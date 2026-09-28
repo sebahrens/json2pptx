@@ -139,6 +139,7 @@ var kindExamples = map[SlideKind]map[string]any{
 			map[string]any{"label": "OpEx", "type": "delta", "value": -30},
 			map[string]any{"label": "EBITDA", "type": "total", "value": 45},
 		},
+		"source":   "FY26 management accounts",
 		"takeaway": "EBITDA closes at $45m after cost deductions.",
 	},
 	KindPillars: {
@@ -186,6 +187,7 @@ var kindExamples = map[SlideKind]map[string]any{
 		"column_alignments": []any{"left", "right", "right", "right"},
 		"highlight_column":  "FY26 revenue",
 		"totals_row":        true,
+		"source":            "Finance segment reporting, FY25-FY26",
 		"takeaway":          "Enterprise added $12.8M; SMB gave back $0.7M.",
 	},
 	KindKPISnapshot: {
@@ -196,6 +198,7 @@ var kindExamples = map[SlideKind]map[string]any{
 			map[string]any{"value": "118%", "label": "Net retention"},
 			map[string]any{"value": "41d", "label": "Sales cycle", "delta": "-6d"},
 		},
+		"source":   "Q4 board pack",
 		"takeaway": "Growth and efficiency both improved.",
 	},
 	KindChartInsight: {
@@ -213,6 +216,7 @@ var kindExamples = map[SlideKind]map[string]any{
 			"Revenue grew 41% across the year.",
 			"The Q4 step-up reflects the EMEA launch.",
 		},
+		"source":   "Company filings, FY26",
 		"takeaway": "Momentum supports the H2 targets.",
 	},
 	KindComparison: {

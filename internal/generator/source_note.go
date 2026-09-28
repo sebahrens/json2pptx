@@ -12,11 +12,12 @@ import (
 // It was 800 (8pt) in a raw #888888, right-aligned, while the patterns drew
 // their own sources at 9-10pt dk1 on the left: one deck showed sources in
 // three sizes and two corners depending on which pattern owned the slide
-// (go-slide-creator-7eib).
+// (go-slide-creator-7eib). Pattern sources now lift into this zone, so it is
+// the one place a generated slide shows attribution (go-slide-creator-cuszt).
 const sourceNoteFontSize = int(patterns.SourceNoteSizePt * 100)
 
 // generateSourceNoteShapeInBounds creates a p:sp element for source
-// attribution text in small gray italics, placed at bounds (the chrome frame's
+// attribution text in 9pt muted-text italics, placed at bounds (the chrome frame's
 // source band). shapeID must be unique within the slide's shape tree; callers
 // allocate it from findMaxShapeID(slideData)+1 just before insertion.
 func generateSourceNoteShapeInBounds(sourceText string, shapeID uint32, bounds pptx.RectEmu) string {
@@ -38,6 +39,8 @@ func generateLinkedSourceNoteShapeInBounds(sourceText string, shapeID uint32, bo
 		Text: &pptx.TextBody{
 			Wrap:   "square",
 			Anchor: "t",
+			// The same 0.1in left inset as the title and footer text boxes, so
+			// the attribution's first glyph lines up with theirs on the grid.
 			Insets: [4]int64{91440, 0, 0, 0},
 			Paragraphs: []pptx.Paragraph{{
 				Align: patterns.SourceNoteAlign,
@@ -47,7 +50,7 @@ func generateLinkedSourceNoteShapeInBounds(sourceText string, shapeID uint32, bo
 					FontSize:        sourceNoteFontSize,
 					Italic:          true,
 					Dirty:           true,
-					Color:           pptx.SchemeFill(patterns.SourceNoteScheme),
+					Color:           pptx.SchemeFill(patterns.SourceNoteScheme, pptx.LumMod(patterns.SourceNoteLumMod), pptx.LumOff(patterns.SourceNoteLumOff)),
 					HyperlinkRelID:  relID,
 					HyperlinkAction: action,
 				}},

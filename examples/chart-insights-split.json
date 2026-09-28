@@ -1,5 +1,12 @@
 {
   "template": "midnight-blue",
+  "chrome": {
+    "confidentiality": "Confidential",
+    "page_numbers": {
+      "enabled": true,
+      "format": "{current}"
+    }
+  },
   "output_filename": "chart-insights-split.pptx",
   "accent_strategy": "primary",
   "slides": [

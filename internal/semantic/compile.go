@@ -154,6 +154,14 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 		// and before go-slide-creator-zmjs only chart_insight could carry a
 		// source — an option matrix or financial case could not cite anything.
 		applyUniversalSlideFields(compiled, si, ir.SourceMap)
+		// DATA_WITHOUT_SOURCE addresses the slide's source field, which a
+		// data slide without one never set; map its pointer to the DeckSpec
+		// field the author fills (go-slide-creator-cuszt).
+		semSlide := si.SourcePath
+		if semSlide == "" {
+			semSlide = fmt.Sprintf("slides[%d]", si.SourceIndex)
+		}
+		ir.SourceMap.Add(slidepath.SlideField(outputIndex, "source"), semSlide+".source", si.SourceIndex)
 		compiled.SectionTitle = si.SectionTitle
 		input.Slides = append(input.Slides, *compiled)
 	}

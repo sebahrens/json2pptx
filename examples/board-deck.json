@@ -1,5 +1,13 @@
 {
   "template": "forest-green",
+  "chrome": {
+    "confidentiality": "Board confidential",
+    "footer_date": "Q1 2026",
+    "page_numbers": {
+      "enabled": true,
+      "format": "{current}"
+    }
+  },
   "output_filename": "board-deck.pptx",
   "slides": [
     {
@@ -11,6 +19,7 @@
     },
     {
       "layout_id": "content",
+      "source": "Q1 2026 management accounts (unaudited)",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Revenue Highlight"}
       ],
@@ -25,6 +34,7 @@
     },
     {
       "layout_id": "content",
+      "source": "Q1 2026 management accounts; LTV/CAC on trailing 12 months",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Operating Metrics"}
       ],
@@ -108,6 +118,7 @@
     },
     {
       "layout_id": "content",
+      "source": "Operations dashboard, Q4 2025 vs Q1 2026",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Efficiency Gains"}
       ],

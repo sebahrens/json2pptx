@@ -21,7 +21,8 @@ server `instructions`):** A deck is done only after every slide of the CURRENT r
 
 **Must-read before authoring:** [QUALITY.md](QUALITY.md) — ghost deck of
 titles first, full-sentence action titles (≤15 words, carrying the number),
-one message per slide, a `takeaway` and `source` on every evidence slide, and
+one message per slide, a `takeaway` and `source` on every evidence slide
+(a data slide without a source draws the advisory `DATA_WITHOUT_SOURCE`), and
 the message → visual table. A deck that passes every gate with topic titles
 is not finished.
 

@@ -98,6 +98,10 @@ const (
 	// ("Market Overview") instead of stating the slide's point: fewer than four
 	// words with no number and no verb (go-slide-creator-d830i). Advisory.
 	ErrCodeTitleNotAction = "TITLE_NOT_ACTION"
+	// ErrCodeDataWithoutSource flags a slide that shows data — a chart, a
+	// table, a KPI or stat pattern — with no source, so its numbers cannot be
+	// traced (go-slide-creator-cuszt). Advisory.
+	ErrCodeDataWithoutSource = "DATA_WITHOUT_SOURCE"
 	// ErrCodeTitleTooLong flags a content-slide title that renders on more than
 	// two lines at the size generation writes (go-slide-creator-d830i).
 	// Advisory; the measured TITLE_OVERFLOW / title_wraps codes own fit.
@@ -258,6 +262,7 @@ var (
 	ErrMissingAltText    = errors.New("image or icon asset is missing alt text")
 	ErrDuplicateTitle    = errors.New("slide title duplicates another content slide's title")
 	ErrTitleNotAction    = errors.New("content slide title names a topic instead of stating a point")
+	ErrDataWithoutSource = errors.New("slide shows data but cites no source")
 	ErrTitleTooLong      = errors.New("content slide title renders on more than two lines")
 	ErrContentDropped    = errors.New("author-provided content was dropped without being placed")
 
@@ -333,6 +338,7 @@ var codeSentinel = map[string]error{
 	ErrCodeMissingAltText:          ErrMissingAltText,
 	ErrCodeDuplicateTitle:          ErrDuplicateTitle,
 	ErrCodeTitleNotAction:          ErrTitleNotAction,
+	ErrCodeDataWithoutSource:       ErrDataWithoutSource,
 	ErrCodeTitleTooLong:            ErrTitleTooLong,
 	ErrCodeContentDropped:          ErrContentDropped,
 	ErrCodeChartValueCoerced:       ErrChartValueCoerced,

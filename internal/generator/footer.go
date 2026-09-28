@@ -248,9 +248,16 @@ func generateFooterShapesAvoiding(positions map[string]*transformXML, config *Fo
 	return strings.Join(shapes, "\n")
 }
 
+// slideNumFieldID is the a:fld id of every injected slide-number field. It was
+// a fresh random UUID per slide, so a deck with page numbers never rendered to
+// the same bytes twice — invisible until a determinism-pinned example gained
+// chrome (go-slide-creator-oa0ru). PowerPoint's own layouts share one field id
+// across every slide, so a fixed, name-derived id is valid OOXML.
+var slideNumFieldID = "{" + strings.ToUpper(uuid.NewSHA1(uuid.NameSpaceURL, []byte("json2pptx:slidenum")).String()) + "}"
+
 // generateSlideNumShape creates a footer shape with an auto-updating slide number field.
 func generateSlideNumShape(shapeID uint32, name string, xfrm *transformXML, fontSize int, colorHex string) string {
-	fieldID := "{" + uuid.New().String() + "}"
+	fieldID := slideNumFieldID
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     name,
@@ -364,7 +371,7 @@ func buildPageNumberRuns(format string, totalSlides, fontSize int, colorHex stri
 
 		switch nextKind {
 		case "current":
-			fieldID := "{" + uuid.New().String() + "}"
+			fieldID := slideNumFieldID
 			runs = append(runs, pptx.Run{
 				Text:      "\u2039#\u203a",
 				Lang:      "en-US",

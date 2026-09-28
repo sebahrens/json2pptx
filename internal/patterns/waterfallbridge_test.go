@@ -819,8 +819,8 @@ func TestWaterfallBridge_CaptionStatesTheScale(t *testing.T) {
 	if obj.Paragraphs[0].Content != v.Caption {
 		t.Errorf("caption = %q, want %q", obj.Paragraphs[0].Content, v.Caption)
 	}
-	if obj.Align != "r" {
-		t.Errorf("caption align = %q, want right so it reads as an annotation", obj.Align)
+	if obj.Align != "l" {
+		t.Errorf("caption align = %q, want left: the unit caption sits top-left of the chart (go-slide-creator-cuszt)", obj.Align)
 	}
 	// Whitespace-only is not a caption.
 	blank := base()

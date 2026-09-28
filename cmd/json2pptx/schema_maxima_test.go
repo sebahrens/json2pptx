@@ -438,7 +438,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"bmc-canvas":                   2.4,
 	"capability-heatmap":           3.8,
 	"card-grid":                    2.4,
-	"chart-insights-split":         4.6,
+	"chart-insights-split":         4.3, // midnight-blue edge-art clearance narrows the column (oa0ru)
 	"comparison-2col":              4.2,
 	"contact-directory":            3.8, // Still refused by the generated-font floor; not a readable schema budget.
 	"driver-tree":                  4.1,
@@ -460,7 +460,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"matrix-2x2":                   9.4,
 	"metric-list":                  5.0,
 	"numbered-step-strip":          4.8,
-	"phase-roadmap":                4.6,
+	"phase-roadmap":                4.3, // midnight-blue edge-art clearance narrows the column (oa0ru)
 	// Layout-aware standalone readability measurement exposed a schema-legal
 	// payload below the floor; go-slide-creator-tp23k tracks its text budget.
 	"process-flow":         0,

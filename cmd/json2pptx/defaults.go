@@ -1,6 +1,9 @@
 package main
 
-import "github.com/sebahrens/json2pptx/internal/jsonschema"
+import (
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/patterns"
+)
 
 // applyDefaults shallow-applies deck-level defaults onto every matching block
 // in the presentation. Must be called after JSON unmarshal but before struct
@@ -11,6 +14,7 @@ func applyDefaults(input *PresentationInput) {
 		return
 	}
 	applyTypeScaleDefaults(input)
+	liftPatternSources(input)
 	if input.Defaults == nil {
 		return
 	}
@@ -168,4 +172,45 @@ func applyCellStyleDefaults(shape *jsonschema.ShapeSpecInput, def *jsonschema.Sh
 	if shape.Icon == nil && def.Icon != nil {
 		shape.Icon = def.Icon
 	}
+}
+
+// liftPatternSources moves the values.source of chart-insights-split and
+// stat-hero (at slide level or inside a compose envelope) into the slide's
+// source, so every source on a generated deck renders once, in the chrome
+// frame's 9pt source zone above the footer, and the pattern centres in the
+// space left above it (go-slide-creator-cuszt). It runs with the other input
+// normalisations so preflight, fit findings, preview and generation all see
+// the same slide. Idempotent: a lifted pattern no longer carries a source.
+func liftPatternSources(input *PresentationInput) {
+	for i := range input.Slides {
+		slide := &input.Slides[i]
+		if slide.Pattern != nil {
+			slide.Source = liftOnePatternSource(slide.Source, slide.Pattern)
+		}
+		if slide.Compose != nil {
+			slide.Source = liftComposeSources(slide.Source, slide.Compose)
+		}
+	}
+}
+
+func liftComposeSources(source string, compose *ComposeInput) string {
+	for i := range compose.Segments {
+		segment := &compose.Segments[i]
+		if segment.HasPattern() {
+			source = liftOnePatternSource(source, &segment.Pattern)
+		}
+		if segment.Compose != nil {
+			source = liftComposeSources(source, segment.Compose)
+		}
+	}
+	return source
+}
+
+func liftOnePatternSource(source string, p *PatternInput) string {
+	lifted, values, ok := patterns.LiftPatternSource(p.Name, p.Values)
+	if !ok {
+		return source
+	}
+	p.Values = values
+	return patterns.MergeSourceNotes(source, lifted)
 }

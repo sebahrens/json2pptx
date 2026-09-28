@@ -36,8 +36,10 @@ default. Discover archetypes with `list_deck_archetypes`.
 numbers, and section crumbs. `meta.viewing_mode` and
 `meta.accent_strategy` choose reading scale and accent rhythm (enum values per
 the schema; others are `SEMANTIC_REQUIRED`). Every slide
-kind can carry `notes` and `source`; the latter is rendered once even when
-the chosen pattern has its own attribution band. `meta.type_scale` can be
+kind can carry `notes` and `source`; the latter is rendered once, in the 9pt
+source zone above the footer, even when the chosen pattern has its own
+attribution field. A data slide without one draws `DATA_WITHOUT_SOURCE` at
+`slides[N].source`. `meta.type_scale` can be
 `compact`, `comfortable` (default), or `presentation` for the whole deck; a
 slide's `pattern` is a string, never an object.
 

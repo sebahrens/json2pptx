@@ -37,6 +37,31 @@
   `largest_empty_band_in` param; the content-sized box patterns (`kpi-*`,
   `card-grid`, `before-after`, `before-after-compact`, `strategy-house`) use a
   20% ink threshold (other patterns 29%).
+- **2026-09-28 — Unreleased — source zone, `DATA_WITHOUT_SOURCE`, and
+  edge-art clearance (`go-slide-creator-cuszt`, `go-slide-creator-oa0ru`).**
+  No schema shape change (no `SchemaVersion` bump). Every source on a
+  generated slide now renders once, in the chrome frame's source zone just
+  above the footer: 9pt italic, `tx1` muted to ~60%, on the content column's
+  left edge, with at least 12pt between it and the takeaway band or content
+  above. `chart-insights-split` and `stat-hero` `values.source` are lifted
+  into `slide.source` during input normalisation (merged, duplicates
+  dropped), so they reserve the zone before the pattern is laid out instead
+  of drawing a row inside it; `expand_pattern` on its own still draws the
+  source in the grid. New advisory fit finding `DATA_WITHOUT_SOURCE` (`info`,
+  `fix.kind: provide_value`, `params.field: "source"`, path
+  `/slides/N/source`, DeckSpec `semantic_path` `slides[N].source`) on slides
+  with a chart, a chart-shaped diagram, a table of figures, or a chart / KPI /
+  stat pattern and no source. `waterfall-bridge`'s `caption` (the unit /
+  scale note) moves from top-right to top-left above the bars. Full-height
+  decorative art wholly inside one side margin (midnight-blue's left accent
+  bar and stripe) now pushes the content column in so it clears the art by
+  the opposite side's margin; the title and the left footer text follow, so
+  title, content, source and footer share one left edge. Injected
+  slide-number fields use a fixed field id instead of a random one per slide,
+  so decks with page numbers render byte-identically. Shipped examples gain
+  `chrome` (confidentiality + page numbers); `board-deck` also sources its
+  data slides.
+
 - **2026-09-28 — Schema 4.153.0: uniform 0.5 cm shape text inset.**
   Every text-bearing shape the engine draws (shape_grid cells — so every
   pattern, compose block and raw grid — and the native diagram shapes) keeps

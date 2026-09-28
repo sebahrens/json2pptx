@@ -1,5 +1,12 @@
 {
   "template": "midnight-blue",
+  "chrome": {
+    "confidentiality": "Confidential",
+    "page_numbers": {
+      "enabled": true,
+      "format": "{current}"
+    }
+  },
   "output_filename": "process-grid-2row.pptx",
   "accent_strategy": "primary",
   "slides": [

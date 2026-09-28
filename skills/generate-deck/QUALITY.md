@@ -48,6 +48,11 @@ the one bar, row or cell the title is about; leave the rest neutral.
 Any slide with data sets `source` (who, what, when: "Company filings, FY24").
 State the period and unit. Never invent a figure, unit or source to fill a
 visual; if the brief has no number, write a qualitative title instead.
+A chart, a table of figures, or a chart / KPI / stat pattern without one
+draws the advisory `DATA_WITHOUT_SOURCE`; for estimates, write
+"Illustrative" rather than leaving it empty. Every source renders once, in
+the 9pt source zone just above the footer, on the content's left edge — a
+`chart-insights-split` or `stat-hero` `values.source` is moved there too.
 
 ## 6. Choose the visual from the message
 
