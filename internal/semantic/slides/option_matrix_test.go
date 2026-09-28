@@ -45,6 +45,43 @@ func harveyMatrix(overlay map[string]any) map[string]any {
 	return body
 }
 
+// go-slide-creator-n83ml: a recommendation the matrix itself scores below
+// another option argues against its own ask.
+func TestOptionMatrixOutscored(t *testing.T) {
+	cases := []struct {
+		name        string
+		overlay     map[string]any
+		found       bool
+		rec, leader string
+	}{
+		{"no recommendation", nil, false, "", ""},
+		{"leader recommended", map[string]any{"recommended": "Consolidate"}, false, "", ""},
+		{"tie is not outscored", map[string]any{"recommended": "Partner"}, false, "", ""},
+		{"outscored", map[string]any{"recommended": "Automate"}, true, "Automate", "Consolidate"},
+		{"wins the decisive criterion", map[string]any{"recommended": "Automate", "decisive_criterion": "Risk"}, false, "", ""},
+		{"loses the decisive criterion", map[string]any{"recommended": "Automate", "decisive_criterion": "Payback"}, true, "Automate", "Consolidate"},
+		{"text scale not compared", map[string]any{"recommended": "Automate", "scale": "text"}, false, "", ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			rec, leader, found := OptionMatrixOutscored(harveyMatrix(c.overlay))
+			if found != c.found || rec != c.rec || leader != c.leader {
+				t.Errorf("got (%q, %q, %v), want (%q, %q, %v)", rec, leader, found, c.rec, c.leader, c.found)
+			}
+		})
+	}
+	rag := map[string]any{
+		"criteria": []any{"Cost", "Speed"}, "scale": "rag", "recommended": "A",
+		"options": []any{
+			map[string]any{"name": "A", "scores": []any{"red", "amber"}},
+			map[string]any{"name": "B", "scores": []any{"green", "green"}},
+		},
+	}
+	if _, leader, found := OptionMatrixOutscored(rag); !found || leader != "B" {
+		t.Errorf("RAG matrix: leader %q found %v, want B true", leader, found)
+	}
+}
+
 func TestOptionMatrixCompilesToTableHighlight(t *testing.T) {
 	values, ok := compiledMatrix(t, harveyMatrix(nil))
 	if !ok {

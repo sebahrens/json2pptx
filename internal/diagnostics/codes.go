@@ -173,6 +173,11 @@ const (
 	// option or decisive criterion, an agenda's current section — and matches
 	// nothing. The highlight or marker silently vanished before this code.
 	CodeSemanticReferenceUnresolved Code = "SEMANTIC_REFERENCE_UNRESOLVED"
+	// CodeSemanticRecommendationOutscored flags an option matrix whose
+	// recommended option scores below another option on the matrix's own
+	// numeric scale (Harvey or RAG), so the slide argues against its own ask
+	// (go-slide-creator-n83ml).
+	CodeSemanticRecommendationOutscored Code = "SEMANTIC_RECOMMENDATION_OUTSCORED"
 	// Deck-rhythm advisories — emitted by internal/semantic rhythm analysis over
 	// the normalized DeckIR (not per-slide authoring rules). They flag monotony
 	// and missing narrative structure before a deck is rendered.
@@ -284,6 +289,7 @@ func AllCodes() []Code {
 		CodeSemanticBridgeTotalMismatch,
 		CodeSemanticPatternNotAvailable,
 		CodeSemanticReferenceUnresolved,
+		CodeSemanticRecommendationOutscored,
 		CodeSemanticRhythmMonotony,
 		CodeSemanticRhythmDensity,
 		CodeSemanticRhythmSectioning,

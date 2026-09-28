@@ -67,8 +67,8 @@ func TestRhythmMonotonyAllowsStructuredOpening(t *testing.T) {
 }
 
 func TestRhythmSectioningFlagsLongUnbrokenDeck(t *testing.T) {
-	slides := make([]SlideSpec, 0, 9)
-	for i := 0; i < 9; i++ {
+	slides := make([]SlideSpec, 0, 11)
+	for i := 0; i < 11; i++ {
 		// Alternate kinds so monotony does not also fire; none are sections.
 		if i%2 == 0 {
 			slides = append(slides, kpiSlide(3))
@@ -81,7 +81,27 @@ func TestRhythmSectioningFlagsLongUnbrokenDeck(t *testing.T) {
 	spec := &DeckSpec{Meta: DeckMeta{Title: "Deck"}, Slides: slides}
 	ws := Normalize(spec).RhythmWarnings()
 	if !rhythmCodes(ws)[string(diagnostics.CodeSemanticRhythmSectioning)] {
-		t.Fatalf("expected sectioning warning for a 9-slide deck with no sections, got %+v", ws)
+		t.Fatalf("expected sectioning warning for an 11-body-slide deck with no sections, got %+v", ws)
+	}
+}
+
+// A deck plan_deck builds at its default budget — cover, ten body slides,
+// closing, and no dividers — is one chapter (go-slide-creator-n83ml).
+func TestRhythmSectioningIgnoresChromeAtDefaultBudget(t *testing.T) {
+	slides := []SlideSpec{{Kind: KindTitle, Body: map[string]any{"title": "Deck"}}}
+	for i := 0; i < 10; i++ {
+		if i%2 == 0 {
+			slides = append(slides, kpiSlide(3))
+		} else {
+			slides = append(slides, SlideSpec{Kind: KindExecutiveSummary, Body: map[string]any{
+				"title": "Summary", "points": []any{"a", "b", "c"}, "takeaway": "t",
+			}})
+		}
+	}
+	slides = append(slides, SlideSpec{Kind: KindClosing, Body: map[string]any{"title": "Thanks"}})
+	spec := &DeckSpec{Meta: DeckMeta{Title: "Deck"}, Slides: slides}
+	if ws := Normalize(spec).RhythmWarnings(); rhythmCodes(ws)[string(diagnostics.CodeSemanticRhythmSectioning)] {
+		t.Errorf("a 12-slide deck with 10 body slides must not trip sectioning, got %+v", ws)
 	}
 }
 

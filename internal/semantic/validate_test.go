@@ -630,6 +630,27 @@ func TestValidateTakeawayExemptWhenKindCarriesConclusion(t *testing.T) {
 	}
 }
 
+// go-slide-creator-n83ml: an option matrix whose recommendation its own
+// scores rank below another option is flagged at the recommendation.
+func TestValidateOptionMatrixRecommendationOutscored(t *testing.T) {
+	body := map[string]any{
+		"title": "Options", "takeaway": "Automate the hubs.", "recommended": "Automate",
+		"criteria": []any{"Capex", "Payback"},
+		"options": []any{
+			map[string]any{"name": "Automate", "scores": []any{1, 1}},
+			map[string]any{"name": "Partner", "scores": []any{4, 3}},
+		},
+	}
+	spec := &DeckSpec{Meta: DeckMeta{Title: "Deck"}, Slides: []SlideSpec{{Kind: KindOptionMatrix, Body: body}}}
+	if _, ok := findAt(Validate(spec, StrictnessWarn), diagnostics.CodeSemanticRecommendationOutscored, "slides[0].recommended"); !ok {
+		t.Fatalf("expected SEMANTIC_RECOMMENDATION_OUTSCORED at slides[0].recommended, got %v", Validate(spec, StrictnessWarn))
+	}
+	body["recommended"] = "Partner"
+	if hasCode(Validate(spec, StrictnessWarn), diagnostics.CodeSemanticRecommendationOutscored) {
+		t.Errorf("the top-scoring recommendation must not be flagged")
+	}
+}
+
 func TestValidateWeakContent(t *testing.T) {
 	spec := &DeckSpec{
 		Meta: DeckMeta{Title: "Deck"},

@@ -166,7 +166,9 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 
 // Stamp a pattern's resolved policy on each shape as well as the grid. Compose
 // flattens segment grids and can discard their grid-level fields; per-shape
-// stamps preserve different overrides on adjacent segments.
+// stamps preserve different overrides on adjacent segments. A shape the pattern
+// itself pinned (peer labels kept at one size, go-slide-creator-n83ml) keeps
+// its own policy.
 func stampPatternTypeScale(grid *jsonschema.ShapeGridInput, mode string) {
 	if grid == nil || mode == "" {
 		return
@@ -177,7 +179,7 @@ func stampPatternTypeScale(grid *jsonschema.ShapeGridInput, mode string) {
 			if cell == nil {
 				continue
 			}
-			if cell.Shape != nil {
+			if cell.Shape != nil && cell.Shape.TypeScale == "" {
 				cell.Shape.TypeScale = mode
 			}
 			if cell.Composite != nil && cell.Composite.Text != nil {

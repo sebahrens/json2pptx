@@ -196,6 +196,7 @@
         {
           "shape": {
             "geometry": "rect",
+            "type_scale": "compact",
             "fill": "none",
             "text": {
               "paragraphs": [
@@ -214,6 +215,7 @@
         {
           "shape": {
             "geometry": "rect",
+            "type_scale": "compact",
             "fill": "none",
             "text": {
               "paragraphs": [
@@ -232,6 +234,7 @@
         {
           "shape": {
             "geometry": "rect",
+            "type_scale": "compact",
             "fill": "none",
             "text": {
               "paragraphs": [
@@ -250,6 +253,7 @@
         {
           "shape": {
             "geometry": "rect",
+            "type_scale": "compact",
             "fill": "none",
             "text": {
               "paragraphs": [
