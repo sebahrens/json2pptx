@@ -1,6 +1,6 @@
 # Schema Changelog
 
-- **Unreleased — uniform 0.5 cm shape text inset.**
+- **2026-09-28 — Schema 4.153.0: uniform 0.5 cm shape text inset.**
   Every text-bearing shape the engine draws (shape_grid cells — so every
   pattern, compose block and raw grid — and the native diagram shapes) keeps
   its text 0.5 cm (~14.17pt) from the edge on all four sides, on every
