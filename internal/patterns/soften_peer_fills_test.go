@@ -31,16 +31,21 @@ func peerGrid(cells ...*jsonschema.GridCellInput) *jsonschema.ShapeGridInput {
 	return &jsonschema.ShapeGridInput{Rows: []jsonschema.GridRowInput{{Cells: cells}}}
 }
 
-func TestSoftenPeerFills_LightAccentPeersBecomeTintWithRule(t *testing.T) {
-	grid := peerGrid(peerCell(`"accent1"`), peerCell(`"accent1"`), peerCell(`"accent1"`))
-	SoftenPeerFills(lightAccentCtx(), "kpi-3up", grid)
-	for i, c := range grid.Rows[0].Cells {
-		tone, _ := parseFillTone(c.Shape.Fill)
-		if tone.Color != "accent1" || tone.LumMod != tintLumMod || tone.LumOff != tintLumOff {
-			t.Errorf("cell %d fill = %s, want accent1 light tint", i, c.Shape.Fill)
-		}
-		if c.AccentBar == nil || c.AccentBar.Color != "accent1" || c.AccentBar.Position != "top" {
-			t.Errorf("cell %d accent bar = %+v, want top accent1 rule", i, c.AccentBar)
+// Peer cards become the neutral 4% surface plus a top accent rule on every
+// template: light accents (p-style orange) and dark ones (navy) alike, so
+// accent1 at 100% is left for the slide's one emphasised element
+// (go-slide-creator-8xsj3).
+func TestSoftenPeerFills_PeersBecomeNeutralWithRule(t *testing.T) {
+	for name, ctx := range map[string]ExpandContext{"light accent": lightAccentCtx(), "dark accent": fullThemeCtx()} {
+		grid := peerGrid(peerCell(`"accent1"`), peerCell(`"accent1"`), peerCell(`"accent1"`))
+		SoftenPeerFills(ctx, "kpi-3up", grid)
+		for i, c := range grid.Rows[0].Cells {
+			if got := string(c.Shape.Fill); got != neutral4JSON {
+				t.Errorf("%s: cell %d fill = %s, want neutral 4%%", name, i, got)
+			}
+			if c.AccentBar == nil || c.AccentBar.Color != "accent1" || c.AccentBar.Position != "top" {
+				t.Errorf("%s: cell %d accent bar = %+v, want top accent1 rule", name, i, c.AccentBar)
+			}
 		}
 	}
 }
@@ -52,7 +57,6 @@ func TestSoftenPeerFills_KeepsSolidFills(t *testing.T) {
 		pattern string
 		grid    *jsonschema.ShapeGridInput
 	}{
-		{"dark accent", fullThemeCtx(), "kpi-3up", peerGrid(peerCell(`"accent1"`), peerCell(`"accent1"`))},
 		{"not a peer-card pattern", lightAccentCtx(), "capability-heatmap", peerGrid(peerCell(`"accent1"`), peerCell(`"accent1"`))},
 		{"lone solid card is emphasis", lightAccentCtx(), "card-grid", peerGrid(peerCell(`"accent1"`), peerCell(`{"color":"accent1","lumMod":20000,"lumOff":80000}`))},
 	}
@@ -66,6 +70,17 @@ func TestSoftenPeerFills_KeepsSolidFills(t *testing.T) {
 				t.Error("unexpected accent bar")
 			}
 		})
+	}
+}
+
+func TestSharedRotationKeyGroupsKPIFamily(t *testing.T) {
+	a, okA := SharedRotationKey("kpi-3up")
+	b, okB := SharedRotationKey("kpi-4up")
+	if !okA || !okB || a != b {
+		t.Errorf("kpi-3up / kpi-4up keys = %q,%v / %q,%v; want one shared key", a, okA, b, okB)
+	}
+	if _, ok := SharedRotationKey("card-grid"); ok {
+		t.Error("card-grid should rotate on its own content")
 	}
 }
 

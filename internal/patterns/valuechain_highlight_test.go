@@ -85,17 +85,17 @@ func TestValueChainHighlightIsDistinctOnEveryBundledTheme(t *testing.T) {
 				t.Fatalf("Expand: %v", err)
 			}
 
-			base := fillOf(t, grid.Rows[0].Cells[0].Shape.Fill)
-			highlight := fillOf(t, grid.Rows[0].Cells[2].Shape.Fill)
-			if highlight == base {
-				t.Fatalf("highlighted step uses the same fill as its neighbours (%s)", base)
+			if got := string(grid.Rows[0].Cells[0].Shape.Fill); got != neutral16JSON {
+				t.Fatalf("plain step fill = %s, want neutral 16%%", got)
 			}
-			ratio, ok := fillContrast(ctx, fillTone{Color: base}, fillTone{Color: highlight})
+			base := valueChainLabelFillName
+			highlight := fillOf(t, grid.Rows[0].Cells[2].Shape.Fill)
+			ratio, ok := fillContrast(ctx, valueChainLabelTone, fillTone{Color: highlight})
 			if !ok {
 				t.Fatalf("cannot measure %s vs %s", base, highlight)
 			}
-			if ratio < fillDistinctnessMin {
-				t.Errorf("highlight %s on %s reads at %.2f:1, want >= %.1f", highlight, base, ratio, fillDistinctnessMin)
+			if ratio < valueChainHighlightMin {
+				t.Errorf("highlight %s on %s reads at %.2f:1, want >= %.1f", highlight, base, ratio, valueChainHighlightMin)
 			}
 			t.Logf("%s: %s on %s = %.2f:1", name, highlight, base, ratio)
 		})
@@ -120,13 +120,14 @@ func TestValueChainHighlightDefaultWithoutTheme(t *testing.T) {
 func TestValueChainAuthoredHighlightIsHonouredAndReported(t *testing.T) {
 	vc := &valueChain{}
 	ctx := ExpandContext{Theme: types.ThemeInfo{Colors: bundledThemeColors["warm-coral"]}}
-	vals := &ValueChainValues{Steps: valueChainSteps(), HighlightColor: "accent2"}
+	// warm-coral accent3 #FF8A65 is 1.59:1 against the neutral 16% step.
+	vals := &ValueChainValues{Steps: valueChainSteps(), HighlightColor: "accent3"}
 
 	grid, err := vc.Expand(ctx, vals, nil, nil)
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
 	}
-	if got := fillOf(t, grid.Rows[0].Cells[2].Shape.Fill); got != "accent2" {
+	if got := fillOf(t, grid.Rows[0].Cells[2].Shape.Fill); got != "accent3" {
 		t.Errorf("authored highlight_color was overridden: got %q", got)
 	}
 
@@ -137,17 +138,17 @@ func TestValueChainAuthoredHighlightIsHonouredAndReported(t *testing.T) {
 	if !strings.HasPrefix(warnings[0], ErrCodeLowContrastHighlight+":") {
 		t.Errorf("warning %q does not carry the finding code", warnings[0])
 	}
-	if !strings.Contains(warnings[0], "1.48") {
+	if !strings.Contains(warnings[0], "1.59") {
 		t.Errorf("warning should quote the measured ratio, got %q", warnings[0])
 	}
 
 	// A highlight that does read draws nothing.
-	vals.HighlightColor = "accent3"
+	vals.HighlightColor = "accent2"
 	if w := vc.PostExpandWarnings(ctx, vals, nil); len(w) != 0 {
 		t.Errorf("a distinct authored highlight drew %v", w)
 	}
 	// Neither does a chain with no highlighted step.
-	vals.HighlightColor = "accent2"
+	vals.HighlightColor = "accent3"
 	for i := range vals.Steps {
 		vals.Steps[i].Highlight = false
 	}

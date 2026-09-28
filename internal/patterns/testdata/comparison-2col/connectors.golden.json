@@ -55,7 +55,12 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "lt2",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
+            },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
@@ -122,7 +127,12 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "lt2",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
+            },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {

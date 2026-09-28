@@ -214,7 +214,13 @@ func patternAccentContext(ctx patterns.ExpandContext, p *PatternInput) patterns.
 		return ctx
 	}
 	// Canonical JSON is stable across whitespace and object-key order, unlike
-	// deck position. Repeated identical patterns intentionally share a colour.
+	// deck position. Repeated identical patterns intentionally share a colour,
+	// and sibling families (every kpi-*) share one key so they never rotate
+	// apart.
+	if key, ok := patterns.SharedRotationKey(p.Name); ok {
+		ctx.RotationKey = key
+		return ctx
+	}
 	var canonical any
 	if err := json.Unmarshal(p.Values, &canonical); err == nil {
 		if data, err := json.Marshal(canonical); err == nil {

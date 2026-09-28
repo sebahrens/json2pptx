@@ -49,13 +49,12 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "lt1",
-            "line": {
+            "fill": {
               "color": "dk1",
-              "width": 0.5,
-              "lumMod": 20000,
-              "lumOff": 80000
+              "lumMod": 4000,
+              "lumOff": 96000
             },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
@@ -73,13 +72,12 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "lt1",
-            "line": {
+            "fill": {
               "color": "dk1",
-              "width": 0.5,
-              "lumMod": 20000,
-              "lumOff": 80000
+              "lumMod": 4000,
+              "lumOff": 96000
             },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
@@ -101,7 +99,12 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "lt2",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 8000,
+              "lumOff": 92000
+            },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
@@ -119,7 +122,12 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "lt2",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 8000,
+              "lumOff": 92000
+            },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {

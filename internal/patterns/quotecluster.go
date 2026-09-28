@@ -272,19 +272,18 @@ func (q *quoteCluster) Expand(ctx ExpandContext, values, overrides any, cellOver
 				continue
 			}
 			qt := v.Quotes[idx]
-			fill := ctx.ResolveSurface("subtle", "lt1")
-			var line json.RawMessage
+			// Rows alternate two neutral steps (4% / 8%), never outlined
+			// white beside filled grey (go-slide-creator-pgdkp).
+			fillA, fillB := surfacePairJSON(ctx)
+			fill := fillA
 			if r%2 == 1 {
-				fill = ctx.ResolveSurface("paper", "lt2")
-			}
-			if fill == "lt1" {
-				line = json.RawMessage(paperSurfaceHairline)
+				fill = fillB
 			}
 			cell := &jsonschema.GridCellInput{
 				Shape: &jsonschema.ShapeSpecInput{
 					Geometry: "roundRect",
-					Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, fill)),
-					Line:     line,
+					Fill:     fill,
+					Line:     noLine,
 					Text:     buildQuoteClusterBubbleText(qt, quoteSize, nameSize, titleSize, accent),
 				},
 			}

@@ -8,13 +8,12 @@
           "row_span": 2,
           "shape": {
             "geometry": "rect",
-            "fill": "lt1",
-            "line": {
+            "fill": {
               "color": "dk1",
-              "width": 0.75,
-              "lumMod": 25000,
-              "lumOff": 75000
+              "lumMod": 4000,
+              "lumOff": 96000
             },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
@@ -45,13 +44,12 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "lt1",
-            "line": {
+            "fill": {
               "color": "dk1",
-              "width": 0.75,
-              "lumMod": 25000,
-              "lumOff": 75000
+              "lumMod": 4000,
+              "lumOff": 96000
             },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
@@ -83,13 +81,12 @@
           "row_span": 2,
           "shape": {
             "geometry": "rect",
-            "fill": "lt1",
-            "line": {
+            "fill": {
               "color": "dk1",
-              "width": 0.75,
-              "lumMod": 25000,
-              "lumOff": 75000
+              "lumMod": 4000,
+              "lumOff": 96000
             },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
@@ -126,13 +123,12 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "lt1",
-            "line": {
+            "fill": {
               "color": "dk1",
-              "width": 0.75,
-              "lumMod": 25000,
-              "lumOff": 75000
+              "lumMod": 4000,
+              "lumOff": 96000
             },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
@@ -164,13 +160,12 @@
           "row_span": 2,
           "shape": {
             "geometry": "rect",
-            "fill": "lt1",
-            "line": {
+            "fill": {
               "color": "dk1",
-              "width": 0.75,
-              "lumMod": 25000,
-              "lumOff": 75000
+              "lumMod": 4000,
+              "lumOff": 96000
             },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
@@ -205,13 +200,12 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "lt1",
-            "line": {
+            "fill": {
               "color": "dk1",
-              "width": 0.75,
-              "lumMod": 25000,
-              "lumOff": 75000
+              "lumMod": 4000,
+              "lumOff": 96000
             },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
@@ -242,13 +236,12 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "lt1",
-            "line": {
+            "fill": {
               "color": "dk1",
-              "width": 0.75,
-              "lumMod": 25000,
-              "lumOff": 75000
+              "lumMod": 4000,
+              "lumOff": 96000
             },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
@@ -284,13 +277,12 @@
           "col_span": 3,
           "shape": {
             "geometry": "rect",
-            "fill": "lt1",
-            "line": {
+            "fill": {
               "color": "dk1",
-              "width": 0.75,
-              "lumMod": 25000,
-              "lumOff": 75000
+              "lumMod": 4000,
+              "lumOff": 96000
             },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
@@ -322,13 +314,12 @@
           "col_span": 2,
           "shape": {
             "geometry": "rect",
-            "fill": "lt1",
-            "line": {
+            "fill": {
               "color": "dk1",
-              "width": 0.75,
-              "lumMod": 25000,
-              "lumOff": 75000
+              "lumMod": 4000,
+              "lumOff": 96000
             },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {

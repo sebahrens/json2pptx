@@ -319,7 +319,7 @@ func (sh *strategyHouse) Expand(ctx ExpandContext, values, overrides any, cellOv
 			ColSpan: numPillars,
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(`"lt2"`),
+				Fill:     neutralFillJSON(NeutralTint8),
 				Text:     buildStrategyHouseRoofText(vals.RoofBadges, baseAccent),
 			},
 		}
@@ -348,14 +348,15 @@ func (sh *strategyHouse) Expand(ctx ExpandContext, values, overrides any, cellOv
 	// a pillar column was invisible below its last bullet and the space between
 	// the bullets and the foundation read as a large empty band rather than as
 	// the pillars holding the house up (go-slide-creator-pr3g).
-	pillarSurface := ctx.ResolveSurface("subtle", "lt2")
+	// Generic light roles become the neutral 4% step (go-slide-creator-8xsj3).
+	pillarSurface := surfaceFillJSON(ctx, "subtle", NeutralTint4)
 	pillarCells := make([]*jsonschema.GridCellInput, numPillars)
 	for i, p := range vals.Pillars {
 		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 		pillarCells[i] = &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, pillarSurface)),
+				Fill:     pillarSurface,
 				Text:     buildStrategyHousePillarText(p.Title, p.Body, headerSize, bodySize, accent),
 			},
 			AccentBar: &jsonschema.AccentBarInput{
@@ -387,12 +388,14 @@ func (sh *strategyHouse) Expand(ctx ExpandContext, values, overrides any, cellOv
 	}
 	rows = append(rows, pillarRow)
 
-	// Foundation row
+	// Foundation row: structure under the pillars, a neutral 16% band with
+	// dk1 text. The objective banner is the slide's one solid-accent element;
+	// a second full-width accent slab competed with it (go-slide-creator-8xsj3).
 	foundationCell := &jsonschema.GridCellInput{
 		ColSpan: numPillars,
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, baseAccent)),
+			Fill:     neutralFillJSON(NeutralTint16),
 			Text:     buildStrategyHouseFoundationText(vals.Foundation, headerSize-2),
 		},
 	}
@@ -465,7 +468,7 @@ func buildStrategyHouseBannerText(objective string, size float64) json.RawMessag
 func buildStrategyHouseFoundationText(foundation string, size float64) json.RawMessage {
 	textObj := strategyHouseTextObj{
 		Paragraphs: []strategyHouseParagraph{
-			{Content: pptx.ConvertMarkdownEmphasis(foundation), Size: size, Bold: true, Color: "lt1", Align: "ctr"},
+			{Content: pptx.ConvertMarkdownEmphasis(foundation), Size: size, Bold: true, Color: "dk1", Align: "ctr"},
 		},
 		Align:         "ctr",
 		VerticalAlign: "ctr",

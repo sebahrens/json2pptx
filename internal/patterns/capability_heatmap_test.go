@@ -156,15 +156,15 @@ func TestCapabilityHeatmap_ExpandStructure(t *testing.T) {
 	if c := grid.Rows[3].Cells[2]; c.Shape != nil {
 		t.Errorf("short column should leave an empty cell, got %+v", c.Shape)
 	}
-	// Tier fills: tier 0 is the accent itself, tier 1 a tint, tier 2 a grey.
+	// Tier fills: tier 0 is the accent itself, tier 1 a tint, tier 2 the neutral 16% grey.
 	if got := string(grid.Rows[1].Cells[0].Shape.Fill); got != `"accent1"` {
 		t.Errorf("tier 0 fill = %s", got)
 	}
 	if got := string(grid.Rows[2].Cells[0].Shape.Fill); !strings.Contains(got, "accent1") || !strings.Contains(got, "lumOff") {
 		t.Errorf("tier 1 fill = %s", got)
 	}
-	if got := string(grid.Rows[3].Cells[0].Shape.Fill); !strings.Contains(got, "lt1") {
-		t.Errorf("tier 2 fill = %s", got)
+	if got := string(grid.Rows[3].Cells[0].Shape.Fill); got != neutral16JSON {
+		t.Errorf("tier 2 fill = %s, want neutral 16%%", got)
 	}
 	legend := grid.Rows[len(grid.Rows)-1].Cells[0]
 	if legend.ColSpan != 4 || legend.Grid == nil || len(legend.Grid.Rows[0].Cells) != 2*len(v.Tiers) {

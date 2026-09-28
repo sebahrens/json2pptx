@@ -488,6 +488,21 @@ var findingMetaRegistry = map[string]FindingMeta{
 		RelatedCodes:  []string{ErrCodeMixedFillScheme, ErrCodeHexFillNonBrand},
 	},
 
+	ErrCodeFilledShapeOutlined: {
+		Code:        ErrCodeFilledShapeOutlined,
+		Summary:     "An authored shape_grid shape has both an opaque fill and a visible outline.",
+		Severity:    "info",
+		WhenEmitted: "Validate/generate fit collection walks an authored (non-pattern, non-compose) shape_grid, nested sub-grids included, and finds a shape whose fill is opaque (not \"none\", alpha >= 50) and whose line is not \"none\". One finding per shape, at the shape's line path. Advisory: the shape renders as authored.",
+		RemediationSteps: []string{
+			"Remove the shape's line (or set it to \"none\"); pattern expanders never outline a filled shape.",
+			"Separate neighbouring filled shapes with the grid gap (4–6pt white gutters over a neutral field) or with two neutral tints ({\"color\":\"dk1\",\"lumMod\":4000,\"lumOff\":96000} and lumMod 8000 / lumOff 92000).",
+			"Keep strokes for rules only: a 0.5pt row divider, a 1pt header underline, or a 2–3pt accent_bar.",
+		},
+		ExampleBefore: `{"shape":{"geometry":"rect","fill":"lt1","line":{"color":"dk1","width":0.75}}}`,
+		ExampleAfter:  `{"shape":{"geometry":"rect","fill":{"color":"dk1","lumMod":4000,"lumOff":96000},"line":"none"}}`,
+		RelatedCodes:  []string{ErrCodeAccentOverload, ErrCodeMixedFillScheme},
+	},
+
 	ErrCodeSparseSingleRowFlow: {
 		Code:        ErrCodeSparseSingleRowFlow,
 		Summary:     "A single-row sequence pattern with sparse per-cell text fills the whole slide, so its boxes stretch vertically.",
@@ -847,9 +862,9 @@ var findingMetaRegistry = map[string]FindingMeta{
 		Code:        ErrCodeLowContrastHighlight,
 		Summary:     "An authored pattern highlight does not read as a highlight against the structure it sits in.",
 		Severity:    "review",
-		WhenEmitted: "A pattern whose one semantic signal is a highlighted cell (value-chain) measures the authored highlight_color against the resolved fill of the other cells and finds under 3:1 — the WCAG non-text bar, below which the two fills are one block of colour. Only an AUTHORED highlight draws this: the default is chosen by the same measurement, so it cannot fail.",
+		WhenEmitted: "A pattern whose one semantic signal is a highlighted cell (value-chain) measures the authored highlight_color against the resolved fill of the other cells (value-chain steps are a neutral dk1 16% tint) and finds under 2:1 of lightness contrast — with an achromatic base a saturated accent also separates by hue, so 2:1 is the bar below which the highlighted step merges into the chain. Only an AUTHORED highlight draws this: the default is chosen by the same measurement, so it cannot fail.",
 		RemediationSteps: []string{
-			"Omit highlight_color and let the engine pick the first accent that clears 3:1 against the step fill for this template.",
+			"Omit highlight_color and let the engine pick the first accent that clears 2:1 against the neutral step fill for this template.",
 			"Or choose a different accent: contrast is template-dependent, so the slot that works on one template can vanish on another.",
 		},
 		ExampleBefore: `{"highlight_color": "accent2", "steps": [{"label": "Manufacturing", "highlight": true}]}`,

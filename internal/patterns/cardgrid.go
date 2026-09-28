@@ -176,6 +176,11 @@ func (c *cardGrid) PostExpandWarnings(ctx ExpandContext, values, overrides any) 
 				ErrCodeBodyTooLong, i, n, budget, ResolveSize(o.BodySize, 12)))
 		}
 	}
+	// Every card-grid card is filled, so an authored border outlines a filled
+	// shape. Honoured, but reported (go-slide-creator-pgdkp).
+	if line := buildCardGridLineOverride(o, "accent1"); line != nil && string(line) != `"none"` {
+		warnings = append(warnings, ErrCodeFilledShapeOutlined+": card-grid overrides draw a border (border / line_color / line_width) round filled cards; drop it — the grid gap and neutral card tints already separate the cards")
+	}
 	return warnings
 }
 func (c *cardGrid) SupportsInlineMarkdown() bool { return true }
@@ -649,7 +654,7 @@ func (c *cardGrid) expandAccentStripe(cell CardGridCell, accent string, headerSi
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "roundRect",
-			Fill:     json.RawMessage(`"lt1"`),
+			Fill:     neutralFillJSON(NeutralTint4), // no white card on white paper
 			Text:     buildCardGridDarkTextContent(cell.Header, headerSize, cell.Body, bodySize, accent),
 		},
 		AccentBar: &jsonschema.AccentBarInput{
@@ -666,7 +671,7 @@ func (c *cardGrid) expandNumberedBadge(cell CardGridCell, idx int, accent string
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "roundRect",
-			Fill:     json.RawMessage(`"lt1"`),
+			Fill:     neutralFillJSON(NeutralTint4), // no white card on white paper
 			Text:     buildNumberedBadgeTextContent(badge, header, headerSize, cell.Body, bodySize, accent),
 		},
 	}
@@ -680,7 +685,7 @@ func (c *cardGrid) expandIconCard(cell CardGridCell, accent string, headerSize, 
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "roundRect",
-			Fill:     json.RawMessage(`"lt1"`),
+			Fill:     neutralFillJSON(NeutralTint4), // no white card on white paper
 			Text:     buildCardGridDarkTextContent(cell.Header, headerSize, cell.Body, bodySize, accent),
 		},
 		AccentBar: &jsonschema.AccentBarInput{
@@ -695,33 +700,30 @@ func (c *cardGrid) expandIconCard(cell CardGridCell, accent string, headerSize, 
 // Uses SurfaceTints from template metadata when available (subtle/paper roles),
 // falling back to lt1/lt2 for templates without surface tint definitions.
 func (c *cardGrid) expandTinted(ctx ExpandContext, cell CardGridCell, idx int, accent string, headerSize, bodySize float64) *jsonschema.GridCellInput {
-	fill := ctx.ResolveSurface("subtle", "lt1")
+	// Two neutral steps, never outlined-white beside filled: a white card on
+	// white paper gets the 4% tint, its neighbour the 8% tint
+	// (go-slide-creator-pgdkp). Template surface roles still win.
+	fillJSON, paperJSON := surfacePairJSON(ctx)
 	if idx%2 == 1 {
-		fill = ctx.ResolveSurface("paper", "lt2")
-	}
-	var line json.RawMessage
-	if fill == "lt1" {
-		line = json.RawMessage(paperSurfaceHairline)
+		fillJSON = paperJSON
 	}
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "roundRect",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, fill)),
-			Line:     line,
+			Fill:     fillJSON,
+			Line:     noLine,
 			Text:     buildCardGridDarkTextContent(cell.Header, headerSize, cell.Body, bodySize, accent),
 		},
 	}
 }
 
 // expandSoftCard: a single pale surface card with dark text and no visible border.
-// An explicit subtle role wins; a white fallback is tinted from the accent so
-// the panel stays visible on white templates. card_fill still overrides it.
+// An explicit subtle role wins; a white fallback becomes the neutral 4% step so
+// the panel stays visible on white templates without an accent wash competing
+// with the recommended card (go-slide-creator-8xsj3). card_fill still
+// overrides it.
 func (c *cardGrid) expandSoftCard(ctx ExpandContext, cell CardGridCell, accent string, headerSize, bodySize float64) *jsonschema.GridCellInput {
-	fill := ctx.ResolveSurface("subtle", "lt1")
-	fillJSON := json.RawMessage(fmt.Sprintf(`"%s"`, fill))
-	if fill == "lt1" {
-		fillJSON = paleAccentTone(accent).fillJSON()
-	}
+	fillJSON := surfaceFillJSON(ctx, "subtle", NeutralTint4)
 	textContent := buildCardGridDarkTextContent(cell.Header, headerSize, cell.Body, bodySize, accent)
 	if cell.Recommended {
 		fillJSON = json.RawMessage(fmt.Sprintf(`"%s"`, accent))

@@ -339,6 +339,7 @@ func classifyFitStage(d diagnostics.Diagnostic) string {
 		patterns.ErrCodeCellUnderfilled, patterns.ErrCodeGridDiagramNarrow,
 		patterns.ErrCodeMixedFillScheme, patterns.ErrCodeDividerTooThin,
 		patterns.ErrCodeStackedTables, patterns.ErrCodeAccentOverload,
+		patterns.ErrCodeFilledShapeOutlined,
 		patterns.ErrCodeContrastPredicted, patterns.ErrCodeColumnWidthDeficit,
 		patterns.ErrCodeDensityExceeded:
 		return preflightStageGrid

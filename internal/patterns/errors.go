@@ -110,6 +110,11 @@ const (
 	// that does not read as a highlight against the structure it sits in
 	// (go-slide-creator-ah5s).
 	ErrCodeLowContrastHighlight = "LOW_CONTRAST_HIGHLIGHT"
+	// ErrCodeFilledShapeOutlined reports an authored shape_grid shape with both
+	// an opaque fill and a visible outline. Pattern expanders never outline a
+	// filled shape; separation comes from gutters and neutral tints
+	// (go-slide-creator-pgdkp). Advisory.
+	ErrCodeFilledShapeOutlined = "FILLED_SHAPE_OUTLINED"
 	// ErrCodeRotatedAccentUnreadable reports an automatic rotate slot that
 	// could not carry the pattern's normal-size light text safely.
 	ErrCodeRotatedAccentUnreadable = "ROTATED_ACCENT_UNREADABLE"
@@ -250,6 +255,7 @@ var (
 	ErrChromeBandNoFit      = errors.New("takeaway/source band does not fit the layout")
 	ErrChromeCollision      = errors.New("authored content intersects opaque template artwork")
 	ErrAccentOverload       = errors.New("slide uses more than two distinct accent hues")
+	ErrFilledShapeOutlined  = errors.New("filled shape also carries an outline")
 	ErrSparseSingleRowFlow  = errors.New("single-row flow pattern stretched to fill slide with sparse per-cell text")
 	ErrOvertallFlowLane     = errors.New("single-row flow lane occupies more than half the content height with short labels")
 	ErrFlowDiamondNoContent = errors.New("process-flow decision diamond has no supporting content zone")
@@ -327,6 +333,7 @@ var codeSentinel = map[string]error{
 	ErrCodeChromeBandNoFit:         ErrChromeBandNoFit,
 	ErrCodeChromeCollision:         ErrChromeCollision,
 	ErrCodeAccentOverload:          ErrAccentOverload,
+	ErrCodeFilledShapeOutlined:     ErrFilledShapeOutlined,
 	ErrCodeSparseSingleRowFlow:     ErrSparseSingleRowFlow,
 	ErrCodeOvertallFlowLane:        ErrOvertallFlowLane,
 	ErrCodeFlowDiamondNoContent:    ErrFlowDiamondNoContent,

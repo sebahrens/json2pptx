@@ -968,6 +968,27 @@ Emitted by `DetectStructuralSmells` for an authored grid whose effective row gap
 
 Emitted by `DetectStructuralSmells` when one authored grid mixes hex fills (other than black/white) with semantic scheme fills. Hex fills do not follow a template swap, so the slide stops being portable. Convert the hex fills to scheme names. `fix.params.value` carries a scheme color the grid already uses, so the `repair_slide` call in `next_tool_call` rewrites every hex fill in the grid to it; pass a different `value` (or a per-cell `path`) to choose another.
 
+### `FILLED_SHAPE_OUTLINED`
+
+**Action:** `info`
+**Pattern:** `shape_grid` (or `card-grid`)
+**Fix kind:** `remove_outline` (advisory)
+
+Emitted by `DetectStructuralSmells` (same scope as `accent_overload`: authored grids only, nested sub-grids included) for every shape whose `fill` is opaque (not `"none"`, `alpha` ≥ 50) and whose `line` is visible (not `"none"`). One finding per shape, at `.../cells/N/shape/line`. Card-grid emits it through `PostExpandWarnings` (path `/slides/N/pattern`) when its `border` (`subtle` / `accent`), `line_color` or `line_width` override draws a border round its always-filled cards.
+
+A stroke round a filled box adds a second contour and doubles the visual noise; outlined boxes beside filled ones read as a rendering bug (go-slide-creator-pgdkp). Pattern expanders never draw one: they separate filled shapes with the grid's white gutters over neutral `dk1` tints (4% / 8% / 16%) and keep strokes for rules only — 0.5pt row dividers, a 1pt header underline or a 2–3pt `accent_bar`. The outline still renders as authored; drop the `line` (or set it to `"none"`) and let the gap or a second tint separate the shapes.
+
+```json
+{
+  "pattern": "shape_grid",
+  "path": "/slides/3/shape_grid/rows/0/cells/1/shape/line",
+  "code": "FILLED_SHAPE_OUTLINED",
+  "message": "slide 4: filled shape at /slides/3/shape_grid/rows/0/cells/1 also has an outline; drop the line and separate filled shapes with the grid gap (white gutters) or two neutral tints",
+  "fix": { "kind": "remove_outline", "params": { "path": "/slides/3/shape_grid/rows/0/cells/1/shape/line", "key": "line" } },
+  "action": "info"
+}
+```
+
 ### `CHROME_COLLISION`
 
 **Action:** `review`
@@ -1132,15 +1153,15 @@ A list is auto-numbered — `<a:buAutoNum type="arabicPeriod"/>` on every paragr
 **Pattern:** `value-chain`
 **Fix kind:** *(none — an authoring choice)*
 
-Emitted when a pattern's AUTHORED highlight colour does not read as a highlight against the structure it sits in: under 3:1 fill-vs-fill, the WCAG non-text bar, below which the two fills are one block of colour at any viewing distance.
+Emitted when a pattern's AUTHORED highlight colour does not read as a highlight against the structure it sits in. Value-chain steps are a neutral `dk1` 16% tint (go-slide-creator-8xsj3); against that achromatic base a saturated accent also separates by hue, so the bar is 2:1 of lightness contrast, below which the highlighted step merges into the chain.
 
-Contrast between two scheme slots is template-dependent, which is what made this invisible: value-chain's old fixed default of `accent2` on `dk2` measures 3.21:1 on midnight-blue and 1.48:1 on warm-coral, where the highlighted step was indistinguishable from its neighbours (go-slide-creator-ah5s). The DEFAULT is now chosen by that measurement — the first of `accent1`, `accent2` … `accent6`, `lt2` that clears the bar — so it cannot fail; only an authored `highlight_color` can, and it is honoured rather than overridden.
+Contrast between two scheme slots is template-dependent, which is what made this invisible: value-chain's old fixed default of `accent2` on `dk2` measured 1.48:1 on warm-coral, where the highlighted step was indistinguishable from its neighbours (go-slide-creator-ah5s). The DEFAULT is chosen by that measurement — the first of `accent1`, `accent2` … `accent6`, `dk2` that clears the bar — so it cannot fail; only an authored `highlight_color` can, and it is honoured rather than overridden.
 
 ```json
 {
   "path": "/slides/1/pattern",
   "code": "LOW_CONTRAST_HIGHLIGHT",
-  "message": "slide 2: value-chain: value-chain highlight_color \"accent2\" reads at 1.48:1 against the step fill (dk2) — below 3.0:1 the highlighted step is not distinguishable from its neighbours; omit highlight_color to let the engine pick an accent that clears the bar",
+  "message": "slide 2: value-chain: value-chain highlight_color \"accent3\" reads at 1.59:1 against the step fill (dk1 at 16%) — below 2.0:1 the highlighted step is not distinguishable from its neighbours; omit highlight_color to let the engine pick an accent that clears the bar",
   "action": "review"
 }
 ```

@@ -117,7 +117,7 @@
           "fit": "contain",
           "shape": {
             "geometry": "ellipse",
-            "fill": "lt1",
+            "fill": "none",
             "line": {
               "color": "accent1",
               "width": 1.75
@@ -144,12 +144,7 @@
           "shape": {
             "geometry": "ellipse",
             "fill": "accent1",
-            "line": {
-              "color": "accent1",
-              "lumMod": 40000,
-              "lumOff": 60000,
-              "width": 6
-            },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
@@ -255,7 +250,7 @@
           "fit": "contain",
           "shape": {
             "geometry": "ellipse",
-            "fill": "lt1",
+            "fill": "none",
             "line": {
               "color": "accent1",
               "width": 1.75
@@ -367,7 +362,7 @@
           "fit": "contain",
           "shape": {
             "geometry": "ellipse",
-            "fill": "lt1",
+            "fill": "none",
             "line": {
               "color": "accent1",
               "width": 1.75
@@ -480,7 +475,7 @@
           "fit": "contain",
           "shape": {
             "geometry": "ellipse",
-            "fill": "lt1",
+            "fill": "none",
             "line": {
               "color": "accent1",
               "width": 1.75

@@ -137,9 +137,11 @@ iterate until the score is ≥ 70.
 
 **Pre-emit checklist.** Tables within Rule 20 (rows ≤ 7, cols ≤ 6, font ≥
 9pt, multiline cells counted); every fill semantic, never mixed with hex
-(Rule 12); no sibling shapes closer than 4pt; `cell_accent_mode` on 4+ peer
-cells; every pattern cell at 35–110% `density_pct` from `expand_pattern`
-(PATTERNS.md).
+(Rule 12); no `line` on a filled shape (`FILLED_SHAPE_OUTLINED`: separate
+with the `gap` and neutral `dk1` tints, e.g. `{"color":"dk1","lumMod":4000,
+"lumOff":96000}`); one solid accent per slide (peer cells neutral, accent as
+a 3pt `accent_bar`); no sibling shapes closer than 4pt; every pattern cell at
+35–110% `density_pct` from `expand_pattern` (PATTERNS.md).
 
 ## Generate and repair
 

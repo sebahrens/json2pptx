@@ -309,6 +309,9 @@ func patternWarningAction(code string) string {
 		// TEXT_EXCEEDS_SHAPE stays advisory: it estimates the box from
 		// authored sizes and a 1.15 estimate can still render on one line.
 		return "shrink_or_split"
+	case patterns.ErrCodeFilledShapeOutlined:
+		// Advisory: the authored border renders as asked (go-slide-creator-pgdkp).
+		return "info"
 	case patterns.ErrCodeChartPlaceholderEmpty:
 		// The chart panel rendered without a chart spec — actionable, agent
 		// should either provide a chart or switch to an insights-only pattern.
