@@ -370,9 +370,8 @@ func TestWaterfallBridge_Expand_SubtotalAutoComputed(t *testing.T) {
 	}
 }
 
-// TestWaterfallBridge_Expand_NegativeDeltaFill verifies negative-delta bars use
-// the negative_accent (default accent2), while positive deltas use the base
-// accent.
+// TestWaterfallBridge_Expand_NegativeDeltaFill verifies the sdxii fills: a
+// decrease carries the story in accent1, an increase is neutral dk1 at 35%.
 func TestWaterfallBridge_Expand_NegativeDeltaFill(t *testing.T) {
 	p, _ := Default().Get("waterfall-bridge")
 	v := &WaterfallBridgeValues{
@@ -405,16 +404,16 @@ func TestWaterfallBridge_Expand_NegativeDeltaFill(t *testing.T) {
 	}
 	dropFill := barFill(1)
 	gainFill := barFill(2)
-	if !strings.Contains(dropFill, "accent2") {
-		t.Errorf("expected negative delta to fill with accent2, got %q", dropFill)
+	if dropFill != `"accent1"` {
+		t.Errorf("expected the decrease to fill with accent1, got %q", dropFill)
 	}
-	if !strings.Contains(gainFill, "accent1") {
-		t.Errorf("expected positive delta to fill with base accent (accent1), got %q", gainFill)
+	if gainFill != `{"color":"dk1","lumMod":35000,"lumOff":65000}` {
+		t.Errorf("expected the increase to fill with neutral dk1 at 35%%, got %q", gainFill)
 	}
 }
 
-// TestWaterfallBridge_Expand_SubtotalFill verifies subtotal columns use the
-// distinct subtotal_accent (default accent3).
+// TestWaterfallBridge_Expand_SubtotalFill verifies subtotal columns are
+// neutral dk1 at 60%, like totals, unless subtotal_accent is set.
 func TestWaterfallBridge_Expand_SubtotalFill(t *testing.T) {
 	p, _ := Default().Get("waterfall-bridge")
 	grid, err := p.Expand(ExpandContext{}, validWaterfallBridgeValues(), nil, nil)
@@ -430,8 +429,8 @@ func TestWaterfallBridge_Expand_SubtotalFill(t *testing.T) {
 			}
 		}
 	}
-	if !strings.Contains(fill, "accent3") {
-		t.Errorf("expected subtotal bar to fill with accent3, got %q", fill)
+	if fill != `{"color":"dk1","lumMod":60000,"lumOff":40000}` {
+		t.Errorf("expected subtotal bar to fill with neutral dk1 at 60%%, got %q", fill)
 	}
 }
 
@@ -443,8 +442,12 @@ func TestWaterfallBridge_Expand_AccentOverride(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
-	// Revenue (total) should now be accent4.
-	c := grid.Rows[0].Cells[0]
+	// The accent override recolours the decreases (column 1, COGS); the
+	// Revenue total stays neutral.
+	if fill := waterfallBarFillForLabel(t, grid, "$120m"); fill == "accent4" {
+		t.Errorf("a total must stay neutral under an accent override, got %q", fill)
+	}
+	c := grid.Rows[0].Cells[1]
 	var fill string
 	for _, row := range c.Grid.Rows {
 		for _, cell := range row.Cells {
@@ -454,7 +457,7 @@ func TestWaterfallBridge_Expand_AccentOverride(t *testing.T) {
 		}
 	}
 	if !strings.Contains(fill, "accent4") {
-		t.Errorf("expected total bar to follow accent override (accent4), got %q", fill)
+		t.Errorf("expected the decrease to follow the accent override (accent4), got %q", fill)
 	}
 }
 
@@ -597,11 +600,9 @@ func TestWaterfallBridge_Recommend(t *testing.T) {
 	}
 }
 
-// go-slide-creator-noa7: negativeAccent defaulted to the literal "accent2" and
-// never consulted template metadata, so on a template whose declared negative
-// colour is something else (modern-template: negative=accent1, a red) the
-// negative delta bars rendered accent2 — its cool "positive-ish" blue — while
-// the declared negative colour sat unused.
+// go-slide-creator-sdxii: the bridge's story is its decreases, so they take
+// accent1 whatever semantic accents the template declares; totals and
+// increases stay neutral dk1 tints (supersedes go-slide-creator-noa7).
 func TestWaterfallBridge_SemanticAccentsDriveFills(t *testing.T) {
 	pat, ok := Default().Get("waterfall-bridge")
 	if !ok {
@@ -618,58 +619,25 @@ func TestWaterfallBridge_SemanticAccentsDriveFills(t *testing.T) {
 		},
 	}
 
-	tests := []struct {
-		name            string
-		semanticAccents map[string]string
-		wantNegative    string
-		wantPositive    string
-	}{
-		{
-			name:            "modern-template palette",
-			semanticAccents: map[string]string{"negative": "accent1", "positive": "accent3", "neutral": "accent4"},
-			wantNegative:    "accent1",
-			wantPositive:    "accent3",
-		},
-		{
-			name:            "midnight-blue palette",
-			semanticAccents: map[string]string{"negative": "accent2", "positive": "accent4", "neutral": "accent5"},
-			wantNegative:    "accent2",
-			wantPositive:    "accent4",
-		},
-		{
-			name:            "template declaring no semantic accents falls back",
-			semanticAccents: nil,
-			wantNegative:    "accent2",
-			wantPositive:    "", // no declared positive: keeps the deck accent rotation
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx := ExpandContext{
-				SlideWidth:  12192000,
-				SlideHeight: 6858000,
-			}
-			if tt.semanticAccents != nil {
-				ctx.Metadata = &types.TemplateMetadata{SemanticAccents: tt.semanticAccents}
-			}
-
-			grid, err := pat.Expand(ctx, values, nil, nil)
-			if err != nil {
-				t.Fatalf("expand: %v", err)
-			}
-
-			negFill := waterfallBarFillForLabel(t, grid, "−31")
-			if negFill != tt.wantNegative {
-				t.Errorf("negative delta bar fill = %q, want %q", negFill, tt.wantNegative)
-			}
-			if tt.wantPositive != "" {
-				posFill := waterfallBarFillForLabel(t, grid, "+31")
-				if posFill != tt.wantPositive {
-					t.Errorf("positive delta bar fill = %q, want %q", posFill, tt.wantPositive)
-				}
-			}
-		})
+	for _, semantic := range []map[string]string{
+		{"negative": "accent1", "positive": "accent3", "neutral": "accent4"},
+		{"negative": "accent2", "positive": "accent4", "neutral": "accent5"},
+		nil,
+	} {
+		ctx := ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}
+		if semantic != nil {
+			ctx.Metadata = &types.TemplateMetadata{SemanticAccents: semantic}
+		}
+		grid, err := pat.Expand(ctx, values, nil, nil)
+		if err != nil {
+			t.Fatalf("expand: %v", err)
+		}
+		if got := waterfallBarFillForLabel(t, grid, "−31"); got != "accent1" {
+			t.Errorf("%v: decrease fill = %q, want accent1", semantic, got)
+		}
+		if got := waterfallBarFillForLabel(t, grid, "+31"); got != `{"color":"dk1","lumMod":35000,"lumOff":65000}` {
+			t.Errorf("%v: increase fill = %q, want neutral dk1 at 35%%", semantic, got)
+		}
 	}
 }
 

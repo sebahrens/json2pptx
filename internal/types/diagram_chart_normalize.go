@@ -49,23 +49,31 @@ func isFlatNumericMap(data map[string]any) bool {
 // payloads (categories+series, value+min+max, ...) and non-chart diagrams are
 // left untouched. Returns true when the spec was rewritten.
 func (ds *DiagramSpec) NormalizeFlatChartData(keyOrder []string) bool {
-	if ds == nil || !isFlatNumericMap(ds.Data) {
+	if ds == nil {
+		return false
+	}
+	// data.highlight rides along a flat map without being a category.
+	rest, highlight, hasHighlight := splitChartHighlight(ds.Data)
+	if !isFlatNumericMap(rest) {
 		return false
 	}
 	ct, ok := chartTypeForDiagramType(ds.Type)
-	if !ok || isAlreadySvggenFormat(ds.Data, ct) {
+	if !ok || isAlreadySvggenFormat(rest, ct) {
 		return false
 	}
 	order := make([]string, 0, len(keyOrder))
 	for _, k := range keyOrder {
-		if _, present := ds.Data[k]; present {
+		if _, present := rest[k]; present {
 			order = append(order, k)
 		}
 	}
-	if len(order) != len(ds.Data) {
+	if len(order) != len(rest) {
 		order = nil // incomplete order: let buildChartData sort deterministically
 	}
-	data, warnings, diags := buildChartData(&ChartSpec{Type: ct, Data: ds.Data, DataOrder: order}) //nolint:staticcheck // ChartSpec conversion is the shared flat-map path
+	data, warnings, diags := buildChartData(&ChartSpec{Type: ct, Data: rest, DataOrder: order}) //nolint:staticcheck // ChartSpec conversion is the shared flat-map path
+	if hasHighlight {
+		data["highlight"] = highlight
+	}
 	ds.Data = data
 	ds.Type = chartTypeToSvggenType[ct]
 	ds.Warnings = append(ds.Warnings, warnings...)

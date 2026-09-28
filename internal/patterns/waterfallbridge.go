@@ -31,9 +31,11 @@ import (
 //   Column types:
 //     "total"    — bar runs from 0 to value (e.g. opening revenue, EBITDA).
 //     "delta"    — floating bar from prev_running to prev_running + value;
-//                  positive = accent (positive) fill; negative = accent2 / red.
+//                  a decrease is the story and takes accent1; an increase is
+//                  neutral dk1 at 35%.
 //     "subtotal" — bar runs from 0 to running total; value auto-computed when
-//                  omitted. Uses a distinct fill so the eye picks it out.
+//                  omitted. Totals and subtotals are neutral dk1 at 60%
+//                  (go-slide-creator-sdxii).
 // ---------------------------------------------------------------------------
 
 func init() {
@@ -123,8 +125,8 @@ type WaterfallBridgeValues struct {
 // accent for downward delta bars.
 type WaterfallBridgeOverrides struct {
 	TextOverrides
-	NegativeAccent string  `json:"negative_accent,omitempty"` // default: template semantic_accents.negative, else "accent2"
-	SubtotalAccent string  `json:"subtotal_accent,omitempty"` // default: template semantic_accents.neutral, else "accent3"
+	NegativeAccent string  `json:"negative_accent,omitempty"` // decrease fill; default: the accent (accent1)
+	SubtotalAccent string  `json:"subtotal_accent,omitempty"` // subtotal fill; default: neutral dk1 at 60%
 	ValueSize      float64 `json:"value_size,omitempty"`      // default 10
 	LabelSize      float64 `json:"label_size,omitempty"`      // default 9
 }
@@ -195,13 +197,13 @@ func (w *waterfallBridge) Schema() *Schema {
 
 	overridesSchema := ObjectSchema(
 		map[string]*Schema{
-			"accent":           StringSchema(0).WithDescription("Accent scheme color for total bars and positive deltas (default accent1)").WithDefault("accent1"),
+			"accent":           StringSchema(0).WithDescription("Accent scheme color for the decrease bars, which carry the bridge's story (default accent1); totals, subtotals and increases are neutral dk1 tints").WithDefault("accent1"),
 			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
 			"header_size":      NumberSchema(6, 40).WithDescription("Column label font size (default 9)"),
 			"body_size":        NumberSchema(6, 40).WithDescription("Value label font size (default 10)"),
-			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent rotation for delta bars"),
-			"negative_accent":  StringSchema(0).WithDescription("Accent scheme color used for negative delta bars (default: the template's declared semantic_accents.negative, else accent2)"),
-			"subtotal_accent":  StringSchema(0).WithDescription("Accent scheme color used for subtotal bars (default: the template's declared semantic_accents.neutral, else accent3)"),
+			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent rotation for increase bars (default: neutral dk1 at 35%)"),
+			"negative_accent":  StringSchema(0).WithDescription("Scheme color for decrease bars; wins over accent (default: the accent, accent1)"),
+			"subtotal_accent":  StringSchema(0).WithDescription("Scheme color for subtotal bars (default: neutral dk1 at 60%, like totals)"),
 			"label_size":       NumberSchema(6, 40).WithDescription("Column label font size (default 9) — overrides header_size for this pattern"),
 			"value_size":       NumberSchema(6, 40).WithDescription("Value label font size (default 10) — overrides body_size for this pattern"),
 		},
@@ -345,17 +347,32 @@ func chartRange(cols []resolvedColumn) (yMin, yMax float64) {
 	return yMin, yMax
 }
 
-// waterfallDeltaFill picks a delta bar's fill. A positive delta is "good": it
-// uses the template's declared positive accent unless the author asked for a
-// per-cell rotation, which they own.
-func waterfallDeltaFill(ctx ExpandContext, negative bool, i int, baseAccent, negativeAccent, positiveAccent, cellAccentMode string) string {
+// Waterfall fills (go-slide-creator-sdxii): the decreases carry the story
+// and take the accent; totals / subtotals and increases are neutral dk1 tints
+// (60% and 35%), so the eye goes to the accent bars.
+var (
+	waterfallTotalTone    = fillTone{Color: "dk1", LumMod: 60000, LumOff: 40000}
+	waterfallIncreaseTone = fillTone{Color: "dk1", LumMod: 35000, LumOff: 65000}
+)
+
+// waterfallColumnTone picks a column's fill and whether it is an accent
+// (highlighted) bar.
+func waterfallColumnTone(ctx ExpandContext, col resolvedColumn, i int, decreaseAccent, subtotalAccent, baseAccent, cellAccentMode string) (fillTone, bool) {
 	switch {
-	case negative:
-		return negativeAccent
-	case positiveAccent != "" && cellAccentMode == "":
-		return positiveAccent
+	case col.typ == wbTypeTotal:
+		return waterfallTotalTone, false
+	case col.typ == wbTypeSubtotal:
+		if subtotalAccent != "" {
+			return fillTone{Color: subtotalAccent}, false
+		}
+		return waterfallTotalTone, false
+	case col.isNegDelta:
+		return fillTone{Color: decreaseAccent}, true
+	case cellAccentMode != "":
+		// An explicit per-cell rotation is the author's choice for increases.
+		return fillTone{Color: ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)}, false
 	default:
-		return ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
+		return waterfallIncreaseTone, false
 	}
 }
 
@@ -398,27 +415,11 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 		}
 	}
 
-	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	// Negative and subtotal fills carry meaning, so they come from the
-	// template's declared semantic_accents when it has them; the literals are
-	// only the fallback for templates that declare none (go-slide-creator-noa7).
-	negativeAccent := ovr.NegativeAccent
-	if negativeAccent == "" {
-		negativeAccent = ctx.SemanticAccentOr("negative", "accent2")
+	baseAccent := highlightAccent(ctx, ovr.Accent, ovr.SemanticAccent)
+	decreaseAccent := ovr.NegativeAccent
+	if decreaseAccent == "" {
+		decreaseAccent = baseAccent
 	}
-	if ovr.NegativeAccent == "" && waterfallFillsCollide(ctx, baseAccent, negativeAccent) {
-		// Decreases must not read as totals. business-template's accent1 and
-		// accent2 are near-identical purples, so the default negative fill was
-		// indistinguishable from the total bars (go-slide-creator-csclk.97).
-		if pick, ok := pickDistinctFill(ctx, fillTone{Color: baseAccent}, fillDistinctnessMin, waterfallNegativeFallbacks...); ok {
-			negativeAccent = pick
-		}
-	}
-	subtotalAccent := ovr.SubtotalAccent
-	if subtotalAccent == "" {
-		subtotalAccent = ctx.SemanticAccentOr("neutral", "accent3")
-	}
-	positiveAccent := ctx.SemanticAccentOr("positive", "")
 	labelSize := ResolveSize(ovr.LabelSize, ResolveSize(ovr.HeaderSize, 9.0))
 	valueSize := ResolveSize(ovr.ValueSize, ResolveSize(ovr.BodySize, 10.0))
 
@@ -443,19 +444,14 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 	labelDecimals := LabelDecimals(labelValues)
 
 	for i, col := range resolved {
-		fill := baseAccent
-		switch col.typ {
-		case wbTypeSubtotal:
-			fill = subtotalAccent
-		case wbTypeDelta:
-			fill = waterfallDeltaFill(ctx, col.isNegDelta, i, baseAccent, negativeAccent, positiveAccent, ovr.CellAccentMode)
-		}
+		tone, accented := waterfallColumnTone(ctx, col, i, decreaseAccent, ovr.SubtotalAccent, baseAccent, ovr.CellAccentMode)
 		topPct, barPct, bottomPct := waterfallBarPcts(col.yStart, col.yEnd, yMin, yMax, scale)
 
 		valueText := FormatMagnitudeLabelDecimals(col.value, vals.Unit, col.typ == wbTypeDelta, labelDecimals)
 		barCells[i] = &jsonschema.GridCellInput{
 			Grid: buildWaterfallColumnGrid(ctx, wbColumnLayout{
-				fill:      fill,
+				tone:      tone,
+				bold:      accented,
 				valueText: valueText,
 				valueSize: valueSize,
 				topPct:    topPct,
@@ -546,10 +542,10 @@ type waterfallBridgeTextObj struct {
 	VerticalAlign string                     `json:"vertical_align"`
 }
 
-func buildWaterfallBridgeValueTextAnchored(value string, size float64, color, anchor string) json.RawMessage {
+func buildWaterfallBridgeValueTextAnchored(value string, size float64, bold bool, color, anchor string) json.RawMessage {
 	textObj := waterfallBridgeTextObj{
 		Paragraphs: []waterfallBridgeParagraph{
-			{Content: value, Size: size, Bold: true, Color: color, Align: "ctr"},
+			{Content: value, Size: size, Bold: bold, Color: color, Align: "ctr"},
 		},
 		Align:         "ctr",
 		VerticalAlign: anchor,
@@ -601,37 +597,6 @@ func buildWaterfallBridgeLabelText(label string, size float64) json.RawMessage {
 	return data
 }
 
-// waterfallNegativeFallbacks are tried, in order, when the negative-delta fill
-// collides with the totals accent.
-var waterfallNegativeFallbacks = []string{"accent2", "accent3", "accent4", "accent5", "accent6", "dk2"}
-
-// waterfallFillsCollide reports whether two fills would read as the same bar
-// colour: the same slot, or near-equal luminance with a hue gap under 45°
-// (two greys also collide). Unresolvable colours never collide.
-func waterfallFillsCollide(ctx ExpandContext, a, b string) bool {
-	if a == b {
-		return true
-	}
-	ca, aok := resolveThemeColor(ctx, a)
-	cb, bok := resolveThemeColor(ctx, b)
-	if !aok || !bok {
-		return false
-	}
-	if ca.ContrastWith(cb) >= 1.5 {
-		return false
-	}
-	ha, sa, _ := toHSL(ca)
-	hb, sb, _ := toHSL(cb)
-	if sa < 0.15 || sb < 0.15 {
-		return sa < 0.15 && sb < 0.15
-	}
-	dh := math.Abs(ha - hb)
-	if dh > 0.5 {
-		dh = 1 - dh
-	}
-	return dh < 1.0/8
-}
-
 // formatWaterfallBridgeValue renders a numeric value with optional unit suffix
 // and a leading "+" / "-" sign for deltas so positive vs. negative direction is
 // unambiguous in the label.
@@ -642,7 +607,8 @@ func formatWaterfallBridgeValue(v float64, unit string, signed bool) string {
 // wbColumnLayout describes one waterfall column's vertical split (percent of
 // the bar area) and bridge-line attachment.
 type wbColumnLayout struct {
-	fill                      string
+	tone                      fillTone
+	bold                      bool // accent bar: its value label is bold
 	valueText                 string
 	valueSize                 float64
 	topPct, barPct, bottomPct float64
@@ -755,7 +721,7 @@ func buildWaterfallColumnGrid(ctx ExpandContext, l wbColumnLayout) *jsonschema.S
 			Fill:      json.RawMessage(`{"color": "lt1", "alpha": 0}`),
 		}
 		if labelSide == side {
-			shape.Text = buildWaterfallBridgeValueTextAnchored(l.valueText, l.valueSize, "dk1", anchor)
+			shape.Text = buildWaterfallBridgeValueTextAnchored(l.valueText, l.valueSize, l.bold, "dk1", anchor)
 		}
 		return jsonschema.GridRowInput{Height: pct, Cells: []*jsonschema.GridCellInput{{ColSpan: 3, Shape: shape}}}
 	}
@@ -781,11 +747,11 @@ func buildWaterfallColumnGrid(ctx ExpandContext, l wbColumnLayout) *jsonschema.S
 	barShape := &jsonschema.ShapeSpecInput{
 		Geometry:  "rect",
 		TypeScale: peerTextTypeScale,
-		Fill:      json.RawMessage(fmt.Sprintf(`"%s"`, l.fill)),
+		Fill:      l.tone.fillJSON(),
 	}
 	if labelSide == "bar" {
-		barShape.Text = buildWaterfallBridgeValueTextAnchored(l.valueText, l.valueSize,
-			readableTextOn(ctx, fillTone{Color: l.fill}, "lt1"), "ctr")
+		barShape.Text = buildWaterfallBridgeValueTextAnchored(l.valueText, l.valueSize, l.bold,
+			readableTextOn(ctx, l.tone, "lt1"), "ctr")
 	}
 
 	var rows []jsonschema.GridRowInput

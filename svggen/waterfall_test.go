@@ -3,6 +3,7 @@ package svggen
 import (
 	"encoding/json"
 	"math"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -198,9 +199,10 @@ func TestWaterfallChart_AllLabelsShownAtTypicalDensity(t *testing.T) {
 	content := svg.String()
 
 	// Every bar's value label must appear in the SVG output. The negative-
-	// delta labels render with a leading "-" (e.g., "-4.8"); positive deltas
-	// use a "+" prefix (e.g., "+8.5"); totals/subtotals use unsigned values.
-	expected := []string{"-3.2", "-4.8", "-2.4", "-1.6", "-0.8", "-1.2", "-14.0", "+8.5", "+12.2", "+24.1", "30.8"}
+	// delta labels render with a leading true minus sign U+2212 (e.g.,
+	// "\u22124.8"); positive deltas use a "+" prefix (e.g., "+8.5");
+	// totals/subtotals use unsigned values.
+	expected := []string{"\u22123.2", "\u22124.8", "\u22122.4", "\u22121.6", "\u22120.8", "\u22121.2", "\u221214.0", "+8.5", "+12.2", "+24.1", "30.8"}
 	for _, want := range expected {
 		if !strings.Contains(content, want) {
 			t.Errorf("SVG output missing value label %q (regression: all bars must be labeled)", want)
@@ -571,6 +573,10 @@ func TestWaterfallDiagram_RenderWithCustomColors(t *testing.T) {
 }
 
 func TestWaterfallDiagram_UsesSemanticThemeAccents(t *testing.T) {
+	// go-slide-creator-sdxii: a bridge tells its story through the decreases,
+	// so they take the chart's first accent while totals and increases stay
+	// neutral dk1 tints (60% and 35%), whatever semantic accents the template
+	// declares.
 	req := &RequestEnvelope{
 		Type: "waterfall",
 		Data: map[string]any{"points": []any{
@@ -580,12 +586,13 @@ func TestWaterfallDiagram_UsesSemanticThemeAccents(t *testing.T) {
 		}},
 		Style: StyleSpec{
 			ThemeColors: []ThemeColorInput{
+				{Name: "dk1", RGB: "#000000"},
+				{Name: "lt1", RGB: "#FFFFFF"},
 				{Name: "accent1", RGB: "#B54C27"},
 				{Name: "accent2", RGB: "#58718A"},
 				{Name: "accent3", RGB: "#1A7B3C"},
 			},
 			SemanticAccents: SemanticAccentSpec{Positive: "accent3", Negative: "accent1", Neutral: "accent2"},
-			DataPalette:     []string{"#123456", "#654321", "#ABCDEF"},
 		},
 	}
 	diagram := &WaterfallDiagram{NewBaseDiagram("waterfall")}
@@ -593,9 +600,15 @@ func TestWaterfallDiagram_UsesSemanticThemeAccents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, color := range []string{"#1a7b3c", "#b54c27", "#58718a"} {
-		if !strings.Contains(strings.ToLower(svg.String()), `fill="`+color+`"`) {
-			t.Errorf("semantic waterfall color %s was not rendered", color)
+	out := strings.ToLower(svg.String())
+	for _, color := range []string{"#b54c27", "#666", "#a6a6a6"} {
+		if !strings.Contains(out, `fill="`+color+`"`) {
+			t.Errorf("waterfall fill %s was not rendered; fills %v", color, regexp.MustCompile(`fill="#[0-9a-f]+"`).FindAllString(out, -1))
+		}
+	}
+	for _, color := range []string{"#1a7b3c", "#58718a"} {
+		if strings.Contains(out, `fill="`+color+`"`) {
+			t.Errorf("waterfall still paints a semantic accent %s", color)
 		}
 	}
 }

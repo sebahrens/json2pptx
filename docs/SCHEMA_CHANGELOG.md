@@ -610,6 +610,21 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-28 — Unreleased — Charts show the title's point (`go-slide-creator-sdxii`).**
+  New `chart_value.highlight` (also svggen `bar_chart` `data.highlight`,
+  `chart-insights-split` `values.chart.data.highlight` and
+  `horizontal-bar-with-callouts` `values.highlight`): 0-based indices and/or
+  category names painted accent1 while every other bar is neutral dk1 at 38%.
+  Omitted, a single-series time series accents its last bar and any other
+  chart its largest; `[]` accents none; an unknown entry fails validation.
+  Multi-series charts keep the series palette. Labelled bar and waterfall
+  charts drop the value axis and gridlines for a 0.75pt dk1 baseline, 60%-of-
+  slot bars and 10pt labels (bold on highlighted bars) with a true minus sign.
+  Waterfalls (svggen and `waterfall-bridge`) paint decreases accent1,
+  increases dk1 at 35% and totals / subtotals dk1 at 60%; the bridge's
+  `accent` override now colours the decreases, and template semantic accents
+  no longer drive its fills.
+
 - **2026-09-24 — Resolved sparse-layout coverage (`go-slide-creator-atrbp`,
   `go-slide-creator-vk3ma`).** Raw-grid `sparse_layout` now measures painted
   cell area, non-text visuals, and wrapped text against the actual resolved

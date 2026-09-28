@@ -48,6 +48,13 @@ type ChartData struct {
 
 	// DataLabels controls data label formatting and display.
 	DataLabels *DataLabelConfig
+
+	// Highlight lists the 0-based category indices a single-series bar chart
+	// paints in accent1; every other bar is neutral. HighlightSet is true when
+	// the author supplied data.highlight (an empty list then highlights
+	// nothing); otherwise the chart picks its own (defaultHighlight).
+	Highlight    []int
+	HighlightSet bool
 }
 
 // ChartSeries represents a single data series.
@@ -322,6 +329,72 @@ type BarChart struct {
 	// legend is placed below everything that config draws, so the two cannot
 	// overprint (go-slide-creator-jp5d).
 	xAxisCfg AxisConfig
+
+	// labelledMode is set for one Draw when every bar carries its value label:
+	// no value axis or gridlines, a thin baseline, 60%-of-slot bars.
+	labelledMode bool
+}
+
+// applyLabelledMode switches the chart to its labelled layout when every bar
+// shows its value on a linear axis: the value axis and gridlines would only
+// repeat the labels, so they go, the left gutter they needed shrinks, and the
+// bars narrow to labelledBarSlotShare of their category slot
+// (go-slide-creator-sdxii). Draw restores the config afterwards.
+func (bc *BarChart) applyLabelledMode() {
+	bc.labelledMode = bc.config.ShowValues && !bc.config.Stacked && bc.config.Scale != "log"
+	if !bc.labelledMode {
+		return
+	}
+	// bar / slot = (1 - BarPadding) / (1 + GroupPadding).
+	bc.config.GroupPadding = math.Max(0, (1-bc.config.BarPadding)/labelledBarSlotShare-1)
+	if bc.config.YAxisTitle == "" && bc.config.MarginRight < bc.config.MarginLeft {
+		bc.config.MarginLeft = bc.config.MarginRight
+	}
+}
+
+// drawLinearGridAndAxes draws the grid (horizontal + optional vertical per
+// chart_style override) and axes of a linear-scale bar chart. When every bar
+// carries its value, gridlines and the value axis only repeat the labels, so
+// the labelled layout draws a baseline instead (go-slide-creator-sdxii).
+func (bc *BarChart) drawLinearGridAndAxes(plotArea Rect, xScale *CategoricalScale, yScale *LinearScale, axisFontSize, xLabelRotation float64, labelStep int) {
+	if bc.config.ShowGrid && !bc.labelledMode {
+		DrawCartesianGridWithVerticals(bc.builder, plotArea, yScale, xScale, bc.config.ShowVerticalGrid)
+	}
+	if !bc.config.ShowAxes {
+		return
+	}
+	if bc.labelledMode {
+		bc.drawLabelledAxes(plotArea, xScale, yScale, axisFontSize, xLabelRotation, labelStep)
+		return
+	}
+	bc.drawAxes(plotArea, xScale, yScale, axisFontSize, xLabelRotation, labelStep)
+}
+
+// drawLabelledAxes draws the category axis without an axis line or ticks, and
+// a thin dk1 baseline at zero across the plot, in place of the value axis.
+func (bc *BarChart) drawLabelledAxes(plotArea Rect, xScale *CategoricalScale, yScale *LinearScale, axisFontSize, xLabelRotation float64, labelStep int) {
+	b := bc.builder
+	xAxisConfig := DefaultAxisConfig(AxisPositionBottom)
+	xAxisConfig.Title = bc.config.XAxisTitle
+	xAxisConfig.FontSize = axisFontSize
+	xAxisConfig.LabelRotation = xLabelRotation
+	xAxisConfig.LabelStep = labelStep
+	xAxisConfig.DisplayLabels = bc.xDisplayLabels
+	xAxisConfig.HideAxisLine = true
+	xAxisConfig.HideTicks = true
+	bc.xAxisCfg = xAxisConfig
+	NewAxis(b, xAxisConfig).DrawCategoricalAxis(xScale, plotArea.X, plotArea.Y+plotArea.H)
+
+	baseY := plotArea.Y + plotArea.H
+	if yScale != nil {
+		if lo, hi := yScale.DomainBounds(); lo <= 0 && hi >= 0 {
+			baseY = plotArea.Y + yScale.Scale(0)
+		}
+	}
+	b.Push()
+	b.SetStrokeColor(b.StyleGuide().Palette.TextPrimary).SetStrokeWidth(labelledBaselinePt)
+	b.DrawLine(plotArea.X, baseY, plotArea.X+plotArea.W, baseY)
+	b.Pop()
 }
 
 // NewBarChart creates a new bar chart renderer.
@@ -340,14 +413,17 @@ func (bc *BarChart) Draw(data ChartData) error {
 	// Scale preparation can reserve an axis gutter or enable value labels for
 	// this render. Do not leak either override into a later Draw on the same
 	// chart instance (for example, a wide-range chart followed by a narrow one).
-	showValues, marginLeft := bc.config.ShowValues, bc.config.MarginLeft
+	showValues, marginLeft, groupPadding := bc.config.ShowValues, bc.config.MarginLeft, bc.config.GroupPadding
 	defer func() {
 		bc.config.ShowValues = showValues
 		bc.config.MarginLeft = marginLeft
+		bc.config.GroupPadding = groupPadding
+		bc.labelledMode = false
 	}()
 	if err := bc.prepareValueScale(data); err != nil {
 		return err
 	}
+	bc.applyLabelledMode()
 
 	b := bc.builder
 	style := b.StyleGuide()
@@ -381,7 +457,9 @@ func (bc *BarChart) Draw(data ChartData) error {
 	bc.config.ResolveValueFormatter(chartDataValues(data), true)
 
 	yMin, yMax := bc.calculateDomain(data)
-	EnsureYAxisFits(b, &bc.config.ChartConfig, yMin, yMax)
+	if !bc.labelledMode {
+		EnsureYAxisFits(b, &bc.config.ChartConfig, yMin, yMax)
+	}
 
 	// Calculate layout (shared across Cartesian chart types)
 	layout := ComputeCartesianLayout(bc.config.ChartConfig, style, data.Title, data.Subtitle, data.Footnote, len(data.Series))
@@ -466,15 +544,7 @@ func (bc *BarChart) Draw(data ChartData) error {
 		yScale.SetRangeLinear(plotArea.H, 0)
 		yScale.Nice(true)
 
-		// Draw grid (horizontal + optional vertical per chart_style override)
-		if bc.config.ShowGrid {
-			DrawCartesianGridWithVerticals(b, plotArea, yScale, xScale, bc.config.ShowVerticalGrid)
-		}
-
-		// Draw axes
-		if bc.config.ShowAxes {
-			bc.drawAxes(plotArea, xScale, yScale, axisFontSize, xLabelRotation, labelStep)
-		}
+		bc.drawLinearGridAndAxes(plotArea, xScale, yScale, axisFontSize, xLabelRotation, labelStep)
 
 		// Draw bars
 		if bc.config.Stacked {
@@ -996,6 +1066,7 @@ func (bc *BarChart) drawBars(data ChartData, plotArea Rect, xScale *CategoricalS
 	// Show enough decimals for the labels to be distinct. Seven bars reading
 	// "5, 5, 5, 6, 6, 6, 7" contradict their own axis (go-slide-creator-66qb).
 	valueFormat := autoValueFormat(bc.config.ValueFormat, chartDataValues(data))
+	pointColors, pointBold := bc.highlightFills(data, colors)
 
 	for seriesIdx, series := range data.Series {
 		barConfig := DefaultBarSeriesConfig()
@@ -1006,6 +1077,12 @@ func (bc *BarChart) drawBars(data ChartData, plotArea Rect, xScale *CategoricalS
 		barConfig.ValueFmt = bc.config.ValueFmt
 		barConfig.SeriesIndex = seriesIdx
 		barConfig.SeriesCount = numSeries
+		barConfig.PointColors = pointColors
+		barConfig.PointBold = pointBold
+		if bc.labelledMode {
+			barConfig.LabelFontSize = labelledValueFontPt
+			barConfig.LabelGap = labelledValueGapPt
+		}
 
 		if series.Color != nil {
 			barConfig.Color = *series.Color
@@ -1053,6 +1130,28 @@ func (bc *BarChart) drawBars(data ChartData, plotArea Rect, xScale *CategoricalS
 		bs.DrawCategorical(points, adjustedXScale, adjustedYScale, baseY)
 		_ = barWidth
 	}
+}
+
+// highlightFills returns the per-bar fills of a single-series, non-stacked
+// chart: neutral dk1 at BarNeutralInk, with the highlighted bars in the
+// series accent (colors[0], accent1 by default) and their labels bold. The
+// author's data.highlight wins; without one, a time series accents its last
+// bar and any other chart its largest (go-slide-creator-sdxii). Multi-series
+// charts, a series with its own colour and explicit data.colors (unless a
+// highlight is also given) keep their palette: nil, nil.
+func (bc *BarChart) highlightFills(data ChartData, colors []Color) ([]Color, []bool) {
+	if bc.config.Stacked || len(data.Series) != 1 || data.Series[0].Color != nil || len(colors) == 0 {
+		return nil, nil
+	}
+	if len(bc.config.Colors) > 0 && !data.HighlightSet {
+		return nil, nil
+	}
+	values := data.Series[0].Values
+	highlight := data.Highlight
+	if !data.HighlightSet {
+		highlight = defaultHighlight(data.Categories, values)
+	}
+	return barHighlightColors(bc.builder.StyleGuide().Palette, colors[0], len(values), highlight)
 }
 
 // drawStackedBars draws stacked bar segments where each series is stacked on top

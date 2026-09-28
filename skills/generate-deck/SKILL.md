@@ -86,7 +86,11 @@ executable one.
   the three-round repair cap. Read before the first render.
 - [RULES.md](RULES.md): shape-grid, content, contrast, typography, and
   anti-pattern rules. Waterfall `type` sets the sign
-  (`chart.waterfall_total_mismatch`).
+  (`chart.waterfall_total_mismatch`). Charts show the title's point: a
+  single-series bar chart (and `horizontal-bar-with-callouts`) is neutral
+  grey with accent1 only on `highlight` bars (0-based indices or names;
+  default the last period of a time series, else the top bar); set it to the
+  bar(s) the title names. Waterfalls accent the decreases.
 - [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance;
   get the current catalog, per-pattern schema and per-field copy targets from
   `list_patterns` / `show_pattern`. Out-of-range pattern text sizes are

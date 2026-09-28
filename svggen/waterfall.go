@@ -192,7 +192,20 @@ func (wc *WaterfallChart) Draw(data WaterfallData) error {
 	wc.config.ResolveValueFormatter(waterfallValues(data.Points), true)
 
 	yMin, yMax := wc.calculateDomain(data.Points)
-	EnsureYAxisFits(b, &wc.config.ChartConfig, yMin, yMax)
+	// Every bar carries its value, so the value axis and gridlines only repeat
+	// the labels. A broken axis (one that does not start at zero) keeps its
+	// axis: without it the truncated totals would read as true lengths
+	// (go-slide-creator-sdxii).
+	labelled := wc.config.ShowValues && yMin <= 0
+	if labelled {
+		// bar / slot = (1 - p) / (1 + p) = labelledBarSlotShare.
+		wc.config.BarPadding = (1 - labelledBarSlotShare) / (1 + labelledBarSlotShare)
+		if wc.config.YAxisTitle == "" && wc.config.MarginRight < wc.config.MarginLeft {
+			wc.config.MarginLeft = wc.config.MarginRight
+		}
+	} else {
+		EnsureYAxisFits(b, &wc.config.ChartConfig, yMin, yMax)
+	}
 
 	// Calculate layout (shared across Cartesian chart types; fixes missing footerHeight)
 	layout := ComputeCartesianLayout(wc.config.ChartConfig, style, data.Title, data.Subtitle, data.Footnote, 1)
@@ -210,17 +223,17 @@ func (wc *WaterfallChart) Draw(data WaterfallData) error {
 	yScale.Nice(true)
 
 	// Draw grid
-	if wc.config.ShowGrid {
+	if wc.config.ShowGrid && !labelled {
 		DrawCartesianGrid(b, plotArea, yScale, nil)
 	}
 
 	// Draw axes
 	if wc.config.ShowAxes {
-		wc.drawAxes(plotArea, xScale, yScale, axisFontSize, xLabelRotation, labelStep, importantLabels)
+		wc.drawAxes(plotArea, xScale, yScale, axisFontSize, xLabelRotation, labelStep, importantLabels, labelled)
 	}
 
 	// Draw bars and connectors
-	wc.drawBarsAndConnectors(data.Points, plotArea, xScale, yScale, isNarrow)
+	wc.drawBarsAndConnectors(data.Points, plotArea, xScale, yScale, isNarrow, labelled)
 
 	// Draw title
 	if wc.config.ShowTitle && data.Title != "" {
@@ -351,7 +364,7 @@ func (wc *WaterfallChart) calculateDomain(points []WaterfallDataPoint) (min, max
 }
 
 // drawAxes draws the chart axes.
-func (wc *WaterfallChart) drawAxes(plotArea Rect, xScale *CategoricalScale, yScale *LinearScale, axisFontSize float64, xLabelRotation float64, labelStep int, importantLabels map[int]bool) {
+func (wc *WaterfallChart) drawAxes(plotArea Rect, xScale *CategoricalScale, yScale *LinearScale, axisFontSize float64, xLabelRotation float64, labelStep int, importantLabels map[int]bool, labelled bool) {
 	b := wc.builder
 
 	// X axis — horizontal by default, rotated when labels are dense. The
@@ -371,8 +384,26 @@ func (wc *WaterfallChart) drawAxes(plotArea Rect, xScale *CategoricalScale, ySca
 		xAxisConfig.ImportantLabels = important
 	}
 
+	if labelled {
+		xAxisConfig.HideAxisLine = true
+		xAxisConfig.HideTicks = true
+	}
+
 	xAxis := NewAxis(b, xAxisConfig)
 	xAxis.DrawCategoricalAxis(xScale, plotArea.X, plotArea.Y+plotArea.H)
+
+	if labelled {
+		// A thin dk1 baseline at zero replaces the value axis.
+		baseY := plotArea.Y + plotArea.H
+		if lo, hi := yScale.DomainBounds(); lo <= 0 && hi >= 0 {
+			baseY = plotArea.Y + yScale.Scale(0)
+		}
+		b.Push()
+		b.SetStrokeColor(b.StyleGuide().Palette.TextPrimary).SetStrokeWidth(labelledBaselinePt)
+		b.DrawLine(plotArea.X, baseY, plotArea.X+plotArea.W, baseY)
+		b.Pop()
+		return
+	}
 
 	// Y axis (shared)
 	DrawCartesianYAxis(b, plotArea, yScale, wc.config.YAxisTitle, wc.config.ValueFmt)
@@ -386,7 +417,7 @@ func (wc *WaterfallChart) drawAxes(plotArea Rect, xScale *CategoricalScale, ySca
 const waterfallMinBarHeight = 2.0
 
 //nolint:gocognit,gocyclo // complex chart rendering logic
-func (wc *WaterfallChart) drawBarsAndConnectors(points []WaterfallDataPoint, plotArea Rect, xScale *CategoricalScale, yScale *LinearScale, isNarrow bool) {
+func (wc *WaterfallChart) drawBarsAndConnectors(points []WaterfallDataPoint, plotArea Rect, xScale *CategoricalScale, yScale *LinearScale, isNarrow, labelled bool) {
 	b := wc.builder
 	style := b.StyleGuide()
 
@@ -565,10 +596,17 @@ func (wc *WaterfallChart) drawBarsAndConnectors(points []WaterfallDataPoint, plo
 				if isNarrow || isDense {
 					valueFontSize = style.Typography.SizeCaption
 				}
+				if labelled {
+					valueFontSize = labelledValueFontPt
+				}
 				b.SetFontSize(valueFontSize)
 				b.SetFontWeight(style.Typography.WeightNormal)
+				// The accent bars carry the story: their labels are bold.
+				if labelled && color == wc.config.DecreaseColor && p.Type != WaterfallTypeTotal && p.Type != WaterfallTypeSubtotal {
+					b.SetFontWeight(style.Typography.WeightBold)
+				}
 
-				label := waterfallLabel(wc.config.ValueFmt.FormatOr(p.Value, wc.config.ValueFormat))
+				label := TrueMinus(waterfallLabel(wc.config.ValueFmt.FormatOr(p.Value, wc.config.ValueFormat)))
 				if p.Value > 0 && p.Type != WaterfallTypeTotal && p.Type != WaterfallTypeSubtotal && i > 0 {
 					label = "+" + label
 				}
@@ -832,10 +870,12 @@ func (d *WaterfallDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		// respect the active template's color scheme.
 		// These are applied BEFORE user custom colors so that explicit
 		// user-specified colors take priority over the theme defaults.
+		// The decreases carry the story of a bridge: they take accent1, while
+		// totals and increases stay neutral dk1 tints (go-slide-creator-sdxii).
 		style := builder.StyleGuide()
-		config.IncreaseColor = style.Palette.Success
-		config.DecreaseColor = style.Palette.Error
-		config.TotalColor = style.Palette.Warning
+		config.TotalColor = NeutralInk(style.Palette, WaterfallTotalInk)
+		config.IncreaseColor = NeutralInk(style.Palette, WaterfallIncreaseInk)
+		config.DecreaseColor = style.Palette.Accent1
 		config.ConnectorColor = style.Palette.TextMuted
 
 		// Apply custom colors if specified (overrides theme defaults)

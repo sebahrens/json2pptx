@@ -222,6 +222,20 @@ var enumMap = map[string]map[string][]string{
 // reflection-derived property schema wholesale. Use for fields that need
 // discriminator-style oneOf branches or other shapes reflection cannot infer.
 var propertyOverrides = map[string]map[string]map[string]any{
+	"ChartSpec": {
+		// go-slide-creator-sdxii: a single-series bar chart paints its bars
+		// neutral and only the highlighted ones in accent1.
+		"highlight": {
+			"type":        "array",
+			"description": "Bars a single-series bar chart paints in accent1; every other bar is neutral (dk1 at 38%). Each entry is a 0-based category index or a category name. Omit it and a time series (years, quarters, months) accents its last bar, any other chart its largest; [] accents none. Ignored by multi-series charts.",
+			"items": map[string]any{
+				"oneOf": []any{
+					map[string]any{"type": "integer", "minimum": 0},
+					map[string]any{"type": "string"},
+				},
+			},
+		},
+	},
 	"SlideInput": {
 		// slide_type is a HINT for layout auto-selection; layout_id PINS a
 		// layout. "closing" (and "quote", "agenda", "image-left", …) are
