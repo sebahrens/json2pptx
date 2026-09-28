@@ -226,7 +226,7 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	dataPalette := resolveDataPalette(templateMetadata, analysis.Theme.Colors)
 	allowDegraded := extractAllowDegradedScoring(request)
 	renderFindings, renderEvidence := mc.collectScoreDeckRenderFindings(ctx, &input, slideIndices, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, allowDegraded)
-	findings = append(findings, renderFindings...)
+	findings = supersedeRealizedContrastPredictions(append(findings, renderFindings...))
 
 	// 3. Append synthesis findings (template-level).
 	findings = append(findings, synthesisFindings...)

@@ -326,7 +326,7 @@ func TestStrictFit_Strict_RefusesUnfittable(t *testing.T) {
 	outputPath := filepath.Join(tmpDir, "result.json")
 
 	// Very long text in a narrow 5-column table should trigger unfittable.
-	longText := strings.Repeat("This is very long overflow text that cannot fit. ", 20)
+	longText := strings.Repeat("This is very long overflow text that cannot fit. ", 60)
 	input := `{
 		"template": "midnight-blue",
 		"slides": [{
@@ -360,7 +360,7 @@ func TestStrictFit_Warn_Succeeds(t *testing.T) {
 	jsonPath := filepath.Join(tmpDir, "input.json")
 	outputPath := filepath.Join(tmpDir, "result.json")
 
-	// Same unfittable content as strict test, but warn mode should succeed.
+	// A long cell (a third of the strict test's) — warn mode must succeed.
 	longText := strings.Repeat("This is very long overflow text that cannot fit. ", 20)
 	input := `{
 		"template": "midnight-blue",

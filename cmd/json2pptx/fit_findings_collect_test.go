@@ -66,7 +66,7 @@ func TestCollectFitFindingsSorting(t *testing.T) {
 	}
 	input := &PresentationInput{
 		Template: "midnight-blue",
-		Slides:   []SlideInput{slide("Quarter in review"), slide("What we do next")},
+		Slides:   []SlideInput{slide("Revenue grew 12% this quarter"), slide("Renewals fund the next phase")},
 	}
 
 	findings := collectFitFindings(input, nil, 9144000, 6858000, nil)

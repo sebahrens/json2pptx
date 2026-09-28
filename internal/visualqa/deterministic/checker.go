@@ -384,6 +384,25 @@ var breadthExemptCodes = map[string]bool{
 	// design. The finding is useful advice ("this headline is long"); it is not
 	// evidence that the slide is broken.
 	patterns.ErrCodeTitleWraps: true,
+	// Info-severity advisories that describe polish or deck-level rhythm, not a
+	// broken slide. Each is still reported and still costs its per-slide points,
+	// but counting them made an honest 28-slide deck read as "57% problem
+	// slides" and fail max_problem_slides_pct on advice alone
+	// (go-slide-creator-fabz4). accent_overload and DECK_MONOTONY keep their own
+	// gate criteria (allow_accent_overload, min_composition_score, refuse at 6+);
+	// DUPLICATE_TITLE feeds the composition score.
+	patterns.ErrCodeMissingAltText:     true,
+	patterns.ErrCodeAccentOverload:     true,
+	patterns.ErrCodeDuplicateTitle:     true,
+	patterns.ErrCodeDeckMonotony:       true,
+	patterns.ErrCodeTableFontScaled:    true,
+	patterns.ErrCodeChartShapeInferred: true,
+	patterns.ErrCodeTitleNotAction:     true,
+	patterns.ErrCodeTitleTooLong:       true,
+	// Layout-balance advisories belong with the airiness family above
+	// (go-slide-creator-u9xfy).
+	patterns.ErrCodeVerticalImbalance: true,
+	patterns.ErrCodeSparsePlaceholder: true,
 }
 
 // isBreadthProblem reports whether a finding makes its slide count as a problem

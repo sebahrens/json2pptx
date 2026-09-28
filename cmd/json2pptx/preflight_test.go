@@ -44,10 +44,12 @@ func TestPreflightCore_CleanDeckExits0(t *testing.T) {
         "layout_id": "slideLayout2",
         "slide_type": "content",
         "content": [
-          {"placeholder_id": "title", "type": "text", "text_value": "Hello"},
+          {"placeholder_id": "title", "type": "text", "text_value": "Renewals drove a record quarter"},
           {"placeholder_id": "body", "type": "bullets", "bullets_value": [
             "Revenue grew 12% on the back of enterprise renewals",
-            "Churn held below 2% for the third consecutive quarter"
+            "Churn held below 2% for the third consecutive quarter",
+            "Net retention reached 118% as expansion outpaced contraction",
+            "Pipeline coverage for next quarter stands at 3.2x target"
           ]}
         ]
       }]

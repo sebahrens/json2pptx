@@ -1092,4 +1092,6 @@ var specValidateAiriness = map[string]bool{
 	patterns.ErrCodeSparseSingleRowFlow: true,
 	patterns.ErrCodeOvertallFlowLane:    true,
 	patterns.ErrCodeSlideNearlyEmpty:    true,
+	patterns.ErrCodeVerticalImbalance:   true,
+	patterns.ErrCodeSparsePlaceholder:   true,
 }

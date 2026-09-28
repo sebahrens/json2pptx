@@ -138,7 +138,7 @@ func generateFitReport(input *PresentationInput, layouts []types.LayoutMetadata,
 				continue
 			}
 			findings = append(findings,
-				measureTable(table, slidepath.ContentIndex(si, ci), si)...)
+				measureTable(table, slidepath.ContentIndex(si, ci), si, tablePlaceholderBounds(content.PlaceholderID, findLayoutForSlide(&slide, layouts)))...)
 		}
 
 		// Walk shape_grid cells using the same layout-aware geometry as
@@ -179,7 +179,17 @@ func resolveTableFromContent(c *ContentInput) *jsonschema.TableInput {
 }
 
 // measureTable measures all cells in a table and returns findings for overflow.
-func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int) []fitFinding {
+//
+// bounds is the table's resolved frame (a grid cell or the body placeholder)
+// when known. With it, each cell is wrapped at the renderer's content-aware
+// column width and judged against the most lines it could get while every
+// other row keeps its minimum height — table rows grow with their content, so
+// an equal "row share" of the frame refused cells that render cleanly (the
+// sovereign-ai risk table: "needs 4 lines, allows 3" on a table that fits,
+// go-slide-creator-fabz4). Whole-table overflow is predicted separately from
+// the renderer's own row plan (table_rows_truncated). Without bounds the
+// legacy slide-proportion estimate applies.
+func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int, bounds types.BoundingBox) []fitFinding {
 	if len(table.Headers) == 0 {
 		return nil
 	}
@@ -217,6 +227,19 @@ func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int)
 	if defaultRowHeightEMU < minRowHeightEMU {
 		defaultRowHeightEMU = minRowHeightEMU
 	}
+	var colWidths []int64
+	if bounds.Width > 0 && bounds.Height > 0 {
+		spec := table.ToTableSpec()
+		colWidths = generator.TableColumnWidths(spec.Headers, spec.Rows, bounds.Width, fontSize)
+		// The most one row can take while the other rows stay at minimum height.
+		defaultRowHeightEMU = max(bounds.Height-int64(numRows-1)*minRowHeightEMU, minRowHeightEMU)
+	}
+	colWidth := func(ci int) int64 {
+		if ci < len(colWidths) && colWidths[ci] > 0 {
+			return colWidths[ci]
+		}
+		return colWidthEMU
+	}
 	lineHeightPt := fontPt * defaultLineSpacing
 	maxLines := int(float64(defaultRowHeightEMU) / (lineHeightPt * 12700)) // 12700 EMU per pt
 	if maxLines < 1 {
@@ -227,7 +250,7 @@ func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int)
 
 	// Measure header cells.
 	for hi, header := range table.Headers {
-		m, err := textfit.MeasureRun(header, "Calibri", fontPt, colWidthEMU, maxLines)
+		m, err := textfit.MeasureRun(header, "Calibri", fontPt, colWidth(hi), maxLines)
 		if err != nil {
 			continue
 		}
@@ -252,7 +275,7 @@ func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int)
 			if cell.Content == "" {
 				continue
 			}
-			m, err := textfit.MeasureRun(cell.Content, "Calibri", fontPt, colWidthEMU, maxLines)
+			m, err := textfit.MeasureRun(cell.Content, "Calibri", fontPt, colWidth(ci), maxLines)
 			if err != nil {
 				continue
 			}
@@ -408,7 +431,9 @@ func (a *gridFitAccum) walk(grid *ShapeGridInput, result *shapegrid.ResolveResul
 		cell := gridCellAtResolved(grid, rc.RowIdx, rc.ColIdx)
 		pathPrefix := fmt.Sprintf("%s/rows/%d/cells/%d", base, rc.RowIdx, rc.ColIdx)
 		if cell != nil && cell.Table != nil {
-			a.findings = append(a.findings, measureTable(cell.Table, slidepath.Join(pathPrefix, "table"), a.slideIdx)...)
+			a.findings = append(a.findings, measureTable(cell.Table, slidepath.Join(pathPrefix, "table"), a.slideIdx, types.BoundingBox{
+				X: rc.CellBounds.X, Y: rc.CellBounds.Y, Width: rc.CellBounds.CX, Height: rc.CellBounds.CY,
+			})...)
 		}
 		if i < len(densities) && (densities[i].MaxChars > 0 || densities[i].ActualChars > 0) {
 			cellFindings, counted, under := cellDensityFindings(densities[i], pathPrefix)

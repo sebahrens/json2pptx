@@ -1,5 +1,27 @@
 # Schema Changelog
 
+- **2026-09-28 — Honest-deck fit findings and layout-balance advisories (`go-slide-creator-fabz4`, `-u9xfy`, `-d830i`).**
+  - `title_wraps` measures at the size generation writes (template size ×
+    baked autofit scale) and rounds its one-line threshold; it no longer
+    reports titles that render on one line.
+  - Table `fit_overflow` measures cells at the renderer's column widths
+    against the table's resolved frame; rows grow with content, so only a
+    cell that cannot fit even with every other row at minimum height refuses.
+  - `DECK_MONOTONY` stays `review` for a run of chart / diagram slides whose
+    visual types differ; only same-type runs of 6+ refuse.
+  - Generate / score responses drop a `contrast_predicted` once the render
+    recorded the same swap as `contrast_autofixed`, and fold a slide's
+    fix-less `contrast_autofixed` records into one finding.
+  - The problem-slide share (`max_problem_slides_pct`, and the score's breadth
+    penalty) no longer counts info-severity advisories: `MISSING_ALT_TEXT`,
+    `accent_overload`, `DUPLICATE_TITLE`, `DECK_MONOTONY`,
+    `table_font_scaled`, `chart_shape_inferred` and the new codes below.
+  - New advisory codes: `TITLE_NOT_ACTION` (info), `TITLE_TOO_LONG`,
+    `VERTICAL_IMBALANCE`, `SPARSE_PLACEHOLDER` (review); all describable via
+    `describe_finding`.
+  - `team-bios` sizes its text rows to the tallest bio and centres the block
+    instead of stretching short bios down a 60% band.
+
 - **2026-09-27 — Schema 4.150.0: written-size budgets for every probed pattern (`go-slide-creator-n1muf`).**
   Every pattern budget calibrated by `probeReadableBudget` is now the written
   size on all nine shipped templates plus local p-style, so published copy

@@ -616,7 +616,7 @@ var findingMetaRegistry = map[string]FindingMeta{
 		Code:        ErrCodeDeckMonotony,
 		Summary:     "Several consecutive slides are built the same way.",
 		Severity:    "review",
-		WhenEmitted: "Four or more consecutive argument slides share one shape (the same pattern, or the same content types); six or more raises it to refuse. Title, section and blank slides never join a run.",
+		WhenEmitted: "Four or more consecutive argument slides share one shape (the same pattern, or the same content types); six or more raises it to refuse — unless the run is chart / diagram slides of differing visual types (bar, line, pie…), which stays review. Title, section and blank slides never join a run.",
 		RemediationSteps: []string{
 			"Vary the visual family: call recommend_visual for the middle slides of the run and take a different pattern for some of them.",
 			"Or merge the run — eight monthly KPI slides are usually one table or one trend chart.",

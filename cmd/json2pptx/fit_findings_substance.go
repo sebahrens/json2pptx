@@ -514,6 +514,7 @@ const (
 func collectMonotonyFindings(input *PresentationInput, layouts ...types.LayoutMetadata) []patterns.FitFinding {
 	var out []patterns.FitFinding
 	runStart, runShape := -1, ""
+	runVisuals := map[string]bool{}
 	flush := func(end int) {
 		if runStart < 0 {
 			return
@@ -523,7 +524,12 @@ func collectMonotonyFindings(input *PresentationInput, layouts ...types.LayoutMe
 			return
 		}
 		action := "review"
-		if runLen >= monotonyRunRefuse {
+		// A run of chart / diagram slides whose visuals differ (bar, line,
+		// pie, funnel…) does not read as one long slide the way six identical
+		// bullet lists do; the charts showcase was refused for "6 consecutive
+		// chart slides" (go-slide-creator-fabz4). It stays an advisory; only
+		// a run of the SAME visual type blocks.
+		if runLen >= monotonyRunRefuse && len(runVisuals) <= 1 {
 			action = "refuse"
 		}
 		out = append(out, patterns.FitFinding{
@@ -549,9 +555,29 @@ func collectMonotonyFindings(input *PresentationInput, layouts ...types.LayoutMe
 		if shape != runShape {
 			flush(i)
 			runStart, runShape = i, shape
+			runVisuals = map[string]bool{}
+		}
+		for _, v := range slideVisualTypes(slide) {
+			runVisuals[v] = true
 		}
 	}
 	flush(len(input.Slides))
+	return out
+}
+
+// slideVisualTypes lists the chart and diagram types a slide's content
+// carries ("chart:bar", "diagram:timeline").
+func slideVisualTypes(slide SlideInput) []string {
+	var out []string
+	for i := range slide.Content {
+		item := &slide.Content[i]
+		switch {
+		case item.ChartValue != nil && item.ChartValue.Type != "":
+			out = append(out, "chart:"+string(item.ChartValue.Type))
+		case item.DiagramValue != nil && item.DiagramValue.Type != "":
+			out = append(out, "diagram:"+item.DiagramValue.Type)
+		}
+	}
 	return out
 }
 

@@ -198,6 +198,11 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// section-divider slides are exempt because cover/closing slides
 	// legitimately repeat phrasing.
 	findings = append(findings, collectDuplicateTitleFindings(input)...)
+	// 10b. Title quality and body balance advisories: topic titles
+	// (TITLE_NOT_ACTION) and a few lines stuck to the top of a large body
+	// placeholder (SPARSE_PLACEHOLDER) — go-slide-creator-d830i / -u9xfy.
+	findings = append(findings, collectTitleNotActionFindings(input, layouts)...)
+	findings = append(findings, collectSparsePlaceholderFindings(input, layouts, slideHeight)...)
 
 	// 11. Deterministic geometry: TEXT_EXCEEDS_SHAPE / SPARSE_FILL / SLIDE_UNDERUSED.
 	findings = append(findings, collectGeometryFindings(input, layouts, slideWidth, slideHeight, theme)...)
