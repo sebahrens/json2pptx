@@ -128,6 +128,27 @@ const (
 	// than rounding (0.5%). The bar is drawn at the authored value, so the walk
 	// visibly does not add up (go-slide-creator-csclk.11).
 	FindingWaterfallTotalMismatch = "chart.waterfall_total_mismatch"
+
+	// FindingOrgChartNodesInvalid is emitted when an org chart's flat nodes
+	// array has a parent id that matches no node, a duplicate id, a node that
+	// is its own parent or a parent cycle (each repaired by drawing the node
+	// under the top node), or when a node has neither name nor title and so
+	// draws as an empty box (typically a node written with "label", which the
+	// org chart does not read).
+	FindingOrgChartNodesInvalid = "diagram.org_chart_nodes_invalid"
+
+	// FindingGlyphMissing is emitted when drawn text contains characters the
+	// embedded chart font has no glyph for (CJK, emoji, Hebrew/Arabic, ...).
+	// Their widths are estimated, so wrap, overlap and truncation decisions
+	// for that text are approximate, and the viewer substitutes a system
+	// font whose metrics may differ (go-slide-creator-s27x0).
+	FindingGlyphMissing = "chart.glyph_missing"
+
+	// FindingFunnelStageIncrease is emitted when a funnel stage is larger
+	// than the stage above it. A funnel reads as progressive narrowing; a
+	// widening stage is a data error or the wrong chart type
+	// (go-slide-creator-7w2ed).
+	FindingFunnelStageIncrease = "chart.funnel_stage_increase"
 )
 
 // FixKind constants for the Kind field of FixSuggestion.

@@ -1139,6 +1139,36 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"Or add the missing increase/decrease step that explains the difference.",
 		},
 	},
+	"diagram.org_chart_nodes_invalid": {
+		Code:        "diagram.org_chart_nodes_invalid",
+		Summary:     "An org chart has unresolvable or empty nodes.",
+		Severity:    "review",
+		WhenEmitted: "svggen finds a flat-nodes parent id that matches no node, a duplicate id, a self-parent or a parent cycle (the node is drawn under the top node), or a node with neither name nor title, which draws as an empty box.",
+		RemediationSteps: []string{
+			"Fix each entry in fix.params.issues: point parent at an existing id, make ids unique, and break cycles.",
+			"Give every node a name (and optionally a title); label is not read by the org chart.",
+		},
+	},
+	"chart.glyph_missing": {
+		Code:        "chart.glyph_missing",
+		Summary:     "Chart text uses characters the embedded chart font cannot render.",
+		Severity:    "review",
+		WhenEmitted: "svggen draws text containing characters (CJK, emoji, Arabic, ...) with no glyph in the embedded face; their widths are estimated and the viewer substitutes a system font.",
+		RemediationSteps: []string{
+			"Render the slide and check the listed characters display correctly and labels do not collide.",
+			"If the target machine lacks a font for the script, shorten or transliterate those labels, or move them into native slide text.",
+		},
+	},
+	"chart.funnel_stage_increase": {
+		Code:        "chart.funnel_stage_increase",
+		Summary:     "A funnel stage is larger than the stage above it.",
+		Severity:    "review",
+		WhenEmitted: "svggen finds a funnel_chart stage whose value exceeds the previous stage's; a funnel reads as progressive narrowing.",
+		RemediationSteps: []string{
+			"Check the stage values and order (fix.params.stage_indices lists the widening stages).",
+			"If the stages are not a narrowing sequence, use a bar chart instead.",
+		},
+	},
 	"chart.zero_sum_pie": {
 		Code:        "chart.zero_sum_pie",
 		Summary:     "A pie/donut chart's slices sum to zero, producing a blank chart.",

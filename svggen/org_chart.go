@@ -1078,6 +1078,18 @@ func (d *OrgChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, 
 			config.MaxVisibleSiblings = int(maxSiblings)
 		}
 
+		if issues := orgChartNodeIssues(req.Data, &data.Root); len(issues) > 0 {
+			builder.AddFinding(Finding{
+				Code:     FindingOrgChartNodesInvalid,
+				Message:  "org chart: " + strings.Join(issues, "; "),
+				Severity: "warning",
+				Fix: &FixSuggestion{
+					Kind:   FixKindReplaceValue,
+					Params: map[string]any{"issues": issues, "diagram_type": "org_chart"},
+				},
+			})
+		}
+
 		chart := NewOrgChartRenderer(builder, config)
 		return chart.Draw(data)
 	})
@@ -1179,9 +1191,83 @@ func parseOrgNode(m map[string]any) (OrgNode, error) {
 	return node, nil
 }
 
+// orgNodeIssuesKey is the private data key under which normalizeOrgChartNodes
+// records structural problems in a flat "nodes" array. Validate normalizes the
+// payload before any builder exists, so the render pass reads the issues back
+// from here and reports them as a FindingOrgChartNodesInvalid finding.
+const orgNodeIssuesKey = "_org_node_issues"
+
+// orgFlatNode is one entry of an org chart's flat "nodes" array.
+type orgFlatNode struct {
+	pos      int // index in the authored nodes array
+	id       string
+	parentID string
+	raw      map[string]any
+}
+
+// resolveOrgParents maps each node to the index of its parent (-1 for a root)
+// and reports duplicate ids, parents that match no id, and self-parents.
+func resolveOrgParents(nodes []orgFlatNode) (parent []int, issues []string) {
+	index := make(map[string]int, len(nodes))
+	for i, fn := range nodes {
+		if fn.id == "" {
+			continue
+		}
+		if j, dup := index[fn.id]; dup {
+			issues = append(issues, fmt.Sprintf("nodes[%d].id %q duplicates nodes[%d]; reports naming it attach to nodes[%d]", fn.pos, fn.id, nodes[j].pos, nodes[j].pos))
+			continue
+		}
+		index[fn.id] = i
+	}
+
+	parent = make([]int, len(nodes))
+	for i, fn := range nodes {
+		parent[i] = -1
+		if fn.parentID == "" {
+			continue
+		}
+		j, ok := index[fn.parentID]
+		switch {
+		case !ok:
+			issues = append(issues, fmt.Sprintf("nodes[%d].parent %q matches no node id; drawn under the top node", fn.pos, fn.parentID))
+		case j == i:
+			issues = append(issues, fmt.Sprintf("nodes[%d] (id %q) is its own parent; drawn under the top node", fn.pos, fn.id))
+		default:
+			parent[i] = j
+		}
+	}
+	return parent, issues
+}
+
+// breakOrgParentCycles cuts every node whose ancestor walk returns to itself
+// loose (parent -1, drawn under the top node) and reports it.
+func breakOrgParentCycles(nodes []orgFlatNode, parent []int) (issues []string) {
+	for i := range nodes {
+		seen := map[int]bool{i: true}
+		for k := parent[i]; k != -1; k = parent[k] {
+			if k == i {
+				issues = append(issues, fmt.Sprintf("nodes[%d] (id %q) is in a parent cycle; drawn under the top node", nodes[i].pos, nodes[i].id))
+				parent[i] = -1
+				break
+			}
+			if seen[k] {
+				break // cycle not through i; cut when its member is visited
+			}
+			seen[k] = true
+		}
+	}
+	return issues
+}
+
 // normalizeOrgChartNodes converts a flat "nodes" array (each node has "id" and
 // optional "parent") into a nested "root" tree that parseOrgChartData expects.
 // If "root" already exists or "nodes" is absent, this is a no-op.
+//
+// A parent id that matches no node, a duplicate id, a node that is its own
+// parent and a parent cycle are all repaired (the node is drawn under the top
+// node, or the duplicate is ignored as a parent) and recorded under
+// orgNodeIssuesKey. They used to be absorbed silently: an orphan was drawn in
+// map-iteration order, and a self-parent recursed forever.
 func normalizeOrgChartNodes(data map[string]any) {
 	if _, hasRoot := data["root"]; hasRoot {
 		return
@@ -1195,34 +1281,24 @@ func normalizeOrgChartNodes(data map[string]any) {
 		return
 	}
 
-	// Index nodes by id.
-	type flatNode struct {
-		id       string
-		parentID string
-		raw      map[string]any
-	}
-	nodes := make([]flatNode, 0, len(nodeSlice))
-	byID := make(map[string]*flatNode)
-	for _, raw := range nodeSlice {
+	nodes := make([]orgFlatNode, 0, len(nodeSlice))
+	for pos, raw := range nodeSlice {
 		m, ok := raw.(map[string]any)
 		if !ok {
 			continue
 		}
 		id, _ := m["id"].(string)
 		parentID, _ := m["parent"].(string)
-		fn := flatNode{id: id, parentID: parentID, raw: m}
-		nodes = append(nodes, fn)
-		if id != "" {
-			byID[id] = &nodes[len(nodes)-1]
-		}
+		nodes = append(nodes, orgFlatNode{pos: pos, id: id, parentID: parentID, raw: m})
 	}
 
-	// Build children lists. A node is a root if parent is "" or missing.
-	childrenOf := make(map[string][]map[string]any)
-	var roots []map[string]any
-	for i := range nodes {
-		fn := &nodes[i]
-		// Build a clean node map with name, title, and children placeholder.
+	parent, issues := resolveOrgParents(nodes)
+	issues = append(issues, breakOrgParentCycles(nodes, parent)...)
+
+	// Build clean node maps (name, title, children) without touching the
+	// caller's node maps, then link them in authored order.
+	tree := make([]map[string]any, len(nodes))
+	for i, fn := range nodes {
 		node := map[string]any{}
 		if name, ok := fn.raw["name"].(string); ok {
 			node["name"] = name
@@ -1230,27 +1306,22 @@ func normalizeOrgChartNodes(data map[string]any) {
 		if title, ok := fn.raw["title"].(string); ok {
 			node["title"] = title
 		}
-		fn.raw["_tree"] = node // stash for linking
-
-		if fn.parentID == "" {
-			roots = append(roots, node)
-		} else {
-			childrenOf[fn.parentID] = append(childrenOf[fn.parentID], node)
-		}
+		tree[i] = node
 	}
-
-	// Attach children.
-	for id, children := range childrenOf {
-		parent, exists := byID[id]
-		if !exists {
-			// Orphaned nodes become roots.
-			roots = append(roots, children...)
+	var roots []map[string]any
+	for i := range nodes {
+		if parent[i] == -1 {
+			roots = append(roots, tree[i])
 			continue
 		}
-		treeNode, _ := parent.raw["_tree"].(map[string]any)
-		treeNode["children"] = children
+		p := tree[parent[i]]
+		children, _ := p["children"].([]any)
+		p["children"] = append(children, tree[i])
 	}
 
+	if len(issues) > 0 {
+		data[orgNodeIssuesKey] = issues
+	}
 	if len(roots) == 0 {
 		return
 	}
@@ -1270,4 +1341,39 @@ func normalizeOrgChartNodes(data map[string]any) {
 		data["root"] = primary
 	}
 	delete(data, "nodes")
+}
+
+// orgChartNodeIssues returns the structural issues recorded by
+// normalizeOrgChartNodes plus one entry per node that has neither a name nor
+// a title (an empty box — typically a node written with "label", which the
+// org chart does not read).
+func orgChartNodeIssues(data map[string]any, root *OrgNode) []string {
+	var issues []string
+	switch recorded := data[orgNodeIssuesKey].(type) {
+	case []string:
+		issues = append(issues, recorded...)
+	case []any:
+		for _, v := range recorded {
+			if s, ok := v.(string); ok {
+				issues = append(issues, s)
+			}
+		}
+	}
+	empty := countEmptyOrgNodes(root)
+	if empty > 0 {
+		issues = append(issues, fmt.Sprintf("%d node(s) have neither name nor title and draw as empty boxes; set name (and optionally title) — label is not read", empty))
+	}
+	return issues
+}
+
+// countEmptyOrgNodes counts nodes with neither a name nor a title.
+func countEmptyOrgNodes(node *OrgNode) int {
+	n := 0
+	if strings.TrimSpace(node.Name) == "" && strings.TrimSpace(node.Title) == "" {
+		n = 1
+	}
+	for i := range node.Children {
+		n += countEmptyOrgNodes(&node.Children[i])
+	}
+	return n
 }

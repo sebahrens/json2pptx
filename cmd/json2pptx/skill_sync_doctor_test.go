@@ -53,7 +53,6 @@ var knownFitDocDrift = map[string]string{
 	"chart.all_zero_series":        "chart code, documented in SKILL.md only",
 	"chart.auto_log_scale_applied": "chart code, documented in SKILL.md only",
 	"chart.invalid_numeric":        "chart code, documented in SKILL.md only",
-	"chart.invalid_time_format":    "chart code, documented in SKILL.md only",
 	"chart.label_truncated":        "chart code, documented in SKILL.md only",
 	"chart.negative_on_log":        "chart code, documented in SKILL.md only",
 	"chart.overflow_suppressed":    "chart code, documented in SKILL.md only",

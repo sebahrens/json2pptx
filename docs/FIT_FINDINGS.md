@@ -809,6 +809,59 @@ A waterfall `total` or `subtotal` point disagrees with the running sum of the ba
 }
 ```
 
+### `diagram.org_chart_nodes_invalid`
+
+**Action:** `review`
+**Pattern:** `org_chart`
+**Fix kind:** `replace_value` (params: `issues` — one string per problem, `diagram_type`)
+
+An org chart's flat `nodes` array has a `parent` that matches no `id`, a duplicate `id`, a node that is its own parent, or a parent cycle — or a node has neither `name` nor `title` (typically written with `label`, which the org chart does not read) and draws as an empty box. Structural problems are repaired by drawing the node under the top node, so the chart renders, but its hierarchy is not the one authored. Fix each listed node.
+
+```json
+{
+  "code": "diagram.org_chart_nodes_invalid",
+  "message": "org chart: nodes[1].parent \"missing\" matches no node id; drawn under the top node",
+  "fix": { "kind": "replace_value", "params": { "issues": ["nodes[1].parent \"missing\" matches no node id; drawn under the top node"], "diagram_type": "org_chart" } },
+  "severity": "warning"
+}
+```
+
+### `chart.glyph_missing`
+
+**Action:** `review`
+**Pattern:** any chart or diagram (non-chart diagrams report it as `diagram.glyph_missing`)
+**Fix kind:** `replace_value` (params: `characters` — up to 12 sample characters, `missing_count`, `scripts`)
+
+Drawn text contains characters the embedded chart font has no glyph for (typically CJK, emoji or Arabic). svggen estimates their widths (one em for East Asian wide characters and emoji, 0.6em otherwise), so wrapping, overlap and truncation for that text are approximate, and the viewer substitutes a system font whose metrics may differ. One finding per chart. Check the rendered slide; if the substitute font is missing on the target machine the characters show as boxes.
+
+```json
+{
+  "code": "chart.glyph_missing",
+  "message": "3 text item(s) use 16 character(s) the embedded chart font has no glyph for (ا ب ح ر ع ل م キ ス テ ト 日; scripts: Arabic, Han, Katakana, emoji/symbols); their widths are estimated, ...",
+  "fix": { "kind": "replace_value", "params": { "characters": ["ا", "キ", "日"], "missing_count": 16, "scripts": ["Arabic", "Han", "Katakana", "emoji/symbols"] } },
+  "severity": "warning"
+}
+```
+
+### `chart.funnel_stage_increase`
+
+**Action:** `review`
+**Pattern:** `funnel_chart`
+**Fix kind:** `replace_value` (params: `stage_indices` — 0-based indices of the widening stages, `diagram_type`)
+
+A funnel stage is larger than the stage above it. A funnel reads as progressive narrowing, so a widening stage is either a data error or the wrong chart (use a bar chart for unordered stage sizes). The funnel still renders as authored.
+
+```json
+{
+  "code": "chart.funnel_stage_increase",
+  "message": "funnel: 1 stage(s) are larger than the stage above them (\"B\" (100) > \"A\" (1)); a funnel should narrow — check the values or use a bar chart",
+  "fix": { "kind": "replace_value", "params": { "stage_indices": [1], "diagram_type": "funnel_chart" } },
+  "severity": "warning"
+}
+```
+
+A gauge whose `value` lies outside `[min, max]` reports the existing `chart.point_out_of_range` (fix kind `explicit_scale`, params `value`, `min`, `max`): the needle is pinned at the nearest end of the dial while the label prints the real value. A timeline `date` string that neither parses nor serves as the item's label reports `chart.invalid_time_format` (fix kind `replace_value`, params `invalid_dates`); when no item has a parseable date the items are spaced evenly in authored order and no date axis is drawn.
+
 ### `CHART_PLACEHOLDER_EMPTY`
 
 **Action:** `review`

@@ -57,6 +57,14 @@ Display hierarchical organizational structures as a tree of connected nodes.
 
 Alternatively, provide `name` or `title` at the top level of data (treated as root).
 
+A flat `nodes` array of `{id, name, title, parent}` is also accepted and is
+converted to the tree above. Box text comes only from `name` and `title` — a
+node written with `label` draws as an empty box. A `parent` that matches no
+`id`, a duplicate `id`, a node that is its own parent, a parent cycle, or a
+node with neither `name` nor `title` emits `diagram.org_chart_nodes_invalid`
+(warning, fix kind `replace_value`, `params.issues` lists each problem); the
+unresolvable node is drawn under the top node rather than dropped.
+
 ## Optional Fields
 
 | Field | Type | Default | Description |

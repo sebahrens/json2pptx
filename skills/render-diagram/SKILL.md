@@ -54,9 +54,9 @@ These are the only tools served by `svggen-mcp`. Treat this table as authoritati
 | `get_started` | Returns the recommended ordered call sequence for a stated task. | Tasks: `"render"` (default), `"preflight-render"`, `"embed-in-deck"`. Unknown values fall back to `"render"`. Call this **first** if you are unsure of the workflow. |
 | `get_capabilities` | Returns `{schema_version, tool_list, chart_types, diagram_types, chart_capabilities, diagram_capabilities, deprecations, features:{dry_render, structured_errors}}`. | `schema_version` is sourced from the svggen library version. Call once per session and compare against any cached value — a change means the contract may have shifted. **Distinct from `json2pptx-mcp.get_capabilities`** (that one is scoped to the deck engine). |
 | `list_diagram_types` | Lists every registered diagram/chart type as `[{name, aliases?}]`. | `name` is the canonical ID (e.g., `bar_chart`). `aliases` enumerates accepted short forms (e.g., `["bar"]`). Prefer the canonical name in new code; aliases remain accepted everywhere `render_diagram` takes a `type`. |
-| `get_diagram_schema` | Returns the input schema for a specific `type`, plus `example_values` with both `minimal` (smallest valid input) and `realistic` (representative shape and content). | Mirrors `json2pptx-mcp.show_pattern.example_values` — copy a working example instead of guessing field names. The legacy top-level `example` field is retained as a back-compat alias for `example_values.realistic`. |
+| `get_diagram_schema` | Returns the input schema for a specific `type`, plus `example_values` with both `minimal` (smallest valid input) and `realistic` (representative shape and content). | Mirrors `json2pptx-mcp.show_pattern.example_values` — copy a working example instead of guessing field names; every example validates and renders for all 21 registered types. An alias (`bar`, `pie`, `org`, `matrix`, …) resolves to its canonical type, which the response's `type` reports. The legacy top-level `example` field is retained as a back-compat alias for `example_values.realistic`. |
 | `validate_diagram` | Validates a `{type, data}` payload **without** rendering. | Returns `{valid, errors?:[diagnostic]}`. Use this when structured feedback is cheaper than a failed render. |
-| `render_diagram` | Renders to SVG (default) or PNG. Optional `dry_run`. | Required: `type`, `data`. Optional: `format` (`"svg"` \| `"png"`), `width`, `height`, `title`, `style`, `dry_run` (bool). |
+| `render_diagram` | Renders to SVG (default) or PNG. Optional `dry_run`. | Required: `type`, `data`. Optional: `format` (`"svg"` \| `"png"`), `width`, `height` (pixels, max 8192 each — larger returns `INVALID_VALUE` with `fix.params.max`), `title`, `style`, `dry_run` (bool). |
 
 ---
 
@@ -95,7 +95,7 @@ They cover **different failure surfaces**. Run them in order, not as substitutes
 | Step | Catches | Does not catch |
 |---|---|---|
 | `validate_diagram` | Required fields, type mismatches, length/shape constraints (e.g., `series[i].values` length aligned with `categories`). | Layout findings — tick thinning, label clipping, legend overflow. |
-| `render_diagram` with `dry_run: true` | Layout findings: `chart.tick_thinned`, `chart.label_clipped`, `chart.legend_overflow_dropped`, `chart.label_truncated`, `chart.scatter_label_skipped`, etc. | Schema errors validate_diagram already surfaced. |
+| `render_diagram` with `dry_run: true` | Layout findings: `chart.tick_thinned`, `chart.label_clipped`, `chart.legend_overflow_dropped`, `chart.label_truncated`, `chart.scatter_label_skipped`, `chart.glyph_missing` (text uses characters the embedded font lacks — CJK, emoji, Arabic; widths are estimated), `diagram.org_chart_nodes_invalid`, `chart.funnel_stage_increase`, `chart.point_out_of_range` (incl. a gauge value outside min–max), `chart.invalid_time_format` (unparseable timeline dates; a timeline with no parseable date draws no date axis), etc. | Schema errors validate_diagram already surfaced. |
 
 `dry_run: true` returns the JSON envelope `{valid, findings, error?}` — no SVG/PNG bytes are produced. It's the same render path minus the byte output, so it surfaces post-layout diagnostics that pure schema validation cannot see.
 
@@ -173,7 +173,7 @@ Use when the final consumer of the SVG is a `shape_grid` cell inside a json2pptx
   "valid": false,
   "diagnostics": [
     {
-      "code": "REQUIRED",           // SCREAMING_SNAKE_CASE — matches json2pptx-mcp casing. Common values: "REQUIRED", "INVALID_TYPE", "INVALID_VALUE", "UNKNOWN_DIAGRAM_TYPE", "RENDER_FAILED", "PARSE_FAILED". Pre-4.23.0 lowercase codes (required, invalid_type, …) are deprecated; get_capabilities.deprecations carries the legacy → canonical mapping.
+      "code": "REQUIRED",           // SCREAMING_SNAKE_CASE — matches json2pptx-mcp casing. Common values: "REQUIRED", "INVALID_TYPE", "INVALID_VALUE", "UNKNOWN_DIAGRAM_TYPE", "RENDER_FAILED", "PARSE_FAILED". Lowercase codes from before json2pptx schema 4.23.0 (required, invalid_type, …) are deprecated; get_capabilities.deprecations carries the legacy → canonical mapping.
       "message": "data is required",
       "path": "data",               // JSON path, e.g. "data.series[0].values"
       "severity": "error",
@@ -199,7 +199,7 @@ Use when the final consumer of the SVG is a `shape_grid` cell inside a json2pptx
 |---|---|---|
 | `REQUIRED` | Required argument missing (`type`, `data`). | `list_diagram_types` (for `type`) or `get_diagram_schema` (for `data`). |
 | `INVALID_TYPE` | Argument has the wrong JSON kind (e.g., `data` is not an object). | `get_diagram_schema` |
-| `INVALID_VALUE` | Argument is the right kind but disallowed (e.g., unsupported `format`, malformed `style`). | none — the `fix.params.allowed` array carries the legal set. |
+| `INVALID_VALUE` | Argument is the right kind but disallowed (e.g., unsupported `format`, malformed `style`, `width`/`height` above 8192). | none — the `fix.params.allowed` array carries the legal set. |
 | `UNKNOWN_DIAGRAM_TYPE` | `type` does not resolve to a registered diagram (alias or canonical). | `list_diagram_types` |
 | `RENDER_FAILED` | Renderer crashed past validation (rare; usually means the input slipped through schema checks). | `get_diagram_schema` |
 | `PARSE_FAILED` | Envelope-level parse error inside `validate_diagram`. | none — fix the payload. |
@@ -228,7 +228,7 @@ subset relevant to svggen.
 
 - **Stale `schema_version`.** Cache `get_capabilities().schema_version` per session and revalidate at the start of each new session. A bump means tool signatures, data shapes, or feature flags may have changed.
 - **Guessing field names from `list_diagram_types` alone.** `list_diagram_types` only gives names; always pull `get_diagram_schema` before building a `data` payload.
-- **Confusing the two MCP servers.** `svggen-mcp` and `json2pptx-mcp` both expose `get_capabilities`, `get_started`, etc. The two are independent and report different `schema_version` values. Do not assume calling one queries the other.
+- **Confusing the two MCP servers.** `svggen-mcp` and `json2pptx-mcp` both expose `get_capabilities`, `get_started`, etc. The two are independent and report different `schema_version` values (svggen-mcp's is the svggen library version, e.g. `0.2.0`; json2pptx-mcp's is the deck schema, `4.x`). Do not assume calling one queries the other.
 - **Inline SVG vs. PNG for embedding.** `shape_grid` `icon.svg_data` requires SVG markup — do not pass base64 PNG into that field. PNG output is for previews or non-pptx consumers.
 - **Style mutations after `resolve_theme`.** Renaming, sorting, or filtering `theme_colors` breaks palette assumptions silently. Pass the array through untouched.
 

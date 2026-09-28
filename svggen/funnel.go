@@ -3,6 +3,7 @@ package svggen
 import (
 	"fmt"
 	"math"
+	"strings"
 )
 
 // =============================================================================
@@ -231,6 +232,34 @@ func funnelAdaptiveGap(numSegments int, baseGap float64) float64 {
 }
 
 // Draw renders the funnel chart.
+// reportIncreasingStages emits FindingFunnelStageIncrease for every stage
+// larger than the one above it. A funnel reads as progressive narrowing, so a
+// widening stage is a data error or the wrong chart; it used to render
+// without comment (go-slide-creator-7w2ed).
+func (fc *FunnelChart) reportIncreasingStages(data FunnelData) {
+	var rising []string
+	var indices []int
+	for i := 1; i < len(data.Points); i++ {
+		prev, cur := data.Points[i-1], data.Points[i]
+		if cur.Value > prev.Value {
+			rising = append(rising, fmt.Sprintf("%q (%g) > %q (%g)", cur.Label, cur.Value, prev.Label, prev.Value))
+			indices = append(indices, i)
+		}
+	}
+	if len(rising) == 0 {
+		return
+	}
+	fc.builder.AddFinding(Finding{
+		Code:     FindingFunnelStageIncrease,
+		Message:  fmt.Sprintf("funnel: %d stage(s) are larger than the stage above them (%s); a funnel should narrow — check the values or use a bar chart", len(rising), strings.Join(rising, "; ")),
+		Severity: "warning",
+		Fix: &FixSuggestion{
+			Kind:   FixKindReplaceValue,
+			Params: map[string]any{"stage_indices": indices, "diagram_type": "funnel_chart"},
+		},
+	})
+}
+
 func (fc *FunnelChart) Draw(data FunnelData) error {
 	if len(data.Points) == 0 {
 		return fmt.Errorf("funnel chart requires at least one data point")
@@ -247,6 +276,7 @@ func (fc *FunnelChart) Draw(data FunnelData) error {
 	fc.config.ResolveValueFormatter(values, false)
 
 	b := fc.builder
+	fc.reportIncreasingStages(data)
 	style := b.StyleGuide()
 	colors := fc.getColors(style, len(data.Points))
 

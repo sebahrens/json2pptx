@@ -39,6 +39,9 @@ import (
 // value.
 const version = svggen.Version
 
+// maxOutputDimension caps render_diagram width and height in pixels.
+const maxOutputDimension = 8192
+
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
@@ -88,10 +91,10 @@ func run() error {
 
 func renderDiagramTool() mcp.Tool {
 	return mcp.NewTool("render_diagram",
-		mcp.WithDescription("Render a diagram or chart to SVG or PNG format. Supports 30+ diagram types including bar_chart, line_chart, pie_chart, org_chart, gantt, timeline, funnel, radar, scatter, bubble, waterfall, heatmap, treemap, venn, swot, matrix_2x2, fishbone, and more."),
+		mcp.WithDescription("Render a diagram or chart to SVG or PNG format. Supports 21 registered types: bar_chart, line_chart, pie_chart, donut_chart, area_chart, radar_chart, scatter_chart, bubble_chart, stacked_bar_chart, stacked_area_chart, grouped_bar_chart, funnel_chart, gauge_chart, treemap_chart, waterfall, org_chart, gantt, timeline, venn, matrix_2x2, fishbone."),
 		mcp.WithString("type",
 			mcp.Required(),
-			mcp.Description("Diagram type (e.g., bar_chart, line_chart, pie_chart, org_chart, gantt, timeline, funnel, radar_chart, scatter_chart, bubble_chart, waterfall, heatmap, treemap, venn, swot, matrix_2x2, fishbone, pyramid, value_chain, porters_five_forces, pestel, nine_box_talent, business_model_canvas, gauge). Use list_diagram_types to see all available types."),
+			mcp.Description("Diagram type: a canonical name (e.g., bar_chart, pie_chart, org_chart, gantt, timeline, waterfall, venn, matrix_2x2, fishbone) or an alias (bar, pie, funnel, gauge, treemap, org, matrix). Use list_diagram_types for the full list with aliases."),
 		),
 		mcp.WithObject("data",
 			mcp.Required(),
@@ -102,10 +105,10 @@ func renderDiagramTool() mcp.Tool {
 			mcp.Enum("svg", "png"),
 		),
 		mcp.WithNumber("width",
-			mcp.Description("Output width in pixels (default: 800)."),
+			mcp.Description("Output width in pixels (default: 800, max: 8192; larger values return INVALID_VALUE)."),
 		),
 		mcp.WithNumber("height",
-			mcp.Description("Output height in pixels (default: 600)."),
+			mcp.Description("Output height in pixels (default: 600, max: 8192; larger values return INVALID_VALUE)."),
 		),
 		mcp.WithString("title",
 			mcp.Description("Diagram title (optional)."),
@@ -239,16 +242,30 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 		req.Title = title
 	}
 
-	// Optional dimensions
-	if w, ok := args["width"]; ok {
-		if wf, ok := w.(float64); ok && wf > 0 {
-			req.Output.Width = int(wf)
+	// Optional dimensions, capped at maxOutputDimension. An uncapped
+	// 20000x20000 request produced a 26668px SVG, and a 12000px PNG took 11 s
+	// and 5.4 MB of base64 (go-slide-creator-7w2ed).
+	for _, dim := range []struct {
+		name string
+		dst  *int
+	}{{"width", &req.Output.Width}, {"height", &req.Output.Height}} {
+		v, ok := args[dim.name].(float64)
+		if !ok || v <= 0 {
+			continue
 		}
-	}
-	if h, ok := args["height"]; ok {
-		if hf, ok := h.(float64); ok && hf > 0 {
-			req.Output.Height = int(hf)
+		if v > maxOutputDimension {
+			return emitErrorResult(diagnostic{
+				Code:     CodeInvalidValue,
+				Message:  fmt.Sprintf("%s %g exceeds the maximum output dimension %d px", dim.name, v, maxOutputDimension),
+				Path:     dim.name,
+				Severity: "error",
+				Fix: &fix{Kind: "replace_value", Params: map[string]any{
+					"path": dim.name, "invalid_value": v, "max": maxOutputDimension,
+				}},
+				Details: map[string]any{"pattern": diagramType},
+			})
 		}
+		*dim.dst = int(v)
 	}
 
 	// Optional style — reject invalid payloads with a structured error.
@@ -533,6 +550,10 @@ func handleGetDiagramSchema(_ context.Context, request mcp.CallToolRequest) (*mc
 		return mcp.NewToolResultError(fmt.Sprintf("unknown diagram type %q — use list_diagram_types to see available types", diagramType)), nil
 	}
 
+	// Resolve aliases (bar, pie, org, matrix, ...) to the canonical registered
+	// name so the example lookup and the reported type match what renders.
+	diagramType = d.Type()
+
 	// Build a minimal example by looking up known schemas.
 	schema := getSchemaForType(diagramType)
 
@@ -620,20 +641,14 @@ func getSchemaForType(typ string) diagramSchema {
 			},
 		},
 		"pie_chart": {
-			description: "Pie or donut chart with labeled slices.",
+			description: "Pie chart: parallel 'categories' (slice labels; 'labels' is an alias) and 'values' arrays. There is no 'slices' field.",
 			minimal: map[string]any{
-				"slices": []any{
-					map[string]any{"label": "A", "value": 60},
-					map[string]any{"label": "B", "value": 40},
-				},
+				"categories": []any{"A", "B"},
+				"values":     []any{60, 40},
 			},
 			realistic: map[string]any{
-				"slices": []any{
-					map[string]any{"label": "Product A", "value": 40},
-					map[string]any{"label": "Product B", "value": 30},
-					map[string]any{"label": "Product C", "value": 20},
-					map[string]any{"label": "Other", "value": 10},
-				},
+				"categories": []any{"Product A", "Product B", "Product C", "Other"},
+				"values":     []any{40, 30, 20, 10},
 			},
 		},
 		"radar_chart": {
@@ -712,38 +727,39 @@ func getSchemaForType(typ string) diagramSchema {
 			},
 		},
 		"waterfall": {
-			description: "Waterfall chart showing incremental changes to a total.",
+			description: "Waterfall chart showing incremental changes to a total. Bars go in 'points' (NOT 'items'); each point has label, value and optional type (increase, decrease, total, subtotal). A total's value must equal the running sum. Parallel 'labels' + 'values' arrays are also accepted.",
 			minimal: map[string]any{
-				"items": []any{
+				"points": []any{
 					map[string]any{"label": "Start", "value": 100},
 					map[string]any{"label": "Change", "value": -20},
-					map[string]any{"label": "End", "value": 0, "is_total": true},
+					map[string]any{"label": "End", "value": 80, "type": "total"},
 				},
 			},
 			realistic: map[string]any{
-				"items": []any{
+				"points": []any{
 					map[string]any{"label": "Revenue", "value": 500},
 					map[string]any{"label": "COGS", "value": -200},
+					map[string]any{"label": "Gross Profit", "value": 300, "type": "subtotal"},
 					map[string]any{"label": "OpEx", "value": -150},
 					map[string]any{"label": "Tax", "value": -50},
-					map[string]any{"label": "Net Profit", "value": 0, "is_total": true},
+					map[string]any{"label": "Net Profit", "value": 100, "type": "total"},
 				},
 			},
 		},
 		"org_chart": {
-			description: "Organizational chart with hierarchical nodes.",
+			description: "Organizational chart. Either a nested 'root' {name, title, children:[...]} or a flat 'nodes' array of {id, name, title, parent}. Box text comes from 'name' (primary line, role or person) and 'title' (secondary line); 'label' is not read. A parent id that matches no node, a duplicate id, or a node with neither name nor title emits diagram.org_chart_nodes_invalid.",
 			minimal: map[string]any{
 				"nodes": []any{
-					map[string]any{"id": "root", "label": "Lead"},
-					map[string]any{"id": "child", "label": "Report", "parent": "root"},
+					map[string]any{"id": "root", "name": "Lead"},
+					map[string]any{"id": "child", "name": "Report", "parent": "root"},
 				},
 			},
 			realistic: map[string]any{
 				"nodes": []any{
-					map[string]any{"id": "ceo", "label": "CEO", "title": "John Smith"},
-					map[string]any{"id": "vp1", "label": "VP Engineering", "title": "Jane Doe", "parent": "ceo"},
-					map[string]any{"id": "vp2", "label": "VP Sales", "title": "Sam Lee", "parent": "ceo"},
-					map[string]any{"id": "vp3", "label": "VP Finance", "title": "Pat Kim", "parent": "ceo"},
+					map[string]any{"id": "ceo", "name": "CEO", "title": "John Smith"},
+					map[string]any{"id": "vp1", "name": "VP Engineering", "title": "Jane Doe", "parent": "ceo"},
+					map[string]any{"id": "vp2", "name": "VP Sales", "title": "Sam Lee", "parent": "ceo"},
+					map[string]any{"id": "vp3", "name": "VP Finance", "title": "Pat Kim", "parent": "ceo"},
 				},
 			},
 		},
@@ -796,25 +812,6 @@ func getSchemaForType(typ string) diagramSchema {
 				},
 			},
 		},
-		"pyramid": {
-			description: "Pyramid diagram with hierarchical layers.",
-			minimal: map[string]any{
-				"layers": []any{
-					map[string]any{"label": "Top"},
-					map[string]any{"label": "Middle"},
-					map[string]any{"label": "Base"},
-				},
-			},
-			realistic: map[string]any{
-				"layers": []any{
-					map[string]any{"label": "Self-Actualization"},
-					map[string]any{"label": "Esteem"},
-					map[string]any{"label": "Belonging"},
-					map[string]any{"label": "Safety"},
-					map[string]any{"label": "Physiological"},
-				},
-			},
-		},
 		"venn": {
 			description: "Venn diagram with 2-4 overlapping circles.",
 			minimal: map[string]any{
@@ -829,21 +826,6 @@ func getSchemaForType(typ string) diagramSchema {
 					map[string]any{"label": "Set B", "items": []any{"c", "d", "e"}},
 					map[string]any{"label": "Set C", "items": []any{"e", "f", "a"}},
 				},
-			},
-		},
-		"swot": {
-			description: "SWOT analysis matrix (Strengths, Weaknesses, Opportunities, Threats).",
-			minimal: map[string]any{
-				"strengths":     []any{"S1"},
-				"weaknesses":    []any{"W1"},
-				"opportunities": []any{"O1"},
-				"threats":       []any{"T1"},
-			},
-			realistic: map[string]any{
-				"strengths":     []any{"Strong brand", "Loyal customers"},
-				"weaknesses":    []any{"High costs", "Limited reach"},
-				"opportunities": []any{"New markets", "Partnerships"},
-				"threats":       []any{"Competition", "Regulation"},
 			},
 		},
 		"matrix_2x2": {
@@ -885,19 +867,6 @@ func getSchemaForType(typ string) diagramSchema {
 				},
 			},
 		},
-		"heatmap": {
-			description: "Heatmap with rows, columns, and values.",
-			minimal: map[string]any{
-				"rows":    []any{"R1", "R2"},
-				"columns": []any{"C1", "C2"},
-				"values":  []any{[]any{1, 2}, []any{3, 4}},
-			},
-			realistic: map[string]any{
-				"rows":    []any{"Mon", "Tue", "Wed", "Thu", "Fri"},
-				"columns": []any{"Morning", "Afternoon", "Evening"},
-				"values":  []any{[]any{3, 7, 2}, []any{5, 9, 4}, []any{1, 6, 8}, []any{4, 8, 5}, []any{2, 5, 9}},
-			},
-		},
 		"treemap_chart": {
 			description: "Treemap showing hierarchical data as nested rectangles.",
 			minimal: map[string]any{
@@ -931,109 +900,15 @@ func getSchemaForType(typ string) diagramSchema {
 				"thresholds": []any{30, 70},
 			},
 		},
-		"value_chain": {
-			description: "Porter's Value Chain diagram with primary and support activities.",
-			minimal: map[string]any{
-				"primary": []any{
-					map[string]any{"label": "Inbound"},
-					map[string]any{"label": "Operations"},
-					map[string]any{"label": "Outbound"},
-				},
-				"support": []any{
-					map[string]any{"label": "Infrastructure"},
-				},
-			},
-			realistic: map[string]any{
-				"primary": []any{
-					map[string]any{"label": "Inbound Logistics"},
-					map[string]any{"label": "Operations"},
-					map[string]any{"label": "Outbound Logistics"},
-					map[string]any{"label": "Marketing & Sales"},
-					map[string]any{"label": "Service"},
-				},
-				"support": []any{
-					map[string]any{"label": "Infrastructure"},
-					map[string]any{"label": "HR Management"},
-					map[string]any{"label": "Technology"},
-					map[string]any{"label": "Procurement"},
-				},
-			},
-		},
-		"porters_five_forces": {
-			description: "Porter's Five Forces competitive analysis diagram. Each force is keyed by 'type' (canonical: rivalry, new_entrants, substitutes, suppliers, buyers) with an 'intensity' from 0.0 to 1.0 (NOT 'position'/'level'). An object-keyed form is also accepted (top-level rivalry/new_entrants/substitutes/supplier_power/buyer_power keys).",
-			minimal: map[string]any{
-				"forces": []any{
-					map[string]any{"type": "rivalry", "intensity": 0.5},
-					map[string]any{"type": "new_entrants", "intensity": 0.4},
-					map[string]any{"type": "substitutes", "intensity": 0.3},
-					map[string]any{"type": "suppliers", "intensity": 0.5},
-					map[string]any{"type": "buyers", "intensity": 0.6},
-				},
-			},
-			realistic: map[string]any{
-				"industry_name": "Enterprise SaaS",
-				"forces": []any{
-					map[string]any{"type": "rivalry", "label": "Competitive Rivalry", "intensity": 0.8, "factors": []any{"Many competitors", "Low switching costs"}},
-					map[string]any{"type": "new_entrants", "label": "Threat of New Entrants", "intensity": 0.4},
-					map[string]any{"type": "substitutes", "label": "Threat of Substitutes", "intensity": 0.3},
-					map[string]any{"type": "suppliers", "label": "Supplier Power", "intensity": 0.5},
-					map[string]any{"type": "buyers", "label": "Buyer Power", "intensity": 0.7},
-				},
-			},
-		},
-		"pestel": {
-			description: "PESTEL analysis diagram covering Political, Economic, Social, Technological, Environmental, Legal factors.",
-			minimal: map[string]any{
-				"factors": []any{
-					map[string]any{"category": "Political", "items": []any{"Item"}},
-				},
-			},
-			realistic: map[string]any{
-				"factors": []any{
-					map[string]any{"category": "Political", "items": []any{"Regulation", "Trade policy"}},
-					map[string]any{"category": "Economic", "items": []any{"GDP growth", "Inflation"}},
-					map[string]any{"category": "Social", "items": []any{"Demographics", "Culture"}},
-					map[string]any{"category": "Technological", "items": []any{"AI", "Automation"}},
-					map[string]any{"category": "Environmental", "items": []any{"Climate", "Sustainability"}},
-					map[string]any{"category": "Legal", "items": []any{"IP law", "Labor law"}},
-				},
-			},
-		},
-		"nine_box_talent": {
-			description: "9-box talent grid with performance and potential axes. People go in 'employees' (NOT 'people'); performance/potential accept \"low\"|\"medium\"|\"high\" or numeric 1|2|3 (1=low, 2=medium, 3=high). Axis names use x_axis_label/y_axis_label. Alternatively place people explicitly via 'cells'.",
-			minimal: map[string]any{
-				"x_axis_label": "Performance",
-				"y_axis_label": "Potential",
-				"employees": []any{
-					map[string]any{"name": "Person", "performance": "medium", "potential": "medium"},
-				},
-			},
-			realistic: map[string]any{
-				"x_axis_label": "Performance",
-				"y_axis_label": "Potential",
-				"employees": []any{
-					map[string]any{"name": "Alice", "performance": "high", "potential": "high"},
-					map[string]any{"name": "Bob", "performance": "medium", "potential": "high"},
-					map[string]any{"name": "Carol", "performance": "high", "potential": "medium"},
-					map[string]any{"name": "Dan", "performance": "low", "potential": "medium"},
-				},
-			},
-		},
 		"donut_chart": {
-			description: "Donut chart (pie with a hollow center) with labeled slices.",
+			description: "Donut chart (pie with a hollow center): parallel 'categories' (slice labels; 'labels' is an alias) and 'values' arrays. There is no 'slices' field.",
 			minimal: map[string]any{
-				"slices": []any{
-					map[string]any{"label": "A", "value": 60},
-					map[string]any{"label": "B", "value": 40},
-				},
+				"categories": []any{"A", "B"},
+				"values":     []any{60, 40},
 			},
 			realistic: map[string]any{
-				"slices": []any{
-					map[string]any{"label": "Product A", "value": 40},
-					map[string]any{"label": "Product B", "value": 30},
-					map[string]any{"label": "Product C", "value": 20},
-					map[string]any{"label": "Other", "value": 10},
-				},
+				"categories": []any{"Product A", "Product B", "Product C", "Other"},
+				"values":     []any{40, 30, 20, 10},
 			},
 		},
 		"area_chart": {
@@ -1103,31 +978,6 @@ func getSchemaForType(typ string) diagramSchema {
 				},
 			},
 		},
-		"business_model_canvas": {
-			description: "Business Model Canvas with 9 building blocks.",
-			minimal: map[string]any{
-				"key_partners":           []any{"Partner"},
-				"key_activities":         []any{"Activity"},
-				"key_resources":          []any{"Resource"},
-				"value_proposition":      []any{"Value"},
-				"customer_segments":      []any{"Segment"},
-				"channels":               []any{"Channel"},
-				"customer_relationships": []any{"Relationship"},
-				"revenue_streams":        []any{"Revenue"},
-				"cost_structure":         []any{"Cost"},
-			},
-			realistic: map[string]any{
-				"key_partners":           []any{"Suppliers", "Distributors"},
-				"key_activities":         []any{"Production", "Marketing"},
-				"key_resources":          []any{"IP", "Staff"},
-				"value_proposition":      []any{"Quality", "Speed"},
-				"customer_segments":      []any{"B2B", "B2C"},
-				"channels":               []any{"Online", "Retail"},
-				"customer_relationships": []any{"Self-service", "Community"},
-				"revenue_streams":        []any{"Subscriptions", "Licensing"},
-				"cost_structure":         []any{"Fixed costs", "Variable costs"},
-			},
-		},
 	}
 
 	if s, ok := schemas[typ]; ok {
@@ -1183,7 +1033,9 @@ type diagnostic struct {
 // These match the casing convention used by json2pptx-mcp (internal/diagnostics
 // codes such as MISSING_PARAMETER, INVALID_JSON, TEMPLATE_NOT_FOUND) so agents
 // dispatching on diagnostic.code can use a single equality check across both
-// MCP servers. Prior to schema 4.23.0, svggen-mcp emitted lowercase_snake codes
+// MCP servers. Prior to json2pptx schema 4.23.0 (the deck-engine schema_version;
+// svggen-mcp reports its own schema_version, svggen.Version), svggen-mcp
+// emitted lowercase_snake codes
 // (required, invalid_type, …); the legacy → canonical mapping is surfaced via
 // get_capabilities.deprecations for the deprecation window.
 const (
@@ -1199,7 +1051,7 @@ const (
 	CodeRenderFailed       = "RENDER_FAILED"
 )
 
-// legacyCodeAliases maps the pre-4.23.0 lowercase_snake codes svggen-mcp used
+// legacyCodeAliases maps the pre-json2pptx-4.23.0 lowercase_snake codes svggen-mcp used
 // to emit to the canonical SCREAMING_SNAKE codes the server emits today. It is
 // surfaced through get_capabilities.deprecations so agents that branched on the
 // old casing know exactly which new code to dispatch on. Order is alphabetical
@@ -1479,7 +1331,7 @@ func buildSvggenRegistry() capabilitiesRegistry {
 // have wired up. Each entry uses path = "diagnostic.code:<legacy>" so the
 // existing {path, replacement, removed_in} shape carries the legacy →
 // canonical code mapping during the deprecation window. The casing migration
-// landed in schema 4.23.0; the legacy lowercase codes are still accepted by
+// landed in json2pptx schema 4.23.0; the legacy lowercase codes are still accepted by
 // downstream consumers as aliases but will be removed once the deprecation
 // window closes.
 func buildSvggenDeprecations() []capabilitiesDeprecation {
@@ -1530,6 +1382,9 @@ func buildSvggenVocabularies() capabilitiesVocabularies {
 		svggen.FindingTickThinned,
 		svggen.FindingWaterfallTotalMismatch,
 		svggen.FindingZeroSumPie,
+		svggen.FindingOrgChartNodesInvalid,
+		svggen.FindingGlyphMissing,
+		svggen.FindingFunnelStageIncrease,
 	}
 	sort.Strings(findingCodes)
 	return capabilitiesVocabularies{

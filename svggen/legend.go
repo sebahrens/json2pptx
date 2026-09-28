@@ -889,6 +889,11 @@ func (l *Legend) drawGrid(bounds Rect, itemWidths []float64, fontSize float64, f
 }
 
 // drawItem draws a single legend item.
+// legendLabelBaselineEm is the distance, in ems of the label font, from a
+// legend row's vertical centre down to the label's alphabetic baseline that
+// visually centres the label on the marker.
+const legendLabelBaselineEm = 0.35
+
 func (l *Legend) drawItem(x, y float64, item LegendItem, fontSize float64, fontColor Color) {
 	b := l.builder
 	style := b.StyleGuide()
@@ -927,15 +932,21 @@ func (l *Legend) drawItem(x, y float64, item LegendItem, fontSize float64, fontC
 
 	// Draw label
 	labelX := x + l.config.MarkerSize + l.config.MarkerLabelGap
-	labelY := y + math.Max(l.config.MarkerSize, fontSize)/2
+	// Centre the label on the marker with an explicit alphabetic baseline
+	// (0.35em below the row centre). TextBaselineMiddle's emitted baseline
+	// lands a further ~0.35em lower, so the label sat below its swatch and
+	// its descenders reached past the row Height() reserved: in a small grid
+	// cell the bottom legend was clipped by the canvas edge
+	// (go-slide-creator-uptnk).
+	labelY := y + math.Max(l.config.MarkerSize, fontSize)/2 + legendLabelBaselineEm*fontSize
 	b.SetTextColor(textColor)
-	b.DrawText(item.Label, labelX, labelY, TextAlignLeft, TextBaselineMiddle)
+	b.DrawText(item.Label, labelX, labelY, TextAlignLeft, TextBaselineAlphabetic)
 
 	// Draw value if present
 	if item.Value != "" {
 		textWidth, _ := b.MeasureText(item.Label)
 		valueX := labelX + textWidth + style.Spacing.XS
-		b.DrawText(item.Value, valueX, labelY, TextAlignLeft, TextBaselineMiddle)
+		b.DrawText(item.Value, valueX, labelY, TextAlignLeft, TextBaselineAlphabetic)
 	}
 }
 

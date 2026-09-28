@@ -4,4 +4,4 @@ package svggen
 // consumed by both the svggen-mcp binary (as its MCP server version) and the
 // get_capabilities tool (as schema_version). Bump this when the public
 // rendering or validation contract changes.
-const Version = "0.1.0"
+const Version = "0.2.0"

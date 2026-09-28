@@ -688,24 +688,20 @@ func TestHandleGetDiagramSchemaKnown(t *testing.T) {
 }
 
 // TestGetDiagramSchemaExampleValuesAllTypes locks the agent-facing contract
-// that every diagram type registered in get_diagram_schema returns both a
-// minimal and a realistic example under the example_values envelope.
-// Mirrors json2pptx-mcp.show_pattern.example_values for cross-tool muscle
-// memory.
+// that every diagram type registered in svggen (and every advertised alias)
+// returns both a minimal and a realistic example under the example_values
+// envelope, and that each example actually passes validate_diagram and
+// renders through render_diagram. A hand-maintained example that drifts from
+// the renderer's accepted shape (e.g. pie slices vs labels/values) fails here.
 func TestGetDiagramSchemaExampleValuesAllTypes(t *testing.T) {
-	// Covers every diagram type registered in svggen/init.go so we lock the
-	// contract that get_diagram_schema returns example_values for the full
-	// registered surface, not just a subset.
-	types := []string{
-		"waterfall", "matrix_2x2", "timeline",
-		"funnel_chart", "gauge_chart", "treemap_chart",
-		"venn", "org_chart", "gantt", "fishbone",
-		"bar_chart", "line_chart", "pie_chart", "donut_chart",
-		"area_chart", "radar_chart", "scatter_chart",
-		"stacked_bar_chart", "bubble_chart",
-		"stacked_area_chart", "grouped_bar_chart",
+	names := svggen.Types()
+	if len(names) != 21 {
+		t.Fatalf("expected 21 registered diagram types, got %d: %v", len(names), names)
 	}
-	for _, diagramType := range types {
+	for _, canonical := range svggen.Types() {
+		names = append(names, svggen.Aliases(canonical)...)
+	}
+	for _, diagramType := range names {
 		t.Run(diagramType, func(t *testing.T) {
 			result, err := handleGetDiagramSchema(context.Background(), makeRequest(map[string]any{
 				"type": diagramType,
@@ -719,8 +715,8 @@ func TestGetDiagramSchemaExampleValuesAllTypes(t *testing.T) {
 			text := result.Content[0].(mcp.TextContent).Text
 			var sr struct {
 				ExampleValues *struct {
-					Minimal   any `json:"minimal"`
-					Realistic any `json:"realistic"`
+					Minimal   map[string]any `json:"minimal"`
+					Realistic map[string]any `json:"realistic"`
 				} `json:"example_values"`
 			}
 			if err := json.Unmarshal([]byte(text), &sr); err != nil {
@@ -735,7 +731,73 @@ func TestGetDiagramSchemaExampleValuesAllTypes(t *testing.T) {
 			if sr.ExampleValues.Realistic == nil {
 				t.Errorf("%s: missing example_values.realistic", diagramType)
 			}
+			for _, ex := range []struct {
+				flavour string
+				data    map[string]any
+			}{
+				{"minimal", sr.ExampleValues.Minimal},
+				{"realistic", sr.ExampleValues.Realistic},
+			} {
+				if ex.data == nil {
+					continue
+				}
+				assertExampleValidates(t, diagramType, ex.flavour, ex.data)
+				assertExampleRenders(t, diagramType, ex.flavour, ex.data)
+			}
 		})
+	}
+}
+
+// assertExampleValidates runs a get_diagram_schema example through
+// validate_diagram and requires {valid:true}.
+func assertExampleValidates(t *testing.T, diagramType, flavour string, example map[string]any) {
+	t.Helper()
+	res, err := handleValidateDiagram(context.Background(), makeRequest(map[string]any{
+		"type": diagramType,
+		"data": example,
+	}))
+	if err != nil {
+		t.Fatalf("%s %s: validate returned error: %v", diagramType, flavour, err)
+	}
+	text := res.Content[0].(mcp.TextContent).Text
+	var vr struct {
+		Valid bool `json:"valid"`
+	}
+	if res.IsError || json.Unmarshal([]byte(text), &vr) != nil || !vr.Valid {
+		t.Errorf("%s %s example does not validate: %s", diagramType, flavour, text)
+	}
+}
+
+// assertExampleRenders runs a get_diagram_schema example through
+// render_diagram and requires SVG output, then dry-renders it and fails on
+// findings that mean the example silently lost content.
+func assertExampleRenders(t *testing.T, diagramType, flavour string, example map[string]any) {
+	t.Helper()
+	res, err := handleRenderDiagram(context.Background(), makeRequest(map[string]any{
+		"type": diagramType,
+		"data": example,
+	}))
+	if err != nil {
+		t.Fatalf("%s %s: render returned error: %v", diagramType, flavour, err)
+	}
+	text := res.Content[0].(mcp.TextContent).Text
+	if res.IsError || !strings.Contains(text, "<svg") {
+		t.Errorf("%s %s example does not render: %s", diagramType, flavour, text)
+		return
+	}
+	findings, dryErr := svggen.DryRender(&svggen.RequestEnvelope{Type: diagramType, Data: example})
+	if dryErr != nil {
+		t.Errorf("%s %s example dry-render failed: %v", diagramType, flavour, dryErr)
+	}
+	for _, f := range findings {
+		switch f.Code {
+		case svggen.FindingDiagramItemsDropped, svggen.FindingInvalidTimeFormat,
+			svggen.FindingQuadrantPositionDefaulted, svggen.FindingInvalidNumeric,
+			svggen.FindingOrgChartNodesInvalid, svggen.FindingPointOutOfRange,
+			svggen.FindingFunnelStageIncrease, svggen.FindingWaterfallTotalMismatch,
+			svggen.FindingGlyphMissing:
+			t.Errorf("%s %s example emits %s: %s", diagramType, flavour, f.Code, f.Message)
+		}
 	}
 }
 
@@ -1267,4 +1329,51 @@ func TestGetCapabilities(t *testing.T) {
 			}
 		}
 	})
+}
+
+// go-slide-creator-7w2ed: width/height were accepted uncapped (20000x20000
+// produced a 26668px SVG; a 12000px PNG took 11 s). Above 8192 px render_diagram
+// returns INVALID_VALUE naming the dimension and the maximum.
+func TestRenderDiagramCapsOutputDimensions(t *testing.T) {
+	data := map[string]any{
+		"categories": []any{"A", "B"},
+		"series":     []any{map[string]any{"name": "S", "values": []any{1, 2}}},
+	}
+	for _, tc := range []struct {
+		name    string
+		w, h    float64
+		wantErr string
+	}{
+		{"width_over", 20000, 600, "width"},
+		{"height_over", 800, 8193, "height"},
+		{"at_cap", 8192, 600, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := handleRenderDiagram(context.Background(), makeRequest(map[string]any{
+				"type": "bar_chart", "data": data, "width": tc.w, "height": tc.h,
+			}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			text := res.Content[0].(mcp.TextContent).Text
+			if tc.wantErr == "" {
+				if res.IsError {
+					t.Fatalf("render at the cap failed: %s", text)
+				}
+				return
+			}
+			if !res.IsError {
+				t.Fatalf("%s %gx%g rendered; want INVALID_VALUE", tc.name, tc.w, tc.h)
+			}
+			var env errorResult
+			if err := json.Unmarshal([]byte(text), &env); err != nil {
+				t.Fatalf("parse error envelope: %v", err)
+			}
+			if len(env.Diagnostics) != 1 || env.Diagnostics[0].Code != CodeInvalidValue ||
+				env.Diagnostics[0].Path != tc.wantErr || env.Diagnostics[0].Fix == nil ||
+				env.Diagnostics[0].Fix.Params["max"] != float64(maxOutputDimension) {
+				t.Errorf("unexpected envelope: %s", text)
+			}
+		})
+	}
 }

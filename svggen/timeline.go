@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -92,7 +93,22 @@ type TimelineData struct {
 	// TimeUnit is the display unit: "day", "week", "month", "quarter", "year".
 	// Default: auto-detected based on date range.
 	TimeUnit string
+
+	// SyntheticDates is set when no activity carried a parseable date, so
+	// every position came from autoAssignDatelessActivities. The events are
+	// then spaced in authored order and no date axis, grid or today line is
+	// drawn: the dates behind them are placeholders, not data.
+	SyntheticDates bool
+
+	// InvalidDates lists authored "date" strings that did not parse and were
+	// not used as the item's label (e.g. {"date": "soon", "title": "A"}).
+	InvalidDates []string
 }
+
+// syntheticTimelineEpoch anchors placeholder dates for a timeline whose items
+// carry none. It used to be the current month, so the same input rendered
+// differently every month and the axis printed invented dates.
+var syntheticTimelineEpoch = time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 // TimelineConfig holds configuration for timeline diagrams.
 type TimelineConfig struct {
@@ -426,9 +442,10 @@ func (tc *TimelineChart) Draw(data TimelineData) error {
 
 	// Grid lines span from content top to time axis
 	gridArea := Rect{X: plotArea.X, Y: plotArea.Y, W: plotArea.W, H: timeAxisY - plotArea.Y}
-	if tc.config.ShowTimeGrid {
+	if tc.config.ShowTimeGrid && !data.SyntheticDates {
 		tc.drawTimeGrid(dateRange, timeUnit, gridArea)
 	}
+	tc.reportInvalidDates(data)
 
 	// Draw phases first (background)
 	for i, activity := range data.Activities {
@@ -437,8 +454,8 @@ func (tc *TimelineChart) Draw(data TimelineData) error {
 		}
 	}
 
-	// Draw today line if enabled
-	if data.ShowToday {
+	// Draw today line if enabled (meaningless against placeholder dates)
+	if data.ShowToday && !data.SyntheticDates {
 		tc.drawTodayLine(data.TodayLabel, dateRange, plotArea)
 	}
 
@@ -509,13 +526,16 @@ func (tc *TimelineChart) Draw(data TimelineData) error {
 		}
 	}
 
-	// Draw time axis at original bottom position
-	tc.drawTimeAxis(dateRange, timeUnit, Rect{
-		X: plotArea.X,
-		Y: timeAxisY,
-		W: plotArea.W,
-		H: timeAxisHeight,
-	}, activityDates)
+	// Draw time axis at original bottom position. Placeholder dates are not
+	// data, so a dateless timeline gets no date axis.
+	if !data.SyntheticDates {
+		tc.drawTimeAxis(dateRange, timeUnit, Rect{
+			X: plotArea.X,
+			Y: timeAxisY,
+			W: plotArea.W,
+			H: timeAxisHeight,
+		}, activityDates)
+	}
 
 	// Draw title
 	if tc.config.ShowTitle && data.Title != "" {
@@ -1268,6 +1288,29 @@ func (tc *TimelineChart) drawPhase(activity TimelineActivity, index int, row int
 	}
 }
 
+// reportInvalidDates emits FindingInvalidTimeFormat for authored date strings
+// that did not parse. Such items used to be placed on dates derived from the
+// current month with nothing reported (go-slide-creator-7w2ed).
+func (tc *TimelineChart) reportInvalidDates(data TimelineData) {
+	if len(data.InvalidDates) == 0 {
+		return
+	}
+	placement := "placed between the dated items"
+	if data.SyntheticDates {
+		placement = "spaced evenly in authored order with no date axis"
+	}
+	tc.builder.AddFinding(Finding{
+		Code: FindingInvalidTimeFormat,
+		Message: fmt.Sprintf("timeline: %d date(s) could not be parsed (%s); those items are %s — use ISO dates (2026-03-15), months (2026-03, Mar 2026) or quarters (Q1 2026)",
+			len(data.InvalidDates), strings.Join(data.InvalidDates, ", "), placement),
+		Severity: "warning",
+		Fix: &FixSuggestion{
+			Kind:   FixKindReplaceValue,
+			Params: map[string]any{"invalid_dates": data.InvalidDates, "diagram_type": "timeline"},
+		},
+	})
+}
+
 // drawTodayLine draws a vertical line at today's date.
 func (tc *TimelineChart) drawTodayLine(label string, dateRange timelineRange, plotArea Rect) {
 	b := tc.builder
@@ -1774,6 +1817,7 @@ func parseTimelineData(req *RequestEnvelope) (TimelineData, error) {
 		for i, aRaw := range activitiesRaw {
 			activity := parseTimelineActivity(aRaw, i)
 			data.Activities = append(data.Activities, activity)
+			data.InvalidDates = appendInvalidTimelineDate(data.InvalidDates, aRaw, activity, fmt.Sprintf("items[%d]", i))
 		}
 	}
 
@@ -1783,6 +1827,7 @@ func parseTimelineData(req *RequestEnvelope) (TimelineData, error) {
 			activity := parseTimelineActivity(mRaw, len(data.Activities)+i)
 			activity.Type = TimelineActivityTypeMilestone
 			data.Activities = append(data.Activities, activity)
+			data.InvalidDates = appendInvalidTimelineDate(data.InvalidDates, mRaw, activity, fmt.Sprintf("milestones[%d]", i))
 		}
 	}
 
@@ -1807,9 +1852,33 @@ func parseTimelineData(req *RequestEnvelope) (TimelineData, error) {
 	// render in a readable horizontal layout instead of collapsing to
 	// a single point. This handles the common pattern where milestones
 	// use descriptive text in the "date" field rather than real dates.
+	data.SyntheticDates = len(data.Activities) > 0
+	for _, act := range data.Activities {
+		if hasDate(act) {
+			data.SyntheticDates = false
+			break
+		}
+	}
 	data.Activities = autoAssignDatelessActivities(data.Activities)
 
 	return data, nil
+}
+
+// appendInvalidTimelineDate records an authored "date" string that neither
+// parsed nor became the item's label.
+func appendInvalidTimelineDate(invalid []string, raw any, act TimelineActivity, where string) []string {
+	m, ok := raw.(map[string]any)
+	if !ok {
+		return invalid
+	}
+	dateStr, ok := m["date"].(string)
+	if !ok || strings.TrimSpace(dateStr) == "" || act.Label == dateStr {
+		return invalid
+	}
+	if _, _, err := parseDateRange(dateStr); err == nil {
+		return invalid
+	}
+	return append(invalid, fmt.Sprintf("%s.date %q", where, dateStr))
 }
 
 // parseTimelineActivity parses a single activity from map data.
@@ -1961,8 +2030,7 @@ func autoAssignDatelessActivities(activities []TimelineActivity) []TimelineActiv
 	// If ALL activities are dateless, create a synthetic range
 	// spanning one month per activity for readable spacing.
 	if minDate.IsZero() {
-		now := time.Now().UTC()
-		minDate = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+		minDate = syntheticTimelineEpoch
 		maxDate = minDate.AddDate(0, len(datelessIdx), 0)
 	}
 

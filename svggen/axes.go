@@ -813,12 +813,19 @@ func (ab *AxisBuilder) DrawTime(scale *TimeScale, x, y float64) *SVGBuilder {
 }
 
 // axisLabelBlockHeight returns the vertical space an axis's tick labels occupy
-// beyond the axis line: one line at the axis font size plus whatever rotation
-// or wrapping allowance the layout pass measured.
+// beyond the axis line plus whatever rotation or wrapping allowance the layout
+// pass measured. Bottom-axis labels are top-anchored, and a top-anchored
+// label's glyphs reach xLabelGlyphEm below the anchor in the emitted SVG — the
+// same budget ComputeCartesianLayout reserves. Measuring one bare line height
+// here put a bottom legend inside the labels' descenders once placement
+// typography enlarged the fonts in a small grid cell (go-slide-creator-uptnk).
 func axisLabelBlockHeight(style *StyleGuide, cfg AxisConfig) float64 {
 	lineHeight := style.Typography.SizeSmall
 	if cfg.FontSize > 0 {
 		lineHeight = cfg.FontSize
+	}
+	if cfg.Position == AxisPositionBottom {
+		return xLabelGlyphEm*lineHeight + cfg.ExtraLabelHeight
 	}
 	return lineHeight + cfg.ExtraLabelHeight
 }
@@ -842,7 +849,9 @@ func axisTitleOffset(style *StyleGuide, cfg AxisConfig) float64 {
 func XAxisFooterHeight(style *StyleGuide, cfg AxisConfig) float64 {
 	h := axisTitleOffset(style, cfg)
 	if cfg.Title != "" {
-		h += style.Typography.SizeBody + style.Spacing.SM
+		// The title is top-anchored too; its glyphs reach xLabelGlyphEm below
+		// the anchor, not one line height.
+		h += xLabelGlyphEm*style.Typography.SizeBody + style.Spacing.SM
 	}
 	return h
 }

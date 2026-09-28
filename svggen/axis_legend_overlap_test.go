@@ -1,6 +1,7 @@
 package svggen
 
 import (
+	"math"
 	"regexp"
 	"strconv"
 	"testing"
@@ -97,7 +98,7 @@ func TestXAxisFooterHeight_AccountsForTitleAndLabelBlock(t *testing.T) {
 	if hRotated <= hTitle {
 		t.Errorf("rotated/wrapped labels must add height: titled=%.2f, rotated=%.2f", hTitle, hRotated)
 	}
-	if got, want := hRotated-hTitle, 40.0; got != want {
+	if got, want := hRotated-hTitle, 40.0; math.Abs(got-want) > 1e-9 {
 		t.Errorf("rotation allowance added %.2f, want the measured %.2f", got, want)
 	}
 }
@@ -113,7 +114,7 @@ func TestAxisTitleOffset_ClearsTheLabelBlock(t *testing.T) {
 	cfg.ExtraLabelHeight = 40
 	rotated := axisTitleOffset(style, cfg)
 
-	if rotated-plain != 40 {
+	if math.Abs(rotated-plain-40) > 1e-9 {
 		t.Errorf("title offset ignored the rotation allowance: plain=%.2f rotated=%.2f", plain, rotated)
 	}
 	if plain <= cfg.TickSize+cfg.TickPadding {

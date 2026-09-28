@@ -95,10 +95,18 @@ func ComputeCartesianLayout(config ChartConfig, style *StyleGuide, title, subtit
 	// A "top"-anchored label's glyphs extend about 1.75em below its anchor in
 	// the emitted SVG (ascent offset plus descent), so budget that rather than
 	// one bare line height.
+	//
+	// With an x-axis title or a bottom legend, reserve exactly what the chart
+	// will place: XAxisFooterHeight is the offset the axis title and the
+	// legend are drawn at, so reserving anything less pushed a bottom legend
+	// off the canvas under an x-axis title in a small cell
+	// (go-slide-creator-uptnk).
 	xAxisCfg := DefaultAxisConfig(AxisPositionBottom)
-	needBottom := xAxisCfg.TickSize + math.Max(xAxisCfg.TickPadding, 3) + xLabelGlyphEm*style.Typography.SizeSmall
-	if legendHeight > 0 && config.LegendPosition == LegendPositionBottom {
-		needBottom += style.Spacing.SM
+	xAxisCfg.TickPadding = math.Max(xAxisCfg.TickPadding, 3)
+	xAxisCfg.Title = config.XAxisTitle
+	needBottom := xAxisCfg.TickSize + xAxisCfg.TickPadding + xLabelGlyphEm*style.Typography.SizeSmall
+	if config.XAxisTitle != "" || (legendHeight > 0 && config.LegendPosition == LegendPositionBottom) {
+		needBottom = XAxisFooterHeight(style, xAxisCfg)
 	}
 	if extra := needBottom - config.MarginBottom; extra > 0 {
 		plotArea.H -= extra
