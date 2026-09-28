@@ -16,6 +16,7 @@ func runPlanDeck() error {
 	brief := fs.String("brief", "", "Deck brief / topic description (required)")
 	slideBudget := fs.Int("slides", 0, "Target number of slides (optional, 0 = auto)")
 	tmpl := fs.String("template", "", "Optional template name to make the plan template-aware (adds per-slide template_support)")
+	format := fs.String("format", "raw", "raw (pattern outline with SlideInput skeletons) or deckspec (DeckSpec draft with narrative slots)")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx plan-deck --brief <description> [options]\n\n")
@@ -47,6 +48,9 @@ func runPlanDeck() error {
 	}
 	if *tmpl != "" {
 		args["template"] = *tmpl
+	}
+	if *format != "" && *format != "raw" {
+		args["format"] = *format
 	}
 
 	result, err := mc.handlePlanDeck(context.Background(), mcpRequestWithArgs(args))

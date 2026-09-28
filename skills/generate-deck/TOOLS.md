@@ -19,7 +19,7 @@ Default for content-bearing decks: author real content as a DeckSpec; call `list
 |---|---|---|
 | Server/session state | `get_started` | `get_capabilities`, `get_input_schema`, `get_data_format_hints` |
 | Templates and palette | `list_templates` | `examine_template`, `resolve_theme` |
-| New semantic deck | `list_deck_archetypes`, `list_slide_kinds` | `explain_deck_spec`, `validate_deck_spec`, `render_deck_spec` |
+| New semantic deck | `plan_deck` (`format:"deckspec"`), `list_slide_kinds` | `list_deck_archetypes`, `explain_deck_spec`, `validate_deck_spec`, `render_deck_spec` |
 | Semantic escape hatch | `compile_deck_spec` | `validate_input`, `generate_presentation` |
 | Raw planning | `recommend_visual` | `plan_deck`, `recommend_pattern`, `analyze_deck_rhythm` |
 | Raw pattern | `list_patterns`, `show_pattern` | `validate_pattern`, `expand_pattern`, `expand_patterns` |
@@ -64,9 +64,16 @@ signature or schema registry.
   replacement; prefer composition where documented below.
 - Results use compact `structuredContent`. On newer MCP protocol versions,
   `content[0].text` may be a bounded synopsis (status, `content_hash`,
-  `blocking_reasons`, `changed_slides`, `failed_fixes`); prefer structured
-  data. A tool's `next_tool_call` is a
-  suggested recovery path, not permission to mutate external state.
+  `blocking_reasons`, `changed_slides`, `failed_fixes`), so inspect structured data
+  instead of parsing a prose fallback. A tool's `next_tool_call` is a
+  suggested recovery path (`{tool, args_template}`; `slide_index: -1` means
+  you supply it), not permission to mutate external state.
+  `generate_presentation`, `auto_repair` and `make_deck` accept an
+  `idempotency_key` retry token: an unchanged retry replays
+  (`idempotent_replay: true`), a changed input under the same key is
+  `IDEMPOTENCY_CONFLICT`. Deterministic planning/validation responses carry a
+  `response_fingerprint` cache key. Details:
+  `docs/AGENT_DIAGNOSTICS.md` §7 (MCP call mechanics).
 
 ## Composition recipes
 

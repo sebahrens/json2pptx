@@ -455,3 +455,73 @@ reports the full picture in one pass.
 The envelope's `ok` flag always reflects error severity only; `--strict` raises
 the *exit code* on warnings without changing `ok`, so the wire shape stays
 consistent across surfaces.
+
+## 7. MCP call mechanics
+
+Moved from the generate-deck skill so the skill bundle stays within its
+budget; the skill's TOOLS.md summarises these in three sentences.
+
+### 7.1 Machine-actionable `next_tool_call`
+
+Pattern validation errors (`validate_pattern`), density warnings (`expand_pattern`), fit-report findings (`validate_input`, `generate_presentation`), and boundary errors from the candidate-decision tools (`plan_deck`, `recommend_pattern`, `recommend_visual`, `validate_input`, `preview_presentation_plan`, `score_deck`) include an optional `next_tool_call` field when the error has an actionable recovery. This is a machine-readable hint: the exact MCP tool name and an `args_template` pre-filled with fix parameters. Invoke the suggested tool directly without inferring the protocol from the error message.
+
+Boundary-error mappings used by the candidate-decision tools:
+
+- `MISSING_PARAMETER` / `INVALID_JSON` on `presentation` → `get_input_schema` (fetch the schema and retry)
+- `MISSING_PARAMETER` on `template` (or `TEMPLATE_NOT_FOUND` / `TEMPLATE_ERROR`) → `list_templates`
+- `MISSING_PARAMETER` on `brief` / `intent` → retry the same tool with the missing argument
+- `INVALID_PARAMETER` for an unknown pattern name → `list_patterns`
+- `UNKNOWN_PARAMETER` (any tool) → the argument name is not accepted by the tool; rename it to `fix.params.did_you_mean` (e.g. `plan_deck` `slide_count` → `slide_budget`) and retry via `next_tool_call`
+- `STRUCTURE_AND_SLIDES` on `structure` → remove one of the two — `structure` and top-level `slides` are mutually exclusive. The `fix.params.field` names which side to drop (`"slides"`).
+- `INVALID_STRUCTURE` on `structure` → repair the structure block (missing section title, empty sections, section with no slides). The underlying expansion error is in `fix.params.error`.
+
+```json
+{
+  "field": "values.title",
+  "code": "unknown_key",
+  "message": "unknown field \"titl\" (did you mean \"title\"?)",
+  "fix": { "kind": "rename_field", "params": { "from": "titl", "to": "title" } },
+  "next_tool_call": {
+    "tool": "repair_slide",
+    "args_template": {
+      "slide_index": -1,
+      "pattern": "card-grid",
+      "fixes": [{ "kind": "rename_field", "params": { "from": "titl", "to": "title" } }]
+    }
+  }
+}
+```
+
+- `slide_index: -1` means "caller must supply the actual slide index" — `validate_pattern` operates without slide context.
+- For `swap_pattern` / `adopt_pattern` fix kinds, `next_tool_call` points to `recommend_visual` (`{intent, content_hints: {item_count}}`, in every tool profile) instead of `repair_slide`; fill in `intent` before calling.
+- Internal-only errors (marshal failures, unrecognized fix kinds inside content-finding errors) may omit `next_tool_call` (the field is absent, not null). Boundary errors from candidate-decision tools always carry it.
+
+
+### 7.2 `response_fingerprint` — server-side cache key
+
+`validate_input`, `preview_presentation_plan`, `plan_deck`, and `recommend_visual` responses include a top-level `response_fingerprint` field: a sha256 hex digest (64 chars) of the canonical JSON of the response body with the fingerprint field itself zeroed. These four paths are deterministic — identical inputs produce identical fingerprints — so agents may use the fingerprint directly as a memoisation cache key without re-hashing the body. To verify a fingerprint, parse the response, zero `response_fingerprint`, re-marshal canonically, and sha256-hash the result.
+
+
+### 7.3 `idempotency_key` — safe retries for generate / auto_repair / make_deck
+
+`generate_presentation`, `auto_repair`, and `make_deck` accept an optional top-level `idempotency_key` string. When set, the server caches the first successful response under that key and replays it on subsequent calls within the cache TTL (1 hour, per-process), **but only when the request content is unchanged**. The replay response carries `"idempotent_replay": true` so the caller can tell a deduped retry from a fresh run.
+
+The key is a *retry token*, not a request identity: the server also stores a fingerprint of the normalized request (every argument except `idempotency_key`). Reusing the same key with edited input is treated as a different request — the server refuses with an `IDEMPOTENCY_CONFLICT` error (carrying `current_fingerprint` and `original_fingerprint` in the finding evidence) instead of replaying the original deck for the wrong content. Issue a fresh key for new content, or restore the original input to replay.
+
+Use this to make transport-layer retries safe. Without an idempotency key, every retry runs the full pipeline again and writes a fresh output file (`output.pptx`, `output_1.pptx`, `output_2.pptx`, …); the caller is also billed for the wasted inference + render cost.
+
+```json
+{
+  "presentation": { "template": "midnight-blue", "slides": [/* … */] },
+  "output_filename": "deck.pptx",
+  "idempotency_key": "agent-session-abc123/turn-7"
+}
+```
+
+Rules of thumb:
+
+- Generate the key from something stable across retries (session id + turn number, or a hash of the input). Never use a timestamp — every retry would get a new key.
+- Keys are scoped per-tool, so the same string used against `generate_presentation` and `auto_repair` will not collide.
+- A replay requires the request to be byte-for-byte equivalent (modulo object-key ordering). If you edit the deck/outline or any other argument and keep the key, you get an `IDEMPOTENCY_CONFLICT` error, never a stale replay — bump the key whenever the content changes.
+- Only successful responses are cached. Error responses surface every time so the agent can fix the underlying input.
+- The cache is in-memory and per-process. Restarting the MCP server drops it — design retries to tolerate a fresh run after a server bounce.

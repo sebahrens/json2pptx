@@ -2,9 +2,9 @@
   "_skeleton": "exec-summary",
   "_description": "Executive briefing: 6 slides. Lead with the headline number, then evidence, decision, and ask. Rhythm: title, hero metric, supporting KPIs, comparison/decision, validation, closing.",
   "_instructions": "Replace every __FILL_*__ token with content. Do not introduce new patterns or layouts without re-running analyze_deck_rhythm. Delete this and the _* keys before validating.",
-  "template": "__FILL_TEMPLATE_NAME__ (one of: midnight-blue, forest-green, modern-template, warm-coral)",
+  "template": "__FILL_TEMPLATE_NAME__ (a name from list_templates)",
   "design_mode": "constrained",
-  "accent_strategy": "rotate",
+  "accent_strategy": "primary",
   "output_filename": "__FILL_OUTPUT_FILENAME__.pptx",
   "slides": [
     {
@@ -16,7 +16,7 @@
       ]
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "contrast_check": true,
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "__FILL_HERO_SLIDE_TITLE__ (the one-line story, e.g. 'Revenue grew 34% on enterprise traction')"}
@@ -31,7 +31,7 @@
       }
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "contrast_check": true,
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "__FILL_KPI_SLIDE_TITLE__ (e.g. 'Supporting metrics')"}
@@ -46,7 +46,7 @@
       }
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "contrast_check": true,
       "takeaway": "__FILL_MATRIX_TAKEAWAY__ (one sentence — the headline reading of the 2x2)",
       "content": [
@@ -65,7 +65,7 @@
       }
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "contrast_check": true,
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "__FILL_QUOTE_TITLE__ (e.g. 'Customer voice' or 'Why this matters')"}

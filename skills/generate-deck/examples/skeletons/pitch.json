@@ -2,9 +2,9 @@
   "_skeleton": "pitch",
   "_description": "Investor / sales pitch: 9 slides. Classic arc: cover, agenda, problem/opportunity, solution, traction, product, moat, social proof, the ask.",
   "_instructions": "Replace every __FILL_*__ token. Keep icons from the bundled set (call list_icons / json2pptx icons list — never use emoji). Delete this and the _* keys before validating.",
-  "template": "__FILL_TEMPLATE_NAME__ (one of: midnight-blue, forest-green, modern-template, warm-coral)",
+  "template": "__FILL_TEMPLATE_NAME__ (a name from list_templates)",
   "design_mode": "constrained",
-  "accent_strategy": "rotate",
+  "accent_strategy": "primary",
   "output_filename": "__FILL_OUTPUT_FILENAME__.pptx",
   "slides": [
     {
@@ -16,7 +16,7 @@
       ]
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "contrast_check": true,
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Today's agenda"}
@@ -33,7 +33,7 @@
       }
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "contrast_check": true,
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "__FILL_OPPORTUNITY_TITLE__ (e.g. 'The opportunity')"}
@@ -48,7 +48,7 @@
       }
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "contrast_check": true,
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "__FILL_DIFFERENTIATION_TITLE__ (e.g. 'Why we win')"}
@@ -78,7 +78,7 @@
       }
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "contrast_check": true,
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "__FILL_TRACTION_TITLE__ (e.g. 'Key metrics')"}
@@ -93,7 +93,7 @@
       }
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "contrast_check": true,
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "__FILL_PRODUCT_TITLE__ (e.g. 'Product suite')"}
@@ -112,7 +112,7 @@
       }
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "contrast_check": true,
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "__FILL_MOAT_TITLE__ (e.g. 'Our moat')"}
@@ -130,7 +130,7 @@
       }
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "contrast_check": true,
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "__FILL_QUOTE_TITLE__ (e.g. 'What customers say')"}

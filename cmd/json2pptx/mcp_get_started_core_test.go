@@ -19,7 +19,7 @@ func TestGetStartedBriefToolsAreCore(t *testing.T) {
 				t.Errorf("task=%s fast_path tool %q not in core profile", task, resp.FastPath.Tool)
 			}
 		}
-		for _, step := range resp.Sequence {
+		for _, step := range append(append([]getStartedStep{}, resp.Sequence...), resp.RawSequence...) {
 			if !core[step.Tool] {
 				t.Errorf("task=%s sequence tool %q not in core profile", task, step.Tool)
 			}

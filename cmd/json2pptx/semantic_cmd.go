@@ -656,10 +656,14 @@ func buildSemanticRenderSuccess(input *PresentationInput, cr *semantic.CompileRe
 	// deck reported eight findings. Run the shared collectors here too
 	// (go-slide-creator-05wn).
 	fit = append(fit, collectFitFindings(input, rr.TemplateLayouts, rr.SlideWidth, rr.SlideHeight, &rr.TemplateTheme)...)
-	fit = dedupFitFindings(fit)
+	fit = collapseRotatedAccentFindings(dedupFitFindings(fit))
 	patterns.SortCanonical(fit, slidepath.SlideIndex)
 	for _, f := range fit {
-		diags = append(diags, semanticDiagFromFitWithIR(sm, ir, f))
+		d := semanticDiagFromFitWithIR(sm, ir, f)
+		if f.Path == rotatedAccentDeckPath && d.SemanticPath == "" {
+			d.SemanticPath = "meta.accent_strategy"
+		}
+		diags = append(diags, d)
 	}
 
 	var warnings []string

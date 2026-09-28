@@ -2053,6 +2053,32 @@ var outputSchemaPlanDeck = json.RawMessage(`{
         "required": ["slide_index", "narrative_role", "recommended_pattern", "layout", "suggested_pattern", "content_seed", "rationale"]
       }
     },
+    "format":       {"type": "string", "enum": ["deckspec"], "description": "Present only for format:\"deckspec\", whose response carries deck_spec and slots instead of slides and rhythm_check."},
+    "deck_spec": {
+      "type": "object",
+      "description": "format:\"deckspec\" only: a DeckSpec draft {meta, slides:[{kind, title:\"__FILL__\"}]} in storyline order. Fill every slide's fields from list_slide_kinds, write action titles, then validate_deck_spec.",
+      "properties": {
+        "meta":   {"type": "object"},
+        "slides": {"type": "array", "items": {"type": "object", "properties": {"kind": {"type": "string"}, "title": {"type": "string"}}, "required": ["kind"]}}
+      },
+      "required": ["meta", "slides"]
+    },
+    "slots": {
+      "type": "array",
+      "description": "format:\"deckspec\" only: one entry per deck_spec slide.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slide_index": {"type": "integer"},
+          "slot":        {"type": "string", "enum": ["cover", "answer", "problem", "cause", "evidence", "plan", "roadmap", "ask", "closing"]},
+          "kind":        {"type": "string"},
+          "guidance":    {"type": "string", "description": "What the slide must argue."},
+          "facts":       {"type": "array", "items": {"type": "string"}, "description": "Brief facts (verbatim) routed to this slot."}
+        },
+        "required": ["slide_index", "slot", "kind", "guidance"]
+      }
+    },
+    "budget_note":  {"type": "string", "description": "Why the plan is shorter than slide_budget, when it is."},
     "brief":        {"type": "string"},
     "slide_budget":  {"type": "integer"},
     "unplaced_facts": {"type": "array", "items": {"type": "string"}, "description": "Brief facts no slide had capacity for (always present; [] when all placed). Add slides or fold these into existing slides — they are not on any content seed."},
@@ -2070,7 +2096,7 @@ var outputSchemaPlanDeck = json.RawMessage(`{
     },
     "response_fingerprint": {"type": "string", "description": "Lowercase sha256 hex (64 chars) over the canonical JSON of this response (with the field zeroed). Use as cache key / drift detector."}
   },
-  "required": ["slides", "brief", "slide_budget", "rhythm_check", "unplaced_facts"],
+  "required": ["brief", "slide_budget", "unplaced_facts"],
   "$defs": {
     "template_support": {
       "type": "object",
@@ -2184,6 +2210,18 @@ var outputSchemaGetStarted = json.RawMessage(`{
     },
     "sequence": {
       "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tool":         {"type": "string"},
+          "when_to_call": {"type": "string"}
+        },
+        "required": ["tool", "when_to_call"]
+      }
+    },
+    "raw_sequence": {
+      "type": "array",
+      "description": "task=brief only: the raw PresentationInput chain (recommend_visual → validate_input → generate_presentation → render/inspect), for features the DeckSpec path cannot express. For brief, sequence is the DeckSpec path and fast_path.falls_back_to mirrors this list.",
       "items": {
         "type": "object",
         "properties": {

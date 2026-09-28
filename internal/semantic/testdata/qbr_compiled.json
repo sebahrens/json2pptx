@@ -26,7 +26,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Where We Stand"
+          "text_value": "Q2 beat plan on revenue, but SMB churn now threatens H2 retention"
         }
       ],
       "pattern": {
@@ -57,7 +57,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "The Quarter in Numbers"
+          "text_value": "ARR reached $48M and every metric improved except SMB churn"
         }
       ],
       "pattern": {
@@ -85,7 +85,8 @@
           "small_size": 16
         }
       },
-      "takeaway": "Every headline metric improved except SMB churn."
+      "source": "Internal finance and CRM data, Q2 FY26 close",
+      "takeaway": "Churn is the one number moving the wrong way, and it is concentrated in SMB."
     },
     {
       "layout_id": "blank-title",
@@ -94,7 +95,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Revenue Trajectory"
+          "text_value": "Revenue grew 41% this year, with EMEA driving the Q4 step-up"
         }
       ],
       "pattern": {
@@ -128,7 +129,8 @@
             "The Q4 step-up reflects the EMEA market launch landing early.",
             "Pipeline coverage points to continued acceleration into H2."
           ],
-          "so_what": "Q4 acceleration reflects the EMEA launch landing ahead of schedule."
+          "so_what": "Q4 acceleration reflects the EMEA launch landing ahead of schedule.",
+          "source": "Internal finance data, FY26 quarterly close"
         },
         "overrides": {
           "title_size": 14,
@@ -143,7 +145,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "The H2 Retention Bet"
+          "text_value": "Fund an SMB success pod in Q3 to protect 118% net retention"
         }
       ],
       "pattern": {
@@ -179,12 +181,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Questions \u0026 Discussion"
+          "text_value": "Approve the SMB success pod this month to protect H2 growth"
         },
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "text_value": "Thank you — let's talk through H2 priorities."
+          "text_value": "Owner: VP Customer Success · decision needed by 31 July"
         }
       ]
     }

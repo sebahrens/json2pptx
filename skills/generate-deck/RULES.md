@@ -47,11 +47,11 @@ The numeric ranges above are the published surface of the canonical design token
 
 | # | Rule | Rationale |
 |---|---|---|
-| 11a | Chart and matrix slides MUST set `slide.takeaway` (one sentence — the headline answer). | Omission emits `takeaway_missing`. It renders as 14pt bold dark text on an accent-tinted band above the source/footer, spanning the body column; content frames shrink above it. Without room, the band is skipped and preflight emits `chrome_band_no_fit`. |
+| 10b | Chart and matrix slides MUST set `slide.takeaway` (one sentence — the headline answer). | Omission emits `takeaway_missing`. It renders as 14pt bold dark text on an accent-tinted band above the source/footer, spanning the body column; content frames shrink above it. Without room, the band is skipped and preflight emits `chrome_band_no_fit`. |
 
 ```json
 {
-  "layout_id": "blank",
+  "layout_id": "blank-title",
   "takeaway": "Margin contraction is driven by the EU region — not company-wide.",
   "pattern": { "name": "matrix-2x2", "values": { ... } }
 }
@@ -66,7 +66,7 @@ The numeric ranges above are the published surface of the canonical design token
 | 12 | Semantic fills (`accent1`, `lt2`, `dk1`) required; hex `#RRGGBB` forbidden unless in brand-color allowlist. **Never mix semantic and hex fills on the same slide.** Never use raw names like `"blue"`. `theme_override.colors` values must be exact 6-digit hex (`#1A2B3C` or `1A2B3C`); `#abc` shorthand or names like `"navy"` fail validation with `invalid_color` at `theme_override/colors/<slot>`; control characters in font names fail with `INVALID_PARAMETER` | Semantic colors adapt to template theme; use `{"color": "accent1", "lumMod": 75000, "lumOff": 25000}` for tints. Mixed hex+semantic on one slide breaks visual consistency and is always a bug |
 | 13 | `align`: `"l"`, `"ctr"`, `"r"`, `"just"` | NOT `"left"`, `"center"`, `"right"` |
 | 14 | `vertical_align`: `"t"`, `"ctr"`, `"b"` | NOT `"top"`, `"middle"`, `"bottom"` |
-| 15 | Templates: `forest-green`, `midnight-blue`, `modern-template`, `warm-coral` | Inspect via `list_templates` (MCP) or `json2pptx skill-info` (CLI). Default MCP discovery returns `canonical_layout_ids`, `color_roles`, `table_styles[]`, `white_text_safe_body` (4.5:1), `white_text_safe_large` (3:1), and `data_format_hints_digest`; request `mode="compact"` or `fields="full"` for `layout_names`. Templates that fail analysis appear with an `error` field and no layout/theme data — do not use them for generation |
+| 15 | Template names come from `list_templates` (MCP) or `json2pptx skill-info` (CLI); never assume a fixed list — the shipped set grows and a server may register more | Default MCP discovery returns `canonical_layout_ids`, `color_roles`, `table_styles[]`, `white_text_safe_body` (4.5:1), `white_text_safe_large` (3:1), and `data_format_hints_digest`; request `mode="compact"` or `fields="full"` for `layout_names`. Templates that fail analysis appear with an `error` field and no layout/theme data — do not use them for generation |
 
 **`placeholder_id` per layout:** `title`/`closing` → `title`, `subtitle`; `content` → `title`, `body`; `two-column` → `title`, `body`, `body_2`; `blank-title` (and legacy `blank`) → `title` only (body goes in `shape_grid`); `blank-canvas` → no placeholders (all content via `shape_grid`/`pattern`); `section` → `title` (some templates use a body placeholder for decorative numbering, not supporting text). A section `subtitle` is unsupported: use a layout with a subtitle or a `shape_grid` text box. For authoritative per-template lists, use `json2pptx skill-info` or `list_templates` (MCP).
 
@@ -190,7 +190,21 @@ Rules: no visual pattern family should appear 3+ times consecutively (alternatin
 
 ### Accent monotony
 
-Using the default `accent_strategy: "primary"` on a 10+ slide deck makes every shape the same color. Set `"rotate"` or `"section-keyed"` for longer decks, or manually assign different accents to shape fills.
+This is the one place the skill sets accent strategy; other guides defer here.
+
+- `primary` (default) is the safe choice for any length: one brand accent,
+  with variety from `cell_accent_mode` inside grid slides.
+- `section-keyed` gives each chapter its own accent — use it when the deck has
+  `structure.sections` / section dividers.
+- `rotate` cycles pattern slides through the template's **safe** accents only
+  (light body text readable on the fill, not the negative accent), keyed to
+  each pattern's content so inserting a slide recolours nothing. Validation
+  reports the excluded accents once per deck (`ROTATED_ACCENT_UNREADABLE`,
+  info, at `/accent_strategy`). Use it only when that safe set has three or
+  more accents and the deck has many pattern slides; otherwise it adds noise,
+  not variety.
+
+Do not switch strategy just to move `accent_balance`; judge the rendered slides.
 
 ### Sparse single-row flow
 

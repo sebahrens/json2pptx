@@ -72,7 +72,22 @@ func TestGetStartedBriefSequence(t *testing.T) {
 	if resp.Task != "brief" {
 		t.Errorf("task = %q, want %q", resp.Task, "brief")
 	}
+	// go-slide-creator-waft9: SKILL.md makes DeckSpec the default, so the
+	// numbered sequence an agent follows is the DeckSpec path; the raw chain
+	// moved to raw_sequence.
 	want := []string{
+		"plan_deck",
+		"list_slide_kinds",
+		"validate_deck_spec",
+		"render_deck_spec",
+		"render_deck_thumbnails",
+		"submit_visual_review",
+	}
+	assertStepTools(t, "sequence", resp.Sequence, want)
+	if got := resp.Sequence[0].ArgsTemplate["format"]; got != "deckspec" {
+		t.Errorf("brief plan_deck step should ask for format deckspec, got %v", got)
+	}
+	assertStepTools(t, "raw_sequence", resp.RawSequence, []string{
 		"get_capabilities",
 		"list_templates",
 		"plan_deck",
@@ -83,16 +98,25 @@ func TestGetStartedBriefSequence(t *testing.T) {
 		"score_deck",
 		"render_deck_thumbnails",
 		"inspect_slide_images",
+	})
+	for _, task := range []string{"revise", "validate-only", "onboard-template"} {
+		if raw := callGetStarted(t, task).RawSequence; len(raw) != 0 {
+			t.Errorf("task %s: raw_sequence is brief-only, got %v", task, raw)
+		}
 	}
-	if len(resp.Sequence) != len(want) {
-		t.Fatalf("sequence length = %d, want %d (%v)", len(resp.Sequence), len(want), resp.Sequence)
+}
+
+func assertStepTools(t *testing.T, label string, steps []getStartedStep, want []string) {
+	t.Helper()
+	if len(steps) != len(want) {
+		t.Fatalf("%s length = %d, want %d (%v)", label, len(steps), len(want), steps)
 	}
-	for i, step := range resp.Sequence {
+	for i, step := range steps {
 		if step.Tool != want[i] {
-			t.Errorf("sequence[%d].tool = %q, want %q", i, step.Tool, want[i])
+			t.Errorf("%s[%d].tool = %q, want %q", label, i, step.Tool, want[i])
 		}
 		if step.WhenToCall == "" {
-			t.Errorf("sequence[%d].when_to_call is empty for tool %q", i, step.Tool)
+			t.Errorf("%s[%d].when_to_call is empty for tool %q", label, i, step.Tool)
 		}
 	}
 }
@@ -107,7 +131,7 @@ func TestGetStartedRequiresCurrentRevisionPixelReview(t *testing.T) {
 		for _, step := range resp.Sequence {
 			joined += step.Tool + " "
 		}
-		if !strings.Contains(joined, "render_deck_thumbnails") || !strings.Contains(joined, "inspect_slide_images") {
+		if !strings.Contains(joined, "render_deck_thumbnails") || (!strings.Contains(joined, "inspect_slide_images") && !strings.Contains(joined, "submit_visual_review")) {
 			t.Fatalf("%s omits pixel workflow: %s", task, joined)
 		}
 	}
@@ -130,7 +154,7 @@ func TestGetStartedSequencesAreClassifiedTools(t *testing.T) {
 		if len(resp.Sequence) == 0 {
 			t.Errorf("task %q: empty sequence", task)
 		}
-		for i, step := range resp.Sequence {
+		for i, step := range append(append([]getStartedStep{}, resp.Sequence...), resp.RawSequence...) {
 			if !registered[step.Tool] {
 				t.Errorf("task %q sequence[%d]: %q is not a registered MCP tool", task, i, step.Tool)
 			}
@@ -169,12 +193,9 @@ func TestGetStartedBriefRecommendsRenderDeckSpec(t *testing.T) {
 	if !strings.Contains(resp.FastPath.WhenToCall, "skeleton/wireframe") {
 		t.Errorf("fast_path.when_to_call must position make_deck as skeleton/wireframe only")
 	}
-	// falls_back_to must mirror the manual sequence so the facade and the
-	// controllable path it collapses stay in lockstep.
-	seqTools := make([]string, len(resp.Sequence))
-	for i, s := range resp.Sequence {
-		seqTools[i] = s.Tool
-	}
+	// falls_back_to must mirror the raw chain (brief's raw_sequence) so the
+	// facade and the controllable path it collapses stay in lockstep.
+	seqTools := stepTools(resp.RawSequence)
 	if len(resp.FastPath.FallsBackTo) != len(seqTools) {
 		t.Fatalf("fast_path.falls_back_to = %v, want it to mirror sequence %v", resp.FastPath.FallsBackTo, seqTools)
 	}
@@ -401,6 +422,16 @@ func TestGetStartedSequences_Executable(t *testing.T) {
 		]
 	}`)
 
+	// fixtureSpec is the DeckSpec an agent on the brief sequence holds.
+	fixtureSpec := map[string]any{
+		"meta": map[string]any{"title": "Quarterly Review", "template": "midnight-blue"},
+		"slides": []any{
+			map[string]any{"kind": "title", "title": "Quarterly Review", "subtitle": "Leadership team"},
+			map[string]any{"kind": "executive_summary", "title": "Revenue grew 12% while margin held steady",
+				"points": []any{"Revenue up 12% on enterprise demand.", "Margin steady at 41%.", "New market entry is on track."}},
+		},
+	}
+
 	// runStep dispatches one sequence step against the fixture. It returns
 	// any side-effect the step produced (currently: generated pptx path).
 	runStep := func(t *testing.T, tool string, generatedPath string) string {
@@ -507,6 +538,24 @@ func TestGetStartedSequences_Executable(t *testing.T) {
 			}))
 		case "describe_finding":
 			result, err = handleDescribeFinding(ctx, makeRequest(map[string]any{"code": "LAYOUT_UNRESOLVABLE"}))
+		case "list_slide_kinds":
+			result, err = handleListSlideKinds(ctx, makeRequest(map[string]any{}))
+		case "validate_deck_spec":
+			result, err = mc.handleValidateDeckSpec(ctx, makeRequest(map[string]any{"spec": fixtureSpec}))
+		case "render_deck_spec":
+			result, err = mc.handleRenderDeckSpec(ctx, makeRequest(map[string]any{"spec": fixtureSpec, "template": "midnight-blue"}))
+			if err == nil && result != nil && !result.IsError {
+				var out struct {
+					PPTXPath string `json:"pptx_path"`
+				}
+				if jerr := json.Unmarshal([]byte(textContent(result)), &out); jerr == nil && out.PPTXPath != "" {
+					generatedPath = out.PPTXPath
+				}
+			}
+		case "submit_visual_review":
+			// Needs rendered thumbnails of the current revision, like
+			// inspect_slide_images; the render integration covers it.
+			return generatedPath
 		default:
 			t.Fatalf("integration test does not know how to invoke tool %q — add a case to runStep", tool)
 		}
@@ -555,21 +604,32 @@ func TestGetStartedSequences_Executable(t *testing.T) {
 				t.Fatalf("task=%q returned empty sequence", task)
 			}
 			var generatedPath string
-			if task == "revise" {
-				generatedPath = preGenerate(t)
-				defer os.Remove(generatedPath)
-			}
-			for _, step := range resp.Sequence {
-				step := step
-				t.Run(step.Tool, func(t *testing.T) {
-					generatedPath = runStep(t, step.Tool, generatedPath)
-				})
+			for _, steps := range [][]getStartedStep{resp.Sequence, resp.RawSequence} {
+				generatedPath = generatedPathForTask(t, task, preGenerate, generatedPath)
+				for _, step := range steps {
+					step := step
+					t.Run(step.Tool, func(t *testing.T) {
+						generatedPath = runStep(t, step.Tool, generatedPath)
+					})
+				}
 			}
 			if generatedPath != "" {
 				_ = os.Remove(generatedPath)
 			}
 		})
 	}
+}
+
+// generatedPathForTask seeds the revise flow with a generated deck, since
+// read_presentation needs one; other tasks keep whatever the last path made.
+func generatedPathForTask(t *testing.T, task string, preGenerate func(*testing.T) string, current string) string {
+	t.Helper()
+	if task != "revise" || current != "" {
+		return current
+	}
+	path := preGenerate(t)
+	t.Cleanup(func() { _ = os.Remove(path) })
+	return path
 }
 
 // TestGetStartedRevise_RequiresGenerateBeforeRead documents the invariant
@@ -631,9 +691,9 @@ func TestGetStarted_CoreProfileRecommendsOnlyAdvertisedTools(t *testing.T) {
 		t.Run(task, func(t *testing.T) {
 			resp := buildGetStartedResponse(task, testRenderReady())
 
-			for i, step := range resp.Sequence {
+			for i, step := range append(append([]getStartedStep{}, resp.Sequence...), resp.RawSequence...) {
 				if !core[step.Tool] {
-					t.Errorf("sequence[%d] recommends %q, which the core profile does not advertise", i, step.Tool)
+					t.Errorf("sequence/raw_sequence[%d] recommends %q, which the core profile does not advertise", i, step.Tool)
 				}
 			}
 			if resp.FastPath == nil {

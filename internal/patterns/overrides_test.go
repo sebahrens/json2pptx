@@ -131,7 +131,7 @@ func TestExpandContext_ResolveAccent(t *testing.T) {
 func TestRotateSkipsUnreadableAndNegativeThemeAccents(t *testing.T) {
 	ctx := ExpandContext{
 		AccentStrategy: AccentStrategyRotate,
-		SlideIndex:     5, // accent6 is too light for lt1 text
+		SlideIndex:     5, // safe set is accent1, accent3, accent5 (accent2 negative; 4, 6 too light)
 		AutoAccent:     true,
 		Theme: types.ThemeInfo{Colors: []types.ThemeColor{
 			{Name: "lt1", RGB: "FFFFFF"},
@@ -144,8 +144,8 @@ func TestRotateSkipsUnreadableAndNegativeThemeAccents(t *testing.T) {
 		}},
 		Metadata: &types.TemplateMetadata{SemanticAccents: map[string]string{"negative": "accent2"}},
 	}
-	if got := ctx.ResolveAccent("", ""); got != "accent1" {
-		t.Errorf("unreadable accent6 should rotate to safe accent1, got %s", got)
+	if got := ctx.ResolveAccent("", ""); got != "accent5" {
+		t.Errorf("slide 5 should index the safe set {accent1, accent3, accent5} to accent5, got %s", got)
 	}
 	if warning := ctx.RotationWarning(); warning == "" {
 		t.Error("skipping an unreadable accent should produce a finding warning")

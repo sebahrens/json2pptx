@@ -19,7 +19,9 @@ func mcpPlanDeckTool() mcp.Tool {
 	return mcp.NewTool("plan_deck",
 		mcp.WithDescription(`Plan a presentation deck from a brief — returns an ordered slide outline with recommended patterns and narrative roles.
 
-Use this BEFORE generate_presentation to get a structured plan. The output includes per-slide layout + pattern recommendations, content seeds, and narrative roles (opening, evidence, comparison, close). Every slide carries a canonical layout: the opening slide is layout "title" and the closing slide is layout "closing", both with NO pattern (recommended_pattern ""); content slides use "blank-title" plus a pattern. The plan enforces deck-rhythm rules:
+format:"deckspec" (recommended for the default DeckSpec path) instead returns deck_spec: a DeckSpec draft whose slides follow a storyline — cover, answer (executive_summary), problem, cause, evidence, plan, roadmap, ask (decision), closing — with each slide's kind and a __FILL__ action title, plus slots[] (slot, kind, guidance, brief facts routed to it) and unplaced_facts. Fill each slide's fields from list_slide_kinds, write action titles, then validate_deck_spec → render_deck_spec. must_include is ignored in this format.
+
+The default format:"raw" is described below. Use it BEFORE generate_presentation to get a structured plan. The output includes per-slide layout + pattern recommendations, content seeds, and narrative roles (opening, evidence, comparison, close). Every slide carries a canonical layout: the opening slide is layout "title" and the closing slide is layout "closing", both with NO pattern (recommended_pattern ""); content slides use "blank-title" plus a pattern. The plan enforces deck-rhythm rules:
 - No 3 consecutive slides with the same pattern
 - Emphasis slides (stat-hero, pull-quote, kpi-inline) about every ~5 slides, capped at ceil(n/5) per deck
 - Comparison slots use only two-sided comparison patterns (comparison-2col, before-after)
@@ -41,6 +43,10 @@ The plan's slides[] are advisory records, NOT SlideInput objects. To build a raw
 		),
 		mcp.WithArray("must_include",
 			mcp.Description("Pattern names that must appear in the plan (e.g., [\"bmc-canvas\", \"kpi-3up\"])."),
+		),
+		mcp.WithString("format",
+			mcp.Description("\"raw\" (default): pattern outline with raw SlideInput skeletons for generate_presentation. \"deckspec\": a DeckSpec draft with narrative slots (answer, problem, cause, evidence, plan, roadmap, ask) for validate_deck_spec / render_deck_spec."),
+			mcp.Enum("raw", deckplan.FormatDeckSpec),
 		),
 		mcp.WithString("template",
 			mcp.Description("Optional template name (e.g., midnight-blue) to make the plan template-aware. When supplied, every planned slide (and each alternative) carries a template_support object {status: supported|risky|unsupported, reasons[], required_layout} grounded in the template's canonical layouts, derivable layouts, font-aware placeholder capacities, and palette — the same shared helper recommend_visual uses. A recommended pattern the template cannot host is replaced with a supported alternative when one exists, so the plan never assigns an impossible pattern. Use list_templates to discover names."),
@@ -84,6 +90,14 @@ func (mc *mcpConfig) handlePlanDeck(ctx context.Context, request mcp.CallToolReq
 		}
 	}
 
+	format := "raw"
+	if f, ok := request.GetArguments()["format"].(string); ok && f != "" {
+		format = f
+	}
+	if format != "raw" && format != deckplan.FormatDeckSpec {
+		return argInvalidValue("plan_deck", "INVALID_PARAMETER", "format", fmt.Sprintf("format must be \"raw\" or %q, got %q", deckplan.FormatDeckSpec, format), "string", deckplan.FormatDeckSpec, nextCallRetry("plan_deck", "format")), nil
+	}
+
 	// Validate must_include patterns exist.
 	reg := patterns.Default()
 	for _, name := range mustInclude {
@@ -111,6 +125,18 @@ func (mc *mcpConfig) handlePlanDeck(ctx context.Context, request mcp.CallToolReq
 		}
 	}
 
+	if format == deckplan.FormatDeckSpec {
+		if analysis == nil {
+			templateName = ""
+		}
+		return planDeckSpecResult(ctx, deckplan.BuildDeckSpecPlan(deckplan.Params{
+			Brief:        brief,
+			SlideBudget:  slideBudget,
+			Audience:     audience,
+			TemplateName: templateName,
+		}))
+	}
+
 	result := deckplan.BuildDeckPlan(reg, deckplan.Params{
 		Brief:        brief,
 		SlideBudget:  slideBudget,
@@ -125,6 +151,18 @@ func (mc *mcpConfig) handlePlanDeck(ctx context.Context, request mcp.CallToolReq
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, result)
+	if err != nil {
+		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err), nextCallRetry("plan_deck", "brief")), nil
+	}
+	return mcpResult, nil
+}
+
+// planDeckSpecResult fingerprints and wraps a format:"deckspec" plan.
+func planDeckSpecResult(ctx context.Context, plan *deckplan.DeckSpecPlan) (*mcp.CallToolResult, error) {
+	if err := api.ComputeResponseFingerprint(plan); err != nil {
+		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to compute response fingerprint: %v", err), nextCallRetry("plan_deck", "brief")), nil
+	}
+	mcpResult, err := api.MCPSuccessResult(ctx, plan)
 	if err != nil {
 		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err), nextCallRetry("plan_deck", "brief")), nil
 	}

@@ -2,9 +2,9 @@
   "_skeleton": "data-heavy",
   "_description": "Chart-driven deck: 7 slides. Each chart slide carries a takeaway (Rule 11a). Rhythm: title, trend, breakdown, table evidence, distribution, KPI scorecard, closing.",
   "_instructions": "Replace every __FILL_*__ token. For each chart slide, write a takeaway that states the answer — never let a chart speak for itself. Delete this and the _* keys before validating.",
-  "template": "__FILL_TEMPLATE_NAME__ (one of: midnight-blue, forest-green, modern-template, warm-coral)",
+  "template": "__FILL_TEMPLATE_NAME__ (a name from list_templates)",
   "design_mode": "constrained",
-  "accent_strategy": "rotate",
+  "accent_strategy": "primary",
   "output_filename": "__FILL_OUTPUT_FILENAME__.pptx",
   "slides": [
     {
@@ -103,7 +103,7 @@
       ]
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "contrast_check": true,
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "__FILL_SCORECARD_TITLE__ (e.g. 'Quarter scorecard')"}

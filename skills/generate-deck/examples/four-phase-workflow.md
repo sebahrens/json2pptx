@@ -1,156 +1,85 @@
-# Worked Example: 4-Phase Deck Generation
+# Worked Example: Plan → Vary → Render → Repair
 
-This shows the full PLAN → VARY → RENDER → REPAIR flow for a 10-slide strategy deck.
+The default DeckSpec path for an 8-slide Series B strategy deck. Raw
+`PresentationInput` steps are in [../RAW_PATH.md](../RAW_PATH.md).
 
-## Phase 1: PLAN
+User prompt: "Create a strategy deck for our Series B fundraise. AI
+infrastructure company, $50M ARR, 140% NRR, 3,200 customers, raising $75M."
 
-User prompt: "Create a strategy deck for our Series B fundraise. AI infrastructure company, $50M ARR."
+## Phase 1: PLAN — ghost deck first
 
-**Step 1 — Pick template and accent strategy:**
-
-```
-list_templates() → choose "midnight-blue" (professional, dark backgrounds)
-accent_strategy: "rotate" (10 slides, want visual variety)
-```
-
-**Step 2 — Build outline using `recommend_visual` for each intent:**
-
-`recommend_visual` is the primary entry point — it ranks across all visual categories (placeholder layouts, named patterns, charts, diagrams). `recommend_pattern` is the pattern-only subset and should only be used when you already know the slide needs a named pattern.
+Write the titles alone and read them as the whole argument
+([../QUALITY.md](../QUALITY.md)). Every content title is a sentence that
+states its conclusion and carries its number:
 
 ```
-recommend_visual("title slide opening")        → title (layout)
-recommend_visual("3 key metrics KPIs")          → kpi-3up
-recommend_visual("market opportunity size")     → stat-hero
-recommend_visual("product architecture layers") → arch-stack
-recommend_visual("competitive comparison")      → comparison-2col
-recommend_visual("growth trajectory chart")     → content (chart slide)
-recommend_visual("team leadership grid")        → card-grid
-recommend_visual("financial projections table") → content (table slide)
-recommend_visual("implementation roadmap")      → roadmap-phased
-recommend_visual("call to action closing")      → closing (layout)
+1. title             Series B: scaling AI infrastructure
+2. executive_summary $50M ARR and 140% NRR show a platform ready to scale 3x
+3. kpi_snapshot      3,200 customers expand 40% a year without a field sales team
+4. chart_insight     ARR grew from $12M to $50M in two years on self-serve adoption
+5. comparison        Managed inference costs customers 45% less than DIY clusters
+6. roadmap           Three phases take us from $50M to $150M ARR by 2028
+7. decision          $75M funds GPU capacity and enterprise sales, not new products
+8. closing           Close the round by June to secure Q3 GPU allocation
 ```
 
-**Step 3 — Check outline against rhythm rules:**
+Slide 5 was first drafted as "Competitive landscape" — a topic, not a
+message — and rewritten once the claim was known. The kinds come from the
+message → visual table: growth over time is a chart, a cost claim is a
+comparison, the plan is a roadmap, the ask is a decision.
 
-```
-Outline:
-  1. title         — "Series B: Scaling AI Infrastructure"
-  2. kpi-3up       — "$50M ARR | 140% NRR | 3,200 Customers"
-  3. stat-hero     — "The $180B Opportunity"           ← narrative break
-  4. arch-stack    — "Platform Architecture"
-  5. comparison-2col — "Why Us vs. Incumbents"
-  6. content/chart — "Revenue Growth 2023-2026"
-  7. card-grid     — "Leadership Team"
-  8. content/table — "Financial Projections"
-  9. roadmap-phased — "18-Month Execution Plan"
- 10. closing       — "The Ask: $75M Series B"
-```
+`plan_deck` with `format: "deckspec"` drafts the same structure from a brief
+(kinds plus narrative slots); treat its titles as placeholders to rewrite.
 
-No pattern repeats more than once. Density alternates (high→low→high). Narrative break at slide 3.
+## Phase 2: VARY — check the sequence before rendering
 
-## Phase 2: VARY
-
-Build the JSON, then check rhythm:
-
-```json
-analyze_deck_rhythm({
-  "presentation": {
-    "template": "midnight-blue",
-    "slides": [...]
-  }
-})
-```
-
-Response:
-```json
-{
-  "per_slide": [
-    {"slide_index": 0, "pattern": "title",          "density_class": "low",  "accent_role": "none"},
-    {"slide_index": 1, "pattern": "kpi-3up",        "density_class": "med",  "accent_role": "accent1"},
-    {"slide_index": 2, "pattern": "stat-hero",      "density_class": "low",  "accent_role": "accent2"},
-    {"slide_index": 3, "pattern": "arch-stack",     "density_class": "high", "accent_role": "accent1"},
-    {"slide_index": 4, "pattern": "comparison-2col","density_class": "med",  "accent_role": "accent3"},
-    {"slide_index": 5, "pattern": "content",        "density_class": "med",  "accent_role": "none"},
-    {"slide_index": 6, "pattern": "card-grid",      "density_class": "med",  "accent_role": "accent1"},
-    {"slide_index": 7, "pattern": "content",        "density_class": "high", "accent_role": "none"},
-    {"slide_index": 8, "pattern": "roadmap-phased", "density_class": "high", "accent_role": "accent4"},
-    {"slide_index": 9, "pattern": "closing",        "density_class": "low",  "accent_role": "none"}
-  ],
-  "aggregates": {
-    "pattern_runs": [],
-    "longest_run": 1,
-    "repetition_index": 0.2,
-    "accent_balance": {"accent1": 0.43, "accent2": 0.14, "accent3": 0.14, "accent4": 0.14},
-    "density_cv": 0.33
-  },
-  "recommendations": [],
-  "composition_score": 90
-}
-```
-
-All checks pass: `longest_run=1`, `repetition_index=0.2`, `density_cv=0.33`, `composition_score=90`. Proceed to render.
+`explain_deck_spec` (full tool profile) previews the resolved visual for
+every slide. The sequence above never repeats a visual family, puts a light
+KPI slide between the summary and the chart, and keeps `meta.accent_strategy`
+at the default `primary` — rotation is only worth it when the template's
+safe-accent set is large (see RULES.md → Accent monotony).
 
 ## Phase 3: RENDER
 
+```yaml
+meta:
+  title: "Series B: scaling AI infrastructure"
+  template: midnight-blue
+slides:
+  - kind: title
+    title: "Series B: scaling AI infrastructure"
+    subtitle: Confidential — board and investors
+  - kind: kpi_snapshot
+    title: 3,200 customers expand 40% a year without a field sales team
+    takeaway: Expansion, not new logos, is the growth engine.
+    source: Company data, FY26 Q1
+    kpis:
+      - { value: "$50M", label: "Annual recurring revenue" }
+      - { value: "140%", label: "Net revenue retention" }
+      - { value: "3,200", label: "Paying customers" }
+  # … the remaining slides follow the ghost deck
+```
+
+`validate_deck_spec` → `render_deck_spec` → `render_deck_thumbnails` (all
+slides). Keep the returned `deck_id`.
+
+## Phase 4: REPAIR — review every slide, then patch
+
+Apply the per-slide rubric in [../WORKFLOW.md](../WORKFLOW.md) to each image.
+Here slide 4's chart had no unit on its axis and slide 6's title ran to three
+lines. Both are spec edits, sent as one patch:
+
 ```json
-generate_presentation({
-  "presentation": {
-    "template": "midnight-blue",
-    "accent_strategy": "rotate",
-    "slides": [
-      {
-        "slide_type": "title",
-        "layout_id": "title",
-        "content": [
-          {"placeholder_id": "title", "type": "text", "value": "Series B: Scaling AI Infrastructure"},
-          {"placeholder_id": "subtitle", "type": "text", "value": "Confidential — May 2026"}
-        ]
-      },
-      {
-        "layout_id": "blank",
-        "pattern": {
-          "name": "kpi-3up",
-          "values": {
-            "title": "Traction at Scale",
-            "kpis": [
-              {"label": "Annual Recurring Revenue", "value": "$50M", "delta": "+140% YoY"},
-              {"label": "Net Revenue Retention", "value": "140%", "delta": "Top decile"},
-              {"label": "Enterprise Customers", "value": "3,200", "delta": "+85% YoY"}
-            ]
-          }
-        }
-      }
-    ]
-  },
-  "strict_fit": "warn",
-  "fit_report": true
+render_deck_spec({
+  "deck_id": "<deck_id>",
+  "patch": [
+    {"op": "replace", "path": "/slides/3/chart/title", "value": "ARR ($M)"},
+    {"op": "replace", "path": "/slides/5/title", "value": "Three phases take ARR from $50M to $150M by 2028"}
+  ]
 })
 ```
 
-(Remaining 8 slides follow the same pattern — each using the planned layout/pattern.)
-
-## Phase 4: REPAIR
-
-Fit report shows one finding:
-
-```json
-{
-  "path": "slides[7].content.body",
-  "code": "fit_overflow",
-  "severity": "error",
-  "message": "table needs 9 rows but cell height allows 6",
-  "fix": {"kind": "split_at_row", "params": {"row": 6}}
-}
-```
-
-Fix with `repair_slide`:
-
-```json
-repair_slide({
-  "presentation": {...},
-  "slide_index": 7,
-  "fixes": [{"kind": "split_at_row", "params": {"row": 6}}]
-})
-```
-
-This splits the financial projections table across two slides. Re-run `render_deck_thumbnails` and visually verify all slides pass the inspection checklist.
+Re-render `changed_slides` with `render_deck_thumbnails(slide_indices)`, then
+make one full pass over the final revision and record it with
+`submit_visual_review`. Stop after three repair rounds and report what is
+still open instead of looping.

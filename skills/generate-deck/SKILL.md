@@ -19,6 +19,12 @@ do not infer a tool's signature from an old example.
 **Completion rule (single source — same text as `get_started.completion_protocol.rule` and the MCP
 server `instructions`):** A deck is done only after every slide of the CURRENT revision has been rendered (render_deck_thumbnails) and looked at by you. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After a repair, re-render and re-inspect the slides that changed (render_deck_thumbnails with slide_indices, or render_slide_image for a single one), then make one full-deck pass over the final revision: the revision you ship is the one that has to have been seen.
 
+**Must-read before authoring:** [QUALITY.md](QUALITY.md) — ghost deck of
+titles first, full-sentence action titles (≤15 words, carrying the number),
+one message per slide, a `takeaway` and `source` on every evidence slide, and
+the message → visual table. A deck that passes every gate with topic titles
+is not finished.
+
 ## Choose the authoring path
 
 <!-- workflow-contract:start -->
@@ -26,10 +32,13 @@ Default for content-bearing decks: author real content as a DeckSpec; call `list
 <!-- workflow-contract:end -->
 
 For a new content-bearing deck, write a semantic **DeckSpec** (`meta` plus
-`slides[].kind`, or chapter-based `structure`). Discover available kinds with
-`list_slide_kinds` using its compact fields; request `item_schema` and
+`slides[].kind`, or chapter-based `structure`). `get_started(task:"brief")`
+returns this path as its `sequence` (the raw chain is `raw_sequence`):
+`plan_deck` with `format:"deckspec"` drafts the storyline as a DeckSpec
+(a kind per narrative slot, brief facts routed to each); discover kinds with
+`list_slide_kinds` using its compact fields, requesting `item_schema` and
 `compositions` only for selected kinds. Then call `validate_deck_spec`,
-`render_deck_spec`, and `render_deck_thumbnails`. Edit the spec at a finding's
+`render_deck_spec`, `render_deck_thumbnails`, and `submit_visual_review`. Edit the spec at a finding's
 `semantic_path` and repeat. `make_deck` creates an exemplar-filled wireframe,
 not a publishable authored deck. Read [DECKSPEC.md](DECKSPEC.md) for budgets,
 degradation behavior, required-layout coverage, handles, and revision rules.
@@ -63,20 +72,23 @@ executable one.
 
 ## References, loaded only when relevant
 
+- [QUALITY.md](QUALITY.md): storyline, action titles, one message per slide,
+  takeaways, sources, and choosing the visual from the message (always read).
 - [DECKSPEC.md](DECKSPEC.md): semantic authoring, content budgets, degradation,
   chapter structure, required layouts, and spec-level iteration.
-- [RAW_PATH.md](RAW_PATH.md): raw `PresentationInput` preconditions, strict
-  output validation, repair, assets, and SVG/diagram integration.
+- [RAW_PATH.md](RAW_PATH.md): raw `PresentationInput` preconditions, raw
+  planning and rhythm, strict output validation, repair, assets, and
+  SVG/diagram integration.
 - [TOOLS.md](TOOLS.md): concise phase map, tool-profile discovery, MCP-only
   operations, and composition recipes.
-- [WORKFLOW.md](WORKFLOW.md): detailed Plan → Vary → Render → Repair workflow,
-  visual inspection, resumable calls, and idempotency.
+- [WORKFLOW.md](WORKFLOW.md): Plan → Vary → Render → Repair on the DeckSpec
+  path, the per-slide review rubric (recorded in `submit_visual_review`), and
+  the three-round repair cap. Read before the first render.
 - [RULES.md](RULES.md): shape-grid, content, contrast, typography, and
   anti-pattern rules. Waterfall `type` sets the sign
   (`chart.waterfall_total_mismatch`).
-- [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance
-  (including tier-rated `capability-heatmap`, labelled-row `framework-grid`
-  and per-pair-count `state-shift-hub` budgets); get the current catalog and per-pattern schema from
+- [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance;
+  get the current catalog, per-pattern schema and per-field copy targets from
   `list_patterns` / `show_pattern`. Out-of-range pattern text sizes are
   rejected, not clamped.
 - [FINDINGS.md](FINDINGS.md): legacy finding and fix details for cases not yet
