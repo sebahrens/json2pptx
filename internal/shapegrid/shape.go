@@ -127,6 +127,11 @@ func generateShapeXML(spec *ShapeSpec, id uint32, bounds pptx.RectEmu, autofitSc
 				tb.Insets[i] += ei[i]
 			}
 		}
+		// Typographic finishing (go-slide-creator-58dhw): one alignment per
+		// card, tracked caps labels, no one-word last line on bold headings.
+		unifyCardAlignment(tb)
+		trackCapsLabels(tb, bounds)
+		balanceHeadingLines(tb, bounds)
 		pptx.SetAutofitScale(tb, autofitScale)
 		opts.Text = tb
 	}

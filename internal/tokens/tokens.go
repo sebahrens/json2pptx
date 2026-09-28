@@ -44,7 +44,7 @@ const (
 	// line of a `\n`-separated text run.
 	CardTitleMinHPt     = 1200 // 12pt
 	CardTitleMaxHPt     = 1400 // 14pt
-	CardTitleDefaultHPt = 1300 // 13pt
+	CardTitleDefaultHPt = 1400 // 14pt — the subhead step of the type scale
 
 	// CardBody* frame the body text of a card cell. Regular weight.
 	// 11pt suits 3-4 cols, 10pt suits 5+ cols, 9pt is the floor.

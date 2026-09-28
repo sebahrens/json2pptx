@@ -826,6 +826,7 @@ func resolveGridForStructural(grid *ShapeGridInput, overrideBounds *pptx.RectEmu
 		RowGap:    rowGap,
 		VAlign:    vAlign,
 	}
+	sgGrid.KeepTextSizes = grid.KeepTextSizes
 
 	if vErr := shapegrid.Validate(sgGrid); vErr != nil {
 		return nil

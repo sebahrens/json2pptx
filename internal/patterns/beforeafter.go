@@ -211,8 +211,8 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	cellIdx := 0
 
 	// Header row: Before header | full-height chevron | After header.
-	beforeHeader := buildBeforeAfterTextContent(vals.Before.Header, headerSize, true, "lt1", "ctr")
-	afterHeader := buildBeforeAfterTextContent(vals.After.Header, headerSize, true, "lt1", "ctr")
+	beforeHeader := buildBeforeAfterTextContent(vals.Before.Header, headerSize, true, "lt1", "l")
+	afterHeader := buildBeforeAfterTextContent(vals.After.Header, headerSize, true, "lt1", "l")
 
 	beforeHeaderCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{

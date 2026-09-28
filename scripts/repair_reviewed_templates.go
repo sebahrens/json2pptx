@@ -37,6 +37,8 @@ func main() {
 			repair = repairBlueChildLeading
 		case "--business-column-leading":
 			repair = repairBusinessColumnLeading
+		case "--pstyle-body-minor-font":
+			repair = repairPStyleBodyMinorFont
 		default:
 			panic("unknown reviewed repair")
 		}
@@ -119,6 +121,82 @@ func repairPStyleOneContentHierarchy(path string) error {
 		"ppt/slideLayouts/slideLayout2.xml": {
 			old:         `<a:lvl1pPr><a:spcAft><a:spcPts val="1200"/></a:spcAft><a:defRPr sz="1500"/></a:lvl1pPr><a:lvl2pPr><a:defRPr sz="1200"><a:latin typeface="+mj-lt"/></a:defRPr></a:lvl2pPr><a:lvl3pPr><a:defRPr sz="1200"/></a:lvl3pPr><a:lvl4pPr><a:defRPr sz="1200"/></a:lvl4pPr><a:lvl5pPr><a:defRPr sz="1200"/></a:lvl5pPr>`,
 			replacement: `<a:lvl1pPr><a:spcAft><a:spcPts val="1200"/></a:spcAft><a:defRPr sz="2000"/></a:lvl1pPr><a:lvl2pPr><a:defRPr sz="2000"><a:latin typeface="+mj-lt"/></a:defRPr></a:lvl2pPr><a:lvl3pPr><a:defRPr sz="1800"/></a:lvl3pPr><a:lvl4pPr><a:defRPr sz="1600"/></a:lvl4pPr><a:lvl5pPr><a:defRPr sz="1600"/></a:lvl5pPr>`,
+			guards:      []string{`name="One Content"`, `name="body"`, `cx="11421056" cy="4000502"`},
+		},
+	})
+}
+
+// p-style sets its body levels 2–5 (where ordinary bullets and their children
+// live) in the major font (+mj-lt, Georgia), and One Content repeats it on its
+// level2 root. Placeholder bullets therefore rendered in a serif at body size
+// while shape text beside them used the minor sans. Serif belongs to titles and
+// display figures only: move exactly those five body declarations to +mn-lt and
+// leave the title style, the Closing layout and every bullet glyph unchanged.
+func repairPStyleBodyMinorFont(path string) error {
+	const major = `<a:latin typeface="+mj-lt"/><a:ea typeface="+mn-ea"/><a:cs typeface="+mn-cs"/>`
+	const minor = `<a:latin typeface="+mn-lt"/><a:ea typeface="+mn-ea"/><a:cs typeface="+mn-cs"/>`
+	const masterPart = "ppt/slideMasters/slideMaster1.xml"
+	z, err := zip.OpenReader(path)
+	if err != nil {
+		return err
+	}
+	var master []byte
+	for _, e := range z.File {
+		if e.Name != masterPart {
+			continue
+		}
+		r, err := e.Open()
+		if err != nil {
+			_ = z.Close()
+			return err
+		}
+		master, err = io.ReadAll(r)
+		_ = r.Close()
+		if err != nil {
+			_ = z.Close()
+			return err
+		}
+	}
+	if err := z.Close(); err != nil {
+		return err
+	}
+	if master == nil {
+		return fmt.Errorf("reviewed master missing")
+	}
+	start, end := bytes.Index(master, []byte("<p:bodyStyle>")), bytes.Index(master, []byte("</p:bodyStyle>"))
+	if start < 0 || end < start {
+		return fmt.Errorf("reviewed master body style missing")
+	}
+	body := string(master[start : end+len("</p:bodyStyle>")])
+	// Rebuild both the reviewed preimage and the repaired body style level by
+	// level, so an already-repaired master is recognised and a master where only
+	// some levels were changed (or a fifth serif level appeared) is refused.
+	before, after := body, body
+	for _, lvl := range []string{"lvl2pPr", "lvl3pPr", "lvl4pPr", "lvl5pPr"} {
+		open, closeTag := "<a:"+lvl+" ", "</a:"+lvl+">"
+		i := strings.Index(body, open)
+		j := strings.Index(body, closeTag)
+		if i < 0 || j < i || strings.Count(body, open) != 1 {
+			return fmt.Errorf("reviewed master body level %s missing", lvl)
+		}
+		seg := body[i : j+len(closeTag)]
+		if strings.Count(seg, major)+strings.Count(seg, minor) != 1 {
+			return fmt.Errorf("unexpected reviewed body typography at %s", lvl)
+		}
+		before = strings.Replace(before, seg, strings.Replace(seg, minor, major, 1), 1)
+		after = strings.Replace(after, seg, strings.Replace(seg, major, minor, 1), 1)
+	}
+	if strings.Count(after, "+mj-lt") != 0 {
+		return fmt.Errorf("unexpected major font elsewhere in reviewed body style")
+	}
+	if body != before && body != after {
+		return fmt.Errorf("partial reviewed body typography; refusing to patch")
+	}
+	return repairReviewedParts(path, "p-style-body-minor-font-before.pptx", map[string]reviewedPartRepair{
+		masterPart: {old: before, replacement: after, guards: []string{`<p:titleStyle>`, `<a:buFont typeface="Georgia"`, `<a:buChar char="–"/>`}},
+		"ppt/slideLayouts/slideLayout2.xml": {
+			old:         `<a:lvl2pPr><a:defRPr sz="2000"><a:latin typeface="+mj-lt"/></a:defRPr></a:lvl2pPr>`,
+			replacement: `<a:lvl2pPr><a:defRPr sz="2000"><a:latin typeface="+mn-lt"/></a:defRPr></a:lvl2pPr>`,
 			guards:      []string{`name="One Content"`, `name="body"`, `cx="11421056" cy="4000502"`},
 		},
 	})

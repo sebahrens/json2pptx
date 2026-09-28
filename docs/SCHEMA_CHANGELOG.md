@@ -1,5 +1,19 @@
 # Schema Changelog
 
+- **Unreleased — type scale and typographic polish (`go-slide-creator-30471`, `-58dhw`).**
+  No schema shape change. `shape_grid` text settles onto the type scale
+  28 / 18 / 14 / 12 / 10pt (off-scale sizes render at the step at or below
+  them; display figures, 28pt+ text and a `design_mode: "free"` deck's own
+  grids are exempt); `type_scale: "comfortable"` caps are now 14 / 12 / 40pt.
+  Short ALL-CAPS labels get +7% tracking, bold headings / names and
+  content-layout titles are balanced so no line ends on a lone word, centred
+  headings above left-aligned text in one shape are set left, before-after
+  headers are left-aligned, and contact-directory prefers layouts that keep
+  every name on one line (type steps 18/14, 14/12, 12/12). Two-column slides
+  whose `body` / `body_2` bullets both open with a short label line render it
+  as a bold, unbulleted column header. `scripts/repair_reviewed_templates.go
+  --pstyle-body-minor-font` moves p-style's body levels off the serif major
+  font.
 - **2026-09-28 — Schema 4.153.0: uniform 0.5 cm shape text inset.**
   Every text-bearing shape the engine draws (shape_grid cells — so every
   pattern, compose block and raw grid — and the native diagram shapes) keeps

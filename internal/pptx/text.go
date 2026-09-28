@@ -35,6 +35,11 @@ type Paragraph struct {
 	MarginL    int64      // Left margin in EMU
 	Indent     int64      // First-line indent in EMU (negative for hanging indent)
 	SpaceAfter int        // Space after paragraph in hundredths of a point (e.g. 600 = 6pt)
+
+	// MarginR is the paragraph's right margin in EMU (a:pPr marR). It narrows
+	// the wrapping measure of a single paragraph, e.g. to balance a heading's
+	// lines; 0 wraps at the full text-box width.
+	MarginR int64
 }
 
 // Run represents a DrawingML text run (a:r) or field (a:fld).
@@ -58,6 +63,10 @@ type Run struct {
 	// attribute. BaselineSuperscript / BaselineSubscript are the conventional
 	// values; 0 means normal baseline.
 	Baseline int
+
+	// Spacing is added letter-spacing (tracking) in hundredths of a point —
+	// OOXML's a:rPr spc attribute. 0 keeps the font's own spacing.
+	Spacing int
 }
 
 // Baseline offsets for superscript and subscript runs, in the thousandths-of-a-
@@ -137,7 +146,7 @@ func (p Paragraph) WriteXML(buf *bytes.Buffer) {
 	buf.WriteString(`<a:p>`)
 
 	// Paragraph properties
-	hasPPr := p.Align != "" || p.MarginL != 0 || p.Indent != 0 || p.Bullet != nil || p.NoBullet || p.SpaceAfter > 0
+	hasPPr := p.Align != "" || p.MarginL != 0 || p.MarginR != 0 || p.Indent != 0 || p.Bullet != nil || p.NoBullet || p.SpaceAfter > 0
 	if hasPPr {
 		buf.WriteString(`<a:pPr`)
 		if p.Align != "" {
@@ -145,6 +154,9 @@ func (p Paragraph) WriteXML(buf *bytes.Buffer) {
 		}
 		if p.MarginL != 0 {
 			fmt.Fprintf(buf, ` marL="%d"`, p.MarginL)
+		}
+		if p.MarginR != 0 {
+			fmt.Fprintf(buf, ` marR="%d"`, p.MarginR)
 		}
 		if p.Indent != 0 {
 			fmt.Fprintf(buf, ` indent="%d"`, p.Indent)
@@ -214,7 +226,7 @@ func (r Run) marshalXML(buf *bytes.Buffer) {
 }
 
 func (r Run) writeRunProperties(buf *bytes.Buffer) {
-	hasRPr := r.FontSize > 0 || r.Bold || r.Italic || r.Underline || r.Dirty || !r.Color.IsZero() || r.Lang != "" || r.FontFamily != "" || r.Baseline != 0 || r.HyperlinkRelID != ""
+	hasRPr := r.FontSize > 0 || r.Bold || r.Italic || r.Underline || r.Dirty || !r.Color.IsZero() || r.Lang != "" || r.FontFamily != "" || r.Baseline != 0 || r.Spacing != 0 || r.HyperlinkRelID != ""
 	if hasRPr {
 		buf.WriteString(`<a:rPr`)
 		if r.Lang != "" {
@@ -232,12 +244,7 @@ func (r Run) writeRunProperties(buf *bytes.Buffer) {
 		if r.Underline {
 			buf.WriteString(` u="sng"`)
 		}
-		if r.Baseline != 0 {
-			fmt.Fprintf(buf, ` baseline="%d"`, r.Baseline)
-		}
-		if r.Dirty {
-			buf.WriteString(` dirty="0"`)
-		}
+		r.writeOffsetAttrs(buf)
 		hasChildren := !r.Color.IsZero() || r.FontFamily != "" || r.HyperlinkRelID != ""
 		if hasChildren {
 			buf.WriteString(`>`)
@@ -254,6 +261,19 @@ func (r Run) writeRunProperties(buf *bytes.Buffer) {
 		} else {
 			buf.WriteString(`/>`)
 		}
+	}
+}
+
+// writeOffsetAttrs writes the run's tracking, baseline and dirty attributes.
+func (r Run) writeOffsetAttrs(buf *bytes.Buffer) {
+	if r.Spacing != 0 {
+		fmt.Fprintf(buf, ` spc="%d"`, r.Spacing)
+	}
+	if r.Baseline != 0 {
+		fmt.Fprintf(buf, ` baseline="%d"`, r.Baseline)
+	}
+	if r.Dirty {
+		buf.WriteString(` dirty="0"`)
 	}
 }
 

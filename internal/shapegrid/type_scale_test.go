@@ -45,7 +45,7 @@ func TestTypeScaleGrowsSparseBodyToRoleCap(t *testing.T) {
 		want float64
 	}{
 		{"compact", 12},
-		{"comfortable", 16},
+		{"comfortable", 14},
 		{"presentation", 18},
 	} {
 		t.Run(tc.mode, func(t *testing.T) {
@@ -103,5 +103,60 @@ func TestTypeScalePreservesParagraphStylesAndSource(t *testing.T) {
 	}
 	if got := float64(tb.Paragraphs[1].Runs[0].FontSize) / 100; got <= 12 || got > 14 {
 		t.Errorf("supporting caption size = %.2fpt, want growth no higher than 14pt", got)
+	}
+}
+
+func TestTypeScaleSnapsOffScaleSizesDown(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		text string
+		want []float64
+	}{
+		{"card header 16 to subhead", `{"content":"Quick Wins","size":16,"bold":true}`, []float64{14}},
+		{"table header 13 to body", `{"content":"Time to value","size":13,"bold":true}`, []float64{12}},
+		{"label 22 to lead", `{"content":"North America","size":22}`, []float64{18}},
+		{"name 20 to lead", `{"content":"Jane Smith","size":20}`, []float64{18}},
+		{"on-scale untouched", `{"content":"Body","size":12}`, []float64{12}},
+		{"sub-12 sizes render at the shape floor", `{"content":"Source: survey","size":8}`, []float64{12}},
+		{"display heading untouched", `{"content":"Domestic","size":32}`, []float64{32}},
+		{"KPI figure keeps measured size", `{"content":"$4.2M\nrevenue","size":24}`, []float64{24, 24}},
+		{"step numeral keeps size", `{"content":"1","size":25,"bold":true}`, []float64{25}},
+		{"small figure snaps", `{"content":"2x to 5x","size":15}`, []float64{14}},
+		{"paragraphs snap one by one", `{"paragraphs":[{"content":"01","size":20,"bold":true},{"content":"Growth is plateauing","size":17,"color":"accent1"}]}`, []float64{20, 14}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			spec := resolvedScaledShape(t, "", tc.text, 300, 200)
+			tb, err := ResolveTextInput(spec.Text)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(tb.Paragraphs) != len(tc.want) {
+				t.Fatalf("paragraphs = %d, want %d", len(tb.Paragraphs), len(tc.want))
+			}
+			for i, want := range tc.want {
+				if got := float64(tb.Paragraphs[i].Runs[0].FontSize) / 100; got != want {
+					t.Errorf("paragraph %d size = %.2fpt, want %.2fpt", i, got, want)
+				}
+			}
+			if strings.Contains(tc.text, "accent1") && !strings.Contains(string(spec.Text), "accent1") {
+				t.Errorf("paragraph styling dropped: %s", spec.Text)
+			}
+		})
+	}
+}
+
+func TestTypeScaleKeepTextSizesLeavesAuthoredSizes(t *testing.T) {
+	text := `{"content":"Quick Wins","size":16}`
+	grid := &Grid{
+		Bounds:  pptx.RectEmu{CX: PtToEMU(300), CY: PtToEMU(200)},
+		Columns: []float64{100}, KeepTextSizes: true,
+		Rows: []Row{{Cells: []Cell{{Shape: &ShapeSpec{Geometry: "rect", Text: json.RawMessage(text)}}}}},
+	}
+	resolved, err := Resolve(grid, pptx.NewShapeIDAllocator(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := firstScaledSize(t, resolved.Cells[0].ShapeSpec); got != 16 {
+		t.Errorf("free-mode authored size = %.2fpt, want 16pt kept", got)
 	}
 }

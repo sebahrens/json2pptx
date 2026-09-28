@@ -70,6 +70,9 @@ func (ctx *singlePassContext) inheritedTitleStyle(layoutID string) (template.Inh
 func (ctx *singlePassContext) titleAutofitOptions(layoutID string) []autofitOption {
 	opts := []autofitOption{withTitleRole()}
 	if st, ok := ctx.inheritedTitleStyle(layoutID); ok {
+		if align := ctx.layoutTitleAlign(layoutID); align != "" {
+			st.Align = align // the layout placeholder's lstStyle overrides the master
+		}
 		fontName := resolveStyleFontName(st.Typeface, ctx.titleFontName, ctx.themeFontName)
 		if fontName == "" {
 			fontName = ctx.titleFontName

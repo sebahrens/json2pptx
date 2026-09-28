@@ -420,6 +420,10 @@ func bulletParagraphLevel(baseLevel, depth int) int {
 // It preserves paragraph and run properties from the layout template.
 // masterBulletLevel specifies the first level with bullets from the slide master (-1 to auto-detect).
 func setBulletParagraphs(shape *shapeXML, placeholderID string, value interface{}, masterBulletLevel int, autofitOpts ...autofitOption) error {
+	header := ""
+	if headed, isHeaded := value.(columnHeaderBullets); isHeaded {
+		header, value = headed.Header, headed.Bullets
+	}
 	bullets, ok := value.([]string)
 	if !ok {
 		return fmt.Errorf("invalid bullets value for placeholder %s", placeholderID)
@@ -476,6 +480,9 @@ func setBulletParagraphs(shape *shapeXML, placeholderID string, value interface{
 			Properties: pProps,
 			Runs:       runs,
 		}
+	}
+	if header != "" {
+		paragraphs = append([]paragraphXML{columnHeaderParagraph(header, templateStyles, bulletLevel)}, paragraphs...)
 	}
 	shape.TextBody.Paragraphs = paragraphs
 

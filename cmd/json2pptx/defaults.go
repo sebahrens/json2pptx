@@ -11,6 +11,11 @@ func applyDefaults(input *PresentationInput) {
 		return
 	}
 	applyTypeScaleDefaults(input)
+	if effectiveDesignMode(input) == designModeFree {
+		for i := range input.Slides {
+			keepAuthoredTextSizes(input.Slides[i].ShapeGrid)
+		}
+	}
 	if input.Defaults == nil {
 		return
 	}
@@ -47,6 +52,23 @@ func applyTypeScaleDefaults(input *PresentationInput) {
 			applyComposeTypeScale(slide.Compose, input.TypeScale)
 		}
 		applyGridTypeScale(slide.ShapeGrid, input.TypeScale)
+	}
+}
+
+// keepAuthoredTextSizes exempts a free-mode deck's own shape grids from the
+// type-scale snap: design_mode "free" is the author's statement that raw sizes
+// are deliberate. Grids a pattern expands into are built later and still snap.
+func keepAuthoredTextSizes(grid *jsonschema.ShapeGridInput) {
+	if grid == nil {
+		return
+	}
+	grid.KeepTextSizes = true
+	for i := range grid.Rows {
+		for _, cell := range grid.Rows[i].Cells {
+			if cell != nil {
+				keepAuthoredTextSizes(cell.Grid)
+			}
+		}
 	}
 }
 

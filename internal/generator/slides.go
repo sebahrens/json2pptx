@@ -666,6 +666,7 @@ type paragraphXML struct {
 type paragraphPropertiesXML struct {
 	Level  *int   `xml:"lvl,attr,omitempty"`    // Bullet level (0-8), nil if not set
 	MarL   *int   `xml:"marL,attr,omitempty"`   // Left margin in EMU, nil inherits from bodyStyle
+	MarR   *int   `xml:"marR,attr,omitempty"`   // Right margin in EMU (title line balancing), nil inherits
 	Indent *int   `xml:"indent,attr,omitempty"` // First-line indent in EMU, nil inherits from bodyStyle
 	Algn   string `xml:"algn,attr,omitempty"`   // Paragraph alignment: "l", "ctr", "r", "just"
 	Inner  string `xml:",innerxml"`             // Child elements (preserved verbatim)

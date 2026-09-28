@@ -213,6 +213,7 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 		// retain normAutofit as a safety net; divider titles disable further
 		// renderer shrink so the 28pt floor remains stable.
 		bakeTitleFit(shape, params, result)
+		balanceTitleLines(shape, params, result, &cfg)
 		emitReadabilityFinding(&cfg, shape, params, result, len(shape.TextBody.Paragraphs))
 		if cfg.sectionTitle {
 			// Keep the measured font size stable across renderers. A bare

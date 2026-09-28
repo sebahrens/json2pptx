@@ -25,6 +25,9 @@ type InheritedTextStyle struct {
 	SpcBefPt float64
 	// Typeface is the raw latin typeface (may be a theme token like "+mj-lt").
 	Typeface string
+	// Align is the level-1 paragraph alignment ("l", "ctr", "r", …); "" when
+	// the style declares none (OOXML then aligns left).
+	Align string
 }
 
 type masterTitleStyleXML struct {
@@ -38,6 +41,7 @@ type masterBodyStyleXML struct {
 }
 
 type titleLevelPropsXML struct {
+	Algn   string      `xml:"algn,attr"`
 	LnSpc  *spacingXML `xml:"lnSpc"`
 	SpcBef *spacingXML `xml:"spcBef"`
 	DefRPr *struct {
@@ -85,7 +89,7 @@ func ParseMasterBodyStyle(masterData []byte) InheritedTextStyle {
 
 // inheritedFromLevelProps converts one parsed lvl1pPr into an InheritedTextStyle.
 func inheritedFromLevelProps(lvl *titleLevelPropsXML) InheritedTextStyle {
-	var st InheritedTextStyle
+	st := InheritedTextStyle{Align: lvl.Algn}
 	if lvl.LnSpc != nil && lvl.LnSpc.SpcPct != nil && lvl.LnSpc.SpcPct.Val > 0 {
 		st.LineSpacingPct = lvl.LnSpc.SpcPct.Val / 1000
 	}
@@ -107,6 +111,7 @@ var (
 	lstCapRegexp      = regexp.MustCompile(`<a:defRPr\b[^>]*\bcap="([a-z]+)"`)
 	lstSzRegexp       = regexp.MustCompile(`<a:defRPr\b[^>]*\bsz="(\d+)"`)
 	lstLatinRegexp    = regexp.MustCompile(`<a:latin\s+typeface="([^"]+)"`)
+	lstAlgnRegexp     = regexp.MustCompile(`^<a:lvl1pPr\b[^>]*\balgn="([a-z]+)"`)
 )
 
 // OverrideFromListStyle returns a copy of st with any level-1 overrides found
@@ -141,7 +146,23 @@ func (st InheritedTextStyle) OverrideFromListStyle(lstStyleInner string) Inherit
 	if m := lstLatinRegexp.FindStringSubmatch(lvl1); m != nil {
 		st.Typeface = m[1]
 	}
+	if m := lstAlgnRegexp.FindStringSubmatch(lvl1); m != nil {
+		st.Align = m[1]
+	}
 	return st
+}
+
+// ListStyleLvl1Align returns the algn attribute of a raw <a:lstStyle> inner
+// XML's level-1 paragraph properties, or "" when it declares none.
+func ListStyleLvl1Align(lstStyleInner string) string {
+	i := strings.Index(lstStyleInner, "<a:lvl1pPr")
+	if i < 0 {
+		return ""
+	}
+	if m := lstAlgnRegexp.FindStringSubmatch(lstStyleInner[i:]); m != nil {
+		return m[1]
+	}
+	return ""
 }
 
 var bodyPrAnchorRegexp = regexp.MustCompile(`<a:bodyPr\b[^>]*\banchor="([a-z]+)"`)
