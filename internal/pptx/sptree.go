@@ -152,6 +152,12 @@ func detectIndentation(content []byte, nearOffset int) string {
 }
 
 // indentElement adds proper indentation to a multi-line XML element.
+//
+// Only newlines that sit in inter-tag whitespace (the previous line ends with
+// '>' and the next starts with '<') are treated as formatting and re-indented.
+// A newline inside character data - e.g. a multi-line <a:t> run - is content:
+// it is kept verbatim with no indent added, no leading whitespace trimmed and
+// no blank line dropped, so text never gains visible leading spaces.
 func indentElement(element []byte, baseIndent string) []byte {
 	// Trim leading/trailing whitespace from the element
 	element = bytes.TrimSpace(element)
@@ -163,20 +169,29 @@ func indentElement(element []byte, baseIndent string) []byte {
 		return append(element, '\n')
 	}
 
-	// Re-indent each line (except the first which gets baseIndent)
 	var result bytes.Buffer
-	for i, line := range lines {
+	prev := lines[0]
+	result.Write(prev)
+	for _, line := range lines[1:] {
 		trimmedLine := bytes.TrimLeft(line, " \t")
+		structural := bytes.HasSuffix(bytes.TrimRight(prev, " \t\r"), []byte(">")) &&
+			(len(trimmedLine) == 0 || trimmedLine[0] == '<')
+		if !structural {
+			// Newline inside character data: preserve it exactly.
+			result.WriteByte('\n')
+			result.Write(line)
+			prev = line
+			continue
+		}
 		if len(trimmedLine) == 0 {
 			continue
 		}
-
-		if i > 0 {
-			result.WriteString(baseIndent)
-		}
-		result.Write(trimmedLine)
 		result.WriteByte('\n')
+		result.WriteString(baseIndent)
+		result.Write(trimmedLine)
+		prev = trimmedLine
 	}
+	result.WriteByte('\n')
 
 	return result.Bytes()
 }

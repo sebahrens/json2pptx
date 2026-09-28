@@ -95,8 +95,14 @@ func TestGenerateTableXML_AuthoredBreaksReserveRowHeight(t *testing.T) {
 		t.Fatal(err)
 	}
 	rows := regexp.MustCompile(`<a:tr h="(\d+)">`).FindAllStringSubmatch(result.XML, -1)
-	if len(rows) != 2 || !strings.Contains(result.XML, content) {
+	if len(rows) != 2 || !strings.Contains(result.XML, "<a:t>Workstream</a:t>") ||
+		!strings.Contains(result.XML, "<a:t>Gate evidence</a:t>") {
 		t.Fatalf("required cell or row missing: %s", result.XML)
+	}
+	// go-slide-creator-x2b12: authored newlines become <a:br> line breaks,
+	// never a raw LF inside <a:t> that the spTree re-indenter could pad.
+	if strings.Count(result.XML, "<a:br>") != 2 || strings.Contains(result.XML, "Workstream\n") {
+		t.Fatalf("authored breaks not emitted as <a:br>: %s", result.XML)
 	}
 	height, err := strconv.ParseInt(rows[1][1], 10, 64)
 	if err != nil || height < 3*18*12700*12/10+cellMargin {

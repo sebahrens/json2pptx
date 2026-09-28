@@ -22,6 +22,26 @@
   listed in the generated appendix of `docs/AGENT_DIAGNOSTICS.md` (§8). No
   response-shape change.
 
+- **2026-09-28 — Schema 4.154.0 · Embedded diagram text meets the native floor (`go-slide-creator-h3x1i`).**
+  Charts and diagrams placed in a placeholder or grid cell are held to the
+  same `viewing_mode` body floor as native text (12pt `present`) at their
+  placed size: svggen scales the whole type model until its smallest role
+  reaches the floor and uses that placed floor as the fitters' shrink limit, so
+  embedded labels no longer render at 7.9–11.4pt (crowded diagrams report
+  `diagram.text_overlap` instead). `TEXT_BELOW_READABLE_MIN` for embedded
+  diagram text that still falls below the floor is now `action: "refuse"`
+  (was `review`), matching measured native runs. Standalone `render_diagram`
+  output is unchanged. No `SchemaVersion` bump.
+- **2026-09-28 — Schema 4.154.0 · Content drops refuse (`go-slide-creator-k3lyz`).**
+  `CONTENT_DROPPED` gains the hard cause `fix.params.cause:
+  "placeholder_occupied"` (a text block or visual resolving to a placeholder
+  another block already fills; params `placeholder_id`, `layout_id`,
+  `kept_block`). Hard drops (`placeholder_not_found`, `placeholder_occupied`)
+  now carry `action: "refuse"` (severity `error`) and `fix.params.options`
+  (`split_slide`, `choose_layout`, `retarget_placeholder`, `merge_blocks`);
+  they fail strict `output_validation` and the human CLI `generate` path now
+  exits non-zero on them. Auto layout selection prefers layouts with a slot
+  for the title and for the body/subtitle. Additive; no `SchemaVersion` bump.
 - **2026-09-28 — Schema 4.154.0 · Template-aware stacked columns and nested-cell readability
   prediction (`go-slide-creator-bzh34`).** A `chart-insights-split` with a
   headline or so-what pins those rows at their writer-measured height and,

@@ -65,8 +65,13 @@ func TestPrepareImages_VisualCollisionEmitsContentDropped(t *testing.T) {
 	if dropped == nil {
 		t.Fatalf("expected a CONTENT_DROPPED finding for the colliding visual, got findings: %v", result.FitFindings)
 	}
-	if dropped.Action != "review" {
-		t.Errorf("CONTENT_DROPPED action = %q, want review", dropped.Action)
+	// A dropped visual is actual source loss: a hard, refuse-class drop
+	// (go-slide-creator-k3lyz).
+	if dropped.Action != "refuse" || !patterns.IsHardContentDrop(*dropped) {
+		t.Errorf("CONTENT_DROPPED action = %q hard=%v, want a refuse-class hard drop", dropped.Action, patterns.IsHardContentDrop(*dropped))
+	}
+	if cause := dropped.Fix.Params["cause"]; cause != patterns.CausePlaceholderOccupied {
+		t.Errorf("cause = %v, want %s", cause, patterns.CausePlaceholderOccupied)
 	}
 	// The dropped block is the second content item (index 1).
 	if want := "/slides/0/content/1"; dropped.Path != want {

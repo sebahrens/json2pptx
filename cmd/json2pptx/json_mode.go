@@ -716,6 +716,21 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		slog.Warn(w)
 	}
 
+	// A hard content drop (a block whose placeholder is missing or already
+	// filled) is source loss, not a warning: the JSON path answers
+	// success:false, so the human path must not exit 0 on the same deck
+	// (go-slide-creator-k3lyz).
+	if !output.Success {
+		var drops []string
+		for _, f := range allFitFindings {
+			if patterns.IsHardContentDrop(f) {
+				drops = append(drops, fmt.Sprintf("%s: %s", f.Path, f.Message))
+			}
+		}
+		return fmt.Errorf("generation failed: %s: %d author content block(s) dropped, so %s is incomplete; split the slide, choose a layout with a slot for each block, or retarget the placeholder:\n  %s",
+			patterns.ErrCodeContentDropped, len(drops), outputPath, strings.Join(drops, "\n  "))
+	}
+
 	slog.Info("JSON conversion complete",
 		"output", outputPath,
 		"slides", result.SlideCount,

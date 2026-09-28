@@ -4,6 +4,8 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
 // Two text blocks on one placeholder used to overwrite each other silently;
@@ -24,6 +26,14 @@ func TestPopulateTextInSlide_DuplicateTextBlockEmitsContentDropped(t *testing.T)
 			dropped++
 			if f.Path != "/slides/0/content/2" {
 				t.Errorf("finding path = %q, want /slides/0/content/2", f.Path)
+			}
+			// Content loss is a refusal with concrete remedies, never a
+			// silent WARN (go-slide-creator-k3lyz).
+			if f.Action != "refuse" || f.Severity() != "error" || !patterns.IsHardContentDrop(f) {
+				t.Errorf("drop must be a refuse-class hard drop, got action=%q severity=%q", f.Action, f.Severity())
+			}
+			if opts, _ := f.Fix.Params["options"].([]string); len(opts) == 0 || opts[0] != "split_slide" {
+				t.Errorf("fix.params.options = %v, want split_slide first", f.Fix.Params["options"])
 			}
 		}
 	}

@@ -58,6 +58,22 @@ func wbStructuralRows(g *jsonschema.ShapeGridInput) int {
 	return n
 }
 
+// wbBarFill returns the fill of a column sub-grid's bar: the second cell of
+// the [gutter, bar, gutter] row. Value labels usually sit in a transparent
+// spacer outside the bar (go-slide-creator-h1smy), so the bar is found by
+// position, not by carrying text.
+func wbBarFill(g *jsonschema.ShapeGridInput) string {
+	if g == nil {
+		return ""
+	}
+	for _, r := range g.Rows {
+		if r.Height >= 0.5 && len(r.Cells) == 2 && r.Cells[1] != nil && r.Cells[1].Shape != nil {
+			return string(r.Cells[1].Shape.Fill)
+		}
+	}
+	return ""
+}
+
 // wbIsBridgeLine reports whether a sub-grid row is a bridge-line hairline.
 func wbIsBridgeLine(r jsonschema.GridRowInput) bool {
 	if r.Height >= 0.5 {
@@ -301,25 +317,24 @@ func TestWaterfallBridge_Expand_FloatingBars(t *testing.T) {
 	// spacer (yMin = -? Let's check below).
 	// Actually with the values {120, -45, 75 subtotal, -30, 45}:
 	//   running: 120, 75, 75, 45, 45
-	//   yMin = 0, yMax = 120, scale = 120.
-	//   Revenue total 0..120: top spacer 0%, bar 100%, bottom 0% → just 1 sub-row.
+	//   yMin = 0, yMax = 120 plus the label headroom (go-slide-creator-h1smy).
+	//   Revenue total 0..120: headroom spacer + bar, nothing below → 2 sub-rows.
 	revenue := grid.Rows[0].Cells[0]
 	if revenue.Grid == nil {
 		t.Fatal("expected sub-grid on revenue bar cell")
 	}
-	if wbStructuralRows(revenue.Grid) != 1 {
-		t.Errorf("revenue total 0..max should have 1 sub-row (bar only), got %d", wbStructuralRows(revenue.Grid))
+	if wbStructuralRows(revenue.Grid) != 2 {
+		t.Errorf("revenue total 0..max should have 2 sub-rows (headroom + bar), got %d", wbStructuralRows(revenue.Grid))
 	}
 
-	// Column 1 = COGS (delta, -45). yStart=120, yEnd=75. Bar from 75..120, so:
-	//   topPct = (120-120)/120 = 0%, barPct = 45/120 ≈ 37.5%, bottomPct = 75/120 ≈ 62.5%.
-	//   → 2 sub-rows: bar + bottom spacer.
+	// Column 1 = COGS (delta, -45). yStart=120, yEnd=75. Bar from 75..120:
+	//   headroom spacer + bar + bottom spacer → 3 sub-rows.
 	cogs := grid.Rows[0].Cells[1]
 	if cogs.Grid == nil {
 		t.Fatal("expected sub-grid on COGS bar cell")
 	}
-	if wbStructuralRows(cogs.Grid) != 2 {
-		t.Errorf("COGS delta should have 2 sub-rows (bar + bottom spacer), got %d", wbStructuralRows(cogs.Grid))
+	if wbStructuralRows(cogs.Grid) != 3 {
+		t.Errorf("COGS delta should have 3 sub-rows (headroom + bar + bottom spacer), got %d", wbStructuralRows(cogs.Grid))
 	}
 
 	// Column 3 = OpEx (delta, -30). yStart=75, yEnd=45. Bar from 45..75:
@@ -389,18 +404,7 @@ func TestWaterfallBridge_Expand_NegativeDeltaFill(t *testing.T) {
 
 	// Helper: pull the bar shape (the cell with bold text) out of a column.
 	barFill := func(col int) string {
-		c := grid.Rows[0].Cells[col]
-		if c.Grid == nil {
-			return ""
-		}
-		for _, row := range c.Grid.Rows {
-			for _, cell := range row.Cells {
-				if cell.Shape != nil && len(cell.Shape.Text) > 0 {
-					return string(cell.Shape.Fill)
-				}
-			}
-		}
-		return ""
+		return wbBarFill(grid.Rows[0].Cells[col].Grid)
 	}
 	dropFill := barFill(1)
 	gainFill := barFill(2)
@@ -421,14 +425,7 @@ func TestWaterfallBridge_Expand_SubtotalFill(t *testing.T) {
 		t.Fatalf("Expand failed: %v", err)
 	}
 	c := grid.Rows[0].Cells[2] // Gross Profit subtotal
-	var fill string
-	for _, row := range c.Grid.Rows {
-		for _, cell := range row.Cells {
-			if cell.Shape != nil && len(cell.Shape.Text) > 0 {
-				fill = string(cell.Shape.Fill)
-			}
-		}
-	}
+	fill := wbBarFill(c.Grid)
 	if fill != `{"color":"dk1","lumMod":60000,"lumOff":40000}` {
 		t.Errorf("expected subtotal bar to fill with neutral dk1 at 60%%, got %q", fill)
 	}
@@ -448,14 +445,7 @@ func TestWaterfallBridge_Expand_AccentOverride(t *testing.T) {
 		t.Errorf("a total must stay neutral under an accent override, got %q", fill)
 	}
 	c := grid.Rows[0].Cells[1]
-	var fill string
-	for _, row := range c.Grid.Rows {
-		for _, cell := range row.Cells {
-			if cell.Shape != nil && len(cell.Shape.Text) > 0 {
-				fill = string(cell.Shape.Fill)
-			}
-		}
-	}
+	fill := wbBarFill(c.Grid)
 	if !strings.Contains(fill, "accent4") {
 		t.Errorf("expected the decrease to follow the accent override (accent4), got %q", fill)
 	}
@@ -476,14 +466,7 @@ func TestWaterfallBridge_Expand_NegativeAccentOverride(t *testing.T) {
 		t.Fatalf("Expand failed: %v", err)
 	}
 	c := grid.Rows[0].Cells[1] // negative delta
-	var fill string
-	for _, row := range c.Grid.Rows {
-		for _, cell := range row.Cells {
-			if cell.Shape != nil && len(cell.Shape.Text) > 0 {
-				fill = string(cell.Shape.Fill)
-			}
-		}
-	}
+	fill := wbBarFill(c.Grid)
 	if !strings.Contains(fill, "accent5") {
 		t.Errorf("expected negative delta to follow negative_accent override (accent5), got %q", fill)
 	}
@@ -664,38 +647,27 @@ func TestWaterfallBridge_ExplicitNegativeAccentWins(t *testing.T) {
 	}
 }
 
-// waterfallBarFillForLabel finds the bar shape whose value text contains the
-// given label fragment and returns its fill colour string.
+// waterfallBarFillForLabel finds the column whose value text contains the
+// given label fragment (inside the bar or in an outside-label spacer) and
+// returns its bar's fill colour string.
 func waterfallBarFillForLabel(t *testing.T, grid *jsonschema.ShapeGridInput, labelFragment string) string {
 	t.Helper()
-	var found string
-	var walk func(g *jsonschema.ShapeGridInput)
-	walk = func(g *jsonschema.ShapeGridInput) {
-		if g == nil || found != "" {
-			return
-		}
-		for _, row := range g.Rows {
-			for _, cell := range row.Cells {
-				if cell == nil {
-					continue
-				}
-				if cell.Shape != nil && strings.Contains(string(cell.Shape.Text), labelFragment) {
-					fill := strings.Trim(string(cell.Shape.Fill), `"`)
-					// Skip the transparent outside-label cells.
-					if fill != "" && !strings.Contains(fill, "alpha") {
-						found = fill
-						return
+	for _, row := range grid.Rows {
+		for _, cell := range row.Cells {
+			if cell == nil || cell.Grid == nil {
+				continue
+			}
+			for _, sub := range cell.Grid.Rows {
+				for _, c := range sub.Cells {
+					if c != nil && c.Shape != nil && strings.Contains(string(c.Shape.Text), labelFragment) {
+						return strings.Trim(wbBarFill(cell.Grid), `"`)
 					}
 				}
-				walk(cell.Grid)
 			}
 		}
 	}
-	walk(grid)
-	if found == "" {
-		t.Fatalf("no bar shape found whose value text contains %q", labelFragment)
-	}
-	return found
+	t.Fatalf("no column found whose value text contains %q", labelFragment)
+	return ""
 }
 
 // wbColumnRows returns the rows of a column's sub-grid from the bar band.
@@ -848,5 +820,41 @@ func TestWaterfallBridge_CaptionTooLong(t *testing.T) {
 	err := p.Validate(v, nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "caption") {
 		t.Errorf("an over-budget caption should be reported, got %v", err)
+	}
+}
+
+// go-slide-creator-h1smy: the tallest bar keeps a headroom band under the
+// title (never less than the 0.5 cm inset), and value labels sit outside the
+// bars — above totals and increases, below decreases.
+func TestWaterfallBridge_HeadroomAndOutsideLabels(t *testing.T) {
+	p, _ := Default().Get("waterfall-bridge")
+	ctx := ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}
+	grid, err := p.Expand(ctx, validWaterfallBridgeValues(), nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	areaPt := waterfallBarAreaPt(ctx)
+	for col := range grid.Rows[0].Cells {
+		rows := wbColumnRows(t, grid, 0, col)
+		if rows[0].Height*areaPt/100 < wbMinHeadroomPt-0.01 {
+			t.Errorf("column %d: top spacer %.1fpt is thinner than the 0.5 cm inset", col, rows[0].Height*areaPt/100)
+		}
+		for _, r := range rows {
+			if len(r.Cells) == 2 && r.Cells[1] != nil && r.Cells[1].Shape != nil && len(r.Cells[1].Shape.Text) > 0 {
+				t.Errorf("column %d: value label is inside the bar; want it outside", col)
+			}
+		}
+	}
+	// Decreases put their label below the bar (top-anchored in the spacer).
+	var below bool
+	for _, r := range wbColumnRows(t, grid, 0, 1) {
+		for _, c := range r.Cells {
+			if c != nil && c.Shape != nil && len(c.Shape.Text) > 0 && wbTextObj(t, c.Shape.Text).VerticalAlign == "t" {
+				below = true
+			}
+		}
+	}
+	if !below {
+		t.Error("the COGS decrease label should sit below its bar")
 	}
 }

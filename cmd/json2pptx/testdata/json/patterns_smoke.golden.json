@@ -266,6 +266,90 @@
     ]
   },
   {
+    "pattern_name": "agenda",
+    "row_count": 7,
+    "cell_counts": [
+      2,
+      1,
+      2,
+      1,
+      2,
+      1,
+      2
+    ]
+  },
+  {
+    "pattern_name": "before-after-compact",
+    "row_count": 2,
+    "cell_counts": [
+      3,
+      2
+    ]
+  },
+  {
+    "pattern_name": "hero-detail",
+    "row_count": 2,
+    "cell_counts": [
+      1,
+      3
+    ]
+  },
+  {
+    "pattern_name": "kpi-5up",
+    "row_count": 1,
+    "cell_counts": [
+      5
+    ]
+  },
+  {
+    "pattern_name": "kpi-6up",
+    "row_count": 1,
+    "cell_counts": [
+      6
+    ]
+  },
+  {
+    "pattern_name": "kpi-inline",
+    "row_count": 1,
+    "cell_counts": [
+      3
+    ]
+  },
+  {
+    "pattern_name": "process-flow-compact",
+    "row_count": 1,
+    "cell_counts": [
+      4
+    ]
+  },
+  {
+    "pattern_name": "roadmap-phased",
+    "row_count": 4,
+    "cell_counts": [
+      5,
+      5,
+      5,
+      5
+    ]
+  },
+  {
+    "pattern_name": "strategy-house",
+    "row_count": 3,
+    "cell_counts": [
+      1,
+      3,
+      1
+    ]
+  },
+  {
+    "pattern_name": "stylish-panels",
+    "row_count": 2,
+    "cell_counts": [
+      3,
+      3
+    ]
+  },
+  {
     "pattern_name": "next-steps",
     "row_count": 9,
     "cell_counts": [

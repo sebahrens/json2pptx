@@ -122,3 +122,37 @@ func TestGenerate_DuplicatePlaceholderResolutionErrors(t *testing.T) {
 		t.Errorf("error does not describe the placeholder collision: %v", err)
 	}
 }
+
+// TestGenerate_HumanPathRefusesDroppedTextBlock pins go-slide-creator-k3lyz:
+// two text blocks on one placeholder drop the second, and the human CLI path
+// (no JSON output) must fail instead of logging a WARN and exiting 0.
+func TestGenerate_HumanPathRefusesDroppedTextBlock(t *testing.T) {
+	templatesDir, err := filepath.Abs(testTemplatesDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	deck := `{
+  "template": "midnight-blue",
+  "slides": [{
+    "slide_type": "content",
+    "content": [
+      {"placeholder_id": "title", "type": "text", "text_value": "Two blocks"},
+      {"placeholder_id": "body", "type": "bullets", "bullets_value": ["left one"]},
+      {"placeholder_id": "body", "type": "bullets", "bullets_value": ["right one"]}
+    ]
+  }]
+}`
+	inputPath := filepath.Join(dir, "deck.json")
+	if err := os.WriteFile(inputPath, []byte(deck), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	err = runJSONMode(inputPath, "", templatesDir, dir, "", false, false, "midnight-blue", "off", false, "", "free", false)
+	if err == nil || !strings.Contains(err.Error(), "CONTENT_DROPPED") || !strings.Contains(err.Error(), "/slides/0/content/2") {
+		t.Fatalf("expected a CONTENT_DROPPED failure naming /slides/0/content/2, got %v", err)
+	}
+	// output_validation off keeps the documented opt-out.
+	if err := runJSONMode(inputPath, "", templatesDir, dir, "", false, false, "midnight-blue", "off", false, "off", "free", false); err != nil {
+		t.Fatalf("output_validation off must not fail: %v", err)
+	}
+}

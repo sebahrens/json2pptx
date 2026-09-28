@@ -76,26 +76,24 @@ func TestGridDiagramConverterCLIDryRun(t *testing.T) {
 	}
 }
 
+// go-slide-creator-h3x1i: the dry render scales the embedded type model to the
+// viewing mode's floor at the cell's placed size, so a crowded org chart in a
+// narrow cell no longer predicts sub-floor text in either mode.
 func TestGridDiagramReadabilityPreflight(t *testing.T) {
 	input := &PresentationInput{Slides: []SlideInput{{ShapeGrid: &ShapeGridInput{
 		Bounds: &GridBoundsInput{X: 10, Y: 10, Width: 25, Height: 40},
 		Rows:   []GridRowInput{{Cells: []*GridCellInput{{Diagram: crowdedOrgDiagram()}}}},
 	}}}}
-	for _, tc := range []struct{ mode, floor string }{{"present", "12pt"}, {"read", "10pt"}} {
-		t.Run(tc.mode, func(t *testing.T) {
-			input.ViewingMode = tc.mode
+	for _, mode := range []string{"present", "read"} {
+		t.Run(mode, func(t *testing.T) {
+			input.ViewingMode = mode
 			findings := collectChartDryRenderFindingsResolved(input, nil, "", "warn", true,
 				nil, 12_000_000, 7_000_000)
 			for _, finding := range findings {
-				if finding.Code != "TEXT_BELOW_READABLE_MIN" {
-					continue
+				if finding.Code == "TEXT_BELOW_READABLE_MIN" {
+					t.Errorf("embedded text scaled to the floor still predicts sub-floor text: %+v", finding)
 				}
-				if finding.Path != "/slides/0/shape_grid/rows/0/cells/0/diagram" || finding.Action != "review" || !strings.Contains(finding.Message, tc.floor) {
-					t.Errorf("readability preflight has wrong path, action, or floor: %+v", finding)
-				}
-				return
 			}
-			t.Errorf("expected physical-size readability preflight finding; got %+v", findings)
 		})
 	}
 }

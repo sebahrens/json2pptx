@@ -24,8 +24,10 @@ import (
 //     Row 1 — bar area: N column cells, each holding a vertical sub-grid
 //             [top-spacer, bridge line, bar, bridge line, bottom-spacer] on a
 //             [gutter, bar, gutter] split (see buildWaterfallColumnGrid). Unused rows collapse to
-//             zero height. The bar carries the value label unless it is too thin,
-//             in which case the label sits in the adjacent spacer.
+//             zero height. The value label sits outside the bar, in the spacer
+//             above totals / increases and below decreases, and falls back into
+//             the bar only when neither spacer can hold it. The range carries
+//             a headroom band (>= the 0.5 cm inset) above the tallest bar.
 //     Row 2 — labels: N column cells with the component name beneath each bar.
 //
 //   Column types:
@@ -432,6 +434,13 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 
 	n := len(resolved)
 	barAreaPt := waterfallBarAreaPt(ctx)
+	// Headroom (go-slide-creator-h1smy): the tallest bar used to start flush
+	// under the title. Reserve a band above it that holds an outside value
+	// label and is never thinner than the 0.5 cm content inset.
+	if headPt := waterfallHeadroomPt(valueSize); barAreaPt > 2*headPt {
+		yMax += scale * headPt / (barAreaPt - headPt)
+		scale = yMax - yMin
+	}
 	barCells := make([]*jsonschema.GridCellInput, n)
 	labelCells := make([]*jsonschema.GridCellInput, n)
 
@@ -465,6 +474,7 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 				hasIn:    i > 0,
 				hasOut:   i < n-1,
 				areaPt:   barAreaPt,
+				colPt:    waterfallColumnWidthPt(ctx, n),
 			}),
 		}
 
@@ -619,6 +629,7 @@ type wbColumnLayout struct {
 	inOnTop, outOnTop         bool // bridge levels sit on the bar's top edge?
 	hasIn, hasOut             bool // bridge line from the previous / to the next column
 	areaPt                    float64
+	colPt                     float64 // column width in points (0 = unknown)
 }
 
 const (
@@ -639,18 +650,57 @@ func waterfallBarAreaPt(ctx ExpandContext) float64 {
 	return float64(h) / 12700 * 0.85
 }
 
-// waterfallLabelSide returns where a column's value label goes: "bar" when
-// the bar can hold one line of value text, otherwise the adjacent spacer
-// ("top" / "bottom", preferring l.labelUp) that has room.
+// waterfallColumnWidthPt is one column's width in points, or 0 when the
+// content width is unknown.
+func waterfallColumnWidthPt(ctx ExpandContext, n int) float64 {
+	w, _ := expandContentSize(ctx)
+	if w <= 0 || n <= 0 {
+		return 0
+	}
+	return float64(w) / 12700 / float64(n)
+}
+
+// wbLabelBandPt is the height one line of value text needs at size.
+// Measure at the size the writer emits: a 10pt label is raised to the 12pt
+// shape-text floor, and a bar sized for 10pt stored the 12pt label at 90%
+// autofit, below the floor (go-slide-creator-n1muf). The +6 margin covers the
+// column-area estimate running a little above the written bar height (modern
+// stored a 21.1pt bar's label at 96%).
+func wbLabelBandPt(size float64) float64 {
+	return shapegrid.EffectiveTextSizePt(size)*1.5 + 6
+}
+
+// wbMinHeadroomPt is the 0.5 cm content inset in points: the least clear
+// space kept between the title zone and the tallest bar.
+const wbMinHeadroomPt = 0.5 / 2.54 * 72
+
+// waterfallHeadroomPt is the band reserved above the tallest bar: room for
+// its outside value label (plus the bridge line carved from the same spacer),
+// never less than the 0.5 cm inset.
+func waterfallHeadroomPt(valueSize float64) float64 {
+	return math.Max(wbMinHeadroomPt, wbLabelBandPt(valueSize)+wbBridgeLinePt+0.5)
+}
+
+// waterfallLabelSide returns where a column's value label goes. Labels sit
+// outside the bar (go-slide-creator-h1smy): in the spacer on the preferred
+// side (l.labelUp: above for totals and increases, below for decreases), else
+// the other spacer, and inside the bar only when neither spacer has room.
 func waterfallLabelSide(l wbColumnLayout, topPct, barPct, bottomPct float64) string {
-	// Measure at the size the writer emits: a 10pt label is raised to the
-	// 12pt shape-text floor, and a bar sized for 10pt stored the 12pt label at
-	// 90% autofit, below the floor (go-slide-creator-n1muf).
-	// The +6 margin covers the column-area estimate running a little above
-	// the written bar height (modern stored a 21.1pt bar's label at 96%).
-	needPt := shapegrid.EffectiveTextSizePt(l.valueSize)*1.5 + 6
-	if l.areaPt <= 0 || l.areaPt*barPct/100 >= needPt {
+	if l.areaPt <= 0 {
 		return "bar"
+	}
+	needPt := wbLabelBandPt(l.valueSize)
+	// A value too wide for one line in its column wraps; an outside spacer
+	// sized for one line would shrink it, so a wrapping label stays in a bar
+	// tall enough to hold it (schema-maximum values with long units).
+	if l.colPt > 0 {
+		textPt := float64(runeLen(l.valueText)) * shapegrid.EffectiveTextSizePt(l.valueSize) * 0.6
+		if lines := math.Ceil(textPt / (l.colPt * 0.9)); lines > 1 {
+			if l.areaPt*barPct/100 >= needPt*lines {
+				return "bar"
+			}
+			needPt *= lines
+		}
 	}
 	first, second := "top", "bottom"
 	firstPct, secondPct := topPct, bottomPct

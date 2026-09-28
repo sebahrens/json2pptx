@@ -119,11 +119,13 @@
             "type": "treemap",
             "title": "Revenue Breakdown by Product Line",
             "data": {
-              "Enterprise Platform": 45,
-              "SMB Suite": 25,
-              "API Services": 15,
-              "Professional Services": 10,
-              "Training": 5
+              "values": [
+                {"label": "Enterprise Platform", "value": 45},
+                {"label": "SMB Suite", "value": 25},
+                {"label": "API Services", "value": 15},
+                {"label": "Professional Services", "value": 10},
+                {"label": "Training", "value": 5}
+              ]
             }
           }
         }

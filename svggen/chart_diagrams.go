@@ -1544,19 +1544,32 @@ func placementScale(style StyleSpec, width, height float64) float64 {
 	return math.Min(style.PlacementWidthPt/width, style.PlacementHeightPt/height)
 }
 
-// applyPlacementTypography raises the starting type scale in proportion to
-// the physical placement. Individual diagram fitters may still need smaller
-// text; reportPlacementReadability identifies that actual result afterward.
+// applyPlacementTypography scales the diagram's type model to its physical
+// placement so embedded text meets the same readability floor as native text
+// (go-slide-creator-h3x1i). Every role is raised in proportion until the
+// SMALLEST role (small labels or captions) reaches the floor in placed points,
+// and the builder's fitter floor (ClampFontSize / ClampFontSizeForRect) is set
+// to the same placed floor so a fitter cannot shrink a label back below it.
+// A diagram that still draws sub-floor text (a hard-coded size) is reported by
+// reportPlacementReadability.
 func applyPlacementTypography(builder *SVGBuilder, style StyleSpec, width, height float64) {
 	scale := placementScale(style, width, height)
 	if scale <= 0 || style.MinReadablePt <= 0 || builder.style == nil || builder.style.Typography == nil {
 		return
 	}
+	floorUser := style.MinReadablePt / scale
+	if floorUser > builder.MinFontSize() {
+		builder.SetMinFontSize(floorUser)
+	}
 	typ := builder.style.Typography
-	if typ.SizeSmall <= 0 {
+	smallest := typ.SizeSmall
+	if typ.SizeCaption > 0 && (smallest <= 0 || typ.SizeCaption < smallest) {
+		smallest = typ.SizeCaption
+	}
+	if smallest <= 0 {
 		return
 	}
-	factor := style.MinReadablePt / (scale * typ.SizeSmall)
+	factor := floorUser / smallest
 	if factor <= 1 {
 		return
 	}
@@ -1578,9 +1591,12 @@ func reportPlacementReadability(builder *SVGBuilder, style StyleSpec, width, hei
 	if actualPt+0.05 >= style.MinReadablePt {
 		return
 	}
+	// Same policy as native text (go-slide-creator-h3x1i): the size is measured
+	// at the placement, not predicted, and applyPlacementTypography already
+	// scaled the type model to the floor, so what remains below it is refused.
 	builder.AddFinding(core.Finding{
 		Code:     core.FindingTextBelowReadableMin,
-		Severity: core.SeverityWarning,
+		Severity: core.SeverityRefuse,
 		Message:  fmt.Sprintf("embedded diagram text renders at %.1fpt in its PPTX cell, below the %.0fpt readability floor; simplify the diagram or enlarge its cell", actualPt, style.MinReadablePt),
 		Fix: &core.FixSuggestion{Kind: "simplify_or_enlarge_diagram", Params: map[string]any{
 			"actual_pt": actualPt, "min_pt": style.MinReadablePt,

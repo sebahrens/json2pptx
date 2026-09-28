@@ -3240,36 +3240,16 @@ func TestDiagramCellInserts_NarrowCellWarning(t *testing.T) {
 	if len(icons) != 1 {
 		t.Fatalf("expected 1 icon insert, got %d", len(icons))
 	}
-	if pt := minDisplayedSVGFontPt(t, icons[0].SVGData, cell.Bounds); pt >= 12 {
-		t.Fatalf("fixture no longer exercises unreadable embedded text: %.1fpt", pt)
+	// go-slide-creator-h3x1i: embedded text is held to the native 12pt floor at
+	// its placed size, so the crowded org chart draws at the floor (SVG sizes
+	// are serialized to 4 decimals) and raises no sub-floor finding.
+	if pt := minDisplayedSVGFontPt(t, icons[0].SVGData, cell.Bounds); pt < 12-0.05 {
+		t.Fatalf("embedded org-chart text renders at %.2fpt, below the 12pt floor", pt)
 	}
-	var readability bool
 	for _, finding := range findings {
 		if finding.Code == "TEXT_BELOW_READABLE_MIN" {
-			readability = true
-			if finding.Severity != "warning" || !strings.Contains(finding.Message, "readability floor") {
-				t.Errorf("rendered SVG readability finding = %+v", finding)
-			}
+			t.Errorf("text drawn at the floor produced a sub-floor finding: %+v", finding)
 		}
-	}
-	if !readability {
-		t.Errorf("unreadable org-chart text has no structured finding: %+v", findings)
-	}
-	gridOut, err := generateGridOutput(&shapegrid.ResolveResult{Cells: []shapegrid.ResolvedCell{cell}}, newAllocFrom(200), diagCtx, 2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var surfaced bool
-	for _, finding := range gridOut.FitFindings {
-		if finding.Code == "TEXT_BELOW_READABLE_MIN" {
-			surfaced = true
-			if finding.Path != "/slides/2/shape_grid/rows/0/cells/0/diagram" || finding.Action != "review" {
-				t.Errorf("grid readability finding lost its path/severity: %+v", finding)
-			}
-		}
-	}
-	if !surfaced {
-		t.Errorf("grid output dropped SVG readability finding: %+v", gridOut.FitFindings)
 	}
 	if len(warnings) != 1 {
 		t.Fatalf("expected 1 warning for complex org_chart in narrow cell, got %d", len(warnings))
