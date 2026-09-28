@@ -216,12 +216,7 @@ func TestRunAuditPalette_EndToEnd(t *testing.T) {
 	deckJSON := filepath.Join(repoRoot, "tests", "palette_parity", "deck.json")
 
 	tmp := t.TempDir()
-	binPath := filepath.Join(tmp, "json2pptx")
-	build := exec.Command("go", "build", "-o", binPath, "./cmd/json2pptx") //nolint:gosec // controlled args
-	build.Dir = repoRoot
-	if out, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("go build: %v\n%s", err, out)
-	}
+	binPath := sharedTestBinary(t)
 	gen := exec.Command(binPath, "generate", //nolint:gosec // controlled args
 		"-json", deckJSON,
 		"-template", "midnight-blue",

@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -165,16 +166,42 @@ func findProjectRoot(t *testing.T) string {
 	}
 }
 
+// The json2pptx binary is built once per test process and shared by every
+// caller (go-slide-creator-s2s53); tests only execute it. TestMain removes it.
+var (
+	qualityBinaryOnce sync.Once
+	qualityBinaryDir  string
+	qualityBinaryPath string
+	qualityBinaryErr  error
+	qualityBinaryOut  []byte
+)
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	if qualityBinaryDir != "" {
+		_ = os.RemoveAll(qualityBinaryDir)
+	}
+	os.Exit(code)
+}
+
 func buildBinary(t *testing.T, projectRoot string) string {
 	t.Helper()
-	binary := filepath.Join(t.TempDir(), "json2pptx")
-	cmd := exec.Command("go", "build", "-o", binary, "./cmd/json2pptx") //nolint:gosec // test code with controlled args
-	cmd.Dir = projectRoot
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("build json2pptx: %v\n%s", err, out)
+	qualityBinaryOnce.Do(func() {
+		dir, err := os.MkdirTemp("", "json2pptx-quality-bin-")
+		if err != nil {
+			qualityBinaryErr = err
+			return
+		}
+		qualityBinaryDir = dir
+		qualityBinaryPath = filepath.Join(dir, "json2pptx")
+		cmd := exec.Command("go", "build", "-o", qualityBinaryPath, "./cmd/json2pptx") //nolint:gosec // test code with controlled args
+		cmd.Dir = projectRoot
+		qualityBinaryOut, qualityBinaryErr = cmd.CombinedOutput()
+	})
+	if qualityBinaryErr != nil {
+		t.Fatalf("build json2pptx: %v\n%s", qualityBinaryErr, qualityBinaryOut)
 	}
-	return binary
+	return qualityBinaryPath
 }
 
 func computeMetrics(t *testing.T, jsonPath, binary string) metrics {

@@ -270,6 +270,8 @@ func measureSchemaMaximumEncodedPt(patternName string, encoded json.RawMessage, 
 // measurement lost padding/paragraph spacing. These are audit corrections,
 // not evidence that the underlying extreme payload is readable.
 func TestSchemaMaximaMeasurementsMatchWrittenRuns(t *testing.T) {
+	// Read-only inputs; writes go only to t.TempDir() (go-slide-creator-s2s53).
+	t.Parallel()
 	for _, name := range []string{"text-sidebar", "contact-directory", "labeled-rows"} {
 		pat, _ := patterns.Default().Get(name)
 		values, note := schemaMaximumValues(pat)
@@ -282,6 +284,7 @@ func TestSchemaMaximaMeasurementsMatchWrittenRuns(t *testing.T) {
 		}
 		for _, templateName := range schemaMaximaTemplateNames(t) {
 			t.Run(name+"/"+templateName, func(t *testing.T) {
+				t.Parallel()
 				geom := loadSchemaMaximaGeometry(t, templateName)
 				input := &PresentationInput{Slides: []SlideInput{{LayoutID: "blank-title", Pattern: &PatternInput{Name: name, Values: encoded}}}}
 				expanded, _ := expandPatternsForFit(input, geom.width, geom.height, nil, geom.layouts...)

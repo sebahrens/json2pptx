@@ -22,6 +22,8 @@ import (
 )
 
 func TestTemplateDiscoveryPlaceholderParity(t *testing.T) {
+	// Read-only inputs; writes go only to t.TempDir() (go-slide-creator-s2s53).
+	t.Parallel()
 	cache := template.NewMemoryCache(24 * time.Hour)
 	var sawUtility, sawSectionNumber bool
 	for _, templatePath := range testutil.TestTemplatePaths() {

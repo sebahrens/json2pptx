@@ -11,6 +11,8 @@ import (
 // validated that directory. Users copy these files, so each must pass
 // `json2pptx validate` without errors.
 func TestShippedExamplesValidate(t *testing.T) {
+	// Read-only inputs; writes go only to t.TempDir() (go-slide-creator-s2s53).
+	t.Parallel()
 	var paths []string
 	for _, pattern := range []string{"*.json", filepath.Join("diagrams", "*.json")} {
 		matches, err := filepath.Glob(filepath.Join("..", "..", "examples", pattern))
@@ -24,6 +26,7 @@ func TestShippedExamplesValidate(t *testing.T) {
 	}
 	for _, path := range paths {
 		t.Run(filepath.Base(filepath.Dir(path))+"/"+filepath.Base(path), func(t *testing.T) {
+			t.Parallel()
 			result := validateJSONFile(path, testTemplatesDir, "", false, "warn")
 			if !result.Valid {
 				t.Fatalf("%s does not validate: %v", path, result.Errors)
