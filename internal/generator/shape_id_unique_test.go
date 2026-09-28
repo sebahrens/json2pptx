@@ -62,9 +62,9 @@ func TestLateInjectionShapeIDsUnique(t *testing.T) {
 		seen[id] = true
 	}
 
-	// 4 original + takeaway + source note + 2 footer shapes = 8 unique ids.
-	if len(seen) != 8 {
-		t.Errorf("expected 8 unique shape ids, got %d: %v", len(seen), seen)
+	// 4 original + takeaway (bar + text) + source note + 2 footer shapes = 9 unique ids.
+	if len(seen) != 9 {
+		t.Errorf("expected 9 unique shape ids, got %d: %v", len(seen), seen)
 	}
 }
 

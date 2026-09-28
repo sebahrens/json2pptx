@@ -49,7 +49,7 @@ The numeric ranges above are the published surface of the canonical design token
 
 | # | Rule | Rationale |
 |---|---|---|
-| 10b | Chart and matrix slides MUST set `slide.takeaway` (one sentence — the headline answer). | Omission emits `takeaway_missing`. It renders as 14pt bold dark text on an accent-tinted band above the source/footer, spanning the body column; content frames shrink above it. Without room, the band is skipped and preflight emits `chrome_band_no_fit`. |
+| 10b | Chart and matrix slides MUST set `slide.takeaway` (one sentence — the headline answer). | Omission emits `takeaway_missing`. It renders as 14pt bold dk1 text beside a flush 3pt accent1 bar (no fill, no outline) above the source/footer, spanning the body column with 16pt of air above and 12pt below; content frames shrink above it. Budget two lines. Without room, the band is skipped and preflight emits `chrome_band_no_fit`. |
 
 ```json
 {

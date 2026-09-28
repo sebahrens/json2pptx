@@ -14,7 +14,7 @@ import (
 
 // ---------------------------------------------------------------------------
 // exec-summary pattern — 3-5 bold lead-in statements, each with a short
-// supporting sentence, plus an optional bottom-line bar.
+// supporting sentence, plus an optional bottom-line takeaway band.
 // ---------------------------------------------------------------------------
 //
 // Layout (one row per point, thin rules between rows):
@@ -22,7 +22,7 @@ import (
 //   [ 1 ]  Bold lead-in statement            Supporting evidence sentence …
 //   ─────────────────────────────────────────────────────────────────────────
 //   [ 2 ]  …                                  …
-//   ▌Bottom line: optional tinted conclusion bar spanning the full width
+//   ▌Bottom line: optional takeaway band (flush accent bar, bold text)
 //
 // Rows start at their measured text height and short summaries distribute
 // surplus content-zone height into the point rows. Dividers and the bottom
@@ -33,10 +33,6 @@ func init() {
 }
 
 type execSummary struct{}
-
-// execSummaryBottomLineLabel is the flag's caption. Set in caps because it is a
-// label, not a sentence — the statement next to it carries the words.
-const execSummaryBottomLineLabel = "BOTTOM LINE"
 
 // Pattern budgets.
 const (
@@ -51,18 +47,12 @@ const (
 	execSummaryColGapPt   = 12.0
 	execSummaryRowGapPt   = 7.0
 	execSummaryRulePt     = 0.75
-	// execSummaryFlagColPct is the width of the "BOTTOM LINE" flag, wide enough
-	// for the label at the support size without crowding the statement.
-	execSummaryFlagColPct = 20.0
-	// execSummaryFlagGapPt is the gap between the flag's point and the statement
-	// box — small, so the two read as one callout.
-	execSummaryFlagGapPt  = 4.0
 	execSummaryMinFillPct = 62.0
 )
 
 func (e *execSummary) Name() string { return "exec-summary" }
 func (e *execSummary) Description() string {
-	return "Executive summary of 3-5 bold lead-in statements, each with a supporting sentence, separated by thin rules; optional bottom-line bar"
+	return "Executive summary of 3-5 bold lead-in statements, each with a supporting sentence, separated by thin rules; optional bottom-line takeaway band"
 }
 func (e *execSummary) UseWhen() string {
 	return "Executive summary or key-messages slide stating 3–5 conclusions as bold lead-ins with one supporting sentence each (answer-first / pyramid-principle style); prefer scqa-summary when the story must follow Situation / Complication / Questions / Answer, pull-quote for a single takeaway, card-grid when items are parallel features rather than conclusions, labeled-rows when each row is a keyword label (WHY / WHAT / HOW) with body text, metric-list when each row leads with a number"
@@ -117,6 +107,9 @@ type ExecSummaryValues struct {
 type ExecSummaryOverrides struct {
 	TextOverrides
 	Numbered *bool `json:"numbered,omitempty"` // default true
+	// TakeawayEmphasis styles the bottom-line band: "" (accent bar only),
+	// "subtle" (5% neutral tint) or "strong" (solid accent).
+	TakeawayEmphasis string `json:"takeaway_emphasis,omitempty"`
 }
 
 // ExecSummaryCellOverride is the shared per-cell override, indexed by point.
@@ -192,19 +185,20 @@ func (e *execSummary) Schema() *Schema {
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
 			"points":      ArraySchema(pointSchema, execSummaryMinPoints, execSummaryMaxPoints).WithDescription("3-5 key messages, most important first"),
-			"bottom_line": StringSchema(execSummaryBottomLineMax).WithDescription("Optional recommendation / ask rendered as a tinted bar under the points; about 102 readable characters with 4-5 points"),
+			"bottom_line": StringSchema(execSummaryBottomLineMax).WithDescription("Optional recommendation / ask rendered as the takeaway band under the points (flush accent bar, bold dk1 text, no box); about 102 readable characters with 4-5 points"),
 		},
 		[]string{"points"},
 	).WithAdditionalProperties(false)
 
 	overridesSchema := ObjectSchema(
 		map[string]*Schema{
-			"accent":           StringSchema(0).WithDescription("Accent scheme color for numbers and the bottom-line bar (default accent1)").WithDefault("accent1"),
-			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-			"header_size":      NumberSchema(12, 40).WithDescription("Lead-in font size in points (default 17; 16 with 5 points)"),
-			"body_size":        NumberSchema(12, 40).WithDescription("Support text font size in points (default 14; 13 with 5 points)"),
-			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-point accent rotation for the numbers"),
-			"numbered":         BooleanSchema().WithDescription("Show the 1..N number column (default true)"),
+			"accent":            StringSchema(0).WithDescription("Accent scheme color for numbers and the bottom-line accent bar (default accent1)").WithDefault("accent1"),
+			"semantic_accent":   EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
+			"header_size":       NumberSchema(12, 40).WithDescription("Lead-in font size in points (default 17; 16 with 5 points)"),
+			"body_size":         NumberSchema(12, 40).WithDescription("Support text font size in points (default 14; 13 with 5 points)"),
+			"cell_accent_mode":  EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-point accent rotation for the numbers"),
+			"numbered":          BooleanSchema().WithDescription("Show the 1..N number column (default true)"),
+			"takeaway_emphasis": TakeawayEmphasisSchema(),
 		},
 		nil,
 	).WithAdditionalProperties(false)
@@ -218,7 +212,7 @@ func (e *execSummary) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Executive summary: 3-5 bold lead-in statements with supporting sentences, separated by rules, plus an optional bottom-line bar")
+	}).WithDescription("Executive summary: 3-5 bold lead-in statements with supporting sentences, separated by rules, plus an optional bottom-line takeaway band")
 }
 
 func (e *execSummary) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -233,8 +227,13 @@ func (e *execSummary) Validate(values, overrides any, cellOverrides map[int]any)
 		ovr, ok := overrides.(*ExecSummaryOverrides)
 		if !ok {
 			errs = append(errs, fmt.Errorf("exec-summary: overrides must be *ExecSummaryOverrides, got %T", overrides))
-		} else if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
-			errs = append(errs, err)
+		} else {
+			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
+				errs = append(errs, err)
+			}
+			if err := validateTakeawayEmphasis(name, ovr.TakeawayEmphasis); err != nil {
+				errs = append(errs, err)
+			}
 		}
 	}
 
@@ -302,7 +301,7 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 	var lay execSummaryLayout
 	for _, st := range steps {
-		lay = measureExecSummary(ctx, vals, cols, numbered, st[0], st[1], areaW)
+		lay = measureExecSummary(ctx, vals, cols, numbered, st[0], st[1], areaW, ovr.TakeawayEmphasis)
 		if lay.natural() <= areaH {
 			break
 		}
@@ -358,28 +357,10 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 
 	if bottomPt > 0 {
-		// The ask is a labelled callout, not a fourth pale band. A full-width
-		// tinted rectangle with a left stripe read as a near-twin of the
-		// generator's takeaway band sitting right below it — two similar pale
-		// rectangles stacked, neither one reading as the conclusion. It is now a
-		// rule that closes the list, a saturated accent flag whose point aims
-		// into the statement, and the statement in its own tinted box.
-		rows = append(rows,
-			jsonschema.GridRowInput{
-				MinHeight: execSummaryRulePt, MaxHeight: execSummaryRulePt,
-				Cells: []*jsonschema.GridCellInput{{
-					ColSpan: len(cols),
-					Shape:   &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: ruleFill},
-				}},
-			},
-			jsonschema.GridRowInput{
-				MinHeight: bottomPt, MaxHeight: bottomPt,
-				Cells: []*jsonschema.GridCellInput{{
-					ColSpan: len(cols),
-					Grid:    execSummaryBottomLine(ctx, vals.BottomLine, baseAccent, supportSize+1),
-				}},
-			},
-		)
+		// The ask is the shared takeaway component: a flush accent bar and
+		// bold dk1 text, no box, no outline (go-slide-creator-7b5o6). It
+		// replaced a closing rule + chevron "BOTTOM LINE" flag + tinted box.
+		rows = append(rows, TakeawayRow(ctx, execSummaryTakeaway(vals.BottomLine, baseAccent, ovr.TakeawayEmphasis), len(cols), areaW, execSummaryRowGapPt))
 	}
 
 	colsJSON, _ := json.Marshal(cols)
@@ -395,54 +376,9 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	return grid, nil
 }
 
-// execSummaryBottomLine renders the ask as a pointing accent flag followed by
-// the statement in a tinted box. The flag is a homePlate — a pentagon whose
-// point aims right, into the text it introduces — so the callout reads as one
-// object with a direction, rather than as another horizontal band.
-func execSummaryBottomLine(ctx ExpandContext, bottomLine, accent string, sizePt float64) *jsonschema.ShapeGridInput {
-	flagText, _ := json.Marshal(chartInsightsText{
-		Paragraphs: []chartInsightsParagraph{{
-			Content: execSummaryBottomLineLabel,
-			Size:    sizePt - 2,
-			Bold:    true,
-			Color:   readableTextOn(ctx, fillTone{Color: accent}, "lt1"),
-			Align:   "ctr",
-		}},
-		Align:         "ctr",
-		VerticalAlign: "ctr",
-	})
-
-	tone := inactiveTintTone(accent)
-	statementText, _ := json.Marshal(chartInsightsText{
-		Paragraphs: []chartInsightsParagraph{{
-			Content: pptx.ConvertMarkdownEmphasis(bottomLine),
-			Size:    sizePt,
-			Color:   readableTextOn(ctx, tone, "dk1"),
-			Align:   "l",
-		}},
-		Align:         "l",
-		VerticalAlign: "ctr",
-	})
-
-	colsJSON, _ := json.Marshal([]float64{execSummaryFlagColPct, 100 - execSummaryFlagColPct})
-	return &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(colsJSON),
-		ColGap:  execSummaryFlagGapPt,
-		Rows: []jsonschema.GridRowInput{{
-			Cells: []*jsonschema.GridCellInput{
-				{Shape: &jsonschema.ShapeSpecInput{
-					Geometry: "homePlate",
-					Fill:     json.RawMessage(strconv.Quote(accent)),
-					Text:     flagText,
-				}},
-				{Shape: &jsonschema.ShapeSpecInput{
-					Geometry: "rect",
-					Fill:     tone.fillJSON(),
-					Text:     statementText,
-				}},
-			},
-		}},
-	}
+// execSummaryTakeaway is the bottom line as a takeaway band spec.
+func execSummaryTakeaway(bottomLine, accent, emphasis string) TakeawaySpec {
+	return TakeawaySpec{Text: pptx.ConvertMarkdownEmphasis(bottomLine), Accent: accent, Emphasis: emphasis}
 }
 
 // execSummaryTextCell builds one unfilled row cell: paragraphs, a vertical
@@ -483,7 +419,7 @@ func baselineInsetPt(tallest, pt float64) float64 {
 type execSummaryLayout struct {
 	leadSize, supportSize, numSize float64
 	rowPt                          []float64 // natural height per point row
-	bottomPt                       float64   // bottom-line bar height (0 = none)
+	bottomPt                       float64   // bottom-line takeaway row height (0 = none)
 }
 
 func (l execSummaryLayout) rules() int { return len(l.rowPt) - 1 }
@@ -514,7 +450,7 @@ func (l execSummaryLayout) natural() float64 {
 }
 
 // measureExecSummary measures every row at the given lead / support sizes.
-func measureExecSummary(ctx ExpandContext, vals *ExecSummaryValues, cols []float64, numbered bool, leadSize, supportSize, areaW float64) execSummaryLayout {
+func measureExecSummary(ctx ExpandContext, vals *ExecSummaryValues, cols []float64, numbered bool, leadSize, supportSize, areaW float64, emphasis string) execSummaryLayout {
 	usableW := areaW - execSummaryColGapPt*float64(len(cols)-1)
 	colW := func(i int) float64 { return usableW * cols[i] / 100 }
 	leadCol, supportCol := 0, 1
@@ -542,7 +478,7 @@ func measureExecSummary(ctx ExpandContext, vals *ExecSummaryValues, cols []float
 		lay.rowPt[i] = h
 	}
 	if strings.TrimSpace(vals.BottomLine) != "" {
-		lay.bottomPt = sizedBlockHeightPt(ctx, []sizedPara{{text: "<b>Bottom line:</b> " + vals.BottomLine, sizePt: supportSize + 1, bold: true}}, areaW)
+		lay.bottomPt = TakeawayRowHeightPt(ctx, execSummaryTakeaway(vals.BottomLine, "", emphasis), areaW, execSummaryRowGapPt)
 	}
 	return lay
 }

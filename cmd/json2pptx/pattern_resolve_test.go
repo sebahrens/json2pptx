@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
@@ -474,10 +475,11 @@ func TestExpandPattern_CalloutCardGrid(t *testing.T) {
 		t.Fatalf("expected 2 rows (1 content + 1 callout), got %d", len(grid.Rows))
 	}
 
-	// Callout row should have AutoHeight and 1 cell spanning 2 columns
+	// The callout is the shared takeaway band: a fixed-height row with one
+	// cell spanning both columns (go-slide-creator-7b5o6).
 	calloutRow := grid.Rows[1]
-	if !calloutRow.AutoHeight {
-		t.Error("callout row should have AutoHeight=true")
+	if !calloutRow.AutoHeight || calloutRow.MinHeight <= 0 {
+		t.Errorf("callout row should be an auto row floored at its measured height, got %+v", calloutRow)
 	}
 	if len(calloutRow.Cells) != 1 {
 		t.Fatalf("callout row should have 1 cell, got %d", len(calloutRow.Cells))
@@ -485,8 +487,9 @@ func TestExpandPattern_CalloutCardGrid(t *testing.T) {
 	if calloutRow.Cells[0].ColSpan != 2 {
 		t.Errorf("callout cell ColSpan = %d, want 2", calloutRow.Cells[0].ColSpan)
 	}
-	if calloutRow.Cells[0].Shape == nil {
-		t.Fatal("callout cell should have a Shape")
+	bar, text := calloutBandCells(t, calloutRow)
+	if string(bar.Shape.Fill) != `"accent1"` || string(text.Shape.Fill) != `"none"` || string(text.Shape.Line) != `"none"` {
+		t.Errorf("callout band = bar %s / text fill %s line %s, want accent1 bar, no fill, no stroke", bar.Shape.Fill, text.Shape.Fill, text.Shape.Line)
 	}
 }
 
@@ -518,17 +521,14 @@ func TestExpandPattern_CalloutComparison2col(t *testing.T) {
 		t.Fatalf("expected 3 rows, got %d", len(grid.Rows))
 	}
 
-	calloutRow := grid.Rows[2]
-	if !calloutRow.AutoHeight {
-		t.Error("callout row should have AutoHeight=true")
-	}
-	// Should use accent3 fill
+	// The accent colours the band's bar, not a filled strip.
+	bar, _ := calloutBandCells(t, grid.Rows[2])
 	var fill string
-	if err := json.Unmarshal(calloutRow.Cells[0].Shape.Fill, &fill); err != nil {
+	if err := json.Unmarshal(bar.Shape.Fill, &fill); err != nil {
 		t.Fatalf("fill unmarshal: %v", err)
 	}
 	if fill != "accent3" {
-		t.Errorf("callout fill = %q, want %q", fill, "accent3")
+		t.Errorf("callout bar fill = %q, want %q", fill, "accent3")
 	}
 }
 
@@ -898,5 +898,35 @@ func TestComputeQualityScore_TrulyEmptyStillPenalized(t *testing.T) {
 	}
 	if !found {
 		t.Error("truly empty slide should still be penalized")
+	}
+}
+
+// calloutBandCells returns the bar and text cells of a takeaway callout row.
+func calloutBandCells(t *testing.T, row jsonschema.GridRowInput) (bar, text *jsonschema.GridCellInput) {
+	t.Helper()
+	if len(row.Cells) != 1 || row.Cells[0] == nil || row.Cells[0].Grid == nil {
+		t.Fatalf("callout row should hold one takeaway sub-grid, got %+v", row)
+	}
+	rows := row.Cells[0].Grid.Rows
+	band := rows[len(rows)-1]
+	if len(band.Cells) != 2 || band.Cells[0].Shape == nil || band.Cells[1].Shape == nil {
+		t.Fatalf("takeaway band should be [bar, text], got %+v", band)
+	}
+	return band.Cells[0], band.Cells[1]
+}
+
+func TestCalloutTakeawaySpec_Emphasis(t *testing.T) {
+	cases := map[string]patterns.TakeawaySpec{
+		"":            {Text: "x"},
+		"bold":        {Text: "x"},
+		"italic":      {Text: "x", Italic: true},
+		"bold-italic": {Text: "x", Italic: true},
+		"subtle":      {Text: "x", Emphasis: "subtle"},
+		"strong":      {Text: "x", Emphasis: "strong"},
+	}
+	for emphasis, want := range cases {
+		if got := calloutTakeawaySpec(&patterns.PatternCallout{Text: "x", Emphasis: emphasis}); got != want {
+			t.Errorf("emphasis %q -> %+v, want %+v", emphasis, got, want)
+		}
 	}
 }

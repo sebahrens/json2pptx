@@ -27,7 +27,7 @@ import (
 //   So-what extensions (go-slide-creator-pzrs):
 //     - headline: a big accent number + label at the top of the insights
 //       column (the one figure the audience should remember);
-//     - so_what: a tinted, accent-barred callout at the bottom of the column;
+//     - so_what: the shared takeaway band at the bottom of the column;
 //     - a series / unit caption above the chart ("Revenue ($M)"), explicit
 //       via chart_label or derived from a single series name + unit — the
 //       chart otherwise drops the series name because single-series charts
@@ -112,7 +112,7 @@ type ChartInsightsSplitValues struct {
 	Source        string             `json:"source,omitempty"`         // Optional source / footnote rendered below the left panel
 
 	Headline   *ChartInsightsHeadline `json:"headline,omitempty"`    // Big number + label at the top of the insights column
-	SoWhat     string                 `json:"so_what,omitempty"`     // Tinted "So what" callout at the bottom of the insights column
+	SoWhat     string                 `json:"so_what,omitempty"`     // Takeaway band at the bottom of the insights column
 	ChartLabel string                 `json:"chart_label,omitempty"` // Caption above the chart (series name / units); derived when omitted
 	Unit       string                 `json:"unit,omitempty"`        // Unit appended to the derived caption, e.g. "$M" → "Revenue ($M)"
 }
@@ -171,6 +171,9 @@ type ChartInsightsSplitOverrides struct {
 	ShowDivider    *bool   `json:"show_divider,omitempty"`    // When false, omit the thin vertical accent divider (default true)
 	DataLabels     *bool   `json:"data_labels,omitempty"`     // Force value labels on / off (default: on for bar/column/line/area charts with ≤16 points)
 	HeadlineSize   float64 `json:"headline_size,omitempty"`   // Headline value font size (default 32)
+	// TakeawayEmphasis styles the so-what band: "" (accent bar only),
+	// "subtle" (5% neutral tint) or "strong" (solid accent).
+	TakeawayEmphasis string `json:"takeaway_emphasis,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -201,7 +204,7 @@ func (cis *chartInsightsSplit) Schema() *Schema {
 				"value": StringSchema(cisHeadlineValueMax).WithDescription("Headline figure, e.g. \"+75%\""),
 				"label": StringSchema(cisHeadlineLabelMax).WithDescription("What the figure means; about 41 readable characters"),
 			}, []string{"value"}).WithAdditionalProperties(false).WithDescription("Big accent number at the top of the insights column"),
-			"so_what":     StringSchema(cisSoWhatMax).WithDescription("Implication / recommendation shown as a tinted callout under the insights"),
+			"so_what":     StringSchema(cisSoWhatMax).WithDescription("Implication / recommendation shown as the takeaway band under the insights (flush accent bar, bold dk1 text, no box)"),
 			"chart_label": StringSchema(cisChartLabelMax).WithDescription("Caption above the chart (series + units); defaults to the single series name + unit"),
 			"unit":        StringSchema(cisUnitMax).WithDescription("Unit for the derived chart caption, e.g. \"$M\""),
 		},
@@ -210,15 +213,16 @@ func (cis *chartInsightsSplit) Schema() *Schema {
 
 	overridesSchema := ObjectSchema(
 		map[string]*Schema{
-			"accent":          StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
-			"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-			"title_size":      NumberSchema(6, 40).WithDescription("Font size for insights_title in points (default 12)"),
-			"bullet_size":     NumberSchema(6, 40).WithDescription("Font size for insight bullets in points (default 12)"),
-			"source_size":     NumberSchema(6, 24).WithDescription("Font size for source line in points (default 9)"),
-			"chart_width_pct": NumberSchema(40, 80).WithDescription("Width of the chart panel as a percentage of the grid (default 65)").WithDefault(65),
-			"show_divider":    BooleanSchema().WithDescription("Render a thin vertical accent divider between panels (default true)"),
-			"data_labels":     BooleanSchema().WithDescription("Value labels on the chart (default on for bar/column/line/area charts with ≤16 points)"),
-			"headline_size":   NumberSchema(18, 60).WithDescription("Headline value font size in points (default 32)"),
+			"accent":            StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
+			"semantic_accent":   EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
+			"title_size":        NumberSchema(6, 40).WithDescription("Font size for insights_title in points (default 12)"),
+			"bullet_size":       NumberSchema(6, 40).WithDescription("Font size for insight bullets in points (default 12)"),
+			"source_size":       NumberSchema(6, 24).WithDescription("Font size for source line in points (default 9)"),
+			"chart_width_pct":   NumberSchema(40, 80).WithDescription("Width of the chart panel as a percentage of the grid (default 65)").WithDefault(65),
+			"show_divider":      BooleanSchema().WithDescription("Render a thin vertical accent divider between panels (default true)"),
+			"data_labels":       BooleanSchema().WithDescription("Value labels on the chart (default on for bar/column/line/area charts with ≤16 points)"),
+			"headline_size":     NumberSchema(18, 60).WithDescription("Headline value font size in points (default 32)"),
+			"takeaway_emphasis": TakeawayEmphasisSchema(),
 		},
 		nil,
 	).WithAdditionalProperties(false)
@@ -270,6 +274,11 @@ func (cis *chartInsightsSplit) Validate(values, overrides any, cellOverrides map
 	}
 
 	errs = append(errs, validateChartInsightsExtras(v)...)
+	if ovr, ok := overrides.(*ChartInsightsSplitOverrides); ok && ovr != nil {
+		if err := validateTakeawayEmphasis(name, ovr.TakeawayEmphasis); err != nil {
+			errs = append(errs, err)
+		}
+	}
 
 	// Validate chart: if present, must declare a type and data.
 	if v.Chart != nil {
@@ -802,27 +811,20 @@ func buildInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *Ch
 	hasSoWhat := strings.TrimSpace(v.SoWhat) != ""
 	if insights == nil && hasSoWhat && !hasHeadline {
 		// Callout-only semantic slides give the implication the whole right
-		// panel instead of leaving an empty "Key Insights" row above it.
-		tone := inactiveTintTone(accent)
-		content := "<b>So what:</b> " + pptx.ConvertMarkdownEmphasis(v.SoWhat)
-		textJSON, _ := json.Marshal(chartInsightsText{
-			Paragraphs:    []chartInsightsParagraph{{Content: content, Size: 16, Color: readableTextOn(ctx, tone, "dk1"), Align: "l"}},
-			Align:         "l",
-			VerticalAlign: "ctr",
-		})
-		return &jsonschema.GridCellInput{
-			Shape:     &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: tone.fillJSON(), Text: textJSON},
-			AccentBar: &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: 3},
-		}
+		// panel instead of leaving an empty "Key Insights" row above it. It is
+		// still the takeaway band, top-anchored at its measured height. The
+		// panel cell hosts the band grid directly (one sub-grid inset).
+		spec := cisTakeaway(v, accent, ovr.TakeawayEmphasis)
+		bandW := cisInsightsColumnPt(ctx, v, ovr) - 2*SubGridInsetPt
+		grid := TakeawayGrid(ctx, spec, bandW, 0, TakeawayBandHeightPt(ctx, spec, bandW))
+		grid.VerticalAlign = "top"
+		return &jsonschema.GridCellInput{Grid: grid}
 	}
 	if !hasHeadline && !hasSoWhat {
 		return insights
 	}
-	areaW, areaH := sizingAreaPt(ctx)
-	colW := areaW * (100 - clampPct(ovr.ChartWidthPct, 65.0, 40.0, 80.0)) / 100
-	if v.Chart == nil {
-		colW = areaW
-	}
+	_, areaH := sizingAreaPt(ctx)
+	colW := cisInsightsColumnPt(ctx, v, ovr)
 	colH := areaH
 	if v.Source != "" {
 		colH -= cisSourceRowPt + 8 // source row + row gap
@@ -850,22 +852,17 @@ func buildInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *Ch
 	}
 	var soWhatRow *jsonschema.GridRowInput
 	if hasSoWhat {
-		tone := inactiveTintTone(accent)
-		content := "<b>So what:</b> " + pptx.ConvertMarkdownEmphasis(v.SoWhat)
-		soSize := 13.0
-		if len(v.Insights) >= 5 {
-			soSize = 12
-		}
-		h := sizedBlockHeightPt(ctx, []sizedPara{{text: content, sizePt: soSize}}, colW-8)
-		textJSON, _ := json.Marshal(chartInsightsText{
-			Paragraphs:    []chartInsightsParagraph{{Content: content, Size: soSize, Color: readableTextOn(ctx, tone, "dk1"), Align: "l"}},
-			Align:         "l",
-			VerticalAlign: "ctr",
-		})
-		soWhatRow = &jsonschema.GridRowInput{Height: pctOf(h, colH), Cells: []*jsonschema.GridCellInput{{
-			Shape:     &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: tone.fillJSON(), Text: textJSON},
-			AccentBar: &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: 3},
-		}}}
+		// The so-what is the shared takeaway band (go-slide-creator-7b5o6):
+		// a flush accent bar and bold dk1 text, no tinted box.
+		spec := cisTakeaway(v, accent, ovr.TakeawayEmphasis)
+		// The row is floored in points, not a share of the estimated column
+		// height: a percentage of an estimate squeezed the band below its
+		// measured height and autofit shrank the text. The column is itself a
+		// sub-grid, so the band's host cell is the column minus its inset.
+		hostW := colW - 2*SubGridInsetPt
+		h := TakeawayRowHeightPt(ctx, spec, hostW, cisColumnRowGapPt)
+		row := TakeawayRow(ctx, spec, 1, hostW, cisColumnRowGapPt)
+		soWhatRow = &row
 		used += pctOf(h, colH)
 	}
 	if insights != nil {
@@ -876,7 +873,35 @@ func buildInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *Ch
 	}
 	return &jsonschema.GridCellInput{Grid: &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(`1`),
-		RowGap:  6,
+		RowGap:  cisColumnRowGapPt,
 		Rows:    rows,
 	}}
+}
+
+// cisInsightsColumnPt is the insights column's width: its share of the
+// content width after the 8pt gap between the chart and the column (the
+// whole width when there is no chart).
+func cisInsightsColumnPt(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *ChartInsightsSplitOverrides) float64 {
+	areaW, _ := sizingAreaPt(ctx)
+	if v.Chart == nil {
+		return areaW
+	}
+	return (areaW - 8) * (100 - clampPct(ovr.ChartWidthPct, sparseInsightsChartPct(v), 40.0, 80.0)) / 100
+}
+
+// cisColumnRowGapPt is the row gap of the stacked insights column.
+const cisColumnRowGapPt = 6.0
+
+// cisTakeaway is the so-what as a takeaway band spec. The band sits in the
+// narrow insights column, so it steps down with a dense column the way the
+// bullets do; everything else is the shared component.
+func cisTakeaway(v *ChartInsightsSplitValues, accent, emphasis string) TakeawaySpec {
+	size := TakeawaySizePt
+	if v.Chart != nil {
+		size = 13
+		if len(v.Insights) >= 5 {
+			size = 12
+		}
+	}
+	return TakeawaySpec{Text: pptx.ConvertMarkdownEmphasis(v.SoWhat), Accent: accent, Emphasis: emphasis, SizePt: size}
 }

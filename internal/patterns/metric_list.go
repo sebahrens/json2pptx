@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"strconv"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -26,7 +25,7 @@ import (
 //          ~30%  │ Generated real AI value
 //   ───────────────────────────────────────────────────────
 //        16→33%  │ Agentic value share expected to double by 2028
-//   ███████████ optional full-width accent callout banner ███████████
+//   ▌optional takeaway-band callout (accent bar + bold text)
 //
 // The value column is fixed-width and right-aligned so the numbers line up on
 // their right edge — the typographic convention for a stat stack. One item may
@@ -73,7 +72,7 @@ const (
 
 func (m *metricList) Name() string { return "metric-list" }
 func (m *metricList) Description() string {
-	return "Vertical 'by the numbers' stack of 3-7 metrics: big right-aligned accent value beside a bold label and optional detail line, hairline rules between rows, optional highlighted row and bottom callout banner"
+	return "Vertical 'by the numbers' stack of 3-7 metrics: big right-aligned accent value beside a bold label and optional detail line, hairline rules between rows, optional highlighted row and bottom takeaway-band callout"
 }
 func (m *metricList) UseWhen() string {
 	return "3–7 headline numbers read top-to-bottom as a list, each needing a one-line label and an optional detail line (stat stack / 'by the numbers' / proof-point column); prefer kpi-3up..kpi-6up for 2–6 equally weighted KPI cards side by side, stat-hero or hero-detail when one number dominates, exec-summary when the rows are sentences rather than numbers, labeled-rows when each row is a keyword label with body text"
@@ -119,7 +118,7 @@ type MetricListItem struct {
 	Highlight bool   `json:"highlight,omitempty"`
 }
 
-// MetricListValues holds the 3-7 metrics and the optional callout banner.
+// MetricListValues holds the 3-7 metrics and the optional takeaway callout.
 type MetricListValues struct {
 	Items   []MetricListItem `json:"items"`
 	Callout string           `json:"callout,omitempty"`
@@ -133,6 +132,9 @@ type MetricListOverrides struct {
 	LabelSize      float64 `json:"label_size,omitempty"`
 	ValueWidthPct  float64 `json:"value_width_pct,omitempty"`
 	CellAccentMode string  `json:"cell_accent_mode,omitempty"`
+	// TakeawayEmphasis styles the callout band: "" (accent bar only),
+	// "subtle" (5% neutral tint) or "strong" (solid accent).
+	TakeawayEmphasis string `json:"takeaway_emphasis,omitempty"`
 }
 
 // MetricListCellOverride is the shared per-cell override, indexed by item.
@@ -156,19 +158,20 @@ func (m *metricList) Schema() *Schema {
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
 			"items":   ArraySchema(itemSchema, metricListMinItems, metricListMaxItems).WithDescription("3-7 metrics, top to bottom"),
-			"callout": StringSchema(metricListCalloutMax).WithDescription("Optional so-what rendered as a full-width accent banner under the list (≤140 chars); its text colour is chosen by measured contrast"),
+			"callout": StringSchema(metricListCalloutMax).WithDescription("Optional so-what rendered as the takeaway band under the list (≤140 chars): flush accent bar, bold dk1 text, no box; overrides.takeaway_emphasis tints or fills it"),
 		},
 		[]string{"items"},
 	).WithAdditionalProperties(false)
 
 	overridesSchema := ObjectSchema(
 		map[string]*Schema{
-			"accent":           StringSchema(0).WithDescription("Accent scheme color for the values, highlight and callout (default accent1)").WithDefault("accent1"),
-			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-			"value_size":       NumberSchema(16, 72).WithDescription("Value font size in points (default: the largest of 40/36/32/28/24 that fits; still shrinks so the longest value stays on one line)"),
-			"label_size":       NumberSchema(12, 32).WithDescription("Label font size in points (default 18 stepping down to 14 as items are added); the detail line is 4pt smaller, never below 12"),
-			"value_width_pct":  NumberSchema(metricListMinValuePct, metricListMaxValuePct).WithDescription("Width of the right-aligned value column as a percentage of the pattern width (default 28)"),
-			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-row accent rotation for the values"),
+			"accent":            StringSchema(0).WithDescription("Accent scheme color for the values, highlight and callout (default accent1)").WithDefault("accent1"),
+			"semantic_accent":   EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
+			"value_size":        NumberSchema(16, 72).WithDescription("Value font size in points (default: the largest of 40/36/32/28/24 that fits; still shrinks so the longest value stays on one line)"),
+			"label_size":        NumberSchema(12, 32).WithDescription("Label font size in points (default 18 stepping down to 14 as items are added); the detail line is 4pt smaller, never below 12"),
+			"value_width_pct":   NumberSchema(metricListMinValuePct, metricListMaxValuePct).WithDescription("Width of the right-aligned value column as a percentage of the pattern width (default 28)"),
+			"cell_accent_mode":  EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-row accent rotation for the values"),
+			"takeaway_emphasis": TakeawayEmphasisSchema(),
 		},
 		nil,
 	).WithAdditionalProperties(false)
@@ -182,7 +185,7 @@ func (m *metricList) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Metric list: 3-7 rows of a big right-aligned accent value beside a label and optional detail, hairline rules between rows, optional highlighted row and callout banner")
+	}).WithDescription("Metric list: 3-7 rows of a big right-aligned accent value beside a label and optional detail, hairline rules between rows, optional highlighted row and takeaway-band callout")
 }
 
 func (m *metricList) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -251,6 +254,9 @@ func validateMetricListOverrides(overrides any) []error {
 	if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
 		errs = append(errs, err)
 	}
+	if err := validateTakeawayEmphasis(name, ovr.TakeawayEmphasis); err != nil {
+		errs = append(errs, err)
+	}
 	if ovr.ValueWidthPct != 0 && (ovr.ValueWidthPct < metricListMinValuePct || ovr.ValueWidthPct > metricListMaxValuePct) {
 		errs = append(errs, errOutOfRange(name, "overrides.value_width_pct", int(metricListMinValuePct), int(metricListMaxValuePct), int(ovr.ValueWidthPct)))
 	}
@@ -316,7 +322,7 @@ func layoutMetricList(ctx ExpandContext, vals *MetricListValues, ovr *MetricList
 	}
 	var lay metricListLayout
 	for _, sc := range scales {
-		lay = measureMetricList(ctx, vals, cols, sc[0], sc[1]+labelBump, areaW)
+		lay = measureMetricList(ctx, vals, cols, sc[0], sc[1]+labelBump, areaW, ovr.TakeawayEmphasis)
 		if lay.natural(len(vals.Items)) <= areaH {
 			break
 		}
@@ -324,7 +330,7 @@ func layoutMetricList(ctx ExpandContext, vals *MetricListValues, ovr *MetricList
 	return lay
 }
 
-func measureMetricList(ctx ExpandContext, vals *MetricListValues, cols []float64, valueSize, labelSize, areaW float64) metricListLayout {
+func measureMetricList(ctx ExpandContext, vals *MetricListValues, cols []float64, valueSize, labelSize, areaW float64, emphasis string) metricListLayout {
 	usableW := areaW - metricListColGapPt
 	valueColW := usableW * cols[0] / 100
 	textColW := usableW * cols[1] / 100
@@ -358,8 +364,7 @@ func measureMetricList(ctx ExpandContext, vals *MetricListValues, cols []float64
 	}
 	lay.rowPt = math.Ceil(row)
 	if strings.TrimSpace(vals.Callout) != "" {
-		h := sizedBlockHeightPt(ctx, []sizedPara{{text: vals.Callout, sizePt: labelSize, bold: true}}, areaW)
-		lay.calloutPt = math.Ceil(math.Max(h, labelSize*sizingLineSpacing*2))
+		lay.calloutPt = TakeawayRowHeightPt(ctx, metricListTakeaway(vals.Callout, "", emphasis), areaW, metricListRowGapPt)
 	}
 	return lay
 }
@@ -502,25 +507,10 @@ func (m *metricList) Expand(ctx ExpandContext, values, overrides any, cellOverri
 	}
 
 	if lay.calloutPt > 0 {
-		tone := fillTone{Color: baseAccent}
-		rows = append(rows, jsonschema.GridRowInput{
-			MinHeight: lay.calloutPt, MaxHeight: lay.calloutPt,
-			Cells: []*jsonschema.GridCellInput{{
-				ColSpan: 2,
-				Shape: &jsonschema.ShapeSpecInput{
-					Geometry: "rect",
-					Fill:     json.RawMessage(strconv.Quote(baseAccent)),
-					Line:     json.RawMessage(`"none"`),
-					Text: insetText{
-						Paragraphs: []chartInsightsParagraph{{
-							Content: pptx.ConvertMarkdownEmphasis(vals.Callout), Size: lay.labelSize, Bold: true,
-							Color: readableTextOn(ctx, tone, "lt1"), Align: "ctr",
-						}},
-						Align: "ctr", VerticalAlign: "ctr",
-					}.json(),
-				},
-			}},
-		})
+		// The so-what is the shared takeaway band, not a solid accent banner
+		// (go-slide-creator-7b5o6).
+		areaW, _ := sizingAreaPt(ctx)
+		rows = append(rows, TakeawayRow(ctx, metricListTakeaway(vals.Callout, baseAccent, ovr.TakeawayEmphasis), 2, areaW, metricListRowGapPt))
 		itemRow = append(itemRow, false)
 	}
 
@@ -561,4 +551,9 @@ func (m *metricList) PostExpandWarnings(ctx ExpandContext, values, overrides any
 			ErrCodeBodyTooLong, need, areaH))
 	}
 	return out
+}
+
+// metricListTakeaway is the callout as a takeaway band spec.
+func metricListTakeaway(callout, accent, emphasis string) TakeawaySpec {
+	return TakeawaySpec{Text: pptx.ConvertMarkdownEmphasis(callout), Accent: accent, Emphasis: emphasis}
 }

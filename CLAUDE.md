@@ -159,7 +159,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `contact-directory` | Key-contacts directory: 1–4 groups (regions / practices), each an accent heading over a rule, then up to 24 people in rows of 3–5 — circular headshot (`photo`) or initials disc + bold name + muted title; sparse directories stack a large headshot above a centred name |
 | `driver-tree` | Value / cost driver tree: root metric → 2–4 branches → 1–4 leaf items each, with optional per-branch annotations and connector lines (use svggen `org_chart` for people/role hierarchies) |
 | `dual-org-ladder` | Two parallel org columns with 2–4 paired role cards and an org-name header above each column (joint-venture / engagement-team slides) |
-| `exec-summary` | Executive summary of 3–5 bold lead-in statements, each with one supporting sentence, separated by rules, plus an optional tinted bottom-line bar (content-sized rows) |
+| `exec-summary` | Executive summary of 3–5 bold lead-in statements, each with one supporting sentence, separated by rules, plus an optional bottom-line takeaway band (content-sized rows) |
 | `framework-grid` | Framework of 2–6 labelled dimension rows (bold label on a tinted band) each followed by 1–4 small cards (accent title + short body); the longest row sets the column count and shorter rows leave trailing space empty |
 | `hero-detail` | One dominant metric with 2–4 supporting detail bullets; use `stat-hero` for the metric alone or `kpi-3up` for equally weighted metrics |
 | `horizontal-bar-with-callouts` | Ranked horizontal bars (3–8) on the left with a per-bar accent-anchored insight callout on the right; callouts are optional and the column is dropped when none are given |
@@ -174,7 +174,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `kpi-inline` | Horizontal inline KPI bar, height-capped for supporting context |
 | `labeled-rows` | 2–6 rows of a keyword label block (WHY / WHAT / HOW; `label_style` `filled` accent block or accent `text`) with optional sublabel beside 1–4 lines of body text, rules between content-sized rows |
 | `matrix-2x2` | 2×2 quadrant matrix with axis labels |
-| `metric-list` | Vertical "by the numbers" stack of 3–7 metrics: big right-aligned accent value + bold label + optional detail line, hairline rules, optional highlighted row (`highlight: true`, at most one) and bottom callout banner |
+| `metric-list` | Vertical "by the numbers" stack of 3–7 metrics: big right-aligned accent value + bold label + optional detail line, hairline rules, optional highlighted row (`highlight: true`, at most one) and a bottom takeaway-band callout |
 | `next-steps` | Closing next-steps slide: 2–6 numbered action rows (action / owner / date; empty owner or date columns drop) separated by 0.5pt rules, plus an optional "Decisions requested" band (left accent rule, no outline, no fill) — the closer instead of "Thank you" |
 | `numbered-step-strip` | Ordered numbered steps (3–7; chevron ≤6) WITHOUT flowchart diamonds, in `chevron` / `stacked-box` / `toc` styles, each with an optional per-step detail zone and (stacked-box / toc) an optional `steps[].icon` |
 | `process-flow` | Left-to-right process flow with steps and decision points |

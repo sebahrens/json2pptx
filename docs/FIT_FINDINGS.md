@@ -1041,7 +1041,7 @@ Triggers when **all** of the following hold:
 
 The verb test is biased toward false negatives: a title with a verb the check does not know keeps its nudge, which is the old behaviour, while a wrong suppression silently removes the signal.
 
-The warning never blocks generation — the takeaway is advisory, not structural. Add a one-sentence `takeaway` to the slide; it renders as 14pt bold dark-gray text in the layout-derived band above the footer placeholders, above the source note row (see `chrome_band_no_fit`).
+The warning never blocks generation — the takeaway is advisory, not structural. Add a one-sentence `takeaway` to the slide; it renders as the takeaway band — a flush 3pt accent bar beside 14pt bold `dk1` text, no fill, no outline — in the layout-derived band above the footer placeholders, above the source note row, with 16pt of air above and 12pt below (see `chrome_band_no_fit`).
 
 ```json
 {
@@ -1916,7 +1916,7 @@ Body text in adjacent grid cells of a sibling pattern (`card-grid`, `kpi-*`, `co
 
 **Severity:** `info`
 
-A slide carrying a chart or 2×2 matrix is missing a visually-distinct takeaway / "so what" band (typically the bottom 8-12% of the slide, filled with `dk1` or an accent and white text). Without this band the audience has to derive the argument from the chart, which they rarely do correctly.
+A slide carrying a chart or 2×2 matrix is missing a visually-distinct takeaway / "so what" line (the engine's takeaway band: a 3pt accent bar beside bold dark text near the bottom of the slide). Without this band the audience has to derive the argument from the chart, which they rarely do correctly.
 
 Engine has a parallel `takeaway_missing` (lowercase, action `review`) that fires when `slide.takeaway` is empty on chart/matrix slides; the visual-qa code catches cases where the takeaway text is present but the band is invisible (rendered with low contrast, off-slide, etc.).
 

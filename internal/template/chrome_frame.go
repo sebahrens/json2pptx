@@ -79,6 +79,14 @@ const sourceBandClearance int64 = 12 * 12700
 // that must remain for content once the takeaway/source bands are reserved.
 const minChromeContentRatio = 20
 
+// Takeaway band air, in EMU: 12pt to the source line / footer below and 16pt
+// to the content above (patterns.TakeawayGapBelowPt / TakeawayGapAbovePt;
+// the template package cannot import patterns).
+const (
+	takeawayGapBelowEMU int64 = 12 * 12700
+	takeawayGapAboveEMU int64 = 16 * 12700
+)
+
 // ResolveChromeFrame derives the chrome frame for a slide on layout. reference
 // supplies horizontal geometry when layout has no body/content placeholders
 // (title-only, blank, or unknown layouts) — normally the template's One Content
@@ -128,6 +136,11 @@ func ResolveChromeFrame(layout, reference *types.LayoutMetadata, slideWidth, sli
 	}
 
 	top, bottom = reserveDisclosureChromeBand(layout, h, gap, top, bottom)
+	// The takeaway band keeps at least 12pt to the source line / footer below
+	// it and 16pt of air above it (go-slide-creator-7b5o6); the 0.7%-of-height
+	// gap left it ~4pt from the footer and touching it on some templates.
+	takeawayGapBelow := max(gap, takeawayGapBelowEMU)
+	takeawayGapAbove := max(gap, takeawayGapAboveEMU)
 	y := bottom
 	if hasSource {
 		y -= sourceH
@@ -139,9 +152,12 @@ func ResolveChromeFrame(layout, reference *types.LayoutMetadata, slideWidth, sli
 		y -= max(gap, sourceBandClearance)
 	}
 	if hasTakeaway {
+		// bottom already sits one gap above the footer, and a source band
+		// is followed by one gap; top that up to the takeaway's 12pt.
+		y -= takeawayGapBelow - gap
 		y -= takeawayH
 		frame.Takeaway = ChromeRect{X: left, Y: y, CX: right - left, CY: takeawayH}
-		y -= gap
+		y -= takeawayGapAbove
 	}
 	// Tall, filled master/layout artwork at a side of the body column is
 	// reserved as chrome. Narrow rules and large background panels do not

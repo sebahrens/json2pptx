@@ -174,9 +174,9 @@ func TestExecSummary_ExpandStructure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 4 point rows + 3 rules between them + a closing rule + the bottom line.
-	if got := len(grid.Rows); got != 9 {
-		t.Fatalf("rows = %d, want 9", got)
+	// 4 point rows + 3 rules between them + the bottom-line takeaway band.
+	if got := len(grid.Rows); got != 8 {
+		t.Fatalf("rows = %d, want 8", got)
 	}
 	if got := len(grid.Rows[0].Cells); got != 3 {
 		t.Errorf("point row cells = %d, want 3 (number, lead, support)", got)
@@ -196,35 +196,15 @@ func TestExecSummary_ExpandStructure(t *testing.T) {
 	if support.Paragraphs[0].Size < 12 {
 		t.Errorf("support text below 12pt: %v", support.Paragraphs[0].Size)
 	}
-	// The ask is a labelled callout, not a fourth pale band: a rule closes the
-	// point list, then a pointing accent flag introduces the statement in its own
-	// tinted box. A full-width tinted rectangle read as a near-twin of the
-	// generator's takeaway band right below it.
-	closingRule := grid.Rows[7].Cells[0]
-	if closingRule.ColSpan != 3 || closingRule.Shape == nil || closingRule.Shape.Geometry != "rect" {
-		t.Errorf("row 7 should be the closing rule spanning all columns, got %+v", closingRule)
+	// The ask is the shared takeaway band (go-slide-creator-7b5o6): no closing
+	// rule, no chevron "BOTTOM LINE" flag, no tinted box — a flush accent bar
+	// beside the statement in bold dk1.
+	bottom := grid.Rows[7].Cells[0]
+	if bottom.ColSpan != 3 || bottom.Grid == nil {
+		t.Fatalf("bottom line should be a takeaway sub-grid spanning all columns, got %+v", bottom)
 	}
-	bottom := grid.Rows[8].Cells[0]
-	if bottom.Grid == nil || len(bottom.Grid.Rows) != 1 || len(bottom.Grid.Rows[0].Cells) != 2 {
-		t.Fatalf("bottom line should be a flag + statement grid, got %+v", bottom)
-	}
-	flag := bottom.Grid.Rows[0].Cells[0]
-	if flag.Shape == nil || flag.Shape.Geometry != "homePlate" {
-		t.Errorf("flag geometry = %+v, want homePlate (a shape that points at the statement)", flag.Shape)
-	}
-	if got := cellText(t, flag.Shape.Text).Paragraphs[0].Content; got != execSummaryBottomLineLabel {
-		t.Errorf("flag label = %q, want %q", got, execSummaryBottomLineLabel)
-	}
-	if !cellText(t, flag.Shape.Text).Paragraphs[0].Bold {
-		t.Error("flag label must be bold")
-	}
-	statement := bottom.Grid.Rows[0].Cells[1]
-	if statement.Shape == nil || !strings.Contains(string(statement.Shape.Fill), "lumMod") {
-		t.Errorf("statement should sit in a tinted box, got fill=%s", statement.Shape.Fill)
-	}
-	if got := cellText(t, statement.Shape.Text).Paragraphs[0].Content; got != vals.BottomLine {
-		t.Errorf("statement = %q, want the bottom_line verbatim", got)
-	}
+	band := bottom.Grid.Rows[len(bottom.Grid.Rows)-1]
+	assertTakeawayBand(t, band, vals.BottomLine)
 }
 
 func TestExecSummary_ContentSizedHeight(t *testing.T) {

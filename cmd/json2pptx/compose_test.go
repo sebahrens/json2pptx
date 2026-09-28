@@ -1006,11 +1006,12 @@ func TestExpandCompose_Callout(t *testing.T) {
 	}
 
 	last := grid.Rows[len(grid.Rows)-1]
-	if len(last.Cells) != 1 || last.Cells[0] == nil || last.Cells[0].Shape == nil {
-		t.Fatal("callout row missing shape cell")
+	if len(last.Cells) != 1 || last.Cells[0] == nil {
+		t.Fatal("callout row missing its cell")
 	}
-	if !bytes.Contains(last.Cells[0].Shape.Text, []byte("Bottom line")) {
-		t.Errorf("callout text not rendered: %s", string(last.Cells[0].Shape.Text))
+	_, text := calloutBandCells(t, last)
+	if !bytes.Contains(text.Shape.Text, []byte("Bottom line")) {
+		t.Errorf("callout text not rendered: %s", string(text.Shape.Text))
 	}
 }
 
@@ -1043,8 +1044,7 @@ func TestExpandCompose_BannerAndCallout(t *testing.T) {
 		!bytes.Contains(first.Cells[0].Shape.Text, []byte("Top band")) {
 		t.Errorf("banner not at row 0")
 	}
-	if last.Cells[0] == nil || last.Cells[0].Shape == nil ||
-		!bytes.Contains(last.Cells[0].Shape.Text, []byte("Bottom band")) {
+	if _, text := calloutBandCells(t, last); !bytes.Contains(text.Shape.Text, []byte("Bottom band")) {
 		t.Errorf("callout not at last row")
 	}
 }

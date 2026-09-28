@@ -92,8 +92,3 @@ const (
 // FootnoteColor is the canonical grey used for footnote/source text.
 // Keep in sync with the RULES.md typography table.
 const FootnoteColor = "#666666"
-
-// TakeawayColor is the canonical dark fill used for the slide takeaway
-// headline. Renders against a light slide background; on dark templates
-// the renderer auto-flips per the WCAG contrast pass.
-const TakeawayColor = "#1F1F1F"
