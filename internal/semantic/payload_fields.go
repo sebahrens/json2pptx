@@ -56,7 +56,10 @@ var execSummaryPointKeys = []string{
 }
 
 // kpiItemKeys are the keys kpiCells reads from a KPI entry.
-var kpiItemKeys = []string{"value", "big", "label", "small", "caption", "delta", "sub", "trend", "change"}
+var kpiItemKeys = []string{"value", "big", "label", "small", "caption", "delta", "sub", "trend", "change", "comparator", "vs"}
+
+// nextStepsActionKeys are the keys nextStepsPayload reads from an action.
+var nextStepsActionKeys = []string{"action", "title", "label", "step", "text", "owner", "who", "date", "due", "when"}
 
 // optionMatrixCriterionKeys are the keys optionMatrixCriteria reads from a
 // criterion object; optionMatrixOptionKeys the keys an option row is read by
@@ -200,7 +203,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 	KindKPISnapshot: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
 		"takeaway": strField("One-line takeaway footer."),
-		"kpis":     {typ: "array", desc: "2–6 KPI objects {value, label, delta?}.", itemKeys: kpiItemKeys},
+		"kpis":     {typ: "array", desc: "2–6 KPI objects {value, label, delta?, comparator?}. comparator (alias vs, ≤24 chars) is the reference the number is read against, e.g. \"vs plan +4 pts\".", itemKeys: kpiItemKeys},
 		"metrics":  {typ: "array", desc: "Alias for kpis.", itemKeys: kpiItemKeys},
 	}, compositionFields()), universalFields()),
 	KindChartInsight: withFields(withFields(map[string]payloadField{
@@ -452,6 +455,21 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"choices":      {typ: "array", desc: "Alias for options.", itemStrings: true, itemKeys: decisionOptionKeys, itemKeySchemas: map[string]any{"recommended": map[string]any{"type": "boolean"}}},
 		"alternatives": {typ: "array", desc: "Alias for options.", itemStrings: true, itemKeys: decisionOptionKeys, itemKeySchemas: map[string]any{"recommended": map[string]any{"type": "boolean"}}},
 	}, compositionFields()), universalFields()),
+	KindNextSteps: withFields(map[string]payloadField{
+		"title": strField("Slide title, e.g. \"Three actions start the pilot in October\"."),
+		"actions": {
+			typ:         "array",
+			desc:        "2–6 actions in order: strings or {action (≤90 chars), owner? (≤30), date? (≤20)}. Owner and date columns drop when no action has one.",
+			itemStrings: true, itemKeys: nextStepsActionKeys,
+		},
+		"next_steps":          {typ: "array", desc: "Alias for actions.", itemStrings: true, itemKeys: nextStepsActionKeys},
+		"steps":               {typ: "array", desc: "Alias for actions.", itemStrings: true, itemKeys: nextStepsActionKeys},
+		"decisions":           textList("0–3 decisions requested (≤120 chars each), rendered in a band with a left accent rule under the actions."),
+		"decisions_requested": textList("Alias for decisions."),
+		"asks":                textList("Alias for decisions."),
+		"decisions_label":     strField("Band label (default \"Decisions requested\")."),
+		"takeaway":            strField("One-line takeaway footer."),
+	}, universalFields()),
 	KindClosing: withFields(map[string]payloadField{
 		"title":    strField("Closing headline."),
 		"subtitle": strField("Subtitle line."),

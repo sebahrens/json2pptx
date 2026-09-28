@@ -49,6 +49,13 @@ type ChartSpec struct {
 	// than the type name it used to announce but cannot say what the chart is FOR
 	// (go-slide-creator-6e8h).
 	Alt string `json:"alt,omitempty"`
+
+	// Highlight names the bars a single-series bar chart paints in accent1;
+	// every other bar is neutral. Entries are 0-based category indices or
+	// category names. Nil lets the renderer choose (the last bar of a time
+	// series, otherwise the largest); an empty list highlights nothing. It is
+	// forwarded to svggen as data.highlight (go-slide-creator-sdxii).
+	Highlight []any `json:"highlight,omitempty"`
 }
 
 // ChartStyleOverrides carries per-slide overrides for the executive chart-style
@@ -99,6 +106,7 @@ func (cs *ChartSpec) UnmarshalJSON(b []byte) error {
 		TimeOrder    []string             `json:"time_order,omitempty"`
 		ChartStyle   *ChartStyleOverrides `json:"chart_style,omitempty"`
 		Alt          string               `json:"alt,omitempty"`
+		Highlight    []any                `json:"highlight,omitempty"`
 	}
 
 	var raw chartSpecRawData
@@ -119,6 +127,7 @@ func (cs *ChartSpec) UnmarshalJSON(b []byte) error {
 	cs.TimeOrder = raw.TimeOrder
 	cs.ChartStyle = raw.ChartStyle
 	cs.Alt = raw.Alt
+	cs.Highlight = raw.Highlight
 
 	if len(raw.Data) == 0 {
 		return nil
@@ -429,6 +438,14 @@ func (cs *ChartSpec) ToDiagramSpec() *DiagramSpec {
 
 	// Build data payload based on chart type
 	data, warnings, chartDiags := buildChartData(cs)
+	if cs.Highlight != nil {
+		withHighlight := make(map[string]any, len(data)+1)
+		for k, v := range data {
+			withHighlight[k] = v
+		}
+		withHighlight["highlight"] = cs.Highlight
+		data = withHighlight
+	}
 
 	// Convert style
 	var style *DiagramStyle
@@ -591,6 +608,50 @@ func isAlreadySvggenFormat(data map[string]any, chartType ChartType) bool {
 // buildChartData constructs the data payload for svggen based on chart type.
 // It returns the data map, legacy warning strings, and structured diagnostics.
 func buildChartData(spec *ChartSpec) (map[string]any, []string, []ChartDiagnostic) {
+	// data.highlight is a directive, not a category: keep it out of the
+	// label->value conversion and hand it to svggen unchanged.
+	rest, highlight, ok := splitChartHighlight(spec.Data)
+	if !ok {
+		return buildChartDataPayload(spec)
+	}
+	stripped := *spec
+	stripped.Data = rest
+	if len(spec.DataOrder) > 0 {
+		stripped.DataOrder = make([]string, 0, len(spec.DataOrder))
+		for _, k := range spec.DataOrder {
+			if k != "highlight" {
+				stripped.DataOrder = append(stripped.DataOrder, k)
+			}
+		}
+	}
+	data, warnings, diags := buildChartDataPayload(&stripped)
+	out := make(map[string]any, len(data)+1)
+	for k, v := range data {
+		out[k] = v
+	}
+	out["highlight"] = highlight
+	return out, warnings, diags
+}
+
+// splitChartHighlight returns data without an array-valued "highlight" key,
+// the highlight list, and whether one was present. data is not modified.
+func splitChartHighlight(data map[string]any) (map[string]any, []any, bool) {
+	highlight, ok := data["highlight"].([]any)
+	if !ok {
+		return data, nil, false
+	}
+	rest := make(map[string]any, len(data)-1)
+	for k, v := range data {
+		if k != "highlight" {
+			rest[k] = v
+		}
+	}
+	return rest, highlight, true
+}
+
+// buildChartDataPayload converts a chart's data (without data.highlight) into
+// svggen's payload.
+func buildChartDataPayload(spec *ChartSpec) (map[string]any, []string, []ChartDiagnostic) {
 	// TimeData takes precedence over Data when set (for time-series charts).
 	data := spec.Data
 	order := spec.DataOrder

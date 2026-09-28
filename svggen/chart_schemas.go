@@ -101,10 +101,23 @@ func dataLabelsFieldSchema() *DataSchema {
 
 // DataSchema returns the JSON Schema for bar_chart data.
 func (d *BarChartDiagram) DataSchema() *DataSchema {
+	fields := commonChartFields()
+	fields["highlight"] = highlightFieldSchema()
 	return ObjectDataSchema(
 		"Bar chart data with categories and series. Supports grouped, stacked, and horizontal variants.",
-		commonChartFields(),
+		fields,
 		[]string{"categories", "series"},
+	)
+}
+
+// highlightFieldSchema describes data.highlight on a single-series bar chart:
+// the bars painted in accent1 while every other bar stays neutral
+// (go-slide-creator-sdxii).
+func highlightFieldSchema() *DataSchema {
+	return ArrayDataSchema(
+		"Bars to paint in accent1 on a single-series bar chart; every other bar is neutral (dk1 at 38%). Each entry is a 0-based category index or a category name. Omit it and a time series (years, quarters, months) accents its last bar, any other chart its largest; [] accents none. Ignored by multi-series charts.",
+		&DataSchema{Description: "0-based category index (integer) or category name (string)"},
+		0,
 	)
 }
 

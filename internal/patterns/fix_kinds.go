@@ -176,6 +176,12 @@ var fixKindRegistry = map[string]FixKindInfo{
 		Guidance:     "Emoji do not render reliably in PowerPoint text. Rewrite the string without them, or use a bundled icon for the same signal.",
 		Alternatives: []string{"replace_value"},
 	},
+	"remove_outline": {
+		Kind:         "remove_outline",
+		Class:        FixClassAdvisory,
+		Guidance:     "A filled shape also carries an outline. Delete the shape's line (or set it to \"none\") and separate neighbouring filled shapes with the grid gap — 4–6pt white gutters over a neutral field — or with two neutral tints (dk1 at 4% and 8%). Keep strokes only for 0.5pt row dividers, a 1pt header underline or a 2–3pt accent bar.",
+		Alternatives: []string{"replace_value"},
+	},
 	"remove_field_or_switch_pattern": {
 		Kind:         "remove_field_or_switch_pattern",
 		Class:        FixClassAdvisory,

@@ -210,9 +210,9 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 	cellIdx := 0
 
-	// Header row: Before header | full-height chevron | After header.
-	beforeHeader := buildBeforeAfterTextContent(vals.Before.Header, headerSize, true, "lt1", "ctr")
-	afterHeader := buildBeforeAfterTextContent(vals.After.Header, headerSize, true, "lt1", "ctr")
+	// Header row: Before header | compact transition chevron | After header.
+	beforeHeader := buildBeforeAfterTextContent(vals.Before.Header, headerSize, true, "lt1", "l")
+	afterHeader := buildBeforeAfterTextContent(vals.After.Header, headerSize, true, "lt1", "l")
 
 	beforeHeaderCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
@@ -224,13 +224,7 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	applyBeforeAfterCellOverride(beforeHeaderCell, cellOverrides, cellIdx, beforeAccent)
 	cellIdx++
 
-	chevronCell := &jsonschema.GridCellInput{
-		RowSpan: 2,
-		Shape: &jsonschema.ShapeSpecInput{
-			Geometry: "chevron",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, baseAccent)),
-		},
-	}
+	chevronCell := beforeAfterChevronCell(baseAccent)
 	applyBeforeAfterCellOverride(chevronCell, cellOverrides, cellIdx, baseAccent)
 	cellIdx++
 
@@ -291,14 +285,35 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 			},
 		},
 	}
-	fillCappedRows(ctx, grid.Rows, grid.Gap, 0.60, func(i int) bool { return i == 1 })
-	// The larger panels are now intentionally visible. Centre a sparse list in
-	// its panel so the extra height reads as breathing room, not a blank tail.
+	// No stretch-to-fill (go-slide-creator-wntyw): the panels hug their
+	// bullets and the block is middle-anchored in the body zone. Stretching
+	// them to 60% of the zone left four bullets floating in a 200pt panel.
+	// The padding that remains is split evenly above and below the list.
 	for _, cell := range []*jsonschema.GridCellInput{beforeBodyCell, afterBodyCell} {
 		cell.Shape.Text = withVerticalAlign(cell.Shape.Text, "ctr")
 	}
 
 	return grid, nil
+}
+
+// beforeAfterChevronPt is the transition chevron's size: a small marker
+// centred in the gutter between the two panels, not a full-height block
+// (go-slide-creator-7z5we).
+const beforeAfterChevronPt = 24.0
+
+// beforeAfterChevronCell is the compact transition chevron. It spans both
+// rows so it centres on the whole block; max_height + fit "contain" hold it
+// to a beforeAfterChevronPt square whatever the column width.
+func beforeAfterChevronCell(accent string) *jsonschema.GridCellInput {
+	return &jsonschema.GridCellInput{
+		RowSpan:   2,
+		MaxHeight: beforeAfterChevronPt,
+		Fit:       "contain",
+		Shape: &jsonschema.ShapeSpecInput{
+			Geometry: "chevron",
+			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+		},
+	}
 }
 
 // Size both before-after variants against their actual 0.5 cm text insets.
@@ -316,8 +331,11 @@ func beforeAfterFullRowHeights(ctx ExpandContext, beforeHeader, afterHeader, bef
 // Keep only a trace of the accent in the panel fill. The shape-grid renderer
 // only emits tint modifiers for scheme colours, so pre-mix explicit hex
 // overrides with white instead.
-func beforeAfterPanelTone(accent string) fillTone {
-	return paleAccentTone(accent)
+func beforeAfterPanelTone(string) fillTone {
+	// A neutral surface, not a pale accent wash: the two panels are peers,
+	// and accent tints are reserved for marking one highlighted band
+	// (go-slide-creator-8xsj3).
+	return neutralTone(NeutralTint4)
 }
 
 func buildBeforeAfterTextContent(content string, size float64, bold bool, color, align string) json.RawMessage {

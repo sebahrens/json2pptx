@@ -332,17 +332,16 @@ func (b *bmcCanvas) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		vals.RevenueStreams,    // 8
 	}
 
-	// Default cell border: subtle dk1-tinted stroke so the 9-cell canvas
-	// reads as a structured grid (canonical Osterwalder look) rather than
-	// floating panels. Authors can override via cell_overrides if desired.
-	const bmcCellBorderJSON = `{"color":"dk1","width":0.75,"lumMod":25000,"lumOff":75000}`
+	// The canvas is built from gutters, not borders: each of the nine cells
+	// is a neutral 4% tint with no outline, and the grid's 4pt white gutters
+	// draw the Osterwalder structure (go-slide-creator-pgdkp).
 
 	makeCell := func(idx int, cell BMCCell, colSpan, rowSpan int) *jsonschema.GridCellInput {
 		gc := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(`"lt1"`),
-				Line:     json.RawMessage(bmcCellBorderJSON),
+				Fill:     neutralFillJSON(NeutralTint4),
+				Line:     noLine,
 				Text:     buildBMCCellContent(cell, headerSize, bulletSize, accent),
 			},
 		}

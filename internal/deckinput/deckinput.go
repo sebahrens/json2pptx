@@ -96,6 +96,13 @@ type ChromeInput struct {
 	// SectionCrumb enables running section title in the footer. Requires
 	// the structure block with named sections to be useful.
 	SectionCrumb bool `json:"section_crumb,omitempty"`
+	// Tracker sets the current section name above the title of every content
+	// slide inside a section, in 9pt accent1 caps with +8% letter-spacing,
+	// 6pt above the title (go-slide-creator-r3gsw). The section comes from
+	// structure.sections (a slide's section_title) or, on a flat deck, from the
+	// most recent section-divider slide. Title, section-divider and closing
+	// slides carry none, and a slide's own eyebrow wins.
+	Tracker bool `json:"tracker,omitempty"`
 }
 
 // PageNumbersInput controls slide number display within chrome.

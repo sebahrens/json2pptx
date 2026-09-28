@@ -128,7 +128,7 @@ These checks target presentation polish beyond rendering correctness. Each findi
 
 - **Accent hue count** — count distinct accent hues visible on the slide (excluding background, neutrals, and text colors). More than 2 distinct accent hues on one slide reads as visual noise. Finding code: `ACCENT_OVERLOAD`. Severity: `warning`.
 - **Baseline alignment** — body text in adjacent grid cells (e.g. `card-grid`, `kpi-*`, `comparison-2col`) should sit on the same horizontal baseline. Flag visible misalignment between sibling cards. Finding code: `BASELINE_MISALIGN`. Severity: `warning`.
-- **Takeaway band** — slides showing a chart or 2×2 matrix should carry a visually distinct "takeaway" / "so what" row, typically the bottom 8-12% of the slide with `dk1` or accent fill plus white text. Flag missing takeaway bands on chart / matrix slides. Finding code: `MISSING_TAKEAWAY`. Severity: `info`.
+- **Takeaway band** — slides showing a chart or 2×2 matrix should carry a visually distinct "takeaway" / "so what" row, typically near the bottom of the slide: a 3pt accent bar beside bold dark text (no box). Flag missing takeaway bands on chart / matrix slides. Finding code: `MISSING_TAKEAWAY`. Severity: `info`.
 - **Executive chart style** — flag the following chart anti-patterns:
   - Visible chart border framing the plot area → `CHART_BORDER` (severity: `warning`)
   - Visible vertical gridlines on a bar/line chart → `CHART_VERTICAL_GRIDLINES` (severity: `warning`)

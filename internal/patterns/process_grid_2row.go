@@ -427,18 +427,18 @@ func buildProcessGrid2RowOutcomeRow(ctx ExpandContext, outcomes []string, accent
 // Cell builders
 // ---------------------------------------------------------------------------
 
-// processGrid2RowLabelFill is the row-label column fill: the template's dark
-// brand colour (dk2) rather than dk1, which is pure black in most themes and
-// reads off-brand next to the accent phase boxes.
-const processGrid2RowLabelFill = "dk2"
-
+// buildProcessGrid2RowLabelCell builds the row-label column cell. Its fill is
+// the template's dark brand colour (dk2), or dk1 at 60% when dk2 is black: a
+// solid black block is the heavy "structure" fill the design review rejected
+// (go-slide-creator-8xsj3). Ink is measured on the fill actually painted.
 func buildProcessGrid2RowLabelCell(ctx ExpandContext, label string, size float64) *jsonschema.GridCellInput {
-	textColor := readableTextOn(ctx, fillTone{Color: processGrid2RowLabelFill}, "lt1")
+	tone := structuralDarkTone(ctx)
+	textColor := readableTextOn(ctx, tone, "lt1")
 	text := buildProcessGrid2RowTextContent(pptx.ConvertMarkdownEmphasis(label), size, true, textColor)
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, processGrid2RowLabelFill)),
+			Fill:     tone.fillJSON(),
 			Text:     text,
 		},
 	}

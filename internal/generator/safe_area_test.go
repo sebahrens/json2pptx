@@ -90,8 +90,15 @@ func TestGeneratorChromeFrameUsesTemplateProfile(t *testing.T) {
 	if frame.Basis != template.ChromeBasisLayout {
 		t.Fatalf("basis = %q, want layout", frame.Basis)
 	}
-	if frame.Takeaway.X != 838200 || frame.Takeaway.X+frame.Takeaway.CX != 838200+10515600 {
-		t.Errorf("takeaway x-range = [%d,%d], want body column [838200,11353800]", frame.Takeaway.X, frame.Takeaway.X+frame.Takeaway.CX)
+	// The body column starts at 838200, but the master's full-height accent
+	// bar and stripe (ending at 396000) sit in the left margin, so the column
+	// clears them by the right-hand margin: 396000 + 838200
+	// (go-slide-creator-oa0ru).
+	if frame.Takeaway.X != 1234200 || frame.Takeaway.X+frame.Takeaway.CX != 838200+10515600 {
+		t.Errorf("takeaway x-range = [%d,%d], want edge-art-clear body column [1234200,11353800]", frame.Takeaway.X, frame.Takeaway.X+frame.Takeaway.CX)
+	}
+	if !frame.SideDecorInset {
+		t.Error("SideDecorInset = false, want true for midnight-blue's left edge art")
 	}
 	if frame.Source.Bottom() > 6356350 {
 		t.Errorf("source band bottom %d overlaps footer placeholders at 6356350", frame.Source.Bottom())

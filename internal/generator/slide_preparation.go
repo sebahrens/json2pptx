@@ -145,6 +145,11 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 	}
 
 	var warnings []string
+	if input.slideSpec.Tracker != "" && input.slideSpec.Eyebrow == "" {
+		if err := ctx.placeTitleTracker(slide, input.slideSpec.Tracker, input.slideSpec.LayoutID); err != nil {
+			warnings = append(warnings, err.Error())
+		}
+	}
 	if len(input.slideSpec.Content) > 0 || input.slideSpec.Eyebrow != "" {
 		warnings = ctx.populateTextInSlide(slide, input.slideSpec.Content, input.slideSpec.LayoutID, input.slideIndex, input.slideSpec.Eyebrow)
 	}
@@ -510,6 +515,7 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 	// (go-slide-creator-rioxd). Keep the first and report the loser.
 	claimedTextShapes := make(map[int]int) // shapeIdx -> content index
 
+	content = markColumnHeaders(slide.CommonSlideData.ShapeTree.Shapes, content)
 	for j, item := range content {
 		// Skip visual content types - they are handled in prepareImages
 		if item.Type == ContentImage || item.Type == ContentDiagram || item.Type == ContentTable {

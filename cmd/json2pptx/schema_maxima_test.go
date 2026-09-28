@@ -434,10 +434,10 @@ func schemaMaximumValues(pat patterns.Pattern) (any, string) {
 // image-text-split text column, legends) and reports every predicted shrink
 // below the floor, not only shrinks of 0.85 or harsher — generation refuses
 // both. The chart-insights-split, image-text-split, matrix-2x2 and
-// process-flow pins below record that newly visible extreme-schema debt; the
+// process-flow pins (and agenda, next-steps) below record that newly visible extreme-schema debt; the
 // generated output of these payloads did not change.
 var schemaMaximaShrinkPt = map[string]float64{
-	"agenda":                       7.0,
+	"agenda":                       7.8, // Rule-based agenda (go-slide-creator-r3gsw): wider item column; nested cells measured (bzh34).
 	"agenda-with-images":           4.3,
 	"arch-stack":                   6.2,
 	"before-after":                 5.0,
@@ -445,7 +445,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"bmc-canvas":                   2.4,
 	"capability-heatmap":           3.8,
 	"card-grid":                    2.4,
-	"chart-insights-split":         2.4,
+	"chart-insights-split":         2.4, // nested stacked-column cells measured (bzh34)
 	"comparison-2col":              4.2,
 	"contact-directory":            3.8, // Still refused by the generated-font floor; not a readable schema budget.
 	"driver-tree":                  4.1,
@@ -464,13 +464,14 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"kpi-6up":                      0.0,
 	"kpi-inline":                   7.7,
 	"labeled-rows":                 5.0,
-	"matrix-2x2":                   8.4,
+	"matrix-2x2":                   8.2,
 	"metric-list":                  5.0,
+	"next-steps":                   6.0,
 	"numbered-step-strip":          4.8,
-	"phase-roadmap":                4.6,
+	"phase-roadmap":                4.3, // midnight-blue edge-art clearance narrows the column (oa0ru)
 	// Layout-aware standalone readability measurement exposed a schema-legal
 	// payload below the floor; go-slide-creator-tp23k tracks its text budget.
-	"process-flow":         10.8,
+	"process-flow":         10.6,
 	"process-flow-compact": 9.1,
 	// Optional column_headers + outcomes rows (go-slide-creator-s1uvj.10) take
 	// height from the two tracks; the 40-char row labels in the 12% label
@@ -534,6 +535,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"labeled-rows":                 6.2,
 	"matrix-2x2":                   9.4,
 	"metric-list":                  5.5,
+	"next-steps":                   6.7,
 	"numbered-step-strip":          5.8,
 	"phase-roadmap":                5.0,
 	"process-flow":                 0,

@@ -1,5 +1,12 @@
 {
   "template": "forest-green",
+  "chrome": {
+    "confidentiality": "Confidential",
+    "page_numbers": {
+      "enabled": true,
+      "format": "{current}"
+    }
+  },
   "output_filename": "charts.pptx",
   "slides": [
     {

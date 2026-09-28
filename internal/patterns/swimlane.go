@@ -265,22 +265,24 @@ func (s *swimlane) Expand(ctx ExpandContext, values, overrides any, cellOverride
 
 	for i, lane := range vals.Lanes {
 		// Alternate lane background
-		laneFill := `"lt1"`
-		var laneLine json.RawMessage
+		// Lanes alternate two neutral steps with no outline
+		// (go-slide-creator-pgdkp); the 4pt grid gutter separates the cells.
+		laneFill := string(neutralFillJSON(NeutralTint4))
 		if i%2 == 1 {
-			laneFill = `{"color":"lt2","alpha":50}`
-		} else {
-			laneLine = json.RawMessage(paperSurfaceHairline)
+			laneFill = string(neutralFillJSON(NeutralTint8))
 		}
+		laneLine := noLine
 
 		cells := make([]*jsonschema.GridCellInput, numCols)
 
 		// Actor label cell
-		actorText := buildSwimlaneTextContent(lane.Actor, headerSize, true, "lt1", "ctr")
+		// Actor labels are structure, not emphasis: a neutral 16% block with
+		// dk1 text instead of a column of solid accent (go-slide-creator-8xsj3).
+		actorText := buildSwimlaneTextContent(lane.Actor, headerSize, true, "dk1", "ctr")
 		cells[0] = &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+				Fill:     neutralFillJSON(NeutralTint16),
 				Text:     actorText,
 			},
 		}

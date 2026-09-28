@@ -21,7 +21,8 @@ server `instructions`):** A deck is done only after every slide of the CURRENT r
 
 **Must-read before authoring:** [QUALITY.md](QUALITY.md) — ghost deck of
 titles first, full-sentence action titles (≤15 words, carrying the number),
-one message per slide, a `takeaway` and `source` on every evidence slide, and
+one message per slide, a `takeaway` and `source` on every evidence slide
+(a data slide without a source draws the advisory `DATA_WITHOUT_SOURCE`), and
 the message → visual table. A deck that passes every gate with topic titles
 is not finished.
 
@@ -53,7 +54,7 @@ inspect. Pattern copy budgets assume the template's full content area; on a
 short or narrow template, or under a `takeaway`, `chart-insights-split` and
 `table-highlight` report `BODY_TOO_LONG` naming what to drop, and validate
 predicts grid text (nested cells included) that generation would refuse as
-`TEXT_BELOW_READABLE_MIN` ([PATTERNS.md](PATTERNS.md)).
+`TEXT_BELOW_READABLE_MIN`.
 Read [RAW_PATH.md](RAW_PATH.md) before authoring raw JSON. Its
 preconditions are **not** universal DeckSpec requirements. Two raw-only
 patterns cover pages DeckSpec kinds do not: `contact-directory` (key contacts
@@ -91,11 +92,23 @@ executable one.
   the three-round repair cap. Read before the first render.
 - [RULES.md](RULES.md): shape-grid, content, contrast, typography, and
   anti-pattern rules. Waterfall `type` sets the sign
-  (`chart.waterfall_total_mismatch`).
+  (`chart.waterfall_total_mismatch`). Charts show the title's point: a
+  single-series bar chart (and `horizontal-bar-with-callouts`) is neutral
+  grey with accent1 only on `highlight` bars (0-based indices or names;
+  default the last period of a time series, else the top bar); set it to the
+  bar(s) the title names. Waterfalls accent the decreases.
+  A table with no `style` renders as a
+  consulting table (unfilled 11pt bold header over a 1pt rule, 12pt rows,
+  hairline rules, no zebra); `table-highlight` matches it.
 - [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance;
   get the current catalog, per-pattern schema and per-field copy targets from
   `list_patterns` / `show_pattern`. Out-of-range pattern text sizes are
-  rejected, not clamped.
+  rejected, not clamped. Grid text settles onto the type scale
+  (28 / 18 / 14 / 12 / 10pt; KPI figures keep their display size), short
+  ALL-CAPS labels are letter-spaced automatically (+7%) — write them in caps,
+  do not add spaces — and bold headings, titles and names are balanced so no
+  line ends on a lone word. In a two-column comparison, open each column's
+  bullets with a short label line to get a bold column header.
 - [FINDINGS.md](FINDINGS.md): legacy finding and fix details for cases not yet
   covered by `describe_finding`; prefer the live tool for known codes.
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):

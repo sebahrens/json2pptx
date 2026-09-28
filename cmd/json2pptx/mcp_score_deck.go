@@ -328,6 +328,7 @@ func (mc *mcpConfig) collectRenderFindings(
 	genReq.Footer = footerConfigForInput(input, len(slideSpecs))
 	if input.Chrome != nil {
 		applyChromeSkip(slideSpecs, input.Chrome, input.Slides, layouts)
+		applyChromeTracker(slideSpecs, input.Chrome, input.Slides, layouts)
 	}
 	if input.ThemeOverride != nil {
 		genReq.ThemeOverride = input.ThemeOverride.ToThemeOverride()

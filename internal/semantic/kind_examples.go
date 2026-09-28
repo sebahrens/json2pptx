@@ -139,6 +139,7 @@ var kindExamples = map[SlideKind]map[string]any{
 			map[string]any{"label": "OpEx", "type": "delta", "value": -30},
 			map[string]any{"label": "EBITDA", "type": "total", "value": 45},
 		},
+		"source":   "FY26 management accounts",
 		"takeaway": "EBITDA closes at $45m after cost deductions.",
 	},
 	KindPillars: {
@@ -186,6 +187,7 @@ var kindExamples = map[SlideKind]map[string]any{
 		"column_alignments": []any{"left", "right", "right", "right"},
 		"highlight_column":  "FY26 revenue",
 		"totals_row":        true,
+		"source":            "Finance segment reporting, FY25-FY26",
 		"takeaway":          "Enterprise added $12.8M; SMB gave back $0.7M.",
 	},
 	KindKPISnapshot: {
@@ -196,6 +198,7 @@ var kindExamples = map[SlideKind]map[string]any{
 			map[string]any{"value": "118%", "label": "Net retention"},
 			map[string]any{"value": "41d", "label": "Sales cycle", "delta": "-6d"},
 		},
+		"source":   "Q4 board pack",
 		"takeaway": "Growth and efficiency both improved.",
 	},
 	KindChartInsight: {
@@ -213,6 +216,7 @@ var kindExamples = map[SlideKind]map[string]any{
 			"Revenue grew 41% across the year.",
 			"The Q4 step-up reflects the EMEA launch.",
 		},
+		"source":   "Company filings, FY26",
 		"takeaway": "Momentum supports the H2 targets.",
 	},
 	KindComparison: {
@@ -251,8 +255,18 @@ var kindExamples = map[SlideKind]map[string]any{
 		},
 		"takeaway": "Fund the pod now to protect net retention.",
 	},
+	KindNextSteps: {
+		"kind":  "next_steps",
+		"title": "Three actions start the SMB pilot in October",
+		"actions": []any{
+			map[string]any{"action": "Confirm pilot scope and success metrics", "owner": "COO", "date": "15 Oct"},
+			map[string]any{"action": "Hire the four-person SMB success pod", "owner": "VP Customer", "date": "31 Oct"},
+			map[string]any{"action": "Report first retention read-out to the board", "owner": "CFO", "date": "Jan board"},
+		},
+		"decisions": []any{"Approve the €1.2M pod budget for FY27"},
+	},
 	KindClosing: {
-		"kind": "closing", "title": "Thank you", "subtitle": "Questions and discussion",
+		"kind": "closing", "title": "Questions and discussion", "subtitle": "Contacts on the next page",
 	},
 	// The escape hatch's reason to exist is a pattern no kind compiles to, so
 	// the example shows one rather than the bullets every other kind already

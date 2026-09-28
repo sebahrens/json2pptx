@@ -2,7 +2,6 @@ package patterns
 
 import (
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
-	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // peerCardPatterns are the patterns whose solid accent cards are peers — every
@@ -16,23 +15,40 @@ var peerCardPatterns = map[string]bool{
 	"scqa-summary":         true,
 	"before-after":         true,
 	"before-after-compact": true,
+	// Its two column headers are peers too (go-slide-creator-8xsj3).
+	"comparison-2col": true,
+}
+
+// SharedRotationKey returns the rotation key every pattern of a sibling family
+// shares, and ok=false for patterns that rotate on their own content. KPI
+// patterns are one family: under accent_strategy "rotate" a kpi-3up and a
+// kpi-4up (or two composed on one slide) used to hash to different accents,
+// so sibling metric cards changed colour for no reason — midnight-blue's
+// KPI 4-up turned pink with a red rule beside a navy 3-up
+// (go-slide-creator-8xsj3). The family key keeps them on one accent.
+func SharedRotationKey(patternName string) (string, bool) {
+	switch patternName {
+	case "kpi-2up", "kpi-3up", "kpi-4up", "kpi-5up", "kpi-6up", "kpi-inline":
+		return "kpi-family", true
+	}
+	return "", false
 }
 
 // peerRuleWidthPt is the thickness of the accent rule a softened card gets.
 const peerRuleWidthPt = 3
 
-// SoftenPeerFills replaces solid light-accent fills on peer cards with a light
-// tint of the same accent plus an accent rule along the top
-// (go-slide-creator-pymy7).
+// SoftenPeerFills replaces solid accent fills on peer cards with a neutral
+// surface (dk1 at 4%) plus an accent rule along the top
+// (go-slide-creator-pymy7, go-slide-creator-8xsj3).
 //
-// On templates whose accents are light (p-style's oranges), a slide of
-// 100%-accent peer cards is a wall of colour: nothing reads as emphasis
-// because everything is. The rule only fires when:
+// A slide of 100%-accent peer cards is a wall of colour: nothing reads as
+// emphasis because everything is. accent1 at 100% belongs on at most one
+// emphasised element per slide, so peer cards take the neutral surface on
+// every template — light accents (p-style's oranges) and dark ones
+// (midnight-blue's navy) alike — and the accent survives as the 3pt rule.
+// The rule only fires when:
 //
 //   - the pattern is a peer-card pattern (peerCardPatterns);
-//   - the accent is light, i.e. the pattern's lt1 text fails WCAG AA on it —
-//     the same trigger ApplyReadableInk uses; dark-accent templates keep their
-//     solid cards unchanged;
 //   - at least two cells share the identical, unmodified accent fill. A cell
 //     that already stands apart (its own accent bar, a different fill) is the
 //     pattern's emphasis and stays solid, as do lone solid cells.
@@ -49,7 +65,7 @@ func SoftenPeerFills(ctx ExpandContext, patternName string, grid *jsonschema.Sha
 	collectPeerCells(grid, groups, &order)
 	for _, accent := range order {
 		cells := groups[accent]
-		if len(cells) < 2 || !lightAccent(ctx, accent) {
+		if len(cells) < 2 {
 			continue
 		}
 		for _, cell := range cells {
@@ -91,19 +107,9 @@ func isAccentSlot(c string) bool {
 	return false
 }
 
-// lightAccent reports whether lt1 text fails WCAG AA on the accent.
-func lightAccent(ctx ExpandContext, accent string) bool {
-	fill, ok := resolveThemeColor(ctx, accent)
-	if !ok {
-		return false
-	}
-	light, ok := resolveThemeColor(ctx, "lt1")
-	return ok && light.ContrastWith(fill) < svggen.WCAGAANormal
-}
-
 func softenCell(ctx ExpandContext, cell *jsonschema.GridCellInput, accent string) {
 	oldFill := cell.Shape.Fill
-	tint := inactiveTintTone(accent).fillJSON()
+	tint := neutralFillJSON(NeutralTint4)
 	cell.Shape.Fill = tint
 	cell.AccentBar = &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: peerRuleWidthPt}
 	if icon := cell.Shape.Icon; icon != nil && (icon.Fill == "" || icon.Fill == iconFillOn(ctx, oldFill, accent)) {

@@ -180,8 +180,8 @@ func TestWaterfallTypeSignTotalsAndPrecision(t *testing.T) {
 	if strings.Contains(string(doc.Content), ">-0.0<") {
 		t.Error("small delta printed as -0.0")
 	}
-	if !strings.Contains(string(doc.Content), "-0.04") {
-		t.Error("small delta should print as -0.04")
+	if !strings.Contains(string(doc.Content), "\u22120.04") {
+		t.Error("small delta should print as \u22120.04 (true minus sign)")
 	}
 }
 

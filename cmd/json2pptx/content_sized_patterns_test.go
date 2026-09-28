@@ -106,12 +106,14 @@ func TestGeneratePatternUsesTemplateContentHeight(t *testing.T) {
 	if diff := float64(maxHeight)/12700 - preflightHeight; diff < -1 || diff > 1 {
 		t.Errorf("preflight KPI height %.1fpt disagrees with generated shape %.1fpt", preflightHeight, float64(maxHeight)/12700)
 	}
-	if float64(maxHeight) < 0.69*float64(content.CY) || float64(maxHeight) > 0.71*float64(content.CY) {
-		t.Errorf("KPI row height %.1fpt should use about 70%% of template content height %.1fpt", float64(maxHeight)/12700, float64(content.CY)/12700)
+	// Content-sized (go-slide-creator-wntyw): a value + caption card hugs
+	// its text instead of taking 70% of the zone.
+	if float64(maxHeight) > 0.45*float64(content.CY) {
+		t.Errorf("KPI row height %.1fpt stretches past 45%% of template content height %.1fpt", float64(maxHeight)/12700, float64(content.CY)/12700)
 	}
 
-	// A deck rhythm grid can make the real render frame narrower still. Its
-	// 3913340 EMU frame must yield the 70%% KPI base on the tighter frame.
+	// A deck rhythm grid can make the real render frame shorter still; the
+	// content-sized card keeps its height on the tighter frame.
 	rhythm := &resolvedGrid{TitleBaselineY: 1600000, ContentBottomY: 5741940, LeftMarginX: 838200, RightEdgeX: 11353800, SlideWidth: sw, SlideHeight: sh}
 	_, tight := patternExpansionGeometry(slide, layouts, sw, sh, rhythm)
 	if tight.CY != 3913340 {
@@ -133,8 +135,8 @@ func TestGeneratePatternUsesTemplateContentHeight(t *testing.T) {
 			}
 		}
 	}
-	if got := float64(tightMax) / 12700; got < 215 || got > 217 {
-		t.Errorf("KPI card height = %.1fpt with 308.1pt render frame, want about 216pt", got)
+	if got, want := float64(tightMax)/12700, float64(maxHeight)/12700; got < want-1 || got > want+1 {
+		t.Errorf("KPI card height = %.1fpt with 308.1pt render frame, want the content-sized %.1fpt", got, want)
 	}
 }
 
@@ -183,17 +185,21 @@ func assertCentred(t *testing.T, name string, cells []shapegrid.ResolvedCell) {
 	}
 }
 
+// Full-size patterns are middle-anchored in the content zone. Row lists
+// (agenda, exec-summary, process-flow) keep a minimum presence; box patterns
+// (before-after, card-grid) are content-sized and never stretched to fill
+// (go-slide-creator-wntyw), so they carry a ceiling instead of a floor.
 func TestFullPatternsOccupyContentZone(t *testing.T) {
 	for _, tc := range []struct {
-		name string
-		min  float64
+		name     string
+		min, max float64
 	}{
-		{"kpi-4up", 0.59},
-		{"process-flow", 0.44},
-		{"before-after", 0.59},
-		{"agenda", 0.59},
-		{"exec-summary", 0.61},
-		{"card-grid", 0.59},
+		{"kpi-4up", 0, 0.60},
+		{"process-flow", 0.44, 1},
+		{"before-after", 0, 0.50},
+		{"agenda", 0.59, 1},
+		{"exec-summary", 0.40, 1},
+		{"card-grid", 0, 0.55},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			pat, ok := patterns.Default().Get(tc.name)
@@ -210,8 +216,12 @@ func TestFullPatternsOccupyContentZone(t *testing.T) {
 			}
 			res, _ := resolvePatternForTest(t, tc.name, string(values))
 			top, bottom := blockExtent(res.Cells)
-			if got := float64(bottom-top) / float64(contentRect.CY); got < tc.min {
+			got := float64(bottom-top) / float64(contentRect.CY)
+			if got < tc.min {
 				t.Errorf("block fills %.1f%% of content zone, want at least %.1f%%", got*100, tc.min*100)
+			}
+			if got > tc.max {
+				t.Errorf("block fills %.1f%% of content zone, want at most %.1f%% (content-sized, no stretch)", got*100, tc.max*100)
 			}
 			assertCentred(t, tc.name, res.Cells)
 		})

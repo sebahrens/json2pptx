@@ -174,6 +174,11 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 		"title": shapeString, "options": shapeArray, "choices": shapeArray, "alternatives": shapeArray,
 		"recommendation": shapeString, "takeaway": shapeString,
 	},
+	KindNextSteps: {
+		"title": shapeString, "actions": shapeArray, "next_steps": shapeArray, "steps": shapeArray,
+		"decisions": shapeArray, "decisions_requested": shapeArray, "asks": shapeArray,
+		"decisions_label": shapeString, "takeaway": shapeString,
+	},
 	KindClosing: {"title": shapeString, "subtitle": shapeString},
 }
 
@@ -579,6 +584,8 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 		validateMatrix(path, slide, s)
 	case KindDecision:
 		validateDecision(path, slide, s)
+	case KindNextSteps:
+		validateNextSteps(path, slide, s)
 	case KindFramework:
 		validateFramework(path, slide, s)
 	case KindImageCase:
@@ -613,6 +620,28 @@ func validateAgenda(path string, slide SlideSpec, s *semDiags) {
 		s.advisory(path+"."+field, diagnostics.CodeSemanticReferenceUnresolved,
 			fmt.Sprintf("%s names no section (use a 1-based number up to %d or a section title), so the current-section marker is not drawn", field, n))
 	}
+}
+
+// validateNextSteps reports a next-steps payload that will not render as the
+// next-steps visual (go-slide-creator-7lzdh). It still renders — as bullets —
+// so the rule says what is lost rather than blocking.
+func validateNextSteps(path string, slide SlideSpec, s *semDiags) {
+	field := slides.NextStepsActionsField(slide.Body)
+	n := slides.UsableNextStepsActionCount(slide.Body)
+	if !s.requireUsableContent(path, field, slide.Body, n) {
+		return
+	}
+	reason := slides.NextStepsDegradeReason(slide.Body)
+	if reason == "" {
+		return
+	}
+	why := degradeBudgetExceeded
+	if n < 2 || n > 6 || strings.Contains(reason, "decisions must contain") {
+		why = degradeCountOutOfRange
+	}
+	s.degrade(path+"."+field,
+		fmt.Sprintf("next_steps renders 2–6 actions (action ≤90, owner ≤30, date ≤20 chars) and 0–3 decisions as the next-steps visual; %s, so it degrades to a bullet list", reason),
+		"next-steps", degradeToBullets, why)
 }
 
 func validateBridge(path string, slide SlideSpec, s *semDiags) {

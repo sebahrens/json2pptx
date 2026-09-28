@@ -157,6 +157,10 @@ type HorizontalBarCalloutsValues struct {
 	Bars     []HorizontalBarCalloutsBar `json:"bars"`
 	MaxValue float64                    `json:"max_value,omitempty"`
 	Unit     string                     `json:"unit,omitempty"`
+	// Highlight lists the bars painted in the accent (0-based indices or
+	// labels); every other bar is neutral dk1 at 38%. Nil highlights the top
+	// (largest) bar; an empty list highlights none (go-slide-creator-sdxii).
+	Highlight []any `json:"highlight,omitempty"`
 }
 
 // HorizontalBarCalloutsOverrides is the standard text overrides plus pattern
@@ -205,17 +209,18 @@ func (h *horizontalBarCallouts) Schema() *Schema {
 			"bars":      ArraySchema(barSchema, hbcMinBars, hbcMaxBars).WithDescription("Ranked horizontal bars (3-8)"),
 			"max_value": NumberSchema(0, 1e12).WithDescription("Scale ceiling; defaults to the maximum bar value"),
 			"unit":      StringSchema(hbcUnitMax).WithDescription("Optional unit string appended to value labels (e.g. \"%\", \"M\")"),
+			"highlight": highlightSchema("Bars painted in accent1 (0-based indices or bar labels); every other bar is neutral dk1 at 38%. Omit to highlight the top (largest) bar; [] highlights none"),
 		},
 		[]string{"bars"},
 	).WithAdditionalProperties(false)
 
 	overridesSchema := ObjectSchema(
 		map[string]*Schema{
-			"accent":           StringSchema(0).WithDescription("Accent scheme color governing bar fill and callout accent bar (default accent1)").WithDefault("accent1"),
+			"accent":           StringSchema(0).WithDescription("Accent scheme color for the highlighted bars and the callout accent bars (default accent1); the other bars are neutral dk1 at 38%").WithDefault("accent1"),
 			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
 			"header_size":      NumberSchema(6, 40).WithDescription("Bar label font size (default 11)"),
 			"body_size":        NumberSchema(6, 40).WithDescription("Callout text font size (default 10)"),
-			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent rotation for callout accent bars"),
+			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent rotation for callout accent bars; when set, every bar takes its row's accent instead of the neutral/highlight split"),
 			"label_size":       NumberSchema(6, 40).WithDescription("Bar label font size (default 11) — overrides header_size for this pattern"),
 			"value_size":       NumberSchema(6, 40).WithDescription("Value label font size (default 12)"),
 			"callout_size":     NumberSchema(6, 40).WithDescription("Callout text font size (default 10) — overrides body_size for this pattern"),
@@ -294,6 +299,16 @@ func (h *horizontalBarCallouts) Validate(values, overrides any, cellOverrides ma
 		errs = append(errs, errMaxLength(name, "unit", hbcUnitMax, runeLen(vals.Unit)))
 	}
 
+	if _, err := resolveBarHighlight(vals.Highlight, hbcBarLabels(vals.Bars)); err != nil {
+		errs = append(errs, &ValidationError{
+			Pattern: name,
+			Path:    "highlight",
+			Code:    ErrCodeOutOfRange,
+			Message: fmt.Sprintf("%s: %v", name, err),
+			Fix:     ProvideValueFix("highlight"),
+		})
+	}
+
 	if coErr := validateCellOverrideKeys(name, cellOverrides, len(vals.Bars), ""); coErr != nil {
 		errs = append(errs, coErr)
 	}
@@ -337,6 +352,19 @@ func (h *horizontalBarCallouts) Expand(ctx ExpandContext, values, overrides any,
 	n := len(vals.Bars)
 	rows := make([]jsonschema.GridRowInput, n)
 
+	// The bars are neutral and only the highlighted ones take the accent, so
+	// the chart shows the point of the slide (go-slide-creator-sdxii). An
+	// explicit cell_accent_mode keeps the author's per-row accents instead.
+	hlAccent := highlightAccent(ctx, ovr.Accent, ovr.SemanticAccent)
+	highlighted, _ := resolveBarHighlight(vals.Highlight, hbcBarLabels(vals.Bars))
+	if vals.Highlight == nil && n > 0 {
+		values := make([]float64, n)
+		for i, b := range vals.Bars {
+			values[i] = b.Value
+		}
+		highlighted = map[int]bool{topBarIndex(values): true}
+	}
+
 	// A callout column with nothing in it is not empty space, it is a 40%-wide
 	// hole with a column of floating accent ticks beside the bars. Drop it when
 	// no bar has anything to say (go-slide-creator-i0x0).
@@ -378,7 +406,14 @@ func (h *horizontalBarCallouts) Expand(ctx ExpandContext, values, overrides any,
 		fillPct := barAreaPct * fillFraction
 		restPct := barAreaPct - fillPct
 
-		barCell := buildHorizontalBarRowCell(bar, accent, vals.Unit, labelSize, valueSize, labelColPct, fillPct, restPct, barAreaWidthPt)
+		tone := barNeutralTone
+		switch {
+		case ovr.CellAccentMode != "":
+			tone = fillTone{Color: accent}
+		case highlighted[i]:
+			tone = fillTone{Color: hlAccent}
+		}
+		barCell := buildHorizontalBarRowCell(ctx, bar, tone, highlighted[i], vals.Unit, labelSize, valueSize, labelColPct, fillPct, restPct, barAreaWidthPt)
 		textOvr := hbcTextOverride(cellOverrides[i])
 		if strings.TrimSpace(bar.Callout) == "" || !withCallouts {
 			// No insight to restyle: the text keys land on the bar's label.
@@ -459,7 +494,7 @@ func hbcTextOverride(co any) *CellOverride {
 
 // buildHorizontalBarRowCell constructs the left-column cell containing a
 // three-column sub-grid: [label, fill, rest].
-func buildHorizontalBarRowCell(bar HorizontalBarCalloutsBar, accent, unit string, labelSize, valueSize, labelColPct, fillPct, restPct, barAreaWidthPt float64) *jsonschema.GridCellInput {
+func buildHorizontalBarRowCell(ctx ExpandContext, bar HorizontalBarCalloutsBar, tone fillTone, bold bool, unit string, labelSize, valueSize, labelColPct, fillPct, restPct, barAreaWidthPt float64) *jsonschema.GridCellInput {
 	labelCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
@@ -479,10 +514,11 @@ func buildHorizontalBarRowCell(bar HorizontalBarCalloutsBar, accent, unit string
 
 	fillShape := &jsonschema.ShapeSpecInput{
 		Geometry: "rect",
-		Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+		Fill:     tone.fillJSON(),
 	}
+	inBarInk := readableTextOn(ctx, tone, "lt1")
 	if labelInBar {
-		fillShape.Text = buildHorizontalBarValueText(valueLabel, valueSize)
+		fillShape.Text = buildHorizontalBarValueText(valueLabel, valueSize, inBarInk, bold)
 	}
 	fillCell := &jsonschema.GridCellInput{Shape: fillShape}
 
@@ -494,14 +530,14 @@ func buildHorizontalBarRowCell(bar HorizontalBarCalloutsBar, accent, unit string
 			Fill:     json.RawMessage(`{"color": "lt1", "alpha": 0}`),
 		}
 		if !labelInBar {
-			restShape.Text = buildHorizontalBarOutsideValueText(valueLabel, valueSize)
+			restShape.Text = buildHorizontalBarOutsideValueText(valueLabel, valueSize, bold)
 		}
 		cells = append(cells, &jsonschema.GridCellInput{Shape: restShape})
 		cols = append(cols, restPct)
 	} else if !labelInBar {
 		// The bar fills the whole area, so there is no remainder cell to put the
 		// label in — keep it inside.
-		fillShape.Text = buildHorizontalBarValueText(valueLabel, valueSize)
+		fillShape.Text = buildHorizontalBarValueText(valueLabel, valueSize, inBarInk, bold)
 	}
 
 	subColsJSON, _ := json.Marshal(cols)
@@ -514,6 +550,15 @@ func buildHorizontalBarRowCell(bar HorizontalBarCalloutsBar, accent, unit string
 	}
 
 	return &jsonschema.GridCellInput{Grid: subGrid}
+}
+
+// hbcBarLabels returns the bar labels, the names data.highlight may use.
+func hbcBarLabels(bars []HorizontalBarCalloutsBar) []string {
+	labels := make([]string, len(bars))
+	for i, b := range bars {
+		labels[i] = b.Label
+	}
+	return labels
 }
 
 // anyHorizontalBarCallout reports whether at least one bar carries callout
@@ -576,10 +621,12 @@ func buildHorizontalBarLabelText(label string, size float64) json.RawMessage {
 	return data
 }
 
-func buildHorizontalBarValueText(value string, size float64) json.RawMessage {
+// buildHorizontalBarValueText renders a value label inside its bar, in ink
+// readable on the bar's fill; it is bold on a highlighted bar.
+func buildHorizontalBarValueText(value string, size float64, ink string, bold bool) json.RawMessage {
 	textObj := horizontalBarTextObj{
 		Paragraphs: []horizontalBarParagraph{
-			{Content: value, Size: size, Bold: true, Color: "lt1", Align: "r"},
+			{Content: value, Size: size, Bold: bold, Color: ink, Align: "r"},
 		},
 		Align:         "r",
 		VerticalAlign: "ctr",
@@ -591,10 +638,10 @@ func buildHorizontalBarValueText(value string, size float64) json.RawMessage {
 // buildHorizontalBarOutsideValueText renders a value label placed to the RIGHT
 // of a bar that is too short to hold it, in dark text on the transparent
 // remainder cell.
-func buildHorizontalBarOutsideValueText(value string, size float64) json.RawMessage {
+func buildHorizontalBarOutsideValueText(value string, size float64, bold bool) json.RawMessage {
 	textObj := horizontalBarTextObj{
 		Paragraphs: []horizontalBarParagraph{
-			{Content: value, Size: size, Bold: true, Color: "dk1", Align: "l"},
+			{Content: value, Size: size, Bold: bold, Color: "dk1", Align: "l"},
 		},
 		Align:         "l",
 		VerticalAlign: "ctr",

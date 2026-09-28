@@ -286,11 +286,16 @@ func TestRenderedChartUsesOneNumberFormat(t *testing.T) {
 		return out
 	}
 
-	// With value_format: the axis ticks and the bar labels both carry it.
+	// With value_format: the axis ticks and the bar labels both carry it. A
+	// labelled bar chart drops its value axis (go-slide-creator-sdxii), so the
+	// axis side is read from an unlabelled render.
 	euros := extract(t, barReq(StyleSpec{
 		ShowValues:  true,
 		ValueFormat: &ValueFormatSpec{Style: "compact", Prefix: "€"},
 	}))
+	euros = append(euros, extract(t, barReq(StyleSpec{
+		ValueFormat: &ValueFormatSpec{Style: "compact", Prefix: "€"},
+	}))...)
 	joined := strings.Join(euros, " ")
 	for _, want := range []string{"€1.2M", "€800K", "€865K"} {
 		if !strings.Contains(joined, want) {

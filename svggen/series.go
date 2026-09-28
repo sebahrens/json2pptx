@@ -109,6 +109,19 @@ type BarSeriesConfig struct {
 
 	// SeriesCount is the total number of series in a grouped bar chart.
 	SeriesCount int
+
+	// PointColors, when its length matches the points, overrides Color per
+	// bar (the neutral / highlight split of a single-series chart).
+	PointColors []Color
+
+	// PointBold marks the bars whose value label is drawn bold.
+	PointBold []bool
+
+	// LabelFontSize, when > 0, replaces the style's small size for value labels.
+	LabelFontSize float64
+
+	// LabelGap, when > 0, is the distance between a bar end and its label.
+	LabelGap float64
 }
 
 // ValuePosition specifies where to place value labels.
@@ -176,7 +189,7 @@ func (bs *BarSeries) DrawCategorical(points []DataPoint, xScale *CategoricalScal
 
 	b.Push()
 
-	for _, point := range points {
+	for i, point := range points {
 		x := xScale.Scale(point.XCategory)
 		y := yScale.Scale(point.Y)
 
@@ -188,13 +201,17 @@ func (bs *BarSeries) DrawCategorical(points []DataPoint, xScale *CategoricalScal
 			x = xScale.ScaleStart(point.XCategory) + (bandwidth-groupWidth)/2 + barOffset + barWidth/2
 		}
 
-		bs.drawBar(x, y, barWidth, baseY)
+		bs.drawBarColored(x, y, barWidth, baseY, bs.pointColor(i, len(points)))
 	}
 
 	// Draw value labels if enabled
 	if bs.config.ShowValues {
-		b.SetFontSize(style.Typography.SizeSmall).SetFontWeight(style.Typography.WeightNormal)
-		for _, point := range points {
+		labelSize := style.Typography.SizeSmall
+		if bs.config.LabelFontSize > 0 {
+			labelSize = bs.config.LabelFontSize
+		}
+		b.SetFontSize(labelSize).SetFontWeight(style.Typography.WeightNormal)
+		for i, point := range points {
 			x := xScale.Scale(point.XCategory)
 			y := yScale.Scale(point.Y)
 
@@ -205,7 +222,14 @@ func (bs *BarSeries) DrawCategorical(points []DataPoint, xScale *CategoricalScal
 				x = xScale.ScaleStart(point.XCategory) + (bandwidth-groupWidth)/2 + barOffset + barWidth/2
 			}
 
+			bold := len(bs.config.PointBold) == len(points) && bs.config.PointBold[i]
+			if bold {
+				b.SetFontWeight(style.Typography.WeightBold)
+			}
 			bs.drawValueLabel(x, y, point.LabelValue(), barWidth, baseY)
+			if bold {
+				b.SetFontWeight(style.Typography.WeightNormal)
+			}
 		}
 	}
 
@@ -243,8 +267,22 @@ func (bs *BarSeries) DrawLinear(points []DataPoint, xScale, yScale *LinearScale,
 	return bs
 }
 
-// drawBar draws a single bar.
+// pointColor returns bar i's fill: its PointColors entry when the per-bar
+// colours cover every point, otherwise the series colour.
+func (bs *BarSeries) pointColor(i, n int) Color {
+	if len(bs.config.PointColors) == n && i < n {
+		return bs.config.PointColors[i]
+	}
+	return bs.config.Color
+}
+
+// drawBar draws a single bar in the series colour.
 func (bs *BarSeries) drawBar(x, y, width, baseY float64) {
+	bs.drawBarColored(x, y, width, baseY, bs.config.Color)
+}
+
+// drawBarColored draws a single bar filled with fill.
+func (bs *BarSeries) drawBarColored(x, y, width, baseY float64, fill Color) {
 	b := bs.builder
 
 	var rect Rect
@@ -288,7 +326,7 @@ func (bs *BarSeries) drawBar(x, y, width, baseY float64) {
 	}
 
 	// Set colors
-	b.SetFillColor(bs.config.Color)
+	b.SetFillColor(fill)
 	if bs.config.StrokeWidth > 0 {
 		b.SetStrokeColor(bs.config.StrokeColor)
 		b.SetStrokeWidth(bs.config.StrokeWidth)
@@ -307,10 +345,15 @@ func (bs *BarSeries) drawValueLabel(x, y, value, width, baseY float64) {
 	b := bs.builder
 	style := b.StyleGuide()
 
-	label := bs.config.ValueFmt.FormatOr(value, bs.config.ValueFormat)
+	label := TrueMinus(bs.config.ValueFmt.FormatOr(value, bs.config.ValueFormat))
 
 	var labelX, labelY float64
 	var baseline TextBaseline
+
+	gap := style.Spacing.SM
+	if bs.config.LabelGap > 0 {
+		gap = bs.config.LabelGap
+	}
 
 	barHeight := baseY - y
 	if bs.config.Orientation == SeriesVertical {
@@ -318,10 +361,10 @@ func (bs *BarSeries) drawValueLabel(x, y, value, width, baseY float64) {
 		switch bs.config.ValuePosition {
 		case ValuePositionTop:
 			if barHeight >= 0 {
-				labelY = y - style.Spacing.SM
+				labelY = y - gap
 				baseline = TextBaselineBottom
 			} else {
-				labelY = y + style.Spacing.SM
+				labelY = y + gap
 				baseline = TextBaselineTop
 			}
 		case ValuePositionCenter:

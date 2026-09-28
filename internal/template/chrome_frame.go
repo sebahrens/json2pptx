@@ -64,11 +64,28 @@ type ChromeFrame struct {
 	HasFooter bool       `json:"has_footer"`
 	Basis     string     `json:"basis"`
 	Fits      bool       `json:"fits"`
+	// SideDecorInset is true when master/layout side artwork (an edge stripe,
+	// a tall panel) moved the content column in from the layout's own body
+	// span. The title placeholder then shifts with the content so the title
+	// and the content keep one left edge (go-slide-creator-oa0ru).
+	SideDecorInset bool `json:"-"`
 }
+
+// sourceBandClearance is the minimum gap, in EMU, between the source/footnote
+// zone and the band or content above it: 12pt.
+const sourceBandClearance int64 = 12 * 12700
 
 // minChromeContentRatio is the minimum share of the slide height (percent)
 // that must remain for content once the takeaway/source bands are reserved.
 const minChromeContentRatio = 20
+
+// Takeaway band air, in EMU: 12pt to the source line / footer below and 16pt
+// to the content above (patterns.TakeawayGapBelowPt / TakeawayGapAbovePt;
+// the template package cannot import patterns).
+const (
+	takeawayGapBelowEMU int64 = 12 * 12700
+	takeawayGapAboveEMU int64 = 16 * 12700
+)
 
 // ResolveChromeFrame derives the chrome frame for a slide on layout. reference
 // supplies horizontal geometry when layout has no body/content placeholders
@@ -119,16 +136,28 @@ func ResolveChromeFrame(layout, reference *types.LayoutMetadata, slideWidth, sli
 	}
 
 	top, bottom = reserveDisclosureChromeBand(layout, h, gap, top, bottom)
+	// The takeaway band keeps at least 12pt to the source line / footer below
+	// it and 16pt of air above it (go-slide-creator-7b5o6); the 0.7%-of-height
+	// gap left it ~4pt from the footer and touching it on some templates.
+	takeawayGapBelow := max(gap, takeawayGapBelowEMU)
+	takeawayGapAbove := max(gap, takeawayGapAboveEMU)
 	y := bottom
 	if hasSource {
 		y -= sourceH
 		frame.Source = ChromeRect{X: left, Y: y, CX: right - left, CY: sourceH}
-		y -= gap
+		// The source zone is a footnote, not part of the takeaway: keep at
+		// least 12pt between the attribution and whatever sits above it (the
+		// takeaway band or the content), so the two never read as one block
+		// (go-slide-creator-cuszt).
+		y -= max(gap, sourceBandClearance)
 	}
 	if hasTakeaway {
+		// bottom already sits one gap above the footer, and a source band
+		// is followed by one gap; top that up to the takeaway's 12pt.
+		y -= takeawayGapBelow - gap
 		y -= takeawayH
 		frame.Takeaway = ChromeRect{X: left, Y: y, CX: right - left, CY: takeawayH}
-		y -= gap
+		y -= takeawayGapAbove
 	}
 	// Tall, filled master/layout artwork at a side of the body column is
 	// reserved as chrome. Narrow rules and large background panels do not
@@ -138,7 +167,9 @@ func ResolveChromeFrame(layout, reference *types.LayoutMetadata, slideWidth, sli
 	if decorLayout == nil {
 		decorLayout = reference
 	}
+	bareLeft, bareRight := left, right
 	left, right = excludeSideDecor(decorLayout, left, right, top, y, w, h)
+	frame.SideDecorInset = left != bareLeft || right != bareRight
 	if hasTakeaway {
 		frame.Takeaway.X, frame.Takeaway.CX = left, right-left
 	}
@@ -186,6 +217,7 @@ func excludeSideDecor(layout *types.LayoutMetadata, left, right, top, bottom, sl
 		return left, right
 	}
 	padding := min(slideWidth, slideHeight) * 26 / 1000 // about 0.2 in on 16:9
+	origLeft, origRight := left, right
 	for _, decor := range layout.DecorRegions {
 		if decor.Width <= 0 || decor.Height <= 0 || decor.Width*5 >= slideWidth*2 {
 			continue // no-fill/invalid or broad background panel
@@ -200,6 +232,56 @@ func excludeSideDecor(layout *types.LayoutMetadata, left, right, top, bottom, sl
 		} else if decor.X < right && end >= right && decor.X-padding > left {
 			right = decor.X - padding
 		}
+	}
+	if left != origLeft || right != origRight {
+		// Art that overlapped the body column already moved it clear.
+		return left, right
+	}
+	return excludeEdgeArt(layout, left, right, top, bottom, slideWidth, padding)
+}
+
+// excludeEdgeArt clears decorative edge art that sits wholly inside a side
+// margin — midnight-blue's full-height accent bar and stripe at the left edge.
+// The body column already starts to the right of such art, so the straddle
+// rule above never fires, yet the art eats most of the margin and crowds the
+// title and content against it. The fix is geometric, not per template: the
+// content keeps, measured from the art's inner edge, the margin the layout
+// gives the undecorated side. Art on both sides leaves the column unchanged
+// (there is no clean side to mirror), as does a clearance that would leave
+// less than half the slide width for content (go-slide-creator-oa0ru).
+func excludeEdgeArt(layout *types.LayoutMetadata, left, right, top, bottom, slideWidth, padding int64) (int64, int64) {
+	var leftArtEnd, rightArtStart int64 = -1, -1
+	for _, decor := range layout.DecorRegions {
+		if decor.Width <= 0 || decor.Height <= 0 || decor.Width*5 >= slideWidth*2 {
+			continue
+		}
+		overlap := min(bottom, decor.Y+decor.Height) - max(top, decor.Y)
+		if overlap*2 < bottom-top {
+			continue
+		}
+		end := decor.X + decor.Width
+		switch {
+		case end <= left && decor.X < slideWidth/2:
+			leftArtEnd = max(leftArtEnd, end)
+		case decor.X >= right && decor.X > slideWidth/2:
+			if rightArtStart < 0 || decor.X < rightArtStart {
+				rightArtStart = decor.X
+			}
+		}
+	}
+	if (leftArtEnd >= 0) == (rightArtStart >= 0) {
+		return left, right
+	}
+	if leftArtEnd >= 0 {
+		clearance := max(slideWidth-right, padding)
+		if want := leftArtEnd + clearance; want > left && (right-want)*2 >= slideWidth {
+			left = want
+		}
+		return left, right
+	}
+	clearance := max(left, padding)
+	if want := rightArtStart - clearance; want < right && (want-left)*2 >= slideWidth {
+		right = want
 	}
 	return left, right
 }

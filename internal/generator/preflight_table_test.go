@@ -9,9 +9,10 @@ import (
 )
 
 func TestDetectTablePreflight_FontScaledByColumns(t *testing.T) {
-	headers := []string{"A", "B", "C", "D", "E", "F"} // 6 cols > 4 → scale
+	// 8 cols: the engine-default 12pt rows exceed the 18pt*4/8 cap → scale.
+	headers := []string{"A", "B", "C", "D", "E", "F", "G", "H"}
 	rows := [][]types.TableCell{
-		{{Content: "1"}, {Content: "2"}, {Content: "3"}, {Content: "4"}, {Content: "5"}, {Content: "6"}},
+		{{Content: "1"}, {Content: "2"}, {Content: "3"}, {Content: "4"}, {Content: "5"}, {Content: "6"}, {Content: "7"}, {Content: "8"}},
 	}
 	findings := DetectTablePreflight(TablePreflightInput{
 		Path:    "/slides/0/content/0",

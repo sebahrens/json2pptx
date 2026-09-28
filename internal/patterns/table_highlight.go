@@ -20,18 +20,24 @@ import (
 //
 // Layout:
 //
-//   | Option      | Cost | Speed | Risk |      ← dk2 header (highlight column: accent)
-//   | Option A    |  ◕   |  ●    |  ◑   |      ← alternating light banding
-//   ▌Option B ★   |  ●   |  ◕    |  ●   |      ← highlighted row: accent tint + bar
-//   | Option C    |  ◔   |  ◑    |  ○   |
+//     Option        Cost   Speed   Risk        ← unfilled 11pt bold dk1 header
+//   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━    ← 1pt dk1 rule
+//     Option A       ◕      ●       ◑
+//   ───────────────────────────────────────    ← 0.5pt dk1-at-15% hairline
+//   ▌Option B ★      ●      ◕       ●          ← highlighted row: accent 10% + 3pt bar
+//   ───────────────────────────────────────
+//     Option C       ◔      ◑       ○
 //     ● Fully meets  ◑ Partially meets  ○ Does not meet   ← legend
 //
+// The table follows the engine's consulting table default
+// (go-slide-creator-1iiej): no header fill (a highlighted criterion's header
+// is set in the accent instead), no zebra banding, no cell gaps, 12pt rows.
 // Harvey balls and RAG dots are drawn as inline SVG icons (resolved theme hex
 // for Harvey balls, conventional status colours for RAG) centred on the cell
 // shape, so the row fill stays behind them. Rows are content-sized from the
 // measured option / criterion text and pinned in points (min_height =
-// max_height), so the table never stretches to full height and is centred by
-// the pattern vertical_align default.
+// max_height), never padded to fill, and the block is top-anchored under the
+// title like a native table.
 
 func init() {
 	Default().Register(&tableHighlight{})
@@ -53,10 +59,18 @@ const (
 	thLabelMax       = 24
 	thLegendMax      = 20
 
-	thColGapPt    = 3.0
-	thRowGapPt    = 3.0
-	thMinRowPt    = 38.0
-	thMinHeaderPt = 34.0
+	// No gutters: rules separate the rows and a highlighted row / column
+	// reads as one continuous band (go-slide-creator-1iiej).
+	thColGapPt = 0.01 // 0 would mean the 8pt grid default
+	thRowGapPt = 0.01
+	// thHeaderRulePt / thRowRulePt are the rule under the header and the
+	// hairline between option rows.
+	thHeaderRulePt = 1.0
+	thRowRulePt    = 0.5
+	// thHighlightBarPt is the accent bar on the highlighted row's left edge.
+	thHighlightBarPt = 3.0
+	thMinRowPt       = 38.0
+	thMinHeaderPt    = 24.0
 	// thLegendPt is the height reserved per legend row. It must be generous:
 	// the table's rows are scaled down proportionally when they over-fill, and
 	// at 32pt the legend cell resolved to ~18pt, leaving a 10pt nested row that
@@ -77,8 +91,6 @@ const (
 	// cell, which otherwise collapses and shrinks its labels to illegibility.
 	thLegendRowPt = 24.0
 	thSymbolPt    = 22.0 // rendered Harvey ball / RAG dot diameter
-	thMinFillPct  = 55.0 // pad body rows until the table covers this share of the content height
-	thMaxPad      = 1.5
 )
 
 // Score scales.
@@ -267,6 +279,10 @@ func thAreaWarning(ctx ExpandContext, v *TableHighlightValues, overrides any) st
 	if l.total() <= l.areaH+0.5 {
 		return ""
 	}
+	// Report the least height the table can take: writer-measured rows and
+	// the compact legend.
+	l.tight, l.legendPt = true, thLegendCompactPt
+	l.measure(l.headerSize, l.bodySize, l.detailSize)
 	return fmt.Sprintf("%s: table-highlight needs about %.0fpt of height at readable sizes but this layout's content area holds %.0fpt — drop the option details or highlight_label, hide the legend (show_legend: false), drop the slide takeaway, or split the table", ErrCodeBodyTooLong, math.Ceil(l.total()), math.Floor(l.areaH))
 }
 
@@ -351,8 +367,8 @@ func (p *tableHighlight) Schema() *Schema {
 	overridesSchema := ObjectSchema(map[string]*Schema{
 		"accent":          StringSchema(0).WithDescription("Accent for the highlighted row / column (default accent1)").WithDefault("accent1"),
 		"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-		"header_size":     NumberSchema(12, 28).WithDescription("Header font size in points (default 13)"),
-		"body_size":       NumberSchema(12, 28).WithDescription("Option name / text cell font size in points (default 14)"),
+		"header_size":     NumberSchema(11, 28).WithDescription("Header font size in points (default 11, the consulting table header)"),
+		"body_size":       NumberSchema(12, 28).WithDescription("Option name / text cell font size in points (default 12)"),
 		"rag_colors": ObjectSchema(map[string]*Schema{
 			"red": StringSchema(0), "amber": StringSchema(0), "green": StringSchema(0),
 		}, nil).WithAdditionalProperties(false).WithDescription("Replace the conventional RAG status colours (scheme name or hex)"),
@@ -695,9 +711,10 @@ func newTHLayout(ctx ExpandContext, v *TableHighlightValues, ovr *TableHighlight
 	if kinds := thLegendKinds(v); len(kinds) > 0 && (v.ShowLegend == nil || *v.ShowLegend) {
 		l.legend = kinds
 	}
-	// One row per legend scale (go-slide-creator-z0up).
-	rowCount := 1 + len(v.Options) + len(l.legend)
-	l.gapsPt = thRowGapPt * float64(rowCount-1)
+	// One row per legend scale (go-slide-creator-z0up), plus the header rule
+	// and the hairlines between option rows.
+	rowCount := 1 + len(v.Options) + len(l.legend) + len(v.Options)
+	l.gapsPt = thRowGapPt*float64(rowCount-1) + thHeaderRulePt + thRowRulePt*float64(len(v.Options)-1)
 	return l
 }
 
@@ -756,7 +773,7 @@ func (l *thLayout) writtenOptionHeight(i int) float64 {
 	for j := range l.v.Criteria {
 		sc, ok := parseTableHighlightScore(safeScore(l.v.Options[i].Scores, j), l.v.scaleFor(j))
 		if ok && sc.kind == thScaleText {
-			cell := thScoreCell(l.ctx, sc, tones.band, l.symbolInk, l.ovr.RAGColors, l.bodySize, 1)
+			cell := thScoreCell(l.ctx, sc, fillTone{Color: "none"}, l.symbolInk, l.ovr.RAGColors, l.bodySize, 1)
 			h = math.Max(h, writtenFitHeightPt(cell.Shape.Text, l.colW(j+1), 0))
 		}
 	}
@@ -779,45 +796,27 @@ func (l *thLayout) optionHeight(o TableHighlightOption, bodySize, detailSize flo
 	return h
 }
 
-// fit picks the largest type-scale step whose table fits the content area
-// (explicit header_size / body_size pin it; nothing steps below 12pt), then
-// pads short tables so they do not read as a sliver.
+// fit sets the consulting table type scale — 11pt bold header over 12pt
+// rows (go-slide-creator-1iiej); explicit header_size / body_size pin it.
+// Rows stay content-height: a short table is never padded to fill.
 func (l *thLayout) fit() {
-	steps := [][3]float64{{13, 14, 12}, {12, 13, 12}, {12, 12, 12}}
-	if l.ovr.HeaderSize > 0 || l.ovr.BodySize > 0 {
-		steps = [][3]float64{{ResolveSize(l.ovr.HeaderSize, 13), ResolveSize(l.ovr.BodySize, 14), 12}}
-	}
-	for _, st := range steps {
-		l.measure(st[0], st[1], st[2])
-		if l.total() <= l.areaH {
-			break
-		}
-	}
+	headerSize, bodySize := ResolveSize(l.ovr.HeaderSize, 11), ResolveSize(l.ovr.BodySize, 12)
+	l.measure(headerSize, bodySize, 12)
 	if l.total() > l.areaH {
-		// Still taller than this template's content area (a short layout, or
-		// a takeaway bar above the table): size rows at the height the writer
+		// Taller than this template's content area (a short layout, or a
+		// takeaway band above the table): size rows at the height the writer
 		// needs and drop the legend's over-fill reserve. An over-filled grid
 		// scales every row down proportionally and the writer then shrinks
 		// 12pt option names below the floor (go-slide-creator-bzh34).
 		l.tight, l.legendPt = true, thLegendCompactPt
-		for _, st := range steps {
-			l.measure(st[0], st[1], st[2])
-			if l.total() <= l.areaH {
-				break
-			}
-		}
-		if l.total() > l.areaH && thLegendCompactPt*l.areaH/l.total() < thLegendRowPt+2*4 {
+		l.measure(headerSize, bodySize, 12)
+		if l.total() > l.areaH && thLegendCompactPt*l.areaH/l.total() < thLegendRowPt+2*SubGridInsetPt {
 			// Over-filled enough that the grid's proportional scale-down would
-			// squeeze the compact legend below its nested row: keep the
-			// generous reserve (see thLegendPt).
-			l.legendPt = thLegendPt
-			l.fixedPt += float64(len(l.legend)) * (thLegendPt - thLegendCompactPt)
-		}
-	}
-	if target := l.areaH * thMinFillPct / 100; l.total() < target {
-		scale := math.Min((target-l.fixedPt)/l.bodyTotal(), thMaxPad)
-		for i := range l.rowPt {
-			l.rowPt[i] *= scale
+			// squeeze the compact legend below its nested row: this content
+			// cannot fit (thAreaWarning says so), so keep the estimated rows
+			// and the generous legend reserve (see thLegendPt).
+			l.tight, l.legendPt = false, thLegendPt
+			l.measure(headerSize, bodySize, 12)
 		}
 	}
 }
@@ -837,9 +836,13 @@ func (p *tableHighlight) Expand(ctx ExpandContext, values, overrides any, cellOv
 	l := newTHLayout(ctx, v, ovr)
 	l.fit()
 
-	rows := make([]jsonschema.GridRowInput, 0, len(v.Options)+2)
+	rows := make([]jsonschema.GridRowInput, 0, 2*len(v.Options)+1+len(l.legend))
 	rows = append(rows, jsonschema.GridRowInput{MinHeight: l.headerPt, MaxHeight: l.headerPt, Cells: l.headerCells()})
+	rows = append(rows, thRuleRow(len(l.cols), thHeaderRulePt, fillTone{Color: "dk1"}))
 	for i := range v.Options {
+		if i > 0 {
+			rows = append(rows, thRuleRow(len(l.cols), thRowRulePt, fillTone{Color: "dk1", Alpha: 15}))
+		}
 		rows = append(rows, jsonschema.GridRowInput{MinHeight: l.rowPt[i], MaxHeight: l.rowPt[i], Cells: l.optionCells(i, cellOverrides)})
 	}
 	// One row per scale. Both scales on one row gave each label a twelfth of the
@@ -858,24 +861,35 @@ func (p *tableHighlight) Expand(ctx ExpandContext, values, overrides any, cellOv
 		ColGap:  thColGapPt,
 		RowGap:  thRowGapPt,
 		Rows:    rows,
+		// Top-anchored under the title, like a native table.
+		VerticalAlign: "top",
 	}
 	return grid, nil
 }
 
-// thTones are the table fills: dk2 header (accent for the highlighted
-// column), light banding on alternate rows, an accent "Lighter 60%" tint on
-// the highlighted row and a "Lighter 80%" tint down the highlighted column.
+// thRuleRow is a full-width horizontal rule row of the given weight.
+func thRuleRow(cols int, weightPt float64, tone fillTone) jsonschema.GridRowInput {
+	return jsonschema.GridRowInput{
+		MinHeight: weightPt, MaxHeight: weightPt,
+		Cells: []*jsonschema.GridCellInput{{
+			ColSpan: cols,
+			Shape:   &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: tone.fillJSON()},
+		}},
+	}
+}
+
+// thTones are the table fills. The header is unfilled; the highlighted row
+// is an accent 10% tint (plus a 3pt accent bar) and the highlighted column a
+// "Lighter 80%" accent tint.
 type thTones struct {
-	header, hlHeader, band, hlRow, hlCol fillTone
+	header, hlRow, hlCol fillTone
 }
 
 func (l *thLayout) tones() thTones {
 	t := thTones{
-		header:   fillTone{Color: "dk2"},
-		hlHeader: fillTone{Color: l.accent},
-		band:     fillTone{Color: "lt2", Alpha: 55},
-		hlRow:    fillTone{Color: l.accent, LumMod: 40000, LumOff: 60000},
-		hlCol:    fillTone{Color: l.accent, LumMod: tintLumMod, LumOff: tintLumOff},
+		header: fillTone{Color: "none"},
+		hlRow:  fillTone{Color: l.accent, LumMod: 10000, LumOff: 90000},
+		hlCol:  fillTone{Color: l.accent, LumMod: tintLumMod, LumOff: tintLumOff},
 	}
 	if isHexColor(l.accent) {
 		// lumMod / lumOff only apply to scheme colours; fall back to neutral.
@@ -884,17 +898,20 @@ func (l *thLayout) tones() thTones {
 	return t
 }
 
+// headerCells sets the criteria as unfilled bold dk1 type; a highlighted
+// criterion is set in the accent when it reads, instead of a filled cell.
 func (l *thLayout) headerCells() []*jsonschema.GridCellInput {
 	tones := l.tones()
+	ink := readableTextOn(l.ctx, tones.header, "dk1")
 	cells := make([]*jsonschema.GridCellInput, 0, len(l.cols))
-	cells = append(cells, thTextCell(tones.header, readableTextOn(l.ctx, tones.header, "lt1"), "l",
+	cells = append(cells, thTextCellAnchored(tones.header, ink, "l", "b",
 		[]chartInsightsParagraph{{Content: l.corner, Size: l.headerSize, Bold: true}}))
 	for j, c := range l.v.Criteria {
-		tone := tones.header
+		colInk := ink
 		if j == l.hlCol {
-			tone = tones.hlHeader
+			colInk = thTagInk(l.ctx, l.accent, tones.header)
 		}
-		cells = append(cells, thTextCell(tone, readableTextOn(l.ctx, tone, "lt1"), "ctr",
+		cells = append(cells, thTextCellAnchored(tones.header, colInk, "ctr", "b",
 			[]chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(c.Label), Size: l.headerSize, Bold: true}}))
 	}
 	return cells
@@ -904,9 +921,6 @@ func (l *thLayout) optionCells(i int, cellOverrides map[int]any) []*jsonschema.G
 	tones := l.tones()
 	o := l.v.Options[i]
 	rowTone := fillTone{Color: "none"}
-	if i%2 == 1 {
-		rowTone = tones.band
-	}
 	if i == l.hlRow {
 		rowTone = tones.hlRow
 	}
@@ -916,7 +930,7 @@ func (l *thLayout) optionCells(i int, cellOverrides map[int]any) []*jsonschema.G
 	// Index i is option row i; its name cell is the primary text (D15 text keys).
 	applyCellTextOverride(nameCell, co)
 	if i == l.hlRow || (hasCO && co.AccentBar) {
-		nameCell.AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: l.accent, Width: 4}
+		nameCell.AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: l.accent, Width: thHighlightBarPt}
 	}
 	cells := []*jsonschema.GridCellInput{nameCell}
 	for j := range l.v.Criteria {
@@ -962,15 +976,21 @@ func thTagInk(ctx ExpandContext, accent string, tone fillTone) string {
 	return readableTextOn(ctx, tone, "dk1")
 }
 
-// thTextCell builds a filled (or transparent) text cell.
+// thTextCell builds a filled (or transparent) vertically centred text cell.
 func thTextCell(tone fillTone, ink, align string, paras []chartInsightsParagraph) *jsonschema.GridCellInput {
+	return thTextCellAnchored(tone, ink, align, "ctr", paras)
+}
+
+// thTextCellAnchored is thTextCell with an explicit vertical anchor; header
+// labels sit on the rule under them ("b").
+func thTextCellAnchored(tone fillTone, ink, align, anchor string, paras []chartInsightsParagraph) *jsonschema.GridCellInput {
 	for i := range paras {
 		if paras[i].Color == "" {
 			paras[i].Color = ink
 		}
 		paras[i].Align = align
 	}
-	textJSON, _ := json.Marshal(chartInsightsText{Paragraphs: paras, Align: align, VerticalAlign: "ctr"})
+	textJSON, _ := json.Marshal(chartInsightsText{Paragraphs: paras, Align: align, VerticalAlign: anchor})
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: thFill(tone), Text: textJSON},
 	}

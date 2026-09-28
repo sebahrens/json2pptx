@@ -221,7 +221,7 @@ type CalloutSupport interface {
 // no bullets) per D15 discipline.
 type PatternCallout struct {
 	Text     string `json:"text"`
-	Emphasis string `json:"emphasis,omitempty"` // "bold", "italic", "bold-italic"
+	Emphasis string `json:"emphasis,omitempty"` // "bold" (default), "italic", "bold-italic", "subtle", "strong"
 	Accent   string `json:"accent,omitempty"`   // scheme ref, e.g. "accent1"
 }
 

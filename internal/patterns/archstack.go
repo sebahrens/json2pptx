@@ -60,6 +60,9 @@ func (a *archStack) ExemplarValues() any {
 // Types
 // ---------------------------------------------------------------------------
 
+// archStackTierBarPt is the accent bar on each tier's left edge.
+const archStackTierBarPt = 3
+
 // ArchStackTier represents one horizontal layer in the architecture stack.
 type ArchStackTier struct {
 	Label       string `json:"label"`
@@ -281,19 +284,18 @@ func (a *archStack) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 
 		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 
-		// Vary fill slightly per tier for visual distinction
-		alpha := 100 - i*10
-		if alpha < 40 {
-			alpha = 40
-		}
-		fill := json.RawMessage(fmt.Sprintf(`{"color":"%s","alpha":%d}`, accent, alpha))
-
+		// Tiers are structure: a neutral 16% block with dk1 text and a 3pt
+		// accent bar, separated by the 4pt white gutter. The old 100%→40%
+		// accent-alpha ramp painted every tier in muddy mid-tints that encode
+		// nothing (go-slide-creator-8xsj3); ApplyReadableInk darkens the text.
 		cells[0] = &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     fill,
+				Fill:     neutralFillJSON(NeutralTint16),
+				Line:     noLine,
 				Text:     text,
 			},
+			AccentBar: &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: archStackTierBarPt},
 		}
 		applyArchStackOverride(cells[0], cellOverrides, cellIdx, accent)
 		cellIdx++
@@ -307,7 +309,7 @@ func (a *archStack) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 					RowSpan: len(vals.Tiers),
 					Shape: &jsonschema.ShapeSpecInput{
 						Geometry: "rect",
-						Fill:     json.RawMessage(`"lt2"`),
+						Fill:     neutralFillJSON(NeutralTint8),
 						Text:     railText,
 					},
 				}

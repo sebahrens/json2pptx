@@ -376,22 +376,19 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 	// it makes each left/right pair read as one unit and keeps sparse 3-row
 	// comparisons from looking like floating, ungrouped cells. An explicit
 	// row_fill overrides striping and paints every body row the same color.
+	//
+	// The two bands are the template's declared subtle / paper surfaces, or
+	// the dk1 neutral steps (4% / 8%) where a role is undeclared or is the
+	// page colour; no row is outlined (go-slide-creator-pgdkp).
 	striped := ovr.RowFill == ""
-	stripeFillA := ctx.ResolveSurface("subtle", "lt1") // even body rows
-	stripeFillB := ctx.ResolveSurface("paper", "lt2")  // odd body rows
-	uniformFill := ovr.RowFill
+	stripeFillA, stripeFillB := surfacePairJSON(ctx) // even / odd body rows
+	uniformFill := json.RawMessage(fmt.Sprintf(`"%s"`, ovr.RowFill))
 	if striped && ovr.Connectors {
 		// Connector rows are already grouped by the connector rule, so the
 		// left column takes one neutral (non-white) surface instead of zebra
 		// bands; the right column carries the accent tint.
 		striped = false
 		uniformFill = stripeFillA
-		if uniformFill == "lt1" {
-			uniformFill = stripeFillB
-		}
-		if uniformFill == "lt1" {
-			uniformFill = "lt2"
-		}
 	}
 
 	hasHeaders := vals.HeaderLeft != "" || vals.HeaderRight != ""
@@ -442,18 +439,17 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 
 	// Body rows — apply inline markdown emphasis (**bold**, *italic*)
 	for bi, row := range vals.Rows {
-		rowFill := uniformFill
-		var rowLine json.RawMessage
+		// Rows alternate two tints and carry no outline: outlined-white
+		// beside filled-grey read as a rendering bug (go-slide-creator-pgdkp).
+		// An authored row_fill is kept as written.
+		rowFillJSON := uniformFill
 		if striped {
-			rowFill = stripeFillA
+			rowFillJSON = stripeFillA
 			if bi%2 == 1 {
-				rowFill = stripeFillB
-			}
-			if rowFill == "lt1" {
-				rowLine = json.RawMessage(paperSurfaceHairline)
+				rowFillJSON = stripeFillB
 			}
 		}
-		rowFillJSON := json.RawMessage(fmt.Sprintf(`"%s"`, rowFill))
+		rowLine := noLine
 
 		leftText := buildComparison2colTextContent(pptx.ConvertMarkdownEmphasis(row.Left), bodySize, false, "dk1", "l")
 		rightColor := "dk1"

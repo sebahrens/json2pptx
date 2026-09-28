@@ -968,6 +968,27 @@ Emitted by `DetectStructuralSmells` for an authored grid whose effective row gap
 
 Emitted by `DetectStructuralSmells` when one authored grid mixes hex fills (other than black/white) with semantic scheme fills. Hex fills do not follow a template swap, so the slide stops being portable. Convert the hex fills to scheme names. `fix.params.value` carries a scheme color the grid already uses, so the `repair_slide` call in `next_tool_call` rewrites every hex fill in the grid to it; pass a different `value` (or a per-cell `path`) to choose another.
 
+### `FILLED_SHAPE_OUTLINED`
+
+**Action:** `info`
+**Pattern:** `shape_grid` (or `card-grid`)
+**Fix kind:** `remove_outline` (advisory)
+
+Emitted by `DetectStructuralSmells` (same scope as `accent_overload`: authored grids only, nested sub-grids included) for every shape whose `fill` is opaque (not `"none"`, `alpha` ≥ 50) and whose `line` is visible (not `"none"`). One finding per shape, at `.../cells/N/shape/line`. Card-grid emits it through `PostExpandWarnings` (path `/slides/N/pattern`) when its `border` (`subtle` / `accent`), `line_color` or `line_width` override draws a border round its always-filled cards.
+
+A stroke round a filled box adds a second contour and doubles the visual noise; outlined boxes beside filled ones read as a rendering bug (go-slide-creator-pgdkp). Pattern expanders never draw one: they separate filled shapes with the grid's white gutters over neutral `dk1` tints (4% / 8% / 16%) and keep strokes for rules only — 0.5pt row dividers, a 1pt header underline or a 2–3pt `accent_bar`. The outline still renders as authored; drop the `line` (or set it to `"none"`) and let the gap or a second tint separate the shapes.
+
+```json
+{
+  "pattern": "shape_grid",
+  "path": "/slides/3/shape_grid/rows/0/cells/1/shape/line",
+  "code": "FILLED_SHAPE_OUTLINED",
+  "message": "slide 4: filled shape at /slides/3/shape_grid/rows/0/cells/1 also has an outline; drop the line and separate filled shapes with the grid gap (white gutters) or two neutral tints",
+  "fix": { "kind": "remove_outline", "params": { "path": "/slides/3/shape_grid/rows/0/cells/1/shape/line", "key": "line" } },
+  "action": "info"
+}
+```
+
 ### `CHROME_COLLISION`
 
 **Action:** `review`
@@ -1020,7 +1041,7 @@ Triggers when **all** of the following hold:
 
 The verb test is biased toward false negatives: a title with a verb the check does not know keeps its nudge, which is the old behaviour, while a wrong suppression silently removes the signal.
 
-The warning never blocks generation — the takeaway is advisory, not structural. Add a one-sentence `takeaway` to the slide; it renders as 14pt bold dark-gray text in the layout-derived band above the footer placeholders, above the source note row (see `chrome_band_no_fit`).
+The warning never blocks generation — the takeaway is advisory, not structural. Add a one-sentence `takeaway` to the slide; it renders as the takeaway band — a flush 3pt accent bar beside 14pt bold `dk1` text, no fill, no outline — in the layout-derived band above the footer placeholders, above the source note row, with 16pt of air above and 12pt below (see `chrome_band_no_fit`).
 
 ```json
 {
@@ -1132,15 +1153,15 @@ A list is auto-numbered — `<a:buAutoNum type="arabicPeriod"/>` on every paragr
 **Pattern:** `value-chain`
 **Fix kind:** *(none — an authoring choice)*
 
-Emitted when a pattern's AUTHORED highlight colour does not read as a highlight against the structure it sits in: under 3:1 fill-vs-fill, the WCAG non-text bar, below which the two fills are one block of colour at any viewing distance.
+Emitted when a pattern's AUTHORED highlight colour does not read as a highlight against the structure it sits in. Value-chain steps are a neutral `dk1` 16% tint (go-slide-creator-8xsj3); against that achromatic base a saturated accent also separates by hue, so the bar is 2:1 of lightness contrast, below which the highlighted step merges into the chain.
 
-Contrast between two scheme slots is template-dependent, which is what made this invisible: value-chain's old fixed default of `accent2` on `dk2` measures 3.21:1 on midnight-blue and 1.48:1 on warm-coral, where the highlighted step was indistinguishable from its neighbours (go-slide-creator-ah5s). The DEFAULT is now chosen by that measurement — the first of `accent1`, `accent2` … `accent6`, `lt2` that clears the bar — so it cannot fail; only an authored `highlight_color` can, and it is honoured rather than overridden.
+Contrast between two scheme slots is template-dependent, which is what made this invisible: value-chain's old fixed default of `accent2` on `dk2` measured 1.48:1 on warm-coral, where the highlighted step was indistinguishable from its neighbours (go-slide-creator-ah5s). The DEFAULT is chosen by that measurement — the first of `accent1`, `accent2` … `accent6`, `dk2` that clears the bar — so it cannot fail; only an authored `highlight_color` can, and it is honoured rather than overridden.
 
 ```json
 {
   "path": "/slides/1/pattern",
   "code": "LOW_CONTRAST_HIGHLIGHT",
-  "message": "slide 2: value-chain: value-chain highlight_color \"accent2\" reads at 1.48:1 against the step fill (dk2) — below 3.0:1 the highlighted step is not distinguishable from its neighbours; omit highlight_color to let the engine pick an accent that clears the bar",
+  "message": "slide 2: value-chain: value-chain highlight_color \"accent3\" reads at 1.59:1 against the step fill (dk1 at 16%) — below 2.0:1 the highlighted step is not distinguishable from its neighbours; omit highlight_color to let the engine pick an accent that clears the bar",
   "action": "review"
 }
 ```
@@ -1244,6 +1265,27 @@ A content slide's title names a topic ("Market Overview") instead of stating the
   "code": "TITLE_NOT_ACTION",
   "message": "slide 3: title \"Market Overview\" names a topic, not the slide's point — state the takeaway as a sentence with a verb or a number",
   "fix": { "kind": "review", "params": { "placeholder_id": "title", "current_words": 2 } },
+  "action": "info"
+}
+```
+
+### `DATA_WITHOUT_SOURCE`
+
+**Action:** `info`
+**Pattern:** *(none — content lint; the message names the data pattern)*
+**Fix kind:** `provide_value` (`params.field: "source"`)
+**Emitted at:** preflight (validate / preview / score / generate `fit_report`), from the authored slide before pattern or compose expansion
+
+A slide shows data but cites no source (go-slide-creator-cuszt). Data means a `chart` content item, a chart-shaped `diagram`, a `table` with a digit in any body cell, or one of the numeric patterns: `chart-insights-split`, `waterfall-bridge`, `horizontal-bar-with-callouts`, `kpi-2up` … `kpi-6up`, `kpi-inline`, `stat-hero`, `hero-detail`, `metric-list` (also as a `compose` segment). Qualitative patterns (`matrix-2x2`, `table-highlight`, `capability-heatmap`), word-only tables, and title / section slides are exempt. A slide counts as sourced when `slide.source` is set **or** a `chart-insights-split` / `stat-hero` carries `values.source`: input normalisation lifts that value into `slide.source` (merged with an existing slide source, duplicates dropped), so it renders in the same source zone as every other source. `fix.params.data` names what was found (`"a chart"`, `"a table of figures"`, `"the kpi-4up pattern"`). On the DeckSpec path the finding maps to `semantic_path` `slides[N].source`.
+
+**The source zone.** Every source on a generated slide renders once, in the chrome frame's source band: 9pt italic, the text colour (`tx1`) muted to ~60% (`lumMod 60000` / `lumOff 40000`), left-aligned on the content column (same 0.1in text inset as the title and footer), directly above the footer. The band is reserved before content is laid out, so patterns centre in the space above it, and it keeps at least 12pt between itself and the takeaway band or the content above. A pattern expanded on its own (`expand_pattern`, no chrome) still draws its `values.source` in its grid.
+
+```json
+{
+  "path": "/slides/2/source",
+  "code": "DATA_WITHOUT_SOURCE",
+  "message": "slide 3: shows the kpi-4up pattern but cites no source — set the slide's source (origin and base, or \"Illustrative\") so the numbers can be traced",
+  "fix": { "kind": "provide_value", "params": { "field": "source", "data": "the kpi-4up pattern" } },
   "action": "info"
 }
 ```
@@ -1352,14 +1394,14 @@ A filled shape covering more than **10% of the slide area** holds text whose est
 **Fix kind:** `add_detail_or_resize`
 **Emitted at:** preflight, deterministic geometry
 
-The union of the slide's content "ink" covers too little of the safe content area (the layout's content zone below the title, as used for `bounds_relative_to_content_area`). This does not count white space between distant elements or count overlapping rectangles twice. Ink is every filled shape with content, every table / image / icon / diagram / composite cell, accent bars, and — for unfilled text shapes — the estimated text block placed by the text's `align` / `vertical_align`. An explicitly text-empty filled card is not counted as content and can also receive `SPARSE_FILL`; a fill-only shape with no text field can still be deliberate chrome. Slides that also put content into a non-title placeholder are skipped (the grid then shares the area); a near-empty placeholder slide is `SLIDE_NEARLY_EMPTY`'s business, not this one. A centered KPI row also fires when it leaves a vertical empty band of at least 0.75in. On DeckSpec renders, the finding maps to the semantic slide and recommends adding useful detail, choosing a denser kind, or merging slides.
+The union of the slide's content "ink" covers too little of the safe content area (the layout's content zone below the title, as used for `bounds_relative_to_content_area`). This does not count white space between distant elements or count overlapping rectangles twice. Ink is every filled shape with content, every table / image / icon / diagram / composite cell, accent bars, and — for unfilled text shapes — the estimated text block placed by the text's `align` / `vertical_align`. An explicitly text-empty filled card is not counted as content and can also receive `SPARSE_FILL`; a fill-only shape with no text field can still be deliberate chrome. Slides that also put content into a non-title placeholder are skipped (the grid then shares the area); a near-empty placeholder slide is `SLIDE_NEARLY_EMPTY`'s business, not this one. Content-sized blocks (KPI rows, before-after panels, card grids) are middle-anchored with equal bands above and below by design and are judged only by their ink share, against a 20% threshold (`kpi-*`, `card-grid`, `before-after`, `before-after-compact`, `strategy-house`; other patterns 29%, author-capped bands 45%): boxes are never stretched to fill the zone, so the former "KPI row leaves a 0.75in empty band" clause (and its `largest_empty_band_in` param) is gone (go-slide-creator-wntyw). On DeckSpec renders, the finding maps to the semantic slide and recommends adding useful detail, choosing a denser kind, or merging slides.
 
 **The threshold depends on whether the author imposed a restrictive size cap** (`fix.params.band_capped_by`):
 
 | `band_capped_by` | threshold | why |
 |---|---|---|
 | `author` | 45% | the slide sets restrictive `bounds` or `max_height_pct`, so loosening the cap is actionable |
-| `pattern` | 29% | the pattern derived its height from its content; visible ink rather than padded slots determines sparsity |
+| `pattern` | 29% (20% for the content-sized box patterns `kpi-*`, `card-grid`, `before-after`, `before-after-compact`, `strategy-house`) | the pattern derived its height from its content; visible ink rather than padded slots determines sparsity |
 | `none` | 29% | a raw grid or a pattern with explicit full-area bounds has no restrictive cap; add content or combine zones, not raise a nonexistent cap |
 
 Fires for e.g. an insights-only `chart-insights-split`, a `kpi-inline` capped to a thin band, or a four-stop `timeline-horizontal` (10% of the zone).
@@ -1874,7 +1916,7 @@ Body text in adjacent grid cells of a sibling pattern (`card-grid`, `kpi-*`, `co
 
 **Severity:** `info`
 
-A slide carrying a chart or 2×2 matrix is missing a visually-distinct takeaway / "so what" band (typically the bottom 8-12% of the slide, filled with `dk1` or an accent and white text). Without this band the audience has to derive the argument from the chart, which they rarely do correctly.
+A slide carrying a chart or 2×2 matrix is missing a visually-distinct takeaway / "so what" line (the engine's takeaway band: a 3pt accent bar beside bold dark text near the bottom of the slide). Without this band the audience has to derive the argument from the chart, which they rarely do correctly.
 
 Engine has a parallel `takeaway_missing` (lowercase, action `review`) that fires when `slide.takeaway` is empty on chart/matrix slides; the visual-qa code catches cases where the takeaway text is present but the band is invisible (rendered with low contrast, off-slide, etc.).
 

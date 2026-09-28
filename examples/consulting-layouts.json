@@ -1,6 +1,13 @@
 {
   "design_mode": "free",
   "template": "midnight-blue",
+  "chrome": {
+    "confidentiality": "Confidential",
+    "page_numbers": {
+      "enabled": true,
+      "format": "{current}"
+    }
+  },
   "output_filename": "consulting-layouts.pptx",
   "slides": [
     {
@@ -24,7 +31,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Process Flow (Chevron Header)"
+          "text_value": "Four phases take the program from discovery to sustained value"
         }
       ],
       "shape_grid": {
@@ -170,7 +177,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "MECE Framework (2x2 Matrix)"
+          "text_value": "Three quick wins deliver high impact for low effort"
         }
       ],
       "shape_grid": {
@@ -260,7 +267,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Key Findings (Numbered Takeaways)"
+          "text_value": "A $4.2B market is within reach once tech and talent gaps close"
         }
       ],
       "shape_grid": {
@@ -420,7 +427,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Workstream Overview (3x3 Grid)"
+          "text_value": "Six workstreams across technology, people and process cost $5.35M"
         }
       ],
       "shape_grid": {
@@ -589,7 +596,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Comparison View (Side-by-Side)"
+          "text_value": "The future state cuts annual IT spend by 33% to $2.8M"
         }
       ],
       "shape_grid": {
@@ -675,7 +682,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Timeline & Milestones (Horizontal Phases)"
+          "text_value": "Four quarterly phases take the platform live globally by Q4 2026"
         }
       ],
       "shape_grid": {
@@ -881,7 +888,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Investment Summary (KPI Scorecard)"
+          "text_value": "An $8.4M investment returns 2.1x and pays back in 18 months"
         }
       ],
       "shape_grid": {

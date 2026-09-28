@@ -177,13 +177,13 @@ func TestMetricList_ExpandStructure(t *testing.T) {
 		}
 		h = r.MaxHeight
 	}
+	// The callout is the shared takeaway band, not a solid accent banner
+	// (go-slide-creator-7b5o6).
 	callout := grid.Rows[len(grid.Rows)-1].Cells[0]
-	if callout.ColSpan != 2 || string(callout.Shape.Fill) != `"accent1"` {
-		t.Errorf("callout should be a full-width accent banner, got span=%d fill=%s", callout.ColSpan, callout.Shape.Fill)
+	if callout.ColSpan != 2 || callout.Grid == nil {
+		t.Fatalf("callout should be a takeaway sub-grid spanning both columns, got %+v", callout)
 	}
-	if got := cellText(t, callout.Shape.Text).Paragraphs[0].Color; got != "lt1" {
-		t.Errorf("callout ink on dark accent1 = %q, want lt1", got)
-	}
+	assertTakeawayBand(t, callout.Grid.Rows[len(callout.Grid.Rows)-1], vals.Callout)
 }
 
 func TestMetricList_Highlight(t *testing.T) {

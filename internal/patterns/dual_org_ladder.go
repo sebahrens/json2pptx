@@ -382,9 +382,10 @@ func buildDualOrgRoleCell(memberName, title string, nameSize, titleSize float64)
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
-			Fill:     json.RawMessage(`"none"`),
-			Line:     json.RawMessage(`{"color": "dk2", "width": 0.75}`),
-			Text:     buildDualOrgRoleText(memberName, title, nameSize, titleSize),
+			// A neutral card, not an outlined empty box (go-slide-creator-pgdkp).
+			Fill: neutralFillJSON(NeutralTint4),
+			Line: noLine,
+			Text: buildDualOrgRoleText(memberName, title, nameSize, titleSize),
 		},
 	}
 }

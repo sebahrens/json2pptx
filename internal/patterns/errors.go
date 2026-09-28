@@ -98,6 +98,10 @@ const (
 	// ("Market Overview") instead of stating the slide's point: fewer than four
 	// words with no number and no verb (go-slide-creator-d830i). Advisory.
 	ErrCodeTitleNotAction = "TITLE_NOT_ACTION"
+	// ErrCodeDataWithoutSource flags a slide that shows data — a chart, a
+	// table, a KPI or stat pattern — with no source, so its numbers cannot be
+	// traced (go-slide-creator-cuszt). Advisory.
+	ErrCodeDataWithoutSource = "DATA_WITHOUT_SOURCE"
 	// ErrCodeTitleTooLong flags a content-slide title that renders on more than
 	// two lines at the size generation writes (go-slide-creator-d830i).
 	// Advisory; the measured TITLE_OVERFLOW / title_wraps codes own fit.
@@ -106,6 +110,11 @@ const (
 	// that does not read as a highlight against the structure it sits in
 	// (go-slide-creator-ah5s).
 	ErrCodeLowContrastHighlight = "LOW_CONTRAST_HIGHLIGHT"
+	// ErrCodeFilledShapeOutlined reports an authored shape_grid shape with both
+	// an opaque fill and a visible outline. Pattern expanders never outline a
+	// filled shape; separation comes from gutters and neutral tints
+	// (go-slide-creator-pgdkp). Advisory.
+	ErrCodeFilledShapeOutlined = "FILLED_SHAPE_OUTLINED"
 	// ErrCodeRotatedAccentUnreadable reports an automatic rotate slot that
 	// could not carry the pattern's normal-size light text safely.
 	ErrCodeRotatedAccentUnreadable = "ROTATED_ACCENT_UNREADABLE"
@@ -246,6 +255,7 @@ var (
 	ErrChromeBandNoFit      = errors.New("takeaway/source band does not fit the layout")
 	ErrChromeCollision      = errors.New("authored content intersects opaque template artwork")
 	ErrAccentOverload       = errors.New("slide uses more than two distinct accent hues")
+	ErrFilledShapeOutlined  = errors.New("filled shape also carries an outline")
 	ErrSparseSingleRowFlow  = errors.New("single-row flow pattern stretched to fill slide with sparse per-cell text")
 	ErrOvertallFlowLane     = errors.New("single-row flow lane occupies more than half the content height with short labels")
 	ErrFlowDiamondNoContent = errors.New("process-flow decision diamond has no supporting content zone")
@@ -258,6 +268,7 @@ var (
 	ErrMissingAltText    = errors.New("image or icon asset is missing alt text")
 	ErrDuplicateTitle    = errors.New("slide title duplicates another content slide's title")
 	ErrTitleNotAction    = errors.New("content slide title names a topic instead of stating a point")
+	ErrDataWithoutSource = errors.New("slide shows data but cites no source")
 	ErrTitleTooLong      = errors.New("content slide title renders on more than two lines")
 	ErrContentDropped    = errors.New("author-provided content was dropped without being placed")
 
@@ -322,6 +333,7 @@ var codeSentinel = map[string]error{
 	ErrCodeChromeBandNoFit:         ErrChromeBandNoFit,
 	ErrCodeChromeCollision:         ErrChromeCollision,
 	ErrCodeAccentOverload:          ErrAccentOverload,
+	ErrCodeFilledShapeOutlined:     ErrFilledShapeOutlined,
 	ErrCodeSparseSingleRowFlow:     ErrSparseSingleRowFlow,
 	ErrCodeOvertallFlowLane:        ErrOvertallFlowLane,
 	ErrCodeFlowDiamondNoContent:    ErrFlowDiamondNoContent,
@@ -333,6 +345,7 @@ var codeSentinel = map[string]error{
 	ErrCodeMissingAltText:          ErrMissingAltText,
 	ErrCodeDuplicateTitle:          ErrDuplicateTitle,
 	ErrCodeTitleNotAction:          ErrTitleNotAction,
+	ErrCodeDataWithoutSource:       ErrDataWithoutSource,
 	ErrCodeTitleTooLong:            ErrTitleTooLong,
 	ErrCodeContentDropped:          ErrContentDropped,
 	ErrCodeChartValueCoerced:       ErrChartValueCoerced,

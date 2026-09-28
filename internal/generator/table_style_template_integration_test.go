@@ -54,8 +54,12 @@ func TestGenerateTableUsesTemplateDefaultStyle(t *testing.T) {
 			if defined && (filled || bold) {
 				t.Errorf("explicit header styling overrides a real template table style: fill=%t bold=%t", filled, bold)
 			}
-			if !defined && (!filled || !bold) {
-				t.Errorf("missing template style left header unstyled: fill=%t bold=%t", filled, bold)
+			// A missing template style falls back to the engine's consulting
+			// default (go-slide-creator-1iiej): an unfilled bold header over a
+			// 1pt text-color rule, never a solid header bar.
+			ruled := bytes.Contains(frame, []byte(`<a:lnB w="12700" cap="flat" cmpd="sng"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill></a:lnB>`))
+			if !defined && (filled || !bold || !ruled) {
+				t.Errorf("missing template style did not get the engine-default header: fill=%t bold=%t rule=%t", filled, bold, ruled)
 			}
 		})
 	}
@@ -64,7 +68,7 @@ func TestGenerateTableUsesTemplateDefaultStyle(t *testing.T) {
 	}
 }
 
-func TestTemplateDefaultWithoutDefinitionRendersFilledHeader(t *testing.T) {
+func TestTemplateDefaultWithoutDefinitionRendersStyledHeader(t *testing.T) {
 	if testing.Short() {
 		t.Skip("pixel comparison requires LibreOffice")
 	}
@@ -111,7 +115,7 @@ func TestTemplateDefaultWithoutDefinitionRendersFilledHeader(t *testing.T) {
 				}
 			}
 			if changed < 2000 {
-				t.Errorf("only %d central pixels changed when header fill was removed; missing style still renders plain", changed)
+				t.Errorf("only %d central pixels differ from the header_background none control; missing style still renders plain", changed)
 			}
 		})
 	}

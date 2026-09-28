@@ -82,3 +82,44 @@ func MinReadableHPt(mode ViewingMode, role TextRole) int {
 		return 1000
 	}
 }
+
+// Type scale (go-slide-creator-30471). Pattern and shape text sits on five
+// text steps — title/display 28pt, lead 18pt, subhead 14pt, body 12pt,
+// caption 10pt — plus a 40–48pt display step for KPI values. The role ladders
+// in tokens.go (GridHeader*, CardTitle*, CardBody*, Footnote*) are ranges on
+// this scale; the readability floors above are unchanged by it.
+const (
+	TypeScaleDisplayHPt = 2800 // titles and display headings
+	TypeScaleLeadHPt    = 1800 // lead / section labels
+	TypeScaleSubheadHPt = 1400 // subheads, card titles (bold)
+	TypeScaleBodyHPt    = 1200 // body copy
+	TypeScaleCaptionHPt = 1000 // captions, legends, dense table cells
+	TypeScaleKPIMinHPt  = 4000 // KPI display figures, lower bound
+	TypeScaleKPIMaxHPt  = 4800 // KPI display figures, upper bound
+
+	// BodyTextMinHPt is the body minimum; DenseBodyTextMinHPt is allowed only
+	// in tables and dense matrices. Neither loosens MinReadableHPt.
+	BodyTextMinHPt      = 1100
+	DenseBodyTextMinHPt = 1000
+)
+
+// typeScaleSteps are the sizes SnapTextHPt settles text onto, ascending. The
+// 11pt body minimum is a step so dense body copy is never pushed to caption.
+var typeScaleSteps = []int{TypeScaleCaptionHPt, BodyTextMinHPt, TypeScaleBodyHPt, TypeScaleSubheadHPt, TypeScaleLeadHPt, TypeScaleDisplayHPt}
+
+// SnapTextHPt returns the largest type-scale step at or below hpt. Sizes below
+// the caption step (footnotes) and at or above the display step (display
+// headings and figures, which are measured to fit) are returned unchanged.
+// Snapping only ever shrinks, so text that fit before still fits.
+func SnapTextHPt(hpt int) int {
+	if hpt < TypeScaleCaptionHPt || hpt >= TypeScaleDisplayHPt {
+		return hpt
+	}
+	snapped := hpt
+	for _, step := range typeScaleSteps {
+		if step <= hpt {
+			snapped = step
+		}
+	}
+	return snapped
+}

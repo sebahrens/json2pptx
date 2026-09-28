@@ -500,19 +500,18 @@ func chmTierTone(accent string, tier int) fillTone {
 		}
 		return fillTone{Color: accent, LumMod: 40000, LumOff: 60000}
 	case 2:
-		return fillTone{Color: "lt1", LumMod: 85000}
+		return neutralTone(NeutralTint16)
 	default:
-		return fillTone{Color: "lt1", LumMod: 95000}
+		// The lightest tier is a neutral step dark enough to read as a cell
+		// on white paper without an outline (go-slide-creator-pgdkp).
+		return neutralTone(NeutralTint8)
 	}
 }
 
-// chmTierLine is the cell border: none, except for the lightest tier, which
-// is barely off the page colour and needs a hairline to read as a cell.
-func chmTierLine(tier int) json.RawMessage {
-	if tier >= 3 {
-		return json.RawMessage(paperSurfaceHairline)
-	}
-	return json.RawMessage(`"none"`)
+// chmTierLine is the cell border: none on every tier. Filled cells are
+// separated by the grid gutters, never by an outline (go-slide-creator-pgdkp).
+func chmTierLine(int) json.RawMessage {
+	return noLine
 }
 
 // chmTierFallbackInk is the text colour without a theme to measure against.
@@ -660,7 +659,7 @@ func chmLegendCell(ctx ExpandContext, v *CapabilityHeatmapValues, accent string,
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
 				Fill:     tone.fillJSON(),
-				Line:     json.RawMessage(paperSurfaceHairline),
+				Line:     noLine,
 			},
 		})
 		cells = append(cells, &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{

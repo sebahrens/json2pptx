@@ -448,6 +448,21 @@ var findingMetaRegistry = map[string]FindingMeta{
 		ExampleBefore: `{"slides":[{"layout_id":"content","content":[{"type":"chart","chart_value":{...}}]}]}  // takeaway omitted`,
 		ExampleAfter:  `{"slides":[{"layout_id":"content","takeaway":"Q4 revenue grew 18% YoY, driven by enterprise.","content":[{"type":"chart","chart_value":{...}}]}]}`,
 	},
+	ErrCodeDataWithoutSource: {
+		Code:        ErrCodeDataWithoutSource,
+		Summary:     "A slide shows data (a chart, a table, a KPI or stat pattern) but cites no source.",
+		Severity:    "info",
+		WhenEmitted: "Pre-flight finds a slide whose `source` is empty after pattern sources are lifted to the slide, and which carries a chart content item, a chart-shaped diagram, a native table, a pattern whose taxonomy marks it `data_visual` (chart-insights-split, waterfall-bridge, horizontal-bar-with-callouts, ...), or a KPI / stat pattern (kpi-Nup, kpi-inline, stat-hero, hero-detail, metric-list). Title, section and closing slides are exempt. Advisory: the deck renders unchanged.",
+		RemediationSteps: []string{
+			"Set the slide's `source` (DeckSpec: the slide's `source` field) to the data's origin and base, e.g. \"Company filings; n = 412 enterprises, 2025\". It renders once, 9pt, in the source zone above the footer, left-aligned to the content grid.",
+			"A chart-insights-split or stat-hero `values.source` counts too: generation lifts it into the same zone.",
+			"Apply via repair_slide(kind=provide_value, params.field='source').",
+			"If the numbers are illustrative, say so in the source (\"Illustrative\") rather than leaving it empty.",
+		},
+		ExampleBefore: `{"layout_id":"content","pattern":{"name":"kpi-4up","values":[...]}}  // no source`,
+		ExampleAfter:  `{"layout_id":"content","source":"Company filings, FY2025","pattern":{"name":"kpi-4up","values":[...]}}`,
+		RelatedCodes:  []string{ErrCodeTakeawayMissing, ErrCodeChromeBandNoFit},
+	},
 	ErrCodeChromeBandNoFit: {
 		Code:        ErrCodeChromeBandNoFit,
 		Summary:     "The slide's takeaway/source band cannot be placed on its layout without overlapping chrome.",
@@ -471,6 +486,21 @@ var findingMetaRegistry = map[string]FindingMeta{
 		ExampleBefore: `cells use accent1, accent2, accent3, accent4 — 4 distinct hues`,
 		ExampleAfter:  `cells all use accent1 with cell_accent_mode='progressive' (tint ladder)`,
 		RelatedCodes:  []string{ErrCodeMixedFillScheme, ErrCodeHexFillNonBrand},
+	},
+
+	ErrCodeFilledShapeOutlined: {
+		Code:        ErrCodeFilledShapeOutlined,
+		Summary:     "An authored shape_grid shape has both an opaque fill and a visible outline.",
+		Severity:    "info",
+		WhenEmitted: "Validate/generate fit collection walks an authored (non-pattern, non-compose) shape_grid, nested sub-grids included, and finds a shape whose fill is opaque (not \"none\", alpha >= 50) and whose line is not \"none\". One finding per shape, at the shape's line path. Advisory: the shape renders as authored.",
+		RemediationSteps: []string{
+			"Remove the shape's line (or set it to \"none\"); pattern expanders never outline a filled shape.",
+			"Separate neighbouring filled shapes with the grid gap (4–6pt white gutters over a neutral field) or with two neutral tints ({\"color\":\"dk1\",\"lumMod\":4000,\"lumOff\":96000} and lumMod 8000 / lumOff 92000).",
+			"Keep strokes for rules only: a 0.5pt row divider, a 1pt header underline, or a 2–3pt accent_bar.",
+		},
+		ExampleBefore: `{"shape":{"geometry":"rect","fill":"lt1","line":{"color":"dk1","width":0.75}}}`,
+		ExampleAfter:  `{"shape":{"geometry":"rect","fill":{"color":"dk1","lumMod":4000,"lumOff":96000},"line":"none"}}`,
+		RelatedCodes:  []string{ErrCodeAccentOverload, ErrCodeMixedFillScheme},
 	},
 
 	ErrCodeSparseSingleRowFlow: {
@@ -832,9 +862,9 @@ var findingMetaRegistry = map[string]FindingMeta{
 		Code:        ErrCodeLowContrastHighlight,
 		Summary:     "An authored pattern highlight does not read as a highlight against the structure it sits in.",
 		Severity:    "review",
-		WhenEmitted: "A pattern whose one semantic signal is a highlighted cell (value-chain) measures the authored highlight_color against the resolved fill of the other cells and finds under 3:1 — the WCAG non-text bar, below which the two fills are one block of colour. Only an AUTHORED highlight draws this: the default is chosen by the same measurement, so it cannot fail.",
+		WhenEmitted: "A pattern whose one semantic signal is a highlighted cell (value-chain) measures the authored highlight_color against the resolved fill of the other cells (value-chain steps are a neutral dk1 16% tint) and finds under 2:1 of lightness contrast — with an achromatic base a saturated accent also separates by hue, so 2:1 is the bar below which the highlighted step merges into the chain. Only an AUTHORED highlight draws this: the default is chosen by the same measurement, so it cannot fail.",
 		RemediationSteps: []string{
-			"Omit highlight_color and let the engine pick the first accent that clears 3:1 against the step fill for this template.",
+			"Omit highlight_color and let the engine pick the first accent that clears 2:1 against the neutral step fill for this template.",
 			"Or choose a different accent: contrast is template-dependent, so the slot that works on one template can vanish on another.",
 		},
 		ExampleBefore: `{"highlight_color": "accent2", "steps": [{"label": "Manufacturing", "highlight": true}]}`,

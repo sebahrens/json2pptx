@@ -108,7 +108,7 @@ func (k *kpiInline) PostExpandWarnings(_ ExpandContext, values, _ any) []string 
 func (k *kpiInline) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
-			"values":         ArraySchema(kpiCellSchema(kpiInlineBigMaxChars), 2, 6).WithDescription("2-6 KPI cells in a compact bar. Metric values have a tighter 8-character maximum than full-size KPI cards. Caption budget without icons: 40 chars (38 at 6 KPIs); with a delta 35/25/20 at 4/5/6 KPIs. With icons: 31 at 5 KPIs (16 with a delta), 21 at 6 KPIs (11 with a delta)."),
+			"values":         ArraySchema(kpiCellSchema(kpiInlineBigMaxChars, 0), 2, 6).WithDescription("2-6 KPI cells in a compact bar. Metric values have a tighter 8-character maximum than full-size KPI cards. Caption budget without icons: 40 chars (38 at 6 KPIs); with a delta 35/25/20 at 4/5/6 KPIs. With icons: 31 at 5 KPIs (16 with a delta), 21 at 6 KPIs (11 with a delta)."),
 			"overrides":      kpiOverridesSchema(),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
@@ -158,6 +158,13 @@ func (k *kpiInline) Validate(values, overrides any, cellOverrides map[int]any) e
 		if subLength := runeLen(cell.Sub); subLength > kpiSubMaxChars {
 			errs = append(errs, errMaxLength(name, fmt.Sprintf("values[%d].sub", i), kpiSubMaxChars, subLength))
 		}
+		if cell.Comparator != "" {
+			// The compact bar is height-capped: a comparator line would push
+			// every caption below the readable floor.
+			errs = append(errs, newValidationError(name, fmt.Sprintf("values[%d].comparator", i), ErrCodeUnknownKey,
+				fmt.Sprintf("%s: values[%d].comparator: the height-capped kpi-inline bar has no comparator line — use a kpi-Nup card row for KPIs read against plan or prior year, or fold the reference into the delta (\"+4 vs plan\")", name, i),
+				RemoveFieldFix(fmt.Sprintf("values[%d].comparator", i))))
+		}
 		if cell.Icon != nil {
 			iconPath := fmt.Sprintf("values[%d].icon", i)
 			errs = append(errs, validateIconRef(name, iconPath, *cell.Icon)...)
@@ -197,7 +204,7 @@ func (k *kpiInline) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	gridCells := make([]*jsonschema.GridCellInput, n)
 	for i, cell := range *cells {
 		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
-		textContent := buildKPITextContent(cell.Big, bigSize, cell.Small, smallSize, cell.Sub, false)
+		textContent := buildKPITextContent(cell.Big, bigSize, cell.Small, smallSize, cell.Sub, false, "", false)
 		fillJSON := json.RawMessage(fmt.Sprintf(`"%s"`, accent))
 
 		shape := &jsonschema.ShapeSpecInput{

@@ -10,9 +10,9 @@
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "accent1",
-              "lumMod": 20000,
-              "lumOff": 80000
+              "color": "dk1",
+              "lumMod": 8000,
+              "lumOff": 92000
             },
             "text": {
               "paragraphs": [
@@ -52,9 +52,9 @@
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "accent1",
-              "lumMod": 20000,
-              "lumOff": 80000
+              "color": "dk1",
+              "lumMod": 8000,
+              "lumOff": 92000
             },
             "text": {
               "paragraphs": [
@@ -75,9 +75,9 @@
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "accent1",
-              "lumMod": 20000,
-              "lumOff": 80000
+              "color": "dk1",
+              "lumMod": 8000,
+              "lumOff": 92000
             },
             "text": {
               "paragraphs": [
@@ -101,6 +101,7 @@
       "cells": [
         {
           "col_span": 4,
+          "max_height": 3,
           "shape": {
             "geometry": "rect",
             "fill": "accent1"

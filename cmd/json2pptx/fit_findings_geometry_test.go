@@ -298,14 +298,13 @@ func TestGeometry_ContentSizedPatternBandIsNotUnderused(t *testing.T) {
 	}
 }
 
-func TestGeometry_KPIEmptyVerticalBandReportsDespiteCardArea(t *testing.T) {
+// A content-sized KPI row centred in the zone is the intended layout
+// (go-slide-creator-wntyw): its equal bands above and below are not
+// underuse, so no empty-band clause may push the cards back to a stretch.
+func TestGeometry_CentredContentSizedKPIRowIsNotUnderused(t *testing.T) {
 	in := geomSlides(t, `[{"layout_id":"content","pattern":{"name":"kpi-3up","values":[{"big":"41%","small":"Share of revenue"},{"big":"17","small":"New logos"},{"big":"3x","small":"Pipeline growth"}]}}]`)
-	fs := findingsByCode(collectGeometryFindings(in, nil, 0, 0, nil), patterns.ErrCodeSlideUnderused)
-	if len(fs) != 1 {
-		t.Fatalf("centered KPI row should report its empty vertical band: %+v", fs)
-	}
-	if gap, ok := fs[0].Fix.Params["largest_empty_band_in"].(float64); !ok || gap < .75 {
-		t.Fatalf("missing measured vertical gap: %+v", fs[0].Fix)
+	if fs := findingsByCode(collectGeometryFindings(in, nil, 0, 0, nil), patterns.ErrCodeSlideUnderused); len(fs) != 0 {
+		t.Fatalf("centred content-sized KPI row was reported as underused: %+v", fs)
 	}
 }
 
@@ -358,15 +357,12 @@ func TestInkCoverageFractionUsesUnionWithinSafeZone(t *testing.T) {
 	}
 }
 
-func TestGeometry_KPIGapBelowThresholdDoesNotFlagFilledSlide(t *testing.T) {
+func TestGeometry_FilledKPISlideIsNotFlagged(t *testing.T) {
 	safe := pptx.RectEmu{CX: 1000000, CY: 2000000}
 	ink := []pptx.RectEmu{{Y: 500000, CX: 1000000, CY: 1000000}}
-	if got := largestVerticalInkGap(ink, safe); got != 500000 {
-		t.Fatalf("largest gap = %d EMU, want 500000", got)
-	}
 	slide := &SlideInput{Pattern: &PatternInput{Name: "kpi-3up"}}
 	if f := checkSlideUnderused(ink, safe, slide, 0, "kpi-3up", false); f != nil {
-		t.Fatalf("filled KPI slide with sub-threshold gap was flagged: %+v", f)
+		t.Fatalf("filled KPI slide was flagged: %+v", f)
 	}
 }
 

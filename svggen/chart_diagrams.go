@@ -58,7 +58,17 @@ func (d *BarChartDiagram) Validate(req *RequestEnvelope) error {
 	if err := validateBarScale(req, false); err != nil {
 		return err
 	}
-	return validateCategoriesAndSeries(req.Data, "bar_chart", true, 1)
+	if err := validateCategoriesAndSeries(req.Data, "bar_chart", true, 1); err != nil {
+		return err
+	}
+	return validateHighlight(req.Data)
+}
+
+// validateHighlight rejects a data.highlight entry that names no category.
+func validateHighlight(data map[string]any) error {
+	cats, _ := toStringSlice(data["categories"])
+	_, _, err := resolveHighlight(data, cats)
+	return err
 }
 
 func validateBarScale(req *RequestEnvelope, stacked bool) error {
@@ -1010,6 +1020,12 @@ func extractChartData(req *RequestEnvelope) (ChartData, error) {
 
 	// Extract data label config
 	chartData.DataLabels = extractDataLabels(data)
+
+	highlight, set, err := resolveHighlight(data, chartData.Categories)
+	if err != nil {
+		return chartData, err
+	}
+	chartData.Highlight, chartData.HighlightSet = highlight, set
 
 	return chartData, nil
 }

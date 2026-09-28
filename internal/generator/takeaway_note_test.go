@@ -7,37 +7,47 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
-// TestGenerateTakeawayShape verifies that the takeaway shape XML contains
-// the expected text, bold formatting, font size, dark text color, and the
-// distinct accent-tinted band fill plus accent rule (go-slide-creator-5ovr).
+// TestGenerateTakeawayShape verifies the slide takeaway is the shared
+// takeaway component (go-slide-creator-7b5o6): a flush 3pt accent1 bar and
+// 14pt bold dk1 text inset 12pt from it, top-anchored, with no fill and no
+// outline — not the old peach wash framed by a 1pt accent rule.
 func TestGenerateTakeawayShape(t *testing.T) {
-	xml := generateTakeawayShapeInBounds("Revenue doubled year over year.", 100, pptx.RectEmu{X: 838200, Y: 5700000, CX: 10515600, CY: 360000})
+	bounds := pptx.RectEmu{X: 838200, Y: 5700000, CX: 10515600, CY: 514350}
+	xml := generateTakeawayShapesInBounds("Revenue doubled year over year.", 100, bounds, takeawayStyle{})
 	if xml == "" {
-		t.Fatal("generateTakeawayShapeInBounds returned empty string")
+		t.Fatal("generateTakeawayShapesInBounds returned empty string")
 	}
 
 	wants := []string{
 		"Revenue doubled year over year.",
+		`name="Takeaway Bar"`,
 		`name="Takeaway"`,
-		`sz="1600"`,                       // 16pt takeaway, not a small card title
+		`sz="1400"`,                       // 14pt
 		`b="1"`,                           // bold
-		"1F1F1F",                          // dark gray text color
-		`<a:schemeClr val="accent1"`,      // accent-driven band fill / rule
-		`<a:lumMod val="20000"/>`,         // light wash: 20% luminance retained
-		`<a:lumOff val="80000"/>`,         // light wash: +80% luminance
-		`<a:ln w="12700"`,                 // 1pt accent rule framing the band
-		`<a:off x="838200" y="5700000"/>`, // placed at the supplied chrome band
+		`<a:schemeClr val="dk1"`,          // theme ink, not a hex
+		`<a:schemeClr val="accent1"`,      // the bar
+		`<a:ext cx="38100"`,               // 3pt bar
+		`<a:off x="838200" y="5700000"/>`, // bar flush at the band's left edge
+		`lIns="190500"`,                   // bar (3pt) + 12pt to the text
+		`anchor="t"`,                      // top-anchored
 	}
 	for _, want := range wants {
 		if !strings.Contains(xml, want) {
-			t.Errorf("generateTakeawayShapeInBounds() missing %q in:\n%s", want, xml)
+			t.Errorf("generateTakeawayShapesInBounds() missing %q in:\n%s", want, xml)
 		}
 	}
-
-	// The band must NOT render as a plain no-fill text box — the QA finding
-	// that triggered the band treatment.
-	if strings.Contains(xml, "<a:noFill/>") {
-		t.Errorf("takeaway should have a band fill, not noFill:\n%s", xml)
+	for _, reject := range []string{"lumMod", "lumOff", "1F1F1F", `<a:ln w="12700"`} {
+		if strings.Contains(xml, reject) {
+			t.Errorf("takeaway must carry no tint, rule or hex ink; found %q in:\n%s", reject, xml)
+		}
+	}
+	// One line of text: the band shrinks to the words instead of running the
+	// bar the whole reserved rectangle.
+	if h := takeawayBandHeight("Revenue doubled year over year.", bounds, takeawayStyle{}); h >= bounds.CY {
+		t.Errorf("one-line band height = %d, want < reserved %d", h, bounds.CY)
+	}
+	if !strings.Contains(generateTakeawayShapesInBounds("x", 1, bounds, takeawayStyle{InkHex: "#F0F0F0"}), `srgbClr val="F0F0F0"`) {
+		t.Error("a dark layout's measured ink must replace dk1")
 	}
 }
 

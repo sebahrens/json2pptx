@@ -17,6 +17,126 @@
   generates on every shipped template except `modern`, where the
   table-highlight slide under a takeaway is flagged before generation. No
   schema-version change.
+- **Unreleased — consulting table default (`go-slide-creator-1iiej`).**
+  A table with no style (no `header_background`, no `use_table_style`,
+  `style_id` unset or the engine default GUID) — and a `use_table_style` /
+  `@template-default` table whose template ships no style formatting — now
+  renders with no header fill (11pt bold `dk1` over a 1pt `dk1` rule), 12pt
+  rows separated by 0.5pt `dk1`-15% hairlines, no zebra stripes, no vertical
+  rules, a bold first column and right-aligned numbers; rows stay
+  content-height and top-anchored. Explicit `header_background`, `borders`,
+  `striped` and defined template styles are honoured unchanged. A table with no
+  `style` object now carries `borders: ""` (was `"all"`) in its resolved spec.
+  The 12pt start is capped at the 18pt × 4 / columns wide-table budget, so
+  `table_font_scaled` fires from seven columns (was five) for default tables;
+  the validate-time preflight and fit report predict the same sizes.
+  `table-highlight` follows the same look: unfilled header (a highlighted
+  criterion's header is no longer an accent fill), 1pt header rule and
+  hairlines between options, no banding or cell gutters, highlighted row at an
+  accent 10% tint with a 3pt bar, rows no longer padded to fill and the block
+  top-anchored; its `header_size` default is 11 (range now 11–28) and
+  `body_size` default 12. No `SchemaVersion` bump.
+
+- **Unreleased — Thin connective geometry and content-sized boxes (`go-slide-creator-7z5we`, `go-slide-creator-wntyw`).**
+  No schema field changes. Rendering: matrix-2x2 axes are 1.5pt arrows with
+  an 8pt head (were block arrows; the y-axis label now sits beside its arrow
+  in dk1); the before-after / before-after-compact transition chevron is a
+  24pt marker in the gutter (was full-height); the phase-roadmap timeline is
+  a 3pt rule and the timeline-horizontal dots axis 3pt (was a 12–20pt band /
+  2.5pt); a top `accent_bar` lies flush inside the card's top edge (it floated
+  2pt above the card, and on strategy-house filled the gap under the banner
+  so the gutters notched the roof). Boxes are no longer stretched to fill the
+  zone: kpi-Nup cards, card-grid rows, before-after panels and strategy-house
+  bands / pillars are content-sized (at most 1.6x their content) and
+  middle-anchored; exec-summary / metric-list / labeled-rows rows grow at most
+  1.6x. The body zone starts 18pt below a measured top-anchored title.
+  `SLIDE_UNDERUSED` dropped its KPI "empty band >= 0.75in" clause and the
+  `largest_empty_band_in` param; the content-sized box patterns (`kpi-*`,
+  `card-grid`, `before-after`, `before-after-compact`, `strategy-house`) use a
+  20% ink threshold (other patterns 29%).
+- **2026-09-28 — Unreleased — source zone, `DATA_WITHOUT_SOURCE`, and
+  edge-art clearance (`go-slide-creator-cuszt`, `go-slide-creator-oa0ru`).**
+  No schema shape change (no `SchemaVersion` bump). Every source on a
+  generated slide now renders once, in the chrome frame's source zone just
+  above the footer: 9pt italic, `tx1` muted to ~60%, on the content column's
+  left edge, with at least 12pt between it and the takeaway band or content
+  above. `chart-insights-split` and `stat-hero` `values.source` are lifted
+  into `slide.source` during input normalisation (merged, duplicates
+  dropped), so they reserve the zone before the pattern is laid out instead
+  of drawing a row inside it; `expand_pattern` on its own still draws the
+  source in the grid. New advisory fit finding `DATA_WITHOUT_SOURCE` (`info`,
+  `fix.kind: provide_value`, `params.field: "source"`, path
+  `/slides/N/source`, DeckSpec `semantic_path` `slides[N].source`) on slides
+  with a chart, a chart-shaped diagram, a table of figures, or a chart / KPI /
+  stat pattern and no source. `waterfall-bridge`'s `caption` (the unit /
+  scale note) moves from top-right to top-left above the bars. Full-height
+  decorative art wholly inside one side margin (midnight-blue's left accent
+  bar and stripe) now pushes the content column in so it clears the art by
+  the opposite side's margin; the title and the left footer text follow, so
+  title, content, source and footer share one left edge. Injected
+  slide-number fields use a fixed field id instead of a random one per slide,
+  so decks with page numbers render byte-identically. Shipped examples gain
+  `chrome` (confidentiality + page numbers); `board-deck` also sources its
+  data slides.
+
+- **Unreleased — type scale and typographic polish (`go-slide-creator-30471`, `-58dhw`).**
+  No schema shape change. `shape_grid` text settles onto the type scale
+  28 / 18 / 14 / 12 / 10pt (off-scale sizes render at the step at or below
+  them; display figures, 28pt+ text and a `design_mode: "free"` deck's own
+  grids are exempt); `type_scale: "comfortable"` caps are now 14 / 12 / 40pt.
+  Short ALL-CAPS labels get +7% tracking, bold headings / names and
+  content-layout titles are balanced so no line ends on a lone word, centred
+  headings above left-aligned text in one shape are set left, before-after
+  headers are left-aligned, and contact-directory prefers layouts that keep
+  every name on one line (type steps 18/14, 14/12, 12/12). Two-column slides
+  whose `body` / `body_2` bullets both open with a short label line render it
+  as a bold, unbulleted column header. `scripts/repair_reviewed_templates.go
+  --pstyle-body-minor-font` moves p-style's body levels off the serif major
+  font.
+- **Unreleased — no outlines on filled shapes, neutral surfaces, one accent (`go-slide-creator-pgdkp`, `go-slide-creator-8xsj3`).**
+  Pattern expansions no longer outline a filled shape: the 0.5pt hairline on
+  white cards (card-grid `tinted`, comparison-2col, quote-cluster, swimlane,
+  capability-heatmap), the matrix-2x2 quadrant and bmc-canvas cell borders,
+  the dual-org-ladder role-card outlines and the state-shift-hub halo are gone.
+  Filled shapes are separated by the grid's white gutters over neutral tints of
+  `dk1` (`{"color":"dk1","lumMod":4000,"lumOff":96000}` = 4%, 8%, 16%); a white
+  card on white paper takes the 4% tint, alternating rows take a declared
+  template surface plus the 4% step (or 4% / 8%). Surfaces default to those
+  neutrals with dark text: peer cards (`kpi-Nup`, `card-grid`, `icon-row`,
+  `scqa-summary`, `before-after[-compact]`, and now `comparison-2col` headers)
+  become the 4% surface plus a 3pt accent rule on every template, not only
+  light-accent ones; before-after panels, framework-grid bands / cards,
+  soft-card, inactive phase-roadmap phases and arch-stack tiers (plus a 3pt
+  accent bar) drop their accent washes and 40–100% alpha ramps; value-chain
+  steps are the neutral 16% tint with the one highlighted step in the first
+  accent that clears 2:1 against it (default `accent1`; `LOW_CONTRAST_HIGHLIGHT`
+  now measures against the neutral step at 2:1); journey-maturity-model keeps
+  the solid accent only on the current stage; strategy-house's foundation and
+  swimlane actor labels are neutral; process-grid-2row's row labels use `dk1`
+  60% where `dk2` is black. Where a saturated fill remains, labeled-rows and
+  value-chain pick the ink by measured contrast at the text's own size.
+  `accent_strategy: "rotate"` skips grey theme slots (HSL saturation < 0.15)
+  and pastel slots under 2:1 against `lt1` (was 1.3:1), and every `kpi-*`
+  pattern shares one rotation key so sibling KPI patterns never change colour.
+  New advisory finding `FILLED_SHAPE_OUTLINED` (action `info`, advisory fix
+  kind `remove_outline`) flags an authored raw `shape_grid` shape with an
+  opaque fill and a visible `line`, and a card-grid `border` / `line_color` /
+  `line_width` override. No `SchemaVersion` bump.
+- **Unreleased — one takeaway component (go-slide-creator-7b5o6).**
+  The slide `takeaway`, chart-insights-split `so_what`, exec-summary
+  `bottom_line`, metric-list `callout` and the pattern / compose `callout`
+  render one band: a flush 3pt accent bar the band's height beside 14pt bold
+  `dk1` text (theme ink, not `#1F1F1F`) 12pt from the bar, top-anchored,
+  sized to its (budgeted two) lines, content width, no fill and no outline,
+  with 16pt of air above and 12pt to the source line / footer. Removed: the
+  chevron "BOTTOM LINE" flag and closing rule (exec-summary now expands to one
+  row fewer), the peach accent-tint slide band with its 1pt accent outline,
+  the solid accent metric-list banner and callout strip, and the "So what:"
+  label. New values: `callout.emphasis` adds `subtle` (5% neutral tint) and
+  `strong` (solid accent, measured-contrast ink); exec-summary, metric-list
+  and chart-insights-split take `overrides.takeaway_emphasis`
+  (`subtle` | `strong`). The chrome frame reserves the larger gaps around a
+  takeaway, so content on takeaway slides ends ~20pt higher.
 
 - **2026-09-28 — Schema 4.153.0: uniform 0.5 cm shape text inset.**
   Every text-bearing shape the engine draws (shape_grid cells — so every
@@ -627,6 +747,40 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 ## Unreleased
 
 ### Added
+
+- **2026-09-28 — Unreleased — Charts show the title's point (`go-slide-creator-sdxii`).**
+  New `chart_value.highlight` (also svggen `bar_chart` `data.highlight`,
+  `chart-insights-split` `values.chart.data.highlight` and
+  `horizontal-bar-with-callouts` `values.highlight`): 0-based indices and/or
+  category names painted accent1 while every other bar is neutral dk1 at 38%.
+  Omitted, a single-series time series accents its last bar and any other
+  chart its largest; `[]` accents none; an unknown entry fails validation.
+  Multi-series charts keep the series palette. Labelled bar and waterfall
+  charts drop the value axis and gridlines for a 0.75pt dk1 baseline, 60%-of-
+  slot bars and 10pt labels (bold on highlighted bars) with a true minus sign.
+  Waterfalls (svggen and `waterfall-bridge`) paint decreases accent1,
+  increases dk1 at 35% and totals / subtotals dk1 at 60%; the bridge's
+  `accent` override now colours the decreases, and template semantic accents
+  no longer drive its fills.
+- **2026-09-28 — Unreleased — Section tracker, rule-based agenda, next-steps closer, KPI comparators
+  (`go-slide-creator-r3gsw`, `go-slide-creator-7lzdh`, `go-slide-creator-lsfbi`).**
+  `chrome.tracker` (raw) / `meta.chrome.tracker` (DeckSpec) sets the current
+  section name above each content slide's title in 9pt accent1 caps with +8%
+  letter-spacing, 6pt above the title, from `structure.sections` or, on a flat
+  deck, the preceding section slide; title, section, closing and agenda slides
+  and slides with an `eyebrow` carry none. The `agenda` pattern is restyled:
+  28pt serif (`+mj-lt`) accent numerals, 16pt items, 0.5pt rules between
+  content-height rows, no filled tiles; `overrides.highlight` now sets the
+  current row bold and the others at 50% opacity. New pattern `next-steps`
+  (2–6 `actions` {action, owner?, date?} and 0–3 `decisions` in a "Decisions
+  requested" band with a left accent rule, no outline, no fill) and DeckSpec
+  kind `next_steps`; `plan_deck format:"deckspec"` now closes on `next_steps`
+  instead of `closing`, which stays available. `kpi-2up`…`kpi-6up` cells and
+  `kpi_snapshot` KPIs take an optional `comparator` (alias `vs`, ≤24 chars)
+  rendered as its own line in the delta's style; `kpi-inline` rejects it.
+  Shape-grid paragraphs accept `alpha` (text opacity, percent). Shipped
+  examples `board-deck`, `consulting-layouts` and `patterns-smoke` now use
+  action titles. No schema version bump.
 
 - **2026-09-24 — Resolved sparse-layout coverage (`go-slide-creator-atrbp`,
   `go-slide-creator-vk3ma`).** Raw-grid `sparse_layout` now measures painted

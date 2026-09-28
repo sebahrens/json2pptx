@@ -65,7 +65,7 @@ Cell options: "col_span", "row_span" for merged cells. Shape options: "geometry"
 Optional top-level fields: "output_filename", "accent_strategy" ("primary"|"rotate"|"section-keyed" — controls default accent color rotation across slides), "viewing_mode" ("present" default|"read" — readability floors for TEXT_BELOW_READABLE_MIN), "type_scale" ("compact" raw default|"comfortable"|"presentation" — measured grow-to-fill for sparse shape-grid text; a pattern's overrides.type_scale wins), "design_mode" ("constrained" default|"free" — constrained refuses hand-set text sizes and non-theme fills in shape_grid cells with design_mode_violation; set "free" INSIDE this presentation object, not as a tool argument, when the raw values are deliberate), "defaults":{"table_style":{...},"cell_style":{...}} (swap-only deck-level defaults applied before validation), "footer":{"enabled":true,"left_text":"..."}, "theme_override":{"colors":{},"title_font":"...","body_font":"..."}.
 
 Advanced deck-level fields (all opt-in; see get_capabilities.features for support + usage hints):
-- "chrome":{"confidentiality":"...","client_name":"...","project_code":"...","footer_date":"...","page_numbers":{"enabled":true,"format":"{current} / {total}","skip":["title","closing"]},"section_crumb":true} — deck-wide footer chrome with page numbers and an optional section title crumb; auto-suppressed on title/closing slides.
+- "chrome":{"confidentiality":"...","client_name":"...","project_code":"...","footer_date":"...","page_numbers":{"enabled":true,"format":"{current} / {total}","skip":["title","closing"]},"section_crumb":true,"tracker":true} — deck-wide footer chrome with page numbers and an optional section title crumb; auto-suppressed on title/closing slides. tracker sets the current section name in small accent caps above each content slide's title.
 - "structure":{"cover":{...},"closing":{...},"auto_agenda":true,"sections":[{"title":"...","slides":[...]}]} — expands into a flat slide sequence with auto section dividers + optional agenda slide. Mutually exclusive with top-level "slides".
 
 Optional slide fields: "slide_type", "speaker_notes", "source", "transition", "build".
@@ -546,6 +546,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	genReq.Footer = footerConfigForInput(&input, len(slideSpecs))
 	if input.Chrome != nil {
 		applyChromeSkip(slideSpecs, input.Chrome, input.Slides, templateLayouts)
+		applyChromeTracker(slideSpecs, input.Chrome, input.Slides, templateLayouts)
 	}
 	if input.ThemeOverride != nil {
 		genReq.ThemeOverride = input.ThemeOverride.ToThemeOverride()

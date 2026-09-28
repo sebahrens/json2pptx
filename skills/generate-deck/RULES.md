@@ -32,6 +32,8 @@ Do not invent font sizes. When generating `shape_grid` JSON, use these consisten
 
 Leave text insets at the 0.5 cm default. Anything outside these ranges should be a deliberate, named-pattern override — never an ad-hoc choice. See [`docs/INPUT_FORMAT.md`](../../docs/INPUT_FORMAT.md) for full examples.
 
+Every size in the table sits on the **type scale**: 28pt display / title, 18pt lead, 14pt subhead (bold card titles, grid headers), 12pt body, 10pt caption, plus a 40–48pt display step for KPI values; 11pt is the body minimum and 10pt is allowed only in tables and dense matrices. The engine settles off-scale `shape_grid` sizes onto the step at or below them (16pt renders at 14pt, 20pt at 18pt), keeps display figures and 28pt+ text as measured, and never goes below a `viewing_mode` readability floor. Short ALL-CAPS labels are tracked +7% automatically. Serif (the template's major font) belongs to titles and display figures only; body text uses the minor font.
+
 The numeric ranges above are the published surface of the canonical design tokens in [`internal/tokens/tokens.go`](../../internal/tokens/tokens.go) (`GridHeader*`, `CardTitle*`, `CardBody*`, `StepNumber*`, `Footnote*`). A regression test (`internal/tokens/tokens_test.go`) verifies this table stays in sync with the constants — if you change one, change the other in the same PR.
 
 ## Charts
@@ -47,7 +49,7 @@ The numeric ranges above are the published surface of the canonical design token
 
 | # | Rule | Rationale |
 |---|---|---|
-| 10b | Chart and matrix slides MUST set `slide.takeaway` (one sentence — the headline answer). | Omission emits `takeaway_missing`. It renders as 14pt bold dark text on an accent-tinted band above the source/footer, spanning the body column; content frames shrink above it. Without room, the band is skipped and preflight emits `chrome_band_no_fit`. |
+| 10b | Chart and matrix slides MUST set `slide.takeaway` (one sentence — the headline answer). | Omission emits `takeaway_missing`. It renders as 14pt bold dk1 text beside a flush 3pt accent1 bar (no fill, no outline) above the source/footer, spanning the body column with 16pt of air above and 12pt below; content frames shrink above it. Budget two lines. Without room, the band is skipped and preflight emits `chrome_band_no_fit`. |
 
 ```json
 {
@@ -105,6 +107,8 @@ Accepted `IconInput` sources, exactly one per icon: `name` (bundled), `path` (lo
 **Multiline cell counting.** A table cell containing `\n` or a comma-list with ≥3 items counts as N logical rows where N = max(line_count, ceil(comma_items / 1)). Apply this adjusted row count BEFORE the rows > 7 check. A 5-row table where 3 cells each contain 2 lines = 5 + 3 = 8 logical rows → must split.
 
 **Refusal wording.** When TDR forces a split, emit exactly: *"This table has [N] logical rows × [M] columns; per Rule 20 I cannot fit this — emitting split_slide to distribute rows across slides."* Do not silently shrink fonts below 9pt to avoid the split.
+
+**Default look.** A table with no `style` renders as a consulting table: no header fill (never a black header bar), 11pt bold header over a 1pt rule, 12pt rows separated by 0.5pt 15% hairlines, no zebra, bold first column, numeric columns right-aligned, content-height rows top-anchored under the title. Prefer it; add `header_background` / `borders` / `striped` only for a deliberate exception. `table-highlight` uses the same look with an accent 10% tint and 3pt accent bar on the highlighted row.
 
 Call `table_density_guide` (MCP) or run `json2pptx tables guide` (CLI, add `--json` for the structured envelope) for detailed font size and row-count guidance when building table slides in shape grids. Pass `{template: "..."}` (MCP) or `--template <name>` (CLI) to scope results to a specific template's `table_styles[]`. `style_id` narrows to one of those styles and requires `template`.
 
@@ -197,8 +201,9 @@ This is the one place the skill sets accent strategy; other guides defer here.
 - `section-keyed` gives each chapter its own accent — use it when the deck has
   `structure.sections` / section dividers.
 - `rotate` cycles pattern slides through the template's **safe** accents only
-  (light body text readable on the fill, not the negative accent), keyed to
-  each pattern's content so inserting a slide recolours nothing. Validation
+  (light body text readable on the fill, not the negative accent, not a grey
+  or pastel slot under 2:1 on `lt1`), keyed to each pattern's content so
+  inserting a slide recolours nothing; every `kpi-*` pattern shares one accent. Validation
   reports the excluded accents once per deck (`ROTATED_ACCENT_UNREADABLE`,
   info, at `/accent_strategy`). Use it only when that safe set has three or
   more accents and the deck has many pattern slides; otherwise it adds noise,

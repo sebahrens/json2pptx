@@ -41,12 +41,24 @@ func TestBeforeAfter_HeaderBandAndContentBody(t *testing.T) {
 	if h := maxCellHeight([]shapegrid.ResolvedCell{headers[0], headers[2]}); h > 50*pt {
 		t.Errorf("header band %.0fpt, want <= 50pt", float64(h)/pt)
 	}
-	if bodies := rowCells(res.Cells, 1); len(bodies) != 2 || headers[1].CellBounds.CY <= bodies[0].CellBounds.CY {
-		t.Errorf("chevron should span the header and both body panels; headers=%+v bodies=%+v", headers, bodies)
+	// The transition chevron is a compact 24pt marker centred on the whole
+	// block (go-slide-creator-7z5we), not a full-height column.
+	bodies := rowCells(res.Cells, 1)
+	if len(bodies) != 2 {
+		t.Fatalf("expected two body panels, got %d", len(bodies))
 	}
-	// The header stays compact while the full variant uses the available zone.
-	if top, bottom := blockExtent(res.Cells); float64(bottom-top) < 0.59*float64(contentRect.CY) {
-		t.Errorf("before-after block %.0fpt uses less than 60%% of the content height", float64(bottom-top)/pt)
+	chev := headers[1].Bounds
+	if chev.CY > 25*pt || chev.CX > 25*pt {
+		t.Errorf("chevron %.0fx%.0fpt, want a compact <= 24pt marker", float64(chev.CX)/pt, float64(chev.CY)/pt)
+	}
+	blockMid := (headers[0].CellBounds.Y + bodies[0].CellBounds.Y + bodies[0].CellBounds.CY) / 2
+	if mid := chev.Y + chev.CY/2; mid < blockMid-pt || mid > blockMid+pt {
+		t.Errorf("chevron centre %d is not centred on the block (%d)", mid, blockMid)
+	}
+	// Content-sized (go-slide-creator-wntyw): the panels hug their bullets
+	// and are never stretched to fill the zone.
+	if top, bottom := blockExtent(res.Cells); float64(bottom-top) > 0.6*float64(contentRect.CY) {
+		t.Errorf("before-after block %.0fpt stretches past 60%% of the content height", float64(bottom-top)/pt)
 	}
 	assertCentred(t, "before-after", res.Cells)
 }

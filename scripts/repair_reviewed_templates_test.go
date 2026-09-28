@@ -575,3 +575,106 @@ func TestReviewedPartsFailBeforeAnyMutation(t *testing.T) {
 		})
 	}
 }
+
+func TestRepairPStyleBodyMinorFont(t *testing.T) {
+	const major = `<a:latin typeface="+mj-lt"/><a:ea typeface="+mn-ea"/><a:cs typeface="+mn-cs"/>`
+	const minor = `<a:latin typeface="+mn-lt"/><a:ea typeface="+mn-ea"/><a:cs typeface="+mn-cs"/>`
+	level := func(n, font string) string {
+		return `<a:lvl` + n + `pPr marL="0"><a:defRPr sz="1400">` + font + `</a:defRPr></a:lvl` + n + `pPr>`
+	}
+	master := `<p:titleStyle><a:lvl1pPr><a:defRPr><a:latin typeface="+mj-lt"/><a:ea typeface="+mj-ea"/></a:defRPr></a:lvl1pPr></p:titleStyle><p:bodyStyle>` +
+		level("1", minor) + level("2", major) + level("3", major) +
+		`<a:lvl4pPr marL="0"><a:buFont typeface="Georgia"/><a:buChar char="–"/><a:defRPr sz="1400">` + major + `</a:defRPr></a:lvl4pPr>` +
+		level("5", major) + level("6", minor) + `</p:bodyStyle>`
+	const layout = `<p:cSld name="One Content"><p:sp name="body"><a:ext cx="11421056" cy="4000502"/><a:lstStyle><a:lvl2pPr><a:defRPr sz="2000"><a:latin typeface="+mj-lt"/></a:defRPr></a:lvl2pPr></a:lstStyle></p:sp></p:cSld>`
+	const backup = "output/template-repair-20260926/p-style-body-minor-font-before.pptx"
+	for _, invalid := range []string{"", "partial", "extra-serif", "layout-drift"} {
+		t.Run(invalid, func(t *testing.T) {
+			t.Chdir(t.TempDir())
+			parts := map[string]string{
+				"ppt/slideMasters/slideMaster1.xml": master,
+				"ppt/slideLayouts/slideLayout2.xml": layout,
+				"ppt/slideLayouts/slideLayout3.xml": `<p:cSld name="Closing"><a:latin typeface="+mj-lt"/></p:cSld>`,
+			}
+			switch invalid {
+			case "partial":
+				parts["ppt/slideMasters/slideMaster1.xml"] = strings.Replace(master, level("3", major), level("3", minor), 1)
+			case "extra-serif":
+				parts["ppt/slideMasters/slideMaster1.xml"] = strings.Replace(master, level("6", minor), level("6", major), 1)
+			case "layout-drift":
+				parts["ppt/slideLayouts/slideLayout2.xml"] = strings.Replace(layout, `sz="2000"`, `sz="1200"`, 1)
+			}
+			var buf bytes.Buffer
+			w := zip.NewWriter(&buf)
+			for name, body := range parts {
+				f, err := w.Create(name)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := io.WriteString(f, body); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := w.Close(); err != nil {
+				t.Fatal(err)
+			}
+			before := bytes.Clone(buf.Bytes())
+			if err := os.WriteFile("source.pptx", before, 0600); err != nil {
+				t.Fatal(err)
+			}
+			err := repairPStyleBodyMinorFont("source.pptx")
+			if (err != nil) != (invalid != "") {
+				t.Fatalf("repair=%v for %q", err, invalid)
+			}
+			after, err := os.ReadFile("source.pptx")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if invalid != "" {
+				if !bytes.Equal(before, after) {
+					t.Fatal("invalid source modified")
+				}
+				if _, err := os.Stat(backup); !os.IsNotExist(err) {
+					t.Fatal("invalid source created a backup")
+				}
+				return
+			}
+			if preimage, err := os.ReadFile(backup); err != nil || !bytes.Equal(preimage, before) {
+				t.Fatal("preimage not preserved")
+			}
+			r, err := zip.OpenReader("source.pptx")
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, entry := range r.File {
+				f, err := entry.Open()
+				if err != nil {
+					t.Fatal(err)
+				}
+				body, err := io.ReadAll(f)
+				_ = f.Close()
+				if err != nil {
+					t.Fatal(err)
+				}
+				want := parts[entry.Name]
+				switch entry.Name {
+				case "ppt/slideMasters/slideMaster1.xml":
+					want = strings.ReplaceAll(want, major, minor)
+				case "ppt/slideLayouts/slideLayout2.xml":
+					want = strings.Replace(want, "+mj-lt", "+mn-lt", 1)
+				}
+				if string(body) != want {
+					t.Fatalf("unexpected content in %s:\n%s", entry.Name, body)
+				}
+			}
+			_ = r.Close()
+			if err := repairPStyleBodyMinorFont("source.pptx"); err != nil {
+				t.Fatal(err)
+			}
+			again, err := os.ReadFile("source.pptx")
+			if err != nil || !bytes.Equal(after, again) {
+				t.Fatal("idempotent repair rewrote source")
+			}
+		})
+	}
+}

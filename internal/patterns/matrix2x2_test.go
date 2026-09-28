@@ -277,7 +277,12 @@ func TestMatrix2x2(t *testing.T) {
 			t.Fatalf("axis cells must be sub-grids, got x=%v y=%v", xAxis, yAxis)
 		}
 		xArrow := xAxis.Rows[0].Cells[1].Grid.Rows[0].Cells[1].Shape
-		yArrow := yAxis.Rows[1].Cells[0].Shape
+		yMiddle := yAxis.Rows[1].Cells[0].Grid
+		if yMiddle == nil {
+			t.Fatalf("y-axis middle must be a [title | arrow] sub-grid")
+		}
+		yTitle := yMiddle.Rows[0].Cells[0].Shape
+		yArrow := yMiddle.Rows[0].Cells[1].Shape
 		if xArrow.Geometry != "rightArrow" {
 			t.Errorf("x-axis geometry = %q, want rightArrow", xArrow.Geometry)
 		}
@@ -302,13 +307,21 @@ func TestMatrix2x2(t *testing.T) {
 		// Y-axis arrow must NOT rotate: rotating the shape flips its
 		// width/height about its center (J2P-MATRIX-005). Only the text
 		// reads vertically (vert270).
-		if yArrow.Rotation != 0 {
+		// Thin axes (go-slide-creator-7z5we): a 1.5pt shaft with an 8pt
+		// head — the x arrow is held to 8pt by its cell max_height.
+		if xCell := xAxis.Rows[0].Cells[1].Grid.Rows[0].Cells[1]; xCell.MaxHeight != matrix2x2AxisArrowPt {
+			t.Errorf("x-axis arrow max_height = %v, want %v", xCell.MaxHeight, matrix2x2AxisArrowPt)
+		}
+		if adj := xArrow.Adjustments["adj1"]; adj > 20000 {
+			t.Errorf("x-axis shaft adj1 = %d, want a thin line (<= 20%% of the 8pt head)", adj)
+		}
+		if yArrow.Rotation != 0 || yTitle.Rotation != 0 {
 			t.Errorf("y-axis rotation = %v, want 0 (J2P-MATRIX-005)", yArrow.Rotation)
 		}
 		var yText struct {
 			Vert string `json:"vert"`
 		}
-		if err := json.Unmarshal(yArrow.Text, &yText); err != nil {
+		if err := json.Unmarshal(yTitle.Text, &yText); err != nil {
 			t.Fatalf("y-axis text unmarshal: %v", err)
 		}
 		if yText.Vert != "vert270" {
@@ -330,13 +343,13 @@ func TestMatrix2x2(t *testing.T) {
 			t.Errorf("y-axis row_span = %d, want 2", grid.Rows[1].Cells[0].RowSpan)
 		}
 
-		// Quadrant cells should have lt1 fill
-		var qFill string
-		if err := json.Unmarshal(grid.Rows[1].Cells[1].Shape.Fill, &qFill); err != nil {
-			t.Fatalf("quadrant fill unmarshal: %v", err)
+		// Quadrants are a neutral 4% field split by white gutters, with no
+		// border (go-slide-creator-pgdkp).
+		if got := string(grid.Rows[1].Cells[1].Shape.Fill); got != neutral4JSON {
+			t.Errorf("quadrant fill = %s, want neutral 4%%", got)
 		}
-		if qFill != "lt1" {
-			t.Errorf("quadrant fill = %q, want %q", qFill, "lt1")
+		if got := string(grid.Rows[1].Cells[1].Shape.Line); got != `"none"` {
+			t.Errorf("quadrant line = %s, want none", got)
 		}
 	})
 

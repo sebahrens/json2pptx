@@ -37,11 +37,10 @@ func TestComposeContentSizedLeavesUseAllocatedSegments(t *testing.T) {
 			}
 			// Each vertical segment is a nested sub-grid in its own parent row.
 			got := merged.Rows[0].Cells[0].Grid.Rows[0].MaxHeight
-			allowed := fullHeight*tc.maxShare + 2
-			if tc.maxShare < 0.5 {
-				allowed = float64(ctx.LayoutBounds.Height)/12700*tc.maxShare + 2
-			}
-			if got >= fullHeight || got > allowed {
+			allowed := float64(ctx.LayoutBounds.Height)/12700*tc.maxShare + 2
+			// Content-sized KPI rows (go-slide-creator-wntyw) are the same
+			// height on the full slide and in a segment that holds them.
+			if got > fullHeight || got > allowed {
 				t.Errorf("KPI row max height %.1fpt does not fit its %.0f%% vertical segment (full-slide %.1fpt)", got, tc.maxShare*100, fullHeight)
 			}
 		})
@@ -98,8 +97,10 @@ func TestComposeHorizontalKeepsCompactCardBesideFullHeightHero(t *testing.T) {
 		t.Fatalf("expected three KPI cards and hero, got %d shapes", len(shapes))
 	}
 	card, full := shapes[0], shapes[3]
-	if float64(card.CY) < 0.59*float64(full.CY) {
-		t.Errorf("full KPI card height %.1fpt occupies less than 60%% of %.1fpt segment", float64(card.CY)/12700, float64(full.CY)/12700)
+	// Content-sized (go-slide-creator-wntyw): the card hugs its value and
+	// caption rather than stretching towards the segment height.
+	if float64(card.CY) > 0.5*float64(full.CY) {
+		t.Errorf("KPI card height %.1fpt stretches past half of the %.1fpt segment", float64(card.CY)/12700, float64(full.CY)/12700)
 	}
 	if card.Y <= full.Y || card.Y+card.CY >= full.Y+full.CY {
 		t.Errorf("KPI card is not centered within its segment: card=%+v hero=%+v", card, full)

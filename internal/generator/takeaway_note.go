@@ -1,48 +1,104 @@
 package generator
 
 import (
+	"math"
+	"strings"
+
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
-	"github.com/sebahrens/json2pptx/internal/tokens"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
-// takeawayFontSize is the takeaway font size in hundredths of a point. The
-// takeaway is the slide's headline answer, so it uses a 16pt banner size
-// rather than a card-title or footnote size. Its band geometry
-// (x-range, height, position above the footer chrome) comes from the template
-// profile via template.ResolveChromeFrame — there are no fixed EMU positions.
-var takeawayFontSize = tokens.GridHeaderDefaultHPt // 16pt
+// The slide takeaway is the shared takeaway component (patterns.Takeaway*,
+// go-slide-creator-7b5o6): a flush 3pt accent1 bar the full height of the
+// band, and 14pt bold text in the theme's dk1 ink 12pt from the bar,
+// top-anchored. No fill and no stroke. It used to be an accent1 "Lighter 80%"
+// wash framed by a 1pt accent rule carrying hard-coded #1F1F1F text — a
+// peach box on warm templates, and one of four different boxes the engine
+// drew for the same job.
+//
+// Its band rectangle comes from the chrome frame (template.ResolveChromeFrame),
+// which reserves 16pt of air above the band and 12pt below it to the source
+// line or the footer. Inside that rectangle the band takes the height its
+// text needs — one or two lines — so the bar never runs past the words.
 
-// Takeaway band accent tint (in thousandths of a percent). The band fill is
-// the template's accent1 lightened ~80% toward white ("Accent 1, Lighter 80%"
-// in PowerPoint terms). Using lumMod/lumOff keeps the band a subtle, branded
-// wash that is always light enough for the dark takeaway text to clear WCAG AA
-// — including on dark templates, where the takeaway is injected AFTER the
-// contrast pass and so cannot rely on auto-flip (go-slide-creator-5ovr).
-const (
-	takeawayBandLumMod = 20000 // keep 20% of the accent's luminance
-	takeawayBandLumOff = 80000 // add 80% luminance → near-white accent wash
-	takeawayRuleWidth  = 12700 // 1pt accent border framing the band
-)
+// takeawayFontSize is the takeaway font size in hundredths of a point.
+var takeawayFontSize = int(patterns.TakeawaySizePt * 100)
 
-// generateTakeawayShapeInBounds creates a p:sp element for slide takeaway text.
-// The shape renders as a distinct band: a subtle accent-tinted fill framed by
-// a thin accent rule, carrying bold dark text, so the headline reads
-// regardless of the underlying slide/template color. bounds is the takeaway
-// rectangle of the slide's chrome frame. shapeID must be unique within the
-// slide's shape tree; callers allocate it from findMaxShapeID(slideData)+1.
-func generateTakeawayShapeInBounds(takeawayText string, shapeID uint32, bounds pptx.RectEmu) string {
-	b, err := pptx.GenerateShape(pptx.ShapeOptions{
-		ID:       shapeID,
-		Name:     "Takeaway",
-		Bounds:   bounds,
+const emuPerPt = 12700
+
+// takeawayStyle carries the per-slide inputs the band cannot know on its own.
+type takeawayStyle struct {
+	// FontName is the theme body font, used to measure the wrap.
+	FontName string
+	// InkHex, when set, replaces the dk1 scheme ink: the layout's background
+	// would leave dk1 unreadable (a dark layout) and the contrast pass has
+	// already run by the time the takeaway is injected.
+	InkHex string
+}
+
+// takeawayBandHeight returns the band height (EMU) the text needs in a band
+// bounds.CX wide, capped at bounds.CY.
+func takeawayBandHeight(text string, bounds pptx.RectEmu, style takeawayStyle) int64 {
+	textW := bounds.CX - int64((patterns.TakeawayBarPt+patterns.TakeawayTextInsetPt)*emuPerPt)
+	font := strings.TrimSpace(style.FontName)
+	if font == "" {
+		font = "Arial"
+	}
+	lines := 1
+	if m, err := textfit.MeasureStyledRuns(textfit.StyledMeasureParams{
+		Runs:     []textfit.StyledRun{{Text: text, Bold: true}},
+		FontName: font,
+		FontPt:   patterns.TakeawaySizePt,
+		WidthEMU: textW,
+	}); err == nil && m.Lines > 1 {
+		lines = m.Lines
+	}
+	const safetyPt = 2.0
+	h := int64(math.Ceil((float64(lines)*patterns.TakeawaySizePt*1.2 + 2*patterns.TakeawayPadPt + safetyPt) * emuPerPt))
+	return min(h, bounds.CY)
+}
+
+// generateTakeawayShapesInBounds returns the band's two shapes — the accent
+// bar and the text — for the chrome takeaway rectangle bounds. firstID and
+// firstID+1 must be unique within the slide's shape tree.
+func generateTakeawayShapesInBounds(takeawayText string, firstID uint32, bounds pptx.RectEmu, style takeawayStyle) string {
+	band := bounds
+	band.CY = takeawayBandHeight(takeawayText, bounds, style)
+	barW := int64(patterns.TakeawayBarPt * emuPerPt)
+
+	bar, err := pptx.GenerateShape(pptx.ShapeOptions{
+		ID:       firstID,
+		Name:     "Takeaway Bar",
+		Bounds:   pptx.RectEmu{X: band.X, Y: band.Y, CX: barW, CY: band.CY},
 		Geometry: pptx.GeomRect,
-		Fill:     pptx.SchemeFill("accent1", pptx.LumMod(takeawayBandLumMod), pptx.LumOff(takeawayBandLumOff)),
-		Line:     pptx.Line{Width: takeawayRuleWidth, Fill: pptx.SchemeFill("accent1")},
+		Fill:     pptx.SchemeFill("accent1"),
+		Line:     pptx.NoLine(),
+	})
+	if err != nil {
+		return ""
+	}
+
+	ink := pptx.SchemeFill(patterns.TakeawayInk)
+	if style.InkHex != "" {
+		ink = pptx.SolidFill(strings.TrimPrefix(style.InkHex, "#"))
+	}
+	pad := int64(patterns.TakeawayPadPt * emuPerPt)
+	text, err := pptx.GenerateShape(pptx.ShapeOptions{
+		ID:   firstID + 1,
+		Name: "Takeaway",
+		// The text box spans the whole band (so the band's x is the body
+		// column, as the chrome frame and portability checks expect) and
+		// clears the bar with its left inset.
+		Bounds:   band,
+		Geometry: pptx.GeomRect,
+		Fill:     pptx.NoFill(),
+		Line:     pptx.NoLine(),
 		TxBox:    true,
 		Text: &pptx.TextBody{
 			Wrap:   "square",
-			Anchor: "ctr",
-			Insets: pptx.ShapeTextInsets(),
+			Anchor: "t",
+			Insets: [4]int64{barW + int64(patterns.TakeawayTextInsetPt*emuPerPt), pad, 0, pad},
 			Paragraphs: []pptx.Paragraph{{
 				Align: "l",
 				Runs: []pptx.Run{{
@@ -51,7 +107,7 @@ func generateTakeawayShapeInBounds(takeawayText string, shapeID uint32, bounds p
 					FontSize: takeawayFontSize,
 					Bold:     true,
 					Dirty:    true,
-					Color:    pptx.SolidFill(tokens.TakeawayColor[1:]),
+					Color:    ink,
 				}},
 			}},
 		},
@@ -59,14 +115,35 @@ func generateTakeawayShapeInBounds(takeawayText string, shapeID uint32, bounds p
 	if err != nil {
 		return ""
 	}
-	return string(b)
+	return string(bar) + string(text)
 }
 
-// insertTakeaway inserts a takeaway text shape at bounds (the chrome frame's
-// takeaway band) before </p:spTree>, so it renders on top of slide content.
+// insertTakeaway inserts the takeaway band at bounds (the chrome frame's
+// takeaway rectangle) before </p:spTree>, so it renders on top of slide
+// content, measuring with Arial and inking in dk1.
 func insertTakeaway(slideData []byte, takeawayText string, bounds pptx.RectEmu) ([]byte, error) {
-	// Allocate a slide-unique ID above any existing shape so the takeaway
-	// cannot collide with content shapes or other late injections.
-	shapeXML := generateTakeawayShapeInBounds(takeawayText, findMaxShapeID(slideData)+1, bounds)
-	return pptx.InsertIntoSpTree(slideData, []byte(shapeXML), pptx.InsertAtEnd)
+	return insertStyledTakeaway(slideData, takeawayText, bounds, takeawayStyle{})
+}
+
+func insertStyledTakeaway(slideData []byte, takeawayText string, bounds pptx.RectEmu, style takeawayStyle) ([]byte, error) {
+	// Allocate slide-unique IDs above any existing shape so the band cannot
+	// collide with content shapes or other late injections.
+	shapesXML := generateTakeawayShapesInBounds(takeawayText, findMaxShapeID(slideData)+1, bounds, style)
+	return pptx.InsertIntoSpTree(slideData, []byte(shapesXML), pptx.InsertAtEnd)
+}
+
+// takeawayInkForLayout returns "" when dk1 reads on the layout's background
+// (the common case: keep the scheme ink) or the theme colour that does when
+// it would not. It records no finding — the chrome pass owns those.
+func (ctx *singlePassContext) takeawayInkForLayout(layoutID string) string {
+	if layoutID == "" {
+		return ""
+	}
+	layoutData, err := ctx.readLayoutFile(layoutID)
+	if err != nil {
+		return ""
+	}
+	bgHex := extractLayoutBackgroundColor(layoutData, ctx.themeColors)
+	inkHex := resolveSchemeColorToHex(patterns.TakeawayInk, ctx.themeColors)
+	return chromeColorVerdict(bgHex, inkHex, ctx.themeColors, 0).hex
 }

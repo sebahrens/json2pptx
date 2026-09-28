@@ -203,7 +203,7 @@
             ]
           ],
           "style": {
-            "borders": "all",
+            "borders": "",
             "header_background": "",
             "striped": false
           }

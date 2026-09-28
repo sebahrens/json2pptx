@@ -42,6 +42,10 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 			findings = append(findings, finding)
 		}
 	}
+	// Data slides without a source (DATA_WITHOUT_SOURCE). Reads the authored
+	// patterns and compose segments, so it runs before expansion replaces them
+	// with grids (go-slide-creator-cuszt).
+	findings = append(findings, collectDataWithoutSourceFindings(input)...)
 	var geometryErrors []patterns.FitFinding
 	input, layouts, geometryErrors = withDerivedFitLayouts(input, layouts, slideWidth, slideHeight)
 	findings = append(findings, geometryErrors...)
@@ -826,6 +830,7 @@ func resolveGridForStructural(grid *ShapeGridInput, overrideBounds *pptx.RectEmu
 		RowGap:    rowGap,
 		VAlign:    vAlign,
 	}
+	sgGrid.KeepTextSizes = grid.KeepTextSizes
 
 	if vErr := shapegrid.Validate(sgGrid); vErr != nil {
 		return nil
@@ -1332,7 +1337,11 @@ func collectStructuralSmellFindings(input *PresentationInput) []patterns.FitFind
 			continue
 		}
 		for _, w := range pipeline.DetectStructuralSmells(slide.ShapeGrid, si) {
-			findings = append(findings, patterns.FitFinding{ValidationError: *w, Action: "review"})
+			action := "review"
+			if w.Code == patterns.ErrCodeFilledShapeOutlined {
+				action = "info" // advisory: the outline renders as authored
+			}
+			findings = append(findings, patterns.FitFinding{ValidationError: *w, Action: action})
 		}
 	}
 	return findings
@@ -1491,6 +1500,7 @@ func collectTablePreflightFindings(input *PresentationInput, layouts []types.Lay
 				Path:    pathPrefix,
 				Headers: spec.Headers,
 				Rows:    spec.Rows,
+				Style:   spec.Style,
 				Bounds:  bounds,
 			})...)
 		}
@@ -1541,6 +1551,7 @@ func collectGridTablePreflightResolved(grid *ShapeGridInput, result *shapegrid.R
 				Path:    path + "/table",
 				Headers: spec.Headers,
 				Rows:    spec.Rows,
+				Style:   spec.Style,
 				Bounds: types.BoundingBox{
 					X: rc.CellBounds.X, Y: rc.CellBounds.Y,
 					Width: rc.CellBounds.CX, Height: rc.CellBounds.CY,

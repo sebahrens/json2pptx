@@ -175,12 +175,13 @@ func IsValidTableStyleID(id string) bool {
 	return tableStyleIDPattern.MatchString(id)
 }
 
-// DefaultTableStyle provides sensible defaults for table styling.
-// HeaderBackground is intentionally empty so the table style's firstRow
-// appearance takes effect; set it explicitly to override.
+// DefaultTableStyle is the style of a table authored without a style block.
+// HeaderBackground and Borders are intentionally empty so the renderer draws
+// its consulting default (no header fill, hairline row rules, no zebra;
+// go-slide-creator-1iiej); set them explicitly to override.
 var DefaultTableStyle = TableStyle{
 	HeaderBackground: "",
-	Borders:          "all",
+	Borders:          "",
 	Striped:          nil,
 	StyleID:          DefaultTableStyleID,
 }

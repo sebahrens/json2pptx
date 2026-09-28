@@ -22,17 +22,25 @@ import (
 //
 // Icon accepts either a bundled-name string shorthand or a full IconRef object
 // (path / url / svg_data / fill / alt / position). See IconRef and IconRefSchema.
+//
+// Comparator is the reference the number is read against ("vs plan +4 pts",
+// "vs PY -2%"): a partner reads a KPI without one as unanchored
+// (go-slide-creator-lsfbi). It renders as its own line under the caption and
+// delta, in the delta's size and ink, so every card in a row shares one style.
 type KPICell struct {
-	Big   string   `json:"big"`
-	Small string   `json:"small"`
-	Sub   string   `json:"sub,omitempty"`
-	Icon  *IconRef `json:"icon,omitempty"`
+	Big        string   `json:"big"`
+	Small      string   `json:"small"`
+	Sub        string   `json:"sub,omitempty"`
+	Comparator string   `json:"comparator,omitempty"`
+	Icon       *IconRef `json:"icon,omitempty"`
 }
 
 const (
-	kpiSubMaxChars       = 12
-	kpiNupBigMaxChars    = 12
-	kpiInlineBigMaxChars = 8
+	// kpiComparatorMaxChars bounds the comparator line ("vs plan +4 pts").
+	kpiComparatorMaxChars = 24
+	kpiSubMaxChars        = 12
+	kpiNupBigMaxChars     = 12
+	kpiInlineBigMaxChars  = 8
 )
 
 // UnmarshalJSON supports string shorthand "Big | Small" or an object. The object
@@ -52,17 +60,21 @@ func (c *KPICell) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 	var obj struct {
-		Big     string   `json:"big"`
-		Small   string   `json:"small"`
-		Value   string   `json:"value"`
-		Number  string   `json:"number"`
-		Label   string   `json:"label"`
-		Caption string   `json:"caption"`
-		Sub     string   `json:"sub"`
-		Delta   string   `json:"delta"`
-		Trend   string   `json:"trend"`
-		Change  string   `json:"change"`
-		Icon    *IconRef `json:"icon"`
+		Big     string `json:"big"`
+		Small   string `json:"small"`
+		Value   string `json:"value"`
+		Number  string `json:"number"`
+		Label   string `json:"label"`
+		Caption string `json:"caption"`
+		Sub     string `json:"sub"`
+		Delta   string `json:"delta"`
+		Trend   string `json:"trend"`
+		Change  string `json:"change"`
+		// Comparator and its alias vs name the reference the value is read
+		// against ("vs plan +4 pts").
+		Comparator string   `json:"comparator"`
+		Vs         string   `json:"vs"`
+		Icon       *IconRef `json:"icon"`
 	}
 	if err := json.Unmarshal(data, &obj); err != nil {
 		return fmt.Errorf("KPICell must be a string \"Big | Small\" or an object {big, small} (aliases value/number, label/caption, sub/delta/trend/change): %w", err)
@@ -70,6 +82,7 @@ func (c *KPICell) UnmarshalJSON(data []byte) error {
 	c.Big = firstNonEmpty(obj.Big, obj.Value, obj.Number)
 	c.Small = firstNonEmpty(obj.Small, obj.Label, obj.Caption)
 	c.Sub = firstNonEmpty(obj.Sub, obj.Delta, obj.Trend, obj.Change)
+	c.Comparator = firstNonEmpty(obj.Comparator, obj.Vs)
 	c.Icon = obj.Icon
 	return nil
 }
@@ -183,6 +196,9 @@ func validateKPICells(patternName string, cells []KPICell, expectedCount int, si
 		if subLength := runeLen(cell.Sub); subLength > kpiSubMaxChars {
 			errs = append(errs, errMaxLength(patternName, fmt.Sprintf("values[%d].sub", i), kpiSubMaxChars, subLength))
 		}
+		if n := runeLen(cell.Comparator); n > kpiComparatorMaxChars {
+			errs = append(errs, errMaxLength(patternName, fmt.Sprintf("values[%d].comparator", i), kpiComparatorMaxChars, n))
+		}
 		if cell.Icon != nil {
 			iconPath := fmt.Sprintf("values[%d].icon", i)
 			errs = append(errs, validateIconRef(patternName, iconPath, *cell.Icon)...)
@@ -203,19 +219,24 @@ func validateKPICells(patternName string, cells []KPICell, expectedCount int, si
 // The icon field is polymorphic: it accepts a bundled-name string shorthand
 // (e.g. "rocket") or a full IconRef object (path / url / svg_data / fill / alt
 // / position).
-func kpiCellSchema(bigMaxChars int) *Schema {
+func kpiCellSchema(bigMaxChars, comparatorMaxChars int) *Schema {
+	props := map[string]*Schema{
+		"big":   StringSchema(bigMaxChars).WithDescription("The big number (e.g. \"$4.2M\"); the hard character maximum is not a fit guarantee for every card width"),
+		"small": StringSchema(40).WithDescription("Short caption (e.g. \"ARR\")"),
+		"sub":   StringSchema(kpiSubMaxChars).WithDescription("Optional delta/trend annotation rendered below the number (e.g. \"+5%\"); aliases delta/trend/change"),
+		"icon":  IconRefSchema("Optional icon: bundled name string or {name|path|url|svg_data, fill?, alt?, position?} object"),
+	}
+	shape := "{big, small, sub?, icon?}"
+	// comparatorMaxChars 0 means the pattern takes no comparator line (the
+	// height-capped kpi-inline bar).
+	if comparatorMaxChars > 0 {
+		props["comparator"] = StringSchema(comparatorMaxChars).WithDescription("Optional comparator line: the reference the number is read against (e.g. \"vs plan +4 pts\", \"vs PY -2%\"); rendered under the caption in the delta's style, with the line reserved on every card when any card has one; alias vs")
+		shape = "{big, small, sub?, comparator?, icon?}"
+	}
 	return OneOfSchema(
 		StringSchema(0).WithDescription("Shorthand: \"Big | Small\" (e.g. \"$4.2M | ARR\")"),
-		ObjectSchema(
-			map[string]*Schema{
-				"big":   StringSchema(bigMaxChars).WithDescription("The big number (e.g. \"$4.2M\"); the hard character maximum is not a fit guarantee for every card width"),
-				"small": StringSchema(40).WithDescription("Short caption (e.g. \"ARR\")"),
-				"sub":   StringSchema(kpiSubMaxChars).WithDescription("Optional delta/trend annotation rendered below the number (e.g. \"+5%\"); aliases delta/trend/change"),
-				"icon":  IconRefSchema("Optional icon: bundled name string or {name|path|url|svg_data, fill?, alt?, position?} object"),
-			},
-			[]string{"big", "small"},
-		).WithAdditionalProperties(false),
-	).WithDescription("KPI cell: string \"Big | Small\" or {big, small, sub?, icon?}")
+		ObjectSchema(props, []string{"big", "small"}).WithAdditionalProperties(false),
+	).WithDescription("KPI cell: string \"Big | Small\" or " + shape)
 }
 
 // kpiOverridesSchema returns the JSON Schema for KPI pattern-level overrides.
@@ -233,11 +254,12 @@ func kpiOverridesSchema() *Schema {
 }
 
 // buildKPITextContent creates a JSON text object with paragraphs for a KPI cell.
-// The caption stays directly below the value; the smaller delta/trend line has
-// a reserved final slot on full-size cards so all cards in a row keep the same
-// baseline even when some metrics have no delta. Compact inline bars omit that
-// empty slot. The text color stays "lt1" on the accent fill.
-func buildKPITextContent(big string, bigSize float64, small string, smallSize float64, sub string, fixedDeltaSlot bool) json.RawMessage {
+// The caption stays directly below the value; the smaller delta/trend line and
+// the comparator line ("vs plan +4 pts") follow in one shared style. Each has a
+// reserved slot on full-size cards when any card in the row carries one, so all
+// cards keep the same baseline. Compact inline bars omit the empty slots. The
+// text color stays "lt1" on the accent fill.
+func buildKPITextContent(big string, bigSize float64, small string, smallSize float64, sub string, fixedDeltaSlot bool, comparator string, fixedComparatorSlot bool) json.RawMessage {
 	type paragraph struct {
 		Content string  `json:"content"`
 		Size    float64 `json:"size"`
@@ -258,6 +280,12 @@ func buildKPITextContent(big string, bigSize float64, small string, smallSize fl
 	if sub != "" {
 		paragraphs = append(paragraphs, paragraph{Content: sub, Size: kpiSubSize(smallSize), Color: "lt1", Align: "ctr"})
 	}
+	if comparator == "" && fixedComparatorSlot {
+		comparator = "\u00a0"
+	}
+	if comparator != "" {
+		paragraphs = append(paragraphs, paragraph{Content: comparator, Size: kpiSubSize(smallSize), Color: "lt1", Align: "ctr"})
+	}
 
 	textObj := struct {
 		Paragraphs    []paragraph `json:"paragraphs"`
@@ -271,6 +299,17 @@ func buildKPITextContent(big string, bigSize float64, small string, smallSize fl
 
 	data, _ := json.Marshal(textObj)
 	return data
+}
+
+// kpiReservedSlots reports whether any card in the row carries a delta and a
+// comparator line, so every card reserves the same lines and keeps one
+// baseline.
+func kpiReservedSlots(cells []KPICell) (delta, comparator bool) {
+	for _, c := range cells {
+		delta = delta || c.Sub != ""
+		comparator = comparator || c.Comparator != ""
+	}
+	return delta, comparator
 }
 
 // kpiSubSize returns the font size for the sub/delta annotation: ~85% of the
@@ -307,19 +346,16 @@ const (
 	kpiTopIconWFrac  = 0.45
 	kpiLeftIconHFrac = 0.4
 	kpiLeftIconWFrac = 0.2
-	// kpiBaseCardHeightFrac is the share of the content height a KPI card
-	// takes when its content fits. The full-size variant uses at least 70% of
-	// the zone while the row remains centred vertically by the grid.
-	//
-	// It is a BASE, not a cap — kpiRowMaxHeightPt raises the row to whatever
-	// the tallest card's measured content needs, bounded only by the content
-	// box. It was named kpiMaxCardHeightFrac and passed to clampPt as the
-	// LOWER bound, so every doc and test asserting a "cap" was false
-	// (go-slide-creator-4uxi).
+	// kpiBaseCardHeightFrac is the share of the content height used as the
+	// card-height ESTIMATE that picks the icon position (left on landscape
+	// cards, top on portrait) and the default icon footprint before the row
+	// is sized. It is neither a floor nor a cap on the rendered card:
+	// kpiRowMaxHeightPt sizes the row to its content (go-slide-creator-wntyw).
 	kpiBaseCardHeightFrac = 0.70
-	// kpiCardPadPt is the vertical breathing room added around the card text
-	// when content needs more than the cap.
-	kpiCardPadPt = 24.0
+	// kpiCardPadPt is the minimum vertical breathing room (beyond the text
+	// insets) a card keeps around its text; short content gets up to
+	// contentStretchMax x its height instead.
+	kpiCardPadPt = 12.0
 )
 
 // kpiCardGeometry is the estimated size (points) of one KPI card.
@@ -328,28 +364,22 @@ type kpiCardGeometry struct {
 }
 
 // kpiCardGeometryFor estimates the card size for n cards spread across the
-// content area. Card height is the kpiBaseCardHeightFrac share of the content
-// height; kpiRowMaxHeightPt raises it when content needs more.
+// content area. The height is the kpiBaseCardHeightFrac estimate used for
+// icon placement; kpiRowMaxHeightPt sizes the rendered row to its content.
 func kpiCardGeometryFor(ctx ExpandContext, n int) kpiCardGeometry {
 	w, h := contentAreaPt(ctx)
 	return kpiCardGeometry{wPt: equalColumnWidthPt(w, n, kpiCardGapPt), hPt: h * kpiBaseCardHeightFrac}
 }
 
-// kpiRowMaxHeightPt returns the KPI row's max_height: the capped card height,
-// raised when the tallest card's content (top icon zone + value + sub +
-// caption + padding) needs more, never above the content height.
+// kpiRowMaxHeightPt returns the KPI row's max_height: the tallest card's
+// content (top icon zone + value + sub + caption) plus its padding, at most
+// contentStretchMax x that content, never above the content height.
 func kpiRowMaxHeightPt(ctx ExpandContext, cells []KPICell, geo kpiCardGeometry, iconPos string, bigSize, smallSize float64) float64 {
 	_, contentH := contentAreaPt(ctx)
 	font := ctx.Theme.BodyFont
 	textW := geo.wPt - 2*defaultShapeInsetLRPt
 	need := 0.0
-	reserveDelta := false
-	for _, c := range cells {
-		if c.Sub != "" {
-			reserveDelta = true
-			break
-		}
-	}
+	reserveDelta, reserveComparator := kpiReservedSlots(cells)
 	for _, c := range cells {
 		w := geo.valueWidthPt(c.Icon, iconPos)
 		if w <= 0 {
@@ -359,23 +389,29 @@ func kpiRowMaxHeightPt(ctx ExpandContext, cells []KPICell, geo kpiCardGeometry, 
 		if sub == "" && reserveDelta {
 			sub = "\u00a0" // same reserved baseline as buildKPITextContent
 		}
+		comparator := c.Comparator
+		if comparator == "" && reserveComparator {
+			comparator = "\u00a0"
+		}
 		h := textBlockHeightPt(font, w,
 			textParagraph{text: c.Big, size: bigSize, bold: true},
 			textParagraph{text: c.Small, size: smallSize},
 			textParagraph{text: sub, size: kpiSubSize(smallSize)},
+			textParagraph{text: comparator, size: kpiSubSize(smallSize)},
 		)
 		pos := effectiveIconPos(c.Icon, iconPos)
 		if c.Icon != nil && !c.Icon.IsEmpty() && pos == "top" {
 			h += math.Min(geo.wPt, geo.hPt)*geo.iconScale(c.Icon, pos) + 2*kpiIconGapPt
 		}
-		need = math.Max(need, h+kpiCardPadPt+2*defaultShapeInsetTBPt)
+		need = math.Max(need, math.Max(h*contentStretchMax, h+kpiCardPadPt+2*defaultShapeInsetTBPt))
 	}
-	// geo.hPt is the BASE (clampPt's lower bound) and the content box is the
-	// ceiling. A tighter ceiling was considered and rejected: a row can never
-	// exceed the box anyway, so capping below it only clips cards whose text
-	// genuinely needs the height, leaving the rest of the box empty while the
-	// text overflows (go-slide-creator-4uxi).
-	return clampPt(need, geo.hPt, contentH)
+	// Content-sized (go-slide-creator-wntyw): the card hugs its value and
+	// caption — at most contentStretchMax x the text block, or the text plus
+	// the padding and insets when that is larger — and the row is
+	// middle-anchored in the body zone. geo.hPt is no longer a floor: a 70%
+	// base gave a 270pt card around 60pt of content. The content box stays
+	// the ceiling.
+	return clampPt(need, 0, contentH)
 }
 
 // iconPosition picks the default overlay icon position: "left" for landscape

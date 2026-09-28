@@ -2,19 +2,19 @@
   "col_gap": 8,
   "row_gap": 6,
   "columns": [
-    10.4,
-    14.6,
-    10.4,
-    14.6,
-    10.4,
-    14.6,
-    10.4,
-    14.6
+    8.8,
+    16.2,
+    8.8,
+    16.2,
+    8.8,
+    16.2,
+    8.8,
+    16.2
   ],
   "rows": [
     {
-      "min_height": 49,
-      "max_height": 49,
+      "min_height": 48,
+      "max_height": 48,
       "cells": [
         {
           "col_span": 8,
@@ -25,7 +25,7 @@
               "paragraphs": [
                 {
                   "content": "North America",
-                  "size": 15,
+                  "size": 14,
                   "bold": true,
                   "color": "accent1",
                   "align": "l"
@@ -44,8 +44,8 @@
       ]
     },
     {
-      "min_height": 104,
-      "max_height": 104,
+      "min_height": 103,
+      "max_height": 103,
       "cells": [
         {
           "fit": "contain",
@@ -60,7 +60,7 @@
               "paragraphs": [
                 {
                   "content": "JS",
-                  "size": 24,
+                  "size": 20,
                   "bold": true,
                   "color": "accent1",
                   "align": "ctr"
@@ -79,7 +79,7 @@
               "paragraphs": [
                 {
                   "content": "Jane Smith",
-                  "size": 13,
+                  "size": 12,
                   "bold": true,
                   "color": "dk1",
                   "align": "l"
@@ -109,7 +109,7 @@
               "paragraphs": [
                 {
                   "content": "AP",
-                  "size": 24,
+                  "size": 20,
                   "bold": true,
                   "color": "accent1",
                   "align": "ctr"
@@ -128,7 +128,7 @@
               "paragraphs": [
                 {
                   "content": "Arun Patel",
-                  "size": 13,
+                  "size": 12,
                   "bold": true,
                   "color": "dk1",
                   "align": "l"
@@ -158,7 +158,7 @@
               "paragraphs": [
                 {
                   "content": "LR",
-                  "size": 24,
+                  "size": 20,
                   "bold": true,
                   "color": "accent1",
                   "align": "ctr"
@@ -177,7 +177,7 @@
               "paragraphs": [
                 {
                   "content": "Lila Romero",
-                  "size": 13,
+                  "size": 12,
                   "bold": true,
                   "color": "dk1",
                   "align": "l"
@@ -207,7 +207,7 @@
               "paragraphs": [
                 {
                   "content": "TB",
-                  "size": 24,
+                  "size": 20,
                   "bold": true,
                   "color": "accent1",
                   "align": "ctr"
@@ -226,7 +226,7 @@
               "paragraphs": [
                 {
                   "content": "Tom Becker",
-                  "size": 13,
+                  "size": 12,
                   "bold": true,
                   "color": "dk1",
                   "align": "l"
@@ -246,8 +246,8 @@
       ]
     },
     {
-      "min_height": 55,
-      "max_height": 55,
+      "min_height": 54,
+      "max_height": 54,
       "cells": [
         {
           "col_span": 8,
@@ -258,7 +258,7 @@
               "paragraphs": [
                 {
                   "content": "Europe",
-                  "size": 15,
+                  "size": 14,
                   "bold": true,
                   "color": "accent1",
                   "align": "l"
@@ -277,8 +277,8 @@
       ]
     },
     {
-      "min_height": 105,
-      "max_height": 105,
+      "min_height": 103,
+      "max_height": 103,
       "cells": [
         {
           "fit": "contain",
@@ -293,7 +293,7 @@
               "paragraphs": [
                 {
                   "content": "SL",
-                  "size": 24,
+                  "size": 20,
                   "bold": true,
                   "color": "accent1",
                   "align": "ctr"
@@ -312,7 +312,7 @@
               "paragraphs": [
                 {
                   "content": "Sophie Laurent",
-                  "size": 13,
+                  "size": 12,
                   "bold": true,
                   "color": "dk1",
                   "align": "l"
@@ -342,7 +342,7 @@
               "paragraphs": [
                 {
                   "content": "HN",
-                  "size": 24,
+                  "size": 20,
                   "bold": true,
                   "color": "accent1",
                   "align": "ctr"
@@ -361,7 +361,7 @@
               "paragraphs": [
                 {
                   "content": "Henrik Nilsson",
-                  "size": 13,
+                  "size": 12,
                   "bold": true,
                   "color": "dk1",
                   "align": "l"
@@ -391,7 +391,7 @@
               "paragraphs": [
                 {
                   "content": "MK",
-                  "size": 24,
+                  "size": 20,
                   "bold": true,
                   "color": "accent1",
                   "align": "ctr"
@@ -410,7 +410,7 @@
               "paragraphs": [
                 {
                   "content": "Marta Kowalska",
-                  "size": 13,
+                  "size": 12,
                   "bold": true,
                   "color": "dk1",
                   "align": "l"

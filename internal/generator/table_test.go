@@ -155,15 +155,16 @@ func TestGenerateTableXML_HeaderStyling(t *testing.T) {
 	}
 }
 
-func TestGenerateTableXML_DefaultHeaderFillWhenOmitted(t *testing.T) {
-	// go-slide-creator-weaq: when HeaderBackground is empty and no explicit
-	// table style was chosen, the engine renders the default header: accent1
-	// fill, bold, lt1 text (most templates do not ship the default GUID style,
-	// so deferring to it rendered plain headers).
+func TestGenerateTableXML_DefaultHeaderUnfilledWhenOmitted(t *testing.T) {
+	// go-slide-creator-1iiej: when HeaderBackground is empty and no explicit
+	// table style was chosen, the engine renders the consulting default
+	// header: no fill (explicit noFill so the referenced style cannot show
+	// through), 11pt bold text-color type over a 1pt text-color rule, no
+	// vertical rules.
 	table := &types.TableSpec{
 		Headers: []string{"Header 1"},
 		Rows:    [][]types.TableCell{{{Content: "A", ColSpan: 1, RowSpan: 1}}},
-		Style:   types.TableStyle{HeaderBackground: "", Borders: "all"},
+		Style:   types.TableStyle{HeaderBackground: ""},
 	}
 
 	config := TableRenderConfig{
@@ -176,11 +177,17 @@ func TestGenerateTableXML_DefaultHeaderFillWhenOmitted(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	firstRow := result.XML[strings.Index(result.XML, "<a:tr "):strings.Index(result.XML, "</a:tr>")]
-	if !strings.Contains(firstRow, `<a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:tcPr>`) {
-		t.Errorf("default header should have accent1 fill: %s", firstRow)
+	if !strings.Contains(firstRow, `<a:noFill/></a:tcPr>`) || strings.Contains(firstRow, `<a:schemeClr val="accent1"/></a:solidFill></a:tcPr>`) {
+		t.Errorf("default header should be unfilled: %s", firstRow)
 	}
-	if !strings.Contains(firstRow, `b="1"`) || !strings.Contains(firstRow, `<a:schemeClr val="lt1"/>`) {
-		t.Errorf("default header should be bold lt1 text: %s", firstRow)
+	if !strings.Contains(firstRow, `sz="1100" b="1"><a:solidFill><a:schemeClr val="tx1"/>`) {
+		t.Errorf("default header should be 11pt bold text-color type: %s", firstRow)
+	}
+	if !strings.Contains(firstRow, `<a:lnB w="12700" cap="flat" cmpd="sng"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill></a:lnB>`) {
+		t.Errorf("default header should sit over a 1pt rule: %s", firstRow)
+	}
+	if !strings.Contains(firstRow, `<a:lnL w="0"><a:noFill/></a:lnL>`) {
+		t.Errorf("default table should draw no vertical rules: %s", firstRow)
 	}
 }
 
@@ -309,12 +316,14 @@ func TestGenerateTableXML_NoBorders(t *testing.T) {
 }
 
 func TestGenerateTableXML_OmittedBordersWithStyle(t *testing.T) {
-	// When borders are omitted and a table style is set, tblBorders should
-	// not be emitted so the style's own border definitions take effect.
+	// When borders are omitted and a (template) table style is set,
+	// tblBorders should not be emitted so the style's own border definitions
+	// take effect. The engine-default GUID is not such a style: it selects
+	// the engine's consulting default (go-slide-creator-1iiej).
 	table := &types.TableSpec{
 		Headers: []string{"Header 1"},
 		Rows:    [][]types.TableCell{{{Content: "A", ColSpan: 1, RowSpan: 1}}},
-		Style:   types.TableStyle{StyleID: "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"},
+		Style:   types.TableStyle{StyleID: "{073A0DAA-6AF3-43AB-8588-CEC1D06C72B9}"},
 	}
 
 	config := TableRenderConfig{
@@ -1217,10 +1226,10 @@ func TestGenerateTableXML_WideTable_4Columns_UseOfFunds(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// 4 columns should use original font size (1800), not scaled down.
-	// Header font = 1800 * 1.1 = 1980
-	if !strings.Contains(result.XML, `sz="1980"`) {
-		t.Error("4-column table should use unscaled header font size (1980 = 18pt * 1.1)")
+	// 4 columns keep the engine-default type scale (go-slide-creator-1iiej):
+	// 12pt rows under an 11pt header, not scaled down.
+	if !strings.Contains(result.XML, `sz="1200"`) || !strings.Contains(result.XML, `sz="1100" b="1"`) {
+		t.Error("4-column default table should use unscaled 12pt rows and an 11pt header")
 	}
 
 	// Should still have vert="horz" for correctness
@@ -1229,8 +1238,57 @@ func TestGenerateTableXML_WideTable_4Columns_UseOfFunds(t *testing.T) {
 	}
 }
 
+func TestGenerateTableXML_EngineDefault_ColumnScaling(t *testing.T) {
+	// go-slide-creator-1iiej: the engine default starts at 12pt rows / 11pt
+	// header and is only capped at the 18pt-equivalent wide-table size
+	// (18pt * 4/numCols), never below the 10pt floor.
+	tests := []struct {
+		numCols            int
+		wantBody, wantHead int
+		wantScaled         bool
+	}{
+		{4, 1200, 1100, false},
+		{6, 1200, 1100, false}, // cap 1200 == 12pt: unchanged
+		{7, 1028, 1000, true},  // 1800*4/7 = 1028; header floors at 10pt
+		{10, 1000, 1000, true}, // floor
+	}
+	for _, tc := range tests {
+		headers := make([]string, tc.numCols)
+		row := make([]types.TableCell, tc.numCols)
+		for i := range headers {
+			headers[i] = fmt.Sprintf("Col %d", i+1)
+			row[i] = types.TableCell{Content: fmt.Sprintf("Val %d", i+1), ColSpan: 1, RowSpan: 1}
+		}
+		table := &types.TableSpec{Headers: headers, Rows: [][]types.TableCell{row}, Style: types.DefaultTableStyle}
+		result, err := GenerateTableXML(table, TableRenderConfig{
+			Bounds: types.BoundingBox{Width: 8229600, Height: 3000000},
+			Style:  table.Style,
+		})
+		if err != nil {
+			t.Fatalf("%d cols: %v", tc.numCols, err)
+		}
+		if !strings.Contains(result.XML, fmt.Sprintf(`sz="%d" b="0"`, tc.wantBody)) {
+			t.Errorf("%d cols: want body sz=%d", tc.numCols, tc.wantBody)
+		}
+		if !strings.Contains(result.XML, fmt.Sprintf(`sz="%d" b="1"><a:solidFill><a:schemeClr val="tx1"/>`, tc.wantHead)) {
+			t.Errorf("%d cols: want header sz=%d", tc.numCols, tc.wantHead)
+		}
+		scaled := false
+		for _, f := range result.Findings {
+			if f.Code == patterns.ErrCodeTableFontScaled {
+				scaled = true
+			}
+		}
+		if scaled != tc.wantScaled {
+			t.Errorf("%d cols: table_font_scaled = %v, want %v", tc.numCols, scaled, tc.wantScaled)
+		}
+	}
+}
+
 func TestGenerateTableXML_WideTable_FontScaling(t *testing.T) {
-	// Verify font scaling logic for different column counts.
+	// Verify the legacy font scaling logic for different column counts. The
+	// accent1 header opts out of the engine default, which starts at 12pt
+	// (see TestGenerateTableXML_EngineDefault_ColumnScaling).
 	tests := []struct {
 		name         string
 		numCols      int
@@ -1257,7 +1315,7 @@ func TestGenerateTableXML_WideTable_FontScaling(t *testing.T) {
 			table := &types.TableSpec{
 				Headers: headers,
 				Rows:    [][]types.TableCell{row},
-				Style:   types.DefaultTableStyle,
+				Style:   types.TableStyle{HeaderBackground: "accent1", StyleID: types.DefaultTableStyleID},
 			}
 
 			config := TableRenderConfig{
@@ -1410,8 +1468,8 @@ func TestFinancialTableWidthsAndAlignment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Five columns trigger the renderer's 18pt -> 14.4pt density scaling.
-	renderedWidths := calculateColumnWidths(len(table.Headers), available, table.Headers, table.Rows, 1440)
+	// Five columns keep the engine-default 12pt rows (go-slide-creator-1iiej).
+	renderedWidths := calculateColumnWidths(len(table.Headers), available, table.Headers, table.Rows, engineDefaultRowFontSize)
 	if renderedWidths[0] >= available*45/100 {
 		t.Errorf("rendered label column occupies %.1f%%, want below 45%%", 100*float64(renderedWidths[0])/float64(available))
 	}
@@ -1421,7 +1479,7 @@ func TestFinancialTableWidthsAndAlignment(t *testing.T) {
 		}
 	}
 	for i := 1; i < len(table.Headers); i++ {
-		measurement, err := textfit.MeasureRun(table.Headers[i], defaultFontFamily, 15.84, renderedWidths[i], 1)
+		measurement, err := textfit.MeasureRun(table.Headers[i], defaultFontFamily, 11, renderedWidths[i], 1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1719,9 +1777,9 @@ func TestGenerateTableXML_SmallTable_NoTruncation(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Should use default font size (header = 1800 * 1.1 = 1980)
-	if !strings.Contains(result.XML, `sz="1980"`) {
-		t.Error("small table should use unscaled header font (1980)")
+	// Should use the unscaled engine-default header (11pt over 12pt rows)
+	if !strings.Contains(result.XML, `sz="1100" b="1"`) {
+		t.Error("small table should use the unscaled 11pt header")
 	}
 
 	// Should NOT contain truncation text

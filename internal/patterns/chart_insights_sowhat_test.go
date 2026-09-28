@@ -110,22 +110,23 @@ func TestChartInsightsSplit_HeadlineAndSoWhatColumn(t *testing.T) {
 	if head[0].Content != "+75%" || head[0].Size < 24 || !head[0].Bold || head[1].Size < 12 {
 		t.Errorf("headline paragraphs = %+v", head)
 	}
+	// The so-what is the shared takeaway band (go-slide-creator-7b5o6).
 	soWhat := col.Grid.Rows[2].Cells[0]
-	if soWhat.AccentBar == nil || !strings.Contains(string(soWhat.Shape.Fill), "lumMod") {
-		t.Errorf("so-what should be a tinted, accent-barred callout: %+v", soWhat)
+	if soWhat.Grid == nil {
+		t.Fatalf("so-what should be a takeaway sub-grid: %+v", soWhat)
 	}
-	if txt := cellText(t, soWhat.Shape.Text).Paragraphs[0]; !strings.HasPrefix(txt.Content, "<b>So what:</b>") || txt.Size < 12 {
-		t.Errorf("so-what text = %+v", txt)
-	}
+	assertTakeawayBand(t, soWhat.Grid.Rows[len(soWhat.Grid.Rows)-1], v.SoWhat)
 	if col.AccentBar != nil {
 		t.Error("the stacked column carries no divider (nested-grid accent bars are not drawn)")
 	}
-	// Headline and so-what rows are pinned at their writer-measured height;
-	// the insights panel takes the rest (go-slide-creator-bzh34).
-	for _, i := range []int{0, 2} {
-		if r := col.Grid.Rows[i]; r.MinHeight <= 0 || r.MinHeight != r.MaxHeight || r.Height != 0 {
-			t.Errorf("row %d should be pinned in points, got %+v", i, r)
-		}
+	// The headline row is pinned at its writer-measured height, the so-what
+	// is an auto row floored at the band's height, and the insights panel
+	// takes the rest (go-slide-creator-bzh34).
+	if r := col.Grid.Rows[0]; r.MinHeight <= 0 || r.MinHeight != r.MaxHeight || r.Height != 0 {
+		t.Errorf("headline row should be pinned in points, got %+v", r)
+	}
+	if r := col.Grid.Rows[2]; !r.AutoHeight || r.MinHeight <= 0 || r.Height != 0 {
+		t.Errorf("so-what row should be an auto row floored in points, got %+v", r)
 	}
 	if r := col.Grid.Rows[1]; r.Height != 0 || r.MinHeight != 0 || r.MaxHeight != 0 {
 		t.Errorf("insights row should flex, got %+v", r)
@@ -153,7 +154,8 @@ func TestChartInsightsSplit_DenseColumnStepsDown(t *testing.T) {
 	if got := cellText(t, col.Rows[0].Cells[0].Shape.Text).Paragraphs[0].Size; got != 26 {
 		t.Errorf("headline should step down to 26pt with 6 insights, got %v", got)
 	}
-	if got := cellText(t, col.Rows[2].Cells[0].Shape.Text).Paragraphs[0].Size; got != 12 {
+	band := col.Rows[2].Cells[0].Grid.Rows
+	if got := cellText(t, band[len(band)-1].Cells[1].Shape.Text).Paragraphs[0].Size; got != 12 {
 		t.Errorf("so-what should step down to 12pt with 6 insights, got %v", got)
 	}
 	pinned, _ := p.Expand(fullThemeCtx(), v, &ChartInsightsSplitOverrides{HeadlineSize: 40}, nil)

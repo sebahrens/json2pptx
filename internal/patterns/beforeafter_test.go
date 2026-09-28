@@ -6,7 +6,6 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
-	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // TestBeforeAfter_HeaderTextVerticalAnchorCenter is a regression for
@@ -60,7 +59,7 @@ func TestBeforeAfter_ExpandBasic(t *testing.T) {
 	}
 }
 
-func TestBeforeAfterFullPanelsUseSurplusHeight(t *testing.T) {
+func TestBeforeAfterFullPanelsHugContent(t *testing.T) {
 	pat := &beforeAfter{}
 	vals := &BeforeAfterValues{
 		Before: BeforeAfterColumn{Header: "Today", Items: []string{"Manual", "Slow"}},
@@ -71,17 +70,21 @@ func TestBeforeAfterFullPanelsUseSurplusHeight(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, zoneH := sizingAreaPt(fullThemeCtx())
-	if got := grid.Rows[0].MaxHeight + grid.Rows[1].MaxHeight + grid.Gap; got < zoneH*0.59 {
-		t.Errorf("full block %.1fpt uses less than 60%% of %.1fpt zone", got, zoneH)
+	// Content-sized (go-slide-creator-wntyw): two bullets per side must not
+	// be stretched into tall panels.
+	if got := grid.Rows[0].MaxHeight + grid.Rows[1].MaxHeight + grid.Gap; got > zoneH*0.45 {
+		t.Errorf("before-after block %.1fpt stretches past 45%% of the %.1fpt zone for two bullets", got, zoneH)
 	}
-	if got := grid.Rows[0].Cells[1]; got.RowSpan != 2 || got.Shape.Geometry != "chevron" || len(got.Shape.Text) != 0 {
-		t.Errorf("separator should be a full-height chevron without a redundant arrow: %+v", got)
+	// Compact transition chevron (go-slide-creator-7z5we), not a full-height block.
+	if got := grid.Rows[0].Cells[1]; got.RowSpan != 2 || got.Shape.Geometry != "chevron" || len(got.Shape.Text) != 0 ||
+		got.MaxHeight != beforeAfterChevronPt || got.Fit != "contain" {
+		t.Errorf("separator should be a compact %gpt chevron without a redundant arrow: %+v", beforeAfterChevronPt, got)
 	}
 	if len(grid.Rows[1].Cells) != 2 {
 		t.Fatalf("body should contain two panels, with center reserved by chevron: %+v", grid.Rows[1].Cells)
 	}
 	for _, cell := range grid.Rows[1].Cells {
-		if string(cell.Shape.Fill) != `{"color":"accent1","tint":12000}` || !strings.Contains(string(cell.Shape.Text), `"vertical_align":"ctr"`) {
+		if string(cell.Shape.Fill) != neutral4JSON || !strings.Contains(string(cell.Shape.Text), `"vertical_align":"ctr"`) {
 			t.Errorf("expanded body panel should be visible and centered: %+v", cell.Shape)
 		}
 	}
@@ -112,43 +115,27 @@ func TestBeforeAfterFullPanelsHaveHalfCentimeterTextMargins(t *testing.T) {
 	}
 }
 
-func TestBeforeAfterPanelToneHexOverride(t *testing.T) {
-	pat := &beforeAfter{}
+// TestBeforeAfterPanelsAreNeutralForEveryAccent: the body panels are peers on
+// a neutral surface whatever the accent — a hex override or per-cell accents
+// only colour the headers' rules, never a pale wash under the text
+// (go-slide-creator-8xsj3).
+func TestBeforeAfterPanelsAreNeutralForEveryAccent(t *testing.T) {
 	vals := &BeforeAfterValues{
 		Before: BeforeAfterColumn{Header: "Today", Items: []string{"Manual"}},
 		After:  BeforeAfterColumn{Header: "Target", Items: []string{"Automated"}},
 	}
-	grid, err := pat.Expand(fullThemeCtx(), vals, &BeforeAfterOverrides{Accent: "#2E5090"}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	tone := beforeAfterPanelTone("#2E5090")
-	if tone.Tint != 0 || !isHexColor(tone.Color) {
-		t.Fatalf("hex accent should be pre-mixed into a solid fill, got %+v", tone)
-	}
-	for _, cell := range grid.Rows[1].Cells {
-		if string(cell.Shape.Fill) != `"`+tone.Color+`"` {
-			t.Errorf("body panel fill %s does not use tinted hex accent %s", cell.Shape.Fill, tone.Color)
+	for name, ovr := range map[string]*BeforeAfterOverrides{
+		"hex":       {Accent: "#2E5090"},
+		"alternate": {CellAccentMode: "alternate"},
+	} {
+		grid, err := (&beforeAfter{}).Expand(fullThemeCtx(), vals, ovr, nil)
+		if err != nil {
+			t.Fatal(err)
 		}
-	}
-	c := svggen.MustParseColor(tone.Color)
-	if c.Luminance() < 0.85 || c.Hex() == "#FFFFFF" {
-		t.Errorf("panel should be super-light but visibly accent-derived, got %s", c.Hex())
-	}
-}
-
-func TestBeforeAfterPanelsFollowPerCellAccents(t *testing.T) {
-	vals := &BeforeAfterValues{
-		Before: BeforeAfterColumn{Header: "Today", Items: []string{"Manual"}},
-		After:  BeforeAfterColumn{Header: "Target", Items: []string{"Automated"}},
-	}
-	grid, err := (&beforeAfter{}).Expand(fullThemeCtx(), vals, &BeforeAfterOverrides{CellAccentMode: "alternate"}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for i, want := range []string{`{"color":"accent1","tint":12000}`, `{"color":"accent2","tint":12000}`} {
-		if got := string(grid.Rows[1].Cells[i].Shape.Fill); got != want {
-			t.Errorf("panel %d fill = %s, want %s", i, got, want)
+		for i, cell := range grid.Rows[1].Cells {
+			if got := string(cell.Shape.Fill); got != neutral4JSON {
+				t.Errorf("%s: panel %d fill = %s, want neutral 4%%", name, i, got)
+			}
 		}
 	}
 }

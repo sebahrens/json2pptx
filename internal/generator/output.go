@@ -841,7 +841,8 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 			ctx.warnings = append(ctx.warnings, fmt.Sprintf("slide %d: takeaway/source band does not fit layout %q; band skipped (chrome_band_no_fit)", slideNum, ctx.slideContentMap[slideNum].LayoutID))
 		} else {
 			if hasTakeaway {
-				slideData, err = insertTakeaway(slideData, takeawayText, frame.Takeaway.Rect())
+				style := takeawayStyle{FontName: ctx.themeFontName, InkHex: ctx.takeawayInkForLayout(ctx.slideContentMap[slideNum].LayoutID)}
+				slideData, err = insertStyledTakeaway(slideData, takeawayText, frame.Takeaway.Rect(), style)
 				if err != nil {
 					return fmt.Errorf("failed to insert takeaway for slide %d: %w", slideNum, err)
 				}
@@ -864,7 +865,7 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		var footerPositions map[string]*transformXML
 		layoutID := ""
 		if spec, ok := ctx.slideContentMap[slideNum]; ok {
-			footerPositions = ctx.getFooterPositionsForLayout(spec.LayoutID)
+			footerPositions = alignFooterWithInsetContent(ctx.getFooterPositionsForLayout(spec.LayoutID), ctx.chromeFrameForLayout(spec.LayoutID, false, false))
 			layoutID = spec.LayoutID
 		}
 		// Chrome is injected as schemeClr tx1, which a layout that inverts its

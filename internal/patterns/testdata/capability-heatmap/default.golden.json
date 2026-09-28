@@ -317,8 +317,9 @@
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "lt1",
-              "lumMod": 85000
+              "color": "dk1",
+              "lumMod": 16000,
+              "lumOff": 84000
             },
             "line": "none",
             "text": {
@@ -363,8 +364,9 @@
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "lt1",
-              "lumMod": 85000
+              "color": "dk1",
+              "lumMod": 16000,
+              "lumOff": 84000
             },
             "line": "none",
             "text": {
@@ -392,8 +394,9 @@
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "lt1",
-              "lumMod": 85000
+              "color": "dk1",
+              "lumMod": 16000,
+              "lumOff": 84000
             },
             "line": "none",
             "text": {
@@ -439,12 +442,7 @@
                     "shape": {
                       "geometry": "rect",
                       "fill": "accent1",
-                      "line": {
-                        "color": "dk1",
-                        "width": 0.5,
-                        "lumMod": 20000,
-                        "lumOff": 80000
-                      }
+                      "line": "none"
                     }
                   },
                   {
@@ -474,12 +472,7 @@
                         "lumMod": 40000,
                         "lumOff": 60000
                       },
-                      "line": {
-                        "color": "dk1",
-                        "width": 0.5,
-                        "lumMod": 20000,
-                        "lumOff": 80000
-                      }
+                      "line": "none"
                     }
                   },
                   {
@@ -505,15 +498,11 @@
                     "shape": {
                       "geometry": "rect",
                       "fill": {
-                        "color": "lt1",
-                        "lumMod": 85000
-                      },
-                      "line": {
                         "color": "dk1",
-                        "width": 0.5,
-                        "lumMod": 20000,
-                        "lumOff": 80000
-                      }
+                        "lumMod": 16000,
+                        "lumOff": 84000
+                      },
+                      "line": "none"
                     }
                   },
                   {

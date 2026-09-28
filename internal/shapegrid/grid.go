@@ -295,6 +295,9 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 			if mode != "" && mode != "compact" {
 				cell.ShapeSpec = growShapeText(cell.ShapeSpec, cell.Bounds, cell.TextInsets, mode)
 			}
+			if !grid.KeepTextSizes {
+				cell.ShapeSpec = snapShapeTextToScale(cell.ShapeSpec)
+			}
 		}
 	}
 	shareRowAutofitScale(cells)
@@ -836,7 +839,11 @@ func PtToEMU(pt float64) int64 {
 }
 
 // accentBarBounds computes the position and size of a decorative accent bar
-// relative to the cell bounds. The bar is placed just outside the cell edge.
+// relative to the cell bounds. Left / right / bottom bars sit just outside the
+// cell edge (2pt gap). A top bar is the card's top rule: it lies flush on the
+// cell's top edge, inside the cell, so it never floats above the card and never
+// reaches up into the row gap above it (where it used to read as the card's
+// neighbour — a banner or roof — notched by the column gutters).
 func accentBarBounds(cellBounds pptx.RectEmu, spec *AccentBarSpec) pptx.RectEmu {
 	width := spec.Width
 	if width <= 0 {
@@ -861,9 +868,12 @@ func accentBarBounds(cellBounds pptx.RectEmu, spec *AccentBarSpec) pptx.RectEmu 
 			CY: cellBounds.CY,
 		}
 	case "top":
+		if widthEMU > cellBounds.CY {
+			widthEMU = cellBounds.CY
+		}
 		return pptx.RectEmu{
 			X:  cellBounds.X,
-			Y:  cellBounds.Y - widthEMU - gapEMU,
+			Y:  cellBounds.Y,
 			CX: cellBounds.CX,
 			CY: widthEMU,
 		}

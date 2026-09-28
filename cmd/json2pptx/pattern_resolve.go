@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"math"
 	"strconv"
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
@@ -12,7 +11,6 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
-	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
 // PatternInput is the JSON schema for pattern-based slides.
@@ -108,7 +106,7 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	}
 
 	// Expand
-	grid, err := pat.Expand(expandCtx, values, overrides, cellOverrides)
+	grid, err := pat.Expand(reserveCalloutBand(expandCtx, p.Callout), values, overrides, cellOverrides)
 	if err != nil {
 		return nil, nil, fmt.Errorf("pattern %q: expand failed: %w", p.Name, err)
 	}
@@ -214,7 +212,13 @@ func patternAccentContext(ctx patterns.ExpandContext, p *PatternInput) patterns.
 		return ctx
 	}
 	// Canonical JSON is stable across whitespace and object-key order, unlike
-	// deck position. Repeated identical patterns intentionally share a colour.
+	// deck position. Repeated identical patterns intentionally share a colour,
+	// and sibling families (every kpi-*) share one key so they never rotate
+	// apart.
+	if key, ok := patterns.SharedRotationKey(p.Name); ok {
+		ctx.RotationKey = key
+		return ctx
+	}
 	var canonical any
 	if err := json.Unmarshal(p.Values, &canonical); err == nil {
 		if data, err := json.Marshal(canonical); err == nil {
@@ -247,70 +251,65 @@ func patternExpansionBounds(ctx patterns.ExpandContext, pct *GridBoundsInput, re
 	return patterns.LayoutBounds{X: bounds.X, Y: bounds.Y, Width: bounds.CX, Height: bounds.CY}
 }
 
-// appendCalloutRow appends a full-width callout row to the expanded grid.
-// The callout spans all columns and uses AutoHeight for text-driven sizing.
+// appendCalloutRow appends the callout as the shared takeaway band
+// (patterns.TakeawayRow): a flush 3pt accent bar beside 14pt bold dk1 text,
+// no fill and no stroke by default, with 16pt of air above it. It used to be
+// a solid accent1 strip with white centred text — one of four different boxes
+// the engine drew for the same job (go-slide-creator-7b5o6).
 // Callout cells are NOT addressable via cell_overrides (D18).
 func appendCalloutRow(grid *jsonschema.ShapeGridInput, callout *patterns.PatternCallout, ctx patterns.ExpandContext) *jsonschema.ShapeGridInput {
-	// Determine column count from the grid
 	numCols := 1
 	if len(grid.Rows) > 0 {
 		numCols = len(grid.Rows[0].Cells)
 	}
-
-	accent := "accent1"
-	if callout.Accent != "" {
-		accent = callout.Accent
+	rowGap := grid.RowGap
+	if rowGap == 0 {
+		rowGap = grid.Gap
 	}
-
-	bold := callout.Emphasis == "bold" || callout.Emphasis == "bold-italic"
-	italic := callout.Emphasis == "italic" || callout.Emphasis == "bold-italic"
-
-	textContent := buildCalloutTextContent(callout.Text, 14.0, bold, italic, "lt1", "ctr")
-
-	calloutCell := &jsonschema.GridCellInput{
-		ColSpan: numCols,
-		Shape: &jsonschema.ShapeSpecInput{
-			Geometry: "rect",
-			Fill:     jsonStringRaw(accent),
-			Text:     textContent,
-		},
+	if rowGap == 0 {
+		rowGap = 8 // shapegrid default
 	}
-
-	calloutRow := jsonschema.GridRowInput{
-		AutoHeight: true,
-		Cells:      []*jsonschema.GridCellInput{calloutCell},
-	}
-	// The auto-height estimate counts only explicit newlines, so a callout
-	// that wraps (a decision's "recommendation — takeaway") got a one-line
-	// strip and its second line clipped (go-slide-creator-csclk.98). Measure
-	// the wrap at the band's width and floor the row at that height.
-	calloutRow.MinHeight = calloutMinHeightPt(callout.Text, bold, ctx)
-
-	grid.Rows = append(grid.Rows, calloutRow)
+	grid.Rows = append(grid.Rows, patterns.TakeawayRow(ctx, calloutTakeawaySpec(callout), numCols, calloutBandWidthPt(ctx), rowGap))
 	return grid
 }
 
-// calloutMinHeightPt returns the height a 14pt callout band needs to hold its
-// text wrapped at the pattern's width, or 0 when it fits on one line (the
-// auto-height estimate already covers one line) or cannot be measured.
-func calloutMinHeightPt(text string, bold bool, ctx patterns.ExpandContext) float64 {
-	const sizePt, insetLRPt, insetTBPt = 14.0, pptx.ShapeTextInsetPt, pptx.ShapeTextInsetPt
+// reserveCalloutBand returns ctx with the callout band's height taken out of
+// the layout bounds. The band is appended after expansion at its measured
+// height and does not shrink, so the pattern sizes its own rows for what is
+// left. Unknown bounds (and no callout) leave ctx unchanged.
+func reserveCalloutBand(ctx patterns.ExpandContext, callout *patterns.PatternCallout) patterns.ExpandContext {
+	if callout == nil || ctx.LayoutBounds.Height <= 0 {
+		return ctx
+	}
+	const hostRowGapPt = 8 // the shapegrid default; the pattern sets its own after expansion
+	bandPt := patterns.TakeawayRowHeightPt(ctx, calloutTakeawaySpec(callout), calloutBandWidthPt(ctx), hostRowGapPt)
+	reserve := int64((bandPt + hostRowGapPt) * 12700)
+	ctx.LayoutBounds.Height = max(ctx.LayoutBounds.Height-reserve, ctx.LayoutBounds.Height/2)
+	return ctx
+}
+
+// calloutTakeawaySpec maps the callout DTO onto the takeaway band. The band is
+// always bold; "italic" / "bold-italic" set it italic, and "subtle" / "strong"
+// pick the tinted or solid-accent variant.
+func calloutTakeawaySpec(callout *patterns.PatternCallout) patterns.TakeawaySpec {
+	spec := patterns.TakeawaySpec{Text: callout.Text, Accent: callout.Accent}
+	switch callout.Emphasis {
+	case "italic", "bold-italic":
+		spec.Italic = true
+	case patterns.TakeawayEmphasisSubtle, patterns.TakeawayEmphasisStrong:
+		spec.Emphasis = callout.Emphasis
+	}
+	return spec
+}
+
+// calloutBandWidthPt is the width the callout band wraps at: the pattern's
+// layout bounds, else the shape-grid default for the slide.
+func calloutBandWidthPt(ctx patterns.ExpandContext) float64 {
 	widthEMU := ctx.LayoutBounds.Width
 	if widthEMU <= 0 {
 		widthEMU = shapegrid.DefaultBounds(ctx.SlideWidth, ctx.SlideHeight).CX
 	}
-	m, err := textfit.MeasureStyledRuns(textfit.StyledMeasureParams{
-		Runs:     []textfit.StyledRun{{Text: text, Bold: bold}},
-		FontName: ctx.Theme.BodyFont,
-		FontPt:   sizePt,
-		WidthEMU: widthEMU,
-		InsetsPt: [4]float64{insetLRPt, insetTBPt, insetLRPt, insetTBPt},
-	})
-	if err != nil || m.Lines <= 1 {
-		return 0
-	}
-	// One spare line's worth of leading absorbs renderer metric drift.
-	return math.Ceil((float64(m.Lines)+0.25)*sizePt*1.2 + 2*insetTBPt)
+	return float64(widthEMU) / 12700
 }
 
 // buildCalloutTextContent creates a JSON text object for a callout cell.

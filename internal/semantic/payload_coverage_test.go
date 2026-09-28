@@ -395,6 +395,20 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 		"recommendation": {inject: func(s string) map[string]any { return map[string]any{"title": "Filler", "recommendation": s} }, rendered: true},
 		"takeaway":       {inject: func(s string) map[string]any { return map[string]any{"title": "Filler", "takeaway": s} }, rendered: true},
 	},
+	KindNextSteps: {
+		"title": {inject: func(s string) map[string]any {
+			return map[string]any{"title": s, "actions": []any{"Filler one", "Filler two"}}
+		}, rendered: true},
+		"actions": {inject: func(s string) map[string]any {
+			return map[string]any{"title": "Filler", "actions": []any{map[string]any{"action": s, "owner": "COO", "date": "Oct"}, "Filler two"}}
+		}, rendered: true},
+		"decisions": {inject: func(s string) map[string]any {
+			return map[string]any{"title": "Filler", "actions": []any{"Filler one", "Filler two"}, "decisions": []any{s}}
+		}, rendered: true},
+		"decisions_label": {inject: func(s string) map[string]any {
+			return map[string]any{"title": "Filler", "actions": []any{"Filler one", "Filler two"}, "decisions": []any{"Approve"}, "decisions_label": s}
+		}, rendered: true},
+	},
 	KindClosing: {
 		"title":    {inject: func(s string) map[string]any { return map[string]any{"title": s} }, rendered: true},
 		"subtitle": {inject: func(s string) map[string]any { return map[string]any{"title": "Filler", "subtitle": s} }, rendered: true},

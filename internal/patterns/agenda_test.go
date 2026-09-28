@@ -41,39 +41,100 @@ func TestAgendaDenseUnbrokenTitleWarning(t *testing.T) {
 	}
 }
 
-func TestAgendaSparseTitlesGrowWithoutChangingDenseOrOverrides(t *testing.T) {
-	p := &agenda{}
-	for _, tc := range []struct {
-		name  string
-		items []string
-		ovr   *AgendaOverrides
-		want  float64
-	}{
-		{"short", []string{"Intro", "Analysis", "Decision"}, nil, 18},
-		{"long title", []string{"Introduction to the regional operating model", "Analysis", "Decision"}, nil, 14},
-		{"override", []string{"Intro", "Analysis", "Decision"}, &AgendaOverrides{TitleSize: 13}, 13},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			var overrides any
-			if tc.ovr != nil {
-				overrides = tc.ovr
+// agendaTestPara decodes one agenda cell's single paragraph.
+type agendaTestPara struct {
+	Content string  `json:"content"`
+	Size    float64 `json:"size"`
+	Bold    bool    `json:"bold"`
+	Color   string  `json:"color"`
+	Font    string  `json:"font"`
+	Alpha   float64 `json:"alpha"`
+}
+
+func agendaCellPara(t *testing.T, text json.RawMessage) agendaTestPara {
+	t.Helper()
+	var body struct {
+		Paragraphs []agendaTestPara `json:"paragraphs"`
+	}
+	if err := json.Unmarshal(text, &body); err != nil {
+		t.Fatal(err)
+	}
+	if len(body.Paragraphs) != 1 {
+		t.Fatalf("want one paragraph, got %+v", body.Paragraphs)
+	}
+	return body.Paragraphs[0]
+}
+
+// TestAgendaRuleBasedStyle pins design review C5 (go-slide-creator-r3gsw):
+// 28pt accent serif numerals, 16pt items, 0.5pt rules between rows, no
+// filled tiles.
+func TestAgendaRuleBasedStyle(t *testing.T) {
+	grid, err := (&agenda{}).Expand(ExpandContext{}, &AgendaValues{Items: []string{"Intro", "Analysis", "Decision"}}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(grid.Rows) != 5 {
+		t.Fatalf("rows = %d, want 3 items + 2 rules", len(grid.Rows))
+	}
+	for i, row := range grid.Rows {
+		if i%2 == 1 {
+			if row.MaxHeight != agendaRulePt || len(row.Cells) != 1 || row.Cells[0].ColSpan != 2 {
+				t.Errorf("row %d is not a 0.5pt full-width rule: %+v", i, row)
 			}
-			grid, err := p.Expand(ExpandContext{}, &AgendaValues{Items: tc.items}, overrides, nil)
-			if err != nil {
-				t.Fatal(err)
+			continue
+		}
+		for _, c := range row.Cells {
+			if string(c.Shape.Fill) != `"none"` {
+				t.Errorf("row %d cell fill = %s, want none (no tiles)", i, c.Shape.Fill)
 			}
-			var body struct {
-				Paragraphs []struct {
-					Size float64 `json:"size"`
-				} `json:"paragraphs"`
+		}
+		num := agendaCellPara(t, row.Cells[0].Shape.Text)
+		if num.Size != 28 || num.Font != "+mj-lt" || num.Color != "accent1" || num.Alpha != 0 {
+			t.Errorf("row %d numeral = %+v, want 28pt +mj-lt accent1", i, num)
+		}
+		title := agendaCellPara(t, row.Cells[1].Shape.Text)
+		if title.Size != 16 || title.Bold || title.Color != "dk1" || title.Alpha != 0 {
+			t.Errorf("row %d item = %+v, want plain 16pt dk1", i, title)
+		}
+	}
+	if grid.VerticalAlign != "center" {
+		t.Errorf("vertical_align = %q, want center", grid.VerticalAlign)
+	}
+}
+
+// TestAgendaRepeatHighlightsCurrent: on a repeated agenda the current item is
+// bold dk1 and every other row is at 50%.
+func TestAgendaRepeatHighlightsCurrent(t *testing.T) {
+	grid, err := (&agenda{}).Expand(ExpandContext{}, &AgendaValues{Items: []string{"A", "B", "C"}}, &AgendaOverrides{Highlight: 2}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for item := 0; item < 3; item++ {
+		row := grid.Rows[2*item]
+		title := agendaCellPara(t, row.Cells[1].Shape.Text)
+		num := agendaCellPara(t, row.Cells[0].Shape.Text)
+		if item == 1 {
+			if !title.Bold || title.Alpha != 0 || num.Alpha != 0 {
+				t.Errorf("current item = %+v / %+v, want bold at full opacity", title, num)
 			}
-			if err := json.Unmarshal(grid.Rows[0].Cells[1].Shape.Text, &body); err != nil {
-				t.Fatal(err)
-			}
-			if len(body.Paragraphs) != 1 || body.Paragraphs[0].Size != tc.want {
-				t.Errorf("title size = %+v, want %g", body.Paragraphs, tc.want)
-			}
-		})
+			continue
+		}
+		if title.Bold || title.Alpha != 50 || num.Alpha != 50 {
+			t.Errorf("item %d = %+v / %+v, want regular at 50%%", item, title, num)
+		}
+	}
+}
+
+func TestAgendaOverridesKeepSizes(t *testing.T) {
+	grid, err := (&agenda{}).Expand(ExpandContext{}, &AgendaValues{Items: []string{"Intro", "Analysis"}}, &AgendaOverrides{TitleSize: 13, NumberSize: 20}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := agendaCellPara(t, grid.Rows[0].Cells[1].Shape.Text).Size; got != 13 {
+		t.Errorf("title size = %g, want 13", got)
+	}
+	if got := agendaCellPara(t, grid.Rows[0].Cells[0].Shape.Text).Size; got != 20 {
+		t.Errorf("number size = %g, want 20", got)
 	}
 }
 
@@ -146,13 +207,13 @@ func TestAgenda_Expand_Basic(t *testing.T) {
 		t.Fatalf("Expand failed: %v", err)
 	}
 
-	if len(grid.Rows) != 3 {
-		t.Fatalf("expected 3 rows, got %d", len(grid.Rows))
+	if len(grid.Rows) != 5 {
+		t.Fatalf("expected 3 items + 2 rules, got %d rows", len(grid.Rows))
 	}
 
-	// Each row should have 2 cells: number badge + title
+	// Each item row has 2 cells (numeral + title); odd rows are the rules.
 	for i, row := range grid.Rows {
-		if len(row.Cells) != 2 {
+		if i%2 == 0 && len(row.Cells) != 2 {
 			t.Errorf("row[%d]: expected 2 cells, got %d", i, len(row.Cells))
 		}
 	}
@@ -172,8 +233,8 @@ func TestAgenda_Expand_WithHighlight(t *testing.T) {
 		t.Fatalf("Expand failed: %v", err)
 	}
 
-	if len(grid.Rows) != 3 {
-		t.Fatalf("expected 3 rows, got %d", len(grid.Rows))
+	if len(grid.Rows) != 5 {
+		t.Fatalf("expected 3 items + 2 rules, got %d rows", len(grid.Rows))
 	}
 }
 

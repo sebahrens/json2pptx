@@ -44,7 +44,7 @@ const (
 	// line of a `\n`-separated text run.
 	CardTitleMinHPt     = 1200 // 12pt
 	CardTitleMaxHPt     = 1400 // 14pt
-	CardTitleDefaultHPt = 1300 // 13pt
+	CardTitleDefaultHPt = 1400 // 14pt — the subhead step of the type scale
 
 	// CardBody* frame the body text of a card cell. Regular weight.
 	// 11pt suits 3-4 cols, 10pt suits 5+ cols, 9pt is the floor.
@@ -92,8 +92,3 @@ const (
 // FootnoteColor is the canonical grey used for footnote/source text.
 // Keep in sync with the RULES.md typography table.
 const FootnoteColor = "#666666"
-
-// TakeawayColor is the canonical dark fill used for the slide takeaway
-// headline. Renders against a light slide background; on dark templates
-// the renderer auto-flips per the WCAG contrast pass.
-const TakeawayColor = "#1F1F1F"

@@ -235,20 +235,17 @@ func TestBMCCanvas(t *testing.T) {
 		if grid.Rows[2].Cells[1].ColSpan != 2 {
 			t.Errorf("revenue_streams col_span = %d, want 2", grid.Rows[2].Cells[1].ColSpan)
 		}
-		// Fill should be lt1 (light background for BMC cells)
-		var fill string
-		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Fill, &fill); err != nil {
-			t.Fatalf("fill unmarshal: %v", err)
-		}
-		if fill != "lt1" {
-			t.Errorf("fill = %q, want %q", fill, "lt1")
+		// Cells are the neutral 4% surface (no white card on white paper).
+		if got := string(grid.Rows[0].Cells[0].Shape.Fill); got != neutral4JSON {
+			t.Errorf("fill = %s, want neutral 4%%", got)
 		}
 	})
 
-	t.Run("expand_default_cell_borders", func(t *testing.T) {
-		// Regression: every BMC cell must emit a visible line/border by default
-		// so the 9-cell canvas reads as a structured grid rather than floating
-		// panels (see issue go-slide-creator-kkcc).
+	t.Run("expand_default_no_cell_borders", func(t *testing.T) {
+		// The canvas is built from gutters, not borders: every cell is a
+		// neutral tint with line "none", and the grid gap draws the structure
+		// (go-slide-creator-pgdkp, superseding the go-slide-creator-kkcc
+		// borders).
 		vals := defaultBMCValues()
 		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
 		if err != nil {
@@ -261,23 +258,11 @@ func TestBMCCanvas(t *testing.T) {
 				if c.Shape == nil {
 					t.Fatalf("row[%d].cells[%d] has nil shape", ri, ci)
 				}
-				if len(c.Shape.Line) == 0 {
-					t.Errorf("row[%d].cells[%d] missing default line/border", ri, ci)
-					continue
+				if got := string(c.Shape.Line); got != `"none"` {
+					t.Errorf("row[%d].cells[%d] line = %s, want none", ri, ci, got)
 				}
-				var lineObj struct {
-					Color string  `json:"color"`
-					Width float64 `json:"width"`
-				}
-				if err := json.Unmarshal(c.Shape.Line, &lineObj); err != nil {
-					t.Errorf("row[%d].cells[%d] line unmarshal: %v", ri, ci, err)
-					continue
-				}
-				if lineObj.Color == "" {
-					t.Errorf("row[%d].cells[%d] line missing color", ri, ci)
-				}
-				if lineObj.Width <= 0 {
-					t.Errorf("row[%d].cells[%d] line width must be > 0, got %v", ri, ci, lineObj.Width)
+				if got := string(c.Shape.Fill); got != neutral4JSON {
+					t.Errorf("row[%d].cells[%d] fill = %s, want neutral 4%%", ri, ci, got)
 				}
 			}
 		}

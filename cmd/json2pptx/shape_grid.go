@@ -775,6 +775,7 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 		RowGap:    rowGap,
 		VAlign:    vAlign,
 	}
+	grid.KeepTextSizes = input.KeepTextSizes
 
 	// Validate grid structure before rendering (catches overlaps, span errors, etc.)
 	if vErr := shapegrid.Validate(grid); vErr != nil {

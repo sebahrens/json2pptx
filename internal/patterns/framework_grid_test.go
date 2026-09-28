@@ -131,12 +131,14 @@ func TestFrameworkGrid_ExpandStructure(t *testing.T) {
 		t.Errorf("short row should leave trailing space empty, got %+v", c.Shape)
 	}
 	label := grid.Rows[0].Cells[0].Shape
-	if !strings.Contains(string(label.Text), `"bold":true`) || !strings.Contains(string(label.Fill), "accent1") {
-		t.Errorf("row label should be bold on an accent tint: fill=%s text=%s", label.Fill, label.Text)
+	// Neutral surfaces: the label band is the 8% step, the cards the 4% step;
+	// the accent lives in the card titles (go-slide-creator-8xsj3).
+	if !strings.Contains(string(label.Text), `"bold":true`) || string(label.Fill) != neutral8JSON {
+		t.Errorf("row label should be bold on the neutral 8%% band: fill=%s text=%s", label.Fill, label.Text)
 	}
 	card := grid.Rows[0].Cells[1].Shape
-	if !strings.Contains(string(card.Text), `"color":"accent1"`) || !strings.Contains(string(card.Fill), "tint") {
-		t.Errorf("card should carry an accent title on a pale wash: fill=%s text=%s", card.Fill, card.Text)
+	if !strings.Contains(string(card.Text), `"color":"accent1"`) || string(card.Fill) != neutral4JSON {
+		t.Errorf("card should carry an accent title on the neutral 4%% surface: fill=%s text=%s", card.Fill, card.Text)
 	}
 	// Cell override index 4 is row 1's label (row 0 = label + 3 cards).
 	if grid.Rows[1].Cells[0].AccentBar == nil {
@@ -168,10 +170,15 @@ func TestFrameworkGrid_CellAccentModes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			// The per-card accent colours the card title; the surface stays
+			// neutral (go-slide-creator-8xsj3).
 			for j, want := range tc.want {
-				fill := string(grid.Rows[0].Cells[1+j].Shape.Fill)
-				if !strings.Contains(fill, `"`+want+`"`) {
-					t.Errorf("card %d fill %s, want a wash of %s", j, fill, want)
+				shape := grid.Rows[0].Cells[1+j].Shape
+				if !strings.Contains(string(shape.Text), `"color":"`+want+`"`) {
+					t.Errorf("card %d title %s, want %s", j, shape.Text, want)
+				}
+				if got := string(shape.Fill); got != neutral4JSON {
+					t.Errorf("card %d fill %s, want neutral 4%%", j, got)
 				}
 			}
 		})

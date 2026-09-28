@@ -38,11 +38,13 @@ Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid
 }
 ```
 
-KPI `values` is a JSON **array** of cells (one per metric). Each cell is an object `{"big", "small"}` (aliases `value`/`number` → `big`, `label`/`caption` → `small`) or a pipe-delimited string `"$127M | Revenue"`. The two forms are interchangeable and may be mixed in one array.
+KPI `values` is a JSON **array** of cells (one per metric). Each cell is an object `{"big", "small"}` (aliases `value`/`number` → `big`, `label`/`caption` → `small`) or a pipe-delimited string `"$127M | Revenue"`. The two forms are interchangeable and may be mixed in one array. Give a KPI its reference: `comparator` (alias `vs`, ≤24 chars, e.g. `"vs plan +4 pts"`) renders as a line under the caption and delta on kpi-Nup cards (`kpi-inline` rejects it).
+
+**Closing.** End a consulting deck on `next-steps` (actions with `owner` and `date`, plus `decisions` requested), not a "Thank you" title slide. A repeated `agenda` with `overrides.highlight` marks the current section.
 
 Do NOT hand-roll shape grids when a named pattern exists. Use the pattern, fill in the values, and let the engine handle grid structure, bounds, and gap arithmetic.
 
-**Callouts.** Patterns with `supports_callout=true` accept an envelope-level `callout: {text, emphasis?, accent?}` — a full-width band rendered below the pattern. Use for one-line takeaways; text is plain string (no bullets / structured content). KPI patterns refuse callouts (`callout_unsupported`).
+**Callouts.** Patterns with `supports_callout=true` accept an envelope-level `callout: {text, emphasis?, accent?}` — the takeaway band below the pattern (flush 3pt accent bar, 14pt bold dk1 text, no box, no outline). `emphasis`: `bold` (default), `italic`/`bold-italic`, `subtle` (5% neutral tint) or `strong` (solid accent, measured-contrast text). Use for one-line takeaways (budget two lines); text is plain string (no bullets / structured content). KPI patterns refuse callouts (`callout_unsupported`). exec-summary `bottom_line`, metric-list `callout` and chart-insights-split `so_what` render the same band; their `overrides.takeaway_emphasis` takes `subtle` / `strong`.
 
 ### Picking a Grid Configuration with `text_budget_guide`
 
@@ -65,14 +67,6 @@ roadmap activities, team bios, metric details, swimlane steps, KPI captions and
 the rest) live in each field's `show_pattern` description, measured at default
 sizes for every supported count. Read them there; `BODY_TOO_LONG` names the
 field to shorten and `TEXT_EXCEEDS_SHAPE` a word that cannot fit its shape. Limits: `state-shift-hub` takes 3–4 pairs, `dual-org-ladder` at most 4 rows.
-Those budgets assume a template's full content area. `chart-insights-split`
-(headline / so-what column) and `table-highlight` also check the slide's
-actual area (a short or narrow template, or a `takeaway` bar above the
-pattern): when the content cannot fit at readable sizes even after the
-pattern steps its type down and narrows the chart, they report
-`BODY_TOO_LONG` naming what to drop (a headline, so-what, source, option
-details, `highlight_label`, the legend, or the takeaway). Validate reports it
-with the predicted `TEXT_BELOW_READABLE_MIN`, which generation refuses.
 
 ---
 
@@ -135,6 +129,8 @@ When `expand_pattern` returns cells outside the optimal band:
 3. **Check `layout_suggestions[]`:** When **all** populated cells are consistently suboptimal (all underfilled or all overflowing), `expand_pattern` returns `layout_suggestions[]` — an array of alternative patterns with optional overrides and a `reason` string. Use these as actionable swap recommendations instead of guessing. Suggestions only appear when density is unanimously bad; mixed-density grids (some optimal, some not) produce no suggestions — adjust content manually in that case.
 
 ### Bounds Override: `bounds` and `max_height_pct`
+
+**Box patterns are already content-sized.** `kpi-Nup` cards, `card-grid` rows, `before-after` panels and `strategy-house` pillars hug their text (at most 1.6× its height) and the block is middle-anchored in the body zone; they are never stretched to fill it. Leftover space around a short block is intended — do not pad copy to fill a card. `SLIDE_UNDERUSED` judges these patterns at a 20% ink threshold (29% for other patterns) and no longer reports a KPI row's empty band; when it fires, add a supporting zone (`compose`), a `takeaway`, or merge slides.
 
 When patterns produce oversized cells for short content (e.g., a 3-step process-flow with terse labels), use a compact variant or constrain the grid using `bounds` or `max_height_pct`:
 

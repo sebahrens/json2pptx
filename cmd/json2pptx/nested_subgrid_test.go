@@ -181,8 +181,10 @@ func TestExpandNestedCellPatterns_KPI3UpInMatrixCell(t *testing.T) {
 		t.Fatal("expected a CellKindSubGrid placeholder at row=1 col=1")
 	}
 	usableHeight := float64(parentBounds.CY-2*subGridInsetEMU) / 12700
-	if got, want := cell.Grid.Rows[0].MaxHeight, 0.70*usableHeight; got < want-1 || got > want+1 {
-		t.Errorf("nested KPI max_height %.1fpt should use about 70%% of its %.1fpt inset parent cell", got, usableHeight)
+	// Content-sized (go-slide-creator-wntyw): the nested row hugs its cards
+	// and never exceeds the inset parent cell.
+	if got := cell.Grid.Rows[0].MaxHeight; got <= 0 || got > usableHeight+1 {
+		t.Errorf("nested KPI max_height %.1fpt should be content-sized within its %.1fpt inset parent cell", got, usableHeight)
 	}
 
 	// At least one rendered cell must fall inside the placeholder bounds.

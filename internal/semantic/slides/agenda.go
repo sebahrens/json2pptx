@@ -93,22 +93,10 @@ func compileAgendaList(in Input, sections []agendaSection, current int) (*deckin
 	slide := &deckinput.SlideInput{SlideType: "content", LayoutID: "blank-title"}
 	links := titleLink(slide, in)
 	slide.Pattern = &deckinput.PatternInput{Name: "agenda", Values: encoded}
-	// The pattern's compact 14pt fallback is too small for a compiled agenda.
-	// Its short-list default remains 18pt, so only the dense case needs an
-	// explicit 16pt floor.
-	ovr := patterns.AgendaOverrides{Highlight: current, TitleSize: 16}
-	if len(items) <= 5 {
-		short := true
-		for _, item := range items {
-			if runeLen(item) > 36 {
-				short = false
-				break
-			}
-		}
-		if short {
-			ovr.TitleSize = 18
-		}
-	}
+	// The pattern's own type (28pt serif numerals, 16pt items) is the
+	// design-review agenda (go-slide-creator-r3gsw); only the current-section
+	// highlight is carried.
+	ovr := patterns.AgendaOverrides{Highlight: current}
 	var oErr error
 	slide.Pattern.Overrides, oErr = json.Marshal(ovr)
 	if oErr != nil {

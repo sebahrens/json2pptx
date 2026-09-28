@@ -383,10 +383,11 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 	// Row 1 — phase label boxes
 	phaseCells := make([]*jsonschema.GridCellInput, n)
 	for i, p := range vals.Phases {
-		// Inactive phases use a light tint of the accent (not dk1 black, which
-		// reads off-brand next to the accent); the active phase keeps the
-		// full accent. Header text colour follows the effective fill.
-		tone := inactiveTintTone(accent)
+		// Inactive phases are the neutral 8% step (not dk1 black, and not an
+		// accent wash that competes with the one active phase); the active
+		// phase keeps the full accent (go-slide-creator-8xsj3). Header text
+		// colour follows the effective fill.
+		tone := neutralTone(NeutralTint8)
 		if p.Active {
 			tone = fillTone{Color: accent}
 		}
@@ -402,11 +403,13 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 	}
 	rows = append(rows, jsonschema.GridRowInput{Height: headerPct, Cells: phaseCells})
 
-	// Row 2 — continuous timeline bar spanning all phases. Rendered as a slim
-	// accent "spine" (not a heavy dk1 band) so the phase boxes remain the
-	// dominant anchors and the bar reads as a brand-coloured connector.
+	// Row 2 — continuous timeline rule spanning all phases. The row keeps its
+	// share of the height as spacing, but the accent "spine" drawn in it is a
+	// timelineRulePt rule centred in the row, not a 12-20pt band
+	// (go-slide-creator-7z5we), so the phase boxes remain the dominant anchors.
 	timelineCell := &jsonschema.GridCellInput{
-		ColSpan: n,
+		ColSpan:   n,
+		MaxHeight: timelineRulePt,
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
 			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),

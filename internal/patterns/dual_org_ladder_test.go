@@ -271,7 +271,9 @@ func TestDualOrgLadder_Expand_HeaderTextIsWhiteAndBold(t *testing.T) {
 	}
 }
 
-func TestDualOrgLadder_Expand_BodyCellsHaveBorderNoFill(t *testing.T) {
+// Role cards are neutral 4% cards with no outline, not outlined empty boxes
+// (go-slide-creator-pgdkp).
+func TestDualOrgLadder_Expand_BodyCellsAreTintedNotOutlined(t *testing.T) {
 	p, _ := Default().Get("dual-org-ladder")
 	v := validDualOrgLadderValues(2)
 	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
@@ -280,11 +282,11 @@ func TestDualOrgLadder_Expand_BodyCellsHaveBorderNoFill(t *testing.T) {
 	}
 	body := grid.Rows[1]
 	for i, cell := range body.Cells {
-		if !strings.Contains(string(cell.Shape.Fill), "none") {
-			t.Errorf("body cell %d: expected fill 'none', got %q", i, string(cell.Shape.Fill))
+		if got := string(cell.Shape.Fill); got != neutral4JSON {
+			t.Errorf("body cell %d: fill = %s, want neutral 4%%", i, got)
 		}
-		if len(cell.Shape.Line) == 0 {
-			t.Errorf("body cell %d: expected a border line spec", i)
+		if got := string(cell.Shape.Line); got != `"none"` {
+			t.Errorf("body cell %d: line = %s, want none", i, got)
 		}
 	}
 }

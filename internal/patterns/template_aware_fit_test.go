@@ -61,13 +61,14 @@ func TestChartInsightsSplit_StackedColumnFitsContentArea(t *testing.T) {
 	if short > 0 {
 		t.Fatalf("stacked column is %.1fpt short at chart %.0f%%", short, pct)
 	}
-	if pct >= chartInsightsDefaultPct || pct < cisMinChartPct {
-		t.Errorf("chart pct = %.0f, want narrowed within [%.0f, %.0f)", pct, cisMinChartPct, chartInsightsDefaultPct)
+	if pct > chartInsightsDefaultPct || pct < cisMinChartPct {
+		t.Errorf("chart pct = %.0f, want within [%.0f, %.0f]", pct, cisMinChartPct, chartInsightsDefaultPct)
 	}
-	for _, i := range []int{0, 2} {
-		if r := cell.Grid.Rows[i]; r.MinHeight <= 0 || r.MinHeight != r.MaxHeight {
-			t.Errorf("row %d should be pinned in points: %+v", i, r)
-		}
+	if r := cell.Grid.Rows[0]; r.MinHeight <= 0 || r.MinHeight != r.MaxHeight {
+		t.Errorf("headline row should be pinned in points: %+v", r)
+	}
+	if r := cell.Grid.Rows[2]; !r.AutoHeight || r.MinHeight <= 0 {
+		t.Errorf("so-what band row should be floored in points: %+v", r)
 	}
 	for _, w := range (&chartInsightsSplit{}).PostExpandWarnings(ctx, v, nil) {
 		t.Errorf("unexpected warning: %s", w)
