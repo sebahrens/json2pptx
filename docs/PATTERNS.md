@@ -154,7 +154,7 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Big-number KPIs (2–6 items) | `kpi-Nup` | Fixed count, ≤12-char metrics (measured one-line fit warnings); optional per-cell `sub` (delta/trend annotation, aliases `delta`/`trend`/`change`) |
 | Ranked horizontal bars (3–8) with per-bar insight | `horizontal-bar-with-callouts` | One callout per bar, accent-bar bound to the row; omit every `callout` and the column is dropped so the bars span the full width |
 | Single dominant metric | `stat-hero` | One hero number with context |
-| Stat stack / "by the numbers" list | `metric-list` | 3–7 rows read top to bottom: big right-aligned accent `value` (≤12 chars, one shared size shrunk until the longest fits on one line) + bold `label` + optional `detail`, hairline rules; at most one `highlight: true` row (Lighter-80% accent band + accent bar, value ink measured against the band) and an optional full-width accent `callout` banner (text colour by measured contrast). Details hold 120 chars through 4 items, ~90 at 5, none at 6–7. Use `kpi-Nup` for side-by-side cards, `stat-hero` / `hero-detail` for one dominant number |
+| Stat stack / "by the numbers" list | `metric-list` | 3–7 rows read top to bottom: big right-aligned accent `value` (≤12 chars, one shared size shrunk until the longest fits on one line) + bold `label` + optional `detail`, hairline rules; at most one `highlight: true` row (Lighter-80% accent band + accent bar, value ink measured against the band) and an optional `callout` rendered as the takeaway band (see [The takeaway component](#the-takeaway-component)). Details hold 120 chars through 4 items, ~90 at 5, none at 6–7. Use `kpi-Nup` for side-by-side cards, `stat-hero` / `hero-detail` for one dominant number |
 | Feature/capability cards | `card-grid` | Multi-line body text per card |
 | Sequential process | `process-flow` | Ordered steps with arrows |
 | Ordered steps / annotated ToC (no branching) | `numbered-step-strip` | 3–7 numbered steps (chevron ≤6) with an optional per-step detail zone and, in `stacked-box` / `toc`, an optional `steps[].icon` between the number badge and the label; `chevron` ribbon, `stacked-box` scorecard, or `toc` agenda — never emits decision diamonds (use `process-flow` for branching) |
@@ -177,7 +177,7 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Single-track phased roadmap | `phase-roadmap` | Phases + timeline bar + dates + per-phase description (+ milestones); optional `parallel_tracks` (0–4 cross-cutting workstreams, ≤90 chars) render as full-width tinted bars below the phases with a `parallel_label` (default "In parallel") at left, their height taken from the phase-box row |
 | Cross-functional swimlanes | `swimlane` | Multiple parallel tracks |
 | Executive summary (problem framing) | `scqa-summary` | 4-row Situation/Complication/Questions/Answer narrative arc |
-| Executive summary (key messages) | `exec-summary` | 3–5 bold lead-in conclusions (≤90 chars) each with one supporting sentence (≤200 chars), rules between rows, optional `bottom_line` ask (a pointing accent flag labelled BOTTOM LINE, then the statement in a tinted box); answer-first rather than an SCQA arc |
+| Executive summary (key messages) | `exec-summary` | 3–5 bold lead-in conclusions (≤90 chars) each with one supporting sentence (≤200 chars), rules between rows, optional `bottom_line` ask (the takeaway band: flush accent bar + bold dk1 statement, no box — see [The takeaway component](#the-takeaway-component)); answer-first rather than an SCQA arc |
 | Keyword-labelled rows (WHY / WHAT / HOW) | `labeled-rows` | 2–6 rows: a label block on the left (`label_style: filled` accent block with bold keyword + optional smaller `sublabel`, or `text` = accent-coloured bold keyword with no fill) beside 1–4 lines of `body` (**bold** allowed), rules between content-sized rows. The keyword shrinks as one shared size until no word breaks mid-word. Bodies hold 300 chars through 4 rows, ~190 at 5–6 rows (and 5–6 rows leave no room for multi-line sublabels). Use `exec-summary` when rows are sentence-length conclusions, `metric-list` when each row leads with a number |
 | Deck section list | `agenda` | Numbered section outline |
 | Visual deck preview | `agenda-with-images` | Numbered agenda rows with image/quote placeholders alongside the title (3–6 items); the placeholder column is all-or-nothing — a row with no `image_label` still gets an empty placeholder |
@@ -473,6 +473,20 @@ Both are content-sized row stacks separated by 0.75pt hairline rule rows, sized 
 
 `metric-list` sets `col_gap` to 0.1pt, not 0: a highlighted row tints both of its cells, and a real gap (0 resolves to shapegrid's 8pt default) shows as a white seam through the band. The gutter comes from the two cells' uniform text margins instead, and each highlighted cell is outlined in its own band colour (lumMod / lumOff, which shape lines honour; tint they do not) so no hairline shows.
 
+## The takeaway component
+
+One renderer carries every "so what" in the engine (go-slide-creator-7b5o6): the slide `takeaway` band (`internal/generator/takeaway_note.go`), chart-insights-split `so_what`, exec-summary `bottom_line`, metric-list `callout`, and the pattern / compose envelope `callout` (`cmd/json2pptx/pattern_resolve.go` `appendCalloutRow`). Pattern surfaces build it with `patterns.TakeawayRow` / `TakeawayGrid` (`internal/patterns/takeaway.go`); the slide band reads the same constants.
+
+- **No stroke, no fill by default.** A flush 3pt accent bar (accent1, or the pattern's resolved accent) runs the full height of the band on its left.
+- **Text** is 14pt bold in the theme's `dk1` ink (never a hex), 12pt from the bar, top-anchored, budgeted to two lines; the band is sized to its measured lines.
+- **Width** is the content width (the host grid's width, or the body column for the slide band), never a full bleed.
+- **Air:** at least 16pt above the band (a spacer row tops up the host's row gap and the renderer's 4pt sub-grid inset) and at least 12pt below it to the source line or footer (`template.ResolveChromeFrame`).
+- **Variants** — `emphasis` on a callout, `overrides.takeaway_emphasis` on exec-summary / metric-list / chart-insights-split: `subtle` adds a 5% `dk1` tint behind the text; `strong` fills the band with the accent and picks the text ink by measured contrast. A callout's `italic` / `bold-italic` set the (always bold) text italic.
+- The band row is an auto-height row floored at its measured height, never a `max_height` pin: any max on a row switches the host grid from stretching its rows to content-sized rows, which shrank auto-height hosts such as `numbered-step-strip` to their estimates. A pattern callout also shrinks the pattern's expansion bounds by the band's height before expanding.
+- On a layout whose background would leave `dk1` unreadable, the slide band inks in the theme colour the chrome contrast check picks (the takeaway is injected after the contrast pass).
+
+The chevron "BOTTOM LINE" flag, the peach accent-tint band with a 1pt accent outline, the solid accent metric-list banner and the solid accent callout strip are gone.
+
 ## Text on a tinted fill must be chosen by measurement too
 
 The same rule applies to the text a pattern paints INSIDE a fill it tints itself. `timeline-horizontal` tints each bar of its gantt and chevron chains — shade 70000 at the first stop through tint 40000 at the last — and hardcoded `lt1` inside every one of them, so the lightest bar measured **1.54:1** in a real midnight-blue render and its date label was invisible (go-slide-creator-5qotm).
@@ -638,7 +652,7 @@ For readability the right panel applies vertical rhythm via per-paragraph `space
 **So-what extensions (go-slide-creator-pzrs).** Consulting chart slides state the figure and the implication, not just the bullets:
 
 - `headline` `{value ≤12, label ≤60}` — a big accent number (32pt, 26pt with ≥5 insights; `overrides.headline_size`) at the top of the insights column.
-- `so_what` (≤160) — a tinted, accent-barred callout ("**So what:** …") at the bottom of the column, or filling the right panel when it is the only insight.
+- `so_what` (≤160) — the takeaway band (see [The takeaway component](#the-takeaway-component)) at the bottom of the column, top-anchored in the right panel when it is the only insight. It is 13pt beside a chart (12pt at 5+ insights), 14pt without one, and no longer carries a "So what:" label — the accent bar marks it.
 - Chart caption — single-series charts render without a legend, so the series name used to disappear. A bold caption above the chart now shows `chart_label` (≤60) or, when the chart has no `title`, the single series name plus `unit` (≤12): `"Revenue"` + `"$M"` → `Revenue ($M)`; multi-series charts get `Values in <unit>` (their legend names the series).
 - Data labels — `Style.ShowValues` is switched on by default for bar-type charts with ≤16 points and single-series line / area charts with ≤12 points; `overrides.data_labels` forces on / off and an explicit `data.data_labels` payload is left to svggen. The caller's chart spec is never mutated.
 

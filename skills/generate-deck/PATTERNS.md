@@ -42,7 +42,7 @@ KPI `values` is a JSON **array** of cells (one per metric). Each cell is an obje
 
 Do NOT hand-roll shape grids when a named pattern exists. Use the pattern, fill in the values, and let the engine handle grid structure, bounds, and gap arithmetic.
 
-**Callouts.** Patterns with `supports_callout=true` accept an envelope-level `callout: {text, emphasis?, accent?}` — a full-width band rendered below the pattern. Use for one-line takeaways; text is plain string (no bullets / structured content). KPI patterns refuse callouts (`callout_unsupported`).
+**Callouts.** Patterns with `supports_callout=true` accept an envelope-level `callout: {text, emphasis?, accent?}` — the takeaway band below the pattern (flush 3pt accent bar, 14pt bold dk1 text, no box, no outline). `emphasis`: `bold` (default), `italic`/`bold-italic`, `subtle` (5% neutral tint) or `strong` (solid accent, measured-contrast text). Use for one-line takeaways (budget two lines); text is plain string (no bullets / structured content). KPI patterns refuse callouts (`callout_unsupported`). exec-summary `bottom_line`, metric-list `callout` and chart-insights-split `so_what` render the same band; their `overrides.takeaway_emphasis` takes `subtle` / `strong`.
 
 ### Picking a Grid Configuration with `text_budget_guide`
 

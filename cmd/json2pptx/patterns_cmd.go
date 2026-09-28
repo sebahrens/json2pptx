@@ -541,7 +541,7 @@ func parsePatternInputFile(content []byte, name string) (*PatternInput, error) {
 func patternCalloutSchemaJSON() json.RawMessage {
 	return json.RawMessage(`{
   "type": "object",
-  "description": "Optional callout band rendered below the pattern content",
+  "description": "Optional takeaway band rendered below the pattern content (flush 3pt accent bar, 14pt bold dk1 text, 16pt of air above)",
   "properties": {
     "text": {
       "type": "string",
@@ -549,8 +549,8 @@ func patternCalloutSchemaJSON() json.RawMessage {
     },
     "emphasis": {
       "type": "string",
-      "description": "Text emphasis style",
-      "enum": ["bold", "italic", "bold-italic"]
+      "description": "Takeaway band style: bold (default) = flush accent bar + bold dk1 text, no fill, no outline; italic / bold-italic set the text italic; subtle adds a 5% neutral tint; strong is a solid accent band with measured-contrast text",
+      "enum": ["bold", "italic", "bold-italic", "subtle", "strong"]
     },
     "accent": {
       "type": "string",

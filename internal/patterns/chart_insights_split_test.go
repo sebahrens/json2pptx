@@ -144,9 +144,11 @@ func TestChartInsightsSplit(t *testing.T) {
 			t.Fatal("callout-only expansion is empty")
 		}
 		cell := grid.Rows[0].Cells[0]
-		if cell.Shape == nil || !strings.Contains(string(cell.Shape.Text), "Increase capacity") {
-			t.Errorf("callout text missing from expanded panel: %+v", cell)
+		if cell.Grid == nil {
+			t.Fatalf("callout-only panel should be a takeaway sub-grid: %+v", cell)
 		}
+		band := cell.Grid.Rows
+		assertTakeawayBand(t, band[len(band)-1], "Increase capacity")
 	})
 
 	t.Run("headline_and_callout_without_bullets", func(t *testing.T) {

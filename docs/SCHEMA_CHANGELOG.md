@@ -1,5 +1,21 @@
 # Schema Changelog
 
+- **Unreleased — one takeaway component (go-slide-creator-7b5o6).**
+  The slide `takeaway`, chart-insights-split `so_what`, exec-summary
+  `bottom_line`, metric-list `callout` and the pattern / compose `callout`
+  render one band: a flush 3pt accent bar the band's height beside 14pt bold
+  `dk1` text (theme ink, not `#1F1F1F`) 12pt from the bar, top-anchored,
+  sized to its (budgeted two) lines, content width, no fill and no outline,
+  with 16pt of air above and 12pt to the source line / footer. Removed: the
+  chevron "BOTTOM LINE" flag and closing rule (exec-summary now expands to one
+  row fewer), the peach accent-tint slide band with its 1pt accent outline,
+  the solid accent metric-list banner and callout strip, and the "So what:"
+  label. New values: `callout.emphasis` adds `subtle` (5% neutral tint) and
+  `strong` (solid accent, measured-contrast ink); exec-summary, metric-list
+  and chart-insights-split take `overrides.takeaway_emphasis`
+  (`subtle` | `strong`). The chrome frame reserves the larger gaps around a
+  takeaway, so content on takeaway slides ends ~20pt higher.
+
 - **2026-09-28 — Schema 4.153.0: uniform 0.5 cm shape text inset.**
   Every text-bearing shape the engine draws (shape_grid cells — so every
   pattern, compose block and raw grid — and the native diagram shapes) keeps
