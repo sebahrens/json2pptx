@@ -68,10 +68,12 @@ func (s *stateShiftHub) ExemplarValues() any {
 		LeftHeader:  "TODAY'S STATE",
 		RightHeader: "AGENTIC STATE",
 		Pairs: []StateShiftPair{
+			// Three pairs with column headers: four pairs plus headers leave a
+			// stage row too short for a title and a description at the 12pt
+			// floor on the shortest shipped content area (abstract, 294pt).
 			{Title: "Intake", Before: "Requests arrive by email and are triaged by hand", After: "Agents classify and route every request on arrival"},
 			{Title: "Research", Before: "Analysts spend days assembling context", After: "Agents draft a sourced brief in minutes"},
 			{Title: "Decision", Before: "Committees wait for weekly meetings", After: "Owners approve pre-analysed options same day"},
-			{Title: "Follow-up", Before: "Status is chased manually", After: "Agents track progress and escalate exceptions"},
 		},
 	}
 }
@@ -141,6 +143,8 @@ const (
 	sshMaxBulgePt        = 44.0 // furthest the middle nodes swing out past the top/bottom ones
 	sshHubMinPt          = 110.0
 	sshHubMaxPt          = 230.0
+	sshHubStepPt         = 20.0 // hub diameter step when the items need the width
+	sshMinTitlePt        = 12.0 // stage title floor the default steps down to
 	sshHaloWidthPt       = 6.0
 	sshTitleSpacePt      = 1.0 // space after a stage title
 	sshNeedSlackPt       = 2.0 // rounding slack on a measured text block
@@ -253,7 +257,10 @@ func (s *stateShiftHub) Validate(values, overrides any, cellOverrides map[int]an
 // sshRow is the resolved geometry of one stage row (points, grid-relative).
 type sshRow struct {
 	dx       float64 // node centre's horizontal distance from the hub centre
+	need     float64 // written height the taller side needs at textEdge
 	textEdge float64 // right edge of the left text box (mirrored on the right)
+
+	beforeTitle, afterTitle, before, after string // the row's item text
 }
 
 // sshLayout carries every measurement Expand and PostExpandWarnings share.
@@ -305,33 +312,93 @@ func sshMeasure(ctx ExpandContext, v *StateShiftHubValues, ovr *StateShiftHubOve
 		nodeR:     sshNodeDiaPt / 2,
 	}
 
-	n64 := float64(n)
 	hubFrac := sshHubWidthFrac
 	if n >= 5 {
 		hubFrac = sshHubWidthDenseFrac // dense rows need the width for text
 	}
-	hubD := math.Min(w*hubFrac, sshHubMaxPt)
+	// Stage rows are sized to the WRITTEN height of their longest item at its
+	// real (arc-dependent) frame width. When they do not fit, the layout gives
+	// way in order — row gaps, then hub width (down to the smallest circle
+	// that still holds its label), then the stage title steps to the 12pt
+	// floor — before any text is left to the writer's autofit shrink, which
+	// took stage titles to 9pt on a short content area (go-slide-creator-k3eb3).
+	titles := []float64{lay.titleSize}
+	if ovr.TitleSize == 0 && lay.titleSize > sshMinTitlePt {
+		titles = append(titles, sshMinTitlePt)
+	}
+	hub0 := math.Min(w*hubFrac, sshHubMaxPt)
+	hubs := []float64{hub0}
+	for d := hub0 - sshHubStepPt; d > sshHubMinPt; d -= sshHubStepPt {
+		hubs = append(hubs, d)
+	}
+	if hub0 > sshHubMinPt {
+		hubs = append(hubs, sshHubMinPt)
+	}
+	var best sshLayout
+	for _, ts := range titles {
+		for _, hubD := range hubs {
+			cand := lay
+			cand.titleSize = ts
+			sshPlace(ctx, v, ovr, &cand, h, hubD)
+			if cand.fits() {
+				return cand
+			}
+			switch {
+			case best.rows == nil, cand.hubFits && !best.hubFits:
+				best = cand
+			case cand.hubFits == best.hubFits && cand.overflowPt() < best.overflowPt()-0.5:
+				best = cand
+			}
+		}
+	}
+	// Nothing fits: keep the arrangement that overflows least;
+	// PostExpandWarnings reports the items that outgrow their row.
+	return best
+}
+
+// sshPlace resolves one candidate geometry for a hub of diameter hubD
+// (before the body height caps it) and measures every item against it.
+func sshPlace(ctx ExpandContext, v *StateShiftHubValues, ovr *StateShiftHubOverrides, lay *sshLayout, h, hubD float64) {
+	n64 := float64(max(len(v.Pairs), 1))
 	dxMin := hubD/2 + sshHubGapPt + lay.nodeR
 	// The header spans its text column and the nodes beside it.
 	lay.headerEdge = lay.cx - dxMin + lay.nodeR
 
 	bodyAvail := h
+	lay.headerH = 0
 	if v.hasHeaders() {
 		lay.headerH = headerRowPt(ctx.Theme.BodyFont, []string{v.LeftHeader, v.RightHeader}, sshHeaderPt, lay.headerEdge-2*defaultShapeInsetLRPt)
 		bodyAvail -= lay.headerH + sshRowGapPt
 	}
-	// A stage row holds at least a title line and a body line. When the full
-	// gaps would squeeze rows below that, the gap gives way first (down to
-	// sshMinRowGapPt): six pairs on a short content area were otherwise
-	// written at 90% autofit, below the body floor (go-slide-creator-n1muf).
+
+	// First pass at the full gap and the default pitch cap; the frames then
+	// say how tall a row must be. Rows may grow past the cap to hold their
+	// text, and the gaps give way (down to sshMinRowGapPt) before the rows
+	// are squeezed below it.
 	lay.gap = sshRowGapPt
-	if n > 1 {
-		minItem := writtenFitHeightPt(sshItemCell("Stage", "One line", "l", lay, "dk1").Shape.Text, w/2, 0)
-		if (bodyAvail-(n64-1)*lay.gap)/n64 < minItem {
-			lay.gap = math.Max(sshMinRowGapPt, math.Floor((bodyAvail-n64*minItem)/(n64-1)))
+	sshArrange(v, lay, hubD, dxMin, bodyAvail, sshMaxPitchPt)
+	need := lay.itemNeed(ctx)
+	if need > math.Floor(lay.pitch) {
+		if n64 > 1 && (bodyAvail-(n64-1)*lay.gap)/n64 < need {
+			lay.gap = math.Max(sshMinRowGapPt, math.Floor((bodyAvail-n64*need)/(n64-1)))
 		}
+		sshArrange(v, lay, hubD, dxMin, bodyAvail, math.Max(sshMaxPitchPt, need))
+		// The arc moved with the pitch; measure the frames it now gives.
+		lay.itemNeed(ctx)
 	}
-	lay.pitch = math.Min((bodyAvail-(n64-1)*lay.gap)/n64, sshMaxPitchPt)
+
+	// The ellipse's text rectangle is its inscribed square.
+	inner := lay.hubD * math.Sqrt2 / 2
+	lay.hubTextW = inner - 2*defaultShapeInsetLRPt
+	lay.hubTextH = inner - 2*defaultShapeInsetTBPt
+	lay.hubSize, lay.hubFits = sshFitHubLabel(ctx, v.HubLabel, ResolveSize(ovr.HubSize, sshHubPt), lay.hubTextW, lay.hubTextH)
+}
+
+// sshArrange sets the row pitch (capped at maxPitch) and places the hub and
+// the node arc for the current gap.
+func sshArrange(v *StateShiftHubValues, lay *sshLayout, hubD, dxMin, bodyAvail, maxPitch float64) {
+	n64 := float64(max(len(v.Pairs), 1))
+	lay.pitch = math.Min((bodyAvail-(n64-1)*lay.gap)/n64, maxPitch)
 	lay.pitch = math.Max(lay.pitch, sshNodeDiaPt+4)
 	bodyH := n64*lay.pitch + (n64-1)*lay.gap
 
@@ -348,18 +415,49 @@ func sshMeasure(ctx ExpandContext, v *StateShiftHubValues, ovr *StateShiftHubOve
 		squash = sshMaxBulgePt / bulge
 	}
 	lay.rows = make([]sshRow, len(v.Pairs))
-	for i := range lay.rows {
+	for i, p := range v.Pairs {
 		dy := sshRowCentre(i, lay.pitch, lay.gap) - bodyH/2
 		dx := dxMin + (math.Sqrt(math.Max(ring*ring-dy*dy, dxMin*dxMin))-dxMin)*squash
-		lay.rows[i] = sshRow{dx: dx, textEdge: lay.cx - dx - lay.nodeR - sshTextGapPt}
+		bt, at := sshTitles(p)
+		lay.rows[i] = sshRow{dx: dx, textEdge: lay.cx - dx - lay.nodeR - sshTextGapPt, beforeTitle: bt, afterTitle: at, before: p.Before, after: p.After}
 	}
+}
 
-	// The ellipse's text rectangle is its inscribed square.
-	inner := lay.hubD * math.Sqrt2 / 2
-	lay.hubTextW = inner - 2*defaultShapeInsetLRPt
-	lay.hubTextH = inner - 2*defaultShapeInsetTBPt
-	lay.hubSize, lay.hubFits = sshFitHubLabel(ctx, v.HubLabel, ResolveSize(ovr.HubSize, sshHubPt), lay.hubTextW, lay.hubTextH)
-	return lay
+// itemNeed measures, for every row, the height its taller side needs at the
+// row's frame width, records it on the row and returns the tallest.
+func (l *sshLayout) itemNeed(ctx ExpandContext) float64 {
+	need := 0.0
+	for i := range l.rows {
+		r := &l.rows[i]
+		r.need = math.Max(sshSideNeedPt(ctx, *l, r.beforeTitle, r.before, r.textEdge),
+			sshSideNeedPt(ctx, *l, r.afterTitle, r.after, r.textEdge))
+		need = math.Max(need, r.need)
+	}
+	return need
+}
+
+// sshSideNeedPt is the height one item needs in a frame frameW wide: the
+// larger of the pattern's theme-font model and the writer's own measure. The
+// row is written at floor(pitch), and text the writer measures taller than
+// that is stored shrunk (go-slide-creator-k3eb3).
+func sshSideNeedPt(ctx ExpandContext, lay sshLayout, title, body string, frameW float64) float64 {
+	return math.Max(sshTextNeedPt(ctx, lay, title, pptx.ConvertMarkdownEmphasis(body), frameW),
+		writtenFitHeightPt(sshItemCell(title, body, "l", lay, "dk1").Shape.Text, frameW, 0))
+}
+
+// fits reports whether every item is written unshrunk in its row and the hub
+// label fits its circle.
+func (l sshLayout) fits() bool {
+	return l.hubFits && l.overflowPt() == 0
+}
+
+// overflowPt is how far the tallest item overflows its row (0 when all fit).
+func (l sshLayout) overflowPt() float64 {
+	over := 0.0
+	for _, r := range l.rows {
+		over = math.Max(over, r.need-math.Floor(l.pitch))
+	}
+	return over
 }
 
 func sshRowCentre(i int, pitch, gap float64) float64 {
@@ -437,8 +535,8 @@ func (s *stateShiftHub) PostExpandWarnings(ctx ExpandContext, values, overrides 
 		bt, at := sshTitles(p)
 		frameW := lay.rows[i].textEdge
 		for _, side := range []struct{ field, title, body string }{{"before", bt, p.Before}, {"after", at, p.After}} {
-			need := sshTextNeedPt(ctx, lay, side.title, pptx.ConvertMarkdownEmphasis(side.body), frameW)
-			if need <= lay.pitch {
+			need := sshSideNeedPt(ctx, lay, side.title, side.body, frameW)
+			if need <= math.Floor(lay.pitch) {
 				continue
 			}
 			lines := sshBodyLineBudget(ctx, lay, side.title, frameW)

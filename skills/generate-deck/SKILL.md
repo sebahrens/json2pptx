@@ -51,8 +51,11 @@ patterns with `list_patterns` and the chosen pattern's live value schema with
 `recommend_visual` (when visual choice is unclear) → `expand_pattern` (when
 using a pattern) → `validate_input` → `generate_presentation` → render and
 inspect. Pattern copy budgets assume the template's full content area; on a
-short or narrow template, or under a `takeaway`, `chart-insights-split` and
-`table-highlight` report `BODY_TOO_LONG` naming what to drop, and validate
+short or narrow template, or under a `takeaway`, the content-sized patterns
+(`chart-insights-split`, `table-highlight`, `exec-summary`, `scqa-summary`,
+`bmc-canvas`, `agenda-with-images`, `state-shift-hub`, `metric-list`,
+`next-steps`) first step type down to the 12pt floor, then report
+`BODY_TOO_LONG` naming what to drop, and validate
 predicts grid text (nested cells included) that generation would refuse as
 `TEXT_BELOW_READABLE_MIN`.
 Read [RAW_PATH.md](RAW_PATH.md) before authoring raw JSON. Its

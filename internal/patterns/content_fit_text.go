@@ -161,6 +161,28 @@ func contentCardHeightPt(textHPt, cardWPt float64, hasTopIcon bool) float64 {
 	return math.Round(h + 0.6*cardWPt + 6)
 }
 
+// floorFlexRowsAtNeeds keeps equal flex rows while every row's share of
+// availPt holds its needs[i] (the written fit of its tallest cell); otherwise
+// it floors each row at its need and shares the slack in proportion, so a
+// crowded row takes height from sparse ones instead of being written shrunk
+// below the readability floor (go-slide-creator-k3eb3). It reports whether the
+// needs fit availPt at all.
+func floorFlexRowsAtNeeds(rows []jsonschema.GridRowInput, needs []float64, availPt float64) bool {
+	total, share := 0.0, availPt/float64(max(len(needs), 1))
+	equalFits := true
+	for _, n := range needs {
+		total += n
+		equalFits = equalFits && n <= share
+	}
+	if !equalFits {
+		for i := range rows {
+			rows[i].MinHeight = math.Ceil(needs[i])
+			rows[i].Flex = math.Ceil(needs[i])
+		}
+	}
+	return total <= availPt+1
+}
+
 // writtenFitHeightPt returns the smallest whole-point shape height, not below
 // minPt, at which the shape_grid writer stores no normAutofit shrink for text
 // in a shape widthPt wide. Pattern sizing measures with the theme body font;

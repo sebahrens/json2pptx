@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -143,11 +144,41 @@ func scqaItemBudgets(items int) (single, average int) {
 	}
 }
 
-func (s *scqaSummary) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+func (s *scqaSummary) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*SCQASummaryValues)
 	if !ok || v == nil {
 		return nil
 	}
+	warnings := scqaBudgetWarnings(v)
+	if len(warnings) > 0 || ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 {
+		return warnings
+	}
+	// The budgets assume a typical content area; with the template's own
+	// area the rows are measured against it (go-slide-creator-k3eb3).
+	ovr, _ := overrides.(*SCQASummaryOverrides)
+	if ovr == nil {
+		ovr = &SCQASummaryOverrides{}
+	}
+	specs := []struct {
+		label string
+		body  []string
+	}{
+		{"Situation", []string(v.Situation)}, {"Complication", []string(v.Complication)},
+		{"Questions", v.Questions}, {"Answer", v.Answer},
+	}
+	needs, avail := scqaRowNeeds(ctx, specs, ResolveSize(ovr.HeaderSize, 20.0), ResolveSize(ovr.BodySize, 12.0))
+	total := 0.0
+	for _, n := range needs {
+		total += n
+	}
+	if total > avail+1 {
+		warnings = append(warnings, fmt.Sprintf("%s: scqa-summary rows need %.0fpt at readable sizes but the content area holds about %.0fpt — shorten or merge bullets, or split the summary", ErrCodeBodyTooLong, total, avail))
+	}
+	return warnings
+}
+
+// scqaBudgetWarnings reports rows whose bullets exceed the measured budgets.
+func scqaBudgetWarnings(v *SCQASummaryValues) []string {
 	rows := []struct {
 		name  string
 		items []string
@@ -324,14 +355,38 @@ func (s *scqaSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		}
 	}
 
+	needs, avail := scqaRowNeeds(ctx, rowSpecs, headerSize, bodySize)
+	floorFlexRowsAtNeeds(rows, needs, avail)
+
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(`[1, 4]`),
-		Gap:     8,
-		RowGap:  6,
+		Gap:     scqaColGapPt,
+		RowGap:  scqaRowGapPt,
 		Rows:    rows,
 	}
 
 	return grid, nil
+}
+
+const (
+	scqaColGapPt = 8.0
+	scqaRowGapPt = 6.0
+)
+
+// scqaRowNeeds returns each row's written-fit height (label and content at
+// their real column widths) and the height the four rows share.
+func scqaRowNeeds(ctx ExpandContext, specs []struct {
+	label string
+	body  []string
+}, headerSize, bodySize float64) ([]float64, float64) {
+	areaW, areaH := sizingAreaPt(ctx)
+	unit := (areaW - scqaColGapPt) / 5
+	needs := make([]float64, len(specs))
+	for i, s := range specs {
+		needs[i] = math.Max(writtenFitHeightPt(buildSCQALabelText(s.label, headerSize), unit, 0),
+			writtenFitHeightPt(buildSCQAContentText(s.body, bodySize), 4*unit, 0))
+	}
+	return needs, areaH - float64(len(specs)-1)*scqaRowGapPt
 }
 
 // ---------------------------------------------------------------------------

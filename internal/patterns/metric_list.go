@@ -288,8 +288,22 @@ func (l metricListLayout) natural(n int) float64 {
 	return h + float64(rows-1)*metricListRowGapPt
 }
 
+// minimal is natural without the callout band's air (the spacer above it, the
+// sub-grid insets and its rounding slack), which the grid squeezes before any
+// text row is written shrunk.
+func (l metricListLayout) minimal(n int) float64 {
+	h := l.natural(n)
+	if l.calloutPt > 0 {
+		h -= TakeawaySpacerPt(metricListRowGapPt) + 2*SubGridInsetPt + takeawaySafetyPt
+	}
+	return h
+}
+
 // metricListScales is the default type scale, largest first: value, label.
-var metricListScales = [][2]float64{{40, 18}, {36, 17}, {32, 16}, {28, 15}, {24, 14}, {22, 14}}
+// The last step sets the label at the 12pt floor so a tall list picks a
+// readable size itself instead of leaving the writer to shrink it
+// (go-slide-creator-k3eb3).
+var metricListScales = [][2]float64{{40, 18}, {36, 17}, {32, 16}, {28, 15}, {24, 14}, {22, 14}, {20, 12}}
 
 func metricListDetailSize(label float64) float64 { return math.Max(12, label-4) }
 
@@ -320,14 +334,24 @@ func layoutMetricList(ctx ExpandContext, vals *MetricListValues, ovr *MetricList
 		scales = [][2]float64{{ResolveSize(ovr.ValueSize, scales[0][0]), ResolveSize(ovr.LabelSize, scales[0][1]+labelBump)}}
 		labelBump = 0
 	}
-	var lay metricListLayout
-	for _, sc := range scales {
-		lay = measureMetricList(ctx, vals, cols, sc[0], sc[1]+labelBump, areaW, ovr.TakeawayEmphasis)
+	var over metricListLayout
+	for i, sc := range scales {
+		lay := measureMetricList(ctx, vals, cols, sc[0], sc[1]+labelBump, areaW, ovr.TakeawayEmphasis)
 		if lay.natural(len(vals.Items)) <= areaH {
-			break
+			return lay
+		}
+		// At the floor the air above the callout band may give way too.
+		if i == len(scales)-1 && lay.minimal(len(vals.Items)) <= areaH {
+			return lay
+		}
+		// The floor step is taken only when it makes the list fit: a list
+		// that overflows even there keeps the larger step, since the writer
+		// shrinks it either way and a smaller start only ends smaller.
+		if i < len(scales)-1 || len(scales) == 1 {
+			over = lay
 		}
 	}
-	return lay
+	return over
 }
 
 func measureMetricList(ctx ExpandContext, vals *MetricListValues, cols []float64, valueSize, labelSize, areaW float64, emphasis string) metricListLayout {
@@ -361,6 +385,10 @@ func measureMetricList(ctx ExpandContext, vals *MetricListValues, cols []float64
 			paras = append(paras, sizedPara{text: it.Detail, sizePt: lay.detailSize})
 		}
 		row = math.Max(row, sizedBlockHeightPt(ctx, paras, textFrameW))
+		// The row is never below what the writer needs to store the text
+		// unshrunk at the real column widths (go-slide-creator-k3eb3).
+		row = math.Max(row, writtenFitHeightPt(metricListTextJSON(it, labelSize, lay.detailSize, "dk2", "dk1"), textFrameW, 0))
+		row = math.Max(row, writtenFitHeightPt(metricListValueJSON(it.Value, size, "dk1"), valueColW, 0))
 	}
 	lay.rowPt = math.Ceil(row)
 	if strings.TrimSpace(vals.Callout) != "" {
@@ -477,12 +505,7 @@ func (m *metricList) Expand(ctx ExpandContext, values, overrides any, cellOverri
 			Geometry: "rect",
 			Fill:     fill,
 			Line:     line,
-			Text: insetText{
-				Paragraphs: []chartInsightsParagraph{{
-					Content: it.Value, Size: lay.valueSize, Bold: true, Color: valueInk, Align: "r",
-				}},
-				Align: "r", VerticalAlign: "ctr",
-			}.json(),
+			Text:     metricListValueJSON(it.Value, lay.valueSize, valueInk),
 		}}
 		// The big value is the item's primary text (D15 text keys).
 		applyCellTextOverride(valueCell, co)
@@ -490,17 +513,11 @@ func (m *metricList) Expand(ctx ExpandContext, values, overrides any, cellOverri
 			valueCell.AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: metricListBarPt}
 		}
 
-		paras := []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(it.Label), Size: lay.labelSize, Bold: true, Color: rowLabelInk, Align: "l", SpaceAfter: 2}}
-		if strings.TrimSpace(it.Detail) != "" {
-			paras = append(paras, chartInsightsParagraph{Content: pptx.ConvertMarkdownEmphasis(it.Detail), Size: lay.detailSize, Color: detailInk, Align: "l"})
-		}
 		textCell := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
 			Fill:     fill,
 			Line:     line,
-			Text: insetText{
-				Paragraphs: paras, Align: "l", VerticalAlign: "ctr",
-			}.json(),
+			Text:     metricListTextJSON(it, lay.labelSize, lay.detailSize, rowLabelInk, detailInk),
 		}}
 		rows = append(rows, jsonschema.GridRowInput{MinHeight: lay.rowPt, MaxHeight: lay.rowPt, Cells: []*jsonschema.GridCellInput{valueCell, textCell}})
 		itemRow = append(itemRow, true)
@@ -545,12 +562,30 @@ func (m *metricList) PostExpandWarnings(ctx ExpandContext, values, overrides any
 			ErrCodeTextExceedsShape, i, v.Items[i].Value, lay.valueSize))
 	}
 	_, areaH := sizingAreaPt(ctx)
-	if need := lay.natural(len(v.Items)); need > areaH+1 {
+	if need := lay.minimal(len(v.Items)); need > areaH+1 {
 		out = append(out, fmt.Sprintf(
 			"%s: metric-list items need %.0fpt at the smallest type scale but the content area holds about %.0fpt — 4 items hold about 98 detail characters each, 5 items about 40 and 6-7 items none; shorten or drop the detail lines, drop the callout, or use fewer items",
 			ErrCodeBodyTooLong, need, areaH))
 	}
 	return out
+}
+
+// metricListValueJSON is the value cell text; measureMetricList sizes the row
+// on the same text Expand writes.
+func metricListValueJSON(value string, size float64, ink string) json.RawMessage {
+	return insetText{
+		Paragraphs: []chartInsightsParagraph{{Content: value, Size: size, Bold: true, Color: ink, Align: "r"}},
+		Align:      "r", VerticalAlign: "ctr",
+	}.json()
+}
+
+// metricListTextJSON is the label + detail cell text.
+func metricListTextJSON(it MetricListItem, labelSize, detailSize float64, labelInk, detailInk string) json.RawMessage {
+	paras := []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(it.Label), Size: labelSize, Bold: true, Color: labelInk, Align: "l", SpaceAfter: 2}}
+	if strings.TrimSpace(it.Detail) != "" {
+		paras = append(paras, chartInsightsParagraph{Content: pptx.ConvertMarkdownEmphasis(it.Detail), Size: detailSize, Color: detailInk, Align: "l"})
+	}
+	return insetText{Paragraphs: paras, Align: "l", VerticalAlign: "ctr"}.json()
 }
 
 // metricListTakeaway is the callout as a takeaway band spec.

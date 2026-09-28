@@ -87,9 +87,9 @@ func (cis *chartInsightsSplit) ExemplarValues() any {
 		Headline:      &ChartInsightsHeadline{Value: "+75%", Label: "revenue growth Q1 to Q4"},
 		InsightsTitle: "Key Insights",
 		Insights: []string{
-			"Enterprise adoption drove most of the growth.",
-			"Q4 spike reflects the EMEA market launch.",
-			"Pipeline coverage points to further gains in FY26.",
+			"Enterprise adoption drove most growth.",
+			"Q4 spike reflects the EMEA launch.",
+			"Pipeline points to further FY26 gains.",
 		},
 		SoWhat: "Fund the EMEA sales build-out now to keep the growth rate.",
 		Source: "Source: Internal finance (FY25)",

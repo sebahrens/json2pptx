@@ -2,21 +2,21 @@
   "col_gap": 0.01,
   "row_gap": 6,
   "columns": [
-    26.635,
+    27.024,
     0.97,
-    2.867,
+    2.477,
     0.97,
-    0.284,
-    3.836,
+    0.674,
+    3.446,
     1.939,
     25,
     1.939,
-    3.836,
-    0.284,
+    3.446,
+    0.674,
     0.97,
-    2.867,
+    2.477,
     0.97,
-    26.635
+    27.024
   ],
   "rows": [
     {
@@ -81,7 +81,7 @@
       ]
     },
     {
-      "max_height": 63,
+      "max_height": 86,
       "cells": [
         {
           "col_span": 3,
@@ -139,7 +139,7 @@
         },
         {},
         {
-          "row_span": 4,
+          "row_span": 3,
           "fit": "contain",
           "shape": {
             "geometry": "ellipse",
@@ -215,7 +215,7 @@
       ]
     },
     {
-      "max_height": 63,
+      "max_height": 86,
       "cells": [
         {
           "shape": {
@@ -327,9 +327,10 @@
       ]
     },
     {
-      "max_height": 63,
+      "max_height": 86,
       "cells": [
         {
+          "col_span": 3,
           "shape": {
             "geometry": "rect",
             "fill": "none",
@@ -358,7 +359,7 @@
         },
         {},
         {
-          "col_span": 3,
+          "col_span": 2,
           "fit": "contain",
           "shape": {
             "geometry": "ellipse",
@@ -384,10 +385,8 @@
         },
         {},
         {},
-        {},
-        {},
         {
-          "col_span": 3,
+          "col_span": 2,
           "fit": "contain",
           "shape": {
             "geometry": "ellipse",
@@ -410,6 +409,7 @@
         },
         {},
         {
+          "col_span": 3,
           "shape": {
             "geometry": "rect",
             "fill": "none",
@@ -426,118 +426,6 @@
                 },
                 {
                   "content": "Owners approve pre-analysed options same day",
-                  "size": 12,
-                  "color": "dk1",
-                  "align": "l"
-                }
-              ],
-              "align": "l",
-              "vertical_align": "ctr"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "max_height": 63,
-      "cells": [
-        {
-          "col_span": 3,
-          "shape": {
-            "geometry": "rect",
-            "fill": "none",
-            "line": "none",
-            "text": {
-              "paragraphs": [
-                {
-                  "content": "Follow-up",
-                  "size": 14,
-                  "bold": true,
-                  "color": "accent1",
-                  "align": "r",
-                  "space_after": 1
-                },
-                {
-                  "content": "Status is chased manually",
-                  "size": 12,
-                  "color": "dk1",
-                  "align": "r"
-                }
-              ],
-              "align": "r",
-              "vertical_align": "ctr"
-            }
-          }
-        },
-        {},
-        {
-          "col_span": 2,
-          "fit": "contain",
-          "shape": {
-            "geometry": "ellipse",
-            "fill": "none",
-            "line": {
-              "color": "accent1",
-              "width": 1.75
-            },
-            "text": {
-              "paragraphs": [
-                {
-                  "content": "04",
-                  "size": 12,
-                  "bold": true,
-                  "color": "accent1",
-                  "align": "ctr"
-                }
-              ],
-              "align": "ctr",
-              "vertical_align": "ctr"
-            }
-          }
-        },
-        {},
-        {},
-        {
-          "col_span": 2,
-          "fit": "contain",
-          "shape": {
-            "geometry": "ellipse",
-            "fill": "accent1",
-            "line": "none",
-            "text": {
-              "paragraphs": [
-                {
-                  "content": "04",
-                  "size": 12,
-                  "bold": true,
-                  "color": "lt1",
-                  "align": "ctr"
-                }
-              ],
-              "align": "ctr",
-              "vertical_align": "ctr"
-            }
-          }
-        },
-        {},
-        {
-          "col_span": 3,
-          "shape": {
-            "geometry": "rect",
-            "fill": "none",
-            "line": "none",
-            "text": {
-              "paragraphs": [
-                {
-                  "content": "Follow-up",
-                  "size": 14,
-                  "bold": true,
-                  "color": "accent1",
-                  "align": "l",
-                  "space_after": 1
-                },
-                {
-                  "content": "Agents track progress and escalate exceptions",
                   "size": 12,
                   "color": "dk1",
                   "align": "l"

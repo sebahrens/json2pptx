@@ -52,6 +52,7 @@ const (
 	nextStepsRulePt        = 0.5
 	nextStepsRowGapPt      = 2.0
 	nextStepsBandGapPt     = 14.0
+	nextStepsMinBandGapPt  = 6.0
 	nextStepsBandBarPt     = 3.0
 	nextStepsOwnerPct      = 22.0
 	nextStepsDatePct       = 15.0
@@ -63,8 +64,11 @@ const (
 )
 
 // nextStepsScales steps numeral / action / meta sizes down only when the
-// default rows do not fit the content area.
-var nextStepsScales = [][3]float64{{20, 16, 14}, {18, 14, 12}}
+// default rows do not fit the content area. The last step sets the actions
+// and decisions at the 12pt floor: the pattern picks a readable size itself
+// rather than handing the writer rows it can only fit by autofit shrink
+// (go-slide-creator-k3eb3).
+var nextStepsScales = [][3]float64{{20, 16, 14}, {18, 14, 12}, {16, 12, 12}}
 
 func (n *nextSteps) Name() string { return "next-steps" }
 func (n *nextSteps) Description() string {
@@ -242,6 +246,7 @@ type nextStepsLayout struct {
 	headerPt                                float64
 	rowPt                                   []float64
 	bandPt                                  float64 // 0 = no decisions band
+	bandGapPt                               float64 // space above the band
 	decisionSize                            float64
 	numberCol, actionCol, ownerCol, dateCol int
 }
@@ -254,7 +259,7 @@ func (l nextStepsLayout) natural() float64 {
 		h += r
 	}
 	if l.bandPt > 0 {
-		h += nextStepsBandGapPt + l.bandPt
+		h += l.bandGapPt + l.bandPt
 		rows += 2
 	}
 	return h + float64(rows-1)*nextStepsRowGapPt
@@ -266,19 +271,37 @@ func layoutNextSteps(ctx ExpandContext, vals *NextStepsValues, ovr *NextStepsOve
 	if ovr.ActionSize > 0 {
 		scales = [][3]float64{{scales[0][0], ovr.ActionSize, math.Max(12, ovr.ActionSize-2)}}
 	}
-	var lay nextStepsLayout
-	for _, sc := range scales {
-		lay = measureNextSteps(ctx, vals, sc[0], sc[1], sc[2])
+	fit := func(sc [3]float64) (nextStepsLayout, bool) {
+		lay := measureNextSteps(ctx, vals, sc[0], sc[1], sc[2])
 		if lay.natural() <= areaH {
-			break
+			return lay, true
+		}
+		// Too tall at this step: the space above the band gives way before
+		// the type steps down.
+		if lay.bandPt > 0 {
+			lay.bandGapPt = nextStepsMinBandGapPt
+		}
+		return lay, lay.natural() <= areaH
+	}
+	var over nextStepsLayout
+	for i, sc := range scales {
+		lay, ok := fit(sc)
+		if ok {
+			return lay
+		}
+		// The floor step is taken only when it makes the list fit: content
+		// that overflows even there keeps the larger step, since the writer
+		// shrinks it either way and a smaller start only ends smaller.
+		if i < len(scales)-1 || len(scales) < 3 {
+			over = lay
 		}
 	}
-	return lay
+	return over
 }
 
 func measureNextSteps(ctx ExpandContext, vals *NextStepsValues, numberSize, actionSize, metaSize float64) nextStepsLayout {
 	areaW, _ := sizingAreaPt(ctx)
-	lay := nextStepsLayout{numberSize: numberSize, actionSize: actionSize, metaSize: metaSize, decisionSize: actionSize,
+	lay := nextStepsLayout{numberSize: numberSize, actionSize: actionSize, metaSize: metaSize, decisionSize: actionSize, bandGapPt: nextStepsBandGapPt,
 		ownerCol: -1, dateCol: -1}
 	for _, a := range vals.Actions {
 		lay.hasOwner = lay.hasOwner || strings.TrimSpace(a.Owner) != ""
@@ -304,16 +327,23 @@ func measureNextSteps(ctx ExpandContext, vals *NextStepsValues, numberSize, acti
 		lay.cols = append(lay.cols, nextStepsDatePct)
 	}
 
-	lay.headerPt = math.Ceil(nextStepsHeaderSizePt*sizingLineSpacing + 2*sizingInsetTBPt)
+	// Every row is sized to the written fit of the cells it will hold, at
+	// their real column widths: the pattern's own metric model alone let the
+	// writer store rows shrunk below the floor (go-slide-creator-k3eb3).
+	lay.headerPt = math.Ceil(math.Max(nextStepsHeaderSizePt*sizingLineSpacing+2*sizingInsetTBPt,
+		writtenFitHeightPt(nextStepsHeaderCell("Action", 100).Shape.Text, areaW*actionPct/100, 0)))
 	numberRow := numberSize*sizingLineSpacing + 2*sizingInsetTBPt
-	for _, a := range vals.Actions {
-		h := numberRow
+	for i, a := range vals.Actions {
+		h := math.Max(numberRow, writtenFitHeightPt(nextStepsNumberCell(i, numberSize, "dk1").Shape.Text, areaW*numberPct/100, 0))
 		h = math.Max(h, sizedBlockHeightPt(ctx, []sizedPara{{text: a.Action, sizePt: actionSize}}, areaW*actionPct/100))
+		h = math.Max(h, writtenFitHeightPt(nextStepsActionCell(a.Action, actionSize).Shape.Text, areaW*actionPct/100, 0))
 		if lay.hasOwner {
 			h = math.Max(h, sizedBlockHeightPt(ctx, []sizedPara{{text: a.Owner, sizePt: metaSize}}, areaW*nextStepsOwnerPct/100))
+			h = math.Max(h, writtenFitHeightPt(nextStepsOwnerCell(a.Owner, metaSize).Shape.Text, areaW*nextStepsOwnerPct/100, 0))
 		}
 		if lay.hasDate {
 			h = math.Max(h, sizedBlockHeightPt(ctx, []sizedPara{{text: a.Date, sizePt: metaSize}}, areaW*nextStepsDatePct/100))
+			h = math.Max(h, writtenFitHeightPt(nextStepsDateCell(a.Date, metaSize).Shape.Text, areaW*nextStepsDatePct/100, 0))
 		}
 		lay.rowPt = append(lay.rowPt, math.Ceil(h))
 	}
@@ -322,9 +352,43 @@ func measureNextSteps(ctx ExpandContext, vals *NextStepsValues, numberSize, acti
 		for _, d := range decisions {
 			paras = append(paras, sizedPara{text: "• " + d, sizePt: lay.decisionSize, bold: true, spaceAfterPt: 2})
 		}
-		lay.bandPt = math.Ceil(sizedBlockHeightPt(ctx, paras, areaW-nextStepsBandBarPt))
+		band := nextStepsBandCell(vals, lay.decisionSize, "dk1")
+		lay.bandPt = math.Ceil(math.Max(sizedBlockHeightPt(ctx, paras, areaW-nextStepsBandBarPt),
+			writtenFitHeightPt(band.Shape.Text, areaW-nextStepsBandBarPt, 0)))
 	}
 	return lay
+}
+
+// The row cells below are shared by measureNextSteps and Expand, so a row is
+// sized on exactly the text it is written with.
+
+func nextStepsHeaderCell(label string, alpha float64) *jsonschema.GridCellInput {
+	return nextStepsTextCell("b", nextStepsParagraph{Content: label, Size: nextStepsHeaderSizePt, Bold: true, Color: "dk1", Alpha: alpha})
+}
+
+func nextStepsNumberCell(i int, size float64, ink string) *jsonschema.GridCellInput {
+	return nextStepsTextCell("ctr", nextStepsParagraph{Content: fmt.Sprintf("%02d", i+1), Size: size, Color: ink, Font: nextStepsNumberFont})
+}
+
+func nextStepsActionCell(action string, size float64) *jsonschema.GridCellInput {
+	return nextStepsTextCell("ctr", nextStepsParagraph{Content: pptx.ConvertMarkdownEmphasis(action), Size: size, Color: "dk1"})
+}
+
+func nextStepsOwnerCell(owner string, size float64) *jsonschema.GridCellInput {
+	return nextStepsTextCell("ctr", nextStepsParagraph{Content: owner, Size: size, Color: "dk1"})
+}
+
+func nextStepsDateCell(date string, size float64) *jsonschema.GridCellInput {
+	return nextStepsTextCell("ctr", nextStepsParagraph{Content: date, Size: size, Bold: true, Color: "dk1"})
+}
+
+// nextStepsBandCell is the "Decisions requested" band text: label + bullets.
+func nextStepsBandCell(vals *NextStepsValues, size float64, labelInk string) *jsonschema.GridCellInput {
+	paras := []nextStepsParagraph{{Content: nextStepsLabel(vals), Size: nextStepsBandLabelSize, Bold: true, Color: labelInk, SpaceAfter: 4}}
+	for _, d := range nonEmptyStrings(vals.Decisions) {
+		paras = append(paras, nextStepsParagraph{Content: "• " + pptx.ConvertMarkdownEmphasis(d), Size: size, Bold: true, Color: "dk1", SpaceAfter: 2})
+	}
+	return nextStepsTextCell("ctr", paras...)
 }
 
 func nextStepsLabel(vals *NextStepsValues) string {
@@ -405,7 +469,7 @@ func (n *nextSteps) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	headerAlpha := readableDimAlpha(ctx, "dk1", nextStepsHeaderAlpha, 4.5)
 	numberInk := accentInkOnLight(ctx, accent, 3.0)
 	header := func(label string) *jsonschema.GridCellInput {
-		return nextStepsTextCell("b", nextStepsParagraph{Content: label, Size: nextStepsHeaderSizePt, Bold: true, Color: "dk1", Alpha: headerAlpha})
+		return nextStepsHeaderCell(label, headerAlpha)
 	}
 	headerCells := []*jsonschema.GridCellInput{{}, header("Action")}
 	if lay.hasOwner {
@@ -421,8 +485,8 @@ func (n *nextSteps) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		rows = append(rows, rule())
 		itemRow = append(itemRow, false)
 		cells := []*jsonschema.GridCellInput{
-			nextStepsTextCell("ctr", nextStepsParagraph{Content: fmt.Sprintf("%02d", i+1), Size: lay.numberSize, Color: numberInk, Font: nextStepsNumberFont}),
-			nextStepsTextCell("ctr", nextStepsParagraph{Content: pptx.ConvertMarkdownEmphasis(a.Action), Size: lay.actionSize, Color: "dk1"}),
+			nextStepsNumberCell(i, lay.numberSize, numberInk),
+			nextStepsActionCell(a.Action, lay.actionSize),
 		}
 		if co, ok := cellOverrides[i].(*NextStepsCellOverride); ok && co != nil {
 			applyCellTextOverride(cells[1], co)
@@ -431,10 +495,10 @@ func (n *nextSteps) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 			}
 		}
 		if lay.hasOwner {
-			cells = append(cells, nextStepsTextCell("ctr", nextStepsParagraph{Content: a.Owner, Size: lay.metaSize, Color: "dk1"}))
+			cells = append(cells, nextStepsOwnerCell(a.Owner, lay.metaSize))
 		}
 		if lay.hasDate {
-			cells = append(cells, nextStepsTextCell("ctr", nextStepsParagraph{Content: a.Date, Size: lay.metaSize, Bold: true, Color: "dk1"}))
+			cells = append(cells, nextStepsDateCell(a.Date, lay.metaSize))
 		}
 		rows = append(rows, jsonschema.GridRowInput{MinHeight: lay.rowPt[i], MaxHeight: lay.rowPt[i], Cells: cells})
 		itemRow = append(itemRow, true)
@@ -442,15 +506,11 @@ func (n *nextSteps) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 
 	if lay.bandPt > 0 {
 		rows = append(rows, jsonschema.GridRowInput{
-			MinHeight: nextStepsBandGapPt, MaxHeight: nextStepsBandGapPt,
+			MinHeight: lay.bandGapPt, MaxHeight: lay.bandGapPt,
 			Cells: []*jsonschema.GridCellInput{{ColSpan: nCols}},
 		})
 		itemRow = append(itemRow, false)
-		paras := []nextStepsParagraph{{Content: nextStepsLabel(vals), Size: nextStepsBandLabelSize, Bold: true, Color: accentInkOnLight(ctx, accent, 4.5), SpaceAfter: 4}}
-		for _, d := range nonEmptyStrings(vals.Decisions) {
-			paras = append(paras, nextStepsParagraph{Content: "• " + pptx.ConvertMarkdownEmphasis(d), Size: lay.decisionSize, Bold: true, Color: "dk1", SpaceAfter: 2})
-		}
-		band := nextStepsTextCell("ctr", paras...)
+		band := nextStepsBandCell(vals, lay.decisionSize, accentInkOnLight(ctx, accent, 4.5))
 		band.ColSpan = nCols
 		band.AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: nextStepsBandBarPt}
 		rows = append(rows, jsonschema.GridRowInput{MinHeight: lay.bandPt, MaxHeight: lay.bandPt, Cells: []*jsonschema.GridCellInput{band}})

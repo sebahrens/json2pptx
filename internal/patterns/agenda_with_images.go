@@ -44,11 +44,13 @@ func (a *agendaWithImages) Taxonomy() PatternTaxonomy {
 
 func (a *agendaWithImages) ExemplarValues() any {
 	return &AgendaWithImagesValues{
+		// Four rows: the subtitle budget is zero at five or six rows, so a
+		// five-row exemplar with subtitles was over its own budget and written
+		// below the floor on the shorter content areas (go-slide-creator-k3eb3).
 		Items: []AgendaWithImagesItem{
 			{Title: "Executive Summary", Subtitle: "Situation, complication and our answer", ImageLabel: "Chart: Revenue trend"},
 			{Title: "Market Analysis", Subtitle: "Size, growth and competitive position", ImageLabel: "Photo: Market scene"},
 			{Title: "Strategic Options", Subtitle: "Three paths and our recommendation", ImageLabel: "Diagram: Option tree"},
-			{Title: "Implementation Plan", Subtitle: "Phased rollout over 12 months", ImageLabel: "Photo: Project team"},
 			{Title: "Next Steps", Subtitle: "Decisions required from this meeting"},
 		},
 	}
@@ -137,11 +139,32 @@ func agendaWithImagesLabelBudget(rows int) int {
 	}
 }
 
-func (a *agendaWithImages) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+func (a *agendaWithImages) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*AgendaWithImagesValues)
 	if !ok || v == nil {
 		return nil
 	}
+	warnings := agendaWithImagesBudgetWarnings(v)
+	if len(warnings) > 0 || len(v.Items) == 0 || ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 {
+		return warnings
+	}
+	// The budgets assume a typical content area; with the template's own area
+	// the rows are measured against it (go-slide-creator-k3eb3).
+	ovr, _ := overrides.(*AgendaWithImagesOverrides)
+	if ovr == nil {
+		ovr = &AgendaWithImagesOverrides{}
+	}
+	if _, _, total := agendaWithImagesFit(ctx, v, ovr); total > 0 {
+		if _, areaH := sizingAreaPt(ctx); total > areaH+1 {
+			warnings = append(warnings, fmt.Sprintf("%s: agenda-with-images rows need %.0fpt at readable sizes but the content area holds about %.0fpt — shorten titles or subtitles, omit subtitles, or use fewer rows", ErrCodeBodyTooLong, total, areaH))
+		}
+	}
+	return warnings
+}
+
+// agendaWithImagesBudgetWarnings reports titles, subtitles and image labels
+// longer than the measured character budgets.
+func agendaWithImagesBudgetWarnings(v *AgendaWithImagesValues) []string {
 	withImages := anyAgendaImageLabel(v.Items)
 	var warnings []string
 	for i, item := range v.Items {
@@ -267,7 +290,6 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	numberSize := ResolveSize(ovr.NumberSize, 18.0)
-	titleSize := ResolveSize(ovr.TitleSize, 14.0)
 	subtitleSize := ResolveSize(ovr.SubtitleSize, 10.0)
 	imageLabelSize := ResolveSize(ovr.ImageLabelSize, 10.0)
 
@@ -288,6 +310,11 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 	rowCount := float64(len(v.Items))
 	minRowPt := (areaH*0.70 - (rowCount-1)*agendaDividerHeightPct*areaH/100 - (2*rowCount-2)*agendaRowGapPt) / rowCount
 	minRowPt = max(minRowPt, 48)
+	// Each row is floored at the written height of its own title cell; when
+	// the rows would not fit at the default title size, the titles step to
+	// the 12pt floor rather than being written shrunk below it
+	// (go-slide-creator-k3eb3).
+	titleSize, rowNeeds, _ := agendaWithImagesFit(ctx, v, ovr)
 
 	// Build content rows interleaved with thin divider rows (one divider between
 	// each pair of items, none above the first or below the last).
@@ -350,7 +377,7 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 
 		rows = append(rows, jsonschema.GridRowInput{
 			AutoHeight: true,
-			MinHeight:  minRowPt,
+			MinHeight:  max(minRowPt, rowNeeds[i]),
 			Cells:      cells,
 		})
 
@@ -429,6 +456,44 @@ func buildAgendaWithImagesTitleText(title, subtitle string, titleSize, subtitleS
 	data, _ := json.Marshal(textObj)
 	return data
 }
+
+// agendaWithImagesFit picks the title size (the default 14pt, stepping to the
+// 12pt floor when the rows would not otherwise fit the content area; an
+// authored title_size is kept) and returns each row's written-fit height at
+// that size and the height all rows need together with dividers and gaps.
+func agendaWithImagesFit(ctx ExpandContext, v *AgendaWithImagesValues, ovr *AgendaWithImagesOverrides) (float64, []float64, float64) {
+	areaW, areaH := sizingAreaPt(ctx)
+	const gridGapPt, units = 8.0, 1.8 + 4.8 + 3.2
+	unitW := (areaW - 2*gridGapPt) / units
+	titleW := 4.8 * unitW
+	if !anyAgendaImageLabel(v.Items) {
+		titleW = 8*unitW + gridGapPt // the title spans the image column
+	}
+	n := float64(len(v.Items))
+	fixed := (n-1)*agendaDividerHeightPct*areaH/100 + (2*n-2)*agendaRowGapPt
+	subtitleSize := ResolveSize(ovr.SubtitleSize, 10.0)
+	sizes := []float64{ResolveSize(ovr.TitleSize, 14.0)}
+	if ovr.TitleSize == 0 {
+		sizes = append(sizes, agendaMinTitlePt)
+	}
+	var needs []float64
+	total := 0.0
+	for _, size := range sizes {
+		needs = make([]float64, len(v.Items))
+		total = fixed
+		for i, item := range v.Items {
+			needs[i] = writtenFitHeightPt(buildAgendaWithImagesTitleText(item.Title, item.Subtitle, size, subtitleSize), titleW, 0)
+			total += needs[i]
+		}
+		if total <= areaH {
+			return size, needs, total
+		}
+	}
+	return sizes[len(sizes)-1], needs, total
+}
+
+// agendaMinTitlePt is the title floor the default size steps down to.
+const agendaMinTitlePt = 12.0
 
 // anyAgendaImageLabel reports whether at least one item carries an image label,
 // which is what earns the deck an image column at all.
