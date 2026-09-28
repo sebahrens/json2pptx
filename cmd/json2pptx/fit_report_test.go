@@ -187,7 +187,8 @@ func TestGenerateFitReport_ShapeGridText(t *testing.T) {
 }
 
 func TestGenerateFitReport_ShapeGridEmbeddedTable(t *testing.T) {
-	longText := strings.Repeat("Overflow text here. ", 20)
+	// Long enough to overflow at the engine-default 12pt table size.
+	longText := strings.Repeat("Overflow text here. ", 60)
 	input := &PresentationInput{
 		Template: "midnight-blue",
 		Slides: []SlideInput{

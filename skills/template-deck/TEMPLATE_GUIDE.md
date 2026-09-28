@@ -222,7 +222,7 @@ Data table with optional styling.
 |---|---|---|
 | `headers` | `string[]` | Column headers |
 | `rows` | `(string \| {content, col_span, row_span})[][]` | Row data — cells can be plain strings or objects for spanning |
-| `style` | `object` | `header_background` (color), `borders` (`"horizontal"`, `"all"`, `"none"`), `striped` (bool) |
+| `style` | `object` | `header_background` (color), `borders` (`"horizontal"`, `"all"`, `"none"`), `striped` (bool). Omit `style` for the engine default: unfilled 11pt bold header over a 1pt rule, 12pt rows with hairline rules, no zebra, bold first column, numbers right-aligned (see `docs/STYLE_DEFAULTS.md`) |
 | `column_alignments` | `string[]` | Per-column alignment: `"l"`, `"c"`, `"r"` |
 
 ### chart

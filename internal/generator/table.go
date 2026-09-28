@@ -26,6 +26,16 @@ type TableRenderConfig struct {
 	ColumnAlignments []string          // Per-column alignment: "left", "center", "right"
 	StrictFit        bool              // When true, measure cells and refuse if any overflow (--strict-fit=strict)
 	AlignTop         bool              // Anchor content-sized table at the top of its bounds
+
+	// engineDefault selects the engine's consulting default look (no header
+	// fill, hairline row rules, no zebra, 12pt rows; go-slide-creator-1iiej).
+	// Set by applyDefaultTableStyling for an unset style, or by
+	// PopulateTableInShape when use_table_style falls back because the
+	// template defines no formatting for its table style.
+	engineDefault bool
+	// renderRows is the number of emitted data rows (summary row included),
+	// so cell borders can tell the last row.
+	renderRows int
 }
 
 // TableRenderResult contains the generated table XML.
@@ -76,13 +86,16 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	numRows := len(table.Rows) + 1 // +1 for header row
 
 	// Apply defaults
+	applyDefaultTableStyling(table, &config)
 	if config.DefaultSize == 0 {
 		config.DefaultSize = defaultFontSize
+		if config.engineDefault {
+			config.DefaultSize = engineDefaultRowFontSize
+		}
 	}
 	if config.DefaultFont == "" {
 		config.DefaultFont = defaultFontFamily
 	}
-	applyDefaultTableStyling(table, &config)
 	if financialTableColumns(numCols, table.Rows) {
 		alignments := make([]string, numCols)
 		copy(alignments, config.ColumnAlignments)
@@ -112,13 +125,9 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	// Scale font size down for wide tables to prevent text overflow and
 	// vertical stacking.  Standard slide width (~9 in / 8229600 EMU) can
 	// comfortably fit 4 columns at 18pt.  Beyond that we reduce linearly,
-	// clamping to a readable minimum of 1000 (10pt).
-	if numCols > 4 {
-		scale := 4.0 / float64(numCols)
-		scaled := int(float64(config.DefaultSize) * scale)
-		if scaled < minFontSizeForTable {
-			scaled = minFontSizeForTable
-		}
+	// clamping to a readable minimum of 1000 (10pt). The 12pt engine default
+	// is only capped at that budget (see columnScaledFontSize).
+	if scaled, changed := columnScaledFontSize(config.DefaultSize, numCols, config.engineDefault); changed {
 		config.DefaultSize = scaled
 		// Site 6: emit hint when font is scaled down due to column count.
 		findings = append(findings, patterns.FitFinding{
@@ -271,15 +280,18 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	// Without <a:tblBorders>, PowerPoint renders default grid lines
 	// even when cell-level borders specify noFill.
 	bandRow := "1"
-	if config.Style.Striped != nil && !*config.Style.Striped {
+	if !tableStriped(config) {
 		bandRow = "0"
 	}
 	fmt.Fprintf(&xml, `<a:tblPr firstRow="1" bandRow="%s">`, bandRow)
 	// When use_table_style is set, skip tblBorders entirely so the style controls borders.
 	// When borders are omitted and a table style is in use, also skip tblBorders
-	// so the style's own border definitions (wholeTbl > tcBdr) take effect.
+	// so the style's own border definitions (wholeTbl > tcBdr) take effect —
+	// except in the engine-default look, which draws its own rules only.
 	if !config.Style.UseTableStyle {
-		if !(config.Style.Borders == "" && config.Style.StyleID != "") {
+		if config.engineDefault && config.Style.Borders == "" {
+			xml.WriteString(engineDefaultTableLevelBorders())
+		} else if !(config.Style.Borders == "" && config.Style.StyleID != "") {
 			xml.WriteString(generateTableLevelBorders(config.Style.Borders))
 		}
 	}
@@ -294,6 +306,8 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 
 	// Column grid
 	xml.WriteString(generateTableGrid(colWidths))
+
+	config.renderRows = len(renderRows)
 
 	// Header row
 	if len(table.HeaderCells) > 0 {
@@ -409,7 +423,7 @@ func summaryTableRow(numCols, hidden int) []types.TableCell {
 func measureTableRowHeight(cells []types.TableCell, colWidths []int64, config TableRenderConfig, header bool) int64 {
 	fontSize := config.DefaultSize
 	if header {
-		fontSize = int(float64(fontSize) * 1.1)
+		fontSize = headerFontSize(config, fontSize)
 	}
 	rowHeight := contentRowHeight(fontSize)
 	fontPt := float64(fontSize) / 100.0
@@ -974,10 +988,12 @@ func generateCellContent(text string, isHeader bool, config TableRenderConfig, c
 	// the style's firstRow > tcTxStyle controls text formatting (bold, color).
 	// Only force bold when we are NOT deferring to the table style.
 	// When use_table_style is set, always defer to the style.
-	styleControlsHeader := config.Style.UseTableStyle || (config.Style.StyleID != "" && config.Style.HeaderBackground == "")
+	styleControlsHeader := config.Style.UseTableStyle ||
+		(!config.engineDefault && config.Style.StyleID != "" && config.Style.HeaderBackground == "")
 	if isHeader {
-		// Headers are slightly larger and bold
-		fontSize = int(float64(fontSize) * 1.1)
+		// Headers are bold: 110% of the body, or 11pt over 12pt rows in the
+		// engine-default look.
+		fontSize = headerFontSize(config, fontSize)
 		if !styleControlsHeader {
 			bold = "1"
 		}
@@ -1024,7 +1040,8 @@ func generateCellContent(text string, isHeader bool, config TableRenderConfig, c
 func generateDataCellContent(cell types.TableCell, isTotalsRow bool, config TableRenderConfig, colIdx int) string {
 	fontSize := config.DefaultSize
 	bold := "0"
-	if isTotalsRow {
+	// Totals rows are bold; so is the engine-default first (label) column.
+	if isTotalsRow || (config.engineDefault && colIdx == 0) {
 		bold = "1"
 	}
 
@@ -1288,7 +1305,11 @@ func generateCellProperties(config TableRenderConfig, isHeader bool, rowIdx int,
 	// so the table style controls all cell appearance.
 	if !config.Style.UseTableStyle {
 		// Add borders based on style, with merge overrides
-		xml.WriteString(generateBorderXMLWithOverrides(config.Style.Borders, isHeader, overrides))
+		if config.engineDefault && config.Style.Borders == "" {
+			xml.WriteString(engineDefaultBordersXML(isHeader, rowIdx, rowIdx == config.renderRows-1, overrides))
+		} else {
+			xml.WriteString(generateBorderXMLWithOverrides(config.Style.Borders, isHeader, overrides))
+		}
 
 		// Determine cell fill — priority: conditional > highlight column > header/stripe
 		fillXML := ""
@@ -1311,10 +1332,17 @@ func generateCellProperties(config TableRenderConfig, isHeader bool, rowIdx int,
 					fill.WriteTo(&cb)
 					xml.WriteString(cb.String())
 				}
+			} else if config.engineDefault {
+				// Explicit noFill so the referenced table style's firstRow
+				// fill never shows through the unfilled header.
+				xml.WriteString(`<a:noFill/>`)
 			}
-		} else if (config.Style.Striped == nil || *config.Style.Striped) && rowIdx%2 == 1 {
+		} else if tableStriped(config) && rowIdx%2 == 1 {
 			// Use accent1 at 15% saturation for a reliably visible alternating stripe.
 			xml.WriteString(`<a:solidFill><a:schemeClr val="accent1"><a:lumMod val="15000"/><a:lumOff val="85000"/></a:schemeClr></a:solidFill>`)
+		} else if config.engineDefault {
+			// No zebra: override the referenced style's band fill.
+			xml.WriteString(`<a:noFill/>`)
 		}
 	}
 

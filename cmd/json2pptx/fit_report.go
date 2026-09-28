@@ -198,15 +198,8 @@ func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int,
 	numRows := len(table.Rows) + 1 // +1 for header
 
 	// Compute effective font size using the same logic as generator/table.go.
-	fontSize := generator.DefaultTableFontSize
-	if numCols > 4 {
-		scale := 4.0 / float64(numCols)
-		scaled := int(float64(fontSize) * scale)
-		if scaled < generator.MinTableFontSize {
-			scaled = generator.MinTableFontSize
-		}
-		fontSize = scaled
-	}
+	tableStyle := table.ToTableSpec().Style
+	fontSize := generator.TableColumnScaledFontSize(tableStyle, generator.TableBaseFontSize(tableStyle), numCols)
 	fontPt := float64(fontSize) / 100.0
 
 	// Estimate cell width from default slide width and equal column split.

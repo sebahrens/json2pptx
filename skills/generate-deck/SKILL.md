@@ -86,7 +86,9 @@ executable one.
   the three-round repair cap. Read before the first render.
 - [RULES.md](RULES.md): shape-grid, content, contrast, typography, and
   anti-pattern rules. Waterfall `type` sets the sign
-  (`chart.waterfall_total_mismatch`).
+  (`chart.waterfall_total_mismatch`). A table with no `style` renders as a
+  consulting table (unfilled 11pt bold header over a 1pt rule, 12pt rows,
+  hairline rules, no zebra); `table-highlight` matches it.
 - [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance;
   get the current catalog, per-pattern schema and per-field copy targets from
   `list_patterns` / `show_pattern`. Out-of-range pattern text sizes are
