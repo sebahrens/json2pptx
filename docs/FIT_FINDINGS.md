@@ -208,6 +208,22 @@ corresponding `SECTION_NUMBER_SEQUENCE_MISMATCH` refusal in the generation
 response, so callers can distinguish an applied correction from an unresolved
 authoring error.
 
+### `INPUT_CONTROL_CHARS_REMOVED`
+
+**Action:** `info`
+
+**Emitted at:** decode time, reported by the fit/content preflight (`validate -fit-report`, preview, generate, MCP equivalents); HTTP `/api/v1/convert` reports it as a `stats.warnings[]` string prefixed with the code
+
+Invisible bidi embedding / override / isolate controls (U+202A–U+202E,
+U+2066–U+2069) and byte-order marks (U+FEFF) are removed from every JSON
+string value before the deck is decoded. They spoof the reading order of
+rendered text, and a bidi control followed by an emoji or symbol and a
+combining mark crashed the text shaper (go-slide-creator-7oz3c). One finding
+per changed string; `path` is the JSON Pointer of the string value. The
+directional marks U+200E / U+200F / U+061C are legitimate in right-to-left
+prose and are kept. Remove the characters from the source so it matches the
+rendered slide.
+
 ### `MISSING_TITLE`
 
 **Action:** `refuse` for a content-bearing untitled canvas
@@ -1153,6 +1169,8 @@ Content lint emits this code when a single `text`, `bullets`, `body_and_bullets`
 ```
 
 For pattern warnings, shorten the named value to the limit in its message, reduce the pattern's item density, or split the content. These warnings do not necessarily provide `fix.params.max_words`.
+
+**Paragraph cap (action `refuse`).** A single content block that renders more than 200 paragraphs into one placeholder (authored text lines, bullets, and the body / header / lead-out paragraphs of the bullet-bearing types) is refused with `BODY_TOO_LONG` at action `refuse`, replacing the review-level word-budget finding for that block. `fix` is `{kind: "reduce_text", params: {current_paragraphs, max_paragraphs: 200, strategy: "split"}}`: split the content across slides (go-slide-creator-8hg02).
 
 ### `BULLET_NESTING_DEEP`
 

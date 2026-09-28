@@ -174,7 +174,7 @@ func Calculate(p Params) (FitResult, error) {
 		scale := float64(scalePct) / 100.0
 		scaledFontPt := fontSizePt * scale
 
-		totalHeight := estimateTextHeight(ff, p.Paragraphs, scaledFontPt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt)
+		totalHeight := estimateTextHeightUpTo(ff, p.Paragraphs, scaledFontPt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt, usableHeightPt)
 
 		if totalHeight <= usableHeightPt {
 			readability := CheckReadability(p.FontSizeHPt, scalePct*1000, p.ViewingMode, p.TextRole)
@@ -192,7 +192,7 @@ func Calculate(p Params) (FitResult, error) {
 	// fits at 88% is incorrectly reported as needing compressed lines.
 	if (100-minScale)%fontScaleStep != 0 {
 		scaledFontPt := fontSizePt * float64(minScale) / 100.0
-		totalHeight := estimateTextHeight(ff, p.Paragraphs, scaledFontPt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt)
+		totalHeight := estimateTextHeightUpTo(ff, p.Paragraphs, scaledFontPt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt, usableHeightPt)
 		if totalHeight <= usableHeightPt {
 			readability := CheckReadability(p.FontSizeHPt, minScale*1000, p.ViewingMode, p.TextRole)
 			return FitResult{FontScale: minScale * 1000, Readable: readability.Readable, EffectiveHPt: readability.EffectiveHPt, PolicyMinHPt: readability.MinimumHPt, FontSubstituted: fontSubstituted}, nil
@@ -204,7 +204,7 @@ func Calculate(p Params) (FitResult, error) {
 	scaledFontPt := fontSizePt * minScaleF
 	for lnReduction := 5; lnReduction <= maxLnSpcReductionPct; lnReduction += 5 {
 		reducedSpacing := p.LineSpacing * (1.0 - float64(lnReduction)/100.0)
-		totalHeight := estimateTextHeight(ff, p.Paragraphs, scaledFontPt, usableWidthPt, reducedSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt)
+		totalHeight := estimateTextHeightUpTo(ff, p.Paragraphs, scaledFontPt, usableWidthPt, reducedSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt, usableHeightPt)
 
 		if totalHeight <= usableHeightPt {
 			readability := CheckReadability(p.FontSizeHPt, minScale*1000, p.ViewingMode, p.TextRole)
@@ -232,12 +232,25 @@ func Calculate(p Params) (FitResult, error) {
 // perParaSpacings overrides extraSpacingPt for each corresponding paragraph index.
 // leftMargins is per-paragraph left margin in points (from bullet marL); reduces available width.
 func estimateTextHeight(ff *canvas.FontFamily, paragraphs []string, fontSizePt, widthPt, lineSpacing, extraSpacingPt float64, perParaSpacings, leftMargins []float64) float64 {
+	return estimateTextHeightUpTo(ff, paragraphs, fontSizePt, widthPt, lineSpacing, extraSpacingPt, perParaSpacings, leftMargins, math.Inf(1))
+}
+
+// estimateTextHeightUpTo is estimateTextHeight that stops measuring once the
+// running height exceeds limitPt and returns that partial (already too tall)
+// height. Calculate only compares the result against the box height, so the
+// early exit changes no answer, but an overflowing 2000-paragraph body now
+// shapes only the paragraphs that fit plus one per scale step instead of all
+// of them (go-slide-creator-8hg02).
+func estimateTextHeightUpTo(ff *canvas.FontFamily, paragraphs []string, fontSizePt, widthPt, lineSpacing, extraSpacingPt float64, perParaSpacings, leftMargins []float64, limitPt float64) float64 {
 	face := newFace(ff, fontSizePt, canvas.FontRegular)
 
 	lineHeightPt := fontSizePt * lineSpacing
 	var totalHeight float64
 
 	for i, para := range paragraphs {
+		if totalHeight > limitPt {
+			return totalHeight
+		}
 		spacing := extraSpacingPt
 		if i < len(perParaSpacings) {
 			spacing = perParaSpacings[i]
@@ -306,8 +319,7 @@ func MaxFontForWidth(text string, widthEMU int64, fontName string) int {
 
 		fits := true
 		for _, w := range words {
-			wl := canvas.NewTextLine(face, w, canvas.Left)
-			if wl.Bounds().W() > usableWidthPt*ptToMM {
+			if LineWidthMM(face, w) > usableWidthPt*ptToMM {
 				fits = false
 				break
 			}
@@ -380,15 +392,13 @@ func wrapTextLine(face *canvas.FontFace, text string, widthPt float64) int {
 	}
 
 	// Measure space width once for this font face, not per word
-	spaceLine := canvas.NewTextLine(face, " ", canvas.Left)
-	spaceWidth := spaceLine.Bounds().W()
+	spaceWidth := LineWidthMM(face, " ")
 
 	lines := 1
 	var currentWidth float64
 
 	for i, word := range words {
-		wordLine := canvas.NewTextLine(face, word, canvas.Left)
-		wordWidth := wordLine.Bounds().W()
+		wordWidth := LineWidthMM(face, word)
 
 		if i > 0 {
 			if currentWidth+spaceWidth+wordWidth <= widthMM {

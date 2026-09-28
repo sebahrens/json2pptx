@@ -64,6 +64,11 @@ type ConvertRequest struct {
 	// (config Images.AllowedBasePaths). Empty means unrestricted apart from
 	// the traversal check.
 	AllowedImagePaths []string
+	// MaxOutputSlides caps the slide count AFTER auto-pagination and overflow
+	// splitting (0 = no cap). An input slide cap alone is not enough: one
+	// slide with 10,000 bullets paginates into thousands of output slides
+	// (go-slide-creator-tcxsq).
+	MaxOutputSlides int
 }
 
 // ConvertResult contains the output of a conversion operation.
@@ -156,6 +161,14 @@ func (p *DefaultPipeline) Convert(ctx context.Context, req ConvertRequest) (*Con
 	//   - Standard slides with chart + body but no chart placeholder
 	splitWarnings := SplitContentOverflow(presentation, req.TemplateAnalysis.Layouts)
 	paginationWarnings = append(paginationWarnings, splitWarnings...)
+
+	if req.MaxOutputSlides > 0 && len(presentation.Slides) > req.MaxOutputSlides {
+		return nil, &ValidationError{
+			Field: "slides",
+			Message: fmt.Sprintf("content paginates into %d slides; the maximum is %d — split the request or shorten the longest slides",
+				len(presentation.Slides), req.MaxOutputSlides),
+		}
+	}
 
 	// Step 2: Convert slides to generator format with heuristic layout selection
 	slideSpecs, slideWarnings, slideErrors, err := p.convertSlides(ctx, presentation, effectiveAnalysis, req.Partial || req.DryRun)

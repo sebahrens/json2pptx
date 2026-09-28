@@ -25,7 +25,9 @@ hex colors or absolute sizing are intentional.
 For a reusable deck use canonical `layout_id` values discovered from
 `list_templates` / `examine_template`, not a template-specific
 `slideLayoutN` identifier. A pinned layout number is appropriate only for
-an inspected, fixed template. The content-as-array shape, placeholder IDs,
+an inspected, fixed template. A raw `shape_grid.columns` is a whole number
+1-24 or an array of at most 24 widths; `validate` rejects anything else
+(`INVALID_GRID`). The content-as-array shape, placeholder IDs,
 and shape-grid properties are in
 [TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md); inspect the live
 template to verify actual bounds. A raw deck may use top-level
@@ -79,6 +81,9 @@ field replacement; validate and inspect the resulting deck before shipping.
 
 For a local relative asset, send an explicit absolute `base_dir` to MCP
 calls. CLI validation resolves relative to the input file directory.
+`base_dir` bounds relative asset paths only: an absolute image, background
+or icon path is read wherever it points unless the server sets
+`ALLOWED_IMAGE_PATHS`.
 Validation checks image, background, and icon paths; unsafe traversal,
 symlink escapes, missing files, unset environment variables, oversized
 assets, bad remote types, and unsafe SVG XML have distinct findings. Do not

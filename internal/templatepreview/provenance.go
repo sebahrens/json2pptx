@@ -43,6 +43,7 @@ func hashBytes(data []byte) string {
 // every shipped preview stale (go-slide-creator-csclk.1).
 var RenderingPackageDirs = []string{
 	"cmd/templatepreviews",
+	"internal/bidisafe",
 	"internal/deckinput",
 	"internal/diagnostics",
 	"internal/generator",

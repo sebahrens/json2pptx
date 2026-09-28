@@ -480,74 +480,96 @@ func buildNormAutofitElement(result textfit.FitResult) string {
 	return fmt.Sprintf(`<a:normAutofit %s/>`, strings.Join(attrs, " "))
 }
 
+// trimmedFitParams returns params measuring the first keep paragraphs of texts
+// followed by the "…" truncation indicator, which uses the base paragraph
+// spacing and no extra left margin.
+func trimmedFitParams(params textfit.Params, texts []string, keep int) textfit.Params {
+	trimmedTexts := make([]string, keep+1)
+	copy(trimmedTexts, texts[:keep])
+	trimmedTexts[keep] = "\u2026" // ellipsis character
+
+	var trimmedSpacings []float64
+	if params.ExtraSpacingsPt != nil {
+		trimmedSpacings = make([]float64, keep+1)
+		copy(trimmedSpacings, params.ExtraSpacingsPt[:min(keep, len(params.ExtraSpacingsPt))])
+		trimmedSpacings[keep] = params.ExtraSpacingPt // "…" uses base spacing
+	}
+
+	var trimmedMargins []float64
+	if params.LeftMarginsPt != nil {
+		trimmedMargins = make([]float64, keep+1)
+		copy(trimmedMargins, params.LeftMarginsPt[:min(keep, len(params.LeftMarginsPt))])
+		// "…" indicator has no extra margin
+	}
+
+	trimmed := params
+	trimmed.Paragraphs = trimmedTexts
+	trimmed.ExtraSpacingsPt = trimmedSpacings
+	trimmed.LeftMarginsPt = trimmedMargins
+	return trimmed
+}
+
+// largestFittingPrefix returns the largest keep in [minKeep, maxKeep] for
+// which accept(Calculate(first keep paragraphs + "…")) holds, with that
+// result. Keeping fewer paragraphs never makes the text harder to fit, so the
+// predicate is monotone in keep and a binary search finds the same answer the
+// old drop-one-paragraph-per-iteration loop did, in O(log n) measurements
+// instead of O(n). The linear loop re-measured every remaining paragraph on
+// each iteration, so a 2000-bullet placeholder took minutes
+// (go-slide-creator-8hg02).
+//
+// ok is false when no prefix is accepted or the font cache is unavailable.
+func largestFittingPrefix(params textfit.Params, texts []string, minKeep, maxKeep int, accept func(textfit.FitResult) bool) (keep int, result textfit.FitResult, ok bool) {
+	lo, hi := minKeep, maxKeep
+	for lo <= hi {
+		mid := lo + (hi-lo)/2
+		r, err := textfit.Calculate(trimmedFitParams(params, texts, mid))
+		if err != nil {
+			return 0, textfit.FitResult{}, false // font cache unavailable
+		}
+		if accept(r) {
+			keep, result, ok = mid, r, true
+			lo = mid + 1
+		} else {
+			hi = mid - 1
+		}
+	}
+	return keep, result, ok
+}
+
+// appendEllipsisParagraph truncates the shape to paras and appends the "…"
+// indicator paragraph, reusing the first paragraph's run properties.
+func appendEllipsisParagraph(shape *shapeXML, paras []paragraphXML) {
+	shape.TextBody.Paragraphs = paras
+	var rProps *runPropertiesXML
+	if len(paras) > 0 && len(paras[0].Runs) > 0 {
+		rProps = paras[0].Runs[0].RunProperties
+	}
+	shape.TextBody.Paragraphs = append(shape.TextBody.Paragraphs, paragraphXML{
+		Properties: noBulletParagraphProps(""),
+		Runs: []runXML{{
+			RunProperties: rProps,
+			Text:          "\u2026",
+		}},
+	})
+}
+
 // trimOverflowParagraphs removes trailing paragraphs from the shape until the
 // content fits within the placeholder at minimum font scale. Adds a "..." indicator
 // to show content was truncated. Returns the recalculated FitResult.
 func trimOverflowParagraphs(shape *shapeXML, params textfit.Params, cfg *autofitConfig) textfit.FitResult {
 	paras := shape.TextBody.Paragraphs
 
-	// Need at least 2 paragraphs to trim (keep 1 + add "..." indicator)
-	for len(paras) > 2 {
-		// Remove last paragraph
-		paras = paras[:len(paras)-1]
-
-		// Build trimmed parameter slices
-		trimmedTexts := collectParagraphTexts(paras)
-		// Add "..." indicator text to height calculation
-		trimmedTexts = append(trimmedTexts, "\u2026") // ellipsis character
-
-		var trimmedSpacings []float64
-		if params.ExtraSpacingsPt != nil {
-			n := len(paras)
-			if n < len(params.ExtraSpacingsPt) {
-				trimmedSpacings = make([]float64, n+1)
-				copy(trimmedSpacings, params.ExtraSpacingsPt[:n])
-			} else {
-				trimmedSpacings = make([]float64, n+1)
-				copy(trimmedSpacings, params.ExtraSpacingsPt)
-			}
-			trimmedSpacings[n] = params.ExtraSpacingPt // "..." uses base spacing
-		}
-
-		var trimmedMargins []float64
-		if params.LeftMarginsPt != nil {
-			n := len(paras)
-			if n < len(params.LeftMarginsPt) {
-				trimmedMargins = make([]float64, n+1)
-				copy(trimmedMargins, params.LeftMarginsPt[:n])
-			} else {
-				trimmedMargins = make([]float64, n+1)
-				copy(trimmedMargins, params.LeftMarginsPt)
-			}
-			// "..." indicator has no extra margin
-		}
-
-		trimmedParams := params
-		trimmedParams.Paragraphs = trimmedTexts
-		trimmedParams.ExtraSpacingsPt = trimmedSpacings
-		trimmedParams.LeftMarginsPt = trimmedMargins
-
-		result, err := textfit.Calculate(trimmedParams)
-		if err != nil {
-			break // font cache unavailable — fall through to overflow
-		}
-		if !result.Overflow {
+	// Need at least 2 paragraphs to trim (keep >= 2, drop >= 1, add "...").
+	if len(paras) > 2 {
+		texts := collectParagraphTexts(paras)
+		keep, result, ok := largestFittingPrefix(params, texts, 2, len(paras)-1, func(r textfit.FitResult) bool {
+			return !r.Overflow
+		})
+		if ok {
 			// Content fits after trimming — update shape paragraphs
-			shape.TextBody.Paragraphs = paras
-
-			// Add "..." indicator paragraph using first paragraph's run properties
-			var rProps *runPropertiesXML
-			if len(paras) > 0 && len(paras[0].Runs) > 0 {
-				rProps = paras[0].Runs[0].RunProperties
-			}
-			ellipsisPara := paragraphXML{
-				Properties: noBulletParagraphProps(""),
-				Runs: []runXML{{
-					RunProperties: rProps,
-					Text:          "\u2026",
-				}},
-			}
-			shape.TextBody.Paragraphs = append(shape.TextBody.Paragraphs, ellipsisPara)
+			paras = paras[:keep]
+			appendEllipsisParagraph(shape, paras)
 
 			slog.Info("trimmed overflow: removed paragraphs to fit placeholder",
 				slog.Int("original", len(params.Paragraphs)),
@@ -616,64 +638,16 @@ func trimForReadability(shape *shapeXML, params textfit.Params, targetMinFontSca
 	paras := shape.TextBody.Paragraphs
 
 	// Need at least 4 paragraphs to consider trimming for readability
-	// (keep at least 3 visible + 1 "…" indicator)
-	for len(paras) > 4 {
-		// Remove last paragraph
-		paras = paras[:len(paras)-1]
-
-		// Build trimmed parameter slices
-		trimmedTexts := collectParagraphTexts(paras)
-		trimmedTexts = append(trimmedTexts, "\u2026") // ellipsis
-
-		var trimmedSpacings []float64
-		if params.ExtraSpacingsPt != nil {
-			n := len(paras)
-			trimmedSpacings = make([]float64, n+1)
-			if n < len(params.ExtraSpacingsPt) {
-				copy(trimmedSpacings, params.ExtraSpacingsPt[:n])
-			} else {
-				copy(trimmedSpacings, params.ExtraSpacingsPt)
-			}
-			trimmedSpacings[n] = params.ExtraSpacingPt
-		}
-
-		var trimmedMargins []float64
-		if params.LeftMarginsPt != nil {
-			n := len(paras)
-			trimmedMargins = make([]float64, n+1)
-			if n < len(params.LeftMarginsPt) {
-				copy(trimmedMargins, params.LeftMarginsPt[:n])
-			} else {
-				copy(trimmedMargins, params.LeftMarginsPt)
-			}
-		}
-
-		trimmedParams := params
-		trimmedParams.Paragraphs = trimmedTexts
-		trimmedParams.ExtraSpacingsPt = trimmedSpacings
-		trimmedParams.LeftMarginsPt = trimmedMargins
-
-		result, err := textfit.Calculate(trimmedParams)
-		if err != nil {
-			break // font cache unavailable — fall through to original
-		}
-		if !result.Overflow && (result.FontScale == 0 || result.FontScale >= targetMinFontScale) {
+	// (keep at least 4 visible, drop at least 1, add the "…" indicator).
+	if len(paras) > 4 {
+		texts := collectParagraphTexts(paras)
+		keep, result, ok := largestFittingPrefix(params, texts, 4, len(paras)-1, func(r textfit.FitResult) bool {
+			return !r.Overflow && (r.FontScale == 0 || r.FontScale >= targetMinFontScale)
+		})
+		if ok {
 			// Content fits at an acceptable font scale — update shape
-			shape.TextBody.Paragraphs = paras
-
-			// Add "…" indicator paragraph
-			var rProps *runPropertiesXML
-			if len(paras) > 0 && len(paras[0].Runs) > 0 {
-				rProps = paras[0].Runs[0].RunProperties
-			}
-			ellipsisPara := paragraphXML{
-				Properties: noBulletParagraphProps(""),
-				Runs: []runXML{{
-					RunProperties: rProps,
-					Text:          "\u2026",
-				}},
-			}
-			shape.TextBody.Paragraphs = append(shape.TextBody.Paragraphs, ellipsisPara)
+			paras = paras[:keep]
+			appendEllipsisParagraph(shape, paras)
 
 			slog.Info("trimmed for readability: removed paragraphs to improve font scale",
 				slog.Int("original", len(params.Paragraphs)),

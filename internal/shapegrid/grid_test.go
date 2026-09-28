@@ -345,17 +345,41 @@ func TestResolveColumns_SingleColumn(t *testing.T) {
 }
 
 func TestResolveColumns_LargeCount(t *testing.T) {
-	cols, err := ResolveColumns(50, nil)
+	cols, err := ResolveColumns(MaxColumns, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(cols) != 50 {
-		t.Fatalf("expected 50 columns, got %d", len(cols))
+	if len(cols) != MaxColumns {
+		t.Fatalf("expected %d columns, got %d", MaxColumns, len(cols))
 	}
 	for _, c := range cols {
-		if c != 2 {
-			t.Errorf("expected 2%% each, got %f", c)
+		if math.Abs(c-100.0/MaxColumns) > 1e-9 {
+			t.Errorf("expected %.4f%% each, got %f", 100.0/MaxColumns, c)
 		}
+	}
+}
+
+// go-slide-creator-4kq5m: an unbounded count panicked in makeslice
+// (MaxInt64, 1e308 via a saturating int()) or silently allocated ~900 MB
+// (5e7). Every out-of-range value is refused before anything is sized.
+func TestColumnCountBounds(t *testing.T) {
+	for _, n := range []float64{math.MaxInt64, 1e308, math.Inf(1), math.Inf(-1), math.NaN(), -5, 0, 0.5, 2.5, MaxColumns + 1, 5e7} {
+		if got, err := ColumnCount(n); err == nil {
+			t.Errorf("ColumnCount(%v) = %d, want error", n, got)
+		}
+	}
+	for _, n := range []float64{1, 3, MaxColumns} {
+		if got, err := ColumnCount(n); err != nil || got != int(n) {
+			t.Errorf("ColumnCount(%v) = %d, %v; want %d", n, got, err, int(n))
+		}
+	}
+	for _, v := range []int{MaxColumns + 1, math.MaxInt, 50_000_000} {
+		if _, err := ResolveColumns(v, nil); err == nil {
+			t.Errorf("ResolveColumns(%d) must be refused", v)
+		}
+	}
+	if _, err := ResolveColumns(make([]float64, MaxColumns+1), nil); err == nil {
+		t.Error("a columns array longer than MaxColumns must be refused")
 	}
 }
 

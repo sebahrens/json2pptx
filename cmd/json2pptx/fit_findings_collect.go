@@ -36,7 +36,9 @@ const DefaultFindingBudget = 5
 // currently this gates the contrast_predicted detector. Pass nil to skip
 // those (callers that don't have a parsed template theme).
 func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, theme *types.ThemeInfo) []patterns.FitFinding {
-	var findings []patterns.FitFinding
+	// Invisible control characters removed at decode time
+	// (INPUT_CONTROL_CHARS_REMOVED, go-slide-creator-7oz3c).
+	findings := collectControlCharFindings(input)
 	for i, slide := range input.Slides {
 		if finding, ok := derivedColumnLayoutFinding(slide, i); ok {
 			findings = append(findings, finding)
@@ -1455,7 +1457,11 @@ func inferGridColumns(grid *ShapeGridInput) int {
 	if len(grid.Columns) > 0 {
 		var n float64
 		if err := json.Unmarshal(grid.Columns, &n); err == nil {
-			return int(n)
+			// Out-of-range counts are refused by validation; do not let
+			// int(1e308) size anything here (go-slide-creator-4kq5m).
+			if count, err := shapegrid.ColumnCount(n); err == nil {
+				return count
+			}
 		}
 		var arr []float64
 		if err := json.Unmarshal(grid.Columns, &arr); err == nil {

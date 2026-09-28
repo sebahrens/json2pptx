@@ -310,6 +310,31 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 	}, nil
 }
 
+// MaxColumns is the largest explicit shape_grid column count (numeric
+// `columns`) or percentage-array length accepted. The widest shipped pattern
+// grid uses 15 tracks; 24 leaves room for dense authored grids while keeping
+// an absurd count (columns: 9223372036854775807, 1e308, 50000000) from
+// panicking in makeslice or allocating hundreds of MB before any other check
+// runs (go-slide-creator-4kq5m).
+const MaxColumns = 24
+
+// ColumnCount validates a numeric shape_grid `columns` value, as decoded from
+// JSON into a float64, and converts it to an int. It rejects NaN, infinities,
+// fractions and counts outside 1..MaxColumns BEFORE the int conversion, which
+// saturates (1e308 becomes MaxInt64) and so cannot be checked afterwards.
+func ColumnCount(n float64) (int, error) {
+	if math.IsNaN(n) || math.IsInf(n, 0) || n != math.Trunc(n) {
+		return 0, fmt.Errorf("shape_grid: columns must be a whole number from 1 to %d, got %v; use an integer (e.g. 3) for equal columns, or an array of percentages (e.g. [30, 40, 30])", MaxColumns, n)
+	}
+	if n < 1 {
+		return 0, fmt.Errorf("shape_grid: columns must be from 1 to %d, got %v; set columns to a positive integer (e.g. 3) for equal-width columns", MaxColumns, n)
+	}
+	if n > MaxColumns {
+		return 0, fmt.Errorf("shape_grid: columns must be from 1 to %d, got %v; split a wider grid across slides", MaxColumns, n)
+	}
+	return int(n), nil
+}
+
 // ResolveColumns parses column specifications and returns percentage widths.
 // It accepts either a count (equal split) or an explicit array of percentages.
 // If columns is nil, it infers the column count from the maximum cell count across rows.
@@ -330,10 +355,16 @@ func ResolveColumns(columns interface{}, rowCellCounts []int) ([]float64, error)
 		if v < 1 {
 			return nil, fmt.Errorf("shape_grid: columns must be >= 1, got %d; set columns to a positive integer (e.g. 3) for equal-width columns", v)
 		}
+		if v > MaxColumns {
+			return nil, fmt.Errorf("shape_grid: columns must be from 1 to %d, got %d; split a wider grid across slides", MaxColumns, v)
+		}
 		return equalSplit(v), nil
 	case []float64:
 		if len(v) == 0 {
 			return nil, fmt.Errorf("shape_grid: columns array must not be empty; provide percentage widths (e.g. [30, 40, 30]) or use a number for equal columns")
+		}
+		if len(v) > MaxColumns {
+			return nil, fmt.Errorf("shape_grid: columns array has %d entries; at most %d columns are supported", len(v), MaxColumns)
 		}
 		return v, nil
 	default:

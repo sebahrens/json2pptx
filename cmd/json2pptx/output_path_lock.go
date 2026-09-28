@@ -25,26 +25,58 @@ import (
 // renders DO aim at the same file (the caller asked for it) the write and the
 // hash-read that follows cannot interleave with another render's write.
 
-// outputPathLocks holds one mutex per absolute output path. Entries are never
-// removed: a server renders into a bounded set of paths, and dropping a mutex
-// another goroutine still holds is how this kind of map goes wrong.
-var outputPathLocks sync.Map
+// outputPathLocks holds one reference-counted mutex per absolute output path
+// that some goroutine currently holds or waits for. An entry is removed when
+// its last holder unlocks, so the map is bounded by the number of in-flight
+// renders rather than growing with every distinct output path a long-lived
+// MCP server ever wrote (go-slide-creator-tcxsq). Removing only at refcount
+// zero is what keeps a waiter from being handed a different mutex than the
+// holder's.
+var outputPathLocks = struct {
+	mu    sync.Mutex
+	locks map[string]*outputPathLock
+}{locks: make(map[string]*outputPathLock)}
+
+type outputPathLock struct {
+	mu   sync.Mutex
+	refs int // holders plus waiters; guarded by outputPathLocks.mu
+}
 
 // lockOutputPath serializes writes to one output path, returning the unlock
 // function. Paths are compared after cleaning and resolving to absolute form so
-// two spellings of the same file share a lock.
+// two spellings of the same file share a lock. The unlock function must be
+// called exactly once.
 func lockOutputPath(path string) func() {
 	key := path
 	if abs, err := filepath.Abs(path); err == nil {
 		key = filepath.Clean(abs)
 	}
-	v, _ := outputPathLocks.LoadOrStore(key, &sync.Mutex{})
-	mu, ok := v.(*sync.Mutex)
-	if !ok {
-		return func() {}
+	outputPathLocks.mu.Lock()
+	l := outputPathLocks.locks[key]
+	if l == nil {
+		l = &outputPathLock{}
+		outputPathLocks.locks[key] = l
 	}
-	mu.Lock()
-	return mu.Unlock
+	l.refs++
+	outputPathLocks.mu.Unlock()
+
+	l.mu.Lock()
+	return func() {
+		l.mu.Unlock()
+		outputPathLocks.mu.Lock()
+		l.refs--
+		if l.refs == 0 {
+			delete(outputPathLocks.locks, key)
+		}
+		outputPathLocks.mu.Unlock()
+	}
+}
+
+// outputPathLockCount reports how many paths currently have a lock entry.
+func outputPathLockCount() int {
+	outputPathLocks.mu.Lock()
+	defer outputPathLocks.mu.Unlock()
+	return len(outputPathLocks.locks)
 }
 
 // deckSpecOutputFilename derives a collision-free default filename for a

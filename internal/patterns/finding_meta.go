@@ -631,6 +631,16 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"Update the authored label to the reported value so validation and the source deck agree.",
 		},
 	},
+	ErrCodeInputControlCharsRemoved: {
+		Code:        ErrCodeInputControlCharsRemoved,
+		Summary:     "Invisible bidi override / isolate controls or byte-order marks were removed from an authored string.",
+		Severity:    "info",
+		WhenEmitted: "A JSON string value in the deck contained U+202A-U+202E, U+2066-U+2069 or U+FEFF; they are stripped at decode time before any measurement or rendering.",
+		RemediationSteps: []string{
+			"Remove the invisible characters from the source text (they usually arrive by copy-paste) so the source and the rendered slide agree.",
+			"For right-to-left text rely on the script itself, or on the U+200E / U+200F directional marks, which are kept.",
+		},
+	},
 	ErrCodeSlideNearlyEmpty: {
 		Code:        ErrCodeSlideNearlyEmpty,
 		Summary:     "A content slide carries almost no content.",
@@ -679,11 +689,12 @@ var findingMetaRegistry = map[string]FindingMeta{
 		Code:        ErrCodeBodyTooLong,
 		Summary:     "Body copy exceeds either the 80-word content limit or a pattern's shape-specific text budget.",
 		Severity:    "review",
-		WhenEmitted: "Content lint finds more than 80 whitespace-separated words in one text/bullet block, or a pattern's post-expand check finds text beyond its geometry-specific character, line, or measured-fit budget (card-grid reports its body-only limit per cell).",
+		WhenEmitted: "Content lint finds more than 80 whitespace-separated words in one text/bullet block, or a pattern's post-expand check finds text beyond its geometry-specific character, line, or measured-fit budget (card-grid reports its body-only limit per cell). At action refuse: one placeholder carries more than 200 paragraphs (fix.params.max_paragraphs).",
 		RemediationSteps: []string{
 			"Read the finding's path and message for the actual unit and target; do not assume that every BODY_TOO_LONG finding has an 80-word limit.",
 			"For content-lint findings with fix.params.max_words, trim to that word limit or use repair_slide(kind=reduce_text, params={max_words}); preserve numbers, units, negations, and qualifiers.",
 			"For pattern warnings, shorten the named field to the reported character/line budget, reduce the pattern's item density, or split the content across slides. A pattern warning does not supply max_words.",
+			"For the paragraph-cap refusal (fix.params.max_paragraphs), split the block across slides; the renderer would otherwise drop the trailing paragraphs.",
 		},
 		RelatedCodes: []string{ErrCodePlaceholderOverflow, ErrCodeBulletNestingDeep},
 	},

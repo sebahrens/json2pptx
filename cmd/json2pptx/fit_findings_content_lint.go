@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -18,13 +19,19 @@ const (
 	maxHeadlineWords      = 12
 	maxBodyWords          = 80
 	maxBulletNestingDepth = 2
+	// maxPlaceholderParagraphs caps the paragraphs one placeholder may carry.
+	// Past it the block cannot be read on a slide at any font size, and the
+	// renderer's fit measurement grows with every paragraph
+	// (go-slide-creator-8hg02). Reported as BODY_TOO_LONG at action "refuse".
+	maxPlaceholderParagraphs = 200
 )
 
 // collectContentLintFindings emits advisory findings when slide content
 // exceeds readability budgets: HEADLINE_TOO_LONG (>12 words on title),
 // BODY_TOO_LONG (>80 words on a text block), BULLET_NESTING_DEEP (bullets
-// nested more than two levels). All findings have action "review"; they
-// never block render.
+// nested more than two levels). These findings have action "review" and never
+// block render, except BODY_TOO_LONG for a placeholder carrying more than
+// maxPlaceholderParagraphs paragraphs, which is a refusal.
 //
 // measuredTitles names the titles collectTitleFitFindings already measured
 // against a real placeholder. The word count is a proxy for "does this headline
@@ -47,6 +54,25 @@ func collectContentLintFindings(input *PresentationInput, measuredTitles measure
 
 // lintContentItem dispatches the content lint checks for one authored item.
 func lintContentItem(slideIdx, contentIdx int, content *ContentInput, measuredTitles measuredTitleSet) []patterns.FitFinding {
+	findings := lintContentBudgets(slideIdx, contentIdx, content, measuredTitles)
+	if n := placeholderParagraphCount(content); n > maxPlaceholderParagraphs {
+		// A paragraph count no slide can hold is refused outright rather than
+		// left to the renderer's autofit trimming, which measures every
+		// paragraph (go-slide-creator-8hg02). The refusal replaces the
+		// review-level word-budget finding for the same block.
+		kept := findings[:0]
+		for _, f := range findings {
+			if f.Code != patterns.ErrCodeBodyTooLong {
+				kept = append(kept, f)
+			}
+		}
+		findings = append(kept, makeParagraphCapFinding(slideIdx, slidepath.ContentIndex(slideIdx, contentIdx), n))
+	}
+	return findings
+}
+
+// lintContentBudgets dispatches the per-type content lint checks.
+func lintContentBudgets(slideIdx, contentIdx int, content *ContentInput, measuredTitles measuredTitleSet) []patterns.FitFinding {
 	path := slidepath.ContentIndex(slideIdx, contentIdx)
 	switch content.Type {
 	case "text":
@@ -306,6 +332,67 @@ func makeBodyFinding(slideIdx int, path string, words int) patterns.FitFinding {
 			},
 		},
 		Action: "review",
+	}
+}
+
+// placeholderParagraphCount is the number of paragraphs a content item renders
+// into its placeholder: authored lines of text, one per bullet, plus the body,
+// headers and lead-outs of the bullet-bearing types.
+func placeholderParagraphCount(content *ContentInput) int {
+	lines := func(s string) int {
+		if s == "" {
+			return 0
+		}
+		return strings.Count(s, "\n") + 1
+	}
+	switch content.Type {
+	case "text":
+		if content.TextValue != nil {
+			return lines(*content.TextValue)
+		}
+	case "bullets":
+		if content.BulletsValue != nil {
+			return len(*content.BulletsValue)
+		}
+		// Legacy raw `value` array.
+		var legacy []json.RawMessage
+		if len(content.Value) > 0 && json.Unmarshal(content.Value, &legacy) == nil {
+			return len(legacy)
+		}
+	case "body_and_bullets":
+		if v := content.BodyAndBulletsValue; v != nil {
+			return lines(v.Body) + len(v.Bullets) + lines(v.TrailingBody)
+		}
+	case "bullet_groups":
+		if v := content.BulletGroupsValue; v != nil {
+			n := lines(v.Body) + lines(v.TrailingBody)
+			for _, g := range v.Groups {
+				n += lines(g.GroupLabel) + lines(g.Header) + lines(g.Body) + len(g.Bullets)
+			}
+			return n
+		}
+	}
+	return 0
+}
+
+func makeParagraphCapFinding(slideIdx int, path string, paragraphs int) patterns.FitFinding {
+	return patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Path: path,
+			Code: patterns.ErrCodeBodyTooLong,
+			Message: fmt.Sprintf(
+				"slide %d: placeholder carries %d paragraphs; at most %d are accepted per placeholder — split the content across slides",
+				slideIdx+1, paragraphs, maxPlaceholderParagraphs),
+			Fix: &patterns.FixSuggestion{
+				Kind: "reduce_text",
+				Params: map[string]any{
+					"current_paragraphs": paragraphs,
+					"max_paragraphs":     maxPlaceholderParagraphs,
+					"strategy":           "split",
+				},
+			},
+		},
+		Action: "refuse",
 	}
 }
 

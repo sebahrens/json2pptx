@@ -1454,7 +1454,13 @@ func resolveColumnsDTO(raw json.RawMessage, rows []GridRowInput) ([]float64, err
 	// Try number (equal columns)
 	var n float64
 	if err := json.Unmarshal(raw, &n); err == nil {
-		return shapegrid.ResolveColumns(int(n), nil)
+		// Range-check BEFORE int(): int(1e308) saturates to MaxInt64 and the
+		// equal split then panics in makeslice (go-slide-creator-4kq5m).
+		count, err := shapegrid.ColumnCount(n)
+		if err != nil {
+			return nil, err
+		}
+		return shapegrid.ResolveColumns(count, nil)
 	}
 
 	// Try array of percentages

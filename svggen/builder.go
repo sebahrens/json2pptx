@@ -1064,8 +1064,12 @@ func (b *SVGBuilder) DrawText(text string, x, y float64, align TextAlign, baseli
 		canvasAlign = canvas.Right
 	}
 
-	// Create text line
-	textLine := canvas.NewTextLine(face, text, canvasAlign)
+	// Create text line. Shaping can panic on adversarial rune sequences; an
+	// unshapeable label is skipped rather than crashing the render.
+	textLine := safeTextLine(face, text, canvasAlign)
+	if textLine == nil {
+		return b
+	}
 
 	// Convert coordinates (canvas uses bottom-left origin)
 	xMM := x * ptToMM
@@ -1131,7 +1135,11 @@ func (b *SVGBuilder) MeasureText(text string) (width, height float64) {
 		return 0, 0
 	}
 
-	textLine := canvas.NewTextLine(face, text, canvas.Left)
+	textLine := safeTextLine(face, text, canvas.Left)
+	if textLine == nil {
+		// Shaping failed: estimate from an average glyph advance of 0.55em.
+		return float64(len([]rune(text))) * 0.55 * b.fontSize, b.fontSize
+	}
 	bounds := textLine.Bounds()
 
 	// Characters the face cannot render measure as .notdef; estimate their

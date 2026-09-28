@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/svggen/fontcache"
 	"github.com/tdewolff/canvas"
 )
@@ -115,7 +116,7 @@ func fitFooterText(text string, widthEMU int64, fontName string) (string, int) {
 	usableMM := float64(widthEMU-2*91440) / 36000
 	fits := func(t string, size int) bool {
 		face := ff.Face(float64(size)/100, color.Black, canvas.FontRegular, canvas.FontNormal)
-		return canvas.NewTextLine(face, t, canvas.Left).Bounds().W() <= usableMM
+		return textfit.LineWidthMM(face, t) <= usableMM
 	}
 	for size := footerFontSize; size >= footerMinFontSize; size -= footerFontStep {
 		if fits(text, size) {
