@@ -25,7 +25,9 @@ hex colors or absolute sizing are intentional.
 For a reusable deck use canonical `layout_id` values discovered from
 `list_templates` / `examine_template`, not a template-specific
 `slideLayoutN` identifier. A pinned layout number is appropriate only for
-an inspected, fixed template. The content-as-array shape, placeholder IDs,
+an inspected, fixed template. A raw `shape_grid.columns` is a whole number
+1-24 or an array of at most 24 widths; `validate` rejects anything else
+(`INVALID_GRID`). The content-as-array shape, placeholder IDs,
 and shape-grid properties are in
 [TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md); inspect the live
 template to verify actual bounds. A raw deck may use top-level

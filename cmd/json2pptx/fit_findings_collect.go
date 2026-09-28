@@ -1457,7 +1457,11 @@ func inferGridColumns(grid *ShapeGridInput) int {
 	if len(grid.Columns) > 0 {
 		var n float64
 		if err := json.Unmarshal(grid.Columns, &n); err == nil {
-			return int(n)
+			// Out-of-range counts are refused by validation; do not let
+			// int(1e308) size anything here (go-slide-creator-4kq5m).
+			if count, err := shapegrid.ColumnCount(n); err == nil {
+				return count
+			}
 		}
 		var arr []float64
 		if err := json.Unmarshal(grid.Columns, &arr); err == nil {

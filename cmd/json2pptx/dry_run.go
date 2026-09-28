@@ -1174,9 +1174,15 @@ func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCo
 			var arr []float64
 			if err := json.Unmarshal(grid.Columns, &arr); err != nil {
 				errors = append(errors, fmt.Sprintf("slide %d: shape_grid columns must be a number or array of numbers", slideNum))
+			} else if len(arr) > shapegrid.MaxColumns {
+				errors = append(errors, fmt.Sprintf("slide %d: shape_grid columns array has %d entries; at most %d columns are supported", slideNum, len(arr), shapegrid.MaxColumns))
 			} else {
 				colWeights = arr
 			}
+		} else if _, err := shapegrid.ColumnCount(n); err != nil {
+			// Finite, whole and 1..MaxColumns, checked before any int()
+			// conversion (go-slide-creator-4kq5m).
+			errors = append(errors, fmt.Sprintf("slide %d: %v", slideNum, err))
 		}
 	}
 
