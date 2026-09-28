@@ -16,8 +16,10 @@ How to cut a release (tag, archives, container image) is described in
 
 ## [Unreleased]
 
-No release has been tagged yet. Everything below, developed since the initial
-commit on 2026-04-02, becomes the first tagged release. Ships input schema
+## [0.1.0] - 2026-09-28
+
+First tagged release. Everything below was developed since the initial
+commit on 2026-04-02. Ships input schema
 4.154.0 (see [docs/SCHEMA_CHANGELOG.md](docs/SCHEMA_CHANGELOG.md)).
 
 ### Added
@@ -58,4 +60,5 @@ commit on 2026-04-02, becomes the first tagged release. Ships input schema
 - **Deck-level style defaults** for tables and cells; see
   [docs/STYLE_DEFAULTS.md](docs/STYLE_DEFAULTS.md).
 
-[Unreleased]: https://github.com/sebahrens/json2pptx/commits/main
+[Unreleased]: https://github.com/sebahrens/json2pptx/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/sebahrens/json2pptx/releases/tag/v0.1.0
