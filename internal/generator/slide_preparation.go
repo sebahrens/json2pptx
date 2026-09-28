@@ -505,6 +505,11 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 	// Get the first bullet level from the slide master for this layout
 	masterBulletLevel := ctx.getFirstBulletLevelForLayout(layoutID)
 
+	// A shape holds one text block: a second block resolving to a shape that
+	// already received text would overwrite it, silently dropping the first
+	// (go-slide-creator-rioxd). Keep the first and report the loser.
+	claimedTextShapes := make(map[int]int) // shapeIdx -> content index
+
 	for j, item := range content {
 		// Skip visual content types - they are handled in prepareImages
 		if item.Type == ContentImage || item.Type == ContentDiagram || item.Type == ContentTable {
@@ -559,6 +564,19 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 					Action: "info",
 				})
 			}
+		}
+
+		if firstIdx, claimed := claimedTextShapes[shapeIdx]; claimed && contentItemHasText(item) {
+			locator := fmt.Sprintf("content block %d (%s)", j+1, item.Type)
+			reason := fmt.Sprintf(
+				"placeholder %q already holds content block %d; a placeholder renders one text block — target a different placeholder (e.g. body_2) or merge the blocks",
+				item.PlaceholderID, firstIdx+1)
+			ctx.emitFitFinding(patterns.ContentDropped(slidepath.ContentIndex(slideIndex, j), locator, reason))
+			warnings = append(warnings, fmt.Sprintf("slide %d: %s dropped — %s", slideIndex+1, locator, reason))
+			continue
+		}
+		if contentItemHasText(item) {
+			claimedTextShapes[shapeIdx] = j
 		}
 
 		shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]

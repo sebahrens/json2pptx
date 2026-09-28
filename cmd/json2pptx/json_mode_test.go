@@ -1741,6 +1741,29 @@ func TestMergeTextItemsSamePlaceholder(t *testing.T) {
 	})
 }
 
+func TestRouteDuplicateBodyToSecondColumn(t *testing.T) {
+	dup := func() []generator.ContentItem {
+		return []generator.ContentItem{
+			{PlaceholderID: "title", Type: generator.ContentText, Value: "T"},
+			{PlaceholderID: "body", Type: generator.ContentBullets, Value: []string{"a"}},
+			{PlaceholderID: "body", Type: generator.ContentBullets, Value: []string{"b"}},
+		}
+	}
+	got := routeDuplicateBodyToSecondColumn(dup(), types.SlideTypeTwoColumn)
+	if got[1].PlaceholderID != "body" || got[2].PlaceholderID != "body_2" {
+		t.Errorf("two-column duplicate not routed to body_2: %+v", got)
+	}
+	got = routeDuplicateBodyToSecondColumn(dup(), types.SlideTypeContent)
+	if got[2].PlaceholderID != "body" {
+		t.Errorf("content slide must not be rerouted (generator reports CONTENT_DROPPED): %+v", got)
+	}
+	taken := append(dup(), generator.ContentItem{PlaceholderID: "body_2", Type: generator.ContentText, Value: "c"})
+	got = routeDuplicateBodyToSecondColumn(taken, types.SlideTypeTwoColumn)
+	if got[2].PlaceholderID != "body" {
+		t.Errorf("occupied body_2 must not be overwritten: %+v", got)
+	}
+}
+
 // strPtr is a test helper that returns a pointer to a string.
 func strPtr(s string) *string { return &s }
 
