@@ -631,6 +631,16 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"Update the authored label to the reported value so validation and the source deck agree.",
 		},
 	},
+	ErrCodeInputControlCharsRemoved: {
+		Code:        ErrCodeInputControlCharsRemoved,
+		Summary:     "Invisible bidi override / isolate controls or byte-order marks were removed from an authored string.",
+		Severity:    "info",
+		WhenEmitted: "A JSON string value in the deck contained U+202A-U+202E, U+2066-U+2069 or U+FEFF; they are stripped at decode time before any measurement or rendering.",
+		RemediationSteps: []string{
+			"Remove the invisible characters from the source text (they usually arrive by copy-paste) so the source and the rendered slide agree.",
+			"For right-to-left text rely on the script itself, or on the U+200E / U+200F directional marks, which are kept.",
+		},
+	},
 	ErrCodeSlideNearlyEmpty: {
 		Code:        ErrCodeSlideNearlyEmpty,
 		Summary:     "A content slide carries almost no content.",

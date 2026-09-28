@@ -24,7 +24,9 @@ then code. A deck-level finding precedes slide 0 at equal severity.
 - `review` / `info`: the engine points out a judgment for the author.
   Inspect the rendered slide and decide whether to change it. An advisory is
   not a failed tool call, and a clean deterministic score does not replace
-  final-revision visual inspection.
+  final-revision visual inspection. `INPUT_CONTROL_CHARS_REMOVED` (info):
+  invisible bidi controls / BOMs were stripped from that string; drop them
+  from your source text.
 
 `score_deck` classifies a finding as `pattern_choice`, `rendering`, or
 `content`. A pattern-choice problem usually calls for a different visual

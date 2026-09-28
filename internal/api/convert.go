@@ -195,7 +195,7 @@ func (cs *ConvertService) ConvertHandler() http.HandlerFunc {
 			OutputPath:     pipelineResult.OutputPath,
 			OutputFilename: outputFilename,
 			SlideCount:     pipelineResult.SlideCount,
-			Warnings:       pipelineResult.Warnings,
+			Warnings:       append(append([]string(nil), req.controlCharWarnings...), pipelineResult.Warnings...),
 		}
 
 		cs.sendResponse(w, req, templateAnalysis, genResult, startTime)
@@ -299,6 +299,12 @@ func (cs *ConvertService) parseAndValidateRequest(w http.ResponseWriter, r *http
 		writeJSONParseError(w, err)
 		return nil, "", err
 	}
+
+	// Strip invisible bidi override / isolate controls and BOMs from every
+	// string: they spoof reading order and crash the text shaper
+	// (go-slide-creator-7oz3c). The request is round-tripped only when the
+	// cheap pre-check finds a candidate.
+	neutralizeRequestControlChars(&req)
 
 	// Validate required fields
 	if len(req.Slides) == 0 {
@@ -514,6 +520,10 @@ type ConvertRequest struct {
 	Template string          `json:"template"`
 	Slides   []APISlide      `json:"slides"`
 	Options  *ConvertOptions `json:"options,omitempty"`
+
+	// controlCharWarnings reports strings from which invisible control
+	// characters were removed; it is prepended to the response warnings.
+	controlCharWarnings []string
 }
 
 // APISlide describes a single slide in the JSON input.

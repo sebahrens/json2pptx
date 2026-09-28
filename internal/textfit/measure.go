@@ -74,8 +74,8 @@ func MeasureStyledRuns(p StyledMeasureParams) (RunMeasurement, error) {
 				current = 0
 			}
 			for _, word := range strings.Fields(part) {
-				wordWidth := canvas.NewTextLine(face, word, canvas.Left).Bounds().W()
-				spaceWidth := canvas.NewTextLine(face, " ", canvas.Left).Bounds().W()
+				wordWidth := LineWidthMM(face, word)
+				spaceWidth := LineWidthMM(face, " ")
 				needed := wordWidth
 				if current > 0 {
 					needed += spaceWidth
@@ -174,7 +174,7 @@ func MeasureLineWidth(text, fontName string, fontPt float64) (int64, error) {
 	face := newFace(ff, fontPt, canvas.FontRegular)
 	var widest float64
 	for _, line := range strings.Split(text, "\n") {
-		if width := canvas.NewTextLine(face, line, canvas.Left).Bounds().W(); width > widest {
+		if width := LineWidthMM(face, line); width > widest {
 			widest = width
 		}
 	}
@@ -213,8 +213,7 @@ func estimateLineOverflowChars(face *canvas.FontFace, text string, widthPt float
 		return 0
 	}
 
-	spaceLine := canvas.NewTextLine(face, " ", canvas.Left)
-	spaceWidth := spaceLine.Bounds().W()
+	spaceWidth := LineWidthMM(face, " ")
 
 	line := 1
 	var currentWidth float64
@@ -230,8 +229,7 @@ func estimateLineOverflowChars(face *canvas.FontFace, text string, widthPt float
 	}
 
 	for i, word := range words {
-		wordLine := canvas.NewTextLine(face, word, canvas.Left)
-		wordWidth := wordLine.Bounds().W()
+		wordWidth := LineWidthMM(face, word)
 		wordRunes := len([]rune(word))
 
 		if i > 0 {
@@ -282,7 +280,7 @@ func MeasureStyledLineWidth(text, fontName string, fontPt float64, bold bool) (i
 	face := newFace(ff, fontPt, canvas.FontBold)
 	var widest float64
 	for _, line := range strings.Split(text, "\n") {
-		if width := canvas.NewTextLine(face, line, canvas.Left).Bounds().W(); width > widest {
+		if width := LineWidthMM(face, line); width > widest {
 			widest = width
 		}
 	}

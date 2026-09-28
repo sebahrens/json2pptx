@@ -306,8 +306,7 @@ func MaxFontForWidth(text string, widthEMU int64, fontName string) int {
 
 		fits := true
 		for _, w := range words {
-			wl := canvas.NewTextLine(face, w, canvas.Left)
-			if wl.Bounds().W() > usableWidthPt*ptToMM {
+			if LineWidthMM(face, w) > usableWidthPt*ptToMM {
 				fits = false
 				break
 			}
@@ -380,15 +379,13 @@ func wrapTextLine(face *canvas.FontFace, text string, widthPt float64) int {
 	}
 
 	// Measure space width once for this font face, not per word
-	spaceLine := canvas.NewTextLine(face, " ", canvas.Left)
-	spaceWidth := spaceLine.Bounds().W()
+	spaceWidth := LineWidthMM(face, " ")
 
 	lines := 1
 	var currentWidth float64
 
 	for i, word := range words {
-		wordLine := canvas.NewTextLine(face, word, canvas.Left)
-		wordWidth := wordLine.Bounds().W()
+		wordWidth := LineWidthMM(face, word)
 
 		if i > 0 {
 			if currentWidth+spaceWidth+wordWidth <= widthMM {

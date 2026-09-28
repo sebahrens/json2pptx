@@ -137,8 +137,12 @@ const (
 	ErrCodeSectionNumberSequenceMismatch = "SECTION_NUMBER_SEQUENCE_MISMATCH"
 	ErrCodeSectionNumberRenumbered       = "SECTION_NUMBER_RENUMBERED"
 	ErrCodeSlideNearlyEmpty              = "SLIDE_NEARLY_EMPTY"
-	ErrCodeDeckMonotony                  = "DECK_MONOTONY"
-	ErrCodeChartOverloaded               = "CHART_OVERLOADED"
+	// ErrCodeInputControlCharsRemoved reports invisible bidi override /
+	// isolate controls or BOMs removed from an authored string at decode time
+	// (go-slide-creator-7oz3c).
+	ErrCodeInputControlCharsRemoved = "INPUT_CONTROL_CHARS_REMOVED"
+	ErrCodeDeckMonotony             = "DECK_MONOTONY"
+	ErrCodeChartOverloaded          = "CHART_OVERLOADED"
 
 	// PATTERN_CONTENT_MISMATCH: the pattern is not the shape of its content —
 	// KPIs drawn as a timeline, a four-month plan drawn as a 2x2

@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/sebahrens/json2pptx/internal/bidisafe"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -76,6 +77,11 @@ type PresentationInput struct {
 	Grid           *GridConfig     `json:"grid,omitempty"`
 	Structure      *StructureInput `json:"structure,omitempty"`
 	Slides         []SlideInput    `json:"slides"`
+
+	// ControlCharSites lists the string values from which invisible bidi
+	// controls / BOM were removed at decode time (go-slide-creator-7oz3c).
+	// Never serialized: it feeds the INPUT_CONTROL_CHARS_REMOVED finding.
+	ControlCharSites []bidisafe.Site `json:"-"`
 }
 
 // ChromeInput configures deck-level persistent chrome (footers, page numbers,
@@ -178,6 +184,11 @@ type GridConfig struct {
 // UnmarshalJSON handles both regular slides and split_slide entries.
 // A split_slide entry is expanded inline into N regular SlideInput entries.
 func (p *PresentationInput) UnmarshalJSON(data []byte) error {
+	// Invisible bidi override / isolate controls and BOMs are removed from
+	// every string before decoding: they spoof reading order and crash the
+	// text shaper (go-slide-creator-7oz3c).
+	data, sites := bidisafe.Neutralize(data)
+	defer func() { p.ControlCharSites = sites }()
 	// Use type alias to avoid infinite recursion.
 	type Alias PresentationInput
 	aux := &struct {
