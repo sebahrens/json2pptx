@@ -143,7 +143,8 @@ const (
 	sshMaxBulgePt        = 44.0 // furthest the middle nodes swing out past the top/bottom ones
 	sshHubMinPt          = 110.0
 	sshHubMaxPt          = 230.0
-	sshHubStepPt         = 20.0 // hub diameter step when the items need the width
+	sshHubStepPt         = 5.0  // hub diameter step when the items need the width: fine enough to find the widest frames whose hub still holds its label
+	sshHubFallbackEvery  = 4    // every 4th step (20pt) is a fallback candidate when nothing fits
 	sshMinTitlePt        = 12.0 // stage title floor the default steps down to
 	sshHaloWidthPt       = 6.0
 	sshTitleSpacePt      = 1.0 // space after a stage title
@@ -336,12 +337,19 @@ func sshMeasure(ctx ExpandContext, v *StateShiftHubValues, ovr *StateShiftHubOve
 	}
 	var best sshLayout
 	for _, ts := range titles {
-		for _, hubD := range hubs {
+		for i, hubD := range hubs {
 			cand := lay
 			cand.titleSize = ts
 			sshPlace(ctx, v, ovr, &cand, h, hubD)
 			if cand.fits() {
 				return cand
+			}
+			// The fine hub steps exist to find a layout that fits; the
+			// fallback for content that fits nowhere is chosen among the
+			// coarse steps only, so overflowing payloads are not steered to
+			// a smaller written size by a sub-point overflow difference.
+			if i%sshHubFallbackEvery != 0 && hubD != sshHubMinPt {
+				continue
 			}
 			switch {
 			case best.rows == nil, cand.hubFits && !best.hubFits:
