@@ -2760,7 +2760,7 @@ func autoMapPlaceholders(items []ContentInput, selectedLayout types.LayoutMetada
 	if bodyPH == nil {
 		bodyPH = findFirstPlaceholder(selectedLayout, types.PlaceholderContent)
 	}
-	subtitlePH := findFirstPlaceholder(selectedLayout, types.PlaceholderSubtitle)
+	subtitlePH := findVirtualPlaceholder(selectedLayout, "subtitle", types.PlaceholderSubtitle)
 	imagePH := findFirstPlaceholder(selectedLayout, types.PlaceholderImage)
 	chartPH := findFirstPlaceholder(selectedLayout, types.PlaceholderChart)
 
@@ -2972,11 +2972,24 @@ func isSlotMarker(id string) bool {
 // findFirstPlaceholder returns the first placeholder of a given type in a layout.
 func findFirstPlaceholder(layout types.LayoutMetadata, phType types.PlaceholderType) *types.PlaceholderInfo {
 	for i := range layout.Placeholders {
-		if layout.Placeholders[i].Type == phType {
+		// A legal-disclosure slot shares the subTitle type on some templates
+		// (p-style Closing) but must never receive ordinary subtitle copy.
+		if layout.Placeholders[i].Type == phType && !types.IsDisclosurePlaceholder(layout.Placeholders[i]) {
 			return &layout.Placeholders[i]
 		}
 	}
 	return nil
+}
+
+// findVirtualPlaceholder prefers a placeholder whose canonical ID equals the
+// virtual name ("subtitle"), then the first non-disclosure one of the type.
+func findVirtualPlaceholder(layout types.LayoutMetadata, id string, phType types.PlaceholderType) *types.PlaceholderInfo {
+	for i := range layout.Placeholders {
+		if layout.Placeholders[i].ID == id && layout.Placeholders[i].Type == phType {
+			return &layout.Placeholders[i]
+		}
+	}
+	return findFirstPlaceholder(layout, phType)
 }
 
 // placeholderIDStr returns the placeholder's canonical ID.
