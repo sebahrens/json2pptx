@@ -131,31 +131,10 @@ Generate the complete JSON in one pass. Use named patterns for shape grid slides
 
 Validation is NOT verification. `validate_input` checks JSON structure; it does not judge whether the deck looks right. Contrast auto-fix, sizing choices, overflowing text, and mis-chosen layouts are all visible in pixels and invisible in JSON. **Images are truth.**
 
-1. **Schema + fit check.** Call `validate_input` with `fit_report: true` (MCP) or run `json2pptx validate -fit-report` (CLI). The CLI form `-fit-report=path.json` writes **NDJSON** (one finding per line, no array wrapping); `-fit-report=-` writes NDJSON to stdout; bare `-fit-report` prints a human-readable summary to stderr. Validate exits 0 even with unfittable cells — refusal comes via `strict_fit` on generate. Fix only failing slides, don't regenerate the deck. The fit-report surfaces diagnostics with `fix.kind` hints that are directly actionable. Use `describe_finding` and `get_capabilities().vocabularies` for live codes and fix kinds; [FINDINGS.md](FINDINGS.md) explains the decision process. Input JSON is validated with `additionalProperties: false` — unknown fields produce warnings identifying the unexpected key and its location.
+1. **Schema + fit check.** Call `validate_input` with `fit_report: true` (MCP) or run `json2pptx validate --fit-report` (CLI; add `--json` for the MCP envelope, `--format=ndjson` for one object per file). Validate exits 0 even with unfittable cells — refusal comes via `strict_fit` on generate. Fix only failing slides, don't regenerate the deck. The fit-report surfaces diagnostics with `fix.kind` hints that are directly actionable. Use `describe_finding` and `get_capabilities().vocabularies` for live codes and fix kinds; [FINDINGS.md](FINDINGS.md) explains the decision process. Input JSON is validated with `additionalProperties: false` — unknown fields produce warnings identifying the unexpected key and its location.
 
    **Findings sort invariant.** Every `findings` / `fit_findings` array — across `validate_input`, `preview_presentation_plan`, `generate_presentation`, `score_deck`, and `repair_slide` — is sorted by `(severity desc, slide_index asc, code asc)`. `findings[0]` is always the most important fix to attempt first. Deck-level findings (path doesn't match `/slides/N/...`) sort before slide 0 at equal severity. The ordering is deterministic across runs, so agents can address findings top-to-bottom without re-prioritising.
-2. **Generate.** Call `generate_presentation` with `strict_fit: "warn"` (default) or `"strict"` for refuse-on-overflow (MCP), or `json2pptx generate -strict-fit warn|strict` (CLI). The strict-fit ladder: `off` (legacy, silent shrink+truncate); `warn` (shrink + emit fit-findings); `strict` (refuse on overflow with `fix.kind: split_at_row|reduce_text`). Both native layout findings and chart findings participate in the ladder — see FINDINGS.md for which codes promote at which level. On refusal, MCP returns the shared FindingEnvelope with `IsError=true`:
-   ```json
-   {
-     "schema_version": "1.0",
-     "tool": "json2pptx",
-     "subcommand": "mcp",
-     "ok": false,
-     "summary": "1 error",
-     "findings": [
-       {
-         "id": "fit-1",
-         "code": "FIT.placeholder_overflow",
-         "category": "FIT",
-         "severity": "error",
-         "where": { "slide": 2 },
-         "message": "text overflows placeholder by 42%",
-         "evidence": { "path": "slides[2].content.body" },
-         "remediation": { "primary": { "action": "shorten_text", "params": { "kind": "reduce_text" } } }
-       }
-     ]
-   }
-   ```
+2. **Generate.** Call `generate_presentation` with `strict_fit: "warn"` (default) or `"strict"` for refuse-on-overflow (MCP), or `json2pptx generate -strict-fit warn|strict` (CLI). The strict-fit ladder: `off` (legacy, silent shrink+truncate); `warn` (shrink + emit fit-findings); `strict` (refuse on overflow with `fix.kind: split_at_row|reduce_text`). Both native layout findings and chart findings participate in the ladder — see FINDINGS.md for which codes promote at which level. On refusal, MCP returns the shared FindingEnvelope (see [FINDINGS.md](FINDINGS.md)) with `IsError=true`.
 3. **Render to images, then inspect them.** Three distinct steps — do not conflate them:
    - **Structural wireframe** (`preview_slide_wireframe`) is geometry only. Its response is stamped `inspection_kind: "wireframe_structural"`, `contract: "structural_only"`, `not_text_flow_safe: true`. It does NOT model text wrapping, font metrics, icon/text collisions, SVG readability, or image fidelity, and emits no quality verdict. **A wireframe never satisfies visual QA** — it is a cheap pre-render sanity check, nothing more.
    - **Rendered-image generation** (`render_slide_image` for one slide / `render_deck_thumbnails` for the whole deck, preferred over the `pptx2jpg -input <out.pptx> -output <dir>/ -density 150` shell-out) produces real pixels via LibreOffice + ImageMagick. **Generating the PNG is not the same as inspecting it** — an unviewed render is evidence you have not yet read. By default these tools return every slide as a native MCP image content block you can look at directly (plus JSON metadata with each slide's on-disk `path`); pass `include_base64_json: true` only for clients that cannot display MCP images.
@@ -212,72 +191,3 @@ for f in findings where f.severity in {"P0","P1"}:
 The same response also carries a top-level `findings` `FindingEnvelope` — every per-slide finding projected into the shared diagnostics wire shape used by `validate_input`, `repair_slide`, and the MCP error path. P0/P1 map to `error` (so `findings.ok` is `false` exactly when a slide needs repair under the P0/P1 policy below), P2 to `warning`, P3 to `info`; overflow categories namespace as `FIT` and all other visual defects as `RENDER`. Branch on `findings.ok` for a one-flag stop signal, or keep reading `results[slide].findings` when you need the full per-slide `suggested_fixes[]`.
 
 **False-positive policy.** Haiku-vision flags ~60% false positives on layout issues (top-clipping, title-cut) when running on already-correct decks. Treat P2/P3 findings as advisory; only P0/P1 should trigger automatic repair without user confirmation.
-
----
-
-## Machine-Actionable `next_tool_call`
-
-Pattern validation errors (`validate_pattern`), density warnings (`expand_pattern`), fit-report findings (`validate_input`, `generate_presentation`), and boundary errors from the candidate-decision tools (`plan_deck`, `recommend_pattern`, `recommend_visual`, `validate_input`, `preview_presentation_plan`, `score_deck`) include an optional `next_tool_call` field when the error has an actionable recovery. This is a machine-readable hint: the exact MCP tool name and an `args_template` pre-filled with fix parameters. Invoke the suggested tool directly without inferring the protocol from the error message.
-
-Boundary-error mappings used by the candidate-decision tools:
-
-- `MISSING_PARAMETER` / `INVALID_JSON` on `presentation` → `get_input_schema` (fetch the schema and retry)
-- `MISSING_PARAMETER` on `template` (or `TEMPLATE_NOT_FOUND` / `TEMPLATE_ERROR`) → `list_templates`
-- `MISSING_PARAMETER` on `brief` / `intent` → retry the same tool with the missing argument
-- `INVALID_PARAMETER` for an unknown pattern name → `list_patterns`
-- `UNKNOWN_PARAMETER` (any tool) → the argument name is not accepted by the tool; rename it to `fix.params.did_you_mean` (e.g. `plan_deck` `slide_count` → `slide_budget`) and retry via `next_tool_call`
-- `STRUCTURE_AND_SLIDES` on `structure` → remove one of the two — `structure` and top-level `slides` are mutually exclusive. The `fix.params.field` names which side to drop (`"slides"`).
-- `INVALID_STRUCTURE` on `structure` → repair the structure block (missing section title, empty sections, section with no slides). The underlying expansion error is in `fix.params.error`.
-
-```json
-{
-  "field": "values.title",
-  "code": "unknown_key",
-  "message": "unknown field \"titl\" (did you mean \"title\"?)",
-  "fix": { "kind": "rename_field", "params": { "from": "titl", "to": "title" } },
-  "next_tool_call": {
-    "tool": "repair_slide",
-    "args_template": {
-      "slide_index": -1,
-      "pattern": "card-grid",
-      "fixes": [{ "kind": "rename_field", "params": { "from": "titl", "to": "title" } }]
-    }
-  }
-}
-```
-
-- `slide_index: -1` means "caller must supply the actual slide index" — `validate_pattern` operates without slide context.
-- For `swap_pattern` / `adopt_pattern` fix kinds, `next_tool_call` points to `recommend_visual` (`{intent, content_hints: {item_count}}`, in every tool profile) instead of `repair_slide`; fill in `intent` before calling.
-- Internal-only errors (marshal failures, unrecognized fix kinds inside content-finding errors) may omit `next_tool_call` (the field is absent, not null). Boundary errors from candidate-decision tools always carry it.
-
----
-
-## `response_fingerprint` — server-side cache key
-
-`validate_input`, `preview_presentation_plan`, `plan_deck`, and `recommend_visual` responses include a top-level `response_fingerprint` field: a sha256 hex digest (64 chars) of the canonical JSON of the response body with the fingerprint field itself zeroed. These four paths are deterministic — identical inputs produce identical fingerprints — so agents may use the fingerprint directly as a memoisation cache key without re-hashing the body. To verify a fingerprint, parse the response, zero `response_fingerprint`, re-marshal canonically, and sha256-hash the result.
-
----
-
-## `idempotency_key` — safe retries for generate / auto_repair / make_deck
-
-`generate_presentation`, `auto_repair`, and `make_deck` accept an optional top-level `idempotency_key` string. When set, the server caches the first successful response under that key and replays it on subsequent calls within the cache TTL (1 hour, per-process), **but only when the request content is unchanged**. The replay response carries `"idempotent_replay": true` so the caller can tell a deduped retry from a fresh run.
-
-The key is a *retry token*, not a request identity: the server also stores a fingerprint of the normalized request (every argument except `idempotency_key`). Reusing the same key with edited input is treated as a different request — the server refuses with an `IDEMPOTENCY_CONFLICT` error (carrying `current_fingerprint` and `original_fingerprint` in the finding evidence) instead of replaying the original deck for the wrong content. Issue a fresh key for new content, or restore the original input to replay.
-
-Use this to make transport-layer retries safe. Without an idempotency key, every retry runs the full pipeline again and writes a fresh output file (`output.pptx`, `output_1.pptx`, `output_2.pptx`, …); the caller is also billed for the wasted inference + render cost.
-
-```json
-{
-  "presentation": { "template": "midnight-blue", "slides": [/* … */] },
-  "output_filename": "deck.pptx",
-  "idempotency_key": "agent-session-abc123/turn-7"
-}
-```
-
-Rules of thumb:
-
-- Generate the key from something stable across retries (session id + turn number, or a hash of the input). Never use a timestamp — every retry would get a new key.
-- Keys are scoped per-tool, so the same string used against `generate_presentation` and `auto_repair` will not collide.
-- A replay requires the request to be byte-for-byte equivalent (modulo object-key ordering). If you edit the deck/outline or any other argument and keep the key, you get an `IDEMPOTENCY_CONFLICT` error, never a stale replay — bump the key whenever the content changes.
-- Only successful responses are cached. Error responses surface every time so the agent can fix the underlying input.
-- The cache is in-memory and per-process. Restarting the MCP server drops it — design retries to tolerate a fresh run after a server bounce.

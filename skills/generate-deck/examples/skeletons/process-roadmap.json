@@ -1,8 +1,8 @@
 {
   "_skeleton": "process-roadmap",
-  "_description": "Process and phased roadmap deck: 6 slides. Structure: title, end-to-end process, swimlane responsibilities, phased roadmap timeline, success metrics, closing.",
+  "_description": "Process and phased roadmap deck: 6 slides. Structure: title, end-to-end process, swimlane responsibilities, dated phase roadmap, success metrics, closing.",
   "_instructions": "Replace every __FILL_*__ token. Keep the swimlane step count consistent across lanes (use empty string '' for lanes that have no step in that column). Delete this and the _* keys before validating.",
-  "template": "__FILL_TEMPLATE_NAME__ (one of: midnight-blue, forest-green, modern-template, warm-coral)",
+  "template": "__FILL_TEMPLATE_NAME__ (a name from list_templates)",
   "design_mode": "constrained",
   "accent_strategy": "rotate",
   "output_filename": "__FILL_OUTPUT_FILENAME__.pptx",
@@ -16,7 +16,7 @@
       ]
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "contrast_check": true,
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "__FILL_PROCESS_TITLE__ (e.g. 'End-to-end customer journey')"}
@@ -35,7 +35,7 @@
       }
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "contrast_check": true,
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "__FILL_SWIMLANE_TITLE__ (e.g. 'Roles & handoffs')"}
@@ -52,23 +52,25 @@
       }
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "contrast_check": true,
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "__FILL_ROADMAP_TITLE__ (e.g. 'Delivery roadmap, FY26')"}
       ],
       "pattern": {
-        "name": "timeline-horizontal",
-        "values": [
-          {"label": "__FILL_PHASE_1_LABEL__", "date": "__FILL_PHASE_1_DATE__", "body": "__FILL_PHASE_1_BODY__"},
-          {"label": "__FILL_PHASE_2_LABEL__", "date": "__FILL_PHASE_2_DATE__", "body": "__FILL_PHASE_2_BODY__"},
-          {"label": "__FILL_PHASE_3_LABEL__", "date": "__FILL_PHASE_3_DATE__", "body": "__FILL_PHASE_3_BODY__"},
-          {"label": "__FILL_PHASE_4_LABEL__", "date": "__FILL_PHASE_4_DATE__", "body": "__FILL_PHASE_4_BODY__"}
-        ]
+        "name": "phase-roadmap",
+        "values": {
+          "phases": [
+            {"name": "__FILL_PHASE_1_NAME__", "date_label": "__FILL_PHASE_1_DATES__", "description": "__FILL_PHASE_1_DESCRIPTION__", "active": true},
+            {"name": "__FILL_PHASE_2_NAME__", "date_label": "__FILL_PHASE_2_DATES__", "description": "__FILL_PHASE_2_DESCRIPTION__"},
+            {"name": "__FILL_PHASE_3_NAME__", "date_label": "__FILL_PHASE_3_DATES__", "description": "__FILL_PHASE_3_DESCRIPTION__", "milestone": "__FILL_PHASE_3_MILESTONE__"},
+            {"name": "__FILL_PHASE_4_NAME__", "date_label": "__FILL_PHASE_4_DATES__", "description": "__FILL_PHASE_4_DESCRIPTION__"}
+          ]
+        }
       }
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "contrast_check": true,
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "__FILL_METRICS_TITLE__ (e.g. 'How we will measure success')"}

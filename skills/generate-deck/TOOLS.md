@@ -65,7 +65,14 @@ signature or schema registry.
 - Results use compact `structuredContent`. On newer MCP protocol versions,
   `content[0].text` may be a bounded synopsis, so inspect structured data
   instead of parsing a prose fallback. A tool's `next_tool_call` is a
-  suggested recovery path, not permission to mutate external state.
+  suggested recovery path (`{tool, args_template}`; `slide_index: -1` means
+  you supply it), not permission to mutate external state.
+  `generate_presentation`, `auto_repair` and `make_deck` accept an
+  `idempotency_key` retry token: an unchanged retry replays
+  (`idempotent_replay: true`), a changed input under the same key is
+  `IDEMPOTENCY_CONFLICT`. Deterministic planning/validation responses carry a
+  `response_fingerprint` cache key. Details:
+  `docs/AGENT_DIAGNOSTICS.md` §7 (MCP call mechanics).
 
 ## Composition recipes
 

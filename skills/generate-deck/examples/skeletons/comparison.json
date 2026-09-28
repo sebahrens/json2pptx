@@ -2,7 +2,7 @@
   "_skeleton": "comparison",
   "_description": "Comparison-driven deck: 5 slides. Structure: title, before/after transformation, head-to-head capability table, 2x2 positioning, closing. The matrix slide carries a takeaway (Rule 11a).",
   "_instructions": "Replace every __FILL_*__ token. Keep before/after rows aligned (same number of items left and right). Delete this and the _* keys before validating.",
-  "template": "__FILL_TEMPLATE_NAME__ (one of: midnight-blue, forest-green, modern-template, warm-coral)",
+  "template": "__FILL_TEMPLATE_NAME__ (a name from list_templates)",
   "design_mode": "constrained",
   "accent_strategy": "rotate",
   "output_filename": "__FILL_OUTPUT_FILENAME__.pptx",
@@ -16,7 +16,7 @@
       ]
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "contrast_check": true,
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "__FILL_BEFORE_AFTER_TITLE__ (e.g. 'From manual to automated')"}
@@ -46,7 +46,7 @@
       }
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "contrast_check": true,
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "__FILL_HEAD_TO_HEAD_TITLE__ (e.g. 'Capability comparison')"}
@@ -66,7 +66,7 @@
       }
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "contrast_check": true,
       "takeaway": "__FILL_MATRIX_TAKEAWAY__ (one sentence — which quadrant we are in / aiming for)",
       "content": [

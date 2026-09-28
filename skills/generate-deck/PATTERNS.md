@@ -26,7 +26,7 @@ Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid
 
 ```json
 {
-  "layout_id": "blank",
+  "layout_id": "blank-title",
   "pattern": {
     "name": "kpi-3up",
     "values": [
@@ -48,7 +48,7 @@ Do NOT hand-roll shape grids when a named pattern exists. Use the pattern, fill 
 
 Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `show_pattern` returns a `text_budget_guide` block that tells you how much text fits in each configuration — use it to pick the right grid size **before** writing cell content.
 
-**Response shape:** `example_values` (canonical `values`), `text_budget_guide.target_density` (`min_pct` 60 / `ideal_pct` 85 / `max_pct` 110) and `text_budget_guide.configurations[]` with `columns`, `rows`, `body_max_chars` (at 12pt) and `header_max_chars` (at 16pt).
+**Response shape:** `example_values` (canonical `values`), `text_budget_guide.target_density` and `text_budget_guide.configurations[]` with `columns`, `rows`, `body_max_chars` (at 12pt) and `header_max_chars` (at 16pt). `target_density` is a *character* sizing target for choosing a configuration; the post-expansion `density_pct` check below is a *height* ratio with its own 35–110% band.
 
 **Workflow — pick the right configuration:**
 
@@ -60,39 +60,11 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Non-grid patterns** (e.g., `pull-quote`, `stat-hero`, single-cell patterns) have no `text_budget_guide`. For those, use per-placeholder budgets from `list_templates` instead.
 
-**Business Model Canvas.** `bmc-canvas` has nine fixed cells of different sizes. Its `show_pattern` schema describes the per-bullet copy target for each cell and bullet count at default font sizes. The narrow middle cells (`key_activities`, `key_resources`, `customer_relations`, `channels`) hold about 125 characters with one bullet, 25 each with three, and 22 each with four or five. Use at most five bullets in these cells and in the bottom cost/revenue cells. `BODY_TOO_LONG` warnings name the cell and measured target. The 200-character schema maximum permits copy in spacious cells; it is not a readable target for every cell.
-
-**Driver tree.** `driver-tree` supports up to 12 leaf rows. Leaf copy holds about 120 characters through five rows, 62 at 8–12 (45 with annotations); `show_pattern` gives the full table. `BODY_TOO_LONG` names the field; check the fit report when units or font overrides are present.
-
-**Two-column comparisons.** For `comparison-2col`, count body rows plus one when the optional headers are present. At default font sizes, each body cell holds about 200 characters through four effective rows, 196 at five, 131 at six or seven, 66 at eight to ten; ten body rows plus headers do not fit. `BODY_TOO_LONG` identifies the row and left/right cell to shorten. For a "from → to" shift (traditional vs. new model), set `overrides.connectors: true`: a narrow centre gutter carries a per-row accent circle with a chevron joined to both cells, left cells gain an accent stripe on a neutral surface and right cells an accent tint. The text columns narrow to 45% each, so plan about 88% of the per-cell budgets above.
-
-**Phased roadmaps.** `roadmap-phased` activities hold 80 characters at 2 phases × 2 workstreams and about 20 at 8 × 6. `show_pattern` lists the measured target for each 2–8 phase by 2–6 workstream combination. `BODY_TOO_LONG` identifies the exact workstream and phase item to shorten.
-
-**Single-track roadmaps.** `phase-roadmap` accepts up to four `values.parallel_tracks` (one line, ≤90 chars each) for workstreams that run alongside every phase; they render as full-width tinted bars under a `values.parallel_label` (default "In parallel", ≤24 chars).
-
-**Two-track process grids.** `process-grid-2row` accepts `values.column_headers` (≤24 chars) and `values.outcomes` (≤32 chars, rendered as accent pills); each list needs one entry per phase and both rows must have the same phase count, else validation fails.
-
-**Team bios.** `team-bios` has about 220 readable bio characters per card with 1–4 members and 90 with 5–8, at default font sizes. The fifth member adds a second card row. A headshot changes the photo zone but not this bio target. `BODY_TOO_LONG` names the member and target; move longer biographies to a separate slide.
-
-**Metric lists.** `metric-list` holds 120-character `detail` lines through four items and about 90 at five; at six or seven items omit details (and, at seven, the `callout`). `TEXT_EXCEEDS_SHAPE` names a value that still wraps.
-
-**Labeled rows.** `labeled-rows` (WHY / WHAT / HOW) holds 300-character bodies through four rows and about 190 at five or six; `BODY_TOO_LONG` reports the overflow.
-
-**Contact directories.** `contact-directory` fits 24 people with one-line titles in one or two groups at 4–5 per row; four groups fit only as single rows. Wrapped titles cost about a third more height; past that it reports `BODY_TOO_LONG`. Without `columns` it drops to 3 per row first.
-
-**Text sidebars.** `text-sidebar`'s main column holds about 1,100 characters at 14pt and 1,500 at 12pt; keep the sidebar to one statement.
-
-**Swimlanes.** `swimlane` steps hold 80 characters in sparse grids and about 21 at 8 steps × 6 lanes (`show_pattern` lists each combination); actor labels hold 40 (32 with six lanes). `BODY_TOO_LONG` names the lane and step.
-
-**Numbered steps.** `numbered-step-strip` labels hold 60 characters (about 45 in a six-step `chevron`); bodies hold ~178 (chevron), 120 / 116 (six-plus stacked-box / toc). Only `stacked-box` / `toc` accept a seventh step and an optional per-step `icon` (bundled name or `{name|path|url|svg_data}`); `chevron` rejects both. `BODY_TOO_LONG` names long labels; `TEXT_EXCEEDS_SHAPE` flags a mid-word chevron break.
-
-**State-shift hub.** `state-shift-hub` descriptions hold about 100 characters with 3 pairs, 62 with 4, 40 with 5 and 30 with 6; keep `hub_label` near 40 characters.
-
-**Inline KPIs.** `kpi-inline` has a compact height. Captions hold the 40-character schema limit without icons or with up to four KPIs. With icons in five or six cells, the number and optional delta share space with the caption: an eight-character number in a five-KPI bar leaves about 16 caption characters without a delta and none with one. `show_pattern` describes the dense cases; `BODY_TOO_LONG` names the affected KPI and suggests shortening copy or dropping the delta/icon.
-
-**Capability heatmaps.** `capability-heatmap` cells index `tiers` (0 = solid accent). Keep activities to 1–3 short words at 7–8 columns; too-wide header words draw `TEXT_EXCEEDS_SHAPE`, overfull grids `BODY_TOO_LONG`. Sizes: 12–40pt.
-
-**Framework grids.** `framework-grid` rows all take the tallest row's height; keep card bodies near 60 characters at four cards per row. Sizes: 12–40pt.
+**Per-pattern copy targets** (BMC cells, driver-tree leaves, comparison rows,
+roadmap activities, team bios, metric details, swimlane steps, KPI captions and
+the rest) live in each field's `show_pattern` description, measured at default
+sizes for every supported count. Read them there; `BODY_TOO_LONG` names the
+field to shorten and `TEXT_EXCEEDS_SHAPE` a word that cannot fit its shape.
 
 ---
 
@@ -104,7 +76,7 @@ Every shape grid cell has a measurable text capacity. `density_pct` is a **heigh
 
 | Band | Density % | Status | Severity | Meaning |
 |------|-----------|--------|----------|---------|
-| Underfilled | < 60% | `underfilled` | info | Cell looks sparse; content doesn't justify the allocated space |
+| Underfilled | < 35% | `underfilled` | info | Cell looks sparse; content doesn't justify the allocated space |
 | Optimal | 35–110% | `optimal` | — | Content fits naturally with appropriate whitespace |
 | Overflow | > 110% | `overflow` | warning | Text will clip or require aggressive shrinking to fit |
 
@@ -121,7 +93,7 @@ Every shape grid cell has a measurable text capacity. `density_pct` is a **heigh
 | `col` | int | Column index |
 | `max_chars` | int | Maximum characters that fit at the resolved font size |
 | `actual_chars` | int | Characters currently in the cell content |
-| `density_pct` | int | `actual_chars / max_chars × 100` |
+| `density_pct` | int | wrapped text height / cell text height × 100 |
 | `status` | string | `"underfilled"`, `"optimal"`, or `"overflow"` |
 | `font_size_pt` | float | Font size used for the budget calculation |
 
@@ -134,7 +106,7 @@ Compare your planned content against `max_chars` for each cell. Adjust before re
 1. **Rewrite content** to fit the budget — shorter sentences, fewer bullets, tighter phrasing. This preserves meaning and produces richer output than mechanical truncation.
 2. **Swap layout** — if the content genuinely needs more space, use `repair_slide` with `swap_layout` or switch to a pattern with higher capacity (see `layout_suggestions[]` from `expand_pattern`).
 3. **`reduce_text` / `split_at_row`** — use `repair_slide` with `fix.kind: reduce_text` or `split_at_row` to bring cells back into the optimal band.
-4. **`reduce_cell_text`** — truncates a single shape_grid cell to `max_chars` with an ellipsis. Use only when the agent should not rephrase the text (e.g., user-supplied verbatim content that the agent shouldn't alter). After applying, re-validate with `fit_report: true` to confirm zero residual `cell_overflow` findings.
+4. **`reduce_cell_text`** — truncates a single shape_grid cell to `max_chars` with an ellipsis. Use only when the agent should not rephrase the text (e.g., user-supplied verbatim content that the agent shouldn't alter). After applying, re-validate with `fit_report: true` to confirm zero residual `fit_overflow` findings.
 
 **Anti-pattern:** do not use `reduce_cell_text` as the default response to overflow. It is a last-resort fallback, not a substitute for the upstream Text Capacity Awareness loop (Phase 2 VARY).
 
@@ -142,8 +114,8 @@ Compare your planned content against `max_chars` for each cell. Adjust before re
 
 When `expand_pattern` returns cells outside the optimal band:
 
-1. **Underfilled cells (< 60%):**
-   - Add supporting detail, examples, or context to bring density above 60%.
+1. **Underfilled cells (< 35%):**
+   - Add supporting detail, examples, or context to bring density above 35%.
    - If content is inherently short (a metric label, a one-word status), switch to a pattern designed for sparse content — e.g., `kpi-3up` instead of `card-grid`.
    - For a grid where most cells are underfilled, reduce the grid configuration (e.g., 2×2 instead of 3×2) so each cell gets less space.
 

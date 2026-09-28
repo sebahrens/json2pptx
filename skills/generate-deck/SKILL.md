@@ -74,9 +74,8 @@ executable one.
 - [RULES.md](RULES.md): shape-grid, content, contrast, typography, and
   anti-pattern rules. Waterfall `type` sets the sign
   (`chart.waterfall_total_mismatch`).
-- [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance
-  (including tier-rated `capability-heatmap`, labelled-row `framework-grid`
-  and per-pair-count `state-shift-hub` budgets); get the current catalog and per-pattern schema from
+- [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance;
+  get the current catalog, per-pattern schema and per-field copy targets from
   `list_patterns` / `show_pattern`. Out-of-range pattern text sizes are
   rejected, not clamped.
 - [FINDINGS.md](FINDINGS.md): legacy finding and fix details for cases not yet
