@@ -143,6 +143,12 @@ const (
 	// for that text are approximate, and the viewer substitutes a system
 	// font whose metrics may differ (go-slide-creator-s27x0).
 	FindingGlyphMissing = "chart.glyph_missing"
+
+	// FindingFunnelStageIncrease is emitted when a funnel stage is larger
+	// than the stage above it. A funnel reads as progressive narrowing; a
+	// widening stage is a data error or the wrong chart type
+	// (go-slide-creator-7w2ed).
+	FindingFunnelStageIncrease = "chart.funnel_stage_increase"
 )
 
 // FixKind constants for the Kind field of FixSuggestion.

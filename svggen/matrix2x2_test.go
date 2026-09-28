@@ -1321,12 +1321,11 @@ func TestMatrix2x2Chart_VeryNarrowCanvas_LabelsWrapped(t *testing.T) {
 			t.Errorf("Expected SVG to contain full label %q (label was likely truncated)", p.Label)
 		}
 	}
-	// No ellipsis should appear for these reasonably-sized labels.
-	// Note: on systems with wider font metrics (e.g., Linux CI with
-	// different fonts), labels may still be truncated. Log instead of fail
-	// since this is font-dependent behavior.
+	// No ellipsis should appear for these reasonably-sized labels. Text is
+	// measured with svggen's embedded fonts, not host fonts, so this is
+	// deterministic across platforms (go-slide-creator-7w2ed).
 	if strings.Contains(content, "…") {
-		t.Logf("Labels were truncated with ellipsis (may be font-dependent)")
+		t.Errorf("labels were truncated with an ellipsis in a 300x250 matrix")
 	}
 }
 

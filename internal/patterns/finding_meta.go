@@ -1159,6 +1159,16 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"If the target machine lacks a font for the script, shorten or transliterate those labels, or move them into native slide text.",
 		},
 	},
+	"chart.funnel_stage_increase": {
+		Code:        "chart.funnel_stage_increase",
+		Summary:     "A funnel stage is larger than the stage above it.",
+		Severity:    "review",
+		WhenEmitted: "svggen finds a funnel_chart stage whose value exceeds the previous stage's; a funnel reads as progressive narrowing.",
+		RemediationSteps: []string{
+			"Check the stage values and order (fix.params.stage_indices lists the widening stages).",
+			"If the stages are not a narrowing sequence, use a bar chart instead.",
+		},
+	},
 	"chart.zero_sum_pie": {
 		Code:        "chart.zero_sum_pie",
 		Summary:     "A pie/donut chart's slices sum to zero, producing a blank chart.",

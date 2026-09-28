@@ -912,8 +912,26 @@ func TestGanttChart_RowsDoNotOverlap(t *testing.T) {
 			len(rows), overflow.count, totalVisible)
 	}
 
-	if overflow.count > 0 {
-		t.Logf("Visible: %d, overflow: %d", len(rows), overflow.count)
+	// Row layout is pure geometry, so the split is deterministic: adaptive
+	// row sizing fits all 20 tasks in 500pt with nothing overflowed.
+	if overflow.count != 0 || len(rows) != 20 {
+		t.Errorf("expected all 20 rows visible with no overflow, got %d visible + %d overflow", len(rows), overflow.count)
+	}
+
+	// Far more tasks than the minimum row height allows must overflow, while
+	// still showing rows.
+	var many []GanttTask
+	for i := 0; i < 200; i++ {
+		many = append(many, GanttTask{
+			ID:        fmt.Sprintf("m%d", i),
+			Label:     fmt.Sprintf("Task %d", i+1),
+			StartDate: date(2024, 1, 1),
+			EndDate:   date(2024, 2, 1),
+		})
+	}
+	rows, overflow = chart.buildRows(GanttData{Tasks: many}, plotArea)
+	if overflow.count == 0 || len(rows) == 0 || len(rows)+overflow.count != 200 {
+		t.Errorf("200 tasks in 500pt: got %d visible + %d overflow, want both non-zero summing to 200", len(rows), overflow.count)
 	}
 }
 

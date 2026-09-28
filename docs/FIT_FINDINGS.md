@@ -843,6 +843,25 @@ Drawn text contains characters the embedded chart font has no glyph for (typical
 }
 ```
 
+### `chart.funnel_stage_increase`
+
+**Action:** `review`
+**Pattern:** `funnel_chart`
+**Fix kind:** `replace_value` (params: `stage_indices` — 0-based indices of the widening stages, `diagram_type`)
+
+A funnel stage is larger than the stage above it. A funnel reads as progressive narrowing, so a widening stage is either a data error or the wrong chart (use a bar chart for unordered stage sizes). The funnel still renders as authored.
+
+```json
+{
+  "code": "chart.funnel_stage_increase",
+  "message": "funnel: 1 stage(s) are larger than the stage above them (\"B\" (100) > \"A\" (1)); a funnel should narrow — check the values or use a bar chart",
+  "fix": { "kind": "replace_value", "params": { "stage_indices": [1], "diagram_type": "funnel_chart" } },
+  "severity": "warning"
+}
+```
+
+A gauge whose `value` lies outside `[min, max]` reports the existing `chart.point_out_of_range` (fix kind `explicit_scale`, params `value`, `min`, `max`): the needle is pinned at the nearest end of the dial while the label prints the real value. A timeline `date` string that neither parses nor serves as the item's label reports `chart.invalid_time_format` (fix kind `replace_value`, params `invalid_dates`); when no item has a parseable date the items are spaced evenly in authored order and no date axis is drawn.
+
 ### `CHART_PLACEHOLDER_EMPTY`
 
 **Action:** `review`

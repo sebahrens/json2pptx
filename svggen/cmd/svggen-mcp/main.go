@@ -39,6 +39,9 @@ import (
 // value.
 const version = svggen.Version
 
+// maxOutputDimension caps render_diagram width and height in pixels.
+const maxOutputDimension = 8192
+
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
@@ -102,10 +105,10 @@ func renderDiagramTool() mcp.Tool {
 			mcp.Enum("svg", "png"),
 		),
 		mcp.WithNumber("width",
-			mcp.Description("Output width in pixels (default: 800)."),
+			mcp.Description("Output width in pixels (default: 800, max: 8192; larger values return INVALID_VALUE)."),
 		),
 		mcp.WithNumber("height",
-			mcp.Description("Output height in pixels (default: 600)."),
+			mcp.Description("Output height in pixels (default: 600, max: 8192; larger values return INVALID_VALUE)."),
 		),
 		mcp.WithString("title",
 			mcp.Description("Diagram title (optional)."),
@@ -239,16 +242,30 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 		req.Title = title
 	}
 
-	// Optional dimensions
-	if w, ok := args["width"]; ok {
-		if wf, ok := w.(float64); ok && wf > 0 {
-			req.Output.Width = int(wf)
+	// Optional dimensions, capped at maxOutputDimension. An uncapped
+	// 20000x20000 request produced a 26668px SVG, and a 12000px PNG took 11 s
+	// and 5.4 MB of base64 (go-slide-creator-7w2ed).
+	for _, dim := range []struct {
+		name string
+		dst  *int
+	}{{"width", &req.Output.Width}, {"height", &req.Output.Height}} {
+		v, ok := args[dim.name].(float64)
+		if !ok || v <= 0 {
+			continue
 		}
-	}
-	if h, ok := args["height"]; ok {
-		if hf, ok := h.(float64); ok && hf > 0 {
-			req.Output.Height = int(hf)
+		if v > maxOutputDimension {
+			return emitErrorResult(diagnostic{
+				Code:     CodeInvalidValue,
+				Message:  fmt.Sprintf("%s %g exceeds the maximum output dimension %d px", dim.name, v, maxOutputDimension),
+				Path:     dim.name,
+				Severity: "error",
+				Fix: &fix{Kind: "replace_value", Params: map[string]any{
+					"path": dim.name, "invalid_value": v, "max": maxOutputDimension,
+				}},
+				Details: map[string]any{"pattern": diagramType},
+			})
 		}
+		*dim.dst = int(v)
 	}
 
 	// Optional style — reject invalid payloads with a structured error.
@@ -1367,6 +1384,7 @@ func buildSvggenVocabularies() capabilitiesVocabularies {
 		svggen.FindingZeroSumPie,
 		svggen.FindingOrgChartNodesInvalid,
 		svggen.FindingGlyphMissing,
+		svggen.FindingFunnelStageIncrease,
 	}
 	sort.Strings(findingCodes)
 	return capabilitiesVocabularies{

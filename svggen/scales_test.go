@@ -506,20 +506,29 @@ func TestCategoricalScale_Basic(t *testing.T) {
 	categories := []string{"A", "B", "C", "D"}
 	scale := NewCategoricalScale(categories).SetRangeCategorical(0, 400)
 
-	// Test that each category is positioned correctly
+	// Band centres must lie inside the range, be evenly spaced, and sit
+	// symmetrically about the range centre (equal outer padding).
+	positions := make([]float64, len(categories))
 	for i, cat := range categories {
-		pos := scale.Scale(cat)
-
-		// Position should be approximately evenly spaced
-		expectedApprox := float64(i+1) * 400 / float64(len(categories)+1)
-		if math.Abs(pos-expectedApprox) > 100 { // Very rough check
-			t.Logf("Category %s at position %v (expected ~%v)", cat, pos, expectedApprox)
+		positions[i] = scale.Scale(cat)
+		if positions[i] < 0 || positions[i] > 400 {
+			t.Errorf("Category %s position %v outside range [0, 400]", cat, positions[i])
 		}
-
-		// Position should be within range
-		if pos < 0 || pos > 400 {
-			t.Errorf("Category %s position %v outside range [0, 400]", cat, pos)
+	}
+	step := positions[1] - positions[0]
+	if step <= 0 {
+		t.Fatalf("categories not increasing: %v", positions)
+	}
+	for i := 2; i < len(positions); i++ {
+		if d := positions[i] - positions[i-1]; math.Abs(d-step) > 1e-9 {
+			t.Errorf("uneven spacing between %s and %s: %v, want %v", categories[i-1], categories[i], d, step)
 		}
+	}
+	if lead, trail := positions[0], 400-positions[len(positions)-1]; math.Abs(lead-trail) > 1e-9 {
+		t.Errorf("asymmetric outer padding: leading %v, trailing %v", lead, trail)
+	}
+	if scale.Scale("missing") != 0 {
+		t.Errorf("unknown category should map to range min, got %v", scale.Scale("missing"))
 	}
 }
 

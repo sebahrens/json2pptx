@@ -793,7 +793,9 @@ func assertExampleRenders(t *testing.T, diagramType, flavour string, example map
 		switch f.Code {
 		case svggen.FindingDiagramItemsDropped, svggen.FindingInvalidTimeFormat,
 			svggen.FindingQuadrantPositionDefaulted, svggen.FindingInvalidNumeric,
-			svggen.FindingOrgChartNodesInvalid:
+			svggen.FindingOrgChartNodesInvalid, svggen.FindingPointOutOfRange,
+			svggen.FindingFunnelStageIncrease, svggen.FindingWaterfallTotalMismatch,
+			svggen.FindingGlyphMissing:
 			t.Errorf("%s %s example emits %s: %s", diagramType, flavour, f.Code, f.Message)
 		}
 	}
@@ -1327,4 +1329,51 @@ func TestGetCapabilities(t *testing.T) {
 			}
 		}
 	})
+}
+
+// go-slide-creator-7w2ed: width/height were accepted uncapped (20000x20000
+// produced a 26668px SVG; a 12000px PNG took 11 s). Above 8192 px render_diagram
+// returns INVALID_VALUE naming the dimension and the maximum.
+func TestRenderDiagramCapsOutputDimensions(t *testing.T) {
+	data := map[string]any{
+		"categories": []any{"A", "B"},
+		"series":     []any{map[string]any{"name": "S", "values": []any{1, 2}}},
+	}
+	for _, tc := range []struct {
+		name    string
+		w, h    float64
+		wantErr string
+	}{
+		{"width_over", 20000, 600, "width"},
+		{"height_over", 800, 8193, "height"},
+		{"at_cap", 8192, 600, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := handleRenderDiagram(context.Background(), makeRequest(map[string]any{
+				"type": "bar_chart", "data": data, "width": tc.w, "height": tc.h,
+			}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			text := res.Content[0].(mcp.TextContent).Text
+			if tc.wantErr == "" {
+				if res.IsError {
+					t.Fatalf("render at the cap failed: %s", text)
+				}
+				return
+			}
+			if !res.IsError {
+				t.Fatalf("%s %gx%g rendered; want INVALID_VALUE", tc.name, tc.w, tc.h)
+			}
+			var env errorResult
+			if err := json.Unmarshal([]byte(text), &env); err != nil {
+				t.Fatalf("parse error envelope: %v", err)
+			}
+			if len(env.Diagnostics) != 1 || env.Diagnostics[0].Code != CodeInvalidValue ||
+				env.Diagnostics[0].Path != tc.wantErr || env.Diagnostics[0].Fix == nil ||
+				env.Diagnostics[0].Fix.Params["max"] != float64(maxOutputDimension) {
+				t.Errorf("unexpected envelope: %s", text)
+			}
+		})
+	}
 }
