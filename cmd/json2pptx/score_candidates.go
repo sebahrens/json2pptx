@@ -75,6 +75,8 @@ var contentAxisCodes = map[string]bool{
 	patterns.ErrCodeContentDropped:         true,
 	patterns.ErrCodePatternContentMismatch: true,
 	patterns.ErrCodeTakeawayMissing:        true,
+	patterns.ErrCodeTitleNotAction:         true,
+	patterns.ErrCodeTitleTooLong:           true,
 }
 
 // candidateRefusalCeiling is where a candidate's ranking score starts once any

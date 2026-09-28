@@ -44,6 +44,18 @@ type titleMeasurement struct {
 	result textfit.FitResult
 }
 
+// renderedSizeHPt is the title size generation actually writes: the measured
+// autofit scale is baked into the run size (bakeTitleFit), so a 44pt template
+// title that fits at 90% renders at 39.5pt. The informational wrap notice must
+// measure at that size — measuring at the unscaled template size reported
+// one-line titles as wrapping (go-slide-creator-fabz4).
+func (m titleMeasurement) renderedSizeHPt(startHPt int) int {
+	if !m.OK || m.result.Overflow || m.result.FontScale <= 0 || m.result.FontScale >= 100000 {
+		return startHPt
+	}
+	return startHPt * m.result.FontScale / 100000
+}
+
 // Flagged reports whether the title should be shortened.
 func (m titleMeasurement) Flagged() bool { return m.OK && (m.Refuse || m.Overflow || m.Shrinks) }
 
@@ -261,25 +273,39 @@ func collectTitleFitFindings(input *PresentationInput, layouts []types.LayoutMet
 				findings = append(findings, *f)
 				continue
 			}
-			// Informational wrap notice: emitted once the slide's layout is
-			// known concretely, whether the author named it or the selector
-			// predicted it. Canonical-id slides (layout_id: "content") still
-			// get only the measured verdict above, which is more specific.
-			if findLayoutForSlide(slide, layouts) == nil && slide.LayoutID != "" {
-				continue
-			}
-			if f := generator.DetectTitleWraps(generator.TitleWrapsInput{
-				SlideIndex:  si,
-				Path:        path,
-				Title:       title,
-				WidthEMU:    ph.Bounds.Width,
-				HeightEMU:   ph.Bounds.Height,
-				FontSizeHPt: effectivePh.FontSize,
-				FontName:    ph.FontFamily,
-			}); f != nil {
+			if f := titleNoticeFinding(slide, si, path, title, ph, effectivePh, m, layouts); f != nil {
 				findings = append(findings, *f)
 			}
 		}
 	}
 	return findings, measured
+}
+
+// titleNoticeFinding is the advisory verdict for a title the measured check
+// found comfortable: TITLE_TOO_LONG for a content-slide headline that runs past
+// two lines at the size generation writes (go-slide-creator-d830i), otherwise
+// the informational title_wraps notice measured at that same size.
+func titleNoticeFinding(slide *SlideInput, si int, path, title string, ph, effectivePh *types.PlaceholderInfo, m titleMeasurement, layouts []types.LayoutMetadata) *patterns.FitFinding {
+	renderedHPt := m.renderedSizeHPt(effectivePh.FontSize)
+	if m.OK && slideQualifiesForDuplicateTitleCheck(*slide) && slideCarriesArgument(*slide, layouts...) {
+		if f := titleTooLongFinding(path, title, ph.FontFamily, effectivePh.TextCaps, renderedHPt, ph.Bounds.Width); f != nil {
+			return f
+		}
+	}
+	// Informational wrap notice: emitted once the slide's layout is known
+	// concretely, whether the author named it or the selector predicted it.
+	// Canonical-id slides (layout_id: "content") still get only the measured
+	// verdict, which is more specific.
+	if findLayoutForSlide(slide, layouts) == nil && slide.LayoutID != "" {
+		return nil
+	}
+	return generator.DetectTitleWraps(generator.TitleWrapsInput{
+		SlideIndex:  si,
+		Path:        path,
+		Title:       title,
+		WidthEMU:    ph.Bounds.Width,
+		HeightEMU:   ph.Bounds.Height,
+		FontSizeHPt: renderedHPt,
+		FontName:    ph.FontFamily,
+	})
 }

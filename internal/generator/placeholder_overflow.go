@@ -2,6 +2,7 @@ package generator
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -176,7 +177,11 @@ func DetectTitleWraps(input TitleWrapsInput) *patterns.FitFinding {
 	// A single line height is fontSize * lineSpacing (default 1.2).
 	// MeasureHeight uses the same default, so compute the single-line
 	// threshold identically: fontPt * 1.2, converted to EMU.
-	singleLineEMU := int64(fontSizePt * 1.2 * 12700) // 12700 EMU per point
+	// Rounded, not truncated: 48pt * 1.2 * 12700 is 731519.99…, and truncating
+	// it made an exactly-one-line title (731520) read as wrapping — "Product
+	// Launch Strategy" on one line was reported as title_wraps
+	// (go-slide-creator-fabz4).
+	singleLineEMU := int64(math.Round(fontSizePt * 1.2 * 12700)) // 12700 EMU per point
 
 	if measuredEMU <= singleLineEMU {
 		return nil

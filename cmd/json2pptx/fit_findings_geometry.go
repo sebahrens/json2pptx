@@ -134,6 +134,8 @@ func collectGeometryFindings(input *PresentationInput, layouts []types.LayoutMet
 		safe := contentRelativeBoundsBase(geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
 		if f := checkSlideUnderused(acc.ink, safe, &slide, si, patternName, acc.heightSensitiveOverflow()); f != nil {
 			findings = append(findings, *f)
+		} else if f := checkVerticalImbalance(acc.ink, safe, &slide, si, patternName); f != nil {
+			findings = append(findings, *f)
 		}
 	}
 	return findings

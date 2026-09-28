@@ -29,7 +29,8 @@ then code. A deck-level finding precedes slide 0 at equal severity.
 `score_deck` classifies a finding as `pattern_choice`, `rendering`, or
 `content`. A pattern-choice problem usually calls for a different visual
 family. A rendering problem calls for fit, geometry, or contrast repair.
-A content problem calls for a better title, evidence, labels, or copy.
+A content problem (e.g. `TITLE_NOT_ACTION`, `TITLE_TOO_LONG`) calls for a
+better title, evidence, labels, or copy.
 The classification is more useful than a generic increase-the-score loop.
 
 On raw decks, `propose_repairs` translates findings to candidate directives

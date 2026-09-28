@@ -188,3 +188,16 @@ func hasColumnWidthDeficit(numCols int, availableWidth int64, headers []string, 
 	_, deficit := calculateColumnWidthsWithDiag(numCols, availableWidth, headers, rows, fontSize)
 	return deficit
 }
+
+// TableColumnWidths exposes the renderer's content-aware column allocator so
+// fit-report measurement wraps each cell at the width generation gives it,
+// not at an equal split (go-slide-creator-fabz4).
+func TableColumnWidths(headers []string, rows [][]types.TableCell, widthEMU int64, fontSizeHPt int) []int64 {
+	if len(headers) == 0 || widthEMU <= 0 {
+		return nil
+	}
+	if fontSizeHPt <= 0 {
+		fontSizeHPt = defaultFontSize
+	}
+	return calculateColumnWidths(len(headers), widthEMU, headers, rows, fontSizeHPt)
+}

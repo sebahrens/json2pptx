@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"unicode"
 
@@ -351,7 +352,58 @@ func (t *teamBios) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		RowGap:  0,
 		Rows:    rows,
 	}
+	capTeamBiosTextRows(ctx, grid, columns)
 	return grid, nil
+}
+
+// capTeamBiosTextRows sizes each card-row's text row to its tallest member
+// text instead of 60% of the card height, and centres the block. Short bios
+// used to sit at the top of a tall empty text band, so the slide read
+// top-heavy with ~2in of blank space below the cards (VERTICAL_IMBALANCE,
+// go-slide-creator-u9xfy). The photo row keeps its nominal share.
+func capTeamBiosTextRows(ctx ExpandContext, grid *jsonschema.ShapeGridInput, columns int) {
+	const (
+		insetPt    = 14.2 // 0.5cm text inset per side (conservative: narrower measures taller)
+		padPt      = 6.0
+		photoShare = 40.0 // percent of a card-row
+	)
+	w, h := contentAreaPt(ctx)
+	cardRows := len(grid.Rows) / 2
+	if cardRows == 0 || columns == 0 {
+		return
+	}
+	textW := equalColumnWidthPt(w, columns, grid.Gap) - 2*insetPt
+	nominalCard := h / float64(cardRows)
+	capped := false
+	for r := 1; r < len(grid.Rows); r += 2 {
+		tallest := 0.0
+		for _, c := range grid.Rows[r].Cells {
+			if c != nil && c.Shape != nil && len(c.Shape.Text) > 0 {
+				tallest = math.Max(tallest, shapeTextHeightPt(ctx.Theme.BodyFont, c.Shape.Text, textW))
+			}
+		}
+		need := math.Ceil(tallest + 2*padPt)
+		if tallest <= 0 || need >= nominalCard*0.6 {
+			continue
+		}
+		grid.Rows[r].MaxHeight = need
+		capped = true
+	}
+	if !capped {
+		return
+	}
+	// Row Height values are ratios that only a stretching grid normalises; a
+	// centred block reads them as percentages. Pin each photo row to its 40%
+	// share of a card-row and let each text row flex up to its cap.
+	for r := 0; r+1 < len(grid.Rows); r += 2 {
+		grid.Rows[r].Height = photoShare / float64(cardRows)
+		grid.Rows[r+1].Height = 0
+		grid.Rows[r+1].Flex = 1
+		if grid.Rows[r+1].MaxHeight == 0 {
+			grid.Rows[r+1].MaxHeight = math.Floor(nominalCard * 0.6)
+		}
+	}
+	grid.VerticalAlign = GridVerticalAlignDefault
 }
 
 // ---------------------------------------------------------------------------

@@ -94,6 +94,14 @@ const (
 	ErrCodeBulletNestingDeep = "BULLET_NESTING_DEEP"
 	ErrCodeMissingAltText    = "MISSING_ALT_TEXT"
 	ErrCodeDuplicateTitle    = "DUPLICATE_TITLE"
+	// ErrCodeTitleNotAction flags a content-slide title that names a topic
+	// ("Market Overview") instead of stating the slide's point: fewer than four
+	// words with no number and no verb (go-slide-creator-d830i). Advisory.
+	ErrCodeTitleNotAction = "TITLE_NOT_ACTION"
+	// ErrCodeTitleTooLong flags a content-slide title that renders on more than
+	// two lines at the size generation writes (go-slide-creator-d830i).
+	// Advisory; the measured TITLE_OVERFLOW / title_wraps codes own fit.
+	ErrCodeTitleTooLong = "TITLE_TOO_LONG"
 	// ErrCodeLowContrastHighlight reports a pattern highlight the author chose
 	// that does not read as a highlight against the structure it sits in
 	// (go-slide-creator-ah5s).
@@ -249,6 +257,8 @@ var (
 	ErrBulletNestingDeep = errors.New("bullet list nests more than two levels deep")
 	ErrMissingAltText    = errors.New("image or icon asset is missing alt text")
 	ErrDuplicateTitle    = errors.New("slide title duplicates another content slide's title")
+	ErrTitleNotAction    = errors.New("content slide title names a topic instead of stating a point")
+	ErrTitleTooLong      = errors.New("content slide title renders on more than two lines")
 	ErrContentDropped    = errors.New("author-provided content was dropped without being placed")
 
 	ErrChartValueCoerced     = errors.New("non-numeric chart value coerced to zero")
@@ -322,6 +332,8 @@ var codeSentinel = map[string]error{
 	ErrCodeBulletNestingDeep:       ErrBulletNestingDeep,
 	ErrCodeMissingAltText:          ErrMissingAltText,
 	ErrCodeDuplicateTitle:          ErrDuplicateTitle,
+	ErrCodeTitleNotAction:          ErrTitleNotAction,
+	ErrCodeTitleTooLong:            ErrTitleTooLong,
 	ErrCodeContentDropped:          ErrContentDropped,
 	ErrCodeChartValueCoerced:       ErrChartValueCoerced,
 	ErrCodeChartShapeInferred:      ErrChartShapeInferred,

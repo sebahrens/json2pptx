@@ -627,7 +627,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// collectFitFindings, dedupFitFindings removes the duplicates by
 	// (Code, Path, Action, Message).
 	fitFindings = append(fitFindings, strictFitFindings...)
-	fitFindings = dedupFitFindings(fitFindings)
+	fitFindings = supersedeRealizedContrastPredictions(dedupFitFindings(fitFindings))
 
 	// Apply per-slide finding budget.
 	verboseFit, _ := request.GetArguments()["verbose_fit"].(bool)

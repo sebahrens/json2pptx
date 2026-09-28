@@ -326,6 +326,8 @@ An ordinary two-line title in a box tall enough for it produces no finding. The 
 
 Titles are never ellipsized by the generator. A wrap notice describes the lines at the template font, not lost text; measured fit decides whether shortening is required.
 
+The wrap notice measures at the size generation actually writes: the template title size times the measured autofit scale baked into the run (a 44pt title that fits at 90% renders at 39.5pt). Measuring at the unscaled template size reported titles that render on one line as wrapping — 22 of 28 slides on `sovereign-ai-strategy` / midnight-blue (go-slide-creator-fabz4). The one-line threshold is rounded, not truncated, so an exactly-one-line 48pt title is not reported. On content slides a title that renders on three or more lines is reported as `TITLE_TOO_LONG` instead.
+
 **Measured escalation (go-slide-creator-vjwn).** Titles are also measured against the resolved title placeholder with the template's inherited title style (master size, all-caps, line spacing; canonical `layout_id`s such as `"content"` are resolved) using exact glyph widths — the same measurement the generator applies at render time. When the title only fits below the comfort size (80% of the template title size, capped at 32pt for large display titles) or only with reduced line spacing, `title_wraps` is emitted with `action: shrink_or_split`, `fix.kind: shorten_title` and `fix.params: {current_chars, max_chars, fit_scale_pct}` (`max_chars` = longest prefix that fits at the comfort size). When it cannot fit at all, `TITLE_OVERFLOW` is emitted instead. `validate` and the generate `quality` score use the same verdict, and they now say it in the same words: the validate-time diagnostic is the very same finding converted to a diagnostic, carrying the identical code (`title_wraps` / `TITLE_OVERFLOW`), path and message, so the findings envelope collapses the two into one entry instead of reporting one wrapped title twice under two codes (`max_length` no longer appears for titles). The measured verdict is now the **only** title-length rule:
 
 - The 60-character score fallback is gone. An unmeasurable title scores clean rather than against a number nothing renders; `HEADLINE_TOO_LONG` (12 words) is the fallback lint for that case, and it stands down for any title the measurement covered.
@@ -833,6 +835,8 @@ The `chart-insights-split` pattern was expanded without a `chart` spec, so the l
 
 Text exceeds the height available to it. The `split_at_row` fix includes a `row` parameter suggesting where to split the table.
 
+On a **table** whose frame is known (a `shape_grid` cell, or a body placeholder on a resolved layout), each cell is wrapped at the renderer's content-aware column width and judged against the most lines its row could take while every other row keeps its minimum height. Table rows grow with their content, so the old equal "row share" of the frame refused cells that render cleanly ("needs 4 lines @ 14pt; cell allows 3" on the sovereign-ai risk table, go-slide-creator-fabz4). Whole-table overflow is predicted from the renderer's own row plan as `table_rows_truncated`. Without a known frame the legacy slide-proportion estimate applies.
+
 On a **shape_grid cell** it is emitted only when the wrapped text does not fit **even at the smallest autofit shrink the renderer applies** (`textcapacity.AutofitFloorScale`, 20%) — i.e. text is genuinely clipped. A cell the renderer merely shrinks into (density >110% but `fits`) renders every word; the defect there is the resulting size, reported as `TEXT_BELOW_READABLE_MIN` at `review`. Reporting the shrink itself as `refuse` refused the project's own showcase decks — `business-model-canvas` scored 62 with 4 refusals on cells whose bullets are fully visible (go-slide-creator-lmpu). The fix is `reduce_cell_text` with the cell's own `cell_path` and `max_chars` budget — apply it verbatim. `reduce_text` walks *content items* and cannot reach grid text, so aiming it at a cell answers `code: "wrong_kind_for_target"` with `did_you_mean: "reduce_cell_text"` and a corrected `next_tool_call` (go-slide-creator-9zof). A **grid row** whose content exceeds its `max_height` is not itself a text target: its finding carries the advisory `increase_row_height` (guidance + `reshape_grid` / `reduce_cell_text` alternatives), while each overfull cell in it carries its own executable fix.
 
 ```json
@@ -1226,6 +1230,32 @@ Slide selection:
 }
 ```
 
+### `TITLE_NOT_ACTION`
+
+**Action:** `info`
+**Pattern:** *(none — content lint)*
+**Fix kind:** `review` (advisory)
+
+A content slide's title names a topic ("Market Overview") instead of stating the slide's point: fewer than four words, no digit, and no verb from a small action-title lexicon (or an `-ed` form). Title, section and chrome slides, slides that state their point in a `takeaway`, and navigation titles (Agenda, Appendix, Q&A, Thank you, …) are exempt. Heuristic, so it is `info`: it costs no score points and does not count toward the gate (go-slide-creator-d830i). `fix.params` carry `placeholder_id`, `current_words` and a `hint`.
+
+```json
+{
+  "path": "/slides/2/content/0",
+  "code": "TITLE_NOT_ACTION",
+  "message": "slide 3: title \"Market Overview\" names a topic, not the slide's point — state the takeaway as a sentence with a verb or a number",
+  "fix": { "kind": "review", "params": { "placeholder_id": "title", "current_words": 2 } },
+  "action": "info"
+}
+```
+
+### `TITLE_TOO_LONG`
+
+**Action:** `review`
+**Pattern:** `placeholder`
+**Fix kind:** `shorten_title`
+
+A content slide's title fits its placeholder but renders on three or more lines at the size generation writes. A headline over two lines stops reading as one claim. It replaces the `title_wraps` notice for that title; titles that do not fit comfortably are still `title_wraps` (`shrink_or_split`) or `TITLE_OVERFLOW`. Cover and section titles are exempt (go-slide-creator-d830i). `fix.params`: `current_chars`, `rendered_lines`, `max_lines` (2) and `max_chars` — the longest word prefix that fits in two lines.
+
 ### `TEXT_EXCEEDS_SHAPE`
 
 **Action:** `review` for predicted overflow below 2×; **`shrink_or_split` (blocking)** for predicted overflow at least 2× or a measured pattern failure
@@ -1343,6 +1373,24 @@ Fires for e.g. an insights-only `chart-insights-split`, a `kpi-inline` capped to
   "action": "review"
 }
 ```
+
+### `VERTICAL_IMBALANCE`
+
+**Action:** `review`
+**Pattern:** the slide's pattern (empty for raw `shape_grid`)
+**Fix kind:** `add_detail_or_resize`
+**Emitted at:** preflight, deterministic geometry
+
+The slide's grid content hugs one edge of the safe content area: the empty band above or below the ink is at least 1.25in and at least 30% of the zone height larger than the band on the other side — an empty band above a roadmap, or a row of cards pinned to the top (go-slide-creator-u9xfy). Centred content with equal margins is balanced and is not reported; a slide already reported as `SLIDE_UNDERUSED` is not reported twice; slides with body placeholder content are skipped; on a slide with a `takeaway` the band below the grid is not counted, because the takeaway renders there. `fix.params`: `empty_band_in`, `empty_band_side` (`above` / `below`) and a `hint`. Exempt from the gate's problem-slide share, like the other airiness codes.
+
+### `SPARSE_PLACEHOLDER`
+
+**Action:** `review`
+**Pattern:** *(none — placeholder content)*
+**Fix kind:** `add_detail_or_resize`
+**Emitted at:** preflight
+
+A slide whose only content besides the title is one text / bullets body, in a body placeholder at least 35% of the slide tall, where the measured text (placeholder font and size) fills under 25% of the placeholder height — four short bullets stuck to the top of an empty slide (go-slide-creator-u9xfy). Slides with a grid, pattern, chart, table or image are laid out by that content and are skipped. `fix.params`: `text_height_pct`, `threshold_pct` and a `hint` (turn the points into a pattern, add evidence or a takeaway, or merge the slide). Exempt from the gate's problem-slide share.
 
 ### `CONTENT_DROPPED`
 
@@ -1521,6 +1569,8 @@ The placeholder's own fill cannot be verified or auto-fixed safely. A gradient m
 **Fix kind:** `replace_color`
 
 Text color was automatically replaced to meet WCAG AA contrast requirements against the resolved background. For `shape_grid` cells the background is the *effective* fill: `alpha` (composited over the theme `lt1`) and `lumMod`/`lumOff` modifiers on the solid fill are applied before the ratio is computed, so a light accent tint is not mistaken for the saturated base accent. This is informational — the fix has already been applied. The `fix.params` include the original and replacement colors, the background color, the contrast ratios before and after the swap, and the text surface `source`.
+
+In `generate` / `generate_presentation` / `score_deck` responses a `contrast_predicted` finding is dropped once the render recorded the same swap (same slide, same from / to / background colours) as `contrast_autofixed`, and a slide's `contrast_autofixed` records that carry no executable fix are folded into one finding whose message counts the surfaces ("auto-fixed low-contrast text on 4 surfaces of this slide, e.g. …"). Records with a `replace_color` fix stay separate. Before this a deck reported each swap twice — ~50 info lines on one 28-slide deck (go-slide-creator-fabz4).
 
 The finding's `path` locates the swap so an agent can map it back to the offending element. For `shape_grid` cell swaps the path is the flat rendered-shape index `"/slides/{i}/shape_grid/shapes/{n}"` (the original grid row/cell coordinates are not retained on the raw shape XML at render time). For template layout text (the `lstStyle`/`run` sources) the path is the slide-level `"/slides/{i}"`. Deck chrome — the footer line and the page number — is reported at `"/slides/{i}/chrome"` with `source: "chrome"`. The owning slide index is derived from `path` like every other finding. `fix.params.source` names the surface: `shape_grid`, `shape_grid_group`, `lstStyle`, `run`, `chrome`, `layout-lstStyle` or `master-txStyles`.
 

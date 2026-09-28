@@ -677,7 +677,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	if jsonOutputPath == "" {
 		allFitFindings = append(allFitFindings, collectDiagramIconFindings(input)...)
 	}
-	allFitFindings = dedupFitFindings(allFitFindings)
+	allFitFindings = supersedeRealizedContrastPredictions(dedupFitFindings(allFitFindings))
 
 	// Build per-slide resolution summary
 	slideResolutions := buildSlideResolutions(input.Slides, slideSpecs, templateLayouts, syntheticFiles,
