@@ -76,7 +76,7 @@ Section dividers are numbered automatically `01`, `02`, … in deck order. Omit 
 
 | # | Rule | Rationale |
 |---|---|---|
-| 16 | Engine auto-replaces low-contrast text (WCAG AA for that text's size). On a fill you authored it nudges the color toward black/white; on a background YOU set on the slide it snaps to a template text color instead. Auto-fixes are visible — check `fit_findings` for `contrast_autofixed` entries (with before/after ratios) before deciding whether to re-author colors | White on `accent3`-`accent6` → surprise gray. Fix: use `accent1`/`accent2` fill, or `dk1` text, or `"contrast_check": false` (last resort — only when you've verified contrast manually) |
+| 16 | Engine auto-replaces low-contrast text (WCAG AA for its size: 3:1 only at ≥18pt / ≥14pt bold) with a template text color (`lt1`/`dk2`/`dk1`), one color per fill per slide. It keeps your color when a swap would barely raise the ratio, and never recolors text matching a transparent cell's canvas (hidden on purpose). Check `fit_findings` for `contrast_autofixed` (before/after ratios) before re-authoring colors | White on light accents → dark text. Fix: a darker accent fill, `dk1` text, or `"contrast_check": false` (last resort, after checking contrast yourself) |
 
 ## Icons (no emoji)
 
