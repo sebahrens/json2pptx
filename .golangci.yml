@@ -1,4 +1,4 @@
-# golangci-lint configuration for go-slide-creator
+# golangci-lint configuration for json2pptx
 # See: https://golangci-lint.run/docs/configuration/
 version: "2"
 

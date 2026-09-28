@@ -1,4 +1,4 @@
-# Go Slide Creator Makefile
+# json2pptx Makefile
 #
 # Targets:
 #   make              Build all binaries (current OS/arch)

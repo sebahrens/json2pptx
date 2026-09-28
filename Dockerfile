@@ -41,8 +41,8 @@ ARG COMMIT_SHA=unknown
 ARG BUILD_TIME=unknown
 
 # OCI Image Labels
-LABEL org.opencontainers.image.title="Go Slide Creator"
-LABEL org.opencontainers.image.description="AI-powered slide deck generator service"
+LABEL org.opencontainers.image.title="json2pptx"
+LABEL org.opencontainers.image.description="Generate PowerPoint decks from structured JSON (CLI, HTTP API, MCP server)"
 LABEL org.opencontainers.image.version="${VERSION}"
 LABEL org.opencontainers.image.revision="${COMMIT_SHA}"
 LABEL org.opencontainers.image.created="${BUILD_TIME}"

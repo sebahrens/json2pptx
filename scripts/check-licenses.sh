@@ -1,5 +1,5 @@
 #!/bin/bash
-# License compliance check for go-slide-creator
+# License compliance check for json2pptx
 # Fails if any restricted licenses are found in dependencies
 #
 # Usage: ./scripts/check-licenses.sh
@@ -20,7 +20,7 @@ fi
 
 # Run license check
 # --disallowed_types: GPL, AGPL, and other copyleft licenses that require
-# derivative works to be open source (incompatible with MIT)
+# derivative works to be open source (incompatible with Apache-2.0 distribution)
 #
 # Note: We allow LGPL because Go uses dynamic dispatch (interfaces),
 # not static linking, making LGPL-licensed libraries compatible.
