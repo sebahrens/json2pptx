@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
@@ -146,7 +147,7 @@ func bmcNamedCells(v *BMCCanvasValues) []bmcNamedCell {
 
 // PostExpandWarnings gives authors a cell-specific copy target. The schema
 // retains the 200-character item maximum because spacious cells can use it.
-func (b *bmcCanvas) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+func (b *bmcCanvas) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*BMCCanvasValues)
 	if !ok || v == nil {
 		return nil
@@ -170,6 +171,17 @@ func (b *bmcCanvas) PostExpandWarnings(_ ExpandContext, values, _ any) []string 
 					"%s: bmc-canvas %s.bullets[%d] is %d characters; with %d bullets this cell holds about %d characters per bullet before text shrinks below the readable minimum — shorten the bullet or reduce the count",
 					ErrCodeBodyTooLong, named.name, i, n, count, budget))
 			}
+		}
+	}
+	// The budgets assume a typical content area; with the template's own area
+	// the canvas is also measured against it (go-slide-creator-k3eb3).
+	if len(warnings) == 0 && ctx.LayoutBounds.Width > 0 && ctx.LayoutBounds.Height > 0 {
+		ovr, _ := overrides.(*BMCCanvasOverrides)
+		if ovr == nil {
+			ovr = &BMCCanvasOverrides{}
+		}
+		if w := bmcMeasuredWarning(ctx, v, ResolveSize(ovr.HeaderSize, 11.0), ResolveSize(ovr.BulletSize, 9.0)); w != "" {
+			warnings = append(warnings, w)
 		}
 	}
 	return warnings
@@ -384,13 +396,60 @@ func (b *bmcCanvas) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		},
 	}
 
+	// Equal thirds unless a row's cells need more than a third to be written
+	// unshrunk: then each row is floored at its measured need and the slack
+	// is shared in proportion (go-slide-creator-k3eb3).
+	needs := bmcRowNeeds(ctx, bmcCells, headerSize, bulletSize, accent)
+	_, areaH := sizingAreaPt(ctx)
+	floorFlexRowsAtNeeds(rows, needs[:], areaH-2*bmcGapPt)
+
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(`5`),
-		Gap:     4,
+		Gap:     bmcGapPt,
 		Rows:    rows,
 	}
 
 	return grid, nil
+}
+
+// bmcGapPt is the white gutter between canvas cells.
+const bmcGapPt = 4.0
+
+// bmcRowNeeds returns the height each of the three canvas rows needs for its
+// cells to be written unshrunk at their real widths (the row-spanning cells
+// share rows 0 and 1).
+func bmcRowNeeds(ctx ExpandContext, cells []BMCCell, headerSize, bulletSize float64, accent string) [3]float64 {
+	areaW, _ := sizingAreaPt(ctx)
+	colW := equalColumnWidthPt(areaW, 5, bmcGapPt)
+	need := func(c BMCCell, spanCols int) float64 {
+		w := float64(spanCols)*colW + float64(spanCols-1)*bmcGapPt
+		return writtenFitHeightPt(buildBMCCellContent(c, headerSize, bulletSize, accent), w, 0)
+	}
+	var n [3]float64
+	n[0] = math.Max(need(cells[1], 1), need(cells[4], 1))
+	n[1] = math.Max(need(cells[2], 1), need(cells[5], 1))
+	n[2] = math.Max(need(cells[7], 3), need(cells[8], 2))
+	tall := math.Max(need(cells[0], 1), math.Max(need(cells[3], 1), need(cells[6], 1)))
+	if short := tall - (n[0] + n[1] + bmcGapPt); short > 0 {
+		n[0] += short / 2
+		n[1] += short / 2
+	}
+	return n
+}
+
+// bmcMeasuredWarning reports a canvas whose rows need more than the content
+// area even when each row is sized to its own content.
+func bmcMeasuredWarning(ctx ExpandContext, v *BMCCanvasValues, headerSize, bulletSize float64) string {
+	cells := []BMCCell{v.KeyPartners, v.KeyActivities, v.KeyResources, v.ValuePropositions,
+		v.CustomerRelations, v.Channels, v.CustomerSegments, v.CostStructure, v.RevenueStreams}
+	needs := bmcRowNeeds(ctx, cells, headerSize, bulletSize, "accent1")
+	_, areaH := sizingAreaPt(ctx)
+	total := needs[0] + needs[1] + needs[2] + 2*bmcGapPt
+	if total <= areaH+1 {
+		return ""
+	}
+	return fmt.Sprintf("%s: bmc-canvas cells need %.0fpt of height at the readable minimum but the content area holds about %.0fpt — shorten the bullets or reduce their count, starting with the most crowded cells",
+		ErrCodeBodyTooLong, total, areaH)
 }
 
 // buildBMCCellContent creates a JSON text object with a bold header and bullet list.
