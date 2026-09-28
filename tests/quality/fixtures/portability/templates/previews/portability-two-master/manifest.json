@@ -2,25 +2,25 @@
   "schema_version": 1,
   "recipe": "native-layout-thumbnail-v2",
   "template_sha256": "e8019a81eb4a903963f78661cf99e1d491dd2d33532e481951b7209bbd06711a",
-  "rendering_source_sha256": "4c377d85c44602a5f26c1e70094ffc4a3c80ebf0649f5800351a299dc2299e94",
-  "render_cache_identity": "889cfc06f7c045fb0d7d9a3b172e169860a0ff942954528ad9c7aea9174ee258",
+  "rendering_source_sha256": "1d7d848fbf17174f17413dbef812b8bb65c6492f5970e36fe90f517a56e54f08",
+  "render_cache_identity": "cbfa6baf2b8ef7ddf007de8a78b13331341b86bac7f6cf1a86e0542b4fb8310d",
   "width": 320,
   "dpi": 60,
   "png_sha256": {
     "slideLayout1": "5a7023710000c0eb3b183d5ad2448e0a9b05a877b03d923e47d98f325531758b",
-    "slideLayout10": "c38fe16c777955293c2d6f704fa6b87453bb2877bdad69c44724698ea7dd58c2",
+    "slideLayout10": "84721300a47908eab6445aadd453d767a0a481f2716e7e8183a832ec2e1b4eac",
     "slideLayout11": "cd1813b1aa9884d2380d7e6572c149823bd842f494701331c699f2a39d9493d1",
     "slideLayout12": "d6d80f55365337c12ac28af3ee667fb7e411a55f8fb9bcb4e76da8bd17a8734d",
     "slideLayout13": "04e7c04a2005cc5517bebda890491caee3c78a5f47cc852177d73b0eaec8afc8",
     "slideLayout14": "9bcb22ce72a3de749125564a424d6923b11abe084704185da1faca0ae8df4562",
-    "slideLayout2": "028042aef7b983ee23dd4ec077a61581d6b3ae156c892be5b0bf2f922a1c8351",
-    "slideLayout3": "910d2ffe85978c7604400881af05b6f44e7c602bdf5678658223530e49b08164",
-    "slideLayout4": "10b2ee33cce124b9c6bf9c42b7f050bbeae71937bb4a78d7928c7a200b8a5c16",
+    "slideLayout2": "c78d4411dca90f0787ff5539916f3cba879ff44fd307a8f071a08a7ad5405229",
+    "slideLayout3": "fd303389e4dd030d4ce364ce811d592d2dbaf1161954e9469e90463ba6e6991b",
+    "slideLayout4": "d2caa88540b8f8802612763fae2526cb5c90bedf4deda2cef1f0f33f10477d80",
     "slideLayout5": "55acf94313b4675abdc8b61fce715f5fa23dacf872e038c8e4b112353d71e931",
     "slideLayout6": "6841bb814fbe0f696250f56af7adfb4de174762c32f227980ed19330a0fa1ca1",
-    "slideLayout7": "516c8822dc5db866704889ad62caaeb4cb13e799f1a5bddffe0f920be2d44c3c",
+    "slideLayout7": "6d019261e13eb10a70fa8606b50cef77e9e94a3fa1070847609bfa16a513b485",
     "slideLayout8": "62051bc0d12409eb05788d366aae3c583030a7c3e0fab1565a68915f0749368a",
-    "slideLayout9": "b2b116b04df66c49e843e83ebe295817184183fc5d2845f6b7036f540730fe31"
+    "slideLayout9": "f84fa14c0dd9dd853ede94b69a0a812e77998f76a7b27ad1b9202beb3898a332"
   },
   "source_content": {
     "slideLayout1": [
