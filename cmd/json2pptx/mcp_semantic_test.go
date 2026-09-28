@@ -143,14 +143,12 @@ func TestSemanticMCP_ValidateSelectedTemplateUsesRotatedAccent(t *testing.T) {
 	structuredInto(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{
 		"spec": spec, "template": "midnight-blue",
 	}).StructuredContent, &midnight)
-	forestAccent := false
+	// forest-green's rotated accent2 (#FF8F00) is light; the KPI keeps that
+	// fill and writes a readable dark ink, so no contrast repair is predicted.
 	for _, finding := range forest.Findings {
 		if strings.Contains(finding.Message, "#FF8F00") && strings.HasSuffix(finding.Code, "contrast_predicted") {
-			forestAccent = true
+			t.Fatalf("forest-green KPI text on accent2 should be written readably: %+v", finding)
 		}
-	}
-	if !forestAccent {
-		t.Fatalf("forest-green validation did not predict contrast on rotated accent2 #FF8F00: %+v", forest.Findings)
 	}
 	for _, finding := range midnight.Findings {
 		if strings.Contains(finding.Message, "#FF8F00") {

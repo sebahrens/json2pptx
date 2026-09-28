@@ -92,6 +92,9 @@ func generateShapeXML(spec *ShapeSpec, id uint32, bounds pptx.RectEmu, autofitSc
 	if spec.Geometry == "roundRect" && !hasAdjustment(opts.Adjustments, "adj") {
 		opts.Adjustments = append(opts.Adjustments, pptx.AdjustValue{Name: "adj", Value: 0})
 	}
+	if adj, ok := DefaultChevronAdj(spec.Geometry, bounds.CX, bounds.CY); ok && adj < 50000 && !hasAdjustment(opts.Adjustments, "adj") {
+		opts.Adjustments = append(opts.Adjustments, pptx.AdjustValue{Name: "adj", Value: adj})
+	}
 
 	// Fill
 	if len(spec.Fill) > 0 {

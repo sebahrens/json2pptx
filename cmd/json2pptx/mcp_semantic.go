@@ -14,6 +14,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/semantic"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -313,6 +314,13 @@ func (mc *mcpConfig) handleValidateDeckSpec(ctx context.Context, request mcp.Cal
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal validate_deck_spec response: %v", err)), nil
 	}
+	// A spec that cannot even be decoded (malformed document, wrong container
+	// or field type) is a failed call, not a validation verdict on a deck:
+	// flag it so hosts that branch on isError see it (go-slide-creator-6p9mm).
+	// A decodable spec with invalid content stays an ok=false verdict.
+	if parsedSpec == nil {
+		mcpResult.IsError = true
+	}
 	return mcpResult, nil
 }
 
@@ -460,6 +468,9 @@ type renderDeckSpecResponse struct {
 	// ChangedSlides names the 0-based slides a patch on this call changed, so
 	// only those thumbnails need re-pulling. Absent when nothing was patched.
 	ChangedSlides []int `json:"changed_slides,omitempty"`
+	// NextToolCall chains the loop: the first blocking diagnostic's fix, else
+	// render_deck_thumbnails for the changed slides (go-slide-creator-z3pbp).
+	NextToolCall *patterns.ToolCallSuggestion `json:"next_tool_call,omitempty"`
 }
 
 // semanticRenderToMCP adapts the CLI-shaped semanticRenderResult into the MCP
@@ -537,6 +548,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	// A handle remembers the template its last render resolved to. Without this,
 	// re-rendering a stored deck without repeating the template argument would
 	// silently restyle it (go-slide-creator-voxp).
+	argTemplate := templateName
 	if templateName == "" {
 		templateName = src.Template
 	}
@@ -563,6 +575,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	}
 
 	startTime := time.Now()
+	var precedenceWarning string
 	finish := func(res renderDeckSpecResponse) (*mcp.CallToolResult, error) {
 		storedTemplate := res.Template
 		if storedTemplate == "" {
@@ -574,6 +587,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 		}
 		res.ChangedSlides = changed
 		semanticizeRenderDiagnostics(res.Diagnostics, data, res.DeckID)
+		completeRenderDeckSpecResponse(&res, precedenceWarning)
 		return semanticSuccessOrInternal(ctx, "render_deck_spec", res)
 	}
 
@@ -586,6 +600,11 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 		enrichSemanticKindDiagnostics(ds)
 		return api.MCPDiagnosticsError(ds), nil
 	}
+
+	// meta.template outranks the template / template_path arguments. That was
+	// silent: an agent that passed template=X rendered Y and never knew why
+	// (go-slide-creator-6p9mm). Say which one won and how to switch.
+	precedenceWarning = templatePrecedenceWarning(spec.Meta.Template, argTemplate, rawTemplatePath)
 
 	// Every render used to land on <output_dir>/output.pptx, so two calls in one
 	// session silently destroyed each other and the reported content_hash stopped
@@ -1072,9 +1091,11 @@ func (mc *mcpConfig) compiledSpecFindings(filename string, data []byte, strictne
 		if specValidateAiriness[f.Code] {
 			continue
 		}
-		if semPath, _, mapped := sm.ResolveSemantic(f.Path); mapped && semPath != "" {
+		semPath, semIdx, mapped := sm.ResolveSemantic(f.Path)
+		if mapped && semPath != "" {
 			d.Path = semPath
 		}
+		d.Message = zeroBasedSlideMessage(d.Message, slidepath.SlideIndex(f.Path), semIdx)
 		out = append(out, d)
 	}
 	return out, resolvedTemplate
@@ -1092,4 +1113,32 @@ var specValidateAiriness = map[string]bool{
 	patterns.ErrCodeSparseSingleRowFlow: true,
 	patterns.ErrCodeOvertallFlowLane:    true,
 	patterns.ErrCodeSlideNearlyEmpty:    true,
+}
+
+// templatePrecedenceWarning explains a template / template_path argument the
+// spec's meta.template overrides; empty when nothing was overridden.
+func templatePrecedenceWarning(metaTemplate, argTemplate, argTemplatePath string) string {
+	if metaTemplate == "" {
+		return ""
+	}
+	switch {
+	case argTemplate != "" && argTemplate != metaTemplate:
+		return fmt.Sprintf("template argument %q was ignored: the spec pins meta.template %q, which wins (meta.template > template/template_path > archetype default); to render with %q, patch [{\"op\":\"replace\",\"path\":\"/meta/template\",\"value\":%q}] or remove meta.template", argTemplate, metaTemplate, argTemplate, argTemplate)
+	case argTemplatePath != "":
+		return fmt.Sprintf("template_path %q was ignored: the spec pins meta.template %q, which wins (meta.template > template/template_path > archetype default); remove meta.template to render with the file", argTemplatePath, metaTemplate)
+	}
+	return ""
+}
+
+// completeRenderDeckSpecResponse adds the template-precedence warning and the
+// next step of the render loop (go-slide-creator-6p9mm, go-slide-creator-z3pbp).
+func completeRenderDeckSpecResponse(res *renderDeckSpecResponse, precedenceWarning string) {
+	if precedenceWarning != "" {
+		res.Warnings = append([]string{precedenceWarning}, res.Warnings...)
+	}
+	if !res.OK || res.PptxPath == "" {
+		return
+	}
+	ready := res.DeterministicReady != nil && *res.DeterministicReady
+	res.NextToolCall = renderNextToolCall(ready, firstBlockingSemanticCall(res.Diagnostics), res.PptxPath, res.ChangedSlides)
 }

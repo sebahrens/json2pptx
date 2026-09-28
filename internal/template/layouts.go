@@ -576,6 +576,9 @@ type shapeXML struct {
 
 // textBodyXML represents the text body of a shape with list styles for font extraction.
 type textBodyXML struct {
+	BodyPr *struct {
+		Anchor string `xml:"anchor,attr"`
+	} `xml:"bodyPr"`
 	ListStyle *listStyleXML `xml:"lstStyle"`
 }
 

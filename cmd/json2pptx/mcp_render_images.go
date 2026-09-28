@@ -19,6 +19,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/render"
 )
 
@@ -92,6 +93,9 @@ type renderedDeckThumbnailsResponse struct {
 	// ImageMIMEType is the encoding of every image block (image/jpeg),
 	// hoisted from slides[]. slides[].path stays the full-resolution PNG.
 	ImageMIMEType string `json:"image_mime_type,omitempty"`
+	// NextToolCall points at submit_visual_review bound to this exact PPTX
+	// revision, the step that closes the render loop (go-slide-creator-z3pbp).
+	NextToolCall *patterns.ToolCallSuggestion `json:"next_tool_call,omitempty"`
 }
 
 // slideImageToMCP converts one rendered SlideImage into its metadata record and
@@ -213,6 +217,11 @@ func deckThumbnailsMCPResult(ctx context.Context, request mcp.CallToolRequest, d
 		}
 		resp.Slides = append(resp.Slides, meta)
 		images = append(images, enc)
+	}
+	if pptxPath := request.GetString("pptx_path", ""); pptxPath != "" {
+		if artifact, aerr := describeArtifact(pptxPath, "pptx"); aerr == nil {
+			resp.NextToolCall = nextCallSubmitVisualReview(pptxPath, artifact.SHA256)
+		}
 	}
 	res, err := api.MCPImageResult(ctx, resp, images)
 	if err != nil {

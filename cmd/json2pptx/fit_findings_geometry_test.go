@@ -58,11 +58,13 @@ func TestGeometry_ChevronStripPatternFits(t *testing.T) {
 }
 
 // Hand-authored narrow chevrons whose labels cannot fit between the notches
-// are still flagged, aggregated per slide.
+// are still flagged, aggregated per slide. The long-label cells pin the
+// preset notch (adj 50000) so the zero-width branch stays covered; unpinned
+// stubby chevrons get a capped notch (go-slide-creator-5wm83).
 func TestGeometry_ChevronTextExceedsShape(t *testing.T) {
 	in := geomSlides(t, `[{"layout_id":"content","shape_grid":{"columns":8,"rows":[{"cells":[
-		{"shape":{"geometry":"chevron","fill":"accent1","text":{"content":"Decommissioning","size":18}}},
-		{"shape":{"geometry":"chevron","fill":"accent1","text":{"content":"Transformation","size":18}}},
+		{"shape":{"geometry":"chevron","adjustments":{"adj":50000},"fill":"accent1","text":{"content":"Decommissioning","size":18}}},
+		{"shape":{"geometry":"chevron","adjustments":{"adj":50000},"fill":"accent1","text":{"content":"Transformation","size":18}}},
 		{"shape":{"geometry":"chevron","fill":"accent1","text":"Ok"}},{"shape":{"geometry":"chevron","fill":"accent1","text":"Ok"}},
 		{"shape":{"geometry":"chevron","fill":"accent1","text":"Ok"}},{"shape":{"geometry":"chevron","fill":"accent1","text":"Ok"}},
 		{"shape":{"geometry":"chevron","fill":"accent1","text":"Ok"}},{"shape":{"geometry":"chevron","fill":"accent1","text":"Ok"}}]}]}}]`)
@@ -87,8 +89,7 @@ func TestGeometry_ChevronTextExceedsShape(t *testing.T) {
 	if fs[0].NextToolCall != nil {
 		t.Errorf("advisory geometry fix must not offer a non-executable reduce_text call: %+v", fs[0].NextToolCall)
 	}
-	// Tall, narrow chevrons leave (almost) no width between the notches, so
-	// every cell is legitimately flagged; the long labels must be among them.
+	// The long labels must be among the flagged cells.
 	cells, _ := f.Fix.Params["cells"].([]string)
 	if len(cells) < 2 || cells[0] != "/slides/0/shape_grid/rows/0/cells/0/shape/text" || cells[1] != "/slides/0/shape_grid/rows/0/cells/1/shape/text" {
 		t.Errorf("want the long-label cells flagged, got %v", cells)

@@ -199,7 +199,7 @@ An ordered list of scheme color names controlling chart series coloring. `svggen
 
 The list should contain 6 entries (one per accent slot). The ordering determines which accent is used for the first, second, third (etc.) chart series. Templates can reorder to put their most visually distinct accents first.
 
-When `data_palette` is absent, charts start from the fixed order `accent1`–`accent6`. At render time, automatic chart colors with less than 2:1 contrast on the effective chart background are skipped; visible theme colors and dark/light theme slots fill the six series positions. Explicit author-supplied chart colors are preserved. `list_templates` keeps the authored `data_palette` ordering and reports near-background accents separately in `color_roles.near_background_accents`.
+When `data_palette` is absent, charts start from the fixed order `accent1`–`accent6`. At render time, automatic chart colors with less than 2:1 contrast on the effective chart background are skipped; visible theme colors and dark/light theme slots fill the six series positions. When a chart uses fewer series than the palette holds, a palette color within ΔE 25 (CIE76) of one already assigned is moved later so neighbouring series stay distinguishable on single-hue templates (theme `dk2` / `dk1`, a shade of the first color, then grey fill in when the palette runs out of distinct colors); a chart that needs every palette slot keeps the declared order. Explicit author-supplied chart colors are preserved. `list_templates` keeps the authored `data_palette` ordering and reports near-background accents separately in `color_roles.near_background_accents`.
 
 ### Template Conformance Check
 

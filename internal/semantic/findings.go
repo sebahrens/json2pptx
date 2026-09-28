@@ -60,6 +60,10 @@ type MappedFinding struct {
 type SemanticEdit struct {
 	Kind string `json:"kind"`
 	Hint string `json:"hint"`
+	// Params carries the raw finding's machine-applicable budgets (max_chars,
+	// max_items, threshold_pct, …) plus fix_kind, so the edit can be applied
+	// without re-deriving the limit from the message (go-slide-creator-pi6ea).
+	Params map[string]any `json:"params,omitempty"`
 }
 
 // Semantic edit kinds. Stable strings suitable for programmatic matching.

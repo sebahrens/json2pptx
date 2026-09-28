@@ -92,14 +92,14 @@ func TestPopulatedSiblingBodyControlsTableTopAlignment(t *testing.T) {
 	}
 	ctx.slideContentMap[1] = SlideSpec{LayoutID: "slideLayout3", Content: []ContentItem{{PlaceholderID: "body_2", Type: ContentTable}}}
 	if ctx.hasPopulatedSiblingBody(1, 1) {
-		t.Error("lone table should retain centered placement")
+		t.Error("lone table should have no populated sibling")
 	}
 	ctx.processTableContent(1, 0, tableItem, &slide.CommonSlideData.ShapeTree.Shapes[1], 1, nil)
 	if len(ctx.tableInserts[1]) != 2 {
 		t.Fatalf("lone table inserts = %d, want 2", len(ctx.tableInserts[1]))
 	}
-	if y, _ := frameGeometry(t, ctx.tableInserts[1][1].graphicFrameXML); y <= 1000000 {
-		t.Errorf("lone short table starts at y=%d, want centered below body top", y)
+	if y, _ := frameGeometry(t, ctx.tableInserts[1][1].graphicFrameXML); y != 1000000 {
+		t.Errorf("lone short table starts at y=%d, want body top 1000000", y)
 	}
 	slide.CommonSlideData.ShapeTree.Shapes[1].ShapeProperties.Transform.Offset.X = 0
 	slide.CommonSlideData.ShapeTree.Shapes[1].ShapeProperties.Transform.Offset.Y = 6000000

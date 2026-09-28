@@ -143,3 +143,31 @@ func (st InheritedTextStyle) OverrideFromListStyle(lstStyleInner string) Inherit
 	}
 	return st
 }
+
+var bodyPrAnchorRegexp = regexp.MustCompile(`<a:bodyPr\b[^>]*\banchor="([a-z]+)"`)
+
+// ParseMasterTitleAnchor returns the bodyPr anchor of the slide master's title
+// placeholder, or "" when the master declares none (go-slide-creator-pymy7).
+func ParseMasterTitleAnchor(masterData []byte) string {
+	for _, sp := range strings.Split(string(masterData), "<p:sp>")[1:] {
+		if end := strings.Index(sp, "</p:sp>"); end >= 0 {
+			sp = sp[:end]
+		}
+		ph := strings.Index(sp, "<p:ph ")
+		if ph < 0 {
+			continue
+		}
+		tag := sp[ph:]
+		if gt := strings.Index(tag, ">"); gt >= 0 {
+			tag = tag[:gt]
+		}
+		if !strings.Contains(tag, `type="title"`) {
+			continue
+		}
+		if m := bodyPrAnchorRegexp.FindStringSubmatch(sp); m != nil {
+			return m[1]
+		}
+		return ""
+	}
+	return ""
+}

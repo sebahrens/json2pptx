@@ -1,6 +1,6 @@
 # Schema Changelog
 
-- **2026-09-28 — Schema 4.151.0: slimmer MCP surface (`go-slide-creator-355t7`, `-fa3k8`, `-ppned`).**
+- **2026-09-28 — Schema 4.152.0: slimmer MCP surface (`go-slide-creator-355t7`, `-fa3k8`, `-ppned`).**
   - New default tool profile `deckspec`: `tools/list` advertises 12 DeckSpec
     tools (get_started, list_templates, examine_template, list_slide_kinds,
     validate_deck_spec, render_deck_spec, render_deck_thumbnails,
@@ -28,6 +28,35 @@
     (they were typed string, so the kind's own example failed its schema;
     `validate_deck_spec`'s closed schema changes the same way).
   The tool name set is unchanged, so the schema fingerprint is unchanged.
+
+- **2026-09-28 — Schema 4.151.0: MCP completion state and error ergonomics (`go-slide-creator-mn33v`, `-z3pbp`, `-6p9mm`, `-pi6ea`).**
+  - `generate_presentation` gains render_deck_spec's completion block —
+    `deterministic_ready`, `publishable` (false on a fresh render),
+    `blocking_reasons`, `deterministic_blocking_reasons` — plus
+    `next_tool_call`, and records its gate so `submit_visual_review` cannot
+    approve a raw deck the gate blocks.
+  - `render_deck_spec` and `generate_presentation` chain `next_tool_call`:
+    the first blocking fix, else `render_deck_thumbnails` (with
+    `slide_indices` = `changed_slides`); `render_deck_thumbnails` returns
+    `next_tool_call` = `submit_visual_review` bound to the file's sha256.
+  - The MCP text synopsis keeps `content_hash`, `blocking_reasons`,
+    `changed_slides` and `failed_fixes`.
+  - `repair_slide`: an unknown kind with `did_you_mean` returns
+    `next_tool_call` = `repair_slide` retrying the corrected kind.
+  - `submit_visual_review` rejections name the argument
+    (`pptx_revision`, `revision`, `reviewer`, `slides[i].index` …) with
+    `details.expected_revision` / `details.missing_slide_indices`.
+  - DeckSpec: typed decode errors name the field path and expected shape
+    (`meta.*` → `invalid_meta`) and suggest `{"enabled": …}` for a boolean on
+    an on/off object; an undecodable spec makes `validate_deck_spec` return
+    `isError`; `render_deck_spec` warns when `meta.template` overrides the
+    `template` / `template_path` argument; a `/meta` patch reports every
+    slide in `changed_slides`; fit messages use `slides[N]` (0-based);
+    `where.slide` is recovered from JSON-pointer paths.
+  - DeckSpec findings keep raw fix budgets (`max_chars`, `max_items`,
+    `threshold_pct`, … plus `fix_kind`) in `remediation.primary.params` and
+    `recommended_edit.params`; a list over its `max_items` gets `remove`
+    patch ops.
 
 - **2026-09-27 — Schema 4.150.0: written-size budgets for every probed pattern (`go-slide-creator-n1muf`).**
   Every pattern budget calibrated by `probeReadableBudget` is now the written

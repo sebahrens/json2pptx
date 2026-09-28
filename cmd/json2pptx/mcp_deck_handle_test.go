@@ -347,9 +347,10 @@ func TestSpecPatchOps(t *testing.T) {
 			slides: 4,
 		},
 		{
-			name:    "retarget the template",
-			ops:     []any{map[string]any{"op": "replace", "path": "/meta/template", "value": "forest-green"}},
-			want:    nil,
+			name: "retarget the template",
+			ops:  []any{map[string]any{"op": "replace", "path": "/meta/template", "value": "forest-green"}},
+			// A deck-level edit restyles every slide (go-slide-creator-6p9mm).
+			want:    []int{0, 1, 2, 3, 4},
 			slides:  5,
 			contain: "forest-green",
 		},

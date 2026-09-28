@@ -93,7 +93,7 @@ Fixes accept optional path (RFC 6901 JSON Pointer) to target an element; otherwi
 
 Executable kinds: `+strings.Join(repairFixKinds(), ", ")+`. Each kind's params: get_capabilities sections:["vocabularies"] → repair_fix_kind_params.
 
-Non-applied outcomes: an unknown kind returns kind_not_supported (did_you_mean, supported_kinds); a registered advisory kind returns advisory_fix_kind with guidance and executable alternatives — follow those; do not retry the same kind.`),
+Non-applied outcomes: an unknown kind returns kind_not_supported and supported_kinds, with next_tool_call get_capabilities{sections:["vocabularies"]} — or, with did_you_mean, repair_slide retrying the corrected kind; a registered advisory kind returns advisory_fix_kind with guidance and executable alternatives — follow those; do not retry the same kind.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRepairSlide)),
 		mcp.WithObject("presentation",
 			mcp.Description(`Full presentation definition. Same schema as generate_presentation.`),
@@ -226,6 +226,12 @@ func (mc *mcpConfig) handleRepairSlide(ctx context.Context, request mcp.CallTool
 		output.PatchedDeck = patchedJSON
 	}
 
+	retryDeck := output.DeckID
+	if retryDeck == "" && output.SemanticSourceUnchanged {
+		retryDeck = sourceDeckID
+	}
+	retargetDidYouMeanRetries(output.AppliedFixes, fixes, slideIdx, retryDeck)
+
 	mcpResult, err := api.MCPSuccessResult(ctx, output)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
@@ -315,8 +321,36 @@ func unappliedFix(kind string) appliedFix {
 	} else if match, _ := generator.ClosestMatch(strings.ToLower(kind), patterns.AllFixKinds(), 4); match != "" {
 		out.DidYouMean = match
 		out.Message += fmt.Sprintf("; did you mean %q?", match)
+		// A likely typo is fixed by retrying with the corrected kind, not by
+		// reading the vocabulary (go-slide-creator-z3pbp).
+		out.NextToolCall = &patterns.ToolCallSuggestion{
+			Tool:         "repair_slide",
+			ArgsTemplate: map[string]any{"fixes": []any{map[string]any{"kind": match}}},
+		}
 	}
 	return out
+}
+
+// retargetDidYouMeanRetries completes an unknown-kind retry suggestion with the
+// call's own slide, deck and params, so it replays verbatim.
+func retargetDidYouMeanRetries(applied []appliedFix, fixes []repairFixInput, slideIdx int, deckID string) {
+	for i := range applied {
+		a := &applied[i]
+		if a.DidYouMean == "" || a.NextToolCall == nil || a.NextToolCall.Tool != "repair_slide" || i >= len(fixes) {
+			continue
+		}
+		fix := map[string]any{"kind": a.DidYouMean}
+		if len(fixes[i].Params) > 0 {
+			fix["params"] = fixes[i].Params
+		}
+		args := map[string]any{"slide_index": slideIdx, "fixes": []any{fix}}
+		if deckID != "" {
+			args["deck_id"] = deckID
+		} else {
+			args["presentation"] = "<the same presentation>"
+		}
+		a.NextToolCall = &patterns.ToolCallSuggestion{Tool: "repair_slide", ArgsTemplate: args}
+	}
 }
 
 // ellipsis marks truncated text, matching reduce_cell_text's single U+2026.

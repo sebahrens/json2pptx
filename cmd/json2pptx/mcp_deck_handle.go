@@ -524,12 +524,37 @@ func changedSlideIndices(handle *deckHandle, patched []byte) []int {
 	if len(after) < len(before) && len(after) > 0 {
 		changed[len(after)-1] = true
 	}
+	// A DeckSpec meta / structure edit (template, chrome, accent strategy, …)
+	// restyles every slide without touching any slide's own content. Reporting
+	// no changed slides told the agent there was nothing to re-inspect
+	// (go-slide-creator-6p9mm).
+	if handle.RawPresentation == nil && deckLevelDigest(handle.Spec) != deckLevelDigest(patched) {
+		for i := range after {
+			changed[i] = true
+		}
+	}
 	out := make([]int, 0, len(changed))
 	for i := range changed {
 		out = append(out, i)
 	}
 	sort.Ints(out)
 	return out
+}
+
+// deckLevelDigest digests everything in an encoded spec except its slides
+// array: the deck-level settings that apply to every slide.
+func deckLevelDigest(spec []byte) string {
+	canonical, _ := canonicalSpec("spec.json", spec)
+	var doc map[string]any
+	if err := json.Unmarshal(canonical, &doc); err != nil {
+		return ""
+	}
+	delete(doc, "slides")
+	encoded, err := json.Marshal(doc)
+	if err != nil {
+		return ""
+	}
+	return diagnostics.ComputeInputSHA256(encoded)
 }
 
 // slideDigests returns a content digest per slide of an encoded spec. Each

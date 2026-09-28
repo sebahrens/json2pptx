@@ -181,6 +181,67 @@ type submitVisualReviewOutput struct {
 // (coverage, staleness, malformed slide entry) as opposed to an I/O failure.
 var errVisualReviewRejected = errors.New("visual review rejected")
 
+// visualReviewRejection is a rejection that names the argument at fault. Every
+// rejection used to be reported at path "slides", so a stale pptx_revision
+// read as a slides problem and the agent re-sent the same stale hash
+// (go-slide-creator-6p9mm). Details carries expected_revision /
+// missing_slide_indices so the retry needs no second probe.
+type visualReviewRejection struct {
+	Path    string
+	Message string
+	Details map[string]any
+}
+
+func (r *visualReviewRejection) Error() string { return r.Message }
+
+func (r *visualReviewRejection) Is(target error) bool { return target == errVisualReviewRejected }
+
+func rejectReview(path string, details map[string]any, format string, args ...any) error {
+	return &visualReviewRejection{Path: path, Message: fmt.Sprintf(format, args...), Details: details}
+}
+
+// checkReviewBinding reports the argument-specific rejections before the
+// generic completion check: a stale pptx_revision / revision, and the slide
+// indices the submission is missing, duplicates or has out of range.
+func checkReviewBinding(in submitVisualReviewInput, artifactSHA, currentRevision string, total int) error {
+	if in.PPTXRevision != artifactSHA {
+		return rejectReview("pptx_revision", map[string]any{"expected_revision": artifactSHA},
+			"pptx_revision %s is not the current file's sha256 %s: the PPTX changed since it was reviewed (or the hash is not its content_hash); re-render the thumbnails of the current file and resubmit with pptx_revision %s",
+			in.PPTXRevision, artifactSHA, artifactSHA)
+	}
+	if in.Revision != "" && in.Revision != currentRevision {
+		return rejectReview("revision", map[string]any{"expected_revision": currentRevision},
+			"revision %s is not the deck's current revision %s; omit revision or send %s", in.Revision, currentRevision, currentRevision)
+	}
+	seen := make(map[int]int, len(in.Slides))
+	for i, sl := range in.Slides {
+		if sl.Index == nil {
+			continue // appendReviewSlides names the missing index field
+		}
+		idx := *sl.Index
+		if idx < 0 || idx >= total {
+			return rejectReview(fmt.Sprintf("slides[%d].index", i), map[string]any{"slide_count": total},
+				"slides[%d].index %d is outside the deck: valid 0-based indices are 0..%d", i, idx, total-1)
+		}
+		if prev, dup := seen[idx]; dup {
+			return rejectReview(fmt.Sprintf("slides[%d].index", i), map[string]any{"duplicate_of": fmt.Sprintf("slides[%d]", prev)},
+				"slides[%d].index %d duplicates slides[%d]: every slide must appear exactly once", i, idx, prev)
+		}
+		seen[idx] = i
+	}
+	var missing []int
+	for idx := 0; idx < total; idx++ {
+		if _, ok := seen[idx]; !ok {
+			missing = append(missing, idx)
+		}
+	}
+	if len(missing) > 0 {
+		return rejectReview("slides", map[string]any{"missing_slide_indices": missing, "slide_count": total},
+			"all-slide coverage required: the deck has %d slides (0-based 0..%d) and the review is missing %v", total, total-1, missing)
+	}
+	return nil
+}
+
 var slidePartRE = regexp.MustCompile(`^ppt/slides/slide[0-9]+\.xml$`)
 
 // countPPTXSlides counts the slide parts in a PPTX package.
@@ -255,7 +316,7 @@ func submitVisualReview(in submitVisualReviewInput) (*submitVisualReviewOutput, 
 		reviewer = "host"
 	}
 	if reviewer != "host" && reviewer != "manual" {
-		return nil, fmt.Errorf("%w: reviewer must be \"host\" or \"manual\", got %q", errVisualReviewRejected, reviewer)
+		return nil, rejectReview("reviewer", nil, "reviewer must be \"host\" or \"manual\", got %q", reviewer)
 	}
 	artifact, err := describeArtifact(in.PPTXPath, "pptx")
 	if err != nil {
@@ -283,6 +344,9 @@ func submitVisualReview(in submitVisualReviewInput) (*submitVisualReviewOutput, 
 		Findings:       []visualqa.Finding{},
 	}
 	if err := appendReviewSlides(record, in.Slides, reviewer); err != nil {
+		return nil, err
+	}
+	if err := checkReviewBinding(in, artifact.SHA256, currentRevision, total); err != nil {
 		return nil, err
 	}
 	if verr := record.ValidateCompletion(artifact.SHA256, currentRevision, total); verr != nil {
@@ -382,23 +446,23 @@ func submitVisualReview(in submitVisualReviewInput) (*submitVisualReviewOutput, 
 func appendReviewSlides(record *visualqa.ReviewRecord, slides []visualReviewSlideInput, reviewer string) error {
 	for i, s := range slides {
 		if s.Index == nil {
-			return fmt.Errorf("%w: slides[%d].index is required", errVisualReviewRejected, i)
+			return rejectReview(fmt.Sprintf("slides[%d].index", i), nil, "slides[%d].index is required (0-based)", i)
 		}
 		if s.Verdict != "approved" && s.Verdict != "changes_requested" && s.Verdict != "inconclusive" {
-			return fmt.Errorf("%w: slides[%d].verdict must be approved, changes_requested, or inconclusive; got %q", errVisualReviewRejected, i, s.Verdict)
+			return rejectReview(fmt.Sprintf("slides[%d].verdict", i), nil, "slides[%d].verdict must be approved, changes_requested, or inconclusive; got %q", i, s.Verdict)
 		}
 		if s.ImagePath == "" && s.ImageSHA256 == "" {
 			// The image is the evidence: a verdict with no pixels behind it
 			// cannot be verified against the artifact's own render, so it is
 			// rejected here rather than three checks later under a message
 			// that names a field the caller never had to supply.
-			return fmt.Errorf("%w: slides[%d]: one of image_path or image_sha256 is required — submit the rendered PNG you inspected (render_deck_thumbnails returns both for every slide)", errVisualReviewRejected, i)
+			return rejectReview(fmt.Sprintf("slides[%d].image_sha256", i), nil, "slides[%d]: one of image_path or image_sha256 is required — submit the rendered PNG you inspected (render_deck_thumbnails returns both for every slide)", i)
 		}
 		pixelHash := strings.ToLower(s.ImageSHA256)
 		if s.ImagePath != "" {
 			data, rerr := os.ReadFile(s.ImagePath) //nolint:gosec // reviewer-supplied rendered image path
 			if rerr != nil {
-				return fmt.Errorf("%w: slides[%d].image_path: %v", errVisualReviewRejected, i, rerr)
+				return rejectReview(fmt.Sprintf("slides[%d].image_path", i), nil, "slides[%d].image_path: %v", i, rerr)
 			}
 			pixelHash = visualqa.PixelHash(data)
 		}
@@ -453,6 +517,10 @@ func handleSubmitVisualReview(ctx context.Context, request mcp.CallToolRequest) 
 		Slides:       slides,
 	})
 	if err != nil {
+		var rejection *visualReviewRejection
+		if errors.As(err, &rejection) {
+			return visualReviewRejectionResult(rejection), nil
+		}
 		if errors.Is(err, errVisualReviewRejected) {
 			return argInvalidValue(tool, "INVALID_PARAMETER", "slides", err.Error(), "array", nil, nil), nil
 		}
@@ -463,4 +531,27 @@ func handleSubmitVisualReview(ctx context.Context, request mcp.CallToolRequest) 
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", merr)), nil
 	}
 	return res, nil
+}
+
+// visualReviewRejectionResult reports a rejection at the argument it names,
+// with its expected values in details.
+func visualReviewRejectionResult(r *visualReviewRejection) *mcp.CallToolResult {
+	expected := "array"
+	switch {
+	case r.Path == "pptx_revision" || r.Path == "revision" || r.Path == "reviewer":
+		expected = "string"
+	case strings.HasSuffix(r.Path, ".index"):
+		expected = "integer"
+	case strings.HasPrefix(r.Path, "slides["):
+		expected = "string"
+	}
+	return api.MCPDiagnosticsError([]diagnostics.Diagnostic{{
+		Code:         diagnostics.CodeInvalidParameter,
+		Path:         r.Path,
+		Message:      r.Message,
+		Severity:     diagnostics.SeverityError,
+		ExpectedType: expected,
+		Details:      r.Details,
+		NextToolCall: nextCallRetry("submit_visual_review", r.Path),
+	}})
 }
