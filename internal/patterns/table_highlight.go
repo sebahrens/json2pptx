@@ -62,6 +62,12 @@ const (
 	// at 32pt the legend cell resolved to ~18pt, leaving a 10pt nested row that
 	// shrank its labels to ~2pt (go-slide-creator-z0up).
 	thLegendPt = 64.0
+	// thLegendCompactPt is the legend row height a table that would not fit
+	// its content area steps down to: the nested legend row plus the 4pt
+	// sub-grid inset above and below it, and a little slack. Only a table
+	// sized with writer-measured rows (thLayout.tight) uses it, and only while
+	// any remaining over-fill cannot scale it below that nested row.
+	thLegendCompactPt = thLegendRowPt + 2*4 + 2
 	// thLegendSwatchPct / thLegendLabelPct are the swatch and label column
 	// widths of a legend row, as a percentage of the table. Three entries per
 	// row (one scale) leaves room for readable words; six squeezed them to ~3pt.
@@ -242,6 +248,28 @@ func tableHighlightPairedCopyBudget(options, criteria int) int {
 	}
 }
 
+// thAreaWarning reports a table that does not fit this layout's content area
+// even with its rows at the height the writer needs and a compact legend.
+// The character budgets are measured against the shipped templates' full
+// content areas; a shorter area (a template with a tall title band, or a
+// takeaway bar above the table) holds fewer text lines, and the grid would
+// shrink the option names below the 12pt floor (go-slide-creator-bzh34).
+func thAreaWarning(ctx ExpandContext, v *TableHighlightValues, overrides any) string {
+	if ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 || len(v.Options) == 0 || len(v.Criteria) == 0 {
+		return "" // no measured content area: the budgets above apply
+	}
+	ovr, _ := overrides.(*TableHighlightOverrides)
+	if ovr == nil {
+		ovr = &TableHighlightOverrides{}
+	}
+	l := newTHLayout(ctx, v, ovr)
+	l.fit()
+	if l.total() <= l.areaH+0.5 {
+		return ""
+	}
+	return fmt.Sprintf("%s: table-highlight needs about %.0fpt of height at readable sizes but this layout's content area holds %.0fpt — drop the option details or highlight_label, hide the legend (show_legend: false), drop the slide takeaway, or split the table", ErrCodeBodyTooLong, math.Ceil(l.total()), math.Floor(l.areaH))
+}
+
 // tableHighlightNameOnlyBudget is the readable option name from four rows.
 const tableHighlightNameOnlyBudget = 30
 
@@ -254,16 +282,19 @@ func TableHighlightDetailLimit(options, criteria int) int {
 	return thDenseDetailMax
 }
 
-func (p *tableHighlight) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+func (p *tableHighlight) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*TableHighlightValues)
 	if !ok || v == nil {
 		return nil
 	}
+	var warnings []string
+	if w := thAreaWarning(ctx, v, overrides); w != "" {
+		warnings = append(warnings, w)
+	}
 	budget := tableHighlightPairedCopyBudget(len(v.Options), len(v.Criteria))
 	if budget >= thNameMax {
-		return nil
+		return warnings
 	}
-	var warnings []string
 	if budget == 0 {
 		for i, option := range v.Options {
 			if strings.TrimSpace(option.Detail) != "" {
@@ -597,6 +628,11 @@ type thLayout struct {
 	rowPt      []float64
 	gapsPt     float64
 	fixedPt    float64
+	legendPt   float64 // height of each legend row
+	// tight sizes rows at the height the shape writer needs
+	// (writtenFitHeightPt) instead of the pattern estimate with its safety
+	// margin; set when the estimated table does not fit the content area.
+	tight bool
 }
 
 func (l *thLayout) colW(i int) float64 {
@@ -615,7 +651,7 @@ func (l *thLayout) total() float64 { return l.fixedPt + l.bodyTotal() }
 
 // newTHLayout resolves column geometry, highlight indices and the legend.
 func newTHLayout(ctx ExpandContext, v *TableHighlightValues, ovr *TableHighlightOverrides) *thLayout {
-	l := &thLayout{ctx: ctx, v: v, ovr: ovr, accent: ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent), hlRow: -1, hlCol: -1}
+	l := &thLayout{ctx: ctx, v: v, ovr: ovr, accent: ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent), hlRow: -1, hlCol: -1, legendPt: thLegendPt}
 	if v.HighlightRow != nil {
 		l.hlRow = *v.HighlightRow
 	}
@@ -671,12 +707,28 @@ func newTHLayout(ctx ExpandContext, v *TableHighlightValues, ovr *TableHighlight
 func (l *thLayout) measure(headerSize, bodySize, detailSize float64) {
 	ctx, v := l.ctx, l.v
 	l.headerSize, l.bodySize, l.detailSize = headerSize, bodySize, detailSize
-	l.headerPt = math.Max(thMinHeaderPt, sizedBlockHeightPt(ctx, []sizedPara{{text: l.corner, sizePt: headerSize, bold: true}}, l.colW(0)))
-	for j, c := range v.Criteria {
-		l.headerPt = math.Max(l.headerPt, sizedBlockHeightPt(ctx, []sizedPara{{text: c.Label, sizePt: headerSize, bold: true}}, l.colW(j+1)))
+	if l.tight {
+		l.headerPt = thMinHeaderPt
+		for j, cell := range l.headerCells() {
+			l.headerPt = math.Max(l.headerPt, writtenFitHeightPt(cell.Shape.Text, l.colW(j), 0))
+		}
+	} else {
+		l.headerPt = math.Max(thMinHeaderPt, sizedBlockHeightPt(ctx, []sizedPara{{text: l.corner, sizePt: headerSize, bold: true}}, l.colW(0)))
+		for j, c := range v.Criteria {
+			l.headerPt = math.Max(l.headerPt, sizedBlockHeightPt(ctx, []sizedPara{{text: c.Label, sizePt: headerSize, bold: true}}, l.colW(j+1)))
+		}
 	}
 	rowPt, hlPt := thMinRowPt, 0.0
 	for i, o := range v.Options {
+		if l.tight {
+			h := l.writtenOptionHeight(i)
+			if i == l.hlRow && v.HighlightLabel != "" {
+				hlPt = h
+			} else {
+				rowPt = math.Max(rowPt, h)
+			}
+			continue
+		}
 		h := l.optionHeight(o, bodySize, detailSize)
 		if i == l.hlRow && v.HighlightLabel != "" {
 			hlPt = h + detailSize*sizingLineSpacing
@@ -693,7 +745,22 @@ func (l *thLayout) measure(headerSize, bodySize, detailSize float64) {
 		}
 	}
 	l.fixedPt = l.headerPt + l.gapsPt
-	l.fixedPt += float64(len(l.legend)) * thLegendPt
+	l.fixedPt += float64(len(l.legend)) * l.legendPt
+}
+
+// writtenOptionHeight is the height the shape writer needs for option row
+// i's name cell and text score cells, without autofit shrink.
+func (l *thLayout) writtenOptionHeight(i int) float64 {
+	tones := l.tones()
+	h := writtenFitHeightPt(thTextCell(tones.hlRow, "dk1", "l", l.nameParas(i, "dk1", tones.hlRow)).Shape.Text, l.colW(0), 0)
+	for j := range l.v.Criteria {
+		sc, ok := parseTableHighlightScore(safeScore(l.v.Options[i].Scores, j), l.v.scaleFor(j))
+		if ok && sc.kind == thScaleText {
+			cell := thScoreCell(l.ctx, sc, tones.band, l.symbolInk, l.ovr.RAGColors, l.bodySize, 1)
+			h = math.Max(h, writtenFitHeightPt(cell.Shape.Text, l.colW(j+1), 0))
+		}
+	}
+	return h
 }
 
 // optionHeight is the natural height of one option row's name / detail /
@@ -724,6 +791,27 @@ func (l *thLayout) fit() {
 		l.measure(st[0], st[1], st[2])
 		if l.total() <= l.areaH {
 			break
+		}
+	}
+	if l.total() > l.areaH {
+		// Still taller than this template's content area (a short layout, or
+		// a takeaway bar above the table): size rows at the height the writer
+		// needs and drop the legend's over-fill reserve. An over-filled grid
+		// scales every row down proportionally and the writer then shrinks
+		// 12pt option names below the floor (go-slide-creator-bzh34).
+		l.tight, l.legendPt = true, thLegendCompactPt
+		for _, st := range steps {
+			l.measure(st[0], st[1], st[2])
+			if l.total() <= l.areaH {
+				break
+			}
+		}
+		if l.total() > l.areaH && thLegendCompactPt*l.areaH/l.total() < thLegendRowPt+2*4 {
+			// Over-filled enough that the grid's proportional scale-down would
+			// squeeze the compact legend below its nested row: keep the
+			// generous reserve (see thLegendPt).
+			l.legendPt = thLegendPt
+			l.fixedPt += float64(len(l.legend)) * (thLegendPt - thLegendCompactPt)
 		}
 	}
 	if target := l.areaH * thMinFillPct / 100; l.total() < target {
@@ -759,7 +847,7 @@ func (p *tableHighlight) Expand(ctx ExpandContext, values, overrides any, cellOv
 	// third (go-slide-creator-z0up).
 	for _, kind := range l.legend {
 		rows = append(rows, jsonschema.GridRowInput{
-			MinHeight: thLegendPt, MaxHeight: thLegendPt,
+			MinHeight: l.legendPt, MaxHeight: l.legendPt,
 			Cells: []*jsonschema.GridCellInput{thLegendCell(ctx, v, kind, l.symbolInk, ovr.RAGColors, len(l.cols))},
 		})
 	}
@@ -823,14 +911,7 @@ func (l *thLayout) optionCells(i int, cellOverrides map[int]any) []*jsonschema.G
 		rowTone = tones.hlRow
 	}
 	nameInk := readableTextOn(l.ctx, rowTone, "dk1")
-	paras := []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(o.Name), Size: l.bodySize, Bold: true, Color: nameInk}}
-	if o.Detail != "" {
-		paras = append(paras, chartInsightsParagraph{Content: pptx.ConvertMarkdownEmphasis(o.Detail), Size: l.detailSize, Color: nameInk})
-	}
-	if i == l.hlRow && l.v.HighlightLabel != "" {
-		paras = append(paras, chartInsightsParagraph{Content: l.v.HighlightLabel, Size: l.detailSize, Bold: true, Color: thTagInk(l.ctx, l.accent, rowTone)})
-	}
-	nameCell := thTextCell(rowTone, nameInk, "l", paras)
+	nameCell := thTextCell(rowTone, nameInk, "l", l.nameParas(i, nameInk, rowTone))
 	co, hasCO := cellOverrides[i].(*TableHighlightCellOverride)
 	// Index i is option row i; its name cell is the primary text (D15 text keys).
 	applyCellTextOverride(nameCell, co)
@@ -847,6 +928,20 @@ func (l *thLayout) optionCells(i int, cellOverrides map[int]any) []*jsonschema.G
 		cells = append(cells, thScoreCell(l.ctx, sc, tone, l.symbolInk, l.ovr.RAGColors, l.bodySize, l.rowPt[i]))
 	}
 	return cells
+}
+
+// nameParas is option row i's name cell text: bold name, optional detail
+// and, on the highlighted row, the highlight tag.
+func (l *thLayout) nameParas(i int, nameInk string, rowTone fillTone) []chartInsightsParagraph {
+	o := l.v.Options[i]
+	paras := []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(o.Name), Size: l.bodySize, Bold: true, Color: nameInk}}
+	if o.Detail != "" {
+		paras = append(paras, chartInsightsParagraph{Content: pptx.ConvertMarkdownEmphasis(o.Detail), Size: l.detailSize, Color: nameInk})
+	}
+	if i == l.hlRow && l.v.HighlightLabel != "" {
+		paras = append(paras, chartInsightsParagraph{Content: l.v.HighlightLabel, Size: l.detailSize, Bold: true, Color: thTagInk(l.ctx, l.accent, rowTone)})
+	}
+	return paras
 }
 
 func safeScore(scores []TableHighlightScore, j int) TableHighlightScore {

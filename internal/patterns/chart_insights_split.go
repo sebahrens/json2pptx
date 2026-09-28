@@ -296,6 +296,9 @@ func (cis *chartInsightsSplit) PostExpandWarnings(ctx ExpandContext, values, ove
 	}
 	extras := v.Headline != nil || strings.TrimSpace(v.SoWhat) != ""
 	warnings := cisInsightWarnings(v, extras)
+	if w := cisColumnAreaWarning(ctx, v, overrides); w != "" {
+		warnings = append(warnings, w)
+	}
 	if h := v.Headline; h != nil && runeLen(h.Label) > cisHeadlineLabelBudget {
 		warnings = append(warnings, fmt.Sprintf("%s: chart-insights-split headline.label has %d characters; the headline holds about %d readable label characters — shorten the label", ErrCodeBodyTooLong, runeLen(h.Label), cisHeadlineLabelBudget))
 	}
@@ -329,6 +332,33 @@ var (
 		{{160, 160, 104, 75, 50, 25}, {160, 50, 24, 22, 21, 21}},
 	}
 )
+
+// cisColumnAreaWarning reports a stacked headline / so-what column whose
+// insights do not fit this layout's content area even at the compact sizes
+// and narrowest chart. The character budgets are measured against the
+// shipped templates' full content areas; a narrow or short area (or a
+// takeaway bar) holds fewer lines, and the writer would shrink the insights
+// below the 12pt floor (go-slide-creator-bzh34).
+func cisColumnAreaWarning(ctx ExpandContext, v *ChartInsightsSplitValues, overrides any) string {
+	if ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 || len(v.Insights) == 0 {
+		return "" // no measured content area: the budgets above apply
+	}
+	ovr, _ := overrides.(*ChartInsightsSplitOverrides)
+	if ovr == nil {
+		ovr = &ChartInsightsSplitOverrides{}
+	}
+	title := v.InsightsTitle
+	if title == "" {
+		title = "Key Insights"
+	}
+	panel := buildInsightsPanel(title, v.Insights, "accent1", ResolveSize(ovr.TitleSize, 12.0), ResolveSize(ovr.BulletSize, 12.0))
+	chartPct := clampPct(ovr.ChartWidthPct, sparseInsightsChartPct(v), 40.0, 80.0)
+	_, _, short := buildInsightsColumn(ctx, v, ovr, panel, "accent1", chartPct)
+	if short <= 0.5 {
+		return ""
+	}
+	return fmt.Sprintf("%s: chart-insights-split insights column is about %.0fpt taller than this layout's content area holds beside the headline / so-what at readable sizes — drop the headline, so_what or source, use fewer or shorter insights, or drop the slide takeaway", ErrCodeBodyTooLong, math.Ceil(short))
+}
 
 // cisHeadlineLabelBudget is the readable headline label length.
 const cisHeadlineLabelBudget = 41
@@ -406,7 +436,14 @@ func (cis *chartInsightsSplit) Expand(ctx ExpandContext, values, overrides any, 
 	if len(v.Insights) > 0 {
 		insightsCell = buildInsightsPanel(insightsTitle, v.Insights, accent, titleSize, bulletSize)
 	}
-	insightsCell = buildInsightsColumn(ctx, v, ovr, insightsCell, accent)
+	// Compute the chart panel width as a fraction of the grid. The default
+	// widens when the insights column has little to hold: a 35% column carrying
+	// one short bullet leaves a large empty block under it while the chart is
+	// squeezed into 55% of the slide (go-slide-creator-pyxn). A stacked
+	// headline / so-what column may narrow the chart instead so its insights
+	// fit this template's content area (go-slide-creator-bzh34).
+	chartPct := clampPct(ovr.ChartWidthPct, sparseInsightsChartPct(v), 40.0, 80.0)
+	insightsCell, chartPct, _ = buildInsightsColumn(ctx, v, ovr, insightsCell, accent, chartPct)
 
 	// Full-width fallback: no chart → single insights cell spanning the grid.
 	if v.Chart == nil {
@@ -420,11 +457,6 @@ func (cis *chartInsightsSplit) Expand(ctx ExpandContext, values, overrides any, 
 		return grid, nil
 	}
 
-	// Compute the chart panel width as a fraction of the grid. The default
-	// widens when the insights column has little to hold: a 35% column carrying
-	// one short bullet leaves a large empty block under it while the chart is
-	// squeezed into 55% of the slide (go-slide-creator-pyxn).
-	chartPct := clampPct(ovr.ChartWidthPct, sparseInsightsChartPct(v), 40.0, 80.0)
 	insightsPct := 100.0 - chartPct
 
 	// Chart panel: a Diagram cell rendered via svggen, with value labels and
@@ -794,10 +826,32 @@ func buildChartWithCaption(ctx ExpandContext, chart *jsonschema.GridCellInput, l
 	}}
 }
 
+// Geometry of the stacked insights column (points): the chart / insights
+// column gap, the inset a nested grid is resolved inside
+// (renderNestedSubGrids) and the stacked column's row gap.
+const (
+	cisColGapPt       = 8.0
+	cisSubGridInsetPt = 4.0
+	cisStackRowGapPt  = 6.0
+	// cisMinChartPct is the narrowest default chart panel a stacked column
+	// may take room from when its insights would not fit.
+	cisMinChartPct = 55.0
+)
+
 // buildInsightsColumn returns the insights cell unchanged when neither a
 // headline nor a so-what is set; otherwise it stacks [headline] / insights /
-// [so-what] in a nested grid sized from the measured headline and callout.
-func buildInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *ChartInsightsSplitOverrides, insights *jsonschema.GridCellInput, accent string) *jsonschema.GridCellInput {
+// [so-what] in a nested grid. The headline and so-what rows are pinned at the
+// height the writer needs for them (writtenFitHeightPt) and the insights
+// panel takes the rest. When the insights would not fit this template's
+// content area, the headline and callout step down to their compact sizes
+// and then, unless chart_width_pct pins it, the chart panel narrows (to
+// cisMinChartPct). Sized from percentages of an estimated area, the column
+// was written with its insights autofit below the 12pt floor on templates
+// with a shorter content area (go-slide-creator-bzh34). It returns the cell,
+// the chart panel width it was sized for and how many points the column is
+// short of (0 when it fits); when no candidate fits, the one closest to
+// fitting is used.
+func buildInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *ChartInsightsSplitOverrides, insights *jsonschema.GridCellInput, accent string, chartPct float64) (*jsonschema.GridCellInput, float64, float64) {
 	hasHeadline := v.Headline != nil && strings.TrimSpace(v.Headline.Value) != ""
 	hasSoWhat := strings.TrimSpace(v.SoWhat) != ""
 	if insights == nil && hasSoWhat && !hasHeadline {
@@ -813,26 +867,60 @@ func buildInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *Ch
 		return &jsonschema.GridCellInput{
 			Shape:     &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: tone.fillJSON(), Text: textJSON},
 			AccentBar: &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: 3},
-		}
+		}, chartPct, 0
 	}
 	if !hasHeadline && !hasSoWhat {
-		return insights
+		return insights, chartPct, 0
 	}
+	// Candidate layouts in order of preference: the authored sizes at the
+	// default width, then the compact sizes at narrowing chart widths.
+	type candidate struct {
+		pct     float64
+		compact bool
+	}
+	candidates := []candidate{{chartPct, false}, {chartPct, true}}
+	if v.Chart != nil && ovr.ChartWidthPct <= 0 {
+		for p := chartPct - 5; p >= cisMinChartPct; p -= 5 {
+			candidates = append(candidates, candidate{p, true})
+		}
+	}
+	var best *jsonschema.GridCellInput
+	bestPct, bestShort := chartPct, math.Inf(1)
+	for _, c := range candidates {
+		cell, short := stackInsightsColumn(ctx, v, ovr, insights, accent, c.pct, c.compact)
+		if short <= 0 {
+			return cell, c.pct, 0
+		}
+		if short < bestShort {
+			best, bestPct, bestShort = cell, c.pct, short
+		}
+	}
+	return best, bestPct, bestShort
+}
+
+// stackInsightsColumn builds the stacked column for one chart width and type
+// step, reporting how many points the insights panel is short of beside the
+// pinned rows (0 or less when it fits).
+func stackInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *ChartInsightsSplitOverrides, insights *jsonschema.GridCellInput, accent string, chartPct float64, compact bool) (*jsonschema.GridCellInput, float64) {
+	hasHeadline := v.Headline != nil && strings.TrimSpace(v.Headline.Value) != ""
+	hasSoWhat := strings.TrimSpace(v.SoWhat) != ""
 	areaW, areaH := sizingAreaPt(ctx)
-	colW := areaW * (100 - clampPct(ovr.ChartWidthPct, 65.0, 40.0, 80.0)) / 100
+	// The column's inner frame: the nested grid resolves inside the cell less
+	// the sub-grid inset on every side.
+	colW := (areaW-cisColGapPt)*(100-chartPct)/100 - 2*cisSubGridInsetPt
 	if v.Chart == nil {
-		colW = areaW
+		colW = areaW - 2*cisSubGridInsetPt
 	}
-	colH := areaH
+	colH := areaH - 2*cisSubGridInsetPt
 	if v.Source != "" {
-		colH -= cisSourceRowPt + 8 // source row + row gap
+		colH -= cisSourceRowPt + cisColGapPt // source row + row gap
 	}
 
 	var rows []jsonschema.GridRowInput
 	used := 0.0
 	if hasHeadline {
 		size := ResolveSize(ovr.HeadlineSize, 32)
-		if ovr.HeadlineSize == 0 && len(v.Insights) >= 5 {
+		if ovr.HeadlineSize == 0 && (compact || len(v.Insights) >= 5) {
 			size = 26
 		}
 		paras := []chartInsightsParagraph{{Content: v.Headline.Value, Size: size, Bold: true, Color: inkOnLight(ctx, accent, 3.0), Align: "l"}}
@@ -841,42 +929,49 @@ func buildInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *Ch
 			paras = append(paras, chartInsightsParagraph{Content: pptx.ConvertMarkdownEmphasis(v.Headline.Label), Size: 12, Color: "dk1", Align: "l"})
 			sized = append(sized, sizedPara{text: v.Headline.Label, sizePt: 12})
 		}
-		h := sizedBlockHeightPt(ctx, sized, colW)
 		textJSON, _ := json.Marshal(chartInsightsText{Paragraphs: paras, Align: "l", VerticalAlign: "t"})
-		rows = append(rows, jsonschema.GridRowInput{Height: pctOf(h, colH), Cells: []*jsonschema.GridCellInput{{
+		h := math.Max(sizedBlockHeightPt(ctx, sized, colW), writtenFitHeightPt(textJSON, colW, 0))
+		rows = append(rows, jsonschema.GridRowInput{MinHeight: h, MaxHeight: h, Cells: []*jsonschema.GridCellInput{{
 			Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`), Text: textJSON},
 		}}})
-		used += pctOf(h, colH)
+		used += h
 	}
 	var soWhatRow *jsonschema.GridRowInput
 	if hasSoWhat {
 		tone := inactiveTintTone(accent)
 		content := "<b>So what:</b> " + pptx.ConvertMarkdownEmphasis(v.SoWhat)
 		soSize := 13.0
-		if len(v.Insights) >= 5 {
+		if compact || len(v.Insights) >= 5 {
 			soSize = 12
 		}
-		h := sizedBlockHeightPt(ctx, []sizedPara{{text: content, sizePt: soSize}}, colW-8)
 		textJSON, _ := json.Marshal(chartInsightsText{
 			Paragraphs:    []chartInsightsParagraph{{Content: content, Size: soSize, Color: readableTextOn(ctx, tone, "dk1"), Align: "l"}},
 			Align:         "l",
 			VerticalAlign: "ctr",
 		})
-		soWhatRow = &jsonschema.GridRowInput{Height: pctOf(h, colH), Cells: []*jsonschema.GridCellInput{{
+		// Measured 8pt narrower than the column: the accent bar takes the
+		// callout's left edge.
+		h := math.Max(sizedBlockHeightPt(ctx, []sizedPara{{text: content, sizePt: soSize}}, colW-8), writtenFitHeightPt(textJSON, colW-8, 0))
+		soWhatRow = &jsonschema.GridRowInput{MinHeight: h, MaxHeight: h, Cells: []*jsonschema.GridCellInput{{
 			Shape:     &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: tone.fillJSON(), Text: textJSON},
 			AccentBar: &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: 3},
 		}}}
-		used += pctOf(h, colH)
+		used += h
 	}
+	need := 0.0
 	if insights != nil {
-		rows = append(rows, jsonschema.GridRowInput{Height: math.Max(100-used, 10), Cells: []*jsonschema.GridCellInput{insights}})
+		rows = append(rows, jsonschema.GridRowInput{Cells: []*jsonschema.GridCellInput{insights}})
+		if insights.Shape != nil {
+			need = writtenFitHeightPt(insights.Shape.Text, colW, 0)
+		}
 	}
 	if soWhatRow != nil {
 		rows = append(rows, *soWhatRow)
 	}
+	short := used + need + cisStackRowGapPt*float64(len(rows)-1) - colH
 	return &jsonschema.GridCellInput{Grid: &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(`1`),
-		RowGap:  6,
+		RowGap:  cisStackRowGapPt,
 		Rows:    rows,
-	}}
+	}}, short
 }

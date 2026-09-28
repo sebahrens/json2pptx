@@ -120,12 +120,15 @@ func TestChartInsightsSplit_HeadlineAndSoWhatColumn(t *testing.T) {
 	if col.AccentBar != nil {
 		t.Error("the stacked column carries no divider (nested-grid accent bars are not drawn)")
 	}
-	sum := 0.0
-	for _, r := range col.Grid.Rows {
-		sum += r.Height
+	// Headline and so-what rows are pinned at their writer-measured height;
+	// the insights panel takes the rest (go-slide-creator-bzh34).
+	for _, i := range []int{0, 2} {
+		if r := col.Grid.Rows[i]; r.MinHeight <= 0 || r.MinHeight != r.MaxHeight || r.Height != 0 {
+			t.Errorf("row %d should be pinned in points, got %+v", i, r)
+		}
 	}
-	if sum < 99 || sum > 101 {
-		t.Errorf("column rows should share 100%%, got %.1f", sum)
+	if r := col.Grid.Rows[1]; r.Height != 0 || r.MinHeight != 0 || r.MaxHeight != 0 {
+		t.Errorf("insights row should flex, got %+v", r)
 	}
 	// Source row is pinned in points so its 12pt floor never autofits.
 	src := grid.Rows[len(grid.Rows)-1]

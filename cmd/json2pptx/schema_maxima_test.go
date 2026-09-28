@@ -429,6 +429,13 @@ func schemaMaximumValues(pat patterns.Pattern) (any, string) {
 // against populated written runs by TestSchemaMaximaMeasurementsMatchWrittenRuns.
 // The old predictor omitted paragraph spacing and double-subtracted padding;
 // changing these audit values does not make extreme payloads safe to publish.
+// go-slide-creator-bzh34: the readability prediction now measures the cells
+// of nested sub-grids (a stacked chart-insights-split column, the
+// image-text-split text column, legends) and reports every predicted shrink
+// below the floor, not only shrinks of 0.85 or harsher — generation refuses
+// both. The chart-insights-split, image-text-split, matrix-2x2 and
+// process-flow pins below record that newly visible extreme-schema debt; the
+// generated output of these payloads did not change.
 var schemaMaximaShrinkPt = map[string]float64{
 	"agenda":                       7.0,
 	"agenda-with-images":           4.3,
@@ -438,7 +445,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"bmc-canvas":                   2.4,
 	"capability-heatmap":           3.8,
 	"card-grid":                    2.4,
-	"chart-insights-split":         4.6,
+	"chart-insights-split":         2.4,
 	"comparison-2col":              4.2,
 	"contact-directory":            3.8, // Still refused by the generated-font floor; not a readable schema budget.
 	"driver-tree":                  4.1,
@@ -448,7 +455,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"hero-detail":                  6.7,
 	"horizontal-bar-with-callouts": 3.8,
 	"icon-row":                     0.0,
-	"image-text-split":             0.0,
+	"image-text-split":             5.5,
 	"journey-maturity-model":       9.1,
 	"kpi-2up":                      0.0,
 	"kpi-3up":                      0.0,
@@ -457,13 +464,13 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"kpi-6up":                      0.0,
 	"kpi-inline":                   7.7,
 	"labeled-rows":                 5.0,
-	"matrix-2x2":                   9.4,
+	"matrix-2x2":                   8.4,
 	"metric-list":                  5.0,
 	"numbered-step-strip":          4.8,
 	"phase-roadmap":                4.6,
 	// Layout-aware standalone readability measurement exposed a schema-legal
 	// payload below the floor; go-slide-creator-tp23k tracks its text budget.
-	"process-flow":         0,
+	"process-flow":         10.8,
 	"process-flow-compact": 9.1,
 	// Optional column_headers + outcomes rows (go-slide-creator-s1uvj.10) take
 	// height from the two tracks; the 40-char row labels in the 12% label
@@ -506,7 +513,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"bmc-canvas":                   2.4,
 	"capability-heatmap":           3.8,
 	"card-grid":                    2.4,
-	"chart-insights-split":         5.0,
+	"chart-insights-split":         2.4,
 	"contact-directory":            4.3,
 	"comparison-2col":              4.5,
 	"driver-tree":                  4.8,
@@ -516,7 +523,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"hero-detail":                  7.9,
 	"horizontal-bar-with-callouts": 3.8,
 	"icon-row":                     0,
-	"image-text-split":             0,
+	"image-text-split":             6.2,
 	"journey-maturity-model":       9.8,
 	"kpi-2up":                      0,
 	"kpi-3up":                      0,
@@ -525,7 +532,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"kpi-6up":                      0,
 	"kpi-inline":                   8.4,
 	"labeled-rows":                 6.2,
-	"matrix-2x2":                   0,
+	"matrix-2x2":                   9.4,
 	"metric-list":                  5.5,
 	"numbered-step-strip":          5.8,
 	"phase-roadmap":                5.0,
@@ -542,7 +549,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"strategy-house":               4.6,
 	"stylish-panels":               2.8,
 	"swimlane":                     4.8,
-	"table-highlight":              5.5,
+	"table-highlight":              5.3,
 	"team-bios":                    5.5,
 	"text-sidebar":                 5.5,
 	"timeline-horizontal":          6.0,

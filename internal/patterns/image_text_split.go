@@ -59,6 +59,10 @@ const (
 	itsMinFillPct    = 60.0 // never shorter than this share of the content height
 	itsMetricValuePt = 24.0
 	itsMetricLabelPt = 12.0
+	// itsSubGridInsetPt is the inset a nested grid resolves inside
+	// (renderNestedSubGrids): the text column stacks its text over the metric
+	// row in one, and the metric row is a nested grid of its own.
+	itsSubGridInsetPt = 4.0
 )
 
 // ImageAssetRef names one image reference inside a pattern's values.
@@ -343,8 +347,23 @@ func (p *imageTextSplit) Expand(ctx ExpandContext, values, overrides any, cellOv
 }
 
 // itsMeasure resolves column widths, the type scale and the grid height.
+// When the text column does not fit at the smallest type step, the image
+// narrows (to 30%, unless image_width_pct pins it) so the text wraps to fewer
+// lines on a template with a short or narrow content area.
 func itsMeasure(ctx ExpandContext, v *ImageTextSplitValues, ovr *ImageTextSplitOverrides, areaW, areaH float64) itsLayout {
-	lay := itsLayout{imgPct: clampPct(ovr.ImageWidthPct, 45, 30, 60)}
+	pct := clampPct(ovr.ImageWidthPct, 45, 30, 60)
+	lay, column := itsMeasureAt(ctx, v, ovr, areaW, areaH, pct)
+	for ovr.ImageWidthPct <= 0 && column > areaH && pct > 30 {
+		pct -= 5
+		lay, column = itsMeasureAt(ctx, v, ovr, areaW, areaH, pct)
+	}
+	return lay
+}
+
+// itsMeasureAt measures the layout at one image width, returning it with the
+// text column's height.
+func itsMeasureAt(ctx ExpandContext, v *ImageTextSplitValues, ovr *ImageTextSplitOverrides, areaW, areaH, imgPct float64) (itsLayout, float64) {
+	lay := itsLayout{imgPct: imgPct}
 	lay.textPct = 100 - lay.imgPct
 	lay.imgW = (areaW - itsColGapPt) * lay.imgPct / 100
 	lay.textW = (areaW - itsColGapPt) * lay.textPct / 100
@@ -359,13 +378,21 @@ func itsMeasure(ctx ExpandContext, v *ImageTextSplitValues, ovr *ImageTextSplitO
 	if ovr.HeadingSize > 0 || ovr.BodySize > 0 {
 		steps = [][2]float64{{ResolveSize(ovr.HeadingSize, 20), ResolveSize(ovr.BodySize, 14)}}
 	}
+	// With metrics the text sits in a nested grid, inset on every side; its
+	// height is what the shape writer needs at that width, so the text row is
+	// never written shrunk below the body floor (go-slide-creator-bzh34).
+	textW := lay.textW
+	if lay.metricsPt > 0 {
+		textW -= 2 * itsSubGridInsetPt
+	}
 	var column float64
 	for _, st := range steps {
 		lay.headingSize, lay.bodySize = st[0], st[1]
-		lay.textPt = sizedBlockHeightPt(ctx, itsTextParas(v, st[0], st[1]), lay.textW)
+		lay.textPt = math.Max(sizedBlockHeightPt(ctx, itsTextParas(v, st[0], st[1]), textW),
+			writtenFitHeightPt(itsTextJSON(ctx, v, lay, "accent1"), textW, 0))
 		column = lay.textPt
 		if lay.metricsPt > 0 {
-			column += itsRowGapPt + lay.metricsPt
+			column += itsRowGapPt + itsMetricRowPt(lay) + 2*itsSubGridInsetPt
 		}
 		if column <= areaH {
 			break
@@ -376,7 +403,7 @@ func itsMeasure(ctx ExpandContext, v *ImageTextSplitValues, ovr *ImageTextSplitO
 		imageColumn += itsRowGapPt + lay.captionPt
 	}
 	lay.heightPt = math.Min(math.Max(math.Max(column, imageColumn), areaH*itsMinFillPct/100), areaH)
-	return lay
+	return lay, column
 }
 
 // itsTextParas returns the measured paragraphs of the text column.
@@ -446,9 +473,14 @@ func itsImageColumn(ctx ExpandContext, v *ImageTextSplitValues, lay itsLayout) *
 	}}
 }
 
-// itsTextColumn builds the text cell, stacking the metric row underneath
-// (bottom-anchored) when metrics are present.
-func itsTextColumn(ctx ExpandContext, v *ImageTextSplitValues, lay itsLayout, accent string) *jsonschema.GridCellInput {
+// itsMetricRowPt is the metric row height: the metric cells plus the inset
+// of the nested grid that lays them out.
+func itsMetricRowPt(lay itsLayout) float64 {
+	return lay.metricsPt + 2*itsSubGridInsetPt
+}
+
+// itsTextJSON is the text cell's body: eyebrow, heading, body and bullets.
+func itsTextJSON(ctx ExpandContext, v *ImageTextSplitValues, lay itsLayout, accent string) json.RawMessage {
 	var paras []chartInsightsParagraph
 	for _, sp := range itsTextParas(v, lay.headingSize, lay.bodySize) {
 		para := chartInsightsParagraph{Content: pptx.ConvertMarkdownEmphasis(sp.text), Size: sp.sizePt, Bold: sp.bold, Color: "dk1", Align: "l", SpaceAfter: sp.spaceAfterPt}
@@ -464,7 +496,13 @@ func itsTextColumn(ctx ExpandContext, v *ImageTextSplitValues, lay itsLayout, ac
 		paras[n-1].SpaceAfter = 0
 	}
 	textJSON, _ := json.Marshal(chartInsightsText{Paragraphs: paras, Align: "l", VerticalAlign: "t"})
-	text := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`), Text: textJSON}}
+	return textJSON
+}
+
+// itsTextColumn builds the text cell, stacking the metric row underneath
+// (bottom-anchored) when metrics are present.
+func itsTextColumn(ctx ExpandContext, v *ImageTextSplitValues, lay itsLayout, accent string) *jsonschema.GridCellInput {
+	text := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`), Text: itsTextJSON(ctx, v, lay, accent)}}
 	if lay.metricsPt <= 0 {
 		return text
 	}
@@ -485,13 +523,14 @@ func itsTextColumn(ctx ExpandContext, v *ImageTextSplitValues, lay itsLayout, ac
 			AccentBar: &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: 2},
 		})
 	}
-	metricsPct := pctOf(lay.metricsPt, lay.heightPt-itsRowGapPt)
+	// The metric row is pinned in points and the text takes the rest.
+	metricRowPt := itsMetricRowPt(lay)
 	return &jsonschema.GridCellInput{Grid: &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(`1`),
 		RowGap:  itsRowGapPt,
 		Rows: []jsonschema.GridRowInput{
-			{Height: 100 - metricsPct, Cells: []*jsonschema.GridCellInput{text}},
-			{Height: metricsPct, Cells: []*jsonschema.GridCellInput{{Grid: &jsonschema.ShapeGridInput{
+			{Cells: []*jsonschema.GridCellInput{text}},
+			{MinHeight: metricRowPt, MaxHeight: metricRowPt, Cells: []*jsonschema.GridCellInput{{Grid: &jsonschema.ShapeGridInput{
 				Columns: json.RawMessage(fmt.Sprintf("%d", len(metricCells))),
 				ColGap:  12,
 				Rows:    []jsonschema.GridRowInput{{Cells: metricCells}},

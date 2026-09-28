@@ -1,5 +1,23 @@
 # Schema Changelog
 
+- **Unreleased — Template-aware stacked columns and nested-cell readability
+  prediction (`go-slide-creator-bzh34`).** A `chart-insights-split` with a
+  headline or so-what pins those rows at their writer-measured height and,
+  when the insights would not fit the slide's content area, steps the
+  headline / so-what to their compact sizes and narrows the chart (to 55%,
+  unless `chart_width_pct` pins it); `table-highlight` re-measures an
+  over-tall table with the writer and compacts its legend reserve;
+  `image-text-split` sizes its text column with the writer and narrows the
+  image (to 30%, unless `image_width_pct` pins it). Content that still cannot
+  fit gets a template-aware `BODY_TOO_LONG` from `chart-insights-split` and
+  `table-highlight`. The fit report's `TEXT_BELOW_READABLE_MIN` prediction for
+  grid text now measures nested sub-grid cells and drops its 0.85 reporting
+  threshold, so validate predicts the refusals generation makes. The State of
+  AI deck that p-style accepted but midnight-blue refused at 10.6pt now
+  generates on every shipped template except `modern`, where the
+  table-highlight slide under a takeaway is flagged before generation. No
+  schema-version change.
+
 - **2026-09-28 — Schema 4.153.0: uniform 0.5 cm shape text inset.**
   Every text-bearing shape the engine draws (shape_grid cells — so every
   pattern, compose block and raw grid — and the native diagram shapes) keeps

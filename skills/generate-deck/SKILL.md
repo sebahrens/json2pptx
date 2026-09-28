@@ -49,7 +49,12 @@ patterns with `list_patterns` and the chosen pattern's live value schema with
 `show_pattern`; use `get_input_schema` for raw fields. The raw path is
 `recommend_visual` (when visual choice is unclear) → `expand_pattern` (when
 using a pattern) → `validate_input` → `generate_presentation` → render and
-inspect. Read [RAW_PATH.md](RAW_PATH.md) before authoring raw JSON. Its
+inspect. Pattern copy budgets assume the template's full content area; on a
+short or narrow template, or under a `takeaway`, `chart-insights-split` and
+`table-highlight` report `BODY_TOO_LONG` naming what to drop, and validate
+predicts grid text (nested cells included) that generation would refuse as
+`TEXT_BELOW_READABLE_MIN` ([PATTERNS.md](PATTERNS.md)).
+Read [RAW_PATH.md](RAW_PATH.md) before authoring raw JSON. Its
 preconditions are **not** universal DeckSpec requirements. Two raw-only
 patterns cover pages DeckSpec kinds do not: `contact-directory` (key contacts
 / "who to call": grouped rows of circular headshots, names and titles, up to

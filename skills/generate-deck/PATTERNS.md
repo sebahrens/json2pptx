@@ -65,6 +65,14 @@ roadmap activities, team bios, metric details, swimlane steps, KPI captions and
 the rest) live in each field's `show_pattern` description, measured at default
 sizes for every supported count. Read them there; `BODY_TOO_LONG` names the
 field to shorten and `TEXT_EXCEEDS_SHAPE` a word that cannot fit its shape. Limits: `state-shift-hub` takes 3–4 pairs, `dual-org-ladder` at most 4 rows.
+Those budgets assume a template's full content area. `chart-insights-split`
+(headline / so-what column) and `table-highlight` also check the slide's
+actual area (a short or narrow template, or a `takeaway` bar above the
+pattern): when the content cannot fit at readable sizes even after the
+pattern steps its type down and narrows the chart, they report
+`BODY_TOO_LONG` naming what to drop (a headline, so-what, source, option
+details, `highlight_label`, the legend, or the takeaway). Validate reports it
+with the predicted `TEXT_BELOW_READABLE_MIN`, which generation refuses.
 
 ---
 

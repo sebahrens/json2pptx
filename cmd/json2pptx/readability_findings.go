@@ -9,6 +9,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/textcapacity"
@@ -54,7 +55,8 @@ func collectReadabilityFindings(input *PresentationInput, layouts []types.Layout
 		if result == nil {
 			continue
 		}
-		for _, cell := range result.Cells {
+		for _, rc := range readabilityGridCells(slide.ShapeGrid, result, slidepath.ShapeGrid(si), slideWidth, slideHeight, 0) {
+			cell := rc.cell
 			if cell.Kind != shapegrid.CellKindShape || cell.ShapeSpec == nil || cell.Bounds.CX <= 0 || cell.Bounds.CY <= 0 {
 				continue
 			}
@@ -68,7 +70,7 @@ func collectReadabilityFindings(input *PresentationInput, layouts []types.Layout
 				// readability measurement for XML that cannot be produced.
 				continue
 			}
-			cellPath := slidepath.GridCell(si, cell.RowIdx, cell.ColIdx)
+			cellPath := rc.path
 			path := slidepath.Join(cellPath, "shape/text")
 			roleOverride := patternCellReadabilityRole(slide, cell.RowIdx)
 			if f := worstReadability(paras, scale, mode, path, roleOverride); f != nil {
@@ -95,6 +97,41 @@ func collectReadabilityFindings(input *PresentationInput, layouts []types.Layout
 		}
 	}
 	return findings
+}
+
+// readabilityGridCell is one resolved grid cell with its JSON-pointer path.
+type readabilityGridCell struct {
+	cell shapegrid.ResolvedCell
+	path string
+}
+
+// readabilityGridCells flattens a resolved grid the way generation does
+// (renderNestedSubGrids): nested sub-grids resolve inside their placeholder
+// bounds less subGridInsetEMU, and their shape cells are checked too.
+// Generation refuses unreadable text in a nested cell (a stacked
+// chart-insights-split column, for example), so the fit report must predict
+// it there as well (go-slide-creator-bzh34).
+func readabilityGridCells(grid *ShapeGridInput, result *shapegrid.ResolveResult, base string, slideWidth, slideHeight int64, depth int) []readabilityGridCell {
+	var out []readabilityGridCell
+	for _, rc := range result.Cells {
+		path := fmt.Sprintf("%s/rows/%d/cells/%d", base, rc.RowIdx, rc.ColIdx)
+		if rc.Kind != shapegrid.CellKindSubGrid {
+			out = append(out, readabilityGridCell{cell: rc, path: path})
+			continue
+		}
+		src := gridCellAtResolved(grid, rc.RowIdx, rc.ColIdx)
+		if src == nil || src.Grid == nil || depth >= maxGeomNestingDepth {
+			continue
+		}
+		inset := pptx.RectEmu{X: rc.Bounds.X + subGridInsetEMU, Y: rc.Bounds.Y + subGridInsetEMU, CX: rc.Bounds.CX - 2*subGridInsetEMU, CY: rc.Bounds.CY - 2*subGridInsetEMU}
+		if inset.CX <= 0 || inset.CY <= 0 {
+			inset = rc.Bounds
+		}
+		if sub := resolveGridForStructural(src.Grid, &inset, nil, slideWidth, slideHeight); sub != nil {
+			out = append(out, readabilityGridCells(src.Grid, sub, path+"/grid", slideWidth, slideHeight, depth+1)...)
+		}
+	}
+	return out
 }
 
 func populatedCellBudget(cell shapegrid.ResolvedCell) (int, bool) {
@@ -247,25 +284,10 @@ func splitCellParagraphs(content string, sizePt float64, bold bool) []cellParagr
 	return out
 }
 
-// autofitShrinkReportThreshold is the predicted scale at or below which a
-// shrink-driven readability finding is trustworthy.
-//
-// The shrink is a PREDICTION from an estimated cell box, and the estimate runs a
-// little tight: on examples/phase-roadmap.json it predicts 12pt shrinking to
-// ~10.6pt on cells that render at about 12pt. Reporting inside that error bar
-// turned clean pattern decks into gate failures the moment pattern slides
-// started being measured (go-slide-creator-adur). A prediction of 0.85 or
-// harsher is well outside the error bar; text AUTHORED below the floor is exact
-// and always reported.
-const autofitShrinkReportThreshold = 0.85
-
 // worstReadability returns the TEXT_BELOW_READABLE_MIN finding for the
 // paragraph furthest below its role's floor after the predicted autofit
 // scale, or nil when every paragraph stays readable.
 func worstReadability(paras []cellParagraph, scale float64, mode tokens.ViewingMode, path string, roleOverride tokens.TextRole) *patterns.FitFinding {
-	if scale < 1 && scale > autofitShrinkReportThreshold {
-		return nil
-	}
 	var worst *patterns.FitFinding
 	worstRatio := 1.0
 	populated := populatedCellParagraphs(paras)
