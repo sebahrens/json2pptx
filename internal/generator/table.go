@@ -908,12 +908,9 @@ func generateItalicCellContent(text string, config TableRenderConfig, colIdx int
 			`<a:normAutofit/>`+
 			`</a:bodyPr>`+
 			`<a:lstStyle/>`+
-			`<a:p><a:pPr algn="%s"/><a:r>`+
-			`<a:rPr lang="en-US" sz="%d" b="0" i="1"/>`+
-			`<a:t>%s</a:t>`+
-			`</a:r></a:p></a:txBody>`,
+			`<a:p><a:pPr algn="%s"/>%s</a:p></a:txBody>`,
 		cellMargin, cellMargin, cellMargin/2, cellMargin/2,
-		algn, fontSize, escapeXMLText(text),
+		algn, cellRunsXML(fmt.Sprintf(`<a:rPr lang="en-US" sz="%d" b="0" i="1"/>`, fontSize), text),
 	)
 }
 
@@ -1026,12 +1023,9 @@ func generateCellContent(text string, isHeader bool, config TableRenderConfig, c
 			`<a:normAutofit/>`+
 			`</a:bodyPr>`+
 			`<a:lstStyle/>`+
-			`<a:p><a:pPr algn="%s"/><a:r>`+
-			`%s`+
-			`<a:t>%s</a:t>`+
-			`</a:r></a:p></a:txBody>`,
+			`<a:p><a:pPr algn="%s"/>%s</a:p></a:txBody>`,
 		cellMargin, cellMargin, cellMargin/2, cellMargin/2,
-		algn, rPr, escapeXMLText(text),
+		algn, cellRunsXML(rPr, text),
 	)
 }
 
@@ -1070,12 +1064,9 @@ func generateDataCellContent(cell types.TableCell, isTotalsRow bool, config Tabl
 				`<a:normAutofit/>`+
 				`</a:bodyPr>`+
 				`<a:lstStyle/>`+
-				`<a:p><a:pPr algn="%s"/><a:r>`+
-				`<a:rPr lang="en-US" sz="%d" b="%s">%s</a:rPr>`+
-				`<a:t>%s</a:t>`+
-				`</a:r></a:p></a:txBody>`,
+				`<a:p><a:pPr algn="%s"/>%s</a:p></a:txBody>`,
 			cellMargin, cellMargin, cellMargin/2, cellMargin/2,
-			algn, fontSize, bold, fontColorXML, escapeXMLText(cell.Content),
+			algn, cellRunsXML(fmt.Sprintf(`<a:rPr lang="en-US" sz="%d" b="%s">%s</a:rPr>`, fontSize, bold, fontColorXML), cell.Content),
 		)
 	}
 
@@ -1085,13 +1076,28 @@ func generateDataCellContent(cell types.TableCell, isTotalsRow bool, config Tabl
 			`<a:normAutofit/>`+
 			`</a:bodyPr>`+
 			`<a:lstStyle/>`+
-			`<a:p><a:pPr algn="%s"/><a:r>`+
-			`<a:rPr lang="en-US" sz="%d" b="%s"/>`+
-			`<a:t>%s</a:t>`+
-			`</a:r></a:p></a:txBody>`,
+			`<a:p><a:pPr algn="%s"/>%s</a:p></a:txBody>`,
 		cellMargin, cellMargin, cellMargin/2, cellMargin/2,
-		algn, fontSize, bold, escapeXMLText(cell.Content),
+		algn, cellRunsXML(fmt.Sprintf(`<a:rPr lang="en-US" sz="%d" b="%s"/>`, fontSize, bold), cell.Content),
 	)
+}
+
+// cellRunsXML renders cell text as runs. An explicit newline in the cell
+// content becomes an <a:br/> line break carrying the same run properties, so
+// "In Progress\n65% complete" renders as two left-aligned lines instead of a
+// raw LF inside <a:t> (which renderers treat inconsistently and which the
+// spTree re-indenter used to pad with leading spaces).
+func cellRunsXML(rPr, text string) string {
+	text = strings.ReplaceAll(text, "\r\n", "\n")
+	lines := strings.Split(text, "\n")
+	var b strings.Builder
+	for i, line := range lines {
+		if i > 0 {
+			b.WriteString(`<a:br>` + rPr + `</a:br>`)
+		}
+		b.WriteString(`<a:r>` + rPr + `<a:t>` + escapeXMLText(line) + `</a:t></a:r>`)
+	}
+	return b.String()
 }
 
 // deltaTextColor returns OOXML solidFill XML for delta column cells.

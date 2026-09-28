@@ -460,3 +460,26 @@ func TestInsertIntoSpTree_PreservesNamespaces(t *testing.T) {
 		}
 	}
 }
+
+// TestIndentElement_PreservesTextNodeNewlines guards go-slide-creator-x2b12:
+// a newline inside <a:t> character data is content, so re-indenting the
+// inserted element must not pad the continuation line with spaces.
+func TestIndentElement_PreservesTextNodeNewlines(t *testing.T) {
+	elem := []byte("<p:graphicFrame>\n  <a:tc><a:t>In Progress\n65% complete\n\n  At Risk</a:t></a:tc>\n</p:graphicFrame>")
+	got := string(indentElement(elem, "    "))
+	want := "<p:graphicFrame>\n    <a:tc><a:t>In Progress\n65% complete\n\n  At Risk</a:t></a:tc>\n    </p:graphicFrame>\n"
+	if got != want {
+		t.Errorf("indentElement mangled text content\n got: %q\nwant: %q", got, want)
+	}
+}
+
+// TestIndentElement_ReindentsStructuralLines keeps the original behaviour for
+// inter-tag whitespace: those lines are re-indented and blank lines dropped.
+func TestIndentElement_ReindentsStructuralLines(t *testing.T) {
+	elem := []byte("<p:sp>\n\t<p:nvSpPr/>\n\n        <p:spPr/>\n</p:sp>")
+	got := string(indentElement(elem, "  "))
+	want := "<p:sp>\n  <p:nvSpPr/>\n  <p:spPr/>\n  </p:sp>\n"
+	if got != want {
+		t.Errorf("got %q want %q", got, want)
+	}
+}
