@@ -80,7 +80,9 @@ func TestCardGridCellUnmarshalJSON(t *testing.T) {
 	})
 }
 
-func TestCardGridShortCardsCentreCopyAfterZoneFill(t *testing.T) {
+// Short cards stay content-sized (go-slide-creator-wntyw): no stretch towards
+// the zone height, so no mostly empty panels.
+func TestCardGridShortCardsStayContentSized(t *testing.T) {
 	pat := &cardGrid{}
 	vals := &CardGridValues{Columns: 2, Rows: 1, Cells: []CardGridCell{
 		{Header: "Growth", Body: "12%"}, {Header: "Margin", Body: "42%"},
@@ -90,13 +92,11 @@ func TestCardGridShortCardsCentreCopyAfterZoneFill(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, zoneH := sizingAreaPt(fullThemeCtx())
-	if grid.Rows[0].MaxHeight < zoneH*0.59 {
-		t.Errorf("card row %.1fpt uses less than 60%% of %.1fpt zone", grid.Rows[0].MaxHeight, zoneH)
+	if grid.Rows[0].MaxHeight > zoneH*0.4 {
+		t.Errorf("card row %.1fpt stretches past 40%% of the %.1fpt zone for two short cards", grid.Rows[0].MaxHeight, zoneH)
 	}
-	for i, cell := range grid.Rows[0].Cells {
-		if !strings.Contains(string(cell.Shape.Text), `"vertical_align":"ctr"`) {
-			t.Errorf("sparse card %d not centered in grown panel: %s", i, cell.Shape.Text)
-		}
+	if grid.VerticalAlign != GridVerticalAlignDefault {
+		t.Errorf("card grid vertical_align = %q, want the middle-anchored default", grid.VerticalAlign)
 	}
 }
 

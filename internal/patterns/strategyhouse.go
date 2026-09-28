@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -307,6 +308,9 @@ func (sh *strategyHouse) Expand(ctx ExpandContext, values, overrides any, cellOv
 	foundationIdx := numPillars + 1
 	roofIdx := numPillars + 2
 
+	fullW, areaH := contentAreaPt(ctx)
+	pillarW := equalColumnWidthPt(fullW, numPillars, strategyHouseColGapPt)
+
 	var rows []jsonschema.GridRowInput
 
 	// Optional roof row: badges as a tinted strip
@@ -320,10 +324,7 @@ func (sh *strategyHouse) Expand(ctx ExpandContext, values, overrides any, cellOv
 			},
 		}
 		applyStrategyHouseOverride(roofCell, cellOverrides, roofIdx, baseAccent)
-		rows = append(rows, jsonschema.GridRowInput{
-			Height: 12,
-			Cells:  []*jsonschema.GridCellInput{roofCell},
-		})
+		rows = append(rows, strategyHouseBandRow(roofCell, fullW, 0.12*areaH))
 	}
 
 	// Banner row: objective on a strong accent fill
@@ -336,14 +337,11 @@ func (sh *strategyHouse) Expand(ctx ExpandContext, values, overrides any, cellOv
 		},
 	}
 	applyStrategyHouseOverride(bannerCell, cellOverrides, bannerIdx, baseAccent)
-	bannerHeight := 18.0
+	bannerShare := 0.18
 	if hasRoof {
-		bannerHeight = 16.0
+		bannerShare = 0.16
 	}
-	rows = append(rows, jsonschema.GridRowInput{
-		Height: bannerHeight,
-		Cells:  []*jsonschema.GridCellInput{bannerCell},
-	})
+	rows = append(rows, strategyHouseBandRow(bannerCell, fullW, bannerShare*areaH))
 
 	// Pillar row: N cells on the template's subtle surface, with bold titles
 	// and bullet bodies. The fill used to be lt1 — white on a white slide — so
@@ -368,7 +366,26 @@ func (sh *strategyHouse) Expand(ctx ExpandContext, values, overrides any, cellOv
 		}
 		applyStrategyHouseOverride(pillarCells[i], cellOverrides, pillarIdx0+i, accent)
 	}
-	rows = append(rows, jsonschema.GridRowInput{Cells: pillarCells})
+	// Content-sized pillars (go-slide-creator-wntyw): the row hugs the
+	// longest pillar's title + bullets plus card padding instead of taking
+	// every point the banner and foundation leave, which left the pillars
+	// ~60% empty. The cap is a max_height on a flex row: content that needs more than
+	// the zone leaves still takes whatever the bands leave (and a text that
+	// cannot be sized at all leaves the row uncapped).
+	pillarRow := jsonschema.GridRowInput{Cells: pillarCells}
+	pillarPt := 0.0
+	for _, c := range pillarCells {
+		need := writtenFitHeightPt(c.Shape.Text, pillarW, 0)
+		if need <= 0 {
+			pillarPt = 0
+			break
+		}
+		pillarPt = math.Max(pillarPt, need)
+	}
+	if pillarPt > 0 {
+		pillarRow.MaxHeight = math.Round(pillarPt + cardPadPt)
+	}
+	rows = append(rows, pillarRow)
 
 	// Foundation row
 	foundationCell := &jsonschema.GridCellInput{
@@ -380,19 +397,39 @@ func (sh *strategyHouse) Expand(ctx ExpandContext, values, overrides any, cellOv
 		},
 	}
 	applyStrategyHouseOverride(foundationCell, cellOverrides, foundationIdx, baseAccent)
-	rows = append(rows, jsonschema.GridRowInput{
-		Height: 18,
-		Cells:  []*jsonschema.GridCellInput{foundationCell},
-	})
+	rows = append(rows, strategyHouseBandRow(foundationCell, fullW, 0.18*areaH))
 
+	// Bands are pinned and the pillar row is capped in points, so the house
+	// is a content-sized block middle-anchored in the body zone.
 	grid := &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(fmt.Sprintf(`%d`, numPillars)),
-		Gap:     8,
-		RowGap:  6,
-		Rows:    rows,
+		Columns:       json.RawMessage(fmt.Sprintf(`%d`, numPillars)),
+		Gap:           strategyHouseColGapPt,
+		RowGap:        6,
+		Rows:          rows,
+		VerticalAlign: GridVerticalAlignDefault,
 	}
 
 	return grid, nil
+}
+
+// strategyHouseColGapPt is the gutter between pillars.
+const strategyHouseColGapPt = 8.0
+
+// strategyHouseBandPadPt is the breathing room a full-width band (roof,
+// objective banner, foundation) gets around its text.
+const strategyHouseBandPadPt = 10.0
+
+// strategyHouseBandRow pins a full-width band row to its text height plus
+// strategyHouseBandPadPt, never taller than maxPt (the share of the zone the
+// band used to take as a fixed percentage; longer text autofits there).
+func strategyHouseBandRow(cell *jsonschema.GridCellInput, widthPt, maxPt float64) jsonschema.GridRowInput {
+	need := writtenFitHeightPt(cell.Shape.Text, widthPt, 0)
+	h := maxPt
+	if need > 0 {
+		h = math.Min(need+strategyHouseBandPadPt, maxPt)
+	}
+	h = math.Round(h)
+	return jsonschema.GridRowInput{MinHeight: h, MaxHeight: h, Cells: []*jsonschema.GridCellInput{cell}}
 }
 
 // ---------------------------------------------------------------------------

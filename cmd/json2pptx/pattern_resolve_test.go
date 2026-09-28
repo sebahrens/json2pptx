@@ -307,7 +307,9 @@ func TestExpandPatternSizesToEffectiveBounds(t *testing.T) {
 		t.Fatal(err)
 	}
 	renderBounds := resolveGridBounds(clamped, contentRect, zone, ctx.SlideWidth, ctx.SlideHeight)
-	if clamped.Rows[0].MaxHeight >= unclamped.Rows[0].MaxHeight || clamped.Rows[0].MaxHeight > float64(renderBounds.CY)/12700+1 {
+	// Content-sized KPI rows keep their height when it fits the render zone;
+	// they must never exceed it.
+	if clamped.Rows[0].MaxHeight > unclamped.Rows[0].MaxHeight || clamped.Rows[0].MaxHeight > float64(renderBounds.CY)/12700+1 {
 		t.Errorf("clamped KPI max height %.1fpt not sized to render zone %.1fpt (raw %.1fpt)", clamped.Rows[0].MaxHeight, float64(renderBounds.CY)/12700, unclamped.Rows[0].MaxHeight)
 	}
 

@@ -145,30 +145,26 @@ func TestKPIRowHeightInvariant(t *testing.T) {
 					t.Fatalf("Expand: %v", err)
 				}
 				got := grid.Rows[0].MaxHeight
-				base := contentH * kpiBaseCardHeightFrac
-				if c.atBase && got < contentH*0.70-0.5 {
-					t.Errorf("full-size KPI row uses %.1f%% of the content height, want at least 70%%", got/contentH*100)
-				}
-				if got < base-0.5 {
-					t.Errorf("row max_height %.1fpt is below the %.1fpt base", got, base)
-				}
 				if got > contentH+0.5 {
 					t.Errorf("row max_height %.1fpt exceeds the %.1fpt content box", got, contentH)
 				}
-				// Content that fits must not inflate the row: that is the half
-				// of the rule go-slide-creator-7km8 added and it still holds.
-				if c.atBase && got > base+1 {
-					t.Errorf("content that fits raised the row to %.1fpt; it should rest on the %.1fpt base", got, base)
+				// Content-sized (go-slide-creator-wntyw): content that fits
+				// must not stretch the card towards the zone height.
+				if c.atBase && got > contentH*0.45 {
+					t.Errorf("light KPI row %.1fpt uses %.0f%% of the %.1fpt zone; cards must hug their content", got, got/contentH*100, contentH)
+				}
+				if got < 60 {
+					t.Errorf("row max_height %.1fpt is too short for a value and caption", got)
 				}
 			})
 		}
 	}
 }
 
-// The base is a floor, not a cap — say so in a test, because the name used to
-// claim the opposite and nothing caught it.
+// Content that needs more than the zone is clipped to the content box, never
+// beyond it.
 func TestKPIRowHeightIsRaisedNotCapped(t *testing.T) {
-	// A short content zone makes even modest content exceed the base.
+	// A short content zone makes even modest content exceed the zone.
 	ctx := ExpandContext{
 		SlideWidth: 12192000, SlideHeight: 6858000,
 		LayoutBounds: LayoutBounds{Width: 10515600, Height: 1200000},
@@ -185,10 +181,10 @@ func TestKPIRowHeightIsRaisedNotCapped(t *testing.T) {
 		t.Fatalf("Expand: %v", err)
 	}
 	got := grid.Rows[0].MaxHeight
-	if base := contentH * kpiBaseCardHeightFrac; got <= base+0.5 {
-		t.Errorf("row max_height %.1fpt did not rise above the %.1fpt base; the base is meant to be a floor", got, base)
-	}
 	if got > contentH+0.5 {
 		t.Errorf("row max_height %.1fpt exceeds the %.1fpt content box", got, contentH)
+	}
+	if got < contentH*0.9 {
+		t.Errorf("row max_height %.1fpt should rise to the %.1fpt content box for content that needs it", got, contentH)
 	}
 }

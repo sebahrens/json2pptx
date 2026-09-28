@@ -1,5 +1,22 @@
 # Schema Changelog
 
+- **Unreleased — Thin connective geometry and content-sized boxes (`go-slide-creator-7z5we`, `go-slide-creator-wntyw`).**
+  No schema field changes. Rendering: matrix-2x2 axes are 1.5pt arrows with
+  an 8pt head (were block arrows; the y-axis label now sits beside its arrow
+  in dk1); the before-after / before-after-compact transition chevron is a
+  24pt marker in the gutter (was full-height); the phase-roadmap timeline is
+  a 3pt rule and the timeline-horizontal dots axis 3pt (was a 12–20pt band /
+  2.5pt); a top `accent_bar` lies flush inside the card's top edge (it floated
+  2pt above the card, and on strategy-house filled the gap under the banner
+  so the gutters notched the roof). Boxes are no longer stretched to fill the
+  zone: kpi-Nup cards, card-grid rows, before-after panels and strategy-house
+  bands / pillars are content-sized (at most 1.6x their content) and
+  middle-anchored; exec-summary / metric-list / labeled-rows rows grow at most
+  1.6x. The body zone starts 18pt below a measured top-anchored title.
+  `SLIDE_UNDERUSED` dropped its KPI "empty band >= 0.75in" clause and the
+  `largest_empty_band_in` param; the content-sized box patterns (`kpi-*`,
+  `card-grid`, `before-after`, `before-after-compact`, `strategy-house`) use a
+  20% ink threshold (other patterns 29%).
 - **2026-09-28 — Schema 4.153.0: uniform 0.5 cm shape text inset.**
   Every text-bearing shape the engine draws (shape_grid cells — so every
   pattern, compose block and raw grid — and the native diagram shapes) keeps

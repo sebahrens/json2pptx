@@ -7,10 +7,12 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
-// titleTextSafetyLines is the share of one title line kept below the measured
-// title text before the standard grid gap applies, absorbing small
-// measurement differences between the estimator and the renderer.
-const titleTextSafetyLines = 0.25
+// bodyZoneTitleGapPt is the distance from the bottom of a measured
+// (top-anchored) title's text to the top of the body zone: 18pt
+// (go-slide-creator-wntyw). It absorbs small measurement differences between
+// the estimator and the renderer, and it is the one fixed start line the
+// eye finds on every slide; the standard gridChromeGapPt is part of it.
+const bodyZoneTitleGapPt = 18.0
 
 // reserveMeasuredTitle pulls the content zone's TitleBottom up from the title
 // placeholder's bottom edge to the bottom of the title's measured text when the
@@ -78,7 +80,7 @@ func reserveMeasuredTitle(g GridGeometry, slide SlideInput, layouts []types.Layo
 }
 
 // measuredTitleBottom estimates the Y (EMU) where a top-anchored title's text
-// ends, plus a small safety margin. ok is false when the text cannot be
+// ends, plus the part of bodyZoneTitleGapPt the zone's own gap does not cover. ok is false when the text cannot be
 // measured (no font cache), in which case the caller keeps the box edge.
 func measuredTitleBottom(title *types.PlaceholderInfo, text string) (int64, bool) {
 	if title.TextCaps {
@@ -99,7 +101,8 @@ func measuredTitleBottom(title *types.PlaceholderInfo, text string) (int64, bool
 	if err != nil || h <= 0 {
 		return 0, false
 	}
-	linePt := float64(title.FontSize) / 100.0 * lineSpacing
-	safety := int64(linePt * titleTextSafetyLines * 12700)
+	// The zone's bounds add gridChromeGapPt below TitleBottom; reserve the
+	// rest of bodyZoneTitleGapPt here.
+	safety := int64((bodyZoneTitleGapPt - gridChromeGapPt) * 12700)
 	return title.Bounds.Y + h + safety, true
 }

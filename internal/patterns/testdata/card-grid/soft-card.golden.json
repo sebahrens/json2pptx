@@ -3,8 +3,7 @@
   "columns": 2,
   "rows": [
     {
-      "min_height": 94.7,
-      "max_height": 94.7,
+      "max_height": 82,
       "cells": [
         {
           "shape": {
@@ -12,7 +11,6 @@
             "fill": "#FFF5ED",
             "line": "none",
             "text": {
-              "align": "l",
               "paragraphs": [
                 {
                   "content": "Card 1",
@@ -28,7 +26,8 @@
                   "align": "l"
                 }
               ],
-              "vertical_align": "ctr"
+              "align": "l",
+              "vertical_align": "t"
             }
           }
         },
@@ -38,7 +37,6 @@
             "fill": "#FFF5ED",
             "line": "none",
             "text": {
-              "align": "l",
               "paragraphs": [
                 {
                   "content": "Card 2",
@@ -54,15 +52,15 @@
                   "align": "l"
                 }
               ],
-              "vertical_align": "ctr"
+              "align": "l",
+              "vertical_align": "t"
             }
           }
         }
       ]
     },
     {
-      "min_height": 94.7,
-      "max_height": 94.7,
+      "max_height": 82,
       "cells": [
         {
           "shape": {
@@ -70,7 +68,6 @@
             "fill": "#FFF5ED",
             "line": "none",
             "text": {
-              "align": "l",
               "paragraphs": [
                 {
                   "content": "Card 3",
@@ -86,7 +83,8 @@
                   "align": "l"
                 }
               ],
-              "vertical_align": "ctr"
+              "align": "l",
+              "vertical_align": "t"
             }
           }
         },
@@ -96,7 +94,6 @@
             "fill": "#FFF5ED",
             "line": "none",
             "text": {
-              "align": "l",
               "paragraphs": [
                 {
                   "content": "Card 4",
@@ -112,7 +109,8 @@
                   "align": "l"
                 }
               ],
-              "vertical_align": "ctr"
+              "align": "l",
+              "vertical_align": "t"
             }
           }
         }

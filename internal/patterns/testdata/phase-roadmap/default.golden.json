@@ -101,6 +101,7 @@
       "cells": [
         {
           "col_span": 4,
+          "max_height": 3,
           "shape": {
             "geometry": "rect",
             "fill": "accent1"
