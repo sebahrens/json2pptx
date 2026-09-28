@@ -26,7 +26,8 @@ then code. A deck-level finding precedes slide 0 at equal severity.
   not a failed tool call, and a clean deterministic score does not replace
   final-revision visual inspection. `INPUT_CONTROL_CHARS_REMOVED` (info):
   invisible bidi controls / BOMs were stripped from that string; drop them
-  from your source text.
+  from your source text. `BODY_TOO_LONG` is a `refuse` when one placeholder
+  carries over 200 paragraphs (`fix.params.max_paragraphs`): split it.
 
 `score_deck` classifies a finding as `pattern_choice`, `rendering`, or
 `content`. A pattern-choice problem usually calls for a different visual

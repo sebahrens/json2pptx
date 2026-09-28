@@ -1117,6 +1117,8 @@ Content lint emits this code when a single `text`, `bullets`, `body_and_bullets`
 
 For pattern warnings, shorten the named value to the limit in its message, reduce the pattern's item density, or split the content. These warnings do not necessarily provide `fix.params.max_words`.
 
+**Paragraph cap (action `refuse`).** A single content block that renders more than 200 paragraphs into one placeholder (authored text lines, bullets, and the body / header / lead-out paragraphs of the bullet-bearing types) is refused with `BODY_TOO_LONG` at action `refuse`, replacing the review-level word-budget finding for that block. `fix` is `{kind: "reduce_text", params: {current_paragraphs, max_paragraphs: 200, strategy: "split"}}`: split the content across slides (go-slide-creator-8hg02).
+
 ### `BULLET_NESTING_DEEP`
 
 **Action:** `review`
