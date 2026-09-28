@@ -172,7 +172,14 @@ func (c ExpandContext) ResolveAccent(accent, semanticAccent string) string {
 
 // ResolveSurface returns the scheme color name for a surface tint role,
 // falling back to defaultColor if the role is not defined in template metadata.
+//
+// Preflight contexts (validate / fit-report) carry the theme but no metadata;
+// they fall back to the SurfaceTints mirrored into ThemeInfo so they resolve
+// the same fill generation does (go-slide-creator-yjap4).
 func (c ExpandContext) ResolveSurface(role, defaultColor string) string {
+	if c.Metadata == nil && len(c.Theme.SurfaceTints) > 0 {
+		return ResolveSurface(role, &types.TemplateMetadata{SurfaceTints: c.Theme.SurfaceTints}, defaultColor)
+	}
 	return ResolveSurface(role, c.Metadata, defaultColor)
 }
 
