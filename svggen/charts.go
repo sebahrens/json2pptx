@@ -2853,6 +2853,9 @@ func (pc *PieChart) Draw(data ChartData) error {
 	centerY := pieArea.Y + pieArea.H/2
 	halfSize := math.Min(pieArea.W, pieArea.H) / 2
 	radiusScale := 0.9
+	// labelReachX is how far past the arc the outside labels reach sideways;
+	// the landscape group centring below keeps them clear of the legend.
+	labelReachX := 0.0
 	if pc.config.LabelPosition == ArcLabelOutside && pc.config.ShowLabels {
 		// Dynamically size the radius so the longest outside label fits.
 		// Label extends: outerRadius + spacing.MD (gap) + spacing.XS (pad) + labelWidth
@@ -2866,27 +2869,29 @@ func (pc *PieChart) Draw(data ChartData) error {
 			b.Push()
 			b.SetFontSize(style.Typography.SizeBody)
 			b.SetFontWeight(style.Typography.WeightNormal)
-			for i, v := range values {
-				pctStr := labelConfig.formatSliceValue(v, total)
-				lbl := pctStr
-				if i < len(labels) && labels[i] != "" {
-					lbl = labels[i] + " " + pctStr
-				}
-				w, _ := b.MeasureText(lbl)
+			// Outside labels print the value only — the legend names the
+			// slices (ArcSeries.drawLabel). Budgeting for "name value" here
+			// pinned the radius to its 65% floor, so pies and donuts filled
+			// barely a third of their frame (go-slide-creator-iry0p).
+			for _, v := range values {
+				w, _ := b.MeasureText(labelConfig.formatSliceValue(v, total))
 				if w > maxLabelW {
 					maxLabelW = w
 				}
 			}
 			b.Pop()
 		}
-		// Diagrams are embedded as PNG (not SVG), so the Go canvas rasterizer
-		// determines final text sizes. No LibreOffice SVG text scaling mismatch.
-		// A small 10% margin accounts for font metric approximation.
-		maxLabelW *= 1.1
+		// Same safety margin drawLabel clamps with: LibreOffice renders SVG
+		// text wider than the Go canvas measures it.
+		maxLabelW *= 1.4
 		labelGap := style.Spacing.MD + style.Spacing.XS // gap from arc + alignment pad
-		needed := labelGap + maxLabelW
-		// Radius must leave room for the label on each side
-		maxRadius := halfSize - needed
+		// A label beside the pie needs its width; one above or below it only
+		// its line height. Budgeting the width on every side left a wide
+		// frame's pie at ~60% of the height it could use (go-slide-creator-iry0p).
+		labelReachX = labelGap + maxLabelW
+		neededH := labelGap + style.Typography.SizeBody*1.2
+		maxRadius := math.Min(pieArea.W/2-labelReachX, pieArea.H/2-neededH)
+		maxRadius = math.Min(maxRadius, halfSize*radiusScale)
 		// Floor at 65% of halfSize so the chart never becomes too tiny
 		minRadius := halfSize * 0.65
 		if maxRadius < minRadius {
@@ -2900,7 +2905,8 @@ func (pc *PieChart) Draw(data ChartData) error {
 	// (height is the constraining dimension). Re-center the pie+legend group
 	// within the full plotArea width to eliminate dead space on the right.
 	if landscapeLegend {
-		actualPieW := 2 * halfSize // visual diameter of pie bounding area
+		// Visual width of the pie with its side labels.
+		actualPieW := math.Min(pieArea.W, math.Max(2*halfSize, 2*(radius+labelReachX)))
 		gap := style.Spacing.MD
 		groupW := actualPieW + gap + legendBounds.W
 		if groupW < plotArea.W {
@@ -3143,8 +3149,17 @@ type RadarChartConfig struct {
 
 // DefaultRadarChartConfig returns default radar chart configuration.
 func DefaultRadarChartConfig(width, height float64) RadarChartConfig {
+	config := DefaultChartConfig(width, height)
+	// A radar has no x/y axes, so the axis-sized bottom and left margins only
+	// shrank the web (go-slide-creator-iry0p). Its axis labels are budgeted
+	// inside the plot area by Draw; use the small uniform pie margin.
+	margin := math.Min(config.MarginTop, config.MarginRight)
+	config.MarginTop = margin
+	config.MarginRight = margin
+	config.MarginBottom = margin
+	config.MarginLeft = margin
 	return RadarChartConfig{
-		ChartConfig: DefaultChartConfig(width, height),
+		ChartConfig: config,
 		FillOpacity: 0.2,
 		ShowPoints:  true,
 		PointSize:   6,
@@ -3212,7 +3227,7 @@ func (rc *RadarChart) Draw(data ChartData) error {
 	// so that labels have more room around the perimeter.
 	centerX := plotArea.X + plotArea.W/2
 	centerY := plotArea.Y + plotArea.H/2
-	radiusFactor := 0.8
+	radiusFactor := 1.0
 	numAxes := len(data.Categories)
 	if numAxes >= 16 {
 		radiusFactor = 0.60
@@ -3222,7 +3237,13 @@ func (rc *RadarChart) Draw(data ChartData) error {
 		radiusFactor = 0.70
 	}
 	maxHalfDim := math.Min(plotArea.W, plotArea.H) / 2
-	radius := maxHalfDim * radiusFactor
+	// The 12 and 6 o'clock labels sit radius+MD from the centre, centred on
+	// a block of up to two lines. Reserve exactly that band above and below
+	// instead of a flat 80% factor, which on a wide slide frame left the web
+	// filling barely a third of the body (go-slide-creator-iry0p).
+	lineH := style.Typography.SizeBody * math.Max(1, style.Typography.LineHeight)
+	radius := math.Min(maxHalfDim*radiusFactor, plotArea.H/2-style.Spacing.MD-lineH)
+	radius = math.Max(radius, maxHalfDim*0.40)
 
 	// Ensure labels are never hyphenated: measure the widest single word at
 	// minimum font size and shrink the radius if the most-constrained label
@@ -3256,7 +3277,9 @@ func (rc *RadarChart) Draw(data ChartData) error {
 		}
 	}
 
-	// Calculate max value
+	// Calculate max value. The outer ring is the data maximum rounded up to
+	// a clean ring step (radarNiceMax below); padding it by 10% first pushed
+	// scores out of 100 onto a 125 ring (go-slide-creator-iry0p).
 	maxValue := rc.config.MaxValue
 	if maxValue == 0 {
 		for _, series := range data.Series {
@@ -3266,7 +3289,6 @@ func (rc *RadarChart) Draw(data ChartData) error {
 				}
 			}
 		}
-		maxValue *= 1.1 // Add 10% padding
 	}
 
 	// Guard against division-by-zero when all values are zero

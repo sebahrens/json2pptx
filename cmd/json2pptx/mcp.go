@@ -34,7 +34,7 @@ import (
 
 func mcpGenerateTool() mcp.Tool {
 	return withPresentationOrDeckIDChoice(mcp.NewTool("generate_presentation",
-		mcp.WithDescription("Generate a PowerPoint presentation from JSON slide definitions or a stored deck_id. Returns the output file path and a raw-deck handle for revision calls."),
+		mcp.WithDescription("Generate a PowerPoint presentation from JSON slide definitions or a stored deck_id. Returns the output file path and a raw-deck handle for revision calls. Run validate_input first; success means the file was written, not that it is done: deterministic_ready/publishable/blocking_reasons carry the verdict and next_tool_call chains render_deck_thumbnails then submit_visual_review."),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaGenerate)),
 		mcp.WithObject("presentation",
 			mcp.Description(`Presentation definition. Use list_templates to discover available template names, layout_ids, and placeholder_ids.
@@ -670,6 +670,18 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		return argInvalidValue("generate_presentation", "STALE_REVISION", "deck_id", "the stored raw deck changed or expired during generation; retry with its current revision", "string", sourceDeckID, nil), nil
 	}
 	output.RawRevision = diagnostics.ComputeInputSHA256(rawDeck)
+
+	// Completion state and the next step, shared with render_deck_spec; the
+	// gate is recorded so submit_visual_review cannot approve a raw deck the
+	// gate blocks (go-slide-creator-mn33v, go-slide-creator-z3pbp).
+	fitReportOn, _ := request.GetArguments()["fit_report"].(bool)
+	status := rawCompletionStatus(fitFindings, result.SlideCount, outputValidationFindings, outputValidation, result.ContentHash, strictFit != "off" || fitReportOn)
+	output.DeterministicReady = &status.DeterministicReady
+	output.Publishable = &status.Publishable
+	output.BlockingReasons = status.BlockingReasons
+	output.DeterministicBlockingReasons = status.DeterministicBlockingReasons
+	output.NextToolCall = renderNextToolCall(status.DeterministicReady, firstBlockingFitCall(fitFindings), outputPath, nil)
+	recordDeterministicGate(outputPath, status.DeterministicBlockingReasons)
 
 	mc.idempotency.Set("generate_presentation", idemKey, idemFingerprint, output)
 

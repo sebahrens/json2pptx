@@ -163,10 +163,32 @@ func runSizeHPt(r Run) int {
 	return 1800
 }
 
+// chevronMaxNotchFraction caps the depth of each chevron notch as a fraction
+// of the shape width. The preset default (adj 50000) sets the notch to half
+// the shorter side, so a chevron less than twice as wide as it is tall loses
+// its whole text rectangle to the two notches and wraps labels mid-word
+// ("Dis/cov/er", go-slide-creator-5wm83). A 25% cap keeps at least half the
+// width for text while leaving wide chevrons at the preset default.
+const chevronMaxNotchFraction = 0.25
+
+// DefaultChevronAdj returns the "adj" a chevron of the given size gets when
+// the author set none: the preset 50000, reduced for stubby chevrons so each
+// notch is at most chevronMaxNotchFraction of the width. ok is false for
+// degenerate bounds.
+func DefaultChevronAdj(cx, cy int64) (adj int64, ok bool) {
+	if cx <= 0 || cy <= 0 {
+		return 0, false
+	}
+	ss := min(cx, cy)
+	capped := int64(chevronMaxNotchFraction * 100000 * float64(cx) / float64(ss))
+	return min(int64(50000), capped), true
+}
+
 // PresetTextRectSize returns the width and height of a preset geometry's own
 // text rectangle inside bounds — the box bodyPr insets are measured from. Most
 // presets use the whole shape; pointed and round presets pull it in. adj is the
-// "adj" adjustment (OOXML 1/100000 units), or negative for the preset default.
+// "adj" adjustment (OOXML 1/100000 units), or negative for the preset default
+// (for a chevron, the DefaultChevronAdj notch cap).
 func PresetTextRectSize(geometry string, adj int64, bounds RectEmu) (int64, int64) {
 	w, h := float64(bounds.CX), float64(bounds.CY)
 	ss := math.Min(w, h)
@@ -182,7 +204,11 @@ func PresetTextRectSize(geometry string, adj int64, bounds RectEmu) (int64, int6
 	tw, th := w, h
 	switch geometry {
 	case "chevron":
-		v := math.Min(a(50000), 100000*w/ss)
+		def := int64(50000)
+		if capped, ok := DefaultChevronAdj(bounds.CX, bounds.CY); ok {
+			def = capped
+		}
+		v := math.Min(a(float64(def)), 100000*w/ss)
 		tw = w - 2*ss*v/100000
 	case "homePlate":
 		v := math.Min(a(50000), 100000*w/ss)

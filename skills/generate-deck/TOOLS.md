@@ -63,8 +63,9 @@ signature or schema registry.
   commands without an MCP counterpart. MCP-only tools have no exact CLI
   replacement; prefer composition where documented below.
 - Results use compact `structuredContent`. On newer MCP protocol versions,
-  `content[0].text` may be a bounded synopsis, so inspect structured data
-  instead of parsing a prose fallback. A tool's `next_tool_call` is a
+  `content[0].text` may be a bounded synopsis (status, `content_hash`,
+  `blocking_reasons`, `changed_slides`, `failed_fixes`); prefer structured
+  data. A tool's `next_tool_call` is a
   suggested recovery path, not permission to mutate external state.
 
 ## Composition recipes

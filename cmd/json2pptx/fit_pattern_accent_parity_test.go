@@ -45,8 +45,8 @@ func TestSectionNumberTargetDoesNotIncludeSameTextTitle(t *testing.T) {
 }
 
 // A section-keyed pattern after a divider uses accent2 in both validation and
-// rendering. The light override makes a real contrast decision observable,
-// rather than merely checking that both paths can expand a pattern.
+// rendering. With a light accent2 the pattern keeps the fill and writes a
+// readable ink, so validation predicts and render performs no contrast repair.
 func TestSectionKeyedPatternContrastParityAcrossLocalTemplates(t *testing.T) {
 	for _, templateName := range testutil.AllTestTemplateNames() {
 		t.Run(templateName, func(t *testing.T) {
@@ -74,15 +74,13 @@ func TestSectionKeyedPatternContrastParityAcrossLocalTemplates(t *testing.T) {
 			if got := string(grid.Rows[0].Cells[0].Shape.Fill); got != `"accent2"` {
 				t.Fatalf("preflight KPI fill = %s, want section-keyed accent2", got)
 			}
+			// The pattern keeps the light accent2 fill and writes a readable
+			// dark ink on it, so neither path needs a contrast repair.
 			predicted := contrastPredictions(collectFitFindings(input, layouts, width, height, &effectiveTheme))
-			found := false
 			for _, finding := range predicted {
 				if strings.HasPrefix(finding.Path, "/slides/2/") && strings.Contains(finding.Message, "(on #EEEEEE") {
-					found = true
+					t.Fatalf("preflight still predicts a contrast repair on the accent2 KPI: %+v", finding)
 				}
-			}
-			if !found {
-				t.Fatalf("no accent2 contrast prediction on slide 3: %+v", predicted)
 			}
 			result, cleanup, err := RunPresentation(context.Background(), input, RenderOptions{
 				OutputDir: t.TempDir(), TemplatesDir: testutil.TemplatesDir(), StrictFit: "off", OutputValidation: "off",
@@ -96,10 +94,9 @@ func TestSectionKeyedPatternContrastParityAcrossLocalTemplates(t *testing.T) {
 			}
 			for _, swap := range result.GenResult.ContrastSwaps {
 				if swap.SlideIndex == 2 && swap.BackgroundColor == "#EEEEEE" {
-					return
+					t.Fatalf("render had to repair accent2 KPI text that expansion should write readably: %+v", swap)
 				}
 			}
-			t.Fatalf("render did not repair accent2 KPI text: %+v", result.GenResult.ContrastSwaps)
 		})
 	}
 }

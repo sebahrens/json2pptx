@@ -163,6 +163,10 @@ func (c ExpandContext) rotatedAccent() (chosen, requested, reason string) {
 	return fallback, requested, fmt.Sprintf("no theme accent is safe for lt1 body text; selected %s", fallback)
 }
 
+// minVisibleAccentContrast is the minimum fill-vs-lt1 contrast for a light
+// accent to carry dark text instead of falling back to a dark fill.
+const minVisibleAccentContrast = 1.3
+
 func (c ExpandContext) safeRotatingAccent(candidate string, ink svggen.Color) bool {
 	if c.Metadata != nil && candidate == c.Metadata.SemanticAccents["negative"] {
 		return false
@@ -171,7 +175,26 @@ func (c ExpandContext) safeRotatingAccent(candidate string, ink svggen.Color) bo
 		return false
 	}
 	fill, found := resolveThemeColor(c, candidate)
-	return found && fill.ContrastWith(ink) >= svggen.WCAGAANormal
+	if !found {
+		return false
+	}
+	if fill.ContrastWith(ink) >= svggen.WCAGAANormal {
+		return true
+	}
+	// A light accent stays on-brand when a theme dark ink reads on it:
+	// ApplyReadableInk swaps the pattern's lt1 text for that ink after
+	// expansion, so the fill need not fall back to dk2 / black.
+	// The fill must still read as a shape on the (lt1) slide: a near-white
+	// accent with dark text would be an invisible card.
+	if fill.ContrastWith(ink) < minVisibleAccentContrast {
+		return false
+	}
+	for _, dark := range []string{"dk2", "dk1"} {
+		if d, ok := resolveThemeColor(c, dark); ok && fill.ContrastWith(d) >= svggen.WCAGAANormal {
+			return true
+		}
+	}
+	return false
 }
 
 // ResolveCellAccent keeps automatic alternate/progressive fills within the

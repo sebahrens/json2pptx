@@ -35,31 +35,20 @@ func riskTable() *types.TableSpec {
 	}
 }
 
-// Rows are sized for their text, so a short table in a full-height body
-// placeholder used to hang from the top and leave the bottom ~45% of the slide
-// blank — with no finding, because the placeholder itself counted as full
-// (go-slide-creator-6jv7).
-func TestTableIsCentredInItsPlaceholder(t *testing.T) {
+// A short table anchors at the top of its content area, directly under the
+// title, instead of floating in the middle of the slide.
+func TestTableAnchorsAtTopOfPlaceholder(t *testing.T) {
 	bounds := types.BoundingBox{X: 838200, Y: 1825625, Width: 10515600, Height: 4351338}
 	result, err := GenerateTableXML(riskTable(), TableRenderConfig{Bounds: bounds})
 	if err != nil {
 		t.Fatalf("GenerateTableXML: %v", err)
 	}
-
 	y, cy := frameGeometry(t, result.XML)
 	if cy >= bounds.Height {
-		t.Fatalf("table fills the placeholder (cy=%d, height=%d); this case needs slack to centre", cy, bounds.Height)
+		t.Fatalf("table fills the placeholder (cy=%d, height=%d); this case needs slack", cy, bounds.Height)
 	}
-	tableCentre := y + cy/2
-	areaCentre := bounds.Y + bounds.Height/2
-	slack := bounds.Height - cy
-	if delta := tableCentre - areaCentre; delta > 1 || delta < -1 {
-		t.Errorf("table centre %d is %d EMU off the content-area centre %d (slack %d)",
-			tableCentre, delta, areaCentre, slack)
-	}
-	// The whitespace is shared, not all at the bottom.
-	if above := y - bounds.Y; above < slack/2-1 || above > slack/2+1 {
-		t.Errorf("space above the table = %d, want half the slack (%d)", above, slack/2)
+	if y != bounds.Y {
+		t.Errorf("table top y=%d, want the content-area top %d", y, bounds.Y)
 	}
 }
 

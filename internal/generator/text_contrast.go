@@ -395,14 +395,6 @@ var textRunPropertiesRegexp = regexp.MustCompile(`<a:rPr\b([^>]*)>`)
 // large-text bar either way.
 const defaultBodyTextPt = 12.0
 
-// wcagLargeTextPt / wcagLargeBoldTextPt are the WCAG "large text" thresholds:
-// 18pt, or 14pt when bold. Only text at or above them may be fixed to the 3:1
-// large-text contrast ratio; everything else needs 4.5:1.
-const (
-	wcagLargeTextPt     = 18.0
-	wcagLargeBoldTextPt = 14.0
-)
-
 // contrastThresholdFor returns the WCAG AA contrast ratio a run of the given
 // size must meet: 3:1 only for genuinely large text, 4.5:1 otherwise.
 //
@@ -415,10 +407,9 @@ func contrastThresholdFor(textPt float64, bold bool) float64 {
 	if textPt <= 0 {
 		textPt = defaultBodyTextPt
 	}
-	if textPt >= wcagLargeTextPt || (bold && textPt >= wcagLargeBoldTextPt) {
-		return svggen.WCAGAALarge
-	}
-	return svggen.WCAGAANormal
+	// One definition with the pattern ink fix (patterns.ApplyReadableInk):
+	// 3:1 only for >=18pt or >=14pt bold.
+	return patterns.TextContrastThreshold(textPt, bold)
 }
 
 // smallestTextPt returns the smallest declared run size in a text-body fragment
@@ -479,6 +470,20 @@ func allRunsBold(fragment string) bool {
 		}
 	}
 	return true
+}
+
+// minWorthwhileContrastGain is the least factor a replacement must raise the
+// contrast ratio by before it may override a colour that already clears the
+// large-text bar. White on midnight-blue's accent2 reads 4.43; swapping it for
+// black (4.74) meets 4.5 on paper, changes nothing a viewer can see, and
+// paints a brand accent card in off-brand black (go-slide-creator-z668n).
+const minWorthwhileContrastGain = 1.2
+
+// contrastSwapWorthwhile reports whether replacing a foreground whose ratio is
+// before with one whose ratio is after is worth the loss of the authored
+// colour. Text below the large-text bar is always fixed.
+func contrastSwapWorthwhile(before, after float64) bool {
+	return before < svggen.WCAGAALarge || after >= before*minWorthwhileContrastGain
 }
 
 // contrastReplacement computes the high-contrast replacement color for a
@@ -675,7 +680,54 @@ func enforceShapeGridContrast(shapes [][]byte, themeColors []types.ThemeColor, w
 		annotateContrastSwaps(swaps, slideIndex, slidepath.Join(gridPath, fmt.Sprintf("shapes/%d", i)), "shape_grid")
 		allSwaps = append(allSwaps, swaps...)
 	}
-	return shapes, allSwaps
+	return harmonizeTextColorPerFill(shapes, allSwaps, themeColors, slideIndex, slideBackground...)
+}
+
+// harmonizeTextColorPerFill keeps one text colour per fill on a slide. The
+// per-shape pass judges each body by its own smallest text, so on p-style's
+// orange a 13pt label flipped to black while larger text on the same fill kept
+// white. Once any cell's colour X on fill F was replaced by Y, every other cell
+// still showing X on F gets Y too: Y was chosen against the stricter bar on
+// that very fill, so it is readable wherever it lands (go-slide-creator-z668n).
+func harmonizeTextColorPerFill(shapes [][]byte, swaps []ContrastSwap, themeColors []types.ThemeColor, slideIndex int, slideBackground ...string) ([][]byte, []ContrastSwap) {
+	type key struct{ fill, orig string }
+	decided := map[key]ContrastSwap{}
+	for _, sw := range swaps {
+		if sw.Source != "shape_grid" {
+			continue // a group decision spans several fills and is already uniform
+		}
+		k := key{strings.ToUpper(sw.BackgroundColor), strings.ToUpper(sw.OriginalColor)}
+		if _, ok := decided[k]; !ok {
+			decided[k] = sw
+		}
+	}
+	if len(decided) == 0 {
+		return shapes, swaps
+	}
+	gridPath := slidepath.ShapeGrid(slideIndex)
+	for i, shape := range shapes {
+		fillHex := strings.ToUpper(gridContrastFillHex(shape, themeColors, slideBackground...))
+		if fillHex == "" {
+			continue
+		}
+		body := shapeTextBody(shape)
+		for _, orig := range textColorsIn(body, themeColors) {
+			sw, ok := decided[key{fillHex, strings.ToUpper(orig)}]
+			if !ok {
+				continue
+			}
+			fixed := replaceTextColor(body, orig, sw.ReplacedColor, themeColors)
+			if fixed == body {
+				continue
+			}
+			shapes[i] = []byte(strings.Replace(string(shapes[i]), body, fixed, 1))
+			body = fixed
+			sw.Path = slidepath.Join(gridPath, fmt.Sprintf("shapes/%d", i))
+			sw.SlideIndex = slideIndex
+			swaps = append(swaps, sw)
+		}
+	}
+	return shapes, swaps
 }
 
 // fixShapeXMLContrast fixes low-contrast text in a raw shape XML fragment.
@@ -686,7 +738,7 @@ func enforceShapeGridContrast(shapes [][]byte, themeColors []types.ThemeColor, w
 // text foreground is white/lt1, the fix is skipped — the template metadata
 // certifies that pairing as safe.
 func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor, whiteTextSafeHex map[string]bool, slideBackground ...string) ([]byte, []ContrastSwap) {
-	fillHex := effectiveGridShapeFillHex(shapeXML, themeColors, slideBackground...)
+	fillHex := gridContrastFillHex(shapeXML, themeColors, slideBackground...)
 	if fillHex == "" {
 		return shapeXML, nil
 	}
@@ -719,12 +771,13 @@ func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor, whiteT
 	// Fix scheme colors in text (with white-text-safe awareness)
 	// Shape-grid colors are author-specified on the shape's own fill, not
 	// inherited through a layout, so no color map override applies.
-	// A shape-grid cell is NOT an author-introduced background for this purpose:
-	// the author chose the fill and the text colour together, so the hue they
-	// picked is intent worth preserving and the lerp stays (go-slide-creator-s7wmh).
-	fixed := fixSchemeColorsForContrast(txBody, bgColor, fillHex, themeColors, &swaps, "shape_grid", "shape_grid", fillSafe, threshold, nil, false)
+	// Grid text that fails snaps to the palette (lt1 / dk2 / dk1, then a fill
+	// shade) rather than lerping its own hue: a lerped accent2 label on a dark
+	// card came out a pale salmon tint that matched nothing in the template
+	// (go-slide-creator-z668n).
+	fixed := fixSchemeColorsForContrast(txBody, bgColor, fillHex, themeColors, &swaps, "shape_grid", "shape_grid", fillSafe, threshold, nil, gridSnapsToPalette)
 	// Fix sRGB colors in text (with white-text-safe awareness)
-	fixed = fixSrgbColorsForContrast(fixed, bgColor, fillHex, themeColors, &swaps, fillSafe, threshold, false)
+	fixed = fixSrgbColorsForContrast(fixed, bgColor, fillHex, themeColors, &swaps, fillSafe, threshold, gridSnapsToPalette)
 
 	if fixed == txBody {
 		return shapeXML, nil // No changes needed
@@ -736,6 +789,46 @@ func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor, whiteT
 	result = append(result, []byte(fixed)...)
 	result = append(result, shapeXML[txEnd:]...)
 	return result, swaps
+}
+
+// gridSnapsToPalette is the palette-snap flag for shape-grid text: a failing
+// grid colour is replaced by a template text colour, never a lerped tint of
+// itself.
+const gridSnapsToPalette = true
+
+// hiddenTextMaxRatio: text on a transparent cell this close to the canvas is
+// invisible by construction.
+const hiddenTextMaxRatio = 1.1
+
+// gridContrastFillHex is the background a grid cell's text is judged against,
+// or "" when the cell must be left alone. On top of
+// effectiveGridShapeFillHex it skips deliberately hidden text: a transparent
+// cell whose literal text colour is the canvas colour (white "1" spacer
+// labels on a white slide). Recolouring it would expose stray text the author
+// hid on purpose (go-slide-creator-z668n).
+func gridContrastFillHex(shapeXML []byte, themeColors []types.ThemeColor, slideBackground ...string) string {
+	fillHex := effectiveGridShapeFillHex(shapeXML, themeColors, slideBackground...)
+	if fillHex == "" || extractShapeFillHex(shapeXML, themeColors, slideBackground...) != "" {
+		return fillHex
+	}
+	canvas, err := svggen.ParseColor(fillHex)
+	if err != nil {
+		return fillHex
+	}
+	literals := textColorRunRegexp.FindAllStringSubmatch(shapeTextBody(shapeXML), -1)
+	if len(literals) == 0 {
+		return fillHex
+	}
+	for _, m := range literals {
+		if m[1] != "srgbClr" {
+			return fillHex
+		}
+		c, cerr := svggen.ParseColor("#" + m[2])
+		if cerr != nil || c.ContrastWith(canvas) >= hiddenTextMaxRatio {
+			return fillHex
+		}
+	}
+	return ""
 }
 
 // effectiveGridShapeFillHex uses the cell's own solid fill when present, then
@@ -804,6 +897,9 @@ func fixSrgbColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex st
 
 		fixedColor, _, fixedScheme := contrastReplacementScheme(hexVal, fgColor, bgColor, themeColors, threshold, authorBackground)
 		newRatio := fixedColor.ContrastWith(bgColor)
+		if !contrastSwapWorthwhile(ratio, newRatio) {
+			return match
+		}
 
 		slog.Warn("text contrast fix: replacing low-contrast sRGB color",
 			slog.String("source", "shape_grid"),
@@ -889,6 +985,9 @@ func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex 
 		// ~#606060.
 		fixedColor, _, fixedScheme := contrastReplacementScheme(schemeName, fgColor, bgColor, themeColors, threshold, authorBackground)
 		newRatio := fixedColor.ContrastWith(bgColor)
+		if !contrastSwapWorthwhile(ratio, newRatio) {
+			return match
+		}
 
 		slog.Warn("text contrast fix: replacing low-contrast scheme color",
 			slog.String("shape", shapeName),

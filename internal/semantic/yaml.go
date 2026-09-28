@@ -74,7 +74,7 @@ func ParseYAML(data []byte) (*DeckSpec, Diagnostics) {
 
 	var raw rawDeck
 	if err := safeyaml.UnmarshalWithLimits(data, &raw, limits); err != nil {
-		return nil, parseErrorDiagnostics(err)
+		return nil, typedDecodeDiagnostics(root, err)
 	}
 	top, _ := root.(map[string]any)
 	return buildDeckSpec(raw, top)
@@ -145,7 +145,7 @@ func ParseJSON(data []byte) (*DeckSpec, Diagnostics) {
 
 	var raw rawDeck
 	if err := json.Unmarshal(data, &raw); err != nil {
-		return nil, parseErrorDiagnostics(err)
+		return nil, typedDecodeDiagnostics(root, err)
 	}
 	top, _ := root.(map[string]any)
 	return buildDeckSpec(raw, top)

@@ -164,6 +164,15 @@ type JSONOutput struct {
 	// idempotency cache instead of regenerated. Only set on MCP responses
 	// when an idempotency_key was supplied and matched a prior call.
 	IdempotentReplay bool `json:"idempotent_replay,omitempty"`
+	// Completion block shared with render_deck_spec (go-slide-creator-mn33v).
+	// Set on MCP generate_presentation responses: success means the file was
+	// written; deterministic_ready means the gate passed; publishable also
+	// needs an approved all-slide submit_visual_review of this exact file.
+	DeterministicReady           *bool                        `json:"deterministic_ready,omitempty"`
+	Publishable                  *bool                        `json:"publishable,omitempty"`
+	BlockingReasons              []string                     `json:"blocking_reasons,omitempty"`
+	DeterministicBlockingReasons []string                     `json:"deterministic_blocking_reasons,omitempty"`
+	NextToolCall                 *patterns.ToolCallSuggestion `json:"next_tool_call,omitempty"`
 	// RawRevision ties a cached generate response to its mutable raw handle.
 	// It is cache-only metadata, never part of the MCP wire response.
 	RawRevision string `json:"-"`
@@ -1482,8 +1491,42 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 	// dividers where both "title" and "body" resolve to the same body placeholder).
 	// Without merging, the second populateShapeText call overwrites the first.
 	items = mergeTextItemsSamePlaceholder(items)
+	items = routeDuplicateBodyToSecondColumn(items, slideType)
 
 	return items, nil
+}
+
+// routeDuplicateBodyToSecondColumn moves a second non-text content block that
+// targets "body" onto the free "body_2" column of a two-column / comparison
+// slide. Without it the later block overwrote the first in the shared
+// placeholder and the left column vanished with no finding
+// (go-slide-creator-rioxd). Collisions it cannot route are left in place; the
+// generator reports each one as CONTENT_DROPPED.
+func routeDuplicateBodyToSecondColumn(items []generator.ContentItem, slideType types.SlideType) []generator.ContentItem {
+	if slideType != types.SlideTypeTwoColumn && slideType != types.SlideTypeComparison {
+		return items
+	}
+	for _, item := range items {
+		if item.PlaceholderID == "body_2" {
+			return items
+		}
+	}
+	seenBody := false
+	for i, item := range items {
+		if item.PlaceholderID != "body" {
+			continue
+		}
+		if !seenBody {
+			seenBody = true
+			continue
+		}
+		if item.Type == generator.ContentText || item.Type == generator.ContentSectionTitle {
+			continue
+		}
+		items[i].PlaceholderID = "body_2"
+		return items
+	}
+	return items
 }
 
 // validateSlidesChartData runs svggen Validate() on chart/diagram content items
@@ -2760,7 +2803,7 @@ func autoMapPlaceholders(items []ContentInput, selectedLayout types.LayoutMetada
 	if bodyPH == nil {
 		bodyPH = findFirstPlaceholder(selectedLayout, types.PlaceholderContent)
 	}
-	subtitlePH := findFirstPlaceholder(selectedLayout, types.PlaceholderSubtitle)
+	subtitlePH := findVirtualPlaceholder(selectedLayout, "subtitle", types.PlaceholderSubtitle)
 	imagePH := findFirstPlaceholder(selectedLayout, types.PlaceholderImage)
 	chartPH := findFirstPlaceholder(selectedLayout, types.PlaceholderChart)
 
@@ -2972,11 +3015,24 @@ func isSlotMarker(id string) bool {
 // findFirstPlaceholder returns the first placeholder of a given type in a layout.
 func findFirstPlaceholder(layout types.LayoutMetadata, phType types.PlaceholderType) *types.PlaceholderInfo {
 	for i := range layout.Placeholders {
-		if layout.Placeholders[i].Type == phType {
+		// A legal-disclosure slot shares the subTitle type on some templates
+		// (p-style Closing) but must never receive ordinary subtitle copy.
+		if layout.Placeholders[i].Type == phType && !types.IsDisclosurePlaceholder(layout.Placeholders[i]) {
 			return &layout.Placeholders[i]
 		}
 	}
 	return nil
+}
+
+// findVirtualPlaceholder prefers a placeholder whose canonical ID equals the
+// virtual name ("subtitle"), then the first non-disclosure one of the type.
+func findVirtualPlaceholder(layout types.LayoutMetadata, id string, phType types.PlaceholderType) *types.PlaceholderInfo {
+	for i := range layout.Placeholders {
+		if layout.Placeholders[i].ID == id && layout.Placeholders[i].Type == phType {
+			return &layout.Placeholders[i]
+		}
+	}
+	return findFirstPlaceholder(layout, phType)
 }
 
 // placeholderIDStr returns the placeholder's canonical ID.

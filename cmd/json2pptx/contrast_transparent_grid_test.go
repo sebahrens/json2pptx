@@ -59,9 +59,12 @@ func TestTransparentGridContrastPreflightUsesEffectiveBackground(t *testing.T) {
 		wantBackground   string
 		wantReplacement  string
 	}{
-		{"white slide", transparentGridSlide(&BackgroundInput{Color: "lt1"}, `"none"`, "#FFFFFF"), "", "#FFFFFF", "#000000"},
-		{"dark slide", transparentGridSlide(&BackgroundInput{Color: "dk1"}, `"none"`, "#000000"), "", "#000000", "#FFFFFF"},
-		{"dark layout", transparentGridSlide(nil, `"none"`, "#000000"), "#000000", "#000000", "#FFFFFF"},
+		// Near-canvas text, not the canvas colour itself: an identical literal
+		// colour on a transparent cell is deliberately hidden text and is left
+		// alone (go-slide-creator-z668n).
+		{"white slide", transparentGridSlide(&BackgroundInput{Color: "lt1"}, `"none"`, "#EEEEEE"), "", "#FFFFFF", "#000000"},
+		{"dark slide", transparentGridSlide(&BackgroundInput{Color: "dk1"}, `"none"`, "#1A1A1A"), "", "#000000", "#FFFFFF"},
+		{"dark layout", transparentGridSlide(nil, `"none"`, "#1A1A1A"), "#000000", "#000000", "#FFFFFF"},
 		{"photo unknown", transparentGridSlide(&BackgroundInput{Image: "photo.png"}, `"none"`, "#FFFFFF"), "#000000", "", ""},
 	}
 	for _, tc := range tests {
@@ -155,7 +158,7 @@ func TestTransparentShapeFillDoesNotTreatUnknownFillAsNoFill(t *testing.T) {
 }
 
 func TestTransparentGridPreflightReResolvesLayoutBackgroundAfterThemeOverride(t *testing.T) {
-	slide := transparentGridSlide(nil, `"none"`, "#000000")
+	slide := transparentGridSlide(nil, `"none"`, "#1A1A1A")
 	slide.LayoutID = "slideLayout1"
 	in := &PresentationInput{Slides: []SlideInput{slide}}
 	layouts := []types.LayoutMetadata{{
@@ -200,8 +203,8 @@ func TestTransparentGridPreflightAppliesLayoutLumModAfterThemeOverride(t *testin
 
 func TestRunPresentationTransparentGridContrastMatchesPreflight(t *testing.T) {
 	for _, tc := range []struct{ name, background, textColor string }{
-		{"light", "#FFFFFF", "#FFFFFF"},
-		{"dark", "#000000", "#000000"},
+		{"light", "#FFFFFF", "#EEEEEE"},
+		{"dark", "#000000", "#1A1A1A"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			slide := transparentGridSlide(&BackgroundInput{Color: tc.background}, `"none"`, tc.textColor)

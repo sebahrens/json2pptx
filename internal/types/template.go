@@ -240,6 +240,14 @@ type PlaceholderInfo struct {
 	TextCaps       bool
 	LineSpacingPct int
 
+	// Anchor is the effective vertical text anchor of a title placeholder
+	// ("t", "ctr", "b"), resolved from the layout bodyPr, then the master's
+	// title placeholder, then the OOXML default "t". Empty for other types.
+	// Grid geometry uses it to find where a top-anchored title's text really
+	// ends instead of reserving the whole (often much taller) title box
+	// (go-slide-creator-pymy7).
+	Anchor string `json:"-"`
+
 	// SpcBefPt is the inherited space-before in points (master bodyStyle /
 	// titleStyle level 1, overridden by the layout placeholder's own lstStyle).
 	// A body placeholder's autofit has to budget it per paragraph: fourteen

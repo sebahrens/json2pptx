@@ -447,13 +447,23 @@ func isCarryableFact(v any) bool {
 // and placeholder roles.
 func whereFromPath(path string) Where {
 	var w Where
-	const marker = "slides["
+	// Fit findings carry JSON-pointer paths ("/slides/2/shape_grid/…"); only
+	// reading the bracket form left contrast_predicted and every other
+	// pointer-path finding without where.slide (go-slide-creator-6p9mm).
+	marker, closer := "slides[", byte(']')
 	i := strings.Index(path, marker)
 	if i < 0 {
-		return w
+		marker, closer = "/slides/", '/'
+		if !strings.HasPrefix(path, marker) {
+			return w
+		}
+		i = 0
 	}
 	rest := path[i+len(marker):]
-	j := strings.IndexByte(rest, ']')
+	j := strings.IndexByte(rest, closer)
+	if j < 0 && closer == '/' {
+		j = len(rest)
+	}
 	if j <= 0 {
 		return w
 	}

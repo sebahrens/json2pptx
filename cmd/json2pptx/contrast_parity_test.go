@@ -140,7 +140,7 @@ func TestSharedGridContrastPredictionAcrossLocalTemplates(t *testing.T) {
 
 func TestImageLabelContrastPredictionUsesCompiledTextShape(t *testing.T) {
 	cell := &GridCellInput{Image: &GridImageInput{Path: "unused.png", Text: &GridImageTextInput{
-		Content: "Caption", Color: "#FFFFFF", Size: 12,
+		Content: "Caption", Color: "#EEEEEE", Size: 12,
 	}}}
 	input := &PresentationInput{Slides: []SlideInput{{
 		Background: &BackgroundInput{Color: "#FFFFFF"},

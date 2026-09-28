@@ -91,7 +91,7 @@ func collectGridTextGroups(shapes [][]byte, themeColors []types.ThemeColor, whit
 	var order int
 
 	for i, shape := range shapes {
-		fillHex := effectiveGridShapeFillHex(shape, themeColors, slideBackground...)
+		fillHex := gridContrastFillHex(shape, themeColors, slideBackground...)
 		if fillHex == "" {
 			continue
 		}
@@ -228,8 +228,14 @@ func groupTextColor(g gridTextGroup, themeColors []types.ThemeColor) (svggen.Col
 		candidate{svggen.MustParseColor("#FFFFFF"), ""},
 	)
 
+	_, _, before := g.worstFill(orig)
 	for _, c := range candidates {
 		if clearsAll(c.color) {
+			if _, _, after := g.worstFill(c.color); !contrastSwapWorthwhile(before, after) {
+				// The best readable colour barely beats the authored one; keep
+				// the authored colour (go-slide-creator-z668n).
+				return svggen.Color{}, "", false
+			}
 			return c.color, c.scheme, true
 		}
 	}
