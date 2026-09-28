@@ -162,12 +162,13 @@ if [[ "$SKIP_TEMPLATES" == false ]]; then
   echo "==> Installing templates..."
   TEMPLATES_DIR="$HOME/.json2pptx/templates"
   mkdir -p "$TEMPLATES_DIR"
-  if ls "$SCRIPT_DIR"/templates/*.pptx >/dev/null 2>&1; then
-    cp "$SCRIPT_DIR"/templates/*.pptx "$TEMPLATES_DIR/"
-    TEMPLATE_COUNT=$(ls -1 "$SCRIPT_DIR"/templates/*.pptx | wc -l | tr -d ' ')
+  # Only the templates embedded in the binary (templates/embed.go) are
+  # installed; a local gitignored template such as p-style.pptx is not.
+  if bash "$SCRIPT_DIR/scripts/shipped-templates.sh" --stage "$TEMPLATES_DIR"; then
+    TEMPLATE_COUNT=$(bash "$SCRIPT_DIR/scripts/shipped-templates.sh" | wc -l | tr -d ' ')
     echo "    $TEMPLATES_DIR/ ($TEMPLATE_COUNT templates)"
   else
-    echo "    WARNING: No .pptx templates found in templates/"
+    echo "    WARNING: could not install the templates listed in templates/embed.go"
   fi
 fi
 

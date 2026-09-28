@@ -227,8 +227,13 @@ docker run -d \
   -p 8080:8080 \
   -v ./templates:/app/templates:ro \
   -v ./output:/app/output:rw \
-  ghcr.io/sebahrens/json2pptx:latest
+  ghcr.io/sebahrens/json2pptx:main
 ```
+
+`:main` is rebuilt on every push to `main`. Release tags (`:X.Y.Z`, `:X.Y`)
+and `:latest` are published only when a `vX.Y.Z` git tag is pushed (see
+[CHANGELOG.md](CHANGELOG.md)); until the first release is tagged, `:main` is
+the only moving tag.
 
 ## Quick Start
 

@@ -1,4 +1,4 @@
-# Go Slide Creator Makefile
+# json2pptx Makefile
 #
 # Targets:
 #   make              Build all binaries (current OS/arch)
@@ -166,9 +166,10 @@ install-templates:
 ifndef SKIP_TEMPLATES
 	@echo "==> Installing templates to $(HOME)/.json2pptx/templates/"
 	@mkdir -p "$(HOME)/.json2pptx/templates"
-	@cp templates/*.pptx "$(HOME)/.json2pptx/templates/"
-	@cp -R templates/previews "$(HOME)/.json2pptx/templates/"
-	@echo "    $$(ls templates/*.pptx 2>/dev/null | wc -l | tr -d ' ') templates installed"
+	@# Only the templates embedded in the binary (templates/embed.go) ship; a
+	@# local gitignored template such as p-style.pptx never leaves this checkout.
+	@bash scripts/shipped-templates.sh --stage "$(HOME)/.json2pptx/templates"
+	@echo "    $$(bash scripts/shipped-templates.sh | wc -l | tr -d ' ') templates installed"
 endif
 
 install-skill:
@@ -235,10 +236,21 @@ build-windows-amd64:
 # ─── Distribution archives ────────────────────────────────────────────
 
 ensure-templates:
-	@if ! ls templates/*.pptx >/dev/null 2>&1; then \
-		echo "ERROR: No templates found in templates/. Cannot build."; \
-		exit 1; \
-	fi
+	@for t in $$(bash scripts/shipped-templates.sh); do \
+		if [ ! -f "templates/$$t.pptx" ]; then \
+			echo "ERROR: templates/$$t.pptx (listed in templates/embed.go) is missing. Cannot build."; \
+			exit 1; \
+		fi; \
+	done
+
+# Stage exactly the templates listed in templates/embed.go (plus their
+# previews) and fail if anything else ended up in the staging dir, so a local
+# gitignored template (p-style) can never ship in an archive.
+# Usage in a recipe: @$(call stage-templates,<staging-dir>)
+define stage-templates
+	bash scripts/shipped-templates.sh --stage "$(1)/templates" || exit $$?; \
+	bash scripts/shipped-templates.sh --check "$(1)/templates" || exit $$?
+endef
 
 # Shared recursive skill staging — keeps dist-linux and dist-windows copying
 # the identical skill tree so Windows archives never drift (go-slide-creator-pmsc).
@@ -261,8 +273,7 @@ dist-linux: release-check ensure-templates
 	rm -rf $(DIST_STAGING)
 	mkdir -p $(DIST_STAGING)/bin $(DIST_STAGING)/templates
 	cp bin/json2pptx-linux-amd64 $(DIST_STAGING)/bin/json2pptx
-	cp templates/*.pptx $(DIST_STAGING)/templates/
-	cp -R templates/previews $(DIST_STAGING)/templates/
+	@$(call stage-templates,$(DIST_STAGING))
 	@$(call stage-skills,$(DIST_STAGING))
 	cp scripts/install-dist.sh $(DIST_STAGING)/install.sh
 	chmod +x $(DIST_STAGING)/install.sh
@@ -278,7 +289,7 @@ dist-windows: release-check ensure-templates
 	rm -rf $(WIN_DIST_STAGING)
 	mkdir -p $(WIN_DIST_STAGING)/bin $(WIN_DIST_STAGING)/templates
 	cp bin/json2pptx-windows-amd64.exe $(WIN_DIST_STAGING)/bin/json2pptx.exe
-	cp templates/*.pptx $(WIN_DIST_STAGING)/templates/
+	@$(call stage-templates,$(WIN_DIST_STAGING))
 	@$(call stage-skills,$(WIN_DIST_STAGING))
 	cp scripts/install-dist.ps1 $(WIN_DIST_STAGING)/install.ps1
 	@echo "==> Creating archive: $(WIN_DIST_ARCHIVE)"
@@ -407,6 +418,14 @@ release-check:
 		git status --short; \
 		exit 1; \
 	fi
+	@# Every template the binary embeds must be a tracked file: archives ship
+	@# exactly that list (scripts/shipped-templates.sh), never a local one.
+	@for t in $$(bash scripts/shipped-templates.sh); do \
+		git ls-files --error-unmatch "templates/$$t.pptx" >/dev/null 2>&1 || { \
+			echo "ERROR: templates/$$t.pptx is embedded (templates/embed.go) but not tracked by git."; \
+			exit 1; \
+		}; \
+	done
 
 release: release-check ensure-templates build-cross
 

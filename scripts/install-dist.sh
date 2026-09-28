@@ -87,6 +87,9 @@ if [ -d "$SCRIPT_DIR/templates" ]; then
   TEMPLATES_DIR="$HOME/.json2pptx/templates"
   mkdir -p "$TEMPLATES_DIR"
   cp "$SCRIPT_DIR/templates/"*.pptx "$TEMPLATES_DIR/"
+  if [ -d "$SCRIPT_DIR/templates/previews" ]; then
+    cp -R "$SCRIPT_DIR/templates/previews" "$TEMPLATES_DIR/"
+  fi
   TEMPLATE_COUNT=$(ls -1 "$SCRIPT_DIR/templates/"*.pptx | wc -l)
   echo "    $TEMPLATES_DIR/ ($TEMPLATE_COUNT templates)"
 fi

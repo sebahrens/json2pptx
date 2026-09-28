@@ -20,8 +20,11 @@ bin/
 /preview
 /testgen
 
-# svggen binary (built inside submodule dir)
+# svggen binaries (built inside submodule dir)
 /svggen/svggen
+/svggen/json2pptx
+/svggen/svggen-mcp
+/svggen/svggen-server
 
 # Root-level compiled binaries (not built with -o bin/)
 /json2pptx
@@ -63,6 +66,7 @@ Thumbs.db
 # Build cache
 /cache/
 /output/
+/outputs/
 
 # examine-template's default output directory
 /examination/

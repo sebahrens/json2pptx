@@ -61,6 +61,10 @@ if (Test-Path $TemplateSrc) {
     $TemplatesDst = Join-Path $env:USERPROFILE ".json2pptx\templates"
     New-Item -ItemType Directory -Force -Path $TemplatesDst | Out-Null
     Copy-Item (Join-Path $TemplateSrc "*.pptx") $TemplatesDst -Force
+    $PreviewsSrc = Join-Path $TemplateSrc "previews"
+    if (Test-Path $PreviewsSrc) {
+        Copy-Item $PreviewsSrc $TemplatesDst -Recurse -Force
+    }
     $TemplateCount = (Get-ChildItem (Join-Path $TemplateSrc "*.pptx")).Count
     Write-Host "    $TemplatesDst ($TemplateCount templates)"
 }

@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   template-portability-rendered:
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -38,6 +39,7 @@ jobs:
           path: output/portability-matrix
 
   test:
+    timeout-minutes: 75
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -94,6 +96,7 @@ jobs:
     # Owned by go-slide-creator-qxgj; covers the template-coverage epic
     # (go-slide-creator-y8nc). The artefact gives reviewers a per-template
     # green/red dashboard before any template change merges.
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -119,6 +122,7 @@ jobs:
           path: output/test-matrix/MATRIX.md
 
   skill-sync:
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
@@ -133,6 +137,7 @@ jobs:
         run: bash scripts/check-skill-canonical.sh
 
   lint:
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -156,6 +161,7 @@ jobs:
           args: --timeout=5m
 
   repo-hygiene:
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -170,6 +176,7 @@ jobs:
           echo "✓ install.sh has executable bit set (${MODE})"
 
   svggen-test:
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -197,6 +204,7 @@ jobs:
         run: cd svggen && go vet ./...
 
   svggen-lint:
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -218,6 +226,7 @@ jobs:
           args: --timeout=5m
 
   security:
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -239,6 +248,7 @@ jobs:
         run: govulncheck ./...
 
   palette-parity:
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -308,6 +318,7 @@ jobs:
             ./smoke
 
   pptx-validation:
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -470,6 +481,7 @@ jobs:
     # round-trips each output through headless LibreOffice. Asserts that
     # soffice emits no repair/corruption/invalid/malformed warnings — the
     # "zero needs repair" guarantee tracked by go-slide-creator-0myv.
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -496,6 +508,7 @@ jobs:
     # in CI, so a default `go test ./...` can be green while real render paths
     # are unexercised. See docs/TESTING.md for the test-tier classification.
     # Tracked by go-slide-creator-p9vi.
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
