@@ -177,6 +177,9 @@ func (cs *ConvertService) ConvertHandler() http.HandlerFunc {
 			SVGScale:              req.Options.SVGScale,
 			ExcludeTemplateSlides: req.Options.ExcludeTemplateSlides,
 			AllowedImagePaths:     cs.allowedImagePaths,
+			// The per-request slide cap bounds the paginated output too
+			// (go-slide-creator-tcxsq).
+			MaxOutputSlides: cs.maxSlides,
 		}
 
 		// Execute conversion

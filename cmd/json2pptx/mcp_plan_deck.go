@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -77,11 +76,8 @@ func (mc *mcpConfig) handlePlanDeck(ctx context.Context, request mcp.CallToolReq
 	}
 
 	var mustInclude []string
-	if miRaw, ok := request.GetArguments()["must_include"]; ok && miRaw != nil {
-		miJSON, err := json.Marshal(miRaw)
-		if err == nil {
-			_ = json.Unmarshal(miJSON, &mustInclude)
-		}
+	if bad := decodeOptionalArg(request, "plan_deck", "must_include", &mustInclude, "array of pattern names", []string{"kpi-3up"}); bad != nil {
+		return bad, nil
 	}
 
 	format := "raw"

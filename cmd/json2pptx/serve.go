@@ -19,6 +19,26 @@ import (
 	"github.com/sebahrens/json2pptx/svggen/fontcache"
 )
 
+// serveReadHeaderTimeout bounds how long the HTTP server waits for request
+// headers, independent of the configurable read_timeout (which may be 0).
+const serveReadHeaderTimeout = 10 * time.Second
+
+// newAPIHTTPServer builds the API http.Server from the server config.
+func newAPIHTTPServer(sc config.ServerConfig, handler http.Handler) *http.Server {
+	return &http.Server{
+		Addr:         fmt.Sprintf(":%d", sc.Port),
+		Handler:      handler,
+		ReadTimeout:  sc.ReadTimeout,
+		WriteTimeout: sc.WriteTimeout,
+		// Unconditional: config allows read_timeout: 0, which left header
+		// reads unbounded, a slowloris hold on connections
+		// (go-slide-creator-tcxsq, gosec G112).
+		ReadHeaderTimeout: serveReadHeaderTimeout,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20,
+	}
+}
+
 func runServe() error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 
@@ -152,14 +172,7 @@ func runServe() error {
 	}
 
 	// Create HTTP server
-	server := &http.Server{
-		Addr:           fmt.Sprintf(":%d", cfg.Server.Port),
-		Handler:        apiServer,
-		ReadTimeout:    cfg.Server.ReadTimeout,
-		WriteTimeout:   cfg.Server.WriteTimeout,
-		IdleTimeout:    120 * time.Second,
-		MaxHeaderBytes: 1 << 20,
-	}
+	server := newAPIHTTPServer(cfg.Server, apiServer)
 
 	// Start pprof server if configured
 	if cfg.Server.PprofPort > 0 {

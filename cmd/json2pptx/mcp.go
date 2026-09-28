@@ -1504,20 +1504,14 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 
 	// Parse optional content_hints.
 	var hints patterns.ContentHints
-	if hintsRaw, ok := request.GetArguments()["content_hints"]; ok && hintsRaw != nil {
-		hintsJSON, err := json.Marshal(hintsRaw)
-		if err == nil {
-			_ = json.Unmarshal(hintsJSON, &hints)
-		}
+	if bad := decodeOptionalArg(request, "recommend_pattern", "content_hints", &hints, "object", map[string]any{"item_count": 3}); bad != nil {
+		return bad, nil
 	}
 
 	// Parse optional variety/diversity parameters.
 	var opts patterns.RecommendOptions
-	if rpRaw, ok := request.GetArguments()["recent_patterns"]; ok && rpRaw != nil {
-		rpJSON, err := json.Marshal(rpRaw)
-		if err == nil {
-			_ = json.Unmarshal(rpJSON, &opts.RecentPatterns)
-		}
+	if bad := decodeOptionalArg(request, "recommend_pattern", "recent_patterns", &opts.RecentPatterns, "array of pattern names", []string{"kpi-3up"}); bad != nil {
+		return bad, nil
 	}
 	if pv, ok := request.GetArguments()["prefer_variety"]; ok {
 		if b, ok := pv.(bool); ok {
@@ -1529,11 +1523,8 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 			opts.SlideIndex = int(f)
 		}
 	}
-	if candsRaw, ok := request.GetArguments()["candidates"]; ok && candsRaw != nil {
-		candsJSON, err := json.Marshal(candsRaw)
-		if err == nil {
-			_ = json.Unmarshal(candsJSON, &opts.Candidates)
-		}
+	if bad := decodeOptionalArg(request, "recommend_pattern", "candidates", &opts.Candidates, "array of pattern names", []string{"kpi-3up", "card-grid"}); bad != nil {
+		return bad, nil
 	}
 
 	reg := patterns.Default()
@@ -1678,21 +1669,17 @@ func mcpRecommendVisualTool() mcp.Tool {
 }
 
 // parseRecommendVisualArgs extracts the optional content_hints and
-// variety/candidate options from a recommend_visual request. Malformed optional
-// fields are silently ignored (best-effort parse), matching the tool contract.
-func parseRecommendVisualArgs(request mcp.CallToolRequest) (patterns.VisualHints, patterns.RecommendOptions) {
+// variety/candidate options from a recommend_visual request. A malformed
+// optional field is an INVALID_PARAMETER error result, not silently ignored
+// (go-slide-creator-tcxsq).
+func parseRecommendVisualArgs(request mcp.CallToolRequest) (patterns.VisualHints, patterns.RecommendOptions, *mcp.CallToolResult) {
 	var hints patterns.VisualHints
-	if hintsRaw, ok := request.GetArguments()["content_hints"]; ok && hintsRaw != nil {
-		if hintsJSON, err := json.Marshal(hintsRaw); err == nil {
-			_ = json.Unmarshal(hintsJSON, &hints)
-		}
-	}
-
 	var opts patterns.RecommendOptions
-	if rpRaw, ok := request.GetArguments()["recent_patterns"]; ok && rpRaw != nil {
-		if rpJSON, err := json.Marshal(rpRaw); err == nil {
-			_ = json.Unmarshal(rpJSON, &opts.RecentPatterns)
-		}
+	if bad := decodeOptionalArg(request, "recommend_visual", "content_hints", &hints, "object", map[string]any{"item_count": 3}); bad != nil {
+		return hints, opts, bad
+	}
+	if bad := decodeOptionalArg(request, "recommend_visual", "recent_patterns", &opts.RecentPatterns, "array of pattern names", []string{"kpi-3up"}); bad != nil {
+		return hints, opts, bad
 	}
 	if pv, ok := request.GetArguments()["prefer_variety"]; ok {
 		if b, ok := pv.(bool); ok {
@@ -1704,12 +1691,10 @@ func parseRecommendVisualArgs(request mcp.CallToolRequest) (patterns.VisualHints
 			opts.SlideIndex = int(f)
 		}
 	}
-	if candsRaw, ok := request.GetArguments()["candidates"]; ok && candsRaw != nil {
-		if candsJSON, err := json.Marshal(candsRaw); err == nil {
-			_ = json.Unmarshal(candsJSON, &opts.Candidates)
-		}
+	if bad := decodeOptionalArg(request, "recommend_visual", "candidates", &opts.Candidates, "array of candidate names", []string{"kpi-3up", "bar_chart"}); bad != nil {
+		return hints, opts, bad
 	}
-	return hints, opts
+	return hints, opts, nil
 }
 
 // resolveTemplateAnalysis loads the optional `template` argument into a parsed
@@ -1744,7 +1729,10 @@ func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.Call
 		return argRequired(request, "recommend_visual", "intent", "string", "show revenue growth over four quarters", nil), nil
 	}
 
-	hints, opts := parseRecommendVisualArgs(request)
+	hints, opts, bad := parseRecommendVisualArgs(request)
+	if bad != nil {
+		return bad, nil
+	}
 
 	// Optional template context — when supplied, recommendations become
 	// template-aware (per-candidate support + demotion of unsupported visuals).

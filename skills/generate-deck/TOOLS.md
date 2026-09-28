@@ -50,6 +50,9 @@ signature or schema registry.
   cache files; use `read_only:true` for side-effect-free discovery.
   `list_templates`, `list_patterns`, and `list_icons` support filtering,
   pagination, and compact/full projection. Fetch full data only when needed.
+- `recommend_visual` `content_hints` / `recent_patterns` / `candidates` and
+  `plan_deck` `must_include` are type-checked: a malformed value returns
+  `INVALID_PARAMETER` naming the argument instead of being ignored.
 - `get_input_schema` and `get_data_format_hints` support digest reuse.
   `list_slide_kinds`, `show_pattern`, and `describe_finding` are the live
   kind, pattern, and finding catalogs. Prefer them to static enumerations.

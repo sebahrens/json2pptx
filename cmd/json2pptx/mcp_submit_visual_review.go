@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
@@ -47,7 +48,30 @@ const (
 // deterministicGates remembers, per artifact sha256, the deterministic
 // blocking reasons of the render_deck_spec call that wrote that artifact, so
 // submit_visual_review can refuse to call a deck with P0 blockers complete.
-var deterministicGates sync.Map // sha256 -> []string
+//
+// It is bounded (go-slide-creator-tcxsq): it used to be a sync.Map that never
+// evicted, growing with every render a long-lived MCP server performed.
+// Entries expire after deterministicGateTTL (the render cache drops an
+// artifact after 24h unused, so a review of it cannot arrive later), and at
+// maxDeterministicGates passing gates are evicted before blocking ones: losing
+// a passing record costs nothing (an unknown gate is simply not applied),
+// while a blocking record is what stops a deck with P0 content from being
+// called complete.
+var deterministicGates = struct {
+	mu      sync.Mutex
+	entries map[string]deterministicGateEntry
+	now     func() time.Time
+}{entries: make(map[string]deterministicGateEntry), now: time.Now}
+
+type deterministicGateEntry struct {
+	reasons   []string
+	expiresAt time.Time
+}
+
+const (
+	maxDeterministicGates = 4096
+	deterministicGateTTL  = 24 * time.Hour
+)
 
 // recordDeterministicGate records the deterministic gate outcome for the PPTX
 // at pptxPath. A nil/empty reasons slice records a passing gate.
@@ -56,18 +80,48 @@ func recordDeterministicGate(pptxPath string, reasons []string) {
 	if err != nil {
 		return
 	}
-	deterministicGates.Store(artifact.SHA256, append([]string{}, reasons...))
+	storeDeterministicGate(artifact.SHA256, reasons)
+}
+
+func storeDeterministicGate(sha string, reasons []string) {
+	g := &deterministicGates
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	now := g.now()
+	if _, exists := g.entries[sha]; !exists && len(g.entries) >= maxDeterministicGates {
+		for k, e := range g.entries {
+			if now.After(e.expiresAt) {
+				delete(g.entries, k)
+			}
+		}
+		// Still full: evict the soonest-expiring passing gate, and a blocking
+		// gate only when no passing gate is left.
+		for len(g.entries) >= maxDeterministicGates {
+			victim, victimPassing := "", false
+			var victimExp time.Time
+			for k, e := range g.entries {
+				passing := len(e.reasons) == 0
+				if victim == "" || (passing && !victimPassing) || (passing == victimPassing && e.expiresAt.Before(victimExp)) {
+					victim, victimPassing, victimExp = k, passing, e.expiresAt
+				}
+			}
+			delete(g.entries, victim)
+		}
+	}
+	g.entries[sha] = deterministicGateEntry{reasons: append([]string{}, reasons...), expiresAt: now.Add(deterministicGateTTL)}
 }
 
 // lookupDeterministicGate returns the recorded deterministic blocking reasons
 // for an artifact and whether the gate outcome is known at all.
 func lookupDeterministicGate(sha string) ([]string, bool) {
-	v, ok := deterministicGates.Load(sha)
-	if !ok {
+	g := &deterministicGates
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	e, ok := g.entries[sha]
+	if !ok || g.now().After(e.expiresAt) {
 		return nil, false
 	}
-	reasons, ok := v.([]string)
-	return reasons, ok
+	return e.reasons, true
 }
 
 func mcpSubmitVisualReviewTool() mcp.Tool {
