@@ -487,7 +487,7 @@ func validateSlideAt(path string, slide SlideSpec, s *semDiags) {
 
 	// Content-bearing slides should carry a one-line takeaway (insight counts
 	// for chart_insight).
-	if kindNeedsTakeaway[slide.Kind] {
+	if kindNeedsTakeaway[slide.Kind] && !kindConclusionPresent(slide) {
 		if slide.String("takeaway") == "" && slide.String("insight") == "" {
 			s.advisory(path+".takeaway", diagnostics.CodeSemanticTakeawayRequired,
 				fmt.Sprintf("%s slide should carry a one-line takeaway", slide.Kind))
@@ -495,6 +495,22 @@ func validateSlideAt(path string, slide SlideSpec, s *semDiags) {
 	}
 
 	scanWeakBody(path, slide.Body, s)
+}
+
+// kindConclusionPresent reports whether the slide already carries its kind's
+// own conclusion callout: an executive summary's bottom_line (or its
+// recommendation alias) or a decision's recommendation. That callout IS the
+// slide's one-line takeaway, so asking for another one only nudged agents into
+// authoring a second conclusion the renderer used to run on into the same band
+// (go-slide-creator-8w4rb).
+func kindConclusionPresent(slide SlideSpec) bool {
+	switch slide.Kind {
+	case KindExecutiveSummary:
+		return slide.String("bottom_line") != "" || slide.String("recommendation") != ""
+	case KindDecision:
+		return slide.String("recommendation") != ""
+	}
+	return false
 }
 
 // validateFieldShapes emits a SEMANTIC_FIELD_TYPE advisory for each payload
@@ -1429,6 +1445,12 @@ func validateOptionMatrix(path string, slide SlideSpec, s *semDiags) {
 				field, map[bool]string{true: "option", false: "criterion"}[strings.HasPrefix(field, "recommended") || field == "highlight_row"]))
 	}
 
+	if rec, leader, found := slides.OptionMatrixOutscored(slide.Body); found {
+		s.advisory(path+"."+optionMatrixRecommendedField(slide.Body), diagnostics.CodeSemanticRecommendationOutscored,
+			fmt.Sprintf("recommended option %q scores below %q on this matrix's own scale; check the scores, set decisive_criterion to the column it wins on, or recommend the higher-scoring option",
+				rec, leader))
+	}
+
 	for _, field := range []string{"highlight_label", "corner_label"} {
 		if label := strPayloadField(slide.Body, field); label != "" && !slides.OptionMatrixLabelFits(label) {
 			s.advisory(path+"."+field, diagnostics.CodeSemanticDensity,
@@ -1466,6 +1488,28 @@ func optionMatrixFieldNames(body map[string]any) (criteria, options string) {
 		options = "rows"
 	}
 	return criteria, options
+}
+
+// optionMatrixRecommendedField names the field the recommendation was authored
+// in, so a finding about it anchors where the author wrote it.
+func optionMatrixRecommendedField(body map[string]any) string {
+	for _, field := range []string{"recommended", "recommended_option", "highlight_row"} {
+		if referencePresentAny(body[field]) {
+			return field
+		}
+	}
+	return "recommended"
+}
+
+// referencePresentAny reports whether a reference field carries a value.
+func referencePresentAny(v any) bool {
+	switch t := v.(type) {
+	case string:
+		return strings.TrimSpace(t) != ""
+	case nil:
+		return false
+	}
+	return true
 }
 
 // optionScoreCount returns the number of scores on an option row.

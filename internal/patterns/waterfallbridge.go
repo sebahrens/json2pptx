@@ -769,8 +769,9 @@ func buildWaterfallColumnGrid(ctx ExpandContext, l wbColumnLayout) *jsonschema.S
 
 	spacer := func(pct float64, side, anchor string) jsonschema.GridRowInput {
 		shape := &jsonschema.ShapeSpecInput{
-			Geometry: "rect",
-			Fill:     json.RawMessage(`{"color": "lt1", "alpha": 0}`),
+			Geometry:  "rect",
+			TypeScale: peerTextTypeScale,
+			Fill:      json.RawMessage(`{"color": "lt1", "alpha": 0}`),
 		}
 		if labelSide == side {
 			shape.Text = buildWaterfallBridgeValueTextAnchored(l.valueText, l.valueSize, "dk1", anchor)
@@ -797,8 +798,9 @@ func buildWaterfallColumnGrid(ctx ExpandContext, l wbColumnLayout) *jsonschema.S
 	}
 
 	barShape := &jsonschema.ShapeSpecInput{
-		Geometry: "rect",
-		Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, l.fill)),
+		Geometry:  "rect",
+		TypeScale: peerTextTypeScale,
+		Fill:      json.RawMessage(fmt.Sprintf(`"%s"`, l.fill)),
 	}
 	if labelSide == "bar" {
 		barShape.Text = buildWaterfallBridgeValueTextAnchored(l.valueText, l.valueSize,

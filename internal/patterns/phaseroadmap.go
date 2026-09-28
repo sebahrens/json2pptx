@@ -443,12 +443,13 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 	descH := 0.0
 	descCells := make([]*jsonschema.GridCellInput, n)
 	for i, p := range vals.Phases {
-		descH = math.Max(descH, textBlockHeightPt(ctx.Theme.BodyFont, descW, textParagraph{text: p.Description, size: bodySize}))
+		descH = math.Max(descH, phaseRoadmapDescHeightPt(ctx.Theme.BodyFont, descW, p.Description, bodySize))
 		descCells[i] = &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
-				Geometry: "rect",
-				Fill:     json.RawMessage(`"none"`),
-				Text:     buildPhaseRoadmapPlainText(pptx.ConvertMarkdownEmphasis(p.Description), bodySize, false, "dk1", "l"),
+				Geometry:  "rect",
+				TypeScale: peerTextTypeScale,
+				Fill:      json.RawMessage(`"none"`),
+				Text:      buildPhaseRoadmapDescText(pptx.ConvertMarkdownEmphasis(p.Description), bodySize),
 			},
 		}
 		applyPhaseRoadmapOverride(descCells[i], cellOverrides, descIdx0+i, accent)
@@ -633,6 +634,46 @@ func buildPhaseRoadmapPlainText(content string, size float64, bold bool, color, 
 	}
 	data, _ := json.Marshal(textObj)
 	return data
+}
+
+// peerTextTypeScale opts a run of peer labels out of per-cell grow-to-fill.
+// Grown one cell at a time, each peer took whatever its own box allowed — a
+// waterfall's "−$12.5M" inside a short bar stayed at 12pt while its
+// neighbours grew to 16pt, and roadmap descriptions landed at four different
+// sizes — so peers that must read as one set keep the authored size
+// (go-slide-creator-n83ml).
+const peerTextTypeScale = "compact"
+
+// phaseRoadmapBulletIndentPt is the hanging indent a "- " description line
+// takes as a native bullet (pptx.BulletMarginLeft, 14pt).
+const phaseRoadmapBulletIndentPt = float64(pptx.BulletMarginLeft) / 12700
+
+// buildPhaseRoadmapDescText renders a phase description. A one-line
+// description keeps the plain paragraph; a multi-line one ("lead-in\n- item")
+// uses the content form, whose "- " lines become native bullets rather than
+// one run-on paragraph (go-slide-creator-n83ml).
+func buildPhaseRoadmapDescText(content string, size float64) json.RawMessage {
+	if !strings.Contains(content, "\n") {
+		return buildPhaseRoadmapPlainText(content, size, false, "dk1", "l")
+	}
+	data, _ := json.Marshal(map[string]any{
+		"content": content, "size": size, "color": "dk1", "align": "l", "vertical_align": "t",
+	})
+	return data
+}
+
+// phaseRoadmapDescHeightPt measures a description line by line, a bullet line
+// in the width its hanging indent leaves.
+func phaseRoadmapDescHeightPt(font string, widthPt float64, desc string, size float64) float64 {
+	var h float64
+	for _, line := range strings.Split(desc, "\n") {
+		w := widthPt
+		if rest, ok := strings.CutPrefix(line, "- "); ok {
+			line, w = rest, widthPt-phaseRoadmapBulletIndentPt
+		}
+		h += textBlockHeightPt(font, w, textParagraph{text: line, size: size})
+	}
+	return h
 }
 
 // phaseRoadmapTrackedRowPcts returns the phase-box, timeline and date row

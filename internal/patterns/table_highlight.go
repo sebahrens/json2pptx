@@ -379,6 +379,27 @@ func parseTableHighlightScore(raw TableHighlightScore, scale string) (thNormaliz
 	}
 }
 
+// TableHighlightScoreRank reads a score on its scale as a 0–1 rank (Harvey
+// level / 4, RAG red 0 / amber 0.5 / green 1). It reports false for a text
+// score, "n/a", or a value the scale cannot read — cells that carry no order.
+func TableHighlightScoreRank(raw TableHighlightScore, scale string) (float64, bool) {
+	scale = strings.ToLower(strings.TrimSpace(scale))
+	if scale == "" {
+		scale = thScaleHarvey
+	}
+	n, ok := parseTableHighlightScore(raw, scale)
+	if !ok {
+		return 0, false
+	}
+	switch n.kind {
+	case thScaleHarvey:
+		return float64(n.level) / 4, true
+	case thScaleRAG:
+		return map[string]float64{"red": 0, "amber": 0.5, "green": 1}[n.rag], true
+	}
+	return 0, false
+}
+
 func (v *TableHighlightValues) scaleFor(col int) string {
 	if col < len(v.Criteria) && v.Criteria[col].Scale != "" {
 		return v.Criteria[col].Scale

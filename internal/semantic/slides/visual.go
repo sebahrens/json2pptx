@@ -653,7 +653,7 @@ func roadmapPhases(body map[string]any) []phaseRoadmapPhase {
 			phase := phaseRoadmapPhase{
 				Name:        name,
 				DateLabel:   firstNonEmpty(strField(t, "date_label"), strField(t, "dates"), strField(t, "date"), strField(t, "period")),
-				Description: foldPhaseItems(firstNonEmpty(strField(t, "description"), strField(t, "detail"), strField(t, "summary")), phaseItems(t)),
+				Description: phaseItemBullets(firstNonEmpty(strField(t, "description"), strField(t, "detail"), strField(t, "summary")), phaseItems(t)),
 				Milestone:   strField(t, "milestone"),
 			}
 			if active, ok := t["active"].(bool); ok {
@@ -686,9 +686,27 @@ func phaseItems(t map[string]any) []string {
 	return out
 }
 
-// foldPhaseItems folds a phase's sub-bullet items into its single description
-// cell so per-phase detail is not dropped. Items are joined with " · " and,
-// when a description is already present, appended after it.
+// phaseItemBullets builds a phase-roadmap description cell: the description as
+// a lead-in line, then one "- " line per item, which the pattern renders as
+// native bullets. Joined with " · " the items read as one run-on paragraph
+// (go-slide-creator-n83ml).
+func phaseItemBullets(desc string, items []string) string {
+	if len(items) == 0 {
+		return desc
+	}
+	lines := make([]string, 0, len(items)+1)
+	if d := strings.TrimSpace(desc); d != "" {
+		lines = append(lines, d)
+	}
+	for _, it := range items {
+		lines = append(lines, "- "+it)
+	}
+	return strings.Join(lines, "\n")
+}
+
+// foldPhaseItems folds a phase's sub-bullet items into one line for the
+// content-slide fallback, where each phase is already a single bullet. Items
+// are joined with " · " and, when a description is present, appended after it.
 func foldPhaseItems(desc string, items []string) string {
 	if len(items) == 0 {
 		return desc

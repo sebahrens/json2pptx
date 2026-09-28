@@ -1,6 +1,9 @@
 package pptx
 
 import (
+	"math"
+	"strings"
+
 	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -34,6 +37,17 @@ const (
 	// autofitMaxLnSpcReduction caps the line-spacing reduction PowerPoint is
 	// asked to apply, matching what it writes itself for heavy shrinks.
 	autofitMaxLnSpcReduction = 20000
+	// autofitDefaultInsetLREMU is the default left/right body inset (0.1in).
+	autofitDefaultInsetLREMU = 91440
+	// autofitWordFloorScale is the smallest shrink applied to keep the widest
+	// word on one line; a word that needs more breaks regardless.
+	autofitWordFloorScale = 0.6
+	// autofitWordMinPt is the readable minimum (shapegrid.MinTextSizePt) a
+	// widest-word shrink never goes below.
+	autofitWordMinPt = 12.0
+	// autofitWordSafety leaves room for the difference between the measuring
+	// font and the template's own body font.
+	autofitWordSafety = 0.97
 )
 
 // applyAutofitScale fills a normAutofit body's fontScale / lnSpcReduction from
@@ -84,8 +98,55 @@ func AutofitScaleFor(tb *TextBody, bounds RectEmu) float64 {
 		LineSpacing: autofitLineSpacing,
 		FloorScale:  autofitFloorScale,
 	})
+	scale = math.Min(scale, longestWordScale(tb, widthEMU))
 	if scale >= 1 {
 		return 1
+	}
+	return scale
+}
+
+// longestWordScale returns the shrink at which the body's widest word fits
+// on one line, or 1 when every word already fits. A normAutofit body only
+// shrinks for height, so a label whose box was tall enough still broke a word
+// it could not hold ("Managemen / t") at full size (go-slide-creator-n83ml).
+// The shrink never takes text below the readable minimum (a grown label
+// shrinks back toward it; 12pt text does not shrink), and a word that still
+// breaks there is left to the height fit rather than shrunk for nothing.
+func longestWordScale(tb *TextBody, widthEMU int64) float64 {
+	if tb.Insets == [4]int64{} {
+		widthEMU -= 2 * autofitDefaultInsetLREMU
+	}
+	// fontScale shrinks every paragraph alike, so the smallest text in the
+	// body sets how far the whole body may shrink.
+	minPt := math.Inf(1)
+	for _, p := range tb.Paragraphs {
+		if text, pt := paragraphTextAndSize(p); strings.TrimSpace(text) != "" && pt > 0 {
+			minPt = math.Min(minPt, pt)
+		}
+	}
+	if minPt <= autofitWordMinPt || math.IsInf(minPt, 1) {
+		return 1
+	}
+	floor := math.Max(autofitWordFloorScale, autofitWordMinPt/minPt)
+	scale := 1.0
+	for _, p := range tb.Paragraphs {
+		text, pt := paragraphTextAndSize(p)
+		avail := float64(widthEMU-p.MarginL) * autofitWordSafety
+		if pt <= 0 || avail <= 0 {
+			continue
+		}
+		for _, word := range strings.Fields(text) {
+			if len([]rune(word)) < 2 {
+				continue
+			}
+			w, err := textfit.MeasureLineWidth(word, autofitFontName, pt)
+			if err != nil || w <= 0 || float64(w) <= avail {
+				continue
+			}
+			if s := math.Floor(avail/float64(w)*100) / 100; s >= floor {
+				scale = math.Min(scale, s)
+			}
+		}
 	}
 	return scale
 }

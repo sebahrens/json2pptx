@@ -25,9 +25,13 @@ const (
 	// maxConsecutiveDense is the longest run of heavy-density slides that does not
 	// trip the density rule.
 	maxConsecutiveDense = 2
-	// sectioningSlideThreshold is the slide count above which a deck with no
-	// section divider is flagged for missing chapter structure.
-	sectioningSlideThreshold      = 8
+	// sectioningSlideThreshold is the count of body slides (cover, closing and
+	// other structural chrome excluded) above which a deck with no section
+	// divider is flagged for missing chapter structure. It matches plan_deck's
+	// default slide_budget of 10: a deck the planner builds at its default size
+	// plus a cover and a closing — the planner emits no dividers — is one
+	// chapter, and flagging it contradicted the plan (go-slide-creator-n83ml).
+	sectioningSlideThreshold      = 10
 	visualBreadthSlideThreshold   = 7
 	minimumDistinctVisualFamilies = 3
 )
@@ -154,18 +158,22 @@ func (ir *DeckIR) densityWarnings() []RhythmWarning {
 
 // sectioningWarning flags a long deck that carries no section divider.
 func (ir *DeckIR) sectioningWarning() (RhythmWarning, bool) {
-	if len(ir.Slides) <= sectioningSlideThreshold {
-		return RhythmWarning{}, false
-	}
+	body := 0
 	for i := range ir.Slides {
 		if ir.Slides[i].Kind == KindSection || ir.Slides[i].Role == RoleTransition {
 			return RhythmWarning{}, false
 		}
+		if ir.Slides[i].Visual.Family != FamilyStructural {
+			body++
+		}
+	}
+	if body <= sectioningSlideThreshold {
+		return RhythmWarning{}, false
 	}
 	return RhythmWarning{
 		Code: string(diagnostics.CodeSemanticRhythmSectioning),
-		Message: fmt.Sprintf("a %d-slide deck has no section dividers; add `section` slides to group it into chapters",
-			len(ir.Slides)),
+		Message: fmt.Sprintf("a %d-slide deck carries %d body slides and no section dividers; add `section` slides to group it into chapters",
+			len(ir.Slides), body),
 	}, true
 }
 

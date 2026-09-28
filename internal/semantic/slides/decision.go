@@ -130,7 +130,8 @@ func decisionPatternSlide(in Input, pattern string, values, overrides json.RawMe
 		RawPath:      in.rawSlide() + ".pattern.values",
 		SemanticPath: in.semSlide() + ".options",
 	})
-	if rec := FoldConclusion(strField(in.Body, "recommendation"), firstNonEmpty(in.Takeaway, strField(in.Body, "takeaway"))); rec != "" {
+	rec, band := SplitConclusion(strField(in.Body, "recommendation"), firstNonEmpty(in.Takeaway, strField(in.Body, "takeaway")))
+	if rec != "" {
 		slide.Pattern.Callout = &patterns.PatternCallout{Text: rec, Emphasis: "bold"}
 		field := "recommendation"
 		if strField(in.Body, field) == "" {
@@ -141,7 +142,9 @@ func decisionPatternSlide(in Input, pattern string, values, overrides json.RawMe
 			SemanticPath: in.semSlide() + "." + field,
 		})
 	}
-	// The pattern callout owns the takeaway too; do not stack a second band.
+	// A takeaway distinct from the recommendation takes the slide's takeaway
+	// band; run on into the callout it overran it (go-slide-creator-8w4rb).
+	links = append(links, separateTakeaway(slide, in, band)...)
 	return slide, links, nil
 }
 

@@ -20,6 +20,18 @@ func TestFoldPhaseItems(t *testing.T) {
 	}
 }
 
+func TestPhaseItemBullets(t *testing.T) {
+	if got := phaseItemBullets("Define scope", nil); got != "Define scope" {
+		t.Errorf("no items: %q", got)
+	}
+	if got, want := phaseItemBullets("Lead-in", []string{"a", "b"}), "Lead-in\n- a\n- b"; got != want {
+		t.Errorf("both: %q want %q", got, want)
+	}
+	if got, want := phaseItemBullets(" ", []string{"a"}), "- a"; got != want {
+		t.Errorf("items only: %q want %q", got, want)
+	}
+}
+
 func TestPhaseItemsExtract(t *testing.T) {
 	got := phaseItems(map[string]any{"items": []any{"a", " b ", "", 3}})
 	want := []string{"a", "b"}
@@ -50,8 +62,8 @@ func TestRoadmapPhasesThreadsItems(t *testing.T) {
 	if len(phases) != 2 {
 		t.Fatalf("got %d phases want 2", len(phases))
 	}
-	if phases[0].Description != "Interviews · Surveys" {
-		t.Errorf("phase0 desc = %q want %q", phases[0].Description, "Interviews · Surveys")
+	if want := "- Interviews\n- Surveys"; phases[0].Description != want {
+		t.Errorf("phase0 desc = %q want %q", phases[0].Description, want)
 	}
 	if phases[1].Description != "Core build" {
 		t.Errorf("phase1 desc = %q want %q", phases[1].Description, "Core build")

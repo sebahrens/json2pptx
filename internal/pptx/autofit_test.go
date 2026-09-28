@@ -3,6 +3,8 @@ package pptx
 import (
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
 // go-slide-creator-wvr0. Every native diagram wrote <a:normAutofit/> with no
@@ -81,6 +83,43 @@ func TestAutofitAccountsForParagraphSpacing(t *testing.T) {
 	if spaced.AutoFitFontScale >= tight.AutoFitFontScale {
 		t.Errorf("paragraph spacing did not tighten the prediction: spaced %d >= tight %d",
 			spaced.AutoFitFontScale, tight.AutoFitFontScale)
+	}
+}
+
+// go-slide-creator-n83ml: a box tall enough for its text still broke a word
+// it was too narrow for ("Managemen / t"); the shrink now also fits the
+// widest word on one line, and leaves a hopeless word to the height fit.
+func textfitWidthPt(word string, pt float64) (float64, error) {
+	w, err := textfit.MeasureLineWidth(word, autofitFontName, pt)
+	return float64(w) / 12700, err
+}
+
+func TestAutofitShrinksToFitTheWidestWord(t *testing.T) {
+	label := func(word string, hp int) *TextBody {
+		return &TextBody{
+			Wrap: "square", AutoFit: "normAutofit",
+			Paragraphs: []Paragraph{{Runs: []Run{{Text: word, FontSize: hp}}}},
+		}
+	}
+	tall := func(widthPt float64) RectEmu { return RectEmu{CX: int64(widthPt * 12700), CY: 100 * 12700} }
+
+	wide, err := textfitWidthPt("Management", 16)
+	if err != nil || wide <= 0 {
+		t.Skipf("cannot measure: %v", err)
+	}
+	// A grown 16pt label whose text width is 90% of the word shrinks to ~0.87.
+	s := AutofitScaleFor(label("Management", 1600), tall(wide*0.9+14.4))
+	if s >= 1 || s < 0.8 {
+		t.Errorf("widest-word scale = %v, want a shrink to ~0.87", s)
+	}
+	if s := AutofitScaleFor(label("Management", 1600), tall(wide*1.2+14.4)); s != 1 {
+		t.Errorf("a word that fits must not shrink, got %v", s)
+	}
+	if s := AutofitScaleFor(label("Management", 1600), tall(wide*0.5+14.4)); s != 1 {
+		t.Errorf("a word that breaks even at the readable minimum must be left to the height fit, got %v", s)
+	}
+	if s := AutofitScaleFor(label("Management", 1200), tall(wide*0.7+14.4)); s != 1 {
+		t.Errorf("12pt text is at the readable minimum and must not shrink for a word, got %v", s)
 	}
 }
 

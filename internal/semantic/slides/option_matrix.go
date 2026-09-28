@@ -377,6 +377,80 @@ func OptionMatrixUnresolvedReferences(body map[string]any) []string {
 	return out
 }
 
+// OptionMatrixOutscored reports the recommended option and the option that
+// outscores it when another row's summed rank (Harvey or RAG, see
+// patterns.TableHighlightScoreRank) is higher (go-slide-creator-n83ml). Rows
+// with a text, n/a or unreadable score are not compared. A decisive criterion
+// on which the recommendation scores at least as high as every other option
+// explains the choice, so it reports nothing then.
+func OptionMatrixOutscored(body map[string]any) (recommended, leader string, found bool) {
+	criteria := optionMatrixCriteria(body)
+	options := optionMatrixOptions(body, len(criteria))
+	rec, ok := optionMatrixRowIndex(body, options)
+	if !ok || len(criteria) == 0 {
+		return "", "", false
+	}
+	scale := strings.ToLower(strField(body, "scale"))
+	ranks := make([][]float64, len(options))
+	for i, o := range options {
+		ranks[i] = optionMatrixRanks(o.Scores, criteria, scale)
+	}
+	if ranks[rec] == nil {
+		return "", "", false
+	}
+	if col, ok := optionMatrixColIndex(body, criteria); ok {
+		wins := true
+		for i, r := range ranks {
+			if i != rec && r != nil && r[col] > ranks[rec][col] {
+				wins = false
+			}
+		}
+		if wins {
+			return "", "", false
+		}
+	}
+	best, bestTotal := -1, sumRanks(ranks[rec])
+	for i, r := range ranks {
+		if i != rec && r != nil && sumRanks(r) > bestTotal+1e-9 {
+			best, bestTotal = i, sumRanks(r)
+		}
+	}
+	if best < 0 {
+		return "", "", false
+	}
+	return options[rec].Name, options[best].Name, true
+}
+
+// optionMatrixRanks reads one row's scores as ranks, or nil when any cell has
+// no order or the row does not score every criterion.
+func optionMatrixRanks(scores []json.RawMessage, criteria []optionMatrixCriterion, scale string) []float64 {
+	if len(scores) != len(criteria) {
+		return nil
+	}
+	out := make([]float64, len(scores))
+	for i, raw := range scores {
+		var s patterns.TableHighlightScore
+		if json.Unmarshal(raw, &s) != nil {
+			return nil
+		}
+		colScale := firstNonEmpty(criteria[i].Scale, scale)
+		r, ok := patterns.TableHighlightScoreRank(s, colScale)
+		if !ok {
+			return nil
+		}
+		out[i] = r
+	}
+	return out
+}
+
+func sumRanks(r []float64) float64 {
+	var t float64
+	for _, v := range r {
+		t += v
+	}
+	return t
+}
+
 // referencePresent reports whether an authored reference carries a value: a
 // number or a non-blank string.
 func referencePresent(v any) bool {

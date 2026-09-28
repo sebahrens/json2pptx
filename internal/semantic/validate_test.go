@@ -608,6 +608,49 @@ func TestValidateTakeawayRequiredAndStrictness(t *testing.T) {
 	}
 }
 
+// An executive summary's bottom line and a decision's recommendation are the
+// slide's takeaway; asking for another one led agents to author a second
+// conclusion that ran on into the same callout (go-slide-creator-8w4rb).
+func TestValidateTakeawayExemptWhenKindCarriesConclusion(t *testing.T) {
+	cases := []struct {
+		kind SlideKind
+		body map[string]any
+		want bool
+	}{
+		{KindExecutiveSummary, map[string]any{"title": "Summary", "points": []any{"a rose", "b fell", "c held"}, "bottom_line": "Fund the pod."}, false},
+		{KindExecutiveSummary, map[string]any{"title": "Summary", "points": []any{"a rose", "b fell", "c held"}}, true},
+		{KindDecision, map[string]any{"title": "Ask", "recommendation": "Fund the pod.", "options": []any{"Build | control", "Buy | speed"}}, false},
+		{KindDecision, map[string]any{"title": "Ask", "options": []any{"Build | control", "Buy | speed"}}, true},
+	}
+	for _, c := range cases {
+		spec := &DeckSpec{Meta: DeckMeta{Title: "Deck"}, Slides: []SlideSpec{{Kind: c.kind, Body: c.body}}}
+		if got := hasCode(Validate(spec, StrictnessWarn), diagnostics.CodeSemanticTakeawayRequired); got != c.want {
+			t.Errorf("%s %v: SEMANTIC_TAKEAWAY_REQUIRED = %v, want %v", c.kind, c.body, got, c.want)
+		}
+	}
+}
+
+// go-slide-creator-n83ml: an option matrix whose recommendation its own
+// scores rank below another option is flagged at the recommendation.
+func TestValidateOptionMatrixRecommendationOutscored(t *testing.T) {
+	body := map[string]any{
+		"title": "Options", "takeaway": "Automate the hubs.", "recommended": "Automate",
+		"criteria": []any{"Capex", "Payback"},
+		"options": []any{
+			map[string]any{"name": "Automate", "scores": []any{1, 1}},
+			map[string]any{"name": "Partner", "scores": []any{4, 3}},
+		},
+	}
+	spec := &DeckSpec{Meta: DeckMeta{Title: "Deck"}, Slides: []SlideSpec{{Kind: KindOptionMatrix, Body: body}}}
+	if _, ok := findAt(Validate(spec, StrictnessWarn), diagnostics.CodeSemanticRecommendationOutscored, "slides[0].recommended"); !ok {
+		t.Fatalf("expected SEMANTIC_RECOMMENDATION_OUTSCORED at slides[0].recommended, got %v", Validate(spec, StrictnessWarn))
+	}
+	body["recommended"] = "Partner"
+	if hasCode(Validate(spec, StrictnessWarn), diagnostics.CodeSemanticRecommendationOutscored) {
+		t.Errorf("the top-scoring recommendation must not be flagged")
+	}
+}
+
 func TestValidateWeakContent(t *testing.T) {
 	spec := &DeckSpec{
 		Meta: DeckMeta{Title: "Deck"},

@@ -1172,7 +1172,7 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		Code:        CodeSemanticTakeawayRequired,
 		Summary:     "A content slide carries no one-line takeaway.",
 		Severity:    describeSeverityReview,
-		WhenEmitted: "semantic validation finds a content-bearing slide (executive_summary, kpi_snapshot, chart_insight, comparison, process, roadmap, decision) with no takeaway (or insight) line. Promoted to an error under strict validation.",
+		WhenEmitted: "semantic validation finds a content-bearing slide (executive_summary, kpi_snapshot, chart_insight, comparison, process, roadmap, decision) with no takeaway (or insight) line. An executive_summary with a bottom_line (or recommendation) and a decision with a recommendation are exempt: that callout is their takeaway, and a distinct takeaway renders in its own band beneath it. Promoted to an error under strict validation.",
 		RemediationSteps: []string{
 			"Add a takeaway line at evidence.path stating the slide's single message.",
 			"For a chart_insight slide an insight line satisfies the requirement.",
@@ -1305,6 +1305,18 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		ExampleAfter:  `{"kind": "agenda", "current": 2, "sections": ["Context", "Options", "Plan"]}`,
 		RelatedCodes:  []string{CodeSemanticFieldType},
 	},
+	CodeSemanticRecommendationOutscored: {
+		Code:        CodeSemanticRecommendationOutscored,
+		Summary:     "An option matrix's recommended option scores below another option, so the slide argues against its own recommendation.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "semantic validation finds an option_matrix whose recommended option's total score (Harvey 0–4 or RAG red/amber/green, summed across criteria) is below another option's. Text-scale matrices and rows with an unreadable score are not compared. The slide still renders. Promoted to an error under strict validation.",
+		RemediationSteps: []string{
+			"Check the scores: a recommendation normally leads the matrix it closes.",
+			"If it wins on one decisive criterion, set decisive_criterion so the highlighted column says why.",
+			"Otherwise recommend the option that scores highest.",
+		},
+		RelatedCodes: []string{CodeSemanticReferenceUnresolved},
+	},
 	CodeSemanticRhythmMonotony: {
 		Code:        CodeSemanticRhythmMonotony,
 		Summary:     "Three or more consecutive slides share the same visual family.",
@@ -1331,7 +1343,7 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		Code:        CodeSemanticRhythmSectioning,
 		Summary:     "A long deck has no section dividers to break it into chapters.",
 		Severity:    describeSeverityReview,
-		WhenEmitted: "deck-rhythm analysis finds a deck of more than 8 slides with no section/transition slide. Promoted to an error under strict validation.",
+		WhenEmitted: "deck-rhythm analysis finds a deck of more than 10 body slides (cover, agenda, closing and other structural slides not counted) with no section/transition slide. Promoted to an error under strict validation.",
 		RemediationSteps: []string{
 			"Add one or more `section` slides to group the deck into chapters.",
 		},

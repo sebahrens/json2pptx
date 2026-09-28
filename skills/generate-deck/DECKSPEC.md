@@ -67,12 +67,12 @@ listing; get exact fields and aliases from `list_slide_kinds`:
 
 | Content shape | Useful visual range and authoring consequence |
 |---|---|
-| Executive summary | Three to five conclusion/support points use the `exec-summary` pattern. Each lead is at most 90 characters and support at most 200; outside the range or budget, the compiler degrades to bullets. `points` or plural `takeaways` are body content; singular `takeaway` is the footer insight. |
+| Executive summary | Three to five conclusion/support points use the `exec-summary` pattern. Each lead is at most 90 characters and support at most 200; outside the range or budget, the compiler degrades to bullets. `points` or plural `takeaways` are body content; singular `takeaway` is the footer insight, optional beside `bottom_line`. |
 | KPI snapshot | Two to six KPI cards. Keep values at most 12 characters, labels at most 40, deltas at most 12. A value beyond the hard budget degrades the slide; a value that fits the character budget but cannot fit in the card reports `BODY_TOO_LONG`. |
 | Chart insight | One to six insights use chart-plus-insights; more use a native chart with the full insight list. Every series needs exactly one unquoted numeric value per category. A short series is `CHART_SERIES_LENGTH_MISMATCH`; a quoted/null value is `CHART_VALUE_NOT_NUMERIC`. Neither should be shipped as an empty plot. |
 | Comparison | Two balanced columns of at most ten rows use a comparison visual; three to five columns use panels; larger content may degrade to cards or bullets. |
 | Table | At most six headers and six body rows fit the semantic table budget. Use `option_matrix` for options scored against criteria instead of flattening that structure into a generic table. |
-| Option matrix | Two to six criteria by two to six options. Each option needs exactly one score per criterion; use the chosen Harvey, RAG, or short text scale consistently. |
+| Option matrix | Two to six criteria by two to six options; one score per criterion on one Harvey, RAG, or text scale. A higher-scoring rival is `SEMANTIC_RECOMMENDATION_OUTSCORED`. |
 | Team | One to eight people use biography cards. Name at most 60 characters, role at most 80, bio at most 220, initials label at most 8. Every card needs a role; a `photo` headshot (path/url string or `{path|url, alt}`) and an initials `photo_label` are alternatives. |
 | Image case | Story body at most 300 characters, eyebrow 30, heading 80, at most five bullets of 140 each, at most three metrics with value 10 and label 40, caption 120. A picture without a stated case is not an image case. Over budget it degrades to two columns, keeping the picture. |
 | Framework | SWOT, Five Forces, and BMC need every canonical part; at most ten items per part and 200 characters per item. A missing part degrades the whole framework to grouped bullets. |
