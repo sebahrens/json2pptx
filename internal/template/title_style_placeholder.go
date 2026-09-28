@@ -25,12 +25,30 @@ func applyInheritedTitleText(info *types.PlaceholderInfo, shape *shapeXML, maste
 			}
 		}
 	}
+	info.Anchor = resolveTitleAnchor(shape, masterFonts)
 	info.TextCaps = st.CapsAll
 	info.LineSpacingPct = st.LineSpacingPct
 	info.SpcBefPt = st.SpcBefPt
 	if info.FontSize == 0 {
 		info.FontSize = st.SizeHPt
 	}
+}
+
+// resolveTitleAnchor returns the effective vertical anchor of a title
+// placeholder: the layout shape's own bodyPr anchor, else the master title
+// placeholder's, else the OOXML default "t". It returns "" when the master
+// could not be resolved, so callers never guess an anchor.
+func resolveTitleAnchor(shape *shapeXML, masterFonts *MasterFontStyles) string {
+	if shape.TextBody != nil && shape.TextBody.BodyPr != nil && shape.TextBody.BodyPr.Anchor != "" {
+		return shape.TextBody.BodyPr.Anchor
+	}
+	if masterFonts == nil {
+		return ""
+	}
+	if masterFonts.TitleAnchor != "" {
+		return masterFonts.TitleAnchor
+	}
+	return "t"
 }
 
 // applyInheritedBodyText fills the measured-fit text style of a body / content
