@@ -321,15 +321,26 @@ func cdTextHeightPt(ctx ExpandContext, p ContactDirectoryPerson, nameSize, title
 }
 
 func cdMeasure(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirectoryOverrides) cdLayout {
+	// A person's name is read as one unit: first look for a layout (type
+	// step, headshot size, column count) that sets every name on one line,
+	// and only then accept names that wrap between words
+	// (go-slide-creator-58dhw).
+	if lay := cdMeasureColumns(ctx, v, ovr, true); lay.fits {
+		return lay
+	}
+	return cdMeasureColumns(ctx, v, ovr, false)
+}
+
+func cdMeasureColumns(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirectoryOverrides, oneLine bool) cdLayout {
 	n := cdColumns(ovr)
-	lay := cdMeasureN(ctx, v, ovr, n)
+	lay := cdMeasureN(ctx, v, ovr, n, oneLine)
 	// Without an explicit column count, a directory that does not fit (too
 	// tall, or a name / title word that would break mid-word) steps down to
 	// fewer, wider columns before giving up.
 	if ovr == nil || ovr.Columns == 0 {
 		var narrowest cdLayout
 		for m := n - 1; !lay.fits && m >= cdMinColumns; m-- {
-			narrowest = cdMeasureN(ctx, v, ovr, m)
+			narrowest = cdMeasureN(ctx, v, ovr, m, oneLine)
 			if narrowest.fits {
 				return narrowest
 			}
@@ -343,7 +354,7 @@ func cdMeasure(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirecto
 	return lay
 }
 
-func cdMeasureN(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirectoryOverrides, n int) cdLayout {
+func cdMeasureN(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirectoryOverrides, n int, oneLine bool) cdLayout {
 	areaW, areaH := sizingAreaPt(ctx)
 	personRows := 0
 	for _, g := range v.Groups {
@@ -351,14 +362,14 @@ func cdMeasureN(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirect
 	}
 	// A sparse directory earns larger headshots and type rather than a small
 	// block floating in an empty slide; a dense one starts smaller.
-	steps := []cdTypeStep{{14, 12}, {13, 12}, {12, 12}}
+	// Steps sit on the type scale (18 / 14 / 12pt, go-slide-creator-30471).
+	steps := []cdTypeStep{{14, 12}, {12, 12}}
 	photoMax := 60.0
 	switch {
 	case personRows <= 2:
-		steps = append([]cdTypeStep{{20, 15}, {18, 14}, {16, 13}}, steps...)
+		steps = append([]cdTypeStep{{18, 14}}, steps...)
 		photoMax = 120
 	case personRows <= 4:
-		steps = append([]cdTypeStep{{16, 13}}, steps...)
 		photoMax = 72
 	}
 	if ovr != nil && (ovr.NameSize > 0 || ovr.TitleSize > 0) {
@@ -374,14 +385,14 @@ func cdMeasureN(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirect
 	stackSearch:
 		for _, st := range steps {
 			for photo := stackMax; photo >= cdStackPhotoMinPt; photo -= cdPhotoStepPt {
-				if lay := cdMeasureStacked(ctx, v, n, st.name, st.title, photo, stackW, areaH); lay.fits {
+				if lay := cdMeasureStacked(ctx, v, n, st.name, st.title, photo, stackW, areaH, oneLine); lay.fits {
 					stacked = lay
 					break stackSearch
 				}
 			}
 		}
 	}
-	side := cdMeasureSide(ctx, v, n, steps, photoMax, areaW, areaH)
+	side := cdMeasureSide(ctx, v, n, steps, photoMax, areaW, areaH, oneLine)
 	// Stacked wins unless it had to set the names smaller than the
 	// side-by-side layout manages: large type is what reads across a room.
 	if stacked.fits && (!side.fits || stacked.nameSize >= side.nameSize) {
@@ -391,7 +402,7 @@ func cdMeasureN(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirect
 }
 
 // cdMeasureSide measures the side-by-side layout (headshot left of the text).
-func cdMeasureSide(ctx ExpandContext, v *ContactDirectoryValues, n int, steps []cdTypeStep, photoMax, areaW, areaH float64) cdLayout {
+func cdMeasureSide(ctx ExpandContext, v *ContactDirectoryValues, n int, steps []cdTypeStep, photoMax, areaW, areaH float64, oneLine bool) cdLayout {
 	usable := areaW - cdColGapPt*float64(2*n-1)
 	personW := usable / float64(n)
 	// A narrow area still measures at the minimum headshot rather than
@@ -404,7 +415,7 @@ func cdMeasureSide(ctx ExpandContext, v *ContactDirectoryValues, n int, steps []
 	var lay cdLayout
 	for photo := photoMax; photo >= math.Max(cdPhotoMinPt, photoMax*0.7); photo -= cdPhotoStepPt {
 		for _, st := range steps {
-			lay = cdMeasureAt(ctx, v, n, st.name, st.title, photo, personW, areaH)
+			lay = cdMeasureAt(ctx, v, n, st.name, st.title, photo, personW, areaH, oneLine)
 			if lay.fits {
 				return lay
 			}
@@ -412,7 +423,7 @@ func cdMeasureSide(ctx ExpandContext, v *ContactDirectoryValues, n int, steps []
 	}
 	for _, st := range steps {
 		for photo := photoMax; photo >= cdPhotoMinPt; photo -= cdPhotoStepPt {
-			lay = cdMeasureAt(ctx, v, n, st.name, st.title, photo, personW, areaH)
+			lay = cdMeasureAt(ctx, v, n, st.name, st.title, photo, personW, areaH, oneLine)
 			if lay.fits {
 				return lay
 			}
@@ -421,7 +432,7 @@ func cdMeasureSide(ctx ExpandContext, v *ContactDirectoryValues, n int, steps []
 	return lay
 }
 
-func cdMeasureAt(ctx ExpandContext, v *ContactDirectoryValues, n int, nameSize, titleSize, photo, personW, areaH float64) cdLayout {
+func cdMeasureAt(ctx ExpandContext, v *ContactDirectoryValues, n int, nameSize, titleSize, photo, personW, areaH float64, oneLine bool) cdLayout {
 	lay := cdLayout{
 		columns:   n,
 		nameSize:  nameSize,
@@ -454,13 +465,13 @@ func cdMeasureAt(ctx ExpandContext, v *ContactDirectoryValues, n int, nameSize, 
 		lay.rowPt = append(lay.rowPt, heights)
 	}
 	lay.naturalPt += cdRowGapPt * float64(rows-1)
-	lay.fits = lay.naturalPt <= areaH && lay.namesFit(ctx, v)
+	lay.fits = lay.naturalPt <= areaH && lay.namesFit(ctx, v) && (!oneLine || lay.namesOneLine(ctx, v))
 	return lay
 }
 
 // cdMeasureStacked measures the sparse layout: per person row, a photo row
 // and a text row, each person one column of stackW points.
-func cdMeasureStacked(ctx ExpandContext, v *ContactDirectoryValues, n int, nameSize, titleSize, photo, stackW, areaH float64) cdLayout {
+func cdMeasureStacked(ctx ExpandContext, v *ContactDirectoryValues, n int, nameSize, titleSize, photo, stackW, areaH float64, oneLine bool) cdLayout {
 	lay := cdLayout{
 		columns:   n,
 		nameSize:  nameSize,
@@ -497,7 +508,7 @@ func cdMeasureStacked(ctx ExpandContext, v *ContactDirectoryValues, n int, nameS
 		lay.textRowPt = append(lay.textRowPt, texts)
 	}
 	lay.naturalPt += cdRowGapPt * float64(rows-1)
-	lay.fits = lay.naturalPt <= areaH && lay.namesFit(ctx, v)
+	lay.fits = lay.naturalPt <= areaH && lay.namesFit(ctx, v) && (!oneLine || lay.namesOneLine(ctx, v))
 	return lay
 }
 
@@ -533,6 +544,21 @@ func (lay cdLayout) firstBrokenWord(ctx ExpandContext, v *ContactDirectoryValues
 		}
 	}
 	return 0, 0, "", true
+}
+
+// namesOneLine reports whether every person's name sets on a single line of
+// the text column, with the same safety margin as firstBrokenWord.
+func (lay cdLayout) namesOneLine(ctx ExpandContext, v *ContactDirectoryValues) bool {
+	font := cdFont(ctx)
+	w := lay.textW - cdTextInsetLPt - cdTextInsetRPt
+	for _, grp := range v.Groups {
+		for _, person := range grp.People {
+			if w <= 0 || measuredLines(person.Name, font, true, lay.nameSize, w*0.95) > 1 {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func cdFont(ctx ExpandContext) string {

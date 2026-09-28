@@ -7,6 +7,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/textfit"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 )
 
 // growShapeText writes measured sizes back to a private copy of the resolved
@@ -127,8 +128,11 @@ func inferScaleRole(text string, fontPt float64, bold bool, paragraphCount int, 
 
 func typeScalePolicy(mode string) (float64, map[string]float64) {
 	switch mode {
+	// Caps sit on the type scale (tokens.TypeScale*): grown text settles onto
+	// a step through snapShapeTextToScale, so a cap between steps only adds
+	// growth that the snap would take back.
 	case "comfortable":
-		return 0.70, map[string]float64{"body": 16, "caption": 13, "kpi-value": 42}
+		return 0.70, map[string]float64{"body": 14, "caption": 12, "kpi-value": 40}
 	case "presentation":
 		return 0.80, map[string]float64{"body": 18, "caption": 14, "kpi-value": 48}
 	default:
@@ -196,4 +200,83 @@ func writeScaledText(raw json.RawMessage, paras []scaleParagraph, scale float64)
 
 func scaledSize(fontPt, scale float64) float64 {
 	return math.Floor(fontPt*scale*100+1e-8) / 100
+}
+
+// snapShapeTextToScale settles every sized paragraph of a resolved shape onto
+// the type scale (go-slide-creator-30471): off-scale pattern sizes such as
+// 13/15/16/17/20/22pt become the step at or below them (12/14/14/14/18/18pt).
+// Display figures — a short run containing a digit at 18pt or more, such as a
+// KPI value or a step numeral — keep their measured size, as does text under
+// the caption step (footnotes) or at the display step and above. Snapping only
+// shrinks, so fit and readability floors (which sit on scale steps) hold.
+// Like growShapeText it rewrites a private copy consumed by both OOXML
+// generation and preflight; the authored input is untouched.
+func snapShapeTextToScale(spec *ShapeSpec) *ShapeSpec {
+	if spec == nil || len(spec.Text) == 0 {
+		return spec
+	}
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(spec.Text, &obj) != nil {
+		return spec // string shorthand renders at the 14pt default, a scale step
+	}
+	changed := false
+	snap := func(size float64, texts ...string) (float64, bool) {
+		if size <= 0 {
+			return size, false
+		}
+		for _, t := range texts {
+			if size >= 18 && isDisplayFigure(t) {
+				return size, false
+			}
+		}
+		hpt := int(math.Round(size * 100))
+		snapped := tokens.SnapTextHPt(hpt)
+		if snapped == hpt {
+			return size, false
+		}
+		return float64(snapped) / 100, true
+	}
+	if rawParas, ok := obj["paragraphs"]; ok {
+		var defs []map[string]json.RawMessage
+		if json.Unmarshal(rawParas, &defs) != nil {
+			return spec
+		}
+		for i := range defs {
+			var size float64
+			var content string
+			_ = json.Unmarshal(defs[i]["size"], &size)
+			_ = json.Unmarshal(defs[i]["content"], &content)
+			if s, ok := snap(size, content); ok {
+				defs[i]["size"], _ = json.Marshal(s)
+				changed = true
+			}
+		}
+		if !changed {
+			return spec
+		}
+		obj["paragraphs"], _ = json.Marshal(defs)
+	} else {
+		var size float64
+		var content string
+		_ = json.Unmarshal(obj["size"], &size)
+		_ = json.Unmarshal(obj["content"], &content)
+		s, ok := snap(size, strings.Split(content, "\n")...)
+		if !ok {
+			return spec
+		}
+		obj["size"], _ = json.Marshal(s)
+	}
+	out, err := json.Marshal(obj)
+	if err != nil {
+		return spec
+	}
+	copySpec := *spec
+	copySpec.Text = out
+	return &copySpec
+}
+
+// isDisplayFigure reports a short run that states a figure or numeral.
+func isDisplayFigure(text string) bool {
+	text = strings.TrimSpace(text)
+	return text != "" && len([]rune(text)) <= 25 && strings.IndexFunc(text, func(r rune) bool { return r >= '0' && r <= '9' }) >= 0
 }

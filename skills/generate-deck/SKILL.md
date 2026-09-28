@@ -98,7 +98,12 @@ executable one.
 - [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance;
   get the current catalog, per-pattern schema and per-field copy targets from
   `list_patterns` / `show_pattern`. Out-of-range pattern text sizes are
-  rejected, not clamped.
+  rejected, not clamped. Grid text settles onto the type scale
+  (28 / 18 / 14 / 12 / 10pt; KPI figures keep their display size), short
+  ALL-CAPS labels are letter-spaced automatically (+7%) — write them in caps,
+  do not add spaces — and bold headings, titles and names are balanced so no
+  line ends on a lone word. In a two-column comparison, open each column's
+  bullets with a short label line to get a bold column header.
 - [FINDINGS.md](FINDINGS.md): legacy finding and fix details for cases not yet
   covered by `describe_finding`; prefer the live tool for known codes.
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):

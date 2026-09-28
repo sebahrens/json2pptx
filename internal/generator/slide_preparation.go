@@ -510,6 +510,7 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 	// (go-slide-creator-rioxd). Keep the first and report the loser.
 	claimedTextShapes := make(map[int]int) // shapeIdx -> content index
 
+	content = markColumnHeaders(slide.CommonSlideData.ShapeTree.Shapes, content)
 	for j, item := range content {
 		// Skip visual content types - they are handled in prepareImages
 		if item.Type == ContentImage || item.Type == ContentDiagram || item.Type == ContentTable {

@@ -32,6 +32,8 @@ Do not invent font sizes. When generating `shape_grid` JSON, use these consisten
 
 Leave text insets at the 0.5 cm default. Anything outside these ranges should be a deliberate, named-pattern override — never an ad-hoc choice. See [`docs/INPUT_FORMAT.md`](../../docs/INPUT_FORMAT.md) for full examples.
 
+Every size in the table sits on the **type scale**: 28pt display / title, 18pt lead, 14pt subhead (bold card titles, grid headers), 12pt body, 10pt caption, plus a 40–48pt display step for KPI values; 11pt is the body minimum and 10pt is allowed only in tables and dense matrices. The engine settles off-scale `shape_grid` sizes onto the step at or below them (16pt renders at 14pt, 20pt at 18pt), keeps display figures and 28pt+ text as measured, and never goes below a `viewing_mode` readability floor. Short ALL-CAPS labels are tracked +7% automatically. Serif (the template's major font) belongs to titles and display figures only; body text uses the minor font.
+
 The numeric ranges above are the published surface of the canonical design tokens in [`internal/tokens/tokens.go`](../../internal/tokens/tokens.go) (`GridHeader*`, `CardTitle*`, `CardBody*`, `StepNumber*`, `Footnote*`). A regression test (`internal/tokens/tokens_test.go`) verifies this table stays in sync with the constants — if you change one, change the other in the same PR.
 
 ## Charts

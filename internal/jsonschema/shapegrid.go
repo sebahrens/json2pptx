@@ -40,6 +40,11 @@ type ShapeGridInput struct {
 	// (go-slide-creator-c3po). It waives the absolute-size rule ONLY — raw hex
 	// colours are still refused, and the expanders do not emit any.
 	Source string `json:"source,omitempty"`
+
+	// KeepTextSizes marks a design_mode "free" deck's own grid: its authored
+	// font sizes are rendered as written instead of settling onto the type
+	// scale. Never read from JSON; set by applyDefaults.
+	KeepTextSizes bool `json:"-"`
 }
 
 // GridBoundsInput defines the bounding rectangle as percentages of slide dimensions.

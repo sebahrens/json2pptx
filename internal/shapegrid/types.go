@@ -90,6 +90,11 @@ type Grid struct {
 	// bounds. VAlignStretch (default) re-scales rows to fill; the other
 	// values keep the content-sized block and place it top/center/bottom.
 	VAlign VerticalAlign
+
+	// KeepTextSizes leaves authored cell font sizes as written. By default
+	// sized text settles onto the type scale (tokens.SnapTextHPt); callers
+	// set this only for a design_mode "free" deck's own grids.
+	KeepTextSizes bool
 }
 
 // Row is a single row in the grid.

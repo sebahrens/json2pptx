@@ -186,7 +186,7 @@ func (cis *chartInsightsSplit) Schema() *Schema {
 		map[string]*Schema{
 			"type":  StringSchema(60).WithDescription("Diagram type (bar_chart, line_chart, pie_chart, etc.) — passed directly to svggen"),
 			"title": StringSchema(120).WithDescription("Optional chart title"),
-			"data": ObjectSchema(map[string]*Schema{}, nil).WithDescription("Diagram-specific data payload (categories + series, or type-specific shape). bar_chart also takes highlight: bars painted in accent1 (0-based category indices or names) while the rest are neutral dk1 at 38%; omit to accent the last bar of a time series, otherwise the largest; [] accents none"),
+			"data":  ObjectSchema(map[string]*Schema{}, nil).WithDescription("Diagram-specific data payload (categories + series, or type-specific shape). bar_chart also takes highlight: bars painted in accent1 (0-based category indices or names) while the rest are neutral dk1 at 38%; omit to accent the last bar of a time series, otherwise the largest; [] accents none"),
 		},
 		[]string{"type", "data"},
 	).WithDescription("Optional chart/diagram rendered in the left panel; omit to render insights full-width")

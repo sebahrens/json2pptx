@@ -295,6 +295,9 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 			if mode != "" && mode != "compact" {
 				cell.ShapeSpec = growShapeText(cell.ShapeSpec, cell.Bounds, cell.TextInsets, mode)
 			}
+			if !grid.KeepTextSizes {
+				cell.ShapeSpec = snapShapeTextToScale(cell.ShapeSpec)
+			}
 		}
 	}
 	shareRowAutofitScale(cells)

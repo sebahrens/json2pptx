@@ -99,3 +99,23 @@ func findRepoFile(t *testing.T, rel string) string {
 		dir = parent
 	}
 }
+
+func TestSnapTextHPtSettlesOnScale(t *testing.T) {
+	for _, tc := range []struct{ in, want int }{
+		{700, 700}, {950, 950}, {1000, 1000}, {1050, 1000}, {1100, 1100}, {1150, 1100},
+		{1200, 1200}, {1300, 1200}, {1500, 1400}, {1600, 1400}, {1700, 1400},
+		{1800, 1800}, {2000, 1800}, {2600, 1800}, {2800, 2800}, {3600, 3600}, {4800, 4800},
+	} {
+		if got := SnapTextHPt(tc.in); got != tc.want {
+			t.Errorf("SnapTextHPt(%d) = %d, want %d", tc.in, got, tc.want)
+		}
+	}
+	// Readability floors must be scale steps, or snapping down could cross one.
+	for _, mode := range []ViewingMode{ViewingModePresentation, ViewingModeReport} {
+		for _, role := range []TextRole{TextRoleBody, TextRoleCardTitle, TextRoleCardBody, TextRoleCaption} {
+			if floor := MinReadableHPt(mode, role); floor >= TypeScaleCaptionHPt && SnapTextHPt(floor) != floor {
+				t.Errorf("%s/%s floor %d is not a scale step", mode, role, floor)
+			}
+		}
+	}
+}
