@@ -56,6 +56,9 @@ const (
 	KindRoadmap SlideKind = "roadmap"
 	// KindDecision frames a decision and its recommendation.
 	KindDecision SlideKind = "decision"
+	// KindNextSteps is the consulting closer: actions with owner and date,
+	// plus the decisions requested (go-slide-creator-7lzdh).
+	KindNextSteps SlideKind = "next_steps"
 	// KindClosing is the closing slide.
 	KindClosing SlideKind = "closing"
 	// KindRawJSON2pptx is an escape hatch carrying a raw json2pptx slide
@@ -240,9 +243,16 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		RequiredAliases: map[string][]string{"options": {"choices", "alternatives"}},
 		TypicalFields:   []string{"options", "recommendation", "takeaway"},
 	},
+	KindNextSteps: {
+		Kind:            KindNextSteps,
+		Summary:         "The closer a consulting deck ends on: 2–6 actions, each with an owner and a date, and 0–3 decisions requested. Renders as the next-steps pattern — numbered action rows separated by rules over a 'Decisions requested' band; outside those bounds it degrades to bullets. Prefer it to a plain closing ('Thank you').",
+		RequiredFields:  []string{"actions"},
+		RequiredAliases: map[string][]string{"actions": {"next_steps", "steps"}},
+		TypicalFields:   []string{"title", "decisions", "decisions_label"},
+	},
 	KindClosing: {
 		Kind:           KindClosing,
-		Summary:        "Closing slide (thank-you, questions, or call to action).",
+		Summary:        "Plain closing slide (a title and subtitle, or a few bullets). A consulting deck should close on next_steps instead; keep this for a Q&A or contact page.",
 		RequiredFields: []string{"title"},
 		TypicalFields:  []string{"subtitle"},
 	},

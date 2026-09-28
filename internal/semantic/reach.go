@@ -33,6 +33,7 @@ var patternReach = map[string]SlideKind{
 	"kpi-6up":              KindKPISnapshot,
 	"card-grid":            KindComparison,
 	"matrix-2x2":           KindMatrix2x2,
+	"next-steps":           KindNextSteps,
 	"numbered-step-strip":  KindDecision,
 	"phase-roadmap":        KindRoadmap,
 	"pull-quote":           KindQuote,

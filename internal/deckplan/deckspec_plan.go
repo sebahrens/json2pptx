@@ -72,7 +72,7 @@ var (
 	slotPlan    = deckSpecSlotDef{"plan", "process", "What we will do: 3-6 steps, each an action with its outcome.", 2, false}
 	slotRoadmap = deckSpecSlotDef{"roadmap", "roadmap", "When it happens: 3-6 phases with dates and the milestone that ends each.", 2, false}
 	slotAsk     = deckSpecSlotDef{"ask", "decision", "The decision needed now: the options, the recommended one, and the ask with owner and date.", 1, false}
-	slotClosing = deckSpecSlotDef{"closing", "closing", "Restate the decision and the next step, with owner and date.", 0, false}
+	slotClosing = deckSpecSlotDef{"closing", "next_steps", "Close on next steps, not \"Thank you\": 2-6 actions, each with an owner and a date, and the decisions requested. A plain closing kind stays available for a Q&A page.", 0, false}
 )
 
 // maxEvidenceSlots caps repeated evidence slides: past this the draft stops

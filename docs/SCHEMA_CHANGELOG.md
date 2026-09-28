@@ -610,6 +610,26 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-28 — Unreleased — Section tracker, rule-based agenda, next-steps closer, KPI comparators
+  (`go-slide-creator-r3gsw`, `go-slide-creator-7lzdh`, `go-slide-creator-lsfbi`).**
+  `chrome.tracker` (raw) / `meta.chrome.tracker` (DeckSpec) sets the current
+  section name above each content slide's title in 9pt accent1 caps with +8%
+  letter-spacing, 6pt above the title, from `structure.sections` or, on a flat
+  deck, the preceding section slide; title, section, closing and agenda slides
+  and slides with an `eyebrow` carry none. The `agenda` pattern is restyled:
+  28pt serif (`+mj-lt`) accent numerals, 16pt items, 0.5pt rules between
+  content-height rows, no filled tiles; `overrides.highlight` now sets the
+  current row bold and the others at 50% opacity. New pattern `next-steps`
+  (2–6 `actions` {action, owner?, date?} and 0–3 `decisions` in a "Decisions
+  requested" band with a left accent rule, no outline, no fill) and DeckSpec
+  kind `next_steps`; `plan_deck format:"deckspec"` now closes on `next_steps`
+  instead of `closing`, which stays available. `kpi-2up`…`kpi-6up` cells and
+  `kpi_snapshot` KPIs take an optional `comparator` (alias `vs`, ≤24 chars)
+  rendered as its own line in the delta's style; `kpi-inline` rejects it.
+  Shape-grid paragraphs accept `alpha` (text opacity, percent). Shipped
+  examples `board-deck`, `consulting-layouts` and `patterns-smoke` now use
+  action titles. No schema version bump.
+
 - **2026-09-24 — Resolved sparse-layout coverage (`go-slide-creator-atrbp`,
   `go-slide-creator-vk3ma`).** Raw-grid `sparse_layout` now measures painted
   cell area, non-text visuals, and wrapped text against the actual resolved

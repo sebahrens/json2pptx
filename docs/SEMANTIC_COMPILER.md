@@ -78,6 +78,7 @@ Initial slide kinds:
 - `process`
 - `roadmap`
 - `decision`
+- `next_steps`
 - `closing`
 - `raw_json2pptx`
 
@@ -87,7 +88,7 @@ Each content-bearing kind compiles to the named pattern its plan advertises (the
 
 | Kind | Pattern | Payload | Fits the visual when |
 |------|---------|---------|----------------------|
-| `kpi_snapshot` | `kpi-2up`…`kpi-6up` | `kpis: [{value,label}]` | 2–6 KPIs |
+| `kpi_snapshot` | `kpi-2up`…`kpi-6up` | `kpis: [{value,label,delta?,comparator?}]` | 2–6 KPIs; `comparator` (alias `vs`, ≤24 chars, "vs plan +4 pts") renders as its own line under the caption |
 | `chart_insight` | `chart-insights-split` | `chart: {type,data}`, `insights: [string]`, `insight?: string` | 1–6 bullets or one scalar `insight` rendered as a so-what callout; a usable chart with neither falls back to the `takeaway` as one bullet, so the chart is never silently dropped |
 | `comparison` | `comparison-2col` | `columns: [{title, items:[string]}, …]` | exactly 2 columns with equal, non-empty item counts (≤10 rows) |
 | `stat` | `stat-hero` | `value`, `label` (+ `unit?`, `context?`, `source?`) | the number ≤20 chars, label ≤80, unit ≤10, context ≤120, source ≤80 |
@@ -97,6 +98,7 @@ Each content-bearing kind compiles to the named pattern its plan advertises (the
 | `framework` (`swot`, `porters_five_forces`) | *native diagram, no pattern* | `sections: {strengths…threats}` / `{rivalry…buyers}` | all 4 / all 5 parts present |
 | `image_case` | `image-text-split` | `body` or `bullets` (+ `image?`, `eyebrow?`, `heading?`, `metrics?`, `caption?`) | body ≤300 chars, eyebrow ≤30, heading ≤80, ≤5 bullets ≤140 each, ≤3 metrics |
 | `decision` | `numbered-step-strip` / `card-grid` | `options: [{label, detail?}]`, `recommendation` | 3–6 options (label ≤60 chars, detail ≤180), or exactly 2 each with a detail |
+| `next_steps` | `next-steps` | `actions: [{action, owner?, date?}]` (aliases `next_steps`, `steps`), `decisions?: [string]`, `decisions_label?` | 2–6 actions (action ≤90, owner ≤30, date ≤20) and 0–3 decisions ≤120; otherwise bullets that keep owner, date and each decision. `plan_deck format:"deckspec"` closes on it; `closing` stays the plain Q&A page |
 | `process` | `numbered-step-strip` / `process-flow` | `steps: [{label, description?, type?}]` | 3–6 described steps (label ≤60 chars, description ≤180), or 3–8 bare / branching ones (≤80 per box) |
 | `roadmap` | `phase-roadmap` | `phases: [{name, date_label?, description?, active?, milestone?}]` | 3–6 named phases |
 

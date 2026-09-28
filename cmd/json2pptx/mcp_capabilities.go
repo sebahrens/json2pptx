@@ -509,7 +509,7 @@ func buildCapabilitiesResultFor(ctx context.Context, templatesDir, outputDir str
 			DeckChrome: capabilitiesFeatureFlag{
 				Supported: true,
 				Version:   "2.8.0",
-				UsageHint: "Set top-level chrome:{confidentiality,client_name,project_code,footer_date,page_numbers,section_crumb}. Composites into a deck-wide footer; auto-suppressed on title/closing slides.",
+				UsageHint: "Set top-level chrome:{confidentiality,client_name,project_code,footer_date,page_numbers,section_crumb,tracker}. Composites into a deck-wide footer; auto-suppressed on title/closing slides. tracker:true sets the current section name above each content slide's title (from structure.sections or the preceding section slide).",
 			},
 			DesignMode: capabilitiesFeatureFlag{
 				Supported: true,

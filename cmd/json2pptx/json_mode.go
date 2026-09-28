@@ -3237,6 +3237,63 @@ func applyChromeSkip(specs []generator.SlideSpec, chrome *ChromeInput, slides []
 	}
 }
 
+// applyChromeTracker sets each content slide's section tracker for
+// chrome.tracker (go-slide-creator-r3gsw). The running section is the slide's
+// own section_title (set when structure.sections expands) or, on a flat deck,
+// the title of the most recent section-divider slide. Title, section-divider
+// and closing slides carry no tracker, and a slide's authored eyebrow wins
+// because both occupy the band above the title.
+func applyChromeTracker(specs []generator.SlideSpec, chrome *ChromeInput, slides []SlideInput, layouts []types.LayoutMetadata) {
+	if chrome == nil || !chrome.Tracker {
+		return
+	}
+	layoutByID := make(map[string]*types.LayoutMetadata, len(layouts))
+	for i := range layouts {
+		layoutByID[layouts[i].ID] = &layouts[i]
+	}
+	// A structure-expanded deck names every in-section slide's section itself;
+	// the running divider title is only the flat-deck fallback, so a closing
+	// content slide after the last section carries no tracker.
+	structured := false
+	for i := range slides {
+		if strings.TrimSpace(slides[i].SectionTitle) != "" {
+			structured = true
+			break
+		}
+	}
+	running := ""
+	for i := range specs {
+		if i >= len(slides) {
+			break
+		}
+		slide := slides[i]
+		canonical := types.CanonicalLayoutUnknown
+		if l := layoutByID[specs[i].LayoutID]; l != nil {
+			canonical = template.EffectiveCanonicalType(l)
+		}
+		if isSectionSlideInput(slide, layouts) || canonical == types.CanonicalLayoutSectionDivider {
+			_, running = extractTitleText(slide)
+			continue
+		}
+		if canonical == types.CanonicalLayoutTitleSlide || canonical == types.CanonicalLayoutClosing ||
+			types.SlideType(slide.SlideType) == types.SlideTypeTitle {
+			continue
+		}
+		// An agenda is the deck's own navigation: it needs no tracker above it.
+		if slide.Pattern != nil && strings.HasPrefix(slide.Pattern.Name, "agenda") {
+			continue
+		}
+		section := strings.TrimSpace(slide.SectionTitle)
+		if section == "" && !structured {
+			section = running
+		}
+		if section == "" || strings.TrimSpace(slide.Eyebrow) != "" {
+			continue
+		}
+		specs[i].Tracker = section
+	}
+}
+
 // patternThemeFromDiag exposes template colors and the body font to pattern
 // expanders for contrast and content-sized text measurement. Returns the zero
 // ThemeInfo when no diagram context is available.

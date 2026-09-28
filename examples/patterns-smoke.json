@@ -5,7 +5,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "KPI 3-Up"}
+        {"placeholder_id": "title", "type": "text", "text_value": "$4.2M revenue on 98.7% uptime from 1,247 active users"}
       ],
       "pattern": {
         "name": "kpi-3up",
@@ -19,7 +19,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "KPI 4-Up"}
+        {"placeholder_id": "title", "type": "text", "text_value": "ARR reached $4.2M with an NPS of 87 and 42 open deals"}
       ],
       "pattern": {
         "name": "kpi-4up",
@@ -35,7 +35,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Business Model Canvas"}
+        {"placeholder_id": "title", "type": "text", "text_value": "A platform model wins on faster time-to-market and lower TCO"}
       ],
       "pattern": {
         "name": "bmc-canvas",
@@ -55,7 +55,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Priority Matrix"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Start with quick wins; defer the thankless high-effort tasks"}
       ],
       "pattern": {
         "name": "matrix-2x2",
@@ -72,7 +72,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Product Roadmap"}
+        {"placeholder_id": "title", "type": "text", "text_value": "GA ships in Q3 2026 and international expansion follows in Q1 2027"}
       ],
       "pattern": {
         "name": "timeline-horizontal",
@@ -88,7 +88,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Service Tiers"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Three plans and three add-ons cover teams from starter to enterprise"}
       ],
       "pattern": {
         "name": "card-grid",
@@ -109,7 +109,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Service Tiers (with cell_overrides)"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Professional is the plan most growing teams should choose"}
       ],
       "pattern": {
         "name": "card-grid",
@@ -131,7 +131,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Our Values"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Four values guide how we work with every customer"}
       ],
       "pattern": {
         "name": "icon-row",
@@ -146,7 +146,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Before vs After"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Automated CI/CD cut release cycles from 4 hours to 15 minutes"}
       ],
       "pattern": {
         "name": "comparison-2col",
@@ -165,7 +165,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Modernization Roadmap"}
+        {"placeholder_id": "title", "type": "text", "text_value": "The pilot goes live by July 2025 and scales to every unit by October"}
       ],
       "pattern": {
         "name": "phase-roadmap",
@@ -182,7 +182,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Quarterly Revenue Trajectory"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Revenue nearly doubled to $8.1M in Q4 on enterprise and EMEA"}
       ],
       "pattern": {
         "name": "chart-insights-split",
@@ -209,7 +209,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "FY26 Strategy: Executive Summary"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Right-sizing the top 10 workloads recovers 14% of FY26 cloud spend"}
       ],
       "pattern": {
         "name": "scqa-summary",
@@ -233,7 +233,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Industrial Value Chain"}
+        {"placeholder_id": "title", "type": "text", "text_value": "We focus on manufacturing, the third of six value-chain steps"}
       ],
       "pattern": {
         "name": "value-chain",
@@ -252,7 +252,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Today's Agenda"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Five topics take us from the summary to next steps"}
       ],
       "pattern": {
         "name": "agenda-with-images",
@@ -270,7 +270,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Our Engagement Team"}
+        {"placeholder_id": "title", "type": "text", "text_value": "A four-person team combines strategy, engineering and design"}
       ],
       "pattern": {
         "name": "team-bios",
@@ -287,7 +287,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "What stakeholders are telling us"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Stakeholders say the platform halved cycle times and earned trust"}
       ],
       "pattern": {
         "name": "quote-cluster",
@@ -306,7 +306,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Digital Maturity Model"}
+        {"placeholder_id": "title", "type": "text", "text_value": "We are at stage three of five: practices are defined, not yet managed"}
       ],
       "pattern": {
         "name": "journey-maturity-model",
@@ -324,7 +324,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Joint Engagement Team"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Each Acme leader has a named Strategy Partners counterpart"}
       ],
       "pattern": {
         "name": "dual-org-ladder",
@@ -343,7 +343,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "From Today to Agentic"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Agents turn days of manual work into same-day decisions"}
       ],
       "pattern": {
         "name": "state-shift-hub",
@@ -362,7 +362,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Executive Summary"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Self-service can close the growth gap within 18 months"}
       ],
       "pattern": {
         "name": "exec-summary",
@@ -379,7 +379,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Option Evaluation"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Buying a SaaS suite is the best option on time to value and risk"}
       ],
       "pattern": {
         "name": "table-highlight",
@@ -397,7 +397,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Case Study"}
+        {"placeholder_id": "title", "type": "text", "text_value": "A retailer cut stock-outs by a third with store-level forecasting"}
       ],
       "pattern": {
         "name": "image-text-split",
@@ -414,7 +414,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "By the Numbers"}
+        {"placeholder_id": "title", "type": "text", "text_value": "AI leaders earn 3.8x higher TSR, yet most firms are still piloting"}
       ],
       "pattern": {
         "name": "metric-list",
@@ -431,7 +431,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Why, What, How"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Act now: an AI-first operating model starts with two or three workflows"}
       ],
       "pattern": {
         "name": "labeled-rows",
@@ -447,7 +447,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Automation Potential by Function"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Automation can unlock up to 45% of middle-office capacity"}
       ],
       "pattern": {
         "name": "capability-heatmap",
@@ -474,7 +474,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Change Management Framework"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Change lands when people, process and technology move together"}
       ],
       "pattern": {
         "name": "framework-grid",
@@ -499,7 +499,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Key Contacts"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Six leaders across North America and Europe are your contacts"}
       ],
       "pattern": {
         "name": "contact-directory",
@@ -522,7 +522,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Introduction"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Supply chains must buy back the resilience a decade of cost-cutting gave away"}
       ],
       "pattern": {
         "name": "text-sidebar",
@@ -534,6 +534,23 @@
           ],
           "bullets": ["Dual sourcing for the top 20 components", "Regional buffer stock"],
           "sidebar": "Resilience is now a design choice, not an insurance premium"
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Three actions start the pilot in October"}
+      ],
+      "pattern": {
+        "name": "next-steps",
+        "values": {
+          "actions": [
+            {"action": "Confirm pilot scope and success metrics with the COO", "owner": "J. Smith", "date": "15 Oct"},
+            {"action": "Stand up the data workstream and secure system access", "owner": "A. Patel", "date": "31 Oct"},
+            {"action": "Present the phase-1 business case to the board", "owner": "CFO office", "date": "Nov board"}
+          ],
+          "decisions": ["Approve the phase-1 budget", "Nominate an executive sponsor for the pilot"]
         }
       }
     }

@@ -137,7 +137,7 @@ func TestInspectPatternInput_WrapperObjectNamesTheKeyToUnwrap(t *testing.T) {
 	}
 	wantPhrase := map[string]string{
 		"timeline-horizontal": "an array of objects {label, body?, date?, end_date?}",
-		"kpi-3up":             "an array where each item is a string or an object {big, small, icon?, sub?}",
+		"kpi-3up":             "an array where each item is a string or an object {big, small, comparator?, icon?, sub?}",
 	}
 	for _, tt := range tests {
 		t.Run(tt.pattern, func(t *testing.T) {

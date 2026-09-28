@@ -86,6 +86,8 @@ type ChromeSpec struct {
 	PageNumbers *PageNumbersSpec `json:"page_numbers,omitempty" yaml:"page_numbers,omitempty"`
 	// SectionCrumb shows the running section title in the footer.
 	SectionCrumb bool `json:"section_crumb,omitempty" yaml:"section_crumb,omitempty"`
+	// Tracker sets the current section name above each content slide's title.
+	Tracker bool `json:"tracker,omitempty" yaml:"tracker,omitempty"`
 }
 
 // PageNumbersSpec mirrors deckinput.PageNumbersInput.

@@ -914,6 +914,16 @@ var rules = []rule{
 		needsMetrics: true,
 	},
 
+	// next-steps — closing action rows (action / owner / date) + decisions band
+	{
+		pattern:   "next-steps",
+		keywords:  []string{"next steps", "next-steps", "action plan", "actions and owners", "owners and dates", "action owner date", "decisions requested", "decisions required", "the ask", "way forward", "closing slide", "call to action"},
+		baseScore: 0.93,
+		rationale: "Closing slide: 2–6 numbered actions with owner and date, plus a 'Decisions requested' band — the closer a consulting deck ends on instead of 'Thank you'",
+		itemMin:   2,
+		itemMax:   6,
+	},
+
 	// labeled-rows — keyword label block beside body text, 2-6 rows
 	{
 		pattern:   "labeled-rows",

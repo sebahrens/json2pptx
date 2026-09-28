@@ -317,6 +317,25 @@ type paragraphDef struct {
 	Color      string  `json:"color,omitempty"`
 	Font       string  `json:"font,omitempty"`
 	SpaceAfter float64 `json:"space_after,omitempty"` // Space below this paragraph in points (e.g. 6 = 6pt)
+	// Alpha is the text opacity in percent (1-99); 0 or 100 = opaque. It needs
+	// an explicit color. The agenda uses it to set the sections the deck is
+	// not at in dk1 at 50% (go-slide-creator-r3gsw).
+	Alpha float64 `json:"alpha,omitempty"`
+}
+
+// paragraphColorFill resolves a paragraph's color, applying its opacity.
+func paragraphColorFill(color string, alpha float64) pptx.Fill {
+	if color == "" {
+		return pptx.Fill{}
+	}
+	if alpha <= 0 || alpha >= 100 || color == "none" {
+		return ResolveFillString(color)
+	}
+	val := int(alpha * 1000)
+	if schemeColorNames[color] {
+		return pptx.SchemeFill(color, pptx.Alpha(val))
+	}
+	return pptx.SolidFillWithAlpha(strings.TrimPrefix(color, "#"), val)
 }
 
 // ResolveTextInput parses text from string shorthand, object form, or paragraphs array form.
@@ -473,10 +492,7 @@ func buildParagraphsTextBody(defs []paragraphDef, defaultAlign, vAlign, defaultF
 			fontSize = int(EffectiveTextSizePt(d.Size) * 100)
 		}
 
-		var colorFill pptx.Fill
-		if d.Color != "" {
-			colorFill = ResolveFillString(d.Color)
-		}
+		colorFill := paragraphColorFill(d.Color, d.Alpha)
 
 		font := d.Font
 		if font == "" {

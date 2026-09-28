@@ -152,6 +152,37 @@ func schemeContrast(ctx ExpandContext, fg, bg string) (float64, bool) {
 
 // inkOnLight returns preferred when it reads against the lt1 background at
 // minRatio or better, otherwise dk1. Without a theme it trusts preferred.
+// readableDimAlpha returns the text opacity (percent) to dim ink on the lt1
+// surface: want when it keeps minRatio, else the next 5% step that does, else
+// 0 (opaque). Without a theme it trusts want. It lets a "50% dk1" design
+// intent survive the WCAG contrast pass instead of being swapped for another
+// ink wholesale (go-slide-creator-r3gsw).
+func readableDimAlpha(ctx ExpandContext, ink string, want, minRatio float64) float64 {
+	c, ok := resolveThemeColor(ctx, ink)
+	bg, bgOK := resolveThemeColor(ctx, "lt1")
+	if !ok || !bgOK {
+		return want
+	}
+	for a := want; a < 100; a += 5 {
+		if EffectiveColorMods(c, ColorMods{Alpha: a / 100}, bg).ContrastWith(bg) >= minRatio {
+			return a
+		}
+	}
+	return 0
+}
+
+// accentInkOnLight returns accent when it reads on lt1 at minRatio, else dk2,
+// else dk1 — the accent family first, so numerals keep the template's
+// colour where they can.
+func accentInkOnLight(ctx ExpandContext, accent string, minRatio float64) string {
+	for _, ink := range []string{accent, "dk2"} {
+		if ratio, ok := schemeContrast(ctx, ink, "lt1"); !ok || ratio >= minRatio {
+			return ink
+		}
+	}
+	return "dk1"
+}
+
 func inkOnLight(ctx ExpandContext, preferred string, minRatio float64) string {
 	ratio, ok := schemeContrast(ctx, preferred, "lt1")
 	if !ok || ratio >= minRatio {

@@ -62,7 +62,7 @@ func TestPlanDeckDeckSpecSmallBudgetKeepsTheAsk(t *testing.T) {
 	for _, s := range plan.Slots {
 		kinds = append(kinds, s.Kind)
 	}
-	if got := strings.Join(kinds, " "); got != "title decision closing" {
+	if got := strings.Join(kinds, " "); got != "title decision next_steps" {
 		t.Errorf("3-slide storyline = %q, want the cover, the ask and the close", got)
 	}
 	big := deckplan.BuildDeckSpecPlan(deckplan.Params{Brief: "Strategy review", SlideBudget: 30})

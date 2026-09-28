@@ -151,10 +151,12 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 
 | Intent | Pattern | Disambiguator |
 |---|---|---|
-| Big-number KPIs (2–6 items) | `kpi-Nup` | Fixed count, ≤12-char metrics (measured one-line fit warnings); optional per-cell `sub` (delta/trend annotation, aliases `delta`/`trend`/`change`) |
+| Big-number KPIs (2–6 items) | `kpi-Nup` | Fixed count, ≤12-char metrics (measured one-line fit warnings); optional per-cell `sub` (delta/trend annotation, aliases `delta`/`trend`/`change`) and `comparator` (≤24 chars, alias `vs`: the reference the number is read against, "vs plan +4 pts"), rendered as its own line in the delta's size and ink and reserved on every card when any card has one. `kpi-inline` (height-capped) rejects `comparator` |
 | Ranked horizontal bars (3–8) with per-bar insight | `horizontal-bar-with-callouts` | One callout per bar, accent-bar bound to the row; omit every `callout` and the column is dropped so the bars span the full width |
 | Single dominant metric | `stat-hero` | One hero number with context |
 | Stat stack / "by the numbers" list | `metric-list` | 3–7 rows read top to bottom: big right-aligned accent `value` (≤12 chars, one shared size shrunk until the longest fits on one line) + bold `label` + optional `detail`, hairline rules; at most one `highlight: true` row (Lighter-80% accent band + accent bar, value ink measured against the band) and an optional full-width accent `callout` banner (text colour by measured contrast). Details hold 120 chars through 4 items, ~90 at 5, none at 6–7. Use `kpi-Nup` for side-by-side cards, `stat-hero` / `hero-detail` for one dominant number |
+| Agenda / contents page | `agenda` | 2–10 rows: a 28pt serif (`+mj-lt`) accent numeral beside a 16pt item, 0.5pt rules between content-height rows, no filled tiles, block middle-anchored (sizes step to 24/16 then 20/14 only when the rows do not fit). `overrides.highlight` marks the current section on a repeated agenda: that row bold dk1, every other row at 50% opacity (stepped up just enough to keep 4.5:1 / 3:1 on lt1). A pale accent falls back to dk2 / dk1 numerals by measured contrast |
+| Closing next steps | `next-steps` | 2–6 numbered action rows (`action` ≤90, `owner` ≤30, `date` ≤20; the owner / date column drops when no action has one) under a quiet column header, 0.5pt rules, plus 0–3 `decisions` (≤120) in a "Decisions requested" band (`decisions_label` overrides) drawn with a 3pt left accent rule, bold text, no outline and no fill. The closer instead of "Thank you"; use `numbered-step-strip` for a process to explain, `phase-roadmap` for a dated schedule |
 | Feature/capability cards | `card-grid` | Multi-line body text per card |
 | Sequential process | `process-flow` | Ordered steps with arrows |
 | Ordered steps / annotated ToC (no branching) | `numbered-step-strip` | 3–7 numbered steps (chevron ≤6) with an optional per-step detail zone and, in `stacked-box` / `toc`, an optional `steps[].icon` between the number badge and the label; `chevron` ribbon, `stacked-box` scorecard, or `toc` agenda — never emits decision diamonds (use `process-flow` for branching) |
@@ -466,6 +468,10 @@ A pattern's JSON schema is the contract an agent sizes its copy against, and a p
 - Keep `maxLength=300` as a hard input bound, not a promise that 300 characters fit every card. The field description directs authors to the per-card budget in `expand_pattern`.
 - Emit a `BODY_TOO_LONG` warning above that same per-card budget. Both `cell_budgets[].max_chars` and the warning account for the selected content area, body font size, card header, icon/chart reservations, and grid dimensions; `actual_chars` counts the body alone. The budget is computed before the supplied body copy sizes a row, so it cannot rise as an author adds text.
 - Derive the budget by MEASUREMENT, not by arithmetic: run the payload at each shape through the same readability prediction the fit report gives an agent. `cmd/json2pptx.TestSchemaMaximaStayReadable` does this for every registered pattern on all four bundled templates and pins the result, so a schema maximum cannot quietly get worse and an improvement cannot be given back.
+
+### Rule-list patterns: `agenda` and `next-steps`
+
+Both follow the design review's rule language (go-slide-creator-r3gsw, go-slide-creator-7lzdh): serif accent numerals, 0.5pt `dk1`-at-30% rule rows between content-height rows, no tile fills, a middle-anchored block with surplus height passed to the item rows (`fillCappedRows`, 62% / 55% minimum fill). Dimmed text (the non-current agenda rows, the next-steps column header) uses the shape-grid paragraph `alpha` (text opacity in percent, needs an explicit `color`); pick it with `readableDimAlpha` so the WCAG pass keeps the intended ink instead of swapping it.
 
 ### Row-list patterns: `metric-list` and `labeled-rows`
 
