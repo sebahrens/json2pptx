@@ -271,9 +271,9 @@ func loadCanonicalAllowlist(t *testing.T) canonicalAllowlist {
 // lying about what is currently broken.
 func TestCanonicalPlaceholdersCorpus_AllowlistEntriesPointAtRealTemplates(t *testing.T) {
 	al := loadCanonicalAllowlist(t)
-	if len(al.Exceptions) == 0 {
-		t.Skip("allow-list is empty — nothing to validate")
-	}
+	// An empty allow-list is the healthy state: every entry below would be
+	// checked, and none exist. Pass rather than skip, so a run reports this
+	// guard as executed (go-slide-creator-gdi5r).
 
 	files := shippedTemplates(t)
 

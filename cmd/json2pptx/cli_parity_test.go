@@ -131,17 +131,10 @@ func TestCLISubcommandsExist(t *testing.T) {
 	}
 }
 
-// buildTestBinary compiles the json2pptx binary for testing.
+// buildTestBinary returns the package's shared json2pptx test binary.
 func buildTestBinary(t *testing.T) string {
 	t.Helper()
-
-	binary := t.TempDir() + "/json2pptx"
-	cmd := exec.Command("go", "build", "-o", binary, ".") //nolint:gosec
-	cmd.Dir = "."
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("failed to build test binary: %v\n%s", err, out)
-	}
-	return binary
+	return sharedTestBinary(t)
 }
 
 // TestHelpListsMCPOnlyTools verifies that `json2pptx help` advertises an

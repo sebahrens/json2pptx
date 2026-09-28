@@ -278,7 +278,9 @@ func TestStrictFit_Off(t *testing.T) {
 	jsonPath := filepath.Join(tmpDir, "input.json")
 	outputPath := filepath.Join(tmpDir, "result.json")
 
-	// Dense table that triggers density warnings.
+	// Dense table that triggers density warnings. Kept to 8 rows so it fits
+	// without truncation: dropped rows are source loss, which is refused in
+	// every strict_fit mode and is not what this test is about.
 	input := `{
 		"template": "midnight-blue",
 		"slides": [{
@@ -289,13 +291,6 @@ func TestStrictFit_Off(t *testing.T) {
 				"table_value": {
 					"headers": ["A","B","C","D","E","F","G","H","I","J"],
 					"rows": [
-						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
-						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
-						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
-						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
-						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
-						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
-						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
 						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
 						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
 						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
@@ -315,9 +310,10 @@ func TestStrictFit_Off(t *testing.T) {
 
 	templatesDir := filepath.Join("..", "..", "templates")
 	err := runJSONMode(jsonPath, outputPath, templatesDir, tmpDir, "", false, false, "", "off", false, "off", "", false)
-	// off mode should not fail due to density — only template/gen errors
+	// off mode must not fail due to density; a generation error here was
+	// previously only logged, hiding the regression (go-slide-creator-gdi5r).
 	if err != nil {
-		t.Logf("runJSONMode returned error (expected if template issue): %v", err)
+		t.Fatalf("strict_fit=off must not refuse a dense deck: %v", err)
 	}
 }
 

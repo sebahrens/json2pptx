@@ -14,6 +14,8 @@ import (
 // Schema legality must not allow the actual generated 2.4–6pt extreme cells
 // through the CLI, even when the advisory preflight gate is disabled.
 func TestCLIExtremeSchemaPatternsCannotPublishTinyText(t *testing.T) {
+	// Read-only inputs; writes go only to t.TempDir() (go-slide-creator-s2s53).
+	t.Parallel()
 	for _, patternName := range []string{"bmc-canvas", "stylish-panels", "card-grid", "contact-directory", "framework-grid", "text-sidebar"} {
 		pat, ok := patterns.Default().Get(patternName)
 		if !ok {
@@ -35,6 +37,7 @@ func TestCLIExtremeSchemaPatternsCannotPublishTinyText(t *testing.T) {
 		}
 		for _, name := range schemaMaximaTemplateNames(t) {
 			t.Run(patternName+"/"+name, func(t *testing.T) {
+				t.Parallel()
 				dir := t.TempDir()
 				input, report := filepath.Join(dir, "input.json"), filepath.Join(dir, "result.json")
 				outputDir := filepath.Join(dir, "output")

@@ -60,6 +60,8 @@ type calibrationResult struct {
 // gate must fail defective decks and pass good ones, and the score must track
 // the human ranking rather than the count of codes that happen to exist.
 func TestCalibrationRanking(t *testing.T) {
+	// Read-only inputs; writes go only to t.TempDir() (go-slide-creator-s2s53).
+	t.Parallel()
 	results := scoreCalibrationCorpus(t)
 	if len(results) < 16 {
 		t.Fatalf("calibration corpus has %d decks, want 16", len(results))
@@ -79,7 +81,18 @@ func TestCalibrationRanking(t *testing.T) {
 
 	for _, r := range results {
 		if r.spec {
-			continue // not gradable through the presentation path
+			// Exempt from the good/defect gate verdict, deliberately: a DeckSpec
+			// loaded as a presentation leaves its first slide looking empty, so
+			// the gate fails G1/G3 (human 72/68) on SLIDE_NEARLY_EMPTY at a
+			// ~97 score. That verdict says nothing about the deck. They still
+			// count toward the Spearman ranking above. Pin the limitation so a
+			// change to it is seen rather than silently exempted
+			// (go-slide-creator-gdi5r): when a spec deck starts passing, the
+			// DeckSpec path became gradable and it belongs in the checks below.
+			if r.gate {
+				t.Errorf("spec deck %s now passes the gate (score %d): DeckSpec decks became gradable — drop the spec exemption and assert its verdict", r.name, r.score)
+			}
+			continue
 		}
 		good := strings.HasPrefix(r.name, "G")
 		switch {

@@ -14,17 +14,10 @@ import (
 	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
-// buildJSON2PPTX builds the binary once for test use.
+// buildJSON2PPTX returns the package's shared json2pptx test binary.
 func buildJSON2PPTX(t *testing.T) string {
 	t.Helper()
-	bin := filepath.Join(t.TempDir(), "json2pptx")
-	cmd := exec.Command("go", "build", "-o", bin, "./") //nolint:gosec
-	cmd.Dir = "."
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("build failed: %v\n%s", err, out)
-	}
-	return bin
+	return sharedTestBinary(t)
 }
 
 // runBin executes the test binary with the given args.

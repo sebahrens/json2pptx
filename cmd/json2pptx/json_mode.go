@@ -351,6 +351,7 @@ func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[st
 	metadata, _ := template.ParseMetadata(reader)
 	if metadata != nil {
 		theme.SemanticAccents = metadata.SemanticAccents
+		theme.SurfaceTints = metadata.SurfaceTints
 	}
 
 	// Normalize placeholder names to canonical form (body, body_2, body_3, etc.)

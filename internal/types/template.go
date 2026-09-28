@@ -394,6 +394,10 @@ type ThemeInfo struct {
 	// SemanticAccents mirrors the template metadata for read-only colour
 	// preflight; it is not an OOXML theme slot.
 	SemanticAccents map[string]string
+	// SurfaceTints mirrors the template metadata surface_tints so read-only
+	// preflight (validate / fit-report) resolves the same neutral surface
+	// fills as generation; it is not an OOXML theme slot.
+	SurfaceTints map[string]string
 }
 
 // ThemeColor represents a single color in the theme.

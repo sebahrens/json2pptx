@@ -17,6 +17,8 @@ import (
 // readability verdicts. Preflight must measure that rectangle as generation
 // does, rather than the template's taller default (go-slide-creator-vrckb).
 func TestFitAndReadabilityUseDeckRhythmBounds(t *testing.T) {
+	// Read-only inputs; writes go only to t.TempDir() (go-slide-creator-s2s53).
+	t.Parallel()
 	reader, err := template.OpenTemplate(filepath.Join("..", "..", "templates", "midnight-blue.pptx"))
 	if err != nil {
 		t.Fatal(err)

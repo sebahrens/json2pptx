@@ -57,8 +57,20 @@ jobs:
       - name: Build
         run: go build ./...
 
-      - name: Test with coverage
-        run: go test ./... -short -v -race -coverprofile=coverage.out -covermode=atomic -timeout=25m
+      # cmd/json2pptx is by far the heaviest package under -race; it runs as its
+      # own step with its own budget so its growth cannot starve the rest of the
+      # module, and the two profiles are merged for the threshold check
+      # (go-slide-creator-s2s53).
+      - name: Test with coverage (cmd/json2pptx)
+        run: go test ./cmd/json2pptx -short -v -race -coverprofile=coverage-cmd.out -covermode=atomic -timeout=40m
+
+      - name: Test with coverage (other packages)
+        run: go test $(go list ./... | grep -v '/cmd/json2pptx$') -short -v -race -coverprofile=coverage-rest.out -covermode=atomic -timeout=25m
+
+      - name: Merge coverage profiles
+        run: |
+          cp coverage-rest.out coverage.out
+          tail -n +2 coverage-cmd.out >> coverage.out
 
       - name: Check coverage threshold
         run: |
@@ -122,16 +134,19 @@ jobs:
           path: output/test-matrix/MATRIX.md
 
   skill-sync:
+    # Runs on pushes to main too: most commits land directly, so a PR-only gate
+    # skipped the commits that land most often (go-slide-creator-3fzw3). On a
+    # push the base is the pre-push tip; the script falls back to HEAD~1 when
+    # that ref is absent (new branch / force-push).
     timeout-minutes: 20
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Check skill-code-docs sync
-        run: bash scripts/check-skill-sync.sh ${{ github.event.pull_request.base.sha }}
+        run: bash scripts/check-skill-sync.sh ${{ github.event.pull_request.base.sha || github.event.before }}
 
       - name: Check skill canonical location (no .claude/skills/ tracking)
         run: bash scripts/check-skill-canonical.sh

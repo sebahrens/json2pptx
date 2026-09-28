@@ -31,10 +31,10 @@ import (
 	"testing"
 )
 
-// skillMdPaths returns the canonical SKILL.md locations to enforce drift
-// against. The first is the repo-canonical authoritative copy; the second is
-// the Claude Code-mounted copy that agents actually load. Both must stay in
-// sync.
+// skillMdPaths returns the SKILL.md locations to enforce drift against: only
+// the repo-canonical copy. A .claude/skills mirror is never tracked
+// (scripts/check-skill-canonical.sh forbids it), so listing it made three
+// subtests skip on every run (go-slide-creator-gdi5r).
 func skillMdPaths(t *testing.T) []string {
 	t.Helper()
 	// Resolve from the test's working directory (cmd/json2pptx) up to the
@@ -42,7 +42,6 @@ func skillMdPaths(t *testing.T) []string {
 	repoRoot := filepath.Join("..", "..")
 	return []string{
 		filepath.Join(repoRoot, "skills", "generate-deck", "SKILL.md"),
-		filepath.Join(repoRoot, ".claude", "skills", "generate-deck", "SKILL.md"),
 	}
 }
 
@@ -87,8 +86,7 @@ func TestSkillMdMentionsEveryMCPTool(t *testing.T) {
 		skillPath := skillPath
 		t.Run(filepath.Base(filepath.Dir(filepath.Dir(skillPath)))+"/"+filepath.Base(filepath.Dir(skillPath)), func(t *testing.T) {
 			if _, err := os.Stat(skillPath); os.IsNotExist(err) {
-				t.Skipf("%s does not exist — skipping drift check", skillPath)
-				return
+				t.Fatalf("%s does not exist — the canonical skill bundle is missing", skillPath)
 			}
 			body := readSkillBundle(t, skillPath)
 			var missing []string
@@ -119,8 +117,7 @@ func TestSkillRoutesRepairKindsToRuntime(t *testing.T) {
 		skillPath := skillPath
 		t.Run(filepath.Base(filepath.Dir(filepath.Dir(skillPath)))+"/"+filepath.Base(filepath.Dir(skillPath)), func(t *testing.T) {
 			if _, err := os.Stat(skillPath); os.IsNotExist(err) {
-				t.Skipf("%s does not exist — skipping drift check", skillPath)
-				return
+				t.Fatalf("%s does not exist — the canonical skill bundle is missing", skillPath)
 			}
 			body := readSkillBundle(t, skillPath)
 			if !strings.Contains(body, "get_capabilities().vocabularies.repair_fix_kinds") {
@@ -188,8 +185,7 @@ func TestSkillMdTemplateGuideCrossRefResolves(t *testing.T) {
 		skillPath := skillPath
 		t.Run(filepath.Base(filepath.Dir(filepath.Dir(skillPath)))+"/"+filepath.Base(filepath.Dir(skillPath)), func(t *testing.T) {
 			if _, err := os.Stat(skillPath); os.IsNotExist(err) {
-				t.Skipf("%s does not exist — skipping cross-ref check", skillPath)
-				return
+				t.Fatalf("%s does not exist — the canonical skill bundle is missing", skillPath)
 			}
 			body := readSkillBundle(t, skillPath)
 

@@ -714,9 +714,23 @@ func TestHandleListIcons_QualifiedName(t *testing.T) {
 		}
 	}
 	// Filled icons must use the qualified form — verify there is at least one
-	// filled icon and its qualified_name starts with "filled:".
+	// filled icon and its qualified_name starts with "filled:". The first
+	// page is all outline icons, so ask for the filled set explicitly; the old
+	// check skipped whenever the page held none (go-slide-creator-gdi5r).
+	filledRes, err := handleListIcons(context.Background(), makeRequest(map[string]any{
+		"set":       "filled",
+		"page_size": float64(200),
+		"fields":    "full",
+	}))
+	if err != nil || filledRes.IsError {
+		t.Fatalf("filled set request failed: err=%v result=%+v", err, filledRes)
+	}
+	var filledResp listIconsResponse
+	if err := json.Unmarshal([]byte(filledRes.Content[0].(mcpgo.TextContent).Text), &filledResp); err != nil {
+		t.Fatalf("failed to parse filled response: %v", err)
+	}
 	var filledOK bool
-	for _, s := range resp.Sets {
+	for _, s := range filledResp.Sets {
 		if s.Set != "filled" {
 			continue
 		}
@@ -728,7 +742,7 @@ func TestHandleListIcons_QualifiedName(t *testing.T) {
 		}
 	}
 	if !filledOK {
-		t.Skip("no filled icons in response — cannot verify filled: prefix")
+		t.Fatal("no filled icons in response — the filled: prefix went unverified")
 	}
 }
 

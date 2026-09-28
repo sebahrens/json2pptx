@@ -939,14 +939,9 @@ func TestConvertHandlerTimeoutBehavior(t *testing.T) {
 func createTestTemplate(t *testing.T, dir, name string) string {
 	t.Helper()
 
-	// Read the existing test template from test fixtures
-	fixturesPath := filepath.Join("..", "..", "testdata", "templates", "SimpleMinimal-Consulting.pptx")
-
-	// Check if test fixtures exist
-	if _, err := os.Stat(fixturesPath); os.IsNotExist(err) {
-		// If fixtures don't exist, skip the test
-		t.Skip("Test template fixtures not available")
-	}
+	// Copy a shipped template. The old testdata/templates fixture was never
+	// tracked, so every caller silently skipped (go-slide-creator-gdi5r).
+	fixturesPath := filepath.Join("..", "..", "templates", "midnight-blue.pptx")
 
 	templatePath := filepath.Join(dir, name+".pptx")
 

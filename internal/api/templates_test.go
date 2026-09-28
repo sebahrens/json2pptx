@@ -417,18 +417,13 @@ func TestWriteError(t *testing.T) {
 }
 
 // TestTemplateServiceIntegration tests the full flow with real template analysis.
-// This test requires valid PPTX template files in testdata directory.
+// It runs against the shipped templates; the old testdata/ lookup held no
+// .pptx files, so the test always skipped (go-slide-creator-gdi5r).
 func TestTemplateServiceIntegration(t *testing.T) {
-	// Check if we have test templates
-	testdataDir := filepath.Join("..", "..", "testdata")
-	if _, err := os.Stat(testdataDir); os.IsNotExist(err) {
-		t.Skip("Skipping integration test: testdata directory not found")
-	}
-
-	// Find .pptx files
+	testdataDir := filepath.Join("..", "..", "templates")
 	entries, err := os.ReadDir(testdataDir)
 	if err != nil {
-		t.Skip("Skipping integration test: cannot read testdata directory")
+		t.Fatalf("read templates directory: %v", err)
 	}
 
 	hasTemplate := false
@@ -440,7 +435,7 @@ func TestTemplateServiceIntegration(t *testing.T) {
 	}
 
 	if !hasTemplate {
-		t.Skip("Skipping integration test: no .pptx templates in testdata")
+		t.Fatal("no .pptx templates in templates/")
 	}
 
 	// Run integration test
@@ -577,13 +572,11 @@ func TestAC7_ListTemplates(t *testing.T) {
 
 // TestAC8_TemplateDetails validates AC8: Template Details
 func TestAC8_TemplateDetails(t *testing.T) {
-	// This test requires a valid template file
-	testdataDir := filepath.Join("..", "..", "testdata")
-
-	// Find a template file
+	// Runs against the shipped templates (go-slide-creator-gdi5r).
+	testdataDir := filepath.Join("..", "..", "templates")
 	entries, err := os.ReadDir(testdataDir)
 	if err != nil {
-		t.Skip("Skipping AC8: cannot read testdata directory")
+		t.Fatalf("read templates directory: %v", err)
 	}
 
 	var templateName string
@@ -595,7 +588,7 @@ func TestAC8_TemplateDetails(t *testing.T) {
 	}
 
 	if templateName == "" {
-		t.Skip("Skipping AC8: no .pptx templates found in testdata")
+		t.Fatal("AC8: no .pptx templates found in templates/")
 	}
 
 	cache := template.NewMemoryCache(24 * time.Hour)
