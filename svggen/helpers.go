@@ -20,9 +20,11 @@ func resolveColors(configColors []Color, style *StyleGuide, count int) []Color {
 	}
 
 	// Determine base palette: prefer user-specified colors, else accent colors.
+	// Theme accents are reordered so the series in use stay visually
+	// distinct on single-hue templates; caller colours are used verbatim.
 	base := configColors
 	if len(base) < count {
-		base = style.Palette.AccentColors()
+		base = distinctSeriesPalette(style.Palette, count)
 	}
 
 	// If the base already has enough colors, return the slice directly.
