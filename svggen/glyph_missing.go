@@ -99,7 +99,13 @@ func estimateMissingGlyphWidth(face *canvas.FontFace, text string, fontSizePt fl
 		}
 	}
 	if s := kept.String(); s != "" {
-		width = canvas.NewTextLine(face, s, canvas.Left).Bounds().W() * mmToPt
+		// Shaping can still panic on the kept runes (bidi controls + combining
+		// marks); fall back to the same 0.55em estimate MeasureText uses.
+		if tl := safeTextLine(face, s, canvas.Left); tl != nil {
+			width = tl.Bounds().W() * mmToPt
+		} else {
+			width = float64(len([]rune(s))) * 0.55 * fontSizePt
+		}
 	}
 	return width + est, true
 }
