@@ -151,12 +151,33 @@ if (-not $SkipTemplates) {
     $TemplatesDst = Join-Path $env:LOCALAPPDATA "json2pptx\templates"
     New-Item -ItemType Directory -Force -Path $TemplatesDst | Out-Null
 
-    $PptxFiles = Get-ChildItem (Join-Path $TemplatesSrc "*.pptx") -ErrorAction SilentlyContinue
-    if ($PptxFiles) {
-        Copy-Item $PptxFiles.FullName $TemplatesDst -Force
-        Write-Host "    $TemplatesDst ($($PptxFiles.Count) templates)"
+    # Only the templates embedded in the binary ship: read the list from the
+    # //go:embed directive in templates/embed.go (the single source of truth,
+    # shared with scripts/shipped-templates.sh) so a local gitignored template
+    # such as p-style.pptx is never installed.
+    $EmbedLine = Select-String -Path (Join-Path $TemplatesSrc "embed.go") -Pattern '^//go:embed ' | Select-Object -First 1
+    $Shipped = @()
+    if ($EmbedLine) {
+        $Shipped = @(($EmbedLine.Line -split '\s+') | Where-Object { $_ -like '*.pptx' } | ForEach-Object { $_ -replace '\.pptx$', '' })
+    }
+    $Installed = 0
+    foreach ($Name in $Shipped) {
+        $Src = Join-Path $TemplatesSrc "$Name.pptx"
+        if (Test-Path $Src) {
+            Copy-Item $Src $TemplatesDst -Force
+            $Installed++
+        }
+        $PreviewSrc = Join-Path $TemplatesSrc "previews\$Name"
+        if (Test-Path $PreviewSrc) {
+            $PreviewDst = Join-Path $TemplatesDst "previews"
+            New-Item -ItemType Directory -Force -Path $PreviewDst | Out-Null
+            Copy-Item $PreviewSrc $PreviewDst -Recurse -Force
+        }
+    }
+    if ($Installed -gt 0) {
+        Write-Host "    $TemplatesDst ($Installed templates)"
     } else {
-        Write-Host "    WARNING: No .pptx templates found in templates/" -ForegroundColor Yellow
+        Write-Host "    WARNING: No templates listed in templates/embed.go were found in templates/" -ForegroundColor Yellow
     }
 }
 
