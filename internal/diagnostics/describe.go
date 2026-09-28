@@ -1171,7 +1171,7 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		Code:        CodeSemanticTakeawayRequired,
 		Summary:     "A content slide carries no one-line takeaway.",
 		Severity:    describeSeverityReview,
-		WhenEmitted: "semantic validation finds a content-bearing slide (executive_summary, kpi_snapshot, chart_insight, comparison, process, roadmap, decision) with no takeaway (or insight) line. Promoted to an error under strict validation.",
+		WhenEmitted: "semantic validation finds a content-bearing slide (executive_summary, kpi_snapshot, chart_insight, comparison, process, roadmap, decision) with no takeaway (or insight) line. An executive_summary with a bottom_line (or recommendation) and a decision with a recommendation are exempt: that callout is their takeaway, and a distinct takeaway renders in its own band beneath it. Promoted to an error under strict validation.",
 		RemediationSteps: []string{
 			"Add a takeaway line at evidence.path stating the slide's single message.",
 			"For a chart_insight slide an insight line satisfies the requirement.",

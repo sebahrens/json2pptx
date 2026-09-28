@@ -54,7 +54,7 @@ func TestExecutiveSummaryCompilesToPattern(t *testing.T) {
 	}
 }
 
-func TestExecutiveSummaryUsesOneConclusionBand(t *testing.T) {
+func TestExecutiveSummaryKeepsTakeawayOutOfBottomLine(t *testing.T) {
 	base := map[string]any{
 		"points":      []any{"Revenue rose", "Churn fell", "Cycle shortened"},
 		"bottom_line": "Fund the retention pod in Q3.",
@@ -64,14 +64,16 @@ func TestExecutiveSummaryUsesOneConclusionBand(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if slide.Takeaway != "" {
-		t.Fatalf("duplicate takeaway band = %q", slide.Takeaway)
+	// A distinct takeaway takes its own band instead of running on into the
+	// bottom line (go-slide-creator-8w4rb).
+	if slide.Takeaway != "Begin hiring next month." {
+		t.Fatalf("takeaway band = %q, want the takeaway", slide.Takeaway)
 	}
 	var values execSummaryValues
 	if err := json.Unmarshal(slide.Pattern.Values, &values); err != nil {
 		t.Fatal(err)
 	}
-	if want := "Fund the retention pod in Q3. — Begin hiring next month."; values.BottomLine != want {
+	if want := "Fund the retention pod in Q3."; values.BottomLine != want {
 		t.Errorf("bottom_line = %q, want %q", values.BottomLine, want)
 	}
 	if !ExecSummaryPatternFeasible(base) {
@@ -82,7 +84,7 @@ func TestExecutiveSummaryUsesOneConclusionBand(t *testing.T) {
 func TestExecutiveSummaryOverfullConclusionDegradesWithoutDroppingText(t *testing.T) {
 	body := map[string]any{
 		"points":      []any{"Revenue rose", "Churn fell", "Cycle shortened"},
-		"bottom_line": strings.Repeat("Action ", 15),
+		"bottom_line": strings.Repeat("Action ", 40),
 		"takeaway":    strings.Repeat("Implication ", 10),
 	}
 	if ExecSummaryPatternFeasible(body) {

@@ -63,7 +63,7 @@ listing; get exact fields and aliases from `list_slide_kinds`:
 
 | Content shape | Useful visual range and authoring consequence |
 |---|---|
-| Executive summary | Three to five conclusion/support points use the `exec-summary` pattern. Each lead is at most 90 characters and support at most 200; outside the range or budget, the compiler degrades to bullets. `points` or plural `takeaways` are body content; singular `takeaway` is the footer insight. |
+| Executive summary | Three to five conclusion/support points use the `exec-summary` pattern. Each lead is at most 90 characters and support at most 200; outside the range or budget, the compiler degrades to bullets. `points` or plural `takeaways` are body content; singular `takeaway` is the footer insight, optional beside `bottom_line`. |
 | KPI snapshot | Two to six KPI cards. Keep values at most 12 characters, labels at most 40, deltas at most 12. A value beyond the hard budget degrades the slide; a value that fits the character budget but cannot fit in the card reports `BODY_TOO_LONG`. |
 | Chart insight | One to six insights use chart-plus-insights; more use a native chart with the full insight list. Every series needs exactly one unquoted numeric value per category. A short series is `CHART_SERIES_LENGTH_MISMATCH`; a quoted/null value is `CHART_VALUE_NOT_NUMERIC`. Neither should be shipped as an empty plot. |
 | Comparison | Two balanced columns of at most ten rows use a comparison visual; three to five columns use panels; larger content may degrade to cards or bullets. |

@@ -487,7 +487,7 @@ func validateSlideAt(path string, slide SlideSpec, s *semDiags) {
 
 	// Content-bearing slides should carry a one-line takeaway (insight counts
 	// for chart_insight).
-	if kindNeedsTakeaway[slide.Kind] {
+	if kindNeedsTakeaway[slide.Kind] && !kindConclusionPresent(slide) {
 		if slide.String("takeaway") == "" && slide.String("insight") == "" {
 			s.advisory(path+".takeaway", diagnostics.CodeSemanticTakeawayRequired,
 				fmt.Sprintf("%s slide should carry a one-line takeaway", slide.Kind))
@@ -495,6 +495,22 @@ func validateSlideAt(path string, slide SlideSpec, s *semDiags) {
 	}
 
 	scanWeakBody(path, slide.Body, s)
+}
+
+// kindConclusionPresent reports whether the slide already carries its kind's
+// own conclusion callout: an executive summary's bottom_line (or its
+// recommendation alias) or a decision's recommendation. That callout IS the
+// slide's one-line takeaway, so asking for another one only nudged agents into
+// authoring a second conclusion the renderer used to run on into the same band
+// (go-slide-creator-8w4rb).
+func kindConclusionPresent(slide SlideSpec) bool {
+	switch slide.Kind {
+	case KindExecutiveSummary:
+		return slide.String("bottom_line") != "" || slide.String("recommendation") != ""
+	case KindDecision:
+		return slide.String("recommendation") != ""
+	}
+	return false
 }
 
 // validateFieldShapes emits a SEMANTIC_FIELD_TYPE advisory for each payload

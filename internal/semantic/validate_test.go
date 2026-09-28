@@ -608,6 +608,28 @@ func TestValidateTakeawayRequiredAndStrictness(t *testing.T) {
 	}
 }
 
+// An executive summary's bottom line and a decision's recommendation are the
+// slide's takeaway; asking for another one led agents to author a second
+// conclusion that ran on into the same callout (go-slide-creator-8w4rb).
+func TestValidateTakeawayExemptWhenKindCarriesConclusion(t *testing.T) {
+	cases := []struct {
+		kind SlideKind
+		body map[string]any
+		want bool
+	}{
+		{KindExecutiveSummary, map[string]any{"title": "Summary", "points": []any{"a rose", "b fell", "c held"}, "bottom_line": "Fund the pod."}, false},
+		{KindExecutiveSummary, map[string]any{"title": "Summary", "points": []any{"a rose", "b fell", "c held"}}, true},
+		{KindDecision, map[string]any{"title": "Ask", "recommendation": "Fund the pod.", "options": []any{"Build | control", "Buy | speed"}}, false},
+		{KindDecision, map[string]any{"title": "Ask", "options": []any{"Build | control", "Buy | speed"}}, true},
+	}
+	for _, c := range cases {
+		spec := &DeckSpec{Meta: DeckMeta{Title: "Deck"}, Slides: []SlideSpec{{Kind: c.kind, Body: c.body}}}
+		if got := hasCode(Validate(spec, StrictnessWarn), diagnostics.CodeSemanticTakeawayRequired); got != c.want {
+			t.Errorf("%s %v: SEMANTIC_TAKEAWAY_REQUIRED = %v, want %v", c.kind, c.body, got, c.want)
+		}
+	}
+}
+
 func TestValidateWeakContent(t *testing.T) {
 	spec := &DeckSpec{
 		Meta: DeckMeta{Title: "Deck"},

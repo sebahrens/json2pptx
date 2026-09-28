@@ -5,18 +5,23 @@ import (
 	"unicode"
 )
 
-// FoldConclusion keeps two authored conclusions in one visual callout. Repeated
-// wording is shown only once; distinct wording is retained in reading order.
-func FoldConclusion(primary, takeaway string) string {
+// SplitConclusion places a kind's own conclusion (an executive summary's
+// bottom line, a decision's recommendation) and the authored takeaway. The
+// callout shows the kind's conclusion, or the takeaway when there is none. A
+// distinct takeaway beside a conclusion comes back as band, for the slide's
+// separate takeaway band: joining the two with a dash made one run-on sentence
+// that overran the callout and clipped (go-slide-creator-8w4rb). Repeated
+// wording is shown only once.
+func SplitConclusion(primary, takeaway string) (callout, band string) {
 	primary = strings.TrimSpace(primary)
 	takeaway = strings.TrimSpace(takeaway)
 	if primary == "" {
-		return takeaway
+		return takeaway, ""
 	}
 	if takeaway == "" || DuplicateConclusion(primary, takeaway) {
-		return primary
+		return primary, ""
 	}
-	return primary + " — " + takeaway
+	return primary, takeaway
 }
 
 // DuplicateConclusion tolerates case, punctuation and minor whitespace edits,

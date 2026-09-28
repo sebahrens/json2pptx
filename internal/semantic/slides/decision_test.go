@@ -80,17 +80,19 @@ func TestCompileDecisionGivesTheAskAVisual(t *testing.T) {
 	})
 }
 
-func TestDecisionUsesOneConclusionBand(t *testing.T) {
+func TestDecisionKeepsTakeawayOutOfCallout(t *testing.T) {
 	body := decisionBody(option("Build", "Full control."), option("Buy", "Fast launch."))
 	body["takeaway"] = "Begin vendor diligence next week."
 	slide, _, err := CompileDecision(Input{Body: body, Takeaway: body["takeaway"].(string)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if slide.Takeaway != "" {
-		t.Fatalf("duplicate takeaway band = %q", slide.Takeaway)
+	// A distinct takeaway takes its own band instead of running on into the
+	// recommendation callout (go-slide-creator-8w4rb).
+	if slide.Takeaway != body["takeaway"] {
+		t.Fatalf("takeaway band = %q, want the takeaway", slide.Takeaway)
 	}
-	if want := body["recommendation"].(string) + " — " + body["takeaway"].(string); slide.Pattern.Callout.Text != want {
+	if want := body["recommendation"].(string); slide.Pattern.Callout.Text != want {
 		t.Errorf("callout = %q, want %q", slide.Pattern.Callout.Text, want)
 	}
 }
