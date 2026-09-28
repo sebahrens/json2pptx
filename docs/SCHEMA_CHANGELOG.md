@@ -2,6 +2,16 @@
 
 - **2026-09-28 — Schema 4.154.0: consultant × designer finishing round (`go-slide-creator-1x3yi`).** Contract changes listed in the 4.154.0 entries below: chart `highlight`, `chrome.tracker`, `next-steps` pattern and `next_steps` kind, KPI `comparator`, `callout.emphasis` subtle/strong and `takeaway_emphasis` overrides, `DATA_WITHOUT_SOURCE` and `FILLED_SHAPE_OUTLINED` findings, engine-default table style, source zone, type scale.
 
+- **2026-09-28 — Schema 4.154.0 · Embedded diagram text meets the native floor (`go-slide-creator-h3x1i`).**
+  Charts and diagrams placed in a placeholder or grid cell are held to the
+  same `viewing_mode` body floor as native text (12pt `present`) at their
+  placed size: svggen scales the whole type model until its smallest role
+  reaches the floor and uses that placed floor as the fitters' shrink limit, so
+  embedded labels no longer render at 7.9–11.4pt (crowded diagrams report
+  `diagram.text_overlap` instead). `TEXT_BELOW_READABLE_MIN` for embedded
+  diagram text that still falls below the floor is now `action: "refuse"`
+  (was `review`), matching measured native runs. Standalone `render_diagram`
+  output is unchanged. No `SchemaVersion` bump.
 - **2026-09-28 — Schema 4.154.0 · Content drops refuse (`go-slide-creator-k3lyz`).**
   `CONTENT_DROPPED` gains the hard cause `fix.params.cause:
   "placeholder_occupied"` (a text block or visual resolving to a placeholder

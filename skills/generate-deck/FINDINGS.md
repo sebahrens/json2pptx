@@ -60,7 +60,12 @@ defaults to a blocking OPC/OOXML pass. `CONTENT_DROPPED` with
 `cause:"placeholder_not_found"` or `"placeholder_occupied"` (two blocks on
 one placeholder) is `action:"refuse"` and blocking in strict mode because the
 content is absent from the result; `fix.params.options` lists the remedies
-(`split_slide`, `choose_layout`, `retarget_placeholder`, `merge_blocks`). See [RAW_PATH.md](RAW_PATH.md) for the
+(`split_slide`, `choose_layout`, `retarget_placeholder`, `merge_blocks`).
+Charts and diagrams share the native 12pt (`present`) floor at their placed
+size: the renderer draws labels at the floor, so a crowded diagram shows
+`diagram.text_overlap` instead of shrinking, and any text still below it is a
+`TEXT_BELOW_READABLE_MIN` refusal (`simplify_or_enlarge_diagram`): enlarge the
+cell or cut categories. See [RAW_PATH.md](RAW_PATH.md) for the
 raw response protocol. `strict_fit` controls promotion of fit and chart
 findings; consult the returned severity/action and `describe_finding`
 instead of copying an old promotion table.
