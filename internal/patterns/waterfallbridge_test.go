@@ -425,8 +425,7 @@ func TestWaterfallBridge_Expand_SubtotalFill(t *testing.T) {
 		t.Fatalf("Expand failed: %v", err)
 	}
 	c := grid.Rows[0].Cells[2] // Gross Profit subtotal
-	var fill string
-	fill = wbBarFill(c.Grid)
+	fill := wbBarFill(c.Grid)
 	if fill != `{"color":"dk1","lumMod":60000,"lumOff":40000}` {
 		t.Errorf("expected subtotal bar to fill with neutral dk1 at 60%%, got %q", fill)
 	}
@@ -446,8 +445,7 @@ func TestWaterfallBridge_Expand_AccentOverride(t *testing.T) {
 		t.Errorf("a total must stay neutral under an accent override, got %q", fill)
 	}
 	c := grid.Rows[0].Cells[1]
-	var fill string
-	fill = wbBarFill(c.Grid)
+	fill := wbBarFill(c.Grid)
 	if !strings.Contains(fill, "accent4") {
 		t.Errorf("expected the decrease to follow the accent override (accent4), got %q", fill)
 	}
@@ -468,8 +466,7 @@ func TestWaterfallBridge_Expand_NegativeAccentOverride(t *testing.T) {
 		t.Fatalf("Expand failed: %v", err)
 	}
 	c := grid.Rows[0].Cells[1] // negative delta
-	var fill string
-	fill = wbBarFill(c.Grid)
+	fill := wbBarFill(c.Grid)
 	if !strings.Contains(fill, "accent5") {
 		t.Errorf("expected negative delta to follow negative_accent override (accent5), got %q", fill)
 	}
