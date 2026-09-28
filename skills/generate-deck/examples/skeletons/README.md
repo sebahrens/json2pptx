@@ -2,7 +2,7 @@
 
 Five canonical JSON skeletons covering the most common deck archetypes. Copy a skeleton, replace every `__FILL_*__` token, strip the `_*` documentation keys (`_skeleton`, `_description`, `_instructions`), and run `validate_input` before generating.
 
-Skeletons are pre-shaped for **constrained mode**: they set `design_mode: "constrained"`, `accent_strategy: "primary"` (see RULES.md → Accent monotony before changing it), `contrast_check: true` on every slide, and (for skeletons containing chart or matrix slides) include the `takeaway` field required by Rule 10b. The rhythm of each skeleton has been picked so no pattern appears 3+ times consecutively — do not stack additional slides of the same pattern type without re-running `analyze_deck_rhythm`.
+Skeletons are pre-shaped for **constrained mode**: they set `design_mode: "constrained"`, `accent_strategy: "primary"` (see WORKFLOW.md → Accent monotony before changing it), `contrast_check: true` on every slide, and (for skeletons containing chart or matrix slides) include the `takeaway` field required by Rule 10b. The rhythm of each skeleton has been picked so no pattern appears 3+ times consecutively — do not stack additional slides of the same pattern type without re-running `analyze_deck_rhythm`.
 
 | File | Slides | When to use | Patterns used |
 |------|--------|-------------|---------------|
@@ -27,7 +27,7 @@ Generating a deck from scratch each time leads to two recurring problems: (1) ag
 
 ## Customizing a skeleton
 
-- **Need more slides?** Insert them between existing slides, but check `analyze_deck_rhythm` — do not introduce a third consecutive use of any pattern (see [RULES.md](../../RULES.md) → Pattern monotony).
+- **Need more slides?** Insert them between existing slides, but check `analyze_deck_rhythm` — do not introduce a third consecutive use of any pattern (see [WORKFLOW.md](../../WORKFLOW.md) → Pattern monotony).
 - **Different template?** Any template `list_templates` returns will work. Patterns and layouts are template-portable.
 - **Need a chart inside a pattern slide?** Use a `compose` envelope (see `get_input_schema`) — do not flatten the pattern through `shape_grid`.
 - **Need to swap a pattern?** Use `recommend_visual` first; do not guess pattern names.

@@ -200,37 +200,9 @@ Top-level `viewing_mode`: `"present"` (default, projected: 12pt body, 10pt capti
 ## Footer, page numbers, and structure
 
 `footer`, `chrome.page_numbers`, and `structure.sections` configure deck chrome and section grouping. See the schema for the full set; agents typically only set `footer.enabled` and `footer.left_text`. When both `footer` and `chrome` are set, enabled `footer.left_text` is retained after any distinct text composed from `chrome`; a page-number-only `chrome` block leaves the legacy line intact. `left_text` always renders on a single line: its box starts at the template's date (`dt`) placeholder and spans the footer (`ftr`) placeholder width (stopping before the slide number); text that is still too wide shrinks from 10.5pt down to 8pt and is then ellipsized (`…`). Content-bearing raw `blank-canvas` slides use `headline`; semantic `DeckSpec` supports flat `slides[]` or chaptered `structure`, plus `meta.required_layouts` for planned canonical-layout coverage. `chrome.tracker: true` sets the current section name above each content slide's title (9pt accent1 caps, +8% letter-spacing, 6pt above the title), from `section_title` or, on a flat deck, the preceding section slide; title, section, closing and agenda slides and slides with an `eyebrow` carry none. A slide's `section_title` is the section name `chrome.section_crumb` appends to its footer; the engine sets it when expanding `structure.sections` and `semantic compile` writes it onto the flat slides it emits, so do not hand-author it. See [SEMANTIC_COMPILER.md](SEMANTIC_COMPILER.md) and `get_input_schema` for the complete contracts.
-## Patch input
+## Patch input and local asset paths
 
-Editing tools accept a *patch* envelope rather than a full `PresentationInput`:
-
-```json
-{
-  "base": {
-    "template": "midnight-blue",
-    "slides": [
-      {"layout_id": "title",   "content": [{"placeholder_id": "title", "type": "text", "text_value": "Original"}]},
-      {"layout_id": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Slide 2"}]}
-    ]
-  },
-  "operations": [
-    {"op": "replace", "slide_index": 0, "slide": {"layout_id": "title",   "content": [{"placeholder_id": "title", "type": "text", "text_value": "Updated"}]}},
-    {"op": "add",     "slide_index": 2, "slide": {"layout_id": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "New"}]}},
-    {"op": "remove",  "slide_index": 1}
-  ]
-}
-```
-
-Operations are applied in order; indices are 0-based. The patch envelope is detected automatically when an input contains an `operations` array.
-
-## Local asset paths
-
-`icon.path`, `image_value.path`, shape-grid `image.path`, and `background.image` accept two convenience expansions before resolution against the input base directory:
-
-- A leading `~/` (or bare `~`) expands to the invoking user's home directory.
-- `$VAR` and `${VAR}` expand via the process environment, for allow-listed names only: `HOME`, `BRAND_ASSETS`, and any `JSON2PPTX_*` variable.
-
-So `~/assets/logo.svg` and `$BRAND_ASSETS/logo.svg` resolve as expected instead of being passed literally to the filesystem. An unset **or non-allow-listed** environment variable yields an `ASSET_PATH_ENV_UNSET` finding (with `details.env_variable` naming the var) rather than silently collapsing to an empty path; other variables are never expanded, so their values cannot surface in a diagnostic. Path diagnostics quote only the raw input path, never the expanded or absolute one. Traversal and symlink protections still apply against the expanded path, and when `ALLOWED_IMAGE_PATHS` is configured, `icon.path` (shape-grid and panel icons, and `preview_icon`) must resolve under one of its roots, exactly like image paths. Diagram data icons rendered by svggen (e.g. timeline `items[].icon`) accept only a bundled name, inline SVG, or a `data:` URI (at most 512 KB decoded; raster at most 4096×4096 px). Remote URLs and local file paths there are ignored — use a shape-grid or panel icon, whose `path`/`url` go through the guarded resolvers.
+The patch envelope (`base` + `operations`) and the `~` / `$VAR` expansion rules for local asset paths live in [INPUT_FORMAT_ADVANCED.md](INPUT_FORMAT_ADVANCED.md).
 
 ## Validating before generating
 

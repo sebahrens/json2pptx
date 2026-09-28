@@ -23,7 +23,7 @@ done
 # continue to resolve. These are generated install resources, never new sources.
 references="$destination/generate-deck/references/repository"
 mkdir -p "$references/docs" "$references/examples" "$references/internal"
-for doc in INPUT_FORMAT FIT_FINDINGS SEMANTIC_COMPILER TEMPLATE_SPEC PATH_GRAMMAR PATTERNS TEMPLATE_ANALYSIS; do
+for doc in INPUT_FORMAT INPUT_FORMAT_ADVANCED FIT_FINDINGS SEMANTIC_COMPILER TEMPLATE_SPEC PATH_GRAMMAR PATTERNS TEMPLATE_ANALYSIS; do
   cp "$repo_root/docs/$doc.md" "$references/docs/"
 done
 cp -R "$repo_root/examples/semantic" "$references/examples/"

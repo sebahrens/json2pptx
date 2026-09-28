@@ -12,7 +12,7 @@ go build ./cmd/json2pptx                # Build just the main CLI
 # Test
 go test ./...                           # All tests
 go test ./internal/generator/...        # Specific package
-cd svggen && go test ./...              # SVG generation (separate go.work module)
+cd svggen && go test ./...              # SVG generation (separate module; root go.mod replace)
 
 # Lint (MUST pass before committing) — use make lint: it pins the version CI runs
 make lint
@@ -98,7 +98,7 @@ internal/
   testutil/       # Test helpers
   utils/          # Utilities
 
-svggen/           # SVG chart/diagram generation (separate Go module via go.work)
+svggen/           # SVG chart/diagram generation (separate Go module, wired in by a replace directive in the root go.mod; go.work is gitignored)
   charts.go       # Bar, line, pie, etc.
   contrast.go     # WCAG contrast calculations
   style.go        # Theme-aware styling

@@ -29,6 +29,9 @@ func TestSchemaDocsDoctor(t *testing.T) {
 	}{
 		{"../../SLIDE_FORMAT.md", 120, "root-level quick tutorial"},
 		{"../../docs/INPUT_FORMAT.md", 250, "docs/ tutorial"},
+		// Patch envelope and asset-path rules were split out of the tutorial
+		// (go-slide-creator-dnboq) rather than raising its line budget.
+		{"../../docs/INPUT_FORMAT_ADVANCED.md", 120, "docs/ tutorial companion"},
 	}
 
 	schemaFields := collectSchemaPropertyNames()

@@ -4,9 +4,9 @@
 
 **Charts/diagrams in shape-grid cells ALREADY EXIST and function end-to-end.**
 
-- `GridCellInput` has a `Diagram *types.DiagramSpec` field (`internal/jsonschema/shapegrid.go:71`)
-- `shapegrid.CellKindDiagram` is a recognized cell kind (`internal/shapegrid/types.go:21`)
-- `generateDiagramCellInserts()` renders svggen diagrams as native SVG into grid cells (`cmd/json2pptx/shape_grid.go:542`)
+- `GridCellInput` has a `Diagram *types.DiagramSpec` field (`internal/jsonschema/shapegrid.go`, `GridCellInput.Diagram`)
+- `shapegrid.CellKindDiagram` is a recognized cell kind (`internal/shapegrid/types.go`)
+- `generateDiagramCellInserts()` renders svggen diagrams as native SVG into grid cells (`cmd/json2pptx/shape_grid.go`, `generateDiagramCellInserts`)
 - A 2x2 grid holding 4 charts is **already possible** by setting `"diagram": {"type": "bar_chart", ...}` in each cell
 
 **Example (already valid input today):**
@@ -113,12 +113,16 @@
 
 ### 4.1 Theme colors are NOT passed to grid-cell diagrams
 
-**Placeholder-based diagrams** (`internal/generator/media.go:861`):
+> **Status (2026-09-28): resolved.** `generateDiagramCellInserts` now forwards
+> `GridDiagramContext.ThemeColors` to `generator.RenderDiagramSpecInPlacement`.
+> The snippets below record the original gap.
+
+**Placeholder-based diagrams** (`internal/generator/media.go`, `renderDiagramSpecFull` call):
 ```go
 rendered, err := renderDiagramSpecFull(diagramSpec, ctx.themeColors, ...)
 ```
 
-**Grid-cell diagrams** (`cmd/json2pptx/shape_grid.go:543`):
+**Grid-cell diagrams** (`cmd/json2pptx/shape_grid.go`, `generateDiagramCellInserts`, as it was):
 ```go
 result, err := generator.RenderDiagramSpecWithMetadata(cell.DiagramSpec, nil, 0, true)
 //                                               themeColors is ^^^ nil
@@ -128,11 +132,19 @@ result, err := generator.RenderDiagramSpecWithMetadata(cell.DiagramSpec, nil, 0,
 
 ### 4.2 Narrow-placeholder warnings skip grid cells
 
-The `complexDiagramTypes` + `checkDiagramInNarrowPlaceholder()` logic (`internal/generator/media.go:534`) only runs for placeholder-based `ContentItem` diagrams. A `matrix_2x2` or `org_chart` crammed into a small grid cell gets **no warning**.
+The `complexDiagramTypes` + `checkDiagramInNarrowPlaceholder()` logic (`internal/generator/media.go`) only ran for placeholder-based `ContentItem` diagrams. A `matrix_2x2` or `org_chart` crammed into a small grid cell got **no warning**.
+
+> **Status (2026-09-28): resolved.** Grid cells call the exported
+> `generator.CheckDiagramInNarrowBounds` / `CheckDiagramInNarrowBoundsFinding`
+> (`cmd/json2pptx/shape_grid.go`, `cmd/json2pptx/fit_findings_collect.go`).
 
 ### 4.3 Missing `fit_report` for grid diagrams
 
 Grid-cell diagrams are rendered as SVG at the shape_grid resolution phase. Their text-fit findings are NOT collected into the generator's `fitFindings`, unlike placeholder diagrams which emit overflow/clamping findings.
+
+> **Status (2026-09-28): resolved.** The grid pass collects
+> `collectDiagramCellFindings` and `generator.SvggenFindingsToFit` into its
+> `FitFindings` (`cmd/json2pptx/shape_grid.go`).
 
 ### 4.4 `diagram` cell type is invisible in docs
 

@@ -71,6 +71,14 @@ Write structured output as JSON:
 json2pptx generate -json examples/basic-deck.json -json-output-report result.json
 ```
 
+Validate a semantic YAML spec from `semantic/` — `json2pptx validate` reads raw
+JSON only and rejects YAML with a parse error, so use the semantic validator
+(`semantic/invalid.yaml` fails on purpose):
+
+```bash
+json2pptx semantic validate --spec examples/semantic/qbr.yaml
+```
+
 ### JSON input structure
 
 ```json

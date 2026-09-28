@@ -997,7 +997,8 @@ Detailed reference documentation for individual MCP tools:
 
 - [analyze_deck_rhythm](./analyze_deck_rhythm.md) — Analyze visual rhythm, detect monotony, score composition
 - [plan_deck](./plan_deck.md) — Plan a deck outline from a brief with rhythm-aware pattern selection
-- [recommend_pattern](./recommend_pattern.md) — Recommend patterns for a content intent with variety awareness
+- [recommend_visual](./recommend_visual.md) — Rank layouts, patterns, charts and diagrams for a content intent (primary recommender)
+- [recommend_pattern](./recommend_pattern.md) — Folded pattern-only alias of `recommend_visual`
 
 ---
 

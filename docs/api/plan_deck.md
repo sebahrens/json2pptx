@@ -23,6 +23,8 @@ Skip `plan_deck` when you already have a detailed slide-by-slide outline or when
 | `slide_budget` | number | No | 10 | Target number of slides (clamped to 3–30) |
 | `audience` | string | No | — | Target audience; board/executive/investor and engineering/technical contexts refine relevant pattern scores without matching audience words as slide-content keywords |
 | `must_include` | array of strings | No | — | Pattern names that must appear in the plan |
+| `format` | string | No | `"raw"` | `"raw"`: pattern outline with raw `SlideInput` skeletons. `"deckspec"` (recommended for more than four slides): a DeckSpec draft (`deck_spec`, `slots[]`, `unplaced_facts[]`) with narrative slots for `validate_deck_spec` / `render_deck_spec`. Any other value is refused with `INVALID_PARAMETER` |
+| `template` | string | No | — | Template name (see `list_templates`). Makes the plan template-aware: each planned slide and alternative carries `template_support` `{status: supported\|risky\|unsupported, reasons[], required_layout}`, and a pattern the template cannot host is replaced by a supported alternative when one exists |
 
 ## Output Schema
 

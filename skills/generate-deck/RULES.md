@@ -169,47 +169,9 @@ Good — all semantic:
 }
 ```
 
-### Pattern monotony (deck-level)
+### Pattern and accent monotony (deck-level)
 
-Generating N slides with the same pattern (e.g., 5 card-grids in a row) produces a visually flat deck. The audience cannot distinguish slides. This is the single most common agent mistake.
-
-Bad — monotonous sequence:
-```
-Slide 2: card-grid — "Market Segments"
-Slide 3: card-grid — "Product Lines"
-Slide 4: card-grid — "Competitor Analysis"
-Slide 5: card-grid — "Team Structure"
-```
-
-Good — varied sequence with rhythm breaks:
-```
-Slide 2: card-grid     — "Market Segments"
-Slide 3: comparison-2col — "Product Lines"
-Slide 4: stat-hero     — "Key Differentiator"     ← narrative break
-Slide 5: matrix-2x2    — "Competitor Positioning"
-Slide 6: icon-row      — "Team Strengths"
-```
-
-Rules: no visual pattern family should appear 3+ times consecutively (alternating `kpi-3up` and `kpi-4up` is still one KPI run). Insert a narrative-break pattern (stat-hero, pull-quote) every ~5 slides. Use `analyze_deck_rhythm` to detect violations before generating.
-
-### Accent monotony
-
-This is the one place the skill sets accent strategy; other guides defer here.
-
-- `primary` (default) is the safe choice for any length: one brand accent,
-  with variety from `cell_accent_mode` inside grid slides.
-- `section-keyed` gives each chapter its own accent — use it when the deck has
-  `structure.sections` / section dividers.
-- `rotate` cycles pattern slides through the template's **safe** accents only
-  (light body text readable on the fill, not the negative accent, not a grey
-  or pastel slot under 2:1 on `lt1`), keyed to each pattern's content so
-  inserting a slide recolours nothing; every `kpi-*` pattern shares one accent. Validation
-  reports the excluded accents once per deck (`ROTATED_ACCENT_UNREADABLE`,
-  info, at `/accent_strategy`). Use it only when that safe set has three or
-  more accents and the deck has many pattern slides; otherwise it adds noise,
-  not variety.
-
-Do not switch strategy just to move `accent_balance`; judge the rendered slides.
+Moved to [WORKFLOW.md](WORKFLOW.md) → Phase 2 (Pattern monotony, Accent monotony).
 
 ### Sparse single-row flow
 

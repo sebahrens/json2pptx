@@ -24,7 +24,7 @@ import (
 // PresentationInput JSON tree. Returns a ValidationError for every unknown
 // field found. Callers decide the severity (warning vs error).
 func checkInputUnknownKeys(raw json.RawMessage) []*patterns.ValidationError {
-	// A patch envelope ({"base": {...}, "operations": [...]}, docs/INPUT_FORMAT.md)
+	// A patch envelope ({"base": {...}, "operations": [...]}, docs/INPUT_FORMAT_ADVANCED.md)
 	// is not a PresentationInput itself: scan its base deck, or "base" and
 	// "operations" are reported as unknown keys and --strict-unknown-keys
 	// rejects the documented form (go-slide-creator-csclk.67).

@@ -30,10 +30,10 @@ Every template must contain **all** of the following layouts. Layout names are m
 |---|-------------|---------------|----------------------|-------------------|
 | 1 | **Title Slide** | `Title Slide` | `title` (type `ctrTitle` or `title`) + `subtitle` | `title-slide` |
 | 2 | **One Content** | `One Content`, `Content` | `title` + `body` (idx 1) | `content` |
-| 3 | **Two Content** | `Two Content`, `Comparison` | `title` + `body` (idx 1) + `body_2` (idx 2), side-by-side | `content`, `two-column` |
+| 3 | **Two Content** | `Two Content`, `Comparison` | `title` + `body` (idx 1) + `body_2` (idx 2), side-by-side | `content`, `two-column`, `comparison` |
 | 4 | **Section Divider** | `Section Divider`, `Section Header` | `title` + body placeholder named `Section Number` (idx varies) | `section-header` |
 | 5 | **Blank** | `Blank` | _(none)_ | `blank` |
-| 6 | **Blank + Title** | `Blank + Title`, `Blank Layout` | `title` only (no body, no subtitle) | `blank-title` |
+| 6 | **Blank + Title** | `Blank + Title`, `Blank Layout` | `title` only (no body, no subtitle) | `blank-title` (plus `title-slide`) |
 | 7 | **Closing** | `Closing`, `Thank You`, `End Slide` | `title` (type `ctrTitle` or `title`) + `subtitle` | `closing` |
 
 **Notes:**
@@ -53,6 +53,16 @@ These layouts are recognized and utilized when present but are not required:
 | Statement | `Statement` | `statement` |
 | Image Left | `Picture with Caption` (image on left) | `image-left` |
 | Image Right | `Picture with Caption` (image on right) | `image-right` |
+
+**Other structural tags.** The classifier also emits tags that no mandatory
+layout requires but that steer layout selection when a template has them:
+`comparison` (always paired with `two-column` — every Two Content layout
+carries it), `title-at-bottom` (visible title in the lower half, body present),
+`compact-title` (a `title-at-bottom` title slot that fits fewer than 35
+characters), `title-hidden` (off-slide title, body present), `full-image`
+(large picture with no text beside it) and `chart-capable` (chart
+placeholder). The rule for each tag is in the
+[TEMPLATE_GUIDE structural-tag table](../skills/template-deck/TEMPLATE_GUIDE.md#structural-tags-from-placeholder-analysis).
 
 ## Placeholder Naming Convention
 
