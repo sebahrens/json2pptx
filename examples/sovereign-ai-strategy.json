@@ -18,7 +18,7 @@
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "text_value": "Building National Sovereign AI Infrastructure Under Domestic Jurisdiction\nMarch 2026 | Prepared for the National Digital Sovereignty Council"
+          "text_value": "National AI infrastructure plan · March 2026"
         }
       ]
     },
@@ -2507,7 +2507,7 @@
                       "Talent shortfall (62% AI researcher emigration)",
                       "High",
                       "High",
-                      "Competitive compensation, repatriation incentives, university partnerships",
+                      "Competitive pay and repatriation incentives; university partnerships",
                       "CHRO"
                     ],
                     [
@@ -3160,7 +3160,7 @@
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "text_value": "The Window for Sovereign AI Infrastructure Is Closing\n\nNations that control their AI infrastructure will shape the rules of the digital economy.\nNations that do not will be subject to them."
+          "text_value": "The window for sovereign AI is closing"
         }
       ]
     }

@@ -112,8 +112,8 @@
                 {"name": "Current", "values": [2.1, 2.4, 2.8, 1.9]},
                 {"name": "Target", "values": [4.2, 4.5, 4.0, 4.3]}
               ]}}},
-              {"shape": {"geometry": "roundRect", "fill": "accent2", "line": {"color": "accent2", "width": 1.5}, "icon": {"name": "shield", "fill": "#FFFFFF", "position": "top", "scale": 0.24}, "text": {"content": "<b>Control tower</b>\nOne intake, one forum, one benefit ledger.", "size": 10, "color": "lt1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 10, "inset_right": 10, "inset_bottom": 8}}},
-              {"shape": {"geometry": "roundRect", "fill": "accent3", "line": {"color": "accent3", "width": 1.5}, "icon": {"name": "activity", "fill": "#FFFFFF", "position": "top", "scale": 0.24}, "text": {"content": "<b>Measurement spine</b>\nOutcome metrics and exception triggers stay visible.", "size": 10, "color": "lt1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 10, "inset_right": 10, "inset_bottom": 8}}}
+              {"shape": {"geometry": "roundRect", "fill": "accent2", "icon": {"name": "shield", "fill": "#FFFFFF", "position": "top", "scale": 0.24}, "text": {"content": "<b>Control tower</b>\nOne intake, one forum, one benefit ledger.", "size": 10, "color": "lt1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 10, "inset_right": 10, "inset_bottom": 8}}},
+              {"shape": {"geometry": "roundRect", "fill": "accent3", "icon": {"name": "activity", "fill": "#FFFFFF", "position": "top", "scale": 0.24}, "text": {"content": "<b>Measurement spine</b>\nOutcome metrics and exception triggers stay visible.", "size": 10, "color": "lt1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 10, "inset_right": 10, "inset_bottom": 8}}}
             ]
           },
           {
@@ -155,9 +155,9 @@
           {
             "height": 27,
             "cells": [
-              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent2", "width": 1.25}, "text": {"content": "<b>Work intake</b>\nManual requests, duplicate triage, unclear ownership.", "size": 10, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 9, "inset_left": 9, "inset_right": 9, "inset_bottom": 0}}},
-              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent2", "width": 1.25}, "text": {"content": "<b>Release rhythm</b>\nQuarterly batches with late risk discovery.", "size": 10, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 9, "inset_left": 9, "inset_right": 9, "inset_bottom": 0}}},
-              {"col_span": 2, "row_span": 2, "diagram": {"type": "matrix_2x2", "title": "svggen sequencing matrix", "width": 900, "height": 300, "fit_mode": "contain", "data": {"x_label": "Implementation effort", "y_label": "Business value", "quadrant_labels": ["Quick wins", "Strategic bets", "Fill-ins", "Defer"], "quadrant_opacity": 0.16, "quadrants": [
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "<b>Work intake</b>\nManual requests, duplicate triage, unclear ownership.", "size": 10, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 9, "inset_left": 9, "inset_right": 9, "inset_bottom": 0}}},
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "<b>Release rhythm</b>\nQuarterly batches with late risk discovery.", "size": 10, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 9, "inset_left": 9, "inset_right": 9, "inset_bottom": 0}}},
+              {"col_span": 2, "row_span": 2, "diagram": {"type": "matrix_2x2", "title": "svggen sequencing matrix", "data": {"x_label": "Implementation effort", "y_label": "Business value", "quadrant_labels": ["Quick wins", "Strategic bets", "Fill-ins", "Defer"], "quadrant_opacity": 0.16, "quadrants": [
                 {"position": "top-left", "label": "Quick wins", "items": ["Workflow status", "SLO alerts"]},
                 {"position": "top-right", "label": "Strategic bets", "items": ["Platform API", "Data product spine"]},
                 {"position": "bottom-left", "label": "Fill-ins", "items": ["Template cleanup"]},
@@ -168,8 +168,8 @@
           {
             "height": 38,
             "cells": [
-              {"shape": {"geometry": "roundRect", "fill": "accent3", "line": {"color": "accent3", "width": 1.25}, "icon": {"name": "layout-dashboard", "fill": "#FFFFFF", "position": "top", "scale": 0.15}, "text": {"content": "<b>Single workflow</b>\nAutomated routing, visible status, clear decision rights.", "size": 10, "color": "lt1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 9, "inset_right": 9, "inset_bottom": 0}}},
-              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent3", "width": 1.25}, "text": {"content": "<b>Continuous delivery</b>\nWeekly increments, guardrails, and benefit checkpoints.", "size": 10, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 9, "inset_left": 9, "inset_right": 9, "inset_bottom": 0}}}
+              {"shape": {"geometry": "roundRect", "fill": "accent3", "icon": {"name": "layout-dashboard", "fill": "#FFFFFF", "position": "top", "scale": 0.15}, "text": {"content": "<b>Single workflow</b>\nAutomated routing, visible status, clear decision rights.", "size": 10, "color": "lt1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 9, "inset_right": 9, "inset_bottom": 0}}},
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "<b>Continuous delivery</b>\nWeekly increments, guardrails, and benefit checkpoints.", "size": 10, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 9, "inset_left": 9, "inset_right": 9, "inset_bottom": 0}}}
             ]
           },
           {
@@ -202,13 +202,14 @@
             ]
           },
           {
-            "height": 21,
-            "connector": {"style": "arrow", "color": "666666", "width": 1.25},
+            "height": 24,
             "cells": [
-              {"shape": {"geometry": "roundRect", "fill": "accent1", "text": {"content": "Initial\n0-30 days", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
-              {"shape": {"geometry": "roundRect", "fill": "accent2", "text": {"content": "Defined\n30-60 days", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
-              {"shape": {"geometry": "roundRect", "fill": "accent3", "text": {"content": "Managed\n60-90 days", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
-              {"shape": {"geometry": "roundRect", "fill": "accent4", "text": {"content": "Optimised\n90+ days", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+              {"col_span": 4, "grid": {"columns": 4, "gap": 4, "rows": [{"height": 100, "connector": {"style": "arrow", "color": "666666", "width": 1.25}, "cells": [
+                {"shape": {"geometry": "roundRect", "fill": "accent1", "text": {"content": "Initial\n0-30 days", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+                {"shape": {"geometry": "roundRect", "fill": "accent2", "text": {"content": "Defined\n30-60 days", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+                {"shape": {"geometry": "roundRect", "fill": "accent3", "text": {"content": "Managed\n60-90 days", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+                {"shape": {"geometry": "roundRect", "fill": "accent4", "text": {"content": "Optimised\n90+ days", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}}
+              ]}]}},
               {"row_span": 2, "diagram": {"type": "line_chart", "title": "svggen maturity trajectory", "data": {"categories": ["Baseline", "30d", "60d", "90d", "Run"], "series": [
                 {"name": "Control maturity", "values": [1.0, 1.8, 2.7, 3.5, 4.2]},
                 {"name": "Delivery confidence", "values": [1.2, 2.0, 2.9, 3.8, 4.5]}
@@ -216,12 +217,12 @@
             ]
           },
           {
-            "height": 36,
+            "height": 33,
             "cells": [
-              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent1", "width": 1.25}, "text": {"content": "<b>Stabilise</b>\nMap demand\nClean ownership\nCreate backlog", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8, "inset_bottom": 0}}},
-              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent2", "width": 1.25}, "text": {"content": "<b>Standardise</b>\nDecision forums\nPortfolio rules\nMetric baseline", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8, "inset_bottom": 0}}},
-              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent3", "width": 1.25}, "text": {"content": "<b>Instrument</b>\nFlow telemetry\nBenefit ledger\nRisk triggers", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8, "inset_bottom": 0}}},
-              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent4", "width": 1.25}, "text": {"content": "<b>Optimise</b>\nCapacity model\nScenario review\nContinuous reset", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8, "inset_bottom": 0}}}
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "<b>Stabilise</b>\nMap demand\nClean ownership\nCreate backlog", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8, "inset_bottom": 0}}},
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "<b>Standardise</b>\nDecision forums\nPortfolio rules\nMetric baseline", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8, "inset_bottom": 0}}},
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "<b>Instrument</b>\nFlow telemetry\nBenefit ledger\nRisk triggers", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8, "inset_bottom": 0}}},
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "<b>Optimise</b>\nCapacity model\nScenario review\nContinuous reset", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8, "inset_bottom": 0}}}
             ]
           },
           {
@@ -229,7 +230,7 @@
             "cells": [
               {"col_span": 2, "shape": {"geometry": "roundRect", "fill": "accent2", "text": {"content": "Governance proof points\nDecision latency, blocked work, exception aging", "size": 10.5, "bold": true, "color": "lt1", "align": "l", "vertical_align": "ctr", "inset_left": 12, "inset_right": 10, "inset_top": 0, "inset_bottom": 0}}},
               {"col_span": 2, "shape": {"geometry": "roundRect", "fill": "accent3", "text": {"content": "Delivery proof points\nThroughput, predictability, benefit realisation", "size": 10.5, "bold": true, "color": "lt1", "align": "l", "vertical_align": "ctr", "inset_left": 12, "inset_right": 10, "inset_top": 0, "inset_bottom": 0}}},
-              {"shape": {"geometry": "roundRect", "fill": "accent1", "line": {"color": "accent1", "width": 1.5}, "icon": {"name": "clock", "fill": "#FFFFFF", "position": "left"}, "text": {"content": "<b>Next checkpoint</b>\nRefresh evidence pack and retire one manual control.", "size": 10, "color": "lt1", "align": "l", "vertical_align": "ctr", "inset_left": 8, "inset_right": 8, "inset_top": 0, "inset_bottom": 0}}}
+              {"shape": {"geometry": "roundRect", "fill": "accent1", "icon": {"name": "clock", "fill": "#FFFFFF", "position": "left"}, "text": {"content": "<b>Next checkpoint</b>\nRefresh evidence pack and retire one manual control.", "size": 10, "color": "lt1", "align": "l", "vertical_align": "ctr", "inset_left": 8, "inset_right": 8, "inset_top": 0, "inset_bottom": 0}}}
             ]
           }
         ]
