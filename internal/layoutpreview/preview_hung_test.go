@@ -27,7 +27,8 @@ const (
 	fakeHungScript = `#!/bin/sh
 if [ "$1" = "--version" ]; then echo "fake 1.0"; exit 0; fi
 sleep 300 &
-echo $! > "$FAKE_PID_DIR/$(basename "$0").pid"
+pidf="$FAKE_PID_DIR/$(basename "$0").pid"
+echo $! > "$pidf.tmp" && mv "$pidf.tmp" "$pidf"
 wait
 `
 	fakeOfficeWritesPDF = `#!/bin/sh
@@ -194,8 +195,10 @@ func TestGenerateContext_CancellationStopsHungRenderer(t *testing.T) {
 	defer cancel()
 	pidFile := filepath.Join(pidDir, "libreoffice.pid")
 	go func() {
-		// Cancel once the fake has actually started its worker.
-		for i := 0; i < 500; i++ {
+		// Cancel once the fake has actually started its worker. The PID file
+		// is renamed into place, so it never appears empty; allow a loaded
+		// host up to 30s to get there.
+		for i := 0; i < 3000; i++ {
 			if _, err := os.Stat(pidFile); err == nil {
 				break
 			}
