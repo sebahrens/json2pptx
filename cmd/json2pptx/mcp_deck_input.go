@@ -49,6 +49,7 @@ func (mc *mcpConfig) presentationForTool(tool string, request mcp.CallToolReques
 		if err != nil || input == nil {
 			return "", "", apiSemanticCompileError(tool, fmt.Sprintf("stored DeckSpec could not be compiled: %v", err))
 		}
+		applyHandleTemplateFile(request, handle, spec.Meta.Template, input)
 		data, err := json.Marshal(input)
 		if err != nil {
 			return "", "", apiSemanticCompileError(tool, fmt.Sprintf("compiled presentation could not be encoded: %v", err))
@@ -65,6 +66,26 @@ func (mc *mcpConfig) presentationForTool(tool string, request mcp.CallToolReques
 		}, nextCallGetInputSchema())
 	}
 	return jsonStr, "", nil
+}
+
+// applyHandleTemplateFile carries a semantic handle's bring-your-own template
+// into the compiled raw deck, so tools that act on a deck_id (score_deck,
+// generate_presentation, …) use the .pptx render_deck_spec rendered with
+// instead of failing on template "" (go-slide-creator-b7qqg.8). The template
+// file was vetted against the handle's base_dir, so that root also becomes the
+// call's base_dir unless the caller passes one: the template_path containment
+// guard and relative asset paths then resolve exactly as they did at render.
+// A spec that pins meta.template keeps it.
+func applyHandleTemplateFile(request mcp.CallToolRequest, handle *deckHandle, metaTemplate string, input *PresentationInput) {
+	if handle.TemplatePath == "" || metaTemplate != "" {
+		return
+	}
+	input.Template = ""
+	input.TemplatePath = handle.TemplatePath
+	args := request.GetArguments()
+	if raw, _ := args["base_dir"].(string); strings.TrimSpace(raw) == "" && handle.BaseDir != "" && args != nil {
+		args["base_dir"] = handle.BaseDir
+	}
 }
 
 func apiSemanticCompileError(tool, message string) *mcp.CallToolResult {

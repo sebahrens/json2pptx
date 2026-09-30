@@ -43,6 +43,23 @@
     `chart.wide_range_linear`; log is only an explicit `style.scale: "log"`,
     whose axis is titled "log scale".
 
+- **2026-09-30 — render_deck_spec resolves assets and keeps BYO templates on deck_id (`go-slide-creator-b7qqg.1`, `.8`, `.11`).**
+  `render_deck_spec` now resolves URL and relative asset references (image_case
+  `image`, team photos, raw_json2pptx images / icons / backgrounds) with the
+  guards `generate_presentation` uses: `base_dir` (deck_id's last root, else
+  server CWD) frames relative paths, URLs go through the SSRF-safe resolver,
+  and a missing / refused asset fails the render with a diagnostic (code
+  `IMAGE_PATH` etc., mapped to the authored slide) instead of a silent
+  "file not found" warning. `base_dir` is no longer ignored without
+  `template_path`; a malformed one is refused. A `template_path` render stores
+  the vetted file and its `base_dir` on the `deck_id`: deck_id-only
+  `render_deck_spec`, `validate_deck_spec` (template layouts are now checked),
+  `score_deck` and `generate_presentation` reuse them; a `template` argument or
+  `meta.template` replaces the file. `score_deck` accepts
+  `presentation.template_path` (+ `base_dir`). The semantic render uses the
+  server's SVG config (strategy, scale, native compatibility, max PNG width)
+  like the raw path. No response-shape change.
+
 - **2026-09-28 — Schema 4.154.0: consultant × designer finishing round (`go-slide-creator-1x3yi`).** Contract changes listed in the 4.154.0 entries below: chart `highlight`, `chrome.tracker`, `next-steps` pattern and `next_steps` kind, KPI `comparator`, `callout.emphasis` subtle/strong and `takeaway_emphasis` overrides, `DATA_WITHOUT_SOURCE` and `FILLED_SHAPE_OUTLINED` findings, engine-default table style, source zone, type scale.
 
 - **2026-09-28 — Skill bundle budget rebalance (`go-slide-creator-dnboq`).**
