@@ -235,11 +235,31 @@ func (t *teamBios) Validate(values, overrides any, cellOverrides map[int]any) er
 }
 
 // PostExpandWarnings reports bios past the measured budget for the card count.
-func (t *teamBios) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+func (t *teamBios) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*TeamBiosValues)
 	if !ok || v == nil {
 		return nil
 	}
+	warnings := teamBiosBudgetWarnings(v)
+	if len(warnings) > 0 || len(v.Members) == 0 || ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 {
+		return warnings
+	}
+	// The character budgets assume a typical content area; with the
+	// template's own area the cards are measured against it
+	// (go-slide-creator-n1muf).
+	ovr, _ := overrides.(*TeamBiosOverrides)
+	if ovr == nil {
+		ovr = &TeamBiosOverrides{}
+	}
+	if fit := teamBiosFit(ctx, v, ovr); !fit.fits {
+		warnings = append(warnings, fmt.Sprintf("%s: team-bios cards need %.0fpt at readable sizes with the smallest headshot but the content area holds about %.0fpt — shorten the bios, names or roles, or split the team across slides", ErrCodeBodyTooLong, fit.totalPt, fit.areaH))
+	}
+	return warnings
+}
+
+// teamBiosBudgetWarnings reports names, roles and bios past the measured
+// character budgets for the member count.
+func teamBiosBudgetWarnings(v *TeamBiosValues) []string {
 	var warnings []string
 	budget := teamBiosReadableBioBudget(len(v.Members))
 	for i, m := range v.Members {
@@ -275,7 +295,10 @@ func (t *teamBios) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	}
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	nameSize := ResolveSize(ovr.NameSize, 14.0)
+	// The name steps 14 -> 12pt only when that lets every card be written
+	// unshrunk in the content area (go-slide-creator-n1muf).
+	fit := teamBiosFit(ctx, v, ovr)
+	nameSize := fit.nameSize
 	roleSize := ResolveSize(ovr.RoleSize, 11.0)
 	bioSize := ResolveSize(ovr.BioSize, 10.0)
 	photoLabelSize := ResolveSize(ovr.PhotoLabelSize, 14.0)
@@ -348,12 +371,137 @@ func (t *teamBios) Expand(ctx ExpandContext, values, overrides any, cellOverride
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(fmt.Sprintf(`%d`, columns)),
-		Gap:     10,
+		Gap:     teamBiosGapPt,
 		RowGap:  0,
 		Rows:    rows,
 	}
 	capTeamBiosTextRows(ctx, grid, columns)
+	floorTeamBiosTextRows(grid, fit)
 	return grid, nil
+}
+
+// teamBiosGapPt is the gutter between member columns.
+const teamBiosGapPt = 10.0
+
+// teamBiosFitResult is the name size the cards are written at, each card
+// row's written text height, and the headshot height that leaves room for
+// them in the content area.
+type teamBiosFitResult struct {
+	nameSize         float64
+	textPt           []float64
+	photoPt, totalPt float64
+	nominalPt, areaH float64
+	gapsPt           float64
+	fits             bool
+}
+
+// teamBiosFit measures every member's name + role + bio with the writer's
+// own fit at the real column width. The headshot row keeps its 40% share of
+// a card row while the text holds in the rest; otherwise it gives way, down
+// to the smallest square that still writes its initials unshrunk, and only
+// then does the default 14pt name step to the 12pt floor.
+func teamBiosFit(ctx ExpandContext, v *TeamBiosValues, ovr *TeamBiosOverrides) teamBiosFitResult {
+	areaW, areaH := sizingAreaPt(ctx)
+	columns := min(max(len(v.Members), teamBiosMinPerRow), teamBiosMaxPerRow)
+	colW := equalColumnWidthPt(areaW, columns, teamBiosGapPt)
+	roleSize, bioSize := ResolveSize(ovr.RoleSize, 11.0), ResolveSize(ovr.BioSize, 10.0)
+	photoLabelSize := ResolveSize(ovr.PhotoLabelSize, 14.0)
+	sizes := []float64{ResolveSize(ovr.NameSize, 14.0)}
+	if ovr.NameSize == 0 {
+		sizes = append(sizes, teamBiosMinNamePt)
+	}
+	// The smallest headshot square that still writes its initials unshrunk.
+	photoMin := teamBiosPhotoMinPt
+	for _, m := range v.Members {
+		if m.Photo != nil {
+			continue
+		}
+		label := strings.TrimSpace(m.PhotoLabel)
+		if label == "" {
+			label = deriveInitials(m.Name)
+		}
+		text := buildTeamBiosCenteredText(label, photoLabelSize, true, "accent1")
+		for photoMin < math.Min(colW, areaH) && writtenNeedOrOverflowPt(ctx.Theme.BodyFont, text, photoMin) > photoMin {
+			photoMin += 4
+		}
+	}
+	measure := func(nameSize float64) teamBiosFitResult {
+		cardRows := (len(v.Members) + teamBiosMaxPerRow - 1) / teamBiosMaxPerRow
+		k := float64(max(cardRows, 1))
+		// The grid gap also separates each headshot row from its text row.
+		gaps := (2*k - 1) * teamBiosGapPt
+		r := teamBiosFitResult{nameSize: nameSize, areaH: areaH, gapsPt: gaps, nominalPt: (areaH - gaps) / k}
+		text := 0.0
+		for start := 0; start < len(v.Members); start += teamBiosMaxPerRow {
+			need := 0.0
+			for _, m := range v.Members[start:min(start+teamBiosMaxPerRow, len(v.Members))] {
+				need = math.Max(need, writtenNeedOrOverflowPt(ctx.Theme.BodyFont, buildTeamBiosTextContent(m, nameSize, roleSize, bioSize, "accent1"), colW))
+			}
+			r.textPt = append(r.textPt, need)
+			text += need
+		}
+		r.photoPt = math.Floor(math.Min(0.4*r.nominalPt, (areaH-gaps-text)/k))
+		r.fits = r.photoPt >= photoMin
+		r.totalPt = text + gaps + k*math.Max(r.photoPt, photoMin)
+		return r
+	}
+	for _, size := range sizes {
+		if r := measure(size); r.fits {
+			return r
+		}
+	}
+	// Nothing fits: keep the first size, so an overflowing payload is not
+	// also set smaller before it is shrunk.
+	return measure(sizes[0])
+}
+
+// teamBiosMinNamePt is the floor the default 14pt name steps down to;
+// teamBiosPhotoMinPt the smallest headshot square the search starts from.
+const (
+	teamBiosMinNamePt  = 12.0
+	teamBiosPhotoMinPt = 44.0
+)
+
+// floorTeamBiosTextRows keeps every text row at or above the written fit of
+// its tallest member: sized by the theme-font model and a 60% share alone,
+// two-row teams were written at 68-96% autofit on the shorter content areas
+// (go-slide-creator-n1muf). When the text needs more than its share, the
+// headshot rows give way in points. A payload that does not fit even then
+// keeps the proportional rows and is reported by PostExpandWarnings.
+func floorTeamBiosTextRows(grid *jsonschema.ShapeGridInput, fit teamBiosFitResult) {
+	if !fit.fits || len(grid.Rows) != 2*len(fit.textPt) {
+		return
+	}
+	// The text rows share 60% of the area: capped rows take their caps,
+	// proportional rows 60% of a card row each.
+	textShare := 0.6*fit.areaH - fit.gapsPt
+	capped := grid.VerticalAlign != ""
+	holds, total := true, 0.0
+	for r := 1; r < len(grid.Rows); r += 2 {
+		need := fit.textPt[r/2]
+		if capped {
+			total += math.Max(grid.Rows[r].MaxHeight, need)
+		} else {
+			holds = holds && need <= 0.6*fit.nominalPt
+		}
+	}
+	if holds && total <= textShare {
+		// Lift any cap the writer needs more than the model gave it.
+		for r := 1; capped && r < len(grid.Rows); r += 2 {
+			need := fit.textPt[r/2]
+			grid.Rows[r].MinHeight = need
+			grid.Rows[r].MaxHeight = math.Max(grid.Rows[r].MaxHeight, need)
+		}
+		return
+	}
+	for r := 0; r+1 < len(grid.Rows); r += 2 {
+		need := fit.textPt[r/2]
+		grid.Rows[r].Height, grid.Rows[r].Flex = 0, 0
+		grid.Rows[r].MinHeight, grid.Rows[r].MaxHeight = fit.photoPt, fit.photoPt
+		grid.Rows[r+1].Height, grid.Rows[r+1].Flex = 0, 1
+		grid.Rows[r+1].MinHeight, grid.Rows[r+1].MaxHeight = need, need
+	}
+	grid.VerticalAlign = GridVerticalAlignDefault
 }
 
 // capTeamBiosTextRows sizes each card-row's text row to its tallest member

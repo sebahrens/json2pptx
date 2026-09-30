@@ -60,6 +60,9 @@ const (
 	cdRowGapPt   = 6.0
 	cdRulePt     = 1.0
 	cdGroupGapPt = 6.0 // extra air above every group heading after the first
+	// cdTightRowGapPt is the row gap once a directory would not otherwise
+	// fit; the extra group gap then goes too (go-slide-creator-n1muf).
+	cdTightRowGapPt = 2.0
 	// cdTextPadPt is the vertical allowance every text cell carries: the
 	// uniform shape text margin, top + bottom. cdTextInsetLPt / RPt are its
 	// left / right margins (the same uniform inset).
@@ -283,7 +286,27 @@ type cdLayout struct {
 	stacked   bool
 	textRowPt [][]float64
 	naturalPt float64
+	rowGapPt  float64
 	fits      bool
+}
+
+// cdOpts are the layout search options: whether every name must set on one
+// line, and whether the air between rows and above group headings has
+// tightened.
+type cdOpts struct{ oneLine, tight bool }
+
+func (o cdOpts) rowGapPt() float64 {
+	if o.tight {
+		return cdTightRowGapPt
+	}
+	return cdRowGapPt
+}
+
+func (o cdOpts) groupGapPt() float64 {
+	if o.tight {
+		return 0
+	}
+	return cdGroupGapPt
 }
 
 // cdTypeStep is one name / title size pair of the type scale search.
@@ -325,22 +348,61 @@ func cdMeasure(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirecto
 	// step, headshot size, column count) that sets every name on one line,
 	// and only then accept names that wrap between words
 	// (go-slide-creator-58dhw).
-	if lay := cdMeasureColumns(ctx, v, ovr, true); lay.fits {
-		return lay
+	// Before giving up, the air between rows and above group headings
+	// tightens; type size and headshot steps are already part of each search
+	// (go-slide-creator-n1muf).
+	for _, opt := range []cdOpts{{oneLine: true}, {oneLine: true, tight: true}, {}, {tight: true}} {
+		if lay := cdFloorWritten(ctx, v, cdMeasureColumns(ctx, v, ovr, opt)); lay.fits {
+			return lay
+		}
 	}
-	return cdMeasureColumns(ctx, v, ovr, false)
+	return cdFloorWritten(ctx, v, cdMeasureColumns(ctx, v, ovr, cdOpts{}))
 }
 
-func cdMeasureColumns(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirectoryOverrides, oneLine bool) cdLayout {
+// cdFloorWritten raises every person row of the chosen layout to the written
+// fit of its tallest text cell at the real column width: the layout search
+// measures with the theme-font model, and a row the writer needs taller would
+// be stored shrunk below the floor (go-slide-creator-n1muf). A layout the
+// floor pushes past the content area no longer fits and is reported.
+func cdFloorWritten(ctx ExpandContext, v *ContactDirectoryValues, lay cdLayout) cdLayout {
+	if len(lay.rowPt) != len(v.Groups) || lay.textW <= 0 {
+		return lay
+	}
+	align, vAlign := "l", "ctr"
+	rows := lay.rowPt
+	if lay.stacked {
+		align, vAlign = "ctr", "t"
+		rows = lay.textRowPt
+	}
+	for g, grp := range v.Groups {
+		for r, people := range cdPersonRows(grp.People, lay.columns) {
+			if r >= len(rows[g]) {
+				break
+			}
+			for _, p := range people {
+				need := writtenNeedOrOverflowPt(cdFont(ctx), cdTextCellAligned(p, lay, "dk1", "dk2", align, vAlign).Shape.Text, lay.textW)
+				if need > rows[g][r] {
+					lay.naturalPt += need - rows[g][r]
+					rows[g][r] = need
+				}
+			}
+		}
+	}
+	_, areaH := sizingAreaPt(ctx)
+	lay.fits = lay.fits && lay.naturalPt <= areaH
+	return lay
+}
+
+func cdMeasureColumns(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirectoryOverrides, opt cdOpts) cdLayout {
 	n := cdColumns(ovr)
-	lay := cdMeasureN(ctx, v, ovr, n, oneLine)
+	lay := cdMeasureN(ctx, v, ovr, n, opt)
 	// Without an explicit column count, a directory that does not fit (too
 	// tall, or a name / title word that would break mid-word) steps down to
 	// fewer, wider columns before giving up.
 	if ovr == nil || ovr.Columns == 0 {
 		var narrowest cdLayout
 		for m := n - 1; !lay.fits && m >= cdMinColumns; m-- {
-			narrowest = cdMeasureN(ctx, v, ovr, m, oneLine)
+			narrowest = cdMeasureN(ctx, v, ovr, m, opt)
 			if narrowest.fits {
 				return narrowest
 			}
@@ -354,7 +416,7 @@ func cdMeasureColumns(ctx ExpandContext, v *ContactDirectoryValues, ovr *Contact
 	return lay
 }
 
-func cdMeasureN(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirectoryOverrides, n int, oneLine bool) cdLayout {
+func cdMeasureN(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirectoryOverrides, n int, opt cdOpts) cdLayout {
 	areaW, areaH := sizingAreaPt(ctx)
 	personRows := 0
 	for _, g := range v.Groups {
@@ -385,14 +447,14 @@ func cdMeasureN(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirect
 	stackSearch:
 		for _, st := range steps {
 			for photo := stackMax; photo >= cdStackPhotoMinPt; photo -= cdPhotoStepPt {
-				if lay := cdMeasureStacked(ctx, v, n, st.name, st.title, photo, stackW, areaH, oneLine); lay.fits {
+				if lay := cdMeasureStacked(ctx, v, n, st.name, st.title, photo, stackW, areaH, opt); lay.fits {
 					stacked = lay
 					break stackSearch
 				}
 			}
 		}
 	}
-	side := cdMeasureSide(ctx, v, n, steps, photoMax, areaW, areaH, oneLine)
+	side := cdMeasureSide(ctx, v, n, steps, photoMax, areaW, areaH, opt)
 	// Stacked wins unless it had to set the names smaller than the
 	// side-by-side layout manages: large type is what reads across a room.
 	if stacked.fits && (!side.fits || stacked.nameSize >= side.nameSize) {
@@ -402,7 +464,7 @@ func cdMeasureN(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirect
 }
 
 // cdMeasureSide measures the side-by-side layout (headshot left of the text).
-func cdMeasureSide(ctx ExpandContext, v *ContactDirectoryValues, n int, steps []cdTypeStep, photoMax, areaW, areaH float64, oneLine bool) cdLayout {
+func cdMeasureSide(ctx ExpandContext, v *ContactDirectoryValues, n int, steps []cdTypeStep, photoMax, areaW, areaH float64, opt cdOpts) cdLayout {
 	usable := areaW - cdColGapPt*float64(2*n-1)
 	personW := usable / float64(n)
 	// A narrow area still measures at the minimum headshot rather than
@@ -415,7 +477,7 @@ func cdMeasureSide(ctx ExpandContext, v *ContactDirectoryValues, n int, steps []
 	var lay cdLayout
 	for photo := photoMax; photo >= math.Max(cdPhotoMinPt, photoMax*0.7); photo -= cdPhotoStepPt {
 		for _, st := range steps {
-			lay = cdMeasureAt(ctx, v, n, st.name, st.title, photo, personW, areaH, oneLine)
+			lay = cdMeasureAt(ctx, v, n, st.name, st.title, photo, personW, areaH, opt)
 			if lay.fits {
 				return lay
 			}
@@ -423,7 +485,7 @@ func cdMeasureSide(ctx ExpandContext, v *ContactDirectoryValues, n int, steps []
 	}
 	for _, st := range steps {
 		for photo := photoMax; photo >= cdPhotoMinPt; photo -= cdPhotoStepPt {
-			lay = cdMeasureAt(ctx, v, n, st.name, st.title, photo, personW, areaH, oneLine)
+			lay = cdMeasureAt(ctx, v, n, st.name, st.title, photo, personW, areaH, opt)
 			if lay.fits {
 				return lay
 			}
@@ -432,7 +494,7 @@ func cdMeasureSide(ctx ExpandContext, v *ContactDirectoryValues, n int, steps []
 	return lay
 }
 
-func cdMeasureAt(ctx ExpandContext, v *ContactDirectoryValues, n int, nameSize, titleSize, photo, personW, areaH float64, oneLine bool) cdLayout {
+func cdMeasureAt(ctx ExpandContext, v *ContactDirectoryValues, n int, nameSize, titleSize, photo, personW, areaH float64, opt cdOpts) cdLayout {
 	lay := cdLayout{
 		columns:   n,
 		nameSize:  nameSize,
@@ -446,7 +508,7 @@ func cdMeasureAt(ctx ExpandContext, v *ContactDirectoryValues, n int, nameSize, 
 	for g, grp := range v.Groups {
 		head := math.Ceil(lay.headSize*sizingLineSpacing + cdTextPadPt + cdSafetyPt)
 		if g > 0 {
-			head += cdGroupGapPt
+			head += opt.groupGapPt()
 		}
 		lay.headPt = append(lay.headPt, head)
 		lay.naturalPt += head
@@ -464,14 +526,15 @@ func cdMeasureAt(ctx ExpandContext, v *ContactDirectoryValues, n int, nameSize, 
 		}
 		lay.rowPt = append(lay.rowPt, heights)
 	}
-	lay.naturalPt += cdRowGapPt * float64(rows-1)
-	lay.fits = lay.naturalPt <= areaH && lay.namesFit(ctx, v) && (!oneLine || lay.namesOneLine(ctx, v))
+	lay.rowGapPt = opt.rowGapPt()
+	lay.naturalPt += lay.rowGapPt * float64(rows-1)
+	lay.fits = lay.naturalPt <= areaH && lay.namesFit(ctx, v) && (!opt.oneLine || lay.namesOneLine(ctx, v))
 	return lay
 }
 
 // cdMeasureStacked measures the sparse layout: per person row, a photo row
 // and a text row, each person one column of stackW points.
-func cdMeasureStacked(ctx ExpandContext, v *ContactDirectoryValues, n int, nameSize, titleSize, photo, stackW, areaH float64, oneLine bool) cdLayout {
+func cdMeasureStacked(ctx ExpandContext, v *ContactDirectoryValues, n int, nameSize, titleSize, photo, stackW, areaH float64, opt cdOpts) cdLayout {
 	lay := cdLayout{
 		columns:   n,
 		nameSize:  nameSize,
@@ -486,7 +549,7 @@ func cdMeasureStacked(ctx ExpandContext, v *ContactDirectoryValues, n int, nameS
 	for g, grp := range v.Groups {
 		head := math.Ceil(lay.headSize*sizingLineSpacing + cdTextPadPt + cdSafetyPt)
 		if g > 0 {
-			head += cdGroupGapPt
+			head += opt.groupGapPt()
 		}
 		lay.headPt = append(lay.headPt, head)
 		lay.naturalPt += head
@@ -507,8 +570,9 @@ func cdMeasureStacked(ctx ExpandContext, v *ContactDirectoryValues, n int, nameS
 		lay.rowPt = append(lay.rowPt, photos)
 		lay.textRowPt = append(lay.textRowPt, texts)
 	}
-	lay.naturalPt += cdRowGapPt * float64(rows-1)
-	lay.fits = lay.naturalPt <= areaH && lay.namesFit(ctx, v) && (!oneLine || lay.namesOneLine(ctx, v))
+	lay.rowGapPt = opt.rowGapPt()
+	lay.naturalPt += lay.rowGapPt * float64(rows-1)
+	lay.fits = lay.naturalPt <= areaH && lay.namesFit(ctx, v) && (!opt.oneLine || lay.namesOneLine(ctx, v))
 	return lay
 }
 
@@ -691,7 +755,7 @@ func (c *contactDirectory) Expand(ctx ExpandContext, values, overrides any, cell
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
 		ColGap:  colGap,
-		RowGap:  cdRowGapPt,
+		RowGap:  lay.rowGapPt,
 		Rows:    rows,
 	}
 	return grid, nil

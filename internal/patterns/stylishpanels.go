@@ -155,11 +155,31 @@ func stylishPanelBodyBudget(panels, longestTitle, bullets int) int {
 	return 200
 }
 
-func (sp *stylishPanels) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+func (sp *stylishPanels) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*StylishPanelsValues)
 	if !ok || v == nil {
 		return nil
 	}
+	warnings := stylishPanelsBudgetWarnings(v)
+	if len(warnings) > 0 || len(*v) == 0 || ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 {
+		return warnings
+	}
+	// The character budgets assume a typical content area; with the
+	// template's own area the panels are measured against it at the smallest
+	// type they step to (go-slide-creator-n1muf).
+	ovr, _ := overrides.(*StylishPanelsOverrides)
+	if ovr == nil {
+		ovr = &StylishPanelsOverrides{}
+	}
+	if fit := stylishPanelsFit(ctx, *v, ovr); !fit.fits {
+		warnings = append(warnings, fmt.Sprintf("%s: stylish-panels ribbons and bullets need %.0fpt at readable sizes but the content area holds about %.0fpt — shorten the bullets or titles, drop bullets, or use fewer panels", ErrCodeBodyTooLong, fit.totalPt, fit.areaHPt))
+	}
+	return warnings
+}
+
+// stylishPanelsBudgetWarnings reports bullet bodies past the measured
+// character budgets for their panel count, title length and bullet count.
+func stylishPanelsBudgetWarnings(v *StylishPanelsValues) []string {
 	longestTitle := 0
 	for _, panel := range *v {
 		if n := runeLen(panel.Title); n > longestTitle {
@@ -295,8 +315,10 @@ func (sp *stylishPanels) Expand(ctx ExpandContext, values, overrides any, cellOv
 	if baseAccent == "" {
 		baseAccent = "accent2"
 	}
-	headerSize := ResolveSize(ovr.HeaderSize, 16.0)
-	bodySize := ResolveSize(ovr.BodySize, 14.0)
+	// Sizes step down towards the 12pt floor only when that makes the panels
+	// fit their written height in the content area (go-slide-creator-n1muf).
+	fit := stylishPanelsFit(ctx, *items, ovr)
+	headerSize, bodySize := fit.headerSize, fit.bodySize
 	cellAccentMode := ovr.CellAccentMode
 
 	n := len(*items)
@@ -354,18 +376,81 @@ func (sp *stylishPanels) Expand(ctx ExpandContext, values, overrides any, cellOv
 		titles[i] = item.Title
 		bodyH = math.Max(bodyH, shapeTextHeightPt(font, bodyCells[i].Shape.Text, colW))
 	}
-	headerPt := headerRowPt(font, titles, headerSize, colW)
+	// Neither row is ever handed less than the written fit of its tallest
+	// cell: sized by the theme-font model alone, the bodies were written at
+	// 44-84% autofit on the short content areas (go-slide-creator-n1muf).
+	headerPt := math.Max(headerRowPt(font, titles, headerSize, colW), fit.headerPt)
+	bodyMax := math.Max(math.Round(bodyH+2*defaultShapeInsetTBPt+cardPadPt), fit.bodyPt)
+	bodyRow := jsonschema.GridRowInput{Cells: bodyCells, MaxHeight: bodyMax}
+	if fit.fits {
+		bodyRow.MinHeight = fit.bodyPt
+	}
 	grid := &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(fmt.Sprintf(`%d`, n)),
-		Gap:           12,
+		Gap:           stylishPanelsGapPt,
 		VerticalAlign: GridVerticalAlignDefault,
 		Rows: []jsonschema.GridRowInput{
 			{Cells: headerCells, MinHeight: headerPt, MaxHeight: headerPt},
-			{Cells: bodyCells, MaxHeight: math.Round(bodyH + 2*defaultShapeInsetTBPt + cardPadPt)},
+			bodyRow,
 		},
 	}
 
 	return grid, nil
+}
+
+// stylishPanelsGapPt is the gutter between panels and between the ribbon
+// header and the panel body.
+const stylishPanelsGapPt = 12.0
+
+// stylishPanelsFitResult is the type size the panels are written at and the
+// written-fit heights of the ribbon row and the body row at that size.
+type stylishPanelsFitResult struct {
+	headerSize, bodySize float64
+	headerPt, bodyPt     float64
+	totalPt, areaHPt     float64
+	fits                 bool
+}
+
+// stylishPanelsFit measures the ribbon titles and bullet bodies with the
+// writer's own fit at their real column width. The defaults (16pt ribbon,
+// 14pt bullets) step towards the 12pt floor — bullets first, then the
+// ribbon — only when the panels would not otherwise fit the content area;
+// authored sizes are kept.
+func stylishPanelsFit(ctx ExpandContext, items []StylishPanelsItem, ovr *StylishPanelsOverrides) stylishPanelsFitResult {
+	type step struct{ header, body float64 }
+	steps := []step{{ResolveSize(ovr.HeaderSize, 16), ResolveSize(ovr.BodySize, 14)}}
+	if ovr.BodySize == 0 {
+		steps = append(steps, step{steps[0].header, 12})
+	}
+	if ovr.HeaderSize == 0 && ovr.BodySize == 0 {
+		steps = append(steps, step{14, 12})
+	}
+	areaW, areaH := sizingAreaPt(ctx)
+	colW := equalColumnWidthPt(areaW, len(items), stylishPanelsGapPt)
+	titles := make([]string, len(items))
+	for i, item := range items {
+		titles[i] = item.Title
+	}
+	measure := func(st step) stylishPanelsFitResult {
+		r := stylishPanelsFitResult{headerSize: st.header, bodySize: st.body, areaHPt: areaH}
+		// The ribbon keeps the band padding the model gives it.
+		r.headerPt = headerRowPt(ctx.Theme.BodyFont, titles, st.header, colW-2*defaultShapeInsetLRPt)
+		for _, item := range items {
+			r.headerPt = math.Max(r.headerPt, writtenNeedOrOverflowPt(ctx.Theme.BodyFont, buildStylishHeaderText(item.Title, st.header), colW))
+			r.bodyPt = math.Max(r.bodyPt, writtenNeedOrOverflowPt(ctx.Theme.BodyFont, buildStylishBodyText(item.Body, st.body, "accent2"), colW))
+		}
+		r.totalPt = r.headerPt + stylishPanelsGapPt + r.bodyPt
+		r.fits = r.totalPt <= areaH
+		return r
+	}
+	for _, st := range steps {
+		if r := measure(st); r.fits {
+			return r
+		}
+	}
+	// Nothing fits: keep the first (default or authored) sizes, so an
+	// overflowing payload is not also set smaller before it is shrunk.
+	return measure(steps[0])
 }
 
 // buildStylishHeaderText creates bold centered white text for the accent header band.
