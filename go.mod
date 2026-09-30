@@ -5,6 +5,7 @@ go 1.25.14
 require (
 	github.com/google/uuid v1.6.0
 	github.com/mark3labs/mcp-go v0.45.0
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	github.com/sebahrens/json2pptx/svggen v0.0.0
 	github.com/tdewolff/canvas v0.0.0-20260109131636-69e1540379c6
 	golang.org/x/image v0.45.0

@@ -215,6 +215,11 @@ type OutputContext struct {
 
 	// Render-time fit findings emitted during generation
 	fitFindings []patterns.FitFinding
+
+	// readabilityEvidence keeps the measured size behind a grid readability
+	// refusal, keyed by finding path. The refusal finding carries no fix, so
+	// without this the numbers survive only as prose (go-slide-creator-b7qqg.4).
+	readabilityEvidence map[string]ReadabilityEvidence
 }
 
 // singlePassContext holds all state needed for single-pass ZIP generation.

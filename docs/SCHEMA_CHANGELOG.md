@@ -60,6 +60,22 @@
   server's SVG config (strategy, scale, native compatibility, max PNG width)
   like the raw path. No response-shape change.
 
+- **2026-09-30 — DeckSpec readability parity, refusal diagnostics and spec string schema (`go-slide-creator-b7qqg.3`, `.4`, `.5`).**
+  The fit report's shape_grid `TEXT_BELOW_READABLE_MIN` prediction is now
+  `action: "refuse"` (severity `error`, was `review`), matching the refusal
+  generation makes on the same written run, and uses generation's truncating
+  size arithmetic; its `reduce_cell_text` fix gains `paragraph_text`.
+  `validate_deck_spec` names the authored field (`evidence.path`, e.g.
+  `slides[0].tiers[0].items`) and adds `evidence.measured` / `allowed`.
+  `render_deck_spec` (and `json2pptx semantic render`) keep a generation
+  refusal as a diagnostic with `code`, `severity`, `action`, `semantic_path`,
+  `raw_path`, a new `evidence` object and a `validate_deck_spec` patch
+  `next_tool_call`, also set top level on the failed render. The
+  `architecture` kind now honours `layout: "content"`. The four DeckSpec tools'
+  `spec` input schema admits the documented YAML/JSON document string: each
+  root `oneOf` branch is guarded to objects and a string branch is added.
+  Additive; no `SchemaVersion` bump.
+
 - **2026-09-28 — Schema 4.154.0: consultant × designer finishing round (`go-slide-creator-1x3yi`).** Contract changes listed in the 4.154.0 entries below: chart `highlight`, `chrome.tracker`, `next-steps` pattern and `next_steps` kind, KPI `comparator`, `callout.emphasis` subtle/strong and `takeaway_emphasis` overrides, `DATA_WITHOUT_SOURCE` and `FILLED_SHAPE_OUTLINED` findings, engine-default table style, source zone, type scale.
 
 - **2026-09-28 — Skill bundle budget rebalance (`go-slide-creator-dnboq`).**

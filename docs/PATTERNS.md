@@ -438,7 +438,7 @@ Parameterize over grid configurations (different cell counts, column layouts) an
 Density % is `required text height / available text height`, so >100% means "needs an autofit shrink", not "clipped". Two further signals separate those cases:
 
 - **`fits: false`** (Density.Fits) — the block does not fit even at the smallest shrink the renderer applies (`textcapacity.AutofitFloorScale`, 20%). This, and only this, is what `fit_overflow` reports for a shape_grid cell: text that is actually clipped.
-- **`TEXT_BELOW_READABLE_MIN`** — the predicted post-autofit size is under the viewing mode's floor for that text role. This is the finding for "it fits, but only because it shrank too far"; it is advisory (`review`).
+- **`TEXT_BELOW_READABLE_MIN`** — the predicted post-autofit size is under the viewing mode's floor for that text role. This is the finding for "it fits, but only because it shrank too far"; it blocks (`refuse`), because generation refuses the same written run.
 
 These thresholds are defined in `internal/textcapacity/textcapacity.go` and are stable — do not hardcode different values in patterns.
 

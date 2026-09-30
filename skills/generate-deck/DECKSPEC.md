@@ -13,7 +13,8 @@ Write the storyline first ([QUALITY.md](QUALITY.md)). `plan_deck` with
 `format:"deckspec"` drafts it: `deck_spec` holds a kind per narrative slot
 (answer, problem, cause, evidence, plan, roadmap, ask) with `__FILL__`
 titles, and `slots[]` gives each slot's guidance and routed brief facts.
-Use YAML or JSON with `meta` and either flat `slides[]` or chapter-based
+Send `spec` as a JSON object or a YAML/JSON document string (both pass the
+advertised schema). Use YAML or JSON with `meta` and either flat `slides[]` or chapter-based
 `structure: {cover, auto_agenda, sections:[{title, slides:[]}], closing}`.
 The forms are mutually exclusive. Chapters add numbered section dividers;
 `meta.chrome.section_crumb: true` labels their content slides in the footer;
@@ -113,6 +114,12 @@ unreviewed response rather than refreshing the earlier one. A visual verdict
 never clears deterministic blockers (`reviewed_deterministic_blockers`).
 Each diagnostic has a `semantic_path` to edit and a
 `raw_path` only as fallback. Keep the DeckSpec as the source of truth.
+Grid text generation would shrink below its readable floor is an `error`
+in `validate_deck_spec` too. If render still refuses (`success: false`), the
+refusal is a diagnostic (`code`, `severity`, `semantic_path`,
+`evidence.measured`/`allowed`) whose `next_tool_call` — also top level — is a
+`validate_deck_spec` patch: rewrite the named field, or for a list, switch
+the slide to its native layout (`/slides/N/layout: "content"`).
 After each revision, render and inspect the affected slides, then inspect all
 slides of the final revision as required by [SKILL.md](SKILL.md).
 

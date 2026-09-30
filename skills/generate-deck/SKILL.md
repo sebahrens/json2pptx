@@ -57,7 +57,9 @@ short or narrow template, or under a `takeaway`, the content-sized patterns
 `next-steps`) first step type down to the 12pt floor, then report
 `BODY_TOO_LONG` naming what to drop, and validate
 predicts grid text (nested cells included) that generation would refuse as
-`TEXT_BELOW_READABLE_MIN`. KPI values and label words are never wrapped
+an `error` `TEXT_BELOW_READABLE_MIN`; a `render_deck_spec` refusal returns
+it as a source-addressed diagnostic with `evidence` and a patch
+`next_tool_call` ([DECKSPEC.md](DECKSPEC.md)). KPI values and label words are never wrapped
 mid-token: a value shrinks (a `kpi-6up` "$4.2M" may render near 28pt) and a
 `process-grid-2row` row-label column widens before its label shrinks; what
 cannot fit is reported (`BODY_TOO_LONG` on `values[i].big`,

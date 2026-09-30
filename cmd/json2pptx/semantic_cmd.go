@@ -382,6 +382,14 @@ type semanticDiagnostic struct {
 	Action          string                       `json:"action,omitempty"`
 	RecommendedEdit *semantic.SemanticEdit       `json:"recommended_edit,omitempty"`
 	NextToolCall    *patterns.ToolCallSuggestion `json:"next_tool_call,omitempty"`
+	// Evidence carries a generation refusal's measurement: measured.font_pt
+	// against allowed.min_font_pt, the text role, viewing mode and the refused
+	// paragraph's text (go-slide-creator-b7qqg.4).
+	Evidence map[string]any `json:"evidence,omitempty"`
+
+	// fallbackPatch is the DeckSpec patch to suggest when the semantic path
+	// names no single rewritable field (a refused list switches composition).
+	fallbackPatch []any
 }
 
 // runSemanticRender implements "semantic render": the target one-command flow
@@ -725,6 +733,12 @@ func buildSemanticRenderFailure(cr *semantic.CompileResult, err error) semanticR
 			}
 			res.Diagnostics = append(res.Diagnostics, semanticDiagFromFitWithIR(sm, ir, f))
 		}
+	}
+	// A generation refusal (unreadable or lost text) carries its code, path
+	// and measurement; keep them as a source-addressed diagnostic rather than
+	// leaving the error string as the only diagnosis (go-slide-creator-b7qqg.4).
+	if d := semanticRefusalDiagnostic(cr, err); d != nil {
+		res.Diagnostics = append(res.Diagnostics, *d)
 	}
 	return res
 }
