@@ -38,7 +38,7 @@ func TestPullQuoteRowsHoldWrittenFit(t *testing.T) {
 							}
 							ctx := ExpandContext{}
 							ctx.Theme.BodyFont = font
-							below, warned := writtenBelowFloor(t, p, ctx, a.w, a.h, v, ovr)
+							below, warned := patternWrittenBelowFloor(t, p, ctx, a.w, a.h, v, ovr)
 							if len(below) > 0 && len(warned) == 0 {
 								t.Errorf("written below the floor without BODY_TOO_LONG: %v", below)
 							}

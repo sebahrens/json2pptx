@@ -21,12 +21,12 @@ var writtenFloorAreas = []struct {
 	{"p-style", 899, 360},
 }
 
-// writtenBelowFloor expands a pattern at an area and returns the text the
+// patternWrittenBelowFloor expands a pattern at an area and returns the text the
 // writer would store shrunk below the 12pt floor, together with the
 // BODY_TOO_LONG warnings the pattern reported for the same payload. The
 // sizing rule (go-slide-creator-n1muf): a legal payload is either laid out
 // readably or reported by the pattern itself — never silently shrunk.
-func writtenBelowFloor(t *testing.T, p Pattern, ctx ExpandContext, w, h float64, values, overrides any) (below []string, warned []string) {
+func patternWrittenBelowFloor(t *testing.T, p Pattern, ctx ExpandContext, w, h float64, values, overrides any) (below []string, warned []string) {
 	t.Helper()
 	ctx.LayoutBounds = LayoutBounds{Width: int64(w * 12700), Height: int64(h * 12700)}
 	if wr, ok := p.(PostExpandWarner); ok {
@@ -115,7 +115,7 @@ func TestTimelineHorizontalWrittenFitOnShortAreas(t *testing.T) {
 		for _, a := range writtenFloorAreas {
 			name := fmt.Sprintf("%s/%d-stops/label%d/body%d/%s", c.style, c.stops, c.label, c.body, a.name)
 			t.Run(name, func(t *testing.T) {
-				below, warned := writtenBelowFloor(t, p, ExpandContext{}, a.w, a.h, timelineStops(c.stops, c.label, c.body), &TimelineHorizontalOverrides{Style: c.style})
+				below, warned := patternWrittenBelowFloor(t, p, ExpandContext{}, a.w, a.h, timelineStops(c.stops, c.label, c.body), &TimelineHorizontalOverrides{Style: c.style})
 				if len(below) > 0 && len(warned) == 0 {
 					t.Errorf("written below the floor without BODY_TOO_LONG: %v", below)
 				}

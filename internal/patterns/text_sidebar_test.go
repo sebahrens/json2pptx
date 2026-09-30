@@ -224,7 +224,7 @@ func TestTextSidebar_WrittenFitOnShortAreas(t *testing.T) {
 					if pl.o != nil {
 						ovr = pl.o
 					}
-					below, warned := writtenBelowFloor(t, p, ctx, a.w, a.h, pl.v, ovr)
+					below, warned := patternWrittenBelowFloor(t, p, ctx, a.w, a.h, pl.v, ovr)
 					if len(below) > 0 && len(warned) == 0 {
 						t.Errorf("written below the floor without BODY_TOO_LONG: %v", below)
 					}
