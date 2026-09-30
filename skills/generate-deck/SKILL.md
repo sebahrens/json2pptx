@@ -60,8 +60,9 @@ short or narrow template, or under a `takeaway`, the content-sized patterns
 (`chart-insights-split`, `table-highlight`, `exec-summary`, `scqa-summary`,
 `bmc-canvas`, `agenda-with-images`, `state-shift-hub`, `metric-list`,
 `next-steps`, `matrix-2x2`, `process-grid-2row`, `stylish-panels`,
-`team-bios`, `framework-grid`, `contact-directory`) first give up air,
-headshot size or type down to the 12pt floor, then report `BODY_TOO_LONG`
+`team-bios`, `framework-grid`, `contact-directory`, `agenda`,
+`before-after[-compact]`, `comparison-2col`, `hero-detail`) first give up
+air, headshot size or type down to the 12pt floor, then report `BODY_TOO_LONG`
 naming what to drop (`icon-row`, `labeled-rows`, `process-flow` and
 `process-flow-compact` grow their cards, rows or band to the text's written
 fit before they report it), and validate

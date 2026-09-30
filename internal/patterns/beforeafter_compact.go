@@ -78,7 +78,7 @@ func beforeAfterCompactBodyLineBudget(before, after string) int {
 	return 6
 }
 
-func (b *beforeAfterCompact) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+func (b *beforeAfterCompact) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*BeforeAfterValues)
 	if !ok || v == nil {
 		return nil
@@ -100,7 +100,12 @@ func (b *beforeAfterCompact) PostExpandWarnings(_ ExpandContext, values, _ any) 
 			warnings = append(warnings, fmt.Sprintf("%s: before-after-compact %s.items use about %d wrapped text lines across %d bullets; this compact column holds about %d lines with the chosen headers — shorten bullets above 103 or 52 characters, use fewer bullets, shorten the headers, or use before-after for more height", ErrCodeBodyTooLong, side.name, lines, len(side.items), budget))
 		}
 	}
-	return warnings
+	if len(warnings) > 0 {
+		return warnings
+	}
+	// The budgets assume a typical content area; with the template's own
+	// area the rows are measured against it (go-slide-creator-n1muf).
+	return beforeAfterAreaWarning(ctx, v, overrides, beforeAfterCompactVariant)
 }
 
 func (b *beforeAfterCompact) Schema() *Schema {
@@ -213,91 +218,26 @@ func (b *beforeAfterCompact) Expand(ctx ExpandContext, values, overrides any, ce
 		}
 	}
 
-	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	headerSize := ResolveSize(ovr.HeaderSize, 14.0)
-	bodySize := ResolveSize(ovr.BodySize, 11.0)
-	cellAccentMode := ovr.CellAccentMode
-
-	beforeAccent := ctx.ResolveCellAccent(baseAccent, 0, cellAccentMode)
-	afterAccent := ctx.ResolveCellAccent(baseAccent, 1, cellAccentMode)
-
-	cellIdx := 0
-
-	// Header row: Before header | compact transition chevron | After header.
-	beforeHeader := buildBeforeAfterTextContent(vals.Before.Header, headerSize, true, "lt1", "l")
-	afterHeader := buildBeforeAfterTextContent(vals.After.Header, headerSize, true, "lt1", "l")
-
-	beforeHeaderCell := &jsonschema.GridCellInput{
-		Shape: &jsonschema.ShapeSpecInput{
-			Geometry: "rect",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, beforeAccent)),
-			Text:     beforeHeader,
-		},
-	}
-	applyBeforeAfterCellOverride(beforeHeaderCell, cellOverrides, cellIdx, beforeAccent)
-	cellIdx++
-
-	chevronCell := beforeAfterChevronCell(baseAccent)
-	applyBeforeAfterCellOverride(chevronCell, cellOverrides, cellIdx, baseAccent)
-	cellIdx++
-
-	afterHeaderCell := &jsonschema.GridCellInput{
-		Shape: &jsonschema.ShapeSpecInput{
-			Geometry: "rect",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, afterAccent)),
-			Text:     afterHeader,
-		},
-	}
-	applyBeforeAfterCellOverride(afterHeaderCell, cellOverrides, cellIdx, afterAccent)
-	cellIdx++
-
-	// Body row: light accent-derived panels; the chevron owns the middle column.
-	beforeBody := buildBeforeAfterBulletContent(vals.Before.Items, bodySize)
-	afterBody := buildBeforeAfterBulletContent(vals.After.Items, bodySize)
-
-	beforeBodyCell := &jsonschema.GridCellInput{
-		Shape: &jsonschema.ShapeSpecInput{
-			Geometry: "rect",
-			Fill:     beforeAfterPanelTone(beforeAccent).fillJSON(),
-			Text:     beforeBody,
-		},
-	}
-	applyBeforeAfterCellOverride(beforeBodyCell, cellOverrides, cellIdx, beforeAccent)
-	cellIdx++
-
-	afterBodyCell := &jsonschema.GridCellInput{
-		Shape: &jsonschema.ShapeSpecInput{
-			Geometry: "rect",
-			Fill:     beforeAfterPanelTone(afterAccent).fillJSON(),
-			Text:     afterBody,
-		},
-	}
-	applyBeforeAfterCellOverride(afterBodyCell, cellOverrides, cellIdx, afterAccent)
+	plan := beforeAfterLayout(ctx, vals, ovr, cellOverrides, beforeAfterCompactVariant)
 
 	colsJSON := json.RawMessage(`[45, 10, 45]`)
 
 	// Compact means compact (go-slide-creator-3i7c): a header band sized to
 	// the header text and a body row that hugs the bullets, the whole block
-	// capped at 60% of the content area and centred there.
-	headerPt, bodyPt := beforeAfterFullRowHeights(ctx, beforeHeader, afterHeader, beforeBody, afterBody, 6)
+	// capped at 60% of the content area and centred there. The cap gives way
+	// (up to the whole area) before any row drops below the written fit of
+	// its text (go-slide-creator-n1muf).
 	grid := &jsonschema.ShapeGridInput{
 		Bounds: &jsonschema.GridBoundsInput{
-			X: 0, Y: 0, Width: 100, Height: 60,
+			X: 0, Y: 0, Width: 100, Height: plan.heightPct,
 		},
 		Columns:       colsJSON,
-		Gap:           6,
+		Gap:           beforeAfterCompactVariant.gapPt,
 		VerticalAlign: GridVerticalAlignDefault,
-		Rows: []jsonschema.GridRowInput{
-			{
-				MinHeight: headerPt,
-				MaxHeight: headerPt,
-				Cells:     []*jsonschema.GridCellInput{beforeHeaderCell, chevronCell, afterHeaderCell},
-			},
-			{
-				MaxHeight: bodyPt,
-				Cells:     []*jsonschema.GridCellInput{beforeBodyCell, afterBodyCell},
-			},
-		},
+		Rows:          plan.gridRows(),
+	}
+	if plan.rowGap != beforeAfterCompactVariant.gapPt {
+		grid.RowGap = plan.rowGap
 	}
 
 	return grid, nil
