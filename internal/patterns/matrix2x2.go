@@ -176,11 +176,31 @@ func matrixBodyRunBudget(header string, headerRun int) int {
 	}
 }
 
-func (m *matrix2x2) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+func (m *matrix2x2) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*Matrix2x2Values)
 	if !ok || v == nil {
 		return nil
 	}
+	warnings := matrixRunBudgetWarnings(v)
+	if len(warnings) > 0 || ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 {
+		return warnings
+	}
+	// The run budgets assume a typical content area; with the template's own
+	// area the quadrant rows are measured against it (go-slide-creator-n1muf).
+	ovr, _ := overrides.(*Matrix2x2Overrides)
+	if ovr == nil {
+		ovr = &Matrix2x2Overrides{}
+	}
+	lay := layoutMatrix2x2(ctx, v, ovr)
+	if total := lay.needs[0] + lay.needs[1]; total > lay.availPt+1 {
+		warnings = append(warnings, fmt.Sprintf("%s: matrix-2x2 quadrants need %.0fpt at readable sizes but the content area holds about %.0fpt for them — shorten the quadrant headers or bodies", ErrCodeBodyTooLong, total, lay.availPt))
+	}
+	return warnings
+}
+
+// matrixRunBudgetWarnings reports quadrants whose unbroken runs exceed the
+// measured run budgets.
+func matrixRunBudgetWarnings(v *Matrix2x2Values) []string {
 	quadrants := []struct {
 		name  string
 		value Matrix2x2Quadrant
@@ -377,8 +397,8 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	}
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	headerSize := ResolveSize(ovr.HeaderSize, 16.0)
-	bodySize := ResolveSize(ovr.BodySize, 12.0)
+	lay := layoutMatrix2x2(ctx, vals, ovr)
+	headerSize, bodySize := lay.headerSize, lay.bodySize
 	labelSize := ResolveSize(ovr.LabelSize, 14.0)
 
 	// Layout: 3 columns [y-axis label, left quadrants, right quadrants]
@@ -457,13 +477,84 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		},
 	}
 
+	// Quadrant rows share the height equally unless one pair's written fit
+	// needs more than half; then each is floored at its need and they share
+	// the slack in proportion (go-slide-creator-n1muf).
+	floorFlexRowsAtNeeds(rows[1:], lay.needs[:], lay.availPt)
+
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(`[12, 44, 44]`),
-		Gap:     6,
+		Gap:     matrix2x2GapPt,
 		Rows:    rows,
 	}
 
 	return grid, nil
+}
+
+const (
+	// matrix2x2GapPt is the grid gap between the axis column, the axis row
+	// and the quadrants.
+	matrix2x2GapPt = 6.0
+	// matrix2x2AxisRowPct is the x-axis row's share of the grid height.
+	matrix2x2AxisRowPct = 16.0
+	// matrix2x2MinHeaderPt is the floor the default quadrant header steps
+	// down to before the quadrants report BODY_TOO_LONG.
+	matrix2x2MinHeaderPt = 12.0
+)
+
+// matrix2x2Layout is the measured quadrant sizing: the header and body sizes,
+// the written-fit height each quadrant row (top pair, bottom pair) needs, and
+// the height the two rows share.
+type matrix2x2Layout struct {
+	headerSize, bodySize float64
+	needs                [2]float64
+	availPt              float64
+}
+
+// layoutMatrix2x2 measures each quadrant cell as the writer will write it
+// (writtenFitHeightPt at the quadrant's real width, plus the top icon zone)
+// and steps the default 16pt header through 14pt to the 12pt floor when the
+// two quadrant rows would not otherwise fit; an authored header_size is kept.
+func layoutMatrix2x2(ctx ExpandContext, v *Matrix2x2Values, ovr *Matrix2x2Overrides) matrix2x2Layout {
+	areaW, areaH := sizingAreaPt(ctx)
+	quadW := (areaW - 2*matrix2x2GapPt) * 0.44
+	lay := matrix2x2Layout{
+		bodySize: ResolveSize(ovr.BodySize, 12.0),
+		availPt:  (areaH - 2*matrix2x2GapPt) * (1 - matrix2x2AxisRowPct/100),
+	}
+	sizes := []float64{ResolveSize(ovr.HeaderSize, 16.0)}
+	if ovr.HeaderSize == 0 {
+		sizes = append(sizes, 14, matrix2x2MinHeaderPt)
+	}
+	pairs := [2][2]Matrix2x2Quadrant{{v.TopLeft, v.TopRight}, {v.BottomLeft, v.BottomRight}}
+	for _, size := range sizes {
+		lay.headerSize = size
+		for r, pair := range pairs {
+			lay.needs[r] = 0
+			for _, q := range pair {
+				fit := writtenFitHeightPt(buildMatrix2x2QuadrantContent(q, size, lay.bodySize, "accent1"), quadW, 0)
+				lay.needs[r] = math.Max(lay.needs[r], matrix2x2QuadrantNeedPt(fit, quadW, q.Icon != nil && !q.Icon.IsEmpty()))
+			}
+		}
+		if lay.needs[0]+lay.needs[1] <= lay.availPt {
+			break
+		}
+	}
+	return lay
+}
+
+// matrix2x2QuadrantNeedPt is the quadrant height that leaves fitPt for its
+// text below a top icon. The renderer sizes a top overlay at 0.6 × the
+// shorter side, capped at 0.4 × the height on a landscape shape, plus a 3pt
+// gap above and below (shapegrid iconOverlayBounds).
+func matrix2x2QuadrantNeedPt(fitPt, widthPt float64, icon bool) float64 {
+	if !icon {
+		return fitPt
+	}
+	if landscape := (fitPt + 6) / (1 - 0.4); widthPt > landscape*1.2 {
+		return math.Ceil(landscape)
+	}
+	return math.Ceil(fitPt + 0.6*widthPt + 6)
 }
 
 // buildMatrix2x2LabelContent creates a JSON text object for an axis label.

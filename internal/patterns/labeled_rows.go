@@ -338,9 +338,33 @@ func measureLabeledRows(ctx ExpandContext, vals *LabeledRowsValues, cols []float
 			label += 2 * (labeledRowsBlockInset - sizingInsetTBPt)
 		}
 		body := sizedBlockHeightPt(ctx, []sizedPara{{text: r.Body, sizePt: bodySize}}, bodyColW)
-		lay.rowPt[i] = math.Ceil(math.Max(label, body))
+		// Never below the written fit of the cells Expand writes: the
+		// theme-font model alone can hand the writer a row it stores with an
+		// autofit shrink (go-slide-creator-n1muf).
+		written := math.Max(
+			writtenFitHeightPt(labeledRowsLabelText(r, lay, "lt1", "lt1"), labelColW, 0),
+			writtenFitHeightPt(labeledRowsBodyText(r, lay.bodySize), bodyColW, 0))
+		lay.rowPt[i] = math.Ceil(math.Max(math.Max(label, body), written))
 	}
 	return lay
+}
+
+// labeledRowsLabelText is a row's label block text: the keyword, then the
+// sublabel when there is one.
+func labeledRowsLabelText(r LabeledRow, lay labeledRowsLayout, ink, subInk string) json.RawMessage {
+	paras := []chartInsightsParagraph{{Content: r.Label, Size: lay.labelSize, Bold: true, Color: ink, Align: "l", SpaceAfter: 2}}
+	if strings.TrimSpace(r.Sublabel) != "" {
+		paras = append(paras, chartInsightsParagraph{Content: r.Sublabel, Size: lay.subSize, Color: subInk, Align: "l"})
+	}
+	return insetText{Paragraphs: paras, Align: "l", VerticalAlign: "ctr"}.json()
+}
+
+// labeledRowsBodyText is a row's body text.
+func labeledRowsBodyText(r LabeledRow, bodySize float64) json.RawMessage {
+	return insetText{
+		Paragraphs: []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(r.Body), Size: bodySize, Color: "dk1", Align: "l"}},
+		Align:      "l", VerticalAlign: "ctr",
+	}.json()
 }
 
 func (l *labeledRows) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
@@ -382,32 +406,22 @@ func (l *labeledRows) Expand(ctx ExpandContext, values, overrides any, cellOverr
 			if co != nil && co.Color != "" {
 				ink = co.Color
 			}
-			paras := []chartInsightsParagraph{{Content: r.Label, Size: lay.labelSize, Bold: true, Color: ink, Align: "l", SpaceAfter: 2}}
-			if strings.TrimSpace(r.Sublabel) != "" {
-				paras = append(paras, chartInsightsParagraph{Content: r.Sublabel, Size: lay.subSize, Color: ink, Align: "l"})
-			}
 			labelCell = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
 				Fill:     json.RawMessage(strconv.Quote(accent)),
 				Line:     json.RawMessage(`"none"`),
-				Text: insetText{
-					Paragraphs: paras, Align: "l", VerticalAlign: "ctr",
-				}.json(),
+				Text:     labeledRowsLabelText(r, lay, ink, ink),
 			}}
 		} else {
 			ink := inkOnLight(ctx, accent, 3.0)
 			if co != nil && co.Color != "" {
 				ink = co.Color
 			}
-			paras := []chartInsightsParagraph{{Content: r.Label, Size: lay.labelSize, Bold: true, Color: ink, Align: "l", SpaceAfter: 2}}
-			if strings.TrimSpace(r.Sublabel) != "" {
-				paras = append(paras, chartInsightsParagraph{Content: r.Sublabel, Size: lay.subSize, Color: subInkOnLight, Align: "l"})
-			}
 			labelCell = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
 				Fill:     json.RawMessage(`"none"`),
 				Line:     json.RawMessage(`"none"`),
-				Text:     insetText{Paragraphs: paras, Align: "l", VerticalAlign: "ctr"}.json(),
+				Text:     labeledRowsLabelText(r, lay, ink, subInkOnLight),
 			}}
 		}
 
@@ -418,10 +432,7 @@ func (l *labeledRows) Expand(ctx ExpandContext, values, overrides any, cellOverr
 			Geometry: "rect",
 			Fill:     json.RawMessage(`"none"`),
 			Line:     json.RawMessage(`"none"`),
-			Text: insetText{
-				Paragraphs: []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(r.Body), Size: lay.bodySize, Color: "dk1", Align: "l"}},
-				Align:      "l", VerticalAlign: "ctr",
-			}.json(),
+			Text:     labeledRowsBodyText(r, lay.bodySize),
 		}}
 		if co != nil && co.AccentBar {
 			bodyCell.AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: 4}
