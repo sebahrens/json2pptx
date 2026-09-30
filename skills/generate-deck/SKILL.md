@@ -107,7 +107,11 @@ executable one.
   anti-pattern rules. Waterfall `type` sets the sign
   (`chart.waterfall_total_mismatch`). CJK / emoji / Arabic chart labels
   lack embedded glyphs (`chart.glyph_missing`): check the render. A funnel
-  must narrow (`chart.funnel_stage_increase`). Charts show the title's point: a
+  must narrow (`chart.funnel_stage_increase`). Percent data: set
+  `style.value_format.input_scale` to `fraction` (0.25 → 25%) or
+  `percentage_points` (0.25 → 0.25%) — left `auto` it guesses and reports
+  `chart.percent_scale_ambiguous`. Bubble area is proportional to size on one
+  chart-wide scale (negative sizes are rejected). Charts show the title's point: a
   single-series bar chart (and `horizontal-bar-with-callouts`) is neutral
   grey with accent1 only on `highlight` bars (0-based indices or names;
   default the last period of a time series, else the top bar); set it to the

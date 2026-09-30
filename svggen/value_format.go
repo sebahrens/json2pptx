@@ -54,6 +54,26 @@ func autoValueFormat(format string, values []float64) string {
 	return "%." + strconv.Itoa(maxAutoDecimals) + "f"
 }
 
+// exactValueFormat returns the fewest decimals (up to maxAutoDecimals) that
+// print every value without rounding, falling back to autoValueFormat when
+// none does.
+func exactValueFormat(values []float64) string {
+	for decimals := 0; decimals <= maxAutoDecimals; decimals++ {
+		scale := math.Pow(10, float64(decimals))
+		exact := true
+		for _, v := range values {
+			if math.Abs(v*scale-math.Round(v*scale)) > 1e-6 {
+				exact = false
+				break
+			}
+		}
+		if exact {
+			return "%." + strconv.Itoa(decimals) + "f"
+		}
+	}
+	return autoValueFormat(defaultValueFormat, values)
+}
+
 // anyFractional reports whether any value has a fractional part worth showing.
 func anyFractional(values []float64) bool {
 	for _, v := range values {
@@ -133,6 +153,13 @@ func groupThousands(s string) string {
 func chartDataValues(data ChartData) []float64 {
 	var out []float64
 	for _, s := range data.Series {
+		// The numbers a chart labels are what its formatter must measure:
+		// a stacked area's authored contributions, not its cumulative
+		// boundaries (go-slide-creator-b7qqg.18).
+		if s.labelValues != nil {
+			out = append(out, s.labelValues...)
+			continue
+		}
 		out = append(out, s.Values...)
 	}
 	return out
@@ -263,7 +290,7 @@ func valueFormatterFromSpec(spec *ValueFormatSpec, values []float64) *ValueForma
 		f.compact = true
 	case "percent":
 		f.percent = true
-		if maxMagnitude(values) <= 1+1e-9 {
+		if percentInputIsFraction(spec.InputScale, values) {
 			f.scale = 100
 			formatValues = scaledValues(values, f.scale)
 		}
@@ -288,7 +315,13 @@ func valueFormatterFromSpec(spec *ValueFormatSpec, values []float64) *ValueForma
 	switch {
 	case decimals >= 0:
 		f.printf = "%." + strconv.Itoa(decimals) + "f"
-	case f.percent, f.group:
+	case f.percent:
+		// A rate is read digit for digit: 0.25 percentage points must not
+		// print as "0.2%" merely because 0.2 and 0.5 are already distinct
+		// (go-slide-creator-b7qqg.22). Show every value exactly when two
+		// decimals suffice, else fall back to the distinct-labels rule.
+		f.printf = exactValueFormat(formatValues)
+	case f.group:
 		// Pick a precision that keeps the labels distinct, as the default does.
 		f.printf = autoValueFormat(defaultValueFormat, formatValues)
 	default:
@@ -302,6 +335,59 @@ func valueFormatterFromSpec(spec *ValueFormatSpec, values []float64) *ValueForma
 		f.group = *spec.ThousandsSep
 	}
 	return f
+}
+
+// percentInputIsFraction reports whether percent data is written as
+// fractions (0.25 = 25%) and must be multiplied by 100. An explicit
+// input_scale decides; "auto" (or empty) keeps the legacy inference — fractions
+// when every value is within [-1, 1] — which valueFormatFindings reports as an
+// assumption (go-slide-creator-b7qqg.22).
+func percentInputIsFraction(inputScale string, values []float64) bool {
+	switch normalizedInputScale(inputScale) {
+	case InputScaleFraction:
+		return true
+	case InputScalePercentagePoints:
+		return false
+	default:
+		return maxMagnitude(values) <= 1+1e-9
+	}
+}
+
+func normalizedInputScale(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	if s == "" {
+		return InputScaleAuto
+	}
+	return s
+}
+
+// validateValueFormat rejects a value_format the renderer cannot honour
+// exactly. input_scale is only meaningful for percent: accepting it silently
+// elsewhere would let an agent believe it changed something.
+func validateValueFormat(spec *ValueFormatSpec) error {
+	if spec == nil || spec.InputScale == "" {
+		return nil
+	}
+	scale := normalizedInputScale(spec.InputScale)
+	switch scale {
+	case InputScaleAuto, InputScaleFraction, InputScalePercentagePoints:
+	default:
+		return &ValidationError{
+			Field:   "style.value_format.input_scale",
+			Code:    ErrCodeInvalidValue,
+			Message: `value_format.input_scale must be "auto", "fraction" (0.25 → 25%) or "percentage_points" (0.25 → 0.25%)`,
+			Value:   spec.InputScale,
+		}
+	}
+	if scale != InputScaleAuto && strings.ToLower(strings.TrimSpace(spec.Style)) != "percent" {
+		return &ValidationError{
+			Field:   "style.value_format.input_scale",
+			Code:    ErrCodeInvalidValue,
+			Message: `value_format.input_scale applies only to style "percent"; remove it or set style to "percent"`,
+			Value:   spec.InputScale,
+		}
+	}
+	return nil
 }
 
 // maxSpecDecimals caps an explicit decimals request. Past three places a chart
@@ -374,18 +460,41 @@ func valueFormatFindings(req *RequestEnvelope) []Finding {
 		if req.Type == "pie_chart" || req.Type == "donut_chart" {
 			return nil
 		}
+		// An explicit input_scale is the author's word on the units; there is
+		// nothing left to guess (go-slide-creator-b7qqg.22).
+		if normalizedInputScale(spec.InputScale) != InputScaleAuto {
+			return nil
+		}
 		values := requestFormattedValues(req.Data)
+		if len(values) == 0 {
+			return nil
+		}
 		if maxMagnitude(values) > 1+1e-9 {
 			return []Finding{{
 				Field:    "style.value_format",
 				Code:     FindingPercentScaleAmbiguous,
-				Message:  "percent values above 1 were preserved as already-scaled percentages; use fractions in [0,1] or plain formatting when the scale is not percentage points",
+				Message:  "percent values above 1 were preserved as already-scaled percentage points (41.2 → 41.2%); set style.value_format.input_scale to \"percentage_points\" to confirm, or \"fraction\" if 1.2 means 120%",
 				Severity: core.SeverityWarning,
 				Fix: &FixSuggestion{Kind: FixKindExplicitScale, Params: map[string]any{
-					"style": "percent", "fractional_range": "0..1",
+					"style": "percent", "field": "style.value_format.input_scale",
+					"assumed": InputScalePercentagePoints, "options": []string{InputScaleFraction, InputScalePercentagePoints},
 				}},
 			}}
 		}
+		// Every value is within [-1, 1], so auto multiplied by 100. That is
+		// right for 0.412 → 41.2% but wrong for deposit rates of 0.25 and 0.50
+		// percentage points, which printed as 25% and 50%. The renderer cannot
+		// tell the two apart; say what it assumed and how to pin it.
+		return []Finding{{
+			Field:    "style.value_format",
+			Code:     FindingPercentScaleAmbiguous,
+			Message:  "percent values within [-1, 1] were read as fractions and multiplied by 100 (0.25 → 25%); if they are already percentage points (0.25 → 0.25%) set style.value_format.input_scale to \"percentage_points\", or set \"fraction\" to confirm",
+			Severity: core.SeverityInfo,
+			Fix: &FixSuggestion{Kind: FixKindExplicitScale, Params: map[string]any{
+				"style": "percent", "field": "style.value_format.input_scale",
+				"assumed": InputScaleFraction, "options": []string{InputScaleFraction, InputScalePercentagePoints},
+			}},
+		}}
 	case "currency":
 		if strings.TrimSpace(spec.Prefix) == "" {
 			return []Finding{{

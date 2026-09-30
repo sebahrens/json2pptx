@@ -1137,12 +1137,12 @@ var findingMetaRegistry = map[string]FindingMeta{
 	},
 	"chart.percent_scale_ambiguous": {
 		Code:        "chart.percent_scale_ambiguous",
-		Summary:     "Percent formatting received values above 1, so their scale is ambiguous.",
+		Summary:     "Percent formatting had to guess whether the values are fractions or percentage points.",
 		Severity:    "review",
-		WhenEmitted: "svggen receives style.value_format.style=percent and at least one formatted value has magnitude above 1; those values are preserved as already-scaled percentage points.",
+		WhenEmitted: "svggen receives style.value_format.style=percent without an explicit input_scale (or input_scale=auto). Warning when a formatted value exceeds 1 (preserved as percentage points: 41.2 → 41.2%); info when every value is within [-1,1] (read as fractions: 0.25 → 25%). fix.params names the field, the assumed scale and the options.",
 		RemediationSteps: []string{
-			"Use fractional values in [0,1] when percent should multiply by 100 (0.412 → 41.2%).",
-			"Or keep already-scaled values and review the rendered labels to confirm that percentage points are intended.",
+			"Set style.value_format.input_scale to \"percentage_points\" when the numbers are already percents (0.25 → 0.25%, 41.2 → 41.2%).",
+			"Or set it to \"fraction\" when 1 means 100% (0.412 → 41.2%, 1.2 → 120%).",
 		},
 	},
 	"chart.currency_prefix_defaulted": {

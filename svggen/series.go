@@ -47,6 +47,11 @@ type DataPoint struct {
 
 	// Value is the raw value for display purposes.
 	Value float64
+
+	// hasValue records that Value was set deliberately, so a raw value of
+	// zero still wins over Y (a stacked-area band contributing 0 sits at a
+	// non-zero cumulative Y but must be labelled 0).
+	hasValue bool
 }
 
 // LabelValue is the number a value label should show: the raw Value when the
@@ -57,7 +62,7 @@ type DataPoint struct {
 // the label site read Y (go-slide-creator-e2ck9, found while unifying the
 // number format). A label has to show the value, not its exponent.
 func (p DataPoint) LabelValue() float64 {
-	if p.Value != 0 {
+	if p.hasValue || p.Value != 0 {
 		return p.Value
 	}
 	return p.Y
@@ -583,7 +588,7 @@ func (ls *LineSeries) draw(coords []Point, baseY float64, points []DataPoint) {
 	if ls.config.ShowValues {
 		b.SetFontSize(style.Typography.SizeSmall).SetFontWeight(style.Typography.WeightNormal)
 		for i, c := range coords {
-			label := ls.config.ValueFmt.FormatOr(points[i].Y, ls.config.ValueFormat)
+			label := ls.config.ValueFmt.FormatOr(points[i].LabelValue(), ls.config.ValueFormat)
 			labelY := c.Y - ls.config.MarkerSize - style.Spacing.SM
 			b.DrawText(label, c.X, labelY, TextAlignCenter, TextBaselineBottom)
 		}
@@ -819,6 +824,10 @@ type PointSeriesConfig struct {
 	// SizeScale enables variable point sizes based on value.
 	SizeScale *LinearScale
 
+	// AreaScale, when set, sizes each point as a bubble whose area is
+	// proportional to its Value. It takes precedence over SizeScale.
+	AreaScale *BubbleSizeScale
+
 	// ColorScale enables variable colors based on value (uses palette).
 	ColorScale *LinearScale
 }
@@ -915,6 +924,9 @@ func (ps *PointSeries) DrawCategorical(points []DataPoint, xScale *CategoricalSc
 
 // getPointSize returns the size for a point, optionally scaled by value.
 func (ps *PointSeries) getPointSize(point DataPoint) float64 {
+	if ps.config.AreaScale != nil {
+		return ps.config.AreaScale.Diameter(point.Value)
+	}
 	if ps.config.SizeScale != nil {
 		// Scale size based on value
 		scaledValue := ps.config.SizeScale.Scale(point.Value)

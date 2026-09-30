@@ -85,6 +85,12 @@ type ChartSeries struct {
 
 	// Labels are optional labels for each data point.
 	Labels []string
+
+	// labelValues, when set, are the numbers the value labels show in place
+	// of Values. A stacked area plots each band at its cumulative boundary,
+	// but its labels must still read the band's own authored contribution
+	// (go-slide-creator-b7qqg.18).
+	labelValues []float64
 }
 
 // HasTimeData returns true if this series contains time-series data.
@@ -1968,6 +1974,7 @@ func (lc *LineChart) drawLines(data ChartData, plotArea Rect, xScale Scale, ySca
 			adjustedXScale := NewCategoricalScale(data.Categories)
 			adjustedXScale.SetRangeCategorical(plotArea.X, plotArea.X+plotArea.W)
 
+			setLabelValues(points, series.labelValues)
 			ls.DrawCategorical(points, adjustedXScale, adjustedYScale, baseY)
 			_ = xs
 
@@ -2008,6 +2015,7 @@ func (lc *LineChart) drawLines(data ChartData, plotArea Rect, xScale Scale, ySca
 			adjustedXScale := NewLinearScale(float64(tMin), float64(tMax))
 			adjustedXScale.SetRangeLinear(plotArea.X, plotArea.X+plotArea.W)
 
+			setLabelValues(points, series.labelValues)
 			ls.DrawLinear(points, adjustedXScale, adjustedYScale, baseY)
 
 		case *LinearScale:
@@ -2029,7 +2037,19 @@ func (lc *LineChart) drawLines(data ChartData, plotArea Rect, xScale Scale, ySca
 			adjustedXScale := NewLinearScale(xMin, xMax)
 			adjustedXScale.SetRangeLinear(plotArea.X, plotArea.X+plotArea.W)
 
+			setLabelValues(points, series.labelValues)
 			ls.DrawLinear(points, adjustedXScale, adjustedYScale, baseY)
+		}
+	}
+}
+
+// setLabelValues records a series' label values on its plotted points, so the
+// value labels show them instead of the plotted Y (go-slide-creator-b7qqg.18).
+func setLabelValues(points []DataPoint, labelValues []float64) {
+	for i := range points {
+		if i < len(labelValues) {
+			points[i].Value = labelValues[i]
+			points[i].hasValue = true
 		}
 	}
 }
@@ -2130,11 +2150,27 @@ func (sac *StackedAreaChart) Draw(data ChartData) error {
 			cumulative[j] += v
 			vals[j] = cumulative[j]
 		}
+		authored := make([]float64, numCategories)
+		copy(authored, data.Series[i].Values)
 		stackedData.Series[i] = ChartSeries{
-			Name:   data.Series[i].Name,
-			Values: vals,
-			Color:  data.Series[i].Color,
-			Labels: data.Series[i].Labels,
+			Name:        data.Series[i].Name,
+			Values:      vals,
+			Color:       data.Series[i].Color,
+			Labels:      data.Series[i].Labels,
+			labelValues: authored,
+		}
+	}
+
+	// Pin each series' identity colour in AUTHORED order before the paint
+	// order is reversed. LineChart allocates palette colours by position, so
+	// reversing first handed the first series the last series' colour — the
+	// same data drew blue/orange as a bar chart and orange/blue as a stacked
+	// area (go-slide-creator-b7qqg.19). Explicit series colours are kept.
+	colors := resolveColors(sac.config.Colors, sac.builder.StyleGuide(), len(stackedData.Series))
+	for i := range stackedData.Series {
+		if stackedData.Series[i].Color == nil && i < len(colors) {
+			c := colors[i]
+			stackedData.Series[i].Color = &c
 		}
 	}
 
@@ -2167,7 +2203,11 @@ type ScatterChartConfig struct {
 	// VariableSize enables bubble chart mode.
 	VariableSize bool
 
-	// SizeRange is the min/max size for bubble mode.
+	// SizeRange is the [minimum, maximum] bubble DIAMETER in points for bubble
+	// mode. The largest size value in the whole chart is drawn at the maximum;
+	// every other bubble's AREA is proportional to its value. The minimum is
+	// only a visibility floor for zero and near-zero sizes (see
+	// BubbleSizeScale).
 	SizeRange [2]float64
 }
 
@@ -2179,7 +2219,9 @@ func DefaultScatterChartConfig(width, height float64) ScatterChartConfig {
 		PointShape:   MarkerCircle,
 		ShowLabels:   false,
 		VariableSize: false,
-		SizeRange:    [2]float64{4, 20},
+		// A 84pt maximum keeps the largest bubble the size it had under the
+		// old linear mapping (8 * 0.5 * (1+20)).
+		SizeRange: [2]float64{3, 84},
 	}
 }
 
@@ -2461,6 +2503,11 @@ func (sc *ScatterChart) drawPoints(data ChartData, xScale, yScale *LinearScale, 
 
 	var pending []scatterLabel
 
+	var sizeScale *BubbleSizeScale
+	if sc.config.VariableSize {
+		sizeScale = NewBubbleSizeScale(data.Series, sc.config.SizeRange[0], sc.config.SizeRange[1], sc.config.PointSize)
+	}
+
 	for seriesIdx, series := range data.Series {
 		pointConfig := DefaultPointSeriesConfig()
 		pointConfig.Color = colors[seriesIdx%len(colors)]
@@ -2474,20 +2521,10 @@ func (sc *ScatterChart) drawPoints(data ChartData, xScale, yScale *LinearScale, 
 			pointConfig.Color = *series.Color
 		}
 
-		// Handle bubble chart mode: variable-size points from BubbleValues
-		if sc.config.VariableSize && len(series.BubbleValues) > 0 {
-			bMin, bMax := series.BubbleValues[0], series.BubbleValues[0]
-			for _, bv := range series.BubbleValues {
-				if bv < bMin {
-					bMin = bv
-				}
-				if bv > bMax {
-					bMax = bv
-				}
-			}
-			sizeScale := NewLinearScale(bMin, bMax)
-			sizeScale.SetRangeLinear(sc.config.SizeRange[0], sc.config.SizeRange[1])
-			pointConfig.SizeScale = sizeScale
+		// Bubble mode: one chart-wide, area-proportional size scale shared by
+		// every series (go-slide-creator-b7qqg.20, .21).
+		if sizeScale != nil && len(series.BubbleValues) > 0 {
+			pointConfig.AreaScale = sizeScale
 		}
 
 		ps := NewPointSeries(b, pointConfig)

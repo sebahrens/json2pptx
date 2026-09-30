@@ -275,10 +275,9 @@ type StyleSpec struct {
 // side; the chart_render bridge copies field-for-field.
 type ValueFormatSpec struct {
 	// Style selects the notation: "plain" (grouped digits, the default),
-	// "compact" (1.2K / 3.4M / 5.6B / 7.8T), "percent" (fractions in [0,1]
-	// are multiplied by 100; larger values are preserved with an ambiguity
-	// finding), or "currency" (grouped digits with Prefix; "¤" plus a finding
-	// when Prefix is omitted).
+	// "compact" (1.2K / 3.4M / 5.6B / 7.8T), "percent" (units set by
+	// InputScale), or "currency" (grouped digits with Prefix; "¤" plus a
+	// finding when Prefix is omitted).
 	Style string `json:"style,omitempty" yaml:"style,omitempty"`
 
 	// Decimals fixes the number of decimal places. Nil lets the renderer pick:
@@ -296,12 +295,28 @@ type ValueFormatSpec struct {
 	// ThousandsSep groups the integer part in threes. Nil means the style's
 	// default: on for plain and currency, off for compact and percent.
 	ThousandsSep *bool `json:"thousands_sep,omitempty" yaml:"thousands_sep,omitempty"`
+
+	// InputScale declares the units of the data for style "percent":
+	// "fraction" (0.25 is 25%, 1.2 is 120%), "percentage_points" (0.25 is
+	// 0.25%, 25 is 25%) or "auto" / empty (fractions when every value is
+	// within [-1, 1], percentage points otherwise; auto reports
+	// chart.percent_scale_ambiguous either way). It applies to the ticks, the
+	// data labels and any in-mark label alike, and is rejected with any other
+	// style (go-slide-creator-b7qqg.22).
+	InputScale string `json:"input_scale,omitempty" yaml:"input_scale,omitempty"`
 }
+
+// Percent input scales accepted by ValueFormatSpec.InputScale.
+const (
+	InputScaleAuto             = "auto"
+	InputScaleFraction         = "fraction"
+	InputScalePercentagePoints = "percentage_points"
+)
 
 // IsZero reports whether the spec asks for nothing.
 func (v *ValueFormatSpec) IsZero() bool {
 	return v == nil || (v.Style == "" && v.Decimals == nil && v.Prefix == "" &&
-		v.Suffix == "" && v.ThousandsSep == nil)
+		v.Suffix == "" && v.ThousandsSep == nil && v.InputScale == "")
 }
 
 // ChartStyleOverrides carries per-request opt-ins/opt-outs that flip an

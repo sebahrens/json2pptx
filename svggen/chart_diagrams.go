@@ -1648,8 +1648,26 @@ func (d *BubbleChartDiagram) Validate(req *RequestEnvelope) error {
 	if err := validateCategoriesAndSeries(req.Data, "bubble_chart", false, 1); err != nil {
 		return err
 	}
-	_, err := extractBubbleChartData(req)
-	return err
+	data, err := extractBubbleChartData(req)
+	if err != nil {
+		return err
+	}
+	// A bubble's area encodes its size, and a negative number has no area
+	// (go-slide-creator-b7qqg.21). Zero is allowed and drawn at the minimum
+	// visible marker.
+	for i, s := range data.Series {
+		for j, v := range s.BubbleValues {
+			if v < 0 {
+				return &ValidationError{
+					Field:   fmt.Sprintf("data.series[%d].bubble_values[%d]", i, j),
+					Code:    ErrCodeInvalidValue,
+					Message: "bubble_chart sizes must be zero or positive: bubble area is proportional to size, and a negative size has no area. Plot the signed quantity on an axis instead",
+					Value:   v,
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // Render generates an SVG document for the bubble chart.

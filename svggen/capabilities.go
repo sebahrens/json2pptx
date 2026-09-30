@@ -76,7 +76,7 @@ func ChartCapabilities() []ChartCapability {
 			SupportsNegatives: boolPtr(true),
 			SupportsLogScale:  boolPtr(true),
 			LabelStrategy:     strPtr("adapt: shrink→two-line wrap→rotate up to 90°→bounded ellipsis; never thin nominal categories"),
-			DensityBehavior:   strPtr("crowded categories recommend horizontal-bar-with-callouts or split; auto log-scale at 1000x range"),
+			DensityBehavior:   strPtr("crowded categories recommend horizontal-bar-with-callouts or split; values spanning 1000x or more stay on a linear axis with value labels and report chart.wide_range_linear — log scale only when style.scale is \"log\", and a log axis is visibly titled \"log scale\""),
 			Status:            "ready",
 		},
 		{
@@ -87,7 +87,7 @@ func ChartCapabilities() []ChartCapability {
 			SupportsNegatives: boolPtr(true),
 			SupportsLogScale:  boolPtr(true),
 			LabelStrategy:     strPtr("adapt: shrink→two-line wrap→rotate up to 90°→bounded ellipsis; never thin nominal categories"),
-			DensityBehavior:   strPtr("crowded categories recommend horizontal-bar-with-callouts or split; auto log-scale at 1000x range"),
+			DensityBehavior:   strPtr("crowded categories recommend horizontal-bar-with-callouts or split; values spanning 1000x or more stay on a linear axis with value labels and report chart.wide_range_linear — log scale only when style.scale is \"log\", and a log axis is visibly titled \"log scale\""),
 			Status:            "ready",
 		},
 		{

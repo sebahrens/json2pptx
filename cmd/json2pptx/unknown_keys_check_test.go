@@ -51,7 +51,7 @@ func TestUnknownKeys_ValueFormat(t *testing.T) {
 	raw := json.RawMessage(`{"template":"t","slides":[{"slide_type":"chart","content":[
 		{"placeholder_id":"body","type":"chart","chart_value":{"type":"bar",
 			"data":{"categories":["Q1"],"series":[{"name":"Rev","values":[1]}]},
-			"style":{"show_values":true,"value_format":{"style":"compact","prefix":"€","decimals":1,"suffix":"","thousands_sep":true,"stile":"compact","separator":true}}}}]}]}`)
+			"style":{"show_values":true,"value_format":{"style":"compact","prefix":"€","decimals":1,"suffix":"","thousands_sep":true,"input_scale":"auto","stile":"compact","separator":true}}}}]}]}`)
 
 	got := map[string]bool{}
 	for _, w := range checkInputUnknownKeys(raw) {
@@ -71,6 +71,7 @@ func TestUnknownKeys_ValueFormat(t *testing.T) {
 		"/slides/0/content/0/chart_value/style/value_format/decimals",
 		"/slides/0/content/0/chart_value/style/value_format/suffix",
 		"/slides/0/content/0/chart_value/style/value_format/thousands_sep",
+		"/slides/0/content/0/chart_value/style/value_format/input_scale",
 	} {
 		if got[ok] {
 			t.Errorf("working key %s reported as unknown", ok)
