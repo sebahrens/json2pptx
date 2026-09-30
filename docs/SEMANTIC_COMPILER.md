@@ -169,7 +169,7 @@ HTTP:
 - `GET /api/v1/semantic/schema`
 - `POST /api/v1/semantic/validate`
 - `POST /api/v1/semantic/compile` (add `?include_compiled_json=true` for the raw deck)
-- `POST /api/v1/semantic/render` — **deferred, returns HTTP 501**; the render orchestration lives in the CLI layer, so use `json2pptx semantic render` (CLI) or `render_deck_spec` (MCP)
+- `POST /api/v1/semantic/render` — compile and render to `.pptx` through the same runner as `json2pptx semantic render` / `render_deck_spec` (raw spec body, or multipart with a `spec` part plus an optional bring-your-own `template` .pptx and `assets` files); the runner is injected into `internal/api` from `cmd/json2pptx` at server wiring time. See `docs/api/README.md` (Render)
 
 ## Package layout
 

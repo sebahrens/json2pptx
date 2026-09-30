@@ -119,7 +119,10 @@ in `validate_deck_spec` too. If render still refuses (`success: false`), the
 refusal is a diagnostic (`code`, `severity`, `semantic_path`,
 `evidence.measured`/`allowed`) whose `next_tool_call` — also top level — is a
 `validate_deck_spec` patch: rewrite the named field, or for a list, switch
-the slide to its native layout (`/slides/N/layout: "content"`).
+the slide to its native layout (`/slides/N/layout: "content"`). Inside a
+`raw_json2pptx` slide its `semantic_path` is the slide's `slides[N].slide`
+payload. HTTP integrations get the same render through
+`POST /api/v1/semantic/render` (documented in the repository's `docs/api/README.md`).
 After each revision, render and inspect the affected slides, then inspect all
 slides of the final revision as required by [SKILL.md](SKILL.md).
 

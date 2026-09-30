@@ -33,10 +33,9 @@ import (
 // (unsupported content type, oversized or empty body) keep the simple
 // apierrors.Response shape.
 //
-// Render is intentionally deferred: the render orchestration (RunPresentation)
-// still lives in cmd/json2pptx, not internal/, so POST /api/v1/semantic/render
-// returns 501 and points callers at the CLI / MCP render surfaces until the
-// orchestration is extracted into internal/.
+// Render (POST /api/v1/semantic/render) lives in semantic_render.go: it drives
+// the shared presentation runner, which cmd/json2pptx injects at server wiring
+// time (ServerConfig.SemanticRenderer) so internal/api never imports cmd/.
 // ---------------------------------------------------------------------------
 
 // semanticValidateResponse is the body of POST /api/v1/semantic/validate. valid
@@ -168,27 +167,6 @@ func SemanticCompileHandler() http.HandlerFunc {
 			resp.CompiledJSON = raw
 		}
 		writeJSON(w, http.StatusOK, resp)
-	}
-}
-
-// SemanticRenderHandler returns POST /api/v1/semantic/render — deferred. The
-// render orchestration (RunPresentation) currently lives in cmd/json2pptx, not
-// internal/, so the HTTP surface cannot drive it without duplicating the flow.
-// Until that orchestration is extracted into internal/, this endpoint responds
-// 501 and points callers at the CLI / MCP render surfaces.
-func SemanticRenderHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		writeError(w, http.StatusNotImplemented, apierrors.CodeUnsupportedFeature,
-			"Semantic render is not yet available over HTTP. Use the `json2pptx semantic render` CLI "+
-				"or the render_deck_spec MCP tool; POST /api/v1/semantic/compile to obtain the raw "+
-				"PresentationInput JSON in the meantime.",
-			map[string]any{
-				"alternatives": []string{
-					"json2pptx semantic render",
-					"render_deck_spec (MCP)",
-					"POST /api/v1/semantic/compile",
-				},
-			})
 	}
 }
 

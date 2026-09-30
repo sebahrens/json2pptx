@@ -197,8 +197,8 @@ func TestSemanticCompileHandler_MalformedJSON(t *testing.T) {
 	}
 }
 
-func TestSemanticRenderHandler_Deferred(t *testing.T) {
-	w := postSemantic(t, SemanticRenderHandler(), "/api/v1/semantic/render", "application/json", validDeckSpecJSON)
+func TestSemanticRenderHandler_NoRendererIs501(t *testing.T) {
+	w := postSemantic(t, SemanticRenderHandler(nil, t.TempDir(), 0, nil), "/api/v1/semantic/render", "application/json", validDeckSpecJSON)
 	if w.Code != http.StatusNotImplemented {
 		t.Fatalf("status = %d, want 501", w.Code)
 	}

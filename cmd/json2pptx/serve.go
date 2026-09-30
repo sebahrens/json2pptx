@@ -151,6 +151,10 @@ func runServe() error {
 		AllowedImagePaths:     cfg.Images.AllowedBasePaths,
 		MaxSlidesPerRequest:   cfg.Server.MaxSlidesPerRequest,
 		MaxConcurrentConverts: cfg.Server.MaxConcurrentConverts,
+		// The shared semantic render runner, built from the same loaded
+		// config so HTTP renders use this server's templates dir, SVG
+		// strategy and image allow-list (go-slide-creator-b7qqg.25).
+		SemanticRenderer: newHTTPSemanticRenderer(cfg),
 	})
 
 	// Start output file cleanup daemon (enforces FileRetention policy)

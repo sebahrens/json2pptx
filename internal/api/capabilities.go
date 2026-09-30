@@ -24,14 +24,17 @@ type ConvertCapabilities struct {
 }
 
 // SemanticCapabilities describes what the /api/v1/semantic/* endpoints support.
-// Render is deferred until the render orchestration is extracted into internal/,
-// so it is advertised as unavailable with its CLI/MCP alternatives.
+// Render runs the same presentation runner as the CLI / MCP render surfaces.
+// DeferredOperations is kept (empty) so clients that read it see nothing
+// deferred.
 type SemanticCapabilities struct {
 	SupportedOperations []string `json:"supported_operations"`
 	DeferredOperations  []string `json:"deferred_operations"`
 	RequestBody         string   `json:"request_body"`
+	RenderRequestBody   string   `json:"render_request_body"`
 	QueryParameters     []string `json:"query_parameters"`
 	DiagnosticContract  string   `json:"diagnostic_contract"`
+	RenderResponse      string   `json:"render_response"`
 }
 
 // CapabilitiesHandler returns a handler for GET /api/v1/capabilities.
@@ -70,14 +73,22 @@ func CapabilitiesHandler() http.HandlerFunc {
 				},
 			},
 			SemanticCapabilities: SemanticCapabilities{
-				SupportedOperations: []string{"schema", "validate", "compile"},
-				DeferredOperations: []string{
-					"render (use `json2pptx semantic render` CLI or render_deck_spec MCP; HTTP returns 501)",
+				SupportedOperations: []string{"schema", "validate", "compile", "render"},
+				DeferredOperations:  []string{},
+				RequestBody:         "Raw semantic deck spec document; application/json parsed as JSON, application/x-yaml as YAML.",
+				RenderRequestBody: "render also accepts multipart/form-data: a \"spec\" part (file or field), an optional " +
+					"\"template\" .pptx part (bring-your-own template, used when the spec pins no meta.template) and " +
+					"any number of \"assets\" file parts that relative asset paths in the spec resolve against.",
+				QueryParameters: []string{
+					"strict (off|warn|strict, default warn)", "template",
+					"include_compiled_json (compile only)", "output_validation (render only; off|warn|strict, default strict)",
 				},
-				RequestBody:     "Raw semantic deck spec document; application/json parsed as JSON, application/x-yaml as YAML.",
-				QueryParameters: []string{"strict (off|warn|strict, default warn)", "template", "include_compiled_json (compile only)"},
-				DiagnosticContract: "Diagnostic-bearing responses use the shared FindingEnvelope; " +
+				DiagnosticContract: "validate/compile responses use the shared FindingEnvelope; render returns the " +
+					"`json2pptx semantic render` result object (diagnostics carry semantic_path plus raw_path); " +
 					"transport/request errors use the simple error envelope.",
+				RenderResponse: "200 with file_url (GET /api/v1/download/{filename}), expires_at, slide_count, content_hash, " +
+					"quality, deterministic_ready, publishable, warnings, diagnostics; 422 with ok=false, error and " +
+					"source-addressed diagnostics when the spec, template, assets or a quality gate refuses the render.",
 			},
 			AvailableEndpoints: []string{
 				"GET  /api/v1/health",
@@ -109,7 +120,8 @@ func CapabilitiesHandler() http.HandlerFunc {
 			},
 			RecommendedInterface: "For decks with charts, diagrams, tables, images, shape grids, " +
 				"or named patterns, use the MCP interface (json2pptx mcp) or the CLI " +
-				"(json2pptx generate). The HTTP API supports basic text and bullet slides only.",
+				"(json2pptx generate). POST /api/v1/convert supports basic text and bullet slides only; " +
+				"POST /api/v1/semantic/render renders full semantic deck specs.",
 		}
 
 		writeJSON(w, http.StatusOK, resp)
