@@ -1333,6 +1333,17 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"Widen or heighten the diagram frame, or move the detail to a text column beside it.",
 		},
 	},
+	"diagram.region_overflow": {
+		Code:        "diagram.region_overflow",
+		Summary:     "A diagram caption could not fit inside the region it labels and crosses the region's outline.",
+		Severity:    "review",
+		WhenEmitted: "A Venn intersection caption (field intersections.<key>) does not fit inside its lens or pairwise / triple region at a readable size, even after the renderer shrank it to the floor, re-broke its lines, moved it along the region and (two circles, overlap_ratio not set) widened the overlap.",
+		RemediationSteps: []string{
+			"Shorten the caption named in fix.params.label.",
+			"When fix.params.overlap_ratio is present, set data.overlap_ratio to it (or remove your overlap_ratio so the renderer can widen the overlap itself).",
+			"Move the shared detail to a callout or text column beside the diagram, or use matrix_2x2 / comparison-2col instead.",
+		},
+	},
 	"diagram.quadrant_position_defaulted": {
 		Code:        "diagram.quadrant_position_defaulted",
 		Summary:     "A matrix quadrant had no valid position and was placed by its list index.",

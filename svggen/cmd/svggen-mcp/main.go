@@ -1364,6 +1364,7 @@ func buildSvggenVocabularies() capabilitiesVocabularies {
 		svggen.FindingCurrencyPrefixDefaulted,
 		svggen.FindingDiagramItemsDropped,
 		svggen.FindingDiagramTextOverlap,
+		svggen.FindingDiagramRegionOverflow,
 		svggen.FindingQuadrantPositionDefaulted,
 		svggen.FindingInvalidNumeric,
 		svggen.FindingInvalidTimeFormat,

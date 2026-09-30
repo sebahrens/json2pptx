@@ -622,6 +622,7 @@ go test ./cmd/json2pptx -run TestFindingCatalogCodesAreDocumented -update-diag-a
 | `chart.invalid_numeric` | review | Chart data contains a value that cannot be parsed as a number. |
 | `chart.invalid_time_format` | review | A time-axis value is not in a recognized format. |
 | `diagram.label_truncated` | review | A diagram label was shortened to fit. |
+| `diagram.region_overflow` | review | A diagram caption could not fit inside the region it labels and crosses the region's outline. |
 | `diagram.quadrant_position_defaulted` | review | A matrix quadrant had no valid position and was placed by its list index. |
 | `invalid_enum` | refuse | A pattern field has an unsupported enum value. |
 | `layout_synthesized` | review | A missing template layout was synthesized. |

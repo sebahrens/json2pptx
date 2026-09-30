@@ -3,6 +3,8 @@ package svggen
 import (
 	"fmt"
 	"math"
+	"sort"
+	"strings"
 )
 
 // =============================================================================
@@ -22,6 +24,12 @@ type VennConfig struct {
 	// OverlapRatio controls how much circles overlap (0 = touching, 1 = concentric).
 	// Typical values: 0.3-0.5
 	OverlapRatio float64
+
+	// FixedOverlap stops a two-circle diagram from widening OverlapRatio (up
+	// to vennMaxAdaptiveOverlap) when that is what it takes to fit the
+	// intersection caption inside the lens. Set when the author supplied
+	// overlap_ratio.
+	FixedOverlap bool
 }
 
 // DefaultVennConfig returns default Venn configuration.
@@ -76,6 +84,8 @@ type VennData struct {
 type VennChart struct {
 	builder *SVGBuilder
 	config  VennConfig
+	// layouts are the circles of the last Draw, for region checks in tests.
+	layouts []circleLayout
 }
 
 // NewVennChart creates a new Venn chart renderer.
@@ -137,10 +147,14 @@ func (vc *VennChart) Draw(data VennData) error {
 	// Compute circle layouts
 	var layouts []circleLayout
 	if numCircles == 2 {
+		vc.adaptOverlap2(data, plotArea, colors)
 		layouts = vc.layout2Circles(plotArea, colors)
 	} else {
+		vc.adaptOverlap3(data, plotArea, colors)
 		layouts = vc.layout3Circles(plotArea, colors)
 	}
+
+	vc.layouts = layouts
 
 	// Draw circles (background fill)
 	for _, cl := range layouts {
@@ -161,7 +175,7 @@ func (vc *VennChart) Draw(data VennData) error {
 
 	// Draw intersection labels
 	if numCircles == 2 {
-		vc.drawIntersection2(data, layouts)
+		vc.drawIntersection2(data, layouts, plotArea, colors)
 	} else {
 		vc.drawIntersections3(data, layouts)
 	}
@@ -196,7 +210,10 @@ func (vc *VennChart) layout2Circles(area Rect, colors []Color) []circleLayout {
 	// Two circles side by side with overlap.
 	// Use most of the available area so labels have room.
 	centerY := area.Y + area.H/2
-	radius := math.Min(area.W/2.8, area.H/2.1)
+	// The pair is 2·(2-o)·r wide for overlap o. The old W/2.8 bound ignored
+	// that, so a width-bound frame (a half-width column) drew the outer
+	// circles past the canvas edge.
+	radius := math.Min(area.W/(2*(2-vc.config.OverlapRatio)), area.H/2.1)
 	offset := radius * (1.0 - vc.config.OverlapRatio)
 	centerX := area.X + area.W/2
 
@@ -211,15 +228,23 @@ func (vc *VennChart) layout3Circles(area Rect, colors []Color) []circleLayout {
 	// Three circles in a triangular arrangement
 	centerX := area.X + area.W/2
 	centerY := area.Y + area.H/2
-	radius := math.Min(area.W/3.2, area.H/3.0)
-	offset := radius * (1.0 - vc.config.OverlapRatio)
+	// The triangle's footprint is (2 + sqrt(3)(1-o))·r wide and
+	// (2 + 1.5(1-o))·r tall for overlap o. The historical divisors (3.2, 3.0)
+	// stay the ceiling, so a wider overlap — adopted to fit intersection
+	// captions — grows the circles into the space it frees instead of
+	// shrinking the diagram.
+	spread := 1.0 - vc.config.OverlapRatio
+	radius := math.Min(area.W/math.Min(3.2, 2+math.Sqrt(3)*spread), area.H/math.Min(3.0, 2+1.5*spread))
+	offset := radius * spread
 
 	// Equilateral triangle arrangement:
 	// Top circle, bottom-left, bottom-right.
-	// Place centroid at the plot area center so the "abc" label sits at the
-	// visual center.  The triangle is top-heavy (1 circle above vs 2 below),
-	// but the title/header fills the space above the circles.
-	triCenterY := centerY
+	// The footprint runs from offset+r above the centroid to offset/2+r below
+	// it, so the centroid sits offset/4 below the plot centre to centre the
+	// footprint vertically. With the centroid at the plot centre the top
+	// circle overran the plot area while space was left below the diagram,
+	// which cost the height-bound diagrams on wide slide frames radius.
+	triCenterY := centerY + offset/4
 
 	return []circleLayout{
 		{cx: centerX, cy: triCenterY - offset, radius: radius, color: colors[0]},                                                  // top
@@ -442,164 +467,383 @@ func (vc *VennChart) drawLabels3(data VennData, layouts []circleLayout) {
 	}
 }
 
+// vennMaxAdaptiveOverlap is the widest overlap a two-circle diagram adopts on
+// its own to fit an intersection caption. Beyond it the exclusive crescents get
+// too thin for their own labels.
+const vennMaxAdaptiveOverlap = 0.40
+
+// vennOverlapStep is the increment of the overlap search.
+const vennOverlapStep = 0.05
+
+// vennLens2 is the laid-out "ab" region of a two-circle diagram: the caption
+// fitted to the lens and the item list's budget below it.
+type vennLens2 struct {
+	fit        vennCaptionFit
+	ix, iy     float64
+	itemsTop   float64
+	itemsW     float64
+	itemsMaxH  float64
+	itemsFont  float64
+	itemsAllIn bool // every item fits the budget at itemsFont
+}
+
+// layoutIntersection2 fits the "ab" caption inside the lens of two circles and
+// budgets its items: as wide as the lens where they sit, down to r/2 below
+// the centre line.
+func (vc *VennChart) layoutIntersection2(region VennRegion, layouts []circleLayout) vennLens2 {
+	style := vc.builder.StyleGuide()
+	r := layouts[0].radius
+	l := vennLens2{
+		ix: (layouts[0].cx + layouts[1].cx) / 2,
+		iy: (layouts[0].cy + layouts[1].cy) / 2,
+	}
+	floor := vc.vennCaptionFloor(r)
+	labelSize, itemSize := vennFontSizes(style)
+	lens := vennRegionShape{in: layouts[:2], pad: vc.vennCaptionPad(floor)}
+	l.fit = vc.fitCaptionInRegion(region.Label, lens, l.ix, l.iy, labelSize, floor, style.Typography.WeightMedium)
+
+	l.itemsTop = l.iy + l.fit.height()/2 + labelSize*0.4
+	l.itemsMaxH = l.iy + r*0.50 - l.itemsTop
+	itemsLens := vennRegionShape{in: layouts[:2], pad: vc.vennCaptionPad(itemSize)}
+	l.itemsW = 2 * itemsLens.halfWidth(l.ix, l.itemsTop, l.itemsTop+math.Max(0, math.Min(l.itemsMaxH, itemSize*3)))
+	if l.itemsW <= 0 {
+		l.itemsW = r * math.Max(vc.config.OverlapRatio*2.5, 0.55)
+	}
+	l.itemsFont = vc.fitVennItemsFontSize(region.Items, l.itemsW, itemSize, l.itemsMaxH, style)
+	l.itemsAllIn = len(region.Items) == 0 || vc.vennItemsHeight(region.Items, l.itemsW, l.itemsFont) <= l.itemsMaxH
+	return l
+}
+
+// vennItemsHeight is the stacked height of items wrapped at width, as
+// drawVennItemsBudgeted lays them out.
+func (vc *VennChart) vennItemsHeight(items []string, width, fontSize float64) float64 {
+	b := vc.builder
+	lineFactor := 1.2
+	if st := b.StyleGuide(); st != nil && st.Typography != nil && st.Typography.LineHeight > 0 {
+		lineFactor = st.Typography.LineHeight
+	}
+	b.Push()
+	defer b.Pop()
+	b.SetFontSize(fontSize)
+	lineSpacing := fontSize * lineFactor
+	h := 0.0
+	for _, item := range items {
+		block := b.WrapText(item, width)
+		if len(block.Lines) == 0 {
+			continue
+		}
+		h += float64(len(block.Lines)) * lineSpacing
+	}
+	return h + float64(max(len(items)-1, 0))*lineSpacing*0.15
+}
+
+// adaptOverlap2 widens the overlap of a two-circle diagram, in
+// vennOverlapStep increments up to vennMaxAdaptiveOverlap, until the "ab"
+// caption fits the lens at (close to) its preferred size with all of its
+// items. It keeps the overlap that fits best, and leaves it unchanged when no
+// overlap helps or when the author fixed it.
+func (vc *VennChart) adaptOverlap2(data VennData, area Rect, colors []Color) {
+	if vc.config.FixedOverlap || data.Intersections == nil {
+		return
+	}
+	region, ok := data.Intersections["ab"]
+	if !ok || (strings.TrimSpace(region.Label) == "" && len(region.Items) == 0) {
+		return
+	}
+	if ov, found := vc.overlapFittingIntersection(region, area, colors); found {
+		vc.config.OverlapRatio = ov
+	}
+}
+
+// overlapFittingIntersection searches overlaps from the current ratio up to
+// vennMaxAdaptiveOverlap for the one that fits the "ab" region best: the first
+// whose caption fits at 90% of the preferred size with every item, else the
+// best by (caption fits, items fit, caption size). It restores the configured
+// ratio before returning; found is false when no overlap fits the caption.
+func (vc *VennChart) overlapFittingIntersection(region VennRegion, area Rect, colors []Color) (float64, bool) {
+	base := vc.config.OverlapRatio
+	defer func() { vc.config.OverlapRatio = base }()
+	labelSize, _ := vennFontSizes(vc.builder.StyleGuide())
+	type score struct {
+		items bool
+		font  float64
+	}
+	better := func(a, b score) bool {
+		if a.items != b.items {
+			return a.items
+		}
+		return a.font > b.font+1e-9
+	}
+	bestOv, found := base, false
+	var best score
+	for i := 0; ; i++ {
+		ov := base + float64(i)*vennOverlapStep
+		if i > 0 && ov > vennMaxAdaptiveOverlap+1e-9 {
+			break
+		}
+		vc.config.OverlapRatio = ov
+		l := vc.layoutIntersection2(region, vc.layout2Circles(area, colors))
+		if !l.fit.ok {
+			continue
+		}
+		if l.itemsAllIn && l.fit.fontSize >= labelSize*0.9-1e-9 {
+			return ov, true
+		}
+		if sc := (score{l.itemsAllIn, l.fit.fontSize}); !found || better(sc, best) {
+			bestOv, best, found = ov, sc, true
+		}
+	}
+	return bestOv, found
+}
+
 // drawIntersection2 draws the label in the intersection region of 2 circles.
-func (vc *VennChart) drawIntersection2(data VennData, layouts []circleLayout) {
+func (vc *VennChart) drawIntersection2(data VennData, layouts []circleLayout, area Rect, colors []Color) {
 	if data.Intersections == nil {
 		return
 	}
-
-	b := vc.builder
-	style := b.StyleGuide()
-	r := layouts[0].radius
-
 	region, ok := data.Intersections["ab"]
 	if !ok {
 		return
 	}
+	style := vc.builder.StyleGuide()
 
-	// Intersection center is midpoint between circle centers.
-	ix := (layouts[0].cx + layouts[1].cx) / 2
-	iy := (layouts[0].cy + layouts[1].cy) / 2
-
-	// Blend colors for intersection
+	// Fit the caption to the lens itself: every line inside both circles over
+	// its full height, at a size no smaller than the builder's floor.
+	l := vc.layoutIntersection2(region, layouts)
 	blendColor := blendColors(layouts[0].color, layouts[1].color)
-
-	// Calculate available width for the intersection lens.
-	// Use a generous width: the lens is geometrically wide enough to hold text
-	// at readable sizes. The previous formula (OverlapRatio*1.6) was too narrow.
-	intersectWidth := r * math.Max(vc.config.OverlapRatio*2.5, 0.55)
-
-	// Use style-guide font sizes, clamped to fit the intersection region.
-	// Don't apply vennLoScale to the clamp budget — it double-shrinks the font.
-	// The loScale is already handled by WrapText below.
-	labelSize, itemSize := vennFontSizes(style)
-	// Scale min floor down for very small canvases (r < 60) to avoid truncation.
-	minFloor := math.Max(6, math.Min(11, r*0.15))
-	interFit := LabelFitStrategy{PreferredSize: labelSize, MinSize: minFloor, MinCharWidth: 4.0}
-	origMinInter := b.MinFontSize()
-	b.SetMinFontSize(minFloor)
-	interResult := interFit.Fit(b, region.Label, intersectWidth, 0)
-	b.SetMinFontSize(origMinInter)
-	labelSize = interResult.FontSize
-
-	b.Push()
-	b.SetFontSize(labelSize)
-	b.SetFontWeight(style.Typography.WeightMedium)
-	b.SetTextColor(blendColor.Darken(0.3))
-
-	// Wrap the label using full geometric width (font already clamped for loScale)
-	block := b.WrapText(region.Label, intersectWidth)
-	if len(block.Lines) > 0 {
-		labelY := iy - block.TotalHeight/2
-		b.DrawTextBlock(block, ix, labelY+block.LineHeight, HorizontalAlignCenter)
+	vc.drawCaption(l.fit, l.ix, style.Typography.WeightMedium, blendColor.Darken(0.3))
+	if !l.fit.ok {
+		suggested := 0.0
+		if vc.config.FixedOverlap {
+			if ov, found := vc.overlapFittingIntersection(region, area, colors); found && ov > vc.config.OverlapRatio {
+				suggested = ov
+			}
+		}
+		vc.reportRegionOverflow("ab", region.Label, l.fit, data, suggested)
 	}
-	b.Pop()
-
-	// Budget items to stay within the bottom half of the intersection lens
-	labelBottomY := iy + block.TotalHeight/2 + labelSize*0.4
-	maxItemsBottom := iy + r*0.50
-	itemsMaxH := maxItemsBottom - labelBottomY
-	fittedSize := vc.fitVennItemsFontSize(region.Items, intersectWidth, itemSize, itemsMaxH, style)
-	vc.drawVennItemsBudgeted(region.Items, ix, labelBottomY, intersectWidth, fittedSize, itemsMaxH, style, region.Label)
+	vc.drawVennItemsBudgeted(region.Items, l.ix, l.itemsTop, l.itemsW, l.itemsFont, l.itemsMaxH, style, region.Label)
 }
 
-// drawIntersections3 draws labels in the intersection regions of 3 circles.
-func (vc *VennChart) drawIntersections3(data VennData, layouts []circleLayout) {
+// vennPlacedCaption is an intersection caption fitted to its region.
+type vennPlacedCaption struct {
+	key    string
+	region VennRegion
+	fit    vennCaptionFit
+	x, y   float64
+	shape  vennRegionShape
+	color  Color
+	weight int
+}
+
+// vennPairRegions are the pairwise regions of a 3-circle diagram.
+var vennPairRegions = []struct {
+	key  string
+	i, j int
+}{
+	{"ab", 0, 1},
+	{"ac", 0, 2},
+	{"bc", 1, 2},
+}
+
+// placeCaptions3 fits every intersection caption of a 3-circle diagram to its
+// region: pairwise captions inside both of their circles and outside the
+// third, the triple caption inside all three.
+func (vc *VennChart) placeCaptions3(data VennData, layouts []circleLayout) []vennPlacedCaption {
 	if data.Intersections == nil {
-		return
+		return nil
 	}
-
-	b := vc.builder
-	style := b.StyleGuide()
-
+	style := vc.builder.StyleGuide()
 	r := layouts[0].radius
-	labelSize, itemSize := vennFontSizes(style)
-
+	labelSize, _ := vennFontSizes(style)
 	centerX := (layouts[0].cx + layouts[1].cx + layouts[2].cx) / 3
 	centerY := (layouts[0].cy + layouts[1].cy + layouts[2].cy) / 3
+	floor := vc.vennCaptionFloor(r)
+	pad := vc.vennCaptionPad(floor)
+	weight := style.Typography.WeightMedium
 
-	// Pairwise intersection positions
-	pairRegions := []struct {
-		key  string
-		i, j int
-	}{
-		{"ab", 0, 1},
-		{"ac", 0, 2},
-		{"bc", 1, 2},
-	}
-
-	for _, pr := range pairRegions {
+	var out []vennPlacedCaption
+	for _, pr := range vennPairRegions {
 		region, ok := data.Intersections[pr.key]
 		if !ok {
 			continue
 		}
+		k := 3 - pr.i - pr.j // the circle this region excludes
 
-		// Midpoint between two circle centers, pushed strongly away from the
-		// triple center (0.45 * r) so pairwise labels don't collide with "abc"
-		// or with each other.
-		mx := (layouts[pr.i].cx + layouts[pr.j].cx) / 2
-		my := (layouts[pr.i].cy + layouts[pr.j].cy) / 2
-		dx := mx - centerX
-		dy := my - centerY
+		// Search the caption anchor along the ray from the triple centre
+		// through the pair midpoint (the region's axis of symmetry) for the
+		// position that fits the caption largest, preferring the historical
+		// 0.45r push.
+		mx0 := (layouts[pr.i].cx + layouts[pr.j].cx) / 2
+		my0 := (layouts[pr.i].cy + layouts[pr.j].cy) / 2
+		dx := mx0 - centerX
+		dy := my0 - centerY
 		dist := math.Sqrt(dx*dx + dy*dy)
+		ux, uy := 0.0, 0.0
 		if dist > 0 {
-			pushFactor := r * 0.45
-			mx += dx / dist * pushFactor
-			my += dy / dist * pushFactor
+			ux, uy = dx/dist, dy/dist
 		}
-
-		blendColor := blendColors(layouts[pr.i].color, layouts[pr.j].color)
-		pairWidth := r * 0.65
-
-		// Clamp font to fit within geometric width (no loScale — it double-shrinks)
-		// Scale min floor down for very small canvases to avoid truncation.
-		pairMinFloor := math.Max(8, math.Min(11, r*0.15))
-		pairFit := LabelFitStrategy{PreferredSize: labelSize, MinSize: pairMinFloor, MinCharWidth: 5.5}
-		pairResult := pairFit.Fit(b, region.Label, pairWidth, 0)
-		pairLabelSize := pairResult.FontSize
-		b.Push()
-		b.SetFontSize(pairLabelSize)
-		b.SetFontWeight(style.Typography.WeightMedium)
-		b.SetTextColor(blendColor.Darken(0.3))
-		block := b.WrapText(region.Label, pairWidth)
-		if len(block.Lines) > 0 {
-			labelY := my - block.TotalHeight/2
-			b.DrawTextBlock(block, mx, labelY+block.LineHeight, HorizontalAlignCenter)
-		}
-		b.Pop()
-
-		itemsStartY := my + block.TotalHeight/2 + labelSize*0.3
-		pairItemsMaxH := r * 0.18
-		fittedPairSize := vc.fitVennItemsFontSize(region.Items, pairWidth, itemSize, pairItemsMaxH, style)
-		vc.drawVennItemsBudgeted(region.Items, mx, itemsStartY, pairWidth, fittedPairSize, pairItemsMaxH, style, region.Label)
+		shape := vennRegionShape{in: []circleLayout{layouts[pr.i], layouts[pr.j]}, out: []circleLayout{layouts[k]}, pad: pad}
+		fit, mx, my := vc.bestAnchoredCaption(region.Label, shape, mx0, my0, ux, uy, r, labelSize, floor, weight)
+		out = append(out, vennPlacedCaption{
+			key: pr.key, region: region, fit: fit, x: mx, y: my, shape: shape,
+			color: blendColors(layouts[pr.i].color, layouts[pr.j].color).Darken(0.3), weight: weight,
+		})
 	}
 
-	// Triple intersection: "abc"
 	if region, ok := data.Intersections["abc"]; ok {
-		blendColor := blendColors(blendColors(layouts[0].color, layouts[1].color), layouts[2].color)
-		tripleWidth := r * 0.50
-
-		// Clamp font to fit within geometric width (no loScale — it double-shrinks)
-		tripleMinFloor := math.Max(8, math.Min(11, r*0.15))
-		tripleFit := LabelFitStrategy{PreferredSize: labelSize, MinSize: tripleMinFloor, MinCharWidth: 5.5}
-		tripleResult := tripleFit.Fit(b, region.Label, tripleWidth, 0)
-		tripleLabelSize := tripleResult.FontSize
-		b.Push()
-		b.SetFontSize(tripleLabelSize)
-		b.SetFontWeight(style.Typography.WeightBold)
-		b.SetTextColor(blendColor.Darken(0.35))
-		block := b.WrapText(region.Label, tripleWidth)
-		if len(block.Lines) > 0 {
-			labelY := centerY - block.TotalHeight/2
-			b.DrawTextBlock(block, centerX, labelY+block.LineHeight, HorizontalAlignCenter)
-		}
-		b.Pop()
-
-		itemsStartY := centerY + block.TotalHeight/2 + labelSize*0.3
-		tripleItemsMaxH := r * 0.18
-		fittedTripleSize := vc.fitVennItemsFontSize(region.Items, tripleWidth, itemSize, tripleItemsMaxH, style)
-		vc.drawVennItemsBudgeted(region.Items, centerX, itemsStartY, tripleWidth, fittedTripleSize, tripleItemsMaxH, style, region.Label)
+		shape := vennRegionShape{in: layouts[:3], pad: pad}
+		bold := style.Typography.WeightBold
+		fit := vc.fitCaptionInRegion(region.Label, shape, centerX, centerY, labelSize, floor, bold)
+		out = append(out, vennPlacedCaption{
+			key: "abc", region: region, fit: fit, x: centerX, y: centerY, shape: shape,
+			color:  blendColors(blendColors(layouts[0].color, layouts[1].color), layouts[2].color).Darken(0.35),
+			weight: bold,
+		})
 	}
+	return out
+}
+
+// vennCaptionScore ranks a set of placed captions: more fitting captions
+// first, then the larger smallest font.
+func vennCaptionScore(placed []vennPlacedCaption) (fitting int, minFont float64) {
+	minFont = math.Inf(1)
+	for _, p := range placed {
+		if strings.TrimSpace(p.region.Label) == "" {
+			continue
+		}
+		if p.fit.ok {
+			fitting++
+		}
+		minFont = math.Min(minFont, p.fit.fontSize)
+	}
+	return fitting, minFont
+}
+
+// adaptOverlap3 widens the overlap of a 3-circle diagram, in vennOverlapStep
+// increments up to vennMaxAdaptiveOverlap3, until every intersection caption
+// fits its region at (close to) its preferred size, keeping the overlap that
+// fits the most captions at the largest size. The default 0.20 overlap leaves
+// the pairwise and triple regions too small for even a two-word caption at a
+// readable size.
+func (vc *VennChart) adaptOverlap3(data VennData, area Rect, colors []Color) {
+	if vc.config.FixedOverlap || data.Intersections == nil {
+		return
+	}
+	labelled := 0
+	for _, reg := range data.Intersections {
+		if strings.TrimSpace(reg.Label) != "" {
+			labelled++
+		}
+	}
+	if labelled == 0 {
+		return
+	}
+	labelSize, _ := vennFontSizes(vc.builder.StyleGuide())
+	base := vc.config.OverlapRatio
+	bestOv, bestFit, bestFont := base, -1, -1.0
+	for i := 0; ; i++ {
+		ov := base + float64(i)*vennOverlapStep
+		if i > 0 && ov > vennMaxAdaptiveOverlap3+1e-9 {
+			break
+		}
+		vc.config.OverlapRatio = ov
+		fitting, minFont := vennCaptionScore(vc.placeCaptions3(data, vc.layout3Circles(area, colors)))
+		if fitting == labelled && minFont >= labelSize*0.9-1e-9 {
+			bestOv = ov
+			break
+		}
+		if fitting > bestFit || (fitting == bestFit && minFont > bestFont+1e-9) {
+			bestOv, bestFit, bestFont = ov, fitting, minFont
+		}
+	}
+	vc.config.OverlapRatio = bestOv
+}
+
+// vennMaxAdaptiveOverlap3 is the widest overlap a 3-circle diagram adopts on
+// its own. Past it the pairwise regions shrink again as the triple region
+// grows.
+const vennMaxAdaptiveOverlap3 = 0.50
+
+// drawIntersections3 draws labels in the intersection regions of 3 circles.
+func (vc *VennChart) drawIntersections3(data VennData, layouts []circleLayout) {
+	style := vc.builder.StyleGuide()
+	r := layouts[0].radius
+	labelSize, itemSize := vennFontSizes(style)
+
+	for _, p := range vc.placeCaptions3(data, layouts) {
+		vc.drawCaption(p.fit, p.x, p.weight, p.color)
+		if !p.fit.ok {
+			vc.reportRegionOverflow(p.key, p.region.Label, p.fit, data, 0)
+		}
+
+		width := r * 0.65
+		if p.key == "abc" {
+			width = r * 0.50
+		}
+		itemsStartY := p.y + p.fit.height()/2 + labelSize*0.3
+		itemsMaxH := r * 0.18
+		if w := 2 * p.shape.halfWidth(p.x, itemsStartY, itemsStartY+itemsMaxH); w > 0 && w < width {
+			width = w
+		}
+		fitted := vc.fitVennItemsFontSize(p.region.Items, width, itemSize, itemsMaxH, style)
+		vc.drawVennItemsBudgeted(p.region.Items, p.x, itemsStartY, width, fitted, itemsMaxH, style, p.region.Label)
+	}
+}
+
+// vennAnchor is a candidate caption anchor in a pairwise region, in radius
+// units along (t) and across (q) the region's axis.
+type vennAnchor struct{ t, q float64 }
+
+// vennPairAnchors lists the anchors bestAnchoredCaption tries, nearest to the
+// historical 0.45r push first. The region's axis is diagonal for the upper
+// pairs, so horizontal text can gain width a little off the axis.
+var vennPairAnchors = func() []vennAnchor {
+	const preferredT = 0.45
+	var out []vennAnchor
+	for i := 0; i <= 14; i++ {
+		for _, q := range []float64{0, -0.10, 0.10, -0.20, 0.20} {
+			out = append(out, vennAnchor{t: 0.10 + float64(i)*0.05, q: q})
+		}
+	}
+	sort.SliceStable(out, func(a, b int) bool {
+		da := math.Abs(out[a].t-preferredT) + math.Abs(out[a].q)
+		db := math.Abs(out[b].t-preferredT) + math.Abs(out[b].q)
+		return da < db
+	})
+	return out
+}()
+
+// bestAnchoredCaption fits label into shape at the anchors of vennPairAnchors
+// around (x0, y0) on the axis (ux, uy) and returns the best: a fitting layout
+// over a failing one, then the larger font, then the anchor nearest the
+// historical position. It stops at the first anchor that fits at the
+// preferred size.
+func (vc *VennChart) bestAnchoredCaption(label string, shape vennRegionShape, x0, y0, ux, uy, r, preferred, floor float64, weight int) (vennCaptionFit, float64, float64) {
+	at := func(a vennAnchor) (float64, float64) {
+		return x0 + (ux*a.t-uy*a.q)*r, y0 + (uy*a.t+ux*a.q)*r
+	}
+	var best vennCaptionFit
+	bestX, bestY := at(vennPairAnchors[0])
+	have := false
+	for _, a := range vennPairAnchors {
+		ax, ay := at(a)
+		fit := vc.fitCaptionInRegion(label, shape, ax, ay, preferred, floor, weight)
+		if !fit.ok {
+			continue
+		}
+		if !have || fit.fontSize > best.fontSize+1e-9 {
+			best, bestX, bestY, have = fit, ax, ay, true
+		}
+		if fit.fontSize >= math.Max(preferred, floor)-1e-9 {
+			break
+		}
+	}
+	if !have {
+		// Nothing fits: keep the historical anchor for the best-effort layout.
+		ax, ay := at(vennPairAnchors[0])
+		return vc.fitCaptionInRegion(label, shape, ax, ay, preferred, floor, weight), ax, ay
+	}
+	return best, bestX, bestY
 }
 
 // fitVennItemsFontSize uses binary search to find the largest font size (floor 6pt)
@@ -881,6 +1125,7 @@ func (d *VennDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *SVG
 		}
 		if overlap, ok := req.Data["overlap_ratio"].(float64); ok {
 			config.OverlapRatio = overlap
+			config.FixedOverlap = true
 		}
 
 		chart := NewVennChart(builder, config)

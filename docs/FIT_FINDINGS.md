@@ -36,6 +36,17 @@ intersecting strings when their measured text boxes overlap substantially;
 Diagonal tick labels are excluded from this check until their rotated text
 outlines can be measured reliably.
 
+Venn intersection captions are fitted to the region they label, not a
+rectangle: every line must lie inside the lens (or the three-circle pairwise /
+triple region) over its full height, at a size no smaller than the placement
+floor. The renderer shrinks to that floor, re-breaks lines, moves a
+three-circle caption along its region and widens the overlap (up to 0.40 for
+two circles, 0.50 for three) when `overlap_ratio` is not authored. A caption
+that still cannot fit is drawn best-effort and reported as
+`diagram.region_overflow` (review, `fix.kind` `shorten_labels`, field
+`intersections.<key>`, `params.label`, and `params.overlap_ratio` when a wider
+authored overlap would fit it).
+
 Native OOXML diagrams use a companion preflight. It measures BMC, value-chain,
 panel, and heatmap copy against the same fixed-font cell proportions as their
 PowerPoint shape builders, and applies measured density ceilings to the other

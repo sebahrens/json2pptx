@@ -327,7 +327,9 @@ func TestVennDiagram_RenderSetsAlias(t *testing.T) {
 	}
 
 	svg := string(doc.Content)
-	for _, label := range []string{"Tech", "Design", "UX Engineering"} {
+	// The intersection caption is fitted to the lens and may break across
+	// lines (go-slide-creator-b7qqg.27), so check it word by word.
+	for _, label := range []string{"Tech", "Design", "UX", "Engineering"} {
 		if !strings.Contains(svg, label) {
 			t.Errorf("Expected SVG to contain %q", label)
 		}
@@ -450,8 +452,9 @@ func TestVennDiagram_Render_AllExclusiveItems(t *testing.T) {
 					}
 				}
 
-				// Intersection items must also be present
-				for _, item := range []string{"Prototyping", "User Research"} {
+				// Intersection items must also be present. They wrap to the
+				// lens width, so "User Research" may span two lines.
+				for _, item := range []string{"Prototyping", "User", "Research"} {
 					if !strings.Contains(svg, item) {
 						t.Errorf("MISSING intersection item %q in SVG output", item)
 					}

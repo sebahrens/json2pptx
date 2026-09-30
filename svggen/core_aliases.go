@@ -171,6 +171,7 @@ const (
 	FindingOverflowSuppressed        = core.FindingOverflowSuppressed
 	FindingDiagramItemsDropped       = core.FindingDiagramItemsDropped
 	FindingDiagramTextOverlap        = core.FindingDiagramTextOverlap
+	FindingDiagramRegionOverflow     = core.FindingDiagramRegionOverflow
 	FindingOrgChartDepthPruned       = core.FindingOrgChartDepthPruned
 	FindingQuadrantPositionDefaulted = core.FindingQuadrantPositionDefaulted
 	FindingPlotAreaCollapsed         = core.FindingPlotAreaCollapsed
