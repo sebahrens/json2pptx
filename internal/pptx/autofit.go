@@ -67,12 +67,63 @@ func applyAutofitScale(tb *TextBody, bounds RectEmu) {
 // AutofitScaleFor returns the uniform shrink (0..1] a normAutofit body needs to
 // fit bounds, or 1 when it fits, is not normAutofit, or cannot be measured.
 func AutofitScaleFor(tb *TextBody, bounds RectEmu) float64 {
-	if tb == nil || tb.AutoFit != "normAutofit" {
+	m, ok := autofitMeasureInput(tb, bounds)
+	if !ok {
 		return 1
+	}
+	scale, _ := textfit.AutofitScale(m.paras, m.measureW, m.availablePt, autofitOptions)
+	scale = math.Min(scale, longestWordScale(tb, m.widthEMU))
+	if scale >= 1 {
+		return 1
+	}
+	return scale
+}
+
+// AutofitFitsFor reports whether AutofitScaleFor(tb, bounds) >= 1 — the body
+// is written with no shrink — measuring only the authored size. Height
+// searches (writtenFitHeightPt, nativeTextNeedEMU) probe many heights and need
+// only this yes/no; AutofitScaleFor would walk every 2% shrink step down to
+// the floor for each probe that does not fit, which dominated schema-maximum
+// measurement under -race (go-slide-creator-b7qqg.16). The answer is
+// identical to AutofitScaleFor(tb, bounds) >= 1 by construction: the scale
+// search returns 1 exactly when the first (scale 1) step fits.
+func AutofitFitsFor(tb *TextBody, bounds RectEmu) bool {
+	m, ok := autofitMeasureInput(tb, bounds)
+	if !ok {
+		return true
+	}
+	if !textfit.AutofitFits(m.paras, m.measureW, m.availablePt, autofitOptions) {
+		return false
+	}
+	return longestWordScale(tb, m.widthEMU) >= 1
+}
+
+// autofitOptions is the measurement configuration AutofitScaleFor and
+// AutofitFitsFor share.
+var autofitOptions = textfit.AutofitOptions{
+	FontName:    autofitFontName,
+	LineSpacing: autofitLineSpacing,
+	FloorScale:  autofitFloorScale,
+}
+
+// autofitInput is the measurable form of a normAutofit body in bounds.
+type autofitInput struct {
+	paras       []textfit.AutofitParagraph
+	measureW    int64
+	availablePt float64
+	widthEMU    int64
+}
+
+// autofitMeasureInput prepares a body for measurement. ok is false when the
+// body is not normAutofit, has no text area, or has no measurable text — the
+// cases AutofitScaleFor reports as 1.
+func autofitMeasureInput(tb *TextBody, bounds RectEmu) (autofitInput, bool) {
+	if tb == nil || tb.AutoFit != "normAutofit" {
+		return autofitInput{}, false
 	}
 	widthEMU, heightEMU := textAreaEMU(tb, bounds)
 	if widthEMU <= 0 || heightEMU <= 0 {
-		return 1
+		return autofitInput{}, false
 	}
 
 	paras := make([]textfit.AutofitParagraph, 0, len(tb.Paragraphs))
@@ -88,7 +139,7 @@ func AutofitScaleFor(tb *TextBody, bounds RectEmu) float64 {
 		})
 	}
 	if len(paras) == 0 {
-		return 1
+		return autofitInput{}, false
 	}
 
 	availablePt := float64(heightEMU) / float64(types.EMUPerPoint)
@@ -106,16 +157,7 @@ func AutofitScaleFor(tb *TextBody, bounds RectEmu) float64 {
 		// at its measurement boundary.
 		measureW += 2 * autofitMeasureSideEMU
 	}
-	scale, _ := textfit.AutofitScale(paras, measureW, availablePt, textfit.AutofitOptions{
-		FontName:    autofitFontName,
-		LineSpacing: autofitLineSpacing,
-		FloorScale:  autofitFloorScale,
-	})
-	scale = math.Min(scale, longestWordScale(tb, widthEMU))
-	if scale >= 1 {
-		return 1
-	}
-	return scale
+	return autofitInput{paras: paras, measureW: measureW, availablePt: availablePt, widthEMU: widthEMU}, true
 }
 
 // longestWordScale returns the shrink at which the body's widest word fits

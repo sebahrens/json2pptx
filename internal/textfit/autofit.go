@@ -54,6 +54,31 @@ func AutofitScale(paras []AutofitParagraph, widthEMU int64, availableHeightPt fl
 	if availableHeightPt <= 0 || widthEMU <= 0 {
 		return 1, true
 	}
+	opts = opts.withDefaults()
+	for step := 0; ; step++ {
+		scale := 1.0 - opts.Step*float64(step)
+		if scale < opts.FloorScale {
+			break
+		}
+		if autofitFitsAt(paras, widthEMU, availableHeightPt, opts, scale) {
+			return scale, true
+		}
+	}
+	return opts.FloorScale, false
+}
+
+// AutofitFits reports whether the paragraphs fit at their authored size —
+// exactly when AutofitScale returns a scale of 1 — measuring only that one
+// size instead of walking the shrink steps. Height searches that only need a
+// yes/no per probe use it (go-slide-creator-b7qqg.16).
+func AutofitFits(paras []AutofitParagraph, widthEMU int64, availableHeightPt float64, opts AutofitOptions) bool {
+	if availableHeightPt <= 0 || widthEMU <= 0 {
+		return true
+	}
+	return autofitFitsAt(paras, widthEMU, availableHeightPt, opts.withDefaults(), 1)
+}
+
+func (opts AutofitOptions) withDefaults() AutofitOptions {
 	if opts.LineSpacing <= 0 {
 		opts.LineSpacing = 1.2
 	}
@@ -63,31 +88,23 @@ func AutofitScale(paras []AutofitParagraph, widthEMU int64, availableHeightPt fl
 	if opts.Step <= 0 {
 		opts.Step = 0.02
 	}
+	return opts
+}
 
-	fits := func(scale float64) bool {
-		total := 0.0
-		for _, p := range paras {
-			if strings.TrimSpace(p.Text) == "" {
-				continue
-			}
-			pt := p.FontPt * scale
-			m, err := MeasureRun(p.Text, opts.FontName, pt, widthEMU, 0)
-			if err != nil {
-				return true // cannot measure: do not invent an overflow
-			}
-			total += float64(m.Lines)*pt*opts.LineSpacing + p.SpaceAfterPt
+// autofitFitsAt reports whether the paragraphs, shrunk by scale, fit
+// availableHeightPt.
+func autofitFitsAt(paras []AutofitParagraph, widthEMU int64, availableHeightPt float64, opts AutofitOptions, scale float64) bool {
+	total := 0.0
+	for _, p := range paras {
+		if strings.TrimSpace(p.Text) == "" {
+			continue
 		}
-		return total <= availableHeightPt
+		pt := p.FontPt * scale
+		m, err := MeasureRun(p.Text, opts.FontName, pt, widthEMU, 0)
+		if err != nil {
+			return true // cannot measure: do not invent an overflow
+		}
+		total += float64(m.Lines)*pt*opts.LineSpacing + p.SpaceAfterPt
 	}
-
-	for step := 0; ; step++ {
-		scale := 1.0 - opts.Step*float64(step)
-		if scale < opts.FloorScale {
-			break
-		}
-		if fits(scale) {
-			return scale, true
-		}
-	}
-	return opts.FloorScale, false
+	return total <= availableHeightPt
 }

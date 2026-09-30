@@ -224,7 +224,7 @@ func writtenFitHeightPt(text json.RawMessage, widthPt, minPt float64) float64 {
 	}
 	insetsPt += largestRunPt(tb) * sizingLineSpacing
 	fits := func(h float64) bool {
-		return pptx.AutofitScaleFor(tb, pptx.RectEmu{CX: w, CY: int64(h * sizingEMUPerPt)}) >= 1
+		return pptx.AutofitFitsFor(tb, pptx.RectEmu{CX: w, CY: int64(h * sizingEMUPerPt)})
 	}
 	// The fit is monotonic in height: binary-search whole points.
 	lo := math.Ceil(math.Max(minPt, insetsPt))

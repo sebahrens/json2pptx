@@ -169,3 +169,31 @@ func TestParagraphTextAndSizeUsesTheSmallestRun(t *testing.T) {
 		t.Errorf("a paragraph with no declared size should report 0, got %v", pt)
 	}
 }
+
+// TestAutofitFitsForMatchesAutofitScaleFor pins AutofitFitsFor to the
+// AutofitScaleFor(...) >= 1 answer it replaces in height searches
+// (go-slide-creator-b7qqg.16): same bodies, same bounds, same verdict,
+// including word-width shrinks, declared/default insets and degenerate boxes.
+func TestAutofitFitsForMatchesAutofitScaleFor(t *testing.T) {
+	longWord := &TextBody{AutoFit: "normAutofit", Paragraphs: []Paragraph{{Runs: []Run{{Text: "Internationalisation", FontSize: 2800}}}}}
+	noInsets := &TextBody{AutoFit: "normAutofit", Paragraphs: []Paragraph{
+		{Runs: []Run{{Text: "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW", FontSize: 1400}}},
+		{Runs: []Run{{Text: "A second paragraph of ordinary words that wraps", FontSize: 1200}}, SpaceAfter: 600},
+	}}
+	bodies := map[string]*TextBody{
+		"bullets-1": bulletBody(1), "bullets-6": bulletBody(6), "long-word": longWord, "default-insets": noInsets,
+		"not-autofit": {AutoFit: "spAutoFit", Paragraphs: bulletBody(3).Paragraphs},
+		"empty":       {AutoFit: "normAutofit"},
+	}
+	for name, tb := range bodies {
+		for _, cx := range []int64{0, 400000, 1200000, 2500000, 5221224} {
+			for cy := int64(0); cy <= 3000000; cy += 25400 * 7 {
+				bounds := RectEmu{CX: cx, CY: cy}
+				want := AutofitScaleFor(tb, bounds) >= 1
+				if got := AutofitFitsFor(tb, bounds); got != want {
+					t.Fatalf("%s at %dx%d EMU: AutofitFitsFor = %v, AutofitScaleFor>=1 = %v", name, cx, cy, got, want)
+				}
+			}
+		}
+	}
+}
