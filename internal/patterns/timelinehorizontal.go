@@ -9,6 +9,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
 // ---------------------------------------------------------------------------
@@ -171,7 +172,50 @@ func (th *timelineHorizontal) PostExpandWarnings(ctx ExpandContext, values, over
 			}
 		}
 	}
+	// The budgets assume a typical content area; with the template's own area
+	// the rows are also measured against it (go-slide-creator-n1muf).
+	if len(warnings) > 0 {
+		return warnings
+	}
+	if w := th.measuredWarning(ctx, v, ovr, style); w != "" {
+		warnings = append(warnings, w)
+	}
 	return warnings
+}
+
+// measuredWarning reports a timeline whose text needs more height than the
+// template's content area holds even with every row at its written fit and
+// the type at the readable minimum. Without LayoutBounds it reports nothing.
+func (th *timelineHorizontal) measuredWarning(ctx ExpandContext, v *TimelineHorizontalValues, ovr *TimelineHorizontalOverrides, style string) string {
+	if ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 {
+		return ""
+	}
+	if ovr == nil {
+		ovr = &TimelineHorizontalOverrides{}
+	}
+	switch style {
+	case "gantt":
+		grid, err := th.expandGantt(ctx, v, ovr, nil)
+		if err != nil {
+			return ""
+		}
+		if fit := timelineGanttFitRows(ctx, grid.Rows); !fit.fits {
+			return fmt.Sprintf("%s: timeline-horizontal gantt rows need %.0fpt for their wrapped labels but the content area holds about %.0fpt — shorten the labels to one line or use fewer stops", ErrCodeBodyTooLong, fit.totalPt, fit.availPt)
+		}
+	case "chevron":
+		grid, err := th.expandChevron(ctx, v, ovr, nil)
+		if err != nil || len(grid.Rows) == 0 {
+			return ""
+		}
+		if fit := timelineChevronRowFit(ctx, grid.Rows[0].Cells, timelineChevronDateRowPt(timelineChevronDateSize(ovr))); fit.needPt > fit.availPt+1 {
+			return fmt.Sprintf("%s: timeline-horizontal chevrons need %.0fpt for their labels and bodies but the content area holds about %.0fpt — shorten the longest labels or bodies, use fewer stops, or choose dots style", ErrCodeBodyTooLong, fit.needPt, fit.availPt)
+		}
+	default:
+		if fit := measureTimelineDots(ctx, *v, ovr, nil, "accent1"); fit.stopNeedPt > fit.stopAvailPt+1 {
+			return fmt.Sprintf("%s: timeline-horizontal stops need %.0fpt below the axis at the readable minimum but the content area leaves about %.0fpt — shorten the longest labels or bodies, or use fewer stops", ErrCodeBodyTooLong, fit.stopNeedPt, fit.stopAvailPt)
+		}
+	}
+	return ""
 }
 
 func timelineChevronDateSize(ovr *TimelineHorizontalOverrides) float64 {
@@ -343,35 +387,15 @@ func (th *timelineHorizontal) Expand(ctx ExpandContext, values, overrides any, c
 
 func (th *timelineHorizontal) expandDots(ctx ExpandContext, stops *TimelineHorizontalValues, ovr *TimelineHorizontalOverrides, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	labelSize := ResolveSize(ovr.LabelSize, 14.0)
-	dateSize := ResolveSize(ovr.DateSize, 12.0)
-	bodySize := ResolveSize(ovr.BodySize, 12.0)
-
+	fit := measureTimelineDots(ctx, *stops, ovr, cellOverrides, accent)
 	n := len(*stops)
-	font := ctx.Theme.BodyFont
-	contentW, contentH := contentAreaPt(ctx)
-	textW := equalColumnWidthPt(contentW, n, timelineDotsColGapPt) - 2*defaultShapeInsetLRPt
 
 	// A real timeline (go-slide-creator-7km8): an optional date row above a
 	// horizontal axis of accent dots joined by connector lines, with the stop
 	// label + body below each dot. Every row is content-sized and the block
 	// is centred vertically, instead of full-height filled pillars.
-	hasDates := false
-	dateCells := make([]*jsonschema.GridCellInput, n)
 	dotCells := make([]*jsonschema.GridCellInput, n)
-	labelCells := make([]*jsonschema.GridCellInput, n)
-	var dateH, labelH float64
-	for i, stop := range *stops {
-		if stop.Date != "" {
-			hasDates = true
-		}
-		dateCells[i] = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
-			Geometry: "rect",
-			Fill:     json.RawMessage(`"none"`),
-			Text:     buildTimelineDotsText([]timelineDotsPara{{stop.Date, dateSize, true, accent}}, "b"),
-		}}
-		dateH = math.Max(dateH, textBlockHeightPt(font, textW, textParagraph{text: stop.Date, size: dateSize, bold: true}))
-
+	for i := range dotCells {
 		dotCells[i] = &jsonschema.GridCellInput{
 			Fit: "contain",
 			Shape: &jsonschema.ShapeSpecInput{
@@ -380,35 +404,11 @@ func (th *timelineHorizontal) expandDots(ctx ExpandContext, stops *TimelineHoriz
 				Line:     json.RawMessage(`"none"`),
 			},
 		}
-
-		paras := []timelineDotsPara{{stop.Label, labelSize, true, "dk1"}}
-		if stop.Body != "" {
-			paras = append(paras, timelineDotsPara{stop.Body, bodySize, false, "dk1"})
-		}
-		labelCells[i] = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
-			Geometry: "rect",
-			Fill:     json.RawMessage(`"none"`),
-			Text:     buildTimelineDotsText(paras, "t"),
-		}}
-		labelH = math.Max(labelH, textBlockHeightPt(font, textW,
-			textParagraph{text: stop.Label, size: labelSize, bold: true},
-			textParagraph{text: stop.Body, size: bodySize}))
-
-		if co, ok := cellOverrides[i]; ok {
-			if cellOvr, coOk := co.(*TimelineHorizontalCellOverride); coOk {
-				applyCellTextOverride(labelCells[i], cellOvr)
-				if cellOvr.AccentBar {
-					labelCells[i].AccentBar = &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: 4}
-				}
-			}
-		}
 	}
 
-	pad := 2*defaultShapeInsetTBPt + 4
 	var rows []jsonschema.GridRowInput
-	if hasDates {
-		h := math.Round(dateH + pad)
-		rows = append(rows, jsonschema.GridRowInput{Cells: dateCells, MinHeight: h, MaxHeight: h})
+	if fit.dateRowPt > 0 {
+		rows = append(rows, jsonschema.GridRowInput{Cells: fit.dateCells, MinHeight: fit.dateRowPt, MaxHeight: fit.dateRowPt})
 	}
 	rows = append(rows, jsonschema.GridRowInput{
 		Cells:     dotCells,
@@ -416,16 +416,120 @@ func (th *timelineHorizontal) expandDots(ctx ExpandContext, stops *TimelineHoriz
 		MaxHeight: timelineDotSizePt,
 		Connector: &jsonschema.ConnectorSpecInput{Style: "line", Color: accent, Width: timelineRulePt},
 	})
-	stopH := math.Min(labelH+pad, contentH*timelineStopMaxHeightFrac)
-	rows = append(rows, jsonschema.GridRowInput{Cells: labelCells, MaxHeight: math.Round(math.Max(stopH, labelSize*contentLineHeight+pad))})
+	stopRow := jsonschema.GridRowInput{Cells: fit.stopCells, MaxHeight: fit.stopRowPt}
+	if fit.stopNeedPt > fit.modelStopPt {
+		// The row is held at its written fit (go-slide-creator-n1muf).
+		stopRow.MinHeight = math.Min(fit.stopNeedPt, fit.stopRowPt)
+	}
+	rows = append(rows, stopRow)
 
 	return &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(fmt.Sprintf(`%d`, n)),
 		ColGap:        timelineDotsColGapPt,
-		RowGap:        6,
+		RowGap:        timelineDotsRowGapPt,
 		Rows:          rows,
 		VerticalAlign: GridVerticalAlignDefault,
 	}, nil
+}
+
+// timelineDotsFit is the measured layout of a dots-style timeline.
+type timelineDotsFit struct {
+	labelSize   float64
+	dateCells   []*jsonschema.GridCellInput
+	stopCells   []*jsonschema.GridCellInput
+	dateRowPt   float64 // 0 when no stop has a date
+	modelStopPt float64 // the theme-font estimate, capped at timelineStopMaxHeightFrac
+	stopNeedPt  float64 // written fit of the tallest stop cell
+	stopAvailPt float64 // height left below the axis
+	stopRowPt   float64 // the stop row height handed to the grid
+}
+
+// measureTimelineDots builds the date and stop cells and sizes their rows.
+// The stop row was pinned to the theme-font estimate, capped at 40% of the
+// content height, and on the short template areas the documented budgets were
+// written shrunk to 9–11.8pt. The row now grows to the written fit of its
+// tallest cell at the real column width; when that leaves no room the default
+// 14pt label steps to 12pt, and a stop that still does not fit is left to
+// the measured BODY_TOO_LONG in PostExpandWarnings (go-slide-creator-n1muf).
+func measureTimelineDots(ctx ExpandContext, stops TimelineHorizontalValues, ovr *TimelineHorizontalOverrides, cellOverrides map[int]any, accent string) timelineDotsFit {
+	if ovr == nil {
+		ovr = &TimelineHorizontalOverrides{}
+	}
+	dateSize := ResolveSize(ovr.DateSize, 12.0)
+	bodySize := ResolveSize(ovr.BodySize, 12.0)
+	n := len(stops)
+	font := ctx.Theme.BodyFont
+	contentW, contentH := contentAreaPt(ctx)
+	colW := equalColumnWidthPt(contentW, n, timelineDotsColGapPt)
+	textW := colW - 2*defaultShapeInsetLRPt
+	pad := 2*defaultShapeInsetTBPt + 4
+
+	fit := timelineDotsFit{dateCells: make([]*jsonschema.GridCellInput, n)}
+	hasDates := false
+	var dateH, dateNeed float64
+	for i, stop := range stops {
+		if stop.Date != "" {
+			hasDates = true
+		}
+		text := buildTimelineDotsText([]timelineDotsPara{{stop.Date, dateSize, true, accent}}, "b")
+		fit.dateCells[i] = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+			Geometry: "rect",
+			Fill:     json.RawMessage(`"none"`),
+			Text:     text,
+		}}
+		dateH = math.Max(dateH, textBlockHeightPt(font, textW, textParagraph{text: stop.Date, size: dateSize, bold: true}))
+		if stop.Date != "" {
+			dateNeed = math.Max(dateNeed, writtenFitHeightPt(text, colW, 0))
+		}
+	}
+	fit.stopAvailPt = contentH - timelineDotSizePt - timelineDotsRowGapPt
+	if hasDates {
+		fit.dateRowPt = math.Max(math.Round(dateH+pad), dateNeed)
+		fit.stopAvailPt -= fit.dateRowPt + timelineDotsRowGapPt
+	}
+	fit.stopAvailPt = math.Floor(fit.stopAvailPt)
+
+	build := func(labelSize float64) {
+		fit.labelSize = labelSize
+		fit.stopCells = make([]*jsonschema.GridCellInput, n)
+		var labelH float64
+		fit.stopNeedPt = 0
+		for i, stop := range stops {
+			paras := []timelineDotsPara{{stop.Label, labelSize, true, "dk1"}}
+			if stop.Body != "" {
+				paras = append(paras, timelineDotsPara{stop.Body, bodySize, false, "dk1"})
+			}
+			cell := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+				Geometry: "rect",
+				Fill:     json.RawMessage(`"none"`),
+				Text:     buildTimelineDotsText(paras, "t"),
+			}}
+			if co, ok := cellOverrides[i]; ok {
+				if cellOvr, coOk := co.(*TimelineHorizontalCellOverride); coOk {
+					applyCellTextOverride(cell, cellOvr)
+					if cellOvr.AccentBar {
+						cell.AccentBar = &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: 4}
+					}
+				}
+			}
+			fit.stopCells[i] = cell
+			labelH = math.Max(labelH, textBlockHeightPt(font, textW,
+				textParagraph{text: stop.Label, size: labelSize, bold: true},
+				textParagraph{text: stop.Body, size: bodySize}))
+			fit.stopNeedPt = math.Max(fit.stopNeedPt, writtenFitHeightPt(cell.Shape.Text, colW, 0))
+		}
+		stopH := math.Min(labelH+pad, contentH*timelineStopMaxHeightFrac)
+		fit.modelStopPt = math.Round(math.Max(stopH, labelSize*contentLineHeight+pad))
+	}
+	build(ResolveSize(ovr.LabelSize, 14.0))
+	if fit.stopNeedPt > fit.stopAvailPt && ovr.LabelSize == 0 {
+		build(shapegrid.MinTextSizePt)
+	}
+	fit.stopRowPt = fit.modelStopPt
+	if fit.stopNeedPt > fit.modelStopPt {
+		fit.stopRowPt = math.Max(fit.modelStopPt, math.Min(fit.stopNeedPt, fit.stopAvailPt))
+	}
+	return fit
 }
 
 const (
@@ -437,6 +541,8 @@ const (
 	timelineDotSizePt = 18.0
 	// timelineDotsColGapPt separates stop columns in dots style.
 	timelineDotsColGapPt = 16.0
+	// timelineDotsRowGapPt separates the date, axis and stop rows.
+	timelineDotsRowGapPt = 6.0
 	// timelineStopMaxHeightFrac caps the label/body zone under each dot.
 	timelineStopMaxHeightFrac = 0.4
 	// timelineChevronMaxHeightFrac caps the chevron row in chevron style.
@@ -545,20 +651,64 @@ func (th *timelineHorizontal) expandChevron(ctx ExpandContext, stops *TimelineHo
 
 	// Content-sized rows (go-slide-creator-7km8): the chevron row is capped
 	// at timelineChevronMaxHeightFrac of the content height and the date row
-	// hugs its text; the grid centres the block vertically.
-	_, contentH := contentAreaPt(ctx)
-	dateRowH := math.Round(dateSize*contentLineHeight + 2*defaultShapeInsetTBPt + 4)
+	// hugs its text; the grid centres the block vertically. A chevron whose
+	// text needs more than the cap grows to its written fit, up to the height
+	// the date row leaves (go-slide-creator-n1muf).
+	dateRowH := timelineChevronDateRowPt(dateSize)
+	fit := timelineChevronRowFit(ctx, chevronCells, dateRowH)
+	chevronRow := jsonschema.GridRowInput{Cells: chevronCells, MaxHeight: fit.rowPt}
+	if fit.needPt > fit.capPt {
+		chevronRow.MinHeight = fit.rowPt
+	}
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(fmt.Sprintf(`%d`, n)),
 		Gap:     0,
 		Rows: []jsonschema.GridRowInput{
-			{Cells: chevronCells, MaxHeight: math.Round(contentH * timelineChevronMaxHeightFrac)},
+			chevronRow,
 			{Cells: dateCells, MinHeight: dateRowH, MaxHeight: dateRowH},
 		},
 		VerticalAlign: GridVerticalAlignDefault,
 	}
 
 	return grid, nil
+}
+
+// timelineChevronResolvedGapPt is the gap a chevron grid's Gap 0 resolves to
+// (the shape-grid default).
+const timelineChevronResolvedGapPt = 8.0
+
+// timelineChevronDateRowPt is the one-line date row below the chevrons.
+func timelineChevronDateRowPt(dateSize float64) float64 {
+	return math.Round(dateSize*contentLineHeight + 2*defaultShapeInsetTBPt + 4)
+}
+
+// timelineRowFit sizes a timeline row against the written fit of its cells.
+type timelineRowFit struct {
+	capPt   float64 // the pattern's own height cap for the row
+	needPt  float64 // written fit of the tallest cell
+	availPt float64 // the most the row can take
+	rowPt   float64 // the height handed to the grid
+}
+
+// timelineChevronRowFit measures the chevron row: at least its cap, grown to
+// the written fit of its tallest chevron (at the full cell width, the box the
+// writer's autofit measures) but never past the height the date row leaves.
+func timelineChevronRowFit(ctx ExpandContext, cells []*jsonschema.GridCellInput, dateRowPt float64) timelineRowFit {
+	contentW, contentH := contentAreaPt(ctx)
+	// The grid's Gap 0 resolves to the shape-grid default gap between the
+	// links and above the date row.
+	colW := equalColumnWidthPt(contentW, len(cells), timelineChevronResolvedGapPt)
+	fit := timelineRowFit{capPt: math.Round(contentH * timelineChevronMaxHeightFrac), availPt: math.Floor(contentH - dateRowPt - timelineChevronResolvedGapPt)}
+	for _, c := range cells {
+		if c != nil && c.Shape != nil {
+			fit.needPt = math.Max(fit.needPt, writtenFitHeightPt(c.Shape.Text, colW, 0))
+		}
+	}
+	fit.rowPt = fit.capPt
+	if fit.needPt > fit.capPt {
+		fit.rowPt = math.Max(fit.capPt, math.Min(fit.needPt, fit.availPt))
+	}
+	return fit
 }
 
 // expandGantt renders horizontal bars representing date ranges.
@@ -633,14 +783,97 @@ func (th *timelineHorizontal) expandGantt(ctx ExpandContext, stops *TimelineHori
 		}
 	}
 
+	// A bar whose label wraps is held at its written fit instead of being
+	// squeezed to the cap; one-line rows keep giving way, since the writer
+	// clamps a short shape's margin so one line always fits. When the wrapped
+	// rows do not fit, the label column widens before they are left to shrink
+	// (go-slide-creator-n1muf).
+	fit := timelineGanttFitRows(ctx, rows)
+	if fit.fits {
+		for i := range rows {
+			if fit.needs[i] > 0 {
+				rows[i].MinHeight = fit.needs[i]
+				rows[i].MaxHeight = math.Max(rows[i].MaxHeight, fit.needs[i])
+			}
+		}
+	}
+	cols := fmt.Sprintf(`[%g, %g]`, fit.labelPct, 100-fit.labelPct)
+
 	grid := &jsonschema.ShapeGridInput{
-		Columns:       json.RawMessage(`[30, 70]`),
-		Gap:           8,
+		Columns:       json.RawMessage(cols),
+		Gap:           timelineGanttGapPt,
 		Rows:          rows,
 		VerticalAlign: GridVerticalAlignDefault,
 	}
 
 	return grid, nil
+}
+
+const (
+	// timelineGanttGapPt separates the label column from the bars, and the rows.
+	timelineGanttGapPt = 8.0
+	// timelineGanttLabelPct is the label column's default share of the grid,
+	// and timelineGanttLabelMaxPct the widest it grows to hold wrapped labels.
+	timelineGanttLabelPct    = 30.0
+	timelineGanttLabelMaxPct = 45.0
+)
+
+// timelineGanttFit is the written-fit measurement of a gantt stack.
+type timelineGanttFit struct {
+	labelPct float64
+	needs    []float64 // written fit of a row whose text wraps; 0 for one-line rows
+	totalPt  float64   // the stack's minimum height: wrapped rows at their fit, one-line rows at one line
+	availPt  float64
+	fits     bool
+}
+
+// timelineGanttFitRows measures the stack at the default label column and,
+// while the wrapped rows do not fit, at wider ones in 5-point steps. With no
+// width that fits it reports the default column.
+func timelineGanttFitRows(ctx ExpandContext, rows []jsonschema.GridRowInput) timelineGanttFit {
+	first := timelineGanttRowFit(ctx, rows, timelineGanttLabelPct)
+	for pct := timelineGanttLabelPct + 5; !first.fits && pct <= timelineGanttLabelMaxPct; pct += 5 {
+		if fit := timelineGanttRowFit(ctx, rows, pct); fit.fits {
+			return fit
+		}
+	}
+	return first
+}
+
+// timelineGanttRowFit measures each gantt row's label and bar text at their
+// real column widths for a label column labelPct of the grid.
+func timelineGanttRowFit(ctx ExpandContext, rows []jsonschema.GridRowInput, labelPct float64) timelineGanttFit {
+	contentW, contentH := contentAreaPt(ctx)
+	// A substituted template face draws wider than its stand-in, and a label
+	// that only just fits one line wraps in the renderer — where the clamped
+	// margin of a one-line row leaves no room for the second line, so
+	// LibreOffice shrinks it. Rows are measured at the atomic-token width.
+	font := ctx.Theme.BodyFont
+	widths := []float64{
+		textfit.AtomicTokenWidthPt(font, (contentW-timelineGanttGapPt)*labelPct/100),
+		textfit.AtomicTokenWidthPt(font, (contentW-timelineGanttGapPt)*(100-labelPct)/100),
+	}
+	fit := timelineGanttFit{labelPct: labelPct, needs: make([]float64, len(rows)), availPt: contentH - float64(max(len(rows)-1, 0))*timelineGanttGapPt}
+	for i, row := range rows {
+		oneLine := 0.0
+		for j, c := range row.Cells {
+			if c == nil || c.Shape == nil || j >= len(widths) {
+				continue
+			}
+			tb, err := shapegrid.ResolveTextInput(c.Shape.Text)
+			if err != nil || tb == nil {
+				continue
+			}
+			line := largestRunPt(tb) * contentLineHeight
+			oneLine = math.Max(oneLine, line)
+			if need := writtenFitHeightPt(c.Shape.Text, widths[j], 0); need > math.Ceil(2*defaultShapeInsetTBPt+line) {
+				fit.needs[i] = math.Max(fit.needs[i], need)
+			}
+		}
+		fit.totalPt += math.Max(fit.needs[i], oneLine)
+	}
+	fit.fits = fit.totalPt <= fit.availPt+1
+	return fit
 }
 
 // chevronGradientTone produces the fill tone for one link of a gradient chain.

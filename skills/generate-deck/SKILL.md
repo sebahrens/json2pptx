@@ -59,14 +59,16 @@ inspect. Pattern copy budgets assume the template's full content area; on a
 short or narrow template, or under a `takeaway`, the content-sized patterns
 (`chart-insights-split`, `table-highlight`, `exec-summary`, `scqa-summary`,
 `bmc-canvas`, `agenda-with-images`, `state-shift-hub`, `metric-list`,
-`next-steps`) first step type down to the 12pt floor, then report
+`next-steps`, `timeline-horizontal`, `pull-quote`) first grow rows and
+step type down (a `pull-quote` quote 36 → 20pt), then report
 `BODY_TOO_LONG` naming what to drop, and validate
 predicts grid text (nested cells included) that generation would refuse as
 an `error` `TEXT_BELOW_READABLE_MIN`; a `render_deck_spec` refusal returns
 it as a source-addressed diagnostic with `evidence` and a patch
 `next_tool_call` ([DECKSPEC.md](DECKSPEC.md)). KPI values and label words are never wrapped
 mid-token: a value shrinks (a `kpi-6up` "$4.2M" may render near 28pt) and a
-`process-grid-2row` row-label column widens before its label shrinks; what
+`process-grid-2row` row-label column (and the `scqa-summary` label column,
+up to 1.3 : 4) widens before its label shrinks; what
 cannot fit is reported (`BODY_TOO_LONG` on `values[i].big`,
 `TEXT_EXCEEDS_SHAPE` naming the label word) — see [PATTERNS.md](PATTERNS.md).
 Content under a top-anchored title starts below its measured lines,

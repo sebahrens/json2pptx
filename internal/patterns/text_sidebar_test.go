@@ -2,6 +2,7 @@ package patterns
 
 import (
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -179,6 +180,74 @@ func TestTextSidebar_Golden(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertPatternGolden(t, grid, filepath.Join("testdata", "text-sidebar", "default.golden.json"))
+}
+
+// The main column and the sidebar are sized by the theme-font model; the row
+// must also hold the written fit of both cells, or the writer stores the copy
+// shrunk. Across the short template areas and the documented copy range the
+// columns are either written at their authored size or reported as
+// BODY_TOO_LONG, and a row the pattern says fits is never shorter than the
+// written fit of either cell (go-slide-creator-n1muf).
+func TestTextSidebar_WrittenFitOnShortAreas(t *testing.T) {
+	p := &textSidebar{}
+	type payload struct {
+		name string
+		v    *TextSidebarValues
+		o    *TextSidebarOverrides
+	}
+	var payloads []payload
+	for chars := 300; chars <= 1800; chars += 150 {
+		para := wordsOfLength("operating detail", min(chars/4, tsParagraphMax))
+		payloads = append(payloads, payload{fmt.Sprintf("prose%d", chars), &TextSidebarValues{
+			Heading: "Introduction", Paragraphs: []string{para, para, para, para}, Sidebar: wordsOfLength("key message", 150),
+		}, nil})
+		bullet := wordsOfLength("alpha beta", min(chars/12, tsBulletMax))
+		payloads = append(payloads, payload{fmt.Sprintf("bullets%d", chars), &TextSidebarValues{
+			Heading: "Introduction", Paragraphs: []string{wordsOfLength("operating detail", min(chars/2, tsParagraphMax-1)) + ":"},
+			Bullets: []string{bullet, bullet, bullet, bullet, bullet, bullet}, Sidebar: wordsOfLength("key message", tsSidebarMax),
+		}, &TextSidebarOverrides{SidebarStyle: "filled", SidebarWidthPct: tsMinSidePct}})
+	}
+	for _, size := range []float64{14, 28, 40} {
+		for chars := 40; chars <= tsSidebarMax; chars += 40 {
+			payloads = append(payloads, payload{fmt.Sprintf("sidebar%.0f/%d", size, chars), &TextSidebarValues{
+				Paragraphs: []string{"A short opening paragraph."}, Sidebar: wordsOfLength("key message", chars),
+			}, &TextSidebarOverrides{SidebarSize: size, SidebarWidthPct: tsMinSidePct}})
+		}
+	}
+	for _, font := range []string{"", "Tenorite", "Segoe UI"} {
+		for _, a := range writtenFloorAreas {
+			for _, pl := range payloads {
+				t.Run(fmt.Sprintf("%q/%s/%s", font, a.name, pl.name), func(t *testing.T) {
+					ctx := ExpandContext{}
+					ctx.Theme.BodyFont = font
+					var ovr any
+					if pl.o != nil {
+						ovr = pl.o
+					}
+					below, warned := writtenBelowFloor(t, p, ctx, a.w, a.h, pl.v, ovr)
+					if len(below) > 0 && len(warned) == 0 {
+						t.Errorf("written below the floor without BODY_TOO_LONG: %v", below)
+					}
+					ctx.LayoutBounds = LayoutBounds{Width: int64(a.w * 12700), Height: int64(a.h * 12700)}
+					o := pl.o
+					if o == nil {
+						o = &TextSidebarOverrides{}
+					}
+					lay := tsMeasure(ctx, pl.v, o)
+					if lay.mainFits {
+						if need := writtenFitHeightPt(tsMainCell(ctx, pl.v, lay).Shape.Text, lay.mainW, 0); lay.heightPt < need {
+							t.Errorf("row %.0fpt is below the main column's written fit %.0fpt", lay.heightPt, need)
+						}
+					}
+					if lay.sideFits {
+						if need := writtenFitHeightPt(tsSidebarCell(ctx, pl.v.Sidebar, lay, "accent1", o.SidebarStyle).Shape.Text, lay.sideW, 0); lay.heightPt < need {
+							t.Errorf("row %.0fpt is below the sidebar's written fit %.0fpt", lay.heightPt, need)
+						}
+					}
+				})
+			}
+		}
+	}
 }
 
 func TestTextSidebar_Recommend(t *testing.T) {

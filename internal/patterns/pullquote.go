@@ -187,6 +187,12 @@ const (
 	// pullQuoteMaxQuoteFrac caps the quote row so a very long quote still
 	// leaves the attribution its row.
 	pullQuoteMaxQuoteFrac = 0.8
+	// pullQuoteMinQuoteFrac keeps the quote row its share when an oversized
+	// attribution would otherwise take the whole area.
+	pullQuoteMinQuoteFrac = 0.4
+	// pullQuoteMinQuotePt is the smallest step the default quote size takes
+	// (the quote_size schema minimum) before a long quote is left to autofit.
+	pullQuoteMinQuotePt = 20.0
 	// pullQuoteRulePt is the thickness of the accent rule, and
 	// pullQuoteRuleMinPct keeps it visible inside a small composed cell.
 	pullQuoteRulePt     = 6.0
@@ -276,20 +282,37 @@ func (pq *pullQuote) Expand(ctx ExpandContext, values, overrides any, cellOverri
 	}
 	textW := usableW * (100 - rulePct - imgPct) / 100
 
-	attrRowPt := sizedBlockHeightPt(ctx, []sizedPara{{text: attrLine, sizePt: attrSize}}, textW)
-	quoteRowPt := sizedBlockHeightPt(ctx, []sizedPara{{text: quoteLine, sizePt: quoteSize}}, textW)
-	// A quote longer than its share of the area is left to the renderer's
-	// autofit — but only the quote's own row shrinks, never the attribution.
-	if capPt := areaH * pullQuoteMaxQuoteFrac; quoteRowPt > capPt {
-		quoteRowPt = capPt
-	}
-
-	quoteCell := pullQuoteCell([]pullQuoteParagraph{
-		{Content: quoteLine, Size: quoteSize, Italic: true, Color: "dk1", Align: "ctr"},
-	}, "b")
+	// Both rows hold the written fit of their text as well as the theme-font
+	// estimate, so the writer stores neither shrunk (go-slide-creator-n1muf).
 	attrCell := pullQuoteCell([]pullQuoteParagraph{
 		{Content: attrLine, Size: attrSize, Color: "dk1", Align: "ctr"},
 	}, "t")
+	attrRowPt := math.Max(sizedBlockHeightPt(ctx, []sizedPara{{text: attrLine, sizePt: attrSize}}, textW),
+		writtenFitHeightPt(attrCell.Shape.Text, textW, 0))
+
+	// The quote row is capped so a long quote leaves the attribution its row.
+	// The default quote size steps down until the quote is written unshrunk
+	// in that row; a quote that overflows even at 20pt (or at an authored
+	// quote_size) is left to the renderer's autofit — but only the quote's own
+	// row shrinks, never the attribution.
+	capPt := math.Max(math.Min(areaH*pullQuoteMaxQuoteFrac, areaH-attrRowPt-pullQuoteRowGapPt), areaH*pullQuoteMinQuoteFrac)
+	steps := []float64{quoteSize}
+	if ovr.QuoteSize == 0 {
+		steps = []float64{36, 32, 28, 24, pullQuoteMinQuotePt}
+	}
+	var quoteCell *jsonschema.GridCellInput
+	var quoteRowPt float64
+	for _, size := range steps {
+		quoteCell = pullQuoteCell([]pullQuoteParagraph{
+			{Content: quoteLine, Size: size, Italic: true, Color: "dk1", Align: "ctr"},
+		}, "b")
+		quoteRowPt = math.Max(sizedBlockHeightPt(ctx, []sizedPara{{text: quoteLine, sizePt: size}}, textW),
+			writtenFitHeightPt(quoteCell.Shape.Text, textW, 0))
+		if quoteRowPt <= capPt {
+			break
+		}
+	}
+	quoteRowPt = math.Min(quoteRowPt, capPt)
 
 	// The accent rule and the headshot are columns spanning both rows, not
 	// per-cell bars and not a nested grid: two bars would be broken apart by
