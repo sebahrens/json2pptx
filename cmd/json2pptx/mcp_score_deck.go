@@ -88,6 +88,25 @@ func scoreDeckModeError(mode string) *mcp.CallToolResult {
 // scoreDeckMissingSlides distinguishes a present-but-empty slides array from
 // a missing one — argRequired would otherwise say "must be an array, got an
 // array" (go-slide-creator-csclk.31).
+// scoreDeckTemplatePath resolves the template score_deck renders against: a
+// registered name, or — when no name is given — the deck's template_path
+// under the base_dir containment guard (go-slide-creator-b7qqg.8).
+func (mc *mcpConfig) scoreDeckTemplatePath(request mcp.CallToolRequest, templateName, templateFile string) (string, func(), *mcp.CallToolResult) {
+	if templateFile != "" {
+		path, cleanup, d := mc.resolveTemplateSource(request, "score_deck",
+			"presentation.template", "presentation.template_path", "", templateFile)
+		if d != nil {
+			return "", func() {}, api.MCPDiagnosticsError([]diagnostics.Diagnostic{*d})
+		}
+		return path, cleanup, nil
+	}
+	path, cleanup, err := resolveTemplatePath(templateName, mc.templatesDir)
+	if err != nil {
+		return "", func() {}, mcpErrorWithNext("TEMPLATE_NOT_FOUND", templateNotFoundError(templateName, mc.templatesDir), nextCallListTemplates())
+	}
+	return path, cleanup, nil
+}
+
 func scoreDeckMissingSlides(request mcp.CallToolRequest, jsonStr string) *mcp.CallToolResult {
 	example := []any{map[string]any{"layout_id": "title"}}
 	var raw struct {
@@ -150,7 +169,14 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	if override, err := request.RequireString("template"); err == nil && override != "" {
 		templateName = override
 	}
+	// A deck's template_path (a bring-your-own .pptx, e.g. the one a
+	// render_deck_spec deck_id carries) stands in for template; an explicit
+	// template argument still wins (go-slide-creator-b7qqg.8).
+	templateFile := ""
 	if templateName == "" {
+		templateFile = input.TemplatePath
+	}
+	if templateName == "" && templateFile == "" {
 		return argRequired(request, "score_deck", "template", "string", "midnight-blue", nextCallListTemplates()), nil
 	}
 	if len(input.Slides) == 0 {
@@ -182,9 +208,9 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	}
 
 	// Resolve and analyze template.
-	templatePath, templateCleanup, err := resolveTemplatePath(templateName, mc.templatesDir)
-	if err != nil {
-		return mcpErrorWithNext("TEMPLATE_NOT_FOUND", templateNotFoundError(templateName, mc.templatesDir), nextCallListTemplates()), nil
+	templatePath, templateCleanup, tplErr := mc.scoreDeckTemplatePath(request, templateName, templateFile)
+	if tplErr != nil {
+		return tplErr, nil
 	}
 	defer templateCleanup()
 

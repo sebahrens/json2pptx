@@ -10,7 +10,6 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
-	"github.com/sebahrens/json2pptx/internal/config"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/semantic"
@@ -286,9 +285,19 @@ func (mc *mcpConfig) handleValidateDeckSpec(ctx context.Context, request mcp.Cal
 	// (go-slide-creator-05wn).
 	resolvedTemplate := templateName
 	if parsedSpec != nil && !parseDiags.HasErrors() {
-		compiledFindings, template := mc.compiledSpecFindings(filename, data, strictness, templateName)
+		// A deck_id's bring-your-own template is validated against too, as
+		// render would use it (go-slide-creator-b7qqg.8).
+		byoPath, byoDiag := storedByoTemplatePath("validate_deck_spec", src, templateName, "", parsedSpec.Meta.Template)
+		if byoDiag != nil {
+			ds = append(ds, *byoDiag)
+		}
+		compiledFindings, template := mc.compiledSpecFindings(filename, data, strictness, templateName, byoPath)
 		ds = append(ds, compiledFindings...)
 		resolvedTemplate = template
+		if byoPath != "" || byoDiag != nil {
+			// Keep the handle's template file rather than an archetype default.
+			resolvedTemplate = ""
+		}
 	}
 	envelope := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
 		Subcommand:  "validate_deck_spec",
@@ -519,7 +528,7 @@ func mcpRenderDeckSpecTool() mcp.Tool {
 			mcp.Description("Local .pptx to render with, for a template that is not registered on the server. Resolved against base_dir (the server CWD when absent) and MUST stay inside it. Mutually exclusive with template; a template pinned by the spec's meta.template wins over both. Run examine_template(template_path=...) first to check the file has the layouts a deck needs."),
 		),
 		mcp.WithString("base_dir",
-			mcp.Description("Absolute directory that bounds template_path resolution (the allowed root). Relative template_path values resolve against it; the resolved file must stay inside it. Ignored when template_path is absent."),
+			mcp.Description("Absolute directory relative paths resolve against: asset references in the spec (image.path, photos, raw_json2pptx images / icons / backgrounds), with the same guards as raw deck generation, and template_path, which must stay inside it. Defaults to the deck_id's last render root, else the server CWD. The deck_id remembers it along with a template_path, so later deck_id-only calls reuse the same template file and root."),
 		),
 		mcp.WithString("output_validation",
 			mcp.Description("Post-generation output validation: off, warn, or strict (default). strict refuses to emit a deck with text overflow."),
@@ -576,13 +585,18 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 
 	startTime := time.Now()
 	var precedenceWarning string
+	// byoTemplatePath / assetBaseDir are what this render resolved, stored on
+	// the handle so a deck_id-only follow-up keeps them (go-slide-creator-b7qqg.8).
+	var byoTemplatePath, assetBaseDir string
 	finish := func(res renderDeckSpecResponse) (*mcp.CallToolResult, error) {
-		storedTemplate := res.Template
-		if storedTemplate == "" {
-			storedTemplate = src.Template
+		stored := deckTemplateSource{Template: res.Template, BaseDir: assetBaseDir}
+		if byoTemplatePath != "" {
+			stored = deckTemplateSource{TemplatePath: byoTemplatePath, BaseDir: assetBaseDir}
+		} else if stored.Template == "" {
+			stored.Template = src.Template
 		}
-		var stored bool
-		if res.DeckID, stored = mc.rememberDeck(deckID, src.BaseSpec, data, filename, storedTemplate); !stored {
+		var ok bool
+		if res.DeckID, ok = mc.rememberDeckSource(deckID, src.BaseSpec, data, filename, stored); !ok {
 			return staleDeckSpecResult("render_deck_spec", deckID), nil
 		}
 		res.ChangedSlides = changed
@@ -651,24 +665,17 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	applyDefaults(input)
 	resolveInputNamedSettingsForDir(mc.templatesDir, input)
 
-	cfg := config.DefaultConfig()
-	if mc.templatesDir != "" {
-		cfg.Templates.Dir = mc.templatesDir
-	}
-
-	// A caller-supplied .pptx renders the deck when the spec pins no template of
-	// its own — the bring-your-own path for a template the server does not have
-	// registered (go-slide-creator-ydbk).
-	var resolvedTemplatePath string
-	if rawTemplatePath != "" && spec.Meta.Template == "" {
-		path, d := resolveRequestTemplatePath(request, "render_deck_spec", rawTemplatePath)
-		if d != nil {
-			mc.logRenderEvent(ctx, mcp.LoggingLevelWarning, "deck template path invalid", map[string]any{"tool": "render_deck_spec"})
-			res := renderDeckSpecResponse{OK: false, Success: false, Error: d.Message}
-			res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(*d))
-			return finish(res)
-		}
-		resolvedTemplatePath = path
+	// One root frames every relative path this render reads (asset references
+	// and a template_path), and a caller-supplied or deck_id-carried .pptx
+	// renders the deck when the spec pins no template of its own
+	// (go-slide-creator-ydbk, b7qqg.1, b7qqg.8).
+	baseDir, resolvedTemplatePath, d := semanticRenderRoots(request, src, argTemplate, rawTemplatePath, spec.Meta.Template)
+	assetBaseDir, byoTemplatePath = baseDir, resolvedTemplatePath
+	if d != nil {
+		mc.logRenderEvent(ctx, mcp.LoggingLevelWarning, "deck base_dir or template path invalid", map[string]any{"tool": "render_deck_spec"})
+		res := renderDeckSpecResponse{OK: false, Success: false, Error: d.Message}
+		res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(*d))
+		return finish(res)
 	}
 	if resolvedTemplatePath == "" {
 		path, templateCleanup, err := resolveTemplatePath(input.Template, mc.templatesDir)
@@ -681,27 +688,38 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 		defer templateCleanup()
 	}
 
-	runRes, cleanup, renderErr := RunPresentation(ctx, input, RenderOptions{
+	// URL and relative asset references resolve inside the runner, with the
+	// guards generate_presentation uses; the download cache lives until the
+	// render is done (go-slide-creator-b7qqg.1).
+	assets, closeAssets, assetErr := mc.newSemanticAssetPrep(input, baseDir)
+	defer closeAssets()
+	if assetErr != nil {
+		return api.MCPSimpleError("URL_RESOLVER_INIT", assetErr.Error()), nil
+	}
+
+	// SVG knobs come from the server's effective config, as for
+	// generate_presentation (go-slide-creator-b7qqg.11).
+	runRes, cleanup, renderErr := RunPresentation(ctx, input, mc.withServerSVGConfig(RenderOptions{
 		OutputDir:            mc.outputDir,
 		OutputFilename:       outputFilename,
-		TemplatesDir:         cfg.Templates.Dir,
+		TemplatesDir:         mc.templatesDir,
 		ResolvedTemplatePath: resolvedTemplatePath,
 		OutputValidation:     outputValidation,
 		AccentStrategy:       patterns.AccentStrategy(input.AccentStrategy),
-		SVGStrategy:          string(cfg.SVG.Strategy),
-		SVGScale:             cfg.SVG.Scale,
-		SVGNativeCompat:      string(cfg.SVG.NativeCompatibility),
-		MaxPNGWidth:          cfg.SVG.MaxPNGWidth,
-		AllowedImagePaths:    imageAllowList(mc.cfg.Images.AllowedBasePaths),
-	})
+		AllowedImagePaths:    assets.allowed,
+		PreConvert:           assets.preConvert(input),
+	}))
 	defer cleanup()
 	if renderErr != nil {
 		mc.logRenderEvent(ctx, mcp.LoggingLevelWarning, "deck render failed", map[string]any{"tool": "render_deck_spec"})
-		res := semanticRenderToMCP(buildSemanticRenderFailure(compileResult, renderErr), &explanation)
+		failure := buildSemanticRenderFailure(compileResult, renderErr)
+		failure.Diagnostics = append(failure.Diagnostics, assets.semanticDiagnostics(compileResult)...)
+		res := semanticRenderToMCP(failure, &explanation)
 		return finish(res)
 	}
 
 	built := buildSemanticRenderSuccess(input, compileResult, runRes, startTime)
+	built.Warnings = append(built.Warnings, assets.warnings...)
 	recordDeterministicGate(built.OutputPath, built.DeterministicBlockingReasons)
 	res := semanticRenderToMCP(built, &explanation)
 	// Hand back a handle for the rendered spec, and say which slides the patch
@@ -1023,7 +1041,11 @@ func semanticSuccessOrInternal(ctx context.Context, tool string, v any) (*mcp.Ca
 // the compiled deck, returning semantic-path diagnostics and the resolved
 // template for the stored handle. A spec that does not compile returns no
 // compiled findings: its blocking errors are already reported by Check.
-func (mc *mcpConfig) compiledSpecFindings(filename string, data []byte, strictness semantic.Strictness, defaultTemplate string) ([]diagnostics.Diagnostic, string) {
+//
+// byoTemplatePath is a deck_id's vetted bring-your-own template file; when set
+// the fit pass analyzes it instead of skipping template checks and reporting
+// "no issues" (go-slide-creator-b7qqg.8).
+func (mc *mcpConfig) compiledSpecFindings(filename string, data []byte, strictness semantic.Strictness, defaultTemplate, byoTemplatePath string) ([]diagnostics.Diagnostic, string) {
 	spec, parseDiags := semantic.Parse(filename, data)
 	if spec == nil || parseDiags.HasErrors() {
 		return nil, defaultTemplate
@@ -1045,10 +1067,10 @@ func (mc *mcpConfig) compiledSpecFindings(filename string, data []byte, strictne
 	var templateDiagnostics []diagnostics.Diagnostic
 	var slideWidth, slideHeight int64
 	var theme *types.ThemeInfo
-	if input.Template == "" {
+	if input.Template == "" && byoTemplatePath == "" {
 		// The semantic spec may deliberately leave template selection to the
 		// later render call. There is nothing to resolve during validation.
-	} else if templatePath, cleanup, terr := resolveTemplatePath(input.Template, mc.templatesDir); terr == nil {
+	} else if templatePath, cleanup, terr := mc.specTemplateFile(input.Template, byoTemplatePath); terr == nil {
 		defer cleanup()
 		cache := mc.cache
 		if cache == nil {

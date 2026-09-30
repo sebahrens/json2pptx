@@ -53,6 +53,13 @@ type deckHandle struct {
 	// Template is the template the last render used, echoed so a re-render
 	// without an explicit template keeps the deck looking the same.
 	Template string
+	// TemplatePath is the vetted, absolute bring-your-own .pptx the last render
+	// used (render_deck_spec template_path), and BaseDir the allowed root it was
+	// vetted against — also the frame relative asset paths resolved in. Without
+	// them a BYO deck_id re-rendered, validated or scored against template ""
+	// (go-slide-creator-b7qqg.8). A handle holds a Template OR a TemplatePath.
+	TemplatePath string
+	BaseDir      string
 }
 
 // deckHandleStore is a per-process, TTL'd map of handles. Same scope as the
@@ -120,8 +127,12 @@ func (s *deckHandleStore) Update(id string, base []byte, h *deckHandle) bool {
 	// template or filename. Keep the last render's metadata unless the caller
 	// supplied a replacement. Do this under the store lock so updates cannot
 	// briefly expose a handle with an empty template.
-	if h.Template == "" {
+	if h.Template == "" && h.TemplatePath == "" {
 		h.Template = entry.handle.Template
+		h.TemplatePath = entry.handle.TemplatePath
+	}
+	if h.BaseDir == "" {
+		h.BaseDir = entry.handle.BaseDir
 	}
 	if h.Filename == "" {
 		h.Filename = entry.handle.Filename
@@ -196,6 +207,10 @@ type specSource struct {
 	// handle-driven re-render that names no template falls back to it, so
 	// patching a deck cannot silently restyle it.
 	Template string
+	// TemplatePath / BaseDir are the handle's bring-your-own template and the
+	// root it (and relative assets) resolved against (go-slide-creator-b7qqg.8).
+	TemplatePath string
+	BaseDir      string
 	// BaseSpec is the stored spec the call loaded before patching; storing
 	// the result compares against it so concurrent patches cannot be lost.
 	BaseSpec []byte
@@ -248,6 +263,8 @@ func (mc *mcpConfig) resolveSpecSource(tool string, request mcp.CallToolRequest)
 		DeckID:        rawID,
 		ChangedSlides: changed,
 		Template:      handle.Template,
+		TemplatePath:  handle.TemplatePath,
+		BaseDir:       handle.BaseDir,
 		BaseSpec:      handle.Spec,
 	}, nil
 }
@@ -642,7 +659,26 @@ func newDeckHandleFor(spec []byte, filename, template string) *deckHandle {
 // this call's edit would overwrite it; a call that made no edit then leaves
 // the newer stored deck in place and still reports true.
 func (mc *mcpConfig) rememberDeck(existingID string, base, spec []byte, filename, template string) (string, bool) {
-	h := newDeckHandleFor(spec, filename, template)
+	return mc.rememberDeckSource(existingID, base, spec, filename, deckTemplateSource{Template: template})
+}
+
+// deckTemplateSource is the template identity a render resolved: a registered
+// name, or a bring-your-own file plus the root it was vetted against.
+type deckTemplateSource struct {
+	Template     string
+	TemplatePath string
+	BaseDir      string
+}
+
+// rememberDeckSource is rememberDeck carrying the full template source, so a
+// bring-your-own template survives on the handle (go-slide-creator-b7qqg.8).
+func (mc *mcpConfig) rememberDeckSource(existingID string, base, spec []byte, filename string, src deckTemplateSource) (string, bool) {
+	h := newDeckHandleFor(spec, filename, src.Template)
+	h.TemplatePath = src.TemplatePath
+	h.BaseDir = src.BaseDir
+	if h.TemplatePath != "" {
+		h.Template = ""
+	}
 	if existingID != "" {
 		if filename == "" {
 			// newDeckHandleFor gives an unnamed new deck a default filename;

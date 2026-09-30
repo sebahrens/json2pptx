@@ -134,5 +134,9 @@ path and `get_capabilities().mcp_tools_available` (tools callable by name);
 `list_templates` preview-cache writes are undesirable during discovery,
 pass `read_only: true`. Args over 2 MiB of text are refused; a raced
 `deck_id` patch returns `STALE_REVISION` (reload, re-apply).
+`render_deck_spec` resolves relative asset paths (image, photos) against
+`base_dir` and fetches `url` assets like `generate_presentation`; a missing
+asset fails the render. A `template_path` + `base_dir` render is kept on the
+`deck_id`, so deck_id-only render / validate / score calls reuse that file.
 
 Responses are always compact JSON; the server still advertises `experimental.compact_responses: {}` and still honours the client capability and the deprecated `MCP_COMPACT_RESPONSES=1` environment variable, but neither changes anything.
