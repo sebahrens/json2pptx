@@ -32,6 +32,7 @@ type Server struct {
 	templateService *TemplateService
 	healthHandler   *HealthHandler
 	patternsHandler *PatternsHandler
+	semanticRender  http.HandlerFunc
 	logger          *slog.Logger
 }
 
@@ -56,7 +57,15 @@ type ServerConfig struct {
 	// MaxSlidesPerRequest caps slides per /convert request (0 = default).
 	MaxSlidesPerRequest int
 	// MaxConcurrentConverts bounds concurrent /convert requests (0 = default).
+	// Semantic renders share the same bound.
 	MaxConcurrentConverts int
+	// SemanticRenderer drives POST /api/v1/semantic/render. It is the shared
+	// presentation runner (RunPresentation and its semantic compile / asset /
+	// diagnostic glue), which lives in cmd/json2pptx and is injected here so
+	// internal/api does not import cmd/. It must be built from the same
+	// runtime configuration the server runs with (templates dir, SVG
+	// strategy, ALLOWED_IMAGE_PATHS). Nil leaves the endpoint answering 501.
+	SemanticRenderer SemanticRenderer
 }
 
 // NewServer creates a new API server with all handlers configured.
@@ -84,7 +93,9 @@ func NewServer(cfg ServerConfig) *Server {
 		templateService: templateService,
 		healthHandler:   healthHandler,
 		patternsHandler: patternsHandler,
-		logger:          cfg.Logger,
+		semanticRender: SemanticRenderHandler(cfg.SemanticRenderer, cfg.OutputDir,
+			cfg.FileRetention, convertService.convertSem),
+		logger: cfg.Logger,
 	}
 
 	s.setupRoutes()
@@ -101,7 +112,7 @@ func (s *Server) setupRoutes() {
 	s.mux.Handle("GET /api/v1/semantic/schema", SemanticSchemaHandler())
 	s.mux.Handle("POST /api/v1/semantic/validate", SemanticValidateHandler())
 	s.mux.Handle("POST /api/v1/semantic/compile", SemanticCompileHandler())
-	s.mux.Handle("POST /api/v1/semantic/render", SemanticRenderHandler())
+	s.mux.Handle("POST /api/v1/semantic/render", s.semanticRender)
 	s.mux.Handle("POST /api/v1/convert", s.convertService.ConvertHandler())
 	s.mux.Handle("GET /api/v1/download/{filename}", s.convertService.DownloadHandler())
 	s.mux.Handle("GET /api/v1/patterns", s.patternsHandler.ListHandler())

@@ -389,15 +389,16 @@ Tuning options ride as query parameters so the body stays a clean spec.
 | `GET /api/v1/semantic/schema` | Return the semantic deck-spec JSON Schema |
 | `POST /api/v1/semantic/validate` | Validate a semantic spec; returns `{valid, findings}` (HTTP 200) |
 | `POST /api/v1/semantic/compile` | Compile a semantic spec to raw `PresentationInput` JSON |
-| `POST /api/v1/semantic/render` | **Deferred (HTTP 501)** — use the CLI/MCP render surfaces |
+| `POST /api/v1/semantic/render` | Compile and render a semantic spec to `.pptx` (same runner as `json2pptx semantic render` / `render_deck_spec`) |
 
-Query parameters (validate/compile):
+Query parameters:
 
 | Parameter | Endpoint | Default | Description |
 |-----------|----------|---------|-------------|
-| `strict` | both | `warn` | Advisory-rule severity: `off`, `warn`, or `strict` |
-| `template` | compile | — | Default template when the spec pins none |
+| `strict` | validate, compile, render | `warn` | Advisory-rule severity: `off`, `warn`, or `strict` |
+| `template` | compile, render | — | Default (registered) template when the spec pins none |
 | `include_compiled_json` | compile | `false` | When `true`, include the full compiled `PresentationInput` under `compiled_json` |
+| `output_validation` | render | `strict` | Post-generation output validation: `off`, `warn`, or `strict` |
 
 Example request:
 
@@ -412,13 +413,58 @@ When a raw validator emits a generated JSON pointer, the semantic source map
 translates it back to the closest semantic field and preserves the raw path as
 fallback evidence.
 
-> **Render is deferred.** The render orchestration still lives in the CLI layer,
-> so `POST /api/v1/semantic/render` returns **HTTP 501** (`UNSUPPORTED_FEATURE`)
-> with the available alternatives. To render a semantic spec today, use the
-> `json2pptx semantic render` CLI or the `render_deck_spec` MCP tool; or call
-> `POST /api/v1/semantic/compile` to obtain the raw `PresentationInput` JSON and
-> feed it to `generate_presentation` / `json2pptx generate`. See
-> `GET /api/v1/capabilities` (`semantic` block) for the machine-readable boundary.
+#### Render
+
+`POST /api/v1/semantic/render` runs the same presentation runner as the
+`json2pptx semantic render` CLI and the `render_deck_spec` MCP tool — same
+compile, design-mode, asset, template, text-fit / readability and output
+validation (strict by default) policies — using the server's own runtime
+configuration (templates dir, SVG strategy, `ALLOWED_IMAGE_PATHS`).
+
+The body is either the raw spec document (as for validate/compile) or
+`multipart/form-data` with:
+
+| Part | Required | Description |
+|------|----------|-------------|
+| `spec` | Yes | The spec (file or field). A `.json` filename or a `{`-leading field parses as JSON, otherwise YAML |
+| `template` | No | A bring-your-own `.pptx`. Used when the spec pins no `meta.template` (`meta.template` wins and a warning says so) |
+| `assets` | No, repeatable | Asset files. Relative asset paths in the spec resolve against them by base filename |
+
+A relative asset path to a file that was not uploaded is refused. Local image
+paths are restricted to the uploaded assets, the URL download cache and any
+configured `ALLOWED_IMAGE_PATHS` roots, so a request cannot embed arbitrary
+server files.
+
+```bash
+curl -X POST "http://localhost:8080/api/v1/semantic/render" \
+  -F "spec=@deck.yaml" -F "template=@brand.pptx" -F "assets=@logo.png"
+```
+
+Success (HTTP 200) returns the CLI render result with server-local paths
+replaced by a download link:
+
+```json
+{
+  "ok": true,
+  "file_url": "/api/v1/download/a1b2c3d4e5f6789012345678abcdef01.pptx",
+  "expires_at": "2026-09-30T10:00:00Z",
+  "template": "midnight-blue",
+  "slide_count": 6,
+  "content_hash": "…",
+  "quality": {"score": 96, "…": "…"},
+  "deterministic_ready": true,
+  "publishable": false,
+  "warnings": [],
+  "diagnostics": []
+}
+```
+
+A refused render (HTTP 422) returns `ok: false`, `error` and diagnostics
+addressed at the DeckSpec (`semantic_path`, with the compiled `raw_path` kept as
+evidence) — e.g. a `TEXT_BELOW_READABLE_MIN` readability refusal at
+`slides[3].slide`, an `IMAGE_PATH` for a missing asset, or `TEMPLATE_NOT_FOUND`
+at `meta.template`. Renders share the `/convert` concurrency limit (HTTP 503
+with `Retry-After` when saturated).
 
 ---
 

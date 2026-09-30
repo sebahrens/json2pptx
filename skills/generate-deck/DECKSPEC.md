@@ -112,7 +112,12 @@ current-revision status for the final verdict; re-rendering creates a new
 unreviewed response rather than refreshing the earlier one. A visual verdict
 never clears deterministic blockers (`reviewed_deterministic_blockers`).
 Each diagnostic has a `semantic_path` to edit and a
-`raw_path` only as fallback. Keep the DeckSpec as the source of truth.
+`raw_path` only as fallback. A render that generation refuses (unreadable or
+lossy text, e.g. `TEXT_BELOW_READABLE_MIN` with `action: "refuse"`) returns
+`ok: false` with that refusal as a diagnostic too; inside a `raw_json2pptx`
+slide its `semantic_path` is the slide's `slides[N].slide` payload. Keep the
+DeckSpec as the source of truth. HTTP integrations get the same render through
+`POST /api/v1/semantic/render` (documented in the repository's `docs/api/README.md`).
 After each revision, render and inspect the affected slides, then inspect all
 slides of the final revision as required by [SKILL.md](SKILL.md).
 

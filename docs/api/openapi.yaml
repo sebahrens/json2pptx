@@ -12,10 +12,10 @@ info:
     `POST /api/v1/convert` supports **basic text and bullet slides only**. For
     normal agent-authored business decks, prefer the semantic endpoints under
     `/api/v1/semantic/*`; they validate and compile compact YAML/JSON deck specs
-    to the raw `PresentationInput` model. Rendering to a `.pptx` is **not yet
-    available over HTTP** (`POST /api/v1/semantic/render` returns **501**); use
-    `json2pptx semantic render` (CLI) or `render_deck_spec` (MCP), which drive the
-    same engine. For raw features not expressible in the semantic schema (charts,
+    to the raw `PresentationInput` model, and `POST /api/v1/semantic/render`
+    renders them to a `.pptx` through the same presentation runner as
+    `json2pptx semantic render` (CLI) and `render_deck_spec` (MCP) — same
+    template, asset, diagnostic and quality policies. For raw features not expressible in the semantic schema (charts,
     diagrams, tables, images, shape grids, named patterns, deck structure, theme
     overrides, accent strategies), use the **MCP interface** (`json2pptx mcp`) or
     the **CLI** (`json2pptx generate`).
@@ -225,17 +225,122 @@ paths:
     post:
       tags:
         - Semantic
-      summary: Render a semantic deck spec (deferred)
+      summary: Compile and render a semantic deck spec to PPTX
       description: >
-        Deferred. The render orchestration still lives in the CLI layer, so this
-        endpoint returns 501 (UNSUPPORTED_FEATURE) with the available
-        alternatives. Use the `json2pptx semantic render` CLI or the
-        `render_deck_spec` MCP tool, or compile via POST /api/v1/semantic/compile
-        and feed the raw PresentationInput to generate_presentation.
+        Parses, validates and compiles a semantic deck spec, then renders it
+        through the shared presentation runner (the same flow as
+        `json2pptx semantic render` and the `render_deck_spec` MCP tool):
+        design-mode gate, deck defaults, guarded URL / relative-asset
+        resolution, template resolution, text-fit and readability gates,
+        generation and post-generation output validation (strict by default).
+        The server's runtime configuration applies (templates dir, SVG
+        strategy, ALLOWED_IMAGE_PATHS).
+
+
+        The body is either the raw spec document (application/json or YAML,
+        as for validate/compile) or multipart/form-data with a `spec` part
+        (file or field; a `.json` filename or `{`-leading field parses as
+        JSON, otherwise YAML), an optional `template` part (a bring-your-own
+        `.pptx`, used when the spec pins no meta.template — meta.template wins
+        and a warning says so) and any number of `assets` file parts. Relative
+        asset paths in the spec resolve against the uploaded assets (by base
+        filename); a relative path to a file that was not uploaded is refused.
+        Local image paths are restricted to the uploaded assets, the URL
+        download cache and the configured ALLOWED_IMAGE_PATHS roots.
+
+
+        Responds 200 with the rendered deck's `file_url` (fetch it from
+        GET /api/v1/download/{filename}; valid until `expires_at`) plus the
+        CLI render result (slide_count, content_hash, quality,
+        deterministic_ready, publishable, warnings, diagnostics). Responds 422
+        with `ok:false`, `error` and source-addressed diagnostics
+        (`semantic_path` into the DeckSpec, `raw_path` into the compiled
+        PresentationInput) when the spec, template, assets or a quality gate
+        (e.g. TEXT_BELOW_READABLE_MIN unreadable text) refuses the render.
       operationId: renderSemanticDeckSpec
+      parameters:
+        - $ref: '#/components/parameters/SemanticStrict'
+        - name: template
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Registered template used when the spec pins none.
+        - name: output_validation
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [off, warn, strict]
+            default: strict
+          description: Post-generation output validation mode.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+          application/x-yaml:
+            schema:
+              type: string
+          multipart/form-data:
+            schema:
+              type: object
+              required: [spec]
+              properties:
+                spec:
+                  type: string
+                  format: binary
+                  description: The semantic deck spec (JSON or YAML).
+                template:
+                  type: string
+                  format: binary
+                  description: Optional bring-your-own .pptx template.
+                assets:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Asset files that relative asset paths in the spec resolve against.
       responses:
+        '200':
+          description: Deck rendered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SemanticRenderResponse'
+        '422':
+          description: Render refused (spec, template, asset or quality-gate failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SemanticRenderResponse'
+        '400':
+          description: Malformed request (empty body, invalid strict / output_validation, bad multipart parts)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Request body too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Content-Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '501':
-          description: Render is not yet available over HTTP
+          description: The server was built without the render runner wired in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Too many concurrent renders (shares the /convert concurrency limit); retry after Retry-After
           content:
             application/json:
               schema:
@@ -1737,6 +1842,87 @@ components:
         error:
           type: string
           description: Blocking error message (present on failure).
+
+    SemanticRenderDiagnostic:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        severity:
+          type: string
+          enum: [error, warning, info]
+        message:
+          type: string
+        semantic_path:
+          type: string
+          description: Path into the DeckSpec the author wrote (e.g. slides[1].slide, meta.template).
+        raw_path:
+          type: string
+          description: Originating path in the compiled PresentationInput (fallback evidence).
+        slide_index:
+          type: integer
+          description: Semantic slide index the finding belongs to.
+        action:
+          type: string
+        recommended_edit:
+          type: object
+
+    SemanticRenderResponse:
+      type: object
+      description: >
+        Result of POST /api/v1/semantic/render — the `json2pptx semantic render`
+        result object, with server-local paths replaced by file_url.
+      required:
+        - ok
+      properties:
+        ok:
+          type: boolean
+          description: True when a deck was written.
+        file_url:
+          type: string
+          description: Download path of the rendered deck (present on success).
+        expires_at:
+          type: string
+          format: date-time
+        template:
+          type: string
+          description: Template used (the uploaded filename for a bring-your-own template).
+        slide_count:
+          type: integer
+        content_hash:
+          type: string
+        duration_ms:
+          type: integer
+        quality:
+          type: object
+          description: Deterministic quality score and evidence.
+        deterministic_ready:
+          type: boolean
+        publishable:
+          type: boolean
+          description: False until an all-slide visual verdict exists.
+        manual_review_required:
+          type: boolean
+        blocking_reasons:
+          type: array
+          items:
+            type: string
+        deterministic_blocking_reasons:
+          type: array
+          items:
+            type: string
+        warnings:
+          type: array
+          items:
+            type: string
+        diagnostics:
+          type: array
+          items:
+            $ref: '#/components/schemas/SemanticRenderDiagnostic'
+        error:
+          type: string
+          description: Blocking reason (present on failure).
 
   parameters:
     SemanticStrict:

@@ -131,23 +131,7 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 			ir.SourceMap.SetSlidePath(outputIndex, si.SourcePath)
 		}
 		for _, l := range links {
-			ir.SourceMap.Add(l.RawPath, l.SemanticPath, si.SourceIndex)
-			// Validation findings now address authored content by array index.
-			// Keep an item-level pointer alias so a finding can map back to the
-			// semantic field that produced it.
-			if alias := indexedContentAliasPath(compiled, l.RawPath, outputIndex); alias != "" {
-				ir.SourceMap.Add(alias, l.SemanticPath, si.SourceIndex)
-			}
-			// Preserve the legacy placeholder-name alias for older findings and
-			// repair_slide selectors. Compiler links use indexed dotted paths.
-			if alias := placeholderAliasPath(compiled, l.RawPath, outputIndex); alias != "" {
-				ir.SourceMap.Add(alias, l.SemanticPath, si.SourceIndex)
-			}
-			// Chrome fit findings use JSON Pointer paths, whereas compiler links
-			// use dotted raw paths. Register the takeaway's pointer spelling too.
-			if strings.HasSuffix(l.RawPath, ".takeaway") {
-				ir.SourceMap.Add(slidepath.SlideField(outputIndex, "takeaway"), l.SemanticPath, si.SourceIndex)
-			}
+			registerSourceLink(ir.SourceMap, compiled, l, outputIndex, si.SourceIndex)
 		}
 		// Universal per-slide fields every kind accepts: speaker notes and a
 		// source/footnote line. They are plain strings with no layout impact,
@@ -369,6 +353,36 @@ func bodyString(body map[string]any, keys ...string) string {
 		}
 	}
 	return ""
+}
+
+// registerSourceLink records one compiler source link plus the JSON Pointer
+// aliases render/validation findings address the same content by.
+func registerSourceLink(sm *SourceMap, compiled *deckinput.SlideInput, l slides.SourceLink, outputIndex, sourceIndex int) {
+	sm.Add(l.RawPath, l.SemanticPath, sourceIndex)
+	// Validation findings now address authored content by array index.
+	// Keep an item-level pointer alias so a finding can map back to the
+	// semantic field that produced it.
+	if alias := indexedContentAliasPath(compiled, l.RawPath, outputIndex); alias != "" {
+		sm.Add(alias, l.SemanticPath, sourceIndex)
+	}
+	// Preserve the legacy placeholder-name alias for older findings and
+	// repair_slide selectors. Compiler links use indexed dotted paths.
+	if alias := placeholderAliasPath(compiled, l.RawPath, outputIndex); alias != "" {
+		sm.Add(alias, l.SemanticPath, sourceIndex)
+	}
+	// Chrome fit findings use JSON Pointer paths, whereas compiler links
+	// use dotted raw paths. Register the takeaway's pointer spelling too.
+	if strings.HasSuffix(l.RawPath, ".takeaway") {
+		sm.Add(slidepath.SlideField(outputIndex, "takeaway"), l.SemanticPath, sourceIndex)
+	}
+	// A whole-slide link (the raw_json2pptx escape hatch) is spelled in
+	// dotted form; register its JSON Pointer spelling too, so a render
+	// finding anywhere inside the passed-through slide (e.g. a readability
+	// refusal at /slides/N/content/M/diagram_value) resolves to the authored
+	// slide payload (go-slide-creator-b7qqg.25).
+	if normalizePath(l.RawPath) == fmt.Sprintf("slides[%d]", outputIndex) {
+		sm.Add(slidepath.Slide(outputIndex), l.SemanticPath, sourceIndex)
+	}
 }
 
 // placeholderAliasPath preserves the legacy placeholder-name selector for

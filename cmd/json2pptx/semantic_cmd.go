@@ -726,6 +726,16 @@ func buildSemanticRenderFailure(cr *semantic.CompileResult, err error) semanticR
 			res.Diagnostics = append(res.Diagnostics, semanticDiagFromFitWithIR(sm, ir, f))
 		}
 	}
+	// A generation refusal (unreadable or lossy text) names the authored raw
+	// path; trace it back to the semantic source too, so the refused slide is
+	// addressable without parsing the error string.
+	if loss := generationRefusal(err); loss != nil {
+		var ir *semantic.DeckIR
+		if cr != nil {
+			ir = cr.IR
+		}
+		res.Diagnostics = append(res.Diagnostics, semanticDiagFromFitWithIR(sm, ir, patterns.FitFinding{ValidationError: *loss, Action: "refuse"}))
+	}
 	return res
 }
 
