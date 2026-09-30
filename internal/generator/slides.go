@@ -136,11 +136,17 @@ type IconInsert struct {
 	// FallbackSizePx is the target longer side for the PNG paired with the SVG.
 	// Zero keeps the small-icon default; diagrams set this from their frame size.
 	FallbackSizePx int
-	OffsetX        int64 // X position in EMU
-	OffsetY        int64 // Y position in EMU
-	ExtentCX       int64 // Width in EMU
-	ExtentCY       int64 // Height in EMU
-	Group          bool  // When true, wrap the emitted p:pic in a p:grpSp so PowerPoint treats it as a single selection target.
+	// Diagram marks an svggen chart/diagram cell. Diagram inserts obey the
+	// resolved SVG strategy like placeholder charts: native embeds the SVG
+	// with a PNG fallback; png / emf embed a PNG only, rasterized at the
+	// configured scale and capped at MaxPNGWidth (go-slide-creator-4c9m7).
+	// Icons stay native SVG regardless of strategy.
+	Diagram  bool
+	OffsetX  int64 // X position in EMU
+	OffsetY  int64 // Y position in EMU
+	ExtentCX int64 // Width in EMU
+	ExtentCY int64 // Height in EMU
+	Group    bool  // When true, wrap the emitted p:pic in a p:grpSp so PowerPoint treats it as a single selection target.
 }
 
 // ImageInsert describes an image file to embed in a slide as a p:pic element.

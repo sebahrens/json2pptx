@@ -189,8 +189,8 @@ func TestWithServerSVGConfig(t *testing.T) {
 }
 
 // svgConfigSpec renders a placeholder chart, the media the SVG strategy
-// governs. (Pattern-embedded shape_grid diagrams, e.g. chart_insight's, are
-// always native SVG in the generator on every path, so they cannot show it.)
+// governs. (Pattern-embedded shape_grid diagrams are covered by
+// grid_diagram_svg_strategy_test.go, go-slide-creator-4c9m7.)
 var svgConfigSpec = map[string]any{
 	"meta": map[string]any{"title": "Config parity", "template": "midnight-blue"},
 	"slides": []any{map[string]any{

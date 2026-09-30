@@ -1,5 +1,15 @@
 # Schema Changelog
 
+- **2026-09-30 — Grid diagrams obey the SVG strategy (`go-slide-creator-4c9m7`).**
+  Diagram / chart cells embedded by patterns and `shape_grid` (e.g. the
+  `chart-insights-split` / semantic `chart_insight` chart panel) now follow
+  the resolved SVG strategy on `generate_presentation`, `render_deck_spec`
+  and the CLI, as placeholder charts already did: `native` (default,
+  unchanged) embeds the SVG with a PNG fallback; `png` / `emf` embed a PNG
+  only, rasterized at the configured scale and capped at `max_png_width`
+  (previously always native SVG). Grid icons remain native SVG. No schema or
+  response-shape change.
+
 - **2026-09-30 — Required media is a blocker; URL images survive deck handles (`go-slide-creator-b7qqg.2`, `.9`, `.10`, `.12`).**
   New refuse-class finding `IMAGE_ASSET_UNAVAILABLE`: an authored picture
   (pattern image, `shape_grid` image cell at any nesting depth, content

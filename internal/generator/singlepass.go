@@ -433,11 +433,32 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 		// Register icon inserts from shape_grid as native SVG inserts
 		for iconIdx, icon := range slide.IconInserts {
 			sourceID := fmt.Sprintf("icon-s%d-i%d", slideNum, iconIdx)
+			if icon.Diagram && ctx.svgConverter.GetStrategy() != SVGStrategyNative {
+				// png / emf strategy: a grid diagram embeds as a raster
+				// picture only, exactly like a placeholder chart under the
+				// same strategy (go-slide-creator-4c9m7).
+				pngData, err := ctx.gridDiagramRaster(icon)
+				if err != nil {
+					return fmt.Errorf("slide %d diagram PNG: %w", slideNum, err)
+				}
+				ctx.slideRelUpdates[slideNum] = append(ctx.slideRelUpdates[slideNum], mediaRel{
+					mediaFileName:  ctx.allocPNG(sourceID),
+					data:           pngData,
+					description:    icon.Alt,
+					offsetX:        icon.OffsetX,
+					offsetY:        icon.OffsetY,
+					extentCX:       icon.ExtentCX,
+					extentCY:       icon.ExtentCY,
+					placeholderIdx: -1, // No placeholder to remove — injected as new p:pic
+				})
+				continue
+			}
 			svgMediaFile, pngMediaFile := ctx.allocSVGPNGPair(sourceID)
 			var pngData []byte
 			if icon.FallbackSizePx > 0 {
 				var err error
-				pngData, err = ctx.svgConverter.RasterizeBytesToPNG(ctx.ctx, icon.SVGData, icon.FallbackSizePx)
+				pngData, err = ctx.svgConverter.rasterizeWithinMaxWidth(ctx.ctx, icon.SVGData,
+					ctx.svgConverter.capLongerSideToMaxWidth(icon.FallbackSizePx, icon.ExtentCX, icon.ExtentCY))
 				if err != nil {
 					return fmt.Errorf("slide %d diagram fallback PNG: %w", slideNum, err)
 				}
@@ -843,4 +864,11 @@ func parseLayoutPictures(data []byte) []layoutPicInfo {
 	}
 
 	return pics
+}
+
+// gridDiagramRaster renders a shape_grid diagram's SVG to the PNG a non-native
+// SVG strategy embeds, honoring the configured scale and MaxPNGWidth.
+func (ctx *singlePassContext) gridDiagramRaster(icon IconInsert) ([]byte, error) {
+	c := ctx.svgConverter
+	return c.rasterizeWithinMaxWidth(ctx.ctx, icon.SVGData, c.gridDiagramRasterSizePx(icon.ExtentCX, icon.ExtentCY))
 }

@@ -797,6 +797,8 @@ The HTTP API (`serve`) has no built-in authentication, CORS policy, rate limitin
 | `emf` | Convert SVG to EMF vector format | Inkscape | PowerPoint 2010+ |
 | `native` | Embed SVG directly with PNG fallback | `rsvg-convert` or `resvg` for fallback | PowerPoint 2016+ |
 
+The strategy governs every svggen chart / diagram: placeholder charts and the diagram cells that patterns and `shape_grid` embed (e.g. the `chart-insights-split` chart panel). Under `png` / `emf` those are embedded as PNG only, at `SVG_SCALE` and capped at `MAX_PNG_WIDTH`. Small `shape_grid` icons stay native SVG with a PNG fallback.
+
 ```sh
 brew install librsvg          # macOS
 apt install librsvg2-bin      # Ubuntu/Debian
