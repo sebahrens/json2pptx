@@ -1404,6 +1404,7 @@ func generateDiagramCellInserts(cell shapegrid.ResolvedCell, diagCtx *GridDiagra
 	return []generator.IconInsert{{
 		SVGData:        result.SVG,
 		FallbackSizePx: diagramFallbackSizePx(cell.Bounds.CX, cell.Bounds.CY),
+		Diagram:        true,
 		// An authored alt wins; the derived fallback describes the diagram's
 		// contents rather than naming its type (go-slide-creator-6e8h).
 		Alt:      generator.DiagramAltTextFor(diagramSpec),

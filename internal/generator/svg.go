@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"image/png"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
@@ -656,4 +658,50 @@ func CleanupOrphanedTempFiles(maxAge time.Duration) (int, error) {
 		return cleaned, fmt.Errorf("cleanup errors: %v", errs)
 	}
 	return cleaned, nil
+}
+
+// gridDiagramRasterSizePx is the longer-side pixel size of the raster a
+// non-native SVG strategy embeds for a shape_grid diagram: the frame at 96 DPI
+// times the configured SVG scale (as ConvertToPNG scales an SVG's intrinsic
+// size), capped so the width stays within MaxPNGWidth.
+func (c *SVGConverter) gridDiagramRasterSizePx(extentCX, extentCY int64) int {
+	scale := c.Scale
+	if scale <= 0 {
+		scale = DefaultSVGScale
+	}
+	longer := max(extentCX, extentCY)
+	if longer <= 0 {
+		return iconFallbackPNGSizePx
+	}
+	size := int(math.Ceil(float64(longer) / float64(types.EMUPerPixel) * scale))
+	return c.capLongerSideToMaxWidth(size, extentCX, extentCY)
+}
+
+// capLongerSideToMaxWidth reduces a longer-side pixel size so the raster's
+// width (from the frame aspect) does not exceed MaxPNGWidth.
+func (c *SVGConverter) capLongerSideToMaxWidth(size int, extentCX, extentCY int64) int {
+	if c.MaxPNGWidth <= 0 || extentCX <= 0 || extentCY <= 0 {
+		return size
+	}
+	longer := max(extentCX, extentCY)
+	widthPx := float64(size) * float64(extentCX) / float64(longer)
+	if widthPx <= float64(c.MaxPNGWidth) {
+		return size
+	}
+	return max(1, int(float64(c.MaxPNGWidth)*float64(longer)/float64(extentCX)))
+}
+
+// rasterizeWithinMaxWidth rasterizes svgData at targetSizePx (longer side) and,
+// when the SVG's own aspect makes the result wider than MaxPNGWidth, renders
+// it again at the size that fits.
+func (c *SVGConverter) rasterizeWithinMaxWidth(ctx context.Context, svgData []byte, targetSizePx int) ([]byte, error) {
+	out, err := c.RasterizeBytesToPNG(ctx, svgData, targetSizePx)
+	if err != nil || c.MaxPNGWidth <= 0 {
+		return out, err
+	}
+	cfg, err := png.DecodeConfig(bytes.NewReader(out))
+	if err != nil || cfg.Width <= c.MaxPNGWidth {
+		return out, nil
+	}
+	return c.RasterizeBytesToPNG(ctx, svgData, targetSizePx*c.MaxPNGWidth/cfg.Width)
 }

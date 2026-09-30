@@ -119,6 +119,22 @@ func scoreDeckMissingSlides(request mcp.CallToolRequest, jsonStr string) *mcp.Ca
 	return argRequired(request, "score_deck", "presentation.slides", "array", example, nextCallGetInputSchema())
 }
 
+// scoreDeckTemplateChoice resolves the template to score against: the
+// template argument, else the deck's template, else the deck's template_path
+// (a bring-your-own .pptx, e.g. the one a render_deck_spec deck_id carries;
+// go-slide-creator-b7qqg.8). Exactly one of the results is non-empty, or
+// neither when the deck names no template.
+func scoreDeckTemplateChoice(request mcp.CallToolRequest, input *PresentationInput) (name, file string) {
+	name = input.Template
+	if override, err := request.RequireString("template"); err == nil && override != "" {
+		name = override
+	}
+	if name == "" {
+		file = input.TemplatePath
+	}
+	return name, file
+}
+
 func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	jsonStr, _, paramErr := mc.presentationForTool("score_deck", request)
 	if paramErr != nil {
@@ -164,18 +180,7 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 		return api.MCPDiagnosticsError(structDiags), nil
 	}
 
-	// Resolve template name.
-	templateName := input.Template
-	if override, err := request.RequireString("template"); err == nil && override != "" {
-		templateName = override
-	}
-	// A deck's template_path (a bring-your-own .pptx, e.g. the one a
-	// render_deck_spec deck_id carries) stands in for template; an explicit
-	// template argument still wins (go-slide-creator-b7qqg.8).
-	templateFile := ""
-	if templateName == "" {
-		templateFile = input.TemplatePath
-	}
+	templateName, templateFile := scoreDeckTemplateChoice(request, &input)
 	if templateName == "" && templateFile == "" {
 		return argRequired(request, "score_deck", "template", "string", "midnight-blue", nextCallListTemplates()), nil
 	}
