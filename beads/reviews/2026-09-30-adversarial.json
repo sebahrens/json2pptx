@@ -1,0 +1,732 @@
+{
+  "reviewer": "adversarial",
+  "reviewed_head": "4515d79bebefa6b09e39182cc59d8a7d5b8f9fba",
+  "date": "2026-09-30",
+  "beads_epic": "go-slide-creator-b7qqg",
+  "summary": {
+    "new_atomic_beads": 27,
+    "priority_counts": {
+      "P1": 11,
+      "P2": 14,
+      "P3": 2
+    },
+    "visual_images_inspected": 450
+  },
+  "scope": {
+    "semantic_kind_gallery": {
+      "kinds": 24,
+      "templates_attempted": 10,
+      "successful_full_decks": 9,
+      "slides_inspected": 216,
+      "failure": "modern architecture readability refusal; filed .3/.4"
+    },
+    "named_patterns": {
+      "distinct_patterns": 51,
+      "gallery_templates": [
+        "midnight-blue",
+        "modern-yellow",
+        "warm-coral"
+      ],
+      "slides_inspected": 151
+    },
+    "charts_and_diagrams": {
+      "chart_types": 15,
+      "diagram_types": 21,
+      "templates": [
+        "midnight-blue",
+        "warm-coral"
+      ],
+      "slides_inspected": 72
+    },
+    "examples_and_revision_probes": {
+      "qbr_slides": 6,
+      "changed_slide_revision": 1,
+      "chart_boundary_and_escape_hatch_probes": 4
+    },
+    "runtime": "Fresh local binary, real stdio MCP initialize/tools-list/tool calls; isolated handler probes for resource lifetime/config/redirect behavior. Native LibreOfficeDev through the bundled override renderer.",
+    "source_review": [
+      "MCP profiles/discovery/schema",
+      "asset resolution and lifetimes",
+      "BYO templates and handles",
+      "semantic compile/validate/render parity",
+      "quality and visual review gates",
+      "SVG/native charts and diagrams",
+      "HTTP semantic parity",
+      "subprocess cancellation and runtime budgets",
+      "canonical agent docs"
+    ],
+    "deduplication": "Compared with1846 pre-review Beads records, including closed audit issues and active readability debt."
+  },
+  "checks": {
+    "build": "passed",
+    "pinned_make_lint": "passed in both modules,0 issues",
+    "svggen_short_race": "passed",
+    "root_short_race_25m": "failed twice at25m in TestSchemaMaximaStayReadable; other root packages passed",
+    "tracked_gofmt": "one baseline extra-blank-line defect; filed .26",
+    "isolated_probes": "confirmed deleted URL assets, semantic SVG config mismatch and redirect domain-policy bypass",
+    "patch_loop": "QBR deck_id+patch retained template and returned changed_slides:[0]; selected thumbnail render returned only0",
+    "visual_review_loop": "Honest changes_requested submissions accepted for bubble/Venn; approval remains false"
+  },
+  "findings": [
+    {
+      "key": "semantic-assets",
+      "area": "mcp-assets",
+      "priority": 1,
+      "title": "render_deck_spec skips URL and base_dir asset resolution on the recommended MCP path",
+      "problem": "The semantic MCP renderer calls RunPresentation without the URL/local-asset preparation required by that runner. Valid relative images in a DeckSpec are silently omitted, and URL image fields never get resolved. Passing base_dir does not repair this: its schema says it only applies to template_path.",
+      "evidence": [
+        "request-asset-relative.json supplies an image_case with image.path=qbr-slide-0.png and base_dir equal to the directory that contains that file.",
+        "response-asset-relative.json returns success:true with warning shape_grid image: file not found: qbr-slide-0.png. The file exists under the supplied root.",
+        "cmd/json2pptx/mcp_semantic.go handleRenderDeckSpec invokes RunPresentation without PreConvert; presentation_runner.go explicitly requires resolved URL and local references.",
+        "semantic_cmd.go resolves URLs and local paths in its PreConvert hook; mcp.go handleGenerate does both."
+      ],
+      "expected": "The semantic MCP path must honor base_dir for all supported asset references, use the safe URL resolver, preserve its cache through generation, and match CLI/raw behavior.",
+      "scope": "Related closed go-slide-creator-6wss.4 fixed the CLI semantic render path; the MCP counterpart remains broken.",
+      "acceptance": "A real MCP test with a non-CWD relative image plus base_dir embeds its bytes; image_case URL, team photo, raw escape hatch, background and nested grid assets resolve through the same guards as raw generation.",
+      "bead_id": "go-slide-creator-b7qqg.1",
+      "code_location": {
+        "file": "cmd/json2pptx/mcp_semantic.go",
+        "line": 683
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "missing-pattern-image-gate",
+      "area": "quality-gates",
+      "priority": 1,
+      "title": "Missing shape-grid image still yields deterministic_ready=true and a passing quality gate",
+      "problem": "A required image_case picture can fail to load and leave a placeholder while the completion precondition reports no deterministic blocker. This lets agents submit an incomplete factual/screenshot slide for visual approval.",
+      "evidence": [
+        "response-asset-relative.json contains warning shape_grid image: file not found: qbr-slide-0.png but deterministic_ready:true, structural_score:100 and quality_gate.passed:true.",
+        "The only blocking_reason is the missing visual verdict; there is no image/content-loss diagnostic or semantic_path.",
+        "This applies independently of base_dir: an explicit nonexistent image must also block or produce structured refusal.",
+        "asset-absolute-missing2-data.json confirms an absolute nonexistent image also reports deterministic_ready:true with only a warning, independently of relative resolution."
+      ],
+      "expected": "Required media omissions must produce an actionable structured finding and prevent deterministic readiness. Intentionally decorative optional assets can have an explicit nonblocking policy.",
+      "acceptance": "A missing or corrupt picture in image_case, pattern image and nested grid cells yields a source-addressed blocking finding; no approved review can publish a deck missing a required asset.",
+      "bead_id": "go-slide-creator-b7qqg.2",
+      "code_location": {
+        "file": "cmd/json2pptx/semantic_cmd.go",
+        "line": 727
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "arch-preflight-parity",
+      "area": "validation",
+      "priority": 1,
+      "title": "validate_deck_spec treats predicted sub-floor grid text as info even though generation refuses it",
+      "problem": "Validation knows the exact unreadable text outcome but classifies it as advisory, so the advertised validate\u2192render workflow approves an input the generator cannot render.",
+      "evidence": [
+        "request-arch-validate.json uses list_slide_kinds architecture example with meta.template=modern.",
+        "response-arch-validate.json reports ok:true and INPUT.TEXT_BELOW_READABLE_MIN severity:info/action:review at 11.04pt versus 12pt.",
+        "response-arch-render.json refuses the same example because card-body text writes 12pt with stored autofit 92%, yielding 11.0pt.",
+        "The all-kind gallery cannot render on modern because this single built-in example fails (response-gallery-modern.json)."
+      ],
+      "expected": "Compiled semantic preflight must classify generated-grid role/readability predictions with the same refusal policy as generation.",
+      "acceptance": "The live architecture example validates as a source-addressed error on modern, or is rendered at a readable size; validate and render agree on all kind/template readable floors.",
+      "bead_id": "go-slide-creator-b7qqg.3",
+      "code_location": {
+        "file": "cmd/json2pptx/readability_findings.go",
+        "line": 46
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "semantic-refusal-envelope",
+      "area": "mcp-repair",
+      "priority": 1,
+      "title": "Generation-time DeckSpec refusals collapse into an error string without findings or a repair call",
+      "problem": "When the final generator refuses unreadable grid text, semantic MCP returns only error, explanation_summary and deck_id. It discards the machine-readable refusal code, semantic source path and next_tool_call needed for the agent to fix the slide.",
+      "evidence": [
+        "response-arch-render.json returns success:false with an error string naming /slides/0/rendered_shapes/200/paragraphs/1.",
+        "It has no diagnostics, deterministic_blocking_reasons or next_tool_call.",
+        "The authored architecture text is several tiers/items; a generated shape ID does not identify the DeckSpec field to edit.",
+        "handleRenderDeckSpec builds buildSemanticRenderFailure(compileResult,renderErr) instead of translating the generation refusal through the source map."
+      ],
+      "expected": "Preserve errors.As refusal metadata, map to authored semantic fields, and return a validate_deck_spec patch or concrete source-addressed remediation.",
+      "acceptance": "A final grid/table/native readability refusal returns stable code, severity/error action, semantic_path, measured/allowed evidence and an executable follow-up; no rendered_shapes-only generic string is the sole diagnosis.",
+      "bead_id": "go-slide-creator-b7qqg.4",
+      "code_location": {
+        "file": "cmd/json2pptx/semantic_cmd.go",
+        "line": 706
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "semantic-string-schema",
+      "area": "mcp-contract",
+      "priority": 2,
+      "title": "DeckSpec tool schemas declare spec as object while descriptions promise YAML/JSON strings",
+      "problem": "The implementation accepts string DeckSpecs and the tool prose advertises them, but spec is mcp.WithObject on validate_deck_spec/render_deck_spec/compile_deck_spec/explain_deck_spec. A schema-validating MCP host rejects the advertised string before it reaches the server.",
+      "evidence": [
+        "tools.json render_deck_spec.inputSchema.properties.spec has type:object and no object|string union.",
+        "Its description explicitly says a raw YAML/JSON string is accepted.",
+        "The real qbr-validate and qbr-render requests use a YAML string and succeed on the permissive stdio server.",
+        "mcp_semantic.go semanticSpecBytes supports string but deckSpec*Arg factories call mcp.WithObject."
+      ],
+      "expected": "Publish a union that includes the documented string input or consistently stop advertising/supporting it.",
+      "acceptance": "Validate every documented DeckSpec argument form against the advertised schemas in all profiles; the YAML example passes client-side validation.",
+      "bead_id": "go-slide-creator-b7qqg.5",
+      "code_location": {
+        "file": "cmd/json2pptx/mcp_semantic.go",
+        "line": 245
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "layout-preview-timeouts",
+      "area": "reliability",
+      "priority": 2,
+      "title": "Cold layout-preview discovery can hang indefinitely in LibreOffice or ImageMagick",
+      "problem": "Layout preview generation launches external commands with exec.Command and context.Background, bypassing the bounded subprocess runner used for deck renders. list_templates/examine_template/recommendation discovery can hang indefinitely on a cold cache.",
+      "evidence": [
+        "internal/layoutpreview/preview.go generateAllPreviews uses context.Background for generation, exec.Command(loBin,loArgs...) and exec.Command(magickBin,...) with cmd.Run and no deadline.",
+        "currentPreviewCacheIdentity only bounds --version; the actual conversion/rasterization have no timeout.",
+        "A stuck conversion leaves discovery waiting, no RENDER_* timeout finding, no cancellation-owned child cleanup."
+      ],
+      "expected": "Carry the request context through preview generation and use bounded, owned-process conversion/rasterization with actionable diagnostics.",
+      "scope": "Closed go-slide-creator-9hty hardens internal/render; internal/layoutpreview remains a separate unbounded implementation.",
+      "acceptance": "A fake hung LibreOffice and rasterizer cause preview discovery to return bounded timeout errors, clean up only their own children/temp files and leave the MCP session responsive.",
+      "bead_id": "go-slide-creator-b7qqg.6",
+      "code_location": {
+        "file": "internal/layoutpreview/preview.go",
+        "line": 141
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "canonical-guide-values",
+      "area": "docs",
+      "priority": 2,
+      "title": "Canonical template guide examples still use removed value fields and generate empty content",
+      "problem": "The canonical template usage reference instructs agents to copy raw examples using value instead of typed fields. Those examples now create an empty content slide with deprecation warnings and no body text.",
+      "evidence": [
+        "skills/template-deck/TEMPLATE_GUIDE.md Selecting a Layout by Canonical ID uses value for title/text and bullets.",
+        "request-guide-legacy.json copies its content example into generate_presentation.",
+        "response-guide-legacy.json reports removed-in-3.0.0 warnings, content slide has 0 body words, SLIDE_NEARLY_EMPTY and deterministic_ready:false."
+      ],
+      "expected": "All canonical copy-ready examples use text_value, bullets_value and current supported fields.",
+      "acceptance": "Execute raw JSON examples from TEMPLATE_GUIDE against validate_input/generate; intended title/body is preserved and no deprecated value key remains.",
+      "bead_id": "go-slide-creator-b7qqg.7",
+      "code_location": {
+        "file": "skills/template-deck/TEMPLATE_GUIDE.md",
+        "line": 149
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "byo-handle",
+      "area": "mcp-state",
+      "priority": 1,
+      "title": "BYO template selection is lost by deck_id revisions, scoring and validation",
+      "problem": "The supported template_path/base_dir render succeeds, but the resulting semantic handle retains only an empty registered template name. Re-rendering the handle fails; scoring asks for a missing template while validation says no issues.",
+      "evidence": [
+        "request-byo-initial.json renders the repository portability-4x3.pptx fixture successfully with no pinned meta.template.",
+        "request-byo-followup.json passes only the returned deck_id; response has TPL.TEMPLATE_NOT_FOUND for template \"\".",
+        "byo-score-data.json returns INPUT.MISSING_PARAMETER template; byo-validate-data.json reports ok:true/no issues.",
+        "deckHandle does not persist TemplatePath or BaseDir; handleRenderDeckSpec stores res.Template/src.Template only."
+      ],
+      "expected": "Retain the effective BYO template identity and asset root in handles, or return an explicit self-contained revision contract that all handle tools honor.",
+      "acceptance": "Render, validate, score and patch/re-render a BYO 4x3 template by deck_id alone; preserve the slide size, layouts, theme and template content.",
+      "bead_id": "go-slide-creator-b7qqg.8",
+      "code_location": {
+        "file": "cmd/json2pptx/mcp_deck_handle.go",
+        "line": 40
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "url-handle-lifetime",
+      "area": "mcp-state",
+      "priority": 1,
+      "title": "URL-image generation stores deleted download paths in raw deck handles",
+      "problem": "generate_presentation resolves an image URL to a temporary path, stores that mutated input in the deck handle, then its deferred resolver cleanup deletes the file. An immediate deck_id regeneration fails with INPUT.IMAGE_PATH, breaking the normal revision loop.",
+      "evidence": [
+        "isolated-probes.log TestAdversarialReviewURLHandleRoundTrip invokes the real MCP handlers with an httptest PNG URL.",
+        "First generation succeeds. Stored image_value.url is empty, stored path points into go-slide-creator-resources-*; os.Stat already returns no such file.",
+        "Second handleGenerate(deck_id) returns INPUT.IMAGE_PATH at /slides/0/content/1/image_value/path.",
+        "mcp-isolated-probes.go preserves the self-contained reproduction; mcp.go resolvePresentationURLs mutates before rememberRawDeck, with defer urlCleanup."
+      ],
+      "expected": "Store the authored URL before materialization or keep downloaded bytes under a handle-owned lifetime; use the safe resolver again when rebuilding.",
+      "acceptance": "An initial URL-image render followed by score, patch, repair and regeneration from its handle retains the image. Test nested pattern/grid/background assets too.",
+      "bead_id": "go-slide-creator-b7qqg.9",
+      "code_location": {
+        "file": "cmd/json2pptx/mcp.go",
+        "line": 668
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "score-media-parity",
+      "area": "quality-gates",
+      "priority": 1,
+      "title": "score_deck gives a perfect score to an unresolved required URL image",
+      "problem": "The score tool omits URL materialization and media-failure findings. A required screenshot that is never fetched returns overall_score:100, zero findings and a passing gate. This defeats preflight for agents relying on score_deck.",
+      "evidence": [
+        "request-score-url.json supplies image-text-split image.url=https://example.com/picture.png.",
+        "score-url-data.json reports overall_score:100, per_slide findings:[], quality_gate.passed:true.",
+        "mcp_score_deck.go resolves local paths but does not call resolvePresentationURLs; render warning collection excludes missing-media warnings."
+      ],
+      "expected": "Use the same asset preparation and required-media policy as actual generation; failed/unresolved required media must be structured blockers.",
+      "acceptance": "Score a valid URL image and a missing/invalid URL image; only the valid image can pass and the bad case exposes its authored source path.",
+      "bead_id": "go-slide-creator-b7qqg.10",
+      "code_location": {
+        "file": "cmd/json2pptx/mcp_score_deck.go",
+        "line": 103
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "semantic-svg-config",
+      "area": "configuration",
+      "priority": 2,
+      "title": "render_deck_spec discards the MCP server SVG rendering configuration",
+      "problem": "The semantic renderer constructs config.DefaultConfig rather than using mc.cfg for SVG strategy, scale, compatibility and PNG width. An operator-requested PNG strategy is silently replaced by native SVG, changing compatibility and resolution on the recommended agent path.",
+      "evidence": [
+        "isolated-probes.log TestAdversarialReviewSemanticSVGConfig sets mc.cfg.SVG.Strategy=PNG and calls handleRenderDeckSpec on chart_insight.",
+        "The resulting deck still contains ppt/media/image1.svg plus a fallback PNG.",
+        "cmd/json2pptx/mcp_semantic.go:654 resets cfg and :691-694 passes default SVG strategy, scale, native compatibility and MaxPNGWidth."
+      ],
+      "expected": "Use the effective server configuration consistently across semantic and raw generation, including env/config overrides.",
+      "acceptance": "Parity tests configure PNG/native/EMF, scale, strict native compatibility and MaxPNGWidth; semantic output obeys the same resolved options as raw output.",
+      "bead_id": "go-slide-creator-b7qqg.11",
+      "code_location": {
+        "file": "cmd/json2pptx/mcp_semantic.go",
+        "line": 654
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "redirect-domain-allowlist",
+      "area": "resource-security",
+      "priority": 2,
+      "title": "Resource domain allow-list is bypassed by redirects to other public domains",
+      "problem": "AllowedDomains is checked only for the initial URL. The normal safe HTTP client checks redirect count and private-IP dialing, but never rechecks the domain policy. An allowed host can redirect to an unapproved public host and the resolver downloads/caches it.",
+      "evidence": [
+        "resource-isolated-probes.go constructs newSafeHTTPClient and replaces only its transport with deterministic public-host responses.",
+        "isolated-probes.log shows AllowedDomains=[allowed.example], fetched_hosts=[allowed.example unapproved.example], successful cached image and nil error.",
+        "internal/resource/resolver.go download validates only u.Hostname before r.client.Get; ssrf.go CheckRedirect has no allow-list check."
+      ],
+      "expected": "Enforce the configured host allow-list on every redirect while retaining the private-address checks and bounded redirects.",
+      "acceptance": "Reject an allowed-to-unapproved redirect before fetching its body; allow an approved redirect; retain existing safe-dial and redirect-limit behavior.",
+      "bead_id": "go-slide-creator-b7qqg.12",
+      "code_location": {
+        "file": "internal/resource/resolver.go",
+        "line": 163
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "semantic-title-content-collision",
+      "area": "visual-layout",
+      "priority": 1,
+      "title": "Built-in semantic examples overlap title text and body content without collision findings",
+      "problem": "The default copy-ready architecture example on blue-corporate and matrix_2x2 example on modern-yellow visibly overlap their two-line titles with the first content row/axis labels. Validation and render diagnostics miss both, so shortening/reflow is not offered to agents.",
+      "evidence": [
+        "images-blue-corporate/01.png: \"THEM\" from the architecture headline runs into the top tier panel.",
+        "images-modern-yellow/10.png: headline \"quarters\" overlaps the Low effort axis label.",
+        "validate-collision-blue-corporate-data.json has no issues; modern-yellow validation has only contrast info.",
+        "Generated OOXML: blue-corporate title y=841248, cy=1016000 (bottom1857248), architecture content starts1453896; modern-yellow title bottom1690688 while Low effort y=1248029,cy=541995.",
+        "Gallery render responses have no title/collision diagnostic for these slides."
+      ],
+      "expected": "Reserve the effective title ink/placeholder space from the same selected layout when placing every pattern component, and report measured title/content collisions as blockers with semantic paths.",
+      "scope": "Related closed go-slide-creator-3a29 verified a different template QA deck; these current recommended semantic examples reproduce a residual collision.",
+      "acceptance": "Render the exact catalog examples on both templates and inspect full-size PNGs; no title/body ink overlaps and a deliberately forced collision is caught in validate/render with a source-addressed fix.",
+      "bead_id": "go-slide-creator-b7qqg.13",
+      "code_location": {
+        "file": "cmd/json2pptx/shape_grid.go",
+        "line": 252
+      },
+      "confidence": 0.9,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "kpi-atomic-magnitude",
+      "area": "visual-typography",
+      "priority": 2,
+      "title": "kpi-6up breaks the magnitude and unit across lines on modern-yellow",
+      "problem": "The bundled six-KPI example wraps \"$4.2M\" as \"$4.2\"/\"M\" and \"127%\" as \"127\"/\"%\" on modern-yellow. This damages the metric hierarchy and makes units appear detached despite other templates fitting the same strings.",
+      "evidence": [
+        "raw-images-modern-yellow/24.png and raw-contact-modern-yellow-24.png visibly split the ARR and NRR values.",
+        "Same example on midnight-blue and warm-coral remains one line.",
+        "raw-gallery-modern-yellow.json uses show_pattern(kpi-6up).example_values and type_scale:comfortable without custom sizes."
+      ],
+      "expected": "Treat KPI magnitude+unit as an atomic display token; allocate width or use a readable measured size before wrapping its suffix to another line.",
+      "acceptance": "The catalog kpi-2up through kpi-6up values render on one line at a readable size across bundled templates; too-long values get a concrete rebalance/split finding rather than dangling units.",
+      "bead_id": "go-slide-creator-b7qqg.14",
+      "code_location": {
+        "file": "internal/patterns/kpi_common.go",
+        "line": 477
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "process-label-word-break",
+      "area": "visual-typography",
+      "priority": 2,
+      "title": "process-grid-2row splits short row labels inside words on modern-yellow",
+      "problem": "The bundled process-grid-2row example has a narrow first column whose labels render DESIGN/PROCES/S and PRODUCTI/ON. These are ordinary short labels with abundant unused height; the example should demonstrate usable typography.",
+      "evidence": [
+        "raw-images-modern-yellow/34.png and raw-contact-modern-yellow-32.png show broken row-header words.",
+        "Raw input uses current show_pattern example_values, blank-title and comfortable defaults.",
+        "Other templates preserve the intended DESIGN PROCESS and PRODUCTION labels."
+      ],
+      "expected": "Measure row-header width under the resolved template font; widen the label column or choose a readable header size and break only at intended word boundaries.",
+      "acceptance": "Visual before/after of the exact example across all bundled templates shows intact row-header words; add a measured warning for labels that cannot fit without intra-word wrapping.",
+      "bead_id": "go-slide-creator-b7qqg.15",
+      "code_location": {
+        "file": "internal/patterns/process_grid_2row.go",
+        "line": 257
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "race-25min-timeout",
+      "area": "test-reliability",
+      "priority": 2,
+      "title": "CI-equivalent race suite still exceeds the documented 25-minute timeout in schema maxima",
+      "problem": "The prescribed root race command timed out at 25 minutes with TestSchemaMaximaStayReadable still running. The stack is CPU text shaping through repeated state-shift-hub candidate measurements, not an external renderer wait. Raising the documented timeout previously did not make this gate reliable on this host.",
+      "evidence": [
+        "/tmp/json2pptx-review-race.log ends panic: test timed out after 25m0s, cmd/json2pptx FAIL at1500.054s.",
+        "Stack: TestSchemaMaximaStayReadable \u2192 measureSchemaMaximumEncodedPt \u2192 collectReadabilityFindings \u2192 stateShiftHub.Expand \u2192 sshMeasure/sshPlace \u2192 writtenFitHeightPt \u2192 AutofitScale \u2192 MeasureRun/wrapText.",
+        "Host uses Go1.26.3; an elevated rerun with an isolated log is tracked in root-race-final.log.",
+        "Independent root-race-final.log reproduces the same25m timeout: TestSchemaMaximaStayReadable still running7m39s; cmd/json2pptx1500.064s. All other packages passed."
+      ],
+      "scope": "Related closed go-slide-creator-tn6i5 changed the default10m guidance to25m. This is a current25m overrun; investigate performance rather than another blanket increase. Earlier sandbox-only listener/cache failures are excluded. Related closed go-slide-creator-wf94z previously profiled/deduplicated the suite and reported548.896s; the current timeout is a regression beyond that work.",
+      "expected": "Bound/collapse duplicate fit candidate work and structure expensive maximum tests so the advertised race gate completes predictably while preserving coverage.",
+      "acceptance": "Record root race suite and worst-pattern durations on comparable hardware, profile the hot loop, and demonstrate completion within the CI25m budget with margin.",
+      "bead_id": "go-slide-creator-b7qqg.16",
+      "code_location": {
+        "file": "cmd/json2pptx/schema_maxima_test.go",
+        "line": 99
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "bmc-relations-loss",
+      "area": "native-diagrams",
+      "priority": 1,
+      "title": "Native Business Model Canvas silently drops the documented customer_relations field",
+      "problem": "Agent discovery requires customer_relations, but the native BMC parser only accepts customer_relationships and other aliases. A valid nine-section input renders an empty Customer Relationships cell and loses its authored content with no loss warning.",
+      "evidence": [
+        "chart-diagram-midnight-blue.json slide25 supplies customer_relations:[\"Dedicated success team\"], following get_data_format_hints and get_diagram_capabilities.",
+        "chart-diagram-images-midnight-blue/25.png and warm-coral/25.png show the empty Customer Relationships panel.",
+        "The phrase is absent from slide26.xml, while all eight other authored sections survive.",
+        "internal/generator/bmc_shapes.go bmcSectionAliases has customer_relationships but omits customer_relations; svggen/capabilities.go:413 and semantic framework field prose use customer_relations."
+      ],
+      "expected": "Accept the canonical documented key in native BMC, normalize synonyms consistently, and prevent required-section data from disappearing silently.",
+      "acceptance": "Generate every advertised BMC required key through placeholder, semantic framework and grid paths; assert all nine authored section texts are present in PPTX and rendered images.",
+      "bead_id": "go-slide-creator-b7qqg.17",
+      "code_location": {
+        "file": "internal/generator/bmc_shapes.go",
+        "line": 145
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "stacked-area-value-labels",
+      "area": "chart-correctness",
+      "priority": 1,
+      "title": "Stacked-area data labels show cumulative totals as individual series values",
+      "problem": "style.show_values=true on stacked_area labels the second series with cumulative values while its legend still names that individual series. A prior-year value35 is displayed77, making the chart contradict its input.",
+      "evidence": [
+        "request-stacked-area-values.json has Current year=[42,36,28,18], Prior year=[35,32,24,16], show_values:true.",
+        "stacked-area-values.svg and .png label Prior year with77,68,52,34 instead of35,32,24,16.",
+        "svggen/charts.go StackedAreaChart.Draw replaces each series.Values with cumulative sums then sends them directly to LineChart.Draw; value-label formatting sees those sums."
+      ],
+      "expected": "Separate stack boundary coordinates from original datum values. Either label each band with its actual contribution or explicitly label cumulative totals as totals.",
+      "acceptance": "For two/three-series stacked areas, labels match authored values and legend identities. Totals, if enabled separately, have an explicit total role and do not replace series values.",
+      "bead_id": "go-slide-creator-b7qqg.18",
+      "code_location": {
+        "file": "svggen/charts.go",
+        "line": 2135
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "stacked-area-color-order",
+      "area": "visual-consistency",
+      "priority": 2,
+      "title": "Stacked-area reverses the default series colors compared with other chart types",
+      "problem": "Rendering the same ordered series as stacked_area swaps Current year and Prior year palette assignments relative to bar, stacked_bar, line and area. A deck changes the meaning of its colors when the visual type changes.",
+      "evidence": [
+        "chart-diagram-contact-midnight-blue-00.png and warm-coral-00.png: Current year is blue/orange in the first five charts, but red/teal in stacked_area.",
+        "StackedAreaChart.Draw reverses the cumulative series before palette colors are allocated by LineChart.Draw.",
+        "Explicit per-series Color pointers survive, but agents using normal template/default colors hit the swap."
+      ],
+      "expected": "Assign series identity colors before reversing painter order, so stack rendering order does not alter the palette mapping.",
+      "acceptance": "A deck containing all Cartesian types with identical ordered series preserves the series-to-template-color mapping, including forced legends/direct labels and style.colors overrides.",
+      "bead_id": "go-slide-creator-b7qqg.19",
+      "code_location": {
+        "file": "svggen/charts.go",
+        "line": 2147
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "bubble-per-series-scale",
+      "area": "chart-correctness",
+      "priority": 1,
+      "title": "Bubble charts scale size separately per series, so equal values have different areas",
+      "problem": "Each series creates its own bubble size domain. The same size10 draws a large bubble in Region A and a tiny one in Region B; the chart makes identical magnitudes appear about18 times different in area.",
+      "evidence": [
+        "request-bubble-scaling.json: Region A sizes[5,10], Region B sizes[10,20].",
+        "bubble-scaling.png visibly shows A size10 far larger than B size10.",
+        "bubble-scaling.svg arcs have radii56.0035 versus13.3342 for the equal size10 points; area ratio approximately17.6.",
+        "svggen/charts.go:2477-2491 computes bMin/bMax inside the per-series loop."
+      ],
+      "expected": "Resolve one size domain across the entire chart and use it for every series; retain a shared third-variable scale and expose it clearly.",
+      "acceptance": "Identical sizes in different series produce identical bubble areas; changing or adding another series does not change equal-value comparisons. Include singleton and constant-size series.",
+      "bead_id": "go-slide-creator-b7qqg.20",
+      "code_location": {
+        "file": "svggen/charts.go",
+        "line": 2477
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "bubble-area-encoding",
+      "area": "chart-correctness",
+      "priority": 2,
+      "title": "Bubble radius normalization exaggerates magnitude differences instead of encoding area",
+      "problem": "Even within a single series, sizes5 and10 draw radii13.3342 and56.0035, approximately17.6 times the area for only twice the value. Linear min/max mapping to radius with a nonzero floor cannot communicate the magnitude ratio honestly.",
+      "evidence": [
+        "bubble-scaling.svg/.png Region A authored sizes5 and10 use radii13.3342 and56.0035.",
+        "charts.go maps min/max directly through NewLinearScale to SizeRange; PointSeries consumes that as marker radius.",
+        "Data-format hints advertise a numeric size dimension but provide no alternate encoding policy or scale legend."
+      ],
+      "expected": "Default numeric size to a chart-wide area-proportional encoding (sqrt radius scale); any bounded/nonproportional presentation policy must be explicit and visibly qualified.",
+      "acceptance": "Positive values with ratio1:2:4 have area ratios1:2:4 under the default; zero/negative cases have a documented policy. Test multiple series and consistent size legends.",
+      "bead_id": "go-slide-creator-b7qqg.21",
+      "code_location": {
+        "file": "svggen/charts.go",
+        "line": 2489
+      },
+      "confidence": 0.9,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "percent-explicit-input-scale",
+      "area": "chart-authoring",
+      "type": "feature",
+      "priority": 2,
+      "title": "Add an explicit percentage input scale to avoid heuristic 100x misinterpretation",
+      "problem": "Percent formatting cannot unambiguously represent low percentage-point data or fractional ratios exceeding100%. It infers scale100 when every magnitude is <=1, otherwise scale1 for the entire chart. The closed style schema has no way to declare the intended units.",
+      "evidence": [
+        "request-percent-ambiguous.json authors deposit rates0.25 and0.50 with percent style; percent-ambiguous.png displays25% and50% under a title saying rates are below1%.",
+        "No chart.percent_scale_ambiguous finding is emitted for this low-range case; current ambiguity warning only triggers above1.",
+        "svggen/value_format.go:264-267 chooses scale from chart-wide maxMagnitude. chart_style_hints explicitly documents this heuristic."
+      ],
+      "expected": "Offer input_scale:fraction|percentage_points (or equivalent explicit multiplier), retain backwards-compatible auto only as a clearly documented policy, and give agents actionable ambiguity feedback.",
+      "acceptance": "Explicit percentage_points formats0.25 as0.25%; fraction formats1.2 as120%; tick labels, data labels and marks share the declared scale. Discovery, schema, validation and renderer expose the same option.",
+      "bead_id": "go-slide-creator-b7qqg.22",
+      "code_location": {
+        "file": "svggen/value_format.go",
+        "line": 264
+      },
+      "confidence": 0.9,
+      "autofix_class": "advisory",
+      "owner": "human"
+    },
+    {
+      "key": "bar-capabilities-auto-log",
+      "area": "mcp-discovery",
+      "priority": 2,
+      "title": "Chart capability discovery still promises automatic log scaling that was removed",
+      "problem": "get_chart_capabilities tells agents bar and grouped_bar auto log-scale at1000x range. The renderer now intentionally keeps linear scale and emits chart.wide_range_linear unless style.scale explicitly requests log. Conflicting discovery can make agents rely on a behavior that does not occur.",
+      "evidence": [
+        "chart-caps-data.json bar/grouped_bar density_behavior contains \"auto log-scale at 1000x range\".",
+        "data-hints-data.json chart_style_hints.style.scale says wide-range bars stay linear and report chart.wide_range_linear.",
+        "svggen/capabilities.go:79,90 are stale; chart wide-range behavior was changed by closed go-slide-creator-gpjwj."
+      ],
+      "expected": "Describe the current linear-by-default behavior and the explicit log opt-in consistently on every discovery surface.",
+      "acceptance": "Compare capability prose, style hints, docs and an actual wide-range bar render; no auto-log promise remains and explicit log is visibly labeled.",
+      "bead_id": "go-slide-creator-b7qqg.23",
+      "code_location": {
+        "file": "svggen/capabilities.go",
+        "line": 79
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "recommend-core-runnable-visual",
+      "area": "agent-experience",
+      "type": "feature",
+      "priority": 2,
+      "title": "Bridge recommended diagrams into runnable DeckSpec examples on the default MCP surface",
+      "problem": "The default twelve-tool profile recommends useful diagram types such as gantt, but returns only placement metadata and a blank layout preview. It provides no runnable DeckSpec/raw escape-hatch example or next call for the diagram data contract; full diagram format hints and raw generator tools are omitted from tools/list. Agents must leave the recommended core workflow and infer the lower-level payload to use these capabilities.",
+      "evidence": [
+        "recommend-gantt-data.json ranks gantt0.92 with metadata_only:true and layout preview only; no authored example or next_tool_call.",
+        "tools.json default profile exposes twelve tools, excluding get_data_format_hints, get_diagram_capabilities and generate_presentation.",
+        "list_slide_kinds has no gantt/venn/pestel kind; raw_json2pptx is the supported escape hatch but its pattern example does not teach these diagram payloads.",
+        "request-semantic-venn.json demonstrates that a native supported raw_json2pptx wrapper can render the full diagram capability without changing profiles."
+      ],
+      "expected": "Make every recommended chart/diagram reachable with a concrete core-profile DeckSpec example and source-addressed field discovery, ideally a semantic diagram kind or generated escape-hatch recipe.",
+      "acceptance": "From only the advertised default tools, an agent follows recommend_visual(gantt/venn/pestel) to a schema-valid renderable DeckSpec without guessing hidden tools or reading server-local files; recommendations include runnable payloads and the supported next call.",
+      "bead_id": "go-slide-creator-b7qqg.24",
+      "code_location": {
+        "file": "cmd/json2pptx/mcp.go",
+        "line": 1730
+      },
+      "confidence": 0.9,
+      "autofix_class": "advisory",
+      "owner": "human"
+    },
+    {
+      "key": "deferred-http-semantic-render",
+      "area": "api-parity",
+      "type": "feature",
+      "priority": 3,
+      "title": "Complete the deferred semantic HTTP render endpoint using the shared presentation runner",
+      "problem": "The HTTP integration surface can validate and compile DeckSpecs, but POST /api/v1/semantic/render still returns501. The renderer is now reusable through RunPresentation, so this remains a concrete missing integration feature rather than an unavoidable cmd-only architecture constraint.",
+      "evidence": [
+        "internal/api/semantic.go SemanticRenderHandler is a501 stub.",
+        "Closed go-slide-creator-m0jg.12 explicitly deferred rendering while orchestration lived in cmd; go-slide-creator-6wss.5 corrected the docs instead of implementing it.",
+        "MCP/CLI semantic generation now use a shared in-memory runner; consumers of the HTTP API still must compile and call a second lower-level endpoint."
+      ],
+      "expected": "Expose semantic generation with the same asset handling, diagnostics, configuration, template and quality policies as CLI/MCP through an internal reusable runner.",
+      "scope": "This is the explicit deferred feature from closed scaffold beads, not a claim that current docs falsely advertise it. No open follow-up was found.",
+      "acceptance": "HTTP integration tests cover successful DeckSpec PPTX output, BYO/registered templates, assets, readable-text refusals, source-addressed diagnostics and consistent runtime configuration; OpenAPI/capabilities move render to supported.",
+      "bead_id": "go-slide-creator-b7qqg.25",
+      "code_location": {
+        "file": "internal/api/semantic.go",
+        "line": 179
+      },
+      "confidence": 0.9,
+      "autofix_class": "advisory",
+      "owner": "human"
+    },
+    {
+      "key": "tracked-gofmt",
+      "area": "maintenance",
+      "priority": 3,
+      "title": "Tracked value-chain regression test fails the prescribed gofmt check",
+      "problem": "The prescribed tracked-file gofmt check reports cmd/json2pptx/value_chain_highlight_test.go because it contains an extra blank line at EOF. This is a formatting-only maintenance defect on the reviewed clean HEAD.",
+      "evidence": [
+        "git ls-files -z -- \"*.go\" | xargs -0 gofmt -l returns cmd/json2pptx/value_chain_highlight_test.go on clean HEAD4515d79b.",
+        "gofmt -d shows the precise formatting-only diff; no review production files were modified."
+      ],
+      "expected": "Format the tracked regression test and keep the source-format check clean.",
+      "acceptance": "The prescribed tracked-file gofmt command produces no output, and the value-chain tests still pass.",
+      "bead_id": "go-slide-creator-b7qqg.26",
+      "code_location": {
+        "file": "cmd/json2pptx/value_chain_highlight_test.go",
+        "line": 99
+      },
+      "confidence": 0.99,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    },
+    {
+      "key": "venn-intersection-caption",
+      "area": "visual-layout",
+      "priority": 2,
+      "title": "Venn intersection captions wrap across the lens boundaries instead of fitting the region",
+      "problem": "A short authored intersection caption is wrapped into three lines whose first/last words cross the circle outlines. The renderer bounds text against a rectangular slot rather than the actual intersection lens, weakening the visual meaning of shared items.",
+      "evidence": [
+        "request-semantic-venn.json supplies two circles and intersections.ab.label=\"Focused value proposition\" through the supported semantic escape hatch.",
+        "semantic-venn.png shows Focused and proposition crossing the circle outlines on either side of the lens.",
+        "The real submit_visual_review response accepts a changes_requested verdict with the observed layout defect (review-venn-changes-data.json).",
+        "Existing diagram.label_truncated notices do not explain the actual intersection-region collision or propose an overlap/width adjustment."
+      ],
+      "scope": "Closed onop/h1wsz addressed missing circle items and dropped content, not this intersection-caption geometry.",
+      "expected": "Measure the intersection lens width over each text line and adapt overlap ratio/font/line breaks, or offer an outside callout/alternate diagram instead of letting the caption cross its region boundaries.",
+      "acceptance": "Render the exact two-circle caption plus three-circle intersection labels at real slide frames; text lies inside its intended region at readable sizes, or an actionable warning points to the caption and suggests a supported geometry alternative.",
+      "bead_id": "go-slide-creator-b7qqg.27",
+      "code_location": {
+        "file": "svggen/venn.go",
+        "line": 445
+      },
+      "confidence": 0.9,
+      "autofix_class": "advisory",
+      "owner": "human",
+      "type": "bug"
+    }
+  ],
+  "residual_risks": [
+    {
+      "bead_id": "go-slide-creator-n1muf",
+      "status": "in_progress",
+      "description": "Existing extreme schema readability debt remains; not duplicated."
+    },
+    {
+      "bead_id": "go-slide-creator-skei",
+      "status": "deferred",
+      "description": "Existing custom PwC template canonical-layout limitation remains; not duplicated."
+    },
+    "Some host fonts are substituted; runtime warns explicitly. Visual defects were judged from the actual MCP render and, where possible, corroborated by OOXML/SVG geometry.",
+    "Implementation fixes are pending in the filed beads; this audit does not claim the repository is defect-free."
+  ],
+  "testing_gaps": [
+    "No native Windows PowerPoint rendering or live human-agent preference study was performed.",
+    "The two25m root race timeouts prevent claiming a complete passing root race gate; covered by .16.",
+    "The review samples real content, catalogs, templates and adversarial boundary workflows; it cannot prove the absence of every possible input defect."
+  ],
+  "evidence_directory": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-09-30"
+}
