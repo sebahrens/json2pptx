@@ -9,6 +9,8 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
 // ---------------------------------------------------------------------------
@@ -166,7 +168,7 @@ func (s *scqaSummary) PostExpandWarnings(ctx ExpandContext, values, overrides an
 		{"Situation", []string(v.Situation)}, {"Complication", []string(v.Complication)},
 		{"Questions", v.Questions}, {"Answer", v.Answer},
 	}
-	needs, avail := scqaRowNeeds(ctx, specs, ResolveSize(ovr.HeaderSize, 20.0), ResolveSize(ovr.BodySize, 12.0))
+	needs, avail := scqaRowNeeds(ctx, specs, fitSCQALabels(ctx, ResolveSize(ovr.HeaderSize, 20.0)), ResolveSize(ovr.BodySize, 12.0))
 	total := 0.0
 	for _, n := range needs {
 		total += n
@@ -314,7 +316,8 @@ func (s *scqaSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	headerSize := ResolveSize(ovr.HeaderSize, 20.0)
+	labelFit := fitSCQALabels(ctx, ResolveSize(ovr.HeaderSize, 20.0))
+	headerSize := labelFit.size
 	bodySize := ResolveSize(ovr.BodySize, 12.0)
 
 	rowSpecs := []struct {
@@ -355,11 +358,11 @@ func (s *scqaSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		}
 	}
 
-	needs, avail := scqaRowNeeds(ctx, rowSpecs, headerSize, bodySize)
+	needs, avail := scqaRowNeeds(ctx, rowSpecs, labelFit, bodySize)
 	floorFlexRowsAtNeeds(rows, needs, avail)
 
 	grid := &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(`[1, 4]`),
+		Columns: json.RawMessage(fmt.Sprintf(`[%g, 4]`, labelFit.weight)),
 		Gap:     scqaColGapPt,
 		RowGap:  scqaRowGapPt,
 		Rows:    rows,
@@ -373,18 +376,72 @@ const (
 	scqaRowGapPt = 6.0
 )
 
+// scqaLabels are the four row labels, each a single word.
+var scqaLabels = []string{"Situation", "Complication", "Questions", "Answer"}
+
+// scqaLabelFit is the label column weight (the content column is 4) and the
+// label size.
+type scqaLabelFit struct {
+	weight, size float64
+}
+
+// scqaLabelWeights are the label column weights tried, narrowest first.
+var scqaLabelWeights = []float64{1, 1.1, 1.2, 1.3}
+
+// scqaColumnWidthsPt returns the label and content column widths.
+func scqaColumnWidthsPt(areaW, weight float64) (label, content float64) {
+	unit := (areaW - scqaColGapPt) / (weight + 4)
+	return weight * unit, 4 * unit
+}
+
+// fitSCQALabels returns the label size and column weight at which every row
+// label stays on one line. A label is one word, so a wrap is a mid-word break
+// ("Complicatio / n"): each word is measured bold against the atomic-token
+// width, which leaves a substituted template face (abstract's Tenorite) the
+// margin it draws wider than its stand-in. Geometry gives way before type: at
+// each size, from sizePt down 1pt to the 12pt floor, the label column widens
+// up to 1.3 : 4 before the size steps down (go-slide-creator-n1muf).
+func fitSCQALabels(ctx ExpandContext, sizePt float64) scqaLabelFit {
+	areaW, _ := sizingAreaPt(ctx)
+	font := ctx.Theme.BodyFont
+	fits := func(size, weight float64) bool {
+		labelW, _ := scqaColumnWidthsPt(areaW, weight)
+		w := textfit.AtomicTokenWidthPt(font, math.Max(labelW-2*defaultShapeInsetLRPt, 1))
+		for _, label := range scqaLabels {
+			if measuredLines(label, font, true, size, w) > 1 {
+				return false
+			}
+		}
+		return true
+	}
+	floor := math.Min(sizePt, shapegrid.MinTextSizePt)
+	for size := sizePt; size > floor; size-- {
+		for _, weight := range scqaLabelWeights {
+			if fits(size, weight) {
+				return scqaLabelFit{weight: weight, size: size}
+			}
+		}
+	}
+	for _, weight := range scqaLabelWeights {
+		if fits(floor, weight) {
+			return scqaLabelFit{weight: weight, size: floor}
+		}
+	}
+	return scqaLabelFit{weight: 1, size: floor}
+}
+
 // scqaRowNeeds returns each row's written-fit height (label and content at
 // their real column widths) and the height the four rows share.
 func scqaRowNeeds(ctx ExpandContext, specs []struct {
 	label string
 	body  []string
-}, headerSize, bodySize float64) ([]float64, float64) {
+}, label scqaLabelFit, bodySize float64) ([]float64, float64) {
 	areaW, areaH := sizingAreaPt(ctx)
-	unit := (areaW - scqaColGapPt) / 5
+	labelW, contentW := scqaColumnWidthsPt(areaW, label.weight)
 	needs := make([]float64, len(specs))
 	for i, s := range specs {
-		needs[i] = math.Max(writtenFitHeightPt(buildSCQALabelText(s.label, headerSize), unit, 0),
-			writtenFitHeightPt(buildSCQAContentText(s.body, bodySize), 4*unit, 0))
+		needs[i] = math.Max(writtenFitHeightPt(buildSCQALabelText(s.label, label.size), labelW, 0),
+			writtenFitHeightPt(buildSCQAContentText(s.body, bodySize), contentW, 0))
 	}
 	return needs, areaH - float64(len(specs)-1)*scqaRowGapPt
 }

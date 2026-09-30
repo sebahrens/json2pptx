@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
 func TestSCQASummarySharedRowBudget(t *testing.T) {
@@ -403,4 +405,52 @@ func TestSCQASummary_Golden_Default(t *testing.T) {
 	}
 
 	assertPatternGolden(t, grid, filepath.Join("testdata", "scqa-summary", "default.golden.json"))
+}
+
+// A row label is one word ("Complication") that must never break mid-word. On
+// abstract the body face is Tenorite, which the measurer only substitutes, and
+// LibreOffice drew "Complicatio / n" at 20pt in the 1/5 label column: the label
+// was measured edge-to-edge in Liberation Sans. Every label word now fits the
+// atomic-token width (80% of the text width for a substituted face), the label
+// stepping down 1pt at a time (go-slide-creator-n1muf).
+func TestSCQASummaryLabelsNeverBreakMidWord(t *testing.T) {
+	areas := []struct {
+		name string
+		w, h float64
+	}{{"abstract", 687, 294}, {"modern", 851, 311}, {"warm-coral", 828, 349}, {"p-style", 899, 360}}
+	for _, font := range []string{"Tenorite", "Segoe UI", "Arial", ""} {
+		for _, a := range areas {
+			for _, header := range []float64{0, 28} {
+				ctx := ExpandContext{LayoutBounds: LayoutBounds{Width: int64(a.w * 12700), Height: int64(a.h * 12700)}}
+				ctx.Theme.BodyFont = font
+				var ovr any
+				if header > 0 {
+					ovr = &SCQASummaryOverrides{HeaderSize: header}
+				}
+				grid, err := (&scqaSummary{}).Expand(ctx, validSCQAValues(), ovr, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var cols []float64
+				if err := json.Unmarshal(grid.Columns, &cols); err != nil || len(cols) != 2 {
+					t.Fatalf("columns %s: %v", grid.Columns, err)
+				}
+				labelW := (a.w-scqaColGapPt)*cols[0]/(cols[0]+cols[1]) - 2*defaultShapeInsetLRPt
+				w := textfit.AtomicTokenWidthPt(font, labelW)
+				for _, row := range grid.Rows {
+					var obj scqaTextObj
+					if err := json.Unmarshal(row.Cells[0].Shape.Text, &obj); err != nil {
+						t.Fatal(err)
+					}
+					p := obj.Paragraphs[0]
+					if p.Size < 12 {
+						t.Errorf("%q/%s/header %.0f: label %q at %.0fpt, below the 12pt floor", font, a.name, header, p.Content, p.Size)
+					}
+					if lines := measuredLines(p.Content, font, true, p.Size, w); lines > 1 {
+						t.Errorf("%q/%s/header %.0f: label %q at %.0fpt wraps to %d lines in %.0fpt", font, a.name, header, p.Content, p.Size, lines, w)
+					}
+				}
+			}
+		}
+	}
 }

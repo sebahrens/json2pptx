@@ -61,17 +61,19 @@ short or narrow template, or under a `takeaway`, the content-sized patterns
 `bmc-canvas`, `agenda-with-images`, `state-shift-hub`, `metric-list`,
 `next-steps`, `matrix-2x2`, `process-grid-2row`, `stylish-panels`,
 `team-bios`, `framework-grid`, `contact-directory`, `agenda`,
-`before-after[-compact]`, `comparison-2col`, `hero-detail`) first give up
-air, headshot size or type down to the 12pt floor, then report `BODY_TOO_LONG`
-naming what to drop (`icon-row`, `labeled-rows`, `process-flow` and
-`process-flow-compact` grow their cards, rows or band to the text's written
-fit before they report it), and validate
+`before-after[-compact]`, `comparison-2col`, `hero-detail`,
+`timeline-horizontal`, `pull-quote`) first give up air, headshot size or
+type down to the 12pt floor (a `pull-quote` quote 36 → 20pt), then report
+`BODY_TOO_LONG` naming what to drop (`icon-row`, `labeled-rows`,
+`process-flow` and `process-flow-compact` grow their cards, rows or band to
+the text's written fit before they report it), and validate
 predicts grid text (nested cells included) that generation would refuse as
 an `error` `TEXT_BELOW_READABLE_MIN`; a `render_deck_spec` refusal returns
 it as a source-addressed diagnostic with `evidence` and a patch
 `next_tool_call` ([DECKSPEC.md](DECKSPEC.md)). KPI values and label words are never wrapped
 mid-token: a value shrinks (a `kpi-6up` "$4.2M" may render near 28pt) and a
-`process-grid-2row` row-label column widens before its label shrinks; what
+`process-grid-2row` row-label column (and the `scqa-summary` label column,
+up to 1.3 : 4) widens before its label shrinks; what
 cannot fit is reported (`BODY_TOO_LONG` on `values[i].big`,
 `TEXT_EXCEEDS_SHAPE` naming the label word) — see [PATTERNS.md](PATTERNS.md).
 Content under a top-anchored title starts below its measured lines,

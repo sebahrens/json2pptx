@@ -559,7 +559,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"table-highlight":              5.3,
 	"team-bios":                    5.5,
 	"text-sidebar":                 5.5,
-	"timeline-horizontal":          6.0,
+	"timeline-horizontal":          8.6, // stop rows grow to their written fit (n1muf)
 	"value-chain":                  9.1,
 	"waterfall-bridge":             6.7,
 }
