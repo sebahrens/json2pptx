@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
-	"os"
 	"sort"
 	"strings"
 
@@ -1284,29 +1283,16 @@ func (ctx *singlePassContext) processImageContent(slideNum int, item ContentItem
 	imagePath := imgContent.Path
 	bounds := imgContent.Bounds
 
-	// Validate path using config-injected allowed paths
-	if err := ValidateImagePathWithConfig(imagePath, ctx.allowedImagePaths); err != nil {
-		reason := fmt.Sprintf("security: image path validation failed for %s: %v", item.PlaceholderID, err)
-		ctx.warnings = append(ctx.warnings, reason)
+	// Validate path (allowed roots), existence and image signature. A
+	// picture that cannot be embedded is a refuse-class finding, not only a
+	// warning (go-slide-creator-b7qqg.2).
+	if problem := imageAssetProblem(imagePath, ctx.allowedImagePaths); problem != "" {
+		ctx.reportUnavailableImage("image", imagePath, slidepath.Content(slideNum-1, item.PlaceholderID), problem)
 		ctx.mediaFailures = append(ctx.mediaFailures, MediaFailure{
 			SlideNum:      slideNum,
 			PlaceholderID: item.PlaceholderID,
 			ContentType:   "image",
-			Reason:        reason,
-			Fallback:      "skipped",
-		})
-		return
-	}
-
-	// Check if image exists
-	if _, err := os.Stat(imagePath); err != nil {
-		reason := fmt.Sprintf("image file not found: %s", imagePath)
-		ctx.warnings = append(ctx.warnings, reason)
-		ctx.mediaFailures = append(ctx.mediaFailures, MediaFailure{
-			SlideNum:      slideNum,
-			PlaceholderID: item.PlaceholderID,
-			ContentType:   "image",
-			Reason:        reason,
+			Reason:        fmt.Sprintf("image %s: %s", imagePath, problem),
 			Fallback:      "skipped",
 		})
 		return

@@ -439,15 +439,17 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// and CLI agree on which URL fields are supported. Failures become
 	// per-field URL_FETCH_FAILED diagnostics. The cache cleanup is deferred
 	// for the rest of this handler — closing it earlier would invalidate the
-	// local paths now embedded in the slides.
-	urlFindings, urlCleanup, urlCacheDir, urlErr := mc.resolvePresentationURLs(input.Slides)
-	defer urlCleanup()
+	// local paths now embedded in the slides. The authored URLs are restored
+	// before the deck handle is stored (go-slide-creator-b7qqg.9).
+	urls, urlErr := mc.materializeURLs(input.Slides)
+	defer urls.Cleanup()
 	if urlErr != nil {
 		return api.MCPSimpleError("URL_RESOLVER_INIT", fmt.Sprintf("resource resolver: %v", urlErr)), nil
 	}
-	if len(urlFindings) > 0 {
-		return api.MCPDiagnosticsError(urlFindings), nil
+	if len(urls.Findings) > 0 {
+		return api.MCPDiagnosticsError(urls.Findings), nil
 	}
+	urlCacheDir := urls.CacheDir
 
 	// Resolve relative asset paths (icons, content images, grid images,
 	// background images) against base_dir. MCP receives inline JSON, not a
@@ -660,6 +662,11 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		Slides:                   slideResolutions,
 		OutputValidationFindings: outputValidationFindings,
 	}
+	// The handle outlives this request, but the URL download cache does not:
+	// store the authored URLs, not the soon-deleted cached paths, so a
+	// deck_id regeneration / score / repair re-fetches them through the safe
+	// resolver (go-slide-creator-b7qqg.9).
+	urls.RestoreAuthoredURLs(input.Slides)
 	rawDeck, marshalErr := json.Marshal(input)
 	if marshalErr != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to store generated deck: %v", marshalErr)), nil

@@ -65,7 +65,11 @@ patterns cover pages DeckSpec kinds do not: `contact-directory` (key contacts
 24 people) and `text-sidebar` (prose introduction or foreword beside one large
 key-message panel). A shape-grid `image` cell accepts `geometry: "ellipse"` for
 a circular picture frame. Asset paths expand only `$HOME`, `$BRAND_ASSETS`,
-`$JSON2PPTX_*`; `icon.path` obeys `ALLOWED_IMAGE_PATHS`.
+`$JSON2PPTX_*`; `icon.path` obeys `ALLOWED_IMAGE_PATHS`. A picture that cannot
+be embedded (missing, corrupt, outside the image roots) is refuse-class
+`IMAGE_ASSET_UNAVAILABLE` at the authored field and blocks `deterministic_ready`;
+`score_deck` fetches image `url`s like generation (`URL_FETCH_FAILED` refuses),
+and a `deck_id` keeps the authored `url`, re-fetched on each render.
 
 Both render tools return `deterministic_ready`, `publishable` (false on a fresh
 render), `blocking_reasons` and `next_tool_call` (blocking fix, else

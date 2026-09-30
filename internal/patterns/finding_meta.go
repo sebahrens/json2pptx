@@ -251,6 +251,20 @@ var findingMetaRegistry = map[string]FindingMeta{
 		ExampleAfter:  `{"background":{"image":"hero.jpg","overlay":{"color":"dk1","alpha":0.45}}}`,
 		RelatedCodes:  []string{ErrCodeContrastPredicted},
 	},
+	ErrCodeImageAssetUnavailable: {
+		Code:        ErrCodeImageAssetUnavailable,
+		Summary:     "An authored picture could not be embedded, so its frame renders empty.",
+		Severity:    "refuse",
+		WhenEmitted: "Generation cannot embed an authored image — a pattern image (image_case, image-text-split, team-bios photo, …), a shape_grid image cell at any nesting depth, a content image_value, or a slide background image — because the file is missing, outside the allowed image roots, unreadable, or its bytes are not a recognisable image. The path names the authored field. It blocks deterministic_ready and the quality gate: a deck missing a required asset must not be approved.",
+		RemediationSteps: []string{
+			"Fix the file at the reported path: supply an existing PNG/JPEG/GIF/SVG/BMP/TIFF/WebP file (relative paths resolve against base_dir) or an http(s) url the server can fetch.",
+			"If the picture is not available yet, remove the image field so the pattern renders its explicit placeholder frame instead of a silently empty one.",
+			"Re-render and confirm the finding is gone before submitting a visual review.",
+		},
+		ExampleBefore: `{"image":{"path":"screens/missing.png"}}`,
+		ExampleAfter:  `{"image":{"path":"screens/dashboard.png","alt":"Q3 dashboard"}}`,
+		RelatedCodes:  []string{ErrCodeTextOverImageUnverified},
+	},
 	ErrCodeInvalidShape: {
 		Code:        ErrCodeInvalidShape,
 		Summary:     "A value has the wrong structural shape (e.g., array where object expected).",
