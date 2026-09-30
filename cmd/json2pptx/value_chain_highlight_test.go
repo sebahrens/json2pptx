@@ -97,4 +97,3 @@ func cellFill(t *testing.T, raw json.RawMessage) (string, patterns.ColorMods) {
 	}
 	return obj.Color, patterns.ColorMods{LumMod: obj.LumMod, LumOff: obj.LumOff, Tint: obj.Tint, Shade: obj.Shade}
 }
-
