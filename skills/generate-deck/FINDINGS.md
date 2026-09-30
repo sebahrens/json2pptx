@@ -76,7 +76,9 @@ Charts and diagrams share the native 12pt (`present`) floor at their placed
 size: the renderer draws labels at the floor, so a crowded diagram shows
 `diagram.text_overlap` instead of shrinking, and any text still below it is a
 `TEXT_BELOW_READABLE_MIN` refusal (`simplify_or_enlarge_diagram`): enlarge the
-cell or cut categories. See [RAW_PATH.md](RAW_PATH.md) for the
+cell or cut categories. `diagram.region_overflow` names a Venn intersection
+caption that crosses its region's outline: shorten `fix.params.label`, apply
+`fix.params.overlap_ratio` when given, or move the detail to a callout. See [RAW_PATH.md](RAW_PATH.md) for the
 raw response protocol. `strict_fit` controls promotion of fit and chart
 findings; consult the returned severity/action and `describe_finding`
 instead of copying an old promotion table.

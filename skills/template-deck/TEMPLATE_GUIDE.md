@@ -146,23 +146,23 @@ The `full` mode output shows normalized placeholder IDs, character limits, and E
     {
       "layout_id": "title",
       "content": [
-        {"placeholder_id": "title", "type": "text", "value": "Q1 2026 Review"},
-        {"placeholder_id": "subtitle", "type": "text", "value": "Strategy Team"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Q1 2026 Review"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Strategy Team"}
       ]
     },
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "value": "Key Metrics"},
-        {"placeholder_id": "body", "type": "bullets", "value": ["Revenue +15%", "DAU +22%", "Churn -3%"]}
+        {"placeholder_id": "title", "type": "text", "text_value": "Key Metrics"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["Revenue +15%", "DAU +22%", "Churn -3%"]}
       ]
     },
     {
       "layout_id": "two-column",
       "content": [
-        {"placeholder_id": "title", "type": "text", "value": "Comparison"},
-        {"placeholder_id": "body", "type": "bullets", "value": ["Before: manual", "Slow turnaround"]},
-        {"placeholder_id": "body_2", "type": "bullets", "value": ["After: automated", "Real-time"]}
+        {"placeholder_id": "title", "type": "text", "text_value": "Comparison"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["Before: manual", "Slow turnaround"]},
+        {"placeholder_id": "body_2", "type": "bullets", "bullets_value": ["After: automated", "Real-time"]}
       ]
     }
   ]
@@ -173,11 +173,11 @@ The `full` mode output shows normalized placeholder IDs, character limits, and E
 
 ### text
 
-Plain text. Value: `string` (via `text_value` or `value`).
+Plain text. Value: `string` (via `text_value`; the untyped `value` field is deprecated — do not use it).
 
 ### bullets
 
-Bullet list. Value: `string[]` (via `bullets_value` or `value`).
+Bullet list. Value: `string[]` (via `bullets_value`; the untyped `value` field is deprecated — do not use it).
 
 ### body_and_bullets
 
@@ -228,7 +228,7 @@ Data table with optional styling.
 
 ### chart
 
-SVG chart rendered into a placeholder. Value: `ChartSpec` (via `chart_value` or `value`).
+SVG chart rendered into a placeholder. Value: `ChartSpec` (via `chart_value`; the untyped `value` field is deprecated — do not use it).
 
 ```json
 {"placeholder_id": "body", "type": "chart", "chart_value": {
@@ -260,7 +260,7 @@ SVG chart rendered into a placeholder. Value: `ChartSpec` (via `chart_value` or 
 
 ### diagram
 
-Native OOXML or SVG diagram rendered into a placeholder. Value: `DiagramSpec` (via `diagram_value` or `value`).
+Native OOXML or SVG diagram rendered into a placeholder. Value: `DiagramSpec` (via `diagram_value`; the untyped `value` field is deprecated — do not use it).
 
 ```json
 {"placeholder_id": "body", "type": "diagram", "diagram_value": {
@@ -297,7 +297,7 @@ Native OOXML or SVG diagram rendered into a placeholder. Value: `DiagramSpec` (v
 
 ### image
 
-Image embedded in a placeholder. Value: `ImageInput` (via `image_value` or `value`).
+Image embedded in a placeholder. Value: `ImageInput` (via `image_value`; the untyped `value` field is deprecated — do not use it).
 
 ```json
 {"placeholder_id": "image", "type": "image", "image_value": {"path": "assets/photo.jpg", "alt": "Team photo"}}
@@ -436,7 +436,7 @@ Set `slide_type` to `"blank"` (or `"virtual"`) and omit `layout_id`. The engine 
 {
   "slide_type": "blank",
   "content": [
-    {"placeholder_id": "title", "type": "text", "value": "Slide Title"}
+    {"placeholder_id": "title", "type": "text", "text_value": "Slide Title"}
   ],
   "shape_grid": { ... }
 }
@@ -540,7 +540,7 @@ Use these scheme names for template-consistent colors: `accent1`-`accent6`, `dk1
 {
   "slide_type": "blank",
   "content": [
-    {"placeholder_id": "title", "type": "text", "value": "Our Process"}
+    {"placeholder_id": "title", "type": "text", "text_value": "Our Process"}
   ],
   "shape_grid": {
     "gap": 3,
@@ -549,18 +549,18 @@ Use these scheme names for template-consistent colors: `accent1`-`accent6`, `dk1
       {
         "height": 22,
         "cells": [
-          {"shape": {"geometry": "chevron", "fill": "accent1", "text": {"content": "Discover", "size": 13, "bold": true, "color": "#FFFFFF", "align": "ctr", "vertical_align": "ctr"}}},
-          {"shape": {"geometry": "chevron", "fill": "accent1", "text": {"content": "Design", "size": 13, "bold": true, "color": "#FFFFFF", "align": "ctr", "vertical_align": "ctr"}}},
-          {"shape": {"geometry": "chevron", "fill": "accent1", "text": {"content": "Deliver", "size": 13, "bold": true, "color": "#FFFFFF", "align": "ctr", "vertical_align": "ctr"}}},
-          {"shape": {"geometry": "chevron", "fill": "accent1", "text": {"content": "Sustain", "size": 13, "bold": true, "color": "#FFFFFF", "align": "ctr", "vertical_align": "ctr"}}}
+          {"shape": {"geometry": "chevron", "fill": "accent1", "text": {"content": "Discover", "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+          {"shape": {"geometry": "chevron", "fill": "accent1", "text": {"content": "Design", "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+          {"shape": {"geometry": "chevron", "fill": "accent1", "text": {"content": "Deliver", "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+          {"shape": {"geometry": "chevron", "fill": "accent1", "text": {"content": "Sustain", "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}}
         ]
       },
       {
         "cells": [
-          {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "Stakeholder interviews\nCurrent state assessment", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}},
-          {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "Solution architecture\nRoadmap development", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}},
-          {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "Agile implementation\nChange management", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}},
-          {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "Performance monitoring\nKnowledge transfer", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}}
+          {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "Stakeholder interviews\nCurrent state assessment", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}},
+          {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "Solution architecture\nRoadmap development", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}},
+          {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "Agile implementation\nChange management", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}},
+          {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "Performance monitoring\nKnowledge transfer", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}}
         ]
       }
     ]
@@ -574,7 +574,7 @@ Use these scheme names for template-consistent colors: `accent1`-`accent6`, `dk1
 {
   "slide_type": "blank",
   "content": [
-    {"placeholder_id": "title", "type": "text", "value": "Priority Matrix"}
+    {"placeholder_id": "title", "type": "text", "text_value": "Priority Matrix"}
   ],
   "shape_grid": {
     "gap": 4,
@@ -583,19 +583,19 @@ Use these scheme names for template-consistent colors: `accent1`-`accent6`, `dk1
       {
         "height": 15,
         "cells": [
-          {"col_span": 2, "shape": {"geometry": "roundRect", "fill": "accent1", "text": {"content": "Impact vs Effort", "size": 16, "bold": true, "color": "#FFFFFF", "align": "ctr", "vertical_align": "ctr"}}}
+          {"col_span": 2, "shape": {"geometry": "roundRect", "fill": "accent1", "text": {"content": "Impact vs Effort", "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}}
         ]
       },
       {
         "cells": [
-          {"shape": {"geometry": "roundRect", "fill": "accent1", "text": {"content": "Quick Wins\n\nHigh Impact / Low Effort", "size": 11, "color": "#FFFFFF", "align": "l", "vertical_align": "t", "inset_top": 10, "inset_left": 10}}},
-          {"shape": {"geometry": "roundRect", "fill": "accent2", "text": {"content": "Strategic Bets\n\nHigh Impact / High Effort", "size": 11, "color": "#FFFFFF", "align": "l", "vertical_align": "t", "inset_top": 10, "inset_left": 10}}}
+          {"shape": {"geometry": "roundRect", "fill": "accent1", "text": {"content": "Quick Wins\n\nHigh Impact / Low Effort", "color": "lt1", "align": "l", "vertical_align": "t", "inset_top": 10, "inset_left": 10}}},
+          {"shape": {"geometry": "roundRect", "fill": "accent2", "text": {"content": "Strategic Bets\n\nHigh Impact / High Effort", "color": "lt1", "align": "l", "vertical_align": "t", "inset_top": 10, "inset_left": 10}}}
         ]
       },
       {
         "cells": [
-          {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "Fill-Ins\n\nLow Impact / Low Effort", "size": 11, "align": "l", "vertical_align": "t", "inset_top": 10, "inset_left": 10}}},
-          {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "Deprioritize\n\nLow Impact / High Effort", "size": 11, "align": "l", "vertical_align": "t", "inset_top": 10, "inset_left": 10}}}
+          {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "Fill-Ins\n\nLow Impact / Low Effort", "align": "l", "vertical_align": "t", "inset_top": 10, "inset_left": 10}}},
+          {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "Deprioritize\n\nLow Impact / High Effort", "align": "l", "vertical_align": "t", "inset_top": 10, "inset_left": 10}}}
         ]
       }
     ]
@@ -610,6 +610,7 @@ Use these scheme names for template-consistent colors: `accent1`-`accent6`, `dk1
 - **Row heights**: Set `height` on header rows (e.g., `18`-`22`) and leave content rows at 0 (equal split).
 - **Text insets**: Always set `inset_top`, `inset_left`, `inset_right` (6-12pt) on content-heavy shapes to avoid text touching edges.
 - **Theme colors**: Prefer scheme names (`accent1`, `lt2`) over hex codes for template portability.
+- **Design mode**: The default `design_mode: "constrained"` rejects raw hex colors and absolute `size` values in shape text, which is why the examples above use scheme colors and template-managed sizes. Set `"design_mode": "free"` at the deck level only when an explicit hex color or point size is intentional.
 
 ## Character Limits
 

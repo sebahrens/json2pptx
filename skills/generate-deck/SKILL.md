@@ -41,7 +41,11 @@ returns this path as its `sequence` (the raw chain is `raw_sequence`):
 `compositions` only for selected kinds. Then call `validate_deck_spec`,
 `render_deck_spec`, `render_deck_thumbnails`, and `submit_visual_review`. Edit the spec at a finding's
 `semantic_path` and repeat (a render refused as unreadable also returns its
-`TEXT_BELOW_READABLE_MIN` refusal with a `semantic_path`). `make_deck` creates an exemplar-filled wireframe,
+`TEXT_BELOW_READABLE_MIN` refusal with a `semantic_path`). For a chart or diagram no kind covers (gantt,
+venn, pestel, ...), a `recommend_visual` chart/diagram candidate carries
+`data_contract` (keys + `field_path`) and a runnable `next_tool_call`
+(`render_deck_spec` with a `raw_json2pptx` slide); replace its title and data.
+`make_deck` creates an exemplar-filled wireframe,
 not a publishable authored deck. Read [DECKSPEC.md](DECKSPEC.md) for budgets,
 degradation behavior, required-layout coverage, handles, and revision rules.
 

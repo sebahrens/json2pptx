@@ -84,6 +84,12 @@ const (
 	// FindingDiagramTextOverlap identifies visibly intersecting drawn labels.
 	FindingDiagramTextOverlap = "diagram.text_overlap"
 
+	// FindingDiagramRegionOverflow is emitted when a diagram caption cannot be
+	// fitted inside the region it labels (e.g. a Venn intersection lens) at a
+	// readable size and is drawn crossing the region's outline
+	// (go-slide-creator-b7qqg.27).
+	FindingDiagramRegionOverflow = "diagram.region_overflow"
+
 	// FindingOrgChartDepthPruned is emitted when an org chart drops whole
 	// levels of the hierarchy to keep the remaining boxes readable. The chart
 	// then misrepresents the org, so the loss must be visible
