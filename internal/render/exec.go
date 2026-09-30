@@ -165,3 +165,24 @@ func runBounded(ctx context.Context, tool, path string, timeout time.Duration, n
 	}
 	return outBuf.String(), errBuf.String(), runErr
 }
+
+// RunLibreOfficeBounded runs one LibreOffice invocation (bin + args) under the
+// same bounded, owned-process policy as the render tools: ctx cancellation or
+// the timeout kills the conversion's whole process group (including the
+// forked soffice.bin worker), stdout/stderr are captured with a bound, and a
+// deadline returns a *TimeoutError with Code LIBREOFFICE_TIMEOUT. path names
+// the input for diagnostics. It is exported for sibling packages (layout
+// preview discovery) that drive their own conversion recipe but must not
+// reimplement the unbounded exec.Command path (go-slide-creator-b7qqg.6).
+func RunLibreOfficeBounded(ctx context.Context, path string, timeout time.Duration, bin string, args ...string) (stderr string, err error) {
+	_, stderr, err = runBounded(ctx, toolLibreOffice, path, timeout, bin, args...)
+	return stderr, err
+}
+
+// RunImageMagickBounded is RunLibreOfficeBounded for an ImageMagick
+// rasterization; a deadline returns a *TimeoutError with Code
+// IMAGEMAGICK_TIMEOUT.
+func RunImageMagickBounded(ctx context.Context, path string, timeout time.Duration, bin string, args ...string) (stderr string, err error) {
+	_, stderr, err = runBounded(ctx, toolImageMagick, path, timeout, bin, args...)
+	return stderr, err
+}

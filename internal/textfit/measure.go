@@ -3,6 +3,7 @@ package textfit
 import (
 	"math"
 	"strings"
+	"sync"
 
 	"github.com/sebahrens/json2pptx/svggen/fontcache"
 	"github.com/tdewolff/canvas"
@@ -131,10 +132,80 @@ func MeasureRun(text string, fontName string, fontPt float64, widthEMU int64, ma
 		return RunMeasurement{}, ErrNoFontCache
 	}
 
+	key := runMeasureKey{family: ff, fontName: fontName, text: text, fontPt: fontPt, widthEMU: widthEMU, maxLines: maxLines}
+	if m, ok := runMeasureMemo.get(key); ok {
+		return m, nil
+	}
+	m := measureRunUncached(ff, resolvedFont, substituted, text, fontPt, widthEMU, maxLines)
+	runMeasureMemo.put(key, m)
+	return m, nil
+}
+
+// runMeasureKey identifies one MeasureRun result. The loaded family pointer is
+// part of the key, so a font-cache reload (fontcache.Reset in tests, LRU
+// eviction) can never serve a measurement taken with other metrics.
+type runMeasureKey struct {
+	family   *canvas.FontFamily
+	fontName string
+	text     string
+	fontPt   float64
+	widthEMU int64
+	maxLines int
+}
+
+// measureMemoMax bounds each measurement memo. Fit searches re-measure the
+// same run at the same size and width many times — a height binary search
+// probes ~9 heights, each re-shaping identical text, and the autofit scale
+// walk repeats the same shrink ladder for every sibling cell — so a few
+// thousand entries collapse that duplicate shaping (go-slide-creator-b7qqg.16)
+// while keeping memory bounded in a long-running MCP server.
+const measureMemoMax = 4096
+
+// runMeasureMemo caches MeasureRun, a pure function of its key: text shaping
+// with a fixed loaded font is deterministic, so serving a memoized result
+// cannot change any measurement or rendered output.
+var runMeasureMemo = newBoundedMemo[runMeasureKey, RunMeasurement]()
+
+// boundedMemo is a mutex-guarded map that is cleared wholesale when full:
+// cheaper than LRU bookkeeping on every hit, and hot duplicates are simply
+// re-measured once and cached again.
+type boundedMemo[K comparable, V any] struct {
+	mu      sync.Mutex
+	entries map[K]V
+}
+
+func newBoundedMemo[K comparable, V any]() *boundedMemo[K, V] {
+	return &boundedMemo[K, V]{entries: make(map[K]V)}
+}
+
+func (c *boundedMemo[K, V]) get(k K) (V, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	v, ok := c.entries[k]
+	return v, ok
+}
+
+func (c *boundedMemo[K, V]) put(k K, v V) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if len(c.entries) >= measureMemoMax {
+		clear(c.entries)
+	}
+	c.entries[k] = v
+}
+
+func (c *boundedMemo[K, V]) size() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.entries)
+}
+
+// measureRunUncached is MeasureRun after font resolution, without the memo.
+func measureRunUncached(ff *canvas.FontFamily, resolvedFont string, substituted bool, text string, fontPt float64, widthEMU int64, maxLines int) RunMeasurement {
 	// Convert EMU to points, subtract default OOXML margins (7.2pt each side).
 	widthPt := float64(widthEMU)/float64(emuPerPoint) - 2*7.2
 	if widthPt <= 0 {
-		return RunMeasurement{Lines: 1, Fits: false, OverflowChars: len([]rune(text))}, nil
+		return RunMeasurement{Lines: 1, Fits: false, OverflowChars: len([]rune(text))}
 	}
 
 	face := newFace(ff, fontPt, canvas.FontRegular)
@@ -158,12 +229,31 @@ func MeasureRun(text string, fontName string, fontPt float64, widthEMU int64, ma
 		Fits:            overflowChars == 0,
 		FontFamily:      resolvedFont,
 		FontSubstituted: substituted,
-	}, nil
+	}
 }
 
 // MeasureLineWidth returns the width of the longest explicit line at fontPt.
 // It does not add text-box insets; callers can add their actual cell margins.
 func MeasureLineWidth(text, fontName string, fontPt float64) (int64, error) {
+	return measureLineWidthMemo(text, fontName, fontPt, false)
+}
+
+// lineWidthKey identifies one MeasureLineWidth / MeasureStyledLineWidth
+// result; like runMeasureKey it pins the loaded family pointer.
+type lineWidthKey struct {
+	family   *canvas.FontFamily
+	fontName string
+	text     string
+	fontPt   float64
+	bold     bool
+}
+
+// lineWidthMemo caches widest-line measurements. Word-width checks (the
+// widest-word inset clamp and autofit word shrink) re-measure every word of a
+// body for each height a fit search probes (go-slide-creator-b7qqg.16).
+var lineWidthMemo = newBoundedMemo[lineWidthKey, int64]()
+
+func measureLineWidthMemo(text, fontName string, fontPt float64, bold bool) (int64, error) {
 	if text == "" || fontPt <= 0 {
 		return 0, nil
 	}
@@ -171,14 +261,28 @@ func MeasureLineWidth(text, fontName string, fontPt float64) (int64, error) {
 	if ff == nil {
 		return 0, ErrNoFontCache
 	}
-	face := newFace(ff, fontPt, canvas.FontRegular)
+	key := lineWidthKey{family: ff, fontName: fontName, text: text, fontPt: fontPt, bold: bold}
+	if w, ok := lineWidthMemo.get(key); ok {
+		return w, nil
+	}
+	w := measureLineWidthUncached(ff, text, fontPt, bold)
+	lineWidthMemo.put(key, w)
+	return w, nil
+}
+
+func measureLineWidthUncached(ff *canvas.FontFamily, text string, fontPt float64, bold bool) int64 {
+	style := canvas.FontRegular
+	if bold {
+		style = canvas.FontBold
+	}
+	face := newFace(ff, fontPt, style)
 	var widest float64
 	for _, line := range strings.Split(text, "\n") {
 		if width := LineWidthMM(face, line); width > widest {
 			widest = width
 		}
 	}
-	return int64(math.Ceil(widest / ptToMM * float64(emuPerPoint))), nil
+	return int64(math.Ceil(widest / ptToMM * float64(emuPerPoint)))
 }
 
 // estimateOverflowChars approximates how many characters don't fit within
@@ -267,22 +371,5 @@ func estimateLineOverflowChars(face *canvas.FontFace, text string, widthPt float
 // bold glyphs run noticeably wider, so a bold label measured regular claims
 // room it does not have.
 func MeasureStyledLineWidth(text, fontName string, fontPt float64, bold bool) (int64, error) {
-	if !bold {
-		return MeasureLineWidth(text, fontName, fontPt)
-	}
-	if text == "" || fontPt <= 0 {
-		return 0, nil
-	}
-	ff, _, _ := fontcache.Resolve(fontName, "Arial")
-	if ff == nil {
-		return 0, ErrNoFontCache
-	}
-	face := newFace(ff, fontPt, canvas.FontBold)
-	var widest float64
-	for _, line := range strings.Split(text, "\n") {
-		if width := LineWidthMM(face, line); width > widest {
-			widest = width
-		}
-	}
-	return int64(math.Ceil(widest / ptToMM * float64(emuPerPoint))), nil
+	return measureLineWidthMemo(text, fontName, fontPt, bold)
 }

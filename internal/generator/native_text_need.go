@@ -50,7 +50,7 @@ func nativeTextNeedEMU(tb pptx.TextBody, width, limit int64) int64 {
 		probe := tb
 		bounds := pptx.RectEmu{CX: width, CY: h}
 		probe.Insets = pptx.EffectiveTextInsets(&probe, bounds)
-		return pptx.AutofitScaleFor(&probe, bounds) >= 1
+		return pptx.AutofitFitsFor(&probe, bounds)
 	}
 	if !fits(limit) {
 		return limit
