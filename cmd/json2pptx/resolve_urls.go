@@ -35,24 +35,28 @@ func hasURLReferences(slides []SlideInput) bool { //nolint:gocognit
 				return true
 			}
 		}
-		if slides[i].ShapeGrid == nil {
-			continue
+		if slides[i].ShapeGrid != nil && gridHasURLReferences(slides[i].ShapeGrid) {
+			return true
 		}
-		for j := range slides[i].ShapeGrid.Rows {
-			for k := range slides[i].ShapeGrid.Rows[j].Cells {
-				cell := slides[i].ShapeGrid.Rows[j].Cells[k]
-				if cell == nil {
-					continue
-				}
-				if cell.Image != nil && cell.Image.URL != "" {
-					return true
-				}
-				if cell.Icon != nil && cell.Icon.URL != "" {
-					return true
-				}
-				if cell.Shape != nil && cell.Shape.Icon != nil && cell.Shape.Icon.URL != "" {
-					return true
-				}
+	}
+	return false
+}
+
+// gridHasURLReferences reports whether grid or any nested cell grid carries
+// an image / icon URL.
+func gridHasURLReferences(grid *ShapeGridInput) bool {
+	for j := range grid.Rows {
+		for _, cell := range grid.Rows[j].Cells {
+			if cell == nil {
+				continue
+			}
+			if (cell.Image != nil && cell.Image.URL != "") ||
+				(cell.Icon != nil && cell.Icon.URL != "") ||
+				(cell.Shape != nil && cell.Shape.Icon != nil && cell.Shape.Icon.URL != "") {
+				return true
+			}
+			if cell.Grid != nil && gridHasURLReferences(cell.Grid) {
+				return true
 			}
 		}
 	}
@@ -102,62 +106,67 @@ func resolveURLs(slides []SlideInput, resolver urlResolver) []diagnostics.Diagno
 			}
 		}
 
-		// Shape grid URLs
-		if slides[i].ShapeGrid == nil {
-			continue
+		// Shape grid URLs, including nested cell grids.
+		if slides[i].ShapeGrid != nil {
+			findings = append(findings, resolveGridURLs(slides[i].ShapeGrid, slidepath.ShapeGrid(i), i, resolver)...)
 		}
-		for j := range slides[i].ShapeGrid.Rows {
-			for k := range slides[i].ShapeGrid.Rows[j].Cells {
-				cell := slides[i].ShapeGrid.Rows[j].Cells[k]
-				if cell == nil {
-					continue
-				}
+	}
+	return findings
+}
 
-				// Grid image URL
-				if cell.Image != nil && cell.Image.URL != "" {
-					path, err := resolver.ResolveImage(cell.Image.URL)
-					if err != nil {
-						findings = append(findings, urlFetchDiagnostic(
-							slidepath.GridCellField(i, j, k, "image/url"),
-							"image", "image", cell.Image.URL, i, err,
-						))
-					} else {
-						cell.Image.Path = path
-						cell.Image.URL = ""
-					}
-				}
-
-				// Icon URL (cell-level)
-				if cell.Icon != nil && cell.Icon.URL != "" {
-					path, err := resolver.ResolveSVG(cell.Icon.URL)
-					if err != nil {
-						findings = append(findings, urlFetchDiagnostic(
-							slidepath.GridCellField(i, j, k, "icon/url"),
-							"icon", "svg", cell.Icon.URL, i, err,
-						))
-					} else {
-						cell.Icon.Path = path
-						cell.Icon.URL = ""
-					}
-				}
-
-				// Icon URL nested inside shape
-				if cell.Shape != nil && cell.Shape.Icon != nil && cell.Shape.Icon.URL != "" {
-					path, err := resolver.ResolveSVG(cell.Shape.Icon.URL)
-					if err != nil {
-						findings = append(findings, urlFetchDiagnostic(
-							slidepath.GridCellField(i, j, k, "shape/icon/url"),
-							"icon", "svg", cell.Shape.Icon.URL, i, err,
-						))
-					} else {
-						cell.Shape.Icon.Path = path
-						cell.Shape.Icon.URL = ""
-					}
-				}
+// resolveGridURLs resolves the image / icon URLs of grid's cells and,
+// recursively, of every nested cell grid under the JSON pointer prefix.
+// Nested grids used to be skipped, leaving their URLs unfetched.
+func resolveGridURLs(grid *ShapeGridInput, prefix string, slideIdx int, resolver urlResolver) []diagnostics.Diagnostic {
+	var findings []diagnostics.Diagnostic
+	for j := range grid.Rows {
+		for k, cell := range grid.Rows[j].Cells {
+			if cell == nil {
+				continue
+			}
+			cellPath := fmt.Sprintf("%s/rows/%d/cells/%d", prefix, j, k)
+			if cell.Image != nil {
+				findings = appendURLFinding(findings, resolveURLField(&cell.Image.URL, &cell.Image.Path, false, cellPath+"/image/url", "image", slideIdx, resolver))
+			}
+			if cell.Icon != nil {
+				findings = appendURLFinding(findings, resolveURLField(&cell.Icon.URL, &cell.Icon.Path, true, cellPath+"/icon/url", "icon", slideIdx, resolver))
+			}
+			if cell.Shape != nil && cell.Shape.Icon != nil {
+				findings = appendURLFinding(findings, resolveURLField(&cell.Shape.Icon.URL, &cell.Shape.Icon.Path, true, cellPath+"/shape/icon/url", "icon", slideIdx, resolver))
+			}
+			if cell.Grid != nil {
+				findings = append(findings, resolveGridURLs(cell.Grid, cellPath+"/grid", slideIdx, resolver)...)
 			}
 		}
 	}
 	return findings
+}
+
+// resolveURLField downloads *url (an SVG when svg is set, else a raster
+// image) and, on success, moves the cached path into *path and clears *url.
+// Returns the failure diagnostic, or nil on success / when *url is empty.
+func resolveURLField(url, path *string, svg bool, jsonPath, assetKind string, slideIdx int, resolver urlResolver) *diagnostics.Diagnostic {
+	if *url == "" {
+		return nil
+	}
+	resolve, expected := resolver.ResolveImage, "image"
+	if svg {
+		resolve, expected = resolver.ResolveSVG, "svg"
+	}
+	p, err := resolve(*url)
+	if err != nil {
+		d := urlFetchDiagnostic(jsonPath, assetKind, expected, *url, slideIdx, err)
+		return &d
+	}
+	*path, *url = p, ""
+	return nil
+}
+
+func appendURLFinding(findings []diagnostics.Diagnostic, d *diagnostics.Diagnostic) []diagnostics.Diagnostic {
+	if d == nil {
+		return findings
+	}
+	return append(findings, *d)
 }
 
 // urlFetchDiagnostic builds a structured diagnostic with the fields agents

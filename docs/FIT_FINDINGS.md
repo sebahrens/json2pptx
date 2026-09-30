@@ -306,6 +306,26 @@ The finding is advisory because only the author knows whether the photo is unifo
 
 With an overlay present, the scrim decides the text's background: at `alpha` ≥ 0.35 the contrast pass judges the text against the scrim colour rather than falling back to the layout's fill.
 
+### `IMAGE_ASSET_UNAVAILABLE`
+
+**Action:** `refuse`
+**Fix kind:** `provide_value`
+**Emitted at:** render (generate / render_deck_spec / score_deck / auto_repair)
+
+An authored picture reached generation but could not be embedded, so its frame renders empty: the file is missing, outside the allowed image roots (`ALLOWED_IMAGE_PATHS`), unreadable, or its bytes carry no recognised image signature (PNG, JPEG, GIF, BMP, TIFF, WebP raster magic, or an `<svg` root for `.svg`). It covers pattern images (`image_case` / `image-text-split`, headshots, …), `shape_grid` image cells at any nesting depth (`cells[].grid`), content `image_value` pictures and slide background images. The path names the field the author wrote — `/slides/0/pattern/values/image`, not the expanded grid cell.
+
+It is refuse-class: `deterministic_ready` is false and the quality gate fails, so a deck missing a required asset cannot be approved. Missing local files are normally refused earlier by the asset preflight (`IMAGE_PATH` / `BACKGROUND_IMAGE_PATH`, including nested grid cells) and unreachable URLs by `URL_FETCH_FAILED`; this finding is the render-time backstop for everything that slips past (corrupt bytes, a path the preflight did not see).
+
+```json
+{
+  "path": "/slides/0/pattern/values/image",
+  "code": "IMAGE_ASSET_UNAVAILABLE",
+  "message": "shape_grid image \"/abs/screens/dashboard.png\" could not be embedded (file content is not a recognised image format); the frame renders empty",
+  "fix": { "kind": "provide_value", "params": { "path": "/slides/0/pattern/values/image", "hint": "supply an existing image file (relative paths resolve against base_dir) or a reachable http(s) url, or remove the image field" } },
+  "action": "refuse"
+}
+```
+
 ### `placeholder_overflow`
 
 **Action:** `shrink_or_split`

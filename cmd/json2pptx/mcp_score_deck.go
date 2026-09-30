@@ -168,7 +168,22 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	if baseDirErr != nil {
 		return baseDirErr, nil
 	}
-	if assetFindings := resolveLocalAssetPaths(input.Slides, baseDir, imageAllowList(mc.cfg.Images.AllowedBasePaths)...); len(assetFindings) > 0 {
+	// URL references are materialized through the same SSRF-safe resolver
+	// generate_presentation uses, so a required picture that cannot be
+	// fetched is a structured blocker addressed to its authored url field,
+	// never a silently empty frame scored 100 (go-slide-creator-b7qqg.10).
+	// Scoring never stores the deck, so the cache only has to outlive the
+	// render pass below.
+	urls, urlErr := mc.materializeURLs(input.Slides)
+	defer urls.Cleanup()
+	if urlErr != nil {
+		return mcpErrorWithNext("URL_RESOLVER_INIT", fmt.Sprintf("resource resolver: %v", urlErr), nextCallRetry("score_deck", "presentation")), nil
+	}
+	if len(urls.Findings) > 0 {
+		return api.MCPDiagnosticsError(urls.Findings), nil
+	}
+	mediaAllowList := imageAllowList(mc.cfg.Images.AllowedBasePaths, urls.CacheDir)
+	if assetFindings := resolveLocalAssetPaths(input.Slides, baseDir, mediaAllowList...); len(assetFindings) > 0 {
 		if assetErrors := diagnostics.FilterBySeverity(assetFindings, diagnostics.SeverityError); len(assetErrors) > 0 {
 			return api.MCPDiagnosticsError(assetErrors), nil
 		}
@@ -225,7 +240,7 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	//    subset index space back to the original deck index space.
 	dataPalette := resolveDataPalette(templateMetadata, analysis.Theme.Colors)
 	allowDegraded := extractAllowDegradedScoring(request)
-	renderFindings, renderEvidence := mc.collectScoreDeckRenderFindings(ctx, &input, slideIndices, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, allowDegraded)
+	renderFindings, renderEvidence := mc.collectScoreDeckRenderFindings(ctx, &input, slideIndices, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, allowDegraded, urls.CacheDir)
 	findings = supersedeRealizedContrastPredictions(append(findings, renderFindings...))
 
 	// 3. Append synthesis findings (template-level).
@@ -286,6 +301,7 @@ func (mc *mcpConfig) collectRenderFindings(
 	syntheticFiles map[string][]byte,
 	templateMetadata *types.TemplateMetadata,
 	dataPalette []string,
+	extraImageDirs ...string,
 ) ([]patterns.FitFinding, deterministic.RenderEvidence) {
 	// Resolve deck-level rhythm grid when configured.
 	var rhythmGrid *resolvedGrid
@@ -321,7 +337,7 @@ func (mc *mcpConfig) collectRenderFindings(
 		StrictFit:             "warn",
 		DataPalette:           dataPalette,
 		ViewingMode:           input.ViewingMode,
-		AllowedImagePaths:     imageAllowList(mc.cfg.Images.AllowedBasePaths),
+		AllowedImagePaths:     imageAllowList(mc.cfg.Images.AllowedBasePaths, extraImageDirs...),
 	}
 
 	// Wire footer/chrome configuration.
@@ -364,15 +380,16 @@ func (mc *mcpConfig) collectScoreDeckRenderFindings(
 	templateMetadata *types.TemplateMetadata,
 	dataPalette []string,
 	allowDegraded bool,
+	extraImageDirs ...string,
 ) ([]patterns.FitFinding, deterministic.RenderEvidence) {
 	var renderFindings []patterns.FitFinding
 	var evidence deterministic.RenderEvidence
 	if len(slideIndices) > 0 {
 		subset, subsetToOrig := buildSlideSubset(input, slideIndices)
-		renderFindings, evidence = mc.collectRenderFindings(ctx, subset, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette)
+		renderFindings, evidence = mc.collectRenderFindings(ctx, subset, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, extraImageDirs...)
 		renderFindings = remapFindingsSlideIndex(renderFindings, subsetToOrig)
 	} else {
-		renderFindings, evidence = mc.collectRenderFindings(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette)
+		renderFindings, evidence = mc.collectRenderFindings(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, extraImageDirs...)
 	}
 	if !evidence.Complete {
 		evidence.Degraded = allowDegraded

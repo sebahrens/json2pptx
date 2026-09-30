@@ -1705,15 +1705,29 @@ func resolveSlideAssets(slide *SlideInput, baseDir string, slideIdx int, allowLi
 	if slide.ShapeGrid == nil {
 		return findings
 	}
-	for j := range slide.ShapeGrid.Rows {
-		for k := range slide.ShapeGrid.Rows[j].Cells {
-			cell := slide.ShapeGrid.Rows[j].Cells[k]
-			if cell == nil || cell.Image == nil || cell.Image.Path == "" {
+	return append(findings, resolveGridImageAssets(slide.ShapeGrid, slidepath.ShapeGrid(slideIdx), baseDir, slideIdx)...)
+}
+
+// resolveGridImageAssets resolves the image cells of grid and, recursively,
+// of every nested cell grid (cells[].grid) under the JSON pointer prefix.
+// Nested grids used to be skipped, so a missing picture inside a sub-grid
+// reached the generator unchecked (go-slide-creator-b7qqg.2).
+func resolveGridImageAssets(grid *ShapeGridInput, prefix, baseDir string, slideIdx int) []diagnostics.Diagnostic {
+	var findings []diagnostics.Diagnostic
+	for j := range grid.Rows {
+		for k := range grid.Rows[j].Cells {
+			cell := grid.Rows[j].Cells[k]
+			if cell == nil {
 				continue
 			}
-			path := slidepath.GridCellField(slideIdx, j, k, "image/path")
-			findings = append(findings, applyLocalAssetPath(&cell.Image.Path, baseDir,
-				diagnostics.CodeImagePath, "image", slideIdx, path)...)
+			cellPath := fmt.Sprintf("%s/rows/%d/cells/%d", prefix, j, k)
+			if cell.Image != nil && cell.Image.Path != "" {
+				findings = append(findings, applyLocalAssetPath(&cell.Image.Path, baseDir,
+					diagnostics.CodeImagePath, "image", slideIdx, cellPath+"/image/path")...)
+			}
+			if cell.Grid != nil {
+				findings = append(findings, resolveGridImageAssets(cell.Grid, cellPath+"/grid", baseDir, slideIdx)...)
+			}
 		}
 	}
 	return findings

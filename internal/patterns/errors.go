@@ -217,6 +217,15 @@ const (
 	// deck renders, and only the author knows whether the photo is dark enough
 	// under the text.
 	ErrCodeTextOverImageUnverified = "TEXT_OVER_IMAGE_UNVERIFIED"
+
+	// ErrCodeImageAssetUnavailable marks an authored picture (image_case /
+	// pattern image, shape_grid image cell at any nesting depth, content
+	// image_value, slide background image) that generation could not embed:
+	// the file is missing, outside the allowed image roots, unreadable, or
+	// not a recognisable image. The slide renders with an empty frame, so the
+	// finding is refuse-class: it blocks deterministic readiness and the
+	// quality gate (go-slide-creator-b7qqg.2).
+	ErrCodeImageAssetUnavailable = "IMAGE_ASSET_UNAVAILABLE"
 )
 
 // Sentinel errors for matching with errors.Is. Each ValidationError wraps the
@@ -298,6 +307,8 @@ var (
 
 	ErrTextOverImageUnverified = errors.New("text sits on a background image with no scrim, so its contrast cannot be checked")
 
+	ErrImageAssetUnavailable = errors.New("authored image could not be embedded; its frame renders empty")
+
 	ErrDiagramAspectMismatch = errors.New("diagram cell aspect differs from rendered SVG aspect")
 )
 
@@ -370,6 +381,7 @@ var codeSentinel = map[string]error{
 	ErrCodeContrastPredicted:       ErrContrastPredicted,
 	ErrCodeContrastUnresolved:      ErrContrastUnresolved,
 	ErrCodeTextOverImageUnverified: ErrTextOverImageUnverified,
+	ErrCodeImageAssetUnavailable:   ErrImageAssetUnavailable,
 	ErrCodeDiagramAspectMismatch:   ErrDiagramAspectMismatch,
 }
 

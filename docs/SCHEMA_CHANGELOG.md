@@ -1,5 +1,22 @@
 # Schema Changelog
 
+- **2026-09-30 — Required media is a blocker; URL images survive deck handles (`go-slide-creator-b7qqg.2`, `.9`, `.10`, `.12`).**
+  New refuse-class finding `IMAGE_ASSET_UNAVAILABLE`: an authored picture
+  (pattern image, `shape_grid` image cell at any nesting depth, content
+  `image_value`, slide background) that generation cannot embed — missing,
+  outside `ALLOWED_IMAGE_PATHS`, unreadable, or not a recognised image — is
+  reported at the authored field (e.g. `/slides/0/pattern/values/image`)
+  and blocks `deterministic_ready` and the quality gate (previously only a
+  free-text warning). The asset preflight and URL resolution now also walk
+  nested cell grids (`cells[].grid`). `score_deck` and `auto_repair`
+  materialize image `url`s through the same SSRF-safe resolver as
+  `generate_presentation`; an unreachable URL refuses with
+  `URL_FETCH_FAILED` at its `…/url` path instead of scoring 100.
+  `generate_presentation` stores the authored `url` (not the deleted
+  download path) in the raw `deck_id` handle, and `auto_repair` returns it in
+  `final_presentation`. The resource resolver's `AllowedDomains` allow-list
+  is enforced on every redirect hop. No `SchemaVersion` bump.
+
 - **2026-09-28 — Schema 4.154.0: consultant × designer finishing round (`go-slide-creator-1x3yi`).** Contract changes listed in the 4.154.0 entries below: chart `highlight`, `chrome.tracker`, `next-steps` pattern and `next_steps` kind, KPI `comparator`, `callout.emphasis` subtle/strong and `takeaway_emphasis` overrides, `DATA_WITHOUT_SOURCE` and `FILLED_SHAPE_OUTLINED` findings, engine-default table style, source zone, type scale.
 
 - **2026-09-28 — Skill bundle budget rebalance (`go-slide-creator-dnboq`).**

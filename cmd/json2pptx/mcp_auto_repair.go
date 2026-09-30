@@ -532,7 +532,21 @@ func (mc *mcpConfig) runAutoRepairLoop(
 	// through unchanged, so resolving once up front is correct for every pass.
 	// Error-severity findings short-circuit (the caller passes the result
 	// straight through), matching handleGenerate's contract.
-	if assetFindings := resolveLocalAssetPaths(input.Slides, baseDir, imageAllowList(mc.cfg.Images.AllowedBasePaths)...); len(assetFindings) > 0 {
+	//
+	// URL references are materialized first through the same SSRF-safe
+	// resolver, so the loop scores and renders the real pictures. The cache
+	// lives until the loop returns; the authored URLs are restored before the
+	// final deck is marshaled into final_presentation and the resume
+	// checkpoint, which outlive the cache (go-slide-creator-b7qqg.9).
+	urls, urlErr := mc.materializeURLs(input.Slides)
+	defer urls.Cleanup()
+	if urlErr != nil {
+		return nil, api.MCPSimpleError("URL_RESOLVER_INIT", fmt.Sprintf("resource resolver: %v", urlErr))
+	}
+	if len(urls.Findings) > 0 {
+		return nil, api.MCPDiagnosticsError(urls.Findings)
+	}
+	if assetFindings := resolveLocalAssetPaths(input.Slides, baseDir, imageAllowList(mc.cfg.Images.AllowedBasePaths, urls.CacheDir)...); len(assetFindings) > 0 {
 		if assetErrors := diagnostics.FilterBySeverity(assetFindings, diagnostics.SeverityError); len(assetErrors) > 0 {
 			return nil, api.MCPDiagnosticsError(assetErrors)
 		}
@@ -605,7 +619,7 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		passesRun = pass
 
 		findings := collectFitFindings(input, layouts, slideWidth, slideHeight, &analysis.Theme)
-		renderFindings, renderEvidence := mc.collectRenderFindings(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette)
+		renderFindings, renderEvidence := mc.collectRenderFindings(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, urls.CacheDir)
 		findings = append(findings, renderFindings...)
 
 		// A failed render pass must not look like a clean one: surface a
@@ -642,7 +656,7 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		}
 	}
 
-	finalPath, renderErr := mc.renderAutoRepairFinal(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, outputPath)
+	finalPath, renderErr := mc.renderAutoRepairFinal(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, outputPath, urls.CacheDir)
 	if renderErr != nil {
 		return nil, api.MCPSimpleError("GENERATION_FAILED", fmt.Sprintf("final generation failed: %v", renderErr))
 	}
@@ -683,7 +697,9 @@ func (mc *mcpConfig) runAutoRepairLoop(
 	// during the loop (and visual_qa phase) plus the up-front asset-path and
 	// canonical-layout resolution, so the JSON round-trips back into
 	// validate_input / generate_presentation as-is — agents never have to
-	// rebuild it from trace.
+	// rebuild it from trace. Downloaded pictures go back to their authored
+	// URLs: the cached files are deleted when this function returns.
+	urls.RestoreAuthoredURLs(input.Slides)
 	finalPresentation, err := json.Marshal(input)
 	if err != nil {
 		return nil, api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal final presentation: %v", err))
@@ -1246,6 +1262,7 @@ func (mc *mcpConfig) renderAutoRepairFinal(
 	templateMetadata *types.TemplateMetadata,
 	dataPalette []string,
 	outputPath string,
+	extraImageDirs ...string,
 ) (string, error) {
 	var rhythmGrid *resolvedGrid
 	if input.Grid != nil {
@@ -1270,7 +1287,7 @@ func (mc *mcpConfig) renderAutoRepairFinal(
 		StrictFit:             "warn",
 		DataPalette:           dataPalette,
 		ViewingMode:           input.ViewingMode,
-		AllowedImagePaths:     imageAllowList(mc.cfg.Images.AllowedBasePaths),
+		AllowedImagePaths:     imageAllowList(mc.cfg.Images.AllowedBasePaths, extraImageDirs...),
 	}
 	genReq.Footer = footerConfigForInput(input, len(slideSpecs))
 	if input.Chrome != nil {

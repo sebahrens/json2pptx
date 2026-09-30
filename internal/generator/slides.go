@@ -153,6 +153,11 @@ type ImageInsert struct {
 	OffsetY  int64  // Y position in EMU
 	ExtentCX int64  // Width in EMU
 	ExtentCY int64  // Height in EMU
+	// SourcePath is the JSON pointer of the authored field this picture came
+	// from (e.g. /slides/0/pattern/values/image). When the file cannot be
+	// embedded the IMAGE_ASSET_UNAVAILABLE finding is addressed to it; empty
+	// falls back to the slide's shape_grid path.
+	SourcePath string
 }
 
 // ContentItem represents content to place in a placeholder.

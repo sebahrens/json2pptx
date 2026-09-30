@@ -15,6 +15,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -458,14 +459,16 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 		}
 		// Register image inserts from shape_grid as media relationships
 		for imgIdx, img := range slide.ImageInserts {
-			// Validate image path for security (prevent path traversal)
-			if err := ValidateImagePathWithConfig(img.Path, ctx.allowedImagePaths); err != nil {
-				ctx.warnings = append(ctx.warnings, fmt.Sprintf("shape_grid image: path validation failed: %v", err))
-				continue
-			}
-			// Verify image file exists
-			if _, err := os.Stat(img.Path); err != nil {
-				ctx.warnings = append(ctx.warnings, fmt.Sprintf("shape_grid image: file not found: %s", img.Path))
+			// Validate the path (traversal / allowed roots), existence and
+			// image signature. A picture that cannot be embedded is a
+			// refuse-class finding addressed to its authored field, never
+			// just a warning beside an empty frame (go-slide-creator-b7qqg.2).
+			if problem := imageAssetProblem(img.Path, ctx.allowedImagePaths); problem != "" {
+				src := img.SourcePath
+				if src == "" {
+					src = slidepath.ShapeGrid(slideNum - startSlideNum)
+				}
+				ctx.reportUnavailableImage("shape_grid image", img.Path, src, problem)
 				continue
 			}
 			// Route SVG images through native SVG embedding (asvg:svgBlip)
@@ -508,10 +511,9 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 		// Register background image as media relationship
 		if slide.Background != nil && slide.Background.Path != "" {
 			bgPath := slide.Background.Path
-			if err := ValidateImagePathWithConfig(bgPath, ctx.allowedImagePaths); err != nil {
-				ctx.warnings = append(ctx.warnings, fmt.Sprintf("background image: path validation failed: %v", err))
-			} else if _, err := os.Stat(bgPath); err != nil {
-				ctx.warnings = append(ctx.warnings, fmt.Sprintf("background image: file not found: %s", bgPath))
+			if problem := imageAssetProblem(bgPath, ctx.allowedImagePaths); problem != "" {
+				ctx.reportUnavailableImage("background image", bgPath,
+					slidepath.SlideField(slideNum-startSlideNum, "background/image"), problem)
 			} else {
 				mediaFileName := ctx.allocateMediaSlot(bgPath)
 				ctx.slideBgMedia[slideNum] = mediaRel{

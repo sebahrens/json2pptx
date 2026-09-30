@@ -1032,6 +1032,10 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		}
 	}
 
+	// Record which authored field supplied each image file before pattern /
+	// compose expansion replaces the grid (go-slide-creator-b7qqg.2).
+	imageSources := authoredImageSources(&slide, i)
+
 	// XOR enforcement: pattern, compose, and shape_grid are mutually exclusive (D1)
 	{
 		setCount := 0
@@ -1186,6 +1190,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			}
 			spec.IconInserts = gridResult.IconInserts
 			spec.ImageInserts = gridResult.ImageInserts
+			annotateImageInsertSources(spec.ImageInserts, imageSources)
 			warnings = append(warnings, gridResult.Warnings...)
 			slideFitFindings = append(slideFitFindings, gridResult.FitFindings...)
 		}
