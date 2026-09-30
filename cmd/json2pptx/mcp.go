@@ -1644,7 +1644,7 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 
 func mcpRecommendVisualTool() mcp.Tool {
 	return mcp.NewTool("recommend_visual",
-		mcp.WithDescription("Unified visual recommender: ranks candidates across placeholder layouts, named patterns, charts, diagrams, and raw shape_grid. Unsupported Sankey requests return empty candidates and unsupported_visual: sankey; there is no Sankey renderer. Ask this tool first, then use the winning category's tool to build the slide. When candidates is supplied, scores ONLY those names against intent/hints and returns all of them ranked (no threshold cutoff, no truncation), except unsupported visuals; category is auto-resolved from the catalog and unknown names appear with score 0."),
+		mcp.WithDescription("Unified visual recommender: ranks candidates across placeholder layouts, named patterns, charts, diagrams, and raw shape_grid. Unsupported Sankey requests return empty candidates and unsupported_visual: sankey; there is no Sankey renderer. Ask this tool first, then use the winning category's tool to build the slide. Chart and diagram candidates carry data_contract and a runnable next_tool_call (render_deck_spec with a complete DeckSpec). When candidates is supplied, scores ONLY those names against intent/hints and returns all of them ranked (no threshold cutoff, no truncation), except unsupported visuals; category is auto-resolved from the catalog and unknown names appear with score 0."),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRecommendVisual)),
 		mcp.WithString("intent",
 			mcp.Required(),
@@ -1777,6 +1777,10 @@ func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.Call
 			rec.Candidates[i].Example = visualExampleForCandidate(rec.Candidates[i], analysis, mc.templatesDir, templateNameFromRequest(request), reg)
 		}
 	}
+
+	// Chart / diagram candidates carry their data contract and a runnable
+	// render_deck_spec call (go-slide-creator-b7qqg.24).
+	attachVisualRecipes(&rec, templateNameFromRequest(request))
 
 	if err := api.ComputeResponseFingerprint(&rec); err != nil {
 		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to compute response fingerprint: %v", err), nextCallRetry("recommend_visual", "intent")), nil

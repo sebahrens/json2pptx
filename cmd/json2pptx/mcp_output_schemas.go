@@ -443,7 +443,27 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
           "diversity_bonus":  {"type": "boolean"},
           "placement":        {"$ref": "#/$defs/placement_guidance"},
           "template_support": {"$ref": "#/$defs/template_support"},
-          "example":          {"$ref": "#/$defs/visual_example"}
+          "example":          {"$ref": "#/$defs/visual_example"},
+          "data_contract": {
+            "type": "object",
+            "description": "Chart / diagram candidates only: the data keys the type takes (same entry as get_data_format_hints) and field_path, where that data sits in next_tool_call.args_template.spec.",
+            "properties": {
+              "required_keys": {"type": "array", "items": {"type": "string"}},
+              "optional_keys": {"type": "array", "items": {"type": "string"}},
+              "description":   {"type": "string"},
+              "field_path":    {"type": "string"}
+            },
+            "required": ["required_keys", "description", "field_path"]
+          },
+          "next_tool_call": {
+            "type": "object",
+            "description": "Chart / diagram candidates only: a runnable render_deck_spec call whose args_template.spec is a complete DeckSpec (one raw_json2pptx slide hosting this chart / diagram with sample data). Replace the title and data, keep the shape.",
+            "properties": {
+              "tool":          {"type": "string"},
+              "args_template": {"type": "object"}
+            },
+            "required": ["tool", "args_template"]
+          }
         },
         "required": ["category", "name", "score", "rationale", "confidence_band"]
       }

@@ -91,6 +91,27 @@ type VisualCandidate struct {
 	// template-agnostic results.
 	TemplateSupport *TemplateSupport `json:"template_support,omitempty"`
 	Example         *VisualExample   `json:"example,omitempty"`
+	// DataContract names the data keys a chart / diagram candidate takes and
+	// where they go in NextToolCall's spec. Populated by the MCP layer for
+	// chart and diagram candidates; nil otherwise.
+	DataContract *VisualDataContract `json:"data_contract,omitempty"`
+	// NextToolCall is a runnable call that renders this chart / diagram
+	// candidate on the default MCP profile: render_deck_spec with a complete
+	// DeckSpec (one raw_json2pptx slide carrying sample data). Populated by the
+	// MCP layer for chart and diagram candidates; nil otherwise.
+	NextToolCall *ToolCallSuggestion `json:"next_tool_call,omitempty"`
+}
+
+// VisualDataContract is the data shape of a chart / diagram type — the same
+// entry get_data_format_hints serves — plus where that data sits in the
+// candidate's runnable spec.
+type VisualDataContract struct {
+	RequiredKeys []string `json:"required_keys"`
+	OptionalKeys []string `json:"optional_keys,omitempty"`
+	Description  string   `json:"description"`
+	// FieldPath is the path of the data object inside next_tool_call's
+	// args_template.spec (e.g. slides[0].slide.content[1].diagram_value.data).
+	FieldPath string `json:"field_path"`
 }
 
 // VisualExample connects a recommendation to compact template-specific visual

@@ -53,6 +53,11 @@ signature or schema registry.
 - `recommend_visual` `content_hints` / `recent_patterns` / `candidates` and
   `plan_deck` `must_include` are type-checked: a malformed value returns
   `INVALID_PARAMETER` naming the argument instead of being ignored.
+  Every `chart` / `diagram` candidate carries `data_contract`
+  (`required_keys`, `optional_keys`, `description`, `field_path`) and a
+  `next_tool_call` to `render_deck_spec` whose `spec` is a complete DeckSpec
+  (one `raw_json2pptx` slide with sample data), so the default profile
+  reaches every chart and diagram type without `get_data_format_hints`.
 - `get_input_schema` and `get_data_format_hints` support digest reuse.
   `list_slide_kinds`, `show_pattern`, and `describe_finding` are the live
   kind, pattern, and finding catalogs. Prefer them to static enumerations.
