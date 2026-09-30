@@ -66,7 +66,14 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 roadmap activities, team bios, metric details, swimlane steps, KPI captions and
 the rest) live in each field's `show_pattern` description, measured at default
 sizes for every supported count. Read them there; `BODY_TOO_LONG` names the
-field to shorten and `TEXT_EXCEEDS_SHAPE` a word that cannot fit its shape. Limits: `state-shift-hub` takes 3–4 pairs, `dual-org-ladder` at most 4 rows.
+field to shorten and `TEXT_EXCEEDS_SHAPE` a word that cannot fit its shape.
+KPI values ("$4.2M", "127%") and label words are sized as unbreakable tokens: the
+pattern shrinks a value (or, for `process-grid-2row`, widens the row-label column
+up to 22% before shrinking the label) rather than let the unit or a word wrap, so
+a `kpi-6up` value may render smaller than on `kpi-3up`; a value that cannot fit
+at the floor is reported as `BODY_TOO_LONG` on `values[i].big`, and a
+`process-grid-2row` row-label word that cannot fit the widest column at 12pt as
+`TEXT_EXCEEDS_SHAPE` — shorten or abbreviate it. Limits: `state-shift-hub` takes 3–4 pairs, `dual-org-ladder` at most 4 rows.
 
 ---
 

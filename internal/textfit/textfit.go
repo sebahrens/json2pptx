@@ -10,6 +10,7 @@ import (
 	"image/color"
 	"math"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -81,6 +82,12 @@ type Params struct {
 	MinFontScalePct int
 	ViewingMode     tokens.ViewingMode
 	TextRole        tokens.TextRole
+	// Bold measures with the bold face (inherited b="1"). Honoured by
+	// MeasureHeight only.
+	Bold bool
+	// LetterSpacingPt is the inherited letter spacing (OOXML spc / 100) added
+	// after every character, spaces included. Honoured by MeasureHeight only.
+	LetterSpacingPt float64
 }
 
 const (
@@ -368,8 +375,44 @@ func MeasureHeight(p Params) (int64, error) {
 		return 0, ErrNoFontCache
 	}
 
+	if p.Bold || p.LetterSpacingPt != 0 {
+		style := canvas.FontRegular
+		if p.Bold {
+			style = canvas.FontBold
+		}
+		heightPt := estimateStyledTextHeight(newFace(ff, fontSizePt, style), p, fontSizePt, usableWidthPt)
+		return int64(math.Ceil(heightPt * float64(emuPerPoint))), nil
+	}
+
 	heightPt := estimateTextHeight(ff, p.Paragraphs, fontSizePt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt)
 	return int64(math.Ceil(heightPt * float64(emuPerPoint))), nil
+}
+
+// estimateStyledTextHeight is estimateTextHeight for a pre-built face with
+// per-character letter spacing (MeasureHeight's bold / tracked path).
+func estimateStyledTextHeight(face *canvas.FontFace, p Params, fontSizePt, widthPt float64) float64 {
+	lineHeightPt := fontSizePt * p.LineSpacing
+	trackMM := p.LetterSpacingPt * ptToMM
+	measure := func(s string) float64 {
+		return LineWidthMM(face, s) + trackMM*float64(utf8.RuneCountInString(s))
+	}
+	var total float64
+	for i, para := range p.Paragraphs {
+		spacing := p.ExtraSpacingPt
+		if i < len(p.ExtraSpacingsPt) {
+			spacing = p.ExtraSpacingsPt[i]
+		}
+		w := widthPt
+		if i < len(p.LeftMarginsPt) && p.LeftMarginsPt[i] > 0 {
+			w = math.Max(widthPt-p.LeftMarginsPt[i], fontSizePt)
+		}
+		lines := 0
+		for _, line := range strings.Split(para, "\n") {
+			lines += wrapLineWith(measure, line, w)
+		}
+		total += float64(lines)*lineHeightPt + spacing
+	}
+	return total
 }
 
 // wrapText estimates how many lines a paragraph will need when word-wrapped
@@ -385,6 +428,11 @@ func wrapText(face *canvas.FontFace, text string, widthPt float64) int {
 }
 
 func wrapTextLine(face *canvas.FontFace, text string, widthPt float64) int {
+	return wrapLineWith(func(s string) float64 { return LineWidthMM(face, s) }, text, widthPt)
+}
+
+// wrapLineWith is wrapTextLine over an arbitrary width function (mm).
+func wrapLineWith(measure func(string) float64, text string, widthPt float64) int {
 	widthMM := widthPt * ptToMM
 	words := strings.Fields(text)
 	if len(words) == 0 {
@@ -392,13 +440,13 @@ func wrapTextLine(face *canvas.FontFace, text string, widthPt float64) int {
 	}
 
 	// Measure space width once for this font face, not per word
-	spaceWidth := LineWidthMM(face, " ")
+	spaceWidth := measure(" ")
 
 	lines := 1
 	var currentWidth float64
 
 	for i, word := range words {
-		wordWidth := LineWidthMM(face, word)
+		wordWidth := measure(word)
 
 		if i > 0 {
 			if currentWidth+spaceWidth+wordWidth <= widthMM {

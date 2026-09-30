@@ -240,6 +240,15 @@ type PlaceholderInfo struct {
 	TextCaps       bool
 	LineSpacingPct int
 
+	// TextBold and CharSpacingHPt are the inherited title run weight (b="1")
+	// and letter spacing (spc, hundredths of a point) from the master
+	// titleStyle overridden by the layout lstStyle. Both widen every line, so
+	// measuring a tracked, bold title with the regular face under-counted its
+	// lines and the pattern below was placed into the title's second line
+	// (go-slide-creator-b7qqg.13).
+	TextBold       bool `json:"-"`
+	CharSpacingHPt int  `json:"-"`
+
 	// Anchor is the effective vertical text anchor of a title placeholder
 	// ("t", "ctr", "b"), resolved from the layout bodyPr, then the master's
 	// title placeholder, then the OOXML default "t". Empty for other types.

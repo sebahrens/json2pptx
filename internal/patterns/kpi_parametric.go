@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
 // ---------------------------------------------------------------------------
@@ -139,7 +140,10 @@ func (k *kpiNup) PostExpandWarnings(ctx ExpandContext, values, overrides any) []
 	var warnings []string
 	for i, cell := range *cells {
 		width := geo.valueWidthPt(cell.Icon, iconPos)
-		if measuredLines(cell.Big, ctx.Theme.BodyFont, true, bigSize, width) > 1 {
+		// The same atomic-token width kpiFitBigSize fits against: a value that
+		// only fits edge-to-edge in a stand-in face renders as "$4.2" / "M"
+		// (go-slide-creator-b7qqg.14).
+		if measuredLines(cell.Big, ctx.Theme.BodyFont, true, bigSize, textfit.AtomicTokenWidthPt(ctx.Theme.BodyFont, width)) > 1 {
 			warnings = append(warnings, fmt.Sprintf("%s: %s values[%d].big cannot fit on one line at the %.0fpt effective size in a %.0fpt-wide card — shorten the metric, move/remove its icon, or use fewer KPI cards", ErrCodeBodyTooLong, k.Name(), i, bigSize, width))
 		}
 	}

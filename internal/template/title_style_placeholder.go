@@ -23,10 +23,18 @@ func applyInheritedTitleText(info *types.PlaceholderInfo, shape *shapeXML, maste
 			if lvl.DefRPr.Size > 0 {
 				st.SizeHPt = lvl.DefRPr.Size
 			}
+			if lvl.DefRPr.Bold != "" {
+				st.Bold = xmlBoolAttr(lvl.DefRPr.Bold)
+			}
+			if lvl.DefRPr.Spc != "" {
+				st.SpcHPt = xmlIntAttr(lvl.DefRPr.Spc)
+			}
 		}
 	}
 	info.Anchor = resolveTitleAnchor(shape, masterFonts)
 	info.TextCaps = st.CapsAll
+	info.TextBold = st.Bold
+	info.CharSpacingHPt = st.SpcHPt
 	info.LineSpacingPct = st.LineSpacingPct
 	info.SpcBefPt = st.SpcBefPt
 	if info.FontSize == 0 {

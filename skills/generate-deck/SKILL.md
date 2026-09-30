@@ -57,7 +57,13 @@ short or narrow template, or under a `takeaway`, the content-sized patterns
 `next-steps`) first step type down to the 12pt floor, then report
 `BODY_TOO_LONG` naming what to drop, and validate
 predicts grid text (nested cells included) that generation would refuse as
-`TEXT_BELOW_READABLE_MIN`.
+`TEXT_BELOW_READABLE_MIN`. KPI values and label words are never wrapped
+mid-token: a value shrinks (a `kpi-6up` "$4.2M" may render near 28pt) and a
+`process-grid-2row` row-label column widens before its label shrinks; what
+cannot fit is reported (`BODY_TOO_LONG` on `values[i].big`,
+`TEXT_EXCEEDS_SHAPE` naming the label word) — see [PATTERNS.md](PATTERNS.md).
+Content under a top-anchored title starts below its measured lines,
+including tracked, bold or substituted title faces.
 Read [RAW_PATH.md](RAW_PATH.md) before authoring raw JSON. Its
 preconditions are **not** universal DeckSpec requirements. Two raw-only
 patterns cover pages DeckSpec kinds do not: `contact-directory` (key contacts

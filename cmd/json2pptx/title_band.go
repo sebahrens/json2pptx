@@ -90,13 +90,29 @@ func measuredTitleBottom(title *types.PlaceholderInfo, text string) (int64, bool
 	if title.LineSpacingPct > 0 {
 		lineSpacing = 1.2 * float64(title.LineSpacingPct) / 100.0
 	}
+	bold, width := title.TextBold, title.Bounds.Width
+	if textfit.FontSubstituted(title.FontFamily) {
+		// The template's title face is not available to the measurer, and the
+		// renderer's substitute is unknown too (modern-yellow's "Segoe UI
+		// Semibold" measures as regular Arial here but wraps "quarters" onto a
+		// second line in LibreOffice). The reservation errs toward the extra
+		// line: a heavy-weight family measures bold, and every substituted
+		// face gets a width margin (go-slide-creator-b7qqg.13).
+		bold = bold || heavyWeightFamily(title.FontFamily)
+		width = width * (100 - substitutedTitleWidthMarginPct) / 100
+	}
 	h, err := textfit.MeasureHeight(textfit.Params{
-		WidthEMU:    title.Bounds.Width,
+		WidthEMU:    width,
 		HeightEMU:   title.Bounds.Height,
 		FontSizeHPt: title.FontSize,
 		FontName:    title.FontFamily,
 		Paragraphs:  []string{text},
 		LineSpacing: lineSpacing,
+		// A bold, tracked title (blue-corporate: b="1", spc="300", all caps)
+		// wraps well before the regular untracked face says it does
+		// (go-slide-creator-b7qqg.13).
+		Bold:            bold,
+		LetterSpacingPt: float64(title.CharSpacingHPt) / 100.0,
 	})
 	if err != nil || h <= 0 {
 		return 0, false
@@ -105,4 +121,24 @@ func measuredTitleBottom(title *types.PlaceholderInfo, text string) (int64, bool
 	// rest of bodyZoneTitleGapPt here.
 	safety := int64((bodyZoneTitleGapPt - gridChromeGapPt) * 12700)
 	return title.Bounds.Y + h + safety, true
+}
+
+// substitutedTitleWidthMarginPct is the share of the title width the body-zone
+// reservation withholds when the title face had to be substituted: the
+// substitute's metrics are a guess, and a guess that is a few percent narrow
+// puts the pattern into the title's second line.
+const substitutedTitleWidthMarginPct = 10
+
+// heavyWeightFamily reports whether a family name itself names a weight above
+// regular ("Segoe UI Semibold", "Arial Black"). Such weights ship as separate
+// fonts; when one is substituted by a regular face, the bold face is the
+// closer width proxy.
+func heavyWeightFamily(name string) bool {
+	n := strings.ToLower(name)
+	for _, w := range []string{"semibold", "semi bold", "demibold", "bold", "black", "heavy"} {
+		if strings.Contains(n, w) {
+			return true
+		}
+	}
+	return false
 }

@@ -40,6 +40,7 @@ func growShapeText(spec *ShapeSpec, bounds pptx.RectEmu, overlay [4]int64, mode 
 			maxScale = ratio
 		}
 	}
+	maxScale = math.Min(maxScale, tokenGrowthCap(paras, width))
 	if maxScale <= 1.01 {
 		return spec
 	}
@@ -80,6 +81,39 @@ type scaleParagraph struct {
 	spaceAfter float64
 	marginL    int64
 	role       string
+	bold       bool
+}
+
+// tokenGrowthCap is the largest scale at which every token that fits its line
+// at the pattern's size still fits: a word, or a whole KPI value ("12 days").
+// Growth only ever fills spare height, so it must not be what breaks a label
+// mid-word ("PRODUCTI / ON") or a value from its unit ("$4.2" / "M") — the
+// pattern measured those whole and growth measures by line count alone. The
+// token keeps textfit.AtomicTokenWidthPct of the width because the grower
+// measures a stand-in face, not the template font (go-slide-creator-b7qqg.14 /
+// .15). A token between that share and the full line keeps its size; tokens
+// already wider than their line at scale 1 do not cap growth.
+func tokenGrowthCap(paras []scaleParagraph, width int64) float64 {
+	limit := math.Inf(1)
+	for _, p := range paras {
+		line := float64(width - p.marginL)
+		allowed := line * textfit.AtomicTokenWidthPct / 100
+		if allowed <= 0 {
+			continue
+		}
+		tokens := strings.Fields(p.text)
+		if p.role == "kpi-value" {
+			tokens = []string{strings.TrimSpace(p.text)}
+		}
+		for _, tok := range tokens {
+			w, err := textfit.MeasureStyledLineWidth(tok, "Liberation Sans", p.fontPt, p.bold)
+			if err != nil || w <= 0 || float64(w) > line {
+				continue
+			}
+			limit = math.Min(limit, math.Max(allowed, float64(w))/float64(w))
+		}
+	}
+	return limit
 }
 
 func scaleParagraphs(tb *pptx.TextBody) []scaleParagraph {
@@ -111,6 +145,7 @@ func scaleParagraphs(tb *pptx.TextBody) []scaleParagraph {
 			spaceAfter: float64(p.SpaceAfter) / 100,
 			marginL:    p.MarginL,
 			role:       inferScaleRole(text.String(), fontPt, bold, len(tb.Paragraphs), hasKPI),
+			bold:       bold,
 		})
 	}
 	return paras
