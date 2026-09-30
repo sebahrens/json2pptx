@@ -1,5 +1,31 @@
 # Schema Changelog
 
+- **2026-09-30 — Chart correctness: percent `input_scale`, bubble area, stacked-area identity (`go-slide-creator-b7qqg.18`–`.23`).**
+  - **`style.value_format.input_scale`** (`auto` | `fraction` |
+    `percentage_points`) declares the units of percent data. `fraction`
+    formats 1.2 as `120%`; `percentage_points` formats 0.25 as `0.25%`; ticks
+    and data labels share the declared scale, and percent labels print every
+    value exactly when two decimals suffice. An unknown value, or any value
+    other than `auto` with a non-percent style, fails validation. `auto` (the
+    default, unchanged rendering) now also reports the low-range case: values
+    all within [-1, 1] raise `chart.percent_scale_ambiguous` at severity
+    `info`; values above 1 keep the `warning`. Both carry `fix.kind:
+    explicit_scale` with `params.field: "style.value_format.input_scale"`,
+    `params.assumed` and `params.options`.
+  - **Bubble charts** size bubbles by area on one chart-wide scale:
+    diameter = max × √(size / largest size in the chart). Equal sizes in
+    different series draw equal bubbles (the old per-series linear radius
+    mapping drew sizes 5 and 10 with a ~17.6× area ratio). Zero draws a
+    minimum 3pt dot; a negative size fails validation.
+  - **Stacked area** value labels show each band's authored value, not its
+    cumulative boundary, and series keep the palette colour they have in
+    bar / line / area charts (the stack's paint order no longer reassigns
+    them).
+  - **Chart capabilities** for `bar` / `grouped_bar` no longer promise an
+    automatic log scale: wide ranges stay linear with value labels and
+    `chart.wide_range_linear`; log is only an explicit `style.scale: "log"`,
+    whose axis is titled "log scale".
+
 - **2026-09-28 — Schema 4.154.0: consultant × designer finishing round (`go-slide-creator-1x3yi`).** Contract changes listed in the 4.154.0 entries below: chart `highlight`, `chrome.tracker`, `next-steps` pattern and `next_steps` kind, KPI `comparator`, `callout.emphasis` subtle/strong and `takeaway_emphasis` overrides, `DATA_WITHOUT_SOURCE` and `FILLED_SHAPE_OUTLINED` findings, engine-default table style, source zone, type scale.
 
 - **2026-09-28 — Skill bundle budget rebalance (`go-slide-creator-dnboq`).**

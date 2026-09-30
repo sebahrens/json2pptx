@@ -886,6 +886,7 @@ func TestValueFormatSurvivesTheBridge(t *testing.T) {
 				Prefix:       "€",
 				Suffix:       " ARR",
 				ThousandsSep: &sep,
+				InputScale:   "percentage_points",
 			},
 		},
 	}
@@ -901,6 +902,9 @@ func TestValueFormatSurvivesTheBridge(t *testing.T) {
 	}
 	if got.ThousandsSep == nil || *got.ThousandsSep {
 		t.Errorf("thousands_sep not forwarded: %+v", got.ThousandsSep)
+	}
+	if got.InputScale != "percentage_points" {
+		t.Errorf("input_scale not forwarded: %q", got.InputScale)
 	}
 
 	// Absent stays absent: a nil spec must not materialise as an empty struct,

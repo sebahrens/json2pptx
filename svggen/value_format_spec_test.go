@@ -73,7 +73,11 @@ func TestValueFormatFindings(t *testing.T) {
 		values   []any
 		wantCode string
 	}{
-		{name: "fractional percent is unambiguous", spec: &ValueFormatSpec{Style: "percent"}, values: []any{0.412, 0.408, 0.401}},
+		// Auto cannot tell 0.25 (a fraction, 25%) from 0.25 percentage points;
+		// it says what it assumed (go-slide-creator-b7qqg.22).
+		{name: "fractional percent under auto reports the assumption", spec: &ValueFormatSpec{Style: "percent"}, values: []any{0.412, 0.408, 0.401}, wantCode: FindingPercentScaleAmbiguous},
+		{name: "explicit fraction is unambiguous", spec: &ValueFormatSpec{Style: "percent", InputScale: "fraction"}, values: []any{0.412, 1.2}},
+		{name: "explicit percentage points is unambiguous", spec: &ValueFormatSpec{Style: "percent", InputScale: "percentage_points"}, values: []any{0.25, 0.5}},
 		{name: "already-scaled percent warns", spec: &ValueFormatSpec{Style: "percent"}, values: []any{41.2, 40.8, 40.1}, wantCode: FindingPercentScaleAmbiguous},
 		{name: "currency symbol is explicit", spec: &ValueFormatSpec{Style: "currency", Prefix: "€"}, values: []any{12.0}},
 		{name: "currency symbol defaults visibly", spec: &ValueFormatSpec{Style: "currency"}, values: []any{12.0}, wantCode: FindingCurrencyPrefixDefaulted},

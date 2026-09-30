@@ -323,10 +323,9 @@ type ChartStyle struct {
 // it field-for-field.
 type ValueFormatSpec struct {
 	// Style selects the notation: "plain" (grouped digits, the default),
-	// "compact" (1.2K / 3.4M / 5.6B / 7.8T), "percent" (fractions in [0,1]
-	// are multiplied by 100; larger values are preserved with an ambiguity
-	// finding), or "currency" (grouped digits with Prefix; "¤" plus a finding
-	// when Prefix is omitted).
+	// "compact" (1.2K / 3.4M / 5.6B / 7.8T), "percent" (units set by
+	// InputScale), or "currency" (grouped digits with Prefix; "¤" plus a
+	// finding when Prefix is omitted).
 	Style string `json:"style,omitempty" yaml:"style,omitempty"`
 	// Decimals fixes the decimal places. Omit it and the renderer shows enough
 	// to keep the labels distinct (capped at 2) while the axis shows what its
@@ -339,6 +338,12 @@ type ValueFormatSpec struct {
 	// ThousandsSep groups the integer part in threes. Omit it for the style's
 	// default: on for plain and currency, off for compact and percent.
 	ThousandsSep *bool `json:"thousands_sep,omitempty" yaml:"thousands_sep,omitempty"`
+	// InputScale declares the units of percent data: "fraction" (0.25 → 25%,
+	// 1.2 → 120%), "percentage_points" (0.25 → 0.25%, 25 → 25%) or "auto"
+	// (the default: fractions when every value is within [-1, 1], percentage
+	// points otherwise, reported as chart.percent_scale_ambiguous). Only valid
+	// with style "percent".
+	InputScale string `json:"input_scale,omitempty" yaml:"input_scale,omitempty"`
 }
 
 // DefaultChartDimensions provides default chart dimensions.

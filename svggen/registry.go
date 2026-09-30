@@ -150,6 +150,9 @@ func renderMultiFormatInternal(r *Registry, req *RequestEnvelope, formats ...str
 	if err := req.Validate(); err != nil {
 		return nil, nil, err
 	}
+	if err := validateValueFormat(req.Style.ValueFormat); err != nil {
+		return nil, nil, fmt.Errorf("svggen: validation failed for %q: %w", req.Type, err)
+	}
 
 	// Warn when data is empty — the diagram will render blank.
 	if len(req.Data) == 0 {

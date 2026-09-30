@@ -303,6 +303,7 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 				Prefix:       vf.Prefix,
 				Suffix:       vf.Suffix,
 				ThousandsSep: vf.ThousandsSep,
+				InputScale:   vf.InputScale,
 			}
 		}
 	}

@@ -140,6 +140,13 @@ func GetValidationErrors(err error) []ValidationError { return core.GetValidatio
 
 // --- Constants (re-exported) ---
 
+// Percent input scales for ValueFormatSpec.InputScale.
+const (
+	InputScaleAuto             = core.InputScaleAuto
+	InputScaleFraction         = core.InputScaleFraction
+	InputScalePercentagePoints = core.InputScalePercentagePoints
+)
+
 const (
 	ErrCodeRequired       = core.ErrCodeRequired
 	ErrCodeInvalidType    = core.ErrCodeInvalidType

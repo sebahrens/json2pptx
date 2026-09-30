@@ -211,7 +211,8 @@ var enumMap = map[string]map[string][]string{
 		"type": {"split_slide"},
 	},
 	"ValueFormatSpec": {
-		"style": {"plain", "compact", "percent", "currency"},
+		"style":       {"plain", "compact", "percent", "currency"},
+		"input_scale": {"auto", "fraction", "percentage_points"},
 	},
 	"SplitConfig": {
 		"by": {"table.rows"},
