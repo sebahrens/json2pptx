@@ -144,7 +144,7 @@ func processFlowLabelBudget(steps int, pointed bool) (wordLike, unbroken int) {
 	return 80, 80
 }
 
-func (p *processFlow) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+func (p *processFlow) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*ProcessFlowValues)
 	if !ok || v == nil {
 		return nil
@@ -160,6 +160,9 @@ func (p *processFlow) PostExpandWarnings(_ ExpandContext, values, _ any) []strin
 		if runeLen(step.Label) > wordBudget || longest > unbrokenBudget {
 			warnings = append(warnings, fmt.Sprintf("%s: process-flow steps[%d].label has %d characters (longest unbroken run %d); this %d-step %s holds about %d word-like or %d wide unbroken characters — shorten the label, add word breaks, or use fewer steps", ErrCodeBodyTooLong, i, runeLen(step.Label), longest, len(v.Steps), step.Type, wordBudget, unbrokenBudget))
 		}
+	}
+	if len(warnings) == 0 {
+		warnings = processFlowAreaWarning(ctx, "process-flow", v.Steps, overrides, false)
 	}
 	return warnings
 }
@@ -313,7 +316,12 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	// (go-slide-creator-7km8) instead of stretching into full-height pillars
 	// with needle-thin diamonds; the grid centres the row vertically.
 	pointedRow := allStepsPointed(vals.Steps)
-	_, rowHeight := processFlowCellSize(ctx, len(vals.Steps), pointedRow)
+	cellW, rowHeight := processFlowCellSize(ctx, len(vals.Steps), pointedRow)
+	// The cap gives way to the written fit of the tallest label (never
+	// past the content area) before the writer would shrink it below the
+	// readable floor (go-slide-creator-n1muf).
+	_, contentH := contentAreaPt(ctx)
+	rowHeight = math.Max(rowHeight, math.Min(processFlowWrittenNeedPt(cells, cellW), math.Round(contentH)))
 	row := jsonschema.GridRowInput{
 		Cells:     cells,
 		Connector: &jsonschema.ConnectorSpecInput{Style: "arrow", Color: "dk1", Width: 1.5},
@@ -334,6 +342,63 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 
 	return grid, nil
+}
+
+// processFlowWrittenNeedPt is the height the tallest step needs for the
+// writer to store its label without an autofit shrink: the written fit of
+// each step's own text at the step width (the writer measures the full shape
+// bounds, whatever the preset's notch or diamond).
+func processFlowWrittenNeedPt(cells []*jsonschema.GridCellInput, cellW float64) float64 {
+	need := 0.0
+	for _, c := range cells {
+		if c != nil && c.Shape != nil {
+			need = math.Max(need, writtenFitHeightPt(c.Shape.Text, cellW, 0))
+		}
+	}
+	return math.Ceil(need)
+}
+
+// processFlowStepsNeedPt builds each step's label cell as Expand writes it and
+// returns the written-fit height the tallest needs, with the step width and
+// the content-area height.
+func processFlowStepsNeedPt(ctx ExpandContext, steps []ProcessFlowStep, bodySize float64, compact bool) (need, areaH float64) {
+	cells := make([]*jsonschema.GridCellInput, len(steps))
+	for i, step := range steps {
+		text := buildProcessFlowTextContent(pptx.ConvertMarkdownEmphasis(step.Label), bodySize)
+		if step.Type == "chevron" || step.Type == "arrow" {
+			text = buildProcessFlowPointedText(pptx.ConvertMarkdownEmphasis(step.Label), bodySize)
+		}
+		cells[i] = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Text: text}}
+	}
+	var cellW float64
+	if compact {
+		cellW, _ = processFlowCompactCellSize(ctx, len(steps), false)
+	} else {
+		cellW, _ = processFlowCellSize(ctx, len(steps), false)
+	}
+	_, areaH = contentAreaPt(ctx)
+	return processFlowWrittenNeedPt(cells, cellW), areaH
+}
+
+// processFlowAreaWarning reports steps whose written fit needs more height
+// than the template's content area holds (go-slide-creator-n1muf).
+func processFlowAreaWarning(ctx ExpandContext, name string, steps []ProcessFlowStep, overrides any, compact bool) []string {
+	if ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 || len(steps) == 0 {
+		return nil
+	}
+	ovr, _ := overrides.(*ProcessFlowOverrides)
+	if ovr == nil {
+		ovr = &ProcessFlowOverrides{}
+	}
+	size := processFlowFullFontPt(steps)
+	if compact {
+		size = processFlowDefaultFontPt(len(steps))
+	}
+	need, areaH := processFlowStepsNeedPt(ctx, steps, ResolveSize(ovr.BodySize, size), compact)
+	if need <= areaH+1 {
+		return nil
+	}
+	return []string{fmt.Sprintf("%s: %s step labels need %.0fpt at readable sizes but the content area holds about %.0fpt — shorten the labels or use fewer steps", ErrCodeBodyTooLong, name, need, areaH)}
 }
 
 // processFlowMaxHeightFrac caps process-flow steps at this share of the

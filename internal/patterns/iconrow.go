@@ -321,28 +321,78 @@ func iconRowHasSecondary(items IconRowValues) bool {
 // contentCardHeightPt solves the circularity the icon creates — the renderer
 // sizes a "top" overlay from the card's own height — so the height comes from
 // the same helper card-grid and hero-detail use.
+//
+// The caption height is the larger of the theme-font model and the written
+// fit of the caption cell the writer measures (writtenFitHeightPt): the model
+// alone let five 60-character captions be written at 7–10pt on the shipped
+// content areas (go-slide-creator-n1muf). When the card needs more than the
+// strip cap, the cap gives way up to the whole content area before the
+// caption is shrunk; what still does not fit is reported by
+// PostExpandWarnings as BODY_TOO_LONG.
 func iconRowMaxHeightPt(ctx ExpandContext, cells []*jsonschema.GridCellInput) float64 {
+	need, areaH := iconRowCardNeedPt(ctx, cells)
+	if need <= 0 {
+		return 0
+	}
+	if need > areaH*iconRowMaxHeightFrac {
+		return clampPt(need, iconRowMinHeightPt, areaH)
+	}
+	return clampPt(need, iconRowMinHeightPt, areaH*iconRowMaxHeightFrac)
+}
+
+// iconRowCardNeedPt is the tallest card's content height (icon zone, caption
+// at its written fit, padding and insets) and the content-area height.
+func iconRowCardNeedPt(ctx ExpandContext, cells []*jsonschema.GridCellInput) (need, areaH float64) {
 	n := len(cells)
 	areaW, areaH := sizingAreaPt(ctx)
 	if n == 0 || areaW <= 0 || areaH <= 0 {
-		return 0
+		return 0, areaH
 	}
 	cardW := equalColumnWidthPt(areaW, n, iconRowGapPt)
 	textW := cardW - 2*defaultShapeInsetLRPt
 	if textW <= 0 {
-		return 0
+		return 0, areaH
 	}
 
 	font := ctx.Theme.BodyFont
-	need := 0.0
 	for _, c := range cells {
 		if c == nil || c.Shape == nil {
 			continue
 		}
-		textH := shapeTextHeightPt(font, c.Shape.Text, textW)
+		textH := math.Max(shapeTextHeightPt(font, c.Shape.Text, textW),
+			writtenFitHeightPt(c.Shape.Text, cardW, 0)-2*defaultShapeInsetTBPt)
 		need = math.Max(need, contentCardHeightPt(textH, cardW, c.Shape.Icon != nil))
 	}
-	return clampPt(need, iconRowMinHeightPt, areaH*iconRowMaxHeightFrac)
+	return need, areaH
+}
+
+// PostExpandWarnings reports captions whose cards need more height than the
+// template's content area holds, so the writer would shrink them below the
+// readable floor (go-slide-creator-n1muf). Without a known content area the
+// schema's 60-character caption limit is the contract.
+func (ir *iconRow) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
+	items, ok := values.(*IconRowValues)
+	if !ok || items == nil || len(*items) == 0 || iconRowHasSecondary(*items) ||
+		ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 {
+		return nil
+	}
+	ovr, _ := overrides.(*IconRowOverrides)
+	if ovr == nil {
+		ovr = &IconRowOverrides{}
+	}
+	captionSize := ResolveSize(ovr.CaptionSize, 12.0)
+	cells := make([]*jsonschema.GridCellInput, len(*items))
+	for i, item := range *items {
+		cells[i] = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Text: buildIconRowCaptionOnly(item.Caption, captionSize)}}
+		if item.Icon != nil && !item.Icon.IsEmpty() {
+			cells[i].Shape.Icon = &jsonschema.IconInput{Position: "top"}
+		}
+	}
+	need, areaH := iconRowCardNeedPt(ctx, cells)
+	if need <= areaH+1 {
+		return nil
+	}
+	return []string{fmt.Sprintf("%s: icon-row captions need %.0fpt cards at readable sizes but the content area holds about %.0fpt — shorten the captions or use fewer items", ErrCodeBodyTooLong, need, areaH)}
 }
 
 // buildIconRowCaptionOnly creates a JSON text object with caption only (for SVG icon mode).

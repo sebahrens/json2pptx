@@ -473,15 +473,17 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"numbered-step-strip":          4.8,
 	"phase-roadmap":                4.3, // midnight-blue edge-art clearance narrows the column (oa0ru)
 	// Layout-aware standalone readability measurement exposed a schema-legal
-	// payload below the floor; go-slide-creator-tp23k tracks its text budget.
-	"process-flow":         10.6,
-	"process-flow-compact": 9.1,
+	// payload below the floor (go-slide-creator-tp23k); the step row / band now
+	// grows to the written fit of its tallest label (n1muf).
+	"process-flow":         0,
+	"process-flow-compact": 0,
 	// Optional column_headers + outcomes rows (go-slide-creator-s1uvj.10) take
 	// height from the two tracks; the 40-char row labels in the 12% label
 	// column used to autofit to ~10.4pt at 14pt. The labels now step down to
 	// 12pt so no word breaks (go-slide-creator-csclk.113), and the maximum
-	// renders with nothing below the floor.
-	"process-grid-2row": 6.5,
+	// renders with nothing below the floor. Tracks floored at their written
+	// fit, header / outcome rows never below theirs (n1muf): 6.5 -> 9.6.
+	"process-grid-2row": 9.6,
 	// A long italic quote is prose, not a KPI value. With the 12pt prose floor,
 	// the schema-maximum quote remains readable beside its optional headshot;
 	// genuine sub-12pt shrink still produces a finding (tp23k.2).
@@ -542,8 +544,8 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"numbered-step-strip":          5.8,
 	"phase-roadmap":                5.0,
 	"process-flow":                 0,
-	"process-flow-compact":         10.1,
-	"process-grid-2row":            8.9,
+	"process-flow-compact":         0,    // band grows to the written fit (n1muf)
+	"process-grid-2row":            10.8, // rows floored at their written fit (n1muf)
 	"pull-quote":                   0,
 	"pyramid":                      8.4,
 	"quote-cluster":                7.0,

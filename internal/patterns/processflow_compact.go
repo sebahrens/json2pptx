@@ -94,7 +94,7 @@ func processFlowCompactLabelBudget(steps int, pointed bool) (wordLike, unbroken 
 	return 80, 80
 }
 
-func (p *processFlowCompact) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+func (p *processFlowCompact) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*ProcessFlowValues)
 	if !ok || v == nil {
 		return nil
@@ -110,6 +110,9 @@ func (p *processFlowCompact) PostExpandWarnings(_ ExpandContext, values, _ any) 
 		if runeLen(step.Label) > wordBudget || longest > unbrokenBudget {
 			warnings = append(warnings, fmt.Sprintf("%s: process-flow-compact steps[%d].label has %d characters (longest unbroken run %d); this %d-step %s holds about %d word-like or %d wide unbroken characters — shorten the label, add word breaks, or use fewer steps", ErrCodeBodyTooLong, i, runeLen(step.Label), longest, len(v.Steps), step.Type, wordBudget, unbrokenBudget))
 		}
+	}
+	if len(warnings) == 0 {
+		warnings = processFlowAreaWarning(ctx, "process-flow-compact", v.Steps, overrides, true)
 	}
 	return warnings
 }
@@ -297,8 +300,12 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 		row.Connector = nil
 	}
 
-	_, bandHeight := processFlowCompactCellSize(ctx, len(vals.Steps), pointedRow)
+	cellW, bandHeight := processFlowCompactCellSize(ctx, len(vals.Steps), pointedRow)
 	_, contentHeight := contentAreaPt(ctx)
+	// The band cap gives way to the written fit of the tallest label (never
+	// past the content area) before the writer would shrink it below the
+	// readable floor (go-slide-creator-n1muf).
+	bandHeight = math.Max(bandHeight, math.Min(processFlowWrittenNeedPt(cells, cellW), contentHeight))
 	bandHeightPct := processFlowCompactHeightPct
 	if contentHeight > 0 {
 		bandHeightPct = bandHeight / contentHeight * 100
