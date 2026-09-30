@@ -7,11 +7,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"image/png"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -79,12 +79,67 @@ func (o *Options) dpi() int {
 	return 96
 }
 
+// Deadlines for the external preview subprocesses and for a whole cold
+// preview build. They are vars so tests can shrink them to force a timeout
+// with a fake hung binary (go-slide-creator-b7qqg.6). The LibreOffice step
+// converts one slide per layout in a single run, so it gets more headroom than
+// a render-tool conversion; each ImageMagick call rasterizes a single page.
+var (
+	previewLibreOfficeTimeout = 180 * time.Second
+	previewImageMagickTimeout = 60 * time.Second
+	previewTotalTimeout       = 5 * time.Minute
+)
+
+// previewTimeoutError rewraps a renderer *render.TimeoutError with guidance
+// for the discovery surfaces (list_templates, examine_template, skill-info)
+// rather than the render tools' force=true retry. errors.As still reaches the
+// underlying *render.TimeoutError (tool, code, elapsed).
+func previewTimeoutError(step string, err error) error {
+	var te *render.TimeoutError
+	if !errors.As(err, &te) {
+		return err
+	}
+	return &previewTimeout{
+		msg: fmt.Sprintf("layout preview %s: %s. Previews are optional: retry discovery, or pass "+
+			"read_only=true / --no-preview to skip them; if it recurs the renderer is likely wedged — "+
+			"restart LibreOffice/ImageMagick", step, te.Summary()),
+		err: te,
+	}
+}
+
+// previewTimeout carries discovery guidance in its message while unwrapping to
+// the structured *render.TimeoutError, whose own message cites the render
+// tools' force=true retry that discovery does not take.
+type previewTimeout struct {
+	msg string
+	err error
+}
+
+func (e *previewTimeout) Error() string { return e.msg }
+func (e *previewTimeout) Unwrap() error { return e.err }
+
 // Generate produces PNG preview images for each layout in the template.
 // Returns nil if LibreOffice or ImageMagick is not available (graceful degradation).
+// It runs without a request context; callers on a request path should use
+// GenerateContext so cancellation reaches the renderer subprocesses.
 func Generate(templatePath string, analysis *types.TemplateAnalysis, opts *Options) (*Result, error) {
+	return GenerateContext(context.Background(), templatePath, analysis, opts)
+}
+
+// GenerateContext is Generate bound to ctx: cancelling ctx (or exceeding the
+// per-step / total preview deadlines) kills the LibreOffice or ImageMagick
+// process group it started, removes its own temp files and partially written
+// PNGs, and returns an error. Deadline overruns wrap a *render.TimeoutError.
+func GenerateContext(ctx context.Context, templatePath string, analysis *types.TemplateAnalysis, opts *Options) (*Result, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	// Check tool availability — graceful degradation when missing
 	if !hasLibreOffice() || !hasImageMagick() {
 		return nil, nil
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 
 	cacheDir := opts.cacheDir()
@@ -92,7 +147,7 @@ func Generate(templatePath string, analysis *types.TemplateAnalysis, opts *Optio
 
 	// Reuse only previews from the same template, generator, recipe, renderer
 	// and effective resolution. Legacy template-only caches are left untouched.
-	hash, err := currentPreviewCacheIdentity(templatePath, analysis, opts)
+	hash, err := currentPreviewCacheIdentityContext(ctx, templatePath, analysis, opts)
 	if err != nil {
 		return nil, fmt.Errorf("identify preview cache: %w", err)
 	}
@@ -117,7 +172,9 @@ func Generate(templatePath string, analysis *types.TemplateAnalysis, opts *Optio
 
 	// Generate a single PPTX with all layouts (one slide per layout)
 	// then split the resulting PDF pages into individual PNGs.
-	if err := generateAllPreviews(templatePath, analysis, previewDir, opts.dpi(), opts.loProfileArgs()); err != nil {
+	buildCtx, cancel := context.WithTimeout(ctx, previewTotalTimeout)
+	defer cancel()
+	if err := generateAllPreviews(buildCtx, templatePath, analysis, previewDir, opts.dpi(), opts.loProfileArgs()); err != nil {
 		return nil, err
 	}
 
@@ -137,13 +194,25 @@ func Generate(templatePath string, analysis *types.TemplateAnalysis, opts *Optio
 }
 
 // generateAllPreviews creates a PPTX with one slide per layout, converts to PDF,
-// then splits into per-layout PNG files.
-func generateAllPreviews(templatePath string, analysis *types.TemplateAnalysis, previewDir string, dpi int, loArgs []string) error {
+// then splits into per-layout PNG files. Every external step is bounded by ctx
+// and its own deadline through internal/render's owned-process runner, and on
+// failure the PNGs this call wrote are removed so no partial set lingers in the
+// cache directory (other files there are left alone).
+func generateAllPreviews(ctx context.Context, templatePath string, analysis *types.TemplateAnalysis, previewDir string, dpi int, loArgs []string) (err error) {
 	tmpDir, err := os.MkdirTemp("", "layoutpreview-*")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(tmpDir)
+
+	var written []string
+	defer func() {
+		if err != nil {
+			for _, p := range written {
+				_ = os.Remove(p)
+			}
+		}
+	}()
 
 	// Build slide specs — one slide per layout with sample content so
 	// placeholder positions are visible in the rendered PNG.
@@ -157,7 +226,6 @@ func generateAllPreviews(templatePath string, analysis *types.TemplateAnalysis, 
 
 	// Generate a PPTX using the real generator
 	pptxPath := filepath.Join(tmpDir, "layouts.pptx")
-	ctx := context.Background()
 	_, err = generator.Generate(ctx, generator.GenerationRequest{
 		TemplatePath:          templatePath,
 		OutputPath:            pptxPath,
@@ -167,15 +235,14 @@ func generateAllPreviews(templatePath string, analysis *types.TemplateAnalysis, 
 	if err != nil {
 		return fmt.Errorf("generate preview pptx: %w", err)
 	}
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("layout preview cancelled: %w", err)
+	}
 
 	// Convert to PDF via LibreOffice
-	loBin := libreOfficeBin()
-	loArgs = append(loArgs, "--headless", "--convert-to", "pdf", "--outdir", tmpDir, pptxPath)
-	cmd := exec.Command(loBin, loArgs...) //nolint:gosec // binary path from LookPath
-	cmd.Stdout = io.Discard
-	cmd.Stderr = io.Discard
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("libreoffice convert: %w", err)
+	args := append(append([]string(nil), loArgs...), "--headless", "--convert-to", "pdf", "--outdir", tmpDir, pptxPath)
+	if stderr, err := render.RunLibreOfficeBounded(ctx, pptxPath, previewLibreOfficeTimeout, libreOfficeBin(), args...); err != nil {
+		return previewStepError(ctx, "libreoffice convert", err, stderr)
 	}
 
 	pdfPath := filepath.Join(tmpDir, "layouts.pdf")
@@ -188,15 +255,37 @@ func generateAllPreviews(templatePath string, analysis *types.TemplateAnalysis, 
 	for i, layout := range analysis.Layouts {
 		pngPath := filepath.Join(previewDir, layout.ID+".png")
 		pageSpec := fmt.Sprintf("%s[%d]", pdfPath, i)
-		cmd := exec.Command(magickBin, "-density", fmt.Sprintf("%d", dpi), pageSpec, "-quality", "90", pngPath) //nolint:gosec // binary path from LookPath
-		cmd.Stdout = io.Discard
-		cmd.Stderr = io.Discard
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("rasterize layout %s (page %d): %w", layout.ID, i+1, err)
+		written = append(written, pngPath)
+		stderr, err := render.RunImageMagickBounded(ctx, pageSpec, previewImageMagickTimeout, magickBin,
+			"-density", fmt.Sprintf("%d", dpi), pageSpec, "-quality", "90", pngPath)
+		if err != nil {
+			return previewStepError(ctx, fmt.Sprintf("rasterize layout %s (page %d)", layout.ID, i+1), err, stderr)
 		}
 	}
 
 	return nil
+}
+
+// previewStepError turns a failed bounded subprocess into an actionable error:
+// a renderer deadline keeps its *render.TimeoutError (with discovery-specific
+// guidance), an exhausted total preview budget or caller cancellation keeps the
+// context error, and other failures carry the captured stderr.
+func previewStepError(ctx context.Context, step string, err error, stderr string) error {
+	var te *render.TimeoutError
+	if errors.As(err, &te) {
+		return previewTimeoutError(step, err)
+	}
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		if errors.Is(ctxErr, context.DeadlineExceeded) {
+			return fmt.Errorf("layout preview %s: preview build exceeded its %s budget. Previews are optional: "+
+				"retry discovery, or pass read_only=true / --no-preview to skip them: %w", step, previewTotalTimeout, ctxErr)
+		}
+		return fmt.Errorf("layout preview %s cancelled: %w", step, ctxErr)
+	}
+	if s := strings.TrimSpace(stderr); s != "" {
+		return fmt.Errorf("%s: %w: %s", step, err, s)
+	}
+	return fmt.Errorf("%s: %w", step, err)
 }
 
 func collectCachedPreviews(previewDir string, analysis *types.TemplateAnalysis) (*Result, error) {

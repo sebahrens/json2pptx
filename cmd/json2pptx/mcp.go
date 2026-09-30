@@ -819,7 +819,7 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 		// Pass the LOGICAL name: an embedded template's resolved path is an
 		// os.CreateTemp file, so the path's base name is neither stable nor
 		// usable as a `template` argument (go-slide-creator-ccpv).
-		skillOpts := skillInfoOptions{NoPreview: readOnly, LogicalName: rt.name}
+		skillOpts := skillInfoOptions{NoPreview: readOnly, LogicalName: rt.name, Ctx: ctx}
 		info, err := analyzeTemplateForSkillInfoOpts(rt.path, mc.cache, mode, skillOpts)
 		if err != nil {
 			slog.Error("failed to analyze template", "template", rt.name, "error", err)

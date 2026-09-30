@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -112,6 +113,11 @@ type skillInfoOptions struct {
 	// every call (go-slide-creator-ccpv). Empty falls back to the file's base
 	// name, which is correct for templates read from a directory.
 	LogicalName string
+
+	// Ctx is the request context layout-preview generation runs under, so a
+	// cancelled MCP call kills the LibreOffice / ImageMagick children it
+	// started (go-slide-creator-b7qqg.6). Nil means context.Background().
+	Ctx context.Context
 }
 
 // skillComposeEntry describes the compose envelope feature for agents browsing
@@ -646,7 +652,15 @@ func analyzeTemplateForSkillInfoOpts(templatePath string, cache types.TemplateCa
 	// treats a nil previews result as "no previews available".
 	var previews *layoutpreview.Result
 	if !opts.NoPreview {
-		previews, _ = layoutpreview.Generate(templatePath, analysis, nil)
+		ctx := opts.Ctx
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		var previewErr error
+		previews, previewErr = layoutpreview.GenerateContext(ctx, templatePath, analysis, nil)
+		if previewErr != nil {
+			slog.Warn("layout previews unavailable", "template", templatePath, "error", previewErr)
+		}
 	}
 
 	layoutNames := make([]string, len(analysis.Layouts))

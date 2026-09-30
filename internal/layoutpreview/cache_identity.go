@@ -31,8 +31,14 @@ var previewEngineIdentity = sync.OnceValues(func() (string, error) {
 // Include the tool version as well as entrypoint bytes: bundled entrypoints can
 // be wrapper scripts whose target changes without changing the wrapper itself.
 func previewToolIdentity(binary string) (string, error) {
+	return previewToolIdentityContext(context.Background(), binary)
+}
+
+// previewToolIdentityContext bounds the --version probe by the caller's
+// request context as well as its own short deadline.
+func previewToolIdentityContext(parent context.Context, binary string) (string, error) {
 	return previewToolIdentityWithVersion(binary, func(path string) ([]byte, error) {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(parent, 5*time.Second)
 		defer cancel()
 		return previewRendererVersion(ctx, path)
 	})
@@ -92,6 +98,10 @@ func previewCacheIdentity(templateHash, engineHash, officeHash, rasterHash strin
 }
 
 func currentPreviewCacheIdentity(templatePath string, analysis *types.TemplateAnalysis, opts *Options) (string, error) {
+	return currentPreviewCacheIdentityContext(context.Background(), templatePath, analysis, opts)
+}
+
+func currentPreviewCacheIdentityContext(ctx context.Context, templatePath string, analysis *types.TemplateAnalysis, opts *Options) (string, error) {
 	templateHash, err := fileHash(templatePath)
 	if err != nil {
 		return "", fmt.Errorf("hash template: %w", err)
