@@ -49,6 +49,8 @@ const (
 	fgColGapPt        = 8.0
 	fgRowGapPt        = 8.0
 	fgCardPadPt       = 10.0
+	fgTightPadPt      = 4.0 // card padding once the rows would not fit
+	fgTightRowGapPt   = 4.0 // row gap once the rows would not fit
 	fgMinRowPt        = 40.0
 	fgFillFrac        = 0.80 // share of the content height the block aims for
 	fgMaxStretch      = 1.8  // rows stop growing past this multiple of their content
@@ -252,6 +254,8 @@ type fgLayout struct {
 	neededHPt  float64
 	areaHPt    float64
 	tallestRow int
+	padPt      float64 // card padding above and below the text
+	rowGapPt   float64 // gap between dimension rows
 }
 
 func fgResolveOverrides(overrides any) *FrameworkGridOverrides {
@@ -261,10 +265,32 @@ func fgResolveOverrides(overrides any) *FrameworkGridOverrides {
 	return &FrameworkGridOverrides{}
 }
 
+// fgMeasure picks the layout the framework is written with. Rows never go
+// below the written fit of their tallest cell; when the rows would not fit
+// the content area, the air gives way first (card padding and row gaps
+// tighten), then the default 14pt titles and labels step to the 12pt floor
+// (go-slide-creator-n1muf). A framework that does not fit even then keeps
+// the default layout, so it is not also set smaller before it is shrunk,
+// and PostExpandWarnings reports it.
 func fgMeasure(ctx ExpandContext, v *FrameworkGridValues, ovr *FrameworkGridOverrides) fgLayout {
+	type step struct{ pad, gap, title float64 }
+	title := ResolveSize(ovr.TitleSize, 14)
+	steps := []step{{fgCardPadPt, fgRowGapPt, title}, {fgTightPadPt, fgTightRowGapPt, title}}
+	if ovr.TitleSize == 0 {
+		steps = append(steps, step{fgTightPadPt, fgTightRowGapPt, shapegrid.MinTextSizePt})
+	}
+	for _, st := range steps {
+		if l := fgMeasureAt(ctx, v, ovr, st.pad, st.gap, st.title); l.neededHPt <= l.areaHPt {
+			return l
+		}
+	}
+	return fgMeasureAt(ctx, v, ovr, steps[0].pad, steps[0].gap, steps[0].title)
+}
+
+func fgMeasureAt(ctx ExpandContext, v *FrameworkGridValues, ovr *FrameworkGridOverrides, padPt, rowGapPt, titleSize float64) fgLayout {
 	font := ctx.Theme.BodyFont
 	contentW, contentH := contentAreaPt(ctx)
-	l := fgLayout{areaHPt: contentH}
+	l := fgLayout{areaHPt: contentH, padPt: padPt, rowGapPt: rowGapPt}
 	for _, row := range v.Rows {
 		l.cols = max(l.cols, len(row.Cards))
 	}
@@ -277,7 +303,7 @@ func fgMeasure(ctx ExpandContext, v *FrameworkGridValues, ovr *FrameworkGridOver
 	l.labelTextW = math.Max(gridW*l.labelPct/100-2*defaultShapeInsetLRPt, 1)
 	cardW := gridW * (100 - l.labelPct) / 100 / float64(l.cols)
 	l.cardTextW = math.Max(cardW-2*defaultShapeInsetLRPt, 1)
-	l.titlePt = shapegrid.EffectiveTextSizePt(ResolveSize(ovr.TitleSize, 14))
+	l.titlePt = shapegrid.EffectiveTextSizePt(titleSize)
 	l.bodyPt = shapegrid.EffectiveTextSizePt(ResolveSize(ovr.BodySize, 12))
 
 	for i, row := range v.Rows {
@@ -287,19 +313,21 @@ func fgMeasure(ctx ExpandContext, v *FrameworkGridValues, ovr *FrameworkGridOver
 				textParagraph{text: inlineMarkupRe.ReplaceAllString(card.Title, ""), size: l.titlePt, bold: true},
 				textParagraph{text: inlineMarkupRe.ReplaceAllString(card.Body, ""), size: l.bodyPt}))
 		}
-		h = math.Round(math.Max(h+2*defaultShapeInsetTBPt+2*fgCardPadPt, fgMinRowPt))
+		h = math.Round(math.Max(h+2*defaultShapeInsetTBPt+2*padPt, fgMinRowPt))
 		// Cards must also fit by the writer's own measure at their unstretched
 		// inset: sized by the theme-font model alone, abstract's cards were
 		// stored at 92% autofit, below the body floor (go-slide-creator-n1muf).
+		// So must the label band, whose long labels wrap in the narrow column.
+		h = math.Max(h, writtenNeedOrOverflowPt(font, fgLabelTextJSON(row.Label, l.titlePt, "dk2"), gridW*l.labelPct/100))
 		for _, card := range row.Cards {
-			h = math.Max(h, writtenFitHeightPt(fgCardTextJSON(card, l, "dk1", "dk1", math.Round(defaultShapeInsetTBPt+fgCardPadPt)), cardW, h))
+			h = math.Max(h, writtenNeedOrOverflowPt(font, fgCardTextJSON(card, l, "dk1", "dk1", math.Round(defaultShapeInsetTBPt+padPt)), cardW))
 		}
 		if h > l.contentHPt {
 			l.contentHPt, l.tallestRow = h, i
 		}
 	}
 	n := float64(len(v.Rows))
-	gaps := fgRowGapPt * math.Max(n-1, 0)
+	gaps := rowGapPt * math.Max(n-1, 0)
 	l.neededHPt = gaps + n*l.contentHPt
 
 	// Every row takes the tallest row's height so the grid reads as a grid,
@@ -384,19 +412,14 @@ func (p *frameworkGrid) Expand(ctx ExpandContext, values, overrides any, cellOve
 
 	rows := make([]jsonschema.GridRowInput, 0, len(vals.Rows))
 	idx := 0
-	insetTop := math.Round(defaultShapeInsetTBPt + fgCardPadPt + (l.rowHPt-l.contentHPt)/2)
+	insetTop := math.Round(defaultShapeInsetTBPt + l.padPt + (l.rowHPt-l.contentHPt)/2)
 	for _, row := range vals.Rows {
-		labelText := patternTextObj{
-			Paragraphs:    []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(row.Label), Size: l.titlePt, Bold: true, Color: labelInk, Align: "l"}},
-			Align:         "l",
-			VerticalAlign: "ctr",
-		}
 		// Label cell, then one cell per card column.
 		label := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
 			Fill:     labelTone.fillJSON(),
 			Line:     json.RawMessage(`"none"`),
-			Text:     labelText.json(),
+			Text:     fgLabelTextJSON(row.Label, l.titlePt, labelInk),
 		}}
 		fgApplyCellOverride(label, cellOverrides, idx, base)
 		cells := []*jsonschema.GridCellInput{label}
@@ -438,7 +461,7 @@ func (p *frameworkGrid) Expand(ctx ExpandContext, values, overrides any, cellOve
 	return &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(colsJSON),
 		ColGap:        fgColGapPt,
-		RowGap:        fgRowGapPt,
+		RowGap:        l.rowGapPt,
 		Rows:          rows,
 		VerticalAlign: GridVerticalAlignDefault,
 	}, nil
@@ -479,6 +502,15 @@ func (p *frameworkGrid) PostExpandWarnings(ctx ExpandContext, values, overrides 
 	return []string{fmt.Sprintf(
 		"%s: framework-grid rows[%d] sets a %.0fpt row height and every row takes it; %d rows need about %.0fpt but the content area holds %.0fpt, so every card shrinks — shorten the card bodies in rows[%d], drop a row, or split the framework",
 		ErrCodeBodyTooLong, l.tallestRow, l.contentHPt, len(v.Rows), l.neededHPt, l.areaHPt, l.tallestRow)}
+}
+
+// fgLabelTextJSON is the text object a row-label band is written with.
+func fgLabelTextJSON(label string, sizePt float64, ink string) json.RawMessage {
+	return patternTextObj{
+		Paragraphs:    []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(label), Size: sizePt, Bold: true, Color: ink, Align: "l"}},
+		Align:         "l",
+		VerticalAlign: "ctr",
+	}.json()
 }
 
 // fgCardTextJSON is the text object a framework card is written with.
