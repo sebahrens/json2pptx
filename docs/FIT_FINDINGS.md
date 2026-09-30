@@ -1401,7 +1401,7 @@ A content slide's title fits its placeholder but renders on three or more lines 
 | Source | What it knows | Action |
 |--------|---------------|--------|
 | The deterministic geometry detector (below) | It *estimates* the text box from the authored size and preset geometry. A 15% deficit may render correctly after shrinkage, but a 2× deficit is too large to leave as informational. | `review` below 2×; `shrink_or_split` at 2× or more |
-| A pattern's `PostExpandWarnings` | The pattern has *measured* that the text cannot fit at its own readable floor, after giving up every adjustment it has (`numbered-step-strip` surrenders notch depth first, then type size down to 12pt). The mid-word break is certain. | `shrink_or_split` — **the default quality gate fails** |
+| A pattern's `PostExpandWarnings` | The pattern has *measured* that the text cannot fit at its own readable floor, after giving up every adjustment it has (`numbered-step-strip` surrenders notch depth first, then type size down to 12pt; `process-grid-2row` widens its row-label column to 22%, then shrinks the label to 12pt). The mid-word break is certain. | `shrink_or_split` — **the default quality gate fails** |
 
 That split is what lets the gate block a real defect without failing decks that render correctly. Before it, a deck whose chevrons rendered as "Internationalisatio / n programme" scored 85 with `quality_gate.passed = true`.
 

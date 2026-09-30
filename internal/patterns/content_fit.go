@@ -85,6 +85,9 @@ func fitSingleLineSize(text, font string, bold bool, sizePt, minPt, widthPt floa
 	if text == "" || sizePt <= minPt {
 		return sizePt
 	}
+	// The token must not break in the renderer's face either: a substituted
+	// template font gets the atomic-token margin (go-slide-creator-b7qqg.14).
+	widthPt = textfit.AtomicTokenWidthPt(font, widthPt)
 	for s := sizePt; s > minPt; s-- {
 		if measuredLines(text, font, bold, s, widthPt) <= 1 {
 			return s

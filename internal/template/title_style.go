@@ -28,6 +28,10 @@ type InheritedTextStyle struct {
 	// Align is the level-1 paragraph alignment ("l", "ctr", "r", …); "" when
 	// the style declares none (OOXML then aligns left).
 	Align string
+	// Bold is true when the level-1 run default is bold (b="1").
+	Bold bool
+	// SpcHPt is the level-1 letter spacing (spc) in hundredths of a point.
+	SpcHPt int
 }
 
 type masterTitleStyleXML struct {
@@ -47,6 +51,8 @@ type titleLevelPropsXML struct {
 	DefRPr *struct {
 		Size  int           `xml:"sz,attr"`
 		Cap   string        `xml:"cap,attr"`
+		Bold  string        `xml:"b,attr"`
+		Spc   string        `xml:"spc,attr"`
 		Latin *latinFontXML `xml:"latin"`
 	} `xml:"defRPr"`
 }
@@ -99,6 +105,8 @@ func inheritedFromLevelProps(lvl *titleLevelPropsXML) InheritedTextStyle {
 	if r := lvl.DefRPr; r != nil {
 		st.SizeHPt = r.Size
 		st.CapsAll = r.Cap == "all"
+		st.Bold = xmlBoolAttr(r.Bold)
+		st.SpcHPt = xmlIntAttr(r.Spc)
 		if r.Latin != nil {
 			st.Typeface = r.Latin.Typeface
 		}
@@ -191,4 +199,16 @@ func ParseMasterTitleAnchor(masterData []byte) string {
 		return ""
 	}
 	return ""
+}
+
+// xmlBoolAttr reads an OOXML boolean attribute ("1"/"true").
+func xmlBoolAttr(v string) bool { return v == "1" || v == "true" }
+
+// xmlIntAttr reads an integer attribute, 0 when absent or malformed.
+func xmlIntAttr(v string) int {
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return 0
+	}
+	return n
 }

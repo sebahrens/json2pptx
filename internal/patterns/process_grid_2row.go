@@ -10,6 +10,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
 // ---------------------------------------------------------------------------
@@ -95,8 +96,11 @@ const (
 	processGrid2RowHeaderMaxChars  = 24
 	processGrid2RowOutcomeMaxChars = 32
 	processGrid2RowLabelColPct     = 12.0
-	processGrid2RowGapPt           = 6.0
-	processGrid2RowUnderlinePt     = 3.0
+	// processGrid2RowLabelColMaxPct is how wide the row-label column may grow
+	// to keep a label word on one line before the label shrinks.
+	processGrid2RowLabelColMaxPct = 22.0
+	processGrid2RowGapPt          = 6.0
+	processGrid2RowUnderlinePt    = 3.0
 	// processGrid2RowMeasureSafety narrows the measured width so a header or
 	// outcome that nearly fills its column is sized for a second line rather
 	// than squeezed when the renderer's font runs wider than the metrics.
@@ -274,21 +278,11 @@ func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellO
 	labelSize := ResolveSize(ovr.HeaderSize, 14.0)
 	phaseSize := ResolveSize(ovr.BodySize, 12.0)
 
-	// The row labels sit in a narrow fixed column: shrink one shared size
-	// until no label word breaks mid-word ("PRODUCTI / ON",
-	// go-slide-creator-csclk.113), never below the renderer's floor.
-	rowLabelSize := labelSize
-	{
-		areaW, _ := contentAreaPt(ctx)
-		labelTextW := math.Max((areaW*processGrid2RowLabelColPct/100-processGrid2RowGapPt-2*defaultShapeInsetLRPt)*0.9, 1)
-		for _, label := range []string{vals.Row1Label, vals.Row2Label} {
-			for _, w := range strings.Fields(label) {
-				if s := fitSingleLineSize(w, ctx.Theme.BodyFont, true, rowLabelSize, shapegrid.MinTextSizePt, labelTextW); s < rowLabelSize {
-					rowLabelSize = s
-				}
-			}
-		}
-	}
+	// The row labels sit in the narrow first column: widen it, then shrink
+	// one shared size, until no label word breaks mid-word ("PRODUCTI / ON",
+	// go-slide-creator-csclk.113 / b7qqg.15).
+	lf := fitProcessGrid2RowLabels(ctx, vals, labelSize)
+	rowLabelSize, labelColPct := lf.sizePt, lf.colPct
 
 	row1Color := vals.Row1Color
 	if row1Color == "" {
@@ -309,8 +303,8 @@ func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellO
 	// Column widths: row-label column ~12%, phase columns split the rest.
 	numCols := 1 + n
 	cols := make([]float64, numCols)
-	cols[0] = processGrid2RowLabelColPct
-	phaseWidth := (100 - processGrid2RowLabelColPct) / float64(n)
+	cols[0] = labelColPct
+	phaseWidth := (100 - labelColPct) / float64(n)
 	for i := 1; i < numCols; i++ {
 		cols[i] = phaseWidth
 	}
@@ -373,6 +367,83 @@ func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellO
 	}
 
 	return grid, nil
+}
+
+// processGrid2RowLabelFit is the measured row-label column: its width (percent
+// of the grid), the shared label size, and the label words that still cannot
+// fit one line at the floor.
+type processGrid2RowLabelFit struct {
+	colPct float64
+	sizePt float64
+	unfit  []string
+}
+
+// fitProcessGrid2RowLabels sizes the row-label column so every label word
+// renders on one line. The readable size wins over the phase columns' width:
+// each size from the requested one down to the renderer's floor first tries
+// widening the column (12% → processGrid2RowLabelColMaxPct), and only a word
+// that fits no column at that size costs a point. A word that fits no column
+// even at the floor leaves the column at its default 12%. Words are measured bold in
+// the theme body font against the atomic-token width, so a substituted face
+// still keeps "PRODUCTION" whole (go-slide-creator-b7qqg.15).
+func fitProcessGrid2RowLabels(ctx ExpandContext, vals *ProcessGrid2RowValues, labelSize float64) processGrid2RowLabelFit {
+	var words []string
+	for _, label := range []string{vals.Row1Label, vals.Row2Label} {
+		words = append(words, strings.Fields(label)...)
+	}
+	areaW, _ := contentAreaPt(ctx)
+	font := ctx.Theme.BodyFont
+	textW := func(colPct float64) float64 {
+		return math.Max(areaW*colPct/100-processGrid2RowGapPt-2*defaultShapeInsetLRPt, 1)
+	}
+	fits := func(size, colPct float64) bool {
+		w := textfit.AtomicTokenWidthPt(font, textW(colPct))
+		for _, word := range words {
+			if measuredLines(word, font, true, size, w) > 1 {
+				return false
+			}
+		}
+		return true
+	}
+	floor := math.Min(labelSize, shapegrid.MinTextSizePt)
+	for size := labelSize; size >= floor; size-- {
+		for colPct := processGrid2RowLabelColPct; colPct <= processGrid2RowLabelColMaxPct; colPct++ {
+			if fits(size, colPct) {
+				return processGrid2RowLabelFit{colPct: colPct, sizePt: size}
+			}
+		}
+	}
+	// No column width saves the label, so widening would only take room from
+	// the phase columns: keep the default column and report the words.
+	fit := processGrid2RowLabelFit{colPct: processGrid2RowLabelColPct, sizePt: floor}
+	w := textfit.AtomicTokenWidthPt(font, textW(processGrid2RowLabelColMaxPct))
+	for _, word := range words {
+		if measuredLines(word, font, true, floor, w) > 1 {
+			fit.unfit = append(fit.unfit, word)
+		}
+	}
+	return fit
+}
+
+// PostExpandWarnings reports row-label words that break mid-word even in the
+// widest label column at the readable floor: the renderer will split them
+// ("PRODUCTI / ON"), and only a shorter label fixes that.
+func (p *processGrid2Row) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
+	vals, ok := values.(*ProcessGrid2RowValues)
+	if !ok || vals == nil {
+		return nil
+	}
+	ovr, _ := overrides.(*ProcessGrid2RowOverrides)
+	if ovr == nil {
+		ovr = &ProcessGrid2RowOverrides{}
+	}
+	fit := fitProcessGrid2RowLabels(ctx, vals, ResolveSize(ovr.HeaderSize, 14.0))
+	if len(fit.unfit) == 0 {
+		return nil
+	}
+	return []string{fmt.Sprintf(
+		"%s: process-grid-2row row label word(s) %s cannot fit one line of the label column (even widened to %.0f%%) at %.0fpt — the renderer breaks them mid-word; shorten or abbreviate row1_label / row2_label",
+		ErrCodeTextExceedsShape, listFirstN(fit.unfit, 3), processGrid2RowLabelColMaxPct, fit.sizePt)}
 }
 
 // buildProcessGrid2RowHeaderRow is the optional column-header row: bold

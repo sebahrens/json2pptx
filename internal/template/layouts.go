@@ -599,6 +599,8 @@ type levelParagraphPropsXML struct {
 type defaultRunPropsXML struct {
 	Size      int           `xml:"sz,attr"`
 	Cap       string        `xml:"cap,attr"`
+	Bold      string        `xml:"b,attr"`
+	Spc       string        `xml:"spc,attr"`
 	Latin     *latinFontXML `xml:"latin"`
 	SolidFill *solidFillXML `xml:"solidFill"`
 }
