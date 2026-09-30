@@ -8,6 +8,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
 // ---------------------------------------------------------------------------
@@ -151,7 +152,7 @@ func heroDetailBodyBudget(details, titleChars int, icon bool) int {
 // heroDetailContextBudget is the readable hero context length.
 const heroDetailContextBudget = 40
 
-func (hd *heroDetail) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+func (hd *heroDetail) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*HeroDetailValues)
 	if !ok || v == nil {
 		return nil
@@ -168,6 +169,18 @@ func (hd *heroDetail) PostExpandWarnings(_ ExpandContext, values, _ any) []strin
 		} else if n > budget {
 			warnings = append(warnings, fmt.Sprintf("%s: hero-detail details[%d].body is %d characters; %d detail cards (icon=%t) with a %d-character title hold about %d readable body characters — shorten the body or title, omit the icon, or use fewer cards", ErrCodeBodyTooLong, i, n, len(v.Details), icon, runeLen(detail.Title), budget))
 		}
+	}
+	if len(warnings) > 0 || ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 || len(v.Details) == 0 {
+		return warnings
+	}
+	// The budgets assume a typical content area; with the template's own
+	// area the rows are measured against it (go-slide-creator-n1muf).
+	ovr, _ := overrides.(*HeroDetailOverrides)
+	if ovr == nil {
+		ovr = &HeroDetailOverrides{}
+	}
+	if plan := hd.layout(ctx, v, ovr, nil); !plan.fits && heroDetailShrinks(ctx, plan) {
+		warnings = append(warnings, fmt.Sprintf("%s: hero-detail hero and detail cards need %s at readable sizes but the content area holds about %.0fpt — shorten the card bodies or titles, the hero label or context, or use fewer cards", ErrCodeBodyTooLong, readableNeedPhrase(plan.need), plan.avail))
 	}
 	return warnings
 }
@@ -309,34 +322,148 @@ func (hd *heroDetail) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		}
 	}
 
+	plan := hd.layout(ctx, v, ovr, cellOverrides)
+
+	// Content-sized rows (go-slide-creator-3i7c): the hero row hugs the
+	// stat + label, detail cards hug their title/body (sparse card text is
+	// centred), and the grid centres the block vertically. Neither row is
+	// below the written fit of its text (go-slide-creator-n1muf).
+	grid := &jsonschema.ShapeGridInput{
+		VerticalAlign: GridVerticalAlignDefault,
+		Columns:       json.RawMessage(fmt.Sprintf(`%d`, len(v.Details))),
+		Gap:           heroDetailGapPt,
+		Rows: []jsonschema.GridRowInput{
+			{MinHeight: plan.heroNeed, MaxHeight: plan.heroMax, Cells: []*jsonschema.GridCellInput{plan.hero}},
+			{MinHeight: plan.detailMin(), MaxHeight: plan.detailMax, Cells: plan.details},
+		},
+	}
+	if plan.rowGap != heroDetailGapPt {
+		grid.RowGap = plan.rowGap
+	}
+
+	return grid, nil
+}
+
+// heroDetailGapPt is the default gap between the hero and the cards and
+// between the cards.
+const heroDetailGapPt = 10.0
+
+// heroDetailPlan is one candidate layout: the cells at one set of sizes and
+// the heights of the hero row and the card row.
+type heroDetailPlan struct {
+	hero                *jsonschema.GridCellInput
+	details             []*jsonschema.GridCellInput
+	heroNeed, heroMax   float64
+	detailNeed          float64
+	detailMax           float64
+	rowGap, need, avail float64
+	fits                bool
+}
+
+// detailMin floors the card row at its written fit while the block fits;
+// past that the cards take what the hero leaves (BODY_TOO_LONG reports it).
+func (p heroDetailPlan) detailMin() float64 {
+	if p.fits {
+		return p.detailNeed
+	}
+	return 0
+}
+
+// heroDetailHeroSteps are the default hero figure sizes, largest first. The
+// hero takes the largest that holds its stat, label and context within its
+// share of the content area.
+var heroDetailHeroSteps = []float64{80, 64, 48}
+
+// heroDetailHeroSharePct is the share of the content area the hero row keeps.
+const heroDetailHeroSharePct = 45.0
+
+// layout sizes the hero and card rows to the written fit of their text
+// (go-slide-creator-n1muf). The hero figure takes the largest default step
+// that fits its share of the area; when the cards still do not fit, the hero
+// steps down further, then the row gap gives way, then the label and card
+// titles step to the 14pt / 12pt floor. Authored sizes are kept. A step is
+// taken only when it makes the block fit.
+func (hd *heroDetail) layout(ctx ExpandContext, v *HeroDetailValues, ovr *HeroDetailOverrides, cellOverrides map[int]any) heroDetailPlan {
+	type step struct{ hero, label, header, gap float64 }
+	label := ResolveSize(ovr.LabelSize, 16.0)
+	header := ResolveSize(ovr.HeaderSize, 14.0)
+	heroSizes := []float64{ResolveSize(ovr.HeroSize, heroDetailHeroSteps[0])}
+	if ovr.HeroSize == 0 {
+		heroSizes = heroDetailHeroSteps
+	}
+	// The first hero step is the largest whose hero row keeps its share.
+	_, areaH := sizingAreaPt(ctx)
+	base := len(heroSizes) - 1
+	for i, hs := range heroSizes[:base] {
+		if p := hd.measure(ctx, v, ovr, cellOverrides, hs, label, header, heroDetailGapPt); p.heroNeed <= areaH*heroDetailHeroSharePct/100 {
+			base = i
+			break
+		}
+	}
+	var steps []step
+	for _, hs := range heroSizes[base:] {
+		steps = append(steps, step{hs, label, header, heroDetailGapPt})
+	}
+	last := steps[len(steps)-1]
+	steps = append(steps, step{last.hero, last.label, last.header, heroDetailMinGapPt})
+	if ovr.LabelSize == 0 || ovr.HeaderSize == 0 {
+		st := step{last.hero, last.label, last.header, heroDetailMinGapPt}
+		if ovr.LabelSize == 0 {
+			st.label = heroDetailMinLabelPt
+		}
+		if ovr.HeaderSize == 0 {
+			st.header = heroDetailMinHeaderPt
+		}
+		steps = append(steps, st)
+	}
+	var first heroDetailPlan
+	for i, st := range steps {
+		plan := hd.measure(ctx, v, ovr, cellOverrides, st.hero, st.label, st.header, st.gap)
+		if plan.fits {
+			return plan
+		}
+		if i == 0 {
+			first = plan
+		}
+	}
+	return first
+}
+
+// Floors the hero-detail steps down to before it reports BODY_TOO_LONG.
+const (
+	heroDetailMinGapPt    = 4.0
+	heroDetailMinLabelPt  = 14.0
+	heroDetailMinHeaderPt = 12.0
+)
+
+// measure builds the cells at one set of sizes and measures both rows: the
+// theme-font model the pattern always used, floored at the written fit of
+// the hero and of every card at its real width.
+func (hd *heroDetail) measure(ctx ExpandContext, v *HeroDetailValues, ovr *HeroDetailOverrides, cellOverrides map[int]any, heroSize, labelSize, headerSize, rowGap float64) heroDetailPlan {
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	heroSize := ResolveSize(ovr.HeroSize, 80.0)
-	labelSize := ResolveSize(ovr.LabelSize, 16.0)
-	headerSize := ResolveSize(ovr.HeaderSize, 14.0)
 	detailSize := ResolveSize(ovr.DetailSize, 11.0)
 	style := ovr.Style
 	if style == "" {
 		style = "cards"
 	}
 
-	// Row 1: Hero stat (single cell spanning all columns, ~40% height)
+	// Row 1: Hero stat (single cell spanning all columns)
 	heroCell := hd.buildHeroCell(v.Hero, accent, heroSize, labelSize)
 	heroCell.ColSpan = len(v.Details)
 	// Cell 0 is the hero; Validate accepts it, so honour it like the details.
 	applyHeroDetailCellOverride(heroCell, cellOverrides, 0, accent)
 
-	// Content-sized rows (go-slide-creator-3i7c): the hero row hugs the
-	// stat + label, detail cards hug their title/body (sparse card text is
-	// centred), and the grid centres the block vertically.
 	font := ctx.Theme.BodyFont
 	contentW, contentH := contentAreaPt(ctx)
+	// The fit is judged against the conservative sizing area (the layout's
+	// own area when known).
+	_, availH := sizingAreaPt(ctx)
 	heroH := shapeTextHeightPt(font, heroCell.Shape.Text, contentW-2*defaultShapeInsetLRPt)
-	heroRow := jsonschema.GridRowInput{
-		MaxHeight: math.Round(math.Min(heroH+2*defaultShapeInsetTBPt+cardPadPt, contentH*0.45)),
-		Cells:     []*jsonschema.GridCellInput{heroCell},
-	}
+	plan := heroDetailPlan{hero: heroCell, rowGap: rowGap, avail: availH}
+	plan.heroNeed = rowTextNeedPt(heroCell.Shape.Text, contentW)
+	plan.heroMax = math.Max(math.Round(math.Min(heroH+2*defaultShapeInsetTBPt+cardPadPt, contentH*heroDetailHeroSharePct/100)), plan.heroNeed)
 
-	// Row 2: Detail cards (N columns, ~60% height)
+	// Row 2: Detail cards (N columns)
 	detailCells := make([]*jsonschema.GridCellInput, len(v.Details))
 	for i, d := range v.Details {
 		switch style {
@@ -349,35 +476,74 @@ func (hd *heroDetail) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		applyHeroDetailCellOverride(detailCells[i], cellOverrides, i+1, accent)
 	}
 
-	cardW := equalColumnWidthPt(contentW, len(v.Details), 10)
+	cardW := equalColumnWidthPt(contentW, len(v.Details), heroDetailGapPt)
 	textW := cardW - 2*defaultShapeInsetLRPt
 	textHs := make([]float64, len(detailCells))
 	cardH := 0.0
 	for i, dc := range detailCells {
 		textHs[i] = shapeTextHeightPt(font, dc.Shape.Text, textW)
 		cardH = math.Max(cardH, contentCardHeightPt(textHs[i], cardW, dc.Shape.Icon != nil))
+		need := rowTextNeedPt(dc.Shape.Text, cardW)
+		if dc.Shape.Icon != nil {
+			need = heroDetailIconCardPt(need, cardW)
+		}
+		plan.detailNeed = math.Max(plan.detailNeed, need)
 	}
+	plan.detailMax = math.Max(cardH, plan.detailNeed)
 	for i, dc := range detailCells {
 		if dc.Shape.Icon == nil {
-			dc.Shape.Text = anchorSparseText(dc.Shape.Text, textHs[i], cardH-2*defaultShapeInsetTBPt)
+			dc.Shape.Text = anchorSparseText(dc.Shape.Text, textHs[i], plan.detailMax-2*defaultShapeInsetTBPt)
 		}
 	}
-	detailRow := jsonschema.GridRowInput{
-		MaxHeight: cardH,
-		Cells:     detailCells,
-	}
+	plan.details = detailCells
+	plan.need = plan.heroNeed + rowGap + plan.detailNeed
+	plan.fits = plan.need <= plan.avail
+	return plan
+}
 
-	grid := &jsonschema.ShapeGridInput{
-		VerticalAlign: GridVerticalAlignDefault,
-		Columns:       json.RawMessage(fmt.Sprintf(`%d`, len(v.Details))),
-		Gap:           10,
-		Rows: []jsonschema.GridRowInput{
-			heroRow,
-			detailRow,
-		},
+// heroDetailIconCardPt is the smallest card height whose text area, below
+// the writer's top icon zone (grid.go iconOverlayBounds: the default 0.6
+// scale of the card's smaller side, capped at 40% of the height on a
+// landscape card, plus a 3pt gap above and below), holds textNeedPt.
+func heroDetailIconCardPt(textNeedPt, cardW float64) float64 {
+	for h := math.Ceil(textNeedPt); h < textNeedPt+rowTextBeyondAreaPt; h++ {
+		icon := 0.6 * math.Min(cardW, h)
+		if cardW > 1.2*h {
+			icon = math.Min(icon, 0.4*h)
+		}
+		if h-(icon+6) >= textNeedPt {
+			return h
+		}
 	}
+	return textNeedPt + rowTextBeyondAreaPt
+}
 
-	return grid, nil
+// heroDetailShrinks reports whether the writer would store a shrink for the
+// hero or a card of plan: past the fit the hero keeps its row and the cards
+// take the rest.
+func heroDetailShrinks(ctx ExpandContext, plan heroDetailPlan) bool {
+	contentW, _ := contentAreaPt(ctx)
+	cardW := equalColumnWidthPt(contentW, len(plan.details), heroDetailGapPt)
+	fits := func(text json.RawMessage, w, h float64) bool {
+		tb, err := shapegrid.ResolveTextInput(text)
+		return err != nil || tb == nil || pptx.AutofitFitsFor(tb, pptx.RectEmu{CX: int64(w * sizingEMUPerPt), CY: int64(h * sizingEMUPerPt)})
+	}
+	if !fits(plan.hero.Shape.Text, contentW, plan.heroNeed) {
+		return true
+	}
+	cardH := math.Min(plan.detailNeed, plan.avail-plan.rowGap-plan.heroNeed)
+	for _, dc := range plan.details {
+		if dc.Shape.Icon != nil {
+			if cardH < plan.detailNeed {
+				return true
+			}
+			continue
+		}
+		if !fits(dc.Shape.Text, cardW, cardH) {
+			return true
+		}
+	}
+	return false
 }
 
 // buildHeroCell produces the hero stat cell for the top row.

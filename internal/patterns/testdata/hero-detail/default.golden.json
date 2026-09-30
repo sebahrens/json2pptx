@@ -3,6 +3,7 @@
   "columns": 3,
   "rows": [
     {
+      "min_height": 144,
       "max_height": 164,
       "cells": [
         {
@@ -33,6 +34,7 @@
       ]
     },
     {
+      "min_height": 60,
       "max_height": 80,
       "cells": [
         {

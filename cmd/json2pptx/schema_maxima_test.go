@@ -443,19 +443,19 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"agenda":                       7.8, // Rule-based agenda (go-slide-creator-r3gsw): wider item column; nested cells measured (bzh34).
 	"agenda-with-images":           4.3,
 	"arch-stack":                   6.2,
-	"before-after":                 5.0,
-	"before-after-compact":         5.0,
+	"before-after":                 5.5, // rows floored at written fit (n1muf)
+	"before-after-compact":         5.8, // rows floored at written fit (n1muf)
 	"bmc-canvas":                   2.4,
 	"capability-heatmap":           3.8,
 	"card-grid":                    2.4,
 	"chart-insights-split":         2.4, // nested stacked-column cells measured (bzh34)
-	"comparison-2col":              4.2,
+	"comparison-2col":              4.5, // rows floored at written fit (n1muf)
 	"contact-directory":            3.8, // Still refused by the generated-font floor; not a readable schema budget.
 	"driver-tree":                  4.1,
 	"dual-org-ladder":              7.0,
 	"exec-summary":                 4.8,
 	"framework-grid":               2.9,
-	"hero-detail":                  6.7,
+	"hero-detail":                  7.0, // hero steps to its share, rows at written fit (n1muf)
 	"horizontal-bar-with-callouts": 3.8,
 	"icon-row":                     0.0,
 	"image-text-split":             5.5,
@@ -524,7 +524,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"dual-org-ladder":              7.6,
 	"exec-summary":                 6.5,
 	"framework-grid":               2.9,
-	"hero-detail":                  7.9,
+	"hero-detail":                  0,
 	"horizontal-bar-with-callouts": 3.8,
 	"icon-row":                     0,
 	"image-text-split":             6.2,

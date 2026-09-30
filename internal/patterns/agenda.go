@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
 // ---------------------------------------------------------------------------
@@ -78,24 +80,35 @@ func (a *agenda) NewValues() any       { return &AgendaValues{} }
 func (a *agenda) NewOverrides() any    { return &AgendaOverrides{} }
 func (a *agenda) NewCellOverride() any { return &AgendaCellOverride{} }
 
-func (a *agenda) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+func (a *agenda) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*AgendaValues)
 	if !ok || v == nil {
 		return nil
 	}
-	limit := agendaUnbrokenBudget(len(v.Items))
-	if limit == 0 {
-		return nil
-	}
 	var warnings []string
-	for i, title := range v.Items {
-		longest := 0
-		for _, word := range strings.Fields(title) {
-			longest = max(longest, runeLen(word))
+	if limit := agendaUnbrokenBudget(len(v.Items)); limit > 0 {
+		for i, title := range v.Items {
+			longest := 0
+			for _, word := range strings.Fields(title) {
+				longest = max(longest, runeLen(word))
+			}
+			if longest > limit {
+				warnings = append(warnings, fmt.Sprintf("%s: agenda items[%d] contains a %d-character unbroken word; %d rows hold about %d wide characters per title — add a word break, shorten the title, or split the agenda", ErrCodeBodyTooLong, i, longest, len(v.Items), limit))
+			}
 		}
-		if longest > limit {
-			warnings = append(warnings, fmt.Sprintf("%s: agenda items[%d] contains a %d-character unbroken word; %d rows hold about %d wide characters per title — add a word break, shorten the title, or split the agenda", ErrCodeBodyTooLong, i, longest, len(v.Items), limit))
-		}
+	}
+	if len(warnings) > 0 || len(v.Items) == 0 || ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 {
+		return warnings
+	}
+	// With the template's own content area the rows are measured against it
+	// (go-slide-creator-n1muf).
+	ovr, _ := overrides.(*AgendaOverrides)
+	if ovr == nil {
+		ovr = &AgendaOverrides{}
+	}
+	if lay, fits := layoutAgenda(ctx, v.Items, ovr); !fits && agendaFlexShrinks(ctx, v.Items, lay, ovr.Highlight) {
+		_, areaH := sizingAreaPt(ctx)
+		warnings = append(warnings, fmt.Sprintf("%s: agenda rows need %s at readable sizes but the content area holds about %.0fpt — shorten the section titles or use fewer sections", ErrCodeBodyTooLong, readableNeedPhrase(lay.natural()), areaH))
 	}
 	return warnings
 }
@@ -246,19 +259,91 @@ func (l agendaLayout) natural() float64 {
 	return h + float64(2*n-2)*agendaListRowGapPt
 }
 
-func measureAgenda(ctx ExpandContext, items []string, numberSize, titleSize float64) agendaLayout {
+func measureAgenda(ctx ExpandContext, items []string, numberSize, titleSize float64, highlight int) agendaLayout {
 	areaW, _ := sizingAreaPt(ctx)
 	// The numeral column holds "10" at the numeral size plus the text margin.
 	numberColPt := numberSize*1.3 + 2*defaultShapeInsetLRPt
 	pct := math.Min(20, math.Max(6, math.Ceil(numberColPt/areaW*100)))
-	titleW := areaW * (100 - pct) / 100
 	lay := agendaLayout{numberSize: numberSize, titleSize: titleSize, numberPct: pct}
+	numberW, titleW := lay.columnWidths(areaW)
 	numberRow := numberSize*sizingLineSpacing + 2*sizingInsetTBPt
-	for _, title := range items {
+	for i, title := range items {
 		h := sizedBlockHeightPt(ctx, []sizedPara{{text: title, sizePt: titleSize}}, titleW)
+		// The row is never below the written fit of its title (bold when it
+		// is the highlighted section) or numeral at the real column widths
+		// (go-slide-creator-n1muf).
+		h = math.Max(h, rowTextNeedPt(agendaTitleText(title, titleSize, highlight == i+1), titleW))
+		h = math.Max(h, rowTextNeedPt(agendaNumberText(i, numberSize), numberW))
 		lay.rowPt = append(lay.rowPt, math.Ceil(math.Max(numberRow, h)))
 	}
 	return lay
+}
+
+// columnWidths are the numeral and title column widths in an areaW-wide grid.
+func (l agendaLayout) columnWidths(areaW float64) (numberW, titleW float64) {
+	inner := areaW - agendaColGapPt
+	return inner * l.numberPct / 100, inner * (100 - l.numberPct) / 100
+}
+
+// agendaColGapPt is the gap between the numeral and title columns.
+const agendaColGapPt = 0.1
+
+// agendaTitleText and agendaNumberText are the plain (undimmed) cell texts
+// the rows are measured on; dimming changes only the opacity.
+func agendaTitleText(title string, size float64, bold bool) json.RawMessage {
+	return agendaText(agendaParagraph{Content: title, Size: size, Bold: bold, Color: "dk1"})
+}
+
+func agendaNumberText(i int, size float64) json.RawMessage {
+	return agendaText(agendaParagraph{Content: fmt.Sprintf("%02d", i+1), Size: size, Font: agendaNumberFont})
+}
+
+// agendaFloorScale is the last step: items at the 12pt floor, taken only when
+// it makes the rows fit so an overflowing agenda keeps the larger step.
+var agendaFloorScale = [2]float64{20, 12}
+
+// layoutAgenda picks the largest type scale whose rows fit the content area;
+// an authored numeral or title size is kept. The second result reports
+// whether the rows fit at all.
+func layoutAgenda(ctx ExpandContext, items []string, ovr *AgendaOverrides) (agendaLayout, bool) {
+	_, areaH := sizingAreaPt(ctx)
+	var lay agendaLayout
+	for _, sc := range agendaScales {
+		lay = measureAgenda(ctx, items, ResolveSize(ovr.NumberSize, sc[0]), ResolveSize(ovr.TitleSize, sc[1]), ovr.Highlight)
+		if lay.natural() <= areaH {
+			return lay, true
+		}
+	}
+	if ovr.TitleSize == 0 {
+		floor := measureAgenda(ctx, items, ResolveSize(ovr.NumberSize, agendaFloorScale[0]), agendaFloorScale[1], ovr.Highlight)
+		if floor.natural() <= areaH {
+			return floor, true
+		}
+	}
+	return lay, false
+}
+
+// agendaFlexShrinks reports whether an agenda whose rows do not fit would be
+// written shrunk: the rows share the area as equal flex rows, where a
+// one-line title can still be written whole (the writer clamps a short
+// shape's margin).
+func agendaFlexShrinks(ctx ExpandContext, items []string, lay agendaLayout, highlight int) bool {
+	areaW, areaH := sizingAreaPt(ctx)
+	n := float64(len(items))
+	rowH := (areaH - (n-1)*agendaRulePt - (2*n-2)*agendaListRowGapPt) / n
+	numberW, titleW := lay.columnWidths(areaW)
+	for i, title := range items {
+		for _, cell := range []struct {
+			text json.RawMessage
+			w    float64
+		}{{agendaTitleText(title, lay.titleSize, highlight == i+1), titleW}, {agendaNumberText(i, lay.numberSize), numberW}} {
+			tb, err := shapegrid.ResolveTextInput(cell.text)
+			if err == nil && tb != nil && !pptx.AutofitFitsFor(tb, pptx.RectEmu{CX: int64(cell.w * sizingEMUPerPt), CY: int64(rowH * sizingEMUPerPt)}) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (a *agenda) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
@@ -277,14 +362,7 @@ func (a *agenda) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 	}
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	_, areaH := sizingAreaPt(ctx)
-	var lay agendaLayout
-	for _, sc := range agendaScales {
-		lay = measureAgenda(ctx, v.Items, ResolveSize(ovr.NumberSize, sc[0]), ResolveSize(ovr.TitleSize, sc[1]))
-		if lay.natural() <= areaH {
-			break
-		}
-	}
+	lay, fits := layoutAgenda(ctx, v.Items, ovr)
 
 	// Numerals are large text (3:1); items are body text (4.5:1). A pale
 	// accent falls back to dk2 / dk1, and the 50% dim steps up just enough to
@@ -362,7 +440,7 @@ func (a *agenda) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 	// Past the smallest scale the rows cannot all hold their content height:
 	// hand them to the grid as flex rows so it shares the area rather than
 	// overflowing it.
-	if lay.natural() > areaH {
+	if !fits {
 		for i := range rows {
 			if itemRow[i] {
 				rows[i].MinHeight, rows[i].MaxHeight = 0, 0
@@ -375,7 +453,7 @@ func (a *agenda) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 	colsJSON, _ := json.Marshal([]float64{lay.numberPct, 100 - lay.numberPct})
 	grid := &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(colsJSON),
-		ColGap:        0.1,
+		ColGap:        agendaColGapPt,
 		RowGap:        agendaListRowGapPt,
 		Rows:          rows,
 		VerticalAlign: GridVerticalAlignDefault,

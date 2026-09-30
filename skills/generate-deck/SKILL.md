@@ -59,6 +59,7 @@ inspect. Pattern copy budgets assume the template's full content area; on a
 short or narrow template, or under a `takeaway`, the content-sized patterns
 (`chart-insights-split`, `table-highlight`, `exec-summary`, `scqa-summary`,
 `bmc-canvas`, `agenda-with-images`, `state-shift-hub`, `metric-list`,
+`agenda`, `before-after[-compact]`, `comparison-2col`, `hero-detail`,
 `next-steps`) first step type down to the 12pt floor, then report
 `BODY_TOO_LONG` naming what to drop, and validate
 predicts grid text (nested cells included) that generation would refuse as

@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
 // ---------------------------------------------------------------------------
@@ -203,7 +205,7 @@ func comparisonBodyBudget(bodyRows int, headers bool) int {
 // column narrows from 50% to comparisonConnectorColPct of the grid width.
 const comparisonConnectorBudgetPct = 88
 
-func (c *comparison2col) PostExpandWarnings(_ ExpandContext, values, overrides any) []string {
+func (c *comparison2col) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*Comparison2colValues)
 	if !ok || v == nil {
 		return nil
@@ -222,6 +224,18 @@ func (c *comparison2col) PostExpandWarnings(_ ExpandContext, values, overrides a
 				warnings = append(warnings, fmt.Sprintf("%s: comparison-2col rows[%d].%s is %d characters; %d body rows with headers=%t%s hold about %d characters per cell before text shrinks below the readable minimum — shorten the cell or use fewer rows", ErrCodeBodyTooLong, i, field.name, n, len(v.Rows), headers, connectorNote(connectors), budget))
 			}
 		}
+	}
+	if len(warnings) > 0 || ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 || len(v.Rows) == 0 {
+		return warnings
+	}
+	// The budgets assume a typical content area; with the template's own area
+	// the rows are measured against it (go-slide-creator-n1muf).
+	ovr, _ := overrides.(*Comparison2colOverrides)
+	if ovr == nil {
+		ovr = &Comparison2colOverrides{}
+	}
+	if plan := comparisonLayout(ctx, v, ovr, nil); !plan.fits && comparisonShrinks(plan) {
+		warnings = append(warnings, fmt.Sprintf("%s: comparison-2col rows need %s at readable sizes but the content area holds about %.0fpt — shorten the cells, use fewer rows, or split the comparison", ErrCodeBodyTooLong, readableNeedPhrase(plan.total), plan.avail))
 	}
 	return warnings
 }
@@ -366,9 +380,183 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 		}
 	}
 
-	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
+	plan := comparisonLayout(ctx, vals, ovr, cellOverrides)
+	plan.sizeRows()
+
+	grid := &jsonschema.ShapeGridInput{
+		Columns: json.RawMessage(`2`),
+		Gap:     comparisonGapPt,
+		Rows:    plan.rows,
+	}
+	if plan.rowGap != comparisonGapPt {
+		grid.RowGap = plan.rowGap
+	}
+	if ovr.Connectors {
+		grid.Columns = json.RawMessage(fmt.Sprintf(`[%d, %d, %d]`, comparisonConnectorColPct, 100-2*comparisonConnectorColPct, comparisonConnectorColPct))
+		grid.ColGap = comparisonConnectorColGap
+	}
+
+	return grid, nil
+}
+
+// comparisonGapPt is the default row and column gap.
+const comparisonGapPt = 8.0
+
+// comparisonPlan is one candidate layout: the rows built at a type size and
+// row gap, each row's written-fit height and the height the rows share.
+type comparisonPlan struct {
+	rows   []jsonschema.GridRowInput
+	needs  []float64
+	avail  float64
+	rowGap float64
+	textW  float64
+	fits   bool
+	header bool    // rows[0] is the header row
+	total  float64 // the rows' written-fit heights together
+}
+
+// sizeRows hands the rows their heights. Rows that fit keep equal flex rows
+// unless one needs more than its share; then every row is floored at its
+// need (floorFlexRowsAtNeeds). Rows that cannot fit share what the header
+// band leaves in proportion to their needs, so the header keeps its band and
+// the crowded rows take height from the sparse ones.
+func (p comparisonPlan) sizeRows() {
+	if p.fits {
+		floorFlexRowsAtNeeds(p.rows, p.needs, p.avail)
+		return
+	}
+	for i := range p.rows {
+		if i == 0 && p.header {
+			p.rows[i].MinHeight, p.rows[i].MaxHeight = math.Ceil(p.needs[i]), math.Ceil(p.needs[i])
+			continue
+		}
+		p.rows[i].Flex = math.Max(math.Ceil(p.needs[i]), 1)
+	}
+}
+
+// heights are the row heights sizeRows leads the grid to.
+func (p comparisonPlan) heights() []float64 {
+	out := append([]float64(nil), p.needs...)
+	if p.fits {
+		return out
+	}
+	avail, total, from := p.avail, 0.0, 0
+	if p.header && len(out) > 0 {
+		avail -= out[0]
+		from = 1
+	}
+	for _, n := range out[from:] {
+		total += n
+	}
+	for i := from; i < len(out) && total > 0; i++ {
+		out[i] = math.Max(avail, 0) * out[i] / total
+	}
+	return out
+}
+
+// comparisonLayout sizes the rows to the written fit of their tallest cell at
+// the real column width (go-slide-creator-n1muf). When the rows do not fit the
+// content area at the default sizes, the row gap gives way first, then the
+// type steps to the 12pt body / 14pt header floor; an authored size is kept.
+// A step is taken only when it makes the rows fit, so overflowing payloads
+// keep the default sizes (and report BODY_TOO_LONG when the area is known).
+func comparisonLayout(ctx ExpandContext, vals *Comparison2colValues, ovr *Comparison2colOverrides, cellOverrides map[int]any) comparisonPlan {
 	headerSize := ResolveSize(ovr.HeaderSize, 18.0)
 	bodySize := ResolveSize(ovr.BodySize, 14.0)
+	type step struct{ header, body, gap float64 }
+	steps := []step{{headerSize, bodySize, comparisonGapPt}, {headerSize, bodySize, comparisonMinRowGapPt}}
+	if ovr.HeaderSize == 0 || ovr.BodySize == 0 {
+		st := step{headerSize, bodySize, comparisonMinRowGapPt}
+		if ovr.HeaderSize == 0 {
+			st.header = comparisonMinHeaderPt
+		}
+		if ovr.BodySize == 0 {
+			st.body = comparisonMinBodyPt
+		}
+		steps = append(steps, st)
+	}
+	var first comparisonPlan
+	for i, st := range steps {
+		plan := comparisonMeasure(ctx, vals, ovr, cellOverrides, st.header, st.body, st.gap)
+		if plan.fits {
+			return plan
+		}
+		if i == 0 {
+			first = plan
+		}
+	}
+	return first
+}
+
+// Floors the comparison steps down to before it reports BODY_TOO_LONG.
+const (
+	comparisonMinRowGapPt = 4.0
+	comparisonMinHeaderPt = 14.0
+	comparisonMinBodyPt   = 12.0
+)
+
+// comparisonMeasure builds the rows at one type size and row gap and measures
+// each row's written fit at the real text-column width.
+func comparisonMeasure(ctx ExpandContext, vals *Comparison2colValues, ovr *Comparison2colOverrides, cellOverrides map[int]any, headerSize, bodySize, rowGap float64) comparisonPlan {
+	areaW, areaH := sizingAreaPt(ctx)
+	textW := (areaW - comparisonGapPt) / 2
+	if ovr.Connectors {
+		textW = (areaW - 2*comparisonConnectorColGap) * comparisonConnectorColPct / 100
+	}
+	rows := buildComparison2colRows(ctx, vals, ovr, cellOverrides, headerSize, bodySize)
+	plan := comparisonPlan{rows: rows, rowGap: rowGap, textW: textW, header: vals.HeaderLeft != "" || vals.HeaderRight != ""}
+	plan.avail = areaH - float64(len(rows)-1)*rowGap
+	total := 0.0
+	for _, r := range rows {
+		need := 0.0
+		for _, cell := range r.Cells {
+			if cell != nil && cell.Shape != nil && len(cell.Shape.Text) > 0 {
+				need = max(need, rowTextNeedPt(cell.Shape.Text, textW))
+			}
+		}
+		plan.needs = append(plan.needs, need)
+		total += need
+	}
+	plan.fits = total <= plan.avail
+	plan.total = total
+	if !plan.fits {
+		// Rows past the fit share the area in proportion to their needs; a
+		// need beyond the whole area counts as the area.
+		for i := range plan.needs {
+			plan.needs[i] = math.Min(plan.needs[i], plan.avail)
+		}
+	}
+	return plan
+}
+
+// comparisonShrinks reports whether the writer would store a shrink for some
+// cell of plan at the heights sizeRows leads to. A one-line cell in a short
+// row can still be written whole (the writer clamps a degenerate shape's
+// margin), so this is measured rather than read off the needs.
+func comparisonShrinks(plan comparisonPlan) bool {
+	heights := plan.heights()
+	for i, r := range plan.rows {
+		h := heights[i]
+		for _, cell := range r.Cells {
+			if cell == nil || cell.Shape == nil || len(cell.Shape.Text) == 0 {
+				continue
+			}
+			tb, err := shapegrid.ResolveTextInput(cell.Shape.Text)
+			if err != nil || tb == nil {
+				continue
+			}
+			if !pptx.AutofitFitsFor(tb, pptx.RectEmu{CX: int64(plan.textW * sizingEMUPerPt), CY: int64(h * sizingEMUPerPt)}) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// buildComparison2colRows builds the header row (when headers are given) and
+// one row per comparison at the given type sizes.
+func buildComparison2colRows(ctx ExpandContext, vals *Comparison2colValues, ovr *Comparison2colOverrides, cellOverrides map[int]any, headerSize, bodySize float64) []jsonschema.GridRowInput {
+	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	cellAccentMode := ovr.CellAccentMode
 
 	// Body-row fills. When no explicit row_fill is given, alternate body rows
@@ -497,17 +685,7 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 		})
 	}
 
-	grid := &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(`2`),
-		Gap:     8,
-		Rows:    rows,
-	}
-	if ovr.Connectors {
-		grid.Columns = json.RawMessage(fmt.Sprintf(`[%d, %d, %d]`, comparisonConnectorColPct, 100-2*comparisonConnectorColPct, comparisonConnectorColPct))
-		grid.ColGap = comparisonConnectorColGap
-	}
-
-	return grid, nil
+	return rows
 }
 
 // Connector-mode geometry: each text column keeps comparisonConnectorColPct of
