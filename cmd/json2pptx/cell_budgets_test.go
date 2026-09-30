@@ -292,6 +292,7 @@ func TestSparseLayoutWarning_ProcessFlowShortSteps(t *testing.T) {
 	warn := sparseLayoutWarning(budgets, pat, "process-flow", pi)
 	if warn == nil {
 		t.Fatal("expected sparse_layout warning for 3 short steps, got nil")
+		return
 	}
 	if warn.Status != "sparse_layout" {
 		t.Errorf("expected status sparse_layout, got %q", warn.Status)
@@ -362,6 +363,7 @@ func TestDensityClassWarning_MediumPatternSparseContent(t *testing.T) {
 	warn := densityClassWarning(budgets, pat, "process-flow", pi, reg)
 	if warn == nil {
 		t.Fatal("expected density_class_divergence warning, got nil")
+		return
 	}
 	if warn.Status != "density_class_divergence" {
 		t.Errorf("expected status density_class_divergence, got %q", warn.Status)
@@ -394,6 +396,7 @@ func TestDensityClassWarning_HighPatternSparseContent(t *testing.T) {
 	warn := densityClassWarning(budgets, pat, "bmc-canvas", pi, reg)
 	if warn == nil {
 		t.Fatal("expected density_class_divergence warning, got nil")
+		return
 	}
 	if warn.Status != "density_class_divergence" {
 		t.Errorf("expected status density_class_divergence, got %q", warn.Status)

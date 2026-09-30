@@ -150,14 +150,8 @@ func loadFont(name string, fallbackName string) (*canvas.FontFamily, string, boo
 	}
 
 	// 3. Try common system fallbacks.
-	for _, fb := range []string{"Arial", "Helvetica", "DejaVu Sans"} {
-		if fb == name || fb == fallbackName {
-			continue
-		}
-		if err := ff.LoadSystemFont(fb, canvas.FontRegular); err == nil {
-			_ = ff.LoadSystemFont(fb, canvas.FontBold) // best-effort bold
-			return ff, fb, true
-		}
+	if resolved, ok := loadCommonFallback(ff, name, fallbackName); ok {
+		return ff, resolved, true
 	}
 
 	// 4. Load embedded Liberation Sans (always available, metric-compatible with Arial).
@@ -244,4 +238,27 @@ func Reset() {
 	defer cache.mu.Unlock()
 	cache.items = make(map[string]*list.Element)
 	cache.order.Init()
+}
+
+// loadCommonFallback loads the first available common fallback face into ff,
+// skipping the names already tried. A Linux "Arial" lookup can silently return
+// DejaVu Sans, so a substituted face (e.g. "Segoe UI") would measure ~15%
+// wider there than on macOS; substitutes are measured with the embedded
+// Arial-compatible face on every host instead.
+func loadCommonFallback(ff *canvas.FontFamily, name, fallbackName string) (string, bool) {
+	for _, fb := range []string{"Arial", "Helvetica", "DejaVu Sans"} {
+		if fb == name || fb == fallbackName {
+			continue
+		}
+		if fb == "Arial" {
+			if err := loadEmbeddedLiberation(ff); err == nil {
+				return "Liberation Sans", true
+			}
+		}
+		if err := ff.LoadSystemFont(fb, canvas.FontRegular); err == nil {
+			_ = ff.LoadSystemFont(fb, canvas.FontBold) // best-effort bold
+			return fb, true
+		}
+	}
+	return "", false
 }
