@@ -66,6 +66,9 @@ func NewResolver(opts ResolverOptions) (*Resolver, error) {
 	if client == nil {
 		client = newSafeHTTPClient(opts.Timeout)
 	}
+	if len(allowed) > 0 {
+		client = withRedirectAllowList(client, allowed)
+	}
 
 	return &Resolver{
 		client:  client,
@@ -73,6 +76,39 @@ func NewResolver(opts ResolverOptions) (*Resolver, error) {
 		opts:    opts,
 		allowed: allowed,
 	}, nil
+}
+
+// maxRedirects bounds redirect chains when the wrapped client has no
+// CheckRedirect policy of its own (mirrors net/http's default of 10).
+const maxRedirects = 10
+
+// withRedirectAllowList returns a shallow copy of client whose CheckRedirect
+// re-applies the domain allow-list to every redirect hop before it is
+// followed, then defers to the client's own redirect policy (redirect limit).
+// download checks the initial URL; without this an allowed host could 30x to
+// an unapproved public host whose body would be fetched and cached
+// (go-slide-creator-b7qqg.12). Private-IP blocking stays in the transport's
+// dialer and applies to every hop independently.
+func withRedirectAllowList(client *http.Client, allowed map[string]bool) *http.Client {
+	wrapped := *client
+	inner := client.CheckRedirect
+	wrapped.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if req.URL.Scheme != "http" && req.URL.Scheme != "https" {
+			return fmt.Errorf("redirect to %q blocked: only http and https schemes are allowed", req.URL.Redacted())
+		}
+		host := strings.ToLower(req.URL.Hostname())
+		if !allowed[host] {
+			return fmt.Errorf("redirect to %q blocked: domain %q is not in the allowed list", req.URL.Redacted(), host)
+		}
+		if inner != nil {
+			return inner(req, via)
+		}
+		if len(via) >= maxRedirects {
+			return fmt.Errorf("too many redirects")
+		}
+		return nil
+	}
+	return &wrapped
 }
 
 // Close removes all cached files.
