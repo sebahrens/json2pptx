@@ -210,10 +210,23 @@ func semanticizeFinding(f *diagnostics.Finding, data []byte, deckID string) {
 	rawAction, fixParams := findingFixParams(f.Remediation)
 	f.NextToolCall = nil
 	f.Remediation = nil
+	fallback, _ := f.Evidence[compositionPatchDetail].([]any)
+	delete(f.Evidence, compositionPatchDetail)
 	if path, ok := f.Evidence["path"].(string); ok && deckID != "" {
-		if ops := semanticPatchOps(data, path, f.Code, fixParams); len(ops) > 0 {
+		ops := semanticPatchOps(data, path, f.Code, fixParams)
+		usedFallback := false
+		if len(ops) == 0 && len(fallback) > 0 {
+			// A refused list has no single field to rewrite; switching the
+			// slide to its native-layout composition keeps every item
+			// (go-slide-creator-b7qqg.4).
+			ops, usedFallback = fallback, true
+		}
+		if len(ops) > 0 {
 			f.NextToolCall = semanticPatchSuggestion(deckID, ops)
 			params := patchRemediationParams(path, ops, fixParams)
+			if first, ok := ops[0].(map[string]any); ok && usedFallback {
+				params["path"] = first["path"]
+			}
 			if match := templateDidYouMean(templateNotFound, templateRemediation); match != nil {
 				params["did_you_mean"] = match
 			}
@@ -286,6 +299,8 @@ func semanticizeRenderDiagnostics(ds []semanticDiagnostic, data []byte, deckID s
 			}
 			if ops := semanticPatchOps(data, ds[i].SemanticPath, ds[i].Code, params); len(ops) > 0 {
 				ds[i].NextToolCall = semanticPatchSuggestion(deckID, ops)
+			} else if len(ds[i].fallbackPatch) > 0 {
+				ds[i].NextToolCall = semanticPatchSuggestion(deckID, ds[i].fallbackPatch)
 			}
 		}
 		if ds[i].NextToolCall == nil {

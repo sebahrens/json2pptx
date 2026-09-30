@@ -346,9 +346,10 @@ func generateSinglePass(goCtx context.Context, req GenerationRequest) (*Generati
 	for _, finding := range ctx.fitFindings {
 		if finding.Code == patterns.ErrCodeTextBelowReadableMin && finding.Action == "refuse" {
 			located := finding.ValidationError
+			evidence := ctx.readabilityEvidenceFor(finding)
 			ctx.authorNativeRefusal(&located)
 			readability := SourcePreservingParagraphRepair(located, req.Slides)
-			return nil, ctx.warnings, fmt.Errorf("generation refused: unreadable generated text: %w", &readability)
+			return nil, ctx.warnings, fmt.Errorf("generation refused: unreadable generated text: %w", &ReadabilityRefusal{Loss: &readability, Evidence: evidence})
 		}
 	}
 

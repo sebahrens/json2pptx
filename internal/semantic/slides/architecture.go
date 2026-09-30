@@ -51,7 +51,11 @@ type archStackValues struct {
 // pattern's budgets.
 func CompileArchitecture(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	tiers := ArchitectureTiers(in.Body)
-	if !archStackFits(tiers, architectureRails(in.Body)) {
+	// layout: content is the kind's published native-bullets composition. It
+	// validated clean and then compiled the pattern anyway, so the one
+	// source-preserving way off an unreadable arch-stack did nothing
+	// (go-slide-creator-b7qqg.4).
+	if in.Layout == "content" || !archStackFits(tiers, architectureRails(in.Body)) {
 		return compileArchitectureFallback(in, tiers)
 	}
 

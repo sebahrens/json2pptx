@@ -84,6 +84,13 @@ func collectReadabilityFindings(input *PresentationInput, layouts []types.Layout
 				// grid cell. Point it at the cell with its measured budget
 				// (go-slide-creator-9zof).
 				retargetCellReadabilityFix(f, cellPath, maxChars)
+				// Generation refuses exactly this outcome: it reads the same
+				// stored autofit scale off the same emitted shape and rejects
+				// any role-tagged grid paragraph below its floor
+				// (generator.reportGridReadability). An advisory here let
+				// validate approve a deck render then refused
+				// (go-slide-creator-b7qqg.3).
+				f.Action = "refuse"
 				if fromPattern[si] {
 					patternName := ""
 					if slide.Pattern != nil {
@@ -296,7 +303,11 @@ func worstReadability(paras []cellParagraph, scale float64, mode tokens.ViewingM
 		if roleOverride != "" {
 			role = roleOverride
 		}
-		effective := p.sizePt * scale
+		// The same integer arithmetic generation uses on the written run size
+		// and stored fontScale (generator.reportGridReadability), so a
+		// paragraph a hair under its floor is refused by both or neither.
+		effectiveHPt := int(math.Round(p.sizePt*100) * math.Round(scale*100000) / 100000)
+		effective := float64(effectiveHPt) / 100
 		minPt := float64(tokens.MinReadableHPt(mode, role)) / 100.0
 		ratio := effective / minPt
 		if ratio >= worstRatio {
@@ -312,12 +323,15 @@ func worstReadability(paras []cellParagraph, scale float64, mode tokens.ViewingM
 			Path:              path,
 			Mode:              mode,
 			Role:              role,
-			EffectiveHPt:      int(math.Round(effective * 100)),
+			EffectiveHPt:      effectiveHPt,
 			Paragraphs:        len(paras),
 			Context:           ctx,
 			MeasurementSource: measurementSource,
 		})
 		if f != nil {
+			// The paragraph text lets a DeckSpec caller name the authored
+			// field behind a generated cell (go-slide-creator-b7qqg.3).
+			f.Fix.Params["paragraph_text"] = strings.TrimSpace(p.text)
 			worst, worstRatio = f, ratio
 		}
 	}

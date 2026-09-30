@@ -182,6 +182,36 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 	return input, result, nil
 }
 
+// NativeLayoutAlternative returns the layout override (e.g. "content") that
+// takes a pattern slide off its generated grid onto template-native text
+// without dropping source, or "" when the slide has no pattern or none of its
+// kind's layout-only alternatives actually compiles without one. The check
+// compiles the slide with the override, so a composition the kind merely
+// lists is never offered as a repair (go-slide-creator-b7qqg.4).
+func NativeLayoutAlternative(slide SlideIR) string {
+	if slide.Visual.Pattern == "" {
+		return ""
+	}
+	for _, alt := range slide.Visual.Alternatives {
+		if alt.Pattern != "" || alt.Layout == "" || alt.Layout == slide.Visual.Layout {
+			continue
+		}
+		compiled, _, err := compileSlide(slide.Kind, slides.Input{
+			SourceIndex: slide.SourceIndex,
+			SourcePath:  slide.SourcePath,
+			Title:       slide.Title,
+			Takeaway:    slide.Takeaway,
+			Pattern:     slide.Visual.Pattern,
+			Layout:      alt.Layout,
+			Body:        slide.Body,
+		})
+		if err == nil && compiled != nil && compiled.Pattern == nil && compiled.ShapeGrid == nil && compiled.Compose == nil {
+			return alt.Layout
+		}
+	}
+	return ""
+}
+
 func withoutTitleContent(content []deckinput.ContentInput) []deckinput.ContentInput {
 	out := content[:0]
 	for _, item := range content {

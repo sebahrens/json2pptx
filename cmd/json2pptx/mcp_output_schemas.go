@@ -2523,7 +2523,8 @@ var outputSchemaCompileDeckSpec = json.RawMessage(`{
         "slide_index":   {"type": "integer"},
         "action":        {"type": "string"},
         "recommended_edit": {"type": "object"},
-        "next_tool_call": {"type": "object", "properties": {"tool": {"type": "string"}, "args_template": {"type": "object"}}, "required": ["tool", "args_template"]}
+        "next_tool_call": {"type": "object", "properties": {"tool": {"type": "string"}, "args_template": {"type": "object"}}, "required": ["tool", "args_template"]},
+        "evidence":      {"type": "object", "description": "A generation refusal's measurement: measured.font_pt against allowed.min_font_pt, role, viewing_mode, measurement_source and the refused paragraph text."}
       },
       "required": ["code", "message"]
     }
@@ -2568,7 +2569,8 @@ var outputSchemaRenderDeckSpec = json.RawMessage(`{
         "slide_index":   {"type": "integer"},
         "action":        {"type": "string"},
         "recommended_edit": {"type": "object"},
-        "next_tool_call": {"type": "object", "properties": {"tool": {"type": "string"}, "args_template": {"type": "object"}}, "required": ["tool", "args_template"]}
+        "next_tool_call": {"type": "object", "properties": {"tool": {"type": "string"}, "args_template": {"type": "object"}}, "required": ["tool", "args_template"]},
+        "evidence":      {"type": "object", "description": "A generation refusal's measurement: measured.font_pt against allowed.min_font_pt, role, viewing_mode, measurement_source and the refused paragraph text."}
       },
       "required": ["code", "message"]
     }

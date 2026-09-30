@@ -189,7 +189,41 @@ func withDeckSpecOutline() mcp.PropertyOption {
 			}
 			schema[k] = v
 		}
+		admitSpecDocumentString(schema)
 	}
+}
+
+// admitSpecDocumentString makes the spec property's object-only composition
+// keywords accept the documented YAML/JSON string form too. "type" already
+// lists string, but the root oneOf (slides XOR structure) did not: for a
+// string, "required" is vacuously true, so each branch's "not required" fails,
+// no branch matches, and a validating MCP host rejected the string before it
+// reached the server (go-slide-creator-b7qqg.5). Each branch now applies to
+// objects only, and one more branch admits the string.
+func admitSpecDocumentString(schema map[string]any) {
+	branches, ok := schema["oneOf"].([]any)
+	if !ok {
+		return
+	}
+	out := make([]any, 0, len(branches)+1)
+	for _, b := range branches {
+		branch, ok := b.(map[string]any)
+		if !ok {
+			out = append(out, b)
+			continue
+		}
+		guarded := make(map[string]any, len(branch)+1)
+		for k, v := range branch {
+			guarded[k] = v
+		}
+		guarded["type"] = "object"
+		out = append(out, guarded)
+	}
+	schema["oneOf"] = append(out, map[string]any{
+		"type":        "string",
+		"minLength":   1,
+		"description": "The DeckSpec as a YAML or JSON document string.",
+	})
 }
 
 // withDeckSpecSchema merges the compact, reference-preserving DeckSpec schema
@@ -204,6 +238,7 @@ func withDeckSpecSchema() mcp.PropertyOption {
 			}
 			schema[k] = v
 		}
+		admitSpecDocumentString(schema)
 	}
 }
 
@@ -1094,7 +1129,10 @@ func (mc *mcpConfig) compiledSpecFindings(filename string, data []byte, strictne
 		semPath, semIdx, mapped := sm.ResolveSemantic(f.Path)
 		if mapped && semPath != "" {
 			d.Path = semPath
+		} else if field := generatedCellSemanticPath(compileResult, f); field != "" {
+			d.Path = field
 		}
+		decorateReadabilityRefusal(&d, compileResult, f)
 		d.Message = zeroBasedSlideMessage(d.Message, slidepath.SlideIndex(f.Path), semIdx)
 		out = append(out, d)
 	}
@@ -1139,6 +1177,11 @@ func completeRenderDeckSpecResponse(res *renderDeckSpecResponse, precedenceWarni
 		res.Warnings = append([]string{precedenceWarning}, res.Warnings...)
 	}
 	if !res.OK || res.PptxPath == "" {
+		// A refused render still has a next step: the blocking diagnostic's
+		// patch (go-slide-creator-b7qqg.4).
+		if !res.OK {
+			res.NextToolCall = firstBlockingSemanticCall(res.Diagnostics)
+		}
 		return
 	}
 	ready := res.DeterministicReady != nil && *res.DeterministicReady

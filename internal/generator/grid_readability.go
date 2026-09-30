@@ -56,6 +56,14 @@ func (ctx *singlePassContext) reportGridReadability(shapes [][]byte, roles map[u
 					Paragraphs: len(shape.TextBody.Paragraphs), MeasurementSource: "generated_grid_role",
 					Context: fmt.Sprintf("written %.1fpt run with stored autofit %d%%", float64(size)/100, scale/1000),
 				}); f != nil {
+					ctx.recordReadabilityEvidence(path, ReadabilityEvidence{
+						Role:              string(role),
+						ActualPt:          float64(effective) / 100,
+						MinPt:             float64(tokens.MinReadableHPt(ctx.viewingMode, role)) / 100,
+						ViewingMode:       tokens.ViewingModeInputName(ctx.viewingMode),
+						MeasurementSource: "generated_grid_role",
+						Text:              paragraphText(paragraph),
+					})
 					f.Action = "refuse"
 					f.Fix = nil
 					f.Message = strings.TrimSuffix(strings.TrimSuffix(f.Message, "; shorten the text"), "; split the text") + "; preserve all source at a readable size"
@@ -80,6 +88,15 @@ func gridTextFrameHasNoArea(shape shapeXML) bool {
 		}
 	}
 	return transform.Extent.CX <= insets[0]+insets[2] || transform.Extent.CY <= insets[1]+insets[3]
+}
+
+// paragraphText joins a paragraph's run text.
+func paragraphText(paragraph paragraphXML) string {
+	var b strings.Builder
+	for _, run := range paragraph.Runs {
+		b.WriteString(run.Text)
+	}
+	return strings.TrimSpace(b.String())
 }
 
 func smallestPopulatedParagraphRunSizeHPt(paragraph paragraphXML) int {

@@ -57,7 +57,9 @@ short or narrow template, or under a `takeaway`, the content-sized patterns
 `next-steps`) first step type down to the 12pt floor, then report
 `BODY_TOO_LONG` naming what to drop, and validate
 predicts grid text (nested cells included) that generation would refuse as
-`TEXT_BELOW_READABLE_MIN`.
+an `error` `TEXT_BELOW_READABLE_MIN`; a `render_deck_spec` refusal returns
+it as a source-addressed diagnostic with `evidence` and a patch
+`next_tool_call` ([DECKSPEC.md](DECKSPEC.md)).
 Read [RAW_PATH.md](RAW_PATH.md) before authoring raw JSON. Its
 preconditions are **not** universal DeckSpec requirements. Two raw-only
 patterns cover pages DeckSpec kinds do not: `contact-directory` (key contacts
