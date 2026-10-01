@@ -64,10 +64,14 @@ func TestExecutiveSummaryKeepsTakeawayOutOfBottomLine(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// A distinct takeaway takes its own band instead of running on into the
-	// bottom line (go-slide-creator-8w4rb).
-	if slide.Takeaway != "Begin hiring next month." {
-		t.Fatalf("takeaway band = %q, want the takeaway", slide.Takeaway)
+	// A distinct takeaway neither runs on into the bottom line
+	// (go-slide-creator-8w4rb) nor stacks a second band under it: it goes to
+	// the speaker notes (go-slide-creator-zvu7c).
+	if slide.Takeaway != "" {
+		t.Fatalf("takeaway band = %q, want none beside the bottom line", slide.Takeaway)
+	}
+	if !strings.Contains(slide.SpeakerNotes, "Begin hiring next month.") {
+		t.Fatalf("speaker notes = %q, want the dropped takeaway kept", slide.SpeakerNotes)
 	}
 	var values execSummaryValues
 	if err := json.Unmarshal(slide.Pattern.Values, &values); err != nil {

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
 func TestStatHeroCombinedWideCopyWarning(t *testing.T) {
@@ -159,9 +161,22 @@ func TestStatHero(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
-		textStr := string(grid.Rows[0].Cells[0].Shape.Text)
-		if !strings.Contains(textStr, "$2.4B TAM") {
-			t.Errorf("text should contain value + unit: %s", textStr)
+		// The unit is a smaller trailing run on the value's baseline, not
+		// part of the display-size figure (go-slide-creator-yn2pw).
+		tb, err := shapegrid.ResolveTextInput(grid.Rows[0].Cells[0].Shape.Text)
+		if err != nil {
+			t.Fatal(err)
+		}
+		runs := tb.Paragraphs[0].Runs
+		if len(runs) != 2 || runs[0].Text != "$2.4B" || strings.TrimSpace(runs[1].Text) != "TAM" {
+			t.Fatalf("value paragraph runs = %+v, want value then unit", runs)
+		}
+		ratio := float64(runs[1].FontSize) / float64(runs[0].FontSize)
+		if ratio < 0.35 || ratio > 0.45 {
+			t.Errorf("unit is %.0f%% of the value size, want 35–45%%", ratio*100)
+		}
+		if runs[1].Bold != runs[0].Bold {
+			t.Error("unit should share the value's weight")
 		}
 	})
 

@@ -148,7 +148,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindAgenda: {
 		Kind:            KindAgenda,
-		Summary:         "The deck's contents page: the sections it covers, in order, optionally marking the one the deck is at. Sections carrying a subtitle render as agenda-with-images rows (3–6); plain sections as the numbered agenda list (2–10). Outside those bounds it degrades to a numbered bullet list.",
+		Summary:         "The deck's contents page: the sections it covers, in order, optionally marking the one the deck is at. Renders as the numbered agenda list (2–10 sections), each subtitle as a muted line under its title and the current section bold with the rest dimmed; a subtitle over 120 characters uses agenda-with-images rows (3–6). Outside those bounds it degrades to a numbered bullet list.",
 		RequiredFields:  []string{"sections"},
 		RequiredAliases: map[string][]string{"sections": {"items", "agenda"}},
 		TypicalFields:   []string{"title", "current", "takeaway"},
@@ -252,7 +252,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindClosing: {
 		Kind:           KindClosing,
-		Summary:        "Plain closing slide (a title and subtitle, or a few bullets). A consulting deck should close on next_steps instead; keep this for a Q&A or contact page.",
+		Summary:        "Plain closing slide on the template's own closing layout (a title of at most ~40 characters and a subtitle), or a content slide with a few bullets. A consulting deck should close on next_steps instead; keep this for a Q&A or contact page.",
 		RequiredFields: []string{"title"},
 		TypicalFields:  []string{"subtitle"},
 	},

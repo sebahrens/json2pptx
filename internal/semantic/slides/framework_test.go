@@ -42,6 +42,11 @@ func TestCompileFrameworkRoutesEachFramework(t *testing.T) {
 		if slide.SlideType != "diagram" {
 			t.Errorf("slide_type = %q, want diagram", slide.SlideType)
 		}
+		// Pinned rather than left to the heuristic matcher, which picked a
+		// different layout per slide (go-slide-creator-ngbnf).
+		if slide.LayoutID != "content" {
+			t.Errorf("layout_id = %q, want content", slide.LayoutID)
+		}
 	})
 
 	t.Run("five forces carries each force's factors", func(t *testing.T) {

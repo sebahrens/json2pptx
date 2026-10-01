@@ -15,11 +15,11 @@ func TestExecSummaryFivePointSupportBudget(t *testing.T) {
 		v.Points = append(v.Points, ExecSummaryPoint{Lead: "Conclusion", Support: strings.Repeat("S", 200)})
 	}
 	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
-	if len(got) != 1 || !strings.Contains(got[0], "points.support") || !strings.Contains(got[0], "about 75") {
+	if len(got) != 1 || !strings.Contains(got[0], "points.support") || !strings.Contains(got[0], "about 60") {
 		t.Fatalf("dense support warning: %v", got)
 	}
 	for i := range v.Points {
-		v.Points[i].Support = strings.Repeat("S", 75)
+		v.Points[i].Support = strings.Repeat("S", 60)
 	}
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
 		t.Fatalf("measured dense target should fit: %v", got)
@@ -27,27 +27,28 @@ func TestExecSummaryFivePointSupportBudget(t *testing.T) {
 	v.Points[0].Support = strings.Repeat("S", 200)
 	v.Points[1].Support = "Brief"
 	v.Points[2].Support = "Brief"
+	v.Points[3].Support = "Brief"
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
 		t.Fatalf("one long support with short neighbors should fit: %v", got)
 	}
-	// Five points hold about 75 support characters with or without a bottom
+	// Five points hold about 60 support characters with or without a bottom
 	// line.
 	v.BottomLine = ""
 	for i := range v.Points {
-		v.Points[i].Support = strings.Repeat("S", 76)
+		v.Points[i].Support = strings.Repeat("S", 61)
 	}
-	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 || !strings.Contains(got[0], "about 75") {
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 || !strings.Contains(got[0], "about 60") {
 		t.Fatalf("five points without bottom line: %v", got)
 	}
 	v.Points = v.Points[:4]
 	for i := range v.Points {
-		v.Points[i].Support = strings.Repeat("S", 150)
+		v.Points[i].Support = strings.Repeat("S", 128)
 	}
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
 		t.Fatalf("four points without bottom line should fit their measured target: %v", got)
 	}
 	v.Points[0].Support += "S"
-	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 || !strings.Contains(got[0], "about 150") {
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 || !strings.Contains(got[0], "about 128") {
 		t.Fatalf("four points over the measured target: %v", got)
 	}
 	v.Points = v.Points[:3]

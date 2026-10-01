@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
@@ -185,15 +186,20 @@ func (sh *statHero) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	labelSize := ResolveSize(ovr.LabelSize, 18.0)
 	contextSize := ResolveSize(ovr.ContextSize, 14.0)
 
-	// Build the main value display string
-	displayValue := v.Value
+	// The unit is a trailing run in the value's paragraph — same baseline,
+	// same accent — at statHeroUnitRatio of the value size. At the value's own
+	// size "$2.4B TAM" read as a slogan rather than a figure; consulting
+	// big-number slides set the unit at about a third of the number
+	// (go-slide-creator-yn2pw).
+	valuePara := statHeroParagraph{Content: v.Value, Size: valueSize, Bold: true, Color: accent, Align: "ctr"}
 	if v.Unit != "" {
-		displayValue += " " + v.Unit
+		valuePara.Suffix = " " + v.Unit
+		valuePara.SuffixSize = statHeroUnitSize(valueSize)
 	}
 
 	// Build paragraphs
 	paragraphs := []statHeroParagraph{
-		{Content: displayValue, Size: valueSize, Bold: true, Color: accent, Align: "ctr"},
+		valuePara,
 		{Content: v.Label, Size: labelSize, Color: "dk1", Align: "ctr"},
 	}
 
@@ -236,14 +242,26 @@ func (sh *statHero) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	return grid, nil
 }
 
-// statHeroParagraph is a text paragraph for JSON marshalling.
+// statHeroUnitRatio is the unit's size as a share of the value's.
+const statHeroUnitRatio = 0.4
+
+// statHeroUnitSize is the unit run's size beside a value of valueSize points,
+// never under the 12pt floor.
+func statHeroUnitSize(valueSize float64) float64 {
+	return math.Max(12, math.Round(valueSize*statHeroUnitRatio))
+}
+
+// statHeroParagraph is a text paragraph for JSON marshalling. Suffix is a
+// trailing run at SuffixSize in the same paragraph (the unit).
 type statHeroParagraph struct {
-	Content string  `json:"content"`
-	Size    float64 `json:"size"`
-	Bold    bool    `json:"bold,omitempty"`
-	Italic  bool    `json:"italic,omitempty"`
-	Color   string  `json:"color,omitempty"`
-	Align   string  `json:"align,omitempty"`
+	Content    string  `json:"content"`
+	Size       float64 `json:"size"`
+	Bold       bool    `json:"bold,omitempty"`
+	Italic     bool    `json:"italic,omitempty"`
+	Color      string  `json:"color,omitempty"`
+	Align      string  `json:"align,omitempty"`
+	Suffix     string  `json:"suffix,omitempty"`
+	SuffixSize float64 `json:"suffix_size,omitempty"`
 }
 
 // statHeroText is the text object for JSON marshalling.

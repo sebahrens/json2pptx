@@ -176,10 +176,11 @@ func CompileOrg(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 		}
 		return node
 	}
-	slide := &deckinput.SlideInput{SlideType: "diagram"}
+	// One-cell grid on blank-title, like every other content kind, so the
+	// title keeps one position across the deck (go-slide-creator-ngbnf).
+	slide := blankTitleCellSlide(&deckinput.GridCellInput{Diagram: &types.DiagramSpec{Type: "org_chart", Data: map[string]any{"root": build(r.root)}, Alt: visualAltText(in)}})
 	links := titleLink(slide, in)
-	idx := appendContent(slide, diagramContent("body", &types.DiagramSpec{Type: "org_chart", Data: map[string]any{"root": build(r.root)}, Alt: visualAltText(in)}))
-	links = append(links, SourceLink{RawPath: fmt.Sprintf("%s.content[%d].diagram_value.data.root", in.rawSlide(), idx), SemanticPath: in.semSlide() + ".nodes"})
+	links = append(links, SourceLink{RawPath: in.rawSlide() + blankTitleCellPath + ".diagram.data.root", SemanticPath: in.semSlide() + ".nodes"})
 	links = append(links, applyTakeaway(slide, in)...)
 	return slide, links, nil
 }

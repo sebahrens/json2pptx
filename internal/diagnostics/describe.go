@@ -1223,12 +1223,26 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 	},
 	CodeSemanticDuplicateCallout: {
 		Code:        CodeSemanticDuplicateCallout,
-		Summary:     "The takeaway repeats this slide's conclusion.",
+		Summary:     "The takeaway competes with this slide's own conclusion band.",
 		Severity:    describeSeverityReview,
-		WhenEmitted: "An executive_summary takeaway repeats bottom_line or a decision takeaway repeats recommendation. The compiler renders the conclusion once instead of stacking identical callouts.",
+		WhenEmitted: "An executive_summary takeaway sits beside bottom_line (or recommendation), or a decision takeaway beside recommendation. A slide has one conclusion band: a repeated takeaway is shown once, and on the exec-summary / numbered-option visuals a distinct takeaway is moved to the speaker notes instead of rendering as a second stacked band.",
 		RemediationSteps: []string{
-			"Remove the redundant takeaway, or rewrite it to add a distinct action or implication.",
+			"Drop the takeaway: the bottom line or recommendation is the slide's conclusion.",
+			"Or merge what the takeaway adds into the bottom line / recommendation.",
 		},
+	},
+	CodeSemanticImageMissing: {
+		Code:        CodeSemanticImageMissing,
+		Summary:     "An image_case slide has no image, so a dashed placeholder box renders where the picture belongs.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "semantic validation finds an image_case with none of image / photo / screenshot (a path, URL, or {path|url, alt} object) and no image_label marking a deliberate placeholder. The slide still renders, with an 'Image placeholder' box. Promoted to an error under strict validation.",
+		RemediationSteps: []string{
+			"Set image (or photo / screenshot) to the picture's path or URL.",
+			"For a deliberate draft placeholder, set image_label to what the picture will show.",
+		},
+		ExampleBefore: `{"kind": "image_case", "heading": "Two clearers migrated in one weekend", "body": "..."}`,
+		ExampleAfter:  `{"kind": "image_case", "heading": "Two clearers migrated in one weekend", "body": "...", "image": "images/cutover-room.jpg"}`,
+		RelatedCodes:  []string{CodeSemanticWeakContent},
 	},
 	CodeSemanticFieldType: {
 		Code:        CodeSemanticFieldType,

@@ -24,7 +24,7 @@ func orgNodes() []any {
 func TestOrgCompilesRegisteredDiagramWithoutPruning(t *testing.T) {
 	body := map[string]any{"title": "Programme governance", "takeaway": "One group owns decisions.", "nodes": orgNodes()}
 	plan := Normalize(orgSpec(body))
-	if plan.Slides[0].Visual.Layout != "diagram" {
+	if plan.Slides[0].Visual.Layout != "blank-title" {
 		t.Fatalf("plan = %+v", plan.Slides[0].Visual)
 	}
 	input, result, err := Compile(orgSpec(body), CompileOptions{})
@@ -32,16 +32,18 @@ func TestOrgCompilesRegisteredDiagramWithoutPruning(t *testing.T) {
 		t.Fatalf("compile: %v; %+v", err, result.Diagnostics)
 	}
 	slide := input.Slides[0]
-	if slide.SlideType != "diagram" {
-		t.Fatalf("slide type = %q", slide.SlideType)
+	// go-slide-creator-ngbnf: the org chart rides in a one-cell grid on
+	// blank-title so its title matches every other content kind.
+	if slide.SlideType != "content" || slide.LayoutID != "blank-title" {
+		t.Fatalf("slide type / layout = %q / %q", slide.SlideType, slide.LayoutID)
 	}
 	var data map[string]any
-	for _, c := range slide.Content {
-		if c.DiagramValue != nil {
-			if c.DiagramValue.Type != "org_chart" {
-				t.Fatalf("diagram = %q", c.DiagramValue.Type)
+	if slide.ShapeGrid != nil && len(slide.ShapeGrid.Rows) == 1 && len(slide.ShapeGrid.Rows[0].Cells) == 1 {
+		if d := slide.ShapeGrid.Rows[0].Cells[0].Diagram; d != nil {
+			if d.Type != "org_chart" {
+				t.Fatalf("diagram = %q", d.Type)
 			}
-			data = c.DiagramValue.Data
+			data = d.Data
 		}
 	}
 	if data == nil {

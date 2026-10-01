@@ -225,6 +225,12 @@ func imageCaseFrom(body map[string]any) imageCaseValues {
 	return v
 }
 
+// ImageCaseHasImage reports whether an image_case payload names a picture
+// (image / photo / screenshot as a path, URL or {path|url} object).
+func ImageCaseHasImage(body map[string]any) bool {
+	return imageCaseImageFrom(body) != nil
+}
+
 // imageCaseImageFrom reads the picture: a path or url string, or an object.
 func imageCaseImageFrom(body map[string]any) *imageCaseImage {
 	for _, key := range []string{"image", "photo", "screenshot"} {

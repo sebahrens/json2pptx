@@ -19,8 +19,9 @@ var kindExamples = map[SlideKind]map[string]any{
 			map[string]any{"lead": "Enterprise is carrying the mix.", "support": "It now drives 55% of new bookings, up from 38% last year."},
 			map[string]any{"lead": "SMB retention is the one real risk.", "support": "Monthly churn rose to 3.1%, concentrated in the sub-50-seat tier."},
 		},
+		// bottom_line is this kind's conclusion band; a takeaway beside it would
+		// be a second band (go-slide-creator-zvu7c), so the example has none.
 		"bottom_line": "Fund an SMB retention pod in Q3 and hold the enterprise motion as is.",
-		"takeaway":    "Protect SMB retention to keep the growth plan on track.",
 	},
 	KindOptionMatrix: {
 		"kind":  "option_matrix",
@@ -111,6 +112,11 @@ var kindExamples = map[SlideKind]map[string]any{
 		},
 		"caption":  "The cutover room, March 2026",
 		"takeaway": "The rehearsal is what made the weekend boring.",
+		// No picture ships with the example, so image_label marks a deliberate
+		// placeholder: a labelled dashed box renders until image (a path or
+		// URL) is set; without either, validation warns SEMANTIC_IMAGE_MISSING
+		// (go-slide-creator-zj4yq).
+		"image_label": "Photo of the cutover room",
 	},
 	KindAgenda: {
 		"kind":    "agenda",
@@ -245,15 +251,16 @@ var kindExamples = map[SlideKind]map[string]any{
 		"takeaway": "Global availability by Q3.",
 	},
 	KindDecision: {
-		"kind":           "decision",
-		"title":          "Fund an SMB success pod",
+		"kind":  "decision",
+		"title": "Fund an SMB success pod",
+		// recommendation is this kind's conclusion band; no separate takeaway
+		// (go-slide-creator-zvu7c).
 		"recommendation": "Stand up a dedicated SMB customer-success pod in Q3.",
 		"options": []any{
 			map[string]any{"label": "Hold current coverage", "detail": "No new cost, and SMB churn keeps climbing through the year."},
 			map[string]any{"label": "Fund an SMB success pod", "detail": "Four people from Q3; protects net retention in the segment.", "recommended": true},
 			map[string]any{"label": "Outsource SMB support", "detail": "Cheapest per seat, but the escalation path gets longer."},
 		},
-		"takeaway": "Fund the pod now to protect net retention.",
 	},
 	KindNextSteps: {
 		"kind":  "next_steps",

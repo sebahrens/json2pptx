@@ -64,24 +64,37 @@ func TestDuplicateConclusionDiagnostic(t *testing.T) {
 		name string
 		kind SlideKind
 		body map[string]any
+		// oneBand: the slide renders the kind's own conclusion band, so a
+		// distinct takeaway is moved to the notes and flagged too
+		// (go-slide-creator-zvu7c).
+		oneBand bool
 	}{
-		{"decision", KindDecision, map[string]any{
+		{"decision content fallback", KindDecision, map[string]any{
 			"title": "Choose", "options": []any{map[string]any{"label": "A", "recommended": true}, "B"},
 			"recommendation": "Fund the retention pod in Q3.", "takeaway": "FUND THE RETENTION POD IN Q3!",
-		}},
+		}, false},
+		{"decision strip", KindDecision, map[string]any{
+			"title": "Choose", "options": []any{map[string]any{"label": "A", "detail": "a", "recommended": true}, map[string]any{"label": "B", "detail": "b"}, map[string]any{"label": "C", "detail": "c"}},
+			"recommendation": "Fund the retention pod in Q3.", "takeaway": "FUND THE RETENTION POD IN Q3!",
+		}, true},
 		{"executive summary", KindExecutiveSummary, map[string]any{
 			"title": "Summary", "points": []any{"A", "B", "C"},
 			"bottom_line": "Fund the retention pod in Q3.", "takeaway": "Fund the retention pod in Q3!",
-		}},
+		}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			spec := &DeckSpec{Meta: DeckMeta{Title: "Board update"}, Slides: []SlideSpec{{Kind: tc.kind, Body: tc.body}}}
-			if _, ok := findAt(Validate(spec, StrictnessWarn), diagnostics.CodeSemanticDuplicateCallout, "slides[0].takeaway"); !ok {
-				t.Fatal("missing duplicate-callout advisory")
+			d, ok := findAt(Validate(spec, StrictnessWarn), diagnostics.CodeSemanticDuplicateCallout, "slides[0].takeaway")
+			if !ok || !strings.Contains(d.Message, "repeats") {
+				t.Fatalf("missing duplicate-callout advisory: %+v", d)
 			}
 			tc.body["takeaway"] = "Begin hiring next month."
-			if _, ok := findAt(Validate(spec, StrictnessWarn), diagnostics.CodeSemanticDuplicateCallout, "slides[0].takeaway"); ok {
-				t.Fatal("distinct takeaway incorrectly flagged as duplicate")
+			d, ok = findAt(Validate(spec, StrictnessWarn), diagnostics.CodeSemanticDuplicateCallout, "slides[0].takeaway")
+			if ok != tc.oneBand {
+				t.Fatalf("distinct takeaway flagged = %v, want %v: %+v", ok, tc.oneBand, d)
+			}
+			if ok && !strings.Contains(d.Message, "speaker notes") {
+				t.Fatalf("distinct-takeaway advisory should say where the takeaway went: %q", d.Message)
 			}
 		})
 	}

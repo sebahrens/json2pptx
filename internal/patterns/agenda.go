@@ -58,6 +58,22 @@ func (a *agenda) ExemplarValues() any {
 // AgendaValues holds the section titles for the agenda pattern.
 type AgendaValues struct {
 	Items []string `json:"items"` // Section titles in order
+	// Subtitles is an optional one-line description per section, parallel to
+	// Items, set in a smaller muted line under the title. It lets a described
+	// agenda keep the numbered list and its current-section highlight instead
+	// of the agenda-with-images tiles (go-slide-creator-rv9fe).
+	Subtitles []string `json:"subtitles,omitempty"`
+}
+
+// agendaSubtitleMax is the per-subtitle character budget.
+const agendaSubtitleMax = 120
+
+// subtitle returns the subtitle for item i, or "".
+func (v *AgendaValues) subtitle(i int) string {
+	if i < len(v.Subtitles) {
+		return strings.TrimSpace(v.Subtitles[i])
+	}
+	return ""
 }
 
 // AgendaOverrides contains pattern-level overrides for the agenda.
@@ -106,9 +122,13 @@ func (a *agenda) PostExpandWarnings(ctx ExpandContext, values, overrides any) []
 	if ovr == nil {
 		ovr = &AgendaOverrides{}
 	}
-	if lay, fits := layoutAgenda(ctx, v.Items, ovr); !fits && agendaFlexShrinks(ctx, v.Items, lay, ovr.Highlight) {
+	v, lay, fits, dropped := agendaFitValues(ctx, v, ovr)
+	if dropped {
+		warnings = append(warnings, fmt.Sprintf("%s: agenda subtitles do not fit the content area at readable sizes and are left off — shorten or drop the subtitles, or use fewer sections", ErrCodeBodyTooLong))
+	}
+	if !fits && agendaFlexShrinks(ctx, v, lay, ovr.Highlight) {
 		_, areaH := sizingAreaPt(ctx)
-		warnings = append(warnings, fmt.Sprintf("%s: agenda rows need %s at readable sizes but the content area holds about %.0fpt — shorten the section titles or use fewer sections", ErrCodeBodyTooLong, readableNeedPhrase(lay.natural()), areaH))
+		warnings = append(warnings, fmt.Sprintf("%s: agenda rows need %s at readable sizes but the content area holds about %.0fpt — shorten the section titles or subtitles, or use fewer sections", ErrCodeBodyTooLong, readableNeedPhrase(lay.natural()), areaH))
 	}
 	return warnings
 }
@@ -134,6 +154,8 @@ func (a *agenda) Schema() *Schema {
 				map[string]*Schema{
 					"items": ArraySchema(StringSchema(100).WithDescription("Section title; with 5-10 items, keep wide unbroken runs near 59 characters or add word breaks"), 2, 10).
 						WithDescription("Section titles in order"),
+					"subtitles": ArraySchema(StringSchema(agendaSubtitleMax).WithDescription("One-line section description, set smaller and muted under the title; left off, with BODY_TOO_LONG, when the rows cannot hold them"), 0, 10).
+						WithDescription("Optional per-section descriptions, parallel to items (no more entries than items)"),
 				},
 				[]string{"items"},
 			).WithAdditionalProperties(false),
@@ -177,6 +199,14 @@ func (a *agenda) Validate(values, overrides any, cellOverrides map[int]any) erro
 			errs = append(errs, errRequired(name, path))
 		} else if runeLen(item) > 100 {
 			errs = append(errs, errMaxLength(name, path, 100, runeLen(item)))
+		}
+	}
+	if len(v.Subtitles) > len(v.Items) {
+		errs = append(errs, fmt.Errorf("agenda: subtitles has %d entries for %d items; give at most one subtitle per item", len(v.Subtitles), len(v.Items)))
+	}
+	for i, sub := range v.Subtitles {
+		if runeLen(sub) > agendaSubtitleMax {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("subtitles[%d]", i), agendaSubtitleMax, runeLen(sub)))
 		}
 	}
 
@@ -231,17 +261,29 @@ type agendaParagraph struct {
 	Alpha   float64 `json:"alpha,omitempty"`
 }
 
-// agendaText is the single-paragraph, left-aligned, middle-anchored text
-// object every agenda cell uses.
-func agendaText(p agendaParagraph) json.RawMessage {
-	p.Align = "l"
+// agendaText is the left-aligned, middle-anchored text object every agenda
+// cell uses: one paragraph, or a title over its subtitle.
+func agendaText(ps ...agendaParagraph) json.RawMessage {
+	for i := range ps {
+		ps[i].Align = "l"
+	}
 	data, _ := json.Marshal(struct {
 		Paragraphs    []agendaParagraph `json:"paragraphs"`
 		Align         string            `json:"align"`
 		VerticalAlign string            `json:"vertical_align"`
-	}{[]agendaParagraph{p}, "l", "ctr"})
+	}{ps, "l", "ctr"})
 	return data
 }
+
+// agendaSubtitleSize is the subtitle size under a title of titleSize: four
+// points smaller, never under the 12pt floor.
+func agendaSubtitleSize(titleSize float64) float64 {
+	return math.Max(12, titleSize-4)
+}
+
+// agendaSubtitleAlpha is the muted (secondary) opacity of a subtitle on a row
+// that is not dimmed.
+const agendaSubtitleAlpha = 70.0
 
 // agendaLayout is the measured geometry at one type scale.
 type agendaLayout struct {
@@ -259,7 +301,7 @@ func (l agendaLayout) natural() float64 {
 	return h + float64(2*n-2)*agendaListRowGapPt
 }
 
-func measureAgenda(ctx ExpandContext, items []string, numberSize, titleSize float64, highlight int) agendaLayout {
+func measureAgenda(ctx ExpandContext, v *AgendaValues, numberSize, titleSize float64, highlight int) agendaLayout {
 	areaW, _ := sizingAreaPt(ctx)
 	// The numeral column holds "10" at the numeral size plus the text margin.
 	numberColPt := numberSize*1.3 + 2*defaultShapeInsetLRPt
@@ -267,12 +309,16 @@ func measureAgenda(ctx ExpandContext, items []string, numberSize, titleSize floa
 	lay := agendaLayout{numberSize: numberSize, titleSize: titleSize, numberPct: pct}
 	numberW, titleW := lay.columnWidths(areaW)
 	numberRow := numberSize*sizingLineSpacing + 2*sizingInsetTBPt
-	for i, title := range items {
-		h := sizedBlockHeightPt(ctx, []sizedPara{{text: title, sizePt: titleSize}}, titleW)
+	for i, title := range v.Items {
+		paras := []sizedPara{{text: title, sizePt: titleSize}}
+		if sub := v.subtitle(i); sub != "" {
+			paras = append(paras, sizedPara{text: sub, sizePt: agendaSubtitleSize(titleSize)})
+		}
+		h := sizedBlockHeightPt(ctx, paras, titleW)
 		// The row is never below the written fit of its title (bold when it
 		// is the highlighted section) or numeral at the real column widths
 		// (go-slide-creator-n1muf).
-		h = math.Max(h, rowTextNeedPt(agendaTitleText(title, titleSize, highlight == i+1), titleW))
+		h = math.Max(h, rowTextNeedPt(agendaTitleText(title, v.subtitle(i), titleSize, highlight == i+1), titleW))
 		h = math.Max(h, rowTextNeedPt(agendaNumberText(i, numberSize), numberW))
 		lay.rowPt = append(lay.rowPt, math.Ceil(math.Max(numberRow, h)))
 	}
@@ -290,8 +336,18 @@ const agendaColGapPt = 0.1
 
 // agendaTitleText and agendaNumberText are the plain (undimmed) cell texts
 // the rows are measured on; dimming changes only the opacity.
-func agendaTitleText(title string, size float64, bold bool) json.RawMessage {
-	return agendaText(agendaParagraph{Content: title, Size: size, Bold: bold, Color: "dk1"})
+func agendaTitleText(title, subtitle string, size float64, bold bool) json.RawMessage {
+	return agendaItemText(title, subtitle, size, bold, 0, 0)
+}
+
+// agendaItemText is a section's title paragraph and, when it has one, its
+// subtitle paragraph — smaller and muted — at the given opacities.
+func agendaItemText(title, subtitle string, size float64, bold bool, titleAlpha, subAlpha float64) json.RawMessage {
+	paras := []agendaParagraph{{Content: title, Size: size, Bold: bold, Color: "dk1", Alpha: titleAlpha}}
+	if subtitle != "" {
+		paras = append(paras, agendaParagraph{Content: subtitle, Size: agendaSubtitleSize(size), Color: "dk1", Alpha: subAlpha})
+	}
+	return agendaText(paras...)
 }
 
 func agendaNumberText(i int, size float64) json.RawMessage {
@@ -305,17 +361,17 @@ var agendaFloorScale = [2]float64{20, 12}
 // layoutAgenda picks the largest type scale whose rows fit the content area;
 // an authored numeral or title size is kept. The second result reports
 // whether the rows fit at all.
-func layoutAgenda(ctx ExpandContext, items []string, ovr *AgendaOverrides) (agendaLayout, bool) {
+func layoutAgenda(ctx ExpandContext, v *AgendaValues, ovr *AgendaOverrides) (agendaLayout, bool) {
 	_, areaH := sizingAreaPt(ctx)
 	var lay agendaLayout
 	for _, sc := range agendaScales {
-		lay = measureAgenda(ctx, items, ResolveSize(ovr.NumberSize, sc[0]), ResolveSize(ovr.TitleSize, sc[1]), ovr.Highlight)
+		lay = measureAgenda(ctx, v, ResolveSize(ovr.NumberSize, sc[0]), ResolveSize(ovr.TitleSize, sc[1]), ovr.Highlight)
 		if lay.natural() <= areaH {
 			return lay, true
 		}
 	}
 	if ovr.TitleSize == 0 {
-		floor := measureAgenda(ctx, items, ResolveSize(ovr.NumberSize, agendaFloorScale[0]), agendaFloorScale[1], ovr.Highlight)
+		floor := measureAgenda(ctx, v, ResolveSize(ovr.NumberSize, agendaFloorScale[0]), agendaFloorScale[1], ovr.Highlight)
 		if floor.natural() <= areaH {
 			return floor, true
 		}
@@ -323,20 +379,34 @@ func layoutAgenda(ctx ExpandContext, items []string, ovr *AgendaOverrides) (agen
 	return lay, false
 }
 
+// agendaFitValues lays the agenda out, leaving the subtitles off when the rows
+// cannot hold them at a readable size: the section titles are the agenda, and
+// squeezing every row to share the area shrank them below the floor. The last
+// result reports that subtitles were dropped (PostExpandWarnings says so).
+func agendaFitValues(ctx ExpandContext, v *AgendaValues, ovr *AgendaOverrides) (*AgendaValues, agendaLayout, bool, bool) {
+	lay, fits := layoutAgenda(ctx, v, ovr)
+	if fits || len(v.Subtitles) == 0 {
+		return v, lay, fits, false
+	}
+	bare := &AgendaValues{Items: v.Items}
+	lay, fits = layoutAgenda(ctx, bare, ovr)
+	return bare, lay, fits, true
+}
+
 // agendaFlexShrinks reports whether an agenda whose rows do not fit would be
 // written shrunk: the rows share the area as equal flex rows, where a
 // one-line title can still be written whole (the writer clamps a short
 // shape's margin).
-func agendaFlexShrinks(ctx ExpandContext, items []string, lay agendaLayout, highlight int) bool {
+func agendaFlexShrinks(ctx ExpandContext, v *AgendaValues, lay agendaLayout, highlight int) bool {
 	areaW, areaH := sizingAreaPt(ctx)
-	n := float64(len(items))
+	n := float64(len(v.Items))
 	rowH := (areaH - (n-1)*agendaRulePt - (2*n-2)*agendaListRowGapPt) / n
 	numberW, titleW := lay.columnWidths(areaW)
-	for i, title := range items {
+	for i, title := range v.Items {
 		for _, cell := range []struct {
 			text json.RawMessage
 			w    float64
-		}{{agendaTitleText(title, lay.titleSize, highlight == i+1), titleW}, {agendaNumberText(i, lay.numberSize), numberW}} {
+		}{{agendaTitleText(title, v.subtitle(i), lay.titleSize, highlight == i+1), titleW}, {agendaNumberText(i, lay.numberSize), numberW}} {
 			tb, err := shapegrid.ResolveTextInput(cell.text)
 			if err == nil && tb != nil && !pptx.AutofitFitsFor(tb, pptx.RectEmu{CX: int64(cell.w * sizingEMUPerPt), CY: int64(rowH * sizingEMUPerPt)}) {
 				return true
@@ -362,7 +432,7 @@ func (a *agenda) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 	}
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	lay, fits := layoutAgenda(ctx, v.Items, ovr)
+	v, lay, fits, _ := agendaFitValues(ctx, v, ovr)
 
 	// Numerals are large text (3:1); items are body text (4.5:1). A pale
 	// accent falls back to dk2 / dk1, and the 50% dim steps up just enough to
@@ -370,6 +440,7 @@ func (a *agenda) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 	numberInk := accentInkOnLight(ctx, accent, 3.0)
 	numberDim := readableDimAlpha(ctx, numberInk, agendaDimAlpha, 3.0)
 	titleDim := readableDimAlpha(ctx, "dk1", agendaDimAlpha, 4.5)
+	subMuted := readableDimAlpha(ctx, "dk1", agendaSubtitleAlpha, 4.5)
 
 	ruleFill := fillTone{Color: "dk1", Alpha: 30}.fillJSON()
 	rows := make([]jsonschema.GridRowInput, 0, 2*len(v.Items))
@@ -389,9 +460,9 @@ func (a *agenda) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 		// A repeated agenda marks where the deck is: the current section in
 		// bold dk1, the others at 50%. Without a highlight every row is plain.
 		highlighted := ovr.Highlight > 0 && ovr.Highlight == i+1
-		dimNumber, dimTitle := 0.0, 0.0
+		dimNumber, dimTitle, dimSub := 0.0, 0.0, subMuted
 		if ovr.Highlight > 0 && !highlighted {
-			dimNumber, dimTitle = numberDim, titleDim
+			dimNumber, dimTitle, dimSub = numberDim, titleDim, titleDim
 		}
 
 		numberCell := &jsonschema.GridCellInput{
@@ -410,9 +481,7 @@ func (a *agenda) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 				Geometry: "rect",
 				Fill:     json.RawMessage(`"none"`),
 				Line:     json.RawMessage(`"none"`),
-				Text: agendaText(agendaParagraph{
-					Content: title, Size: lay.titleSize, Bold: highlighted, Color: "dk1", Alpha: dimTitle,
-				}),
+				Text:     agendaItemText(title, v.subtitle(i), lay.titleSize, highlighted, dimTitle, dimSub),
 			},
 		}
 

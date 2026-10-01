@@ -43,7 +43,7 @@ const (
 	execSummaryBottomLineMax = 160
 
 	execSummaryNumColPct  = 5.0
-	execSummaryLeadColPct = 36.0
+	execSummaryLeadColPct = 45.0
 	execSummaryColGapPt   = 12.0
 	execSummaryRowGapPt   = 7.0
 	execSummaryMinGapPt   = 2.0 // row gap when the default gaps would push text below the floor
@@ -78,7 +78,7 @@ func (e *execSummary) SupportsInlineMarkdown() bool { return true }
 func (e *execSummary) ExemplarValues() any {
 	return &ExecSummaryValues{
 		Points: []ExecSummaryPoint{
-			// Four points with a bottom line hold about 42 lead characters
+			// Four points with a bottom line hold about 57 lead characters
 			// (execSummaryBudgets); the leads stay well inside it so they fit
 			// the shortest shipped content area too.
 			{Lead: "Core growth is slowing", Support: "Revenue grew 4% in FY25 versus 11% for the market."},
@@ -131,15 +131,20 @@ func (e *execSummary) NewCellOverride() any { return &ExecSummaryCellOverride{} 
 // the supports.
 func execSummaryBudgets(points int, bottomLine string) (lead, support int) {
 	bottom := runeLen(strings.TrimSpace(bottomLine))
+	// Re-measured by TestExecSummaryBudgetProbe for the 45% lead column
+	// (go-slide-creator-n7q73). They are the no-template contract: with the
+	// template's content area PostExpandWarnings measures the real layout.
 	switch {
-	case points >= 5, points == 4 && bottom > 0:
-		return 42, 75
+	case points >= 5:
+		return 52, 60
+	case points == 4 && bottom > 0:
+		return 57, 65
 	case points == 4:
-		return 82, 150
+		return execSummaryLeadMax, 128
 	case bottom > 40:
-		return 88, 68
+		return execSummaryLeadMax, 182
 	case bottom > 0:
-		return 88, 152
+		return execSummaryLeadMax, 193
 	default:
 		return execSummaryLeadMax, execSummarySupportMax
 	}
@@ -159,12 +164,18 @@ func (e *execSummary) PostExpandWarnings(ctx ExpandContext, values, overrides an
 	if !ok || v == nil {
 		return nil
 	}
-	warnings := execSummaryBudgetWarnings(v)
-	if len(v.Points) == 0 || len(warnings) > 0 || ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 {
-		// Without the template's content area the measured budgets are the
-		// contract; with it, the layout below is measured against it.
-		return warnings
+	if len(v.Points) == 0 || ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 {
+		// Without the template's content area the measured character budgets
+		// are the contract.
+		return execSummaryBudgetWarnings(v)
 	}
+	// With it, the layout is measured against the real area and only text that
+	// does not fit at a readable size is reported. The character budgets are
+	// worst-case averages (every support at full length on the smallest
+	// shipped area): a 43-character lead beside one-line supports fits on two
+	// lines, yet the budget flagged it and blocked the quality gate
+	// (go-slide-creator-n7q73).
+	var warnings []string
 	// The character budgets are template-averaged; the measured layout is the
 	// one this content area gets. A summary whose rows need more than the area
 	// at the floor sizes would otherwise only surface as a writer shrink below
@@ -205,7 +216,7 @@ func (e *execSummary) Schema() *Schema {
 	pointSchema := ObjectSchema(
 		map[string]*Schema{
 			"lead":    StringSchema(execSummaryLeadMax).WithDescription("Bold lead-in statement — the conclusion, stated as a full sentence (≤90 chars)"),
-			"support": StringSchema(execSummarySupportMax).WithDescription("One supporting sentence with the evidence (≤200 chars); average support per point: 3 points with a bottom line about 152 (68 with one over 40 characters); 4 points about 150 (75 with a bottom line); 5 points about 75. Leads: about 88 with 3 points and a bottom line, 82 with 4 points, 42 with 4 points and a bottom line or with 5"),
+			"support": StringSchema(execSummarySupportMax).WithDescription("One supporting sentence with the evidence (≤200 chars); average support per point: 3 points with a bottom line about 193 (182 with one over 40 characters); 4 points about 128 (65 with a bottom line); 5 points about 60. Leads: up to 90 with 3 points or 4 without a bottom line, about 57 with 4 points and a bottom line, 52 with 5. A point with no support at all spans the lead across the width"),
 		},
 		[]string{"lead"},
 	).WithAdditionalProperties(false)
@@ -351,7 +362,9 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 			}
 		}
 		cells = append(cells, leadCell)
-		cells = append(cells, execSummarySupportCell(p.Support, supportSize, tallest))
+		if len(cells) < len(cols) {
+			cells = append(cells, execSummarySupportCell(p.Support, supportSize, tallest))
+		}
 		rows = append(rows, jsonschema.GridRowInput{MinHeight: rowPt[i], MaxHeight: rowPt[i], Cells: cells})
 	}
 
@@ -386,10 +399,7 @@ var execSummarySteps = [][2]float64{{17, 14}, {16, 13}, {15, 12}, {14, 12}, {13,
 // floor). Explicit header_size / body_size overrides pin the scale.
 func layoutExecSummary(ctx ExpandContext, vals *ExecSummaryValues, ovr *ExecSummaryOverrides) ([]float64, execSummaryLayout) {
 	numbered := ovr.Numbered == nil || *ovr.Numbered
-	cols := []float64{execSummaryLeadColPct, 100 - execSummaryLeadColPct}
-	if numbered {
-		cols = []float64{execSummaryNumColPct, execSummaryLeadColPct, 100 - execSummaryNumColPct - execSummaryLeadColPct}
-	}
+	cols := execSummaryColumns(numbered, execSummaryHasSupport(vals))
 	areaW, areaH := sizingAreaPt(ctx)
 	steps := execSummarySteps
 	if len(vals.Points) >= execSummaryMaxPoints {
@@ -409,7 +419,50 @@ func layoutExecSummary(ctx ExpandContext, vals *ExecSummaryValues, ovr *ExecSumm
 			}
 		}
 	}
+	// The sizing estimate is conservative. When no step fits by it, the
+	// writer's own measure decides: rows sized to their written fit store every
+	// run unshrunk, where rows the grid squeezes to share the area would not.
+	for _, st := range steps {
+		l := measureExecSummary(ctx, vals, cols, numbered, st[0], st[1], areaW, execSummaryMinGapPt, ovr.TakeawayEmphasis)
+		if l.writtenNatural() <= areaH {
+			for i, w := range l.writtenPt {
+				l.rowPt[i] = math.Ceil(w)
+			}
+			return cols, l
+		}
+	}
 	return cols, lay
+}
+
+// execSummaryHasSupport reports whether any point carries a supporting
+// sentence. Without one there is no support column: plain-string points used to
+// sit in the lead column beside an empty support column, wrapping short
+// conclusions next to half a slide of white space (go-slide-creator-n7q73).
+func execSummaryHasSupport(vals *ExecSummaryValues) bool {
+	for _, p := range vals.Points {
+		if strings.TrimSpace(p.Support) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// execSummaryColumns is the column split in percent: the optional number
+// column, the bold lead column, and the support column when any point has one.
+// The lead column takes 45% of the width: the conclusions are the message, and
+// at the old 36% a two-clause lead wrapped while a one-line support sat in
+// white space (go-slide-creator-n7q73).
+func execSummaryColumns(numbered, support bool) []float64 {
+	var cols []float64
+	rest := 100.0
+	if numbered {
+		cols = append(cols, execSummaryNumColPct)
+		rest -= execSummaryNumColPct
+	}
+	if !support {
+		return append(cols, rest)
+	}
+	return append(cols, execSummaryLeadColPct, rest-execSummaryLeadColPct)
 }
 
 // execSummaryTakeaway is the bottom line as a takeaway band spec.
@@ -430,8 +483,13 @@ func execSummaryTextCell(paras []chartInsightsParagraph, vAlign string, nudge fl
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
-			Fill:     json.RawMessage(`"none"`),
-			Text:     textJSON,
+			// The pattern measured one type step for every row. The deck's
+			// type-scale growth sizes each cell on its own spare height, so a
+			// taller row's support grew a step while its neighbours stayed put
+			// and the rows rendered at mixed sizes (go-slide-creator-a47pk).
+			TypeScale: "compact",
+			Fill:      json.RawMessage(`"none"`),
+			Text:      textJSON,
 		},
 	}
 }
@@ -523,9 +581,14 @@ func (l execSummaryLayout) writtenNatural() float64 {
 func measureExecSummary(ctx ExpandContext, vals *ExecSummaryValues, cols []float64, numbered bool, leadSize, supportSize, areaW, rowGapPt float64, emphasis string) execSummaryLayout {
 	usableW := areaW - execSummaryColGapPt*float64(len(cols)-1)
 	colW := func(i int) float64 { return usableW * cols[i] / 100 }
-	leadCol, supportCol := 0, 1
+	leadCol := 0
 	if numbered {
-		leadCol, supportCol = 1, 2
+		leadCol = 1
+	}
+	// supportCol is -1 for a leads-only summary: the lead spans the width.
+	supportCol := leadCol + 1
+	if supportCol >= len(cols) {
+		supportCol = -1
 	}
 	lay := execSummaryLayout{
 		leadSize:    leadSize,
@@ -541,14 +604,15 @@ func measureExecSummary(ctx ExpandContext, vals *ExecSummaryValues, cols []float
 	}
 	for i, p := range vals.Points {
 		// A baseline nudge adds to the cell's top margin (execSummaryTextCell).
-		lead := sizedBlockHeightPt(ctx, []sizedPara{{text: p.Lead, sizePt: leadSize, bold: true}}, colW(leadCol)) + baselineInsetPt(tallest, leadSize)
-		support := sizedBlockHeightPt(ctx, []sizedPara{{text: p.Support, sizePt: supportSize}}, colW(supportCol)) + baselineInsetPt(tallest, supportSize)
-		h := math.Max(lead, support)
+		h := sizedBlockHeightPt(ctx, []sizedPara{{text: p.Lead, sizePt: leadSize, bold: true}}, colW(leadCol)) + baselineInsetPt(tallest, leadSize)
 		// The row is never below what the writer needs to store each cell
 		// unshrunk at its real column width, baseline nudge included
 		// (go-slide-creator-k3eb3).
-		written := math.Max(writtenFitHeightPt(execSummaryLeadCell(p.Lead, leadSize, tallest, "dk2").Shape.Text, colW(leadCol), 0),
-			writtenFitHeightPt(execSummarySupportCell(p.Support, supportSize, tallest).Shape.Text, colW(supportCol), 0))
+		written := writtenFitHeightPt(execSummaryLeadCell(p.Lead, leadSize, tallest, "dk2").Shape.Text, colW(leadCol), 0)
+		if supportCol >= 0 {
+			h = math.Max(h, sizedBlockHeightPt(ctx, []sizedPara{{text: p.Support, sizePt: supportSize}}, colW(supportCol))+baselineInsetPt(tallest, supportSize))
+			written = math.Max(written, writtenFitHeightPt(execSummarySupportCell(p.Support, supportSize, tallest).Shape.Text, colW(supportCol), 0))
+		}
 		if numbered {
 			h = math.Max(h, lay.numSize*sizingLineSpacing+2*sizingInsetTBPt)
 			written = math.Max(written, writtenFitHeightPt(execSummaryNumberCell(i, lay.numSize, "dk1").Shape.Text, colW(0), 0))

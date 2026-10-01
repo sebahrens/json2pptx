@@ -26,6 +26,14 @@ one message per slide, a `takeaway` and `source` on every evidence slide
 the message → visual table. A deck that passes every gate with topic titles
 is not finished.
 
+**One conclusion band per slide:** `takeaway` is the fallback for kinds with
+their own conclusion field — on `executive_summary` write `bottom_line`, on
+`decision` write `recommendation`, and leave `takeaway` out; one written
+beside them goes to the speaker notes (`SEMANTIC_DUPLICATE_CALLOUT`). Kind
+specifics (exec-summary budgets, agenda subtitles under a bold current
+section, stat `unit` at 40% of the value, `closing` on the template's closing
+layout, `SEMANTIC_IMAGE_MISSING`) are in [DECKSPEC.md](DECKSPEC.md).
+
 ## Choose the authoring path
 
 <!-- workflow-contract:start -->

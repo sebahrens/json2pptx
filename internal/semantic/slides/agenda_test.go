@@ -28,9 +28,19 @@ func TestCompileAgendaPicksThePatternFromTheContent(t *testing.T) {
 		wantPattern string
 	}{
 		{
-			name: "subtitled sections become rows",
+			// Subtitles ride under each title in the numbered list, which keeps
+			// the current-section highlight (go-slide-creator-rv9fe).
+			name: "subtitled sections stay the numbered list",
 			body: agendaBody(nil,
 				subtitled("Where we are", "Q3 against the plan"),
+				subtitled("What we found", "Three findings"),
+				subtitled("What we recommend", "The decision")),
+			wantPattern: "agenda",
+		},
+		{
+			name: "a subtitle too long for the list becomes rows",
+			body: agendaBody(nil,
+				subtitled("Where we are", strings.Repeat("Q3 against the plan ", 7)),
 				subtitled("What we found", "Three findings"),
 				subtitled("What we recommend", "The decision")),
 			wantPattern: "agenda-with-images",
@@ -102,8 +112,14 @@ func TestCompileAgendaUsesReadableTypeSizes(t *testing.T) {
 	}{
 		{"short list", agendaBody(nil, "Performance", "Risks", "Investment"), 0, 0},
 		{"dense list", agendaBody(nil, "one", "two", "three", "four", "five", "six"), 0, 0},
-		{"subtitled rows", agendaBody(nil,
+		// Subtitled sections are the list too: the pattern sets the subtitle
+		// four points under the item, never below 12 (go-slide-creator-rv9fe).
+		{"subtitled list", agendaBody(nil,
 			subtitled("Performance", "What changed"),
+			subtitled("Risks", "What matters"),
+			subtitled("Investment", "What comes next")), 0, 0},
+		{"subtitled rows", agendaBody(nil,
+			subtitled("Performance", strings.Repeat("What changed ", 10)),
 			subtitled("Risks", "What matters"),
 			subtitled("Investment", "What comes next")), 16, 12},
 	}
@@ -155,7 +171,10 @@ func TestAgendaCurrentSectionSurvivesEveryPath(t *testing.T) {
 		}
 	})
 
-	t.Run("rows carry the marker in the subtitle", func(t *testing.T) {
+	// A subtitled agenda is highlighted like a plain one: the current row in
+	// bold, the rest dimmed — never a literal "(we are here)" in its text
+	// (go-slide-creator-rv9fe).
+	t.Run("subtitled sections highlight the row", func(t *testing.T) {
 		body := agendaBody(map[string]any{"current": 2.0},
 			subtitled("Where we are", "Q3 against the plan"),
 			subtitled("What we found", "Three findings"),
@@ -164,8 +183,23 @@ func TestAgendaCurrentSectionSurvivesEveryPath(t *testing.T) {
 		if err != nil {
 			t.Fatalf("compile: %v", err)
 		}
-		if !strings.Contains(string(slide.Pattern.Values), "we are here") {
-			t.Errorf("the current row is unmarked: %s", slide.Pattern.Values)
+		if slide.Pattern == nil || slide.Pattern.Name != "agenda" {
+			t.Fatalf("pattern = %+v, want agenda", slide.Pattern)
+		}
+		if strings.Contains(string(slide.Pattern.Values), "we are here") {
+			t.Errorf("literal marker printed on the slide: %s", slide.Pattern.Values)
+		}
+		var ovr struct {
+			Highlight int `json:"highlight"`
+		}
+		if err := json.Unmarshal(slide.Pattern.Overrides, &ovr); err != nil || ovr.Highlight != 2 {
+			t.Errorf("highlight = %d (%v), want 2", ovr.Highlight, err)
+		}
+		var values struct {
+			Subtitles []string `json:"subtitles"`
+		}
+		if err := json.Unmarshal(slide.Pattern.Values, &values); err != nil || len(values.Subtitles) != 3 || values.Subtitles[1] != "Three findings" {
+			t.Errorf("subtitles = %v (%v)", values.Subtitles, err)
 		}
 	})
 

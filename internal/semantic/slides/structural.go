@@ -59,9 +59,11 @@ func CompileSection(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 }
 
 // CompileClosing compiles a closing slide. With bullets/points it renders as a
-// content slide (title + bullets); otherwise it renders as a title slide with
-// an optional subtitle, mirroring the opening chrome. "closing" is a template
-// layout name, not a slide_type hint, so the slide_type stays title/content.
+// content slide (title + bullets); otherwise it renders a title and optional
+// subtitle on the layout the planner chose — the template's own "closing"
+// layout, not the cover, which made the closer a second title slide
+// (go-slide-creator-maq6l). "closing" is a template layout name, not a
+// slide_type hint, so the slide_type stays title/content.
 func CompileClosing(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	var links []SourceLink
 
@@ -99,6 +101,13 @@ func CompileClosing(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 		})
 	}
 	return slide, links, nil
+}
+
+// ClosingHasBullets reports whether a closing payload renders as a content
+// slide (title + bullets) rather than on the template's closing layout.
+func ClosingHasBullets(body map[string]any) bool {
+	b, _ := closingBullets(body)
+	return len(b) > 0
 }
 
 // closingBullets returns the closing slide's bullet list and the semantic field

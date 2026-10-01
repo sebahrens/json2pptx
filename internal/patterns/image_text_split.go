@@ -435,12 +435,19 @@ func itsImageColumn(ctx ExpandContext, v *ImageTextSplitValues, lay itsLayout) *
 		}
 		picture = &jsonschema.GridCellInput{Image: img}
 	} else {
-		label := firstNonEmpty(v.ImageLabel, "Add an image (values.image.path)")
+		// The slide never prints an authoring instruction: the old default
+		// label named the raw field ("values.image.path"), which is wrong for a
+		// DeckSpec author and nonsense to a client. The missing image is
+		// reported by validation instead (go-slide-creator-zj4yq).
+		paras := []chartInsightsParagraph{
+			{Content: "Image placeholder", Size: 14, Bold: true, Color: inkOnLight(ctx, "dk2", 4.5), Align: "ctr"},
+		}
+		if label := strings.TrimSpace(v.ImageLabel); label != "" {
+			paras[0].SpaceAfter = 4
+			paras = append(paras, chartInsightsParagraph{Content: label, Size: 12, Color: "dk1", Align: "ctr"})
+		}
 		textJSON, _ := json.Marshal(chartInsightsText{
-			Paragraphs: []chartInsightsParagraph{
-				{Content: "Image placeholder", Size: 14, Bold: true, Color: inkOnLight(ctx, "dk2", 4.5), Align: "ctr", SpaceAfter: 4},
-				{Content: label, Size: 12, Color: "dk1", Align: "ctr"},
-			},
+			Paragraphs:    paras,
 			Align:         "ctr",
 			VerticalAlign: "ctr",
 		})

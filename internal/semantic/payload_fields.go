@@ -278,7 +278,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"takeaway": strField("One-line takeaway footer."),
 		"sections": {
 			typ:         "array",
-			desc:        "The deck's sections in order: strings, or {title, subtitle?}. A subtitle on any section switches the slide to the agenda-with-images rows (3–6 sections); plain sections render as the numbered list (2–10). Title ≤80 chars, subtitle ≤160.",
+			desc:        "The deck's sections in order: strings, or {title, subtitle?}. Subtitles render as a muted line under each title in the numbered list (2–10 sections; title ≤100, subtitle ≤120); a longer subtitle (≤160, 3–6 sections, title ≤80) switches to the agenda-with-images rows.",
 			itemStrings: true,
 			itemKeys:    agendaSectionKeys,
 		},
@@ -348,7 +348,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"label":       strField("The words beneath the number — what it measures. ≤80 chars; defaults to the slide title."),
 		"caption":     strField("Alias for label."),
 		"subtitle":    strField("Alias for label."),
-		"unit":        strField("Short suffix beside the number (e.g. \"TAM\", \"MRR\"). ≤10 chars."),
+		"unit":        strField("Short suffix beside the number (e.g. \"TAM\", \"MRR\"), set at 40% of the number's size. ≤10 chars."),
 		"suffix":      strField("Alias for unit."),
 		"context":     strField("One line of context beneath the label. ≤120 chars."),
 		"detail":      strField("Alias for context."),

@@ -172,22 +172,21 @@
           "text": "Stand up a dedicated SMB customer-success pod in Q3 to arrest churn before it compounds.",
           "emphasis": "bold"
         }
-      },
-      "takeaway": "Fund a dedicated SMB success pod now to protect net retention."
+      }
     },
     {
-      "layout_id": "title",
+      "layout_id": "closing",
       "slide_type": "title",
       "content": [
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Approve the SMB success pod this month to protect H2 growth"
+          "text_value": "Approve the SMB success pod this month"
         },
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "text_value": "Owner: VP Customer Success · decision needed by 31 July"
+          "text_value": "Protects H2 growth · Owner: VP Customer Success · decision by 31 July"
         }
       ]
     }

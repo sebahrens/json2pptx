@@ -156,9 +156,12 @@ func compileFrameworkDiagram(in Input, name string, sections map[string][]string
 		data[s.key] = items
 	}
 
-	// A native diagram needs a body placeholder to land in; blank-title has
-	// none, and the content would be dropped on the floor with a warning.
-	slide := &deckinput.SlideInput{SlideType: "diagram"}
+	// A native SWOT / five-forces diagram is drawn as OOXML shapes only inside
+	// a body placeholder (in a grid cell it would need an svggen renderer that
+	// does not exist), and blank-title has no body placeholder. The layout is
+	// pinned to the canonical content layout rather than left to the heuristic
+	// matcher, which picked a different layout per slide (go-slide-creator-ngbnf).
+	slide := &deckinput.SlideInput{SlideType: "diagram", LayoutID: "content"}
 	links := titleLink(slide, in)
 	idx := appendContent(slide, diagramContent("body", &types.DiagramSpec{
 		Type: name, Data: data, Alt: visualAltText(in),
