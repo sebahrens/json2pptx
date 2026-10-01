@@ -831,6 +831,7 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 			))
 			continue
 		}
+		applyDiagramAccentStrategy(&spec, accentStrategy)
 		specs = append(specs, spec)
 	}
 

@@ -108,9 +108,10 @@ after embedding a chart or diagram. A diagram collision or unreadable
 native text is a content/layout problem: shorten labels or give the diagram
 more space, then render the slide to pixels again.
 
-Diagrams use one hue by default: timeline bars/milestones and matrix_2x2
-points stay in accent1 and its tints, and matrix_2x2 quadrants share a
-neutral wash. To make
+Diagrams use one hue by default: timeline bars/milestones, matrix_2x2
+points and org_chart levels stay in accent1 and its tints (org levels take
+one accent each only under `accent_strategy` `rotate` / `section-keyed`),
+and matrix_2x2 quadrants share a neutral wash. To make
 one quadrant carry the message, set `data.highlight_quadrant` (index 0-3,
 `"top-left"`-style position, or the quadrant's label); give points a `series`
 only when they really belong to different groups.
