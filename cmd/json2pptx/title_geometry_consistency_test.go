@@ -22,12 +22,6 @@ func TestContentTitleSitsOnOneBaselineEveryTemplate(t *testing.T) {
 	const tol = 91440
 	for _, tpl := range testutil.AllTestTemplateNames() {
 		t.Run(tpl, func(t *testing.T) {
-			if tpl == "modern-template" {
-				// Allow-listed in internal/template/testdata/conformance_allowlist.json:
-				// its reviewed bottom-anchored content title cannot move without
-				// lowering pattern readability (go-slide-creator-kyk01).
-				t.Skip("modern-template title geometry is a tracked exception")
-			}
 			t1, t2, t3 := "Revenue grew 17% on new logos", "Two entry routes remain", "Three numbers frame the decision"
 			b1, b2, b3 := []string{"Revenue EUR 21M", "Margin 68%"}, []string{"Greenfield", "Capex EUR 9M"}, []string{"Acquisition", "Capex EUR 14M"}
 			in := &PresentationInput{Template: tpl, OutputFilename: "titles.pptx", Slides: []SlideInput{
