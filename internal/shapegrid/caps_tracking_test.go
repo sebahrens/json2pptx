@@ -27,6 +27,8 @@ func TestCapsLabelsGetTracking(t *testing.T) {
 		{"caps label", `{"content":"BOTTOM LINE","size":12,"bold":true}`, 200, `spc="84"`},
 		{"caps label scales with size", `{"content":"WHY","size":18,"bold":true}`, 200, `spc="126"`},
 		{"mixed case is not a label", `{"content":"Bottom line","size":12}`, 200, ""},
+		{"regular-weight initialism is body text", `{"content":"VP CS","size":14}`, 200, ""},
+		{"regular-weight caps cell is body text", `{"content":"CFO","size":12}`, 200, ""},
 		{"acronym too short", `{"content":"AI","size":12}`, 200, ""},
 		{"figure is not a label", `{"content":"$4.2M","size":12}`, 200, ""},
 		{"display heading keeps its spacing", `{"content":"DOMESTIC","size":32}`, 400, ""},

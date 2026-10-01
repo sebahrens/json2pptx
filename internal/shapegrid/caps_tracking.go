@@ -13,10 +13,16 @@ import (
 //
 // Uppercase labels — "BOTTOM LINE", "CASE STUDY", "WHY", axis and column
 // labels — set tight read as shouting; typographic practice letter-spaces
-// them. Every shape paragraph that is a short all-caps label at text size gets
-// +7% tracking (0.07em, OOXML a:rPr spc), provided the wider label still wraps
-// to the same number of lines — so a label that barely fits its cell is left
-// untouched rather than pushed onto a second line.
+// them. Every shape paragraph that is a short, bold all-caps label at text
+// size gets +7% tracking (0.07em, OOXML a:rPr spc), provided the wider label
+// still wraps to the same number of lines — so a label that barely fits its
+// cell is left untouched rather than pushed onto a second line.
+//
+// Only bold paragraphs qualify: header, eyebrow and badge roles are set bold,
+// while regular-weight caps in body cells are initialisms ("VP CS", "CFO" in
+// a next-steps owner column, table cells, KPI comparators) whose word gaps
+// would visibly widen next to untracked mixed-case neighbours
+// (go-slide-creator-y1476).
 
 // capsTrackingEm is the added letter-spacing, as a fraction of the font size.
 const capsTrackingEm = 0.07
@@ -55,13 +61,16 @@ func trackCapsLabels(tb *pptx.TextBody, bounds pptx.RectEmu) {
 }
 
 // capsLabelSize reports the paragraph's font size when it is a caps label:
-// at least three letters, every letter uppercase, short, at text size, and
-// not already letter-spaced.
+// at least three letters, every letter uppercase, short, at text size, bold
+// (a header / eyebrow / badge role), and not already letter-spaced.
 func capsLabelSize(p *pptx.Paragraph) (int, bool) {
 	var text strings.Builder
 	size := 0
 	for _, r := range p.Runs {
 		if r.FieldType != "" || r.Spacing != 0 {
+			return 0, false
+		}
+		if !r.Bold && strings.TrimSpace(r.Text) != "" {
 			return 0, false
 		}
 		text.WriteString(r.Text)

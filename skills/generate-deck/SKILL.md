@@ -138,7 +138,8 @@ executable one.
   `list_patterns` / `show_pattern`. Out-of-range pattern text sizes are
   rejected, not clamped. Grid text settles onto the type scale
   (28 / 18 / 14 / 12 / 10pt; KPI figures keep their display size), short
-  ALL-CAPS labels are letter-spaced automatically (+7%) — write them in caps,
+  bold ALL-CAPS labels are letter-spaced automatically (+7%; regular-weight
+  initialisms such as an owner "VP CS" are not) — write them in caps,
   do not add spaces — and bold headings, titles and names are balanced so no
   line ends on a lone word. In a two-column comparison, open each column's
   bullets with a short label line to get a bold column header.
