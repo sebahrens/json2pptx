@@ -49,6 +49,11 @@ Map out a complete business model using the 9-section canvas framework.
 | `cost_structure` | Bottom-left | Major cost drivers |
 | `revenue_streams` | Bottom-right | How revenue is generated |
 
+The documented keys (`get_diagram_capabilities`) are `value_propositions` and
+`customer_relations`; `value_proposition` and `customer_relationships` (and
+camelCase forms) are accepted synonyms. Two spellings of one section are merged.
+Any other key is not drawn and is reported as `diagram.data_key_ignored`.
+
 ## Required Fields
 
 | Field | Type | Description |

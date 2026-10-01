@@ -78,7 +78,7 @@ var frameworkSections = map[string][]frameworkSection{
 		{key: "key_activities", heading: "Key activities", synonyms: []string{"activities"}},
 		{key: "key_resources", heading: "Key resources", synonyms: []string{"resources"}},
 		{key: "value_propositions", heading: "Value propositions", synonyms: []string{"value_proposition", "value"}},
-		{key: "customer_relations", heading: "Customer relationships", synonyms: []string{"customer_relationships", "relationships"}},
+		{key: "customer_relations", heading: "Customer relationships", synonyms: []string{"customer_relationships", "customer_relationship", "relationships"}},
 		{key: "channels", heading: "Channels", synonyms: []string{"channel"}},
 		{key: "customer_segments", heading: "Customer segments", synonyms: []string{"segments", "customers"}},
 		{key: "cost_structure", heading: "Cost structure", synonyms: []string{"costs"}},
@@ -273,11 +273,13 @@ func FrameworkContent(body map[string]any) map[string][]string {
 	}
 
 	out := map[string][]string{}
+	// Every spelling of a part is read and merged, canonical first: an author
+	// who writes both customer_relations and customer_relationships loses
+	// neither (go-slide-creator-b7qqg.17), matching the native canvas.
 	for _, s := range order {
 		for _, key := range append([]string{s.key}, s.synonyms...) {
 			if items := frameworkItems(scope[key]); len(items) > 0 {
-				out[s.key] = items
-				break
+				out[s.key] = append(out[s.key], items...)
 			}
 		}
 	}

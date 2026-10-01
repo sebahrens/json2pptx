@@ -78,7 +78,10 @@ size: the renderer draws labels at the floor, so a crowded diagram shows
 `TEXT_BELOW_READABLE_MIN` refusal (`simplify_or_enlarge_diagram`): enlarge the
 cell or cut categories. `diagram.region_overflow` names a Venn intersection
 caption that crosses its region's outline: shorten `fix.params.label`, apply
-`fix.params.overlap_ratio` when given, or move the detail to a callout. See [RAW_PATH.md](RAW_PATH.md) for the
+`fix.params.overlap_ratio` when given, or move the detail to a callout.
+`diagram.data_key_ignored` (review) names a `business_model_canvas` data key
+the canvas never reads (its text is not drawn): rename it to
+`fix.params.did_you_mean` or one of `fix.params.accepted`. See [RAW_PATH.md](RAW_PATH.md) for the
 raw response protocol. `strict_fit` controls promotion of fit and chart
 findings; consult the returned severity/action and `describe_finding`
 instead of copying an old promotion table.

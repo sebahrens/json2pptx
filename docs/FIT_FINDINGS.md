@@ -873,6 +873,25 @@ An org chart's flat `nodes` array has a `parent` that matches no `id`, a duplica
 }
 ```
 
+### `diagram.data_key_ignored`
+
+**Action:** `review`
+**Pattern:** `business_model_canvas`
+**Fix kind:** `review` (params: `field`, `diagram_type`, `accepted` — the nine documented keys, `did_you_mean` when a close accepted spelling exists)
+**Emitted at:** native diagram preflight — `validate` / `validate_input` / `preview_presentation_plan`; generate also logs it
+
+A native `business_model_canvas` reads its nine sections under any accepted spelling — the documented `key_partners`, `key_activities`, `key_resources`, `value_propositions`, `customer_relations`, `channels`, `customer_segments`, `cost_structure`, `revenue_streams`, plus synonyms such as `customer_relationships` / `value_proposition` (two spellings of one section are merged, canonical first). Any other key in `data` (or `data.boxes`) is never drawn, so its text would vanish from the slide; this finding names it instead (go-slide-creator-b7qqg.17). `title` / `subtitle` / `boxes` are not reported.
+
+```json
+{
+  "code": "diagram.data_key_ignored",
+  "path": "/slides/0/content/1/diagram_value/data/customer_relatons",
+  "message": "business_model_canvas: data key \"customer_relatons\" is not a canvas section and is not drawn — its content never reaches the slide; did you mean \"customer_relations\"?",
+  "fix": { "kind": "review", "params": { "field": "customer_relatons", "diagram_type": "business_model_canvas", "did_you_mean": "customer_relations", "accepted": ["key_partners", "..."] } },
+  "action": "review"
+}
+```
+
 ### `chart.glyph_missing`
 
 **Action:** `review`
