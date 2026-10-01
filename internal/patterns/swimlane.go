@@ -44,9 +44,9 @@ func (s *swimlane) SupportsInlineMarkdown() bool { return true }
 func (s *swimlane) ExemplarValues() any {
 	return &SwimlaneValues{
 		Lanes: []SwimlaneLane{
-			{Actor: "Customer", Steps: []string{"Submit request", "Receive update", "Approve"}},
-			{Actor: "Support", Steps: []string{"Triage", "Investigate", "Resolve"}},
-			{Actor: "Engineering", Steps: []string{"", "Fix bug", "Deploy"}},
+			{Actor: "Customer", Steps: []string{"Report incident through the portal", "", "", "", "", "Confirm service restored and close"}},
+			{Actor: "Service desk", Steps: []string{"", "Log, classify and assign priority", "", "", "Verify fix with the customer", ""}},
+			{Actor: "Engineering", Steps: []string{"", "", "Diagnose the root cause", "Deploy and monitor the fix", "", ""}},
 		},
 	}
 }
@@ -292,11 +292,13 @@ func (s *swimlane) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		// Step cells
 		for j, step := range lane.Steps {
 			if step == "" {
-				// Empty cell — transparent placeholder
+				// Empty position: an unpainted spacer, so the lane reads as
+				// a flow with gaps rather than a table of blank tiles
+				// (go-slide-creator-0b3f6). Connectors skip it.
 				cells[j+1] = &jsonschema.GridCellInput{
 					Shape: &jsonschema.ShapeSpecInput{
 						Geometry: "rect",
-						Fill:     json.RawMessage(laneFill),
+						Fill:     json.RawMessage(`"none"`),
 						Line:     laneLine,
 					},
 				}
@@ -320,12 +322,69 @@ func (s *swimlane) Expand(ctx ExpandContext, values, overrides any, cellOverride
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
-		Gap:     4,
-		RowGap:  2,
+		ColGap:  swimlaneColGap(stepCount),
+		RowGap:  swimlaneRowGap(len(vals.Lanes)),
 		Rows:    rows,
+		Links:   swimlaneLinks(vals.Lanes, accent),
 	}
 
 	return grid, nil
+}
+
+// Gutters wide enough to carry a visible arrow between steps: the column
+// gap holds a lane change's elbow turn plus an arrowhead, the row gap a
+// same-column hand-off arrow. Dense grids narrow them so the step text keeps
+// the room its budget was measured with (the 8-step x 6-lane schema maximum
+// is pinned by TestSchemaMaximaStayReadable).
+func swimlaneColGap(steps int) float64 {
+	switch {
+	case steps >= 7:
+		return 6
+	case steps == 6:
+		return 10
+	}
+	return 14
+}
+
+func swimlaneRowGap(lanes int) float64 {
+	switch {
+	case lanes >= 6:
+		return 3
+	case lanes == 5:
+		return 6
+	case lanes == 4:
+		return 8
+	}
+	return 10
+}
+
+// swimlaneLinks joins consecutive steps in reading order — column by
+// column, top lane first within a column — with accent arrows, the same
+// connector style value-chain and journey-maturity use. A lane change in the
+// next column turns in the column gutter; a hand-off within one column runs
+// straight down. Empty positions are skipped (go-slide-creator-0b3f6).
+func swimlaneLinks(lanes []SwimlaneLane, accent string) []jsonschema.GridLinkInput {
+	steps := 0
+	if len(lanes) > 0 {
+		steps = len(lanes[0].Steps)
+	}
+	var order [][2]int // {grid row, grid column}
+	for j := 0; j < steps; j++ {
+		for i, lane := range lanes {
+			if j < len(lane.Steps) && lane.Steps[j] != "" {
+				order = append(order, [2]int{i, j + 1})
+			}
+		}
+	}
+	var links []jsonschema.GridLinkInput
+	for k := 0; k+1 < len(order); k++ {
+		links = append(links, jsonschema.GridLinkInput{
+			From:      order[k],
+			To:        order[k+1],
+			Connector: &jsonschema.ConnectorSpecInput{Style: "arrow", Color: accent, Width: 1.5},
+		})
+	}
+	return links
 }
 
 func buildSwimlaneTextContent(content string, size float64, bold bool, color, align string) json.RawMessage {

@@ -285,6 +285,7 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 	}
 
 	connectors := resolveRowConnectors(grid, cells, rowCellIDs, rowYOffsets, rowHeightsEMU, alloc)
+	connectors = append(connectors, resolveLinks(grid, cells, rowCellIDs, alloc)...)
 	for i := range cells {
 		cell := &cells[i]
 		if cell.Kind == CellKindShape && cell.ShapeSpec != nil {

@@ -1,5 +1,31 @@
 # Schema Changelog
 
+- **2026-10-01 — `shape_grid.links`; swimlane hand-off arrows; one people primitive (4.155.0; `go-slide-creator-0b3f6`, `q4fut`, `ux1le`, `swt4x`, `wd6p6`).**
+  - New optional `shape_grid.links`: `[{"from":[row,col],"to":[row,col],"connector":{style,color,width,dash}}]`
+    draws an explicit connector between two cells addressed by the row and
+    grid column each starts in. Same-column links run bottom edge to top edge;
+    other links run side to side and turn in the column gutter as an elbow. A
+    link to a spacer (no fill, no outline) or a missing cell is dropped. Row
+    `connector` is unchanged (it still chains cells within one row).
+  - `swimlane` joins consecutive steps in reading order (column by column, top
+    lane first) with accent arrows, including lane changes, and draws empty
+    positions as unpainted spacers instead of blank lane-tinted tiles; the
+    gutters widen to carry the arrows (narrower on dense grids). The exemplar
+    is now a one-step-per-column incident flow.
+  - `team-bios` draws its initials placeholder with the `contact-directory`
+    primitive — a circular accent-tint disc with bold initials scaled to the
+    disc (an explicit `photo_label_size` wins) — crops photos into a circle,
+    and centres name / role / bio under the headshot.
+  - kpi-Nup icons default to `top` on every card count (kpi-2up / kpi-3up
+    used to pin a `left` icon on landscape cards); an authored
+    `icon.position` still wins.
+  - `pull-quote` aligns the quote and attribution flush to its accent rule
+    (left rule → left-aligned, right rule → right-aligned) and centres them
+    only with `accent_side: "none"`.
+  - Realistic exemplar copy (`show_pattern` `example_values`, `plan_deck`
+    fit prediction) for `card-grid`, `comparison-2col`, `timeline-horizontal`
+    and `agenda-with-images` (every row now carries an `image_label`).
+
 - **2026-09-30 — Grid diagrams obey the SVG strategy (`go-slide-creator-4c9m7`).**
   Diagram / chart cells embedded by patterns and `shape_grid` (e.g. the
   `chart-insights-split` / semantic `chart_insight` chart panel) now follow

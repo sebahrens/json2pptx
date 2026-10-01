@@ -705,14 +705,7 @@ func (c *contactDirectory) Expand(ctx ExpandContext, values, overrides any, cell
 	headInk := inkOnLight(ctx, accent, 3.0)
 	nameInk := inkOnLight(ctx, "dk1", 4.5)
 	titleInk := inkOnLight(ctx, "dk2", 4.5)
-	discTone := inactiveTintTone(accent)
-	// Initials are large bold text: the accent reads on its own pale tint on
-	// most palettes (3:1 is the large-text bar); a light accent falls back to
-	// the measured theme ink. Without a theme the accent is kept.
-	discInk := accent
-	if ratio, ok := fillContrast(ctx, fillTone{Color: accent}, discTone); ok && ratio < 4.5 {
-		discInk = readableTextOn(ctx, discTone, accent)
-	}
+	discTone, discInk := headshotDisc(ctx, accent)
 
 	var rows []jsonschema.GridRowInput
 	for g, grp := range v.Groups {
@@ -792,27 +785,10 @@ func cdPhotoCell(p ContactDirectoryPerson, disc fillTone, discInk string, photoP
 	if t := strings.TrimSpace(p.Title); t != "" && alt != "" {
 		alt += ", " + t
 	}
-	if cell := patternPhotoCell(p.Photo, firstNonEmpty(alt, "Contact photo")); cell != nil {
-		cell.Fit = "contain"
-		cell.Image.Geometry = "ellipse"
-		return cell
-	}
 	// Two bold initials fill the ellipse's inscribed text box at 30% of the
 	// disc, never under the 12pt floor.
 	initialsSize := math.Max(shapegrid.MinTextSizePt, math.Round(photoPt*0.3))
-	textJSON, _ := json.Marshal(chartInsightsText{
-		Paragraphs:    []chartInsightsParagraph{{Content: deriveInitials(p.Name), Size: initialsSize, Bold: true, Color: discInk, Align: "ctr"}},
-		Align:         "ctr",
-		VerticalAlign: "ctr",
-	})
-	return &jsonschema.GridCellInput{
-		Fit: "contain",
-		Shape: &jsonschema.ShapeSpecInput{
-			Geometry: "ellipse",
-			Fill:     disc.fillJSON(),
-			Text:     textJSON,
-		},
-	}
+	return headshotCell(p.Photo, firstNonEmpty(alt, "Contact photo"), deriveInitials(p.Name), disc, discInk, initialsSize)
 }
 
 // cdTextCell is the bold name over the muted title, centred on the headshot.

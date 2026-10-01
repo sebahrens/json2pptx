@@ -261,6 +261,12 @@ func (pq *pullQuote) Expand(ctx ExpandContext, values, overrides any, cellOverri
 		accentSide = "left"
 	}
 
+	// The quote block hangs flush off its accent rule: left-aligned beside a
+	// left rule, right-aligned beside a right one, centred only when there is
+	// no rule. A centred quote left the rule orphaned 100+px from the first
+	// glyph (go-slide-creator-wd6p6).
+	align := pullQuoteTextAlign(accentSide)
+
 	areaW, areaH := sizingAreaPt(ctx)
 
 	// An optional headshot takes a column of its own, and the quote block is
@@ -285,8 +291,8 @@ func (pq *pullQuote) Expand(ctx ExpandContext, values, overrides any, cellOverri
 	// Both rows hold the written fit of their text as well as the theme-font
 	// estimate, so the writer stores neither shrunk (go-slide-creator-n1muf).
 	attrCell := pullQuoteCell([]pullQuoteParagraph{
-		{Content: attrLine, Size: attrSize, Color: "dk1", Align: "ctr"},
-	}, "t")
+		{Content: attrLine, Size: attrSize, Color: "dk1", Align: align},
+	}, "t", align)
 	attrRowPt := math.Max(sizedBlockHeightPt(ctx, []sizedPara{{text: attrLine, sizePt: attrSize}}, textW),
 		writtenFitHeightPt(attrCell.Shape.Text, textW, 0))
 
@@ -304,8 +310,8 @@ func (pq *pullQuote) Expand(ctx ExpandContext, values, overrides any, cellOverri
 	var quoteRowPt float64
 	for _, size := range steps {
 		quoteCell = pullQuoteCell([]pullQuoteParagraph{
-			{Content: quoteLine, Size: size, Italic: true, Color: "dk1", Align: "ctr"},
-		}, "b")
+			{Content: quoteLine, Size: size, Italic: true, Color: "dk1", Align: align},
+		}, "b", align)
 		quoteRowPt = math.Max(sizedBlockHeightPt(ctx, []sizedPara{{text: quoteLine, sizePt: size}}, textW),
 			writtenFitHeightPt(quoteCell.Shape.Text, textW, 0))
 		if quoteRowPt <= capPt {
@@ -412,12 +418,25 @@ func pullQuoteImageAlt(v *PullQuoteValues) string {
 	}
 }
 
+// pullQuoteTextAlign is the horizontal alignment that keeps the quote block
+// attached to its accent rule.
+func pullQuoteTextAlign(accentSide string) string {
+	switch accentSide {
+	case "left":
+		return "l"
+	case "right":
+		return "r"
+	}
+	return "ctr"
+}
+
 // pullQuoteCell wraps paragraphs in a text cell with the given vertical
-// anchor; the cell keeps the uniform shape text margin.
-func pullQuoteCell(paras []pullQuoteParagraph, vAlign string) *jsonschema.GridCellInput {
+// anchor and horizontal alignment; the cell keeps the uniform shape text
+// margin.
+func pullQuoteCell(paras []pullQuoteParagraph, vAlign, align string) *jsonschema.GridCellInput {
 	textJSON, _ := json.Marshal(pullQuoteText{
 		Paragraphs:    paras,
-		Align:         "ctr",
+		Align:         align,
 		VerticalAlign: vAlign,
 	})
 	return &jsonschema.GridCellInput{

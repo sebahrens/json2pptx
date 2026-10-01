@@ -95,6 +95,24 @@ type Grid struct {
 	// sized text settles onto the type scale (tokens.SnapTextHPt); callers
 	// set this only for a design_mode "free" deck's own grids.
 	KeepTextSizes bool
+
+	// Links are explicit connectors between two cells addressed by their
+	// (row, grid column) origin, for flows that cross rows (a swimlane
+	// hand-off from one lane to the next). Row connectors only chain cells
+	// that share a row.
+	Links []Link
+}
+
+// Link is an explicit connector from one cell to another. Cells are
+// addressed by the row and grid column they start in (the resolved cell's
+// RowIdx/ColIdx). Same-column links run bottom edge to top edge; any other
+// link runs side edge to side edge and becomes an elbow when the endpoints
+// sit at different heights, so it turns in the column gutter instead of
+// cutting through neighbouring cells.
+type Link struct {
+	FromRow, FromCol int
+	ToRow, ToCol     int
+	Spec             *ConnectorSpec
 }
 
 // Row is a single row in the grid.

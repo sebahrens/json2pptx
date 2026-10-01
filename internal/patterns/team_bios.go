@@ -152,7 +152,7 @@ func (t *teamBios) Schema() *Schema {
 			"name":        StringSchema(teamBiosNameMaxChars).WithDescription("Person's full name (rendered bold); about 52 readable characters with 5-8 members"),
 			"role":        StringSchema(teamBiosRoleMaxChars).WithDescription("Role or title (rendered in accent color); about 40 readable characters with 5-8 members"),
 			"bio":         StringSchema(teamBiosBioMaxChars).WithDescription("Short bio. Approximate readable limit: 220 characters with 1-4 members, 40 with 5-8; longer bios emit BODY_TOO_LONG."),
-			"photo":       PhotoSchema("Headshot, cover-cropped to a centered square photo frame; omit it to draw a square initials tile (alt defaults to the member's name and role)", teamBiosPhotoAltMaxChars),
+			"photo":       PhotoSchema("Headshot, cover-cropped into a centred circle; omit it to draw a circular initials disc (alt defaults to the member's name and role)", teamBiosPhotoAltMaxChars),
 			"photo_label": StringSchema(teamBiosPhotoMaxChars).WithDescription("Label centred in the initials placeholder when no photo is given; defaults to initials derived from name"),
 		},
 		[]string{"name", "role"},
@@ -324,6 +324,12 @@ func (t *teamBios) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		textRowHeight  = 6.0 // ~60% of a card-row
 	)
 
+	// The headshot placeholder is the people primitive contact-directory
+	// draws too — an accent-tint disc with bold accent initials — instead of
+	// a large lt2 square with small initials (go-slide-creator-q4fut).
+	disc, discInk := headshotDisc(ctx, accent)
+	initialsSize := teamBiosInitialsSize(ctx, v.Members, fit, columns, ovr.PhotoLabelSize, photoLabelSize)
+
 	var rows []jsonschema.GridRowInput
 
 	for start := 0; start < len(v.Members); start += teamBiosMaxPerRow {
@@ -340,7 +346,7 @@ func (t *teamBios) Expand(ctx ExpandContext, values, overrides any, cellOverride
 			if col < len(members) {
 				memberIdx := start + col
 				m := members[col]
-				photoCells[col] = buildTeamBiosPhotoCell(m, accent, photoLabelSize)
+				photoCells[col] = buildTeamBiosPhotoCell(m, disc, discInk, initialsSize)
 				textCells[col] = buildTeamBiosTextCell(m, accent, nameSize, roleSize, bioSize)
 
 				// Cell overrides apply to the text cell (where name/role/bio live).
@@ -560,29 +566,38 @@ func capTeamBiosTextRows(ctx ExpandContext, grid *jsonschema.ShapeGridInput, col
 // Cell builders
 // ---------------------------------------------------------------------------
 
-func buildTeamBiosPhotoCell(m TeamBiosMember, accent string, photoLabelSize float64) *jsonschema.GridCellInput {
-	// A real headshot renders as a shape_grid image cell, which the generator
-	// cover-crops to the frame; the initials tile is the fallback, not the only
-	// option it used to be (go-slide-creator-hdpq).
-	if cell := patternPhotoCell(m.Photo, teamBiosPhotoAlt(m)); cell != nil {
-		// Images normally cover-crop the full grid cell. A headshot needs a
-		// square frame inside its wide card column so faces are not cut into
-		// letterboxes; explicit contain also bypasses default-fill expansion.
-		cell.Fit = "contain"
-		return cell
-	}
+// buildTeamBiosPhotoCell is the shared headshot primitive: a real headshot
+// cover-cropped into a circle (go-slide-creator-hdpq), else the initials disc.
+// Both are square ("contain") so faces are not cut into letterboxes inside a
+// wide card column.
+func buildTeamBiosPhotoCell(m TeamBiosMember, disc fillTone, ink string, labelSize float64) *jsonschema.GridCellInput {
 	label := strings.TrimSpace(m.PhotoLabel)
 	if label == "" {
 		label = deriveInitials(m.Name)
 	}
-	return &jsonschema.GridCellInput{
-		Fit: "contain",
-		Shape: &jsonschema.ShapeSpecInput{
-			Geometry: "roundRect",
-			Fill:     json.RawMessage(`"lt2"`),
-			Text:     buildTeamBiosCenteredText(label, photoLabelSize, true, accent),
-		},
+	return headshotCell(m.Photo, teamBiosPhotoAlt(m), label, disc, ink, labelSize)
+}
+
+// teamBiosInitialsSize scales the initials with the disc the way
+// contact-directory does (30% of its diameter) so a large disc does not
+// carry small initials; an explicit photo_label_size wins, the 14pt default
+// is the floor, and a longer custom photo_label (over 3 characters) keeps
+// the default so it is not set larger than the disc holds.
+func teamBiosInitialsSize(ctx ExpandContext, members []TeamBiosMember, fit teamBiosFitResult, columns int, override, base float64) float64 {
+	if override != 0 {
+		return base
 	}
+	for _, m := range members {
+		if m.Photo == nil && runeLen(strings.TrimSpace(m.PhotoLabel)) > 3 {
+			return base
+		}
+	}
+	areaW, _ := sizingAreaPt(ctx)
+	diameter := fit.photoPt
+	if colW := equalColumnWidthPt(areaW, columns, teamBiosGapPt); colW > 0 && colW < diameter {
+		diameter = colW
+	}
+	return math.Max(base, math.Round(diameter*0.3))
 }
 
 // teamBiosPhotoAlt describes a headshot for a reader who cannot see it: the
@@ -654,17 +669,20 @@ func buildTeamBiosCenteredText(label string, size float64, bold bool, color stri
 
 func buildTeamBiosTextContent(m TeamBiosMember, nameSize, roleSize, bioSize float64, accent string) json.RawMessage {
 	paras := []teamBiosParagraph{
-		{Content: m.Name, Size: nameSize, Bold: true, Color: "dk1", Align: "l"},
-		{Content: m.Role, Size: roleSize, Color: accent, Align: "l"},
+		{Content: m.Name, Size: nameSize, Bold: true, Color: "dk1", Align: "ctr"},
+		{Content: m.Role, Size: roleSize, Color: accent, Align: "ctr"},
 	}
 	if strings.TrimSpace(m.Bio) != "" {
 		paras = append(paras, teamBiosParagraph{
-			Content: m.Bio, Size: bioSize, Color: "dk2", Align: "l",
+			Content: m.Bio, Size: bioSize, Color: "dk2", Align: "ctr",
 		})
 	}
+	// Name, role and bio centre under the centred headshot so each column
+	// has one axis, not a centred disc over a left-aligned text block
+	// (go-slide-creator-q4fut, go-slide-creator-wd6p6).
 	obj := teamBiosTextObj{
 		Paragraphs:    paras,
-		Align:         "l",
+		Align:         "ctr",
 		VerticalAlign: "t",
 	}
 	data, _ := json.Marshal(obj)

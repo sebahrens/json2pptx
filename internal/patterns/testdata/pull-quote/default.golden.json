@@ -26,10 +26,10 @@
                   "size": 36,
                   "italic": true,
                   "color": "dk1",
-                  "align": "ctr"
+                  "align": "l"
                 }
               ],
-              "align": "ctr",
+              "align": "l",
               "vertical_align": "b"
             }
           }
@@ -49,10 +49,10 @@
                   "content": "— Alan Kay, Computer Scientist",
                   "size": 14,
                   "color": "dk1",
-                  "align": "ctr"
+                  "align": "l"
                 }
               ],
-              "align": "ctr",
+              "align": "l",
               "vertical_align": "t"
             }
           }
