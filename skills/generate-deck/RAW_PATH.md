@@ -108,6 +108,11 @@ after embedding a chart or diagram. A diagram collision or unreadable
 native text is a content/layout problem: shorten labels or give the diagram
 more space, then render the slide to pixels again.
 
+A `swot` or `porters_five_forces` diagram also renders as native shapes in a
+`shape_grid` cell (`{"diagram": {"type": "swot", ...}}`), so it can sit on
+`blank-title` under the same title as pattern slides; the other native-only
+types (pestel, bmc, value_chain, ...) still need a body placeholder.
+
 Diagrams use one hue by default: timeline bars/milestones, matrix_2x2
 points and org_chart levels stay in accent1 and its tints (org levels take
 one accent each only under `accent_strategy` `rotate` / `section-keyed`),

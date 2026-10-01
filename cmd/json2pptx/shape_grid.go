@@ -1196,15 +1196,14 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 				ExtentCY: cell.Bounds.CY,
 			})
 		case shapegrid.CellKindDiagram:
-			icons, diagramWarnings, renderFindings, err := generateDiagramCellInserts(cell, diagCtx)
+			s, icons, diagramWarnings, findings, err := generateDiagramCell(cell, alloc, diagCtx, slideIdx)
 			if err != nil {
 				return nil, err
 			}
+			cellShapes = append(cellShapes, s...)
 			cellIcons = append(cellIcons, icons...)
 			warnings = append(warnings, diagramWarnings...)
-			fitFindings = append(fitFindings, collectDiagramCellFindings(cell, slideIdx)...)
-			fitFindings = append(fitFindings, generator.SvggenFindingsToFit(renderFindings, cell.DiagramSpec.Type,
-				slidepath.GridCellField(slideIdx, cell.RowIdx, cell.ColIdx, "diagram"))...)
+			fitFindings = append(fitFindings, findings...)
 		case shapegrid.CellKindImage:
 			s, imgs, err := generateImageCellXML(cell, alloc)
 			if err != nil {
@@ -1452,6 +1451,47 @@ func generateDiagramCellInserts(cell shapegrid.ResolvedCell, diagCtx *GridDiagra
 		// behavior of grouped native shape cells (go-slide-creator-zg8q.10).
 		Group: cell.Group,
 	}}, warnings, result.Findings, nil
+}
+
+// generateDiagramCell renders one diagram cell. SWOT and five forces are
+// native OOXML shapes, not svggen pictures, so they are emitted as a shape
+// group at the cell bounds (go-slide-creator-ngbnf); every other type is an
+// svggen picture with its render-time fit findings.
+func generateDiagramCell(cell shapegrid.ResolvedCell, alloc *pptx.ShapeIDAllocator, diagCtx *GridDiagramContext, slideIdx int) ([][]byte, []generator.IconInsert, []string, []patterns.FitFinding, error) {
+	if generator.IsGridNativeDiagram(cell.DiagramSpec) {
+		xml, err := generateNativeDiagramCellXML(cell, alloc, diagCtx)
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
+		return [][]byte{xml}, nil, nil, nil, nil
+	}
+	icons, warnings, renderFindings, err := generateDiagramCellInserts(cell, diagCtx)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+	findings := collectDiagramCellFindings(cell, slideIdx)
+	findings = append(findings, generator.SvggenFindingsToFit(renderFindings, cell.DiagramSpec.Type,
+		slidepath.GridCellField(slideIdx, cell.RowIdx, cell.ColIdx, "diagram"))...)
+	return nil, icons, warnings, findings, nil
+}
+
+// generateNativeDiagramCellXML renders a native-shape diagram (SWOT, five
+// forces) as a group at the cell bounds, reserving its shape IDs from alloc so
+// they cannot collide with the grid's other shapes.
+func generateNativeDiagramCellXML(cell shapegrid.ResolvedCell, alloc *pptx.ShapeIDAllocator, diagCtx *GridDiagramContext) ([]byte, error) {
+	var themeColors []types.ThemeColor
+	var font string
+	if diagCtx != nil {
+		themeColors = diagCtx.ThemeColors
+		font = diagCtx.FontFamily
+	}
+	base := alloc.AllocN(generator.GridNativeDiagramShapeIDs(cell.DiagramSpec))
+	bounds := types.BoundingBox{X: cell.Bounds.X, Y: cell.Bounds.Y, Width: cell.Bounds.CX, Height: cell.Bounds.CY}
+	xml, err := generator.GenerateGridNativeDiagramXML(cell.DiagramSpec, bounds, base, themeColors, font, generator.DiagramAltTextFor(cell.DiagramSpec))
+	if err != nil {
+		return nil, fmt.Errorf("diagram in grid row %d, column %d: %w", cell.RowIdx+1, cell.ColIdx+1, err)
+	}
+	return []byte(xml), nil
 }
 
 // diagramFallbackSizePx gives the raster fallback at least 150 pixels per

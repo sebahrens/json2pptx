@@ -38,14 +38,11 @@ func TestCompileFrameworkRoutesEachFramework(t *testing.T) {
 		if diagram.Type != "swot" {
 			t.Errorf("diagram type = %q, want swot", diagram.Type)
 		}
-		// The diagram needs a body placeholder to land in; blank-title has none.
-		if slide.SlideType != "diagram" {
-			t.Errorf("slide_type = %q, want diagram", slide.SlideType)
-		}
-		// Pinned rather than left to the heuristic matcher, which picked a
-		// different layout per slide (go-slide-creator-ngbnf).
-		if slide.LayoutID != "content" {
-			t.Errorf("layout_id = %q, want content", slide.LayoutID)
+		// The native diagram rides in a one-cell grid on blank-title, like
+		// every other content kind, so the title does not jump between
+		// layouts mid-deck (go-slide-creator-ngbnf).
+		if slide.LayoutID != "blank-title" {
+			t.Errorf("layout_id = %q, want blank-title", slide.LayoutID)
 		}
 	})
 
@@ -255,6 +252,15 @@ func findDiagram(t *testing.T, slide *deckinput.SlideInput) *types.DiagramSpec {
 	for _, c := range slide.Content {
 		if c.DiagramValue != nil {
 			return c.DiagramValue
+		}
+	}
+	if g := slide.ShapeGrid; g != nil {
+		for _, row := range g.Rows {
+			for _, cell := range row.Cells {
+				if cell != nil && cell.Diagram != nil {
+					return cell.Diagram
+				}
+			}
 		}
 	}
 	t.Fatalf("slide carries no diagram: %+v", slide.Content)
