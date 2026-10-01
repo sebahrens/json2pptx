@@ -3,10 +3,8 @@
 Use this guide when a deck tool returns findings. Do **not** load a static
 finding-code catalog: call `describe_finding` for an unfamiliar code. Its
 runtime registry supplies the current summary, severity, emission conditions,
-remediation steps, examples, and related codes. The diagnostic taxonomy and
-code-level coverage are tested in the server. Contributors who need emission
-paths and deeper rationale can read
-[docs/FIT_FINDINGS.md](../../docs/FIT_FINDINGS.md).
+remediation steps, examples, and related codes. Emission paths and deeper
+rationale: [docs/FIT_FINDINGS.md](../../docs/FIT_FINDINGS.md).
 
 Each finding has stable machine fields `{path, code, severity, action, fix}`;
 `fix` has `kind` and `params`. The prose `message` is explanatory,
@@ -93,5 +91,4 @@ caption that crosses its region's outline: shorten `fix.params.label`, apply
 the canvas never reads (its text is not drawn): rename it to
 `fix.params.did_you_mean` or one of `fix.params.accepted`. See [RAW_PATH.md](RAW_PATH.md) for the
 raw response protocol. `strict_fit` controls promotion of fit and chart
-findings; consult the returned severity/action and `describe_finding`
-instead of copying an old promotion table.
+findings; trust the returned severity/action, not an old promotion table.
