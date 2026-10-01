@@ -56,11 +56,12 @@ const (
 	VAlignCenter VerticalAlign = "center"
 	// VAlignBottom keeps resolved row heights and anchors the block at the bottom.
 	VAlignBottom VerticalAlign = "bottom"
-	// VAlignAuto keeps resolved row heights and hangs the block from the top
-	// of the bounds when it fills less than AutoCenterMinFill of them, else
-	// centres it (go-slide-creator-e17xy): a short card row sits under the
-	// title like native body text instead of floating mid-slide, while a
-	// block that nearly fills the area is balanced.
+	// VAlignAuto keeps resolved row heights and hangs the block from the
+	// template's body line (Grid.AnchorY, see AnchoredAuto) when one is known;
+	// without one it top-anchors a block filling less than AutoCenterMinFill
+	// of the bounds and centres a fuller one (go-slide-creator-e17xy): a card
+	// row sits under the title like native body text instead of floating
+	// mid-slide.
 	VAlignAuto VerticalAlign = "auto"
 )
 
@@ -79,6 +80,18 @@ func (a VerticalAlign) ResolveAuto(usedEMU, availEMU int64) VerticalAlign {
 		return VAlignCenter
 	}
 	return VAlignTop
+}
+
+// AnchoredAuto resolves VAlignAuto to VAlignTop when the template's body
+// line is known (anchorY > 0): every content-sized block then hangs from the
+// line native body text starts on, whatever its fill, so pattern and native
+// slides share one content top (go-slide-creator-e17xy). Without a body line
+// auto keeps its fill rule (ResolveAuto); other alignments are unchanged.
+func (a VerticalAlign) AnchoredAuto(anchorY int64) VerticalAlign {
+	if a == VAlignAuto && anchorY > 0 {
+		return VAlignTop
+	}
+	return a
 }
 
 // ParseVerticalAlign maps the DTO string to a VerticalAlign. "" and

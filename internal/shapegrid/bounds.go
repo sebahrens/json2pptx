@@ -35,6 +35,12 @@ type ContentZone struct {
 	// placeholder X + its lIns), or 0 when unknown. Unfilled first-column
 	// grid text is inset to start on it (go-slide-creator-svrpx).
 	TextLeft int64
+	// ContentTop, when non-zero, is where default grid bounds start instead
+	// of TitleBottom + gap: the template's body line (BodyTop), committed only
+	// when starting there costs the zone no height a full-area pattern needs
+	// (go-slide-creator-e17xy). Explicit slide-relative bounds still clamp
+	// against TitleBottom only.
+	ContentTop int64
 }
 
 // DefaultBoundsFromZone derives grid bounds from a ContentZone, applying a gap (in points)
@@ -42,6 +48,9 @@ type ContentZone struct {
 func DefaultBoundsFromZone(zone ContentZone, gapPt float64) pptx.RectEmu {
 	gapEMU := int64(gapPt * 12700)
 	top := zone.TitleBottom + gapEMU
+	if zone.ContentTop > top {
+		top = zone.ContentTop
+	}
 	bottom := zone.FooterTop - gapEMU
 	height := bottom - top
 	if height < 0 {

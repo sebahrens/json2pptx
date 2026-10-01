@@ -324,7 +324,9 @@ func TestGeometry_SparseSemanticPatternKindsReportUnderfill(t *testing.T) {
 		values string
 	}{
 		{"team-bios", `{"members":[{"name":"Amara Okafor","role":"Partner","bio":"Leads the work."},{"name":"Jonas Weber","role":"Delivery lead","bio":"Runs the plan."},{"name":"Priya Raman","role":"Data lead","bio":"Owns reporting."}]}`},
-		{"phase-roadmap", `{"phases":[{"name":"Pilot","date_label":"Q1","description":"Prove value"},{"name":"Expand","date_label":"Q2","description":"Scale"},{"name":"Launch","date_label":"Q3","description":"Go live"}]}`},
+		// Bare phase names: the header boxes alone (go-slide-creator-e17xy
+		// moved roadmaps with one-line descriptions to the strip threshold).
+		{"phase-roadmap", `{"phases":[{"name":"Pilot"},{"name":"Expand"},{"name":"Launch"}]}`},
 		{"agenda", `{"items":["Performance","Risks","Investment"]}`},
 		{"icon-row", `[{"icon":"rocket","caption":"Launch"},{"icon":"trending-up","caption":"Growth"},{"icon":"currency-dollar","caption":"Revenue"}]`},
 		{"quote-cluster", `{"quotes":[{"text":"Faster decisions.","name":"A. Lee"},{"text":"Better data.","name":"J. Smith"},{"text":"Less rework.","name":"P. Kim"}]}`},

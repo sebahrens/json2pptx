@@ -96,15 +96,20 @@ func TestVerticalImbalance(t *testing.T) {
 	safe := pptx.RectEmu{X: 0, Y: 0, CX: 9144000, CY: 4572000}
 	slide := &SlideInput{}
 	top := []pptx.RectEmu{{X: 0, Y: 0, CX: 9144000, CY: 1828800}}
-	if f := checkVerticalImbalance(top, safe, slide, 0, ""); f == nil || f.Code != patterns.ErrCodeVerticalImbalance {
+	if f := checkVerticalImbalance(top, safe, slide, 0, "", 0); f == nil || f.Code != patterns.ErrCodeVerticalImbalance {
 		t.Fatalf("top-pinned block not reported: %+v", f)
 	}
 	centred := []pptx.RectEmu{{X: 0, Y: 1371600, CX: 9144000, CY: 1828800}}
-	if f := checkVerticalImbalance(centred, safe, slide, 0, ""); f != nil {
+	if f := checkVerticalImbalance(centred, safe, slide, 0, "", 0); f != nil {
 		t.Errorf("centred block reported: %+v", f)
 	}
+	// go-slide-creator-e17xy: a block hung from the template's body line
+	// leaves its band below as the normal bottom margin.
+	if f := checkVerticalImbalance(top, safe, slide, 0, "", safe.Y+12700); f != nil {
+		t.Errorf("block hung from the body line reported: %+v", f)
+	}
 	slide.Takeaway = "The takeaway renders below the grid."
-	if f := checkVerticalImbalance(top, safe, slide, 0, ""); f != nil {
+	if f := checkVerticalImbalance(top, safe, slide, 0, "", 0); f != nil {
 		t.Errorf("band below a grid with a takeaway reported: %+v", f)
 	}
 }

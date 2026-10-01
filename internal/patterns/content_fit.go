@@ -100,9 +100,10 @@ func fitSingleLineSize(text, font string, bold bool, sizePt, minPt, widthPt floa
 // GridVerticalAlignDefault is the vertical_align every expanded pattern grid
 // gets unless the pattern sets its own. Content-sized blocks (rows capped by
 // max_height, height-capped bounds) no longer stretch to fill the content area
-// (go-slide-creator-7km8); "auto" hangs a block that fills under 60% of the
-// area from its top — the same line native body text starts on — and centres
-// a fuller one (go-slide-creator-e17xy). A slide-level pattern
+// (go-slide-creator-7km8); "auto" hangs the block from the template's body
+// line — the line native body text starts on — and, on a template without
+// one, centres a block filling over 60% of the area (go-slide-creator-e17xy).
+// A slide-level pattern
 // vertical_align ("center", "top", ...) overrides it.
 const GridVerticalAlignDefault = "auto"
 

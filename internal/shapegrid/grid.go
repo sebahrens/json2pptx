@@ -738,7 +738,7 @@ func effectiveVAlign(grid *Grid) VerticalAlign {
 	}
 	for _, r := range grid.Rows {
 		if r.MaxHeight > 0 {
-			return grid.VAlign
+			return grid.VAlign.AnchoredAuto(grid.AnchorY)
 		}
 	}
 	return VAlignStretch

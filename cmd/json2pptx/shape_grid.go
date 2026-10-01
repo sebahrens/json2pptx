@@ -706,7 +706,7 @@ func alignRelativeBounds(b, content pptx.RectEmu, input *ShapeGridInput, anchorY
 		return b
 	}
 	align, _ := shapegrid.ParseVerticalAlign(input.VerticalAlign)
-	switch align.ResolveAuto(b.CY, content.CY) {
+	switch align.AnchoredAuto(anchorY).ResolveAuto(b.CY, content.CY) {
 	case shapegrid.VAlignTop:
 		if anchorY > b.Y {
 			b.Y += min64(anchorY-b.Y, content.Y+content.CY-b.CY-b.Y)

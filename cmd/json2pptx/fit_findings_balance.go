@@ -24,6 +24,9 @@ const (
 	// verticalImbalanceSkewFrac is how much larger (as a share of the content
 	// zone's height) the empty band on one side must be than on the other.
 	verticalImbalanceSkewFrac = 0.30
+	// bodyLineToleranceEMU is how far (6pt) below the template's body line a
+	// block may start and still count as hung from it.
+	bodyLineToleranceEMU = 6 * 12700
 
 	// sparsePlaceholderMaxFrac: body text filling less than this share of its
 	// placeholder's height reads as a few lines stuck to the top of an empty box.
@@ -38,7 +41,13 @@ const (
 // other — an empty band above a roadmap, or a row of cards pinned to the top.
 // Centred content with equal margins is balanced and is not reported;
 // sparseness as such is SLIDE_UNDERUSED's job.
-func checkVerticalImbalance(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInput, si int, patternName string) *patterns.FitFinding {
+//
+// bodyLine is the template's body line (ContentZone.BodyTop, 0 when
+// unknown). A block whose top sits on it hangs from the line native body
+// text starts on — the deliberate placement for content-sized blocks
+// (go-slide-creator-e17xy) — so the band below it is the slide's normal
+// bottom margin, not imbalance.
+func checkVerticalImbalance(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInput, si int, patternName string, bodyLine int64) *patterns.FitFinding {
 	if safe.CY <= 0 || len(ink) == 0 || hasBodyPlaceholderContent(slide) {
 		return nil
 	}
@@ -66,6 +75,9 @@ func checkVerticalImbalance(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideI
 	}
 	skew := math.Abs(float64(top-bottom)) / float64(safe.CY)
 	if band < verticalImbalanceMinGapEMU || skew < verticalImbalanceSkewFrac {
+		return nil
+	}
+	if side == "below" && bodyLine > 0 && first <= max(safe.Y, bodyLine)+bodyLineToleranceEMU {
 		return nil
 	}
 	return &patterns.FitFinding{

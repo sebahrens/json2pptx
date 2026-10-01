@@ -151,11 +151,12 @@ func heavyWeightFamily(name string) bool {
 // reserveMeasuredTitle), so a short pattern on p-style started hard under a
 // one-line title while the native bullets of the next slide started at the
 // body placeholder, ~70pt lower. Consulting decks hang every slide's content
-// from one line. The zone keeps its full height (dense patterns need it), but
-// records the layout's body / content placeholder top — or, for a title-only
-// layout that draws the same title box as the template's reference
-// one-content layout, that layout's — as BodyTop. A top-anchored
-// content-sized block then starts there whenever its slack allows.
+// from one line. The layout's body / content placeholder top — or, for a
+// title-only layout that draws the same title box as the template's
+// reference one-content layout, that layout's — is recorded as BodyTop: a
+// content-sized block ("auto" / "top") starts there whenever its slack
+// allows. Full-area grids start there too (ContentTop) as far as
+// bodyStartTop allows, so dense patterns keep the height they are sized for.
 func reserveBodyAnchor(g GridGeometry, slide SlideInput, layouts []types.LayoutMetadata) GridGeometry {
 	if g.Zone == nil {
 		return g
@@ -177,13 +178,44 @@ func reserveBodyAnchor(g GridGeometry, slide SlideInput, layouts []types.LayoutM
 		return g
 	}
 	gap := int64(gridChromeGapPt * 12700)
-	if anchor <= g.Zone.TitleBottom+gap || anchor >= g.Zone.FooterTop-gap {
+	if anchor >= g.Zone.FooterTop-gap {
 		return g
 	}
 	zone := *g.Zone
 	zone.BodyTop = anchor
+	if top := bodyStartTop(zone.TitleBottom, title, anchor); top > zone.TitleBottom+gap {
+		zone.ContentTop = top
+		if g.OverrideBounds != nil && g.OverrideBounds.Y < top {
+			b := *g.OverrideBounds
+			b.CY -= top - b.Y
+			b.Y = top
+			if b.CY < 0 {
+				b.CY = 0
+			}
+			g.OverrideBounds = &b
+		}
+	}
 	g.Zone = &zone
 	return g
+}
+
+// bodyStartTop is where full-area grids start (ContentZone.ContentTop): the
+// body line anchor, but never below gridChromeGapPt under the title box — the
+// zone every pattern's schema maxima are sized and pinned for
+// (TestSchemaMaximaStayReadable). Where a template's body placeholder sits
+// further below its title box (p-style ~11pt, modern-yellow ~19pt,
+// business-template ~28pt), starting there would shrink that zone and push
+// dense content under the readable floor, so those templates start full-area
+// grids at the title-box line and only content-sized blocks hang from the
+// body line. A measured short title (reserveMeasuredTitle) lifts only the
+// zone's limit, never this start line, so pattern slides no longer start
+// hard under a one-line title while native body text starts lower.
+func bodyStartTop(titleBottom int64, title *types.PlaceholderInfo, anchor int64) int64 {
+	base := title.Bounds.Y + title.Bounds.Height
+	if titleBottom > base {
+		base = titleBottom
+	}
+	return min64(anchor, base+int64(gridChromeGapPt*12700))
 }
 
 // layoutTitlePlaceholder returns the layout's first title placeholder.
