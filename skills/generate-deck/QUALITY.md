@@ -87,3 +87,5 @@ nothing. Rhythm tools come after the message is right.
 - The executive summary's points match the section titles that follow.
 - The closing states the decision or next step, with owner and date
   (`next_steps` kind / `next-steps` pattern, not "Thank you").
+- Content slides carry a page number and the deck date (on by default; set
+  `meta.date`). No stat-hero or pull-quote added just to vary the rhythm.

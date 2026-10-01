@@ -25,24 +25,38 @@ func TestPlanDeckDeckSpecFormat(t *testing.T) {
 	if err := json.Unmarshal([]byte(textContent(res)), &plan); err != nil {
 		t.Fatal(err)
 	}
-	if plan.Format != "deckspec" || len(plan.DeckSpec.Slides) != 9 || len(plan.Slots) != 9 {
-		t.Fatalf("format=%q slides=%d slots=%d, want deckspec/9/9", plan.Format, len(plan.DeckSpec.Slides), len(plan.Slots))
+	if plan.Format != "deckspec" || len(plan.Slots) == 0 {
+		t.Fatalf("format=%q slots=%d, want a deckspec draft", plan.Format, len(plan.Slots))
 	}
+
+	// The draft is a DeckSpec the compiler parses as-is, and it renders within
+	// the budget — generated agenda and dividers included.
+	raw, err := json.Marshal(plan.DeckSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec, diags := semantic.ParseJSON(raw)
+	if spec == nil {
+		t.Fatalf("draft does not parse as a DeckSpec: %+v\n%s", diags, raw)
+	}
+	if n := semantic.ExpandedSlideCount(spec); n > 9 {
+		t.Errorf("draft renders %d slides, over the 9-slide budget", n)
+	}
+
 	var slots []string
-	for i, slot := range plan.Slots {
+	for _, slot := range plan.Slots {
 		slots = append(slots, slot.Slot)
-		kind, _ := plan.DeckSpec.Slides[i]["kind"].(string)
-		if kind != slot.Kind {
-			t.Errorf("slide %d kind %q != slot kind %q", i, kind, slot.Kind)
+		if !semantic.SlideKind(slot.Kind).Valid() {
+			t.Errorf("slot %s uses unknown DeckSpec kind %q", slot.Slot, slot.Kind)
 		}
-		if !semantic.SlideKind(kind).Valid() {
-			t.Errorf("slide %d uses unknown DeckSpec kind %q", i, kind)
-		}
-		if slot.Guidance == "" {
-			t.Errorf("slot %d has no guidance", i)
+		if slot.Guidance == "" || slot.Path == "" {
+			t.Errorf("slot %s has no guidance or path", slot.Slot)
 		}
 	}
-	want := "cover answer problem cause evidence plan roadmap ask closing"
+	// A board update naming a problem and proposing a fix: the problem in the
+	// brief's numbers, its causes, and the ask — between cover and close
+	// (go-slide-creator-khzni).
+	want := "cover answer problem cause ask closing"
 	if got := strings.Join(slots, " "); got != want {
 		t.Errorf("storyline = %q, want %q", got, want)
 	}
@@ -50,6 +64,10 @@ func TestPlanDeckDeckSpecFormat(t *testing.T) {
 	problem := plan.Slots[2]
 	if problem.Kind != "kpi_snapshot" || len(problem.Facts) < 2 {
 		t.Errorf("problem slot = %+v, want kpi_snapshot carrying the churn/NRR facts", problem)
+	}
+	chrome, _ := plan.DeckSpec.Meta["chrome"].(map[string]any)
+	if pn, _ := chrome["page_numbers"].(map[string]any); pn["enabled"] != true {
+		t.Errorf("draft meta.chrome must turn page numbers on (go-slide-creator-1iy0x): %v", plan.DeckSpec.Meta)
 	}
 	if plan.UnplacedFacts == nil {
 		t.Error("unplaced_facts must always be present")

@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"unicode"
 
 	// Ensure all patterns are registered via init().
 	_ "github.com/sebahrens/json2pptx/internal/patterns"
@@ -19,7 +20,7 @@ func TestMakeDeck_ColdStartOutlineProducesPPTX(t *testing.T) {
 	mc := repairMC(t)
 
 	result, err := mc.handleMakeDeck(context.Background(), makeRequest(map[string]any{
-		"outline":         "Pitch our Series B for an AI infrastructure company",
+		"outline":         "Pitch our Series B for an AI infrastructure company: revenue grew 18% YoY to $42M, gross margin expanded to 61% (+3 pts vs plan), net revenue retention 112%; churn rose to 4.1% in SMB",
 		"template":        "midnight-blue",
 		"output_filename": "make_deck_cold_start.pptx",
 		"style_hints": map[string]any{
@@ -60,8 +61,29 @@ func TestMakeDeck_ColdStartOutlineProducesPPTX(t *testing.T) {
 	if output.Plan.SlideBudget != 6 {
 		t.Errorf("plan.slide_budget = %d, want 6", output.Plan.SlideBudget)
 	}
-	if len(output.Plan.Slides) != 6 {
-		t.Errorf("plan.slides length = %d, want 6", len(output.Plan.Slides))
+	// Slots the brief gives nothing to show are dropped, so the plan may be
+	// shorter than the budget (go-slide-creator-tu35a).
+	if n := len(output.Plan.Slides); n < 3 || n > 6 {
+		t.Errorf("plan.slides length = %d, want 3..6", n)
+	}
+	// Titles are sentence-cased brief clauses, never cut mid-clause, and never
+	// the planner's placeholder prose (go-slide-creator-tu35a).
+	for _, sl := range output.Plan.Slides {
+		title := sl.Title
+		if title == "" {
+			continue
+		}
+		if r := []rune(title)[0]; unicode.IsLower(r) {
+			t.Errorf("slide %d title %q is not sentence-cased", sl.SlideIndex, title)
+		}
+		if strings.HasSuffix(title, "...") || strings.HasSuffix(title, "…") {
+			t.Errorf("slide %d title %q was cut mid-clause", sl.SlideIndex, title)
+		}
+		for _, seed := range []string{"Key data point", "Structure or methodology overview", "Standout metric", "Comparison of alternatives"} {
+			if strings.Contains(title, seed) {
+				t.Errorf("slide %d title %q is placeholder prose", sl.SlideIndex, title)
+			}
+		}
 	}
 	if len(output.Plan.Slides) > 0 {
 		// Opening slide title should reflect the brief.

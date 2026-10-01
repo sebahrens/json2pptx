@@ -92,7 +92,8 @@ type ChromeSpec struct {
 
 // PageNumbersSpec mirrors deckinput.PageNumbersInput.
 type PageNumbersSpec struct {
-	// Enabled turns page numbers on or off (default: on when chrome is set).
+	// Enabled turns page numbers on or off (default: on, with or without a
+	// chrome block; false suppresses the slide number).
 	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty"`
 	// Format supports {current} and {total} (e.g. "{current} / {total}").
 	Format string `json:"format,omitempty" yaml:"format,omitempty"`

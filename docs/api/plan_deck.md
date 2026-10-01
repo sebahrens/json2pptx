@@ -10,7 +10,8 @@ Use `plan_deck` as the **first step** when building a deck from scratch. It conv
 - Assigns narrative roles (opening, framework, evidence, comparison, emphasis, closing)
 - Assigns every slide a canonical `layout`: the opening slide is `"title"` and the closing slide is `"closing"`, both with **no pattern**; content slides use `"blank-title"` plus a pattern
 - Recommends patterns for each content slide using taxonomy-aware matching; `comparison` slots use only `comparison-2col` / `before-after`
-- Enforces deck-rhythm rules automatically (no 3+ consecutive same-pattern runs, emphasis every ~5 slides, capped at ceil(n/5))
+- Enforces deck-rhythm rules automatically (no 3+ consecutive same-pattern runs, emphasis capped at ceil(n/5) and planned only for the brief's headline number or quote)
+- Plans only what the brief supports: a `framework` slot needs a framework named in the brief, and evidence / comparison / emphasis slots that receive no brief fact are dropped (the plan comes back shorter, with a `budget_note`) instead of being seeded with placeholder prose
 - Produces output directly consumable as the `slides` array in `generate_presentation`
 
 Skip `plan_deck` when you already have a detailed slide-by-slide outline or when modifying an existing deck.
@@ -104,9 +105,29 @@ Skip `plan_deck` when you already have a detailed slide-by-slide outline or when
 
 ### Brief facts
 
-The planner lifts facts out of the brief so its numbers reach the slides instead of generic seeds. The brief is split into clauses (sentence ends, `;`, newlines, `, `, `: `, spaced dashes — decimals like `1.5M` and separators like `1,200` survive). A clause is a fact when it holds a standalone quantity (`+23%`, `$50M`, `40 engineers`; period labels such as `Q3`/`FY24` do not count) or a named entity (an acronym like `EU`, or a mid-clause proper noun). The first clause is treated as the deck topic and only counts when it holds a quantity.
+The planner lifts facts out of the brief so its numbers reach the slides instead of generic seeds. The brief is split into clauses (sentence ends, `;`, newlines, `, `, `: `, spaced dashes — decimals like `1.5M` and separators like `1,200` survive; a comma inside brackets and a short lower-case list item such as `time-to-market, and risk` do not split, so option lists stay whole). A clause is a fact when it holds a standalone quantity (`+23%`, `$50M`, `40 engineers`; period labels such as `Q3`/`FY24` do not count), a named entity (an acronym like `EU`, or a mid-clause proper noun), a quote, or an option comparison. The first clause is treated as the deck topic and only counts when it holds a quantity.
 
-Facts are assigned to pattern slides (never title/closing): quantities first go to numeric patterns (`kpi-*`, `stat-hero`, `kpi-inline`, `chart-insights-split`, `horizontal-bar-with-callouts`, `waterfall-bridge`, `driver-tree`); everything else is spread round-robin over evidence/comparison slides, then framework/emphasis slides. Capacity is one fact per KPI card (`kpi-3up` → 3), one for `stat-hero` / `pull-quote`, two otherwise. Leftovers go to the top-level `unplaced_facts` array (always present, `[]` when empty) — add a slide or fold them in by hand.
+Each fact is classified: a **metric** (percent, currency, magnitude such as `12.5m`, points, or a count that is neither a to-do nor a date), a **to-do / ask** (`hiring 12 AEs`, `approve a term sheet by 30 November`), a **dated milestone** (`SOC 2 Type II in December`), an **option** (`build vs buy`; `vs plan` is a benchmark, not an option) or a **quote**.
+
+Facts are assigned to pattern slides (never title/closing): metrics first go to numeric patterns (`kpi-*`, `stat-hero`, `kpi-inline`, `chart-insights-split`, `horizontal-bar-with-callouts`, `waterfall-bridge`, `driver-tree`), quotes to `pull-quote`, options to comparison slots; everything else is spread round-robin over evidence/comparison slides, then framework/emphasis slides — but a KPI / stat slide only ever takes a metric, a `pull-quote` a quote and a comparison slot an option. Capacity is one fact per KPI card (`kpi-3up` → 3), one for `stat-hero` / `pull-quote`, two otherwise. Leftovers go to the top-level `unplaced_facts` array (always present, `[]` when empty) — add a slide or fold them in by hand.
+
+### format: "deckspec"
+
+`deck_spec` is drafted from the brief's signals rather than a fixed arc:
+
+| Brief signal | Slot → kind |
+|---|---|
+| always | `cover` → `title`, `answer` → `executive_summary`, `closing` → `next_steps` |
+| 2+ metrics / 1 metric / a named problem without numbers | `problem` (or `context` when no problem is named) → `kpi_snapshot` / `stat` / `comparison` |
+| shipped / launched / released work | `highlights` → `pillars` |
+| a metric that changes over time (YoY, "from X to Y", 3+ values) | `evidence` → `chart_insight` (one per such fact, at most two) |
+| a named problem (not for a customer-facing deck) | `cause` → `pillars` (`table` when pillars is taken) |
+| options weighed against criteria | `options` → `option_matrix` |
+| a plan or priorities with to-dos | `plan` → `pillars` / `process` (steps) / `table` |
+| 2+ dated milestones / phases | `roadmap` → `timeline` / `roadmap` |
+| a request for a decision (not for a customer-facing deck) | `ask` → `decision` |
+
+Facts route by class: change-over-time metrics to `evidence`, other metrics to `problem`/`context`, asks to `ask`/`closing`, dated milestones to `roadmap`, options to `options`, to-dos to `plan`/`closing`, the rest to `answer`, `highlights`, `cause`. A budget of 8+ slides is drafted as `structure` (`auto_agenda: true`, 2–4 sections; the agenda and one divider per section count toward the budget) when the storyline fills it or the chapters fit; `slots[].path` says where each slide lives and `slots[].section` names its chapter. `meta.chrome` sets `page_numbers.enabled: true` (and `tracker: true` for a chaptered draft); `meta.date` is `__FILL__`.
 
 ### Top-level fields
 
@@ -130,10 +151,10 @@ The planner distributes slides across a standard narrative arc:
 | Role | Fraction | Purpose |
 |------|----------|---------|
 | `opening` | ~10% | Title, context-setting |
-| `framework` | ~15% | Structure or methodology overview |
+| `framework` | ~15% | The framework the brief names — planned only when the brief names a framework, methodology, model or structure; otherwise the share goes to evidence |
 | `evidence` | ~40% | Supporting data, details, case studies |
 | `comparison` | ~15% | Compare alternatives or trade-offs |
-| `emphasis` | ~10% | Standout metric or memorable quote (visual breathing room) |
+| `emphasis` | ~10% | The brief's headline number (`stat-hero`) or quote (`pull-quote`) — planned only when the brief carries one |
 | `closing` | ~10% | Summary and next steps |
 
 ## Rhythm Rules
@@ -142,7 +163,7 @@ The planner automatically enforces:
 
 1. **Structural bookends** — slide 0 is layout `title` and the last slide is layout `closing`, both with no pattern (a pattern there fights the layout's own title treatment)
 2. **No 3+ consecutive runs** — if detected, the middle slide is swapped to a pattern from a different visual family
-3. **Emphasis injection** — at least one `stat-hero` or `pull-quote` every ~5 slides
+3. **No emphasis quota** — no slide is rewritten to `stat-hero` / `pull-quote` to vary the rhythm; an emphasis slide exists only for the brief's own number or quote. A straight sequence uses `numbered-step-strip`, not `process-flow` (kept for briefs with decision points)
 4. **Emphasis cap** — at most ceil(n/5) emphasis slides (`stat-hero`, `pull-quote`, `kpi-inline`) per n-slide deck; extras are demoted to a non-emphasis pattern (must_include placements are kept)
 5. **Comparison family** — `comparison` slots use only `comparison-2col` or `before-after` (before-after first when the brief mentions before/after or current/future state; the two alternate across multiple comparison slots)
 6. **Variety awareness** — `recommend_pattern` is called with `prefer_variety=true` to penalize recently-used patterns
@@ -164,27 +185,24 @@ The planner automatically enforces:
 {
   "slides": [
     {"slide_index": 0, "narrative_role": "opening",    "recommended_pattern": "",               "layout": "title",       "content_seed": "Title and context: Series B pitch for an AI infrastructure...", "rationale": "opening slide: use the template's \"title\" layout with no pattern"},
-    {"slide_index": 1, "narrative_role": "framework",  "recommended_pattern": "kpi-3up",        "content_seed": "Series B pitch for an AI infrastructure company with $50M ARR — Structure or methodology overview", "facts": ["Series B pitch for an AI infrastructure company with $50M ARR"], "rationale": "required by must_include"},
-    {"slide_index": 2, "narrative_role": "evidence",   "recommended_pattern": "arch-stack",     "content_seed": "Key data point or supporting detail", "rationale": "taxonomy match: evidence+structural"},
-    {"slide_index": 3, "narrative_role": "evidence",   "recommended_pattern": "card-grid",      "content_seed": "Key data point or supporting detail", "rationale": "variety pick: different visual family"},
-    {"slide_index": 4, "narrative_role": "emphasis",   "recommended_pattern": "pull-quote",     "content_seed": "Standout metric or memorable takeaway", "rationale": "emphasis injection: visual breathing room every ~5 slides"},
-    {"slide_index": 5, "narrative_role": "comparison", "recommended_pattern": "comparison-2col","layout": "blank-title", "content_seed": "Comparison of alternatives or trade-offs", "rationale": "comparison slot: two-sided comparison pattern"},
-    {"slide_index": 6, "narrative_role": "evidence",   "recommended_pattern": "roadmap-phased", "content_seed": "Detailed evidence or case study", "rationale": "required by must_include"},
-    {"slide_index": 7, "narrative_role": "closing",    "recommended_pattern": "",               "layout": "closing",     "content_seed": "Summary, next steps, or call to action", "rationale": "closing slide: use the template's \"closing\" layout with no pattern"}
+    {"slide_index": 1, "narrative_role": "evidence",   "recommended_pattern": "kpi-3up",        "content_seed": "Series B pitch for an AI infrastructure company with $50M ARR — Prove one claim with the facts routed here", "facts": ["Series B pitch for an AI infrastructure company with $50M ARR"], "rationale": "required by must_include"},
+    {"slide_index": 2, "narrative_role": "evidence",   "recommended_pattern": "roadmap-phased", "content_seed": "Prove one claim with the facts routed here", "rationale": "required by must_include"},
+    {"slide_index": 3, "narrative_role": "closing",    "recommended_pattern": "",               "layout": "closing",     "content_seed": "Summary, next steps, or call to action", "rationale": "closing slide: use the template's \"closing\" layout with no pattern"}
   ],
   "brief": "Series B pitch for an AI infrastructure company with $50M ARR",
   "slide_budget": 8,
   "unplaced_facts": [],
+  "budget_note": "planned 4 fewer slide(s) than the budget: no brief fact, option or quote supports them, and a slot with nothing to show would only carry placeholder prose — add the numbers, names, options or quotes those slides would prove",
   "rhythm_check": {
     "longest_pattern_run": 1,
-    "has_emphasis": true,
-    "emphasis_count": 1,
-    "pattern_variety": 5
+    "has_emphasis": false,
+    "emphasis_count": 0,
+    "pattern_variety": 2
   }
 }
 ```
 
-(Pattern slides 1–4 and 6 also carry `"layout": "blank-title"`; omitted above for width.)
+(Pattern slides 1–2 also carry `"layout": "blank-title"`; omitted above for width. A one-fact brief plans a short deck: give the brief the numbers, names, options or quotes the extra slides would prove.)
 
 ## Composing with Other Tools
 

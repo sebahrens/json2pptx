@@ -113,25 +113,34 @@ func TestBuildDeckPlan_UnplacedFactsAlwaysArray(t *testing.T) {
 }
 
 func TestExtractBriefFacts(t *testing.T) {
+	type tn struct {
+		text    string
+		numeric bool
+	}
 	cases := []struct {
 		brief string
-		want  []briefFact
+		want  []tn
 	}{
-		{"+23% revenue, churn 4%", []briefFact{{"+23% revenue", true}, {"churn 4%", true}}},
+		{"+23% revenue, churn 4%", []tn{{"+23% revenue", true}, {"churn 4%", true}}},
 		// First clause is the topic: an entity-only first clause is not a fact,
 		// and period labels like Q3 are not quantities.
 		{"Pitch our Series B for an AI infra company", nil},
+		// A hiring plan carries a number but is a to-do, not a KPI
+		// (go-slide-creator-gvbw8).
 		{"Q3 QBR for the board: EU expansion is on track; hiring adds 40 engineers.",
-			[]briefFact{{"EU expansion is on track", false}, {"hiring adds 40 engineers", true}}},
+			[]tn{{"EU expansion is on track", false}, {"hiring adds 40 engineers", false}}},
 		// Decimals and thousands separators survive the clause split; leading
 		// conjunctions are stripped; duplicates collapse.
 		{"ARR hit $1.5M. NRR is 140%, and we serve 1,200 customers. NRR is 140%.",
-			[]briefFact{{"ARR hit $1.5M", true}, {"NRR is 140%", true}, {"we serve 1,200 customers", true}}},
+			[]tn{{"ARR hit $1.5M", true}, {"NRR is 140%", true}, {"we serve 1,200 customers", true}}},
 		{"", nil},
 		{"a plain brief with no data", nil},
 	}
 	for _, tc := range cases {
-		got := extractBriefFacts(tc.brief)
+		var got []tn
+		for _, f := range extractBriefFacts(tc.brief) {
+			got = append(got, tn{f.text, f.numeric})
+		}
 		if len(got) == 0 && len(tc.want) == 0 {
 			continue
 		}

@@ -27,7 +27,12 @@ type FooterConfig struct {
 	Enabled          bool   // Master switch — when false, no footers are injected
 	LeftText         string // Left footer text (e.g., "Acme Corp | Confidential")
 	PageNumberFormat string // Slide number format (e.g., "{current} / {total}"); empty = plain slide number field
-	TotalSlides      int    // Total slide count, used when PageNumberFormat contains {total}
+	// HidePageNumber suppresses the slide number while keeping the left
+	// footer text. chrome.page_numbers.enabled:false used to clear
+	// PageNumberFormat, but "" already meant "plain slide number", so the
+	// switch did nothing (go-slide-creator-1iy0x).
+	HidePageNumber bool
+	TotalSlides    int // Total slide count, used when PageNumberFormat contains {total}
 
 	// LeftTextBySlide overrides LeftText for individual slides, indexed by
 	// 0-based slide index. An empty string (or a short slice) falls back to

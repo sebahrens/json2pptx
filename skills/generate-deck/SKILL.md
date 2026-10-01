@@ -36,7 +36,8 @@ For a new content-bearing deck, write a semantic **DeckSpec** (`meta` plus
 `slides[].kind`, or chapter-based `structure`). `get_started(task:"brief")`
 returns this path as its `sequence` (the raw chain is `raw_sequence`):
 `plan_deck` with `format:"deckspec"` drafts the storyline as a DeckSpec
-(a kind per narrative slot, brief facts routed to each); discover kinds with
+(kinds chosen from the brief's signals, brief facts routed by type; 8+ slides
+are drafted in `structure` chapters; `meta.chrome` turns page numbers on); discover kinds with
 `list_slide_kinds` using its compact fields, requesting `item_schema` and
 `compositions` only for selected kinds. Then call `validate_deck_spec`,
 `render_deck_spec`, `render_deck_thumbnails`, and `submit_visual_review`. Edit the spec at a finding's

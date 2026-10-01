@@ -211,6 +211,9 @@ func generateFooterShapesAvoiding(positions map[string]*transformXML, config *Fo
 	// so the left footer has to be laid out against the widened box or the two
 	// overlap (go-slide-creator-pss1z).
 	pageNum := resolvePageNumberSizing(positions, config.PageNumberFormat, config.TotalSlides, fontName)
+	if config.HidePageNumber {
+		pageNum = nil
+	}
 	if pageNum != nil && len(obstacles) > 0 {
 		pageNum.box = clearPageNumberBox(pageNum.box, obstacles, pageNumberLeftLimit(positions), slideWidth)
 		if pageNum.box == nil {

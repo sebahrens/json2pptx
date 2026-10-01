@@ -35,9 +35,15 @@ func TestBuildDeckPlan_StructuralSlidesComparisonAndEmphasisCap(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			res := BuildDeckPlan(reg, Params{Brief: tc.brief, SlideBudget: tc.budget, Audience: tc.audience}, nil)
+			// A slot the brief gives nothing to show is dropped, not padded
+			// with placeholder prose (go-slide-creator-tu35a): the plan may
+			// be shorter than the budget, and then it says why.
 			n := len(res.Slides)
-			if n != tc.budget {
-				t.Fatalf("got %d slides, want %d", n, tc.budget)
+			if n > tc.budget || n < 3 {
+				t.Fatalf("got %d slides, want 3..%d", n, tc.budget)
+			}
+			if n < tc.budget && res.BudgetNote == "" {
+				t.Errorf("plan of %d < budget %d slides carries no budget_note", n, tc.budget)
 			}
 
 			first, last := res.Slides[0], res.Slides[n-1]
