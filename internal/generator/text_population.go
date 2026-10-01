@@ -771,19 +771,12 @@ func setBulletGroupsParagraphs(shape *shapeXML, placeholderID string, value inte
 
 	var paragraphs []paragraphXML
 
-	// For dense layouts (≥3 groups), use compact spacing and merge group body
-	// into header to reduce paragraph count and prevent excessive font scaling.
-	// At 12pt spcBef with 4 groups (19 paragraphs), textfit scales to 60% (12pt),
-	// which is illegibly small. Compact mode reduces this to ~70% (14pt).
-	// 3-4 groups use moderate spacing (10pt) for visual separation between groups.
-	// 5+ groups use tight spacing (6pt) to fit more content.
+	// For dense layouts (≥3 groups), merge group body into header to reduce
+	// paragraph count and prevent excessive font scaling. Spacing is explicit
+	// on every group paragraph (go-slide-creator-b1vkj) so groups read by
+	// proximity whatever the master declares: see bulletGroupSpacingFor.
 	denseGroups := len(content.Groups) >= 3
-	headerSpcBefVal := "1200" // 12pt
-	if len(content.Groups) >= 5 {
-		headerSpcBefVal = "600" // 6pt — tight spacing for very dense layouts
-	} else if denseGroups {
-		headerSpcBefVal = "1000" // 10pt — moderate spacing for 3-4 groups
-	}
+	spacing := bulletGroupSpacingFor(len(content.Groups))
 
 	// Add intro body paragraph(s) before groups.
 	// Body is always the text preceding the first section header/bullets in the
@@ -803,8 +796,10 @@ func setBulletGroupsParagraphs(shape *shapeXML, placeholderID string, value inte
 		}
 	}
 
-	for _, group := range content.Groups {
-		paragraphs = append(paragraphs, buildGroupParagraphs(group, denseGroups, headerSpcBefVal, bulletLevel, templateStyles)...)
+	for i, group := range content.Groups {
+		// The first group opens the box flush unless an intro body precedes it.
+		first := i == 0 && len(paragraphs) == 0
+		paragraphs = append(paragraphs, buildGroupParagraphs(group, denseGroups, spacing, first, bulletLevel, templateStyles)...)
 	}
 
 	// Add trailing body paragraph(s) if present (rendered without bullet marker).
@@ -862,10 +857,76 @@ func setBulletGroupsParagraphs(shape *shapeXML, placeholderID string, value inte
 	return nil
 }
 
+// bulletGroupSpacing is the explicit paragraph spacing (hundredths of a
+// point) of a bullet_groups body. Gestalt proximity: the space before a
+// group (GroupBef) is at least 1.5x the space between bullets (BulletBef),
+// and the space between a header and its first bullet (FirstBef) is less
+// than the space between bullets, so each header binds to the group below it
+// (go-slide-creator-b1vkj). Every group paragraph carries spcAft 0 so a
+// master's lvl1 spcAft cannot push the first bullet away from its header.
+type bulletGroupSpacing struct {
+	GroupBef  int
+	BulletBef int
+	FirstBef  int
+}
+
+// bulletGroupSpacingFor returns the spacing for n groups: dense layouts
+// tighten every gap proportionally so all groups still fit.
+func bulletGroupSpacingFor(n int) bulletGroupSpacing {
+	switch {
+	case n >= 5:
+		return bulletGroupSpacing{GroupBef: 600, BulletBef: 300, FirstBef: 100}
+	case n >= 3:
+		return bulletGroupSpacing{GroupBef: 1200, BulletBef: 400, FirstBef: 200}
+	default:
+		return bulletGroupSpacing{GroupBef: 1800, BulletBef: 600, FirstBef: 300}
+	}
+}
+
+// bulletGroupSubMarL is the cap on a group sub-bullet's text indent from the
+// header's left edge (24pt); bulletGroupDepthMarL is the extra indent per
+// nested depth; the glyph hangs bulletGroupHang to the left of the text.
+const (
+	bulletGroupSubMarL   = 304800
+	bulletGroupDepthMarL = 228600
+	bulletGroupHang      = 177800
+)
+
+// spacingXML returns explicit spcBef / spcAft elements.
+func spacingXML(bef, aft int) string {
+	return fmt.Sprintf(`<a:spcBef><a:spcPts val="%d"/></a:spcBef><a:spcAft><a:spcPts val="%d"/></a:spcAft>`, bef, aft)
+}
+
+var (
+	spcBefElemRegexp = regexp.MustCompile(`(?s)<a:spcBef>.*?</a:spcBef>|<a:spcBef/>`)
+	spcAftElemRegexp = regexp.MustCompile(`(?s)<a:spcAft>.*?</a:spcAft>|<a:spcAft/>`)
+)
+
+// setParagraphSpacing replaces any spcBef / spcAft in a paragraph's
+// properties with explicit values, keeping the CT_TextParagraphProperties
+// child order (lnSpc, spcBef, spcAft, bullet properties ...).
+func setParagraphSpacing(props *paragraphPropertiesXML, bef, aft int) {
+	inner := spcBefElemRegexp.ReplaceAllString(props.Inner, "")
+	inner = spcAftElemRegexp.ReplaceAllString(inner, "")
+	sp := spacingXML(bef, aft)
+	if i := strings.Index(inner, "</a:lnSpc>"); i >= 0 {
+		i += len("</a:lnSpc>")
+		inner = inner[:i] + sp + inner[i:]
+	} else {
+		inner = sp + inner
+	}
+	props.Inner = inner
+}
+
 // buildGroupParagraphs converts a single BulletGroup into paragraphs with
 // optional dense-mode header merging, body text, and indented sub-bullets.
-func buildGroupParagraphs(group BulletGroup, denseGroups bool, headerSpcBefVal string, bulletLevel int, templateStyles []bulletLevelStyle) []paragraphXML {
+// first marks the opening group of an otherwise empty body (no space before).
+func buildGroupParagraphs(group BulletGroup, denseGroups bool, spacing bulletGroupSpacing, first bool, bulletLevel int, templateStyles []bulletLevelStyle) []paragraphXML {
 	var paragraphs []paragraphXML
+	groupBef := spacing.GroupBef
+	if first {
+		groupBef = 0
+	}
 
 	// Build header text, optionally merging group body for dense layouts.
 	headerText := group.Header
@@ -891,9 +952,8 @@ func buildGroupParagraphs(group BulletGroup, denseGroups bool, headerSpcBefVal s
 			// Font family is inherited from the template (theme minor font).
 			runs[i].RunProperties.Caps = "small"
 		}
-		spcBef := fmt.Sprintf(`<a:spcBef><a:spcPts val="%s"/></a:spcBef>`, headerSpcBefVal)
 		paragraphs = append(paragraphs, paragraphXML{
-			Properties: noBulletParagraphProps(spcBef),
+			Properties: noBulletParagraphProps(spacingXML(groupBef, 0)),
 			Runs:       runs,
 		})
 	}
@@ -906,15 +966,19 @@ func buildGroupParagraphs(group BulletGroup, denseGroups bool, headerSpcBefVal s
 			runs[i].RunProperties.Bold = "1"
 		}
 		// When there's a group label above, use tighter spacing before the header
-		hSpcBef := headerSpcBefVal
+		hSpcBef := groupBef
 		if group.GroupLabel != "" {
-			hSpcBef = "200" // 2pt — tight coupling between label and header
+			hSpcBef = 200 // 2pt — tight coupling between label and header
 		}
-		spcBef := fmt.Sprintf(`<a:spcBef><a:spcPts val="%s"/></a:spcBef>`, hSpcBef)
 		paragraphs = append(paragraphs, paragraphXML{
-			Properties: noBulletParagraphProps(spcBef),
+			Properties: noBulletParagraphProps(spacingXML(hSpcBef, 0)),
 			Runs:       runs,
 		})
+	}
+	// The paragraph after the group's opening line sits close to it.
+	nextBef := spacing.FirstBef
+	if len(paragraphs) == 0 {
+		nextBef = groupBef
 	}
 
 	// Group-level body text (skipped if already merged into header)
@@ -935,10 +999,12 @@ func buildGroupParagraphs(group BulletGroup, denseGroups bool, headerSpcBefVal s
 			_, rProps := getBulletStyleForLevel(templateStyles, 0)
 			runs := createFormattedRuns(bodyPara, rProps)
 			paragraphs = append(paragraphs, paragraphXML{
-				Properties: noBulletParagraphProps(""),
+				Properties: noBulletParagraphProps(spacingXML(nextBef, 0)),
 				Runs:       runs,
 			})
+			nextBef = spacing.BulletBef
 		}
+		nextBef = spacing.FirstBef
 	}
 
 	// Sub-bullets (indented one level deeper than the base bullet level), plus
@@ -948,10 +1014,20 @@ func buildGroupParagraphs(group BulletGroup, denseGroups bool, headerSpcBefVal s
 		depth, text := pptx.BulletIndentDepth(bullet)
 		pProps, rProps := getBulletStyleForLevel(templateStyles, bulletParagraphLevel(subBulletLevel, depth))
 		runs := createFormattedRuns(text, rProps)
-		if pProps.MarL != nil && *pProps.MarL == 0 {
-			fallbackMarL := 360000
-			pProps.MarL = &fallbackMarL
+		if pProps == nil {
+			pProps = &paragraphPropertiesXML{}
 		}
+		// Cap the indent under the flush-left header: a master's deep
+		// level-2 margin (54-60pt) would waste a sixth of the column. A
+		// template margin already inside the cap is kept.
+		if pProps.MarL == nil || *pProps.MarL <= 0 || *pProps.MarL > bulletGroupSubMarL || depth > 0 {
+			marL := bulletGroupSubMarL + depth*bulletGroupDepthMarL
+			indent := -bulletGroupHang
+			pProps.MarL = &marL
+			pProps.Indent = &indent
+		}
+		setParagraphSpacing(pProps, nextBef, 0)
+		nextBef = spacing.BulletBef
 		paragraphs = append(paragraphs, paragraphXML{
 			Properties: pProps,
 			Runs:       runs,

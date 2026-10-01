@@ -1872,8 +1872,8 @@ func TestBulletGroupsIndentHierarchy(t *testing.T) {
 		if *bulletP.Properties.MarL == 0 {
 			t.Error("bullet marL should not be 0 when template has zero margin — fallback should apply")
 		}
-		if *bulletP.Properties.MarL != 360000 {
-			t.Errorf("expected fallback marL=360000, got %d", *bulletP.Properties.MarL)
+		if *bulletP.Properties.MarL != bulletGroupSubMarL {
+			t.Errorf("expected fallback marL=%d (24pt cap, go-slide-creator-b1vkj), got %d", bulletGroupSubMarL, *bulletP.Properties.MarL)
 		}
 	})
 }
