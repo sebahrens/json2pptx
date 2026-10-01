@@ -54,7 +54,7 @@ Show trends over time or continuous data with connected points.
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `show_legend` | `bool` | `false` | Display legend |
-| `show_values` | `bool` | `false` | Show value labels at points |
+| `show_values` | `bool` | labelled for one series up to 12 points | Show value labels at points; omitted, a single-series line with at most 12 points is labelled, `false` opts out |
 | `show_grid` | `bool` | `false` | Display background grid |
 | `palette` | `string\|string[]` | `corporate` | Color scheme |
 

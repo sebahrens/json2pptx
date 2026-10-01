@@ -909,7 +909,7 @@ type chartStyleHints struct {
 func buildChartStyleHints() *chartStyleHints {
 	return &chartStyleHints{
 		Style: map[string]string{
-			"show_values":  "Draw the value on each bar / point / slice (bool). This is the data-labels switch.",
+			"show_values":  "Draw the value on each bar / point / slice (bool). This is the data-labels switch. Omitted, bar charts up to 16 bars, single-series line / area charts up to 12 points and treemaps are labelled (bars then drop the value axis and gridlines); false opts out.",
 			"scale":        "Value axis for bar and grouped_bar charts: linear (default) or explicit log. Wide-range bars stay linear, show values, and report chart.wide_range_linear. Log axes are visibly labelled.",
 			"show_legend":  "Force the legend on, including on a single-series chart where it is suppressed by default (bool).",
 			"colors":       "Template scheme colors (accent1-6, dk1/dk2, lt1/lt2) for data series, in series order (string[]). Raw hex is allowed only in design_mode free. Unresolvable colors report CUSTOM_COLOR_DROPPED and fall back to the template/default accent.",

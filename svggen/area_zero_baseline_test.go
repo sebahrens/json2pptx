@@ -115,6 +115,9 @@ func TestFilledCharts_ConstantValuesBaselineAtZero(t *testing.T) {
 		t.Run(ct, func(t *testing.T) {
 			doc, err := Render(&RequestEnvelope{
 				Type: ct,
+				// Unlabelled: a labelled single-series area drops its value
+				// axis (go-slide-creator-oocqj), and this test reads the axis.
+				Style: StyleSpec{ShowValuesSet: true},
 				Data: map[string]any{
 					"categories": []any{"Q1", "Q2", "Q3"},
 					"series": []any{

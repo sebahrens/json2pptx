@@ -874,8 +874,8 @@ func (d *WaterfallDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		// totals and increases stay neutral dk1 tints (go-slide-creator-sdxii).
 		style := builder.StyleGuide()
 		config.TotalColor = NeutralInk(style.Palette, WaterfallTotalInk)
-		config.IncreaseColor = NeutralInk(style.Palette, WaterfallIncreaseInk)
 		config.DecreaseColor = style.Palette.Accent1
+		config.IncreaseColor = waterfallIncreaseInk(style.Palette, config.TotalColor, config.DecreaseColor)
 		config.ConnectorColor = style.Palette.TextMuted
 
 		// Apply custom colors if specified (overrides theme defaults)

@@ -122,6 +122,8 @@ type TreemapData struct {
 type TreemapChart struct {
 	builder *SVGBuilder
 	config  TreemapChartConfig
+	// total is the sum of the top-level values, the whole a cell share is of.
+	total float64
 }
 
 // NewTreemapChart creates a new treemap chart renderer.
@@ -173,6 +175,7 @@ func (tc *TreemapChart) Draw(data TreemapData) error {
 	}
 
 	// Apply squarified layout algorithm
+	tc.total = totalValue
 	tc.squarifyLayout(data.Nodes, plotArea, totalValue)
 
 	// Draw nodes
@@ -434,12 +437,12 @@ func (tc *TreemapChart) drawNodes(nodes []*TreemapNode, colors []Color, depth in
 			if bounds.W >= tc.config.LabelMinSize && bounds.H >= tc.config.LabelMinSize {
 				candidateFontSize := math.Min(style.Typography.SizeSmall, math.Min(bounds.W/5, bounds.H/3))
 				if candidateFontSize >= minLabelFontSize {
-					tc.drawNodeLabel(node, labelBounds, style)
+					tc.drawNodeLabel(node, labelBounds, style, color)
 				} else {
-					tc.drawAbbreviatedLabel(node, labelBounds, style)
+					tc.drawAbbreviatedLabel(node, labelBounds, style, color)
 				}
 			} else if bounds.W >= abbreviatedMinSize && bounds.H >= abbreviatedMinSize {
-				tc.drawAbbreviatedLabel(node, labelBounds, style)
+				tc.drawAbbreviatedLabel(node, labelBounds, style, color)
 			}
 		}
 
@@ -494,11 +497,12 @@ const (
 )
 
 // drawNodeLabel draws the label for a treemap node.
-func (tc *TreemapChart) drawNodeLabel(node *TreemapNode, bounds Rect, style *StyleGuide) {
+func (tc *TreemapChart) drawNodeLabel(node *TreemapNode, bounds Rect, style *StyleGuide, fill Color) {
 	b := tc.builder
 
-	// Determine text color based on background luminance
-	textColor := MustParseColor(DefaultThemeLT1Hex)
+	// The label ink is measured against the cell's own fill: a light tint of
+	// the data palette takes dark text, a saturated accent white.
+	textColor := fill.TextColorFor()
 
 	b.Push()
 	b.SetTextColor(textColor)
@@ -519,12 +523,16 @@ func (tc *TreemapChart) drawNodeLabel(node *TreemapNode, bounds Rect, style *Sty
 	case TreemapLabelCenter:
 		labelX = bounds.X + bounds.W/2
 		labelY = bounds.Y + bounds.H/2
-		if tc.config.ShowValueLabels {
+		valueText := ""
+		if tc.config.ShowValueLabels && bounds.H >= 2.4*fontSize {
+			valueText = tc.valueLabel(node, bounds.W-2*tc.config.Padding, fontSize*0.8)
+		}
+		if valueText != "" {
 			// Label above center
 			b.DrawText(node.Label, labelX, labelY-fontSize/2, TextAlignCenter, TextBaselineBottom)
 			// Value below center
 			b.SetFontSize(fontSize * 0.8)
-			valueText := tc.config.ValueFmt.FormatOr(node.TotalValue(), tc.config.ValueFormat)
+			b.SetFontWeight(style.Typography.WeightNormal)
 			b.DrawText(valueText, labelX, labelY+fontSize/2, TextAlignCenter, TextBaselineTop)
 		} else {
 			b.DrawText(node.Label, labelX, labelY, TextAlignCenter, TextBaselineMiddle)
@@ -534,15 +542,40 @@ func (tc *TreemapChart) drawNodeLabel(node *TreemapNode, bounds Rect, style *Sty
 	b.Pop()
 }
 
+// valueLabel is a cell's value line: the formatted value, followed by its
+// share of the whole ("45 (38%)") when the values are not already shares of
+// 100 or percentages. The share is dropped when the pair does not fit
+// maxWidth at size, and the line is empty when even the value does not.
+func (tc *TreemapChart) valueLabel(node *TreemapNode, maxWidth, size float64) string {
+	b := tc.builder
+	v := node.TotalValue()
+	value := TrueMinus(tc.config.ValueFmt.FormatOr(v, tc.config.ValueFormat))
+	b.Push()
+	defer b.Pop()
+	b.SetFontSize(size)
+	withShare := value
+	isPercent := tc.config.ValueFormatSpec != nil && tc.config.ValueFormatSpec.Style == "percent"
+	if tc.total > 0 && math.Abs(tc.total-100) > 0.5 && !isPercent {
+		withShare = fmt.Sprintf("%s (%.0f%%)", value, 100*v/tc.total)
+	}
+	if w, _ := b.MeasureText(withShare); w <= maxWidth {
+		return withShare
+	}
+	if w, _ := b.MeasureText(value); w <= maxWidth {
+		return value
+	}
+	return ""
+}
+
 // drawAbbreviatedLabel draws a short abbreviated label (first 2 characters)
 // for treemap cells that are too small for a full label.
-func (tc *TreemapChart) drawAbbreviatedLabel(node *TreemapNode, bounds Rect, style *StyleGuide) {
+func (tc *TreemapChart) drawAbbreviatedLabel(node *TreemapNode, bounds Rect, style *StyleGuide, fill Color) {
 	if node.Label == "" {
 		return
 	}
 
 	b := tc.builder
-	textColor := MustParseColor(DefaultThemeLT1Hex)
+	textColor := fill.TextColorFor()
 
 	// Abbreviate: use first 2 characters (or full label if shorter).
 	abbrev := node.Label
@@ -644,7 +677,10 @@ func (d *TreemapDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *
 		config := DefaultTreemapChartConfig(width, height)
 		config.ValueFormatSpec = req.Style.ValueFormat
 		config.ShowLabels = true
-		config.ShowValueLabels = req.Style.ShowValues
+		// A treemap without values is a coloured legend: the name and the
+		// formatted value (with its share) are on unless show_values is
+		// explicitly false or data.data_labels is false (go-slide-creator-0fc8y).
+		config.ShowValueLabels = req.Style.ValuesShown(true) && dataLabelsNotOff(req.Data)
 
 		// Apply custom options
 		if padding, ok := req.Data["padding"].(float64); ok {

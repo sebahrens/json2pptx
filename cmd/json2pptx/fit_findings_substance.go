@@ -684,18 +684,25 @@ func collectChartLegibilityFindings(input *PresentationInput) []patterns.FitFind
 			if len(labels) <= ceiling {
 				continue
 			}
+			msg := fmt.Sprintf("slide %d: %s chart has %d categories (%s) — the labels are thinned or rotated into an unreadable band; keep the top %d and group the rest, or split the chart",
+				si+1, item.ChartValue.Type, len(labels), why, ceiling)
+			params := map[string]any{
+				"current_categories": len(labels),
+				"max_categories":     ceiling,
+			}
+			if isPieChartType(string(item.ChartValue.Type)) {
+				msg = fmt.Sprintf("slide %d: %s has %d slices (%s) — a pie reads only up to %d; use bar_chart (sorted, labelled) for this many categories, or keep the top %d slices and group the rest into \"Other\"",
+					si+1, item.ChartValue.Type, len(labels), why, ceiling, ceiling-1)
+				params["use_type"] = "bar_chart"
+			}
 			out = append(out, patterns.FitFinding{
 				ValidationError: patterns.ValidationError{
-					Path: slidepath.ContentIndex(si, ci),
-					Code: patterns.ErrCodeChartOverloaded,
-					Message: fmt.Sprintf("slide %d: %s chart has %d categories (%s) — the labels are thinned or rotated into an unreadable band; keep the top %d and group the rest, or split the chart",
-						si+1, item.ChartValue.Type, len(labels), why, ceiling),
+					Path:    slidepath.ContentIndex(si, ci),
+					Code:    patterns.ErrCodeChartOverloaded,
+					Message: msg,
 					Fix: &patterns.FixSuggestion{
-						Kind: "reduce_items",
-						Params: map[string]any{
-							"current_categories": len(labels),
-							"max_categories":     ceiling,
-						},
+						Kind:   "reduce_items",
+						Params: params,
 					},
 				},
 				Action: "review",
@@ -708,8 +715,10 @@ func collectChartLegibilityFindings(input *PresentationInput) []patterns.FitFind
 // chartCategoryCeiling returns the readable category ceiling for a chart type
 // and its labels, plus the reason that ceiling applies.
 func chartCategoryCeiling(chartType string, labels []string) (int, string) {
-	switch strings.ToLower(chartType) {
-	case "pie", "donut", "doughnut":
+	// The authored type is the _chart form (pie_chart, donut_chart) that
+	// RULES.md mandates; matching only the bare form let an 8-slice pie fall
+	// through to the 12-category ceiling (go-slide-creator-ihlsr).
+	if isPieChartType(chartType) {
 		return chartMaxSliceCategories, "slices below a few percent cannot be labelled"
 	}
 	total := 0
@@ -720,6 +729,23 @@ func chartCategoryCeiling(chartType string, labels []string) (int, string) {
 		return chartLongLabelCategories, fmt.Sprintf("labels average %d characters", mean)
 	}
 	return chartMaxCategories, "beyond what an axis can label"
+}
+
+// isPieChartType reports whether a chart type is a pie or donut in any of its
+// spellings (pie, pie_chart, donut, donut_chart, doughnut).
+func isPieChartType(chartType string) bool {
+	switch strings.TrimSuffix(strings.ToLower(strings.TrimSpace(chartType)), "_chart") {
+	case "pie", "donut", "doughnut":
+		return true
+	}
+	return false
+}
+
+// chartDirectiveKeys are flat-map data keys that steer the chart rather than
+// name a category (data.highlight / sort / orientation / data_labels /
+// group_small_below_pct).
+var chartDirectiveKeys = map[string]bool{
+	"highlight": true, "sort": true, "orientation": true, "data_labels": true, "group_small_below_pct": true,
 }
 
 // chartCategoryLabels returns the category labels of a chart in whichever shape
@@ -742,11 +768,19 @@ func chartCategoryLabels(chart *types.ChartSpec) []string { //nolint:staticcheck
 		return cats
 	}
 	if len(chart.DataOrder) > 0 {
-		return chart.DataOrder
+		labels := make([]string, 0, len(chart.DataOrder))
+		for _, k := range chart.DataOrder {
+			if !chartDirectiveKeys[k] {
+				labels = append(labels, k)
+			}
+		}
+		return labels
 	}
 	labels := make([]string, 0, len(source))
 	for k := range source {
-		labels = append(labels, k)
+		if !chartDirectiveKeys[k] {
+			labels = append(labels, k)
+		}
 	}
 	sort.Strings(labels)
 	return labels

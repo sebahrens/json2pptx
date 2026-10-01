@@ -115,6 +115,7 @@ func renderChartSVG(t *testing.T, chartType string, seriesCount int, forceLegend
 		Title:  "direct-label parity",
 		Data:   map[string]any{"categories": categories, "series": series},
 		Output: OutputSpec{Format: "svg", Width: 1600, Height: 900},
+		Style:  StyleSpec{ShowValuesSet: true}, // unlabelled: value labels would crowd out direct labels
 	}
 	if forceLegend {
 		req.Style.ShowLegend = true

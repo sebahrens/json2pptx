@@ -19,7 +19,7 @@ func renderSingleSeriesBar(t *testing.T, overrides *ChartStyleOverrides) string 
 			},
 		},
 		Output: OutputSpec{Width: 800, Height: 600, Format: "svg"},
-		Style:  StyleSpec{ChartStyle: overrides},
+		Style:  StyleSpec{ChartStyle: overrides, ShowValuesSet: true},
 	}
 	out, err := RenderMultiFormatWithFindings(req, "svg")
 	if err != nil {

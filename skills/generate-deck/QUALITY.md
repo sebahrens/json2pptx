@@ -41,7 +41,9 @@ of any company. Order supporting points by importance, not by discovery.
 Chart, table, matrix, bridge and KPI slides set `takeaway`: one sentence on
 what the evidence means or what to do about it — not a restatement of the
 title. Label the measure and unit on every chart (RULES.md 10a). Highlight
-the one bar, row or cell the title is about; leave the rest neutral.
+the one bar, row, cell, line or slice the title is about; leave the rest
+neutral (`data.highlight` — series names on line / area / grouped bar,
+slice names on pie / donut; RULES.md 10e–10f).
 
 ## 5. Source every number
 

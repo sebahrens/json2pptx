@@ -162,8 +162,10 @@ func TestBuildSupportedTypes_DataFormatHints(t *testing.T) {
 					}
 				}
 			}
-			if df.Description != tt.wantDesc {
-				t.Errorf("Description = %q, want %q", df.Description, tt.wantDesc)
+			// A prefix: the bar hint goes on to document its labelled / sort /
+			// orientation defaults (go-slide-creator-oocqj).
+			if !strings.HasPrefix(df.Description, tt.wantDesc) {
+				t.Errorf("Description = %q, want prefix %q", df.Description, tt.wantDesc)
 			}
 		})
 	}

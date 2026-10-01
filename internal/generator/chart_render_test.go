@@ -317,13 +317,16 @@ func TestVisibleChartPaletteDarkAndDegenerateThemes(t *testing.T) {
 		wantFirst  string
 	}{
 		{
-			name: "dark canvas uses light theme slot",
+			// A pale (or, on a dark canvas, near-black) accent is shaded
+			// into visibility in its own hue family; text inks (lt1 here)
+			// are never a series colour (go-slide-creator-orqni).
+			name: "dark canvas lightens the accent rather than borrowing lt1",
 			theme: []svggen.ThemeColorInput{
 				{Name: "accent1", RGB: "#101010"},
 				{Name: "dk1", RGB: "#000000"},
 				{Name: "lt1", RGB: "#FFFFFF"},
 			},
-			background: "#000000", wantFirst: "#FFFFFF",
+			background: "#000000", wantFirst: svggen.MustParseColor("#101010").Lighten(0.3).Hex(),
 		},
 		{
 			name:       "malformed theme falls back to distinct chart colors",
@@ -684,7 +687,9 @@ func TestDiagramSpecToSVGGen_RawPalette(t *testing.T) {
 		}
 		rawGuide := svggen.StyleGuideFromSpec(result.Style)
 		got := accentHexes(rawGuide.Palette)
-		want := []string{"#FD5108", "#FE7C39", "#A1A8B3", "#000000"}
+		// The pale #FFAA72 is darkened into visibility; dk1 black is never
+		// borrowed as a series colour (go-slide-creator-orqni).
+		want := []string{"#FD5108", "#FE7C39", "#D89060", "#A1A8B3"}
 		for i, want := range want {
 			if got[i] != want {
 				t.Errorf("chart Accent%d = %s, want visible %s", i+1, got[i], want)
@@ -912,7 +917,7 @@ func TestValueFormatSurvivesTheBridge(t *testing.T) {
 	bare := &types.DiagramSpec{
 		Type:  "bar_chart",
 		Data:  map[string]any{"categories": []string{"A"}, "series": []any{}},
-		Style: &types.DiagramStyle{ShowValues: true},
+		Style: &types.DiagramStyle{ShowValues: boolPtr(true)},
 	}
 	if diagramSpecToSVGGen(bare, nil, 0, "").Style.ValueFormat != nil {
 		t.Error("missing value_format should leave StyleSpec.ValueFormat nil")
@@ -927,7 +932,7 @@ func TestChartSpecValueFormatReachesTheDiagramSpec(t *testing.T) {
 		Type: "bar",
 		Data: map[string]any{"A": 1.0},
 		Style: &types.ChartStyle{
-			ShowValues:  true,
+			ShowValues:  boolPtr(true),
 			Scale:       "log",
 			ValueFormat: &types.ValueFormatSpec{Style: "currency", Prefix: "$"},
 		},

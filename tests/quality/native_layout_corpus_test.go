@@ -259,7 +259,7 @@ func makeNativeProbes(layout types.LayoutMetadata, imagePath string) []nativePro
 							Data: map[string]any{"categories": labels, "y_label": "Cases (count)", "series": []any{map[string]any{"name": metric, "values": []float64{12, 18, 15, 24}}}},
 							// Exact labels make numeric fidelity observable in this QA probe;
 							// they are not a universal authoring requirement for every chart.
-							Style: &types.DiagramStyle{ShowValues: true},
+							Style: &types.DiagramStyle{ShowValues: func() *bool { b := true; return &b }()},
 						}
 						p.ExpectedPictures++
 						p.ExpectedDiagramLabels = append(p.ExpectedDiagramLabels, labels...)
@@ -471,7 +471,7 @@ func TestNativeProbeEvidenceProfilesPreserveDistinctColumns(t *testing.T) {
 				charts++
 				diagram := item.Value.(*types.DiagramSpec)
 				metric := fmt.Sprintf("C%d cases", charts)
-				if diagram.Title != metric || diagram.Data["y_label"] != "Cases (count)" || diagram.Style == nil || !diagram.Style.ShowValues {
+				if diagram.Title != metric || diagram.Data["y_label"] != "Cases (count)" || diagram.Style == nil || diagram.Style.ShowValues == nil || !*diagram.Style.ShowValues {
 					t.Fatalf("chart metric, units or exact value labels missing: %+v", diagram)
 				}
 				if got := diagram.Data["categories"].([]string); strings.Join(got, ",") != "Q1,Q2,Q3,Q4" {

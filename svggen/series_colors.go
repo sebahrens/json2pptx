@@ -42,12 +42,18 @@ func (c Color) lab() (l, a, b float64) {
 
 // distinctSeriesPalette orders the palette's accents so that the first count
 // series colours are pairwise at least MinSeriesDeltaE apart. Accents keep
-// their template order; one too close to an already chosen colour is deferred
-// rather than dropped. When the template's own accents cannot supply count
-// distinct colours, theme text colours (dk2 / dk1), a shade of accent1 and a
-// neutral grey are tried before the deferred accents are used anyway. Every
-// returned colour is a template colour or derived from one, so a
-// well-separated palette comes back unchanged.
+// their template (data_palette) order; one too close to an already chosen
+// colour is deferred rather than dropped. Two kinds of accent are deferred
+// behind every other usable colour (go-slide-creator-orqni):
+//
+//   - an accent the template names as its semantic positive or negative
+//     (Palette.SeriesAvoid): a red or green series reads as a verdict;
+//   - an accent within MinSeriesDeltaE of dk1: a near-black series looks like
+//     text or a rendering fault.
+//
+// When the remaining accents cannot supply count distinct colours, a tonal
+// ramp of accent1 and neutral greys fill in before any deferred accent is
+// used. Text inks (dk1 / dk2) are never a series colour. accent1 always leads.
 //
 // Only a chart that leaves some accents unused is reordered: when every
 // palette slot is needed anyway, the template's declared data_palette
@@ -58,7 +64,9 @@ func distinctSeriesPalette(p *Palette, count int) []Color {
 		return accents
 	}
 	chosen := make([]Color, 0, len(accents)+4)
-	var deferred []Color
+	// deferred holds accents too close to a chosen colour; avoided holds the
+	// semantic / near-black ones, used only after everything else.
+	var deferred, avoided []Color
 	farEnough := func(c Color) bool {
 		for _, other := range chosen {
 			if deltaE76(c, other) < MinSeriesDeltaE {
@@ -67,29 +75,45 @@ func distinctSeriesPalette(p *Palette, count int) []Color {
 		}
 		return true
 	}
-	for _, c := range accents {
-		if len(chosen) < count && farEnough(c) {
+	usable := func(c Color) bool {
+		if deltaE76(c, p.TextPrimary) < MinSeriesDeltaE {
+			return false
+		}
+		for _, avoid := range p.SeriesAvoid {
+			if c == avoid {
+				return false
+			}
+		}
+		return true
+	}
+	for i, c := range accents {
+		switch {
+		case i > 0 && !usable(c):
+			avoided = append(avoided, c)
+		case len(chosen) < count && farEnough(c):
 			chosen = append(chosen, c)
-		} else {
+		default:
 			deferred = append(deferred, c)
 		}
 	}
 	if len(chosen) < count {
 		fallbacks := []Color{
-			p.TextSecondary,
-			p.TextPrimary,
 			accents[0].Darken(0.45),
-			MustParseColor("#8C8C8C"),
+			NeutralInk(p, 0.5),
+			accents[0].Lighten(0.4),
+			NeutralInk(p, 0.28),
+			accents[0].Darken(0.65),
 		}
 		for _, c := range fallbacks {
 			if len(chosen) >= count {
 				break
 			}
-			if c.A == 0 || c.ContrastWith(p.Background) < 2 || !farEnough(c) {
+			if c.A == 0 || c.ContrastWith(p.Background) < 2 || !farEnough(c) || !usable(c) {
 				continue
 			}
 			chosen = append(chosen, c)
 		}
 	}
-	return append(chosen, deferred...)
+	chosen = append(chosen, deferred...)
+	return append(chosen, avoided...)
 }

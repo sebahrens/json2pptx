@@ -1,0 +1,418 @@
+package svggen
+
+import (
+	"fmt"
+	"math"
+)
+
+// Horizontal bars are the textbook form for a ranked item comparison with
+// long category names (Zelazny): the names read left-to-right in a column
+// instead of wrapping under narrow columns. data.orientation: "horizontal"
+// on bar_chart / grouped_bar_chart / stacked_bar_chart selects this layout
+// (go-slide-creator-oocqj).
+const (
+	// OrientationHorizontal is the data.orientation value for horizontal bars.
+	OrientationHorizontal = "horizontal"
+	// OrientationVertical is the default data.orientation.
+	OrientationVertical = "vertical"
+
+	// hbarLabelColumnMaxShare caps the category-name column at this share of
+	// the canvas width; longer names wrap to two lines, then truncate.
+	hbarLabelColumnMaxShare = 0.38
+	// hbarLabelGapPt separates a category name from its bar.
+	hbarLabelGapPt = 8.0
+	// hbarSlotShare is a bar's thickness as a share of its category slot.
+	hbarSlotShare = 0.62
+	// HorizontalBarLabelMinChars is the longest category name, in
+	// characters, a vertical bar chart carries comfortably; past it the
+	// capabilities recommend data.orientation "horizontal".
+	HorizontalBarLabelMinChars = 14
+)
+
+// resolveOrientation reads data.orientation.
+func resolveOrientation(data map[string]any) (bool, error) {
+	raw, ok := data["orientation"]
+	if !ok || raw == nil {
+		return false, nil
+	}
+	s, isString := raw.(string)
+	switch {
+	case isString && (s == OrientationHorizontal):
+		return true, nil
+	case isString && (s == OrientationVertical || s == ""):
+		return false, nil
+	}
+	return false, &ValidationError{
+		Field:   "data.orientation",
+		Code:    ErrCodeInvalidValue,
+		Message: fmt.Sprintf("data.orientation must be \"vertical\" or \"horizontal\", got %v", raw),
+		Value:   raw,
+	}
+}
+
+// hbarLayout is the geometry of one horizontal bar render.
+type hbarLayout struct {
+	plot         Rect
+	header       float64
+	footer       float64
+	legend       float64
+	axisH        float64
+	labelFont    float64
+	valueFont    float64
+	labelColumn  float64
+	displayNames [][]string
+}
+
+// drawHorizontal renders the chart with categories down the left and bars
+// growing to the right. With value labels on (the default for a short
+// chart) there is no value axis or gridline — each bar carries its number
+// and a thin baseline marks zero; without them a bottom value axis and
+// light vertical gridlines are drawn.
+func (bc *BarChart) drawHorizontal(data ChartData) error {
+	if bc.config.Scale == "log" {
+		return fmt.Errorf("log scale is not supported for horizontal bars")
+	}
+	b := bc.builder
+	style := b.StyleGuide()
+	colors := seriesHighlightColors(style.Palette, bc.getColors(style, len(data.Series)), data)
+	b.CheckChartCapacity(len(data.Series), len(data.Categories))
+	bc.config.ResolveValueFormatter(chartDataValues(data), true)
+	labelled := bc.config.ShowValues
+
+	lo, hi := bc.calculateDomain(data)
+	lay := bc.horizontalLayout(data, lo, hi, labelled)
+	plot := lay.plot
+
+	vScale := NewLinearScale(lo, hi)
+	vScale.SetRangeLinear(0, plot.W)
+	if !labelled {
+		vScale.Nice(true)
+	}
+	cScale := NewCategoricalScale(data.Categories)
+	cScale.SetRangeCategorical(plot.Y, plot.Y+plot.H)
+	pad := math.Max(0, (1-hbarSlotShare)/(1+hbarSlotShare))
+	cScale.PaddingInner(pad)
+	cScale.PaddingOuter(pad / 2)
+
+	zeroX := plot.X + vScale.Scale(math.Max(lo, math.Min(0, hi)))
+	if !labelled {
+		bc.drawHorizontalValueAxis(plot, vScale)
+	}
+
+	bc.drawHorizontalCategoryNames(data, cScale, lay, zeroX)
+	if bc.config.Stacked {
+		bc.drawHorizontalStacks(data, plot, cScale, vScale, colors, labelled, lay.valueFont)
+	} else {
+		bc.drawHorizontalBars(data, plot, cScale, vScale, colors, labelled, lay.valueFont)
+	}
+
+	// Zero baseline over the bars' roots.
+	b.Push()
+	b.SetStrokeColor(style.Palette.TextPrimary).SetStrokeWidth(labelledBaselinePt)
+	b.DrawLine(zeroX, plot.Y, zeroX, plot.Y+plot.H)
+	b.Pop()
+
+	if bc.config.ShowTitle && data.Title != "" {
+		titleConfig := DefaultTitleConfig()
+		titleConfig.Text = data.Title
+		titleConfig.Subtitle = data.Subtitle
+		NewTitle(b, titleConfig).Draw(Rect{X: 0, Y: 0, W: bc.config.Width, H: lay.header + bc.config.MarginTop})
+	}
+	if lay.legend > 0 {
+		bc.drawHorizontalLegend(data, colors, Rect{
+			X: plot.X, Y: plot.Y + plot.H + lay.axisH + style.Spacing.SM, W: plot.W, H: lay.legend,
+		})
+	}
+	if data.Footnote != "" {
+		footnoteConfig := DefaultFootnoteConfig()
+		footnoteConfig.Text = data.Footnote
+		NewFootnote(b, footnoteConfig).Draw(Rect{X: 0, Y: bc.config.Height - lay.footer, W: bc.config.Width, H: lay.footer})
+	}
+	return nil
+}
+
+// horizontalLayout measures the category-name column, the value-label
+// reserve and the header / legend / footer bands, and returns the plot rect.
+func (bc *BarChart) horizontalLayout(data ChartData, lo, hi float64, labelled bool) hbarLayout {
+	b := bc.builder
+	style := b.StyleGuide()
+	lay := hbarLayout{labelFont: style.Typography.SizeSmall, valueFont: style.Typography.SizeSmall}
+	if labelled {
+		lay.valueFont = labelledValueFontPt
+	}
+	if bc.config.ShowTitle && data.Title != "" {
+		lay.header = style.Typography.SizeTitle + style.Spacing.MD
+		if data.Subtitle != "" {
+			lay.header += style.Typography.SizeSubtitle + style.Spacing.XS
+		}
+	}
+	if data.Footnote != "" {
+		lay.footer = FootnoteReservedHeight(style)
+	}
+	if !labelled {
+		lay.axisH = style.Typography.SizeSmall*xLabelGlyphEm + 8
+	}
+
+	width := bc.config.Width - bc.config.MarginLeft - bc.config.MarginRight
+	// Category names: as wide as the widest name, capped, wrapping to two
+	// lines past the cap.
+	b.Push()
+	b.SetFontSize(lay.labelFont)
+	maxCol := bc.config.Width * hbarLabelColumnMaxShare
+	col := 0.0
+	lay.displayNames = make([][]string, len(data.Categories))
+	for i, c := range data.Categories {
+		lines := []string{c}
+		if w, _ := b.MeasureText(c); w > maxCol {
+			lines = twoLineLabel(b, c, maxCol)
+		}
+		lay.displayNames[i] = lines
+		for _, l := range lines {
+			if w, _ := b.MeasureText(l); w > col {
+				col = w
+			}
+		}
+	}
+	// Value labels sit past the bar end: reserve the widest one.
+	valueReserve := 0.0
+	if labelled {
+		b.SetFontSize(lay.valueFont).SetFontWeight(style.Typography.WeightBold)
+		for _, v := range hbarLabelValues(data, bc.config.Stacked) {
+			if w, _ := b.MeasureText(TrueMinus(bc.config.ValueFmt.FormatOr(v, bc.config.ValueFormat))); w > valueReserve {
+				valueReserve = w
+			}
+		}
+		valueReserve += labelledValueGapPt
+	}
+	b.Pop()
+	lay.labelColumn = math.Min(col, maxCol)
+
+	legendItems := 0
+	if len(data.Series) > 1 || bc.config.ForceLegendSingleSeries {
+		legendItems = len(data.Series)
+	}
+	if legendItems > 0 {
+		legendConfig := PresentationLegendConfig(style)
+		legend := NewLegend(b, legendConfig)
+		items := make([]LegendItem, len(data.Series))
+		for i, s := range data.Series {
+			items[i] = LegendItem{Label: s.Name}
+		}
+		legend.SetItems(items)
+		lay.legend = legend.Height(width)
+	}
+
+	left := bc.config.MarginLeft + lay.labelColumn + hbarLabelGapPt
+	// A negative bar's label sits left of its end, inside the plot.
+	if lo < 0 && labelled {
+		left += valueReserve
+	}
+	right := bc.config.MarginRight + valueReserve
+	if hi <= 0 {
+		right = bc.config.MarginRight
+	}
+	top := bc.config.MarginTop + lay.header
+	bottom := bc.config.MarginBottom + lay.footer + lay.axisH
+	if lay.legend > 0 {
+		bottom += lay.legend + style.Spacing.SM
+	}
+	lay.plot = Rect{
+		X: left,
+		Y: top,
+		W: math.Max(0, bc.config.Width-left-right),
+		H: math.Max(0, bc.config.Height-top-bottom),
+	}
+	return lay
+}
+
+// hbarLabelValues are the numbers the value labels print: each bar, or each
+// stack's total for a stacked chart.
+func hbarLabelValues(data ChartData, stacked bool) []float64 {
+	if !stacked {
+		return chartDataValues(data)
+	}
+	out := make([]float64, len(data.Categories))
+	for _, s := range data.Series {
+		for i, v := range s.Values {
+			if i < len(out) {
+				out[i] += v
+			}
+		}
+	}
+	return out
+}
+
+// twoLineLabel breaks a long category name at the word boundary nearest its
+// middle; a line still wider than maxWidth is truncated with an ellipsis.
+func twoLineLabel(b *SVGBuilder, label string, maxWidth float64) []string {
+	block := b.WrapText(label, maxWidth)
+	if len(block.Lines) <= 1 {
+		return []string{b.TruncateToWidth(label, maxWidth)}
+	}
+	first := block.Lines[0].Text
+	rest := label[min(len(label), len(first)):]
+	for len(rest) > 0 && rest[0] == ' ' {
+		rest = rest[1:]
+	}
+	return []string{first, b.TruncateToWidth(rest, maxWidth)}
+}
+
+// drawHorizontalCategoryNames writes each category name right-aligned in the
+// column left of the bars, vertically centred on its slot.
+func (bc *BarChart) drawHorizontalCategoryNames(data ChartData, cScale *CategoricalScale, lay hbarLayout, zeroX float64) {
+	b := bc.builder
+	style := b.StyleGuide()
+	b.Push()
+	b.SetFontSize(lay.labelFont).SetFontWeight(style.Typography.WeightNormal)
+	b.SetTextColor(style.Palette.TextPrimary)
+	x := math.Min(lay.plot.X, zeroX) - hbarLabelGapPt
+	lineH := lay.labelFont * 1.2
+	for i, c := range data.Categories {
+		lines := lay.displayNames[i]
+		cy := cScale.Scale(c)
+		y0 := cy - lineH*float64(len(lines)-1)/2
+		for j, l := range lines {
+			b.DrawText(l, x, y0+float64(j)*lineH, TextAlignRight, TextBaselineMiddle)
+		}
+	}
+	b.Pop()
+}
+
+// drawHorizontalValueAxis draws the bottom value axis and light vertical
+// gridlines of an unlabelled horizontal chart.
+func (bc *BarChart) drawHorizontalValueAxis(plot Rect, vScale *LinearScale) {
+	b := bc.builder
+	if bc.config.ShowGrid {
+		gridConfig := DefaultGridConfig()
+		b.Push()
+		b.SetStrokeColor(gridConfig.Color).SetStrokeWidth(gridConfig.StrokeWidth)
+		b.SetDashes(gridConfig.DashPattern...)
+		for _, v := range vScale.Ticks(5) {
+			x := plot.X + vScale.Scale(v)
+			b.DrawLine(x, plot.Y, x, plot.Y+plot.H)
+		}
+		b.Pop()
+	}
+	if !bc.config.ShowAxes {
+		return
+	}
+	axisConfig := DefaultAxisConfig(AxisPositionBottom)
+	axisConfig.TickCount = 5
+	axisConfig.ValueFmt = bc.config.ValueFmt
+	axisConfig.Title = bc.config.YAxisTitle
+	axisConfig.HideAxisLine = true
+	NewAxis(b, axisConfig).DrawLinearAxis(vScale, plot.X, plot.Y+plot.H)
+}
+
+// drawHorizontalBars draws side-by-side (grouped) bars, one band per series
+// inside each category slot, with the value label past each bar's end.
+func (bc *BarChart) drawHorizontalBars(data ChartData, plot Rect, cScale *CategoricalScale, vScale *LinearScale, colors []Color, labelled bool, valueFont float64) {
+	b := bc.builder
+	style := b.StyleGuide()
+	pointColors, pointBold := bc.highlightFills(data, colors)
+	n := len(data.Series)
+	band := cScale.Bandwidth() / float64(n)
+	for si, s := range data.Series {
+		fill := colors[si%len(colors)]
+		if s.Color != nil {
+			fill = *s.Color
+		}
+		for i, c := range data.Categories {
+			if i >= len(s.Values) {
+				continue
+			}
+			v := s.Values[i]
+			barFill := fill
+			if len(pointColors) == len(s.Values) {
+				barFill = pointColors[i]
+			}
+			y := cScale.ScaleStart(c) + band*float64(si)
+			x0, x1 := plot.X+vScale.Scale(0), plot.X+vScale.Scale(v)
+			b.Push()
+			b.SetFillColor(barFill).SetStrokeWidth(0)
+			b.FillRect(Rect{X: math.Min(x0, x1), Y: y, W: math.Abs(x1 - x0), H: band * 0.92})
+			b.Pop()
+			if !labelled {
+				continue
+			}
+			bold := len(pointBold) == len(s.Values) && pointBold[i]
+			bc.drawHorizontalValueLabel(v, x1, y+band*0.46, bold, valueFont, style)
+		}
+	}
+}
+
+// drawHorizontalStacks draws one bar per category of stacked segments
+// (positives rightward, negatives leftward) with the stack total past its end.
+func (bc *BarChart) drawHorizontalStacks(data ChartData, plot Rect, cScale *CategoricalScale, vScale *LinearScale, colors []Color, labelled bool, valueFont float64) {
+	b := bc.builder
+	style := b.StyleGuide()
+	band := cScale.Bandwidth()
+	for i, c := range data.Categories {
+		pos, neg := 0.0, 0.0
+		y := cScale.ScaleStart(c)
+		for si, s := range data.Series {
+			if i >= len(s.Values) {
+				continue
+			}
+			v := s.Values[i]
+			start := pos
+			if v < 0 {
+				start = neg
+				neg += v
+			} else {
+				pos += v
+			}
+			fill := colors[si%len(colors)]
+			if s.Color != nil {
+				fill = *s.Color
+			}
+			x0, x1 := plot.X+vScale.Scale(start), plot.X+vScale.Scale(start+v)
+			seg := Rect{X: math.Min(x0, x1), Y: y, W: math.Abs(x1 - x0), H: band}
+			b.Push()
+			b.SetFillColor(fill).SetStrokeWidth(0)
+			b.FillRect(seg)
+			b.Pop()
+			if labelled {
+				drawStackSegmentLabel(b, style, bc.config.ChartConfig, v, seg, fill)
+			}
+		}
+		if labelled && pos > 0 {
+			bc.drawHorizontalValueLabel(pos+neg, plot.X+vScale.Scale(pos), y+band/2, true, valueFont, style)
+		}
+	}
+}
+
+// drawHorizontalValueLabel writes one value past a bar's end: right of a
+// positive bar, left of a negative one.
+func (bc *BarChart) drawHorizontalValueLabel(v, endX, cy float64, bold bool, size float64, style *StyleGuide) {
+	b := bc.builder
+	label := TrueMinus(bc.config.ValueFmt.FormatOr(v, bc.config.ValueFormat))
+	b.Push()
+	b.SetFontSize(size).SetTextColor(style.Palette.TextPrimary)
+	if bold {
+		b.SetFontWeight(style.Typography.WeightBold)
+	} else {
+		b.SetFontWeight(style.Typography.WeightNormal)
+	}
+	if v < 0 {
+		b.DrawText(label, endX-labelledValueGapPt, cy, TextAlignRight, TextBaselineMiddle)
+	} else {
+		b.DrawText(label, endX+labelledValueGapPt, cy, TextAlignLeft, TextBaselineMiddle)
+	}
+	b.Pop()
+}
+
+// drawHorizontalLegend draws the series legend under the plot.
+func (bc *BarChart) drawHorizontalLegend(data ChartData, colors []Color, bounds Rect) {
+	style := bc.builder.StyleGuide()
+	legend := NewLegend(bc.builder, PresentationLegendConfig(style))
+	items := make([]LegendItem, len(data.Series))
+	for i, s := range data.Series {
+		items[i] = LegendItem{Label: s.Name, Color: colors[i%len(colors)]}
+		if s.Color != nil {
+			items[i].Color = *s.Color
+		}
+	}
+	legend.SetItems(items)
+	legend.Draw(bounds)
+}

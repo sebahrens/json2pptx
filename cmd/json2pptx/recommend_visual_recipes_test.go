@@ -134,6 +134,35 @@ func TestRecommendVisualRecipesRenderForEveryType(t *testing.T) {
 	}
 }
 
+// TestRecommendVisualRankingIntentGetsHorizontalBars covers
+// go-slide-creator-oocqj: a ranking intent hands the bar candidate a
+// horizontal, sorted recipe, and that recipe renders.
+func TestRecommendVisualRankingIntentGetsHorizontalBars(t *testing.T) {
+	if !rankingIntent("Rank the top 5 markets by revenue") || !rankingIntent("Germany is the largest market") {
+		t.Fatal("ranking intents not recognised")
+	}
+	if rankingIntent("Revenue grew every quarter") {
+		t.Fatal("a trend intent was read as a ranking")
+	}
+	rec := patterns.RecommendVisualResult{
+		QueryUnderstood: "rank the top 5 markets by revenue",
+		Candidates:      []patterns.VisualCandidate{{Category: patterns.VisualCategoryChart, Name: "bar"}},
+	}
+	attachVisualRecipes(&rec, "midnight-blue")
+	c := rec.Candidates[0]
+	raw, _ := json.Marshal(c.NextToolCall.ArgsTemplate)
+	if !strings.Contains(string(raw), `"orientation":"horizontal"`) {
+		t.Fatalf("ranking recipe is not horizontal: %s", raw)
+	}
+	if testing.Short() {
+		return
+	}
+	verdict := renderRecipe(t, semanticTestConfig(t), c)
+	if !verdict.Success {
+		t.Fatalf("ranked bar recipe did not render: %q %+v", verdict.Error, verdict.Diagnostics)
+	}
+}
+
 // assertDeckHasVisual checks slide 1 embeds a rendered chart/diagram (an SVG /
 // PNG picture or native diagram shapes beyond the title).
 func assertDeckHasVisual(t *testing.T, pptxPath string) {

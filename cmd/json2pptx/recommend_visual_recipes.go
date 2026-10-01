@@ -35,12 +35,23 @@ var visualRecipeData = map[string]map[string]any{
 		"categories": []any{"Q1", "Q2", "Q3", "Q4"},
 		"series":     []any{map[string]any{"name": "Revenue ($M)", "values": []any{2.8, 3.1, 3.2, 3.4}}},
 	},
+	// bar_ranked is the bar recipe for a ranking intent: horizontal bars,
+	// sorted largest first by default.
+	"bar_ranked": {
+		"orientation": "horizontal",
+		"categories":  []any{"Germany", "France", "United Kingdom", "Italy", "Spain"},
+		"series":      []any{map[string]any{"name": "Revenue ($M)", "values": []any{42, 35, 31, 18, 12}}},
+	},
+	// The multi-series recipes name the series the slide is about in
+	// highlight: it keeps its colour and the rest turn grey context
+	// (go-slide-creator-kbzu2).
 	"grouped_bar": {
 		"categories": []any{"North", "South", "East"},
 		"series": []any{
 			map[string]any{"name": "2025", "values": []any{120, 98, 145}},
 			map[string]any{"name": "2026", "values": []any{135, 112, 152}},
 		},
+		"highlight": []any{"2026"},
 	},
 	"stacked_bar": {
 		"categories": []any{"Q1", "Q2", "Q3"},
@@ -51,7 +62,11 @@ var visualRecipeData = map[string]map[string]any{
 	},
 	"line": {
 		"categories": []any{"Jan", "Feb", "Mar", "Apr", "May", "Jun"},
-		"series":     []any{map[string]any{"name": "Active users (k)", "values": []any{85, 92, 98, 110, 125, 138}}},
+		"series": []any{
+			map[string]any{"name": "Mobile app", "values": []any{85, 92, 98, 110, 125, 138}},
+			map[string]any{"name": "Web", "values": []any{120, 118, 121, 119, 117, 116}},
+		},
+		"highlight": []any{"Mobile app"},
 	},
 	"area": {
 		"categories": []any{"Jan", "Feb", "Mar", "Apr"},
@@ -303,11 +318,13 @@ var visualRecipeData = map[string]map[string]any{
 // called without one; the spec renders on every shipped template.
 const visualRecipeTemplate = "midnight-blue"
 
-// visualRecipeDeckSpec returns a complete DeckSpec rendering one chart or
-// diagram candidate through the raw_json2pptx escape hatch, or nil when the
-// candidate is not a chart / diagram or has no recipe. valueKey is the typed
-// content field (chart_value / diagram_value) that carries the data.
-func visualRecipeDeckSpec(category patterns.VisualCategory, name, templateName string) (spec map[string]any, valueKey string) {
+// visualRecipeDeckSpecFrom returns a complete DeckSpec rendering one chart or
+// diagram candidate through the raw_json2pptx escape hatch, with the sample
+// data of recipe dataKey (the type name, or a variant such as "bar_ranked"),
+// or nil when the candidate is not a chart / diagram or has no recipe.
+// valueKey is the typed content field (chart_value / diagram_value) that
+// carries the data.
+func visualRecipeDeckSpecFrom(category patterns.VisualCategory, name, dataKey, templateName string) (spec map[string]any, valueKey string) {
 	var itemType string
 	switch category {
 	case patterns.VisualCategoryChart:
@@ -317,7 +334,7 @@ func visualRecipeDeckSpec(category patterns.VisualCategory, name, templateName s
 	default:
 		return nil, ""
 	}
-	data, ok := visualRecipeData[name]
+	data, ok := visualRecipeData[dataKey]
 	if !ok {
 		return nil, ""
 	}
@@ -366,13 +383,38 @@ func deepCopyAny(v any) any {
 	}
 }
 
+// rankingIntentWords mark an intent that ranks items by size.
+var rankingIntentWords = []string{"rank", "ranking", "ranked", "largest", "biggest", "smallest", "highest", "lowest", "top", "leaders", "leading"}
+
+// rankingIntent reports whether the recommend_visual query asks for a ranking.
+func rankingIntent(query string) bool {
+	for _, w := range strings.FieldsFunc(strings.ToLower(query), func(r rune) bool {
+		return (r < 'a' || r > 'z') && (r < '0' || r > '9')
+	}) {
+		for _, k := range rankingIntentWords {
+			if w == k {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // attachVisualRecipes gives every chart / diagram candidate its data contract
 // and a runnable render_deck_spec next call.
 func attachVisualRecipes(rec *patterns.RecommendVisualResult, templateName string) {
 	hints := buildDataFormatHints()
+	ranking := rankingIntent(rec.QueryUnderstood)
 	for i := range rec.Candidates {
 		c := &rec.Candidates[i]
-		spec, valueKey := visualRecipeDeckSpec(c.Category, c.Name, templateName)
+		dataKey := c.Name
+		// A ranking ("largest", "top 5") is the textbook horizontal bar chart:
+		// names in a column, bars sorted largest first (go-slide-creator-oocqj).
+		if c.Name == "bar" && ranking {
+			dataKey = "bar_ranked"
+			c.Rationale += "; a ranking reads best as horizontal bars sorted largest first (data.orientation \"horizontal\")"
+		}
+		spec, valueKey := visualRecipeDeckSpecFrom(c.Category, c.Name, dataKey, templateName)
 		if spec == nil {
 			continue
 		}

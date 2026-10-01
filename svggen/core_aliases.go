@@ -132,6 +132,11 @@ func NumberDataSchema(desc string) *DataSchema { return core.NumberDataSchema(de
 // BooleanDataSchema creates a boolean data schema.
 func BooleanDataSchema(desc string) *DataSchema { return core.BooleanDataSchema(desc) }
 
+// EnumDataSchema creates a string enum data schema.
+func EnumDataSchema(desc string, values ...string) *DataSchema {
+	return core.EnumDataSchema(desc, values...)
+}
+
 // IsValidationError checks if an error is a validation error.
 func IsValidationError(err error) bool { return core.IsValidationError(err) }
 

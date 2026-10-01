@@ -618,8 +618,13 @@ func applyChartHint(candidates []VisualCandidate, hints *VisualHints, intentLowe
 	}
 }
 
+// pieMaxRecommendedSlices is the most categories recommend_visual still ranks
+// a pie / donut for; past it a sorted bar chart reads better
+// (go-slide-creator-ihlsr).
+const pieMaxRecommendedSlices = 5
+
 func chartOverloaded(name string, hints *VisualHints, intentLower string) bool {
-	return ((name == "pie" || name == "donut") && (hints.DataPoints > 6 || hints.SeriesCount > 1)) ||
+	return ((name == "pie" || name == "donut") && (hints.DataPoints > pieMaxRecommendedSlices || hints.SeriesCount > 1)) ||
 		(name == "gauge" && (hints.DataPoints > 1 || hints.SeriesCount > 1 || hasTimeSeriesIntent(intentLower)))
 }
 
@@ -761,7 +766,7 @@ func scoreChartRule(r chartRule, intentLower string, hints *VisualHints) float64
 	if r.needsSingleSeries && hints.SeriesCount > 1 {
 		score -= 0.2
 	}
-	if (r.chartType == "pie" || r.chartType == "donut") && hints.DataPoints > 6 {
+	if (r.chartType == "pie" || r.chartType == "donut") && hints.DataPoints > pieMaxRecommendedSlices {
 		score -= 0.45 // overloaded slice labels: drop from normal recommendations
 	}
 	if r.chartType == "pie" && hints.DataPoints > 0 && hints.DataPoints <= 6 && intentContainsPhrase(intentWords(intentLower), []string{"allocation"}) {

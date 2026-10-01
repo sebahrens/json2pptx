@@ -279,7 +279,13 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 			Neutral:  spec.Style.SemanticAccents["neutral"],
 		}
 		style.ShowLegend = spec.Style.ShowLegend
-		style.ShowValues = spec.Style.ShowValues
+		// nil leaves the renderer's labelled default (bar / short line
+		// charts show their values); an explicit false opts out
+		// (go-slide-creator-oocqj).
+		if spec.Style.ShowValues != nil {
+			style.ShowValues = *spec.Style.ShowValues
+			style.ShowValuesSet = true
+		}
 		style.Scale = spec.Style.Scale
 		if spec.Style.FontFamily != "" {
 			style.FontFamily = spec.Style.FontFamily
@@ -494,9 +500,11 @@ func isSVGChartType(name string) bool {
 	return false
 }
 
-// visibleChartPalette retains preferred chart order while removing colors
-// with less than 2:1 contrast on the chart canvas. Dark theme slots provide
-// distinct fallbacks when a template has fewer than six visible accents.
+// visibleChartPalette retains preferred chart order while replacing colors
+// with less than 2:1 contrast on the chart canvas by a darker shade of the
+// same accent, so a pale template accent stays in its hue family. Text inks
+// (dk1 / dk2) are never a data colour: a pale-accent template used to paint
+// its third series solid black (go-slide-creator-orqni).
 func visibleChartPalette(theme []svggen.ThemeColorInput, preferred []string, backgroundHex string) []string {
 	background, err := svggen.ParseColor(backgroundHex)
 	if err != nil {
@@ -512,26 +520,20 @@ func visibleChartPalette(theme []svggen.ThemeColorInput, preferred []string, bac
 			}
 		}
 	}
-	for _, name := range []string{"dk2", "dk1", "lt2", "lt1"} {
-		for _, tc := range theme {
-			if tc.Name == name {
-				ordered = append(ordered, tc.RGB)
-				break
-			}
-		}
-	}
 	// A malformed or monochrome theme may have fewer than six usable slots.
 	// Borrow distinct default chart colors only after exhausting its own
 	// palette, so multiple data series do not become identical.
 	for _, color := range svggen.DefaultPalette().AccentColors() {
 		ordered = append(ordered, color.Hex())
 	}
-	ordered = append(ordered, "#000000", "#FFFFFF")
 	visible := make([]string, 0, 6)
 	seen := make(map[string]bool, len(ordered))
 	for _, hex := range ordered {
 		color, err := svggen.ParseColor(hex)
-		if err != nil || color.ContrastWith(background) < 2 {
+		if err != nil {
+			continue
+		}
+		if color = visibleShade(color, background); color.A == 0 {
 			continue
 		}
 		key := strings.ToUpper(color.Hex())
@@ -558,6 +560,25 @@ func visibleChartPalette(theme []svggen.ThemeColorInput, preferred []string, bac
 		visible = append(visible, visible[len(visible)%baseCount])
 	}
 	return visible
+}
+
+// visibleShade returns c when it has 2:1 contrast on background, otherwise the
+// nearest shade of c (darker on a light canvas, lighter on a dark one) that
+// does, or a zero Color when none does.
+func visibleShade(c, background svggen.Color) svggen.Color {
+	if c.ContrastWith(background) >= 2 {
+		return c
+	}
+	for _, amount := range []float64{0.15, 0.3, 0.45, 0.6, 0.75} {
+		d := c.Darken(amount)
+		if !background.IsLight() {
+			d = c.Lighten(amount)
+		}
+		if d.ContrastWith(background) >= 2 {
+			return d
+		}
+	}
+	return svggen.Color{}
 }
 
 // lookupBackgroundAndSurface returns the hex values for the theme's lt1 (slide

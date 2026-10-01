@@ -103,10 +103,73 @@ func dataLabelsFieldSchema() *DataSchema {
 func (d *BarChartDiagram) DataSchema() *DataSchema {
 	fields := commonChartFields()
 	fields["highlight"] = highlightFieldSchema()
+	fields["sort"] = sortFieldSchema(true)
+	fields["orientation"] = orientationFieldSchema()
 	return ObjectDataSchema(
-		"Bar chart data with categories and series. Supports grouped, stacked, and horizontal variants.",
+		"Bar chart data with categories and series. orientation \"horizontal\" draws ranked horizontal bars; sort orders the bars (default descending for non-time, non-ordinal single-series categories).",
 		fields,
 		[]string{"categories", "series"},
+	)
+}
+
+// barFamilyFields are the shared fields of grouped / stacked bar charts.
+func barFamilyFields() map[string]*DataSchema {
+	fields := commonChartFields()
+	fields["sort"] = sortFieldSchema(false)
+	fields["orientation"] = orientationFieldSchema()
+	fields["highlight"] = seriesHighlightFieldSchema()
+	return fields
+}
+
+// sortFieldSchema describes data.sort on bar-family charts
+// (go-slide-creator-oocqj).
+func sortFieldSchema(rankedDefault bool) *DataSchema {
+	desc := "Bar order by value: \"desc\" (largest first), \"asc\", or \"none\" (the authored order). Multi-series charts sort by each category's total."
+	if rankedDefault {
+		desc += " Omitted, a single-series chart whose categories are not periods (years, quarters, months) or an ordinal scale (ranges, stages, low/medium/high) sorts descending; set \"none\" to keep a meaningful authored order."
+	} else {
+		desc += " Omitted, the authored order is kept."
+	}
+	return EnumDataSchema(desc, SortDesc, SortAsc, SortNone)
+}
+
+// orientationFieldSchema describes data.orientation on bar-family charts.
+func orientationFieldSchema() *DataSchema {
+	return EnumDataSchema(
+		"\"horizontal\" draws bars left-to-right with the category names in a column on the left — the form for a ranking or long category names (over ~14 characters). Default \"vertical\".",
+		OrientationVertical, OrientationHorizontal)
+}
+
+// seriesHighlightFieldSchema describes data.highlight on multi-series charts:
+// the series the message is about (go-slide-creator-kbzu2).
+func seriesHighlightFieldSchema() *DataSchema {
+	return ArrayDataSchema(
+		"Series the slide is about: 0-based series indices or series names. Highlighted series keep accent1 (a 2pt line, labelled at its end, on line / area charts); every other series turns neutral dk1 at 38% (1pt lines without markers). Omitted, every series keeps its palette colour.",
+		&DataSchema{Description: "0-based series index (integer) or series name (string)"},
+		0,
+	)
+}
+
+// withSeriesHighlight adds the series highlight to a line / area schema.
+func withSeriesHighlight(fields map[string]*DataSchema) map[string]*DataSchema {
+	fields["highlight"] = seriesHighlightFieldSchema()
+	return fields
+}
+
+// pieSortFieldSchema describes data.sort on pie / donut charts
+// (go-slide-creator-ihlsr).
+func pieSortFieldSchema() *DataSchema {
+	return EnumDataSchema(
+		"Slice order clockwise from 12 o'clock: \"desc\" (default — largest first), \"asc\", or \"none\" (the authored order, for slices with a natural sequence).",
+		SortDesc, SortAsc, SortNone)
+}
+
+// sliceHighlightFieldSchema describes data.highlight on pie / donut charts.
+func sliceHighlightFieldSchema() *DataSchema {
+	return ArrayDataSchema(
+		"Slices the slide is about: 0-based slice indices or slice labels. Highlighted slices are painted in accent1 and every other slice in neutral greys. Omitted, slices take the series palette.",
+		&DataSchema{Description: "0-based slice index (integer) or slice label (string)"},
+		0,
 	)
 }
 
@@ -125,7 +188,7 @@ func highlightFieldSchema() *DataSchema {
 func (d *LineChartDiagram) DataSchema() *DataSchema {
 	return ObjectDataSchema(
 		"Line chart data with categories and series. Supports time-series via time_strings/time_values in series objects.",
-		commonChartFields(),
+		withSeriesHighlight(commonChartFields()),
 		nil, // categories not always required (time-series mode)
 	)
 }
@@ -135,12 +198,15 @@ func (d *PieChartDiagram) DataSchema() *DataSchema {
 	return ObjectDataSchema(
 		"Pie chart data with categories/labels and values.",
 		map[string]*DataSchema{
-			"categories": ArrayDataSchema("Slice labels", StringDataSchema("Label"), 1),
-			"labels":     ArrayDataSchema("Alias for categories", StringDataSchema("Label"), 1),
-			"x_labels":   ArrayDataSchema("Alias for categories", StringDataSchema("Label"), 1),
-			"values":     ArrayDataSchema("Slice values", NumberDataSchema("Value"), 1),
-			"colors":     ArrayDataSchema("Custom hex color overrides", StringDataSchema("Hex color, e.g. #FF0000"), 0),
-			"footnote":   StringDataSchema("Chart footnote text"),
+			"categories":            ArrayDataSchema("Slice labels", StringDataSchema("Label"), 1),
+			"labels":                ArrayDataSchema("Alias for categories", StringDataSchema("Label"), 1),
+			"x_labels":              ArrayDataSchema("Alias for categories", StringDataSchema("Label"), 1),
+			"values":                ArrayDataSchema("Slice values", NumberDataSchema("Value"), 1),
+			"colors":                ArrayDataSchema("Custom hex color overrides", StringDataSchema("Hex color, e.g. #FF0000"), 0),
+			"footnote":              StringDataSchema("Chart footnote text"),
+			"highlight":             sliceHighlightFieldSchema(),
+			"sort":                  pieSortFieldSchema(),
+			"group_small_below_pct": NumberDataSchema("Slices under this share of the total (percent, default 3) fold into one trailing \"Other\" slice when two or more qualify; 0 never folds. A highlighted slice is never folded."),
 		},
 		[]string{"values"},
 	)
@@ -151,12 +217,15 @@ func (d *DonutChartDiagram) DataSchema() *DataSchema {
 	return ObjectDataSchema(
 		"Donut chart data with categories/labels and values.",
 		map[string]*DataSchema{
-			"categories": ArrayDataSchema("Slice labels", StringDataSchema("Label"), 1),
-			"labels":     ArrayDataSchema("Alias for categories", StringDataSchema("Label"), 1),
-			"x_labels":   ArrayDataSchema("Alias for categories", StringDataSchema("Label"), 1),
-			"values":     ArrayDataSchema("Slice values", NumberDataSchema("Value"), 1),
-			"colors":     ArrayDataSchema("Custom hex color overrides", StringDataSchema("Hex color, e.g. #FF0000"), 0),
-			"footnote":   StringDataSchema("Chart footnote text"),
+			"categories":            ArrayDataSchema("Slice labels", StringDataSchema("Label"), 1),
+			"labels":                ArrayDataSchema("Alias for categories", StringDataSchema("Label"), 1),
+			"x_labels":              ArrayDataSchema("Alias for categories", StringDataSchema("Label"), 1),
+			"values":                ArrayDataSchema("Slice values", NumberDataSchema("Value"), 1),
+			"colors":                ArrayDataSchema("Custom hex color overrides", StringDataSchema("Hex color, e.g. #FF0000"), 0),
+			"footnote":              StringDataSchema("Chart footnote text"),
+			"highlight":             sliceHighlightFieldSchema(),
+			"sort":                  pieSortFieldSchema(),
+			"group_small_below_pct": NumberDataSchema("Slices under this share of the total (percent, default 3) fold into one trailing \"Other\" slice when two or more qualify; 0 never folds. A highlighted slice is never folded."),
 		},
 		[]string{"values"},
 	)
@@ -166,7 +235,7 @@ func (d *DonutChartDiagram) DataSchema() *DataSchema {
 func (d *AreaChartDiagram) DataSchema() *DataSchema {
 	return ObjectDataSchema(
 		"Area chart data with categories and series.",
-		commonChartFields(),
+		withSeriesHighlight(commonChartFields()),
 		[]string{"categories", "series"},
 	)
 }
@@ -175,7 +244,7 @@ func (d *AreaChartDiagram) DataSchema() *DataSchema {
 func (d *StackedBarChartDiagram) DataSchema() *DataSchema {
 	return ObjectDataSchema(
 		"Stacked bar chart data with categories and series.",
-		commonChartFields(),
+		barFamilyFields(),
 		[]string{"categories", "series"},
 	)
 }
@@ -184,7 +253,7 @@ func (d *StackedBarChartDiagram) DataSchema() *DataSchema {
 func (d *GroupedBarChartDiagram) DataSchema() *DataSchema {
 	return ObjectDataSchema(
 		"Grouped bar chart data with categories and series.",
-		commonChartFields(),
+		barFamilyFields(),
 		[]string{"categories", "series"},
 	)
 }

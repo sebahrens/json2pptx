@@ -52,8 +52,9 @@ func (ds *DiagramSpec) NormalizeFlatChartData(keyOrder []string) bool {
 	if ds == nil {
 		return false
 	}
-	// data.highlight rides along a flat map without being a category.
-	rest, highlight, hasHighlight := splitChartHighlight(ds.Data)
+	// data.highlight / sort / orientation / data_labels ride along a flat map
+	// without being categories.
+	rest, directives := splitChartDirectives(ds.Data)
 	if !isFlatNumericMap(rest) {
 		return false
 	}
@@ -71,8 +72,8 @@ func (ds *DiagramSpec) NormalizeFlatChartData(keyOrder []string) bool {
 		order = nil // incomplete order: let buildChartData sort deterministically
 	}
 	data, warnings, diags := buildChartData(&ChartSpec{Type: ct, Data: rest, DataOrder: order}) //nolint:staticcheck // ChartSpec conversion is the shared flat-map path
-	if hasHighlight {
-		data["highlight"] = highlight
+	for k, v := range directives {
+		data[k] = v
 	}
 	ds.Data = data
 	ds.Type = chartTypeToSvggenType[ct]

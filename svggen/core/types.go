@@ -219,6 +219,13 @@ type StyleSpec struct {
 	// ShowValues enables value labels on data points.
 	ShowValues bool `json:"show_values,omitempty" yaml:"show_values,omitempty"`
 
+	// ShowValuesSet records that ShowValues was given explicitly (JSON
+	// "show_values": false is otherwise indistinguishable from omitting it).
+	// Charts whose default is labelled (bar / line / area with few points,
+	// treemap) only drop their labels on an explicit false. Set by
+	// UnmarshalJSON and by the json2pptx bridge.
+	ShowValuesSet bool `json:"-" yaml:"-"`
+
 	// Scale controls the value axis of bar and grouped_bar charts. Empty and
 	// "linear" preserve bar lengths; "log" is an explicit opt-in.
 	Scale string `json:"scale,omitempty" yaml:"scale,omitempty"`
@@ -266,6 +273,50 @@ type StyleSpec struct {
 	// "1000 / 1200 / 1400" up the axis and "1,240 / 865 / 413" on the bars, and
 	// no single knob reached both (go-slide-creator-e2ck9).
 	ValueFormat *ValueFormatSpec `json:"value_format,omitempty" yaml:"value_format,omitempty"`
+}
+
+// UnmarshalJSON decodes a StyleSpec and records whether show_values was
+// present, so an explicit false can opt out of a labelled default.
+func (s *StyleSpec) UnmarshalJSON(b []byte) error {
+	type plain StyleSpec
+	var p plain
+	if err := json.Unmarshal(b, &p); err != nil {
+		return err
+	}
+	*s = StyleSpec(p)
+	var probe struct {
+		ShowValues *bool `json:"show_values"`
+	}
+	if err := json.Unmarshal(b, &probe); err == nil && probe.ShowValues != nil {
+		s.ShowValuesSet = true
+	}
+	return nil
+}
+
+// MarshalJSON keeps an explicit "show_values": false on the wire, so a
+// request round-trips and the render cache key tells it apart from an
+// omitted switch.
+func (s StyleSpec) MarshalJSON() ([]byte, error) {
+	type plain StyleSpec
+	if s.ShowValues || !s.ShowValuesSet {
+		return json.Marshal(plain(s))
+	}
+	return json.Marshal(struct {
+		plain
+		ShowValues bool `json:"show_values"`
+	}{plain: plain(s)})
+}
+
+// ValuesShown resolves the value-label switch against a chart's default:
+// an explicit show_values wins, otherwise def applies.
+func (s StyleSpec) ValuesShown(def bool) bool {
+	if s.ShowValues {
+		return true
+	}
+	if s.ShowValuesSet {
+		return false
+	}
+	return def
 }
 
 // ValueFormatSpec is the agent-facing number format for a chart's values.

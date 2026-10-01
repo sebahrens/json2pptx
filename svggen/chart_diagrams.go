@@ -97,9 +97,17 @@ func (d *BarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, 
 		if err != nil {
 			return err
 		}
+		if err := sortBarCategories(req, &chartData, true); err != nil {
+			return err
+		}
+		horizontal, err := resolveOrientation(req.Data)
+		if err != nil {
+			return err
+		}
 
 		width, height := builder.Width(), builder.Height()
 		config := DefaultBarChartConfig(width, height)
+		config.Horizontal = horizontal
 		config.ShowTitle = req.Title != ""
 		// ShowLegend defaults to true in DefaultChartConfig; the Draw method
 		// only renders legends for multi-series data (len(series) > 1).
@@ -110,7 +118,7 @@ func (d *BarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, 
 		// ShowLegend=true as a force-on signal that disables the direct-label
 		// path (which would otherwise replace the legend with inline labels).
 		config.PreferDirectLabels = !req.Style.ShowLegend
-		config.ShowValues = req.Style.ShowValues
+		config.ShowValues = resolveDefaultShowValues(req, "bar_chart", chartData)
 		config.Scale = req.Style.Scale
 		// ShowGrid defaults to true in DefaultChartConfig for professional dashboards.
 		// Only disable if the request explicitly sets show_grid (Go zero-value means unset).
@@ -213,13 +221,16 @@ func (d *LineChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 
 		width, height := builder.Width(), builder.Height()
 		config := DefaultLineChartConfig(width, height)
+		// Markers on every point of a dense chart are clutter: only up to
+		// LineMarkersMaxPoints points carry them (go-slide-creator-kbzu2).
+		config.ShowMarkers = lineMarkersByDefault(chartData)
 		config.ShowTitle = req.Title != ""
 		// ShowLegend kept at default true; Draw only renders for multi-series.
 		// Explicit ShowLegend=true forces the legend back on by disabling
 		// the direct-label path; otherwise direct labels replace the legend
 		// for series counts in the executive direct-label window.
 		config.PreferDirectLabels = !req.Style.ShowLegend
-		config.ShowValues = req.Style.ShowValues
+		config.ShowValues = resolveDefaultShowValues(req, "line_chart", chartData)
 		// ShowGrid defaults to true in DefaultChartConfig for professional dashboards.
 
 		// Apply color overrides from data.colors (array of hex strings).
@@ -286,6 +297,9 @@ func (d *PieChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, 
 		if err != nil {
 			return err
 		}
+		if err := preparePieData(req, &chartData); err != nil {
+			return err
+		}
 
 		width, height := builder.Width(), builder.Height()
 		config := DefaultPieChartConfig(width, height)
@@ -295,6 +309,12 @@ func (d *PieChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, 
 		// The percentage labels on slices show values (40.0%) but not category names (Development, Marketing)
 		// Without the legend, viewers cannot understand what the chart is showing
 		// Note: DefaultPieChartConfig sets ShowLegend=true, so we keep that default
+
+		// Up to PieDirectLabelMaxSlices slices are labelled "Name NN%" with no
+		// legend; above that (or with style.show_legend) the legend names them
+		// (go-slide-creator-ihlsr).
+		config.NameInLabel = pieUsesDirectLabels(req, pieSliceCount(chartData))
+		config.ShowLegend = !config.NameInLabel
 
 		// Apply color overrides from data.colors (array of hex strings).
 		config.Colors = extractChartColorsForRequest(req, builder)
@@ -344,6 +364,9 @@ func (d *DonutChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder
 		if err != nil {
 			return err
 		}
+		if err := preparePieData(req, &chartData); err != nil {
+			return err
+		}
 
 		width, height := builder.Width(), builder.Height()
 		config := DefaultDonutChartConfig(width, height)
@@ -353,6 +376,12 @@ func (d *DonutChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder
 		// The percentage labels on slices show values (40.0%) but not category names (Development, Marketing)
 		// Without the legend, viewers cannot understand what the chart is showing
 		// Note: DefaultDonutChartConfig sets ShowLegend=true, so we keep that default
+
+		// Up to PieDirectLabelMaxSlices slices are labelled "Name NN%" with no
+		// legend; above that (or with style.show_legend) the legend names them
+		// (go-slide-creator-ihlsr).
+		config.NameInLabel = pieUsesDirectLabels(req, pieSliceCount(chartData))
+		config.ShowLegend = !config.NameInLabel
 
 		// Apply color overrides from data.colors (array of hex strings).
 		config.Colors = extractChartColorsForRequest(req, builder)
@@ -397,7 +426,7 @@ func (d *AreaChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		// Explicit ShowLegend=true forces the legend back on by disabling
 		// the direct-label path.
 		config.PreferDirectLabels = !req.Style.ShowLegend
-		config.ShowValues = req.Style.ShowValues
+		config.ShowValues = resolveDefaultShowValues(req, "area_chart", chartData)
 		// ShowGrid defaults to true in DefaultChartConfig for professional dashboards.
 
 		// Apply color overrides from data.colors (array of hex strings).
@@ -759,11 +788,19 @@ func (d *StackedBarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBu
 		if err != nil {
 			return err
 		}
+		if err := sortBarCategories(req, &chartData, false); err != nil {
+			return err
+		}
+		horizontal, err := resolveOrientation(req.Data)
+		if err != nil {
+			return err
+		}
 
 		width, height := builder.Width(), builder.Height()
 		config := DefaultBarChartConfig(width, height)
+		config.Horizontal = horizontal
 		config.ShowTitle = req.Title != ""
-		config.ShowValues = req.Style.ShowValues
+		config.ShowValues = resolveDefaultShowValues(req, "stacked_bar_chart", chartData)
 		// ShowGrid defaults to true in DefaultChartConfig for professional dashboards.
 		config.Stacked = true // Enable stacking
 		// Stacked bar charts always show legend - it's essential to identify segments
@@ -1021,13 +1058,27 @@ func extractChartData(req *RequestEnvelope) (ChartData, error) {
 	// Extract data label config
 	chartData.DataLabels = extractDataLabels(data)
 
+	err := resolveChartHighlight(data, &chartData)
+	return chartData, err
+}
+
+// resolveChartHighlight reads data.highlight onto the chart. On a
+// multi-series chart it names the series the slide is about
+// (go-slide-creator-kbzu2); entries that name no series fall back to the
+// category reading, which multi-series charts ignore.
+func resolveChartHighlight(data map[string]any, chartData *ChartData) error {
+	if len(chartData.Series) > 1 {
+		if sh, set, err := resolveSeriesHighlight(data, chartData.Series); err == nil && set {
+			chartData.SeriesHighlight, chartData.SeriesHighlightSet = sh, true
+			return nil
+		}
+	}
 	highlight, set, err := resolveHighlight(data, chartData.Categories)
 	if err != nil {
-		return chartData, err
+		return err
 	}
 	chartData.Highlight, chartData.HighlightSet = highlight, set
-
-	return chartData, nil
+	return nil
 }
 
 // applyDataLabelsToConfig applies DataLabelConfig to ChartConfig's ShowValues/ValueFormat.
@@ -1990,15 +2041,23 @@ func (d *GroupedBarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBu
 		if err != nil {
 			return err
 		}
+		if err := sortBarCategories(req, &chartData, false); err != nil {
+			return err
+		}
+		horizontal, err := resolveOrientation(req.Data)
+		if err != nil {
+			return err
+		}
 
 		width, height := builder.Width(), builder.Height()
 		config := DefaultBarChartConfig(width, height)
+		config.Horizontal = horizontal
 		config.ShowTitle = req.Title != ""
 		// ShowLegend kept at default true; Draw only renders for multi-series.
 		// Explicit ShowLegend=true forces the legend back on by disabling the
 		// direct-label path.
 		config.PreferDirectLabels = !req.Style.ShowLegend
-		config.ShowValues = req.Style.ShowValues
+		config.ShowValues = resolveDefaultShowValues(req, "grouped_bar_chart", chartData)
 		config.Scale = req.Style.Scale
 		// ShowGrid defaults to true in DefaultChartConfig for professional dashboards.
 		config.Stacked = false // Explicit: side-by-side bars
@@ -2015,6 +2074,9 @@ func (d *GroupedBarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBu
 		if config.YAxisTitle != "" {
 			config.MarginLeft += 20
 		}
+
+		// Apply data_labels config to chart config
+		applyDataLabelsToConfig(&config.ChartConfig, chartData.DataLabels)
 
 		// Apply per-slide chart_style token overrides.
 		applyChartStyleOverrides(&config.ChartConfig, req.Style)
