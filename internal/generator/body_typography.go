@@ -92,16 +92,7 @@ func applyLeadParagraphSizes(shape *shapeXML, cfg *autofitConfig) {
 // listStyleLevelSize returns the defRPr size declared for a 0-based level
 // in a list style, or 0.
 func listStyleLevelSize(inner string, level int) int {
-	tag := fmt.Sprintf("a:lvl%dpPr", level+1)
-	start := strings.Index(inner, "<"+tag)
-	if start < 0 {
-		return 0
-	}
-	block := inner[start:]
-	if end := strings.Index(block, "</"+tag+">"); end >= 0 {
-		block = block[:end]
-	}
-	return parseSzAttr(block)
+	return parseSzAttr(listStyleLevelBlock(inner, level))
 }
 
 // extractFontSizeFromParagraphs returns the first explicit run size, or 0.

@@ -481,6 +481,7 @@ func setBulletParagraphs(shape *shapeXML, placeholderID string, value interface{
 			Runs:       runs,
 		}
 	}
+	unmarkNestedUnderUnmarkedBase(paragraphs, shape.TextBody.ListStyle, bulletLevel)
 	if header != "" {
 		paragraphs = append([]paragraphXML{columnHeaderParagraph(header, templateStyles, bulletLevel)}, paragraphs...)
 	}
@@ -622,6 +623,7 @@ func setBodyAndBulletsParagraphs(shape *shapeXML, placeholderID string, value in
 		}
 	}
 
+	unmarkNestedUnderUnmarkedBase(paragraphs, shape.TextBody.ListStyle, bulletLevel)
 	shape.TextBody.Paragraphs = paragraphs
 
 	// Strip inherited bold and all-caps from lstStyle so only inline tag formatting applies.
@@ -720,6 +722,7 @@ func setBodyAndLeadParagraphs(shape *shapeXML, placeholderID string, value inter
 		})
 	}
 
+	unmarkNestedUnderUnmarkedBase(paragraphs, shape.TextBody.ListStyle, bulletLevel)
 	shape.TextBody.Paragraphs = paragraphs
 
 	// Strip inherited bold and all-caps from lstStyle

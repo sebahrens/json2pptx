@@ -62,7 +62,7 @@ To preview the same input against another registered template without editing th
 A slide's `content` array is a list of typed items, each targeting a placeholder by its canonical id (`title`, `subtitle`, `body`, `body_2`, `body_3`, `image`, `image_2`). The schema enforces the `type` → typed-value pairing via an `if`/`then` discriminator chain:
 
 - `type: "text"`             → requires `text_value` (string)
-- `type: "bullets"`          → requires `bullets_value` (string array)
+- `type: "bullets"`          → requires `bullets_value` (string array); leading spaces or tabs on an item nest it one level deeper. When the layout disables markers on its first body level (e.g. `abstract`), nested items are also unmarked and indented 18pt per level, so marker use stays consistent across levels
 - `type: "body_and_bullets"` → requires `body_and_bullets_value`
 - `type: "body_and_lead"`    → requires `body_and_lead_value` (`{"lead": "...", "bullets": [...]}`); the bullets are sized like plain bullets by the body density policy (18pt up to 6 paragraphs, 16pt from 7, 14pt from 10; an in-range template size is kept) and the bold, unbulleted lead one 2pt step above them (never under 16pt); autofit shrinks both together
 - `type: "bullet_groups"`    → requires `bullet_groups_value`; groups are spaced by proximity (a header sits closer to its first bullet than bullets sit to each other, and the gap before the next header is at least 1.5× the bullet gap), and sub-bullets are indented at most 24pt from the header edge, whatever the template master declares
