@@ -199,16 +199,17 @@ func assertCentred(t *testing.T, name string, cells []shapegrid.ResolvedCell) {
 }
 
 // Full-size patterns take the auto placement in the content zone. Row lists
-// (agenda, exec-summary, process-flow) keep a minimum presence; box patterns
-// (before-after, card-grid) are content-sized and never stretched to fill
-// (go-slide-creator-wntyw), so they carry a ceiling instead of a floor.
+// (agenda, exec-summary) keep a minimum presence; box patterns (before-after,
+// card-grid, and process-flow since go-slide-creator-xb06p) are content-sized
+// and never stretched to fill (go-slide-creator-wntyw), so they carry a
+// ceiling instead of a floor.
 func TestFullPatternsOccupyContentZone(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		min, max float64
 	}{
 		{"kpi-4up", 0, 0.60},
-		{"process-flow", 0.44, 1},
+		{"process-flow", 0, 0.30},
 		{"before-after", 0, 0.50},
 		{"agenda", 0.59, 1},
 		{"exec-summary", 0.40, 1},
@@ -255,11 +256,13 @@ func TestKPI3up_CardFillsZoneAndCentred(t *testing.T) {
 	assertCentred(t, "kpi-3up", res.Cells)
 }
 
-func TestProcessFlow_StepsFillZoneAndCentred(t *testing.T) {
+// Process steps are content-sized boxes (go-slide-creator-xb06p): no taller
+// than 30% of the content area, never shorter than a box, centred.
+func TestProcessFlow_StepsContentSizedAndCentred(t *testing.T) {
 	res, _ := resolvePatternForTest(t, "process-flow", `{"steps":[{"label":"Intake"},{"label":"Triage"},{"label":"Approve?","type":"decision"},{"label":"Close"}]}`)
 	for _, c := range res.Cells {
-		if float64(c.CellBounds.CY) < 0.44*float64(contentRect.CY) {
-			t.Errorf("process step height %d < 45%% of content height", c.CellBounds.CY)
+		if h := float64(c.CellBounds.CY); h > 0.30*float64(contentRect.CY)+12700 || h < 0.35*float64(c.CellBounds.CX) {
+			t.Errorf("process step %dx%d EMU, want content-sized within 30%% of the %d content height", c.CellBounds.CX, c.CellBounds.CY, contentRect.CY)
 		}
 	}
 	assertCentred(t, "process-flow", res.Cells)
@@ -278,7 +281,10 @@ func TestProcessFlowCompactChevronResolvedGeometry(t *testing.T) {
 			t.Errorf("cell %d lost chevron geometry", i)
 		}
 	}
-	assertCentred(t, "process-flow-compact chevrons", res.Cells)
+	// The compact band is top-anchored under the title (go-slide-creator-xb06p).
+	if top, _ := blockExtent(res.Cells); top-contentRect.Y > 12700 {
+		t.Errorf("process-flow-compact band starts %d EMU below the content top, want top-anchored", top-contentRect.Y)
+	}
 	shapes := 0
 	for _, shape := range res.Shapes {
 		if !bytes.Contains(shape, []byte(`prst="chevron"`)) {

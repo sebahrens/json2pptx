@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
-	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
 // ---------------------------------------------------------------------------
@@ -94,6 +93,8 @@ func processFlowDefaultFontPt(n int) float64 {
 type ProcessFlowStep struct {
 	Label string `json:"label"`
 	Type  string `json:"type,omitempty"` // "step" (default), "decision", "chevron", or "arrow"
+	// Highlight fills this one step with the solid accent (at most one).
+	Highlight bool `json:"highlight,omitempty"`
 }
 
 // ProcessFlowValues holds the steps for the process flow.
@@ -101,9 +102,19 @@ type ProcessFlowValues struct {
 	Steps []ProcessFlowStep `json:"steps"`
 }
 
-// ProcessFlowOverrides is the standard text overrides. header_size is not
-// supported (step labels are body text) and is rejected by Validate.
-type ProcessFlowOverrides = TextOverrides
+// ProcessFlowOverrides is the standard text overrides plus the step style.
+// header_size is not supported (step labels are body text) and is rejected
+// by Validate.
+type ProcessFlowOverrides struct {
+	TextOverrides
+	// Style is "tinted" (default: neutral steps with dark text; the accent
+	// fills only a highlighted step or a lone decision, and draws the
+	// connectors) or "solid" (every step filled with the accent; legacy).
+	Style string `json:"style,omitempty"`
+}
+
+// processFlowStyles are the accepted overrides.style values.
+var processFlowStyles = []string{"tinted", "solid"}
 
 // ProcessFlowCellOverride is the shared per-cell override.
 type ProcessFlowCellOverride = CellOverride
@@ -168,13 +179,7 @@ func (p *processFlow) PostExpandWarnings(ctx ExpandContext, values, overrides an
 }
 
 func (p *processFlow) Schema() *Schema {
-	stepSchema := ObjectSchema(
-		map[string]*Schema{
-			"label": StringSchema(80).WithDescription("Step label text; chevron/arrow labels tighten to about 61/31/12/10 word-like characters at 5/6/7/8 steps (rectangular steps about 72 at 7 and 71 at 8), less for wide unbroken text"),
-			"type":  EnumSchema("step", "decision", "chevron", "arrow").WithDescription("Shape type: rectangle (step), diamond (decision), chevron, or right-arrow (arrow)").WithDefault("step"),
-		},
-		[]string{"label"},
-	).WithAdditionalProperties(false)
+	stepSchema := processFlowStepSchema("Step label text; chevron/arrow labels tighten to about 61/31/12/10 word-like characters at 5/6/7/8 steps (rectangular steps about 72 at 7 and 71 at 8), less for wide unbroken text")
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
@@ -186,7 +191,7 @@ func (p *processFlow) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"values":         valuesSchema,
-			"overrides":      textOverridesSchemaWithout("header_size"),
+			"overrides":      processFlowOverridesSchema(),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
@@ -205,16 +210,7 @@ func (p *processFlow) Validate(values, overrides any, cellOverrides map[int]any)
 	var errs []error
 
 	// Validate cell_accent_mode
-	if overrides != nil {
-		if ovr, ok := overrides.(*ProcessFlowOverrides); ok {
-			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
-				errs = append(errs, err)
-			}
-			// Step labels are body text; there is no header for header_size
-			// to size (go-slide-creator-s1uvj.41).
-			errs = append(errs, rejectUnusedTextOverrides(name, ovr, "header_size")...)
-		}
-	}
+	errs = append(errs, validateProcessFlowStyle(name, vals.Steps, overrides)...)
 
 	if len(vals.Steps) < 3 {
 		errs = append(errs, errMinItems(name, "steps", 3, len(vals.Steps), ""))
@@ -258,57 +254,8 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		}
 	}
 
-	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	bodySize := ResolveSize(ovr.BodySize, processFlowFullFontPt(vals.Steps))
-	cellAccentMode := ovr.CellAccentMode
-
-	cells := make([]*jsonschema.GridCellInput, len(vals.Steps))
-	for i, step := range vals.Steps {
-		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
-		geometry := "roundRect"
-		pointed := false
-		switch step.Type {
-		case "decision":
-			geometry = "diamond"
-		case "chevron":
-			geometry = "chevron"
-			pointed = true
-		case "arrow":
-			geometry = "rightArrow"
-			pointed = true
-		}
-
-		text := buildProcessFlowTextContent(pptx.ConvertMarkdownEmphasis(step.Label), bodySize)
-		if pointed {
-			text = buildProcessFlowPointedText(pptx.ConvertMarkdownEmphasis(step.Label), bodySize)
-		}
-
-		cell := &jsonschema.GridCellInput{
-			Shape: &jsonschema.ShapeSpecInput{
-				Geometry: geometry,
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
-				Text:     text,
-			},
-		}
-		if pointed {
-			cell.Shape.Adjustments = map[string]int64{"adj": chevronAdj}
-		}
-
-		if co, coOk := cellOverrides[i]; coOk {
-			if cellOvr, ok2 := co.(*ProcessFlowCellOverride); ok2 {
-				applyCellTextOverride(cell, cellOvr)
-				if cellOvr.AccentBar {
-					cell.AccentBar = &jsonschema.AccentBarInput{
-						Position: "left",
-						Color:    accent,
-						Width:    4,
-					}
-				}
-			}
-		}
-
-		cells[i] = cell
-	}
+	cells := buildProcessFlowCells(ctx, vals.Steps, ovr, cellOverrides, bodySize)
 
 	colsJSON, _ := json.Marshal(len(vals.Steps))
 
@@ -316,15 +263,20 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	// (go-slide-creator-7km8) instead of stretching into full-height pillars
 	// with needle-thin diamonds; the grid centres the row vertically.
 	pointedRow := allStepsPointed(vals.Steps)
-	cellW, rowHeight := processFlowCellSize(ctx, len(vals.Steps), pointedRow)
-	// The cap gives way to the written fit of the tallest label (never
-	// past the content area) before the writer would shrink it below the
-	// readable floor (go-slide-creator-n1muf).
+	cellW, rowCap := processFlowCellSize(ctx, len(vals.Steps), pointedRow)
+	// Steps are content-sized: the written fit of the tallest label, floored
+	// at a box proportion so a one-word step still reads as a box, and capped
+	// at processFlowMaxHeightFrac (go-slide-creator-xb06p). The cap gives way
+	// to the written fit of the tallest label (never past the content area)
+	// before the writer would shrink it below the readable floor
+	// (go-slide-creator-n1muf).
 	_, contentH := contentAreaPt(ctx)
-	rowHeight = math.Max(rowHeight, math.Min(processFlowWrittenNeedPt(cells, cellW), math.Round(contentH)))
+	need := processFlowWrittenNeedPt(cells, cellW)
+	rowHeight := processFlowContentHeight(need, cellW, processFlowBoxAspect, rowCap)
+	rowHeight = math.Max(rowHeight, math.Min(need, math.Round(contentH)))
 	row := jsonschema.GridRowInput{
 		Cells:     cells,
-		Connector: &jsonschema.ConnectorSpecInput{Style: "arrow", Color: "dk1", Width: 1.5},
+		Connector: processFlowConnector(ctx, ovr),
 		MaxHeight: rowHeight,
 	}
 	// Chevrons point at the next step; an arrow drawn between them is a second
@@ -346,14 +298,22 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 // processFlowWrittenNeedPt is the height the tallest step needs for the
 // writer to store its label without an autofit shrink: the written fit of
-// each step's own text at the step width (the writer measures the full shape
-// bounds, whatever the preset's notch or diamond).
+// each step's own text at the step width. A diamond's text sits in the
+// preset's inner half-size rectangle (pptx.PresetTextRectSize), so a decision
+// needs twice the fit of its label at half the step width; measured at the
+// full width, a content-sized row left "Within policy?" to be shrunk by the
+// renderer (go-slide-creator-xb06p).
 func processFlowWrittenNeedPt(cells []*jsonschema.GridCellInput, cellW float64) float64 {
 	need := 0.0
 	for _, c := range cells {
-		if c != nil && c.Shape != nil {
-			need = math.Max(need, writtenFitHeightPt(c.Shape.Text, cellW, 0))
+		if c == nil || c.Shape == nil {
+			continue
 		}
+		if c.Shape.Geometry == "diamond" {
+			need = math.Max(need, 2*writtenFitHeightPt(c.Shape.Text, cellW/2, 0))
+			continue
+		}
+		need = math.Max(need, writtenFitHeightPt(c.Shape.Text, cellW, 0))
 	}
 	return math.Ceil(need)
 }
@@ -362,14 +322,7 @@ func processFlowWrittenNeedPt(cells []*jsonschema.GridCellInput, cellW float64) 
 // returns the written-fit height the tallest needs, with the step width and
 // the content-area height.
 func processFlowStepsNeedPt(ctx ExpandContext, steps []ProcessFlowStep, bodySize float64, compact bool) (need, areaH float64) {
-	cells := make([]*jsonschema.GridCellInput, len(steps))
-	for i, step := range steps {
-		text := buildProcessFlowTextContent(pptx.ConvertMarkdownEmphasis(step.Label), bodySize)
-		if step.Type == "chevron" || step.Type == "arrow" {
-			text = buildProcessFlowPointedText(pptx.ConvertMarkdownEmphasis(step.Label), bodySize)
-		}
-		cells[i] = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Text: text}}
-	}
+	cells := buildProcessFlowCells(ctx, steps, &ProcessFlowOverrides{}, nil, bodySize)
 	var cellW float64
 	if compact {
 		cellW, _ = processFlowCompactCellSize(ctx, len(steps), false)
@@ -402,8 +355,24 @@ func processFlowAreaWarning(ctx ExpandContext, name string, steps []ProcessFlowS
 }
 
 // processFlowMaxHeightFrac caps process-flow steps at this share of the
-// content height.
-const processFlowMaxHeightFrac = 0.45
+// content height. It was 0.45, which stretched one-word steps into 155px
+// slabs (go-slide-creator-xb06p).
+const processFlowMaxHeightFrac = 0.30
+
+// processFlowBoxAspect is the height floor of a step as a share of its width:
+// a one-word label still gets a box, not a bar. process-flow-compact uses the
+// shallower processFlowCompactBoxAspect.
+const processFlowBoxAspect = 0.40
+
+// processFlowContentHeight sizes a step row to its written need, floored at
+// aspect × the step width and capped at limit.
+func processFlowContentHeight(need, cellW, aspect, limit float64) float64 {
+	h := math.Max(need, cellW*aspect)
+	if limit > 0 {
+		h = math.Min(h, limit)
+	}
+	return math.Round(h)
+}
 
 // processFlowFullFontPt uses the taller full-size row to promote short labels.
 // Dense labels keep the conservative scale; compact flows retain their own
@@ -463,7 +432,7 @@ func allStepsPointed(steps []ProcessFlowStep) bool {
 // rectangle, so the label keeps only the uniform shape text margin inside it;
 // adding the notch again as bodyPr insets leaves almost no room for text in
 // narrow steps.
-func buildProcessFlowPointedText(content string, size float64) json.RawMessage {
+func buildProcessFlowPointedText(content string, size float64, ink string) json.RawMessage {
 	type paragraph struct {
 		Content string  `json:"content"`
 		Size    float64 `json:"size"`
@@ -478,7 +447,7 @@ func buildProcessFlowPointedText(content string, size float64) json.RawMessage {
 		VerticalAlign string      `json:"vertical_align"`
 	}{
 		Paragraphs: []paragraph{
-			{Content: content, Size: size, Bold: true, Color: "lt1", Align: "ctr"},
+			{Content: content, Size: size, Bold: true, Color: ink, Align: "ctr"},
 		},
 		Align:         "ctr",
 		VerticalAlign: "ctr",
@@ -488,7 +457,7 @@ func buildProcessFlowPointedText(content string, size float64) json.RawMessage {
 	return data
 }
 
-func buildProcessFlowTextContent(content string, size float64) json.RawMessage {
+func buildProcessFlowTextContent(content string, size float64, ink string) json.RawMessage {
 	type paragraph struct {
 		Content string  `json:"content"`
 		Size    float64 `json:"size"`
@@ -503,7 +472,7 @@ func buildProcessFlowTextContent(content string, size float64) json.RawMessage {
 		VerticalAlign string      `json:"vertical_align"`
 	}{
 		Paragraphs: []paragraph{
-			{Content: content, Size: size, Bold: true, Color: "lt1", Align: "ctr"},
+			{Content: content, Size: size, Bold: true, Color: ink, Align: "ctr"},
 		},
 		Align:         "ctr",
 		VerticalAlign: "ctr",

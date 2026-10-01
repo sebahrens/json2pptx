@@ -275,13 +275,9 @@ func (jm *journeyMaturity) Expand(ctx ExpandContext, values, overrides any, cell
 				Text:     labelText,
 			},
 		}
-		if stage.Current {
-			headerCell.AccentBar = &jsonschema.AccentBarInput{
-				Position: "left",
-				Color:    baseAccent,
-				Width:    4,
-			}
-		}
+		// The current header's accent fill is its emphasis. A left accent bar
+		// on it rendered outside the cell, in the column gap over the
+		// previous stage's arrow (go-slide-creator-8gbmn).
 
 		descContent := strings.TrimSpace(stage.Description)
 		var descShape *jsonschema.ShapeSpecInput
@@ -305,18 +301,24 @@ func (jm *journeyMaturity) Expand(ctx ExpandContext, values, overrides any, cell
 		// a rotated shape rotates its text too (the old rot=180 triangle
 		// rendered the label upside down). Other cells render an empty rect
 		// so the grid stays well-formed.
+		//
+		// The callout is outlined in the base accent so the accent-filled
+		// header stays the slide's one solid emphasis (go-slide-creator-fl11f),
+		// and the other cells are unfilled rects: bg1 painted white tiles on
+		// a tinted slide background (go-slide-creator-8gbmn).
 		var markerShape *jsonschema.ShapeSpecInput
 		if stage.Current {
-			markerText := readableTextOn(ctx, fillTone{Color: baseAccent}, "lt1")
+			markerLine, _ := json.Marshal(map[string]any{"color": baseAccent, "width": journeyMaturityMarkerLinePt})
 			markerShape = &jsonschema.ShapeSpecInput{
 				Geometry: journeyMaturityMarkerGeometry,
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, baseAccent)),
-				Text:     buildJourneyMaturityMarkerText("We are here", descSize, markerText),
+				Fill:     json.RawMessage(`"none"`),
+				Line:     markerLine,
+				Text:     buildJourneyMaturityMarkerText("We are here", descSize, inkOnLight(ctx, baseAccent, 4.5)),
 			}
 		} else {
 			markerShape = &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(`"bg1"`),
+				Fill:     json.RawMessage(`"none"`),
 			}
 		}
 		markerCells[i] = &jsonschema.GridCellInput{Shape: markerShape}
@@ -363,6 +365,10 @@ func (jm *journeyMaturity) Expand(ctx ExpandContext, values, overrides any, cell
 
 	return grid, nil
 }
+
+// journeyMaturityMarkerLinePt is the accent outline of the "We are here"
+// callout.
+const journeyMaturityMarkerLinePt = 1.5
 
 // ---------------------------------------------------------------------------
 // Text builders

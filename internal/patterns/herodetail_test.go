@@ -215,7 +215,7 @@ func TestHeroDetail(t *testing.T) {
 				{Title: "Outlook", Body: "Strong tailwinds"},
 			},
 		}
-		grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+		grid, err := p.Expand(ExpandContext{}, v, &HeroDetailOverrides{Style: "cards"}, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
@@ -264,10 +264,11 @@ func TestHeroDetail(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
-		// Minimal style should have lt1 fill and accent bar
+		// Minimal style has no fill (no white box on a tinted slide) and
+		// an accent bar (go-slide-creator-19pp9).
 		fillStr := string(grid.Rows[1].Cells[0].Shape.Fill)
-		if !strings.Contains(fillStr, "lt1") {
-			t.Errorf("minimal style should have lt1 fill, got: %s", fillStr)
+		if fillStr != `"none"` {
+			t.Errorf("minimal style should have no fill, got: %s", fillStr)
 		}
 		if grid.Rows[1].Cells[0].AccentBar == nil {
 			t.Error("minimal style should have accent bar")

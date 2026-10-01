@@ -255,39 +255,20 @@ func TestComputeCellBudgets_EmptyGrid(t *testing.T) {
 }
 
 func TestSparseLayoutWarning_ProcessFlowShortSteps(t *testing.T) {
-	// process-flow with very short step labels should trigger sparse_layout.
-	// The steps carry the uniform 0.5 cm text margin, which counts as used
-	// box height, so the frame is a full 16:9 content area: tall enough that
-	// one-letter labels leave the boxes mostly empty.
+	// A sparse process-flow budget (one-letter labels in roomy boxes) triggers
+	// sparse_layout. process-flow steps are content-sized since
+	// go-slide-creator-xb06p, so the expanded exemplar no longer produces such
+	// budgets; the warning is exercised on synthetic low-density budgets.
 	reg := patterns.Default()
 	pat, ok := reg.Get("process-flow")
 	if !ok {
 		t.Skip("process-flow pattern not registered")
 	}
-
-	ctx := patterns.ExpandContext{
-		SlideWidth:  12192000,
-		SlideHeight: 6858000,
-		LayoutBounds: patterns.LayoutBounds{
-			X: 457200, Y: 457200,
-			Width: 11277600, Height: 5943600,
-		},
+	budgets := []cellBudgetEntry{
+		{CellIndex: 0, ActualChars: 1, MaxChars: 400, DensityPct: 1},
+		{CellIndex: 1, ActualChars: 1, MaxChars: 400, DensityPct: 1},
+		{CellIndex: 2, ActualChars: 1, MaxChars: 400, DensityPct: 1},
 	}
-
-	// Expand with 3 short steps (minimal text = low density)
-	values := &patterns.ProcessFlowValues{
-		Steps: []patterns.ProcessFlowStep{
-			{Label: "A", Type: "step"},
-			{Label: "B", Type: "step"},
-			{Label: "C", Type: "step"},
-		},
-	}
-	grid, err := pat.Expand(ctx, values, nil, nil)
-	if err != nil {
-		t.Fatalf("expand failed: %v", err)
-	}
-
-	budgets, _ := computeCellBudgets(grid, ctx)
 	pi := &PatternInput{Name: "process-flow"}
 	warn := sparseLayoutWarning(budgets, pat, "process-flow", pi)
 	if warn == nil {

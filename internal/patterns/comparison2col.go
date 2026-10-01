@@ -183,8 +183,9 @@ func (c *comparison2col) NewCellOverride() any { return &Comparison2colCellOverr
 // Measured by TestComparisonBudgetProbe against the written size (no run
 // stored below its role floor) on every shipped template at default text
 // sizes, every cell keeping the uniform 0.5 cm shape text margin
-// (go-slide-creator-n1muf). A header row consumes the same height as one body
-// row.
+// (go-slide-creator-n1muf). The budgets were measured with the header row
+// taking the same height as one body row; content-sized rows (header at its
+// written need) leave the body at least that much.
 func comparisonBodyBudget(bodyRows int, headers bool) int {
 	effectiveRows := bodyRows
 	if headers {
@@ -384,9 +385,10 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 	plan.sizeRows()
 
 	grid := &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(`2`),
-		Gap:     comparisonGapPt,
-		Rows:    plan.rows,
+		Columns:       json.RawMessage(`2`),
+		Gap:           comparisonGapPt,
+		Rows:          plan.rows,
+		VerticalAlign: GridVerticalAlignDefault,
 	}
 	if plan.rowGap != comparisonGapPt {
 		grid.RowGap = plan.rowGap
@@ -415,14 +417,18 @@ type comparisonPlan struct {
 	total  float64 // the rows' written-fit heights together
 }
 
-// sizeRows hands the rows their heights. Rows that fit keep equal flex rows
-// unless one needs more than its share; then every row is floored at its
-// need (floorFlexRowsAtNeeds). Rows that cannot fit share what the header
-// band leaves in proportion to their needs, so the header keeps its band and
-// the crowded rows take height from the sparse ones.
+// sizeRows hands the rows their heights. Rows that fit are content-sized
+// (go-slide-creator-x0b82): the header band is exactly its written need, and
+// each body row its need grown by an equal share of the surplus up to
+// comparisonMinFillFrac of the area, at most comparisonStretchMax x its need
+// — equal flex rows turned a one-word header into a body-row-tall band and
+// one-line items into ~100px tinted slabs. The grid centres the block. Rows
+// that cannot fit share what the header band leaves in proportion to their
+// needs, so the header keeps its band and the crowded rows take height from
+// the sparse ones.
 func (p comparisonPlan) sizeRows() {
 	if p.fits {
-		floorFlexRowsAtNeeds(p.rows, p.needs, p.avail)
+		p.contentSizeRows()
 		return
 	}
 	for i := range p.rows {
@@ -431,6 +437,45 @@ func (p comparisonPlan) sizeRows() {
 			continue
 		}
 		p.rows[i].Flex = math.Max(math.Ceil(p.needs[i]), 1)
+	}
+}
+
+// Content-sized comparison rows: body rows grow towards
+// comparisonMinFillFrac of the area, each at most comparisonStretchMax x its
+// written need, so a one-line item keeps its text above a quarter of its row.
+const (
+	comparisonMinFillFrac  = 0.5
+	comparisonStretchMax   = 1.4
+	comparisonRowMinGrowPt = 0.5
+)
+
+// contentSizeRows pins every row at its written need and shares the surplus
+// up to comparisonMinFillFrac of the area among the body rows.
+func (p comparisonPlan) contentSizeRows() {
+	used := p.total
+	body := 0
+	for i := range p.rows {
+		h := math.Ceil(p.needs[i])
+		p.rows[i].MinHeight, p.rows[i].MaxHeight, p.rows[i].Flex = h, h, 0
+		if !(i == 0 && p.header) {
+			body++
+		}
+	}
+	gaps := float64(len(p.rows)-1) * p.rowGap
+	target := (p.avail+gaps)*comparisonMinFillFrac - gaps
+	if body == 0 || used >= target {
+		return
+	}
+	extra := (target - used) / float64(body)
+	if extra < comparisonRowMinGrowPt {
+		return
+	}
+	for i := range p.rows {
+		if i == 0 && p.header {
+			continue
+		}
+		grown := math.Min(p.rows[i].MaxHeight+extra, math.Ceil(p.needs[i]*comparisonStretchMax))
+		p.rows[i].MinHeight, p.rows[i].MaxHeight = grown, grown
 	}
 }
 

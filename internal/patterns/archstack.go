@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -323,15 +324,44 @@ func (a *archStack) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		rows = append(rows, jsonschema.GridRowInput{Cells: cells})
 	}
 
+	// Tiers are content-sized (go-slide-creator-3nsll): every tier takes the
+	// tallest tier's written need plus padding, capped at
+	// archStackTierMaxHeightFrac of the content height, so four one-line
+	// tiers no longer stretch into ~85px slabs; a longer description still
+	// grows past the cap rather than shrinking below the readable floor. The
+	// grid centres the stack in the content area.
+	contentW, contentH := contentAreaPt(ctx)
+	tierW := contentW * cols[0] / 100
+	need := 0.0
+	for _, row := range rows {
+		if c := row.Cells[0]; c != nil && c.Shape != nil {
+			need = math.Max(need, writtenFitHeightPt(c.Shape.Text, tierW, 0))
+		}
+	}
+	if need > 0 && contentH > 0 {
+		tierH := math.Ceil(math.Max(need, math.Min(need+archStackTierPadPt, contentH*archStackTierMaxHeightFrac)))
+		for i := range rows {
+			rows[i].MaxHeight = tierH
+		}
+	}
+
 	grid := &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(colsJSON),
-		Gap:     4,
-		RowGap:  4,
-		Rows:    rows,
+		Columns:       json.RawMessage(colsJSON),
+		Gap:           4,
+		RowGap:        4,
+		Rows:          rows,
+		VerticalAlign: GridVerticalAlignDefault,
 	}
 
 	return grid, nil
 }
+
+// archStackTierMaxHeightFrac caps a content-sized tier at this share of the
+// content height.
+const archStackTierMaxHeightFrac = 0.20
+
+// archStackTierPadPt is the breathing room a tier gets beyond its written need.
+const archStackTierPadPt = 8.0
 
 func buildArchStackTierContent(label string, labelSize float64, desc string, descSize float64) json.RawMessage {
 	type paragraph struct {

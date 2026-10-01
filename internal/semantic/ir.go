@@ -696,6 +696,7 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 		return []CompositionCandidate{
 			visual("numbered-step-strip", "3-7 steps that each carry a description, as numbered rows"),
 			visual("process-flow", "3-8 bare or branching steps as a flow diagram"),
+			visual("process-flow-compact", "3-6 short labels (averaging under 40 characters) as a shallow flow band under the title"),
 			{Layout: "content", Reason: "native bullets preserve shorter or longer processes"},
 		}
 	case KindRoadmap:

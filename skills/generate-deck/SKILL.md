@@ -93,6 +93,9 @@ mid-token: a value shrinks (a `kpi-6up` "$4.2M" may render near 28pt) and a
 up to 1.3 : 4) widens before its label shrinks; what
 cannot fit is reported (`BODY_TOO_LONG` on `values[i].big`,
 `TEXT_EXCEEDS_SHAPE` naming the label word) — see [PATTERNS.md](PATTERNS.md).
+Patterns spend at most one solid accent block by default (structural cells
+are neutral tints; opt-ins such as `overrides.style: "solid"` are listed in
+[PATTERNS.md](PATTERNS.md)); `process-flow` takes `steps[].highlight`.
 Content under a top-anchored title starts below its measured lines,
 including tracked, bold or substituted title faces.
 Read [RAW_PATH.md](RAW_PATH.md) before authoring raw JSON. Its

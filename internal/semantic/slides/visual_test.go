@@ -239,8 +239,9 @@ func TestCompileProcess_EmitsPattern(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CompileProcess: %v", err)
 	}
-	if slide.Pattern == nil || slide.Pattern.Name != "process-flow" {
-		t.Fatalf("expected process-flow pattern, got %+v", slide.Pattern)
+	// Three short labels compile to the compact flow (go-slide-creator-xb06p).
+	if slide.Pattern == nil || slide.Pattern.Name != "process-flow-compact" {
+		t.Fatalf("expected process-flow-compact pattern, got %+v", slide.Pattern)
 	}
 	var vals processFlowValues
 	decodePattern(t, slide.Pattern.Values, &vals)

@@ -2,7 +2,6 @@ package patterns
 
 import (
 	"encoding/json"
-	"math"
 	"strings"
 	"testing"
 )
@@ -30,10 +29,12 @@ func TestProcessFlowCompactPointedStepsKeepReadableTextWidth(t *testing.T) {
 			if grid.Bounds == nil {
 				t.Fatal("missing compact bounds")
 			}
-			width, height := processFlowCompactCellSize(ctx, len(tc.steps), true)
+			width, bandCap := processFlowCompactCellSize(ctx, len(tc.steps), true)
 			_, contentHeight := contentAreaPt(ctx)
-			if got := grid.Bounds.Height / 100 * contentHeight; math.Abs(got-height) > 0.01 {
-				t.Fatalf("rendered band height = %.2fpt, want %.2fpt", got, height)
+			// Content-sized at or below the pointed cap (go-slide-creator-xb06p).
+			height := grid.Bounds.Height / 100 * contentHeight
+			if height <= 0 || height > bandCap+0.01 {
+				t.Fatalf("rendered band height = %.2fpt, want content-sized within the %.2fpt cap", height, bandCap)
 			}
 			if height > width*chevronMaxAspectH {
 				t.Errorf("%.1fpt pointed band exceeds half of %.1fpt step width", height, width)
@@ -117,12 +118,13 @@ func TestProcessFlowCompact_ExpandBasic(t *testing.T) {
 		t.Fatalf("Expand: %v", err)
 	}
 
-	// Must have bounds set to ~35% height
+	// Bounds are content-sized at or below the compact cap
+	// (go-slide-creator-xb06p).
 	if grid.Bounds == nil {
 		t.Fatal("expected bounds to be set for compact variant")
 	}
-	if grid.Bounds.Height != 35 {
-		t.Errorf("expected bounds height 35, got %v", grid.Bounds.Height)
+	if grid.Bounds.Height <= 0 || grid.Bounds.Height > processFlowCompactHeightPct {
+		t.Errorf("expected bounds height within (0, %v], got %v", processFlowCompactHeightPct, grid.Bounds.Height)
 	}
 	if grid.Bounds.Width != 100 {
 		t.Errorf("expected bounds width 100, got %v", grid.Bounds.Width)

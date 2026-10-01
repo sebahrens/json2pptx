@@ -282,7 +282,7 @@ func TestExplainCompileParity_PatternsValidate(t *testing.T) {
 
 	wantPatterns := map[string]bool{
 		"kpi-4up": false, "chart-insights-split": false,
-		"comparison-2col": false, "process-flow": false, "phase-roadmap": false,
+		"comparison-2col": false, "process-flow-compact": false, "phase-roadmap": false,
 		"numbered-step-strip": false,
 	}
 	for i := range input.Slides {
