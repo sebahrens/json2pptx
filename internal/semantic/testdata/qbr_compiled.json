@@ -2,6 +2,11 @@
   "template": "midnight-blue",
   "design_mode": "constrained",
   "type_scale": "comfortable",
+  "chrome": {
+    "page_numbers": {
+      "enabled": true
+    }
+  },
   "slides": [
     {
       "layout_id": "title",

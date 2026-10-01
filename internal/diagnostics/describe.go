@@ -398,7 +398,7 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 			"Swap one slide in the run to a different pattern; call recommend_visual for the slide's intent to rank alternatives.",
 			"An emphasis slide (stat-hero, pull-quote) in the middle of a run breaks it effectively.",
 		},
-		RelatedCodes: []string{"density_monotony", "missing_emphasis"},
+		RelatedCodes: []string{"density_monotony"},
 	},
 
 	"density_monotony": {
@@ -410,19 +410,7 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 			"Alternate dense slides with light ones: follow a table or dense grid with a stat-hero, pull-quote, or section divider.",
 			"Call analyze_deck_rhythm for the per-slide density figures behind this score.",
 		},
-		RelatedCodes: []string{"pattern_run", "missing_emphasis"},
-	},
-
-	"missing_emphasis": {
-		Code:        "missing_emphasis",
-		Summary:     "A long deck contains no emphasis slide to break its monotony.",
-		Severity:    describeSeverityReview,
-		WhenEmitted: "score_deck finds 10 or more slides with no emphasis pattern (stat-hero, pull-quote) anywhere in the sequence.",
-		RemediationSteps: []string{
-			"Add a stat-hero slide for the deck's single most important number, or a pull-quote for a customer/stakeholder voice.",
-			"Place it at a natural pause — after a section, or before the recommendation.",
-		},
-		RelatedCodes: []string{"density_monotony", "pattern_run"},
+		RelatedCodes: []string{"pattern_run"},
 	},
 
 	"accent_dominance": {

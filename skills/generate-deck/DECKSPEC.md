@@ -10,9 +10,15 @@ kind you intend to use. `item_schema` is the closed contract; an alias is a
 ## Plan the narrative
 
 Write the storyline first ([QUALITY.md](QUALITY.md)). `plan_deck` with
-`format:"deckspec"` drafts it: `deck_spec` holds a kind per narrative slot
-(answer, problem, cause, evidence, plan, roadmap, ask) with `__FILL__`
-titles, and `slots[]` gives each slot's guidance and routed brief facts.
+`format:"deckspec"` drafts it from the brief: an option evaluation gets
+`option_matrix` before `decision`, a chart only for a fact that changes over
+time, `cause` only when the brief names a problem, `decision` only when it
+asks for one, and a customer update gets highlights and a dated `timeline`.
+`deck_spec` holds the kinds with `__FILL__` titles (and `meta.date`); a budget
+of 8+ slides comes back as `structure` (auto agenda + 2–4 sections, whose
+dividers count toward the budget). `slots[]` gives each slot's `path`,
+guidance and routed brief facts: metrics to KPI/stat slots, to-dos and asks
+to the plan, decision and next steps, dated milestones to the timeline.
 Send `spec` as a JSON object or a YAML/JSON document string (both pass the
 advertised schema). Use YAML or JSON with `meta` and either flat `slides[]` or chapter-based
 `structure: {cover, auto_agenda, sections:[{title, slides:[]}], closing}`.
@@ -35,7 +41,10 @@ adding empty or unrelated slides. Template resolution order is
 default. Discover archetypes with `list_deck_archetypes`.
 
 `meta.chrome` controls confidentiality, client/project labels, date, page
-numbers, and section crumbs. `meta.viewing_mode` and
+numbers, and section crumbs. Without `meta.chrome` a deck renders consulting
+chrome by default: page numbers on every slide but the title and closing,
+`meta.date` in the footer, and the tracker when the deck has sections.
+`chrome.page_numbers.enabled: false` turns the numbers off. `meta.viewing_mode` and
 `meta.accent_strategy` choose reading scale and accent rhythm (enum values per
 the schema; others are `SEMANTIC_REQUIRED`). Every slide
 kind can carry `notes` and `source`; the latter is rendered once, in the 9pt

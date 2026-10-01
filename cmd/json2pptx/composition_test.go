@@ -34,27 +34,21 @@ func TestCompositionAxis_PatternRun(t *testing.T) {
 	}
 }
 
-func TestCompositionAxis_MissingEmphasis(t *testing.T) {
-	// 12 content slides with no stat-hero or pull-quote.
+// go-slide-creator-kod2i: a long deck with no stat-hero / pull-quote is not a
+// defect. missing_emphasis pushed agents to add filler quote slides.
+func TestCompositionAxis_NoMissingEmphasis(t *testing.T) {
 	slides := make([]SlideInput, 12)
 	for i := range slides {
 		slides[i] = SlideInput{SlideType: "content"}
 	}
-
 	result := compositionAxis(slides)
 	if result == nil {
 		t.Fatal("expected non-nil composition result")
 	}
-
-	found := false
 	for _, d := range result.Diagnostics {
 		if d.Code == "missing_emphasis" {
-			found = true
-			break
+			t.Errorf("missing_emphasis is retired, got %+v", d)
 		}
-	}
-	if !found {
-		t.Error("expected missing_emphasis diagnostic for 12-slide deck with no emphasis slides")
 	}
 }
 

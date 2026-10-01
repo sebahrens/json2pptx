@@ -26,6 +26,26 @@
     fit prediction) for `card-grid`, `comparison-2col`, `timeline-horizontal`
     and `agenda-with-images` (every row now carries an `image_label`).
 
+- **2026-10-01 — Consulting chrome by default; brief-driven plan_deck (`go-slide-creator-1iy0x`, `-khzni`, `-gvbw8`, `-tu35a`, `-kod2i`).**
+  A DeckSpec without `meta.chrome` now compiles to page numbers on every
+  slide but the title and closing, the `meta.date` footer, and the section
+  tracker when the deck has sections (rendered bytes change for such decks).
+  `chrome.page_numbers.enabled: false` now actually suppresses the slide
+  number on both paths (it used to fall back to a plain number).
+  `plan_deck format:"deckspec"` drafts kinds from the brief's signals (new
+  slots `context`, `highlights`, `options`), sets `meta.chrome` and
+  `meta.date: "__FILL__"`, returns `deck_spec.structure` (auto agenda, 2–4
+  sections) for 8+ slide budgets, and adds `slots[].path` / `slots[].section`;
+  `deck_spec.slides` is now optional. Brief facts are classified (metric,
+  to-do / ask, dated milestone, option, quote) and routed by class; commas
+  inside brackets no longer split clauses. The raw plan drops evidence /
+  comparison / emphasis slots with no routed fact (`budget_note`), plans a
+  framework slot only for a framework the brief names, has no emphasis quota
+  (stat-hero / pull-quote only for the brief's number or quote), and prefers
+  `numbered-step-strip` over `process-flow` without decision points.
+  `make_deck` titles are sentence-cased brief clauses, never cut mid-clause.
+  `score_deck` no longer emits `missing_emphasis`.
+
 - **2026-09-30 — Grid diagrams obey the SVG strategy (`go-slide-creator-4c9m7`).**
   Diagram / chart cells embedded by patterns and `shape_grid` (e.g. the
   `chart-insights-split` / semantic `chart_insight` chart panel) now follow

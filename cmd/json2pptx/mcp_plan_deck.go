@@ -16,13 +16,13 @@ import (
 
 func mcpPlanDeckTool() mcp.Tool {
 	return mcp.NewTool("plan_deck",
-		mcp.WithDescription(`Plan a deck from a brief — an ordered slide outline with narrative roles (opening, evidence, comparison, close), a canonical layout per slide (opening "title" and closing "closing" with no pattern; content slides "blank-title" plus a pattern) and content seeds. The plan enforces deck rhythm: no 3 consecutive slides with the same pattern, an emphasis slide (stat-hero, pull-quote, kpi-inline) about every ~5 slides capped at ceil(n/5), two-sided comparison patterns for comparison slots, and accent rotation.
+		mcp.WithDescription(`Plan a deck from a brief — an ordered slide outline with narrative roles (opening, evidence, comparison, close), a canonical layout per slide (opening "title" and closing "closing" with no pattern; content slides "blank-title" plus a pattern) and content seeds. Rhythm: no 3 consecutive slides with the same pattern; emphasis (stat-hero, pull-quote) only for the brief's own headline number or quote, capped at ceil(n/5). Slots the brief gives nothing to show are dropped (budget_note says so).
 
-format:"deckspec" (recommended) returns deck_spec: a DeckSpec draft following a storyline (cover, answer, problem, cause, evidence, plan, roadmap, ask, closing) with kinds and __FILL__ action titles, plus slots[] and unplaced_facts; fill it from list_slide_kinds, then validate_deck_spec → render_deck_spec.
+format:"deckspec" (recommended) returns deck_spec: a DeckSpec draft whose kinds follow the brief (option_matrix before decision for an option evaluation, chart_insight only for a trend, decision only when the brief asks), with meta.chrome page numbers and structure chapters at 8+ slides; plus slots[] (path, guidance, facts) and unplaced_facts. Fill it from list_slide_kinds, then validate_deck_spec → render_deck_spec.
 
-Facts in the brief (numbers such as "+23% revenue", named entities such as "EU expansion") are routed verbatim into slide seeds and facts[], quantities to KPI / stat / chart slides first; facts with no room are listed in unplaced_facts.
+Brief facts are routed verbatim: metrics to KPI / stat / chart slides, to-dos and asks to plan / decision / next steps, dated milestones to the timeline; leftovers in unplaced_facts.
 
-The plan's slides[] are advisory records, NOT SlideInput objects. For a DeckSpec deck, use the plan to choose kinds and order. For a raw deck, copy each slides[i].skeleton (when present) into presentation.slides[], replace its __FILL__ tokens with real content and validate before generating; a slide without a skeleton is authored from its recommended pattern's schema.`),
+The plan's slides[] are advisory records, NOT SlideInput objects. For a raw deck, copy each slides[i].skeleton (when present) into presentation.slides[], replace its __FILL__ tokens with real content and validate before generating; a slide without a skeleton is authored from its recommended pattern's schema.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaPlanDeck)),
 		mcp.WithString("brief",
 			mcp.Required(),
@@ -38,7 +38,7 @@ The plan's slides[] are advisory records, NOT SlideInput objects. For a DeckSpec
 			mcp.Description("Pattern names that must appear in the plan (e.g., [\"bmc-canvas\", \"kpi-3up\"])."),
 		),
 		mcp.WithString("format",
-			mcp.Description("\"raw\" (default): pattern outline with raw SlideInput skeletons for the raw path. \"deckspec\": a DeckSpec draft with narrative slots (answer, problem, cause, evidence, plan, roadmap, ask) for validate_deck_spec / render_deck_spec."),
+			mcp.Description("\"raw\" (default): pattern outline with raw SlideInput skeletons for the raw path. \"deckspec\": a DeckSpec draft with narrative slots drafted from the brief (answer, context/problem, highlights, evidence, cause, options, plan, roadmap, ask) for validate_deck_spec / render_deck_spec."),
 			mcp.Enum("raw", deckplan.FormatDeckSpec),
 		),
 		mcp.WithString("template",

@@ -150,19 +150,20 @@ func TestEnforceRhythm_BreaksLongRuns(t *testing.T) {
 func TestBuildDeckPlan_NilPredictor(t *testing.T) {
 	reg := patterns.Default()
 	result := BuildDeckPlan(reg, Params{
-		Brief:       "Pitch our Series B for an AI infra company",
+		Brief:       "Pitch our Series B for an AI infra company: ARR reached $12M, up 3x year over year; NRR is 140%; gross margin 72%; 1,200 customers including Acme and Globex; we raise $40M against Anthropic-scale competitors vs incumbents",
 		SlideBudget: 10,
 		Audience:    "investors",
 	}, nil)
 
-	if len(result.Slides) != 10 {
-		t.Fatalf("expected 10 slides, got %d", len(result.Slides))
+	n := len(result.Slides)
+	if n < 4 || n > 10 {
+		t.Fatalf("expected 4..10 slides for a fact-rich brief, got %d", n)
 	}
 	if result.Slides[0].NarrativeRole != "opening" {
 		t.Errorf("first slide should be opening, got %q", result.Slides[0].NarrativeRole)
 	}
-	if result.Slides[9].NarrativeRole != "closing" {
-		t.Errorf("last slide should be closing, got %q", result.Slides[9].NarrativeRole)
+	if result.Slides[n-1].NarrativeRole != "closing" {
+		t.Errorf("last slide should be closing, got %q", result.Slides[n-1].NarrativeRole)
 	}
 	if result.RhythmCheck.LongestPatternRun > 2 {
 		t.Errorf("longest pattern run should be <=2, got %d", result.RhythmCheck.LongestPatternRun)

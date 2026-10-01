@@ -2078,12 +2078,13 @@ var outputSchemaPlanDeck = json.RawMessage(`{
     "format":       {"type": "string", "enum": ["deckspec"], "description": "Present only for format:\"deckspec\", whose response carries deck_spec and slots instead of slides and rhythm_check."},
     "deck_spec": {
       "type": "object",
-      "description": "format:\"deckspec\" only: a DeckSpec draft {meta, slides:[{kind, title:\"__FILL__\"}]} in storyline order. Fill every slide's fields from list_slide_kinds, write action titles, then validate_deck_spec.",
+      "description": "format:\"deckspec\" only: a DeckSpec draft in storyline order — {meta, slides:[{kind, title:\"__FILL__\"}]} for a flat deck, or {meta, structure:{cover, auto_agenda:true, sections:[{title, slides}], closing}} when the deck is drafted in chapters (budgets of 8+ slides; the generated agenda and one divider per section count toward the budget). meta.chrome turns page numbers on (and the section tracker for a chaptered draft); meta.date is __FILL__. Fill every slide's fields from list_slide_kinds, write action titles, then validate_deck_spec.",
       "properties": {
-        "meta":   {"type": "object"},
-        "slides": {"type": "array", "items": {"type": "object", "properties": {"kind": {"type": "string"}, "title": {"type": "string"}}, "required": ["kind"]}}
+        "meta":      {"type": "object"},
+        "slides":    {"type": "array", "items": {"type": "object", "properties": {"kind": {"type": "string"}, "title": {"type": "string"}}, "required": ["kind"]}},
+        "structure": {"type": "object", "properties": {"cover": {"type": "object"}, "auto_agenda": {"type": "boolean"}, "sections": {"type": "array", "items": {"type": "object", "properties": {"title": {"type": "string"}, "slides": {"type": "array", "items": {"type": "object"}}}, "required": ["title", "slides"]}}, "closing": {"type": "object"}}, "required": ["sections"]}
       },
-      "required": ["meta", "slides"]
+      "required": ["meta"]
     },
     "slots": {
       "type": "array",
@@ -2092,12 +2093,14 @@ var outputSchemaPlanDeck = json.RawMessage(`{
         "type": "object",
         "properties": {
           "slide_index": {"type": "integer"},
-          "slot":        {"type": "string", "enum": ["cover", "answer", "problem", "cause", "evidence", "plan", "roadmap", "ask", "closing"]},
+          "path":        {"type": "string", "description": "Where the slide lives in deck_spec: slides[i], structure.cover, structure.sections[s].slides[i] or structure.closing."},
+          "slot":        {"type": "string", "enum": ["cover", "answer", "context", "problem", "highlights", "evidence", "cause", "options", "plan", "roadmap", "ask", "closing"]},
           "kind":        {"type": "string"},
+          "section":     {"type": "string", "description": "The chapter the slide belongs to, for a chaptered draft."},
           "guidance":    {"type": "string", "description": "What the slide must argue."},
           "facts":       {"type": "array", "items": {"type": "string"}, "description": "Brief facts (verbatim) routed to this slot."}
         },
-        "required": ["slide_index", "slot", "kind", "guidance"]
+        "required": ["slide_index", "path", "slot", "kind", "guidance"]
       }
     },
     "budget_note":  {"type": "string", "description": "Why the plan is shorter than slide_budget, when it is."},

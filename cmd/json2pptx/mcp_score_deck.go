@@ -549,23 +549,11 @@ func compositionAxis(slides []SlideInput) *deterministic.CompositionResult {
 		})
 	}
 
-	// Flag missing narrative roles — no emphasis slide in 10+ slide decks.
-	if len(slides) >= 10 {
-		hasEmphasis := false
-		for _, si := range rhythm.PerSlide {
-			switch si.Pattern {
-			case "stat-hero", "pull-quote":
-				hasEmphasis = true
-			}
-		}
-		if !hasEmphasis {
-			diags = append(diags, deterministic.CompositionDiagnostic{
-				Code:     "missing_emphasis",
-				Severity: "info",
-				Message:  "deck has 10+ slides but no emphasis slide (stat-hero, pull-quote); consider adding one to break monotony",
-			})
-		}
-	}
+	// No missing_emphasis diagnostic (go-slide-creator-kod2i): a deck whose
+	// every slide carries a sourced chart, KPI or decision needs no
+	// stat-hero / pull-quote "breather", and the warning pushed agents to add
+	// a quote from nobody to clear it. A stat or quote slide belongs in a deck
+	// only when the message is a single number or a stakeholder voice.
 
 	return &deterministic.CompositionResult{
 		Score:       compositionScore,

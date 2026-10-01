@@ -303,9 +303,19 @@ func firstNonEmptyStr(vals ...string) string {
 // — a confidentiality stamp, the client name, page numbers — is on every board
 // deck, and the semantic path could not express any of it
 // (go-slide-creator-zmjs).
+//
+// A spec with no meta.chrome gets consulting chrome by default
+// (go-slide-creator-1iy0x): page numbers on every slide but the title and
+// closing, meta.date in the footer, and the section tracker when the deck has
+// sections. An unnumbered deck cannot be referenced in a meeting ("go to page
+// 12") and reads as a draft. Opt out with meta.chrome.page_numbers.enabled:
+// false; an explicit chrome block is copied as written.
 func compileChrome(ir *DeckIR) *deckinput.ChromeInput {
-	if ir == nil || ir.Chrome == nil {
+	if ir == nil {
 		return nil
+	}
+	if ir.Chrome == nil {
+		return defaultChrome(ir)
 	}
 	c := ir.Chrome
 	out := &deckinput.ChromeInput{
@@ -321,6 +331,22 @@ func compileChrome(ir *DeckIR) *deckinput.ChromeInput {
 			Enabled: c.PageNumbers.Enabled,
 			Format:  c.PageNumbers.Format,
 			Skip:    append([]string(nil), c.PageNumbers.Skip...),
+		}
+	}
+	return out
+}
+
+// defaultChrome is the chrome a spec without meta.chrome renders with: page
+// numbers (the default skip list leaves the title and closing slides
+// unnumbered), the footer date from meta.date, and the section tracker when the
+// deck has section dividers — authored section kinds or structure.sections.
+func defaultChrome(ir *DeckIR) *deckinput.ChromeInput {
+	on := true
+	out := &deckinput.ChromeInput{FooterDate: ir.Date, PageNumbers: &deckinput.PageNumbersInput{Enabled: &on}}
+	for i := range ir.Slides {
+		if ir.Slides[i].Kind == KindSection {
+			out.Tracker = true
+			break
 		}
 	}
 	return out

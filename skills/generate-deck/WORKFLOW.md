@@ -13,16 +13,19 @@ applies to both paths. Storyline rules are in [QUALITY.md](QUALITY.md).
    the whole argument (QUALITY.md). Present them to the user unless they asked
    for the finished deck directly.
 2. **Draft the spec.** For more than four slides call `plan_deck` with
-   `format: "deckspec"`: it returns `deck_spec` (a kind per narrative slot —
-   answer, problem, cause, evidence, plan, roadmap, ask), `slots[]` with
-   guidance and the brief facts routed to each slot, and `unplaced_facts[]`
-   (place them; do not drop them). Replace every `__FILL__` title with your
-   ghost-deck title and fill the fields from `list_slide_kinds`.
+   `format: "deckspec"`: it returns `deck_spec` (kinds drafted from the
+   brief — `structure` chapters for 8+ slides), `slots[]` with each slot's
+   `path`, guidance and routed brief facts, and `unplaced_facts[]` (place
+   them; do not drop them). Replace every `__FILL__` (titles, `meta.date`)
+   and fill the fields from `list_slide_kinds`.
 3. **Template.** `list_templates` gives names, `canonical_layout_ids` and
    `color_roles`. Set `meta.template`; leave `meta.accent_strategy` at
    `primary` unless Phase 2 → Accent monotony says otherwise.
 4. **Chapters.** Use `structure.sections` (with `auto_agenda` for two or more
    sections) instead of hand-made dividers; the engine numbers them.
+5. **Chrome.** Page numbers (title and closing skipped) and the date are on
+   by default; set `meta.date`, and add confidentiality / client in
+   `meta.chrome` when the deck needs them.
 
 The outline you show the user:
 
@@ -91,7 +94,7 @@ Slide 5: matrix-2x2    — "Competitor Positioning"
 Slide 6: icon-row      — "Team Strengths"
 ```
 
-Rules: no visual pattern family should appear 3+ times consecutively (alternating `kpi-3up` and `kpi-4up` is still one KPI run). Insert a narrative-break pattern (stat-hero, pull-quote) every ~5 slides. Use `analyze_deck_rhythm` to detect violations before generating.
+Rules: no visual pattern family should appear 3+ times consecutively (alternating `kpi-3up` and `kpi-4up` is still one KPI run). Use a stat or quote slide only when the message is a single number or a stakeholder voice — never as a filler break. Use `analyze_deck_rhythm` to detect violations before generating.
 
 ### Accent monotony
 

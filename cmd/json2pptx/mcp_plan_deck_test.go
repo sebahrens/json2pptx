@@ -22,12 +22,21 @@ func testBuildPlan(reg *patterns.Registry, brief string, budget int, audience st
 	}, planPredictor{reg: reg})
 }
 
+// richPlanBrief carries enough facts, options, a quote and a named framework
+// for a full plan: slots the brief gives nothing to show are dropped
+// (go-slide-creator-tu35a), so a one-line brief plans a short deck.
+const richPlanBrief = `Pitch our Series B for an AI infra company: ARR reached $12M, up 3x year over year; NRR is 140%; gross margin 72%; 1,200 customers including Acme and Globex; payback is 14 months; build vs buy against incumbents Initech and Hooli; "the fastest inference stack we have tested" said the CTO of Globex; our architecture framework has three layers; EU expansion in 2027; APAC pilot with Umbrella`
+
 func TestBuildDeckPlan_Basic12Slides(t *testing.T) {
 	reg := patterns.Default()
-	result := testBuildPlan(reg, "Pitch our Series B for an AI infra company", 12, "investors", nil)
+	result := testBuildPlan(reg, richPlanBrief, 12, "investors", nil)
 
-	if len(result.Slides) != 12 {
-		t.Fatalf("expected 12 slides, got %d", len(result.Slides))
+	n := len(result.Slides)
+	if n < 8 || n > 12 {
+		for _, s := range result.Slides {
+			t.Logf("  slide %d: %s (%s) — %v", s.SlideIndex, s.RecommendedPattern, s.NarrativeRole, s.Facts)
+		}
+		t.Fatalf("expected 8..12 slides for a fact-rich brief, got %d (note %q)", n, result.BudgetNote)
 	}
 
 	// Verify slide indices are sequential.
@@ -41,8 +50,8 @@ func TestBuildDeckPlan_Basic12Slides(t *testing.T) {
 	if result.Slides[0].NarrativeRole != "opening" {
 		t.Errorf("first slide should be opening, got %q", result.Slides[0].NarrativeRole)
 	}
-	if result.Slides[11].NarrativeRole != "closing" {
-		t.Errorf("last slide should be closing, got %q", result.Slides[11].NarrativeRole)
+	if result.Slides[n-1].NarrativeRole != "closing" {
+		t.Errorf("last slide should be closing, got %q", result.Slides[n-1].NarrativeRole)
 	}
 
 	// Verify no pattern runs exceed 2 (rhythm rule).
@@ -53,9 +62,9 @@ func TestBuildDeckPlan_Basic12Slides(t *testing.T) {
 		}
 	}
 
-	// Verify at least one emphasis pattern.
+	// The brief quotes its customer's CTO: the emphasis slot shows that voice.
 	if !result.RhythmCheck.HasEmphasis {
-		t.Error("expected at least one emphasis pattern (stat-hero or pull-quote)")
+		t.Error("expected an emphasis slide for the brief's quote")
 	}
 
 	// Verify all content slides have patterns; title/closing use layouts.
@@ -115,10 +124,10 @@ func TestBuildDeckPlan_MinBudget(t *testing.T) {
 
 func TestBuildDeckPlan_AttachesPredictions(t *testing.T) {
 	reg := patterns.Default()
-	result := testBuildPlan(reg, "Quarterly business review", 10, "executives", nil)
+	result := testBuildPlan(reg, richPlanBrief, 10, "executives", nil)
 
-	if len(result.Slides) != 10 {
-		t.Fatalf("expected 10 slides, got %d", len(result.Slides))
+	if n := len(result.Slides); n < 6 || n > 10 {
+		t.Fatalf("expected 6..10 slides, got %d", n)
 	}
 
 	// Every content slide should have alternatives populated (next-best ranked
@@ -202,7 +211,7 @@ func TestPredictCellBudgets_UnknownPattern(t *testing.T) {
 
 func TestBuildDeckPlan_AttachesSkeletonAndFallback(t *testing.T) {
 	reg := patterns.Default()
-	result := testBuildPlan(reg, "Pitch our Series B for an AI infra company", 5, "investors", nil)
+	result := testBuildPlan(reg, richPlanBrief, 5, "investors", nil)
 
 	if len(result.Slides) != 5 {
 		t.Fatalf("expected 5 slides, got %d", len(result.Slides))

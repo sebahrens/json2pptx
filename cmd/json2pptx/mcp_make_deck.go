@@ -579,17 +579,21 @@ func layoutIDForNarrativeRole(role string) string {
 }
 
 // titleForPlannedSlide derives a slide title from the plan slot. The opening
-// slot gets the brief itself (truncated) so the deck names what it's about;
-// every other slot draws from the planner's content_seed so the title at
-// least describes the slot's purpose. Empty seeds fall back to a positional
-// label so we never emit empty titles (which would trigger output validation).
+// slot gets the brief's first clause so the deck names what it's about; a
+// slot carrying brief facts is titled with its first fact — the claim the
+// slide shows — and any other slot falls back to its content seed. Titles are
+// sentence-cased and never cut mid-clause (go-slide-creator-tu35a). Empty
+// seeds fall back to a positional label so we never emit empty titles (which
+// would trigger output validation).
 func titleForPlannedSlide(ps deckplan.Slide, outline string) string {
-	const titleCap = 60
 	if ps.NarrativeRole == "opening" && outline != "" {
-		return deckplan.TruncateBrief(outline, titleCap)
+		return deckplan.TitleFromClause(deckplan.BriefTopic(outline))
+	}
+	if len(ps.Facts) > 0 {
+		return deckplan.TitleFromClause(ps.Facts[0])
 	}
 	if ps.ContentSeed != "" {
-		return deckplan.TruncateBrief(ps.ContentSeed, titleCap)
+		return deckplan.TitleFromClause(ps.ContentSeed)
 	}
 	return fmt.Sprintf("Slide %d", ps.SlideIndex+1)
 }

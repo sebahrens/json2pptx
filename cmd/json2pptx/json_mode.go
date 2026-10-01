@@ -3083,7 +3083,9 @@ func chromeToFooterConfig(chrome *ChromeInput, totalSlides int, slides []SlideIn
 	if chrome.PageNumbers != nil {
 		if chrome.PageNumbers.Enabled != nil && !*chrome.PageNumbers.Enabled {
 			// Page numbers explicitly disabled — keep footer but no slide number.
-			cfg.PageNumberFormat = ""
+			// An empty format means "plain slide number", so it cannot carry
+			// the switch (go-slide-creator-1iy0x).
+			cfg.HidePageNumber = true
 		} else if chrome.PageNumbers.Format != "" {
 			cfg.PageNumberFormat = chrome.PageNumbers.Format
 		}

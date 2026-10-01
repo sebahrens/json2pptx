@@ -1,7 +1,7 @@
 // Package deckplan assembles a presentation deck plan from a brief: an ordered
 // slide outline with narrative roles, recommended patterns, content seeds,
 // fillable skeletons, and ranked alternatives, all subject to deck-rhythm
-// rules (no long pattern runs, periodic emphasis, variety-aware selection).
+// rules (no long pattern runs, capped emphasis, variety-aware selection).
 //
 // The planning core is template-agnostic and render-free. When a
 // generator.TemplateSupportContext is supplied it additionally swaps any
@@ -295,8 +295,11 @@ func BuildDeckPlan(reg *patterns.Registry, p Params, predictor Predictor) *Resul
 	// 2. Assign patterns to each slot.
 	slides := assignPatterns(reg, p.Brief, p.Audience, roleSlots, p.MustInclude)
 
-	// 3. Enforce rhythm rules — break runs of 3+ and inject emphasis.
+	// 3. Enforce rhythm rules — break runs of 3+ and cap emphasis / repeats.
 	slides = enforceRhythm(reg, slides, p.Brief)
+
+	// 3b. A straight sequence is a numbered step strip, not a flowchart.
+	preferStepStrip(slides, p.Brief)
 
 	// 4. With template context, replace any recommended pattern the template
 	//    cannot host with a supported alternative. Done before predictions so the
@@ -308,6 +311,16 @@ func BuildDeckPlan(reg *patterns.Registry, p Params, predictor Predictor) *Resul
 	// 4b. Route the brief's facts (quantities, named entities) into the content
 	//     seeds of the final pattern slots; leftovers become unplaced_facts.
 	unplaced := assignBriefFacts(slides, p.Brief)
+
+	// 4c. Drop evidence / comparison / emphasis slots the brief gave nothing
+	//     to show (go-slide-creator-tu35a): placeholder prose is not content.
+	slides, dropped := dropUnsupportedSlots(slides)
+	if note := droppedSlotsNote(dropped); note != "" {
+		if budgetNote != "" {
+			budgetNote += "; "
+		}
+		budgetNote += note
+	}
 
 	// 5. Attach per-slot predictions: cell budgets, fit findings, ranked
 	//    alternatives, suggested-pattern triplet, and skeleton. Done after
@@ -403,6 +416,11 @@ func distributeRoles(reg *patterns.Registry, brief string, budget int) ([]string
 	}
 
 	order, counts := proportionalRoleCounts(remaining)
+
+	// Framework and emphasis slots exist only when the brief carries a named
+	// framework / a headline number or quote (go-slide-creator-tu35a,
+	// go-slide-creator-kod2i).
+	order = gateBriefRoles(brief, order, counts)
 
 	// Bound each role by the patterns and the brief content behind it, moving
 	// the surplus to roles with headroom (go-slide-creator-whp97).
@@ -514,6 +532,19 @@ func assignPatterns(reg *patterns.Registry, brief, audience string, roleSlots []
 			slides[i].Rationale = mustIncludeRationale
 			mustIncludeUsed[pat] = true
 			usedPatterns = append(usedPatterns, pat)
+			continue
+		}
+
+		// An emphasis slot shows the brief's quote, else its headline number;
+		// it is never a decorative breather (go-slide-creator-kod2i).
+		if role == "emphasis" {
+			slides[i].RecommendedPattern = "stat-hero"
+			slides[i].Rationale = "emphasis: the brief's headline number on its own slide"
+			if briefHasQuote(brief) {
+				slides[i].RecommendedPattern = "pull-quote"
+				slides[i].Rationale = "emphasis: the voice the brief quotes"
+			}
+			usedPatterns = append(usedPatterns, slides[i].RecommendedPattern)
 			continue
 		}
 
@@ -766,17 +797,16 @@ func contentSeedForRole(role, brief string, idx, total int) string {
 	case "opening":
 		return "Title and context: " + truncateSeed(normalizeBriefForSeed(brief), 80)
 	case "framework":
-		return "Structure or methodology overview"
-	case "evidence":
-		position := float64(idx) / float64(total)
-		if position < 0.4 {
-			return "Key data point or supporting detail"
+		if c := frameworkClause(brief); c != "" {
+			return "The framework the brief names: " + c
 		}
-		return "Detailed evidence or case study"
+		return "The framework the brief names"
+	case "evidence":
+		return "Prove one claim with the facts routed here"
 	case "comparison":
-		return "Comparison of alternatives or trade-offs"
+		return "Compare the options the brief names"
 	case "emphasis":
-		return "Standout metric or memorable takeaway"
+		return "The one number or voice the audience must remember"
 	case "closing":
 		return "Summary, next steps, or call to action"
 	default:
@@ -842,15 +872,16 @@ func fallbackPattern(role string, patternList []patInfo, used []string) string {
 	}
 }
 
-// enforceRhythm applies rhythm rules: break runs of 3+ and inject emphasis.
+// enforceRhythm applies rhythm rules: break runs of 3+, cap emphasis and cap
+// pattern-family repeats.
+//
+// There is no emphasis quota. The planner used to rewrite every ~5th slide to
+// stat-hero or pull-quote seeded "Standout metric or memorable takeaway"
+// whatever the brief said, which put a pull-quote from nobody into a QBR
+// (go-slide-creator-kod2i). An emphasis slide is now planned only when the
+// brief carries its number or quote (see gateBriefRoles).
 func enforceRhythm(reg *patterns.Registry, slides []Slide, brief string) []Slide {
 	// Pass 1: Break pattern runs of 3+.
-	slides = breakLongRuns(reg, slides)
-
-	// Pass 2: Ensure emphasis slides every ~5 slides.
-	slides = ensureEmphasis(reg, slides)
-
-	// Pass 3: Break any new runs introduced by emphasis injection.
 	slides = breakLongRuns(reg, slides)
 
 	// Pass 4: Cap emphasis patterns at ceil(n/5). Replacements are chosen to
@@ -1176,64 +1207,6 @@ func findBreakPattern(reg *patterns.Registry, slides []Slide, idx int) string {
 		return "stat-hero"
 	}
 	return "card-grid"
-}
-
-// ensureEmphasis checks that at least one emphasis pattern appears every ~5 slides.
-func ensureEmphasis(reg *patterns.Registry, slides []Slide) []Slide {
-	if len(slides) <= 4 {
-		// Too short to need emphasis injection.
-		return slides
-	}
-
-	// Find existing emphasis positions.
-	emphasisPositions := make([]int, 0)
-	for i, s := range slides {
-		if emphasisPatterns[s.RecommendedPattern] {
-			emphasisPositions = append(emphasisPositions, i)
-		}
-	}
-
-	if len(emphasisPositions) > 0 {
-		// Check if any gap exceeds 6 slides.
-		needsInsertion := false
-		prev := 0
-		for _, pos := range emphasisPositions {
-			if pos-prev > 6 {
-				needsInsertion = true
-				break
-			}
-			prev = pos
-		}
-		if len(slides)-1-prev > 6 {
-			needsInsertion = true
-		}
-		if !needsInsertion {
-			return slides
-		}
-	}
-
-	// Insert emphasis at ~every 5th slide, preferring evidence slots.
-	for i := 4; i < len(slides)-1; i += 5 {
-		if emphasisPatterns[slides[i].RecommendedPattern] {
-			continue // already emphasis
-		}
-		// Don't replace opening/closing or a comparison slot.
-		if isStructuralRole(slides[i].NarrativeRole) || slides[i].NarrativeRole == "comparison" {
-			continue
-		}
-		// Alternate between stat-hero and pull-quote.
-		emphPat := "stat-hero"
-		if len(emphasisPositions)%2 == 1 {
-			emphPat = "pull-quote"
-		}
-		slides[i].RecommendedPattern = emphPat
-		slides[i].NarrativeRole = "emphasis"
-		slides[i].ContentSeed = "Standout metric or memorable takeaway"
-		slides[i].Rationale = "emphasis injection: visual breathing room every ~5 slides"
-		emphasisPositions = append(emphasisPositions, i)
-	}
-
-	return slides
 }
 
 // computeRhythmCheck summarizes rhythm metrics for the plan.
