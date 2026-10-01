@@ -61,3 +61,41 @@ func TestChartTextRolesOnSlideScale(t *testing.T) {
 		t.Errorf("scaled chart title = %gpt on a small canvas, below the %gpt subhead step", small.SizeTitle, tokens.TypeScaleSubheadPt)
 	}
 }
+
+// TestChartTypeScaleMatchesSlideScale pins svggen's mirrored scale steps to
+// the slide's, one for one, and every chart typography table svggen ships —
+// the defaults, the compact tier, every layout preset and the large-canvas
+// caps — onto those steps (go-slide-creator-vmdfm). A step added to or moved
+// on either side fails here until the other follows.
+func TestChartTypeScaleMatchesSlideScale(t *testing.T) {
+	slide := tokens.TypeScaleStepsHPt()
+	chart := svggen.ChartTypeScaleStepsPt
+	if len(slide) != len(chart) {
+		t.Fatalf("svggen mirrors %d scale steps %v, the slide scale has %d %v", len(chart), chart, len(slide), slide)
+	}
+	for i := range slide {
+		if int(math.Round(chart[i]*100)) != slide[i] {
+			t.Errorf("scale step %d: svggen %gpt, slide %gpt", i, chart[i], float64(slide[i])/100)
+		}
+	}
+
+	onScale := func(where string, pts ...float64) {
+		t.Helper()
+		for _, pt := range pts {
+			if !tokens.OnTypeScaleHPt(int(math.Round(pt * 100))) {
+				t.Errorf("%s: %gpt is off the slide type scale", where, pt)
+			}
+		}
+	}
+	sizes := func(ty *svggen.Typography) []float64 {
+		return []float64{ty.SizeTitle, ty.SizeSubtitle, ty.SizeHeading, ty.SizeBody, ty.SizeSmall, ty.SizeCaption}
+	}
+	onScale("DefaultTypography", sizes(svggen.DefaultTypography())...)
+	onScale("CompactTypography", sizes(svggen.CompactTypography())...)
+	for name, ty := range svggen.PresetTypography {
+		onScale("preset "+name, sizes(ty)...)
+	}
+	onScale("ScaleForDimensions caps", svggen.ChartTitleMaxPt, svggen.ChartSubtitleMaxPt, svggen.ChartHeadingMaxPt,
+		svggen.ChartBodyMaxPt, svggen.ChartLabelMaxPt, svggen.ChartCaptionMaxPt)
+	onScale("ScaleForDimensions at the caps", sizes(svggen.DefaultTypography().ScaleForDimensions(4000, 3000))...)
+}

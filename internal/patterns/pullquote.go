@@ -190,8 +190,9 @@ const (
 	// pullQuoteMinQuoteFrac keeps the quote row its share when an oversized
 	// attribution would otherwise take the whole area.
 	pullQuoteMinQuoteFrac = 0.4
-	// pullQuoteMinQuotePt is the smallest step the default quote size takes
-	// (the quote_size schema minimum) before a long quote is left to autofit.
+	// pullQuoteMinQuotePt is the quote_size schema minimum. The default
+	// quote ladder ends on the 18pt lead step, the size a 20pt prose quote
+	// renders at once settled onto the scale (go-slide-creator-vmdfm).
 	pullQuoteMinQuotePt = 20.0
 	// pullQuoteRulePt is the thickness of the accent rule, and
 	// pullQuoteRuleMinPct keeps it visible inside a small composed cell.
@@ -298,13 +299,13 @@ func (pq *pullQuote) Expand(ctx ExpandContext, values, overrides any, cellOverri
 
 	// The quote row is capped so a long quote leaves the attribution its row.
 	// The default quote size steps down until the quote is written unshrunk
-	// in that row; a quote that overflows even at 20pt (or at an authored
+	// in that row; a quote that overflows even at 18pt (or at an authored
 	// quote_size) is left to the renderer's autofit — but only the quote's own
 	// row shrinks, never the attribution.
 	capPt := math.Max(math.Min(areaH*pullQuoteMaxQuoteFrac, areaH-attrRowPt-pullQuoteRowGapPt), areaH*pullQuoteMinQuoteFrac)
 	steps := []float64{quoteSize}
 	if ovr.QuoteSize == 0 {
-		steps = []float64{36, 32, 28, 24, pullQuoteMinQuotePt}
+		steps = []float64{sizeQuotePt, scaleDisplayPt, scaleLeadPt}
 	}
 	var quoteCell *jsonschema.GridCellInput
 	var quoteRowPt float64

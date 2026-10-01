@@ -150,7 +150,7 @@ type ImageTextSplitOverrides struct {
 	SemanticAccent string  `json:"semantic_accent,omitempty"`
 	ImageSide      string  `json:"image_side,omitempty"`      // left (default) | right
 	ImageWidthPct  float64 `json:"image_width_pct,omitempty"` // 30-60, default 45
-	HeadingSize    float64 `json:"heading_size,omitempty"`    // default 20
+	HeadingSize    float64 `json:"heading_size,omitempty"`    // default 18
 	BodySize       float64 `json:"body_size,omitempty"`       // default 14
 }
 
@@ -195,7 +195,7 @@ func (p *imageTextSplit) Schema() *Schema {
 		"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
 		"image_side":      EnumSchema("left", "right").WithDescription("Which side the image sits on (default left)").WithDefault("left"),
 		"image_width_pct": NumberSchema(30, 60).WithDescription("Image column width as a percentage of the grid (default 45)").WithDefault(45),
-		"heading_size":    NumberSchema(14, 40).WithDescription("Heading font size in points (default 20)"),
+		"heading_size":    NumberSchema(14, 40).WithDescription("Heading font size in points (default 18)"),
 		"body_size":       NumberSchema(12, 24).WithDescription("Body / bullet font size in points (default 14)"),
 	}, nil).WithAdditionalProperties(false)
 
@@ -374,9 +374,9 @@ func itsMeasureAt(ctx ExpandContext, v *ImageTextSplitValues, ovr *ImageTextSpli
 		lay.captionPt = sizedBlockHeightPt(ctx, []sizedPara{{text: v.Caption, sizePt: scaleBodyPt}}, lay.imgW)
 	}
 
-	steps := [][2]float64{{20, 14}, {18, 13}, {16, 12}}
+	steps := [][2]float64{{scaleLeadPt, scaleSubheadPt}, {scaleLeadPt, scaleBodyPt}, {scaleSubheadPt, scaleBodyPt}}
 	if ovr.HeadingSize > 0 || ovr.BodySize > 0 {
-		steps = [][2]float64{{ResolveSize(ovr.HeadingSize, sizeLeadPlusPt), ResolveSize(ovr.BodySize, scaleSubheadPt)}}
+		steps = [][2]float64{{ResolveSize(ovr.HeadingSize, scaleLeadPt), ResolveSize(ovr.BodySize, scaleSubheadPt)}}
 	}
 	// With metrics the text sits in a nested grid, inset on every side; its
 	// height is what the shape writer needs at that width, so the text row is

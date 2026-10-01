@@ -207,3 +207,242 @@ func TestPatternDefaultSizesOnTypeScale(t *testing.T) {
 		}
 	}
 }
+
+// isLadderName reports a variable that holds a fit ladder: the sizes a
+// pattern steps through while measuring (fooSteps, fooScales, heroSizes, …).
+func isLadderName(name string) bool {
+	lower := strings.ToLower(name)
+	for _, suffix := range []string{"steps", "scales", "scale", "sizes"} {
+		if strings.HasSuffix(lower, suffix) {
+			return true
+		}
+	}
+	return false
+}
+
+// isNonSizeField reports a ladder struct field that is geometry, not a text
+// size (a gap, padding, a percentage or fraction of the area, a weight).
+func isNonSizeField(name string) bool {
+	lower := strings.ToLower(name)
+	for _, part := range []string{"gap", "pad", "pct", "frac", "weight", "inset", "width", "limit"} {
+		if strings.Contains(lower, part) {
+			return true
+		}
+	}
+	return false
+}
+
+// structFieldIndex maps struct type names to their ordered field names, per
+// scope: the package (key "") and each function that declares local types.
+type structFieldIndex map[string]map[string][]string
+
+func indexStructFields(files []*ast.File) structFieldIndex {
+	idx := structFieldIndex{"": {}}
+	add := func(scope string, ts *ast.TypeSpec) {
+		st, ok := ts.Type.(*ast.StructType)
+		if !ok {
+			return
+		}
+		var names []string
+		for _, f := range st.Fields.List {
+			for _, n := range f.Names {
+				names = append(names, n.Name)
+			}
+		}
+		if idx[scope] == nil {
+			idx[scope] = map[string][]string{}
+		}
+		idx[scope][ts.Name.Name] = names
+	}
+	for _, f := range files {
+		for _, decl := range f.Decls {
+			switch d := decl.(type) {
+			case *ast.GenDecl:
+				for _, spec := range d.Specs {
+					if ts, ok := spec.(*ast.TypeSpec); ok {
+						add("", ts)
+					}
+				}
+			case *ast.FuncDecl:
+				if d.Body == nil {
+					continue
+				}
+				ast.Inspect(d.Body, func(n ast.Node) bool {
+					if ts, ok := n.(*ast.TypeSpec); ok {
+						add(d.Name.Name, ts)
+					}
+					return true
+				})
+			}
+		}
+	}
+	return idx
+}
+
+func (idx structFieldIndex) fields(scope, name string) ([]string, bool) {
+	if f, ok := idx[scope][name]; ok {
+		return f, true
+	}
+	f, ok := idx[""][name]
+	return f, ok
+}
+
+// TestPatternFitLaddersOnTypeScale extends the type-scale guard to the shrink
+// ladders patterns walk while measuring a fit (go-slide-creator-vmdfm): every
+// text size in a ladder — a composite literal assigned or appended to a
+// *steps / *scales / *sizes variable — names a constant (no numeric literal)
+// that is a type-scale step, an allow-listed default (offScaleDefaultReasons)
+// or an allow-listed ladder step (offScaleLadderReasons). Geometry fields of a
+// ladder struct (gaps, padding, percentages) are not text sizes.
+func TestPatternFitLaddersOnTypeScale(t *testing.T) {
+	fset := token.NewFileSet()
+	patternConsts, files := parseConstDecls(t, fset, ".")
+	tokenConsts, _ := parseConstDecls(t, fset, filepath.Join("..", "tokens"))
+	shapegridConsts, _ := parseConstDecls(t, fset, filepath.Join("..", "shapegrid"))
+	env := &sizeConstEnv{pkgs: map[string]map[string]ast.Expr{
+		"patterns": patternConsts, "tokens": tokenConsts, "shapegrid": shapegridConsts,
+	}}
+	structs := indexStructFields(files)
+
+	var problems []string
+	ladders := 0
+	report := func(n ast.Node, format string, args ...any) {
+		args = append([]any{fset.Position(n.Pos())}, args...)
+		problems = append(problems, fmt.Sprintf("%s: "+format, args...))
+	}
+	checkLeaf := func(ladder string, e ast.Expr) {
+		if isNumericLit(e) {
+			report(e, "ladder %s: size %s is a literal; name a type-scale step (type_scale.go)", ladder, e.(*ast.BasicLit).Value)
+			return
+		}
+		v, chain, ok := env.eval("patterns", e)
+		if !ok || v.Kind() == constant.Unknown {
+			return // measured, authored or derived size
+		}
+		pt := constPt(v)
+		if onTypeScalePt(pt) {
+			return
+		}
+		// An allow-listed constant passes as itself, not as the operand of
+		// arithmetic that lands somewhere else off the scale.
+		if _, derived := ast.Unparen(e).(*ast.BinaryExpr); !derived {
+			for _, name := range chain {
+				_, isDefault := offScaleDefaultReasons[name]
+				_, isLadder := offScaleLadderReasons[name]
+				if isDefault || isLadder {
+					return
+				}
+			}
+		}
+		report(e, "ladder %s: step %v (%.4gpt) is off the type scale and not allow-listed in offScaleLadderReasons", ladder, chain, pt)
+	}
+	var walk func(scope, ladder string, lit *ast.CompositeLit, typ ast.Expr)
+	walk = func(scope, ladder string, lit *ast.CompositeLit, typ ast.Expr) {
+		if lit.Type != nil {
+			typ = lit.Type
+		}
+		switch tt := typ.(type) {
+		case *ast.ArrayType:
+			for _, el := range lit.Elts {
+				if c, ok := el.(*ast.CompositeLit); ok {
+					walk(scope, ladder, c, tt.Elt)
+				} else if id, ok := tt.Elt.(*ast.Ident); ok && id.Name == "float64" {
+					checkLeaf(ladder, el)
+				}
+			}
+		case *ast.Ident:
+			fields, ok := structs.fields(scope, tt.Name)
+			if !ok {
+				return
+			}
+			for i, el := range lit.Elts {
+				name := ""
+				if kv, isKV := el.(*ast.KeyValueExpr); isKV {
+					if k, isIdent := kv.Key.(*ast.Ident); isIdent {
+						name = k.Name
+					}
+					el = kv.Value
+				} else if i < len(fields) {
+					name = fields[i]
+				}
+				if name == "" || isNonSizeField(name) {
+					continue
+				}
+				checkLeaf(ladder, el)
+			}
+		}
+	}
+	visitRHS := func(scope, ladder string, rhs ast.Expr) {
+		switch r := rhs.(type) {
+		case *ast.CompositeLit:
+			ladders++
+			walk(scope, ladder, r, nil)
+		case *ast.CallExpr:
+			fn, ok := r.Fun.(*ast.Ident)
+			if !ok || fn.Name != "append" || len(r.Args) == 0 {
+				return
+			}
+			for _, arg := range r.Args {
+				if c, ok := arg.(*ast.CompositeLit); ok {
+					ladders++
+					walk(scope, ladder, c, nil)
+				}
+			}
+		}
+	}
+	for _, f := range files {
+		for _, decl := range f.Decls {
+			switch d := decl.(type) {
+			case *ast.GenDecl:
+				if d.Tok != token.VAR {
+					continue
+				}
+				for _, spec := range d.Specs {
+					vs := spec.(*ast.ValueSpec)
+					for i, name := range vs.Names {
+						if i < len(vs.Values) && isLadderName(name.Name) {
+							visitRHS("", name.Name, vs.Values[i])
+						}
+					}
+				}
+			case *ast.FuncDecl:
+				if d.Body == nil {
+					continue
+				}
+				scope := d.Name.Name
+				ast.Inspect(d.Body, func(n ast.Node) bool {
+					as, ok := n.(*ast.AssignStmt)
+					if !ok || len(as.Lhs) != len(as.Rhs) {
+						return true
+					}
+					for i, lhs := range as.Lhs {
+						if id, ok := lhs.(*ast.Ident); ok && isLadderName(id.Name) {
+							visitRHS(scope, id.Name, as.Rhs[i])
+						}
+					}
+					return true
+				})
+			}
+		}
+	}
+	if ladders < 10 {
+		t.Fatalf("found only %d fit ladders; the source scan has lost track of them", ladders)
+	}
+	sort.Strings(problems)
+	for _, p := range problems {
+		t.Error(p)
+	}
+	for name, reason := range offScaleLadderReasons {
+		def, ok := patternConsts[name]
+		if !ok {
+			t.Errorf("offScaleLadderReasons lists %q, which is not a constant of this package", name)
+			continue
+		}
+		if v, _, ok := env.eval("patterns", def); ok && onTypeScalePt(constPt(v)) {
+			t.Errorf("offScaleLadderReasons lists %q, but %.4gpt is on the type scale; drop the entry", name, constPt(v))
+		}
+		if strings.TrimSpace(reason) == "" {
+			t.Errorf("offScaleLadderReasons[%q] has no reason", name)
+		}
+	}
+}

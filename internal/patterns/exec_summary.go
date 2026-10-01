@@ -391,8 +391,9 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 // execSummarySteps is the type scale, lead / support, largest first. The last
 // step sets the lead at the 12pt floor: a tall summary gets a readable size
 // the pattern chose instead of a larger one the writer has to shrink below the
-// floor (go-slide-creator-k3eb3).
-var execSummarySteps = [][2]float64{{17, 14}, {16, 13}, {15, 12}, {14, 12}, {13, 12}, {12, 12}}
+// floor (go-slide-creator-k3eb3). Each step is a pair of scale steps, measured
+// at the size it renders (go-slide-creator-vmdfm).
+var execSummarySteps = [][2]float64{{scaleSubheadPt, scaleSubheadPt}, {scaleSubheadPt, scaleBodyPt}, {scaleBodyPt, scaleBodyPt}}
 
 // layoutExecSummary returns the column split and the largest type step whose
 // natural height fits the content area (never below the 12pt readability

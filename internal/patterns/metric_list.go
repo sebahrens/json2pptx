@@ -303,7 +303,11 @@ func (l metricListLayout) minimal(n int) float64 {
 // The last step sets the label at the 12pt floor so a tall list picks a
 // readable size itself instead of leaving the writer to shrink it
 // (go-slide-creator-k3eb3).
-var metricListScales = [][2]float64{{40, 18}, {36, 17}, {32, 16}, {28, 15}, {24, 14}, {22, 14}, {20, 12}}
+//
+// Values are display figures: they step from the 40pt KPI step to the 28pt
+// display step to the 18pt lead step; labels from lead to subhead to body
+// (go-slide-creator-vmdfm).
+var metricListScales = [][2]float64{{scaleKPIPt, scaleLeadPt}, {scaleDisplayPt, scaleSubheadPt}, {scaleLeadPt, scaleBodyPt}}
 
 func metricListDetailSize(label float64) float64 { return math.Max(12, label-4) }
 
@@ -322,7 +326,8 @@ func layoutMetricList(ctx ExpandContext, vals *MetricListValues, ovr *MetricList
 		scales = scales[1:]
 	}
 	// A list with no detail lines gives the label the whole row: set it 2pt
-	// larger so the stack does not read as a column of small captions.
+	// larger, settled onto the scale (a 12pt label becomes 14pt), so the
+	// stack does not read as a column of small captions.
 	labelBump := 2.0
 	for _, it := range vals.Items {
 		if strings.TrimSpace(it.Detail) != "" {
@@ -331,12 +336,16 @@ func layoutMetricList(ctx ExpandContext, vals *MetricListValues, ovr *MetricList
 		}
 	}
 	if ovr.ValueSize > 0 || ovr.LabelSize > 0 {
-		scales = [][2]float64{{ResolveSize(ovr.ValueSize, scales[0][0]), ResolveSize(ovr.LabelSize, scales[0][1]+labelBump)}}
+		scales = [][2]float64{{ResolveSize(ovr.ValueSize, scales[0][0]), ResolveSize(ovr.LabelSize, snapPt(scales[0][1]+labelBump))}}
 		labelBump = 0
 	}
 	var over metricListLayout
 	for i, sc := range scales {
-		lay := measureMetricList(ctx, vals, cols, sc[0], sc[1]+labelBump, areaW, ovr.TakeawayEmphasis)
+		label := sc[1]
+		if labelBump > 0 {
+			label = snapPt(label + labelBump)
+		}
+		lay := measureMetricList(ctx, vals, cols, sc[0], label, areaW, ovr.TakeawayEmphasis)
 		if lay.natural(len(vals.Items)) <= areaH {
 			return lay
 		}

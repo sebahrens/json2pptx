@@ -444,10 +444,10 @@ func stylishPanelsFit(ctx ExpandContext, items []StylishPanelsItem, ovr *Stylish
 	type step struct{ header, body float64 }
 	steps := []step{{ResolveSize(ovr.HeaderSize, sizeHeaderPt), ResolveSize(ovr.BodySize, scaleSubheadPt)}}
 	if ovr.BodySize == 0 {
-		steps = append(steps, step{steps[0].header, 12})
+		steps = append(steps, step{steps[0].header, scaleBodyPt})
 	}
 	if ovr.HeaderSize == 0 && ovr.BodySize == 0 {
-		steps = append(steps, step{14, 12})
+		steps = append(steps, step{scaleSubheadPt, scaleBodyPt})
 	}
 	areaW, areaH := sizingAreaPt(ctx)
 	colW := equalColumnWidthPt(areaW, len(items), stylishPanelsGapPt)

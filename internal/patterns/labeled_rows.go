@@ -265,8 +265,9 @@ func (l labeledRowsLayout) natural() float64 {
 	return h + float64(2*n-2)*labeledRowsRowGapPt
 }
 
-// labeledRowsScales is the default type scale, largest first: label, body.
-var labeledRowsScales = [][2]float64{{22, 15}, {20, 14}, {18, 13}, {16, 12}}
+// labeledRowsScales is the default type scale, largest first: label, body,
+// each a scale step (go-slide-creator-vmdfm).
+var labeledRowsScales = [][2]float64{{scaleLeadPt, scaleSubheadPt}, {scaleLeadPt, scaleBodyPt}, {scaleSubheadPt, scaleBodyPt}}
 
 func labeledRowsSubSize(body float64) float64 { return math.Max(12, body-2) }
 
@@ -279,10 +280,10 @@ func layoutLabeledRows(ctx ExpandContext, vals *LabeledRowsValues, ovr *LabeledR
 	areaW, areaH := sizingAreaPt(ctx)
 	filled := ovr.LabelStyle != labeledRowsStyleText
 
+	// Every row count starts at the top step: the 5–6 row lists that used
+	// to skip a measuring step rendered at the same 18/14pt once settled
+	// onto the scale (go-slide-creator-vmdfm).
 	scales := labeledRowsScales
-	if len(vals.Rows) >= 5 {
-		scales = scales[1:]
-	}
 	if ovr.LabelSize > 0 || ovr.BodySize > 0 {
 		scales = [][2]float64{{ResolveSize(ovr.LabelSize, scales[0][0]), ResolveSize(ovr.BodySize, scales[0][1])}}
 	}

@@ -232,7 +232,7 @@ func (a *agenda) Validate(values, overrides any, cellOverrides map[int]any) erro
 // filled tiles, content-height rows middle-anchored on the slide.
 const (
 	agendaNumberSize   = tokens.TypeScaleDisplayPt
-	agendaTitleSize    = sizeHeaderPt
+	agendaTitleSize    = scaleSubheadPt
 	agendaRulePt       = 0.5
 	agendaListRowGapPt = 2.0
 	// agendaDimAlpha is the opacity of the sections the deck is not at when
@@ -247,8 +247,10 @@ const (
 )
 
 // agendaScales steps the numeral / item sizes down only when the default rows
-// no longer fit the content area (8–10 item agendas).
-var agendaScales = [][2]float64{{agendaNumberSize, agendaTitleSize}, {24, 16}, {20, 14}}
+// no longer fit the content area (8–10 item agendas). Numerals step from the
+// 28pt display step to the 18pt lead step; items stay on the 14pt subhead
+// step (go-slide-creator-vmdfm).
+var agendaScales = [][2]float64{{agendaNumberSize, agendaTitleSize}, {scaleLeadPt, agendaTitleSize}}
 
 // agendaParagraph is one agenda text run: numerals carry the heading font and
 // dimmed rows an opacity.
@@ -357,7 +359,7 @@ func agendaNumberText(i int, size float64) json.RawMessage {
 
 // agendaFloorScale is the last step: items at the 12pt floor, taken only when
 // it makes the rows fit so an overflowing agenda keeps the larger step.
-var agendaFloorScale = [2]float64{20, 12}
+var agendaFloorScale = [2]float64{scaleLeadPt, scaleBodyPt}
 
 // layoutAgenda picks the largest type scale whose rows fit the content area;
 // an authored numeral or title size is kept. The second result reports

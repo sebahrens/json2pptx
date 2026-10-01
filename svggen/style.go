@@ -528,11 +528,11 @@ func (t *Typography) ScaleForDimensions(width, height float64) *Typography {
 	cp.SizeCaption = t.SizeCaption * scale
 
 	// Enforce minimum and maximum font sizes for presentation scale.
-	// Font sizes are now actual rendered pt values (no pipeline reduction).
-	// Floors prevent text from becoming illegible on small canvases;
-	// caps prevent oversized text on large canvases.
-	// Body text floors at 11pt and label/annotation text at 10pt minimum
-	// to ensure legibility across all chart types and canvas sizes.
+	// Floors prevent text from becoming illegible on small canvases; caps
+	// prevent oversized text on large canvases. Both are steps of the slide
+	// type scale (type_roles.go): body text floors at the 11pt dense-body
+	// step, labels and captions at the 10pt caption step, and each role caps
+	// at the next display step above its reference size.
 	const (
 		minTitle    = ChartTitleMinPt // Chart titles stay on the slide subhead step
 		minSubtitle = ChartTextMinPt  // Subtitles/section headers
@@ -541,12 +541,12 @@ func (t *Typography) ScaleForDimensions(width, height float64) *Typography {
 		minSmall    = ChartLabelMinPt // Axis tick labels, value labels
 		minCaption  = ChartLabelMinPt // Diagram badges, footnotes — 10pt floor for presentation readability
 
-		maxTitle    = 24.0 // Large canvas titles
-		maxSubtitle = 19.0
-		maxHeading  = 16.0
-		maxBody     = 14.0
-		maxSmall    = 12.0
-		maxCaption  = 12.0 // Allow captions to scale on larger canvases
+		maxTitle    = ChartTitleMaxPt
+		maxSubtitle = ChartSubtitleMaxPt
+		maxHeading  = ChartHeadingMaxPt
+		maxBody     = ChartBodyMaxPt
+		maxSmall    = ChartLabelMaxPt
+		maxCaption  = ChartCaptionMaxPt
 	)
 	cp.SizeTitle = math.Max(minTitle, math.Min(maxTitle, cp.SizeTitle))
 	cp.SizeSubtitle = math.Max(minSubtitle, math.Min(maxSubtitle, cp.SizeSubtitle))
@@ -583,20 +583,19 @@ func DefaultTypography() *Typography {
 	}
 }
 
-// CompactTypography returns smaller typography for dense diagrams.
-// Sizes respect the minimum font size floors (11pt body, 10pt captions) to
-// ensure legibility even in information-dense layouts.
+// CompactTypography returns smaller typography for dense diagrams: the
+// compact chart tier (see compactChartSizes), on the slide type scale.
 func CompactTypography() *Typography {
 	return &Typography{
 		FontFamily:    "Arial",
 		FallbackFonts: []string{"Helvetica", "sans-serif"},
 
-		SizeTitle:    13,
-		SizeSubtitle: 11,
-		SizeHeading:  11,
-		SizeBody:     11,
-		SizeSmall:    9,
-		SizeCaption:  10,
+		SizeTitle:    compactChartSizes.SizeTitle,
+		SizeSubtitle: compactChartSizes.SizeSubtitle,
+		SizeHeading:  compactChartSizes.SizeHeading,
+		SizeBody:     compactChartSizes.SizeBody,
+		SizeSmall:    compactChartSizes.SizeSmall,
+		SizeCaption:  compactChartSizes.SizeCaption,
 
 		WeightLight:  300,
 		WeightNormal: 400,
@@ -611,93 +610,68 @@ func CompactTypography() *Typography {
 // Preset Typography
 // =============================================================================
 
-// PresetTypography maps layout preset names to hand-tuned typography settings.
-// These replace the geometric-mean computation in ScaleForDimensions for known
-// presets, providing deterministic, professionally calibrated font sizes.
+// Chart typography tiers (go-slide-creator-vmdfm). Every preset names a tier
+// whose sizes are steps of the slide type scale (type_roles.go). The tiers
+// were derived from the former hand-tuned preset sizes by snapping each to
+// the step at or below it — the rule the slide renderer applies to off-scale
+// text (tokens.SnapTextHPt) — and then raising it to its role floor: the
+// title to the 14pt subhead step (ChartTitleMinPt), labels and captions to the
+// 10pt caption step (ChartLabelMinPt). TestPresetTypographyOnTypeScale pins
+// every preset size to a step, at or above its floor, in role order.
+var (
+	// standardChartSizes is a full content-area chart (content_16x9): the
+	// chart roles, with legend / section headings on the subhead step.
+	standardChartSizes = Typography{
+		SizeTitle: ChartTitlePt, SizeSubtitle: ChartSubtitlePt, SizeHeading: ChartStepSubheadPt,
+		SizeBody: ChartBodyPt, SizeSmall: ChartLabelPt, SizeCaption: ChartCaptionPt,
+	}
+	// fullSlideChartSizes is a full-slide canvas (slide_16x9): labels and
+	// captions sit on the 11pt dense-body step instead of the caption step.
+	fullSlideChartSizes = Typography{
+		SizeTitle: ChartTitlePt, SizeSubtitle: ChartSubtitlePt, SizeHeading: ChartStepSubheadPt,
+		SizeBody: ChartBodyPt, SizeSmall: ChartStepDenseBodyPt, SizeCaption: ChartStepDenseBodyPt,
+	}
+	// slide4x3ChartSizes is a 4:3 full slide: the chart roles with body text
+	// on the dense-body step.
+	slide4x3ChartSizes = Typography{
+		SizeTitle: ChartTitlePt, SizeSubtitle: ChartSubtitlePt, SizeHeading: ChartHeadingPt,
+		SizeBody: ChartStepDenseBodyPt, SizeSmall: ChartLabelPt, SizeCaption: ChartCaptionPt,
+	}
+	// mediumChartSizes is a half-width or square chart: title at its floor,
+	// subtitle on the body step, text at the dense-body floor.
+	mediumChartSizes = Typography{
+		SizeTitle: ChartTitleMinPt, SizeSubtitle: ChartStepBodyPt, SizeHeading: ChartTextMinPt,
+		SizeBody: ChartTextMinPt, SizeSmall: ChartLabelMinPt, SizeCaption: ChartLabelMinPt,
+	}
+	// compactChartSizes is a third-width, small 4:3 or thumbnail chart (and
+	// CompactTypography): every role at its floor.
+	compactChartSizes = Typography{
+		SizeTitle: ChartTitleMinPt, SizeSubtitle: ChartTextMinPt, SizeHeading: ChartTextMinPt,
+		SizeBody: ChartTextMinPt, SizeSmall: ChartLabelMinPt, SizeCaption: ChartLabelMinPt,
+	}
+)
+
+// chartTier returns a copy of a tier with its line height.
+func chartTier(sizes Typography, lineHeight float64) *Typography {
+	sizes.LineHeight = lineHeight
+	return &sizes
+}
+
+// PresetTypography maps layout preset names to typography tiers. These
+// replace the geometric-mean computation in ScaleForDimensions for known
+// presets, providing deterministic font sizes on the slide type scale.
 //
 // Values are actual rendered point sizes in the PPTX placeholder.
 // For unknown presets, ScaleForDimensions is used as a fallback.
 var PresetTypography = map[string]*Typography{
-	// Full content area (1600x900) — large canvas.
-	"content_16x9": {
-		SizeTitle:    20,
-		SizeSubtitle: 16,
-		SizeHeading:  14,
-		SizeBody:     12,
-		SizeSmall:    10,
-		SizeCaption:  10,
-		LineHeight:   1.4,
-	},
-	// Full slide area (1920x1080).
-	"slide_16x9": {
-		SizeTitle:    22,
-		SizeSubtitle: 17,
-		SizeHeading:  15,
-		SizeBody:     13,
-		SizeSmall:    11,
-		SizeCaption:  11,
-		LineHeight:   1.4,
-	},
-	// Half-width (760x720).
-	"half_16x9": {
-		SizeTitle:    15,
-		SizeSubtitle: 13,
-		SizeHeading:  11,
-		SizeBody:     11,
-		SizeSmall:    9,
-		SizeCaption:  10,
-		LineHeight:   1.4,
-	},
-	// Third-width (500x720).
-	"third_16x9": {
-		SizeTitle:    13,
-		SizeSubtitle: 11,
-		SizeHeading:  11,
-		SizeBody:     11,
-		SizeSmall:    9,
-		SizeCaption:  10,
-		LineHeight:   1.3,
-	},
-	// 4:3 full slide (1024x768).
-	"slide_4x3": {
-		SizeTitle:    18,
-		SizeSubtitle: 14,
-		SizeHeading:  13,
-		SizeBody:     11,
-		SizeSmall:    10,
-		SizeCaption:  10,
-		LineHeight:   1.4,
-	},
-	// 4:3 half-width (420x540).
-	"half_4x3": {
-		SizeTitle:    13,
-		SizeSubtitle: 11,
-		SizeHeading:  11,
-		SizeBody:     11,
-		SizeSmall:    9,
-		SizeCaption:  10,
-		LineHeight:   1.3,
-	},
-	// Square (600x600) — used for circular charts.
-	"square": {
-		SizeTitle:    15,
-		SizeSubtitle: 12,
-		SizeHeading:  11,
-		SizeBody:     11,
-		SizeSmall:    9,
-		SizeCaption:  10,
-		LineHeight:   1.4,
-	},
-	// Thumbnail (400x300) — small preview.
-	"thumbnail": {
-		SizeTitle:    13,
-		SizeSubtitle: 11,
-		SizeHeading:  11,
-		SizeBody:     11,
-		SizeSmall:    9,
-		SizeCaption:  10,
-		LineHeight:   1.3,
-	},
+	"content_16x9": chartTier(standardChartSizes, 1.4),  // full content area (1600x900)
+	"slide_16x9":   chartTier(fullSlideChartSizes, 1.4), // full slide (1920x1080)
+	"half_16x9":    chartTier(mediumChartSizes, 1.4),    // half width (760x720)
+	"third_16x9":   chartTier(compactChartSizes, 1.3),   // third width (500x720)
+	"slide_4x3":    chartTier(slide4x3ChartSizes, 1.4),  // 4:3 full slide (1024x768)
+	"half_4x3":     chartTier(compactChartSizes, 1.3),   // 4:3 half width (420x540)
+	"square":       chartTier(mediumChartSizes, 1.4),    // square (600x600), circular charts
+	"thumbnail":    chartTier(compactChartSizes, 1.3),   // thumbnail (400x300)
 }
 
 // TypographyForPreset returns hand-tuned typography for a known layout preset.

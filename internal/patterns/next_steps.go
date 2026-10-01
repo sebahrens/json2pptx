@@ -69,7 +69,9 @@ const (
 // and decisions at the 12pt floor: the pattern picks a readable size itself
 // rather than handing the writer rows it can only fit by autofit shrink
 // (go-slide-creator-k3eb3).
-var nextStepsScales = [][3]float64{{20, 16, 14}, {18, 14, 12}, {16, 12, 12}}
+//
+// Every size is a scale step (go-slide-creator-vmdfm).
+var nextStepsScales = [][3]float64{{scaleLeadPt, scaleSubheadPt, scaleSubheadPt}, {scaleLeadPt, scaleSubheadPt, scaleBodyPt}, {scaleSubheadPt, scaleBodyPt, scaleBodyPt}}
 
 func (n *nextSteps) Name() string { return "next-steps" }
 func (n *nextSteps) Description() string {
@@ -270,7 +272,7 @@ func layoutNextSteps(ctx ExpandContext, vals *NextStepsValues, ovr *NextStepsOve
 	_, areaH := sizingAreaPt(ctx)
 	scales := nextStepsScales
 	if ovr.ActionSize > 0 {
-		scales = [][3]float64{{scales[0][0], ovr.ActionSize, math.Max(12, ovr.ActionSize-2)}}
+		scales = [][3]float64{{scales[0][0], ovr.ActionSize, math.Max(scaleBodyPt, ovr.ActionSize-2)}}
 	}
 	fit := func(sc [3]float64) (nextStepsLayout, bool) {
 		lay := measureNextSteps(ctx, vals, sc[0], sc[1], sc[2])
