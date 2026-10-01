@@ -9,12 +9,12 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
-// bodyZoneTitleGapPt is the distance from the bottom of a measured
-// (top-anchored) title's text to the top of the body zone: 18pt
-// (go-slide-creator-wntyw). It absorbs small measurement differences between
-// the estimator and the renderer, and it is the one fixed start line the
-// eye finds on every slide; the standard gridChromeGapPt is part of it.
-const bodyZoneTitleGapPt = 18.0
+// The distance from the bottom of a measured (top-anchored) title's text to
+// the top of the body zone is the template grid's title_gap_pt, default
+// types.DefaultGridTitleGapPt = 18pt (go-slide-creator-wntyw, -5ms8c). It
+// absorbs small measurement differences between the estimator and the
+// renderer, and it is the one fixed start line the eye finds on every slide;
+// the standard gridChromeGapPt is part of it.
 
 // reserveMeasuredTitle pulls the content zone's TitleBottom up from the title
 // placeholder's bottom edge to the bottom of the title's measured text when the
@@ -59,7 +59,7 @@ func reserveMeasuredTitle(g GridGeometry, slide SlideInput, layouts []types.Layo
 	if text == "" {
 		return g
 	}
-	textBottom, ok := measuredTitleBottom(title, text)
+	textBottom, ok := measuredTitleBottom(title, text, types.TemplateGridOf(layouts).TitleGapPtOrDefault())
 	if !ok || textBottom >= boxBottom {
 		return g
 	}
@@ -82,9 +82,9 @@ func reserveMeasuredTitle(g GridGeometry, slide SlideInput, layouts []types.Layo
 }
 
 // measuredTitleBottom estimates the Y (EMU) where a top-anchored title's text
-// ends, plus the part of bodyZoneTitleGapPt the zone's own gap does not cover. ok is false when the text cannot be
+// ends, plus the part of the title gap (titleGapPt) the zone's own gap does not cover. ok is false when the text cannot be
 // measured (no font cache), in which case the caller keeps the box edge.
-func measuredTitleBottom(title *types.PlaceholderInfo, text string) (int64, bool) {
+func measuredTitleBottom(title *types.PlaceholderInfo, text string, titleGapPt float64) (int64, bool) {
 	if title.TextCaps {
 		text = strings.ToUpper(text)
 	}
@@ -120,8 +120,9 @@ func measuredTitleBottom(title *types.PlaceholderInfo, text string) (int64, bool
 		return 0, false
 	}
 	// The zone's bounds add gridChromeGapPt below TitleBottom; reserve the
-	// rest of bodyZoneTitleGapPt here.
-	safety := int64((bodyZoneTitleGapPt - gridChromeGapPt) * 12700)
+	// rest of the title gap (the template grid's title_gap_pt, default
+	// types.DefaultGridTitleGapPt) here.
+	safety := int64(max(titleGapPt-gridChromeGapPt, 0) * 12700)
 	return title.Bounds.Y + h + safety, true
 }
 
@@ -152,11 +153,12 @@ func heavyWeightFamily(name string) bool {
 // reserveMeasuredTitle), so a short pattern on p-style started hard under a
 // one-line title while the native bullets of the next slide started at the
 // body placeholder, ~70pt lower. Consulting decks hang every slide's content
-// from one line. The zone keeps its full height (dense patterns need it), but
-// records the layout's body / content placeholder top — or, for a title-only
-// layout that draws the same title box as the template's reference
-// one-content layout, that layout's — as BodyTop. A top-anchored
-// content-sized block then starts there whenever its slack allows.
+// from one line. The layout's body / content placeholder top — or, for a
+// title-only layout that draws the same title box as the template's
+// reference one-content layout, that layout's — is recorded as BodyTop: a
+// content-sized block ("auto" / "top") starts there whenever its slack
+// allows. Full-area grids start there too (ContentTop) as far as
+// bodyStartTop allows, so dense patterns keep the height they are sized for.
 func reserveBodyAnchor(g GridGeometry, slide SlideInput, layouts []types.LayoutMetadata) GridGeometry {
 	if g.Zone == nil {
 		return g
@@ -178,13 +180,44 @@ func reserveBodyAnchor(g GridGeometry, slide SlideInput, layouts []types.LayoutM
 		return g
 	}
 	gap := int64(gridChromeGapPt * 12700)
-	if anchor <= g.Zone.TitleBottom+gap || anchor >= g.Zone.FooterTop-gap {
+	if anchor >= g.Zone.FooterTop-gap {
 		return g
 	}
 	zone := *g.Zone
 	zone.BodyTop = anchor
+	if top := bodyStartTop(zone.TitleBottom, title, anchor); top > zone.TitleBottom+gap {
+		zone.ContentTop = top
+		if g.OverrideBounds != nil && g.OverrideBounds.Y < top {
+			b := *g.OverrideBounds
+			b.CY -= top - b.Y
+			b.Y = top
+			if b.CY < 0 {
+				b.CY = 0
+			}
+			g.OverrideBounds = &b
+		}
+	}
 	g.Zone = &zone
 	return g
+}
+
+// bodyStartTop is where full-area grids start (ContentZone.ContentTop): the
+// body line anchor, but never below gridChromeGapPt under the title box — the
+// zone every pattern's schema maxima are sized and pinned for
+// (TestSchemaMaximaStayReadable). Where a template's body placeholder sits
+// further below its title box (p-style ~11pt, modern-yellow ~19pt,
+// business-template ~28pt), starting there would shrink that zone and push
+// dense content under the readable floor, so those templates start full-area
+// grids at the title-box line and only content-sized blocks hang from the
+// body line. A measured short title (reserveMeasuredTitle) lifts only the
+// zone's limit, never this start line, so pattern slides no longer start
+// hard under a one-line title while native body text starts lower.
+func bodyStartTop(titleBottom int64, title *types.PlaceholderInfo, anchor int64) int64 {
+	base := title.Bounds.Y + title.Bounds.Height
+	if titleBottom > base {
+		base = titleBottom
+	}
+	return min64(anchor, base+int64(gridChromeGapPt*12700))
 }
 
 // layoutTitlePlaceholder returns the layout's first title placeholder.

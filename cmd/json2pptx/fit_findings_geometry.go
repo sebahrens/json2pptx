@@ -50,6 +50,9 @@ const (
 	// to reach 29% is exactly the empty-box look go-slide-creator-wntyw
 	// removed. The finding keeps firing for a genuinely sparse box slide.
 	slideUnderusedBoxPatternMaxFrac = 0.20
+	// slideUnderusedStripPatternMaxFrac is the threshold for content-sized
+	// time-line strips hung from the body line (contentSizedStripPatterns).
+	slideUnderusedStripPatternMaxFrac = 0.22
 	// textExceedsTolerance absorbs rounding/kerning noise before flagging.
 	textExceedsTolerance = 1.02
 
@@ -139,7 +142,7 @@ func collectGeometryFindings(input *PresentationInput, layouts []types.LayoutMet
 		safe := contentRelativeBoundsBase(geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
 		if f := checkSlideUnderused(acc.ink, safe, &slide, si, patternName, acc.heightSensitiveOverflow()); f != nil {
 			findings = append(findings, *f)
-		} else if f := checkVerticalImbalance(acc.ink, safe, &slide, si, patternName); f != nil {
+		} else if f := checkVerticalImbalance(acc.ink, safe, &slide, si, patternName, zoneBodyTop(geom.Zone)); f != nil {
 			findings = append(findings, *f)
 		}
 	}
@@ -411,6 +414,20 @@ var contentSizedBoxPatterns = map[string]bool{
 	"comparison-2col": true,
 }
 
+// contentSizedStripPatterns are the time-line patterns whose rows are
+// content-sized (go-slide-creator-7km8, -n1muf) and hang from the template's
+// body line (go-slide-creator-e17xy): a three-phase roadmap or a four-stop
+// timeline with one-line descriptions covers ~24-29% of the zone at its
+// natural height, and the only ways to 29% were stretching the phase boxes
+// past contentStretchMax or centring a thin band mid-slide — the dead space
+// the 2026-10-01 review flagged on every template. A roadmap of bare phase
+// names (~20%: the header boxes alone) or a timeline of bare labels still
+// reports.
+var contentSizedStripPatterns = map[string]bool{
+	"phase-roadmap":       true,
+	"timeline-horizontal": true,
+}
+
 func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInput, si int, patternName string, heightSensitiveOverflow bool) *patterns.FitFinding {
 	if safe.CX <= 0 || safe.CY <= 0 || hasBodyPlaceholderContent(slide) {
 		return nil
@@ -431,8 +448,11 @@ func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInpu
 		}
 	case "pattern":
 		hint = "this block sizes itself to its content — add detail to it, pair it with a supporting zone using compose, or choose a denser pattern"
-		if contentSizedBoxPatterns[patternName] || strings.HasPrefix(patternName, "kpi-") {
+		switch {
+		case contentSizedBoxPatterns[patternName] || strings.HasPrefix(patternName, "kpi-"):
 			threshold = slideUnderusedBoxPatternMaxFrac
+		case contentSizedStripPatterns[patternName]:
+			threshold = slideUnderusedStripPatternMaxFrac
 		}
 	}
 	// A content-sized, middle-anchored block (a KPI row, before-after panels)
@@ -851,4 +871,12 @@ func maxI64(a, b int64) int64 {
 		return a
 	}
 	return b
+}
+
+// zoneBodyTop is the zone's body line, 0 without a zone.
+func zoneBodyTop(zone *shapegrid.ContentZone) int64 {
+	if zone == nil {
+		return 0
+	}
+	return zone.BodyTop
 }

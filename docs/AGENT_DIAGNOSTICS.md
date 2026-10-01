@@ -607,6 +607,7 @@ go test ./cmd/json2pptx -run TestFindingCatalogCodesAreDocumented -update-diag-a
 | `STYLE_NOT_FOUND` | refuse | A referenced named style is not defined. |
 | `TEMPLATES_DIR` | refuse | The templates directory is missing or unreadable. |
 | `TEMPLATE_ASPECT_RATIO_INVALID` | review | The metadata aspect_ratio is not in WIDTH:HEIGHT form. |
+| `TEMPLATE_GRID_INVALID` | review | A template metadata `grid` value (margin_pct, columns, gutter_pt, title_gap_pt) is out of range; the engine ignores it and applies its default. |
 | `TEMPLATE_LAYOUT_HINT_INVALID` | review | A layout hint in the metadata is malformed (empty key or a negative budget). |
 | `TEMPLATE_METADATA_PARSE` | review | The template's embedded metadata file could not be read or parsed. |
 | `TEMPLATE_METADATA_VERSION` | review | The template metadata declares a version outside the supported range. |

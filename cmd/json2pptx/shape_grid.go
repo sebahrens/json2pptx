@@ -456,6 +456,7 @@ func resolveGridGeometry(slide SlideInput, layouts []types.LayoutMetadata, slide
 			}
 		}
 	}
+	g = applyTemplateGrid(g, layouts, slideWidth)
 	g = reserveMeasuredTitle(g, slide, layouts)
 	g = reserveBodyAnchor(g, slide, layouts)
 	g = reserveTakeawayBand(g, slide, layouts)
@@ -706,7 +707,7 @@ func alignRelativeBounds(b, content pptx.RectEmu, input *ShapeGridInput, anchorY
 		return b
 	}
 	align, _ := shapegrid.ParseVerticalAlign(input.VerticalAlign)
-	switch align.ResolveAuto(b.CY, content.CY) {
+	switch align.AnchoredAuto(anchorY).ResolveAuto(b.CY, content.CY) {
 	case shapegrid.VAlignTop:
 		if anchorY > b.Y {
 			b.Y += min64(anchorY-b.Y, content.Y+content.CY-b.CY-b.Y)
@@ -792,6 +793,7 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 	if zone != nil {
 		grid.AnchorY = zone.BodyTop
 		grid.TextLeft = zone.TextLeft
+		grid.DefaultGapPt = zone.GutterPt
 	}
 	grid.KeepTextSizes = input.KeepTextSizes
 	grid.Links = convertGridLinks(input.Links)

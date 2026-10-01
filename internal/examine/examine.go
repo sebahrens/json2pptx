@@ -87,6 +87,9 @@ type Report struct {
 	CanonicalCoverage map[string]CanonicalCoverage `json:"canonical_coverage"`
 	DerivableLayouts  []DerivableLayoutReport      `json:"derivable_layouts"`
 	Layouts           []LayoutReport               `json:"layouts"`
+	// Grid is the template's effective grid system (metadata "grid" keys or
+	// engine defaults) and content frame (go-slide-creator-5ms8c).
+	Grid template.ResolvedGrid `json:"grid"`
 	// Profile is the summary of the template profile (template.BuildProfile)
 	// the generator uses for chrome geometry; nil when profiling failed.
 	Profile  *ProfileReport              `json:"profile,omitempty"`
@@ -330,6 +333,7 @@ func BuildReport(in Inputs) *Report {
 		CanonicalCoverage: coverage,
 		DerivableLayouts:  buildDerivable(in.Layouts),
 		Layouts:           layoutReports,
+		Grid:              template.ResolveTemplateGrid(in.Layouts, w, h),
 		Profile:           buildProfileReport(in.Profile),
 		Findings:          env,
 	}

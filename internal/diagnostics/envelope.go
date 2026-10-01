@@ -510,7 +510,7 @@ var classifyMap = func() map[string]Namespace {
 		CodeTemplateNotFound, CodeTemplateError, CodeTemplatesDir,
 		CodeTemplateMetadataParse, CodeTemplateMetadataVersion,
 		CodeTemplateAspectRatioInvalid, CodeTemplateLayoutHintInvalid,
-		CodeTemplateSectionNumberNaming)
+		CodeTemplateGridInvalid, CodeTemplateSectionNumberNaming)
 	add(NamespaceGrid, CodePatternError)
 	add(NamespaceFit, CodeStrictFit)
 	// Content-policy string-literal code (not declared in codes.go). It must map

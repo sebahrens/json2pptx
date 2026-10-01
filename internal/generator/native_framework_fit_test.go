@@ -27,8 +27,10 @@ func TestNativeFrameworkSparseContentShrinksAndReports(t *testing.T) {
 			if got.Height >= bounds.Height || got.Height <= 0 {
 				t.Fatalf("diagram not content-sized: height=%d, original=%d", got.Height, bounds.Height)
 			}
-			if got.Width != bounds.Width || got.X != bounds.X || abs((got.Y-bounds.Y)-(bounds.Height-got.Height)/2) > 1 {
-				t.Fatalf("diagram not centred within original width: %+v", got)
+			// go-slide-creator-e17xy: hung from the placeholder top (the body
+			// line), not centred as a floating band.
+			if got.Width != bounds.Width || got.X != bounds.X || got.Y != bounds.Y {
+				t.Fatalf("diagram not top-anchored within original width: %+v", got)
 			}
 			if len(ctx.fitFindings) != 1 {
 				t.Fatalf("want one sparse finding, got %+v", ctx.fitFindings)

@@ -1471,6 +1471,17 @@ var findingMetaRegistry = map[string]FindingMeta{
 		ExampleBefore: `{"layout_hints":{"content":{"max_bullets":-1}}}`,
 		ExampleAfter:  `{"layout_hints":{"content":{"max_bullets":6}}}`,
 	},
+	"TEMPLATE_GRID_INVALID": {
+		Code:        "TEMPLATE_GRID_INVALID",
+		Summary:     "A template metadata grid value is out of range and is ignored.",
+		Severity:    "review",
+		WhenEmitted: "validate-template finds a grid key outside its accepted range: margin_pct 0-25, columns 0-24, gutter_pt 0-72, title_gap_pt 0-144. The engine ignores that key and applies its default (placeholder-derived margin, 12 columns, 8pt gutter, 18pt title gap).",
+		RemediationSteps: []string{
+			"Set the key inside its range in the template metadata's grid block, or remove it to take the engine default.",
+		},
+		ExampleBefore: `{"grid":{"gutter_pt":-4}}`,
+		ExampleAfter:  `{"grid":{"gutter_pt":12}}`,
+	},
 	"TEMPLATE_SECTION_NUMBER_NAMING": {
 		Code:        "TEMPLATE_SECTION_NUMBER_NAMING",
 		Summary:     "A section-header layout has a decorative number placeholder that is not named \"Section Number\".",

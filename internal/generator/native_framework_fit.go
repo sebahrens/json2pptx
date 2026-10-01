@@ -9,7 +9,7 @@ import (
 )
 
 // fitNativeFramework sizes a framework to its measured text while retaining the
-// authored width and centring the result in the placeholder. Dense frameworks
+// authored width and hanging the result from the placeholder top. Dense frameworks
 // keep their original geometry. A sparse finding describes the remaining lack
 // of content, rather than suggesting a shape-grid-only repair for a diagram.
 func (ctx *singlePassContext) fitNativeFramework(slideNum, contentIdx int, kind string, bounds types.BoundingBox, panels []nativePanelData, meta houseDiagramMeta) types.BoundingBox {
@@ -53,13 +53,16 @@ func nativeFrameworkSize(kind string, bounds types.BoundingBox, panels []nativeP
 	return nativeFrameworkHeight{}
 }
 
-// fitBoundsToFramework centres a framework of the measured height in bounds;
-// a framework that needs the whole height (or more) keeps it.
+// fitBoundsToFramework hangs a framework of the measured height from the top
+// of its body placeholder — the line native body text starts on — so a SWOT
+// or five-forces slide starts its content where every other slide of the
+// deck does instead of floating a thin band mid-slide
+// (go-slide-creator-e17xy); a framework that needs the whole height (or
+// more) keeps it.
 func fitBoundsToFramework(bounds types.BoundingBox, size nativeFrameworkHeight) types.BoundingBox {
 	if size.box <= 0 || size.box >= bounds.Height {
 		return bounds
 	}
-	bounds.Y += (bounds.Height - size.box) / 2
 	bounds.Height = size.box
 	return bounds
 }

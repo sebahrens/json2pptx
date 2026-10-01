@@ -330,6 +330,12 @@ func validateRequiredFields(metadata *types.TemplateMetadata, result *Validation
 	// Version validation is already done in ParseMetadata
 	// Additional field validations can be added here
 
+	// Grid values outside the accepted range are ignored by the engine
+	// (TemplateGrid.Sanitized); say so rather than dropping them silently.
+	for _, problem := range metadata.Grid.Problems() {
+		result.addWarning(diagnostics.CodeTemplateGridInvalid, problem+" (ignored; the engine default applies)")
+	}
+
 	// Validate aspect ratio format if provided
 	if metadata.AspectRatio != "" {
 		if !isValidAspectRatio(metadata.AspectRatio) {

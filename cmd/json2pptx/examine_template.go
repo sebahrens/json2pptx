@@ -345,6 +345,16 @@ func printExamineSummary(report *examine.Report, outDir string, pngCount int, no
 	fmt.Printf("Output:   %s\n", outDir)
 	fmt.Printf("Layouts:  %d   Findings: %s (%s)\n", len(report.Layouts), boolPassAttention(report.Findings.OK), report.Findings.Summary)
 
+	g := report.Grid
+	declared := "engine defaults"
+	if len(g.Declared) > 0 {
+		declared = "declared: " + strings.Join(g.Declared, ", ")
+	}
+	fmt.Printf("Grid:     margin %.1f%%, %d columns, gutter %gpt, title gap %gpt (%s)\n", g.MarginPct, g.Columns, g.GutterPt, g.TitleGapPt, declared)
+	if f := g.Frame; f != nil {
+		fmt.Printf("Frame:    title bottom %.1fpt, content top %.1fpt, left %.1fpt, right %.1fpt\n", f.TitleBottomPt, f.ContentTopPt, f.LeftPt, f.RightPt)
+	}
+
 	fmt.Println("Canonical coverage:")
 	for _, fam := range []string{"title-slide", "section-divider", "one-content", "qa-closing"} {
 		c := report.CanonicalCoverage[fam]

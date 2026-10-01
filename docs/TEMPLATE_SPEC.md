@@ -182,6 +182,12 @@ Templates may include an embedded metadata file at `ppt/go-slide-creator-metadat
   "accent_usage_guide": {
     "accent1": "#2E5090 primary emphasis: headers, bands, key figures; carries white text (7.9:1)",
     "accent4": "#FFC000 near-background tint: subtle surfaces only, never text, thin rules or chart series"
+  },
+  "grid": {
+    "margin_pct": 6,
+    "columns": 12,
+    "gutter_pt": 10,
+    "title_gap_pt": 18
   }
 }
 ```
@@ -220,6 +226,19 @@ When `data_palette` is absent, charts start from the fixed order `accent1`–`ac
 One line per accent (`accent1`–`accent6`) stating its intended role and what text it can carry, surfaced by `list_templates` (`fields="full"`, CLI `skill-info --mode compact`) so agents pick accents with intent. Every bundled template authors all six lines (a corpus test enforces it). When a template has no guide — a bring-your-own template such as one without a metadata part — `list_templates` derives one from the theme's measured contrast (primary / secondary fill, white-text safety, near-background tints) and sets `accent_usage_guide_derived: true`; treat a derived guide as contrast facts only, not brand intent.
 
 `color_roles.primary_fill` / `secondary_fill` name the first accents that carry white body text (4.5:1), then large text (3:1), then a qualifying `dk2` / `dk1`; they are not always `accent1`, and patterns use the same slot as their default accent (`ExpandContext.DefaultAccent`). `color_roles.ink_on_accent` gives, per accent, the readable text colour for a fill of that accent (`lt1` when white passes 4.5:1, else `dk2` / `dk1`) and its ratio.
+
+### Grid
+
+The template's grid system (go-slide-creator-5ms8c). Every key is optional; an omitted key takes the engine default, so a template without a `grid` block renders exactly as before. `ParseLayouts` attaches the grid to every parsed layout, so generation, `validate` / fit-report, previews and `score_deck` all apply the same values.
+
+| Key | Range | Default | What the engine does with it |
+|-----|-------|---------|------------------------------|
+| `margin_pct` | 0–25 | the reference one-content layout's title left edge | Left / right content margin as a percentage of the slide width. Pattern and `shape_grid` zones are narrowed to it (never widened over template artwork); the content frame's left edge follows it. |
+| `columns` | 0–24 | 12 | Advisory column count for agents sizing their own `shape_grid` columns; reported, not enforced. |
+| `gutter_pt` | 0–72 | 8 | Default column / row gap of any shape grid (raw or pattern) that sets no `gap` / `col_gap` / `row_gap` of its own. Patterns that set their own gaps keep them. |
+| `title_gap_pt` | 0–144 | 18 | Gap between the bottom of a measured, top-anchored title's text and the start of the body zone (`reserveMeasuredTitle`); also the content top of a template whose reference layout has no body placeholder. |
+
+Out-of-range values are reported by `validate-template` as `TEMPLATE_GRID_INVALID` and ignored (the default applies). `list_templates` (`fields="full"`, CLI `skill-info`) and `examine-template` (report.json `grid`, report.md "Grid" section, and the CLI summary) print the effective values, `declared` (the keys the template authors) and the `content_frame`: the reference one-content layout's title bottom, body top (the body line) and left / right edges in points — the lines `grid_violation` checks rendered content against (see [FIT_FINDINGS.md](FIT_FINDINGS.md#grid_violation)). Chart frames and pattern-internal gaps do not read the grid yet.
 
 ### Template Conformance Check
 

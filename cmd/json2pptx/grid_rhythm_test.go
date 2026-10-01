@@ -276,8 +276,10 @@ func TestDetectGridViolations(t *testing.T) {
 		},
 	}
 
+	// Only placeholders the slide fills are measured (go-slide-creator-5ms8c).
+	title := "Quarterly results"
 	slides := []SlideInput{
-		{LayoutID: "layout1"},
+		{LayoutID: "layout1", Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: &title}}},
 	}
 
 	findings := detectGridViolations(rg, layouts, slides)
