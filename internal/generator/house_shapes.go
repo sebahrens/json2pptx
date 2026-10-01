@@ -62,9 +62,6 @@ const (
 	// 700 = 7pt
 	houseItemFontSizeSmall int = 700
 
-	// houseRoofHeightRatio is the fraction of total height used by the roof.
-	houseRoofHeightRatio float64 = 0.22
-
 	// houseFoundationHeightRatio is the fraction of total height for the foundation.
 	houseFoundationHeightRatio float64 = 0.13
 
@@ -367,8 +364,9 @@ func generateHouseDiagramGroupXML(panels []nativePanelData, bounds types.Boundin
 	// Keep the familiar architectural proportions when the authored region is
 	// generous. A content-sized group uses the measured end bands so a long
 	// foundation label never stretches the pillars.
+	// The roof is not stretched with them: it stays as tall as its label
+	// needs (go-slide-creator-n0zpq).
 	if bounds.Height > houseContentHeight(panels, meta, bounds, "").box {
-		roofH = max(roofH, int64(float64(bounds.Height)*houseRoofHeightRatio))
 		foundH = max(foundH, int64(float64(bounds.Height)*houseFoundationHeightRatio))
 	}
 
@@ -399,29 +397,48 @@ func generateHouseDiagramGroupXML(panels []nativePanelData, bounds types.Boundin
 		Geometry: pptx.GeomTriangle,
 		Fill:     pptx.SchemeFill("accent1"),
 		Line:     pptx.Line{Width: 0, Fill: pptx.NoFill()},
-		Text: &pptx.TextBody{
-			Wrap:    "square",
-			Anchor:  "ctr",
-			Insets:  pptx.ShapeTextInsets(),
-			AutoFit: "normAutofit",
-			Paragraphs: []pptx.Paragraph{{
-				Align:    "ctr",
-				NoBullet: true,
-				Runs: []pptx.Run{{
-					Text:     roofTitle,
-					Lang:     "en-US",
-					FontSize: labelFont,
-					Bold:     true,
-					Dirty:    true,
-					Color:    pptx.SchemeFill("lt1"),
-				}},
-			}},
-		},
 	})
 	if err != nil {
 		slog.Warn("house diagram: roof shape failed", "error", err)
 	} else {
 		children = append(children, roofShape)
+	}
+	// The roof label is an overlay box centred in the triangle's middle
+	// third (houseRoofTextBox), not the triangle's own text, whose preset
+	// text rectangle is its lower half.
+	if roofTitle != "" {
+		top, textH, textW := houseRoofTextBox(roofTitle, "", labelFont, bounds.Width, roofH)
+		shapeIdx++
+		label, err := pptx.GenerateShape(pptx.ShapeOptions{
+			ID:       shapeIDBase + shapeIdx,
+			Name:     "House Roof Label",
+			Bounds:   pptx.RectEmu{X: bounds.X + (bounds.Width-textW)/2, Y: roofY + top, CX: textW, CY: textH},
+			Geometry: pptx.GeomRect,
+			Fill:     pptx.NoFill(),
+			Line:     pptx.Line{Width: 0, Fill: pptx.NoFill()},
+			TxBox:    true,
+			Text: &pptx.TextBody{
+				Wrap:   "square",
+				Anchor: "ctr",
+				Paragraphs: []pptx.Paragraph{{
+					Align:    "ctr",
+					NoBullet: true,
+					Runs: []pptx.Run{{
+						Text:     roofTitle,
+						Lang:     "en-US",
+						FontSize: labelFont,
+						Bold:     true,
+						Dirty:    true,
+						Color:    pptx.SchemeFill("lt1"),
+					}},
+				}},
+			},
+		})
+		if err != nil {
+			slog.Warn("house diagram: roof label failed", "error", err)
+		} else {
+			children = append(children, label)
+		}
 	}
 
 	// --- Floor sections ---
@@ -643,7 +660,7 @@ func generateHousePillarShape(id uint32, panel nativePanelData, x, y, w, h int64
 }
 
 // houseDiagramEstimateShapeCount returns the estimated number of shapes for ID allocation.
-// 1 (group) + 1 (roof) + N (floor sections) + 1 (foundation)
+// 1 (group) + 1 (roof) + 1 (roof label) + N (floor sections) + 1 (foundation)
 func houseDiagramEstimateShapeCount(panels []nativePanelData) uint32 {
-	return uint32(1 + len(panels))
+	return uint32(2 + len(panels))
 }

@@ -338,8 +338,8 @@ func TestGenerateHouseDiagramGroupXML_RoofAndFoundationOnly(t *testing.T) {
 func TestHouseDiagramEstimateShapeCount(t *testing.T) {
 	panels := make([]nativePanelData, 5) // roof + 3 pillars + foundation
 	got := houseDiagramEstimateShapeCount(panels)
-	if got != 6 { // 1 group + 5 shapes
-		t.Errorf("houseDiagramEstimateShapeCount() = %d, want 6", got)
+	if got != 7 { // 1 group + 5 shapes + the roof label overlay
+		t.Errorf("houseDiagramEstimateShapeCount() = %d, want 7", got)
 	}
 }
 
