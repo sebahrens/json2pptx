@@ -240,9 +240,9 @@ func PopulateTableInShape(
 	style.StyleID = resolver.ResolveTableStyleID(style.StyleID)
 	// Some templates declare a default GUID but ship no formatting rule for it.
 	// Keep the resolved GUID for OOXML compatibility while rendering the header
-	// explicitly — in the engine-default look (go-slide-creator-1iiej) unless
-	// the author chose a header_background — so it remains visible in
-	// PowerPoint and LibreOffice.
+	// explicitly — in the engine-default look (go-slide-creator-1iiej; a
+	// header_background only adds the header fill, go-slide-creator-87eu0) —
+	// so it remains visible in PowerPoint and LibreOffice.
 	engineDefault := false
 	if style.UseTableStyle {
 		defined := true
@@ -254,7 +254,7 @@ func PopulateTableInShape(
 		}
 		if !defined {
 			style.UseTableStyle = false
-			engineDefault = style.HeaderBackground == ""
+			engineDefault = true
 		}
 	}
 

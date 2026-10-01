@@ -1293,7 +1293,7 @@ func TestGenerateTableXML_EngineDefault_ColumnScaling(t *testing.T) {
 
 func TestGenerateTableXML_WideTable_FontScaling(t *testing.T) {
 	// Verify the legacy font scaling logic for different column counts. The
-	// accent1 header opts out of the engine default, which starts at 12pt
+	// non-default style_id opts out of the engine default, which starts at 12pt
 	// (see TestGenerateTableXML_EngineDefault_ColumnScaling).
 	tests := []struct {
 		name         string
@@ -1321,7 +1321,7 @@ func TestGenerateTableXML_WideTable_FontScaling(t *testing.T) {
 			table := &types.TableSpec{
 				Headers: headers,
 				Rows:    [][]types.TableCell{row},
-				Style:   types.TableStyle{HeaderBackground: "accent1", StyleID: types.DefaultTableStyleID},
+				Style:   types.TableStyle{HeaderBackground: "accent1", StyleID: "{073A0DAA-6AF3-43AB-8588-CEC1D06C72B9}"},
 			}
 
 			config := TableRenderConfig{

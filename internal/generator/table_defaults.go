@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // Default table styling (go-slide-creator-weaq, go-slide-creator-1iiej).
@@ -26,12 +27,15 @@ import (
 //     placeholder; the table is anchored at the top of its content area
 //
 // The default applies when the author left the style unset (no
-// header_background, no use_table_style, style_id empty or the engine
-// default GUID) and as the fallback for use_table_style /
-// "@template-default" when the template ships no formatting for its declared
-// table style. An authored style_id that the template defines, or an explicit
-// header_background, is still honoured; explicit borders / striped values are
-// honoured on top of the default.
+// use_table_style, style_id empty or the engine default GUID) and as the
+// fallback for use_table_style / "@template-default" when the template ships
+// no formatting for its declared table style. An authored style_id that the
+// template defines is still honoured. header_background, borders and striped
+// are additive on top of the default (go-slide-creator-87eu0): a
+// header_background only fills the header row (header text flips to lt1 or
+// dk1 by contrast) and keeps the 12pt / 11pt type, the horizontal rules and
+// the unbanded rows; explicit borders / striped values opt in to grid lines
+// or zebra stripes individually.
 
 // Engine-default type scale (go-slide-creator-1iiej): 12pt rows, 11pt header.
 // The shrink chain below never takes either under the 10pt table
@@ -49,10 +53,11 @@ const (
 
 // IsEngineDefaultTableStyle reports whether an (unresolved) authored table
 // style leaves the look to the engine's consulting default: no
-// use_table_style, no header_background, and a style_id that is empty or the
-// engine-default GUID.
+// use_table_style and a style_id that is empty or the engine-default GUID.
+// header_background does not leave the default (go-slide-creator-87eu0): it
+// only adds a header fill on top of it.
 func IsEngineDefaultTableStyle(st types.TableStyle) bool {
-	return !st.UseTableStyle && st.HeaderBackground == "" &&
+	return !st.UseTableStyle &&
 		(st.StyleID == "" || st.StyleID == types.DefaultTableStyleID)
 }
 
@@ -99,9 +104,8 @@ func TableColumnScaledFontSize(st types.TableStyle, size, numCols int) int {
 }
 
 // applyDefaultTableStyling marks engine-default tables and infers numeric
-// column types. Explicit author choices always win: an explicit
-// header_background (including "none"), use_table_style, a non-default
-// style_id, column_types, or a per-column alignment.
+// column types. Explicit author choices always win: use_table_style, a
+// non-default style_id, column_types, or a per-column alignment.
 func applyDefaultTableStyling(table *types.TableSpec, config *TableRenderConfig) {
 	if IsEngineDefaultTableStyle(config.Style) {
 		config.engineDefault = true
@@ -263,21 +267,67 @@ func isTotalRow(row []types.TableCell) bool {
 	return totalRowLabelRegexp.MatchString(strings.ToLower(strings.TrimSpace(row[0].Content)))
 }
 
-// headerTextColorXML returns the run fill for header text: lt1 on dark
-// scheme fills (accents, dk*, tx*), the text color (dk1) on the unfilled
-// engine-default header, nothing otherwise.
+// headerTextColorXML returns the run fill for header text. On a filled
+// header the text is lt1 or tx1, whichever contrasts more with the fill
+// (resolved through the theme when one is available); dark scheme fills
+// (accents, dk*, tx*) fall back to lt1 without a theme. The unfilled
+// engine-default header uses the text color (tx1); a legacy unfilled header
+// emits nothing.
 func headerTextColorXML(config TableRenderConfig) string {
+	const light = `<a:solidFill><a:schemeClr val="lt1"/></a:solidFill>`
+	const dark = `<a:solidFill><a:schemeClr val="tx1"/></a:solidFill>`
 	if config.Style.UseTableStyle {
 		return ""
 	}
-	switch strings.ToLower(strings.TrimSpace(config.Style.HeaderBackground)) {
+	bg := strings.ToLower(strings.TrimSpace(config.Style.HeaderBackground))
+	if bg == "" || bg == "none" {
+		if config.engineDefault {
+			return dark
+		}
+		return ""
+	}
+	if fill, ok := headerFillColor(bg, config.Theme); ok {
+		white := svggen.Color{R: 255, G: 255, B: 255, A: 1}
+		black := svggen.Color{A: 1}
+		if c, ok := headerFillColor("dk1", config.Theme); ok {
+			black = c
+		}
+		if c, ok := headerFillColor("lt1", config.Theme); ok {
+			white = c
+		}
+		if fill.ContrastWith(white) >= fill.ContrastWith(black) {
+			return light
+		}
+		return dark
+	}
+	switch bg {
 	case "accent1", "accent2", "accent3", "accent4", "accent5", "accent6", "dk1", "dk2", "tx1", "tx2":
-		return `<a:solidFill><a:schemeClr val="lt1"/></a:solidFill>`
+		return light
 	}
 	if config.engineDefault {
-		return `<a:solidFill><a:schemeClr val="tx1"/></a:solidFill>`
+		return dark
 	}
 	return ""
+}
+
+// headerFillColor resolves a header_background value (hex or scheme name)
+// to a concrete color, using the theme for scheme names.
+func headerFillColor(bg string, theme *types.ThemeInfo) (svggen.Color, bool) {
+	hex := bg
+	if !strings.HasPrefix(hex, "#") {
+		if theme == nil {
+			return svggen.Color{}, false
+		}
+		hex = resolveSchemeColorToHex(bg, theme.Colors)
+		if hex == "" {
+			return svggen.Color{}, false
+		}
+	}
+	c, err := svggen.ParseColor(hex)
+	if err != nil {
+		return svggen.Color{}, false
+	}
+	return c, true
 }
 
 // contentRowHeight is the minimum row height for content-driven tables: a
