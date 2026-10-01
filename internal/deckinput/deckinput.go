@@ -529,14 +529,18 @@ type JSONFooter struct {
 // PatternInput is the JSON schema for pattern-based slides.
 // Placed at the same level as shape_grid in SlideInput (XOR — D1).
 type PatternInput struct {
-	Name             string                      `json:"name"`
-	Values           json.RawMessage             `json:"values"`
-	Overrides        json.RawMessage             `json:"overrides,omitempty"`
-	CellOverrides    map[string]json.RawMessage  `json:"cell_overrides,omitempty"`
-	Callout          *patterns.PatternCallout    `json:"callout,omitempty"`
-	Bounds           *jsonschema.GridBoundsInput `json:"bounds,omitempty"`
-	MaxHeightPct     float64                     `json:"max_height_pct,omitempty"`
-	DefaultTypeScale string                      `json:"-"` // inherited deck policy; overrides.type_scale wins
+	Name          string                      `json:"name"`
+	Values        json.RawMessage             `json:"values"`
+	Overrides     json.RawMessage             `json:"overrides,omitempty"`
+	CellOverrides map[string]json.RawMessage  `json:"cell_overrides,omitempty"`
+	Callout       *patterns.PatternCallout    `json:"callout,omitempty"`
+	Bounds        *jsonschema.GridBoundsInput `json:"bounds,omitempty"`
+	MaxHeightPct  float64                     `json:"max_height_pct,omitempty"`
+	// VerticalAlign places a content-sized pattern block in its area: "auto"
+	// (default; top-anchored under 60% fill, else centred), "top", "center",
+	// "bottom" or "stretch" (go-slide-creator-e17xy).
+	VerticalAlign    string `json:"vertical_align,omitempty"`
+	DefaultTypeScale string `json:"-"` // inherited deck policy; overrides.type_scale wins
 }
 
 // ComposeInput defines a composition envelope that arranges multiple patterns

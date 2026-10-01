@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.154.0
+schema_version: 4.155.0
 description: >-
   Create or revise PowerPoint decks with json2pptx. Use for presentation and
   slide-deck requests that need template-aware authoring, validation, rendering,
@@ -147,6 +147,8 @@ executable one.
   shaded just enough to keep the type white (no black-on-orange).
   Large accent-coloured text (KPI values, stat heroes) keeps the accent when
   it clears the 3:1 large-text bar; only the small text beside it is fixed.
+  Short pattern blocks hang from the native body line, not mid-slide;
+  `pattern.vertical_align: "center"` centres one (default `auto`).
 - [FINDINGS.md](FINDINGS.md): legacy finding and fix details for cases not yet
   covered by `describe_finding`; prefer the live tool for known codes.
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):

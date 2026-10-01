@@ -1,5 +1,15 @@
 # Schema Changelog
 
+- **2026-10-01 — Pattern `vertical_align`; content-sized blocks hang from the body line (`go-slide-creator-e17xy`, SchemaVersion 4.155.0).**
+  A slide `pattern` accepts `vertical_align`: `auto` (the new default),
+  `top`, `center`, `bottom` or `stretch`; raw `shape_grid.vertical_align`
+  accepts `auto` too. `auto` hangs a content-sized block that fills at most
+  60% of the content area from its top — moving it down to the template's
+  body placeholder top (the line native bullets start on) as far as its
+  slack allows — and centres a fuller one. Pattern grids previously defaulted
+  to `center`, so short card rows floated mid-slide. `agenda` stays centred.
+  Expanded pattern grids now report `"vertical_align": "auto"`.
+
 - **2026-09-30 — Grid diagrams obey the SVG strategy (`go-slide-creator-4c9m7`).**
   Diagram / chart cells embedded by patterns and `shape_grid` (e.g. the
   `chart-insights-split` / semantic `chart_insight` chart panel) now follow

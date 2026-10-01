@@ -211,6 +211,6 @@
       ]
     }
   ],
-  "vertical_align": "center",
+  "vertical_align": "auto",
   "source": "pattern:comparison-2col"
 }

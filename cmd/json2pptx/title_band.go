@@ -3,6 +3,7 @@ package main
 import (
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -141,4 +142,93 @@ func heavyWeightFamily(name string) bool {
 		}
 	}
 	return false
+}
+
+// reserveBodyAnchor records where the template starts native body content
+// (go-slide-creator-e17xy).
+//
+// The zone's top edge comes from the title (its box, or its measured text —
+// reserveMeasuredTitle), so a short pattern on p-style started hard under a
+// one-line title while the native bullets of the next slide started at the
+// body placeholder, ~70pt lower. Consulting decks hang every slide's content
+// from one line. The zone keeps its full height (dense patterns need it), but
+// records the layout's body / content placeholder top — or, for a title-only
+// layout that draws the same title box as the template's reference
+// one-content layout, that layout's — as BodyTop. A top-anchored
+// content-sized block then starts there whenever its slack allows.
+func reserveBodyAnchor(g GridGeometry, slide SlideInput, layouts []types.LayoutMetadata) GridGeometry {
+	if g.Zone == nil {
+		return g
+	}
+	id := g.LayoutID
+	if id == "" {
+		id = canonicalGridLayoutID(slide.LayoutID, layouts)
+	}
+	layout := findLayoutByID(layouts, id)
+	if layout == nil || isBlankCanvasLayout(id, layouts) {
+		return g
+	}
+	title := layoutTitlePlaceholder(layout)
+	if title == nil {
+		return g
+	}
+	anchor, ok := bodyAnchorTop(layout, title, layouts)
+	if !ok {
+		return g
+	}
+	gap := int64(gridChromeGapPt * 12700)
+	if anchor <= g.Zone.TitleBottom+gap || anchor >= g.Zone.FooterTop-gap {
+		return g
+	}
+	zone := *g.Zone
+	zone.BodyTop = anchor
+	g.Zone = &zone
+	return g
+}
+
+// layoutTitlePlaceholder returns the layout's first title placeholder.
+func layoutTitlePlaceholder(layout *types.LayoutMetadata) *types.PlaceholderInfo {
+	for i := range layout.Placeholders {
+		if layout.Placeholders[i].Type == types.PlaceholderTitle {
+			return &layout.Placeholders[i]
+		}
+	}
+	return nil
+}
+
+// bodyAnchorTitleTolerance is how far (EMU, ~2pt) two layouts' title boxes may
+// differ and still count as the same title band.
+const bodyAnchorTitleTolerance = 25400
+
+// bodyAnchorTop returns the top of the native body content the layout's
+// slides line up with: the layout's own body / content placeholder, else the
+// template's reference one-content layout's when both layouts draw the same
+// title box (blank-title / title-only pattern layouts).
+func bodyAnchorTop(layout *types.LayoutMetadata, title *types.PlaceholderInfo, layouts []types.LayoutMetadata) (int64, bool) {
+	if content, ok := firstBodyOrContentBounds(layout); ok {
+		return content.Y, true
+	}
+	ref := template.ChromeReferenceLayout(layouts)
+	if ref == nil || ref.ID == layout.ID {
+		return 0, false
+	}
+	refTitle := layoutTitlePlaceholder(ref)
+	if refTitle == nil {
+		return 0, false
+	}
+	absDiff := func(a, b int64) int64 {
+		if a > b {
+			return a - b
+		}
+		return b - a
+	}
+	if absDiff(refTitle.Bounds.Y, title.Bounds.Y) > bodyAnchorTitleTolerance ||
+		absDiff(refTitle.Bounds.Height, title.Bounds.Height) > bodyAnchorTitleTolerance {
+		return 0, false
+	}
+	content, ok := firstBodyOrContentBounds(ref)
+	if !ok {
+		return 0, false
+	}
+	return content.Y, true
 }

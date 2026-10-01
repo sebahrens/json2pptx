@@ -25,6 +25,12 @@ type ContentZone struct {
 	// to avoid opaque master/layout artwork. Explicit slide-relative bounds
 	// must then be clipped horizontally as well as vertically.
 	SideDecor bool
+	// BodyTop is the Y where the template starts native body content (the
+	// body placeholder top), or 0 when unknown. It does not shrink the zone:
+	// a top-anchored content-sized block hangs from it when the slack allows,
+	// so pattern and native slides share one content line without taking
+	// height from dense patterns (go-slide-creator-e17xy).
+	BodyTop int64
 }
 
 // DefaultBoundsFromZone derives grid bounds from a ContentZone, applying a gap (in points)

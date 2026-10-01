@@ -119,6 +119,15 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	// leaving the lower half of the slide empty. A pattern may opt out by
 	// setting vertical_align itself ("top" / "stretch").
 	patterns.ApplyGridDefaults(grid)
+	if p.VerticalAlign != "" {
+		if _, ok := shapegrid.ParseVerticalAlign(p.VerticalAlign); !ok {
+			return nil, nil, fmt.Errorf("pattern %q: vertical_align must be one of \"auto\", \"top\", \"center\", \"bottom\", \"stretch\", got %q", p.Name, p.VerticalAlign)
+		}
+		grid.VerticalAlign = p.VerticalAlign
+		if p.VerticalAlign == "stretch" {
+			grid.VerticalAlign = string(shapegrid.VAlignStretch)
+		}
+	}
 	// Peer cards on light accents become a tint + accent rule instead of a
 	// wall of solid colour; runs before the ink fix so the text darkens.
 	patterns.SoftenPeerFills(expandCtx, p.Name, grid)

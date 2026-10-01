@@ -175,17 +175,30 @@ func blockExtent(cells []shapegrid.ResolvedCell) (top, bottom int64) {
 	return top, bottom
 }
 
+// assertCentred checks the default "auto" placement of a content-sized
+// block (go-slide-creator-e17xy): one that fills under 60% of the content
+// zone hangs from its top, where native body text starts; a fuller one is
+// centred (go-slide-creator-7km8).
 func assertCentred(t *testing.T, name string, cells []shapegrid.ResolvedCell) {
 	t.Helper()
 	top, bottom := blockExtent(cells)
 	above := top - contentRect.Y
 	below := contentRect.Y + contentRect.CY - bottom
-	if d := above - below; d > 12700 || d < -12700 {
-		t.Errorf("%s: block not vertically centred (above=%d below=%d)", name, above, below)
+	topAnchored := above <= 12700 && above >= -12700
+	d := above - below
+	centred := d <= 12700 && d >= -12700
+	fill := float64(bottom-top) / float64(contentRect.CY)
+	switch {
+	case fill < shapegrid.AutoCenterMinFill-0.02 && !topAnchored:
+		t.Errorf("%s: short block (%.0f%%) not top-anchored (above=%d below=%d)", name, fill*100, above, below)
+	case fill > shapegrid.AutoCenterMinFill+0.02 && !centred:
+		t.Errorf("%s: full block (%.0f%%) not vertically centred (above=%d below=%d)", name, fill*100, above, below)
+	case !topAnchored && !centred:
+		t.Errorf("%s: block (%.0f%%) neither top-anchored nor centred (above=%d below=%d)", name, fill*100, above, below)
 	}
 }
 
-// Full-size patterns are middle-anchored in the content zone. Row lists
+// Full-size patterns take the auto placement in the content zone. Row lists
 // (agenda, exec-summary, process-flow) keep a minimum presence; box patterns
 // (before-after, card-grid) are content-sized and never stretched to fill
 // (go-slide-creator-wntyw), so they carry a ceiling instead of a floor.
@@ -231,8 +244,8 @@ func TestFullPatternsOccupyContentZone(t *testing.T) {
 // TestKPI3up_CardFillsZoneAndCentred covers the full-size occupancy policy.
 func TestKPI3up_CardFillsZoneAndCentred(t *testing.T) {
 	res, grid := resolvePatternForTest(t, "kpi-3up", `[{"big":"$4.2M","small":"ARR added in H1","icon":"currency-dollar"},{"big":"127%","small":"Net revenue retention"},{"big":"12 days","small":"Median sales cycle"}]`)
-	if grid.VerticalAlign != "center" {
-		t.Errorf("pattern grid vertical_align = %q, want center", grid.VerticalAlign)
+	if grid.VerticalAlign != patterns.GridVerticalAlignDefault {
+		t.Errorf("pattern grid vertical_align = %q, want %q", grid.VerticalAlign, patterns.GridVerticalAlignDefault)
 	}
 	for _, c := range res.Cells {
 		if float64(c.CellBounds.CY) < 0.59*float64(contentRect.CY) {

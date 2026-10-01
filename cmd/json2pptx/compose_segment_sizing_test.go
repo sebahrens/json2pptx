@@ -102,8 +102,10 @@ func TestComposeHorizontalKeepsCompactCardBesideFullHeightHero(t *testing.T) {
 	if float64(card.CY) > 0.5*float64(full.CY) {
 		t.Errorf("KPI card height %.1fpt stretches past half of the %.1fpt segment", float64(card.CY)/12700, float64(full.CY)/12700)
 	}
-	if card.Y <= full.Y || card.Y+card.CY >= full.Y+full.CY {
-		t.Errorf("KPI card is not centered within its segment: card=%+v hero=%+v", card, full)
+	// A short card hangs from the segment top beside the hero, on the same
+	// content line (auto placement, go-slide-creator-e17xy).
+	if d := card.Y - full.Y; d < -12700 || d > 12700 || card.Y+card.CY >= full.Y+full.CY {
+		t.Errorf("KPI card is not top-aligned within its segment: card=%+v hero=%+v", card, full)
 	}
 }
 
