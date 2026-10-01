@@ -403,6 +403,19 @@ var rules = []rule{
 		itemMin:   3,
 		itemMax:   7,
 	},
+	{
+		// A plain "N-step process" / procedure / sequence (go-slide-creator-tu35a):
+		// RULES.md reserves a full-slide process-flow for a sequence that
+		// branches, so a straight sequence is a numbered strip. Scored below
+		// process-flow's base so a flow with decision points keeps process-flow
+		// on top; processFlowDemotion drops process-flow under it otherwise.
+		pattern:   "numbered-step-strip",
+		keywords:  []string{"process", "steps", "step", "procedure", "sequence", "onboarding"},
+		baseScore: 0.80,
+		rationale: "A straight sequence of 3-7 steps with no decision points is a numbered strip; keep process-flow for a flow that branches",
+		itemMin:   3,
+		itemMax:   7,
+	},
 
 	// Process grid 2-row — double-track processes with two parallel rows sharing N columns
 	{
@@ -1296,12 +1309,54 @@ func processFlowDemotion(intentLower string, hints *ContentHints) bool {
 			return true
 		}
 	}
+	// A straight sequence — a process, procedure or N steps with no decision
+	// language — is a numbered strip, never a flowchart (RULES.md "sparse
+	// single-row flow"; go-slide-creator-tu35a).
+	if straightSequenceIntent(intentLower) {
+		return true
+	}
 	// Sparse single-row signal: a low-density 3–6 item count with no branching
 	// term is a short numbered list, not a flowchart.
 	if hints != nil && hints.DensityHint == "low" && hints.ItemCount >= 3 && hints.ItemCount <= 6 {
 		return true
 	}
 	return false
+}
+
+// sequenceIntentWords (stemmed) name an ordered sequence of steps.
+var sequenceIntentWords = []string{"process", "step", "procedure", "sequence", "stage"}
+
+// decisionIntentPrefixes mark words that imply a branch, a gate or a
+// conditional path — the only content that earns a process-flow.
+var decisionIntentPrefixes = []string{"decision", "decid", "approv", "reject", "escalat", "exception", "condition", "branch"}
+
+// decisionIntentWords are whole words that imply a conditional path.
+var decisionIntentWords = []string{"if", "else", "otherwise", "whether", "yes", "no"}
+
+// straightSequenceIntent reports whether the intent names a sequence of steps
+// and carries no decision, approval or conditional language.
+func straightSequenceIntent(intentLower string) bool {
+	words := intentWords(intentLower)
+	sequence := false
+	for _, w := range words {
+		for _, p := range decisionIntentPrefixes {
+			if strings.HasPrefix(w, p) {
+				return false
+			}
+		}
+		for _, d := range decisionIntentWords {
+			if w == d {
+				return false
+			}
+		}
+		stem := stemIntentWord(w)
+		for _, s := range sequenceIntentWords {
+			if stem == s {
+				sequence = true
+			}
+		}
+	}
+	return sequence
 }
 
 // applyOrderedStepsRouting demotes process-flow / process-flow-compact when the

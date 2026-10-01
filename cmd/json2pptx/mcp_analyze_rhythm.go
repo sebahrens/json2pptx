@@ -97,9 +97,11 @@ func analyzeDeckRhythm(slides []SlideInput) *rhythm.Result {
 func analyzeDeckRhythmWithStrategy(slides []SlideInput, accentStrategy string) *rhythm.Result {
 	strategy := patterns.AccentStrategy(accentStrategy)
 	sectionIndices := slideSectionIndices(slides, nil)
+	backMatter := deckBackMatter(slides, nil)
 	rhythmSlides := make([]rhythm.Slide, len(slides))
 	for i, s := range slides {
 		rhythmSlides[i] = toRhythmSlide(s)
+		rhythmSlides[i].Appendix = backMatter[i]
 		if s.Pattern != nil {
 			rhythmSlides[i].PatternAccent = rhythmPatternAccent(s.Pattern, strategy, i, sectionIndices[i])
 		}

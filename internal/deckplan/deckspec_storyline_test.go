@@ -1,6 +1,7 @@
 package deckplan
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -138,6 +139,71 @@ func TestDeckSpecFactRouting(t *testing.T) {
 	}
 }
 
+// khzni: back matter is drafted from spare budget when the brief has backup
+// material, after the next-steps close, and never pads a brief that has none.
+func TestDeckSpecAppendix(t *testing.T) {
+	appendixOf := func(p *DeckSpecPlan) *DeckSpecSectionDraft {
+		if st := p.DeckSpec.Structure; st != nil && len(st.Sections) > 0 && st.Sections[len(st.Sections)-1].Appendix {
+			return &st.Sections[len(st.Sections)-1]
+		}
+		return nil
+	}
+
+	// A QBR with six figures and room to spare gets a backup data table after
+	// the close; the close moves into the last chapter so it precedes it.
+	qbr := BuildDeckSpecPlan(Params{Brief: reviewBriefQBR, SlideBudget: 12})
+	app := appendixOf(qbr)
+	if app == nil || app.Title != "Appendix" || len(app.Slides) != 1 || app.Slides[0]["kind"] != "table" {
+		t.Fatalf("QBR at 12 slides: want one backup table in an appendix section, got %+v", qbr.DeckSpec.Structure)
+	}
+	if qbr.DeckSpec.Structure.Closing != nil {
+		t.Errorf("with an appendix the close must end the last chapter, not render after the appendix")
+	}
+	closing := slotByName(qbr, "closing")
+	if closing == nil || !strings.HasPrefix(closing.Path, "structure.sections[1].slides[") || closing.Appendix {
+		t.Errorf("closing slot = %+v, want the end of the last body chapter", closing)
+	}
+	if backup := slotByName(qbr, "backup"); backup == nil || !backup.Appendix || backup.Section != "Appendix" || backup.Path != "structure.sections[2].slides[0]" {
+		t.Errorf("backup slot = %+v", backup)
+	}
+
+	// No room: the appendix never displaces a body slide.
+	if app := appendixOf(BuildDeckSpecPlan(Params{Brief: reviewBriefQBR, SlideBudget: 10})); app != nil {
+		t.Errorf("QBR at 10 slides has no spare room but drafted an appendix: %+v", app)
+	}
+	// No backup material: room alone does not pad the deck.
+	for _, brief := range []string{reviewBriefProduct, reviewBriefStrategy} {
+		if app := appendixOf(BuildDeckSpecPlan(Params{Brief: brief, SlideBudget: 16})); app != nil {
+			t.Errorf("brief without backup material drafted an appendix: %+v", app)
+		}
+	}
+
+	// A brief that asks for backup and names its methodology gets both.
+	asked := BuildDeckSpecPlan(Params{Brief: reviewBriefStrategy + "; include backup detail on the market sizing methodology and assumptions", SlideBudget: 14})
+	app = appendixOf(asked)
+	if app == nil || len(app.Slides) != 2 || slotByName(asked, "methodology") == nil {
+		t.Errorf("backup + methodology brief: want backup and methodology slides in the appendix, got %+v / %v", app, storylineKinds(asked))
+	}
+
+	// A flat draft carries the appendix as an appendix divider after the close.
+	flat := BuildDeckSpecPlan(Params{Brief: reviewBriefProduct + "; include backup detail on adoption by segment", SlideBudget: 8})
+	if flat.DeckSpec.Structure != nil {
+		t.Fatalf("product brief at 8 slides should stay flat: %+v", flat.DeckSpec.Structure)
+	}
+	slides := flat.DeckSpec.Slides
+	if len(slides) < 3 || slides[len(slides)-2]["kind"] != "section" || slides[len(slides)-2]["appendix"] != true || slides[len(slides)-3]["kind"] != "next_steps" {
+		t.Errorf("flat appendix: want next_steps, then a section with appendix: true, then backup: %v", slides)
+	}
+	for i, s := range flat.Slots {
+		if s.SlideIndex != i || s.Path != fmt.Sprintf("slides[%d]", i) {
+			t.Errorf("flat slot %d = %+v: slide_index / path out of step", i, s)
+		}
+	}
+	if d := slotByName(flat, "appendix"); d == nil || d.Kind != "section" || !d.Appendix {
+		t.Errorf("flat appendix divider slot = %+v", d)
+	}
+}
+
 // khzni (4)/(5): a large budget is drafted in chapters, never as a run of
 // same-kind slides.
 func TestDeckSpecChaptersAndRuns(t *testing.T) {
@@ -153,8 +219,16 @@ func TestDeckSpecChaptersAndRuns(t *testing.T) {
 			rendered := len(p.Slots)
 			if st := p.DeckSpec.Structure; st != nil {
 				rendered += 1 + len(st.Sections)
-				if !st.AutoAgenda || len(st.Sections) < 2 || len(st.Sections) > 4 {
-					t.Errorf("budget %d: structure must carry auto_agenda and 2-4 sections, got %+v", budget, st)
+				body := 0
+				for si, sec := range st.Sections {
+					if !sec.Appendix {
+						body++
+					} else if si != len(st.Sections)-1 {
+						t.Errorf("budget %d: the appendix section must be last: %+v", budget, st.Sections)
+					}
+				}
+				if !st.AutoAgenda || body < 2 || body > 4 {
+					t.Errorf("budget %d: structure must carry auto_agenda and 2-4 chapters, got %+v", budget, st)
 				}
 				if p.DeckSpec.Slides != nil {
 					t.Errorf("budget %d: structure and slides are exclusive", budget)

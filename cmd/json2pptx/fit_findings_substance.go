@@ -553,8 +553,14 @@ func collectMonotonyFindings(input *PresentationInput, layouts ...types.LayoutMe
 			Action: action,
 		})
 	}
+	// Appendix back matter is reference material, not the argument: a run of
+	// backup tables is not monotony (go-slide-creator-khzni).
+	backMatter := deckBackMatter(input.Slides, layouts)
 	for i, slide := range input.Slides {
 		shape := slideShapeKey(slide, layouts...)
+		if backMatter[i] {
+			shape = ""
+		}
 		if shape != runShape {
 			flush(i)
 			runStart, runShape = i, shape

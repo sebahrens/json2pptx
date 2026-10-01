@@ -13,7 +13,10 @@ package semantic
 // SourceMap are left empty here; the compiler populates them as it emits the
 // PresentationInput in a later phase.
 
-import "github.com/sebahrens/json2pptx/internal/semantic/slides"
+import (
+	"github.com/sebahrens/json2pptx/internal/semantic/slides"
+	"github.com/sebahrens/json2pptx/internal/types"
+)
 
 // NarrativeRole names the role a slide plays in the deck's narrative arc. It is
 // derived from the slide kind and biases rhythm and emphasis decisions.
@@ -107,6 +110,10 @@ type SlideIR struct {
 	SourceIndex  int    `json:"source_index"`
 	SourcePath   string `json:"source_path,omitempty"`
 	SectionTitle string `json:"section_title,omitempty"`
+	// Appendix marks back matter: an appendix divider and the slides after it
+	// (or a structure section with appendix: true). The deck-rhythm runs skip
+	// these slides (go-slide-creator-khzni).
+	Appendix bool `json:"appendix,omitempty"`
 	// Kind is the semantic slide kind.
 	Kind SlideKind `json:"kind"`
 	// Title is the slide title extracted from the payload (may be empty).
@@ -481,6 +488,7 @@ func Normalize(spec *DeckSpec) *DeckIR {
 		planned.SectionTitle = source.SectionTitle
 		ir.Slides = append(ir.Slides, planned)
 	}
+	markBackMatter(ir.Slides)
 	ir.Rhythm = computeRhythm(ir.Slides)
 	ir.LayoutCoverage = applyRequiredLayoutCoverage(ir.Slides, spec.Meta.RequiredLayouts)
 	return ir
@@ -730,6 +738,25 @@ func newRhythmPlan() RhythmPlan {
 }
 
 // computeRhythm tallies visual families and densities across the planned slides.
+// markBackMatter sets Appendix on an appendix divider (appendix: true, or a
+// title such as Appendix / Backup / Annex) and every slide after it up to the
+// next ordinary divider.
+func markBackMatter(slides []SlideIR) {
+	probes := make([]types.BackMatterProbe, len(slides))
+	for i := range slides {
+		s := &slides[i]
+		if s.Kind == KindSection {
+			appendix, _ := s.Body["appendix"].(bool)
+			probes[i] = types.BackMatterProbe{Divider: true, AppendixDivider: appendix || types.IsAppendixSectionTitle(s.Title)}
+			continue
+		}
+		probes[i] = types.BackMatterProbe{Crumb: s.SectionTitle}
+	}
+	for i, back := range types.BackMatterMask(probes) {
+		slides[i].Appendix = back
+	}
+}
+
 func computeRhythm(slides []SlideIR) RhythmPlan {
 	r := newRhythmPlan()
 	r.SlideCount = len(slides)

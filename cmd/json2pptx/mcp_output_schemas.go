@@ -2083,11 +2083,11 @@ var outputSchemaPlanDeck = json.RawMessage(`{
     "format":       {"type": "string", "enum": ["deckspec"], "description": "Present only for format:\"deckspec\", whose response carries deck_spec and slots instead of slides and rhythm_check."},
     "deck_spec": {
       "type": "object",
-      "description": "format:\"deckspec\" only: a DeckSpec draft in storyline order — {meta, slides:[{kind, title:\"__FILL__\"}]} for a flat deck, or {meta, structure:{cover, auto_agenda:true, sections:[{title, slides}], closing}} when the deck is drafted in chapters (budgets of 8+ slides; the generated agenda and one divider per section count toward the budget). meta.chrome turns page numbers on (and the section tracker for a chaptered draft); meta.date is __FILL__. Fill every slide's fields from list_slide_kinds, write action titles, then validate_deck_spec.",
+      "description": "format:\"deckspec\" only: a DeckSpec draft in storyline order — {meta, slides:[{kind, title:\"__FILL__\"}]} for a flat deck, or {meta, structure:{cover, auto_agenda:true, sections:[{title, slides}], closing}} when the deck is drafted in chapters (budgets of 8+ slides; the generated agenda and one divider per section count toward the budget). When the brief has backup material (asks for backup / detail, names a methodology or assumptions, has facts the body could not hold, or 3+ figures) and the budget has room after the body, the draft ends with an appendix: a last section with appendix:true (the next_steps close then ends the last body chapter instead of structure.closing) or, in a flat draft, a {kind:\"section\", title:\"Appendix\", appendix:true} divider after the close followed by the backup slides; back matter is unnumbered, left out of the agenda and exempt from the deck-rhythm run checks. meta.chrome turns page numbers on (and the section tracker for a chaptered draft); meta.date is __FILL__. Fill every slide's fields from list_slide_kinds, write action titles, then validate_deck_spec.",
       "properties": {
         "meta":      {"type": "object"},
         "slides":    {"type": "array", "items": {"type": "object", "properties": {"kind": {"type": "string"}, "title": {"type": "string"}}, "required": ["kind"]}},
-        "structure": {"type": "object", "properties": {"cover": {"type": "object"}, "auto_agenda": {"type": "boolean"}, "sections": {"type": "array", "items": {"type": "object", "properties": {"title": {"type": "string"}, "slides": {"type": "array", "items": {"type": "object"}}}, "required": ["title", "slides"]}}, "closing": {"type": "object"}}, "required": ["sections"]}
+        "structure": {"type": "object", "properties": {"cover": {"type": "object"}, "auto_agenda": {"type": "boolean"}, "sections": {"type": "array", "items": {"type": "object", "properties": {"title": {"type": "string"}, "slides": {"type": "array", "items": {"type": "object"}}, "appendix": {"type": "boolean", "description": "true on the back-matter section only."}}, "required": ["title", "slides"]}}, "closing": {"type": "object"}}, "required": ["sections"]}
       },
       "required": ["meta"]
     },
@@ -2099,11 +2099,12 @@ var outputSchemaPlanDeck = json.RawMessage(`{
         "properties": {
           "slide_index": {"type": "integer"},
           "path":        {"type": "string", "description": "Where the slide lives in deck_spec: slides[i], structure.cover, structure.sections[s].slides[i] or structure.closing."},
-          "slot":        {"type": "string", "enum": ["cover", "answer", "context", "problem", "highlights", "evidence", "cause", "options", "plan", "roadmap", "ask", "closing"]},
+          "slot":        {"type": "string", "enum": ["cover", "answer", "context", "problem", "highlights", "evidence", "cause", "options", "plan", "roadmap", "ask", "closing", "appendix", "backup", "methodology"], "description": "appendix is a flat draft's appendix divider; backup and methodology are back-matter slides."},
           "kind":        {"type": "string"},
           "section":     {"type": "string", "description": "The chapter the slide belongs to, for a chaptered draft."},
           "guidance":    {"type": "string", "description": "What the slide must argue."},
-          "facts":       {"type": "array", "items": {"type": "string"}, "description": "Brief facts (verbatim) routed to this slot."}
+          "facts":       {"type": "array", "items": {"type": "string"}, "description": "Brief facts (verbatim) routed to this slot."},
+          "appendix":    {"type": "boolean", "description": "true for back-matter slots (appendix divider, backup slides): reference pages after the close, outside the deck-rhythm checks."}
         },
         "required": ["slide_index", "path", "slot", "kind", "guidance"]
       }

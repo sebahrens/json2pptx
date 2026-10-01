@@ -73,6 +73,10 @@ type DeckSpecStructureDraft struct {
 type DeckSpecSectionDraft struct {
 	Title  string           `json:"title"`
 	Slides []map[string]any `json:"slides"`
+	// Appendix marks the back-matter section: an unnumbered divider, left out
+	// of the auto agenda, its slides' running section reading "Appendix", and
+	// exempt from the deck-rhythm run checks.
+	Appendix bool `json:"appendix,omitempty"`
 }
 
 // DeckSpecSlot annotates one draft slide.
@@ -87,6 +91,10 @@ type DeckSpecSlot struct {
 	Section  string   `json:"section,omitempty"`
 	Guidance string   `json:"guidance"`
 	Facts    []string `json:"facts,omitempty"`
+	// Appendix is true for back-matter slots (the appendix divider of a flat
+	// draft and the backup slides): reference pages after the close, not part
+	// of the argument.
+	Appendix bool `json:"appendix,omitempty"`
 }
 
 // deckSpecSlotDef is one narrative slot of the storyline.
@@ -127,6 +135,8 @@ type briefSignals struct {
 	phases    bool // the brief carries a roadmap, phases or workstreams
 	phased    bool // the brief names phases or workstreams outright
 	customers bool // customer-facing deck
+	backup    bool // the brief asks for backup / detail material
+	method    bool // the brief carries a methodology or assumptions
 }
 
 var (
@@ -139,6 +149,8 @@ var (
 	cueProcess   = regexp.MustCompile(`(?i)\b(?:steps?|process|sequence|workflow|stages?|onboarding flow|first,? then)\b`)
 	cuePhased    = regexp.MustCompile(`(?i)\b(?:phases?|workstreams?|waves?)\b`)
 	cueCustomers = regexp.MustCompile(`(?i)\b(?:customers?|clients?|users|partners)\b`)
+	cueBackup    = regexp.MustCompile(`(?i)\b(?:appendix|appendices|backup|back-up|supporting (?:data|detail|analysis|material)|detailed (?:data|figures|financials|breakdown|analysis)|deep[- ]dives?|breakdowns?|data tables?|reference material)\b`)
+	cueMethod    = regexp.MustCompile(`(?i)\b(?:methodology|method|assumptions?|approach to the analysis|data sources?)\b`)
 )
 
 func readBriefSignals(brief, audience string, facts []briefFact) briefSignals {
@@ -151,6 +163,8 @@ func readBriefSignals(brief, audience string, facts []briefFact) briefSignals {
 		process:  cueProcess.MatchString(brief),
 		phases:   briefHasPhaseSequence(brief),
 		phased:   cuePhased.MatchString(brief),
+		backup:   cueBackup.MatchString(brief),
+		method:   cueMethod.MatchString(brief),
 	}
 	// A customer-facing deck is one whose audience — or opening clause — names
 	// customers; "churn among SMB customers" in a board brief is not.
@@ -371,6 +385,34 @@ func chapterSections(defs []deckSpecSlotDef) []draftSection {
 	return secs
 }
 
+// appendixTitle is the title of the drafted back-matter section / divider.
+const appendixTitle = "Appendix"
+
+// appendixSlots drafts the back matter (go-slide-creator-khzni): a consulting
+// deck ends on its next steps and keeps the detail a reader may ask for in an
+// appendix after them. Back matter is drafted only from spare budget — it never
+// displaces a body slide — and only when there is backup material: the brief
+// asks for backup / detail, carries a methodology or assumptions, has facts the
+// body had no room for, or has enough figures (3+) for a detailed data table.
+// room is the budget left after the body; the appendix divider costs one slide.
+func appendixSlots(sig briefSignals, unplaced, room int) []deckSpecSlotDef {
+	var defs []deckSpecSlotDef
+	if sig.backup || unplaced > 0 || sig.metrics >= 3 {
+		defs = append(defs, deckSpecSlotDef{"backup", "table",
+			"Backup, not argument: the detailed figures behind the body's claims (or the facts the body had no room for) in one table with its source; the title says what the table shows. Drop it if the body already carries every number.",
+			6, ""})
+	}
+	if sig.method {
+		defs = append(defs, deckSpecSlotDef{"methodology", "table",
+			"How the numbers were built: one row per assumption or data source, with its value and where it comes from.",
+			4, ""})
+	}
+	if n := room - 1; len(defs) > n {
+		defs = defs[:max(n, 0)]
+	}
+	return defs
+}
+
 // structuredSlideCount is the rendered length of a chaptered draft: cover,
 // generated agenda, one divider per section, the body slides, and closing.
 func structuredSlideCount(defs []deckSpecSlotDef, secs []draftSection) int {
@@ -469,38 +511,24 @@ func BuildDeckSpecPlan(p Params) *DeckSpecPlan {
 		return slide
 	}
 
-	draft := DeckSpecDraft{Meta: meta}
 	rendered := len(ordered)
-	if len(secs) == 0 {
-		draft.Slides = make([]map[string]any, len(ordered))
-		for i, s := range ordered {
-			draft.Slides[i] = slideFor(s)
-			slots[i].Path = fmt.Sprintf("slides[%d]", i)
-		}
-	} else {
-		st := &DeckSpecStructureDraft{AutoAgenda: true}
-		for i, s := range ordered {
-			switch s.slot {
-			case "cover":
-				st.Cover = slideFor(s)
-				slots[i].Path = "structure.cover"
-			case "closing":
-				st.Closing = slideFor(s)
-				slots[i].Path = "structure.closing"
-			}
-		}
-		for si, sec := range secs {
-			title := sectionTitle(sec, ordered)
-			section := DeckSpecSectionDraft{Title: title}
-			for j, idx := range sec.slots {
-				section.Slides = append(section.Slides, slideFor(ordered[idx]))
-				slots[idx].Path = fmt.Sprintf("structure.sections[%d].slides[%d]", si, j)
-				slots[idx].Section = title
-			}
-			st.Sections = append(st.Sections, section)
-		}
-		draft.Structure = st
+	if len(secs) > 0 {
 		rendered = structuredSlideCount(ordered, secs)
+	}
+	var backMatter []deckSpecSlotDef
+	if budget >= minChapterBudget {
+		backMatter = appendixSlots(sig, len(unplaced), budget-rendered)
+	}
+	if len(backMatter) > 0 {
+		unplaced = routeAppendixFacts(backMatter, &slots, unplaced)
+		rendered += 1 + len(backMatter)
+	}
+
+	draft := DeckSpecDraft{Meta: meta}
+	if len(secs) == 0 {
+		draft.Slides = draftFlat(ordered, backMatter, &slots, slideFor)
+	} else {
+		draft.Structure = draftStructure(ordered, secs, backMatter, slots, slideFor)
 	}
 
 	plan := &DeckSpecPlan{
@@ -515,6 +543,101 @@ func BuildDeckSpecPlan(p Params) *DeckSpecPlan {
 		plan.BudgetNote = fmt.Sprintf("The storyline needs %d of the %d slides: it is not padded with repeated evidence slides. Add a slide only for a claim the brief can prove.", rendered, budget)
 	}
 	return plan
+}
+
+// routeAppendixFacts appends the back-matter slots after the storyline's and
+// gives them the facts the body had no room for. It returns what is still
+// unplaced.
+func routeAppendixFacts(defs []deckSpecSlotDef, slots *[]DeckSpecSlot, unplaced []string) []string {
+	rest := unplaced
+	for _, d := range defs {
+		slot := DeckSpecSlot{SlideIndex: len(*slots), Slot: d.slot, Kind: d.kind, Guidance: d.guidance, Section: appendixTitle, Appendix: true}
+		for len(rest) > 0 && len(slot.Facts) < d.capacity {
+			slot.Facts = append(slot.Facts, rest[0])
+			rest = rest[1:]
+		}
+		*slots = append(*slots, slot)
+	}
+	return append([]string{}, rest...)
+}
+
+// appendixDividerGuidance explains the authored appendix divider of a flat
+// draft.
+const appendixDividerGuidance = "Opens the back matter after the close: appendix: true leaves the divider unnumbered and the slides after it out of the deck-rhythm checks. Keep the title Appendix."
+
+// draftFlat lays a flat draft out as slides[]: the storyline, then — when
+// there is back matter — an appendix divider (section kind, appendix: true)
+// and the backup slides. The divider gets its own slot, inserted before the
+// backup slots.
+func draftFlat(ordered, backMatter []deckSpecSlotDef, slots *[]DeckSpecSlot, slideFor func(deckSpecSlotDef) map[string]any) []map[string]any {
+	out := make([]map[string]any, 0, len(ordered)+1+len(backMatter))
+	for i, s := range ordered {
+		out = append(out, slideFor(s))
+		(*slots)[i].Path = fmt.Sprintf("slides[%d]", i)
+	}
+	if len(backMatter) == 0 {
+		return out
+	}
+	divider := DeckSpecSlot{Slot: "appendix", Kind: "section", Guidance: appendixDividerGuidance, Section: appendixTitle, Appendix: true}
+	all := append(append(append([]DeckSpecSlot{}, (*slots)[:len(ordered)]...), divider), (*slots)[len(ordered):]...)
+	out = append(out, map[string]any{"kind": "section", "title": appendixTitle, "appendix": true})
+	for _, s := range backMatter {
+		out = append(out, slideFor(s))
+	}
+	for i := range all {
+		all[i].SlideIndex = i
+		all[i].Path = fmt.Sprintf("slides[%d]", i)
+	}
+	*slots = all
+	return out
+}
+
+// draftStructure lays a chaptered draft out as a structure block. With back
+// matter, the next-steps close becomes the last slide of the last chapter and
+// an appendix section (appendix: true) follows it: structure.closing renders
+// after every section, and a deck ends its argument before the backup pages.
+func draftStructure(ordered []deckSpecSlotDef, secs []draftSection, backMatter []deckSpecSlotDef, slots []DeckSpecSlot, slideFor func(deckSpecSlotDef) map[string]any) *DeckSpecStructureDraft {
+	st := &DeckSpecStructureDraft{AutoAgenda: true}
+	closing := -1
+	for i, s := range ordered {
+		switch s.slot {
+		case "cover":
+			st.Cover = slideFor(s)
+			slots[i].Path = "structure.cover"
+		case "closing":
+			closing = i
+			st.Closing = slideFor(s)
+			slots[i].Path = "structure.closing"
+		}
+	}
+	for si, sec := range secs {
+		title := sectionTitle(sec, ordered)
+		section := DeckSpecSectionDraft{Title: title}
+		for j, idx := range sec.slots {
+			section.Slides = append(section.Slides, slideFor(ordered[idx]))
+			slots[idx].Path = fmt.Sprintf("structure.sections[%d].slides[%d]", si, j)
+			slots[idx].Section = title
+		}
+		st.Sections = append(st.Sections, section)
+	}
+	if len(backMatter) == 0 {
+		return st
+	}
+	if closing >= 0 {
+		last := len(st.Sections) - 1
+		st.Sections[last].Slides = append(st.Sections[last].Slides, st.Closing)
+		st.Closing = nil
+		slots[closing].Path = fmt.Sprintf("structure.sections[%d].slides[%d]", last, len(st.Sections[last].Slides)-1)
+		slots[closing].Section = st.Sections[last].Title
+	}
+	appendix := DeckSpecSectionDraft{Title: appendixTitle, Appendix: true}
+	si := len(st.Sections)
+	for j, s := range backMatter {
+		appendix.Slides = append(appendix.Slides, slideFor(s))
+		slots[len(ordered)+j].Path = fmt.Sprintf("structure.sections[%d].slides[%d]", si, j)
+	}
+	st.Sections = append(st.Sections, appendix)
+	return st
 }
 
 // routeDeckSpecFacts assigns brief facts to slots by what each fact is

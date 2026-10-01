@@ -80,6 +80,54 @@ func TestRecommendIntentTopOneGolden(t *testing.T) {
 	}
 }
 
+// A straight sequence of steps is a numbered strip; process-flow is kept for a
+// flow that branches (RULES.md "sparse single-row flow"; go-slide-creator-tu35a).
+func TestRecommendStraightSequenceVsBranchingFlowGolden(t *testing.T) {
+	reg := Default()
+	cases := []struct {
+		intent string
+		want   string
+	}{
+		{"show the 5-step onboarding process", "numbered-step-strip"},
+		{"our implementation process in four steps", "numbered-step-strip"},
+		{"order fulfilment process", "numbered-step-strip"},
+		{"step-by-step migration procedure", "numbered-step-strip"},
+		{"procurement process with approval branches", "process-flow"},
+		{"claims process: if approved pay, else escalate", "process-flow"},
+		{"process flow with three decision steps", "process-flow"},
+	}
+	rank := func(names []string, name string) int {
+		for i, n := range names {
+			if n == name {
+				return i
+			}
+		}
+		return len(names)
+	}
+	for _, tc := range cases {
+		t.Run(tc.intent, func(t *testing.T) {
+			visual := RecommendVisual(reg, tc.intent, nil, 5)
+			var vn []string
+			for _, c := range visual.Candidates {
+				vn = append(vn, c.Name)
+			}
+			pattern := Recommend(reg, tc.intent, nil, 5)
+			var pn []string
+			for _, c := range pattern.Candidates {
+				pn = append(pn, c.PatternName)
+			}
+			for label, names := range map[string][]string{"recommend_visual": vn, "recommend": pn} {
+				if len(names) == 0 || names[0] != tc.want {
+					t.Errorf("%s top = %v, want %s first", label, names, tc.want)
+				}
+			}
+			if tc.want == "numbered-step-strip" && rank(vn, "process_flow") < rank(vn, "numbered-step-strip") {
+				t.Errorf("straight sequence ranks the process_flow diagram above numbered-step-strip: %v", vn)
+			}
+		})
+	}
+}
+
 func TestRecommendDoesNotMatchAccidentalSubstrings(t *testing.T) {
 	for _, recommend := range []struct {
 		name string

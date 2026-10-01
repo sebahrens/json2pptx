@@ -183,7 +183,7 @@ Moved to [WORKFLOW.md](WORKFLOW.md) → Phase 2 (Pattern monotony, Accent monoto
 
 ### Sparse single-row flow
 
-Filling a whole slide with one row of 3-6 short boxes — a lone `process-flow` or `timeline-horizontal` strip floating in whitespace — reads as unfinished. `process-flow` earns a full slide only when the sequence actually **branches** (decision diamonds); `timeline-horizontal` only for **true calendar milestones** with real dates.
+Filling a whole slide with one row of 3-6 short boxes — a lone `process-flow` or `timeline-horizontal` strip floating in whitespace — reads as unfinished. `process-flow` earns a full slide only when the sequence actually **branches** (decision diamonds); `timeline-horizontal` only for **true calendar milestones** with real dates. `recommend_visual` ranks `numbered-step-strip` first for a sequence with no decision language.
 
 Bad — a straight 4-step chain stretched across a bare slide:
 ```

@@ -258,7 +258,7 @@ func narrativeRecommendations(inputs []Slide) []Recommendation { //nolint:gocogn
 	var bulletSlides []int
 	var bulletText strings.Builder
 	for i, s := range inputs {
-		if isBulletsOnlySlide(s) {
+		if isBulletsOnlySlide(s) && !s.Appendix {
 			bulletSlides = append(bulletSlides, i)
 			bulletText.WriteString(s.Title + " " + s.Text + " ")
 		}

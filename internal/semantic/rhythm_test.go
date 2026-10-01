@@ -52,6 +52,48 @@ func TestRhythmMonotonyAllowsTwoInARow(t *testing.T) {
 	}
 }
 
+// khzni: appendix back matter is exempt from the run checks, in both the flat
+// (an appendix divider) and the structure (sections[].appendix) forms.
+func TestRhythmMonotonySkipsAppendix(t *testing.T) {
+	monotony := string(diagnostics.CodeSemanticRhythmMonotony)
+	divider := func(title string, appendix bool) SlideSpec {
+		body := map[string]any{"title": title}
+		if appendix {
+			body["appendix"] = true
+		}
+		return SlideSpec{Kind: KindSection, Body: body}
+	}
+	cases := []struct {
+		name string
+		spec *DeckSpec
+		want bool
+	}{
+		{"flat appendix: true", &DeckSpec{Slides: []SlideSpec{divider("Detailed data", true), kpiSlide(3), kpiSlide(3), kpiSlide(3)}}, false},
+		{"flat Appendix title", &DeckSpec{Slides: []SlideSpec{divider("Appendix", false), kpiSlide(3), kpiSlide(3), kpiSlide(3)}}, false},
+		{"flat ordinary chapter", &DeckSpec{Slides: []SlideSpec{divider("Market", false), kpiSlide(3), kpiSlide(3), kpiSlide(3)}}, true},
+		{"structure appendix section", &DeckSpec{Structure: &DeckStructure{Sections: []DeckSection{
+			{Title: "Body", Slides: []SlideSpec{kpiSlide(3)}},
+			{Title: "Supporting data", Appendix: true, Slides: []SlideSpec{kpiSlide(3), kpiSlide(3), kpiSlide(3)}},
+		}}}, false},
+		{"structure chapter section", &DeckSpec{Structure: &DeckStructure{Sections: []DeckSection{
+			{Title: "Body", Slides: []SlideSpec{kpiSlide(3)}},
+			{Title: "Supporting data", Slides: []SlideSpec{kpiSlide(3), kpiSlide(3), kpiSlide(3)}},
+		}}}, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.spec.Meta = DeckMeta{Title: "Deck"}
+			ir := Normalize(tc.spec)
+			if got := rhythmCodes(ir.RhythmWarnings())[monotony]; got != tc.want {
+				t.Errorf("monotony = %v, want %v", got, tc.want)
+			}
+			if !tc.want && !ir.Slides[len(ir.Slides)-1].Appendix {
+				t.Errorf("last backup slide not marked appendix: %+v", ir.Slides[len(ir.Slides)-1])
+			}
+		})
+	}
+}
+
 func TestRhythmMonotonyAllowsStructuredOpening(t *testing.T) {
 	cover := SlideSpec{Kind: KindTitle, Body: map[string]any{"title": "Deck"}}
 	spec := &DeckSpec{
