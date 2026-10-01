@@ -265,6 +265,50 @@ var findingMetaRegistry = map[string]FindingMeta{
 		ExampleAfter:  `{"image":{"path":"screens/dashboard.png","alt":"Q3 dashboard"}}`,
 		RelatedCodes:  []string{ErrCodeTextOverImageUnverified},
 	},
+	ErrCodeImageHeavyCrop: {
+		Code:        ErrCodeImageHeavyCrop,
+		Summary:     "A cover-fit picture discards more than 30% of its width or height to fill its frame.",
+		Severity:    "review",
+		WhenEmitted: "Render-time placement of a content image_value with fit cover (explicit, or the default in a picture placeholder) whose frame aspect differs so much from the image that more than 30% of one axis is cropped away. fix.params.discarded_pct reports the share lost. Images in body/content placeholders with no fit are placed whole (contain, top-left anchored) and never trigger it.",
+		RemediationSteps: []string{
+			"Set image_value.fit to \"contain\" to keep the whole picture.",
+			"Or supply a crop of the image whose aspect matches the frame, or pick a layout whose picture frame matches the photo's orientation.",
+		},
+		ExampleBefore: `{"type":"image","image_value":{"path":"portrait.jpg","fit":"cover"}}`,
+		ExampleAfter:  `{"type":"image","image_value":{"path":"portrait.jpg","fit":"contain"}}`,
+		RelatedCodes:  []string{ErrCodeTextOverImageUnverified},
+	},
+	ErrCodeChromeOverImage: {
+		Code:        ErrCodeChromeOverImage,
+		Summary:     "Footer text / page number / date were omitted on a slide where a picture covers the footer band.",
+		Severity:    "info",
+		WhenEmitted: "Generation finds an inserted picture (content image_value) whose frame intersects the footer chrome band — typically a full-bleed picture layout. The engine cannot verify text contrast against photo pixels, so it drops the chrome on that slide (like title and closing slides) instead of drawing it illegibly.",
+		RemediationSteps: []string{
+			"Accept the omission for a full-bleed photo slide, or use a layout whose picture frame stops above the footer band if the page number must show.",
+		},
+		RelatedCodes: []string{ErrCodeTextOverImageUnverified},
+	},
+	ErrCodeSubtitleWraps: {
+		Code:        ErrCodeSubtitleWraps,
+		Summary:     "A title-slide or closing subtitle wraps onto a second line even at the title's width.",
+		Severity:    "info",
+		WhenEmitted: "Generation widens a title / closing subtitle placeholder that is narrower than the title to the title's width, keeps date tokens together with non-breaking spaces, and the measured subtitle still needs more than one line.",
+		RemediationSteps: []string{
+			"Shorten the subtitle to one line (a dateline such as \"Steering committee | 1 October 2026\").",
+		},
+		RelatedCodes: []string{ErrCodeTitleWraps},
+	},
+	ErrCodeComparisonPreferPattern: {
+		Code:        ErrCodeComparisonPreferPattern,
+		Summary:     "A slide_type comparison slide renders as two plain bullet columns; comparison-2col or before-after give a designed comparison.",
+		Severity:    "info",
+		WhenEmitted: "Preflight finds a slide with slide_type \"comparison\". It renders on the template's Two Content layout with the first bullet of body and body_2 promoted to a bold column header — no divider, no verdict row. The named patterns draw headers, rows and an optional connector or verdict.",
+		RemediationSteps: []string{
+			"Re-author the slide as layout_id blank-title with pattern comparison-2col (options side by side) or before-after (a change of state).",
+			"Keep slide_type comparison only for a quick two-list contrast; open each column with the option name.",
+		},
+		RelatedCodes: []string{ErrCodePatternContentMismatch},
+	},
 	ErrCodeInvalidShape: {
 		Code:        ErrCodeInvalidShape,
 		Summary:     "A value has the wrong structural shape (e.g., array where object expected).",

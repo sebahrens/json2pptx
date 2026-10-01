@@ -265,7 +265,11 @@ type skillTemplateInfo struct {
 	// layout at five paragraphs, before any content-specific autofit.
 	BodyFontSizePt         float64           `json:"body_font_size_pt,omitempty"`
 	TemplateBodyFontSizePt float64           `json:"template_body_font_size_pt,omitempty"`
-	AccentUsageGuide       map[string]string `json:"accent_usage_guide,omitempty"` // from template metadata; omitted when unset
+	AccentUsageGuide       map[string]string `json:"accent_usage_guide,omitempty"` // from template metadata, else derived from the theme's contrast
+	// AccentUsageGuideDerived is true when the template ships no authored
+	// accent_usage_guide and the engine derived one from color_roles
+	// (go-slide-creator-u1h9b).
+	AccentUsageGuideDerived bool `json:"accent_usage_guide_derived,omitempty"`
 	// SemanticAccents maps semantic roles (positive/negative/neutral) to theme
 	// accent names. Mirrors TemplateMetadata.SemanticAccents; omitted when unset.
 	SemanticAccents map[string]string `json:"semantic_accents,omitempty"`
@@ -344,6 +348,10 @@ type skillColorRoles struct {
 	WhiteTextSafeBody     []string `json:"white_text_safe_body"`    // accents passing 4.5:1 against white
 	WhiteTextSafeLarge    []string `json:"white_text_safe_large"`   // accents passing 3:1 against white
 	NearBackgroundAccents []string `json:"near_background_accents"` // accents below 2:1 against lt1
+	// InkOnAccent names, per accent, the text colour a fill of that accent
+	// can carry (lt1 when white passes 4.5:1, else dk2 / dk1) and its ratio
+	// (go-slide-creator-2mia4).
+	InkOnAccent map[string]skillInk `json:"ink_on_accent,omitempty"`
 }
 
 // skillLayoutSummary is a lightweight layout entry included in compact mode
@@ -641,6 +649,10 @@ func analyzeTemplateForSkillInfoOpts(templatePath string, cache types.TemplateCa
 			info.LayoutHints = md.LayoutHints
 		}
 	}
+	if len(info.AccentUsageGuide) == 0 {
+		info.AccentUsageGuide = deriveAccentUsageGuide(analysis.Theme.Colors, info.ColorRoles)
+		info.AccentUsageGuideDerived = len(info.AccentUsageGuide) > 0
+	}
 
 	// Canonical family coverage + derivable-layout readiness let agents vet a
 	// template's planning surface without escalating to examine_template.
@@ -838,6 +850,7 @@ func buildColorRoles(colors []types.ThemeColor) *skillColorRoles {
 		WhiteTextSafeBody:     safeBody,
 		WhiteTextSafeLarge:    safeLarge,
 		NearBackgroundAccents: nearBackground,
+		InkOnAccent:           buildInkOnAccent(colors),
 	}
 
 	// Prefer body-safe accents, then large-text-safe accents. A theme with no

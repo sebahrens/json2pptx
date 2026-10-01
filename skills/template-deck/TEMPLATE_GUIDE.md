@@ -105,7 +105,8 @@ Use the **canonical ID** in `layout_id` — not the display name:
 | Content | `content` | `title`, `body` |
 | Two-column | `two-column` | `title`, `body`, `body_2` |
 | Section divider | `section` | `title`, `body` |
-| Image slide | `image-left`, `image-right` when available on the chosen template | Inspect that layout's placeholders; some use `title` + `subtitle` + picture, not `body` |
+| Image slide | `slide_type: "image"` (no `layout_id`) | Only `modern` ships picture layouts (`image-left` / `image-right` / full-image); on the other templates an image slide lands on the full-width One Content layout and the picture fills its `body` whole (top-left anchored, never cropped). Author the picture as `placeholder_id` `image` or `body` — a missing one is remapped (info `placeholder_remapped`). Never a column of Two Content or a title-less layout |
+| Comparison | `slide_type: "comparison"` | `title`, `body`, `body_2` on Two Content; the first bullet of each column renders as a bold column header (the option name). No divider or verdict — prefer the `comparison-2col` / `before-after` pattern (info `COMPARISON_PREFER_PATTERN`) |
 | Chart slide | `content` | `title`, `body` (charts render as SVG in body) |
 | Closing | `closing` | `title`, `subtitle` |
 | Blank + Title | `blank-title` | `title` only (body goes in `shape_grid`) |
@@ -305,8 +306,14 @@ Image embedded in a placeholder. Value: `ImageInput` (via `image_value`; the unt
 
 Supports `path` (local file) or `url` (HTTP/HTTPS download).
 
-Native image placeholders use `fit: "cover"` by default: the image keeps its
-aspect ratio but may lose its outer edges. Use `fit: "contain"` for screenshots,
+With no `fit`, a native **picture** placeholder cover-crops the image to its
+frame: the image keeps its aspect ratio but may lose its outer edges, and a crop
+that discards more than 30% of an axis reports `IMAGE_HEAVY_CROP`. A **body /
+content** placeholder (every template without a picture layout) keeps the whole
+image instead — scaled to fit and anchored to the placeholder's top-left corner,
+so a portrait photo in One Content's wide body is never cut to a horizontal
+band. A picture that reaches the footer band (a full-bleed layout) suppresses
+that slide's footer text and page number (`CHROME_OVER_IMAGE`). Use `fit: "contain"` for screenshots,
 diagrams or other required source evidence so the whole image remains visible,
 centered within the native frame without stretching. Do not cover-crop labels
 or required facts. Inspect the rendered page: contain preserves the image but

@@ -542,3 +542,61 @@ func AttachNextToolCalls(findings []FitFinding, slideIndexFn func(string) int) {
 		}
 	}
 }
+
+// ImageHeavyCrop builds the IMAGE_HEAVY_CROP review finding for a cover-fit
+// picture that discards more than 30% of an axis (go-slide-creator-dk5sk).
+// defaulted reports that cover was the placeholder default, not authored.
+func ImageHeavyCrop(path, placeholderID string, discarded float64, defaulted bool) FitFinding {
+	pct := int(discarded*100 + 0.5)
+	how := "fit \"cover\""
+	if defaulted {
+		how = "the picture placeholder's default cover fit"
+	}
+	return FitFinding{
+		ValidationError: ValidationError{
+			Path:    path,
+			Code:    ErrCodeImageHeavyCrop,
+			Message: fmt.Sprintf("image in placeholder %q: %s crops away %d%% of the picture to fill the frame", placeholderID, how, pct),
+			Fix: &FixSuggestion{Kind: "provide_value", Params: map[string]any{
+				"path":          path + "/image_value/fit",
+				"value":         "contain",
+				"discarded_pct": pct,
+				"hint":          "use fit contain to keep the whole picture, or supply a crop whose aspect matches the frame",
+			}},
+		},
+		Action: "review",
+	}
+}
+
+// ChromeOverImage builds the CHROME_OVER_IMAGE info finding for a slide whose
+// footer chrome was omitted because a picture covers the footer band
+// (go-slide-creator-3bph8).
+func ChromeOverImage(path string, slideNum int) FitFinding {
+	return FitFinding{
+		ValidationError: ValidationError{
+			Path:    path,
+			Code:    ErrCodeChromeOverImage,
+			Message: fmt.Sprintf("slide %d: footer text / page number omitted because a picture covers the footer band and their contrast against the photo cannot be verified", slideNum),
+			Fix: &FixSuggestion{Kind: "review", Params: map[string]any{
+				"hint": "accept the omission on a full-bleed photo slide, or use a layout whose picture frame stops above the footer band",
+			}},
+		},
+		Action: "info",
+	}
+}
+
+// SubtitleWraps builds the SUBTITLE_WRAPS info finding (go-slide-creator-9bmaz).
+func SubtitleWraps(path string, slideNum, lines int) FitFinding {
+	return FitFinding{
+		ValidationError: ValidationError{
+			Path:    path,
+			Code:    ErrCodeSubtitleWraps,
+			Message: fmt.Sprintf("slide %d: subtitle wraps onto %d lines even at the title's width", slideNum, lines),
+			Fix: &FixSuggestion{Kind: "review", Params: map[string]any{
+				"path": path,
+				"hint": "shorten the subtitle to a one-line dateline",
+			}},
+		},
+		Action: "info",
+	}
+}

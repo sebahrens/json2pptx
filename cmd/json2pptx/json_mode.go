@@ -1367,6 +1367,9 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 				return nil, fmt.Errorf("slide %d, content %d: bullets resolved to %T, want []string", slideNum, j+1, resolved)
 			}
 			item.Value = bullets
+			// A comparison slide's columns open with the option names: render
+			// them as bold column headers (go-slide-creator-gndpw).
+			item.ColumnHeader = slideType == types.SlideTypeComparison
 
 		case "body_and_bullets":
 			item.Type = generator.ContentBodyAndBullets
@@ -2428,8 +2431,8 @@ func inferSlideType(slide SlideInput, layouts ...types.LayoutMetadata) types.Sli
 	hasDiagram := false
 	hasImage := false
 	hasTable := false
-	textCount := 0
-	bodyTextCount := 0 // text items that are NOT title/subtitle
+	bodyTextCount := 0    // text items that are NOT title/subtitle
+	captionTextCount := 0 // as bodyTextCount, plus text with no placeholder_id
 	hasBullets := false
 
 	for _, item := range slide.Content {
@@ -2443,9 +2446,11 @@ func inferSlideType(slide SlideInput, layouts ...types.LayoutMetadata) types.Sli
 		case "table":
 			hasTable = true
 		case "text":
-			textCount++
-			if item.PlaceholderID != "" && !isTitlePlaceholderID(item.PlaceholderID) && !isLikelySubtitle(item.PlaceholderID) {
-				bodyTextCount++
+			if !isTitlePlaceholderID(item.PlaceholderID) && !isLikelySubtitle(item.PlaceholderID) {
+				captionTextCount++
+				if item.PlaceholderID != "" {
+					bodyTextCount++
+				}
 			}
 		case "bullets", "body_and_bullets", "bullet_groups":
 			hasBullets = true
@@ -2458,7 +2463,10 @@ func inferSlideType(slide SlideInput, layouts ...types.LayoutMetadata) types.Sli
 		}
 		return types.SlideTypeDiagram
 	}
-	if hasImage && (textCount > 0 || hasBullets) {
+	// Only body copy beside the picture makes a two-column slide; a headline
+	// (title / subtitle) over one picture is an image slide, which wants a
+	// full-width frame, not half of Two Content (go-slide-creator-f0l85).
+	if hasImage && (captionTextCount > 0 || hasBullets) {
 		return types.SlideTypeTwoColumn
 	}
 	if hasImage {

@@ -153,6 +153,7 @@ func CheckConformanceReader(reader *Reader, name string) (*ConformanceReport, er
 	checks = append(checks, checkConflictingLayoutTags(layouts)...)
 	checks = append(checks, checkTextPlaceholderOverlap(layouts)...)
 	checks = append(checks, checkImageTitleLayerOrder(layouts)...)
+	checks = append(checks, checkContentTitleGeometry(layouts)...)
 	checks = append(checks, checkContentTitleBodyHierarchy(layouts)...)
 	staticText, err := checkLayoutStaticText(reader)
 	if err != nil {

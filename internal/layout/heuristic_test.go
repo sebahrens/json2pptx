@@ -1033,10 +1033,12 @@ func TestSelectLayout_ImageFallbackToBody(t *testing.T) {
 
 // Test image slide with no placeholder and no body produces warning (not blank)
 func TestSelectLayout_ImageNoPlaceholderNoBody(t *testing.T) {
-	// Layout with only a title — no image or body placeholder
-	layouts := []types.LayoutMetadata{
-		titleLayout(),
-	}
+	// Layout with only a title — no image or body placeholder. A cover
+	// (title-slide) layout is rejected for image slides outright
+	// (go-slide-creator-f0l85), so use an untagged title-only layout.
+	titleOnly := titleLayout()
+	titleOnly.ID, titleOnly.Name, titleOnly.Tags = "layout-title-only", "Title Only", nil
+	layouts := []types.LayoutMetadata{titleOnly}
 
 	slide := types.SlideDefinition{
 		Index: 1,

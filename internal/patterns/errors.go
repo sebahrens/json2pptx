@@ -226,6 +226,28 @@ const (
 	// finding is refuse-class: it blocks deterministic readiness and the
 	// quality gate (go-slide-creator-b7qqg.2).
 	ErrCodeImageAssetUnavailable = "IMAGE_ASSET_UNAVAILABLE"
+
+	// ErrCodeImageHeavyCrop marks a picture placed with cover whose frame
+	// aspect discards more than 30% of either image axis — a portrait photo
+	// cover-cropped into a wide frame keeps a horizontal band of the subject
+	// (go-slide-creator-dk5sk). Advisory.
+	ErrCodeImageHeavyCrop = "IMAGE_HEAVY_CROP"
+
+	// ErrCodeChromeOverImage marks a slide whose footer band (footer text,
+	// page number, date) would sit on an inserted picture. The engine omits
+	// that chrome rather than drawing it unverified over photo pixels
+	// (go-slide-creator-3bph8). Advisory.
+	ErrCodeChromeOverImage = "CHROME_OVER_IMAGE"
+
+	// ErrCodeSubtitleWraps marks a title / closing subtitle that still wraps
+	// after the engine widened its placeholder to the title width
+	// (go-slide-creator-9bmaz). Advisory.
+	ErrCodeSubtitleWraps = "SUBTITLE_WRAPS"
+
+	// ErrCodeComparisonPreferPattern points a slide_type "comparison" slide
+	// at the designed comparison patterns: the slide type renders two plain
+	// bullet columns under bold option headers (go-slide-creator-gndpw). Info.
+	ErrCodeComparisonPreferPattern = "COMPARISON_PREFER_PATTERN"
 )
 
 // Sentinel errors for matching with errors.Is. Each ValidationError wraps the
@@ -309,6 +331,12 @@ var (
 
 	ErrImageAssetUnavailable = errors.New("authored image could not be embedded; its frame renders empty")
 
+	ErrImageHeavyCrop  = errors.New("cover fit discards a large share of the picture")
+	ErrChromeOverImage = errors.New("footer chrome omitted because a picture covers the footer band")
+	ErrSubtitleWraps   = errors.New("title-slide subtitle wraps onto a second line")
+
+	ErrComparisonPreferPattern = errors.New("slide_type comparison renders plain columns; a comparison pattern is designed for it")
+
 	ErrDiagramAspectMismatch = errors.New("diagram cell aspect differs from rendered SVG aspect")
 )
 
@@ -382,6 +410,10 @@ var codeSentinel = map[string]error{
 	ErrCodeContrastUnresolved:      ErrContrastUnresolved,
 	ErrCodeTextOverImageUnverified: ErrTextOverImageUnverified,
 	ErrCodeImageAssetUnavailable:   ErrImageAssetUnavailable,
+	ErrCodeImageHeavyCrop:          ErrImageHeavyCrop,
+	ErrCodeChromeOverImage:         ErrChromeOverImage,
+	ErrCodeSubtitleWraps:           ErrSubtitleWraps,
+	ErrCodeComparisonPreferPattern: ErrComparisonPreferPattern,
 	ErrCodeDiagramAspectMismatch:   ErrDiagramAspectMismatch,
 }
 

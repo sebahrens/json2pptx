@@ -337,6 +337,80 @@ It is refuse-class: `deterministic_ready` is false and the quality gate fails, s
 }
 ```
 
+### `IMAGE_HEAVY_CROP`
+
+**Action:** `review`
+**Fix kind:** `provide_value`
+**Emitted at:** render (generate / render_deck_spec / score_deck)
+
+A content `image_value` placed with **cover** — `fit: "cover"`, or no `fit` in a genuine picture placeholder — whose frame aspect differs so much from the picture that more than 30% of its width or height is cropped away. `fix.params.discarded_pct` is the share lost on the worse axis. A portrait photo cover-cropped into a wide frame keeps a horizontal band of the subject (go-slide-creator-dk5sk).
+
+With no `fit`, an image in a **body / content** placeholder (every template without a picture layout) is never cropped: it is scaled to fit the placeholder whole and anchored to its top-left corner, so this finding does not fire there.
+
+```json
+{
+  "path": "/slides/4/content/1",
+  "code": "IMAGE_HEAVY_CROP",
+  "message": "image in placeholder \"image\": the picture placeholder's default cover fit crops away 63% of the picture to fill the frame",
+  "fix": { "kind": "provide_value", "params": { "path": "/slides/4/content/1/image_value/fit", "value": "contain", "discarded_pct": 63, "hint": "use fit contain to keep the whole picture, or supply a crop whose aspect matches the frame" } },
+  "action": "review"
+}
+```
+
+### `CHROME_OVER_IMAGE`
+
+**Action:** `info`
+**Fix kind:** `review`
+**Emitted at:** render (generate / render_deck_spec / score_deck)
+
+An inserted content picture reaches into the footer band (typically a full-bleed picture layout such as modern's Title Only). Chrome text colour is resolved against the layout background only, never against photo pixels, so the engine omits the footer text, page number and date on that slide — as it does on title and closing slides — instead of drawing them unverified over the photo (go-slide-creator-3bph8). A picture that stays above the footer band keeps the chrome.
+
+```json
+{
+  "path": "/slides/4/chrome",
+  "code": "CHROME_OVER_IMAGE",
+  "message": "slide 5: footer text / page number omitted because a picture covers the footer band and their contrast against the photo cannot be verified",
+  "fix": { "kind": "review", "params": { "hint": "accept the omission on a full-bleed photo slide, or use a layout whose picture frame stops above the footer band" } },
+  "action": "info"
+}
+```
+
+### `SUBTITLE_WRAPS`
+
+**Action:** `info`
+**Fix kind:** `review`
+**Emitted at:** render (generate / render_deck_spec / score_deck)
+
+A title-slide or closing subtitle still needs more than one line after the engine widened its placeholder to the title's width (same left edge) and joined date tokens ("15 November 2026") with non-breaking spaces so a wrap never strands the year (go-slide-creator-9bmaz). The cover and the closer are the first and last thing the reader sees; keep the dateline to one line.
+
+```json
+{
+  "path": "/slides/0/content/1",
+  "code": "SUBTITLE_WRAPS",
+  "message": "slide 1: subtitle wraps onto 2 lines even at the title's width",
+  "fix": { "kind": "review", "params": { "path": "/slides/0/content/1", "hint": "shorten the subtitle to a one-line dateline" } },
+  "action": "info"
+}
+```
+
+### `COMPARISON_PREFER_PATTERN`
+
+**Action:** `info`
+**Fix kind:** `swap_pattern` (`params: {from, to, alternatives, layout_id}`)
+**Emitted at:** preflight (validate / preview / score)
+
+A slide sets `slide_type: "comparison"`. It renders on the template's Two Content layout: `body` and `body_2` bullet lists, the first bullet of each promoted to a bold column header (the option names) — but no divider, connector or verdict row, so it reads close to a plain two-column slide (go-slide-creator-gndpw). The named patterns are the designed comparison: `comparison-2col` for options side by side, `before-after` for a change of state.
+
+```json
+{
+  "path": "/slides/9/slide_type",
+  "code": "COMPARISON_PREFER_PATTERN",
+  "message": "slide 10: slide_type \"comparison\" renders two plain bullet columns under bold option headers; the comparison-2col (or before-after) pattern draws a designed comparison",
+  "fix": { "kind": "swap_pattern", "params": { "from": "slide_type:comparison", "to": "comparison-2col", "alternatives": ["before-after"], "layout_id": "blank-title" } },
+  "action": "info"
+}
+```
+
 ### `placeholder_overflow`
 
 **Action:** `shrink_or_split`

@@ -660,6 +660,13 @@ func scoreChartSlide(layout types.LayoutMetadata, slide types.SlideDefinition) f
 	return scoreNoMatch // Charts require chart or body capability
 }
 
+// scoreImageSlide prefers a real picture frame, then a template's full-image
+// layout, then the single full-width body of a content layout. Nine of ten
+// shipped templates have no picture placeholder, and before this ranking
+// every layout scored minimal so variety noise routed a hero photo into one
+// column of Two Content or the title-less Statement layout
+// (go-slide-creator-f0l85). Two-column / divider / cover layouts are rejected
+// outright in isLayoutSuitable; this keeps the remaining order deliberate.
 func scoreImageSlide(layout types.LayoutMetadata) float64 {
 	if layout.Capacity.HasImageSlot {
 		return scorePerfectMatch
@@ -667,7 +674,34 @@ func scoreImageSlide(layout types.LayoutMetadata) float64 {
 	if hasTag(layout.Tags, "full-image") {
 		return scoreGoodMatch
 	}
+	if hasTag(layout.Tags, "two-column") || hasTag(layout.Tags, "statement") || hasTag(layout.Tags, "quote") {
+		return scoreMinimalMatch
+	}
+	if hasTag(layout.Tags, "content") && len(findBodyPlaceholders(layout)) == 1 {
+		return scoreAcceptable
+	}
 	return scoreMinimalMatch
+}
+
+// imageSlideLayoutUnsuitable reports layouts that cannot present a single
+// hero image: two-column layouts (half-width column, empty other half),
+// section dividers, covers, closers and title-less statement/quote layouts.
+// A layout with a genuine picture placeholder is always acceptable; a layout
+// with neither picture nor body slot stays suitable but scores minimal, so a
+// template with no better choice still renders (with a mapping warning).
+func imageSlideLayoutUnsuitable(layout types.LayoutMetadata, slide types.SlideDefinition) bool {
+	if layout.Capacity.HasImageSlot || hasTag(layout.Tags, "full-image") {
+		return false
+	}
+	if hasTag(layout.Tags, "two-column") && !slide.HasSlots() {
+		return true
+	}
+	for _, tag := range []string{"section-header", "closing", "thank-you", "title-slide", "statement", "quote"} {
+		if hasTag(layout.Tags, tag) {
+			return true
+		}
+	}
+	return false
 }
 
 func scoreComparisonSlide(layout types.LayoutMetadata) float64 {
@@ -1055,6 +1089,13 @@ func isLayoutSuitable(layout types.LayoutMetadata, slide types.SlideDefinition) 
 		hasTag(layout.Tags, "statement") || hasTag(layout.Tags, "quote")) {
 		return false
 	}
+	// A titled image slide on a title-less layout loses its headline: the
+	// title falls back to the only body shape, which the picture then
+	// replaces (go-slide-creator-2hkgy). Never choose such a layout.
+	if (slide.Type == types.SlideTypeImage || slide.Content.ImagePath != "") && slide.Title != "" &&
+		findPlaceholder(layout, types.PlaceholderTitle) == nil {
+		return false
+	}
 	// A section divider's body-shaped slots are decorative (often a large
 	// section number), even when the template accidentally labels them content.
 	// Never route an ordinary slide into one merely because it has body capacity.
@@ -1124,7 +1165,11 @@ func isLayoutSuitable(layout types.LayoutMetadata, slide types.SlideDefinition) 
 		}
 		return true
 	case types.SlideTypeImage:
-		// Images can use image slots or any layout with space
+		// Images need a picture slot or one full-width body; never a column
+		// of a two-column layout or a divider / cover / closer (go-slide-creator-f0l85).
+		if imageSlideLayoutUnsuitable(layout, slide) {
+			return false
+		}
 		return layout.Capacity.HasImageSlot || len(layout.Placeholders) > 0
 	case types.SlideTypeTwoColumn:
 		// Two-column slides with explicit ::slot1::/::slot2:: markers need layouts

@@ -132,6 +132,11 @@ type MediaContext struct {
 	usedExtensions  map[string]bool    // image extensions for Content_Types.xml
 	slideRelUpdates map[int][]mediaRel // slideNum -> relationships to add
 
+	// pictureFrames records the final frame of every authored content image
+	// per slide, so footer chrome can stand down where a photo covers the
+	// footer band (go-slide-creator-3bph8). Lazily allocated.
+	pictureFrames map[int][]types.BoundingBox
+
 	// tableStyleIDsUsed tracks the resolved <a:tableStyleId> GUIDs referenced
 	// by rendered tables. Used to synthesize a populated ppt/tableStyles.xml so
 	// strict OOXML readers (e.g. LibreOffice) see at least a stub <a:tblStyle>

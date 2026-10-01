@@ -179,7 +179,11 @@ type ContentItem struct {
 	FontSize      int         // Font size override in hundredths of a point (e.g., 7200 = 72pt). 0 means no override.
 	TextColor     string      // Optional theme scheme color for generated text runs (e.g., "accent2").
 	Link          *LinkSpec   // Optional hyperlink on every text run in this item
-	linkMarker    string      // Temporary run relationship marker, resolved during slide writing
+	// ColumnHeader marks a body / body_2 bullet list on a slide_type
+	// "comparison" slide: its first line always renders as the column header
+	// (go-slide-creator-gndpw), not only when the header heuristic agrees.
+	ColumnHeader bool
+	linkMarker   string // Temporary run relationship marker, resolved during slide writing
 }
 
 // LinkSpec targets either an external URL or a slide in the same deck.

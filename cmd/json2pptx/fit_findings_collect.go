@@ -48,6 +48,7 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// patterns and compose segments, so it runs before expansion replaces them
 	// with grids (go-slide-creator-cuszt).
 	findings = append(findings, collectDataWithoutSourceFindings(input)...)
+	findings = append(findings, collectComparisonSlideFindings(input)...)
 	var geometryErrors []patterns.FitFinding
 	input, layouts, geometryErrors = withDerivedFitLayouts(input, layouts, slideWidth, slideHeight)
 	findings = append(findings, geometryErrors...)
