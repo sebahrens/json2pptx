@@ -578,6 +578,7 @@ type shapeXML struct {
 type textBodyXML struct {
 	BodyPr *struct {
 		Anchor string `xml:"anchor,attr"`
+		LIns   string `xml:"lIns,attr"`
 	} `xml:"bodyPr"`
 	ListStyle *listStyleXML `xml:"lstStyle"`
 }

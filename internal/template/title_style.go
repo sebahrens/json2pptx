@@ -201,6 +201,34 @@ func ParseMasterTitleAnchor(masterData []byte) string {
 	return ""
 }
 
+var bodyPrLInsRegexp = regexp.MustCompile(`<a:bodyPr\b[^>]*\blIns="(\d+)"`)
+
+// ParseMasterTitleLeftInset returns the bodyPr lIns of the slide master's
+// title placeholder, or "" when it declares none (go-slide-creator-svrpx).
+func ParseMasterTitleLeftInset(masterData []byte) string {
+	for _, sp := range strings.Split(string(masterData), "<p:sp>")[1:] {
+		if end := strings.Index(sp, "</p:sp>"); end >= 0 {
+			sp = sp[:end]
+		}
+		ph := strings.Index(sp, "<p:ph ")
+		if ph < 0 {
+			continue
+		}
+		tag := sp[ph:]
+		if gt := strings.Index(tag, ">"); gt >= 0 {
+			tag = tag[:gt]
+		}
+		if !strings.Contains(tag, `type="title"`) {
+			continue
+		}
+		if m := bodyPrLInsRegexp.FindStringSubmatch(sp); m != nil {
+			return m[1]
+		}
+		return ""
+	}
+	return ""
+}
+
 // xmlBoolAttr reads an OOXML boolean attribute ("1"/"true").
 func xmlBoolAttr(v string) bool { return v == "1" || v == "true" }
 

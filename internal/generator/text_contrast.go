@@ -710,13 +710,20 @@ func harmonizeTextColorPerFill(shapes [][]byte, swaps []ContrastSwap, themeColor
 		if fillHex == "" {
 			continue
 		}
+		fill, err := svggen.ParseColor(fillHex)
+		if err != nil {
+			continue
+		}
 		body := shapeTextBody(shape)
+		bodyThreshold := bodyContrastThreshold(body)
 		for _, orig := range textColorsIn(body, themeColors) {
 			sw, ok := decided[key{fillHex, strings.ToUpper(orig)}]
 			if !ok {
 				continue
 			}
-			fixed := replaceTextColor(body, orig, sw.ReplacedColor, themeColors)
+			// Only where the colour misses this run's bar: a large accent
+			// value that clears 3:1 keeps it (go-slide-creator-tinsz).
+			fixed := replaceFailingTextColor(body, orig, sw.ReplacedColor, fill, bodyThreshold, themeColors)
 			if fixed == body {
 				continue
 			}
@@ -763,21 +770,29 @@ func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor, whiteT
 	txBody := string(shapeXML[txStart:txEnd])
 
 	var swaps []ContrastSwap
-	// The whole body is fixed against one background, so its threshold comes
-	// from its SMALLEST text: an 11pt supporting line needs 4.5:1 even when it
-	// sits beside a 28pt KPI value (go-slide-creator-9ux4).
-	bodyPt, bodyBold := smallestTextPt(txBody)
-	threshold := contrastThresholdFor(bodyPt, bodyBold)
-	// Fix scheme colors in text (with white-text-safe awareness)
-	// Shape-grid colors are author-specified on the shape's own fill, not
-	// inherited through a layout, so no color map override applies.
-	// Grid text that fails snaps to the palette (lt1 / dk2 / dk1, then a fill
-	// shade) rather than lerping its own hue: a lerped accent2 label on a dark
-	// card came out a pale salmon tint that matched nothing in the template
-	// (go-slide-creator-z668n).
-	fixed := fixSchemeColorsForContrast(txBody, bgColor, fillHex, themeColors, &swaps, "shape_grid", "shape_grid", fillSafe, threshold, nil, gridSnapsToPalette)
-	// Fix sRGB colors in text (with white-text-safe awareness)
-	fixed = fixSrgbColorsForContrast(fixed, bgColor, fillHex, themeColors, &swaps, fillSafe, threshold, gridSnapsToPalette)
+	// Neutral inks are fixed against the body's SMALLEST text: an 11pt
+	// supporting line needs 4.5:1 even when it sits beside a 28pt KPI value
+	// (go-slide-creator-9ux4), and one cell must not split white / black.
+	// A brand-coloured run is judged at its own size, so a 40pt accent value
+	// that clears the 3:1 large-text bar keeps the accent
+	// (go-slide-creator-tinsz).
+	bodyThreshold := bodyContrastThreshold(txBody)
+	fixed := mapTextPropsBlocks(txBody, bodyThreshold, func(block string, threshold float64) string {
+		// Shape-grid colors are author-specified on the shape's own fill, not
+		// inherited through a layout, so no color map override applies.
+		// Grid text that fails snaps to the palette (lt1 / dk2 / dk1, then a
+		// fill shade) rather than lerping its own hue: a lerped accent2 label
+		// on a dark card came out a pale salmon tint that matched nothing in
+		// the template (go-slide-creator-z668n). Large brand-coloured text on
+		// a light fill is the exception: the minimal darken of the accent
+		// keeps its hue where a snap would paint the hero number dk1.
+		snap := gridSnapsToPalette
+		if threshold <= svggen.WCAGAALarge && !blockColorIsNeutral(block) && isLightBackground(bgColor) {
+			snap = false
+		}
+		block = fixSchemeColorsForContrast(block, bgColor, fillHex, themeColors, &swaps, "shape_grid", "shape_grid", fillSafe, threshold, nil, snap)
+		return fixSrgbColorsForContrast(block, bgColor, fillHex, themeColors, &swaps, fillSafe, threshold, snap)
+	})
 
 	if fixed == txBody {
 		return shapeXML, nil // No changes needed

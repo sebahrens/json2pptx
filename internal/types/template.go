@@ -257,6 +257,13 @@ type PlaceholderInfo struct {
 	// (go-slide-creator-pymy7).
 	Anchor string `json:"-"`
 
+	// TextInsetLeftEMU is the effective left text inset of a title
+	// placeholder (layout bodyPr lIns, then the master title's, then the
+	// OOXML default 91440). Grid geometry starts unfilled first-column text
+	// at the title's text edge (go-slide-creator-svrpx). 0 for other types
+	// and for a title that sets lIns="0".
+	TextInsetLeftEMU int64 `json:"-"`
+
 	// SpcBefPt is the inherited space-before in points (master bodyStyle /
 	// titleStyle level 1, overridden by the layout placeholder's own lstStyle).
 	// A body placeholder's autofit has to budget it per paragraph: fourteen

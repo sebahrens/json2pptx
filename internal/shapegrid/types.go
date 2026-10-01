@@ -56,7 +56,30 @@ const (
 	VAlignCenter VerticalAlign = "center"
 	// VAlignBottom keeps resolved row heights and anchors the block at the bottom.
 	VAlignBottom VerticalAlign = "bottom"
+	// VAlignAuto keeps resolved row heights and hangs the block from the top
+	// of the bounds when it fills less than AutoCenterMinFill of them, else
+	// centres it (go-slide-creator-e17xy): a short card row sits under the
+	// title like native body text instead of floating mid-slide, while a
+	// block that nearly fills the area is balanced.
+	VAlignAuto VerticalAlign = "auto"
 )
+
+// AutoCenterMinFill is the share of the available height a content-sized
+// block must exceed (by more than a point) before VAlignAuto centres it rather
+// than top-anchoring it; a pattern capped at exactly 60% hangs from the top.
+const AutoCenterMinFill = 0.6
+
+// ResolveAuto returns the concrete alignment VAlignAuto takes for a block of
+// usedEMU inside availEMU; other alignments are returned unchanged.
+func (a VerticalAlign) ResolveAuto(usedEMU, availEMU int64) VerticalAlign {
+	if a != VAlignAuto {
+		return a
+	}
+	if availEMU > 0 && float64(usedEMU) > AutoCenterMinFill*float64(availEMU)+12700 {
+		return VAlignCenter
+	}
+	return VAlignTop
+}
 
 // ParseVerticalAlign maps the DTO string to a VerticalAlign. "" and
 // "stretch" map to VAlignStretch; ok is false for unknown values.
@@ -70,6 +93,8 @@ func ParseVerticalAlign(s string) (VerticalAlign, bool) {
 		return VAlignCenter, true
 	case "bottom":
 		return VAlignBottom, true
+	case "auto":
+		return VAlignAuto, true
 	}
 	return VAlignStretch, false
 }
@@ -90,6 +115,15 @@ type Grid struct {
 	// bounds. VAlignStretch (default) re-scales rows to fill; the other
 	// values keep the content-sized block and place it top/center/bottom.
 	VAlign VerticalAlign
+	// AnchorY is the preferred absolute Y (EMU) of a top-anchored
+	// content-sized block — the template's body placeholder top
+	// (ContentZone.BodyTop). The block moves down to it only as far as its
+	// slack allows; 0 means the bounds top.
+	AnchorY int64
+	// TextLeft is the absolute X (EMU) where the slide title's text starts
+	// (ContentZone.TextLeft). Unfilled left-aligned text in the first column
+	// is inset to start there; 0 leaves insets alone (go-slide-creator-svrpx).
+	TextLeft int64
 
 	// KeepTextSizes leaves authored cell font sizes as written. By default
 	// sized text settles onto the type scale (tokens.SnapTextHPt); callers

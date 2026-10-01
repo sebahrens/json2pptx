@@ -19,7 +19,8 @@ const (
 // from a slide-percentage fallback.
 const (
 	ChromeBasisLayout          = "layout"           // the slide's own body/content placeholders
-	ChromeBasisReferenceLayout = "reference_layout" // the template's One Content binding (layout has no body)
+	ChromeBasisLayoutTitle     = "layout_title"     // a title-only layout: its title column, the span its shape_grid content uses
+	ChromeBasisReferenceLayout = "reference_layout" // the template's One Content binding (layout has no body or title)
 	ChromeBasisSlideFallback   = "slide_fallback"   // no placeholder geometry at all: slide-percentage margins
 )
 
@@ -110,6 +111,12 @@ func ResolveChromeFrame(layout, reference *types.LayoutMetadata, slideWidth, sli
 	left, right := marginX, w-marginX
 	if l, r, ok := contentSpan(layout, w); ok {
 		left, right, frame.Basis = l, r, ChromeBasisLayout
+	} else if l, r, ok := titleColumnSpan(layout, w, h); ok {
+		// A title-only layout's grid content spans the title column
+		// (titleOnlyContentZone); the takeaway / source bands share that
+		// left edge instead of the One Content layout's body edge, which
+		// sat 45px right of every pattern on abstract (go-slide-creator-svrpx).
+		left, right, frame.Basis = l, r, ChromeBasisLayoutTitle
 	} else if l, r, ok := contentSpan(reference, w); ok {
 		left, right, frame.Basis = l, r, ChromeBasisReferenceLayout
 	}
@@ -343,6 +350,27 @@ func contentSpan(layout *types.LayoutMetadata, slideWidth int64) (int64, int64, 
 		found = true
 	}
 	return left, right, found && right > left
+}
+
+// titleColumnSpan returns the horizontal span shape_grid content takes on a
+// title-only layout: the title's left edge, and a right edge symmetric to it
+// (or the title's own right edge when that is further right) — the same rule
+// as the generator's titleOnlyContentZone.
+func titleColumnSpan(layout *types.LayoutMetadata, slideWidth, slideHeight int64) (int64, int64, bool) {
+	if layout == nil {
+		return 0, 0, false
+	}
+	for i := range layout.Placeholders {
+		ph := &layout.Placeholders[i]
+		if ph.Type != types.PlaceholderTitle || ph.Bounds.Width <= 0 || ph.Bounds.Y >= slideHeight/2 {
+			continue
+		}
+		left := max(ph.Bounds.X, 0)
+		right := max(slideWidth-left, ph.Bounds.X+ph.Bounds.Width)
+		right = min(right, slideWidth)
+		return left, right, right > left
+	}
+	return 0, 0, false
 }
 
 // titleBottom returns the bottom edge of the layout's title placeholder when

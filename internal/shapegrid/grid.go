@@ -94,6 +94,9 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 	// non-stretch VAlign, slack left by capped rows is kept and the block is
 	// placed inside the bounds instead of re-scaling rows to fill them.
 	rowHeightsEMU, blockOffset := layoutRowsEMU(rowHeights, availH, effectiveVAlign(grid))
+	if blockOffset == 0 && grid.AnchorY > gridY && effectiveVAlign(grid) != VAlignStretch {
+		blockOffset = anchoredTopOffset(rowHeightsEMU, availH, grid.AnchorY-gridY, effectiveVAlign(grid))
+	}
 	rowYOffsets := make([]int64, numRows)
 	y := gridY + blockOffset
 	for r := 0; r < numRows; r++ {
@@ -286,6 +289,7 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 
 	connectors := resolveRowConnectors(grid, cells, rowCellIDs, rowYOffsets, rowHeightsEMU, alloc)
 	connectors = append(connectors, resolveLinks(grid, cells, rowCellIDs, alloc)...)
+	alignFirstColumnText(cells, gridX, grid.TextLeft)
 	for i := range cells {
 		cell := &cells[i]
 		if cell.Kind == CellKindShape && cell.ShapeSpec != nil {
@@ -763,7 +767,7 @@ func layoutRowsEMU(pcts []float64, availH int64, align VerticalAlign) ([]int64, 
 	used := int64(float64(availH) * sum / 100.0)
 	heights := distributeEMU(pcts, used)
 	slack := availH - used
-	switch align {
+	switch align.ResolveAuto(used, availH) {
 	case VAlignCenter:
 		return heights, slack / 2
 	case VAlignBottom:
@@ -771,6 +775,25 @@ func layoutRowsEMU(pcts []float64, availH int64, align VerticalAlign) ([]int64, 
 	default:
 		return heights, 0
 	}
+}
+
+// anchoredTopOffset returns how far a top-placed block moves down toward the
+// preferred anchor (offset from the bounds top): all the way when its slack
+// allows, else as far as the slack goes. Only top placement (explicit top, or
+// auto resolving to top) is anchored.
+func anchoredTopOffset(heights []int64, availH, want int64, align VerticalAlign) int64 {
+	var used int64 // availH already excludes the row gaps
+	for _, h := range heights {
+		used += h
+	}
+	if align.ResolveAuto(used, availH) != VAlignTop {
+		return 0
+	}
+	slack := availH - used
+	if slack <= 0 || want <= 0 {
+		return 0
+	}
+	return min(want, slack)
 }
 
 // distributeEMU converts percentage slices into absolute EMU values that sum

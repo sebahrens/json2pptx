@@ -457,9 +457,11 @@ func resolveGridGeometry(slide SlideInput, layouts []types.LayoutMetadata, slide
 		}
 	}
 	g = reserveMeasuredTitle(g, slide, layouts)
+	g = reserveBodyAnchor(g, slide, layouts)
 	g = reserveTakeawayBand(g, slide, layouts)
 	g = reserveCanvasHeadline(g, slide, layouts, slideWidth, slideHeight)
-	return reserveGridSideDecor(g, slide, layouts, slideWidth, slideHeight)
+	g = reserveGridSideDecor(g, slide, layouts, slideWidth, slideHeight)
+	return reserveTitleTextEdge(g, slide, layouts)
 }
 
 // reserveGridSideDecor applies the same master/layout side-art exclusion as
@@ -655,7 +657,11 @@ func resolveGridBounds(input *ShapeGridInput, overrideBounds *pptx.RectEmu, zone
 		if input.BoundsRelativeToContentArea {
 			contentBounds := contentRelativeBoundsBase(overrideBounds, zone, slideWidth, slideHeight)
 			b := boundsFromRectPercentages(contentBounds, input.Bounds)
-			return alignRelativeBounds(b, contentBounds, input)
+			var anchorY int64
+			if zone != nil {
+				anchorY = zone.BodyTop
+			}
+			return alignRelativeBounds(b, contentBounds, input, anchorY)
 		}
 		bounds := shapegrid.BoundsFromPercentages(input.Bounds.X, input.Bounds.Y, input.Bounds.Width, input.Bounds.Height, slideWidth, slideHeight)
 		// Clamp explicit bounds against ContentZone to prevent overlapping chrome.
@@ -691,12 +697,20 @@ func resolveGridBounds(input *ShapeGridInput, overrideBounds *pptx.RectEmu, zone
 // "bottom" anchors it at the bottom. This is how height-capped patterns
 // (numbered-step-strip, *-compact, kpi-inline) avoid leaving the lower half of
 // the slide empty. Explicit non-zero y offsets are kept as authored.
-func alignRelativeBounds(b, content pptx.RectEmu, input *ShapeGridInput) pptx.RectEmu {
+//
+// A top-placed box (explicit top, or auto on a box under 60% of the area)
+// hangs from anchorY — the template's body placeholder top — as far as the
+// area's slack allows (go-slide-creator-e17xy).
+func alignRelativeBounds(b, content pptx.RectEmu, input *ShapeGridInput, anchorY int64) pptx.RectEmu {
 	if input.Bounds == nil || input.Bounds.Y != 0 || b.CY >= content.CY {
 		return b
 	}
 	align, _ := shapegrid.ParseVerticalAlign(input.VerticalAlign)
-	switch align {
+	switch align.ResolveAuto(b.CY, content.CY) {
+	case shapegrid.VAlignTop:
+		if anchorY > b.Y {
+			b.Y += min64(anchorY-b.Y, content.Y+content.CY-b.CY-b.Y)
+		}
 	case shapegrid.VAlignCenter:
 		b.Y = content.Y + (content.CY-b.CY)/2
 	case shapegrid.VAlignBottom:
@@ -763,7 +777,7 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 
 	vAlign, ok := shapegrid.ParseVerticalAlign(input.VerticalAlign)
 	if !ok {
-		return nil, fmt.Errorf("shape_grid: vertical_align must be one of \"stretch\", \"top\", \"center\", \"bottom\", got %q", input.VerticalAlign)
+		return nil, fmt.Errorf("shape_grid: vertical_align must be one of \"stretch\", \"top\", \"center\", \"bottom\", \"auto\", got %q", input.VerticalAlign)
 	}
 
 	grid := &shapegrid.Grid{
@@ -774,6 +788,10 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 		ColGap:    colGap,
 		RowGap:    rowGap,
 		VAlign:    vAlign,
+	}
+	if zone != nil {
+		grid.AnchorY = zone.BodyTop
+		grid.TextLeft = zone.TextLeft
 	}
 	grid.KeepTextSizes = input.KeepTextSizes
 	grid.Links = convertGridLinks(input.Links)
@@ -2550,4 +2568,11 @@ func gridFooterTop(layout *types.LayoutMetadata, slideHeight int64) (int64, bool
 		}
 	}
 	return sh - shapegrid.MinBottomMarginEMU, false
+}
+
+func min64(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
 }

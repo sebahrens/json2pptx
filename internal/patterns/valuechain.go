@@ -202,9 +202,11 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 		// Ink by measured contrast at the label's own size: lt1 when it clears
 		// WCAG AA (3:1 for large bold labels), else the theme's dark ink.
+		// A highlight accent lt1 misses is shaded until it reads rather than
+		// taking black type (go-slide-creator-v9tup).
 		ink := "dk1"
 		if step.Highlight {
-			ink = readableInkOn(ctx, tone, "lt1", TextContrastThreshold(labelSize, true))
+			tone, ink = accentFillAndInk(ctx, tone, TextContrastThreshold(labelSize, true))
 		}
 		labelText := buildValueChainLabelText(pptx.ConvertMarkdownEmphasis(step.Label), labelSize, ink)
 		labelCell := &jsonschema.GridCellInput{

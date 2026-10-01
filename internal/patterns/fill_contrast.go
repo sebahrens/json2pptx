@@ -291,6 +291,90 @@ func readableInkOn(ctx ExpandContext, tone fillTone, fallback string, minContras
 	return best
 }
 
+// Shading an accent fill so its light ink reads (go-slide-creator-v9tup).
+//
+// The fill under pattern text is engine-drawn, so when lt1 misses the WCAG
+// bar on an accent the brand-preserving fix is to deepen the FILL — an OOXML
+// a:shade keeps the hue and the theme link — rather than to paint black or
+// dark-brown type on a saturated orange / taupe / green box. Only mid-tone
+// solid fills qualify: a light tint (or a pale accent such as a yellow, where
+// lt1 is far off the bar) keeps its surface and takes dark ink instead.
+const (
+	// shadeMinKeep is the deepest shade allowed, as the linear-light fraction
+	// of the fill kept (OOXML a:shade val / 100000). 0.45 keeps the accent
+	// recognisably itself (#55BC7E -> about #3D875A).
+	shadeMinKeep = 0.45
+	// shadeMinLightRatio is the lt1 contrast the unshaded fill must already
+	// reach to count as a mid-tone accent worth shading.
+	shadeMinLightRatio = 1.8
+	// shadeStep is the search step in OOXML thousandths of a percent.
+	shadeStep = 1000
+)
+
+// shadeForLightInk returns tone deepened by the smallest a:shade at which lt1
+// clears minContrast. ok is false when lt1 already clears it, when the fill is
+// a tint / neutral surface / pale accent, or when no shade within
+// shadeMinKeep suffices. Scheme fills carry the shade as a modifier; hex fills
+// are returned as the shaded hex (the shape-grid resolver honours modifiers on
+// scheme colours only).
+func shadeForLightInk(ctx ExpandContext, tone fillTone, minContrast float64) (fillTone, bool) {
+	// A near-opaque fill (alpha >= 80%) still reads as the accent; a more
+	// translucent one is a tint and takes dark ink instead.
+	if tone.Tint > 0 || tone.LumOff > 0 || (tone.Alpha > 0 && tone.Alpha < 80) {
+		return fillTone{}, false
+	}
+	name := strings.TrimSpace(tone.Color)
+	if alias, isAlias := schemeAliases[name]; isAlias {
+		name = alias
+	}
+	switch name {
+	case "lt1", "lt2", "dk1", "dk2":
+		return fillTone{}, false
+	}
+	light, ok := resolveThemeColor(ctx, "lt1")
+	if !ok {
+		return fillTone{}, false
+	}
+	fill, ok := effectiveFillColor(ctx, tone)
+	if !ok {
+		return fillTone{}, false
+	}
+	ratio := light.ContrastWith(fill)
+	if ratio >= minContrast || ratio < shadeMinLightRatio {
+		return fillTone{}, false
+	}
+	base := 100000
+	if tone.Shade > 0 {
+		base = tone.Shade
+	}
+	for keep := base - shadeStep; float64(keep) >= shadeMinKeep*100000; keep -= shadeStep {
+		cand := tone
+		cand.Shade = keep
+		c, cok := effectiveFillColor(ctx, cand)
+		if !cok || light.ContrastWith(c) < minContrast {
+			continue
+		}
+		if isHexColor(tone.Color) {
+			// c is already composited over lt1 when the tone is translucent,
+			// so the opaque hex is what the viewer sees.
+			return fillTone{Color: c.Hex()}, true
+		}
+		return cand, true
+	}
+	return fillTone{}, false
+}
+
+// accentFillAndInk returns the fill and text ink a pattern should paint for
+// light-ink text of the given contrast bar on tone: lt1 on tone when it
+// already reads, else lt1 on the minimally shaded tone, else the first
+// readable theme ink (lt1 -> dk2 -> dk1) on the unchanged tone.
+func accentFillAndInk(ctx ExpandContext, tone fillTone, minContrast float64) (fillTone, string) {
+	if shaded, ok := shadeForLightInk(ctx, tone, minContrast); ok {
+		return shaded, "lt1"
+	}
+	return tone, readableInkOn(ctx, tone, "lt1", minContrast)
+}
+
 // applyLumModOff applies the OOXML lumMod / lumOff transforms (in HSL space).
 func applyLumModOff(c svggen.Color, lumMod, lumOff int) svggen.Color {
 	h, s, l := toHSL(c)

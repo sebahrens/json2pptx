@@ -1188,7 +1188,7 @@ func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCo
 	}
 
 	if _, ok := shapegrid.ParseVerticalAlign(grid.VerticalAlign); !ok {
-		errors = append(errors, fmt.Sprintf("slide %d: shape_grid vertical_align must be one of \"stretch\", \"top\", \"center\", \"bottom\", got %q", slideNum, grid.VerticalAlign))
+		errors = append(errors, fmt.Sprintf("slide %d: shape_grid vertical_align must be one of \"stretch\", \"top\", \"center\", \"bottom\", \"auto\", got %q", slideNum, grid.VerticalAlign))
 	}
 
 	// Validate columns

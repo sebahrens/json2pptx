@@ -32,6 +32,7 @@ func applyInheritedTitleText(info *types.PlaceholderInfo, shape *shapeXML, maste
 		}
 	}
 	info.Anchor = resolveTitleAnchor(shape, masterFonts)
+	info.TextInsetLeftEMU = resolveTitleLeftInset(shape, masterFonts)
 	info.TextCaps = st.CapsAll
 	info.TextBold = st.Bold
 	info.CharSpacingHPt = st.SpcHPt
@@ -57,6 +58,22 @@ func resolveTitleAnchor(shape *shapeXML, masterFonts *MasterFontStyles) string {
 		return masterFonts.TitleAnchor
 	}
 	return "t"
+}
+
+// defaultTextInsetLeftEMU is the OOXML bodyPr lIns default (0.1in).
+const defaultTextInsetLeftEMU = 91440
+
+// resolveTitleLeftInset returns the effective left text inset of a title
+// placeholder: the layout shape's own bodyPr lIns, else the master title's,
+// else the OOXML default 91440 EMU.
+func resolveTitleLeftInset(shape *shapeXML, masterFonts *MasterFontStyles) int64 {
+	if shape.TextBody != nil && shape.TextBody.BodyPr != nil && shape.TextBody.BodyPr.LIns != "" {
+		return int64(xmlIntAttr(shape.TextBody.BodyPr.LIns))
+	}
+	if masterFonts != nil && masterFonts.TitleLeftInset != "" {
+		return int64(xmlIntAttr(masterFonts.TitleLeftInset))
+	}
+	return defaultTextInsetLeftEMU
 }
 
 // applyInheritedBodyText fills the measured-fit text style of a body / content

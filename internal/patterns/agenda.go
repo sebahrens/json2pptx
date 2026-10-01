@@ -526,7 +526,7 @@ func (a *agenda) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 		ColGap:        agendaColGapPt,
 		RowGap:        agendaListRowGapPt,
 		Rows:          rows,
-		VerticalAlign: GridVerticalAlignDefault,
+		VerticalAlign: "center", // an agenda is a balanced contents page, not a body block
 	}
 
 	return grid, nil

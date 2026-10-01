@@ -833,6 +833,10 @@ func resolveGridForStructural(grid *ShapeGridInput, overrideBounds *pptx.RectEmu
 		RowGap:    rowGap,
 		VAlign:    vAlign,
 	}
+	if zone != nil {
+		sgGrid.AnchorY = zone.BodyTop
+		sgGrid.TextLeft = zone.TextLeft
+	}
 	sgGrid.KeepTextSizes = grid.KeepTextSizes
 
 	if vErr := shapegrid.Validate(sgGrid); vErr != nil {

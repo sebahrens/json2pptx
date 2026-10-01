@@ -9,12 +9,16 @@ import (
 )
 
 // ApplyReadableInk keeps a pattern on the template's own accents. Patterns
-// write light (lt1) text on accent fills; on templates whose accents are light
-// (p-style's oranges) that text is unreadable, and the old answer was to swap
-// the FILL for dk2 / black, painting every card black. Instead, keep the
-// accent fill and swap the pattern-authored light text for the first theme ink
-// that is readable on it. Only light inks written by the pattern are touched,
-// so author-chosen colours and dark text are never rewritten.
+// write light (lt1) text on accent fills; on templates whose accents are
+// mid-tone (p-style's orange, abstract's taupe, warm-coral's E64A19) that text
+// misses WCAG AA. The old answers were to swap the FILL for dk2 / black
+// (every card black) or the text for dk1 (bold black type on a saturated
+// box). Instead the accent fill is first deepened by the smallest a:shade at
+// which the light text reads — same hue, white type (go-slide-creator-v9tup) —
+// and only a fill no shade can rescue (a pale accent, a tint) keeps its
+// surface and has the pattern-authored light text swapped for the first
+// readable theme ink. Only light inks written by the pattern are touched, so
+// author-chosen colours and dark text are never rewritten.
 func ApplyReadableInk(ctx ExpandContext, grid *jsonschema.ShapeGridInput) {
 	if grid == nil || len(ctx.Theme.Colors) == 0 {
 		return
@@ -72,6 +76,12 @@ func fixShapeInk(ctx ExpandContext, shape *jsonschema.ShapeSpecInput) {
 	if !ok {
 		return
 	}
+	if hasFailingLightInk(ctx, text, fill, minContrast) && !hasDarkInk(text) {
+		if shaded, sok := shadeForLightInk(ctx, tone, minContrast); sok {
+			shape.Fill = shaded.fillJSON()
+			return
+		}
+	}
 	if !recolorLightInk(ctx, text, fill, tone, minContrast) {
 		return
 	}
@@ -110,6 +120,54 @@ func recolorLightInk(ctx ExpandContext, node any, fill svggen.Color, tone fillTo
 		}
 	}
 	return changed
+}
+
+// hasFailingLightInk reports whether any light-ink "color" in the text object
+// misses minContrast on fill.
+func hasFailingLightInk(ctx ExpandContext, node any, fill svggen.Color, minContrast float64) bool {
+	switch v := node.(type) {
+	case map[string]any:
+		if c, ok := v["color"].(string); ok && isLightInk(c) {
+			if ink, iok := resolveThemeColor(ctx, c); iok && ink.ContrastWith(fill) < minContrast {
+				return true
+			}
+		}
+		for k, child := range v {
+			if k != "color" && hasFailingLightInk(ctx, child, fill, minContrast) {
+				return true
+			}
+		}
+	case []any:
+		for _, child := range v {
+			if hasFailingLightInk(ctx, child, fill, minContrast) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// hasDarkInk reports whether the text object sets any non-light colour; a
+// shaded fill would cost that text contrast, so such shapes keep their fill.
+func hasDarkInk(node any) bool {
+	switch v := node.(type) {
+	case map[string]any:
+		if c, ok := v["color"].(string); ok && c != "" && !isLightInk(c) {
+			return true
+		}
+		for k, child := range v {
+			if k != "color" && hasDarkInk(child) {
+				return true
+			}
+		}
+	case []any:
+		for _, child := range v {
+			if hasDarkInk(child) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func isLightInk(c string) bool {

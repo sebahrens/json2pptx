@@ -157,12 +157,19 @@ executable one.
   `list_patterns` / `show_pattern`. Out-of-range pattern text sizes are
   rejected, not clamped. Grid text settles onto the type scale
   (28 / 18 / 14 / 12 / 10pt; KPI figures keep their display size), short
-  ALL-CAPS labels are letter-spaced automatically (+7%) — write them in caps,
+  bold ALL-CAPS labels are letter-spaced automatically (+7%; regular-weight
+  initialisms such as an owner "VP CS" are not) — write them in caps,
   do not add spaces — and bold headings, titles and names are balanced so no
   line ends on a lone word. In a two-column comparison, open each column's
   bullets with a short label line to get a bold column header. In raw
   `shape_grid` text, bullet a paragraph with `paragraphs[].bullet: true`
   (or `"–"`) — a real hanging-indent bullet — never a typed "• ".
+  Pattern-drawn accent fills that white labels would miss WCAG on are
+  shaded just enough to keep the type white (no black-on-orange).
+  Large accent-coloured text (KPI values, stat heroes) keeps the accent when
+  it clears the 3:1 large-text bar; only the small text beside it is fixed.
+  Short pattern blocks hang from the native body line, not mid-slide;
+  `pattern.vertical_align: "center"` centres one (default `auto`).
 - [FINDINGS.md](FINDINGS.md): legacy finding and fix details for cases not yet
   covered by `describe_finding`; prefer the live tool for known codes.
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):

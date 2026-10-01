@@ -267,6 +267,8 @@ func discoverySchema(p Pattern) *Schema {
 		ExclusiveMinimum: float64Ptr(0),
 		ExclusiveMaximum: float64Ptr(100),
 	}}).WithDescription("Maximum grid height as a percentage of the content area; strictly between 0 and 100, including fractional values; ignored when bounds is set")
+	root.raw.Properties["vertical_align"] = EnumSchema("auto", "top", "center", "bottom", "stretch").
+		WithDescription("Placement of a content-sized block in the content area: auto (default) hangs a block filling under 60% of the area from its top, where native body text starts, and centres a fuller one; center / top / bottom force it; stretch fills the area")
 	root.raw.Properties["bounds"] = ObjectSchema(map[string]*Schema{
 		"x":      NumberSchema(0, 100),
 		"y":      NumberSchema(0, 100),

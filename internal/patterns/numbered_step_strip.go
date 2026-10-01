@@ -780,8 +780,8 @@ func (n *numberedStepStrip) expandStackedBox(ctx ExpandContext, vals *NumberedSt
 			},
 		}
 		if step.Recommended {
-			bodyCell.Shape.Fill = json.RawMessage(fmt.Sprintf(`"%s"`, baseAccent))
-			ink := readableInkOn(ctx, fillTone{Color: baseAccent}, "lt1", 4.5)
+			tone, ink := accentFillAndInk(ctx, fillTone{Color: baseAccent}, 4.5)
+			bodyCell.Shape.Fill = tone.fillJSON()
 			bodyCell.Shape.Text = buildNumberedStepRecommendedBody(
 				pptx.ConvertMarkdownEmphasis(step.Label), labelSize,
 				pptx.ConvertMarkdownEmphasis(strings.TrimSpace(step.Body)), bodySize, ink)
