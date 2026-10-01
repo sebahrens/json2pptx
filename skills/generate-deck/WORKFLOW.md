@@ -87,26 +87,14 @@ without rendering, and `analyze_deck_rhythm` accepts the `deck_id`.
 
 ### Pattern monotony (deck-level)
 
-Generating N slides with the same pattern (e.g., 5 card-grids in a row) produces a visually flat deck. The audience cannot distinguish slides. This is the single most common agent mistake.
-
-Bad — monotonous sequence:
-```
-Slide 2: card-grid — "Market Segments"
-Slide 3: card-grid — "Product Lines"
-Slide 4: card-grid — "Competitor Analysis"
-Slide 5: card-grid — "Team Structure"
-```
-
-Good — varied sequence with rhythm breaks:
-```
-Slide 2: card-grid     — "Market Segments"
-Slide 3: comparison-2col — "Product Lines"
-Slide 4: stat-hero     — "Key Differentiator"     ← narrative break
-Slide 5: matrix-2x2    — "Competitor Positioning"
-Slide 6: icon-row      — "Team Strengths"
-```
-
-Rules: no visual pattern family should appear 3+ times consecutively (alternating `kpi-3up` and `kpi-4up` is still one KPI run). Use a stat or quote slide only when the message is a single number or a stakeholder voice — never as a filler break. Use `analyze_deck_rhythm` to detect violations before generating. Appendix back matter (after a divider titled Appendix / Backup / Annex, or in a `sections[].appendix: true` section) is exempt: backup pages never form a run for `break_run`, `DECK_MONOTONY` or `SEMANTIC_RHYTHM_MONOTONY`.
+The most common agent mistake: the same pattern slide after slide (card-grid,
+card-grid, card-grid, …) makes a flat deck. Break runs with a different
+family that fits the content — e.g. card-grid → comparison-2col → stat-hero →
+matrix-2x2 → icon-row. Use a stat or quote slide only when the message is a
+single number or a stakeholder voice — never as filler. Appendix back matter
+(after a divider titled Appendix / Backup / Annex, or in a
+`sections[].appendix: true` section) is exempt: backup pages never form a run
+for `break_run`, `DECK_MONOTONY` or `SEMANTIC_RHYTHM_MONOTONY`.
 
 ### Accent monotony
 

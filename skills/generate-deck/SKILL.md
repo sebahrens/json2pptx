@@ -22,25 +22,20 @@ server `instructions`):** A deck is done only after every slide of the CURRENT r
 **Must-read before authoring:** [QUALITY.md](QUALITY.md) — ghost deck of
 titles first, full-sentence action titles (≤15 words, carrying the number),
 one message per slide, a `takeaway` and `source` on every evidence slide
-(a data slide without a source draws `DATA_WITHOUT_SOURCE`, review weight; set a
-deck-wide default once with DeckSpec `meta.source` / raw top-level `source`), and
-the message → visual table. `score_deck`'s gate now enforces the storyline:
-`takeaway_missing` (require_takeaway_on_charts), topic titles
-(`TITLE_NOT_ACTION` on more than 25% of slides, max_topic_title_pct), and
-`NO_EXECUTIVE_SUMMARY` / `CLOSING_WITHOUT_NEXT_STEPS` (require_storyline);
-`SLIDE_TEXT_DENSE` (>6 bullets, >80 words, or a bullet over two lines) costs
-score. See [FINDINGS.md](FINDINGS.md). A deck that passes every gate with topic titles is not finished. Back matter: `sections[].appendix: true` or raw
-`section_number: false|"A"` (Appendix/Backup/Q&A dividers are unnumbered).
-`analyze_deck_rhythm` recommendations carry a `code` (RAW_PATH.md); keep
-`accent_weight: "strong"` patterns (`list_patterns` full) to two in a row.
+(deck-wide default: DeckSpec `meta.source` / raw top-level `source`), and the
+message → visual table. `score_deck`'s gate enforces the storyline
+(`takeaway_missing`, `TITLE_NOT_ACTION`, `NO_EXECUTIVE_SUMMARY`,
+`CLOSING_WITHOUT_NEXT_STEPS`, `DATA_WITHOUT_SOURCE`, `SLIDE_TEXT_DENSE`:
+[FINDINGS.md](FINDINGS.md)). A deck that passes every gate with topic titles
+is not finished. Back matter: `sections[].appendix: true` or raw
+`section_number: false|"A"`. Keep `accent_weight: "strong"` patterns
+(`list_patterns` full) to two in a row.
 
 **One conclusion band per slide:** `takeaway` is the fallback for kinds with
 their own conclusion field — on `executive_summary` write `bottom_line`, on
-`decision` write `recommendation`, and leave `takeaway` out; one written
-beside them goes to the speaker notes (`SEMANTIC_DUPLICATE_CALLOUT`). Kind
-specifics (exec-summary budgets, agenda subtitles under a bold current
-section, stat `unit` at 40% of the value, `closing` on the template's closing
-layout, `SEMANTIC_IMAGE_MISSING`) are in [DECKSPEC.md](DECKSPEC.md).
+`decision` write `recommendation`, and leave `takeaway` out (a duplicate goes
+to the speaker notes, `SEMANTIC_DUPLICATE_CALLOUT`). Kind budgets and
+specifics are in [DECKSPEC.md](DECKSPEC.md).
 
 ## Choose the authoring path
 
@@ -50,71 +45,27 @@ Default for content-bearing decks: author real content as a DeckSpec; call `list
 
 For a new content-bearing deck, write a semantic **DeckSpec** (`meta` plus
 `slides[].kind`, or chapter-based `structure`). `get_started(task:"brief")`
-returns this path as its `sequence` (the raw chain is `raw_sequence`):
-`plan_deck` with `format:"deckspec"` drafts the storyline as a DeckSpec
-(kinds chosen from the brief's signals, brief facts routed by type; 8+ slides
-are drafted in `structure` chapters, plus an appendix when the brief has backup material (DECKSPEC.md); `meta.chrome` turns page numbers on); discover kinds with
-`list_slide_kinds` using its compact fields, requesting `item_schema` and
-`compositions` only for selected kinds. Then call `validate_deck_spec`,
-`render_deck_spec`, `render_deck_thumbnails`, and `submit_visual_review`. Edit the spec at a finding's
-`semantic_path` and repeat (a render refused as unreadable also returns its
-`TEXT_BELOW_READABLE_MIN` refusal with a `semantic_path`). For a chart or diagram no kind covers (gantt,
-venn, pestel, ...), a `recommend_visual` chart/diagram candidate carries
-`data_contract` (keys + `field_path`) and a runnable `next_tool_call`
-(`render_deck_spec` with a `raw_json2pptx` slide); replace its title and data.
-`make_deck` creates an exemplar-filled wireframe,
-not a publishable authored deck. Read [DECKSPEC.md](DECKSPEC.md) for budgets,
-degradation behavior, required-layout coverage, handles, and revision rules.
+returns this path as its `sequence` (the raw chain is `raw_sequence`).
+`plan_deck` with `format:"deckspec"` drafts the storyline as a DeckSpec; discover
+kinds with `list_slide_kinds` using its compact fields, requesting
+`item_schema` and `compositions` only for selected kinds. Then call
+`validate_deck_spec`, `render_deck_spec`, `render_deck_thumbnails`, and
+`submit_visual_review`. Edit the spec at a finding's `semantic_path` and
+repeat. For a chart or diagram no kind covers (gantt, venn, pestel, ...), a
+`recommend_visual` chart/diagram candidate carries `data_contract` and a
+runnable `next_tool_call` (`render_deck_spec` with a `raw_json2pptx` slide);
+replace its title and data. Read [DECKSPEC.md](DECKSPEC.md) for budgets,
+degradation, required-layout coverage, handles, and revision rules.
 
 Use raw `PresentationInput` only for a feature the semantic schema cannot
-express, a targeted low-level repair, or an existing raw deck. Discover
-patterns with `list_patterns` and the chosen pattern's live value schema with
-`show_pattern`; use `get_input_schema` for raw fields. The raw path is
-`recommend_visual` (when visual choice is unclear) → `expand_pattern` (when
-using a pattern) → `validate_input` → `generate_presentation` → render and
-inspect. Pattern copy budgets assume the template's full content area; on a
-short or narrow template, or under a `takeaway`, the content-sized patterns
-(`chart-insights-split`, `table-highlight`, `exec-summary`, `scqa-summary`,
-`bmc-canvas`, `agenda-with-images`, `state-shift-hub`, `metric-list`,
-`next-steps`, `matrix-2x2`, `process-grid-2row`, `stylish-panels`,
-`team-bios`, `framework-grid`, `contact-directory`, `agenda`,
-`before-after[-compact]`, `comparison-2col`, `hero-detail`,
-`timeline-horizontal`, `pull-quote`) first give up air, headshot size or
-type down to the 12pt floor (a `pull-quote` quote 36 → 20pt), then report
-`BODY_TOO_LONG` naming what to drop (`icon-row`, `labeled-rows`,
-`process-flow` and `process-flow-compact` grow their cards, rows or band to
-the text's written fit before they report it), and validate
-predicts grid text (nested cells included) that generation would refuse as
-an `error` `TEXT_BELOW_READABLE_MIN`; a `render_deck_spec` refusal returns
-it as a source-addressed diagnostic with `evidence` and a patch
-`next_tool_call` ([DECKSPEC.md](DECKSPEC.md)). KPI values and label words are never wrapped
-mid-token: a value shrinks (a `kpi-6up` "$4.2M" may render near 28pt) and a
-`process-grid-2row` row-label column (and the `scqa-summary` label column,
-up to 1.3 : 4) widens before its label shrinks; what
-cannot fit is reported (`BODY_TOO_LONG` on `values[i].big`,
-`TEXT_EXCEEDS_SHAPE` naming the label word) — see [PATTERNS.md](PATTERNS.md).
-Patterns spend at most one solid accent block by default, in the template's
-`color_roles.primary_fill` (structural cells are neutral tints; opt-ins such
-as `overrides.style: "solid"`: [PATTERNS.md](PATTERNS.md)).
-Content under a top-anchored title starts below its measured lines,
-including tracked, bold or substituted title faces.
-Read [RAW_PATH.md](RAW_PATH.md) before authoring raw JSON. Its
-preconditions are **not** universal DeckSpec requirements. Two raw-only
-patterns cover pages DeckSpec kinds do not: `contact-directory` (key contacts
-/ "who to call": grouped rows of circular headshots, names and titles, up to
-24 people) and `text-sidebar` (prose introduction or foreword beside one large
-key-message panel). A shape-grid `image` cell accepts `geometry: "ellipse"` for
-a circular picture frame. Asset paths expand only `$HOME`, `$BRAND_ASSETS`,
-`$JSON2PPTX_*`; `icon.path` obeys `ALLOWED_IMAGE_PATHS`. A picture that cannot
-be embedded (missing, corrupt, outside the image roots) is refuse-class
-`IMAGE_ASSET_UNAVAILABLE` at the authored field and blocks `deterministic_ready`.
-A `slide_type: "image"` slide on a template without a picture layout fills One
-Content's body with the whole picture (no crop); cover discarding over 30%
-reports `IMAGE_HEAVY_CROP`, and a photo over the footer band drops that slide's
-chrome (`CHROME_OVER_IMAGE`). Prefer `comparison-2col` / `before-after` to
-`slide_type: "comparison"` (`COMPARISON_PREFER_PATTERN`);
-`score_deck` fetches image `url`s like generation (`URL_FETCH_FAILED` refuses),
-and a `deck_id` keeps the authored `url`, re-fetched on each render.
+express, a targeted low-level repair, or an existing raw deck. Read
+[RAW_PATH.md](RAW_PATH.md) first; its preconditions are **not** universal
+DeckSpec requirements. The raw path is `recommend_visual` (when visual choice
+is unclear) → `list_patterns` / `show_pattern` → `expand_pattern` →
+`validate_input` → `generate_presentation` → render and inspect;
+`get_input_schema` has the raw fields. How patterns fit text, shrink, and
+report `BODY_TOO_LONG` / `TEXT_EXCEEDS_SHAPE` is in [PATTERNS.md](PATTERNS.md);
+patterns spend at most one solid accent block, in `color_roles.primary_fill`.
 
 Both render tools return `deterministic_ready`, `publishable` (false on a fresh
 render), `blocking_reasons` and `next_tool_call` (blocking fix, else
@@ -134,58 +85,21 @@ executable one.
   takeaways, sources, and choosing the visual from the message (always read).
 - [DECKSPEC.md](DECKSPEC.md): semantic authoring, content budgets, degradation,
   chapter structure, required layouts, and spec-level iteration.
-- [RAW_PATH.md](RAW_PATH.md): raw `PresentationInput` preconditions, raw
-  planning and rhythm, strict output validation, repair, assets, and
-  SVG/diagram integration.
-- [TOOLS.md](TOOLS.md): concise phase map, tool-profile discovery, MCP-only
+- [WORKFLOW.md](WORKFLOW.md): Plan → Vary → Render → Repair, the per-slide
+  review rubric (recorded in `submit_visual_review`), and the three-round
+  repair cap. Read before the first render.
+- [RAW_PATH.md](RAW_PATH.md): raw preconditions, planning and rhythm, strict
+  output validation, repair, images and assets, SVG/diagram integration.
+- [TOOLS.md](TOOLS.md): phase map, tool-profile discovery, MCP-only
   operations, and composition recipes.
-- [WORKFLOW.md](WORKFLOW.md): Plan → Vary → Render → Repair on the DeckSpec
-  path, the per-slide review rubric (recorded in `submit_visual_review`), and
-  the three-round repair cap. Read before the first render.
-- [RULES.md](RULES.md): shape-grid, content, contrast, typography, and
-  anti-pattern rules. Waterfall `type` sets the sign
-  (`chart.waterfall_total_mismatch`). CJK / emoji / Arabic chart labels
-  lack embedded glyphs (`chart.glyph_missing`): check the render. A funnel
-  must narrow (`chart.funnel_stage_increase`). Percent data: set
-  `style.value_format.input_scale` to `fraction` (0.25 → 25%) or
-  `percentage_points` (0.25 → 0.25%) — left `auto` it guesses and reports
-  `chart.percent_scale_ambiguous`. Bubble area is proportional to size on one
-  chart-wide scale (negative sizes are rejected). Charts show the title's point: a
-  single-series bar chart (and `horizontal-bar-with-callouts`) is neutral
-  grey with accent1 only on `highlight` bars (0-based indices or names;
-  default the last period of a time series, else the top bar); set it to the
-  bar(s) the title names. Waterfalls accent the decreases. Charts are
-  labelled by default on every path (bars ≤16, single-series line/area ≤12
-  points, treemaps; `style.show_values: false` opts out); bars rank
-  descending (`data.sort`), `data.orientation: "horizontal"` for rankings /
-  long names; multi-series `data.highlight` names the series (rest grey,
-  default the one the title names); pies sort, label "Name NN%" ≤6 slices,
-  fold <3% into Other — over 7 slices `CHART_OVERLOADED` says use a bar.
-  A table with no `style` renders as a
-  consulting table (unfilled 11pt bold header over a 1pt rule, 12pt rows,
-  hairline rules, no zebra); `table-highlight` matches it. `header_background`
-  only adds a header fill (same type, rules, no zebra). `body_and_lead`
-  bullets get the body density size; the bold lead sits one 2pt step above.
-- [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance;
-  get the current catalog, per-pattern schema and per-field copy targets from
-  `list_patterns` / `show_pattern`. Out-of-range pattern text sizes are
-  rejected, not clamped. Grid text settles onto the type scale
-  (28 / 18 / 14 / 12 / 10pt; KPI figures keep their display size), short
-  bold ALL-CAPS labels are letter-spaced automatically (+7%; regular-weight
-  initialisms such as an owner "VP CS" are not) — write them in caps,
-  do not add spaces — and bold headings, titles and names are balanced so no
-  line ends on a lone word. In a two-column comparison, open each column's
-  bullets with a short label line to get a bold column header. In raw
-  `shape_grid` text, bullet a paragraph with `paragraphs[].bullet: true`
-  (or `"–"`) — a real hanging-indent bullet — never a typed "• ".
-  Pattern-drawn accent fills that white labels would miss WCAG on are
-  shaded just enough to keep the type white (no black-on-orange).
-  Large accent-coloured text (KPI values, stat heroes) keeps the accent when
-  it clears the 3:1 large-text bar; only the small text beside it is fixed.
-  Pattern blocks hang from the native body line, not mid-slide;
-  `pattern.vertical_align: "center"` centres one (default `auto`).
-- [FINDINGS.md](FINDINGS.md): legacy finding and fix details for cases not yet
-  covered by `describe_finding`; prefer the live tool for known codes.
+- [RULES.md](RULES.md): shape-grid, chart, table, content, contrast,
+  typography, and anti-pattern rules (chart labelling, highlight, sorting,
+  percent scale and the default table look live here).
+- [PATTERNS.md](PATTERNS.md): pattern selection, text capacity, content-sized
+  degradation and accent defaults; the live catalog, schemas and per-field
+  copy targets come from `list_patterns` / `show_pattern`.
+- [FINDINGS.md](FINDINGS.md): finding and fix semantics not yet covered by
+  `describe_finding`; prefer the live tool for known codes.
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):
   template/layout fields and raw slide structure.
 

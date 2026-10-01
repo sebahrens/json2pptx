@@ -22,6 +22,12 @@ and typed content uses the matching `*_value` property declared by
 template-managed type sizes. Use `design_mode:"free"` only when explicit
 hex colors or absolute sizing are intentional.
 
+Two raw-only patterns cover pages DeckSpec kinds do not: `contact-directory`
+(key contacts / "who to call": grouped rows of circular headshots, names and
+titles, up to 24 people) and `text-sidebar` (prose introduction or foreword
+beside one large key-message panel). Prefer `comparison-2col` /
+`before-after` to `slide_type: "comparison"` (`COMPARISON_PREFER_PATTERN`).
+
 For a reusable deck use canonical `layout_id` values discovered from
 `list_templates` / `examine_template`, not a template-specific
 `slideLayoutN` identifier. A pinned layout number is appropriate only for
@@ -48,15 +54,12 @@ it says nothing about visual polish. `CONTENT_DROPPED` with
 `"placeholder_occupied"` (another block already fills it) is a refuse-class
 drop and strict mode fails generation. Read
 `placeholders_dropped`, not just `placeholders_used`, when a slide looks
-empty. If a finding code is unfamiliar, use `describe_finding`; for
-repairable kinds query
-`get_capabilities().vocabularies.repair_fix_kinds`.
+empty.
 
-Actual source loss refuses every fit mode, including `warn` and `off`.
-Preserve required content and the requested slide count; refused inputs and
-stale outputs are not approved. Use `describe_finding` for repair guidance.
-So does grid text below its role floor
-(`TEXT_BELOW_READABLE_MIN`); a lone axis "1" is a caption.
+Actual source loss refuses every fit mode, including `warn` and `off`, and so
+does grid text below its role floor (`TEXT_BELOW_READABLE_MIN`; a lone axis
+"1" is a caption). Preserve required content and the requested slide count;
+refused inputs and stale outputs are not approved.
 
 Apply precise `repair_slide` fixes to one raw slide per call; with a raw
 `deck_id` each call is small. `propose_repairs` plans several slides. A finding can recommend an advisory kind whose remedy is an
@@ -84,11 +87,20 @@ For a local relative asset, send an explicit absolute `base_dir` to MCP
 calls. CLI validation resolves relative to the input file directory.
 `base_dir` bounds relative asset paths only: an absolute image, background
 or icon path is read wherever it points unless the server sets
-`ALLOWED_IMAGE_PATHS`.
-Validation checks image, background, and icon paths; unsafe traversal,
-symlink escapes, missing files, unset environment variables, oversized
-assets, bad remote types, and unsafe SVG XML have distinct findings. Do not
-assume a URL will fetch or an SVG is safe because it looks plausible.
+`ALLOWED_IMAGE_PATHS` (which `icon.path` also obeys). Asset paths expand only
+`$HOME`, `$BRAND_ASSETS`, `$JSON2PPTX_*`. Unsafe traversal, symlink escapes,
+missing files, unset variables, oversized assets, bad remote types, and unsafe
+SVG XML have distinct findings; a picture that cannot be embedded is
+refuse-class `IMAGE_ASSET_UNAVAILABLE` at the authored field and blocks
+`deterministic_ready`. `score_deck` fetches image `url`s like generation
+(`URL_FETCH_FAILED` refuses); a `deck_id` keeps the authored `url`,
+re-fetched on each render.
+
+A `slide_type: "image"` slide on a template without a picture layout fills
+One Content's body with the whole picture (no crop); cover discarding over 30%
+reports `IMAGE_HEAVY_CROP`, and a photo over the footer band drops that
+slide's chrome (`CHROME_OVER_IMAGE`). A shape-grid `image` cell accepts
+`geometry: "ellipse"` for a circular frame (RULES.md 6d).
 
 Use bundled icon names from `list_icons`, qualified by set when necessary;
 do not put emoji codepoints in deck JSON. A pattern icon slot may take a
