@@ -182,9 +182,9 @@ func (sh *statHero) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	}
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	valueSize := ResolveSize(ovr.ValueSize, 120.0)
-	labelSize := ResolveSize(ovr.LabelSize, 18.0)
-	contextSize := ResolveSize(ovr.ContextSize, 14.0)
+	valueSize := ResolveSize(ovr.ValueSize, sizeHeroFigurePt)
+	labelSize := ResolveSize(ovr.LabelSize, scaleLeadPt)
+	contextSize := ResolveSize(ovr.ContextSize, scaleSubheadPt)
 
 	// The unit is a trailing run in the value's paragraph — same baseline,
 	// same accent — at statHeroUnitRatio of the value size. At the value's own

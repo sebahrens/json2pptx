@@ -527,12 +527,12 @@ func (t *Typography) ScaleForDimensions(width, height float64) *Typography {
 	// Body text floors at 11pt and label/annotation text at 10pt minimum
 	// to ensure legibility across all chart types and canvas sizes.
 	const (
-		minTitle    = 13.0 // Chart titles must remain prominent
-		minSubtitle = 11.0 // Subtitles/section headers
-		minHeading  = 11.0 // Legend text, section headings
-		minBody     = 11.0 // Pie/donut outside labels, axis titles
-		minSmall    = 10.0 // Axis tick labels, value labels
-		minCaption  = 10.0 // Diagram badges, footnotes — 10pt floor for presentation readability
+		minTitle    = ChartTitleMinPt // Chart titles stay on the slide subhead step
+		minSubtitle = ChartTextMinPt  // Subtitles/section headers
+		minHeading  = ChartTextMinPt  // Legend text, section headings
+		minBody     = ChartTextMinPt  // Pie/donut outside labels, axis titles
+		minSmall    = ChartLabelMinPt // Axis tick labels, value labels
+		minCaption  = ChartLabelMinPt // Diagram badges, footnotes — 10pt floor for presentation readability
 
 		maxTitle    = 24.0 // Large canvas titles
 		maxSubtitle = 19.0
@@ -560,12 +560,12 @@ func DefaultTypography() *Typography {
 		FontFamily:    "Arial",
 		FallbackFonts: []string{"Helvetica", "sans-serif"},
 
-		SizeTitle:    18,
-		SizeSubtitle: 15,
-		SizeHeading:  13,
-		SizeBody:     12,
-		SizeSmall:    10,
-		SizeCaption:  10,
+		SizeTitle:    ChartTitlePt,
+		SizeSubtitle: ChartSubtitlePt,
+		SizeHeading:  ChartHeadingPt,
+		SizeBody:     ChartBodyPt,
+		SizeSmall:    ChartLabelPt,
+		SizeCaption:  ChartCaptionPt,
 
 		WeightLight:  300,
 		WeightNormal: 400,

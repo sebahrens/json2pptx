@@ -266,9 +266,9 @@ func (d *dualOrgLadder) Expand(ctx ExpandContext, values, overrides any, cellOve
 	// are peers and a second brand hue says otherwise (go-slide-creator-at7ij).
 	accentB := ovr.AccentB
 	usePeerToneForB := accentB == ""
-	orgSize := ResolveSize(ovr.OrgSize, 14.0)
-	nameSize := ResolveSize(ovr.NameSize, 12.0)
-	titleSize := ResolveSize(ovr.TitleSize, 10.0)
+	orgSize := ResolveSize(ovr.OrgSize, scaleSubheadPt)
+	nameSize := ResolveSize(ovr.NameSize, scaleBodyPt)
+	titleSize := ResolveSize(ovr.TitleSize, scaleCaptionPt)
 
 	showConnectors := true
 	if v.ShowConnectors != nil {

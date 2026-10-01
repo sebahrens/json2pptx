@@ -199,7 +199,7 @@ func scaleBlockFits(paras []scaleParagraph, width int64, targetHeightPt, scale f
 		if err != nil {
 			return false
 		}
-		height += float64(m.Lines)*pt*1.2 + p.spaceAfter
+		height += float64(m.Lines)*pt*textLineHeightFactor + p.spaceAfter
 		if height > targetHeightPt {
 			return false
 		}

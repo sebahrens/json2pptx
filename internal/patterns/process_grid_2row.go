@@ -275,7 +275,7 @@ func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellO
 	// Resolve the base accent for cell-override accent bars; per-row fills come
 	// from row1_color / row2_color directly, not from the resolved accent.
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	phaseSize := ResolveSize(ovr.BodySize, 12.0)
+	phaseSize := ResolveSize(ovr.BodySize, scaleBodyPt)
 
 	// The row labels sit in the narrow first column: widen it, then shrink
 	// one shared size, until no label word breaks mid-word ("PRODUCTI / ON",
@@ -455,8 +455,8 @@ type processGrid2RowLayout struct {
 // the column headers sized from it) step to the 12pt floor; an authored
 // header_size is kept (go-slide-creator-n1muf).
 func layoutProcessGrid2Row(ctx ExpandContext, vals *ProcessGrid2RowValues, ovr *ProcessGrid2RowOverrides) processGrid2RowLayout {
-	phaseSize := ResolveSize(ovr.BodySize, 12.0)
-	sizes := []float64{ResolveSize(ovr.HeaderSize, 14.0)}
+	phaseSize := ResolveSize(ovr.BodySize, scaleBodyPt)
+	sizes := []float64{ResolveSize(ovr.HeaderSize, scaleSubheadPt)}
 	if ovr.HeaderSize == 0 {
 		sizes = append(sizes, shapegrid.MinTextSizePt)
 	}

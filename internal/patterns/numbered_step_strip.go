@@ -275,7 +275,7 @@ func (n *numberedStepStrip) PostExpandWarnings(ctx ExpandContext, values, overri
 	if ovr == nil {
 		ovr = &NumberedStepStripOverrides{}
 	}
-	fit := fitChevronLabels(ctx, vals, chevronStripGeometry(ctx, len(vals.Steps)), ResolveSize(ovr.HeaderSize, 13.0))
+	fit := fitChevronLabels(ctx, vals, chevronStripGeometry(ctx, len(vals.Steps)), ResolveSize(ovr.HeaderSize, sizeLabelPt))
 	if len(fit.unfit) == 0 {
 		return warnings
 	}
@@ -417,7 +417,7 @@ func stepNumber(step NumberedStepStripStep, idx int) string {
 
 func (n *numberedStepStrip) expandChevron(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides, cellOverrides map[int]any) *jsonschema.ShapeGridInput {
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	labelSize := ResolveSize(ovr.HeaderSize, 13.0)
+	labelSize := ResolveSize(ovr.HeaderSize, sizeLabelPt)
 	descSize := ResolveSize(ovr.BodySize, chevronDescDefaultSize)
 	cellAccentMode := ovr.CellAccentMode
 
@@ -524,7 +524,7 @@ const (
 	// ation".
 	chevronFitSafetyFrac = 0.90
 	// chevronDescDefaultSize is the default detail-zone text size (pt).
-	chevronDescDefaultSize = 12.0
+	chevronDescDefaultSize = scaleBodyPt
 	// chevronDescInsetPt is the detail zone's side margin: the uniform shape
 	// text inset.
 	chevronDescInsetPt = defaultShapeInsetLRPt
@@ -749,9 +749,9 @@ func buildChevronDescText(body string, size float64) json.RawMessage {
 
 func (n *numberedStepStrip) expandStackedBox(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides, cellOverrides map[int]any) *jsonschema.ShapeGridInput {
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	numberSize := ResolveSize(ovr.HeaderSize, 18.0)
-	labelSize := 13.0
-	bodySize := ResolveSize(ovr.BodySize, 10.0)
+	numberSize := ResolveSize(ovr.HeaderSize, scaleLeadPt)
+	labelSize := sizeLabelPt
+	bodySize := ResolveSize(ovr.BodySize, scaleCaptionPt)
 	cellAccentMode := ovr.CellAccentMode
 
 	withIcons := numberedStepsHaveIcons(vals)
@@ -880,9 +880,9 @@ func numberedStepIconCell(ctx ExpandContext, step NumberedStepStripStep, tip str
 
 func (n *numberedStepStrip) expandTOC(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides, cellOverrides map[int]any) *jsonschema.ShapeGridInput {
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	numberSize := ResolveSize(ovr.HeaderSize, 20.0)
-	titleSize := 14.0
-	bodySize := ResolveSize(ovr.BodySize, 10.0)
+	numberSize := ResolveSize(ovr.HeaderSize, sizeLeadPlusPt)
+	titleSize := scaleSubheadPt
+	bodySize := ResolveSize(ovr.BodySize, scaleCaptionPt)
 	cellAccentMode := ovr.CellAccentMode
 
 	withIcons := numberedStepsHaveIcons(vals)
@@ -986,7 +986,7 @@ func buildNumberedStepStackedBody(label string, labelSize float64, body string, 
 
 func buildNumberedStepRecommendedBody(label string, labelSize float64, body string, bodySize float64, ink string) json.RawMessage {
 	paras := []numberedStepParagraph{
-		{Content: "RECOMMENDED", Size: 8, Bold: true, Color: ink, Align: "l"},
+		{Content: "RECOMMENDED", Size: sizeBadgePt, Bold: true, Color: ink, Align: "l"},
 		{Content: label, Size: labelSize, Bold: true, Color: ink, Align: "l"},
 	}
 	if body != "" {

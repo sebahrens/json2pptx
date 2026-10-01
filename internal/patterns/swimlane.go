@@ -241,8 +241,8 @@ func (s *swimlane) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	}
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	headerSize := ResolveSize(ovr.HeaderSize, 12.0)
-	bodySize := ResolveSize(ovr.BodySize, 11.0)
+	headerSize := ResolveSize(ovr.HeaderSize, scaleBodyPt)
+	bodySize := ResolveSize(ovr.BodySize, scaleDenseBodyPt)
 
 	// Determine number of columns: 1 actor label + N steps
 	stepCount := 0

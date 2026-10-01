@@ -21,9 +21,9 @@ func TestComputeCartesianLayout_Basic(t *testing.T) {
 
 	layout := ComputeCartesianLayout(config, style, "Title", "Subtitle", "Footnote", 3)
 
-	// headerHeight = SizeTitle(18) + Spacing.MD(8) + SizeSubtitle(15) + Spacing.XS(4) = 45
-	if math.Abs(layout.HeaderHeight-45) > 0.001 {
-		t.Errorf("HeaderHeight = %v, want 45", layout.HeaderHeight)
+	// headerHeight = SizeTitle(18) + Spacing.MD(8) + SizeSubtitle(14) + Spacing.XS(4) = 44
+	if math.Abs(layout.HeaderHeight-44) > 0.001 {
+		t.Errorf("HeaderHeight = %v, want 44", layout.HeaderHeight)
 	}
 
 	// footerHeight = FootnoteReservedHeight = SizeCaption(10) + Padding(3)*2 = 16
@@ -38,18 +38,18 @@ func TestComputeCartesianLayout_Basic(t *testing.T) {
 
 	// PlotArea should be adjusted from the base PlotArea.
 	// Base: X=60, Y=40, W=720, H=500
-	// Adjusted: Y += 45 => 85, H -= (45+16+22) => 417  (legend bottom)
+	// Adjusted: Y += 44 => 84, H -= (44+16+22) => 418  (legend bottom)
 	if math.Abs(layout.PlotArea.X-60) > 0.001 {
 		t.Errorf("PlotArea.X = %v, want 60", layout.PlotArea.X)
 	}
-	if math.Abs(layout.PlotArea.Y-85) > 0.001 {
-		t.Errorf("PlotArea.Y = %v, want 85", layout.PlotArea.Y)
+	if math.Abs(layout.PlotArea.Y-84) > 0.001 {
+		t.Errorf("PlotArea.Y = %v, want 84", layout.PlotArea.Y)
 	}
 	if math.Abs(layout.PlotArea.W-720) > 0.001 {
 		t.Errorf("PlotArea.W = %v, want 720", layout.PlotArea.W)
 	}
-	if math.Abs(layout.PlotArea.H-417) > 0.001 {
-		t.Errorf("PlotArea.H = %v, want 417", layout.PlotArea.H)
+	if math.Abs(layout.PlotArea.H-418) > 0.001 {
+		t.Errorf("PlotArea.H = %v, want 418", layout.PlotArea.H)
 	}
 }
 

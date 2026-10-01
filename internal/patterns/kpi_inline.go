@@ -220,8 +220,8 @@ func (k *kpiInline) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	// pattern only supports (go-slide-creator-061ag).
 	solid := ovr.Style == "solid"
 	// Smaller sizes for inline variant
-	bigSize := ResolveSize(ovr.BigSize, 24.0)
-	smallSize := ResolveSize(ovr.SmallSize, 11.0)
+	bigSize := ResolveSize(ovr.BigSize, sizeFigurePt)
+	smallSize := ResolveSize(ovr.SmallSize, scaleDenseBodyPt)
 	cellAccentMode := ovr.CellAccentMode
 
 	n := len(*cells)

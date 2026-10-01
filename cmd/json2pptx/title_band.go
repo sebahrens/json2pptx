@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/template"
@@ -87,9 +88,9 @@ func measuredTitleBottom(title *types.PlaceholderInfo, text string) (int64, bool
 	if title.TextCaps {
 		text = strings.ToUpper(text)
 	}
-	lineSpacing := 1.2
+	lineSpacing := tokens.LineHeight
 	if title.LineSpacingPct > 0 {
-		lineSpacing = 1.2 * float64(title.LineSpacingPct) / 100.0
+		lineSpacing = tokens.LineHeight * float64(title.LineSpacingPct) / 100.0
 	}
 	bold, width := title.TextBold, title.Bounds.Width
 	if textfit.FontSubstituted(title.FontFamily) {

@@ -332,8 +332,8 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 	}
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	headerSize := ResolveSize(ovr.HeaderSize, 14.0)
-	bodySize := ResolveSize(ovr.BodySize, 10.0)
+	headerSize := ResolveSize(ovr.HeaderSize, scaleSubheadPt)
+	bodySize := ResolveSize(ovr.BodySize, scaleCaptionPt)
 	dateSize := bodySize
 	milestoneSize := bodySize
 

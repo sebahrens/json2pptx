@@ -422,8 +422,8 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 	if decreaseAccent == "" {
 		decreaseAccent = baseAccent
 	}
-	labelSize := ResolveSize(ovr.LabelSize, ResolveSize(ovr.HeaderSize, 9.0))
-	valueSize := ResolveSize(ovr.ValueSize, ResolveSize(ovr.BodySize, 10.0))
+	labelSize := ResolveSize(ovr.LabelSize, ResolveSize(ovr.HeaderSize, sizeDenseCaptionPt))
+	valueSize := ResolveSize(ovr.ValueSize, ResolveSize(ovr.BodySize, scaleCaptionPt))
 
 	resolved := resolveColumns(vals.Columns)
 	yMin, yMax := chartRange(resolved)

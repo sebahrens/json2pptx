@@ -208,7 +208,9 @@ func TestFullPatternsOccupyContentZone(t *testing.T) {
 		name     string
 		min, max float64
 	}{
-		{"kpi-4up", 0, 0.60},
+		// kpi-4up figures sit on the 40pt KPI step (was 36pt, go-slide-creator-vmdfm);
+		// the content-sized row is a little taller for it, not stretched.
+		{"kpi-4up", 0, 0.65},
 		{"process-flow", 0, 0.30},
 		{"before-after", 0, 0.50},
 		{"agenda", 0.59, 1},

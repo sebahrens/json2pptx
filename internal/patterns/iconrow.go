@@ -220,7 +220,7 @@ func (ir *iconRow) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	// icon_size override is retained on the schema for backward compatibility but
 	// is unused now that icons render as an SVG overlay that sizes itself relative
 	// to the cell. caption_size still controls the caption font size.
-	captionSize := ResolveSize(ovr.CaptionSize, 12.0)
+	captionSize := ResolveSize(ovr.CaptionSize, scaleBodyPt)
 	cellAccentMode := ovr.CellAccentMode
 
 	gridCells := make([]*jsonschema.GridCellInput, len(*items))
@@ -380,7 +380,7 @@ func (ir *iconRow) PostExpandWarnings(ctx ExpandContext, values, overrides any) 
 	if ovr == nil {
 		ovr = &IconRowOverrides{}
 	}
-	captionSize := ResolveSize(ovr.CaptionSize, 12.0)
+	captionSize := ResolveSize(ovr.CaptionSize, scaleBodyPt)
 	cells := make([]*jsonschema.GridCellInput, len(*items))
 	for i, item := range *items {
 		cells[i] = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Text: buildIconRowCaptionOnly(item.Caption, captionSize)}}

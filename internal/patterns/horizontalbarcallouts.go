@@ -332,9 +332,9 @@ func (h *horizontalBarCallouts) Expand(ctx ExpandContext, values, overrides any,
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	// label_size wins over header_size; callout_size wins over body_size.
-	labelSize := ResolveSize(ovr.LabelSize, ResolveSize(ovr.HeaderSize, 11.0))
-	calloutSize := ResolveSize(ovr.CalloutSize, ResolveSize(ovr.BodySize, 10.0))
-	valueSize := ResolveSize(ovr.ValueSize, 12.0)
+	labelSize := ResolveSize(ovr.LabelSize, ResolveSize(ovr.HeaderSize, scaleDenseBodyPt))
+	calloutSize := ResolveSize(ovr.CalloutSize, ResolveSize(ovr.BodySize, scaleCaptionPt))
+	valueSize := ResolveSize(ovr.ValueSize, scaleBodyPt)
 
 	// Resolve max_value: explicit > derived from bars > 1 (fallback to avoid div0).
 	maxVal := vals.MaxValue

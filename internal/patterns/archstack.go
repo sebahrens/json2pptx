@@ -243,8 +243,8 @@ func (a *archStack) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	}
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	headerSize := ResolveSize(ovr.HeaderSize, 14.0)
-	bodySize := ResolveSize(ovr.BodySize, 11.0)
+	headerSize := ResolveSize(ovr.HeaderSize, scaleSubheadPt)
+	bodySize := ResolveSize(ovr.BodySize, scaleDenseBodyPt)
 	cellAccentMode := ovr.CellAccentMode
 
 	hasSideRails := len(vals.SideRails) > 0
@@ -399,7 +399,7 @@ const archStackRailWidthPct = 4.0
 
 // archStackRailLabelSize is the rail label size. It is the smallest text on the
 // slide by design: the rail names a concern, the tiers carry the content.
-const archStackRailLabelSize = 10.0
+const archStackRailLabelSize = scaleCaptionPt
 
 // buildArchStackRailContent renders a cross-cutting rail label rotated to read
 // bottom-to-top, so the band only needs to be as wide as one line of text.

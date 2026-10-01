@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"io"
 	"math"
 	"os"
@@ -215,7 +216,7 @@ func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int,
 	// measured at the real point size, the old fixed one-line-per-row budget
 	// flagged ordinary two-line cells as overflow.)
 	const minRowHeightEMU int64 = 370840
-	const defaultLineSpacing = 1.2
+	const defaultLineSpacing = tokens.LineHeight
 	defaultRowHeightEMU := int64(float64(shapegrid.DefaultSlideHeightEMU) * 0.6 / float64(numRows))
 	if defaultRowHeightEMU < minRowHeightEMU {
 		defaultRowHeightEMU = minRowHeightEMU

@@ -435,7 +435,7 @@ func cdMeasureN(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirect
 		photoMax = 72
 	}
 	if ovr != nil && (ovr.NameSize > 0 || ovr.TitleSize > 0) {
-		steps = []cdTypeStep{{ResolveSize(ovr.NameSize, 14), ResolveSize(ovr.TitleSize, 12)}}
+		steps = []cdTypeStep{{ResolveSize(ovr.NameSize, scaleSubheadPt), ResolveSize(ovr.TitleSize, scaleBodyPt)}}
 	}
 	// A sparse directory (one or two rows of people) stacks each headshot
 	// above a centred name: side-by-side, a single row is a thin strip in an

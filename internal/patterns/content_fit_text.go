@@ -20,7 +20,7 @@ var inlineMarkupRe = regexp.MustCompile(`<[^>]+>`)
 func shapeTextHeightPt(font string, text json.RawMessage, widthPt float64) float64 {
 	var s string
 	if json.Unmarshal(text, &s) == nil {
-		return textBlockHeightPt(font, widthPt, textParagraph{text: inlineMarkupRe.ReplaceAllString(s, ""), size: 14})
+		return textBlockHeightPt(font, widthPt, textParagraph{text: inlineMarkupRe.ReplaceAllString(s, ""), size: scaleSubheadPt})
 	}
 	var obj struct {
 		Paragraphs []struct {
@@ -36,7 +36,7 @@ func shapeTextHeightPt(font string, text json.RawMessage, widthPt float64) float
 	for _, p := range obj.Paragraphs {
 		size := p.Size
 		if size <= 0 {
-			size = 14
+			size = scaleSubheadPt
 		}
 		paras = append(paras, textParagraph{text: inlineMarkupRe.ReplaceAllString(p.Content, ""), size: size, bold: p.Bold})
 	}

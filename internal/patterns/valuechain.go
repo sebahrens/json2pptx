@@ -180,8 +180,8 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	labelSize, _ := fitValueChainLabels(ctx, vals.Steps, ResolveSize(ovr.HeaderSize, 12.0))
-	descSize := ResolveSize(ovr.BodySize, 9.0)
+	labelSize, _ := fitValueChainLabels(ctx, vals.Steps, ResolveSize(ovr.HeaderSize, scaleBodyPt))
+	descSize := ResolveSize(ovr.BodySize, sizeDenseCaptionPt)
 	cellAccentMode := ovr.CellAccentMode
 
 	highlightColor := resolveValueChainHighlight(ctx, vals.HighlightColor)
@@ -440,7 +440,7 @@ func (vc *valueChain) PostExpandWarnings(ctx ExpandContext, values, overrides an
 	if ovr == nil {
 		ovr = &ValueChainOverrides{}
 	}
-	if size, unfit := fitValueChainLabels(ctx, v.Steps, ResolveSize(ovr.HeaderSize, 12.0)); len(unfit) > 0 {
+	if size, unfit := fitValueChainLabels(ctx, v.Steps, ResolveSize(ovr.HeaderSize, scaleBodyPt)); len(unfit) > 0 {
 		noun, verb, pronoun := "label", "does", "it"
 		if len(unfit) > 1 {
 			noun, verb, pronoun = "labels", "do", "them"

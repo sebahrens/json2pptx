@@ -1,6 +1,9 @@
 package textfit
 
-import "strings"
+import (
+	"github.com/sebahrens/json2pptx/internal/tokens"
+	"strings"
+)
 
 // Autofit scale prediction (go-slide-creator-wvr0).
 //
@@ -80,7 +83,7 @@ func AutofitFits(paras []AutofitParagraph, widthEMU int64, availableHeightPt flo
 
 func (opts AutofitOptions) withDefaults() AutofitOptions {
 	if opts.LineSpacing <= 0 {
-		opts.LineSpacing = 1.2
+		opts.LineSpacing = tokens.LineHeight
 	}
 	if opts.FloorScale <= 0 {
 		opts.FloorScale = 0.2

@@ -58,7 +58,7 @@ const (
 	tsParaSpacePt     = 8.0
 	tsBulletSpacePt   = 4.0
 	tsHeadingSpacePt  = 10.0
-	tsDefaultBodySize = 14.0
+	tsDefaultBodySize = scaleSubheadPt
 	tsSparseBodySize  = 16.0
 )
 

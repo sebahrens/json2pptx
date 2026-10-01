@@ -59,7 +59,7 @@ type Params struct {
 	FontName string
 	// Paragraphs is the list of text paragraphs to fit.
 	Paragraphs []string
-	// LineSpacing is the line spacing multiplier (e.g., 1.2). Defaults to 1.2.
+	// LineSpacing is the line spacing multiplier (e.g., 1.2). Defaults to tokens.LineHeight (1.2).
 	LineSpacing float64
 	// ExtraSpacingPt is additional spacing per paragraph in points (e.g., spcBef + spcAft
 	// from the slide master bodyStyle). Defaults to 0. Typical values: 8-12pt.
@@ -133,7 +133,7 @@ func Calculate(p Params) (FitResult, error) {
 		p.FontName = "Arial"
 	}
 	if p.LineSpacing <= 0 {
-		p.LineSpacing = 1.2
+		p.LineSpacing = tokens.LineHeight
 	}
 
 	// Convert placeholder bounds from EMU to points
@@ -359,7 +359,7 @@ func MeasureHeight(p Params) (int64, error) {
 		p.FontName = "Arial"
 	}
 	if p.LineSpacing <= 0 {
-		p.LineSpacing = 1.2
+		p.LineSpacing = tokens.LineHeight
 	}
 
 	widthPt := float64(p.WidthEMU) / float64(emuPerPoint)

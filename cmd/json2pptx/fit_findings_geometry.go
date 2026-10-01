@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"encoding/json"
 	"fmt"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"image/color"
 	"math"
 	"regexp"
@@ -54,7 +55,7 @@ const (
 
 	emuPerPt           = 12700.0
 	shapeDefaultTextPt = 14.0 // shapegrid defaultTextSizeHPt
-	geometryLineHeight = 1.2
+	geometryLineHeight = tokens.LineHeight
 	mmToPt             = 72.0 / 25.4
 	fallbackMeasureFnt = "Arial"
 )
