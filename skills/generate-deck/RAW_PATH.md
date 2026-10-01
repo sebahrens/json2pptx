@@ -74,7 +74,7 @@ rhythm, and regenerate calls. Keep your own source JSON; a
 round-trip `PresentationInput`; it includes shapes inside groups (native
 diagrams such as swot / pestel / bmc), connectors, `pictures[]` and
 `hyperlinks`. A `FONT_SUBSTITUTED` warning means renders may wrap where fit
-findings did not; trust the image (Calibri / Cambria measure with the metric-identical Carlito / Caladea when LibreOffice or crosextra fonts are installed, and are not reported). `apply_deck_patch` is an atomic structural
+findings did not; trust the image (Calibri measures with the embedded, metric-identical Carlito on every host and is not reported). `apply_deck_patch` is an atomic structural
 transform for insertion, removal, replacement, move, duplicate, or existing
 field replacement; validate and inspect the resulting deck before shipping.
 

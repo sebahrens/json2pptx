@@ -55,8 +55,8 @@
   policy and the bold lead sits one 2pt step above them (was a fixed 16pt /
   12pt). `bullet_groups` group by proximity with explicit spacing and a 24pt
   sub-bullet indent cap. Nested bullets under a layout's unmarked first level
-  are unmarked too. Calibri / Cambria measure with Carlito / Caladea when
-  installed (no `FONT_SUBSTITUTED`). New shape-grid `paragraphs[].bullet`
+  are unmarked too. Calibri measures with the embedded, metric-identical
+  Carlito on every host (no `FONT_SUBSTITUTED`). New shape-grid `paragraphs[].bullet`
   (`true` or a marker string) emits real hanging-indent bullets; nine
   patterns use it instead of a typed "• ". The RULES.md typography table is
   the type scale (28/18/14/12/10pt, 40-48pt KPI, 9pt engine source line);

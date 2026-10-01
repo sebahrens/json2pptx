@@ -33,3 +33,15 @@ var PoppinsLight []byte
 
 //go:embed Poppins-LightItalic.ttf
 var PoppinsLightItalic []byte
+
+// Carlito is the open, metric-compatible clone of Calibri (identical advance
+// widths) that LibreOffice renders with when Calibri is absent. Embedded so
+// Calibri templates measure the same on every host, with or without
+// LibreOffice or crosextra fonts installed. Unmodified files from the
+// LibreOffice bundle; copyright and SIL Open Font License in Carlito-OFL.txt.
+//
+//go:embed Carlito-Regular.ttf
+var CarlitoRegular []byte
+
+//go:embed Carlito-Bold.ttf
+var CarlitoBold []byte
