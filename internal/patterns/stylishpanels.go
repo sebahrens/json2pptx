@@ -484,11 +484,13 @@ func buildStylishBodyText(bullets []string, bodySize float64, accent string) jso
 		Size    float64 `json:"size"`
 		Color   string  `json:"color,omitempty"`
 		Align   string  `json:"align,omitempty"`
+		Bullet  bool    `json:"bullet,omitempty"`
 	}
 	paras := make([]paragraph, len(bullets))
 	for i, b := range bullets {
 		paras[i] = paragraph{
-			Content: "• " + pptx.ConvertMarkdownEmphasis(b),
+			Bullet:  true,
+			Content: pptx.ConvertMarkdownEmphasis(b),
 			Size:    bodySize,
 			Color:   "dk1",
 			Align:   "l",

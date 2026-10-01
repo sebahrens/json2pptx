@@ -275,7 +275,7 @@ func tsMainParas(v *TextSidebarValues, headingSize, bodySize float64) []sizedPar
 				if j == len(v.Bullets)-1 {
 					space = tsParaSpacePt
 				}
-				paras = append(paras, sizedPara{text: "• " + b, sizePt: bodySize, spaceAfterPt: space})
+				paras = append(paras, sizedPara{text: b, sizePt: bodySize, spaceAfterPt: space, bullet: true})
 			}
 		}
 	}
@@ -404,7 +404,7 @@ func tsMainCell(ctx ExpandContext, v *TextSidebarValues, lay tsLayout) *jsonsche
 	var paras []chartInsightsParagraph
 	hasHeading := strings.TrimSpace(v.Heading) != ""
 	for i, sp := range tsMainParas(v, lay.headingSize, lay.bodySize) {
-		para := chartInsightsParagraph{Content: pptx.ConvertMarkdownEmphasis(sp.text), Size: sp.sizePt, Color: "dk1", Align: "l", SpaceAfter: sp.spaceAfterPt}
+		para := chartInsightsParagraph{Content: pptx.ConvertMarkdownEmphasis(sp.text), Size: sp.sizePt, Color: "dk1", Align: "l", SpaceAfter: sp.spaceAfterPt, Bullet: sp.bullet}
 		if i == 0 && hasHeading {
 			para.Bold = true
 			para.Color = headingInk

@@ -562,12 +562,14 @@ func buildBeforeAfterBulletContent(items []string, size float64) json.RawMessage
 		Size    float64 `json:"size"`
 		Color   string  `json:"color,omitempty"`
 		Align   string  `json:"align,omitempty"`
+		Bullet  bool    `json:"bullet,omitempty"`
 	}
 
 	paras := make([]paragraph, len(items))
 	for i, item := range items {
 		paras[i] = paragraph{
-			Content: "• " + pptx.ConvertMarkdownEmphasis(item),
+			Bullet:  true,
+			Content: pptx.ConvertMarkdownEmphasis(item),
 			Size:    size,
 			Color:   "dk1",
 			Align:   "l",

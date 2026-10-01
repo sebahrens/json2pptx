@@ -550,7 +550,8 @@ func buildInsightsPanel(title string, insights []string, accent string, titleSiz
 			spaceAfter = 0
 		}
 		paras = append(paras, chartInsightsParagraph{
-			Content:    "• " + pptx.ConvertMarkdownEmphasis(ins),
+			Bullet:     true,
+			Content:    pptx.ConvertMarkdownEmphasis(ins),
 			Size:       bulletSize,
 			Color:      "dk1",
 			Align:      "l",
@@ -625,6 +626,8 @@ type chartInsightsParagraph struct {
 	Color      string  `json:"color,omitempty"`
 	Align      string  `json:"align,omitempty"`
 	SpaceAfter float64 `json:"space_after,omitempty"`
+	// Bullet renders a real bullet with a hanging indent (go-slide-creator-zieyk).
+	Bullet bool `json:"bullet,omitempty"`
 }
 
 // chartInsightsText is the text object for JSON marshalling.

@@ -38,24 +38,27 @@
                   "space_after": 8
                 },
                 {
-                  "content": "• How do recent advances in agentic AI affect our strategy?",
+                  "content": "How do recent advances in agentic AI affect our strategy?",
                   "size": 14,
                   "color": "dk1",
                   "align": "l",
-                  "space_after": 4
+                  "space_after": 4,
+                  "bullet": true
                 },
                 {
-                  "content": "• We have run AI pilots for two years and the ROI is underwhelming — what are the best doing differently?",
+                  "content": "We have run AI pilots for two years and the ROI is underwhelming — what are the best doing differently?",
                   "size": 14,
                   "color": "dk1",
                   "align": "l",
-                  "space_after": 4
+                  "space_after": 4,
+                  "bullet": true
                 },
                 {
-                  "content": "• What does an end-to-end AI-first operating model look like?",
+                  "content": "What does an end-to-end AI-first operating model look like?",
                   "size": 14,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 }
               ],
               "align": "l",

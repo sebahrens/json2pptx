@@ -460,13 +460,14 @@ func buildBMCCellContent(cell BMCCell, headerSize, bulletSize float64, accent st
 		Bold    bool    `json:"bold,omitempty"`
 		Color   string  `json:"color,omitempty"`
 		Align   string  `json:"align,omitempty"`
+		Bullet  bool    `json:"bullet,omitempty"`
 	}
 
 	paras := []paragraph{
 		{Content: cell.Header, Size: headerSize, Bold: true, Color: accent, Align: "l"},
 	}
 	for _, bullet := range cell.Bullets {
-		paras = append(paras, paragraph{Content: "• " + bullet, Size: bulletSize, Color: "dk1", Align: "l"})
+		paras = append(paras, paragraph{Content: bullet, Size: bulletSize, Color: "dk1", Align: "l", Bullet: true})
 	}
 
 	textObj := struct {

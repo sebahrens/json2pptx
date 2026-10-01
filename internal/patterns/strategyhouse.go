@@ -445,6 +445,7 @@ type strategyHouseParagraph struct {
 	Bold    bool    `json:"bold,omitempty"`
 	Color   string  `json:"color,omitempty"`
 	Align   string  `json:"align,omitempty"`
+	Bullet  bool    `json:"bullet,omitempty"`
 }
 
 type strategyHouseTextObj struct {
@@ -501,7 +502,8 @@ func buildStrategyHousePillarText(title string, body []string, titleSize, bodySi
 	})
 	for _, b := range body {
 		paras = append(paras, strategyHouseParagraph{
-			Content: "• " + pptx.ConvertMarkdownEmphasis(b),
+			Bullet:  true,
+			Content: pptx.ConvertMarkdownEmphasis(b),
 			Size:    bodySize,
 			Color:   "dk1",
 			Align:   "l",

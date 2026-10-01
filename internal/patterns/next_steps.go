@@ -350,7 +350,7 @@ func measureNextSteps(ctx ExpandContext, vals *NextStepsValues, numberSize, acti
 	if decisions := nonEmptyStrings(vals.Decisions); len(decisions) > 0 {
 		paras := []sizedPara{{text: nextStepsLabel(vals), sizePt: nextStepsBandLabelSize, bold: true, spaceAfterPt: 4}}
 		for _, d := range decisions {
-			paras = append(paras, sizedPara{text: "• " + d, sizePt: lay.decisionSize, bold: true, spaceAfterPt: 2})
+			paras = append(paras, sizedPara{text: d, sizePt: lay.decisionSize, bold: true, spaceAfterPt: 2, bullet: true})
 		}
 		band := nextStepsBandCell(vals, lay.decisionSize, "dk1")
 		lay.bandPt = math.Ceil(math.Max(sizedBlockHeightPt(ctx, paras, areaW-nextStepsBandBarPt),
@@ -386,7 +386,7 @@ func nextStepsDateCell(date string, size float64) *jsonschema.GridCellInput {
 func nextStepsBandCell(vals *NextStepsValues, size float64, labelInk string) *jsonschema.GridCellInput {
 	paras := []nextStepsParagraph{{Content: nextStepsLabel(vals), Size: nextStepsBandLabelSize, Bold: true, Color: labelInk, SpaceAfter: 4}}
 	for _, d := range nonEmptyStrings(vals.Decisions) {
-		paras = append(paras, nextStepsParagraph{Content: "• " + pptx.ConvertMarkdownEmphasis(d), Size: size, Bold: true, Color: "dk1", SpaceAfter: 2})
+		paras = append(paras, nextStepsParagraph{Content: pptx.ConvertMarkdownEmphasis(d), Size: size, Bold: true, Color: "dk1", SpaceAfter: 2, Bullet: true})
 	}
 	return nextStepsTextCell("ctr", paras...)
 }
@@ -419,6 +419,7 @@ type nextStepsParagraph struct {
 	Font       string  `json:"font,omitempty"`
 	Alpha      float64 `json:"alpha,omitempty"`
 	SpaceAfter float64 `json:"space_after,omitempty"`
+	Bullet     bool    `json:"bullet,omitempty"`
 }
 
 func nextStepsTextCell(vAlign string, paras ...nextStepsParagraph) *jsonschema.GridCellInput {

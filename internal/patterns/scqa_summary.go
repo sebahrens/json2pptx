@@ -456,6 +456,7 @@ type scqaParagraph struct {
 	Bold    bool    `json:"bold,omitempty"`
 	Color   string  `json:"color,omitempty"`
 	Align   string  `json:"align,omitempty"`
+	Bullet  bool    `json:"bullet,omitempty"`
 }
 
 type scqaTextObj struct {
@@ -478,18 +479,15 @@ func buildSCQALabelText(label string, size float64) json.RawMessage {
 }
 
 // buildSCQAContentText builds the right-column body text. A single-item list
-// renders as one paragraph (no bullet prefix); multi-item lists render as
-// bulleted paragraphs prefixed with "• ".
+// renders as one paragraph (no bullet); multi-item lists render as real
+// bulleted paragraphs with a hanging indent.
 func buildSCQAContentText(items []string, size float64) json.RawMessage {
 	paras := make([]scqaParagraph, 0, len(items))
 	singleItem := len(items) == 1
 	for _, item := range items {
-		content := pptx.ConvertMarkdownEmphasis(item)
-		if !singleItem {
-			content = "• " + content
-		}
 		paras = append(paras, scqaParagraph{
-			Content: content,
+			Bullet:  !singleItem,
+			Content: pptx.ConvertMarkdownEmphasis(item),
 			Size:    size,
 			Color:   "dk1",
 			Align:   "l",

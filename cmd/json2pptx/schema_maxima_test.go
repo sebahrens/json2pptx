@@ -444,7 +444,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"agenda-with-images":           4.3,
 	"arch-stack":                   6.2,
 	"before-after":                 5.5, // rows floored at written fit (n1muf)
-	"before-after-compact":         5.8, // rows floored at written fit (n1muf)
+	"before-after-compact":         7.2, // rows floored at written fit (n1muf); real bullets, no typed "• " prefix (zieyk)
 	"bmc-canvas":                   2.4,
 	"capability-heatmap":           3.8,
 	"card-grid":                    2.4,
@@ -458,7 +458,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"hero-detail":                  7.0, // hero steps to its share, rows at written fit (n1muf)
 	"horizontal-bar-with-callouts": 3.8,
 	"icon-row":                     0.0,
-	"image-text-split":             5.5,
+	"image-text-split":             7.0, // real bullets (zieyk)
 	"journey-maturity-model":       9.1,
 	"kpi-2up":                      0.0,
 	"kpi-3up":                      0.0,
@@ -515,7 +515,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"agenda-with-images":           4.8,
 	"arch-stack":                   7.4,
 	"before-after":                 5.5,
-	"before-after-compact":         5.8,
+	"before-after-compact":         0, // real bullets (zieyk)
 	"bmc-canvas":                   2.4,
 	"capability-heatmap":           3.8,
 	"card-grid":                    2.4,
@@ -529,7 +529,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"hero-detail":                  0,
 	"horizontal-bar-with-callouts": 3.8,
 	"icon-row":                     0,
-	"image-text-split":             6.2,
+	"image-text-split":             7.9, // real bullets (zieyk)
 	"journey-maturity-model":       9.8,
 	"kpi-2up":                      0,
 	"kpi-3up":                      0,

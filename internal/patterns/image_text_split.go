@@ -419,7 +419,7 @@ func itsTextParas(v *ImageTextSplitValues, headingSize, bodySize float64) []size
 		paras = append(paras, sizedPara{text: v.Body, sizePt: bodySize, spaceAfterPt: 8})
 	}
 	for _, b := range v.Bullets {
-		paras = append(paras, sizedPara{text: "• " + b, sizePt: bodySize, spaceAfterPt: 6})
+		paras = append(paras, sizedPara{text: b, sizePt: bodySize, spaceAfterPt: 6, bullet: true})
 	}
 	return paras
 }
@@ -483,7 +483,7 @@ func itsMetricRowPt(lay itsLayout) float64 {
 func itsTextJSON(ctx ExpandContext, v *ImageTextSplitValues, lay itsLayout, accent string) json.RawMessage {
 	var paras []chartInsightsParagraph
 	for _, sp := range itsTextParas(v, lay.headingSize, lay.bodySize) {
-		para := chartInsightsParagraph{Content: pptx.ConvertMarkdownEmphasis(sp.text), Size: sp.sizePt, Bold: sp.bold, Color: "dk1", Align: "l", SpaceAfter: sp.spaceAfterPt}
+		para := chartInsightsParagraph{Content: pptx.ConvertMarkdownEmphasis(sp.text), Size: sp.sizePt, Bold: sp.bold, Color: "dk1", Align: "l", SpaceAfter: sp.spaceAfterPt, Bullet: sp.bullet}
 		switch {
 		case v.Eyebrow != "" && len(paras) == 0:
 			para.Color = inkOnLight(ctx, accent, 4.5)

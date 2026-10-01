@@ -143,7 +143,9 @@ executable one.
   ALL-CAPS labels are letter-spaced automatically (+7%) — write them in caps,
   do not add spaces — and bold headings, titles and names are balanced so no
   line ends on a lone word. In a two-column comparison, open each column's
-  bullets with a short label line to get a bold column header.
+  bullets with a short label line to get a bold column header. In raw
+  `shape_grid` text, bullet a paragraph with `paragraphs[].bullet: true`
+  (or `"–"`) — a real hanging-indent bullet — never a typed "• ".
 - [FINDINGS.md](FINDINGS.md): legacy finding and fix details for cases not yet
   covered by `describe_finding`; prefer the live tool for known codes.
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):
