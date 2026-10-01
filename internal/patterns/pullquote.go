@@ -246,8 +246,8 @@ func (pq *pullQuote) Expand(ctx ExpandContext, values, overrides any, cellOverri
 	}
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	quoteSize := ResolveSize(ovr.QuoteSize, 36.0)
-	attrSize := math.Max(ResolveSize(ovr.AttrSize, 14.0), pullQuoteAttrMinPt)
+	quoteSize := ResolveSize(ovr.QuoteSize, sizeQuotePt)
+	attrSize := math.Max(ResolveSize(ovr.AttrSize, scaleSubheadPt), pullQuoteAttrMinPt)
 
 	// Build attribution line
 	attrLine := "\u2014 " + v.Attribution

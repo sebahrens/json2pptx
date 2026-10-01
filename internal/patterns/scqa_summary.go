@@ -168,7 +168,7 @@ func (s *scqaSummary) PostExpandWarnings(ctx ExpandContext, values, overrides an
 		{"Situation", []string(v.Situation)}, {"Complication", []string(v.Complication)},
 		{"Questions", v.Questions}, {"Answer", v.Answer},
 	}
-	needs, avail := scqaRowNeeds(ctx, specs, fitSCQALabels(ctx, ResolveSize(ovr.HeaderSize, 20.0)), ResolveSize(ovr.BodySize, 12.0))
+	needs, avail := scqaRowNeeds(ctx, specs, fitSCQALabels(ctx, ResolveSize(ovr.HeaderSize, sizeLeadPlusPt)), ResolveSize(ovr.BodySize, scaleBodyPt))
 	total := 0.0
 	for _, n := range needs {
 		total += n
@@ -316,9 +316,9 @@ func (s *scqaSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	labelFit := fitSCQALabels(ctx, ResolveSize(ovr.HeaderSize, 20.0))
+	labelFit := fitSCQALabels(ctx, ResolveSize(ovr.HeaderSize, sizeLeadPlusPt))
 	headerSize := labelFit.size
-	bodySize := ResolveSize(ovr.BodySize, 12.0)
+	bodySize := ResolveSize(ovr.BodySize, scaleBodyPt)
 
 	rowSpecs := []struct {
 		label string

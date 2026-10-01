@@ -299,9 +299,9 @@ func (t *teamBios) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	// unshrunk in the content area (go-slide-creator-n1muf).
 	fit := teamBiosFit(ctx, v, ovr)
 	nameSize := fit.nameSize
-	roleSize := ResolveSize(ovr.RoleSize, 11.0)
-	bioSize := ResolveSize(ovr.BioSize, 10.0)
-	photoLabelSize := ResolveSize(ovr.PhotoLabelSize, 14.0)
+	roleSize := ResolveSize(ovr.RoleSize, scaleDenseBodyPt)
+	bioSize := ResolveSize(ovr.BioSize, scaleCaptionPt)
+	photoLabelSize := ResolveSize(ovr.PhotoLabelSize, scaleSubheadPt)
 
 	// Layout: members are arranged left-to-right, up to teamBiosMaxPerRow per
 	// card-row. Each card-row produces TWO grid rows — a photo row (40% of card
@@ -410,9 +410,9 @@ func teamBiosFit(ctx ExpandContext, v *TeamBiosValues, ovr *TeamBiosOverrides) t
 	areaW, areaH := sizingAreaPt(ctx)
 	columns := min(max(len(v.Members), teamBiosMinPerRow), teamBiosMaxPerRow)
 	colW := equalColumnWidthPt(areaW, columns, teamBiosGapPt)
-	roleSize, bioSize := ResolveSize(ovr.RoleSize, 11.0), ResolveSize(ovr.BioSize, 10.0)
-	photoLabelSize := ResolveSize(ovr.PhotoLabelSize, 14.0)
-	sizes := []float64{ResolveSize(ovr.NameSize, 14.0)}
+	roleSize, bioSize := ResolveSize(ovr.RoleSize, scaleDenseBodyPt), ResolveSize(ovr.BioSize, scaleCaptionPt)
+	photoLabelSize := ResolveSize(ovr.PhotoLabelSize, scaleSubheadPt)
+	sizes := []float64{ResolveSize(ovr.NameSize, scaleSubheadPt)}
 	if ovr.NameSize == 0 {
 		sizes = append(sizes, teamBiosMinNamePt)
 	}

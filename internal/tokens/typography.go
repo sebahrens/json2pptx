@@ -116,8 +116,32 @@ const (
 	TypeScaleSubheadPt = TypeScaleSubheadHPt / 100.0
 	TypeScaleBodyPt    = TypeScaleBodyHPt / 100.0
 	TypeScaleCaptionPt = TypeScaleCaptionHPt / 100.0
+	TypeScaleKPIMinPt  = TypeScaleKPIMinHPt / 100.0
+	TypeScaleKPIMaxPt  = TypeScaleKPIMaxHPt / 100.0
+	BodyTextMinPt      = BodyTextMinHPt / 100.0
 	SourceLinePt       = SourceLineHPt / 100.0
 )
+
+// LineHeight is the single-spaced line pitch, as a multiple of the font
+// size, that every text measurement assumes: PowerPoint's 100% line spacing
+// renders a line about 1.2 em tall. Fit estimators, capacity budgets and the
+// renderer's height checks share it so they agree on how tall a line is.
+const LineHeight = 1.2
+
+// OnTypeScaleHPt reports whether hpt is a size of the type scale: one of the
+// text steps SnapTextHPt settles onto (10/11/12/14/18/28pt) or a size in the
+// 40-48pt KPI display step.
+func OnTypeScaleHPt(hpt int) bool {
+	if hpt >= TypeScaleKPIMinHPt && hpt <= TypeScaleKPIMaxHPt {
+		return true
+	}
+	for _, step := range typeScaleSteps {
+		if step == hpt {
+			return true
+		}
+	}
+	return false
+}
 
 // typeScaleSteps are the sizes SnapTextHPt settles text onto, ascending. The
 // 11pt body minimum is a step so dense body copy is never pushed to caption.

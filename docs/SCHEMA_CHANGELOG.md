@@ -1,5 +1,19 @@
 # Schema Changelog
 
+- **2026-10-01 — Pattern and chart sizes on the type scale; modern-template title baseline (`go-slide-creator-vmdfm`, `-kyk01`).**
+  - kpi-Nup big numbers default to the 40pt KPI step (`big_size` default
+    was 36pt, off the published 40–48pt step); values still shrink to fit.
+  - Chart text roles are slide steps (`svggen/type_roles.go`): subtitle 14pt
+    (was 15), legend / heading 12pt (was 13) on the reference canvas, and a
+    scaled chart title never drops below the 14pt subhead step (was 13pt).
+  - Every pattern default size names a constant in
+    `internal/patterns/type_scale.go`; off-scale defaults are allow-listed
+    with a reason and test-enforced. Rendered pattern output is otherwise
+    unchanged. One `tokens.LineHeight` (1.2) replaces the repeated literal.
+  - modern-template's One Content, Two Content and Blank + Title titles share
+    one bottom-anchored frame, so the headline no longer jumps between
+    bullet, two-column and pattern slides. No `SchemaVersion` bump.
+
 - **2026-10-01 — `shape_grid.links`; swimlane hand-off arrows; one people primitive (4.155.0; `go-slide-creator-0b3f6`, `q4fut`, `ux1le`, `swt4x`, `wd6p6`).**
   - New optional `shape_grid.links`: `[{"from":[row,col],"to":[row,col],"connector":{style,color,width,dash}}]`
     draws an explicit connector between two cells addressed by the row and

@@ -1,6 +1,7 @@
 package textfit
 
 import (
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"math"
 	"strings"
 	"sync"
@@ -58,7 +59,7 @@ func MeasureStyledRuns(p StyledMeasureParams) (RunMeasurement, error) {
 	}
 	spacing := p.LineSpacing
 	if spacing <= 0 {
-		spacing = 1.2
+		spacing = tokens.LineHeight
 	}
 	lines := 1
 	current := 0.0
@@ -211,9 +212,7 @@ func measureRunUncached(ff *canvas.FontFamily, resolvedFont string, substituted 
 	face := newFace(ff, fontPt, canvas.FontRegular)
 	lines := wrapText(face, text, widthPt)
 
-	// Default line spacing 1.2×
-	const defaultLineSpacing = 1.2
-	lineHeightPt := fontPt * defaultLineSpacing
+	lineHeightPt := fontPt * tokens.LineHeight
 	totalHeightPt := float64(lines) * lineHeightPt
 	requiredEMU := int64(math.Ceil(totalHeightPt * float64(emuPerPoint)))
 

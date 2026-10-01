@@ -385,8 +385,8 @@ const heroDetailHeroSharePct = 45.0
 // taken only when it makes the block fit.
 func (hd *heroDetail) layout(ctx ExpandContext, v *HeroDetailValues, ovr *HeroDetailOverrides, cellOverrides map[int]any) heroDetailPlan {
 	type step struct{ hero, label, header, gap float64 }
-	label := ResolveSize(ovr.LabelSize, 16.0)
-	header := ResolveSize(ovr.HeaderSize, 14.0)
+	label := ResolveSize(ovr.LabelSize, sizeHeaderPt)
+	header := ResolveSize(ovr.HeaderSize, scaleSubheadPt)
 	heroSizes := []float64{ResolveSize(ovr.HeroSize, heroDetailHeroSteps[0])}
 	if ovr.HeroSize == 0 {
 		heroSizes = heroDetailHeroSteps
@@ -441,7 +441,7 @@ const (
 // the hero and of every card at its real width.
 func (hd *heroDetail) measure(ctx ExpandContext, v *HeroDetailValues, ovr *HeroDetailOverrides, cellOverrides map[int]any, heroSize, labelSize, headerSize, rowGap float64) heroDetailPlan {
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	detailSize := ResolveSize(ovr.DetailSize, 11.0)
+	detailSize := ResolveSize(ovr.DetailSize, scaleDenseBodyPt)
 	// minimal is the default: the hero number is the slide's one emphasis,
 	// so the detail cards carry no accent fill (go-slide-creator-19pp9).
 	style := ovr.Style

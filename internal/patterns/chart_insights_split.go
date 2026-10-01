@@ -361,7 +361,7 @@ func cisColumnAreaWarning(ctx ExpandContext, v *ChartInsightsSplitValues, overri
 	if title == "" {
 		title = "Key Insights"
 	}
-	panel := buildInsightsPanel(title, v.Insights, "accent1", ResolveSize(ovr.TitleSize, 12.0), ResolveSize(ovr.BulletSize, 12.0))
+	panel := buildInsightsPanel(title, v.Insights, "accent1", ResolveSize(ovr.TitleSize, scaleBodyPt), ResolveSize(ovr.BulletSize, scaleBodyPt))
 	chartPct := clampPct(ovr.ChartWidthPct, sparseInsightsChartPct(v), 40.0, 80.0)
 	_, _, short := buildInsightsColumn(ctx, v, ovr, panel, "accent1", chartPct)
 	if short <= 0.5 {
@@ -432,8 +432,8 @@ func (cis *chartInsightsSplit) Expand(ctx ExpandContext, values, overrides any, 
 	}
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	titleSize := ResolveSize(ovr.TitleSize, 12.0)
-	bulletSize := ResolveSize(ovr.BulletSize, 12.0)
+	titleSize := ResolveSize(ovr.TitleSize, scaleBodyPt)
+	bulletSize := ResolveSize(ovr.BulletSize, scaleBodyPt)
 	sourceSize := ResolveSize(ovr.SourceSize, SourceNoteSizePt)
 
 	insightsTitle := v.InsightsTitle
@@ -818,7 +818,7 @@ const cisCaptionPt = 26.0
 // buildChartWithCaption stacks a small bold caption above the chart cell.
 func buildChartWithCaption(ctx ExpandContext, chart *jsonschema.GridCellInput, label string) *jsonschema.GridCellInput {
 	textJSON, _ := json.Marshal(chartInsightsText{
-		Paragraphs:    []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(label), Size: 12, Bold: true, Color: inkOnLight(ctx, "dk2", 4.5), Align: "l"}},
+		Paragraphs:    []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(label), Size: scaleBodyPt, Bold: true, Color: inkOnLight(ctx, "dk2", 4.5), Align: "l"}},
 		Align:         "l",
 		VerticalAlign: "b",
 	})
@@ -920,15 +920,15 @@ func stackInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *Ch
 	var rows []jsonschema.GridRowInput
 	used := 0.0
 	if hasHeadline {
-		size := ResolveSize(ovr.HeadlineSize, 32)
+		size := ResolveSize(ovr.HeadlineSize, sizeHeadlineFigurePt)
 		if ovr.HeadlineSize == 0 && (compact || len(v.Insights) >= 5) {
-			size = 26
+			size = sizeHeadlineFigureCompactPt
 		}
 		paras := []chartInsightsParagraph{{Content: v.Headline.Value, Size: size, Bold: true, Color: inkOnLight(ctx, accent, 3.0), Align: "l"}}
 		sized := []sizedPara{{text: v.Headline.Value, sizePt: size, bold: true}}
 		if v.Headline.Label != "" {
-			paras = append(paras, chartInsightsParagraph{Content: pptx.ConvertMarkdownEmphasis(v.Headline.Label), Size: 12, Color: "dk1", Align: "l"})
-			sized = append(sized, sizedPara{text: v.Headline.Label, sizePt: 12})
+			paras = append(paras, chartInsightsParagraph{Content: pptx.ConvertMarkdownEmphasis(v.Headline.Label), Size: scaleBodyPt, Color: "dk1", Align: "l"})
+			sized = append(sized, sizedPara{text: v.Headline.Label, sizePt: scaleBodyPt})
 		}
 		textJSON, _ := json.Marshal(chartInsightsText{Paragraphs: paras, Align: "l", VerticalAlign: "t"})
 		h := math.Max(sizedBlockHeightPt(ctx, sized, colW), writtenFitHeightPt(textJSON, colW, 0))
@@ -945,7 +945,7 @@ func stackInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *Ch
 		// sets it at 12pt beside a chart.
 		spec := cisTakeaway(v, accent, ovr.TakeawayEmphasis)
 		if compact && v.Chart != nil {
-			spec.SizePt = 12
+			spec.SizePt = scaleBodyPt
 		}
 		h := TakeawayRowHeightPt(ctx, spec, colW, cisColumnRowGapPt)
 		row := TakeawayRow(ctx, spec, 1, colW, cisColumnRowGapPt)
@@ -990,9 +990,9 @@ const cisColumnRowGapPt = 6.0
 func cisTakeaway(v *ChartInsightsSplitValues, accent, emphasis string) TakeawaySpec {
 	size := TakeawaySizePt
 	if v.Chart != nil {
-		size = 13
+		size = sizeLabelPt
 		if len(v.Insights) >= 5 {
-			size = 12
+			size = scaleBodyPt
 		}
 	}
 	return TakeawaySpec{Text: pptx.ConvertMarkdownEmphasis(v.SoWhat), Accent: accent, Emphasis: emphasis, SizePt: size}

@@ -222,7 +222,7 @@ func timelineChevronDateSize(ovr *TimelineHorizontalOverrides) float64 {
 	if ovr == nil {
 		return shapegrid.MinTextSizePt
 	}
-	return shapegrid.EffectiveTextSizePt(ResolveSize(ovr.DateSize, 9))
+	return shapegrid.EffectiveTextSizePt(ResolveSize(ovr.DateSize, sizeDenseCaptionPt))
 }
 
 // timelineChevronBodyCapacity measures the actual line budget beneath one
@@ -252,7 +252,7 @@ func timelineChevronBodyCapacity(ctx ExpandContext, stops TimelineHorizontalValu
 // A small label cannot pull its body below the renderer's readable 12pt floor;
 // an explicit body_size wins over the derived default.
 func timelineChevronTextSizes(ovr *TimelineHorizontalOverrides) (labelSize, bodySize float64) {
-	labelSize = 12
+	labelSize = scaleBodyPt
 	if ovr != nil {
 		labelSize = ResolveSize(ovr.LabelSize, labelSize)
 		bodySize = ResolveSize(ovr.BodySize, labelSize-2)
@@ -455,8 +455,8 @@ func measureTimelineDots(ctx ExpandContext, stops TimelineHorizontalValues, ovr 
 	if ovr == nil {
 		ovr = &TimelineHorizontalOverrides{}
 	}
-	dateSize := ResolveSize(ovr.DateSize, 12.0)
-	bodySize := ResolveSize(ovr.BodySize, 12.0)
+	dateSize := ResolveSize(ovr.DateSize, scaleBodyPt)
+	bodySize := ResolveSize(ovr.BodySize, scaleBodyPt)
 	n := len(stops)
 	font := ctx.Theme.BodyFont
 	contentW, contentH := contentAreaPt(ctx)
@@ -521,7 +521,7 @@ func measureTimelineDots(ctx ExpandContext, stops TimelineHorizontalValues, ovr 
 		stopH := math.Min(labelH+pad, contentH*timelineStopMaxHeightFrac)
 		fit.modelStopPt = math.Round(math.Max(stopH, labelSize*contentLineHeight+pad))
 	}
-	build(ResolveSize(ovr.LabelSize, 14.0))
+	build(ResolveSize(ovr.LabelSize, scaleSubheadPt))
 	if fit.stopNeedPt > fit.stopAvailPt && ovr.LabelSize == 0 {
 		build(shapegrid.MinTextSizePt)
 	}
@@ -715,8 +715,8 @@ func timelineChevronRowFit(ctx ExpandContext, cells []*jsonschema.GridCellInput,
 // Label left-aligned in bar, date range shown as bar width hint.
 func (th *timelineHorizontal) expandGantt(ctx ExpandContext, stops *TimelineHorizontalValues, ovr *TimelineHorizontalOverrides, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	labelSize := ResolveSize(ovr.LabelSize, 11.0)
-	dateSize := ResolveSize(ovr.DateSize, 9.0)
+	labelSize := ResolveSize(ovr.LabelSize, scaleDenseBodyPt)
+	dateSize := ResolveSize(ovr.DateSize, sizeDenseCaptionPt)
 
 	n := len(*stops)
 	// Bars are capped (go-slide-creator-7km8) so 3 stops do not become three

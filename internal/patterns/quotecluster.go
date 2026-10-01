@@ -253,9 +253,9 @@ func (q *quoteCluster) Expand(ctx ExpandContext, values, overrides any, cellOver
 	}
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	quoteSize := ResolveSize(ovr.QuoteSize, 10.0)
-	nameSize := ResolveSize(ovr.NameSize, 9.0)
-	titleSize := ResolveSize(ovr.TitleSize, 8.0)
+	quoteSize := ResolveSize(ovr.QuoteSize, scaleCaptionPt)
+	nameSize := ResolveSize(ovr.NameSize, sizeDenseCaptionPt)
+	titleSize := ResolveSize(ovr.TitleSize, sizeBadgePt)
 
 	// Lay out quotes left-to-right into 3-column rows. Short final rows stay
 	// left-aligned: any unused right-hand columns become empty filler cells so

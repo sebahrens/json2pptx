@@ -179,7 +179,7 @@ func (p *pyramid) Expand(ctx ExpandContext, values, overrides any, cellOverrides
 	}
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	bodySize := ResolveSize(ovr.BodySize, 14.0)
+	bodySize := ResolveSize(ovr.BodySize, scaleSubheadPt)
 	n := len(vals.Tiers)
 	if n == 0 {
 		return nil, fmt.Errorf("pyramid: at least one tier is required")

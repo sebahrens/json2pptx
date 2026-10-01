@@ -253,8 +253,8 @@ type beforeAfterVariant struct {
 }
 
 var (
-	beforeAfterFullVariant    = beforeAfterVariant{name: "before-after", headerSize: 16, bodySize: 12, minHeaderSize: 14, gapPt: 8, heightPct: 100}
-	beforeAfterCompactVariant = beforeAfterVariant{name: "before-after-compact", headerSize: 14, bodySize: 11, minHeaderSize: 12, gapPt: 6, heightPct: 60, growHeight: true}
+	beforeAfterFullVariant    = beforeAfterVariant{name: "before-after", headerSize: sizeHeaderPt, bodySize: scaleBodyPt, minHeaderSize: scaleSubheadPt, gapPt: 8, heightPct: 100}
+	beforeAfterCompactVariant = beforeAfterVariant{name: "before-after-compact", headerSize: scaleSubheadPt, bodySize: scaleDenseBodyPt, minHeaderSize: scaleBodyPt, gapPt: 6, heightPct: 60, growHeight: true}
 )
 
 // beforeAfterMinRowGapPt is the row gap the header / body gap gives way to.

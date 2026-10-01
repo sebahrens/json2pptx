@@ -442,7 +442,7 @@ type stylishPanelsFitResult struct {
 // authored sizes are kept.
 func stylishPanelsFit(ctx ExpandContext, items []StylishPanelsItem, ovr *StylishPanelsOverrides) stylishPanelsFitResult {
 	type step struct{ header, body float64 }
-	steps := []step{{ResolveSize(ovr.HeaderSize, 16), ResolveSize(ovr.BodySize, 14)}}
+	steps := []step{{ResolveSize(ovr.HeaderSize, sizeHeaderPt), ResolveSize(ovr.BodySize, scaleSubheadPt)}}
 	if ovr.BodySize == 0 {
 		steps = append(steps, step{steps[0].header, 12})
 	}

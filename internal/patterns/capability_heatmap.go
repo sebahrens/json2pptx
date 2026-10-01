@@ -359,7 +359,7 @@ func chmMeasure(ctx ExpandContext, v *CapabilityHeatmapValues, ovr *CapabilityHe
 
 	// One shared title size: shrink until no header word breaks mid-word,
 	// never below the renderer's floor.
-	size := shapegrid.EffectiveTextSizePt(ResolveSize(ovr.HeaderSize, 14))
+	size := shapegrid.EffectiveTextSizePt(ResolveSize(ovr.HeaderSize, scaleSubheadPt))
 	for _, col := range v.Columns {
 		for _, word := range strings.Fields(col.Header) {
 			if s := fitSingleLineSize(word, font, true, size, shapegrid.MinTextSizePt, l.headerTextW); s < size {
@@ -387,7 +387,7 @@ func chmMeasure(ctx ExpandContext, v *CapabilityHeatmapValues, ovr *CapabilityHe
 	}
 	l.headerHPt = math.Round(math.Max(headerH+2*defaultShapeInsetTBPt+headerBandPadPt, chmMinHeaderPt))
 
-	l.cellPt = shapegrid.EffectiveTextSizePt(ResolveSize(ovr.CellSize, 12))
+	l.cellPt = shapegrid.EffectiveTextSizePt(ResolveSize(ovr.CellSize, scaleBodyPt))
 	cellH := 0.0
 	for _, col := range v.Columns {
 		l.maxCells = max(l.maxCells, len(col.Cells))

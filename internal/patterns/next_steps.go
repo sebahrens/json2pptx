@@ -61,7 +61,7 @@ const (
 	nextStepsHeaderAlpha   = 60.0
 	nextStepsNumberFont    = "+mj-lt"
 	nextStepsHeaderSizePt  = tokens.TypeScaleBodyPt
-	nextStepsBandLabelSize = 13.0
+	nextStepsBandLabelSize = sizeLabelPt
 )
 
 // nextStepsScales steps numeral / action / meta sizes down only when the

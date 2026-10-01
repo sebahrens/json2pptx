@@ -800,7 +800,7 @@ func (l *thLayout) optionHeight(o TableHighlightOption, bodySize, detailSize flo
 // rows (go-slide-creator-1iiej); explicit header_size / body_size pin it.
 // Rows stay content-height: a short table is never padded to fill.
 func (l *thLayout) fit() {
-	headerSize, bodySize := ResolveSize(l.ovr.HeaderSize, 11), ResolveSize(l.ovr.BodySize, 12)
+	headerSize, bodySize := ResolveSize(l.ovr.HeaderSize, scaleDenseBodyPt), ResolveSize(l.ovr.BodySize, scaleBodyPt)
 	l.measure(headerSize, bodySize, 12)
 	if l.total() > l.areaH {
 		// Taller than this template's content area (a short layout, or a
@@ -1110,7 +1110,7 @@ func thLegendCell(ctx ExpandContext, v *TableHighlightValues, kind string, symbo
 		svg, alt := thSymbolSVG(ctx, sc, symbolInk, ragColors)
 		cells = append(cells, &jsonschema.GridCellInput{Fit: "contain", Icon: &jsonschema.IconInput{SVGData: svg, Alt: alt}})
 		textJSON, _ := json.Marshal(chartInsightsText{
-			Paragraphs:    []chartInsightsParagraph{{Content: labels[i], Size: 12, Color: "dk1", Align: "l"}},
+			Paragraphs:    []chartInsightsParagraph{{Content: labels[i], Size: scaleBodyPt, Color: "dk1", Align: "l"}},
 			Align:         "l",
 			VerticalAlign: "ctr",
 		})

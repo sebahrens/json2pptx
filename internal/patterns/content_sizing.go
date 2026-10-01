@@ -1,6 +1,7 @@
 package patterns
 
 import (
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"math"
 	"regexp"
 	"strings"
@@ -19,7 +20,7 @@ import (
 // ---------------------------------------------------------------------------
 
 const (
-	sizingLineSpacing = 1.2                   // renderer line height factor
+	sizingLineSpacing = tokens.LineHeight     // renderer line height factor
 	sizingInsetTBPt   = pptx.ShapeTextInsetPt // top / bottom inset every shape is written with (0.5 cm)
 	sizingInsetLRPt   = pptx.ShapeTextInsetPt // left / right inset every shape is written with (0.5 cm)
 	// measureRunInsetPt is the side inset textfit.MeasureRun removes from the

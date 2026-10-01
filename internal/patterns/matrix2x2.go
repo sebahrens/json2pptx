@@ -399,7 +399,7 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	lay := layoutMatrix2x2(ctx, vals, ovr)
 	headerSize, bodySize := lay.headerSize, lay.bodySize
-	labelSize := ResolveSize(ovr.LabelSize, 14.0)
+	labelSize := ResolveSize(ovr.LabelSize, scaleSubheadPt)
 
 	// Layout: 3 columns [y-axis label, left quadrants, right quadrants]
 	// Row 0: [empty corner, x-axis label (col_span=2)]
@@ -519,10 +519,10 @@ func layoutMatrix2x2(ctx ExpandContext, v *Matrix2x2Values, ovr *Matrix2x2Overri
 	areaW, areaH := sizingAreaPt(ctx)
 	quadW := (areaW - 2*matrix2x2GapPt) * 0.44
 	lay := matrix2x2Layout{
-		bodySize: ResolveSize(ovr.BodySize, 12.0),
+		bodySize: ResolveSize(ovr.BodySize, scaleBodyPt),
 		availPt:  (areaH - 2*matrix2x2GapPt) * (1 - matrix2x2AxisRowPct/100),
 	}
-	sizes := []float64{ResolveSize(ovr.HeaderSize, 16.0)}
+	sizes := []float64{ResolveSize(ovr.HeaderSize, sizeHeaderPt)}
 	if ovr.HeaderSize == 0 {
 		sizes = append(sizes, 14, matrix2x2MinHeaderPt)
 	}

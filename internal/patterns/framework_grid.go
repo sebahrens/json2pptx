@@ -274,7 +274,7 @@ func fgResolveOverrides(overrides any) *FrameworkGridOverrides {
 // and PostExpandWarnings reports it.
 func fgMeasure(ctx ExpandContext, v *FrameworkGridValues, ovr *FrameworkGridOverrides) fgLayout {
 	type step struct{ pad, gap, title float64 }
-	title := ResolveSize(ovr.TitleSize, 14)
+	title := ResolveSize(ovr.TitleSize, scaleSubheadPt)
 	steps := []step{{fgCardPadPt, fgRowGapPt, title}, {fgTightPadPt, fgTightRowGapPt, title}}
 	if ovr.TitleSize == 0 {
 		steps = append(steps, step{fgTightPadPt, fgTightRowGapPt, shapegrid.MinTextSizePt})
@@ -304,7 +304,7 @@ func fgMeasureAt(ctx ExpandContext, v *FrameworkGridValues, ovr *FrameworkGridOv
 	cardW := gridW * (100 - l.labelPct) / 100 / float64(l.cols)
 	l.cardTextW = math.Max(cardW-2*defaultShapeInsetLRPt, 1)
 	l.titlePt = shapegrid.EffectiveTextSizePt(titleSize)
-	l.bodyPt = shapegrid.EffectiveTextSizePt(ResolveSize(ovr.BodySize, 12))
+	l.bodyPt = shapegrid.EffectiveTextSizePt(ResolveSize(ovr.BodySize, scaleBodyPt))
 
 	for i, row := range v.Rows {
 		h := textBlockHeightPt(font, l.labelTextW, textParagraph{text: inlineMarkupRe.ReplaceAllString(row.Label, ""), size: l.titlePt, bold: true})

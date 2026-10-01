@@ -232,7 +232,7 @@ func (a *agenda) Validate(values, overrides any, cellOverrides map[int]any) erro
 // filled tiles, content-height rows middle-anchored on the slide.
 const (
 	agendaNumberSize   = tokens.TypeScaleDisplayPt
-	agendaTitleSize    = 16.0
+	agendaTitleSize    = sizeHeaderPt
 	agendaRulePt       = 0.5
 	agendaListRowGapPt = 2.0
 	// agendaDimAlpha is the opacity of the sections the deck is not at when

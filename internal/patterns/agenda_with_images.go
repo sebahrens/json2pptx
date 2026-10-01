@@ -289,9 +289,9 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 	}
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	numberSize := ResolveSize(ovr.NumberSize, 18.0)
-	subtitleSize := ResolveSize(ovr.SubtitleSize, 10.0)
-	imageLabelSize := ResolveSize(ovr.ImageLabelSize, 10.0)
+	numberSize := ResolveSize(ovr.NumberSize, scaleLeadPt)
+	subtitleSize := ResolveSize(ovr.SubtitleSize, scaleCaptionPt)
+	imageLabelSize := ResolveSize(ovr.ImageLabelSize, scaleCaptionPt)
 
 	// The image column is all-or-nothing: one row's label earns the column for
 	// every row, and no labels at all mean no column (go-slide-creator-jodu).
@@ -471,8 +471,8 @@ func agendaWithImagesFit(ctx ExpandContext, v *AgendaWithImagesValues, ovr *Agen
 	}
 	n := float64(len(v.Items))
 	fixed := (n-1)*agendaDividerHeightPct*areaH/100 + (2*n-2)*agendaRowGapPt
-	subtitleSize := ResolveSize(ovr.SubtitleSize, 10.0)
-	sizes := []float64{ResolveSize(ovr.TitleSize, 14.0)}
+	subtitleSize := ResolveSize(ovr.SubtitleSize, scaleCaptionPt)
+	sizes := []float64{ResolveSize(ovr.TitleSize, scaleSubheadPt)}
 	if ovr.TitleSize == 0 {
 		sizes = append(sizes, agendaMinTitlePt)
 	}

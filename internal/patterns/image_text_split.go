@@ -57,8 +57,8 @@ const (
 	itsRowGapPt      = 10.0
 	itsImageAspect   = 0.75 // preferred frame height / width (4:3)
 	itsMinFillPct    = 60.0 // never shorter than this share of the content height
-	itsMetricValuePt = 24.0
-	itsMetricLabelPt = 12.0
+	itsMetricValuePt = sizeFigurePt
+	itsMetricLabelPt = scaleBodyPt
 	// itsSubGridInsetPt is the inset a nested grid resolves inside
 	// (renderNestedSubGrids): the text column stacks its text over the metric
 	// row in one, and the metric row is a nested grid of its own.
@@ -371,12 +371,12 @@ func itsMeasureAt(ctx ExpandContext, v *ImageTextSplitValues, ovr *ImageTextSpli
 		lay.metricsPt = itsMetricValuePt*sizingLineSpacing + 2*itsMetricLabelPt*sizingLineSpacing + 2*sizingInsetTBPt + sizingSafetyPt
 	}
 	if strings.TrimSpace(v.Caption) != "" {
-		lay.captionPt = sizedBlockHeightPt(ctx, []sizedPara{{text: v.Caption, sizePt: 12}}, lay.imgW)
+		lay.captionPt = sizedBlockHeightPt(ctx, []sizedPara{{text: v.Caption, sizePt: scaleBodyPt}}, lay.imgW)
 	}
 
 	steps := [][2]float64{{20, 14}, {18, 13}, {16, 12}}
 	if ovr.HeadingSize > 0 || ovr.BodySize > 0 {
-		steps = [][2]float64{{ResolveSize(ovr.HeadingSize, 20), ResolveSize(ovr.BodySize, 14)}}
+		steps = [][2]float64{{ResolveSize(ovr.HeadingSize, sizeLeadPlusPt), ResolveSize(ovr.BodySize, scaleSubheadPt)}}
 	}
 	// With metrics the text sits in a nested grid, inset on every side; its
 	// height is what the shape writer needs at that width, so the text row is
@@ -410,7 +410,7 @@ func itsMeasureAt(ctx ExpandContext, v *ImageTextSplitValues, ovr *ImageTextSpli
 func itsTextParas(v *ImageTextSplitValues, headingSize, bodySize float64) []sizedPara {
 	var paras []sizedPara
 	if v.Eyebrow != "" {
-		paras = append(paras, sizedPara{text: strings.ToUpper(v.Eyebrow), sizePt: 12, bold: true, spaceAfterPt: 4})
+		paras = append(paras, sizedPara{text: strings.ToUpper(v.Eyebrow), sizePt: scaleBodyPt, bold: true, spaceAfterPt: 4})
 	}
 	if v.Heading != "" {
 		paras = append(paras, sizedPara{text: v.Heading, sizePt: headingSize, bold: true, spaceAfterPt: 10})
@@ -440,11 +440,11 @@ func itsImageColumn(ctx ExpandContext, v *ImageTextSplitValues, lay itsLayout) *
 		// DeckSpec author and nonsense to a client. The missing image is
 		// reported by validation instead (go-slide-creator-zj4yq).
 		paras := []chartInsightsParagraph{
-			{Content: "Image placeholder", Size: 14, Bold: true, Color: inkOnLight(ctx, "dk2", 4.5), Align: "ctr"},
+			{Content: "Image placeholder", Size: scaleSubheadPt, Bold: true, Color: inkOnLight(ctx, "dk2", 4.5), Align: "ctr"},
 		}
 		if label := strings.TrimSpace(v.ImageLabel); label != "" {
 			paras[0].SpaceAfter = 4
-			paras = append(paras, chartInsightsParagraph{Content: label, Size: 12, Color: "dk1", Align: "ctr"})
+			paras = append(paras, chartInsightsParagraph{Content: label, Size: scaleBodyPt, Color: "dk1", Align: "ctr"})
 		}
 		textJSON, _ := json.Marshal(chartInsightsText{
 			Paragraphs:    paras,
@@ -464,7 +464,7 @@ func itsImageColumn(ctx ExpandContext, v *ImageTextSplitValues, lay itsLayout) *
 		return picture
 	}
 	capJSON, _ := json.Marshal(chartInsightsText{
-		Paragraphs:    []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(v.Caption), Size: 12, Italic: true, Color: "dk1", Align: "l"}},
+		Paragraphs:    []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(v.Caption), Size: scaleBodyPt, Italic: true, Color: "dk1", Align: "l"}},
 		Align:         "l",
 		VerticalAlign: "t",
 	})

@@ -230,8 +230,8 @@ func (jm *journeyMaturity) Expand(ctx ExpandContext, values, overrides any, cell
 	}
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	labelSize := ResolveSize(ovr.HeaderSize, 12.0)
-	descSize := ResolveSize(ovr.BodySize, 9.0)
+	labelSize := ResolveSize(ovr.HeaderSize, scaleBodyPt)
+	descSize := ResolveSize(ovr.BodySize, sizeDenseCaptionPt)
 	cellAccentMode := ovr.CellAccentMode
 
 	bodyFill := surfaceFillJSON(ctx, "subtle", NeutralTint4)

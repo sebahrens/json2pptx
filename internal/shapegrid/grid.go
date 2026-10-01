@@ -3,6 +3,7 @@ package shapegrid
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"math"
 	"strings"
 
@@ -713,7 +714,7 @@ const (
 	// there), so a row sized to hold exactly its own text was reported as
 	// overflowing by the same ~17% on every pattern that measures its rows
 	// (go-slide-creator-wrsb).
-	textLineHeightFactor = 1.2
+	textLineHeightFactor = tokens.LineHeight
 	// textShapePaddingPt is the shape's own top+bottom text inset: the uniform
 	// shape margin (pptx.ShapeTextInsetPt, 0.5 cm) on each side.
 	textShapePaddingPt = 2 * pptx.ShapeTextInsetPt

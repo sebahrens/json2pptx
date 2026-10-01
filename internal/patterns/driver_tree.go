@@ -392,9 +392,9 @@ func (dt *driverTree) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	rootSize := ResolveSize(ovr.HeaderSize, 14.0)
-	branchSize := ResolveSize(ovr.HeaderSize, 12.0)
-	leafSize := ResolveSize(ovr.BodySize, 9.0)
+	rootSize := ResolveSize(ovr.HeaderSize, scaleSubheadPt)
+	branchSize := ResolveSize(ovr.HeaderSize, scaleBodyPt)
+	leafSize := ResolveSize(ovr.BodySize, sizeDenseCaptionPt)
 	cellAccentMode := ovr.CellAccentMode
 
 	totalLeaves := 0

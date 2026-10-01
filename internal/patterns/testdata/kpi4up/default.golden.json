@@ -3,7 +3,7 @@
   "columns": 4,
   "rows": [
     {
-      "max_height": 100,
+      "max_height": 105,
       "cells": [
         {
           "shape": {
@@ -13,7 +13,7 @@
               "paragraphs": [
                 {
                   "content": "$4.2M",
-                  "size": 36,
+                  "size": 40,
                   "bold": true,
                   "color": "lt1",
                   "align": "ctr"
@@ -38,7 +38,7 @@
               "paragraphs": [
                 {
                   "content": "127%",
-                  "size": 36,
+                  "size": 40,
                   "bold": true,
                   "color": "lt1",
                   "align": "ctr"
@@ -63,7 +63,7 @@
               "paragraphs": [
                 {
                   "content": "12d",
-                  "size": 36,
+                  "size": 40,
                   "bold": true,
                   "color": "lt1",
                   "align": "ctr"
@@ -88,7 +88,7 @@
               "paragraphs": [
                 {
                   "content": "98%",
-                  "size": 36,
+                  "size": 40,
                   "bold": true,
                   "color": "lt1",
                   "align": "ctr"

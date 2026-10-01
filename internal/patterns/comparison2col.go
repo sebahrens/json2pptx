@@ -506,8 +506,8 @@ func (p comparisonPlan) heights() []float64 {
 // A step is taken only when it makes the rows fit, so overflowing payloads
 // keep the default sizes (and report BODY_TOO_LONG when the area is known).
 func comparisonLayout(ctx ExpandContext, vals *Comparison2colValues, ovr *Comparison2colOverrides, cellOverrides map[int]any) comparisonPlan {
-	headerSize := ResolveSize(ovr.HeaderSize, 18.0)
-	bodySize := ResolveSize(ovr.BodySize, 14.0)
+	headerSize := ResolveSize(ovr.HeaderSize, scaleLeadPt)
+	bodySize := ResolveSize(ovr.BodySize, scaleSubheadPt)
 	type step struct{ header, body, gap float64 }
 	steps := []step{{headerSize, bodySize, comparisonGapPt}, {headerSize, bodySize, comparisonMinRowGapPt}}
 	if ovr.HeaderSize == 0 || ovr.BodySize == 0 {

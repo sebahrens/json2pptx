@@ -51,7 +51,11 @@ func TestModernContentTypographySourceAndGeneration(t *testing.T) {
 			t.Fatal("missing native title geometry or typography")
 		}
 		frame := title.ShapeProperties.Transform
-		if frame.Offset.X != 860893 || frame.Offset.Y != 647303 || frame.Extent.CX != 10465073 || frame.Extent.CY != 1532258 {
+		// Y is 507303 (not the original 647303) since go-slide-creator-kyk01:
+		// the reviewed 1.68in frame moved up 0.15in so its bottom edge meets
+		// Blank + Title's and all content-family titles share one baseline.
+		// Size, anchor and leading — the multiline capacity — are unchanged.
+		if frame.Offset.X != 860893 || frame.Offset.Y != 507303 || frame.Extent.CX != 10465073 || frame.Extent.CY != 1532258 {
 			t.Errorf("title frame lost reviewed multiline capacity: %+v", frame)
 		}
 		if title.TextBody.BodyProperties.Anchor != "b" {

@@ -145,20 +145,21 @@ func resolveKPIAccent(ovr *KPIOverrides, ctx ExpandContext) string {
 	return ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 }
 
-// resolveKPIBigSize returns the big-number font size, defaulting to 36pt.
+// resolveKPIBigSize returns the big-number font size, defaulting to the
+// 40pt KPI display step (measured down to fit by kpiFitBigSize).
 func resolveKPIBigSize(ovr *KPIOverrides) float64 {
 	if ovr == nil {
-		return 36.0
+		return scaleKPIPt
 	}
-	return ResolveSize(ovr.BigSize, 36.0)
+	return ResolveSize(ovr.BigSize, scaleKPIPt)
 }
 
 // resolveKPISmallSize returns the caption font size, defaulting to 14pt.
 func resolveKPISmallSize(ovr *KPIOverrides) float64 {
 	if ovr == nil {
-		return 14.0
+		return scaleSubheadPt
 	}
-	return ResolveSize(ovr.SmallSize, 14.0)
+	return ResolveSize(ovr.SmallSize, scaleSubheadPt)
 }
 
 // validateKPICells validates a slice of KPI cells for a pattern with the given

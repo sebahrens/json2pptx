@@ -126,11 +126,11 @@ const (
 	sshHeaderMax         = 48
 	sshTitleMax          = 40
 	sshBodyMax           = 140
-	sshTitlePt           = 14.0
-	sshBodyPt            = 12.0
-	sshHubPt             = 20.0
-	sshHeaderPt          = 12.0
-	sshNodeLabelPt       = 12.0
+	sshTitlePt           = scaleSubheadPt
+	sshBodyPt            = scaleBodyPt
+	sshHubPt             = sizeLeadPlusPt
+	sshHeaderPt          = scaleBodyPt
+	sshNodeLabelPt       = scaleBodyPt
 	sshNodeDiaPt         = 34.0 // numbered node circle
 	sshHubGapPt          = 16.0 // hub edge to the nearest node edge
 	sshTextGapPt         = 8.0  // node edge to its text box

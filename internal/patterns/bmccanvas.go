@@ -180,7 +180,7 @@ func (b *bmcCanvas) PostExpandWarnings(ctx ExpandContext, values, overrides any)
 		if ovr == nil {
 			ovr = &BMCCanvasOverrides{}
 		}
-		if w := bmcMeasuredWarning(ctx, v, ResolveSize(ovr.HeaderSize, 11.0), ResolveSize(ovr.BulletSize, 9.0)); w != "" {
+		if w := bmcMeasuredWarning(ctx, v, ResolveSize(ovr.HeaderSize, scaleDenseBodyPt), ResolveSize(ovr.BulletSize, sizeDenseCaptionPt)); w != "" {
 			warnings = append(warnings, w)
 		}
 	}
@@ -319,8 +319,8 @@ func (b *bmcCanvas) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	}
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	headerSize := ResolveSize(ovr.HeaderSize, 11.0)
-	bulletSize := ResolveSize(ovr.BulletSize, 9.0)
+	headerSize := ResolveSize(ovr.HeaderSize, scaleDenseBodyPt)
+	bulletSize := ResolveSize(ovr.BulletSize, sizeDenseCaptionPt)
 
 	// BMC canonical layout (5 columns, 3 rows):
 	//

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"math"
 	"strings"
 
@@ -341,7 +342,7 @@ func cardGridBudgetContext(ctx patterns.ExpandContext, callout *patterns.Pattern
 	}
 	areaH := float64(ctx.LayoutBounds.Height) / 12700
 	lines := strings.Count(callout.Text, "\n") + 1
-	reserved := math.Max(areaH*0.08, float64(lines)*14*1.2+2*pptx.ShapeTextInsetPt) + 10
+	reserved := math.Max(areaH*0.08, float64(lines)*tokens.TypeScaleSubheadPt*tokens.LineHeight+2*pptx.ShapeTextInsetPt) + 10
 	remaining := ctx.LayoutBounds.Height - int64(reserved*12700)
 	if remaining < 1 {
 		remaining = 1

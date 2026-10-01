@@ -1,6 +1,7 @@
 package patterns
 
 import (
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"math"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -22,7 +23,7 @@ const (
 	defaultShapeInsetLRPt = pptx.ShapeTextInsetPt
 	defaultShapeInsetTBPt = pptx.ShapeTextInsetPt
 	// contentLineHeight is the line-height factor used for content estimates.
-	contentLineHeight = 1.2
+	contentLineHeight = tokens.LineHeight
 )
 
 // contentAreaPt returns the pattern's content-area width and height in points,

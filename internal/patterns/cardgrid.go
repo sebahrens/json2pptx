@@ -66,8 +66,8 @@ func CardGridBodyBudgets(ctx ExpandContext, v *CardGridValues, o *CardGridOverri
 		return make([]int, len(v.Cells))
 	}
 
-	headerSize := ResolveSize(o.HeaderSize, 16)
-	bodySize := ResolveSize(o.BodySize, 12)
+	headerSize := ResolveSize(o.HeaderSize, sizeHeaderPt)
+	bodySize := ResolveSize(o.BodySize, scaleBodyPt)
 	budgets := make([]int, len(v.Cells))
 	headerHeights := make([]float64, len(v.Cells))
 	rowHeaderHeights := make([]float64, v.Rows)
@@ -146,7 +146,7 @@ func cardGridHeaderHeight(font string, textW, headerSize float64, style, header 
 	height := textBlockHeightPt(font, math.Max(textW, 1),
 		textParagraph{text: header, size: headerSize, bold: true})
 	if style == "numbered-badge" {
-		badgeSize := math.Min(headerSize*1.5, 36)
+		badgeSize := math.Min(headerSize*1.5, sizeBadgeNumeralMaxPt)
 		height += badgeSize * contentLineHeight
 	}
 	return height
@@ -173,7 +173,7 @@ func (c *cardGrid) PostExpandWarnings(ctx ExpandContext, values, overrides any) 
 		if n := runeLen(cell.Body); n > budget {
 			warnings = append(warnings, fmt.Sprintf(
 				"%s: card-grid cells[%d].body is %d characters; this card holds about %d at %.0fpt in the selected content area — trim it, or use fewer cards",
-				ErrCodeBodyTooLong, i, n, budget, ResolveSize(o.BodySize, 12)))
+				ErrCodeBodyTooLong, i, n, budget, ResolveSize(o.BodySize, scaleBodyPt)))
 		}
 	}
 	// Every card-grid card is filled, so an authored border outlines a filled
@@ -478,8 +478,8 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	}
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	headerSize := ResolveSize(ovr.HeaderSize, 16.0)
-	bodySize := ResolveSize(ovr.BodySize, 12.0)
+	headerSize := ResolveSize(ovr.HeaderSize, sizeHeaderPt)
+	bodySize := ResolveSize(ovr.BodySize, scaleBodyPt)
 	style := ovr.Style
 	if style == "" {
 		style = "filled"
@@ -733,7 +733,7 @@ func (c *cardGrid) expandSoftCard(ctx ExpandContext, cell CardGridCell, accent s
 		fillJSON = tone.fillJSON()
 		textContent = marshalTextObj(cardTextObj{
 			Paragraphs: []cardParagraph{
-				{Content: "RECOMMENDED", Size: 9, Bold: true, Color: ink, Align: "l"},
+				{Content: "RECOMMENDED", Size: sizeBadgePt, Bold: true, Color: ink, Align: "l"},
 				{Content: cell.Header, Size: headerSize, Bold: true, Color: ink, Align: "l"},
 				{Content: pptx.ConvertMarkdownEmphasis(cell.Body), Size: bodySize, Color: ink, Align: "l"},
 			},
@@ -925,10 +925,7 @@ func buildCardGridDarkTextContent(header string, headerSize float64, body string
 
 // buildNumberedBadgeTextContent renders a large number badge, header, and body.
 func buildNumberedBadgeTextContent(badge, header string, headerSize float64, body string, bodySize float64, accent string) json.RawMessage {
-	badgeSize := headerSize * 1.5
-	if badgeSize > 36 {
-		badgeSize = 36
-	}
+	badgeSize := math.Min(headerSize*1.5, sizeBadgeNumeralMaxPt)
 	return marshalTextObj(cardTextObj{
 		Paragraphs: []cardParagraph{
 			{Content: badge, Size: badgeSize, Bold: true, Color: accent, Align: "l"},

@@ -295,8 +295,8 @@ func (r *roadmapPhased) Expand(ctx ExpandContext, values, overrides any, cellOve
 	}
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	headerSize := ResolveSize(ovr.HeaderSize, 11.0)
-	bodySize := ResolveSize(ovr.BodySize, 10.0)
+	headerSize := ResolveSize(ovr.HeaderSize, scaleDenseBodyPt)
+	bodySize := ResolveSize(ovr.BodySize, scaleCaptionPt)
 
 	phaseCount := len(vals.Phases)
 	numCols := 1 + phaseCount // workstream label + phases

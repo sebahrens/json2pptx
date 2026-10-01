@@ -294,8 +294,8 @@ func (sh *strategyHouse) Expand(ctx ExpandContext, values, overrides any, cellOv
 	}
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	headerSize := ResolveSize(ovr.HeaderSize, 16.0)
-	bodySize := ResolveSize(ovr.BodySize, 12.0)
+	headerSize := ResolveSize(ovr.HeaderSize, sizeHeaderPt)
+	bodySize := ResolveSize(ovr.BodySize, scaleBodyPt)
 	cellAccentMode := ovr.CellAccentMode
 
 	numPillars := len(vals.Pillars)
@@ -482,7 +482,7 @@ func buildStrategyHouseRoofText(badges []string, accent string) json.RawMessage 
 	joined := strings.Join(badges, "   ·   ")
 	textObj := strategyHouseTextObj{
 		Paragraphs: []strategyHouseParagraph{
-			{Content: joined, Size: 11, Bold: true, Color: accent, Align: "ctr"},
+			{Content: joined, Size: scaleDenseBodyPt, Bold: true, Color: accent, Align: "ctr"},
 		},
 		Align:         "ctr",
 		VerticalAlign: "ctr",
