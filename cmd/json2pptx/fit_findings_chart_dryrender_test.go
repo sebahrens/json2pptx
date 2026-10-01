@@ -520,7 +520,16 @@ func assertCrowdedNominalAt(t *testing.T, findings []patterns.FitFinding, wantPa
 func TestDryRender_NativeDiagramsAreNotSvggenBusiness(t *testing.T) {
 	for _, typ := range []string{"swot", "business_model_canvas", "value_chain", "heatmap", "panel_layout", "pyramid", "kpi_dashboard"} {
 		spec := &types.DiagramSpec{Type: typ, Data: map[string]any{"whatever": "the native builder reads"}}
-		if got := dryRenderSpecToFindings(spec, nil, "", "warn", "/slides/0/content/0/diagram_value"); len(got) != 0 {
+		var got []patterns.FitFinding
+		for _, f := range dryRenderSpecToFindings(spec, nil, "", "warn", "/slides/0/content/0/diagram_value") {
+			// The canvas names the key it does not read (go-slide-creator-b7qqg.17);
+			// that review finding is the native builder's own, not svggen's.
+			if typ == "business_model_canvas" && f.Code == "diagram.data_key_ignored" && f.Action == "review" {
+				continue
+			}
+			got = append(got, f)
+		}
+		if len(got) != 0 {
 			t.Errorf("%s: native diagram reported %d finding(s): %+v", typ, len(got), got)
 		}
 	}
