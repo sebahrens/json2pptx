@@ -15,6 +15,10 @@ import (
 type OrgChartConfig struct {
 	ChartConfig
 
+	// LevelAccents gives each hierarchy level its own theme accent. Off by
+	// default: levels are the primary accent and its tints.
+	LevelAccents bool
+
 	// NodeWidth is the width of each person box in points.
 	NodeWidth float64
 
@@ -977,18 +981,25 @@ func (oc *OrgChartRenderer) getColors(style *StyleGuide) []Color {
 	if len(oc.config.Colors) > 0 {
 		return oc.config.Colors
 	}
-	accents := style.Palette.AccentColors()
-	if len(accents) >= 3 {
-		return accents
+	if oc.config.LevelAccents {
+		if accents := style.Palette.AccentColors(); len(accents) >= 3 {
+			return accents
+		}
 	}
-	// Fallback: professional hierarchy colors
-	return []Color{
-		MustParseColor(DefaultThemeAccent1Hex), // Blue (top level)
-		MustParseColor(DefaultThemeAccent5Hex), // Green (second level)
-		MustParseColor(DefaultThemeAccent2Hex), // Orange (third level)
-		MustParseColor(DefaultThemeAccent3Hex), // Red (fourth level)
-		MustParseColor(DefaultThemeAccent4Hex), // Teal (fifth level)
-	}
+	// One hue, lighter by depth: the deck's primary accent at the top, then
+	// tints. Taking accent1, accent2, ... per level painted the second level
+	// red on midnight-blue and a foreign blue on abstract, a colour nothing
+	// else in a primary-accent deck uses (go-slide-creator-libnz).
+	primary := style.Palette.Accent1
+	return []Color{primary, primary.Lighten(0.2), primary.Lighten(0.35), primary.Lighten(0.45)}
+}
+
+// orgChartLevelAccents reports whether data asks for one accent per level:
+// only under a deck accent_strategy that rotates accents ("rotate",
+// "section-keyed"), which the generator passes as data.accent_strategy.
+func orgChartLevelAccents(data map[string]any) bool {
+	s, _ := data["accent_strategy"].(string)
+	return s == "rotate" || s == "section-keyed"
 }
 
 // =============================================================================
@@ -1077,6 +1088,7 @@ func (d *OrgChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, 
 		if maxSiblings, ok := req.Data["max_visible_siblings"].(float64); ok {
 			config.MaxVisibleSiblings = int(maxSiblings)
 		}
+		config.LevelAccents = orgChartLevelAccents(req.Data)
 
 		if issues := orgChartNodeIssues(req.Data, &data.Root); len(issues) > 0 {
 			builder.AddFinding(Finding{

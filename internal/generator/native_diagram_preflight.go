@@ -68,6 +68,14 @@ func nativeProcessFlowPreflight(spec *types.DiagramSpec, font, path string, widt
 	layout := computeProcessFlowLayout(steps, connections, bounds, direction, font)
 	for i, step := range steps {
 		box := layout.steps[i]
+		if step.stepType == pfDecisionType && step.description == "" {
+			// Drawn unwrapped at a size fitted to the diamond.
+			if !pfDecisionLabelFits(step.label, font, box.cx, box.cy) {
+				need := int64(pfDecisionMinLabelSize) * 127 * 12 / 10 * int64(len(strings.Fields(step.label))) * 2
+				out = append(out, nativeTextCollisionFinding(spec.Type, slidepath.Field(path, fmt.Sprintf("data.steps[%d]", i)), step.label, "", need, box.cy))
+			}
+			continue
+		}
 		usableW, availableH := pfTextArea(step, font, box.cx, box.cy)
 		if usableW < 1 {
 			usableW = 1
@@ -82,9 +90,11 @@ func nativeProcessFlowPreflight(spec *types.DiagramSpec, font, path string, widt
 	}
 
 	stepRects := make(map[string]pptx.RectEmu, len(steps))
+	stepKinds := make(map[string]processFlowStepType, len(steps))
 	for i, step := range steps {
 		box := layout.steps[i]
 		stepRects[step.id] = pptx.RectEmu{X: box.x, Y: box.y, CX: box.cx, CY: box.cy}
+		stepKinds[step.id] = step.stepType
 	}
 	for i, connection := range connections {
 		if connection.label == "" {
@@ -95,9 +105,10 @@ func nativeProcessFlowPreflight(spec *types.DiagramSpec, font, path string, widt
 		if !srcOK || !tgtOK {
 			continue
 		}
-		label := pfConnLabelBounds(src, tgt, layout.direction)
-		for _, stepRect := range stepRects {
-			if nativeRectsOverlap(label, stepRect) {
+		labelW, labelH := pfConnLabelSize(connection.label, font)
+		label := pfConnLabelBounds(src, tgt, layout.direction, labelW, labelH, stepKinds[connection.from] == pfDecisionType)
+		for id, stepRect := range stepRects {
+			if pfRectHitsStep(label, stepRect, stepKinds[id]) {
 				out = append(out, patterns.FitFinding{
 					ValidationError: patterns.ValidationError{
 						Pattern: spec.Type,
@@ -199,7 +210,7 @@ func measureNativeText(text, font string, size float64, width int64) int64 {
 func nativeBMCPreflight(spec *types.DiagramSpec, font, path string, width, height int64) []patterns.FitFinding {
 	sections := parseBMCSections(spec.Data)
 	cells := bmcCellRects(bmcPanels(spec), types.BoundingBox{Width: width, Height: height})
-	var out []patterns.FitFinding
+	out := bmcIgnoredKeyFindings(spec, path)
 	for _, key := range bmcSectionOrder {
 		sec := sections[key]
 		title := sec.title
@@ -214,6 +225,43 @@ func nativeBMCPreflight(spec *types.DiagramSpec, font, path string, width, heigh
 		if body != "" && required > bodyH {
 			out = append(out, nativeTextCollisionFinding(spec.Type, slidepath.Field(path, "data."+string(key)), title, body, required, bodyH))
 		}
+	}
+	return out
+}
+
+// bmcIgnoredKeyFindings reports every data key the canvas never reads: its
+// text would vanish from the slide with nothing to say so
+// (go-slide-creator-b7qqg.17).
+func bmcIgnoredKeyFindings(spec *types.DiagramSpec, path string) []patterns.FitFinding {
+	ignored := BMCIgnoredKeys(spec.Data)
+	if len(ignored) == 0 {
+		return nil
+	}
+	prefix := "data."
+	if _, nested := spec.Data["boxes"].(map[string]any); nested {
+		prefix = "data.boxes."
+	}
+	// The documented spelling of the nine keys (capabilities RequiredFields).
+	canonical := []string{"key_partners", "key_activities", "key_resources", "value_propositions",
+		"customer_relations", "channels", "customer_segments", "cost_structure", "revenue_streams"}
+	out := make([]patterns.FitFinding, 0, len(ignored))
+	for _, key := range ignored {
+		params := map[string]any{"field": key, "diagram_type": spec.Type, "accepted": canonical}
+		msg := fmt.Sprintf("business_model_canvas: data key %q is not a canvas section and is not drawn — its content never reaches the slide", key)
+		if match, dist := ClosestMatch(key, bmcAliasKeysSorted(), 4); dist >= 0 {
+			params["did_you_mean"] = match
+			msg += fmt.Sprintf("; did you mean %q?", match)
+		}
+		out = append(out, patterns.FitFinding{
+			ValidationError: patterns.ValidationError{
+				Pattern: spec.Type,
+				Path:    slidepath.Field(path, prefix+key),
+				Code:    "diagram.data_key_ignored",
+				Message: msg,
+				Fix:     &patterns.FixSuggestion{Kind: "review", Params: params},
+			},
+			Action: "review",
+		})
 	}
 	return out
 }

@@ -1381,6 +1381,17 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"Or reduce data/series count so the chart fits.",
 		},
 	},
+	"diagram.data_key_ignored": {
+		Code:        "diagram.data_key_ignored",
+		Summary:     "A native diagram's data carries a key the diagram never reads, so its text is not drawn.",
+		Severity:    "review",
+		WhenEmitted: "A business_model_canvas data (or data.boxes) key is none of the nine sections or their accepted spellings (customer_relations / customer_relationships, value_propositions / value_proposition, ...); the canvas renders without it.",
+		RemediationSteps: []string{
+			"Rename the key to the section it belongs to; fix.params.did_you_mean names the closest accepted key when there is one.",
+			"Or remove the key if its content is not meant to be on the canvas.",
+		},
+		RelatedCodes: []string{"PATTERN_UNKNOWN_FIELD"},
+	},
 	"diagram.items_dropped": {
 		Code:        "diagram.items_dropped",
 		Summary:     "Authored diagram items did not fit and were omitted from the rendered visual.",

@@ -40,7 +40,7 @@ const (
 	pfDescFontSize int = 1400
 
 	// Connection labels are utility text, not primary step content.
-	pfConnLabelFontSize int = 1100
+	pfConnLabelFontSize int = 1200
 
 	// pfTextInset is the text inset for step shapes (EMU): the uniform 0.5 cm
 	// shape text margin.
@@ -284,6 +284,10 @@ func generateSequentialFlowConnections(steps []processFlowStep) []processFlowCon
 type pfStepLayout struct {
 	x, y   int64 // Top-left position
 	cx, cy int64 // Width, height
+
+	// keepWidth marks a decision diamond widened so its label fits at 14pt
+	// or more: a too-wide single row narrows the other steps first.
+	keepWidth bool
 }
 
 // pfLayoutResult holds all computed positions for steps and the flow direction.
@@ -308,6 +312,7 @@ func computeProcessFlowLayout(steps []processFlowStep, connections []processFlow
 	for i, s := range steps {
 		layouts[i].cx, layouts[i].cy = pfStepDimensions(s, bounds, n)
 		pfGrowTextHeight(&layouts[i], s, font)
+		pfWidenDecision(&layouts[i], s, font, bounds)
 	}
 
 	// Auto-switch to vertical if horizontal would be too crowded.
@@ -398,6 +403,12 @@ func pfRequiredTextHeight(step processFlowStep, font string, width int64) int64 
 }
 
 func pfGrowTextHeight(layout *pfStepLayout, step processFlowStep, font string) {
+	if step.stepType == pfDecisionType && step.description == "" {
+		// The label is fitted to the diamond at draw time
+		// (pfDecisionLabelLines). Growing the height for a word broken inside
+		// the half-width text rectangle only made the diamond tall and narrow.
+		return
+	}
 	layout.cy = max(layout.cy, pfMinimumTextHeight(*layout, step, font))
 }
 
@@ -683,13 +694,36 @@ func pfCenterLayoutAt(layout *pfStepLayout, bounds types.BoundingBox, centerPct 
 
 // pfLayoutSingleRow positions all steps in one horizontal row.
 func pfLayoutSingleRow(layouts []pfStepLayout, bounds types.BoundingBox, totalW, maxH int64) pfLayoutResult {
-	// Scale down if too wide.
+	// Scale down if too wide. A widened decision keeps its width while the
+	// other steps can absorb the squeeze (to at most half their width);
+	// otherwise everything scales together.
 	if totalW > bounds.Width {
+		var keptW, flexW int64
+		for _, l := range layouts {
+			if l.keepWidth {
+				keptW += l.cx
+			} else {
+				flexW += l.cx
+			}
+		}
+		gaps := totalW - keptW - flexW
+		flexScale := 0.0
+		if flexW > 0 && keptW > 0 {
+			flexScale = float64(bounds.Width-gaps-keptW) / float64(flexW)
+		}
+		uniform := flexScale < 0.5
 		scale := float64(bounds.Width) / float64(totalW)
 		totalW = 0
 		for i := range layouts {
-			layouts[i].cx = int64(float64(layouts[i].cx) * scale)
-			layouts[i].cy = int64(float64(layouts[i].cy) * scale)
+			s := scale
+			if !uniform {
+				s = flexScale
+				if layouts[i].keepWidth {
+					s = 1
+				}
+			}
+			layouts[i].cx = int64(float64(layouts[i].cx) * s)
+			layouts[i].cy = int64(float64(layouts[i].cy) * s)
 			totalW += layouts[i].cx
 			if i > 0 {
 				totalW += pfGap
@@ -866,7 +900,7 @@ func generateProcessFlowGroupXML(panels []nativePanelData, bounds types.Bounding
 		stepIDs[step.id] = shapeID
 		nextID++
 
-		opts := pfGenerateStepShape(step, sl, shapeID, len(steps))
+		opts := pfGenerateStepShape(step, sl, shapeID, len(steps), meta.fontName)
 		stepShapes[step.id] = opts
 
 		b, err := pptx.GenerateShape(opts)
@@ -893,7 +927,7 @@ func generateProcessFlowGroupXML(panels []nativePanelData, bounds types.Bounding
 
 		// Generate connection label as a separate text shape if present.
 		if conn.label != "" {
-			labelXML := pfGenerateConnLabel(nextID, srcOpts, tgtOpts, conn.label, layout.direction)
+			labelXML := pfGenerateConnLabel(nextID, srcOpts, tgtOpts, conn.label, layout.direction, meta.fontName)
 			if len(labelXML) > 0 {
 				children = append(children, labelXML)
 				nextID++
@@ -916,28 +950,56 @@ func generateProcessFlowGroupXML(panels []nativePanelData, bounds types.Bounding
 }
 
 // pfGenerateStepShape builds a ShapeOptions for a process flow step.
-func pfGenerateStepShape(step processFlowStep, sl pfStepLayout, shapeID uint32, totalSteps int) pptx.ShapeOptions {
+func pfGenerateStepShape(step processFlowStep, sl pfStepLayout, shapeID uint32, totalSteps int, fonts ...string) pptx.ShapeOptions {
 	geom := pfGeometryForStepType(step.stepType)
 	fill, line := pfColorsForStepType(step.stepType)
+	font := defaultFontFamily
+	if len(fonts) > 0 && fonts[0] != "" {
+		font = fonts[0]
+	}
 
 	// Build text paragraphs.
 	var paras []pptx.Paragraph
 
 	// More steps must not silently lower the primary text role.
 	labelSize := pfLabelFontSize
+	labelLines := []string{step.label}
+	wrap := "square"
+	autoFit := "normAutofit"
+	insets := pptx.ShapeTextInsets()
+	if step.stepType == pfDecisionType {
+		// A diamond's preset text rectangle is only the middle half of its
+		// width, so "Approved?" at 18pt was force-broken mid-word
+		// (go-slide-creator-acydi). The label is broken at spaces only, at the
+		// largest size in [14pt, 18pt] whose lines fit the diamond's visible
+		// width at their height, and drawn unwrapped so no renderer can split
+		// a word.
+		if step.description == "" {
+			labelSize, labelLines = pfDecisionLabelLines(step.label, font, sl.cx, sl.cy)
+			// Unwrapped and not autofit: LibreOffice's shrink-on-overflow
+			// re-wraps an unwrapped body inside the preset text rectangle.
+			wrap = "none"
+			autoFit = ""
+			insets = [4]int64{}
+		} else {
+			labelSize = pfDecisionWrappedLabelSize(step, font, sl.cx)
+		}
+	}
 
-	paras = append(paras, pptx.Paragraph{
-		Align:    "ctr",
-		NoBullet: true,
-		Runs: []pptx.Run{{
-			Text:     step.label,
-			Lang:     "en-US",
-			FontSize: labelSize,
-			Bold:     true,
-			Dirty:    true,
-			Color:    pptx.SchemeFill("dk1"),
-		}},
-	})
+	for _, text := range labelLines {
+		paras = append(paras, pptx.Paragraph{
+			Align:    "ctr",
+			NoBullet: true,
+			Runs: []pptx.Run{{
+				Text:     text,
+				Lang:     "en-US",
+				FontSize: labelSize,
+				Bold:     true,
+				Dirty:    true,
+				Color:    pptx.SchemeFill("dk1"),
+			}},
+		})
+	}
 
 	// Description paragraph — smaller, regular weight.
 	if step.description != "" {
@@ -968,13 +1030,142 @@ func pfGenerateStepShape(step processFlowStep, sl pfStepLayout, shapeID uint32, 
 		Fill:        fill,
 		Line:        line,
 		Text: &pptx.TextBody{
-			Wrap:       "square",
+			Wrap:       wrap,
 			Anchor:     "ctr",
-			Insets:     pptx.ShapeTextInsets(),
-			AutoFit:    "normAutofit",
+			Insets:     insets,
+			AutoFit:    autoFit,
 			Paragraphs: paras,
 		},
 	}
+}
+
+// Decision label sizes, hundredths of a point: never above the step label
+// role, never below the 14pt the review set as the floor for a decision.
+const (
+	pfDecisionMinLabelSize = 1400
+	pfDecisionSizeStep     = 100
+	pfDecisionMaxLines     = 3
+)
+
+// pfDecisionLabelLines breaks a decision label at spaces into the fewest lines
+// at the largest size in [14pt, 18pt] where every line fits the diamond. A
+// line block of height H centred in a diamond of cx x cy has cx*(1-H/cy) of
+// visible width at its top and bottom edge; a margin keeps the text off the
+// outline. When nothing fits, the label is drawn at 14pt in as few lines as
+// its words allow — still never split inside a word.
+func pfDecisionLabelLines(label, font string, cx, cy int64) (int, []string) {
+	words := strings.Fields(label)
+	if len(words) == 0 || cx <= 0 || cy <= 0 {
+		return pfLabelFontSize, []string{label}
+	}
+	const margin int64 = 2 * 45720 // 0.05" each side
+	for size := pfLabelFontSize; size >= pfDecisionMinLabelSize; size -= pfDecisionSizeStep {
+		lineH := int64(size) * 127 * 12 / 10
+		for n := 1; n <= pfDecisionMaxLines && n <= len(words); n++ {
+			blockH := int64(n) * lineH
+			if blockH >= cy {
+				break
+			}
+			allowed := cx*(cy-blockH)/cy - margin
+			if lines, ok := pfGreedyLines(words, font, size, allowed); ok && len(lines) <= n {
+				return size, lines
+			}
+		}
+	}
+	lines, _ := pfGreedyLines(words, font, pfDecisionMinLabelSize, cx/2)
+	return pfDecisionMinLabelSize, lines
+}
+
+// pfWidenDecision widens a decision diamond (height unchanged) until its
+// label fits at 14pt or more, up to a third of the frame width, so a single
+// long word is never broken inside the diamond (go-slide-creator-acydi).
+func pfWidenDecision(layout *pfStepLayout, step processFlowStep, font string, bounds types.BoundingBox) {
+	if step.stepType != pfDecisionType || step.description != "" || layout.cy <= 0 {
+		return
+	}
+	if pfDecisionLabelFits(step.label, font, layout.cx, layout.cy) {
+		return
+	}
+	limit := max(layout.cx, bounds.Width/3)
+	for w := layout.cx + layout.cx/20; w <= limit; w += max(1, layout.cx/20) {
+		if pfDecisionLabelFits(step.label, font, w, layout.cy) {
+			layout.cx = w
+			layout.keepWidth = true
+			return
+		}
+	}
+	layout.cx = limit
+	layout.keepWidth = true
+}
+
+// pfDecisionLabelFits reports whether pfDecisionLabelLines finds a size in
+// [14pt, 18pt] at which the label fits the diamond without the fallback.
+func pfDecisionLabelFits(label, font string, cx, cy int64) bool {
+	size, lines := pfDecisionLabelLines(label, font, cx, cy)
+	if size > pfDecisionMinLabelSize {
+		return true
+	}
+	lineH := int64(size) * 127 * 12 / 10
+	blockH := int64(len(lines)) * lineH
+	if blockH >= cy {
+		return false
+	}
+	allowed := cx*(cy-blockH)/cy - 2*45720
+	_, ok := pfGreedyLines(lines, font, size, allowed)
+	return ok
+}
+
+// pfGreedyLines packs words into lines no wider than maxW; ok is false when
+// a single word is wider on its own.
+func pfGreedyLines(words []string, font string, size int, maxW int64) ([]string, bool) {
+	width := func(s string) int64 {
+		w, err := textfit.MeasureStyledLineWidth(s, font, float64(size)/100, true)
+		if err != nil || w <= 0 {
+			return int64(len([]rune(s))) * pfLabelGlyphWidthEMU * int64(size) / int64(pfLabelFontSize)
+		}
+		return w + w/50
+	}
+	ok := true
+	var lines []string
+	cur := ""
+	for _, word := range words {
+		if width(word) > maxW {
+			ok = false
+		}
+		next := word
+		if cur != "" {
+			next = cur + " " + word
+		}
+		if cur != "" && width(next) > maxW {
+			lines = append(lines, cur)
+			cur = word
+			continue
+		}
+		cur = next
+	}
+	if cur != "" {
+		lines = append(lines, cur)
+	}
+	return lines, ok
+}
+
+// pfDecisionWrappedLabelSize is the size for a decision that also carries a
+// description, whose body must wrap: the largest size in [14pt, 18pt] at
+// which the label's widest word fits the preset's half-width text rectangle.
+func pfDecisionWrappedLabelSize(step processFlowStep, font string, cx int64) int {
+	rectW := cx / 2
+	for size := pfLabelFontSize; size > pfDecisionMinLabelSize; size -= pfDecisionSizeStep {
+		var widest int64
+		for _, word := range strings.Fields(step.label) {
+			if w, err := textfit.MeasureStyledLineWidth(word, font, float64(size)/100, true); err == nil {
+				widest = max(widest, w)
+			}
+		}
+		if widest <= rectW {
+			return size
+		}
+	}
+	return pfDecisionMinLabelSize
 }
 
 // pfGeometryForStepType maps step types to OOXML preset geometries.
@@ -1083,23 +1274,38 @@ func pfGenerateConnector(connID uint32, src, tgt pptx.ShapeOptions, srcShapeID, 
 	return b
 }
 
-// pfGenerateConnLabel produces a small text shape for a connection label,
-// positioned at the midpoint between two shapes.
-func pfGenerateConnLabel(shapeID uint32, src, tgt pptx.ShapeOptions, label, direction string) []byte {
-	labelBounds := pfConnLabelBounds(src.Bounds, tgt.Bounds, direction)
+// Connection label geometry (EMU).
+const (
+	pfConnLabelPad       int64 = 27432 // 0.03" text padding inside the knock-out
+	pfConnLabelVPad      int64 = 9144  // 0.01" above and below the line box
+	pfConnLabelClearance int64 = 45720 // 0.05" between the label and its connector
+)
+
+// pfGenerateConnLabel produces a small text shape for a connection label. On
+// a horizontal row it sits above the connector, clear of the line and its
+// arrowhead, on a background-coloured knock-out; it used to be centred on the
+// line, where the 11pt italic "Yes" read as a smudge on the arrowhead
+// (go-slide-creator-acydi).
+func pfGenerateConnLabel(shapeID uint32, src, tgt pptx.ShapeOptions, label, direction string, fonts ...string) []byte {
+	font := defaultFontFamily
+	if len(fonts) > 0 && fonts[0] != "" {
+		font = fonts[0]
+	}
+	labelW, labelH := pfConnLabelSize(label, font)
+	labelBounds := pfConnLabelBounds(src.Bounds, tgt.Bounds, direction, labelW, labelH, src.Geometry == pptx.GeomFlowChartDecision)
 
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     fmt.Sprintf("Conn Label %s", label),
 		Bounds:   labelBounds,
 		Geometry: pptx.GeomRect,
-		Fill:     pptx.NoFill(),
+		Fill:     pptx.SchemeFill("bg1"),
 		Line:     pptx.Line{Width: 0, Fill: pptx.NoFill()},
 		TxBox:    true,
 		Text: &pptx.TextBody{
-			Wrap:   "square",
+			Wrap:   "none",
 			Anchor: "ctr",
-			Insets: pptx.ShapeTextInsets(),
+			Insets: [4]int64{pfConnLabelPad, pfConnLabelVPad, pfConnLabelPad, pfConnLabelVPad},
 			Paragraphs: []pptx.Paragraph{{
 				Align:    "ctr",
 				NoBullet: true,
@@ -1107,7 +1313,6 @@ func pfGenerateConnLabel(shapeID uint32, src, tgt pptx.ShapeOptions, label, dire
 					Text:     label,
 					Lang:     "en-US",
 					FontSize: pfConnLabelFontSize,
-					Italic:   true,
 					Dirty:    true,
 					Color:    pptx.SchemeFill("tx1", pptx.LumMod(65000), pptx.LumOff(35000)),
 				}},
@@ -1121,12 +1326,42 @@ func pfGenerateConnLabel(shapeID uint32, src, tgt pptx.ShapeOptions, label, dire
 	return b
 }
 
-func pfConnLabelBounds(src, tgt pptx.RectEmu, direction string) pptx.RectEmu {
-	const (
-		labelW    int64 = 457200 // ~0.5"
-		labelH    int64 = 182880 // ~0.2"
-		offsetAmt int64 = 91440  // ~0.1"
-	)
+// pfConnLabelSize is the knock-out box a connection label needs: its measured
+// one-line width plus padding, by one line of the label size.
+func pfConnLabelSize(label, font string) (int64, int64) {
+	textW, err := textfit.MeasureStyledLineWidth(label, font, float64(pfConnLabelFontSize)/100, false)
+	if err != nil || textW <= 0 {
+		textW = int64(len([]rune(label))) * pfBodyGlyphWidthEMU
+	}
+	return textW + textW/10 + 2*pfConnLabelPad, int64(pfConnLabelFontSize)*127*12/10 + 2*pfConnLabelVPad
+}
+
+// pfRectHitsStep reports whether rect touches the visible step shape: the
+// diamond itself for a decision (its bounding box corners are empty), the
+// box for every other step.
+func pfRectHitsStep(rect, step pptx.RectEmu, kind processFlowStepType) bool {
+	if !nativeRectsOverlap(rect, step) {
+		return false
+	}
+	if kind != pfDecisionType || step.CX <= 0 || step.CY <= 0 {
+		return true
+	}
+	// The rect point closest to the diamond centre in the diamond's own
+	// L1 metric is the per-axis clamp of the centre into the rect.
+	cx, cy := step.X+step.CX/2, step.Y+step.CY/2
+	px := min(max(cx, rect.X), rect.X+rect.CX)
+	py := min(max(cy, rect.Y), rect.Y+rect.CY)
+	return float64(abs64(px-cx))/float64(step.CX/2)+float64(abs64(py-cy))/float64(step.CY/2) < 1
+}
+
+// pfConnLabelBounds places a labelW x labelH connection label. Vertical flows
+// put it beside the connector in the gap between the boxes. On a horizontal
+// row it sits above the connector line with pfConnLabelClearance to spare,
+// centred on the edge-to-edge gap; a label wider than the gap is right-aligned
+// to the target's left edge, so it extends back over the source (a decision
+// diamond's corner is empty there) instead of over the target's box.
+func pfConnLabelBounds(src, tgt pptx.RectEmu, direction string, labelW, labelH int64, srcDiamond bool) pptx.RectEmu {
+	const offsetAmt int64 = 91440 // ~0.1"
 	srcCX, srcCY := src.X+src.CX/2, src.Y+src.CY/2
 	tgtCX, tgtCY := tgt.X+tgt.CX/2, tgt.Y+tgt.CY/2
 	midX, midY := (srcCX+tgtCX)/2, (srcCY+tgtCY)/2
@@ -1144,7 +1379,31 @@ func pfConnLabelBounds(src, tgt pptx.RectEmu, direction string) pptx.RectEmu {
 		}
 		return pptx.RectEmu{X: x, Y: midY - labelH/2, CX: labelW, CY: labelH}
 	}
-	return pptx.RectEmu{X: midX - labelW/2, Y: midY - labelH/2 - offsetAmt, CX: labelW, CY: labelH}
+	if abs64(srcCY-tgtCY) > src.CY/2 {
+		// A bent connector between rows: keep the label beside its midpoint.
+		return pptx.RectEmu{X: midX - labelW/2, Y: midY - labelH - pfConnLabelClearance, CX: labelW, CY: labelH}
+	}
+	// Straight connector on one row: the line runs at the source's centre.
+	lineY := srcCY
+	gapL, gapR := src.X+src.CX, tgt.X
+	if tgt.X < src.X {
+		gapL, gapR = tgt.X+tgt.CX, src.X
+	}
+	x := (gapL+gapR)/2 - labelW/2
+	lift := pfConnLabelClearance
+	if overhang := labelW - (gapR - gapL - 2*pfConnLabelPad); overhang > 0 {
+		if tgt.X >= src.X {
+			x = gapR - pfConnLabelPad - labelW
+		} else {
+			x = gapL + pfConnLabelPad
+		}
+		// Over a diamond's empty corner the label clears the sloped edge
+		// once its bottom is overhang*cy/cx above the vertex.
+		if srcDiamond && src.CX > 0 {
+			lift = max(lift, overhang*src.CY/src.CX+pfConnLabelPad)
+		}
+	}
+	return pptx.RectEmu{X: x, Y: lineY - lift - labelH, CX: labelW, CY: labelH}
 }
 
 func pfMax64(a, b int64) int64 {

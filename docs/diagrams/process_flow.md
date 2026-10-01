@@ -86,6 +86,13 @@ inside the edge-to-edge gap. If a short frame still forces text or a connection
 label into a step, preflight reports `diagram.text_overlap` instead of silently
 shipping unreadable 5pt text.
 
+A decision label is never broken inside a word: it is drawn unwrapped, broken
+only at spaces, at the largest size in 14–18pt whose lines fit the diamond's
+visible width; on a horizontal row the diamond is widened (other steps narrow
+first) until that holds, and preflight reports `diagram.text_overlap` when even
+14pt cannot fit. In `horizontal` mode a connection label (12pt) sits above its
+connector on a background knock-out, clear of the line and arrowhead.
+
 ## Step Optional Fields
 
 | Field | Type | Description |

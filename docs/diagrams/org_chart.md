@@ -79,6 +79,7 @@ unresolvable node is drawn under the top node rather than dropped.
 | `vertical_gap` | `number` | - | Spacing between levels |
 | `corner_radius` | `number` | - | Rounded corners on nodes |
 | `max_visible_siblings` | `number` | `9` | Max siblings before "+N more" collapse |
+| `accent_strategy` | `string` | the deck's | `rotate` / `section-keyed` give each level its own accent; anything else (the default `primary`) draws every level in accent1 and lighter tints of it. In a deck the generator passes the deck-level `accent_strategy` here unless the diagram sets one |
 
 ## Overflow
 

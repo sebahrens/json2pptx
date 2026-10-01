@@ -135,6 +135,10 @@ type Matrix2x2Point struct {
 
 	// Description is optional additional text.
 	Description string
+
+	// Series groups points that share a colour (one accent per series, in
+	// first-appearance order). Read from "series", "group" or "category".
+	Series string
 }
 
 // Matrix2x2Data represents the data for a 2x2 matrix chart.
@@ -343,7 +347,10 @@ func (mc *Matrix2x2Chart) drawAxisLabels(plotArea Rect) {
 	// Y-axis name (rotated -90°, reads bottom-to-top)
 	b.SetFontSize(style.Typography.SizeBody)
 	b.SetFontWeight(style.Typography.WeightMedium)
-	yLabelX := style.Typography.SizeBody / 2
+	// Beside the matrix's left edge, not at the canvas edge: anchored at the
+	// canvas edge the title floated a margin's width away from the matrix
+	// (go-slide-creator-njdno). Mirrors the x-axis title's offset below.
+	yLabelX := math.Max(style.Typography.SizeBody, plotArea.X-style.Spacing.LG)
 	yLabelY := plotArea.Y + plotArea.H/2
 	b.Push()
 	b.RotateAround(-90, yLabelX, yLabelY)
@@ -607,7 +614,14 @@ func (mc *Matrix2x2Chart) drawPoints(points []Matrix2x2Point, plotArea Rect, cap
 		}
 	}
 
-	for i, point := range points {
+	seriesIndex := map[string]int{}
+	for _, point := range points {
+		if _, seen := seriesIndex[point.Series]; point.Series != "" && !seen {
+			seriesIndex[point.Series] = len(seriesIndex)
+		}
+	}
+
+	for _, point := range points {
 		// A coordinate outside the axis range used to be plotted wherever the
 		// scale put it: outside the plot frame, over the axis titles, or off the
 		// canvas — silently (go-slide-creator-s27x). Clamp it back into the
@@ -636,7 +650,13 @@ func (mc *Matrix2x2Chart) drawPoints(points []Matrix2x2Point, plotArea Rect, cap
 			})
 		}
 
-		color := palette.AccentColor(i)
+		// One ink for every point: colouring each by index suggested
+		// categories the data does not have (go-slide-creator-njdno). Points
+		// that name a series take one accent per series.
+		color := palette.Accent1
+		if point.Series != "" {
+			color = palette.AccentColor(seriesIndex[point.Series])
+		}
 		if point.Color != nil {
 			color = *point.Color
 		}
@@ -1084,13 +1104,13 @@ func (d *Matrix2x2Diagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		config.ShowPointLabels = true
 		config.ShowGridLines = true
 
-		// Override default hardcoded colors with template theme accent colors.
+		// Neutral quadrants by default: one light ink tint for all four, and
+		// the accent reserved for a quadrant the author highlights. Four
+		// accent tints read as a patchwork and bury which quadrant matters
+		// (go-slide-creator-njdno).
 		style := builder.StyleGuide()
-		accents := style.Palette.AccentColors()
-		if len(accents) >= 4 {
-			for i := 0; i < 4; i++ {
-				config.QuadrantColors[i] = accents[i].WithAlpha(config.QuadrantOpacity)
-			}
+		for i := range config.QuadrantColors {
+			config.QuadrantColors[i] = style.Palette.TextPrimary.WithAlpha(matrixNeutralQuadrantAlpha)
 		}
 
 		// Apply custom axis labels (support multiple key formats)
@@ -1142,6 +1162,12 @@ func (d *Matrix2x2Diagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 			}
 		}
 
+		// The highlighted quadrant (by index, position or label) takes the
+		// accent tint.
+		if hi, ok := matrixHighlightQuadrant(req.Data, config.QuadrantLabels); ok {
+			config.QuadrantColors[hi] = style.Palette.Accent1.WithAlpha(matrixHighlightQuadrantAlpha)
+		}
+
 		// Apply custom quadrant colors
 		if colors, ok := req.Data["quadrant_colors"].([]any); ok {
 			for i, c := range colors {
@@ -1155,8 +1181,9 @@ func (d *Matrix2x2Diagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 			}
 		}
 
-		// Apply custom quadrant opacity
-		if opacity, ok := req.Data["quadrant_opacity"].(float64); ok {
+		// Apply custom quadrant opacity (to authored quadrant_colors; the
+		// neutral default and the highlight keep their calibrated tints).
+		if opacity, ok := req.Data["quadrant_opacity"].(float64); ok && req.Data["quadrant_colors"] != nil {
 			config.QuadrantOpacity = opacity
 			// Re-apply opacity to existing colors
 			for i := range config.QuadrantColors {
@@ -1199,6 +1226,54 @@ func (d *Matrix2x2Diagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		}
 		return nil
 	})
+}
+
+// Quadrant tints: the neutral default is a 6% wash of the text ink; the
+// highlighted quadrant is a light accent1 tint.
+const (
+	matrixNeutralQuadrantAlpha   = 0.06
+	matrixHighlightQuadrantAlpha = 0.18
+)
+
+// matrixHighlightQuadrant resolves data.highlight_quadrant — an index 0-3
+// (top-left, top-right, bottom-left, bottom-right), a position such as
+// "top-left" / "top_right", or a quadrant's label — or a quadrants[] entry
+// carrying highlight: true.
+func matrixHighlightQuadrant(data map[string]any, labels [4]string) (int, bool) {
+	switch v := data["highlight_quadrant"].(type) {
+	case float64:
+		if i := int(v); float64(i) == v && i >= 0 && i < 4 {
+			return i, true
+		}
+	case int:
+		if v >= 0 && v < 4 {
+			return v, true
+		}
+	case string:
+		s := strings.TrimSpace(v)
+		pos := strings.NewReplacer("_", "-", " ", "-").Replace(strings.ToLower(s))
+		if i := quadrantPositionIndex(pos); i >= 0 {
+			return i, true
+		}
+		for i, label := range labels {
+			if label != "" && strings.EqualFold(label, s) {
+				return i, true
+			}
+		}
+	}
+	if quadrants, ok := data["quadrants"].([]any); ok {
+		for i, q := range quadrants {
+			qMap, ok := q.(map[string]any)
+			if !ok {
+				continue
+			}
+			if hi, _ := qMap["highlight"].(bool); hi {
+				idx, _ := resolvedQuadrantIndex(qMap, i)
+				return idx, true
+			}
+		}
+	}
+	return 0, false
 }
 
 // parseMatrix2x2Data parses the request data into Matrix2x2Data.
@@ -1244,6 +1319,12 @@ func parseMatrix2x2Data(req *RequestEnvelope) (Matrix2x2Data, []Finding, error) 
 				}
 				if desc, ok := p["description"].(string); ok {
 					point.Description = desc
+				}
+				for _, key := range []string{"series", "group", "category"} {
+					if s, ok := p[key].(string); ok && strings.TrimSpace(s) != "" {
+						point.Series = strings.TrimSpace(s)
+						break
+					}
 				}
 			}
 

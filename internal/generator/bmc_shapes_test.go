@@ -351,3 +351,33 @@ func TestAllocatePanelIconRelIDs_BMCMode(t *testing.T) {
 		t.Errorf("BMC groupXML should be valid XML, got: %v", err)
 	}
 }
+
+// TestParseBMCSections_SpellingsMergeDeterministically covers
+// go-slide-creator-b7qqg.17: the documented customer_relations key is read,
+// two spellings of one section merge (canonical first) instead of one being
+// dropped at random, and the bmc-canvas pattern's {header, bullets} cell is
+// accepted.
+func TestParseBMCSections_SpellingsMergeDeterministically(t *testing.T) {
+	data := map[string]any{
+		"customer_relations":     []any{"Dedicated success team"},
+		"customer_relationships": []any{"Self-service portal"},
+		"channels":               map[string]any{"header": "Routes", "bullets": []any{"Partners"}},
+	}
+	for i := 0; i < 20; i++ {
+		sections := parseBMCSections(data)
+		cr := sections[bmcCustRelations].items
+		if strings.Join(cr, "|") != "Self-service portal|Dedicated success team" {
+			t.Fatalf("customer relationships = %v, want both spellings merged, canonical key first", cr)
+		}
+		ch := sections[bmcChannels]
+		if ch.title != "Routes" || len(ch.items) != 1 || ch.items[0] != "Partners" {
+			t.Fatalf("channels = %+v, want the {header, bullets} cell read", ch)
+		}
+	}
+	if got := BMCIgnoredKeys(data); len(got) != 0 {
+		t.Errorf("BMCIgnoredKeys = %v, want none", got)
+	}
+	if got := BMCIgnoredKeys(map[string]any{"key_partner": []any{"x"}, "title": "t"}); len(got) != 1 || got[0] != "key_partner" {
+		t.Errorf("BMCIgnoredKeys = %v, want [key_partner]", got)
+	}
+}

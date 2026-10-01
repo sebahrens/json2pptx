@@ -3,6 +3,7 @@ package generator
 import (
 	"fmt"
 	"log/slog"
+	"sort"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -126,8 +127,20 @@ var bmcDefaultTitles = map[bmcSectionKey]string{
 	bmcRevenueStreams:   "Revenue Streams",
 }
 
-// bmcSectionAliases maps various input key formats to canonical section keys.
+// bmcSectionAliases maps every accepted input key to its canonical section.
+// Agents are told the nine required keys by capabilities / skill_info / the
+// bmc-canvas pattern (customer_relations, value_propositions), while older
+// decks and the examples use customer_relationships / value_proposition; the
+// native canvas reads both spellings, because a documented key used to render
+// an empty cell with no warning (go-slide-creator-b7qqg.17). The synonyms also
+// cover the semantic framework compiler's list, so one vocabulary works on
+// every path.
 var bmcSectionAliases = map[string]bmcSectionKey{
+	"customer_relations":     bmcCustRelations,
+	"customer_relationship":  bmcCustRelations,
+	"customerRelations":      bmcCustRelations,
+	"channel":                bmcChannels,
+	"revenues":               bmcRevenueStreams,
 	"key_partners":           bmcKeyPartners,
 	"keyPartners":            bmcKeyPartners,
 	"partners":               bmcKeyPartners,
@@ -158,6 +171,53 @@ var bmcSectionAliases = map[string]bmcSectionKey{
 	"revenue":                bmcRevenueStreams,
 }
 
+// bmcNonSectionKeys are data keys that are not sections but are never content
+// loss (the nested-boxes wrapper, and titles the slide draws elsewhere).
+var bmcNonSectionKeys = map[string]bool{"boxes": true, "title": true, "subtitle": true}
+
+// bmcAliasKeysSorted returns the alias keys in a fixed order: each section's
+// canonical key first, then the rest alphabetically. Ranging over the map made
+// the winner random when an author supplied two spellings of one section.
+func bmcAliasKeysSorted() []string {
+	keys := make([]string, 0, len(bmcSectionAliases))
+	for k := range bmcSectionAliases {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		ci := keys[i] == string(bmcSectionAliases[keys[i]])
+		cj := keys[j] == string(bmcSectionAliases[keys[j]])
+		if ci != cj {
+			return ci
+		}
+		return keys[i] < keys[j]
+	})
+	return keys
+}
+
+// bmcDataSource returns the map holding the sections: the nested "boxes"
+// object when present, else the data itself.
+func bmcDataSource(data map[string]any) map[string]any {
+	if boxes, ok := data["boxes"].(map[string]any); ok {
+		return boxes
+	}
+	return data
+}
+
+// BMCIgnoredKeys lists, sorted, the data keys a native business_model_canvas
+// never reads. Their content would vanish from the slide, so preflight reports
+// them as diagram.data_key_ignored.
+func BMCIgnoredKeys(data map[string]any) []string {
+	var out []string
+	for key := range bmcDataSource(data) {
+		if _, ok := bmcSectionAliases[key]; ok || bmcNonSectionKeys[key] {
+			continue
+		}
+		out = append(out, key)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // bmcSectionData holds parsed data for a single BMC section.
 type bmcSectionData struct {
 	key   bmcSectionKey
@@ -180,6 +240,10 @@ func (ctx *singlePassContext) processBMCNativeShapes(slideNum int, item ContentI
 	}
 
 	panels := bmcPanels(diagramSpec)
+	if ignored := BMCIgnoredKeys(diagramSpec.Data); len(ignored) > 0 {
+		slog.Warn("native bmc: data keys are not canvas sections and are not drawn",
+			"slide", slideNum, "keys", ignored)
+	}
 
 	slide := ctx.templateSlideData[slideNum]
 	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
@@ -229,53 +293,60 @@ func bmcPanels(spec *types.DiagramSpec) []nativePanelData {
 // ({boxes: {key_partners: {items: ["items"]}}}).
 func parseBMCSections(data map[string]any) map[bmcSectionKey]bmcSectionData {
 	sections := make(map[bmcSectionKey]bmcSectionData)
+	dataSource := bmcDataSource(data)
 
-	// Check for nested "boxes" structure first
-	dataSource := data
-	if boxes, ok := data["boxes"]; ok {
-		if boxesMap, ok := boxes.(map[string]any); ok {
-			dataSource = boxesMap
-		}
-	}
-
-	for key, alias := range bmcSectionAliases {
+	// Two spellings of one section (customer_relations and
+	// customer_relationships) are merged, canonical spelling first, rather
+	// than one being discarded at random.
+	for _, key := range bmcAliasKeysSorted() {
 		rawVal, ok := dataSource[key]
 		if !ok {
 			continue
 		}
-		// Don't overwrite if we already parsed this section from a more
-		// specific key alias.
-		if _, exists := sections[alias]; exists {
-			continue
-		}
-		sec := bmcSectionData{key: alias}
+		alias := bmcSectionAliases[key]
+		sec := sections[alias]
+		sec.key = alias
 		switch v := rawVal.(type) {
-		case []any:
-			for _, item := range v {
-				if s, ok := item.(string); ok {
-					sec.items = append(sec.items, s)
-				}
-			}
-		case []string:
-			sec.items = v
+		case []any, []string, string:
+			sec.items = append(sec.items, bmcStrings(v)...)
 		case map[string]any:
-			if title, ok := v["title"].(string); ok {
-				sec.title = title
-			}
-			if items, ok := v["items"].([]any); ok {
-				for _, item := range items {
-					if s, ok := item.(string); ok {
-						sec.items = append(sec.items, s)
-					}
+			// {title, items} is the native shape; {header, bullets} is the
+			// bmc-canvas pattern's cell shape, accepted so a payload moved
+			// between the two paths keeps its text.
+			for _, titleKey := range []string{"title", "header"} {
+				if title, ok := v[titleKey].(string); ok && title != "" && sec.title == "" {
+					sec.title = title
 				}
 			}
-		case string:
-			sec.items = []string{v}
+			sec.items = append(sec.items, bmcStrings(v["items"])...)
+			sec.items = append(sec.items, bmcStrings(v["bullets"])...)
 		}
 		sections[alias] = sec
 	}
 
 	return sections
+}
+
+// bmcStrings reads a section value as a list of strings.
+func bmcStrings(raw any) []string {
+	switch v := raw.(type) {
+	case string:
+		if v == "" {
+			return nil
+		}
+		return []string{v}
+	case []string:
+		return v
+	case []any:
+		var out []string
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	return nil
 }
 
 // generateBMCGroupXML produces the complete <p:grpSp> XML for a 9-box BMC grid.

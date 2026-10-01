@@ -188,15 +188,60 @@ func houseTextFonts(meta houseDiagramMeta) (labelFont, itemFont int) {
 	return labelFont, itemFont
 }
 
+// Roof label placement. The roof triangle's preset text rectangle is its
+// lower half, so a centred label sat on the triangle's base, touching the
+// pillar row, with the upper two thirds of the roof empty
+// (go-slide-creator-n0zpq). The label is an overlay text box instead,
+// centred at houseRoofCentre of the roof height — inside the triangle's
+// middle third — and as wide as the triangle is at the box's top edge.
+const (
+	houseRoofCentre      = 0.62
+	houseRoofMinHeight   = 50 * int64(types.EMUPerPoint)
+	houseRoofClearance   = 8 * int64(types.EMUPerPoint) // label to roof base (pillar row)
+	houseRoofWidthFactor = 0.9                          // of the triangle's width at the label's top
+)
+
+// houseRoofTextBox returns the roof label box for a roof of roofH: its top
+// offset from the roof's top, its height and its width (centred).
+func houseRoofTextBox(title, fontName string, labelFont int, width, roofH int64) (top, height, boxW int64) {
+	if roofH <= 0 || width <= 0 {
+		return 0, 0, 0
+	}
+	centre := int64(houseRoofCentre * float64(roofH))
+	height = panelTextHeightEMU([]string{"Ag"}, fontName, width, labelFont, 0)
+	for range 4 {
+		top = max(0, centre-height/2)
+		boxW = int64(float64(width) * float64(top) / float64(roofH) * houseRoofWidthFactor)
+		need := panelTextHeightEMU([]string{title}, fontName, boxW, labelFont, 0)
+		if need <= height {
+			break
+		}
+		height = need
+	}
+	top = max(0, centre-height/2)
+	return top, height, boxW
+}
+
+// houseRoofHeight is the shortest roof (at least houseRoofMinHeight) whose
+// label box keeps houseRoofClearance above the roof base: a one-line
+// objective gets a shallow roof rather than a tall empty wedge.
+func houseRoofHeight(title, fontName string, labelFont int, width int64) int64 {
+	h := houseRoofMinHeight
+	for range 60 {
+		top, height, boxW := houseRoofTextBox(title, fontName, labelFont, width, h)
+		if boxW > 0 && top+height <= h-houseRoofClearance {
+			return h
+		}
+		h += h / 10
+	}
+	return h
+}
+
 func houseEndBandHeights(panels []nativePanelData, width int64, labelFont int, fontName string) (roof, foundation int64) {
 	if len(panels) < 2 {
 		return 0, 0
 	}
-	roof = panelTextHeightEMU([]string{panels[0].title}, fontName, measureWidthEMU(width/2, houseTextInsetEMU, houseTextInsetEMU), labelFont, 0) + 4*houseTextInsetEMU
-	// A triangle's usable text rectangle is much shallower than its outer
-	// bounds in LibreOffice/PowerPoint. Keep a real roof band even when the
-	// title itself measures as one short line.
-	roof = max(roof, 50*int64(types.EMUPerPoint))
+	roof = houseRoofHeight(panels[0].title, fontName, labelFont, width)
 	foundation = panelTextHeightEMU([]string{panels[len(panels)-1].title}, fontName, measureWidthEMU(width, houseTextInsetEMU, houseTextInsetEMU), labelFont, 0) + 2*houseTextInsetEMU
 	return roof, foundation
 }

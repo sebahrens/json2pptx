@@ -194,9 +194,26 @@ func DefaultTimelineConfig(width, height float64) TimelineConfig {
 type TimelineChart struct {
 	builder          *SVGBuilder
 	config           TimelineConfig
-	accentColors     []Color // theme-aware accent colors, set in Draw()
-	showDescriptions bool    // false when vertical space is too tight for descriptions
+	showDescriptions bool // false when vertical space is too tight for descriptions
+
+	// labelFontSize is the one size every event label is drawn at: the
+	// smallest size any label needs to fit its budget. Fitting each label on
+	// its own drew the first bar's label smaller than its neighbours
+	// (go-slide-creator-a6sux). 0 means "use each label's own fit".
+	labelFontSize float64
+
+	// milestoneBand is set when the timeline has both activity bars and
+	// milestones: the milestones then sit on their own marker band between
+	// the bars and the time axis instead of on the activity rows, where they
+	// overprinted bar ends (go-slide-creator-a6sux).
+	milestoneBand bool
+	bandRect      Rect    // marker band geometry (valid when milestoneBand)
+	bandDiamond   float64 // diamond size on the marker band
+	bandLabelLine float64 // height of one label line on the marker band
 }
+
+// timelineBandRow is the row sentinel for milestones drawn on the marker band.
+const timelineBandRow = -1
 
 // NewTimelineChart creates a new timeline chart renderer.
 func NewTimelineChart(builder *SVGBuilder, config TimelineConfig) *TimelineChart {
@@ -248,23 +265,15 @@ func (tc *TimelineChart) Draw(data TimelineData) error {
 	tc.config.ProgressColor = style.Palette.Success
 	tc.config.TodayLineColor = style.Palette.Error
 	tc.config.TimeGridColor = style.Palette.Border
+	// One hue for the whole roadmap: every bar and phase band in accent1 and
+	// every milestone in a deeper shade of it. Cycling the accents by event
+	// index painted a four-event programme blue / red / yellow / green, which
+	// implies categories the data does not have (go-slide-creator-a6sux). An
+	// item's own color still wins.
 	tc.config.PhaseFillColor = style.Palette.Accent1.WithAlpha(0.15)
 	tc.config.ActivityFillColor = style.Palette.Accent1
 	tc.config.ActivityStrokeColor = style.Palette.Accent1.Darken(0.2)
-	tc.config.MilestoneFillColor = style.Palette.Error
-
-	// Build accent color palette for theme-aware rendering
-	tc.accentColors = style.Palette.AccentColors()
-	if len(tc.accentColors) < 3 {
-		tc.accentColors = []Color{
-			MustParseColor(DefaultThemeAccent1Hex),
-			MustParseColor(DefaultThemeAccent5Hex),
-			MustParseColor(DefaultThemeAccent2Hex),
-			MustParseColor(DefaultThemeAccent3Hex),
-			MustParseColor(DefaultThemeAccent4Hex),
-			MustParseColor(DefaultThemeAccent7Hex),
-		}
-	}
+	tc.config.MilestoneFillColor = style.Palette.Accent1.Darken(0.35)
 
 	// Calculate plot area
 	plotArea := tc.config.PlotArea()
@@ -319,8 +328,57 @@ func (tc *TimelineChart) Draw(data TimelineData) error {
 	}
 	timeUnit = coarsenTimeUnit(tc.builder, dateRange, timeUnit)
 
+	// Milestones move to a marker band of their own when there are bars to
+	// collide with; a milestone-only timeline keeps them on the rows.
+	hasBars, hasMilestones := false, false
+	for _, act := range data.Activities {
+		switch act.Type {
+		case TimelineActivityTypeMilestone:
+			hasMilestones = true
+		case TimelineActivityTypePhase:
+		default:
+			hasBars = true
+		}
+	}
+	tc.milestoneBand = hasBars && hasMilestones
+
 	// Assign rows to activities
 	rowAssignments := tc.assignRows(data.Activities, dateRange, plotArea)
+
+	// Label budgets and above/below staggering depend only on x positions,
+	// so they are settled before the vertical layout, which needs to know
+	// whether the marker band carries one label line or two.
+	activityBudgets := tc.computePerActivityBudgets(data.Activities, rowAssignments, dateRange, plotArea, nil)
+	labelBelow := tc.computeLabelStagger(data.Activities, rowAssignments, dateRange, plotArea, activityBudgets)
+	activityBudgets = tc.computePerActivityBudgets(data.Activities, rowAssignments, dateRange, plotArea, labelBelow)
+	tc.labelFontSize = tc.uniformLabelSize(data.Activities, activityBudgets, dateRange, plotArea)
+
+	bandH := 0.0
+	if tc.milestoneBand {
+		labelSize := style.Typography.SizeBody
+		if tc.labelFontSize > 0 {
+			labelSize = tc.labelFontSize
+		}
+		tc.bandDiamond = tc.config.MilestoneSize
+		b.Push()
+		b.SetFontSize(labelSize)
+		b.SetFontWeight(style.Typography.WeightMedium)
+		_, lineH := b.MeasureText("Hg")
+		b.Pop()
+		tc.bandLabelLine = math.Max(lineH, labelSize) * style.Typography.LineHeight
+		lines := 1.0
+		for i, act := range data.Activities {
+			if act.Type == TimelineActivityTypeMilestone && labelBelow[i] {
+				lines = 2
+				break
+			}
+		}
+		// A top-anchored label's glyphs reach ~1.8 em below its anchor once
+		// the renderer's baseline offset and descenders are counted, so the
+		// band keeps 0.4 em beyond the line box clear of the axis rule.
+		bandH = style.Spacing.SM + tc.bandDiamond + style.Spacing.XS + lines*tc.bandLabelLine + 0.4*labelSize + style.Spacing.SM
+		plotArea.H -= bandH
+	}
 
 	// Count non-phase activities to determine space requirements.
 	numNonPhase := 0
@@ -344,7 +402,10 @@ func (tc *TimelineChart) Draw(data TimelineData) error {
 
 	// Remember original plot bottom for time axis placement.
 	// The time axis is placed after the plot area + description buffer.
-	timeAxisY := plotArea.Y + plotArea.H + descBuffer
+	timeAxisY := plotArea.Y + plotArea.H + descBuffer + bandH
+	if tc.milestoneBand {
+		tc.bandRect = Rect{X: plotArea.X, Y: timeAxisY - bandH, W: plotArea.W, H: bandH}
+	}
 
 	// Scale row dimensions to fill the plot area vertically
 	maxRow := 0
@@ -448,9 +509,9 @@ func (tc *TimelineChart) Draw(data TimelineData) error {
 	tc.reportInvalidDates(data)
 
 	// Draw phases first (background)
-	for i, activity := range data.Activities {
+	for _, activity := range data.Activities {
 		if activity.Type == TimelineActivityTypePhase {
-			tc.drawPhase(activity, i, rowAssignments[i], dateRange, plotArea)
+			tc.drawPhase(activity, dateRange, plotArea)
 		}
 	}
 
@@ -458,16 +519,6 @@ func (tc *TimelineChart) Draw(data TimelineData) error {
 	if data.ShowToday && !data.SyntheticDates {
 		tc.drawTodayLine(data.TodayLabel, dateRange, plotArea)
 	}
-
-	// Pre-compute per-activity label budgets based on actual X-position
-	// spacing to neighbors on the same row. This prevents label overlap
-	// when activities cluster in a narrow date range.
-	activityBudgets := tc.computePerActivityBudgets(data.Activities, rowAssignments, dateRange, plotArea)
-
-	// Pre-compute which activities need their label below (instead of above)
-	// to avoid horizontal overlap with adjacent items on the same row.
-	// This applies to both milestones and activity bars.
-	labelBelow := tc.computeLabelStagger(data.Activities, rowAssignments, dateRange, plotArea, activityBudgets)
 
 	// Draw activities (skip overflow rows)
 	for i, activity := range data.Activities {
@@ -481,9 +532,9 @@ func (tc *TimelineChart) Draw(data TimelineData) error {
 				labelBudget = plotArea.W
 			}
 			if activity.Type == TimelineActivityTypeMilestone {
-				tc.drawMilestone(activity, i, row, dateRange, plotArea, labelBudget, labelBelow[i])
+				tc.drawMilestone(activity, row, dateRange, plotArea, labelBudget, labelBelow[i])
 			} else {
-				tc.drawActivityBar(activity, i, row, dateRange, plotArea, labelBudget, labelBelow[i])
+				tc.drawActivityBar(activity, row, dateRange, plotArea, labelBudget, labelBelow[i])
 			}
 		}
 	}
@@ -708,6 +759,12 @@ func (tc *TimelineChart) assignRows(activities []TimelineActivity, dateRange tim
 	for _, idx := range indices {
 		activity := activities[idx]
 
+		// Milestones on the marker band take no activity row.
+		if tc.milestoneBand && activity.Type == TimelineActivityTypeMilestone {
+			rows[idx] = timelineBandRow
+			continue
+		}
+
 		// If row is pre-assigned, use it
 		if activity.Row >= 0 {
 			rows[idx] = activity.Row
@@ -759,9 +816,8 @@ func (tc *TimelineChart) assignRows(activities []TimelineActivity, dateRange tim
 // labelBudget is the horizontal space allocated per activity for label sizing.
 // labelBelow overrides the label position to "below" when staggering is needed
 // to prevent horizontal overlap with adjacent activities on the same row.
-func (tc *TimelineChart) drawActivityBar(activity TimelineActivity, index int, row int, dateRange timelineRange, plotArea Rect, labelBudget float64, labelBelow bool) {
+func (tc *TimelineChart) drawActivityBar(activity TimelineActivity, row int, dateRange timelineRange, plotArea Rect, labelBudget float64, labelBelow bool) {
 	b := tc.builder
-	style := b.StyleGuide()
 
 	// Calculate position
 	startX := dateRange.dateToX(activity.StartDate, plotArea)
@@ -774,12 +830,10 @@ func (tc *TimelineChart) drawActivityBar(activity TimelineActivity, index int, r
 	rowY := plotArea.Y + float64(row)*(tc.config.RowHeight+tc.config.RowSpacing)
 	barY := rowY + (tc.config.RowHeight-tc.config.BarHeight)/2
 
-	// Determine colors - use theme accent colors, cycling by activity index
-	fillColor := tc.accentColors[index%len(tc.accentColors)]
-	strokeColor := fillColor.Darken(0.2)
+	// One fill for every bar (an item's own color wins).
+	fillColor := tc.config.ActivityFillColor
 	if activity.Color != nil {
 		fillColor = *activity.Color
-		strokeColor = activity.Color.Darken(0.2)
 	}
 
 	rect := Rect{
@@ -789,12 +843,18 @@ func (tc *TimelineChart) drawActivityBar(activity TimelineActivity, index int, r
 		H: tc.config.BarHeight,
 	}
 
-	// Draw bar background
+	// Flat, unoutlined bar, inset so back-to-back phases of one colour stay
+	// distinguishable (the gap shows whatever is behind the diagram).
+	const inset = 1.5
+	drawn := rect
+	if drawn.W > 6*inset {
+		drawn.X += inset
+		drawn.W -= 2 * inset
+	}
 	b.Push()
 	b.SetFillColor(fillColor)
-	b.SetStrokeColor(strokeColor)
-	b.SetStrokeWidth(style.Strokes.WidthNormal)
-	b.DrawRoundedRect(rect, tc.config.BarCornerRadius)
+	b.SetStrokeWidth(0)
+	b.DrawRect(drawn)
 	b.Pop()
 
 	// Draw progress if enabled
@@ -809,7 +869,7 @@ func (tc *TimelineChart) drawActivityBar(activity TimelineActivity, index int, r
 		b.Push()
 		b.SetFillColor(tc.config.ProgressColor)
 		b.SetStrokeWidth(0)
-		b.DrawRoundedRect(progressRect, tc.config.BarCornerRadius)
+		b.DrawRect(progressRect)
 		b.Pop()
 	}
 
@@ -854,6 +914,7 @@ func (tc *TimelineChart) drawActivityLabel(label string, barRect Rect, row int, 
 
 	// Use shared LabelFitStrategy for consistent sizing across diagram types.
 	fit := DefaultLabelFit(style.Typography).Fit(b, label, maxLabelW, 0)
+	tc.applyUniformLabelSize(&fit, label, maxLabelW)
 	displayLabel := fit.DisplayText
 
 	labelY := barRect.Y + barRect.H/2
@@ -875,6 +936,7 @@ func (tc *TimelineChart) drawActivityLabel(label string, barRect Rect, row int, 
 		rightBudget := (plotArea.X + plotArea.W) - (barRect.X + barRect.W + style.Spacing.SM)
 		if rightBudget > 0 {
 			rFit := DefaultLabelFit(style.Typography).Fit(b, label, rightBudget*0.95, 0)
+			tc.applyUniformLabelSize(&rFit, label, rightBudget*0.95)
 			displayLabel = rFit.DisplayText
 		}
 		labelX := barRect.X + barRect.W + style.Spacing.SM
@@ -896,6 +958,7 @@ func (tc *TimelineChart) drawActivityLabel(label string, barRect Rect, row int, 
 		leftBudget := barRect.X - plotArea.X
 		if leftBudget > 0 {
 			lFit := DefaultLabelFit(style.Typography).Fit(b, label, leftBudget*0.95, 0)
+			tc.applyUniformLabelSize(&lFit, label, leftBudget*0.95)
 			displayLabel = lFit.DisplayText
 		}
 		labelX := plotArea.X - style.Spacing.SM
@@ -946,7 +1009,7 @@ func (tc *TimelineChart) drawActivityDescription(desc string, barRect Rect, barC
 // activity based on actual X-position spacing to neighbors on the same row.
 // This prevents labels from being sized wider than the gap between adjacent
 // activities, which causes overlap when activities cluster in a narrow date range.
-func (tc *TimelineChart) computePerActivityBudgets(activities []TimelineActivity, rowAssignments []int, dateRange timelineRange, plotArea Rect) map[int]float64 {
+func (tc *TimelineChart) computePerActivityBudgets(activities []TimelineActivity, rowAssignments []int, dateRange timelineRange, plotArea Rect, below map[int]bool) map[int]float64 {
 	type actInfo struct {
 		idx int
 		x   float64 // center X of the activity
@@ -965,7 +1028,13 @@ func (tc *TimelineChart) computePerActivityBudgets(activities []TimelineActivity
 			endX := dateRange.dateToX(act.EndDate, plotArea)
 			x = (startX + endX) / 2
 		}
-		rowActs[rowAssignments[i]] = append(rowActs[rowAssignments[i]], actInfo{idx: i, x: x})
+		// A staggered milestone label shares its line only with the other
+		// labels on that line, so its budget runs to those neighbours.
+		lane := rowAssignments[i] * 2
+		if act.Type == TimelineActivityTypeMilestone && below[i] {
+			lane++
+		}
+		rowActs[lane] = append(rowActs[lane], actInfo{idx: i, x: x})
 	}
 
 	budgets := make(map[int]float64)
@@ -1040,12 +1109,21 @@ func (tc *TimelineChart) computeLabelStagger(activities []TimelineActivity, rowA
 			x = (startX + endX) / 2
 		}
 
-		// Estimate label width using the per-activity budget.
+		// Estimate label width using the per-activity budget. A milestone
+		// label is judged at its natural width: squeezing it into a half-gap
+		// budget first hid every overlap, so close milestones were never
+		// staggered and their labels shrank or truncated instead.
 		maxLabelW := budgets[i] * 0.85
 		b.Push()
 		b.SetFontWeight(style.Typography.WeightMedium)
-		fit := DefaultLabelFit(style.Typography).Fit(b, act.Label, maxLabelW, 0)
-		labelW, _ := b.MeasureText(fit.DisplayText)
+		var labelW float64
+		if act.Type == TimelineActivityTypeMilestone {
+			b.SetFontSize(style.Typography.SizeBody)
+			labelW, _ = b.MeasureText(act.Label)
+		} else {
+			fit := DefaultLabelFit(style.Typography).Fit(b, act.Label, maxLabelW, 0)
+			labelW, _ = b.MeasureText(fit.DisplayText)
+		}
 		b.Pop()
 
 		rowItems[rowAssignments[i]] = append(rowItems[rowAssignments[i]], actInfo{
@@ -1103,7 +1181,7 @@ func (tc *TimelineChart) computeLabelStagger(activities []TimelineActivity, rowA
 // labelBudget is the horizontal space allocated per activity for label sizing.
 // labelBelow overrides the label position to "below" when staggering is needed
 // to prevent horizontal overlap with adjacent milestones on the same row.
-func (tc *TimelineChart) drawMilestone(activity TimelineActivity, index int, row int, dateRange timelineRange, plotArea Rect, labelBudget float64, labelBelow bool) {
+func (tc *TimelineChart) drawMilestone(activity TimelineActivity, row int, dateRange timelineRange, plotArea Rect, labelBudget float64, labelBelow bool) {
 	b := tc.builder
 	style := b.StyleGuide()
 
@@ -1115,10 +1193,15 @@ func (tc *TimelineChart) drawMilestone(activity TimelineActivity, index int, row
 	// Diamond half-size
 	halfSize := tc.config.MilestoneSize / 2
 
-	// Determine color - use theme accent colors, cycling by activity index
-	fillColor := tc.accentColors[index%len(tc.accentColors)]
+	// One milestone color (an item's own color wins).
+	fillColor := tc.config.MilestoneFillColor
 	if activity.Color != nil {
 		fillColor = *activity.Color
+	}
+
+	if row == timelineBandRow {
+		tc.drawBandMilestone(activity, x, fillColor, plotArea, labelBudget, labelBelow)
+		return
 	}
 
 	// Draw diamond
@@ -1150,6 +1233,7 @@ func (tc *TimelineChart) drawMilestone(activity TimelineActivity, index int, row
 		// Use shared LabelFitStrategy for consistent sizing across diagram types.
 		maxLabelW := labelBudget * 0.85
 		fit := DefaultLabelFit(style.Typography).Fit(b, activity.Label, maxLabelW, 0)
+		tc.applyUniformLabelSize(&fit, activity.Label, maxLabelW)
 		displayLabel := fit.DisplayText
 
 		// Determine effective label position. When staggering is active
@@ -1186,6 +1270,115 @@ func (tc *TimelineChart) drawMilestone(activity TimelineActivity, index int, row
 
 		b.Pop()
 	}
+}
+
+// drawBandMilestone draws a milestone on the marker band between the bars and
+// the time axis: the diamond at the top of the band, its label beneath it on
+// the first label line, or on the second when labelBelow staggers it away
+// from a neighbour. Nothing else is drawn in the band, so neither the diamond
+// nor its label can touch a bar.
+func (tc *TimelineChart) drawBandMilestone(activity TimelineActivity, x float64, fillColor Color, plotArea Rect, labelBudget float64, labelBelow bool) {
+	b := tc.builder
+	style := b.StyleGuide()
+	half := tc.bandDiamond / 2
+	y := tc.bandRect.Y + style.Spacing.SM + half
+
+	b.Push()
+	b.SetFillColor(fillColor)
+	b.SetStrokeWidth(0)
+	b.DrawPolygon([]Point{{X: x, Y: y - half}, {X: x + half, Y: y}, {X: x, Y: y + half}, {X: x - half, Y: y}})
+	b.Pop()
+
+	if !tc.config.ShowLabels || activity.Label == "" {
+		return
+	}
+	b.Push()
+	b.SetFontWeight(style.Typography.WeightMedium)
+	b.SetTextColor(style.Palette.TextPrimary)
+	fit := DefaultLabelFit(style.Typography).Fit(b, activity.Label, labelBudget*0.85, 0)
+	tc.applyUniformLabelSize(&fit, activity.Label, labelBudget*0.85)
+	labelY := y + half + style.Spacing.XS
+	if labelBelow {
+		labelY += tc.bandLabelLine
+	}
+	labelX := clampCenterLabelX(b, fit.DisplayText, x, plotArea)
+	b.DrawText(fit.DisplayText, labelX, labelY, TextAlignCenter, TextBaselineTop)
+	b.Pop()
+}
+
+// uniformLabelSize returns the one font size all event labels share: the
+// smallest size any of them needs within its own budget (the same budget the
+// draw functions fit against). 0 when no label is drawn.
+func (tc *TimelineChart) uniformLabelSize(activities []TimelineActivity, budgets map[int]float64, dateRange timelineRange, plotArea Rect) float64 {
+	if !tc.config.ShowLabels {
+		return 0
+	}
+	b := tc.builder
+	style := b.StyleGuide()
+	size := 0.0
+	for i, act := range activities {
+		if act.Type == TimelineActivityTypePhase || act.Label == "" {
+			continue
+		}
+		avail := budgets[i]
+		if avail <= 0 {
+			avail = plotArea.W
+		}
+		if act.Type != TimelineActivityTypeMilestone {
+			barW := dateRange.dateToX(act.EndDate, plotArea) - dateRange.dateToX(act.StartDate, plotArea)
+			avail = math.Max(avail, barW)
+		}
+		// The shrink step of LabelFitStrategy.Fit, without its truncation
+		// finding: this only measures.
+		strat := DefaultLabelFit(style.Typography)
+		minSize := strat.effectiveMinSize(b)
+		maxW := math.Max(avail*0.85, minSize*strat.MinCharWidth)
+		b.Push()
+		b.SetFontWeight(style.Typography.WeightMedium)
+		fs := b.ClampFontSize(act.Label, maxW, strat.PreferredSize, minSize)
+		b.Pop()
+		if size == 0 || fs < size {
+			size = fs
+		}
+	}
+	// One cramped label must not take every label down to the 7pt fit
+	// floor: below the small size the cramped label is shortened instead.
+	if size > 0 && size < style.Typography.SizeSmall {
+		size = math.Min(style.Typography.SizeSmall, style.Typography.SizeBody)
+	}
+	return size
+}
+
+// applyUniformLabelSize redraws a fitted label at the shared label size. A
+// label that needed less than the shared size to fit is shortened at the
+// shared size instead (its budget is unchanged, so it cannot reach a
+// neighbour).
+func (tc *TimelineChart) applyUniformLabelSize(fit *LabelFitResult, label string, maxW float64) {
+	size := tc.labelFontSize
+	if size <= 0 || fit.FontSize == size {
+		return
+	}
+	b := tc.builder
+	raised := fit.FontSize < size
+	fit.FontSize = size
+	b.SetFontSize(size)
+	if !raised {
+		return
+	}
+	maxW = math.Max(maxW, size*DefaultLabelFit(b.StyleGuide().Typography).MinCharWidth)
+	shortened := b.TruncateToWidth(label, maxW)
+	if shortened != label && fit.DisplayText == label {
+		b.AddFinding(Finding{
+			Code:     FindingLabelTruncated,
+			Message:  fmt.Sprintf("timeline label truncated at the shared %.1fpt label size — original %d chars", size, len([]rune(label))),
+			Severity: "info",
+			Fix: &FixSuggestion{
+				Kind:   FixKindTruncateOrSplit,
+				Params: map[string]any{"original": label, "truncated": shortened, "font_size": size},
+			},
+		})
+	}
+	fit.DisplayText = shortened
 }
 
 // drawTimelineIcon draws an icon image at the given center position.
@@ -1230,7 +1423,7 @@ func clampCenterLabelX(b *SVGBuilder, text string, x float64, plotArea Rect) flo
 }
 
 // drawPhase draws a phase background band.
-func (tc *TimelineChart) drawPhase(activity TimelineActivity, index int, row int, dateRange timelineRange, plotArea Rect) {
+func (tc *TimelineChart) drawPhase(activity TimelineActivity, dateRange timelineRange, plotArea Rect) {
 	b := tc.builder
 	style := b.StyleGuide()
 
@@ -1239,9 +1432,9 @@ func (tc *TimelineChart) drawPhase(activity TimelineActivity, index int, row int
 	endX := dateRange.dateToX(activity.EndDate, plotArea)
 	width := endX - startX
 
-	// Determine color - use theme accent colors with transparency
-	accentColor := tc.accentColors[index%len(tc.accentColors)]
-	fillColor := accentColor.WithAlpha(0.15)
+	// Every phase band in the same accent tint (an item's own color wins).
+	accentColor := tc.config.ActivityFillColor
+	fillColor := tc.config.PhaseFillColor
 	if activity.Color != nil {
 		fillColor = activity.Color.WithAlpha(0.2)
 	}

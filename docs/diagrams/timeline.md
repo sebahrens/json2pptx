@@ -48,6 +48,14 @@ Visualize project schedules with activities, milestones, and phases.
 | `milestone` | Point-in-time event | Diamond marker |
 | `phase` | Background grouping | Colored band |
 
+Colour is one hue, not one per item: every bar is a flat accent1 rectangle,
+every phase band an accent1 tint and every milestone diamond a deeper shade of
+accent1 (an item's `color` overrides it). When a timeline has both bars and
+milestones, the milestones sit on their own marker band between the bars and the
+time axis, labels beneath (staggered onto a second line when neighbours would
+collide), so no diamond or label touches a bar. All event labels share one font
+size.
+
 ## Date Fields
 
 For `activity` and `phase` types:
