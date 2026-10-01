@@ -5,7 +5,6 @@ package svggen
 import (
 	"fmt"
 	"math"
-	"strings"
 )
 
 // resolveColors returns a color palette of exactly count colors for chart rendering.
@@ -151,23 +150,6 @@ func hueToRGB(p, q, t float64) float64 {
 	default:
 		return p
 	}
-}
-
-// truncateText truncates text to fit within maxWidth at the given fontSize,
-// using an approximate average character width of 0.55 * fontSize.
-func truncateText(text string, maxWidth, fontSize float64) string {
-	avgCharWidth := fontSize * 0.55
-	maxChars := int(maxWidth / avgCharWidth)
-	if maxChars <= 0 {
-		return ""
-	}
-	if len(text) <= maxChars {
-		return text
-	}
-	if maxChars <= 3 {
-		return text[:maxChars]
-	}
-	return strings.TrimSpace(text[:maxChars-3]) + "..."
 }
 
 // parseStringList coerces a value (typically from JSON-decoded map data) into

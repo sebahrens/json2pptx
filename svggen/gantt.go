@@ -410,6 +410,10 @@ func (gc *GanttChart) detectTimeUnit(dateRange timelineRange) string {
 // When there are too many rows to fit at a minimum readable row height,
 // the visible count is capped and the overflow count is returned so a
 // "+N more" indicator can be rendered.
+// ganttMilestoneLane is the lane ungrouped milestones join on a chart whose
+// tasks are grouped into swimlanes.
+const ganttMilestoneLane = "Milestones"
+
 func (gc *GanttChart) buildRows(data GanttData, plotArea Rect) ([]ganttRow, ganttOverflow) {
 	var rows []ganttRow
 
@@ -421,22 +425,42 @@ func (gc *GanttChart) buildRows(data GanttData, plotArea Rect) ([]ganttRow, gant
 		})
 	}
 
-	// Add standalone milestones
+	// Add standalone milestones. On a chart with swimlanes an ungrouped
+	// milestone joins a trailing "Milestones" lane, so it is drawn inside a
+	// lane rather than as a stray row above the first one.
+	hasLanes := false
+	for _, task := range data.Tasks {
+		if task.Swimlane != "" {
+			hasLanes = true
+			break
+		}
+	}
 	for i := range data.Milestones {
+		lane := data.Milestones[i].Swimlane
+		if lane == "" && hasLanes {
+			lane = ganttMilestoneLane
+		}
 		rows = append(rows, ganttRow{
 			milestone: &data.Milestones[i],
-			swimlane:  data.Milestones[i].Swimlane,
+			swimlane:  lane,
 		})
 	}
 
-	// Sort by swimlane, then by start date
-	sort.SliceStable(rows, func(i, j int) bool {
-		// First by swimlane
-		si, sj := rows[i].swimlane, rows[j].swimlane
-		if si != sj {
-			return si < sj
+	// Lanes keep the order they first appear in the input — authored plans
+	// list phases chronologically, and sorting lane names alphabetically put
+	// Build before Discovery (go-slide-creator-n0adg). Rows inside a lane run
+	// by start date.
+	laneOrder := map[string]int{}
+	for _, row := range rows {
+		if _, seen := laneOrder[row.swimlane]; !seen {
+			laneOrder[row.swimlane] = len(laneOrder)
 		}
-		// Then by start date
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		li, lj := laneOrder[rows[i].swimlane], laneOrder[rows[j].swimlane]
+		if li != lj {
+			return li < lj
+		}
 		di := gc.rowStartDate(rows[i])
 		dj := gc.rowStartDate(rows[j])
 		return di.Before(dj)
@@ -756,11 +780,11 @@ func (gc *GanttChart) drawMilestoneDateLabel(d time.Time, cx, cy, halfSize float
 	b.SetFontWeight(style.Typography.WeightNormal)
 	b.SetTextColor(style.Palette.TextSecondary)
 
+	// The date sits beside the diamond, in the diamond's own row. Drawn
+	// below the diamond it landed on the next row's label or bar
+	// (go-slide-creator-n0adg).
 	gap := style.Spacing.XS
-	belowY := cy + halfSize + gap
-	if belowY+fontSize+gap <= chartArea.Y+chartArea.H {
-		b.DrawText(label, cx, belowY, TextAlignCenter, TextBaselineTop)
-	} else {
+	{
 		labelWidth, _ := b.MeasureText(label)
 		// Leave a full extra gap for the rendered font's descender. The
 		// renderer-independent alphabetic baseline can sit below the nominal
@@ -1171,10 +1195,44 @@ func (gc *GanttChart) drawSwimlaneHeaders(rows []ganttRow, swimlanes []string, p
 		b.SetTextColor(style.Palette.TextSecondary)
 
 		headerX := plotArea.X + style.Spacing.SM
-		displayText := truncateText(swimlane, gc.config.SwimlaneHeaderWidth-style.Spacing.SM*2, style.Typography.SizeSmall)
-		b.DrawText(displayText, headerX, centerY, TextAlignLeft, TextBaselineMiddle)
+		gc.drawSwimlaneHeaderText(swimlane, headerX, centerY, gc.config.SwimlaneHeaderWidth-style.Spacing.SM*2, lastY-firstY)
 		b.Pop()
 	}
+}
+
+// drawSwimlaneHeaderText draws a lane name in its header column, measured
+// with the real font rather than the 0.55em character estimate, which cut
+// "Discovery" to "Disco..." in a column wide enough for it
+// (go-slide-creator-n0adg). A name too wide for one line wraps onto two at a
+// space when the lane is tall enough, then shrinks, and is shortened only as
+// a last resort. The caller has set the header font.
+func (gc *GanttChart) drawSwimlaneHeaderText(name string, x, centerY, maxW, laneH float64) {
+	b := gc.builder
+	style := b.StyleGuide()
+	if w, _ := b.MeasureText(name); w <= maxW {
+		b.DrawText(name, x, centerY, TextAlignLeft, TextBaselineMiddle)
+		return
+	}
+	lineH := style.Typography.SizeSmall * style.Typography.LineHeight
+	if words := strings.Fields(name); len(words) > 1 && laneH >= 2*lineH {
+		block := b.WrapText(name, maxW)
+		if len(block.Lines) == 2 {
+			fits := true
+			for _, line := range block.Lines {
+				if line.Width > maxW {
+					fits = false
+				}
+			}
+			if fits {
+				b.DrawText(block.Lines[0].Text, x, centerY-lineH/2, TextAlignLeft, TextBaselineMiddle)
+				b.DrawText(block.Lines[1].Text, x, centerY+lineH/2, TextAlignLeft, TextBaselineMiddle)
+				return
+			}
+		}
+	}
+	size := b.ClampFontSize(name, maxW, style.Typography.SizeSmall, b.MinFontSize())
+	b.SetFontSize(size)
+	b.DrawText(b.TruncateToWidth(name, maxW), x, centerY, TextAlignLeft, TextBaselineMiddle)
 }
 
 // drawTimeAxis draws the time axis with labels (reuses timeline logic).

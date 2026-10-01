@@ -68,6 +68,12 @@ At least one of `tasks` or `milestones` must be provided:
 | `show_grid` | `bool` | `false` | Show time grid |
 | `label_width` | `number` | - | Width for task labels |
 
+Swimlanes are drawn in the order they first appear in the input (tasks by start
+date inside a lane), never alphabetically. A lane name is measured with the real
+font and wraps onto two lines before it is ever shortened. On a chart with
+swimlanes, milestones without one gather in a trailing **Milestones** lane; every
+milestone's date is printed beside its diamond, in its own row.
+
 ## Examples
 
 ### With Progress
