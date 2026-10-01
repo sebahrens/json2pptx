@@ -1,5 +1,13 @@
 # Schema Changelog
 
+- **2026-10-01 — One left edge for title, pattern text and takeaway (`go-slide-creator-svrpx`).**
+  Unfilled, left-aligned first-column grid text now starts on the title's
+  text edge (its 0.5 cm left margin is reduced to reach it). On title-only
+  layouts the takeaway / source bands take the title column, the span the
+  pattern uses; the chrome frame reports that as the new `basis` value
+  `layout_title` (alongside `layout`, `reference_layout`, `slide_fallback`).
+  No `SchemaVersion` bump.
+
 - **2026-10-01 — Pattern `vertical_align`; content-sized blocks hang from the body line (`go-slide-creator-e17xy`, SchemaVersion 4.155.0).**
   A slide `pattern` accepts `vertical_align`: `auto` (the new default),
   `top`, `center`, `bottom` or `stretch`; raw `shape_grid.vertical_align`

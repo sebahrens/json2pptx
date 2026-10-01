@@ -834,6 +834,7 @@ func resolveGridForStructural(grid *ShapeGridInput, overrideBounds *pptx.RectEmu
 	}
 	if zone != nil {
 		sgGrid.AnchorY = zone.BodyTop
+		sgGrid.TextLeft = zone.TextLeft
 	}
 	sgGrid.KeepTextSizes = grid.KeepTextSizes
 

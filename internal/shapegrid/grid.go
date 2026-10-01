@@ -288,6 +288,7 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 	}
 
 	connectors := resolveRowConnectors(grid, cells, rowCellIDs, rowYOffsets, rowHeightsEMU, alloc)
+	alignFirstColumnText(cells, gridX, grid.TextLeft)
 	for i := range cells {
 		cell := &cells[i]
 		if cell.Kind == CellKindShape && cell.ShapeSpec != nil {

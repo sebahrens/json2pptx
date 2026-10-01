@@ -31,6 +31,10 @@ type ContentZone struct {
 	// so pattern and native slides share one content line without taking
 	// height from dense patterns (go-slide-creator-e17xy).
 	BodyTop int64
+	// TextLeft is the X where the slide title's text starts (title
+	// placeholder X + its lIns), or 0 when unknown. Unfilled first-column
+	// grid text is inset to start on it (go-slide-creator-svrpx).
+	TextLeft int64
 }
 
 // DefaultBoundsFromZone derives grid bounds from a ContentZone, applying a gap (in points)

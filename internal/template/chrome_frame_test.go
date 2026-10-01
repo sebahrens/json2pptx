@@ -201,7 +201,9 @@ func TestResolveChromeFrameNoFitAndReference(t *testing.T) {
 		t.Error("no bands requested must always fit")
 	}
 
-	// A title-only layout borrows the reference layout's body column.
+	// A title-only layout's bands share its title column, the span its
+	// shape_grid content takes, not the reference body column
+	// (go-slide-creator-svrpx).
 	ref := &types.LayoutMetadata{ID: "ref", Placeholders: []types.PlaceholderInfo{
 		{Type: types.PlaceholderBody, Bounds: types.BoundingBox{X: 700000, Y: 1500000, Width: 10000000, Height: 4000000}},
 	}}
@@ -209,8 +211,13 @@ func TestResolveChromeFrameNoFitAndReference(t *testing.T) {
 		{Type: types.PlaceholderTitle, Bounds: types.BoundingBox{X: 300000, Y: 300000, Width: 11000000, Height: 1000000}},
 	}}
 	f := ResolveChromeFrame(titleOnly, ref, 12192000, 6858000, true, false)
-	if f.Basis != ChromeBasisReferenceLayout || f.Takeaway.X != 700000 || f.Takeaway.CX != 10000000 {
-		t.Errorf("reference geometry not used: %+v", f)
+	if f.Basis != ChromeBasisLayoutTitle || f.Takeaway.X != 300000 || f.Takeaway.CX != 12192000-2*300000 {
+		t.Errorf("title column not used: %+v", f)
+	}
+	// Without a title the reference body column still applies.
+	noTitle := &types.LayoutMetadata{ID: "b"}
+	if nf := ResolveChromeFrame(noTitle, ref, 12192000, 6858000, true, false); nf.Basis != ChromeBasisReferenceLayout || nf.Takeaway.X != 700000 {
+		t.Errorf("reference geometry not used: %+v", nf)
 	}
 	if f.HasFooter {
 		t.Error("a known layout without footer regions must not borrow the reference footers")

@@ -27,6 +27,9 @@ type MasterFontStyles struct {
 	// TitleAnchor is the bodyPr anchor of the master's title placeholder
 	// ("" when the master does not declare one).
 	TitleAnchor string
+	// TitleLeftInset is the lIns attribute (EMU, as written) of the master
+	// title placeholder's bodyPr, "" when the master declares none.
+	TitleLeftInset string
 	// BodyText is the inherited body text style (size, line spacing,
 	// space-before) a body placeholder's measured fit has to budget for.
 	BodyText   InheritedTextStyle
@@ -134,11 +137,12 @@ func (r *MasterFontResolver) parseMasterFontStyles(masterData []byte) *MasterFon
 	}
 
 	styles := &MasterFontStyles{
-		TitleText:   ParseMasterTitleStyle(masterData),
-		TitleAnchor: ParseMasterTitleAnchor(masterData),
-		BodyText:    ParseMasterBodyStyle(masterData),
-		BodyStyle:   make(map[int]*FontStyle),
-		OtherStyle:  make(map[int]*FontStyle),
+		TitleText:      ParseMasterTitleStyle(masterData),
+		TitleAnchor:    ParseMasterTitleAnchor(masterData),
+		TitleLeftInset: ParseMasterTitleLeftInset(masterData),
+		BodyText:       ParseMasterBodyStyle(masterData),
+		BodyStyle:      make(map[int]*FontStyle),
+		OtherStyle:     make(map[int]*FontStyle),
 	}
 
 	// Parse title style (level 1 only)

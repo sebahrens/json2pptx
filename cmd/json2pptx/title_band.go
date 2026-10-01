@@ -232,3 +232,36 @@ func bodyAnchorTop(layout *types.LayoutMetadata, title *types.PlaceholderInfo, l
 	}
 	return content.Y, true
 }
+
+// reserveTitleTextEdge records where the slide title's text starts — the
+// title placeholder X plus its left inset — so unfilled first-column grid
+// text can start on the same line (go-slide-creator-svrpx). When side artwork
+// moved the content column right, the generator shifts the title with it
+// (go-slide-creator-oa0ru), so the edge follows the column.
+func reserveTitleTextEdge(g GridGeometry, slide SlideInput, layouts []types.LayoutMetadata) GridGeometry {
+	if g.Zone == nil {
+		return g
+	}
+	id := g.LayoutID
+	if id == "" {
+		id = canonicalGridLayoutID(slide.LayoutID, layouts)
+	}
+	layout := findLayoutByID(layouts, id)
+	if layout == nil || isBlankCanvasLayout(id, layouts) {
+		return g
+	}
+	title := layoutTitlePlaceholder(layout)
+	// Anchor is only resolved (with the inset beside it) for titles parsed
+	// from a real template.
+	if title == nil || title.Anchor == "" {
+		return g
+	}
+	x := title.Bounds.X
+	if g.Zone.SideDecor && g.Zone.LeftMargin > x {
+		x = g.Zone.LeftMargin
+	}
+	zone := *g.Zone
+	zone.TextLeft = x + title.TextInsetLeftEMU
+	g.Zone = &zone
+	return g
+}

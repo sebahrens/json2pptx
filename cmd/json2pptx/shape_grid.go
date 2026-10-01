@@ -460,7 +460,8 @@ func resolveGridGeometry(slide SlideInput, layouts []types.LayoutMetadata, slide
 	g = reserveBodyAnchor(g, slide, layouts)
 	g = reserveTakeawayBand(g, slide, layouts)
 	g = reserveCanvasHeadline(g, slide, layouts, slideWidth, slideHeight)
-	return reserveGridSideDecor(g, slide, layouts, slideWidth, slideHeight)
+	g = reserveGridSideDecor(g, slide, layouts, slideWidth, slideHeight)
+	return reserveTitleTextEdge(g, slide, layouts)
 }
 
 // reserveGridSideDecor applies the same master/layout side-art exclusion as
@@ -790,6 +791,7 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 	}
 	if zone != nil {
 		grid.AnchorY = zone.BodyTop
+		grid.TextLeft = zone.TextLeft
 	}
 	grid.KeepTextSizes = input.KeepTextSizes
 

@@ -120,6 +120,10 @@ type Grid struct {
 	// (ContentZone.BodyTop). The block moves down to it only as far as its
 	// slack allows; 0 means the bounds top.
 	AnchorY int64
+	// TextLeft is the absolute X (EMU) where the slide title's text starts
+	// (ContentZone.TextLeft). Unfilled left-aligned text in the first column
+	// is inset to start there; 0 leaves insets alone (go-slide-creator-svrpx).
+	TextLeft int64
 
 	// KeepTextSizes leaves authored cell font sizes as written. By default
 	// sized text settles onto the type scale (tokens.SnapTextHPt); callers
