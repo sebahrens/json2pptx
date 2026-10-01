@@ -59,7 +59,6 @@ const (
 	tsBulletSpacePt   = 4.0
 	tsHeadingSpacePt  = 10.0
 	tsDefaultBodySize = scaleSubheadPt
-	tsSparseBodySize  = 16.0
 )
 
 func (t *textSidebar) Name() string { return "text-sidebar" }
@@ -121,7 +120,7 @@ type TextSidebarOverrides struct {
 	SidebarSide     string  `json:"sidebar_side,omitempty"`      // right (default) | left
 	SidebarWidthPct float64 `json:"sidebar_width_pct,omitempty"` // 25-40, default 32
 	BodySize        float64 `json:"body_size,omitempty"`         // default 14
-	SidebarSize     float64 `json:"sidebar_size,omitempty"`      // default 24, stepped down to fit
+	SidebarSize     float64 `json:"sidebar_size,omitempty"`      // default 28, stepped down to fit
 	SidebarStyle    string  `json:"sidebar_style,omitempty"`     // tinted (default) | filled
 }
 
@@ -143,7 +142,7 @@ func (t *textSidebar) Schema() *Schema {
 		"sidebar_side":      EnumSchema("right", "left").WithDescription("Which side the sidebar sits on (default right)").WithDefault("right"),
 		"sidebar_width_pct": NumberSchema(tsMinSidePct, tsMaxSidePct).WithDescription("Sidebar width as a percentage of the grid (default 32)").WithDefault(tsDefaultSidePct),
 		"body_size":         NumberSchema(12, 20).WithDescription("Main-column body / bullet font size in points (default 14 — 16 for short copy, stepped down to 12 for long copy; the heading is 6pt larger)"),
-		"sidebar_size":      NumberSchema(14, 40).WithDescription("Sidebar message font size in points (default 24, stepped down until the message fits)"),
+		"sidebar_size":      NumberSchema(14, 40).WithDescription("Sidebar message font size in points (default 28, stepped down to 18 then 14 until the message fits)"),
 		"sidebar_style":     EnumSchema("tinted", "filled").WithDescription("tinted (default): pale accent surface with an accent top bar and dark text; filled: solid accent panel with measured light text").WithDefault("tinted"),
 	}, nil).WithAdditionalProperties(false)
 
@@ -295,15 +294,17 @@ func tsMeasure(ctx ExpandContext, v *TextSidebarValues, ovr *TextSidebarOverride
 	lay.mainW = (areaW - tsColGapPt) * lay.mainPct / 100
 	lay.sideW = (areaW - tsColGapPt) * lay.sidePct / 100
 
-	// Short copy is promoted to 16pt (it must still leave the column
-	// visibly un-crammed); longer copy steps down from 14pt to the floor.
+	// Body copy sets on the 14pt subhead step and steps down to the 12pt
+	// floor when it does not fit; the heading sits on the step at or below
+	// body+6pt (go-slide-creator-vmdfm). (A former 16pt "sparse" promotion
+	// rendered at 14pt once settled onto the scale, so it is gone.)
 	type bodyStep struct{ size, limitFrac float64 }
-	bodySteps := []bodyStep{{tsSparseBodySize, 0.7}, {tsDefaultBodySize, 1}, {13, 1}, {12, 1}}
+	bodySteps := []bodyStep{{tsDefaultBodySize, 1}, {scaleBodyPt, 1}}
 	if ovr.BodySize > 0 {
 		bodySteps = []bodyStep{{ovr.BodySize, 1}}
 	}
 	for _, st := range bodySteps {
-		lay.bodySize, lay.headingSize = st.size, st.size+6
+		lay.bodySize, lay.headingSize = st.size, snapPt(st.size+6)
 		lay.mainPt = sizedBlockHeightPt(ctx, tsMainParas(v, lay.headingSize, lay.bodySize), lay.mainW)
 		if lay.mainPt <= areaH*st.limitFrac {
 			break
@@ -312,7 +313,7 @@ func tsMeasure(ctx ExpandContext, v *TextSidebarValues, ovr *TextSidebarOverride
 	lay.mainFits = lay.mainPt <= areaH
 	lay.heightPt = math.Min(math.Max(lay.mainPt, areaH*tsMinFillPct/100), areaH)
 
-	sideSteps := []float64{28, 26, 24, 22, 20, 18, 16}
+	sideSteps := []float64{scaleDisplayPt, scaleLeadPt, scaleSubheadPt}
 	if ovr.SidebarSize > 0 {
 		sideSteps = []float64{ovr.SidebarSize}
 	}

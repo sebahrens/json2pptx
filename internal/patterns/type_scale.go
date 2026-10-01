@@ -1,6 +1,10 @@
 package patterns
 
-import "github.com/sebahrens/json2pptx/internal/tokens"
+import (
+	"math"
+
+	"github.com/sebahrens/json2pptx/internal/tokens"
+)
 
 // Pattern default text sizes (go-slide-creator-vmdfm).
 //
@@ -12,10 +16,12 @@ import "github.com/sebahrens/json2pptx/internal/tokens"
 // listed in offScaleDefaultReasons.
 //
 // Shrink ladders that a pattern walks while measuring a fit (agendaScales,
-// execSummarySteps, metricListScales, …) are measurement sequences, not
-// defaults: they may pass through intermediate sizes, and the shape_grid
-// renderer settles whatever size they land on onto the scale
-// (shapegrid.snapShapeTextToScale), never below the readable floor.
+// execSummarySteps, metricListScales, …) name scale steps too: a ladder
+// measures text at the size it renders, so it steps from one scale step to
+// the next instead of through intermediate sizes the renderer would settle
+// onto a lower step anyway (shapegrid.snapShapeTextToScale).
+// TestPatternFitLaddersOnTypeScale holds every ladder to the scale; a step
+// off it must be listed in offScaleLadderReasons.
 const (
 	scaleDisplayPt   = tokens.TypeScaleDisplayPt // 28pt display / title
 	scaleLeadPt      = tokens.TypeScaleLeadPt    // 18pt lead / banner, step numerals
@@ -24,6 +30,7 @@ const (
 	scaleDenseBodyPt = tokens.BodyTextMinPt      // 11pt dense body (body minimum)
 	scaleCaptionPt   = tokens.TypeScaleCaptionPt // 10pt caption
 	scaleKPIPt       = tokens.TypeScaleKPIMinPt  // 40pt KPI display figure
+	scaleKPIMaxPt    = tokens.TypeScaleKPIMaxPt  // 48pt top of the KPI display step
 )
 
 // Off-scale defaults. Each keeps the size a pattern has always measured and
@@ -88,4 +95,27 @@ var offScaleDefaultReasons = map[string]string{
 	"sizeDenseCaptionPt":          "dense detail line measured compact; rendered at the 12pt floor",
 	"sizeBadgePt":                 "ALL-CAPS badge measured compact; rendered at the 12pt floor",
 	"SourceNoteSizePt":            "engine-rendered 9pt source line (chrome, not an authoring size)",
+}
+
+// Off-scale ladder steps. A fit ladder may only leave the scale for a display
+// figure above the 28pt display step (measured to fit, never snapped) or for
+// a half-step whose removal would lower a TestSchemaMaximaStayReadable pin;
+// each is listed in offScaleLadderReasons with the reason.
+const (
+	// sizeHeroDetailFigurePt is hero-detail's largest hero figure: one
+	// dominant metric, an oversized display figure like stat-hero's.
+	sizeHeroDetailFigurePt = 80.0
+)
+
+// offScaleLadderReasons allow-lists off-scale ladder steps
+// (TestPatternFitLaddersOnTypeScale). Allow-listed defaults
+// (offScaleDefaultReasons) may also appear in a ladder as its first step.
+var offScaleLadderReasons = map[string]string{
+	"sizeHeroDetailFigurePt": "hero-detail's dominant figure, an oversized display figure measured to fit",
+}
+
+// snapPt settles a derived size (a ladder step plus a bump) onto the type
+// scale step at or below it — what the renderer would draw it at.
+func snapPt(pt float64) float64 {
+	return float64(tokens.SnapTextHPt(int(math.Round(pt*100)))) / 100
 }

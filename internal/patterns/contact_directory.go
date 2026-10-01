@@ -425,11 +425,11 @@ func cdMeasureN(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirect
 	// A sparse directory earns larger headshots and type rather than a small
 	// block floating in an empty slide; a dense one starts smaller.
 	// Steps sit on the type scale (18 / 14 / 12pt, go-slide-creator-30471).
-	steps := []cdTypeStep{{14, 12}, {12, 12}}
+	steps := []cdTypeStep{{scaleSubheadPt, scaleBodyPt}, {scaleBodyPt, scaleBodyPt}}
 	photoMax := 60.0
 	switch {
 	case personRows <= 2:
-		steps = append([]cdTypeStep{{18, 14}}, steps...)
+		steps = append([]cdTypeStep{{scaleLeadPt, scaleSubheadPt}}, steps...)
 		photoMax = 120
 	case personRows <= 4:
 		photoMax = 72

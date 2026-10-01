@@ -6,8 +6,8 @@
   ],
   "rows": [
     {
-      "min_height": 275.1,
-      "max_height": 275.1,
+      "min_height": 272.7,
+      "max_height": 272.7,
       "cells": [
         {
           "shape": {
@@ -17,7 +17,7 @@
               "paragraphs": [
                 {
                   "content": "Introduction",
-                  "size": 20,
+                  "size": 18,
                   "bold": true,
                   "color": "dk2",
                   "align": "l",
@@ -78,7 +78,7 @@
               "paragraphs": [
                 {
                   "content": "In this perspective, we outline how AI-first asset managers unlock end-to-end transformation and sustained value creation",
-                  "size": 20,
+                  "size": 18,
                   "bold": true,
                   "color": "dk2",
                   "align": "l"

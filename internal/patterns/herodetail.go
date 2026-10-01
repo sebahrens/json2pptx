@@ -372,7 +372,7 @@ func (p heroDetailPlan) detailMin() float64 {
 // heroDetailHeroSteps are the default hero figure sizes, largest first. The
 // hero takes the largest that holds its stat, label and context within its
 // share of the content area.
-var heroDetailHeroSteps = []float64{80, 64, 48}
+var heroDetailHeroSteps = []float64{sizeHeroDetailFigurePt, scaleKPIMaxPt}
 
 // heroDetailHeroSharePct is the share of the content area the hero row keeps.
 const heroDetailHeroSharePct = 45.0

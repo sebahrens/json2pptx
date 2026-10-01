@@ -66,7 +66,7 @@ func agendaCellPara(t *testing.T, text json.RawMessage) agendaTestPara {
 }
 
 // TestAgendaRuleBasedStyle pins design review C5 (go-slide-creator-r3gsw):
-// 28pt accent serif numerals, 16pt items, 0.5pt rules between rows, no
+// 28pt accent serif numerals, 14pt items, 0.5pt rules between rows, no
 // filled tiles.
 func TestAgendaRuleBasedStyle(t *testing.T) {
 	grid, err := (&agenda{}).Expand(ExpandContext{}, &AgendaValues{Items: []string{"Intro", "Analysis", "Decision"}}, nil, nil)
@@ -93,8 +93,8 @@ func TestAgendaRuleBasedStyle(t *testing.T) {
 			t.Errorf("row %d numeral = %+v, want 28pt +mj-lt accent1", i, num)
 		}
 		title := agendaCellPara(t, row.Cells[1].Shape.Text)
-		if title.Size != 16 || title.Bold || title.Color != "dk1" || title.Alpha != 0 {
-			t.Errorf("row %d item = %+v, want plain 16pt dk1", i, title)
+		if title.Size != agendaTitleSize || title.Bold || title.Color != "dk1" || title.Alpha != 0 {
+			t.Errorf("row %d item = %+v, want plain 14pt dk1", i, title)
 		}
 	}
 	if grid.VerticalAlign != "center" {

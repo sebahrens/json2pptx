@@ -109,7 +109,7 @@ func compileAgendaList(in Input, sections []agendaSection, current int) (*deckin
 	slide := &deckinput.SlideInput{SlideType: "content", LayoutID: "blank-title"}
 	links := titleLink(slide, in)
 	slide.Pattern = &deckinput.PatternInput{Name: "agenda", Values: encoded}
-	// The pattern's own type (28pt serif numerals, 16pt items) is the
+	// The pattern's own type (28pt serif numerals, 14pt items) is the
 	// design-review agenda (go-slide-creator-r3gsw); only the current-section
 	// highlight is carried.
 	ovr := patterns.AgendaOverrides{Highlight: current}

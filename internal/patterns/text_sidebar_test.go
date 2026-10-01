@@ -150,7 +150,7 @@ func TestTextSidebar_FilledLeft(t *testing.T) {
 		t.Errorf("light text is measured to read on the dark accent1 fill, got %q", ink)
 	}
 	main := cellText(t, grid.Rows[0].Cells[1].Shape.Text)
-	if main.VerticalAlign != "ctr" || main.Paragraphs[0].Size != tsSparseBodySize {
+	if main.VerticalAlign != "ctr" || main.Paragraphs[0].Size != tsDefaultBodySize {
 		t.Errorf("short copy is promoted and centred, got %v / %+v", main.VerticalAlign, main.Paragraphs[0])
 	}
 }
