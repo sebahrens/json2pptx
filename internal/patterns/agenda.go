@@ -10,6 +10,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 )
 
 // ---------------------------------------------------------------------------
@@ -200,7 +201,7 @@ func (a *agenda) Validate(values, overrides any, cellOverrides map[int]any) erro
 // serif numeral in the accent beside the item, 0.5pt rules between rows, no
 // filled tiles, content-height rows middle-anchored on the slide.
 const (
-	agendaNumberSize   = 28.0
+	agendaNumberSize   = tokens.TypeScaleDisplayPt
 	agendaTitleSize    = 16.0
 	agendaRulePt       = 0.5
 	agendaListRowGapPt = 2.0

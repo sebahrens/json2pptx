@@ -61,17 +61,7 @@ json2pptx serve --config config.yaml
 
 ## Shape Grid Typography Hierarchy
 
-When generating `shape_grid` JSON, use consistent font sizes:
-
-| Role              | Size   | Weight | Notes                              |
-|-------------------|--------|--------|------------------------------------|
-| Grid header/banner| 14-18pt| Bold   | White on accent fill, full-width   |
-| Card title        | 12-14pt| Bold   | First line, separated by `\n`      |
-| Card body         | 9-11pt | Regular| 11pt for 3-4 cols, 10pt for 5+    |
-| Step number       | 20-24pt| Bold   | White on accent, narrow column     |
-| Footnote/source   | 7-8pt  | Regular| Grey (#666666)                     |
-
-Always set text insets (6-12pt) on body cells. See `docs/INPUT_FORMAT.md` for full examples.
+`shape_grid` text uses one type scale — 28pt display / title, 18pt lead, 14pt subhead (card titles), 12pt body, 10pt caption (tables and dense matrices only), 40-48pt KPI figures. The role table lives in [skills/generate-deck/RULES.md](skills/generate-deck/RULES.md#typography-hierarchy-shape_grid) and is test-synced with `internal/tokens/typography.go`; leave text insets at the 0.5 cm default. See `docs/INPUT_FORMAT.md` for full examples.
 
 ## Template Reference
 

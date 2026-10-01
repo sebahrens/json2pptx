@@ -9,6 +9,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 )
 
 // ---------------------------------------------------------------------------
@@ -59,7 +60,7 @@ const (
 	nextStepsMinFillFrac   = 0.55
 	nextStepsHeaderAlpha   = 60.0
 	nextStepsNumberFont    = "+mj-lt"
-	nextStepsHeaderSizePt  = 12.0
+	nextStepsHeaderSizePt  = tokens.TypeScaleBodyPt
 	nextStepsBandLabelSize = 13.0
 )
 
