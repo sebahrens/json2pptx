@@ -56,6 +56,23 @@ func TestAnalyze_BasicRun(t *testing.T) {
 	}
 }
 
+// khzni: appendix back matter neither forms nor extends a pattern run.
+func TestAnalyze_AppendixIsOutsideRuns(t *testing.T) {
+	slides := make([]rhythm.Slide, 6)
+	for i := range slides {
+		slides[i] = rhythm.Slide{HasPattern: true, PatternName: "card-grid", Appendix: i >= 2}
+	}
+	result := rhythm.Analyze(slides)
+	if result.Aggregates.LongestRun != 2 {
+		t.Errorf("longest_run = %d, want 2 (the four backup pages are exempt): %+v", result.Aggregates.LongestRun, result.Aggregates.PatternRuns)
+	}
+	for _, r := range result.Recommendations {
+		if r.Code == rhythm.CodeBreakRun {
+			t.Errorf("break_run recommended inside the appendix: %+v", r)
+		}
+	}
+}
+
 func TestAnalyze_AlternatingKPIsAreOneVisualRun(t *testing.T) {
 	slides := make([]rhythm.Slide, 8)
 	for i := range slides {

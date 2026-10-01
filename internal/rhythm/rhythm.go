@@ -71,6 +71,11 @@ type Slide struct {
 	// SolidAccentCells counts raw shape_grid cells filled with a solid
 	// (opaque) accent colour.
 	SolidAccentCells int
+	// Appendix marks back matter (after an Appendix / Backup divider, or in a
+	// structure section marked appendix). Backup pages neither form nor
+	// extend a pattern run and do not count toward bullets_heavy
+	// (go-slide-creator-khzni).
+	Appendix bool
 }
 
 // SlideInfo describes the visual fingerprint of a single slide.
@@ -82,6 +87,7 @@ type SlideInfo struct {
 	DominantVisual           string `json:"dominant_visual"`             // "chart", "diagram", "table", "text", "grid", "pattern"
 	WithinSlideAccentVariety int    `json:"within_slide_accent_variety"` // distinct accent slots used across cells
 	cellCount                int    // internal: total cells in shape_grid (not serialized)
+	appendix                 bool   // internal: back matter, outside the run checks
 }
 
 // PatternRun describes a consecutive run of one visual family. Name is the
@@ -213,6 +219,7 @@ func fingerprint(idx int, s Slide) SlideInfo {
 	info.AccentRole = primaryAccent(s)
 	info.WithinSlideAccentVariety = countDistinctAccents(s)
 	info.cellCount = s.CellCount
+	info.appendix = s.Appendix
 
 	return info
 }
@@ -357,13 +364,22 @@ func detectPatternRuns(slides []SlideInfo) []PatternRun {
 		return nil
 	}
 
+	// Appendix back matter gets a per-slide key no other slide shares, so it
+	// neither forms nor extends a run.
+	keyOf := func(i int) string {
+		if slides[i].appendix {
+			return fmt.Sprintf("\x00appendix-%d", i)
+		}
+		return visualFingerprint(slides[i])
+	}
+
 	var runs []PatternRun
 	current := PatternRun{Name: visualFamily(slides[0].Pattern), Start: 0, Len: 1}
-	currentKey := visualFingerprint(slides[0])
+	currentKey := keyOf(0)
 
 	for i := 1; i < len(slides); i++ {
 		family := visualFamily(slides[i].Pattern)
-		key := visualFingerprint(slides[i])
+		key := keyOf(i)
 		if key == currentKey {
 			current.Len++
 		} else {

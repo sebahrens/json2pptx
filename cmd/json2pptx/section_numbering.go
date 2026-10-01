@@ -22,6 +22,24 @@ import (
 //
 // Every surface that predicts the injected number (rendering, contrast
 // checks, SECTION_NUMBER_SEQUENCE_MISMATCH) shares this one function.
+// deckBackMatter reports, per slide, whether it is appendix back matter: a
+// divider titled Appendix / Backup / Annex and the slides after it up to the
+// next ordinary divider, or a slide whose running section (structure
+// sections[].appendix) names an appendix. Deck-rhythm checks skip these
+// slides (go-slide-creator-khzni).
+func deckBackMatter(slides []SlideInput, layouts []types.LayoutMetadata) []bool {
+	probes := make([]types.BackMatterProbe, len(slides))
+	for i := range slides {
+		if isSectionSlideInput(slides[i], layouts) {
+			_, title := extractTitleText(slides[i])
+			probes[i] = types.BackMatterProbe{Divider: true, AppendixDivider: types.IsAppendixSectionTitle(title)}
+			continue
+		}
+		probes[i] = types.BackMatterProbe{Crumb: slides[i].SectionTitle}
+	}
+	return types.BackMatterMask(probes)
+}
+
 func deckSectionNumbers(slides []SlideInput, layouts []types.LayoutMetadata) (labels []string, ordinals []int) {
 	labels = make([]string, len(slides))
 	ordinals = make([]int, len(slides))

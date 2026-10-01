@@ -142,7 +142,7 @@ func (ir *DeckIR) densityWarnings() []RhythmWarning {
 		}
 	}
 	for i := range ir.Slides {
-		if ir.Slides[i].Visual.Density == DensityHeavy {
+		if ir.Slides[i].Visual.Density == DensityHeavy && !ir.Slides[i].Appendix {
 			if runLen == 0 {
 				runStart = i
 			}
@@ -225,11 +225,16 @@ func (ir *DeckIR) slideListPath() string {
 }
 
 // familyRuns groups the slides into maximal runs of identical visual family, in
-// source order.
+// source order. Appendix back matter is reference material, not part of the
+// argument's rhythm: it counts as structural, so it neither forms nor extends
+// a run (go-slide-creator-khzni).
 func familyRuns(slides []SlideIR) []familyRun {
 	var runs []familyRun
 	for i := range slides {
 		fam := slides[i].Visual.Family
+		if slides[i].Appendix {
+			fam = FamilyStructural
+		}
 		if n := len(runs); n > 0 && runs[n-1].family == fam {
 			runs[n-1].length++
 			continue

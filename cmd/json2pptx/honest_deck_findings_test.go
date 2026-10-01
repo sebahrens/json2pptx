@@ -136,6 +136,40 @@ func TestMonotonyChartRunOfDifferentTypesIsReview(t *testing.T) {
 	}
 }
 
+// khzni: appendix back matter is exempt from DECK_MONOTONY — after a divider
+// titled Appendix (flat deck) or in a structure section marked appendix.
+func TestMonotonySkipsAppendixBackMatter(t *testing.T) {
+	chartSlide := func() SlideInput {
+		title := "Revenue grew 12%"
+		return SlideInput{SlideType: "content", Content: []ContentInput{
+			{PlaceholderID: "title", Type: "text", TextValue: &title},
+			{PlaceholderID: "body", Type: "chart", ChartValue: &types.ChartSpec{Type: types.ChartType("bar"), Data: map[string]any{"a": 1.0, "b": 2.0}}},
+		}}
+	}
+	divider := func(title string) SlideInput {
+		return SlideInput{SlideType: "section", Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: &title}}}
+	}
+	flat := &PresentationInput{Slides: []SlideInput{divider("Appendix")}}
+	chapter := &PresentationInput{Slides: []SlideInput{divider("Market")}}
+	crumb := &PresentationInput{}
+	for i := 0; i < 6; i++ {
+		flat.Slides = append(flat.Slides, chartSlide())
+		chapter.Slides = append(chapter.Slides, chartSlide())
+		s := chartSlide()
+		s.SectionTitle = "Appendix: Supporting data"
+		crumb.Slides = append(crumb.Slides, s)
+	}
+	if got := collectMonotonyFindings(flat); len(got) != 0 {
+		t.Errorf("backup charts after an Appendix divider flagged: %+v", got)
+	}
+	if got := collectMonotonyFindings(crumb); len(got) != 0 {
+		t.Errorf("appendix-section charts flagged: %+v", got)
+	}
+	if got := collectMonotonyFindings(chapter); len(got) != 1 {
+		t.Errorf("an ordinary chapter run must still be flagged, got %+v", got)
+	}
+}
+
 func TestSupersedeRealizedContrastPredictions(t *testing.T) {
 	in := []patterns.FitFinding{
 		{ValidationError: patterns.ValidationError{Path: "/slides/2/shape_grid/rows/0/cells/1/shape/text", Code: patterns.ErrCodeContrastPredicted,

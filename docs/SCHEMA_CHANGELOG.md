@@ -1,5 +1,26 @@
 # Schema Changelog
 
+- **2026-10-01 — plan_deck appendix; back matter outside rhythm checks; straight sequences rank numbered-step-strip (`go-slide-creator-khzni`, `-tu35a`).**
+  - `plan_deck format:"deckspec"` drafts an appendix from spare budget (8+
+    slide budgets) when the brief has backup material: backup / detail
+    language, a methodology or assumptions, facts the body could not hold, or
+    3+ figures. Chaptered drafts get a last `structure.sections[]` entry with
+    `appendix: true` (the `next_steps` close moves from `structure.closing` to
+    the end of the last body chapter); flat drafts get a
+    `{kind:"section", title:"Appendix", appendix:true}` slide after the close.
+    New slot names `appendix`, `backup`, `methodology`; new optional
+    `slots[].appendix` and `deck_spec.structure.sections[].appendix` in the
+    output schema.
+  - Appendix back matter (after a divider titled Appendix / Backup / Annex, or
+    in an `appendix: true` structure section) is exempt from `DECK_MONOTONY`,
+    `analyze_deck_rhythm` `break_run` / `bullets_heavy`, and
+    `SEMANTIC_RHYTHM_MONOTONY` / `SEMANTIC_RHYTHM_DENSITY`. `explain_deck_spec`
+    IR slides carry `appendix: true` for back matter.
+  - `recommend_visual` / pattern recommendations rank `numbered-step-strip`
+    above `process-flow` (and the `process_flow` diagram) for a process /
+    procedure / N-step intent without decision, approval, branch or
+    conditional language.
+
 - **2026-10-01 — `shape_grid.links`; swimlane hand-off arrows; one people primitive (4.155.0; `go-slide-creator-0b3f6`, `q4fut`, `ux1le`, `swt4x`, `wd6p6`).**
   - New optional `shape_grid.links`: `[{"from":[row,col],"to":[row,col],"connector":{style,color,width,dash}}]`
     draws an explicit connector between two cells addressed by the row and

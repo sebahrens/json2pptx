@@ -89,6 +89,52 @@ func TestPlanDeckDeckSpecSmallBudgetKeepsTheAsk(t *testing.T) {
 	}
 }
 
+// khzni: a draft with back matter parses as a DeckSpec, closes on next steps
+// before the appendix, and its appendix slides are outside the rhythm runs.
+func TestPlanDeckDeckSpecAppendixDraftParses(t *testing.T) {
+	for _, tc := range []struct {
+		brief  string
+		budget int
+	}{
+		{"Q3 quarterly business review: revenue grew 18% YoY to $42M, gross margin 61%, NRR 112%, churn rose to 4.1%; priorities for Q4 are hiring 12 AEs and fixing onboarding; include backup detail on the regional breakdown and the forecast methodology", 14},
+		{"Product update for customers: we shipped SSO and audit logs in Q3; adoption is 38% of active accounts; include backup detail on adoption by segment", 8},
+	} {
+		plan := deckplan.BuildDeckSpecPlan(deckplan.Params{Brief: tc.brief, SlideBudget: tc.budget})
+		raw, err := json.Marshal(plan.DeckSpec)
+		if err != nil {
+			t.Fatal(err)
+		}
+		spec, diags := semantic.ParseJSON(raw)
+		if spec == nil {
+			t.Fatalf("draft does not parse as a DeckSpec: %+v\n%s", diags, raw)
+		}
+		if n := semantic.ExpandedSlideCount(spec); n > tc.budget {
+			t.Errorf("budget %d: draft renders %d slides", tc.budget, n)
+		}
+		ir := semantic.Normalize(spec)
+		closeAt, firstBackup := -1, -1
+		for i, s := range ir.Slides {
+			if s.Kind == semantic.KindNextSteps {
+				closeAt = i
+			}
+			if s.Appendix && firstBackup < 0 {
+				firstBackup = i
+			}
+		}
+		if firstBackup < 0 {
+			t.Fatalf("budget %d: brief asks for backup detail but the draft has no appendix: %s", tc.budget, raw)
+		}
+		if closeAt < 0 || closeAt > firstBackup {
+			t.Errorf("budget %d: next_steps (slide %d) must close the argument before the appendix (slide %d)", tc.budget, closeAt, firstBackup)
+		}
+		for i := firstBackup; i < len(ir.Slides); i++ {
+			if !ir.Slides[i].Appendix {
+				t.Errorf("budget %d: slide %d (%s) after the appendix divider is not back matter", tc.budget, i, ir.Slides[i].Kind)
+			}
+		}
+	}
+}
+
 func TestPlanDeckRejectsUnknownFormat(t *testing.T) {
 	mc := &mcpConfig{templatesDir: "../../templates"}
 	res, err := mc.handlePlanDeck(context.Background(), makeRequest(map[string]any{"brief": "x", "format": "pptx"}))

@@ -30,7 +30,12 @@ generates divider numbers: do not hand-author them. A section with
 matter: its divider is unnumbered and later chapters keep their numbers,
 `auto_agenda` leaves it out, and its slides' tracker / crumb read
 "Appendix: <title>". Dividers titled Appendix, Backup, Annex, Q&A or Thank
-you are unnumbered without the flag. Keep an actual narrative
+you are unnumbered without the flag. Appendix slides (after an appendix /
+Appendix-titled divider) are outside the rhythm run checks, so backup tables
+in a row are fine. `plan_deck` drafts this appendix itself when the brief has
+backup material and the budget has room: a last `appendix: true` section
+(the `next_steps` close then ends the last chapter) or, flat, an appendix
+`section` slide after the close; its slots carry `appendix: true`. Keep an actual narrative
 instead of creating one slide per layout or a sequence of interchangeable
 cards. `explain_deck_spec` previews the resolved story and visual rhythm
 without rendering.

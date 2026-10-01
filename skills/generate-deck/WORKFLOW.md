@@ -104,7 +104,7 @@ Slide 5: matrix-2x2    — "Competitor Positioning"
 Slide 6: icon-row      — "Team Strengths"
 ```
 
-Rules: no visual pattern family should appear 3+ times consecutively (alternating `kpi-3up` and `kpi-4up` is still one KPI run). Use a stat or quote slide only when the message is a single number or a stakeholder voice — never as a filler break. Use `analyze_deck_rhythm` to detect violations before generating.
+Rules: no visual pattern family should appear 3+ times consecutively (alternating `kpi-3up` and `kpi-4up` is still one KPI run). Use a stat or quote slide only when the message is a single number or a stakeholder voice — never as a filler break. Use `analyze_deck_rhythm` to detect violations before generating. Appendix back matter (after a divider titled Appendix / Backup / Annex, or in a `sections[].appendix: true` section) is exempt: backup pages never form a run for `break_run`, `DECK_MONOTONY` or `SEMANTIC_RHYTHM_MONOTONY`.
 
 ### Accent monotony
 
