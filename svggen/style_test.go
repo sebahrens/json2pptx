@@ -906,14 +906,14 @@ func TestTypography_ScaleForDimensions_MaximumFontSizes(t *testing.T) {
 
 	// At content_16x9 (1600x900), scale = sqrt(2.0 * 1.5) ≈ 1.73
 	// Without caps: Title=18*1.73=31.1, Small=10*1.73=17.3
-	// With caps: Title=24, Small=12
+	// With caps (the next scale step above each role): Title=28, Small=12
 	scaled := typ.ScaleForDimensions(1600, 900)
 
-	if scaled.SizeTitle > 24.0 {
-		t.Errorf("SizeTitle = %v, want <= 24.0 (max cap)", scaled.SizeTitle)
+	if scaled.SizeTitle > ChartTitleMaxPt {
+		t.Errorf("SizeTitle = %v, want <= %v (max cap)", scaled.SizeTitle, ChartTitleMaxPt)
 	}
-	if scaled.SizeTitle < 24.0-0.01 {
-		t.Errorf("SizeTitle = %v, want 24.0 (should hit cap at 1600x900)", scaled.SizeTitle)
+	if scaled.SizeTitle < ChartTitleMaxPt-0.01 {
+		t.Errorf("SizeTitle = %v, want %v (should hit cap at 1600x900)", scaled.SizeTitle, ChartTitleMaxPt)
 	}
 
 	if scaled.SizeSmall > 12.0 {
@@ -922,8 +922,8 @@ func TestTypography_ScaleForDimensions_MaximumFontSizes(t *testing.T) {
 
 	// At 2x scale (1600x1200), all sizes should be capped
 	scaled2x := typ.ScaleForDimensions(1600, 1200)
-	if scaled2x.SizeTitle > 24.0 {
-		t.Errorf("SizeTitle at 2x = %v, want <= 24.0 (max cap)", scaled2x.SizeTitle)
+	if scaled2x.SizeTitle > ChartTitleMaxPt {
+		t.Errorf("SizeTitle at 2x = %v, want <= %v (max cap)", scaled2x.SizeTitle, ChartTitleMaxPt)
 	}
 	if scaled2x.SizeBody > 14.0 {
 		t.Errorf("SizeBody at 2x = %v, want <= 14.0 (max cap)", scaled2x.SizeBody)

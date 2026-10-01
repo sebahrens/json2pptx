@@ -147,6 +147,13 @@ func OnTypeScaleHPt(hpt int) bool {
 // 11pt body minimum is a step so dense body copy is never pushed to caption.
 var typeScaleSteps = []int{TypeScaleCaptionHPt, BodyTextMinHPt, TypeScaleBodyHPt, TypeScaleSubheadHPt, TypeScaleLeadHPt, TypeScaleDisplayHPt}
 
+// TypeScaleStepsHPt returns the text steps SnapTextHPt settles onto,
+// ascending (a copy). svggen mirrors them in svggen.ChartTypeScaleStepsPt;
+// chart_scale_test.go pins the two lists equal.
+func TypeScaleStepsHPt() []int {
+	return append([]int(nil), typeScaleSteps...)
+}
+
 // SnapTextHPt returns the largest type-scale step at or below hpt. Sizes below
 // the caption step (footnotes) and at or above the display step (display
 // headings and figures, which are measured to fit) are returned unchanged.
