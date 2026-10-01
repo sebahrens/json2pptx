@@ -1010,10 +1010,17 @@ func buildGroupParagraphs(group BulletGroup, denseGroups bool, spacing bulletGro
 		nextBef = spacing.FirstBef
 	}
 
-	// Sub-bullets (indented one level deeper than the base bullet level), plus
-	// whatever depth the bullet's own leading whitespace asks for.
+	return append(paragraphs, groupSubBulletParagraphs(group.Bullets, spacing, nextBef, bulletLevel, templateStyles)...)
+}
+
+// groupSubBulletParagraphs renders a group's sub-bullets, indented one level
+// deeper than the base bullet level plus whatever depth the bullet's own
+// leading whitespace asks for. firstBef is the space before the first one.
+func groupSubBulletParagraphs(bullets []string, spacing bulletGroupSpacing, firstBef, bulletLevel int, templateStyles []bulletLevelStyle) []paragraphXML {
+	var paragraphs []paragraphXML
+	nextBef := firstBef
 	subBulletLevel := bulletLevel + 1
-	for _, bullet := range group.Bullets {
+	for _, bullet := range bullets {
 		depth, text := pptx.BulletIndentDepth(bullet)
 		pProps, rProps := getBulletStyleForLevel(templateStyles, bulletParagraphLevel(subBulletLevel, depth))
 		runs := createFormattedRuns(text, rProps)
