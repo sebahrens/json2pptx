@@ -15,6 +15,7 @@ type ShapeGridInput = jsonschema.ShapeGridInput
 type GridBoundsInput = jsonschema.GridBoundsInput
 type GridRowInput = jsonschema.GridRowInput
 type ConnectorSpecInput = jsonschema.ConnectorSpecInput
+type GridLinkInput = jsonschema.GridLinkInput
 type GridCellInput = jsonschema.GridCellInput
 type AccentBarInput = jsonschema.AccentBarInput
 type GridImageInput = jsonschema.GridImageInput

@@ -24,6 +24,10 @@ type ShapeGridInput struct {
 	RowGap                      float64          `json:"row_gap,omitempty"` // Row gap in points (overrides gap)
 	Columns                     json.RawMessage  `json:"columns,omitempty"` // number | number[]
 	Rows                        []GridRowInput   `json:"rows"`
+	// Links are explicit connectors between two cells addressed by the row
+	// and grid column each starts in — for flows that cross rows (swimlane
+	// hand-offs). Row "connector" only chains cells within one row.
+	Links []GridLinkInput `json:"links,omitempty"`
 	// VerticalAlign places a content-sized row block inside the bounds when
 	// the rows (fixed heights, auto heights, flex rows capped by max_height)
 	// sum to less than the bounds: "stretch" (default for raw grids — rows
@@ -70,6 +74,14 @@ type GridRowInput struct {
 	MaxHeight  float64             `json:"max_height,omitempty"`  // Maximum row height in points (0 = no maximum)
 	Cells      []*GridCellInput    `json:"cells"`
 	Connector  *ConnectorSpecInput `json:"connector,omitempty"` // Optional connector lines between adjacent cells
+}
+
+// GridLinkInput is one explicit connector from cell [row, col] to cell
+// [row, col] (zero-based row index and grid column of each cell's origin).
+type GridLinkInput struct {
+	From      [2]int              `json:"from"`
+	To        [2]int              `json:"to"`
+	Connector *ConnectorSpecInput `json:"connector,omitempty"` // Styling (default: thin black line)
 }
 
 // ConnectorSpecInput defines the style of connector lines between adjacent cells in a row.

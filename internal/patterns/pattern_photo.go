@@ -1,6 +1,7 @@
 package patterns
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -65,5 +66,44 @@ func patternPhotoCell(img *jsonschema.GridImageInput, defaultAlt string) *jsonsc
 	}
 	return &jsonschema.GridCellInput{
 		Image: &jsonschema.GridImageInput{Path: img.Path, URL: img.URL, Alt: alt},
+	}
+}
+
+// headshotDisc is the shared tint and initials ink of the people patterns'
+// headshot placeholder: the accent's pale tint, with the accent as the
+// initials ink where it reads on that tint (large bold text) and the measured
+// theme ink otherwise. Without a theme the accent is kept.
+func headshotDisc(ctx ExpandContext, accent string) (fillTone, string) {
+	disc := inactiveTintTone(accent)
+	ink := accent
+	if ratio, ok := fillContrast(ctx, fillTone{Color: accent}, disc); ok && ratio < 4.5 {
+		ink = readableTextOn(ctx, disc, accent)
+	}
+	return disc, ink
+}
+
+// headshotCell is the one people primitive team-bios and contact-directory
+// share (go-slide-creator-q4fut): a real photo cover-cropped into a circle,
+// or, without one, a circular disc in the accent tint carrying the bold
+// initials (label) at labelSize in ink. Both are square ("contain") and
+// centred in their cell.
+func headshotCell(photo *jsonschema.GridImageInput, alt, label string, disc fillTone, ink string, labelSize float64) *jsonschema.GridCellInput {
+	if cell := patternPhotoCell(photo, alt); cell != nil {
+		cell.Fit = "contain"
+		cell.Image.Geometry = "ellipse"
+		return cell
+	}
+	textJSON, _ := json.Marshal(chartInsightsText{
+		Paragraphs:    []chartInsightsParagraph{{Content: label, Size: labelSize, Bold: true, Color: ink, Align: "ctr"}},
+		Align:         "ctr",
+		VerticalAlign: "ctr",
+	})
+	return &jsonschema.GridCellInput{
+		Fit: "contain",
+		Shape: &jsonschema.ShapeSpecInput{
+			Geometry: "ellipse",
+			Fill:     disc.fillJSON(),
+			Text:     textJSON,
+		},
 	}
 }

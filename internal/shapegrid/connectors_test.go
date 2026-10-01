@@ -112,3 +112,46 @@ func TestIsVisibleFillAndLine(t *testing.T) {
 		}
 	}
 }
+
+// Explicit links join cells across rows: same-column links run straight
+// down, cross-column links turn in the gutter as an elbow, and a link to a
+// spacer or a missing cell is dropped (go-slide-creator-0b3f6).
+func TestResolveLinks_CrossRowRouting(t *testing.T) {
+	arrow := &ConnectorSpec{Style: "arrow"}
+	spacer := &ShapeSpec{Geometry: "rect", Fill: json.RawMessage(`"none"`)}
+	grid := &Grid{
+		Bounds:  pptx.RectEmu{X: 0, Y: 0, CX: 9144000, CY: 3000000},
+		Columns: []float64{50, 50},
+		ColGap:  14,
+		RowGap:  10,
+		Rows: []Row{
+			{Cells: []Cell{{Shape: filled("roundRect")}, {Shape: filled("roundRect")}}},
+			{Cells: []Cell{{Shape: filled("roundRect")}, {Shape: spacer}}},
+		},
+		Links: []Link{
+			{FromRow: 0, FromCol: 0, ToRow: 1, ToCol: 0, Spec: arrow}, // straight down
+			{FromRow: 1, FromCol: 0, ToRow: 0, ToCol: 1, Spec: arrow}, // lane change: elbow
+			{FromRow: 0, FromCol: 1, ToRow: 1, ToCol: 1, Spec: arrow}, // spacer target: dropped
+			{FromRow: 0, FromCol: 0, ToRow: 5, ToCol: 0, Spec: arrow}, // out of range: dropped
+		},
+	}
+	res, err := Resolve(grid, newAlloc(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Connectors) != 2 {
+		t.Fatalf("want 2 connectors, got %d: %+v", len(res.Connectors), res.Connectors)
+	}
+	down, turn := res.Connectors[0], res.Connectors[1]
+	if down.Elbow || down.Bounds.CX > 1 {
+		t.Errorf("same-column link should be a straight vertical line, got %+v", down)
+	}
+	if !turn.Elbow || !turn.FlipV {
+		t.Errorf("cross-column link to a higher row should be an upward elbow, got %+v", turn)
+	}
+	for _, c := range res.Connectors {
+		if c.Spec != arrow {
+			t.Errorf("link lost its spec: %+v", c)
+		}
+	}
+}

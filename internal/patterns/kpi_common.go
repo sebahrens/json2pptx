@@ -329,10 +329,6 @@ func kpiSubSize(smallSize float64) float64 {
 const (
 	// kpiCardGapPt is the gap between KPI cards.
 	kpiCardGapPt = 12.0
-	// kpiLeftIconMinAspect: cards at least this much wider than tall place
-	// their icon on the left; narrower cards stack the icon on top so the
-	// value keeps the full card width.
-	kpiLeftIconMinAspect = 1.2
 	// kpiMinBigSize is the floor the big number shrinks to before it may wrap.
 	kpiMinBigSize = 16.0
 	// Mirrors shapegrid's overlay defaults: 0.6 icon scale, 3pt gap, and
@@ -347,9 +343,8 @@ const (
 	kpiLeftIconHFrac = 0.4
 	kpiLeftIconWFrac = 0.2
 	// kpiBaseCardHeightFrac is the share of the content height used as the
-	// card-height ESTIMATE that picks the icon position (left on landscape
-	// cards, top on portrait) and the default icon footprint before the row
-	// is sized. It is neither a floor nor a cap on the rendered card:
+	// card-height ESTIMATE that sets the default icon footprint before the
+	// row is sized. It is neither a floor nor a cap on the rendered card:
 	// kpiRowMaxHeightPt sizes the row to its content (go-slide-creator-wntyw).
 	kpiBaseCardHeightFrac = 0.70
 	// kpiCardPadPt is the minimum vertical breathing room (beyond the text
@@ -414,13 +409,13 @@ func kpiRowMaxHeightPt(ctx ExpandContext, cells []KPICell, geo kpiCardGeometry, 
 	return clampPt(need, 0, contentH)
 }
 
-// iconPosition picks the default overlay icon position: "left" for landscape
-// cards, "top" for square / portrait cards (a left icon on a narrow card
-// squeezes the value into a sliver and breaks it mid-token).
+// iconPosition is the default overlay icon position: "top" for every
+// kpi-Nup card, so the icon and value stack on one centred axis and the whole
+// family shares one anatomy. Landscape kpi-2up / kpi-3up cards used to pin
+// the icon at the left inset and centre the value in the remaining width, so
+// the number sat right of centre and the anatomy flipped per template
+// (go-slide-creator-ux1le). An authored icon.position still wins.
 func (g kpiCardGeometry) iconPosition() string {
-	if g.wPt >= g.hPt*kpiLeftIconMinAspect {
-		return "left"
-	}
 	return "top"
 }
 

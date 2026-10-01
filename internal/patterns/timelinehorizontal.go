@@ -45,9 +45,9 @@ func (th *timelineHorizontal) Taxonomy() PatternTaxonomy {
 
 func (th *timelineHorizontal) ExemplarValues() any {
 	v := TimelineHorizontalValues{
-		{Label: "Phase 1", Date: "Q1 2025", Body: "Planning"},
-		{Label: "Phase 2", Date: "Q2 2025", Body: "Development"},
-		{Label: "Phase 3", Date: "Q3 2025", Body: "Launch"},
+		{Label: "Discovery", Date: "Q1 2025", Body: "Baseline costs and interview 40 stakeholders"},
+		{Label: "Pilot", Date: "Q2 2025", Body: "Run the new model in two regions"},
+		{Label: "Scale-up", Date: "Q3 2025", Body: "Roll out to all twelve markets"},
 	}
 	return &v
 }

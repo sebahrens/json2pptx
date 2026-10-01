@@ -198,12 +198,15 @@ func (c *cardGrid) ExemplarValues() any {
 		Columns: 3,
 		Rows:    2,
 		Cells: []CardGridCell{
-			{Header: "Card 1", Body: "Description 1"},
-			{Header: "Card 2", Body: "Description 2"},
-			{Header: "Card 3", Body: "Description 3"},
-			{Header: "Card 4", Body: "Description 4"},
-			{Header: "Card 5", Body: "Description 5"},
-			{Header: "Card 6", Body: "Description 6"},
+			// Realistic 1-2 line consulting copy: exemplars are agent-visible
+			// (show_pattern, plan_deck fit prediction), and numbered
+			// placeholders fit trivially (go-slide-creator-swt4x).
+			{Header: "Pricing discipline", Body: "Retire ad-hoc discounts and enforce one price corridor per segment"},
+			{Header: "Procurement", Body: "Consolidate 1,400 suppliers into 300 strategic partners by 2026"},
+			{Header: "Network footprint", Body: "Close four sub-scale depots and serve their regions from two hubs"},
+			{Header: "Digital channel", Body: "Move repeat orders to self-service and free up sales capacity"},
+			{Header: "Working capital", Body: "Cut inventory days from 62 to 45 through demand-driven planning"},
+			{Header: "Organisation", Body: "Merge regional back offices into one shared-service centre"},
 		},
 	}
 }

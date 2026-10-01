@@ -96,7 +96,7 @@ func TestSkeletonForPattern_StringLeavesReplaced(t *testing.T) {
 	}
 	// comparison-2col exemplar has Headers=["Pros","Cons"] and Rows with
 	// Left/Right strings — none of those literals should leak into the skeleton.
-	for _, leak := range []string{"Pros", "Cons", "Fast", "Expensive", "Reliable", "Complex"} {
+	for _, leak := range []string{"Pros", "Cons", "Live in eight weeks", "Licence fees", "uptime", "change requests"} {
 		if strings.Contains(string(raw), leak) {
 			t.Errorf("exemplar literal %q leaked into skeleton: %s", leak, string(raw))
 		}

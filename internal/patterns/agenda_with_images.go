@@ -51,7 +51,7 @@ func (a *agendaWithImages) ExemplarValues() any {
 			{Title: "Executive Summary", Subtitle: "Situation, complication and our answer", ImageLabel: "Chart: Revenue trend"},
 			{Title: "Market Analysis", Subtitle: "Size, growth and competitive position", ImageLabel: "Photo: Market scene"},
 			{Title: "Strategic Options", Subtitle: "Three paths and our recommendation", ImageLabel: "Diagram: Option tree"},
-			{Title: "Next Steps", Subtitle: "Decisions required from this meeting"},
+			{Title: "Next Steps", Subtitle: "Decisions required from this meeting", ImageLabel: "Table: Decision log"},
 		},
 	}
 }

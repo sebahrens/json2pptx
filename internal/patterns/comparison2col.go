@@ -48,8 +48,8 @@ func (c *comparison2col) ExemplarValues() any {
 	return &Comparison2colValues{
 		Headers: [2]string{"Pros", "Cons"},
 		Rows: []Comparison2colRow{
-			{Left: "Fast", Right: "Expensive"},
-			{Left: "Reliable", Right: "Complex"},
+			{Left: "Live in eight weeks on the vendor's proven platform", Right: "Licence fees add EUR 1.2M a year from year two"},
+			{Left: "Vendor carries uptime and security patching risk", Right: "Custom pricing rules need costly change requests"},
 		},
 	}
 }

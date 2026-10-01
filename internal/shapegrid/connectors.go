@@ -117,6 +117,59 @@ func resolveRowConnectors(grid *Grid, cells []ResolvedCell, rowCellIDs [][]int,
 	return connectors
 }
 
+// resolveLinks generates the explicit cell-to-cell connectors of grid.Links.
+// A link whose endpoint does not resolve to a visible anchor cell (out of
+// range, a spacer, an invisible shape) is skipped rather than drawn into
+// empty space.
+func resolveLinks(grid *Grid, cells []ResolvedCell, rowCellIDs [][]int, alloc *pptx.ShapeIDAllocator) []ResolvedConnector {
+	if len(grid.Links) == 0 {
+		return nil
+	}
+	find := func(row, col int) (int, bool) {
+		if row < 0 || row >= len(rowCellIDs) {
+			return 0, false
+		}
+		for _, idx := range rowCellIDs[row] {
+			if cells[idx].ColIdx == col {
+				return idx, isConnectable(cells[idx])
+			}
+		}
+		return 0, false
+	}
+	var out []ResolvedConnector
+	for _, l := range grid.Links {
+		a, okA := find(l.FromRow, l.FromCol)
+		b, okB := find(l.ToRow, l.ToCol)
+		if !okA || !okB || a == b {
+			continue
+		}
+		src, tgt := cells[a], cells[b]
+		srcOpts := pptx.ShapeOptions{Bounds: src.Bounds}
+		tgtOpts := pptx.ShapeOptions{Bounds: tgt.Bounds}
+		if src.ShapeSpec != nil {
+			srcOpts.Geometry = pptx.PresetGeometry(src.ShapeSpec.Geometry)
+		}
+		if tgt.ShapeSpec != nil {
+			tgtOpts.Geometry = pptx.PresetGeometry(tgt.ShapeSpec.Geometry)
+		}
+		sameCol := l.FromCol == l.ToCol
+		route := pptx.Route(srcOpts, tgtOpts, !sameCol)
+		out = append(out, ResolvedConnector{
+			Bounds:    route.Bounds,
+			ID:        alloc.Alloc(),
+			Spec:      l.Spec,
+			SourceID:  src.ID,
+			TargetID:  tgt.ID,
+			StartSite: route.StartSite,
+			EndSite:   route.EndSite,
+			Elbow:     !sameCol && elbowNeeded(route),
+			FlipH:     route.FlipH,
+			FlipV:     route.FlipV,
+		})
+	}
+	return out
+}
+
 // elbowThresholdEMU is the vertical offset (1pt) above which a side-to-side
 // connector is drawn as an elbow rather than a straight line.
 const elbowThresholdEMU = 12700
