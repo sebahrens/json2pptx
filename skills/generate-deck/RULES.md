@@ -78,7 +78,7 @@ Section dividers are numbered automatically `01`, `02`, … in deck order. Omit 
 
 | # | Rule | Rationale |
 |---|---|---|
-| 16 | Engine auto-replaces low-contrast text (WCAG AA for its size: 3:1 only at ≥18pt / ≥14pt bold) with a template text color (`lt1`/`dk2`/`dk1`), one color per fill per slide. It keeps your color when a swap would barely raise the ratio, and never recolors text matching a transparent cell's canvas (hidden on purpose). Check `fit_findings` for `contrast_autofixed` (before/after ratios) before re-authoring colors | White on light accents → dark text. Fix: a darker accent fill, `dk1` text, or `"contrast_check": false` (last resort, after checking contrast yourself) |
+| 16 | Engine auto-replaces low-contrast text (WCAG AA for its size: 3:1 only at ≥18pt / ≥14pt bold) with a template text color (`lt1`/`dk2`/`dk1`), one color per fill per slide. It keeps your color when a swap would barely raise the ratio, and never recolors text matching a transparent cell's canvas (hidden on purpose). Check `fit_findings` for `contrast_autofixed` (before/after ratios) before re-authoring colors. Pattern-drawn accent fills (process steps, pyramid tiers, panel headers, banners, badges) whose white label misses the bar are first deepened by a minimal `shade` of the same accent so the type stays white; only a pale accent or tint takes dark ink | White on light accents → dark text. Fix: a darker accent fill, `dk1` text, or `"contrast_check": false` (last resort, after checking contrast yourself) |
 
 ## Icons (no emoji)
 

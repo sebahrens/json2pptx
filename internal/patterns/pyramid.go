@@ -205,9 +205,15 @@ func (p *pyramid) Expand(ctx ExpandContext, values, overrides any, cellOverrides
 		// lighten. Text colour is picked per tier against the effective
 		// (alpha-composited) fill so light bottom tiers get dark text.
 		alpha := 100 - i*15
+		// A near-opaque tier whose accent lt1 misses is shaded until the white
+		// label reads, instead of taking black type (go-slide-creator-v9tup).
 		tone := fillTone{Color: accent, Alpha: float64(alpha)}
-		textColor := readableTextOn(ctx, tone, pyramidFallbackTextColor(alpha))
+		minContrast := TextContrastThreshold(bodySize, true) // tier labels are bold
+		textColor := readableInkOn(ctx, tone, pyramidFallbackTextColor(alpha), minContrast)
 		fill := json.RawMessage(fmt.Sprintf(`{"color":"%s","alpha":%d}`, accent, alpha))
+		if shaded, ok := shadeForLightInk(ctx, tone, minContrast); ok {
+			textColor, fill = "lt1", shaded.fillJSON()
+		}
 
 		shape := &jsonschema.ShapeSpecInput{
 			Geometry: "trapezoid",

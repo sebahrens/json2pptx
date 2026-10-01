@@ -726,8 +726,8 @@ func (c *cardGrid) expandSoftCard(ctx ExpandContext, cell CardGridCell, accent s
 	fillJSON := surfaceFillJSON(ctx, "subtle", NeutralTint4)
 	textContent := buildCardGridDarkTextContent(cell.Header, headerSize, cell.Body, bodySize, accent)
 	if cell.Recommended {
-		fillJSON = json.RawMessage(fmt.Sprintf(`"%s"`, accent))
-		ink := readableInkOn(ctx, fillTone{Color: accent}, "lt1", 4.5)
+		tone, ink := accentFillAndInk(ctx, fillTone{Color: accent}, 4.5)
+		fillJSON = tone.fillJSON()
 		textContent = marshalTextObj(cardTextObj{
 			Paragraphs: []cardParagraph{
 				{Content: "RECOMMENDED", Size: 9, Bold: true, Color: ink, Align: "l"},

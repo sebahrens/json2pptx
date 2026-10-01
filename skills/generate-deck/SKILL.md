@@ -143,6 +143,8 @@ executable one.
   do not add spaces — and bold headings, titles and names are balanced so no
   line ends on a lone word. In a two-column comparison, open each column's
   bullets with a short label line to get a bold column header.
+  Pattern-drawn accent fills that white labels would miss WCAG on are
+  shaded just enough to keep the type white (no black-on-orange).
 - [FINDINGS.md](FINDINGS.md): legacy finding and fix details for cases not yet
   covered by `describe_finding`; prefer the live tool for known codes.
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):

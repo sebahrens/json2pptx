@@ -948,7 +948,10 @@ func TestCardGridRecommendedSoftCard(t *testing.T) {
 		t.Fatal(err)
 	}
 	fg, fgOK := resolveThemeColor(ctx, selectedText.Paragraphs[0].Color)
-	bg, bgOK := resolveThemeColor(ctx, "accent1")
+	// Measured against the fill as painted: a mid-tone accent is shaded
+	// until lt1 reads (go-slide-creator-v9tup).
+	selTone, _ := parseFillTone(selected.Fill)
+	bg, bgOK := effectiveFillColor(ctx, selTone)
 	if !strings.Contains(string(selected.Text), "RECOMMENDED") || !fgOK || !bgOK || fg.ContrastWith(bg) < 4.5 {
 		t.Fatalf("selected text missing badge/contrast: %s", selected.Text)
 	}

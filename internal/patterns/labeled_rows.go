@@ -402,13 +402,18 @@ func (l *labeledRows) Expand(ctx ExpandContext, values, overrides any, cellOverr
 			if strings.TrimSpace(r.Sublabel) != "" {
 				minContrast = max(minContrast, TextContrastThreshold(lay.subSize, false))
 			}
-			ink := readableInkOn(ctx, fillTone{Color: accent}, "lt1", minContrast)
+			fill := json.RawMessage(strconv.Quote(accent))
+			var ink string
 			if co != nil && co.Color != "" {
 				ink = co.Color
+			} else {
+				var tone fillTone
+				tone, ink = accentFillAndInk(ctx, fillTone{Color: accent}, minContrast)
+				fill = tone.fillJSON()
 			}
 			labelCell = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(strconv.Quote(accent)),
+				Fill:     fill,
 				Line:     json.RawMessage(`"none"`),
 				Text:     labeledRowsLabelText(r, lay, ink, ink),
 			}}
