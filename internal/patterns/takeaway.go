@@ -168,6 +168,9 @@ func TakeawayGrid(ctx ExpandContext, s TakeawaySpec, bandWidthPt, spacerPt, band
 	colsJSON, _ := json.Marshal([]float64{barPct, 100 - barPct})
 
 	accent := s.accent()
+	if s.Accent == "" {
+		accent = ctx.DefaultAccent()
+	}
 	textFill := json.RawMessage(`"none"`)
 	ink := inkOnLight(ctx, TakeawayInk, 4.5)
 	right := 0.0

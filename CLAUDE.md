@@ -172,7 +172,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `kpi-5up` | Five big-number KPI cards with short captions |
 | `kpi-6up` | Six big-number KPI cards with short captions |
 | `kpi-inline` | Horizontal inline KPI bar, height-capped for supporting context |
-| `labeled-rows` | 2–6 rows of a keyword label block (WHY / WHAT / HOW; `label_style` `filled` accent block or accent `text`) with optional sublabel beside 1–4 lines of body text, rules between content-sized rows |
+| `labeled-rows` | 2–6 rows of a keyword label block (WHY / WHAT / HOW; `label_style` `tinted` (default) neutral block under an accent rule, `filled` accent block or accent `text`) with optional sublabel beside 1–4 lines of body text, rules between content-sized rows |
 | `matrix-2x2` | 2×2 quadrant matrix with axis labels |
 | `metric-list` | Vertical "by the numbers" stack of 3–7 metrics: big right-aligned accent value + bold label + optional detail line, hairline rules, optional highlighted row (`highlight: true`, at most one) and a bottom takeaway-band callout |
 | `next-steps` | Closing next-steps slide: 2–6 numbered action rows (action / owner / date; empty owner or date columns drop) separated by 0.5pt rules, plus an optional "Decisions requested" band (left accent rule, no outline, no fill) — the closer instead of "Thank you" |

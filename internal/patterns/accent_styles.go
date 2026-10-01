@@ -54,3 +54,15 @@ func errInvalidEnum(pattern, path, got string, allowed []string) *ValidationErro
 		Message: fmt.Sprintf("%s: %s must be one of %s; got %q", pattern, path, strings.Join(allowed, ", "), got),
 	}
 }
+
+// accentInkOnTone returns accent when it clears minContrast against tone as
+// painted, else the first theme ink that reads there (lt1 / dk2 / dk1). An
+// accent numeral or keyword on a neutral tint keeps the brand where it reads
+// and never ships below the bar (the render-time fixer would otherwise swap
+// it, go-slide-creator-fl11f). Without a theme it returns accent.
+func accentInkOnTone(ctx ExpandContext, accent string, tone fillTone, minContrast float64) string {
+	if r, ok := fillContrast(ctx, fillTone{Color: accent}, tone); !ok || r >= minContrast {
+		return accent
+	}
+	return readableInkOn(ctx, tone, accent, minContrast)
+}

@@ -27,15 +27,9 @@ var accentIsTheMessage = map[string]string{
 }
 
 // accentRestraintPending lists patterns that still default to a row of solid
-// accent blocks and have no fix yet. The list only shrinks: a pattern that
-// starts passing must be removed (the test says so), and a pattern not listed
-// here may not regress.
-var accentRestraintPending = map[string]string{
-	"agenda-with-images":  "numbered accent squares per row",
-	"labeled-rows":        "label_style filled (default) is a solid accent block per row",
-	"numbered-step-strip": "stacked-box number lanes are solid accent blocks",
-	"process-grid-2row":   "phase boxes are solid accent / accent-shade blocks",
-}
+// accent blocks and have no fix yet. It is empty — the epic's acceptance —
+// and must stay so: a pattern may not regress.
+var accentRestraintPending = map[string]string{}
 
 // pStyleTheme is p-style's palette: a light orange accent1 on white paper,
 // the template the review's walls of colour were most visible on.
@@ -94,6 +88,9 @@ func isSolidAccentFill(raw json.RawMessage) bool {
 // acceptance: every pattern exemplar renders with at most one solid-accent
 // block by default, except where the accent fill is the data itself.
 func TestExemplarGallery_AccentRestraint(t *testing.T) {
+	if len(accentRestraintPending) != 0 {
+		t.Errorf("accentRestraintPending must stay empty, got %v (go-slide-creator-fl11f)", accentRestraintPending)
+	}
 	reg := patterns.Default()
 	var names []string
 	for _, p := range reg.List() {

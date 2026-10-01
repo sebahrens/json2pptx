@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
 
 // ---------------------------------------------------------------------------
-// agenda-with-images pattern — numbered accent squares + title + image/quote
+// agenda-with-images pattern — numbered accent numerals + title + image/quote
 // per agenda row. Richer alternative to the plain `agenda` pattern.
 // ---------------------------------------------------------------------------
 
@@ -22,7 +23,7 @@ type agendaWithImages struct{}
 
 func (a *agendaWithImages) Name() string { return "agenda-with-images" }
 func (a *agendaWithImages) Description() string {
-	return "Numbered accent squares + title/subtitle + image (or quote) placeholder per agenda row"
+	return "Numbered accent numerals + title/subtitle + image (or quote) placeholder per agenda row"
 }
 func (a *agendaWithImages) UseWhen() string {
 	return "Agenda or table-of-contents slide where each section needs a visual preview (image placeholder or pull quote) alongside the numbered title; prefer plain `agenda` when items are bare titles, card-grid when items need multi-line body text"
@@ -81,7 +82,13 @@ type AgendaWithImagesOverrides struct {
 	TitleSize      float64 `json:"title_size,omitempty"`       // Font size for row title (default 14)
 	SubtitleSize   float64 `json:"subtitle_size,omitempty"`    // Font size for subtitle (default 10)
 	ImageLabelSize float64 `json:"image_label_size,omitempty"` // Font size for image placeholder caption (default 10)
+	// Style is "numeral" (default: unfilled bold accent numerals) or "solid"
+	// (accent-filled number squares with white numerals; legacy look).
+	Style string `json:"style,omitempty"`
 }
+
+// agendaWithImagesStyles are the accepted overrides.style values.
+var agendaWithImagesStyles = []string{"numeral", "solid"}
 
 // AgendaWithImagesCellOverride is the shared per-cell override, indexed by item.
 type AgendaWithImagesCellOverride = CellOverride
@@ -206,12 +213,13 @@ func (a *agendaWithImages) Schema() *Schema {
 
 	overridesSchema := ObjectSchema(
 		map[string]*Schema{
-			"accent":           StringSchema(0).WithDescription("Accent scheme color for number badges (default accent1)").WithDefault("accent1"),
+			"accent":           StringSchema(0).WithDescription("Accent scheme color for the numerals (default: the template's color_roles.primary_fill)").WithDefault("accent1"),
 			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
 			"number_size":      NumberSchema(6, 60).WithDescription("Font size for number badge in points (default 18)"),
 			"title_size":       NumberSchema(6, 60).WithDescription("Font size for row title in points (default 14)"),
 			"subtitle_size":    NumberSchema(6, 40).WithDescription("Font size for subtitle in points (default 10)"),
 			"image_label_size": NumberSchema(6, 40).WithDescription("Font size for image placeholder caption in points (default 10)"),
+			"style":            EnumSchema(agendaWithImagesStyles...).WithDescription("numeral (default): unfilled bold accent numerals, so a column of agenda numbers does not read as a row of accent blocks. solid: accent-filled number squares with white numerals (legacy look)").WithDefault("numeral"),
 		},
 		nil,
 	).WithAdditionalProperties(false)
@@ -225,7 +233,7 @@ func (a *agendaWithImages) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Numbered agenda rows with accent number badges, titles, optional subtitles, and optional image placeholders or pull-quotes")
+	}).WithDescription("Numbered agenda rows with accent numerals (or solid number badges via overrides.style), titles, optional subtitles, and optional image placeholders or pull-quotes")
 }
 
 func (a *agendaWithImages) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -267,6 +275,12 @@ func (a *agendaWithImages) Validate(values, overrides any, cellOverrides map[int
 		}
 	}
 
+	if ovr, ok := overrides.(*AgendaWithImagesOverrides); ok && ovr != nil {
+		if ovr.Style != "" && !slices.Contains(agendaWithImagesStyles, ovr.Style) {
+			errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, agendaWithImagesStyles))
+		}
+	}
+
 	if coErr := validateCellOverrideKeys(name, cellOverrides, len(v.Items), ""); coErr != nil {
 		errs = append(errs, coErr)
 	}
@@ -289,6 +303,9 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 	}
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
+	// An unfilled numeral is bold large text on the slide background: it
+	// needs 3:1 against lt1, else it steps to dk2 / dk1.
+	numeralInk := accentInkOnLight(ctx, accent, 3.0)
 	numberSize := ResolveSize(ovr.NumberSize, scaleLeadPt)
 	subtitleSize := ResolveSize(ovr.SubtitleSize, scaleCaptionPt)
 	imageLabelSize := ResolveSize(ovr.ImageLabelSize, scaleCaptionPt)
@@ -326,9 +343,17 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 			num = i + 1
 		}
 
-		// Number badge cell: accent-filled rounded square with white number.
-		numberCell := buildAgendaBadgeCell(
-			fmt.Sprintf("%02d", num), accent, numberSize, badgeWidthPct)
+		// Number cell: an unfilled bold accent numeral by default; a column of
+		// accent-filled squares read as a row of solid accent blocks
+		// (go-slide-creator-fl11f). overrides.style "solid" restores the
+		// accent-filled rounded square with a white numeral.
+		var numberCell *jsonschema.GridCellInput
+		if ovr.Style == "solid" {
+			numberCell = buildAgendaBadgeCell(
+				fmt.Sprintf("%02d", num), accent, numberSize, badgeWidthPct)
+		} else {
+			numberCell = buildAgendaNumeralCell(fmt.Sprintf("%02d", num), numeralInk, numberSize)
+		}
 
 		// Title cell: title (+ optional subtitle paragraph).
 		titleCell := &jsonschema.GridCellInput{
@@ -428,9 +453,14 @@ type agendaWithImagesTextObj struct {
 }
 
 func buildAgendaWithImagesBadgeText(num string, size float64) json.RawMessage {
+	return buildAgendaWithImagesNumberText(num, size, "lt1")
+}
+
+// buildAgendaWithImagesNumberText is the centred bold number in the given ink.
+func buildAgendaWithImagesNumberText(num string, size float64, ink string) json.RawMessage {
 	textObj := agendaWithImagesTextObj{
 		Paragraphs: []agendaWithImagesParagraph{
-			{Content: num, Size: size, Bold: true, Color: "lt1", Align: "ctr"},
+			{Content: num, Size: size, Bold: true, Color: ink, Align: "ctr"},
 		},
 		Align:         "ctr",
 		VerticalAlign: "ctr",
@@ -594,5 +624,16 @@ func buildAgendaBadgeCell(label, accent string, size, widthPct float64) *jsonsch
 		Rows: []jsonschema.GridRowInput{{
 			Cells: []*jsonschema.GridCellInput{{}, {Shape: badge}, {}},
 		}},
+	}}
+}
+
+// buildAgendaNumeralCell is the restrained default number cell: an unfilled,
+// unoutlined bold numeral in the accent ink, centred in its column.
+func buildAgendaNumeralCell(label, ink string, size float64) *jsonschema.GridCellInput {
+	return &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+		Geometry: "rect",
+		Fill:     json.RawMessage(`"none"`),
+		Line:     noLine,
+		Text:     buildAgendaWithImagesNumberText(label, size, ink),
 	}}
 }

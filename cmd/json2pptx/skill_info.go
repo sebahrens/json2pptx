@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -855,19 +854,10 @@ func buildColorRoles(colors []types.ThemeColor) *skillColorRoles {
 
 	// Prefer body-safe accents, then large-text-safe accents. A theme with no
 	// qualifying accent must not recommend a near-background fill for white
-	// text; use a qualifying dark theme slot instead.
-	candidates := append([]string{}, safeBody...)
-	for _, name := range safeLarge {
-		if !slices.Contains(candidates, name) {
-			candidates = append(candidates, name)
-		}
-	}
-	for _, name := range []string{"dk2", "dk1"} {
-		hex := findColorHex(colors, name)
-		if c, err := svggen.ParseColor(hex); err == nil && c.ContrastWith(white) >= svggen.WCAGAALarge {
-			candidates = append(candidates, name)
-		}
-	}
+	// text; use a qualifying dark theme slot instead. Patterns default to the
+	// same slot (patterns.PrimaryFillCandidates, ExpandContext.DefaultAccent;
+	// go-slide-creator-2mia4).
+	candidates := patterns.PrimaryFillCandidates(colors)
 	roles.PrimaryFill, roles.SecondaryFill = "", ""
 	if len(candidates) > 0 {
 		roles.PrimaryFill = candidates[0]

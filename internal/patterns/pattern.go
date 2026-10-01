@@ -163,11 +163,15 @@ func (c ExpandContext) ResolveAccent(accent, semanticAccent string) string {
 			return resolved
 		}
 	}
-	if c.AccentStrategy == AccentStrategyRotate {
+	switch c.AccentStrategy {
+	case AccentStrategyRotate:
 		chosen, _, _ := c.rotatedAccent()
 		return chosen
+	case AccentStrategySectionKeyed:
+		return AccentForStrategy(c.AccentStrategy, c.SlideIndex, c.SectionIndex)
+	default:
+		return c.DefaultAccent()
 	}
-	return AccentForStrategy(c.AccentStrategy, c.SlideIndex, c.SectionIndex)
 }
 
 // ResolveSurface returns the scheme color name for a surface tint role,

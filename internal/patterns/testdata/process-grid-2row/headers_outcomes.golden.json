@@ -141,14 +141,19 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "accent1",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 8000,
+              "lumOff": 92000
+            },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "DESIGN",
                   "size": 12,
                   "bold": true,
-                  "color": "lt1",
+                  "color": "dk2",
                   "align": "ctr"
                 }
               ],
@@ -160,14 +165,19 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "accent1",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 8000,
+              "lumOff": 92000
+            },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "EDIT",
                   "size": 12,
                   "bold": true,
-                  "color": "lt1",
+                  "color": "dk2",
                   "align": "ctr"
                 }
               ],
@@ -179,14 +189,19 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "accent1",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 8000,
+              "lumOff": 92000
+            },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "ASSETS",
                   "size": 12,
                   "bold": true,
-                  "color": "lt1",
+                  "color": "dk2",
                   "align": "ctr"
                 }
               ],
@@ -198,14 +213,19 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "accent1",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 8000,
+              "lumOff": 92000
+            },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "UX / UI",
                   "size": 12,
                   "bold": true,
-                  "color": "lt1",
+                  "color": "dk2",
                   "align": "ctr"
                 }
               ],
@@ -241,88 +261,116 @@
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "accent1",
-              "lumMod": 65000
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
             },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "PROTOTYPE",
                   "size": 12,
                   "bold": true,
-                  "color": "lt1",
+                  "color": "dk2",
                   "align": "ctr"
                 }
               ],
               "align": "ctr",
               "vertical_align": "ctr"
             }
+          },
+          "accent_bar": {
+            "position": "top",
+            "color": "accent1",
+            "width": 3
           }
         },
         {
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "accent1",
-              "lumMod": 65000
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
             },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "DEVELOP",
                   "size": 12,
                   "bold": true,
-                  "color": "lt1",
+                  "color": "dk2",
                   "align": "ctr"
                 }
               ],
               "align": "ctr",
               "vertical_align": "ctr"
             }
+          },
+          "accent_bar": {
+            "position": "top",
+            "color": "accent1",
+            "width": 3
           }
         },
         {
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "accent1",
-              "lumMod": 65000
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
             },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "USER TESTING",
                   "size": 12,
                   "bold": true,
-                  "color": "lt1",
+                  "color": "dk2",
                   "align": "ctr"
                 }
               ],
               "align": "ctr",
               "vertical_align": "ctr"
             }
+          },
+          "accent_bar": {
+            "position": "top",
+            "color": "accent1",
+            "width": 3
           }
         },
         {
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "accent1",
-              "lumMod": 65000
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
             },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "RELEASE",
                   "size": 12,
                   "bold": true,
-                  "color": "lt1",
+                  "color": "dk2",
                   "align": "ctr"
                 }
               ],
               "align": "ctr",
               "vertical_align": "ctr"
             }
+          },
+          "accent_bar": {
+            "position": "top",
+            "color": "accent1",
+            "width": 3
           }
         }
       ]

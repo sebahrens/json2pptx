@@ -323,8 +323,26 @@ func TestNumberedStepStrip_Expand_StackedBoxTipColor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
-	if !strings.Contains(string(grid.Rows[1].Cells[0].Shape.Fill), "accent4") {
-		t.Errorf("expected per-step tip_color accent4 on number lane, got %q", string(grid.Rows[1].Cells[0].Shape.Fill))
+	// Tinted lane by default: the tip colour is the numeral's ink.
+	lane := grid.Rows[1].Cells[0].Shape
+	if strings.Contains(string(lane.Fill), "accent") || !strings.Contains(string(lane.Text), "accent4") {
+		t.Errorf("expected a neutral lane with an accent4 numeral, got fill %s text %s", lane.Fill, lane.Text)
+	}
+	solid, err := p.Expand(ExpandContext{}, v, &NumberedStepStripOverrides{Style: "solid"}, nil)
+	if err != nil {
+		t.Fatalf("Expand failed: %v", err)
+	}
+	if !strings.Contains(string(solid.Rows[1].Cells[0].Shape.Fill), "accent4") {
+		t.Errorf("style solid: expected per-step tip_color accent4 on number lane, got %q", string(solid.Rows[1].Cells[0].Shape.Fill))
+	}
+}
+
+// TestNumberedStepStrip_StyleValidation rejects an unknown lane style.
+func TestNumberedStepStrip_StyleValidation(t *testing.T) {
+	p, _ := Default().Get("numbered-step-strip")
+	err := p.Validate(validNumberedStepStripValues("stacked-box", 3), &NumberedStepStripOverrides{Style: "loud"}, nil)
+	if err == nil || !strings.Contains(err.Error(), "overrides.style") {
+		t.Fatalf("expected overrides.style error, got %v", err)
 	}
 }
 
@@ -357,8 +375,16 @@ func TestNumberedStepStrip_Expand_TOCMirrorsAgenda(t *testing.T) {
 	}
 	badge := grid.Rows[0].Cells[0]
 	title := grid.Rows[0].Cells[1]
-	if badge.Shape.Geometry != "roundRect" {
-		t.Errorf("expected rounded number badge (like agenda), got %q", badge.Shape.Geometry)
+	// An unfilled accent numeral like agenda's (go-slide-creator-fl11f).
+	if string(badge.Shape.Fill) != `"none"` || !strings.Contains(string(badge.Shape.Text), "accent") {
+		t.Errorf("expected an unfilled accent numeral, got fill %s text %s", badge.Shape.Fill, badge.Shape.Text)
+	}
+	solid, err := p.Expand(ExpandContext{}, v, &NumberedStepStripOverrides{Style: "solid"}, nil)
+	if err != nil {
+		t.Fatalf("Expand failed: %v", err)
+	}
+	if solid.Rows[0].Cells[0].Shape.Geometry != "roundRect" {
+		t.Errorf("style solid: expected rounded number badge, got %q", solid.Rows[0].Cells[0].Shape.Geometry)
 	}
 	if !strings.Contains(string(title.Shape.Fill), "none") {
 		t.Errorf("expected no-fill title cell (like agenda), got %q", string(title.Shape.Fill))

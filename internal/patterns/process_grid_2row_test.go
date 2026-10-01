@@ -142,10 +142,39 @@ func TestProcessGrid2Row_Expand_DefaultLayout(t *testing.T) {
 	}
 }
 
-func TestProcessGrid2Row_Expand_DefaultColorsAreAccent1Accent3(t *testing.T) {
+// TestProcessGrid2Row_Expand_TintedDefault: phase boxes are neutral tints
+// under a thin rule in the track colour, the second track a lighter step, so
+// two rows of phases are not a wall of accent blocks (go-slide-creator-fl11f).
+func TestProcessGrid2Row_Expand_TintedDefault(t *testing.T) {
 	p, _ := Default().Get("process-grid-2row")
 	v := validProcessGrid2RowValues(4)
 	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand failed: %v", err)
+	}
+	for r := 0; r < 2; r++ {
+		for i := 1; i < len(grid.Rows[r].Cells); i++ {
+			cell := grid.Rows[r].Cells[i]
+			if strings.Contains(string(cell.Shape.Fill), "accent") {
+				t.Errorf("row %d phase %d: want a neutral tint, got %s", r+1, i, cell.Shape.Fill)
+			}
+			if cell.AccentBar == nil || cell.AccentBar.Color != "accent1" || cell.AccentBar.Position != "top" {
+				t.Errorf("row %d phase %d: want a top accent1 rule, got %+v", r+1, i, cell.AccentBar)
+			}
+		}
+	}
+	if string(grid.Rows[0].Cells[1].Shape.Fill) == string(grid.Rows[1].Cells[1].Shape.Fill) {
+		t.Errorf("the two tracks share one tint %s", grid.Rows[0].Cells[1].Shape.Fill)
+	}
+	if err := p.Validate(v, &ProcessGrid2RowOverrides{Style: "loud"}, nil); err == nil || !strings.Contains(err.Error(), "overrides.style") {
+		t.Errorf("expected overrides.style error, got %v", err)
+	}
+}
+
+func TestProcessGrid2Row_Expand_DefaultColorsAreAccent1Accent3(t *testing.T) {
+	p, _ := Default().Get("process-grid-2row")
+	v := validProcessGrid2RowValues(4)
+	grid, err := p.Expand(ExpandContext{}, v, &ProcessGrid2RowOverrides{Style: "solid"}, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -188,7 +217,7 @@ func TestProcessGrid2Row_Expand_CustomColors(t *testing.T) {
 	v := validProcessGrid2RowValues(4)
 	v.Row1Color = "accent2"
 	v.Row2Color = "accent5"
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, v, &ProcessGrid2RowOverrides{Style: "solid"}, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
