@@ -25,7 +25,12 @@ advertised schema). Use YAML or JSON with `meta` and either flat `slides[]` or c
 The forms are mutually exclusive. Chapters add numbered section dividers;
 `meta.chrome.section_crumb: true` labels their content slides in the footer;
 `meta.chrome.tracker: true` sets the section name above each content title. The compiler
-generates divider numbers: do not hand-author them. Keep an actual narrative
+generates divider numbers: do not hand-author them. A section with
+`appendix: true` (or a `section` slide with `appendix: true`) is back
+matter: its divider is unnumbered and later chapters keep their numbers,
+`auto_agenda` leaves it out, and its slides' tracker / crumb read
+"Appendix: <title>". Dividers titled Appendix, Backup, Annex, Q&A or Thank
+you are unnumbered without the flag. Keep an actual narrative
 instead of creating one slide per layout or a sequence of interchangeable
 cards. `explain_deck_spec` previews the resolved story and visual rhythm
 without rendering.

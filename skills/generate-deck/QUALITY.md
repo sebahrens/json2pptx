@@ -72,9 +72,21 @@ Pick the DeckSpec kind that matches what the title claims, then confirm with
 | a sequence of steps | `process` |
 | a plan over time | `roadmap` (phases) or `timeline` (dated milestones) |
 | a positioning on two dimensions | `matrix_2x2` |
+| exact figures: financials, P&L, pricing, a segment split | `table` (`totals_row` for the total line, units in the header) |
+| where risks sit by likelihood × impact | `matrix_2x2` (axes Likelihood / Impact, each quadrant listing its risks) |
+| the risks and how they are mitigated | `table` (Risk · Likelihood · Impact · Mitigation · Owner), not a card per risk |
+| a reporting or governance structure | `org` |
+| who is on the team | `team` |
+| what the deck covers | `agenda` (or `structure.auto_agenda`) |
+| one customer story or case | `image_case` |
 | a structure of parts (SWOT, BMC, pillars) | `framework` / `pillars` |
 | what people said | `quote` |
 | the whole answer up front | `executive_summary` |
+
+Back matter goes in an appendix: `structure.sections[].appendix: true` (or a
+`section` slide with `appendix: true`) — the divider is unnumbered and left
+out of the agenda. A divider titled Appendix / Backup / Q&A is unnumbered
+automatically.
 
 Do not choose a visual because it looks varied; a card grid of topics proves
 nothing. Rhythm tools come after the message is right.

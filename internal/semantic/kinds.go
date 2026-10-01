@@ -97,7 +97,8 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindSection: {
 		Kind:           KindSection,
-		Summary:        "Section divider introducing the next group of slides.",
+		Summary:        "Section divider introducing the next group of slides. Numbered 01, 02, … automatically; appendix: true (or a title such as Appendix, Backup, Q&A) leaves it unnumbered and uncounted.",
+		TypicalFields:  []string{"appendix"},
 		RequiredFields: []string{"title"},
 	},
 	KindExecutiveSummary: {
@@ -134,7 +135,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindTable: {
 		Kind:            KindTable,
-		Summary:         "A native data table — the financials, the segment split, the pricing tiers. Renders with the template's own table style; up to 6 columns × 7 logical rows before the density rules ask for a split.",
+		Summary:         "A native data table — the financials / P&L, the segment split, the price list, a risk register (risk, likelihood, impact, mitigation, owner). Renders with the template's own table style; up to 6 columns × 7 logical rows before the density rules ask for a split.",
 		RequiredFields:  []string{"headers", "rows"},
 		RequiredAliases: map[string][]string{"headers": {"columns"}},
 		TypicalFields:   []string{"title", "column_alignments", "highlight_column", "totals_row", "takeaway"},
@@ -201,7 +202,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindMatrix2x2: {
 		Kind:           KindMatrix2x2,
-		Summary:        "Two axes and four quadrants — impact against effort, reach against cost. Needs both axis labels and all four quadrants, each with a header; short of that, or past a quadrant's text budgets, it degrades to a bullet list naming each quadrant's position.",
+		Summary:        "Two axes and four quadrants — impact against effort, reach against cost. Also the risk heat map: Likelihood × Impact axes, each quadrant body listing the risks in it. Needs both axis labels and all four quadrants, each with a header; short of that, or past a quadrant's text budgets, it degrades to a bullet list naming each quadrant's position.",
 		RequiredFields: []string{"quadrants", "x_axis", "y_axis"},
 		RequiredAliases: map[string][]string{
 			"quadrants": {"cells", "boxes", "top_left"},

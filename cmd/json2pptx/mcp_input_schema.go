@@ -122,6 +122,7 @@ var fieldScopeMap = map[string]map[string]string{
 		"build":            "slide",
 		"contrast_check":   "slide",
 		"section_title":    "slide",
+		"section_number":   "slide",
 	},
 	"SplitSlideInput": {
 		"type":  "slide",
@@ -246,6 +247,15 @@ var propertyOverrides = map[string]map[string]map[string]any{
 		"slide_type": {
 			"type":        "string",
 			"description": "Hint for layout auto-selection. NOT the same vocabulary as layout_id: a canonical layout name such as \"closing\", \"quote\", \"agenda\" or \"image-left\" pins a layout and belongs in layout_id (call list_templates for the template's canonical_layout_ids). Passing one here is reported as UNKNOWN_ENUM with a rename_field fix pointing at layout_id.",
+		},
+		// go-slide-creator-7ldh9: per-divider override of the automatic
+		// chapter number.
+		"section_number": {
+			"description": "Section dividers only. false suppresses the automatic chapter number (the divider is not counted); a short label (≤4 chars, e.g. \"A\", \"02\") renders verbatim, and a numeric label restarts the count from it. Omitted, dividers titled Appendix / Backup / Annex / Q&A / Questions / Thank you are unnumbered and the rest are numbered 01, 02, …",
+			"oneOf": []any{
+				map[string]any{"type": "boolean"},
+				map[string]any{"type": "string", "minLength": 1, "maxLength": 4},
+			},
 		},
 	},
 	"PresentationInput": {

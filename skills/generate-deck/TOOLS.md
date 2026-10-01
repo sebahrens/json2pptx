@@ -58,6 +58,14 @@ signature or schema registry.
   `next_tool_call` to `render_deck_spec` whose `spec` is a complete DeckSpec
   (one `raw_json2pptx` slide with sample data), so the default profile
   reaches every chart and diagram type without `get_data_format_hints`.
+  A `placeholder_layout` candidate named `table` is a native table (content
+  type `table` / DeckSpec kind `table`, `totals_row`); financials, P&L,
+  price lists and risk registers rank it first. Consulting intents are
+  routed by meaning: a comparison or trend outranks `stat-hero`, a reporting
+  structure ranks `org_chart` above `team-bios`, "executive summary" ranks
+  `exec-summary` above the bullets layout, "appendix" offers section /
+  content / table, and a risk matrix offers `matrix-2x2` / `table-highlight`
+  (never `comparison-2col`).
 - `get_input_schema` and `get_data_format_hints` support digest reuse.
   `list_slide_kinds`, `show_pattern`, and `describe_finding` are the live
   kind, pattern, and finding catalogs. Prefer them to static enumerations.

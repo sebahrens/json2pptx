@@ -121,8 +121,9 @@ func deckStructureSchema() map[string]any {
 	section := map[string]any{
 		"type": "object", "required": []any{"title", "slides"},
 		"properties": map[string]any{
-			"title":  map[string]any{"type": "string", "minLength": 1},
-			"slides": map[string]any{"type": "array", "minItems": 1, "items": map[string]any{"$ref": "#/$defs/SlideSpec"}},
+			"title":    map[string]any{"type": "string", "minLength": 1},
+			"slides":   map[string]any{"type": "array", "minItems": 1, "items": map[string]any{"$ref": "#/$defs/SlideSpec"}},
+			"appendix": map[string]any{"type": "boolean", "description": "Back matter: the divider is unnumbered, the section is left out of auto_agenda, and its slides' tracker / crumb read \"Appendix\"."},
 		},
 		"additionalProperties": false,
 	}
@@ -150,7 +151,7 @@ func chromeSchema() map[string]any {
 			"client_name":     map[string]any{"type": "string", "description": "Client or company name."},
 			"project_code":    map[string]any{"type": "string", "description": "Project identifier (e.g. \"Aurora\"); rendered as \"Project <code>\" in the footer unless it already starts with \"Project\"."},
 			"footer_date":     map[string]any{"type": "string", "description": "Date shown in the footer; defaults to meta.date."},
-			"section_crumb":   map[string]any{"type": "boolean", "description": "Show the running section title in the footer."},
+			"section_crumb":   map[string]any{"type": "boolean", "description": "Show the running section title in the footer: structure.sections, or the preceding section slide on a flat deck."},
 			"tracker":         map[string]any{"type": "boolean", "description": "Set the current section name above each content slide's title (9pt accent caps). Needs sections: structure.sections or section slides."},
 			"page_numbers": map[string]any{
 				"type":        "object",

@@ -1911,14 +1911,7 @@ func placeholderPairBackground(ph *types.PlaceholderInfo, canvas, source string,
 }
 
 func contrastSectionNumbers(input *PresentationInput, layouts []types.LayoutMetadata) []string {
-	numbers := make([]string, len(input.Slides))
-	sectionNum := 0
-	for si, slide := range input.Slides {
-		if isSectionSlideInput(slide, layouts) {
-			sectionNum++
-			numbers[si] = fmt.Sprintf("%02d", sectionNum)
-		}
-	}
+	numbers, _ := deckSectionNumbers(input.Slides, layouts)
 	return numbers
 }
 

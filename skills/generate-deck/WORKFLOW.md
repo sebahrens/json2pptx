@@ -70,6 +70,10 @@ without rendering, and `analyze_deck_rhythm` accepts the `deck_id`.
   is still one run); follow a dense slide (table, grid) with a light one
   (stat, quote, section).
 - Every evidence slide has a `takeaway` and a `source`.
+- Clear `analyze_deck_rhythm`'s narrative codes (`missing_executive_summary`,
+  `missing_next_steps`, `missing_sections`,
+  `evidence_missing_takeaway_or_source`, `bullets_heavy`) and accent codes
+  (`accent_heavy_slide`, `strong_accent_run`) — RAW_PATH.md lists them.
 - `composition_score < 70` or `longest_run ≥ 3` → change the kind of the
   middle slide, not its content.
 
@@ -100,8 +104,8 @@ Rules: no visual pattern family should appear 3+ times consecutively (alternatin
 
 This is the one place the skill sets accent strategy; other guides defer here.
 
-- `primary` (default) is the safe choice for any length: one brand accent,
-  with variety from `cell_accent_mode` inside grid slides.
+- `primary` (default) is the safe choice for any length: one brand accent;
+  keep grid cells `uniform` unless they show ordered or graded data.
 - `section-keyed` gives each chapter its own accent — use it when the deck has
   `structure.sections` / section dividers.
 - `rotate` cycles pattern slides through the template's **safe** accents only

@@ -27,6 +27,10 @@ type DeckStructure struct {
 type DeckSection struct {
 	Title  string      `json:"title" yaml:"title"`
 	Slides []SlideSpec `json:"slides" yaml:"slides"`
+	// Appendix marks back matter (go-slide-creator-deb2h): the divider is
+	// unnumbered, the section is left out of auto_agenda, and its slides'
+	// tracker / crumb read "Appendix".
+	Appendix bool `json:"appendix,omitempty" yaml:"appendix,omitempty"`
 }
 
 // DeckMeta carries deck-level intent and presentation context.

@@ -99,8 +99,9 @@ type ChromeInput struct {
 	FooterDate string `json:"footer_date,omitempty"`
 	// PageNumbers controls slide numbering.
 	PageNumbers *PageNumbersInput `json:"page_numbers,omitempty"`
-	// SectionCrumb enables running section title in the footer. Requires
-	// the structure block with named sections to be useful.
+	// SectionCrumb enables running section title in the footer: the
+	// slide's structure section, or on a flat deck the preceding
+	// section-divider slide, as for Tracker (go-slide-creator-gl5bh).
 	SectionCrumb bool `json:"section_crumb,omitempty"`
 	// Tracker sets the current section name above the title of every content
 	// slide inside a section, in 9pt accent1 caps with +8% letter-spacing,
@@ -146,6 +147,10 @@ type SectionInput struct {
 	Title string `json:"title"`
 	// Slides contains the content slides within this section.
 	Slides []SlideInput `json:"slides"`
+	// Appendix marks back matter (go-slide-creator-deb2h): the divider gets
+	// no chapter number (section_number: false), auto_agenda leaves the
+	// section out, and its slides' tracker / crumb read "Appendix".
+	Appendix bool `json:"appendix,omitempty"`
 }
 
 // DefaultsInput provides deck-level defaults that are shallow-applied to every
@@ -282,6 +287,14 @@ type SlideInput struct {
 	TransitionSpeed    string               `json:"transition_speed,omitempty"`
 	Build              string               `json:"build,omitempty"`
 	ContrastCheck      *bool                `json:"contrast_check,omitempty"`
+
+	// SectionNumber overrides the automatic chapter number of a section
+	// divider (go-slide-creator-7ldh9): false suppresses it (and the divider
+	// does not count towards later numbers), a short string ("A", "02") is
+	// rendered verbatim. Omitted, dividers titled Appendix / Backup / Annex /
+	// Q&A / Questions / Thank you are unnumbered and every other divider gets
+	// the next "01", "02", … number.
+	SectionNumber *SectionNumberInput `json:"section_number,omitempty"`
 
 	// SectionTitle is the title of the structure.sections[] entry this slide was
 	// expanded from, and is what chrome.section_crumb puts in the footer

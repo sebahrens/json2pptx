@@ -45,6 +45,7 @@ type ChromeInput = deckinput.ChromeInput
 type PageNumbersInput = deckinput.PageNumbersInput
 type StructureInput = deckinput.StructureInput
 type SectionInput = deckinput.SectionInput
+type SectionNumberInput = deckinput.SectionNumberInput
 type DefaultsInput = deckinput.DefaultsInput
 type GridConfig = deckinput.GridConfig
 type ThemeInput = deckinput.ThemeInput

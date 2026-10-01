@@ -93,12 +93,15 @@ func TestAnalyze_BreakSuggestionsUseContentHints(t *testing.T) {
 	}{
 		{"chart", "kpi-3up", "chart", "", "chart-insights-split"},
 		{"table", "kpi-3up", "table", "", "table-highlight"},
-		{"diagram", "kpi-3up", "diagram", "", "timeline-horizontal"},
+		// No dates on the slide: no timeline (go-slide-creator-hl17m).
+		{"diagram", "kpi-3up", "diagram", "", "journey-maturity-model"},
 		{"image", "kpi-3up", "image", "", "image-text-split"},
-		{"process", "process-flow", "", "", "timeline-horizontal"},
+		{"process", "process-flow", "", "", "journey-maturity-model"},
 		{"cards", "card-grid", "", "", "comparison-2col"},
 		{"comparison", "pull-quote", "", "comparison", "comparison-2col"},
-		{"fallback", "pull-quote", "", "", "stat-hero"},
+		// Prose without numbers, options or dates gets text-shaped patterns,
+		// never an invented hero number.
+		{"fallback", "pull-quote", "", "", "labeled-rows"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			second := tt.pattern
@@ -268,27 +271,60 @@ func TestAnalyze_WithinSlideAccentVariety(t *testing.T) {
 	}
 }
 
-func TestAnalyze_AccentVarietyRecommendation(t *testing.T) {
-	// Slide with 6 cells all using the same accent — should trigger recommendation.
-	accents := make([]string, 6)
-	for i := range accents {
-		accents[i] = "accent1"
-	}
-	slides := []rhythm.Slide{
+// TestAnalyze_NoMoreAccentAdvice pins the removed rule
+// (go-slide-creator-hl17m): a restrained slide — many cells, one accent —
+// is the standard, not a defect, so nothing asks for more accents.
+func TestAnalyze_NoMoreAccentAdvice(t *testing.T) {
+	accents := []string{"accent1", "accent1", "accent1", "accent1", "accent1", "accent1"}
+	for _, s := range []rhythm.Slide{
 		{HasShapeGrid: true, CellCount: 6, CellAccents: accents},
+		{HasPattern: true, PatternName: "card-grid", CellCount: 6, CellAccents: accents},
+		{HasPattern: true, PatternName: "kpi-6up", CellCount: 6},
+	} {
+		for _, rec := range rhythm.Analyze([]rhythm.Slide{s}).Recommendations {
+			for _, b := range rec.RecommendedBreak {
+				if b == "cell_accent_mode: progressive" {
+					t.Errorf("%s: still recommends progressive accents: %+v", s.PatternName, rec)
+				}
+			}
+			if rec.SlideIndex == 0 {
+				t.Errorf("%s: unexpected per-slide accent advice: %+v", s.PatternName, rec)
+			}
+		}
+	}
+}
+
+// TestAnalyze_AccentHeaviness: a slide with many solid accent cells, and a
+// run of AccentWeight=strong slides, are what get flagged now.
+func TestAnalyze_AccentHeaviness(t *testing.T) {
+	heavy := rhythm.Slide{HasShapeGrid: true, CellCount: 6, SolidAccentCells: 5, CellAccents: []string{"accent1"}}
+	recs := rhythm.Analyze([]rhythm.Slide{heavy}).Recommendations
+	if len(recs) != 1 || recs[0].Code != rhythm.CodeAccentHeavySlide {
+		t.Fatalf("solid-accent slide recs = %+v", recs)
 	}
 
-	result := rhythm.Analyze(slides)
-
+	strong := []rhythm.Slide{
+		{HasPattern: true, PatternName: "stat-hero"},
+		{HasPattern: true, PatternName: "hero-detail"},
+		{HasPattern: true, PatternName: "metric-list"},
+		{HasPattern: true, PatternName: "table-highlight"},
+	}
 	found := false
-	for _, rec := range result.Recommendations {
-		if rec.SlideIndex == 0 && len(rec.RecommendedBreak) > 0 && rec.RecommendedBreak[0] == "shape_grid.rows[].cells[].shape.fill" {
+	for _, rec := range rhythm.Analyze(strong).Recommendations {
+		if rec.Code == rhythm.CodeStrongAccentRun {
 			found = true
-			break
+			if rec.SlideIndex != 2 {
+				t.Errorf("strong run flagged at %d, want 2", rec.SlideIndex)
+			}
+			for _, b := range rec.RecommendedBreak {
+				if b == "stat-hero" || b == "metric-list" || b == "kpi-3up" {
+					t.Errorf("strong-run break proposes another strong pattern %q", b)
+				}
+			}
 		}
 	}
 	if !found {
-		t.Error("expected per-cell fill recommendation for raw 6-cell slide with 1 accent")
+		t.Error("three consecutive strong-accent slides not flagged")
 	}
 }
 
@@ -331,21 +367,135 @@ func TestAnalyze_ContentVisualBreaksFalseRun(t *testing.T) {
 	}
 }
 
-func TestAnalyze_AccentAdviceMatchesAuthoringSurface(t *testing.T) {
-	accents := []string{"accent1", "accent1", "accent1", "accent1", "accent1"}
+func recCodes(r *rhythm.Result) map[string][]rhythm.Recommendation {
+	out := map[string][]rhythm.Recommendation{}
+	for _, rec := range r.Recommendations {
+		out[rec.Code] = append(out[rec.Code], rec)
+	}
+	return out
+}
+
+func bulletsSlide(title, text string) rhythm.Slide {
+	return rhythm.Slide{SlideType: "content", Title: title, Text: text, ContentKinds: []string{"text", "bullets"}}
+}
+
+// TestAnalyze_NarrativeStructure pins go-slide-creator-hl17m on the review's
+// mixed deck shape: topic-titled bullets, no sources, a "Thank you" close.
+func TestAnalyze_NarrativeStructure(t *testing.T) {
+	slides := []rhythm.Slide{
+		{Role: "title", Title: "FY26 plan"},
+		bulletsSlide("Margin analysis", "Gross margin fell from 41% to 38%"),
+		{HasPattern: true, PatternName: "kpi-4up", Title: "Key metrics"},
+		bulletsSlide("Market overview", "The market is consolidating"),
+		{SlideType: "content", Title: "Revenue", ContentKinds: []string{"text", "chart"}, HasTakeaway: true},
+		bulletsSlide("Options", "Option A versus option B"),
+		{HasPattern: true, PatternName: "kpi-4up", Title: "More metrics", HasTakeaway: true, HasSource: true},
+		bulletsSlide("Risks", "Execution risk is moderate"),
+		{Role: "closing", Title: "Thank you"},
+	}
+	codes := recCodes(rhythm.Analyze(slides))
+	if r := codes[rhythm.CodeMissingExecutiveSummary]; len(r) != 1 || r[0].SlideIndex != 1 {
+		t.Errorf("missing exec summary = %+v", r)
+	}
+	if r := codes[rhythm.CodeMissingNextSteps]; len(r) != 1 || r[0].SlideIndex != 8 {
+		t.Errorf("missing next steps = %+v", r)
+	}
+	// Slide 2 (kpi, no takeaway/source) and 4 (chart, no source) flagged; 6 is complete.
+	ev := codes[rhythm.CodeEvidenceMissingTakeawaySrc]
+	if len(ev) != 2 || ev[0].SlideIndex != 2 || ev[1].SlideIndex != 4 {
+		t.Errorf("evidence recs = %+v", ev)
+	}
+	bh := codes[rhythm.CodeBulletsHeavy]
+	if len(bh) != 1 {
+		t.Fatalf("bullets-heavy recs = %+v", bh)
+	}
+	for _, b := range bh[0].RecommendedBreak {
+		if b == "timeline-horizontal" {
+			t.Errorf("bullets break proposes a timeline without dates: %v", bh[0].RecommendedBreak)
+		}
+	}
+	if bh[0].RecommendedBreak[0] != "kpi-3up" {
+		t.Errorf("numeric bullets should suggest a KPI visual first: %v", bh[0].RecommendedBreak)
+	}
+	if _, ok := codes[rhythm.CodeMissingSections]; ok {
+		t.Error("a 7-content-slide deck does not need sections")
+	}
+
+	// The complete deck: exec summary, sections, next steps — nothing narrative.
+	good := []rhythm.Slide{
+		{Role: "title", Title: "Plan"},
+		{HasPattern: true, PatternName: "exec-summary", Title: "We should expand"},
+		{Role: "section", Title: "Market"},
+		{SlideType: "content", Title: "Demand grew 12%", ContentKinds: []string{"chart"}, HasTakeaway: true, HasSource: true},
+		{HasPattern: true, PatternName: "comparison-2col", Title: "Two options"},
+		{HasPattern: true, PatternName: "next-steps", Title: "Next steps"},
+	}
+	for code := range recCodes(rhythm.Analyze(good)) {
+		switch code {
+		case rhythm.CodeMissingExecutiveSummary, rhythm.CodeMissingNextSteps, rhythm.CodeEvidenceMissingTakeawaySrc, rhythm.CodeBulletsHeavy:
+			t.Errorf("complete deck flagged %s", code)
+		}
+	}
+}
+
+func TestAnalyze_MissingSectionsOnLongDecks(t *testing.T) {
+	slides := []rhythm.Slide{{Role: "title", Title: "Deck"}}
+	for i := 0; i < 10; i++ {
+		slides = append(slides, rhythm.Slide{HasPattern: true, PatternName: "card-grid", Title: "Point"})
+	}
+	if r := recCodes(rhythm.Analyze(slides))[rhythm.CodeMissingSections]; len(r) != 1 {
+		t.Errorf("missing sections recs = %+v", r)
+	}
+	slides = append(slides[:3], append([]rhythm.Slide{{Role: "section", Title: "Part two"}}, slides[3:]...)...)
+	if r := recCodes(rhythm.Analyze(slides))[rhythm.CodeMissingSections]; len(r) != 0 {
+		t.Errorf("deck with a divider still flagged: %+v", r)
+	}
+}
+
+// TestAnalyze_BulletRunBreaksFromContent: a run of plain bullets slides gets
+// alternatives from what the slide says, and a timeline only with dates.
+func TestAnalyze_BulletRunBreaksFromContent(t *testing.T) {
 	for _, tc := range []struct {
-		name, want string
-		slide      rhythm.Slide
+		text, want string
 	}{
-		{"raw grid", "shape_grid.rows[].cells[].shape.fill", rhythm.Slide{HasShapeGrid: true, CellCount: 5, CellAccents: accents}},
-		{"named pattern", "cell_accent_mode: progressive", rhythm.Slide{HasPattern: true, PatternName: "card-grid", CellCount: 5, CellAccents: accents}},
+		{"Revenue up 12% to $48M", "kpi-3up"},
+		{"Option A versus option B", "comparison-2col"},
+		{"Launch in Q3 2026, scale by March 2027", "timeline-horizontal"},
+		{"Culture matters and teams must align", "labeled-rows"},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
-			recs := rhythm.Analyze([]rhythm.Slide{tc.slide}).Recommendations
-			if len(recs) != 1 || len(recs[0].RecommendedBreak) != 1 || recs[0].RecommendedBreak[0] != tc.want {
-				t.Errorf("advice = %+v, want %q", recs, tc.want)
+		slides := []rhythm.Slide{bulletsSlide("A", "x"), bulletsSlide("B", "y"), bulletsSlide("C", tc.text)}
+		var brk []string
+		for _, rec := range rhythm.Analyze(slides).Recommendations {
+			if rec.Code == rhythm.CodeBreakRun {
+				brk = rec.RecommendedBreak
 			}
-		})
+		}
+		if len(brk) == 0 || brk[0] != tc.want {
+			t.Errorf("%q: break = %v, want %s first", tc.text, brk, tc.want)
+		}
+		if tc.want != "timeline-horizontal" {
+			for _, b := range brk {
+				if b == "timeline-horizontal" || b == "phase-roadmap" {
+					t.Errorf("%q: proposes %s without dates", tc.text, b)
+				}
+			}
+		}
+	}
+}
+
+// TestAnalyze_PatternAccentBalance: pattern slides contribute their resolved
+// accent, so accent_balance is measured on the pattern / DeckSpec path.
+func TestAnalyze_PatternAccentBalance(t *testing.T) {
+	slides := []rhythm.Slide{
+		{HasPattern: true, PatternName: "kpi-3up", PatternAccent: "accent1"},
+		{HasPattern: true, PatternName: "card-grid", PatternAccent: "accent2"},
+	}
+	r := rhythm.Analyze(slides)
+	if r.Aggregates.AccentBalance["accent1"] != 0.5 || r.Aggregates.AccentBalance["accent2"] != 0.5 {
+		t.Errorf("accent_balance = %v", r.Aggregates.AccentBalance)
+	}
+	if r.PerSlide[1].AccentRole != "accent2" {
+		t.Errorf("accent_role = %q", r.PerSlide[1].AccentRole)
 	}
 }
 

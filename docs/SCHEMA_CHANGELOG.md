@@ -63,6 +63,35 @@
   the unused role tokens (grid header, 9-11pt card body, step number, 7-8pt
   footnote, cell insets, grid gaps) were removed. No `SchemaVersion` bump.
 
+- **2026-10-01 — Schema 4.155.0 · Agent guidance: appendix dividers, flat-deck crumbs, consulting routing, narrative rhythm (`go-slide-creator-biw2e`, `-hl17m`, `-deb2h`, `-7ldh9`, `-gl5bh`).**
+  - **`slides[].section_number`** (raw): `false` suppresses a divider's
+    automatic chapter number (and the divider is not counted); a label of at
+    most 4 characters (`"A"`, `"02"`) renders verbatim, a numeric label
+    restarting the count. Without it, dividers titled Appendix / Backup /
+    Annex / Q&A / Questions / Thank you are now unnumbered and uncounted
+    (previously "Appendix" rendered "04"). `SECTION_NUMBER_SEQUENCE_MISMATCH`
+    follows the same count.
+  - **`structure.sections[].appendix`** (raw and DeckSpec) and DeckSpec
+    `section` kind **`appendix: true`**: unnumbered divider, left out of
+    `auto_agenda`, running section "Appendix: <title>".
+  - **`chrome.section_crumb` on flat decks** uses the preceding section
+    slide's title, like `chrome.tracker` (it was silently inert).
+  - **`recommend_visual`**: new `placeholder_layout` candidate `table`
+    (native table, `totals_row`) for financials / P&L / price lists / risk
+    registers; consulting-intent routing (comparison / trend over
+    `stat-hero`, `org_chart` over `team-bios`, `exec-summary` over the
+    bullets layout, appendix → section / content / table, risk matrix →
+    `matrix-2x2` / `table-highlight` without `comparison-2col`).
+  - **`analyze_deck_rhythm`**: `recommendations[].code` (`break_run`,
+    `underfilled_cells`, `missing_executive_summary`, `missing_next_steps`,
+    `missing_sections`, `evidence_missing_takeaway_or_source`,
+    `bullets_heavy`, `accent_heavy_slide`, `strong_accent_run`). The
+    "only 1 accent — add `cell_accent_mode: progressive`" recommendation is
+    removed. Break suggestions for plain-slide runs follow the slide's
+    content and never propose a timeline without dates. `accent_balance`
+    and `per_slide[].accent_role` now count pattern slides by their
+    resolved accent (`accent_strategy` / `overrides.accent`).
+
 - **2026-09-30 — Grid diagrams obey the SVG strategy (`go-slide-creator-4c9m7`).**
   Diagram / chart cells embedded by patterns and `shape_grid` (e.g. the
   `chart-insights-split` / semantic `chart_insight` chart panel) now follow

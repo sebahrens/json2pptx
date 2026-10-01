@@ -46,6 +46,11 @@ func CompileTitle(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 func CompileSection(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	slide := &deckinput.SlideInput{SlideType: "section", LayoutID: in.Layout}
 	var links []SourceLink
+	// appendix: true marks back matter: no chapter number, and the divider
+	// does not advance the numbering of later sections (go-slide-creator-deb2h).
+	if appendix, _ := in.Body["appendix"].(bool); appendix {
+		slide.SectionNumber = &deckinput.SectionNumberInput{Suppress: true}
+	}
 
 	if in.Title != "" {
 		idx := appendContent(slide, textContent("title", in.Title))

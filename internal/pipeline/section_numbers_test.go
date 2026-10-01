@@ -30,3 +30,20 @@ func TestAssignSectionNumbersOnlyForEmptySections(t *testing.T) {
 		}
 	}
 }
+
+func TestAssignSectionNumbersSkipsBackMatter(t *testing.T) {
+	slides := []types.SlideDefinition{
+		{Type: types.SlideTypeSection, Title: "Market"},
+		{Type: types.SlideTypeSection, Title: "Appendix"},
+		{Type: types.SlideTypeSection, Title: "Plan"},
+		{Type: types.SlideTypeSection, Title: "Q&A"},
+		{Type: types.SlideTypeSection, Title: "Backup: detailed financials"},
+	}
+	assignSectionNumbers(slides)
+	want := []string{"01", "", "02", "", ""}
+	for i, slide := range slides {
+		if slide.Content.Body != want[i] {
+			t.Errorf("slide %d (%s) body = %q, want %q", i, slide.Title, slide.Content.Body, want[i])
+		}
+	}
+}

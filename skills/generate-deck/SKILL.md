@@ -24,7 +24,10 @@ titles first, full-sentence action titles (≤15 words, carrying the number),
 one message per slide, a `takeaway` and `source` on every evidence slide
 (a data slide without a source draws the advisory `DATA_WITHOUT_SOURCE`), and
 the message → visual table. A deck that passes every gate with topic titles
-is not finished.
+is not finished. Back matter: `sections[].appendix: true` or raw
+`section_number: false|"A"` (Appendix/Backup/Q&A dividers are unnumbered).
+`analyze_deck_rhythm` recommendations carry a `code` (RAW_PATH.md); keep
+`accent_weight: "strong"` patterns (`list_patterns` full) to two in a row.
 
 **One conclusion band per slide:** `takeaway` is the fallback for kinds with
 their own conclusion field — on `executive_summary` write `bottom_line`, on
