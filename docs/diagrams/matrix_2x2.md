@@ -103,6 +103,13 @@ In `points` mode the quadrant captions sit in each quadrant's **outer top corner
 | `quadrant_labels` | `string[4]` | See below | Labels for [TL, TR, BL, BR] |
 | `title` | `string` | - | Diagram title |
 | `subtitle` | `string` | - | Subtitle |
+| `highlight_quadrant` | `number` \| `string` | - | The one quadrant tinted in accent1: index 0-3 (TL, TR, BL, BR), a position (`"top-left"`, `"top_right"`, ...) or a quadrant label. `quadrants[].highlight: true` does the same |
+| `quadrant_colors` | `string[4]` | - | Explicit hex fills for [TL, TR, BL, BR] (at `quadrant_opacity`, default 0.3) |
+
+Colour is restrained by default: all four quadrants share one light neutral
+wash (6% of the text ink), and every point is drawn in accent1. Tint the
+quadrant that carries the message with `highlight_quadrant`; points that name a
+`series` get one accent per series.
 
 ## Default Quadrant Labels
 
@@ -119,6 +126,7 @@ In `points` mode the quadrant captions sit in each quadrant's **outer top corner
 |-------|------|-------------|
 | `size` | `number` | Point radius (default: 12) |
 | `color` | `string` | Custom hex color |
+| `series` | `string` | Groups points that share a colour (`group` / `category` accepted); without it every point is accent1 |
 | `description` | `string` | Additional details |
 
 ## Examples
