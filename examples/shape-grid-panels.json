@@ -26,12 +26,41 @@
       ]
     },
     {
+      "layout_id": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Four pillars and five markets set a phased plan for growth"
+        }
+      ],
+      "pattern": {
+        "name": "exec-summary",
+        "values": {
+          "points": [
+            {
+              "lead": "Growth leads the pillars",
+              "support": "We aim to grow customer acquisition by 25% in new markets."
+            },
+            {
+              "lead": "We deliver end to end",
+              "support": "Consulting, implementation and 24/7 support form one offer."
+            },
+            {
+              "lead": "Delivery runs in phases",
+              "support": "A five-phase roadmap sequences the work across the year."
+            }
+          ]
+        }
+      }
+    },
+    {
       "slide_type": "blank",
       "content": [
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Strategic Pillars"
+          "text_value": "Four strategic pillars anchor the plan, led by 25% customer growth"
         }
       ],
       "shape_grid": {
@@ -135,7 +164,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Service Offerings"
+          "text_value": "We deliver end to end: consulting, implementation and 24/7 support"
         }
       ],
       "shape_grid": {
@@ -224,7 +253,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Market Segments"
+          "text_value": "We focus on five target markets, from healthcare to tech"
         }
       ],
       "shape_grid": {
@@ -345,7 +374,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Implementation Roadmap"
+          "text_value": "Implementation runs in five phases across the year"
         }
       ],
       "shape_grid": {
@@ -540,7 +569,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Thank You"
+          "text_value": "Approve the pillar plan to start phase one"
         },
         {
           "placeholder_id": "subtitle",

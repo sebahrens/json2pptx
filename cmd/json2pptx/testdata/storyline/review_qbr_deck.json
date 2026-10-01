@@ -1,0 +1,395 @@
+{
+  "template": "midnight-blue",
+  "design_mode": "constrained",
+  "type_scale": "comfortable",
+  "slides": [
+    {
+      "layout_id": "title",
+      "slide_type": "title",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Q3 FY26 Business Review"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "text_value": "Executive committee · October 2026"
+        }
+      ]
+    },
+    {
+      "layout_id": "blank-title",
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Q3 beat plan on revenue and margin, but SMB churn now threatens Q4 retention"
+        }
+      ],
+      "pattern": {
+        "name": "exec-summary",
+        "values": {
+          "points": [
+            {
+              "lead": "Revenue grew 18% YoY to $42M, ahead of plan",
+              "support": "Enterprise bookings and the EMEA launch drove the step-up."
+            },
+            {
+              "lead": "Gross margin reached 61%, 3 points above plan",
+              "support": "Hosting consolidation cut COGS per customer by 9%."
+            },
+            {
+              "lead": "SMB churn rose to 4.1% and is the one metric moving the wrong way",
+              "support": "Exit surveys cite onboarding gaps; time-to-first-value is 31 days."
+            },
+            {
+              "lead": "Q4 priorities are the enterprise tier, 12 AE hires and SMB onboarding",
+              "support": "Approve the $2.4M hiring budget by 15 October to land Q1 ramp."
+            }
+          ],
+          "bottom_line": "Approve the hiring budget and the onboarding fix by 15 October."
+        }
+      }
+    },
+    {
+      "layout_id": "blank-title",
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Every headline metric improved in Q3 except SMB churn"
+        }
+      ],
+      "pattern": {
+        "name": "kpi-4up",
+        "values": [
+          {
+            "big": "$42M",
+            "small": "Quarterly revenue",
+            "sub": "+18% YoY",
+            "comparator": "vs plan +4%"
+          },
+          {
+            "big": "61%",
+            "small": "Gross margin",
+            "sub": "+3 pts",
+            "comparator": "vs plan +3 pts"
+          },
+          {
+            "big": "112%",
+            "small": "Net revenue retention",
+            "sub": "+2 pts"
+          },
+          {
+            "big": "4.1%",
+            "small": "SMB logo churn",
+            "sub": "+0.9 pts",
+            "comparator": "vs 3.2% in Q2"
+          }
+        ],
+        "overrides": {
+          "big_size": 44,
+          "small_size": 16
+        }
+      },
+      "source": "Internal finance and CRM data, Q3 FY26 close",
+      "takeaway": "Churn is the one number moving the wrong way, and it is concentrated in SMB."
+    },
+    {
+      "layout_id": "blank-title",
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Revenue grew 18% YoY to $42M, with Q3 the strongest quarter on record"
+        }
+      ],
+      "pattern": {
+        "name": "chart-insights-split",
+        "values": {
+          "chart": {
+            "type": "bar_chart",
+            "title": "Quarterly revenue ($M)",
+            "data": {
+              "categories": [
+                "Q3 FY25",
+                "Q4 FY25",
+                "Q1 FY26",
+                "Q2 FY26",
+                "Q3 FY26"
+              ],
+              "series": [
+                {
+                  "name": "Revenue",
+                  "values": [
+                    35.6,
+                    37.1,
+                    38.4,
+                    40.2,
+                    42
+                  ]
+                }
+              ]
+            }
+          },
+          "insights": [
+            "Revenue grew 18% YoY, led by enterprise adoption.",
+            "EMEA contributed $6M of the $6.4M YoY increase.",
+            "Pipeline coverage of 3.2x supports the Q4 target."
+          ],
+          "source": "Internal finance data, FY26 quarterly close"
+        },
+        "overrides": {
+          "title_size": 14,
+          "bullet_size": 14
+        }
+      },
+      "takeaway": "Enterprise and EMEA are now the growth engine; SMB is flat."
+    },
+    {
+      "layout_id": "blank-title",
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "SMB churn rose to 4.1% while enterprise churn held at 0.8%"
+        }
+      ],
+      "pattern": {
+        "name": "chart-insights-split",
+        "values": {
+          "chart": {
+            "type": "line_chart",
+            "title": "Quarterly logo churn (%)",
+            "data": {
+              "categories": [
+                "Q3 FY25",
+                "Q4 FY25",
+                "Q1 FY26",
+                "Q2 FY26",
+                "Q3 FY26"
+              ],
+              "series": [
+                {
+                  "name": "SMB",
+                  "values": [
+                    2.9,
+                    3,
+                    3.1,
+                    3.2,
+                    4.1
+                  ]
+                },
+                {
+                  "name": "Enterprise",
+                  "values": [
+                    0.9,
+                    0.8,
+                    0.8,
+                    0.8,
+                    0.8
+                  ]
+                }
+              ]
+            }
+          },
+          "insights": [
+            "Exit surveys cite onboarding gaps as the top reason.",
+            "Time-to-first-value is 31 days for SMB vs 12 for enterprise.",
+            "Churned accounts had 40% lower product adoption."
+          ],
+          "source": "CRM data, Q3 FY26; exit surveys n=84"
+        },
+        "overrides": {
+          "title_size": 14,
+          "bullet_size": 14
+        }
+      },
+      "takeaway": "The churn problem is an SMB onboarding problem, not a product problem."
+    },
+    {
+      "layout_id": "blank-title",
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Three drivers explain the SMB churn increase"
+        }
+      ],
+      "pattern": {
+        "name": "stylish-panels",
+        "values": [
+          {
+            "title": "Slow onboarding",
+            "body": [
+              "31-day time-to-first-value",
+              "No guided setup flow"
+            ]
+          },
+          {
+            "title": "Thin support coverage",
+            "body": [
+              "SMB ticket volume up 19%",
+              "No dedicated success pod"
+            ]
+          },
+          {
+            "title": "Low adoption",
+            "body": [
+              "Churned accounts used 40% fewer features",
+              "Dashboard adoption at 38%"
+            ]
+          }
+        ]
+      },
+      "takeaway": "Onboarding is the lever: it is the cheapest driver to fix and the one churned customers cite first."
+    },
+    {
+      "layout_id": "blank-title",
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "A guided onboarding flow cuts time-to-first-value from 31 to 10 days"
+        }
+      ],
+      "pattern": {
+        "name": "numbered-step-strip",
+        "values": {
+          "style": "stacked-box",
+          "steps": [
+            {
+              "label": "Guided setup",
+              "body": "Templated workspace and data import in the first session."
+            },
+            {
+              "label": "Activation check-in",
+              "body": "Success call at day 5 with adoption scorecard."
+            },
+            {
+              "label": "Feature nudges",
+              "body": "In-app prompts for the three features that predict retention."
+            },
+            {
+              "label": "30-day review",
+              "body": "Health score review and expansion conversation."
+            }
+          ]
+        }
+      },
+      "takeaway": "Four steps, all in the first 30 days, owned by the new SMB success pod."
+    },
+    {
+      "layout_id": "blank-title",
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Q4 delivers the enterprise tier, 12 AE hires and the onboarding fix"
+        }
+      ],
+      "pattern": {
+        "name": "phase-roadmap",
+        "values": {
+          "phases": [
+            {
+              "name": "October",
+              "description": "Enterprise tier launch; AE hiring starts"
+            },
+            {
+              "name": "November",
+              "description": "Hiring complete; guided onboarding beta"
+            },
+            {
+              "name": "December",
+              "description": "SOC 2 Type II; onboarding GA"
+            }
+          ]
+        }
+      },
+      "takeaway": "Hiring must complete in November for the AE ramp to land in Q1."
+    },
+    {
+      "layout_id": "blank-title",
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Approve the $2.4M hiring budget and the onboarding fix by 15 October"
+        }
+      ],
+      "pattern": {
+        "name": "numbered-step-strip",
+        "values": {
+          "style": "stacked-box",
+          "steps": [
+            {
+              "label": "Hold current plan",
+              "body": "No new cost; SMB churn keeps climbing through Q4."
+            },
+            {
+              "label": "Approve hiring and onboarding fix",
+              "body": "$2.4M annualised; 12 AEs ramped by Q1, churn below 3% by Q2.",
+              "recommended": true
+            },
+            {
+              "label": "Approve hiring only",
+              "body": "Revenue upside without fixing retention; churn stays above 4%."
+            }
+          ]
+        },
+        "callout": {
+          "text": "Approve both now so the AE ramp lands in Q1 and SMB churn falls below 3% by Q2.",
+          "emphasis": "bold"
+        }
+      }
+    },
+    {
+      "layout_id": "blank-title",
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Next steps"
+        }
+      ],
+      "pattern": {
+        "name": "next-steps",
+        "values": {
+          "actions": [
+            {
+              "action": "Approve $2.4M AE hiring budget",
+              "owner": "CFO",
+              "date": "15 Oct"
+            },
+            {
+              "action": "Kick off guided onboarding build",
+              "owner": "VP Product",
+              "date": "20 Oct"
+            },
+            {
+              "action": "Stand up SMB success pod",
+              "owner": "VP CS",
+              "date": "1 Nov"
+            }
+          ],
+          "decisions": [
+            "Approve the $2.4M hiring budget",
+            "Approve the onboarding roadmap re-prioritisation"
+          ]
+        }
+      }
+    }
+  ]
+}

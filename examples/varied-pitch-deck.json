@@ -35,7 +35,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "The Opportunity"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Real-time analytics is an $18B market by 2028"}
       ],
       "pattern": {
         "name": "stat-hero",
@@ -49,7 +49,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Key Metrics"}
+        {"placeholder_id": "title", "type": "text", "text_value": "ARR reached $8.4M with 142% net revenue retention"}
       ],
       "pattern": {
         "name": "kpi-3up",
@@ -100,7 +100,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Product Suite"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Three products cover streaming, insight and anomaly detection"}
       ],
       "pattern": {
         "name": "card-grid",
@@ -118,7 +118,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Product Roadmap"}
+        {"placeholder_id": "title", "type": "text", "text_value": "SSO, AI dashboards and multi-region all ship during 2026"}
       ],
       "pattern": {
         "name": "timeline-horizontal",
@@ -133,7 +133,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Our Moat"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Proprietary ML models sit on an open-source community moat"}
       ],
       "pattern": {
         "name": "pyramid",
@@ -145,7 +145,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Competitive Landscape"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Acme deploys in days where incumbents take months"}
       ],
       "pattern": {
         "name": "comparison-2col",

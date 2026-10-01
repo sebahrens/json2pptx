@@ -509,11 +509,12 @@ var findingMetaRegistry = map[string]FindingMeta{
 	ErrCodeDataWithoutSource: {
 		Code:        ErrCodeDataWithoutSource,
 		Summary:     "A slide shows data (a chart, a table, a KPI or stat pattern) but cites no source.",
-		Severity:    "info",
-		WhenEmitted: "Pre-flight finds a slide whose `source` is empty after pattern sources are lifted to the slide, and which carries a chart content item, a chart-shaped diagram, a native table, a pattern whose taxonomy marks it `data_visual` (chart-insights-split, waterfall-bridge, horizontal-bar-with-callouts, ...), or a KPI / stat pattern (kpi-Nup, kpi-inline, stat-hero, hero-detail, metric-list). Title, section and closing slides are exempt. Advisory: the deck renders unchanged.",
+		Severity:    "review",
+		WhenEmitted: "Pre-flight finds a slide whose `source` is empty after pattern sources are lifted to the slide and the deck-level default (raw top-level `source`, DeckSpec `meta.source`) is applied, whose charts carry no `footnote`, and which carries a chart content item, a chart-shaped diagram, a native table, a pattern whose taxonomy marks it `data_visual` (chart-insights-split, waterfall-bridge, horizontal-bar-with-callouts, ...), or a KPI / stat pattern (kpi-Nup, kpi-inline, stat-hero, hero-detail, metric-list). Title, section and closing slides are exempt. Review weight (5 points); feeds the quality gate's require_sources criterion. The deck renders unchanged.",
 		RemediationSteps: []string{
 			"Set the slide's `source` (DeckSpec: the slide's `source` field) to the data's origin and base, e.g. \"Company filings; n = 412 enterprises, 2025\". It renders once, 9pt, in the source zone above the footer, left-aligned to the content grid.",
-			"A chart-insights-split or stat-hero `values.source` counts too: generation lifts it into the same zone.",
+			"A chart-insights-split or stat-hero `values.source` counts too: generation lifts it into the same zone. So does a chart_value `footnote`, which renders at the chart's bottom.",
+			"When one data set feeds the whole deck, set the deck-level default once — raw top-level `source`, DeckSpec `meta.source` — and every data slide without its own source renders it.",
 			"Apply via repair_slide(kind=provide_value, params.field='source').",
 			"If the numbers are illustrative, say so in the source (\"Illustrative\") rather than leaving it empty.",
 		},

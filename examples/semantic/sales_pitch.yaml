@@ -12,6 +12,8 @@ meta:
   subtitle: Turn your operational data into decisions
   archetype: sales_pitch
   audience: VP of Operations and the buying committee
+  # Deck-level default source: every data slide without its own source renders it.
+  source: Acme customer benchmark, 2025 (n = 42 deployments)
 
 slides:
   - kind: title

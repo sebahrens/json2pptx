@@ -55,10 +55,10 @@ func init() {
 	findingMetaRegistry[ErrCodeTitleNotAction] = FindingMeta{
 		Code:        ErrCodeTitleNotAction,
 		Summary:     "A content slide's title names a topic instead of stating the slide's point.",
-		Severity:    "info",
-		WhenEmitted: "The title of a content slide (not a title, section or chrome slide) has fewer than four words, no digit and no verb from a small action-title lexicon (or an -ed form). Slides that state their point in a takeaway, and navigation titles such as Agenda, Appendix and Q&A, are exempt. Heuristic and advisory: info, no score cost.",
+		Severity:    "review",
+		WhenEmitted: "The title of a content slide (not a cover, section, agenda or next-steps slide, and not a short label on the deck's last slide) is (a) longer than 15 words, (b) a stock label (Overview, Summary, Executive summary, Key metrics, Next steps, Background, Recommendations, ... or \"<topic> overview / analysis / update\"), or (c) has no digit and no verb from the action-title lexicon (an -ed / -s form counts). Check (c) skips titles of six or more words written in sentence case, and slides that state their point in a takeaway (the DeckSpec title + takeaway convention); (a) and (b) apply regardless. fix.params.reason names the check (too_long, stock_label, no_verb_or_number). Review weight (5 points); feeds the quality gate's require_action_titles criterion.",
 		RemediationSteps: []string{
-			"Rewrite the title as the claim the slide proves — a short sentence with a verb or a number.",
+			"Rewrite the title as the claim the slide proves — a full sentence of at most 15 words with a verb, carrying its number.",
 			"Keep the topic as a section divider or eyebrow if it helps navigation.",
 		},
 		ExampleBefore: `{"placeholder_id":"title","type":"text","text_value":"Market Overview"}`,

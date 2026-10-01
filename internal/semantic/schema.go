@@ -83,6 +83,7 @@ func deckMetaSchema() map[string]any {
 			"audience": map[string]any{"type": "string", "description": "Intended audience (advisory)."},
 			"author":   map[string]any{"type": "string", "description": "Deck author (advisory)."},
 			"date":     map[string]any{"type": "string", "description": "Free-form date string (advisory); fills chrome.footer_date when that is not set."},
+			"source":   map[string]any{"type": "string", "description": "Deck-level default source line (who, what, when). Every data slide — chart, table of figures, KPI / stat — that sets no source of its own renders this one; \"Illustrative\" is accepted."},
 			"viewing_mode": map[string]any{
 				"type":        "string",
 				"description": "Readability policy: \"present\" (default, stricter minimum text sizes) or \"read\".",

@@ -110,6 +110,29 @@
   to `center`, so short card rows floated mid-slide. `agenda` stays centred.
   Expanded pattern grids now report `"vertical_align": "auto"`.
 
+- **2026-10-01 — Schema 4.155.0 · Storyline gates, deck source default, chart footnotes (`go-slide-creator-kuurd`, `-cti7s`, `-mp2p4`, `-fle6s`, `-5ld72`, `-p0zs7`).**
+  - **Input:** top-level `source` (raw) / `meta.source` (DeckSpec) is a
+    deck-level default source line applied to every data slide that sets
+    none. `chart_value` accepts `subtitle` and `footnote` (previously
+    rejected as unknown fields and dropped); the footnote renders at the
+    chart's bottom and counts as the slide's source. `validate` /
+    `validate_input` accept `type: "body_and_lead"` (generate always did) and
+    check `body_and_lead_value` for unknown keys.
+  - **Findings:** `TITLE_NOT_ACTION` is now `review` (5 points) and also
+    flags titles over 15 words and stock labels, with `fix.params.reason`;
+    `next-steps` / agenda slides and a short label on the last slide are
+    exempt. `DATA_WITHOUT_SOURCE` is now `review`. `takeaway_missing` is
+    collected into the shared fit report, so `score_deck`, `auto_repair`,
+    `validate_deck_spec` and `render_deck_spec` see it. New review findings
+    `NO_EXECUTIVE_SUMMARY`, `CLOSING_WITHOUT_NEXT_STEPS` and
+    `SLIDE_TEXT_DENSE`.
+  - **Quality gate:** `require_takeaway_on_charts` now fires (reason suffixed
+    `(require_takeaway_on_charts)`); new criteria `max_topic_title_pct`
+    (default 25, at least two topic titles) and `require_storyline` (default
+    true). `quality_gate.criteria` echoes them, plus the existing
+    `max_problem_slides_pct` and `min_composition_score`, in the output
+    schema.
+
 - **2026-09-30 — Grid diagrams obey the SVG strategy (`go-slide-creator-4c9m7`).**
   Diagram / chart cells embedded by patterns and `shape_grid` (e.g. the
   `chart-insights-split` / semantic `chart_insight` chart panel) now follow

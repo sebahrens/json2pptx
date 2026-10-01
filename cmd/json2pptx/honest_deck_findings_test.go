@@ -48,19 +48,20 @@ func TestTitleNotAction(t *testing.T) {
 			{PlaceholderID: "body", Type: "bullets", BulletsValue: &body},
 		}}
 	}
-	withTakeaway := title("Market Overview")
+	withTakeaway := title("Regional demand")
 	withTakeaway.Takeaway = "Mid-market demand doubled."
 	input := &PresentationInput{Slides: []SlideInput{
-		title("Market Overview"),          // topic → flagged
+		title("Market Overview"),          // stock label → flagged
 		title("Revenue grew 12%"),         // number
 		title("Costs fall"),               // verb (-s form)
 		title("Agenda"),                   // navigation
 		title("Churn stabilised quickly"), // -ed
 		withTakeaway,                      // point stated in the takeaway
+		title("Closing remarks"),          // the deck's last slide may keep a short label
 	}}
 	got := collectTitleNotActionFindings(input, nil)
-	if len(got) != 1 || got[0].Path != "/slides/0/content/0" || got[0].Action != "info" {
-		t.Fatalf("TITLE_NOT_ACTION = %+v, want one info finding on slide 0", got)
+	if len(got) != 1 || got[0].Path != "/slides/0/content/0" || got[0].Action != "review" {
+		t.Fatalf("TITLE_NOT_ACTION = %+v, want one review finding on slide 0", got)
 	}
 }
 

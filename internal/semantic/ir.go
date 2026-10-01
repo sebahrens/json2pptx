@@ -150,6 +150,8 @@ type DeckIR struct {
 	Audience  string    `json:"audience,omitempty"`
 	Author    string    `json:"author,omitempty"`
 	Date      string    `json:"date,omitempty"`
+	// Source is the deck-level default source line (go-slide-creator-mp2p4).
+	Source string `json:"source,omitempty"`
 	// Chrome, ViewingMode and AccentStrategy are deck-level passthroughs to the
 	// raw model (go-slide-creator-zmjs).
 	Chrome         *ChromeSpec `json:"chrome,omitempty"`
@@ -460,6 +462,7 @@ func Normalize(spec *DeckSpec) *DeckIR {
 	ir.Audience = spec.Meta.Audience
 	ir.Author = spec.Meta.Author
 	ir.Date = spec.Meta.Date
+	ir.Source = spec.Meta.Source
 	ir.Chrome = spec.Meta.Chrome
 	ir.ViewingMode = spec.Meta.ViewingMode
 	ir.TypeScale = spec.Meta.TypeScale

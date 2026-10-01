@@ -99,8 +99,11 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// 4.76.0 adds MCP completions; the fingerprint is unchanged.
 	// 4.77.0 classifies pull-quote cells at the body readability floor;
 	// the fingerprint is unchanged.
+	// 4.155.0 adds the deck-level `source` default and chart_value
+	// `subtitle` / `footnote` inputs (go-slide-creator-mp2p4, -p0zs7), so the
+	// PresentationInput hash advances.
 	// If this fails, see file header comment.
-	const wantFingerprint = "f80da01ac8302bae"
+	const wantFingerprint = "7385000a7e6231e1"
 
 	got := schemaFingerprint()
 

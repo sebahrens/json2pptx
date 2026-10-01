@@ -35,7 +35,10 @@ var dataSourcePatterns = map[string]bool{
 //
 // It reads the authored slide, before pattern or compose expansion, and counts
 // a chart-insights-split / stat-hero values.source as a source, since
-// generation lifts it into the slide's source zone. Advisory ("info").
+// generation lifts it into the slide's source zone, and a chart_value footnote,
+// which renders at the chart's bottom. Review-weighted: an unsourced data slide
+// is the first thing a senior reviewer sends back, and at info it cost nothing
+// and never reached the gate (go-slide-creator-mp2p4).
 func collectDataWithoutSourceFindings(input *PresentationInput) []patterns.FitFinding {
 	if input == nil {
 		return nil
@@ -60,10 +63,11 @@ func collectDataWithoutSourceFindings(input *PresentationInput) []patterns.FitFi
 					Params: map[string]any{
 						"field": "source",
 						"data":  what,
+						"hint":  "set the slide's source, or a deck-level default once (raw top-level source, DeckSpec meta.source); \"Illustrative\" is accepted for estimates",
 					},
 				},
 			},
-			Action: "info",
+			Action: "review",
 		})
 	}
 	return out
@@ -74,6 +78,11 @@ func collectDataWithoutSourceFindings(input *PresentationInput) []patterns.FitFi
 func slideCitesSource(slide SlideInput) bool {
 	if strings.TrimSpace(slide.Source) != "" {
 		return true
+	}
+	for _, item := range slide.Content {
+		if item.ChartValue != nil && strings.TrimSpace(item.ChartValue.Footnote) != "" {
+			return true
+		}
 	}
 	if slide.Pattern != nil && patternCitesSource(slide.Pattern) {
 		return true
@@ -97,6 +106,25 @@ func composeCitesSource(c *ComposeInput) bool {
 		}
 	}
 	return false
+}
+
+// applyDeckSourceDefault gives every data slide that cites no source of its
+// own the deck-level default (raw top-level source, DeckSpec meta.source), so
+// a deck built from one data set states it once instead of on every slide
+// (go-slide-creator-mp2p4). It runs after pattern sources are lifted, so a
+// pattern's own values.source still wins.
+func applyDeckSourceDefault(input *PresentationInput) {
+	source := strings.TrimSpace(input.Source)
+	if source == "" {
+		return
+	}
+	for i := range input.Slides {
+		slide := &input.Slides[i]
+		if !slideQualifiesForDuplicateTitleCheck(*slide) || slideCitesSource(*slide) || slideDataKind(*slide) == "" {
+			continue
+		}
+		slide.Source = source
+	}
 }
 
 // slideDataKind names the data a slide shows ("a chart", "a table", "the

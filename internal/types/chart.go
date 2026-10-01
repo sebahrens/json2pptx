@@ -13,8 +13,14 @@ import (
 // Deprecated: Use DiagramSpec instead. ChartSpec requires explicit type mapping.
 // DiagramSpec is more flexible and passes data directly to svggen.
 type ChartSpec struct {
-	Type         ChartType      `json:"type"`                    // Chart type (bar, line, pie, donut)
-	Title        string         `json:"title,omitempty"`         // Chart title
+	Type  ChartType `json:"type"`            // Chart type (bar, line, pie, donut)
+	Title string    `json:"title,omitempty"` // Chart title
+	// Subtitle renders under the chart title (unit or period, e.g. "$M, FY26").
+	Subtitle string `json:"subtitle,omitempty"`
+	// Footnote renders at the chart bottom — the place for the chart's source
+	// attribution ("Source: Company filings, FY24"). It is forwarded to svggen
+	// as data.footnote (go-slide-creator-p0zs7).
+	Footnote     string         `json:"footnote,omitempty"`
 	Data         map[string]any `json:"data"`                    // Label to value mapping (flexible: float64 for simple charts, arrays/objects for structured charts)
 	DataOrder    []string       `json:"data_order,omitempty"`    // Preserved input order of data keys
 	Width        int            `json:"width,omitempty"`         // Width in pixels (default: 800)
@@ -94,6 +100,8 @@ func (cs *ChartSpec) UnmarshalJSON(b []byte) error {
 	type chartSpecRawData struct {
 		Type         ChartType            `json:"type"`
 		Title        string               `json:"title,omitempty"`
+		Subtitle     string               `json:"subtitle,omitempty"`
+		Footnote     string               `json:"footnote,omitempty"`
 		Data         json.RawMessage      `json:"data"`
 		DataOrder    []string             `json:"data_order,omitempty"`
 		Width        int                  `json:"width,omitempty"`
@@ -116,6 +124,8 @@ func (cs *ChartSpec) UnmarshalJSON(b []byte) error {
 
 	cs.Type = raw.Type
 	cs.Title = raw.Title
+	cs.Subtitle = raw.Subtitle
+	cs.Footnote = raw.Footnote
 	cs.DataOrder = raw.DataOrder
 	cs.Width = raw.Width
 	cs.Height = raw.Height
@@ -451,6 +461,16 @@ func (cs *ChartSpec) ToDiagramSpec() *DiagramSpec {
 		withHighlight["highlight"] = cs.Highlight
 		data = withHighlight
 	}
+	if footnote := strings.TrimSpace(cs.Footnote); footnote != "" {
+		if _, authored := data["footnote"]; !authored {
+			withFootnote := make(map[string]any, len(data)+1)
+			for k, v := range data {
+				withFootnote[k] = v
+			}
+			withFootnote["footnote"] = footnote
+			data = withFootnote
+		}
+	}
 
 	// Convert style
 	var style *DiagramStyle
@@ -471,6 +491,7 @@ func (cs *ChartSpec) ToDiagramSpec() *DiagramSpec {
 	return &DiagramSpec{
 		Type:             svggenType,
 		Title:            cs.Title,
+		Subtitle:         cs.Subtitle,
 		Alt:              cs.Alt,
 		Data:             data,
 		Width:            cs.Width,

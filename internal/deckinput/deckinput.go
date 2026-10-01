@@ -76,7 +76,12 @@ type PresentationInput struct {
 	Defaults       *DefaultsInput  `json:"defaults,omitempty"`
 	Grid           *GridConfig     `json:"grid,omitempty"`
 	Structure      *StructureInput `json:"structure,omitempty"`
-	Slides         []SlideInput    `json:"slides"`
+	// Source is the deck-level default source line: every data slide (chart,
+	// table of figures, KPI / stat pattern) that cites no source of its own
+	// renders this one in its source zone, so a deck built from one data set
+	// does not repeat the same string on every slide (go-slide-creator-mp2p4).
+	Source string       `json:"source,omitempty"`
+	Slides []SlideInput `json:"slides"`
 
 	// ControlCharSites lists the string values from which invisible bidi
 	// controls / BOM were removed at decode time (go-slide-creator-7oz3c).

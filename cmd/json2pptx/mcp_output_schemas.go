@@ -818,7 +818,11 @@ var outputSchemaScoreDeck = json.RawMessage(`{
             "max_p0_findings":            {"type": "integer", "description": "Maximum refuse-action findings tolerated (default 0)."},
             "max_p1_findings":            {"type": "integer", "description": "Maximum shrink_or_split-action findings tolerated (default 0)."},
             "require_takeaway_on_charts": {"type": "boolean", "description": "Whether takeaway_missing findings fail the gate (default true)."},
-            "allow_accent_overload":      {"type": "boolean", "description": "Whether accent_overload findings are permitted (default false)."}
+            "max_topic_title_pct":        {"type": "integer", "description": "Maximum share (percent) of scored slides whose title is not an action title (TITLE_NOT_ACTION); at least two such titles are needed to trip it (default 25; 0 disables)."},
+            "require_storyline":          {"type": "boolean", "description": "Whether the deck-structure findings NO_EXECUTIVE_SUMMARY and CLOSING_WITHOUT_NEXT_STEPS fail the gate (default true)."},
+            "allow_accent_overload":      {"type": "boolean", "description": "Whether accent_overload findings are permitted (default false)."},
+            "max_problem_slides_pct":     {"type": "integer", "description": "Maximum share (percent) of slides carrying a non-advisory finding (default 40)."},
+            "min_composition_score":      {"type": "integer", "description": "Floor for the composition (deck rhythm) score on a whole-deck score (default 65)."}
           },
           "required": ["min_score", "max_p0_findings", "max_p1_findings", "require_takeaway_on_charts", "allow_accent_overload"]
         }

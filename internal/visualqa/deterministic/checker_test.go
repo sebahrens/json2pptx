@@ -3,6 +3,7 @@ package deterministic
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -523,5 +524,51 @@ func TestFormatTopCodes(t *testing.T) {
 	got = FormatTopCodes([]CodeCount{{Code: "text_overflow", Count: 3}, {Code: "footer_collision", Count: 1}})
 	if got != "text_overflow(3), footer_collision(1)" {
 		t.Errorf("FormatTopCodes = %q", got)
+	}
+}
+
+// TestQualityGateStorylineCriteria pins go-slide-creator-kuurd's gate
+// criteria: topic titles trip max_topic_title_pct only as a share (one misread
+// title does not block), and the deck-structure findings trip
+// require_storyline.
+func TestQualityGateStorylineCriteria(t *testing.T) {
+	topic := func(slide int) patterns.FitFinding {
+		return patterns.FitFinding{ValidationError: patterns.ValidationError{Path: fmt.Sprintf("/slides/%d/content/0", slide), Code: patterns.ErrCodeTitleNotAction}, Action: "review"}
+	}
+	deck := func(n int) *DeckScore { return &DeckScore{OverallScore: 95, PerSlide: make([]SlideScore, n)} }
+
+	if g := EvaluateQualityGate(deck(8), []patterns.FitFinding{topic(1)}, DefaultQualityGateCriteria()); !g.Passed {
+		t.Errorf("one topic title of eight failed the gate: %v", g.Reasons)
+	}
+	if g := EvaluateQualityGate(deck(8), []patterns.FitFinding{topic(1), topic(2)}, DefaultQualityGateCriteria()); !g.Passed {
+		t.Errorf("two topic titles of eight (25%%) failed the gate: %v", g.Reasons)
+	}
+	g := EvaluateQualityGate(deck(8), []patterns.FitFinding{topic(1), topic(2), topic(3)}, DefaultQualityGateCriteria())
+	if g.Passed || !contains(strings.Join(g.Reasons, "; "), "max_topic_title_pct") {
+		t.Errorf("three topic titles of eight passed: %v", g.Reasons)
+	}
+
+	storyline := []patterns.FitFinding{
+		{ValidationError: patterns.ValidationError{Path: "/slides/1", Code: patterns.ErrCodeNoExecutiveSummary}, Action: "review"},
+		{ValidationError: patterns.ValidationError{Path: "/slides/7/content/0", Code: patterns.ErrCodeClosingWithoutNextSteps}, Action: "review"},
+	}
+	g = EvaluateQualityGate(deck(8), storyline, DefaultQualityGateCriteria())
+	if g.Passed || !contains(strings.Join(g.Reasons, "; "), "require_storyline: CLOSING_WITHOUT_NEXT_STEPS, NO_EXECUTIVE_SUMMARY") {
+		t.Errorf("storyline gaps passed: %v", g.Reasons)
+	}
+	relaxed := DefaultQualityGateCriteria()
+	relaxed.RequireStoryline = false
+	if g := EvaluateQualityGate(deck(8), storyline, relaxed); !g.Passed {
+		t.Errorf("require_storyline=false still failed: %v", g.Reasons)
+	}
+
+	// Unsourced data costs points but is not a gate criterion.
+	unsourced := []patterns.FitFinding{{ValidationError: patterns.ValidationError{Path: "/slides/2/source", Code: patterns.ErrCodeDataWithoutSource}, Action: "review"}}
+	ds := ScoreFromFindings(unsourced, 8)
+	if ds.PerSlide[2].Score != 95 {
+		t.Errorf("DATA_WITHOUT_SOURCE slide score = %d, want 95", ds.PerSlide[2].Score)
+	}
+	if g := EvaluateQualityGate(ds, unsourced, DefaultQualityGateCriteria()); !g.Passed {
+		t.Errorf("an unsourced data slide failed the gate: %v", g.Reasons)
 	}
 }

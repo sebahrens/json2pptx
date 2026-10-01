@@ -19,6 +19,35 @@
     },
     {
       "layout_id": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Q1 beat plan, and enterprise upsell is the next growth lever"
+        }
+      ],
+      "pattern": {
+        "name": "exec-summary",
+        "values": {
+          "points": [
+            {
+              "lead": "Revenue beat plan by 34%",
+              "support": "Q1 revenue reached $12.6M on enterprise expansion and upsell."
+            },
+            {
+              "lead": "Unit economics are strong",
+              "support": "Gross margin is 91% and LTV/CAC is 4.2x on trailing 12 months."
+            },
+            {
+              "lead": "Upsell is the next priority",
+              "support": "Expanding seats in the top 20 accounts is the highest-impact, lowest-effort move."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
       "source": "Q1 2026 management accounts (unaudited)",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Q1 revenue of $12.6M beat plan by 34% on enterprise expansion"}
@@ -149,7 +178,7 @@
     {
       "layout_id": "closing",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Thank You"},
+        {"placeholder_id": "title", "type": "text", "text_value": "Approve the enterprise upsell plan and the APAC study today"},
         {"placeholder_id": "subtitle", "type": "text", "text_value": "Questions & Discussion"}
       ]
     }

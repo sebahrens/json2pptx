@@ -1,4 +1,5 @@
 {
+  "source": "Illustrative figures",
   "template": "midnight-blue",
   "chrome": {
     "confidentiality": "Confidential",
@@ -20,7 +21,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Vendor evaluation scores (5 vendors, 100-pt scale)"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Vendor A leads the evaluation at 87 points, 15 ahead of Vendor B"}
       ],
       "pattern": {
         "name": "horizontal-bar-with-callouts",
@@ -44,7 +45,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Opportunity sizing (3 horizontal bars, dollar unit)"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Enterprise is the largest opportunity at $42M, but the slowest to close"}
       ],
       "pattern": {
         "name": "horizontal-bar-with-callouts",
@@ -61,7 +62,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Top growth drivers (8 ranked levers, custom accent)"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Pricing and cross-sell are the two biggest of eight growth levers"}
       ],
       "pattern": {
         "name": "horizontal-bar-with-callouts",

@@ -220,6 +220,9 @@ func checkContentUnknownKeys(raw json.RawMessage, path string) []*patterns.Valid
 	if v, ok := obj["body_and_bullets_value"]; ok {
 		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(BodyAndBulletsInput{}), path+"/body_and_bullets_value")...)
 	}
+	if v, ok := obj["body_and_lead_value"]; ok {
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(BodyAndLeadInput{}), path+"/body_and_lead_value")...)
+	}
 	if v, ok := obj["bullet_groups_value"]; ok {
 		warnings = append(warnings, checkBulletGroupsUnknownKeys(v, path+"/bullet_groups_value")...)
 	}
@@ -391,6 +394,7 @@ var typedFieldForType = map[string]string{
 	"text":             "text_value",
 	"bullets":          "bullets_value",
 	"body_and_bullets": "body_and_bullets_value",
+	"body_and_lead":    "body_and_lead_value",
 	"bullet_groups":    "bullet_groups_value",
 	"table":            "table_value",
 	"chart":            "chart_value",

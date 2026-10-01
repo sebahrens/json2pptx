@@ -22,9 +22,14 @@ server `instructions`):** A deck is done only after every slide of the CURRENT r
 **Must-read before authoring:** [QUALITY.md](QUALITY.md) — ghost deck of
 titles first, full-sentence action titles (≤15 words, carrying the number),
 one message per slide, a `takeaway` and `source` on every evidence slide
-(a data slide without a source draws the advisory `DATA_WITHOUT_SOURCE`), and
-the message → visual table. A deck that passes every gate with topic titles
-is not finished. Back matter: `sections[].appendix: true` or raw
+(a data slide without a source draws `DATA_WITHOUT_SOURCE`, review weight; set a
+deck-wide default once with DeckSpec `meta.source` / raw top-level `source`), and
+the message → visual table. `score_deck`'s gate now enforces the storyline:
+`takeaway_missing` (require_takeaway_on_charts), topic titles
+(`TITLE_NOT_ACTION` on more than 25% of slides, max_topic_title_pct), and
+`NO_EXECUTIVE_SUMMARY` / `CLOSING_WITHOUT_NEXT_STEPS` (require_storyline);
+`SLIDE_TEXT_DENSE` (>6 bullets, >80 words, or a bullet over two lines) costs
+score. See [FINDINGS.md](FINDINGS.md). A deck that passes every gate with topic titles is not finished. Back matter: `sections[].appendix: true` or raw
 `section_number: false|"A"` (Appendix/Backup/Q&A dividers are unnumbered).
 `analyze_deck_rhythm` recommendations carry a `code` (RAW_PATH.md); keep
 `accent_weight: "strong"` patterns (`list_patterns` full) to two in a row.

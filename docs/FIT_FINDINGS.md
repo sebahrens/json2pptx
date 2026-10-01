@@ -1222,19 +1222,20 @@ The resolved frame per layout (content area, takeaway band, source band, footer 
 **Pattern:** *(none — slide-level)*
 **Fix kind:** `provide_value`
 
-Emitted by `validate_input` and the CLI dry-run when a slide argues from data but says nothing about what the data means. The takeaway is the slide's headline answer — a single sentence that tells the audience the "so what". A chart or 2x2 without one forces the audience to derive the argument themselves, which they rarely do correctly.
+Emitted by `validate_input` and the CLI dry-run (as a warning), and by the shared fit-report collector every surface calls — `score_deck`, `auto_repair`, `validate_deck_spec`, `render_deck_spec`, `generate_presentation(fit_report=true)` — as a `review` finding (go-slide-creator-cti7s). Before that it reached only `validate_input`, so `score_deck`'s `require_takeaway_on_charts` gate criterion counted findings that never arrived and could not fire. The two copies share path, code and message, so `validate_input`'s envelope carries one. It fires when a slide argues from data but says nothing about what the data means. The takeaway is the slide's headline answer — a single sentence that tells the audience the "so what". A chart or 2x2 without one forces the audience to derive the argument themselves, which they rarely do correctly.
 
 Triggers when **all** of the following hold:
 
 - `slide.takeaway` is empty (or whitespace-only)
 - The slide has at least one of: a `chart` content item, a `diagram` content item whose `diagram_value.type` is chart-shaped (bar, line, area, scatter, bubble, pie, donut, stacked_bar, grouped_bar, waterfall, funnel, radar, gauge, treemap), or a **pattern marked `data_visual` in its taxonomy**
-- The slide **title** is not itself the takeaway — a title of six words or more containing a finite verb ("Prioritise the four initiatives in the top-right quadrant") suppresses the finding, because asking for a second sentence saying the same thing is noise
+- The slide **title** is not itself the takeaway — a title of six words or more containing a finite verb ("Prioritise the four initiatives in the top-right quadrant"), or a sentence-case title of six words or more with a verb from the action-title lexicon after its first word, suppresses the finding, because asking for a second sentence saying the same thing is noise
+- A `chart-insights-split` with a `values.so_what` callout counts as the takeaway
 
 `data_visual` is the pattern's own declaration that its job is to argue from data, exposed on `PatternTaxonomy` and returned by `show_pattern` / `list_patterns`. It currently covers `chart-insights-split`, `waterfall-bridge`, `horizontal-bar-with-callouts`, `table-highlight` and `matrix-2x2`. It replaced a `matrix-` name-prefix test that fired on exactly one pattern and never on `chart-insights-split` — the pattern that embeds a chart — nor on the two charts drawn as shape grids (go-slide-creator-g2cy). It is deliberately narrower than `category: "data-display"`: a card grid and an icon row display content without making a quantitative claim, and a 2x2 makes one while being structural.
 
 The verb test is biased toward false negatives: a title with a verb the check does not know keeps its nudge, which is the old behaviour, while a wrong suppression silently removes the signal.
 
-The warning never blocks generation — the takeaway is advisory, not structural. Add a one-sentence `takeaway` to the slide; it renders as the takeaway band — a flush 3pt accent bar beside 14pt bold `dk1` text, no fill, no outline — in the layout-derived band above the footer placeholders, above the source note row, with 16pt of air above and 12pt below (see `chrome_band_no_fit`).
+It never blocks generation, but it fails `score_deck`'s quality gate (reason `N chart/matrix slide(s) missing takeaway (require_takeaway_on_charts)`) while `require_takeaway_on_charts` is true, the default. Add a one-sentence `takeaway` to the slide; it renders as the takeaway band — a flush 3pt accent bar beside 14pt bold `dk1` text, no fill, no outline — in the layout-derived band above the footer placeholders, above the source note row, with 16pt of air above and 12pt below (see `chrome_band_no_fit`).
 
 ```json
 {
@@ -1448,30 +1449,38 @@ Slide selection:
 
 ### `TITLE_NOT_ACTION`
 
-**Action:** `info`
+**Action:** `review`
 **Pattern:** *(none — content lint)*
 **Fix kind:** `review` (advisory)
 
-A content slide's title names a topic ("Market Overview") instead of stating the slide's point: fewer than four words, no digit, and no verb from a small action-title lexicon (or an `-ed` form). Title, section and chrome slides, slides that state their point in a `takeaway`, and navigation titles (Agenda, Appendix, Q&A, Thank you, …) are exempt. Heuristic, so it is `info`: it costs no score points and does not count toward the gate (go-slide-creator-d830i). `fix.params` carry `placeholder_id`, `current_words` and a `hint`.
+A content slide's title is not an action title (go-slide-creator-d830i, go-slide-creator-kuurd). Three checks, named in `fix.params.reason`:
+
+- `too_long` — more than 15 words: an action title states one claim and holds on two lines.
+- `stock_label` — a generic label: Overview, Summary, Executive summary, Key metrics, Key findings, Next steps, Background, Recommendations, Results, Options, Roadmap, … or a short (at most four words) `<topic> overview / analysis / update / summary / highlights / metrics / review / results / deep dive` title ("Revenue Overview", "Margin Analysis").
+- `no_verb_or_number` — no digit and no verb from the action-title lexicon (an `-ed` / `-s` form counts) at any length. Titles of six words or more written in sentence case are taken as sentences even when the verb is outside the lexicon (the check is biased toward false negatives).
+
+`too_long` and `stock_label` apply even when the slide sets a `takeaway`; `no_verb_or_number` stands down there (the DeckSpec title + takeaway convention). Exempt: cover, section, title-type and blank slides; `agenda`, `agenda-with-images` and `next-steps` pattern slides (the DeckSpec `next_steps` closer, "Next steps", is a label by convention); navigation titles (Agenda, Contents, Appendix, Q&A, Thank you, …); and a short label (four words or fewer) on the deck's last slide — a courtesy closer is judged by `CLOSING_WITHOUT_NEXT_STEPS` instead.
+
+Review weight: 5 points on the slide. It is exempt from the problem-slide share; instead `score_deck`'s gate criterion `max_topic_title_pct` (default 25) fails a deck when more than that share of its slides — and at least two — carry the finding (reason `N of M slides lack an action title (X%, TITLE_NOT_ACTION) — exceeds max_topic_title_pct 25`). `fix.params` carry `placeholder_id`, `current_words`, `max_words` (15), `reason` and a `hint`.
 
 ```json
 {
   "path": "/slides/2/content/0",
   "code": "TITLE_NOT_ACTION",
-  "message": "slide 3: title \"Market Overview\" names a topic, not the slide's point — state the takeaway as a sentence with a verb or a number",
-  "fix": { "kind": "review", "params": { "placeholder_id": "title", "current_words": 2 } },
-  "action": "info"
+  "message": "slide 3: title \"Market Overview\" is a stock label, not the slide's point — state the conclusion the slide proves",
+  "fix": { "kind": "review", "params": { "placeholder_id": "title", "current_words": 2, "max_words": 15, "reason": "stock_label" } },
+  "action": "review"
 }
 ```
 
 ### `DATA_WITHOUT_SOURCE`
 
-**Action:** `info`
+**Action:** `review`
 **Pattern:** *(none — content lint; the message names the data pattern)*
 **Fix kind:** `provide_value` (`params.field: "source"`)
 **Emitted at:** preflight (validate / preview / score / generate `fit_report`), from the authored slide before pattern or compose expansion
 
-A slide shows data but cites no source (go-slide-creator-cuszt). Data means a `chart` content item, a chart-shaped `diagram`, a `table` with a digit in any body cell, or one of the numeric patterns: `chart-insights-split`, `waterfall-bridge`, `horizontal-bar-with-callouts`, `kpi-2up` … `kpi-6up`, `kpi-inline`, `stat-hero`, `hero-detail`, `metric-list` (also as a `compose` segment). Qualitative patterns (`matrix-2x2`, `table-highlight`, `capability-heatmap`), word-only tables, and title / section slides are exempt. A slide counts as sourced when `slide.source` is set **or** a `chart-insights-split` / `stat-hero` carries `values.source`: input normalisation lifts that value into `slide.source` (merged with an existing slide source, duplicates dropped), so it renders in the same source zone as every other source. `fix.params.data` names what was found (`"a chart"`, `"a table of figures"`, `"the kpi-4up pattern"`). On the DeckSpec path the finding maps to `semantic_path` `slides[N].source`.
+A slide shows data but cites no source (go-slide-creator-cuszt). Data means a `chart` content item, a chart-shaped `diagram`, a `table` with a digit in any body cell, or one of the numeric patterns: `chart-insights-split`, `waterfall-bridge`, `horizontal-bar-with-callouts`, `kpi-2up` … `kpi-6up`, `kpi-inline`, `stat-hero`, `hero-detail`, `metric-list` (also as a `compose` segment). Qualitative patterns (`matrix-2x2`, `table-highlight`, `capability-heatmap`), word-only tables, and title / section slides are exempt. A slide counts as sourced when `slide.source` is set, **or** a `chart-insights-split` / `stat-hero` carries `values.source` (input normalisation lifts that value into `slide.source`, merged with an existing slide source, duplicates dropped, so it renders in the same source zone as every other source), **or** a `chart_value` carries a `footnote` (rendered at the chart's bottom), **or** the deck sets a default: raw top-level `source` / DeckSpec `meta.source` is applied by input normalisation to every data slide that has none of the above (go-slide-creator-mp2p4). Review weight: 5 points on the slide, emitted by `validate_input`, `validate_deck_spec` (mapped to `slides[N].source`) and `score_deck`; it is not a gate criterion and does not count toward the problem-slide share. `fix.params.data` names what was found (`"a chart"`, `"a table of figures"`, `"the kpi-4up pattern"`). On the DeckSpec path the finding maps to `semantic_path` `slides[N].source`.
 
 **The source zone.** Every source on a generated slide renders once, in the chrome frame's source band: 9pt italic, the text colour (`tx1`) muted to ~60% (`lumMod 60000` / `lumOff 40000`), left-aligned on the content column (same 0.1in text inset as the title and footer), directly above the footer. The band is reserved before content is laid out, so patterns centre in the space above it, and it keeps at least 12pt between itself and the takeaway band or the content above. A pattern expanded on its own (`expand_pattern`, no chrome) still draws its `values.source` in its grid.
 
@@ -1481,7 +1490,70 @@ A slide shows data but cites no source (go-slide-creator-cuszt). Data means a `c
   "code": "DATA_WITHOUT_SOURCE",
   "message": "slide 3: shows the kpi-4up pattern but cites no source — set the slide's source (origin and base, or \"Illustrative\") so the numbers can be traced",
   "fix": { "kind": "provide_value", "params": { "field": "source", "data": "the kpi-4up pattern" } },
-  "action": "info"
+  "action": "review"
+}
+```
+
+### `NO_EXECUTIVE_SUMMARY`
+
+**Action:** `review`
+**Pattern:** *(none — deck-level storyline)*
+**Fix kind:** `adopt_pattern` (advisory; `params.pattern: "exec-summary"`, `params.kind: "executive_summary"`)
+**Emitted at:** preflight (every surface that calls the shared fit collector), reported on `/slides/1`
+
+A deck of six or more slides has no executive summary (go-slide-creator-kuurd): no `exec-summary` or `scqa-summary` pattern (DeckSpec `executive_summary` compiles to one, also as a `compose` segment) and no slide whose title contains "executive summary", "summary", "key takeaways", "at a glance" or "bottom line". A consulting deck opens with the whole answer. Fails `score_deck`'s gate criterion `require_storyline` (reason `deck storyline incomplete (require_storyline: NO_EXECUTIVE_SUMMARY)`); exempt from the problem-slide share.
+
+```json
+{
+  "path": "/slides/1",
+  "code": "NO_EXECUTIVE_SUMMARY",
+  "message": "deck of 9 slides has no executive summary — open with the whole answer (3-5 lead-in statements) right after the title slide",
+  "fix": { "kind": "adopt_pattern", "params": { "pattern": "exec-summary", "kind": "executive_summary", "position": 1 } },
+  "action": "review"
+}
+```
+
+### `CLOSING_WITHOUT_NEXT_STEPS`
+
+**Action:** `review`
+**Pattern:** *(none — deck-level storyline)*
+**Fix kind:** `adopt_pattern` (advisory; `params.pattern: "next-steps"`, `params.kind: "next_steps"`)
+**Emitted at:** preflight, reported on the closing slide's title
+
+The last slide of a deck of three or more is a courtesy closer — titled "Thank you", "Thanks", "Questions", "Any questions?", "Q&A" or "Discussion" — and the deck never states its ask: no `next-steps` pattern slide (DeckSpec `next_steps`) and no slide title containing "next step", "decision", "we ask", "the ask", "approve", "call to action" or "action plan" (go-slide-creator-kuurd). Fails `score_deck`'s gate criterion `require_storyline`; exempt from the problem-slide share. End on the ask, or retitle the closer as the action ("Approve the pilot budget by 15 March to launch in Q3").
+
+```json
+{
+  "path": "/slides/8/content/0",
+  "code": "CLOSING_WITHOUT_NEXT_STEPS",
+  "message": "slide 9: the deck closes on \"Thank you\" and never states its next steps — end on the ask: owners, dates and the decisions requested",
+  "fix": { "kind": "adopt_pattern", "params": { "pattern": "next-steps", "kind": "next_steps" } },
+  "action": "review"
+}
+```
+
+### `SLIDE_TEXT_DENSE`
+
+**Action:** `review`
+**Pattern:** *(none — content lint)*
+**Fix kind:** `split_bullets` (`params.max_items: 6`) for a plain-bullet wall, `rewrite_field` (advisory) otherwise
+**Emitted at:** preflight, reported on the densest body item
+
+A content slide's placeholder body text is a wall (go-slide-creator-fle6s): any of
+
+- more than **six bullets** in one placeholder;
+- more body words on the slide than the viewing-mode budget — **80** for `viewing_mode: "present"` (the default; the same budget as one placeholder's `BODY_TOO_LONG`, so a `reduce_text` repair clears both), **110** for `"read"`;
+- a bullet that wraps past **two lines** at the size generation renders the placeholder (template size, density-normalised), measured when the template's layouts resolve.
+
+Body text means `text`, `bullets`, `body_and_bullets`, `body_and_lead` and `bullet_groups` items other than titles and subtitles; pattern text is budgeted by each pattern's own `BODY_TOO_LONG` checks. `fix.params.limits` lists the limits tripped (`bullets`, `words`, `long_bullets`) beside `words` / `max_words`, `bullets` / `max_bullets` and `long_bullets` / `max_lines_per_item`. Review weight: 5 points, and it counts toward the problem-slide share. Split the slide or cut the bullets that restate the title.
+
+```json
+{
+  "path": "/slides/1/content/1",
+  "code": "SLIDE_TEXT_DENSE",
+  "message": "slide 2: text wall — 7 bullets (max 6); an audience reads a slide at a glance, so split it or cut to the points that prove the title",
+  "fix": { "kind": "split_bullets", "params": { "limits": ["bullets"], "bullets": 7, "max_bullets": 6, "max_items": 6, "words": 63, "max_words": 80 } },
+  "action": "review"
 }
 ```
 

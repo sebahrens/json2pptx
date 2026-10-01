@@ -39,6 +39,8 @@
             "alt": "Revenue rises every quarter, from $12.0M in Q1 2025 to $21.3M in Q1 2026 — a 78% increase over five quarters.",
             "type": "bar",
             "title": "Revenue by Quarter ($M)",
+            "subtitle": "Five quarters, Q1 2025 to Q1 2026",
+            "footnote": "Source: illustrative management accounts",
             "data": {
               "Q1 2025": 12.0,
               "Q2 2025": 14.5,

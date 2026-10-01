@@ -49,6 +49,12 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// with grids (go-slide-creator-cuszt).
 	findings = append(findings, collectDataWithoutSourceFindings(input)...)
 	findings = append(findings, collectComparisonSlideFindings(input)...)
+	// Evidence slides without a so-what (takeaway_missing) and the deck-level
+	// storyline gaps — no executive summary, a thank-you closer with no next
+	// steps. Read from the authored slides for the same reason
+	// (go-slide-creator-cti7s, go-slide-creator-kuurd).
+	findings = append(findings, collectTakeawayMissingFindings(input)...)
+	findings = append(findings, collectStorylineFindings(input)...)
 	var geometryErrors []patterns.FitFinding
 	input, layouts, geometryErrors = withDerivedFitLayouts(input, layouts, slideWidth, slideHeight)
 	findings = append(findings, geometryErrors...)
@@ -210,6 +216,9 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// placeholder (SPARSE_PLACEHOLDER) — go-slide-creator-d830i / -u9xfy.
 	findings = append(findings, collectTitleNotActionFindings(input, layouts)...)
 	findings = append(findings, collectSparsePlaceholderFindings(input, layouts, slideHeight)...)
+	// 10c. Per-slide text-density ceiling (SLIDE_TEXT_DENSE,
+	// go-slide-creator-fle6s).
+	findings = append(findings, collectTextDensityFindings(input, layouts)...)
 
 	// 11. Deterministic geometry: TEXT_EXCEEDS_SHAPE / SPARSE_FILL / SLIDE_UNDERUSED.
 	findings = append(findings, collectGeometryFindings(input, layouts, slideWidth, slideHeight, theme)...)
@@ -1132,6 +1141,14 @@ func extractContentParagraphs(c *ContentInput) []string {
 				paras = append(paras, c.BodyAndBulletsValue.TrailingBody)
 			}
 			return paras
+		}
+	case "body_and_lead":
+		if c.BodyAndLeadValue != nil {
+			var paras []string
+			if c.BodyAndLeadValue.Lead != "" {
+				paras = append(paras, c.BodyAndLeadValue.Lead)
+			}
+			return append(paras, c.BodyAndLeadValue.Bullets...)
 		}
 	case "bullet_groups":
 		if c.BulletGroupsValue != nil {
