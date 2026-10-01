@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/sebahrens/json2pptx/internal/template"
 )
 
 // Markdown renders a human-readable summary of the report: a header, the
@@ -38,6 +40,8 @@ func (r *Report) Markdown() string {
 		fmt.Fprintf(&b, "| %s | %s | %s |\n", string(fam), mark, emptyDash(strings.Join(c.Layouts, ", ")))
 	}
 	b.WriteString("\n")
+
+	writeGridMarkdown(&b, r.Grid)
 
 	// Derivable capabilities matrix.
 	b.WriteString("## Derivable capabilities\n\n")
@@ -98,4 +102,19 @@ func emptyDash(s string) string {
 		return "—"
 	}
 	return s
+}
+
+// writeGridMarkdown renders the template grid section (go-slide-creator-5ms8c).
+func writeGridMarkdown(b *strings.Builder, g template.ResolvedGrid) {
+	b.WriteString("## Grid\n\n")
+	declared := "none (engine defaults)"
+	if len(g.Declared) > 0 {
+		declared = strings.Join(g.Declared, ", ")
+	}
+	fmt.Fprintf(b, "- Declared in metadata: %s\n", declared)
+	fmt.Fprintf(b, "- margin_pct %.1f, columns %d, gutter_pt %g, title_gap_pt %g\n", g.MarginPct, g.Columns, g.GutterPt, g.TitleGapPt)
+	if f := g.Frame; f != nil {
+		fmt.Fprintf(b, "- Content frame: title bottom %.1fpt, content top %.1fpt, left %.1fpt, right %.1fpt\n", f.TitleBottomPt, f.ContentTopPt, f.LeftPt, f.RightPt)
+	}
+	b.WriteString("\n")
 }

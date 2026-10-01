@@ -322,111 +322,13 @@ func validateGridConfig(cfg *GridConfig) error {
 // ~0.05 inch = 45720 EMU. Small rounding differences are ignored.
 const gridViolationThresholdEMU int64 = 45720
 
-// detectGridViolations compares layout placeholder positions against the
-// resolved grid and emits grid_violation fit-findings for layouts that can't
-// reconcile within the threshold.
+// detectGridViolations checks the rendered content of a deck against its
+// configured grid: the title, body placeholders and takeaway bands the slides
+// actually fill (go-slide-creator-5ms8c). Unfilled template placeholders are
+// no longer measured. Shape grids and patterns are snapped to the deck grid at
+// generation (snapBoundsToGrid), so their blocks are not re-checked here.
 func detectGridViolations(rg *resolvedGrid, layouts []types.LayoutMetadata, slides []SlideInput) []patterns.FitFinding {
-	var findings []patterns.FitFinding
-
-	for si, slide := range slides {
-		layout := findLayoutForSlide(&slide, layouts)
-		if layout == nil {
-			continue
-		}
-
-		for _, ph := range layout.Placeholders {
-			path := gridPlaceholderAuthoredPath(si, &slide, ph.ID)
-			switch ph.Type {
-			case types.PlaceholderTitle:
-				titleBottom := ph.Bounds.Y + ph.Bounds.Height
-				deviation := absInt64(titleBottom - rg.TitleBaselineY)
-				if deviation > gridViolationThresholdEMU {
-					findings = append(findings, patterns.FitFinding{
-						ValidationError: patterns.ValidationError{
-							Code: "grid_violation",
-							Path: path,
-							Message: fmt.Sprintf(
-								"title bottom (%.1f%%) deviates from grid title_baseline (%.1f%%) by %.2f%%",
-								emuToPct(titleBottom, rg.SlideHeight),
-								emuToPct(rg.TitleBaselineY, rg.SlideHeight),
-								emuToPct(deviation, rg.SlideHeight),
-							),
-							Fix: &patterns.FixSuggestion{
-								Kind: "reposition_shape",
-								Params: map[string]any{
-									"field":       "title_baseline",
-									"current_emu": titleBottom,
-									"target_emu":  rg.TitleBaselineY,
-								},
-							},
-						},
-						Action:   "review",
-						Measured: &patterns.Extent{HeightEMU: titleBottom},
-						Allowed:  &patterns.Extent{HeightEMU: rg.TitleBaselineY},
-					})
-				}
-
-			case types.PlaceholderBody, types.PlaceholderContent:
-				// Check content top alignment.
-				deviation := absInt64(ph.Bounds.Y - rg.ContentTopY)
-				if deviation > gridViolationThresholdEMU {
-					findings = append(findings, patterns.FitFinding{
-						ValidationError: patterns.ValidationError{
-							Code: "grid_violation",
-							Path: path,
-							Message: fmt.Sprintf(
-								"content top (%.1f%%) deviates from grid content_top (%.1f%%) by %.2f%%",
-								emuToPct(ph.Bounds.Y, rg.SlideHeight),
-								emuToPct(rg.ContentTopY, rg.SlideHeight),
-								emuToPct(deviation, rg.SlideHeight),
-							),
-							Fix: &patterns.FixSuggestion{
-								Kind: "reposition_shape",
-								Params: map[string]any{
-									"field":       "content_top",
-									"current_emu": ph.Bounds.Y,
-									"target_emu":  rg.ContentTopY,
-								},
-							},
-						},
-						Action:   "review",
-						Measured: &patterns.Extent{HeightEMU: ph.Bounds.Y},
-						Allowed:  &patterns.Extent{HeightEMU: rg.ContentTopY},
-					})
-				}
-
-				// Check left margin alignment.
-				deviation = absInt64(ph.Bounds.X - rg.LeftMarginX)
-				if deviation > gridViolationThresholdEMU {
-					findings = append(findings, patterns.FitFinding{
-						ValidationError: patterns.ValidationError{
-							Code: "grid_violation",
-							Path: path,
-							Message: fmt.Sprintf(
-								"content left (%.1f%%) deviates from grid left_margin (%.1f%%) by %.2f%%",
-								emuToPct(ph.Bounds.X, rg.SlideWidth),
-								emuToPct(rg.LeftMarginX, rg.SlideWidth),
-								emuToPct(deviation, rg.SlideWidth),
-							),
-							Fix: &patterns.FixSuggestion{
-								Kind: "reposition_shape",
-								Params: map[string]any{
-									"field":       "left_margin",
-									"current_emu": ph.Bounds.X,
-									"target_emu":  rg.LeftMarginX,
-								},
-							},
-						},
-						Action:   "review",
-						Measured: &patterns.Extent{HeightEMU: ph.Bounds.X},
-						Allowed:  &patterns.Extent{HeightEMU: rg.LeftMarginX},
-					})
-				}
-			}
-		}
-	}
-
-	return findings
+	return detectContentFrameViolations(deckGridFrame(rg), layouts, slides)
 }
 
 // gridPlaceholderAuthoredPath targets the matching authored item when one

@@ -109,13 +109,11 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// the viewing_mode floor for its role (TEXT_BELOW_READABLE_MIN).
 	findings = append(findings, collectReadabilityFindings(input, layouts, slideWidth, slideHeight)...)
 
-	// 3. Grid rhythm violations when a deck-level grid is configured.
-	if input.Grid != nil {
-		if err := validateGridConfig(input.Grid); err == nil {
-			rg := resolveGrid(input.Grid, layouts, slideWidth, slideHeight)
-			findings = append(findings, detectGridViolations(rg, layouts, input.Slides)...)
-		}
-	}
+	// 3. Grid alignment (grid_violation): rendered titles, body content,
+	// grid / pattern blocks and takeaway bands against the deck's grid when
+	// one is configured (review), else against the template's content frame
+	// (info, by default — go-slide-creator-5ms8c).
+	findings = append(findings, contentFrameFindings(input, layouts, slideWidth, slideHeight)...)
 
 	// 3a. Layout resolution: a template missing the role a slide needs used to
 	// pass validate silently and fail generate (go-slide-creator-9svyz).
@@ -845,6 +843,7 @@ func resolveGridForStructural(grid *ShapeGridInput, overrideBounds *pptx.RectEmu
 	if zone != nil {
 		sgGrid.AnchorY = zone.BodyTop
 		sgGrid.TextLeft = zone.TextLeft
+		sgGrid.DefaultGapPt = zone.GutterPt
 	}
 	sgGrid.KeepTextSizes = grid.KeepTextSizes
 

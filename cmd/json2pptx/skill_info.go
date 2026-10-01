@@ -270,6 +270,11 @@ type skillTemplateInfo struct {
 	// accent_usage_guide and the engine derived one from color_roles
 	// (go-slide-creator-u1h9b).
 	AccentUsageGuideDerived bool `json:"accent_usage_guide_derived,omitempty"`
+	// Grid is the template's effective grid system: margin_pct, columns,
+	// gutter_pt and title_gap_pt (declared in its metadata "grid" block, else
+	// the engine defaults; "declared" names the authored keys) plus the
+	// content frame grid_violation checks against (go-slide-creator-5ms8c).
+	Grid *template.ResolvedGrid `json:"grid,omitempty"`
 	// SemanticAccents maps semantic roles (positive/negative/neutral) to theme
 	// accent names. Mirrors TemplateMetadata.SemanticAccents; omitted when unset.
 	SemanticAccents map[string]string `json:"semantic_accents,omitempty"`
@@ -653,6 +658,8 @@ func analyzeTemplateForSkillInfoOpts(templatePath string, cache types.TemplateCa
 		info.AccentUsageGuide = deriveAccentUsageGuide(analysis.Theme.Colors, info.ColorRoles)
 		info.AccentUsageGuideDerived = len(info.AccentUsageGuide) > 0
 	}
+	grid := template.ResolveTemplateGrid(analysis.Layouts, analysis.SlideWidth, analysis.SlideHeight)
+	info.Grid = &grid
 
 	// Canonical family coverage + derivable-layout readiness let agents vet a
 	// template's planning surface without escalating to examine_template.

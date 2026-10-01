@@ -27,6 +27,8 @@ applies to both paths. Storyline rules are in [QUALITY.md](QUALITY.md).
    carries `accent_usage_guide_derived: true` the template authored none and
    the lines are contrast facts only — keep to `primary_fill`, the
    `semantic_accents`, and never use a `near_background_accents` entry for text.
+   `grid` gives the template's margin, columns, gutter and the content frame
+   lines content should start on.
 4. **Chapters.** Use `structure.sections` (with `auto_agenda` for two or more
    sections) instead of hand-made dividers; the engine numbers them.
 5. **Chrome.** Page numbers (title and closing skipped) and the date are on

@@ -44,6 +44,7 @@ const (
 	CodeTemplateMetadataVersion     Code = "TEMPLATE_METADATA_VERSION"
 	CodeTemplateAspectRatioInvalid  Code = "TEMPLATE_ASPECT_RATIO_INVALID"
 	CodeTemplateLayoutHintInvalid   Code = "TEMPLATE_LAYOUT_HINT_INVALID"
+	CodeTemplateGridInvalid         Code = "TEMPLATE_GRID_INVALID"
 	CodeTemplateSectionNumberNaming Code = "TEMPLATE_SECTION_NUMBER_NAMING"
 )
 
@@ -226,6 +227,7 @@ func AllCodes() []Code {
 		CodeTemplateMetadataVersion,
 		CodeTemplateAspectRatioInvalid,
 		CodeTemplateLayoutHintInvalid,
+		CodeTemplateGridInvalid,
 		CodeTemplateSectionNumberNaming,
 		// Resource
 		CodeFileNotFound,

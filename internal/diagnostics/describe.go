@@ -263,12 +263,13 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 
 	"grid_violation": {
 		Code:        "grid_violation",
-		Summary:     "A shape grid's geometry does not sit on the deck's rhythm grid.",
+		Summary:     "Rendered slide content does not start on the deck's grid lines (title baseline, content top, left edge).",
 		Severity:    describeSeverityReview,
-		WhenEmitted: "Rhythm-grid analysis finds shape bounds that do not align to the resolved column/row grid, which reads as visual drift between slides that should look aligned.",
+		WhenEmitted: "Preflight checks the content each content slide actually renders — the title and body placeholders it fills, its shape_grid / pattern block and its takeaway band — against the template's content frame (the reference one-content layout's title bottom, body top and left edge, plus the template metadata grid margin). It runs on every deck at info weight; when the deck sets a top-level grid, the deck grid is the frame and findings are review. Title, section and closing slides and blank canvases are exempt.",
 		RemediationSteps: []string{
-			"Snap the offending bounds to the grid values the message names, or drop the explicit bounds and let the pattern place the block.",
-			"When an off-grid position is deliberate (a deliberately offset hero element), the finding is advisory and can be left.",
+			"Drop explicit bounds / vertical_align so the block takes the default placement on the body line, or snap the bounds to the target the fix names (fix.params.target_emu).",
+			"A slide on a layout whose placeholders sit off the frame reads as a jump when flipping through the deck: pin the deck's content slides to one layout family.",
+			"When an off-grid position is deliberate (an offset hero element), the finding is advisory and can be left.",
 		},
 		RelatedCodes: []string{patterns.ErrCodeSlideBoundsOverflow},
 	},

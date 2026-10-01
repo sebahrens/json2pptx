@@ -133,6 +133,10 @@ type Grid struct {
 	// (ContentZone.BodyTop). The block moves down to it only as far as its
 	// slack allows; 0 means the bounds top.
 	AnchorY int64
+	// DefaultGapPt is the column / row gap (points) used when ColGap / RowGap
+	// are unset: the template grid's gutter_pt (ContentZone.GutterPt), else
+	// the built-in 8pt (go-slide-creator-5ms8c).
+	DefaultGapPt float64
 	// TextLeft is the absolute X (EMU) where the slide title's text starts
 	// (ContentZone.TextLeft). Unfilled left-aligned text in the first column
 	// is inset to start there; 0 leaves insets alone (go-slide-creator-svrpx).

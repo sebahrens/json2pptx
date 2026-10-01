@@ -41,6 +41,10 @@ type ContentZone struct {
 	// (go-slide-creator-e17xy). Explicit slide-relative bounds still clamp
 	// against TitleBottom only.
 	ContentTop int64
+	// GutterPt is the template grid's gutter (metadata grid.gutter_pt), the
+	// default column / row gap for grids that set none; 0 = the built-in 8pt
+	// (go-slide-creator-5ms8c).
+	GutterPt float64
 }
 
 // DefaultBoundsFromZone derives grid bounds from a ContentZone, applying a gap (in points)

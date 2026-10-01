@@ -113,7 +113,12 @@ var outputSchemaListTemplates = json.RawMessage(`{
       }, "required": ["available", "unavailable"]},
       "canonical_layout_ids": {"type": "object", "description": "Available canonical alias to concrete layout ID in every projection, including compact."},
       "body_font_size_pt": {"type": "number", "description": "Nominal generated body size on the canonical content layout at five paragraphs, before content-specific autofit."},
-      "template_body_font_size_pt": {"type": "number", "description": "Original template body size on the canonical content layout before density normalization."}
+      "template_body_font_size_pt": {"type": "number", "description": "Original template body size on the canonical content layout before density normalization."},
+      "grid": {"type": "object", "description": "Template grid system (go-slide-creator-5ms8c): margin_pct, columns, gutter_pt and title_gap_pt from the template metadata grid block, else engine defaults (declared lists the authored keys), plus the content_frame lines (pt) grid_violation checks rendered content against.", "properties": {
+        "margin_pct": {"type": "number"}, "columns": {"type": "integer"}, "gutter_pt": {"type": "number"}, "title_gap_pt": {"type": "number"},
+        "declared": {"type": "array", "items": {"type": "string"}},
+        "content_frame": {"type": "object", "properties": {"title_bottom_pt": {"type": "number"}, "content_top_pt": {"type": "number"}, "left_pt": {"type": "number"}, "right_pt": {"type": "number"}}}
+      }}
     }}},
     "supported_types": {"type": "object", "description": "Omitted from the default compact projection."},
     "input_formats":   {"type": "array", "items": {"type": "string"}},
@@ -970,6 +975,11 @@ var outputSchemaExamineTemplate = json.RawMessage(`{
     "template":     {"type": "string", "description": "Template display name (base file name)."},
     "sha256":       {"type": "string", "description": "SHA-256 of the template bytes."},
     "aspect_ratio": {"type": "string", "description": "Slide aspect ratio (e.g. 16:9)."},
+    "grid": {"type": "object", "description": "Template grid system (go-slide-creator-5ms8c): margin_pct, columns, gutter_pt and title_gap_pt from the template metadata grid block, else engine defaults (declared lists the authored keys), plus the content_frame lines (pt) grid_violation checks rendered content against.", "properties": {
+        "margin_pct": {"type": "number"}, "columns": {"type": "integer"}, "gutter_pt": {"type": "number"}, "title_gap_pt": {"type": "number"},
+        "declared": {"type": "array", "items": {"type": "string"}},
+        "content_frame": {"type": "object", "properties": {"title_bottom_pt": {"type": "number"}, "content_top_pt": {"type": "number"}, "left_pt": {"type": "number"}, "right_pt": {"type": "number"}}}
+      }},
     "slide": {
       "type": "object",
       "properties": {

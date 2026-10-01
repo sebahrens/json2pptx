@@ -1683,6 +1683,19 @@ Fires for e.g. an insights-only `chart-insights-split`, a `kpi-inline` capped to
 }
 ```
 
+### `grid_violation`
+
+**Action:** `info` by default; `review` when the deck sets a top-level `grid`
+**Pattern:** *(none)*
+**Fix kind:** `reposition_shape` (advisory: `params.field` = `title_baseline` / `content_top` / `left_margin`, `params.frame` = `template` / `deck_grid`, `current_emu`, `target_emu`)
+**Emitted at:** preflight (validate fit-report, `score_deck`, generate fit findings)
+
+Rendered content does not start on the deck's grid lines, so the content jumps when flipping through the deck (go-slide-creator-5ms8c). Every content slide is checked on what it actually renders: the title placeholder it fills (its bottom against the title baseline), the first body / content placeholder it fills (top against the content top, left edge — after generation's side-artwork clamp — against the left edge), its `shape_grid` / pattern block (the top-left of the resolved cells) and its takeaway band (left edge). Unfilled template placeholders are not measured. Slides without a `layout_id` are measured on the layout generation predicts for them. Title, section and closing slides, layouts tagged title-slide / section-header / closing, and true blank canvases are exempt.
+
+**Frame.** By default the frame is the template's content frame (`list_templates` / `examine-template` `grid.content_frame`): the reference one-content layout's title bottom, its body placeholder top (the body line native bullets start on) and its title left edge, moved in with side artwork and narrowed to the template metadata `grid.margin_pct` when declared. Tolerances are one 12pt line for tops and 6pt for left edges, and the finding is `info` (weight 0): `score_deck` lists it without lowering the score. When the deck sets a top-level `grid`, that grid is the frame, the tolerance is the legacy 0.05in, findings are `review`, and pattern / shape-grid blocks are not re-checked (generation snaps them to the deck grid).
+
+Typical hits: a slide on a layout whose body placeholder sits off the reference layout's body line; an explicit `bounds` box; full-area patterns on templates whose body placeholder sits more than 9pt below the title box (business-template ~28pt, modern-yellow ~19pt) — they start at the title-box line so dense patterns keep their height (see `vertical_align` in [INPUT_FORMAT.md](INPUT_FORMAT.md)).
+
 ### `VERTICAL_IMBALANCE`
 
 **Action:** `review`

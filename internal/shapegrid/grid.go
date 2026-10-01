@@ -19,14 +19,19 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 	numCols := len(grid.Columns)
 	numRows := len(grid.Rows)
 
-	// Resolve gaps (default 8pt). Values are in typographic points.
+	// Resolve gaps (default: the template gutter, else 8pt). Values are in
+	// typographic points.
+	defaultGap := 8.0
+	if grid.DefaultGapPt > 0 {
+		defaultGap = grid.DefaultGapPt
+	}
 	colGap := grid.ColGap
 	if colGap == 0 {
-		colGap = 8
+		colGap = defaultGap
 	}
 	rowGap := grid.RowGap
 	if rowGap == 0 {
-		rowGap = 8
+		rowGap = defaultGap
 	}
 
 	gridX := grid.Bounds.X

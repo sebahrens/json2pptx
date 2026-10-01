@@ -54,6 +54,17 @@ func ParseLayouts(reader *Reader) ([]types.LayoutMetadata, error) {
 		return nil, fmt.Errorf("failed to parse any layouts from template")
 	}
 
+	// The template-level grid (go-slide-creator-5ms8c) rides on every layout,
+	// so generation, preflight and previews — which all start from the parsed
+	// layouts — read the same margins, gutter and title gap.
+	if md, mdErr := ParseMetadata(reader); mdErr == nil && md != nil {
+		if grid := md.Grid.Sanitized(); grid != nil {
+			for i := range layouts {
+				layouts[i].TemplateGrid = grid
+			}
+		}
+	}
+
 	return layouts, nil
 }
 

@@ -8,12 +8,12 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
-// bodyZoneTitleGapPt is the distance from the bottom of a measured
-// (top-anchored) title's text to the top of the body zone: 18pt
-// (go-slide-creator-wntyw). It absorbs small measurement differences between
-// the estimator and the renderer, and it is the one fixed start line the
-// eye finds on every slide; the standard gridChromeGapPt is part of it.
-const bodyZoneTitleGapPt = 18.0
+// The distance from the bottom of a measured (top-anchored) title's text to
+// the top of the body zone is the template grid's title_gap_pt, default
+// types.DefaultGridTitleGapPt = 18pt (go-slide-creator-wntyw, -5ms8c). It
+// absorbs small measurement differences between the estimator and the
+// renderer, and it is the one fixed start line the eye finds on every slide;
+// the standard gridChromeGapPt is part of it.
 
 // reserveMeasuredTitle pulls the content zone's TitleBottom up from the title
 // placeholder's bottom edge to the bottom of the title's measured text when the
@@ -58,7 +58,7 @@ func reserveMeasuredTitle(g GridGeometry, slide SlideInput, layouts []types.Layo
 	if text == "" {
 		return g
 	}
-	textBottom, ok := measuredTitleBottom(title, text)
+	textBottom, ok := measuredTitleBottom(title, text, types.TemplateGridOf(layouts).TitleGapPtOrDefault())
 	if !ok || textBottom >= boxBottom {
 		return g
 	}
@@ -81,9 +81,9 @@ func reserveMeasuredTitle(g GridGeometry, slide SlideInput, layouts []types.Layo
 }
 
 // measuredTitleBottom estimates the Y (EMU) where a top-anchored title's text
-// ends, plus the part of bodyZoneTitleGapPt the zone's own gap does not cover. ok is false when the text cannot be
+// ends, plus the part of the title gap (titleGapPt) the zone's own gap does not cover. ok is false when the text cannot be
 // measured (no font cache), in which case the caller keeps the box edge.
-func measuredTitleBottom(title *types.PlaceholderInfo, text string) (int64, bool) {
+func measuredTitleBottom(title *types.PlaceholderInfo, text string, titleGapPt float64) (int64, bool) {
 	if title.TextCaps {
 		text = strings.ToUpper(text)
 	}
@@ -119,8 +119,9 @@ func measuredTitleBottom(title *types.PlaceholderInfo, text string) (int64, bool
 		return 0, false
 	}
 	// The zone's bounds add gridChromeGapPt below TitleBottom; reserve the
-	// rest of bodyZoneTitleGapPt here.
-	safety := int64((bodyZoneTitleGapPt - gridChromeGapPt) * 12700)
+	// rest of the title gap (the template grid's title_gap_pt, default
+	// types.DefaultGridTitleGapPt) here.
+	safety := int64(max(titleGapPt-gridChromeGapPt, 0) * 12700)
 	return title.Bounds.Y + h + safety, true
 }
 

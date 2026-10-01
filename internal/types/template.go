@@ -71,6 +71,11 @@ type TemplateMetadata struct {
 	// Template authors supply this; the engine never synthesises it.
 	// When present, list_templates surfaces it so agents can pick colours with intent.
 	AccentUsageGuide map[string]string `json:"accent_usage_guide,omitempty"`
+
+	// Grid is the optional template-level grid system: outer margin, column
+	// count, gutter and title-to-body gap (go-slide-creator-5ms8c). Omitted
+	// keys take the engine defaults; see TemplateGrid.
+	Grid *TemplateGrid `json:"grid,omitempty"`
 }
 
 // LayoutHint provides additional metadata hints for a specific layout.
@@ -168,6 +173,11 @@ type LayoutMetadata struct {
 	// DecorRegions are filled, non-placeholder shapes inherited from the layout
 	// and its master. They are potential exclusions from authored content.
 	DecorRegions []DecorRegion
+
+	// TemplateGrid is the template's sanitized metadata grid (shared by every
+	// layout of the template; nil when it declares none). ParseLayouts sets it
+	// so every geometry path that has the layouts also has the grid.
+	TemplateGrid *TemplateGrid
 }
 
 // DecorRegion is the bounding box of visible template artwork.

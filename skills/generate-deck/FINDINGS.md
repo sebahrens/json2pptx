@@ -28,6 +28,8 @@ then code. A deck-level finding precedes slide 0 at equal severity.
   invisible bidi controls / BOMs were stripped from that string; drop them
   from your source text. `BODY_TOO_LONG` is a `refuse` when one placeholder
   carries over 200 paragraphs (`fix.params.max_paragraphs`): split it.
+  `grid_violation` (info): content starts off the template's
+  `grid.content_frame` — drop explicit `bounds`, keep one layout family.
 
 `score_deck` classifies a finding as `pattern_choice`, `rendering`, or
 `content`. A pattern-choice problem usually calls for a different visual
