@@ -156,18 +156,17 @@ func compileFrameworkDiagram(in Input, name string, sections map[string][]string
 		data[s.key] = items
 	}
 
-	// A native SWOT / five-forces diagram is drawn as OOXML shapes only inside
-	// a body placeholder (in a grid cell it would need an svggen renderer that
-	// does not exist), and blank-title has no body placeholder. The layout is
-	// pinned to the canonical content layout rather than left to the heuristic
-	// matcher, which picked a different layout per slide (go-slide-creator-ngbnf).
-	slide := &deckinput.SlideInput{SlideType: "diagram", LayoutID: "content"}
-	links := titleLink(slide, in)
-	idx := appendContent(slide, diagramContent("body", &types.DiagramSpec{
+	// The native SWOT / five-forces shapes ride in a one-cell grid on
+	// blank-title, the layout every other content kind uses, so the title keeps
+	// one position and treatment across the deck. They used to need a body
+	// placeholder, which pinned them to the content layout — on abstract a
+	// smaller, letter-spaced title (go-slide-creator-ngbnf).
+	slide := blankTitleCellSlide(&deckinput.GridCellInput{Diagram: &types.DiagramSpec{
 		Type: name, Data: data, Alt: visualAltText(in),
-	}))
+	}})
+	links := titleLink(slide, in)
 	links = append(links, SourceLink{
-		RawPath:      fmt.Sprintf("%s.content[%d].diagram_value", in.rawSlide(), idx),
+		RawPath:      in.rawSlide() + blankTitleCellPath + ".diagram.data",
 		SemanticPath: in.semSlide() + ".sections",
 	})
 	links = append(links, applyTakeaway(slide, in)...)
