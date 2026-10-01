@@ -19,6 +19,35 @@
       ]
     },
     {
+      "layout_id": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Bundled icons render crisply in grids, flows and dashboards"
+        }
+      ],
+      "pattern": {
+        "name": "exec-summary",
+        "values": {
+          "points": [
+            {
+              "lead": "Grids keep icons aligned",
+              "support": "A 4x3 gallery holds outline and filled icons at one size."
+            },
+            {
+              "lead": "Flows and dashboards reuse them",
+              "support": "Process steps and KPI tiles pair each icon with a short label."
+            },
+            {
+              "lead": "Status colours stay semantic",
+              "support": "On-track, at-risk and off-track tiles map to theme colours."
+            }
+          ]
+        }
+      }
+    },
+    {
       "slide_type": "blank",
       "content": [
         {
@@ -268,7 +297,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Process Flow with Icons"
+          "text_value": "Discover, plan and execute run as one icon-led flow"
         }
       ],
       "shape_grid": {
@@ -371,7 +400,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "KPI Dashboard with Icons"
+          "text_value": "Q1 2026 revenue reached $21.5M, up 17% year on year"
         }
       ],
       "shape_grid": {
@@ -546,7 +575,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Status Indicators with Colors"
+          "text_value": "Colour-coded tiles show which objectives are at risk"
         }
       ],
       "shape_grid": {
@@ -691,7 +720,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Icon Categories Test"
+          "text_value": "Five icon categories cover charts, actions, status, objects and feedback"
         }
       ],
       "shape_grid": {

@@ -1497,7 +1497,7 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 			}
 
 		default:
-			return nil, fmt.Errorf("slide %d, content %d: unknown type %q (must be text, bullets, body_and_bullets, bullet_groups, table, image, chart, or diagram)", slideNum, j+1, ci.Type)
+			return nil, fmt.Errorf("slide %d, content %d: unknown type %q (must be text, bullets, body_and_bullets, body_and_lead, bullet_groups, table, image, chart, or diagram)", slideNum, j+1, ci.Type)
 		}
 
 		if image, ok := item.Value.(generator.ImageContent); ok {
@@ -1955,6 +1955,17 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 				TrailingBody: input.TrailingBody,
 			}
 
+		case "body_and_lead":
+			item.Type = generator.ContentBodyAndLead
+			var input BodyAndLeadInput
+			if err := json.Unmarshal(jsonItem.Value, &input); err != nil {
+				return nil, fmt.Errorf("slide %d, content %d: invalid body_and_lead value: %w", slideNum, j+1, err)
+			}
+			item.Value = generator.BodyAndLeadContent{
+				Lead:    input.Lead,
+				Bullets: input.Bullets,
+			}
+
 		case "bullet_groups":
 			item.Type = generator.ContentBulletGroups
 			var input BulletGroupsInput
@@ -1964,7 +1975,7 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 			item.Value = convertBulletGroupsInput(&input)
 
 		default:
-			return nil, fmt.Errorf("slide %d, content %d: unknown type %q (must be text, bullets, body_and_bullets, bullet_groups, table, image, chart, or diagram)", slideNum, j+1, jsonItem.Type)
+			return nil, fmt.Errorf("slide %d, content %d: unknown type %q (must be text, bullets, body_and_bullets, body_and_lead, bullet_groups, table, image, chart, or diagram)", slideNum, j+1, jsonItem.Type)
 		}
 
 		items = append(items, item)

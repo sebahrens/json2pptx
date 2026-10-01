@@ -88,6 +88,9 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 	if ir.ViewingMode != "" {
 		input.ViewingMode = ir.ViewingMode
 	}
+	// The deck-level default source is applied per data slide by the raw
+	// pipeline's defaults pass, exactly as for a raw deck's top-level source.
+	input.Source = ir.Source
 	if ir.TypeScale != "" {
 		input.TypeScale = ir.TypeScale
 	}

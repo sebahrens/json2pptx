@@ -33,10 +33,18 @@ then code. A deck-level finding precedes slide 0 at equal severity.
 `content`. A pattern-choice problem usually calls for a different visual
 family. A rendering problem calls for fit, geometry, or contrast repair.
 A content problem (e.g. `TITLE_NOT_ACTION`, `TITLE_TOO_LONG`) calls for a
-better title, evidence, labels, or copy. `DATA_WITHOUT_SOURCE` (info) is one:
+better title, evidence, labels, or copy. `DATA_WITHOUT_SOURCE` (review) is one:
 a chart, table of figures, or chart / KPI / stat pattern with no source — set
 the slide's `source` (DeckSpec `slides[N].source`, `fix.params.field:
-"source"`); never invent one, write "Illustrative" for estimates.
+"source"`), a chart's `footnote`, or a deck default (DeckSpec `meta.source`,
+raw top-level `source`); never invent one, write "Illustrative" for estimates.
+
+Storyline gate (`score_deck`; details in `docs/FIT_FINDINGS.md`):
+`takeaway_missing` → require_takeaway_on_charts; `TITLE_NOT_ACTION` (over 15
+words, stock label, or no verb/number; `fix.params.reason`) on >25% of slides →
+max_topic_title_pct; `NO_EXECUTIVE_SUMMARY` (6+ slides) and
+`CLOSING_WITHOUT_NEXT_STEPS` ("Thank you" closer, no ask) → require_storyline.
+`SLIDE_TEXT_DENSE` (>6 bullets, >80 words, bullet over 2 lines) costs score.
 The classification is more useful than a generic increase-the-score loop.
 
 On raw decks, `propose_repairs` translates findings to candidate directives

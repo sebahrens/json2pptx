@@ -46,6 +46,10 @@ type DeckMeta struct {
 	// Date is a free-form date string shown in chrome (advisory). When Chrome
 	// is set without its own footer_date, this value fills it.
 	Date string `json:"date,omitempty" yaml:"date,omitempty"`
+	// Source is the deck-level default source line, rendered on every data
+	// slide (chart, table of figures, KPI / stat) that sets no source of its
+	// own (go-slide-creator-mp2p4).
+	Source string `json:"source,omitempty" yaml:"source,omitempty"`
 	// Chrome carries deck furniture: confidentiality stamp, client name,
 	// project code, footer date and page numbers. Every board deck has some of
 	// it, and before go-slide-creator-zmjs the semantic path could not express

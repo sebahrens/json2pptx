@@ -226,7 +226,7 @@ current alternatives and value schemas.
 
 ## Charts: Subtitle vs Footnote
 
-Charts accept both `subtitle` and `footnote` fields. Use `subtitle` for contextual text rendered below the chart title (e.g., "FY2024 Q1-Q4"). Use `footnote` for source attribution rendered at the chart bottom. These are separate fields routed to different render positions — do not use `footnote` when you mean `subtitle`.
+`chart_value` accepts both `subtitle` and `footnote` (top-level keys beside `title`, not inside `data`). Use `subtitle` for contextual text rendered below the chart title inside the chart image (e.g., "FY2024 Q1-Q4", "$M"). Use `footnote` for source attribution rendered at the chart's bottom edge (e.g., "Source: Company filings, FY24"); a chart with a `footnote` counts as sourced for `DATA_WITHOUT_SOURCE`. These are separate fields routed to different render positions — do not use `footnote` when you mean `subtitle`. Bar, line, area, stacked, scatter, pie and donut charts draw the footnote; for other chart types, and for the slide-level source zone, set the slide's `source` instead.
 
 ## Font Availability
 

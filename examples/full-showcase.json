@@ -1,4 +1,5 @@
 {
+  "source": "Illustrative figures",
   "template": "midnight-blue",
   "chrome": {
     "confidentiality": "Confidential",
@@ -30,7 +31,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Executive Summary"
+          "text_value": "Executive summary: a Q2 2026 launch can reach $15M ARR on $4.2M"
         },
         {
           "placeholder_id": "body",
@@ -61,7 +62,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Total Addressable Market"
+          "text_value": "Enterprise is the largest segment of an $18.2B market"
         },
         {
           "placeholder_id": "body",
@@ -86,7 +87,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Competitive Landscape"
+          "text_value": "Two incumbents hold 52% of the market; we hold 8%"
         },
         {
           "placeholder_id": "body",
@@ -112,7 +113,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Our Differentiation"
+          "text_value": "AI automation and native multi-cloud support set us apart"
         },
         {
           "placeholder_id": "body",
@@ -152,7 +153,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Revenue Projections"
+          "text_value": "Projected ARR grows from $1.2M to $15M within a year"
         },
         {
           "placeholder_id": "body",
@@ -178,7 +179,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Investment Breakdown"
+          "text_value": "Engineering and marketing take $3.2M of the $4.2M launch budget"
         },
         {
           "placeholder_id": "body",
@@ -235,7 +236,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Product Readiness Assessment"
+          "text_value": "Security and core features are launch-ready; integrations lag at 65"
         },
         {
           "placeholder_id": "body",
@@ -262,7 +263,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Key Risks and Mitigations"
+          "text_value": "Each of the four launch risks has a named mitigation"
         },
         {
           "placeholder_id": "body",
@@ -282,7 +283,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Success Metrics"
+          "text_value": "Success means 100 customers and $15M ARR in the first year"
         },
         {
           "placeholder_id": "body",
@@ -304,7 +305,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Questions?"
+          "text_value": "Approve the $4.2M launch budget to start the beta in April"
         },
         {
           "placeholder_id": "subtitle",

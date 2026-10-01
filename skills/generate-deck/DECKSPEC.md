@@ -40,7 +40,8 @@ numbers, and section crumbs. `meta.viewing_mode` and
 the schema; others are `SEMANTIC_REQUIRED`). Every slide
 kind can carry `notes` and `source`; the latter is rendered once, in the 9pt
 source zone above the footer, even when the chosen pattern has its own
-attribution field. A data slide without one draws `DATA_WITHOUT_SOURCE` at
+attribution field (or set `meta.source` once: every data slide without its
+own source renders it). A data slide without one draws `DATA_WITHOUT_SOURCE` at
 `slides[N].source`. `meta.type_scale` can be
 `compact`, `comfortable` (default), or `presentation` for the whole deck; a
 slide's `pattern` is a string, never an object.

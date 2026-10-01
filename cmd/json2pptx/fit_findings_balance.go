@@ -188,10 +188,6 @@ func soleBodyItem(slide *SlideInput) (int, *ContentInput) {
 	return idx, &slide.Content[idx]
 }
 
-// titleNotActionMaxWords: a title with fewer words than this, no number and no
-// verb names a topic ("Market Overview") rather than the slide's point.
-const titleNotActionMaxWords = 4
-
 // titleTopicExempt are navigation titles that are topics by design.
 var titleTopicExempt = map[string]bool{
 	"agenda": true, "contents": true, "table of contents": true, "appendix": true,
@@ -230,8 +226,10 @@ func isTitleVerb(word string) bool {
 	return len(w) > 4 && strings.HasSuffix(w, "ed")
 }
 
-// collectTitleNotActionFindings flags content-slide titles that name a topic
-// instead of stating a point (go-slide-creator-d830i).
+// collectTitleNotActionFindings flags content-slide titles that are not action
+// titles: longer than 15 words, a stock label, or a topic with no verb and no
+// number (go-slide-creator-d830i, go-slide-creator-kuurd). Review-weighted:
+// at info it cost nothing and a deck of topic titles scored 99 and passed.
 func collectTitleNotActionFindings(input *PresentationInput, layouts []types.LayoutMetadata) []patterns.FitFinding {
 	if input == nil {
 		return nil
@@ -242,47 +240,39 @@ func collectTitleNotActionFindings(input *PresentationInput, layouts []types.Lay
 		if !slideQualifiesForDuplicateTitleCheck(slide) || !slideCarriesArgument(slide, layouts...) {
 			continue
 		}
-		// A slide that states its point in a takeaway may title the topic —
-		// the DeckSpec convention (title + takeaway).
-		if strings.TrimSpace(slide.Takeaway) != "" {
-			continue
-		}
 		phID, text, ci := extractTitleTextAt(slide)
-		if text == "" || titleTopicExempt[normalizeTitleText(strings.TrimRight(text, ".:!?"))] {
+		if text == "" || titleExemptFromAction(input, si, text) {
 			continue
 		}
-		words := strings.Fields(text)
-		if len(words) >= titleNotActionMaxWords || strings.ContainsAny(text, "0123456789") {
-			continue
-		}
-		hasVerb := false
-		for _, w := range words {
-			if isTitleVerb(w) {
-				hasVerb = true
-				break
-			}
-		}
-		if hasVerb {
+		// A slide that states its point in a takeaway may title the topic —
+		// the DeckSpec convention (title + takeaway) — but not with a stock
+		// label or a 20-word headline.
+		reason := titleNotActionReason(text, strings.TrimSpace(slide.Takeaway) != "")
+		if reason == "" {
 			continue
 		}
 		if phID == "" {
 			phID = "title"
 		}
+		words := len(strings.Fields(text))
+		msg, hint := titleNotActionMessage(si, text, reason, words)
 		out = append(out, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
 				Path:    slidepath.ContentIndex(si, ci),
 				Code:    patterns.ErrCodeTitleNotAction,
-				Message: fmt.Sprintf("slide %d: title %q names a topic, not the slide's point — state the takeaway as a sentence with a verb or a number", si+1, text),
+				Message: msg,
 				Fix: &patterns.FixSuggestion{
 					Kind: "review",
 					Params: map[string]any{
 						"placeholder_id": phID,
-						"current_words":  len(words),
-						"hint":           "rewrite as an action title, e.g. \"Market Overview\" → \"Mid-market demand doubled while enterprise stalled\"",
+						"current_words":  words,
+						"max_words":      titleActionMaxWords,
+						"reason":         reason,
+						"hint":           hint,
 					},
 				},
 			},
-			Action: "info",
+			Action: "review",
 		})
 	}
 	return out

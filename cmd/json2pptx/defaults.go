@@ -15,6 +15,7 @@ func applyDefaults(input *PresentationInput) {
 	}
 	applyTypeScaleDefaults(input)
 	liftPatternSources(input)
+	applyDeckSourceDefault(input)
 	if effectiveDesignMode(input) == designModeFree {
 		for i := range input.Slides {
 			keepAuthoredTextSizes(input.Slides[i].ShapeGrid)

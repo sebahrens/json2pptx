@@ -24,7 +24,7 @@ func autoRepairDeck(n int) string {
 				map[string]any{
 					"placeholder_id": "title",
 					"type":           "text",
-					"text_value":     "Heavy slide",
+					"text_value":     "Revenue grew 18% on enterprise renewals",
 				},
 				map[string]any{
 					"placeholder_id": "body",
@@ -212,7 +212,7 @@ func TestAutoRepairPassProposesOptionalReviewAfterGatePass(t *testing.T) {
 	if err := json.Unmarshal([]byte(autoRepairDeck(1)), &input); err != nil {
 		t.Fatal(err)
 	}
-	title := "Heavy slide"
+	title := "Revenue grew 18% on enterprise renewals"
 	finding := patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
 			Path: "/slides/0/content/0/text_value", Code: patterns.ErrCodeTitleWraps,

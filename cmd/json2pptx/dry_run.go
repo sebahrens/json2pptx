@@ -392,6 +392,14 @@ func validateJSONContentValue(item JSONContentItem, slideNum, contentNum int) st
 		if err := json.Unmarshal(item.Value, &bab); err != nil {
 			return fmt.Sprintf("slide %d, content %d: invalid body_and_bullets value: %v", slideNum, contentNum, err)
 		}
+	case "body_and_lead":
+		var bal struct {
+			Lead    string   `json:"lead"`
+			Bullets []string `json:"bullets"`
+		}
+		if err := json.Unmarshal(item.Value, &bal); err != nil {
+			return fmt.Sprintf("slide %d, content %d: invalid body_and_lead value: %v", slideNum, contentNum, err)
+		}
 	case "bullet_groups":
 		var bg struct {
 			Groups []struct {
@@ -700,13 +708,13 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					},
 				})
 			} else {
-				validTypes := []string{"text", "bullets", "body_and_bullets", "bullet_groups", "table", "image", "chart", "diagram"}
+				validTypes := []string{"text", "bullets", "body_and_bullets", "body_and_lead", "bullet_groups", "table", "image", "chart", "diagram"}
 				switch item.Type {
-				case "text", "bullets", "body_and_bullets", "bullet_groups", "table", "image", "chart", "diagram":
+				case "text", "bullets", "body_and_bullets", "body_and_lead", "bullet_groups", "table", "image", "chart", "diagram":
 					// valid types
 				default:
 					output.Valid = false
-					msg := fmt.Sprintf("slide %d, content %d: unknown type %q (must be text, bullets, body_and_bullets, bullet_groups, table, image, chart, or diagram)",
+					msg := fmt.Sprintf("slide %d, content %d: unknown type %q (must be text, bullets, body_and_bullets, body_and_lead, bullet_groups, table, image, chart, or diagram)",
 						i+1, j+1, item.Type)
 					fix := &diagnostics.Fix{
 						Kind:   "use_one_of",
@@ -950,20 +958,12 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 		// audience cannot tell what the chart is supposed to argue. Warn (do
 		// not error) when missing, and stay quiet when the title already
 		// carries the argument.
-		if strings.TrimSpace(slideInput.Takeaway) == "" && slideRequiresTakeaway(slideInput) && !slideTitleStatesTakeaway(slideInput) && !slideHasChartSoWhat(slideInput) {
-			msg := fmt.Sprintf("slide %d: this slide argues from data — set a takeaway headline (or make the title a full sentence) so the audience knows the 'so what'", i+1)
-			ve := &patterns.ValidationError{
-				Path:    slidepath.SlideField(i, "takeaway"),
-				Code:    patterns.ErrCodeTakeawayMissing,
-				Message: msg,
-				Fix: &patterns.FixSuggestion{
-					Kind:   "provide_value",
-					Params: map[string]any{"field": "takeaway"},
-				},
-			}
+		if slideMissesTakeaway(slideInput) {
 			// Advisory only — a missing takeaway does not invalidate the deck
-			// (Valid is left unchanged), so it is a warning.
-			output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(ve))
+			// (Valid is left unchanged), so it is a warning. The fit report
+			// carries the same finding (same path and message) for score_deck's
+			// gate; the envelope dedupes the pair.
+			output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(takeawayMissingError(i)))
 		}
 
 		output.Slides = append(output.Slides, slide)
@@ -1060,6 +1060,16 @@ func slideTitleStatesTakeaway(s SlideInput) bool {
 		// pod" argues, "Fund performance by vintage" labels.
 		if i == 0 && takeawayTitleImperatives[word] {
 			return true
+		}
+	}
+	// A sentence-case title with a verb from the wider action-title lexicon
+	// after its first word is a claim too ("Middle office and operations hold
+	// the largest AI capacity unlock"); Title Case labels stay unconvinced.
+	if titleInSentenceCase(words) {
+		for _, w := range words[1:] {
+			if titleWordIsVerb(w) {
+				return true
+			}
 		}
 	}
 	return false

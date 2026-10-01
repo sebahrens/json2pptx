@@ -166,7 +166,21 @@ type QualityGateCriteria struct {
 	MaxP0Findings           int  `json:"max_p0_findings"`
 	MaxP1Findings           int  `json:"max_p1_findings"`
 	RequireTakeawayOnCharts bool `json:"require_takeaway_on_charts"`
-	AllowAccentOverload     bool `json:"allow_accent_overload"`
+	// MaxTopicTitlePct caps the share of scored slides whose title is not an
+	// action title (TITLE_NOT_ACTION: a topic, a stock label or over 15
+	// words). The skill states the rule; at info weight a deck of topic titles
+	// scored 99 and passed (go-slide-creator-kuurd). A share rather than a
+	// count, because the verb test is a heuristic and one misread title must
+	// not block a sound deck; at least minTopicTitlesForShare are needed to
+	// trip it. 0 disables it. Unsourced data slides (DATA_WITHOUT_SOURCE) are
+	// review-weighted in the score but are not a gate criterion: the
+	// calibration corpus's good decks carry them.
+	MaxTopicTitlePct int `json:"max_topic_title_pct"`
+	// RequireStoryline fails the gate on the deck-structure findings
+	// NO_EXECUTIVE_SUMMARY and CLOSING_WITHOUT_NEXT_STEPS
+	// (go-slide-creator-kuurd).
+	RequireStoryline    bool `json:"require_storyline"`
+	AllowAccentOverload bool `json:"allow_accent_overload"`
 	// MaxProblemSlidesPct caps the share of slides carrying at least one
 	// finding. Without it a deck reached 95-100 with an unresolved review
 	// finding on every slide — five slides each holding a single one-word
@@ -204,6 +218,15 @@ const (
 	// minProblemSlidesForShare is the fewest blemished slides that can trip the
 	// share criterion.
 	minProblemSlidesForShare = 3
+
+	// DefaultQualityGateMaxTopicTitlePct is the action-title ceiling: a deck
+	// may carry a stray label, not a storyline of them. The review's weak deck
+	// had topic titles on 5 of 9 slides (55%); the calibration corpus's good
+	// decks have none (go-slide-creator-kuurd).
+	DefaultQualityGateMaxTopicTitlePct = 25
+	// minTopicTitlesForShare is the fewest topic titles that can trip the
+	// action-title criterion, so a two-slide showcase with one label passes.
+	minTopicTitlesForShare = 2
 )
 
 // DefaultQualityGateCriteria returns the fixed ship-quality thresholds used by
@@ -215,6 +238,8 @@ func DefaultQualityGateCriteria() QualityGateCriteria {
 		MaxP0Findings:           DefaultQualityGateMaxP0Findings,
 		MaxP1Findings:           DefaultQualityGateMaxP1Findings,
 		RequireTakeawayOnCharts: true,
+		MaxTopicTitlePct:        DefaultQualityGateMaxTopicTitlePct,
+		RequireStoryline:        true,
 		AllowAccentOverload:     false,
 		MaxProblemSlidesPct:     DefaultQualityGateMaxProblemSlidesPct,
 		MinCompositionScore:     DefaultQualityGateMinCompositionScore,
@@ -223,8 +248,9 @@ func DefaultQualityGateCriteria() QualityGateCriteria {
 
 // EvaluateQualityGate computes a QualityGate verdict against the given score
 // and findings using the supplied criteria. Reason order is deterministic:
-// score → P0 → P1 → substantive review → takeaway → accent_overload → composition → problem-slide
-// share, so agents can pattern-match on the leading reason.
+// score → P0 → P1 → substantive review → takeaway → action titles → storyline
+// → accent_overload → composition → problem-slide share, so agents can
+// pattern-match on the leading reason.
 //
 // findings should be the same slice that produced the score (i.e. already
 // scoped to the slides being evaluated when slide_indices is set); the gate
@@ -244,6 +270,8 @@ func EvaluateQualityGate(ds *DeckScore, findings []patterns.FitFinding, criteria
 	}
 
 	var p0, p1, substantiveReviews, takeawayMissing, accentOverload int
+	var topicTitles int
+	storyline := map[string]int{}
 	for _, f := range findings {
 		switch f.Action {
 		case "refuse":
@@ -259,6 +287,10 @@ func EvaluateQualityGate(ds *DeckScore, findings []patterns.FitFinding, criteria
 			takeawayMissing++
 		case patterns.ErrCodeAccentOverload:
 			accentOverload++
+		case patterns.ErrCodeTitleNotAction:
+			topicTitles++
+		case patterns.ErrCodeNoExecutiveSummary, patterns.ErrCodeClosingWithoutNextSteps:
+			storyline[f.Code]++
 		}
 	}
 
@@ -272,19 +304,13 @@ func EvaluateQualityGate(ds *DeckScore, findings []patterns.FitFinding, criteria
 		gate.Reasons = append(gate.Reasons, fmt.Sprintf("%d substantive review finding(s) remain (readability, empty content, or contrast)", substantiveReviews))
 	}
 	if criteria.RequireTakeawayOnCharts && takeawayMissing > 0 {
-		gate.Reasons = append(gate.Reasons, fmt.Sprintf("%d chart/matrix slide(s) missing takeaway", takeawayMissing))
+		gate.Reasons = append(gate.Reasons, fmt.Sprintf("%d chart/matrix slide(s) missing takeaway (require_takeaway_on_charts)", takeawayMissing))
 	}
+	gate.Reasons = append(gate.Reasons, storylineGateReasons(ds, criteria, topicTitles, storyline)...)
 	if !criteria.AllowAccentOverload && accentOverload > 0 {
 		gate.Reasons = append(gate.Reasons, fmt.Sprintf("%d slide(s) emit accent_overload (too many distinct accents)", accentOverload))
 	}
-	// Composition (deck rhythm). Only when the score was computed over the whole
-	// deck — ds.Composition is nil on the slide_indices path, where a rhythm
-	// verdict would be meaningless.
-	if criteria.MinCompositionScore > 0 && ds.Composition != nil && ds.Composition.Score < criteria.MinCompositionScore {
-		reason := fmt.Sprintf("composition %d < min_composition_score %d", ds.Composition.Score, criteria.MinCompositionScore)
-		if codes := compositionCodes(ds.Composition); codes != "" {
-			reason += " (" + codes + ")"
-		}
+	if reason := compositionGateReason(ds, criteria); reason != "" {
 		gate.Reasons = append(gate.Reasons, reason)
 	}
 
@@ -301,6 +327,41 @@ func EvaluateQualityGate(ds *DeckScore, findings []patterns.FitFinding, criteria
 
 	gate.Passed = len(gate.Reasons) == 0
 	return gate
+}
+
+// compositionGateReason applies the deck-rhythm floor. Only when the score was
+// computed over the whole deck — ds.Composition is nil on the slide_indices
+// path, where a rhythm verdict would be meaningless.
+func compositionGateReason(ds *DeckScore, criteria QualityGateCriteria) string {
+	if criteria.MinCompositionScore <= 0 || ds.Composition == nil || ds.Composition.Score >= criteria.MinCompositionScore {
+		return ""
+	}
+	reason := fmt.Sprintf("composition %d < min_composition_score %d", ds.Composition.Score, criteria.MinCompositionScore)
+	if codes := compositionCodes(ds.Composition); codes != "" {
+		reason += " (" + codes + ")"
+	}
+	return reason
+}
+
+// storylineGateReasons applies the action-title share and require_storyline
+// criteria (go-slide-creator-kuurd).
+func storylineGateReasons(ds *DeckScore, criteria QualityGateCriteria, topicTitles int, storyline map[string]int) []string {
+	var reasons []string
+	if criteria.MaxTopicTitlePct > 0 && len(ds.PerSlide) > 0 && topicTitles >= minTopicTitlesForShare {
+		if pct := topicTitles * 100 / len(ds.PerSlide); pct > criteria.MaxTopicTitlePct {
+			reasons = append(reasons, fmt.Sprintf("%d of %d slides lack an action title (%d%%, TITLE_NOT_ACTION) — exceeds max_topic_title_pct %d",
+				topicTitles, len(ds.PerSlide), pct, criteria.MaxTopicTitlePct))
+		}
+	}
+	if criteria.RequireStoryline && len(storyline) > 0 {
+		codes := make([]string, 0, len(storyline))
+		for code := range storyline {
+			codes = append(codes, code)
+		}
+		sort.Strings(codes)
+		reasons = append(reasons, fmt.Sprintf("deck storyline incomplete (require_storyline: %s)", strings.Join(codes, ", ")))
+	}
+	return reasons
 }
 
 // gateActionCodes names the distinct findings behind an action-based gate
@@ -399,6 +460,14 @@ var breadthExemptCodes = map[string]bool{
 	patterns.ErrCodeChartShapeInferred: true,
 	patterns.ErrCodeTitleNotAction:     true,
 	patterns.ErrCodeTitleTooLong:       true,
+	// Storyline findings carry their own gate criteria (require_action_titles,
+	// require_sources, require_takeaway_on_charts, require_storyline); counting
+	// them toward the share too would charge one defect twice and collapse the
+	// score of an otherwise sound deck (go-slide-creator-kuurd).
+	patterns.ErrCodeDataWithoutSource:       true,
+	patterns.ErrCodeTakeawayMissing:         true,
+	patterns.ErrCodeNoExecutiveSummary:      true,
+	patterns.ErrCodeClosingWithoutNextSteps: true,
 	// Layout-balance advisories belong with the airiness family above
 	// (go-slide-creator-u9xfy).
 	patterns.ErrCodeVerticalImbalance: true,

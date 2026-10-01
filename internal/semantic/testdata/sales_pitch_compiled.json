@@ -2,6 +2,7 @@
   "template": "warm-coral",
   "design_mode": "constrained",
   "type_scale": "comfortable",
+  "source": "Acme customer benchmark, 2025 (n = 42 deployments)",
   "slides": [
     {
       "layout_id": "title",

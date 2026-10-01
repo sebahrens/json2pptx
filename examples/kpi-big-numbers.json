@@ -31,7 +31,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Q4 2025 Performance Summary"
+          "text_value": "Q4 revenue reached $12.4M, up 18% on Q3"
         }
       ],
       "shape_grid": {
@@ -161,7 +161,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Engineering Velocity"
+          "text_value": "Engineering merged 342 PRs while holding 99.7% uptime"
         }
       ],
       "shape_grid": {
@@ -224,7 +224,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Sales Pipeline"
+          "text_value": "Pipeline of $48M is 83% of target; cycle time needs focus"
         }
       ],
       "shape_grid": {

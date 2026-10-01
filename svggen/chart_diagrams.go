@@ -1838,7 +1838,7 @@ func parseBubblePerCategoryData(data map[string]any) ([]ChartSeries, error) {
 		"title": true, "subtitle": true, "series": true,
 		"colors": true, "x_label": true, "y_label": true,
 		"x_axis_title": true, "y_axis_title": true,
-		"data_order": true,
+		"data_order": true, "footnote": true,
 	}
 
 	var series []ChartSeries

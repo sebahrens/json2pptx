@@ -1,4 +1,5 @@
 {
+  "source": "Illustrative figures",
   "template": "warm-coral",
   "chrome": {
     "confidentiality": "Confidential",
@@ -25,12 +26,41 @@
       ]
     },
     {
+      "layout_id": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Q1 was profitable and revenue rose every quarter"
+        }
+      ],
+      "pattern": {
+        "name": "exec-summary",
+        "values": {
+          "points": [
+            {
+              "lead": "Net income reached $4.5M",
+              "support": "Operating expenses of $10.1M absorbed most of the $14.6M gross profit."
+            },
+            {
+              "lead": "Enterprise drives revenue",
+              "support": "The enterprise platform delivers 45% of revenue across five product lines."
+            },
+            {
+              "lead": "Security is the skill gap",
+              "support": "The team scores 70 on security against 92 on backend engineering."
+            }
+          ]
+        }
+      }
+    },
+    {
       "slide_type": "chart",
       "content": [
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Profit Bridge"
+          "text_value": "Q1 net income reached $4.5M after $10.1M of operating expenses"
         },
         {
           "placeholder_id": "body",
@@ -58,7 +88,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Team Competency Assessment"
+          "text_value": "Security at 70 is the team's weakest skill; backend leads at 92"
         },
         {
           "placeholder_id": "body",
@@ -85,7 +115,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Customer Satisfaction"
+          "text_value": "NPS reached 72, well inside the excellent range"
         },
         {
           "placeholder_id": "body",
@@ -109,7 +139,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Revenue by Segment"
+          "text_value": "The enterprise platform delivers 45% of revenue"
         },
         {
           "placeholder_id": "body",
@@ -137,7 +167,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Quarterly Comparison"
+          "text_value": "Revenue rose every quarter, from $12M in Q1 to $18M in Q4"
         },
         {
           "placeholder_id": "body",

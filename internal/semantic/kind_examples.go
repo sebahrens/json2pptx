@@ -278,7 +278,7 @@ var kindExamples = map[SlideKind]map[string]any{
 			"slide_type": "content",
 			"layout_id":  "blank-title",
 			"content": []any{
-				map[string]any{"placeholder_id": "title", "type": "text", "text_value": "What the steering committee said"},
+				map[string]any{"placeholder_id": "title", "type": "text", "text_value": "The steering committee will not move the go-live date"},
 			},
 			"pattern": map[string]any{
 				"name": "pull-quote",

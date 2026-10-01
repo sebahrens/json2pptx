@@ -46,6 +46,7 @@ Content types and their value fields:
 - "text": "text_value":"string"
 - "bullets": "bullets_value":["item1","item2"]
 - "body_and_bullets": "body_and_bullets_value":{"body":"...","bullets":["..."],"trailing_body":"..."}
+- "body_and_lead": "body_and_lead_value":{"lead":"...","bullets":["..."]}
 - "bullet_groups": "bullet_groups_value":{"body":"...","groups":[{"header":"...","bullets":["..."]}],"trailing_body":"..."}
 - "table": "table_value":{"headers":["H1","H2"],"rows":[["a","b"],["c","d"]]} — a cell may be {"content":"On track","conditional":{"rule":"equals","threshold":"On track","fill":"accent3"}}; rules: always|positive|negative|threshold|gte|lte|between|equals|contains, threshold is a number, a string, or [lo,hi] for between, and the rule is evaluated against the cell's own content
 - "chart": "chart_value":{"type":"bar|grouped_bar|stacked_bar|line|area|stacked_area|pie|donut|scatter|bubble|radar|waterfall|funnel|gauge|treemap","title":"...","data":{...}}

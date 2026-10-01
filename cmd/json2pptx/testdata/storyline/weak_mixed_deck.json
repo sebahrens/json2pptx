@@ -1,0 +1,226 @@
+{
+ "template": "midnight-blue",
+ "slides": [
+  {
+   "layout_id": "title",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Q3 Business Review"
+    },
+    {
+     "placeholder_id": "subtitle",
+     "type": "text",
+     "text_value": "Executive Committee"
+    }
+   ]
+  },
+  {
+   "layout_id": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Revenue Overview"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Revenue grew 18% YoY to $42M in Q3",
+      "Gross margin expanded to 61%, 3 pts ahead of plan",
+      "Net revenue retention was 112% for the quarter",
+      "EMEA pipeline grew 35% quarter over quarter",
+      "Churn rose to 4.1% in the SMB segment",
+      "Enterprise segment bookings up 22%",
+      "Average deal size increased to $48K"
+     ]
+    }
+   ]
+  },
+  {
+   "layout_id": "blank-title",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Key Metrics"
+    }
+   ],
+   "pattern": {
+    "name": "kpi-4up",
+    "values": [
+     {
+      "big": "$42M",
+      "small": "Revenue"
+     },
+     {
+      "big": "61%",
+      "small": "Gross margin"
+     },
+     {
+      "big": "112%",
+      "small": "NRR"
+     },
+     {
+      "big": "4.1%",
+      "small": "SMB churn"
+     }
+    ]
+   }
+  },
+  {
+   "layout_id": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Margin Analysis"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "COGS per customer fell 9% with infrastructure consolidation",
+      "Support cost per ticket fell from $31 to $26",
+      "Cloud spend was flat at $2.1M despite 18% growth",
+      "Services margin improved to 34% from 29%",
+      "Headcount costs grew 11%, below revenue growth",
+      "Hosting migration delivered $400K in annualised savings",
+      "Margin guidance for Q4 raised to 62%"
+     ]
+    }
+   ]
+  },
+  {
+   "layout_id": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Revenue"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "chart",
+     "chart_value": {
+      "type": "bar_chart",
+      "title": "Quarterly revenue",
+      "data": {
+       "categories": [
+        "Q1",
+        "Q2",
+        "Q3",
+        "Q4"
+       ],
+       "series": [
+        {
+         "name": "Revenue",
+         "values": [
+          34,
+          40,
+          44,
+          48
+         ]
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "layout_id": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Pipeline"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Total pipeline reached $118M, 3.2x coverage of Q4 target",
+      "EMEA pipeline up 35% after the London office opened",
+      "Enterprise pipeline up 40% on the new partner channel",
+      "Average sales cycle shortened to 44 days",
+      "Win rate improved to 27% from 24%",
+      "Top 10 deals represent $21M of Q4 pipeline",
+      "Two strategic deals slipped to Q1"
+     ]
+    }
+   ]
+  },
+  {
+   "layout_id": "blank-title",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Pipeline Metrics"
+    }
+   ],
+   "pattern": {
+    "name": "kpi-4up",
+    "values": [
+     {
+      "big": "$118M",
+      "small": "Pipeline"
+     },
+     {
+      "big": "3.2x",
+      "small": "Coverage"
+     },
+     {
+      "big": "27%",
+      "small": "Win rate"
+     },
+     {
+      "big": "44d",
+      "small": "Cycle"
+     }
+    ]
+   }
+  },
+  {
+   "layout_id": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Churn"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "SMB churn rose to 4.1% from 3.2% in Q2",
+      "Enterprise churn held at 0.8%",
+      "Exit surveys cite onboarding gaps as the top reason",
+      "Time-to-first-value is 31 days for SMB vs 12 for enterprise",
+      "Support ticket volume for SMB rose 19%",
+      "Churned accounts had 40% lower product adoption",
+      "SMB NPS fell 6 points to 31"
+     ]
+    }
+   ]
+  },
+  {
+   "layout_id": "closing",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Thank you"
+    },
+    {
+     "placeholder_id": "subtitle",
+     "type": "text",
+     "text_value": "Questions?"
+    }
+   ]
+  }
+ ]
+}
