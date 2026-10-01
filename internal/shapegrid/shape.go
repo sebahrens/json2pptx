@@ -3,7 +3,9 @@ package shapegrid
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -84,9 +86,11 @@ func generateShapeXML(spec *ShapeSpec, id uint32, bounds pptx.RectEmu, autofitSc
 		}
 	}
 
-	// Adjustments
-	for name, val := range spec.Adjustments {
-		opts.Adjustments = append(opts.Adjustments, pptx.AdjustValue{Name: name, Value: int64(val)})
+	// Adjustments, in name order: ranging over the map directly made a
+	// two-handle shape (an upArrow's adj1/adj2) emit its <a:gd> elements in
+	// a random order, so identical input could produce different bytes.
+	for _, name := range slices.Sorted(maps.Keys(spec.Adjustments)) {
+		opts.Adjustments = append(opts.Adjustments, pptx.AdjustValue{Name: name, Value: int64(spec.Adjustments[name])})
 	}
 
 	// Default roundRect to sharp corners (adj=0) when no explicit adj is set.
