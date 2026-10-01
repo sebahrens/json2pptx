@@ -107,6 +107,12 @@ type Palette struct {
 	// theme slots. Theme-derived palettes leave it empty.
 	ExtraAccents []Color
 
+	// SeriesAvoid lists the accents a template names as semantic positive /
+	// negative (green / red). Automatic series colours defer them behind
+	// every other usable colour, so "EMEA" is not painted the alert red
+	// (go-slide-creator-orqni). Explicit author colours are unaffected.
+	SeriesAvoid []Color
+
 	// Semantic colors.
 	Success Color
 	Warning Color
@@ -253,6 +259,7 @@ func (p *Palette) Clone() *Palette {
 	}
 	cp := *p
 	cp.ExtraAccents = append([]Color(nil), p.ExtraAccents...)
+	cp.SeriesAvoid = append([]Color(nil), p.SeriesAvoid...)
 	return &cp
 }
 
@@ -978,6 +985,13 @@ func applySemanticAccents(p *Palette, theme []ThemeColorInput, spec SemanticAcce
 	}
 	p.Success = choose(spec.Positive, 120, false)
 	p.Error = choose(spec.Negative, 0, false)
+	p.SeriesAvoid = nil
+	if spec.Positive != "" {
+		p.SeriesAvoid = append(p.SeriesAvoid, p.Success)
+	}
+	if spec.Negative != "" {
+		p.SeriesAvoid = append(p.SeriesAvoid, p.Error)
+	}
 	p.Warning = choose(spec.Neutral, 210, true)
 }
 

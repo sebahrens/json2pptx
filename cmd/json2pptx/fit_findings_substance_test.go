@@ -252,6 +252,39 @@ func TestChartCategoryLabels_ReadsTheStructuredForm(t *testing.T) {
 	}
 }
 
+// The slice ceiling applies to the _chart spelling RULES.md mandates: an
+// 8-slice pie_chart / donut_chart used to fall through to the 12-category
+// ceiling and draw no finding (go-slide-creator-ihlsr).
+func TestChartLegibility_PieChartSpellingHitsSliceCeiling(t *testing.T) {
+	for _, typ := range []string{"pie", "pie_chart", "donut_chart", "Donut", "doughnut"} {
+		if got, _ := chartCategoryCeiling(typ, []string{"a"}); got != chartMaxSliceCategories {
+			t.Errorf("%s: ceiling %d, want the slice ceiling %d", typ, got, chartMaxSliceCategories)
+		}
+	}
+	raw := `{"template":"t","slides":[{"slide_type":"chart","content":[
+		{"placeholder_id":"body","type":"chart","chart_value":{"type":"pie_chart","data":{"A":30,"B":20,"C":15,"D":10,"E":9,"F":7,"G":5,"H":4,"sort":"none"}}}]}]}`
+	var in PresentationInput
+	if err := json.Unmarshal([]byte(raw), &in); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	var found bool
+	for _, f := range collectChartLegibilityFindings(&in) {
+		if f.Code != patterns.ErrCodeChartOverloaded {
+			continue
+		}
+		found = true
+		if !strings.Contains(f.Message, "8 slices") || !strings.Contains(f.Message, "bar_chart") {
+			t.Errorf("message should count 8 slices (not the sort directive) and point at bar_chart: %s", f.Message)
+		}
+		if f.Fix == nil || f.Fix.Params["use_type"] != "bar_chart" {
+			t.Errorf("fix should carry use_type bar_chart: %+v", f.Fix)
+		}
+	}
+	if !found {
+		t.Error("an 8-slice pie_chart drew no CHART_OVERLOADED")
+	}
+}
+
 // The ceiling has to fire on the structured form end to end, not just count it.
 func TestChartLegibility_FiresOnStructuredPie(t *testing.T) {
 	cats := make([]any, 15)
@@ -271,7 +304,7 @@ func TestChartLegibility_FiresOnStructuredPie(t *testing.T) {
 	for _, f := range collectChartLegibilityFindings(&in) {
 		if f.Code == patterns.ErrCodeChartOverloaded {
 			found = true
-			if !strings.Contains(f.Message, "15 categories") {
+			if !strings.Contains(f.Message, "15 slices") {
 				t.Errorf("message does not report the real count: %s", f.Message)
 			}
 		}

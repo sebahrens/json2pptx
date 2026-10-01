@@ -59,7 +59,7 @@ Display trends over time with filled areas beneath the line.
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `show_legend` | `bool` | `false` | Display legend |
-| `show_values` | `bool` | `false` | Show value labels |
+| `show_values` | `bool` | labelled for one series up to 12 points | Show value labels; omitted, a single-series area with at most 12 points is labelled, `false` opts out |
 | `show_grid` | `bool` | `false` | Display background grid |
 | `palette` | `string\|string[]` | `corporate` | Color scheme |
 

@@ -261,7 +261,7 @@ type DiagramStyle struct {
 	DataPalette     []string          `json:"-" yaml:"-"`                                         // Ordered hex colors for chart series (internal use, from TemplateMetadata)
 	FontFamily      string            `json:"font_family,omitempty" yaml:"font_family,omitempty"` // Font for labels and text
 	ShowLegend      bool              `json:"show_legend,omitempty" yaml:"show_legend,omitempty"` // Display legend
-	ShowValues      bool              `json:"show_values,omitempty" yaml:"show_values,omitempty"` // Display values on elements
+	ShowValues      *bool             `json:"show_values,omitempty" yaml:"show_values,omitempty"` // Display values on elements; nil = the chart default (labelled for bar / short line charts), false opts out
 	Scale           string            `json:"scale,omitempty" yaml:"scale,omitempty"`             // Bar/grouped-bar value axis: linear (default) or log
 	Background      string            `json:"background,omitempty" yaml:"background,omitempty"`   // Background color
 	// ValueFormat is one number format for the diagram's values — axis ticks,

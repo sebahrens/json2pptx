@@ -66,8 +66,42 @@ func TestDistinctSeriesPalette_FallsBackBeyondTemplateAccents(t *testing.T) {
 			}
 		}
 	}
-	if got[1] != p.TextSecondary {
-		t.Errorf("series 1 = %s, want dk2 fallback %s", got[1].Hex(), p.TextSecondary.Hex())
+	for i := 0; i < 3; i++ {
+		if got[i] == p.TextSecondary || got[i] == p.TextPrimary {
+			t.Errorf("series %d = %s: a text ink is never a series colour (go-slide-creator-orqni)", i, got[i].Hex())
+		}
+	}
+}
+
+// TestDistinctSeriesPalette_DefersSemanticAndNearBlack covers
+// go-slide-creator-orqni: the template's semantic red / green and a
+// near-black accent go behind every other usable colour, and the fallbacks
+// never reach for text ink.
+func TestDistinctSeriesPalette_DefersSemanticAndNearBlack(t *testing.T) {
+	p := DefaultPalette()
+	blue, red, amber, green := MustParseColor("#2E5090"), MustParseColor("#D4463A"), MustParseColor("#E8A838"), MustParseColor("#43A047")
+	p.Accent1, p.Accent2, p.Accent3, p.Accent4 = blue, red, amber, green
+	p.Accent5, p.Accent6 = MustParseColor("#26A69A"), MustParseColor("#5C6BC0")
+	p.SeriesAvoid = []Color{green, red}
+	got := distinctSeriesPalette(p, 3)
+	for i := 0; i < 3; i++ {
+		if got[i] == red || got[i] == green {
+			t.Errorf("series %d painted the semantic %s; got %v", i, got[i].Hex(), got[:3])
+		}
+	}
+	if got[0] != blue {
+		t.Errorf("accent1 must lead, got %s", got[0].Hex())
+	}
+
+	ps := pStylePalette() // accent4 is #000000
+	ps.TextPrimary = MustParseColor("#000000")
+	ps.TextSecondary = MustParseColor("#000000")
+	for n := 2; n <= 5; n++ {
+		for i, c := range distinctSeriesPalette(ps, n)[:n] {
+			if d := deltaE76(c, ps.TextPrimary); d < MinSeriesDeltaE {
+				t.Errorf("n=%d series %d = %s is within ΔE %.1f of dk1", n, i, c.Hex(), d)
+			}
+		}
 	}
 }
 

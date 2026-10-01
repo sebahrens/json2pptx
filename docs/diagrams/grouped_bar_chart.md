@@ -59,7 +59,7 @@ Compare multiple series side-by-side within each category using grouped bars.
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `show_legend` | `bool` | `false` | Display legend |
-| `show_values` | `bool` | `false` | Show value labels on bars |
+| `show_values` | `bool` | labelled up to 16 bars | Show value labels on bars; omitted, charts with at most 16 bars are labelled (no value axis or gridlines), `false` opts out |
 | `scale` | `"linear"\|"log"` | `"linear"` | Explicit value-axis scale; a log axis is visibly labelled. |
 | `show_grid` | `bool` | `false` | Display background grid |
 | `palette` | `string\|string[]` | `corporate` | Color scheme |

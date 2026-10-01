@@ -54,7 +54,7 @@ Pie chart variant with a center hole, useful for displaying a central metric.
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `show_legend` | `bool` | `false` | Display legend |
-| `show_values` | `bool` | `false` | Show percentage labels |
+| `show_values` | `bool` | `false` | Percentage labels are always drawn: "Name NN%" with no legend up to 6 slices, percent-only beside a legend above 6 |
 | `palette` | `string\|string[]` | `corporate` | Color scheme |
 
 ## Examples

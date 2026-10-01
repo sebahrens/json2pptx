@@ -23,7 +23,7 @@ func highlightReq(categories []any, values []any, extra map[string]any, showValu
 		Data:   data,
 		Output: OutputSpec{Width: 800, Height: 500},
 		Style: StyleSpec{
-			ShowValues: showValues,
+			ShowValues: showValues, ShowValuesSet: true,
 			ThemeColors: []ThemeColorInput{
 				{Name: "dk1", RGB: "#000000"},
 				{Name: "lt1", RGB: "#FFFFFF"},
@@ -74,11 +74,17 @@ func TestBarHighlight_Defaults(t *testing.T) {
 		t.Errorf("time series should accent the last bar, fills %v", fills)
 	}
 
-	// Any other chart accents its top bar.
+	// Any other chart accents its top bar — first, once the default
+	// descending sort has ranked it (go-slide-creator-oocqj).
 	funcs := []any{"Marketing", "Engineering", "Legal"}
 	fills = barFills(t, highlightReq(funcs, []any{52.0, 71.0, 26.0}, nil, true))
-	if len(fills) != 3 || fills[1] != testAccent || fills[0] != testNeutral || fills[2] != testNeutral {
+	if len(fills) != 3 || fills[0] != testAccent || fills[1] != testNeutral || fills[2] != testNeutral {
 		t.Errorf("ranked chart should accent the top bar only, fills %v", fills)
+	}
+	// With the author's order kept, the accent stays on the largest bar.
+	fills = barFills(t, highlightReq(funcs, []any{52.0, 71.0, 26.0}, map[string]any{"sort": "none"}, true))
+	if len(fills) != 3 || fills[1] != testAccent || fills[0] != testNeutral || fills[2] != testNeutral {
+		t.Errorf("sort none: the largest (second) bar should be accented, fills %v", fills)
 	}
 }
 

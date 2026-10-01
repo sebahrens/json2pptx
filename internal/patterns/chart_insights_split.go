@@ -10,6 +10,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // ---------------------------------------------------------------------------
@@ -130,8 +131,8 @@ const (
 	cisSoWhatMax        = 160
 	cisChartLabelMax    = 60
 	cisUnitMax          = 12
-	cisDataLabelMaxPts  = 16 // auto data labels only when the chart has at most this many points
-	cisSourceRowPt      = 30 // source line row: one 12pt line plus insets
+	cisDataLabelMaxPts  = svggen.LabelledDefaultMaxBarPoints // auto data labels only when the chart has at most this many points
+	cisSourceRowPt      = 30                                 // source line row: one 12pt line plus insets
 )
 
 // UnmarshalJSON decodes the values and normalizes the {label: value} chart
@@ -749,15 +750,12 @@ func chartSeriesNames(d *types.DiagramSpec) []string {
 	return names
 }
 
-// dataLabelChartTypes are the chart types whose value labels read well.
-var dataLabelChartTypes = map[string]bool{
-	"bar_chart": true, "column_chart": true, "stacked_bar_chart": true, "grouped_bar_chart": true,
-	"horizontal_bar_chart": true, "line_chart": true, "area_chart": true, "bar": true, "line": true,
-}
-
-// chartWithDataLabels returns a copy of the chart with value labels turned on
-// (Style.ShowValues) when forced, or by default for label-friendly chart types
-// with few points. The caller's spec and style are never mutated.
+// chartWithDataLabels returns a copy of the chart with the value-label switch
+// (Style.ShowValues) resolved: the pattern override wins, then the author's
+// style.show_values, then a data.data_labels bool, then the renderer's own
+// labelled default (svggen.DefaultDataLabels — the same rule a raw
+// slide_type chart gets, go-slide-creator-oocqj). The caller's spec and style
+// are never mutated.
 func chartWithDataLabels(d *types.DiagramSpec, force *bool) *types.DiagramSpec {
 	cp := cloneDiagramSpec(d)
 	if cp == nil {
@@ -771,14 +769,17 @@ func chartWithDataLabels(d *types.DiagramSpec, force *bool) *types.DiagramSpec {
 		b, isBool := raw.(bool)
 		on = isBool && b
 	}
-	if force != nil {
-		on = *force
-	}
 	style := types.DiagramStyle{}
 	if cp.Style != nil {
 		style = *cp.Style
 	}
-	style.ShowValues = on || style.ShowValues && force == nil
+	if style.ShowValues != nil {
+		on = *style.ShowValues
+	}
+	if force != nil {
+		on = *force
+	}
+	style.ShowValues = &on
 	cp.Style = &style
 	return cp
 }
@@ -787,16 +788,11 @@ func chartWithDataLabels(d *types.DiagramSpec, force *bool) *types.DiagramSpec {
 // charts with at most cisDataLabelMaxPts points, and single-series line /
 // area charts with at most 12 points (labels of crossing series collide).
 func dataLabelsByDefault(d *types.DiagramSpec) bool {
-	if !dataLabelChartTypes[d.Type] {
+	series := len(chartSeriesNames(d))
+	if series == 0 {
 		return false
 	}
-	points := chartPointCount(d)
-	switch d.Type {
-	case "line_chart", "area_chart", "line":
-		return len(chartSeriesNames(d)) == 1 && points <= 12
-	default:
-		return points <= cisDataLabelMaxPts
-	}
+	return svggen.DefaultDataLabels(d.Type, series, chartPointCount(d)/series)
 }
 
 // chartPointCount counts series values (categories × series).

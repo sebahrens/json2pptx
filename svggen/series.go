@@ -3,6 +3,7 @@ package svggen
 import (
 	"fmt"
 	"math"
+	"sort"
 )
 
 // SeriesOrientation specifies vertical or horizontal orientation for series.
@@ -1060,6 +1061,11 @@ type ArcSeriesConfig struct {
 
 	// SortSlices sorts slices by value (descending).
 	SortSlices bool
+
+	// NameInLabel writes "Name NN%" outside labels so the chart needs no
+	// legend (direct labelling, go-slide-creator-ihlsr). Off, an outside label
+	// carries the value only and a legend names the slices.
+	NameInLabel bool
 }
 
 func (c ArcSeriesConfig) formatSliceValue(value, total float64) string {
@@ -1175,6 +1181,7 @@ func (as *ArcSeries) Draw(slices []ArcSlice) *ArcSeries {
 		minLabelSweep = 12.0 // ~3.3%
 	}
 
+	var outside []arcLabelPlacement
 	for i, slice := range slices {
 		if slice.Value < 0 {
 			continue
@@ -1211,14 +1218,103 @@ func (as *ArcSeries) Draw(slices []ArcSlice) *ArcSeries {
 
 		// Draw label — skip for tiny slices to prevent overlap
 		if as.config.ShowLabels && as.config.LabelPosition != ArcLabelNone && sweepAngle >= minLabelSweep {
-			as.drawArcLabel(centerX, centerY, currentAngle, sweepAngle, slice, total)
+			if p, ok := as.drawArcLabel(centerX, centerY, currentAngle, sweepAngle, slice, total); ok {
+				outside = append(outside, p)
+			}
 		}
 
 		currentAngle += sweepAngle
 	}
 
+	// Outside labels are placed together so neighbours on one side never
+	// overprint: a run of thin slices (2% next to 1%) used to print "2%1%"
+	// on top of each other (go-slide-creator-ihlsr).
+	as.drawOutsideLabels(outside)
+
 	b.Pop()
 	return as
+}
+
+// arcLabelPlacement is one outside slice label before collision resolution.
+type arcLabelPlacement struct {
+	text          string
+	x, y          float64 // anchor after canvas clamping
+	align         TextAlign
+	right         bool    // label sits right of the centre
+	edgeX, edgeY  float64 // point on the slice's outer edge, for a leader
+	height, width float64
+	fontSize      float64
+}
+
+// drawOutsideLabels spreads each side's outside labels vertically so no two
+// overlap (at least one line height apart, kept on the canvas), then draws
+// them, with a thin leader to the slice when a label moved off its natural
+// position.
+func (as *ArcSeries) drawOutsideLabels(labels []arcLabelPlacement) {
+	if len(labels) == 0 {
+		return
+	}
+	b := as.builder
+	style := b.StyleGuide()
+	for _, right := range []bool{false, true} {
+		var side []int
+		for i, l := range labels {
+			if l.right == right {
+				side = append(side, i)
+			}
+		}
+		sort.SliceStable(side, func(a, c int) bool { return labels[side[a]].y < labels[side[c]].y })
+		natural := make([]float64, len(side))
+		for k, i := range side {
+			natural[k] = labels[i].y
+		}
+		spreadLabelsVertically(labels, side, style.Spacing.XS, b.Height()-style.Spacing.XS)
+		for k, i := range side {
+			l := labels[i]
+			if math.Abs(l.y-natural[k]) > l.height*0.25 {
+				b.Push()
+				b.SetStrokeColor(style.Palette.TextMuted).SetStrokeWidth(0.5)
+				endX := l.x - style.Spacing.XS
+				if !l.right {
+					endX = l.x + style.Spacing.XS
+				}
+				b.DrawLine(l.edgeX, l.edgeY, endX, l.y)
+				b.Pop()
+			}
+			b.SetFontSize(l.fontSize)
+			b.SetFontWeight(style.Typography.WeightNormal)
+			b.DrawText(l.text, l.x, l.y, l.align, TextBaselineMiddle)
+		}
+	}
+}
+
+// spreadLabelsVertically pushes the labels at idx (sorted by y) apart so
+// consecutive centres are at least one label height (plus 15%) apart, keeping
+// them within [top, bottom].
+func spreadLabelsVertically(labels []arcLabelPlacement, idx []int, top, bottom float64) {
+	if len(idx) < 2 {
+		return
+	}
+	gap := func(i int) float64 { return labels[i].height * 1.15 }
+	for k := 1; k < len(idx); k++ {
+		prev, cur := idx[k-1], idx[k]
+		if minY := labels[prev].y + (gap(prev)+gap(cur))/2; labels[cur].y < minY {
+			labels[cur].y = minY
+		}
+	}
+	last := idx[len(idx)-1]
+	if over := labels[last].y + labels[last].height/2 - bottom; over > 0 {
+		labels[last].y -= over
+		for k := len(idx) - 2; k >= 0; k-- {
+			next, cur := idx[k+1], idx[k]
+			if maxY := labels[next].y - (gap(next)+gap(cur))/2; labels[cur].y > maxY {
+				labels[cur].y = maxY
+			}
+		}
+	}
+	if first := idx[0]; labels[first].y-labels[first].height/2 < top {
+		labels[first].y = top + labels[first].height/2
+	}
 }
 
 // DrawFromValues draws arcs from simple value slice.
@@ -1304,8 +1400,10 @@ func (as *ArcSeries) drawArc(centerX, centerY, startAngle, sweepAngle float64, c
 	path.Draw()
 }
 
-// drawArcLabel draws a label for an arc slice.
-func (as *ArcSeries) drawArcLabel(centerX, centerY, startAngle, sweepAngle float64, slice ArcSlice, total float64) {
+// drawArcLabel draws an inside label for an arc slice. An outside label is
+// returned as a placement (ok true) for drawOutsideLabels to resolve against
+// its neighbours instead of being drawn here.
+func (as *ArcSeries) drawArcLabel(centerX, centerY, startAngle, sweepAngle float64, slice ArcSlice, total float64) (arcLabelPlacement, bool) {
 	b := as.builder
 	style := b.StyleGuide()
 
@@ -1334,6 +1432,9 @@ func (as *ArcSeries) drawArcLabel(centerX, centerY, startAngle, sweepAngle float
 	var label string
 	if as.config.LabelPosition == ArcLabelOutside {
 		label = pctStr
+		if as.config.NameInLabel && slice.Label != "" {
+			label = slice.Label + "  " + pctStr
+		}
 	} else if slice.Label != "" {
 		label = slice.Label + " " + pctStr
 	} else {
@@ -1411,7 +1512,17 @@ func (as *ArcSeries) drawArcLabel(centerX, centerY, startAngle, sweepAngle float
 		labelY = maxY
 	}
 
+	if as.config.LabelPosition == ArcLabelOutside {
+		edgeR := as.config.OuterRadius + 1
+		return arcLabelPlacement{
+			text: label, x: labelX, y: labelY, align: align,
+			right: math.Cos(midAngle) >= 0,
+			edgeX: centerX + edgeR*math.Cos(midAngle), edgeY: centerY + edgeR*math.Sin(midAngle),
+			height: labelHeight, width: labelWidth, fontSize: fontSize,
+		}, true
+	}
 	b.DrawText(label, labelX, labelY, align, TextBaselineMiddle)
+	return arcLabelPlacement{}, false
 }
 
 // =============================================================================

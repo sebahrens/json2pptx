@@ -154,7 +154,13 @@ executable one.
   single-series bar chart (and `horizontal-bar-with-callouts`) is neutral
   grey with accent1 only on `highlight` bars (0-based indices or names;
   default the last period of a time series, else the top bar); set it to the
-  bar(s) the title names. Waterfalls accent the decreases.
+  bar(s) the title names. Waterfalls accent the decreases. Charts are
+  labelled by default on every path (bars ≤16, single-series line/area ≤12
+  points, treemaps; `style.show_values: false` opts out); bars rank
+  descending (`data.sort`), `data.orientation: "horizontal"` for rankings /
+  long names; multi-series `data.highlight` names the series (rest grey,
+  default the one the title names); pies sort, label "Name NN%" ≤6 slices,
+  fold <3% into Other — over 7 slices `CHART_OVERLOADED` says use a bar.
   A table with no `style` renders as a
   consulting table (unfilled 11pt bold header over a 1pt rule, 12pt rows,
   hairline rules, no zebra); `table-highlight` matches it. `header_background`

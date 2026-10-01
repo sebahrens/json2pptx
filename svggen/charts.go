@@ -55,6 +55,12 @@ type ChartData struct {
 	// nothing); otherwise the chart picks its own (defaultHighlight).
 	Highlight    []int
 	HighlightSet bool
+
+	// SeriesHighlight lists the 0-based series a multi-series chart keeps in
+	// colour; every other series turns neutral (go-slide-creator-kbzu2).
+	// SeriesHighlightSet is true when data.highlight named series.
+	SeriesHighlight    []int
+	SeriesHighlightSet bool
 }
 
 // ChartSeries represents a single data series.
@@ -391,6 +397,10 @@ func (bc *BarChart) drawLabelledAxes(plotArea Rect, xScale *CategoricalScale, yS
 	bc.xAxisCfg = xAxisConfig
 	NewAxis(b, xAxisConfig).DrawCategoricalAxis(xScale, plotArea.X, plotArea.Y+plotArea.H)
 
+	// The value axis goes, but an authored y-axis title still names the
+	// unit the labels are in.
+	drawYAxisTitleOnly(b, plotArea, yScale, bc.config.YAxisTitle, bc.config.ValueFmt)
+
 	baseY := plotArea.Y + plotArea.H
 	if yScale != nil {
 		if lo, hi := yScale.DomainBounds(); lo <= 0 && hi >= 0 {
@@ -401,6 +411,23 @@ func (bc *BarChart) drawLabelledAxes(plotArea Rect, xScale *CategoricalScale, yS
 	b.SetStrokeColor(b.StyleGuide().Palette.TextPrimary).SetStrokeWidth(labelledBaselinePt)
 	b.DrawLine(plotArea.X, baseY, plotArea.X+plotArea.W, baseY)
 	b.Pop()
+}
+
+// drawYAxisTitleOnly draws just the y-axis title of a labelled chart: the
+// value axis line, ticks and tick labels are dropped, but an authored title
+// still names the unit the labels are in. No title, nothing drawn.
+func drawYAxisTitleOnly(b *SVGBuilder, plotArea Rect, yScale *LinearScale, title string, vf *ValueFormatter) {
+	if title == "" || yScale == nil {
+		return
+	}
+	yAxisConfig := DefaultAxisConfig(AxisPositionLeft)
+	yAxisConfig.Title = title
+	yAxisConfig.RangeExtent = plotArea.H
+	yAxisConfig.ValueFmt = vf
+	yAxisConfig.HideAxisLine = true
+	yAxisConfig.HideTicks = true
+	yAxisConfig.HideLabels = true
+	NewAxis(b, yAxisConfig).DrawLinearAxis(yScale, plotArea.X, plotArea.Y)
 }
 
 // NewBarChart creates a new bar chart renderer.
@@ -429,11 +456,14 @@ func (bc *BarChart) Draw(data ChartData) error {
 	if err := bc.prepareValueScale(data); err != nil {
 		return err
 	}
+	if bc.config.Horizontal {
+		return bc.drawHorizontal(data)
+	}
 	bc.applyLabelledMode()
 
 	b := bc.builder
 	style := b.StyleGuide()
-	colors := bc.getColors(style, len(data.Series))
+	colors := seriesHighlightColors(style.Palette, bc.getColors(style, len(data.Series)), data)
 
 	b.CheckChartCapacity(len(data.Series), len(data.Categories))
 
@@ -1242,64 +1272,80 @@ func (bc *BarChart) drawStackedBars(data ChartData, plotArea Rect, xScale *Categ
 		}
 	}
 
-	// Draw per-segment value labels inside each stacked bar segment.
-	// Uses contrast-aware text color so labels are readable on any fill.
-	{
-		labelFontSize := math.Max(7, math.Min(8, style.Typography.SizeCaption))
-		b.SetFontSize(labelFontSize)
-		b.SetFontWeight(style.Typography.WeightNormal)
+	b.Pop()
 
-		posForLabels := make([]float64, numCategories)
-		negForLabels := make([]float64, numCategories)
-
-		for seriesIdx, series := range data.Series {
-			segColor := colors[seriesIdx%len(colors)]
-			if series.Color != nil {
-				segColor = *series.Color
+	if !bc.config.ShowValues {
+		return
+	}
+	// Segment labels and stack totals go through the chart's one value
+	// formatter, so a stack never prints "12" next to "5.0", at no less
+	// than the 10pt caption floor (go-slide-creator-uz89d).
+	posForLabels := make([]float64, numCategories)
+	negForLabels := make([]float64, numCategories)
+	for seriesIdx, series := range data.Series {
+		segColor := colors[seriesIdx%len(colors)]
+		if series.Color != nil {
+			segColor = *series.Color
+		}
+		for catIdx := 0; catIdx < numCategories && catIdx < len(series.Values); catIdx++ {
+			v := series.Values[catIdx]
+			if v == 0 {
+				continue
 			}
-
-			for catIdx := 0; catIdx < numCategories && catIdx < len(series.Values); catIdx++ {
-				v := series.Values[catIdx]
-				if v == 0 {
-					continue
-				}
-
-				cat := data.Categories[catIdx]
-				x := adjustedXScale.Scale(cat)
-
-				cumulativeForLabels := cumulativeFor(posForLabels, negForLabels, v)
-				segBottom := cumulativeForLabels[catIdx]
-				segTop := segBottom + v
-
-				yBottom := adjustedYScale.Scale(segBottom)
-				yTop := adjustedYScale.Scale(segTop)
-
-				// Center the label in the segment
-				labelY := (yTop + yBottom) / 2
-				segHeight := math.Abs(yBottom - yTop)
-
-				// Only show label if segment is tall enough (15px minimum)
-				if segHeight > 15 {
-					// Format: integers if >= 10, one decimal if < 10
-					var label string
-					if math.Abs(v) >= 10 {
-						label = fmt.Sprintf("%.0f", v)
-					} else {
-						label = fmt.Sprintf("%.1f", v)
-					}
-
-					// Use contrast-aware text color for readability
-					b.SetTextColor(segColor.TextColorFor())
-					b.DrawText(label, x, labelY, TextAlignCenter, TextBaselineMiddle)
-				}
-
-				cumulativeForLabels[catIdx] = segTop
-			}
+			x := adjustedXScale.Scale(data.Categories[catIdx])
+			cumulativeForLabels := cumulativeFor(posForLabels, negForLabels, v)
+			segBottom := cumulativeForLabels[catIdx]
+			segTop := segBottom + v
+			yBottom := adjustedYScale.Scale(segBottom)
+			yTop := adjustedYScale.Scale(segTop)
+			seg := Rect{X: x - barWidth/2, Y: math.Min(yTop, yBottom), W: barWidth, H: math.Abs(yBottom - yTop)}
+			drawStackSegmentLabel(b, style, bc.config.ChartConfig, v, seg, segColor)
+			cumulativeForLabels[catIdx] = segTop
 		}
 	}
-
+	// The total above each positive stack: a stacked bar's message is
+	// usually the total, so the reader should not have to add it up.
+	if len(data.Series) < 2 {
+		return
+	}
+	b.Push()
+	b.SetFontSize(stackLabelFont(style)).SetFontWeight(style.Typography.WeightBold)
+	b.SetTextColor(style.Palette.TextPrimary)
+	for catIdx := 0; catIdx < numCategories; catIdx++ {
+		if posCumulative[catIdx] <= 0 {
+			continue
+		}
+		total := posCumulative[catIdx] + negCumulative[catIdx]
+		x := adjustedXScale.Scale(data.Categories[catIdx])
+		label := TrueMinus(bc.config.ValueFmt.FormatOr(total, bc.config.ValueFormat))
+		b.DrawText(label, x, adjustedYScale.Scale(posCumulative[catIdx])-labelledValueGapPt, TextAlignCenter, TextBaselineBottom)
+	}
 	b.Pop()
 	_ = baseY
+}
+
+// stackLabelFont is the stacked-bar segment / total label size: the type
+// scale's small size, never under the 10pt caption floor.
+func stackLabelFont(style *StyleGuide) float64 {
+	return math.Max(10, style.Typography.SizeSmall)
+}
+
+// drawStackSegmentLabel centres a stacked segment's value inside it in an ink
+// measured against the segment fill, formatted by the chart's value
+// formatter. A segment too small to hold the label at the floor size is left
+// unlabelled rather than printed in tiny type.
+func drawStackSegmentLabel(b *SVGBuilder, style *StyleGuide, cfg ChartConfig, v float64, seg Rect, fill Color) {
+	size := stackLabelFont(style)
+	label := TrueMinus(cfg.ValueFmt.FormatOr(v, cfg.ValueFormat))
+	b.Push()
+	defer b.Pop()
+	b.SetFontSize(size).SetFontWeight(style.Typography.WeightNormal)
+	w, _ := b.MeasureText(label)
+	if seg.H < size*1.3 || seg.W < w+4 {
+		return
+	}
+	b.SetTextColor(fill.TextColorFor())
+	b.DrawText(label, seg.X+seg.W/2, seg.Y+seg.H/2, TextAlignCenter, TextBaselineMiddle)
 }
 
 // getColors returns colors for the series.
@@ -1359,6 +1405,11 @@ type LineChart struct {
 	// xAxisCfg is the x-axis configuration drawAxes actually drew with; the
 	// legend is placed below it (go-slide-creator-jp5d).
 	xAxisCfg AxisConfig
+
+	// labelled is set for one Draw when a single series carries a value on
+	// every point: the gridlines and value-axis ticks would only repeat the
+	// labels, so they go (go-slide-creator-oocqj).
+	labelled bool
 }
 
 // NewLineChart creates a new line chart renderer.
@@ -1378,6 +1429,7 @@ func (lc *LineChart) Draw(data ChartData) error {
 	b := lc.builder
 	style := b.StyleGuide()
 	colors := lc.getColors(style, len(data.Series))
+	colors = seriesHighlightColors(style.Palette, colors, data)
 
 	b.CheckChartCapacity(len(data.Series), len(data.Categories))
 
@@ -1385,6 +1437,10 @@ func (lc *LineChart) Draw(data ChartData) error {
 	// direct labels are active so the labels (drawn at the line end) fit
 	// inside the SVG viewport instead of being clipped.
 	directLabels := useDirectLabels(lc.config.ChartConfig, len(data.Series))
+	// A series highlight names its series at the line ends whatever their
+	// count: the highlighted one in colour, the context ones in grey
+	// (go-slide-creator-kbzu2).
+	directLabels = lc.highlightDirectLabels(data, directLabels)
 	directLabelMargin := 0.0
 	if directLabels {
 		directLabelMargin = measureDirectLabelMargin(b, style, data.Series)
@@ -1396,7 +1452,7 @@ func (lc *LineChart) Draw(data ChartData) error {
 	lc.config.ResolveValueFormatter(chartDataValues(data), true)
 
 	yMin, yMax := lc.calculateYDomain(data)
-	EnsureYAxisFits(b, &lc.config.ChartConfig, yMin, yMax)
+	lc.prepareValueAxis(yMin, yMax, len(data.Series))
 
 	// Calculate layout (shared across Cartesian chart types)
 	layout := ComputeCartesianLayout(lc.config.ChartConfig, style, data.Title, data.Subtitle, data.Footnote, len(data.Series))
@@ -1451,7 +1507,7 @@ func (lc *LineChart) Draw(data ChartData) error {
 	yScale.Nice(true)
 
 	// Draw grid (horizontal + optional vertical per chart_style override)
-	if lc.config.ShowGrid {
+	if lc.config.ShowGrid && !lc.labelled {
 		DrawCartesianGridWithVerticals(b, plotArea, yScale, xScale, lc.config.ShowVerticalGrid)
 	}
 
@@ -1517,6 +1573,31 @@ func (lc *LineChart) Draw(data ChartData) error {
 	return nil
 }
 
+// highlightDirectLabels turns direct labels on (and the legend off) for a
+// series highlight, which names its series at the line ends whatever their
+// count (go-slide-creator-kbzu2).
+func (lc *LineChart) highlightDirectLabels(data ChartData, directLabels bool) bool {
+	if lc.config.PreferDirectLabels && data.SeriesHighlightSet && len(data.Series) > 1 {
+		lc.config.ShowLegend = false
+		return true
+	}
+	return directLabels
+}
+
+// prepareValueAxis decides the labelled layout: a single labelled series
+// drops its value axis, so its left gutter shrinks; otherwise the gutter grows
+// to fit the y tick labels.
+func (lc *LineChart) prepareValueAxis(yMin, yMax float64, seriesCount int) {
+	lc.labelled = lc.config.ShowValues && seriesCount == 1
+	if !lc.labelled {
+		EnsureYAxisFits(lc.builder, &lc.config.ChartConfig, yMin, yMax)
+		return
+	}
+	if lc.config.YAxisTitle == "" && lc.config.MarginRight < lc.config.MarginLeft {
+		lc.config.MarginLeft = lc.config.MarginRight
+	}
+}
+
 // drawLegendOrDirectLabels routes to either the legend renderer or the
 // inline direct-label renderer for line/area charts. Centralises the branch
 // so LineChart.Draw stays at one decision call site and the cyclomatic
@@ -1525,8 +1606,17 @@ func (lc *LineChart) drawLegendOrDirectLabels(directLabels bool, style *StyleGui
 	b := lc.builder
 
 	if directLabels {
-		if drawLineDirectSeriesLabels(b, style, data, plotArea, xScale, yScale, colors, marginRight) {
+		labelColors := seriesLabelColors(style.Palette, colors, data)
+		if drawLineDirectSeriesLabels(b, style, data, plotArea, xScale, yScale, labelColors, marginRight) {
 			return
+		}
+		// With a highlight, the names that matter are the highlighted ones:
+		// label those alone rather than fall back to a legend.
+		if data.SeriesHighlightSet {
+			only, onlyColors := highlightedOnly(data, labelColors)
+			if drawLineDirectSeriesLabels(b, style, only, plotArea, xScale, yScale, onlyColors, marginRight) {
+				return
+			}
 		}
 		// The end labels could not be stacked inside the plot without
 		// overlapping, so the series are named in a legend instead — an
@@ -1919,7 +2009,11 @@ func (lc *LineChart) drawAxes(plotArea Rect, xScale Scale, yScale *LinearScale, 
 	}
 	lc.xAxisCfg = xAxisConfig
 
-	// Y axis (shared)
+	// Y axis (shared); a labelled line keeps only an authored title.
+	if lc.labelled {
+		drawYAxisTitleOnly(b, plotArea, yScale, lc.config.YAxisTitle, lc.config.ValueFmt)
+		return
+	}
 	DrawCartesianYAxis(b, plotArea, yScale, lc.config.YAxisTitle, lc.config.ValueFmt)
 }
 
@@ -1932,19 +2026,27 @@ func (lc *LineChart) drawLines(data ChartData, plotArea Rect, xScale Scale, ySca
 	// Show enough decimals for the labels to be distinct (go-slide-creator-66qb).
 	lineValueFormat := autoValueFormat(lc.config.ValueFormat, chartDataValues(data))
 
-	for seriesIdx, series := range data.Series {
+	// Context series first, so a highlighted series is painted on top.
+	for _, seriesIdx := range seriesDrawOrder(data) {
+		series := data.Series[seriesIdx]
+		emphasised := seriesHighlighted(data, seriesIdx)
 		lineConfig := DefaultLineSeriesConfig()
 		lineConfig.Color = colors[seriesIdx%len(colors)]
 		lineConfig.MarkerFillColor = lineConfig.Color
 		lineConfig.StrokeWidth = lc.config.StrokeWidth
 		lineConfig.ShowMarkers = lc.config.ShowMarkers
+		if !emphasised {
+			// Grey context: a thin line without markers or values.
+			lineConfig.StrokeWidth = contextStrokeWidth(lc.config.StrokeWidth)
+			lineConfig.ShowMarkers = false
+		}
 		lineConfig.MarkerSize = lc.config.MarkerSize
 		lineConfig.Smooth = lc.config.Smooth
 		lineConfig.Tension = lc.config.Tension
 		lineConfig.FillArea = lc.config.FillArea
 		lineConfig.FillColor = colors[seriesIdx%len(colors)]
 		lineConfig.FillOpacity = lc.config.FillOpacity
-		lineConfig.ShowValues = lc.config.ShowValues
+		lineConfig.ShowValues = lc.config.ShowValues && emphasised
 		lineConfig.ValueFormat = lineValueFormat
 		lineConfig.ValueFmt = lc.config.ValueFmt
 
@@ -2774,6 +2876,10 @@ type PieChartConfig struct {
 
 	// ExplodedSlices is a list of slice indices to explode.
 	ExplodedSlices []int
+
+	// NameInLabel writes "Name NN%" outside labels; the dispatcher turns the
+	// legend off with it (direct labelling, go-slide-creator-ihlsr).
+	NameInLabel bool
 }
 
 // DefaultPieChartConfig returns default pie chart configuration.
@@ -2846,6 +2952,9 @@ func (pc *PieChart) Draw(data ChartData) error {
 	// with their labels, colors and explode flags — before anything is
 	// totalled, measured or drawn, and report what was dropped.
 	colors := pc.getColors(style, len(values))
+	if data.HighlightSet {
+		colors = pieHighlightColors(style.Palette, colors[0], len(values), data.Highlight)
+	}
 	values, labels, colors, exploded := pc.excludeNegativeSlices(values, labels, colors)
 
 	// Detect zero-sum condition: all values zero or all negative.
@@ -3005,12 +3114,15 @@ func (pc *PieChart) Draw(data ChartData) error {
 			b.Push()
 			b.SetFontSize(style.Typography.SizeBody)
 			b.SetFontWeight(style.Typography.WeightNormal)
-			// Outside labels print the value only — the legend names the
-			// slices (ArcSeries.drawLabel). Budgeting for "name value" here
-			// pinned the radius to its 65% floor, so pies and donuts filled
-			// barely a third of their frame (go-slide-creator-iry0p).
-			for _, v := range values {
-				w, _ := b.MeasureText(labelConfig.formatSliceValue(v, total))
+			// With a legend, outside labels print the value only — budgeting
+			// for "name value" there pinned the radius to its 65% floor
+			// (go-slide-creator-iry0p). Direct labels carry the name too.
+			for i, v := range values {
+				text := labelConfig.formatSliceValue(v, total)
+				if pc.config.NameInLabel && i < len(labels) && labels[i] != "" {
+					text = labels[i] + "  " + text
+				}
+				w, _ := b.MeasureText(text)
 				if w > maxLabelW {
 					maxLabelW = w
 				}
@@ -3071,6 +3183,7 @@ func (pc *PieChart) Draw(data ChartData) error {
 	arcConfig.ExplodeOffset = pc.config.ExplodeOffset
 	arcConfig.ExplodedSlices = exploded
 	arcConfig.Colors = colors
+	arcConfig.NameInLabel = pc.config.NameInLabel
 
 	arcs := NewArcSeries(b, arcConfig)
 

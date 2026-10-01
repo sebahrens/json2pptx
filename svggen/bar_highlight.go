@@ -10,15 +10,20 @@ import (
 
 // A chart should show the point its slide title makes, so a single-series bar
 // chart paints every bar in a neutral tint and only the bar(s) the title is
-// about in accent1 (go-slide-creator-sdxii). The same neutral ramp drives the
-// waterfall: totals neutral 60%, increases neutral 35%, decreases accent1.
+// about in accent1 (go-slide-creator-sdxii). The waterfall uses the same
+// inks: totals neutral 60%, decreases accent1, increases a legible accent1
+// tint or shade (waterfallIncreaseInk).
 const (
 	// BarNeutralInk is the dk1 share of a neutral (non-highlighted) bar.
 	BarNeutralInk = 0.38
 	// WaterfallTotalInk is the dk1 share of a waterfall total / subtotal bar.
 	WaterfallTotalInk = 0.60
-	// WaterfallIncreaseInk is the dk1 share of a waterfall increase bar.
-	WaterfallIncreaseInk = 0.35
+	// WaterfallIncreaseShare is the accent1 share (over the background) a
+	// waterfall increase bar is painted in when that tint is legible.
+	WaterfallIncreaseShare = 0.55
+	// waterfallIncreaseMinContrast is the least contrast an increase bar
+	// keeps against the chart background (WCAG non-text 3:1).
+	waterfallIncreaseMinContrast = 3.0
 
 	// labelledBarSlotShare is a bar's width as a share of its category slot
 	// (band plus gap) when every bar carries its value label.
@@ -41,6 +46,42 @@ func NeutralInk(p *Palette, share float64) Color {
 	ink := p.TextPrimary
 	ink.A = math.Max(0, math.Min(1, share))
 	return ink.BlendOver(bg)
+}
+
+// waterfallIncreaseInk is the fill of a waterfall increase bar: a tint of
+// accent1 when it keeps 3:1 against the background, otherwise a shade of it,
+// and in either case at least MinSeriesDeltaE away from the decrease (accent1)
+// and total (neutral) fills, so the three classes stay distinct. The old
+// neutral 35% grey nearly vanished on white (go-slide-creator-rmm0x).
+func waterfallIncreaseInk(p *Palette, total, decrease Color) Color {
+	bg := p.Background
+	if bg.A < 1 {
+		bg = bg.BlendOver(Color{R: 255, G: 255, B: 255, A: 1})
+	}
+	tint := func(share float64) Color {
+		c := p.Accent1
+		c.A = share
+		return c.BlendOver(bg)
+	}
+	candidates := []Color{
+		tint(WaterfallIncreaseShare),
+		tint(0.7),
+		p.Accent1.Darken(0.35),
+		p.Accent1.Darken(0.55),
+		NeutralInk(p, 0.85),
+	}
+	for _, c := range candidates {
+		if c.ContrastWith(bg) >= waterfallIncreaseMinContrast &&
+			deltaE76(c, decrease) >= MinSeriesDeltaE && deltaE76(c, total) >= MinSeriesDeltaE {
+			return c
+		}
+	}
+	for _, c := range candidates {
+		if c.ContrastWith(bg) >= waterfallIncreaseMinContrast {
+			return c
+		}
+	}
+	return candidates[0]
 }
 
 // TrueMinus replaces the ASCII hyphen that marks a negative number with the

@@ -1113,27 +1113,27 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		// --- Charts ---
 		"bar": {
 			RequiredKeys: []string{"categories", "series"},
-			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels"},
-			Description:  "categories: string array; series: [{name, values: number[]}]",
+			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels", "highlight", "sort", "orientation"},
+			Description:  "categories: string array; series: [{name, values: number[]}]. Up to 16 bars are labelled by default (value on each bar, no value axis or gridlines; data_labels: false or style.show_values: false opts out). sort: desc|asc|none (default desc for a single series of non-time, non-ordinal categories). orientation: \"horizontal\" for rankings or category names over ~14 characters. highlight: category indices or names painted accent1 (single series).",
 		},
 		"line": {
 			RequiredKeys: []string{"series"},
-			OptionalKeys: []string{"categories", "colors", "x_label", "y_label", "annotations", "data_labels"},
-			Description:  "series: [{name, values: number[]}]; categories required unless series contain time_strings or time_values",
+			OptionalKeys: []string{"categories", "colors", "x_label", "y_label", "annotations", "data_labels", "highlight"},
+			Description:  "series: [{name, values: number[]}]; categories required unless series contain time_strings or time_values. highlight: the series (names or indices) the slide is about — kept in accent1 and labelled at the line end, the rest grey context (defaults to the one series the slide title names). A single series up to 12 points is labelled by default; markers drop past 12 points.",
 		},
 		"pie": {
 			RequiredKeys: []string{"values"},
-			OptionalKeys: []string{"categories", "colors"},
-			Description:  "values: number[]; categories: string[] for slice labels",
+			OptionalKeys: []string{"categories", "colors", "highlight", "sort", "group_small_below_pct"},
+			Description:  "values: number[]; categories: string[] for slice labels. Slices sort largest-first (sort: none keeps the authored order); up to 6 slices are labelled \"Name NN%\" with no legend; slices under 3% fold into \"Other\" when two or more qualify (group_small_below_pct, 0 = never); highlight paints the named slices accent1 and the rest grey. More than 7 slices: use a bar chart.",
 		},
 		"donut": {
 			RequiredKeys: []string{"values"},
-			OptionalKeys: []string{"categories", "colors"},
-			Description:  "values: number[]; categories: string[] for slice labels",
+			OptionalKeys: []string{"categories", "colors", "highlight", "sort", "group_small_below_pct"},
+			Description:  "values: number[]; categories: string[] for slice labels. Same defaults as pie: sorted largest-first, direct \"Name NN%\" labels up to 6 slices, small slices folded into \"Other\", highlight for the slice the slide is about.",
 		},
 		"area": {
 			RequiredKeys: []string{"categories", "series"},
-			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels"},
+			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels", "highlight"},
 			Description:  "categories: string array; series: [{name, values: number[]}]",
 		},
 		"radar": {
@@ -1148,8 +1148,8 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		},
 		"stacked_bar": {
 			RequiredKeys: []string{"categories", "series"},
-			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels"},
-			Description:  "categories: string[]; series: [{name, values: number[]}]",
+			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels", "sort", "orientation"},
+			Description:  "categories: string[]; series: [{name, values: number[]}]. Up to 16 segments carry segment labels (>= 10pt, one number format) and a bold total above each stack; data_labels: false drops both.",
 		},
 		"bubble": {
 			RequiredKeys: []string{"series"},
@@ -1163,8 +1163,8 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		},
 		"grouped_bar": {
 			RequiredKeys: []string{"categories", "series"},
-			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels"},
-			Description:  "categories: string[]; series: [{name, values: number[]}] (min 2 series)",
+			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels", "highlight", "sort", "orientation"},
+			Description:  "categories: string[]; series: [{name, values: number[]}] (min 2 series). highlight: the series the slide is about (others grey); orientation: \"horizontal\"; sort: desc|asc|none by category total.",
 		},
 		"waterfall": {
 			RequiredKeys: []string{"points"},
@@ -1184,7 +1184,7 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		"treemap": {
 			RequiredKeys: []string{"nodes"},
 			OptionalKeys: []string{"padding", "corner_radius"},
-			Description:  "nodes: [{label, value, children?, color?}] (alias: items or values)",
+			Description:  "nodes: [{label, value, children?, color?}] (alias: items or values). Cells print name + value (with share of the whole) by default; style.show_values: false shows names only.",
 		},
 		// --- Diagrams ---
 		"timeline": {

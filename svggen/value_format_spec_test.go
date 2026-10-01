@@ -298,7 +298,7 @@ func TestRenderedChartUsesOneNumberFormat(t *testing.T) {
 		ValueFormat: &ValueFormatSpec{Style: "compact", Prefix: "€"},
 	}))
 	euros = append(euros, extract(t, barReq(StyleSpec{
-		ValueFormat: &ValueFormatSpec{Style: "compact", Prefix: "€"},
+		ValueFormat: &ValueFormatSpec{Style: "compact", Prefix: "€"}, ShowValuesSet: true,
 	}))...)
 	joined := strings.Join(euros, " ")
 	for _, want := range []string{"€1.2M", "€800K", "€865K"} {

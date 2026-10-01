@@ -374,6 +374,11 @@ var (
 	// style="stroke:#...;..." segment. Line charts render their series as path
 	// strokes using this form.
 	chartPaletteStyleStrokeRegex = regexp.MustCompile(`stroke:(#[0-9a-fA-F]{6})`)
+
+	// chartPaletteStyleFillRegex captures style="fill:#..." segments. A pie
+	// draws its slices this way; with direct labels (<= 6 slices) it has no
+	// legend swatches to read the attribute form from (go-slide-creator-ihlsr).
+	chartPaletteStyleFillRegex = regexp.MustCompile(`fill:(#[0-9a-fA-F]{6})`)
 )
 
 // extractChartPaletteSeriesColors returns the in-document-order, deduplicated
@@ -387,6 +392,8 @@ func extractChartPaletteSeriesColors(svg, chartType string, palette []string) []
 	var matches []string
 	if chartType == "line_chart" {
 		matches = chartPaletteExtractMatches(chartPaletteStyleStrokeRegex, svg)
+	} else if chartType == "pie_chart" {
+		matches = chartPaletteExtractMatches(chartPaletteStyleFillRegex, svg)
 	} else {
 		matches = chartPaletteExtractMatches(chartPaletteAttrFillRegex, svg)
 	}

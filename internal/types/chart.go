@@ -314,7 +314,7 @@ type ChartStyle struct {
 	// wins when both are set.
 	ShowLegend bool `json:"show_legend,omitempty"`
 	// ShowValues draws the value on each data point / bar / slice.
-	ShowValues bool `json:"show_values,omitempty"`
+	ShowValues *bool `json:"show_values,omitempty"`
 	// Scale selects a bar/grouped-bar value axis: linear (default) or log.
 	Scale string `json:"scale,omitempty"`
 	// ValueFormat is ONE number format for the chart: the value axis ticks, the
@@ -634,10 +634,11 @@ func isAlreadySvggenFormat(data map[string]any, chartType ChartType) bool {
 // buildChartData constructs the data payload for svggen based on chart type.
 // It returns the data map, legacy warning strings, and structured diagnostics.
 func buildChartData(spec *ChartSpec) (map[string]any, []string, []ChartDiagnostic) {
-	// data.highlight is a directive, not a category: keep it out of the
-	// label->value conversion and hand it to svggen unchanged.
-	rest, highlight, ok := splitChartHighlight(spec.Data)
-	if !ok {
+	// data.highlight / sort / orientation / data_labels are directives, not
+	// categories: keep them out of the label->value conversion and hand them
+	// to svggen unchanged.
+	rest, directives := splitChartDirectives(spec.Data)
+	if len(directives) == 0 {
 		return buildChartDataPayload(spec)
 	}
 	stripped := *spec
@@ -645,37 +646,70 @@ func buildChartData(spec *ChartSpec) (map[string]any, []string, []ChartDiagnosti
 	if len(spec.DataOrder) > 0 {
 		stripped.DataOrder = make([]string, 0, len(spec.DataOrder))
 		for _, k := range spec.DataOrder {
-			if k != "highlight" {
+			if _, isDirective := directives[k]; !isDirective {
 				stripped.DataOrder = append(stripped.DataOrder, k)
 			}
 		}
 	}
 	data, warnings, diags := buildChartDataPayload(&stripped)
-	out := make(map[string]any, len(data)+1)
+	out := make(map[string]any, len(data)+len(directives))
 	for k, v := range data {
 		out[k] = v
 	}
-	out["highlight"] = highlight
+	for k, v := range directives {
+		out[k] = v
+	}
 	return out, warnings, diags
 }
 
-// splitChartHighlight returns data without an array-valued "highlight" key,
-// the highlight list, and whether one was present. data is not modified.
-func splitChartHighlight(data map[string]any) (map[string]any, []any, bool) {
-	highlight, ok := data["highlight"].([]any)
-	if !ok {
-		return data, nil, false
-	}
-	rest := make(map[string]any, len(data)-1)
+// splitChartDirectives returns data without its directive keys and the
+// directives themselves (nil when there are none). A directive key is only
+// one when its value has the directive's shape — an array highlight, a string
+// sort / orientation, a bool or object data_labels — so a numeric category
+// that happens to share the name stays a category. data is not modified.
+func splitChartDirectives(data map[string]any) (map[string]any, map[string]any) {
+	var directives map[string]any
 	for k, v := range data {
-		if k != "highlight" {
+		if !isChartDirective(k, v) {
+			continue
+		}
+		if directives == nil {
+			directives = make(map[string]any, 2)
+		}
+		directives[k] = v
+	}
+	if len(directives) == 0 {
+		return data, nil
+	}
+	rest := make(map[string]any, len(data)-len(directives))
+	for k, v := range data {
+		if _, isDirective := directives[k]; !isDirective {
 			rest[k] = v
 		}
 	}
-	return rest, highlight, true
+	return rest, directives
 }
 
-// buildChartDataPayload converts a chart's data (without data.highlight) into
+func isChartDirective(key string, v any) bool {
+	switch key {
+	case "highlight":
+		_, ok := v.([]any)
+		return ok
+	case "sort", "orientation":
+		_, ok := v.(string)
+		return ok
+	case "data_labels":
+		switch v.(type) {
+		case bool, map[string]any:
+			return true
+		}
+	case "group_small_below_pct":
+		return true
+	}
+	return false
+}
+
+// buildChartDataPayload converts a chart's data (without its directives) into
 // svggen's payload.
 func buildChartDataPayload(spec *ChartSpec) (map[string]any, []string, []ChartDiagnostic) {
 	// TimeData takes precedence over Data when set (for time-series charts).

@@ -60,7 +60,7 @@ Compare categories with bars split into stacked segments showing composition.
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `show_legend` | `bool` | `false` | Display legend |
-| `show_values` | `bool` | `false` | Show value labels on segments |
+| `show_values` | `bool` | labelled up to 16 segments | Segment labels (one number format, >= 10pt) plus a total per stack; omitted, on up to 16 segments, `false` opts out |
 | `show_grid` | `bool` | `false` | Display background grid |
 | `palette` | `string\|string[]` | `corporate` | Color scheme |
 

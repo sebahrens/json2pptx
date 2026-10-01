@@ -709,7 +709,7 @@ func TestShowGridConfiguration(t *testing.T) {
 					},
 				},
 				Style: StyleSpec{
-					ShowLegend: true,
+					ShowLegend: true, ShowValuesSet: true, // unlabelled: the labelled layout has no grid
 				},
 				Output: OutputSpec{
 					Width:  800,

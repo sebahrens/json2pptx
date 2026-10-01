@@ -260,6 +260,7 @@ func (ctx *singlePassContext) prepareImages() error {
 
 			switch item.Type {
 			case ContentDiagram:
+				item = withTitleSeriesHighlightItem(item, slideSpec)
 				ctx.processDiagramContent(slideNum, contentIdx, item, shape, shapeIdx, resolver)
 			case ContentImage:
 				ctx.processImageContent(slideNum, contentIdx, item, shape, shapeIdx)

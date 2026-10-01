@@ -133,6 +133,34 @@
     `max_problem_slides_pct` and `min_composition_score`, in the output
     schema.
 
+- **2026-10-01 — Chart defaults: labelled, ranked, emphasised, restrained (`go-slide-creator-oocqj`, `-kbzu2`, `-ihlsr`, `-uz89d`, `-orqni`, `-rmm0x`, `-0fc8y`).**
+  - `chart_value.style.show_values` / `diagram_value.style.show_values` are
+    now tri-state: omitted means the renderer default, which labels
+    bar-family charts with at most 16 bars, single-series line / area charts
+    with at most 12 points and treemaps on every path (raw, pattern, grid,
+    standalone svggen); `false` opts out. Labelled bars drop the value axis
+    and gridlines.
+  - New chart data directives (flat maps too): `data.sort`
+    (`desc`|`asc`|`none`; default `desc` for single-series non-time,
+    non-ordinal bar charts and for pies), `data.orientation`
+    (`vertical`|`horizontal`) on bar / grouped / stacked bar,
+    `data.highlight` naming SERIES on multi-series line / area / grouped bar
+    (default: the one series the slide title or takeaway names) and SLICES on
+    pie / donut, `data.group_small_below_pct` on pie / donut (default 3).
+  - Pies / donuts: largest-first, "Name NN%" labels and no legend up to 6
+    slices, collision-free outside labels. `CHART_OVERLOADED` now fires for
+    `pie_chart` / `donut_chart` above 7 slices with `fix.params.use_type:
+    "bar_chart"`.
+  - Stacked bars: segment labels in the chart's value format at >= 10pt
+    plus a bold total per stack. Treemaps print value (+ share) by default.
+  - Series colours: semantic positive / negative and near-black accents are
+    deferred, text inks never used, pale accents darkened rather than
+    replaced. Waterfall increases are a legible accent1 tint / shade.
+  - `get_data_format_hints` and `get_chart_capabilities` describe the new
+    keys and defaults; `recommend_visual` ranks pies only up to 5
+    categories, hands a ranking intent a horizontal sorted bar recipe, and
+    its line / grouped-bar recipes carry `highlight`.
+
 - **2026-09-30 — Grid diagrams obey the SVG strategy (`go-slide-creator-4c9m7`).**
   Diagram / chart cells embedded by patterns and `shape_grid` (e.g. the
   `chart-insights-split` / semantic `chart_insight` chart panel) now follow

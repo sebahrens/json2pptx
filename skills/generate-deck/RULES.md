@@ -47,6 +47,11 @@ The table is the published surface of the type-scale tokens in [`internal/tokens
 | 9 | Chart types use underscores: `stacked_bar`, `grouped_bar` | Hyphens (`stacked-bar`) silently fail |
 | 10 | Don't mix data formats. Single: `{"Q1": 10}`; Multi: `{categories, series}`; Waterfall: `{points}` | Pick one format per chart |
 | 10a | Visibly label the measure and supplied units; never invent units. Raw `bar_chart`: `title` and `data.y_label`/`data.y_axis_title`; otherwise check the live schema. | Use a title, axis, direct label or legend. `series.name`/`alt` alone may be invisible; an identified measure needs no redundant legend. |
+| 10c | Charts are labelled by default (raw and pattern paths): bars ≤16, single-series line / area ≤12 points (no value axis or gridlines then), treemaps (name + value + share). Opt out: `style.show_values: false` or `data.data_labels: false`. | Direct labels, no chart junk. |
+| 10d | Single-series bars of non-time, non-ordinal categories sort descending; `data.sort: "none"` keeps a meaningful order. `data.orientation: "horizontal"` (bar / grouped / stacked) for rankings or names over ~14 chars. | Ranked horizontal bars read in one glance. |
+| 10e | Multi-series line / area / grouped bar: `data.highlight` (series names / indices) keeps that series accent1, the rest grey; default = the one series the title / takeaway names. Markers drop past 12 points. Stacked bars: one-format ≥10pt segment labels + a total per stack. | Emphasis passes the 3-second test. |
+| 10f | Pie / donut: sorted largest-first; ≤6 slices labelled "Name NN%" without legend; <3% slices fold into "Other" (`data.group_small_below_pct`, 0 = never); `data.highlight` = accent1 slice, rest grey. >7 slices: `CHART_OVERLOADED` (`use_type: "bar_chart"`). | Pies only for a few coarse shares. |
+| 10g | Auto series colours skip the template's semantic red / green while other colours remain and never use dk1 / dk2; set `style.colors` when a colour must carry meaning. | Red reads as a verdict; black as a fault. |
 
 ## Slide Takeaway (the "so what" line)
 

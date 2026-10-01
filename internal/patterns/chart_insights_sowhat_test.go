@@ -41,23 +41,23 @@ func TestChartInsightsSplit_ChartCaption(t *testing.T) {
 func TestChartInsightsSplit_DataLabels(t *testing.T) {
 	on, off := true, false
 	src := barChart("Revenue")
-	if got := chartWithDataLabels(src, nil); got.Style == nil || !got.Style.ShowValues {
+	if got := chartWithDataLabels(src, nil); got.Style == nil || !*got.Style.ShowValues {
 		t.Error("bar chart with few points should get value labels by default")
 	}
 	if src.Style != nil {
 		t.Error("caller's chart spec must not be mutated")
 	}
-	if got := chartWithDataLabels(src, &off); got.Style.ShowValues {
+	if got := chartWithDataLabels(src, &off); *got.Style.ShowValues {
 		t.Error("data_labels:false must switch labels off")
 	}
 
 	line := &types.DiagramSpec{Type: "line_chart", Data: map[string]any{"categories": []any{"a", "b"}, "series": []any{
 		map[string]any{"name": "Plan", "values": []any{1, 2}}, map[string]any{"name": "Actual", "values": []any{2, 3}},
 	}}}
-	if chartWithDataLabels(line, nil).Style.ShowValues {
+	if *chartWithDataLabels(line, nil).Style.ShowValues {
 		t.Error("multi-series line charts should not get colliding labels by default")
 	}
-	if !chartWithDataLabels(line, &on).Style.ShowValues {
+	if !*chartWithDataLabels(line, &on).Style.ShowValues {
 		t.Error("data_labels:true must force labels on")
 	}
 
@@ -67,27 +67,27 @@ func TestChartInsightsSplit_DataLabels(t *testing.T) {
 		vals[i] = i
 	}
 	many.Data["series"] = []any{map[string]any{"name": "x", "values": vals}}
-	if chartWithDataLabels(many, nil).Style.ShowValues {
+	if *chartWithDataLabels(many, nil).Style.ShowValues {
 		t.Error("charts with many points should not be labelled by default")
 	}
 
 	configured := barChart("x")
 	configured.Data["data_labels"] = map[string]any{"format": "%.1f"}
-	if chartWithDataLabels(configured, nil).Style.ShowValues {
+	if *chartWithDataLabels(configured, nil).Style.ShowValues {
 		t.Error("an explicit data.data_labels payload is left to svggen")
 	}
 	boolOn := barChart("x")
 	boolOn.Data["data_labels"] = true
-	if !chartWithDataLabels(boolOn, nil).Style.ShowValues {
+	if !*chartWithDataLabels(boolOn, nil).Style.ShowValues {
 		t.Error("data.data_labels: true must keep value labels on (csclk.10)")
 	}
 	boolOff := barChart("x")
 	boolOff.Data["data_labels"] = false
-	if chartWithDataLabels(boolOff, nil).Style.ShowValues {
+	if *chartWithDataLabels(boolOff, nil).Style.ShowValues {
 		t.Error("data.data_labels: false must switch value labels off")
 	}
 	pie := &types.DiagramSpec{Type: "pie_chart", Data: map[string]any{"values": []any{1, 2}}}
-	if chartWithDataLabels(pie, nil).Style.ShowValues {
+	if *chartWithDataLabels(pie, nil).Style.ShowValues {
 		t.Error("non label-friendly chart types keep their defaults")
 	}
 }
