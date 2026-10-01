@@ -39,13 +39,16 @@ func collectSectionNumberSequenceFindings(input *PresentationInput, layouts []ty
 		return nil
 	}
 	predicted := predictSlideLayouts(input, layouts)
-	sectionIndex := 0
+	_, ordinals := deckSectionNumbers(input.Slides, layouts)
 	var out []patterns.FitFinding
 	for slideIndex, slide := range input.Slides {
-		if !isSectionSlideInput(slide, layouts) {
+		// Unnumbered dividers (section_number: false, Appendix / Q&A …) and
+		// authored section_number labels have no automatic number to
+		// contradict (go-slide-creator-7ldh9).
+		sectionIndex := ordinals[slideIndex]
+		if sectionIndex == 0 || (slide.SectionNumber != nil && slide.SectionNumber.Label != "") {
 			continue
 		}
-		sectionIndex++
 		var resolved *types.LayoutMetadata
 		if slideIndex < len(predicted) {
 			resolved = predicted[slideIndex]

@@ -794,14 +794,7 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 	// layout resolution, so it lands in the decorative section_number frame when
 	// the layout has one and falls back to the body/tagline slot otherwise
 	// (see convertSinglePresentationSlide / injectSectionNumber).
-	sectionNumbers := make([]string, len(slides))
-	sectionNum := 0
-	for i := range slides {
-		if isSectionSlideInput(slides[i], layouts) {
-			sectionNum++
-			sectionNumbers[i] = fmt.Sprintf("%02d", sectionNum)
-		}
-	}
+	sectionNumbers, _ := deckSectionNumbers(slides, layouts)
 
 	// Build per-slide section index for accent-strategy=section-keyed.
 	// Section indices start at 0 and increment each time a "section" slide is seen.
@@ -3172,9 +3165,10 @@ func composeChromeLine(chrome *ChromeInput) string {
 // title appended. Slides outside a section (cover, agenda, dividers, closing)
 // get an empty entry and fall back to the deck-wide line.
 //
-// Returns nil when no slide carries a section, so a deck that sets
-// section_crumb without a structure block costs nothing — and, importantly,
-// changes nothing.
+// Returns nil when no slide carries a section_title. This is the
+// layout-free first pass; the render paths then call
+// applyChromeSectionCrumb, which also covers flat decks from their section
+// dividers (go-slide-creator-gl5bh).
 func sectionCrumbFooterLines(base string, slides []SlideInput) []string {
 	lines := make([]string, len(slides))
 	any := false
@@ -3268,6 +3262,52 @@ func applyChromeTracker(specs []generator.SlideSpec, chrome *ChromeInput, slides
 	if chrome == nil || !chrome.Tracker {
 		return
 	}
+	sections := runningSectionTitles(specs, slides, layouts)
+	for i := range sections {
+		if sections[i] == "" || strings.TrimSpace(slides[i].Eyebrow) != "" {
+			continue
+		}
+		specs[i].Tracker = sections[i]
+	}
+}
+
+// applyChromeSectionCrumb rebuilds chrome.section_crumb's per-slide footer
+// lines from the same running section the tracker uses, so a flat deck with
+// section-divider slides gets its crumb too (go-slide-creator-gl5bh). It
+// replaces the structure-only lines chromeToFooterConfig derived from
+// section_title, which on a flat deck were silently empty.
+func applyChromeSectionCrumb(footer *generator.FooterConfig, specs []generator.SlideSpec, chrome *ChromeInput, slides []SlideInput, layouts []types.LayoutMetadata) {
+	if footer == nil || chrome == nil || !chrome.SectionCrumb {
+		return
+	}
+	sections := runningSectionTitles(specs, slides, layouts)
+	lines := make([]string, len(sections))
+	any := false
+	for i, sec := range sections {
+		if sec == "" {
+			continue
+		}
+		any = true
+		if footer.LeftText == "" {
+			lines[i] = sec
+		} else {
+			lines[i] = footer.LeftText + " | " + sec
+		}
+	}
+	if !any {
+		footer.LeftTextBySlide = nil
+		return
+	}
+	footer.LeftTextBySlide = lines
+}
+
+// runningSectionTitles is the per-slide running section shared by
+// chrome.tracker and chrome.section_crumb: the slide's own section_title (set
+// when structure.sections expands) or, on a flat deck, the title of the most
+// recent section-divider slide. Title, section-divider, closing and agenda
+// slides get "".
+func runningSectionTitles(specs []generator.SlideSpec, slides []SlideInput, layouts []types.LayoutMetadata) []string {
+	out := make([]string, len(specs))
 	layoutByID := make(map[string]*types.LayoutMetadata, len(layouts))
 	for i := range layouts {
 		layoutByID[layouts[i].ID] = &layouts[i]
@@ -3308,11 +3348,9 @@ func applyChromeTracker(specs []generator.SlideSpec, chrome *ChromeInput, slides
 		if section == "" && !structured {
 			section = running
 		}
-		if section == "" || strings.TrimSpace(slide.Eyebrow) != "" {
-			continue
-		}
-		specs[i].Tracker = section
+		out[i] = section
 	}
+	return out
 }
 
 // patternThemeFromDiag exposes template colors and the body font to pattern

@@ -236,6 +236,11 @@ var placeholderRules = []placeholderRule{
 	{slideType: "two-column", keywords: []string{"two column", "side by side", "left right", "dual", "split layout"}, baseScore: 0.88, rationale: "Two-column layout for side-by-side content"},
 	{slideType: "image", keywords: []string{"image", "photo", "picture", "screenshot", "visual"}, baseScore: 0.88, rationale: "Image-focused slide layout"},
 	{slideType: "blank", keywords: []string{"blank", "empty", "free form", "custom layout"}, baseScore: 0.80, rationale: "Blank slide for fully custom content"},
+	// go-slide-creator-biw2e / -deb2h: financials, P&L, pricing tiers and
+	// segment splits are tables in a consulting deck — not bullets, not a
+	// chart_insight. No candidate used to exist, so "financial table of P&L"
+	// fell through to raw_shape_grid at 0.30.
+	{slideType: "table", keywords: []string{"table", "tabular", "p&l", "profit and loss", "income statement", "balance sheet", "financials", "financial statement", "price list", "rate card", "segment split", "line items", "risk register"}, baseScore: 0.90, rationale: "Native PowerPoint table (content type table / DeckSpec kind table): exact figures in rows and columns, with totals_row for a totals / subtotals row, column_alignments for right-aligned numbers and the units in the header or caption"},
 }
 
 // RecommendVisual scores all visual categories against the given intent and hints,
@@ -309,6 +314,7 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 	// declared compose-affinity (PatternTaxonomy.ComposesWith).
 	all = append(all, scoreCompose(reg, intentLower, patternCandidates)...)
 	applyChartHint(all, hints, intentLower)
+	all = applyConsultingIntentRouting(all, intentLower, hints)
 
 	// Route ordered-steps / ToC intents away from the process_flow diagram. The
 	// process-flow *pattern* is already demoted inside scoreAndDedup; here we
@@ -401,6 +407,7 @@ func recommendVisualOnlyCandidates(reg *Registry, intentLower string, hints *Vis
 	}
 	preferNativeLabelledMatrix(out, intentLower)
 	applyChartHint(out, hints, intentLower)
+	out = adjustConsultingIntentScores(out, intentLower, hints)
 
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Score != out[j].Score {

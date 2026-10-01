@@ -124,7 +124,8 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 		"eyebrow":  {inject: func(s string) map[string]any { return map[string]any{"title": "Filler", "eyebrow": s} }, rendered: true},
 	},
 	KindSection: {
-		"title": {inject: func(s string) map[string]any { return map[string]any{"title": s} }, rendered: true},
+		"title":    {inject: func(s string) map[string]any { return map[string]any{"title": s} }, rendered: true},
+		"appendix": {inject: func(string) map[string]any { return map[string]any{"title": "Filler", "appendix": true} }, rendered: false, why: "appendix suppresses the chapter number rather than contributing text (TestStructuredDeckAppendixSection)"},
 	},
 	KindExecutiveSummary: {
 		"title":     {inject: func(s string) map[string]any { return map[string]any{"title": s} }, rendered: true},

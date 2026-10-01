@@ -402,6 +402,11 @@ func assignSectionNumbers(slides []types.SlideDefinition) {
 		if slides[i].Type != types.SlideTypeSection {
 			continue
 		}
+		// Back-matter dividers (Appendix, Backup, Q&A, Thank you) are neither
+		// numbered nor counted (go-slide-creator-7ldh9).
+		if types.IsUnnumberedSectionTitle(slides[i].Title) {
+			continue
+		}
 		sectionNum++
 		content := slides[i].Content
 		if content.Body == "" && content.BodyAfterBullets == "" && len(content.Bullets) == 0 &&

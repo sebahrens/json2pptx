@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/rhythm"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
@@ -57,7 +59,7 @@ func handleAnalyzeDeckRhythm(ctx context.Context, request mcp.CallToolRequest) (
 		return argRequired(request, "analyze_deck_rhythm", "presentation.slides", "array", []any{map[string]any{"layout_id": "title"}}, nextCallGetInputSchema()), nil
 	}
 
-	result := analyzeDeckRhythm(input.Slides)
+	result := analyzeDeckRhythmWithStrategy(input.Slides, input.AccentStrategy)
 
 	mcpResult, err := api.MCPSuccessResult(ctx, result)
 	if err != nil {
@@ -86,11 +88,37 @@ func (mc *mcpConfig) handleAnalyzeDeckRhythm(ctx context.Context, request mcp.Ca
 // this single adapter so they share one source of truth for composition
 // analysis.
 func analyzeDeckRhythm(slides []SlideInput) *rhythm.Result {
+	return analyzeDeckRhythmWithStrategy(slides, "")
+}
+
+// analyzeDeckRhythmWithStrategy also resolves each pattern slide's accent from
+// the deck's accent_strategy, so accent_balance is measured on decks built
+// from patterns / DeckSpec (go-slide-creator-hl17m).
+func analyzeDeckRhythmWithStrategy(slides []SlideInput, accentStrategy string) *rhythm.Result {
+	strategy := patterns.AccentStrategy(accentStrategy)
+	sectionIndices := slideSectionIndices(slides, nil)
 	rhythmSlides := make([]rhythm.Slide, len(slides))
 	for i, s := range slides {
 		rhythmSlides[i] = toRhythmSlide(s)
+		if s.Pattern != nil {
+			rhythmSlides[i].PatternAccent = rhythmPatternAccent(s.Pattern, strategy, i, sectionIndices[i])
+		}
 	}
 	return rhythm.Analyze(rhythmSlides)
+}
+
+// rhythmPatternAccent is the accent a pattern slide renders in: its explicit
+// overrides.accent, else the strategy's default for the slide.
+func rhythmPatternAccent(p *PatternInput, strategy patterns.AccentStrategy, slideIndex, sectionIndex int) string {
+	if len(p.Overrides) > 0 {
+		var o struct {
+			Accent string `json:"accent"`
+		}
+		if json.Unmarshal(p.Overrides, &o) == nil && isAccentColor(o.Accent) {
+			return o.Accent
+		}
+	}
+	return patterns.AccentForStrategy(strategy, slideIndex, sectionIndex)
 }
 
 // toRhythmSlide projects a single SlideInput into the analyzer's input model.
@@ -102,32 +130,151 @@ func toRhythmSlide(s SlideInput) rhythm.Slide {
 		HasPattern:   s.Pattern != nil,
 		HasShapeGrid: s.ShapeGrid != nil,
 		HasCompose:   s.Compose != nil,
+		Role:         rhythmRole(s),
+		HasTakeaway:  strings.TrimSpace(s.Takeaway) != "",
+		HasSource:    strings.TrimSpace(s.Source) != "" || s.SourceLink != nil,
 	}
+	_, rs.Title = extractTitleText(s)
+	var text []string
 	if s.Pattern != nil {
 		rs.PatternName = s.Pattern.Name
+		vals := patternValueStrings(s.Pattern.Values)
+		text = append(text, vals.text...)
+		rs.HasTakeaway = rs.HasTakeaway || vals.takeaway
+		rs.HasSource = rs.HasSource || vals.source
 	}
 	if len(s.Content) > 0 {
 		rs.ContentKinds = make([]string, len(s.Content))
 		for i, c := range s.Content {
 			rs.ContentKinds[i] = c.Type
 		}
+		text = append(text, contentBodyText(s.Content)...)
 	}
+	rs.Text = strings.Join(text, " ")
 	if s.ShapeGrid != nil {
-		for _, row := range s.ShapeGrid.Rows {
-			// cellCount counts every slot (matching len(row.Cells)), including
-			// nil/empty cells; accent hints only come from filled shape cells.
-			rs.CellCount += len(row.Cells)
-			for _, cell := range row.Cells {
-				if cell != nil && cell.Shape != nil {
-					if fill := extractAccentFromFill(cell.Shape.Fill); fill != "" {
-						rs.CellAccents = append(rs.CellAccents, fill)
-					}
-				}
-			}
-		}
+		projectGridAccents(&rs, s.ShapeGrid)
 		rs.Grid = buildDensityGrid(s.ShapeGrid)
 	}
 	return rs
+}
+
+// contentBodyText is the non-title text and bullets of a slide's content.
+func contentBodyText(content []ContentInput) []string {
+	var text []string
+	for _, c := range content {
+		if isTitlePlaceholderID(c.PlaceholderID) {
+			continue
+		}
+		if c.TextValue != nil {
+			text = append(text, *c.TextValue)
+		}
+		if c.BulletsValue != nil {
+			text = append(text, *c.BulletsValue...)
+		}
+	}
+	return text
+}
+
+// projectGridAccents counts the grid's cells and records its accent fills.
+func projectGridAccents(rs *rhythm.Slide, sg *ShapeGridInput) {
+	for _, row := range sg.Rows {
+		// cellCount counts every slot (matching len(row.Cells)), including
+		// nil/empty cells; accent hints only come from filled shape cells.
+		rs.CellCount += len(row.Cells)
+		for _, cell := range row.Cells {
+			if cell == nil || cell.Shape == nil {
+				continue
+			}
+			fill := extractAccentFromFill(cell.Shape.Fill)
+			if fill == "" {
+				continue
+			}
+			rs.CellAccents = append(rs.CellAccents, fill)
+			if isSolidFill(cell.Shape.Fill) {
+				rs.SolidAccentCells++
+			}
+		}
+	}
+}
+
+// rhythmRole names a slide's structural role from its slide_type / layout_id
+// hint and pattern; the analyzer has no template, so canonical layout names
+// are matched by ID.
+func rhythmRole(s SlideInput) string {
+	hint := strings.ToLower(s.SlideType)
+	layout := strings.ToLower(s.LayoutID)
+	switch {
+	case hint == "section" || layout == "section" || strings.Contains(layout, "section"):
+		return "section"
+	case layout == "closing" || strings.Contains(layout, "closing"):
+		return "closing"
+	case hint == "title" || layout == "title":
+		return "title"
+	case s.Pattern != nil && strings.HasPrefix(s.Pattern.Name, "agenda"), layout == "agenda":
+		return "agenda"
+	}
+	return ""
+}
+
+// patternValueSignals are the strings a pattern's values carry, and whether
+// a so-what / source rides in them (chart-insights-split's so_what,
+// stat-hero's source, exec-summary's bottom_line …).
+type patternValueSignals struct {
+	text             []string
+	takeaway, source bool
+}
+
+func patternValueStrings(raw json.RawMessage) patternValueSignals {
+	var out patternValueSignals
+	if len(raw) == 0 {
+		return out
+	}
+	var v any
+	if json.Unmarshal(raw, &v) != nil {
+		return out
+	}
+	var walk func(key string, v any)
+	walk = func(key string, v any) {
+		switch t := v.(type) {
+		case string:
+			if strings.TrimSpace(t) == "" {
+				return
+			}
+			switch key {
+			case "takeaway", "so_what", "callout", "bottom_line", "insight":
+				out.takeaway = true
+			case "source":
+				out.source = true
+			}
+			out.text = append(out.text, t)
+		case []any:
+			for _, e := range t {
+				walk(key, e)
+			}
+		case map[string]any:
+			for k, e := range t {
+				walk(k, e)
+			}
+		}
+	}
+	walk("", v)
+	return out
+}
+
+// isSolidFill reports an opaque fill: the string form, or an object without
+// alpha (or alpha ≥ 80).
+func isSolidFill(fill json.RawMessage) bool {
+	var s string
+	if json.Unmarshal(fill, &s) == nil {
+		return true
+	}
+	var obj struct {
+		Alpha *float64 `json:"alpha"`
+	}
+	if json.Unmarshal(fill, &obj) != nil {
+		return false
+	}
+	return obj.Alpha == nil || *obj.Alpha >= 80
 }
 
 // buildDensityGrid converts a shape_grid DTO into a resolution-ready

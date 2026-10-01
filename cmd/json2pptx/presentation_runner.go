@@ -297,6 +297,7 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 	if input.Chrome != nil {
 		applyChromeSkip(slideSpecs, input.Chrome, input.Slides, templateLayouts)
 		applyChromeTracker(slideSpecs, input.Chrome, input.Slides, templateLayouts)
+		applyChromeSectionCrumb(genReq.Footer, slideSpecs, input.Chrome, input.Slides, templateLayouts)
 	}
 
 	// Wire theme override.

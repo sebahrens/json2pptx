@@ -33,8 +33,9 @@ type rawStructure struct {
 }
 
 type rawSection struct {
-	Title  string `json:"title" yaml:"title"`
-	Slides []any  `json:"slides" yaml:"slides"`
+	Title    string `json:"title" yaml:"title"`
+	Slides   []any  `json:"slides" yaml:"slides"`
+	Appendix bool   `json:"appendix" yaml:"appendix"`
 }
 
 // Parse decodes a semantic deck document, dispatching on the filename
@@ -276,7 +277,7 @@ var topLevelMigrations = map[string]string{
 var knownMetaKeys = []string{"title", "subtitle", "archetype", "template", "audience", "author", "date", "chrome", "viewing_mode", "type_scale", "accent_strategy", "design_mode", "required_layouts"}
 
 var knownStructureKeys = []string{"cover", "auto_agenda", "sections", "closing"}
-var knownSectionKeys = []string{"title", "slides"}
+var knownSectionKeys = []string{"title", "slides", "appendix"}
 
 // metaMigrations maps a common stale/alias meta key onto the field it should be,
 // checked before the generic fuzzy suggestion (mirrors topLevelMigrations).
@@ -340,7 +341,7 @@ func buildDeckSpec(raw rawDeck, top map[string]any) (*DeckSpec, Diagnostics) {
 			st.Cover = &cover
 		}
 		for i, rawSection := range raw.Structure.Sections {
-			section := DeckSection{Title: rawSection.Title}
+			section := DeckSection{Title: rawSection.Title, Appendix: rawSection.Appendix}
 			for j, elem := range rawSection.Slides {
 				path := fmt.Sprintf("structure.sections[%d].slides[%d]", i, j)
 				m, ok := elem.(map[string]any)

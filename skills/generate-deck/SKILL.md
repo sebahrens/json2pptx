@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.154.0
+schema_version: 4.155.0
 description: >-
   Create or revise PowerPoint decks with json2pptx. Use for presentation and
   slide-deck requests that need template-aware authoring, validation, rendering,
@@ -24,7 +24,10 @@ titles first, full-sentence action titles (≤15 words, carrying the number),
 one message per slide, a `takeaway` and `source` on every evidence slide
 (a data slide without a source draws the advisory `DATA_WITHOUT_SOURCE`), and
 the message → visual table. A deck that passes every gate with topic titles
-is not finished.
+is not finished. Back matter: `sections[].appendix: true` or raw
+`section_number: false|"A"` (Appendix/Backup/Q&A dividers are unnumbered).
+`analyze_deck_rhythm` recommendations carry a `code` (RAW_PATH.md); keep
+`accent_weight: "strong"` patterns (`list_patterns` full) to two in a row.
 
 ## Choose the authoring path
 

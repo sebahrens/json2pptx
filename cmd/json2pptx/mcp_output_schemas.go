@@ -1955,6 +1955,7 @@ var outputSchemaAnalyzeDeckRhythm = json.RawMessage(`{
       "items": {
         "type": "object",
         "properties": {
+          "code":                      {"type": "string", "enum": ["break_run", "underfilled_cells", "missing_executive_summary", "missing_next_steps", "missing_sections", "evidence_missing_takeaway_or_source", "bullets_heavy", "accent_heavy_slide", "strong_accent_run"], "description": "What the recommendation is about. slide_index -1 means deck-level."},
           "slide_index":               {"type": "integer"},
           "message":                   {"type": "string"},
           "recommended_break_patterns": {"type": "array", "items": {"type": "string"}}

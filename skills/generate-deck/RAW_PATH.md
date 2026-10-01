@@ -135,11 +135,18 @@ or `fields="full"`.
 `aggregates` — `longest_run` (target ≤ 2), `repetition_index` (< 0.5),
 `accent_balance` (no accent > 80%), `density_cv` (> 0.1 on 4+ slides),
 `density_distribution` — plus `composition_score` and `recommendations` with
-`recommended_break_patterns`. Act on it: swap the middle slide of a run of 3
-to a suggested break pattern; add a stat/quote break when `density_cv` is
-flat; set `cell_accent_mode: "progressive"` on a 5+ cell slide with one
-accent; add detail or use a smaller grid when underfilled cells pass 30%;
-iterate until the score is ≥ 70.
+`recommended_break_patterns` and a `code`. Act on it: swap the middle slide
+of a run of 3 (`break_run`) to a suggested break pattern — suggestions follow
+the slide's content (numbers → KPI / stat, options → comparison, dates →
+timeline; never a timeline without dates); add detail or use a smaller grid
+when underfilled cells pass 30% (`underfilled_cells`). Narrative checks:
+`missing_executive_summary` (6+ slides), `missing_next_steps` (no
+next-steps close), `missing_sections` (10+ content slides, no divider or
+agenda), `evidence_missing_takeaway_or_source`, `bullets_heavy` (3+
+bullets-only slides). Accent checks: `accent_heavy_slide`,
+`strong_accent_run` (see RULES.md). `accent_balance` counts pattern slides
+by their resolved accent (`accent_strategy` or `overrides.accent`).
+Iterate until the score is ≥ 70 and the narrative codes are gone.
 
 **Pre-emit checklist.** Tables within Rule 20 (rows ≤ 7, cols ≤ 6, font ≥
 9pt, multiline cells counted); every fill semantic, never mixed with hex

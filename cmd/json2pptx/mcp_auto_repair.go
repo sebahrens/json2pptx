@@ -1293,6 +1293,7 @@ func (mc *mcpConfig) renderAutoRepairFinal(
 	if input.Chrome != nil {
 		applyChromeSkip(slideSpecs, input.Chrome, input.Slides, layouts)
 		applyChromeTracker(slideSpecs, input.Chrome, input.Slides, layouts)
+		applyChromeSectionCrumb(genReq.Footer, slideSpecs, input.Chrome, input.Slides, layouts)
 	}
 	if input.ThemeOverride != nil {
 		genReq.ThemeOverride = input.ThemeOverride.ToThemeOverride()

@@ -217,10 +217,10 @@ current alternatives and value schemas.
 
 **Anti-patterns:**
 
-- All cells same accent on a slide with 4+ peer cells → use `progressive` to differentiate items visually.
-- Mixing `alternate` with `section-keyed` accent strategy without validation → verify the result with `analyze_deck_rhythm` to confirm within-slide accent variety reads well against the section-level base.
+- `progressive` on peer cells that are not ordered or graded data → keep `uniform`: one accent per slide is the consulting default, and accent belongs on the one cell the title is about.
+- Mixing `alternate` with `section-keyed` accent strategy without validation → render and check the slide reads as one emphasis, not a rainbow.
 
-**Validation loop.** After generating, check `analyze_deck_rhythm` for `within_slide_accent_variety` recommendations. If the tool flags low variety on a grid-heavy slide, set `cell_accent_mode: "progressive"` in the pattern's overrides and re-analyze.
+**Validation loop.** `analyze_deck_rhythm` no longer asks for more accents. It flags accent *heaviness*: `accent_heavy_slide` (a raw grid with 4+ solid-accent cells — give the rest a neutral `lt2` / dk1-tint fill) and `strong_accent_run` (3+ consecutive slides using `accent_weight: "strong"` patterns — swap one for a normal or subtle pattern).
 
 ---
 

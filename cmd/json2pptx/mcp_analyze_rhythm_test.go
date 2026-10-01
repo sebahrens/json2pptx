@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"os"
 	"reflect"
 	"testing"
 )
@@ -63,5 +64,38 @@ func TestAnalyzeDeckRhythm_ResolvesDTOGridForDensity(t *testing.T) {
 	dd := analyzeDeckRhythm([]SlideInput{slide}).Aggregates.DensityDistribution
 	if dd.UnderfilledCells != 2 || dd.OptimalCells != 0 || dd.OverflowCells != 0 {
 		t.Errorf("density distribution from converted grid = %+v, want 2 underfilled", dd)
+	}
+}
+
+// TestAnalyzeDeckRhythm_ReviewMixedDeck is the 2026-10-01 review's mixed
+// deck (go-slide-creator-hl17m): topic-titled bullets, no sources, a "Thank
+// you" close. It used to score 90 with no recommendations at all.
+func TestAnalyzeDeckRhythm_ReviewMixedDeck(t *testing.T) {
+	data, err := os.ReadFile("testdata/rhythm/mixed_review_deck.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var input PresentationInput
+	if err := json.Unmarshal(data, &input); err != nil {
+		t.Fatal(err)
+	}
+	result := analyzeDeckRhythmWithStrategy(input.Slides, input.AccentStrategy)
+	codes := map[string]int{}
+	for _, rec := range result.Recommendations {
+		t.Logf("%s @%d: %s %v", rec.Code, rec.SlideIndex, rec.Message, rec.RecommendedBreak)
+		codes[rec.Code]++
+		for _, b := range rec.RecommendedBreak {
+			if b == "timeline-horizontal" {
+				t.Errorf("recommends a timeline for undated content: %+v", rec)
+			}
+		}
+	}
+	for _, want := range []string{"missing_executive_summary", "missing_next_steps", "evidence_missing_takeaway_or_source", "bullets_heavy"} {
+		if codes[want] == 0 {
+			t.Errorf("missing %s recommendation; got %v", want, codes)
+		}
+	}
+	if len(result.Aggregates.AccentBalance) == 0 {
+		t.Error("accent_balance is empty on a pattern deck")
 	}
 }

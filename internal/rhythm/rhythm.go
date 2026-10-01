@@ -48,6 +48,29 @@ type Slide struct {
 	// Grid is a resolution-ready shape_grid for density measurement, or nil to
 	// skip the slide in density-distribution accounting.
 	Grid *shapegrid.Grid
+
+	// Narrative-structure signals (go-slide-creator-hl17m). All optional: a
+	// projection that leaves them zero simply skips the narrative rules.
+
+	// Role is the slide's structural role: "title", "section", "closing",
+	// "agenda", or "" for an ordinary content slide.
+	Role string
+	// Title is the slide's headline text.
+	Title string
+	// Text is the slide's visible body text (bullets, text, pattern values),
+	// used to derive content-aware break suggestions.
+	Text string
+	// HasTakeaway / HasSource report a so-what line and a source note.
+	HasTakeaway bool
+	HasSource   bool
+	// PatternAccent is the accent a pattern slide resolves to from the deck's
+	// accent_strategy (or the pattern's explicit accent override). It feeds
+	// accent_balance on the pattern / DeckSpec path, where no raw cell fill
+	// exists to read.
+	PatternAccent string
+	// SolidAccentCells counts raw shape_grid cells filled with a solid
+	// (opaque) accent colour.
+	SolidAccentCells int
 }
 
 // SlideInfo describes the visual fingerprint of a single slide.
@@ -91,6 +114,9 @@ type Aggregates struct {
 
 // Recommendation is an actionable suggestion to improve deck rhythm.
 type Recommendation struct {
+	// Code classifies the recommendation (break_run, missing_executive_summary,
+	// ...); see SKILL.md. Stable for programmatic handling.
+	Code             string   `json:"code,omitempty"`
 	SlideIndex       int      `json:"slide_index"`
 	Message          string   `json:"message"`
 	RecommendedBreak []string `json:"recommended_break_patterns"`
@@ -284,10 +310,14 @@ func densityClass(s Slide) string {
 	}
 }
 
-// primaryAccent returns the first accent color reference on a slide, or "none".
+// primaryAccent returns the first accent color reference on a slide (a raw
+// cell fill, else the pattern's resolved accent), or "none".
 func primaryAccent(s Slide) string {
 	if len(s.CellAccents) > 0 {
 		return s.CellAccents[0]
+	}
+	if s.PatternAccent != "" {
+		return s.PatternAccent
 	}
 	return "none"
 }
@@ -471,6 +501,7 @@ func generateRecommendations(inputs []Slide, slides []SlideInfo, runs []PatternR
 		for offset := 2; offset < run.Len; offset += 3 {
 			insertIdx := run.Start + offset
 			recs = append(recs, Recommendation{
+				Code:             CodeBreakRun,
 				SlideIndex:       insertIdx,
 				Message:          fmt.Sprintf("break a %s run (length %d); consider inserting a different pattern at slide %d", run.Name, run.Len, insertIdx),
 				RecommendedBreak: suggestBreakPatterns(run.Name, inputs[insertIdx]),
@@ -478,23 +509,12 @@ func generateRecommendations(inputs []Slide, slides []SlideInfo, runs []PatternR
 		}
 	}
 
-	// Rule: slide has 5+ cells AND within_slide_accent_variety == 1 →
-	// recommend the fix appropriate to its authoring surface.
-	for _, s := range slides {
-		if s.cellCount >= 5 && s.WithinSlideAccentVariety == 1 {
-			message := fmt.Sprintf("slide %d has %d cells but only 1 accent — set per-cell fill accents for visual hierarchy", s.SlideIndex, s.cellCount)
-			breaks := []string{"shape_grid.rows[].cells[].shape.fill"}
-			if inputs[s.SlideIndex].HasPattern {
-				message = fmt.Sprintf("slide %d has %d cells but only 1 accent — add cell_accent_mode: progressive to the pattern overrides for visual hierarchy", s.SlideIndex, s.cellCount)
-				breaks = []string{"cell_accent_mode: progressive"}
-			}
-			recs = append(recs, Recommendation{
-				SlideIndex:       s.SlideIndex,
-				Message:          message,
-				RecommendedBreak: breaks,
-			})
-		}
-	}
+	// The old "N cells but only 1 accent: add cell_accent_mode: progressive"
+	// rule is gone (go-slide-creator-hl17m): it fired on exactly the
+	// restrained slides (card-grid, kpi-5up, framework-grid) and pushed agents
+	// to rotate accents across cells, the opposite of one emphasis per slide.
+	// Accent heaviness is checked instead.
+	recs = append(recs, accentHeavinessRecommendations(inputs)...)
 
 	// Rule: >30% underfilled cells across the deck → recommend adding detail or smaller grids.
 	totalCells := dd.UnderfilledCells + dd.OptimalCells + dd.OverflowCells
@@ -502,6 +522,7 @@ func generateRecommendations(inputs []Slide, slides []SlideInfo, runs []PatternR
 		underfilledPct := float64(dd.UnderfilledCells) / float64(totalCells) * 100
 		if underfilledPct > 30 {
 			recs = append(recs, Recommendation{
+				Code:             CodeUnderfilledCells,
 				SlideIndex:       -1, // deck-level
 				Message:          fmt.Sprintf("%.0f%% of cells (%d/%d) are underfilled — add detail text or use smaller grid patterns", underfilledPct, dd.UnderfilledCells, totalCells),
 				RecommendedBreak: []string{"kpi-3up", "kpi-2up", "comparison-2col"},
@@ -509,6 +530,7 @@ func generateRecommendations(inputs []Slide, slides []SlideInfo, runs []PatternR
 		}
 	}
 
+	recs = append(recs, narrativeRecommendations(inputs)...)
 	return recs
 }
 
@@ -526,7 +548,14 @@ func suggestBreakPatterns(runFamily string, slide Slide) []string {
 	if intent == runFamily && slide.SlideType == "comparison" {
 		intent = "comparison"
 	}
+	signals := textSignals(slide.Title + " " + slide.Text)
 	preferences := breakPreferences(intent)
+	if !specificBreakIntents[intent] {
+		// A run of plain slides: what the slide says picks the alternative
+		// (numbers -> KPI / stat, options -> comparison, dates -> timeline),
+		// not a fixed list (go-slide-creator-hl17m).
+		preferences = contentBreakPreferences(signals)
+	}
 	preferenceRank := make(map[string]int, len(preferences))
 	for i, name := range preferences {
 		preferenceRank[name] = len(preferences) - i
@@ -547,6 +576,11 @@ func suggestBreakPatterns(runFamily string, slide Slide) []string {
 	for _, pat := range registry.List() {
 		name := pat.Name()
 		if visualFamily(name) == runFamily {
+			continue
+		}
+		// A timeline without dates is decoration (RULES.md): only propose the
+		// time-based patterns when the slide carries date-like content.
+		if timeBasedPatterns[name] && !signals.dates {
 			continue
 		}
 		score := preferenceRank[name] * 10

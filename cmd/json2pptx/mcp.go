@@ -549,6 +549,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	if input.Chrome != nil {
 		applyChromeSkip(slideSpecs, input.Chrome, input.Slides, templateLayouts)
 		applyChromeTracker(slideSpecs, input.Chrome, input.Slides, templateLayouts)
+		applyChromeSectionCrumb(genReq.Footer, slideSpecs, input.Chrome, input.Slides, templateLayouts)
 	}
 	if input.ThemeOverride != nil {
 		genReq.ThemeOverride = input.ThemeOverride.ToThemeOverride()
@@ -1847,6 +1848,7 @@ var placeholderSlideTypeCanonical = map[string]types.CanonicalLayoutType{
 	"section":    types.CanonicalLayoutSectionDivider,
 	"content":    types.CanonicalLayoutOneContent,
 	"image":      types.CanonicalLayoutOneContent,
+	"table":      types.CanonicalLayoutOneContent,
 	"two-column": types.CanonicalLayoutTwoContent,
 	"blank":      types.CanonicalLayoutBlank,
 }

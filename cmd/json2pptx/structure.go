@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // expandStructure converts a StructureInput into a flat []SlideInput.
@@ -40,7 +41,15 @@ func expandStructure(s *StructureInput) ([]SlideInput, error) {
 	if s.Cover != nil {
 		totalSlides++
 	}
-	if s.AutoAgenda && len(s.Sections) >= 2 {
+	// Appendix sections are back matter: the agenda lists only the chapters.
+	agendaSections := make([]SectionInput, 0, len(s.Sections))
+	for _, sec := range s.Sections {
+		if !sec.Appendix {
+			agendaSections = append(agendaSections, sec)
+		}
+	}
+	wantAgenda := s.AutoAgenda && len(agendaSections) >= 2
+	if wantAgenda {
 		totalSlides++
 	}
 	if s.Closing != nil {
@@ -59,8 +68,8 @@ func expandStructure(s *StructureInput) ([]SlideInput, error) {
 	}
 
 	// 2. Agenda slide (uses the "agenda" pattern)
-	if s.AutoAgenda && len(s.Sections) >= 2 {
-		agenda, err := buildAgendaSlide(s.Sections)
+	if wantAgenda {
+		agenda, err := buildAgendaSlide(agendaSections)
 		if err != nil {
 			return nil, fmt.Errorf("structure: auto_agenda: %w", err)
 		}
@@ -75,9 +84,16 @@ func expandStructure(s *StructureInput) ([]SlideInput, error) {
 	// 10.5pt chrome is noise.
 	for _, sec := range s.Sections {
 		divider := buildSectionDivider(sec.Title)
+		crumb := sec.Title
+		if sec.Appendix {
+			// Back matter: no chapter number, later sections keep theirs, and
+			// the running section says "Appendix" (go-slide-creator-deb2h).
+			divider.SectionNumber = &SectionNumberInput{Suppress: true}
+			crumb = types.AppendixSectionLabel(sec.Title)
+		}
 		slides = append(slides, divider)
 		for _, sl := range sec.Slides {
-			sl.SectionTitle = sec.Title
+			sl.SectionTitle = crumb
 			slides = append(slides, sl)
 		}
 	}

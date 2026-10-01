@@ -171,3 +171,42 @@ func TestExpandedSlidePayloadsIncludeGeneratedStructureSlides(t *testing.T) {
 		t.Fatalf("expanded payload/count = %d/%d, want 7", len(payloads), ExpandedSlideCount(spec))
 	}
 }
+
+// TestStructuredDeckAppendixSection pins go-slide-creator-deb2h: an appendix
+// section is left out of auto_agenda, its divider carries no chapter number,
+// and its slides' running section says Appendix.
+func TestStructuredDeckAppendixSection(t *testing.T) {
+	cover := SlideSpec{Kind: KindTitle, Body: map[string]any{"title": "Plan"}}
+	spec := &DeckSpec{
+		Meta: DeckMeta{Title: "Plan"},
+		Structure: &DeckStructure{
+			Cover: &cover, AutoAgenda: true,
+			Sections: []DeckSection{
+				{Title: "Landscape", Slides: []SlideSpec{kpiSlide(3)}},
+				{Title: "Outlook", Slides: []SlideSpec{kpiSlide(3)}},
+				{Title: "Detailed financials", Appendix: true, Slides: []SlideSpec{kpiSlide(3)}},
+			},
+		},
+	}
+	input, result, err := Compile(spec, CompileOptions{})
+	if err != nil {
+		t.Fatalf("compile: %v; diagnostics=%+v", err, result.Diagnostics)
+	}
+	// cover, agenda, div, kpi, div, kpi, appendix div, kpi
+	if len(input.Slides) != 8 {
+		t.Fatalf("compiled %d slides, want 8", len(input.Slides))
+	}
+	if input.Slides[1].Pattern == nil || strings.Contains(string(input.Slides[1].Pattern.Values), "Detailed financials") {
+		t.Errorf("agenda missing or lists the appendix: %+v", input.Slides[1].Pattern)
+	}
+	div := input.Slides[6]
+	if div.SectionNumber == nil || !div.SectionNumber.Suppress {
+		t.Errorf("appendix divider section_number = %+v, want suppressed", div.SectionNumber)
+	}
+	if input.Slides[2].SectionNumber != nil {
+		t.Errorf("chapter divider must keep automatic numbering")
+	}
+	if input.Slides[7].SectionTitle != "Appendix: Detailed financials" {
+		t.Errorf("appendix slide section = %q", input.Slides[7].SectionTitle)
+	}
+}

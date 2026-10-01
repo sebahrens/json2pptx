@@ -185,7 +185,8 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"eyebrow":  strField("Small kicker text above the title."),
 	}, universalFields()),
 	KindSection: withFields(map[string]payloadField{
-		"title": strField("Section name. For supporting copy, use a content slide: section layouts reserve body slots for decorative numbering."),
+		"title":    strField("Section name. For supporting copy, use a content slide: section layouts reserve body slots for decorative numbering."),
+		"appendix": {typ: "boolean", desc: "true marks an appendix / backup divider: no chapter number, and later sections are not renumbered. Dividers titled Appendix, Backup, Annex, Q&A or Thank you are unnumbered automatically."},
 	}, universalFields()),
 	KindExecutiveSummary: withFields(map[string]payloadField{
 		"title": strField("Slide title."),

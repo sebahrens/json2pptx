@@ -3,6 +3,8 @@ package semantic
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 type sourcedSlide struct {
@@ -30,11 +32,15 @@ func expandedSlides(spec *DeckSpec) []sourcedSlide {
 	if st.Cover != nil {
 		out = append(out, sourcedSlide{Slide: *st.Cover, SourcePath: "structure.cover"})
 	}
-	if st.AutoAgenda && len(st.Sections) >= 2 {
-		items := make([]any, 0, len(st.Sections))
-		for _, section := range st.Sections {
+	// Appendix sections are back matter: the agenda lists only the chapters
+	// the audience is walked through (go-slide-creator-deb2h).
+	items := make([]any, 0, len(st.Sections))
+	for _, section := range st.Sections {
+		if !section.Appendix {
 			items = append(items, section.Title)
 		}
+	}
+	if st.AutoAgenda && len(items) >= 2 {
 		out = append(out, sourcedSlide{
 			Slide:      SlideSpec{Kind: KindAgenda, Body: map[string]any{"title": "Agenda", "sections": items}},
 			SourcePath: "structure.sections",
@@ -42,14 +48,20 @@ func expandedSlides(spec *DeckSpec) []sourcedSlide {
 	}
 	for sectionIndex, section := range st.Sections {
 		sectionPath := fmt.Sprintf("structure.sections[%d]", sectionIndex)
+		body := map[string]any{"title": section.Title}
+		crumb := section.Title
+		if section.Appendix {
+			body["appendix"] = true
+			crumb = types.AppendixSectionLabel(section.Title)
+		}
 		out = append(out, sourcedSlide{
-			Slide:      SlideSpec{Kind: KindSection, Body: map[string]any{"title": section.Title}},
+			Slide:      SlideSpec{Kind: KindSection, Body: body},
 			SourcePath: sectionPath,
 		})
 		for slideIndex, slide := range section.Slides {
 			out = append(out, sourcedSlide{
 				Slide: slide, SourcePath: fmt.Sprintf("%s.slides[%d]", sectionPath, slideIndex),
-				SectionTitle: section.Title,
+				SectionTitle: crumb,
 			})
 		}
 	}
