@@ -49,7 +49,7 @@ func TestBodyAndBulletsLeadParagraph_InheritsTemplateFont(t *testing.T) {
 }
 
 func TestGroupLabel_InheritsTemplateFont(t *testing.T) {
-	paras := buildGroupParagraphs(BulletGroup{GroupLabel: "Phase 1", Header: "Header", Bullets: []string{"a"}}, false, "600", 0, nil)
+	paras := buildGroupParagraphs(BulletGroup{GroupLabel: "Phase 1", Header: "Header", Bullets: []string{"a"}}, false, bulletGroupSpacingFor(1), false, 0, nil)
 	for _, p := range paras {
 		assertNoLiteralLatin(t, "group", p.Runs)
 	}

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 )
 
 // ---------------------------------------------------------------------------
@@ -36,9 +37,9 @@ import (
 // Takeaway geometry and type, in points. The generator's slide band reads the
 // same constants so the two renderers cannot drift.
 const (
-	TakeawayBarPt        = 3.0  // flush accent bar width
-	TakeawayTextInsetPt  = 12.0 // bar → text
-	TakeawaySizePt       = 14.0 // text size
+	TakeawayBarPt        = 3.0                       // flush accent bar width
+	TakeawayTextInsetPt  = 12.0                      // bar → text
+	TakeawaySizePt       = tokens.TypeScaleSubheadPt // text size
 	TakeawayInk          = "dk1"
 	TakeawayMaxLines     = 2
 	TakeawayGapAbovePt   = 16.0 // air between the content above and the band

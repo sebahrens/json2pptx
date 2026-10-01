@@ -28,16 +28,16 @@ func collectTakeawayFitFindings(input *PresentationInput, layouts []types.Layout
 		// too short for it (pptx.EffectiveTextInsets). textcapacity and
 		// textfit assume the OOXML 7.2pt / 3.6pt default sides, so hand them
 		// the written text rectangle grown by those defaults.
-		fontPt := float64(tokens.CardTitleMaxHPt) / 100
+		fontPt := float64(tokens.TypeScaleSubheadHPt) / 100
 		in := pptx.EffectiveTextInsets(&pptx.TextBody{
 			Insets:     pptx.ShapeTextInsets(),
-			Paragraphs: []pptx.Paragraph{{Runs: []pptx.Run{{Text: slide.Takeaway, FontSize: tokens.CardTitleMaxHPt}}}},
+			Paragraphs: []pptx.Paragraph{{Runs: []pptx.Run{{Text: slide.Takeaway, FontSize: tokens.TypeScaleSubheadHPt}}}},
 		}, pptx.RectEmu{CX: band.CX, CY: band.CY})
 		width := band.CX - in[0] - in[2] + 2*91440
 		height := band.CY - in[1] - in[3] + 2*45720
 		budget := textcapacity.ForPlaceholder(types.PlaceholderInfo{
 			Bounds:   types.BoundingBox{Width: width, Height: height},
-			FontSize: tokens.CardTitleMaxHPt,
+			FontSize: tokens.TypeScaleSubheadHPt,
 		}, slide.Takeaway)
 		measured, err := textfit.MeasureRun(slide.Takeaway, "Liberation Sans", fontPt, width, budget.MaxLines)
 		if err != nil || measured.Lines <= budget.MaxLines {

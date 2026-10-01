@@ -297,11 +297,15 @@ func TestSCQASummary_Expand_BulletsRenderForMultiItem(t *testing.T) {
 	}
 	// Row 3 is Answer; cell 1 is the content cell.
 	contentText := string(grid.Rows[3].Cells[1].Shape.Text)
-	if !strings.Contains(contentText, "• First answer.") {
-		t.Errorf("expected bullet prefix on multi-item content, got: %s", contentText)
+	// Real bullets (go-slide-creator-zieyk): a bullet field, never a typed glyph.
+	if !strings.Contains(contentText, `"content":"First answer.","size":12,"color":"dk1","align":"l","bullet":true`) {
+		t.Errorf("expected a real bullet on multi-item content, got: %s", contentText)
 	}
-	if !strings.Contains(contentText, "• Second answer.") {
-		t.Errorf("expected bullet prefix on second item, got: %s", contentText)
+	if !strings.Contains(contentText, `"content":"Second answer.","size":12,"color":"dk1","align":"l","bullet":true`) {
+		t.Errorf("expected a real bullet on second item, got: %s", contentText)
+	}
+	if strings.Contains(contentText, "• ") {
+		t.Errorf("literal bullet glyph in content: %s", contentText)
 	}
 }
 

@@ -490,8 +490,8 @@ type BodyAndBulletsInput struct {
 
 // BodyAndLeadInput maps to generator.BodyAndLeadContent.
 type BodyAndLeadInput struct {
-	Lead    string   `json:"lead"`    // Lead-in paragraph (rendered 16pt bold)
-	Bullets []string `json:"bullets"` // Supporting bullets (rendered 12pt)
+	Lead    string   `json:"lead"`    // Lead-in paragraph (bold, one 2pt step above the bullets)
+	Bullets []string `json:"bullets"` // Supporting bullets (sized by the body density policy)
 }
 
 // BulletGroupsInput maps to generator.BulletGroupsContent.

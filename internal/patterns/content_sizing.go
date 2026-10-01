@@ -36,6 +36,11 @@ type sizedPara struct {
 	sizePt       float64
 	bold         bool
 	spaceAfterPt float64
+	// bullet marks a real bulleted paragraph. Its text starts after the
+	// hanging indent (shapegrid.BulletHangPt, 0.65em), which is about the
+	// advance of a "• " prefix, so it is measured with that prefix: sizing
+	// stays identical to the typed-glyph form it replaced.
+	bullet bool
 }
 
 var sizingTagRe = regexp.MustCompile(`<[^>]+>`)
@@ -46,6 +51,9 @@ func paragraphLines(ctx ExpandContext, p sizedPara, widthPt float64) int {
 	text := strings.TrimSpace(sizingTagRe.ReplaceAllString(p.text, ""))
 	if text == "" {
 		return 0
+	}
+	if p.bullet {
+		text = "• " + text // the hanging indent's width (see sizedPara.bullet)
 	}
 	textW := math.Max(widthPt-2*sizingInsetLRPt, 1)
 	if p.bold {

@@ -107,8 +107,8 @@ func TestTextSidebar_ExpandDefault(t *testing.T) {
 		t.Errorf("first paragraph should be the bold heading, got %+v", main[0])
 	}
 	// The exemplar's second paragraph ends with a colon, so the bullets follow it.
-	if !strings.HasPrefix(main[3].Content, "• ") || strings.HasPrefix(main[2].Content, "• ") {
-		t.Errorf("bullets should follow the paragraph that introduces them, got %q / %q", main[2].Content, main[3].Content)
+	if !main[3].Bullet || main[2].Bullet || strings.HasPrefix(main[3].Content, "• ") {
+		t.Errorf("bullets should follow the paragraph that introduces them as real bullets, got %+v / %+v", main[2], main[3])
 	}
 	if !strings.Contains(main[1].Content, "<b>") {
 		t.Errorf("markdown emphasis should convert, got %q", main[1].Content)

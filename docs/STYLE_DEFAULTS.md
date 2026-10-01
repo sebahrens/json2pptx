@@ -97,11 +97,11 @@ If a table has **no** `style` object at all, the entire default is adopted as a 
 
 ## Engine Table Defaults (no style authored)
 
-Independent of the `defaults` block, the renderer applies a consulting table look whenever the author leaves the style unset (go-slide-creator-weaq, restyled by go-slide-creator-1iiej). Only theme scheme colors are used, so the look follows the template. The **engine default** applies when `header_background` is unset, `use_table_style` is false and `style_id` is unset or the engine default GUID — and as the fallback for `use_table_style` / `"@template-default"` when the template ships no formatting for its table style (see below):
+Independent of the `defaults` block, the renderer applies a consulting table look whenever the author leaves the style unset (go-slide-creator-weaq, restyled by go-slide-creator-1iiej). Only theme scheme colors are used, so the look follows the template. The **engine default** applies when `use_table_style` is false and `style_id` is unset or the engine default GUID (a `header_background` does not leave it — see below) — and as the fallback for `use_table_style` / `"@template-default"` when the template ships no formatting for its table style (see below):
 
 | Aspect | Default | Opt out |
 |--------|---------|---------|
-| Header row | **no fill** (never a solid black or accent bar), 11pt bold text color (`dk1`) over a 1pt `dk1` rule | set `header_background` (e.g. `"accent1"`, `"lt2"`), `use_table_style: true` with a template that defines its style, or an explicit template `style_id` |
+| Header row | **no fill** (never a solid black or accent bar), 11pt bold text color (`dk1`) over a 1pt `dk1` rule | `header_background` (e.g. `"accent1"`, `"lt2"`) adds a header fill only; `use_table_style: true` with a template that defines its style, or an explicit template `style_id`, leaves the engine default |
 | Body rows | 12pt, separated by 0.5pt `dk1`-at-15% hairline rules; no vertical rules, no rule under the last row | set `borders` (`"all"`, `"horizontal"`, `"outer"`, `"none"`) for the legacy grid rules |
 | Banding | **no zebra stripes** | `striped: true` |
 | First column | bold (the row label) | — |
@@ -109,9 +109,9 @@ Independent of the `defaults` block, the renderer applies a consulting table loo
 | Total row | bold with a 1pt `dk1` top rule | first cell is `Total` / `Totals` / `Grand total` / `Sum` / `Subtotal` (case-insensitive) — in addition to `totals_row: true` for the last row; rename the label to opt out |
 | Row height | content-driven minimum (one line at the table font plus insets, never below 0.4in); rows are never stretched to fill the placeholder, and the table is top-anchored under the title | — |
 
-Type size: the engine default starts at 12pt rows / 11pt header (a style that opts out keeps the legacy 18pt start). Wide tables are capped at the 18pt-equivalent width budget (18pt × 4 / columns), so a default table stays at 12pt up to six columns and shrinks from seven, never below the 10pt table readability floor; the `table_font_scaled` finding and the validate-time preflight predict the same sizes. TDR density limits (rows ≤ 7, cols ≤ 6) are unchanged.
+Type size: the engine default starts at 12pt rows / 11pt header (a template `style_id` / `use_table_style` that opts out keeps the legacy 18pt start). Wide tables are capped at the 18pt-equivalent width budget (18pt × 4 / columns), so a default table stays at 12pt up to six columns and shrinks from seven, never below the 10pt table readability floor; the `table_font_scaled` finding and the validate-time preflight predict the same sizes. TDR density limits (rows ≤ 7, cols ≤ 6) are unchanged.
 
-A header with an explicit dark scheme `header_background` (`accent1`–`accent6`, `dk1`, `dk2`, `tx1`, `tx2`) gets `lt1` header text.
+**`header_background`, `borders` and `striped` are additive** (go-slide-creator-87eu0): each changes only its own aspect on top of the engine default. A `header_background` alone fills the header row and keeps the 12pt / 11pt type, the horizontal rules (no vertical rules, no outer frame) and the unbanded rows; `borders: "all"` or `striped: true` opt in to the grid or zebra stripes individually. Header text on a filled header is `lt1` or `dk1`, whichever contrasts more with the resolved fill (scheme names resolve through the template theme, hex values directly); without a theme, dark scheme names (`accent1`–`accent6`, `dk1`, `dk2`, `tx1`, `tx2`) get `lt1`.
 
 ## Application Order
 
@@ -141,7 +141,7 @@ Resolution rules:
 
 The `@template-default` sentinel lives in a separate namespace from user-authored style IDs — there is no collision risk with OOXML GUIDs.
 
-If the resolved GUID has no non-empty `<a:tblStyle>` definition in the template, the output keeps that GUID but renders the table explicitly in the engine default look above (unfilled bold header over a 1pt rule, hairline row rules, no zebra), unless the author set `header_background`. This prevents an empty style list or portability-only stub from leaving the table visually plain. Defined template styles remain in control.
+If the resolved GUID has no non-empty `<a:tblStyle>` definition in the template, the output keeps that GUID but renders the table explicitly in the engine default look above (unfilled bold header over a 1pt rule, hairline row rules, no zebra); a `header_background` adds the header fill on top. This prevents an empty style list or portability-only stub from leaving the table visually plain. Defined template styles remain in control.
 
 **Validation:** a `style_id` must be empty, the `@template-default` sentinel, or a well-formed OOXML table style GUID (`{8-4-4-4-12}` hex, e.g. `{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}`). Any other value — a typo or a string containing XML metacharacters such as `"&<` — is rejected with an `INVALID_PARAMETER` validation error and is never emitted into slide XML or `ppt/tableStyles.xml` (the renderer drops it defensively even when validation is skipped). A well-formed GUID that the template does not declare is allowed but produces the advisory `unknown_table_style_id` warning.
 

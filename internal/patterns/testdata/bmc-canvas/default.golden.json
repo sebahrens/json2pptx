@@ -24,16 +24,18 @@
                   "align": "l"
                 },
                 {
-                  "content": "• Supplier A",
+                  "content": "Supplier A",
                   "size": 9,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 },
                 {
-                  "content": "• Partner B",
+                  "content": "Partner B",
                   "size": 9,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 }
               ],
               "align": "l",
@@ -60,16 +62,18 @@
                   "align": "l"
                 },
                 {
-                  "content": "• Manufacturing",
+                  "content": "Manufacturing",
                   "size": 9,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 },
                 {
-                  "content": "• Problem solving",
+                  "content": "Problem solving",
                   "size": 9,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 }
               ],
               "align": "l",
@@ -97,22 +101,25 @@
                   "align": "l"
                 },
                 {
-                  "content": "• Newness",
+                  "content": "Newness",
                   "size": 9,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 },
                 {
-                  "content": "• Performance",
+                  "content": "Performance",
                   "size": 9,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 },
                 {
-                  "content": "• Customization",
+                  "content": "Customization",
                   "size": 9,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 }
               ],
               "align": "l",
@@ -139,16 +146,18 @@
                   "align": "l"
                 },
                 {
-                  "content": "• Personal assistance",
+                  "content": "Personal assistance",
                   "size": 9,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 },
                 {
-                  "content": "• Self-service",
+                  "content": "Self-service",
                   "size": 9,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 }
               ],
               "align": "l",
@@ -176,16 +185,18 @@
                   "align": "l"
                 },
                 {
-                  "content": "• Mass market",
+                  "content": "Mass market",
                   "size": 9,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 },
                 {
-                  "content": "• Niche market",
+                  "content": "Niche market",
                   "size": 9,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 }
               ],
               "align": "l",
@@ -216,16 +227,18 @@
                   "align": "l"
                 },
                 {
-                  "content": "• Physical assets",
+                  "content": "Physical assets",
                   "size": 9,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 },
                 {
-                  "content": "• IP",
+                  "content": "IP",
                   "size": 9,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 }
               ],
               "align": "l",
@@ -252,16 +265,18 @@
                   "align": "l"
                 },
                 {
-                  "content": "• Direct sales",
+                  "content": "Direct sales",
                   "size": 9,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 },
                 {
-                  "content": "• Web",
+                  "content": "Web",
                   "size": 9,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 }
               ],
               "align": "l",
@@ -293,16 +308,18 @@
                   "align": "l"
                 },
                 {
-                  "content": "• Fixed costs",
+                  "content": "Fixed costs",
                   "size": 9,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 },
                 {
-                  "content": "• Variable costs",
+                  "content": "Variable costs",
                   "size": 9,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 }
               ],
               "align": "l",
@@ -330,16 +347,18 @@
                   "align": "l"
                 },
                 {
-                  "content": "• Asset sale",
+                  "content": "Asset sale",
                   "size": 9,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 },
                 {
-                  "content": "• Subscription",
+                  "content": "Subscription",
                   "size": 9,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 }
               ],
               "align": "l",

@@ -4,91 +4,39 @@
 //
 // Anything here is part of the project's design system and is referenced
 // from documentation (skills/generate-deck/RULES.md typography table),
-// validators (text fit defaults, accent constraints), and renderers.
+// validators (text fit defaults, readability floors), and renderers.
 // Changing a value here changes the contract — bump SchemaVersion when
 // renaming or removing a token.
 //
 // Conventions:
 //   - Font sizes are expressed in **hundredths of a point** (HPt) to
 //     match the OOXML `sz="…"` attribute and the existing
-//     `FontSizeHPt` fields in `internal/textfit`. So 12pt = 1200.
-//   - Spacing is expressed in **points** (Pt) to match the shape-grid
-//     `gap` / `row_gap` / `col_gap` fields and the typographic-inset
-//     conventions used throughout the codebase.
-//   - Hex colors are uppercase 6-digit `#RRGGBB` form.
+//     `FontSizeHPt` fields in `internal/textfit`. So 12pt = 1200. The
+//     *Pt mirrors in typography.go serve pattern code, which sizes in points.
 //
-// Coverage roadmap: this package starts with the typography hierarchy
-// (which RULES.md publishes to agents) and grows as scattered defaults
-// are migrated. See bd issue go-slide-creator-clgi.
+// The type scale (typography.go: TypeScale*) is the one authoring scale;
+// RULES.md publishes it as the typography table. The role ladders that used
+// to live here (grid header, card body 9-11pt, step number, 7-8pt footnote,
+// cell insets, grid gaps) were read by no renderer and contradicted the 12pt
+// readable floor, so they were removed (go-slide-creator-vmdfm).
 package tokens
 
-// Typography hierarchy for shape_grid cells.
-//
-// These values mirror the published table in
-// `skills/generate-deck/RULES.md` and the project AGENTS.md. The
-// constants name the *role* (CardTitle, CardBody, StepNumber, …) rather
-// than the size, so future point-size tweaks propagate through every
-// reference automatically.
-//
-// Values are inclusive ranges where the *Min* / *Max* pair frames the
-// healthy zone for that role. The *Default* is the value the engine
-// reaches for when no explicit override is supplied.
+// Dense-report ("read" viewing mode) readability floors. These are policy
+// floors that MinReadableHPt enforces for text read on screen or in print —
+// never authoring sizes: authored text uses the type scale, whose body step
+// is 12pt and caption step 10pt. In the default presentation mode every
+// card role is held to 12pt and captions to 10pt.
 const (
-	// GridHeaderMinHPt / GridHeaderMaxHPt frame the banner / header
-	// row of a shape_grid. Bold, white on accent fill, full-width.
-	GridHeaderMinHPt     = 1400 // 14pt
-	GridHeaderMaxHPt     = 1800 // 18pt
-	GridHeaderDefaultHPt = 1600 // 16pt
-
-	// CardTitle* frame the title line of a card cell. Bold, first
-	// line of a `\n`-separated text run.
-	CardTitleMinHPt     = 1200 // 12pt
-	CardTitleMaxHPt     = 1400 // 14pt
-	CardTitleDefaultHPt = 1400 // 14pt — the subhead step of the type scale
-
-	// CardBody* frame the body text of a card cell. Regular weight.
-	// 11pt suits 3-4 cols, 10pt suits 5+ cols, 9pt is the floor.
-	CardBodyMinHPt     = 900  // 9pt
-	CardBodyMaxHPt     = 1100 // 11pt
-	CardBodyDefaultHPt = 1000 // 10pt
-	CardBodyDenseHPt   = 900  // 9pt — for 5+ cols
-	CardBodyRoomyHPt   = 1100 // 11pt — for 3-4 cols
-
-	// StepNumber* frame a step or sequence numeral rendered in a narrow
-	// accent column (e.g. roadmap, process-flow). Bold, white text.
-	StepNumberMinHPt     = 2000 // 20pt
-	StepNumberMaxHPt     = 2400 // 24pt
-	StepNumberDefaultHPt = 2200 // 22pt
-
-	// Footnote* frame source attribution and small print at the slide
-	// bottom. Regular weight, grey (FootnoteColor).
-	FootnoteMinHPt     = 700 // 7pt
-	FootnoteMaxHPt     = 800 // 8pt
-	FootnoteDefaultHPt = 800 // 8pt
+	// CardTitleMinHPt is the dense-report floor for card titles.
+	CardTitleMinHPt = 1200 // 12pt
+	// CardBodyMinHPt is the dense-report floor for card body copy.
+	CardBodyMinHPt = 900 // 9pt
+	// FootnoteMinHPt is the dense-report floor for footnotes and captions,
+	// and the size below which autofit shrink is reported as unreadable.
+	FootnoteMinHPt = 700 // 7pt
 
 	// BodyDefaultHPt is the fallback body font size used by textfit
 	// when a template master does not surface its own body level. This
 	// matches the typical slide master body level 1.
 	BodyDefaultHPt = 2000 // 20pt
 )
-
-// Cell insets (text padding inside a shape_grid cell), expressed in
-// typographic points. Body cells MUST set all four insets (rule 7 in
-// RULES.md); these constants name the healthy range.
-const (
-	CellInsetMinPt     = 6
-	CellInsetMaxPt     = 12
-	CellInsetDefaultPt = 8
-)
-
-// Gaps (typographic points) between shape_grid rows and columns.
-const (
-	GridGapDefaultPt = 8
-	GridGapTightPt   = 4
-	GridGapDensePt   = 2
-	GridGapLoosePt   = 12
-)
-
-// FootnoteColor is the canonical grey used for footnote/source text.
-// Keep in sync with the RULES.md typography table.
-const FootnoteColor = "#666666"

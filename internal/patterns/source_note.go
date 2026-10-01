@@ -3,6 +3,8 @@ package patterns
 import (
 	"encoding/json"
 	"strings"
+
+	"github.com/sebahrens/json2pptx/internal/tokens"
 )
 
 // One source convention for the whole engine (go-slide-creator-7eib).
@@ -25,7 +27,7 @@ const (
 	// the footer, at this size. A pattern expanded on its own (expand_pattern)
 	// has no chrome and still draws its source inside the grid, where
 	// shape_grid's 12pt readability floor (shapegrid.MinTextSizePt) applies.
-	SourceNoteSizePt = 9.0
+	SourceNoteSizePt = tokens.SourceLinePt
 	// SourceNoteScheme is the source line's base colour: the template's text
 	// colour, which the chrome zone mutes to about 60% (SourceNoteLumMod /
 	// SourceNoteLumOff) so the attribution reads as a footnote without

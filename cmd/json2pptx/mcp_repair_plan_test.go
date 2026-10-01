@@ -23,7 +23,7 @@ func TestProposeRepairsConsumesRealValidateFindings(t *testing.T) {
 		map[string]any{
 			"placeholder_id": "title",
 			"type":           "text",
-			"text_value":     "Revenue expansion in EMEA improved margins through focused pricing and disciplined channel execution this quarter",
+			"text_value":     "Revenue expansion in EMEA improved margins through focused pricing and disciplined channel execution across every region this quarter",
 		},
 		map[string]any{
 			"placeholder_id": "body",

@@ -141,7 +141,9 @@ executable one.
   bar(s) the title names. Waterfalls accent the decreases.
   A table with no `style` renders as a
   consulting table (unfilled 11pt bold header over a 1pt rule, 12pt rows,
-  hairline rules, no zebra); `table-highlight` matches it.
+  hairline rules, no zebra); `table-highlight` matches it. `header_background`
+  only adds a header fill (same type, rules, no zebra). `body_and_lead`
+  bullets get the body density size; the bold lead sits one 2pt step above.
 - [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance;
   get the current catalog, per-pattern schema and per-field copy targets from
   `list_patterns` / `show_pattern`. Out-of-range pattern text sizes are
@@ -150,7 +152,9 @@ executable one.
   ALL-CAPS labels are letter-spaced automatically (+7%) — write them in caps,
   do not add spaces — and bold headings, titles and names are balanced so no
   line ends on a lone word. In a two-column comparison, open each column's
-  bullets with a short label line to get a bold column header.
+  bullets with a short label line to get a bold column header. In raw
+  `shape_grid` text, bullet a paragraph with `paragraphs[].bullet: true`
+  (or `"–"`) — a real hanging-indent bullet — never a typed "• ".
 - [FINDINGS.md](FINDINGS.md): legacy finding and fix details for cases not yet
   covered by `describe_finding`; prefer the live tool for known codes.
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):

@@ -32,6 +32,84 @@ func BodySizeForDensity(templateHPt, density int) (int, BodySizePolicy) {
 	return policy.TargetHPt, policy
 }
 
+// LeadStepHPt is the scale step between a body_and_lead lead paragraph and
+// its supporting bullets; LeadMinHPt is the lead's floor.
+const (
+	LeadStepHPt = 200
+	LeadMinHPt  = 1600
+)
+
+// LeadSizeFor returns the lead-paragraph size for a bullet base size.
+func LeadSizeFor(bulletHPt int) int {
+	lead := bulletHPt + LeadStepHPt
+	if lead < LeadMinHPt {
+		lead = LeadMinHPt
+	}
+	return lead
+}
+
+// applyLeadParagraphSizes sizes the first cfg.leadParagraphs paragraphs one
+// step above the size the bullets actually render at: their explicit run
+// size (density-normalised or authored), else the shape list style's size
+// for their level, else the density base or the inherited size.
+func applyLeadParagraphSizes(shape *shapeXML, cfg *autofitConfig) {
+	if cfg.leadParagraphs <= 0 || shape.TextBody == nil {
+		return
+	}
+	rest := shape.TextBody.Paragraphs[min(cfg.leadParagraphs, len(shape.TextBody.Paragraphs)):]
+	base := extractFontSizeFromParagraphs(rest)
+	if base == 0 && len(rest) > 0 && shape.TextBody.ListStyle != nil {
+		level := 0
+		if rest[0].Properties != nil && rest[0].Properties.Level != nil {
+			level = *rest[0].Properties.Level
+		}
+		base = listStyleLevelSize(shape.TextBody.ListStyle.Inner, level)
+	}
+	if base == 0 {
+		base = cfg.bodyBaseHPt
+	}
+	if base == 0 {
+		base = cfg.authoredFontSizeHPt
+	}
+	if base == 0 && cfg.inherited != nil {
+		base = cfg.inherited.SizeHPt
+	}
+	if base == 0 {
+		return
+	}
+	size := fmt.Sprint(LeadSizeFor(base))
+	for i := 0; i < cfg.leadParagraphs && i < len(shape.TextBody.Paragraphs); i++ {
+		para := &shape.TextBody.Paragraphs[i]
+		for j := range para.Runs {
+			if para.Runs[j].RunProperties == nil {
+				para.Runs[j].RunProperties = &runPropertiesXML{Lang: "en-US"}
+			}
+			para.Runs[j].RunProperties.FontSize = size
+		}
+	}
+}
+
+// listStyleLevelSize returns the defRPr size declared for a 0-based level
+// in a list style, or 0.
+func listStyleLevelSize(inner string, level int) int {
+	return parseSzAttr(listStyleLevelBlock(inner, level))
+}
+
+// extractFontSizeFromParagraphs returns the first explicit run size, or 0.
+func extractFontSizeFromParagraphs(paras []paragraphXML) int {
+	for _, p := range paras {
+		for _, r := range p.Runs {
+			if r.RunProperties != nil && r.RunProperties.FontSize != "" {
+				var v int
+				if _, err := fmt.Sscan(r.RunProperties.FontSize, &v); err == nil && v > 0 {
+					return v
+				}
+			}
+		}
+	}
+	return 0
+}
+
 func normalizeBodyTypography(shape *shapeXML, cfg *autofitConfig) {
 	if !cfg.bodyTypography || shape.TextBody == nil || len(shape.TextBody.Paragraphs) == 0 {
 		return
@@ -59,7 +137,7 @@ func shouldNormalizeBodyTypography(shape *shapeXML, item ContentItem) bool {
 		return false
 	}
 	switch item.Type {
-	case ContentText, ContentBullets, ContentBodyAndBullets, ContentBulletGroups:
+	case ContentText, ContentBullets, ContentBodyAndBullets, ContentBodyAndLead, ContentBulletGroups:
 		return true
 	default:
 		return false

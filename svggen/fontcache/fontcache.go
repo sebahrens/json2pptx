@@ -46,7 +46,9 @@ type fontCache struct {
 //
 //  1. Resolve Lora to the embedded original faces, and Arial to embedded
 //     Liberation Sans for cross-platform metric stability.
-//  2. Try loading name as a system font.
+//  2. Try loading name as a system font, then its metric-compatible clone
+//     (Calibri -> Carlito, Cambria -> Caladea) from the system or from
+//     LibreOffice's bundled fonts; a clone is not reported as substituted.
 //  3. If that fails and fallbackName is non-empty, try the fallback (using the
 //     embedded face when that fallback is Lora or Arial).
 //  4. If that fails, cycle through common system fallbacks (Arial, Helvetica, DejaVu Sans).
@@ -128,6 +130,14 @@ func loadFont(name string, fallbackName string) (*canvas.FontFamily, string, boo
 	if err := ff.LoadSystemFont(name, canvas.FontRegular); err == nil {
 		_ = ff.LoadSystemFont(name, canvas.FontBold) // best-effort bold
 		return ff, name, false
+	}
+
+	// 1b. A metric-compatible clone (Calibri -> Carlito, Cambria -> Caladea)
+	// has the original's advance widths, so it measures exactly as the
+	// original renders; LibreOffice also renders with it. It is therefore
+	// not reported as a substitution (go-slide-creator-tl7vf).
+	if clone, ok := loadMetricClone(ff, name); ok {
+		return ff, clone, false
 	}
 
 	// 2. Try the explicit fallback name.

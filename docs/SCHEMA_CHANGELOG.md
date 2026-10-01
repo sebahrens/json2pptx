@@ -46,6 +46,23 @@
   `make_deck` titles are sentence-cased brief clauses, never cut mid-clause.
   `score_deck` no longer emits `missing_emphasis`.
 
+- **2026-10-01 — Typography fixes from the slide-quality review (`go-slide-creator-87eu0`, `q4zjj`, `b1vkj`, `yjl8d`, `tl7vf`, `zieyk`, `vmdfm`).**
+  A table `header_background` is additive on the consulting default: it only
+  fills the header (text lt1/dk1 by contrast) and keeps 12pt rows / 11pt
+  header, hairline rules and unbanded rows; `borders` / `striped` still opt
+  in individually (previously the whole table fell back to 18pt, a 1pt black
+  grid and zebra stripes). `body_and_lead` bullets follow the body density
+  policy and the bold lead sits one 2pt step above them (was a fixed 16pt /
+  12pt). `bullet_groups` group by proximity with explicit spacing and a 24pt
+  sub-bullet indent cap. Nested bullets under a layout's unmarked first level
+  are unmarked too. Calibri / Cambria measure with Carlito / Caladea when
+  installed (no `FONT_SUBSTITUTED`). New shape-grid `paragraphs[].bullet`
+  (`true` or a marker string) emits real hanging-indent bullets; nine
+  patterns use it instead of a typed "• ". The RULES.md typography table is
+  the type scale (28/18/14/12/10pt, 40-48pt KPI, 9pt engine source line);
+  the unused role tokens (grid header, 9-11pt card body, step number, 7-8pt
+  footnote, cell insets, grid gaps) were removed. No `SchemaVersion` bump.
+
 - **2026-09-30 — Grid diagrams obey the SVG strategy (`go-slide-creator-4c9m7`).**
   Diagram / chart cells embedded by patterns and `shape_grid` (e.g. the
   `chart-insights-split` / semantic `chart_insight` chart panel) now follow

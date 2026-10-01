@@ -116,16 +116,18 @@
             "text": {
               "paragraphs": [
                 {
-                  "content": "• What drives the spend?",
+                  "content": "What drives the spend?",
                   "size": 12,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 },
                 {
-                  "content": "• Where can we recover margin?",
+                  "content": "Where can we recover margin?",
                   "size": 12,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 }
               ],
               "align": "l",
@@ -163,16 +165,18 @@
             "text": {
               "paragraphs": [
                 {
-                  "content": "• Right-size top workloads.",
+                  "content": "Right-size top workloads.",
                   "size": 12,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 },
                 {
-                  "content": "• Stand up FinOps governance.",
+                  "content": "Stand up FinOps governance.",
                   "size": 12,
                   "color": "dk1",
-                  "align": "l"
+                  "align": "l",
+                  "bullet": true
                 }
               ],
               "align": "l",

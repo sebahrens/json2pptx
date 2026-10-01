@@ -101,6 +101,22 @@ const (
 	// in tables and dense matrices. Neither loosens MinReadableHPt.
 	BodyTextMinHPt      = 1100
 	DenseBodyTextMinHPt = 1000
+
+	// SourceLineHPt is the engine-rendered slide source line (9pt italic,
+	// muted). It is chrome, not an authoring size.
+	SourceLineHPt = 900
+)
+
+// Point mirrors of the type-scale steps, for pattern code that sizes text in
+// points (go-slide-creator-vmdfm). Name a size by its step instead of a
+// numeric literal.
+const (
+	TypeScaleDisplayPt = TypeScaleDisplayHPt / 100.0
+	TypeScaleLeadPt    = TypeScaleLeadHPt / 100.0
+	TypeScaleSubheadPt = TypeScaleSubheadHPt / 100.0
+	TypeScaleBodyPt    = TypeScaleBodyHPt / 100.0
+	TypeScaleCaptionPt = TypeScaleCaptionHPt / 100.0
+	SourceLinePt       = SourceLineHPt / 100.0
 )
 
 // typeScaleSteps are the sizes SnapTextHPt settles text onto, ascending. The

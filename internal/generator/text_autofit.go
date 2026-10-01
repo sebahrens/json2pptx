@@ -63,6 +63,13 @@ type autofitConfig struct {
 	// authoredFontSizeHPt is applied to generated runs before measurement,
 	// so autofit uses the same size the output PPTX will actually render.
 	authoredFontSizeHPt int
+	// leadParagraphs is the number of leading body_and_lead lead paragraphs
+	// sized one scale step above the bullets (go-slide-creator-q4zjj).
+	leadParagraphs int
+}
+
+func withLeadParagraphs(n int) autofitOption {
+	return func(c *autofitConfig) { c.leadParagraphs = n }
 }
 
 func withBodyTypography() autofitOption {
@@ -151,6 +158,7 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 		applyFontSizeOverride(shape, cfg.authoredFontSizeHPt)
 	}
 	normalizeBodyTypography(shape, &cfg)
+	applyLeadParagraphSizes(shape, &cfg)
 
 	bp := shape.TextBody.BodyProperties
 	if handleNoAutofitDirective(bp, shape, &cfg) {
@@ -378,6 +386,15 @@ func applyZeroDimensionAutofit(bp *bodyPropertiesXML, shape *shapeXML, cfg *auto
 // including font lookup with theme fallback and master-spacing compensation.
 func buildTextfitParams(shape *shapeXML, widthEMU, heightEMU int64, texts []string, cfg *autofitConfig) textfit.Params {
 	fontSizeHPt := extractFontSizeFromShape(shape)
+	if n := cfg.leadParagraphs; n > 0 && n < len(shape.TextBody.Paragraphs) {
+		// Measure at the bullets' size, not the larger lead's: the lead is
+		// one paragraph and normAutofit scales both uniformly.
+		body := *shape.TextBody
+		body.Paragraphs = body.Paragraphs[n:]
+		rest := *shape
+		rest.TextBody = &body
+		fontSizeHPt = extractFontSizeFromShape(&rest)
+	}
 	fontName := extractFontNameFromShape(shape)
 	if strings.HasPrefix(fontName, "+") {
 		fontName = "" // theme token, not a family — resolve below

@@ -3,6 +3,7 @@ package shapegrid
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -332,6 +333,48 @@ type paragraphDef struct {
 	// the same display size (go-slide-creator-yn2pw).
 	Suffix     string  `json:"suffix,omitempty"`
 	SuffixSize float64 `json:"suffix_size,omitempty"`
+	// Bullet makes the paragraph a real bulleted list item: true for the
+	// default "•", or a string marker such as "–". It emits <a:buChar> with a
+	// hanging indent so wrapped lines align with the text, not the marker
+	// (go-slide-creator-zieyk).
+	Bullet ParagraphBullet `json:"bullet,omitempty"`
+}
+
+// BulletHangPt is the hanging indent (points) of a bulleted grid paragraph
+// at sizePt: 0.65em — the "•" marker (~0.35em) plus a gap, about the advance
+// of the typed "• " prefix it replaces — capped at the 14pt
+// (pptx.BulletMarginLeft) used by placeholder bullets, so small grid text does
+// not lose a disproportionate share of a narrow cell.
+func BulletHangPt(sizePt float64) float64 {
+	maxPt := float64(pptx.BulletMarginLeft) / 12700
+	return math.Min(0.65*sizePt, maxPt)
+}
+
+// ParagraphBullet is a paragraph's bullet marker: "" for none. It unmarshals
+// from true (the default "•"), false (none) or a marker string.
+type ParagraphBullet string
+
+// UnmarshalJSON accepts a boolean or a marker string.
+func (b *ParagraphBullet) UnmarshalJSON(data []byte) error {
+	var on bool
+	if err := json.Unmarshal(data, &on); err == nil {
+		if on {
+			*b = ParagraphBullet(pptx.DefaultBulletChar)
+		} else {
+			*b = ""
+		}
+		return nil
+	}
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return fmt.Errorf("bullet must be true/false or a marker string: %w", err)
+	}
+	s = strings.TrimSpace(s)
+	if len([]rune(s)) > 2 {
+		return fmt.Errorf("bullet marker %q must be at most 2 characters", s)
+	}
+	*b = ParagraphBullet(s)
+	return nil
 }
 
 // paragraphColorFill resolves a paragraph's color, applying its opacity.
@@ -545,6 +588,12 @@ func buildParagraphsTextBody(defs []paragraphDef, defaultAlign, vAlign, defaultF
 		}
 		if d.SpaceAfter > 0 {
 			paragraphs[i].SpaceAfter = int(d.SpaceAfter * 100)
+		}
+		if d.Bullet != "" {
+			hang := int64(BulletHangPt(float64(fontSize)/100) * 12700)
+			paragraphs[i].Bullet = &pptx.BulletDef{Char: string(d.Bullet), Font: pptx.DefaultBulletFont}
+			paragraphs[i].MarginL = hang
+			paragraphs[i].Indent = -hang
 		}
 	}
 

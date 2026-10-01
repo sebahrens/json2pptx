@@ -21,21 +21,23 @@ Non-negotiable. Violating these causes broken or incorrect slides.
 
 ## Typography Hierarchy (shape_grid)
 
-Do not invent font sizes. When generating `shape_grid` JSON, use these consistent sizes — they're the authoritative cross-pattern defaults and match what the engine and built-in patterns expect:
+Do not invent font sizes. A deck uses one type scale; when generating `shape_grid` JSON, pick each size from it by role:
 
-| Role               | Size    | Weight  | Notes                                       |
-|--------------------|---------|---------|---------------------------------------------|
-| Grid header/banner | 14-18pt | Bold    | White on accent fill, full-width            |
-| Card title         | 12-14pt | Bold    | First line, separated by `\n`               |
-| Card body          | 9-11pt  | Regular | 11pt for 3-4 cols, 10pt for 5+              |
-| Step number        | 20-24pt | Bold    | White on accent, narrow column              |
-| Footnote/source    | 7-8pt   | Regular | Grey (#666666)                              |
+| Role                  | Size    | Weight  | Notes                                                              |
+|-----------------------|---------|---------|--------------------------------------------------------------------|
+| Display / title       | 28pt    | Regular | Display headings, divider titles; serif (major font) allowed       |
+| Lead / banner         | 18pt    | Bold    | Grid header band, lead line                                        |
+| Subhead / card title  | 14pt    | Bold    | Card titles (first line, separated by `\n`), column headers       |
+| Body / card body      | 12pt    | Regular | Default body copy; the floor in `present` decks                    |
+| Caption               | 10pt    | Regular | Only tables, dense matrices, legends and chart labels              |
+| KPI value             | 40-48pt | Bold    | Display figures; measured to fit                                   |
+| Source line           | 9pt     | Italic  | Engine-rendered from the slide `source` — never author it          |
 
-Leave text insets at the 0.5 cm default. Anything outside these ranges should be a deliberate, named-pattern override — never an ad-hoc choice. See [`docs/INPUT_FORMAT.md`](../../docs/INPUT_FORMAT.md) for full examples.
+Leave text insets at the 0.5 cm default. A size off this scale should be a deliberate, named-pattern override — never an ad-hoc choice. See [`docs/INPUT_FORMAT.md`](../../docs/INPUT_FORMAT.md) for full examples.
 
-Every size in the table sits on the **type scale**: 28pt display / title, 18pt lead, 14pt subhead (bold card titles, grid headers), 12pt body, 10pt caption, plus a 40–48pt display step for KPI values; 11pt is the body minimum and 10pt is allowed only in tables and dense matrices. The engine settles off-scale `shape_grid` sizes onto the step at or below them (16pt renders at 14pt, 20pt at 18pt), keeps display figures and 28pt+ text as measured, and never goes below a `viewing_mode` readability floor. Short ALL-CAPS labels are tracked +7% automatically. Serif (the template's major font) belongs to titles and display figures only; body text uses the minor font.
+The engine settles off-scale `shape_grid` sizes onto the step at or below them (16pt renders at 14pt, 20pt at 18pt), keeps display figures and 28pt+ text as measured, and never goes below a `viewing_mode` readability floor: in `present` (the default) body and card text under 12pt and captions under 10pt are refused as `TEXT_BELOW_READABLE_MIN`; `read` decks have lower floors for on-screen reading, which are limits, not sizes to author. Short ALL-CAPS labels are tracked +7% automatically. Serif (the template's major font) belongs to titles and display figures only; body text uses the minor font.
 
-The numeric ranges above are the published surface of the canonical design tokens in [`internal/tokens/tokens.go`](../../internal/tokens/tokens.go) (`GridHeader*`, `CardTitle*`, `CardBody*`, `StepNumber*`, `Footnote*`). A regression test (`internal/tokens/tokens_test.go`) verifies this table stays in sync with the constants — if you change one, change the other in the same PR.
+The table is the published surface of the type-scale tokens in [`internal/tokens/typography.go`](../../internal/tokens/typography.go) (`TypeScale*`, `SourceLineHPt`). A regression test (`internal/tokens/tokens_test.go`) verifies this table stays in sync with the constants — if you change one, change the other in the same PR.
 
 ## Charts
 
@@ -109,7 +111,7 @@ Accepted `IconInput` sources, exactly one per icon: `name` (bundled), `path` (lo
 
 **Refusal wording.** When TDR forces a split, emit exactly: *"This table has [N] logical rows × [M] columns; per Rule 20 I cannot fit this — emitting split_slide to distribute rows across slides."* Do not silently shrink fonts below 9pt to avoid the split.
 
-**Default look.** A table with no `style` renders as a consulting table: no header fill (never a black header bar), 11pt bold header over a 1pt rule, 12pt rows separated by 0.5pt 15% hairlines, no zebra, bold first column, numeric columns right-aligned, content-height rows top-anchored under the title. Prefer it; add `header_background` / `borders` / `striped` only for a deliberate exception. `table-highlight` uses the same look with an accent 10% tint and 3pt accent bar on the highlighted row.
+**Default look.** A table with no `style` renders as a consulting table: no header fill (never a black header bar), 11pt bold header over a 1pt rule, 12pt rows separated by 0.5pt 15% hairlines, no zebra, bold first column, numeric columns right-aligned, content-height rows top-anchored under the title. Prefer it; add `header_background` / `borders` / `striped` only for a deliberate exception — each is additive: `header_background` only fills the header (text flips to light/dark by contrast) and keeps the 12pt/11pt type, hairline rules and unbanded rows; `borders` / `striped` opt in to grid lines / zebra individually. `table-highlight` uses the same look with an accent 10% tint and 3pt accent bar on the highlighted row.
 
 Call `table_density_guide` (MCP) or run `json2pptx tables guide` (CLI, add `--json` for the structured envelope) for detailed font size and row-count guidance when building table slides in shape grids. Pass `{template: "..."}` (MCP) or `--template <name>` (CLI) to scope results to a specific template's `table_styles[]`. `style_id` narrows to one of those styles and requires `template`.
 
