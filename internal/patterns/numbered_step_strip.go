@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -121,8 +122,26 @@ type NumberedStepStripValues struct {
 	Steps []NumberedStepStripStep `json:"steps"`
 }
 
-// NumberedStepStripOverrides is the standard text overrides.
-type NumberedStepStripOverrides = TextOverrides
+// NumberedStepStripOverrides is the standard text overrides plus the number
+// lane treatment.
+type NumberedStepStripOverrides struct {
+	TextOverrides
+	// Style is the stacked-box / toc number treatment (not the render style,
+	// which is values.style): "tinted" (default: accent numerals on a neutral
+	// lane, unfilled toc numerals) or "solid" (accent-filled number lanes and
+	// toc badges with white numerals; legacy look).
+	Style string `json:"style,omitempty"`
+}
+
+// numberedStepLaneStyles are the accepted overrides.style values.
+var numberedStepLaneStyles = []string{"tinted", "solid"}
+
+// numberedStepStripOverridesSchema is the text overrides schema plus style.
+func numberedStepStripOverridesSchema() *Schema {
+	s := textOverridesSchema()
+	s.raw.Properties["style"] = EnumSchema(numberedStepLaneStyles...).WithDescription("Number treatment for stacked-box and toc (the render style is values.style). tinted (default): accent numerals on a neutral-tint lane (stacked-box) or unfilled (toc), so the column of numbers does not read as a row of accent blocks. solid: accent-filled number lanes / badges with white numerals (legacy look)").WithDefault("tinted")
+	return s
+}
 
 // NumberedStepStripCellOverride is the shared per-cell override; indexed by step.
 type NumberedStepStripCellOverride = CellOverride
@@ -161,7 +180,7 @@ func (n *numberedStepStrip) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"values":         valuesSchema,
-			"overrides":      textOverridesSchema(),
+			"overrides":      numberedStepStripOverridesSchema(),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
@@ -183,6 +202,9 @@ func (n *numberedStepStrip) Validate(values, overrides any, cellOverrides map[in
 		if ovr, ok := overrides.(*NumberedStepStripOverrides); ok {
 			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
 				errs = append(errs, err)
+			}
+			if ovr.Style != "" && !slices.Contains(numberedStepLaneStyles, ovr.Style) {
+				errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, numberedStepLaneStyles))
 			}
 		}
 	}
@@ -753,6 +775,7 @@ func (n *numberedStepStrip) expandStackedBox(ctx ExpandContext, vals *NumberedSt
 	labelSize := 13.0
 	bodySize := ResolveSize(ovr.BodySize, 10.0)
 	cellAccentMode := ovr.CellAccentMode
+	solid := ovr.Style == "solid"
 
 	withIcons := numberedStepsHaveIcons(vals)
 	rows := make([]jsonschema.GridRowInput, len(vals.Steps))
@@ -762,12 +785,21 @@ func (n *numberedStepStrip) expandStackedBox(ctx ExpandContext, vals *NumberedSt
 			tip = ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 		}
 
+		// The number lane is a neutral tint carrying an accent numeral by
+		// default; a stack of solid accent lanes was a wall of colour
+		// (go-slide-creator-fl11f). overrides.style "solid" restores it.
 		numberCell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, tip)),
-				Text:     buildNumberedStepNumberText(stepNumber(step, i), numberSize, "lt1"),
+				Fill:     neutralFillJSON(NeutralTint4),
+				Line:     noLine,
+				Text:     buildNumberedStepNumberText(stepNumber(step, i), numberSize, accentInkOnTone(ctx, tip, neutralTone(NeutralTint4), 3.0)),
 			},
+		}
+		if solid {
+			numberCell.Shape.Fill = json.RawMessage(fmt.Sprintf(`"%s"`, tip))
+			numberCell.Shape.Line = nil
+			numberCell.Shape.Text = buildNumberedStepNumberText(stepNumber(step, i), numberSize, "lt1")
 		}
 
 		bodyCell := &jsonschema.GridCellInput{
@@ -884,6 +916,7 @@ func (n *numberedStepStrip) expandTOC(ctx ExpandContext, vals *NumberedStepStrip
 	titleSize := 14.0
 	bodySize := ResolveSize(ovr.BodySize, 10.0)
 	cellAccentMode := ovr.CellAccentMode
+	solid := ovr.Style == "solid"
 
 	withIcons := numberedStepsHaveIcons(vals)
 	rows := make([]jsonschema.GridRowInput, len(vals.Steps))
@@ -893,12 +926,21 @@ func (n *numberedStepStrip) expandTOC(ctx ExpandContext, vals *NumberedStepStrip
 			badge = ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 		}
 
+		// An unfilled accent numeral by default (go-slide-creator-fl11f);
+		// overrides.style "solid" restores the accent badge.
 		numberCell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
-				Geometry: "roundRect",
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, badge)),
-				Text:     buildNumberedStepNumberText(stepNumber(step, i), numberSize, "lt1"),
+				Geometry: "rect",
+				Fill:     json.RawMessage(`"none"`),
+				Line:     noLine,
+				Text:     buildNumberedStepNumberText(stepNumber(step, i), numberSize, accentInkOnLight(ctx, badge, 3.0)),
 			},
+		}
+		if solid {
+			numberCell.Shape.Geometry = "roundRect"
+			numberCell.Shape.Fill = json.RawMessage(fmt.Sprintf(`"%s"`, badge))
+			numberCell.Shape.Line = nil
+			numberCell.Shape.Text = buildNumberedStepNumberText(stepNumber(step, i), numberSize, "lt1")
 		}
 
 		titleCell := &jsonschema.GridCellInput{

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -107,8 +108,25 @@ const (
 	processGrid2RowMeasureSafety = 0.85
 )
 
-// ProcessGrid2RowOverrides is the standard text overrides.
-type ProcessGrid2RowOverrides = TextOverrides
+// ProcessGrid2RowOverrides is the standard text overrides plus the phase box
+// treatment.
+type ProcessGrid2RowOverrides struct {
+	TextOverrides
+	// Style is "tinted" (default: neutral-tint phase boxes with dark text
+	// under a thin rule in the track colour) or "solid" (phase boxes filled
+	// with the track colour; legacy look).
+	Style string `json:"style,omitempty"`
+}
+
+// processGrid2RowStyles are the accepted overrides.style values.
+var processGrid2RowStyles = []string{"tinted", "solid"}
+
+// processGrid2RowOverridesSchema is the text overrides schema plus style.
+func processGrid2RowOverridesSchema() *Schema {
+	s := textOverridesSchema()
+	s.raw.Properties["style"] = EnumSchema(processGrid2RowStyles...).WithDescription("tinted (default): neutral-tint phase boxes with dark text under a thin rule in the track colour (row1_color / row2_color), so two rows of phases do not read as a wall of accent blocks. solid: phase boxes filled with the track colour (legacy look)").WithDefault("tinted")
+	return s
+}
 
 // ProcessGrid2RowCellOverride is the shared per-cell override; indexed
 // row-major as: row1_label, row1_phase[0..N-1], row2_label, row2_phase[0..N-1],
@@ -132,10 +150,10 @@ func (p *processGrid2Row) Schema() *Schema {
 		map[string]*Schema{
 			"row1_label":  StringSchema(40).WithDescription("Label for the top row (rendered in the dk2 left column)"),
 			"row1_phases": phasesSchema,
-			"row1_color":  StringSchema(0).WithDescription("Scheme color for the top-row phase boxes (default accent1)").WithDefault("accent1"),
+			"row1_color":  StringSchema(0).WithDescription("Scheme color for the top-row phase rules (style solid: box fills); default: the template's color_roles.primary_fill").WithDefault("accent1"),
 			"row2_label":  StringSchema(40).WithDescription("Label for the bottom row (rendered in the dk2 left column)"),
 			"row2_phases": phasesSchema,
-			"row2_color":  StringSchema(0).WithDescription("Scheme color for the bottom-row phase boxes; defaults to a darker tone of row1_color so the two tracks read as parallel rather than unrelated").WithDefault(""),
+			"row2_color":  StringSchema(0).WithDescription("Scheme color for the bottom-row phase rules (style solid: box fills); defaults to row1_color (under style solid a darker tone of it) so the two tracks read as parallel rather than unrelated").WithDefault(""),
 			"column_headers": ArraySchema(StringSchema(processGrid2RowHeaderMaxChars), 3, 6).
 				WithDescription("Optional per-column headers (one per phase; length must equal the phase count) rendered as a header row with an accent underline above both tracks"),
 			"outcomes": ArraySchema(StringSchema(processGrid2RowOutcomeMaxChars), 3, 6).
@@ -147,7 +165,7 @@ func (p *processGrid2Row) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"values":         valuesSchema,
-			"overrides":      textOverridesSchema(),
+			"overrides":      processGrid2RowOverridesSchema(),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
@@ -169,6 +187,9 @@ func (p *processGrid2Row) Validate(values, overrides any, cellOverrides map[int]
 		if ovr, ok := overrides.(*ProcessGrid2RowOverrides); ok {
 			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
 				errs = append(errs, err)
+			}
+			if ovr.Style != "" && !slices.Contains(processGrid2RowStyles, ovr.Style) {
+				errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, processGrid2RowStyles))
 			}
 		}
 	}
@@ -289,13 +310,17 @@ func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellO
 
 	row1Color := vals.Row1Color
 	if row1Color == "" {
-		row1Color = "accent1"
+		row1Color = ctx.DefaultAccent()
 	}
 	// row2 defaults to a darker tone of row1, not accent3: the two rows are
 	// parallel tracks of one process, and a second brand hue says they are two
 	// different things (go-slide-creator-at7ij).
 	row2Color := vals.Row2Color
 	usePeerToneForRow2 := row2Color == ""
+	// Tinted by default: two rows of solid accent phase boxes were a wall of
+	// colour (go-slide-creator-fl11f); the track colour marks each box with
+	// a thin top rule instead. overrides.style "solid" restores the fills.
+	solid := ovr.Style == "solid"
 
 	n := len(vals.Row1Phases)
 	if n == 0 || n != len(vals.Row2Phases) {
@@ -319,8 +344,18 @@ func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellO
 	row1Cells[0] = buildProcessGrid2RowLabelCell(ctx, vals.Row1Label, rowLabelSize)
 	applyProcessGrid2RowOverride(row1Cells[0], cellOverrides, cellIdx, baseAccent)
 	cellIdx++
+	// Under column headers the header underline already tops the first
+	// track; a second rule beneath it would read as a doubled line.
+	row1Rule := row1Color
+	if len(vals.ColumnHeaders) == n {
+		row1Rule = ""
+	}
 	for i, phase := range vals.Row1Phases {
-		row1Cells[1+i] = buildProcessGrid2RowPhaseCell(ctx, phase, row1Color, phaseSize)
+		if solid {
+			row1Cells[1+i] = buildProcessGrid2RowPhaseCell(ctx, phase, row1Color, phaseSize)
+		} else {
+			row1Cells[1+i] = buildProcessGrid2RowPhaseRuledCell(ctx, phase, row1Rule, NeutralTint8, phaseSize)
+		}
 		applyProcessGrid2RowOverride(row1Cells[1+i], cellOverrides, cellIdx, baseAccent)
 		cellIdx++
 	}
@@ -330,7 +365,14 @@ func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellO
 	applyProcessGrid2RowOverride(row2Cells[0], cellOverrides, cellIdx, baseAccent)
 	cellIdx++
 	for i, phase := range vals.Row2Phases {
-		row2Cells[1+i] = buildProcessGrid2RowPhaseTintedCell(ctx, phase, row1Color, row2Color, usePeerToneForRow2, phaseSize)
+		switch {
+		case solid:
+			row2Cells[1+i] = buildProcessGrid2RowPhaseTintedCell(ctx, phase, row1Color, row2Color, usePeerToneForRow2, phaseSize)
+		case usePeerToneForRow2:
+			row2Cells[1+i] = buildProcessGrid2RowPhaseRuledCell(ctx, phase, row1Color, NeutralTint4, phaseSize)
+		default:
+			row2Cells[1+i] = buildProcessGrid2RowPhaseRuledCell(ctx, phase, row2Color, NeutralTint4, phaseSize)
+		}
 		applyProcessGrid2RowOverride(row2Cells[1+i], cellOverrides, cellIdx, baseAccent)
 		cellIdx++
 	}
@@ -623,6 +665,25 @@ func buildProcessGrid2RowPhaseTintedCell(ctx ExpandContext, phase, row1Color, ro
 			Text:     buildProcessGrid2RowTextContent(pptx.ConvertMarkdownEmphasis(phase), size, true, textColor),
 		},
 	}
+}
+
+// buildProcessGrid2RowPhaseRuledCell is the restrained phase box: a neutral
+// tint with dark bold text under a thin rule in the track colour (none when
+// color is empty). The second track takes the lighter tint step so the
+// parallel rows stay distinguishable (go-slide-creator-at7ij).
+func buildProcessGrid2RowPhaseRuledCell(ctx ExpandContext, phase, color string, tint int, size float64) *jsonschema.GridCellInput {
+	cell := &jsonschema.GridCellInput{
+		Shape: &jsonschema.ShapeSpecInput{
+			Geometry: "rect",
+			Fill:     neutralFillJSON(tint),
+			Line:     noLine,
+			Text:     buildProcessGrid2RowTextContent(pptx.ConvertMarkdownEmphasis(phase), size, true, readableTextOn(ctx, neutralTone(tint), "dk1")),
+		},
+	}
+	if color != "" {
+		cell.AccentBar = &jsonschema.AccentBarInput{Position: "top", Color: color, Width: peerRuleWidthPt}
+	}
+	return cell
 }
 
 func buildProcessGrid2RowPhaseCell(ctx ExpandContext, phase, color string, size float64) *jsonschema.GridCellInput {

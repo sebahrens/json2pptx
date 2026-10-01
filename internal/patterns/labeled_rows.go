@@ -18,7 +18,9 @@ import (
 // Leaner; Adopt / Adapt / Assemble).
 // ---------------------------------------------------------------------------
 //
-// Layout (label_style "filled", the default):
+// Layout (label_style "tinted", the default: a neutral-tint block under a
+// thin accent rule with the keyword in accent ink; "filled" is the legacy
+// solid accent block):
 //
 //   ┌──────────────┐
 //   │ WHY          │  The industry grew 11% in 2025, but most of the growth
@@ -60,13 +62,17 @@ const (
 	labeledRowsMinLabelPt  = 12.0
 	labeledRowsMinFillFrac = 0.60
 
+	labeledRowsStyleTinted = "tinted"
 	labeledRowsStyleFilled = "filled"
 	labeledRowsStyleText   = "text"
 )
 
+// labeledRowsStyles are the accepted overrides.label_style values.
+var labeledRowsStyles = []string{labeledRowsStyleTinted, labeledRowsStyleFilled, labeledRowsStyleText}
+
 func (l *labeledRows) Name() string { return "labeled-rows" }
 func (l *labeledRows) Description() string {
-	return "2-6 rows, each a keyword label block on the left (filled accent block with bold keyword + optional sublabel, or accent-coloured text) beside 1-4 lines of body text, rules between content-sized rows"
+	return "2-6 rows, each a keyword label block on the left (neutral-tint block under an accent rule with bold accent keyword + optional sublabel, a solid accent block, or accent-coloured text) beside 1-4 lines of body text, rules between content-sized rows"
 }
 func (l *labeledRows) UseWhen() string {
 	return "2–6 parallel themes each introduced by a short keyword label (WHY / WHAT / HOW, Smarter / Faster / Leaner, Adopt / Adapt / Assemble) followed by 1–4 lines of explanation; prefer exec-summary for 3–5 numbered sentence-length conclusions, metric-list when each row leads with a number, comparison-2col for two options side by side, scqa-summary for a Situation / Complication / Questions / Answer arc"
@@ -118,7 +124,7 @@ type LabeledRowsValues struct {
 type LabeledRowsOverrides struct {
 	Accent         string  `json:"accent,omitempty"`
 	SemanticAccent string  `json:"semantic_accent,omitempty"`
-	LabelStyle     string  `json:"label_style,omitempty"` // filled (default) | text
+	LabelStyle     string  `json:"label_style,omitempty"` // tinted (default) | filled | text
 	LabelWidthPct  float64 `json:"label_width_pct,omitempty"`
 	LabelSize      float64 `json:"label_size,omitempty"`
 	BodySize       float64 `json:"body_size,omitempty"`
@@ -151,9 +157,9 @@ func (l *labeledRows) Schema() *Schema {
 
 	overridesSchema := ObjectSchema(
 		map[string]*Schema{
-			"accent":           StringSchema(0).WithDescription("Accent scheme color for the label blocks (default accent1)").WithDefault("accent1"),
+			"accent":           StringSchema(0).WithDescription("Accent scheme color for the label rules, keywords and filled blocks (default: the template's color_roles.primary_fill)").WithDefault("accent1"),
 			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-			"label_style":      EnumSchema(labeledRowsStyleFilled, labeledRowsStyleText).WithDescription("filled (default): solid accent block with the keyword in measured-contrast text; text: no fill, keyword in accent-coloured bold type"),
+			"label_style":      EnumSchema(labeledRowsStyles...).WithDescription("tinted (default): neutral-tint block under a thin accent rule, keyword in bold accent type, so a column of labels does not read as a row of accent blocks; filled: solid accent block with the keyword in measured-contrast text (legacy look); text: no fill, keyword in accent-coloured bold type").WithDefault(labeledRowsStyleTinted),
 			"label_width_pct":  NumberSchema(labeledRowsMinLabelPct, labeledRowsMaxLabelPct).WithDescription("Width of the label column as a percentage of the pattern width (default 22)"),
 			"label_size":       NumberSchema(12, 40).WithDescription("Keyword font size in points (default 22 stepping down to 16 as content grows)"),
 			"body_size":        NumberSchema(12, 28).WithDescription("Body font size in points (default 15 stepping down to 12); the sublabel is 2pt smaller than the body, never below 12"),
@@ -171,7 +177,7 @@ func (l *labeledRows) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Labeled rows: 2-6 rows of a keyword label block (filled or text) beside 1-4 lines of body text, rules between content-sized rows")
+	}).WithDescription("Labeled rows: 2-6 rows of a keyword label block (tinted, filled or text) beside 1-4 lines of body text, rules between content-sized rows")
 }
 
 func (l *labeledRows) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -191,11 +197,11 @@ func (l *labeledRows) Validate(values, overrides any, cellOverrides map[int]any)
 				errs = append(errs, err)
 			}
 			switch ovr.LabelStyle {
-			case "", labeledRowsStyleFilled, labeledRowsStyleText:
+			case "", labeledRowsStyleTinted, labeledRowsStyleFilled, labeledRowsStyleText:
 			default:
 				errs = append(errs, newValidationError(name, "overrides.label_style", ErrCodeUnknownEnum,
-					fmt.Sprintf("labeled-rows: overrides.label_style must be %q or %q, got %q", labeledRowsStyleFilled, labeledRowsStyleText, ovr.LabelStyle),
-					UseOneOfFix("overrides.label_style", []string{labeledRowsStyleFilled, labeledRowsStyleText})))
+					fmt.Sprintf("labeled-rows: overrides.label_style must be one of %s, got %q", strings.Join(labeledRowsStyles, ", "), ovr.LabelStyle),
+					UseOneOfFix("overrides.label_style", labeledRowsStyles)))
 			}
 			if ovr.LabelWidthPct != 0 && (ovr.LabelWidthPct < labeledRowsMinLabelPct || ovr.LabelWidthPct > labeledRowsMaxLabelPct) {
 				errs = append(errs, errOutOfRange(name, "overrides.label_width_pct", int(labeledRowsMinLabelPct), int(labeledRowsMaxLabelPct), int(ovr.LabelWidthPct)))
@@ -394,7 +400,25 @@ func (l *labeledRows) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		co, _ := cellOverrides[i].(*LabeledRowsCellOverride)
 
 		var labelCell *jsonschema.GridCellInput
-		if lay.filled {
+		if lay.filled && ovr.LabelStyle != labeledRowsStyleFilled {
+			// Tinted by default: a column of solid accent label blocks was a
+			// wall of colour (go-slide-creator-fl11f). The block keeps the
+			// filled geometry and insets, so the measured layout is shared.
+			minContrast := TextContrastThreshold(lay.labelSize, true)
+			ink := accentInkOnTone(ctx, accent, neutralTone(NeutralTint4), minContrast)
+			if co != nil && co.Color != "" {
+				ink = co.Color
+			}
+			labelCell = &jsonschema.GridCellInput{
+				Shape: &jsonschema.ShapeSpecInput{
+					Geometry: "rect",
+					Fill:     neutralFillJSON(NeutralTint4),
+					Line:     json.RawMessage(`"none"`),
+					Text:     labeledRowsLabelText(r, lay, ink, subInkOnLight),
+				},
+				AccentBar: &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: peerRuleWidthPt},
+			}
+		} else if lay.filled {
 			// Ink by measured contrast at the block's smallest text: lt1 when
 			// it clears WCAG AA there (3:1 for a large bold keyword alone),
 			// else the theme's dark ink (go-slide-creator-8xsj3).

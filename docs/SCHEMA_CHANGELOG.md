@@ -1,5 +1,26 @@
 # Schema Changelog
 
+- **2026-10-01 — Restrained accent defaults for the last four patterns; default accent = `color_roles.primary_fill` (`go-slide-creator-fl11f`, `go-slide-creator-2mia4`).**
+  - `agenda-with-images`: number column is an unfilled bold accent numeral;
+    new `overrides.style` (`numeral` default | `solid` accent squares).
+  - `labeled-rows`: new `label_style` value `tinted` (default; neutral-tint
+    block under a thin accent rule, bold accent keyword); `filled` keeps the
+    solid accent block, `text` is unchanged.
+  - `numbered-step-strip`: new `overrides.style` (`tinted` default | `solid`)
+    for the stacked-box number lane (neutral lane, accent numeral) and the
+    toc badge (unfilled accent numeral); the render style stays `values.style`.
+  - `process-grid-2row`: new `overrides.style` (`tinted` default | `solid`);
+    phase boxes are neutral tints (second track a lighter step) under a thin
+    rule in the track colour, the first track's rule dropped under
+    `column_headers`.
+  - A pattern's default accent (primary / unset `accent_strategy`, and the
+    defaults that hardcoded `accent1`: process-grid-2row `row1_color`,
+    dual-org-ladder `accent_a`, bar highlights, takeaway bands, compose
+    banners, value-chain highlight) is now the template's
+    `color_roles.primary_fill`; unchanged where accent1 carries white text,
+    `accent2` on warm-coral, `accent3` on business-template, `dk2` on
+    blue-corporate.
+
 - **2026-10-01 — `shape_grid.links`; swimlane hand-off arrows; one people primitive (4.155.0; `go-slide-creator-0b3f6`, `q4fut`, `ux1le`, `swt4x`, `wd6p6`).**
   - New optional `shape_grid.links`: `[{"from":[row,col],"to":[row,col],"connector":{style,color,width,dash}}]`
     draws an explicit connector between two cells addressed by the row and

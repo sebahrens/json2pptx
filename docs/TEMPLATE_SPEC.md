@@ -219,7 +219,7 @@ When `data_palette` is absent, charts start from the fixed order `accent1`–`ac
 
 One line per accent (`accent1`–`accent6`) stating its intended role and what text it can carry, surfaced by `list_templates` (`fields="full"`, CLI `skill-info --mode compact`) so agents pick accents with intent. Every bundled template authors all six lines (a corpus test enforces it). When a template has no guide — a bring-your-own template such as one without a metadata part — `list_templates` derives one from the theme's measured contrast (primary / secondary fill, white-text safety, near-background tints) and sets `accent_usage_guide_derived: true`; treat a derived guide as contrast facts only, not brand intent.
 
-`color_roles.primary_fill` / `secondary_fill` name the first accents that carry white body text (4.5:1), then large text (3:1), then a qualifying `dk2` / `dk1`; they are not always `accent1`. `color_roles.ink_on_accent` gives, per accent, the readable text colour for a fill of that accent (`lt1` when white passes 4.5:1, else `dk2` / `dk1`) and its ratio.
+`color_roles.primary_fill` / `secondary_fill` name the first accents that carry white body text (4.5:1), then large text (3:1), then a qualifying `dk2` / `dk1`; they are not always `accent1`, and patterns use the same slot as their default accent (`ExpandContext.DefaultAccent`). `color_roles.ink_on_accent` gives, per accent, the readable text colour for a fill of that accent (`lt1` when white passes 4.5:1, else `dk2` / `dk1`) and its ratio.
 
 ### Template Conformance Check
 

@@ -15,12 +15,13 @@ import (
 var barNeutralTone = fillTone{Color: "dk1", LumMod: 38000, LumOff: 62000}
 
 // highlightAccent is the fill of a highlighted bar: an explicit accent or
-// semantic_accent override when the author gave one, otherwise accent1 — not
+// semantic_accent override when the author gave one, otherwise the template's
+// primary fill (ExpandContext.DefaultAccent, accent1 on most templates) — not
 // the deck's rotated accent, because the highlight is the one emphasis on the
 // slide and must read the same on every chart.
 func highlightAccent(ctx ExpandContext, accent, semanticAccent string) string {
 	if accent == "" && semanticAccent == "" {
-		return "accent1"
+		return ctx.DefaultAccent()
 	}
 	return ctx.ResolveAccent(accent, semanticAccent)
 }

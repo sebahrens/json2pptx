@@ -152,7 +152,7 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 		merged = appendCalloutRow(merged, c.Callout, ctx)
 	}
 	if c.Banner != nil {
-		merged = prependBannerRow(merged, c.Banner)
+		merged = prependBannerRow(merged, c.Banner, ctx)
 	}
 
 	return merged, warnings, nil
@@ -268,7 +268,7 @@ func composeSegmentBounds(c *ComposeInput, ctx patterns.ExpandContext, grids []*
 // text on the accent fill, matching the Strategy-House banner styling.
 // Banner cells are NOT addressable via cell_overrides — the band is a fixed
 // envelope decoration, like PatternCallout.
-func prependBannerRow(grid *jsonschema.ShapeGridInput, banner *patterns.BannerSpec) *jsonschema.ShapeGridInput {
+func prependBannerRow(grid *jsonschema.ShapeGridInput, banner *patterns.BannerSpec, ctx patterns.ExpandContext) *jsonschema.ShapeGridInput {
 	if grid == nil || banner == nil {
 		return grid
 	}
@@ -278,7 +278,8 @@ func prependBannerRow(grid *jsonschema.ShapeGridInput, banner *patterns.BannerSp
 		numCols = 1
 	}
 
-	accent := "accent1"
+	// The template's primary fill carries white text (go-slide-creator-2mia4).
+	accent := ctx.DefaultAccent()
 	if banner.Accent != "" {
 		accent = banner.Accent
 	}

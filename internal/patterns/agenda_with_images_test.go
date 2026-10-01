@@ -428,3 +428,30 @@ func TestAgendaBadgeCellIsFlatWhenItFills(t *testing.T) {
 		t.Errorf("columns = %v, want equal gutters around a 60%% badge", cols)
 	}
 }
+
+// TestAgendaWithImages_NumeralDefault: the number column is an unfilled bold
+// accent numeral by default; overrides.style "solid" restores the accent
+// square with a white numeral (go-slide-creator-fl11f).
+func TestAgendaWithImages_NumeralDefault(t *testing.T) {
+	p, _ := Default().Get("agenda-with-images")
+	v := validAgendaWithImagesValues(3)
+	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	num := grid.Rows[0].Cells[0].Shape
+	if num == nil || string(num.Fill) != `"none"` || !strings.Contains(string(num.Text), `"accent1"`) {
+		t.Fatalf("default number cell = %+v, want an unfilled accent1 numeral", num)
+	}
+	solid, err := p.Expand(ExpandContext{}, v, &AgendaWithImagesOverrides{Style: "solid"}, nil)
+	if err != nil {
+		t.Fatalf("Expand solid: %v", err)
+	}
+	badge := agendaBadgeShape(t, solid.Rows[0].Cells[0])
+	if string(badge.Fill) != `"accent1"` || !strings.Contains(string(badge.Text), `"lt1"`) {
+		t.Errorf("solid badge = fill %s text %s, want accent1 with lt1", badge.Fill, badge.Text)
+	}
+	if err := p.Validate(v, &AgendaWithImagesOverrides{Style: "loud"}, nil); err == nil || !strings.Contains(err.Error(), "overrides.style") {
+		t.Errorf("expected overrides.style error, got %v", err)
+	}
+}

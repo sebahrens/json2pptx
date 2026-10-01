@@ -13,14 +13,19 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "accent1",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
+            },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "01",
                   "size": 18,
                   "bold": true,
-                  "color": "lt1",
+                  "color": "accent1",
                   "align": "ctr"
                 }
               ],
@@ -69,14 +74,19 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "accent1",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
+            },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "02",
                   "size": 18,
                   "bold": true,
-                  "color": "lt1",
+                  "color": "accent1",
                   "align": "ctr"
                 }
               ],
@@ -124,14 +134,19 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "accent1",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
+            },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "03",
                   "size": 18,
                   "bold": true,
-                  "color": "lt1",
+                  "color": "accent1",
                   "align": "ctr"
                 }
               ],

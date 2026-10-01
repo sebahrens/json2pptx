@@ -375,7 +375,7 @@ func textOverridesSchema() *Schema {
 // rather than silently ignored (go-slide-creator-s1uvj.41).
 func textOverridesSchemaWithout(omit ...string) *Schema {
 	props := map[string]*Schema{
-		"accent":           StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
+		"accent":           StringSchema(0).WithDescription("Accent scheme color (default: the template's color_roles.primary_fill — accent1 unless white text fails on it)").WithDefault("accent1"),
 		"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
 		"header_size":      NumberSchema(6, 120).WithDescription("Font size for headers in points"),
 		"body_size":        NumberSchema(6, 120).WithDescription("Font size for body text in points"),

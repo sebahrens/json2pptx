@@ -260,7 +260,7 @@ func (d *dualOrgLadder) Expand(ctx ExpandContext, values, overrides any, cellOve
 
 	accentA := ovr.AccentA
 	if accentA == "" {
-		accentA = "accent1"
+		accentA = ctx.DefaultAccent()
 	}
 	// accent_b defaults to a darker tone of accent_a, not accent2: the two orgs
 	// are peers and a second brand hue says otherwise (go-slide-creator-at7ij).

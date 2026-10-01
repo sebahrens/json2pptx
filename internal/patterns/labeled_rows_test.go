@@ -112,10 +112,35 @@ func TestLabeledRows_Validate(t *testing.T) {
 	}
 }
 
-func TestLabeledRows_ExpandFilled(t *testing.T) {
+// TestLabeledRows_ExpandTintedDefault: the default label block is a neutral
+// tint under a thin accent rule with the keyword in accent ink, not a solid
+// accent block (go-slide-creator-fl11f).
+func TestLabeledRows_ExpandTintedDefault(t *testing.T) {
 	p := labeledRowsPattern(t)
 	vals := p.(Exemplar).ExemplarValues().(*LabeledRowsValues)
 	grid, err := p.Expand(fullThemeCtx(), vals, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, r := range contentRows(grid) {
+		cell := r.Cells[0]
+		if strings.HasPrefix(strings.Trim(string(cell.Shape.Fill), `"`), "accent") {
+			t.Errorf("row %d label fill = %s, want a neutral tint", i, cell.Shape.Fill)
+		}
+		if cell.AccentBar == nil || cell.AccentBar.Position != "top" || cell.AccentBar.Color != "accent1" {
+			t.Errorf("row %d accent bar = %+v, want a top accent1 rule", i, cell.AccentBar)
+		}
+		txt := cellText(t, cell.Shape.Text)
+		if txt.Paragraphs[0].Color != "accent1" || !txt.Paragraphs[0].Bold {
+			t.Errorf("row %d keyword = %+v, want bold accent1", i, txt.Paragraphs[0])
+		}
+	}
+}
+
+func TestLabeledRows_ExpandFilled(t *testing.T) {
+	p := labeledRowsPattern(t)
+	vals := p.(Exemplar).ExemplarValues().(*LabeledRowsValues)
+	grid, err := p.Expand(fullThemeCtx(), vals, &LabeledRowsOverrides{LabelStyle: "filled"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +213,7 @@ func TestLabeledRows_CellAccentModes(t *testing.T) {
 	p := labeledRowsPattern(t)
 	for _, base := range []string{"accent1", "accent3"} {
 		for _, mode := range []string{"uniform", "alternate", "progressive"} {
-			grid, err := p.Expand(ExpandContext{}, &LabeledRowsValues{Rows: labeledRowItems(4)}, &LabeledRowsOverrides{Accent: base, CellAccentMode: mode}, nil)
+			grid, err := p.Expand(ExpandContext{}, &LabeledRowsValues{Rows: labeledRowItems(4)}, &LabeledRowsOverrides{Accent: base, CellAccentMode: mode, LabelStyle: "filled"}, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -416,7 +416,10 @@ func resolveValueChainHighlight(ctx ExpandContext, authored string) string {
 	if authored != "" {
 		return authored
 	}
-	if pick, ok := pickDistinctFill(ctx, valueChainLabelTone, valueChainHighlightMin, valueChainHighlightCandidates...); ok {
+	// The template's primary fill leads, so the highlight is the same slot
+	// every other pattern defaults to (go-slide-creator-2mia4).
+	candidates := append([]string{ctx.DefaultAccent()}, valueChainHighlightCandidates...)
+	if pick, ok := pickDistinctFill(ctx, valueChainLabelTone, valueChainHighlightMin, candidates...); ok {
 		return pick
 	}
 	return valueChainDefaultHighlight
