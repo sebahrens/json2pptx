@@ -68,6 +68,14 @@ func nativeProcessFlowPreflight(spec *types.DiagramSpec, font, path string, widt
 	layout := computeProcessFlowLayout(steps, connections, bounds, direction, font)
 	for i, step := range steps {
 		box := layout.steps[i]
+		if step.stepType == pfDecisionType && step.description == "" {
+			// Drawn unwrapped at a size fitted to the diamond.
+			if !pfDecisionLabelFits(step.label, font, box.cx, box.cy) {
+				need := int64(pfDecisionMinLabelSize) * 127 * 12 / 10 * int64(len(strings.Fields(step.label))) * 2
+				out = append(out, nativeTextCollisionFinding(spec.Type, slidepath.Field(path, fmt.Sprintf("data.steps[%d]", i)), step.label, "", need, box.cy))
+			}
+			continue
+		}
 		usableW, availableH := pfTextArea(step, font, box.cx, box.cy)
 		if usableW < 1 {
 			usableW = 1
@@ -82,9 +90,11 @@ func nativeProcessFlowPreflight(spec *types.DiagramSpec, font, path string, widt
 	}
 
 	stepRects := make(map[string]pptx.RectEmu, len(steps))
+	stepKinds := make(map[string]processFlowStepType, len(steps))
 	for i, step := range steps {
 		box := layout.steps[i]
 		stepRects[step.id] = pptx.RectEmu{X: box.x, Y: box.y, CX: box.cx, CY: box.cy}
+		stepKinds[step.id] = step.stepType
 	}
 	for i, connection := range connections {
 		if connection.label == "" {
@@ -95,9 +105,10 @@ func nativeProcessFlowPreflight(spec *types.DiagramSpec, font, path string, widt
 		if !srcOK || !tgtOK {
 			continue
 		}
-		label := pfConnLabelBounds(src, tgt, layout.direction)
-		for _, stepRect := range stepRects {
-			if nativeRectsOverlap(label, stepRect) {
+		labelW, labelH := pfConnLabelSize(connection.label, font)
+		label := pfConnLabelBounds(src, tgt, layout.direction, labelW, labelH, stepKinds[connection.from] == pfDecisionType)
+		for id, stepRect := range stepRects {
+			if pfRectHitsStep(label, stepRect, stepKinds[id]) {
 				out = append(out, patterns.FitFinding{
 					ValidationError: patterns.ValidationError{
 						Pattern: spec.Type,

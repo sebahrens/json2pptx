@@ -74,8 +74,8 @@ func TestProcessFlowVertical_ConnectionLabelsSitBesideBranchAndBetweenBoxes(t *t
 	left := pptx.RectEmu{X: 1500000, Y: 2000000, CX: 1200000, CY: 700000}
 	right := pptx.RectEmu{X: 7000000, Y: 2000000, CX: 1200000, CY: 700000}
 
-	leftLabel := pfConnLabelBounds(src, left, "vertical")
-	rightLabel := pfConnLabelBounds(src, right, "vertical")
+	leftLabel := pfConnLabelBounds(src, left, "vertical", 457200, 182880, true)
+	rightLabel := pfConnLabelBounds(src, right, "vertical", 457200, 182880, true)
 	leftMid := (src.X + src.CX/2 + left.X + left.CX/2) / 2
 	rightMid := (src.X + src.CX/2 + right.X + right.CX/2) / 2
 	if leftLabel.X+leftLabel.CX >= leftMid {
