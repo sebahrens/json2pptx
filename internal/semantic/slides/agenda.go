@@ -18,11 +18,14 @@ import (
 // optionally which one the deck is at — and the compiler maps it onto the
 // agenda / agenda-with-images patterns.
 //
-// Two patterns, one payload: sections that carry a subtitle are rows with a
-// description (agenda-with-images, 3–6 of them), and plain sections are the
-// numbered list (agenda, 2–10). The choice follows the content rather than an
-// authoring flag, because "did you write subtitles" is the only thing that
-// distinguishes the two visuals.
+// One payload, normally one pattern: the numbered agenda list (2–10 sections),
+// with each section's subtitle as a smaller muted line under its title and the
+// current section in bold with the others dimmed. Subtitled sections used to
+// switch to agenda-with-images, whose photo column fell back to solid accent
+// tiles and which had no highlight, so "current" was printed as a literal
+// "(we are here)" (go-slide-creator-rv9fe). agenda-with-images is now used only
+// when the slide asks for it (pattern: agenda-with-images) or a subtitle is too
+// long for the list.
 
 const (
 	// agendaMinItems / agendaMaxItems mirror the agenda pattern's bounds.
@@ -48,8 +51,12 @@ type agendaSection struct {
 
 // agendaValues is the agenda pattern's values object.
 type agendaValues struct {
-	Items []string `json:"items"`
+	Items     []string `json:"items"`
+	Subtitles []string `json:"subtitles,omitempty"`
 }
+
+// agendaListSubtitleMax mirrors the agenda pattern's subtitle budget.
+const agendaListSubtitleMax = 120
 
 // agendaImagesItem is one agenda-with-images row.
 type agendaImagesItem struct {
@@ -70,10 +77,12 @@ func CompileAgenda(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	current := AgendaCurrentIndex(in.Body, sections)
 
 	switch {
-	case agendaImagesFits(sections):
-		return compileAgendaWithImages(in, sections, current)
+	case in.Pattern == "agenda-with-images" && agendaImagesFits(sections):
+		return compileAgendaWithImages(in, sections)
 	case agendaFits(sections):
 		return compileAgendaList(in, sections, current)
+	case agendaImagesFits(sections):
+		return compileAgendaWithImages(in, sections)
 	default:
 		return compileAgendaFallback(in, sections, current)
 	}
@@ -82,10 +91,17 @@ func CompileAgenda(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 // compileAgendaList emits the numbered agenda pattern.
 func compileAgendaList(in Input, sections []agendaSection, current int) (*deckinput.SlideInput, []SourceLink, error) {
 	items := make([]string, 0, len(sections))
-	for _, s := range sections {
+	var subtitles []string
+	for i, s := range sections {
 		items = append(items, s.Title)
+		if s.Subtitle != "" {
+			for len(subtitles) < i {
+				subtitles = append(subtitles, "")
+			}
+			subtitles = append(subtitles, s.Subtitle)
+		}
 	}
-	encoded, err := json.Marshal(agendaValues{Items: items})
+	encoded, err := json.Marshal(agendaValues{Items: items, Subtitles: subtitles})
 	if err != nil {
 		return nil, nil, fmt.Errorf("marshal agenda values: %w", err)
 	}
@@ -116,9 +132,11 @@ func compileAgendaList(in Input, sections []agendaSection, current int) (*deckin
 	return slide, links, nil
 }
 
-// compileAgendaWithImages emits the row-per-section pattern, which carries the
-// subtitles the plain list cannot.
-func compileAgendaWithImages(in Input, sections []agendaSection, current int) (*deckinput.SlideInput, []SourceLink, error) {
+// compileAgendaWithImages emits the row-per-section pattern: on request, or
+// for subtitles longer than the list holds. It has no highlight, and the
+// current section is not printed as a marker in its text
+// (go-slide-creator-rv9fe).
+func compileAgendaWithImages(in Input, sections []agendaSection) (*deckinput.SlideInput, []SourceLink, error) {
 	items := make([]agendaImagesItem, 0, len(sections))
 	for _, s := range sections {
 		items = append(items, agendaImagesItem(s))
@@ -134,15 +152,6 @@ func compileAgendaWithImages(in Input, sections []agendaSection, current int) (*
 	slide.Pattern.Overrides, err = json.Marshal(patterns.AgendaWithImagesOverrides{TitleSize: 16, SubtitleSize: 12})
 	if err != nil {
 		return nil, nil, fmt.Errorf("marshal agenda-with-images design defaults: %w", err)
-	}
-	// agenda-with-images has no highlight override; the current section is
-	// marked in its own subtitle so the signal is not silently lost.
-	if current > 0 && current <= len(items) {
-		items[current-1].Subtitle = agendaCurrentMarker(items[current-1].Subtitle)
-		if encoded, err = json.Marshal(agendaImagesValues{Items: items}); err != nil {
-			return nil, nil, fmt.Errorf("marshal agenda-with-images values: %w", err)
-		}
-		slide.Pattern.Values = encoded
 	}
 	links = append(links, SourceLink{
 		RawPath:      in.rawSlide() + ".pattern.values.items",
@@ -293,7 +302,7 @@ func agendaFits(sections []agendaSection) bool {
 		return false
 	}
 	for _, s := range sections {
-		if runeLen(s.Title) > agendaItemMax {
+		if runeLen(s.Title) > agendaItemMax || runeLen(s.Subtitle) > agendaListSubtitleMax {
 			return false
 		}
 	}
@@ -325,10 +334,10 @@ func agendaImagesFits(sections []agendaSection) bool {
 func AgendaPattern(body map[string]any) string {
 	sections := AgendaSections(body)
 	switch {
-	case agendaImagesFits(sections):
-		return "agenda-with-images"
 	case agendaFits(sections):
 		return "agenda"
+	case agendaImagesFits(sections):
+		return "agenda-with-images"
 	default:
 		return ""
 	}

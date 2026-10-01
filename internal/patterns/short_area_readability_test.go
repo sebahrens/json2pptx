@@ -94,7 +94,7 @@ func resolveGridAt(t *testing.T, in *jsonschema.ShapeGridInput, bounds pptx.Rect
 			}
 			cells[j] = shapegrid.Cell{ColSpan: c.ColSpan, RowSpan: c.RowSpan, Fit: shapegrid.FitMode(c.Fit), Placeholder: c.Grid != nil}
 			if c.Shape != nil {
-				cells[j].Shape = &shapegrid.ShapeSpec{Geometry: c.Shape.Geometry, Fill: c.Shape.Fill, Line: c.Shape.Line, Text: c.Shape.Text}
+				cells[j].Shape = &shapegrid.ShapeSpec{Geometry: c.Shape.Geometry, TypeScale: c.Shape.TypeScale, Fill: c.Shape.Fill, Line: c.Shape.Line, Text: c.Shape.Text}
 			}
 		}
 		rows[i] = shapegrid.Row{Cells: cells, Height: r.Height, AutoHeight: r.AutoHeight, Flex: r.Flex, MinHeight: r.MinHeight, MaxHeight: r.MaxHeight}
@@ -107,7 +107,7 @@ func resolveGridAt(t *testing.T, in *jsonschema.ShapeGridInput, bounds pptx.Rect
 		rowGap = in.Gap
 	}
 	vAlign, _ := shapegrid.ParseVerticalAlign(in.VerticalAlign)
-	g := &shapegrid.Grid{Bounds: bounds, Columns: cols, Rows: rows, ColGap: colGap, RowGap: rowGap, VAlign: vAlign}
+	g := &shapegrid.Grid{Bounds: bounds, Columns: cols, Rows: rows, ColGap: colGap, RowGap: rowGap, VAlign: vAlign, TypeScale: in.TypeScale}
 	if err := shapegrid.Validate(g); err != nil {
 		t.Fatalf("validate: %v", err)
 	}

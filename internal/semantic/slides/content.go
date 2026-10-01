@@ -35,8 +35,8 @@ func CompileExecutiveSummary(in Input) (*deckinput.SlideInput, []SourceLink, err
 	if !ok {
 		return compileExecutiveSummaryFallback(in)
 	}
-	var band string
-	values.BottomLine, band = SplitConclusion(values.BottomLine, firstNonEmpty(in.Takeaway, strField(in.Body, "takeaway")))
+	var dropped string
+	values.BottomLine, dropped = SplitConclusion(values.BottomLine, firstNonEmpty(in.Takeaway, strField(in.Body, "takeaway")))
 
 	encoded, err := json.Marshal(values)
 	if err != nil {
@@ -83,10 +83,11 @@ func CompileExecutiveSummary(in Input) (*deckinput.SlideInput, []SourceLink, err
 		})
 	}
 
-	// The pattern's bottom-line element is the conclusion band. A distinct
-	// takeaway rides in the generator's own takeaway band rather than running on
+	// The pattern's bottom-line element is the slide's one conclusion band. A
+	// takeaway beside it goes to the speaker notes rather than a second,
+	// near-duplicate band under it (go-slide-creator-zvu7c), and never runs on
 	// into the bottom line, which overran it (go-slide-creator-8w4rb).
-	links = append(links, separateTakeaway(slide, in, band)...)
+	keepDroppedTakeaway(slide, dropped)
 	return slide, links, nil
 }
 
@@ -290,16 +291,6 @@ func applyTakeaway(slide *deckinput.SlideInput, in Input) []SourceLink {
 		RawPath:      in.rawSlide() + ".takeaway",
 		SemanticPath: in.semSlide() + "." + field,
 	}}
-}
-
-// separateTakeaway puts a takeaway that SplitConclusion kept out of a pattern
-// callout into the slide's own takeaway band. An empty band is a no-op.
-func separateTakeaway(slide *deckinput.SlideInput, in Input, band string) []SourceLink {
-	if band == "" {
-		return nil
-	}
-	in.Takeaway = band
-	return applyTakeaway(slide, in)
 }
 
 // firstListField returns the first string-list payload field (in sorted key

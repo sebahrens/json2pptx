@@ -37,9 +37,6 @@ func CompileTable(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 		return compileTableFallback(in, headers, rows)
 	}
 
-	slide := &deckinput.SlideInput{SlideType: "content"}
-	links := titleLink(slide, in)
-
 	table := &jsonschema.TableInput{Headers: headers, Rows: rows, Alt: visualAltText(in)}
 	if alignments := tableColumnAlignments(in.Body, len(headers)); len(alignments) > 0 {
 		table.ColumnAlignments = alignments
@@ -48,18 +45,17 @@ func CompileTable(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 		table.Style = style
 	}
 
-	idx := appendContent(slide, deckinput.ContentInput{
-		PlaceholderID: "body",
-		Type:          "table",
-		TableValue:    table,
-	})
+	// The table rides in a one-cell grid on blank-title, the layout every other
+	// content kind uses, so the title does not jump (go-slide-creator-ngbnf).
+	slide := blankTitleCellSlide(&deckinput.GridCellInput{Table: table})
+	links := titleLink(slide, in)
 	links = append(links,
 		SourceLink{
-			RawPath:      fmt.Sprintf("%s.content[%d].table_value.headers", in.rawSlide(), idx),
+			RawPath:      in.rawSlide() + blankTitleCellPath + ".table.headers",
 			SemanticPath: in.semSlide() + "." + tableHeadersField(in.Body),
 		},
 		SourceLink{
-			RawPath:      fmt.Sprintf("%s.content[%d].table_value.rows", in.rawSlide(), idx),
+			RawPath:      in.rawSlide() + blankTitleCellPath + ".table.rows",
 			SemanticPath: in.semSlide() + ".rows",
 		},
 	)

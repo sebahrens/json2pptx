@@ -590,6 +590,8 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 		validateFramework(path, slide, s)
 	case KindImageCase:
 		validateImageCase(path, slide, s)
+	case KindClosing:
+		validateClosing(path, slide, s)
 	case KindProcess:
 		validateProcess(path, slide, s)
 	case KindRoadmap:
@@ -613,7 +615,7 @@ func validateAgenda(path string, slide SlideSpec, s *semDiags) {
 	}
 	if slides.AgendaPattern(slide.Body) == "" {
 		s.degrade(path+".sections",
-			fmt.Sprintf("agenda has %d usable sections; 2–10 render as the numbered agenda visual and 3–6 with subtitles as agenda rows (otherwise it degrades to a bullet list)", n),
+			fmt.Sprintf("agenda has %d usable sections; 2–10 render as the numbered agenda visual, each subtitle under its title (otherwise it degrades to a bullet list)", n),
 			"agenda", degradeToBullets, degradeCountOutOfRange)
 	}
 	if field := slides.AgendaUnresolvedCurrent(slide.Body); field != "" {
@@ -859,6 +861,34 @@ func validateImageCase(path string, slide SlideSpec, s *semDiags) {
 		s.degrade(path+".body",
 			fmt.Sprintf("image case %s (otherwise it degrades to a content slide)", over),
 			"image-text-split", degradeToContent, degradeBudgetExceeded)
+		return
+	}
+	// Without a picture the split renders a dashed "Image placeholder" box.
+	// Say so here, naming the DeckSpec field, rather than printing an
+	// instruction on the slide (go-slide-creator-zj4yq). An image_label marks
+	// a deliberate placeholder.
+	if !slides.ImageCaseHasImage(slide.Body) && slide.String("image_label") == "" && slide.String("placeholder") == "" {
+		s.advisory(path+".image", diagnostics.CodeSemanticImageMissing,
+			"image case has no image, so a dashed placeholder box renders where the picture belongs; set image (or photo / screenshot) to a path or URL, or set image_label to mark a deliberate placeholder")
+	}
+}
+
+// closingTitleBudget is the closing title length that stays on one or two
+// lines of a template's closing layout: those layouts set the title as display
+// type (letter-spaced capitals on abstract), and a 60-character action title
+// wrapped to four lines there and collided on p-style (go-slide-creator-maq6l).
+const closingTitleBudget = 40
+
+// validateClosing flags a closing title too long for the closing layout's
+// display title. A plain closing slide has no bullets; with bullets it renders
+// as a content slide under an ordinary title.
+func validateClosing(path string, slide SlideSpec, s *semDiags) {
+	if slides.ClosingHasBullets(slide.Body) {
+		return
+	}
+	if n := len([]rune(strings.TrimSpace(slide.String("title")))); n > closingTitleBudget {
+		s.advisory(path+".title", diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("closing title is %d characters; the template's closing layout sets it as a display title that wraps past about %d — keep the title to the ask and move owner, date and rationale to subtitle, or close on next_steps", n, closingTitleBudget))
 	}
 }
 
@@ -867,7 +897,7 @@ func validateImageCase(path string, slide SlideSpec, s *semDiags) {
 // advisory says which visual is lost rather than blocking
 // (go-slide-creator-4ndv).
 func validateDecision(path string, slide SlideSpec, s *semDiags) {
-	validateDuplicateConclusion(path, slide.String("recommendation"), slide.String("takeaway"), "recommendation", s)
+	validateDuplicateConclusion(path, slide.String("recommendation"), slide.String("takeaway"), "the recommendation", slides.DecisionPattern(slide.Body) != "", s)
 	for _, field := range []string{"options", "choices", "alternatives"} {
 		raw, ok := slide.Body[field].([]any)
 		if !ok {
@@ -918,10 +948,22 @@ func validateDecision(path string, slide SlideSpec, s *semDiags) {
 	}
 }
 
-func validateDuplicateConclusion(path, conclusion, takeaway, label string, s *semDiags) {
-	if slides.DuplicateConclusion(conclusion, takeaway) {
+// validateDuplicateConclusion reports a takeaway authored beside the kind's own
+// conclusion. A repeat is shown once; a distinct takeaway on a slide whose
+// visual draws the conclusion band (oneBand) is moved to the speaker notes,
+// because a slide carries one conclusion band, not two stacked near-duplicates
+// (go-slide-creator-zvu7c).
+func validateDuplicateConclusion(path, conclusion, takeaway, label string, oneBand bool, s *semDiags) {
+	if strings.TrimSpace(conclusion) == "" || strings.TrimSpace(takeaway) == "" {
+		return
+	}
+	switch {
+	case slides.DuplicateConclusion(conclusion, takeaway):
 		s.advisory(path+".takeaway", diagnostics.CodeSemanticDuplicateCallout,
 			"takeaway repeats "+label+"; the conclusion band shows it once")
+	case oneBand:
+		s.advisory(path+".takeaway", diagnostics.CodeSemanticDuplicateCallout,
+			"a slide has one conclusion band and "+label+" is it; the takeaway is moved to the speaker notes — drop the takeaway, or merge it into "+label)
 	}
 }
 
@@ -1611,7 +1653,7 @@ func validateExecutiveSummary(path string, slide SlideSpec, s *semDiags) {
 	if conclusion == "" {
 		conclusion = slide.String("recommendation")
 	}
-	validateDuplicateConclusion(path, conclusion, slide.String("takeaway"), "the executive-summary bottom line", s)
+	validateDuplicateConclusion(path, conclusion, slide.String("takeaway"), "the bottom line", slides.ExecSummaryPatternFeasible(slide.Body), s)
 	n, ok := execSummaryPointCount(slide.Body)
 	if !ok {
 		return
@@ -1625,7 +1667,7 @@ func validateExecutiveSummary(path string, slide SlideSpec, s *semDiags) {
 	}
 	if !slides.ExecSummaryPatternFeasible(slide.Body) {
 		s.degrade(pointsPath,
-			"executive summary exceeds an exec-summary text budget (lead ≤90, support ≤200, combined bottom line and takeaway ≤160 characters); shorten it or the slide degrades to a bullet list",
+			"executive summary exceeds an exec-summary text budget (lead ≤90, support ≤200, bottom line ≤160 characters); shorten it or the slide degrades to a bullet list",
 			"exec-summary", degradeToBullets, degradeBudgetExceeded)
 	}
 }

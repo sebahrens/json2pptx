@@ -214,10 +214,11 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		pattern: optionMatrixPattern,
 	},
 	KindTable: {
-		// A native table is a content slide, not a pattern: the renderer builds
-		// it from the template's own table style, so the plan advertises the
-		// layout only (explain/compile parity).
-		role: RoleEvidence, family: FamilyText, density: DensityHeavy, layout: "content",
+		// A native table, not a pattern: the renderer builds it from the
+		// template's own table style, so the plan advertises the layout only
+		// (explain/compile parity). It rides in a one-cell grid on blank-title
+		// so its title matches every other content kind (go-slide-creator-ngbnf).
+		role: RoleEvidence, family: FamilyText, density: DensityHeavy, layout: "blank-title",
 	},
 	KindArchitecture: {
 		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title",
@@ -246,7 +247,7 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RoleAnalysis, family: FamilyComparison, density: DensityMedium, layout: "blank-title",
 		pattern: slides.PillarsPattern,
 	},
-	KindOrg: {role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "diagram"},
+	KindOrg: {role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title"},
 	KindStat: {
 		// One number is the lightest slide in the deck and it is there to make a
 		// point, not to lay out evidence in parts. It shares the big-number
@@ -301,7 +302,7 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RoleClosing, family: FamilyText, density: DensityMedium, layout: "blank-title",
 		pattern: slides.NextStepsPattern,
 	},
-	KindClosing:      {role: RoleClosing, family: FamilyStructural, density: DensityLight, layout: "title"},
+	KindClosing:      {role: RoleClosing, family: FamilyStructural, density: DensityLight, layout: "closing"},
 	KindRawJSON2pptx: passthroughPlan,
 }
 
@@ -514,6 +515,9 @@ func normalizeSlide(index int, slide SlideSpec) SlideIR {
 	if slide.Kind == KindPillars && pattern == "" {
 		plan.layout = "content"
 	}
+	if slide.Kind == KindTable && !slides.TableFeasible(slide.Body) {
+		plan.layout = "content"
+	}
 	if slide.Kind == KindOrg && !slides.OrgFits(slide.Body) {
 		plan.layout = "content"
 	}
@@ -621,7 +625,8 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 		}
 	case KindTable:
 		return []CompositionCandidate{
-			{Layout: "content", Reason: "a native table in the template's own table style"},
+			{Layout: "blank-title", Reason: "a native table in the template's own table style, under the same title as every other content kind"},
+			{Layout: "content", Reason: "bullets preserve rows without a header row"},
 		}
 	case KindArchitecture:
 		return []CompositionCandidate{
@@ -657,7 +662,7 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 		}
 		return append(candidates, CompositionCandidate{Layout: "content", Reason: "bullets preserve an over-budget or partly framed strategy"})
 	case KindOrg:
-		return []CompositionCandidate{{Layout: "diagram", Reason: "up to seven named nodes across three reporting levels"}, {Layout: "content", Reason: "an indented list preserves a larger hierarchy"}}
+		return []CompositionCandidate{{Layout: "blank-title", Reason: "up to seven named nodes across three reporting levels"}, {Layout: "content", Reason: "an indented list preserves a larger hierarchy"}}
 	case KindStat:
 		return []CompositionCandidate{
 			visual("stat-hero", "one oversized number with a label, context and source"),

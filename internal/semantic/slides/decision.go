@@ -130,7 +130,7 @@ func decisionPatternSlide(in Input, pattern string, values, overrides json.RawMe
 		RawPath:      in.rawSlide() + ".pattern.values",
 		SemanticPath: in.semSlide() + ".options",
 	})
-	rec, band := SplitConclusion(strField(in.Body, "recommendation"), firstNonEmpty(in.Takeaway, strField(in.Body, "takeaway")))
+	rec, dropped := SplitConclusion(strField(in.Body, "recommendation"), firstNonEmpty(in.Takeaway, strField(in.Body, "takeaway")))
 	if rec != "" {
 		slide.Pattern.Callout = &patterns.PatternCallout{Text: rec, Emphasis: "bold"}
 		field := "recommendation"
@@ -142,9 +142,9 @@ func decisionPatternSlide(in Input, pattern string, values, overrides json.RawMe
 			SemanticPath: in.semSlide() + "." + field,
 		})
 	}
-	// A takeaway distinct from the recommendation takes the slide's takeaway
-	// band; run on into the callout it overran it (go-slide-creator-8w4rb).
-	links = append(links, separateTakeaway(slide, in, band)...)
+	// One conclusion band per slide: a takeaway beside the recommendation goes
+	// to the speaker notes, not a second band (go-slide-creator-zvu7c).
+	keepDroppedTakeaway(slide, dropped)
 	return slide, links, nil
 }
 

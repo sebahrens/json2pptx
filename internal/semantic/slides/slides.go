@@ -49,6 +49,28 @@ func diagramContent(placeholderID string, diagram *types.DiagramSpec) deckinput.
 	return deckinput.ContentInput{PlaceholderID: placeholderID, Type: "diagram", DiagramValue: diagram}
 }
 
+// blankTitleCellPath is the raw path of the single cell blankTitleCellSlide
+// hosts its visual in.
+const blankTitleCellPath = ".shape_grid.rows[0].cells[0]"
+
+// blankTitleCellSlide hosts one native visual (a table or a diagram) in a
+// one-cell shape grid on the blank-title layout. Every pattern kind renders on
+// blank-title; a native table or diagram used to need the template's body
+// placeholder instead, so the layout matcher picked a different layout for it
+// (on abstract, "One Content" with its own smaller, lower title) and the title
+// jumped position mid-deck (go-slide-creator-ngbnf). Hosting the visual in the
+// grid keeps one title treatment across every DeckSpec content kind.
+func blankTitleCellSlide(cell *deckinput.GridCellInput) *deckinput.SlideInput {
+	return &deckinput.SlideInput{
+		SlideType: "content",
+		LayoutID:  "blank-title",
+		ShapeGrid: &deckinput.ShapeGridInput{
+			Columns: json.RawMessage("1"),
+			Rows:    []deckinput.GridRowInput{{Cells: []*deckinput.GridCellInput{cell}}},
+		},
+	}
+}
+
 // visualAltText is the alt text a compiled chart, diagram or table carries: the
 // slide's takeaway, else its title. A semantic slide states its point in one
 // sentence, and that sentence is exactly what a screen reader should hear about

@@ -326,6 +326,12 @@ type paragraphDef struct {
 	// an explicit color. The agenda uses it to set the sections the deck is
 	// not at in dk1 at 50% (go-slide-creator-r3gsw).
 	Alpha float64 `json:"alpha,omitempty"`
+	// Suffix is a trailing run in the same paragraph at SuffixSize (points),
+	// sharing the paragraph's colour and weight and so its baseline: a unit set
+	// smaller than the figure it qualifies ("$2.4B" + " TAM") rather than at
+	// the same display size (go-slide-creator-yn2pw).
+	Suffix     string  `json:"suffix,omitempty"`
+	SuffixSize float64 `json:"suffix_size,omitempty"`
 }
 
 // paragraphColorFill resolves a paragraph's color, applying its opacity.
@@ -523,6 +529,14 @@ func buildParagraphsTextBody(defs []paragraphDef, defaultAlign, vAlign, defaultF
 			runs = pptx.SplitInlineTags(baseRun)
 		} else {
 			runs = []pptx.Run{baseRun}
+		}
+		if d.Suffix != "" {
+			suffix := baseRun
+			suffix.Text = d.Suffix
+			if d.SuffixSize > 0 {
+				suffix.FontSize = int(EffectiveTextSizePt(d.SuffixSize) * 100)
+			}
+			runs = append(runs, suffix)
 		}
 
 		paragraphs[i] = pptx.Paragraph{

@@ -18,12 +18,28 @@ func compiledTable(t *testing.T, body map[string]any) *jsonschema.TableInput {
 	if err != nil {
 		t.Fatalf("CompileTable: %v", err)
 	}
+	if slide.ShapeGrid == nil || len(slide.ShapeGrid.Rows) != 1 || len(slide.ShapeGrid.Rows[0].Cells) != 1 {
+		return nil
+	}
+	return slide.ShapeGrid.Rows[0].Cells[0].Table
+}
+
+// go-slide-creator-ngbnf: the table rides in a one-cell grid on blank-title,
+// the layout every pattern kind uses, so its title does not jump to the
+// template's "One Content" layout mid-deck.
+func TestTablePinsTheBlankTitleLayout(t *testing.T) {
+	slide, _, err := CompileTable(Input{Title: "Segments", Body: segmentTable(nil)})
+	if err != nil {
+		t.Fatalf("CompileTable: %v", err)
+	}
+	if slide.LayoutID != "blank-title" || slide.SlideType != "content" {
+		t.Fatalf("layout = %q / %q, want blank-title / content", slide.LayoutID, slide.SlideType)
+	}
 	for _, c := range slide.Content {
 		if c.Type == "table" {
-			return c.TableValue
+			t.Fatal("table still emitted as placeholder content")
 		}
 	}
-	return nil
 }
 
 func segmentTable(overlay map[string]any) map[string]any {
@@ -180,12 +196,8 @@ func TestTableFeasibleMatchesCompile(t *testing.T) {
 		if err != nil {
 			t.Fatalf("compile %v: %v", body, err)
 		}
-		compiled := false
-		for _, c := range slide.Content {
-			if c.Type == "table" {
-				compiled = true
-			}
-		}
+		compiled := slide.ShapeGrid != nil && len(slide.ShapeGrid.Rows) == 1 &&
+			len(slide.ShapeGrid.Rows[0].Cells) == 1 && slide.ShapeGrid.Rows[0].Cells[0].Table != nil
 		if got := TableFeasible(body); got != compiled {
 			t.Errorf("TableFeasible(%v) = %v, compile emitted a table = %v", body, got, compiled)
 		}

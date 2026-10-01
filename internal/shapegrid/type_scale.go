@@ -224,6 +224,11 @@ func writeScaledText(raw json.RawMessage, paras []scaleParagraph, scale float64)
 		}
 		for i := range defs {
 			defs[i]["size"], _ = json.Marshal(scaledSize(paras[i].fontPt, scale))
+			// A suffix run (a unit beside its figure) keeps its proportion.
+			var suffixSize float64
+			if json.Unmarshal(defs[i]["suffix_size"], &suffixSize) == nil && suffixSize > 0 {
+				defs[i]["suffix_size"], _ = json.Marshal(scaledSize(suffixSize, scale))
+			}
 		}
 		obj["paragraphs"], _ = json.Marshal(defs)
 	} else {

@@ -53,7 +53,6 @@ slides:
 
   - kind: decision
     title: Fund an SMB success pod in Q3 to protect 118% net retention
-    takeaway: Fund a dedicated SMB success pod now to protect net retention.
     recommendation: Stand up a dedicated SMB customer-success pod in Q3 to arrest churn before it compounds.
     options:
       - label: Hold current coverage
@@ -65,5 +64,5 @@ slides:
         detail: Cheapest per seat, at the expense of response time.
 
   - kind: closing
-    title: Approve the SMB success pod this month to protect H2 growth
-    subtitle: "Owner: VP Customer Success · decision needed by 31 July"
+    title: Approve the SMB success pod this month
+    subtitle: "Protects H2 growth · Owner: VP Customer Success · decision by 31 July"

@@ -87,10 +87,15 @@ func TestDecisionKeepsTakeawayOutOfCallout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// A distinct takeaway takes its own band instead of running on into the
-	// recommendation callout (go-slide-creator-8w4rb).
-	if slide.Takeaway != body["takeaway"] {
-		t.Fatalf("takeaway band = %q, want the takeaway", slide.Takeaway)
+	// A distinct takeaway neither runs on into the recommendation callout
+	// (go-slide-creator-8w4rb) nor stacks a second band under it: the slide
+	// has one conclusion band and the takeaway goes to the speaker notes
+	// (go-slide-creator-zvu7c).
+	if slide.Takeaway != "" {
+		t.Fatalf("takeaway band = %q, want none beside the recommendation", slide.Takeaway)
+	}
+	if !strings.Contains(slide.SpeakerNotes, body["takeaway"].(string)) {
+		t.Fatalf("speaker notes = %q, want the dropped takeaway kept", slide.SpeakerNotes)
 	}
 	if want := body["recommendation"].(string); slide.Pattern.Callout.Text != want {
 		t.Errorf("callout = %q, want %q", slide.Pattern.Callout.Text, want)

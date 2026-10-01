@@ -338,6 +338,12 @@ func applyUniversalSlideFields(compiled *deckinput.SlideInput, si *SlideIR, sm *
 		semSlide = fmt.Sprintf("slides[%d]", si.SourceIndex)
 	}
 	if notes := bodyString(si.Body, "notes", "speaker_notes"); notes != "" {
+		// A kind compiler may already have filed text here (a takeaway kept
+		// off a slide that has its own conclusion band, go-slide-creator-zvu7c);
+		// the author's notes come first.
+		if compiled.SpeakerNotes != "" {
+			notes += "\n\n" + compiled.SpeakerNotes
+		}
 		compiled.SpeakerNotes = notes
 		if sm != nil {
 			sm.Add(rawSlide+"/speaker_notes", semSlide+".notes", si.SourceIndex)

@@ -146,7 +146,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 
 | Pattern | Description |
 |---------|-------------|
-| `agenda` | Numbered section list for agenda / table-of-contents slides: 28pt serif accent numerals, 16pt items, 0.5pt rules, no tiles; `highlight` bolds the current section and dims the rest to 50% |
+| `agenda` | Numbered section list for agenda / table-of-contents slides: 28pt serif accent numerals, 16pt items, 0.5pt rules, no tiles; `highlight` bolds the current section and dims the rest to 50%; optional `subtitles` set a muted line under each item |
 | `agenda-with-images` | Numbered agenda rows (3–6) with title/subtitle and image/quote placeholder per row; the placeholder column is all-or-nothing |
 | `arch-stack` | Architecture stack diagram with tiers and optional side rails |
 | `before-after` | Two-column before/after with transition chevron |

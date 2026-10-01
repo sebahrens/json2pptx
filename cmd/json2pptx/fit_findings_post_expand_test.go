@@ -261,7 +261,9 @@ func TestExecSummaryDenseSupportWarningReachesFitReportAcrossTemplates(t *testin
 	for i := 0; i < 5; i++ {
 		values.Points = append(values.Points, patterns.ExecSummaryPoint{Lead: "Conclusion", Support: strings.Repeat("S", 200)})
 	}
-	assertBudgetFindingAcrossTemplates(t, "exec-summary", values, "points.support", "about 75 support characters")
+	// With the template's content area the warning is the measured fit, not the
+	// character average (go-slide-creator-n7q73).
+	assertBudgetFindingAcrossTemplates(t, "exec-summary", values, "exec-summary needs", "smallest readable type scale")
 }
 
 func TestWaterfallBridgeTenColumnLabelWarningReachesFitReportAcrossTemplates(t *testing.T) {

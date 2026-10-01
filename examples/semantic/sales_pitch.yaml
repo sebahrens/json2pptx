@@ -59,7 +59,6 @@ slides:
 
   - kind: decision
     title: A 90-day pilot on two workflows proves the value before scaling
-    takeaway: Start with a focused pilot on one operations team, then scale on proof.
     recommendation: Run a 90-day pilot with your operations team, instrumenting the two workflows that cost the most analyst time today.
     options:
       - label: Stand up a 90-day pilot on the two highest-cost workflows.
