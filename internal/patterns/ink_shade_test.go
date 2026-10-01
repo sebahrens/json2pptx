@@ -7,6 +7,55 @@ import (
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
 
+// Softened KPI peer cards keep the brand accent on the display figure (3:1
+// large-text bar), darkened in hue only as far as needed; captions stay dark
+// (go-slide-creator-tinsz).
+func TestKPIPeerCardsKeepAccentFigure(t *testing.T) {
+	p, ok := Default().Get("kpi-3up")
+	if !ok {
+		t.Fatal("kpi-3up not registered")
+	}
+	for tmpl, rgb := range midToneAccents {
+		ctx := ctxWithAccent1(rgb)
+		values := p.NewValues()
+		raw := `[{"big":"$48M","small":"Annual revenue"},{"big":"118%","small":"Net retention"},{"big":"41d","small":"Sales cycle"}]`
+		if err := json.Unmarshal([]byte(raw), values); err != nil {
+			t.Fatal(err)
+		}
+		grid, err := p.Expand(ctx, values, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		SoftenPeerFills(ctx, "kpi-3up", grid)
+		ApplyReadableInk(ctx, grid)
+		for _, cell := range grid.Rows[0].Cells {
+			var text struct {
+				Paragraphs []struct {
+					Size  float64 `json:"size"`
+					Color string  `json:"color"`
+				} `json:"paragraphs"`
+			}
+			if err := json.Unmarshal(cell.Shape.Text, &text); err != nil {
+				t.Fatal(err)
+			}
+			fig := text.Paragraphs[0]
+			if fig.Color == "dk1" || fig.Color == "dk2" || fig.Color == "lt1" {
+				t.Errorf("%s: figure ink = %s, want the accent", tmpl, fig.Color)
+				continue
+			}
+			surface, _ := parseFillTone(cell.Shape.Fill)
+			bg, _ := effectiveFillColor(ctx, surface)
+			c, _ := resolveThemeColor(ctx, fig.Color)
+			if r := c.ContrastWith(bg); r < 3.0 {
+				t.Errorf("%s: figure %s on surface = %.2f, want >= 3", tmpl, fig.Color, r)
+			}
+			if text.Paragraphs[1].Color == "lt1" {
+				t.Errorf("%s: caption left lt1 on the neutral surface", tmpl)
+			}
+		}
+	}
+}
+
 // Mid-tone primary accents of the shipped templates on which white 12-13pt
 // labels miss WCAG AA (go-slide-creator-v9tup review table).
 var midToneAccents = map[string]string{

@@ -103,10 +103,12 @@ func collectGridTextGroups(shapes [][]byte, themeColors []types.ThemeColor, whit
 		if txBody == "" {
 			continue
 		}
-		threshold := contrastThresholdFor(smallestTextPt(txBody))
 		safe := len(whiteTextSafeHex) > 0 && whiteTextSafeHex[strings.ToUpper(fillHex)]
 
-		for _, origHex := range textColorsIn(txBody, themeColors) {
+		// Neutral inks share the body's smallest-text bar; brand colours are
+		// grouped per run size (go-slide-creator-tinsz).
+		for _, ct := range textColorsWithThresholds(txBody, bodyContrastThreshold(txBody), themeColors) {
+			origHex, threshold := ct.hex, ct.threshold
 			key := origHex + "|" + fmt.Sprintf("%.2f", threshold)
 			a, ok := byKey[key]
 			if !ok {
@@ -261,7 +263,7 @@ func applyGroupTextColor(shapes [][]byte, g gridTextGroup, replacement svggen.Co
 		if body == "" {
 			continue
 		}
-		fixed := replaceTextColor(body, g.origHex, toHex, themeColors)
+		fixed := replaceTextColorAt(body, g.origHex, toHex, g.threshold, bodyContrastThreshold(body), themeColors)
 		if fixed == body {
 			continue
 		}

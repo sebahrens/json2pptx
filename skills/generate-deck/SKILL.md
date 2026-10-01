@@ -145,6 +145,8 @@ executable one.
   bullets with a short label line to get a bold column header.
   Pattern-drawn accent fills that white labels would miss WCAG on are
   shaded just enough to keep the type white (no black-on-orange).
+  Large accent-coloured text (KPI values, stat heroes) keeps the accent when
+  it clears the 3:1 large-text bar; only the small text beside it is fixed.
 - [FINDINGS.md](FINDINGS.md): legacy finding and fix details for cases not yet
   covered by `describe_finding`; prefer the live tool for known codes.
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):
