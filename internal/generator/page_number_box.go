@@ -53,6 +53,12 @@ type pageNumberSizing struct {
 //
 // A nil return means there is no slide-number position to size.
 func resolvePageNumberSizing(positions map[string]*transformXML, format string, totalSlides int, fontName string) *pageNumberSizing {
+	return resolvePageNumberSizingForText(positions, widestPageNumberText(format, totalSlides), fontName)
+}
+
+// resolvePageNumberSizingForText sizes the page-number box for a known string,
+// such as a literal appendix label ("A12") or the widest formatted number.
+func resolvePageNumberSizingForText(positions map[string]*transformXML, text string, fontName string) *pageNumberSizing {
 	pos, ok := positions["type:sldNum"]
 	if !ok || pos == nil {
 		return nil
@@ -60,7 +66,6 @@ func resolvePageNumberSizing(positions map[string]*transformXML, format string, 
 	box := *pos
 	sizing := &pageNumberSizing{box: &box, fontSize: footerFontSize}
 
-	text := widestPageNumberText(format, totalSlides)
 	if text == "" {
 		return sizing
 	}

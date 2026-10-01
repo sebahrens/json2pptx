@@ -50,6 +50,9 @@ func CompileSection(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	// does not advance the numbering of later sections (go-slide-creator-deb2h).
 	if appendix, _ := in.Body["appendix"].(bool); appendix {
 		slide.SectionNumber = &deckinput.SectionNumberInput{Suppress: true}
+		// The raw divider keeps the mark so the renderer numbers the back
+		// matter A1, A2, … (go-slide-creator-khzni).
+		slide.Appendix = true
 	}
 
 	if in.Title != "" {

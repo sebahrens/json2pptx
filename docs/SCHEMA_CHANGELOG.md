@@ -1,5 +1,17 @@
 # Schema Changelog
 
+- **2026-10-02 — Schema 4.156.0 · Appendix page numbering (`go-slide-creator-khzni`).**
+  - Back-matter slides (after an `appendix: true` / Appendix-titled divider,
+    in a `structure.sections[]` entry with `appendix: true`, or after a
+    single-letter `section_number` divider that follows numbered chapters)
+    show `A1`, `A2`, … in the footer page-number position; the appendix
+    divider shows none; the main deck's numbers stay contiguous and
+    `{total}` counts only the main deck.
+  - New raw slide field **`appendix`** (boolean, section dividers only):
+    opens back matter without an Appendix title. The structure expander and
+    the DeckSpec `section` kind with `appendix: true` set it; the
+    PresentationInput schema fingerprint advances.
+
 - **2026-10-01 — Pattern and chart sizes on the type scale; modern-template title baseline (`go-slide-creator-vmdfm`, `-kyk01`).**
   - kpi-Nup big numbers default to the 40pt KPI step (`big_size` default
     was 36pt, off the published 40–48pt step); values still shrink to fit.

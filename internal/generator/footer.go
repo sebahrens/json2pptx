@@ -210,9 +210,17 @@ func generateFooterShapesAvoiding(positions map[string]*transformXML, config *Fo
 	// Size the page-number box first: it grows leftward from a fixed right edge,
 	// so the left footer has to be laid out against the widened box or the two
 	// overlap (go-slide-creator-pss1z).
-	pageNum := resolvePageNumberSizing(positions, config.PageNumberFormat, config.TotalSlides, fontName)
-	if config.HidePageNumber {
-		pageNum = nil
+	label := ""
+	if l := config.PageLabelFor(slideIndex); l != "" {
+		label = literalPageNumberText(config.PageNumberFormat, l)
+	}
+	var pageNum *pageNumberSizing
+	switch {
+	case config.pageNumberHiddenFor(slideIndex):
+	case label != "":
+		pageNum = resolvePageNumberSizingForText(positions, label, fontName)
+	default:
+		pageNum = resolvePageNumberSizing(positions, config.PageNumberFormat, config.TotalSlides, fontName)
 	}
 	if pageNum != nil && len(obstacles) > 0 {
 		pageNum.box = clearPageNumberBox(pageNum.box, obstacles, pageNumberLeftLimit(positions), slideWidth)
@@ -242,7 +250,9 @@ func generateFooterShapesAvoiding(positions map[string]*transformXML, config *Fo
 	// Right footer (sldNum position): auto-updating slide number field.
 	// This is the last footer zone, so nextID is consumed but not advanced.
 	if pageNum != nil {
-		if config.PageNumberFormat != "" {
+		if label != "" {
+			shapes = append(shapes, generateLiteralPageNumberShape(nextID, "Footer Right", pageNum.box, label, pageNum.fontSize, colorHex))
+		} else if config.PageNumberFormat != "" {
 			shapes = append(shapes, generateFormattedSlideNumShape(nextID, "Footer Right", pageNum.box, config.PageNumberFormat, config.TotalSlides, pageNum.fontSize, colorHex))
 		} else {
 			shapes = append(shapes, generateSlideNumShape(nextID, "Footer Right", pageNum.box, pageNum.fontSize, colorHex))
@@ -250,6 +260,50 @@ func generateFooterShapesAvoiding(positions map[string]*transformXML, config *Fo
 	}
 
 	return strings.Join(shapes, "\n")
+}
+
+// literalPageNumberText renders a literal page label through the page-number
+// format: {current} becomes the label. A format that also shows {total} is the
+// main deck's "n / N" counter, which an appendix label ("A2 / 12") would only
+// confuse, so such slides show the bare label.
+func literalPageNumberText(format, label string) string {
+	if format == "" || !strings.Contains(format, "{current}") || strings.Contains(format, "{total}") {
+		return label
+	}
+	return strings.ReplaceAll(format, "{current}", label)
+}
+
+// generateLiteralPageNumberShape creates the slide-number footer shape with a
+// literal label (no auto-updating field): appendix pages read "A1", "A2", …
+// and keep that label however the deck is reordered (go-slide-creator-khzni).
+func generateLiteralPageNumberShape(shapeID uint32, name string, xfrm *transformXML, text string, fontSize int, colorHex string) string {
+	b, err := pptx.GenerateShape(pptx.ShapeOptions{
+		ID:       shapeID,
+		Name:     name,
+		Bounds:   pptx.RectEmu{X: xfrm.Offset.X, Y: xfrm.Offset.Y, CX: xfrm.Extent.CX, CY: xfrm.Extent.CY},
+		Geometry: pptx.GeomRect,
+		Fill:     pptx.NoFill(),
+		TxBox:    true,
+		Text: &pptx.TextBody{
+			Wrap:   "none",
+			Anchor: "ctr",
+			Insets: [4]int64{91440, 0, 91440, 0},
+			Paragraphs: []pptx.Paragraph{{
+				Align: "r",
+				Runs: []pptx.Run{{
+					Text:     text,
+					Lang:     "en-US",
+					FontSize: fontSize,
+					Dirty:    true,
+					Color:    chromeFill(colorHex),
+				}},
+			}},
+		},
+	})
+	if err != nil {
+		return ""
+	}
+	return string(b)
 }
 
 // slideNumFieldID is the a:fld id of every injected slide-number field. It was

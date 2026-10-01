@@ -102,8 +102,10 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// 4.155.0 adds the deck-level `source` default and chart_value
 	// `subtitle` / `footnote` inputs (go-slide-creator-mp2p4, -p0zs7), so the
 	// PresentationInput hash advances.
+	// 4.156.0 adds the raw slide-level `appendix` divider flag
+	// (go-slide-creator-khzni), so the PresentationInput hash advances.
 	// If this fails, see file header comment.
-	const wantFingerprint = "7385000a7e6231e1"
+	const wantFingerprint = "2ffaa76c5867d6cc"
 
 	got := schemaFingerprint()
 

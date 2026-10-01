@@ -32,7 +32,9 @@ matter: its divider is unnumbered and later chapters keep their numbers,
 "Appendix: <title>". Dividers titled Appendix, Backup, Annex, Q&A or Thank
 you are unnumbered without the flag. Appendix slides (after an appendix /
 Appendix-titled divider) are outside the rhythm run checks, so backup tables
-in a row are fine. `plan_deck` drafts this appendix itself when the brief has
+in a row are fine. With page numbers on, appendix slides read A1, A2, … in the footer
+(an "Appendix B: …" divider numbers B1, B2) and the appendix divider shows
+none; the main deck keeps contiguous numbers and `{total}` counts only it. `plan_deck` drafts this appendix itself when the brief has
 backup material and the budget has room: a last `appendix: true` section
 (the `next_steps` close then ends the last chapter) or, flat, an appendix
 `section` slide after the close; its slots carry `appendix: true`. Keep an actual narrative

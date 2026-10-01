@@ -89,6 +89,7 @@ func expandStructure(s *StructureInput) ([]SlideInput, error) {
 			// Back matter: no chapter number, later sections keep theirs, and
 			// the running section says "Appendix" (go-slide-creator-deb2h).
 			divider.SectionNumber = &SectionNumberInput{Suppress: true}
+			divider.Appendix = true
 			crumb = types.AppendixSectionLabel(sec.Title)
 		}
 		slides = append(slides, divider)

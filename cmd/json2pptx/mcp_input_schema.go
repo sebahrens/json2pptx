@@ -123,6 +123,7 @@ var fieldScopeMap = map[string]map[string]string{
 		"contrast_check":   "slide",
 		"section_title":    "slide",
 		"section_number":   "slide",
+		"appendix":         "slide",
 	},
 	"SplitSlideInput": {
 		"type":  "slide",
@@ -256,6 +257,11 @@ var propertyOverrides = map[string]map[string]map[string]any{
 				map[string]any{"type": "boolean"},
 				map[string]any{"type": "string", "minLength": 1, "maxLength": 4},
 			},
+		},
+		// go-slide-creator-khzni: appendix back matter page numbering.
+		"appendix": {
+			"type":        "boolean",
+			"description": "Section dividers only. true opens appendix back matter: the slides after it (up to the next ordinary divider) show page labels A1, A2, … instead of continuing the main deck's numbers, and are exempt from the deck-rhythm checks. Dividers titled Appendix / Backup / Annex, or a single-letter section_number such as \"A\" after numbered chapters, open back matter without it.",
 		},
 	},
 	"PresentationInput": {

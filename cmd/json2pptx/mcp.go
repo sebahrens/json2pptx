@@ -552,6 +552,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		applyChromeTracker(slideSpecs, input.Chrome, input.Slides, templateLayouts)
 		applyChromeSectionCrumb(genReq.Footer, slideSpecs, input.Chrome, input.Slides, templateLayouts)
 	}
+	applyAppendixPageLabels(genReq.Footer, input.Slides, templateLayouts)
 	if input.ThemeOverride != nil {
 		genReq.ThemeOverride = input.ThemeOverride.ToThemeOverride()
 	}
