@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -51,8 +52,27 @@ func (k *kpiInline) ExemplarValues() any {
 	return &vals
 }
 
-func (k *kpiInline) NewValues() any       { return &KPINupValues{} }
-func (k *kpiInline) NewOverrides() any    { return &KPIOverrides{} }
+func (k *kpiInline) NewValues() any    { return &KPINupValues{} }
+func (k *kpiInline) NewOverrides() any { return &KPIInlineOverrides{} }
+
+// KPIInlineOverrides is the KPI overrides plus the bar style.
+type KPIInlineOverrides struct {
+	KPIOverrides
+	// Style is "tinted" (default: neutral cells with dark text under a thin
+	// accent rule, like the kpi-Nup cards) or "solid" (every KPI a solid
+	// accent block; legacy look).
+	Style string `json:"style,omitempty"`
+}
+
+// kpiInlineStyles are the accepted overrides.style values.
+var kpiInlineStyles = []string{"tinted", "solid"}
+
+// kpiInlineOverridesSchema is the KPI overrides schema plus style.
+func kpiInlineOverridesSchema() *Schema {
+	s := kpiOverridesSchema()
+	s.raw.Properties["style"] = EnumSchema(kpiInlineStyles...).WithDescription("tinted (default): neutral cells with dark text under a thin accent rule, matching the kpi-Nup cards, so a supporting bar does not outshout the slide. solid: every KPI a solid accent block (legacy look)").WithDefault("tinted")
+	return s
+}
 func (k *kpiInline) NewCellOverride() any { return &KPICellOverride{} }
 
 // Measured by TestKPIInlineBudgetProbe across every shipped template at
@@ -109,7 +129,7 @@ func (k *kpiInline) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"values":         ArraySchema(kpiCellSchema(kpiInlineBigMaxChars, 0), 2, 6).WithDescription("2-6 KPI cells in a compact bar. Metric values have a tighter 8-character maximum than full-size KPI cards. Caption budget without icons: 40 chars (38 at 6 KPIs); with a delta 35/25/20 at 4/5/6 KPIs. With icons: 31 at 5 KPIs (16 with a delta), 21 at 6 KPIs (11 with a delta)."),
-			"overrides":      kpiOverridesSchema(),
+			"overrides":      kpiInlineOverridesSchema(),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
@@ -127,11 +147,12 @@ func (k *kpiInline) Validate(values, overrides any, cellOverrides map[int]any) e
 
 	var errs []error
 
-	if overrides != nil {
-		if ovr, ok := overrides.(*KPIOverrides); ok {
-			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
-				errs = append(errs, err)
-			}
+	if ovr, ok := overrides.(*KPIInlineOverrides); ok && ovr != nil {
+		if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
+			errs = append(errs, err)
+		}
+		if ovr.Style != "" && !slices.Contains(kpiInlineStyles, ovr.Style) {
+			errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, kpiInlineStyles))
 		}
 	}
 
@@ -185,16 +206,19 @@ func (k *kpiInline) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	if !ok {
 		return nil, fmt.Errorf("%s: values must be *[]KPICell, got %T", name, values)
 	}
-	ovr := &KPIOverrides{}
+	ovr := &KPIInlineOverrides{}
 	if overrides != nil {
 		var ovrOk bool
-		ovr, ovrOk = overrides.(*KPIOverrides)
+		ovr, ovrOk = overrides.(*KPIInlineOverrides)
 		if !ovrOk {
-			return nil, fmt.Errorf("%s: overrides must be *KPIOverrides, got %T", name, overrides)
+			return nil, fmt.Errorf("%s: overrides must be *KPIInlineOverrides, got %T", name, overrides)
 		}
 	}
 
-	baseAccent := resolveKPIAccent(ovr, ctx)
+	baseAccent := resolveKPIAccent(&ovr.KPIOverrides, ctx)
+	// Tinted by default: three saturated accent bars dominated a slide this
+	// pattern only supports (go-slide-creator-061ag).
+	solid := ovr.Style == "solid"
 	// Smaller sizes for inline variant
 	bigSize := ResolveSize(ovr.BigSize, 24.0)
 	smallSize := ResolveSize(ovr.SmallSize, 11.0)
@@ -206,11 +230,19 @@ func (k *kpiInline) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 		textContent := buildKPITextContent(cell.Big, bigSize, cell.Small, smallSize, cell.Sub, false, "", false)
 		fillJSON := json.RawMessage(fmt.Sprintf(`"%s"`, accent))
+		if !solid {
+			fillJSON = neutralFillJSON(NeutralTint4)
+			textContent = recolorTextInk(textContent, "lt1", "dk1")
+		}
 
 		shape := &jsonschema.ShapeSpecInput{
 			Geometry: "roundRect",
 			Fill:     fillJSON,
 			Text:     textContent,
+		}
+		if !solid {
+			shape.Geometry = "rect"
+			shape.Line = noLine
 		}
 		if cell.Icon != nil {
 			if icon := cell.Icon.Resolve(iconFillOn(ctx, shape.Fill, accent), "left"); icon != nil {
@@ -220,6 +252,9 @@ func (k *kpiInline) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 
 		gc := &jsonschema.GridCellInput{
 			Shape: shape,
+		}
+		if !solid {
+			gc.AccentBar = &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: peerRuleWidthPt}
 		}
 
 		if co, coOk := cellOverrides[i]; coOk {

@@ -322,7 +322,7 @@ func CompileProcess(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	switch ProcessPattern(in.Body) {
 	case "numbered-step-strip":
 		return compileProcessStrip(in, steps)
-	case "process-flow":
+	case "process-flow", processFlowSparsePattern:
 		return compileProcessFlow(in, steps)
 	default:
 		return compileStepBulletsFallback(in)
@@ -356,32 +356,31 @@ func compileProcessStrip(in Input, steps []processStepDetail) (*deckinput.SlideI
 // losing it — that only happens on the branching path, where the diamonds are
 // the reason to be here at all.
 func compileProcessFlow(in Input, steps []processStepDetail) (*deckinput.SlideInput, []SourceLink, error) {
-	flow := make([]processFlowStep, 0, len(steps))
-	for _, st := range steps {
-		flow = append(flow, processFlowStep{Label: st.flowLabel(), Type: st.Type})
-	}
+	flow := flowSteps(steps)
 	encoded, err := json.Marshal(processFlowValues{Steps: flow})
 	if err != nil {
 		return nil, nil, fmt.Errorf("marshal process-flow values: %w", err)
 	}
-	slide, links, err := processPatternSlide(in, "process-flow", encoded)
-	if err == nil && processFlowSparse(flow) {
-		// A short run of bare labels stretched to the full content height is
-		// the SPARSE_SINGLE_ROW_FLOW smell; cap it the way that finding advises
-		// rather than shipping a layout the render gate then flags.
-		slide.Pattern.MaxHeightPct = processFlowSparseHeightPct
+	// A short run of bare labels takes the compact flow: a shallow,
+	// content-sized band top-anchored under the title. Capping process-flow at
+	// half the content height stretched its rows over that whole band — four
+	// ~200px boxes around one word each above an empty lower half
+	// (go-slide-creator-xb06p) — and the uncapped flow is the
+	// SPARSE_SINGLE_ROW_FLOW smell.
+	pattern := "process-flow"
+	if processFlowSparse(flow) {
+		pattern = processFlowSparsePattern
 	}
-	return slide, links, err
+	return processPatternSlide(in, pattern, encoded)
 }
 
 const (
 	// processFlowSparse* mirror the render-side SPARSE_SINGLE_ROW_FLOW guard:
-	// 3–6 steps averaging under 40 characters stretch into oversized boxes, so
-	// the compiler caps them at half the content height (the OVERTALL_FLOW_LANE
-	// limit; lower caps trip SLIDE_UNDERUSED instead).
+	// 3–6 steps averaging under 40 characters would stretch into oversized
+	// boxes, so the compiler emits processFlowSparsePattern instead.
 	processFlowSparseMaxSteps    = 6
 	processFlowSparseMaxAvgChars = 40
-	processFlowSparseHeightPct   = 50.0
+	processFlowSparsePattern     = "process-flow-compact"
 )
 
 // processFlowSparse reports whether a flow is a short run of short labels.
@@ -532,6 +531,27 @@ func processFlowFits(steps []processStepDetail) bool {
 // it (go-slide-creator-61up).
 func ProcessPattern(body map[string]any) string {
 	steps := ProcessStepDetails(body)
+	pattern := processPatternFor(steps)
+	if pattern == "process-flow" && processFlowSparse(flowSteps(steps)) {
+		// A short run of short labels takes the compact flow
+		// (go-slide-creator-xb06p).
+		return processFlowSparsePattern
+	}
+	return pattern
+}
+
+// flowSteps is the steps as compileProcessFlow writes them.
+func flowSteps(steps []processStepDetail) []processFlowStep {
+	flow := make([]processFlowStep, 0, len(steps))
+	for _, st := range steps {
+		flow = append(flow, processFlowStep{Label: st.flowLabel(), Type: st.Type})
+	}
+	return flow
+}
+
+// processPatternFor picks between the flow diagram, the numbered strip and
+// the bullet fallback ("").
+func processPatternFor(steps []processStepDetail) string {
 	switch {
 	case processBranches(steps) && processFlowFits(steps):
 		return "process-flow"

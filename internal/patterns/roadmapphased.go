@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -70,8 +71,17 @@ type RoadmapPhasedValues struct {
 	Workstreams []RoadmapWorkstream `json:"workstreams"`
 }
 
-// RoadmapPhasedOverrides is the standard text overrides.
-type RoadmapPhasedOverrides = TextOverrides
+// RoadmapPhasedOverrides is the standard text overrides plus the grid style.
+type RoadmapPhasedOverrides struct {
+	TextOverrides
+	// Style is "tinted" (default: neutral activity cells with dk1 text, phase
+	// headers marked by an accent rule) or "solid" (the legacy look: every
+	// header and activity filled with the accent).
+	Style string `json:"style,omitempty"`
+}
+
+// roadmapPhasedStyles are the accepted overrides.style values.
+var roadmapPhasedStyles = []string{"tinted", "solid"}
 
 // RoadmapPhasedCellOverride is the shared per-cell override.
 type RoadmapPhasedCellOverride = CellOverride
@@ -186,13 +196,20 @@ func (r *roadmapPhased) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"values":         valuesSchema,
-			"overrides":      textOverridesSchema(),
+			"overrides":      roadmapPhasedOverridesSchema(),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
 	}).WithDescription("Phased roadmap with workstreams and time periods")
+}
+
+// roadmapPhasedOverridesSchema is the standard text overrides plus style.
+func roadmapPhasedOverridesSchema() *Schema {
+	s := textOverridesSchema()
+	s.raw.Properties["style"] = EnumSchema(roadmapPhasedStyles...).WithDescription("tinted (default): activity cells on a neutral tint with dark text, workstream labels on a darker tint, phase headers bold with an accent rule — the accent marks structure without a wall of colour; emphasise one activity with cell_overrides accent_bar. solid: every phase header and activity filled with the accent (legacy look)").WithDefault("tinted")
+	return s
 }
 
 func (r *roadmapPhased) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -203,6 +220,10 @@ func (r *roadmapPhased) Validate(values, overrides any, cellOverrides map[int]an
 
 	const name = "roadmap-phased"
 	var errs []error
+
+	if ovr, ok := overrides.(*RoadmapPhasedOverrides); ok && ovr != nil && ovr.Style != "" && !slices.Contains(roadmapPhasedStyles, ovr.Style) {
+		errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, roadmapPhasedStyles))
+	}
 
 	if len(vals.Phases) < 2 {
 		errs = append(errs, errMinItems(name, "phases", 2, len(vals.Phases), ""))
@@ -300,14 +321,35 @@ func (r *roadmapPhased) Expand(ctx ExpandContext, values, overrides any, cellOve
 			Fill:     json.RawMessage(`"none"`),
 		},
 	}
+	// The default "tinted" style keeps the accent for structure: a rule over
+	// each phase header, dark text on neutral activity cells. Sixteen solid
+	// accent rectangles read as a wall of colour, not a plan
+	// (go-slide-creator-k8x1p).
+	solid := ovr.Style == "solid"
+	itemFill, itemInk := neutralFillJSON(NeutralTint4), "dk1"
+	labelFill := neutralFillJSON(NeutralTint8)
+	if solid {
+		itemFill, itemInk = json.RawMessage(fmt.Sprintf(`"%s"`, accent)), "lt1"
+		labelFill = json.RawMessage(`"lt2"`)
+	}
 	for i, phase := range vals.Phases {
-		text := buildRoadmapTextContent(phase, headerSize, true, "lt1", "ctr")
-		headerCells[i+1] = &jsonschema.GridCellInput{
-			Shape: &jsonschema.ShapeSpecInput{
-				Geometry: "rect",
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
-				Text:     text,
-			},
+		if solid {
+			headerCells[i+1] = &jsonschema.GridCellInput{
+				Shape: &jsonschema.ShapeSpecInput{
+					Geometry: "rect",
+					Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+					Text:     buildRoadmapTextContent(phase, headerSize, true, "lt1", "ctr"),
+				},
+			}
+		} else {
+			headerCells[i+1] = &jsonschema.GridCellInput{
+				Shape: &jsonschema.ShapeSpecInput{
+					Geometry: "rect",
+					Fill:     json.RawMessage(`"none"`),
+					Text:     buildRoadmapTextContent(phase, headerSize, true, "dk1", "ctr"),
+				},
+				AccentBar: &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: peerRuleWidthPt},
+			}
 		}
 		applyRoadmapOverride(headerCells[i+1], cellOverrides, cellIdx, accent)
 		cellIdx++
@@ -323,7 +365,7 @@ func (r *roadmapPhased) Expand(ctx ExpandContext, values, overrides any, cellOve
 		rowCells[0] = &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(`"lt2"`),
+				Fill:     labelFill,
 				Text:     nameText,
 			},
 		}
@@ -340,11 +382,12 @@ func (r *roadmapPhased) Expand(ctx ExpandContext, values, overrides any, cellOve
 					},
 				}
 			} else {
-				itemText := buildRoadmapTextContent(pptx.ConvertMarkdownEmphasis(item), bodySize, false, "lt1", "ctr")
+				itemText := buildRoadmapTextContent(pptx.ConvertMarkdownEmphasis(item), bodySize, false, itemInk, "ctr")
 				rowCells[j+1] = &jsonschema.GridCellInput{
 					Shape: &jsonschema.ShapeSpecInput{
 						Geometry: "roundRect",
-						Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+						Fill:     itemFill,
+						Line:     noLine,
 						Text:     itemText,
 					},
 				}

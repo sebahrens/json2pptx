@@ -48,16 +48,18 @@ func TestTeamMemberPhoto(t *testing.T) {
 	}
 }
 
-// Sparse bare-label flows are height-capped so SPARSE_SINGLE_ROW_FLOW does
-// not fire against the compiler's own choice (go-slide-creator-csclk.56).
-func TestSparseProcessFlowIsCapped(t *testing.T) {
+// Sparse bare-label flows compile to the compact flow, a content-sized band
+// top-anchored under the title, so SPARSE_SINGLE_ROW_FLOW does not fire
+// against the compiler's own choice (go-slide-creator-csclk.56) and the boxes
+// do not stretch over a capped half-slide band (go-slide-creator-xb06p).
+func TestSparseProcessFlowIsCompact(t *testing.T) {
 	slide, _, err := CompileProcess(Input{Body: map[string]any{
 		"title": "How a deal closes", "steps": []any{"Qualify", "Discover", "Propose", "Close"},
 	}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if slide.Pattern == nil || slide.Pattern.Name != "process-flow" || slide.Pattern.MaxHeightPct != processFlowSparseHeightPct {
-		t.Fatalf("want a capped process-flow, got %+v", slide.Pattern)
+	if slide.Pattern == nil || slide.Pattern.Name != "process-flow-compact" || slide.Pattern.MaxHeightPct != 0 {
+		t.Fatalf("want an uncapped process-flow-compact, got %+v", slide.Pattern)
 	}
 }

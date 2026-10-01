@@ -355,9 +355,10 @@ func TestPhaseRoadmap_Expand_MilestoneRowOnlyWhenSet(t *testing.T) {
 	}
 
 	// Add a milestone on one phase -> 5 rows including a milestone row whose
-	// cells without milestone text use no-fill, and cells with text use an
-	// accent-filled roundRect. The milestone row renders directly under the
-	// date labels (row index 3), above the description row (row index 4).
+	// cells without milestone text use no-fill, and the cell with text is a
+	// marker: a small accent diamond beside an unfilled one-line label. The
+	// milestone row renders directly under the timeline rule (row index 2),
+	// above the date labels (go-slide-creator-knue6).
 	v := validPhaseRoadmapValues()
 	v.Phases[2].Milestone = "Pilot go-live"
 	grid, err = p.Expand(ExpandContext{}, v, nil, nil)
@@ -367,20 +368,26 @@ func TestPhaseRoadmap_Expand_MilestoneRowOnlyWhenSet(t *testing.T) {
 	if got := len(grid.Rows); got != 5 {
 		t.Fatalf("expected 5 rows with milestones, got %d", got)
 	}
-	milestoneRow := grid.Rows[3]
+	milestoneRow := grid.Rows[2]
 	if len(milestoneRow.Cells) != 4 {
 		t.Fatalf("expected 4 milestone cells, got %d", len(milestoneRow.Cells))
 	}
-	// Cell 2 has the milestone; others should be empty (no-fill placeholders).
-	if milestoneRow.Cells[2].Shape.Geometry != "roundRect" {
-		t.Errorf("milestone cell geometry = %q, want roundRect", milestoneRow.Cells[2].Shape.Geometry)
+	marker := milestoneRow.Cells[2].Grid
+	if marker == nil || len(marker.Rows) != 1 || len(marker.Rows[0].Cells) != 2 {
+		t.Fatalf("milestone cell is not a marker + label grid: %+v", milestoneRow.Cells[2])
 	}
-	var milestoneFill string
-	if err := json.Unmarshal(milestoneRow.Cells[2].Shape.Fill, &milestoneFill); err != nil {
-		t.Fatalf("milestone fill unmarshal: %v", err)
+	diamond, label := marker.Rows[0].Cells[0], marker.Rows[0].Cells[1]
+	if diamond.Shape.Geometry != "diamond" || string(diamond.Shape.Fill) != `"accent1"` {
+		t.Errorf("milestone marker = %s %s, want an accent1 diamond", diamond.Shape.Geometry, diamond.Shape.Fill)
 	}
-	if milestoneFill != "accent1" {
-		t.Errorf("milestone cell fill = %q, want accent1", milestoneFill)
+	if diamond.MaxHeight > 12 {
+		t.Errorf("milestone marker is %.0fpt tall, want a small marker", diamond.MaxHeight)
+	}
+	if string(label.Shape.Fill) != `"none"` {
+		t.Errorf("milestone label fill = %s, want none", label.Shape.Fill)
+	}
+	if h := milestoneRow.MaxHeight; h > phaseRoadmapMilestoneRowPt(10)+2 {
+		t.Errorf("milestone row is %.0fpt, want one text line plus margins", h)
 	}
 	for _, idx := range []int{0, 1, 3} {
 		var fill string

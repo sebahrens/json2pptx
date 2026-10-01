@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
-	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
 // ---------------------------------------------------------------------------
@@ -118,13 +117,7 @@ func (p *processFlowCompact) PostExpandWarnings(ctx ExpandContext, values, overr
 }
 
 func (p *processFlowCompact) Schema() *Schema {
-	stepSchema := ObjectSchema(
-		map[string]*Schema{
-			"label": StringSchema(80).WithDescription("Step label text; compact chevron/arrow labels tighten to about 61/31/12/10 word-like characters at 5/6/7/8 steps (rectangular steps about 76/52/51 at 6/7/8), less for wide unbroken text"),
-			"type":  EnumSchema("step", "decision", "chevron", "arrow").WithDescription("Shape type: rectangle (step), diamond (decision), chevron, or right-arrow (arrow)").WithDefault("step"),
-		},
-		[]string{"label"},
-	).WithAdditionalProperties(false)
+	stepSchema := processFlowStepSchema("Step label text; compact chevron/arrow labels tighten to about 61/31/12/10 word-like characters at 5/6/7/8 steps (rectangular steps about 76/52/51 at 6/7/8), less for wide unbroken text")
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
@@ -136,7 +129,7 @@ func (p *processFlowCompact) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"values":         valuesSchema,
-			"overrides":      textOverridesSchemaWithout("header_size"),
+			"overrides":      processFlowOverridesSchema(),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
@@ -154,16 +147,7 @@ func (p *processFlowCompact) Validate(values, overrides any, cellOverrides map[i
 	const name = "process-flow-compact"
 	var errs []error
 
-	if overrides != nil {
-		if ovr, ok := overrides.(*ProcessFlowOverrides); ok {
-			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
-				errs = append(errs, err)
-			}
-			// Step labels are body text; there is no header for header_size
-			// to size (go-slide-creator-s1uvj.41).
-			errs = append(errs, rejectUnusedTextOverrides(name, ovr, "header_size")...)
-		}
-	}
+	errs = append(errs, validateProcessFlowStyle(name, vals.Steps, overrides)...)
 
 	if len(vals.Steps) < 3 {
 		errs = append(errs, errMinItems(name, "steps", 3, len(vals.Steps), ""))
@@ -195,7 +179,11 @@ func (p *processFlowCompact) Validate(values, overrides any, cellOverrides map[i
 
 // processFlowCompactHeightPct is the largest share of the content area the
 // compact band occupies. Pointed steps can reduce it further.
-const processFlowCompactHeightPct = 35.0
+const processFlowCompactHeightPct = 22.0
+
+// processFlowCompactBoxAspect is the compact step's height floor as a share
+// of its width — shallower than process-flow's processFlowBoxAspect.
+const processFlowCompactBoxAspect = 0.28
 
 // processFlowCompactCellSize returns the compact step width and band height in
 // points. Pointed presets need a shallow band so their own text rectangle
@@ -230,9 +218,7 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 		}
 	}
 
-	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	bodySize := ResolveSize(ovr.BodySize, processFlowDefaultFontPt(len(vals.Steps)))
-	cellAccentMode := ovr.CellAccentMode
 
 	pointedRow := false
 	for _, step := range vals.Steps {
@@ -242,70 +228,27 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 		}
 	}
 
-	cells := make([]*jsonschema.GridCellInput, len(vals.Steps))
-	for i, step := range vals.Steps {
-		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
-		geometry := "roundRect"
-		pointed := false
-		switch step.Type {
-		case "decision":
-			geometry = "diamond"
-		case "chevron":
-			geometry = "chevron"
-			pointed = true
-		case "arrow":
-			geometry = "rightArrow"
-			pointed = true
-		}
-
-		text := buildProcessFlowTextContent(pptx.ConvertMarkdownEmphasis(step.Label), bodySize)
-		if pointed {
-			text = buildProcessFlowPointedText(pptx.ConvertMarkdownEmphasis(step.Label), bodySize)
-		}
-
-		cell := &jsonschema.GridCellInput{
-			Shape: &jsonschema.ShapeSpecInput{
-				Geometry: geometry,
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
-				Text:     text,
-			},
-		}
-		if pointed {
-			cell.Shape.Adjustments = map[string]int64{"adj": chevronAdj}
-		}
-
-		if co, coOk := cellOverrides[i]; coOk {
-			if cellOvr, ok2 := co.(*ProcessFlowCellOverride); ok2 {
-				applyCellTextOverride(cell, cellOvr)
-				if cellOvr.AccentBar {
-					cell.AccentBar = &jsonschema.AccentBarInput{
-						Position: "left",
-						Color:    accent,
-						Width:    4,
-					}
-				}
-			}
-		}
-
-		cells[i] = cell
-	}
+	cells := buildProcessFlowCells(ctx, vals.Steps, ovr, cellOverrides, bodySize)
 
 	colsJSON, _ := json.Marshal(len(vals.Steps))
 
 	row := jsonschema.GridRowInput{
 		Cells:     cells,
-		Connector: &jsonschema.ConnectorSpecInput{Style: "arrow", Color: "dk1", Width: 1.5},
+		Connector: processFlowConnector(ctx, ovr),
 	}
 	if allStepsPointed(vals.Steps) {
 		row.Connector = nil
 	}
 
-	cellW, bandHeight := processFlowCompactCellSize(ctx, len(vals.Steps), pointedRow)
+	cellW, bandCap := processFlowCompactCellSize(ctx, len(vals.Steps), pointedRow)
 	_, contentHeight := contentAreaPt(ctx)
-	// The band cap gives way to the written fit of the tallest label (never
-	// past the content area) before the writer would shrink it below the
-	// readable floor (go-slide-creator-n1muf).
-	bandHeight = math.Max(bandHeight, math.Min(processFlowWrittenNeedPt(cells, cellW), contentHeight))
+	// The band is content-sized below its cap, shallower than process-flow's
+	// steps (go-slide-creator-xb06p). The cap gives way to the written fit of
+	// the tallest label (never past the content area) before the writer would
+	// shrink it below the readable floor (go-slide-creator-n1muf).
+	need := processFlowWrittenNeedPt(cells, cellW)
+	bandHeight := processFlowContentHeight(need, cellW, processFlowCompactBoxAspect, bandCap)
+	bandHeight = math.Max(bandHeight, math.Min(need, contentHeight))
 	bandHeightPct := processFlowCompactHeightPct
 	if contentHeight > 0 {
 		bandHeightPct = bandHeight / contentHeight * 100
@@ -317,6 +260,10 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 		Columns: json.RawMessage(colsJSON),
 		Gap:     processFlowGapPt,
 		Rows:    []jsonschema.GridRowInput{row},
+		// The compact band is supporting context: it sits under the title
+		// and leaves the space below for other content, instead of floating
+		// a shallow strip in the middle of the slide (go-slide-creator-xb06p).
+		VerticalAlign: "top",
 	}
 
 	return grid, nil

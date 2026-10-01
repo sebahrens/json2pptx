@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -93,7 +94,14 @@ type StylishPanelsOverrides struct {
 	HeaderSize     float64 `json:"header_size,omitempty"`
 	BodySize       float64 `json:"body_size,omitempty"`
 	CellAccentMode string  `json:"cell_accent_mode,omitempty"` // uniform | alternate | progressive
+	// Ribbon is "dark" (default: the template's structural dark tone, dk2 or
+	// a 60% neutral when dk2 is black) or "accent" (accent-filled ribbons;
+	// cell_accent_mode applies).
+	Ribbon string `json:"ribbon,omitempty"`
 }
+
+// stylishPanelsRibbons are the accepted overrides.ribbon values.
+var stylishPanelsRibbons = []string{"dark", "accent"}
 
 // StylishPanelsCellOverride is an alias for the shared CellOverride struct.
 type StylishPanelsCellOverride = CellOverride
@@ -228,7 +236,8 @@ func (sp *stylishPanels) Schema() *Schema {
 					"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
 					"header_size":      NumberSchema(6, 120).WithDescription("Font size for panel headers in points"),
 					"body_size":        NumberSchema(6, 120).WithDescription("Font size for body bullet text in points"),
-					"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation: uniform (default), alternate, progressive").WithDefault("uniform"),
+					"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation for ribbon=accent: uniform (default), alternate, progressive").WithDefault("uniform"),
+					"ribbon":           EnumSchema(stylishPanelsRibbons...).WithDescription("Ribbon header fill: dark (default: the template's structural dark tone, dk2 or a 60% neutral when dk2 is black, so three to five panels are not a wall of accent) or accent (accent-filled ribbons; cell_accent_mode applies)").WithDefault("dark"),
 				},
 				nil,
 			).WithAdditionalProperties(false),
@@ -254,6 +263,9 @@ func (sp *stylishPanels) Validate(values, overrides any, cellOverrides map[int]a
 		if ovr, ok := overrides.(*StylishPanelsOverrides); ok {
 			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
 				errs = append(errs, err)
+			}
+			if ovr.Ribbon != "" && !slices.Contains(stylishPanelsRibbons, ovr.Ribbon) {
+				errs = append(errs, errInvalidEnum(name, "overrides.ribbon", ovr.Ribbon, stylishPanelsRibbons))
 			}
 		}
 	}
@@ -323,27 +335,37 @@ func (sp *stylishPanels) Expand(ctx ExpandContext, values, overrides any, cellOv
 
 	n := len(*items)
 
-	// Row 1: accent header cells (short, colored band)
+	// Row 1: ribbon header cells (short, coloured band). The default ribbon
+	// is the structural dark tone: three to five solid accent ribbons were a
+	// wall of colour (go-slide-creator-fl11f).
 	headerCells := make([]*jsonschema.GridCellInput, n)
 	for i, item := range *items {
-		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
+		ribbon := structuralDarkTone(ctx)
+		if ovr.Ribbon == "accent" {
+			ribbon = fillTone{Color: ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)}
+		}
 		headerCells[i] = &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+				Fill:     ribbon.fillJSON(),
+				Line:     noLine,
 				Text:     buildStylishHeaderText(item.Title, headerSize),
 			},
 		}
 	}
 
-	// Row 2: body cells (light tinted, with bullet text)
+	// Row 2: body cells (neutral tint, with bullet text). An lt1 body
+	// vanished on white-paper templates, leaving bullets hanging under the
+	// ribbons (go-slide-creator-95tp7).
+	bodyFill := surfaceFillJSON(ctx, "subtle", NeutralTint4)
 	bodyCells := make([]*jsonschema.GridCellInput, n)
 	for i, item := range *items {
 		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 		bodyCells[i] = &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(`"lt1"`),
+				Fill:     bodyFill,
+				Line:     noLine,
 				Text:     buildStylishBodyText(item.Body, bodySize, accent),
 			},
 		}
@@ -379,7 +401,9 @@ func (sp *stylishPanels) Expand(ctx ExpandContext, values, overrides any, cellOv
 	// Neither row is ever handed less than the written fit of its tallest
 	// cell: sized by the theme-font model alone, the bodies were written at
 	// 44-84% autofit on the short content areas (go-slide-creator-n1muf).
-	headerPt := math.Max(headerRowPt(font, titles, headerSize, colW), fit.headerPt)
+	// The ribbon is its written need: the band padding headerRowPt adds made
+	// a one-line title a ~65px slab (go-slide-creator-95tp7).
+	headerPt := math.Max(headerRowPt(font, titles, headerSize, colW)-headerBandPadPt, fit.headerPt)
 	bodyMax := math.Max(math.Round(bodyH+2*defaultShapeInsetTBPt+cardPadPt), fit.bodyPt)
 	bodyRow := jsonschema.GridRowInput{Cells: bodyCells, MaxHeight: bodyMax}
 	if fit.fits {

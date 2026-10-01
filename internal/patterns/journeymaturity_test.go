@@ -230,21 +230,24 @@ func TestJourneyMaturity_Expand_CurrentStageMarker(t *testing.T) {
 		}
 	}
 
-	currentHeader := grid.Rows[0].Cells[2]
-	if currentHeader.AccentBar == nil {
-		t.Error("expected accent bar on current stage header")
-	}
-	if currentHeader.AccentBar != nil && currentHeader.AccentBar.Position != "left" {
-		t.Errorf("expected left-positioned accent bar, got %q", currentHeader.AccentBar.Position)
-	}
-
+	// The current header's accent fill is its emphasis: no accent bar, which
+	// rendered outside the cell in the column gap (go-slide-creator-8gbmn).
 	for i, cell := range grid.Rows[0].Cells {
-		if i == 2 {
-			continue
-		}
 		if cell.AccentBar != nil {
-			t.Errorf("header %d: did not expect accent bar on non-current header", i)
+			t.Errorf("header %d: did not expect an accent bar, got %+v", i, cell.AccentBar)
 		}
+	}
+	// Filler marker cells are unfilled: bg1 painted white tiles on tinted
+	// slide backgrounds (go-slide-creator-8gbmn).
+	for i, cell := range grid.Rows[2].Cells {
+		if i != 2 && string(cell.Shape.Fill) != `"none"` {
+			t.Errorf("filler marker cell %d fill = %s, want none", i, cell.Shape.Fill)
+		}
+	}
+	// The callout is outlined, leaving the header the one solid accent block
+	// (go-slide-creator-fl11f).
+	if string(currentMarker.Shape.Fill) != `"none"` || !strings.Contains(string(currentMarker.Shape.Line), "accent1") {
+		t.Errorf("current marker fill/line = %s/%s, want an accent-outlined callout", currentMarker.Shape.Fill, currentMarker.Shape.Line)
 	}
 }
 
@@ -308,8 +311,8 @@ func TestJourneyMaturity_Expand_AccentOverride(t *testing.T) {
 		t.Errorf("expected connector color accent4 from override, got %+v", grid.Rows[0].Connector)
 	}
 	currentMarker := grid.Rows[2].Cells[1]
-	if !strings.Contains(string(currentMarker.Shape.Fill), "accent4") {
-		t.Errorf("expected current marker fill to follow accent override, got %q", string(currentMarker.Shape.Fill))
+	if !strings.Contains(string(currentMarker.Shape.Line), "accent4") {
+		t.Errorf("expected current marker outline to follow accent override, got %q", string(currentMarker.Shape.Line))
 	}
 	currentHeader := grid.Rows[0].Cells[1]
 	if !strings.Contains(string(currentHeader.Shape.Fill), "accent4") {

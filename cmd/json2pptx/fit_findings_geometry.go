@@ -401,6 +401,13 @@ var contentSizedBoxPatterns = map[string]bool{
 	"before-after":         true,
 	"before-after-compact": true,
 	"strategy-house":       true,
+	// Content-sized since the restrained-accent pass (go-slide-creator-xb06p,
+	// -3nsll, -x0b82). process-flow-compact stays at the pattern threshold:
+	// its shallow top-anchored band is supporting context, and alone on a
+	// slide it should be paired with a zone.
+	"process-flow":    true,
+	"arch-stack":      true,
+	"comparison-2col": true,
 }
 
 func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInput, si int, patternName string, heightSensitiveOverflow bool) *patterns.FitFinding {

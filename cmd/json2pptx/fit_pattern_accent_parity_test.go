@@ -61,7 +61,7 @@ func TestSectionKeyedPatternContrastParityAcrossLocalTemplates(t *testing.T) {
 				Slides: []SlideInput{
 					{SlideType: "title"},
 					{SlideType: "section"},
-					{SlideType: "content", Pattern: &PatternInput{Name: "kpi-inline", Values: json.RawMessage(`[{"big":"42%","small":"Growth"},{"big":"1.2M","small":"ARR"}]`)}},
+					{SlideType: "content", Pattern: &PatternInput{Name: "kpi-inline", Values: json.RawMessage(`[{"big":"42%","small":"Growth"},{"big":"1.2M","small":"ARR"}]`), Overrides: json.RawMessage(`{"style":"solid"}`)}},
 				},
 			}
 			applyDefaults(input)

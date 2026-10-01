@@ -57,7 +57,7 @@ func TestProcessFlow_DefaultFontScalesDownWithCount(t *testing.T) {
 }
 
 func TestProcessFlow_BodySizeOverrideWinsOverScaling(t *testing.T) {
-	ovr := &ProcessFlowOverrides{BodySize: 18}
+	ovr := &ProcessFlowOverrides{TextOverrides: TextOverrides{BodySize: 18}}
 	if got := processFlowStepFont(t, 8, ovr); got != 18 {
 		t.Errorf("with body_size=18 override, 8-step font = %g, want 18", got)
 	}

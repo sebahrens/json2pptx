@@ -118,16 +118,16 @@
             "geometry": "rect",
             "fill": "none",
             "text": {
+              "align": "l",
               "paragraphs": [
                 {
                   "content": "Mar–Apr 2025",
                   "size": 10,
                   "bold": true,
                   "color": "dk1",
-                  "align": "ctr"
+                  "align": "l"
                 }
               ],
-              "align": "ctr",
               "vertical_align": "ctr"
             }
           }
@@ -137,16 +137,16 @@
             "geometry": "rect",
             "fill": "none",
             "text": {
+              "align": "l",
               "paragraphs": [
                 {
                   "content": "May–Jul 2025",
                   "size": 10,
                   "bold": true,
                   "color": "dk1",
-                  "align": "ctr"
+                  "align": "l"
                 }
               ],
-              "align": "ctr",
               "vertical_align": "ctr"
             }
           }
@@ -156,16 +156,16 @@
             "geometry": "rect",
             "fill": "none",
             "text": {
+              "align": "l",
               "paragraphs": [
                 {
                   "content": "Aug–Oct 2025",
                   "size": 10,
                   "bold": true,
                   "color": "dk1",
-                  "align": "ctr"
+                  "align": "l"
                 }
               ],
-              "align": "ctr",
               "vertical_align": "ctr"
             }
           }
@@ -175,16 +175,16 @@
             "geometry": "rect",
             "fill": "none",
             "text": {
+              "align": "l",
               "paragraphs": [
                 {
                   "content": "Nov–Dec 2025",
                   "size": 10,
                   "bold": true,
                   "color": "dk1",
-                  "align": "ctr"
+                  "align": "l"
                 }
               ],
-              "align": "ctr",
               "vertical_align": "ctr"
             }
           }

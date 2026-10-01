@@ -88,8 +88,9 @@ func TestProcessFlowChevronKeepsItsLabelOutOfTheNotch(t *testing.T) {
 	if height > math.Round(width*chevronMaxAspectH) {
 		t.Errorf("pointed row height %.0fpt exceeds half its %.0fpt step width", height, width)
 	}
-	if grid.Rows[0].MaxHeight != height {
-		t.Errorf("row max_height = %.0f, want the capped %.0f", grid.Rows[0].MaxHeight, height)
+	// Content-sized below the pointed cap (go-slide-creator-xb06p).
+	if got := grid.Rows[0].MaxHeight; got <= 0 || got > height {
+		t.Errorf("row max_height = %.0f, want content-sized within the capped %.0f", got, height)
 	}
 	// The label is left with a usable share of the shape rather than a column.
 	if textWidth := width - 2*(notch+defaultShapeInsetLRPt); textWidth < width*0.45 {
@@ -121,14 +122,24 @@ func TestProcessFlowPlainStepsKeepTheirConnectors(t *testing.T) {
 		if err := json.Unmarshal(cell.Shape.Text, &text); err != nil {
 			t.Fatalf("cell %d text: %v", i, err)
 		}
+		if cell.Shape.Geometry == "diamond" {
+			// The diamond's text sits in the preset's inner rectangle and
+			// keeps only a thin margin inside it (go-slide-creator-xb06p).
+			if got, _ := text["inset_left"].(float64); got != processFlowDiamondInsetPt {
+				t.Errorf("decision cell %d inset_left = %v, want %v", i, text["inset_left"], processFlowDiamondInsetPt)
+			}
+			continue
+		}
 		if _, has := text["inset_left"]; has {
 			t.Errorf("cell %d was inset for a notch it does not have", i)
 		}
 	}
-	// A row that is not all-pointed keeps the taller box.
-	_, plainHeight := processFlowCellSize(ctx, len(vals.Steps), false)
-	if grid.Rows[0].MaxHeight != plainHeight {
-		t.Errorf("row max_height = %.0f, want the uncapped %.0f", grid.Rows[0].MaxHeight, plainHeight)
+	// A row that is not all-pointed is content-sized: at least the box
+	// proportion of its step width, at most the plain cap
+	// (go-slide-creator-xb06p).
+	plainWidth, plainHeight := processFlowCellSize(ctx, len(vals.Steps), false)
+	if got := grid.Rows[0].MaxHeight; got > plainHeight || got < math.Round(plainWidth*processFlowBoxAspect)-1 && got < plainHeight {
+		t.Errorf("row max_height = %.0f, want between the %.0f box floor and the %.0f cap", got, plainWidth*processFlowBoxAspect, plainHeight)
 	}
 }
 

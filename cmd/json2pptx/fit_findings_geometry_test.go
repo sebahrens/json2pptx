@@ -289,7 +289,6 @@ func geomPatternSlide(t *testing.T, maxHeightPct float64) *PresentationInput {
 func TestGeometry_ContentSizedPatternBandIsNotUnderused(t *testing.T) {
 	for _, pattern := range []string{
 		`{"name":"process-flow","values":{"steps":[{"label":"Discover"},{"label":"Build"},{"label":"Ship"}]}}`,
-		`{"name":"process-flow-compact","values":{"steps":[{"label":"Discover"},{"label":"Build"},{"label":"Ship"}]}}`,
 	} {
 		in := geomSlides(t, `[{"layout_id":"content","pattern":`+pattern+`}]`)
 		if fs := findingsByCode(collectGeometryFindings(in, nil, 0, 0, nil), patterns.ErrCodeSlideUnderused); len(fs) != 0 {
@@ -308,11 +307,14 @@ func TestGeometry_CentredContentSizedKPIRowIsNotUnderused(t *testing.T) {
 	}
 }
 
+// stylish-panels bodies are a visible neutral tint since
+// go-slide-creator-95tp7 (they were lt1, invisible on white paper, so only the
+// ribbons and bullet text counted as ink): the panels themselves are the ink,
+// and a sparse three-panel slide is no longer reported as underused.
 func TestGeometry_SparsePanelsNowReportVisibleInk(t *testing.T) {
 	in := geomSlides(t, `[{"layout_id":"content","pattern":{"name":"stylish-panels","values":[{"title":"A","body":["one","two"]},{"title":"B","body":["one","two"]},{"title":"C","body":["one","two"]}]}}]`)
-	fs := findingsByCode(collectGeometryFindings(in, nil, 0, 0, nil), patterns.ErrCodeSlideUnderused)
-	if len(fs) != 1 || fs[0].Fix.Params["content_area_pct"].(float64) >= 20 {
-		t.Fatalf("sparse panels should report their visible ink, got %+v", fs)
+	if fs := findingsByCode(collectGeometryFindings(in, nil, 0, 0, nil), patterns.ErrCodeSlideUnderused); len(fs) != 0 {
+		t.Fatalf("visible panel bodies count as ink, got %+v", fs)
 	}
 }
 

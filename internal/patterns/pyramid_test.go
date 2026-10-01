@@ -269,10 +269,17 @@ func TestTextOverrides_UnusedHeaderSizeRejected(t *testing.T) {
 			if strings.Contains(string(schemaJSON), `"header_size"`) {
 				t.Errorf("%s overrides schema still publishes header_size", tc.pattern)
 			}
-			if err := p.Validate(tc.values, &TextOverrides{BodySize: 12}, nil); err != nil {
+			overridesOf := func(raw string) any {
+				o := p.NewOverrides()
+				if err := json.Unmarshal([]byte(raw), o); err != nil {
+					t.Fatalf("unmarshal overrides: %v", err)
+				}
+				return o
+			}
+			if err := p.Validate(tc.values, overridesOf(`{"body_size":12}`), nil); err != nil {
 				t.Errorf("body_size must stay valid: %v", err)
 			}
-			err := p.Validate(tc.values, &TextOverrides{HeaderSize: 18}, nil)
+			err := p.Validate(tc.values, overridesOf(`{"header_size":18}`), nil)
 			if err == nil || !strings.Contains(err.Error(), "overrides.header_size is not used") {
 				t.Errorf("want header_size rejected, got %v", err)
 			}

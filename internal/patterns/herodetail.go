@@ -100,7 +100,7 @@ type HeroDetailOverrides struct {
 	LabelSize      float64 `json:"label_size,omitempty"`  // Font size for the label (default 16)
 	HeaderSize     float64 `json:"header_size,omitempty"` // Font size for detail titles (default 14)
 	DetailSize     float64 `json:"detail_size,omitempty"` // Font size for detail body text (default 11)
-	Style          string  `json:"style,omitempty"`       // "cards" (default) or "minimal"
+	Style          string  `json:"style,omitempty"`       // "minimal" (default) or "cards"
 }
 
 // HeroDetailCellOverride is an alias for the shared CellOverride struct.
@@ -108,7 +108,7 @@ type HeroDetailCellOverride = CellOverride
 
 // validHeroDetailStyles enumerates the allowed style values.
 var validHeroDetailStyles = map[string]bool{
-	"":        true, // default = cards
+	"":        true, // default = minimal
 	"cards":   true,
 	"minimal": true,
 }
@@ -220,7 +220,7 @@ func (hd *heroDetail) Schema() *Schema {
 			"label_size":      NumberSchema(6, 60).WithDescription("Font size for the label in points (default 16)"),
 			"header_size":     NumberSchema(6, 60).WithDescription("Font size for detail titles in points (default 14)"),
 			"detail_size":     NumberSchema(6, 40).WithDescription("Font size for detail body text in points (default 11)"),
-			"style":           EnumSchema("cards", "minimal").WithDescription("Visual style: cards (default, accent-filled detail cards) or minimal (light background with accent headers)").WithDefault("cards"),
+			"style":           EnumSchema("minimal", "cards").WithDescription("Visual style: minimal (default: detail text beside a thin accent rule, no fill, top-aligned titles, so the hero stays the one emphasised element) or cards (accent-filled detail cards)").WithDefault("minimal"),
 		},
 		nil,
 	).WithAdditionalProperties(false)
@@ -442,9 +442,11 @@ const (
 func (hd *heroDetail) measure(ctx ExpandContext, v *HeroDetailValues, ovr *HeroDetailOverrides, cellOverrides map[int]any, heroSize, labelSize, headerSize, rowGap float64) heroDetailPlan {
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	detailSize := ResolveSize(ovr.DetailSize, 11.0)
+	// minimal is the default: the hero number is the slide's one emphasis,
+	// so the detail cards carry no accent fill (go-slide-creator-19pp9).
 	style := ovr.Style
 	if style == "" {
-		style = "cards"
+		style = "minimal"
 	}
 
 	// Row 1: Hero stat (single cell spanning all columns)
@@ -491,7 +493,10 @@ func (hd *heroDetail) measure(ctx ExpandContext, v *HeroDetailValues, ovr *HeroD
 	}
 	plan.detailMax = math.Max(cardH, plan.detailNeed)
 	for i, dc := range detailCells {
-		if dc.Shape.Icon == nil {
+		// Minimal cards share one title line: centring a two-line body's
+		// card dropped its neighbours' titles out of line beside the equal
+		// accent rules (go-slide-creator-ppcfn).
+		if dc.Shape.Icon == nil && style != "minimal" {
 			dc.Shape.Text = anchorSparseText(dc.Shape.Text, textHs[i], plan.detailMax-2*defaultShapeInsetTBPt)
 		}
 	}
@@ -629,9 +634,11 @@ func (hd *heroDetail) buildMinimalDetailCell(ctx ExpandContext, d HeroDetailItem
 
 	gc := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
-			Geometry: "roundRect",
-			Fill:     json.RawMessage(`"lt1"`),
-			Text:     textJSON,
+			Geometry: "rect",
+			// No fill: an lt1 card is invisible on white paper and a white
+			// box on a tinted slide background (go-slide-creator-19pp9).
+			Fill: json.RawMessage(`"none"`),
+			Text: textJSON,
 		},
 		AccentBar: &jsonschema.AccentBarInput{
 			Position: "left",

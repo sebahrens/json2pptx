@@ -3,6 +3,8 @@
   "columns": 2,
   "rows": [
     {
+      "min_height": 50,
+      "max_height": 50,
       "cells": [
         {
           "shape": {
@@ -45,6 +47,8 @@
       ]
     },
     {
+      "min_height": 50.105999999999995,
+      "max_height": 50.105999999999995,
       "cells": [
         {
           "shape": {
@@ -95,6 +99,8 @@
       ]
     },
     {
+      "min_height": 50.105999999999995,
+      "max_height": 50.105999999999995,
       "cells": [
         {
           "shape": {
@@ -144,5 +150,6 @@
         }
       ]
     }
-  ]
+  ],
+  "vertical_align": "center"
 }
