@@ -628,23 +628,20 @@ func TestTemplateDiscoveryMarksSectionNumberAutoFilled(t *testing.T) {
 	}
 }
 
-func TestAnalyzeTemplateForSkillInfo_AccentUsageGuideOmittedWhenAbsent(t *testing.T) {
-	// Bundled templates don't currently ship accent_usage_guide metadata,
-	// so the field should be omitted (nil map → omitempty).
+func TestAnalyzeTemplateForSkillInfo_AccentUsageGuideAuthored(t *testing.T) {
+	// Bundled templates author accent_usage_guide (go-slide-creator-u1h9b):
+	// it is surfaced as-is and never flagged derived.
 	cache := template.NewMemoryCache(24 * time.Hour)
 	info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, "compact")
 	if err != nil {
 		t.Fatalf("analyzeTemplateForSkillInfo failed: %v", err)
 	}
-
-	if info.AccentUsageGuide != nil {
-		t.Errorf("AccentUsageGuide should be nil when template metadata doesn't supply it, got %v", info.AccentUsageGuide)
+	if len(info.AccentUsageGuide) != 6 || info.AccentUsageGuideDerived {
+		t.Errorf("guide=%v derived=%v, want six authored lines", info.AccentUsageGuide, info.AccentUsageGuideDerived)
 	}
-
-	// Verify it's omitted from JSON output.
 	b, _ := json.Marshal(info)
-	if containsSubstring(string(b), "accent_usage_guide") {
-		t.Error("accent_usage_guide should be omitted from JSON when not supplied by template metadata")
+	if containsSubstring(string(b), "accent_usage_guide_derived") {
+		t.Error("accent_usage_guide_derived must be omitted for an authored guide")
 	}
 }
 

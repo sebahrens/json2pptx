@@ -12,6 +12,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
 // complexDiagramTypes lists diagram types that are inherently complex and
@@ -205,6 +206,8 @@ func (ctx *singlePassContext) prepareImages() error {
 		// first at identical bounds, silently burying it. Detect that collision
 		// and emit a CONTENT_DROPPED finding rather than overlapping the content.
 		claimedVisualShapes := make(map[int]int) // shapeIdx -> content index of the visual that claimed it
+		shapes := slide.CommonSlideData.ShapeTree.Shapes
+		textClaims := textClaimedShapes(shapes, slideSpec.Content, slideSpec.LayoutID)
 
 		for contentIdx, item := range slideSpec.Content {
 			// Check for visual content types
@@ -215,7 +218,7 @@ func (ctx *singlePassContext) prepareImages() error {
 				continue
 			}
 
-			shapeIdx, tier, found := resolver.ResolveWithFallback(item.PlaceholderID)
+			shapeIdx, tier, found := ctx.resolveVisualShape(resolver, shapes, slideSpec, slideNum, contentIdx, textClaims, claimedVisualShapes)
 			if !found {
 				available := resolver.Keys()
 				layoutID := slideSpec.LayoutID
@@ -259,7 +262,7 @@ func (ctx *singlePassContext) prepareImages() error {
 			case ContentDiagram:
 				ctx.processDiagramContent(slideNum, contentIdx, item, shape, shapeIdx, resolver)
 			case ContentImage:
-				ctx.processImageContent(slideNum, item, shape, shapeIdx)
+				ctx.processImageContent(slideNum, contentIdx, item, shape, shapeIdx)
 			case ContentTable:
 				var tableStyleResolver TableStyleResolver
 				if tableSpec, ok := item.Value.(*types.TableSpec); ok && tableSpec != nil &&
@@ -1252,7 +1255,7 @@ func (ctx *singlePassContext) resolveDiagramWithMetadata(slideNum int, item Cont
 }
 
 // processImageContent handles image content items (file-based images).
-func (ctx *singlePassContext) processImageContent(slideNum int, item ContentItem, shape *shapeXML, shapeIdx int) {
+func (ctx *singlePassContext) processImageContent(slideNum, contentIdx int, item ContentItem, shape *shapeXML, shapeIdx int) {
 	imgContent, ok := item.Value.(ImageContent)
 	if !ok {
 		reason := fmt.Sprintf("invalid image value for placeholder %s", item.PlaceholderID)
@@ -1301,14 +1304,26 @@ func (ctx *singlePassContext) processImageContent(slideNum int, item ContentItem
 	// Get placeholder bounds
 	placeholderBounds := getPlaceholderBounds(shape, bounds)
 
+	// An omitted fit means cover only in a real picture placeholder; a body
+	// placeholder keeps the whole image (go-slide-creator-dk5sk).
+	fit := effectiveImageFit(imgContent.Fit, shape)
+
 	// Handle SVG files with appropriate strategy
 	if IsSVGFile(imagePath) {
-		ctx.processSVGImage(slideNum, imagePath, imgContent.Alt, placeholderBounds, shape, shapeIdx, imgContent.Fit)
+		ctx.processSVGImage(slideNum, imagePath, imgContent.Alt, placeholderBounds, shape, shapeIdx, fit)
 		return
 	}
 
+	if fit == "cover" {
+		if crop, ok := utils.CoverCropForFile(imagePath, placeholderBounds.Width, placeholderBounds.Height); ok {
+			if discard := coverDiscardFraction(imageCoverCrop(crop)); discard > heavyCropThreshold {
+				ctx.emitFitFinding(patterns.ImageHeavyCrop(slidepath.ContentIndex(slideNum-1, contentIdx), item.PlaceholderID, discard, imgContent.Fit == ""))
+			}
+		}
+	}
+
 	// Process regular (non-SVG) image
-	ctx.processRegularImage(slideNum, imagePath, imgContent.Alt, placeholderBounds, shape, shapeIdx, imgContent.Fit)
+	ctx.processRegularImage(slideNum, imagePath, imgContent.Alt, placeholderBounds, shape, shapeIdx, fit)
 }
 
 // processSVGImage handles SVG files based on the configured conversion strategy.
@@ -1352,6 +1367,7 @@ func (ctx *singlePassContext) processNativeSVG(slideNum int, imagePath string, a
 		ctx.recordImagePlacementFailure(slideNum, shapeIdx, err)
 		return
 	}
+	ctx.recordPictureFrame(slideNum, placeholderBounds)
 
 	// Allocate media filenames
 	svgMediaFile, pngMediaFile := ctx.allocSVGPNGPair(fmt.Sprintf("nativesvg-s%d-x%d", slideNum, shapeIdx))
@@ -1405,6 +1421,7 @@ func (ctx *singlePassContext) processRegularImage(slideNum int, imagePath string
 		ctx.recordImagePlacementFailure(slideNum, shapeIdx, err)
 		return
 	}
+	ctx.recordPictureFrame(slideNum, placeholderBounds)
 
 	// Allocate media slot if not already present
 	mediaFileName := ctx.allocateMediaSlot(imagePath)

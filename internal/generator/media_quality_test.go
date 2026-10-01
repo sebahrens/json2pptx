@@ -656,7 +656,7 @@ func TestProcessImageContent_MissingAltTextWarning(t *testing.T) {
 			}
 
 			shape := &shapeXML{}
-			ctx.processImageContent(1, item, shape, 0)
+			ctx.processImageContent(1, 0, item, shape, 0)
 
 			hasAltWarning := false
 			for _, w := range ctx.warnings {

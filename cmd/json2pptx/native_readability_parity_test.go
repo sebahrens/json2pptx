@@ -96,9 +96,9 @@ func TestReadabilityRefusalNamesSlideAndPartialSkipsIt(t *testing.T) {
 	dir := t.TempDir()
 
 	report := filepath.Join(dir, "refused.json")
-	err := runJSONMode(deck, report, testTemplatesDir, filepath.Join(dir, "refused"), "", false, false, "abstract", "warn", false, "strict", "", false)
+	err := runJSONMode(deck, report, testTemplatesDir, filepath.Join(dir, "refused"), "", false, false, "modern", "warn", false, "strict", "", false)
 	if err == nil {
-		t.Fatal("dense canvas generated on abstract")
+		t.Fatal("dense canvas generated on modern")
 	}
 	for _, want := range []string{"slide 2 (layout ", `diagram "business_model_canvas"`, "at /slides/1/content/1/diagram_value", "unreadable generated text"} {
 		if !strings.Contains(err.Error(), want) {
@@ -113,7 +113,7 @@ func TestReadabilityRefusalNamesSlideAndPartialSkipsIt(t *testing.T) {
 	}
 
 	report = filepath.Join(dir, "partial.json")
-	if err := runJSONMode(deck, report, testTemplatesDir, filepath.Join(dir, "partial"), "", false, false, "abstract", "warn", true, "strict", "", false); err != nil {
+	if err := runJSONMode(deck, report, testTemplatesDir, filepath.Join(dir, "partial"), "", false, false, "modern", "warn", true, "strict", "", false); err != nil {
 		t.Fatalf("partial generation failed: %v", err)
 	}
 	var partial JSONOutput

@@ -393,7 +393,7 @@ func TestHTTPSemanticRender_ReadableTextRefusal(t *testing.T) {
 	if err := json.Unmarshal(raw, &deck); err != nil {
 		t.Fatal(err)
 	}
-	spec := fmt.Sprintf(`{"meta": {"title": "Canvas", "template": "abstract"},
+	spec := fmt.Sprintf(`{"meta": {"title": "Canvas", "template": "modern"},
   "slides": [{"kind": "title", "title": "Canvas"}, {"kind": "raw_json2pptx", "slide": %s}]}`, deck.Slides[1])
 
 	ts := newSemanticRenderTestServer(t, semanticRenderTestConfig(t))

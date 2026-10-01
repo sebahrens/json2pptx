@@ -60,14 +60,17 @@ func (ctx *singlePassContext) nativeImageContrastExclusions(slide *slideXML, spe
 	excluded := map[int]bool{}
 	shapes := slide.CommonSlideData.ShapeTree.Shapes
 	resolver := newPlaceholderResolver(shapes, spec.LayoutID)
+	textClaims := textClaimedShapes(shapes, spec.Content, spec.LayoutID)
+	visualClaims := map[int]int{}
 	var images []types.BoundingBox
-	for _, item := range spec.Content {
+	for ci, item := range spec.Content {
 		image, ok := item.Value.(ImageContent)
 		if item.Type != ContentImage || !ok || strings.TrimSpace(image.Path) == "" || ValidateImageFit(image.Fit) != nil {
 			continue
 		}
-		index, _, found := resolver.ResolveWithFallback(item.PlaceholderID)
+		index, _, found, _ := resolveImageShape(resolver, shapes, item.PlaceholderID, textClaims, visualClaims)
 		if found {
+			visualClaims[index] = ci
 			images = append(images, getPlaceholderBounds(&shapes[index], image.Bounds))
 		}
 	}

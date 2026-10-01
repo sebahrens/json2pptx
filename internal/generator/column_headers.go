@@ -53,7 +53,11 @@ func markColumnHeaders(shapes []shapeXML, content []ContentItem) []ContentItem {
 	}
 	left, lok := content[li].Value.([]string)
 	right, rok := content[ri].Value.([]string)
-	if !lok || !rok || !isColumnHeaderLine(left) || !isColumnHeaderLine(right) {
+	headed := isColumnHeaderLine
+	if content[li].ColumnHeader && content[ri].ColumnHeader {
+		headed = isComparisonHeaderLine
+	}
+	if !lok || !rok || !headed(left) || !headed(right) {
 		return content
 	}
 	out := append([]ContentItem(nil), content...)
@@ -91,6 +95,19 @@ func isColumnHeaderLine(bullets []string) bool {
 	}
 	mean := float64(restWords) / float64(len(bullets)-1)
 	return mean >= 3 && float64(words) < mean
+}
+
+// isComparisonHeaderLine accepts the first line of a slide_type
+// "comparison" column as its header whenever it is an unindented label of at
+// most 8 words followed by at least one point: the slide type declares the
+// option names, so the length heuristic of isColumnHeaderLine does not apply.
+func isComparisonHeaderLine(bullets []string) bool {
+	if len(bullets) < 2 {
+		return false
+	}
+	depth, first := pptx.BulletIndentDepth(bullets[0])
+	first = strings.TrimSpace(first)
+	return depth == 0 && first != "" && len(strings.Fields(first)) <= 8
 }
 
 // columnHeaderParagraph renders a column header at the list's bullet level so

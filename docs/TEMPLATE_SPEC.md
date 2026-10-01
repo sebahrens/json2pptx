@@ -178,6 +178,10 @@ Templates may include an embedded metadata file at `ppt/go-slide-creator-metadat
     "positive": "accent4",
     "negative": "accent2",
     "neutral": "accent5"
+  },
+  "accent_usage_guide": {
+    "accent1": "#2E5090 primary emphasis: headers, bands, key figures; carries white text (7.9:1)",
+    "accent4": "#FFC000 near-background tint: subtle surfaces only, never text, thin rules or chart series"
   }
 }
 ```
@@ -210,6 +214,12 @@ An ordered list of scheme color names controlling chart series coloring. `svggen
 The list should contain 6 entries (one per accent slot). The ordering determines which accent is used for the first, second, third (etc.) chart series. Templates can reorder to put their most visually distinct accents first.
 
 When `data_palette` is absent, charts start from the fixed order `accent1`–`accent6`. At render time, automatic chart colors with less than 2:1 contrast on the effective chart background are skipped; visible theme colors and dark/light theme slots fill the six series positions. When a chart uses fewer series than the palette holds, a palette color within ΔE 25 (CIE76) of one already assigned is moved later so neighbouring series stay distinguishable on single-hue templates (theme `dk2` / `dk1`, a shade of the first color, then grey fill in when the palette runs out of distinct colors); a chart that needs every palette slot keeps the declared order. Explicit author-supplied chart colors are preserved. `list_templates` keeps the authored `data_palette` ordering and reports near-background accents separately in `color_roles.near_background_accents`.
+
+### AccentUsageGuide
+
+One line per accent (`accent1`–`accent6`) stating its intended role and what text it can carry, surfaced by `list_templates` (`fields="full"`, CLI `skill-info --mode compact`) so agents pick accents with intent. Every bundled template authors all six lines (a corpus test enforces it). When a template has no guide — a bring-your-own template such as one without a metadata part — `list_templates` derives one from the theme's measured contrast (primary / secondary fill, white-text safety, near-background tints) and sets `accent_usage_guide_derived: true`; treat a derived guide as contrast facts only, not brand intent.
+
+`color_roles.primary_fill` / `secondary_fill` name the first accents that carry white body text (4.5:1), then large text (3:1), then a qualifying `dk2` / `dk1`; they are not always `accent1`. `color_roles.ink_on_accent` gives, per accent, the readable text colour for a fill of that accent (`lt1` when white passes 4.5:1, else `dk2` / `dk1`) and its ratio.
 
 ### Template Conformance Check
 
@@ -250,6 +260,7 @@ The checker verifies:
 15. **Text slots do not materially overlap** — title, subtitle, and body/content placeholders must not intersect by at least 1 mm in both dimensions and 2% of the smaller slot. Decorative section-number frames and picture/text overlays are excluded.
 16. **Image does not cover title** — an image placeholder that overlaps a title must precede it in the layout shape tree. The generator also protects emitted slide order, but source templates should be safe independently.
 17. **Content title/body hierarchy** — a visible title on One Content or Two Content must be larger than first-level body text when both sizes resolve. Layouts named as One / Two Content are judged even when an oversized body font stops the classifier from recognising the role.
+18. **Content title geometry consistent** — the title placeholder of every One Content, Two Content and Blank + Title layout must match the first One Content layout's title in x, y, width, height (±0.1in) and vertical anchor (WARN). A deck mixes bullet slides, side-by-side slides and pattern canvases; differing title boxes make the headline jump from slide to slide.
 
 Exit codes:
 - **0**: All checks pass (WARN findings do not fail the check)
@@ -257,7 +268,7 @@ Exit codes:
 
 ### Known Exceptions
 
-Bundled designer templates pass `template-check` with zero FAIL and zero WARN findings; the conformance allow-list is now empty. `abstract` accent1 was deepened from `#E9E6DF` to warm neutral `#8E8172` so it is visible on the white canvas. `blue-corporate` now has a native date placeholder alongside its footer and page-number placeholders.
+Bundled designer templates pass `template-check` with zero FAIL and zero WARN findings, except `modern-template`'s check-18 WARN (allow-listed, see below). `abstract` accent1 was deepened from `#E9E6DF` to warm neutral `#8E8172` so it is visible on the white canvas. `blue-corporate` now has a native date placeholder alongside its footer and page-number placeholders. Check 18 (go-slide-creator-kyk01) aligned the content-family titles: `abstract` One Content adopted the Two Content / Blank + Title title box (and the body moved to the same top and full width); `business-template` One Content and Blank + Title adopted Two Content's title box (One Content's subtitle now sits between title and body); `blue-corporate` Blank + Title adopted its One Content title box. `modern-template` is allow-listed for this check only (tracking go-slide-creator-kyk01): its reviewed 1.68in bottom-anchored content title cannot move without breaking reviewed typography, and moving Blank + Title down would shrink every pattern canvas.
 
 `modern-template.pptx` previously lacked `Two Content`, `Blank`, and `Blank + Title`. Those layouts were authored into the template directly via OOXML edits (preserving all embedded media byte-for-byte) and `modern-template` is no longer allow-listed.
 

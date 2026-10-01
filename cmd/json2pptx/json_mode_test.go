@@ -862,6 +862,18 @@ func TestInferSlideType(t *testing.T) {
 			want: types.SlideTypeTwoColumn,
 		},
 		{
+			// go-slide-creator-f0l85: a headline over one picture is an image
+			// slide, not half of Two Content.
+			name: "title plus image infers image type",
+			slide: SlideInput{
+				Content: []ContentInput{
+					{PlaceholderID: "title", Type: "text", TextValue: strPtr("Site photo")},
+					{PlaceholderID: "body", Type: "image"},
+				},
+			},
+			want: types.SlideTypeImage,
+		},
+		{
 			name: "image only infers image type",
 			slide: SlideInput{
 				Content: []ContentInput{

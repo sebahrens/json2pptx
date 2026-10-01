@@ -714,6 +714,12 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 	if spec, ok := ctx.slideContentMap[slideNum]; ok {
 		skipFooterThisSlide = spec.SkipFooter
 	}
+	// A photo under the footer band leaves the footer text and page number
+	// unverifiable against its pixels: omit them, as on title / closing
+	// slides, and say so (go-slide-creator-3bph8).
+	if !skipFooterThisSlide && ctx.footerConfig != nil && ctx.footerConfig.Enabled && ctx.suppressChromeOverPicture(slideNum) {
+		skipFooterThisSlide = true
+	}
 	if ctx.footerConfig != nil && ctx.footerConfig.Enabled && !skipFooterThisSlide {
 		slide = removeFooterPlaceholders(slide)
 		// Remove layout-inherited brand mark shapes that would duplicate LeftText.

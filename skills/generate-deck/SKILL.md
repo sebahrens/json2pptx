@@ -87,7 +87,12 @@ key-message panel). A shape-grid `image` cell accepts `geometry: "ellipse"` for
 a circular picture frame. Asset paths expand only `$HOME`, `$BRAND_ASSETS`,
 `$JSON2PPTX_*`; `icon.path` obeys `ALLOWED_IMAGE_PATHS`. A picture that cannot
 be embedded (missing, corrupt, outside the image roots) is refuse-class
-`IMAGE_ASSET_UNAVAILABLE` at the authored field and blocks `deterministic_ready`;
+`IMAGE_ASSET_UNAVAILABLE` at the authored field and blocks `deterministic_ready`.
+A `slide_type: "image"` slide on a template without a picture layout fills One
+Content's body with the whole picture (no crop); cover discarding over 30%
+reports `IMAGE_HEAVY_CROP`, and a photo over the footer band drops that slide's
+chrome (`CHROME_OVER_IMAGE`). Prefer `comparison-2col` / `before-after` to
+`slide_type: "comparison"` (`COMPARISON_PREFER_PATTERN`);
 `score_deck` fetches image `url`s like generation (`URL_FETCH_FAILED` refuses),
 and a `deck_id` keeps the authored `url`, re-fetched on each render.
 

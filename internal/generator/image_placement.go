@@ -26,6 +26,9 @@ func ValidateImageFit(fit string) error {
 // fallback pairs. Contain retains the whole source and centers its original
 // aspect ratio in the native frame; it never stretches or crops evidence.
 func imagePlacement(path string, frame types.BoundingBox, fit string) (types.BoundingBox, *pptx.SrcRect, error) {
+	if fit == fitContainStart {
+		return containStartPlacement(path, frame)
+	}
 	if err := ValidateImageFit(fit); err != nil {
 		return frame, nil, err
 	}
@@ -47,4 +50,62 @@ func imagePlacement(path string, frame types.BoundingBox, fit string) (types.Bou
 		return frame, nil, fmt.Errorf("failed to read image dimensions for %s", path)
 	}
 	return frame, imageCoverCrop(crop), nil
+}
+
+// fitContainStart is the internal placement used when an image with no
+// authored fit lands in a body / content placeholder: the whole picture is
+// kept and anchored to the placeholder's top-left corner, so it starts on
+// the content grid instead of floating centred. Body placeholders are text
+// frames (One Content is ~2.85:1); cover-cropping a portrait photo into one
+// kept ~23% of it (go-slide-creator-dk5sk). Never accepted from input.
+const fitContainStart = "contain-start"
+
+// heavyCropThreshold is the share of either image axis cover may discard
+// before IMAGE_HEAVY_CROP is reported.
+const heavyCropThreshold = 0.30
+
+// effectiveImageFit resolves an omitted fit by placeholder kind: cover for a
+// genuine picture placeholder (its frame was designed for a photo), the
+// whole-image contain-start placement for any other placeholder.
+func effectiveImageFit(fit string, shape *shapeXML) string {
+	if fit != "" {
+		return strings.ToLower(fit)
+	}
+	if shape != nil {
+		if ph := shape.NonVisualProperties.NvPr.Placeholder; ph != nil && ph.Type == "pic" {
+			return "cover"
+		}
+	}
+	return fitContainStart
+}
+
+// containStartPlacement scales the image to fit the frame without cropping
+// and anchors it to the frame's top-left corner.
+func containStartPlacement(path string, frame types.BoundingBox) (types.BoundingBox, *pptx.SrcRect, error) {
+	if frame.Width <= 0 || frame.Height <= 0 {
+		return frame, nil, fmt.Errorf("image frame must have positive dimensions")
+	}
+	bounds, err := utils.ScaleImageToFit(path, frame)
+	if err != nil {
+		return frame, nil, fmt.Errorf("read image dimensions: %w", err)
+	}
+	if bounds.Width <= 0 || bounds.Height <= 0 {
+		return frame, nil, fmt.Errorf("contained image has zero extent")
+	}
+	bounds.X, bounds.Y = frame.X, frame.Y
+	return bounds, nil, nil
+}
+
+// coverDiscardFraction returns the larger share of either axis a cover crop
+// throws away (0 = nothing, 0.77 = 77% of the height discarded).
+func coverDiscardFraction(crop *pptx.SrcRect) float64 {
+	if crop == nil {
+		return 0
+	}
+	h := float64(crop.L+crop.R) / 100000
+	v := float64(crop.T+crop.B) / 100000
+	if v > h {
+		return v
+	}
+	return h
 }

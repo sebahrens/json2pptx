@@ -20,7 +20,13 @@ applies to both paths. Storyline rules are in [QUALITY.md](QUALITY.md).
    ghost-deck title and fill the fields from `list_slide_kinds`.
 3. **Template.** `list_templates` gives names, `canonical_layout_ids` and
    `color_roles`. Set `meta.template`; leave `meta.accent_strategy` at
-   `primary` unless Phase 2 → Accent monotony says otherwise.
+   `primary` unless Phase 2 → Accent monotony says otherwise. Fill with
+   `color_roles.primary_fill` (not always `accent1`) and set text on an
+   accent fill to `color_roles.ink_on_accent[accentN].ink`. With
+   `fields="full"`, `accent_usage_guide` gives each accent's role; when it
+   carries `accent_usage_guide_derived: true` the template authored none and
+   the lines are contrast facts only — keep to `primary_fill`, the
+   `semantic_accents`, and never use a `near_background_accents` entry for text.
 4. **Chapters.** Use `structure.sections` (with `auto_agenda` for two or more
    sections) instead of hand-made dividers; the engine numbers them.
 
