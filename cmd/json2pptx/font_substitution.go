@@ -12,7 +12,8 @@ import (
 // LibreOffice renders substitute their own (often wider) fallback, so a line
 // that fits in measurement can wrap in a render with no finding explaining why
 // (go-slide-creator-csclk.95). Arial is exempt: it resolves to the embedded,
-// metric-compatible Liberation Sans.
+// metric-compatible Liberation Sans; Calibri / Cambria resolve to their
+// metric clones Carlito / Caladea when present (go-slide-creator-tl7vf).
 func themeFontSubstitutionWarnings(theme types.ThemeInfo) []string {
 	var out []string
 	seen := map[string]bool{}

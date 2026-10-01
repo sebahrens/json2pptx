@@ -109,6 +109,15 @@ func measureTitleInPlaceholder(text string, ph *types.PlaceholderInfo, sectionTi
 			m.MaxChars = generator.MaxTitleCharsAtScale(in, minScalePct)
 		} else {
 			m.MaxChars = generator.MaxTitleCharsAtScale(in, generator.TitleComfortScalePct(ph.FontSize))
+			// The fit search steps its scale (…80%, 70%), so a title that
+			// fits at exactly the comfort scale (73% for 44pt) can report
+			// 70%. When the whole title fits at the comfort scale it is
+			// comfortable: "shorten to ≤ N chars" with N = its own length
+			// is not actionable.
+			if m.Shrinks && !m.Overflow && m.result.LnSpcReduction == 0 && m.MaxChars >= m.Chars {
+				m.Shrinks = false
+				m.MaxChars = 0
+			}
 		}
 	}
 	return m
