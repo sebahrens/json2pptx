@@ -606,7 +606,7 @@ func contentUsesBodyTypography(content *ContentInput, ph *types.PlaceholderInfo)
 		return false
 	}
 	switch content.Type {
-	case "text", "bullets", "body_and_bullets", "bullet_groups":
+	case "text", "bullets", "body_and_bullets", "body_and_lead", "bullet_groups":
 		return true
 	default:
 		return false

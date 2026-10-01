@@ -664,8 +664,10 @@ func setBodyAndBulletsParagraphs(shape *shapeXML, placeholderID string, value in
 }
 
 // setBodyAndLeadParagraphs renders a lead-in paragraph (thesis) followed by
-// supporting bullets (evidence). The lead renders at 16pt bold with no bullet
-// marker; bullets render at 12pt with standard bullet formatting and hanging indent.
+// supporting bullets (evidence). The bullets follow the same density policy
+// as plain bullets (BodySizeForDensity, go-slide-creator-q4zjj); the lead is
+// bold, has no bullet marker and sits one scale step (2pt, never under 16pt)
+// above the bullets. Autofit scales both uniformly, keeping the ratio.
 func setBodyAndLeadParagraphs(shape *shapeXML, placeholderID string, value interface{}, masterBulletLevel int, autofitOpts ...autofitOption) error {
 	content, ok := value.(BodyAndLeadContent)
 	if !ok {
@@ -686,7 +688,9 @@ func setBodyAndLeadParagraphs(shape *shapeXML, placeholderID string, value inter
 
 	var paragraphs []paragraphXML
 
-	// Lead-in paragraph: 16pt bold, no bullet
+	// Lead-in paragraph: bold, no bullet. Its size is set from the bullets'
+	// resolved size during autofit (applyLeadParagraphSizes).
+	leadParagraphs := 0
 	if content.Lead != "" {
 		_, rProps := getBulletStyleForLevel(templateStyles, 0)
 		runs := createFormattedRuns(content.Lead, rProps)
@@ -695,27 +699,21 @@ func setBodyAndLeadParagraphs(shape *shapeXML, placeholderID string, value inter
 				runs[i].RunProperties = &runPropertiesXML{Lang: "en-US"}
 			}
 			runs[i].RunProperties.Bold = "1"
-			runs[i].RunProperties.FontSize = "1600" // 16pt
+			runs[i].RunProperties.FontSize = ""
 		}
+		leadParagraphs = 1
 		paragraphs = append(paragraphs, paragraphXML{
 			Properties: noBulletParagraphProps(`<a:spcAft><a:spcPts val="600"/></a:spcAft>`),
 			Runs:       runs,
 		})
 	}
 
-	// Supporting bullets: 12pt regular with bullet markers, each at the level
-	// its own indent asks for.
+	// Supporting bullets with bullet markers, each at the level its own
+	// indent asks for, sized by the body density policy.
 	for _, bullet := range content.Bullets {
 		depth, text := pptx.BulletIndentDepth(bullet)
 		pProps, rProps := getBulletStyleForLevel(templateStyles, bulletParagraphLevel(bulletLevel, depth))
 		runs := createFormattedRuns(text, rProps)
-		// Override font size to 12pt for supporting bullets
-		for i := range runs {
-			if runs[i].RunProperties == nil {
-				runs[i].RunProperties = &runPropertiesXML{Lang: "en-US"}
-			}
-			runs[i].RunProperties.FontSize = "1200" // 12pt
-		}
 		paragraphs = append(paragraphs, paragraphXML{
 			Properties: pProps,
 			Runs:       runs,
@@ -735,7 +733,8 @@ func setBodyAndLeadParagraphs(shape *shapeXML, placeholderID string, value inter
 	// Replace spAutoFit with normAutofit
 	replaceSpAutoFitWithNorm(shape)
 	enforceTextWrap(shape)
-	applySmartAutofitWithOptions(shape, autofitOpts...)
+	opts := append([]autofitOption{withLeadParagraphs(leadParagraphs)}, autofitOpts...)
+	applySmartAutofitWithOptions(shape, opts...)
 
 	return nil
 }

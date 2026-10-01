@@ -132,7 +132,9 @@ executable one.
   bar(s) the title names. Waterfalls accent the decreases.
   A table with no `style` renders as a
   consulting table (unfilled 11pt bold header over a 1pt rule, 12pt rows,
-  hairline rules, no zebra); `table-highlight` matches it.
+  hairline rules, no zebra); `table-highlight` matches it. `header_background`
+  only adds a header fill (same type, rules, no zebra). `body_and_lead`
+  bullets get the body density size; the bold lead sits one 2pt step above.
 - [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance;
   get the current catalog, per-pattern schema and per-field copy targets from
   `list_patterns` / `show_pattern`. Out-of-range pattern text sizes are

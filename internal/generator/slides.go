@@ -197,7 +197,7 @@ const (
 	ContentTitleSlideTitle ContentType = "title_slide_title" // Title slide ctrTitle (preserves template font/alignment)
 	ContentBullets         ContentType = "bullets"
 	ContentBodyAndBullets  ContentType = "body_and_bullets" // Body text followed by bullets
-	ContentBodyAndLead     ContentType = "body_and_lead"    // Lead paragraph (16pt bold) followed by supporting bullets (12pt)
+	ContentBodyAndLead     ContentType = "body_and_lead"    // Bold lead paragraph one step above density-sized supporting bullets
 	ContentBulletGroups    ContentType = "bullet_groups"    // Grouped bullets with section headers
 	ContentImage           ContentType = "image"
 	ContentDiagram         ContentType = "diagram" // Unified diagram type (charts, infographics)

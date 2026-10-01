@@ -64,7 +64,7 @@ A slide's `content` array is a list of typed items, each targeting a placeholder
 - `type: "text"`             → requires `text_value` (string)
 - `type: "bullets"`          → requires `bullets_value` (string array)
 - `type: "body_and_bullets"` → requires `body_and_bullets_value`
-- `type: "body_and_lead"`    → requires `body_and_lead_value`
+- `type: "body_and_lead"`    → requires `body_and_lead_value` (`{"lead": "...", "bullets": [...]}`); the bullets are sized like plain bullets by the body density policy (18pt up to 6 paragraphs, 16pt from 7, 14pt from 10; an in-range template size is kept) and the bold, unbulleted lead one 2pt step above them (never under 16pt); autofit shrinks both together
 - `type: "bullet_groups"`    → requires `bullet_groups_value`
 - `type: "table"`            → requires `table_value`
 - `type: "chart"`            → requires `chart_value`
