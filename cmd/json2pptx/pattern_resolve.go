@@ -21,9 +21,9 @@ type PatternInput = deckinput.PatternInput
 // typed Values/Overrides/CellOverrides, validates, and expands to a
 // ShapeGridInput. Returns the expanded grid, any warnings, and an error.
 func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Registry) (*jsonschema.ShapeGridInput, []string, error) {
-	pat, ok := reg.Get(p.Name)
-	if !ok {
-		return nil, nil, unknownPatternInputError(reg, p.Name)
+	pat, err := lookupPattern(p, reg)
+	if err != nil {
+		return nil, nil, err
 	}
 	mode, cleanOverrides, _ := patterns.SplitTypeScaleOverride(p.Name, p.Overrides)
 	if mode == "" {
@@ -119,15 +119,7 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	// leaving the lower half of the slide empty. A pattern may opt out by
 	// setting vertical_align itself ("top" / "stretch").
 	patterns.ApplyGridDefaults(grid)
-	if p.VerticalAlign != "" {
-		if _, ok := shapegrid.ParseVerticalAlign(p.VerticalAlign); !ok {
-			return nil, nil, fmt.Errorf("pattern %q: vertical_align must be one of \"auto\", \"top\", \"center\", \"bottom\", \"stretch\", got %q", p.Name, p.VerticalAlign)
-		}
-		grid.VerticalAlign = p.VerticalAlign
-		if p.VerticalAlign == "stretch" {
-			grid.VerticalAlign = string(shapegrid.VAlignStretch)
-		}
-	}
+	applyPatternVerticalAlign(p, grid)
 	// Peer cards on light accents become a tint + accent rule instead of a
 	// wall of solid colour; runs before the ink fix so the text darkens.
 	patterns.SoftenPeerFills(expandCtx, p.Name, grid)
@@ -496,4 +488,29 @@ func resolvePatternBounds(p *PatternInput) (*jsonschema.GridBoundsInput, bool) {
 		}, true
 	}
 	return nil, false
+}
+
+// lookupPattern resolves the pattern a PatternInput names and checks its
+// envelope-level vertical_align (go-slide-creator-e17xy).
+func lookupPattern(p *PatternInput, reg *patterns.Registry) (patterns.Pattern, error) {
+	pat, ok := reg.Get(p.Name)
+	if !ok {
+		return nil, unknownPatternInputError(reg, p.Name)
+	}
+	if _, ok := shapegrid.ParseVerticalAlign(p.VerticalAlign); !ok {
+		return nil, fmt.Errorf("pattern %q: vertical_align must be one of \"auto\", \"top\", \"center\", \"bottom\", \"stretch\", got %q", p.Name, p.VerticalAlign)
+	}
+	return pat, nil
+}
+
+// applyPatternVerticalAlign applies a slide pattern's (already validated)
+// vertical_align over the expansion default (go-slide-creator-e17xy).
+func applyPatternVerticalAlign(p *PatternInput, grid *jsonschema.ShapeGridInput) {
+	switch p.VerticalAlign {
+	case "":
+	case "stretch":
+		grid.VerticalAlign = string(shapegrid.VAlignStretch)
+	default:
+		grid.VerticalAlign = p.VerticalAlign
+	}
 }
