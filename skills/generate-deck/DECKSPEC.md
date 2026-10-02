@@ -16,35 +16,29 @@ explicit "compare A with B" (not "compared with plan") — gets
 time, `cause` only when the brief names a problem, `decision` only when it
 asks for one, and a customer update gets highlights and a dated `timeline`.
 `deck_spec` holds the kinds with `__FILL__` titles (and `meta.date`); a budget
-of 8+ slides comes back as `structure` (auto agenda + 2–4 sections, whose
-dividers count toward the budget). `slots[]` gives each slot's `path`,
-guidance and routed brief facts: metrics to KPI/stat slots, a comparison
-whole (both options and their figures) to the option matrix, the
-recommendation with its reason to the decision, to-dos and asks to the
-plan, decision and next steps, dated milestones to the timeline. Facts are
-never truncated: a long clause comes back split into several facts, each
-amount and date intact, and anything no slot holds is in `unplaced_facts`.
-Send `spec` as a JSON object or a YAML/JSON document string (both pass the
-advertised schema). Use YAML or JSON with `meta` and either flat `slides[]` or chapter-based
+of 8+ slides comes back as `structure` (auto agenda + 2–4 sections, dividers
+counted). `slots[]` gives each slot's `path`, guidance and routed facts:
+metrics → KPI/stat, a whole comparison → option matrix, the recommendation
+and reason → decision, to-dos and asks → plan / decision / next steps, dated
+milestones → timeline. Facts are never truncated (a long clause splits,
+amounts and dates intact); what no slot holds is in `unplaced_facts`.
+Send `spec` as a JSON object or a YAML/JSON string, with `meta` and either flat `slides[]` or chapter-based
 `structure: {cover, auto_agenda, sections:[{title, slides:[]}], closing}`.
 The forms are mutually exclusive. Chapters add numbered section dividers;
 `meta.chrome.section_crumb: true` labels their content slides in the footer;
 `meta.chrome.tracker: true` sets the section name above each content title. The compiler
 generates divider numbers: do not hand-author them. A section with
 `appendix: true` (or a `section` slide with `appendix: true`) is back
-matter: its divider is unnumbered and later chapters keep their numbers,
-`auto_agenda` leaves it out, and its slides' tracker / crumb read
-"Appendix: <title>". Dividers titled Appendix, Backup, Annex, Q&A or Thank
-you are unnumbered without the flag. Appendix slides (after an appendix /
-Appendix-titled divider) are outside the rhythm run checks, so backup tables
-in a row are fine. With page numbers on, appendix slides read A1, A2, … in the footer
-(an "Appendix B: …" divider numbers B1, B2) and the appendix divider shows
-none; the main deck keeps contiguous numbers and `{total}` counts only it. `plan_deck` drafts this appendix itself when the brief has
-backup material and the budget has room: a last `appendix: true` section
-(the `next_steps` close then ends the last chapter) or, flat, an appendix
-`section` slide after the close; its slots carry `appendix: true`. Keep an actual narrative
-instead of creating one slide per layout or a sequence of interchangeable
-cards. `explain_deck_spec` previews the resolved story and visual rhythm
+matter: an unnumbered divider (later chapters keep their numbers), left out
+of `auto_agenda`, tracker / crumb "Appendix: <title>". Dividers titled
+Appendix, Backup, Annex, Q&A or Thank you are unnumbered without the flag.
+Appendix slides skip the rhythm run checks; their page numbers read A1, A2, …
+("Appendix B: …" → B1, B2; the divider none), while the main deck stays
+contiguous and `{total}` counts only it. `plan_deck` drafts an appendix when
+the brief has backup material and room: a last `appendix: true` section (the
+`next_steps` close ends the last chapter) or, flat, an appendix `section`
+slide after the close; its slots carry `appendix: true`. Keep a narrative,
+not one slide per layout or interchangeable cards. `explain_deck_spec` previews the resolved story and visual rhythm
 without rendering.
 
 When the request explicitly asks to exercise native layouts, put canonical
@@ -58,18 +52,15 @@ adding empty or unrelated slides. Template resolution order is
 default. Discover archetypes with `list_deck_archetypes`.
 
 `meta.chrome` controls confidentiality, client/project labels, date, page
-numbers, and section crumbs. Without `meta.chrome` a deck renders consulting
-chrome by default: page numbers on every slide but the title and closing,
-`meta.date` in the footer, and the tracker when the deck has sections.
-`chrome.page_numbers.enabled: false` turns the numbers off. `meta.viewing_mode` and
-`meta.accent_strategy` choose reading scale and accent rhythm (enum values per
-the schema; others are `SEMANTIC_REQUIRED`). Every slide
-kind can carry `notes` and `source`; the latter is rendered once, in the 9pt
-source zone above the footer, even when the chosen pattern has its own
-attribution field (or set `meta.source` once: every data slide without its
-own source renders it). A data slide without one draws `DATA_WITHOUT_SOURCE` at
-`slides[N].source`. `meta.type_scale` can be
-`compact`, `comfortable` (default), or `presentation` for the whole deck; a
+numbers and section crumbs. By default a deck gets page numbers on every
+slide but title and closing (`chrome.page_numbers.enabled: false` turns them
+off), `meta.date` in the footer, and the tracker when it has sections.
+`meta.viewing_mode` and `meta.accent_strategy` choose reading scale and
+accent rhythm (schema enums; others are `SEMANTIC_REQUIRED`). Every kind can
+carry `notes` and `source` (rendered once in the 9pt source zone, even when
+the pattern has its own attribution field; `meta.source` is the deck
+default; missing → `DATA_WITHOUT_SOURCE` at `slides[N].source`).
+`meta.type_scale`: `compact`, `comfortable` (default) or `presentation`; a
 slide's `pattern` is a string, never an object.
 
 ## Validation and content budgets
@@ -98,14 +89,14 @@ listing; get exact fields and aliases from `list_slide_kinds`:
 
 | Content shape | Useful visual range and authoring consequence |
 |---|---|
-| Executive summary | Three to five conclusion/support points use the `exec-summary` pattern (lead column 45% of the width). Hard limits: lead 90 characters, support 200, bottom line 160; past them the compiler degrades to bullets. Readable averages per point (lead / support): 3 points 90 / 200 (90 / 193 with a `bottom_line`); 4 points 90 / 128 (57 / 65 with a `bottom_line`); 5 points 52 / 60. On render the pattern measures the real content area and reports `BODY_TOO_LONG` only when the text does not fit at a readable size. Points with no `support` (plain strings) span the lead across the width. `points` or plural `takeaways` are body content. The slide has one conclusion band: `bottom_line` when given, else `takeaway` — a `takeaway` beside a `bottom_line` goes to the speaker notes with `SEMANTIC_DUPLICATE_CALLOUT`. |
+| Executive summary | Three to five conclusion/support points use `exec-summary` (lead column 45% wide). Hard limits: lead 90 characters, support 200, bottom line 160; past them it degrades to bullets. Readable averages (lead / support): 3 points 90 / 200 (90 / 193 with a `bottom_line`); 4 points 90 / 128 (57 / 65 with one); 5 points 52 / 60. Render measures the real area and reports `BODY_TOO_LONG` only when text cannot fit readably. Plain-string points span the lead across the width. `points` or plural `takeaways` are body content. One conclusion band: `bottom_line`, else `takeaway` — both → the `takeaway` goes to the notes (`SEMANTIC_DUPLICATE_CALLOUT`). |
 | KPI snapshot | Two to six KPI cards. Keep values at most 12 characters, labels at most 40, deltas at most 12, `comparator` (alias `vs`, e.g. "vs plan +4 pts") at most 24 — give each KPI its reference. A value beyond the hard budget degrades the slide; a value that fits the character budget but cannot fit in the card reports `BODY_TOO_LONG`. |
 | Chart insight | One to six insights use chart-plus-insights; more use a native chart with the full insight list. Every series needs exactly one unquoted numeric value per category. A short series is `CHART_SERIES_LENGTH_MISMATCH`; a quoted/null value is `CHART_VALUE_NOT_NUMERIC`. Neither should be shipped as an empty plot. |
 | Comparison | Two balanced columns of at most ten rows use a comparison visual; three to five columns use panels; larger content may degrade to cards or bullets. |
 | Table | At most six headers and six body rows fit the semantic table budget. Use `option_matrix` for options scored against criteria instead of flattening that structure into a generic table. |
 | Option matrix | Two to six criteria by two to six options; one score per criterion on one Harvey, RAG, or text scale. A higher-scoring rival is `SEMANTIC_RECOMMENDATION_OUTSCORED`. |
 | Team | One to eight people use biography cards. Name at most 60 characters, role at most 80, bio at most 220, initials label at most 8. Every card needs a role; a `photo` headshot (path/url string or `{path|url, alt}`) and an initials `photo_label` are alternatives. |
-| Image case | Story body at most 300 characters, eyebrow 30, heading 80, at most five bullets of 140 each, at most three metrics with value 10 and label 40, caption 120. A picture without a stated case is not an image case. Over budget it degrades to two columns, keeping the picture. Without `image` / `photo` / `screenshot` a dashed "Image placeholder" box renders and validation warns `SEMANTIC_IMAGE_MISSING`; set `image_label` to mark a deliberate placeholder. |
+| Image case | Story body ≤300 characters, eyebrow 30, heading 80, ≤5 bullets of 140, ≤3 metrics (value 10, label 40), caption 120. A picture without a stated case is not an image case. Over budget it degrades to two columns, keeping the picture. Without `image` / `photo` / `screenshot` a dashed "Image placeholder" renders and validation warns `SEMANTIC_IMAGE_MISSING`; `image_label` marks a deliberate placeholder. |
 | Framework | SWOT, Five Forces, and BMC need every canonical part; at most ten items per part and 200 characters per item. A missing part degrades the whole framework to grouped bullets. |
 | 2×2 matrix | Exactly four headed quadrants and both axes. Quadrant header at most 80 characters, body 200; horizontal axis 16, vertical axis 60, axis ends 11. Missing parts or over-budget copy degrade to named bullets. |
 | Timeline | Three to seven milestones, label at most 60, date 30, body 200. Use ranges for periods; use a roadmap for parallel workstreams. Outside the budget, preserve dates in bullets. |
@@ -130,26 +121,25 @@ content.
 ## Several visuals on one slide
 
 When content types must be read together (chart left, KPI over timeline
-right) use `kind: regions`, not a raw compose: typed regions in a bounded
-arrangement (budgets: `list_slide_kinds`; `examples/semantic/regions.yaml`),
-each rule an error at `slides[N].regions[k]`. A stacked region holds one
-visual's worth; on a readability refusal raise `size_pct`, or cut.
+right) use `kind: regions`, not a raw compose: 2–3 typed chart / stat / kpis
+/ table / timeline / image / text regions in a bounded arrangement with
+`size_pct` shares (budgets: `list_slide_kinds`;
+`examples/semantic/regions.yaml`), each rule an error at
+`slides[N].regions[k]`. A stacked region holds one visual's worth; on a
+readability refusal raise `size_pct`, or cut.
 
 ## Render and revise
 
-Use `validate_deck_spec` → `render_deck_spec`. A render's
-`success: true` means a file was written. `deterministic_ready` means
-diagnostics, output validation, and the quality gate cleared; `publishable`
-is false on a fresh render until a current all-slide visual verdict is
-approved. The CLI exits successfully for a clean, unreviewed render but
-not for a deterministic blocker under strict mode. Resolve `diagnostics[]`,
-`deterministic_blocking_reasons[]`, and the quality gate before review.
-After inspecting the images, use `submit_visual_review` and its returned
-current-revision status for the final verdict; re-rendering creates a new
-unreviewed response rather than refreshing the earlier one. A visual verdict
-never clears deterministic blockers (`reviewed_deterministic_blockers`).
-Each diagnostic has a `semantic_path` to edit and a
-`raw_path` only as fallback. Keep the DeckSpec as the source of truth.
+Use `validate_deck_spec` → `render_deck_spec`. `success: true` means a file
+was written; `deterministic_ready` that diagnostics, output validation and
+the quality gate cleared; `publishable` stays false until a current
+all-slide visual verdict is approved. The CLI exits 0 for a clean,
+unreviewed render, not for a strict-mode blocker. Resolve `diagnostics[]`,
+`deterministic_blocking_reasons[]` and the gate before review, then take the
+final verdict from `submit_visual_review`'s current-revision status; a
+re-render is a new unreviewed response, and a verdict never clears blockers
+(`reviewed_deterministic_blockers`). Edit a diagnostic's `semantic_path`
+(`raw_path` only as fallback). Keep the DeckSpec as the source of truth.
 Grid text generation would shrink below its readable floor is an `error`
 in `validate_deck_spec` too. If render still refuses (`success: false`), the
 refusal is a diagnostic (`code`, `severity`, `semantic_path`,
@@ -179,9 +169,8 @@ pass the pattern schema, and has the same
 font size in constrained mode is refused; use free mode only when low-level
 control is intentional. For a visual beyond semantic reach, query the
 chosen kind's `compositions`; an unsupported override reports
-`SEMANTIC_PATTERN_NOT_AVAILABLE`. Use a minimal raw slide rather than
-lowering the entire deck unnecessarily — also for a multi-region slide
-(WORKFLOW.md → spatial planning).
+`SEMANTIC_PATTERN_NOT_AVAILABLE`. Use a minimal raw slide (also for a
+multi-region slide: WORKFLOW.md → spatial planning), not a lowered deck.
 
 Runnable examples live in [examples/semantic](../../examples/semantic/).
 The compiler architecture and schema are in

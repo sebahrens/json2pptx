@@ -19,10 +19,9 @@ then code. A deck-level finding precedes slide 0 at equal severity.
   that happened to be written.
 - `shrink_or_split`: the content needs more room or less text. Preserve facts;
   split the slide or rewrite copy rather than blindly truncating.
-- `review` / `info`: the engine points out a judgment for the author.
-  Inspect the rendered slide and decide whether to change it. An advisory is
-  not a failed tool call, and a clean deterministic score does not replace
-  final-revision visual inspection. `INPUT_CONTROL_CHARS_REMOVED` (info):
+- `review` / `info`: a judgment for the author; inspect the rendered slide
+  and decide. An advisory is not a failed call, and a clean score does not
+  replace final-revision visual inspection. `INPUT_CONTROL_CHARS_REMOVED` (info):
   invisible bidi controls / BOMs were stripped from that string; drop them
   from your source text. `BODY_TOO_LONG` is a `refuse` when one placeholder
   carries over 200 paragraphs (`fix.params.max_paragraphs`): split it.
@@ -33,11 +32,10 @@ then code. A deck-level finding precedes slide 0 at equal severity.
 `content`. A pattern-choice problem usually calls for a different visual
 family. A rendering problem calls for fit, geometry, or contrast repair.
 A content problem (e.g. `TITLE_NOT_ACTION`, `TITLE_TOO_LONG`) calls for a
-better title, evidence, labels, or copy. `DATA_WITHOUT_SOURCE` (review) is one:
-a chart, table of figures, or chart / KPI / stat pattern with no source — set
-the slide's `source` (DeckSpec `slides[N].source`, `fix.params.field:
-"source"`), a chart's `footnote`, or a deck default (DeckSpec `meta.source`,
-raw top-level `source`); never invent one, write "Illustrative" for estimates.
+better title, evidence, labels, or copy. `DATA_WITHOUT_SOURCE` (review: a
+chart, figures table or chart / KPI / stat pattern with no source) is one:
+set `slides[N].source` (`fix.params.field: "source"`), a chart `footnote` or
+a deck default (QUALITY.md §5); never invent one.
 
 Storyline gate (`score_deck`; details in `docs/FIT_FINDINGS.md`):
 `takeaway_missing` → require_takeaway_on_charts; `TITLE_NOT_ACTION` (over 15

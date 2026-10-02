@@ -54,39 +54,16 @@ kinds with `list_slide_kinds` using its compact fields, requesting
 repeat. For a chart or diagram no kind covers (gantt, venn, pestel, ...), a
 `recommend_visual` chart/diagram candidate carries `data_contract` and a
 runnable `next_tool_call` (`render_deck_spec` with a `raw_json2pptx` slide);
-replace its title and data. To compare one measure across 2–6 groups over
-the same periods, use the `small_multiples` chart (one line panel per named
-series on a shared y scale; `data.y_scale: "independent"` only for shapes —
-see RULES.md 10i).
-Several views on one slide (panels + quote, or an
-explicit "line chart left 65%, KPI upper-right, timeline lower-right" brief)
-come back as a `compose` candidate (`compose:pull-quote+stylish-panels`,
-`compose:chart:line+diagram:timeline+stat-hero`) ranked above the partial
-single views, with the same runnable `next_tool_call` (a `blank-title`
-`raw_json2pptx` slide with `compose.segments`) and a `composition`: its
-`direction` and `regions[]` (`category`, `name`, `size_pct`, `position`,
-`segment_path`, nested `compose`, per-region `data_contract.field_path` of
-the sample content to replace). Copy that one slide into your DeckSpec; the
-other slides stay semantic kinds. A `compose:` name resent in `candidates`
-resolves to the same candidate.
-Native diagrams (swot, pestel, bmc, heatmap, the
-panel family, ...) also render as editable shapes in a `shape_grid` cell or
-`compose` segment — `get_diagram_capabilities` reports each placement's real
-`pipeline` — and a region too small for their text is refused with
-`DIAGRAM_REGION_TOO_SMALL` (`fix.params.min_width_emu` / `min_height_emu`).
-When one slide must show different content
-types together (chart left, KPI and timeline right), use `kind: regions`
-(2–3 typed chart / stat / kpis / table / timeline / image / text regions in
-a bounded arrangement with `size_pct` shares) before reaching for a raw compose;
-`plan_deck` drafts it from region clauses ("left a chart; upper right a
-KPI") and lists what it could not in `unsupported_regions`. Read [DECKSPEC.md](DECKSPEC.md) for budgets,
+replace its title and data. One measure across 2–6 groups over the same
+periods: the `small_multiples` chart (RULES.md 10i). Several views proving
+one title may share a slide; unrelated conclusions get separate slides.
+Prefer `kind: regions` (`plan_deck` drafts it from region clauses, listing
+misses in `unsupported_regions`); only when its region kinds cannot express
+the slide, make that one slide `raw_json2pptx` from a `recommend_visual`
+`compose` candidate ([TOOLS.md](TOOLS.md)) or `list_slide_kinds`
+`kinds:["raw_json2pptx"]` → `composed_example` ([WORKFLOW.md](WORKFLOW.md)
+→ spatial planning). Read [DECKSPEC.md](DECKSPEC.md) for budgets,
 degradation, required-layout coverage, handles, and revision rules.
-
-Several views proving one title (chart, KPIs, dated plan) may share a slide;
-unrelated conclusions get separate slides. Prefer `kind: regions`; only when
-its region kinds cannot express the slide, make that one slide
-`raw_json2pptx`, starting from `list_slide_kinds` `kinds:["raw_json2pptx"]` →
-`composed_example`; [WORKFLOW.md](WORKFLOW.md) → spatial planning has the rules.
 
 Use raw `PresentationInput` only for a feature the semantic schema cannot
 express, a targeted low-level repair, or an existing raw deck. Read
@@ -100,16 +77,15 @@ patterns spend at most one solid accent block, in `color_roles.primary_fill`.
 Pattern text is sized and written in the same theme face (Calibri measures as
 Carlito on every host), so a clean `fit_report` means no stored autofit shrink.
 
-Both render tools return `deterministic_ready`, `publishable` (false on a fresh
-render), `blocking_reasons` and `next_tool_call` (blocking fix, else
-`render_deck_thumbnails` → `submit_visual_review` with `pptx_revision` =
-`content_hash`). `deterministic_ready` is a precondition, not proof anybody
-looked: submit a verdict only after inspecting each current-revision image; it
-never clears deterministic blockers (`reviewed_deterministic_blockers`).
-Any changed slide invalidates its previous visual verdict. Image identity
-(`content_hash`, `image_sha256`) is a pixel hash, so a forced re-render of an
-unchanged revision keeps earlier image paths/hashes valid for the review. If a finding is
-unfamiliar, call `describe_finding`; use
+Both render tools return `deterministic_ready` (a precondition, not proof
+anybody looked), `publishable` (false on a fresh render), `blocking_reasons`
+and `next_tool_call` (blocking fix, else `render_deck_thumbnails` →
+`submit_visual_review` with `pptx_revision` = `content_hash`). Submit a
+verdict only after inspecting each current-revision image; it never clears
+blockers. A changed slide invalidates its verdict; image identity
+(`content_hash`, `image_sha256`) is a pixel hash, so re-rendering an
+unchanged revision keeps earlier images valid. For an unfamiliar finding call
+`describe_finding`; use
 `get_capabilities().vocabularies.repair_fix_kinds` to distinguish executable
 repairs from advice. Do not retry an advisory fix kind as though it were an
 executable one.
@@ -124,8 +100,8 @@ executable one.
   review rubric (recorded in `submit_visual_review`), and the three-round
   repair cap. Read before the first render.
 - [RAW_PATH.md](RAW_PATH.md): raw preconditions, planning and rhythm, strict
-  output validation, repair, images and assets (screenshot callouts via
-  overlay `anchor_image`), SVG/diagram integration.
+  output validation, repair, images and assets (screenshot callouts), SVG/diagram
+  integration.
 - [TOOLS.md](TOOLS.md): phase map, tool-profile discovery, MCP-only
   operations, and composition recipes.
 - [RULES.md](RULES.md): shape-grid, chart, table, content, contrast,
@@ -150,9 +126,8 @@ For a standalone SVG diagram, use the `svggen-mcp` server and its
 Start the deck server with `json2pptx mcp`; its default `deckspec`
 `tools/list` carries only the DeckSpec path. `--tools core` adds the raw
 path and `get_capabilities().mcp_tools_available` (tools callable by name);
-`--tools all` (or `JSON2PPTX_MCP_TOOLS=all`) lists the rest. If
-`list_templates` preview-cache writes are undesirable during discovery,
-pass `read_only: true`. Args over 2 MiB of text are refused; a raced
+`--tools all` (or `JSON2PPTX_MCP_TOOLS=all`) lists the rest. `list_templates`
+`read_only: true` avoids preview-cache writes. Args over 2 MiB of text are refused; a raced
 `deck_id` patch returns `STALE_REVISION` (reload, re-apply).
 `render_deck_spec` resolves relative asset paths (image, photos) against
 `base_dir` and fetches `url` assets like `generate_presentation`; a missing

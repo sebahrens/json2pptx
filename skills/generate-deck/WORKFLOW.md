@@ -17,22 +17,20 @@ applies to both paths. Storyline rules are in [QUALITY.md](QUALITY.md).
    brief — `structure` chapters for 8+ slides), `slots[]` with each slot's
    `path`, guidance and routed brief facts, and `unplaced_facts[]` (place
    them; do not drop them). Replace every `__FILL__` (titles, `meta.date`)
-   and fill the fields from `list_slide_kinds`. A brief that places visuals
-   on one slide ("left a line chart; upper right a KPI; lower right a
-   timeline") gets a `regions` slide whose slot lists each region's `path`,
-   `role`, `kind` and clause; read `unsupported_regions[]` for anything it
-   could not draft as asked.
+   and fill the fields from `list_slide_kinds`. Region clauses ("left a line
+   chart; upper right a KPI") draft a `regions` slide whose slot lists each
+   region's `path`, `role`, `kind` and clause; `unsupported_regions[]` names
+   what it could not draft.
 3. **Template.** `list_templates` gives names, `canonical_layout_ids` and
    `color_roles`. Set `meta.template`; leave `meta.accent_strategy` at
    `primary` unless Phase 2 → Accent monotony says otherwise. Fill with
-   `color_roles.primary_fill` (not always `accent1`) and set text on an
-   accent fill to `color_roles.ink_on_accent[accentN].ink`. With
-   `fields="full"`, `accent_usage_guide` gives each accent's role; when it
-   carries `accent_usage_guide_derived: true` the template authored none and
-   the lines are contrast facts only — keep to `primary_fill`, the
-   `semantic_accents`, and never use a `near_background_accents` entry for text.
-   `grid` gives the template's margin, columns, gutter and the content frame
-   lines content should start on.
+   `color_roles.primary_fill` (not always `accent1`); text on an accent fill
+   uses `color_roles.ink_on_accent[accentN].ink`. With `fields="full"`,
+   `accent_usage_guide` gives each accent's role; with
+   `accent_usage_guide_derived: true` the template authored none (contrast
+   facts only) — keep to `primary_fill` and the `semantic_accents`, never a
+   `near_background_accents` entry for text. `grid` gives margin, columns,
+   gutter and the content frame lines content starts on.
 4. **Chapters.** Use `structure.sections` (with `auto_agenda` for two or more
    sections) instead of hand-made dividers; the engine numbers them.
 5. **Chrome.** Page numbers (title and closing skipped) and the date are on
@@ -66,22 +64,16 @@ argument before applying the coverage constraint:
 
 ### One slide or several: spatial planning
 
-Decide per action title, before choosing kinds:
-
-- **Same title: may share a slide.** Views that each prove the *same* title
-  (the trend, the KPIs that move with it, the dated plan that follows) can sit
-  on one slide as regions. A conclusion the title does not state gets its own
-  slide (QUALITY.md §3). One visual that proves the title stays the default.
-- **DeckSpec path.** Use `kind: regions` (2–3 typed chart / stat / kpis /
-  table / timeline / image / text regions). When those region kinds cannot
-  express the slide (pattern panels, quotes, native diagrams), keep the
-  DeckSpec as the source and make only that slide `raw_json2pptx`.
-  `list_slide_kinds` `kinds:["raw_json2pptx"]` returns `composed_example`
-  (dominant line chart beside a `metric-list` KPI column, above a
-  `timeline-horizontal` footer; action title; `"Illustrative"` source). It
-  validates and renders as returned; swap in your title, data and source.
-  `json2pptx skill-info` `compose.examples` has it plus three more complete
-  compose slides. Do not re-derive the envelope.
+Views that each prove the *same* action title (the trend, its KPIs, the
+dated plan) may share a slide as regions; a conclusion the title does not
+state gets its own slide (QUALITY.md §3). One visual stays the default.
+Prefer `kind: regions` (DECKSPEC.md). When its region kinds cannot express
+the slide (pattern panels, quotes, native diagrams), make only that slide
+`raw_json2pptx` and start from `list_slide_kinds` `kinds:["raw_json2pptx"]`
+→ `composed_example` (line chart beside a `metric-list` KPI column above a
+`timeline-horizontal` footer, `"Illustrative"` source; renders as returned —
+swap title, data, source; `json2pptx skill-info` `compose.examples` has
+three more). Do not re-derive the envelope.
 
 | Need | Use |
 |------|-----|
@@ -89,25 +81,21 @@ Decide per action title, before choosing kinds:
 | One small block inside a grid or pattern cell (`kpi-3up` in a `matrix-2x2` quadrant) | cell-level `pattern` / `grid` (RULES.md 6c) |
 | More table rows than one slide holds | raw `split_slide` (`split.by: "table.rows"`) paginates; it never combines views, and `compose` never paginates |
 
-- `direction: "horizontal"` sets segments side by side, `"vertical"` stacks
-  them; nest a `compose` for chart | KPIs above a footer (at most 8 segments,
-  nesting depth 2, 12 leaves; `get_capabilities().features.compose`).
-- `size_pct` is a segment's share of width (horizontal) or height
-  (vertical); omitted shares split equally, `smart_compose: true` balances
-  by content. Give the dominant evidence the largest share. `gap` is in
-  points (default 8).
+- `direction: "horizontal"` (side by side) or `"vertical"` (stacked); nest a
+  `compose` for chart | KPIs above a footer (≤ 8 segments, depth 2, 12
+  leaves; `get_capabilities().features.compose`).
+- `size_pct` is a segment's share of width / height; omitted shares split
+  equally, `smart_compose: true` balances by content. The dominant evidence
+  gets the largest share. `gap` is in points (default 8).
 - One action title and one slide `source` cover every region; each chart
-  region's own title names measure and unit.
+  region's title names measure and unit.
 
-Narrow regions: each segment is fit-checked in its own rectangle
-(`BODY_TOO_LONG` names `segment[i]` and the measured target). In the
-composed example the 38%-wide KPI column holds three value + label metrics
-with no detail lines and needs about 65% of the height on modern-template
-(174pt); the 35% timeline footer fits only with the month in the label — a
-separate date row needs about 42%, which the KPI column cannot spare.
-Cut copy or add share rather than shrink type, and inspect the composed
-thumbnail: a one-word pyramid apex wraps mid-word in a 50% column with no
-finding.
+Each segment is fit-checked in its own rectangle (`BODY_TOO_LONG` names
+`segment[i]`). In `composed_example` the 38%-wide KPI column (three value +
+label metrics) needs ~65% of the height on modern-template, so the 35%
+timeline footer fits only with the month in the label. Cut copy or add share
+rather than shrink type, and inspect the thumbnail: a one-word pyramid apex
+wraps mid-word in a 50% column with no finding.
 
 Reject the plan before rendering when it produces an isolated numeric divider,
 an untitled visual canvas, one slide per required layout, or a deck made only
@@ -119,16 +107,13 @@ analysis, process and chapter structure.
 
 ## Phase 2: VARY — check the sequence
 
-The compiler picks patterns and layouts per kind; your job is the sequence
-(and, for a slide whose title needs several views, its regions; see Phase 1
-→ spatial planning).
+The compiler picks patterns and layouts per kind; your job is the sequence.
 `explain_deck_spec` (full profile) previews each slide's resolved visual
 without rendering, and `analyze_deck_rhythm` accepts the `deck_id`.
 
 - No visual family three times in a row (alternating `kpi-3up` and `kpi-4up`
-  is still one run; composed slides with the same regions are one run,
-  differently composed ones are not); follow a dense slide (table, grid) with a light one
-  (stat, quote, section).
+  is still one run, as are composed slides with the same regions); follow a
+  dense slide (table, grid) with a light one (stat, quote, section).
 - Every evidence slide has a `takeaway` and a `source`.
 - Clear `analyze_deck_rhythm`'s narrative codes (`missing_executive_summary`,
   `missing_next_steps`, `missing_sections`,
@@ -139,14 +124,12 @@ without rendering, and `analyze_deck_rhythm` accepts the `deck_id`.
 
 ### Pattern monotony (deck-level)
 
-The most common agent mistake: the same pattern slide after slide (card-grid,
-card-grid, card-grid, …) makes a flat deck. Break runs with a different
-family that fits the content — e.g. card-grid → comparison-2col → stat-hero →
-matrix-2x2 → icon-row. Use a stat or quote slide only when the message is a
-single number or a stakeholder voice — never as filler. Appendix back matter
-(after a divider titled Appendix / Backup / Annex, or in a
-`sections[].appendix: true` section) is exempt: backup pages never form a run
-for `break_run`, `DECK_MONOTONY` or `SEMANTIC_RHYTHM_MONOTONY`.
+The most common agent mistake: the same pattern slide after slide makes a
+flat deck. Break runs with a family that fits the content (card-grid →
+comparison-2col → stat-hero → matrix-2x2 → icon-row); a stat or quote only
+for a single number or a stakeholder voice, never as filler. Appendix back
+matter is exempt from `break_run`, `DECK_MONOTONY` and
+`SEMANTIC_RHYTHM_MONOTONY`.
 
 ### Accent monotony
 
@@ -185,13 +168,11 @@ Validation is not verification. Contrast auto-fix, wrapping, clipped text and
 the wrong visual show only in pixels. **Images are truth.**
 
 1. **Render.** `render_deck_thumbnails` for every slide of the current
-   revision; pass `density: 100` for the review pass (the 50 DPI default is a
-   thumbnail, too coarse to read 10pt text). When a response is truncated,
-   request the remaining slides with `slide_indices` — every slide needs an
-   image you looked at. `preview_slide_wireframe` is structural only and
-   never counts as visual review. No render tooling
-   (`get_started.runtime.render_available: false`) → deliver as
-   **UNREVIEWED** and say so.
+   revision with `density: 100` (the 50 DPI default is too coarse for 10pt
+   text). If a response is truncated, request the rest with `slide_indices` —
+   every slide needs an image you looked at; `preview_slide_wireframe` never
+   counts. No render tooling (`get_started.runtime.render_available: false`)
+   → deliver as **UNREVIEWED** and say so.
 2. **Score each slide against the rubric.** No deck size is exempt — a
    one-slide deck is reviewed like a forty-slide one.
 
@@ -212,10 +193,10 @@ the wrong visual show only in pixels. **Images are truth.**
    category = the check name). A P0/P1 finding makes the deck verdict
    `changes_requested`; approve a slide only when it passes all nine.
 4. **Repair.** Edit the spec at the finding's `semantic_path` (or the field
-   the rubric names), send `deck_id` + `patch`, re-render `changed_slides`,
-   re-check those slides, then make one full pass over the final revision
-   and submit that review. Deterministic repairs are in RAW_PATH.md;
-   [FINDINGS.md](FINDINGS.md) covers finding semantics.
+   the rubric names), send `deck_id` + `patch`, re-render and re-check
+   `changed_slides`, then review the whole final revision once and submit.
+   Deterministic repairs: RAW_PATH.md; finding semantics:
+   [FINDINGS.md](FINDINGS.md).
 5. **Loop cap.** Stop after **three** repair rounds. If slides still fail,
    hand back the deck with the open findings listed per slide rather than
    looping or declaring it done.
@@ -227,14 +208,13 @@ submitted and approved, or you have said exactly what could not be verified.
 
 ## Automated vision QA (`inspect_slide_images`)
 
-`inspect_slide_images` runs the same Claude-vision QA agent as `testrand qa`:
-pass rendered images (`{index, path | png_base64, slide_type?, title?}`;
-`slide_type` and `title` improve precision) and get per-slide findings whose
+`inspect_slide_images` runs the Claude-vision QA agent of `testrand qa` on
+rendered images (`{index, path | png_base64, slide_type?, title?}`; the
+optional fields improve precision): per-slide findings whose
 `suggested_fixes[]` map to `repair_slide` kinds, plus a `findings`
-FindingEnvelope (P0/P1 → `error`, so `findings.ok` is false exactly when a
-slide needs repair). Without `ANTHROPIC_API_KEY` it degrades to
-`mode:"heuristic"` (blank / edge-overflow / aspect-ratio only, all P3).
-`image_quality`, `aspect_ratio` and `border_style` findings have no automatic
-fix: surface them. Vision flags about 60% false positives on layout issues in
-correct decks, so treat P2/P3 as advisory. It supplements the rubric above; it
-never replaces your own look at every slide.
+FindingEnvelope (P0/P1 → `error`; `findings.ok` is false exactly when a
+slide needs repair). Without `ANTHROPIC_API_KEY` it is `mode:"heuristic"`
+(blank / edge-overflow / aspect-ratio, all P3). `image_quality`,
+`aspect_ratio` and `border_style` have no automatic fix: surface them. About
+60% of layout flags on correct decks are false positives, so P2/P3 are
+advisory. It supplements your own look at every slide, never replaces it.

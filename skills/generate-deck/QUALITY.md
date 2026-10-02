@@ -32,9 +32,8 @@ gets an action title. If you cannot write one, the slide has no message yet.
 
 ## 3. One message per slide
 
-The body proves the title and nothing else. Two conclusions mean two slides.
-One message is not one visual: a chart, its KPIs and the dated plan that all
-prove the same title may share the slide as regions (WORKFLOW.md → spatial
+The body proves the title and nothing else. Two conclusions mean two slides;
+several views proving one title may share a slide (WORKFLOW.md → spatial
 planning).
 Delete bullets that restate the title, repeat another slide, or would be true
 of any company. Order supporting points by importance, not by discovery.
@@ -53,13 +52,11 @@ slice names on pie / donut; RULES.md 10e–10f).
 Any slide with data sets `source` (who, what, when: "Company filings, FY24").
 State the period and unit. Never invent a figure, unit or source to fill a
 visual; if the brief has no number, write a qualitative title instead.
-A chart, a table of figures, or a chart / KPI / stat pattern without one
-draws `DATA_WITHOUT_SOURCE` (review weight); for estimates, write
-"Illustrative" rather than leaving it empty. When one data set feeds the
-whole deck, set it once: DeckSpec `meta.source`, raw top-level `source`. A
-`chart_value` `footnote` (rendered at the chart's bottom) counts too. Every source renders once, in
-the 9pt source zone just above the footer, on the content's left edge — a
-`chart-insights-split` or `stat-hero` `values.source` is moved there too.
+A data slide without one draws `DATA_WITHOUT_SOURCE` (FINDINGS.md); for
+estimates write "Illustrative". One data set for the whole deck: DeckSpec
+`meta.source` / raw top-level `source`; a `chart_value` `footnote` counts
+too. Every source renders once, in the 9pt zone above the footer — a
+`chart-insights-split` or `stat-hero` `values.source` moves there too.
 
 ## 6. Choose the visual from the message
 
@@ -90,10 +87,8 @@ Pick the DeckSpec kind that matches what the title claims, then confirm with
 | what people said | `quote` |
 | the whole answer up front | `executive_summary` |
 
-Back matter goes in an appendix: `structure.sections[].appendix: true` (or a
-`section` slide with `appendix: true`) — the divider is unnumbered and left
-out of the agenda. A divider titled Appendix / Backup / Q&A is unnumbered
-automatically.
+Back matter goes in an appendix (`structure.sections[].appendix: true`;
+DECKSPEC.md).
 
 Do not choose a visual because it looks varied; a card grid of topics proves
 nothing. Rhythm tools come after the message is right.

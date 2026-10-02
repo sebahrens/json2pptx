@@ -47,12 +47,9 @@ reordering. See [INPUT_FORMAT.md](../../docs/INPUT_FORMAT.md).
 
 ## Diagnose and repair
 
-`generate_presentation` defaults to strict output validation. A successful
-response implies the written PPTX passed the blocking OPC and OOXML checks;
-it says nothing about visual polish. `CONTENT_DROPPED` with
-`fix.params.cause:"placeholder_not_found"` (target placeholder missing) or
-`"placeholder_occupied"` (another block already fills it) is a refuse-class
-drop and strict mode fails generation. Read
+`generate_presentation` defaults to strict output validation: success means
+the PPTX passed the blocking OPC / OOXML checks, not that it looks right.
+Refuse-class `CONTENT_DROPPED` (FINDINGS.md) fails generation; read
 `placeholders_dropped`, not just `placeholders_used`, when a slide looks
 empty.
 
@@ -61,33 +58,28 @@ does grid text below its role floor (`TEXT_BELOW_READABLE_MIN`; a lone axis
 "1" is a caption). Preserve required content and the requested slide count;
 refused inputs and stale outputs are not approved.
 
-Apply precise `repair_slide` fixes to one raw slide per call; with a raw
-`deck_id` each call is small. `propose_repairs` plans several slides. A finding can recommend an advisory kind whose remedy is an
-authoring decision; do not retry it as an executable fix. Text-reduction
-repairs may refuse with `semantic_review_required` when they would remove
-a number, unit, negation, or qualifier; split or rewrite deliberately.
-Read [FINDINGS.md](FINDINGS.md) only if the live `describe_finding` response
-does not cover the code. `score_deck.quality_gate.passed` stops structural
-repair, but does not replace slide-image inspection.
+Apply precise `repair_slide` fixes to one raw slide per call (small with a
+raw `deck_id`); `propose_repairs` plans several. Advisory kinds and
+`semantic_review_required` refusals are authoring decisions, not retries
+([FINDINGS.md](FINDINGS.md), when `describe_finding` does not cover a code).
+`score_deck.quality_gate.passed` stops structural repair, not slide-image
+inspection.
 
-The raw `deck_id` returned by generation is a short-lived server handle.
-It can replace a `presentation` payload on later preview, repair, score,
-rhythm, and regenerate calls. Keep your own source JSON; a
-`read_presentation` extraction is for inspection, not an authoritative
-round-trip `PresentationInput`; it includes shapes inside groups (native
-diagrams such as swot / pestel / bmc), connectors, `pictures[]` and
-`hyperlinks`. A `FONT_SUBSTITUTED` warning means renders may wrap where fit
+The raw `deck_id` from generation is a short-lived handle that can replace
+the `presentation` payload on preview, repair, score, rhythm and regenerate
+calls. Keep your own source JSON: `read_presentation` is for inspection, not
+a round-trip `PresentationInput` (it includes grouped shapes such as native
+swot / pestel / bmc diagrams, connectors, `pictures[]` and `hyperlinks`). A `FONT_SUBSTITUTED` warning means renders may wrap where fit
 findings did not; trust the image (Calibri measures with the embedded, metric-identical Carlito on every host and is not reported). `apply_deck_patch` is an atomic structural
 transform for insertion, removal, replacement, move, duplicate, or existing
 field replacement; validate and inspect the resulting deck before shipping.
 
 ## Images, charts, diagrams, and icons
 
-For a local relative asset, send an explicit absolute `base_dir` to MCP
-calls. CLI validation resolves relative to the input file directory.
-`base_dir` bounds relative asset paths only: an absolute image, background
-or icon path is read wherever it points unless the server sets
-`ALLOWED_IMAGE_PATHS` (which `icon.path` also obeys). Asset paths expand only
+For a local relative asset, send an absolute `base_dir` to MCP calls (CLI
+resolves relative to the input file). `base_dir` bounds relative paths only:
+an absolute image, background or icon path is read wherever it points unless
+the server sets `ALLOWED_IMAGE_PATHS` (`icon.path` obeys it too). Asset paths expand only
 `$HOME`, `$BRAND_ASSETS`, `$JSON2PPTX_*`. Unsafe traversal, symlink escapes,
 missing files, unset variables, oversized assets, bad remote types, and unsafe
 SVG XML have distinct findings; a picture that cannot be embedded is
@@ -99,47 +91,35 @@ re-fetched on each render.
 A `slide_type: "image"` slide on a template without a picture layout fills
 One Content's body with the whole picture (no crop); cover discarding over 30%
 reports `IMAGE_HEAVY_CROP`, and a photo over the footer band drops that
-slide's chrome (`CHROME_OVER_IMAGE`). A shape-grid `image` cell accepts
-`geometry: "ellipse"` for a circular frame and `fit: "contain"` to keep a
-screenshot whole (RULES.md 6d). Numbered callouts on a screenshot use overlay
-`kind: "callout"` with an `anchor_image` target in source-image fractions or
-pixels, so leaders stay on their pixels through crop and layout changes; a
-target the crop hides reports `OVERLAY_TARGET_CROPPED` (RULES.md 6f).
+slide's chrome (`CHROME_OVER_IMAGE`). Image-cell `geometry` / `fit`: RULES.md
+6d; screenshot callouts (`anchor_image`): RULES.md 6f.
 
-Use bundled icon names from `list_icons`, qualified by set when necessary;
-do not put emoji codepoints in deck JSON. A pattern icon slot may take a
-bundled-name string or a full `IconInput` with exactly one of `name`,
-`path`, `url`, or `svg_data`. Inline SVG can avoid a file roundtrip;
-its `fill` override is ignored because it is already styled. Preview a
-custom or recolored icon with `preview_icon` if appearance matters.
-Template scheme colors are the portable default for icon fills.
+Use bundled icon names from `list_icons` (set-qualified when needed), never
+emoji. A pattern icon slot takes a bundled-name string or an `IconInput`
+with exactly one of `name`, `path`, `url`, `svg_data`; inline SVG ignores a
+`fill` override (already styled). Check custom or recolored icons with
+`preview_icon`; template scheme colors are the portable icon fill.
 
-The separate `svggen-mcp` server owns diagram construction. Use its
-`get_started` and `get_diagram_schema` for the chosen diagram type, then
-`validate_diagram` and `render_diagram`. To match the deck palette, call
-`resolve_theme` with the same template and any `theme_override`, then
-pass its `theme_colors` array to each diagram's
-`style.theme_colors`. Use `validate_input` with the fit report enabled
-after embedding a chart or diagram. A diagram collision or unreadable
-native text is a content/layout problem: shorten labels or give the diagram
-more space, then render the slide to pixels again.
+The separate `svggen-mcp` server builds diagrams: its `get_started` and
+`get_diagram_schema`, then `validate_diagram` and `render_diagram`. For the
+deck palette, pass `resolve_theme`'s `theme_colors` (same template and
+`theme_override`) to each diagram's `style.theme_colors`. Run
+`validate_input` with the fit report after embedding a chart or diagram; a
+collision or unreadable native text means shorter labels or more space, then
+render the slide again.
 
-Every native diagram type (`swot`, `porters_five_forces`, `pestel`,
+Native diagram types (`swot`, `porters_five_forces`, `pestel`,
 `business_model_canvas`, `value_chain`, `nine_box_talent`, `kpi_dashboard`,
-`process_flow`, `heatmap`, `pyramid`, `house_diagram`, `panel_layout` and its
-aliases `icon_columns` / `icon_rows` / `stat_cards`) also renders as native,
-editable shapes in a `shape_grid` cell (`{"diagram": {"type": "pestel", ...}}`)
-or a `compose` diagram segment — the same builders as in a body placeholder,
-sized to the region. `get_diagram_capabilities` derives each placement from
-that dispatch: these types report `grid_cell_support: true` with a
-`shape_grid` placement whose `pipeline` is `native_ooxml` (svggen types report
-`svg`). The region is laid out at its actual size: when the diagram's text
-would shrink below the 7pt floor generation publishes, `validate_input`
-(fit report) and `generate_presentation` refuse it with
-`DIAGRAM_REGION_TOO_SMALL`, whose `fix.params` give `min_width_emu` /
-`min_height_emu` (when a region up to 3x larger works) and the alternatives:
-a larger cell or segment, a body placeholder (`diagram_value`), or fewer
-items. Dense canvases (BMC, large heatmaps) usually need most of the slide.
+`process_flow`, `heatmap`, `pyramid`, `house_diagram`, `panel_layout` and
+aliases `icon_columns` / `icon_rows` / `stat_cards`) also render as editable
+shapes in a `shape_grid` cell (`{"diagram": {"type": "pestel", ...}}`) or a
+`compose` segment, sized to the region; `get_diagram_capabilities` reports
+`grid_cell_support: true` and `pipeline` `native_ooxml` (svggen: `svg`). Text
+that would fall below the 7pt floor is refused (`validate_input` fit report,
+`generate_presentation`) with `DIAGRAM_REGION_TOO_SMALL`:
+`fix.params.min_width_emu` / `min_height_emu` (if ≤ 3x larger works) and the
+alternatives — larger region, body placeholder (`diagram_value`), fewer
+items. Dense canvases (BMC, big heatmaps) need most of the slide.
 
 Diagrams use one hue by default: timeline bars/milestones, matrix_2x2
 points and org_chart levels stay in accent1 and its tints (org levels take
@@ -152,9 +132,8 @@ only when they really belong to different groups.
 ## Raw planning
 
 The storyline rules (QUALITY.md) are the same on this path. Region clauses
-("left a chart; upper right a KPI; lower right a timeline") plan one
-`composition` slide whose skeleton is a `shape_grid` with `regions[]` cell
-paths (see `unsupported_regions[]`). `plan_deck`
+plan one `composition` slide (a `shape_grid` skeleton with `regions[]` cell
+paths; misses in `unsupported_regions[]`). `plan_deck`
 (default `format: "raw"`) returns ordered slides with a canonical `layout`
 (`title` first, `closing` last, `blank-title` + a pattern between), a
 `recommended_pattern`, `suggested_pattern_fallback`, narrative role and
@@ -168,10 +147,9 @@ publishable pass with `placeholder_policy: "strict"` so they block.
 
 Per slide intent, `recommend_visual` ranks layouts, patterns, charts,
 diagrams and compose envelopes (`recommend_pattern` only when you already
-need a named pattern). A compose candidate's `next_tool_call.args_template.spec.slides[0].slide`
-is a ready raw slide (`layout_id: "blank-title"`, title, `compose`); its
-`composition.regions[].data_contract.field_path` names each region's sample
-content. Take canonical layout IDs from `list_templates`; for
+need a named pattern); a compose candidate's
+`next_tool_call.args_template.spec.slides[0].slide` is a ready raw slide
+(TOOLS.md). Take canonical layout IDs from `list_templates`; for
 placeholder capacity request `mode="compact"` (`layout_summaries[].placeholders[].max_chars`)
 or `fields="full"`.
 
@@ -190,13 +168,12 @@ when underfilled cells pass 30% (`underfilled_cells`). Narrative checks:
 `missing_executive_summary` (6+ slides), `missing_next_steps` (no
 next-steps close), `missing_sections` (10+ content slides, no divider or
 agenda), `evidence_missing_takeaway_or_source`, `bullets_heavy` (3+
-bullets-only slides). A `compose` slide's `pattern` names its structure —
-direction, region families, a `*` on a region holding ≥ 12.5 points over an
-equal share, nested envelopes in place, e.g. `compose:v[kpi*+pull-quote]` or
-`compose:h[chart+compose:v[kpi+pull-quote]]` — so differently composed
-slides do not form a run, while the same regions reordered, re-split 55/45
-or swapped within a family (`kpi-3up` → `kpi-4up`) still do; its
-`break_run` alternatives skip the run's region families. Accent checks: `accent_heavy_slide`,
+bullets-only slides). A `compose` slide's `pattern` names its structure
+(direction, region families, `*` on a region ≥ 12.5 points over an equal
+share, nesting in place: `compose:v[kpi*+pull-quote]`,
+`compose:h[chart+compose:v[kpi+pull-quote]]`): differently composed slides
+break a run; reordered, re-split or same-family swaps (`kpi-3up` →
+`kpi-4up`) do not, and `break_run` skips the run's families. Accent checks: `accent_heavy_slide`,
 `strong_accent_run` (see RULES.md). `accent_balance` counts pattern slides
 by their resolved accent (`accent_strategy` or `overrides.accent`).
 Iterate until the score is ≥ 70 and the narrative codes are gone.
@@ -215,11 +192,10 @@ a 3pt `accent_bar`); no sibling shapes closer than 4pt; every pattern cell at
 --fit-report`, `--json` for the envelope) exits clean even with unfittable
 cells; refusal comes from `strict_fit` on `generate_presentation`: `off`
 (silent shrink/truncate), `warn` (default: shrink and report), `strict`
-(refuse on overflow with `fix.kind` `split_at_row` / `reduce_text`, as a
-FindingEnvelope with `IsError=true`). Every `findings` array is sorted by
-(severity desc, slide index asc, code asc); deck-level findings precede slide
-0, so work top-down. `preview_presentation_plan` dry-runs layout selection,
-placeholder mapping and fit without writing a PPTX.
+(refuse on overflow with `fix.kind` `split_at_row` / `reduce_text`, a
+FindingEnvelope with `IsError=true`). Work `findings` top-down (FINDINGS.md
+order). `preview_presentation_plan` dry-runs layout selection, placeholder
+mapping and fit without writing a PPTX.
 
 `repair_slide` takes the raw `deck_id` (or the deck JSON), `slide_index` and
 `fixes: [{kind, params}]`; a handle repair persists and returns

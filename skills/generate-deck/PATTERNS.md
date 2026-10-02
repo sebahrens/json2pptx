@@ -7,13 +7,11 @@ How to pick a named pattern, size content for its cells, and read the pre-flight
 ## Pattern Library
 
 Named patterns expand into validated `shape_grid` structures. Choose from
-the live `list_patterns` catalog; call `show_pattern` for a candidate's
-`use_when`, `not_when`, value schema, example, and text budget. The catalog
-changes with the registry, so this guide intentionally does not enumerate it.
-Use `recommend_visual` when the visual family itself is undecided (it ranks
-patterns, native layouts, charts, and diagrams; the folded `recommend_pattern`
-alias is its pattern-only subset). Use a diagram for a data-driven or
-topologically complex graphic rather than forcing it into a text grid.
+the live `list_patterns` catalog (not enumerated here); `show_pattern` gives
+a candidate's `use_when`, `not_when`, value schema, example and text budget.
+`recommend_visual` ranks patterns, native layouts, charts and diagrams when
+the family is undecided (`recommend_pattern` is its pattern-only alias). Use
+a diagram, not a text grid, for data-driven or topologically complex graphics.
 
 - **Browse:** `list_patterns` (MCP) or `json2pptx patterns list` (CLI).
 - **Schema:** `show_pattern` (MCP) or `json2pptx patterns show <name>` (CLI) returns the value schema, `example_values` (use them as the template for `values`) and, for grid-shaped patterns, a `text_budget_guide` with per-configuration `body_max_chars` / `header_max_chars`.
@@ -34,7 +32,7 @@ KPI `values` is a JSON **array**, one cell per metric: an object `{"big", "small
 
 Do NOT hand-roll shape grids when a named pattern exists; let the engine handle grid structure, bounds, and gap arithmetic.
 
-**Callouts.** Patterns with `supports_callout=true` accept an envelope-level `callout: {text, emphasis?, accent?}` — the takeaway band below the pattern (flush 3pt accent bar, 14pt bold dk1 text, no box). `emphasis`: `bold` (default), `italic`/`bold-italic`, `subtle` (5% neutral tint) or `strong` (solid accent, measured-contrast text). Plain one-line text (budget two lines). KPI patterns refuse callouts (`callout_unsupported`). exec-summary `bottom_line`, metric-list `callout` and chart-insights-split `so_what` render the same band; their `overrides.takeaway_emphasis` takes `subtle` / `strong`.
+**Callouts.** Patterns with `supports_callout=true` accept an envelope-level `callout: {text, emphasis?, accent?}` — the takeaway band below the pattern (3pt accent bar, 14pt bold dk1 text, no box; budget two lines). `emphasis`: `bold` (default), `italic`/`bold-italic`, `subtle` (5% neutral tint) or `strong` (solid accent, measured-contrast text). KPI patterns refuse callouts (`callout_unsupported`). exec-summary `bottom_line`, metric-list `callout` and chart-insights-split `so_what` render the same band; their `overrides.takeaway_emphasis` takes `subtle` / `strong`.
 
 **Accent is restrained by default.** Patterns spend at most one solid accent block, in the template's `color_roles.primary_fill` (the default accent). Structural cells are neutral tints with dark text; accent rules, connectors and numerals mark structure. `overrides.style: "solid"` restores accent fills on `roadmap-phased`, `process-flow[-compact]`, `kpi-inline`, `agenda-with-images`, `numbered-step-strip` (number lanes; not `values.style`) and `process-grid-2row`; likewise `labeled-rows` `label_style: "filled"`, `hero-detail` `style: "cards"`, `stylish-panels` `overrides.ribbon: "accent"`. A process flow spends its one solid accent on `steps[].highlight` (at most one) or its single decision. Ask for an accent fill only where it is the slide's one emphasis.
 
@@ -71,12 +69,11 @@ floor is reported — `BODY_TOO_LONG` on `values[i].big`, `TEXT_EXCEEDS_SHAPE`
 naming the label word: shorten or abbreviate it.
 
 **Placement.** Box patterns are content-sized: `kpi-Nup` cards, `card-grid`
-rows, `before-after` panels and `strategy-house` pillars hug their text (at
-most 1.6× its height). Pattern blocks hang from the line native body text
-starts on, not mid-slide; content under a top-anchored title starts below its
-measured lines (tracked, bold or substituted title faces included).
-`pattern.vertical_align` (default `auto`) takes `center` / `bottom` /
-`stretch`. Leftover space below a short block is intended — do not pad copy.
+rows, `before-after` panels and `strategy-house` pillars hug their text (≤
+1.6× its height). Pattern blocks hang from the native body-text line, below
+a top-anchored title's measured lines (tracked, bold or substituted faces
+included). `pattern.vertical_align` (default `auto`) takes `center` /
+`bottom` / `stretch`. Space below a short block is intended — do not pad.
 `SLIDE_UNDERUSED` judges them at 20% ink (`phase-roadmap` /
 `timeline-horizontal` 22%, others 29%); `VERTICAL_IMBALANCE` ignores the band
 below a body-line block. When it fires, add a supporting zone (`compose`), a
@@ -96,19 +93,19 @@ below a body-line block. When it fires, add a supporting zone (`compose`), a
 
 ### Picking a grid configuration with `text_budget_guide`
 
-`show_pattern` returns `text_budget_guide.target_density` (a *character* sizing target) and `text_budget_guide.configurations[]` with `columns`, `rows`, `body_max_chars` (at 12pt) and `header_max_chars` (at 16pt). Estimate characters per cell, choose the configuration whose `body_max_chars` is closest to `planned_chars / 0.85` (~85% density), write to that budget, then call `expand_pattern` and check every `cell_budgets[]` entry lands in 35–110%. Non-grid patterns (`pull-quote`, `stat-hero`) have no guide: use per-placeholder `max_chars` from `list_templates` with `mode="compact"` (or `fields="full"`; the default `fields="compact"` omits them).
+`show_pattern` returns `text_budget_guide.target_density` (a *character* target) and `text_budget_guide.configurations[]` (`columns`, `rows`, `body_max_chars` at 12pt, `header_max_chars` at 16pt). Pick the configuration whose `body_max_chars` is closest to `planned_chars / 0.85` (~85% density), write to it, then check every `expand_pattern` `cell_budgets[]` entry lands in 35–110%. Non-grid patterns (`pull-quote`, `stat-hero`) have no guide: use per-placeholder `max_chars` from `list_templates` `mode="compact"` or `fields="full"` (the default `fields="compact"` omits them).
 
-`cell_budgets[]` entries carry `cell_index` (zero-based), `row`, `col`, `max_chars`, `actual_chars`, `density_pct`, `status` and `font_size_pt`. Rewrite before rendering — cheaper than repairing after generation. WORKFLOW.md's pre-emit check *"every cell at 35–110% density"* reads `density_pct`.
+`cell_budgets[]` entries carry `cell_index` (zero-based), `row`, `col`, `max_chars`, `actual_chars`, `density_pct`, `status` and `font_size_pt`. Rewrite before rendering — cheaper than repairing after generation.
 
 ### Decision rules
 
 - **Underfilled (< 35%):** add supporting detail; for inherently short content (a metric, a status) use a sparse pattern (`kpi-3up`, not `card-grid`); when most cells are underfilled, use a smaller configuration (2×2, not 3×2).
-- **Overflow (> 110%), or `fit_overflow` / `density_exceeded` after generation:** (1) rewrite — shorter sentences, fewer bullets; (2) a larger configuration or a higher-capacity pattern (`repair_slide` `swap_layout`, or `layout_suggestions[]`); (3) `repair_slide` `split_at_row` / `reduce_text`; (4) `reduce_cell_text` (truncates one cell to `max_chars` with an ellipsis) only for verbatim content you must not rephrase, then re-validate with `fit_report: true`. `reduce_cell_text` is a last resort, never a substitute for the VARY loop.
+- **Overflow (> 110%), or `fit_overflow` / `density_exceeded` after generation:** (1) rewrite — shorter sentences, fewer bullets; (2) a larger configuration or higher-capacity pattern (`repair_slide` `swap_layout`, or `layout_suggestions[]`); (3) `repair_slide` `split_at_row` / `reduce_text`; (4) last resort, only for verbatim content: `reduce_cell_text` (truncates one cell to `max_chars` with an ellipsis), then re-validate with `fit_report: true`.
 - **`layout_suggestions[]`** appears only when **all** populated cells are underfilled or all overflow (alternative patterns + overrides + `reason`); mixed grids need manual adjustment.
 
 ### Bounds override: `bounds` and `max_height_pct`
 
-For short content in tall cells, prefer a compact variant (`process-flow-compact`, `before-after-compact`, `kpi-inline`). Otherwise pass `max_height_pct` (1–99, share of the content area; same as `bounds: {x:0, y:0, width:100, height:<value>}`) or `bounds` (percent rectangle; wins over `max_height_pct`) to `expand_pattern` or as slide-level `pattern.bounds` / `pattern.max_height_pct`. Density math then uses the reduced area (no false `cell_underfilled`). `expand_pattern`'s `bounds_assumption` says which area the budgets used: `"full_content_area"` or `"explicit_override"`.
+For short content in tall cells, prefer a compact variant (`process-flow-compact`, `before-after-compact`, `kpi-inline`), else pass `max_height_pct` (1–99% of the content area, = `bounds: {x:0, y:0, width:100, height:<value>}`) or `bounds` (percent rectangle; wins) to `expand_pattern` or as slide-level `pattern.bounds` / `pattern.max_height_pct`. Density math then uses the reduced area (no false `cell_underfilled`); `bounds_assumption` reports `"full_content_area"` or `"explicit_override"`.
 
 An underfilled `capacity_warnings[]` entry without explicit bounds carries a `next_tool_call` re-expanding with a recommended `max_height_pct` — follow it. `density_class_divergence` fires when average density is far below the pattern's `density_class` (<15% medium, <30% high); its `next_tool_call` suggests a compact variant or a `max_height_pct`.
 
