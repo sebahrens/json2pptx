@@ -38,6 +38,8 @@ Do NOT hand-roll shape grids when a named pattern exists; let the engine handle 
 
 **Accent is restrained by default.** Patterns spend at most one solid accent block, in the template's `color_roles.primary_fill` (the default accent). Structural cells are neutral tints with dark text; accent rules, connectors and numerals mark structure. `overrides.style: "solid"` restores accent fills on `roadmap-phased`, `process-flow[-compact]`, `kpi-inline`, `agenda-with-images`, `numbered-step-strip` (number lanes; not `values.style`) and `process-grid-2row`; likewise `labeled-rows` `label_style: "filled"`, `hero-detail` `style: "cards"`, `stylish-panels` `overrides.ribbon: "accent"`. A process flow spends its one solid accent on `steps[].highlight` (at most one) or its single decision. Ask for an accent fill only where it is the slide's one emphasis.
 
+**Chrome bands shrink row budgets.** A `takeaway` (and `source`) band takes 70–100pt off the content zone. `numbered-step-strip` stacked-box / toc rows are measured against what is left and report `BODY_TOO_LONG` ("N stacked-box rows need …pt … the content area holds about …pt") when they cannot fit at 12pt: under a takeaway, keep stacked-box / toc to labels only from five rows up (four toc rows hold a body), or drop the band.
+
 ### Copy budgets and what happens when text does not fit
 
 **Per-pattern copy targets** (BMC cells, driver-tree leaves, comparison rows,
