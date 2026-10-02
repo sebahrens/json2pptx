@@ -350,8 +350,8 @@ func measureLabeledRows(ctx ExpandContext, vals *LabeledRowsValues, cols []float
 		// theme-font model alone can hand the writer a row it stores with an
 		// autofit shrink (go-slide-creator-n1muf).
 		written := math.Max(
-			writtenFitHeightPt(labeledRowsLabelText(r, lay, "lt1", "lt1"), labelColW, 0),
-			writtenFitHeightPt(labeledRowsBodyText(r, lay.bodySize), bodyColW, 0))
+			writtenFitHeightPt(ctx.themeFonts(), labeledRowsLabelText(r, lay, "lt1", "lt1"), labelColW, 0),
+			writtenFitHeightPt(ctx.themeFonts(), labeledRowsBodyText(r, lay.bodySize), bodyColW, 0))
 		lay.rowPt[i] = math.Ceil(math.Max(math.Max(label, body), written))
 	}
 	return lay

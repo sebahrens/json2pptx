@@ -19,6 +19,24 @@ func MetricClone(name string) string {
 	return metricClones[strings.ToLower(strings.TrimSpace(name))]
 }
 
+// HostIndependent reports whether name measures the same on every host: a
+// metric clone (Calibri measures as the embedded Carlito, or as the real
+// Calibri where installed, whose advance widths are identical), an embedded
+// original (Lora, Poppins Light) or Arial (embedded Liberation Sans). Any
+// other family resolves to whatever the host has installed, so a measurement
+// whose result is written into the file — the autofit shrink a writer stores
+// — must not use it (go-slide-creator-ohhb2).
+func HostIndependent(name string) bool {
+	if MetricClone(name) != "" {
+		return true
+	}
+	switch strings.TrimSpace(name) {
+	case "Lora", "Poppins Light", "Arial", "Liberation Sans":
+		return true
+	}
+	return false
+}
+
 // loadMetricClone loads name's metric-compatible clone into ff from the
 // embedded font files, so measurement is identical on every host whether or
 // not LibreOffice or crosextra fonts are installed (a host-dependent lookup

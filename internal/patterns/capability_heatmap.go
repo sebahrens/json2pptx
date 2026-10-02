@@ -464,7 +464,7 @@ func chmLegendTextPt(ctx ExpandContext, v *CapabilityHeatmapValues, contentW flo
 	// theme-font model alone they were stored at 72% autofit (8.6pt, below
 	// the caption floor) on the abstract template (go-slide-creator-n1muf).
 	for i, t := range v.Tiers {
-		h = math.Max(h, writtenFitHeightPt(chmLegendTextJSON(t), contentW*textPct[i]/100, h))
+		h = math.Max(h, writtenFitHeightPt(ctx.themeFonts(), chmLegendTextJSON(t), contentW*textPct[i]/100, h))
 	}
 	return h
 }

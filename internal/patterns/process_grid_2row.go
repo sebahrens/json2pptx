@@ -520,7 +520,7 @@ func layoutProcessGrid2Row(ctx ExpandContext, vals *ProcessGrid2RowValues, ovr *
 			row := buildProcessGrid2RowHeaderRow(ctx, vals.ColumnHeaders, "accent1", math.Max(phaseSize, size-2), colTextW)
 			lay.headerPt = row.MinHeight
 			for _, c := range row.Cells[1:] {
-				lay.headerPt = math.Max(lay.headerPt, math.Ceil(writtenFitHeightPt(c.Shape.Text, phaseW, 0)+processGrid2RowUnderlinePt+2))
+				lay.headerPt = math.Max(lay.headerPt, math.Ceil(writtenFitHeightPt(ctx.themeFonts(), c.Shape.Text, phaseW, 0)+processGrid2RowUnderlinePt+2))
 			}
 			fixed += lay.headerPt + ctx.Gap(processGrid2RowGapPt)
 		}
@@ -528,7 +528,7 @@ func layoutProcessGrid2Row(ctx ExpandContext, vals *ProcessGrid2RowValues, ovr *
 			row := buildProcessGrid2RowOutcomeRow(ctx, vals.Outcomes, "accent1", phaseSize, colTextW)
 			lay.outcomePt = row.MinHeight
 			for _, c := range row.Cells[1:] {
-				lay.outcomePt = math.Max(lay.outcomePt, math.Ceil(writtenFitHeightPt(c.Shape.Text, phaseW, 0)+8))
+				lay.outcomePt = math.Max(lay.outcomePt, math.Ceil(writtenFitHeightPt(ctx.themeFonts(), c.Shape.Text, phaseW, 0)+8))
 			}
 			fixed += lay.outcomePt + ctx.Gap(processGrid2RowGapPt)
 		}
@@ -537,9 +537,9 @@ func layoutProcessGrid2Row(ctx ExpandContext, vals *ProcessGrid2RowValues, ovr *
 			label  string
 			phases []string
 		}{{vals.Row1Label, vals.Row1Phases}, {vals.Row2Label, vals.Row2Phases}} {
-			need := writtenFitHeightPt(buildProcessGrid2RowTextContent(pptx.ConvertMarkdownEmphasis(track.label), lay.label.sizePt, true, "lt1"), labelW, 0)
+			need := writtenFitHeightPt(ctx.themeFonts(), buildProcessGrid2RowTextContent(pptx.ConvertMarkdownEmphasis(track.label), lay.label.sizePt, true, "lt1"), labelW, 0)
 			for _, phase := range track.phases {
-				need = math.Max(need, writtenFitHeightPt(buildProcessGrid2RowTextContent(pptx.ConvertMarkdownEmphasis(phase), phaseSize, true, "lt1"), phaseW, 0))
+				need = math.Max(need, writtenFitHeightPt(ctx.themeFonts(), buildProcessGrid2RowTextContent(pptx.ConvertMarkdownEmphasis(phase), phaseSize, true, "lt1"), phaseW, 0))
 			}
 			lay.trackNeeds[r] = need
 		}

@@ -203,7 +203,7 @@ func largestRunPt(tb *pptx.TextBody) float64 {
 	return float64(largest) / 100
 }
 
-func writtenFitHeightPt(text json.RawMessage, widthPt, minPt float64) float64 {
+func writtenFitHeightPt(fonts pptx.ThemeFonts, text json.RawMessage, widthPt, minPt float64) float64 {
 	const maxGrowPt = 400
 	if len(text) == 0 || widthPt <= 0 {
 		return minPt
@@ -212,6 +212,8 @@ func writtenFitHeightPt(text json.RawMessage, widthPt, minPt float64) float64 {
 	if err != nil || tb == nil {
 		return minPt
 	}
+	// Measure in the face the writer measures the generated shape in.
+	tb.ThemeFonts = fonts
 	w := int64(widthPt * sizingEMUPerPt)
 	// Start at one line plus the full vertical margin. Below that the writer
 	// clamps the margin of a degenerate shape so one line always "fits"

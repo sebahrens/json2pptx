@@ -609,14 +609,14 @@ func measureExecSummary(ctx ExpandContext, vals *ExecSummaryValues, cols []float
 		// The row is never below what the writer needs to store each cell
 		// unshrunk at its real column width, baseline nudge included
 		// (go-slide-creator-k3eb3).
-		written := writtenFitHeightPt(execSummaryLeadCell(p.Lead, leadSize, tallest, "dk2").Shape.Text, colW(leadCol), 0)
+		written := writtenFitHeightPt(ctx.themeFonts(), execSummaryLeadCell(p.Lead, leadSize, tallest, "dk2").Shape.Text, colW(leadCol), 0)
 		if supportCol >= 0 {
 			h = math.Max(h, sizedBlockHeightPt(ctx, []sizedPara{{text: p.Support, sizePt: supportSize}}, colW(supportCol))+baselineInsetPt(tallest, supportSize))
-			written = math.Max(written, writtenFitHeightPt(execSummarySupportCell(p.Support, supportSize, tallest).Shape.Text, colW(supportCol), 0))
+			written = math.Max(written, writtenFitHeightPt(ctx.themeFonts(), execSummarySupportCell(p.Support, supportSize, tallest).Shape.Text, colW(supportCol), 0))
 		}
 		if numbered {
 			h = math.Max(h, lay.numSize*sizingLineSpacing+2*sizingInsetTBPt)
-			written = math.Max(written, writtenFitHeightPt(execSummaryNumberCell(i, lay.numSize, "dk1").Shape.Text, colW(0), 0))
+			written = math.Max(written, writtenFitHeightPt(ctx.themeFonts(), execSummaryNumberCell(i, lay.numSize, "dk1").Shape.Text, colW(0), 0))
 		}
 		lay.writtenPt[i] = written
 		lay.rowPt[i] = math.Ceil(math.Max(h, written))

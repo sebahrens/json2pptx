@@ -322,8 +322,8 @@ func measureAgenda(ctx ExpandContext, v *AgendaValues, numberSize, titleSize flo
 		// The row is never below the written fit of its title (bold when it
 		// is the highlighted section) or numeral at the real column widths
 		// (go-slide-creator-n1muf).
-		h = math.Max(h, rowTextNeedPt(agendaTitleText(title, v.subtitle(i), titleSize, highlight == i+1), titleW))
-		h = math.Max(h, rowTextNeedPt(agendaNumberText(i, numberSize), numberW))
+		h = math.Max(h, rowTextNeedPt(ctx.themeFonts(), agendaTitleText(title, v.subtitle(i), titleSize, highlight == i+1), titleW))
+		h = math.Max(h, rowTextNeedPt(ctx.themeFonts(), agendaNumberText(i, numberSize), numberW))
 		lay.rowPt = append(lay.rowPt, math.Ceil(math.Max(numberRow, h)))
 	}
 	return lay
@@ -412,6 +412,9 @@ func agendaFlexShrinks(ctx ExpandContext, v *AgendaValues, lay agendaLayout, hig
 			w    float64
 		}{{agendaTitleText(title, v.subtitle(i), lay.titleSize, highlight == i+1), titleW}, {agendaNumberText(i, lay.numberSize), numberW}} {
 			tb, err := shapegrid.ResolveTextInput(cell.text)
+			if err == nil && tb != nil {
+				tb.ThemeFonts = ctx.themeFonts()
+			}
 			if err == nil && tb != nil && !pptx.AutofitFitsFor(tb, pptx.RectEmu{CX: int64(cell.w * sizingEMUPerPt), CY: int64(rowH * sizingEMUPerPt)}) {
 				return true
 			}

@@ -939,7 +939,7 @@ func layoutNumberedStepRows(ctx ExpandContext, spec numberedStepRowSpec, fullLab
 	}
 	var first numberedStepRowLayout
 	for i, a := range attempts {
-		lay := measureNumberedStepRows(build(a.labelPt), widths, a.tight)
+		lay := measureNumberedStepRows(ctx.themeFonts(), build(a.labelPt), widths, a.tight)
 		lay.labelPt, lay.areaPt = a.labelPt, areaH
 		gaps := float64(max(len(lay.rows)-1, 0))
 		rowsPt := lay.needPt
@@ -968,7 +968,7 @@ func layoutNumberedStepRows(ctx ExpandContext, spec numberedStepRowSpec, fullLab
 // measureNumberedStepRows pins each row at the writer's fit of its tallest
 // cell. tight measures single-line cells at the writer's clamped margin (one
 // line always fits a shape that holds it) instead of the full 0.5 cm margin.
-func measureNumberedStepRows(rows []jsonschema.GridRowInput, widths []float64, tight bool) numberedStepRowLayout {
+func measureNumberedStepRows(fonts pptx.ThemeFonts, rows []jsonschema.GridRowInput, widths []float64, tight bool) numberedStepRowLayout {
 	lay := numberedStepRowLayout{rows: rows, rowPt: make([]float64, len(rows)), fullPt: make([]float64, len(rows))}
 	for i := range rows {
 		need, full := 0.0, 0.0
@@ -976,10 +976,10 @@ func measureNumberedStepRows(rows []jsonschema.GridRowInput, widths []float64, t
 			if cell == nil || cell.Shape == nil || len(cell.Shape.Text) == 0 || c >= len(widths) {
 				continue
 			}
-			h := rowTextNeedPt(cell.Shape.Text, widths[c])
+			h := rowTextNeedPt(fonts, cell.Shape.Text, widths[c])
 			full = math.Max(full, h)
 			if tight && h < rowTextBeyondAreaPt {
-				h = writtenTightFitPt(cell.Shape.Text, widths[c], h)
+				h = writtenTightFitPt(fonts, cell.Shape.Text, widths[c], h)
 			}
 			need = math.Max(need, h)
 		}
@@ -1036,14 +1036,14 @@ func growTightRows(lay *numberedStepRowLayout, areaH, gaps float64) {
 // stores text with no shrink, counting the margin clamp it applies to a shape
 // too short for one line plus the full margin (pptx.EffectiveTextInsets).
 // fitPt is a height known to fit.
-func writtenTightFitPt(text json.RawMessage, widthPt, fitPt float64) float64 {
+func writtenTightFitPt(fonts pptx.ThemeFonts, text json.RawMessage, widthPt, fitPt float64) float64 {
 	lo, hi := 0.0, math.Ceil(fitPt)
-	if !writtenFitsAt(text, widthPt, hi) {
+	if !writtenFitsAt(fonts, text, widthPt, hi) {
 		return fitPt
 	}
 	for hi-lo > 1 {
 		mid := math.Floor((lo + hi) / 2)
-		if writtenFitsAt(text, widthPt, mid) {
+		if writtenFitsAt(fonts, text, widthPt, mid) {
 			hi = mid
 		} else {
 			lo = mid

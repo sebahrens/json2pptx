@@ -235,7 +235,7 @@ func (c *comparison2col) PostExpandWarnings(ctx ExpandContext, values, overrides
 	if ovr == nil {
 		ovr = &Comparison2colOverrides{}
 	}
-	if plan := comparisonLayout(ctx, v, ovr, nil); !plan.fits && comparisonShrinks(plan) {
+	if plan := comparisonLayout(ctx, v, ovr, nil); !plan.fits && comparisonShrinks(ctx, plan) {
 		warnings = append(warnings, fmt.Sprintf("%s: comparison-2col rows need %s at readable sizes but the content area holds about %.0fpt — shorten the cells, use fewer rows, or split the comparison", ErrCodeBodyTooLong, readableNeedPhrase(plan.total), plan.avail))
 	}
 	return warnings
@@ -556,7 +556,7 @@ func comparisonMeasure(ctx ExpandContext, vals *Comparison2colValues, ovr *Compa
 		need := 0.0
 		for _, cell := range r.Cells {
 			if cell != nil && cell.Shape != nil && len(cell.Shape.Text) > 0 {
-				need = max(need, rowTextNeedPt(cell.Shape.Text, textW))
+				need = max(need, rowTextNeedPt(ctx.themeFonts(), cell.Shape.Text, textW))
 			}
 		}
 		plan.needs = append(plan.needs, need)
@@ -578,7 +578,7 @@ func comparisonMeasure(ctx ExpandContext, vals *Comparison2colValues, ovr *Compa
 // cell of plan at the heights sizeRows leads to. A one-line cell in a short
 // row can still be written whole (the writer clamps a degenerate shape's
 // margin), so this is measured rather than read off the needs.
-func comparisonShrinks(plan comparisonPlan) bool {
+func comparisonShrinks(ctx ExpandContext, plan comparisonPlan) bool {
 	heights := plan.heights()
 	for i, r := range plan.rows {
 		h := heights[i]
@@ -590,6 +590,7 @@ func comparisonShrinks(plan comparisonPlan) bool {
 			if err != nil || tb == nil {
 				continue
 			}
+			tb.ThemeFonts = ctx.themeFonts()
 			if !pptx.AutofitFitsFor(tb, pptx.RectEmu{CX: int64(plan.textW * sizingEMUPerPt), CY: int64(h * sizingEMUPerPt)}) {
 				return true
 			}

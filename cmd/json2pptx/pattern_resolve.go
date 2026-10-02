@@ -144,6 +144,7 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 		grid = appendCalloutRow(grid, p.Callout, expandCtx)
 	}
 	stampPatternTypeScale(grid, mode)
+	stampPatternMeasureFonts(grid, jsonschema.MeasureFonts{Major: expandCtx.Theme.TitleFont, Minor: expandCtx.Theme.BodyFont})
 
 	// Optional PostExpandWarner interface: patterns can surface structured
 	// warning strings (e.g. CHART_PLACEHOLDER_EMPTY) describing known-degraded
@@ -191,6 +192,28 @@ func stampPatternTypeScale(grid *jsonschema.ShapeGridInput, mode string) {
 				cell.Composite.Text.TypeScale = mode
 			}
 			stampPatternTypeScale(cell.Grid, mode)
+		}
+	}
+}
+
+// stampPatternMeasureFonts records on every shape of an expanded grid the
+// theme typefaces the pattern sized its text in, so the writer measures the
+// stored autofit shrink in the same face (go-slide-creator-ohhb2). Per shape,
+// like the type-scale stamp, because compose flattens segment grids. A shape
+// already stamped (a nested cell pattern) keeps its own.
+func stampPatternMeasureFonts(grid *jsonschema.ShapeGridInput, fonts jsonschema.MeasureFonts) {
+	if grid == nil || fonts == (jsonschema.MeasureFonts{}) {
+		return
+	}
+	for i := range grid.Rows {
+		for _, cell := range grid.Rows[i].Cells {
+			if cell == nil {
+				continue
+			}
+			if cell.Shape != nil && cell.Shape.MeasureFonts == (jsonschema.MeasureFonts{}) {
+				cell.Shape.MeasureFonts = fonts
+			}
+			stampPatternMeasureFonts(cell.Grid, fonts)
 		}
 	}
 }

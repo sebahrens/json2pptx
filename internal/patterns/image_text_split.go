@@ -389,7 +389,7 @@ func itsMeasureAt(ctx ExpandContext, v *ImageTextSplitValues, ovr *ImageTextSpli
 	for _, st := range steps {
 		lay.headingSize, lay.bodySize = st[0], st[1]
 		lay.textPt = math.Max(sizedBlockHeightPt(ctx, itsTextParas(v, st[0], st[1]), textW),
-			writtenFitHeightPt(itsTextJSON(ctx, v, lay, "accent1"), textW, 0))
+			writtenFitHeightPt(ctx.themeFonts(), itsTextJSON(ctx, v, lay, "accent1"), textW, 0))
 		column = lay.textPt
 		if lay.metricsPt > 0 {
 			column += ctx.Gap(itsRowGapPt) + itsMetricRowPt(lay) + 2*itsSubGridInsetPt

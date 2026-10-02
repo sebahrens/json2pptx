@@ -71,12 +71,21 @@ func writtenFitShrinks(t *testing.T, p Pattern, font string, w, h float64, value
 		if smallest == 0 {
 			continue
 		}
-		if scale := pptx.AutofitScaleFor(tb, c.Bounds); scale < 1 {
+		if scale := writtenScaleIn(ctx, tb, c.Bounds); scale < 1 {
 			shrinks = append(shrinks, fmt.Sprintf("%q written at %.0fpt × %.0f%% = %.1fpt in a %.0f×%.0fpt shape",
 				firstText(tb), smallest, scale*100, smallest*scale, float64(c.Bounds.CX)/12700, float64(c.Bounds.CY)/12700))
 		}
 	}
 	return warnings, shrinks
+}
+
+// writtenScaleIn is the autofit shrink the writer stores for tb in bounds when
+// the slide's theme is ctx's: the shape grid hands the writer the theme fonts,
+// so a Calibri body is measured in Carlito as pattern sizing measured it
+// (go-slide-creator-ohhb2).
+func writtenScaleIn(ctx ExpandContext, tb *pptx.TextBody, bounds pptx.RectEmu) float64 {
+	tb.ThemeFonts = ctx.themeFonts()
+	return pptx.AutofitScaleFor(tb, bounds)
 }
 
 func hasBodyTooLong(warnings []string) bool {

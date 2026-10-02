@@ -435,7 +435,7 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 		msH := phaseRoadmapMilestoneRowPt(milestoneSize)
 		wraps := false
 		for _, p := range vals.Phases {
-			if p.Milestone != "" && !writtenFitsAt(phaseRoadmapMilestoneText(pptx.ConvertMarkdownEmphasis(p.Milestone), milestoneSize), colW, msH) {
+			if p.Milestone != "" && !writtenFitsAt(ctx.themeFonts(), phaseRoadmapMilestoneText(pptx.ConvertMarkdownEmphasis(p.Milestone), milestoneSize), colW, msH) {
 				wraps = true
 			}
 		}
@@ -872,7 +872,7 @@ func phaseRoadmapDateMinPt(ctx ExpandContext, vals *PhaseRoadmapValues, dateSize
 		if p.DateLabel == "" {
 			continue
 		}
-		need = math.Max(need, writtenFitHeightPt(buildPhaseRoadmapPlainText(p.DateLabel, dateSize, true, "dk1", "ctr"), colW, 0))
+		need = math.Max(need, writtenFitHeightPt(ctx.themeFonts(), buildPhaseRoadmapPlainText(p.DateLabel, dateSize, true, "dk1", "ctr"), colW, 0))
 	}
 	return need
 }

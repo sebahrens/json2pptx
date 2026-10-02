@@ -86,7 +86,7 @@ func panelAuditFloorViolations(t *testing.T, p Pattern, ctx ExpandContext, value
 		if smallest < 12 {
 			continue
 		}
-		if scale := pptx.AutofitScaleFor(tb, c.Bounds); smallest*scale < 12 || (len(unshrunk) > 0 && unshrunk[0] && scale < 1) {
+		if scale := writtenScaleIn(ctx, tb, c.Bounds); smallest*scale < 12 || (len(unshrunk) > 0 && unshrunk[0] && scale < 1) {
 			out = append(out, fmt.Sprintf("%q written at %.0fpt × %.0f%% = %.1fpt in a %.0f×%.0fpt shape",
 				firstText(tb), smallest, scale*100, smallest*scale, float64(c.Bounds.CX)/12700, float64(c.Bounds.CY)/12700))
 		}

@@ -307,11 +307,11 @@ func (p beforeAfterPlan) gridRows() []jsonschema.GridRowInput {
 // widthPt wide. writtenFitHeightPt returns its minPt (0) for text that still
 // shrinks after its longest probe; such text needs more than any content area
 // holds, so it reports rowTextBeyondAreaPt instead of nothing.
-func rowTextNeedPt(text json.RawMessage, widthPt float64) float64 {
+func rowTextNeedPt(fonts pptx.ThemeFonts, text json.RawMessage, widthPt float64) float64 {
 	if len(text) == 0 {
 		return 0
 	}
-	if h := writtenFitHeightPt(text, widthPt, 0); h > 0 {
+	if h := writtenFitHeightPt(fonts, text, widthPt, 0); h > 0 {
 		return h
 	}
 	return rowTextBeyondAreaPt
@@ -319,11 +319,12 @@ func rowTextNeedPt(text json.RawMessage, widthPt float64) float64 {
 
 // writtenFitsAt reports whether the writer stores text in a widthPt × heightPt
 // shape without a shrink.
-func writtenFitsAt(text json.RawMessage, widthPt, heightPt float64) bool {
+func writtenFitsAt(fonts pptx.ThemeFonts, text json.RawMessage, widthPt, heightPt float64) bool {
 	tb, err := shapegrid.ResolveTextInput(text)
 	if err != nil || tb == nil {
 		return true
 	}
+	tb.ThemeFonts = fonts
 	return pptx.AutofitFitsFor(tb, pptx.RectEmu{CX: int64(widthPt * sizingEMUPerPt), CY: int64(heightPt * sizingEMUPerPt)})
 }
 
@@ -381,11 +382,11 @@ func measureBeforeAfter(ctx ExpandContext, vals *BeforeAfterValues, ovr *BeforeA
 	// The header band keeps the model's height when the writer stores both
 	// headers unshrunk there (it clamps a one-line band's margin); otherwise
 	// it grows to their written fit.
-	if !writtenFitsAt(cells.beforeHeader.Shape.Text, colW, headerPt) || !writtenFitsAt(cells.afterHeader.Shape.Text, colW, headerPt) {
-		headerPt = math.Max(headerPt, math.Max(rowTextNeedPt(cells.beforeHeader.Shape.Text, colW), rowTextNeedPt(cells.afterHeader.Shape.Text, colW)))
+	if !writtenFitsAt(ctx.themeFonts(), cells.beforeHeader.Shape.Text, colW, headerPt) || !writtenFitsAt(ctx.themeFonts(), cells.afterHeader.Shape.Text, colW, headerPt) {
+		headerPt = math.Max(headerPt, math.Max(rowTextNeedPt(ctx.themeFonts(), cells.beforeHeader.Shape.Text, colW), rowTextNeedPt(ctx.themeFonts(), cells.afterHeader.Shape.Text, colW)))
 	}
 	plan.headerPt = headerPt
-	plan.bodyNeedPt = math.Max(rowTextNeedPt(cells.beforeBody.Shape.Text, colW), rowTextNeedPt(cells.afterBody.Shape.Text, colW))
+	plan.bodyNeedPt = math.Max(rowTextNeedPt(ctx.themeFonts(), cells.beforeBody.Shape.Text, colW), rowTextNeedPt(ctx.themeFonts(), cells.afterBody.Shape.Text, colW))
 	plan.bodyMaxPt = math.Max(bodyPt, plan.bodyNeedPt)
 	plan.avail = areaH * heightPct / 100
 	plan.need = plan.headerPt + rowGap + plan.bodyNeedPt
@@ -395,7 +396,7 @@ func measureBeforeAfter(ctx ExpandContext, vals *BeforeAfterValues, ovr *BeforeA
 
 // beforeAfterShrinks reports whether the writer would store a shrink for a
 // header or bullet list of plan.
-func beforeAfterShrinks(plan beforeAfterPlan) bool {
+func beforeAfterShrinks(ctx ExpandContext, plan beforeAfterPlan) bool {
 	// Past the fit the header keeps its band and the body takes the rest.
 	bodyH := math.Min(plan.bodyNeedPt, plan.avail-plan.rowGap-plan.headerPt)
 	c := plan.cells
@@ -410,6 +411,7 @@ func beforeAfterShrinks(plan beforeAfterPlan) bool {
 		if err != nil || tb == nil {
 			continue
 		}
+		tb.ThemeFonts = ctx.themeFonts()
 		if !pptx.AutofitFitsFor(tb, pptx.RectEmu{CX: int64(plan.textW * sizingEMUPerPt), CY: int64(cell.h * sizingEMUPerPt)}) {
 			return true
 		}
@@ -428,7 +430,7 @@ func beforeAfterAreaWarning(ctx ExpandContext, vals *BeforeAfterValues, override
 		ovr = &BeforeAfterOverrides{}
 	}
 	plan := beforeAfterLayout(ctx, vals, ovr, nil, v)
-	if plan.fits || !beforeAfterShrinks(plan) {
+	if plan.fits || !beforeAfterShrinks(ctx, plan) {
 		return nil
 	}
 	return []string{fmt.Sprintf("%s: %s headers and bullets need %s at readable sizes but the content area holds about %.0fpt — shorten or merge bullets, use fewer bullets, or split the slide", ErrCodeBodyTooLong, v.name, readableNeedPhrase(plan.need), plan.avail)}

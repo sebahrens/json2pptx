@@ -423,7 +423,7 @@ func bmcRowNeeds(ctx ExpandContext, cells []BMCCell, headerSize, bulletSize floa
 	colW := equalColumnWidthPt(areaW, 5, ctx.Gap(bmcGapPt))
 	need := func(c BMCCell, spanCols int) float64 {
 		w := float64(spanCols)*colW + float64(spanCols-1)*ctx.Gap(bmcGapPt)
-		return writtenFitHeightPt(buildBMCCellContent(c, headerSize, bulletSize, accent), w, 0)
+		return writtenFitHeightPt(ctx.themeFonts(), buildBMCCellContent(c, headerSize, bulletSize, accent), w, 0)
 	}
 	var n [3]float64
 	n[0] = math.Max(need(cells[1], 1), need(cells[4], 1))

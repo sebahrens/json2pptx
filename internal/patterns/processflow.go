@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
 // ---------------------------------------------------------------------------
@@ -271,7 +272,7 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	// before the writer would shrink it below the readable floor
 	// (go-slide-creator-n1muf).
 	_, contentH := contentAreaPt(ctx)
-	need := processFlowWrittenNeedPt(cells, cellW)
+	need := processFlowWrittenNeedPt(ctx.themeFonts(), cells, cellW)
 	rowHeight := processFlowContentHeight(need, cellW, processFlowBoxAspect, rowCap)
 	rowHeight = math.Max(rowHeight, math.Min(need, math.Round(contentH)))
 	row := jsonschema.GridRowInput{
@@ -303,17 +304,17 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 // needs twice the fit of its label at half the step width; measured at the
 // full width, a content-sized row left "Within policy?" to be shrunk by the
 // renderer (go-slide-creator-xb06p).
-func processFlowWrittenNeedPt(cells []*jsonschema.GridCellInput, cellW float64) float64 {
+func processFlowWrittenNeedPt(fonts pptx.ThemeFonts, cells []*jsonschema.GridCellInput, cellW float64) float64 {
 	need := 0.0
 	for _, c := range cells {
 		if c == nil || c.Shape == nil {
 			continue
 		}
 		if c.Shape.Geometry == "diamond" {
-			need = math.Max(need, 2*writtenFitHeightPt(c.Shape.Text, cellW/2, 0))
+			need = math.Max(need, 2*writtenFitHeightPt(fonts, c.Shape.Text, cellW/2, 0))
 			continue
 		}
-		need = math.Max(need, writtenFitHeightPt(c.Shape.Text, cellW, 0))
+		need = math.Max(need, writtenFitHeightPt(fonts, c.Shape.Text, cellW, 0))
 	}
 	return math.Ceil(need)
 }
@@ -330,7 +331,7 @@ func processFlowStepsNeedPt(ctx ExpandContext, steps []ProcessFlowStep, bodySize
 		cellW, _ = processFlowCellSize(ctx, len(steps), false)
 	}
 	_, areaH = contentAreaPt(ctx)
-	return processFlowWrittenNeedPt(cells, cellW), areaH
+	return processFlowWrittenNeedPt(ctx.themeFonts(), cells, cellW), areaH
 }
 
 // processFlowAreaWarning reports steps whose written fit needs more height

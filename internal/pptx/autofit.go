@@ -6,6 +6,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen/fontcache"
 )
 
 // Writing the autofit scale into the shape (go-slide-creator-wvr0).
@@ -19,9 +20,11 @@ import (
 // pixels the client saw.
 
 const (
-	// autofitFontName is the measurement font: Liberation Sans is embedded and
-	// metric-compatible with Arial, so the prediction is host-independent. It
-	// matches internal/textcapacity's budget font.
+	// autofitFontName is the fallback measurement font: Liberation Sans is
+	// embedded and metric-compatible with Arial, so the prediction is
+	// host-independent. It matches internal/textcapacity's budget font. A
+	// body whose text renders in one host-independent theme face is measured
+	// in that face instead (autofitMeasureFont).
 	autofitFontName = "Liberation Sans"
 	// autofitLineSpacing is the line height as a multiple of font size.
 	autofitLineSpacing = 1.2
@@ -71,8 +74,8 @@ func AutofitScaleFor(tb *TextBody, bounds RectEmu) float64 {
 	if !ok {
 		return 1
 	}
-	scale, _ := textfit.AutofitScale(m.paras, m.measureW, m.availablePt, autofitOptions)
-	scale = math.Min(scale, longestWordScale(tb, m.widthEMU))
+	scale, _ := textfit.AutofitScale(m.paras, m.measureW, m.availablePt, autofitOptionsFor(m.face.name))
+	scale = math.Min(scale, longestWordScale(tb, m.widthEMU, m.face))
 	if scale >= 1 {
 		return 1
 	}
@@ -92,18 +95,81 @@ func AutofitFitsFor(tb *TextBody, bounds RectEmu) bool {
 	if !ok {
 		return true
 	}
-	if !textfit.AutofitFits(m.paras, m.measureW, m.availablePt, autofitOptions) {
+	if !textfit.AutofitFits(m.paras, m.measureW, m.availablePt, autofitOptionsFor(m.face.name)) {
 		return false
 	}
-	return longestWordScale(tb, m.widthEMU) >= 1
+	return longestWordScale(tb, m.widthEMU, m.face) >= 1
 }
 
-// autofitOptions is the measurement configuration AutofitScaleFor and
-// AutofitFitsFor share.
-var autofitOptions = textfit.AutofitOptions{
-	FontName:    autofitFontName,
-	LineSpacing: autofitLineSpacing,
-	FloorScale:  autofitFloorScale,
+// autofitOptionsFor is the measurement configuration AutofitScaleFor and
+// AutofitFitsFor share, measuring in font.
+func autofitOptionsFor(font string) textfit.AutofitOptions {
+	return textfit.AutofitOptions{
+		FontName:    font,
+		LineSpacing: autofitLineSpacing,
+		FloorScale:  autofitFloorScale,
+	}
+}
+
+// autofitFace is the face a body's autofit shrink is measured in. exact is
+// true when it is the face the body renders in (or, for Arial, its metric
+// twin), rather than a stand-in for an unknown or host-dependent face.
+type autofitFace struct {
+	name  string
+	exact bool
+}
+
+// autofitMeasureFace returns the face a body's autofit shrink is measured in.
+//
+// Pattern row sizing measures the theme body font through svggen/fontcache —
+// Calibri as its embedded metric clone Carlito — while the writer measured
+// every body in Liberation Sans. Carlito is narrower, so text a pattern sized
+// to fit in N lines needed N+1 in the writer's measure and was written with a
+// stored shrink, or refused below the 12pt floor (go-slide-creator-ohhb2).
+// When every run of the body renders in one theme face that measures the same
+// on every host (fontcache.HostIndependent), the writer measures in that face
+// — the face the pattern measured and the renderer draws. Mixed faces, a face
+// the measurer would have to guess at, or a body with no theme fonts keep the
+// Liberation Sans measure, so the stored bytes never depend on the host.
+func autofitMeasureFace(tb *TextBody) autofitFace {
+	stand := autofitFace{name: autofitFontName}
+	if tb == nil || tb.ThemeFonts == (ThemeFonts{}) {
+		return stand
+	}
+	face := ""
+	for _, p := range tb.Paragraphs {
+		for _, r := range p.Runs {
+			if strings.TrimSpace(r.Text) == "" {
+				continue
+			}
+			f := runTypeface(r.FontFamily, tb.ThemeFonts)
+			if f == "" || (face != "" && !strings.EqualFold(f, face)) {
+				return stand
+			}
+			face = f
+		}
+	}
+	if face == "" || !fontcache.HostIndependent(face) {
+		return stand
+	}
+	if strings.EqualFold(face, "Arial") {
+		// Measured, as before, in its embedded metric twin.
+		return autofitFace{name: autofitFontName, exact: true}
+	}
+	return autofitFace{name: face, exact: true}
+}
+
+// runTypeface resolves a run's latin typeface against the theme fonts: the
+// theme references to their typefaces, an unset typeface to the body font a
+// shape's text inherits, anything else as written.
+func runTypeface(family string, fonts ThemeFonts) string {
+	switch strings.TrimSpace(family) {
+	case "", "+mn-lt":
+		return strings.TrimSpace(fonts.Minor)
+	case "+mj-lt":
+		return strings.TrimSpace(fonts.Major)
+	}
+	return strings.TrimSpace(family)
 }
 
 // autofitInput is the measurable form of a normAutofit body in bounds.
@@ -112,6 +178,7 @@ type autofitInput struct {
 	measureW    int64
 	availablePt float64
 	widthEMU    int64
+	face        autofitFace
 }
 
 // autofitMeasureInput prepares a body for measurement. ok is false when the
@@ -157,7 +224,7 @@ func autofitMeasureInput(tb *TextBody, bounds RectEmu) (autofitInput, bool) {
 		// at its measurement boundary.
 		measureW += 2 * autofitMeasureSideEMU
 	}
-	return autofitInput{paras: paras, measureW: measureW, availablePt: availablePt, widthEMU: widthEMU}, true
+	return autofitInput{paras: paras, measureW: measureW, availablePt: availablePt, widthEMU: widthEMU, face: autofitMeasureFace(tb)}, true
 }
 
 // longestWordScale returns the shrink at which the body's widest word fits
@@ -167,7 +234,13 @@ func autofitMeasureInput(tb *TextBody, bounds RectEmu) (autofitInput, bool) {
 // The shrink never takes text below the readable minimum (a grown label
 // shrinks back toward it; 12pt text does not shrink), and a word that still
 // breaks there is left to the height fit rather than shrunk for nothing.
-func longestWordScale(tb *TextBody, widthEMU int64) float64 {
+//
+// A word measured in a stand-in face keeps autofitWordSafety of the width for
+// the difference to the template's face. Measured in the body's own face it
+// gets the full width and its own weight — the measure pattern sizing fits a
+// KPI value or a label word to (fitSingleLineSize), so a value fitted
+// edge-to-edge is not written shrunk (go-slide-creator-ohhb2).
+func longestWordScale(tb *TextBody, widthEMU int64, face autofitFace) float64 {
 	if tb.Insets == [4]int64{} {
 		widthEMU -= 2 * autofitDefaultInsetLREMU
 	}
@@ -183,18 +256,23 @@ func longestWordScale(tb *TextBody, widthEMU int64) float64 {
 		return 1
 	}
 	floor := math.Max(autofitWordFloorScale, autofitWordMinPt/minPt)
+	safety := autofitWordSafety
+	if face.exact {
+		safety = 1
+	}
 	scale := 1.0
 	for _, p := range tb.Paragraphs {
 		text, pt := paragraphTextAndSize(p)
-		avail := float64(widthEMU-p.MarginL) * autofitWordSafety
+		avail := float64(widthEMU-p.MarginL) * safety
 		if pt <= 0 || avail <= 0 {
 			continue
 		}
+		bold := face.exact && paragraphBold(p)
 		for _, word := range strings.Fields(text) {
 			if len([]rune(word)) < 2 {
 				continue
 			}
-			w, err := textfit.MeasureLineWidth(word, autofitFontName, pt)
+			w, err := textfit.MeasureStyledLineWidth(word, face.name, pt, bold)
 			if err != nil || w <= 0 || float64(w) <= avail {
 				continue
 			}
@@ -204,6 +282,18 @@ func longestWordScale(tb *TextBody, widthEMU int64) float64 {
 		}
 	}
 	return scale
+}
+
+// paragraphBold reports whether any of the paragraph's text is bold — the
+// wider weight, so a mixed paragraph's word is never measured narrower than
+// it renders.
+func paragraphBold(p Paragraph) bool {
+	for _, r := range p.Runs {
+		if r.Bold && strings.TrimSpace(r.Text) != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // SetAutofitScale records a shrink on a normAutofit body. A scale >= 1 leaves
@@ -226,12 +316,20 @@ func SetAutofitScale(tb *TextBody, scale float64) {
 }
 
 // textAreaEMU returns the width and height available to text inside a shape,
-// after the body's insets.
+// after the body's insets, in the text's own direction: rotated text
+// (vert / vert270) runs its lines along the shape's height, so its line
+// measure is the shape's height and its stack the shape's width. Measured
+// unrotated, a matrix-2x2 axis label "Market Growth" in a 69pt-wide side
+// column was written at 92% for a word that fits its 170pt line
+// (go-slide-creator-ohhb2).
 func textAreaEMU(tb *TextBody, bounds RectEmu) (width, height int64) {
 	width, height = bounds.CX, bounds.CY
 	if in := EffectiveTextInsets(tb, bounds); in != [4]int64{} {
 		width -= in[0] + in[2]
 		height -= in[1] + in[3]
+	}
+	if tb.Vert != "" && tb.Vert != "horz" {
+		return height, width
 	}
 	return width, height
 }

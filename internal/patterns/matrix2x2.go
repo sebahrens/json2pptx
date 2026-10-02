@@ -532,7 +532,7 @@ func layoutMatrix2x2(ctx ExpandContext, v *Matrix2x2Values, ovr *Matrix2x2Overri
 		for r, pair := range pairs {
 			lay.needs[r] = 0
 			for _, q := range pair {
-				fit := writtenFitHeightPt(buildMatrix2x2QuadrantContent(q, size, lay.bodySize, "accent1"), quadW, 0)
+				fit := writtenFitHeightPt(ctx.themeFonts(), buildMatrix2x2QuadrantContent(q, size, lay.bodySize, "accent1"), quadW, 0)
 				lay.needs[r] = math.Max(lay.needs[r], matrix2x2QuadrantNeedPt(fit, quadW, q.Icon != nil && !q.Icon.IsEmpty()))
 			}
 		}

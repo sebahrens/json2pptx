@@ -335,7 +335,7 @@ func (a *archStack) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	need := 0.0
 	for _, row := range rows {
 		if c := row.Cells[0]; c != nil && c.Shape != nil {
-			need = math.Max(need, writtenFitHeightPt(c.Shape.Text, tierW, 0))
+			need = math.Max(need, writtenFitHeightPt(ctx.themeFonts(), c.Shape.Text, tierW, 0))
 		}
 	}
 	if need > 0 && contentH > 0 {

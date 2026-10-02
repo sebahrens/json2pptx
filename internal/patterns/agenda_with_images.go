@@ -513,7 +513,7 @@ func agendaWithImagesFit(ctx ExpandContext, v *AgendaWithImagesValues, ovr *Agen
 		needs = make([]float64, len(v.Items))
 		total = fixed
 		for i, item := range v.Items {
-			needs[i] = writtenFitHeightPt(buildAgendaWithImagesTitleText(item.Title, item.Subtitle, size, subtitleSize), titleW, 0)
+			needs[i] = writtenFitHeightPt(ctx.themeFonts(), buildAgendaWithImagesTitleText(item.Title, item.Subtitle, size, subtitleSize), titleW, 0)
 			total += needs[i]
 		}
 		if total <= areaH {

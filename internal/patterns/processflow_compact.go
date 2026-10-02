@@ -246,7 +246,7 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 	// steps (go-slide-creator-xb06p). The cap gives way to the written fit of
 	// the tallest label (never past the content area) before the writer would
 	// shrink it below the readable floor (go-slide-creator-n1muf).
-	need := processFlowWrittenNeedPt(cells, cellW)
+	need := processFlowWrittenNeedPt(ctx.themeFonts(), cells, cellW)
 	bandHeight := processFlowContentHeight(need, cellW, processFlowCompactBoxAspect, bandCap)
 	bandHeight = math.Max(bandHeight, math.Min(need, contentHeight))
 	bandHeightPct := processFlowCompactHeightPct

@@ -479,7 +479,7 @@ func measureTimelineDots(ctx ExpandContext, stops TimelineHorizontalValues, ovr 
 		}}
 		dateH = math.Max(dateH, textBlockHeightPt(font, textW, textParagraph{text: stop.Date, size: dateSize, bold: true}))
 		if stop.Date != "" {
-			dateNeed = math.Max(dateNeed, writtenFitHeightPt(text, colW, 0))
+			dateNeed = math.Max(dateNeed, writtenFitHeightPt(ctx.themeFonts(), text, colW, 0))
 		}
 	}
 	fit.stopAvailPt = contentH - timelineDotSizePt - ctx.Gap(timelineDotsRowGapPt)
@@ -516,7 +516,7 @@ func measureTimelineDots(ctx ExpandContext, stops TimelineHorizontalValues, ovr 
 			labelH = math.Max(labelH, textBlockHeightPt(font, textW,
 				textParagraph{text: stop.Label, size: labelSize, bold: true},
 				textParagraph{text: stop.Body, size: bodySize}))
-			fit.stopNeedPt = math.Max(fit.stopNeedPt, writtenFitHeightPt(cell.Shape.Text, colW, 0))
+			fit.stopNeedPt = math.Max(fit.stopNeedPt, writtenFitHeightPt(ctx.themeFonts(), cell.Shape.Text, colW, 0))
 		}
 		stopH := math.Min(labelH+pad, contentH*timelineStopMaxHeightFrac)
 		fit.modelStopPt = math.Round(math.Max(stopH, labelSize*contentLineHeight+pad))
@@ -701,7 +701,7 @@ func timelineChevronRowFit(ctx ExpandContext, cells []*jsonschema.GridCellInput,
 	fit := timelineRowFit{capPt: math.Round(contentH * timelineChevronMaxHeightFrac), availPt: math.Floor(contentH - dateRowPt - ctx.Gap(timelineChevronResolvedGapPt))}
 	for _, c := range cells {
 		if c != nil && c.Shape != nil {
-			fit.needPt = math.Max(fit.needPt, writtenFitHeightPt(c.Shape.Text, colW, 0))
+			fit.needPt = math.Max(fit.needPt, writtenFitHeightPt(ctx.themeFonts(), c.Shape.Text, colW, 0))
 		}
 	}
 	fit.rowPt = fit.capPt
@@ -866,7 +866,7 @@ func timelineGanttRowFit(ctx ExpandContext, rows []jsonschema.GridRowInput, labe
 			}
 			line := largestRunPt(tb) * contentLineHeight
 			oneLine = math.Max(oneLine, line)
-			if need := writtenFitHeightPt(c.Shape.Text, widths[j], 0); need > math.Ceil(2*defaultShapeInsetTBPt+line) {
+			if need := writtenFitHeightPt(ctx.themeFonts(), c.Shape.Text, widths[j], 0); need > math.Ceil(2*defaultShapeInsetTBPt+line) {
 				fit.needs[i] = math.Max(fit.needs[i], need)
 			}
 		}

@@ -440,8 +440,8 @@ func scqaRowNeeds(ctx ExpandContext, specs []struct {
 	labelW, contentW := scqaColumnWidthsPt(ctx, areaW, label.weight)
 	needs := make([]float64, len(specs))
 	for i, s := range specs {
-		needs[i] = math.Max(writtenFitHeightPt(buildSCQALabelText(s.label, label.size), labelW, 0),
-			writtenFitHeightPt(buildSCQAContentText(s.body, bodySize), contentW, 0))
+		needs[i] = math.Max(writtenFitHeightPt(ctx.themeFonts(), buildSCQALabelText(s.label, label.size), labelW, 0),
+			writtenFitHeightPt(ctx.themeFonts(), buildSCQAContentText(s.body, bodySize), contentW, 0))
 	}
 	return needs, areaH - float64(len(specs)-1)*ctx.Gap(scqaRowGapPt)
 }

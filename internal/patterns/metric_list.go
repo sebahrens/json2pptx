@@ -397,8 +397,8 @@ func measureMetricList(ctx ExpandContext, vals *MetricListValues, cols []float64
 		row = math.Max(row, sizedBlockHeightPt(ctx, paras, textFrameW))
 		// The row is never below what the writer needs to store the text
 		// unshrunk at the real column widths (go-slide-creator-k3eb3).
-		row = math.Max(row, writtenFitHeightPt(metricListTextJSON(it, labelSize, lay.detailSize, "dk2", "dk1"), textFrameW, 0))
-		row = math.Max(row, writtenFitHeightPt(metricListValueJSON(it.Value, size, "dk1"), valueColW, 0))
+		row = math.Max(row, writtenFitHeightPt(ctx.themeFonts(), metricListTextJSON(it, labelSize, lay.detailSize, "dk2", "dk1"), textFrameW, 0))
+		row = math.Max(row, writtenFitHeightPt(ctx.themeFonts(), metricListValueJSON(it.Value, size, "dk1"), valueColW, 0))
 	}
 	lay.rowPt = math.Ceil(row)
 	if strings.TrimSpace(vals.Callout) != "" {
