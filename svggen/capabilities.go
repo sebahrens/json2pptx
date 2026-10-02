@@ -135,6 +135,17 @@ func ChartCapabilities() []ChartCapability {
 			Status:            "ready",
 		},
 		{
+			Type:              "small_multiples",
+			MaxSeries:         intPtr(SmallMultiplesMaxPanels),
+			MaxPoints:         intPtr(5000),
+			MaxCategories:     intPtr(200),
+			SupportsNegatives: boolPtr(true),
+			SupportsLogScale:  boolPtr(false),
+			LabelStrategy:     strPtr("2–6 line panels, one per named series, over the shared categories; every panel has the same plot size and ONE y domain computed from all panels (equal values at equal heights, magnitudes compare), y tick labels on the left column only, one tick precision, category labels under every panel; data.y_scale \"independent\" gives each panel its own axis and prints \"Independent y-axes ... compare shapes, not levels\" under the title; data.highlight greys the other panels"),
+			DensityBehavior:   strPtr("the grid (columns x rows) is chosen so every panel keeps a 3-tick plot height, category labels that fit their band and a panel title that fits its width; when no grid does, chart.plot_area_collapsed (shrink_or_split, fix truncate_or_split with max_panels_per_slide) — split the panels across slides or enlarge the chart; more than 6 panels or fewer than 2 fail validation"),
+			Status:            "ready",
+		},
+		{
 			Type:              "pie",
 			MaxSeries:         intPtr(1),
 			MaxPoints:         intPtr(5000),

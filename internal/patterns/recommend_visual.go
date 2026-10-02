@@ -182,6 +182,7 @@ var chartRules = []chartRule{
 	// Trend / time-series
 	{chartType: "line", keywords: []string{"trend", "time series", "over time", "monthly", "quarterly", "yearly", "growth", "decline", "trajectory", "evolves", "evolution"}, baseScore: 0.90, rationale: "Line chart for showing trends over time"},
 	{chartType: "area", keywords: []string{"area", "cumulative", "volume over time", "stacked area"}, baseScore: 0.85, rationale: "Area chart for cumulative or volume trends"},
+	{chartType: "small_multiples", keywords: []string{"small multiples", "small multiple", "facet", "faceted", "panel per", "one chart per", "per region trend", "trend by region", "trends by segment"}, baseScore: 0.91, rationale: "Small multiples: one line panel per series on a shared y scale, so each trend reads alone and magnitudes still compare", needsMultiSeries: true},
 	{chartType: "stacked_area", keywords: []string{"stacked area", "composition over time", "mix over time"}, baseScore: 0.88, rationale: "Stacked area for showing composition changes over time"},
 
 	// Comparison
