@@ -151,7 +151,10 @@ only when they really belong to different groups.
 
 ## Raw planning
 
-The storyline rules (QUALITY.md) are the same on this path. `plan_deck`
+The storyline rules (QUALITY.md) are the same on this path. Region clauses
+("left a chart; upper right a KPI; lower right a timeline") plan one
+`composition` slide whose skeleton is a `shape_grid` with `regions[]` cell
+paths (see `unsupported_regions[]`). `plan_deck`
 (default `format: "raw"`) returns ordered slides with a canonical `layout`
 (`title` first, `closing` last, `blank-title` + a pattern between), a
 `recommended_pattern`, `suggested_pattern_fallback`, narrative role and

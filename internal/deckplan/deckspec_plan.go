@@ -45,6 +45,10 @@ type DeckSpecPlan struct {
 	Slots []DeckSpecSlot `json:"slots"`
 	// UnplacedFacts lists brief facts no slot had room for. Always present.
 	UnplacedFacts []string `json:"unplaced_facts"`
+	// UnsupportedRegions lists same-slide region requirements the draft could
+	// not honour as asked (an unknown visual, or positions outside the
+	// supported arrangements), each with the reason (go-slide-creator-vae7f).
+	UnsupportedRegions []UnsupportedRegion `json:"unsupported_regions,omitempty"`
 	// BudgetNote explains a draft shorter than slide_budget: the narrative
 	// is not padded with repeated evidence slides.
 	BudgetNote          string `json:"budget_note,omitempty"`
@@ -95,6 +99,9 @@ type DeckSpecSlot struct {
 	// draft and the backup slides): reference pages after the close, not part
 	// of the argument.
 	Appendix bool `json:"appendix,omitempty"`
+	// Regions describes the drafted regions of a mixed-region slot (kind
+	// regions): each region's path, position, role, kind and facts.
+	Regions []RegionSlot `json:"regions,omitempty"`
 }
 
 // deckSpecSlotDef is one narrative slot of the storyline.
@@ -219,7 +226,7 @@ func readBriefSignals(brief, audience string, facts []briefFact) briefSignals {
 // storylineSlots drafts the narrative for the brief: every admitted slot in
 // narrative order, and each slot's admission priority (lower is kept first
 // when the budget is short).
-func storylineSlots(sig briefSignals) (ordered []deckSpecSlotDef, priority map[string]int) {
+func storylineSlots(sig briefSignals, regions bool) (ordered []deckSpecSlotDef, priority map[string]int) {
 	priority = map[string]int{}
 	add := func(rank int, def deckSpecSlotDef) {
 		ordered = append(ordered, def)
@@ -256,6 +263,14 @@ func storylineSlots(sig briefSignals) (ordered []deckSpecSlotDef, priority map[s
 	evidence := min(sig.series, maxEvidenceSlots)
 	for i := 0; i < evidence; i++ {
 		add(7, deckSpecSlotDef{"evidence", "chart_insight", "One chart that proves one claim: the title states the claim with its number; set takeaway and source; never invent data.", 1, chapterSituation})
+	}
+
+	// A slide the brief laid out in regions is the slide it asked for by
+	// name: it ranks with the close, so a short budget keeps it
+	// (go-slide-creator-vae7f). Its facts come from the region clauses, not
+	// from routing.
+	if regions {
+		add(1, deckSpecSlotDef{"regions", "regions", regionsGuidance, 0, chapterSituation})
 	}
 
 	if sig.problem && !sig.customers {
@@ -497,9 +512,17 @@ func chapterDraft(ordered []deckSpecSlotDef, priority map[string]int, budget int
 // slide budget. See DeckSpecPlan for how the brief shapes the storyline.
 func BuildDeckSpecPlan(p Params) *DeckSpecPlan {
 	budget := p.SlideBudget
-	facts := extractBriefFacts(p.Brief)
-	sig := readBriefSignals(p.Brief, p.Audience, facts)
-	full, priority := storylineSlots(sig)
+	// Region clauses ("left two-thirds a line chart …; upper right a KPI")
+	// become one regions slide; the rest of the brief is planned as before
+	// (go-slide-creator-vae7f).
+	req := parseRegionRequest(p.Brief)
+	brief := p.Brief
+	if req != nil {
+		brief = req.remainder
+	}
+	facts := extractBriefFacts(brief)
+	sig := readBriefSignals(brief, p.Audience, facts)
+	full, priority := storylineSlots(sig, req.draftable())
 
 	ordered := fitToBudget(full, priority, budget)
 	var secs []draftSection
@@ -512,6 +535,11 @@ func BuildDeckSpecPlan(p Params) *DeckSpecPlan {
 		slots[i] = DeckSpecSlot{SlideIndex: i, Slot: s.slot, Kind: s.kind, Guidance: s.guidance}
 	}
 	unplaced := routeDeckSpecFacts(ordered, slots, facts)
+	for i := range slots {
+		if slots[i].Slot == "regions" {
+			slots[i].Facts = req.facts()
+		}
+	}
 
 	topic := deckTopic(p.Brief)
 	meta := map[string]any{"title": topic, "date": patterns.FillPlaceholder}
@@ -532,6 +560,9 @@ func BuildDeckSpecPlan(p Params) *DeckSpecPlan {
 	meta["chrome"] = chrome
 
 	slideFor := func(s deckSpecSlotDef) map[string]any {
+		if s.slot == "regions" {
+			return req.draftBody()
+		}
 		slide := map[string]any{"kind": s.kind, "title": patterns.FillPlaceholder}
 		if s.slot == "cover" {
 			slide["title"] = topic
@@ -560,6 +591,12 @@ func BuildDeckSpecPlan(p Params) *DeckSpecPlan {
 		draft.Structure = draftStructure(ordered, secs, backMatter, slots, slideFor)
 	}
 
+	for i := range slots {
+		if slots[i].Slot == "regions" {
+			path := slots[i].Path
+			slots[i].Regions = req.regionSlots(func(k int) string { return fmt.Sprintf("%s.regions[%d]", path, k) })
+		}
+	}
 	plan := &DeckSpecPlan{
 		Format:        FormatDeckSpec,
 		Brief:         p.Brief,
@@ -567,6 +604,9 @@ func BuildDeckSpecPlan(p Params) *DeckSpecPlan {
 		DeckSpec:      draft,
 		Slots:         slots,
 		UnplacedFacts: unplaced,
+	}
+	if req != nil {
+		plan.UnsupportedRegions = req.unsupported
 	}
 	if rendered < budget {
 		plan.BudgetNote = fmt.Sprintf("The storyline needs %d of the %d slides: it is not padded with repeated evidence slides. Add a slide only for a claim the brief can prove.", rendered, budget)

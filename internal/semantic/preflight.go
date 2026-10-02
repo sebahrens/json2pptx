@@ -11,6 +11,7 @@ package semantic
 // because emitting known-invalid raw JSON guarantees a later render failure.
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
@@ -31,6 +32,12 @@ func preflightRawPatterns(input *deckinput.PresentationInput, sm *SourceMap) []d
 	var out []diagnostics.Diagnostic
 	for oi := range input.Slides {
 		slide := &input.Slides[oi]
+		if slide.ShapeGrid != nil {
+			// A pattern nested in a grid cell (a regions slide's stat or
+			// timeline) passes the same gate at expansion, and its finding
+			// belongs to the region that wrote it (go-slide-creator-fn2ka).
+			out = append(out, preflightNestedPatterns(slide.ShapeGrid, fmt.Sprintf("slides[%d].shape_grid", oi), sm)...)
+		}
 		if slide.Pattern == nil {
 			continue
 		}
@@ -41,6 +48,34 @@ func preflightRawPatterns(input *deckinput.PresentationInput, sm *SourceMap) []d
 		rawPrefix := fmt.Sprintf("slides[%d].pattern", oi)
 		for _, d := range diagnostics.FromJoinedError(err, diagnostics.CodeInvalidSlide) {
 			out = append(out, remapPreflightDiagnostic(d, rawPrefix, sm))
+		}
+	}
+	return out
+}
+
+// preflightNestedPatterns validates every pattern nested in a grid cell (at
+// any depth) and remaps each failure to the semantic source.
+func preflightNestedPatterns(grid *deckinput.ShapeGridInput, prefix string, sm *SourceMap) []diagnostics.Diagnostic {
+	var out []diagnostics.Diagnostic
+	for ri, row := range grid.Rows {
+		for ci, cell := range row.Cells {
+			if cell == nil {
+				continue
+			}
+			cellPath := fmt.Sprintf("%s.rows[%d].cells[%d]", prefix, ri, ci)
+			if len(cell.Pattern) > 0 {
+				var p deckinput.PatternInput
+				if err := json.Unmarshal(cell.Pattern, &p); err == nil {
+					if verr := deckinput.ValidatePattern(&p, patterns.Default()); verr != nil {
+						for _, d := range diagnostics.FromJoinedError(verr, diagnostics.CodeInvalidSlide) {
+							out = append(out, remapPreflightDiagnostic(d, cellPath+".pattern", sm))
+						}
+					}
+				}
+			}
+			if cell.Grid != nil {
+				out = append(out, preflightNestedPatterns(cell.Grid, cellPath+".grid", sm)...)
+			}
 		}
 	}
 	return out

@@ -61,6 +61,10 @@ const (
 	KindNextSteps SlideKind = "next_steps"
 	// KindClosing is the closing slide.
 	KindClosing SlideKind = "closing"
+	// KindRegions is one slide split into 2–3 typed regions (chart, stat,
+	// kpis, table, timeline, image, text) under one title, in a bounded
+	// arrangement with explicit proportions (go-slide-creator-fn2ka).
+	KindRegions SlideKind = "regions"
 	// KindRawJSON2pptx is an escape hatch carrying a raw json2pptx slide
 	// payload verbatim, bypassing the semantic abstraction.
 	KindRawJSON2pptx SlideKind = "raw_json2pptx"
@@ -256,6 +260,17 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		Summary:        "Plain closing slide on the template's own closing layout (a title of at most ~40 characters and a subtitle), or a content slide with a few bullets. A consulting deck should close on next_steps instead; keep this for a Q&A or contact page.",
 		RequiredFields: []string{"title"},
 		TypicalFields:  []string{"subtitle"},
+	},
+	KindRegions: {
+		Kind: KindRegions,
+		Summary: "One slide, one title, 2–3 typed regions: the chart on the left with the KPI and the timeline stacked on the right. " +
+			"arrangement is columns or rows (2–3 regions; size_pct is each one's width / height) or main_left / main_right / main_top / main_bottom " +
+			"(exactly 3: regions[0] is the main region and its size_pct its share, default 60; regions[1..2] stack beside it and split that side by their own size_pct). " +
+			"Each region is {kind, size_pct?, heading?, source?, …} with kind chart (chart, unit), stat (value, label, unit, context), kpis (2–4 kpis), " +
+			"table (headers, rows; ≤4 columns × 5 rows), timeline (3–7 milestones), image (image, caption) or text (body, bullets) — the fields of the like-named slide kind. " +
+			"Region sources join the slide's source line. Use it only when the content types must be read together; one kind per slide stays the default.",
+		RequiredFields: []string{"regions"},
+		TypicalFields:  []string{"title", "arrangement", "takeaway", "source"},
 	},
 	KindRawJSON2pptx: {
 		Kind:           KindRawJSON2pptx,

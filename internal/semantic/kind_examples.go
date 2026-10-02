@@ -49,6 +49,28 @@ var kindExamples = map[SlideKind]map[string]any{
 			map[string]any{"name": "Priya Raman", "role": "Data lead", "bio": "Owns the reconciliation model and the migration waves."},
 		},
 	},
+	KindRegions: {
+		"kind":        "regions",
+		"title":       "Revenue growth funds the launch at a 32% gross margin",
+		"arrangement": "main_left",
+		"regions": []any{
+			map[string]any{
+				"kind": "chart", "size_pct": 65, "heading": "Quarterly revenue", "unit": "€m",
+				"chart": map[string]any{"type": "line_chart", "data": map[string]any{
+					"categories": []any{"Q1", "Q2", "Q3", "Q4"},
+					"series":     []any{map[string]any{"name": "Revenue", "values": []any{12, 14, 17, 21}}},
+				}},
+			},
+			map[string]any{"kind": "stat", "size_pct": 40, "value": "32%", "label": "Gross margin, Q4"},
+			map[string]any{"kind": "timeline", "size_pct": 60, "heading": "Launch plan", "milestones": []any{
+				map[string]any{"label": "Design", "date": "Oct"},
+				map[string]any{"label": "Pilot", "date": "Nov"},
+				map[string]any{"label": "Rollout", "date": "Dec"},
+			}},
+		},
+		"source":   "Finance ledger, FY26",
+		"takeaway": "Revenue nearly doubled in a year; the margin pays for the rollout.",
+	},
 	KindStat: {
 		"kind":     "stat",
 		"title":    "The prize",

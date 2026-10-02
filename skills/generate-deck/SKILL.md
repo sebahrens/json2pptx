@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.157.0
+schema_version: 4.159.0
 description: >-
   Create or revise PowerPoint decks with json2pptx. Use for presentation and
   slide-deck requests that need template-aware authoring, validation, rendering,
@@ -74,11 +74,17 @@ panel family, ...) also render as editable shapes in a `shape_grid` cell or
 `compose` segment — `get_diagram_capabilities` reports each placement's real
 `pipeline` — and a region too small for their text is refused with
 `DIAGRAM_REGION_TOO_SMALL` (`fix.params.min_width_emu` / `min_height_emu`).
-Read [DECKSPEC.md](DECKSPEC.md) for budgets,
+When one slide must show different content
+types together (chart left, KPI and timeline right), use `kind: regions`
+(2–3 typed chart / stat / kpis / table / timeline / image / text regions in
+a bounded arrangement with `size_pct` shares) before reaching for a raw compose;
+`plan_deck` drafts it from region clauses ("left a chart; upper right a
+KPI") and lists what it could not in `unsupported_regions`. Read [DECKSPEC.md](DECKSPEC.md) for budgets,
 degradation, required-layout coverage, handles, and revision rules.
 
 Several views proving one title (chart, KPIs, dated plan) may share a slide;
-unrelated conclusions get separate slides. Make only that slide
+unrelated conclusions get separate slides. Prefer `kind: regions`; only when
+its region kinds cannot express the slide, make that one slide
 `raw_json2pptx`, starting from `list_slide_kinds` `kinds:["raw_json2pptx"]` →
 `composed_example`; [WORKFLOW.md](WORKFLOW.md) → spatial planning has the rules.
 

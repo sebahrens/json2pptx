@@ -223,12 +223,21 @@ func kindVariantSchemas() map[string]any {
 // for lists / objects the closed entry / key schema the compiler reads.
 func payloadFieldSchema(f payloadField, role string) map[string]any {
 	s := map[string]any{"type": f.typ}
+	if f.schema != nil {
+		s = f.schema()
+	}
 	desc := f.desc
 	if role != "" {
 		desc = strings.TrimSpace(role + " " + desc)
 	}
 	if desc != "" {
 		s["description"] = desc
+	}
+	if f.schema != nil {
+		return s
+	}
+	if len(f.enum) > 0 {
+		s["enum"] = stringEnum(f.enum)
 	}
 	switch f.typ {
 	case "array":

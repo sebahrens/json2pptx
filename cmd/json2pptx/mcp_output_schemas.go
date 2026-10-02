@@ -2062,8 +2062,9 @@ var outputSchemaPlanDeck = json.RawMessage(`{
         "type": "object",
         "properties": {
           "slide_index":          {"type": "integer"},
-          "narrative_role":       {"type": "string", "enum": ["opening", "evidence", "comparison", "emphasis", "framework", "closing"]},
-          "recommended_pattern":  {"type": "string", "description": "Pattern for this slide; empty string for the title (opening) and closing slides, which use a structural layout with no pattern."},
+          "narrative_role":       {"type": "string", "enum": ["opening", "evidence", "comparison", "emphasis", "framework", "composition", "closing"], "description": "composition: the slide the brief laid out in regions (see regions)."},
+          "recommended_pattern":  {"type": "string", "description": "Pattern for this slide; empty string for the title (opening) and closing slides, which use a structural layout with no pattern, and for a composition slide, whose skeleton is a shape_grid of regions."},
+          "regions":              {"type": "array", "description": "composition slides only: one entry per region of the skeleton's shape_grid, in regions order (main first).", "items": {"type": "object", "properties": {"path": {"type": "string", "description": "Where the region lives: deck_spec slides[i].regions[k] (format:\"deckspec\") or the raw skeleton's shape_grid cell path."}, "position": {"type": "string", "description": "The brief's placement: left, right, top, bottom, upper/lower left/right, centre."}, "role": {"type": "string", "enum": ["main", "supporting"]}, "kind": {"type": "string", "enum": ["chart", "stat", "kpis", "table", "timeline", "image", "text"]}, "visual": {"type": "string", "description": "The brief's own words for the visual."}, "size_pct": {"type": "number", "description": "The share the brief gave the region, when it gave one."}, "facts": {"type": "array", "items": {"type": "string"}, "description": "The brief clause that placed this region, verbatim."}}, "required": ["path", "position", "role", "kind", "visual", "facts"]}},
           "layout":               {"type": "string", "description": "Canonical layout_id for the slide: \"title\" (opening), \"closing\" (closing), \"blank-title\" (every pattern slide). Always equals skeleton.layout_id."},
           "content_seed":         {"type": "string", "description": "Hint of what belongs on the slide. When brief facts were routed here they are prefixed verbatim, joined by '; ', before an em dash and the role hint."},
           "facts":                {"type": "array", "items": {"type": "string"}, "description": "Brief facts (quantity / named-entity clauses, verbatim) routed to this slide. Quantities go to KPI / stat / chart patterns first. Omitted when none; never set on title/closing slides."},
@@ -2135,17 +2136,19 @@ var outputSchemaPlanDeck = json.RawMessage(`{
         "properties": {
           "slide_index": {"type": "integer"},
           "path":        {"type": "string", "description": "Where the slide lives in deck_spec: slides[i], structure.cover, structure.sections[s].slides[i] or structure.closing."},
-          "slot":        {"type": "string", "enum": ["cover", "answer", "context", "problem", "highlights", "evidence", "cause", "options", "plan", "roadmap", "ask", "closing", "appendix", "backup", "methodology"], "description": "appendix is a flat draft's appendix divider; backup and methodology are back-matter slides."},
+          "slot":        {"type": "string", "enum": ["cover", "answer", "context", "problem", "highlights", "evidence", "regions", "cause", "options", "plan", "roadmap", "ask", "closing", "appendix", "backup", "methodology"], "description": "appendix is a flat draft's appendix divider; backup and methodology are back-matter slides; regions is the one slide the brief laid out in regions (kind regions)."},
           "kind":        {"type": "string"},
           "section":     {"type": "string", "description": "The chapter the slide belongs to, for a chaptered draft."},
           "guidance":    {"type": "string", "description": "What the slide must argue."},
           "facts":       {"type": "array", "items": {"type": "string"}, "description": "Brief facts (verbatim) routed to this slot."},
-          "appendix":    {"type": "boolean", "description": "true for back-matter slots (appendix divider, backup slides): reference pages after the close, outside the deck-rhythm checks."}
+          "appendix":    {"type": "boolean", "description": "true for back-matter slots (appendix divider, backup slides): reference pages after the close, outside the deck-rhythm checks."},
+          "regions":     {"type": "array", "description": "regions slot only: each drafted region's path, position, role, kind and facts.", "items": {"type": "object", "properties": {"path": {"type": "string", "description": "Where the region lives: deck_spec slides[i].regions[k] (format:\"deckspec\") or the raw skeleton's shape_grid cell path."}, "position": {"type": "string", "description": "The brief's placement: left, right, top, bottom, upper/lower left/right, centre."}, "role": {"type": "string", "enum": ["main", "supporting"]}, "kind": {"type": "string", "enum": ["chart", "stat", "kpis", "table", "timeline", "image", "text"]}, "visual": {"type": "string", "description": "The brief's own words for the visual."}, "size_pct": {"type": "number", "description": "The share the brief gave the region, when it gave one."}, "facts": {"type": "array", "items": {"type": "string"}, "description": "The brief clause that placed this region, verbatim."}}, "required": ["path", "position", "role", "kind", "visual", "facts"]}}
         },
         "required": ["slide_index", "path", "slot", "kind", "guidance"]
       }
     },
     "budget_note":  {"type": "string", "description": "Why the plan is shorter than slide_budget, when it is."},
+    "unsupported_regions": {"type": "array", "description": "Same-slide region requirements the plan could not draft as asked — a visual no region kind draws (drafted as a text region) or positions outside the supported arrangements (no regions slide; the clauses stay in the brief's facts) — with the reason. Present only when there is one.", "items": {"type": "object", "properties": {"text": {"type": "string"}, "reason": {"type": "string"}}, "required": ["text", "reason"]}},
     "brief":        {"type": "string"},
     "slide_budget":  {"type": "integer"},
     "unplaced_facts": {"type": "array", "items": {"type": "string"}, "description": "Brief facts no slide had capacity for (always present; [] when all placed). Add slides or fold these into existing slides — they are not on any content seed."},

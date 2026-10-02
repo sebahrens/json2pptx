@@ -64,6 +64,7 @@ var kindNeedsTakeaway = map[SlideKind]bool{
 	KindProcess:          true,
 	KindRoadmap:          true,
 	KindDecision:         true,
+	KindRegions:          true,
 }
 
 // shapeKind names the JSON type a kind's compiler expects for a payload field.
@@ -180,6 +181,7 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 		"decisions_label": shapeString, "takeaway": shapeString,
 	},
 	KindClosing: {"title": shapeString, "subtitle": shapeString},
+	KindRegions: {"title": shapeString, "arrangement": shapeString, "regions": shapeArray, "takeaway": shapeString},
 }
 
 // shapeMatches reports whether v has the JSON type the shape expects.
@@ -601,6 +603,16 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 		// so an invalid payload fails fast here instead of compiling to an empty
 		// slide. See validateRawEscapeHatch.
 		validateRawEscapeHatch(path, slide.Body, s)
+	default:
+		validateOtherKind(path, slide, s)
+	}
+}
+
+// validateOtherKind applies the rules of kinds validateKindRules' switch
+// leaves out.
+func validateOtherKind(path string, slide SlideSpec, s *semDiags) {
+	if slide.Kind == KindRegions {
+		validateRegions(path, slide, s)
 	}
 }
 

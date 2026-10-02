@@ -20,7 +20,7 @@ func mcpPlanDeckTool() mcp.Tool {
 
 format:"deckspec" (recommended) returns deck_spec: a DeckSpec draft whose kinds follow the brief (option_matrix before decision for an option evaluation, chart_insight only for a trend, decision only when the brief asks), with meta.chrome page numbers and structure chapters at 8+ slides; plus slots[] (path, guidance, facts) and unplaced_facts. Fill it from list_slide_kinds, then validate_deck_spec → render_deck_spec.
 
-Brief facts are routed verbatim: metrics to KPI / stat / chart slides, to-dos and asks to plan / decision / next steps, dated milestones to the timeline; leftovers in unplaced_facts.
+Brief facts are routed verbatim: metrics to KPI / stat / chart slides, to-dos and asks to plan / decision / next steps, dated milestones to the timeline; leftovers in unplaced_facts. Region clauses ("left a chart; upper right a KPI") draft one regions slide with regions[]; misses: unsupported_regions.
 
 The plan's slides[] are advisory records, NOT SlideInput objects. For a raw deck, copy each slides[i].skeleton (when present) into presentation.slides[], replace its __FILL__ tokens with real content and validate before generating; a slide without a skeleton is authored from its recommended pattern's schema.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaPlanDeck)),

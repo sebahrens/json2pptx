@@ -17,7 +17,11 @@ applies to both paths. Storyline rules are in [QUALITY.md](QUALITY.md).
    brief — `structure` chapters for 8+ slides), `slots[]` with each slot's
    `path`, guidance and routed brief facts, and `unplaced_facts[]` (place
    them; do not drop them). Replace every `__FILL__` (titles, `meta.date`)
-   and fill the fields from `list_slide_kinds`.
+   and fill the fields from `list_slide_kinds`. A brief that places visuals
+   on one slide ("left a line chart; upper right a KPI; lower right a
+   timeline") gets a `regions` slide whose slot lists each region's `path`,
+   `role`, `kind` and clause; read `unsupported_regions[]` for anything it
+   could not draft as asked.
 3. **Template.** `list_templates` gives names, `canonical_layout_ids` and
    `color_roles`. Set `meta.template`; leave `meta.accent_strategy` at
    `primary` unless Phase 2 → Accent monotony says otherwise. Fill with
@@ -68,8 +72,10 @@ Decide per action title, before choosing kinds:
   (the trend, the KPIs that move with it, the dated plan that follows) can sit
   on one slide as regions. A conclusion the title does not state gets its own
   slide (QUALITY.md §3). One visual that proves the title stays the default.
-- **DeckSpec path.** A kind renders one visual and has no region field: keep
-  the DeckSpec as the source and make only that slide `raw_json2pptx`.
+- **DeckSpec path.** Use `kind: regions` (2–3 typed chart / stat / kpis /
+  table / timeline / image / text regions). When those region kinds cannot
+  express the slide (pattern panels, quotes, native diagrams), keep the
+  DeckSpec as the source and make only that slide `raw_json2pptx`.
   `list_slide_kinds` `kinds:["raw_json2pptx"]` returns `composed_example`
   (dominant line chart beside a `metric-list` KPI column, above a
   `timeline-horizontal` footer; action title; `"Illustrative"` source). It

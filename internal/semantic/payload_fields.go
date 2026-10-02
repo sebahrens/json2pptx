@@ -19,6 +19,7 @@ import (
 	"sort"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/semantic/slides"
 )
 
 // payloadField describes one payload key a kind's compiler reads.
@@ -38,6 +39,12 @@ type payloadField struct {
 	// objectKeys lists the keys the compiler reads from an object-valued field.
 	// Nil for an object field means the object is open (validated elsewhere).
 	objectKeys []string
+	// enum restricts a string field to these values.
+	enum []string
+	// schema, when set, builds the field's whole JSON Schema (desc still
+	// supplies its description): the regions list is a union of closed region
+	// variants the generic item rendering cannot express.
+	schema func() map[string]any
 }
 
 // objectTextKeys are the keys stringList reads from an object entry in a
@@ -476,6 +483,14 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"subtitle": strField("Subtitle line."),
 		"bullets":  textList("Optional closing bullets (renders a content slide)."),
 		"points":   textList("Alias for bullets."),
+	}, universalFields()),
+	KindRegions: withFields(map[string]payloadField{
+		"title":    strField("Slide title: the one claim the regions argue together."),
+		"takeaway": strField("One-line takeaway footer."),
+		"arrangement": {typ: "string", enum: slides.RegionArrangements,
+			desc: "columns (default) or rows: 2–3 regions, size_pct is each one's width / height. main_left / main_right / main_top / main_bottom: exactly 3 regions, regions[0] is the main one (size_pct = its share, default 60) and regions[1..2] stack beside it, splitting that side by their own size_pct."},
+		"regions": {typ: "array", schema: regionsSchema,
+			desc: "2–3 typed regions in reading order: {kind, size_pct?, heading?, source?, …kind fields}. Unset size_pct values share what the set ones leave; every region gets 15–85%."},
 	}, universalFields()),
 	KindRawJSON2pptx: withFields(map[string]payloadField{
 		"slide": {typ: "object", desc: "A raw json2pptx slide object (validated strictly as PresentationInput.slides[])."},

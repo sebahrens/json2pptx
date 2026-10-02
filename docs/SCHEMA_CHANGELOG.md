@@ -1,5 +1,55 @@
 # Schema Changelog
 
+- **2026-10-02 — Schema 4.159.0 · plan_deck plans same-slide regions (`go-slide-creator-vae7f`).**
+  - A bounded cue grammar reads region clauses: a segment that starts with a
+    position (left, right, top, bottom, upper/lower left/right, centre),
+    optionally a share ("two-thirds", "half", "a third", "60%,"), and names a
+    visual (chart, KPI / metric, KPIs, timeline, table, image, text). Two or
+    three such clauses in a supported arrangement draft one mixed slide; the
+    clauses (and a lead-in such as "divide the canvas into three regions")
+    are taken out of normal fact routing, so they no longer land on the
+    closing slide or in `unplaced_facts`.
+  - `format:"deckspec"`: a `regions` slot (new slot enum value) drafts a
+    `kind: regions` slide — arrangement, one fillable region per clause,
+    authored shares — and carries `regions[]` {path, position, role
+    (main / supporting), kind, visual, size_pct?, facts}. It ranks with the
+    close, so a short budget keeps it.
+  - `format:"raw"`: a `composition` slide (new `narrative_role`) after the
+    opening, with an empty `recommended_pattern`, a skeleton that is the
+    shape_grid the regions kind compiles to, and `regions[]` with each
+    region's cell path.
+  - New top-level `unsupported_regions[]` {text, reason}: a visual no region
+    kind draws (drafted as a text region) or positions outside the supported
+    arrangements (no regions slide; the clauses are planned as ordinary
+    facts).
+  - Unset region shares now split by kind (a stat takes less than the
+    timeline or table stacked with it, a chart more) instead of equally.
+
+- **2026-10-02 — Schema 4.158.0 · DeckSpec `regions` kind: several typed visuals on one slide (`go-slide-creator-fn2ka`).**
+  - New slide kind **`regions`**: one title, takeaway and source band over
+    2–3 typed regions. `arrangement` is `columns` / `rows` (2–3 regions,
+    `size_pct` = width / height) or `main_left` / `main_right` / `main_top` /
+    `main_bottom` (exactly 3: `regions[0]` is the main region, its
+    `size_pct` its share, default 60; `regions[1..2]` stack beside it). Each
+    region is `{kind, size_pct?, heading?, source?, …}` with kind `chart`,
+    `stat`, `kpis`, `table`, `timeline`, `image` or `text` and the fields of
+    the like-named slide kind. `list_slide_kinds` publishes the kind, its
+    example and an `item_schema` whose `regions` items are a `oneOf` of seven
+    closed region variants; `arrangement` carries an `enum`.
+  - Compiles to one `blank-title` shape grid at the authored shares (svggen
+    chart cells, nested `stat-hero` / `kpi-Nup` / `timeline-horizontal`
+    patterns, native tables, pictures, text boxes); region sources join the
+    slide source line and a data region without one takes `meta.source`.
+  - Every region rule is an error at `slides[i].regions[k].<field>`
+    (`SEMANTIC_UNKNOWN_FIELD`, `SEMANTIC_REQUIRED`, `SEMANTIC_DENSITY`,
+    `SEMANTIC_UNKNOWN_KIND`, chart series checks): a region has no fallback.
+    The post-compile preflight now also validates patterns nested in grid
+    cells, and grid findings (JSON Pointer paths) map back to the region.
+  - A shape-grid table cell too short for its rows reports
+    `table_rows_truncated` (refuse) instead of rendering "…and N more rows"
+    silently. Raw PresentationInput fields are unchanged (fingerprint
+    unchanged).
+
 - **2026-10-02 — Default chart precision keeps small rates true; negative bar labels clear the category names (`go-slide-creator-6te2e`, `-5na8e`).**
   - With no `data.data_labels.format` / `style.value_format`, labels take the
     fewest decimals — one precision per chart, now up to 4 instead of capped

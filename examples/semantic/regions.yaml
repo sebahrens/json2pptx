@@ -1,0 +1,76 @@
+# Mixed-region slides (kind: regions): one title over 2–3 typed regions.
+# Validate:  json2pptx semantic validate --spec examples/semantic/regions.yaml
+# Render:    json2pptx semantic render --spec examples/semantic/regions.yaml --output regions.pptx
+meta:
+  title: Launch review
+  template: midnight-blue
+  date: October 2026
+  source: Finance ledger, FY26
+slides:
+  - kind: title
+    title: Launch review
+    subtitle: Executive committee, October 2026
+
+  # Chart left (65%), the margin KPI over the launch timeline on the right.
+  - kind: regions
+    title: Growth funds the launch at a 32% margin
+    arrangement: main_left
+    regions:
+      - kind: chart
+        size_pct: 65
+        heading: Quarterly revenue
+        unit: €m
+        chart:
+          type: line_chart
+          data:
+            categories: [Q1, Q2, Q3, Q4]
+            series:
+              - name: Revenue
+                values: [12, 14, 17, 21]
+      - kind: stat
+        size_pct: 38
+        value: 32%
+        label: Gross margin, Q4
+      - kind: timeline
+        size_pct: 62
+        heading: Launch plan
+        milestones:
+          - {label: Design, date: Oct}
+          - {label: Pilot, date: Nov}
+          - {label: Rollout, date: Dec}
+    takeaway: Revenue nearly doubled in a year; the margin pays for the rollout.
+
+  # Chart left, the segment table over the narrative on the right.
+  - kind: regions
+    title: Enterprise drives growth; SMB churn is the fix
+    arrangement: main_left
+    regions:
+      - kind: chart
+        size_pct: 50
+        heading: Revenue by segment
+        unit: €m
+        chart:
+          type: bar_chart
+          data:
+            categories: [Q1, Q2, Q3, Q4]
+            series:
+              - name: Enterprise
+                values: [7, 8, 11, 14]
+              - name: SMB
+                values: [5, 6, 6, 7]
+      - kind: table
+        size_pct: 68
+        heading: Q4 by segment
+        headers: [Segment, Revenue, Margin]
+        rows:
+          - [Enterprise, €14m, 36%]
+          - [SMB, €7m, 24%]
+          - [Total, €21m, 32%]
+        column_alignments: [left, right, right]
+        source: Segment P&L, Q4 FY26
+      - kind: text
+        size_pct: 32
+        body: SMB is flat because monthly churn rose to 3.1%.
+        bullets:
+          - Fund an SMB retention pod in Q1
+    takeaway: Enterprise doubled; fixing SMB churn is the cheapest growth left.
