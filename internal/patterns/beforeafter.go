@@ -223,11 +223,11 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	// is below the written fit of its text (go-slide-creator-n1muf).
 	grid := &jsonschema.ShapeGridInput{
 		Columns:       colsJSON,
-		Gap:           beforeAfterFullVariant.gapPt,
+		Gap:           ctx.Gap(beforeAfterFullVariant.gapPt),
 		VerticalAlign: GridVerticalAlignDefault,
 		Rows:          plan.gridRows(),
 	}
-	if plan.rowGap != beforeAfterFullVariant.gapPt {
+	if plan.rowGap != ctx.Gap(beforeAfterFullVariant.gapPt) {
 		grid.RowGap = plan.rowGap
 	}
 	// No stretch-to-fill (go-slide-creator-wntyw): the panels hug their
@@ -349,12 +349,12 @@ func readableNeedPhrase(needPt float64) string {
 func beforeAfterLayout(ctx ExpandContext, vals *BeforeAfterValues, ovr *BeforeAfterOverrides, cellOverrides map[int]any, v beforeAfterVariant) beforeAfterPlan {
 	headerSize := ResolveSize(ovr.HeaderSize, v.headerSize)
 	type step struct{ header, gap, pct float64 }
-	steps := []step{{headerSize, v.gapPt, v.heightPct}, {headerSize, beforeAfterMinRowGapPt, v.heightPct}}
+	steps := []step{{headerSize, ctx.Gap(v.gapPt), v.heightPct}, {headerSize, ctx.Gap(beforeAfterMinRowGapPt), v.heightPct}}
 	if v.growHeight {
-		steps = append(steps, step{headerSize, beforeAfterMinRowGapPt, 100})
+		steps = append(steps, step{headerSize, ctx.Gap(beforeAfterMinRowGapPt), 100})
 	}
 	if ovr.HeaderSize == 0 && v.minHeaderSize < headerSize {
-		steps = append(steps, step{v.minHeaderSize, beforeAfterMinRowGapPt, steps[len(steps)-1].pct})
+		steps = append(steps, step{v.minHeaderSize, ctx.Gap(beforeAfterMinRowGapPt), steps[len(steps)-1].pct})
 	}
 	var first beforeAfterPlan
 	for i, st := range steps {
@@ -374,9 +374,9 @@ func beforeAfterLayout(ctx ExpandContext, vals *BeforeAfterValues, ovr *BeforeAf
 // fit of every header and bullet list at the real column width.
 func measureBeforeAfter(ctx ExpandContext, vals *BeforeAfterValues, ovr *BeforeAfterOverrides, cellOverrides map[int]any, v beforeAfterVariant, headerSize, rowGap, heightPct float64) beforeAfterPlan {
 	cells := buildBeforeAfterCells(ctx, vals, ovr, cellOverrides, headerSize, ResolveSize(ovr.BodySize, v.bodySize))
-	headerPt, bodyPt := beforeAfterFullRowHeights(ctx, cells.beforeHeader.Shape.Text, cells.afterHeader.Shape.Text, cells.beforeBody.Shape.Text, cells.afterBody.Shape.Text, v.gapPt)
+	headerPt, bodyPt := beforeAfterFullRowHeights(ctx, cells.beforeHeader.Shape.Text, cells.afterHeader.Shape.Text, cells.beforeBody.Shape.Text, cells.afterBody.Shape.Text, ctx.Gap(v.gapPt))
 	areaW, areaH := sizingAreaPt(ctx)
-	colW := (areaW - 2*v.gapPt) * 0.45
+	colW := (areaW - 2*ctx.Gap(v.gapPt)) * 0.45
 	plan := beforeAfterPlan{cells: cells, rowGap: rowGap, heightPct: heightPct, textW: colW}
 	// The header band keeps the model's height when the writer stores both
 	// headers unshrunk there (it clamps a one-line band's margin); otherwise

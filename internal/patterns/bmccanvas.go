@@ -401,11 +401,11 @@ func (b *bmcCanvas) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	// is shared in proportion (go-slide-creator-k3eb3).
 	needs := bmcRowNeeds(ctx, bmcCells, headerSize, bulletSize, accent)
 	_, areaH := sizingAreaPt(ctx)
-	floorFlexRowsAtNeeds(rows, needs[:], areaH-2*bmcGapPt)
+	floorFlexRowsAtNeeds(rows, needs[:], areaH-2*ctx.Gap(bmcGapPt))
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(`5`),
-		Gap:     bmcGapPt,
+		Gap:     ctx.Gap(bmcGapPt),
 		Rows:    rows,
 	}
 
@@ -420,9 +420,9 @@ const bmcGapPt = 4.0
 // share rows 0 and 1).
 func bmcRowNeeds(ctx ExpandContext, cells []BMCCell, headerSize, bulletSize float64, accent string) [3]float64 {
 	areaW, _ := sizingAreaPt(ctx)
-	colW := equalColumnWidthPt(areaW, 5, bmcGapPt)
+	colW := equalColumnWidthPt(areaW, 5, ctx.Gap(bmcGapPt))
 	need := func(c BMCCell, spanCols int) float64 {
-		w := float64(spanCols)*colW + float64(spanCols-1)*bmcGapPt
+		w := float64(spanCols)*colW + float64(spanCols-1)*ctx.Gap(bmcGapPt)
 		return writtenFitHeightPt(buildBMCCellContent(c, headerSize, bulletSize, accent), w, 0)
 	}
 	var n [3]float64
@@ -430,7 +430,7 @@ func bmcRowNeeds(ctx ExpandContext, cells []BMCCell, headerSize, bulletSize floa
 	n[1] = math.Max(need(cells[2], 1), need(cells[5], 1))
 	n[2] = math.Max(need(cells[7], 3), need(cells[8], 2))
 	tall := math.Max(need(cells[0], 1), math.Max(need(cells[3], 1), need(cells[6], 1)))
-	if short := tall - (n[0] + n[1] + bmcGapPt); short > 0 {
+	if short := tall - (n[0] + n[1] + ctx.Gap(bmcGapPt)); short > 0 {
 		n[0] += short / 2
 		n[1] += short / 2
 	}
@@ -444,7 +444,7 @@ func bmcMeasuredWarning(ctx ExpandContext, v *BMCCanvasValues, headerSize, bulle
 		v.CustomerRelations, v.Channels, v.CustomerSegments, v.CostStructure, v.RevenueStreams}
 	needs := bmcRowNeeds(ctx, cells, headerSize, bulletSize, "accent1")
 	_, areaH := sizingAreaPt(ctx)
-	total := needs[0] + needs[1] + needs[2] + 2*bmcGapPt
+	total := needs[0] + needs[1] + needs[2] + 2*ctx.Gap(bmcGapPt)
 	if total <= areaH+1 {
 		return ""
 	}

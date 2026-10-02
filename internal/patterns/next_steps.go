@@ -248,6 +248,7 @@ type nextStepsLayout struct {
 	rowPt                                   []float64
 	bandPt                                  float64 // 0 = no decisions band
 	bandGapPt                               float64 // space above the band
+	rowGapPt                                float64 // nextStepsRowGapPt on the template grid
 	decisionSize                            float64
 	numberCol, actionCol, ownerCol, dateCol int
 }
@@ -263,7 +264,7 @@ func (l nextStepsLayout) natural() float64 {
 		h += l.bandGapPt + l.bandPt
 		rows += 2
 	}
-	return h + float64(rows-1)*nextStepsRowGapPt
+	return h + float64(rows-1)*l.rowGapPt
 }
 
 func layoutNextSteps(ctx ExpandContext, vals *NextStepsValues, ovr *NextStepsOverrides) nextStepsLayout {
@@ -280,7 +281,7 @@ func layoutNextSteps(ctx ExpandContext, vals *NextStepsValues, ovr *NextStepsOve
 		// Too tall at this step: the space above the band gives way before
 		// the type steps down.
 		if lay.bandPt > 0 {
-			lay.bandGapPt = nextStepsMinBandGapPt
+			lay.bandGapPt = ctx.Gap(nextStepsMinBandGapPt)
 		}
 		return lay, lay.natural() <= areaH
 	}
@@ -302,7 +303,7 @@ func layoutNextSteps(ctx ExpandContext, vals *NextStepsValues, ovr *NextStepsOve
 
 func measureNextSteps(ctx ExpandContext, vals *NextStepsValues, numberSize, actionSize, metaSize float64) nextStepsLayout {
 	areaW, _ := sizingAreaPt(ctx)
-	lay := nextStepsLayout{numberSize: numberSize, actionSize: actionSize, metaSize: metaSize, decisionSize: actionSize, bandGapPt: nextStepsBandGapPt,
+	lay := nextStepsLayout{numberSize: numberSize, actionSize: actionSize, metaSize: metaSize, decisionSize: actionSize, bandGapPt: ctx.Gap(nextStepsBandGapPt), rowGapPt: ctx.Gap(nextStepsRowGapPt),
 		ownerCol: -1, dateCol: -1}
 	for _, a := range vals.Actions {
 		lay.hasOwner = lay.hasOwner || strings.TrimSpace(a.Owner) != ""
@@ -521,14 +522,14 @@ func (n *nextSteps) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 
 	_, areaH := sizingAreaPt(ctx)
 	if lay.natural() <= areaH {
-		fillCappedRows(ctx, rows, nextStepsRowGapPt, nextStepsMinFillFrac, func(i int) bool { return itemRow[i] })
+		fillCappedRows(ctx, rows, ctx.Gap(nextStepsRowGapPt), nextStepsMinFillFrac, func(i int) bool { return itemRow[i] })
 	}
 
 	colsJSON, _ := json.Marshal(lay.cols)
 	return &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(colsJSON),
 		ColGap:        0.1,
-		RowGap:        nextStepsRowGapPt,
+		RowGap:        ctx.Gap(nextStepsRowGapPt),
 		Rows:          rows,
 		VerticalAlign: GridVerticalAlignDefault,
 	}, nil

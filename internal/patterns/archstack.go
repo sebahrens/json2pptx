@@ -347,8 +347,8 @@ func (a *archStack) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(colsJSON),
-		Gap:           4,
-		RowGap:        4,
+		Gap:           ctx.Gap(4),
+		RowGap:        ctx.Gap(4),
 		Rows:          rows,
 		VerticalAlign: GridVerticalAlignDefault,
 	}

@@ -376,19 +376,19 @@ func sshPlace(ctx ExpandContext, v *StateShiftHubValues, ovr *StateShiftHubOverr
 	lay.headerH = 0
 	if v.hasHeaders() {
 		lay.headerH = headerRowPt(ctx.Theme.BodyFont, []string{v.LeftHeader, v.RightHeader}, sshHeaderPt, lay.headerEdge-2*defaultShapeInsetLRPt)
-		bodyAvail -= lay.headerH + sshRowGapPt
+		bodyAvail -= lay.headerH + ctx.Gap(sshRowGapPt)
 	}
 
 	// First pass at the full gap and the default pitch cap; the frames then
 	// say how tall a row must be. Rows may grow past the cap to hold their
 	// text, and the gaps give way (down to sshMinRowGapPt) before the rows
 	// are squeezed below it.
-	lay.gap = sshRowGapPt
+	lay.gap = ctx.Gap(sshRowGapPt)
 	sshArrange(v, lay, hubD, dxMin, bodyAvail, sshMaxPitchPt)
 	need := lay.itemNeed(ctx)
 	if need > math.Floor(lay.pitch) {
 		if n64 > 1 && (bodyAvail-(n64-1)*lay.gap)/n64 < need {
-			lay.gap = math.Max(sshMinRowGapPt, math.Floor((bodyAvail-n64*need)/(n64-1)))
+			lay.gap = math.Max(ctx.Gap(sshMinRowGapPt), math.Floor((bodyAvail-n64*need)/(n64-1)))
 		}
 		sshArrange(v, lay, hubD, dxMin, bodyAvail, math.Max(sshMaxPitchPt, need))
 		// The arc moved with the pitch; measure the frames it now gives.

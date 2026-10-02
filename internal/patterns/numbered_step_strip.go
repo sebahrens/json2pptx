@@ -493,7 +493,7 @@ func (n *numberedStepStrip) expandChevron(ctx ExpandContext, vals *NumberedStepS
 	rows := []jsonschema.GridRowInput{chevRow}
 	if withBody {
 		descHPt := float64(maxDescLines)*descSize*chevronLineHeight + 2*chevronDescInsetPt
-		totalPt = geo.chevHPt + chevronRowGapPt + descHPt
+		totalPt = geo.chevHPt + ctx.Gap(chevronRowGapPt) + descHPt
 		rows[0].Height = geo.chevHPt / totalPt * 100
 		rows = append(rows, jsonschema.GridRowInput{Cells: descCells})
 	}
@@ -510,7 +510,7 @@ func (n *numberedStepStrip) expandChevron(ctx ExpandContext, vals *NumberedStepS
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
 		Gap:     0,
-		RowGap:  chevronRowGapPt,
+		RowGap:  ctx.Gap(chevronRowGapPt),
 		Rows:    rows,
 		Bounds:  &jsonschema.GridBoundsInput{X: 0, Y: 0, Width: 100, Height: math.Round(heightPct*10) / 10},
 	}
@@ -584,7 +584,7 @@ func chevronStripGeometry(ctx ExpandContext, count int) chevronGeometry {
 	const emuPerPt = 12700.0
 	// Subtract the gaps the renderer puts between the chevrons: the step is
 	// what one chevron actually gets, not its share of the content area.
-	stepW := (float64(w)/emuPerPt - chevronColGapPt*float64(count-1)) / float64(count)
+	stepW := (float64(w)/emuPerPt - ctx.Gap(chevronColGapPt)*float64(count-1)) / float64(count)
 	contentH := float64(h) / emuPerPt
 	chevH := math.Min(stepW*chevronMaxAspectH, contentH*chevronMaxHeightFrac)
 	if chevH < chevronMinHeightPt {
@@ -838,7 +838,7 @@ func (n *numberedStepStrip) expandStackedBox(ctx ExpandContext, vals *NumberedSt
 	}
 	return &jsonschema.ShapeGridInput{
 		Columns: cols,
-		Gap:     stackedBoxColGapPt,
+		Gap:     ctx.Gap(stackedBoxColGapPt),
 		RowGap:  stackedBoxRowGapPt(ctx, rows, weights),
 		Rows:    rows,
 	}
@@ -857,14 +857,14 @@ const (
 // label at 98% autofit, below the body floor (go-slide-creator-n1muf).
 func stackedBoxRowGapPt(ctx ExpandContext, rows []jsonschema.GridRowInput, weights []float64) float64 {
 	if len(rows) < 2 {
-		return stackedBoxRowGapMaxPt
+		return ctx.Gap(stackedBoxRowGapMaxPt)
 	}
 	contentW, contentH := contentAreaPt(ctx)
 	total := 0.0
 	for _, w := range weights {
 		total += w
 	}
-	bodyW := (contentW - stackedBoxColGapPt*float64(len(weights)-1)) * weights[len(weights)-1] / total
+	bodyW := (contentW - ctx.Gap(stackedBoxColGapPt)*float64(len(weights)-1)) * weights[len(weights)-1] / total
 	need := 0.0
 	for _, r := range rows {
 		body := r.Cells[len(r.Cells)-1]
@@ -874,10 +874,10 @@ func stackedBoxRowGapPt(ctx ExpandContext, rows []jsonschema.GridRowInput, weigh
 		need += writtenFitHeightPt(body.Shape.Text, bodyW, 0)
 	}
 	gaps := float64(len(rows) - 1)
-	if need+stackedBoxRowGapMaxPt*gaps <= contentH {
-		return stackedBoxRowGapMaxPt
+	if need+ctx.Gap(stackedBoxRowGapMaxPt)*gaps <= contentH {
+		return ctx.Gap(stackedBoxRowGapMaxPt)
 	}
-	return math.Max(stackedBoxRowGapMinPt, math.Floor((contentH-need)/gaps))
+	return math.Max(ctx.Gap(stackedBoxRowGapMinPt), math.Floor((contentH-need)/gaps))
 }
 
 // numberedStepsHaveIcons reports whether any step carries an icon; the icon
@@ -970,8 +970,8 @@ func (n *numberedStepStrip) expandTOC(ctx ExpandContext, vals *NumberedStepStrip
 	}
 	return &jsonschema.ShapeGridInput{
 		Columns: cols,
-		Gap:     10,
-		RowGap:  6,
+		Gap:     ctx.Gap(10),
+		RowGap:  ctx.Gap(6),
 		Rows:    rows,
 	}
 }

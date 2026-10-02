@@ -193,7 +193,7 @@ func processFlowCompactCellSize(ctx ExpandContext, steps int, pointed bool) (wid
 		steps = 1
 	}
 	contentW, contentH := contentAreaPt(ctx)
-	width = (contentW - processFlowGapPt*float64(steps-1)) / float64(steps)
+	width = (contentW - ctx.Gap(processFlowGapPt)*float64(steps-1)) / float64(steps)
 	height = contentH * processFlowCompactHeightPct / 100
 	if width <= 0 || height <= 0 {
 		return 0, 0
@@ -258,7 +258,7 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 			X: 0, Y: 0, Width: 100, Height: bandHeightPct,
 		},
 		Columns: json.RawMessage(colsJSON),
-		Gap:     processFlowGapPt,
+		Gap:     ctx.Gap(processFlowGapPt),
 		Rows:    []jsonschema.GridRowInput{row},
 		// The compact band is supporting context: it sits under the title
 		// and leaves the space below for other content, instead of floating

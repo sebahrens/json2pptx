@@ -300,7 +300,7 @@ func (d *dualOrgLadder) Expand(ctx ExpandContext, values, overrides any, cellOve
 	// (by the writer's own measure) makes the header give way instead
 	// (go-slide-creator-n1muf).
 	contentW, _ := contentAreaPt(ctx)
-	cardW := (contentW - dualOrgColGapPt) / 2
+	cardW := (contentW - ctx.Gap(dualOrgColGapPt)) / 2
 	bodyMinPt := 0.0
 	for _, row := range v.Rows {
 		for _, c := range []*jsonschema.GridCellInput{
@@ -346,8 +346,8 @@ func (d *dualOrgLadder) Expand(ctx ExpandContext, values, overrides any, cellOve
 	colsJSON, _ := json.Marshal(2)
 	return &jsonschema.ShapeGridInput{
 		Columns: colsJSON,
-		ColGap:  dualOrgColGapPt, // visible gap between the two columns
-		RowGap:  6,
+		ColGap:  ctx.Gap(dualOrgColGapPt), // visible gap between the two columns
+		RowGap:  ctx.Gap(6),
 		Rows:    rows,
 	}, nil
 }

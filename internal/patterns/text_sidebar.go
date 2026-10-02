@@ -292,8 +292,8 @@ func tsMeasure(ctx ExpandContext, v *TextSidebarValues, ovr *TextSidebarOverride
 	areaW, areaH := sizingAreaPt(ctx)
 	lay := tsLayout{sidePct: clampPct(ovr.SidebarWidthPct, tsDefaultSidePct, tsMinSidePct, tsMaxSidePct)}
 	lay.mainPct = 100 - lay.sidePct
-	lay.mainW = (areaW - tsColGapPt) * lay.mainPct / 100
-	lay.sideW = (areaW - tsColGapPt) * lay.sidePct / 100
+	lay.mainW = (areaW - ctx.Gap(tsColGapPt)) * lay.mainPct / 100
+	lay.sideW = (areaW - ctx.Gap(tsColGapPt)) * lay.sidePct / 100
 
 	// Short copy is promoted to 16pt (it must still leave the column
 	// visibly un-crammed); longer copy steps down from 14pt to the floor.
@@ -394,7 +394,7 @@ func (t *textSidebar) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	colsJSON, _ := json.Marshal(cols)
 	return &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
-		ColGap:  tsColGapPt,
+		ColGap:  ctx.Gap(tsColGapPt),
 		Rows:    []jsonschema.GridRowInput{{MinHeight: lay.heightPt, MaxHeight: lay.heightPt, Cells: cells}},
 	}, nil
 }

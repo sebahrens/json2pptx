@@ -528,7 +528,7 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
 		ColGap:  0.01, // columns carry their own inner gutter so bridge lines can cross it
-		RowGap:  4,
+		RowGap:  ctx.Gap(4),
 		Rows:    rows,
 	}
 	return grid, nil

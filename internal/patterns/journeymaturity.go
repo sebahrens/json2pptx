@@ -344,8 +344,8 @@ func (jm *journeyMaturity) Expand(ctx ExpandContext, values, overrides any, cell
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
-		Gap:     8,
-		RowGap:  4,
+		Gap:     ctx.Gap(8),
+		RowGap:  ctx.Gap(4),
 		Rows: []jsonschema.GridRowInput{
 			{
 				Height:    30,

@@ -331,13 +331,13 @@ func (hd *heroDetail) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	grid := &jsonschema.ShapeGridInput{
 		VerticalAlign: GridVerticalAlignDefault,
 		Columns:       json.RawMessage(fmt.Sprintf(`%d`, len(v.Details))),
-		Gap:           heroDetailGapPt,
+		Gap:           ctx.Gap(heroDetailGapPt),
 		Rows: []jsonschema.GridRowInput{
 			{MinHeight: plan.heroNeed, MaxHeight: plan.heroMax, Cells: []*jsonschema.GridCellInput{plan.hero}},
 			{MinHeight: plan.detailMin(), MaxHeight: plan.detailMax, Cells: plan.details},
 		},
 	}
-	if plan.rowGap != heroDetailGapPt {
+	if plan.rowGap != ctx.Gap(heroDetailGapPt) {
 		grid.RowGap = plan.rowGap
 	}
 
@@ -395,19 +395,19 @@ func (hd *heroDetail) layout(ctx ExpandContext, v *HeroDetailValues, ovr *HeroDe
 	_, areaH := sizingAreaPt(ctx)
 	base := len(heroSizes) - 1
 	for i, hs := range heroSizes[:base] {
-		if p := hd.measure(ctx, v, ovr, cellOverrides, hs, label, header, heroDetailGapPt); p.heroNeed <= areaH*heroDetailHeroSharePct/100 {
+		if p := hd.measure(ctx, v, ovr, cellOverrides, hs, label, header, ctx.Gap(heroDetailGapPt)); p.heroNeed <= areaH*heroDetailHeroSharePct/100 {
 			base = i
 			break
 		}
 	}
 	var steps []step
 	for _, hs := range heroSizes[base:] {
-		steps = append(steps, step{hs, label, header, heroDetailGapPt})
+		steps = append(steps, step{hs, label, header, ctx.Gap(heroDetailGapPt)})
 	}
 	last := steps[len(steps)-1]
-	steps = append(steps, step{last.hero, last.label, last.header, heroDetailMinGapPt})
+	steps = append(steps, step{last.hero, last.label, last.header, ctx.Gap(heroDetailMinGapPt)})
 	if ovr.LabelSize == 0 || ovr.HeaderSize == 0 {
-		st := step{last.hero, last.label, last.header, heroDetailMinGapPt}
+		st := step{last.hero, last.label, last.header, ctx.Gap(heroDetailMinGapPt)}
 		if ovr.LabelSize == 0 {
 			st.label = heroDetailMinLabelPt
 		}
@@ -478,7 +478,7 @@ func (hd *heroDetail) measure(ctx ExpandContext, v *HeroDetailValues, ovr *HeroD
 		applyHeroDetailCellOverride(detailCells[i], cellOverrides, i+1, accent)
 	}
 
-	cardW := equalColumnWidthPt(contentW, len(v.Details), heroDetailGapPt)
+	cardW := equalColumnWidthPt(contentW, len(v.Details), ctx.Gap(heroDetailGapPt))
 	textW := cardW - 2*defaultShapeInsetLRPt
 	textHs := make([]float64, len(detailCells))
 	cardH := 0.0
@@ -528,7 +528,7 @@ func heroDetailIconCardPt(textNeedPt, cardW float64) float64 {
 // take the rest.
 func heroDetailShrinks(ctx ExpandContext, plan heroDetailPlan) bool {
 	contentW, _ := contentAreaPt(ctx)
-	cardW := equalColumnWidthPt(contentW, len(plan.details), heroDetailGapPt)
+	cardW := equalColumnWidthPt(contentW, len(plan.details), ctx.Gap(heroDetailGapPt))
 	fits := func(text json.RawMessage, w, h float64) bool {
 		tb, err := shapegrid.ResolveTextInput(text)
 		return err != nil || tb == nil || pptx.AutofitFitsFor(tb, pptx.RectEmu{CX: int64(w * sizingEMUPerPt), CY: int64(h * sizingEMUPerPt)})

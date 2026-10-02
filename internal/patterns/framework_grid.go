@@ -275,9 +275,9 @@ func fgResolveOverrides(overrides any) *FrameworkGridOverrides {
 func fgMeasure(ctx ExpandContext, v *FrameworkGridValues, ovr *FrameworkGridOverrides) fgLayout {
 	type step struct{ pad, gap, title float64 }
 	title := ResolveSize(ovr.TitleSize, scaleSubheadPt)
-	steps := []step{{fgCardPadPt, fgRowGapPt, title}, {fgTightPadPt, fgTightRowGapPt, title}}
+	steps := []step{{fgCardPadPt, ctx.Gap(fgRowGapPt), title}, {fgTightPadPt, ctx.Gap(fgTightRowGapPt), title}}
 	if ovr.TitleSize == 0 {
-		steps = append(steps, step{fgTightPadPt, fgTightRowGapPt, shapegrid.MinTextSizePt})
+		steps = append(steps, step{fgTightPadPt, ctx.Gap(fgTightRowGapPt), shapegrid.MinTextSizePt})
 	}
 	for _, st := range steps {
 		if l := fgMeasureAt(ctx, v, ovr, st.pad, st.gap, st.title); l.neededHPt <= l.areaHPt {
@@ -299,7 +299,7 @@ func fgMeasureAt(ctx ExpandContext, v *FrameworkGridValues, ovr *FrameworkGridOv
 	if ovr.LabelWidthPct > 0 {
 		l.labelPct = clampPt(ovr.LabelWidthPct, fgMinLabelPct, fgMaxLabelPct)
 	}
-	gridW := contentW - fgColGapPt*float64(l.cols)
+	gridW := contentW - ctx.Gap(fgColGapPt)*float64(l.cols)
 	l.labelTextW = math.Max(gridW*l.labelPct/100-2*defaultShapeInsetLRPt, 1)
 	cardW := gridW * (100 - l.labelPct) / 100 / float64(l.cols)
 	l.cardTextW = math.Max(cardW-2*defaultShapeInsetLRPt, 1)
@@ -460,7 +460,7 @@ func (p *frameworkGrid) Expand(ctx ExpandContext, values, overrides any, cellOve
 	colsJSON, _ := json.Marshal(cols)
 	return &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(colsJSON),
-		ColGap:        fgColGapPt,
+		ColGap:        ctx.Gap(fgColGapPt),
 		RowGap:        l.rowGapPt,
 		Rows:          rows,
 		VerticalAlign: GridVerticalAlignDefault,

@@ -288,7 +288,7 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(colsJSON),
-		Gap:           processFlowGapPt,
+		Gap:           ctx.Gap(processFlowGapPt),
 		Rows:          []jsonschema.GridRowInput{row},
 		VerticalAlign: GridVerticalAlignDefault,
 	}
@@ -408,7 +408,7 @@ func processFlowCellSize(ctx ExpandContext, steps int, pointed bool) (width, hei
 		steps = 1
 	}
 	contentW, contentH := contentAreaPt(ctx)
-	width = (contentW - processFlowGapPt*float64(steps-1)) / float64(steps)
+	width = (contentW - ctx.Gap(processFlowGapPt)*float64(steps-1)) / float64(steps)
 	height = math.Round(contentH * processFlowMaxHeightFrac)
 	if pointed {
 		height = math.Min(height, math.Round(width*chevronMaxAspectH))

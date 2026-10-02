@@ -59,9 +59,9 @@ func CardGridBodyBudgets(ctx ExpandContext, v *CardGridValues, o *CardGridOverri
 		o = &CardGridOverrides{}
 	}
 	areaW, areaH := sizingAreaPt(ctx)
-	cardW := equalColumnWidthPt(areaW, v.Columns, contentSizedRowGapPt)
+	cardW := equalColumnWidthPt(areaW, v.Columns, ctx.Gap(contentSizedRowGapPt))
 	textW := cardW - 2*defaultShapeInsetLRPt
-	rowH := (areaH - float64(v.Rows-1)*contentSizedRowGapPt) / float64(v.Rows)
+	rowH := (areaH - float64(v.Rows-1)*ctx.Gap(contentSizedRowGapPt)) / float64(v.Rows)
 	if textW <= 0 || rowH <= 0 {
 		return make([]int, len(v.Cells))
 	}
@@ -518,7 +518,7 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(fmt.Sprintf(`%d`, vals.Columns)),
-		Gap:           10,
+		Gap:           ctx.Gap(10),
 		Rows:          rows,
 		VerticalAlign: GridVerticalAlignDefault,
 	}
@@ -546,7 +546,7 @@ func cardGridContentRow(ctx ExpandContext, cells []*jsonschema.GridCellInput, co
 	// (go-slide-creator-ommn). This runs BEFORE the sizing so the padding is
 	// part of the card the row is sized to.
 	contentW, _ := contentAreaPt(ctx)
-	cardW := equalColumnWidthPt(contentW, cols, contentSizedRowGapPt)
+	cardW := equalColumnWidthPt(contentW, cols, ctx.Gap(contentSizedRowGapPt))
 	alignCardHeaderLines(cells, ctx.Theme.BodyFont, cardW-2*defaultShapeInsetLRPt)
 
 	return contentSizedRow(ctx, cells, cols)

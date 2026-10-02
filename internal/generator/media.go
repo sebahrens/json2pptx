@@ -474,6 +474,7 @@ func (ctx *singlePassContext) processDiagramContent(slideNum, contentIdx int, it
 
 	// Get placeholder bounds BEFORE rendering so we can pass dimensions to the renderer
 	placeholderBounds := getPlaceholderBounds(shape, nil)
+	placeholderBounds = ctx.clampToTemplateGridMargin(slideNum, placeholderBounds)
 
 	// Guard against tiny placeholder bounds that produce thumbnail-sized charts.
 	// In two-column layouts, shape transforms can inherit incorrect dimensions

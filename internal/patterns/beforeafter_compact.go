@@ -232,11 +232,11 @@ func (b *beforeAfterCompact) Expand(ctx ExpandContext, values, overrides any, ce
 			X: 0, Y: 0, Width: 100, Height: plan.heightPct,
 		},
 		Columns:       colsJSON,
-		Gap:           beforeAfterCompactVariant.gapPt,
+		Gap:           ctx.Gap(beforeAfterCompactVariant.gapPt),
 		VerticalAlign: GridVerticalAlignDefault,
 		Rows:          plan.gridRows(),
 	}
-	if plan.rowGap != beforeAfterCompactVariant.gapPt {
+	if plan.rowGap != ctx.Gap(beforeAfterCompactVariant.gapPt) {
 		grid.RowGap = plan.rowGap
 	}
 

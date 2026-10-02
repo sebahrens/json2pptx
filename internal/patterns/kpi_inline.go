@@ -281,7 +281,7 @@ func (k *kpiInline) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 			X: 0, Y: 0, Width: 100, Height: 25,
 		},
 		Columns: colsJSON,
-		Gap:     10,
+		Gap:     ctx.Gap(10),
 		Rows: []jsonschema.GridRowInput{
 			{Cells: gridCells},
 		},

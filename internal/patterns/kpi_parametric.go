@@ -224,7 +224,7 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 	colsJSON := json.RawMessage(strconv.Itoa(n))
 	grid := &jsonschema.ShapeGridInput{
 		Columns: colsJSON,
-		Gap:     kpiCardGapPt,
+		Gap:     ctx.Gap(kpiCardGapPt),
 		Rows: []jsonschema.GridRowInput{
 			{
 				Cells:     gridCells,

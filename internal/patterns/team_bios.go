@@ -377,7 +377,7 @@ func (t *teamBios) Expand(ctx ExpandContext, values, overrides any, cellOverride
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(fmt.Sprintf(`%d`, columns)),
-		Gap:     teamBiosGapPt,
+		Gap:     ctx.Gap(teamBiosGapPt),
 		RowGap:  0,
 		Rows:    rows,
 	}
@@ -409,7 +409,7 @@ type teamBiosFitResult struct {
 func teamBiosFit(ctx ExpandContext, v *TeamBiosValues, ovr *TeamBiosOverrides) teamBiosFitResult {
 	areaW, areaH := sizingAreaPt(ctx)
 	columns := min(max(len(v.Members), teamBiosMinPerRow), teamBiosMaxPerRow)
-	colW := equalColumnWidthPt(areaW, columns, teamBiosGapPt)
+	colW := equalColumnWidthPt(areaW, columns, ctx.Gap(teamBiosGapPt))
 	roleSize, bioSize := ResolveSize(ovr.RoleSize, scaleDenseBodyPt), ResolveSize(ovr.BioSize, scaleCaptionPt)
 	photoLabelSize := ResolveSize(ovr.PhotoLabelSize, scaleSubheadPt)
 	sizes := []float64{ResolveSize(ovr.NameSize, scaleSubheadPt)}
@@ -435,7 +435,7 @@ func teamBiosFit(ctx ExpandContext, v *TeamBiosValues, ovr *TeamBiosOverrides) t
 		cardRows := (len(v.Members) + teamBiosMaxPerRow - 1) / teamBiosMaxPerRow
 		k := float64(max(cardRows, 1))
 		// The grid gap also separates each headshot row from its text row.
-		gaps := (2*k - 1) * teamBiosGapPt
+		gaps := (2*k - 1) * ctx.Gap(teamBiosGapPt)
 		r := teamBiosFitResult{nameSize: nameSize, areaH: areaH, gapsPt: gaps, nominalPt: (areaH - gaps) / k}
 		text := 0.0
 		for start := 0; start < len(v.Members); start += teamBiosMaxPerRow {
@@ -594,7 +594,7 @@ func teamBiosInitialsSize(ctx ExpandContext, members []TeamBiosMember, fit teamB
 	}
 	areaW, _ := sizingAreaPt(ctx)
 	diameter := fit.photoPt
-	if colW := equalColumnWidthPt(areaW, columns, teamBiosGapPt); colW > 0 && colW < diameter {
+	if colW := equalColumnWidthPt(areaW, columns, ctx.Gap(teamBiosGapPt)); colW > 0 && colW < diameter {
 		diameter = colW
 	}
 	return math.Max(base, math.Round(diameter*0.3))

@@ -28,6 +28,22 @@ func (ctx *singlePassContext) loadTemplateProfile(templatePath string) {
 	ctx.profile = profile
 }
 
+// clampToTemplateGridMargin narrows a late-bound visual frame (a placeholder
+// chart / diagram whose transform may be inherited, so the slide-level
+// placeholder clamp never saw it) to the content column when the template
+// declares a grid margin_pct (go-slide-creator-5ms8c). Templates without a
+// grid margin keep the placeholder's own frame.
+func (ctx *singlePassContext) clampToTemplateGridMargin(slideNum int, bounds types.BoundingBox) types.BoundingBox {
+	if ctx.profile == nil {
+		return bounds
+	}
+	if grid := types.TemplateGridOf(ctx.profile.Layouts); grid == nil || grid.MarginPct <= 0 {
+		return bounds
+	}
+	bounds.X, bounds.Width = clampHorizontalToFrame(bounds.X, bounds.Width, ctx.chromeFrameForSlide(slideNum).Content)
+	return bounds
+}
+
 // chromeFrameForLayout resolves the chrome frame for a slide on layoutID from
 // the template profile. Layouts the profile does not know (synthesized
 // layouts) resolve against the profile's One Content reference layout.

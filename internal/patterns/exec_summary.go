@@ -378,7 +378,7 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	colsJSON, _ := json.Marshal(cols)
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
-		ColGap:  execSummaryColGapPt,
+		ColGap:  ctx.Gap(execSummaryColGapPt),
 		RowGap:  lay.rowGapPt,
 		Rows:    rows,
 	}
@@ -411,7 +411,7 @@ func layoutExecSummary(ctx ExpandContext, vals *ExecSummaryValues, ovr *ExecSumm
 	// The air between rows gives way before any text does: every step is
 	// tried at the default row gap, then again at the minimum gap.
 	var lay execSummaryLayout
-	for _, gap := range []float64{execSummaryRowGapPt, execSummaryMinGapPt} {
+	for _, gap := range []float64{ctx.Gap(execSummaryRowGapPt), ctx.Gap(execSummaryMinGapPt)} {
 		for _, st := range steps {
 			lay = measureExecSummary(ctx, vals, cols, numbered, st[0], st[1], areaW, gap, ovr.TakeawayEmphasis)
 			if lay.natural() <= areaH {
@@ -423,7 +423,7 @@ func layoutExecSummary(ctx ExpandContext, vals *ExecSummaryValues, ovr *ExecSumm
 	// writer's own measure decides: rows sized to their written fit store every
 	// run unshrunk, where rows the grid squeezes to share the area would not.
 	for _, st := range steps {
-		l := measureExecSummary(ctx, vals, cols, numbered, st[0], st[1], areaW, execSummaryMinGapPt, ovr.TakeawayEmphasis)
+		l := measureExecSummary(ctx, vals, cols, numbered, st[0], st[1], areaW, ctx.Gap(execSummaryMinGapPt), ovr.TakeawayEmphasis)
 		if l.writtenNatural() <= areaH {
 			for i, w := range l.writtenPt {
 				l.rowPt[i] = math.Ceil(w)
@@ -579,7 +579,7 @@ func (l execSummaryLayout) writtenNatural() float64 {
 
 // measureExecSummary measures every row at the given lead / support sizes.
 func measureExecSummary(ctx ExpandContext, vals *ExecSummaryValues, cols []float64, numbered bool, leadSize, supportSize, areaW, rowGapPt float64, emphasis string) execSummaryLayout {
-	usableW := areaW - execSummaryColGapPt*float64(len(cols)-1)
+	usableW := areaW - ctx.Gap(execSummaryColGapPt)*float64(len(cols)-1)
 	colW := func(i int) float64 { return usableW * cols[i] / 100 }
 	leadCol := 0
 	if numbered {

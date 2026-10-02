@@ -363,8 +363,8 @@ func (s *scqaSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(fmt.Sprintf(`[%g, 4]`, labelFit.weight)),
-		Gap:     scqaColGapPt,
-		RowGap:  scqaRowGapPt,
+		Gap:     ctx.Gap(scqaColGapPt),
+		RowGap:  ctx.Gap(scqaRowGapPt),
 		Rows:    rows,
 	}
 
@@ -389,8 +389,8 @@ type scqaLabelFit struct {
 var scqaLabelWeights = []float64{1, 1.1, 1.2, 1.3}
 
 // scqaColumnWidthsPt returns the label and content column widths.
-func scqaColumnWidthsPt(areaW, weight float64) (label, content float64) {
-	unit := (areaW - scqaColGapPt) / (weight + 4)
+func scqaColumnWidthsPt(ctx ExpandContext, areaW, weight float64) (label, content float64) {
+	unit := (areaW - ctx.Gap(scqaColGapPt)) / (weight + 4)
 	return weight * unit, 4 * unit
 }
 
@@ -405,7 +405,7 @@ func fitSCQALabels(ctx ExpandContext, sizePt float64) scqaLabelFit {
 	areaW, _ := sizingAreaPt(ctx)
 	font := ctx.Theme.BodyFont
 	fits := func(size, weight float64) bool {
-		labelW, _ := scqaColumnWidthsPt(areaW, weight)
+		labelW, _ := scqaColumnWidthsPt(ctx, areaW, weight)
 		w := textfit.AtomicTokenWidthPt(font, math.Max(labelW-2*defaultShapeInsetLRPt, 1))
 		for _, label := range scqaLabels {
 			if measuredLines(label, font, true, size, w) > 1 {
@@ -437,13 +437,13 @@ func scqaRowNeeds(ctx ExpandContext, specs []struct {
 	body  []string
 }, label scqaLabelFit, bodySize float64) ([]float64, float64) {
 	areaW, areaH := sizingAreaPt(ctx)
-	labelW, contentW := scqaColumnWidthsPt(areaW, label.weight)
+	labelW, contentW := scqaColumnWidthsPt(ctx, areaW, label.weight)
 	needs := make([]float64, len(specs))
 	for i, s := range specs {
 		needs[i] = math.Max(writtenFitHeightPt(buildSCQALabelText(s.label, label.size), labelW, 0),
 			writtenFitHeightPt(buildSCQAContentText(s.body, bodySize), contentW, 0))
 	}
-	return needs, areaH - float64(len(specs)-1)*scqaRowGapPt
+	return needs, areaH - float64(len(specs)-1)*ctx.Gap(scqaRowGapPt)
 }
 
 // ---------------------------------------------------------------------------
