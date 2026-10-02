@@ -1093,6 +1093,18 @@ var findingMetaRegistry = map[string]FindingMeta{
 		},
 		RelatedCodes: []string{ErrCodeChartDataEmpty, ErrCodeContentDropped},
 	},
+	ErrCodeDiagramRegionTooSmall: {
+		Code:        ErrCodeDiagramRegionTooSmall,
+		Summary:     "A native diagram (SWOT, PESTEL, BMC, heatmap, panel family, ...) placed in a shape_grid cell or compose segment is too small for its text to stay readable.",
+		Severity:    "refuse",
+		WhenEmitted: "validate (fit report) and generate lay the native diagram out at the region's actual size with the generator's own builders. When generation's written-scale rule would refuse a shape (text shrunk below the 7pt floor), the placement is refused instead of publishing an illegible canvas. fix.params carry the region size, the number of sub-floor shapes, actual_pt / min_pt, and — when a region up to 3x larger renders readably — min_width_emu / min_height_emu.",
+		RemediationSteps: []string{
+			"Give the diagram a larger cell or compose segment, at least fix.params.min_width_emu x min_height_emu.",
+			"Or place it in a body placeholder as content diagram_value, where it gets the slide's full content area.",
+			"Or remove low-priority items so the remaining text fits the region.",
+		},
+		RelatedCodes: []string{ErrCodeTextBelowReadableMin, ErrCodeGridDiagramNarrow},
+	},
 	ErrCodePaginationDefault: {
 		Code:        ErrCodePaginationDefault,
 		Summary:     "Pagination fell back to a default threshold because the template lacks capacity hints.",

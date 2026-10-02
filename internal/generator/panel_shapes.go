@@ -358,7 +358,7 @@ const (
 // panelAliasLayoutMode maps a panel-family alias diagram type to the panel
 // layout mode it represents. The aliases icon_columns / icon_rows / stat_cards
 // are advertised as native_ooxml panel shapes in the diagram capability registry
-// (svggen.diagramAuthoringSurface and diagramPlacementRegistry); this is the
+// (svggen.diagramAuthoringSurface and the dispatch-derived DiagramPlacementFor); this is the
 // single place that resolves each alias to its layout. Returns "" for non-alias
 // types, including the canonical "panel_layout".
 func panelAliasLayoutMode(diagramType string) string {
@@ -914,7 +914,7 @@ func generateStatCardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint
 // build the group XML with the correct shape ID base. Panel icons now embed via
 // the native-SVG path (ctx.nativeSVGInserts), so no per-panel PNG relationships
 // are allocated here.
-func (ctx *singlePassContext) finalizePanelGroupXML() { //nolint:gocyclo
+func (ctx *singlePassContext) finalizePanelGroupXML() {
 	// We need a global shape ID counter that avoids conflicts across slides.
 	// Start at a high base to avoid conflicts with typical OOXML IDs.
 	nextShapeID := uint32(10000)
@@ -928,122 +928,20 @@ func (ctx *singlePassContext) finalizePanelGroupXML() { //nolint:gocyclo
 	}
 	sort.Ints(slideNums)
 
+	env := ctx.nativeDiagramEnv()
 	for _, slideNum := range slideNums {
 		inserts := ctx.panelShapeInserts[slideNum]
 
 		for i := range inserts {
 			base := nextShapeID
 			// Generate the final group XML with the correct shape ID base.
-			switch {
-			case inserts[i].swotMode:
-				inserts[i].groupXML = generateSWOTGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID, inserts[i].taxonomyTints,
-				)
-			case inserts[i].pestelMode:
-				inserts[i].groupXML = generatePESTELGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID, inserts[i].taxonomyTints,
-				)
-			case inserts[i].valueChainMode:
-				inserts[i].groupXML = generateValueChainGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID, inserts[i].valueChainMeta,
-				)
-			case inserts[i].nineBoxMode:
-				inserts[i].groupXML = generateNineBoxGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID, inserts[i].nineBoxTints,
-				)
-			case inserts[i].kpiDashboardMode:
-				inserts[i].groupXML = generateKPIDashboardGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID, ctx.themeColors,
-				)
-			case inserts[i].portersFiveMode:
-				inserts[i].groupXML = generatePortersFiveGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID, ctx.themeColors,
-				)
-			case inserts[i].bmcMode:
-				inserts[i].groupXML = generateBMCGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID, inserts[i].taxonomyTints,
-				)
-			case inserts[i].processFlowMode:
-				inserts[i].groupXML = generateProcessFlowGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID, inserts[i].processFlowMeta,
-				)
-			case inserts[i].heatmapMode:
-				inserts[i].groupXML = generateHeatmapGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID, inserts[i].heatmapMeta, ctx.themeColors,
-				)
-			case inserts[i].pyramidMode:
-				inserts[i].groupXML = generatePyramidGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID, ctx.themeFontName,
-				)
-			case inserts[i].houseDiagramMode:
-				inserts[i].groupXML = generateHouseDiagramGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID, inserts[i].houseDiagramMeta,
-				)
-			case inserts[i].stylishPanelsMode:
-				inserts[i].groupXML = generateStylishPanelsGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID,
-				)
-			case inserts[i].rowsMode:
-				inserts[i].groupXML = generatePanelRowsGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID,
-				)
-			case inserts[i].statCardsMode:
-				inserts[i].groupXML = generateStatCardsGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID, ctx.themeFontName,
-				)
-			default:
-				inserts[i].groupXML = generatePanelGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID, ctx.themeFontName,
-				)
-			}
+			inserts[i].groupXML = renderNativeInsert(&inserts[i], base, env)
 			// A native diagram group carries its alt text on its own cNvPr. The
-			// group builders above assemble children from parsed panel data and
+			// group builders assemble children from parsed panel data and
 			// never see the DiagramSpec, so the description is applied here to
 			// the group each of them returned (go-slide-creator-6e8h).
 			inserts[i].groupXML = pptx.SetGroupDescription(inserts[i].groupXML, inserts[i].altText)
-			// Advance shape ID: 1 (group) + N*shapes_per_panel.
-			// Nine box mode uses more shapes (9 cells × 2 + up to 8 axis labels).
-			// Stat cards mode: 1 shape per card (single rect with text body).
-			// Rows mode: 2 shapes per panel (header + body), same as columns.
-			switch {
-			case inserts[i].valueChainMode:
-				// 1 (group) + N support bars + N primary chevrons + 1 margin (optional)
-				shapeCount := uint32(inserts[i].valueChainMeta.supportCount + inserts[i].valueChainMeta.primaryCount + 1)
-				if inserts[i].valueChainMeta.marginLabel != "" {
-					shapeCount++
-				}
-				nextShapeID += shapeCount
-			case inserts[i].nineBoxMode:
-				// 1 (group) + 9×2 (label+body) + 8 (axis shapes max)
-				nextShapeID += 27
-			case inserts[i].portersFiveMode:
-				// 1 (group) + 5 force boxes + 4 connectors
-				nextShapeID += 10
-			case inserts[i].bmcMode:
-				// 1 (group) + 9×2 (header+body per cell) = 19
-				nextShapeID += 19
-			case inserts[i].processFlowMode:
-				// 1 (group) + N steps + M connectors + L labels
-				nextShapeID += pfEstimateShapeCount(inserts[i].panels)
-			case inserts[i].heatmapMode:
-				// 1 (group) + R*C cells + R row labels + C col labels
-				m := inserts[i].heatmapMeta
-				nextShapeID += uint32(m.numRows*m.numCols + m.numRows + m.numCols + 1)
-			case inserts[i].pyramidMode:
-				// 1 (group) + N level shapes
-				nextShapeID += pyramidEstimateShapeCount(inserts[i].panels)
-			case inserts[i].houseDiagramMode:
-				// 1 (group) + 1 (roof) + N (floor sections) + 1 (foundation)
-				nextShapeID += houseDiagramEstimateShapeCount(inserts[i].panels)
-			case inserts[i].stylishPanelsMode:
-				// N accents + N bodies + 1 ribbon + N headers + 1 group
-				nextShapeID += stylishPanelsEstimateShapeCount(inserts[i].panels)
-			case inserts[i].statCardsMode, inserts[i].kpiDashboardMode:
-				// 1 (group) + N×1 (single rect per card)
-				nextShapeID += uint32(len(inserts[i].panels) + 1)
-			default:
-				nextShapeID += uint32(len(inserts[i].panels)*2 + 1)
-			}
+			nextShapeID += nativeInsertIDSpan(&inserts[i], inserts[i].groupXML, base)
 			if inserts[i].contentPath != "" {
 				ctx.nativeShapeSources = append(ctx.nativeShapeSources, nativeShapeSource{
 					slideIndex: slideNum - ctx.calculateStartingSlideNum(),
@@ -1056,96 +954,6 @@ func (ctx *singlePassContext) finalizePanelGroupXML() { //nolint:gocyclo
 		// Write back the modified slice
 		ctx.panelShapeInserts[slideNum] = inserts
 	}
-}
-
-// processPanelNativeShapes parses panel data from a DiagramSpec and registers
-// a panelShapeInsert for native OOXML shape generation. The actual XML generation
-// is deferred to generatePanelGroupXML, which may be called later during
-// icon rel-ID allocation (pptx-z27).
-//
-// KNOWN LIMITATION: themeOverride/brand_color from frontmatter does NOT modify
-// ppt/theme/theme1.xml, so scheme color refs won't pick up overrides.
-func (ctx *singlePassContext) processPanelNativeShapes(slideNum int, item ContentItem, shapeIdx int) {
-	diagramSpec, ok := item.Value.(*types.DiagramSpec)
-	if !ok {
-		slog.Warn("panel native shapes: invalid diagram spec", "slide", slideNum)
-		return
-	}
-
-	// Warn if themeOverride is set — scheme colors won't reflect overrides.
-
-	// Parse panels from DiagramSpec.Data
-	panelsRaw, ok := diagramSpec.Data["panels"].([]any)
-	if !ok {
-		slog.Warn("panel native shapes: missing or invalid 'panels' data", "slide", slideNum)
-		return
-	}
-
-	// Determine layout mode for routing.
-	layoutMode := panelLayoutMode(diagramSpec)
-	iconDefaultFill := panelIconDefaultFill(layoutMode)
-
-	var panels []nativePanelData
-	for _, item := range panelsRaw {
-		m, ok := item.(map[string]any)
-		if !ok {
-			continue
-		}
-
-		panel := nativePanelData{}
-		if title, ok := m["title"].(string); ok {
-			panel.title = title
-		}
-		if value, ok := m["value"].(string); ok {
-			panel.value = value
-		}
-		if body, ok := m["body"].(string); ok {
-			panel.body = body
-		}
-		// Resolve the optional icon into native SVG markup (bundled name, inline
-		// svg_data, or data URI). Embedded later as an asvg:svgBlip overlay, never
-		// rasterized. File-path/URL icons arrive pre-resolved as svg_data.
-		if icon, ok := m["icon"]; ok {
-			if svg, alt, skip := resolvePanelIcon(icon, iconDefaultFill); len(svg) > 0 {
-				panel.iconSVG = svg
-				panel.iconAlt = alt
-			} else if skip != "" {
-				slog.Warn("panel native shapes: icon not embedded", "slide", slideNum, "reason", skip)
-			}
-		}
-		panels = append(panels, panel)
-	}
-
-	if len(panels) == 0 {
-		slog.Warn("panel native shapes: no panels parsed", "slide", slideNum)
-		return
-	}
-
-	// Get placeholder bounds from the shape being replaced.
-	slide := ctx.templateSlideData[slideNum]
-	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
-	placeholderBounds := getPlaceholderBounds(shape, nil)
-
-	slog.Info("native panel shapes: registered",
-		"slide", slideNum,
-		"panels", len(panels),
-		"layout", layoutMode,
-		"bounds", fmt.Sprintf("%dx%d+%d+%d", placeholderBounds.Width, placeholderBounds.Height, placeholderBounds.X, placeholderBounds.Y))
-
-	ctx.panelShapeInserts[slideNum] = append(ctx.panelShapeInserts[slideNum], panelShapeInsert{
-		altText:           diagramAltText(item),
-		placeholderIdx:    shapeIdx,
-		bounds:            placeholderBounds,
-		panels:            panels,
-		rowsMode:          layoutMode == "rows",
-		statCardsMode:     layoutMode == "stat_cards",
-		stylishPanelsMode: layoutMode == "stylish_panels",
-	})
-
-	// Register panel icons as native SVG overlays (asvg:svgBlip) positioned over
-	// each card. Done here (not in the deferred group-XML pass) because the card
-	// geometry is derived from placeholderBounds, which is known now.
-	ctx.registerPanelIconInserts(slideNum, layoutMode, placeholderBounds, panels)
 }
 
 // registerPanelIconInserts appends a native SVG insert for each panel that has a

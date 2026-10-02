@@ -118,63 +118,6 @@ func isProcessFlowDiagram(spec *types.DiagramSpec) bool {
 	return spec.Type == "process_flow"
 }
 
-// processProcessFlowNativeShapes parses process flow data and registers a panelShapeInsert.
-func (ctx *singlePassContext) processProcessFlowNativeShapes(slideNum int, item ContentItem, shapeIdx int) {
-	diagramSpec, ok := item.Value.(*types.DiagramSpec)
-	if !ok {
-		slog.Warn("process flow native shapes: invalid diagram spec", "slide", slideNum)
-		return
-	}
-
-	steps, connections, direction := parseProcessFlowDiagramData(diagramSpec.Data)
-	if len(steps) == 0 {
-		slog.Warn("process flow native shapes: no steps parsed", "slide", slideNum)
-		return
-	}
-
-	// Encode step+connection data into panels for the panelShapeInsert system.
-	var panels []nativePanelData
-	for _, s := range steps {
-		panels = append(panels, nativePanelData{
-			title: s.label,
-			body:  s.description,
-			value: fmt.Sprintf("%s:%s", s.stepType, s.id),
-		})
-	}
-	// Encode connections as additional panels with a "conn:" prefix in value.
-	for _, c := range connections {
-		panels = append(panels, nativePanelData{
-			title: c.label,
-			value: fmt.Sprintf("conn:%s:%s:%s", c.from, c.to, c.style),
-		})
-	}
-
-	slide := ctx.templateSlideData[slideNum]
-	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
-	placeholderBounds := getPlaceholderBounds(shape, nil)
-
-	slog.Info("native process flow shapes: registered",
-		"slide", slideNum,
-		"steps", len(steps),
-		"connections", len(connections),
-		"direction", direction,
-		"bounds", fmt.Sprintf("%dx%d+%d+%d", placeholderBounds.Width, placeholderBounds.Height, placeholderBounds.X, placeholderBounds.Y))
-
-	ctx.panelShapeInserts[slideNum] = append(ctx.panelShapeInserts[slideNum], panelShapeInsert{
-		altText:         diagramAltText(item),
-		placeholderIdx:  shapeIdx,
-		bounds:          placeholderBounds,
-		panels:          panels,
-		processFlowMode: true,
-		processFlowMeta: processFlowMeta{
-			fontName:        ctx.themeFontName,
-			stepCount:       len(steps),
-			connectionCount: len(connections),
-			direction:       direction,
-		},
-	})
-}
-
 // parseProcessFlowDiagramData extracts steps, connections, and direction from the diagram data map.
 func parseProcessFlowDiagramData(data map[string]any) ([]processFlowStep, []processFlowConnection, string) { //nolint:gocognit
 	var steps []processFlowStep

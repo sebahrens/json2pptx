@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"fmt"
 	"log/slog"
 	"strings"
 
@@ -75,49 +74,6 @@ var pestelSegmentColors = [6]struct {
 // isPESTELDiagram returns true if the diagram spec is a pestel diagram type.
 func isPESTELDiagram(spec *types.DiagramSpec) bool {
 	return spec.Type == "pestel"
-}
-
-// processPESTELNativeShapes parses PESTEL data from a DiagramSpec and registers
-// a panelShapeInsert for native OOXML shape generation.
-func (ctx *singlePassContext) processPESTELNativeShapes(slideNum, contentIdx int, item ContentItem, shapeIdx int) {
-	diagramSpec, ok := item.Value.(*types.DiagramSpec)
-	if !ok {
-		slog.Warn("pestel native shapes: invalid diagram spec", "slide", slideNum)
-		return
-	}
-
-	// Warn if themeOverride is set — scheme colors won't reflect overrides.
-
-	// Parse segments from DiagramSpec.Data.
-	// Supports two formats:
-	//   1. "segments" array: [{"name": "Political", "items": ["Trade policies", ...]}]
-	//   2. Individual keys: {"political": ["Trade policies", ...], "economic": [...]}
-	panels := parsePESTELSegments(diagramSpec.Data)
-
-	if len(panels) == 0 {
-		slog.Warn("pestel native shapes: no segments parsed", "slide", slideNum)
-		return
-	}
-
-	// Get placeholder bounds from the shape being replaced.
-	slide := ctx.templateSlideData[slideNum]
-	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
-	placeholderBounds := getPlaceholderBounds(shape, nil)
-	placeholderBounds = ctx.fitNativeFramework(slideNum, contentIdx, "pestel", placeholderBounds, panels, houseDiagramMeta{})
-
-	slog.Info("native pestel shapes: registered",
-		"slide", slideNum,
-		"segments", len(panels),
-		"bounds", fmt.Sprintf("%dx%d+%d+%d", placeholderBounds.Width, placeholderBounds.Height, placeholderBounds.X, placeholderBounds.Y))
-
-	ctx.panelShapeInserts[slideNum] = append(ctx.panelShapeInserts[slideNum], panelShapeInsert{
-		altText:        diagramAltText(item),
-		placeholderIdx: shapeIdx,
-		bounds:         placeholderBounds,
-		panels:         panels,
-		pestelMode:     true,
-		taxonomyTints:  taxonomyPalette(diagramSpec, len(pestelSegmentColors), uniformTaxonomyTint),
-	})
 }
 
 // parsePESTELSegments extracts segment data from the PESTEL diagram data map.

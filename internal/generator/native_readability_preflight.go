@@ -120,33 +120,27 @@ func (ctx *singlePassContext) authorNativeRefusal(loss *patterns.ValidationError
 	}
 }
 
-// nativeDiagramGroupXML renders the group generation writes for the native
-// diagram types whose text the readability preflight measures, or "" for any
-// other type.
+// nativeReadabilityPreflightTypes are the native diagram types whose text the
+// validate readability preflight measures.
+var nativeReadabilityPreflightTypes = map[string]bool{
+	"business_model_canvas": true,
+	"swot":                  true,
+	"nine_box_talent":       true,
+	"porters_five_forces":   true,
+	"pyramid":               true,
+}
+
+// nativeDiagramGroupXML renders, through the shared bounded adapter, the group
+// generation writes for the native diagram types whose text the readability
+// preflight measures, or "" for any other type.
 func nativeDiagramGroupXML(spec *types.DiagramSpec, bounds types.BoundingBox, fontName string, themeColors []types.ThemeColor) string {
-	base := uint32(nativeReadabilityShapeIDBase)
-	switch {
-	case isBMCDiagram(spec):
-		return generateBMCGroupXML(bmcPanels(spec), bounds, base, taxonomyPalette(spec, len(bmcSectionOrder), bmcDefaultTint))
-	case isSWOTDiagram(spec):
-		panels := swotPanels(spec)
-		bounds = fitBoundsToFramework(bounds, nativeFrameworkSize("swot", bounds, panels, houseDiagramMeta{}, fontName))
-		return generateSWOTGroupXML(panels, bounds, base, taxonomyPalette(spec, 4, swotDefaultTint))
-	case isNineBoxDiagram(spec):
-		panels, _ := nineBoxPanels(spec)
-		return generateNineBoxGroupXML(panels, bounds, base, nineBoxSemanticTints(nil))
-	case isPortersFiveForcesDiagram(spec):
-		panels := porterPanels(spec)
-		if len(panels) == 0 {
-			return ""
-		}
-		return generatePortersFiveGroupXML(panels, bounds, base, themeColors)
-	case isPyramidDiagram(spec):
-		panels, err := pyramidPanels(spec)
-		if err != nil || len(panels) == 0 {
-			return ""
-		}
-		return generatePyramidGroupXML(panels, bounds, base, fontName)
+	if spec == nil || !nativeReadabilityPreflightTypes[spec.Type] {
+		return ""
 	}
-	return ""
+	env := nativeDiagramEnv{fontName: fontName, themeColors: themeColors}
+	layout, err := layoutNativeDiagram(spec, bounds, env, nativeDiagramSite{})
+	if err != nil {
+		return ""
+	}
+	return renderNativeInsert(&layout.insert, nativeReadabilityShapeIDBase, env)
 }

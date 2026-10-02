@@ -8,7 +8,6 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
-	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 )
@@ -88,88 +87,6 @@ type heatmapParsedData struct {
 	minVal     float64
 	maxVal     float64
 	colorScale string
-}
-
-// processHeatmapNativeShapes parses heatmap data from a DiagramSpec and
-// registers a panelShapeInsert for native OOXML shape generation.
-func (ctx *singlePassContext) processHeatmapNativeShapes(slideNum, contentIdx int, item ContentItem, shapeIdx int) {
-	diagramSpec, ok := item.Value.(*types.DiagramSpec)
-	if !ok {
-		slog.Warn("heatmap native shapes: invalid diagram spec", "slide", slideNum)
-		return
-	}
-
-	parsed, err := parseHeatmapData(diagramSpec.Data)
-	if err != nil {
-		slog.Warn("heatmap native shapes: parse failed", "slide", slideNum, "error", err)
-		return
-	}
-
-	if len(parsed.values) == 0 || len(parsed.values[0]) == 0 {
-		slog.Warn("heatmap native shapes: empty values grid", "slide", slideNum)
-		return
-	}
-
-	numRows := len(parsed.values)
-	numCols := len(parsed.values[0])
-
-	// Get placeholder bounds from the shape being replaced. This is resolved
-	// before the meta is encoded so the labels can be measured against the
-	// boxes they will actually be drawn into (go-slide-creator-3rkpt).
-	slide := ctx.templateSlideData[slideNum]
-	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
-	placeholderBounds := getPlaceholderBounds(shape, nil)
-
-	if shortened := fitHeatmapLabels(&parsed, placeholderBounds); shortened > 0 {
-		if f := heatmapLabelFinding(numRows, numCols, shortened, slidepath.ContentIndex(slideNum-1, contentIdx)); f != nil {
-			ctx.fitFindings = append(ctx.fitFindings, *f)
-		}
-		slog.Warn("native heatmap shapes: labels shortened to fit",
-			"slide", slideNum, "rows", numRows, "cols", numCols, "labels", shortened)
-	}
-
-	// Encode heatmap data into panels for the panelShapeInsert system.
-	// Panel 0: metadata (row count, col count, min, max, colorScale, row labels, col labels)
-	// Panels 1..N: one per cell [row*numCols+col], value encoded as title
-	var panels []nativePanelData
-
-	// Panel 0: metadata
-	panels = append(panels, nativePanelData{
-		title: "__heatmap_meta__",
-		body:  encodeHeatmapMeta(parsed),
-	})
-
-	// Panels 1..N: cells
-	for row := 0; row < numRows; row++ {
-		for col := 0; col < numCols; col++ {
-			v := 0.0
-			if col < len(parsed.values[row]) {
-				v = parsed.values[row][col]
-			}
-			panels = append(panels, nativePanelData{
-				title: formatHeatmapVal(v),
-			})
-		}
-	}
-
-	slog.Info("native heatmap shapes: registered",
-		"slide", slideNum,
-		"rows", numRows,
-		"cols", numCols,
-		"bounds", fmt.Sprintf("%dx%d+%d+%d", placeholderBounds.Width, placeholderBounds.Height, placeholderBounds.X, placeholderBounds.Y))
-
-	ctx.panelShapeInserts[slideNum] = append(ctx.panelShapeInserts[slideNum], panelShapeInsert{
-		altText:        diagramAltText(item),
-		placeholderIdx: shapeIdx,
-		bounds:         placeholderBounds,
-		panels:         panels,
-		heatmapMode:    true,
-		heatmapMeta: heatmapMeta{
-			numRows:    numRows,
-			numCols:    numCols,
-			colorScale: parsed.colorScale,
-		},
-	})
 }
 
 // encodeHeatmapMeta encodes heatmap metadata and labels into a single string.

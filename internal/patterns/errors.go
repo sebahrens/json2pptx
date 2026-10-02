@@ -200,8 +200,12 @@ const (
 	ErrCodeTableFontScaled     = "table_font_scaled"
 	ErrCodeDiagramClamped      = "diagram_clamped"
 	ErrCodeDiagramRenderFailed = "diagram_render_failed"
-	ErrCodePaginationDefault   = "pagination_default_threshold"
-	ErrCodeColumnWidthDeficit  = "column_width_deficit"
+	// ErrCodeDiagramRegionTooSmall refuses a native diagram placed in a
+	// shape_grid cell or compose segment too small for its text to stay
+	// readable (go-slide-creator-3grgs).
+	ErrCodeDiagramRegionTooSmall = "DIAGRAM_REGION_TOO_SMALL"
+	ErrCodePaginationDefault     = "pagination_default_threshold"
+	ErrCodeColumnWidthDeficit    = "column_width_deficit"
 
 	// Preflight predictions for render-time behaviour. These mirror the
 	// render-time codes but are emitted from collectFitFindings using only
@@ -319,17 +323,18 @@ var (
 	ErrChartDataEmpty        = errors.New("chart data is empty; output will be blank")
 	ErrChartPlaceholderEmpty = errors.New("chart placeholder rendered without chart spec")
 
-	ErrPlaceholderRemapped = errors.New("placeholder remapped to fallback target")
-	ErrTextTrimmed         = errors.New("trailing paragraphs trimmed to fit placeholder")
-	ErrTextOverflow        = errors.New("text overflows placeholder even after trimming")
-	ErrReadabilityTrimmed  = errors.New("paragraphs trimmed for readability")
-	ErrNoAutofitOverflow   = errors.New("text overflows placeholder with noAutofit")
-	ErrTableRowsTruncated  = errors.New("table rows truncated to fit height")
-	ErrTableFontScaled     = errors.New("table font scaled to minimum floor")
-	ErrDiagramClamped      = errors.New("diagram placeholder dimensions clamped to minimum")
-	ErrDiagramRenderFailed = errors.New("diagram rendering failed, placeholder image inserted")
-	ErrPaginationDefault   = errors.New("pagination using default threshold, no template capacity")
-	ErrColumnWidthDeficit  = errors.New("column widths fell back to global floor")
+	ErrPlaceholderRemapped   = errors.New("placeholder remapped to fallback target")
+	ErrTextTrimmed           = errors.New("trailing paragraphs trimmed to fit placeholder")
+	ErrTextOverflow          = errors.New("text overflows placeholder even after trimming")
+	ErrReadabilityTrimmed    = errors.New("paragraphs trimmed for readability")
+	ErrNoAutofitOverflow     = errors.New("text overflows placeholder with noAutofit")
+	ErrTableRowsTruncated    = errors.New("table rows truncated to fit height")
+	ErrTableFontScaled       = errors.New("table font scaled to minimum floor")
+	ErrDiagramClamped        = errors.New("diagram placeholder dimensions clamped to minimum")
+	ErrDiagramRenderFailed   = errors.New("diagram rendering failed, placeholder image inserted")
+	ErrDiagramRegionTooSmall = errors.New("native diagram region too small for readable text")
+	ErrPaginationDefault     = errors.New("pagination using default threshold, no template capacity")
+	ErrColumnWidthDeficit    = errors.New("column widths fell back to global floor")
 
 	ErrContrastPredicted  = errors.New("text color is predicted to be auto-replaced for WCAG AA contrast")
 	ErrContrastUnresolved = errors.New("placeholder text contrast cannot be verified or safely auto-fixed")
@@ -413,6 +418,7 @@ var codeSentinel = map[string]error{
 	ErrCodeTableFontScaled:         ErrTableFontScaled,
 	ErrCodeDiagramClamped:          ErrDiagramClamped,
 	ErrCodeDiagramRenderFailed:     ErrDiagramRenderFailed,
+	ErrCodeDiagramRegionTooSmall:   ErrDiagramRegionTooSmall,
 	ErrCodePaginationDefault:       ErrPaginationDefault,
 	ErrCodeColumnWidthDeficit:      ErrColumnWidthDeficit,
 	ErrCodeContrastPredicted:       ErrContrastPredicted,

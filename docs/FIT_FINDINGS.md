@@ -875,6 +875,27 @@ At validate / preview time the chart dry-render emits this code with `action: re
 }
 ```
 
+### `DIAGRAM_REGION_TOO_SMALL`
+
+**Action:** `refuse`
+**Fix kind:** advisory `simplify_or_enlarge_diagram`
+**Emitted at:** validate (`--fit-report` / `validate_input(fit_report)`) and generate
+
+A native diagram (`swot`, `pestel`, `business_model_canvas`, `heatmap`, `value_chain`, `nine_box_talent`, `kpi_dashboard`, `process_flow`, `pyramid`, `house_diagram`, `porters_five_forces`, `panel_layout` and its `icon_columns` / `icon_rows` / `stat_cards` aliases) placed in a `shape_grid` cell or `compose` segment is drawn by the same bounded builders as in a body placeholder, sized to the region (go-slide-creator-3grgs). The region is laid out at its actual size first, and when generation's written-scale readability rule would refuse a shape in it — text whose stored autofit takes it below the 7pt floor — the placement is refused rather than published as an illegible canvas. `generate` aborts with the same message; `validate` reports it first at the diagram's path. Dense canvases may correctly refuse a half-width slot; the remedy is room, not a forced shrink.
+
+`fix.params`: `diagram_type`, `region_width_emu`, `region_height_emu`, `shapes_below_floor`, `actual_pt` (smallest written size), `min_pt` (7), `alternatives`, and — when a region up to 3× larger in each dimension renders readably — `min_width_emu` / `min_height_emu` (also in `allowed`). `measured` is the region.
+
+```json
+{
+  "path": "/slides/0/shape_grid/rows/0/cells/0/diagram",
+  "pattern": "pestel",
+  "code": "DIAGRAM_REGION_TOO_SMALL",
+  "message": "native pestel in a 4.4×4.9in region renders 6 shape(s) at 2.2pt, below the 7pt floor generation publishes; it needs about 6.6×7.3in — enlarge the region, place the diagram in a body placeholder, or remove items",
+  "fix": { "kind": "simplify_or_enlarge_diagram", "params": { "diagram_type": "pestel", "region_width_emu": 4023360, "region_height_emu": 4480560, "shapes_below_floor": 6, "actual_pt": 2.2, "min_pt": 7, "min_width_emu": 6035040, "min_height_emu": 6720840, "alternatives": ["give the diagram a larger shape_grid cell or compose segment (fix.params.min_width_emu / min_height_emu)", "place it in a body placeholder as content diagram_value", "remove low-priority items"] } },
+  "action": "refuse"
+}
+```
+
 ### `chart_value_coerced`
 
 **Action:** `review`

@@ -68,7 +68,13 @@ single views, with the same runnable `next_tool_call` (a `blank-title`
 `segment_path`, nested `compose`, per-region `data_contract.field_path` of
 the sample content to replace). Copy that one slide into your DeckSpec; the
 other slides stay semantic kinds. A `compose:` name resent in `candidates`
-resolves to the same candidate. Read [DECKSPEC.md](DECKSPEC.md) for budgets,
+resolves to the same candidate.
+Native diagrams (swot, pestel, bmc, heatmap, the
+panel family, ...) also render as editable shapes in a `shape_grid` cell or
+`compose` segment — `get_diagram_capabilities` reports each placement's real
+`pipeline` — and a region too small for their text is refused with
+`DIAGRAM_REGION_TOO_SMALL` (`fix.params.min_width_emu` / `min_height_emu`).
+Read [DECKSPEC.md](DECKSPEC.md) for budgets,
 degradation, required-layout coverage, handles, and revision rules.
 
 Several views proving one title (chart, KPIs, dated plan) may share a slide;

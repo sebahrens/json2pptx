@@ -177,44 +177,6 @@ func isPortersFiveForcesDiagram(spec *types.DiagramSpec) bool {
 	return spec.Type == "porters_five_forces"
 }
 
-// processPortersFiveForceNativeShapes parses Porter's Five Forces data from a DiagramSpec
-// and registers a panelShapeInsert for native OOXML shape generation.
-func (ctx *singlePassContext) processPortersFiveForceNativeShapes(slideNum int, item ContentItem, shapeIdx int) {
-	diagramSpec, ok := item.Value.(*types.DiagramSpec)
-	if !ok {
-		slog.Warn("porters native shapes: invalid diagram spec", "slide", slideNum)
-		return
-	}
-
-	if ctx.themeOverride != nil {
-		slog.Warn("porters native shapes: themeOverride is set but scheme color refs won't reflect overrides",
-			"slide", slideNum)
-	}
-
-	panels := porterPanels(diagramSpec)
-	if len(panels) == 0 {
-		slog.Warn("porters native shapes: no forces parsed", "slide", slideNum)
-		return
-	}
-
-	slide := ctx.templateSlideData[slideNum]
-	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
-	placeholderBounds := getPlaceholderBounds(shape, nil)
-
-	slog.Info("native porters shapes: registered",
-		"slide", slideNum,
-		"forces", len(panels),
-		"bounds", fmt.Sprintf("%dx%d+%d+%d", placeholderBounds.Width, placeholderBounds.Height, placeholderBounds.X, placeholderBounds.Y))
-
-	ctx.panelShapeInserts[slideNum] = append(ctx.panelShapeInserts[slideNum], panelShapeInsert{
-		altText:         diagramAltText(item),
-		placeholderIdx:  shapeIdx,
-		bounds:          placeholderBounds,
-		panels:          panels,
-		portersFiveMode: true,
-	})
-}
-
 // porterPanels converts a Porter's spec to nativePanelData for the
 // panelShapeInsert system, encoding force metadata into the panel fields.
 func porterPanels(diagramSpec *types.DiagramSpec) []nativePanelData {

@@ -7,7 +7,6 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
-	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 )
@@ -96,67 +95,6 @@ const kpiMaxMetrics = 12
 // isKPIDashboardDiagram returns true if the diagram spec is a kpi_dashboard type.
 func isKPIDashboardDiagram(spec *types.DiagramSpec) bool {
 	return spec.Type == "kpi_dashboard"
-}
-
-// processKPIDashboardNativeShapes parses KPI dashboard data from a DiagramSpec and
-// registers a panelShapeInsert for native OOXML shape generation.
-func (ctx *singlePassContext) processKPIDashboardNativeShapes(slideNum, contentIdx int, item ContentItem, shapeIdx int) {
-	diagramSpec, ok := item.Value.(*types.DiagramSpec)
-	if !ok {
-		slog.Warn("kpi dashboard native shapes: invalid diagram spec", "slide", slideNum)
-		return
-	}
-
-	// Parse metrics from DiagramSpec.Data — accept "metrics" or "kpis" key.
-	metrics := parseKPIMetrics(diagramSpec.Data)
-	if len(metrics) == 0 {
-		slog.Warn("kpi dashboard native shapes: no metrics found", "slide", slideNum)
-		return
-	}
-
-	// Convert metrics to nativePanelData for the panelShapeInsert system.
-	// Enforce the documented capacity instead of silently accepting any count.
-	if len(metrics) > kpiMaxMetrics {
-		dropped := len(metrics) - kpiMaxMetrics
-		reason := fmt.Sprintf(
-			"kpi_dashboard holds at most %d metrics (declared max_nodes); %d of %d were dropped — split across two slides",
-			kpiMaxMetrics, dropped, len(metrics))
-		ctx.emitFitFinding(patterns.ContentDropped(
-			slidepath.ContentIndex(slideNum-1, contentIdx),
-			fmt.Sprintf("%d kpi_dashboard metrics", dropped), reason))
-		ctx.warnings = append(ctx.warnings, fmt.Sprintf("slide %d: %s", slideNum, reason))
-		metrics = metrics[:kpiMaxMetrics]
-	}
-
-	var panels []nativePanelData
-	for _, m := range metrics {
-		// Build delta text with trend arrow prefix.
-		deltaText := buildKPIDeltaText(m.delta, m.trend)
-		panels = append(panels, nativePanelData{
-			title: m.label,
-			value: m.displayValue(),
-			body:  deltaText,
-		})
-	}
-
-	// Get placeholder bounds from the shape being replaced.
-	slide := ctx.templateSlideData[slideNum]
-	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
-	placeholderBounds := getPlaceholderBounds(shape, nil)
-	placeholderBounds = ctx.fitNativeFramework(slideNum, contentIdx, "kpi_dashboard", placeholderBounds, panels, houseDiagramMeta{})
-
-	slog.Info("native kpi dashboard shapes: registered",
-		"slide", slideNum,
-		"metrics", len(metrics),
-		"bounds", fmt.Sprintf("%dx%d+%d+%d", placeholderBounds.Width, placeholderBounds.Height, placeholderBounds.X, placeholderBounds.Y))
-
-	ctx.panelShapeInserts[slideNum] = append(ctx.panelShapeInserts[slideNum], panelShapeInsert{
-		altText:          diagramAltText(item),
-		placeholderIdx:   shapeIdx,
-		bounds:           placeholderBounds,
-		panels:           panels,
-		kpiDashboardMode: true,
-	})
 }
 
 // generateKPIDashboardGroupXML produces the complete <p:grpSp> XML for a KPI dashboard.

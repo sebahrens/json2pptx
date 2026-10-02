@@ -3,7 +3,7 @@ package generator
 import "github.com/sebahrens/json2pptx/internal/patterns"
 
 // EnrichVisualPlacement annotates RecommendVisualResult candidates with placement
-// guidance derived from the canonical diagram placement registry and known facts
+// guidance derived from the renderer dispatch (DiagramPlacementFor) and known facts
 // about chart/pattern/placeholder render paths. This bridges the gap between the
 // category-level recommendation and the authoring path the agent should follow.
 //
@@ -64,15 +64,15 @@ func composePlacement() *patterns.PlacementGuidance {
 }
 
 func diagramPlacement(diagramType string) *patterns.PlacementGuidance {
+	// The same dispatch-derived contract get_diagram_capabilities and
+	// validate read (go-slide-creator-6x9bt): a type no renderer owns is not
+	// advertised as embeddable anywhere.
 	info := DiagramPlacementFor(diagramType)
 	if info == nil {
-		// Unknown diagram — assume SVG, grid-embeddable.
 		return &patterns.PlacementGuidance{
 			PreferredPlacement: "placeholder",
 			HostStrategy:       "placeholder_content",
-			GridEmbeddable:     true,
-			RenderPipeline:     "svg",
-			ComposableWith:     []string{"named_pattern"},
+			GridEmbeddable:     false,
 		}
 	}
 
@@ -81,8 +81,10 @@ func diagramPlacement(diagramType string) *patterns.PlacementGuidance {
 		GridEmbeddable: info.GridCellPipeline != "",
 	}
 
-	// Native OOXML diagrams render best in placeholders (full fidelity).
-	// They can fall back to SVG in grid cells, but placeholder is preferred.
+	// Native OOXML diagrams render best in placeholders (the full content
+	// area). In a grid cell or compose segment they render natively through
+	// the same bounded adapter, refused with DIAGRAM_REGION_TOO_SMALL when the
+	// region is too small for readable text.
 	if info.PlaceholderPipeline == "native_ooxml" {
 		pg.PreferredPlacement = "placeholder"
 		pg.HostStrategy = "placeholder_content"

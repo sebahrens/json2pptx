@@ -93,48 +93,6 @@ func isHouseDiagram(spec *types.DiagramSpec) bool {
 	return spec.Type == "house_diagram"
 }
 
-// processHouseDiagramNativeShapes parses house diagram data from a DiagramSpec
-// and registers a panelShapeInsert for native OOXML shape generation.
-func (ctx *singlePassContext) processHouseDiagramNativeShapes(slideNum, contentIdx int, item ContentItem, shapeIdx int) {
-	diagramSpec, ok := item.Value.(*types.DiagramSpec)
-	if !ok {
-		slog.Warn("house diagram native shapes: invalid diagram spec", "slide", slideNum)
-		return
-	}
-
-	panels, meta, err := parseHouseDiagramNativeData(diagramSpec.Data)
-	if err != nil {
-		slog.Warn("house diagram native shapes: parse failed", "slide", slideNum, "error", err)
-		return
-	}
-
-	if len(panels) == 0 {
-		slog.Warn("house diagram native shapes: no panels parsed", "slide", slideNum)
-		return
-	}
-
-	// Get placeholder bounds from the shape being replaced.
-	slide := ctx.templateSlideData[slideNum]
-	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
-	placeholderBounds := getPlaceholderBounds(shape, nil)
-	placeholderBounds = ctx.fitNativeFramework(slideNum, contentIdx, "house_diagram", placeholderBounds, panels, meta)
-
-	slog.Info("native house diagram shapes: registered",
-		"slide", slideNum,
-		"panels", len(panels),
-		"floors", len(meta.floors),
-		"bounds", fmt.Sprintf("%dx%d+%d+%d", placeholderBounds.Width, placeholderBounds.Height, placeholderBounds.X, placeholderBounds.Y))
-
-	ctx.panelShapeInserts[slideNum] = append(ctx.panelShapeInserts[slideNum], panelShapeInsert{
-		altText:          diagramAltText(item),
-		placeholderIdx:   shapeIdx,
-		bounds:           placeholderBounds,
-		panels:           panels,
-		houseDiagramMode: true,
-		houseDiagramMeta: meta,
-	})
-}
-
 // parseHouseDiagramNativeData extracts house diagram data from the diagram data map.
 // Returns panels encoded as: [roof, floor1_sec1, floor1_sec2, ..., floorN_secM, foundation]
 // and metadata describing the floor structure.
