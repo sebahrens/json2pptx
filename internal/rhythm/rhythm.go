@@ -36,6 +36,9 @@ type Slide struct {
 	HasShapeGrid bool
 	// HasCompose reports whether the slide uses the compose envelope.
 	HasCompose bool
+	// Compose is the envelope's region structure. When nil on a compose
+	// slide the fingerprint falls back to the bare "compose" family.
+	Compose *Compose
 	// ContentKinds lists the content item types in document order
 	// (e.g. "text", "bullets", "table").
 	ContentKinds []string
@@ -76,6 +79,27 @@ type Slide struct {
 	// extend a pattern run and do not count toward bullets_heavy
 	// (go-slide-creator-khzni).
 	Appendix bool
+}
+
+// Compose is the structural projection of a compose envelope: its direction
+// and its regions in document order (go-slide-creator-dzv7d).
+type Compose struct {
+	// Direction is "vertical" or "horizontal".
+	Direction string
+	Regions   []ComposeRegion
+}
+
+// ComposeRegion is one segment of a compose envelope: a leaf pattern, a
+// chart or diagram, or a nested envelope.
+type ComposeRegion struct {
+	// Visual is the leaf pattern name, or "chart" / "diagram" for a diagram
+	// segment. Ignored when Nested is set.
+	Visual string
+	// SizePct is the segment's explicit share; 0 takes an equal part of the
+	// remainder, as the compose engine allocates it.
+	SizePct float64
+	// Nested is a compose envelope inside this segment.
+	Nested *Compose
 }
 
 // SlideInfo describes the visual fingerprint of a single slide.
@@ -194,7 +218,11 @@ func fingerprint(idx int, s Slide) SlideInfo {
 	// Determine pattern name.
 	switch {
 	case s.HasCompose:
-		info.Pattern = "compose"
+		// Every composed slide used to be the one family "compose", so three
+		// structurally different envelopes read as a three-slide run and drew
+		// break_run advice (go-slide-creator-dzv7d). Name the envelope by its
+		// structure instead.
+		info.Pattern = composeFingerprint(s.Compose)
 	case s.PatternName != "":
 		info.Pattern = s.PatternName
 	case s.HasShapeGrid:
@@ -249,6 +277,81 @@ func shapeGridFingerprint(s Slide) string {
 		cols = append(cols, strconv.Itoa(len(row.Cells)))
 	}
 	return "shape_grid:" + strings.Join(cols, "-")
+}
+
+// composeDominantMargin is how far above an equal split a region's share must
+// sit to mark it as dominant: 65/35 marks the larger half of a two-region
+// envelope, 50/50 or 55/45 does not.
+const composeDominantMargin = 0.125
+
+// composeFingerprint names a compose envelope by coarse structure: direction,
+// the visual family of each region (nested envelopes recursively), and which
+// region dominates the space. Regions are sorted, so the same regions in a
+// different order, or a trivially different split, keep one identity and
+// still form a run; a different direction, region mix or dominant region
+// does not. Example: "compose:v[kpi*+pull-quote]".
+func composeFingerprint(c *Compose) string {
+	if c == nil || len(c.Regions) == 0 {
+		return "compose"
+	}
+	dir := "v"
+	if c.Direction == "horizontal" {
+		dir = "h"
+	}
+	shares := composeShares(c.Regions)
+	equal := 1.0 / float64(len(c.Regions))
+	tokens := make([]string, len(c.Regions))
+	for i, r := range c.Regions {
+		token := visualFamily(r.Visual)
+		if r.Nested != nil {
+			token = composeFingerprint(r.Nested)
+		}
+		if token == "" {
+			token = "region"
+		}
+		if len(c.Regions) > 1 && shares[i] >= equal+composeDominantMargin {
+			token += "*"
+		}
+		tokens[i] = token
+	}
+	sort.Strings(tokens)
+	return "compose:" + dir + "[" + strings.Join(tokens, "+") + "]"
+}
+
+// composeShares resolves each region's fraction of the envelope the way the
+// compose engine allocates it: explicit size_pct values first, the remainder
+// split equally among regions without one, then normalised to sum to 1.
+func composeShares(regions []ComposeRegion) []float64 {
+	shares := make([]float64, len(regions))
+	explicit, implicit := 0.0, 0
+	for i, r := range regions {
+		if r.SizePct > 0 {
+			shares[i] = r.SizePct
+			explicit += r.SizePct
+		} else {
+			implicit++
+		}
+	}
+	if implicit > 0 {
+		rest := math.Max(100-explicit, 0) / float64(implicit)
+		for i := range shares {
+			if shares[i] == 0 {
+				shares[i] = rest
+			}
+		}
+	}
+	total := 0.0
+	for _, v := range shares {
+		total += v
+	}
+	for i := range shares {
+		if total > 0 {
+			shares[i] /= total
+		} else {
+			shares[i] = 1 / float64(len(shares))
+		}
+	}
+	return shares
 }
 
 // dominantVisual returns the primary visual type on a slide.
@@ -577,6 +680,11 @@ func suggestBreakPatterns(runFamily string, slide Slide) []string {
 		preferenceRank[name] = len(preferences) - i
 	}
 
+	// A run of composed slides already shows its regions' patterns; breaking
+	// it with one of them would repeat the same visual.
+	runRegions := map[string]bool{}
+	composeRegionFamilies(slide.Compose, runRegions)
+
 	registry := patterns.Default()
 	pairs := map[string]bool{}
 	if current, ok := registry.Get(slide.PatternName); ok {
@@ -591,7 +699,7 @@ func suggestBreakPatterns(runFamily string, slide Slide) []string {
 	var candidates []ranked
 	for _, pat := range registry.List() {
 		name := pat.Name()
-		if visualFamily(name) == runFamily {
+		if family := visualFamily(name); family == runFamily || runRegions[family] {
 			continue
 		}
 		// A timeline without dates is decoration (RULES.md): only propose the
@@ -622,6 +730,23 @@ func suggestBreakPatterns(runFamily string, slide Slide) []string {
 		result = append(result, candidate.name)
 	}
 	return result
+}
+
+// composeRegionFamilies adds the visual family of every leaf region in c
+// (nested envelopes included) to out.
+func composeRegionFamilies(c *Compose, out map[string]bool) {
+	if c == nil {
+		return
+	}
+	for _, r := range c.Regions {
+		if r.Nested != nil {
+			composeRegionFamilies(r.Nested, out)
+			continue
+		}
+		if r.Visual != "" {
+			out[visualFamily(r.Visual)] = true
+		}
+	}
 }
 
 func breakPreferences(intent string) []string {

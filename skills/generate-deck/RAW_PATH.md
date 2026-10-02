@@ -168,7 +168,13 @@ when underfilled cells pass 30% (`underfilled_cells`). Narrative checks:
 `missing_executive_summary` (6+ slides), `missing_next_steps` (no
 next-steps close), `missing_sections` (10+ content slides, no divider or
 agenda), `evidence_missing_takeaway_or_source`, `bullets_heavy` (3+
-bullets-only slides). Accent checks: `accent_heavy_slide`,
+bullets-only slides). A `compose` slide's `pattern` names its structure —
+direction, region families, a `*` on a region holding ≥ 12.5 points over an
+equal share, nested envelopes in place, e.g. `compose:v[kpi*+pull-quote]` or
+`compose:h[chart+compose:v[kpi+pull-quote]]` — so differently composed
+slides do not form a run, while the same regions reordered, re-split 55/45
+or swapped within a family (`kpi-3up` → `kpi-4up`) still do; its
+`break_run` alternatives skip the run's region families. Accent checks: `accent_heavy_slide`,
 `strong_accent_run` (see RULES.md). `accent_balance` counts pattern slides
 by their resolved accent (`accent_strategy` or `overrides.accent`).
 Iterate until the score is ≥ 70 and the narrative codes are gone.

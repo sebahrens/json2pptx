@@ -75,7 +75,8 @@ The compiler picks patterns and layouts per kind; your job is the sequence.
 without rendering, and `analyze_deck_rhythm` accepts the `deck_id`.
 
 - No visual family three times in a row (alternating `kpi-3up` and `kpi-4up`
-  is still one run); follow a dense slide (table, grid) with a light one
+  is still one run; composed slides with the same regions are one run,
+  differently composed ones are not); follow a dense slide (table, grid) with a light one
   (stat, quote, section).
 - Every evidence slide has a `takeaway` and a `source`.
 - Clear `analyze_deck_rhythm`'s narrative codes (`missing_executive_summary`,

@@ -132,6 +132,7 @@ func toRhythmSlide(s SlideInput) rhythm.Slide {
 		HasPattern:   s.Pattern != nil,
 		HasShapeGrid: s.ShapeGrid != nil,
 		HasCompose:   s.Compose != nil,
+		Compose:      rhythmCompose(s.Compose),
 		Role:         rhythmRole(s),
 		HasTakeaway:  strings.TrimSpace(s.Takeaway) != "",
 		HasSource:    strings.TrimSpace(s.Source) != "" || s.SourceLink != nil,
@@ -145,6 +146,8 @@ func toRhythmSlide(s SlideInput) rhythm.Slide {
 		rs.HasTakeaway = rs.HasTakeaway || vals.takeaway
 		rs.HasSource = rs.HasSource || vals.source
 	}
+	// Region text lets break suggestions follow what a composed slide says.
+	text = append(text, composeValueText(s.Compose)...)
 	if len(s.Content) > 0 {
 		rs.ContentKinds = make([]string, len(s.Content))
 		for i, c := range s.Content {
@@ -158,6 +161,48 @@ func toRhythmSlide(s SlideInput) rhythm.Slide {
 		rs.Grid = buildDensityGrid(s.ShapeGrid)
 	}
 	return rs
+}
+
+// rhythmCompose projects a compose envelope into the analyzer's region
+// structure: direction, each segment's pattern (or chart / diagram class),
+// its size_pct and nested envelopes (go-slide-creator-dzv7d).
+func rhythmCompose(c *ComposeInput) *rhythm.Compose {
+	if c == nil {
+		return nil
+	}
+	out := &rhythm.Compose{Direction: c.Direction, Regions: make([]rhythm.ComposeRegion, len(c.Segments))}
+	for i, seg := range c.Segments {
+		region := rhythm.ComposeRegion{SizePct: seg.SizePct}
+		switch {
+		case seg.Compose != nil:
+			region.Nested = rhythmCompose(seg.Compose)
+		case seg.HasDiagram():
+			region.Visual = "diagram"
+			if isChartishDiagramType(seg.Diagram.Type) {
+				region.Visual = "chart"
+			}
+		default:
+			region.Visual = seg.Pattern.Name
+		}
+		out.Regions[i] = region
+	}
+	return out
+}
+
+// composeValueText is the pattern-value text of every region in c.
+func composeValueText(c *ComposeInput) []string {
+	if c == nil {
+		return nil
+	}
+	var text []string
+	for _, seg := range c.Segments {
+		if seg.Compose != nil {
+			text = append(text, composeValueText(seg.Compose)...)
+			continue
+		}
+		text = append(text, patternValueStrings(seg.Pattern.Values).text...)
+	}
+	return text
 }
 
 // contentBodyText is the non-title text and bullets of a slide's content.
