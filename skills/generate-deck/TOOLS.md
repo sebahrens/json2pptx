@@ -58,25 +58,26 @@ signature or schema registry.
   `next_tool_call` to `render_deck_spec` whose `spec` is a complete DeckSpec
   (one `raw_json2pptx` slide with sample data), so the default profile
   reaches every chart and diagram type without `get_data_format_hints`.
-  Every `compose` candidate carries the same runnable `next_tool_call`
-  (a `blank-title` slide with `compose.segments` and sample content in every
-  region) and a `composition` (`direction`, `regions[]` with `size_pct`,
-  `position`, `segment_path`, nested `compose`, per-region `data_contract`;
-  `instructions`). An explicit same-slide brief for several views ("line
-  chart left 65%, KPI upper-right, timeline lower-right") yields one
-  heterogeneous composition — chart / KPI / diagram regions, explicit shares
-  kept — ranked above every partial view; briefs without regions keep their
-  whole-slide candidates. `compose:` names (`compose:<a>+<b>`, charts and
-  diagrams as `chart:<type>` / `diagram:<type>`) resolve in `candidates`;
-  a malformed one returns category `compose`, score 0 and the exact reason.
+  A `compose` candidate carries the same runnable `next_tool_call` (one
+  `blank-title` slide with `compose.segments`, sample content in every
+  region; copy it into the DeckSpec) and a `composition` (`direction`,
+  `regions[]` with `category`, `name`, `size_pct`, `position`,
+  `segment_path`, nested `compose`;
+  `composition.regions[].data_contract.field_path` names the sample content;
+  `instructions`). An explicit same-slide brief ("line chart left 65%, KPI
+  upper-right, timeline lower-right") yields one composition, shares kept,
+  ranked above every partial view. `compose:<a>+<b>` names (charts /
+  diagrams as `chart:<type>` / `diagram:<type>`, e.g.
+  `compose:pull-quote+stylish-panels`,
+  `compose:chart:line+diagram:timeline+stat-hero`) resolve in `candidates`;
+  a malformed one returns category `compose`, score 0 and the reason.
   A `placeholder_layout` candidate named `table` is a native table (content
   type `table` / DeckSpec kind `table`, `totals_row`); financials, P&L,
-  price lists and risk registers rank it first. Consulting intents are
-  routed by meaning: a comparison or trend outranks `stat-hero`, a reporting
-  structure ranks `org_chart` above `team-bios`, "executive summary" ranks
-  `exec-summary` above the bullets layout, "appendix" offers section /
-  content / table, and a risk matrix offers `matrix-2x2` / `table-highlight`
-  (never `comparison-2col`).
+  price lists and risk registers rank it first. Intents route by meaning:
+  comparison / trend outranks `stat-hero`, reporting structure ranks
+  `org_chart` over `team-bios`, "executive summary" ranks `exec-summary`
+  over bullets, "appendix" offers section / content / table, a risk matrix
+  `matrix-2x2` / `table-highlight` (never `comparison-2col`).
 - `get_input_schema` and `get_data_format_hints` support digest reuse.
   `list_slide_kinds`, `show_pattern`, and `describe_finding` are the live
   kind, pattern, and finding catalogs. Prefer them to static enumerations.
