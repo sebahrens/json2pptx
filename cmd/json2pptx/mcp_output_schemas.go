@@ -451,7 +451,7 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
           "example":          {"$ref": "#/$defs/visual_example"},
           "data_contract": {
             "type": "object",
-            "description": "Chart / diagram candidates only: the data keys the type takes (same entry as get_data_format_hints) and field_path, where that data sits in next_tool_call.args_template.spec.",
+            "description": "Chart / diagram candidates: the data keys the type takes (same entry as get_data_format_hints) and field_path, where that data sits in next_tool_call.args_template.spec. Compose candidates carry one per region in composition.",
             "properties": {
               "required_keys": {"type": "array", "items": {"type": "string"}},
               "optional_keys": {"type": "array", "items": {"type": "string"}},
@@ -462,13 +462,14 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
           },
           "next_tool_call": {
             "type": "object",
-            "description": "Chart / diagram candidates only: a runnable render_deck_spec call whose args_template.spec is a complete DeckSpec (one raw_json2pptx slide hosting this chart / diagram with sample data). Replace the title and data, keep the shape.",
+            "description": "Chart, diagram and compose candidates: a runnable render_deck_spec call whose args_template.spec is a complete DeckSpec (one raw_json2pptx slide hosting this chart / diagram, or a blank-title slide with compose.segments for a compose candidate, with sample content). Replace the title and data, keep the shape.",
             "properties": {
               "tool":          {"type": "string"},
               "args_template": {"type": "object"}
             },
             "required": ["tool", "args_template"]
-          }
+          },
+          "composition": {"$ref": "#/$defs/visual_composition"}
         },
         "required": ["category", "name", "score", "rationale", "confidence_band"]
       }
@@ -504,6 +505,31 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
         "required_layout": {"type": "string", "description": "Feasibility label naming the canonical layout or derivable capability the candidate needs (e.g. \"Title Slide\", \"Two Content\", \"full-image\", \"grid base\"). Not necessarily a valid slide.layout_id or semantic meta.required_layouts value. Omitted when no specific requirement exists."}
       },
       "required": ["status"]
+    },
+    "visual_composition": {
+      "type": "object",
+      "description": "Compose candidates only: the region layout next_tool_call renders — compose.direction and one region per compose segment, in order.",
+      "properties": {
+        "direction":    {"type": "string", "enum": ["horizontal", "vertical"]},
+        "instructions": {"type": "string", "description": "How to adopt the recipe slide in a DeckSpec and where the sample content sits."},
+        "regions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "category":      {"type": "string", "enum": ["named_pattern", "chart", "diagram", "compose"], "description": "compose = a nested envelope in compose."},
+              "name":          {"type": "string", "description": "Pattern / chart / diagram type; absent for a nested region."},
+              "size_pct":      {"type": "number", "description": "The segment's share of its envelope (shares of one envelope sum to 100)."},
+              "position":      {"type": "string", "description": "Where the region sits: left, right, top, bottom, upper-right, ..."},
+              "segment_path":  {"type": "string", "description": "This segment in next_tool_call.args_template.spec."},
+              "data_contract": {"type": "object", "description": "Leaf regions: data keys (chart / diagram) or values keys (pattern) and field_path of the sample content to replace."},
+              "compose":       {"type": "object", "description": "Nested visual_composition of a compose region."}
+            },
+            "required": ["category", "size_pct"]
+          }
+        }
+      },
+      "required": ["direction", "regions"]
     },
     "visual_example": {
       "type": "object",

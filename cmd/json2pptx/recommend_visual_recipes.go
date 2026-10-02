@@ -401,12 +401,17 @@ func rankingIntent(query string) bool {
 }
 
 // attachVisualRecipes gives every chart / diagram candidate its data contract
-// and a runnable render_deck_spec next call.
+// and a runnable render_deck_spec next call, and every compose candidate its
+// region contracts and runnable compose recipe (go-slide-creator-okg00).
 func attachVisualRecipes(rec *patterns.RecommendVisualResult, templateName string) {
 	hints := buildDataFormatHints()
 	ranking := rankingIntent(rec.QueryUnderstood)
 	for i := range rec.Candidates {
 		c := &rec.Candidates[i]
+		if c.Category == patterns.VisualCategoryCompose {
+			attachComposeRecipe(c, templateName, patterns.Default(), hints)
+			continue
+		}
 		dataKey := c.Name
 		// A ranking ("largest", "top 5") is the textbook horizontal bar chart:
 		// names in a column, bars sorted largest first (go-slide-creator-oocqj).

@@ -54,7 +54,17 @@ kinds with `list_slide_kinds` using its compact fields, requesting
 repeat. For a chart or diagram no kind covers (gantt, venn, pestel, ...), a
 `recommend_visual` chart/diagram candidate carries `data_contract` and a
 runnable `next_tool_call` (`render_deck_spec` with a `raw_json2pptx` slide);
-replace its title and data. Read [DECKSPEC.md](DECKSPEC.md) for budgets,
+replace its title and data. Several views on one slide (panels + quote, or an
+explicit "line chart left 65%, KPI upper-right, timeline lower-right" brief)
+come back as a `compose` candidate (`compose:pull-quote+stylish-panels`,
+`compose:chart:line+diagram:timeline+stat-hero`) ranked above the partial
+single views, with the same runnable `next_tool_call` (a `blank-title`
+`raw_json2pptx` slide with `compose.segments`) and a `composition`: its
+`direction` and `regions[]` (`category`, `name`, `size_pct`, `position`,
+`segment_path`, nested `compose`, per-region `data_contract.field_path` of
+the sample content to replace). Copy that one slide into your DeckSpec; the
+other slides stay semantic kinds. A `compose:` name resent in `candidates`
+resolves to the same candidate. Read [DECKSPEC.md](DECKSPEC.md) for budgets,
 degradation, required-layout coverage, handles, and revision rules.
 
 Use raw `PresentationInput` only for a feature the semantic schema cannot

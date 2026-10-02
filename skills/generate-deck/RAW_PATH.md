@@ -149,7 +149,10 @@ publishable pass with `placeholder_policy: "strict"` so they block.
 
 Per slide intent, `recommend_visual` ranks layouts, patterns, charts,
 diagrams and compose envelopes (`recommend_pattern` only when you already
-need a named pattern). Take canonical layout IDs from `list_templates`; for
+need a named pattern). A compose candidate's `next_tool_call.args_template.spec.slides[0].slide`
+is a ready raw slide (`layout_id: "blank-title"`, title, `compose`); its
+`composition.regions[].data_contract.field_path` names each region's sample
+content. Take canonical layout IDs from `list_templates`; for
 placeholder capacity request `mode="compact"` (`layout_summaries[].placeholders[].max_chars`)
 or `fields="full"`.
 

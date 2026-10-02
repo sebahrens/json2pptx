@@ -58,6 +58,17 @@ signature or schema registry.
   `next_tool_call` to `render_deck_spec` whose `spec` is a complete DeckSpec
   (one `raw_json2pptx` slide with sample data), so the default profile
   reaches every chart and diagram type without `get_data_format_hints`.
+  Every `compose` candidate carries the same runnable `next_tool_call`
+  (a `blank-title` slide with `compose.segments` and sample content in every
+  region) and a `composition` (`direction`, `regions[]` with `size_pct`,
+  `position`, `segment_path`, nested `compose`, per-region `data_contract`;
+  `instructions`). An explicit same-slide brief for several views ("line
+  chart left 65%, KPI upper-right, timeline lower-right") yields one
+  heterogeneous composition — chart / KPI / diagram regions, explicit shares
+  kept — ranked above every partial view; briefs without regions keep their
+  whole-slide candidates. `compose:` names (`compose:<a>+<b>`, charts and
+  diagrams as `chart:<type>` / `diagram:<type>`) resolve in `candidates`;
+  a malformed one returns category `compose`, score 0 and the exact reason.
   A `placeholder_layout` candidate named `table` is a native table (content
   type `table` / DeckSpec kind `table`, `totals_row`); financials, P&L,
   price lists and risk registers rank it first. Consulting intents are
