@@ -299,6 +299,7 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 		applyChromeTracker(slideSpecs, input.Chrome, input.Slides, templateLayouts)
 		applyChromeSectionCrumb(genReq.Footer, slideSpecs, input.Chrome, input.Slides, templateLayouts)
 	}
+	applyAppendixPageLabels(genReq.Footer, input.Slides, templateLayouts)
 
 	// Wire theme override.
 	if input.ThemeOverride != nil {

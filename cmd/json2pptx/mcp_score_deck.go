@@ -377,6 +377,7 @@ func (mc *mcpConfig) collectRenderFindings(
 		applyChromeTracker(slideSpecs, input.Chrome, input.Slides, layouts)
 		applyChromeSectionCrumb(genReq.Footer, slideSpecs, input.Chrome, input.Slides, layouts)
 	}
+	applyAppendixPageLabels(genReq.Footer, input.Slides, layouts)
 	if input.ThemeOverride != nil {
 		genReq.ThemeOverride = input.ThemeOverride.ToThemeOverride()
 	}

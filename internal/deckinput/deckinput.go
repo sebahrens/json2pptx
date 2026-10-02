@@ -307,6 +307,15 @@ type SlideInput struct {
 	// block; it is serialised so the flat slides `semantic compile` emits keep
 	// their crumbs when fed back to generate (go-slide-creator-csclk.49).
 	SectionTitle string `json:"section_title,omitempty"`
+
+	// Appendix marks a section divider as the start of appendix back matter
+	// (go-slide-creator-khzni): the slides after it, up to the next ordinary
+	// divider, are numbered A1, A2, … in the footer instead of continuing the
+	// main deck's page numbers, and are exempt from the deck-rhythm checks.
+	// Dividers titled Appendix / Backup / Annex are back matter without it; the
+	// engine sets it on the divider of a structure.sections[] entry marked
+	// appendix: true and on a DeckSpec section kind with appendix: true.
+	Appendix bool `json:"appendix,omitempty"`
 }
 
 // BackgroundInput defines a slide background image.

@@ -40,6 +40,37 @@ type FooterConfig struct {
 	// in the footer (go-slide-creator-ynfv); before it the footer was one
 	// deck-wide string with nowhere to vary.
 	LeftTextBySlide []string
+
+	// PageLabelBySlide writes a literal page label into the slide-number
+	// position of individual slides, indexed by 0-based slide index, instead of
+	// PowerPoint's auto-updating slide-number field. Appendix back matter uses
+	// it for "A1", "A2", … and main-deck slides after the appendix for their
+	// contiguous main-deck number (go-slide-creator-khzni). An empty string (or
+	// a short slice) keeps the auto field.
+	PageLabelBySlide []string
+	// HidePageNumberBySlide suppresses the slide number on individual slides
+	// (an appendix divider), keeping the left footer text.
+	HidePageNumberBySlide []bool
+}
+
+// PageLabelFor returns the literal page label for a 0-based slide index, or ""
+// when the slide keeps the auto-updating slide-number field.
+func (c *FooterConfig) PageLabelFor(slideIndex int) string {
+	if c == nil || slideIndex < 0 || slideIndex >= len(c.PageLabelBySlide) {
+		return ""
+	}
+	return c.PageLabelBySlide[slideIndex]
+}
+
+// pageNumberHiddenFor reports whether a 0-based slide shows no page number.
+func (c *FooterConfig) pageNumberHiddenFor(slideIndex int) bool {
+	if c == nil {
+		return false
+	}
+	if c.HidePageNumber {
+		return true
+	}
+	return slideIndex >= 0 && slideIndex < len(c.HidePageNumberBySlide) && c.HidePageNumberBySlide[slideIndex]
 }
 
 // LeftTextFor returns the footer text for a 0-based slide index.
