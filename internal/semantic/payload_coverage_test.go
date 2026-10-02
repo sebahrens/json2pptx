@@ -46,6 +46,16 @@ func covChart(title string) map[string]any {
 	return c
 }
 
+// covRegions builds a two-region (chart + text) regions body over base, the
+// text region's body carrying text.
+func covRegions(base map[string]any, text string) map[string]any {
+	base["regions"] = []any{
+		map[string]any{"kind": "chart", "chart": covChart("")},
+		map[string]any{"kind": "text", "body": text},
+	}
+	return base
+}
+
 // covKPIs builds three KPI cells (a count the kpi-Nup family supports), placing
 // firstBig in the first cell's value.
 func covKPIs(firstBig string) []any {
@@ -326,6 +336,17 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 		"source":   {inject: func(s string) map[string]any { return covStat(map[string]any{"source": s}) }, rendered: true},
 		"title":    {inject: func(s string) map[string]any { return covStat(map[string]any{"title": s}) }, rendered: true},
 		"takeaway": {inject: func(s string) map[string]any { return covStat(map[string]any{"takeaway": s}) }, rendered: true},
+	},
+	// go-slide-creator-fn2ka: every region's content, the slide title, the
+	// takeaway and each source reach the compiled grid / slide.
+	KindRegions: {
+		"regions": {inject: func(s string) map[string]any { return covRegions(map[string]any{}, s) }, rendered: true},
+		"arrangement": {inject: func(string) map[string]any {
+			return covRegions(map[string]any{"arrangement": "rows"}, "Narrative")
+		}, rendered: false, why: "a structural selector: it picks the grid, it is not text"},
+		"title":    {inject: func(s string) map[string]any { return covRegions(map[string]any{"title": s}, "Narrative") }, rendered: true},
+		"takeaway": {inject: func(s string) map[string]any { return covRegions(map[string]any{"takeaway": s}, "Narrative") }, rendered: true},
+		"source":   {inject: func(s string) map[string]any { return covRegions(map[string]any{"source": s}, "Narrative") }, rendered: true},
 	},
 	// go-slide-creator-wrsb: a milestone's label, its date and its body all have
 	// to reach the rendered line.

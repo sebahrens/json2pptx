@@ -82,7 +82,7 @@ func layoutCompatibleWithSlide(layout string, slide SlideIR) bool {
 	case "blank-title", "blank", "blank+title", "blank-canvas":
 		return slide.Visual.Pattern != "" && slide.Kind != KindAgenda
 	case "content":
-		return slide.Role != RoleOpening && slide.Role != RoleTransition && slide.Role != RoleClosing && slide.Kind != KindRawJSON2pptx
+		return slide.Role != RoleOpening && slide.Role != RoleTransition && slide.Role != RoleClosing && slide.Kind != KindRawJSON2pptx && slide.Kind != KindRegions
 	default:
 		return false
 	}

@@ -135,12 +135,25 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 		}
 		for _, l := range links {
 			registerSourceLink(ir.SourceMap, compiled, l, outputIndex, si.SourceIndex)
+			if si.Kind == KindRegions {
+				// Grid findings (a nested pattern's budget, a cell's fit)
+				// address a region's cell by JSON Pointer; register that
+				// spelling so they resolve to the region, not the slide
+				// (go-slide-creator-fn2ka).
+				ir.SourceMap.Add(dottedToPointer(l.RawPath), l.SemanticPath, si.SourceIndex)
+			}
 		}
 		// Universal per-slide fields every kind accepts: speaker notes and a
 		// source/footnote line. They are plain strings with no layout impact,
 		// and before go-slide-creator-zmjs only chart_insight could carry a
 		// source — an option matrix or financial case could not cite anything.
 		applyUniversalSlideFields(compiled, si, ir.SourceMap)
+		// The raw pipeline's deck-source default does not look inside a
+		// shape grid, so a regions slide's chart or table would go out
+		// unsourced; it takes meta.source here (go-slide-creator-fn2ka).
+		if si.Kind == KindRegions && compiled.Source == "" && regionsCarryData(si.Body) {
+			compiled.Source = ir.Source
+		}
 		// DATA_WITHOUT_SOURCE addresses the slide's source field, which a
 		// data slide without one never set; map its pointer to the DeckSpec
 		// field the author fills (go-slide-creator-cuszt).
@@ -265,8 +278,17 @@ func compileSlide(kind SlideKind, in slides.Input) (*deckinput.SlideInput, []sli
 	case KindRawJSON2pptx:
 		return slides.CompileRaw(in)
 	default:
-		return slides.CompileFallback(in)
+		return compileOtherKind(kind, in)
 	}
+}
+
+// compileOtherKind compiles the kinds compileSlide's switch leaves out: the
+// regions kind, and the generic content fallback for everything else.
+func compileOtherKind(kind SlideKind, in slides.Input) (*deckinput.SlideInput, []slides.SourceLink, error) {
+	if kind == KindRegions {
+		return slides.CompileRegions(in)
+	}
+	return slides.CompileFallback(in)
 }
 
 func compileExtendedKind(kind SlideKind, in slides.Input) (*deckinput.SlideInput, []slides.SourceLink, error) {

@@ -121,10 +121,19 @@ listing; get exact fields and aliases from `list_slide_kinds`:
 | Roadmap | Three to six phases use a phase visual; otherwise choose a content layout that preserves every milestone. |
 | Decision | Three to six options use numbered boxes (label at most 60, detail at most 180). Exactly two *detailed* options use paired cards (label at most 80, detail at most 300). Mark exactly one labeled option recommended and put the ask in `recommendation` — it is the slide's one conclusion band; a `takeaway` beside it goes to the speaker notes (`SEMANTIC_DUPLICATE_CALLOUT`). |
 
+
 These are authoring budgets, not an alternate schema. For a kind absent from
 this table, use the runtime example and schema. `list_slide_kinds` also
 returns `required_aliases`, but prefer its canonical field names in new
 content.
+
+## Several visuals on one slide
+
+When content types must be read together (chart left, KPI over timeline
+right) use `kind: regions`, not a raw compose: typed regions in a bounded
+arrangement (budgets: `list_slide_kinds`; `examples/semantic/regions.yaml`),
+each rule an error at `slides[N].regions[k]`. A stacked region holds one
+visual's worth; on a readability refusal raise `size_pct`, or cut.
 
 ## Render and revise
 
@@ -148,8 +157,7 @@ refusal is a diagnostic (`code`, `severity`, `semantic_path`,
 `validate_deck_spec` patch: rewrite the named field, or for a list, switch
 the slide to its native layout (`/slides/N/layout: "content"`). Inside a
 `raw_json2pptx` slide its `semantic_path` is the slide's `slides[N].slide`
-payload. HTTP integrations get the same render through
-`POST /api/v1/semantic/render` (documented in the repository's `docs/api/README.md`).
+payload. HTTP: `POST /api/v1/semantic/render` (`docs/api/README.md`).
 After each revision, render and inspect the affected slides, then inspect all
 slides of the final revision as required by [SKILL.md](SKILL.md).
 

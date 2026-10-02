@@ -1,5 +1,30 @@
 # Schema Changelog
 
+- **2026-10-02 — Schema 4.157.0 · DeckSpec `regions` kind: several typed visuals on one slide (`go-slide-creator-fn2ka`).**
+  - New slide kind **`regions`**: one title, takeaway and source band over
+    2–3 typed regions. `arrangement` is `columns` / `rows` (2–3 regions,
+    `size_pct` = width / height) or `main_left` / `main_right` / `main_top` /
+    `main_bottom` (exactly 3: `regions[0]` is the main region, its
+    `size_pct` its share, default 60; `regions[1..2]` stack beside it). Each
+    region is `{kind, size_pct?, heading?, source?, …}` with kind `chart`,
+    `stat`, `kpis`, `table`, `timeline`, `image` or `text` and the fields of
+    the like-named slide kind. `list_slide_kinds` publishes the kind, its
+    example and an `item_schema` whose `regions` items are a `oneOf` of seven
+    closed region variants; `arrangement` carries an `enum`.
+  - Compiles to one `blank-title` shape grid at the authored shares (svggen
+    chart cells, nested `stat-hero` / `kpi-Nup` / `timeline-horizontal`
+    patterns, native tables, pictures, text boxes); region sources join the
+    slide source line and a data region without one takes `meta.source`.
+  - Every region rule is an error at `slides[i].regions[k].<field>`
+    (`SEMANTIC_UNKNOWN_FIELD`, `SEMANTIC_REQUIRED`, `SEMANTIC_DENSITY`,
+    `SEMANTIC_UNKNOWN_KIND`, chart series checks): a region has no fallback.
+    The post-compile preflight now also validates patterns nested in grid
+    cells, and grid findings (JSON Pointer paths) map back to the region.
+  - A shape-grid table cell too short for its rows reports
+    `table_rows_truncated` (refuse) instead of rendering "…and N more rows"
+    silently. Raw PresentationInput fields are unchanged (fingerprint
+    unchanged).
+
 - **2026-10-02 — plan_deck keeps whole comparisons and drafts an option matrix for "compare A with B" (`go-slide-creator-ze5u7`, `-fu6uy`).**
   - Brief facts are no longer truncated at 120 characters: a long clause is
     split (at a joining word, then at a word boundary outside brackets, never

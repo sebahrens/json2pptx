@@ -1135,6 +1135,35 @@ func collectDiagramCellFindings(cell shapegrid.ResolvedCell, slideIdx int) []pat
 	return findings
 }
 
+// generateTableCell renders a grid table cell. A cell too short for its table
+// drops trailing rows; that is source loss, reported (and refused) like a
+// placeholder table's. It used to be discarded here, so a mixed-region slide
+// shipped "…and 2 more rows" with ok:true (go-slide-creator-fn2ka).
+func generateTableCell(cell shapegrid.ResolvedCell, slideIdx int) ([]byte, []patterns.FitFinding, error) {
+	cfg := generator.TableRenderConfig{
+		Bounds: types.BoundingBox{
+			X:      cell.Bounds.X,
+			Y:      cell.Bounds.Y,
+			Width:  cell.Bounds.CX,
+			Height: cell.Bounds.CY,
+		},
+		Style:            cell.TableSpec.Style,
+		ColumnAlignments: cell.TableSpec.ColumnAlignments,
+	}
+	tblResult, err := generator.GenerateTableXML(cell.TableSpec, cfg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("table in grid: %w", err)
+	}
+	var findings []patterns.FitFinding
+	for _, f := range tblResult.Findings {
+		if f.Code == patterns.ErrCodeTableRowsTruncated {
+			f.Path = slidepath.GridCellField(slideIdx, cell.RowIdx, cell.ColIdx, "table")
+			findings = append(findings, f)
+		}
+	}
+	return []byte(tblResult.XML), findings, nil
+}
+
 // generateGridOutput converts resolved grid cells into XML fragments and media inserts.
 // slideIdx is the 0-based slide index used for constructing JSON paths in findings.
 func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllocator, diagCtx *GridDiagramContext, slideIdx int) (*ShapeGridResult, error) {
@@ -1170,21 +1199,12 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 			cellShapes = append(cellShapes, s...)
 			cellIcons = append(cellIcons, icons...)
 		case shapegrid.CellKindTable:
-			cfg := generator.TableRenderConfig{
-				Bounds: types.BoundingBox{
-					X:      cell.Bounds.X,
-					Y:      cell.Bounds.Y,
-					Width:  cell.Bounds.CX,
-					Height: cell.Bounds.CY,
-				},
-				Style:            cell.TableSpec.Style,
-				ColumnAlignments: cell.TableSpec.ColumnAlignments,
-			}
-			tblResult, err := generator.GenerateTableXML(cell.TableSpec, cfg)
+			xml, findings, err := generateTableCell(cell, slideIdx)
 			if err != nil {
-				return nil, fmt.Errorf("table in grid: %w", err)
+				return nil, err
 			}
-			cellShapes = append(cellShapes, []byte(tblResult.XML))
+			cellShapes = append(cellShapes, xml)
+			fitFindings = append(fitFindings, findings...)
 		case shapegrid.CellKindIcon:
 			svgData, err := resolveIconSVGThemed(cell.IconSpec, overlayThemeColors(diagCtx))
 			if err != nil {

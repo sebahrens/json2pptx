@@ -311,7 +311,13 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RoleClosing, family: FamilyText, density: DensityMedium, layout: "blank-title",
 		pattern: slides.NextStepsPattern,
 	},
-	KindClosing:      {role: RoleClosing, family: FamilyStructural, density: DensityLight, layout: "closing"},
+	KindClosing: {role: RoleClosing, family: FamilyStructural, density: DensityLight, layout: "closing"},
+	KindRegions: {
+		// Several visuals argue one claim together: evidence, and always dense.
+		// The family is the main region's (normalizeSlide), so a chart-led
+		// regions slide beside a chart_insight reads as two charts.
+		role: RoleEvidence, family: FamilyChart, density: DensityHeavy, layout: "blank-title",
+	},
 	KindRawJSON2pptx: passthroughPlan,
 }
 
@@ -532,6 +538,9 @@ func normalizeSlide(index int, slide SlideSpec) SlideIR {
 	if slide.Kind == KindOrg && !slides.OrgFits(slide.Body) {
 		plan.layout = "content"
 	}
+	if slide.Kind == KindRegions {
+		plan.family = regionsFamily(slide.Body)
+	}
 	alternatives := compositionCandidates(slide.Kind, pattern)
 	if requested := slide.String("pattern"); requested != "" {
 		for _, candidate := range alternatives {
@@ -715,8 +724,19 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 			{Layout: "content", Reason: "bullets preserve more actions or longer copy"},
 		}
 	default:
-		return nil
+		return otherCompositionCandidates(kind)
 	}
+}
+
+// otherCompositionCandidates lists the compositions of kinds the switch in
+// compositionCandidates leaves out.
+func otherCompositionCandidates(kind SlideKind) []CompositionCandidate {
+	if kind == KindRegions {
+		// The arrangement field is the composition choice; there is no
+		// pattern or layout override.
+		return []CompositionCandidate{{Layout: "blank-title", Reason: "2–3 typed regions in one shape grid under the slide title, arranged by the arrangement field"}}
+	}
+	return nil
 }
 
 // slideTakeaway extracts the slide's one-line takeaway, falling back to the
@@ -782,6 +802,8 @@ func isDataBearingEvidence(slide SlideIR) bool {
 		return true
 	case KindStat:
 		return bodyString(slide.Body, "source") != ""
+	case KindRegions:
+		return regionsCarryData(slide.Body)
 	default:
 		return false
 	}

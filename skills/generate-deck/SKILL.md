@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.156.0
+schema_version: 4.157.0
 description: >-
   Create or revise PowerPoint decks with json2pptx. Use for presentation and
   slide-deck requests that need template-aware authoring, validation, rendering,
@@ -54,7 +54,10 @@ kinds with `list_slide_kinds` using its compact fields, requesting
 repeat. For a chart or diagram no kind covers (gantt, venn, pestel, ...), a
 `recommend_visual` chart/diagram candidate carries `data_contract` and a
 runnable `next_tool_call` (`render_deck_spec` with a `raw_json2pptx` slide);
-replace its title and data. Read [DECKSPEC.md](DECKSPEC.md) for budgets,
+replace its title and data. When one slide must show different content
+types together (chart left, KPI and timeline right), use `kind: regions`
+(2–3 typed chart / stat / kpis / table / timeline / image / text regions in
+a bounded arrangement with `size_pct` shares), not a raw compose. Read [DECKSPEC.md](DECKSPEC.md) for budgets,
 degradation, required-layout coverage, handles, and revision rules.
 
 Use raw `PresentationInput` only for a feature the semantic schema cannot
