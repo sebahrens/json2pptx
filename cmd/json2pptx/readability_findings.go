@@ -30,6 +30,13 @@ import (
 // collectReadabilityFindings returns TEXT_BELOW_READABLE_MIN findings for
 // shape_grid cells in the deck.
 func collectReadabilityFindings(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) []patterns.FitFinding {
+	return collectReadabilityFindingsWithTheme(input, layouts, slideWidth, slideHeight, nil)
+}
+
+// collectReadabilityFindingsWithTheme is collectReadabilityFindings with the
+// template theme the renderer hands nested patterns: their content sizing
+// measures text in the theme body font.
+func collectReadabilityFindingsWithTheme(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, theme *types.ThemeInfo) []patterns.FitFinding {
 	mode := tokens.ParseViewingMode(input.ViewingMode)
 	rhythm := resolvedValidRhythmGrid(input, layouts, slideWidth, slideHeight)
 	if slideWidth <= 0 {
@@ -43,19 +50,24 @@ func collectReadabilityFindings(input *PresentationInput, layouts []types.Layout
 	// slide was ever evaluated — and "6pt KPI deltas and 9pt chevron
 	// descriptions", the motivating examples for this check, are pattern output
 	// (go-slide-creator-adur).
-	input, fromPattern := expandPatternsForFit(input, slideWidth, slideHeight, nil, layouts...)
+	input, fromPattern := expandPatternsForFit(input, slideWidth, slideHeight, theme, layouts...)
+	sectionIndices := slideSectionIndices(input.Slides, layouts)
 
 	var findings []patterns.FitFinding
 	for si, slide := range input.Slides {
 		if slide.ShapeGrid == nil {
 			continue
 		}
-		geom, _ := patternExpansionGeometry(slide, layouts, slideWidth, slideHeight, rhythm)
-		result := resolveGridForStructural(slide.ShapeGrid, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
+		geom, contentBounds := patternExpansionGeometry(slide, layouts, slideWidth, slideHeight, rhythm)
+		grid, nested := expandNestedPatternsForReadability(slide.ShapeGrid, slidepath.ShapeGrid(si), nestedExpansionGeometry{
+			geom: geom, contentBounds: contentBounds, slideWidth: slideWidth, slideHeight: slideHeight,
+			theme: theme, strategy: patterns.AccentStrategy(input.AccentStrategy), slideIdx: si, sectionIdx: sectionIndices[si],
+		})
+		result := resolveGridForStructural(grid, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
 		if result == nil {
 			continue
 		}
-		for _, rc := range readabilityGridCells(slide.ShapeGrid, result, slidepath.ShapeGrid(si), slideWidth, slideHeight, 0) {
+		for _, rc := range readabilityGridCells(grid, result, slidepath.ShapeGrid(si), slideWidth, slideHeight, 0) {
 			cell := rc.cell
 			if cell.Kind != shapegrid.CellKindShape || cell.ShapeSpec == nil || cell.Bounds.CX <= 0 || cell.Bounds.CY <= 0 {
 				continue
@@ -91,19 +103,123 @@ func collectReadabilityFindings(input *PresentationInput, layouts []types.Layout
 				// validate approve a deck render then refused
 				// (go-slide-creator-b7qqg.3).
 				f.Action = "refuse"
-				if fromPattern[si] {
-					patternName := ""
-					if slide.Pattern != nil {
-						patternName = slide.Pattern.Name
-					}
-					f.Path = rerootPatternPath(f.Path, fromPattern)
-					f.Fix = patternCellFix(f.Fix, patternName)
-				}
+				rerootReadabilityFinding(f, slide, fromPattern[si], fromPattern, nested)
 				findings = append(findings, *f)
 			}
 		}
 	}
 	return findings
+}
+
+// rerootReadabilityFinding points a finding measured on an expanded pattern
+// (slide-level or nested in a grid cell) at the authored pattern and tags its
+// fix with the pattern name.
+func rerootReadabilityFinding(f *patterns.FitFinding, slide SlideInput, slideFromPattern bool, fromPattern map[int]bool, nested nestedPatternCells) {
+	if path, name, ok := nested.reroot(f.Path); ok {
+		f.Path = path
+		f.Fix = patternCellFix(f.Fix, name)
+		return
+	}
+	if !slideFromPattern {
+		return
+	}
+	patternName := ""
+	if slide.Pattern != nil {
+		patternName = slide.Pattern.Name
+	}
+	f.Path = rerootPatternPath(f.Path, fromPattern)
+	f.Fix = patternCellFix(f.Fix, patternName)
+}
+
+// nestedPatternCells maps the JSON pointer of each grid cell that authored a
+// nested pattern to that pattern's name.
+type nestedPatternCells map[string]string
+
+// reroot rewrites a finding path inside an expanded nested pattern
+// (<cell>/grid/...) to the authored pattern (<cell>/pattern/...), the way
+// rerootPatternPath does for a slide-level pattern, and returns the pattern
+// name. The deepest matching cell wins.
+func (n nestedPatternCells) reroot(path string) (string, string, bool) {
+	best := ""
+	for cell := range n {
+		if strings.HasPrefix(path, cell+"/grid/") && len(cell) > len(best) {
+			best = cell
+		}
+	}
+	if best == "" {
+		return path, "", false
+	}
+	return best + "/pattern" + strings.TrimPrefix(path, best+"/grid"), n[best], true
+}
+
+// nestedExpansionGeometry is the expansion context generation hands patterns
+// nested in a slide grid's cells.
+type nestedExpansionGeometry struct {
+	geom                    GridGeometry
+	contentBounds           pptx.RectEmu
+	slideWidth, slideHeight int64
+	theme                   *types.ThemeInfo
+	strategy                patterns.AccentStrategy
+	slideIdx, sectionIdx    int
+}
+
+// expandNestedPatternsForReadability expands patterns nested in a slide grid's
+// cells (a DeckSpec regions slide's stat-hero or timeline) on a copy of the
+// grid, at the content rectangle and expansion context generation uses
+// (convertSinglePresentationSlide → expandNestedCellPatternsInBounds).
+// Generation measures and refuses the text those patterns write; skipping
+// them let validate approve a regions slide that render refused
+// (go-slide-creator-fn2ka). The source grid is never mutated. When nothing is
+// nested, or expansion fails (generation reports that error itself), the
+// source grid is returned with no nested cells.
+func expandNestedPatternsForReadability(grid *ShapeGridInput, base string, g nestedExpansionGeometry) (*ShapeGridInput, nestedPatternCells) {
+	if !hasNestedCellPattern(grid) {
+		return grid, nil
+	}
+	cloned, err := cloneShapeGrid(grid)
+	if err != nil {
+		return grid, nil
+	}
+	ctx := patterns.ExpandContext{
+		ContentZone:    g.geom.Zone,
+		SlideWidth:     g.slideWidth,
+		SlideHeight:    g.slideHeight,
+		LayoutBounds:   patterns.LayoutBounds{X: g.contentBounds.X, Y: g.contentBounds.Y, Width: g.contentBounds.CX, Height: g.contentBounds.CY},
+		AccentStrategy: g.strategy,
+		SlideIndex:     g.slideIdx,
+		SectionIndex:   g.sectionIdx,
+	}
+	if g.theme != nil {
+		ctx.Theme = *g.theme
+	}
+	if err := expandNestedCellPatternsInBounds(cloned, ctx, g.contentBounds, patterns.Default()); err != nil {
+		return grid, nil
+	}
+	nested := nestedPatternCells{}
+	collectNestedPatternCells(grid, base, nested, 0)
+	return cloned, nested
+}
+
+func collectNestedPatternCells(grid *ShapeGridInput, base string, out nestedPatternCells, depth int) {
+	if grid == nil || depth > maxGeomNestingDepth {
+		return
+	}
+	for ri, row := range grid.Rows {
+		for ci, cell := range row.Cells {
+			if cell == nil {
+				continue
+			}
+			path := fmt.Sprintf("%s/rows/%d/cells/%d", base, ri, ci)
+			if len(cell.Pattern) > 0 {
+				var p struct {
+					Name string `json:"name"`
+				}
+				_ = json.Unmarshal(cell.Pattern, &p)
+				out[path] = p.Name
+			}
+			collectNestedPatternCells(cell.Grid, path+"/grid", out, depth+1)
+		}
+	}
 }
 
 // readabilityGridCell is one resolved grid cell with its JSON-pointer path.

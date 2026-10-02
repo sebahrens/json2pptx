@@ -1165,6 +1165,22 @@ func generateTableCell(cell shapegrid.ResolvedCell, slideIdx int) ([]byte, []pat
 	return []byte(tblResult.XML), findings, nil
 }
 
+// gridTableSourceLoss refuses a slide whose grid table cell dropped rows. The
+// generator refuses a placeholder table's dropped rows before publishing; a
+// grid table is written here, outside that gate, so reporting the finding
+// alone let generation succeed with rows missing (go-slide-creator-fn2ka).
+// The error wraps the finding, so callers classify it as a source-preserving
+// refusal (generationRefusal) and --partial drops just this slide.
+func gridTableSourceLoss(findings []patterns.FitFinding) error {
+	for _, f := range findings {
+		if f.Code == patterns.ErrCodeTableRowsTruncated {
+			loss := f.ValidationError
+			return fmt.Errorf("generation refused: generated source loss: %w", &loss)
+		}
+	}
+	return nil
+}
+
 // generateGridOutput converts resolved grid cells into XML fragments and media inserts.
 // slideIdx is the 0-based slide index used for constructing JSON paths in findings.
 func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllocator, diagCtx *GridDiagramContext, slideIdx int) (*ShapeGridResult, error) {
