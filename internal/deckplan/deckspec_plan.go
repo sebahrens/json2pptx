@@ -127,6 +127,7 @@ type briefSignals struct {
 	dated     int  // dated milestone facts that are not to-dos
 	actions   int  // to-do facts
 	options   bool // the brief weighs options against criteria
+	compare   bool // the brief asks outright to compare two alternatives
 	decision  bool // the brief asks for a decision
 	problem   bool // the brief names a problem
 	shipped   bool // the brief reports delivered work
@@ -153,9 +154,25 @@ var (
 	cueMethod    = regexp.MustCompile(`(?i)\b(?:methodology|method|assumptions?|approach to the analysis|data sources?)\b`)
 )
 
+// briefComparesAlternatives reports whether any clause of the brief asks to
+// compare two alternatives ("Compare internal support (€0.8m per year) with
+// outsourcing (€0.5m per year) on cost and launch speed"). cueOptions only
+// knew enumerated options, options-vs-criteria and build/buy wording, so an
+// explicit comparison drafted a single-stat slide instead of an option
+// matrix (go-slide-creator-fu6uy). "Revenue compared with plan" is a
+// benchmark, not a choice.
+func briefComparesAlternatives(brief string) bool {
+	for _, c := range splitBriefClauses(brief) {
+		if comparesAlternatives(c) {
+			return true
+		}
+	}
+	return false
+}
+
 func readBriefSignals(brief, audience string, facts []briefFact) briefSignals {
 	s := briefSignals{
-		options:  cueOptions.MatchString(brief) || briefHasComparisonMatrix(brief),
+		compare:  briefComparesAlternatives(brief),
 		decision: cueDecision.MatchString(brief) || cueShould.MatchString(brief),
 		problem:  cueProblem.MatchString(brief),
 		shipped:  cueShipped.MatchString(brief),
@@ -166,6 +183,7 @@ func readBriefSignals(brief, audience string, facts []briefFact) briefSignals {
 		backup:   cueBackup.MatchString(brief),
 		method:   cueMethod.MatchString(brief),
 	}
+	s.options = s.compare || cueOptions.MatchString(brief) || briefHasComparisonMatrix(brief)
 	// A customer-facing deck is one whose audience — or opening clause — names
 	// customers; "churn among SMB customers" in a board brief is not.
 	head := brief
@@ -175,6 +193,10 @@ func readBriefSignals(brief, audience string, facts []briefFact) briefSignals {
 	s.customers = cueCustomers.MatchString(audience) || cueCustomers.MatchString(head)
 	for _, f := range facts {
 		switch {
+		case f.numeric && f.option && s.options:
+			// The option matrix carries the options' own figures; counting
+			// them as KPIs drafted a stat slide that stole the comparison
+			// (go-slide-creator-fu6uy).
 		case f.numeric:
 			s.metrics++
 			if f.series {
@@ -246,7 +268,14 @@ func storylineSlots(sig briefSignals) (ordered []deckSpecSlotDef, priority map[s
 	}
 
 	if sig.options {
-		add(5, deckSpecSlotDef{"options", "option_matrix", "The options scored against the same criteria, with the recommended option highlighted; the title names the winner and why.", 3, chapterOptions})
+		// A brief that asks outright to compare two alternatives is about
+		// that comparison: the matrix outranks the situation slide when the
+		// budget is short (go-slide-creator-fu6uy).
+		rank := 5
+		if sig.compare {
+			rank = 3
+		}
+		add(rank, deckSpecSlotDef{"options", "option_matrix", "The options scored against the same criteria, with the recommended option highlighted; the title names the winner and why.", 3, chapterOptions})
 	}
 
 	if sig.plan && (sig.actions > 0 || sig.process) {
@@ -643,8 +672,8 @@ func draftStructure(ordered []deckSpecSlotDef, secs []draftSection, backMatter [
 // routeDeckSpecFacts assigns brief facts to slots by what each fact is
 // (go-slide-creator-gvbw8): change-over-time metrics to chart evidence,
 // option metrics to the option matrix, other metrics to the KPI / stat slide,
-// asks to the decision, dated milestones to the roadmap, to-dos to the plan
-// and next steps, and everything else in brief order to the answer, cause,
+// the recommendation and asks to the decision, dated milestones to the
+// roadmap, to-dos to the plan and next steps, and everything else in brief order to the answer, cause,
 // highlights, options and plan. A to-do never lands on a KPI card. It returns
 // what no slot had room for.
 func routeDeckSpecFacts(defs []deckSpecSlotDef, slots []DeckSpecSlot, facts []briefFact) []string {
@@ -669,8 +698,11 @@ func routeDeckSpecFacts(defs []deckSpecSlotDef, slots []DeckSpecSlot, facts []br
 		}
 	}
 	place(func(f briefFact) bool { return f.series }, "evidence")
+	// The recommendation — the alternative backed and why — belongs with the
+	// ask (go-slide-creator-fu6uy).
+	place(func(f briefFact) bool { return f.recommend && !f.numeric }, "ask", "options", "answer")
 	place(func(f briefFact) bool { return f.numeric && f.option }, "options")
-	place(func(f briefFact) bool { return f.numeric }, "problem", "context", "evidence", "options", "answer")
+	place(func(f briefFact) bool { return f.numeric }, "problem", "context", "evidence", "answer")
 	place(func(f briefFact) bool { return f.ask }, "ask", "closing")
 	place(func(f briefFact) bool { return f.dated && !f.action }, "roadmap")
 	place(func(f briefFact) bool { return f.option }, "options")

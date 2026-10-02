@@ -256,3 +256,72 @@ func TestDeckSpecChaptersAndRuns(t *testing.T) {
 		}
 	}
 }
+
+// planFactsAndUnplaced joins every slot's facts and the unplaced facts.
+func planFactsAndUnplaced(p *DeckSpecPlan) string {
+	var all []string
+	for _, s := range p.Slots {
+		all = append(all, s.Facts...)
+	}
+	return strings.Join(append(all, p.UnplacedFacts...), " | ")
+}
+
+// ze5u7: every amount and date of a long comparison brief reaches a slot or
+// unplaced_facts, and the comparison reaches its slot whole.
+func TestDeckSpecLongComparisonKeepsEveryAmount(t *testing.T) {
+	for _, budget := range []int{5, 8, 10, 12} {
+		p := BuildDeckSpecPlan(Params{Brief: reviewBriefPilot, SlideBudget: budget, TemplateName: "warm-coral"})
+		all := planFactsAndUnplaced(p)
+		for _, want := range []string{"€10m", "2024", "€12m", "2025", "45%", "38%", "€0.8m", "6 months", "€0.5m", "2 months", "January 2027", "November 2026"} {
+			if !strings.Contains(all, want) {
+				t.Errorf("budget %d: %q in neither slots[].facts nor unplaced_facts: %s", budget, want, all)
+			}
+		}
+		if strings.Contains(all, "(€ ") || strings.HasSuffix(all, "(€") || strings.Contains(all, "...") {
+			t.Errorf("budget %d: a fact was truncated: %s", budget, all)
+		}
+		opts := factsOf(p, "options")
+		if !strings.Contains(opts, "€0.8m per year, launch in 6 months) with outsourcing (€0.5m per year, launch in 2 months)") {
+			t.Errorf("budget %d: option_matrix facts = %q, want the whole comparison", budget, opts)
+		}
+	}
+}
+
+// fu6uy: an explicit "compare A with B" request drafts an option matrix before
+// the decision, routes both alternatives intact, and carries the recommended
+// alternative with its reason to the decision slot.
+func TestDeckSpecExplicitCompareDraftsOptionMatrix(t *testing.T) {
+	const reco = "Recommend internal support to retain customer relationships"
+	for _, brief := range []string{
+		"Compare internal support (€0.8m per year) with outsourcing (€0.5m per year) on cost and launch speed. " + reco + ".",
+		"Board pilot review. We compare internal support (€0.8m per year) to outsourcing (€0.5m per year) on cost and launch speed. " + reco + ".",
+		"Board pilot review. Outsourcing (€0.5m per year) compared to internal support (€0.8m per year) on cost and launch speed. " + reco + ".",
+	} {
+		p := BuildDeckSpecPlan(Params{Brief: brief, SlideBudget: 12})
+		kinds := storylineKinds(p)
+		om, dec := indexOfKind(kinds, "option_matrix"), indexOfKind(kinds, "decision")
+		if om < 0 || dec < 0 || om > dec {
+			t.Errorf("%q: storyline %v, want option_matrix before decision", brief, kinds)
+		}
+		if opts := factsOf(p, "options"); !strings.Contains(opts, "€0.8m") || !strings.Contains(opts, "€0.5m") {
+			t.Errorf("%q: option_matrix facts = %q, want both alternatives", brief, opts)
+		}
+		for _, slot := range []string{"context", "problem"} {
+			if got := factsOf(p, slot); strings.Contains(got, "€0.5m") {
+				t.Errorf("%q: the comparison landed on the %s slot: %q", brief, slot, got)
+			}
+		}
+		if ask := factsOf(p, "ask"); !strings.Contains(ask, reco) {
+			t.Errorf("%q: decision facts = %q, want the recommendation and its reason (unplaced %v)", brief, ask, p.UnplacedFacts)
+		}
+	}
+
+	// A comparison against a benchmark is a metric, not a choice.
+	bench := BuildDeckSpecPlan(Params{Brief: "Q3 results for the board. Revenue compared with plan rose 12% to €40m. Margin compared to last year reached 31%.", SlideBudget: 12})
+	if kinds := storylineKinds(bench); indexOfKind(kinds, "option_matrix") >= 0 {
+		t.Errorf("benchmark comparison drafted an option matrix: %v", kinds)
+	}
+	if got := factsOf(bench, "context") + factsOf(bench, "problem") + factsOf(bench, "evidence"); !strings.Contains(got, "€40m") || !strings.Contains(got, "31%") {
+		t.Errorf("benchmark metrics should stay on the KPI slots, got %q", got)
+	}
+}

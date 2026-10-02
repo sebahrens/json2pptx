@@ -3,6 +3,8 @@ package deckplan
 import (
 	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 // A brief fact is a short clause lifted verbatim from the brief that carries
@@ -12,12 +14,22 @@ import (
 // stat / chart patterns first), and reports any fact it could not place in
 // Result.UnplacedFacts so no brief fact silently disappears.
 
-// maxFactLen caps a single fact's length; longer clauses are truncated with an
-// ellipsis so a run-on sentence doesn't swamp a content seed. 120 runes keeps
-// an option list with its criteria ("three options were evaluated (build,
-// partner, acquire) against cost, time-to-market, and risk") whole
-// (go-slide-creator-gvbw8).
+// maxFactLen caps a single fact's length; a longer clause is split — at a
+// joining word, then at a word boundary outside brackets — into several
+// facts so a run-on sentence doesn't swamp a content seed. Nothing is cut off:
+// truncating a clause dropped its tail, and with it the second option of a
+// comparison and its amounts, while unplaced_facts stayed empty
+// (go-slide-creator-ze5u7). 120 runes keeps an option list with its criteria
+// ("three options were evaluated (build, partner, acquire) against cost,
+// time-to-market, and risk") whole (go-slide-creator-gvbw8).
 const maxFactLen = 120
+
+// maxComparisonFactLen is the cap for a clause that weighs alternatives
+// ("Compare building an internal team (€0.8m per year, launch in 6 months)
+// with outsourcing (€0.5m per year, launch in 2 months)"). Splitting it would
+// put the two options on different slides, so it stays whole up to twice the
+// normal cap (go-slide-creator-ze5u7).
+const maxComparisonFactLen = 2 * maxFactLen
 
 // factClauseSplit splits a brief into clauses: sentence punctuation followed by
 // whitespace (so decimals like "1.5M" survive), semicolons, newlines, commas
@@ -92,7 +104,24 @@ func isShortListItem(s string) bool {
 // so the facts after "... from 5% to 3% and headcount reached 1200 ..." are
 // kept as their own facts instead of being cut off by the length cap
 // (go-slide-creator-csclk.48).
+// A joining word inside brackets is not a split point: "(€0.8m and 6 months)"
+// is one parenthetical (go-slide-creator-ze5u7).
 var factLongClauseSplit = regexp.MustCompile(`(?i)\s+(?:and|while|whereas|but)\s+`)
+
+// splitTopLevel splits s at every match of re that starts outside brackets.
+func splitTopLevel(s string, re *regexp.Regexp) []string {
+	depths := bracketDepths(s)
+	var out []string
+	last := 0
+	for _, loc := range re.FindAllStringIndex(s, -1) {
+		if depths[loc[0]] > 0 {
+			continue
+		}
+		out = append(out, s[last:loc[0]])
+		last = loc[1]
+	}
+	return append(out, s[last:])
+}
 
 // factListMarker strips a list marker a brief's bullet leaves at the head of a
 // clause: "- ", "* ", "• ", "1. ", "2) ". The marker is the author's list
@@ -106,19 +135,80 @@ var factListMarker = regexp.MustCompile(`^(?:[-*•▪·–—]|\(?\d{1,2}[.)])\
 var factBracketPairs = map[rune]rune{'(': ')', '[': ']', '{': '}'}
 
 // bracketDepths returns, for every byte offset in s, how many brackets are open
-// at that point.
+// at that point. Every byte of a multi-byte rune carries the rune's depth: a
+// continuation byte left at zero made "(€0.5m" look closed inside the "€", so
+// a cut there split the rune and left the parenthesis open, and a comma after
+// a CJK character inside brackets read as a top-level clause boundary
+// (go-slide-creator-ze5u7).
 func bracketDepths(s string) []int {
 	depths := make([]int, len(s))
 	var stack []rune
-	for i, r := range s {
+	for i := 0; i < len(s); {
+		r, w := utf8.DecodeRuneInString(s[i:])
 		if closer, ok := factBracketPairs[r]; ok {
 			stack = append(stack, closer)
 		} else if len(stack) > 0 && r == stack[len(stack)-1] {
 			stack = stack[:len(stack)-1]
 		}
-		depths[i] = len(stack)
+		for j := i; j < i+w; j++ {
+			depths[j] = len(stack)
+		}
+		i += w
 	}
 	return depths
+}
+
+// isFactCloser reports whether r closes a tracked bracket.
+func isFactCloser(r rune) bool {
+	return r == ')' || r == ']' || r == '}'
+}
+
+// dropStrayClosers removes closing brackets that close nothing — the tail of a
+// parenthetical the clause split cut at its opening half.
+func dropStrayClosers(s string) string {
+	var b strings.Builder
+	var stack []rune
+	for _, r := range s {
+		if closer, ok := factBracketPairs[r]; ok {
+			stack = append(stack, closer)
+		} else if len(stack) > 0 && r == stack[len(stack)-1] {
+			stack = stack[:len(stack)-1]
+		} else if len(stack) == 0 && isFactCloser(r) {
+			continue
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
+// splitOpenBrackets splits a fact at every bracket a clause cut left open:
+// "ARR reached €12.5m (up 31%" becomes "ARR reached €12.5m" and "up 31%".
+// Half a parenthesis reads as a typo in a content seed, but dropping the
+// bracketed tail lost its numbers (go-slide-creator-ze5u7), so the tail is
+// kept as a piece of its own. Stray closing brackets are removed.
+func splitOpenBrackets(s string) []string {
+	s = strings.TrimSpace(dropStrayClosers(s))
+	depths := bracketDepths(s)
+	if len(depths) == 0 || depths[len(depths)-1] == 0 {
+		if s == "" {
+			return nil
+		}
+		return []string{s}
+	}
+	// The unmatched opener is the byte after the last point where every
+	// bracket was closed. Openers are ASCII, so it is one byte wide.
+	cut := 0
+	for i := len(depths) - 1; i >= 0; i-- {
+		if depths[i] == 0 {
+			cut = i + 1
+			break
+		}
+	}
+	var out []string
+	if head := strings.TrimRight(strings.TrimSpace(s[:cut]), " \t,;:-–—"); head != "" {
+		out = append(out, head)
+	}
+	return append(out, splitOpenBrackets(s[cut+1:])...)
 }
 
 // balanceFactBrackets drops an unterminated bracket clause from the tail of a
@@ -136,6 +226,98 @@ func balanceFactBrackets(s string) string {
 		}
 	}
 	return ""
+}
+
+// factMonthWord lists month names, which bind to the number on either side:
+// "January 2027", "30 November".
+var factMonthWord = map[string]bool{
+	"january": true, "february": true, "march": true, "april": true, "may": true, "june": true,
+	"july": true, "august": true, "september": true, "october": true, "november": true, "december": true,
+	"jan": true, "feb": true, "mar": true, "apr": true, "jun": true, "jul": true, "aug": true,
+	"sep": true, "sept": true, "oct": true, "nov": true, "dec": true,
+}
+
+// factCurrencyCode lists the currency codes that bind to the number on either
+// side: "EUR 12m", "12m EUR".
+var factCurrencyCode = map[string]bool{"usd": true, "eur": true, "gbp": true, "chf": true, "jpy": true}
+
+// bindsNumber reports whether the space between prev and next sits inside a
+// numeric, currency or date token ("€ 12m", "EUR 12m", "January 2027"), or
+// right after a number, which binds the word it counts or measures ("12 %",
+// "6 months", "14 depots"): a fact is never split there.
+func bindsNumber(prev, next string) bool {
+	pf, nf := strings.Fields(prev), strings.Fields(next)
+	if len(pf) == 0 || len(nf) == 0 {
+		return false
+	}
+	pw := strings.ToLower(strings.Trim(pf[len(pf)-1], "([{"))
+	nw := strings.ToLower(strings.TrimRight(nf[0], ",;:.)]}"))
+	pr, _ := utf8.DecodeLastRuneInString(pw)
+	nr, _ := utf8.DecodeRuneInString(nw)
+	switch {
+	case strings.ContainsRune("$€£¥", pr):
+		return true
+	case (factCurrencyCode[pw] || factMonthWord[pw]) && unicode.IsDigit(nr):
+		return true
+	case strings.IndexFunc(pw, unicode.IsDigit) >= 0:
+		return true
+	}
+	return false
+}
+
+// chunkFact splits a fact longer than limit runes into pieces of at most
+// limit runes where it can, of roughly even length so the last piece is not a
+// stray word. It cuts only at a space outside brackets and never inside a
+// number, an amount or a date; a fact with no such space stays whole rather
+// than being truncated (go-slide-creator-ze5u7).
+func chunkFact(s string, limit int) []string {
+	var out []string
+	for n := utf8.RuneCountInString(s); n > limit; n = utf8.RuneCountInString(s) {
+		pieces := (n + limit - 1) / limit
+		cut := factBreak(s, limit, (n+pieces-1)/pieces)
+		if cut <= 0 {
+			break
+		}
+		if head := strings.TrimRight(strings.TrimSpace(s[:cut]), " \t,;:-–—"); head != "" {
+			out = append(out, head)
+		}
+		s = strings.TrimSpace(s[cut:])
+	}
+	if s != "" {
+		out = append(out, s)
+	}
+	return out
+}
+
+// factBreak returns the byte offset of the allowed break within limit runes
+// nearest to target runes, else the first allowed break after limit, else -1.
+func factBreak(s string, limit, target int) int {
+	depths := bracketDepths(s)
+	best, bestDist, after := -1, 0, -1
+	runeIdx := 0
+	for i, r := range s {
+		if i > 0 && unicode.IsSpace(r) && depths[i] == 0 && !bindsNumber(s[:i], s[i:]) {
+			if runeIdx <= limit {
+				if d := abs(runeIdx - target); best < 0 || d < bestDist {
+					best, bestDist = i, d
+				}
+			} else if after < 0 {
+				after = i
+			}
+		}
+		runeIdx++
+	}
+	if best > 0 {
+		return best
+	}
+	return after
+}
+
+func abs(n int) int {
+	if n < 0 {
+		return -n
+	}
+	return n
 }
 
 // factQuantity matches a standalone number (not glued to a preceding letter,
@@ -222,6 +404,8 @@ type briefFact struct {
 	option bool
 	// quote marks a quoted voice ("…" said the COO).
 	quote bool
+	// recommend marks the recommendation: the alternative backed and why.
+	recommend bool
 }
 
 // factMetricUnit matches a quantity that is a metric on its face: a percent,
@@ -251,6 +435,64 @@ var factDated = regexp.MustCompile(`(?i)\b(?:january|february|march|april|may|ju
 // factOption matches a clause that weighs alternatives.
 var factOption = regexp.MustCompile(`(?i)\b(?:options?|alternatives?|versus|vs\.?|scenarios?|criteria|trade-?offs?)\b`)
 
+// factCompareVerb matches "compare A with B" (also "to", "against", "versus"),
+// and factComparedWith matches "A compared with B". Either weighs two
+// alternatives unless B is a benchmark (go-slide-creator-fu6uy).
+var (
+	factCompareVerb   = regexp.MustCompile(`(?i)\bcompar(?:e|es|ing)\s+\S.*?\s+(?:with|to|against|versus|vs\.?)\s+(\S.*)`)
+	factComparedWith  = regexp.MustCompile(`(?i)\bcompared\s+(?:with|to|against)\s+(\S.*)`)
+	factLeadingFiller = regexp.MustCompile(`(?i)^(?:(?:the|our|its|their|this|that)\s+)+`)
+)
+
+// factBenchmarkWord lists the words that open a benchmark rather than an
+// alternative: "compared with plan", "compare revenue to last year",
+// "compared with a year ago".
+var factBenchmarkWord = map[string]bool{
+	"plan": true, "target": true, "targets": true, "budget": true, "forecast": true, "guidance": true,
+	"consensus": true, "last": true, "prior": true, "previous": true, "py": true, "ly": true,
+	"ytd": true, "benchmark": true, "benchmarks": true, "a": true, "same": true, "year": true,
+	"quarter": true, "month": true, "peers": true, "industry": true, "expectations": true,
+}
+
+// factPeriodLabel matches a reporting period used as a benchmark: q3, h1, fy24.
+var factPeriodLabel = regexp.MustCompile(`^(?:q[1-4]|h[12]|fy\d*)$`)
+
+// comparesAlternatives reports whether a clause asks to compare two
+// alternatives ("Compare internal support with outsourcing", "outsourcing
+// compared to an internal team"). A comparison against a benchmark, a period
+// or a number ("revenue compared with plan", "compared to 2024", "compared to
+// $4m") is a metric, not a choice.
+func comparesAlternatives(text string) bool {
+	for _, re := range []*regexp.Regexp{factCompareVerb, factComparedWith} {
+		m := re.FindStringSubmatch(text)
+		if m == nil {
+			continue
+		}
+		words := strings.Fields(factLeadingFiller.ReplaceAllString(strings.TrimSpace(m[1]), ""))
+		if len(words) == 0 {
+			continue
+		}
+		first := strings.ToLower(strings.Trim(words[0], ",;:.()"))
+		r, _ := utf8.DecodeRuneInString(first)
+		if unicode.IsDigit(r) || strings.ContainsRune("$€£¥+-−", r) || factBenchmarkWord[first] || factPeriodLabel.MatchString(first) {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+// isOptionText reports whether a clause weighs alternatives: an option cue
+// that is not a benchmark ("vs plan"), or a "compare A with B" request.
+func isOptionText(text string) bool {
+	return factOption.MatchString(factBenchmark.ReplaceAllString(text, "")) || comparesAlternatives(text)
+}
+
+// factRecommend matches a recommendation: the alternative the brief backs
+// and, usually, why. It is a fact even without a number or a name, so the
+// decision slot carries it (go-slide-creator-fu6uy).
+var factRecommend = regexp.MustCompile(`(?i)\brecommend(?:s|ed|ing|ation)?\b`)
+
 // factBenchmark matches a comparison against a benchmark rather than an
 // alternative: "vs plan", "versus last year", "vs. target".
 var factBenchmark = regexp.MustCompile(`(?i)\b(?:vs\.?|versus|against)\s+(?:the\s+)?(?:plan|target|budget|forecast|guidance|consensus|last|prior|previous|py|ly|ytd|benchmark)\b`)
@@ -269,7 +511,8 @@ func classifyFact(text string, quantity bool) briefFact {
 	f.action = f.ask || factAction.MatchString(text)
 	f.dated = factDated.MatchString(text)
 	// "vs plan" / "vs last year" is a benchmark, not a choice between options.
-	f.option = factOption.MatchString(factBenchmark.ReplaceAllString(text, ""))
+	f.option = isOptionText(text)
+	f.recommend = factRecommend.MatchString(text)
 	switch {
 	case factMetricUnit.MatchString(factYear.ReplaceAllString(text, "")):
 		f.numeric = true
@@ -287,15 +530,20 @@ func classifyFact(text string, quantity bool) briefFact {
 	return f
 }
 
-// extractBriefFacts pulls quantity and named-entity clauses out of the brief,
-// in brief order, de-duplicated. The brief's first clause is treated as the
-// deck topic (it already feeds the opening slide's seed), so it only counts as
-// a fact when it carries a quantity.
+// extractBriefFacts pulls quantity, named-entity, option and recommendation
+// clauses out of the brief, in brief order, de-duplicated. The brief's first
+// clause is treated as the deck topic (it already feeds the opening slide's
+// seed), so it only counts as a fact when it carries a quantity.
+//
+// No clause is truncated: a long clause is split into several facts, and a
+// clause that weighs alternatives keeps both of them, so every amount and
+// date in a qualifying clause reaches a slot or unplaced_facts
+// (go-slide-creator-ze5u7).
 func extractBriefFacts(brief string) []briefFact {
 	var clauses []string
 	for _, c := range splitBriefClauses(brief) {
-		if len([]rune(strings.TrimSpace(c))) > maxFactLen {
-			clauses = append(clauses, factLongClauseSplit.Split(c, -1)...)
+		if len([]rune(strings.TrimSpace(c))) > maxFactLen && !isOptionText(c) {
+			clauses = append(clauses, splitTopLevel(c, factLongClauseSplit)...)
 			continue
 		}
 		clauses = append(clauses, c)
@@ -313,30 +561,37 @@ func extractBriefFacts(brief string) []briefFact {
 		}
 		isFirst := first
 		first = false
-
-		numeric := factQuantity.MatchString(c)
-		entity := factAcronym.MatchString(c) || factProperNoun.MatchString(c)
 		quoted := cueQuote.MatchString(raw)
-		option := factOption.MatchString(c)
-		if !numeric && (!(entity || quoted || option) || isFirst) {
-			continue
+
+		// A clause cut inside a bracket splits at the open bracket; the
+		// bracketed tail is a piece of its own, never dropped.
+		for _, piece := range splitOpenBrackets(c) {
+			numeric := factQuantity.MatchString(piece)
+			entity := factAcronym.MatchString(piece) || factProperNoun.MatchString(piece)
+			option := factOption.MatchString(piece) || comparesAlternatives(piece)
+			recommend := factRecommend.MatchString(piece)
+			if !numeric && (!(entity || quoted || option || recommend) || isFirst) {
+				continue
+			}
+			limit := maxFactLen
+			if isOptionText(piece) {
+				limit = maxComparisonFactLen
+			}
+			for _, text := range chunkFact(piece, limit) {
+				key := strings.ToLower(text)
+				if seen[key] {
+					continue
+				}
+				seen[key] = true
+				if quoted && strings.Count(text, "\"")%2 == 1 {
+					// The clause trim took one quote mark of the pair.
+					text = strings.ReplaceAll(text, "\"", "")
+				}
+				f := classifyFact(text, factQuantity.MatchString(text))
+				f.quote = quoted
+				out = append(out, f)
+			}
 		}
-		c = balanceFactBrackets(TruncateBrief(c, maxFactLen))
-		if c == "" {
-			continue
-		}
-		key := strings.ToLower(c)
-		if seen[key] {
-			continue
-		}
-		seen[key] = true
-		if quoted && strings.Count(c, "\"")%2 == 1 {
-			// The clause trim took one quote mark of the pair.
-			c = strings.ReplaceAll(c, "\"", "")
-		}
-		f := classifyFact(c, numeric)
-		f.quote = quoted
-		out = append(out, f)
 	}
 	return out
 }

@@ -1,5 +1,22 @@
 # Schema Changelog
 
+- **2026-10-02 — plan_deck keeps whole comparisons and drafts an option matrix for "compare A with B" (`go-slide-creator-ze5u7`, `-fu6uy`).**
+  - Brief facts are no longer truncated at 120 characters: a long clause is
+    split (at a joining word, then at a word boundary outside brackets, never
+    inside an amount, unit or date) into several facts, and a clause that
+    weighs alternatives stays whole up to 240 characters. A clause cut inside
+    a bracket keeps the bracketed tail as its own fact. Bracket tracking is
+    per rune, so `(€0.5m` no longer leaves a half-open parenthesis.
+  - `plan_deck format:"deckspec"` treats "Compare A with B" / "compare A to
+    B" / "A compared to B" as an option evaluation: an `option_matrix` slot
+    before `decision` (ranked above the situation slide when the budget is
+    short), the comparison routed to it whole, and its figures no longer
+    counted as KPIs. A comparison against a benchmark ("revenue compared with
+    plan", "compared to 2024") stays a metric.
+  - A recommendation clause ("Recommend the internal team to retain customer
+    relationships") is a brief fact and routes to the `decision` slot. No
+    response-shape or `SchemaVersion` change.
+
 - **2026-10-02 — Schema 4.156.0 · Appendix page numbering (`go-slide-creator-khzni`).**
   - Back-matter slides (after an `appendix: true` / Appendix-titled divider,
     in a `structure.sections[]` entry with `appendix: true`, or after a

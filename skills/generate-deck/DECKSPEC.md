@@ -10,15 +10,20 @@ kind you intend to use. `item_schema` is the closed contract; an alias is a
 ## Plan the narrative
 
 Write the storyline first ([QUALITY.md](QUALITY.md)). `plan_deck` with
-`format:"deckspec"` drafts it from the brief: an option evaluation gets
+`format:"deckspec"` drafts it from the brief: an option evaluation — or an
+explicit "compare A with B" (not "compared with plan") — gets
 `option_matrix` before `decision`, a chart only for a fact that changes over
 time, `cause` only when the brief names a problem, `decision` only when it
 asks for one, and a customer update gets highlights and a dated `timeline`.
 `deck_spec` holds the kinds with `__FILL__` titles (and `meta.date`); a budget
 of 8+ slides comes back as `structure` (auto agenda + 2–4 sections, whose
 dividers count toward the budget). `slots[]` gives each slot's `path`,
-guidance and routed brief facts: metrics to KPI/stat slots, to-dos and asks
-to the plan, decision and next steps, dated milestones to the timeline.
+guidance and routed brief facts: metrics to KPI/stat slots, a comparison
+whole (both options and their figures) to the option matrix, the
+recommendation with its reason to the decision, to-dos and asks to the
+plan, decision and next steps, dated milestones to the timeline. Facts are
+never truncated: a long clause comes back split into several facts, each
+amount and date intact, and anything no slot holds is in `unplaced_facts`.
 Send `spec` as a JSON object or a YAML/JSON document string (both pass the
 advertised schema). Use YAML or JSON with `meta` and either flat `slides[]` or chapter-based
 `structure: {cover, auto_agenda, sections:[{title, slides:[]}], closing}`.

@@ -96,7 +96,15 @@ func comparisonClause(brief string) string {
 		lower := " " + strings.ToLower(factBenchmark.ReplaceAllString(c, "")) + " "
 		for _, cue := range comparisonCues {
 			if strings.Contains(lower, cue) {
-				return balanceFactBrackets(TruncateBrief(c, maxFactLen))
+				// Cut the way extractBriefFacts cuts — at an open bracket or
+				// a word boundary, never inside an amount — so a long
+				// comparison keeps both options and matches its fact
+				// (go-slide-creator-ze5u7).
+				pieces := splitOpenBrackets(c)
+				if len(pieces) == 0 {
+					return ""
+				}
+				return chunkFact(pieces[0], maxComparisonFactLen)[0]
 			}
 		}
 	}
