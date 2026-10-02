@@ -1,0 +1,2412 @@
+{
+  "audit_date": "2026-10-02",
+  "audit_task": "go-slide-creator-7xwlf",
+  "repository_head": "87d18357b5146796452c6c0cecdaff2937d0ade0",
+  "production_source_commit": "24cae08241bcfebb31dd64221aadffe6a4feba12",
+  "scope": "Output quality: three complete seven-slide decks (21 slides), plus one inspected chart with explicit precision as a control. This is a bounded review, not an exhaustive quality clearance.",
+  "method": "Actual MCP stdio render_deck_spec → render_deck_thumbnails at density100 → inspect PNGs → inspect embedded SVG geometry/text → submit_visual_review for all21 primary slides. Bundled LibreOfficeDev26.8.0.0.alpha0 and the existing private fontconfig.",
+  "limitations": [
+    "p-style is a local ignored template; modern-yellow is the shipped reproducible equivalent.",
+    "No production fixes were made. The explicit-precision control is an authored workaround.",
+    "Input heuristic scores of98–99 were not treated as visual approval; all three primary decks received changes_requested.",
+    "The extra line chart control was inspected, but its two-slide deck was not submitted as an approved complete deliverable.",
+    "No separate defect is asserted solely from whitespace preferences or the truncated line-chart domain."
+  ],
+  "findings": [
+    {
+      "key": "small_rate_precision",
+      "title": "Default chart precision collapses threshold-relevant small rates to identical labels",
+      "type": "bug",
+      "priority": "1",
+      "description": "## Steps to Reproduce\nRender the tracked output-quality-20261002 report's modern-yellow or p-style spec through render_deck_spec, then render_deck_thumbnails at density 100. Slide 3 is a line chart with values [0.035, 0.030, 0.025, 0.022], titled as percentages of failed payments. Its stated rollback threshold is 0.030%.\n\n## Actual Behavior\nLabels read 0.04, 0.03, 0.03, 0.02. Week 2 at the threshold and Week 3 below it become indistinguishable, and endpoint labels imply a 50% rather than 37% reduction. The distortion occurs in embedded SVG text and rendered PNGs on both templates. Input score is 98 and deterministic_ready=true; the explicit all-slide visual verdict is changes_requested.\n\n## Expected Behavior\nDefault formatting preserves distinctions and decision-relevant small magnitudes, with a consistent readable scale/precision. Do not silently collapse distinct values or round nonzero values to zero merely to obey a two-decimal cap. Respect explicit authored precision.\n\n## Root Cause and Scope\nsvggen/value_format.go: maxAutoDecimals=2; autoValueFormat returns %.2f even after labelsAreDistinct fails. NewValueFormatter feeds this into the label path. svggen/value_format_test.go explicitly blesses the cap with the case beyond two decimals we stop. This is a residual of closed go-slide-creator-66qb, not the separate native-pattern numeric formatter in csclk.88.\n\n## Evidence and Control\nReport: tests/quality/results/output-quality-20261002/report.json. PNGs: small-rates-default.png and small-rates-explicit-3-decimals.png in the same directory. Setting chart.data.data_labels.format to %.3f through the same MCP produces 0.035, 0.030, 0.025, 0.022 legibly. This is a verified agent workaround, not an engine fix. Production source: 24cae08241bcfebb31dd64221aadffe6a4feba12; audit HEAD 87d18357.\n\n## Validation\nExisting TestAutoValueFormat and TestBarTopHeadroom tests pass despite the visible defects. Add regression coverage for small rates and a rendered check on two templates; update the test that currently endorses collapsing distinct values.",
+      "acceptance": "Default [0.035,0.030,0.025,0.022] labels preserve the threshold distinction and nonzero magnitudes without contradiction with the headline; explicit precision still wins; inspect before/after rendered slides on modern-yellow and p-style.",
+      "id": "go-slide-creator-6te2e"
+    },
+    {
+      "key": "negative_bar_label_clearance",
+      "title": "Negative bar labels overlap category names because the lower plot edge has no label clearance",
+      "type": "bug",
+      "priority": "2",
+      "description": "## Steps to Reproduce\nRender the tracked output-quality-20261002 report's modern-yellow or p-style spec via MCP. Slide 4 is chart_insight/bar_chart with categories North, West, South, East and values [9,4,0,-2]. Render and inspect the full slide at density 100.\n\n## Actual Behavior\nThe negative value −2 crowds/overlaps East even though both labels are short and the chart is sparse. The same geometry fails on two templates. MCP reports diagram.text_overlap at 55% (info) and still gives deterministic_ready=true / score 98. In modern-yellow's embedded SVG, East baseline y=332.6362 with font 19.2px, and −2 baseline y=319.6724 with font 16px, at identical x=683.3782: only 12.9638px separates baselines. The rendered PNG confirms the collision.\n\n## Expected Behavior\nNegative values, category labels and the zero baseline remain clearly separated without requiring the agent to shorten a four-letter category or suppress data labels.\n\n## Root Cause\nsvggen/charts.go builds the scale from yMin and withBarTopHeadroom(yMax); only positive maxima receive explicit label clearance. drawLabelledAxes places categories below plotArea.Y+plotArea.H. svggen/series.go drawValueLabel puts negative values below the bar endpoint using TextBaselineTop. A minimum exactly on the domain boundary consumes the same bottom band as the categories. Reserve measured lower clearance or position the negative annotation safely; use consistent geometry in the axes and direct-label paths.\n\n## Evidence and Scope\nReport and PNG negative-bar-label.png: tests/quality/results/output-quality-20261002/. Source verified in embedded image3.svg in both PPTX files. Related closed go-slide-creator-xv1k only added positive top headroom; go-slide-creator-s1uvj.29 concerns stacked domains, not this non-stacked label collision. Existing headroom tests pass.\n\n## Validation\nInclude mixed-sign and all-negative series with minima exactly on nice tick boundaries, short and long category labels, and before/after rendered slides in both templates.",
+      "acceptance": "The [9,4,0,-2] chart has a clear gap between −2 and East on both templates, with no text_overlap finding; test lower-edge clearance for mixed-sign and all-negative data while preserving the zero baseline and positive-label clearance.",
+      "id": "go-slide-creator-5na8e"
+    },
+    {
+      "key": "sales_example_quality",
+      "title": "Make the bundled sales-pitch example a credible, actionable presentation exemplar",
+      "type": "task",
+      "priority": "2",
+      "description": "## Problem\nThe shipped examples/semantic/sales_pitch.yaml compiles but its seven-slide warm-coral output is not a top-quality example for agents to imitate. The rendered market-spend chart in billions inherits Acme customer benchmark, 2025 (n=42 deployments), with no visible statement that the market figures are illustrative and no actual/forecast distinction for 2026. The partnership decision exceeds its own visual label budget, falls back to plain bullets, and repeats the pilot recommendation. The final slide says ready to start when you are without an actionable next step, accountable role or timing.\n\n## Evidence\nAll seven slides were rendered and visually inspected via MCP. validate_deck_spec reports decision option 2 label 66 characters >60, INPUT.SEMANTIC_PATTERN_DEGRADED on slides[5].options. render_deck_spec gives score99/deterministic_ready=true; the all-slide visual review records changes_requested. See tests/quality/results/output-quality-20261002/report.json and sales-market-source.png, sales-decision-fallback.png, sales-closing.png.\n\n## Root Cause and Scope\nThis is example authoring, not renderer fabrication: the broad default source, market values, long option text and vague closing are authored in examples/semantic/sales_pitch.yaml. internal/semantic/slides/decision.go deliberately falls back when labels exceed decisionLabelMax=60. Retain that guard; make the canonical example fit it, using concise labels plus details. The existing closed ixfrr only removed an unsupported section subtitle; the open QBR chronology bead z99un covers a different example.\n\n## Requested Change\nClearly disclose illustrative data and distinguish market assumptions/projections from the customer benchmark. Give the alternatives concise labels with useful supporting detail so the comparison and recommendation render visually. End with a concrete pilot decision/next action, role and timing (clearly illustrative rather than invented real commitments). Inspect the full revised deck, not only its schema validity.",
+      "acceptance": "Rendered sales_pitch shows appropriate evidence/projection disclosure, retains its visual decision treatment without SEMANTIC_PATTERN_DEGRADED, and closes with a concrete pilot action/owner/timing; review every slide and record before/after evidence.",
+      "id": "go-slide-creator-3i61q"
+    }
+  ],
+  "decks": [
+    {
+      "name": "sales",
+      "render_arguments": {
+        "spec": "# Sales pitch — semantic authoring example.\n#\n# A compact semantic spec for a sales/pitch deck. It exercises a different\n# archetype (sales_pitch, which prefers the warm-coral template and is not an\n# \"executive\" archetype) and a different slide rhythm than the QBR example:\n# it opens with the opportunity, sizes the market, shows traction, breaks with a\n# `section` divider, and lands a partnership ask. The mix of structural / text /\n# chart / kpi families is deliberately varied so the deck-rhythm rules stay\n# quiet — this file is meant to validate cleanly at the default strictness.\nmeta:\n  title: Acme Analytics — Partnership Proposal\n  subtitle: Turn your operational data into decisions\n  archetype: sales_pitch\n  audience: VP of Operations and the buying committee\n  # Deck-level default source: every data slide without its own source renders it.\n  source: Acme customer benchmark, 2025 (n = 42 deployments)\n\nslides:\n  - kind: title\n    title: Acme Analytics\n    subtitle: Turn your operational data into decisions\n\n  - kind: executive_summary\n    title: Your teams hold the data but still wait days for decisions\n    takeaway: Your teams are data-rich but decision-poor — and the gap is widening.\n    points:\n      - Teams rebuild the same reports weekly.\n      - Decisions wait days for busy analysts.\n      - Real-time rivals react twice as fast.\n      - The data exists but drives no decision.\n\n  - kind: chart_insight\n    title: Real-time decisioning spend overtakes batch reporting in 2025\n    insight: Spend is shifting decisively from batch reporting to live decisioning.\n    chart:\n      type: bar_chart\n      title: Decision-analytics spend ($B)\n      data:\n        categories: [\"2023\", \"2024\", \"2025\", \"2026\"]\n        series:\n          - name: Batch reporting\n            values: [12, 11, 10, 9]\n          - name: Real-time decisioning\n            values: [6, 10, 16, 24]\n    insights:\n      - Real-time decisioning overtakes batch reporting within the window.\n      - Buyers are consolidating onto platforms that close the loop.\n      - Early adopters report faster cycle times within a quarter.\n\n  - kind: kpi_snapshot\n    title: 60+ operations teams already decide 4.2x faster with Acme\n    takeaway: Early customers are already seeing the decision gap close.\n    kpis:\n      - { value: \"60+\", label: \"Operations teams live\" }\n      - { value: \"4.2x\", label: \"Faster decision cycle\" }\n      - { value: \"98%\", label: \"Logo retention\" }\n      - { value: \"11wk\", label: \"Median time to value\" }\n\n  - kind: section\n    title: The Partnership We Propose\n\n  - kind: decision\n    title: A 90-day pilot on two workflows proves the value before scaling\n    recommendation: Run a 90-day pilot with your operations team, instrumenting the two workflows that cost the most analyst time today.\n    options:\n      - label: Stand up a 90-day pilot on the two highest-cost workflows.\n        recommended: true\n      - Begin with a paid discovery to map data sources before committing.\n      - Defer to next budget cycle and revisit once headcount frees up.\n\n  - kind: closing\n    title: Let's Build the Pilot\n    subtitle: Thank you — we're ready to start when you are.\n"
+      },
+      "render_result": {
+        "ok": true,
+        "success": true,
+        "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02-output-quality/output/acme-analytics-partnership-proposal-cb26fe08.pptx",
+        "deterministic_ready": true,
+        "publishable": false,
+        "manual_review_required": true,
+        "blocking_reasons": [
+          "current artifact lacks complete all-slide vision inspection and an explicit approved verdict; render_deck_thumbnails + submit_visual_review supply it"
+        ],
+        "template": "warm-coral",
+        "slide_count": 7,
+        "content_hash": "c5b8b41bf320b6d17aaec7f37b3a4932ec7a3dd5aac9b41e6850cee480a033c4",
+        "duration_ms": 169,
+        "quality_summary": {
+          "score": 99,
+          "basis": "input",
+          "slide_scores": [
+            {
+              "slide_number": 1,
+              "score": 100
+            },
+            {
+              "slide_number": 2,
+              "score": 95,
+              "issues": [
+                "SLIDE_UNDERUSED"
+              ]
+            },
+            {
+              "slide_number": 3,
+              "score": 100
+            },
+            {
+              "slide_number": 4,
+              "score": 100
+            },
+            {
+              "slide_number": 5,
+              "score": 100
+            },
+            {
+              "slide_number": 6,
+              "score": 100
+            },
+            {
+              "slide_number": 7,
+              "score": 100
+            }
+          ],
+          "scope": "input_heuristic",
+          "evidence": {
+            "artifact_sha256": "c5b8b41bf320b6d17aaec7f37b3a4932ec7a3dd5aac9b41e6850cee480a033c4",
+            "schema_valid": true,
+            "generated": true,
+            "fit_checked": true,
+            "structural_valid": true,
+            "pixels_rendered": false,
+            "visually_inspected": false,
+            "reviewed_slide_ids": [],
+            "total_slides": 7,
+            "approved": false,
+            "needs_review": true,
+            "reasons": [
+              "current artifact was not pixel-rendered",
+              "no explicit visual approval verdict for the current artifact"
+            ]
+          },
+          "structural_score": 99,
+          "quality_gate": {
+            "passed": true,
+            "reasons": [],
+            "criteria": {
+              "min_score": 80,
+              "max_p0_findings": 0,
+              "max_p1_findings": 0,
+              "require_takeaway_on_charts": true,
+              "max_topic_title_pct": 25,
+              "require_storyline": true,
+              "allow_accent_overload": false,
+              "max_problem_slides_pct": 40,
+              "min_composition_score": 65
+            }
+          }
+        },
+        "diagnostics": [
+          {
+            "code": "SEMANTIC_PATTERN_DEGRADED",
+            "severity": "warning",
+            "message": "decision option 2's label is 66 characters; a step holds 60 (otherwise it degrades to a content slide)",
+            "semantic_path": "slides[5].options",
+            "next_tool_call": {
+              "tool": "describe_finding",
+              "args_template": {
+                "code": "SEMANTIC_PATTERN_DEGRADED"
+              }
+            }
+          },
+          {
+            "code": "SLIDE_UNDERUSED",
+            "severity": "info",
+            "message": "slide content covers 24% of the safe content area (threshold 29%) — the pattern's visible content occupies too little of the slide",
+            "semantic_path": "slides[1]",
+            "raw_path": "/slides/1",
+            "slide_index": 1,
+            "action": "review",
+            "recommended_edit": {
+              "kind": "add_detail_or_merge",
+              "hint": "Add useful detail, choose a denser slide kind, or merge this slide with a related one.",
+              "params": {
+                "band_capped_by": "pattern",
+                "content_area_pct": 24,
+                "fix_kind": "add_detail_or_resize",
+                "hint": "this block sizes itself to its content — add detail to it, pair it with a supporting zone using compose, or choose a denser pattern",
+                "threshold_pct": 29
+              }
+            },
+            "next_tool_call": {
+              "tool": "describe_finding",
+              "args_template": {
+                "code": "SLIDE_UNDERUSED"
+              }
+            }
+          }
+        ],
+        "explanation_summary": {
+          "title": "Acme Analytics — Partnership Proposal",
+          "archetype": "sales_pitch",
+          "template": "warm-coral",
+          "rhythm": {
+            "slide_count": 7,
+            "families": {
+              "chart": 1,
+              "kpi": 1,
+              "structural": 3,
+              "text": 2
+            },
+            "evidence_families": {
+              "chart": 1,
+              "kpi": 1
+            },
+            "distinct_family_count": 3,
+            "evidence_family_count": 2,
+            "densities": {
+              "light": 3,
+              "medium": 4
+            }
+          },
+          "layout_coverage": {
+            "requested": [],
+            "assigned": [],
+            "missing": []
+          },
+          "slides": [
+            {
+              "index": 0,
+              "kind": "title",
+              "role": "opening",
+              "visual_family": "structural",
+              "density": "light",
+              "title": "Acme Analytics",
+              "layout": "title",
+              "alternatives": [
+                {
+                  "layout": "title",
+                  "reason": "the template's own title layout"
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "kind": "executive_summary",
+              "role": "summary",
+              "visual_family": "text",
+              "density": "medium",
+              "title": "Your teams hold the data but still wait days for decisions",
+              "takeaway": "Your teams are data-rich but decision-poor — and the gap is widening.",
+              "pattern": "exec-summary",
+              "layout": "blank-title",
+              "alternatives": [
+                {
+                  "pattern": "exec-summary",
+                  "layout": "blank-title",
+                  "reason": "3-5 lead-in statements, each with one supporting sentence"
+                },
+                {
+                  "layout": "content",
+                  "reason": "native bullets preserve more or fewer points, or longer ones"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "kind": "chart_insight",
+              "role": "evidence",
+              "visual_family": "chart",
+              "density": "medium",
+              "title": "Real-time decisioning spend overtakes batch reporting in 2025",
+              "takeaway": "Spend is shifting decisively from batch reporting to live decisioning.",
+              "pattern": "chart-insights-split",
+              "layout": "blank-title",
+              "alternatives": [
+                {
+                  "pattern": "chart-insights-split",
+                  "layout": "blank-title",
+                  "reason": "chart with up to 6 insights"
+                },
+                {
+                  "layout": "two-column",
+                  "reason": "native chart and full insight list when density exceeds the pattern"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "kind": "kpi_snapshot",
+              "role": "evidence",
+              "visual_family": "kpi",
+              "density": "medium",
+              "title": "60+ operations teams already decide 4.2x faster with Acme",
+              "takeaway": "Early customers are already seeing the decision gap close.",
+              "pattern": "kpi-4up",
+              "layout": "blank-title",
+              "alternatives": [
+                {
+                  "pattern": "kpi-4up",
+                  "layout": "blank-title",
+                  "reason": "compact visual for 2-6 readable metrics"
+                },
+                {
+                  "layout": "content",
+                  "reason": "native bullets preserve out-of-range or long metrics"
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "kind": "section",
+              "role": "transition",
+              "visual_family": "structural",
+              "density": "light",
+              "title": "The Partnership We Propose",
+              "layout": "section",
+              "alternatives": [
+                {
+                  "layout": "section",
+                  "reason": "the template's own section layout"
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "kind": "decision",
+              "role": "recommendation",
+              "visual_family": "text",
+              "density": "medium",
+              "title": "A 90-day pilot on two workflows proves the value before scaling",
+              "layout": "content",
+              "alternatives": [
+                {
+                  "pattern": "numbered-step-strip",
+                  "layout": "blank-title",
+                  "reason": "3-6 options as numbered boxes, the recommendation in the callout band"
+                },
+                {
+                  "pattern": "card-grid",
+                  "layout": "blank-title",
+                  "reason": "exactly 2 options, each with a detail, as two cards side by side"
+                },
+                {
+                  "layout": "content",
+                  "reason": "the recommendation as a lead-in, then the options as bullets"
+                }
+              ]
+            },
+            {
+              "index": 6,
+              "kind": "closing",
+              "role": "closing",
+              "visual_family": "structural",
+              "density": "light",
+              "title": "Let's Build the Pilot",
+              "layout": "closing",
+              "alternatives": [
+                {
+                  "layout": "closing",
+                  "reason": "the template's own closing layout"
+                }
+              ]
+            }
+          ]
+        },
+        "deck_id": "deck_27a1a877464513d6067d7d440cb681fa",
+        "next_tool_call": {
+          "tool": "render_deck_thumbnails",
+          "args_template": {
+            "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02-output-quality/output/acme-analytics-partnership-proposal-cb26fe08.pptx"
+          }
+        }
+      },
+      "thumbnail_metadata": {
+        "slides": [
+          {
+            "index": 0,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-ef3b948d8e3bee83dc68cb30daff94e5458601e7224f9c78c0558a94195f6e31.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "ef3b948d8e3bee83dc68cb30daff94e5458601e7224f9c78c0558a94195f6e31",
+            "image_content_index": 1,
+            "image_width": 1280,
+            "image_height": 720
+          },
+          {
+            "index": 1,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-4139df153490e2ec22c87511094b1baf628aa2299e6420986e27549cc1d13d84.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "4139df153490e2ec22c87511094b1baf628aa2299e6420986e27549cc1d13d84",
+            "image_content_index": 2,
+            "image_width": 1280,
+            "image_height": 720
+          },
+          {
+            "index": 2,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-0e8b06d4aac4dcb386f8d0a730bafc803af79fdc450a9f1537067b13c980312f.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "0e8b06d4aac4dcb386f8d0a730bafc803af79fdc450a9f1537067b13c980312f",
+            "image_content_index": 3,
+            "image_width": 1280,
+            "image_height": 720
+          },
+          {
+            "index": 3,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-dc138dbb5f19dad8519e926d16a55ba2d23d9d266ce54212e14d38ba7d2675fc.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "dc138dbb5f19dad8519e926d16a55ba2d23d9d266ce54212e14d38ba7d2675fc",
+            "image_content_index": 4,
+            "image_width": 1280,
+            "image_height": 720
+          },
+          {
+            "index": 4,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-f4eaf934c5d0fe16ca380e13e5c239b2e94b785216fea2587f6f983f1dd13137.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "f4eaf934c5d0fe16ca380e13e5c239b2e94b785216fea2587f6f983f1dd13137",
+            "image_content_index": 5,
+            "image_width": 1280,
+            "image_height": 720
+          },
+          {
+            "index": 5,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-e07d4350a9d24bc38722cb2b438444ed6ce6c95d0560dc067d2fab22f0e2a322.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "e07d4350a9d24bc38722cb2b438444ed6ce6c95d0560dc067d2fab22f0e2a322",
+            "image_content_index": 6,
+            "image_width": 1280,
+            "image_height": 720
+          },
+          {
+            "index": 6,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-93ac6df9f94a3f111f5d4507471f90d8d37df6ada5145f36188a72516cef4157.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "93ac6df9f94a3f111f5d4507471f90d8d37df6ada5145f36188a72516cef4157",
+            "image_content_index": 7,
+            "image_width": 1280,
+            "image_height": 720
+          }
+        ],
+        "truncated": false,
+        "delivery": "image_content",
+        "slide_count": 7,
+        "source_hash": "c5b8b41bf320b6d17aaec7f37b3a4932ec7a3dd5aac9b41e6850cee480a033c4",
+        "cleanup": "content-addressed; path is stable while the file exists and is never overwritten with different content; evicted after 24h unused, or oldest-first once the cache exceeds 500 MiB, swept on render; get_capabilities().runtime.render_cache_bytes reports current usage",
+        "image_mime_type": "image/jpeg",
+        "next_tool_call": {
+          "tool": "submit_visual_review",
+          "args_template": {
+            "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02-output-quality/output/acme-analytics-partnership-proposal-cb26fe08.pptx",
+            "pptx_revision": "c5b8b41bf320b6d17aaec7f37b3a4932ec7a3dd5aac9b41e6850cee480a033c4",
+            "slides": "<one {index, verdict, image_sha256} per slide: image_sha256 = slides[].content_hash from render_deck_thumbnails>"
+          }
+        }
+      },
+      "visual_review_arguments": {
+        "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02-output-quality/output/acme-analytics-partnership-proposal-cb26fe08.pptx",
+        "pptx_revision": "c5b8b41bf320b6d17aaec7f37b3a4932ec7a3dd5aac9b41e6850cee480a033c4",
+        "reviewer": "host",
+        "slides": [
+          {
+            "index": 0,
+            "image_sha256": "ef3b948d8e3bee83dc68cb30daff94e5458601e7224f9c78c0558a94195f6e31",
+            "verdict": "approved",
+            "findings": []
+          },
+          {
+            "index": 1,
+            "image_sha256": "4139df153490e2ec22c87511094b1baf628aa2299e6420986e27549cc1d13d84",
+            "verdict": "approved",
+            "findings": []
+          },
+          {
+            "index": 2,
+            "image_sha256": "0e8b06d4aac4dcb386f8d0a730bafc803af79fdc450a9f1537067b13c980312f",
+            "verdict": "changes_requested",
+            "findings": [
+              {
+                "severity": "warning",
+                "category": "output_quality",
+                "description": "Market spending in billions inherits a customer benchmark source with no projection or illustrative-data disclosure."
+              }
+            ]
+          },
+          {
+            "index": 3,
+            "image_sha256": "dc138dbb5f19dad8519e926d16a55ba2d23d9d266ce54212e14d38ba7d2675fc",
+            "verdict": "approved",
+            "findings": []
+          },
+          {
+            "index": 4,
+            "image_sha256": "f4eaf934c5d0fe16ca380e13e5c239b2e94b785216fea2587f6f983f1dd13137",
+            "verdict": "approved",
+            "findings": []
+          },
+          {
+            "index": 5,
+            "image_sha256": "e07d4350a9d24bc38722cb2b438444ed6ce6c95d0560dc067d2fab22f0e2a322",
+            "verdict": "changes_requested",
+            "findings": [
+              {
+                "severity": "warning",
+                "category": "output_quality",
+                "description": "The bundled decision example exceeds the label budget and degrades into plain body bullets."
+              }
+            ]
+          },
+          {
+            "index": 6,
+            "image_sha256": "93ac6df9f94a3f111f5d4507471f90d8d37df6ada5145f36188a72516cef4157",
+            "verdict": "changes_requested",
+            "findings": [
+              {
+                "severity": "warning",
+                "category": "output_quality",
+                "description": "The partnership close contains no concrete next action, accountable role or timing."
+              }
+            ]
+          }
+        ]
+      },
+      "visual_review_result": {
+        "ok": true,
+        "status": "draft_needs_visual_review",
+        "verdict": "changes_requested",
+        "reviewer": "host",
+        "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02-output-quality/output/acme-analytics-partnership-proposal-cb26fe08.pptx",
+        "artifact_sha256": "c5b8b41bf320b6d17aaec7f37b3a4932ec7a3dd5aac9b41e6850cee480a033c4",
+        "revision": "c5b8b41bf320b6d17aaec7f37b3a4932ec7a3dd5aac9b41e6850cee480a033c4",
+        "total_slides": 7,
+        "evidence": {
+          "artifact_sha256": "c5b8b41bf320b6d17aaec7f37b3a4932ec7a3dd5aac9b41e6850cee480a033c4",
+          "revision": "c5b8b41bf320b6d17aaec7f37b3a4932ec7a3dd5aac9b41e6850cee480a033c4",
+          "schema_valid": true,
+          "generated": true,
+          "fit_checked": true,
+          "structural_valid": true,
+          "pixels_rendered": true,
+          "visually_inspected": true,
+          "inspection_backend": "host",
+          "reviewed_slide_ids": [
+            "slide-1",
+            "slide-2",
+            "slide-3",
+            "slide-4",
+            "slide-5",
+            "slide-6",
+            "slide-7"
+          ],
+          "total_slides": 7,
+          "visual_verdict": "changes_requested",
+          "approved": false,
+          "needs_review": true,
+          "reasons": [
+            "no explicit visual approval verdict for the current artifact"
+          ]
+        },
+        "review": {
+          "artifact_sha256": "c5b8b41bf320b6d17aaec7f37b3a4932ec7a3dd5aac9b41e6850cee480a033c4",
+          "revision": "c5b8b41bf320b6d17aaec7f37b3a4932ec7a3dd5aac9b41e6850cee480a033c4",
+          "backend": "host",
+          "slides": [
+            {
+              "index": 0,
+              "role": "slide",
+              "image_sha256": "ef3b948d8e3bee83dc68cb30daff94e5458601e7224f9c78c0558a94195f6e31"
+            },
+            {
+              "index": 1,
+              "role": "slide",
+              "image_sha256": "4139df153490e2ec22c87511094b1baf628aa2299e6420986e27549cc1d13d84"
+            },
+            {
+              "index": 2,
+              "role": "slide",
+              "image_sha256": "0e8b06d4aac4dcb386f8d0a730bafc803af79fdc450a9f1537067b13c980312f"
+            },
+            {
+              "index": 3,
+              "role": "slide",
+              "image_sha256": "dc138dbb5f19dad8519e926d16a55ba2d23d9d266ce54212e14d38ba7d2675fc"
+            },
+            {
+              "index": 4,
+              "role": "slide",
+              "image_sha256": "f4eaf934c5d0fe16ca380e13e5c239b2e94b785216fea2587f6f983f1dd13137"
+            },
+            {
+              "index": 5,
+              "role": "slide",
+              "image_sha256": "e07d4350a9d24bc38722cb2b438444ed6ce6c95d0560dc067d2fab22f0e2a322"
+            },
+            {
+              "index": 6,
+              "role": "slide",
+              "image_sha256": "93ac6df9f94a3f111f5d4507471f90d8d37df6ada5145f36188a72516cef4157"
+            }
+          ],
+          "findings": [
+            {
+              "slide_index": 2,
+              "slide_type": "",
+              "severity": "warning",
+              "category": "output_quality",
+              "description": "Market spending in billions inherits a customer benchmark source with no projection or illustrative-data disclosure.",
+              "location": "",
+              "source": "host"
+            },
+            {
+              "slide_index": 5,
+              "slide_type": "",
+              "severity": "warning",
+              "category": "output_quality",
+              "description": "The bundled decision example exceeds the label budget and degrades into plain body bullets.",
+              "location": "",
+              "source": "host"
+            },
+            {
+              "slide_index": 6,
+              "slide_type": "",
+              "severity": "warning",
+              "category": "output_quality",
+              "description": "The partnership close contains no concrete next action, accountable role or timing.",
+              "location": "",
+              "source": "host"
+            }
+          ],
+          "verdict": "changes_requested"
+        },
+        "image_verification": {
+          "status": "verified",
+          "method": "render_cache",
+          "verified_slides": 7,
+          "total_slides": 7
+        },
+        "manifest_updated": false,
+        "publishable": false
+      }
+    },
+    {
+      "name": "p-style",
+      "render_arguments": {
+        "spec": {
+          "meta": {
+            "title": "Reducing payment failures",
+            "template": "p-style",
+            "date": "2 October 2026",
+            "source": "Illustrative pilot data; not company results"
+          },
+          "slides": [
+            {
+              "kind": "title",
+              "title": "Reducing payment failures",
+              "subtitle": "Illustrative product review · October 2026"
+            },
+            {
+              "kind": "executive_summary",
+              "title": "The retry redesign cuts failures without adding payment latency",
+              "points": [
+                {
+                  "lead": "Failures fell 37%",
+                  "support": "The pilot failure rate fell from 0.035% to 0.022% across four weeks."
+                },
+                {
+                  "lead": "Latency stayed within budget",
+                  "support": "Median authorization latency remained between 180 and 184 milliseconds."
+                },
+                {
+                  "lead": "The rollout needs one owner",
+                  "support": "The payments lead will stage deployment by region and track daily exceptions."
+                }
+              ],
+              "bottom_line": "Approve a staged rollout with a rollback threshold of 0.030%."
+            },
+            {
+              "kind": "chart_insight",
+              "title": "Payment failures fell from 0.035% to 0.022% in four weeks",
+              "chart": {
+                "type": "line_chart",
+                "title": "Failed payments (% of attempts)",
+                "data": {
+                  "categories": [
+                    "Week 1",
+                    "Week 2",
+                    "Week 3",
+                    "Week 4"
+                  ],
+                  "series": [
+                    {
+                      "name": "Failure rate",
+                      "values": [
+                        0.035,
+                        0.03,
+                        0.025,
+                        0.022
+                      ]
+                    }
+                  ]
+                }
+              },
+              "insights": [
+                "Failure rates improved each week.",
+                "The pilot clears the 0.030% rollback threshold."
+              ],
+              "takeaway": "Proceed with staged rollout while monitoring the same failure definition."
+            },
+            {
+              "kind": "chart_insight",
+              "title": "Regional savings range from a €2m loss to a €9m gain",
+              "chart": {
+                "type": "bar_chart",
+                "title": "Annual net savings (€m)",
+                "data": {
+                  "categories": [
+                    "North",
+                    "West",
+                    "South",
+                    "East"
+                  ],
+                  "series": [
+                    {
+                      "name": "Savings",
+                      "values": [
+                        9,
+                        4,
+                        0,
+                        -2
+                      ]
+                    }
+                  ]
+                }
+              },
+              "insights": [
+                "North and West save €13m together.",
+                "East loses €2m and needs a different rollout plan."
+              ],
+              "takeaway": "Roll out in North and West; keep East out of the first wave."
+            },
+            {
+              "kind": "comparison",
+              "title": "Staged rollout limits exposure while preserving the full-year savings",
+              "columns": [
+                {
+                  "header": "Staged rollout",
+                  "items": [
+                    "Two regions first",
+                    "Daily rollback review",
+                    "Full rollout in six weeks"
+                  ]
+                },
+                {
+                  "header": "All regions at once",
+                  "items": [
+                    "Four regions on day one",
+                    "Single rollback decision",
+                    "Full rollout in one week"
+                  ]
+                }
+              ],
+              "takeaway": "Choose the staged rollout because East has negative expected savings."
+            },
+            {
+              "kind": "roadmap",
+              "title": "Regional gates control expansion over the next six weeks",
+              "phases": [
+                {
+                  "name": "North pilot",
+                  "date_label": "Week 1–2",
+                  "description": "Daily failure review; payments lead owns the gate."
+                },
+                {
+                  "name": "West expansion",
+                  "date_label": "Week 3–4",
+                  "description": "Expand only if failures remain below 0.030%."
+                },
+                {
+                  "name": "South readiness",
+                  "date_label": "Week 5–6",
+                  "description": "Resolve zero-savings cases before approval."
+                }
+              ],
+              "takeaway": "East remains outside this plan until the business case improves."
+            },
+            {
+              "kind": "next_steps",
+              "title": "Approve the staged rollout and assign the payments lead",
+              "actions": [
+                {
+                  "action": "Approve the North and West rollout",
+                  "owner": "COO",
+                  "date": "9 Oct"
+                },
+                {
+                  "action": "Publish the daily failure-rate dashboard",
+                  "owner": "Payments lead",
+                  "date": "12 Oct"
+                },
+                {
+                  "action": "Rebuild the East business case",
+                  "owner": "Finance lead",
+                  "date": "30 Oct"
+                }
+              ],
+              "decisions": [
+                "Approve the rollout, subject to the 0.030% rollback threshold."
+              ]
+            }
+          ]
+        }
+      },
+      "render_result": {
+        "ok": true,
+        "success": true,
+        "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02-output-quality/output/reducing-payment-failures-560f9042.pptx",
+        "deterministic_ready": true,
+        "publishable": false,
+        "manual_review_required": true,
+        "blocking_reasons": [
+          "current artifact lacks complete all-slide vision inspection and an explicit approved verdict; render_deck_thumbnails + submit_visual_review supply it"
+        ],
+        "template": "p-style",
+        "slide_count": 7,
+        "content_hash": "e97e93c4ee3373cb89723943d2f17822df741b9ae228f42c0fda7cdca8b67063",
+        "duration_ms": 286,
+        "quality_summary": {
+          "score": 98,
+          "basis": "input",
+          "slide_scores": [
+            {
+              "slide_number": 1,
+              "score": 100
+            },
+            {
+              "slide_number": 2,
+              "score": 100
+            },
+            {
+              "slide_number": 3,
+              "score": 100
+            },
+            {
+              "slide_number": 4,
+              "score": 90,
+              "issues": [
+                "diagram.text_overlap",
+                "diagram.text_overlap"
+              ]
+            },
+            {
+              "slide_number": 5,
+              "score": 100
+            },
+            {
+              "slide_number": 6,
+              "score": 100
+            },
+            {
+              "slide_number": 7,
+              "score": 100
+            }
+          ],
+          "scope": "input_heuristic",
+          "evidence": {
+            "artifact_sha256": "e97e93c4ee3373cb89723943d2f17822df741b9ae228f42c0fda7cdca8b67063",
+            "schema_valid": true,
+            "generated": true,
+            "fit_checked": true,
+            "structural_valid": true,
+            "pixels_rendered": false,
+            "visually_inspected": false,
+            "reviewed_slide_ids": [],
+            "total_slides": 7,
+            "approved": false,
+            "needs_review": true,
+            "reasons": [
+              "current artifact was not pixel-rendered",
+              "no explicit visual approval verdict for the current artifact"
+            ]
+          },
+          "structural_score": 98,
+          "quality_gate": {
+            "passed": true,
+            "reasons": [],
+            "criteria": {
+              "min_score": 80,
+              "max_p0_findings": 0,
+              "max_p1_findings": 0,
+              "require_takeaway_on_charts": true,
+              "max_topic_title_pct": 25,
+              "require_storyline": true,
+              "allow_accent_overload": false,
+              "max_problem_slides_pct": 40,
+              "min_composition_score": 65
+            }
+          }
+        },
+        "diagnostics": [
+          {
+            "code": "diagram.text_overlap",
+            "severity": "info",
+            "message": "drawn text \"East\" overlaps \"−2\" by 55% of the smaller text box; shorten a label or increase the diagram space",
+            "raw_path": "/slides/3/pattern/rows/0/cells/0/diagram",
+            "slide_index": 3,
+            "action": "review",
+            "next_tool_call": {
+              "tool": "describe_finding",
+              "args_template": {
+                "code": "diagram.text_overlap"
+              }
+            }
+          },
+          {
+            "code": "diagram.text_overlap",
+            "severity": "info",
+            "message": "drawn text \"East\" overlaps \"−2\" by 55% of the smaller text box; shorten a label or increase the diagram space",
+            "raw_path": "/slides/3/shape_grid/rows/0/cells/0/diagram",
+            "slide_index": 3,
+            "action": "review",
+            "next_tool_call": {
+              "tool": "describe_finding",
+              "args_template": {
+                "code": "diagram.text_overlap"
+              }
+            }
+          }
+        ],
+        "explanation_summary": {
+          "title": "Reducing payment failures",
+          "template": "p-style",
+          "rhythm": {
+            "slide_count": 7,
+            "families": {
+              "chart": 2,
+              "comparison": 1,
+              "structural": 1,
+              "text": 2,
+              "timeline": 1
+            },
+            "evidence_families": {
+              "chart": 2
+            },
+            "distinct_family_count": 4,
+            "evidence_family_count": 1,
+            "densities": {
+              "light": 1,
+              "medium": 6
+            }
+          },
+          "layout_coverage": {
+            "requested": [],
+            "assigned": [],
+            "missing": []
+          },
+          "slides": [
+            {
+              "index": 0,
+              "kind": "title",
+              "role": "opening",
+              "visual_family": "structural",
+              "density": "light",
+              "title": "Reducing payment failures",
+              "layout": "title",
+              "alternatives": [
+                {
+                  "layout": "title",
+                  "reason": "the template's own title layout"
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "kind": "executive_summary",
+              "role": "summary",
+              "visual_family": "text",
+              "density": "medium",
+              "title": "The retry redesign cuts failures without adding payment latency",
+              "pattern": "exec-summary",
+              "layout": "blank-title",
+              "alternatives": [
+                {
+                  "pattern": "exec-summary",
+                  "layout": "blank-title",
+                  "reason": "3-5 lead-in statements, each with one supporting sentence"
+                },
+                {
+                  "layout": "content",
+                  "reason": "native bullets preserve more or fewer points, or longer ones"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "kind": "chart_insight",
+              "role": "evidence",
+              "visual_family": "chart",
+              "density": "medium",
+              "title": "Payment failures fell from 0.035% to 0.022% in four weeks",
+              "takeaway": "Proceed with staged rollout while monitoring the same failure definition.",
+              "pattern": "chart-insights-split",
+              "layout": "blank-title",
+              "alternatives": [
+                {
+                  "pattern": "chart-insights-split",
+                  "layout": "blank-title",
+                  "reason": "chart with up to 6 insights"
+                },
+                {
+                  "layout": "two-column",
+                  "reason": "native chart and full insight list when density exceeds the pattern"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "kind": "chart_insight",
+              "role": "evidence",
+              "visual_family": "chart",
+              "density": "medium",
+              "title": "Regional savings range from a €2m loss to a €9m gain",
+              "takeaway": "Roll out in North and West; keep East out of the first wave.",
+              "pattern": "chart-insights-split",
+              "layout": "blank-title",
+              "alternatives": [
+                {
+                  "pattern": "chart-insights-split",
+                  "layout": "blank-title",
+                  "reason": "chart with up to 6 insights"
+                },
+                {
+                  "layout": "two-column",
+                  "reason": "native chart and full insight list when density exceeds the pattern"
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "kind": "comparison",
+              "role": "analysis",
+              "visual_family": "comparison",
+              "density": "medium",
+              "title": "Staged rollout limits exposure while preserving the full-year savings",
+              "takeaway": "Choose the staged rollout because East has negative expected savings.",
+              "pattern": "comparison-2col",
+              "layout": "blank-title",
+              "alternatives": [
+                {
+                  "pattern": "comparison-2col",
+                  "layout": "blank-title",
+                  "reason": "balanced two-column comparison"
+                },
+                {
+                  "pattern": "stylish-panels",
+                  "layout": "blank-title",
+                  "reason": "3-5 columns, each a titled panel with its own bullets"
+                },
+                {
+                  "pattern": "card-grid",
+                  "layout": "blank-title",
+                  "reason": "2-5 columns as titled cards when panels do not fit"
+                },
+                {
+                  "layout": "content",
+                  "reason": "native bullets preserve six or more columns"
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "kind": "roadmap",
+              "role": "plan",
+              "visual_family": "timeline",
+              "density": "medium",
+              "title": "Regional gates control expansion over the next six weeks",
+              "takeaway": "East remains outside this plan until the business case improves.",
+              "pattern": "phase-roadmap",
+              "layout": "blank-title",
+              "alternatives": [
+                {
+                  "pattern": "phase-roadmap",
+                  "layout": "blank-title",
+                  "reason": "3-6 phases"
+                },
+                {
+                  "layout": "content",
+                  "reason": "native bullets preserve dense roadmaps"
+                }
+              ]
+            },
+            {
+              "index": 6,
+              "kind": "next_steps",
+              "role": "closing",
+              "visual_family": "text",
+              "density": "medium",
+              "title": "Approve the staged rollout and assign the payments lead",
+              "pattern": "next-steps",
+              "layout": "blank-title",
+              "alternatives": [
+                {
+                  "pattern": "next-steps",
+                  "layout": "blank-title",
+                  "reason": "2-6 actions with owner and date, plus up to 3 decisions requested"
+                },
+                {
+                  "layout": "content",
+                  "reason": "bullets preserve more actions or longer copy"
+                }
+              ]
+            }
+          ]
+        },
+        "deck_id": "deck_78f527fc0d54244b9a6538775239cad3",
+        "next_tool_call": {
+          "tool": "render_deck_thumbnails",
+          "args_template": {
+            "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02-output-quality/output/reducing-payment-failures-560f9042.pptx"
+          }
+        }
+      },
+      "thumbnail_metadata": {
+        "slides": [
+          {
+            "index": 0,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-57df6924e6313955726c22276cccb61b3af5a146c7999f6af51a38a73f8d314d.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "57df6924e6313955726c22276cccb61b3af5a146c7999f6af51a38a73f8d314d",
+            "image_content_index": 1,
+            "image_width": 1280,
+            "image_height": 720
+          },
+          {
+            "index": 1,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-b3ac079107524d7f65bf68894998124ad0c2d288830e7f4df9c7499721602e07.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "b3ac079107524d7f65bf68894998124ad0c2d288830e7f4df9c7499721602e07",
+            "image_content_index": 2,
+            "image_width": 1280,
+            "image_height": 720
+          },
+          {
+            "index": 2,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-f43a6c83f060c57e94bf7ebf6868c85d7a349ad5e4bc22763ea73da8b4932514.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "f43a6c83f060c57e94bf7ebf6868c85d7a349ad5e4bc22763ea73da8b4932514",
+            "image_content_index": 3,
+            "image_width": 1280,
+            "image_height": 720
+          },
+          {
+            "index": 3,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-4fd1e594764ef2bd52de32d25ef06f5326faa912024ccecdb1991815529712ae.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "4fd1e594764ef2bd52de32d25ef06f5326faa912024ccecdb1991815529712ae",
+            "image_content_index": 4,
+            "image_width": 1280,
+            "image_height": 720
+          },
+          {
+            "index": 4,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-9032855877ee812601feec0cdb0b07f416435a7e43f329e53525f1503e245cb5.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "9032855877ee812601feec0cdb0b07f416435a7e43f329e53525f1503e245cb5",
+            "image_content_index": 5,
+            "image_width": 1280,
+            "image_height": 720
+          },
+          {
+            "index": 5,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-c40e9a94a7620b6e7839ccb3f8b3097349263208f9306dd45af2b435d5ae6fdd.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "c40e9a94a7620b6e7839ccb3f8b3097349263208f9306dd45af2b435d5ae6fdd",
+            "image_content_index": 6,
+            "image_width": 1280,
+            "image_height": 720
+          },
+          {
+            "index": 6,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-83d74df0babe60b359c81be0609bb3463a52c2a0b6506e0fca9cec31038a3d81.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "83d74df0babe60b359c81be0609bb3463a52c2a0b6506e0fca9cec31038a3d81",
+            "image_content_index": 7,
+            "image_width": 1280,
+            "image_height": 720
+          }
+        ],
+        "truncated": false,
+        "delivery": "image_content",
+        "slide_count": 7,
+        "source_hash": "e97e93c4ee3373cb89723943d2f17822df741b9ae228f42c0fda7cdca8b67063",
+        "cleanup": "content-addressed; path is stable while the file exists and is never overwritten with different content; evicted after 24h unused, or oldest-first once the cache exceeds 500 MiB, swept on render; get_capabilities().runtime.render_cache_bytes reports current usage",
+        "image_mime_type": "image/jpeg",
+        "next_tool_call": {
+          "tool": "submit_visual_review",
+          "args_template": {
+            "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02-output-quality/output/reducing-payment-failures-560f9042.pptx",
+            "pptx_revision": "e97e93c4ee3373cb89723943d2f17822df741b9ae228f42c0fda7cdca8b67063",
+            "slides": "<one {index, verdict, image_sha256} per slide: image_sha256 = slides[].content_hash from render_deck_thumbnails>"
+          }
+        }
+      },
+      "visual_review_arguments": {
+        "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02-output-quality/output/reducing-payment-failures-560f9042.pptx",
+        "pptx_revision": "e97e93c4ee3373cb89723943d2f17822df741b9ae228f42c0fda7cdca8b67063",
+        "reviewer": "host",
+        "slides": [
+          {
+            "index": 0,
+            "image_sha256": "57df6924e6313955726c22276cccb61b3af5a146c7999f6af51a38a73f8d314d",
+            "verdict": "approved",
+            "findings": []
+          },
+          {
+            "index": 1,
+            "image_sha256": "b3ac079107524d7f65bf68894998124ad0c2d288830e7f4df9c7499721602e07",
+            "verdict": "approved",
+            "findings": []
+          },
+          {
+            "index": 2,
+            "image_sha256": "f43a6c83f060c57e94bf7ebf6868c85d7a349ad5e4bc22763ea73da8b4932514",
+            "verdict": "changes_requested",
+            "findings": [
+              {
+                "severity": "warning",
+                "category": "output_quality",
+                "description": "Data labels round 0.035/0.030/0.025/0.022 to 0.04/0.03/0.03/0.02, hiding threshold-relevant differences."
+              }
+            ]
+          },
+          {
+            "index": 3,
+            "image_sha256": "4fd1e594764ef2bd52de32d25ef06f5326faa912024ccecdb1991815529712ae",
+            "verdict": "changes_requested",
+            "findings": [
+              {
+                "severity": "warning",
+                "category": "output_quality",
+                "description": "The negative value label −2 crowds/overlaps the category East."
+              }
+            ]
+          },
+          {
+            "index": 4,
+            "image_sha256": "9032855877ee812601feec0cdb0b07f416435a7e43f329e53525f1503e245cb5",
+            "verdict": "approved",
+            "findings": []
+          },
+          {
+            "index": 5,
+            "image_sha256": "c40e9a94a7620b6e7839ccb3f8b3097349263208f9306dd45af2b435d5ae6fdd",
+            "verdict": "approved",
+            "findings": []
+          },
+          {
+            "index": 6,
+            "image_sha256": "83d74df0babe60b359c81be0609bb3463a52c2a0b6506e0fca9cec31038a3d81",
+            "verdict": "approved",
+            "findings": []
+          }
+        ]
+      },
+      "visual_review_result": {
+        "ok": true,
+        "status": "draft_needs_visual_review",
+        "verdict": "changes_requested",
+        "reviewer": "host",
+        "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02-output-quality/output/reducing-payment-failures-560f9042.pptx",
+        "artifact_sha256": "e97e93c4ee3373cb89723943d2f17822df741b9ae228f42c0fda7cdca8b67063",
+        "revision": "e97e93c4ee3373cb89723943d2f17822df741b9ae228f42c0fda7cdca8b67063",
+        "total_slides": 7,
+        "evidence": {
+          "artifact_sha256": "e97e93c4ee3373cb89723943d2f17822df741b9ae228f42c0fda7cdca8b67063",
+          "revision": "e97e93c4ee3373cb89723943d2f17822df741b9ae228f42c0fda7cdca8b67063",
+          "schema_valid": true,
+          "generated": true,
+          "fit_checked": true,
+          "structural_valid": true,
+          "pixels_rendered": true,
+          "visually_inspected": true,
+          "inspection_backend": "host",
+          "reviewed_slide_ids": [
+            "slide-1",
+            "slide-2",
+            "slide-3",
+            "slide-4",
+            "slide-5",
+            "slide-6",
+            "slide-7"
+          ],
+          "total_slides": 7,
+          "visual_verdict": "changes_requested",
+          "approved": false,
+          "needs_review": true,
+          "reasons": [
+            "no explicit visual approval verdict for the current artifact"
+          ]
+        },
+        "review": {
+          "artifact_sha256": "e97e93c4ee3373cb89723943d2f17822df741b9ae228f42c0fda7cdca8b67063",
+          "revision": "e97e93c4ee3373cb89723943d2f17822df741b9ae228f42c0fda7cdca8b67063",
+          "backend": "host",
+          "slides": [
+            {
+              "index": 0,
+              "role": "slide",
+              "image_sha256": "57df6924e6313955726c22276cccb61b3af5a146c7999f6af51a38a73f8d314d"
+            },
+            {
+              "index": 1,
+              "role": "slide",
+              "image_sha256": "b3ac079107524d7f65bf68894998124ad0c2d288830e7f4df9c7499721602e07"
+            },
+            {
+              "index": 2,
+              "role": "slide",
+              "image_sha256": "f43a6c83f060c57e94bf7ebf6868c85d7a349ad5e4bc22763ea73da8b4932514"
+            },
+            {
+              "index": 3,
+              "role": "slide",
+              "image_sha256": "4fd1e594764ef2bd52de32d25ef06f5326faa912024ccecdb1991815529712ae"
+            },
+            {
+              "index": 4,
+              "role": "slide",
+              "image_sha256": "9032855877ee812601feec0cdb0b07f416435a7e43f329e53525f1503e245cb5"
+            },
+            {
+              "index": 5,
+              "role": "slide",
+              "image_sha256": "c40e9a94a7620b6e7839ccb3f8b3097349263208f9306dd45af2b435d5ae6fdd"
+            },
+            {
+              "index": 6,
+              "role": "slide",
+              "image_sha256": "83d74df0babe60b359c81be0609bb3463a52c2a0b6506e0fca9cec31038a3d81"
+            }
+          ],
+          "findings": [
+            {
+              "slide_index": 2,
+              "slide_type": "",
+              "severity": "warning",
+              "category": "output_quality",
+              "description": "Data labels round 0.035/0.030/0.025/0.022 to 0.04/0.03/0.03/0.02, hiding threshold-relevant differences.",
+              "location": "",
+              "source": "host"
+            },
+            {
+              "slide_index": 3,
+              "slide_type": "",
+              "severity": "warning",
+              "category": "output_quality",
+              "description": "The negative value label −2 crowds/overlaps the category East.",
+              "location": "",
+              "source": "host"
+            }
+          ],
+          "verdict": "changes_requested"
+        },
+        "image_verification": {
+          "status": "verified",
+          "method": "render_cache",
+          "verified_slides": 7,
+          "total_slides": 7
+        },
+        "manifest_updated": false,
+        "publishable": false
+      }
+    },
+    {
+      "name": "modern-yellow",
+      "render_arguments": {
+        "spec": {
+          "meta": {
+            "title": "Reducing payment failures",
+            "template": "modern-yellow",
+            "date": "2 October 2026",
+            "source": "Illustrative pilot data; not company results"
+          },
+          "slides": [
+            {
+              "kind": "title",
+              "title": "Reducing payment failures",
+              "subtitle": "Illustrative product review · October 2026"
+            },
+            {
+              "kind": "executive_summary",
+              "title": "The retry redesign cuts failures without adding payment latency",
+              "points": [
+                {
+                  "lead": "Failures fell 37%",
+                  "support": "The pilot failure rate fell from 0.035% to 0.022% across four weeks."
+                },
+                {
+                  "lead": "Latency stayed within budget",
+                  "support": "Median authorization latency remained between 180 and 184 milliseconds."
+                },
+                {
+                  "lead": "The rollout needs one owner",
+                  "support": "The payments lead will stage deployment by region and track daily exceptions."
+                }
+              ],
+              "bottom_line": "Approve a staged rollout with a rollback threshold of 0.030%."
+            },
+            {
+              "kind": "chart_insight",
+              "title": "Payment failures fell from 0.035% to 0.022% in four weeks",
+              "chart": {
+                "type": "line_chart",
+                "title": "Failed payments (% of attempts)",
+                "data": {
+                  "categories": [
+                    "Week 1",
+                    "Week 2",
+                    "Week 3",
+                    "Week 4"
+                  ],
+                  "series": [
+                    {
+                      "name": "Failure rate",
+                      "values": [
+                        0.035,
+                        0.03,
+                        0.025,
+                        0.022
+                      ]
+                    }
+                  ]
+                }
+              },
+              "insights": [
+                "Failure rates improved each week.",
+                "The pilot clears the 0.030% rollback threshold."
+              ],
+              "takeaway": "Proceed with staged rollout while monitoring the same failure definition."
+            },
+            {
+              "kind": "chart_insight",
+              "title": "Regional savings range from a €2m loss to a €9m gain",
+              "chart": {
+                "type": "bar_chart",
+                "title": "Annual net savings (€m)",
+                "data": {
+                  "categories": [
+                    "North",
+                    "West",
+                    "South",
+                    "East"
+                  ],
+                  "series": [
+                    {
+                      "name": "Savings",
+                      "values": [
+                        9,
+                        4,
+                        0,
+                        -2
+                      ]
+                    }
+                  ]
+                }
+              },
+              "insights": [
+                "North and West save €13m together.",
+                "East loses €2m and needs a different rollout plan."
+              ],
+              "takeaway": "Roll out in North and West; keep East out of the first wave."
+            },
+            {
+              "kind": "comparison",
+              "title": "Staged rollout limits exposure while preserving the full-year savings",
+              "columns": [
+                {
+                  "header": "Staged rollout",
+                  "items": [
+                    "Two regions first",
+                    "Daily rollback review",
+                    "Full rollout in six weeks"
+                  ]
+                },
+                {
+                  "header": "All regions at once",
+                  "items": [
+                    "Four regions on day one",
+                    "Single rollback decision",
+                    "Full rollout in one week"
+                  ]
+                }
+              ],
+              "takeaway": "Choose the staged rollout because East has negative expected savings."
+            },
+            {
+              "kind": "roadmap",
+              "title": "Regional gates control expansion over the next six weeks",
+              "phases": [
+                {
+                  "name": "North pilot",
+                  "date_label": "Week 1–2",
+                  "description": "Daily failure review; payments lead owns the gate."
+                },
+                {
+                  "name": "West expansion",
+                  "date_label": "Week 3–4",
+                  "description": "Expand only if failures remain below 0.030%."
+                },
+                {
+                  "name": "South readiness",
+                  "date_label": "Week 5–6",
+                  "description": "Resolve zero-savings cases before approval."
+                }
+              ],
+              "takeaway": "East remains outside this plan until the business case improves."
+            },
+            {
+              "kind": "next_steps",
+              "title": "Approve the staged rollout and assign the payments lead",
+              "actions": [
+                {
+                  "action": "Approve the North and West rollout",
+                  "owner": "COO",
+                  "date": "9 Oct"
+                },
+                {
+                  "action": "Publish the daily failure-rate dashboard",
+                  "owner": "Payments lead",
+                  "date": "12 Oct"
+                },
+                {
+                  "action": "Rebuild the East business case",
+                  "owner": "Finance lead",
+                  "date": "30 Oct"
+                }
+              ],
+              "decisions": [
+                "Approve the rollout, subject to the 0.030% rollback threshold."
+              ]
+            }
+          ]
+        }
+      },
+      "render_result": {
+        "ok": true,
+        "success": true,
+        "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02-output-quality/output/reducing-payment-failures-69d9a06d.pptx",
+        "deterministic_ready": true,
+        "publishable": false,
+        "manual_review_required": true,
+        "blocking_reasons": [
+          "current artifact lacks complete all-slide vision inspection and an explicit approved verdict; render_deck_thumbnails + submit_visual_review supply it"
+        ],
+        "template": "modern-yellow",
+        "slide_count": 7,
+        "content_hash": "c4a7ce2c7f3e3e2663baf4a3bc20add82671e55c67801954eb47f1e5fd9aaa27",
+        "duration_ms": 286,
+        "quality_summary": {
+          "score": 98,
+          "basis": "input",
+          "slide_scores": [
+            {
+              "slide_number": 1,
+              "score": 100
+            },
+            {
+              "slide_number": 2,
+              "score": 100
+            },
+            {
+              "slide_number": 3,
+              "score": 100
+            },
+            {
+              "slide_number": 4,
+              "score": 90,
+              "issues": [
+                "diagram.text_overlap",
+                "diagram.text_overlap"
+              ]
+            },
+            {
+              "slide_number": 5,
+              "score": 100
+            },
+            {
+              "slide_number": 6,
+              "score": 100
+            },
+            {
+              "slide_number": 7,
+              "score": 100
+            }
+          ],
+          "scope": "input_heuristic",
+          "evidence": {
+            "artifact_sha256": "c4a7ce2c7f3e3e2663baf4a3bc20add82671e55c67801954eb47f1e5fd9aaa27",
+            "schema_valid": true,
+            "generated": true,
+            "fit_checked": true,
+            "structural_valid": true,
+            "pixels_rendered": false,
+            "visually_inspected": false,
+            "reviewed_slide_ids": [],
+            "total_slides": 7,
+            "approved": false,
+            "needs_review": true,
+            "reasons": [
+              "current artifact was not pixel-rendered",
+              "no explicit visual approval verdict for the current artifact"
+            ]
+          },
+          "structural_score": 98,
+          "quality_gate": {
+            "passed": true,
+            "reasons": [],
+            "criteria": {
+              "min_score": 80,
+              "max_p0_findings": 0,
+              "max_p1_findings": 0,
+              "require_takeaway_on_charts": true,
+              "max_topic_title_pct": 25,
+              "require_storyline": true,
+              "allow_accent_overload": false,
+              "max_problem_slides_pct": 40,
+              "min_composition_score": 65
+            }
+          }
+        },
+        "diagnostics": [
+          {
+            "code": "diagram.text_overlap",
+            "severity": "info",
+            "message": "drawn text \"East\" overlaps \"−2\" by 55% of the smaller text box; shorten a label or increase the diagram space",
+            "raw_path": "/slides/3/pattern/rows/0/cells/0/diagram",
+            "slide_index": 3,
+            "action": "review",
+            "next_tool_call": {
+              "tool": "describe_finding",
+              "args_template": {
+                "code": "diagram.text_overlap"
+              }
+            }
+          },
+          {
+            "code": "diagram.text_overlap",
+            "severity": "info",
+            "message": "drawn text \"East\" overlaps \"−2\" by 55% of the smaller text box; shorten a label or increase the diagram space",
+            "raw_path": "/slides/3/shape_grid/rows/0/cells/0/diagram",
+            "slide_index": 3,
+            "action": "review",
+            "next_tool_call": {
+              "tool": "describe_finding",
+              "args_template": {
+                "code": "diagram.text_overlap"
+              }
+            }
+          }
+        ],
+        "explanation_summary": {
+          "title": "Reducing payment failures",
+          "template": "modern-yellow",
+          "rhythm": {
+            "slide_count": 7,
+            "families": {
+              "chart": 2,
+              "comparison": 1,
+              "structural": 1,
+              "text": 2,
+              "timeline": 1
+            },
+            "evidence_families": {
+              "chart": 2
+            },
+            "distinct_family_count": 4,
+            "evidence_family_count": 1,
+            "densities": {
+              "light": 1,
+              "medium": 6
+            }
+          },
+          "layout_coverage": {
+            "requested": [],
+            "assigned": [],
+            "missing": []
+          },
+          "slides": [
+            {
+              "index": 0,
+              "kind": "title",
+              "role": "opening",
+              "visual_family": "structural",
+              "density": "light",
+              "title": "Reducing payment failures",
+              "layout": "title",
+              "alternatives": [
+                {
+                  "layout": "title",
+                  "reason": "the template's own title layout"
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "kind": "executive_summary",
+              "role": "summary",
+              "visual_family": "text",
+              "density": "medium",
+              "title": "The retry redesign cuts failures without adding payment latency",
+              "pattern": "exec-summary",
+              "layout": "blank-title",
+              "alternatives": [
+                {
+                  "pattern": "exec-summary",
+                  "layout": "blank-title",
+                  "reason": "3-5 lead-in statements, each with one supporting sentence"
+                },
+                {
+                  "layout": "content",
+                  "reason": "native bullets preserve more or fewer points, or longer ones"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "kind": "chart_insight",
+              "role": "evidence",
+              "visual_family": "chart",
+              "density": "medium",
+              "title": "Payment failures fell from 0.035% to 0.022% in four weeks",
+              "takeaway": "Proceed with staged rollout while monitoring the same failure definition.",
+              "pattern": "chart-insights-split",
+              "layout": "blank-title",
+              "alternatives": [
+                {
+                  "pattern": "chart-insights-split",
+                  "layout": "blank-title",
+                  "reason": "chart with up to 6 insights"
+                },
+                {
+                  "layout": "two-column",
+                  "reason": "native chart and full insight list when density exceeds the pattern"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "kind": "chart_insight",
+              "role": "evidence",
+              "visual_family": "chart",
+              "density": "medium",
+              "title": "Regional savings range from a €2m loss to a €9m gain",
+              "takeaway": "Roll out in North and West; keep East out of the first wave.",
+              "pattern": "chart-insights-split",
+              "layout": "blank-title",
+              "alternatives": [
+                {
+                  "pattern": "chart-insights-split",
+                  "layout": "blank-title",
+                  "reason": "chart with up to 6 insights"
+                },
+                {
+                  "layout": "two-column",
+                  "reason": "native chart and full insight list when density exceeds the pattern"
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "kind": "comparison",
+              "role": "analysis",
+              "visual_family": "comparison",
+              "density": "medium",
+              "title": "Staged rollout limits exposure while preserving the full-year savings",
+              "takeaway": "Choose the staged rollout because East has negative expected savings.",
+              "pattern": "comparison-2col",
+              "layout": "blank-title",
+              "alternatives": [
+                {
+                  "pattern": "comparison-2col",
+                  "layout": "blank-title",
+                  "reason": "balanced two-column comparison"
+                },
+                {
+                  "pattern": "stylish-panels",
+                  "layout": "blank-title",
+                  "reason": "3-5 columns, each a titled panel with its own bullets"
+                },
+                {
+                  "pattern": "card-grid",
+                  "layout": "blank-title",
+                  "reason": "2-5 columns as titled cards when panels do not fit"
+                },
+                {
+                  "layout": "content",
+                  "reason": "native bullets preserve six or more columns"
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "kind": "roadmap",
+              "role": "plan",
+              "visual_family": "timeline",
+              "density": "medium",
+              "title": "Regional gates control expansion over the next six weeks",
+              "takeaway": "East remains outside this plan until the business case improves.",
+              "pattern": "phase-roadmap",
+              "layout": "blank-title",
+              "alternatives": [
+                {
+                  "pattern": "phase-roadmap",
+                  "layout": "blank-title",
+                  "reason": "3-6 phases"
+                },
+                {
+                  "layout": "content",
+                  "reason": "native bullets preserve dense roadmaps"
+                }
+              ]
+            },
+            {
+              "index": 6,
+              "kind": "next_steps",
+              "role": "closing",
+              "visual_family": "text",
+              "density": "medium",
+              "title": "Approve the staged rollout and assign the payments lead",
+              "pattern": "next-steps",
+              "layout": "blank-title",
+              "alternatives": [
+                {
+                  "pattern": "next-steps",
+                  "layout": "blank-title",
+                  "reason": "2-6 actions with owner and date, plus up to 3 decisions requested"
+                },
+                {
+                  "layout": "content",
+                  "reason": "bullets preserve more actions or longer copy"
+                }
+              ]
+            }
+          ]
+        },
+        "deck_id": "deck_2f70456ad3d56f252a1b1e87f023ea5f",
+        "next_tool_call": {
+          "tool": "render_deck_thumbnails",
+          "args_template": {
+            "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02-output-quality/output/reducing-payment-failures-69d9a06d.pptx"
+          }
+        }
+      },
+      "thumbnail_metadata": {
+        "slides": [
+          {
+            "index": 0,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-a677506fb9b0a5ec42991728e46313c183a00f5053d547553c179b86da2b7e46.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "a677506fb9b0a5ec42991728e46313c183a00f5053d547553c179b86da2b7e46",
+            "image_content_index": 1,
+            "image_width": 1280,
+            "image_height": 720
+          },
+          {
+            "index": 1,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-db576479f8004dafcd1a20f07d44c70b3aab5360fa17027c5b918ad75e071acf.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "db576479f8004dafcd1a20f07d44c70b3aab5360fa17027c5b918ad75e071acf",
+            "image_content_index": 2,
+            "image_width": 1280,
+            "image_height": 720
+          },
+          {
+            "index": 2,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-f07602745f86206cc8b5d4c14c055fe7149e9a0308060611720bba0c42380dcd.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "f07602745f86206cc8b5d4c14c055fe7149e9a0308060611720bba0c42380dcd",
+            "image_content_index": 3,
+            "image_width": 1280,
+            "image_height": 720
+          },
+          {
+            "index": 3,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-3391aa4aa6fee4fa09c66417a0e351666650b6ac0b8b140a8c55368d19e7df8b.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "3391aa4aa6fee4fa09c66417a0e351666650b6ac0b8b140a8c55368d19e7df8b",
+            "image_content_index": 4,
+            "image_width": 1280,
+            "image_height": 720
+          },
+          {
+            "index": 4,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-fc84bbdaf53acad2520f7bfbe2d0d656988398c9f6c71969d8843677c112f042.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "fc84bbdaf53acad2520f7bfbe2d0d656988398c9f6c71969d8843677c112f042",
+            "image_content_index": 5,
+            "image_width": 1280,
+            "image_height": 720
+          },
+          {
+            "index": 5,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-efa86fdfc67f7b36611c8204423bf3adf7eb56344ff46c7f9a344439028aef9c.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "efa86fdfc67f7b36611c8204423bf3adf7eb56344ff46c7f9a344439028aef9c",
+            "image_content_index": 6,
+            "image_width": 1280,
+            "image_height": 720
+          },
+          {
+            "index": 6,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-11473e332366a9f6bcb91debfb5f6294538bbe31db5dcfd3094aa90f9cd6c199.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "11473e332366a9f6bcb91debfb5f6294538bbe31db5dcfd3094aa90f9cd6c199",
+            "image_content_index": 7,
+            "image_width": 1280,
+            "image_height": 720
+          }
+        ],
+        "truncated": false,
+        "delivery": "image_content",
+        "slide_count": 7,
+        "source_hash": "c4a7ce2c7f3e3e2663baf4a3bc20add82671e55c67801954eb47f1e5fd9aaa27",
+        "cleanup": "content-addressed; path is stable while the file exists and is never overwritten with different content; evicted after 24h unused, or oldest-first once the cache exceeds 500 MiB, swept on render; get_capabilities().runtime.render_cache_bytes reports current usage",
+        "image_mime_type": "image/jpeg",
+        "next_tool_call": {
+          "tool": "submit_visual_review",
+          "args_template": {
+            "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02-output-quality/output/reducing-payment-failures-69d9a06d.pptx",
+            "pptx_revision": "c4a7ce2c7f3e3e2663baf4a3bc20add82671e55c67801954eb47f1e5fd9aaa27",
+            "slides": "<one {index, verdict, image_sha256} per slide: image_sha256 = slides[].content_hash from render_deck_thumbnails>"
+          }
+        }
+      },
+      "visual_review_arguments": {
+        "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02-output-quality/output/reducing-payment-failures-69d9a06d.pptx",
+        "pptx_revision": "c4a7ce2c7f3e3e2663baf4a3bc20add82671e55c67801954eb47f1e5fd9aaa27",
+        "reviewer": "host",
+        "slides": [
+          {
+            "index": 0,
+            "image_sha256": "a677506fb9b0a5ec42991728e46313c183a00f5053d547553c179b86da2b7e46",
+            "verdict": "approved",
+            "findings": []
+          },
+          {
+            "index": 1,
+            "image_sha256": "db576479f8004dafcd1a20f07d44c70b3aab5360fa17027c5b918ad75e071acf",
+            "verdict": "approved",
+            "findings": []
+          },
+          {
+            "index": 2,
+            "image_sha256": "f07602745f86206cc8b5d4c14c055fe7149e9a0308060611720bba0c42380dcd",
+            "verdict": "changes_requested",
+            "findings": [
+              {
+                "severity": "warning",
+                "category": "output_quality",
+                "description": "Data labels round 0.035/0.030/0.025/0.022 to 0.04/0.03/0.03/0.02, hiding threshold-relevant differences."
+              }
+            ]
+          },
+          {
+            "index": 3,
+            "image_sha256": "3391aa4aa6fee4fa09c66417a0e351666650b6ac0b8b140a8c55368d19e7df8b",
+            "verdict": "changes_requested",
+            "findings": [
+              {
+                "severity": "warning",
+                "category": "output_quality",
+                "description": "The negative value label −2 crowds/overlaps the category East."
+              }
+            ]
+          },
+          {
+            "index": 4,
+            "image_sha256": "fc84bbdaf53acad2520f7bfbe2d0d656988398c9f6c71969d8843677c112f042",
+            "verdict": "approved",
+            "findings": []
+          },
+          {
+            "index": 5,
+            "image_sha256": "efa86fdfc67f7b36611c8204423bf3adf7eb56344ff46c7f9a344439028aef9c",
+            "verdict": "approved",
+            "findings": []
+          },
+          {
+            "index": 6,
+            "image_sha256": "11473e332366a9f6bcb91debfb5f6294538bbe31db5dcfd3094aa90f9cd6c199",
+            "verdict": "approved",
+            "findings": []
+          }
+        ]
+      },
+      "visual_review_result": {
+        "ok": true,
+        "status": "draft_needs_visual_review",
+        "verdict": "changes_requested",
+        "reviewer": "host",
+        "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02-output-quality/output/reducing-payment-failures-69d9a06d.pptx",
+        "artifact_sha256": "c4a7ce2c7f3e3e2663baf4a3bc20add82671e55c67801954eb47f1e5fd9aaa27",
+        "revision": "c4a7ce2c7f3e3e2663baf4a3bc20add82671e55c67801954eb47f1e5fd9aaa27",
+        "total_slides": 7,
+        "evidence": {
+          "artifact_sha256": "c4a7ce2c7f3e3e2663baf4a3bc20add82671e55c67801954eb47f1e5fd9aaa27",
+          "revision": "c4a7ce2c7f3e3e2663baf4a3bc20add82671e55c67801954eb47f1e5fd9aaa27",
+          "schema_valid": true,
+          "generated": true,
+          "fit_checked": true,
+          "structural_valid": true,
+          "pixels_rendered": true,
+          "visually_inspected": true,
+          "inspection_backend": "host",
+          "reviewed_slide_ids": [
+            "slide-1",
+            "slide-2",
+            "slide-3",
+            "slide-4",
+            "slide-5",
+            "slide-6",
+            "slide-7"
+          ],
+          "total_slides": 7,
+          "visual_verdict": "changes_requested",
+          "approved": false,
+          "needs_review": true,
+          "reasons": [
+            "no explicit visual approval verdict for the current artifact"
+          ]
+        },
+        "review": {
+          "artifact_sha256": "c4a7ce2c7f3e3e2663baf4a3bc20add82671e55c67801954eb47f1e5fd9aaa27",
+          "revision": "c4a7ce2c7f3e3e2663baf4a3bc20add82671e55c67801954eb47f1e5fd9aaa27",
+          "backend": "host",
+          "slides": [
+            {
+              "index": 0,
+              "role": "slide",
+              "image_sha256": "a677506fb9b0a5ec42991728e46313c183a00f5053d547553c179b86da2b7e46"
+            },
+            {
+              "index": 1,
+              "role": "slide",
+              "image_sha256": "db576479f8004dafcd1a20f07d44c70b3aab5360fa17027c5b918ad75e071acf"
+            },
+            {
+              "index": 2,
+              "role": "slide",
+              "image_sha256": "f07602745f86206cc8b5d4c14c055fe7149e9a0308060611720bba0c42380dcd"
+            },
+            {
+              "index": 3,
+              "role": "slide",
+              "image_sha256": "3391aa4aa6fee4fa09c66417a0e351666650b6ac0b8b140a8c55368d19e7df8b"
+            },
+            {
+              "index": 4,
+              "role": "slide",
+              "image_sha256": "fc84bbdaf53acad2520f7bfbe2d0d656988398c9f6c71969d8843677c112f042"
+            },
+            {
+              "index": 5,
+              "role": "slide",
+              "image_sha256": "efa86fdfc67f7b36611c8204423bf3adf7eb56344ff46c7f9a344439028aef9c"
+            },
+            {
+              "index": 6,
+              "role": "slide",
+              "image_sha256": "11473e332366a9f6bcb91debfb5f6294538bbe31db5dcfd3094aa90f9cd6c199"
+            }
+          ],
+          "findings": [
+            {
+              "slide_index": 2,
+              "slide_type": "",
+              "severity": "warning",
+              "category": "output_quality",
+              "description": "Data labels round 0.035/0.030/0.025/0.022 to 0.04/0.03/0.03/0.02, hiding threshold-relevant differences.",
+              "location": "",
+              "source": "host"
+            },
+            {
+              "slide_index": 3,
+              "slide_type": "",
+              "severity": "warning",
+              "category": "output_quality",
+              "description": "The negative value label −2 crowds/overlaps the category East.",
+              "location": "",
+              "source": "host"
+            }
+          ],
+          "verdict": "changes_requested"
+        },
+        "image_verification": {
+          "status": "verified",
+          "method": "render_cache",
+          "verified_slides": 7,
+          "total_slides": 7
+        },
+        "manifest_updated": false,
+        "publishable": false
+      }
+    },
+    {
+      "name": "precision-control",
+      "render_arguments": {
+        "spec": {
+          "meta": {
+            "title": "Reducing payment failures",
+            "template": "modern-yellow",
+            "date": "2 October 2026",
+            "source": "Illustrative pilot data; not company results"
+          },
+          "slides": [
+            {
+              "kind": "title",
+              "title": "Reducing payment failures",
+              "subtitle": "Illustrative product review · October 2026"
+            },
+            {
+              "kind": "chart_insight",
+              "title": "Payment failures fell from 0.035% to 0.022% in four weeks",
+              "chart": {
+                "type": "line_chart",
+                "title": "Failed payments (% of attempts)",
+                "data": {
+                  "categories": [
+                    "Week 1",
+                    "Week 2",
+                    "Week 3",
+                    "Week 4"
+                  ],
+                  "series": [
+                    {
+                      "name": "Failure rate",
+                      "values": [
+                        0.035,
+                        0.03,
+                        0.025,
+                        0.022
+                      ]
+                    }
+                  ],
+                  "data_labels": {
+                    "format": "%.3f"
+                  }
+                }
+              },
+              "insights": [
+                "Failure rates improved each week.",
+                "The pilot clears the 0.030% rollback threshold."
+              ],
+              "takeaway": "Proceed with staged rollout while monitoring the same failure definition."
+            }
+          ]
+        }
+      },
+      "render_result": {
+        "ok": true,
+        "success": true,
+        "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02-output-quality/output/reducing-payment-failures-29d0fe65.pptx",
+        "deterministic_ready": true,
+        "publishable": false,
+        "manual_review_required": true,
+        "blocking_reasons": [
+          "current artifact lacks complete all-slide vision inspection and an explicit approved verdict; render_deck_thumbnails + submit_visual_review supply it"
+        ],
+        "template": "modern-yellow",
+        "slide_count": 2,
+        "content_hash": "8a171311f86c641524d3ad57660b6af468e532e6b0f203f0f3f8b7f72f6fba59",
+        "duration_ms": 123,
+        "quality_summary": {
+          "score": 100,
+          "basis": "input",
+          "slide_scores": [
+            {
+              "slide_number": 1,
+              "score": 100
+            },
+            {
+              "slide_number": 2,
+              "score": 100
+            }
+          ],
+          "scope": "input_heuristic",
+          "evidence": {
+            "artifact_sha256": "8a171311f86c641524d3ad57660b6af468e532e6b0f203f0f3f8b7f72f6fba59",
+            "schema_valid": true,
+            "generated": true,
+            "fit_checked": true,
+            "structural_valid": true,
+            "pixels_rendered": false,
+            "visually_inspected": false,
+            "reviewed_slide_ids": [],
+            "total_slides": 2,
+            "approved": false,
+            "needs_review": true,
+            "reasons": [
+              "current artifact was not pixel-rendered",
+              "no explicit visual approval verdict for the current artifact"
+            ]
+          },
+          "structural_score": 100,
+          "quality_gate": {
+            "passed": true,
+            "reasons": [],
+            "criteria": {
+              "min_score": 80,
+              "max_p0_findings": 0,
+              "max_p1_findings": 0,
+              "require_takeaway_on_charts": true,
+              "max_topic_title_pct": 25,
+              "require_storyline": true,
+              "allow_accent_overload": false,
+              "max_problem_slides_pct": 40,
+              "min_composition_score": 65
+            }
+          }
+        },
+        "explanation_summary": {
+          "title": "Reducing payment failures",
+          "template": "modern-yellow",
+          "rhythm": {
+            "slide_count": 2,
+            "families": {
+              "chart": 1,
+              "structural": 1
+            },
+            "evidence_families": {
+              "chart": 1
+            },
+            "distinct_family_count": 1,
+            "evidence_family_count": 1,
+            "densities": {
+              "light": 1,
+              "medium": 1
+            }
+          },
+          "layout_coverage": {
+            "requested": [],
+            "assigned": [],
+            "missing": []
+          },
+          "slides": [
+            {
+              "index": 0,
+              "kind": "title",
+              "role": "opening",
+              "visual_family": "structural",
+              "density": "light",
+              "title": "Reducing payment failures",
+              "layout": "title",
+              "alternatives": [
+                {
+                  "layout": "title",
+                  "reason": "the template's own title layout"
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "kind": "chart_insight",
+              "role": "evidence",
+              "visual_family": "chart",
+              "density": "medium",
+              "title": "Payment failures fell from 0.035% to 0.022% in four weeks",
+              "takeaway": "Proceed with staged rollout while monitoring the same failure definition.",
+              "pattern": "chart-insights-split",
+              "layout": "blank-title",
+              "alternatives": [
+                {
+                  "pattern": "chart-insights-split",
+                  "layout": "blank-title",
+                  "reason": "chart with up to 6 insights"
+                },
+                {
+                  "layout": "two-column",
+                  "reason": "native chart and full insight list when density exceeds the pattern"
+                }
+              ]
+            }
+          ]
+        },
+        "deck_id": "deck_58810f3c715a7d40031c2760103685da",
+        "next_tool_call": {
+          "tool": "render_deck_thumbnails",
+          "args_template": {
+            "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02-output-quality/output/reducing-payment-failures-29d0fe65.pptx"
+          }
+        }
+      },
+      "thumbnail_metadata": {
+        "slides": [
+          {
+            "index": 0,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-e755932e2803c01cf3d4db5c074785898ee3bcbea23597757a35443b0d7f60cd.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "e755932e2803c01cf3d4db5c074785898ee3bcbea23597757a35443b0d7f60cd",
+            "image_content_index": 1,
+            "image_width": 1280,
+            "image_height": 720
+          },
+          {
+            "index": 1,
+            "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-a0125ff60ffefa25e4bd491fbe55b2185b093da6c2279d6a4d3fd7eaeeb50786.png",
+            "width": 1333,
+            "height": 750,
+            "content_hash": "a0125ff60ffefa25e4bd491fbe55b2185b093da6c2279d6a4d3fd7eaeeb50786",
+            "image_content_index": 2,
+            "image_width": 1280,
+            "image_height": 720
+          }
+        ],
+        "truncated": false,
+        "delivery": "image_content",
+        "slide_count": 2,
+        "source_hash": "8a171311f86c641524d3ad57660b6af468e532e6b0f203f0f3f8b7f72f6fba59",
+        "cleanup": "content-addressed; path is stable while the file exists and is never overwritten with different content; evicted after 24h unused, or oldest-first once the cache exceeds 500 MiB, swept on render; get_capabilities().runtime.render_cache_bytes reports current usage",
+        "image_mime_type": "image/jpeg",
+        "next_tool_call": {
+          "tool": "submit_visual_review",
+          "args_template": {
+            "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02-output-quality/output/reducing-payment-failures-29d0fe65.pptx",
+            "pptx_revision": "8a171311f86c641524d3ad57660b6af468e532e6b0f203f0f3f8b7f72f6fba59",
+            "slides": "<one {index, verdict, image_sha256} per slide: image_sha256 = slides[].content_hash from render_deck_thumbnails>"
+          }
+        }
+      }
+    }
+  ],
+  "saved_images": [
+    {
+      "file": "small-rates-default.png",
+      "source_deck": "modern-yellow",
+      "slide_index": 2,
+      "sha256": "f07602745f86206cc8b5d4c14c055fe7149e9a0308060611720bba0c42380dcd"
+    },
+    {
+      "file": "small-rates-explicit-3-decimals.png",
+      "source_deck": "precision-control",
+      "slide_index": 1,
+      "sha256": "a0125ff60ffefa25e4bd491fbe55b2185b093da6c2279d6a4d3fd7eaeeb50786"
+    },
+    {
+      "file": "negative-bar-label.png",
+      "source_deck": "modern-yellow",
+      "slide_index": 3,
+      "sha256": "3391aa4aa6fee4fa09c66417a0e351666650b6ac0b8b140a8c55368d19e7df8b"
+    },
+    {
+      "file": "sales-market-source.png",
+      "source_deck": "sales",
+      "slide_index": 2,
+      "sha256": "0e8b06d4aac4dcb386f8d0a730bafc803af79fdc450a9f1537067b13c980312f"
+    },
+    {
+      "file": "sales-decision-fallback.png",
+      "source_deck": "sales",
+      "slide_index": 5,
+      "sha256": "e07d4350a9d24bc38722cb2b438444ed6ce6c95d0560dc067d2fab22f0e2a322"
+    },
+    {
+      "file": "sales-closing.png",
+      "source_deck": "sales",
+      "slide_index": 6,
+      "sha256": "93ac6df9f94a3f111f5d4507471f90d8d37df6ada5145f36188a72516cef4157"
+    }
+  ],
+  "focused_tests": {
+    "command": "cd svggen && go test ./... -run 'TestAutoValueFormat|TestBarTopHeadroom' -count=1",
+    "result": "pass",
+    "interpretation": "Existing tests pass while the observed defects reproduce; the formatting test explicitly expects the two-decimal cap."
+  },
+  "svg_evidence": {
+    "modern-yellow": {
+      "line_labels": [
+        "0.04",
+        "0.03",
+        "0.03",
+        "0.02"
+      ],
+      "negative_label": {
+        "text": "−2",
+        "x": 683.3782,
+        "baseline_y": 319.6724,
+        "font_px": 16
+      },
+      "category": {
+        "text": "East",
+        "x": 683.3782,
+        "baseline_y": 332.6362,
+        "font_px": 19.2
+      }
+    },
+    "p-style": {
+      "line_labels": [
+        "0.04",
+        "0.03",
+        "0.03",
+        "0.02"
+      ],
+      "negative_label": {
+        "text": "−2",
+        "x": 742.5188,
+        "baseline_y": 332.485,
+        "font_px": 15.9887
+      },
+      "category": {
+        "text": "East",
+        "x": 742.5188,
+        "baseline_y": 345.4488,
+        "font_px": 19.1864
+      }
+    }
+  }
+}
