@@ -14,6 +14,25 @@
     and the positive top headroom are unchanged. No response-shape or
     `SchemaVersion` change.
 
+- **2026-10-02 — Composed slides are fingerprinted by structure (`go-slide-creator-dzv7d`).**
+  - `analyze_deck_rhythm` `per_slide[].pattern` (and so `pattern_runs[].name`,
+    the `break_run` message, `score_deck`'s composition `pattern_run`
+    diagnostic and `score_candidates`' rhythm notes) for a `compose` slide is
+    no longer the bare `compose` but its structure:
+    `compose:<v|h>[<region>+<region>…]`, each region the visual family of its
+    pattern (`kpi`, `card-grid`, `pull-quote`, …), `chart` / `diagram` for a
+    diagram segment, or a nested `compose:…` fingerprint, sorted, with `*` on
+    a region whose share sits ≥ 12.5 points above an equal split — e.g.
+    `compose:v[kpi*+pull-quote]`.
+  - Differently composed slides no longer form a phantom run: the review's
+    three valid envelopes (vertical panels+quote, horizontal KPI+flow,
+    vertical quote+KPI) scored `longest_run 3`, `composition_score 80` and a
+    `break_run`; they now score 100 with no run. Equivalent compositions —
+    regions reordered, a 55/45 re-split, `kpi-3up` → `kpi-4up` — still form a
+    run and still draw `break_run`, whose alternatives now follow the
+    regions' text and skip the run's region families.
+    `dominant_visual` stays `compose`. No `SchemaVersion` bump.
+
 - **2026-10-02 — plan_deck keeps whole comparisons and drafts an option matrix for "compare A with B" (`go-slide-creator-ze5u7`, `-fu6uy`).**
   - Brief facts are no longer truncated at 120 characters: a long clause is
     split (at a joining word, then at a word boundary outside brackets, never

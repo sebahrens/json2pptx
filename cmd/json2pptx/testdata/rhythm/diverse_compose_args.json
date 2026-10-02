@@ -1,0 +1,136 @@
+{
+  "presentation": {
+    "template": "midnight-blue",
+    "slides": [
+      {
+        "layout_id": "blank-title",
+        "compose": {
+          "direction": "vertical",
+          "segments": [
+            {
+              "pattern": {
+                "name": "stylish-panels",
+                "values": [
+                  {
+                    "title": "Speed",
+                    "body": [
+                      "Ship weekly"
+                    ]
+                  },
+                  {
+                    "title": "Quality",
+                    "body": [
+                      "Zero defects"
+                    ]
+                  },
+                  {
+                    "title": "Scale",
+                    "body": [
+                      "Serve all teams"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "pattern": {
+                "name": "pull-quote",
+                "values": {
+                  "quote": "Customer adoption gives confidence in the rollout.",
+                  "attribution": "Customer lead"
+                }
+              }
+            }
+          ]
+        },
+        "source": "Illustrative",
+        "takeaway": "The measures support the rollout."
+      },
+      {
+        "layout_id": "blank-title",
+        "compose": {
+          "direction": "horizontal",
+          "segments": [
+            {
+              "pattern": {
+                "name": "kpi-3up",
+                "values": [
+                  {
+                    "big": "42%",
+                    "small": "Win rate"
+                  },
+                  {
+                    "big": "$1.2M",
+                    "small": "Revenue"
+                  },
+                  {
+                    "big": "12",
+                    "small": "Customers"
+                  }
+                ]
+              }
+            },
+            {
+              "pattern": {
+                "name": "process-flow",
+                "values": {
+                  "steps": [
+                    {
+                      "label": "Plan"
+                    },
+                    {
+                      "label": "Build"
+                    },
+                    {
+                      "label": "Ship"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "source": "Illustrative",
+        "takeaway": "The measures support the rollout."
+      },
+      {
+        "layout_id": "blank-title",
+        "compose": {
+          "direction": "vertical",
+          "segments": [
+            {
+              "pattern": {
+                "name": "pull-quote",
+                "values": {
+                  "quote": "Customer adoption gives confidence in the rollout.",
+                  "attribution": "Customer lead"
+                }
+              }
+            },
+            {
+              "pattern": {
+                "name": "kpi-3up",
+                "values": [
+                  {
+                    "big": "42%",
+                    "small": "Win rate"
+                  },
+                  {
+                    "big": "$1.2M",
+                    "small": "Revenue"
+                  },
+                  {
+                    "big": "12",
+                    "small": "Customers"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "source": "Illustrative",
+        "takeaway": "The measures support the rollout."
+      }
+    ]
+  }
+}
