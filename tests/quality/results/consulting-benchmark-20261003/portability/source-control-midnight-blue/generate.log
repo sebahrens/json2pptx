@@ -1,0 +1,65 @@
+{
+  "ok": true,
+  "output_path": ".claude/review-evidence/2026-10-03-consulting/portability/source-control-midnight-blue/deck.pptx",
+  "deterministic_ready": true,
+  "publishable": false,
+  "manual_review_required": true,
+  "blocking_reasons": [
+    "current artifact lacks complete all-slide vision inspection and an explicit approved verdict; render_deck_thumbnails + submit_visual_review supply it"
+  ],
+  "template": "midnight-blue",
+  "slide_count": 1,
+  "content_hash": "ebeb5aa163d34c50a584c0733a1dccd481032720b0b3373848eb4d581a65c29d",
+  "revision": "5be052f8548a28681e6998608cd60e2506ce9ff8f7f8c4e6ddcc0a1bd060e829",
+  "manifest_path": ".claude/review-evidence/2026-10-03-consulting/portability/source-control-midnight-blue/deck.pptx.authoring.json",
+  "duration_ms": 58,
+  "quality": {
+    "score": 100,
+    "basis": "input",
+    "slide_scores": [
+      {
+        "slide_number": 1,
+        "score": 100
+      }
+    ],
+    "scope": "input_heuristic",
+    "evidence": {
+      "artifact_sha256": "ebeb5aa163d34c50a584c0733a1dccd481032720b0b3373848eb4d581a65c29d",
+      "schema_valid": true,
+      "generated": true,
+      "fit_checked": true,
+      "structural_valid": true,
+      "pixels_rendered": false,
+      "visually_inspected": false,
+      "reviewed_slide_ids": [],
+      "total_slides": 1,
+      "approved": false,
+      "needs_review": true,
+      "reasons": [
+        "current artifact was not pixel-rendered",
+        "no explicit visual approval verdict for the current artifact"
+      ]
+    },
+    "structural_score": 100,
+    "quality_gate": {
+      "passed": true,
+      "reasons": [],
+      "criteria": {
+        "min_score": 80,
+        "max_p0_findings": 0,
+        "max_p1_findings": 0,
+        "require_takeaway_on_charts": true,
+        "max_topic_title_pct": 25,
+        "require_storyline": true,
+        "allow_accent_overload": false,
+        "max_problem_slides_pct": 40,
+        "min_composition_score": 65
+      }
+    }
+  }
+}
+2026/10/03 00:49:35 INFO pattern expanded pattern=table-highlight version=1
+2026/10/03 00:49:35 INFO pattern expanded pattern=table-highlight version=1
+2026/10/03 00:49:35 INFO pattern expanded pattern=table-highlight version=1
+2026/10/03 00:49:35 INFO pattern expanded pattern=table-highlight version=1
+2026/10/03 00:49:35 INFO pattern expanded pattern=table-highlight version=1

@@ -1,0 +1,248 @@
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"deck_id\":\"deck_191440449545b21dd590cd3b2c37b5fe\",\"findings\":[{\"code\":\"INPUT.TEXT_BELOW_READABLE_MIN\",\"message\":\"card-title text renders at 10.6pt, below the 12pt minimum for viewing_mode \\\"present\\\" (cell text overflows; autofit sh\u2026\",\"next_tool_call\":{\"args_template\":{\"code\":\"INPUT.TEXT_BELOW_READABLE_MIN\"},\"tool\":\"describe_finding\"},\"severity\":\"error\"},{\"code\":\"INPUT.TEXT_BELOW_READABLE_MIN\",\"message\":\"card-title text renders at 10.6pt, below the 12pt minimum for viewing_mode \\\"present\\\" (cell text overflows; autofit sh\u2026\",\"next_tool_call\":{\"args_template\":{\"code\":\"INPUT.TEXT_BELOW_READABLE_MIN\"},\"tool\":\"describe_finding\"},\"severity\":\"error\"},{\"code\":\"INPUT.TEXT_BELOW_READABLE_MIN\",\"message\":\"card-title text renders at 10.6pt, below the 12pt minimum for viewing_mode \\\"present\\\" (cell text overflows; autofit sh\u2026\",\"next_tool_call\":{\"args_template\":{\"code\":\"INPUT.TEXT_BELOW_READABLE_MIN\"},\"tool\":\"describe_finding\"},\"severity\":\"error\"}],\"findings_count\":5,\"ok\":false,\"summary\":\"4 errors, 1 info\"}"
+      }
+    ],
+    "structuredContent": {
+      "schema_version": "1.0",
+      "tool": "json2pptx",
+      "subcommand": "validate_deck_spec",
+      "input_sha256": "6ce2b22822f9681e76a4beaab31416634f04994bcfd17b381cb4ae534bda6d98",
+      "ok": false,
+      "summary": "4 errors, 1 info",
+      "findings": [
+        {
+          "id": "input-1",
+          "code": "INPUT.TEXT_BELOW_READABLE_MIN",
+          "severity": "error",
+          "category": "INPUT",
+          "where": {
+            "slide": 3
+          },
+          "message": "card-title text renders at 10.6pt, below the 12pt minimum for viewing_mode \"present\" (cell text overflows; autofit shrinks 12pt to ~10.6pt); shorten the text",
+          "evidence": {
+            "action": "refuse",
+            "allowed": {
+              "min_font_pt": 12
+            },
+            "measured": {
+              "font_pt": 10.56
+            },
+            "path": "slides[3].regions[2]"
+          },
+          "remediation": {
+            "primary": {
+              "action": "shorten_text",
+              "params": {
+                "actual_pt": 10.56,
+                "cell_path": "/slides/3/shape_grid/rows/0/cells/1/grid/rows/1/cells/0/grid/rows/1/cells/0/grid/rows/1/cells/0",
+                "fix_kind": "reduce_cell_text",
+                "max_chars": 6,
+                "measurement_source": "predicted",
+                "min_pt": 12,
+                "paragraph_text": "Oct: design",
+                "pattern": "timeline-horizontal",
+                "role": "card-title",
+                "strategy": "shorten",
+                "viewing_mode": "present"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "INPUT.TEXT_BELOW_READABLE_MIN"
+            }
+          },
+          "describe_command": "json2pptx describe-finding TEXT_BELOW_READABLE_MIN"
+        },
+        {
+          "id": "input-2",
+          "code": "INPUT.TEXT_BELOW_READABLE_MIN",
+          "severity": "error",
+          "category": "INPUT",
+          "where": {
+            "slide": 3
+          },
+          "message": "card-title text renders at 10.6pt, below the 12pt minimum for viewing_mode \"present\" (cell text overflows; autofit shrinks 12pt to ~10.6pt); shorten the text",
+          "evidence": {
+            "action": "refuse",
+            "allowed": {
+              "min_font_pt": 12
+            },
+            "measured": {
+              "font_pt": 10.56
+            },
+            "path": "slides[3].regions[2]"
+          },
+          "remediation": {
+            "primary": {
+              "action": "shorten_text",
+              "params": {
+                "actual_pt": 10.56,
+                "cell_path": "/slides/3/shape_grid/rows/0/cells/1/grid/rows/1/cells/0/grid/rows/1/cells/0/grid/rows/1/cells/1",
+                "fix_kind": "reduce_cell_text",
+                "max_chars": 6,
+                "measurement_source": "predicted",
+                "min_pt": 12,
+                "paragraph_text": "Jan: prove",
+                "pattern": "timeline-horizontal",
+                "role": "card-title",
+                "strategy": "shorten",
+                "viewing_mode": "present"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "INPUT.TEXT_BELOW_READABLE_MIN"
+            }
+          },
+          "describe_command": "json2pptx describe-finding TEXT_BELOW_READABLE_MIN"
+        },
+        {
+          "id": "input-3",
+          "code": "INPUT.TEXT_BELOW_READABLE_MIN",
+          "severity": "error",
+          "category": "INPUT",
+          "where": {
+            "slide": 3
+          },
+          "message": "card-title text renders at 10.6pt, below the 12pt minimum for viewing_mode \"present\" (cell text overflows; autofit shrinks 12pt to ~10.6pt); shorten the text",
+          "evidence": {
+            "action": "refuse",
+            "allowed": {
+              "min_font_pt": 12
+            },
+            "measured": {
+              "font_pt": 10.56
+            },
+            "path": "slides[3].regions[2]"
+          },
+          "remediation": {
+            "primary": {
+              "action": "shorten_text",
+              "params": {
+                "actual_pt": 10.56,
+                "cell_path": "/slides/3/shape_grid/rows/0/cells/1/grid/rows/1/cells/0/grid/rows/1/cells/0/grid/rows/1/cells/2",
+                "fix_kind": "reduce_cell_text",
+                "max_chars": 6,
+                "measurement_source": "predicted",
+                "min_pt": 12,
+                "paragraph_text": "Mar: scale",
+                "pattern": "timeline-horizontal",
+                "role": "card-title",
+                "strategy": "shorten",
+                "viewing_mode": "present"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "INPUT.TEXT_BELOW_READABLE_MIN"
+            }
+          },
+          "describe_command": "json2pptx describe-finding TEXT_BELOW_READABLE_MIN"
+        },
+        {
+          "id": "input-4",
+          "code": "INPUT.TEXT_BELOW_READABLE_MIN",
+          "severity": "error",
+          "category": "INPUT",
+          "where": {
+            "slide": 8
+          },
+          "message": "card-title text renders at 10.8pt, below the 12pt minimum for viewing_mode \"present\" (cell text overflows; autofit shrinks 12pt to ~10.8pt); split the text",
+          "evidence": {
+            "action": "refuse",
+            "allowed": {
+              "min_font_pt": 12
+            },
+            "measured": {
+              "font_pt": 10.8
+            },
+            "path": "slides[8].eyebrow",
+            "pattern": "image-text-split"
+          },
+          "remediation": {
+            "primary": {
+              "action": "apply_patch",
+              "params": {
+                "actual_pt": 10.8,
+                "cell_path": "/slides/8/shape_grid/rows/0/cells/1/grid/rows/0/cells/0",
+                "fix_kind": "reduce_cell_text",
+                "max_chars": 532,
+                "measurement_source": "predicted",
+                "min_pt": 12,
+                "op": "replace",
+                "paragraph_text": "PILOT DESIGN",
+                "path": "/slides/8/eyebrow",
+                "pattern": "image-text-split",
+                "role": "card-title",
+                "strategy": "split",
+                "value": "<rewrite this field to resolve INPUT.TEXT_BELOW_READABLE_MIN while preserving meaning; at most 532 characters>",
+                "viewing_mode": "present"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "validate_deck_spec",
+            "args_template": {
+              "deck_id": "deck_191440449545b21dd590cd3b2c37b5fe",
+              "patch": [
+                {
+                  "op": "replace",
+                  "path": "/slides/8/eyebrow",
+                  "value": "<rewrite this field to resolve INPUT.TEXT_BELOW_READABLE_MIN while preserving meaning; at most 532 characters>"
+                }
+              ]
+            }
+          },
+          "describe_command": "json2pptx describe-finding TEXT_BELOW_READABLE_MIN"
+        },
+        {
+          "id": "grid-5",
+          "code": "GRID.pattern_overcrowded",
+          "severity": "info",
+          "category": "GRID",
+          "where": {
+            "slide": 4
+          },
+          "message": "comparison-2col: 10 cells exceeds recommended max of 8 \u2014 consider splitting",
+          "evidence": {
+            "action": "review",
+            "overflow_ratio": 1.25,
+            "path": "/slides/4/pattern",
+            "pattern": "comparison-2col"
+          },
+          "remediation": {
+            "primary": {
+              "action": "split_slide",
+              "params": {
+                "filled_slots": 10,
+                "fix_kind": "split_pattern",
+                "recommended_max": 8,
+                "title_part_2": "(continued)"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "GRID.pattern_overcrowded"
+            }
+          },
+          "describe_command": "json2pptx describe-finding pattern_overcrowded"
+        }
+      ],
+      "deck_id": "deck_191440449545b21dd590cd3b2c37b5fe"
+    }
+  }
+}

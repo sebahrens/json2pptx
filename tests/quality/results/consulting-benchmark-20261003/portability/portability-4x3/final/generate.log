@@ -1,0 +1,51 @@
+2026/10/03 00:49:36 INFO pattern expanded pattern=exec-summary version=1
+2026/10/03 00:49:36 INFO pattern expanded pattern=chart-insights-split version=1
+2026/10/03 00:49:36 INFO pattern expanded pattern=table-highlight version=1
+2026/10/03 00:49:36 INFO pattern expanded pattern=next-steps version=1
+2026/10/03 00:49:36 INFO pattern expanded pattern=exec-summary version=1
+2026/10/03 00:49:36 INFO pattern expanded pattern=chart-insights-split version=1
+2026/10/03 00:49:36 INFO pattern expanded pattern=table-highlight version=1
+2026/10/03 00:49:36 INFO pattern expanded pattern=next-steps version=1
+2026/10/03 00:49:36 INFO pattern expanded pattern=stat-hero version=1
+2026/10/03 00:49:37 INFO pattern expanded pattern=exec-summary version=1
+2026/10/03 00:49:37 INFO pattern expanded pattern=chart-insights-split version=1
+2026/10/03 00:49:37 INFO pattern expanded pattern=stat-hero version=1
+2026/10/03 00:49:37 INFO pattern expanded pattern=table-highlight version=1
+2026/10/03 00:49:37 INFO pattern expanded pattern=next-steps version=1
+{
+  "ok": false,
+  "diagnostics": [
+    {
+      "code": "TEXT_BELOW_READABLE_MIN",
+      "severity": "error",
+      "message": "card-title text renders at 10.8pt, below the 12pt minimum for viewing_mode \"read\" (written 12.0pt run with stored autofit 90%); preserve all source at a readable size; this source cannot use automatic plain-bullet splitting; author source-complete continuation slides or choose a suitable layout, preserving groups and any fixed slide count",
+      "semantic_path": "slides[5]",
+      "raw_path": "/slides/5/rendered_shapes/218/paragraphs/0",
+      "slide_index": 5,
+      "action": "refuse",
+      "recommended_edit": {
+        "kind": "shorten_text",
+        "hint": "Preserve the meaning at a readable size: shorten this field, move detail to another slide, or switch the slide to a composition with more room (explain_deck_spec lists them).",
+        "params": {
+          "actual_pt": 10.8,
+          "min_pt": 12,
+          "role": "card-title"
+        }
+      },
+      "evidence": {
+        "allowed": {
+          "min_font_pt": 12
+        },
+        "measured": {
+          "font_pt": 10.8
+        },
+        "measurement_source": "generated_grid_role",
+        "role": "card-title",
+        "text": "Decisions requested",
+        "viewing_mode": "read"
+      }
+    }
+  ],
+  "error": "failed to generate PPTX: slide 6 (layout \"Blank + Title\", pattern \"next-steps\") at /slides/5/rendered_shapes/218/paragraphs/0: generation refused: unreadable generated text: card-title text renders at 10.8pt, below the 12pt minimum for viewing_mode \"read\" (written 12.0pt run with stored autofit 90%); preserve all source at a readable size; this source cannot use automatic plain-bullet splitting; author source-complete continuation slides or choose a suitable layout, preserving groups and any fixed slide count"
+}
+Error: semantic render: failed to generate PPTX: slide 6 (layout "Blank + Title", pattern "next-steps") at /slides/5/rendered_shapes/218/paragraphs/0: generation refused: unreadable generated text: card-title text renders at 10.8pt, below the 12pt minimum for viewing_mode "read" (written 12.0pt run with stored autofit 90%); preserve all source at a readable size; this source cannot use automatic plain-bullet splitting; author source-complete continuation slides or choose a suitable layout, preserving groups and any fixed slide count

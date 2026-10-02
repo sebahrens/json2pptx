@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "title": "Protect the service launch",
+    "date": "October 2026",
+    "source": "Illustrative planning case; figures are synthetic",
+    "viewing_mode": "read",
+    "template": "midnight-blue"
+  },
+  "slides": [
+    {
+      "kind": "option_matrix",
+      "title": "The pilot preserves capacity upside with less exposure",
+      "corner_label": "Option",
+      "criteria": [
+        "Spend now",
+        "Gate before scale",
+        "Capacity upside"
+      ],
+      "options": [
+        {
+          "name": "Hold",
+          "detail": "Defer all investment",
+          "scores": [
+            "$0",
+            "No change",
+            "0k orders"
+          ]
+        },
+        {
+          "name": "Pilot",
+          "detail": "Test at one hub first",
+          "scores": [
+            "$0.4m",
+            "Required",
+            "25k orders"
+          ]
+        },
+        {
+          "name": "Roll out",
+          "detail": "Commit the full envelope",
+          "scores": [
+            "$1.2m",
+            "None",
+            "25k orders"
+          ]
+        }
+      ],
+      "scale": "text",
+      "recommended": "Pilot",
+      "decisive_criterion": "Gate before scale",
+      "takeaway": "The pilot buys evidence before the largest spend becomes irreversible."
+    }
+  ]
+}

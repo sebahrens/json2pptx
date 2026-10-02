@@ -1,0 +1,342 @@
+{
+  "meta": {
+    "title": "Helios Equipment | Order-to-cash pilot decision",
+    "template": "warm-coral",
+    "date": "3 October 2026",
+    "source": "Illustrative Helios case; management assumptions, Oct 2026",
+    "type_scale": "comfortable",
+    "accent_strategy": "primary",
+    "chrome": {
+      "confidentiality": "Illustrative case",
+      "client_name": "Helios Equipment",
+      "tracker": true,
+      "page_numbers": {
+        "enabled": true
+      }
+    }
+  },
+  "slides": [
+    {
+      "kind": "title",
+      "title": "Release cash without disrupting customer service",
+      "subtitle": "Helios Equipment | Order-to-cash strategy | Decision discussion, 3 October 2026"
+    },
+    {
+      "kind": "executive_summary",
+      "title": "A EUR1.8m pilot can release EUR6m while preserving local customer accountability",
+      "points": [
+        {
+          "lead": "Focus on disputes, not collection pressure.",
+          "support": "Overdue receivables rose from EUR14m to EUR20m; unresolved exceptions create the largest avoidable delay."
+        },
+        {
+          "lead": "Combine shared controls with local ownership.",
+          "support": "A central workbench sets priorities and rules; market teams keep decisions involving customers and commercial terms."
+        },
+        {
+          "lead": "Fund in stages and scale only after proof.",
+          "support": "A two-market pilot tests a EUR6m cash-release opportunity over six months, with clear service and quality guardrails."
+        }
+      ],
+      "bottom_line": "Approve the EUR1.8m pilot envelope; release scale funding only after the January gate.",
+      "source": "Illustrative Helios case; management assumptions, Oct 2026"
+    },
+    {
+      "kind": "section",
+      "title": "Diagnose the bottleneck and choose the model"
+    },
+    {
+      "kind": "regions",
+      "title": "Overdue balances rose EUR6m as fragmented dispute ownership delayed resolution",
+      "arrangement": "main_left",
+      "regions": [
+        {
+          "kind": "chart",
+          "heading": "Overdue receivables, Oct–Mar",
+          "unit": "EURm",
+          "size_pct": 65,
+          "chart": {
+            "type": "line_chart",
+            "data": {
+              "categories": [
+                "Oct",
+                "Nov",
+                "Dec",
+                "Jan",
+                "Feb",
+                "Mar"
+              ],
+              "series": [
+                {
+                  "name": "Overdue balance",
+                  "values": [
+                    14,
+                    15,
+                    16,
+                    17,
+                    19,
+                    20
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "kind": "kpis",
+          "heading": "Starting point",
+          "size_pct": 50,
+          "kpis": [
+            {
+              "value": "68 days",
+              "label": "DSO"
+            },
+            {
+              "value": "38%",
+              "label": "Unowned disputes"
+            }
+          ]
+        },
+        {
+          "kind": "timeline",
+          "heading": "Design / prove / scale",
+          "size_pct": 50,
+          "milestones": [
+            {
+              "label": "Oct"
+            },
+            {
+              "label": "Jan"
+            },
+            {
+              "label": "Mar"
+            }
+          ]
+        }
+      ],
+      "takeaway": "Assign one accountable owner before automating escalation.",
+      "source": "Illustrative Helios case; management assumptions, Oct 2026",
+      "notes": "Pilot gates: design approved in October2026; evidence proved in January2027; scale decision in March2027. All figures and dates illustrative."
+    },
+    {
+      "kind": "comparison",
+      "title": "Central rules and local decisions remove handoffs without weakening customer relationships",
+      "columns": [
+        {
+          "header": "Today: market-by-market queues",
+          "items": [
+            "Priority depends on who follows up",
+            "Cases move between finance and sales",
+            "Escalation thresholds vary by market",
+            "Reporting tracks activity, not cash released"
+          ]
+        },
+        {
+          "header": "Target: one controlled workbench",
+          "items": [
+            "One queue ranks value, age and urgency",
+            "A named market owner closes each case",
+            "Shared rules route commercial exceptions",
+            "One scorecard links service and cash outcomes"
+          ]
+        }
+      ],
+      "takeaway": "Standardize the control system while keeping customer decisions close to the market.",
+      "source": "Illustrative Helios case; management assumptions, Oct 2026"
+    },
+    {
+      "kind": "option_matrix",
+      "title": "An automation-first hybrid balances cash impact, speed and customer accountability",
+      "criteria": [
+        "Cash impact",
+        "Speed",
+        "Ownership",
+        "Controls"
+      ],
+      "options": [
+        {
+          "name": "Centralize",
+          "detail": "Central team resolves all cases",
+          "scores": [
+            4,
+            3,
+            2,
+            3
+          ]
+        },
+        {
+          "name": "Federate",
+          "detail": "Markets retain local workflows",
+          "scores": [
+            2,
+            2,
+            4,
+            2
+          ]
+        },
+        {
+          "name": "Hybrid",
+          "detail": "Shared rules; local case owners",
+          "scores": [
+            4,
+            4,
+            4,
+            4
+          ]
+        }
+      ],
+      "scale": "harvey",
+      "recommended": "Hybrid",
+      "decisive_criterion": "Ownership",
+      "takeaway": "Choose the hybrid; centralization adds customer risk and federation leaves fragmented controls.",
+      "source": "Illustrative Helios case; management assumptions, Oct 2026"
+    },
+    {
+      "kind": "section",
+      "title": "Prove the model before committing to scale"
+    },
+    {
+      "kind": "process",
+      "title": "Four control points give each dispute one owner and an auditable path to closure",
+      "steps": [
+        {
+          "label": "Capture and classify",
+          "description": "Finance creates one case record, links the invoice and assigns a reason code."
+        },
+        {
+          "label": "Assign accountable ownership",
+          "description": "The market lead names a resolver; cases without an owner escalate after 24 hours."
+        },
+        {
+          "label": "Resolve with commercial guardrails",
+          "description": "The resolver agrees the action; credits above EUR25k require a second approval."
+        },
+        {
+          "label": "Close and learn",
+          "description": "Finance verifies cash or credit, closes the case and updates recurring-cause rules."
+        }
+      ],
+      "takeaway": "Automate routing and evidence capture; retain human approval for commercial exceptions.",
+      "source": "Illustrative Helios case; management assumptions, Oct 2026"
+    },
+    {
+      "kind": "image_case",
+      "title": "A visible unassigned queue makes stalled disputes actionable within one working day",
+      "heading": "Turn missing ownership into a daily decision",
+      "body": "The workbench puts unowned cases beside assigned work. The market lead assigns a resolver each morning; finance checks closure evidence at day-end.",
+      "bullets": [
+        "Show owner, age and next action in one view",
+        "Escalate unowned cases after 24 hours"
+      ],
+      "image": {
+        "path": "@benchmark/strategy/approval-workbench.png",
+        "alt": "Illustrative dispute dashboard: 24 open disputes; 12 lack an owner; oldest unassigned case is 48 hours old."
+      },
+      "caption": "Illustrative dashboard design; the first two cases have no assigned owner.",
+      "metrics": [
+        {
+          "value": "12",
+          "label": "unowned cases to assign"
+        }
+      ],
+      "takeaway": "Review ownership daily rather than waiting for the monthly receivables report.",
+      "source": "Illustrative Helios case; management assumptions, Oct 2026"
+    },
+    {
+      "kind": "roadmap",
+      "title": "Three phases release funding only when the pilot demonstrates cash and service results",
+      "phases": [
+        {
+          "name": "Design",
+          "date_label": "Oct–Nov 2026",
+          "description": "Agree the case taxonomy, baseline and decision rights.",
+          "items": [
+            "Finance signs the baseline",
+            "Markets name accountable owners"
+          ],
+          "milestone": "Gate 1: scope approved",
+          "active": true
+        },
+        {
+          "name": "Pilot",
+          "date_label": "Dec 2026–Jan 2027",
+          "description": "Run the workbench in two markets and test escalation rules.",
+          "items": [
+            "Weekly cash and service review",
+            "Audit a sample of closed cases"
+          ],
+          "milestone": "Gate 2: results verified"
+        },
+        {
+          "name": "Scale",
+          "date_label": "Feb–Mar 2027",
+          "description": "Expand only after controls and customer outcomes hold.",
+          "items": [
+            "Wave rollout by market readiness",
+            "Transfer control ownership"
+          ],
+          "milestone": "Gate 3: scale authorized"
+        }
+      ],
+      "takeaway": "The January gate must verify both cash release and customer service.",
+      "source": "Illustrative Helios case; management assumptions, Oct 2026"
+    },
+    {
+      "kind": "table",
+      "title": "Three guardrails protect customers, financial control and data quality during the pilot",
+      "headers": [
+        "Risk",
+        "Guardrail",
+        "Owner",
+        "Proof at gate"
+      ],
+      "rows": [
+        [
+          "Customer disruption",
+          "Pause escalation for live commercial disputes",
+          "Market COO",
+          "No increase in complaints"
+        ],
+        [
+          "Unauthorized credit",
+          "Dual approval above EUR25k",
+          "Finance controller",
+          "No unapproved credits"
+        ],
+        [
+          "Incomplete case data",
+          "Block closure without invoice and reason code",
+          "Data lead",
+          "95% complete records"
+        ]
+      ],
+      "takeaway": "Make service and control failures a reason to stop, even when cash targets improve.",
+      "source": "Illustrative Helios case; management assumptions, Oct 2026"
+    },
+    {
+      "kind": "next_steps",
+      "title": "Approve EUR1.8m by 16 October to launch the two-market pilot in December",
+      "actions": [
+        {
+          "action": "Approve the budget and stage-gate conditions",
+          "owner": "Executive committee",
+          "date": "16 Oct 2026"
+        },
+        {
+          "action": "Sign the baseline, owners and operating rules",
+          "owner": "CFO / COO",
+          "date": "13 Nov 2026"
+        },
+        {
+          "action": "Verify cash, service and control results",
+          "owner": "Pilot sponsor",
+          "date": "29 Jan 2027"
+        }
+      ],
+      "decisions": [
+        "Approve EUR1.8m; reserve rollout funding until the January evidence review."
+      ],
+      "source": "Illustrative Helios case; management assumptions, Oct 2026"
+    }
+  ]
+}

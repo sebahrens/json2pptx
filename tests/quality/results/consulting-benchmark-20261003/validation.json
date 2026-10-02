@@ -1,0 +1,14 @@
+{
+  "all_manifest_hashes_match": true,
+  "json_files_parse": true,
+  "all_228_production_png_paths_preserved": true,
+  "all_ten_issue_descriptions_lint_clean": true,
+  "replay_smoke_tests": [
+    "p-style negative-bar control: success, deterministic_ready true; collision remains",
+    "p-style 12-slide strategy with relocated dashboard asset: success"
+  ],
+  "p_style_template_gitignored": true,
+  "production_code_changed": false,
+  "go_race_lint_rerun": false,
+  "reason": "Evidence-only change; fresh reviewed binary built at tested HEAD."
+}

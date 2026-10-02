@@ -1,0 +1,106 @@
+CONSULTING OUTPUT BENCHMARK — 3 OCTOBER 2026
+
+Outcome: output quality is not cleared. Successful generation and deterministic
+readiness missed meaningful source loss, screenshot crop and label collisions.
+This is a research/testing report, not an assertion of consultant-grade parity.
+Tested commit: 85b482d3b40b89d62b7415ac9c3fd8167bef2e96.
+No production code or templates were changed in this round.
+
+COVERAGE
+Two coherent, fictional 12-slide decision cases were attempted on all ten
+production templates: midnight-blue, p-style, modern-yellow, modern-template,
+business-template, forest-green, warm-coral, blue-corporate, abstract and modern.
+
+Quantitative case: 10 complete decks, 120 individual slide PNGs inspected.
+All ten omit the default source on native table slide 5. Modern also has a
+false body-role readability warning; the 10.08pt KPI caption meets its 10pt floor.
+The other nine are deterministic-ready despite the table-source omission.
+
+Strategy case: 9 complete decks, 108 individual slide PNGs inspected. Six have
+material screenshot crop on slide 9. Midnight Blue, Forest Green and Warm Coral
+preserve the full dashboard and pass the final visual review. Modern still
+refuses generation after three template-specific repair passes; no visual
+review is claimed for that ungenerated deck. Supported process overrides do
+not select the advertised alternative. The initial contact-sheet review was
+subsequently completed with every individual PNG; the correction is recorded.
+
+Portability: six-slide case on all four fixtures (4x3, 21x9, side-logo,
+two-master), native-master controls, attribution and presentation-scale controls.
+53 individual images inspected across 13 artifacts, including 18 revised images
+of already covered slots. Source-complete final wide fixtures render; the 4x3
+closing remains truthfully refused after the bounded repairs. No new fitting
+bug is claimed for this known capacity constraint.
+
+Supplemental exhibits: six images across p-style, midnight-blue, modern-template.
+Quote/stat/action passes; stacked chart plus supporting table compresses the
+plot and is correctly flagged. Two fresh horizontal-negative controls reproduce
+label collision; one explicit-source table control confirms the workaround.
+These streams preserve 290 reviewed PNGs before additional historical evidence;
+228 are the final production-deck slides. Counts exclude contacts and research
+pages, and do not count ungenerated slides as reviewed.
+
+P-STYLE
+The local ignored template was analyzed in both full cases and focused probes.
+Confirmed visible failures include cropped screenshot evidence, missing table
+attribution, horizontal negative-bar label collision, and an endpoint label at
+2.6:1 contrast on white. Its template hash is recorded in the research inventory.
+The PPTX template itself remains untracked. P-style is required in future
+output-quality analyses as an explicit standing user preference.
+
+ATOMIC ISSUES (all open; prefix go-slide-creator-)
+P1 1jtn7 — Quantitative option matrices omit deck source and missing-source review.
+P1 q2emv — Semantic grid tables lose default source and evade source findings.
+P1 vi6uq — P-style line-chart endpoint labels reuse low-contrast series colours.
+P1 zifd3 — Semantic screenshot images cover-crop evidence with no contain control.
+P1 vj549 — Process overrides describe the requested layout but compile the default.
+P1 yiznx — Horizontal negative values overlap the category-label column.
+P2 akues — Abstract divider guard permits ordinary words to split mid-word.
+P2 ifcng — Repair guidance assigns a whole-cell budget to an individual label.
+P2 ntvhh — Generic autofit scan misclassifies compliant KPI captions as body.
+P2 9re9p — Usable plot-height allocation for chart/supporting-table compositions.
+
+The source findings are separate roots: excluded quantitative table-highlight
+patterns versus native table content moved into a grid. Horizontal collision is
+a distinct follow-up to the closed vertical-negative-edge fix. The compact chart
+case is a capability improvement with a working overlap gate. Not every valid
+capacity refusal is a defect, and not every nonzero screenshot crop loses content.
+
+REFERENCE STANDARD
+18 pages visually inspected across four primary consulting publications: BCG
+True-Luxury 2025, Bain Global PE 2025, PwC CEO Survey 2026, and BCG's public Dallas
+client recommendations (2016). research/consulting-benchmark.json and
+source-page-index.json retain direct URLs, dates, exact pages and observations.
+IBCS guidance also informed message-first exhibits, direct labels, explicit
+units/periods and consistent scales for comparable measures (https://www.ibcs.com/IBCS/).
+
+Applied criteria: conclusion-led narrative; evidence linked to implications;
+reconciling financial arithmetic; visible sources/units/time periods; common
+scales only for comparable quantities; actual/forecast distinctions; legible
+hierarchy and chart labels; intact screenshot evidence; owned, dated decisions.
+The benchmark distinguishes dense read-ahead reports from live presentations.
+The baseline comfortable-scale decks are not certified for room projection.
+Original synthetic data and an original dashboard were used. Copyrighted
+reference PDFs and their screenshots are not redistributed in this package.
+
+REPRODUCTION AND LIMITS
+artifact-manifest.json records byte hashes and original input hashes. Inputs
+were reformatted and their dashboard path replaced by @benchmark/strategy/...
+for portability; they are not claimed byte-identical to original inputs.
+Reports/diagnostics preserve historical absolute paths and original hashes.
+Resolve those paths by removing the private_evidence_root prefix and locating
+the remaining path here. Unselected PPTX/cache files remain private local
+artifacts; PNGs, author inputs and selected diagnostics are preserved here.
+
+Example from repository root, after building json2pptx:
+python3 tests/quality/results/consulting-benchmark-20261003/replay.py \
+  tests/quality/results/consulting-benchmark-20261003/strategy/p-style-spec-r3/spec.json \
+  --binary ./bin/json2pptx --templates-dir templates --output /tmp/p-style-review.pptx
+
+For portability inputs use --templates-dir tests/quality/fixtures/portability/templates. Render with the bundled isolated
+LibreOffice, project fontconfig and pdftoppm at 100 DPI; inspect every new image.
+These recorded reviews apply only to the recorded revisions and renderer.
+There is no PowerPoint application verification or exhaustive chart-type sweep.
+A proposed impact-versus-effort exhibit remains untested. Renderer differences,
+new data, other densities and other assets require fresh review. CI success
+alone cannot certify visual output. No full Go/race/lint rerun was required for
+this evidence-only change; the reviewed binary was freshly built at tested HEAD.

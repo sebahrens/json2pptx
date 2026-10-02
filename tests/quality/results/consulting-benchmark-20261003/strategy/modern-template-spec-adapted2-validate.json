@@ -1,0 +1,99 @@
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"deck_id\":\"deck_e8913be4921f75cde8a3b0427f3ea382\",\"findings\":[{\"code\":\"GRID.pattern_overcrowded\",\"message\":\"comparison-2col: 10 cells exceeds recommended max of 8 \u2014 consider splitting\",\"next_tool_call\":{\"args_template\":{\"code\":\"GRID.pattern_overcrowded\"},\"tool\":\"describe_finding\"},\"severity\":\"info\"},{\"code\":\"INPUT.contrast_predicted\",\"message\":\"predicted: low-contrast text will be auto-replaced \u2014 #FFFFFF \u2192 #2C3932 (on #FFFFFF, ratio 1.0 \u2192 12.1)\",\"next_tool_call\":{\"args_template\":{\"code\":\"INPUT.contrast_predicted\"},\"tool\":\"describe_finding\"},\"severity\":\"info\"},{\"code\":\"INPUT.contrast_predicted\",\"message\":\"predicted: low-contrast text will be auto-replaced \u2014 #FFFFFF \u2192 #2C3932 (on #FFFFFF, ratio 1.0 \u2192 12.1)\",\"next_tool_call\":{\"args_template\":{\"code\":\"INPUT.contrast_predicted\"},\"tool\":\"describe_finding\"},\"severity\":\"info\"}],\"findings_count\":3,\"ok\":true,\"summary\":\"3 infos\"}"
+      }
+    ],
+    "structuredContent": {
+      "schema_version": "1.0",
+      "tool": "json2pptx",
+      "subcommand": "validate_deck_spec",
+      "input_sha256": "52888b9a94ebd7e500b11152621fd70ec27477caeaf4953822a97b41cbcb94e7",
+      "ok": true,
+      "summary": "3 infos",
+      "findings": [
+        {
+          "id": "grid-1",
+          "code": "GRID.pattern_overcrowded",
+          "severity": "info",
+          "category": "GRID",
+          "where": {
+            "slide": 4
+          },
+          "message": "comparison-2col: 10 cells exceeds recommended max of 8 \u2014 consider splitting",
+          "evidence": {
+            "action": "review",
+            "overflow_ratio": 1.25,
+            "path": "/slides/4/pattern",
+            "pattern": "comparison-2col"
+          },
+          "remediation": {
+            "primary": {
+              "action": "split_slide",
+              "params": {
+                "filled_slots": 10,
+                "fix_kind": "split_pattern",
+                "recommended_max": 8,
+                "title_part_2": "(continued)"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "GRID.pattern_overcrowded"
+            }
+          },
+          "describe_command": "json2pptx describe-finding pattern_overcrowded"
+        },
+        {
+          "id": "input-2",
+          "code": "INPUT.contrast_predicted",
+          "severity": "info",
+          "category": "INPUT",
+          "where": {
+            "slide": 2
+          },
+          "message": "predicted: low-contrast text will be auto-replaced \u2014 #FFFFFF \u2192 #2C3932 (on #FFFFFF, ratio 1.0 \u2192 12.1)",
+          "evidence": {
+            "action": "info",
+            "path": "/slides/2/chrome"
+          },
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "INPUT.contrast_predicted"
+            }
+          },
+          "describe_command": "json2pptx describe-finding contrast_predicted"
+        },
+        {
+          "id": "input-3",
+          "code": "INPUT.contrast_predicted",
+          "severity": "info",
+          "category": "INPUT",
+          "where": {
+            "slide": 6
+          },
+          "message": "predicted: low-contrast text will be auto-replaced \u2014 #FFFFFF \u2192 #2C3932 (on #FFFFFF, ratio 1.0 \u2192 12.1)",
+          "evidence": {
+            "action": "info",
+            "path": "/slides/6/chrome"
+          },
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "INPUT.contrast_predicted"
+            }
+          },
+          "describe_command": "json2pptx describe-finding contrast_predicted"
+        }
+      ],
+      "deck_id": "deck_e8913be4921f75cde8a3b0427f3ea382"
+    }
+  }
+}

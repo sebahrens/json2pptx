@@ -1,0 +1,546 @@
+{
+  "meta": {
+    "title": "Northstar operations review",
+    "archetype": "board_update",
+    "template": "modern",
+    "date": "3 October 2026",
+    "audience": "Board of directors",
+    "source": "Illustrative management accounts, FY26",
+    "viewing_mode": "present",
+    "type_scale": "comfortable",
+    "chrome": {
+      "confidentiality": "Illustrative case",
+      "page_numbers": {
+        "enabled": true
+      }
+    }
+  },
+  "slides": [
+    {
+      "kind": "title",
+      "title": "Northstar operations review",
+      "subtitle": "FY26 results and FY27 investment decision\nIllustrative board case, 3 October 2026",
+      "notes": "Illustrative case only. FY26 ended 30 September 2026. FY27 pilot forecasts and approvals are scenario assumptions, not audited company facts."
+    },
+    {
+      "kind": "executive_summary",
+      "title": "A staged $1.2m pilot protects the network's $17m EBIT",
+      "points": [
+        {
+          "lead": "Profit increased $5m.",
+          "support": "FY26 EBIT reached $17m on $100m revenue, a 17% margin."
+        },
+        {
+          "lead": "North needs a pilot.",
+          "support": "North EBIT fell $0.5m and readiness scores remain high."
+        },
+        {
+          "lead": "Funding has two gates.",
+          "support": "Release $0.4m for the pilot, then $0.8m after QA approval."
+        }
+      ],
+      "bottom_line": "Approve the staged North pilot by 9 October.",
+      "notes": "Illustrative case only. FY26 ended 30 September 2026. FY27 pilot forecasts and approvals are scenario assumptions, not audited company facts."
+    },
+    {
+      "kind": "bridge",
+      "title": "Volume and pricing lifted EBIT by $7m before $2m cost pressure",
+      "columns": [
+        {
+          "label": "FY25 EBIT",
+          "type": "total",
+          "value": 12
+        },
+        {
+          "label": "Volume",
+          "type": "delta",
+          "value": 4
+        },
+        {
+          "label": "Pricing",
+          "type": "delta",
+          "value": 3
+        },
+        {
+          "label": "Labor",
+          "type": "delta",
+          "value": -1.5
+        },
+        {
+          "label": "Freight",
+          "type": "delta",
+          "value": -0.5
+        },
+        {
+          "label": "FY26 EBIT",
+          "type": "total",
+          "value": 17
+        }
+      ],
+      "unit": "$m",
+      "caption": "FY25 to FY26, operating EBIT",
+      "takeaway": "Protect price realization while North fixes its operating controls.",
+      "notes": "Illustrative case only. FY26 ended 30 September 2026. FY27 pilot forecasts and approvals are scenario assumptions, not audited company facts."
+    },
+    {
+      "kind": "chart_insight",
+      "title": "East and South added $5.5m EBIT while North lost $0.5m",
+      "chart": {
+        "type": "bar_chart",
+        "title": "EBIT change, FY25 to FY26 ($m)",
+        "data": {
+          "categories": [
+            "East",
+            "South",
+            "North"
+          ],
+          "series": [
+            {
+              "name": "EBIT change",
+              "values": [
+                3,
+                2.5,
+                -0.5
+              ]
+            }
+          ],
+          "orientation": "vertical",
+          "sort": "desc",
+          "highlight": [
+            "North"
+          ],
+          "data_labels": {}
+        }
+      },
+      "insights": [
+        "East contributed $3m and South $2.5m of improvement.",
+        "North offset these gains by $0.5m.",
+        "The pilot targets North rather than the entire network."
+      ],
+      "takeaway": "Contain the weak site before committing to a full rollout.",
+      "notes": "Illustrative case only. FY26 ended 30 September 2026. FY27 pilot forecasts and approvals are scenario assumptions, not audited company facts."
+    },
+    {
+      "kind": "table",
+      "title": "East generated $3m of the network's $5m EBIT improvement",
+      "headers": [
+        "Region",
+        "FY25 revenue ($m)",
+        "FY26 revenue ($m)",
+        "FY25 EBIT ($m)",
+        "FY26 EBIT ($m)"
+      ],
+      "rows": [
+        [
+          "East",
+          32,
+          46,
+          4,
+          7
+        ],
+        [
+          "North",
+          28,
+          28,
+          5,
+          4.5
+        ],
+        [
+          "South",
+          20,
+          26,
+          3,
+          5.5
+        ],
+        [
+          "Total",
+          80,
+          100,
+          12,
+          17
+        ]
+      ],
+      "column_alignments": [
+        "left",
+        "right",
+        "right",
+        "right",
+        "right"
+      ],
+      "highlight_column": "FY26 EBIT ($m)",
+      "totals_row": true,
+      "takeaway": "Allocate pilot capacity to North while East funds the expansion.",
+      "notes": "Illustrative case only. FY26 ended 30 September 2026. FY27 pilot forecasts and approvals are scenario assumptions, not audited company facts."
+    },
+    {
+      "kind": "raw_json2pptx",
+      "slide": {
+        "slide_type": "chart",
+        "layout_id": "blank-title",
+        "content": [
+          {
+            "placeholder_id": "title",
+            "type": "text",
+            "text_value": "East's $46m revenue leads the network on a common quarterly scale"
+          }
+        ],
+        "shape_grid": {
+          "columns": 1,
+          "rows": [
+            {
+              "cells": [
+                {
+                  "diagram": {
+                    "type": "small_multiples_chart",
+                    "title": "FY26 regional revenue ($m per quarter)",
+                    "data": {
+                      "categories": [
+                        "Q1",
+                        "Q2",
+                        "Q3",
+                        "Q4"
+                      ],
+                      "series": [
+                        {
+                          "name": "East",
+                          "values": [
+                            10,
+                            11,
+                            12,
+                            13
+                          ]
+                        },
+                        {
+                          "name": "North",
+                          "values": [
+                            7,
+                            7,
+                            7,
+                            7
+                          ]
+                        },
+                        {
+                          "name": "South",
+                          "values": [
+                            5,
+                            6,
+                            7,
+                            8
+                          ]
+                        }
+                      ],
+                      "y_scale": "shared",
+                      "highlight": [
+                        "East"
+                      ]
+                    },
+                    "alt": "Shared-scale regional quarterly revenue: East rises from 10 to 13 million, North stays at 7 and South rises from 5 to 8."
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "takeaway": "East funds the pilot while North must restore its growth.",
+        "source": "Illustrative management accounts, FY26"
+      },
+      "notes": "Illustrative case only. FY26 ended 30 September 2026. FY27 pilot forecasts and approvals are scenario assumptions, not audited company facts."
+    },
+    {
+      "kind": "chart_insight",
+      "title": "Return rates fell to 0.0021% as handling defects declined",
+      "chart": {
+        "type": "line_chart",
+        "title": "FY26 return rate (%)",
+        "data": {
+          "categories": [
+            "Q1",
+            "Q2",
+            "Q3",
+            "Q4"
+          ],
+          "series": [
+            {
+              "name": "Return rate",
+              "values": [
+                0.0048,
+                0.0041,
+                0.0029,
+                0.0021
+              ]
+            }
+          ],
+          "data_labels": {
+            "show_on": "all",
+            "format": "%.4f%%"
+          },
+          "y_label": "Return rate (%)"
+        }
+      },
+      "insights": [
+        "The rate fell 0.0027 percentage points, a 56.25% reduction.",
+        "This equals a drop from 48 to 21 returns per million orders.",
+        "North must sustain the Q4 level before the second tranche."
+      ],
+      "source": "Illustrative normalized QA model, FY26",
+      "takeaway": "Use 0.0021% as the pilot gate, with a stable measurement method.",
+      "notes": "Illustrative case only. FY26 ended 30 September 2026. FY27 pilot forecasts and approvals are scenario assumptions, not audited company facts."
+    },
+    {
+      "kind": "regions",
+      "title": "FY26's 17% EBIT margin supports a staged FY27 pilot",
+      "arrangement": "main_left",
+      "regions": [
+        {
+          "kind": "chart",
+          "heading": "FY26 quarterly revenue",
+          "unit": "$m",
+          "size_pct": 55,
+          "chart": {
+            "type": "line_chart",
+            "data": {
+              "categories": [
+                "Q1",
+                "Q2",
+                "Q3",
+                "Q4"
+              ],
+              "series": [
+                {
+                  "name": "Revenue",
+                  "values": [
+                    22,
+                    24,
+                    26,
+                    28
+                  ]
+                }
+              ],
+              "data_labels": {
+                "show_on": "all"
+              }
+            }
+          }
+        },
+        {
+          "kind": "stat",
+          "value": "17%",
+          "label": "FY26 EBIT margin",
+          "size_pct": 40
+        },
+        {
+          "kind": "timeline",
+          "heading": "FY27 pilot, Oct–Dec",
+          "milestones": [
+            {
+              "label": "Oct pilot"
+            },
+            {
+              "label": "Nov audit"
+            },
+            {
+              "label": "Dec scale"
+            }
+          ],
+          "size_pct": 60
+        }
+      ],
+      "takeaway": "Hold the December release until North passes its QA gates.",
+      "notes": "Illustrative case only. FY26 ended 30 September 2026. FY27 pilot forecasts and approvals are scenario assumptions, not audited company facts."
+    },
+    {
+      "kind": "section",
+      "title": "North pilot and funding gates"
+    },
+    {
+      "kind": "raw_json2pptx",
+      "slide": {
+        "slide_type": "diagram",
+        "layout_id": "blank-title",
+        "content": [
+          {
+            "placeholder_id": "title",
+            "type": "text",
+            "text_value": "North's readiness gaps remain high despite the $5m network EBIT gain"
+          }
+        ],
+        "shape_grid": {
+          "columns": [
+            67,
+            33
+          ],
+          "rows": [
+            {
+              "height": 12,
+              "cells": [
+                {
+                  "shape": {
+                    "geometry": "rect",
+                    "fill": "none",
+                    "text": {
+                      "content": "Readiness risk: 1 = low, 5 = high",
+                      "bold": true
+                    }
+                  }
+                },
+                {
+                  "shape": {
+                    "geometry": "rect",
+                    "fill": "none",
+                    "text": {
+                      "content": "Pilot gates",
+                      "bold": true
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "height": 88,
+              "cells": [
+                {
+                  "diagram": {
+                    "type": "heatmap",
+                    "data": {
+                      "row_labels": [
+                        "East",
+                        "North",
+                        "South"
+                      ],
+                      "col_labels": [
+                        "Equipment",
+                        "Skills",
+                        "QA rules"
+                      ],
+                      "values": [
+                        [
+                          2,
+                          2,
+                          1
+                        ],
+                        [
+                          5,
+                          4,
+                          4
+                        ],
+                        [
+                          3,
+                          2,
+                          2
+                        ]
+                      ],
+                      "color_scale": "sequential"
+                    },
+                    "alt": "North has higher readiness risk than East and South: equipment 5, skills 4 and QA rules 4 on a 1 to 5 scale."
+                  }
+                },
+                {
+                  "shape": {
+                    "geometry": "rect",
+                    "fill": "none",
+                    "text": {
+                      "paragraphs": [
+                        {
+                          "content": "Equipment: verify settings."
+                        },
+                        {
+                          "content": "Skills: certify operators."
+                        },
+                        {
+                          "content": "QA rules: audit exceptions."
+                        },
+                        {
+                          "content": "All three must pass before scale."
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "takeaway": "Use the North pilot to close equipment, skills and QA gaps.",
+        "source": "Illustrative readiness assessment, September 2026"
+      },
+      "notes": "Illustrative case only. FY26 ended 30 September 2026. FY27 pilot forecasts and approvals are scenario assumptions, not audited company facts."
+    },
+    {
+      "kind": "option_matrix",
+      "title": "A $1.2m pilot offers faster payback with contained execution risk",
+      "criteria": [
+        "Investment ($m)",
+        "Payback (months)",
+        "Execution risk",
+        "Evidence"
+      ],
+      "options": [
+        {
+          "name": "Status quo",
+          "detail": "Continue FY26 controls",
+          "scores": [
+            "0",
+            "-",
+            "Medium",
+            "FY26 trend"
+          ]
+        },
+        {
+          "name": "North pilot",
+          "detail": "Gate each funding tranche",
+          "scores": [
+            "1.2",
+            "12",
+            "Low",
+            "Contained test"
+          ]
+        },
+        {
+          "name": "Full rollout",
+          "detail": "Deploy to every site",
+          "scores": [
+            "3.6",
+            "18",
+            "High",
+            "North unproven"
+          ]
+        }
+      ],
+      "scale": "text",
+      "recommended": "North pilot",
+      "decisive_criterion": "Execution risk",
+      "highlight_label": "Recommended",
+      "source": "Illustrative FY27 investment forecast, 3 October 2026",
+      "takeaway": "Approve the pilot before accepting the risk of a full rollout.",
+      "notes": "Illustrative case only. FY26 ended 30 September 2026. FY27 pilot forecasts and approvals are scenario assumptions, not audited company facts."
+    },
+    {
+      "kind": "next_steps",
+      "title": "Four owners will validate the pilot before December's scale decision",
+      "actions": [
+        {
+          "action": "Approve the staged $1.2m budget",
+          "owner": "CFO",
+          "date": "9 Oct"
+        },
+        {
+          "action": "Run the North pilot and track defects",
+          "owner": "COO",
+          "date": "30 Oct"
+        },
+        {
+          "action": "Verify the 0.0021% rate and operating controls",
+          "owner": "Head of QA",
+          "date": "27 Nov"
+        },
+        {
+          "action": "Release $0.8m only if the QA gate passes",
+          "owner": "CEO",
+          "date": "18 Dec"
+        }
+      ],
+      "source": "Illustrative FY27 action plan, 3 October 2026",
+      "notes": "Illustrative case only. FY26 ended 30 September 2026. FY27 pilot forecasts and approvals are scenario assumptions, not audited company facts."
+    }
+  ]
+}

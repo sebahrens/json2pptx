@@ -1,0 +1,1370 @@
+{
+  "head": "85b482d3b40b89d62b7415ac9c3fd8167bef2e96",
+  "binary": "/tmp/json2pptx-review-20261003",
+  "templates": [
+    {
+      "template": "abstract",
+      "local_ignored_template": false,
+      "revision": "v2",
+      "pptx": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/quantitative/output/quantitative-abstract-v2.pptx",
+      "spec": ".claude/review-evidence/2026-10-03-consulting/quantitative/deckspec-v2-abstract.json",
+      "generation_success": true,
+      "deterministic_ready": true,
+      "rendered_slide_count": 12,
+      "reviewed_slide_count": 12,
+      "visual_status": "changes_requested",
+      "status_reason": "Numeric table slide5 loses deck-default attribution. Published artifacts retain this confirmed issue; explicit-source control proves author workaround. No exhaustive clearance claim.",
+      "contact_sheet": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-abstract/contact-sheet.png",
+      "slides": [
+        {
+          "slide": 1,
+          "kind": "title",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-abstract/slide-01.png",
+          "sha256": "0b50b53d7be25ff8e327a517897ebc5d993727b3de1b44df4241a327f112aaaf",
+          "status": "pass",
+          "observations": "Cover preserves FY26 actual/FY27 decision periods and clearly identifies illustrative case."
+        },
+        {
+          "slide": 2,
+          "kind": "executive_summary",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-abstract/slide-02.png",
+          "sha256": "01fdc5e1aa8159688b079f6b50a70ce7342626b582404babc227420fe38aa123",
+          "status": "pass",
+          "observations": "Three evidence-linked implications and explicit staged funding ask are legible."
+        },
+        {
+          "slide": 3,
+          "kind": "bridge",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-abstract/slide-03.png",
+          "sha256": "0afb52ac69b1c649661de3362f82dfd158eb6a5ce165d02b2fc3e58b51256b2f",
+          "status": "pass",
+          "observations": "Bridge12+4+3\u22121.5\u22120.5=17; components/totals/units/period/source legible."
+        },
+        {
+          "slide": 4,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-abstract/slide-04.png",
+          "sha256": "6e3b2c4a8b4b92815c370e77cd0dc659081889d53c1cebb19248687cd955cce7",
+          "status": "pass",
+          "observations": "Vertical signed bars+3,+2.5,\u22120.5 sum+5; labels/categories separated; source visible."
+        },
+        {
+          "slide": 5,
+          "kind": "table",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-abstract/slide-05.png",
+          "sha256": "5bbfd24117075e85bcdddbd47eab3645265c309be6a58216296f56f07e9100ce",
+          "status": "changes_requested",
+          "observations": "Structured table regional revenue and EBIT reconcile to80/100and12/17; numeric alignment, highlight and total row legible; default source is absent."
+        },
+        {
+          "slide": 6,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-abstract/slide-06.png",
+          "sha256": "4c7c1a3bb1b5632d6e4042647553ae7ac265caa995399810a02c758024b26e87",
+          "status": "pass",
+          "observations": "Three revenue panels share4\u201314scale andQ1\u2013Q4; quarterly totals reconcile to100; period/unit/source visible."
+        },
+        {
+          "slide": 7,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-abstract/slide-07.png",
+          "sha256": "87c07faa0faf8e75b2d7738c77f801504527aec85a0634a67e14d1230840fafb",
+          "status": "pass",
+          "observations": "Exact four-decimal percent labels .0048/.0041/.0029/.0021; pp change.0027 and56.25% reduction reconcile; unit/source legible."
+        },
+        {
+          "slide": 8,
+          "kind": "regions",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-abstract/slide-08.png",
+          "sha256": "64c3834bacd9c6d03a9c45e95d56075ad957dc140d41e4168ebc9a03bc399dcc",
+          "status": "pass",
+          "observations": "Revenue chart,17%marginKPI andOct/Nov/Decmilestones occupy distinct legible regions; units/period/source visible."
+        },
+        {
+          "slide": 9,
+          "kind": "section",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-abstract/slide-09.png",
+          "sha256": "5e61c54116a08814eb68c81a5dc09dbcefcd5f635de7cb91a2960de4d60cb212",
+          "status": "pass",
+          "observations": "Section title and section index legible; template decorative areas respected."
+        },
+        {
+          "slide": 10,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-abstract/slide-10.png",
+          "sha256": "7096ed8a5bac3ba511679ef1a367c68f40d332f594d53da66a57fee9a152a0fa",
+          "status": "pass",
+          "observations": "3\u00d73nativeheatmap risk1low5high plus complementary gate text render in separate regions; source visible."
+        },
+        {
+          "slide": 11,
+          "kind": "option_matrix",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-abstract/slide-11.png",
+          "sha256": "606f5e0ecdbe8c280a0379b84e747bb59e32b562bbd9edff9eeee1084aeb872d",
+          "status": "pass",
+          "observations": "Options compare investments0/1.2/3.6andpaybacks-/12/18; recommendation/decisivecriterion/explicitforecastsource legible."
+        },
+        {
+          "slide": 12,
+          "kind": "next_steps",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-abstract/slide-12.png",
+          "sha256": "5369b5114f1dd4db3fc80701fff75db400d7c1e039c0f953b074ec67e84be481",
+          "status": "pass",
+          "observations": "Four owner/date actions preserve budget ask,pilot,measurement gate andconditional0.8release; source visible."
+        }
+      ]
+    },
+    {
+      "template": "blue-corporate",
+      "local_ignored_template": false,
+      "revision": "v2",
+      "pptx": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/quantitative/output/quantitative-blue-corporate-v2.pptx",
+      "spec": ".claude/review-evidence/2026-10-03-consulting/quantitative/deckspec-v2-blue-corporate.json",
+      "generation_success": true,
+      "deterministic_ready": true,
+      "rendered_slide_count": 12,
+      "reviewed_slide_count": 12,
+      "visual_status": "changes_requested",
+      "status_reason": "Numeric table slide5 loses deck-default attribution. Published artifacts retain this confirmed issue; explicit-source control proves author workaround. No exhaustive clearance claim.",
+      "contact_sheet": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-blue-corporate/contact-sheet.png",
+      "slides": [
+        {
+          "slide": 1,
+          "kind": "title",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-blue-corporate/slide-01.png",
+          "sha256": "807939bed11761f1294f128c2f813284215e55f1123e0c7f9065fa5fec59a710",
+          "status": "pass",
+          "observations": "Cover preserves FY26 actual/FY27 decision periods and clearly identifies illustrative case."
+        },
+        {
+          "slide": 2,
+          "kind": "executive_summary",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-blue-corporate/slide-02.png",
+          "sha256": "e0fdc8655c8d690cbb757ef4393dfb1794f15f01851807c90177cc2c7310e659",
+          "status": "pass",
+          "observations": "Three evidence-linked implications and explicit staged funding ask are legible."
+        },
+        {
+          "slide": 3,
+          "kind": "bridge",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-blue-corporate/slide-03.png",
+          "sha256": "1623456017d7751ddab7b9f4f89fb98b12a189bd20906e2e28ef4186a2a55b53",
+          "status": "pass",
+          "observations": "Bridge12+4+3\u22121.5\u22120.5=17; components/totals/units/period/source legible."
+        },
+        {
+          "slide": 4,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-blue-corporate/slide-04.png",
+          "sha256": "8b25d1a3c1e4319b62732b3dbe75d579e80503cf7ae71ed770bf0968fbc12053",
+          "status": "pass",
+          "observations": "Vertical signed bars+3,+2.5,\u22120.5 sum+5; labels/categories separated; source visible."
+        },
+        {
+          "slide": 5,
+          "kind": "table",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-blue-corporate/slide-05.png",
+          "sha256": "2aeff8a1567217295327d61369d7394b9c4d437df96519c48b2ba14702b51491",
+          "status": "changes_requested",
+          "observations": "Structured table regional revenue and EBIT reconcile to80/100and12/17; numeric alignment, highlight and total row legible; default source is absent."
+        },
+        {
+          "slide": 6,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-blue-corporate/slide-06.png",
+          "sha256": "33b07694541de72cd04d2234dfb3a24650b24c28f2b95d7551bb993e5a681109",
+          "status": "pass",
+          "observations": "Three revenue panels share4\u201314scale andQ1\u2013Q4; quarterly totals reconcile to100; period/unit/source visible."
+        },
+        {
+          "slide": 7,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-blue-corporate/slide-07.png",
+          "sha256": "a9f9cfef0475e7929e067b3f9ea2727534697ff1886b2578c57a94866d0608c7",
+          "status": "pass",
+          "observations": "Exact four-decimal percent labels .0048/.0041/.0029/.0021; pp change.0027 and56.25% reduction reconcile; unit/source legible."
+        },
+        {
+          "slide": 8,
+          "kind": "regions",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-blue-corporate/slide-08.png",
+          "sha256": "c001032e8ae46d0b4e231e282ed92bb511806a6fe719482601e8fb8ac894e82e",
+          "status": "pass",
+          "observations": "Revenue chart,17%marginKPI andOct/Nov/Decmilestones occupy distinct legible regions; units/period/source visible."
+        },
+        {
+          "slide": 9,
+          "kind": "section",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-blue-corporate/slide-09.png",
+          "sha256": "331a7da8b0a9053d1a3ef531e9d9944f196714c704026e62f8aa08af43f49535",
+          "status": "pass",
+          "observations": "Section title and section index legible; template decorative areas respected."
+        },
+        {
+          "slide": 10,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-blue-corporate/slide-10.png",
+          "sha256": "699f93f2704130fbf1328f2a4912641243bdef33e4688ced90de499e66633f44",
+          "status": "pass",
+          "observations": "3\u00d73nativeheatmap risk1low5high plus complementary gate text render in separate regions; source visible."
+        },
+        {
+          "slide": 11,
+          "kind": "option_matrix",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-blue-corporate/slide-11.png",
+          "sha256": "6eed7f7fec45c83abf017ebb0ad3b171e9fcadae1df951b1b060208bc8281724",
+          "status": "pass",
+          "observations": "Options compare investments0/1.2/3.6andpaybacks-/12/18; recommendation/decisivecriterion/explicitforecastsource legible."
+        },
+        {
+          "slide": 12,
+          "kind": "next_steps",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-blue-corporate/slide-12.png",
+          "sha256": "3e542c3002b4faa667ee381d472960155683a5f0cd947d41a79241c1576f887a",
+          "status": "pass",
+          "observations": "Four owner/date actions preserve budget ask,pilot,measurement gate andconditional0.8release; source visible."
+        }
+      ]
+    },
+    {
+      "template": "business-template",
+      "local_ignored_template": false,
+      "revision": "v2",
+      "pptx": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/quantitative/output/quantitative-business-template-v2.pptx",
+      "spec": ".claude/review-evidence/2026-10-03-consulting/quantitative/deckspec-v2-business-template.json",
+      "generation_success": true,
+      "deterministic_ready": true,
+      "rendered_slide_count": 12,
+      "reviewed_slide_count": 12,
+      "visual_status": "changes_requested",
+      "status_reason": "Numeric table slide5 loses deck-default attribution. Published artifacts retain this confirmed issue; explicit-source control proves author workaround. No exhaustive clearance claim.",
+      "contact_sheet": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-business-template/contact-sheet.png",
+      "slides": [
+        {
+          "slide": 1,
+          "kind": "title",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-business-template/slide-01.png",
+          "sha256": "7cfde6a81d600856de174f84c8c826b0d59c15674479e341a0de373a4258ae10",
+          "status": "pass",
+          "observations": "Cover preserves FY26 actual/FY27 decision periods and clearly identifies illustrative case."
+        },
+        {
+          "slide": 2,
+          "kind": "executive_summary",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-business-template/slide-02.png",
+          "sha256": "48413313fd3a0163a7f41dbf5fcdb0a2d3341da0c87c3197a95ffc5ac7f202c0",
+          "status": "pass",
+          "observations": "Three evidence-linked implications and explicit staged funding ask are legible."
+        },
+        {
+          "slide": 3,
+          "kind": "bridge",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-business-template/slide-03.png",
+          "sha256": "df981ef24c9402269530e587e0690aeb83078413742ea23a2728ba8b9c8184e1",
+          "status": "pass",
+          "observations": "Bridge12+4+3\u22121.5\u22120.5=17; components/totals/units/period/source legible."
+        },
+        {
+          "slide": 4,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-business-template/slide-04.png",
+          "sha256": "91e43a8a8ffd2d3f048d09957d0eb35e098fc884fa77f2e20dd7784473c6ff24",
+          "status": "pass",
+          "observations": "Vertical signed bars+3,+2.5,\u22120.5 sum+5; labels/categories separated; source visible."
+        },
+        {
+          "slide": 5,
+          "kind": "table",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-business-template/slide-05.png",
+          "sha256": "0524c4dcd3b76ea4d7d0d04da1216627dff04f17f8f54f3767e5cbe2607e6daa",
+          "status": "changes_requested",
+          "observations": "Structured table regional revenue and EBIT reconcile to80/100and12/17; numeric alignment, highlight and total row legible; default source is absent."
+        },
+        {
+          "slide": 6,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-business-template/slide-06.png",
+          "sha256": "3000de2b2a0dbc3fcb85205fd8c8ea3be19c87d9c7da6057a29ed46505b1de08",
+          "status": "pass",
+          "observations": "Three revenue panels share4\u201314scale andQ1\u2013Q4; quarterly totals reconcile to100; period/unit/source visible."
+        },
+        {
+          "slide": 7,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-business-template/slide-07.png",
+          "sha256": "28207a6ccb5869113d6e9192b33ff85ff7b8f3545eb0afcf0932a267ef7249aa",
+          "status": "pass",
+          "observations": "Exact four-decimal percent labels .0048/.0041/.0029/.0021; pp change.0027 and56.25% reduction reconcile; unit/source legible."
+        },
+        {
+          "slide": 8,
+          "kind": "regions",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-business-template/slide-08.png",
+          "sha256": "caee6fc3634a6567a0eb1a555bfec903deb4539d034ef6537c033a7639a84144",
+          "status": "pass",
+          "observations": "Revenue chart,17%marginKPI andOct/Nov/Decmilestones occupy distinct legible regions; units/period/source visible."
+        },
+        {
+          "slide": 9,
+          "kind": "section",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-business-template/slide-09.png",
+          "sha256": "4d8b880a4c982a7662f8f3bd6cd03818c93a74abdfd5d0e24bfb7522a7b2b6ec",
+          "status": "pass",
+          "observations": "Section title and section index legible; template decorative areas respected."
+        },
+        {
+          "slide": 10,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-business-template/slide-10.png",
+          "sha256": "25d176f328085a225d7c045ec965d53c9215db1b37142d66c7aec7363400a0c2",
+          "status": "pass",
+          "observations": "3\u00d73nativeheatmap risk1low5high plus complementary gate text render in separate regions; source visible."
+        },
+        {
+          "slide": 11,
+          "kind": "option_matrix",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-business-template/slide-11.png",
+          "sha256": "f6dec63a6e072ccc7b0c53cf73babf75612caf794dc5cf347d77b822ceae3cba",
+          "status": "pass",
+          "observations": "Options compare investments0/1.2/3.6andpaybacks-/12/18; recommendation/decisivecriterion/explicitforecastsource legible."
+        },
+        {
+          "slide": 12,
+          "kind": "next_steps",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-business-template/slide-12.png",
+          "sha256": "0da525bec683193bf850739b042dea9bdb3a4be3aa534adbd5c3b393c51b3114",
+          "status": "pass",
+          "observations": "Four owner/date actions preserve budget ask,pilot,measurement gate andconditional0.8release; source visible."
+        }
+      ]
+    },
+    {
+      "template": "forest-green",
+      "local_ignored_template": false,
+      "revision": "v2",
+      "pptx": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/quantitative/output/quantitative-forest-green-v2.pptx",
+      "spec": ".claude/review-evidence/2026-10-03-consulting/quantitative/deckspec-v2-forest-green.json",
+      "generation_success": true,
+      "deterministic_ready": true,
+      "rendered_slide_count": 12,
+      "reviewed_slide_count": 12,
+      "visual_status": "changes_requested",
+      "status_reason": "Numeric table slide5 loses deck-default attribution. Published artifacts retain this confirmed issue; explicit-source control proves author workaround. No exhaustive clearance claim.",
+      "contact_sheet": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-forest-green/contact-sheet.png",
+      "slides": [
+        {
+          "slide": 1,
+          "kind": "title",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-forest-green/slide-01.png",
+          "sha256": "3610472527c8a7703501c2b1b8005fa6588d51238dbefc92b30520933ab44c88",
+          "status": "pass",
+          "observations": "Cover preserves FY26 actual/FY27 decision periods and clearly identifies illustrative case."
+        },
+        {
+          "slide": 2,
+          "kind": "executive_summary",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-forest-green/slide-02.png",
+          "sha256": "b024a21e1cbde224961a5928b15c439c0cb77937595d0f5bc11d4d8b962a923b",
+          "status": "pass",
+          "observations": "Three evidence-linked implications and explicit staged funding ask are legible."
+        },
+        {
+          "slide": 3,
+          "kind": "bridge",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-forest-green/slide-03.png",
+          "sha256": "8a7a150d3da4217edc783881c4a9becf515c5205357648a05fb4b6328e2d5a7b",
+          "status": "pass",
+          "observations": "Bridge12+4+3\u22121.5\u22120.5=17; components/totals/units/period/source legible."
+        },
+        {
+          "slide": 4,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-forest-green/slide-04.png",
+          "sha256": "5812ef39f42613c46be010d40d5061fe2943436701a353c2007038b2a66647e6",
+          "status": "pass",
+          "observations": "Vertical signed bars+3,+2.5,\u22120.5 sum+5; labels/categories separated; source visible."
+        },
+        {
+          "slide": 5,
+          "kind": "table",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-forest-green/slide-05.png",
+          "sha256": "a2f1663692af7dce21ced3f0c4382e488eb93779e40448b4515638bbd19f1ba0",
+          "status": "changes_requested",
+          "observations": "Structured table regional revenue and EBIT reconcile to80/100and12/17; numeric alignment, highlight and total row legible; default source is absent."
+        },
+        {
+          "slide": 6,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-forest-green/slide-06.png",
+          "sha256": "0d1ffb8d626388f088302b792329a69189166384d8ef39b9a6cb8352f2f979aa",
+          "status": "pass",
+          "observations": "Three revenue panels share4\u201314scale andQ1\u2013Q4; quarterly totals reconcile to100; period/unit/source visible."
+        },
+        {
+          "slide": 7,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-forest-green/slide-07.png",
+          "sha256": "f256415b86109bd980a6e6f6f3e32f5f9bf6d05ac8bc9726e4a6e78d0579248d",
+          "status": "pass",
+          "observations": "Exact four-decimal percent labels .0048/.0041/.0029/.0021; pp change.0027 and56.25% reduction reconcile; unit/source legible."
+        },
+        {
+          "slide": 8,
+          "kind": "regions",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-forest-green/slide-08.png",
+          "sha256": "45aeb26e1b35406d36755f1624f7533ab59f0fc93909a40fd34c1557f829835e",
+          "status": "pass",
+          "observations": "Revenue chart,17%marginKPI andOct/Nov/Decmilestones occupy distinct legible regions; units/period/source visible."
+        },
+        {
+          "slide": 9,
+          "kind": "section",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-forest-green/slide-09.png",
+          "sha256": "f4841113484930c5748e86003c2e97c6010971caced8ebb6d54123866886f12c",
+          "status": "pass",
+          "observations": "Section title and section index legible; template decorative areas respected."
+        },
+        {
+          "slide": 10,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-forest-green/slide-10.png",
+          "sha256": "46960b81ce986eaf091b231478b84d46785d3ce1958cc3f9075b6241d2e3acfa",
+          "status": "pass",
+          "observations": "3\u00d73nativeheatmap risk1low5high plus complementary gate text render in separate regions; source visible."
+        },
+        {
+          "slide": 11,
+          "kind": "option_matrix",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-forest-green/slide-11.png",
+          "sha256": "1c06f82eff4b093da871a1c2ea07250ce9b3433b963b7799b332374fd86841f0",
+          "status": "pass",
+          "observations": "Options compare investments0/1.2/3.6andpaybacks-/12/18; recommendation/decisivecriterion/explicitforecastsource legible."
+        },
+        {
+          "slide": 12,
+          "kind": "next_steps",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-forest-green/slide-12.png",
+          "sha256": "2d0cc5fe7625b4a292cb6094b3737d13dd2c03793239b267da7bbaf1fddd9e5c",
+          "status": "pass",
+          "observations": "Four owner/date actions preserve budget ask,pilot,measurement gate andconditional0.8release; source visible."
+        }
+      ]
+    },
+    {
+      "template": "midnight-blue",
+      "local_ignored_template": false,
+      "revision": "v2",
+      "pptx": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/quantitative/output/quantitative-midnight-blue-v2.pptx",
+      "spec": ".claude/review-evidence/2026-10-03-consulting/quantitative/deckspec-v2-midnight-blue.json",
+      "generation_success": true,
+      "deterministic_ready": true,
+      "rendered_slide_count": 12,
+      "reviewed_slide_count": 12,
+      "visual_status": "changes_requested",
+      "status_reason": "Numeric table slide5 loses deck-default attribution. Published artifacts retain this confirmed issue; explicit-source control proves author workaround. No exhaustive clearance claim.",
+      "contact_sheet": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-midnight-blue/contact-sheet.png",
+      "slides": [
+        {
+          "slide": 1,
+          "kind": "title",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-midnight-blue/slide-01.png",
+          "sha256": "c8deca0956d5ccc0f5bf98db56828cb809271dc594531b06627841e75728be6b",
+          "status": "pass",
+          "observations": "Cover preserves FY26 actual/FY27 decision periods and clearly identifies illustrative case."
+        },
+        {
+          "slide": 2,
+          "kind": "executive_summary",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-midnight-blue/slide-02.png",
+          "sha256": "7ecea44dacbe9433f0e4637b008f6f46f71c764313e19d92f5b5de633b96dc57",
+          "status": "pass",
+          "observations": "Three evidence-linked implications and explicit staged funding ask are legible."
+        },
+        {
+          "slide": 3,
+          "kind": "bridge",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-midnight-blue/slide-03.png",
+          "sha256": "4c82efaa09af0be612ecd0993e4622c805a03292ceabbfbe25d3090ddbf27773",
+          "status": "pass",
+          "observations": "Bridge12+4+3\u22121.5\u22120.5=17; components/totals/units/period/source legible."
+        },
+        {
+          "slide": 4,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-midnight-blue/slide-04.png",
+          "sha256": "e99acb6d078f2b1a3cd0d9ec26b52730d5e2de21f2638efc0ee21a6daf681e42",
+          "status": "pass",
+          "observations": "Vertical signed bars+3,+2.5,\u22120.5 sum+5; labels/categories separated; source visible."
+        },
+        {
+          "slide": 5,
+          "kind": "table",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-midnight-blue/slide-05.png",
+          "sha256": "b46127e263ebb553d56cbedca661bb2fcd4506ac4edfc208ff7f6d2059567420",
+          "status": "changes_requested",
+          "observations": "Structured table regional revenue and EBIT reconcile to80/100and12/17; numeric alignment, highlight and total row legible; default source is absent."
+        },
+        {
+          "slide": 6,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-midnight-blue/slide-06.png",
+          "sha256": "f84ac51f325379dc84db633ca858062bc19853fa82398291d1c1839ee1823aa3",
+          "status": "pass",
+          "observations": "Three revenue panels share4\u201314scale andQ1\u2013Q4; quarterly totals reconcile to100; period/unit/source visible."
+        },
+        {
+          "slide": 7,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-midnight-blue/slide-07.png",
+          "sha256": "bfadcda2cfd33b48e9f3e4a32aa141ef9ad7d651da03c07c1006b8f00156477f",
+          "status": "pass",
+          "observations": "Exact four-decimal percent labels .0048/.0041/.0029/.0021; pp change.0027 and56.25% reduction reconcile; unit/source legible."
+        },
+        {
+          "slide": 8,
+          "kind": "regions",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-midnight-blue/slide-08.png",
+          "sha256": "7056f5c30f8c81310e38244b6c9646732f74bb2e8f993743988659fdca7cffe8",
+          "status": "pass",
+          "observations": "Revenue chart,17%marginKPI andOct/Nov/Decmilestones occupy distinct legible regions; units/period/source visible."
+        },
+        {
+          "slide": 9,
+          "kind": "section",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-midnight-blue/slide-09.png",
+          "sha256": "dfdb0463d0ad3bb8591f26f39da51b97e8e92a41e2e5406246a9c92489462d2a",
+          "status": "pass",
+          "observations": "Section title and section index legible; template decorative areas respected."
+        },
+        {
+          "slide": 10,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-midnight-blue/slide-10.png",
+          "sha256": "620937a51954a48c71dbc66fa4b5b3c70ea03240dce4ee2fc70fd0c2ed4014cf",
+          "status": "pass",
+          "observations": "3\u00d73nativeheatmap risk1low5high plus complementary gate text render in separate regions; source visible."
+        },
+        {
+          "slide": 11,
+          "kind": "option_matrix",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-midnight-blue/slide-11.png",
+          "sha256": "0a139a26998b1bd09cbe58f5a4121aa86da6e875fd248fa802ad6be24b1805a4",
+          "status": "pass",
+          "observations": "Options compare investments0/1.2/3.6andpaybacks-/12/18; recommendation/decisivecriterion/explicitforecastsource legible."
+        },
+        {
+          "slide": 12,
+          "kind": "next_steps",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-midnight-blue/slide-12.png",
+          "sha256": "faa850809f1eaee41acae7d25c9ba5ef341a68a105549c32a43ddd710c83b17c",
+          "status": "pass",
+          "observations": "Four owner/date actions preserve budget ask,pilot,measurement gate andconditional0.8release; source visible."
+        }
+      ]
+    },
+    {
+      "template": "modern",
+      "local_ignored_template": false,
+      "revision": "v4",
+      "pptx": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/quantitative/output/quantitative-modern-v4.pptx",
+      "spec": ".claude/review-evidence/2026-10-03-consulting/quantitative/deckspec-v4-modern.json",
+      "generation_success": true,
+      "deterministic_ready": false,
+      "rendered_slide_count": 12,
+      "reviewed_slide_count": 12,
+      "visual_status": "changes_requested",
+      "status_reason": "Numeric table slide5 loses deck-default attribution. Published artifacts retain this confirmed issue; explicit-source control proves author workaround. No exhaustive clearance claim.",
+      "contact_sheet": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern/contact-sheet.png",
+      "slides": [
+        {
+          "slide": 1,
+          "kind": "title",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern/slide-01.png",
+          "sha256": "5158fa6b1c6d5a9fd1041886436fdcfac39f80354928a25190a7586d4fb261b2",
+          "status": "pass",
+          "observations": "Cover preserves FY26 actual/FY27 decision periods and clearly identifies illustrative case."
+        },
+        {
+          "slide": 2,
+          "kind": "executive_summary",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern/slide-02.png",
+          "sha256": "477b8898538807280adcd6852ea92ca57d2480f718ac337cc6cc6e1d2c09b91b",
+          "status": "pass",
+          "observations": "Three evidence-linked implications and explicit staged funding ask are legible."
+        },
+        {
+          "slide": 3,
+          "kind": "bridge",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern/slide-03.png",
+          "sha256": "d30cbc40d099344e6cfc8d7b96b2871b36f6ff96ab587153d897c4d5ae207bfa",
+          "status": "pass",
+          "observations": "Bridge12+4+3\u22121.5\u22120.5=17; components/totals/units/period/source legible."
+        },
+        {
+          "slide": 4,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern/slide-04.png",
+          "sha256": "c02eeeacebb80699563cc840074cfbfcefe3c9b74fa5a3614ba2c7b8bd71f0f1",
+          "status": "pass",
+          "observations": "Vertical signed bars+3,+2.5,\u22120.5 sum+5; labels/categories separated; source visible."
+        },
+        {
+          "slide": 5,
+          "kind": "table",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern/slide-05.png",
+          "sha256": "c1454b2a3f7732baed25914f874298cd7d4df30bc375e01ac8c86a6dff8f62f7",
+          "status": "changes_requested",
+          "observations": "Structured table regional revenue and EBIT reconcile to80/100and12/17; numeric alignment, highlight and total row legible; default source is absent."
+        },
+        {
+          "slide": 6,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern/slide-06.png",
+          "sha256": "efdf877c1425b16998627ae781f8e8f339c4a7f4797eb02b6f148eb9e85206f1",
+          "status": "pass",
+          "observations": "Three revenue panels share4\u201314scale andQ1\u2013Q4; quarterly totals reconcile to100; period/unit/source visible."
+        },
+        {
+          "slide": 7,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern/slide-07.png",
+          "sha256": "040cdff50e12cd8cd0481cb7f1606dddf0d235d311b2cd91d2c84922fac4dbe3",
+          "status": "pass",
+          "observations": "Exact four-decimal percent labels .0048/.0041/.0029/.0021; pp change.0027 and56.25% reduction reconcile; unit/source legible."
+        },
+        {
+          "slide": 8,
+          "kind": "regions",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern/slide-08.png",
+          "sha256": "becb3e15963786808e54d53fe95e78423e8eb82ecebbe4c84740902ba0aca2ad",
+          "status": "pass_with_diagnostic_warning",
+          "observations": "Revenue chart,17%marginKPI andOct/Nov/Decmilestones occupy distinct legible regions; units/period/source visible. Stored margin label14pt\u00d772%=10.08pt meets documented10ptKPI-captionfloor; generatedgenericbody12ptwarning contradicts role policy."
+        },
+        {
+          "slide": 9,
+          "kind": "section",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern/slide-09.png",
+          "sha256": "6f1f03edbc6a919b7aa724daab2430fec0b449602a2f47fd498c539601a70126",
+          "status": "pass",
+          "observations": "Section title and section index legible; template decorative areas respected."
+        },
+        {
+          "slide": 10,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern/slide-10.png",
+          "sha256": "c7ca857bb893df177962224c9c3899e58ddbbaa7f6a3d7eb12c6432149eb37cc",
+          "status": "pass",
+          "observations": "3\u00d73nativeheatmap risk1low5high plus complementary gate text render in separate regions; source visible."
+        },
+        {
+          "slide": 11,
+          "kind": "option_matrix",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern/slide-11.png",
+          "sha256": "dbb8a006d7f048b105517ea724b1f85ff0b56b04cbb2280e9ff1aa030ae8f2ca",
+          "status": "pass_with_diagnostic_warning",
+          "observations": "Options compare investments0/1.2/3.6andpaybacks-/12/18; recommendation/decisivecriterion/explicitforecastsource legible.Third bounded author repair removed details already covered in deck and duplicate takeaway; missing-takeaway warning remains, message/recommendation carry conclusion."
+        },
+        {
+          "slide": 12,
+          "kind": "next_steps",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern/slide-12.png",
+          "sha256": "2f52c7b87478a78466a4af64e46dad17e0d05a63e6e5e04983231d68d8064e82",
+          "status": "pass",
+          "observations": "Four owner/date actions preserve budget ask,pilot,measurement gate andconditional0.8release; source visible."
+        }
+      ]
+    },
+    {
+      "template": "modern-template",
+      "local_ignored_template": false,
+      "revision": "v2",
+      "pptx": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/quantitative/output/quantitative-modern-template-v2.pptx",
+      "spec": ".claude/review-evidence/2026-10-03-consulting/quantitative/deckspec-v2-modern-template.json",
+      "generation_success": true,
+      "deterministic_ready": true,
+      "rendered_slide_count": 12,
+      "reviewed_slide_count": 12,
+      "visual_status": "changes_requested",
+      "status_reason": "Numeric table slide5 loses deck-default attribution. Published artifacts retain this confirmed issue; explicit-source control proves author workaround. No exhaustive clearance claim.",
+      "contact_sheet": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-template/contact-sheet.png",
+      "slides": [
+        {
+          "slide": 1,
+          "kind": "title",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-template/slide-01.png",
+          "sha256": "cbe5682a811e8dba675aefb354f0d58327053398eaffa16f069c9347ce99e3c3",
+          "status": "pass",
+          "observations": "Cover preserves FY26 actual/FY27 decision periods and clearly identifies illustrative case."
+        },
+        {
+          "slide": 2,
+          "kind": "executive_summary",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-template/slide-02.png",
+          "sha256": "5359b183354530bf6e823f2a4071e7a8afc13bc302268cb0f778b95f1b371df6",
+          "status": "pass",
+          "observations": "Three evidence-linked implications and explicit staged funding ask are legible."
+        },
+        {
+          "slide": 3,
+          "kind": "bridge",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-template/slide-03.png",
+          "sha256": "2d11b5077c9cd3188e8aecf4fddb5bcf5b521f56563912dfc08aee36a884815b",
+          "status": "pass",
+          "observations": "Bridge12+4+3\u22121.5\u22120.5=17; components/totals/units/period/source legible."
+        },
+        {
+          "slide": 4,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-template/slide-04.png",
+          "sha256": "874c6215a5df3c97d184a42b739093163d81d1741820282272e6b7e29b2bd1d8",
+          "status": "pass",
+          "observations": "Vertical signed bars+3,+2.5,\u22120.5 sum+5; labels/categories separated; source visible."
+        },
+        {
+          "slide": 5,
+          "kind": "table",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-template/slide-05.png",
+          "sha256": "9da65f729721ab1f196039b23302ec1ccdc1028643a4f5364dd0c77913d7c5e8",
+          "status": "changes_requested",
+          "observations": "Structured table regional revenue and EBIT reconcile to80/100and12/17; numeric alignment, highlight and total row legible; default source is absent."
+        },
+        {
+          "slide": 6,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-template/slide-06.png",
+          "sha256": "a7edb2354516dfd39274e519b95dafea10abb0b311235724c947bd1534824b9a",
+          "status": "pass",
+          "observations": "Three revenue panels share4\u201314scale andQ1\u2013Q4; quarterly totals reconcile to100; period/unit/source visible."
+        },
+        {
+          "slide": 7,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-template/slide-07.png",
+          "sha256": "ff41e8517ff6de1081812083d96bdccbadc7818c41ec3b77036c66bf31ea70a5",
+          "status": "pass",
+          "observations": "Exact four-decimal percent labels .0048/.0041/.0029/.0021; pp change.0027 and56.25% reduction reconcile; unit/source legible."
+        },
+        {
+          "slide": 8,
+          "kind": "regions",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-template/slide-08.png",
+          "sha256": "49336d20d35ee84a8eba0ef7a2a3fb5f2fc6d0b0974b189d835db5da9f842cc6",
+          "status": "pass",
+          "observations": "Revenue chart,17%marginKPI andOct/Nov/Decmilestones occupy distinct legible regions; units/period/source visible."
+        },
+        {
+          "slide": 9,
+          "kind": "section",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-template/slide-09.png",
+          "sha256": "9384b69c4044818b785043a314d944074db3edf2e15f68d6c89b32f3c6c0a122",
+          "status": "pass",
+          "observations": "Section title and section index legible; template decorative areas respected."
+        },
+        {
+          "slide": 10,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-template/slide-10.png",
+          "sha256": "7147205749b9333a4d341fe0ae589e516d7dec9fe6115676d869ad2bfcb2eac3",
+          "status": "pass",
+          "observations": "3\u00d73nativeheatmap risk1low5high plus complementary gate text render in separate regions; source visible."
+        },
+        {
+          "slide": 11,
+          "kind": "option_matrix",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-template/slide-11.png",
+          "sha256": "74968361da7fa2da10322b9c28180de8ceb78106ff9e05bc808638c88cd03f4f",
+          "status": "pass",
+          "observations": "Options compare investments0/1.2/3.6andpaybacks-/12/18; recommendation/decisivecriterion/explicitforecastsource legible."
+        },
+        {
+          "slide": 12,
+          "kind": "next_steps",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-template/slide-12.png",
+          "sha256": "5b1cee8e170295096b8f06e07ba63a5348d1e9ffe47be8821483ce16759d9913",
+          "status": "pass",
+          "observations": "Four owner/date actions preserve budget ask,pilot,measurement gate andconditional0.8release; source visible."
+        }
+      ]
+    },
+    {
+      "template": "modern-yellow",
+      "local_ignored_template": false,
+      "revision": "v2",
+      "pptx": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/quantitative/output/quantitative-modern-yellow-v2.pptx",
+      "spec": ".claude/review-evidence/2026-10-03-consulting/quantitative/deckspec-v2-modern-yellow.json",
+      "generation_success": true,
+      "deterministic_ready": true,
+      "rendered_slide_count": 12,
+      "reviewed_slide_count": 12,
+      "visual_status": "changes_requested",
+      "status_reason": "Numeric table slide5 loses deck-default attribution. Published artifacts retain this confirmed issue; explicit-source control proves author workaround. No exhaustive clearance claim.",
+      "contact_sheet": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-yellow/contact-sheet.png",
+      "slides": [
+        {
+          "slide": 1,
+          "kind": "title",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-yellow/slide-01.png",
+          "sha256": "0772f31c90a5481f66c7015b2175c52407f5dc3b999110a6a37024b754f45df6",
+          "status": "pass",
+          "observations": "Cover preserves FY26 actual/FY27 decision periods and clearly identifies illustrative case."
+        },
+        {
+          "slide": 2,
+          "kind": "executive_summary",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-yellow/slide-02.png",
+          "sha256": "b2d911a366d03bc9901d50214cf358d22c27e2e80e93137858beecdf6f285115",
+          "status": "pass",
+          "observations": "Three evidence-linked implications and explicit staged funding ask are legible."
+        },
+        {
+          "slide": 3,
+          "kind": "bridge",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-yellow/slide-03.png",
+          "sha256": "306831b4959cc106116183ee3089d87082dfa3a958ccc15accf1ffb2203d5e8a",
+          "status": "pass",
+          "observations": "Bridge12+4+3\u22121.5\u22120.5=17; components/totals/units/period/source legible."
+        },
+        {
+          "slide": 4,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-yellow/slide-04.png",
+          "sha256": "d5e032d220759d9f78c158bf08f60ba8c830e7337e28db47d161252be5fd3be7",
+          "status": "pass",
+          "observations": "Vertical signed bars+3,+2.5,\u22120.5 sum+5; labels/categories separated; source visible."
+        },
+        {
+          "slide": 5,
+          "kind": "table",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-yellow/slide-05.png",
+          "sha256": "c069346b64517e146ae3f68b3579ea4f3cd1c37cef93d9d2971b49eb47c6ba41",
+          "status": "changes_requested",
+          "observations": "Structured table regional revenue and EBIT reconcile to80/100and12/17; numeric alignment, highlight and total row legible; default source is absent."
+        },
+        {
+          "slide": 6,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-yellow/slide-06.png",
+          "sha256": "e2c03be6306e46b69f5676de2ab34d4a66c45e9a703a3556a3e667f772cf2ec7",
+          "status": "pass",
+          "observations": "Three revenue panels share4\u201314scale andQ1\u2013Q4; quarterly totals reconcile to100; period/unit/source visible."
+        },
+        {
+          "slide": 7,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-yellow/slide-07.png",
+          "sha256": "28f061c29741271fa8da3fd2afbf95b4e9638efc90b6eae5af129ab59bfacdf2",
+          "status": "pass",
+          "observations": "Exact four-decimal percent labels .0048/.0041/.0029/.0021; pp change.0027 and56.25% reduction reconcile; unit/source legible."
+        },
+        {
+          "slide": 8,
+          "kind": "regions",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-yellow/slide-08.png",
+          "sha256": "ff7354d86e7479ed7378c7a6aefd9860581daf714dd3c87172e2bb90fac5245b",
+          "status": "pass",
+          "observations": "Revenue chart,17%marginKPI andOct/Nov/Decmilestones occupy distinct legible regions; units/period/source visible."
+        },
+        {
+          "slide": 9,
+          "kind": "section",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-yellow/slide-09.png",
+          "sha256": "5003e502a3dd9635bbc9bd4f8eba8c856d27adeb1d68a2f3b2bd19aca593ef73",
+          "status": "pass",
+          "observations": "Section title and section index legible; template decorative areas respected."
+        },
+        {
+          "slide": 10,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-yellow/slide-10.png",
+          "sha256": "53031294baa41687bf18257e9a1a627f980f4e4bc6c0d84b3b18291d1021af5d",
+          "status": "pass",
+          "observations": "3\u00d73nativeheatmap risk1low5high plus complementary gate text render in separate regions; source visible."
+        },
+        {
+          "slide": 11,
+          "kind": "option_matrix",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-yellow/slide-11.png",
+          "sha256": "2f27b04eef483be2d0d190b0d2e3640540e809986eb8ceb2f53406c6c7256371",
+          "status": "pass",
+          "observations": "Options compare investments0/1.2/3.6andpaybacks-/12/18; recommendation/decisivecriterion/explicitforecastsource legible."
+        },
+        {
+          "slide": 12,
+          "kind": "next_steps",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern-yellow/slide-12.png",
+          "sha256": "9e2d58f45878621a46d446303ec65225663b74752465edb66375c226921d965b",
+          "status": "pass",
+          "observations": "Four owner/date actions preserve budget ask,pilot,measurement gate andconditional0.8release; source visible."
+        }
+      ]
+    },
+    {
+      "template": "p-style",
+      "local_ignored_template": true,
+      "revision": "v2",
+      "pptx": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/quantitative/output/quantitative-p-style-v2.pptx",
+      "spec": ".claude/review-evidence/2026-10-03-consulting/quantitative/deckspec-v2.json",
+      "generation_success": true,
+      "deterministic_ready": true,
+      "rendered_slide_count": 12,
+      "reviewed_slide_count": 12,
+      "visual_status": "changes_requested",
+      "status_reason": "Numeric table slide5 loses deck-default attribution. Published artifacts retain this confirmed issue; explicit-source control proves author workaround. No exhaustive clearance claim.",
+      "contact_sheet": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-p-style/contact-sheet.png",
+      "slides": [
+        {
+          "slide": 1,
+          "kind": "title",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-p-style/slide-01.png",
+          "sha256": "1bd104c3f8c3876d2b98621160300a406f4870f9a7b760b11354f0c53426ae96",
+          "status": "pass",
+          "observations": "Cover preserves FY26 actual/FY27 decision periods and clearly identifies illustrative case."
+        },
+        {
+          "slide": 2,
+          "kind": "executive_summary",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-p-style/slide-02.png",
+          "sha256": "5301a13a3e72d07a9fa6566e999672b4b4189a4d9a91e0bab302a7034c0a7aeb",
+          "status": "pass",
+          "observations": "Three evidence-linked implications and explicit staged funding ask are legible."
+        },
+        {
+          "slide": 3,
+          "kind": "bridge",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-p-style/slide-03.png",
+          "sha256": "741ed6d4c502188e1d3cfb6b4d04ee4acc332e51ebaefc1755cf99d46c6f4d6e",
+          "status": "pass",
+          "observations": "Bridge12+4+3\u22121.5\u22120.5=17; components/totals/units/period/source legible."
+        },
+        {
+          "slide": 4,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-p-style/slide-04.png",
+          "sha256": "bec754d21cf5364b3fbe280dcce2386c350ed5b502fc25c86b0c87dd1a53f6ad",
+          "status": "pass",
+          "observations": "Vertical signed bars+3,+2.5,\u22120.5 sum+5; labels/categories separated; source visible."
+        },
+        {
+          "slide": 5,
+          "kind": "table",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-p-style/slide-05.png",
+          "sha256": "2afeea6a3a54e6246bd28e63c6f55e133614d7fcd62e4b8c2ceeeb56b1a1a26d",
+          "status": "changes_requested",
+          "observations": "Structured table regional revenue and EBIT reconcile to80/100and12/17; numeric alignment, highlight and total row legible; default source is absent."
+        },
+        {
+          "slide": 6,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-p-style/slide-06.png",
+          "sha256": "720ba84b657082bf4260ab0c3b4212322a20052402854c6029672742c1dde6d6",
+          "status": "pass",
+          "observations": "Three revenue panels share4\u201314scale andQ1\u2013Q4; quarterly totals reconcile to100; period/unit/source visible."
+        },
+        {
+          "slide": 7,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-p-style/slide-07.png",
+          "sha256": "9335cc1f5fdecec1178952083e7c900f3725a9e4910cc26c0f782a2c5292dc7b",
+          "status": "pass",
+          "observations": "Exact four-decimal percent labels .0048/.0041/.0029/.0021; pp change.0027 and56.25% reduction reconcile; unit/source legible."
+        },
+        {
+          "slide": 8,
+          "kind": "regions",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-p-style/slide-08.png",
+          "sha256": "6bdea07daa3393da44a2c9d956bd345dd1821ace4b586329e55d00690b972711",
+          "status": "pass",
+          "observations": "Revenue chart,17%marginKPI andOct/Nov/Decmilestones occupy distinct legible regions; units/period/source visible."
+        },
+        {
+          "slide": 9,
+          "kind": "section",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-p-style/slide-09.png",
+          "sha256": "c221ebf320552e28ab30261b1b72103d03d08b69a68c72e6800432e44f3bea65",
+          "status": "pass",
+          "observations": "Section title and section index legible; template decorative areas respected."
+        },
+        {
+          "slide": 10,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-p-style/slide-10.png",
+          "sha256": "9165457c95d2c48a4073bffa50cfc4ee795fe45162a6f08ffd11a18dcb6434f1",
+          "status": "pass",
+          "observations": "3\u00d73nativeheatmap risk1low5high plus complementary gate text render in separate regions; source visible."
+        },
+        {
+          "slide": 11,
+          "kind": "option_matrix",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-p-style/slide-11.png",
+          "sha256": "1b935a00fc42f0f88acae33aff453e79352fc4f8ecdc3334af2ba530b77ab5ed",
+          "status": "pass",
+          "observations": "Options compare investments0/1.2/3.6andpaybacks-/12/18; recommendation/decisivecriterion/explicitforecastsource legible."
+        },
+        {
+          "slide": 12,
+          "kind": "next_steps",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-p-style/slide-12.png",
+          "sha256": "4b81f495497f856322aabe16c754d97edf004cb7c26c0a683533d1b36712f8cc",
+          "status": "pass",
+          "observations": "Four owner/date actions preserve budget ask,pilot,measurement gate andconditional0.8release; source visible."
+        }
+      ]
+    },
+    {
+      "template": "warm-coral",
+      "local_ignored_template": false,
+      "revision": "v2",
+      "pptx": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/quantitative/output/quantitative-warm-coral-v2.pptx",
+      "spec": ".claude/review-evidence/2026-10-03-consulting/quantitative/deckspec-v2-warm-coral.json",
+      "generation_success": true,
+      "deterministic_ready": true,
+      "rendered_slide_count": 12,
+      "reviewed_slide_count": 12,
+      "visual_status": "changes_requested",
+      "status_reason": "Numeric table slide5 loses deck-default attribution. Published artifacts retain this confirmed issue; explicit-source control proves author workaround. No exhaustive clearance claim.",
+      "contact_sheet": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-warm-coral/contact-sheet.png",
+      "slides": [
+        {
+          "slide": 1,
+          "kind": "title",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-warm-coral/slide-01.png",
+          "sha256": "74af75383db809b40f204f6968f21e1610d50c0ce2db69321fd1fbc7b1317d3e",
+          "status": "pass",
+          "observations": "Cover preserves FY26 actual/FY27 decision periods and clearly identifies illustrative case."
+        },
+        {
+          "slide": 2,
+          "kind": "executive_summary",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-warm-coral/slide-02.png",
+          "sha256": "31dd6a95c7df31b71f295f18687e0204db9cee0dfa87132a49beee53f3a9d4e3",
+          "status": "pass",
+          "observations": "Three evidence-linked implications and explicit staged funding ask are legible."
+        },
+        {
+          "slide": 3,
+          "kind": "bridge",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-warm-coral/slide-03.png",
+          "sha256": "dbf98f89da75b3e8c6b7db92156042f4e43cc4de7c2250e14d00f676bd5d942e",
+          "status": "pass",
+          "observations": "Bridge12+4+3\u22121.5\u22120.5=17; components/totals/units/period/source legible."
+        },
+        {
+          "slide": 4,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-warm-coral/slide-04.png",
+          "sha256": "3072bfb41a33c33783bbbfa87e8ee203d0c4f1da0f67f5870d1c370f5cc0d42e",
+          "status": "pass",
+          "observations": "Vertical signed bars+3,+2.5,\u22120.5 sum+5; labels/categories separated; source visible."
+        },
+        {
+          "slide": 5,
+          "kind": "table",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-warm-coral/slide-05.png",
+          "sha256": "de20ba9b00b5c183a1a2a349873a1daf57219193edfbe8415de2d98a1c99a474",
+          "status": "changes_requested",
+          "observations": "Structured table regional revenue and EBIT reconcile to80/100and12/17; numeric alignment, highlight and total row legible; default source is absent."
+        },
+        {
+          "slide": 6,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-warm-coral/slide-06.png",
+          "sha256": "0860ef72b21f654349afa32c648106d919ff899c93b56e136a7cb0db6b74b7a2",
+          "status": "pass",
+          "observations": "Three revenue panels share4\u201314scale andQ1\u2013Q4; quarterly totals reconcile to100; period/unit/source visible."
+        },
+        {
+          "slide": 7,
+          "kind": "chart_insight",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-warm-coral/slide-07.png",
+          "sha256": "f6c8ff4962d89a39a5f04d7e9eca2ec0454dc0007af0d816857d874c6c257633",
+          "status": "pass",
+          "observations": "Exact four-decimal percent labels .0048/.0041/.0029/.0021; pp change.0027 and56.25% reduction reconcile; unit/source legible."
+        },
+        {
+          "slide": 8,
+          "kind": "regions",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-warm-coral/slide-08.png",
+          "sha256": "7c02d3cc697a0afc7551cc74b76c321010d48f25fd780f0ba4d35e1195653201",
+          "status": "pass",
+          "observations": "Revenue chart,17%marginKPI andOct/Nov/Decmilestones occupy distinct legible regions; units/period/source visible."
+        },
+        {
+          "slide": 9,
+          "kind": "section",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-warm-coral/slide-09.png",
+          "sha256": "5f34560247d04c601c3aa84875e91980c04534a42064b776cf41bec8538dd18e",
+          "status": "pass",
+          "observations": "Section title and section index legible; template decorative areas respected."
+        },
+        {
+          "slide": 10,
+          "kind": "raw_json2pptx",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-warm-coral/slide-10.png",
+          "sha256": "fe69b0858e6b1ca215ee163ac0429da61f2c4f8b963afde2e811f110179477eb",
+          "status": "pass",
+          "observations": "3\u00d73nativeheatmap risk1low5high plus complementary gate text render in separate regions; source visible."
+        },
+        {
+          "slide": 11,
+          "kind": "option_matrix",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-warm-coral/slide-11.png",
+          "sha256": "f14b579c2c961c447f134bcf5f6029f8bff56de91c02232a1c6da650a2c1c0ae",
+          "status": "pass",
+          "observations": "Options compare investments0/1.2/3.6andpaybacks-/12/18; recommendation/decisivecriterion/explicitforecastsource legible."
+        },
+        {
+          "slide": 12,
+          "kind": "next_steps",
+          "full_image_inspected": true,
+          "contact_sheet_inspected": true,
+          "png": ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-warm-coral/slide-12.png",
+          "sha256": "df951c5a4a96c79875b0eabed8a38f53f8b454c142f14f5f2df29ec22ae4394f",
+          "status": "pass",
+          "observations": "Four owner/date actions preserve budget ask,pilot,measurement gate andconditional0.8release; source visible."
+        }
+      ]
+    }
+  ],
+  "full_individual_review_count": 120,
+  "contact_sheet_count": 10,
+  "renderer": "/Users/seb/.cache/codex-runtimes/codex-primary-runtime/dependencies/native/libreoffice-headless/libreoffice/LibreOfficeDev.app/Contents/MacOS/soffice",
+  "density": 100
+}

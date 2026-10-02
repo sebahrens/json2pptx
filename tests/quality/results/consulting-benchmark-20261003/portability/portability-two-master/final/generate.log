@@ -1,0 +1,104 @@
+{
+  "ok": true,
+  "output_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/portability/portability-two-master/final/deck.pptx",
+  "deterministic_ready": true,
+  "publishable": false,
+  "manual_review_required": true,
+  "blocking_reasons": [
+    "current artifact lacks complete all-slide vision inspection and an explicit approved verdict; render_deck_thumbnails + submit_visual_review supply it"
+  ],
+  "template": "portability-two-master",
+  "slide_count": 6,
+  "content_hash": "e58562fcab825cea0cea81dbd3d88e4d594fc8ed51a3175d489054ad77a24b54",
+  "revision": "c8522b0df7d6ccdedc5584c64c75bbddb1218f9b4cfe1e001a7a205155f420b1",
+  "manifest_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/portability/portability-two-master/final/deck.pptx.authoring.json",
+  "duration_ms": 304,
+  "quality": {
+    "score": 100,
+    "basis": "input",
+    "slide_scores": [
+      {
+        "slide_number": 1,
+        "score": 100
+      },
+      {
+        "slide_number": 2,
+        "score": 100
+      },
+      {
+        "slide_number": 3,
+        "score": 100
+      },
+      {
+        "slide_number": 4,
+        "score": 100
+      },
+      {
+        "slide_number": 5,
+        "score": 100
+      },
+      {
+        "slide_number": 6,
+        "score": 100
+      }
+    ],
+    "scope": "input_heuristic",
+    "evidence": {
+      "artifact_sha256": "e58562fcab825cea0cea81dbd3d88e4d594fc8ed51a3175d489054ad77a24b54",
+      "schema_valid": true,
+      "generated": true,
+      "fit_checked": true,
+      "structural_valid": true,
+      "pixels_rendered": false,
+      "visually_inspected": false,
+      "reviewed_slide_ids": [],
+      "total_slides": 6,
+      "approved": false,
+      "needs_review": true,
+      "reasons": [
+        "current artifact was not pixel-rendered",
+        "no explicit visual approval verdict for the current artifact"
+      ]
+    },
+    "structural_score": 100,
+    "quality_gate": {
+      "passed": true,
+      "reasons": [],
+      "criteria": {
+        "min_score": 80,
+        "max_p0_findings": 0,
+        "max_p1_findings": 0,
+        "require_takeaway_on_charts": true,
+        "max_topic_title_pct": 25,
+        "require_storyline": true,
+        "allow_accent_overload": false,
+        "max_problem_slides_pct": 40,
+        "min_composition_score": 65
+      }
+    }
+  }
+}
+2026/10/03 00:49:39 INFO pattern expanded pattern=exec-summary version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=chart-insights-split version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=table-highlight version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=next-steps version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=exec-summary version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=chart-insights-split version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=table-highlight version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=next-steps version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=stat-hero version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=timeline-horizontal version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=exec-summary version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=chart-insights-split version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=stat-hero version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=timeline-horizontal version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=table-highlight version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=next-steps version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=exec-summary version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=chart-insights-split version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=table-highlight version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=next-steps version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=exec-summary version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=chart-insights-split version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=table-highlight version=1
+2026/10/03 00:49:39 INFO pattern expanded pattern=next-steps version=1

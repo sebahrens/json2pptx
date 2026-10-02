@@ -1,0 +1,59 @@
+{
+  "meta": {
+    "template": "modern",
+    "type_scale": "comfortable",
+    "source": "Illustrative Helios case; management assumptions, Oct2026"
+  },
+  "slides": [
+    {
+      "kind": "process",
+      "title": "Four control points give each dispute one owner and an auditable path to closure",
+      "steps": [
+        {
+          "label": "Capture",
+          "description": "Finance creates one case record, links the invoice and assigns a reason code."
+        },
+        {
+          "label": "Assign",
+          "description": "The market lead names a resolver; cases without an owner escalate after 24 hours."
+        },
+        {
+          "label": "Resolve",
+          "description": "The resolver agrees the action; credits above EUR25k require a second approval."
+        },
+        {
+          "label": "Close",
+          "description": "Finance verifies cash or credit, closes the case and updates recurring-cause rules."
+        }
+      ],
+      "takeaway": "Automate routing and evidence capture; retain human approval for commercial exceptions.",
+      "source": "Illustrative Helios case; management assumptions, Oct 2026",
+      "layout": "content"
+    },
+    {
+      "kind": "process",
+      "title": "Four control points give each dispute one owner and an auditable path to closure",
+      "steps": [
+        {
+          "label": "Capture",
+          "description": "Finance creates one case record, links the invoice and assigns a reason code."
+        },
+        {
+          "label": "Assign",
+          "description": "The market lead names a resolver; cases without an owner escalate after 24 hours."
+        },
+        {
+          "label": "Resolve",
+          "description": "The resolver agrees the action; credits above EUR25k require a second approval."
+        },
+        {
+          "label": "Close",
+          "description": "Finance verifies cash or credit, closes the case and updates recurring-cause rules."
+        }
+      ],
+      "pattern": "process-flow",
+      "source": "Illustrative Helios case; management assumptions, Oct 2026",
+      "takeaway": "Automate routing and evidence capture; retain human approval for commercial exceptions."
+    }
+  ]
+}

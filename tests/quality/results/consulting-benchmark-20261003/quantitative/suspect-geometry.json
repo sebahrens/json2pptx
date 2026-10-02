@@ -1,0 +1,252 @@
+{
+  "modern": [
+    {
+      "id": "202",
+      "text": [
+        "FY26 quarterly revenue ($m)"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"731025\" y=\"2341798\" /><ns0:ext cx=\"5799873\" cy=\"254000\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" anchor=\"b\" lIns=\"180000\" tIns=\"0\" rIns=\"180000\" bIns=\"0\"><ns0:normAutofit /></ns0:bodyPr>",
+      "font_sizes": [
+        "1400"
+      ]
+    },
+    {
+      "id": "206",
+      "text": [
+        "17%",
+        "FY26 EBIT margin"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"6784898\" y=\"2392598\" /><ns0:ext cx=\"4625277\" cy=\"908500\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" anchor=\"ctr\" lIns=\"180000\" tIns=\"179930\" rIns=\"180000\" bIns=\"179930\"><ns0:normAutofit fontScale=\"72000\" lnSpcReduction=\"14000\" /></ns0:bodyPr>",
+      "font_sizes": [
+        "3600",
+        "1400"
+      ]
+    },
+    {
+      "id": "207",
+      "text": [
+        "FY27 pilot, Oct\u2013Dec"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"6784898\" y=\"3504298\" /><ns0:ext cx=\"4625277\" cy=\"254000\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" anchor=\"b\" lIns=\"180000\" tIns=\"0\" rIns=\"180000\" bIns=\"0\"><ns0:normAutofit /></ns0:bodyPr>",
+      "font_sizes": [
+        "1400"
+      ]
+    },
+    {
+      "id": "212",
+      "text": [
+        "Oct pilot"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"6835698\" y=\"4204722\" /><ns0:ext cx=\"1372426\" cy=\"622300\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" anchor=\"t\" lIns=\"180000\" tIns=\"180000\" rIns=\"180000\" bIns=\"180000\"><ns0:normAutofit /></ns0:bodyPr>",
+      "font_sizes": [
+        "1400"
+      ]
+    },
+    {
+      "id": "213",
+      "text": [
+        "Nov audit"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"8411324\" y=\"4204722\" /><ns0:ext cx=\"1372426\" cy=\"622300\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" anchor=\"t\" lIns=\"180000\" tIns=\"180000\" rIns=\"180000\" bIns=\"180000\"><ns0:normAutofit /></ns0:bodyPr>",
+      "font_sizes": [
+        "1400"
+      ]
+    },
+    {
+      "id": "214",
+      "text": [
+        "Dec scale"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"9986950\" y=\"4204722\" /><ns0:ext cx=\"1372425\" cy=\"622300\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" anchor=\"t\" lIns=\"180000\" tIns=\"180000\" rIns=\"180000\" bIns=\"180000\"><ns0:normAutofit /></ns0:bodyPr>",
+      "font_sizes": [
+        "1400"
+      ]
+    },
+    {
+      "id": "2",
+      "text": [
+        "FY26's 17% EBIT margin supports a staged FY27 pilot"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"680225\" y=\"466344\" /><ns0:ext cx=\"10803852\" cy=\"1710354\" /></ns0:xfrm>",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" bIns=\"0\" anchor=\"ctr\" anchorCtr=\"0\"><ns0:normAutofit /></ns0:bodyPr>",
+      "font_sizes": [
+        null
+      ]
+    },
+    {
+      "id": "219",
+      "text": [
+        "Hold the December release until North passes its QA gates."
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"680225\" y=\"5336947\" /><ns0:ext cx=\"10831550\" cy=\"289560\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" anchor=\"t\" lIns=\"190500\" tIns=\"25400\" rIns=\"0\" bIns=\"25400\" />",
+      "font_sizes": [
+        "1400"
+      ]
+    },
+    {
+      "id": "220",
+      "text": [
+        "Source: Illustrative management accounts, FY26"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"680225\" y=\"6108091\" /><ns0:ext cx=\"10831550\" cy=\"200253\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" anchor=\"t\" lIns=\"91440\" tIns=\"0\" rIns=\"0\" bIns=\"0\" />",
+      "font_sizes": [
+        "900"
+      ]
+    },
+    {
+      "id": "221",
+      "text": [
+        "Illustrative case \u2014 3 October 2026"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"838200\" y=\"6356350\" /><ns0:ext cx=\"7315200\" cy=\"365125\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" anchor=\"ctr\" lIns=\"91440\" tIns=\"0\" rIns=\"91440\" bIns=\"0\" />",
+      "font_sizes": [
+        "1050"
+      ]
+    },
+    {
+      "id": "222",
+      "text": [
+        "\u2039#\u203a"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"8610600\" y=\"6356350\" /><ns0:ext cx=\"2743200\" cy=\"365125\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"none\" anchor=\"ctr\" lIns=\"91440\" tIns=\"0\" rIns=\"91440\" bIns=\"0\" />",
+      "font_sizes": [
+        "1050"
+      ]
+    }
+  ],
+  "p-style": [
+    {
+      "id": "202",
+      "text": [
+        "FY26 quarterly revenue ($m)"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"448466\" y=\"1862835\" /><ns0:ext cx=\"6124101\" cy=\"254000\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" anchor=\"b\" lIns=\"180000\" tIns=\"0\" rIns=\"180000\" bIns=\"0\"><ns0:normAutofit /></ns0:bodyPr>",
+      "font_sizes": [
+        "1400"
+      ]
+    },
+    {
+      "id": "206",
+      "text": [
+        "17%",
+        "FY26 EBIT margin"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"6826567\" y=\"1913635\" /><ns0:ext cx=\"4890555\" cy=\"1156521\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" anchor=\"ctr\" lIns=\"180000\" tIns=\"180000\" rIns=\"180000\" bIns=\"180000\"><ns0:normAutofit /></ns0:bodyPr>",
+      "font_sizes": [
+        "3600",
+        "1400"
+      ]
+    },
+    {
+      "id": "207",
+      "text": [
+        "FY27 pilot, Oct\u2013Dec"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"6826567\" y=\"3273356\" /><ns0:ext cx=\"4890555\" cy=\"254000\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" anchor=\"b\" lIns=\"180000\" tIns=\"0\" rIns=\"180000\" bIns=\"0\"><ns0:normAutofit /></ns0:bodyPr>",
+      "font_sizes": [
+        "1400"
+      ]
+    },
+    {
+      "id": "212",
+      "text": [
+        "Oct pilot"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"6877367\" y=\"4159797\" /><ns0:ext cx=\"1460852\" cy=\"622300\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" anchor=\"t\" lIns=\"180000\" tIns=\"180000\" rIns=\"180000\" bIns=\"180000\"><ns0:normAutofit /></ns0:bodyPr>",
+      "font_sizes": [
+        "1400"
+      ]
+    },
+    {
+      "id": "213",
+      "text": [
+        "Nov audit"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"8541419\" y=\"4159797\" /><ns0:ext cx=\"1460852\" cy=\"622300\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" anchor=\"t\" lIns=\"180000\" tIns=\"180000\" rIns=\"180000\" bIns=\"180000\"><ns0:normAutofit /></ns0:bodyPr>",
+      "font_sizes": [
+        "1400"
+      ]
+    },
+    {
+      "id": "214",
+      "text": [
+        "Dec scale"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"10205471\" y=\"4159797\" /><ns0:ext cx=\"1460851\" cy=\"622300\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" anchor=\"t\" lIns=\"180000\" tIns=\"180000\" rIns=\"180000\" bIns=\"180000\"><ns0:normAutofit /></ns0:bodyPr>",
+      "font_sizes": [
+        "1400"
+      ]
+    },
+    {
+      "id": "2",
+      "text": [
+        "FY26's 17% EBIT margin supports a staged FY27 pilot"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"397666\" y=\"402336\" /><ns0:ext cx=\"11421056\" cy=\"1295399\" /></ns0:xfrm>",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" lIns=\"0\" rIns=\"0\" tIns=\"0\" bIns=\"0\" anchor=\"t\" anchorCtr=\"0\" rtlCol=\"0\" vert=\"horz\"><ns0:normAutofit /></ns0:bodyPr>",
+      "font_sizes": [
+        null
+      ]
+    },
+    {
+      "id": "219",
+      "text": [
+        "Hold the December release until North passes its QA gates."
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"397666\" y=\"5478038\" /><ns0:ext cx=\"11421056\" cy=\"289560\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" anchor=\"t\" lIns=\"190500\" tIns=\"25400\" rIns=\"0\" bIns=\"25400\" />",
+      "font_sizes": [
+        "1400"
+      ]
+    },
+    {
+      "id": "220",
+      "text": [
+        "Source: Illustrative management accounts, FY26"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"397666\" y=\"6249182\" /><ns0:ext cx=\"11421056\" cy=\"200253\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" anchor=\"t\" lIns=\"91440\" tIns=\"0\" rIns=\"0\" bIns=\"0\" />",
+      "font_sizes": [
+        "900"
+      ]
+    },
+    {
+      "id": "221",
+      "text": [
+        "Illustrative case \u2014 3 October 2026"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"5265850\" y=\"6501384\" /><ns0:ext cx=\"2743200\" cy=\"161583\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"square\" anchor=\"ctr\" lIns=\"91440\" tIns=\"0\" rIns=\"91440\" bIns=\"0\" />",
+      "font_sizes": [
+        "1050"
+      ]
+    },
+    {
+      "id": "222",
+      "text": [
+        "\u2039#\u203a"
+      ],
+      "geometry": "<ns0:xfrm xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:off x=\"11344827\" y=\"6501384\" /><ns0:ext cx=\"457200\" cy=\"161583\" /></ns0:xfrm>\n      ",
+      "bodyPr": "<ns0:bodyPr xmlns:ns0=\"http://schemas.openxmlformats.org/drawingml/2006/main\" wrap=\"none\" anchor=\"ctr\" lIns=\"91440\" tIns=\"0\" rIns=\"91440\" bIns=\"0\" />",
+      "font_sizes": [
+        "1050"
+      ]
+    }
+  ]
+}

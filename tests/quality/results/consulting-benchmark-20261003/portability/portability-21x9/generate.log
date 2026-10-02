@@ -1,0 +1,104 @@
+{
+  "ok": true,
+  "output_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/portability/portability-21x9/deck.pptx",
+  "deterministic_ready": true,
+  "publishable": false,
+  "manual_review_required": true,
+  "blocking_reasons": [
+    "current artifact lacks complete all-slide vision inspection and an explicit approved verdict; render_deck_thumbnails + submit_visual_review supply it"
+  ],
+  "template": "portability-21x9",
+  "slide_count": 6,
+  "content_hash": "64f77599d7f8ec6e9fd1a8aaec900d79cb9b3cfceb104cacabcd404761584e87",
+  "revision": "8c9cb7936d4cb7e708c68e099671faa92aae0af812e6942a6201eeb0f91c737d",
+  "manifest_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/portability/portability-21x9/deck.pptx.authoring.json",
+  "duration_ms": 282,
+  "quality": {
+    "score": 100,
+    "basis": "input",
+    "slide_scores": [
+      {
+        "slide_number": 1,
+        "score": 100
+      },
+      {
+        "slide_number": 2,
+        "score": 100
+      },
+      {
+        "slide_number": 3,
+        "score": 100
+      },
+      {
+        "slide_number": 4,
+        "score": 100
+      },
+      {
+        "slide_number": 5,
+        "score": 100
+      },
+      {
+        "slide_number": 6,
+        "score": 100
+      }
+    ],
+    "scope": "input_heuristic",
+    "evidence": {
+      "artifact_sha256": "64f77599d7f8ec6e9fd1a8aaec900d79cb9b3cfceb104cacabcd404761584e87",
+      "schema_valid": true,
+      "generated": true,
+      "fit_checked": true,
+      "structural_valid": true,
+      "pixels_rendered": false,
+      "visually_inspected": false,
+      "reviewed_slide_ids": [],
+      "total_slides": 6,
+      "approved": false,
+      "needs_review": true,
+      "reasons": [
+        "current artifact was not pixel-rendered",
+        "no explicit visual approval verdict for the current artifact"
+      ]
+    },
+    "structural_score": 100,
+    "quality_gate": {
+      "passed": true,
+      "reasons": [],
+      "criteria": {
+        "min_score": 80,
+        "max_p0_findings": 0,
+        "max_p1_findings": 0,
+        "require_takeaway_on_charts": true,
+        "max_topic_title_pct": 25,
+        "require_storyline": true,
+        "allow_accent_overload": false,
+        "max_problem_slides_pct": 40,
+        "min_composition_score": 65
+      }
+    }
+  }
+}
+2026/10/03 00:46:49 INFO pattern expanded pattern=exec-summary version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=chart-insights-split version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=table-highlight version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=next-steps version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=exec-summary version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=chart-insights-split version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=table-highlight version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=next-steps version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=stat-hero version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=timeline-horizontal version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=exec-summary version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=chart-insights-split version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=stat-hero version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=timeline-horizontal version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=table-highlight version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=next-steps version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=exec-summary version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=chart-insights-split version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=table-highlight version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=next-steps version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=exec-summary version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=chart-insights-split version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=table-highlight version=1
+2026/10/03 00:46:49 INFO pattern expanded pattern=next-steps version=1

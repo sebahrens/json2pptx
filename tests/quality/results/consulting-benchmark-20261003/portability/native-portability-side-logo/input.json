@@ -1,0 +1,29 @@
+{
+  "template": "portability-side-logo",
+  "output_filename": "deck.pptx",
+  "source": "Illustrative operations planning case; all figures synthetic",
+  "slides": [
+    {
+      "layout_id": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "The pilot closes a 20k-order capacity gap"
+        },
+        {
+          "placeholder_id": "body",
+          "type": "bullets",
+          "bullets_value": [
+            "Q4 demand is forecast at 120 thousand orders",
+            "The current network handles 100 thousand orders",
+            "Pilot capacity rises to 125 thousand orders per quarter",
+            "Scale only after 98% on-time delivery for four weeks"
+          ]
+        }
+      ],
+      "takeaway": "Invest $0.4m in the pilot before releasing the remaining $0.8m.",
+      "source": "Illustrative operations planning case; all figures synthetic"
+    }
+  ]
+}

@@ -1,0 +1,980 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-03",
+  "head_at_research_start": "85b482d3",
+  "parent_task": "go-slide-creator-kes55",
+  "scope": "Primary-source visual benchmark, not production defect audit. Authoring and rendering remain through json2pptx. No consultant artwork or substantive source text copied into generated decks.",
+  "copyright_handling": "Source PDFs and page images are private gitignored research evidence; do not commit or distribute as project fixtures. Commit only original illustrative fixture data/rubric if parent chooses.",
+  "source_count": 4,
+  "sources": [
+    {
+      "id": "bcg-luxury-2025",
+      "title": "True-Luxury Global Consumer Insights, 11th Edition",
+      "author": "BCG and Altagamma",
+      "url": "https://web-assets.bcg.com/51/92/68b6af8346629c05e586a734d857/bcg-altagamma-true-luxury-global-consumer-insights-report-2025-vpress-final.pdf",
+      "date": "2025-07-08",
+      "date_evidence_url": "https://www.bcg.com/publications/2025/the-way-forward-for-luxury-starts-at-the-core",
+      "data_as_of": "June 2025",
+      "file": "bcg-2025-luxury-consumer.pdf",
+      "format": "landscape16:9;960x540pt;25pages;PowerPoint-created press/research presentation",
+      "classification": "Presentation artifact with mixed live and read-ahead density; event/publication provenance does not prove every page was spoken live.",
+      "pages": [
+        {
+          "pdf_page_1_based": 3,
+          "printed_page": 2,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bcg-pdfpage03.png",
+          "role": "Fact headline and time evolution",
+          "density": "present",
+          "observation": "One claim leads a time-aligned trend with era shading; signed values and dates appear beside marks. Footnotes are pale and small.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 4,
+          "printed_page": 3,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bcg-pdfpage04.png",
+          "role": "Three parallel metric changes",
+          "density": "present",
+          "observation": "Repeated numbered groups pair dates, values and percentage-point changes. Newspaper images are supporting context; illustrative benchmarks must use original paraphrased evidence.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 7,
+          "printed_page": 6,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bcg-pdfpage07.png",
+          "role": "Framework plus table and implications",
+          "density": "read-ahead",
+          "observation": "Segment geometry, multi-year table and interpretation share row relationships. Dense labels compete for attention; treat this as read-ahead, not live density guidance.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 8,
+          "printed_page": 7,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bcg-pdfpage08.png",
+          "role": "Small multiples with evidence",
+          "density": "present-with-notes",
+          "observation": "Two equal trend panels share year positions and a minus60 to60 percent domain; each has nearby correlation and interpretation. Matching measure colors carry between panels.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 21,
+          "printed_page": 20,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bcg-pdfpage21.png",
+          "role": "Prioritization and ranked interpretation",
+          "density": "read-ahead",
+          "observation": "Ordinal impact/frequency axes position issues; matching numbers link the diagram to a ranked sidebar. Several labels crowd the plotted region.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 22,
+          "printed_page": 21,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bcg-pdfpage22.png",
+          "role": "Qualitative plus quantitative evidence",
+          "density": "read-ahead",
+          "observation": "Aligned rows pair interview evidence with percentages and implications. This is dense; a live benchmark should use one or two rows.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 23,
+          "printed_page": 22,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bcg-pdfpage23.png",
+          "role": "Relationship diagram plus actions",
+          "density": "present",
+          "observation": "A central stakeholder relates to four numbered action groups. Connectors explain association; they do not represent time or measured causal effects.",
+          "visually_inspected": true
+        }
+      ],
+      "local_pdf": ".claude/review-evidence/2026-10-03-consulting/research/bcg-2025-luxury-consumer.pdf",
+      "sha256": "f3e9ac314727b9e7a0056b129ef43019f7165be4e2301ea54ac810bbadc9a94b",
+      "download_complete": true,
+      "source_derived_observation_words": 151
+    },
+    {
+      "id": "bain-pe-2025",
+      "title": "Global Private Equity Report2025",
+      "author": "Bain & Company",
+      "url": "https://www.bain.com.cn/pdfs/202503200139236333.pdf",
+      "date": "2025-03-03",
+      "date_evidence_url": "https://www.bain.com/insights/outlook-is-a-recovery-starting-to-take-shape-global-private-equity-report-2025/",
+      "file": "bain-2025-private-equity.pdf",
+      "format": "portrait US Letter;612x792pt;68pages;InDesign-created",
+      "classification": "Read-ahead research report. Compare exhibit relationships, labels and notes; do not transplant paragraphs or page density into live slides.",
+      "pages": [
+        {
+          "pdf_page_1_based": 10,
+          "printed_page": 8,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bain-pdfpage10.png",
+          "role": "Repeated comparisons with deltas",
+          "density": "read-ahead",
+          "observation": "Three stacked panels retain quartile order and two-period color meaning; difference brackets state units. Measures differ, so identical vertical domains would be inappropriate.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 11,
+          "printed_page": 9,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bain-pdfpage11.png",
+          "role": "Main chart plus supporting table",
+          "density": "read-ahead",
+          "observation": "Stacked regional value bars, a separately labeled count line, aligned deal-size row and change table form one exhibit. Notes qualify exclusions and measurement basis.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 17,
+          "printed_page": 15,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bain-pdfpage17.png",
+          "role": "Forecast distinction",
+          "density": "read-ahead",
+          "observation": "Two related trend charts mark forecast intervals with background shading and a label. Sources and scenario vintage appear below; axes differ because measures differ.",
+          "visually_inspected": true
+        }
+      ],
+      "local_pdf": ".claude/review-evidence/2026-10-03-consulting/research/bain-2025-private-equity.pdf",
+      "sha256": "f01b40eccdcb876952bb53233d7754f970de2947c7051de19ffa5e837c38e624",
+      "download_complete": true,
+      "source_derived_observation_words": 71
+    },
+    {
+      "id": "pwc-ceo-2026",
+      "title": "29th Global CEO Survey: Leading through uncertainty in the age of AI",
+      "author": "PwC",
+      "url": "https://www.pwc.com/gx/en/ceo-survey/2026/pwc-ceo-survey-2026.pdf",
+      "date": "2026-01-19",
+      "date_evidence_url": "https://www.pwc.com/gx/en/news-room/press-releases/2026/pwc-2026-global-ceo-survey.html",
+      "pdf_revision_metadata_date": "2026-01-28",
+      "file": "pwc-2026-ceo-survey.pdf",
+      "format": "portrait A4;595.276x841.89pt;25pages;InDesign-created",
+      "classification": "Read-ahead report. Standalone exhibits can inspire slides; surrounding prose and research questions require shortening or notes.",
+      "pages": [
+        {
+          "pdf_page_1_based": 6,
+          "printed_page": 6,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/pwc-pdfpage06.png",
+          "role": "Two-dimensional outcomes with callouts",
+          "density": "read-ahead",
+          "observation": "A three-by-three outcome grid has direction labels and highlighted subsets connected to interpretations. Callouts identify specific cells rather than floating as decorative cards.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 8,
+          "printed_page": 8,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/pwc-pdfpage08.png",
+          "role": "Two related but distinct outcomes",
+          "density": "read-ahead",
+          "observation": "Matched categories and color progression link two outcomes, each with its own explicitly labeled axis. Model adjustments and sample sizes constrain the interpretation.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 22,
+          "printed_page": 22,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/pwc-pdfpage22.png",
+          "role": "Simple comparison with qualification",
+          "density": "read-ahead",
+          "observation": "Two compact paired comparisons use identical category meaning. Research notes define groups and adjustments; whitespace separates exhibit from subsequent narrative.",
+          "visually_inspected": true
+        }
+      ],
+      "local_pdf": ".claude/review-evidence/2026-10-03-consulting/research/pwc-2026-ceo-survey.pdf",
+      "sha256": "07408ddfedf9fa16c2bf80a489fd1bc53e9f17f5ca085769d8ab3d3769e25556",
+      "download_complete": true,
+      "source_derived_observation_words": 66
+    },
+    {
+      "id": "bcg-dallas-2016",
+      "title": "Loose dogs in Dallas: Strategic Recommendations to Improve Public Safety and Animal Welfare",
+      "author": "Boston Consulting Group; published by City of Dallas",
+      "url": "https://dallascityhall.com/government/Council%20Meeting%20Documents/loose-dogs-in-dallas-strategic-recommendations-to-improve-public-safety-and-animal-welfare_combined_083016.pdf",
+      "date": "2016-08-30",
+      "date_evidence_url": "https://dallascityhall.com/government/Pages/Council-Briefing-2015-2016.aspx",
+      "date_proof": "Physical page2 identifies presentation of findings to City Council and August30,2016. Page1 city memorandum is August26.",
+      "file": "bcg-2016-dallas-dogs.pdf",
+      "format": "406-page mixed-format packet;physical2-58 landscape council deck780.12x540pt;physical59onward report and working materials",
+      "classification": "Actual client council presentation with extensive read-ahead appendix; selected slides are genuinely slide artifacts, but text density remains a limitation.",
+      "pages": [
+        {
+          "pdf_page_1_based": 9,
+          "printed_page": 7,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/dallas-pdfpage09.png",
+          "role": "Executive findings",
+          "density": "read-ahead",
+          "observation": "Theme groups highlight selected facts inline, but thirteen bullets create a dense read-ahead page. Use grouped conclusions; do not copy its live density.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 15,
+          "printed_page": 13,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/dallas-pdfpage15.png",
+          "role": "Benchmark comparison",
+          "density": "present-with-notes",
+          "observation": "Two distinct measures use separate unit labels, focal-city highlighting and benchmark reference lines. An interpretation box explains plausible drivers; long rotated labels reduce live readability.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 28,
+          "printed_page": 26,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/dallas-pdfpage28.png",
+          "role": "Priority and sequencing",
+          "density": "read-ahead",
+          "observation": "Impact and effort positions create five action clusters with numbered sequencing. Unequal blocks express categories; long initiative lists make it read-ahead.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 34,
+          "printed_page": 32,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/dallas-pdfpage34.png",
+          "role": "Actionable next steps",
+          "density": "present-with-notes",
+          "observation": "Three connected stages associate action groups with ownership, trial execution and measurement. Direction and column alignment establish order.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 56,
+          "printed_page": 54,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/dallas-pdfpage56.png",
+          "role": "Options evidence table",
+          "density": "read-ahead",
+          "observation": "Rows retain option identities across three criterion columns; ticks and crosses pair with explanations. This is qualitative evidence, not an unexplained numerical score.",
+          "visually_inspected": true
+        }
+      ],
+      "local_pdf": ".claude/review-evidence/2026-10-03-consulting/research/bcg-2016-dallas-dogs.pdf",
+      "sha256": "8890588fa59591738e94ddd463f5adfe1baf3ae4576bf172017d9c91cada09c2",
+      "download_complete": true,
+      "source_derived_observation_words": 110
+    }
+  ],
+  "guidance_sources": [
+    {
+      "url": "https://www.craftscicom.org/ae_tutorial.html",
+      "author": "Michael Alley, Pennsylvania State University",
+      "derived_principle": "Build presentation messages as sentence headlines and support them with visual evidence; secondary detail can go in notes.",
+      "scope": "Technical presentation guidance supporting headline/evidence principle, not a universal ban on all bullets."
+    },
+    {
+      "url": "https://data.europa.eu/apps/data-visualisation-guide/facets",
+      "author": "EU data.europa.eu Data Visualisation Guide",
+      "derived_principle": "Faceted comparisons of the same variables need shared scales to aid value comparison.",
+      "scope": "Does not require common domains across different metrics."
+    }
+  ],
+  "audience_modes": {
+    "present": "Primary evidence readable as a projected slide at consistent viewport; notes can carry secondary methodology. Shorter content and fewer evidence groups are appropriate.",
+    "read-ahead": "The artifact is designed for individual reading; sources, definitions and dense supporting tables can remain, with intentional hierarchy and legibility. Portrait reports are not literal live-layout targets."
+  },
+  "observable_rubric": [
+    {
+      "id": "R1",
+      "name": "Evidence supports the headline",
+      "check": "Recalculate any stated totals, shares, deltas and relationships; ensure the displayed facts support the claim. Titles can be concise statements; title/section pages are exempt.",
+      "critical_failure": "Contradictory or unsupported quantitative claim."
+    },
+    {
+      "id": "R2",
+      "name": "Relationships and comparisons",
+      "check": "Choose encoding that expresses the task; match domains and plot geometry when comparing the same measure across panels. Distinct outcomes can use separate axes when units and measure names are clear.",
+      "critical_failure": "Misleading magnitude, stacking, baseline or unit interpretation."
+    },
+    {
+      "id": "R3",
+      "name": "Reading order and hierarchy",
+      "check": "Identify headline, dominant evidence, interpretation and action at full-slide view. Titles must not collide with branded chrome. Similar regions align, while the focal exhibit gets the most area.",
+      "critical_failure": "Essential evidence obscured or out of frame."
+    },
+    {
+      "id": "R4",
+      "name": "Labels and explanatory links",
+      "check": "Keep categories, series identities, units, bases and callouts near their marks. A label must remain visibly tied to the correct object after layout/crop changes.",
+      "critical_failure": "Labels point to wrong values or objects."
+    },
+    {
+      "id": "R5",
+      "name": "Legibility and preservation",
+      "check": "Render every final page. At a consistent presentation viewport, primary labels and evidence must be readable without zoom. Inspect note/table detail at read-ahead scale; honor repository template and typography roles. Prefer rearrangement or explicit continuation before losing content.",
+      "critical_failure": "Missing content, accidental clipping, overlap or unreadable essential value."
+    },
+    {
+      "id": "R6",
+      "name": "Notes and evidence status",
+      "check": "Show measurement basis, unit, period and source or synthetic label; forecast/planning status must be distinguishable from actual observations. Long methodological detail belongs in notes/appendix without dropping its essential qualification.",
+      "critical_failure": "Forecast or illustrative content presented as measured actuals."
+    },
+    {
+      "id": "R7",
+      "name": "Template portability",
+      "check": "Review all10 local templates including gitignored p-style. Respect theme fonts, colors, reserved chrome, contrast and content zones; retain semantic equality while changing layout.",
+      "critical_failure": "Template-specific clipping, wrong theme, invisible essential evidence or content loss."
+    },
+    {
+      "id": "R8",
+      "name": "Decision and narrative coherence",
+      "check": "For decision decks, distinguish diagnosis, options, recommendation and execution. Owners, dates and gates must agree across slides; deck rhythm should reflect different evidence structures.",
+      "critical_failure": "Conflicting decisions, owners, dates or gate conditions."
+    }
+  ],
+  "scoring": "Record each applicable rubric item as pass, needs_improvement or fail, with screenshot/shape evidence. No aggregate percentage substitutes for critical failures. Record subjective aesthetic preferences separately from defects.",
+  "representative_exhibit_tasks": [
+    {
+      "id": "E01",
+      "name": "Executive decision",
+      "audience_mode": "present",
+      "headline": "Approve a $1.2m pilot before committing to network rollout",
+      "illustrative_data": {
+        "decision": "Approve12-week pilot",
+        "funding_usd_m": 1.2,
+        "potential_annual_savings_usd_m": 2.4,
+        "conditions": [
+          "Verify service outcomes",
+          "Audit financial benefits",
+          "Approve only after gate review"
+        ],
+        "owner": "COO",
+        "decision_date": "2026-10-16"
+      },
+      "reference_pages": [
+        "bcg-dallas-2016:9",
+        "bcg-dallas-2016:34"
+      ],
+      "observable_acceptance": [
+        "Decision, amount, owner and date visible.",
+        "Potential savings clearly conditional.",
+        "Three evidence/condition groups maintain reading order."
+      ],
+      "current_session_coverage": "Covered by quantitative slide2/12, strategy slide2/12 and portability controls; data here optional alternative."
+    },
+    {
+      "id": "E02",
+      "name": "Ranked bars with evidence sidebar",
+      "audience_mode": "present",
+      "headline": "Two causes account for 57% of rework cases",
+      "illustrative_data": {
+        "unit": "percent of500 illustrative reviewed cases",
+        "categories": [
+          "Missing ownership",
+          "Incomplete case data",
+          "Approval delays",
+          "Duplicate entry",
+          "Other"
+        ],
+        "values": [
+          32,
+          25,
+          18,
+          15,
+          10
+        ],
+        "focus_categories": [
+          "Missing ownership",
+          "Incomplete case data"
+        ],
+        "sidebar": "Name an owner and require complete case data."
+      },
+      "reference_pages": [
+        "bcg-dallas-2016:15"
+      ],
+      "observable_acceptance": [
+        "Bar order meaningful; long labels remain readable.",
+        "Highlight the two causes supporting57%.",
+        "Sample basis and unit visible."
+      ],
+      "current_session_coverage": "Ranked/signed bar insight covered by quantitative slide4; benchmark reference-line treatment is not independently asserted."
+    },
+    {
+      "id": "E03",
+      "name": "Same-metric small multiples",
+      "audience_mode": "present",
+      "headline": "Field cases require ten times the handling time of digital cases",
+      "illustrative_data": {
+        "unit": "hours per completed case",
+        "categories": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4"
+        ],
+        "series": [
+          {
+            "name": "Digital cases",
+            "values": [
+              10,
+              20,
+              15,
+              25
+            ]
+          },
+          {
+            "name": "Field cases",
+            "values": [
+              100,
+              200,
+              150,
+              250
+            ]
+          }
+        ],
+        "required_shared_domain": [
+          0,
+          300
+        ]
+      },
+      "reference_pages": [
+        "bcg-luxury-2025:8"
+      ],
+      "observable_acceptance": [
+        "Same value maps to same vertical position in both panels.",
+        "Matched plot bounds, category positions and scales.",
+        "Tenfold magnitude difference remains visible; panel titles and units readable."
+      ],
+      "current_session_coverage": "Shared-domain renderer exercised by quantitative slide6; this stronger10x stress data is optional additional probe."
+    },
+    {
+      "id": "E04",
+      "name": "Stacked chart with aligned supporting table",
+      "audience_mode": "present",
+      "headline": "Digital intake rose from 40% to 54% while total demand stayed flat",
+      "illustrative_data": {
+        "unit": "thousand cases",
+        "periods": [
+          "Q1",
+          "Q2",
+          "Q3"
+        ],
+        "categories": [
+          "Digital",
+          "Phone",
+          "Branch",
+          "Other"
+        ],
+        "values_by_period": [
+          [
+            20,
+            15,
+            10,
+            5
+          ],
+          [
+            24,
+            12,
+            9,
+            5
+          ],
+          [
+            27,
+            11,
+            8,
+            4
+          ]
+        ],
+        "table_rows": [
+          [
+            "Total cases",
+            50,
+            50,
+            50
+          ],
+          [
+            "Digital share(%)",
+            40,
+            48,
+            54
+          ]
+        ]
+      },
+      "reference_pages": [
+        "bain-pe-2025:11",
+        "bcg-luxury-2025:7"
+      ],
+      "observable_acceptance": [
+        "Table periods align with chart periods.",
+        "Stack totals and share arithmetic agree.",
+        "Channel colors and names stable; notes fit without truncating table."
+      ],
+      "current_session_coverage": "Added authorized three-template probe; table retained after layout repair, stacked plot still compressed with overlapping Y labels and readiness blocked. See supplemental report."
+    },
+    {
+      "id": "E05",
+      "name": "Heterogeneous evidence regions",
+      "audience_mode": "present",
+      "headline": "Average case time fell 25% but rollout depends on two control gates",
+      "illustrative_data": {
+        "main_trend_hours": [
+          72,
+          65,
+          60,
+          54
+        ],
+        "categories": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4"
+        ],
+        "stat": "25% reduction from72to54hours",
+        "timeline": [
+          "Oct scope",
+          "Nov audit",
+          "Dec scale"
+        ],
+        "risks": [
+          "Incomplete ownership",
+          "Unverified closure evidence"
+        ]
+      },
+      "reference_pages": [
+        "bcg-luxury-2025:8",
+        "bcg-luxury-2025:23"
+      ],
+      "observable_acceptance": [
+        "Main trend dominates; KPI and timeline stay readable.",
+        "Nested groups maintain common frame/gutters.",
+        "Risks and time basis remain explicit."
+      ],
+      "current_session_coverage": "Covered by quantitative slide8 and strategy slide4; chart+stat+timeline/risks are current semantic regions."
+    },
+    {
+      "id": "E06",
+      "name": "Actual and forecast",
+      "audience_mode": "present",
+      "headline": "The plan assumes cost growth slows after 2025",
+      "illustrative_data": {
+        "unit": "USD million",
+        "years": [
+          "2023",
+          "2024",
+          "2025",
+          "2026",
+          "2027"
+        ],
+        "values": [
+          40,
+          42,
+          44,
+          45,
+          46
+        ],
+        "actual_through": "2025",
+        "forecast_from": "2026",
+        "assumption": "Illustrative planning scenario; no volume shock",
+        "vintage": "October2026"
+      },
+      "reference_pages": [
+        "bain-pe-2025:17"
+      ],
+      "observable_acceptance": [
+        "Actual/forecast boundary visible in plot or immediate labels.",
+        "Future values clearly scenario assumptions.",
+        "Source/vintage and units retained."
+      ],
+      "current_session_coverage": "Parent additionally rendered a three-slide forecast control in p-style and midnight-blue: Q1/Q2/Q3 actual and Q4 forecast labels plus an explicit insight distinguishing a forecast from the order book. This covers truthful marking by labels. Segment dashing/shading was not observed and is not required if labels communicate status clearly."
+    },
+    {
+      "id": "E07",
+      "name": "Value bridge",
+      "audience_mode": "present",
+      "headline": "Process and quality gains reduce annual cost by $5m net",
+      "illustrative_data": {
+        "unit": "USD million",
+        "start": 40,
+        "changes": [
+          {
+            "label": "Process gains",
+            "value": -4
+          },
+          {
+            "label": "Quality gains",
+            "value": -2
+          },
+          {
+            "label": "Platform cost",
+            "value": 1
+          }
+        ],
+        "end": 35
+      },
+      "reference_pages": [],
+      "observable_acceptance": [
+        "Start+changes=end.",
+        "Signed changes and total bars have correct geometry.",
+        "Change labels readable; units and baseline period present."
+      ],
+      "current_session_coverage": "Covered by quantitative slide3. Researcher-selected task extension; no copied waterfall from chosen source pages."
+    },
+    {
+      "id": "E08",
+      "name": "Prioritization framework plus action sidebar",
+      "audience_mode": "present",
+      "headline": "Ownership and routing are the first priorities because they combine impact with low effort",
+      "illustrative_data": {
+        "axes": {
+          "x": "Implementation effort(low to high)",
+          "y": "Expected impact(low to high)"
+        },
+        "scale": "ordinal1to10;illustrative assessment",
+        "initiatives": [
+          {
+            "name": "Ownership",
+            "effort": 2,
+            "impact": 9
+          },
+          {
+            "name": "Routing",
+            "effort": 3,
+            "impact": 7
+          },
+          {
+            "name": "Data platform",
+            "effort": 8,
+            "impact": 9
+          },
+          {
+            "name": "Cosmetic dashboard",
+            "effort": 2,
+            "impact": 2
+          }
+        ],
+        "recommended_order": [
+          "Ownership",
+          "Routing",
+          "Data platform"
+        ]
+      },
+      "reference_pages": [
+        "bcg-dallas-2016:28",
+        "bcg-luxury-2025:21"
+      ],
+      "observable_acceptance": [
+        "Axis direction and qualitative basis clear.",
+        "Labels remain attached to plotted initiatives without collision.",
+        "Ranked sidebar matches plotted identities."
+      ],
+      "current_session_coverage": "Current heatmap and option matrix covered; neither tests impact\u00d7effort positioning with a linked ranked sidebar. Test opportunity only."
+    },
+    {
+      "id": "E09",
+      "name": "Operating model relationship",
+      "audience_mode": "present",
+      "headline": "One accountable case owner connects finance, markets and data teams",
+      "illustrative_data": {
+        "center": "Case owner",
+        "relationships": [
+          {
+            "to": "Finance",
+            "label": "Validate closure evidence"
+          },
+          {
+            "to": "Market lead",
+            "label": "Resolve customer exception"
+          },
+          {
+            "to": "Data team",
+            "label": "Enforce complete records"
+          }
+        ]
+      },
+      "reference_pages": [
+        "bcg-luxury-2025:23"
+      ],
+      "observable_acceptance": [
+        "Connectors show associations and labels, not invented causality.",
+        "Center and peripheral roles readable.",
+        "No decorative boxes imply unsupported hierarchy."
+      ],
+      "current_session_coverage": "Strategy slide8 covers process sequence and slide5 roles; an association diagram is a distinct optional probe, not a confirmed capability gap."
+    },
+    {
+      "id": "E10",
+      "name": "Roadmap and responsibility",
+      "audience_mode": "present",
+      "headline": "Release funding at three gates after the pilot proves cash and service outcomes",
+      "illustrative_data": {
+        "phases": [
+          "Design(Oct\u2013Nov2026)",
+          "Pilot(Dec2026\u2013Jan2027)",
+          "Scale(Feb\u2013Mar2027)"
+        ],
+        "workstreams": [
+          {
+            "name": "Finance",
+            "owner": "Controller",
+            "deliverables": [
+              "Baseline",
+              "Audit benefits",
+              "Transfer controls"
+            ]
+          },
+          {
+            "name": "Markets",
+            "owner": "COO",
+            "deliverables": [
+              "Name owners",
+              "Verify service",
+              "Roll out by readiness"
+            ]
+          },
+          {
+            "name": "Data",
+            "owner": "Data lead",
+            "deliverables": [
+              "Agree taxonomy",
+              "Audit records",
+              "Scale integrations"
+            ]
+          }
+        ],
+        "milestones": [
+          "Scope approved",
+          "Results verified",
+          "Scale authorized"
+        ]
+      },
+      "reference_pages": [
+        "bcg-dallas-2016:34",
+        "bcg-dallas-2016:28"
+      ],
+      "observable_acceptance": [
+        "Chronology, owners and gate conditions explicit.",
+        "Workstream identities persist across phases.",
+        "No uncertain future milestone presented as achieved."
+      ],
+      "current_session_coverage": "Strategy slide10 already covers phased roadmap/gates. Multiworkstream variant is a synthetic extension; chosen source does not mandate Gantt form."
+    },
+    {
+      "id": "E11",
+      "name": "Option evidence table with notes",
+      "audience_mode": "present",
+      "headline": "The hybrid pilot balances speed with financial and customer control",
+      "illustrative_data": {
+        "headers": [
+          "Option",
+          "Time to test(weeks)",
+          "Funding(USDm)",
+          "Accountability",
+          "Key limitation"
+        ],
+        "rows": [
+          [
+            "Manual controls",
+            4,
+            0.3,
+            "Local owners",
+            "Benefits hard to scale"
+          ],
+          [
+            "Hybrid pilot",
+            12,
+            1.2,
+            "One owner per case",
+            "Requires data readiness"
+          ],
+          [
+            "Full replacement",
+            36,
+            4.5,
+            "Central platform",
+            "Higher delivery exposure"
+          ]
+        ],
+        "recommended": "Hybrid pilot",
+        "note": "Illustrative estimates; compare like scope; no probability implied."
+      },
+      "reference_pages": [
+        "bcg-dallas-2016:56"
+      ],
+      "observable_acceptance": [
+        "Row and column identities readable.",
+        "Units and estimate caveat retained.",
+        "Recommended option explained with evidence, not color alone."
+      ],
+      "current_session_coverage": "Strategy slide6/11 and quantitative slide11 cover options and evidence tables."
+    },
+    {
+      "id": "E12",
+      "name": "Qualitative evidence with metric and action",
+      "audience_mode": "present",
+      "headline": "Case ownership is a testable response to stalled approvals",
+      "illustrative_data": {
+        "quotation": "I lose time finding who can approve the exception.",
+        "attribution": "Illustrative respondent, service team;not a real interview",
+        "sample_metric": "42%of500illustrative reviewed cases lacked an owner",
+        "action": "Assign one owner daily; escalate after24hours"
+      },
+      "reference_pages": [
+        "bcg-luxury-2025:22"
+      ],
+      "observable_acceptance": [
+        "Attribution and synthetic status visible.",
+        "Metric basis preserved.",
+        "Quote, metric and action have aligned association; quote does not prove causality."
+      ],
+      "current_session_coverage": "Added authorized quote+stat+action probe; passes visually in p-style,midnight-blue,modern-template. Attribution and synthetic basis preserved."
+    }
+  ],
+  "template_inventory": [
+    {
+      "name": "abstract",
+      "path": "templates/abstract.pptx",
+      "sha256": "1ebebf80389f0586e919b7edcc36ec47a58cb4691f8c52923fe12cc9baa8c72e",
+      "slide_size_emu": {
+        "cx": "12192000",
+        "cy": "6858000"
+      },
+      "theme_title_font": "Tenorite",
+      "theme_body_font": "Tenorite",
+      "local_gitignored": false,
+      "required_in_benchmark": true
+    },
+    {
+      "name": "blue-corporate",
+      "path": "templates/blue-corporate.pptx",
+      "sha256": "abc8b0a2ee7d57768367c2096723872de2c264daee5578db09957011373179fe",
+      "slide_size_emu": {
+        "cx": "12192000",
+        "cy": "6858000"
+      },
+      "theme_title_font": "Aptos",
+      "theme_body_font": "Aptos Light",
+      "local_gitignored": false,
+      "required_in_benchmark": true
+    },
+    {
+      "name": "business-template",
+      "path": "templates/business-template.pptx",
+      "sha256": "3dd5ff25a5ef5a35c19e7d0d01f879a927c69fbf0e183515dc4c68e04c299021",
+      "slide_size_emu": {
+        "cx": "13439775",
+        "cy": "7559675"
+      },
+      "theme_title_font": "Calibri Light",
+      "theme_body_font": "Calibri",
+      "local_gitignored": false,
+      "required_in_benchmark": true
+    },
+    {
+      "name": "forest-green",
+      "path": "templates/forest-green.pptx",
+      "sha256": "ba5dccabce04d2eb36d0d7ae5ff38eeab5ff49ec1c6b5f861ccda3a51cd189c7",
+      "slide_size_emu": {
+        "cx": "12192000",
+        "cy": "6858000"
+      },
+      "theme_title_font": "Calibri",
+      "theme_body_font": "Calibri",
+      "local_gitignored": false,
+      "required_in_benchmark": true
+    },
+    {
+      "name": "midnight-blue",
+      "path": "templates/midnight-blue.pptx",
+      "sha256": "64bb8dd9297450f2ba21737168ded9fe4b88182439e2d21614e67eb586a4b689",
+      "slide_size_emu": {
+        "cx": "12192000",
+        "cy": "6858000"
+      },
+      "theme_title_font": "Calibri",
+      "theme_body_font": "Calibri",
+      "local_gitignored": false,
+      "required_in_benchmark": true
+    },
+    {
+      "name": "modern-template",
+      "path": "templates/modern-template.pptx",
+      "sha256": "e11cdf6195c9c88a92d59f7a28e20df5275581aff2902f8ef2763133eceae2fa",
+      "slide_size_emu": {
+        "cx": "12192000",
+        "cy": "6858000"
+      },
+      "theme_title_font": "Lora",
+      "theme_body_font": "Poppins Light",
+      "local_gitignored": false,
+      "required_in_benchmark": true
+    },
+    {
+      "name": "modern-yellow",
+      "path": "templates/modern-yellow.pptx",
+      "sha256": "e7ce02d595d2657623e2b231ff4fe14781b863df3b3fe88baab9f4e521a674dc",
+      "slide_size_emu": {
+        "cx": "12192000",
+        "cy": "6858000"
+      },
+      "theme_title_font": "Segoe UI Semibold",
+      "theme_body_font": "Segoe UI",
+      "local_gitignored": false,
+      "required_in_benchmark": true
+    },
+    {
+      "name": "modern",
+      "path": "templates/modern.pptx",
+      "sha256": "e05bbe5f98cd15ba9f3d49725e8113d9e9e1ed3585fa6806d850d9e1677242ae",
+      "slide_size_emu": {
+        "cx": "12192000",
+        "cy": "6858000"
+      },
+      "theme_title_font": "Calibri Light",
+      "theme_body_font": "Calibri",
+      "local_gitignored": false,
+      "required_in_benchmark": true
+    },
+    {
+      "name": "p-style",
+      "path": "templates/p-style.pptx",
+      "sha256": "87134dde6d741a594088314c84f22e1047e3dbcc79f6b68590685b673794444d",
+      "slide_size_emu": {
+        "cx": "12192000",
+        "cy": "6858000"
+      },
+      "theme_title_font": "Georgia",
+      "theme_body_font": "Arial",
+      "local_gitignored": true,
+      "required_in_benchmark": true
+    },
+    {
+      "name": "warm-coral",
+      "path": "templates/warm-coral.pptx",
+      "sha256": "f7a1c8b8f6c6c19546b2b1a6335267df5fc63692bb26bd9c31e497dbe24828c6",
+      "slide_size_emu": {
+        "cx": "12192000",
+        "cy": "6858000"
+      },
+      "theme_title_font": "Gill Sans",
+      "theme_body_font": "Calibri",
+      "local_gitignored": false,
+      "required_in_benchmark": true
+    }
+  ],
+  "p_style_explicit_analysis": {
+    "included": true,
+    "font_observation": "Current theme major Georgia, minor Arial; do not force other template fonts.",
+    "content_zone_reference": ".claude/review-evidence/2026-10-02-layout-composition/p-style-template-analysis.json",
+    "verification": "Current PPTX hash and slide size recorded above; parent runs full p-style quantitative, strategy and portability controls. Prior p-style zone inventory remains useful but generated slides must be reviewed afresh.",
+    "missing_layout_conclusion": "Public benchmarks emphasize relationships already largely covered by current regions, patterns and diagram engines. Public examples alone do not confirm a new p-style defect or justify new layout names."
+  },
+  "current_test_comparison": {
+    "repository_mechanical_tests": "tests/quality/quality_test.go discovers JSON fixtures and computes mechanical metrics; native and portability tests cover source preservation, continuations, typography, chrome and layout surfaces. They do not alone certify headline arithmetic, chart semantics or consultant-like clarity.",
+    "session_quantitative_spec": ".claude/review-evidence/2026-10-03-consulting/quantitative/deckspec-v1.json",
+    "session_strategy_spec": ".claude/review-evidence/2026-10-03-consulting/strategy/spec-r3.json",
+    "covered": "Executive decision, signed contribution bars, waterfall, table, precise rates, common-domain small multiples, heterogeneous regions, heatmap plus actions, options, process, image case, phases/gates and owner/date closure. Coverage here is task presence in specifications; parent separately validates final rendered results. Parent also verified actual/forecast labels in p-style and midnight-blue controls.",
+    "additional_observable_probes": [
+      "Impact/effort positioning with linked ranked actions"
+    ],
+    "optional_synthetic_extensions": [
+      "Stronger10x small-multiple stress data",
+      "Operating-model association diagram",
+      "Multiworkstream roadmap beyond existing phase sequence"
+    ],
+    "issue_policy": "A missing probe is a coverage gap, not automatically a product issue. File only a reproducible incorrect result or separately scoped justified feature after parent reconciliation.",
+    "forecast_control": "Parent rendered p-style and midnight-blue actual/forecast controls; interval status is marked by category labels and an explicit forecast qualification, not claimed segment styling.",
+    "supplemental_results": "Stacked mix+table and attributed quote+metric now exercised as two-slide controls in p-style,midnight-blue,modern-template. Quote exhibit passes. Stacked chart/table plot is compressed with overlapping Y labels; existing findings correctly block deterministic readiness. Parent reconciles oneP2composition allocation feature."
+  },
+  "latest_consultant_comparison": "Recent BCG2025 and PwC2026 exhibits use fact statements, repeated identities, coordinated comparison regions and explicit qualifications. Bain2025 adds rigorous supporting tables and forecast labels. These qualities are relationship/semantics requirements rather than demand for decorative consulting artwork. The actual Dallas client deck confirms decision and prioritization structures but also shows why published consultant density is not an unquestioned live-slide standard.",
+  "visual_inspection_protocol": [
+    "Render every final slide for each of10 local templates, including p-style.",
+    "Inspect at one consistent full-slide viewport for headline and primary evidence, then detail zoom for notes and fit.",
+    "Compare composition intent against the relevant source exhibit, preserving theme identity and original illustrative data.",
+    "Check every value/delta, scale, forecast marker, note, source and linked label before cosmetic scoring.",
+    "Use shape/frame analysis to substantiate suspected clipping or overflow; a screenshot alone can be ambiguous.",
+    "Retain before/after repro images and specification when filing an atomic defect; distinguish input repair from renderer failure."
+  ],
+  "excluded_source": {
+    "title": "McKinsey April2020 economic-impact briefing",
+    "url": "https://www.mckinsey.com/~/media/mckinsey/about%20us/covid%20response%20center/pdfs/responding%20to%20the%20economic%20impact.pdf",
+    "reason": "Browser text accessible, repeated local PDF fetch timeout. No final visual observation attributed to it; replaced with downloaded/inspected city-published BCG client deck."
+  },
+  "supplemental_probe_report": ".claude/review-evidence/2026-10-03-consulting/research/exhibit-probes/probe-findings.json"
+}

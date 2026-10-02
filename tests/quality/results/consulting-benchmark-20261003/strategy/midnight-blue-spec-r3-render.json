@@ -1,0 +1,474 @@
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"blocking_reasons\":[\"current artifact lacks complete all-slide vision inspection and an explicit approved verdict; render_deck_thumbnails \u2026\"],\"content_hash\":\"f1e0d0dcd51b652e99f0dac2e5fc16d4d05dcbedc9b769ee743a5a6db3f630a6\",\"deck_id\":\"deck_e3808d5e09684b75fd26fab6fe097f6c\",\"deterministic_ready\":true,\"diagnostics\":[{\"action\":\"review\",\"code\":\"fit_overflow\",\"message\":\"row content ~80pt exceeds max_height 79pt\",\"next_tool_call\":{\"args_template\":{\"code\":\"fit_overflow\"},\"tool\":\"describe_finding\"},\"severity\":\"info\"}],\"diagnostics_count\":3,\"next_tool_call\":{\"args_template\":{\"pptx_path\":\"/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/output/midnight-blue-spec-r3.pptx\"},\"tool\":\"render_deck_thumbnails\"},\"ok\":true,\"pptx_path\":\"/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/output/midnight-blue-spec-r3.pptx\",\"publishable\":false,\"success\":true}"
+      },
+      {
+        "type": "resource_link",
+        "uri": "json2pptx://deck/midnight-blue-spec-r3.pptx",
+        "name": "midnight-blue-spec-r3.pptx",
+        "description": "The generated presentation (midnight-blue-spec-r3.pptx). Read this resource for the file itself.",
+        "mimeType": "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+      }
+    ],
+    "structuredContent": {
+      "ok": true,
+      "success": true,
+      "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/output/midnight-blue-spec-r3.pptx",
+      "deterministic_ready": true,
+      "publishable": false,
+      "manual_review_required": true,
+      "blocking_reasons": [
+        "current artifact lacks complete all-slide vision inspection and an explicit approved verdict; render_deck_thumbnails + submit_visual_review supply it"
+      ],
+      "template": "midnight-blue",
+      "slide_count": 12,
+      "content_hash": "f1e0d0dcd51b652e99f0dac2e5fc16d4d05dcbedc9b769ee743a5a6db3f630a6",
+      "duration_ms": 304,
+      "quality_summary": {
+        "score": 99,
+        "basis": "input",
+        "slide_scores": [
+          {
+            "slide_number": 1,
+            "score": 100
+          },
+          {
+            "slide_number": 2,
+            "score": 100
+          },
+          {
+            "slide_number": 3,
+            "score": 100
+          },
+          {
+            "slide_number": 4,
+            "score": 95,
+            "issues": [
+              "fit_overflow"
+            ]
+          },
+          {
+            "slide_number": 5,
+            "score": 95,
+            "issues": [
+              "pattern_overcrowded"
+            ]
+          },
+          {
+            "slide_number": 6,
+            "score": 100
+          },
+          {
+            "slide_number": 7,
+            "score": 100
+          },
+          {
+            "slide_number": 8,
+            "score": 100
+          },
+          {
+            "slide_number": 9,
+            "score": 100
+          },
+          {
+            "slide_number": 10,
+            "score": 100
+          },
+          {
+            "slide_number": 11,
+            "score": 100
+          },
+          {
+            "slide_number": 12,
+            "score": 100
+          }
+        ],
+        "scope": "input_heuristic",
+        "evidence": {
+          "artifact_sha256": "f1e0d0dcd51b652e99f0dac2e5fc16d4d05dcbedc9b769ee743a5a6db3f630a6",
+          "schema_valid": true,
+          "generated": true,
+          "fit_checked": true,
+          "structural_valid": true,
+          "pixels_rendered": false,
+          "visually_inspected": false,
+          "reviewed_slide_ids": [],
+          "total_slides": 12,
+          "approved": false,
+          "needs_review": true,
+          "reasons": [
+            "current artifact was not pixel-rendered",
+            "no explicit visual approval verdict for the current artifact"
+          ]
+        },
+        "structural_score": 99,
+        "quality_gate": {
+          "passed": true,
+          "reasons": [],
+          "criteria": {
+            "min_score": 80,
+            "max_p0_findings": 0,
+            "max_p1_findings": 0,
+            "require_takeaway_on_charts": true,
+            "max_topic_title_pct": 25,
+            "require_storyline": true,
+            "allow_accent_overload": false,
+            "max_problem_slides_pct": 40,
+            "min_composition_score": 65
+          }
+        }
+      },
+      "diagnostics": [
+        {
+          "code": "fit_overflow",
+          "severity": "info",
+          "message": "row content ~80pt exceeds max_height 79pt",
+          "semantic_path": "slides[3].regions[1]",
+          "raw_path": "/slides/3/shape_grid/rows/0/cells/1/grid/rows/0/cells/0/grid/rows/1/cells/0/grid/rows/0",
+          "slide_index": 3,
+          "action": "review",
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "fit_overflow"
+            }
+          }
+        },
+        {
+          "code": "pattern_overcrowded",
+          "severity": "info",
+          "message": "comparison-2col: 10 cells exceeds recommended max of 8 \u2014 consider splitting",
+          "raw_path": "/slides/4/pattern",
+          "slide_index": 4,
+          "action": "review",
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "pattern_overcrowded"
+            }
+          }
+        },
+        {
+          "code": "SUBTITLE_WRAPS",
+          "severity": "info",
+          "message": "slides[0]: subtitle wraps onto 2 lines even at the title's width",
+          "semantic_path": "slides[0].subtitle",
+          "raw_path": "/slides/0/content/1",
+          "slide_index": 0,
+          "action": "info",
+          "next_tool_call": {
+            "tool": "validate_deck_spec",
+            "args_template": {
+              "deck_id": "deck_e3808d5e09684b75fd26fab6fe097f6c",
+              "patch": [
+                {
+                  "op": "replace",
+                  "path": "/slides/0/subtitle",
+                  "value": "<rewrite this field to resolve SUBTITLE_WRAPS while preserving meaning>"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "explanation_summary": {
+        "title": "Helios Equipment | Order-to-cash pilot decision",
+        "template": "midnight-blue",
+        "rhythm": {
+          "slide_count": 12,
+          "families": {
+            "chart": 1,
+            "comparison": 2,
+            "process": 1,
+            "structural": 3,
+            "text": 4,
+            "timeline": 1
+          },
+          "evidence_families": {
+            "chart": 1,
+            "text": 1
+          },
+          "distinct_family_count": 5,
+          "evidence_family_count": 2,
+          "densities": {
+            "heavy": 3,
+            "light": 3,
+            "medium": 6
+          }
+        },
+        "layout_coverage": {
+          "requested": [],
+          "assigned": [],
+          "missing": []
+        },
+        "slides": [
+          {
+            "index": 0,
+            "kind": "title",
+            "role": "opening",
+            "visual_family": "structural",
+            "density": "light",
+            "title": "Release cash without disrupting customer service",
+            "layout": "title",
+            "alternatives": [
+              {
+                "layout": "title",
+                "reason": "the template's own title layout"
+              }
+            ]
+          },
+          {
+            "index": 1,
+            "kind": "executive_summary",
+            "role": "summary",
+            "visual_family": "text",
+            "density": "medium",
+            "title": "A EUR1.8m pilot can release EUR6m while preserving local customer accountability",
+            "pattern": "exec-summary",
+            "layout": "blank-title",
+            "alternatives": [
+              {
+                "pattern": "exec-summary",
+                "layout": "blank-title",
+                "reason": "3-5 lead-in statements, each with one supporting sentence"
+              },
+              {
+                "layout": "content",
+                "reason": "native bullets preserve more or fewer points, or longer ones"
+              }
+            ]
+          },
+          {
+            "index": 2,
+            "kind": "section",
+            "role": "transition",
+            "visual_family": "structural",
+            "density": "light",
+            "title": "Diagnose the bottleneck and choose the model",
+            "layout": "section",
+            "alternatives": [
+              {
+                "layout": "section",
+                "reason": "the template's own section layout"
+              }
+            ]
+          },
+          {
+            "index": 3,
+            "kind": "regions",
+            "role": "evidence",
+            "visual_family": "chart",
+            "density": "heavy",
+            "title": "Overdue balances rose EUR6m as fragmented dispute ownership delayed resolution",
+            "takeaway": "Assign one accountable owner before automating escalation.",
+            "layout": "blank-title",
+            "alternatives": [
+              {
+                "layout": "blank-title",
+                "reason": "2\u20133 typed regions in one shape grid under the slide title, arranged by the arrangement field"
+              }
+            ]
+          },
+          {
+            "index": 4,
+            "kind": "comparison",
+            "role": "analysis",
+            "visual_family": "comparison",
+            "density": "medium",
+            "title": "Central rules and local decisions remove handoffs without weakening customer relationships",
+            "takeaway": "Standardize the control system while keeping customer decisions close to the market.",
+            "pattern": "comparison-2col",
+            "layout": "blank-title",
+            "alternatives": [
+              {
+                "pattern": "comparison-2col",
+                "layout": "blank-title",
+                "reason": "balanced two-column comparison"
+              },
+              {
+                "pattern": "stylish-panels",
+                "layout": "blank-title",
+                "reason": "3-5 columns, each a titled panel with its own bullets"
+              },
+              {
+                "pattern": "card-grid",
+                "layout": "blank-title",
+                "reason": "2-5 columns as titled cards when panels do not fit"
+              },
+              {
+                "layout": "content",
+                "reason": "native bullets preserve six or more columns"
+              }
+            ]
+          },
+          {
+            "index": 5,
+            "kind": "option_matrix",
+            "role": "recommendation",
+            "visual_family": "comparison",
+            "density": "heavy",
+            "title": "An automation-first hybrid balances cash impact, speed and customer accountability",
+            "takeaway": "Choose the hybrid; centralization adds customer risk and federation leaves fragmented controls.",
+            "pattern": "table-highlight",
+            "layout": "blank-title",
+            "alternatives": [
+              {
+                "pattern": "table-highlight",
+                "layout": "blank-title",
+                "reason": "2-6 options scored against 2-6 criteria"
+              },
+              {
+                "layout": "content",
+                "reason": "native bullets preserve a matrix outside those bounds"
+              }
+            ]
+          },
+          {
+            "index": 6,
+            "kind": "section",
+            "role": "transition",
+            "visual_family": "structural",
+            "density": "light",
+            "title": "Prove the model before committing to scale",
+            "layout": "section",
+            "alternatives": [
+              {
+                "layout": "section",
+                "reason": "the template's own section layout"
+              }
+            ]
+          },
+          {
+            "index": 7,
+            "kind": "process",
+            "role": "analysis",
+            "visual_family": "process",
+            "density": "medium",
+            "title": "Four control points give each dispute one owner and an auditable path to closure",
+            "takeaway": "Automate routing and evidence capture; retain human approval for commercial exceptions.",
+            "pattern": "numbered-step-strip",
+            "layout": "blank-title",
+            "alternatives": [
+              {
+                "pattern": "numbered-step-strip",
+                "layout": "blank-title",
+                "reason": "3-7 steps that each carry a description, as numbered rows"
+              },
+              {
+                "pattern": "process-flow",
+                "layout": "blank-title",
+                "reason": "3-8 bare or branching steps as a flow diagram"
+              },
+              {
+                "pattern": "process-flow-compact",
+                "layout": "blank-title",
+                "reason": "3-6 short labels (averaging under 40 characters) as a shallow flow band under the title"
+              },
+              {
+                "layout": "content",
+                "reason": "native bullets preserve shorter or longer processes"
+              }
+            ]
+          },
+          {
+            "index": 8,
+            "kind": "image_case",
+            "role": "evidence",
+            "visual_family": "text",
+            "density": "medium",
+            "title": "A visible unassigned queue makes stalled disputes actionable within one working day",
+            "takeaway": "Review ownership daily rather than waiting for the monthly receivables report.",
+            "pattern": "image-text-split",
+            "layout": "blank-title",
+            "alternatives": [
+              {
+                "pattern": "image-text-split",
+                "layout": "blank-title",
+                "reason": "a picture beside the story, with up to 3 result metrics"
+              },
+              {
+                "layout": "content",
+                "reason": "a content slide preserves a longer story than the column holds"
+              }
+            ]
+          },
+          {
+            "index": 9,
+            "kind": "roadmap",
+            "role": "plan",
+            "visual_family": "timeline",
+            "density": "medium",
+            "title": "Three phases release funding only when the pilot demonstrates cash and service results",
+            "takeaway": "The January gate must verify both cash release and customer service.",
+            "pattern": "phase-roadmap",
+            "layout": "blank-title",
+            "alternatives": [
+              {
+                "pattern": "phase-roadmap",
+                "layout": "blank-title",
+                "reason": "3-6 phases"
+              },
+              {
+                "layout": "content",
+                "reason": "native bullets preserve dense roadmaps"
+              }
+            ]
+          },
+          {
+            "index": 10,
+            "kind": "table",
+            "role": "evidence",
+            "visual_family": "text",
+            "density": "heavy",
+            "title": "Three guardrails protect customers, financial control and data quality during the pilot",
+            "takeaway": "Make service and control failures a reason to stop, even when cash targets improve.",
+            "layout": "blank-title",
+            "alternatives": [
+              {
+                "layout": "blank-title",
+                "reason": "a native table in the template's own table style, under the same title as every other content kind"
+              },
+              {
+                "layout": "content",
+                "reason": "bullets preserve rows without a header row"
+              }
+            ]
+          },
+          {
+            "index": 11,
+            "kind": "next_steps",
+            "role": "closing",
+            "visual_family": "text",
+            "density": "medium",
+            "title": "Approve EUR1.8m by 16 October to launch the two-market pilot in December",
+            "pattern": "next-steps",
+            "layout": "blank-title",
+            "alternatives": [
+              {
+                "pattern": "next-steps",
+                "layout": "blank-title",
+                "reason": "2-6 actions with owner and date, plus up to 3 decisions requested"
+              },
+              {
+                "layout": "content",
+                "reason": "bullets preserve more actions or longer copy"
+              }
+            ]
+          }
+        ]
+      },
+      "deck_id": "deck_e3808d5e09684b75fd26fab6fe097f6c",
+      "next_tool_call": {
+        "tool": "render_deck_thumbnails",
+        "args_template": {
+          "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/output/midnight-blue-spec-r3.pptx"
+        }
+      }
+    }
+  }
+}

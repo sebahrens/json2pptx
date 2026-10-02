@@ -1,0 +1,195 @@
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"deck_id\":\"deck_89f1d79c8b9d64e5a738abb8a67fc15e\",\"findings\":[{\"code\":\"GRID.pattern_overcrowded\",\"message\":\"comparison-2col: 10 cells exceeds recommended max of 8 \u2014 consider splitting\",\"next_tool_call\":{\"args_template\":{\"code\":\"GRID.pattern_overcrowded\"},\"tool\":\"describe_finding\"},\"severity\":\"info\"},{\"code\":\"INPUT.contrast_predicted\",\"message\":\"predicted: low-contrast text will be auto-replaced \u2014 #FD5108 \u2192 #F34E08 (on #FFE8D4, ratio 2.8 \u2192 3.0)\",\"next_tool_call\":{\"args_template\":{\"code\":\"INPUT.contrast_predicted\"},\"tool\":\"describe_finding\"},\"severity\":\"info\"},{\"code\":\"INPUT.title_wraps\",\"message\":\"title wraps to multiple lines (48pt font, 6.2\\\" wide placeholder)\",\"next_tool_call\":{\"args_template\":{\"deck_id\":\"deck_89f1d79c8b9d64e5a738abb8a67fc15e\",\"patch\":[{\"op\":\"replace\",\"path\":\"/slides/2/title\",\"value\":\"\\u003crewrite this field to resolve INPUT.title_wraps while preserving meaning\\u003e\"}]},\"tool\":\"validate_deck_spec\"},\"severity\":\"info\"}],\"findings_count\":5,\"ok\":true,\"summary\":\"5 infos\"}"
+      }
+    ],
+    "structuredContent": {
+      "schema_version": "1.0",
+      "tool": "json2pptx",
+      "subcommand": "validate_deck_spec",
+      "input_sha256": "83ed7f07a180f281e02b34c8c4bba48d9ae25902c2dc6044b2506490e4af23d4",
+      "ok": true,
+      "summary": "5 infos",
+      "findings": [
+        {
+          "id": "grid-1",
+          "code": "GRID.pattern_overcrowded",
+          "severity": "info",
+          "category": "GRID",
+          "where": {
+            "slide": 4
+          },
+          "message": "comparison-2col: 10 cells exceeds recommended max of 8 \u2014 consider splitting",
+          "evidence": {
+            "action": "review",
+            "overflow_ratio": 1.25,
+            "path": "/slides/4/pattern",
+            "pattern": "comparison-2col"
+          },
+          "remediation": {
+            "primary": {
+              "action": "split_slide",
+              "params": {
+                "filled_slots": 10,
+                "fix_kind": "split_pattern",
+                "recommended_max": 8,
+                "title_part_2": "(continued)"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "GRID.pattern_overcrowded"
+            }
+          },
+          "describe_command": "json2pptx describe-finding pattern_overcrowded"
+        },
+        {
+          "id": "input-2",
+          "code": "INPUT.contrast_predicted",
+          "severity": "info",
+          "category": "INPUT",
+          "where": {
+            "slide": 2
+          },
+          "message": "predicted: low-contrast text will be auto-replaced \u2014 #FD5108 \u2192 #F34E08 (on #FFE8D4, ratio 2.8 \u2192 3.0)",
+          "evidence": {
+            "action": "info",
+            "path": "/slides/2/content/Section Number"
+          },
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "INPUT.contrast_predicted"
+            }
+          },
+          "describe_command": "json2pptx describe-finding contrast_predicted"
+        },
+        {
+          "id": "input-3",
+          "code": "INPUT.title_wraps",
+          "severity": "info",
+          "category": "INPUT",
+          "where": {
+            "slide": 2
+          },
+          "message": "title wraps to multiple lines (48pt font, 6.2\" wide placeholder)",
+          "evidence": {
+            "action": "info",
+            "allowed": {
+              "width_emu": 5645841,
+              "height_emu": 731520
+            },
+            "measured": {
+              "width_emu": 5645841,
+              "height_emu": 2194560
+            },
+            "overflow_ratio": 3,
+            "path": "slides[2].title",
+            "pattern": "placeholder"
+          },
+          "remediation": {
+            "primary": {
+              "action": "apply_patch",
+              "params": {
+                "op": "replace",
+                "path": "/slides/2/title",
+                "value": "<rewrite this field to resolve INPUT.title_wraps while preserving meaning>"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "validate_deck_spec",
+            "args_template": {
+              "deck_id": "deck_89f1d79c8b9d64e5a738abb8a67fc15e",
+              "patch": [
+                {
+                  "op": "replace",
+                  "path": "/slides/2/title",
+                  "value": "<rewrite this field to resolve INPUT.title_wraps while preserving meaning>"
+                }
+              ]
+            }
+          },
+          "describe_command": "json2pptx describe-finding title_wraps"
+        },
+        {
+          "id": "input-4",
+          "code": "INPUT.contrast_predicted",
+          "severity": "info",
+          "category": "INPUT",
+          "where": {
+            "slide": 6
+          },
+          "message": "predicted: low-contrast text will be auto-replaced \u2014 #FD5108 \u2192 #F34E08 (on #FFE8D4, ratio 2.8 \u2192 3.0)",
+          "evidence": {
+            "action": "info",
+            "path": "/slides/6/content/Section Number"
+          },
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "INPUT.contrast_predicted"
+            }
+          },
+          "describe_command": "json2pptx describe-finding contrast_predicted"
+        },
+        {
+          "id": "input-5",
+          "code": "INPUT.title_wraps",
+          "severity": "info",
+          "category": "INPUT",
+          "where": {
+            "slide": 6
+          },
+          "message": "title wraps to multiple lines (48pt font, 6.2\" wide placeholder)",
+          "evidence": {
+            "action": "info",
+            "allowed": {
+              "width_emu": 5645841,
+              "height_emu": 731520
+            },
+            "measured": {
+              "width_emu": 5645841,
+              "height_emu": 2194560
+            },
+            "overflow_ratio": 3,
+            "path": "slides[6].title",
+            "pattern": "placeholder"
+          },
+          "remediation": {
+            "primary": {
+              "action": "apply_patch",
+              "params": {
+                "op": "replace",
+                "path": "/slides/6/title",
+                "value": "<rewrite this field to resolve INPUT.title_wraps while preserving meaning>"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "validate_deck_spec",
+            "args_template": {
+              "deck_id": "deck_89f1d79c8b9d64e5a738abb8a67fc15e",
+              "patch": [
+                {
+                  "op": "replace",
+                  "path": "/slides/6/title",
+                  "value": "<rewrite this field to resolve INPUT.title_wraps while preserving meaning>"
+                }
+              ]
+            }
+          },
+          "describe_command": "json2pptx describe-finding title_wraps"
+        }
+      ],
+      "deck_id": "deck_89f1d79c8b9d64e5a738abb8a67fc15e"
+    }
+  }
+}

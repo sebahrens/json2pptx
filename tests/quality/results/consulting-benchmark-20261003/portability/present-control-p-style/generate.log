@@ -1,0 +1,101 @@
+{
+  "ok": true,
+  "output_path": ".claude/review-evidence/2026-10-03-consulting/portability/present-control-p-style/deck.pptx",
+  "deterministic_ready": true,
+  "publishable": false,
+  "manual_review_required": true,
+  "blocking_reasons": [
+    "current artifact lacks complete all-slide vision inspection and an explicit approved verdict; render_deck_thumbnails + submit_visual_review supply it"
+  ],
+  "template": "p-style",
+  "slide_count": 3,
+  "content_hash": "931c6ec7f1663126176ac12bb5029e1ae6e13005c4db2046e44aa921d48eff46",
+  "revision": "6907e384149f0748667e4d59a687f0bf3d99616f8575a72dfbcd569e9e0c2807",
+  "manifest_path": ".claude/review-evidence/2026-10-03-consulting/portability/present-control-p-style/deck.pptx.authoring.json",
+  "duration_ms": 232,
+  "quality": {
+    "score": 100,
+    "basis": "input",
+    "slide_scores": [
+      {
+        "slide_number": 1,
+        "score": 100
+      },
+      {
+        "slide_number": 2,
+        "score": 100
+      },
+      {
+        "slide_number": 3,
+        "score": 100
+      }
+    ],
+    "scope": "input_heuristic",
+    "evidence": {
+      "artifact_sha256": "931c6ec7f1663126176ac12bb5029e1ae6e13005c4db2046e44aa921d48eff46",
+      "schema_valid": true,
+      "generated": true,
+      "fit_checked": true,
+      "structural_valid": true,
+      "pixels_rendered": false,
+      "visually_inspected": false,
+      "reviewed_slide_ids": [],
+      "total_slides": 3,
+      "approved": false,
+      "needs_review": true,
+      "reasons": [
+        "current artifact was not pixel-rendered",
+        "no explicit visual approval verdict for the current artifact"
+      ]
+    },
+    "structural_score": 100,
+    "quality_gate": {
+      "passed": true,
+      "reasons": [],
+      "criteria": {
+        "min_score": 80,
+        "max_p0_findings": 0,
+        "max_p1_findings": 0,
+        "require_takeaway_on_charts": true,
+        "max_topic_title_pct": 25,
+        "require_storyline": true,
+        "allow_accent_overload": false,
+        "max_problem_slides_pct": 40,
+        "min_composition_score": 65
+      }
+    }
+  },
+  "diagnostics": [
+    {
+      "code": "chart.label_clipped",
+      "severity": "info",
+      "message": "y-axis label width 26.4pt exceeded available MarginLeft — grew left margin by 3.6pt",
+      "raw_path": "/slides/1/pattern/rows/0/cells/0/diagram",
+      "slide_index": 1,
+      "action": "info"
+    },
+    {
+      "code": "chart.label_clipped",
+      "severity": "info",
+      "message": "y-axis label width 26.4pt exceeded available MarginLeft — grew left margin by 3.6pt",
+      "raw_path": "/slides/1/shape_grid/rows/0/cells/0/diagram/y_axis/labels",
+      "slide_index": 1,
+      "action": "info"
+    }
+  ]
+}
+2026/10/03 00:52:15 INFO pattern expanded pattern=exec-summary version=1
+2026/10/03 00:52:15 INFO pattern expanded pattern=chart-insights-split version=1
+2026/10/03 00:52:15 INFO pattern expanded pattern=next-steps version=1
+2026/10/03 00:52:15 INFO pattern expanded pattern=exec-summary version=1
+2026/10/03 00:52:15 INFO pattern expanded pattern=chart-insights-split version=1
+2026/10/03 00:52:15 INFO pattern expanded pattern=next-steps version=1
+2026/10/03 00:52:15 INFO pattern expanded pattern=exec-summary version=1
+2026/10/03 00:52:15 INFO pattern expanded pattern=chart-insights-split version=1
+2026/10/03 00:52:15 INFO pattern expanded pattern=next-steps version=1
+2026/10/03 00:52:15 INFO pattern expanded pattern=exec-summary version=1
+2026/10/03 00:52:15 INFO pattern expanded pattern=chart-insights-split version=1
+2026/10/03 00:52:15 INFO pattern expanded pattern=next-steps version=1
+2026/10/03 00:52:15 INFO pattern expanded pattern=exec-summary version=1
+2026/10/03 00:52:15 INFO pattern expanded pattern=chart-insights-split version=1
+2026/10/03 00:52:15 INFO pattern expanded pattern=next-steps version=1

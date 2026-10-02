@@ -1,0 +1,33 @@
+{
+  "meta": {
+    "template": "midnight-blue",
+    "type_scale": "comfortable",
+    "source": "Illustrative Helios case; management assumptions, Oct2026"
+  },
+  "slides": [
+    {
+      "kind": "image_case",
+      "title": "A visible unassigned queue makes stalled disputes actionable within one working day",
+      "eyebrow": "Pilot design",
+      "heading": "Turn missing ownership into a daily decision",
+      "body": "The workbench puts unowned cases beside assigned work. The market lead assigns a resolver each morning; finance checks closure evidence at day-end.",
+      "bullets": [
+        "Show owner, age and next action in one view",
+        "Escalate unowned cases after 24 hours"
+      ],
+      "image": {
+        "path": "@benchmark/strategy/approval-workbench.png",
+        "alt": "Illustrative dispute dashboard: 24 open disputes; 12 lack an owner; oldest unassigned case is 48 hours old."
+      },
+      "caption": "Illustrative dashboard design; the first two cases have no assigned owner.",
+      "metrics": [
+        {
+          "value": "12",
+          "label": "unowned cases to assign"
+        }
+      ],
+      "takeaway": "Review ownership daily rather than waiting for the monthly receivables report.",
+      "source": "Illustrative Helios case; management assumptions, Oct 2026"
+    }
+  ]
+}

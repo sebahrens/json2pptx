@@ -1,0 +1,57 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"deck_id\":\"deck_c32e5d9618a43fedbff65cc0ca7510d5\",\"findings\":[{\"code\":\"GRID.pattern_overcrowded\",\"message\":\"comparison-2col: 10 cells exceeds recommended max of 8 \u2014 consider splitting\",\"next_tool_call\":{\"args_template\":{\"code\":\"GRID.pattern_overcrowded\"},\"tool\":\"describe_finding\"},\"severity\":\"info\"}],\"findings_count\":1,\"ok\":true,\"summary\":\"1 info\"}"
+      }
+    ],
+    "structuredContent": {
+      "schema_version": "1.0",
+      "tool": "json2pptx",
+      "subcommand": "validate_deck_spec",
+      "input_sha256": "4856a5c6257063348878c5638706b0f36067b139379fb0a6190bbb9bd6a37c6d",
+      "ok": true,
+      "summary": "1 info",
+      "findings": [
+        {
+          "id": "grid-1",
+          "code": "GRID.pattern_overcrowded",
+          "severity": "info",
+          "category": "GRID",
+          "where": {
+            "slide": 4
+          },
+          "message": "comparison-2col: 10 cells exceeds recommended max of 8 \u2014 consider splitting",
+          "evidence": {
+            "action": "review",
+            "overflow_ratio": 1.25,
+            "path": "/slides/4/pattern",
+            "pattern": "comparison-2col"
+          },
+          "remediation": {
+            "primary": {
+              "action": "split_slide",
+              "params": {
+                "filled_slots": 10,
+                "fix_kind": "split_pattern",
+                "recommended_max": 8,
+                "title_part_2": "(continued)"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "GRID.pattern_overcrowded"
+            }
+          },
+          "describe_command": "json2pptx describe-finding pattern_overcrowded"
+        }
+      ],
+      "deck_id": "deck_c32e5d9618a43fedbff65cc0ca7510d5"
+    }
+  }
+}

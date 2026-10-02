@@ -1,0 +1,18 @@
+{
+  "status": "changes_requested",
+  "templates": 10,
+  "slides_per_template": 12,
+  "full_individual_pngs_reviewed": 120,
+  "contact_sheets_reviewed": 10,
+  "coherent_arithmetic": true,
+  "actual_plan_forecast_distinguished": true,
+  "data_is_illustrative": true,
+  "best_revisions": "v2 for every template except modern v4",
+  "confirmed_new_geometry_defects": 1,
+  "attribution_omission": "Native table default source is absent on all ten templates. Parent deduplicates against the option-matrix source case.",
+  "p_style": "All twelve final p-style slides were visually inspected. Default-source omission and the horizontal negative control fail; no additional p-style-specific issue was found. Mixed regions and native heatmap regions work.",
+  "readiness_not_equated_to_quality": "Generation success and deterministic readiness do not clear visual collisions or source omissions. Selected final decks remain changes_requested pending attribution repair.",
+  "repairs": "At most three output repair rounds per target. Initial failures are preserved. The third modern repair retains the full decision content across the deck.",
+  "primary_evidence": ".claude/review-evidence/2026-10-03-consulting/quantitative/coverage.json",
+  "candidates": ".claude/review-evidence/2026-10-03-consulting/quantitative/atomic-candidates.json"
+}

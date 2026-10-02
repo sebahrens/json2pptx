@@ -1,0 +1,136 @@
+{
+  "candidates": [
+    {
+      "key": "horizontal_negative_label_left_reserve",
+      "title": "Horizontal negative-bar values occupy the category-label column",
+      "issue_type": "bug",
+      "priority": 2,
+      "confirmed": true,
+      "source_content_vs_engine": "Engine geometry: three short category names, three values [3, 2.5, -0.5], and one series. No unusual density. Changing orientation is an author workaround, not a horizontal-renderer correction.",
+      "repro": {
+        "mcp": "render_deck_spec",
+        "inputs": [
+          ".claude/review-evidence/2026-10-03-consulting/quantitative/negative-control-p-style.json",
+          ".claude/review-evidence/2026-10-03-consulting/quantitative/negative-control-modern-yellow.json"
+        ],
+        "then": "Call render_deck_thumbnails with density=100 and max_slides=1.",
+        "result": "Both controls return success=true and deterministic_ready=true despite the 79\u201380% text_overlap info finding and a visible North / \u22120.5 collision."
+      },
+      "evidence": [
+        ".claude/review-evidence/2026-10-03-consulting/quantitative/negative-control-p-style.png",
+        ".claude/review-evidence/2026-10-03-consulting/quantitative/negative-control-modern-yellow.png",
+        ".claude/review-evidence/2026-10-03-consulting/quantitative/negative-render-p-style.json",
+        ".claude/review-evidence/2026-10-03-consulting/quantitative/negative-render-modern-yellow.json",
+        ".claude/review-evidence/2026-10-03-consulting/quantitative/negative-horizontal.svg"
+      ],
+      "geometry": {
+        "North": {
+          "x": 126.8666,
+          "anchor": "end",
+          "baseline_y": 278.589,
+          "font_px": 19.1887
+        },
+        "minus_0_5": {
+          "x": 132.2003,
+          "anchor": "end",
+          "baseline_y": 273.7134,
+          "font_px": 15.9905
+        },
+        "conclusion": "The labels occupy the same category slot; their right edges are 5.33px apart and baselines 4.88px apart. Reported overlap is 79%."
+      },
+      "root": {
+        "pointers": [
+          "svggen/bar_horizontal.go:139 \u2014 horizontalLayout",
+          "svggen/bar_horizontal.go:206 \u2014 left reserve for negative values",
+          "svggen/bar_horizontal.go:262 \u2014 drawHorizontalCategoryNames",
+          "svggen/bar_horizontal.go:387 \u2014 drawHorizontalValueLabel"
+        ],
+        "explanation": "horizontalLayout adds valueReserve to plot.X for negative bars, but drawHorizontalCategoryNames anchors the category relative to that new plot.X. The most-negative bar ends at plot.X; its right-aligned value then occupies the same left band as the right-aligned category. The reserve moves both labels together rather than separating them."
+      },
+      "acceptance": [
+        "The mixed-sign [3, 2.5, -0.5] chart with East / South / North has a clear category/value gap and no text_overlap on p-style and modern-yellow. Inspect actual PNGs.",
+        "Cover all-negative data, shallow negatives, mixed signs, long category names, grouped and stacked horizontal bars, and several label formats.",
+        "Preserve the zero baseline, sign/value fidelity, positive label clearance and role readability floors. Do not suppress labels or require vertical orientation."
+      ],
+      "existing_beads": [
+        {
+          "id": "go-slide-creator-5na8e",
+          "status": "closed, refreshed2026-10-03",
+          "overlap": "The previous issue covers the VERTICAL lower plot edge. Its closure adds vertical negative headroom. The current horizontal category gutter has a distinct root; file an atomic follow-up linked to 5na8e."
+        }
+      ]
+    },
+    {
+      "key": "native_table_default_source",
+      "title": "Deck-level source disappears from quantitative native tables",
+      "issue_type": "bug",
+      "priority": 2,
+      "confirmed": true,
+      "parent_owns_filing": true,
+      "source_content_vs_engine": "Engine default attribution: meta.source contains a complete illustrative-case attribution. The table contains currency values, and the same source is visible on neighboring charts.",
+      "repro": {
+        "input": ".claude/review-evidence/2026-10-03-consulting/quantitative/deckspec-v2.json",
+        "templates": [
+          "abstract",
+          "blue-corporate",
+          "business-template",
+          "forest-green",
+          "midnight-blue",
+          "modern",
+          "modern-template",
+          "modern-yellow",
+          "p-style",
+          "warm-coral"
+        ],
+        "slide_index": 4,
+        "result": "The numeric table has no Source line on all ten reviewed PNGs and in OOXML; generation does not report a missing source.",
+        "explicit_source_control": ".claude/review-evidence/2026-10-03-consulting/quantitative/deckspec-v3-p-style.json",
+        "control_result": "Adding slides[4].source writes Source: Illustrative management accounts, FY26 into slide5.xml. The control PNG shows the attribution clearly."
+      },
+      "evidence": [
+        ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-p-style/slide-05.png",
+        ".claude/review-evidence/2026-10-03-consulting/quantitative/renders-final-modern/slide-05.png",
+        ".claude/review-evidence/2026-10-03-consulting/quantitative/render-v2-p-style.json",
+        ".claude/review-evidence/2026-10-03-consulting/quantitative/render-v3-p-style.json",
+        ".claude/review-evidence/2026-10-03-consulting/quantitative/table-source-control-p-style.png"
+      ],
+      "root": {
+        "pointers": [
+          "cmd/json2pptx/fit_findings_source.go:123 defaultDeckSource",
+          "cmd/json2pptx/fit_findings_source.go:132 slideDataKind",
+          "internal/semantic/slides/table.go"
+        ],
+        "explanation": "Parent will confirm the classifier/attribution root. Explicit per-slide source works; the failure is limited to default source propagation or classification. Merge with the parent quantitative option-matrix source candidate if they share this root."
+      },
+      "acceptance": [
+        "DeckSpec meta.source supplies visible attribution to quantitative native tables on all ten production templates, including p-style.",
+        "Explicit per-slide sources override the fallback; avoid duplicate attribution and preserve legible content and source bands.",
+        "Cover currency, rate and period tables and numeric text-scale option matrices. Exercise validate and render, and inspect actual PNGs."
+      ],
+      "existing_beads": [
+        {
+          "id": "parent default-source candidate",
+          "overlap": "Parent owns the monetary table-highlight option case. Deduplicate after confirming the root."
+        }
+      ]
+    }
+  ],
+  "excluded": [
+    {
+      "key": "next_steps_decision_band_overflow",
+      "reason": "Supported counts do not guarantee capacity on every template. Validation already predicts INPUT.TEXT_BELOW_READABLE_MIN plus BODY_TOO_LONG: 340pt needed vs 318pt available. Removing the duplicate band preserves the decision in an owned action. Closed k3eb3 covers fitting; this fixture does not establish a new bug."
+    },
+    {
+      "key": "modern_optionmatrix_overflow",
+      "reason": "Validation predicts the 10.32pt option-name refusal. Closed bzh34 explicitly leaves modern table-plus-takeaway overflow as a known, predicted limitation. Removing redundant details and takeaway works."
+    },
+    {
+      "key": "typed_stat_caption_role_warning",
+      "reason": "The final modern KPI label is 10.08pt, meeting the documented 10pt caption floor in tokens/typography.go:18. A generic generation warning calls it body text with a 12pt floor. This is diagnostic inconsistency; no visual floor violation is claimed."
+    },
+    {
+      "key": "small_rate_default_rounding",
+      "reason": "The default promises distinct values, not exact source precision. Explicit %.4f%% labels render correctly on all ten templates. This is an author formatting repair, not a missing capability."
+    }
+  ]
+}

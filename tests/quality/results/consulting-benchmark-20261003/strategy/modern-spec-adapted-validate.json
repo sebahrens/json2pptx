@@ -1,0 +1,359 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"deck_id\":\"deck_b814ddd1df465d182d01fa3ec40c7519\",\"findings\":[{\"code\":\"INPUT.TEXT_BELOW_READABLE_MIN\",\"message\":\"card-title text renders at 9.8pt, below the 12pt minimum for viewing_mode \\\"present\\\" (cell text overflows; autofit shr\u2026\",\"next_tool_call\":{\"tool\":\"validate_deck_spec\"},\"severity\":\"error\"},{\"code\":\"INPUT.TEXT_BELOW_READABLE_MIN\",\"message\":\"card-title text renders at 9.8pt, below the 12pt minimum for viewing_mode \\\"present\\\" (cell text overflows; autofit shr\u2026\",\"next_tool_call\":{\"tool\":\"validate_deck_spec\"},\"severity\":\"error\"},{\"code\":\"INPUT.TEXT_BELOW_READABLE_MIN\",\"message\":\"card-title text renders at 9.8pt, below the 12pt minimum for viewing_mode \\\"present\\\" (cell text overflows; autofit shr\u2026\",\"next_tool_call\":{\"tool\":\"validate_deck_spec\"},\"severity\":\"error\"}],\"findings_count\":7,\"ok\":false,\"summary\":\"5 errors, 2 infos\"}"
+      }
+    ],
+    "structuredContent": {
+      "schema_version": "1.0",
+      "tool": "json2pptx",
+      "subcommand": "validate_deck_spec",
+      "input_sha256": "f9ca3330aa104926fd792749109297240f90927206c96c768a183fa48d3cafd1",
+      "ok": false,
+      "summary": "5 errors, 2 infos",
+      "findings": [
+        {
+          "id": "input-1",
+          "code": "INPUT.TEXT_BELOW_READABLE_MIN",
+          "severity": "error",
+          "category": "INPUT",
+          "where": {
+            "slide": 7
+          },
+          "message": "card-title text renders at 9.8pt, below the 12pt minimum for viewing_mode \"present\" (cell text overflows; autofit shrinks 12pt to ~9.8pt); shorten the text",
+          "evidence": {
+            "action": "refuse",
+            "allowed": {
+              "min_font_pt": 12
+            },
+            "measured": {
+              "font_pt": 9.84
+            },
+            "path": "slides[7].steps[0].label",
+            "pattern": "numbered-step-strip"
+          },
+          "remediation": {
+            "primary": {
+              "action": "apply_patch",
+              "params": {
+                "actual_pt": 9.84,
+                "cell_path": "/slides/7/shape_grid/rows/0/cells/1",
+                "fix_kind": "reduce_cell_text",
+                "max_chars": 108,
+                "measurement_source": "predicted",
+                "min_pt": 12,
+                "op": "replace",
+                "paragraph_text": "Capture",
+                "path": "/slides/7/steps/0/label",
+                "pattern": "numbered-step-strip",
+                "role": "card-title",
+                "strategy": "shorten",
+                "value": "<rewrite this field to resolve INPUT.TEXT_BELOW_READABLE_MIN while preserving meaning; at most 108 characters>",
+                "viewing_mode": "present"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "validate_deck_spec",
+            "args_template": {
+              "deck_id": "deck_b814ddd1df465d182d01fa3ec40c7519",
+              "patch": [
+                {
+                  "op": "replace",
+                  "path": "/slides/7/steps/0/label",
+                  "value": "<rewrite this field to resolve INPUT.TEXT_BELOW_READABLE_MIN while preserving meaning; at most 108 characters>"
+                }
+              ]
+            }
+          },
+          "describe_command": "json2pptx describe-finding TEXT_BELOW_READABLE_MIN"
+        },
+        {
+          "id": "input-2",
+          "code": "INPUT.TEXT_BELOW_READABLE_MIN",
+          "severity": "error",
+          "category": "INPUT",
+          "where": {
+            "slide": 7
+          },
+          "message": "card-title text renders at 9.8pt, below the 12pt minimum for viewing_mode \"present\" (cell text overflows; autofit shrinks 12pt to ~9.8pt); shorten the text",
+          "evidence": {
+            "action": "refuse",
+            "allowed": {
+              "min_font_pt": 12
+            },
+            "measured": {
+              "font_pt": 9.84
+            },
+            "path": "slides[7].steps[1].label",
+            "pattern": "numbered-step-strip"
+          },
+          "remediation": {
+            "primary": {
+              "action": "apply_patch",
+              "params": {
+                "actual_pt": 9.84,
+                "cell_path": "/slides/7/shape_grid/rows/1/cells/1",
+                "fix_kind": "reduce_cell_text",
+                "max_chars": 108,
+                "measurement_source": "predicted",
+                "min_pt": 12,
+                "op": "replace",
+                "paragraph_text": "Assign",
+                "path": "/slides/7/steps/1/label",
+                "pattern": "numbered-step-strip",
+                "role": "card-title",
+                "strategy": "shorten",
+                "value": "<rewrite this field to resolve INPUT.TEXT_BELOW_READABLE_MIN while preserving meaning; at most 108 characters>",
+                "viewing_mode": "present"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "validate_deck_spec",
+            "args_template": {
+              "deck_id": "deck_b814ddd1df465d182d01fa3ec40c7519",
+              "patch": [
+                {
+                  "op": "replace",
+                  "path": "/slides/7/steps/1/label",
+                  "value": "<rewrite this field to resolve INPUT.TEXT_BELOW_READABLE_MIN while preserving meaning; at most 108 characters>"
+                }
+              ]
+            }
+          },
+          "describe_command": "json2pptx describe-finding TEXT_BELOW_READABLE_MIN"
+        },
+        {
+          "id": "input-3",
+          "code": "INPUT.TEXT_BELOW_READABLE_MIN",
+          "severity": "error",
+          "category": "INPUT",
+          "where": {
+            "slide": 7
+          },
+          "message": "card-title text renders at 9.8pt, below the 12pt minimum for viewing_mode \"present\" (cell text overflows; autofit shrinks 12pt to ~9.8pt); shorten the text",
+          "evidence": {
+            "action": "refuse",
+            "allowed": {
+              "min_font_pt": 12
+            },
+            "measured": {
+              "font_pt": 9.84
+            },
+            "path": "slides[7].steps[2].label",
+            "pattern": "numbered-step-strip"
+          },
+          "remediation": {
+            "primary": {
+              "action": "apply_patch",
+              "params": {
+                "actual_pt": 9.84,
+                "cell_path": "/slides/7/shape_grid/rows/2/cells/1",
+                "fix_kind": "reduce_cell_text",
+                "max_chars": 108,
+                "measurement_source": "predicted",
+                "min_pt": 12,
+                "op": "replace",
+                "paragraph_text": "Resolve",
+                "path": "/slides/7/steps/2/label",
+                "pattern": "numbered-step-strip",
+                "role": "card-title",
+                "strategy": "shorten",
+                "value": "<rewrite this field to resolve INPUT.TEXT_BELOW_READABLE_MIN while preserving meaning; at most 108 characters>",
+                "viewing_mode": "present"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "validate_deck_spec",
+            "args_template": {
+              "deck_id": "deck_b814ddd1df465d182d01fa3ec40c7519",
+              "patch": [
+                {
+                  "op": "replace",
+                  "path": "/slides/7/steps/2/label",
+                  "value": "<rewrite this field to resolve INPUT.TEXT_BELOW_READABLE_MIN while preserving meaning; at most 108 characters>"
+                }
+              ]
+            }
+          },
+          "describe_command": "json2pptx describe-finding TEXT_BELOW_READABLE_MIN"
+        },
+        {
+          "id": "input-4",
+          "code": "INPUT.TEXT_BELOW_READABLE_MIN",
+          "severity": "error",
+          "category": "INPUT",
+          "where": {
+            "slide": 7
+          },
+          "message": "card-title text renders at 9.8pt, below the 12pt minimum for viewing_mode \"present\" (cell text overflows; autofit shrinks 12pt to ~9.8pt); shorten the text",
+          "evidence": {
+            "action": "refuse",
+            "allowed": {
+              "min_font_pt": 12
+            },
+            "measured": {
+              "font_pt": 9.84
+            },
+            "path": "slides[7].steps[3].label",
+            "pattern": "numbered-step-strip"
+          },
+          "remediation": {
+            "primary": {
+              "action": "apply_patch",
+              "params": {
+                "actual_pt": 9.84,
+                "cell_path": "/slides/7/shape_grid/rows/3/cells/1",
+                "fix_kind": "reduce_cell_text",
+                "max_chars": 108,
+                "measurement_source": "predicted",
+                "min_pt": 12,
+                "op": "replace",
+                "paragraph_text": "Close",
+                "path": "/slides/7/steps/3/label",
+                "pattern": "numbered-step-strip",
+                "role": "card-title",
+                "strategy": "shorten",
+                "value": "<rewrite this field to resolve INPUT.TEXT_BELOW_READABLE_MIN while preserving meaning; at most 108 characters>",
+                "viewing_mode": "present"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "validate_deck_spec",
+            "args_template": {
+              "deck_id": "deck_b814ddd1df465d182d01fa3ec40c7519",
+              "patch": [
+                {
+                  "op": "replace",
+                  "path": "/slides/7/steps/3/label",
+                  "value": "<rewrite this field to resolve INPUT.TEXT_BELOW_READABLE_MIN while preserving meaning; at most 108 characters>"
+                }
+              ]
+            }
+          },
+          "describe_command": "json2pptx describe-finding TEXT_BELOW_READABLE_MIN"
+        },
+        {
+          "id": "input-5",
+          "code": "INPUT.TEXT_BELOW_READABLE_MIN",
+          "severity": "error",
+          "category": "INPUT",
+          "where": {
+            "slide": 8
+          },
+          "message": "card-body text renders at 9.1pt, below the 12pt minimum for viewing_mode \"present\" (cell text overflows; autofit shrinks 12pt to ~9.1pt); split the text",
+          "evidence": {
+            "action": "refuse",
+            "allowed": {
+              "min_font_pt": 12
+            },
+            "measured": {
+              "font_pt": 9.12
+            },
+            "path": "slides[8].body",
+            "pattern": "image-text-split"
+          },
+          "remediation": {
+            "primary": {
+              "action": "apply_patch",
+              "params": {
+                "actual_pt": 9.12,
+                "cell_path": "/slides/8/shape_grid/rows/0/cells/1/grid/rows/0/cells/0",
+                "fix_kind": "reduce_cell_text",
+                "max_chars": 324,
+                "measurement_source": "predicted",
+                "min_pt": 12,
+                "op": "replace",
+                "paragraph_text": "Assign unowned cases each morning. Capture proof of action by day-end.",
+                "path": "/slides/8/body",
+                "pattern": "image-text-split",
+                "role": "card-body",
+                "strategy": "split",
+                "value": "<rewrite this field to resolve INPUT.TEXT_BELOW_READABLE_MIN while preserving meaning; at most 324 characters>",
+                "viewing_mode": "present"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "validate_deck_spec",
+            "args_template": {
+              "deck_id": "deck_b814ddd1df465d182d01fa3ec40c7519",
+              "patch": [
+                {
+                  "op": "replace",
+                  "path": "/slides/8/body",
+                  "value": "<rewrite this field to resolve INPUT.TEXT_BELOW_READABLE_MIN while preserving meaning; at most 324 characters>"
+                }
+              ]
+            }
+          },
+          "describe_command": "json2pptx describe-finding TEXT_BELOW_READABLE_MIN"
+        },
+        {
+          "id": "grid-6",
+          "code": "GRID.pattern_overcrowded",
+          "severity": "info",
+          "category": "GRID",
+          "where": {
+            "slide": 4
+          },
+          "message": "comparison-2col: 10 cells exceeds recommended max of 8 \u2014 consider splitting",
+          "evidence": {
+            "action": "review",
+            "overflow_ratio": 1.25,
+            "path": "/slides/4/pattern",
+            "pattern": "comparison-2col"
+          },
+          "remediation": {
+            "primary": {
+              "action": "split_slide",
+              "params": {
+                "filled_slots": 10,
+                "fix_kind": "split_pattern",
+                "recommended_max": 8,
+                "title_part_2": "(continued)"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "GRID.pattern_overcrowded"
+            }
+          },
+          "describe_command": "json2pptx describe-finding pattern_overcrowded"
+        },
+        {
+          "id": "fit-7",
+          "code": "FIT.BODY_TOO_LONG",
+          "severity": "info",
+          "category": "FIT",
+          "where": {
+            "slide": 7
+          },
+          "message": "slides[7]: numbered-step-strip: numbered-step-strip 4 stacked-box rows need about 242pt at 12pt with 2pt gaps but the content area holds about 215pt (a takeaway or source band shortens it) \u2014 drop or shorten the step bodies, use fewer steps, or drop the takeaway / source",
+          "evidence": {
+            "action": "review",
+            "path": "/slides/7/pattern",
+            "pattern": "numbered-step-strip"
+          },
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "FIT.BODY_TOO_LONG"
+            }
+          },
+          "describe_command": "json2pptx describe-finding BODY_TOO_LONG"
+        }
+      ],
+      "deck_id": "deck_b814ddd1df465d182d01fa3ec40c7519"
+    }
+  }
+}

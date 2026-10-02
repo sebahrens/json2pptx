@@ -1,0 +1,17 @@
+{
+  "meta": {
+    "template": "abstract",
+    "type_scale": "comfortable",
+    "source": "Illustrative Helios case; management assumptions, Oct2026"
+  },
+  "slides": [
+    {
+      "kind": "section",
+      "title": "Diagnose the bottleneck and choose the model"
+    },
+    {
+      "kind": "section",
+      "title": "Prove the model before committing to scale"
+    }
+  ]
+}

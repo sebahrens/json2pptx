@@ -1,0 +1,647 @@
+{
+  "head": "85b482d3",
+  "scope": "Six-slide decision story on all four portability fixtures, native first/second-master and side-logo controls, source-inheritance controls and presentation-scale p-style/midnight-blue controls.",
+  "method": "Bundled LibreOffice headless with isolated profiles, pdftoppm100DPI; every listed image inspected individually, contact sheets used only for orientation. This report records human visual assessment; it is not an MCP publication token.",
+  "reviewed_images": 53,
+  "artifacts": [
+    {
+      "artifact": "portability-4x3/deck.pptx",
+      "sha256": "4edb1f6cee5622d8190248c6d0fcfbb5a4d6f839e732437ecdf30822b5e2a475",
+      "slide_count": 6,
+      "slides": [
+        {
+          "index": 1,
+          "image": "portability-4x3/slide-1.png",
+          "sha256": "8130ca5321be7fce8fd0cdd0128234f49ef91f7c3155bbba8fd5d129c8627fec",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 2,
+          "image": "portability-4x3/slide-2.png",
+          "sha256": "7e07229dfab8c6555c1c87182e1501279e13ea6df3f4e055e30ad668e4c8a998",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 3,
+          "image": "portability-4x3/slide-3.png",
+          "sha256": "306ceb1ce858011a2697e7f391017a0f4108d8c39e298c937b9cff8ebd10e744",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 4,
+          "image": "portability-4x3/slide-4.png",
+          "sha256": "4db5bb0e7d3eb776d1b41e8517e074c9dd6e082e8a10977fd544d17f80ec7273",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 5,
+          "image": "portability-4x3/slide-5.png",
+          "sha256": "1c3816f204fa10ee932d13f0b4318638a1cdd8b85dd4263241caaae0a827767c",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "changes_requested",
+          "findings": [
+            {
+              "bead": "go-slide-creator-1jtn7",
+              "severity": "P1",
+              "category": "Evidence",
+              "description": "Quantitative option matrix omits the authored deck source; no missing-source diagnostic."
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "image": "portability-4x3/slide-6.png",
+          "sha256": "e2cf9c3c48a3cc3d2cd30b3576e5ba3fc93f15aeb3d3f98b4c7b987117f895e0",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        }
+      ]
+    },
+    {
+      "artifact": "portability-21x9/deck.pptx",
+      "sha256": "64f77599d7f8ec6e9fd1a8aaec900d79cb9b3cfceb104cacabcd404761584e87",
+      "slide_count": 6,
+      "slides": [
+        {
+          "index": 1,
+          "image": "portability-21x9/slide-1.png",
+          "sha256": "5c5e8dd2aff79a3bfc8b094046290f4a8e5a08335817c7dc976c3f3e30d04e9c",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 2,
+          "image": "portability-21x9/slide-2.png",
+          "sha256": "1ac4d9aceb7cd0c6422c474559bbc801d84cf108a9c811e9e431f9ac4ed479be",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 3,
+          "image": "portability-21x9/slide-3.png",
+          "sha256": "8cafa8e858d56714cdc23f32ef1452ea825da61cfa42a1fc61625b0542c8079c",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 4,
+          "image": "portability-21x9/slide-4.png",
+          "sha256": "391e245bd397f7c21d163a3613a1cfd70d78b37e2cc072604f1d079e52db2096",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 5,
+          "image": "portability-21x9/slide-5.png",
+          "sha256": "5871c4441c386631354c4585a7db86823949218d18f43eb604bcfdc8971e91c1",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "changes_requested",
+          "findings": [
+            {
+              "bead": "go-slide-creator-1jtn7",
+              "severity": "P1",
+              "category": "Evidence",
+              "description": "Quantitative option matrix omits the authored deck source; no missing-source diagnostic."
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "image": "portability-21x9/slide-6.png",
+          "sha256": "7b78070a8d13ab2781d4f8c4e9f4c56f66ad2c00a382fb471f638ec88dded982",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        }
+      ]
+    },
+    {
+      "artifact": "portability-side-logo/deck.pptx",
+      "sha256": "5763ef6742ae2b1b0bcfa8b04707b1f58a86c89c9d9a60dedd678f509600422e",
+      "slide_count": 6,
+      "slides": [
+        {
+          "index": 1,
+          "image": "portability-side-logo/slide-1.png",
+          "sha256": "907824bfc8b7ad3410b2076b42c54e3be1da4bd92469d6625635402a46175f61",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 2,
+          "image": "portability-side-logo/slide-2.png",
+          "sha256": "7b6e1c8d0a41bab81a7751f39a1fbef694d10e654c41ac4df25c897e7d05b87b",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 3,
+          "image": "portability-side-logo/slide-3.png",
+          "sha256": "0515a26e8c08e4d0b0ad010085a64bb5c75c626b05ba1fd22fcda98fffd7b087",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 4,
+          "image": "portability-side-logo/slide-4.png",
+          "sha256": "df7c817a6b35db72476559501276419e39e2858b96f70ca58072f353228360be",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 5,
+          "image": "portability-side-logo/slide-5.png",
+          "sha256": "468e533a24f2ff0189cdbf98b96a1f666acb72d124362d0fd6f75508cd7c0b26",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "changes_requested",
+          "findings": [
+            {
+              "bead": "go-slide-creator-1jtn7",
+              "severity": "P1",
+              "category": "Evidence",
+              "description": "Quantitative option matrix omits the authored deck source; no missing-source diagnostic."
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "image": "portability-side-logo/slide-6.png",
+          "sha256": "2acf0b8a9b2d7ca9e59e3bb13d6ceb5631c813e2339999f68058e92d3e000145",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        }
+      ]
+    },
+    {
+      "artifact": "portability-two-master/deck.pptx",
+      "sha256": "6065e4a1aba8285ea00853a8b80864bba5ea6caff8acc1d81585c5fa3ced9975",
+      "slide_count": 6,
+      "slides": [
+        {
+          "index": 1,
+          "image": "portability-two-master/slide-1.png",
+          "sha256": "907824bfc8b7ad3410b2076b42c54e3be1da4bd92469d6625635402a46175f61",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 2,
+          "image": "portability-two-master/slide-2.png",
+          "sha256": "7b6e1c8d0a41bab81a7751f39a1fbef694d10e654c41ac4df25c897e7d05b87b",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 3,
+          "image": "portability-two-master/slide-3.png",
+          "sha256": "0515a26e8c08e4d0b0ad010085a64bb5c75c626b05ba1fd22fcda98fffd7b087",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 4,
+          "image": "portability-two-master/slide-4.png",
+          "sha256": "df7c817a6b35db72476559501276419e39e2858b96f70ca58072f353228360be",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 5,
+          "image": "portability-two-master/slide-5.png",
+          "sha256": "468e533a24f2ff0189cdbf98b96a1f666acb72d124362d0fd6f75508cd7c0b26",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "changes_requested",
+          "findings": [
+            {
+              "bead": "go-slide-creator-1jtn7",
+              "severity": "P1",
+              "category": "Evidence",
+              "description": "Quantitative option matrix omits the authored deck source; no missing-source diagnostic."
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "image": "portability-two-master/slide-6.png",
+          "sha256": "2acf0b8a9b2d7ca9e59e3bb13d6ceb5631c813e2339999f68058e92d3e000145",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        }
+      ]
+    },
+    {
+      "artifact": "portability-21x9/final/deck.pptx",
+      "sha256": "13ae8cf0e81164fd17c71d5aeadba2f4cefce19564fe744aca2f5ea8d0f6c9bb",
+      "slide_count": 6,
+      "slides": [
+        {
+          "index": 1,
+          "image": "portability-21x9/final/slide-1.png",
+          "sha256": "5c5e8dd2aff79a3bfc8b094046290f4a8e5a08335817c7dc976c3f3e30d04e9c",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 2,
+          "image": "portability-21x9/final/slide-2.png",
+          "sha256": "95a07c96e643dd0efe2e02a96906e14e7490782ffd2654b9c5ffa81cfd1f1bae",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 3,
+          "image": "portability-21x9/final/slide-3.png",
+          "sha256": "8cafa8e858d56714cdc23f32ef1452ea825da61cfa42a1fc61625b0542c8079c",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 4,
+          "image": "portability-21x9/final/slide-4.png",
+          "sha256": "fc22b12ef07e9a920a808551864e109407228dc6d6def20dc64ccdcd21f50438",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 5,
+          "image": "portability-21x9/final/slide-5.png",
+          "sha256": "4c7fe7a8b9233586d80084ae0548bd3f3ed01a80c4269d098cb11c25932febaf",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 6,
+          "image": "portability-21x9/final/slide-6.png",
+          "sha256": "8cd38817ed335986eb153fd317608f7e7fe4e23172d5fb7864dbed7aadd3d659",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        }
+      ]
+    },
+    {
+      "artifact": "portability-side-logo/final/deck.pptx",
+      "sha256": "b13fa1ea379caeb4279551b2e242a7efacbe977d2cf0304d7cb6414d777753cb",
+      "slide_count": 6,
+      "slides": [
+        {
+          "index": 1,
+          "image": "portability-side-logo/final/slide-1.png",
+          "sha256": "907824bfc8b7ad3410b2076b42c54e3be1da4bd92469d6625635402a46175f61",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 2,
+          "image": "portability-side-logo/final/slide-2.png",
+          "sha256": "f98b5eadf055c90cd8b0ae9c49825ea15659bdde2e945edfe8b34e5a2cca41d5",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 3,
+          "image": "portability-side-logo/final/slide-3.png",
+          "sha256": "0515a26e8c08e4d0b0ad010085a64bb5c75c626b05ba1fd22fcda98fffd7b087",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 4,
+          "image": "portability-side-logo/final/slide-4.png",
+          "sha256": "0275f543f327993761a66d5521b0df1368df3c09c7cc1aa0e05dd2c37c5f9cb6",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 5,
+          "image": "portability-side-logo/final/slide-5.png",
+          "sha256": "745605d07d6694de9b14aa18864416c8d2341543287ab3fa489343c51520d09e",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 6,
+          "image": "portability-side-logo/final/slide-6.png",
+          "sha256": "da6f59ec3fa59a50f00ef9736eded22030c2a8314cbaee9a1446718453ff1a28",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        }
+      ]
+    },
+    {
+      "artifact": "portability-two-master/final/deck.pptx",
+      "sha256": "e58562fcab825cea0cea81dbd3d88e4d594fc8ed51a3175d489054ad77a24b54",
+      "slide_count": 6,
+      "slides": [
+        {
+          "index": 1,
+          "image": "portability-two-master/final/slide-1.png",
+          "sha256": "907824bfc8b7ad3410b2076b42c54e3be1da4bd92469d6625635402a46175f61",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 2,
+          "image": "portability-two-master/final/slide-2.png",
+          "sha256": "f98b5eadf055c90cd8b0ae9c49825ea15659bdde2e945edfe8b34e5a2cca41d5",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 3,
+          "image": "portability-two-master/final/slide-3.png",
+          "sha256": "0515a26e8c08e4d0b0ad010085a64bb5c75c626b05ba1fd22fcda98fffd7b087",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 4,
+          "image": "portability-two-master/final/slide-4.png",
+          "sha256": "0275f543f327993761a66d5521b0df1368df3c09c7cc1aa0e05dd2c37c5f9cb6",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 5,
+          "image": "portability-two-master/final/slide-5.png",
+          "sha256": "745605d07d6694de9b14aa18864416c8d2341543287ab3fa489343c51520d09e",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 6,
+          "image": "portability-two-master/final/slide-6.png",
+          "sha256": "da6f59ec3fa59a50f00ef9736eded22030c2a8314cbaee9a1446718453ff1a28",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        }
+      ]
+    },
+    {
+      "artifact": "native-portability-two-master/deck.pptx",
+      "sha256": "1316bb94eb8ecfd02086c9adf531648b4b97aa46e76a24cfb6f9f811dcf4d813",
+      "slide_count": 2,
+      "slides": [
+        {
+          "index": 1,
+          "image": "native-portability-two-master/slide-1.png",
+          "sha256": "e3a0abb8fdfd2172f47976ed96f4cc0559ee8cecda39c26c68c1f372c7077967",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 2,
+          "image": "native-portability-two-master/slide-2.png",
+          "sha256": "9189e4d867de6a697298bd1e202f5b70be826a652923fd66fec687f7c78900b2",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        }
+      ]
+    },
+    {
+      "artifact": "native-portability-side-logo/deck.pptx",
+      "sha256": "32a553b28e41e91da5f89e811aac014060bae37b8c2a6a52c3f0c7c78c58a8e5",
+      "slide_count": 1,
+      "slides": [
+        {
+          "index": 1,
+          "image": "native-portability-side-logo/slide-1.png",
+          "sha256": "e3a0abb8fdfd2172f47976ed96f4cc0559ee8cecda39c26c68c1f372c7077967",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        }
+      ]
+    },
+    {
+      "artifact": "source-control-p-style/deck.pptx",
+      "sha256": "d86a44f88e3bfb43dfcb3023c528b7c701d8bc3f5945b3b8392eeaf5d682e34d",
+      "slide_count": 1,
+      "slides": [
+        {
+          "index": 1,
+          "image": "source-control-p-style/slide-1.png",
+          "sha256": "95cdfae60a505c38963faccdedc8ae34e1ed14f3e3336af582745e14bfb66778",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "changes_requested",
+          "findings": [
+            {
+              "bead": "go-slide-creator-1jtn7",
+              "severity": "P1",
+              "category": "Evidence",
+              "description": "Quantitative option matrix omits the authored deck source; no missing-source diagnostic."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "artifact": "source-control-midnight-blue/deck.pptx",
+      "sha256": "ebeb5aa163d34c50a584c0733a1dccd481032720b0b3373848eb4d581a65c29d",
+      "slide_count": 1,
+      "slides": [
+        {
+          "index": 1,
+          "image": "source-control-midnight-blue/slide-1.png",
+          "sha256": "f6b3899a24159154d0ae7e59bc8523b501b891df41ea79d31be8b8051fe0d282",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "changes_requested",
+          "findings": [
+            {
+              "bead": "go-slide-creator-1jtn7",
+              "severity": "P1",
+              "category": "Evidence",
+              "description": "Quantitative option matrix omits the authored deck source; no missing-source diagnostic."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "artifact": "present-control-p-style/deck.pptx",
+      "sha256": "931c6ec7f1663126176ac12bb5029e1ae6e13005c4db2046e44aa921d48eff46",
+      "slide_count": 3,
+      "slides": [
+        {
+          "index": 1,
+          "image": "present-control-p-style/slide-1.png",
+          "sha256": "cbe2dad7fa570ad02806c0d921e299a9d92b75a2ece7d9f9abfc0609299f89b5",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 2,
+          "image": "present-control-p-style/slide-2.png",
+          "sha256": "02f57206b4d080612382c62371b0175054e5276d77fcb389cc136822e34b4a5f",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "changes_requested",
+          "findings": [
+            {
+              "bead": "go-slide-creator-vi6uq",
+              "severity": "P1",
+              "category": "Contrast",
+              "description": "Current capacity endpoint label #d89060 on white has2.600:1 contrast; Demand #fd5108 has3.303:1."
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "image": "present-control-p-style/slide-3.png",
+          "sha256": "2bb2ff74484d447bb1118024d6213ab0470430f1bb63ee2831bffa5e3fcb6f4e",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        }
+      ]
+    },
+    {
+      "artifact": "present-control-midnight-blue/deck.pptx",
+      "sha256": "813a6915f7e2930166a98afdbe77934c2756ab54310edeb08d6fe0ef7a6c88ab",
+      "slide_count": 3,
+      "slides": [
+        {
+          "index": 1,
+          "image": "present-control-midnight-blue/slide-1.png",
+          "sha256": "00011e5e5ad0285ae12145578fd6729e769ff71992e2c3ecafdff1a2567f1882",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 2,
+          "image": "present-control-midnight-blue/slide-2.png",
+          "sha256": "fb069a3e85ba455b8077d9004e29ed079e9e3ecbb8722966b5ac7a55f6824cc2",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        },
+        {
+          "index": 3,
+          "image": "present-control-midnight-blue/slide-3.png",
+          "sha256": "660d9a0ca59a51ea8cd158bcc741d73ba2f89dfbcaceb19749bb778dce2240b7",
+          "reviewed_at_density": 100,
+          "reviewer": "root visual inspection",
+          "verdict": "approved",
+          "findings": []
+        }
+      ]
+    }
+  ],
+  "repairs": [
+    {
+      "template": "portability-4x3",
+      "initial": "Three-region timeline label Scope shrinks to9.36pt; generation correctly refuses.",
+      "round1": "Replace timeline with source-complete dated text bullets; six-slide deck generated and all images reviewed.",
+      "round2": "Add explicit source lines to quantified summary/options/close and explicit illustrative qualification to mixed-region source. Closing generated label Decisions requested shrinks to10.8pt; artifact refused.",
+      "round3": "Shorten closing title and action copy without dropping facts; generated label11.04pt still below12pt floor. Stop at three rounds; final attempt not generated. Last generated artifact remains changes_requested due matrix source omission.",
+      "followup": "Quantitative agent corroborates same next-steps generated-label issue on six production templates."
+    }
+  ],
+  "observations": [
+    "Sources restored by explicit per-slide fields in three repaired portability decks; no visible clipping/overlap in their final18 images.",
+    "4:3 title wrapping is two lines, with source-complete body after dated text adaptation.",
+    "Native second-master control correctly follows inset content frame and source/takeaway zones.",
+    "Actual versus forecast is explicit in category labels and insight text; plotted segment style does not change at the boundary.",
+    "Line-chart axes, series endpoints and capacity arithmetic agree with authored data.",
+    "Read-ahead baseline uses viewing_mode:read. Separate controls use viewing_mode:present and type_scale:presentation. Projection-room readability is not inferred from a100DPI review alone."
+  ],
+  "beads": [
+    "go-slide-creator-1jtn7",
+    "go-slide-creator-vi6uq"
+  ]
+}

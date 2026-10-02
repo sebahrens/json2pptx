@@ -1,0 +1,2193 @@
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"slide_kinds_count\":9,\"slide_kinds_names\":[\"comparison\",\"executive_summary\",\"image_case\",\"next_steps\",\"option_matrix\",\"process\",\"regions\",\"roadmap\",\"table\"]}"
+      }
+    ],
+    "structuredContent": {
+      "slide_kinds": [
+        {
+          "kind": "comparison",
+          "summary": "Side-by-side comparison of two or more options.",
+          "required_fields": [
+            "columns"
+          ],
+          "typical_fields": [
+            "title",
+            "takeaway"
+          ],
+          "item_schema": {
+            "additionalProperties": false,
+            "description": "Side-by-side comparison of two or more options.",
+            "properties": {
+              "columns": {
+                "description": "Required payload field. Exactly 2 balanced columns {header, items[]} (or {header, pros[], cons[]}).",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "cons": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "header": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "pros": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "title": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "const": "comparison"
+              },
+              "layout": {
+                "description": "Optional composition override: one of this kind's alternative layouts (list_slide_kinds \u2192 compositions[], or explain_deck_spec slides[].alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE.",
+                "type": "string"
+              },
+              "notes": {
+                "description": "Speaker notes for this slide (rendered into the PPTX notes slide, never shown on the slide).",
+                "type": "string"
+              },
+              "pattern": {
+                "description": "Optional composition override: one of this kind's alternative patterns (list_slide_kinds \u2192 compositions[], or explain_deck_spec slides[].alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE.",
+                "type": "string"
+              },
+              "source": {
+                "description": "Source / footnote line shown under the slide content.",
+                "type": "string"
+              },
+              "takeaway": {
+                "description": "Typical (optional) payload field. One-line takeaway footer.",
+                "type": "string"
+              },
+              "title": {
+                "description": "Typical (optional) payload field. Slide title.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "columns"
+            ],
+            "title": "comparison slide",
+            "type": "object"
+          },
+          "example": {
+            "columns": [
+              {
+                "header": "Build",
+                "items": [
+                  "Full control of roadmap",
+                  "12-month time to market"
+                ]
+              },
+              {
+                "header": "Buy",
+                "items": [
+                  "Vendor roadmap dependency",
+                  "3-month time to market"
+                ]
+              }
+            ],
+            "kind": "comparison",
+            "takeaway": "Buying wins on speed; building wins on control.",
+            "title": "Build versus buy"
+          },
+          "compositions": [
+            {
+              "pattern": "comparison-2col",
+              "layout": "blank-title",
+              "reason": "balanced two-column comparison"
+            },
+            {
+              "pattern": "stylish-panels",
+              "layout": "blank-title",
+              "reason": "3-5 columns, each a titled panel with its own bullets"
+            },
+            {
+              "pattern": "card-grid",
+              "layout": "blank-title",
+              "reason": "2-5 columns as titled cards when panels do not fit"
+            },
+            {
+              "layout": "content",
+              "reason": "native bullets preserve six or more columns"
+            }
+          ]
+        },
+        {
+          "kind": "executive_summary",
+          "summary": "High-level summary of the deck's key messages. 3\u20135 points render as the exec-summary pattern \u2014 numbered bold conclusions, each with its supporting sentence, over an optional bottom-line bar; any other count degrades to a bullet list.",
+          "required_fields": [
+            "title"
+          ],
+          "typical_fields": [
+            "points",
+            "takeaways",
+            "bottom_line",
+            "takeaway"
+          ],
+          "item_schema": {
+            "additionalProperties": false,
+            "description": "High-level summary of the deck's key messages. 3\u20135 points render as the exec-summary pattern \u2014 numbered bold conclusions, each with its supporting sentence, over an optional bottom-line bar; any other count degrades to a bullet list.",
+            "properties": {
+              "bottom_line": {
+                "description": "Typical (optional) payload field. Optional recommendation / ask rendered as a tinted bar under the points.",
+                "type": "string"
+              },
+              "kind": {
+                "const": "executive_summary"
+              },
+              "notes": {
+                "description": "Speaker notes for this slide (rendered into the PPTX notes slide, never shown on the slide).",
+                "type": "string"
+              },
+              "points": {
+                "description": "Typical (optional) payload field. 3\u20135 key messages, most important first. A string is the conclusion alone; {lead, support} adds the evidence sentence under it. Outside 3\u20135 the slide degrades to bullets.",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "body": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "detail": {
+                          "type": "string"
+                        },
+                        "evidence": {
+                          "type": "string"
+                        },
+                        "headline": {
+                          "type": "string"
+                        },
+                        "lead": {
+                          "type": "string"
+                        },
+                        "point": {
+                          "type": "string"
+                        },
+                        "statement": {
+                          "type": "string"
+                        },
+                        "support": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              "source": {
+                "description": "Source / footnote line shown under the slide content.",
+                "type": "string"
+              },
+              "takeaway": {
+                "description": "Typical (optional) payload field. One-line takeaway footer.",
+                "type": "string"
+              },
+              "takeaways": {
+                "$ref": "#/properties/points",
+                "description": "Alias for points."
+              },
+              "title": {
+                "description": "Required payload field. Slide title.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "title"
+            ],
+            "title": "executive_summary slide",
+            "type": "object"
+          },
+          "example": {
+            "bottom_line": "Fund an SMB retention pod in Q3 and hold the enterprise motion as is.",
+            "kind": "executive_summary",
+            "points": [
+              {
+                "lead": "Growth is ahead of plan.",
+                "support": "Revenue grew 41% year over year to $48M, against a 30% plan."
+              },
+              {
+                "lead": "Enterprise is carrying the mix.",
+                "support": "It now drives 55% of new bookings, up from 38% last year."
+              },
+              {
+                "lead": "SMB retention is the one real risk.",
+                "support": "Monthly churn rose to 3.1%, concentrated in the sub-50-seat tier."
+              }
+            ],
+            "title": "Growth is on plan; retention needs a fix"
+          },
+          "compositions": [
+            {
+              "pattern": "exec-summary",
+              "layout": "blank-title",
+              "reason": "3-5 lead-in statements, each with one supporting sentence"
+            },
+            {
+              "layout": "content",
+              "reason": "native bullets preserve more or fewer points, or longer ones"
+            }
+          ]
+        },
+        {
+          "kind": "image_case",
+          "summary": "A photo or screenshot beside the words about it \u2014 the case study or customer story slide. Needs a body or at least one bullet; without a picture it draws a labelled placeholder. Up to 5 bullets and 3 result metrics; past its text budgets it degrades to a content slide. For spoken testimony use the quote kind.",
+          "required_fields": [
+            "body"
+          ],
+          "required_aliases": {
+            "body": [
+              "text",
+              "story",
+              "description",
+              "bullets"
+            ]
+          },
+          "typical_fields": [
+            "title",
+            "image",
+            "eyebrow",
+            "heading",
+            "bullets",
+            "metrics",
+            "caption",
+            "image_side",
+            "image_label",
+            "takeaway"
+          ],
+          "item_schema": {
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "anyOf": [
+                  {
+                    "required": [
+                      "body"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "text"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "story"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "description"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "bullets"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "description": "A photo or screenshot beside the words about it \u2014 the case study or customer story slide. Needs a body or at least one bullet; without a picture it draws a labelled placeholder. Up to 5 bullets and 3 result metrics; past its text budgets it degrades to a content slide. For spoken testimony use the quote kind.",
+            "properties": {
+              "body": {
+                "description": "Required payload field. The story itself. \u2264300 chars; give this or at least one bullet.",
+                "type": "string"
+              },
+              "bullets": {
+                "description": "Accepted alias for the required \"body\" field. Up to 5 supporting points, \u2264140 chars each.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "caption": {
+                "description": "Typical (optional) payload field. Italic line under the picture. \u2264120 chars.",
+                "type": "string"
+              },
+              "description": {
+                "$ref": "#/properties/body",
+                "description": "Alias for body."
+              },
+              "eyebrow": {
+                "description": "Typical (optional) payload field. Small kicker above the heading (e.g. \"Case study\"). \u226430 chars.",
+                "type": "string"
+              },
+              "heading": {
+                "description": "Typical (optional) payload field. The story's headline. \u226480 chars.",
+                "type": "string"
+              },
+              "image": {
+                "description": "Typical (optional) payload field. The picture: a path or url string, or {path|url, alt}. Omit it to draw a labelled placeholder.",
+                "type": "object"
+              },
+              "image_label": {
+                "description": "Typical (optional) payload field. Label for the placeholder when no picture is given. \u226440 chars.",
+                "type": "string"
+              },
+              "image_side": {
+                "description": "Typical (optional) payload field. Which side the picture sits on: \"left\" (default) or \"right\".",
+                "type": "string"
+              },
+              "kind": {
+                "const": "image_case"
+              },
+              "layout": {
+                "description": "Optional composition override: one of this kind's alternative layouts (list_slide_kinds \u2192 compositions[], or explain_deck_spec slides[].alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE.",
+                "type": "string"
+              },
+              "metrics": {
+                "description": "Typical (optional) payload field. Up to 3 result figures: {value (\u226410 chars), label (\u226440)}. Both are required \u2014 a figure with no words is half a claim.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "caption": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "number": {
+                      "type": "string"
+                    },
+                    "stat": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "notes": {
+                "description": "Speaker notes for this slide (rendered into the PPTX notes slide, never shown on the slide).",
+                "type": "string"
+              },
+              "pattern": {
+                "description": "Optional composition override: one of this kind's alternative patterns (list_slide_kinds \u2192 compositions[], or explain_deck_spec slides[].alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE.",
+                "type": "string"
+              },
+              "source": {
+                "description": "Source / footnote line shown under the slide content.",
+                "type": "string"
+              },
+              "story": {
+                "$ref": "#/properties/body",
+                "description": "Alias for body."
+              },
+              "takeaway": {
+                "description": "Typical (optional) payload field. One-line takeaway footer.",
+                "type": "string"
+              },
+              "text": {
+                "$ref": "#/properties/body",
+                "description": "Alias for body."
+              },
+              "title": {
+                "description": "Typical (optional) payload field. Slide title.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "title": "image_case slide",
+            "type": "object"
+          },
+          "example": {
+            "body": "Northbank ran the cutover on the rehearsed plan, with the reconciliation model checking every wave before it went live.",
+            "bullets": [
+              "Nine months from mandate to first wave",
+              "No settlement breaks in the first month"
+            ],
+            "caption": "The cutover room, March 2026",
+            "eyebrow": "Case study",
+            "heading": "Two clearers migrated in one weekend",
+            "image_label": "Photo of the cutover room",
+            "kind": "image_case",
+            "metrics": [
+              {
+                "label": "clearers migrated",
+                "value": "2"
+              },
+              {
+                "label": "settlement breaks",
+                "value": "0"
+              }
+            ],
+            "takeaway": "The rehearsal is what made the weekend boring.",
+            "title": "How Northbank made the deadline"
+          },
+          "compositions": [
+            {
+              "pattern": "image-text-split",
+              "layout": "blank-title",
+              "reason": "a picture beside the story, with up to 3 result metrics"
+            },
+            {
+              "layout": "content",
+              "reason": "a content slide preserves a longer story than the column holds"
+            }
+          ]
+        },
+        {
+          "kind": "next_steps",
+          "summary": "The closer a consulting deck ends on: 2\u20136 actions, each with an owner and a date, and 0\u20133 decisions requested. Renders as the next-steps pattern \u2014 numbered action rows separated by rules over a 'Decisions requested' band; outside those bounds it degrades to bullets. Prefer it to a plain closing ('Thank you').",
+          "required_fields": [
+            "actions"
+          ],
+          "required_aliases": {
+            "actions": [
+              "next_steps",
+              "steps"
+            ]
+          },
+          "typical_fields": [
+            "title",
+            "decisions",
+            "decisions_label"
+          ],
+          "item_schema": {
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "anyOf": [
+                  {
+                    "required": [
+                      "actions"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "next_steps"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "steps"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "description": "The closer a consulting deck ends on: 2\u20136 actions, each with an owner and a date, and 0\u20133 decisions requested. Renders as the next-steps pattern \u2014 numbered action rows separated by rules over a 'Decisions requested' band; outside those bounds it degrades to bullets. Prefer it to a plain closing ('Thank you').",
+            "properties": {
+              "actions": {
+                "description": "Required payload field. 2\u20136 actions in order: strings or {action (\u226490 chars), owner? (\u226430), date? (\u226420)}. Owner and date columns drop when no action has one.",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "action": {
+                          "type": "string"
+                        },
+                        "date": {
+                          "type": "string"
+                        },
+                        "due": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "owner": {
+                          "type": "string"
+                        },
+                        "step": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "when": {
+                          "type": "string"
+                        },
+                        "who": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              "asks": {
+                "$ref": "#/properties/decisions",
+                "description": "Alias for decisions."
+              },
+              "decisions": {
+                "description": "Typical (optional) payload field. 0\u20133 decisions requested (\u2264120 chars each), rendered in a band with a left accent rule under the actions.",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "body": {
+                          "type": "string"
+                        },
+                        "caption": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "detail": {
+                          "type": "string"
+                        },
+                        "heading": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "phase": {
+                          "type": "string"
+                        },
+                        "step": {
+                          "type": "string"
+                        },
+                        "summary": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              "decisions_label": {
+                "description": "Typical (optional) payload field. Band label (default \"Decisions requested\").",
+                "type": "string"
+              },
+              "decisions_requested": {
+                "$ref": "#/properties/decisions",
+                "description": "Alias for decisions."
+              },
+              "kind": {
+                "const": "next_steps"
+              },
+              "next_steps": {
+                "$ref": "#/properties/actions",
+                "description": "Alias for actions."
+              },
+              "notes": {
+                "description": "Speaker notes for this slide (rendered into the PPTX notes slide, never shown on the slide).",
+                "type": "string"
+              },
+              "source": {
+                "description": "Source / footnote line shown under the slide content.",
+                "type": "string"
+              },
+              "steps": {
+                "$ref": "#/properties/actions",
+                "description": "Alias for actions."
+              },
+              "takeaway": {
+                "description": "One-line takeaway footer.",
+                "type": "string"
+              },
+              "title": {
+                "description": "Typical (optional) payload field. Slide title, e.g. \"Three actions start the pilot in October\".",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "title": "next_steps slide",
+            "type": "object"
+          },
+          "example": {
+            "actions": [
+              {
+                "action": "Confirm pilot scope and success metrics",
+                "date": "15 Oct",
+                "owner": "COO"
+              },
+              {
+                "action": "Hire the four-person SMB success pod",
+                "date": "31 Oct",
+                "owner": "VP Customer"
+              },
+              {
+                "action": "Report first retention read-out to the board",
+                "date": "Jan board",
+                "owner": "CFO"
+              }
+            ],
+            "decisions": [
+              "Approve the \u20ac1.2M pod budget for FY27"
+            ],
+            "kind": "next_steps",
+            "title": "Three actions start the SMB pilot in October"
+          },
+          "compositions": [
+            {
+              "pattern": "next-steps",
+              "layout": "blank-title",
+              "reason": "2-6 actions with owner and date, plus up to 3 decisions requested"
+            },
+            {
+              "layout": "content",
+              "reason": "bullets preserve more actions or longer copy"
+            }
+          ]
+        },
+        {
+          "kind": "option_matrix",
+          "summary": "Options scored against shared criteria \u2014 the evaluation matrix a recommendation is argued on. 2\u20136 criteria \u00d7 2\u20136 options render as the table-highlight pattern with the recommended row and decisive column highlighted; outside that it degrades to a scored bullet list.",
+          "required_fields": [
+            "criteria",
+            "options"
+          ],
+          "required_aliases": {
+            "criteria": [
+              "columns"
+            ],
+            "options": [
+              "rows"
+            ]
+          },
+          "typical_fields": [
+            "title",
+            "scale",
+            "recommended",
+            "decisive_criterion",
+            "highlight_label",
+            "takeaway"
+          ],
+          "item_schema": {
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "anyOf": [
+                  {
+                    "required": [
+                      "criteria"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "columns"
+                    ]
+                  }
+                ]
+              },
+              {
+                "anyOf": [
+                  {
+                    "required": [
+                      "options"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "rows"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "description": "Options scored against shared criteria \u2014 the evaluation matrix a recommendation is argued on. 2\u20136 criteria \u00d7 2\u20136 options render as the table-highlight pattern with the recommended row and decisive column highlighted; outside that it degrades to a scored bullet list.",
+            "properties": {
+              "columns": {
+                "$ref": "#/properties/criteria",
+                "description": "Alias for criteria."
+              },
+              "corner_label": {
+                "description": "Label for the table's empty top-left corner cell.",
+                "type": "string"
+              },
+              "criteria": {
+                "description": "Required payload field. 2\u20136 evaluation criteria (table columns): a string label, or {label, scale?} to override the scale for that column.",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "criterion": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "scale": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              "decisive_criterion": {
+                "description": "Typical (optional) payload field. The criterion that decides it, named (matched against criteria[].label) or as a column index \u2014 its column is highlighted.",
+                "type": "string"
+              },
+              "highlight_label": {
+                "description": "Typical (optional) payload field. Badge on the highlighted row (e.g. \"Recommended\").",
+                "type": "string"
+              },
+              "kind": {
+                "const": "option_matrix"
+              },
+              "layout": {
+                "description": "Optional composition override: one of this kind's alternative layouts (list_slide_kinds \u2192 compositions[], or explain_deck_spec slides[].alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE.",
+                "type": "string"
+              },
+              "notes": {
+                "description": "Speaker notes for this slide (rendered into the PPTX notes slide, never shown on the slide).",
+                "type": "string"
+              },
+              "options": {
+                "description": "Required payload field. 2\u20136 options (table rows): {name, detail?, scores[]} with one score per criterion. detail/description/summary \u226480 chars for up to 4 options \u00d7 4 criteria, \u226460 in denser matrices.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "description": {
+                      "description": "Descriptor under the option name: \u226480 chars in a matrix up to 4\u00d74; \u226460 in a denser matrix.",
+                      "maxLength": 80,
+                      "type": "string"
+                    },
+                    "detail": {
+                      "description": "Descriptor under the option name: \u226480 chars in a matrix up to 4\u00d74; \u226460 in a denser matrix.",
+                      "maxLength": 80,
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "option": {
+                      "type": "string"
+                    },
+                    "scores": {
+                      "items": {
+                        "type": [
+                          "number",
+                          "string"
+                        ]
+                      },
+                      "type": "array"
+                    },
+                    "summary": {
+                      "description": "Descriptor under the option name: \u226480 chars in a matrix up to 4\u00d74; \u226460 in a denser matrix.",
+                      "maxLength": 80,
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "values": {
+                      "items": {
+                        "type": [
+                          "number",
+                          "string"
+                        ]
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "pattern": {
+                "description": "Optional composition override: one of this kind's alternative patterns (list_slide_kinds \u2192 compositions[], or explain_deck_spec slides[].alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE.",
+                "type": "string"
+              },
+              "recommended": {
+                "description": "Typical (optional) payload field. The recommended option, named (matched against options[].name) or as a row index \u2014 its row is highlighted.",
+                "type": "string"
+              },
+              "recommended_option": {
+                "$ref": "#/properties/recommended",
+                "description": "Alias for recommended."
+              },
+              "rows": {
+                "$ref": "#/properties/options",
+                "description": "Alias for options."
+              },
+              "scale": {
+                "description": "Typical (optional) payload field. Score vocabulary: harvey (0\u20134 or none/quarter/half/three-quarter/full, the default), rag (red/amber/green), or text (\u226424 chars). Use \"-\" for n/a.",
+                "type": "string"
+              },
+              "source": {
+                "description": "Source / footnote line shown under the slide content.",
+                "type": "string"
+              },
+              "takeaway": {
+                "description": "Typical (optional) payload field. One-line takeaway footer.",
+                "type": "string"
+              },
+              "title": {
+                "description": "Typical (optional) payload field. Slide title.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "title": "option_matrix slide",
+            "type": "object"
+          },
+          "example": {
+            "criteria": [
+              "Capex",
+              "Payback",
+              "Execution risk",
+              "Customer impact"
+            ],
+            "decisive_criterion": "Payback",
+            "highlight_label": "Recommended",
+            "kind": "option_matrix",
+            "options": [
+              {
+                "detail": "Automate the three largest hubs",
+                "name": "Parcel automation",
+                "scores": [
+                  1,
+                  1,
+                  3,
+                  2
+                ]
+              },
+              {
+                "detail": "Close two hubs, expand one",
+                "name": "Hub consolidation",
+                "scores": [
+                  2,
+                  4,
+                  3,
+                  3
+                ]
+              },
+              {
+                "detail": "Outsource last mile in tier-2 cities",
+                "name": "Partner network",
+                "scores": [
+                  4,
+                  4,
+                  1,
+                  1
+                ]
+              }
+            ],
+            "recommended": "Hub consolidation",
+            "scale": "harvey",
+            "takeaway": "Hub consolidation pays back in two years at acceptable risk.",
+            "title": "Hub consolidation scores best on payback and risk"
+          },
+          "compositions": [
+            {
+              "pattern": "table-highlight",
+              "layout": "blank-title",
+              "reason": "2-6 options scored against 2-6 criteria"
+            },
+            {
+              "layout": "content",
+              "reason": "native bullets preserve a matrix outside those bounds"
+            }
+          ]
+        },
+        {
+          "kind": "process",
+          "summary": "Sequential process or flow with ordered steps. Steps that carry a description render as numbered rows (3\u20136), each a bold label over its own detail line; bare labels and branching steps (type: decision) render as the flow diagram (3\u20138).",
+          "required_fields": [
+            "steps"
+          ],
+          "typical_fields": [
+            "title",
+            "takeaway"
+          ],
+          "item_schema": {
+            "additionalProperties": false,
+            "description": "Sequential process or flow with ordered steps. Steps that carry a description render as numbered rows (3\u20136), each a bold label over its own detail line; bare labels and branching steps (type: decision) render as the flow diagram (3\u20138).",
+            "properties": {
+              "kind": {
+                "const": "process"
+              },
+              "layout": {
+                "description": "Optional composition override: one of this kind's alternative layouts (list_slide_kinds \u2192 compositions[], or explain_deck_spec slides[].alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE.",
+                "type": "string"
+              },
+              "notes": {
+                "description": "Speaker notes for this slide (rendered into the PPTX notes slide, never shown on the slide).",
+                "type": "string"
+              },
+              "pattern": {
+                "description": "Optional composition override: one of this kind's alternative patterns (list_slide_kinds \u2192 compositions[], or explain_deck_spec slides[].alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE.",
+                "type": "string"
+              },
+              "source": {
+                "description": "Source / footnote line shown under the slide content.",
+                "type": "string"
+              },
+              "steps": {
+                "description": "Required payload field. Steps: strings or {label, description?, type?}. A step with a description renders as a numbered row (3\u20136 steps; label \u226460 chars, description \u2264180); bare labels and branching steps (type: decision) render as the flow diagram (3\u20138 steps, \u226480 chars per box \u2014 a description there is appended to the label).",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "description": {
+                          "type": "string"
+                        },
+                        "detail": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "step": {
+                          "type": "string"
+                        },
+                        "summary": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "description": "Chart type, e.g. bar_chart, line_chart, pie_chart (see get_chart_capabilities).",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              "takeaway": {
+                "description": "Typical (optional) payload field. One-line takeaway footer.",
+                "type": "string"
+              },
+              "title": {
+                "description": "Typical (optional) payload field. Slide title.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "steps"
+            ],
+            "title": "process slide",
+            "type": "object"
+          },
+          "example": {
+            "kind": "process",
+            "steps": [
+              "Qualify",
+              "Discover",
+              "Propose",
+              "Close"
+            ],
+            "takeaway": "Discovery is where most deals stall.",
+            "title": "How a deal closes"
+          },
+          "compositions": [
+            {
+              "pattern": "numbered-step-strip",
+              "layout": "blank-title",
+              "reason": "3-7 steps that each carry a description, as numbered rows"
+            },
+            {
+              "pattern": "process-flow",
+              "layout": "blank-title",
+              "reason": "3-8 bare or branching steps as a flow diagram"
+            },
+            {
+              "pattern": "process-flow-compact",
+              "layout": "blank-title",
+              "reason": "3-6 short labels (averaging under 40 characters) as a shallow flow band under the title"
+            },
+            {
+              "layout": "content",
+              "reason": "native bullets preserve shorter or longer processes"
+            }
+          ]
+        },
+        {
+          "kind": "regions",
+          "summary": "One slide, one title, 2\u20133 typed regions: the chart on the left with the KPI and the timeline stacked on the right. arrangement is columns or rows (2\u20133 regions; size_pct is each one's width / height) or main_left / main_right / main_top / main_bottom (exactly 3: regions[0] is the main region and its size_pct its share, default 60; regions[1..2] stack beside it and split that side by their own size_pct). Each region is {kind, size_pct?, heading?, source?, \u2026} with kind chart (chart, unit), stat (value, label, unit, context), kpis (2\u20134 kpis), table (headers, rows; \u22644 columns \u00d7 5 rows), timeline (3\u20137 milestones), image (image, caption) or text (body, bullets) \u2014 the fields of the like-named slide kind. Region sources join the slide's source line. Use it only when the content types must be read together; one kind per slide stays the default.",
+          "required_fields": [
+            "regions"
+          ],
+          "typical_fields": [
+            "title",
+            "arrangement",
+            "takeaway",
+            "source"
+          ],
+          "item_schema": {
+            "additionalProperties": false,
+            "description": "One slide, one title, 2\u20133 typed regions: the chart on the left with the KPI and the timeline stacked on the right. arrangement is columns or rows (2\u20133 regions; size_pct is each one's width / height) or main_left / main_right / main_top / main_bottom (exactly 3: regions[0] is the main region and its size_pct its share, default 60; regions[1..2] stack beside it and split that side by their own size_pct). Each region is {kind, size_pct?, heading?, source?, \u2026} with kind chart (chart, unit), stat (value, label, unit, context), kpis (2\u20134 kpis), table (headers, rows; \u22644 columns \u00d7 5 rows), timeline (3\u20137 milestones), image (image, caption) or text (body, bullets) \u2014 the fields of the like-named slide kind. Region sources join the slide's source line. Use it only when the content types must be read together; one kind per slide stays the default.",
+            "properties": {
+              "arrangement": {
+                "description": "Typical (optional) payload field. columns (default) or rows: 2\u20133 regions, size_pct is each one's width / height. main_left / main_right / main_top / main_bottom: exactly 3 regions, regions[0] is the main one (size_pct = its share, default 60) and regions[1..2] stack beside it, splitting that side by their own size_pct.",
+                "enum": [
+                  "columns",
+                  "rows",
+                  "main_left",
+                  "main_right",
+                  "main_top",
+                  "main_bottom"
+                ],
+                "type": "string"
+              },
+              "kind": {
+                "const": "regions"
+              },
+              "notes": {
+                "description": "Speaker notes for this slide (rendered into the PPTX notes slide, never shown on the slide).",
+                "type": "string"
+              },
+              "regions": {
+                "description": "Required payload field. 2\u20133 typed regions in reading order: {kind, size_pct?, heading?, source?, \u2026kind fields}. Unset size_pct values share what the set ones leave; every region gets 15\u201385%.",
+                "items": {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "alt": {
+                          "description": "Alt text for the chart; defaults to the heading or chart title.",
+                          "type": "string"
+                        },
+                        "chart": {
+                          "additionalProperties": false,
+                          "description": "Chart: {type, title?, data}. Bar/line/area data is {categories:[\u2026], series:[{name, values:[\u2026]}]}; pie/donut {categories:[\u2026], values:[\u2026]}.",
+                          "properties": {
+                            "data": {
+                              "description": "Chart data. Bar/line/area: {categories:[\u2026], series:[{name, values:[\u2026]}]}. Pie/donut: {categories:[\u2026], values:[\u2026]}.",
+                              "type": "object"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "description": "Chart type, e.g. bar_chart, line_chart, pie_chart (see get_chart_capabilities).",
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "heading": {
+                          "description": "Optional bold label above the region, \u226460 chars.",
+                          "type": "string"
+                        },
+                        "kind": {
+                          "const": "chart"
+                        },
+                        "size_pct": {
+                          "maximum": 85,
+                          "minimum": 15,
+                          "type": "number"
+                        },
+                        "source": {
+                          "description": "Source of this region's figures; joins the slide's source line.",
+                          "type": "string"
+                        },
+                        "unit": {
+                          "description": "Unit of the chart's values (e.g. \"\u20acm\"), shown after the heading. \u226412 chars.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "chart"
+                      ],
+                      "title": "chart region",
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "context": {
+                          "description": "One line of context beneath the label. \u2264120 chars.",
+                          "type": "string"
+                        },
+                        "heading": {
+                          "description": "Optional bold label above the region, \u226460 chars.",
+                          "type": "string"
+                        },
+                        "kind": {
+                          "const": "stat"
+                        },
+                        "label": {
+                          "description": "The words beneath the number. \u226480 chars.",
+                          "type": "string"
+                        },
+                        "size_pct": {
+                          "maximum": 85,
+                          "minimum": 15,
+                          "type": "number"
+                        },
+                        "source": {
+                          "description": "Source of this region's figures; joins the slide's source line.",
+                          "type": "string"
+                        },
+                        "unit": {
+                          "description": "Short suffix beside the number. \u226410 chars.",
+                          "type": "string"
+                        },
+                        "value": {
+                          "description": "The number, formatted as it should read (e.g. \"32%\"). \u226420 chars.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "value"
+                      ],
+                      "title": "stat region",
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "heading": {
+                          "description": "Optional bold label above the region, \u226460 chars.",
+                          "type": "string"
+                        },
+                        "kind": {
+                          "const": "kpis"
+                        },
+                        "kpis": {
+                          "description": "2\u20134 KPI objects {value, label, delta?, comparator?}.",
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "big": {
+                                "type": "string"
+                              },
+                              "caption": {
+                                "type": "string"
+                              },
+                              "change": {
+                                "type": "string"
+                              },
+                              "comparator": {
+                                "type": "string"
+                              },
+                              "delta": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "small": {
+                                "type": "string"
+                              },
+                              "sub": {
+                                "type": "string"
+                              },
+                              "trend": {
+                                "type": "string"
+                              },
+                              "value": {
+                                "type": "string"
+                              },
+                              "vs": {
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "size_pct": {
+                          "maximum": 85,
+                          "minimum": 15,
+                          "type": "number"
+                        },
+                        "source": {
+                          "description": "Source of this region's figures; joins the slide's source line.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "kpis"
+                      ],
+                      "title": "kpis region",
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "column_alignments": {
+                          "description": "Per-column alignment: left / center / right.",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "body": {
+                                    "type": "string"
+                                  },
+                                  "caption": {
+                                    "type": "string"
+                                  },
+                                  "description": {
+                                    "type": "string"
+                                  },
+                                  "detail": {
+                                    "type": "string"
+                                  },
+                                  "heading": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "phase": {
+                                    "type": "string"
+                                  },
+                                  "step": {
+                                    "type": "string"
+                                  },
+                                  "summary": {
+                                    "type": "string"
+                                  },
+                                  "text": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "type": "array"
+                        },
+                        "headers": {
+                          "description": "Column headers (\u22644).",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "body": {
+                                    "type": "string"
+                                  },
+                                  "caption": {
+                                    "type": "string"
+                                  },
+                                  "description": {
+                                    "type": "string"
+                                  },
+                                  "detail": {
+                                    "type": "string"
+                                  },
+                                  "heading": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "phase": {
+                                    "type": "string"
+                                  },
+                                  "step": {
+                                    "type": "string"
+                                  },
+                                  "summary": {
+                                    "type": "string"
+                                  },
+                                  "text": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "type": "array"
+                        },
+                        "heading": {
+                          "description": "Optional bold label above the region, \u226460 chars.",
+                          "type": "string"
+                        },
+                        "kind": {
+                          "const": "table"
+                        },
+                        "rows": {
+                          "description": "Data rows (\u22645): a list of cells, or an object keyed by header label.",
+                          "type": "array"
+                        },
+                        "size_pct": {
+                          "maximum": 85,
+                          "minimum": 15,
+                          "type": "number"
+                        },
+                        "source": {
+                          "description": "Source of this region's figures; joins the slide's source line.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "headers"
+                      ],
+                      "title": "table region",
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "heading": {
+                          "description": "Optional bold label above the region, \u226460 chars.",
+                          "type": "string"
+                        },
+                        "kind": {
+                          "const": "timeline"
+                        },
+                        "milestones": {
+                          "description": "3\u20137 milestones: strings or {label, date?, end_date?, body?}. Label \u226460 chars, date \u226430, body \u2264200.",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "body": {
+                                    "type": "string"
+                                  },
+                                  "date": {
+                                    "type": "string"
+                                  },
+                                  "date_label": {
+                                    "type": "string"
+                                  },
+                                  "description": {
+                                    "type": "string"
+                                  },
+                                  "detail": {
+                                    "type": "string"
+                                  },
+                                  "end": {
+                                    "type": "string"
+                                  },
+                                  "end_date": {
+                                    "type": "string"
+                                  },
+                                  "event": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "milestone": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "start": {
+                                    "type": "string"
+                                  },
+                                  "start_date": {
+                                    "type": "string"
+                                  },
+                                  "summary": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "until": {
+                                    "type": "string"
+                                  },
+                                  "when": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "type": "array"
+                        },
+                        "size_pct": {
+                          "maximum": 85,
+                          "minimum": 15,
+                          "type": "number"
+                        },
+                        "source": {
+                          "description": "Source of this region's figures; joins the slide's source line.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "milestones"
+                      ],
+                      "title": "timeline region",
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "caption": {
+                          "description": "Italic line under the picture. \u2264120 chars.",
+                          "type": "string"
+                        },
+                        "heading": {
+                          "description": "Optional bold label above the region, \u226460 chars.",
+                          "type": "string"
+                        },
+                        "image": {
+                          "additionalProperties": false,
+                          "description": "The picture: {path|url, alt?}.",
+                          "properties": {
+                            "alt": {
+                              "type": "string"
+                            },
+                            "path": {
+                              "type": "string"
+                            },
+                            "url": {
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "kind": {
+                          "const": "image"
+                        },
+                        "size_pct": {
+                          "maximum": 85,
+                          "minimum": 15,
+                          "type": "number"
+                        },
+                        "source": {
+                          "description": "Source of this region's figures; joins the slide's source line.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "image"
+                      ],
+                      "title": "image region",
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "anyOf": [
+                        {
+                          "required": [
+                            "body"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "bullets"
+                          ]
+                        }
+                      ],
+                      "properties": {
+                        "body": {
+                          "description": "Narrative text, \u2264400 chars; a newline starts a paragraph.",
+                          "type": "string"
+                        },
+                        "bullets": {
+                          "description": "Up to 6 bullets.",
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "heading": {
+                          "description": "Optional bold label above the region, \u226460 chars.",
+                          "type": "string"
+                        },
+                        "kind": {
+                          "const": "text"
+                        },
+                        "size_pct": {
+                          "maximum": 85,
+                          "minimum": 15,
+                          "type": "number"
+                        },
+                        "source": {
+                          "description": "Source of this region's figures; joins the slide's source line.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ],
+                      "title": "text region",
+                      "type": "object"
+                    }
+                  ]
+                },
+                "maxItems": 3,
+                "minItems": 2,
+                "type": "array"
+              },
+              "source": {
+                "description": "Typical (optional) payload field. Source / footnote line shown under the slide content.",
+                "type": "string"
+              },
+              "takeaway": {
+                "description": "Typical (optional) payload field. One-line takeaway footer.",
+                "type": "string"
+              },
+              "title": {
+                "description": "Typical (optional) payload field. Slide title: the one claim the regions argue together.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "regions"
+            ],
+            "title": "regions slide",
+            "type": "object"
+          },
+          "example": {
+            "arrangement": "main_left",
+            "kind": "regions",
+            "regions": [
+              {
+                "chart": {
+                  "data": {
+                    "categories": [
+                      "Q1",
+                      "Q2",
+                      "Q3",
+                      "Q4"
+                    ],
+                    "series": [
+                      {
+                        "name": "Revenue",
+                        "values": [
+                          12,
+                          14,
+                          17,
+                          21
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "line_chart"
+                },
+                "heading": "Quarterly revenue",
+                "kind": "chart",
+                "size_pct": 65,
+                "unit": "\u20acm"
+              },
+              {
+                "kind": "stat",
+                "label": "Gross margin, Q4",
+                "size_pct": 50,
+                "value": "32%"
+              },
+              {
+                "heading": "Launch plan, Oct\u2013Dec",
+                "kind": "timeline",
+                "milestones": [
+                  {
+                    "label": "Design"
+                  },
+                  {
+                    "label": "Pilot"
+                  },
+                  {
+                    "label": "Rollout"
+                  }
+                ],
+                "size_pct": 50
+              }
+            ],
+            "source": "Finance ledger, FY26",
+            "takeaway": "Revenue nearly doubled in a year; the margin pays for the rollout.",
+            "title": "Revenue growth funds the launch at a 32% gross margin"
+          },
+          "compositions": [
+            {
+              "layout": "blank-title",
+              "reason": "2\u20133 typed regions in one shape grid under the slide title, arranged by the arrangement field"
+            }
+          ]
+        },
+        {
+          "kind": "roadmap",
+          "summary": "Phased roadmap or timeline.",
+          "required_fields": [
+            "phases"
+          ],
+          "typical_fields": [
+            "title",
+            "takeaway"
+          ],
+          "item_schema": {
+            "additionalProperties": false,
+            "description": "Phased roadmap or timeline.",
+            "properties": {
+              "kind": {
+                "const": "roadmap"
+              },
+              "layout": {
+                "description": "Optional composition override: one of this kind's alternative layouts (list_slide_kinds \u2192 compositions[], or explain_deck_spec slides[].alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE.",
+                "type": "string"
+              },
+              "notes": {
+                "description": "Speaker notes for this slide (rendered into the PPTX notes slide, never shown on the slide).",
+                "type": "string"
+              },
+              "pattern": {
+                "description": "Optional composition override: one of this kind's alternative patterns (list_slide_kinds \u2192 compositions[], or explain_deck_spec slides[].alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE.",
+                "type": "string"
+              },
+              "phases": {
+                "description": "Required payload field. 3\u20136 phases: strings or {name, date_label?, description?, items?, active?, milestone?}.",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "active": {
+                          "type": "boolean"
+                        },
+                        "bullets": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "date": {
+                          "type": "string"
+                        },
+                        "date_label": {
+                          "type": "string"
+                        },
+                        "dates": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "detail": {
+                          "type": "string"
+                        },
+                        "items": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "milestone": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "period": {
+                          "type": "string"
+                        },
+                        "phase": {
+                          "type": "string"
+                        },
+                        "summary": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              "source": {
+                "description": "Source / footnote line shown under the slide content.",
+                "type": "string"
+              },
+              "takeaway": {
+                "description": "Typical (optional) payload field. One-line takeaway footer.",
+                "type": "string"
+              },
+              "title": {
+                "description": "Typical (optional) payload field. Slide title.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "phases"
+            ],
+            "title": "roadmap slide",
+            "type": "object"
+          },
+          "example": {
+            "kind": "roadmap",
+            "phases": [
+              {
+                "date_label": "Q1",
+                "description": "Two lighthouse customers",
+                "name": "Pilot"
+              },
+              {
+                "date_label": "Q2",
+                "description": "All EMEA accounts",
+                "name": "Expand"
+              },
+              {
+                "date_label": "Q3",
+                "description": "Global availability",
+                "name": "Scale"
+              }
+            ],
+            "takeaway": "Global availability by Q3.",
+            "title": "Rollout plan"
+          },
+          "compositions": [
+            {
+              "pattern": "phase-roadmap",
+              "layout": "blank-title",
+              "reason": "3-6 phases"
+            },
+            {
+              "layout": "content",
+              "reason": "native bullets preserve dense roadmaps"
+            }
+          ]
+        },
+        {
+          "kind": "table",
+          "summary": "A native data table \u2014 the financials / P&L, the segment split, the price list, a risk register (risk, likelihood, impact, mitigation, owner). Renders with the template's own table style; up to 6 columns \u00d7 7 logical rows before the density rules ask for a split.",
+          "required_fields": [
+            "headers",
+            "rows"
+          ],
+          "required_aliases": {
+            "headers": [
+              "columns"
+            ]
+          },
+          "typical_fields": [
+            "title",
+            "column_alignments",
+            "highlight_column",
+            "totals_row",
+            "takeaway"
+          ],
+          "item_schema": {
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "anyOf": [
+                  {
+                    "required": [
+                      "headers"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "columns"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "description": "A native data table \u2014 the financials / P&L, the segment split, the price list, a risk register (risk, likelihood, impact, mitigation, owner). Renders with the template's own table style; up to 6 columns \u00d7 7 logical rows before the density rules ask for a split.",
+            "properties": {
+              "column_alignments": {
+                "description": "Typical (optional) payload field. Per-column alignment: left / center / right (the engine's l / ctr / r are accepted too). Right-align numeric columns.",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "body": {
+                          "type": "string"
+                        },
+                        "caption": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "detail": {
+                          "type": "string"
+                        },
+                        "heading": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "phase": {
+                          "type": "string"
+                        },
+                        "step": {
+                          "type": "string"
+                        },
+                        "summary": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              "column_types": {
+                "description": "Per-column type hint for the renderer's number formatting, e.g. text / number / currency / percent.",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "body": {
+                          "type": "string"
+                        },
+                        "caption": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "detail": {
+                          "type": "string"
+                        },
+                        "heading": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "phase": {
+                          "type": "string"
+                        },
+                        "step": {
+                          "type": "string"
+                        },
+                        "summary": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              "columns": {
+                "$ref": "#/properties/headers",
+                "description": "Alias for headers."
+              },
+              "headers": {
+                "description": "Required payload field. Column headers (up to 6). The table's first row.",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "body": {
+                          "type": "string"
+                        },
+                        "caption": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "detail": {
+                          "type": "string"
+                        },
+                        "heading": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "phase": {
+                          "type": "string"
+                        },
+                        "step": {
+                          "type": "string"
+                        },
+                        "summary": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              "highlight_column": {
+                "description": "Typical (optional) payload field. The column to emphasise, named (matched against a header) or as a 0-based index.",
+                "type": "string"
+              },
+              "kind": {
+                "const": "table"
+              },
+              "layout": {
+                "description": "Optional composition override: one of this kind's alternative layouts (list_slide_kinds \u2192 compositions[], or explain_deck_spec slides[].alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE.",
+                "type": "string"
+              },
+              "notes": {
+                "description": "Speaker notes for this slide (rendered into the PPTX notes slide, never shown on the slide).",
+                "type": "string"
+              },
+              "pattern": {
+                "description": "Optional composition override: one of this kind's alternative patterns (list_slide_kinds \u2192 compositions[], or explain_deck_spec slides[].alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE.",
+                "type": "string"
+              },
+              "rows": {
+                "description": "Required payload field. Data rows (up to 6, so the table stays within the 7-row budget including the header). A row is a list of cell values, or an object keyed by header label. Short rows render blank cells.",
+                "type": "array"
+              },
+              "source": {
+                "description": "Source / footnote line shown under the slide content.",
+                "type": "string"
+              },
+              "takeaway": {
+                "description": "Typical (optional) payload field. One-line takeaway footer.",
+                "type": "string"
+              },
+              "title": {
+                "description": "Typical (optional) payload field. Slide title.",
+                "type": "string"
+              },
+              "totals_row": {
+                "description": "Typical (optional) payload field. Set true when the last data row is a totals row, so the renderer emphasises it.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "rows"
+            ],
+            "title": "table slide",
+            "type": "object"
+          },
+          "example": {
+            "column_alignments": [
+              "left",
+              "right",
+              "right",
+              "right"
+            ],
+            "headers": [
+              "Segment",
+              "FY25 revenue",
+              "FY26 revenue",
+              "Change"
+            ],
+            "highlight_column": "FY26 revenue",
+            "kind": "table",
+            "rows": [
+              [
+                "Enterprise",
+                "$28.4M",
+                "$41.2M",
+                "+45%"
+              ],
+              [
+                "Mid-market",
+                "$12.1M",
+                "$14.8M",
+                "+22%"
+              ],
+              [
+                "SMB",
+                "$9.6M",
+                "$8.9M",
+                "-7%"
+              ],
+              [
+                "Total",
+                "$50.1M",
+                "$64.9M",
+                "+30%"
+              ]
+            ],
+            "source": "Finance segment reporting, FY25-FY26",
+            "takeaway": "Enterprise added $12.8M; SMB gave back $0.7M.",
+            "title": "Enterprise carried the year; SMB did not",
+            "totals_row": true
+          },
+          "compositions": [
+            {
+              "layout": "blank-title",
+              "reason": "a native table in the template's own table style, under the same title as every other content kind"
+            },
+            {
+              "layout": "content",
+              "reason": "bullets preserve rows without a header row"
+            }
+          ]
+        }
+      ],
+      "takeaway_budget": {
+        "font_pt": 14,
+        "max_lines": 1,
+        "note": "Keep takeaway (or chart insight) to one 14pt line in the template's chrome band. Width varies by template; validate_deck_spec reports BODY_TOO_LONG at slides[i].takeaway when measured text wraps."
+      }
+    }
+  }
+}

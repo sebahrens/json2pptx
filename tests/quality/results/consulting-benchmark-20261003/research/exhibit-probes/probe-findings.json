@@ -1,0 +1,313 @@
+{
+  "date": "2026-10-03",
+  "scope": "Two authorized reference-inspired exhibit probes, two slides each in p-style/midnight-blue/modern-template; six final slides inspected.",
+  "inputs": [
+    "spec-v0.json",
+    "spec-v1.json",
+    "spec-v2.json"
+  ],
+  "schema_correction": "unit shortened from14to9characters to satisfy documented12-character bound; expanded meaning retained in heading.",
+  "bounded_layout_repair": "One layout repair: chart70%/table30% to chart60%/table40%, redundant table heading removed. Initial allocation truthfully refused hidden table rows. No further repair iterations.",
+  "slide_reviews": [
+    {
+      "template": "p-style",
+      "slide": 1,
+      "input": ".claude/review-evidence/2026-10-03-consulting/research/exhibit-probes/p-style-spec-v2/spec.json",
+      "pptx": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/research/exhibit-probes/output/p-style-spec-v2.pptx",
+      "pptx_sha256": "286ab4f5a6774eec1217ed42eb1e4c481b462daaa201b5feaeabe4e10cbeb0ec",
+      "png": ".claude/review-evidence/2026-10-03-consulting/research/exhibit-probes/p-style-spec-v2/slide-01.png",
+      "png_sha256": "ade584e527f3d0aa93ce5f8addcdea5012f94fb247aad3afec09be4e2eff4887",
+      "render_density_dpi": 100,
+      "renderer": "Supplied bundled LibreOfficeDev + project FONTCONFIG_FILE + pdftoppm",
+      "visually_inspected": true,
+      "verdict": "fail",
+      "observations": [
+        "Stack totals50 and digital-share40/48/54 are correct; table rows and labels preserved.",
+        "Plot is a shallow strip and Y labels0/20/40/60 overlap at normal view.",
+        "Short Q1/Q2/Q3 labels rule out long rotated X labels as trigger.",
+        "Unit repetition in heading is an authoring defect, not a product issue.",
+        "Period identities match semantically; table columns are not precisely aligned to chart plotting centers."
+      ]
+    },
+    {
+      "template": "p-style",
+      "slide": 2,
+      "input": ".claude/review-evidence/2026-10-03-consulting/research/exhibit-probes/p-style-spec-v2/spec.json",
+      "pptx": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/research/exhibit-probes/output/p-style-spec-v2.pptx",
+      "pptx_sha256": "286ab4f5a6774eec1217ed42eb1e4c481b462daaa201b5feaeabe4e10cbeb0ec",
+      "png": ".claude/review-evidence/2026-10-03-consulting/research/exhibit-probes/p-style-spec-v2/slide-02.png",
+      "png_sha256": "2c22bb48fca7fd99936a26f88ca94a8ad0b48c5c3e253aada79a9e7619803b02",
+      "render_density_dpi": 100,
+      "renderer": "Supplied bundled LibreOfficeDev + project FONTCONFIG_FILE + pdftoppm",
+      "visually_inspected": true,
+      "verdict": "pass",
+      "observations": [
+        "Quote, respondent attribution,42%metric,210/500basis and actions readable.",
+        "Invented interview and synthetic record status visible.",
+        "Headline proposes a test and takeaway explicitly avoids causal benefit claims.",
+        "Theme fonts and accent colors retained; substantial whitespace is deliberate."
+      ]
+    },
+    {
+      "template": "midnight-blue",
+      "slide": 1,
+      "input": ".claude/review-evidence/2026-10-03-consulting/research/exhibit-probes/midnight-blue-spec-v2/spec.json",
+      "pptx": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/research/exhibit-probes/output/midnight-blue-spec-v2.pptx",
+      "pptx_sha256": "3363cb9f847d3580b794efa9c3f025d98a5eb3baa8e87afc13e54cfabb8e020a",
+      "png": ".claude/review-evidence/2026-10-03-consulting/research/exhibit-probes/midnight-blue-spec-v2/slide-01.png",
+      "png_sha256": "3dac6a973637917322fdf1e1ec088516874473291e6e30dd3f357730b0d88dd7",
+      "render_density_dpi": 100,
+      "renderer": "Supplied bundled LibreOfficeDev + project FONTCONFIG_FILE + pdftoppm",
+      "visually_inspected": true,
+      "verdict": "fail",
+      "observations": [
+        "Stack totals50 and digital-share40/48/54 are correct; table rows and labels preserved.",
+        "Plot is a shallow strip and Y labels0/20/40/60 overlap at normal view.",
+        "Short Q1/Q2/Q3 labels rule out long rotated X labels as trigger.",
+        "Unit repetition in heading is an authoring defect, not a product issue.",
+        "Period identities match semantically; table columns are not precisely aligned to chart plotting centers."
+      ]
+    },
+    {
+      "template": "midnight-blue",
+      "slide": 2,
+      "input": ".claude/review-evidence/2026-10-03-consulting/research/exhibit-probes/midnight-blue-spec-v2/spec.json",
+      "pptx": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/research/exhibit-probes/output/midnight-blue-spec-v2.pptx",
+      "pptx_sha256": "3363cb9f847d3580b794efa9c3f025d98a5eb3baa8e87afc13e54cfabb8e020a",
+      "png": ".claude/review-evidence/2026-10-03-consulting/research/exhibit-probes/midnight-blue-spec-v2/slide-02.png",
+      "png_sha256": "f159e23afbf93fa83a6bce0035aa6f1021d4f344f37bf7b2a982af4358100a98",
+      "render_density_dpi": 100,
+      "renderer": "Supplied bundled LibreOfficeDev + project FONTCONFIG_FILE + pdftoppm",
+      "visually_inspected": true,
+      "verdict": "pass",
+      "observations": [
+        "Quote, respondent attribution,42%metric,210/500basis and actions readable.",
+        "Invented interview and synthetic record status visible.",
+        "Headline proposes a test and takeaway explicitly avoids causal benefit claims.",
+        "Theme fonts and accent colors retained; substantial whitespace is deliberate."
+      ]
+    },
+    {
+      "template": "modern-template",
+      "slide": 1,
+      "input": ".claude/review-evidence/2026-10-03-consulting/research/exhibit-probes/modern-template-spec-v2/spec.json",
+      "pptx": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/research/exhibit-probes/output/modern-template-spec-v2.pptx",
+      "pptx_sha256": "f647280ca2bf6559b101be472e69d3f27a305c535e8b66b754c5b34b5386bff4",
+      "png": ".claude/review-evidence/2026-10-03-consulting/research/exhibit-probes/modern-template-spec-v2/slide-01.png",
+      "png_sha256": "a268d0d43f96d2f4339b779a55bf4220879df4ed1774a52eb00fa5ad5e07276a",
+      "render_density_dpi": 100,
+      "renderer": "Supplied bundled LibreOfficeDev + project FONTCONFIG_FILE + pdftoppm",
+      "visually_inspected": true,
+      "verdict": "fail",
+      "observations": [
+        "Stack totals50 and digital-share40/48/54 are correct; table rows and labels preserved.",
+        "Plot is a shallow strip and Y labels0/20/40/60 overlap at normal view.",
+        "Short Q1/Q2/Q3 labels rule out long rotated X labels as trigger.",
+        "Unit repetition in heading is an authoring defect, not a product issue.",
+        "Period identities match semantically; table columns are not precisely aligned to chart plotting centers."
+      ]
+    },
+    {
+      "template": "modern-template",
+      "slide": 2,
+      "input": ".claude/review-evidence/2026-10-03-consulting/research/exhibit-probes/modern-template-spec-v2/spec.json",
+      "pptx": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/research/exhibit-probes/output/modern-template-spec-v2.pptx",
+      "pptx_sha256": "f647280ca2bf6559b101be472e69d3f27a305c535e8b66b754c5b34b5386bff4",
+      "png": ".claude/review-evidence/2026-10-03-consulting/research/exhibit-probes/modern-template-spec-v2/slide-02.png",
+      "png_sha256": "d0be98ed2b967dc7e4393e92f26579508587b1d2cf5b50507269b8ee1e45fe57",
+      "render_density_dpi": 100,
+      "renderer": "Supplied bundled LibreOfficeDev + project FONTCONFIG_FILE + pdftoppm",
+      "visually_inspected": true,
+      "verdict": "pass",
+      "observations": [
+        "Quote, respondent attribution,42%metric,210/500basis and actions readable.",
+        "Invented interview and synthetic record status visible.",
+        "Headline proposes a test and takeaway explicitly avoids causal benefit claims.",
+        "Theme fonts and accent colors retained; substantial whitespace is deliberate."
+      ]
+    }
+  ],
+  "chart_geometry": [
+    {
+      "template": "p-style",
+      "canvas_px": [
+        1188.0,
+        161.0
+      ],
+      "ticks": [
+        {
+          "value": 0,
+          "x": 26.6683,
+          "y": 76.1575,
+          "font_px": 19.1936
+        },
+        {
+          "value": 20,
+          "x": 26.6683,
+          "y": 64.1386,
+          "font_px": 19.1936
+        },
+        {
+          "value": 40,
+          "x": 26.6683,
+          "y": 52.0819,
+          "font_px": 19.1936
+        },
+        {
+          "value": 60,
+          "x": 26.6683,
+          "y": 40.0252,
+          "font_px": 19.1936
+        }
+      ],
+      "axis_tick_span_px": 36.1323,
+      "minimum_adjacent_spacing_px": 12.018900000000002,
+      "label_font_px": 19.1936,
+      "diagnostic_overlap_messages": [
+        "drawn text \"0\" overlaps \"20\" by 44% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"20\" overlaps \"40\" by 44% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"40\" overlaps \"60\" by 44% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"0\" overlaps \"20\" by 44% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"20\" overlaps \"40\" by 44% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"40\" overlaps \"60\" by 44% of the smaller text box; shorten a label or increase the diagram space"
+      ],
+      "deterministic_ready": false,
+      "render_success": true
+    },
+    {
+      "template": "midnight-blue",
+      "canvas_px": [
+        1051.0,
+        153.0
+      ],
+      "ticks": [
+        {
+          "value": 0,
+          "x": 26.6683,
+          "y": 68.0693,
+          "font_px": 19.1893
+        },
+        {
+          "value": 20,
+          "x": 26.6683,
+          "y": 58.6961,
+          "font_px": 19.1893
+        },
+        {
+          "value": 40,
+          "x": 26.6683,
+          "y": 49.3228,
+          "font_px": 19.1893
+        },
+        {
+          "value": 60,
+          "x": 26.6683,
+          "y": 39.9496,
+          "font_px": 19.1893
+        }
+      ],
+      "axis_tick_span_px": 28.1197,
+      "minimum_adjacent_spacing_px": 9.373199999999997,
+      "label_font_px": 19.1893,
+      "diagnostic_overlap_messages": [
+        "drawn text \"0\" overlaps \"20\" by 60% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"20\" overlaps \"40\" by 60% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"40\" overlaps \"60\" by 60% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"0\" overlaps \"20\" by 60% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"20\" overlaps \"40\" by 60% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"40\" overlaps \"60\" by 60% of the smaller text box; shorten a label or increase the diagram space"
+      ],
+      "deterministic_ready": false,
+      "render_success": true
+    },
+    {
+      "template": "modern-template",
+      "canvas_px": [
+        1088.0,
+        141.0
+      ],
+      "ticks": [
+        {
+          "value": 0,
+          "x": 27.362,
+          "y": 56.2394,
+          "font_px": 19.19
+        },
+        {
+          "value": 20,
+          "x": 27.362,
+          "y": 50.8346,
+          "font_px": 19.19
+        },
+        {
+          "value": 40,
+          "x": 27.362,
+          "y": 45.4677,
+          "font_px": 19.19
+        },
+        {
+          "value": 60,
+          "x": 27.362,
+          "y": 40.1008,
+          "font_px": 19.19
+        }
+      ],
+      "axis_tick_span_px": 16.138600000000004,
+      "minimum_adjacent_spacing_px": 5.366900000000001,
+      "label_font_px": 19.19,
+      "diagnostic_overlap_messages": [
+        "drawn text \"0\" overlaps \"40\" by 60% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"0\" overlaps \"60\" by 40% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"0\" overlaps \"60\" by 40% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"40\" overlaps \"60\" by 80% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"20\" overlaps \"60\" by 60% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"40\" overlaps \"60\" by 80% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"20\" overlaps \"60\" by 60% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"20\" overlaps \"40\" by 80% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"0\" overlaps \"40\" by 60% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"0\" overlaps \"20\" by 80% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"20\" overlaps \"40\" by 80% of the smaller text box; shorten a label or increase the diagram space",
+        "drawn text \"0\" overlaps \"20\" by 80% of the smaller text box; shorten a label or increase the diagram space"
+      ],
+      "deterministic_ready": false,
+      "render_success": true
+    }
+  ],
+  "confirmed_output_failure": {
+    "title": "Allocate a readable chart plot when a semantic rows composition pairs a stacked chart with a supporting table",
+    "priority": 2,
+    "type": "feature",
+    "classification": "Composition/usable plot allocation gap; draft rendering already emits overlap findings and blocks readiness.",
+    "trigger": "regions arrangement rows; full-width stacked_bar_chart with4series\u00d73short categories; supporting table has4columns and2rows; final shares60/40; present comfortable typography.",
+    "outcome": "Generated stacked plot spans only36.13px/28.12px/16.14px vertically in p-style/midnight-blue/modern-template;19.19pxaxis labels collide. Table is retained.",
+    "not_claimed": [
+      "No silent content truncation after repair",
+      "No clean gate: deterministic_ready:false",
+      "No new template layout name needed",
+      "No long/rotated X-label case",
+      "No issue in quote+stat+action exhibit"
+    ],
+    "root_pointers": [
+      "internal/semantic/slides/regions.go:201 RegionGroupShares percentage allocation",
+      "internal/semantic/slides/regions.go:242 CompileRegions / chart heading allocation",
+      "svggen/cartesian_layout.go:59 ComputeCartesianLayout reserves axis and legend space after canvas sizing",
+      "svggen/cartesian_layout.go:35 yTickCountForHeight",
+      "svggen/cartesian_layout.go:264 DrawCartesianYAxis",
+      "svggen/scales.go:182 LinearScale.Ticks count is approximate, not a hard cap"
+    ],
+    "additional_mechanism": "At domain0..60, requested count2 uses span/count=30,nice step20 and emits4ticks[0,20,40,60]. Font-aware count alone therefore does not guarantee label spacing. Minimum useful plot allocation must evaluate the actual axis/legend geometry.",
+    "ordinary_workaround": "Increase chart region height, place the table beside the chart, reduce legend overhead, or move supporting table to a separate slide. The tested one-pass allocation remains too short in all three templates.",
+    "suggested_acceptance": [
+      "Before rendering a semantic stacked-chart+table composition, account for axis labels, legends and the actual available plot height.",
+      "Produce a noncolliding plot with readable magnitude differences in p-style and tracked templates, while retaining every table row and evidence note.",
+      "When the requested shares cannot meet a defined readable plot minimum, provide an actionable alternative allocation/arrangement or separate-slide suggestion; continue truthful readiness blocking.",
+      "Test short Q1/Q2/Q3 labels,4series,total50,table2rows and0..60domain; include actual-tick spacing checks rather than nominal tick counts alone.",
+      "Keep synthetic quote+stat+action controls legible across same templates."
+    ],
+    "reconciliation_notes": "Parent confirmed distinct from closed rotated-X-margin k478, dry-render dimensions0ncd8 and general geometry diagnostics72qai. Parent performs final dedup and Beads filing."
+  },
+  "non_product_findings": [
+    "Default system LibreOffice wrapper aborted; final inspection exclusively uses authorized bundled runtime. Environment/tool-path issue was not classified as slide product defect.",
+    "Table70/30fit refusal and unit limit require input correction; no new issue filed for documented bounds."
+  ]
+}

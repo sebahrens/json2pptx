@@ -1,0 +1,184 @@
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"blocking_reasons\":[\"current artifact lacks complete all-slide vision inspection and an explicit approved verdict; render_deck_thumbnails \u2026\"],\"content_hash\":\"a543566597399fd646acea9d18e23e449c9d3b03be1009099ba1bf388c22ab23\",\"deterministic_ready\":true,\"diagnostics\":[{\"code\":\"SEMANTIC_RHYTHM_SYNTHESIS\",\"message\":\"board_update decks should land the message with a synthesis or decision slide; add an executive_summary or decision s\u2026\",\"next_tool_call\":{\"args_template\":{\"code\":\"SEMANTIC_RHYTHM_SYNTHESIS\"},\"tool\":\"describe_finding\"},\"severity\":\"warning\"}],\"diagnostics_count\":3,\"next_tool_call\":{\"args_template\":{\"pptx_path\":\"/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/quantitative/output/negative-control-modern-yellow.pptx\"},\"tool\":\"render_deck_thumbnails\"},\"ok\":true,\"pptx_path\":\"/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/quantitative/output/negative-control-modern-yellow.pptx\",\"publishable\":false,\"success\":true}"
+      },
+      {
+        "type": "resource_link",
+        "uri": "json2pptx://deck/negative-control-modern-yellow.pptx",
+        "name": "negative-control-modern-yellow.pptx",
+        "description": "The generated presentation (negative-control-modern-yellow.pptx). Read this resource for the file itself.",
+        "mimeType": "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+      }
+    ],
+    "structuredContent": {
+      "ok": true,
+      "success": true,
+      "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/quantitative/output/negative-control-modern-yellow.pptx",
+      "deterministic_ready": true,
+      "publishable": false,
+      "manual_review_required": true,
+      "blocking_reasons": [
+        "current artifact lacks complete all-slide vision inspection and an explicit approved verdict; render_deck_thumbnails + submit_visual_review supply it"
+      ],
+      "template": "modern-yellow",
+      "slide_count": 1,
+      "content_hash": "a543566597399fd646acea9d18e23e449c9d3b03be1009099ba1bf388c22ab23",
+      "duration_ms": 122,
+      "quality_summary": {
+        "score": 90,
+        "basis": "input",
+        "slide_scores": [
+          {
+            "slide_number": 1,
+            "score": 90,
+            "issues": [
+              "diagram.text_overlap",
+              "diagram.text_overlap"
+            ]
+          }
+        ],
+        "scope": "input_heuristic",
+        "evidence": {
+          "artifact_sha256": "a543566597399fd646acea9d18e23e449c9d3b03be1009099ba1bf388c22ab23",
+          "schema_valid": true,
+          "generated": true,
+          "fit_checked": true,
+          "structural_valid": true,
+          "pixels_rendered": false,
+          "visually_inspected": false,
+          "reviewed_slide_ids": [],
+          "total_slides": 1,
+          "approved": false,
+          "needs_review": true,
+          "reasons": [
+            "current artifact was not pixel-rendered",
+            "no explicit visual approval verdict for the current artifact"
+          ]
+        },
+        "structural_score": 90,
+        "quality_gate": {
+          "passed": true,
+          "reasons": [],
+          "criteria": {
+            "min_score": 80,
+            "max_p0_findings": 0,
+            "max_p1_findings": 0,
+            "require_takeaway_on_charts": true,
+            "max_topic_title_pct": 25,
+            "require_storyline": true,
+            "allow_accent_overload": false,
+            "max_problem_slides_pct": 40,
+            "min_composition_score": 65
+          }
+        }
+      },
+      "diagnostics": [
+        {
+          "code": "SEMANTIC_RHYTHM_SYNTHESIS",
+          "severity": "warning",
+          "message": "board_update decks should land the message with a synthesis or decision slide; add an executive_summary or decision slide",
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "SEMANTIC_RHYTHM_SYNTHESIS"
+            }
+          }
+        },
+        {
+          "code": "diagram.text_overlap",
+          "severity": "info",
+          "message": "drawn text \"North\" overlaps \"\u22120.5\" by 80% of the smaller text box; shorten a label or increase the diagram space",
+          "raw_path": "/slides/0/pattern/rows/0/cells/0/diagram",
+          "slide_index": 0,
+          "action": "review",
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "diagram.text_overlap"
+            }
+          }
+        },
+        {
+          "code": "diagram.text_overlap",
+          "severity": "info",
+          "message": "drawn text \"North\" overlaps \"\u22120.5\" by 80% of the smaller text box; shorten a label or increase the diagram space",
+          "raw_path": "/slides/0/shape_grid/rows/0/cells/0/diagram",
+          "slide_index": 0,
+          "action": "review",
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "diagram.text_overlap"
+            }
+          }
+        }
+      ],
+      "explanation_summary": {
+        "title": "Northstar operations review",
+        "archetype": "board_update",
+        "template": "modern-yellow",
+        "rhythm": {
+          "slide_count": 1,
+          "families": {
+            "chart": 1
+          },
+          "evidence_families": {
+            "chart": 1
+          },
+          "distinct_family_count": 1,
+          "evidence_family_count": 1,
+          "densities": {
+            "medium": 1
+          }
+        },
+        "layout_coverage": {
+          "requested": [],
+          "assigned": [],
+          "missing": []
+        },
+        "rhythm_warnings": [
+          {
+            "code": "SEMANTIC_RHYTHM_SYNTHESIS",
+            "message": "board_update decks should land the message with a synthesis or decision slide; add an executive_summary or decision slide"
+          }
+        ],
+        "slides": [
+          {
+            "index": 0,
+            "kind": "chart_insight",
+            "role": "evidence",
+            "visual_family": "chart",
+            "density": "medium",
+            "title": "East and South added $5.5m EBIT while North lost $0.5m",
+            "takeaway": "Contain the weak site before committing to a full rollout.",
+            "pattern": "chart-insights-split",
+            "layout": "blank-title",
+            "alternatives": [
+              {
+                "pattern": "chart-insights-split",
+                "layout": "blank-title",
+                "reason": "chart with up to 6 insights"
+              },
+              {
+                "layout": "two-column",
+                "reason": "native chart and full insight list when density exceeds the pattern"
+              }
+            ]
+          }
+        ]
+      },
+      "deck_id": "deck_af52a39c28f6d3a37a66d4c9c04b9d6a",
+      "next_tool_call": {
+        "tool": "render_deck_thumbnails",
+        "args_template": {
+          "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/quantitative/output/negative-control-modern-yellow.pptx"
+        }
+      }
+    }
+  }
+}

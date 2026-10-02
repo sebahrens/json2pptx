@@ -1,0 +1,500 @@
+{
+  "date": "2026-10-03",
+  "data_status": "Researcher-authored illustrative data; not actual client data",
+  "tasks": [
+    {
+      "id": "E01",
+      "name": "Executive decision",
+      "audience_mode": "present",
+      "headline": "Approve a $1.2m pilot before committing to network rollout",
+      "illustrative_data": {
+        "decision": "Approve12-week pilot",
+        "funding_usd_m": 1.2,
+        "potential_annual_savings_usd_m": 2.4,
+        "conditions": [
+          "Verify service outcomes",
+          "Audit financial benefits",
+          "Approve only after gate review"
+        ],
+        "owner": "COO",
+        "decision_date": "2026-10-16"
+      },
+      "reference_pages": [
+        "bcg-dallas-2016:9",
+        "bcg-dallas-2016:34"
+      ],
+      "observable_acceptance": [
+        "Decision, amount, owner and date visible.",
+        "Potential savings clearly conditional.",
+        "Three evidence/condition groups maintain reading order."
+      ],
+      "current_session_coverage": "Covered by quantitative slide2/12, strategy slide2/12 and portability controls; data here optional alternative."
+    },
+    {
+      "id": "E02",
+      "name": "Ranked bars with evidence sidebar",
+      "audience_mode": "present",
+      "headline": "Two causes account for 57% of rework cases",
+      "illustrative_data": {
+        "unit": "percent of500 illustrative reviewed cases",
+        "categories": [
+          "Missing ownership",
+          "Incomplete case data",
+          "Approval delays",
+          "Duplicate entry",
+          "Other"
+        ],
+        "values": [
+          32,
+          25,
+          18,
+          15,
+          10
+        ],
+        "focus_categories": [
+          "Missing ownership",
+          "Incomplete case data"
+        ],
+        "sidebar": "Name an owner and require complete case data."
+      },
+      "reference_pages": [
+        "bcg-dallas-2016:15"
+      ],
+      "observable_acceptance": [
+        "Bar order meaningful; long labels remain readable.",
+        "Highlight the two causes supporting57%.",
+        "Sample basis and unit visible."
+      ],
+      "current_session_coverage": "Ranked/signed bar insight covered by quantitative slide4; benchmark reference-line treatment is not independently asserted."
+    },
+    {
+      "id": "E03",
+      "name": "Same-metric small multiples",
+      "audience_mode": "present",
+      "headline": "Field cases require ten times the handling time of digital cases",
+      "illustrative_data": {
+        "unit": "hours per completed case",
+        "categories": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4"
+        ],
+        "series": [
+          {
+            "name": "Digital cases",
+            "values": [
+              10,
+              20,
+              15,
+              25
+            ]
+          },
+          {
+            "name": "Field cases",
+            "values": [
+              100,
+              200,
+              150,
+              250
+            ]
+          }
+        ],
+        "required_shared_domain": [
+          0,
+          300
+        ]
+      },
+      "reference_pages": [
+        "bcg-luxury-2025:8"
+      ],
+      "observable_acceptance": [
+        "Same value maps to same vertical position in both panels.",
+        "Matched plot bounds, category positions and scales.",
+        "Tenfold magnitude difference remains visible; panel titles and units readable."
+      ],
+      "current_session_coverage": "Shared-domain renderer exercised by quantitative slide6; this stronger10x stress data is optional additional probe."
+    },
+    {
+      "id": "E04",
+      "name": "Stacked chart with aligned supporting table",
+      "audience_mode": "present",
+      "headline": "Digital intake rose from 40% to 54% while total demand stayed flat",
+      "illustrative_data": {
+        "unit": "thousand cases",
+        "periods": [
+          "Q1",
+          "Q2",
+          "Q3"
+        ],
+        "categories": [
+          "Digital",
+          "Phone",
+          "Branch",
+          "Other"
+        ],
+        "values_by_period": [
+          [
+            20,
+            15,
+            10,
+            5
+          ],
+          [
+            24,
+            12,
+            9,
+            5
+          ],
+          [
+            27,
+            11,
+            8,
+            4
+          ]
+        ],
+        "table_rows": [
+          [
+            "Total cases",
+            50,
+            50,
+            50
+          ],
+          [
+            "Digital share(%)",
+            40,
+            48,
+            54
+          ]
+        ]
+      },
+      "reference_pages": [
+        "bain-pe-2025:11",
+        "bcg-luxury-2025:7"
+      ],
+      "observable_acceptance": [
+        "Table periods align with chart periods.",
+        "Stack totals and share arithmetic agree.",
+        "Channel colors and names stable; notes fit without truncating table."
+      ],
+      "current_session_coverage": "Added authorized three-template probe; table retained after layout repair, stacked plot still compressed with overlapping Y labels and readiness blocked. See supplemental report."
+    },
+    {
+      "id": "E05",
+      "name": "Heterogeneous evidence regions",
+      "audience_mode": "present",
+      "headline": "Average case time fell 25% but rollout depends on two control gates",
+      "illustrative_data": {
+        "main_trend_hours": [
+          72,
+          65,
+          60,
+          54
+        ],
+        "categories": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4"
+        ],
+        "stat": "25% reduction from72to54hours",
+        "timeline": [
+          "Oct scope",
+          "Nov audit",
+          "Dec scale"
+        ],
+        "risks": [
+          "Incomplete ownership",
+          "Unverified closure evidence"
+        ]
+      },
+      "reference_pages": [
+        "bcg-luxury-2025:8",
+        "bcg-luxury-2025:23"
+      ],
+      "observable_acceptance": [
+        "Main trend dominates; KPI and timeline stay readable.",
+        "Nested groups maintain common frame/gutters.",
+        "Risks and time basis remain explicit."
+      ],
+      "current_session_coverage": "Covered by quantitative slide8 and strategy slide4; chart+stat+timeline/risks are current semantic regions."
+    },
+    {
+      "id": "E06",
+      "name": "Actual and forecast",
+      "audience_mode": "present",
+      "headline": "The plan assumes cost growth slows after 2025",
+      "illustrative_data": {
+        "unit": "USD million",
+        "years": [
+          "2023",
+          "2024",
+          "2025",
+          "2026",
+          "2027"
+        ],
+        "values": [
+          40,
+          42,
+          44,
+          45,
+          46
+        ],
+        "actual_through": "2025",
+        "forecast_from": "2026",
+        "assumption": "Illustrative planning scenario; no volume shock",
+        "vintage": "October2026"
+      },
+      "reference_pages": [
+        "bain-pe-2025:17"
+      ],
+      "observable_acceptance": [
+        "Actual/forecast boundary visible in plot or immediate labels.",
+        "Future values clearly scenario assumptions.",
+        "Source/vintage and units retained."
+      ],
+      "current_session_coverage": "Parent additionally rendered a three-slide forecast control in p-style and midnight-blue: Q1/Q2/Q3 actual and Q4 forecast labels plus an explicit insight distinguishing a forecast from the order book. This covers truthful marking by labels. Segment dashing/shading was not observed and is not required if labels communicate status clearly."
+    },
+    {
+      "id": "E07",
+      "name": "Value bridge",
+      "audience_mode": "present",
+      "headline": "Process and quality gains reduce annual cost by $5m net",
+      "illustrative_data": {
+        "unit": "USD million",
+        "start": 40,
+        "changes": [
+          {
+            "label": "Process gains",
+            "value": -4
+          },
+          {
+            "label": "Quality gains",
+            "value": -2
+          },
+          {
+            "label": "Platform cost",
+            "value": 1
+          }
+        ],
+        "end": 35
+      },
+      "reference_pages": [],
+      "observable_acceptance": [
+        "Start+changes=end.",
+        "Signed changes and total bars have correct geometry.",
+        "Change labels readable; units and baseline period present."
+      ],
+      "current_session_coverage": "Covered by quantitative slide3. Researcher-selected task extension; no copied waterfall from chosen source pages."
+    },
+    {
+      "id": "E08",
+      "name": "Prioritization framework plus action sidebar",
+      "audience_mode": "present",
+      "headline": "Ownership and routing are the first priorities because they combine impact with low effort",
+      "illustrative_data": {
+        "axes": {
+          "x": "Implementation effort(low to high)",
+          "y": "Expected impact(low to high)"
+        },
+        "scale": "ordinal1to10;illustrative assessment",
+        "initiatives": [
+          {
+            "name": "Ownership",
+            "effort": 2,
+            "impact": 9
+          },
+          {
+            "name": "Routing",
+            "effort": 3,
+            "impact": 7
+          },
+          {
+            "name": "Data platform",
+            "effort": 8,
+            "impact": 9
+          },
+          {
+            "name": "Cosmetic dashboard",
+            "effort": 2,
+            "impact": 2
+          }
+        ],
+        "recommended_order": [
+          "Ownership",
+          "Routing",
+          "Data platform"
+        ]
+      },
+      "reference_pages": [
+        "bcg-dallas-2016:28",
+        "bcg-luxury-2025:21"
+      ],
+      "observable_acceptance": [
+        "Axis direction and qualitative basis clear.",
+        "Labels remain attached to plotted initiatives without collision.",
+        "Ranked sidebar matches plotted identities."
+      ],
+      "current_session_coverage": "Current heatmap and option matrix covered; neither tests impact\u00d7effort positioning with a linked ranked sidebar. Test opportunity only."
+    },
+    {
+      "id": "E09",
+      "name": "Operating model relationship",
+      "audience_mode": "present",
+      "headline": "One accountable case owner connects finance, markets and data teams",
+      "illustrative_data": {
+        "center": "Case owner",
+        "relationships": [
+          {
+            "to": "Finance",
+            "label": "Validate closure evidence"
+          },
+          {
+            "to": "Market lead",
+            "label": "Resolve customer exception"
+          },
+          {
+            "to": "Data team",
+            "label": "Enforce complete records"
+          }
+        ]
+      },
+      "reference_pages": [
+        "bcg-luxury-2025:23"
+      ],
+      "observable_acceptance": [
+        "Connectors show associations and labels, not invented causality.",
+        "Center and peripheral roles readable.",
+        "No decorative boxes imply unsupported hierarchy."
+      ],
+      "current_session_coverage": "Strategy slide8 covers process sequence and slide5 roles; an association diagram is a distinct optional probe, not a confirmed capability gap."
+    },
+    {
+      "id": "E10",
+      "name": "Roadmap and responsibility",
+      "audience_mode": "present",
+      "headline": "Release funding at three gates after the pilot proves cash and service outcomes",
+      "illustrative_data": {
+        "phases": [
+          "Design(Oct\u2013Nov2026)",
+          "Pilot(Dec2026\u2013Jan2027)",
+          "Scale(Feb\u2013Mar2027)"
+        ],
+        "workstreams": [
+          {
+            "name": "Finance",
+            "owner": "Controller",
+            "deliverables": [
+              "Baseline",
+              "Audit benefits",
+              "Transfer controls"
+            ]
+          },
+          {
+            "name": "Markets",
+            "owner": "COO",
+            "deliverables": [
+              "Name owners",
+              "Verify service",
+              "Roll out by readiness"
+            ]
+          },
+          {
+            "name": "Data",
+            "owner": "Data lead",
+            "deliverables": [
+              "Agree taxonomy",
+              "Audit records",
+              "Scale integrations"
+            ]
+          }
+        ],
+        "milestones": [
+          "Scope approved",
+          "Results verified",
+          "Scale authorized"
+        ]
+      },
+      "reference_pages": [
+        "bcg-dallas-2016:34",
+        "bcg-dallas-2016:28"
+      ],
+      "observable_acceptance": [
+        "Chronology, owners and gate conditions explicit.",
+        "Workstream identities persist across phases.",
+        "No uncertain future milestone presented as achieved."
+      ],
+      "current_session_coverage": "Strategy slide10 already covers phased roadmap/gates. Multiworkstream variant is a synthetic extension; chosen source does not mandate Gantt form."
+    },
+    {
+      "id": "E11",
+      "name": "Option evidence table with notes",
+      "audience_mode": "present",
+      "headline": "The hybrid pilot balances speed with financial and customer control",
+      "illustrative_data": {
+        "headers": [
+          "Option",
+          "Time to test(weeks)",
+          "Funding(USDm)",
+          "Accountability",
+          "Key limitation"
+        ],
+        "rows": [
+          [
+            "Manual controls",
+            4,
+            0.3,
+            "Local owners",
+            "Benefits hard to scale"
+          ],
+          [
+            "Hybrid pilot",
+            12,
+            1.2,
+            "One owner per case",
+            "Requires data readiness"
+          ],
+          [
+            "Full replacement",
+            36,
+            4.5,
+            "Central platform",
+            "Higher delivery exposure"
+          ]
+        ],
+        "recommended": "Hybrid pilot",
+        "note": "Illustrative estimates; compare like scope; no probability implied."
+      },
+      "reference_pages": [
+        "bcg-dallas-2016:56"
+      ],
+      "observable_acceptance": [
+        "Row and column identities readable.",
+        "Units and estimate caveat retained.",
+        "Recommended option explained with evidence, not color alone."
+      ],
+      "current_session_coverage": "Strategy slide6/11 and quantitative slide11 cover options and evidence tables."
+    },
+    {
+      "id": "E12",
+      "name": "Qualitative evidence with metric and action",
+      "audience_mode": "present",
+      "headline": "Case ownership is a testable response to stalled approvals",
+      "illustrative_data": {
+        "quotation": "I lose time finding who can approve the exception.",
+        "attribution": "Illustrative respondent, service team;not a real interview",
+        "sample_metric": "42%of500illustrative reviewed cases lacked an owner",
+        "action": "Assign one owner daily; escalate after24hours"
+      },
+      "reference_pages": [
+        "bcg-luxury-2025:22"
+      ],
+      "observable_acceptance": [
+        "Attribution and synthetic status visible.",
+        "Metric basis preserved.",
+        "Quote, metric and action have aligned association; quote does not prove causality."
+      ],
+      "current_session_coverage": "Added authorized quote+stat+action probe; passes visually in p-style,midnight-blue,modern-template. Attribution and synthetic basis preserved."
+    }
+  ]
+}

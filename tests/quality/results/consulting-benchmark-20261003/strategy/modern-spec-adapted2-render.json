@@ -1,0 +1,357 @@
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"deck_id\":\"deck_ad05cb533bdee22774c06ae74db8bcc1\",\"diagnostics\":[{\"action\":\"refuse\",\"code\":\"TEXT_BELOW_READABLE_MIN\",\"message\":\"card-title text renders at 9.8pt, below the 12pt minimum for viewing_mode \\\"present\\\" (written 12.0pt run with stored a\u2026\",\"next_tool_call\":{\"args_template\":{\"deck_id\":\"deck_ad05cb533bdee22774c06ae74db8bcc1\",\"patch\":[{\"op\":\"replace\",\"path\":\"/slides/7/steps/0/label\",\"value\":\"\\u003crewrite this field to resolve TEXT_BELOW_READABLE_MIN while preserving meaning\\u003e\"}]},\"tool\":\"validate_deck_spec\"},\"severity\":\"error\"}],\"diagnostics_count\":1,\"error\":\"failed to generate PPTX: slide 8 (layout \\\"Blank + Title\\\", pattern \\\"numbered-step-strip\\\") at /slides/7/rendered_shapes\u2026\",\"next_tool_call\":{\"args_template\":{\"deck_id\":\"deck_ad05cb533bdee22774c06ae74db8bcc1\",\"patch\":[{\"op\":\"replace\",\"path\":\"/slides/7/steps/0/label\",\"value\":\"\\u003crewrite this field to resolve TEXT_BELOW_READABLE_MIN while preserving meaning\\u003e\"}]},\"tool\":\"validate_deck_spec\"},\"ok\":false,\"success\":false}"
+      }
+    ],
+    "isError": true,
+    "structuredContent": {
+      "ok": false,
+      "success": false,
+      "diagnostics": [
+        {
+          "code": "TEXT_BELOW_READABLE_MIN",
+          "severity": "error",
+          "message": "card-title text renders at 9.8pt, below the 12pt minimum for viewing_mode \"present\" (written 12.0pt run with stored autofit 82%); preserve all source at a readable size; this source cannot use automatic plain-bullet splitting; author source-complete continuation slides or choose a suitable layout, preserving groups and any fixed slide count",
+          "semantic_path": "slides[7].steps[0].label",
+          "raw_path": "/slides/7/rendered_shapes/201/paragraphs/0",
+          "slide_index": 7,
+          "action": "refuse",
+          "recommended_edit": {
+            "kind": "shorten_text",
+            "hint": "Preserve the meaning at a readable size: shorten this field, move detail to another slide, or switch the slide to a composition with more room (explain_deck_spec lists them).",
+            "params": {
+              "actual_pt": 9.84,
+              "min_pt": 12,
+              "role": "card-title"
+            }
+          },
+          "next_tool_call": {
+            "tool": "validate_deck_spec",
+            "args_template": {
+              "deck_id": "deck_ad05cb533bdee22774c06ae74db8bcc1",
+              "patch": [
+                {
+                  "op": "replace",
+                  "path": "/slides/7/steps/0/label",
+                  "value": "<rewrite this field to resolve TEXT_BELOW_READABLE_MIN while preserving meaning>"
+                }
+              ]
+            }
+          },
+          "evidence": {
+            "allowed": {
+              "min_font_pt": 12
+            },
+            "measured": {
+              "font_pt": 9.84
+            },
+            "measurement_source": "generated_grid_role",
+            "role": "card-title",
+            "text": "Capture",
+            "viewing_mode": "present"
+          }
+        }
+      ],
+      "explanation_summary": {
+        "title": "Helios Equipment | Order-to-cash pilot decision",
+        "template": "modern",
+        "rhythm": {
+          "slide_count": 12,
+          "families": {
+            "chart": 1,
+            "comparison": 2,
+            "process": 1,
+            "structural": 3,
+            "text": 4,
+            "timeline": 1
+          },
+          "evidence_families": {
+            "chart": 1,
+            "text": 1
+          },
+          "distinct_family_count": 5,
+          "evidence_family_count": 2,
+          "densities": {
+            "heavy": 4,
+            "light": 3,
+            "medium": 5
+          }
+        },
+        "layout_coverage": {
+          "requested": [],
+          "assigned": [],
+          "missing": []
+        },
+        "slides": [
+          {
+            "index": 0,
+            "kind": "title",
+            "role": "opening",
+            "visual_family": "structural",
+            "density": "light",
+            "title": "Release cash without disrupting customer service",
+            "layout": "title",
+            "alternatives": [
+              {
+                "layout": "title",
+                "reason": "the template's own title layout"
+              }
+            ]
+          },
+          {
+            "index": 1,
+            "kind": "executive_summary",
+            "role": "summary",
+            "visual_family": "text",
+            "density": "medium",
+            "title": "A EUR1.8m pilot can release EUR6m while preserving local customer accountability",
+            "pattern": "exec-summary",
+            "layout": "blank-title",
+            "alternatives": [
+              {
+                "pattern": "exec-summary",
+                "layout": "blank-title",
+                "reason": "3-5 lead-in statements, each with one supporting sentence"
+              },
+              {
+                "layout": "content",
+                "reason": "native bullets preserve more or fewer points, or longer ones"
+              }
+            ]
+          },
+          {
+            "index": 2,
+            "kind": "section",
+            "role": "transition",
+            "visual_family": "structural",
+            "density": "light",
+            "title": "Choose the operating model",
+            "layout": "section",
+            "alternatives": [
+              {
+                "layout": "section",
+                "reason": "the template's own section layout"
+              }
+            ]
+          },
+          {
+            "index": 3,
+            "kind": "regions",
+            "role": "evidence",
+            "visual_family": "chart",
+            "density": "heavy",
+            "title": "Fragmented ownership added EUR6m in overdue balances",
+            "takeaway": "Assign one accountable owner before automating escalation.",
+            "layout": "blank-title",
+            "alternatives": [
+              {
+                "layout": "blank-title",
+                "reason": "2\u20133 typed regions in one shape grid under the slide title, arranged by the arrangement field"
+              }
+            ]
+          },
+          {
+            "index": 4,
+            "kind": "comparison",
+            "role": "analysis",
+            "visual_family": "comparison",
+            "density": "medium",
+            "title": "Shared controls remove handoffs while markets retain customer decisions",
+            "takeaway": "Standardize the control system while keeping customer decisions close to the market.",
+            "pattern": "comparison-2col",
+            "layout": "blank-title",
+            "alternatives": [
+              {
+                "pattern": "comparison-2col",
+                "layout": "blank-title",
+                "reason": "balanced two-column comparison"
+              },
+              {
+                "pattern": "stylish-panels",
+                "layout": "blank-title",
+                "reason": "3-5 columns, each a titled panel with its own bullets"
+              },
+              {
+                "pattern": "card-grid",
+                "layout": "blank-title",
+                "reason": "2-5 columns as titled cards when panels do not fit"
+              },
+              {
+                "layout": "content",
+                "reason": "native bullets preserve six or more columns"
+              }
+            ]
+          },
+          {
+            "index": 5,
+            "kind": "option_matrix",
+            "role": "recommendation",
+            "visual_family": "comparison",
+            "density": "heavy",
+            "title": "An automation-first hybrid balances cash impact, speed and customer accountability",
+            "takeaway": "Choose the hybrid; centralization adds customer risk and federation leaves fragmented controls.",
+            "pattern": "table-highlight",
+            "layout": "blank-title",
+            "alternatives": [
+              {
+                "pattern": "table-highlight",
+                "layout": "blank-title",
+                "reason": "2-6 options scored against 2-6 criteria"
+              },
+              {
+                "layout": "content",
+                "reason": "native bullets preserve a matrix outside those bounds"
+              }
+            ]
+          },
+          {
+            "index": 6,
+            "kind": "section",
+            "role": "transition",
+            "visual_family": "structural",
+            "density": "light",
+            "title": "Prove before scaling",
+            "layout": "section",
+            "alternatives": [
+              {
+                "layout": "section",
+                "reason": "the template's own section layout"
+              }
+            ]
+          },
+          {
+            "index": 7,
+            "kind": "process",
+            "role": "analysis",
+            "visual_family": "process",
+            "density": "medium",
+            "title": "Four control points give each dispute one owner and an auditable path to closure",
+            "takeaway": "Automate routing and evidence capture; retain human approval for commercial exceptions.",
+            "pattern": "numbered-step-strip",
+            "layout": "content",
+            "alternatives": [
+              {
+                "pattern": "numbered-step-strip",
+                "layout": "blank-title",
+                "reason": "3-7 steps that each carry a description, as numbered rows"
+              },
+              {
+                "pattern": "process-flow",
+                "layout": "blank-title",
+                "reason": "3-8 bare or branching steps as a flow diagram"
+              },
+              {
+                "pattern": "process-flow-compact",
+                "layout": "blank-title",
+                "reason": "3-6 short labels (averaging under 40 characters) as a shallow flow band under the title"
+              },
+              {
+                "layout": "content",
+                "reason": "native bullets preserve shorter or longer processes"
+              }
+            ]
+          },
+          {
+            "index": 8,
+            "kind": "regions",
+            "role": "evidence",
+            "visual_family": "text",
+            "density": "heavy",
+            "title": "A daily ownership review makes unassigned disputes actionable",
+            "takeaway": "Review ownership daily rather than waiting for the monthly receivables report.",
+            "layout": "blank-title",
+            "alternatives": [
+              {
+                "layout": "blank-title",
+                "reason": "2\u20133 typed regions in one shape grid under the slide title, arranged by the arrangement field"
+              }
+            ]
+          },
+          {
+            "index": 9,
+            "kind": "roadmap",
+            "role": "plan",
+            "visual_family": "timeline",
+            "density": "medium",
+            "title": "Three phases release funding after cash and service results",
+            "takeaway": "The January gate must verify both cash release and customer service.",
+            "pattern": "phase-roadmap",
+            "layout": "blank-title",
+            "alternatives": [
+              {
+                "pattern": "phase-roadmap",
+                "layout": "blank-title",
+                "reason": "3-6 phases"
+              },
+              {
+                "layout": "content",
+                "reason": "native bullets preserve dense roadmaps"
+              }
+            ]
+          },
+          {
+            "index": 10,
+            "kind": "table",
+            "role": "evidence",
+            "visual_family": "text",
+            "density": "heavy",
+            "title": "Three guardrails protect customers, controls and data quality",
+            "takeaway": "Make service and control failures a reason to stop, even when cash targets improve.",
+            "layout": "blank-title",
+            "alternatives": [
+              {
+                "layout": "blank-title",
+                "reason": "a native table in the template's own table style, under the same title as every other content kind"
+              },
+              {
+                "layout": "content",
+                "reason": "bullets preserve rows without a header row"
+              }
+            ]
+          },
+          {
+            "index": 11,
+            "kind": "next_steps",
+            "role": "closing",
+            "visual_family": "text",
+            "density": "medium",
+            "title": "Approve EUR1.8m by 16 October to launch the two-market pilot in December",
+            "pattern": "next-steps",
+            "layout": "blank-title",
+            "alternatives": [
+              {
+                "pattern": "next-steps",
+                "layout": "blank-title",
+                "reason": "2-6 actions with owner and date, plus up to 3 decisions requested"
+              },
+              {
+                "layout": "content",
+                "reason": "bullets preserve more actions or longer copy"
+              }
+            ]
+          }
+        ]
+      },
+      "error": "failed to generate PPTX: slide 8 (layout \"Blank + Title\", pattern \"numbered-step-strip\") at /slides/7/rendered_shapes/201/paragraphs/0: generation refused: unreadable generated text: card-title text renders at 9.8pt, below the 12pt minimum for viewing_mode \"present\" (written 12.0pt run with stored autofit 82%); preserve all source at a readable size; this source cannot use automatic plain-bullet splitting; author source-complete continuation slides or choose a suitable layout, preserving groups and any fixed slide count",
+      "deck_id": "deck_ad05cb533bdee22774c06ae74db8bcc1",
+      "next_tool_call": {
+        "tool": "validate_deck_spec",
+        "args_template": {
+          "deck_id": "deck_ad05cb533bdee22774c06ae74db8bcc1",
+          "patch": [
+            {
+              "op": "replace",
+              "path": "/slides/7/steps/0/label",
+              "value": "<rewrite this field to resolve TEXT_BELOW_READABLE_MIN while preserving meaning>"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

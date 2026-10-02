@@ -1,0 +1,299 @@
+{
+  "head": "85b482d3b40b89d62b7415ac9c3fd8167bef2e96",
+  "binary": "/tmp/json2pptx-review-20261003",
+  "schema_version": "4.159.0",
+  "scope": "12slide illustrative strategy decision narrative,10productiontemplates",
+  "coverage_manifest": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/coverage-final.json",
+  "summary": {
+    "templates_attempted": 10,
+    "complete_decks_generated": 9,
+    "slides_reviewed": 108,
+    "deterministic_ready_final_generated_decks": 9,
+    "modern_exception": "Refused after3template-specific repair passes; preserve failure and all authored detail.",
+    "visual_review": "All 108 final rendered slides individually inspected at original 100-DPI PNG dimensions after initial contact-sheet pass. Six slide-9 screenshots retain material-crop P2 changes_requested. Midnight Blue, Forest Green and Warm Coral preserve complete dashboard evidence; their blanket nonzero-crop P2 verdicts are withdrawn. No further authoring repairs.",
+    "individual_full_slide_pngs_inspected": 108,
+    "review_method_correction": {
+      "original_pass": "All 108 final slides in readable 2x2 contact sheets; selected critical PNGs individually. Earlier message claiming all individual was inaccurate.",
+      "followup_pass": "All 108 final preserved full-slide PNGs subsequently inspected individually through view_image(detail original). No content edits, rerenders or additional repairs.",
+      "completed_at_utc": "2026-10-02T23:09:11.513678+00:00",
+      "generated_templates": 9,
+      "ungenerated_template": "modern"
+    },
+    "visually_approved_final_decks": 3,
+    "final_decks_with_visual_changes_requested": 6,
+    "submission_evidence": "All nine individual-inspection review submissions accepted; exact registered images verified 12/12 per deck. Three approved, six changes_requested."
+  },
+  "baseline": {
+    "type_scale": "comfortable",
+    "viewing_mode": "present(default)",
+    "use": "Board discussion with distributed read-ahead;12pt bodies not claimed suitable for room projection",
+    "content": "Entire Helios case fictional and labelled illustrative; management assumptions Oct2026, no external factual business claims"
+  },
+  "findings": [
+    {
+      "key": "strategy-screenshot-contain",
+      "title": "Semantic image_case and image regions crop screenshot evidence without a contain control",
+      "type": "bug",
+      "priority": 2,
+      "root_cause": "PhotoSchema limits refs to path/url/alt; itsImageColumn and regionImage rebuild refs without Fit. Default cover therefore applies to screenshots as well as photos. The raw shape-grid contract supports contain but the semantic workflow does not expose it.",
+      "observed": [
+        "p-style slide09 srcRect crops 11.523% top and 11.523% bottom of a 1600x1000 dashboard: visible source interval y=115.23..884.77; dashboard banner and bottom action line disappear.",
+        "Abstract image_case crops 10.436% each end; replacing it with a 65% image region increases crop to18.440% each end. More width cannot preserve full evidence without aspect-aware sizing/contain.",
+        "Full-res source and output were inspected; table evidence is retained at center, but the whole screenshot is not preserved."
+      ],
+      "evidence": [
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/p-style-spec-r3/slide-09.png",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/abstract-spec-adapted/slide-09.png",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/abstract-spec-adapted2/slide-09.png",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/approval-workbench.png",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/image-and-section-geometry.json",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/kinds.json"
+      ],
+      "code_pointers": [
+        "internal/patterns/pattern_photo.go:26 PhotoSchema",
+        "internal/patterns/image_text_split.go:428 itsImageColumn",
+        "internal/semantic/slides/regions.go:610 regionImage",
+        "skills/generate-deck/RULES.md:18 contain guidance"
+      ],
+      "acceptance_criteria": [
+        "Expose image.fit in image_case and image-region contracts; preserve contain through compilation and expansion.",
+        "With contain selected, all dashboard bounds render on p-style and a second distinct template, while photo cover remains selectable.",
+        "Add source-bound screenshot regression, not only no-error generation."
+      ],
+      "related_existing_beads": [
+        "go-slide-creator-zifd3 (filed by parent during this review)",
+        "go-slide-creator-3qzo4.14 (closed native contain support; distinct pattern surface)",
+        "go-slide-creator-3qzo4.15 (closed narrow source; distinct crop control)"
+      ],
+      "filed_bead": "go-slide-creator-zifd3",
+      "minimal_slide": {
+        "kind": "image_case",
+        "title": "A visible unassigned queue makes stalled disputes actionable within one working day",
+        "heading": "Turn missing ownership into a daily decision",
+        "body": "The workbench puts unowned cases beside assigned work. The market lead assigns a resolver each morning; finance checks closure evidence at day-end.",
+        "bullets": [
+          "Show owner, age and next action in one view",
+          "Escalate unowned cases after 24 hours"
+        ],
+        "image": {
+          "path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/approval-workbench.png",
+          "alt": "Illustrative dispute dashboard: 24 open disputes; 12 lack an owner; oldest unassigned case is 48 hours old."
+        },
+        "caption": "Illustrative dashboard design; the first two cases have no assigned owner.",
+        "metrics": [
+          {
+            "value": "12",
+            "label": "unowned cases to assign"
+          }
+        ],
+        "takeaway": "Review ownership daily rather than waiting for the monthly receivables report.",
+        "source": "Illustrative Helios case; management assumptions, Oct 2026"
+      }
+    },
+    {
+      "key": "strategy-process-override",
+      "title": "Process composition overrides change the explanation but still compile the default refused pattern",
+      "type": "bug",
+      "priority": 1,
+      "root_cause": "Compile passes Visual.Pattern and Visual.Layout in slides.Input, but CompileProcess switches on ProcessPattern(in.Body) rather than the selected in.Pattern/in.Layout. Its branches recreate a numbered-step-strip. The IR explanation reports the requested override, so discovery and rendering disagree.",
+      "observed": [
+        "Modern spec-adapted2 process slide has layout:content; explanation_summary reports layout content and promises native bullets, but generation error names layout Blank + Title, numbered-step-strip, Capture 9.84pt.",
+        "Modern spec-adapted3 requests pattern:process-flow; explanation reports process-flow but refusal still names numbered-step-strip and /slides/7/rendered_shapes/201/paragraphs/0.",
+        "The 4 labels are Capture/Assign/Resolve/Close; all detailed steps remain authored. No content was deleted to make this succeed."
+      ],
+      "evidence": [
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/spec-adapted2.json",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/modern-spec-adapted2-render.json",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/modern-spec-adapted2-validate.json",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/spec-adapted3.json",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/modern-spec-adapted3-render.json",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/kinds.json"
+      ],
+      "code_pointers": [
+        "internal/semantic/compile.go:123 input Pattern/Layout passthrough",
+        "internal/semantic/slides/visual.go:320 CompileProcess",
+        "internal/semantic/slides/visual.go:336 compileProcessStrip",
+        "internal/semantic/ir.go:714 process compositions"
+      ],
+      "acceptance_criteria": [
+        "Process pattern overrides select the requested supported compiler, with descriptions preserved.",
+        "layout:content actually emits a native source-complete bullet slide and no pattern; explanation and actual raw/rendered output agree.",
+        "Regression includes a payload that fails default strip on Modern, then succeeds with the advertised alternative; assert all four descriptions remain."
+      ],
+      "related_existing_beads": [
+        "go-slide-creator-b7qqg.4 (closed refusal source/remediation metadata; not this override bug)"
+      ],
+      "minimal_slides": [
+        {
+          "kind": "process",
+          "title": "Four control points give each dispute one owner and an auditable path to closure",
+          "steps": [
+            {
+              "label": "Capture",
+              "description": "Finance creates one case record, links the invoice and assigns a reason code."
+            },
+            {
+              "label": "Assign",
+              "description": "The market lead names a resolver; cases without an owner escalate after 24 hours."
+            },
+            {
+              "label": "Resolve",
+              "description": "The resolver agrees the action; credits above EUR25k require a second approval."
+            },
+            {
+              "label": "Close",
+              "description": "Finance verifies cash or credit, closes the case and updates recurring-cause rules."
+            }
+          ],
+          "takeaway": "Automate routing and evidence capture; retain human approval for commercial exceptions.",
+          "source": "Illustrative Helios case; management assumptions, Oct 2026",
+          "layout": "content"
+        },
+        {
+          "kind": "process",
+          "title": "Four control points give each dispute one owner and an auditable path to closure",
+          "steps": [
+            {
+              "label": "Capture",
+              "description": "Finance creates one case record, links the invoice and assigns a reason code."
+            },
+            {
+              "label": "Assign",
+              "description": "The market lead names a resolver; cases without an owner escalate after 24 hours."
+            },
+            {
+              "label": "Resolve",
+              "description": "The resolver agrees the action; credits above EUR25k require a second approval."
+            },
+            {
+              "label": "Close",
+              "description": "Finance verifies cash or credit, closes the case and updates recurring-cause rules."
+            }
+          ],
+          "pattern": "process-flow",
+          "source": "Illustrative Helios case; management assumptions, Oct 2026",
+          "takeaway": "Automate routing and evidence capture; retain human approval for commercial exceptions."
+        }
+      ]
+    },
+    {
+      "key": "strategy-section-wordfit-regression",
+      "title": "Abstract section dividers still break ordinary all-caps words mid-word without a finding",
+      "type": "bug",
+      "priority": 2,
+      "root_cause": "The existing longest-word fit guard uses estimated/font-metric capacity plus a3% margin, yet the rendered uppercase word still exceeds the actual divider width. The exact glyph/style cause is not isolated; this is an observed rendered regression against the prior fix, not an asserted font-cache cause.",
+      "observed": [
+        "Source title Diagnose the bottleneck and choose the model (44chars) renders BOTTLENEC / K AND; Prove the model before committing to scale renders COMMITTIN / G TO SCALE.",
+        "Abstract adapted deck validation permits these titles and deterministic_ready is true.",
+        "Generated first title box is x6991350 y487018, width4179570 height3377354 EMU; its explicit size is5149hpt, noAutofit. Full-res PNG shows the broken words.",
+        "Shorter section rewrites resolve it in spec-adapted2, showing authoring workaround; no automated remediation identified the original defects."
+      ],
+      "evidence": [
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/abstract-spec-adapted/slide-03.png",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/abstract-spec-adapted/slide-07.png",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/abstract-spec-adapted-render.json",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/abstract-spec-adapted-validate.json",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/abstract-spec-adapted2/slide-03.png",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/image-and-section-geometry.json"
+      ],
+      "code_pointers": [
+        "internal/generator/text_autofit.go:272 capScaleForLongestWord",
+        "internal/generator/text_population.go:261 fitSectionTitle",
+        "internal/generator/title_fit.go:95 DetectSectionTitleFloor",
+        "internal/generator/title_fit_test.go section regressions"
+      ],
+      "acceptance_criteria": [
+        "Both source titles render with complete words on Abstract at >=28pt, or return an actionable divider-specific refusal before ready.",
+        "Use actual all-caps inherited font, spacing, margins and resolved geometry when measuring longest-word capacity.",
+        "Pixel regression checks BOTTLENECK and COMMITTING line boundaries; do not merely assert explicit font size above28pt."
+      ],
+      "related_existing_beads": [
+        "go-slide-creator-csclk.96 (closed 2026-09-27 claimed longest-word fix b05421a7; reproduced currentHEAD)",
+        "go-slide-creator-iuwl3 (closed capacity discovery; related)"
+      ],
+      "regression_of": "go-slide-creator-csclk.96",
+      "minimal_slides": [
+        {
+          "kind": "section",
+          "title": "Diagnose the bottleneck and choose the model"
+        },
+        {
+          "kind": "section",
+          "title": "Prove the model before committing to scale"
+        }
+      ]
+    },
+    {
+      "key": "strategy-shared-height-repair",
+      "title": "Fit repair targets short labels and returns larger-than-current character budgets for shared height failures",
+      "type": "bug",
+      "priority": 2,
+      "root_cause": "worstReadability identifies the worst paragraph and attaches paragraph_text. retargetCellReadabilityFix then adds maxChars for the entire grid cell. Semantic mapping identifies the individual authored field using paragraph_text, while retaining the cell-wide max_chars. Thus the patch edits only an eyebrow/label with a budget measured for the shared cell. Joint height constraints are hidden from that edit.",
+      "observed": [
+        "Modern strip label Capture (7chars) remains9.84pt after long labels become one word; all4label findings ask shorten_text. The original label max_chars budget is larger than current label, so the advertised limit gives no usable reduction.",
+        "Midnight image_case eyebrow PILOT DESIGN (12chars, under documented30) maps to a12pt paragraph rendering10.8pt. Primary apply_patch asks to rewrite that eyebrow to at most532characters, strategy split. That budget is the shared cell budget rather than an eyebrow-specific safe limit.",
+        "Removing the optional eyebrow and retaining narrative/bullets/metrics gets past this refusal; increasing or rewriting the eyebrow alone is not a sensible repair.",
+        "These are guidance defects independent of whether the source can fit: a valid refusal may remain, but its primary suggested edit must address the constrained region."
+      ],
+      "evidence": [
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/validate-r1.json",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/spec-r1.json",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/spec-r2.json",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/modern-spec-adapted-validate.json",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/modern-spec-adapted2-validate.json",
+        "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/modern-spec-adapted2-render.json"
+      ],
+      "code_pointers": [
+        "cmd/json2pptx/readability_findings.go:413 worstReadability",
+        "cmd/json2pptx/readability_findings.go:461 retargetCellReadabilityFix",
+        "cmd/json2pptx/mcp_semantic_next.go:146 semanticFixParams preserves budgets",
+        "internal/patterns/image_text_split.go:410 itsTextParas",
+        "internal/patterns/numbered_step_strip.go stacked rows sizing"
+      ],
+      "acceptance_criteria": [
+        "For height-limited grouped cells, provide fewer rows/shorter detail/more vertical area/native alternative as the primary repair, with exact authored paths.",
+        "A max_chars repair budget must apply to the field it patches and meaningfully reduce the failing extent; never suggest a532char eyebrow for a12char source.",
+        "Re-run the stated primary patch on the source while preserving content; either readability improves or clearly label the guidance as a composition-level manual repair."
+      ],
+      "related_existing_beads": [
+        "go-slide-creator-b7qqg.4 (closed machine-readable refusals; current metadata exists but edit is ineffective)"
+      ],
+      "minimal_slide": {
+        "kind": "image_case",
+        "title": "A visible unassigned queue makes stalled disputes actionable within one working day",
+        "eyebrow": "Pilot design",
+        "heading": "Turn missing ownership into a daily decision",
+        "body": "The workbench puts unowned cases beside assigned work. The market lead assigns a resolver each morning; finance checks closure evidence at day-end.",
+        "bullets": [
+          "Show owner, age and next action in one view",
+          "Escalate unowned cases after 24 hours"
+        ],
+        "image": {
+          "path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-03-consulting/strategy/approval-workbench.png",
+          "alt": "Illustrative dispute dashboard: 24 open disputes; 12 lack an owner; oldest unassigned case is 48 hours old."
+        },
+        "caption": "Illustrative dashboard design; the first two cases have no assigned owner.",
+        "metrics": [
+          {
+            "value": "12",
+            "label": "unowned cases to assign"
+          }
+        ],
+        "takeaway": "Review ownership daily rather than waiting for the monthly receivables report.",
+        "source": "Illustrative Helios case; management assumptions, Oct 2026"
+      }
+    }
+  ],
+  "assessed_not_filed": [
+    "Matrix option detail under schema80chars can still exceed template-specific measured capacity; removing redundant detail resolves. Ordinary capacity exception unless guide claims guaranteed fit.",
+    "3right-region timeline labels with text/dates require shorter labels and region proportions. Kept dates in main roadmap/notes; not treated automatically as renderer bug.",
+    "Comparison4rows yields10cells vs recommended8info, but actual rendering clear and ample space.",
+    "Native risk table uses small standard text with large lower white area; readable read-ahead, subjective density concern, parent projection controls cover viewing context.",
+    "Source/footer initial visual suspicion disproved with magnified PNG band and OOXML; all explicit sources and closing owners/dates are preserved."
+  ],
+  "limitations": [
+    "Minimal JSONs are extracted repro payloads, not separately rerendered; exact reproduced full decks and responses are the evidence.",
+    "No empirical author-agent trace; findings concern observed guidance/compiler/render behavior.",
+    "No production changes; parent files/reconciles atomic Beads."
+  ]
+}

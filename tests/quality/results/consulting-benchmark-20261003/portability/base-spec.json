@@ -1,0 +1,211 @@
+{
+  "meta": {
+    "title": "Protect the service launch",
+    "date": "October 2026",
+    "source": "Illustrative planning case; figures are synthetic",
+    "viewing_mode": "read"
+  },
+  "slides": [
+    {
+      "kind": "title",
+      "title": "Stage the launch to protect service",
+      "subtitle": "Executive decision brief | Illustrative case | October 2026"
+    },
+    {
+      "kind": "executive_summary",
+      "title": "Fund the pilot before committing to rollout",
+      "points": [
+        {
+          "lead": "The forecast requires capacity.",
+          "support": "Quarterly demand rises from 80 to 120 thousand orders; the current network handles 100."
+        },
+        {
+          "lead": "A pilot limits the downside.",
+          "support": "A $0.4m test validates throughput before a further $0.8m is released."
+        },
+        {
+          "lead": "Quality is the release gate.",
+          "support": "Scale only after on-time delivery reaches 98% for four consecutive weeks."
+        }
+      ],
+      "bottom_line": "Approve $0.4m now; review the rollout gate on 15 January 2027."
+    },
+    {
+      "kind": "chart_insight",
+      "title": "Q4 demand exceeds capacity by 20 thousand orders",
+      "chart": {
+        "type": "line_chart",
+        "title": "Quarterly orders and capacity (thousands)",
+        "data": {
+          "categories": [
+            "Q1 actual",
+            "Q2 actual",
+            "Q3 actual",
+            "Q4 forecast"
+          ],
+          "series": [
+            {
+              "name": "Demand",
+              "values": [
+                80,
+                90,
+                100,
+                120
+              ]
+            },
+            {
+              "name": "Current capacity",
+              "values": [
+                100,
+                100,
+                100,
+                100
+              ]
+            }
+          ]
+        }
+      },
+      "insights": [
+        "Q4 demand is a forecast, not a committed order book.",
+        "The base case is 20% above current capacity.",
+        "The pilot tests an additional 25 thousand orders per quarter."
+      ],
+      "takeaway": "Gate the capacity investment on measured service performance."
+    },
+    {
+      "kind": "regions",
+      "title": "A $0.4m pilot tests the bottleneck before rollout",
+      "arrangement": "main_left",
+      "regions": [
+        {
+          "kind": "table",
+          "size_pct": 60,
+          "heading": "Pilot scope and success gates",
+          "headers": [
+            "Measure",
+            "Baseline",
+            "Gate"
+          ],
+          "rows": [
+            [
+              "Orders / quarter",
+              "100k",
+              "125k"
+            ],
+            [
+              "On-time delivery",
+              "94%",
+              "98%"
+            ],
+            [
+              "Cost / order",
+              "$4.80",
+              "$4.50"
+            ]
+          ],
+          "column_alignments": [
+            "left",
+            "right",
+            "right"
+          ],
+          "source": "Operations baseline; target values are hypotheses"
+        },
+        {
+          "kind": "stat",
+          "size_pct": 40,
+          "value": "$0.4m",
+          "label": "Pilot investment",
+          "context": "One-third of the $1.2m total envelope"
+        },
+        {
+          "kind": "timeline",
+          "size_pct": 60,
+          "heading": "Three release gates",
+          "milestones": [
+            {
+              "label": "Scope",
+              "date": "Oct 2026"
+            },
+            {
+              "label": "Test",
+              "date": "Nov 2026"
+            },
+            {
+              "label": "Review",
+              "date": "Jan 2027"
+            }
+          ]
+        }
+      ],
+      "takeaway": "Release the remaining $0.8m only if all three operating gates pass."
+    },
+    {
+      "kind": "option_matrix",
+      "title": "The pilot preserves capacity upside with less exposure",
+      "corner_label": "Option",
+      "criteria": [
+        "Spend now",
+        "Gate before scale",
+        "Capacity upside"
+      ],
+      "options": [
+        {
+          "name": "Hold",
+          "detail": "Defer all investment",
+          "scores": [
+            "$0",
+            "No change",
+            "0k orders"
+          ]
+        },
+        {
+          "name": "Pilot",
+          "detail": "Test at one hub first",
+          "scores": [
+            "$0.4m",
+            "Required",
+            "25k orders"
+          ]
+        },
+        {
+          "name": "Roll out",
+          "detail": "Commit the full envelope",
+          "scores": [
+            "$1.2m",
+            "None",
+            "25k orders"
+          ]
+        }
+      ],
+      "scale": "text",
+      "recommended": "Pilot",
+      "decisive_criterion": "Gate before scale",
+      "takeaway": "The pilot buys evidence before the largest spend becomes irreversible."
+    },
+    {
+      "kind": "next_steps",
+      "title": "Three owners can launch the pilot in November",
+      "actions": [
+        {
+          "action": "Confirm scope and reserve the pilot hub",
+          "owner": "Operations lead",
+          "date": "15 Oct 2026"
+        },
+        {
+          "action": "Release the pilot budget and baseline metrics",
+          "owner": "Finance lead",
+          "date": "31 Oct 2026"
+        },
+        {
+          "action": "Start the test; report service performance weekly",
+          "owner": "Hub manager",
+          "date": "9 Nov 2026"
+        }
+      ],
+      "decisions": [
+        "Approve $0.4m today; keep the remaining $0.8m conditional.",
+        "Review all three operating gates on 15 January 2027."
+      ]
+    }
+  ]
+}

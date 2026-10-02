@@ -1,0 +1,198 @@
+{
+  "sources": [
+    {
+      "id": "bcg-luxury-2025",
+      "url": "https://web-assets.bcg.com/51/92/68b6af8346629c05e586a734d857/bcg-altagamma-true-luxury-global-consumer-insights-report-2025-vpress-final.pdf",
+      "date": "2025-07-08",
+      "local_pdf": ".claude/review-evidence/2026-10-03-consulting/research/bcg-2025-luxury-consumer.pdf",
+      "pages": [
+        {
+          "pdf_page_1_based": 3,
+          "printed_page": 2,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bcg-pdfpage03.png",
+          "role": "Fact headline and time evolution",
+          "density": "present",
+          "observation": "One claim leads a time-aligned trend with era shading; signed values and dates appear beside marks. Footnotes are pale and small.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 4,
+          "printed_page": 3,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bcg-pdfpage04.png",
+          "role": "Three parallel metric changes",
+          "density": "present",
+          "observation": "Repeated numbered groups pair dates, values and percentage-point changes. Newspaper images are supporting context; illustrative benchmarks must use original paraphrased evidence.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 7,
+          "printed_page": 6,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bcg-pdfpage07.png",
+          "role": "Framework plus table and implications",
+          "density": "read-ahead",
+          "observation": "Segment geometry, multi-year table and interpretation share row relationships. Dense labels compete for attention; treat this as read-ahead, not live density guidance.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 8,
+          "printed_page": 7,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bcg-pdfpage08.png",
+          "role": "Small multiples with evidence",
+          "density": "present-with-notes",
+          "observation": "Two equal trend panels share year positions and a minus60 to60 percent domain; each has nearby correlation and interpretation. Matching measure colors carry between panels.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 21,
+          "printed_page": 20,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bcg-pdfpage21.png",
+          "role": "Prioritization and ranked interpretation",
+          "density": "read-ahead",
+          "observation": "Ordinal impact/frequency axes position issues; matching numbers link the diagram to a ranked sidebar. Several labels crowd the plotted region.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 22,
+          "printed_page": 21,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bcg-pdfpage22.png",
+          "role": "Qualitative plus quantitative evidence",
+          "density": "read-ahead",
+          "observation": "Aligned rows pair interview evidence with percentages and implications. This is dense; a live benchmark should use one or two rows.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 23,
+          "printed_page": 22,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bcg-pdfpage23.png",
+          "role": "Relationship diagram plus actions",
+          "density": "present",
+          "observation": "A central stakeholder relates to four numbered action groups. Connectors explain association; they do not represent time or measured causal effects.",
+          "visually_inspected": true
+        }
+      ]
+    },
+    {
+      "id": "bain-pe-2025",
+      "url": "https://www.bain.com.cn/pdfs/202503200139236333.pdf",
+      "date": "2025-03-03",
+      "local_pdf": ".claude/review-evidence/2026-10-03-consulting/research/bain-2025-private-equity.pdf",
+      "pages": [
+        {
+          "pdf_page_1_based": 10,
+          "printed_page": 8,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bain-pdfpage10.png",
+          "role": "Repeated comparisons with deltas",
+          "density": "read-ahead",
+          "observation": "Three stacked panels retain quartile order and two-period color meaning; difference brackets state units. Measures differ, so identical vertical domains would be inappropriate.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 11,
+          "printed_page": 9,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bain-pdfpage11.png",
+          "role": "Main chart plus supporting table",
+          "density": "read-ahead",
+          "observation": "Stacked regional value bars, a separately labeled count line, aligned deal-size row and change table form one exhibit. Notes qualify exclusions and measurement basis.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 17,
+          "printed_page": 15,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/bain-pdfpage17.png",
+          "role": "Forecast distinction",
+          "density": "read-ahead",
+          "observation": "Two related trend charts mark forecast intervals with background shading and a label. Sources and scenario vintage appear below; axes differ because measures differ.",
+          "visually_inspected": true
+        }
+      ]
+    },
+    {
+      "id": "pwc-ceo-2026",
+      "url": "https://www.pwc.com/gx/en/ceo-survey/2026/pwc-ceo-survey-2026.pdf",
+      "date": "2026-01-19",
+      "local_pdf": ".claude/review-evidence/2026-10-03-consulting/research/pwc-2026-ceo-survey.pdf",
+      "pages": [
+        {
+          "pdf_page_1_based": 6,
+          "printed_page": 6,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/pwc-pdfpage06.png",
+          "role": "Two-dimensional outcomes with callouts",
+          "density": "read-ahead",
+          "observation": "A three-by-three outcome grid has direction labels and highlighted subsets connected to interpretations. Callouts identify specific cells rather than floating as decorative cards.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 8,
+          "printed_page": 8,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/pwc-pdfpage08.png",
+          "role": "Two related but distinct outcomes",
+          "density": "read-ahead",
+          "observation": "Matched categories and color progression link two outcomes, each with its own explicitly labeled axis. Model adjustments and sample sizes constrain the interpretation.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 22,
+          "printed_page": 22,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/pwc-pdfpage22.png",
+          "role": "Simple comparison with qualification",
+          "density": "read-ahead",
+          "observation": "Two compact paired comparisons use identical category meaning. Research notes define groups and adjustments; whitespace separates exhibit from subsequent narrative.",
+          "visually_inspected": true
+        }
+      ]
+    },
+    {
+      "id": "bcg-dallas-2016",
+      "url": "https://dallascityhall.com/government/Council%20Meeting%20Documents/loose-dogs-in-dallas-strategic-recommendations-to-improve-public-safety-and-animal-welfare_combined_083016.pdf",
+      "date": "2016-08-30",
+      "local_pdf": ".claude/review-evidence/2026-10-03-consulting/research/bcg-2016-dallas-dogs.pdf",
+      "pages": [
+        {
+          "pdf_page_1_based": 9,
+          "printed_page": 7,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/dallas-pdfpage09.png",
+          "role": "Executive findings",
+          "density": "read-ahead",
+          "observation": "Theme groups highlight selected facts inline, but thirteen bullets create a dense read-ahead page. Use grouped conclusions; do not copy its live density.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 15,
+          "printed_page": 13,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/dallas-pdfpage15.png",
+          "role": "Benchmark comparison",
+          "density": "present-with-notes",
+          "observation": "Two distinct measures use separate unit labels, focal-city highlighting and benchmark reference lines. An interpretation box explains plausible drivers; long rotated labels reduce live readability.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 28,
+          "printed_page": 26,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/dallas-pdfpage28.png",
+          "role": "Priority and sequencing",
+          "density": "read-ahead",
+          "observation": "Impact and effort positions create five action clusters with numbered sequencing. Unequal blocks express categories; long initiative lists make it read-ahead.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 34,
+          "printed_page": 32,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/dallas-pdfpage34.png",
+          "role": "Actionable next steps",
+          "density": "present-with-notes",
+          "observation": "Three connected stages associate action groups with ownership, trial execution and measurement. Direction and column alignment establish order.",
+          "visually_inspected": true
+        },
+        {
+          "pdf_page_1_based": 56,
+          "printed_page": 54,
+          "image": ".claude/review-evidence/2026-10-03-consulting/research/source-pages/dallas-pdfpage56.png",
+          "role": "Options evidence table",
+          "density": "read-ahead",
+          "observation": "Rows retain option identities across three criterion columns; ticks and crosses pair with explanations. This is qualitative evidence, not an unexplained numerical score.",
+          "visually_inspected": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,127 @@
+{
+  "meta": {
+    "title": "Consulting exhibit controls",
+    "template": "p-style",
+    "date": "3 October 2026",
+    "source": "Illustrative case data; not actual company findings",
+    "type_scale": "comfortable",
+    "viewing_mode": "present"
+  },
+  "slides": [
+    {
+      "kind": "regions",
+      "title": "Digital share rose from 40% to 54% while total demand stayed flat",
+      "arrangement": "rows",
+      "regions": [
+        {
+          "kind": "chart",
+          "heading": "Intake mix (thousand cases)",
+          "size_pct": 70,
+          "unit": "000 cases",
+          "chart": {
+            "type": "stacked_bar_chart",
+            "data": {
+              "categories": [
+                "Q1",
+                "Q2",
+                "Q3"
+              ],
+              "series": [
+                {
+                  "name": "Digital",
+                  "values": [
+                    20,
+                    24,
+                    27
+                  ]
+                },
+                {
+                  "name": "Phone",
+                  "values": [
+                    15,
+                    12,
+                    11
+                  ]
+                },
+                {
+                  "name": "Branch",
+                  "values": [
+                    10,
+                    9,
+                    8
+                  ]
+                },
+                {
+                  "name": "Other",
+                  "values": [
+                    5,
+                    5,
+                    4
+                  ]
+                }
+              ],
+              "sort": "none"
+            }
+          }
+        },
+        {
+          "kind": "table",
+          "heading": "Same periods and total basis",
+          "size_pct": 30,
+          "headers": [
+            "Measure",
+            "Q1",
+            "Q2",
+            "Q3"
+          ],
+          "rows": [
+            [
+              "Total cases (000s)",
+              "50",
+              "50",
+              "50"
+            ],
+            [
+              "Digital share (%)",
+              "40",
+              "48",
+              "54"
+            ]
+          ]
+        }
+      ],
+      "takeaway": "The channel shift creates a focused opportunity to simplify digital handling.",
+      "source": "Illustrative quarterly intake; 50,000 cases per quarter",
+      "notes": "Composition inspired by supporting-table exhibits in Bain2025; all data original illustrative values. Digital share = digital volume / total cases."
+    },
+    {
+      "kind": "regions",
+      "title": "Case ownership is a testable response to stalled approvals",
+      "arrangement": "main_left",
+      "regions": [
+        {
+          "kind": "text",
+          "heading": "Illustrative service-team evidence",
+          "size_pct": 60,
+          "body": "“I lose time finding who can approve the exception.”\nIllustrative respondent, service team; not a real interview."
+        },
+        {
+          "kind": "stat",
+          "value": "42%",
+          "label": "Cases without an owner",
+          "context": "210 of 500 illustrative reviewed cases",
+          "size_pct": 55
+        },
+        {
+          "kind": "text",
+          "heading": "Action to test",
+          "body": "Assign one owner daily.\nEscalate unowned cases after 24 hours.",
+          "size_pct": 45
+        }
+      ],
+      "takeaway": "Test ownership rules before assuming the change will reduce resolution time.",
+      "source": "Synthetic case review and invented interview example; October 2026",
+      "notes": "The invented quote and illustrative review metric motivate a pilot; they do not establish causality or actual benefits."
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "images": [
+    {
+      "template": "p-style",
+      "spec": "spec-r3",
+      "slide": 9,
+      "source_pixels": [
+        1600,
+        1000
+      ],
+      "pictures": [
+        {
+          "properties": "<ns0:nvPicPr xmlns:ns0=\"http://schemas.openxmlformats.org/presentationml/2006/main\" xmlns:ns1=\"http://schemas.openxmlformats.org/drawingml/2006/main\">\n      <ns0:cNvPr id=\"100\" name=\"Picture 100\" descr=\"Illustrative dispute dashboard: 24 open disputes; 12 lack an owner; oldest unassigned case is 48 hours old.\" />\n      <ns0:cNvPicPr>\n      <ns1:picLocks noChangeAspect=\"1\" />\n      </ns0:cNvPicPr>\n      <ns0:nvPr />\n      </ns0:nvPicPr>\n      ",
+          "transform": "<ns0:spPr xmlns:ns0=\"http://schemas.openxmlformats.org/presentationml/2006/main\" xmlns:ns1=\"http://schemas.openxmlformats.org/drawingml/2006/main\">\n      <ns1:xfrm>\n      <ns1:off x=\"448466\" y=\"1862835\" />\n      <ns1:ext cx=\"4923575\" cy=\"2368006\" />\n      </ns1:xfrm>\n      <ns1:prstGeom prst=\"rect\">\n      <ns1:avLst />\n      </ns1:prstGeom>\n      </ns0:spPr>\n      ",
+          "fill": "<ns0:blipFill xmlns:ns0=\"http://schemas.openxmlformats.org/presentationml/2006/main\" xmlns:ns1=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:ns2=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\n      <ns1:blip ns2:embed=\"rId2\" />\n      <ns1:srcRect l=\"0\" t=\"11523\" r=\"0\" b=\"11523\" />\n      <ns1:stretch>\n      <ns1:fillRect />\n      </ns1:stretch>\n      </ns0:blipFill>\n      "
+        }
+      ]
+    },
+    {
+      "template": "abstract",
+      "spec": "spec-adapted",
+      "slide": 9,
+      "source_pixels": [
+        1600,
+        1000
+      ],
+      "pictures": [
+        {
+          "properties": "<ns0:nvPicPr xmlns:ns0=\"http://schemas.openxmlformats.org/presentationml/2006/main\" xmlns:ns1=\"http://schemas.openxmlformats.org/drawingml/2006/main\">\n      <ns0:cNvPr id=\"100\" name=\"Picture 100\" descr=\"Illustrative dispute dashboard: 24 open disputes; 12 lack an owner; oldest unassigned case is 48 hours old.\" />\n      <ns0:cNvPicPr>\n      <ns1:picLocks noChangeAspect=\"1\" />\n      </ns0:cNvPicPr>\n      <ns0:nvPr />\n      </ns0:nvPicPr>\n      ",
+          "transform": "<ns0:spPr xmlns:ns0=\"http://schemas.openxmlformats.org/presentationml/2006/main\" xmlns:ns1=\"http://schemas.openxmlformats.org/drawingml/2006/main\">\n      <ns1:xfrm>\n      <ns1:off x=\"889000\" y=\"1855788\" />\n      <ns1:ext cx=\"4516120\" cy=\"2233423\" />\n      </ns1:xfrm>\n      <ns1:prstGeom prst=\"rect\">\n      <ns1:avLst />\n      </ns1:prstGeom>\n      </ns0:spPr>\n      ",
+          "fill": "<ns0:blipFill xmlns:ns0=\"http://schemas.openxmlformats.org/presentationml/2006/main\" xmlns:ns1=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:ns2=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\n      <ns1:blip ns2:embed=\"rId2\" />\n      <ns1:srcRect l=\"0\" t=\"10436\" r=\"0\" b=\"10436\" />\n      <ns1:stretch>\n      <ns1:fillRect />\n      </ns1:stretch>\n      </ns0:blipFill>\n      "
+        }
+      ]
+    },
+    {
+      "template": "abstract",
+      "spec": "spec-adapted2",
+      "slide": 9,
+      "source_pixels": [
+        1600,
+        1000
+      ],
+      "pictures": [
+        {
+          "properties": "<ns0:nvPicPr xmlns:ns0=\"http://schemas.openxmlformats.org/presentationml/2006/main\" xmlns:ns1=\"http://schemas.openxmlformats.org/drawingml/2006/main\">\n      <ns0:cNvPr id=\"100\" name=\"Picture 100\" descr=\"Illustrative dispute dashboard: 24 open disputes; 12 lack an owner; oldest unassigned case is 48 hours old.\" />\n      <ns0:cNvPicPr>\n      <ns1:picLocks noChangeAspect=\"1\" />\n      </ns0:cNvPicPr>\n      <ns0:nvPr />\n      </ns0:nvPicPr>\n      ",
+          "transform": "<ns0:spPr xmlns:ns0=\"http://schemas.openxmlformats.org/presentationml/2006/main\" xmlns:ns1=\"http://schemas.openxmlformats.org/drawingml/2006/main\">\n      <ns1:xfrm>\n      <ns1:off x=\"889000\" y=\"1855788\" />\n      <ns1:ext cx=\"6667500\" cy=\"2630259\" />\n      </ns1:xfrm>\n      <ns1:prstGeom prst=\"rect\">\n      <ns1:avLst />\n      </ns1:prstGeom>\n      </ns0:spPr>\n      ",
+          "fill": "<ns0:blipFill xmlns:ns0=\"http://schemas.openxmlformats.org/presentationml/2006/main\" xmlns:ns1=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:ns2=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\n      <ns1:blip ns2:embed=\"rId2\" />\n      <ns1:srcRect l=\"0\" t=\"18440\" r=\"0\" b=\"18440\" />\n      <ns1:stretch>\n      <ns1:fillRect />\n      </ns1:stretch>\n      </ns0:blipFill>\n      "
+        }
+      ]
+    }
+  ],
+  "abstract_section_title": [
+    {
+      "title": "Diagnose the bottleneck and choose the model",
+      "xml": "<ns0:sp xmlns:ns0=\"http://schemas.openxmlformats.org/presentationml/2006/main\" xmlns:ns1=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><ns0:nvSpPr><ns0:cNvPr id=\"2\" name=\"title\" /><ns0:cNvSpPr /><ns0:nvPr><ns0:ph type=\"ctrTitle\" hasCustomPrompt=\"1\" /></ns0:nvPr></ns0:nvSpPr><ns0:spPr><ns1:xfrm><ns1:off x=\"6991350\" y=\"487018\" /><ns1:ext cx=\"4179570\" cy=\"3377354\" /></ns1:xfrm></ns0:spPr><ns0:txBody><ns1:bodyPr wrap=\"square\" anchor=\"b\"><ns1:noAutofit /></ns1:bodyPr><ns1:lstStyle><ns1:lvl1pPr algn=\"l\"><ns1:defRPr b=\"0\" sz=\"5149\" spc=\"150\" baseline=\"0\"><ns1:solidFill><ns1:schemeClr val=\"tx1\" /></ns1:solidFill></ns1:defRPr></ns1:lvl1pPr></ns1:lstStyle><ns1:p><ns1:pPr marL=\"0\" indent=\"0\"><ns1:buNone /></ns1:pPr><ns1:r><ns1:rPr lang=\"en-US\" sz=\"4350\" /><ns1:t>Diagnose the bottleneck and choose the model</ns1:t></ns1:r></ns1:p></ns0:txBody></ns0:sp>"
+    }
+  ]
+}

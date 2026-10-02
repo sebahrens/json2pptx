@@ -1,0 +1,201 @@
+{
+  "jsonrpc": "2.0",
+  "id": 10,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"deck_id\":\"deck_b884917bc56b247d607c9c62938a87f7\",\"findings\":[{\"code\":\"GRID.pattern_overcrowded\",\"message\":\"comparison-2col: 10 cells exceeds recommended max of 8 \u2014 consider splitting\",\"next_tool_call\":{\"args_template\":{\"code\":\"GRID.pattern_overcrowded\"},\"tool\":\"describe_finding\"},\"severity\":\"info\"},{\"code\":\"INPUT.title_wraps\",\"message\":\"title wraps to multiple lines (32pt font, 5.4\\\" wide placeholder)\",\"next_tool_call\":{\"args_template\":{\"deck_id\":\"deck_b884917bc56b247d607c9c62938a87f7\",\"patch\":[{\"op\":\"replace\",\"path\":\"/slides/0/title\",\"value\":\"\\u003crewrite this field to resolve INPUT.title_wraps while preserving meaning\\u003e\"}]},\"tool\":\"validate_deck_spec\"},\"severity\":\"info\"}],\"findings_count\":4,\"ok\":true,\"summary\":\"4 infos\"}"
+      }
+    ],
+    "structuredContent": {
+      "schema_version": "1.0",
+      "tool": "json2pptx",
+      "subcommand": "validate_deck_spec",
+      "input_sha256": "1e16a620aa337dc85f4f1a68aef9cf8000a25a0f1441b220be28d0c1a3c45137",
+      "ok": true,
+      "summary": "4 infos",
+      "findings": [
+        {
+          "id": "grid-1",
+          "code": "GRID.pattern_overcrowded",
+          "severity": "info",
+          "category": "GRID",
+          "where": {
+            "slide": 4
+          },
+          "message": "comparison-2col: 10 cells exceeds recommended max of 8 \u2014 consider splitting",
+          "evidence": {
+            "action": "review",
+            "overflow_ratio": 1.25,
+            "path": "/slides/4/pattern",
+            "pattern": "comparison-2col"
+          },
+          "remediation": {
+            "primary": {
+              "action": "split_slide",
+              "params": {
+                "filled_slots": 10,
+                "fix_kind": "split_pattern",
+                "recommended_max": 8,
+                "title_part_2": "(continued)"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "GRID.pattern_overcrowded"
+            }
+          },
+          "describe_command": "json2pptx describe-finding pattern_overcrowded"
+        },
+        {
+          "id": "input-2",
+          "code": "INPUT.title_wraps",
+          "severity": "info",
+          "category": "INPUT",
+          "where": {
+            "slide": 0
+          },
+          "message": "title wraps to multiple lines (32pt font, 5.4\" wide placeholder)",
+          "evidence": {
+            "action": "info",
+            "allowed": {
+              "width_emu": 4941771,
+              "height_emu": 493776
+            },
+            "measured": {
+              "width_emu": 4941771,
+              "height_emu": 1481328
+            },
+            "overflow_ratio": 3,
+            "path": "slides[0].title",
+            "pattern": "placeholder"
+          },
+          "remediation": {
+            "primary": {
+              "action": "apply_patch",
+              "params": {
+                "op": "replace",
+                "path": "/slides/0/title",
+                "value": "<rewrite this field to resolve INPUT.title_wraps while preserving meaning>"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "validate_deck_spec",
+            "args_template": {
+              "deck_id": "deck_b884917bc56b247d607c9c62938a87f7",
+              "patch": [
+                {
+                  "op": "replace",
+                  "path": "/slides/0/title",
+                  "value": "<rewrite this field to resolve INPUT.title_wraps while preserving meaning>"
+                }
+              ]
+            }
+          },
+          "describe_command": "json2pptx describe-finding title_wraps"
+        },
+        {
+          "id": "input-3",
+          "code": "INPUT.title_wraps",
+          "severity": "info",
+          "category": "INPUT",
+          "where": {
+            "slide": 2
+          },
+          "message": "title wraps to multiple lines (36pt font, 4.6\" wide placeholder)",
+          "evidence": {
+            "action": "info",
+            "allowed": {
+              "width_emu": 4179570,
+              "height_emu": 548640
+            },
+            "measured": {
+              "width_emu": 4179570,
+              "height_emu": 1645920
+            },
+            "overflow_ratio": 3,
+            "path": "slides[2].title",
+            "pattern": "placeholder"
+          },
+          "remediation": {
+            "primary": {
+              "action": "apply_patch",
+              "params": {
+                "op": "replace",
+                "path": "/slides/2/title",
+                "value": "<rewrite this field to resolve INPUT.title_wraps while preserving meaning>"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "validate_deck_spec",
+            "args_template": {
+              "deck_id": "deck_b884917bc56b247d607c9c62938a87f7",
+              "patch": [
+                {
+                  "op": "replace",
+                  "path": "/slides/2/title",
+                  "value": "<rewrite this field to resolve INPUT.title_wraps while preserving meaning>"
+                }
+              ]
+            }
+          },
+          "describe_command": "json2pptx describe-finding title_wraps"
+        },
+        {
+          "id": "input-4",
+          "code": "INPUT.title_wraps",
+          "severity": "info",
+          "category": "INPUT",
+          "where": {
+            "slide": 6
+          },
+          "message": "title wraps to multiple lines (36pt font, 4.6\" wide placeholder)",
+          "evidence": {
+            "action": "info",
+            "allowed": {
+              "width_emu": 4179570,
+              "height_emu": 548640
+            },
+            "measured": {
+              "width_emu": 4179570,
+              "height_emu": 1645920
+            },
+            "overflow_ratio": 3,
+            "path": "slides[6].title",
+            "pattern": "placeholder"
+          },
+          "remediation": {
+            "primary": {
+              "action": "apply_patch",
+              "params": {
+                "op": "replace",
+                "path": "/slides/6/title",
+                "value": "<rewrite this field to resolve INPUT.title_wraps while preserving meaning>"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "validate_deck_spec",
+            "args_template": {
+              "deck_id": "deck_b884917bc56b247d607c9c62938a87f7",
+              "patch": [
+                {
+                  "op": "replace",
+                  "path": "/slides/6/title",
+                  "value": "<rewrite this field to resolve INPUT.title_wraps while preserving meaning>"
+                }
+              ]
+            }
+          },
+          "describe_command": "json2pptx describe-finding title_wraps"
+        }
+      ],
+      "deck_id": "deck_b884917bc56b247d607c9c62938a87f7"
+    }
+  }
+}

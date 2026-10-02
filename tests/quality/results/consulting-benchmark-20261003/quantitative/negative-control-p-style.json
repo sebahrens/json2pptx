@@ -1,0 +1,58 @@
+{
+  "meta": {
+    "title": "Northstar operations review",
+    "archetype": "board_update",
+    "template": "p-style",
+    "date": "3 October 2026",
+    "audience": "Board of directors",
+    "source": "Illustrative management accounts, FY26",
+    "viewing_mode": "present",
+    "type_scale": "comfortable",
+    "chrome": {
+      "confidentiality": "Illustrative case",
+      "page_numbers": {
+        "enabled": true
+      }
+    }
+  },
+  "slides": [
+    {
+      "kind": "chart_insight",
+      "title": "East and South added $5.5m EBIT while North lost $0.5m",
+      "chart": {
+        "type": "bar_chart",
+        "title": "EBIT change, FY25 to FY26 ($m)",
+        "data": {
+          "categories": [
+            "East",
+            "South",
+            "North"
+          ],
+          "series": [
+            {
+              "name": "EBIT change",
+              "values": [
+                3,
+                2.5,
+                -0.5
+              ]
+            }
+          ],
+          "orientation": "horizontal",
+          "sort": "desc",
+          "highlight": [
+            "North"
+          ],
+          "data_labels": {}
+        }
+      },
+      "insights": [
+        "East contributed $3m and South $2.5m of improvement.",
+        "North offset these gains by $0.5m.",
+        "The pilot targets North rather than the entire network."
+      ],
+      "takeaway": "Contain the weak site before committing to a full rollout.",
+      "notes": "Illustrative case only. FY26 ended 30 September 2026. FY27 pilot forecasts and approvals are scenario assumptions, not audited company facts."
+    }
+  ]
+}
