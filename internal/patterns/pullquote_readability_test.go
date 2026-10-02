@@ -57,7 +57,7 @@ func TestPullQuoteRowsHoldWrittenFit(t *testing.T) {
 								if err != nil || tb == nil {
 									continue
 								}
-								scale := pptx.AutofitScaleFor(tb, c.Bounds)
+								scale := writtenScaleIn(ctx, tb, c.Bounds)
 								if scale < 1 && largestRunPt(tb) > pullQuoteMinQuotePt {
 									t.Errorf("%q at %.0fpt is written at %.0f%% in a %.0f×%.0fpt row",
 										firstText(tb), largestRunPt(tb), scale*100, float64(c.Bounds.CX)/12700, float64(c.Bounds.CY)/12700)

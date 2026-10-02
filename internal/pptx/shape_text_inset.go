@@ -136,11 +136,12 @@ func oneLineBoundsEMU(tb *TextBody) (lineH, wordBound int64) {
 // widestWordEMU measures the widest single word of the body at its run size.
 func widestWordEMU(tb *TextBody) int64 {
 	var widest int64
+	font := autofitMeasureFace(tb).name
 	for _, p := range tb.Paragraphs {
 		for _, r := range p.Runs {
 			size := runSizeHPt(r)
 			for _, w := range strings.FieldsFunc(r.Text, unicode.IsSpace) {
-				ww, err := textfit.MeasureStyledLineWidth(w, autofitFontName, float64(size)/100, r.Bold)
+				ww, err := textfit.MeasureStyledLineWidth(w, font, float64(size)/100, r.Bold)
 				if err != nil {
 					// No measurement font: a conservative 0.6em per rune.
 					ww = int64(float64(len([]rune(w))) * float64(size) * 0.6 * 127)

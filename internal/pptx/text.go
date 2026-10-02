@@ -24,6 +24,20 @@ type TextBody struct {
 	AutoFitFontScale      int
 	AutoFitLnSpcReduction int
 	Paragraphs            []Paragraph
+
+	// ThemeFonts names the typefaces the template's theme font references
+	// ("+mj-lt" / "+mn-lt") resolve to. It is never written: the autofit
+	// shrink is measured in the face the body actually renders in, the same
+	// face pattern sizing measured (go-slide-creator-ohhb2). Zero measures
+	// with the Arial-compatible Liberation Sans.
+	ThemeFonts ThemeFonts
+}
+
+// ThemeFonts is a template theme's heading (major) and body (minor) latin
+// typefaces.
+type ThemeFonts struct {
+	Major string
+	Minor string
 }
 
 // Paragraph represents a DrawingML paragraph (a:p).

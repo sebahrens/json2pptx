@@ -462,7 +462,7 @@ func (hd *heroDetail) measure(ctx ExpandContext, v *HeroDetailValues, ovr *HeroD
 	_, availH := sizingAreaPt(ctx)
 	heroH := shapeTextHeightPt(font, heroCell.Shape.Text, contentW-2*defaultShapeInsetLRPt)
 	plan := heroDetailPlan{hero: heroCell, rowGap: rowGap, avail: availH}
-	plan.heroNeed = rowTextNeedPt(heroCell.Shape.Text, contentW)
+	plan.heroNeed = rowTextNeedPt(ctx.themeFonts(), heroCell.Shape.Text, contentW)
 	plan.heroMax = math.Max(math.Round(math.Min(heroH+2*defaultShapeInsetTBPt+cardPadPt, contentH*heroDetailHeroSharePct/100)), plan.heroNeed)
 
 	// Row 2: Detail cards (N columns)
@@ -485,7 +485,7 @@ func (hd *heroDetail) measure(ctx ExpandContext, v *HeroDetailValues, ovr *HeroD
 	for i, dc := range detailCells {
 		textHs[i] = shapeTextHeightPt(font, dc.Shape.Text, textW)
 		cardH = math.Max(cardH, contentCardHeightPt(textHs[i], cardW, dc.Shape.Icon != nil))
-		need := rowTextNeedPt(dc.Shape.Text, cardW)
+		need := rowTextNeedPt(ctx.themeFonts(), dc.Shape.Text, cardW)
 		if dc.Shape.Icon != nil {
 			need = heroDetailIconCardPt(need, cardW)
 		}
@@ -531,6 +531,9 @@ func heroDetailShrinks(ctx ExpandContext, plan heroDetailPlan) bool {
 	cardW := equalColumnWidthPt(contentW, len(plan.details), ctx.Gap(heroDetailGapPt))
 	fits := func(text json.RawMessage, w, h float64) bool {
 		tb, err := shapegrid.ResolveTextInput(text)
+		if err == nil && tb != nil {
+			tb.ThemeFonts = ctx.themeFonts()
+		}
 		return err != nil || tb == nil || pptx.AutofitFitsFor(tb, pptx.RectEmu{CX: int64(w * sizingEMUPerPt), CY: int64(h * sizingEMUPerPt)})
 	}
 	if !fits(plan.hero.Shape.Text, contentW, plan.heroNeed) {

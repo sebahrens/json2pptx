@@ -727,7 +727,7 @@ func (l *thLayout) measure(headerSize, bodySize, detailSize float64) {
 	if l.tight {
 		l.headerPt = thMinHeaderPt
 		for j, cell := range l.headerCells() {
-			l.headerPt = math.Max(l.headerPt, writtenFitHeightPt(cell.Shape.Text, l.colW(j), 0))
+			l.headerPt = math.Max(l.headerPt, writtenFitHeightPt(l.ctx.themeFonts(), cell.Shape.Text, l.colW(j), 0))
 		}
 	} else {
 		l.headerPt = math.Max(thMinHeaderPt, sizedBlockHeightPt(ctx, []sizedPara{{text: l.corner, sizePt: headerSize, bold: true}}, l.colW(0)))
@@ -769,12 +769,12 @@ func (l *thLayout) measure(headerSize, bodySize, detailSize float64) {
 // i's name cell and text score cells, without autofit shrink.
 func (l *thLayout) writtenOptionHeight(i int) float64 {
 	tones := l.tones()
-	h := writtenFitHeightPt(thTextCell(tones.hlRow, "dk1", "l", l.nameParas(i, "dk1", tones.hlRow)).Shape.Text, l.colW(0), 0)
+	h := writtenFitHeightPt(l.ctx.themeFonts(), thTextCell(tones.hlRow, "dk1", "l", l.nameParas(i, "dk1", tones.hlRow)).Shape.Text, l.colW(0), 0)
 	for j := range l.v.Criteria {
 		sc, ok := parseTableHighlightScore(safeScore(l.v.Options[i].Scores, j), l.v.scaleFor(j))
 		if ok && sc.kind == thScaleText {
 			cell := thScoreCell(l.ctx, sc, fillTone{Color: "none"}, l.symbolInk, l.ovr.RAGColors, l.bodySize, 1)
-			h = math.Max(h, writtenFitHeightPt(cell.Shape.Text, l.colW(j+1), 0))
+			h = math.Max(h, writtenFitHeightPt(l.ctx.themeFonts(), cell.Shape.Text, l.colW(j+1), 0))
 		}
 	}
 	return h

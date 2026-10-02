@@ -300,6 +300,12 @@ type ShapeSpec struct {
 	Rotation    float64
 	Adjustments map[string]int64
 	Link        *LinkSpec
+	// ThemeFonts are the theme typefaces a named pattern sized this shape's
+	// text in. The writer measures the stored autofit shrink in the same
+	// face — Calibri as its metric clone Carlito — so text the pattern sized
+	// to fit is not written shrunk (go-slide-creator-ohhb2). Zero (authored
+	// grids) keeps the Liberation Sans measure.
+	ThemeFonts pptx.ThemeFonts
 }
 
 type LinkSpec struct {

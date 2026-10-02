@@ -335,19 +335,19 @@ func measureNextSteps(ctx ExpandContext, vals *NextStepsValues, numberSize, acti
 	// their real column widths: the pattern's own metric model alone let the
 	// writer store rows shrunk below the floor (go-slide-creator-k3eb3).
 	lay.headerPt = math.Ceil(math.Max(nextStepsHeaderSizePt*sizingLineSpacing+2*sizingInsetTBPt,
-		writtenFitHeightPt(nextStepsHeaderCell("Action", 100).Shape.Text, areaW*actionPct/100, 0)))
+		writtenFitHeightPt(ctx.themeFonts(), nextStepsHeaderCell("Action", 100).Shape.Text, areaW*actionPct/100, 0)))
 	numberRow := numberSize*sizingLineSpacing + 2*sizingInsetTBPt
 	for i, a := range vals.Actions {
-		h := math.Max(numberRow, writtenFitHeightPt(nextStepsNumberCell(i, numberSize, "dk1").Shape.Text, areaW*numberPct/100, 0))
+		h := math.Max(numberRow, writtenFitHeightPt(ctx.themeFonts(), nextStepsNumberCell(i, numberSize, "dk1").Shape.Text, areaW*numberPct/100, 0))
 		h = math.Max(h, sizedBlockHeightPt(ctx, []sizedPara{{text: a.Action, sizePt: actionSize}}, areaW*actionPct/100))
-		h = math.Max(h, writtenFitHeightPt(nextStepsActionCell(a.Action, actionSize).Shape.Text, areaW*actionPct/100, 0))
+		h = math.Max(h, writtenFitHeightPt(ctx.themeFonts(), nextStepsActionCell(a.Action, actionSize).Shape.Text, areaW*actionPct/100, 0))
 		if lay.hasOwner {
 			h = math.Max(h, sizedBlockHeightPt(ctx, []sizedPara{{text: a.Owner, sizePt: metaSize}}, areaW*nextStepsOwnerPct/100))
-			h = math.Max(h, writtenFitHeightPt(nextStepsOwnerCell(a.Owner, metaSize).Shape.Text, areaW*nextStepsOwnerPct/100, 0))
+			h = math.Max(h, writtenFitHeightPt(ctx.themeFonts(), nextStepsOwnerCell(a.Owner, metaSize).Shape.Text, areaW*nextStepsOwnerPct/100, 0))
 		}
 		if lay.hasDate {
 			h = math.Max(h, sizedBlockHeightPt(ctx, []sizedPara{{text: a.Date, sizePt: metaSize}}, areaW*nextStepsDatePct/100))
-			h = math.Max(h, writtenFitHeightPt(nextStepsDateCell(a.Date, metaSize).Shape.Text, areaW*nextStepsDatePct/100, 0))
+			h = math.Max(h, writtenFitHeightPt(ctx.themeFonts(), nextStepsDateCell(a.Date, metaSize).Shape.Text, areaW*nextStepsDatePct/100, 0))
 		}
 		lay.rowPt = append(lay.rowPt, math.Ceil(h))
 	}
@@ -358,7 +358,7 @@ func measureNextSteps(ctx ExpandContext, vals *NextStepsValues, numberSize, acti
 		}
 		band := nextStepsBandCell(vals, lay.decisionSize, "dk1")
 		lay.bandPt = math.Ceil(math.Max(sizedBlockHeightPt(ctx, paras, areaW-nextStepsBandBarPt),
-			writtenFitHeightPt(band.Shape.Text, areaW-nextStepsBandBarPt, 0)))
+			writtenFitHeightPt(ctx.themeFonts(), band.Shape.Text, areaW-nextStepsBandBarPt, 0)))
 	}
 	return lay
 }

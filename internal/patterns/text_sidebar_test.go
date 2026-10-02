@@ -235,12 +235,12 @@ func TestTextSidebar_WrittenFitOnShortAreas(t *testing.T) {
 					}
 					lay := tsMeasure(ctx, pl.v, o)
 					if lay.mainFits {
-						if need := writtenFitHeightPt(tsMainCell(ctx, pl.v, lay).Shape.Text, lay.mainW, 0); lay.heightPt < need {
+						if need := writtenFitHeightPt(ctx.themeFonts(), tsMainCell(ctx, pl.v, lay).Shape.Text, lay.mainW, 0); lay.heightPt < need {
 							t.Errorf("row %.0fpt is below the main column's written fit %.0fpt", lay.heightPt, need)
 						}
 					}
 					if lay.sideFits {
-						if need := writtenFitHeightPt(tsSidebarCell(ctx, pl.v.Sidebar, lay, "accent1", o.SidebarStyle).Shape.Text, lay.sideW, 0); lay.heightPt < need {
+						if need := writtenFitHeightPt(ctx.themeFonts(), tsSidebarCell(ctx, pl.v.Sidebar, lay, "accent1", o.SidebarStyle).Shape.Text, lay.sideW, 0); lay.heightPt < need {
 							t.Errorf("row %.0fpt is below the sidebar's written fit %.0fpt", lay.heightPt, need)
 						}
 					}

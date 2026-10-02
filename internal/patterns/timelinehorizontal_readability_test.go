@@ -57,7 +57,7 @@ func patternWrittenBelowFloor(t *testing.T, p Pattern, ctx ExpandContext, w, h f
 		if smallest == 0 {
 			continue
 		}
-		if scale := pptx.AutofitScaleFor(tb, c.Bounds); smallest*scale < 11.95 {
+		if scale := writtenScaleIn(ctx, tb, c.Bounds); smallest*scale < 11.95 {
 			below = append(below, fmt.Sprintf("%q at %.0fpt × %.0f%% = %.1fpt in %.0f×%.0fpt",
 				firstText(tb), smallest, scale*100, smallest*scale, float64(c.Bounds.CX)/12700, float64(c.Bounds.CY)/12700))
 		}

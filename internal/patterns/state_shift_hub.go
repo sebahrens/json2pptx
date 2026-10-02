@@ -450,7 +450,7 @@ func (l *sshLayout) itemNeed(ctx ExpandContext) float64 {
 // that is stored shrunk (go-slide-creator-k3eb3).
 func sshSideNeedPt(ctx ExpandContext, lay sshLayout, title, body string, frameW float64) float64 {
 	return math.Max(sshTextNeedPt(ctx, lay, title, pptx.ConvertMarkdownEmphasis(body), frameW),
-		writtenFitHeightPt(sshItemCell(title, body, "l", lay, "dk1").Shape.Text, frameW, 0))
+		writtenFitHeightPt(ctx.themeFonts(), sshItemCell(title, body, "l", lay, "dk1").Shape.Text, frameW, 0))
 }
 
 // fits reports whether every item is written unshrunk in its row and the hub

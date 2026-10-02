@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -145,6 +146,13 @@ type ExpandContext struct {
 	// AutoAccent is true only when the pattern did not author an accent or
 	// semantic_accent override. Per-cell variation then stays in the safe pool.
 	AutoAccent bool
+}
+
+// themeFonts returns the theme typefaces the writer resolves a shape's text
+// against when it measures the stored autofit shrink, so a written-fit probe
+// measures in the same face as the shape it predicts (go-slide-creator-ohhb2).
+func (c ExpandContext) themeFonts() pptx.ThemeFonts {
+	return pptx.ThemeFonts{Major: c.Theme.TitleFont, Minor: c.Theme.BodyFont}
 }
 
 // ResolveAccent resolves the accent color for this context, honoring the

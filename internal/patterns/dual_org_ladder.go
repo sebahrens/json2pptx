@@ -307,7 +307,7 @@ func (d *dualOrgLadder) Expand(ctx ExpandContext, values, overrides any, cellOve
 			buildDualOrgRoleCell(row.ANameField, row.ATitle, nameSize, titleSize),
 			buildDualOrgRoleCell(row.BNameField, row.BTitle, nameSize, titleSize),
 		} {
-			bodyMinPt = math.Max(bodyMinPt, writtenFitHeightPt(c.Shape.Text, cardW, 0))
+			bodyMinPt = math.Max(bodyMinPt, writtenFitHeightPt(ctx.themeFonts(), c.Shape.Text, cardW, 0))
 		}
 	}
 

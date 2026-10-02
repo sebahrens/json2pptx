@@ -360,7 +360,7 @@ func iconRowCardNeedPt(ctx ExpandContext, cells []*jsonschema.GridCellInput) (ne
 			continue
 		}
 		textH := math.Max(shapeTextHeightPt(font, c.Shape.Text, textW),
-			writtenFitHeightPt(c.Shape.Text, cardW, 0)-2*defaultShapeInsetTBPt)
+			writtenFitHeightPt(ctx.themeFonts(), c.Shape.Text, cardW, 0)-2*defaultShapeInsetTBPt)
 		need = math.Max(need, contentCardHeightPt(textH, cardW, c.Shape.Icon != nil))
 	}
 	return need, areaH

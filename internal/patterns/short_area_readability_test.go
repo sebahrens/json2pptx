@@ -61,7 +61,7 @@ func TestShortContentAreaExemplarsStayAboveFloor(t *testing.T) {
 					if smallest < 12 {
 						continue // captions and footnotes have their own floors
 					}
-					if scale := pptx.AutofitScaleFor(tb, c.Bounds); smallest*scale < 12 {
+					if scale := writtenScaleIn(ctx, tb, c.Bounds); smallest*scale < 12 {
 						t.Errorf("%q is written at %.0fpt × %.0f%% = %.1fpt in a %.0f×%.0fpt shape, below the 12pt floor",
 							firstText(tb), smallest, scale*100, smallest*scale, float64(c.Bounds.CX)/12700, float64(c.Bounds.CY)/12700)
 					}

@@ -15,7 +15,7 @@ import (
 func TestWrittenFitHeightPtMatchesWriterMeasure(t *testing.T) {
 	text := buildPhaseRoadmapPlainText("Weeks 1–8", 10, true, "dk1", "ctr")
 	const widthPt = 167.24
-	h := writtenFitHeightPt(text, widthPt, 0)
+	h := writtenFitHeightPt(pptx.ThemeFonts{}, text, widthPt, 0)
 	if minH := 12*1.2 + 2*defaultShapeInsetTBPt; h < minH {
 		t.Fatalf("fit height %.0fpt is below one 12pt line plus the uniform insets (%.1fpt)", h, minH)
 	}
@@ -35,7 +35,7 @@ func TestWrittenFitHeightPtMatchesWriterMeasure(t *testing.T) {
 	if got := pptx.EffectiveTextInsets(tb, box(h-1)); got == tb.Insets {
 		t.Fatalf("%.0fpt is not the smallest height that keeps the full margin", h)
 	}
-	if got := writtenFitHeightPt(text, widthPt, h+5); got != h+5 {
+	if got := writtenFitHeightPt(pptx.ThemeFonts{}, text, widthPt, h+5); got != h+5 {
 		t.Fatalf("minimum not honoured: %.0f", got)
 	}
 }

@@ -1024,6 +1024,7 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 			Text:        c.Shape.Text,
 			Rotation:    c.Shape.Rotation,
 			Adjustments: c.Shape.Adjustments,
+			ThemeFonts:  pptx.ThemeFonts{Major: c.Shape.MeasureFonts.Major, Minor: c.Shape.MeasureFonts.Minor},
 		}
 		if c.Shape.Link != nil {
 			cell.Shape.Link = &shapegrid.LinkSpec{URL: c.Shape.Link.URL, Slide: c.Shape.Link.Slide}

@@ -931,7 +931,7 @@ func stackInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *Ch
 			sized = append(sized, sizedPara{text: v.Headline.Label, sizePt: scaleBodyPt})
 		}
 		textJSON, _ := json.Marshal(chartInsightsText{Paragraphs: paras, Align: "l", VerticalAlign: "t"})
-		h := math.Max(sizedBlockHeightPt(ctx, sized, colW), writtenFitHeightPt(textJSON, colW, 0))
+		h := math.Max(sizedBlockHeightPt(ctx, sized, colW), writtenFitHeightPt(ctx.themeFonts(), textJSON, colW, 0))
 		rows = append(rows, jsonschema.GridRowInput{MinHeight: h, MaxHeight: h, Cells: []*jsonschema.GridCellInput{{
 			Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`), Text: textJSON},
 		}}})
@@ -956,7 +956,7 @@ func stackInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *Ch
 	if insights != nil {
 		rows = append(rows, jsonschema.GridRowInput{Cells: []*jsonschema.GridCellInput{insights}})
 		if insights.Shape != nil {
-			need = writtenFitHeightPt(insights.Shape.Text, colW, 0)
+			need = writtenFitHeightPt(ctx.themeFonts(), insights.Shape.Text, colW, 0)
 		}
 	}
 	if soWhatRow != nil {

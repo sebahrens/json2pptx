@@ -41,6 +41,7 @@ func shareRowAutofitScale(cells []ResolvedCell) {
 		for j := 0; j < 4; j++ {
 			tb.Insets[j] += c.TextInsets[j]
 		}
+		tb.ThemeFonts = c.ShapeSpec.ThemeFonts
 		k := key{row: c.RowIdx, sizeHP: size}
 		groups[k] = append(groups[k], member{idx: i, scale: pptx.AutofitScaleFor(tb, c.Bounds)})
 	}

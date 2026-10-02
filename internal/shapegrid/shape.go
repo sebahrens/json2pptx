@@ -125,6 +125,7 @@ func generateShapeXML(spec *ShapeSpec, id uint32, bounds pptx.RectEmu, autofitSc
 		if err != nil {
 			return nil, fmt.Errorf("text: %w", err)
 		}
+		tb.ThemeFonts = spec.ThemeFonts
 		// Apply extra insets (e.g., for icon overlay offset)
 		if len(extraInsets) > 0 {
 			ei := extraInsets[0]

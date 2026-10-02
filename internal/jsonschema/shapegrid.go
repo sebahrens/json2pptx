@@ -203,6 +203,20 @@ type ShapeSpecInput struct {
 	Adjustments map[string]int64 `json:"adjustments,omitempty"`
 	Icon        *IconInput       `json:"icon,omitempty"` // Optional icon overlay rendered on top of the shape
 	Link        *LinkInput       `json:"link,omitempty"` // Click target for the entire shape
+
+	// MeasureFonts are the theme typefaces a named pattern sized this
+	// shape's text in, stamped at expansion. Not part of the input schema:
+	// the writer measures the stored autofit shrink in the same face, so
+	// generation and validation both write what the pattern sized
+	// (go-slide-creator-ohhb2).
+	MeasureFonts MeasureFonts `json:"-"`
+}
+
+// MeasureFonts names a template theme's heading (major) and body (minor)
+// latin typefaces.
+type MeasureFonts struct {
+	Major string
+	Minor string
 }
 
 // LinkInput names one external URL or one slide number in the output deck.

@@ -369,7 +369,7 @@ func valueChainDescRowHeightPt(ctx ExpandContext, cells []*jsonschema.GridCellIn
 	h = math.Round(h + 2*defaultShapeInsetTBPt)
 	for _, c := range cells {
 		if c != nil && c.Shape != nil {
-			h = math.Max(h, writtenFitHeightPt(c.Shape.Text, colW, h))
+			h = math.Max(h, writtenFitHeightPt(ctx.themeFonts(), c.Shape.Text, colW, h))
 		}
 	}
 	return h

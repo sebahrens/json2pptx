@@ -295,7 +295,7 @@ func (pq *pullQuote) Expand(ctx ExpandContext, values, overrides any, cellOverri
 		{Content: attrLine, Size: attrSize, Color: "dk1", Align: align},
 	}, "t", align)
 	attrRowPt := math.Max(sizedBlockHeightPt(ctx, []sizedPara{{text: attrLine, sizePt: attrSize}}, textW),
-		writtenFitHeightPt(attrCell.Shape.Text, textW, 0))
+		writtenFitHeightPt(ctx.themeFonts(), attrCell.Shape.Text, textW, 0))
 
 	// The quote row is capped so a long quote leaves the attribution its row.
 	// The default quote size steps down until the quote is written unshrunk
@@ -314,7 +314,7 @@ func (pq *pullQuote) Expand(ctx ExpandContext, values, overrides any, cellOverri
 			{Content: quoteLine, Size: size, Italic: true, Color: "dk1", Align: align},
 		}, "b", align)
 		quoteRowPt = math.Max(sizedBlockHeightPt(ctx, []sizedPara{{text: quoteLine, sizePt: size}}, textW),
-			writtenFitHeightPt(quoteCell.Shape.Text, textW, 0))
+			writtenFitHeightPt(ctx.themeFonts(), quoteCell.Shape.Text, textW, 0))
 		if quoteRowPt <= capPt {
 			break
 		}
