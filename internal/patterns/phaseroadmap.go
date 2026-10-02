@@ -500,7 +500,7 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 	// flexing over the rest of the slide; the grid centres the block.
 	contentW, _ := contentAreaPt(ctx)
 	descW := equalColumnWidthPt(contentW, n, ctx.Gap(6)) - 2*defaultShapeInsetLRPt
-	descH := 0.0
+	descH, descWrittenH := 0.0, 0.0
 	descCells := make([]*jsonschema.GridCellInput, n)
 	for i, p := range vals.Phases {
 		descH = math.Max(descH, phaseRoadmapDescHeightPt(ctx.Theme.BodyFont, descW, p.Description, bodySize))
@@ -513,10 +513,16 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 			},
 		}
 		applyPhaseRoadmapOverride(descCells[i], cellOverrides, descIdx0+i, accent)
+		// The theme-font model alone is not enough: a Calibri template is
+		// measured with its metric clone (Carlito), narrower than the
+		// writer's autofit font, so a row sized by the model alone was
+		// written shrunk below the 12pt floor (11.5pt on modern, 11.0pt on
+		// business-template). Hold the row at the writer's own fit too.
+		descWrittenH = math.Max(descWrittenH, writtenNeedOrOverflowPt(ctx.Theme.BodyFont, descCells[i].Shape.Text, descW+2*defaultShapeInsetLRPt))
 	}
 	// The row keeps its content height as a minimum so a short content area
 	// squeezes the flexible rows, not the descriptions below their margin.
-	descRowH := math.Round(math.Max(descH, bodySize*contentLineHeight) + 2*defaultShapeInsetTBPt + 6)
+	descRowH := math.Max(math.Round(math.Max(descH, bodySize*contentLineHeight)+2*defaultShapeInsetTBPt+6), math.Ceil(descWrittenH))
 	rows = append(rows, jsonschema.GridRowInput{Cells: descCells, MinHeight: descRowH, MaxHeight: descRowH})
 
 	// Optional parallel-track block — label + full-width tinted bars.
@@ -577,11 +583,15 @@ func buildPhaseRoadmapTracks(ctx ExpandContext, vals *PhaseRoadmapValues, accent
 	k := len(vals.ParallelTracks)
 	contentW, _ := contentAreaPt(ctx)
 	barTextW := contentW*(100-phaseRoadmapTrackLabelColPct)/100 - ctx.Gap(phaseRoadmapTrackGapPt) - 2*defaultShapeInsetLRPt
-	barTextH := bodySize * contentLineHeight
+	barTextH, barWrittenH := bodySize*contentLineHeight, 0.0
 	for _, t := range vals.ParallelTracks {
 		barTextH = math.Max(barTextH, textBlockHeightPt(ctx.Theme.BodyFont, barTextW, textParagraph{text: t, size: bodySize}))
+		// As for the description row: the writer's fit, not only the
+		// theme-font model, sets the bar height.
+		text := buildPhaseRoadmapPlainText(pptx.ConvertMarkdownEmphasis(t), bodySize, false, "dk1", "l")
+		barWrittenH = math.Max(barWrittenH, writtenNeedOrOverflowPt(ctx.Theme.BodyFont, text, barTextW+2*defaultShapeInsetLRPt))
 	}
-	barPt := math.Round(barTextH + 2*defaultShapeInsetTBPt + 4)
+	barPt := math.Max(math.Round(barTextH+2*defaultShapeInsetTBPt+4), math.Ceil(barWrittenH))
 
 	labelSize := math.Max(bodySize+1, math.Min(headerSize-2, 12))
 	label := &jsonschema.GridCellInput{
