@@ -569,3 +569,28 @@ func TestPhaseRoadmap_ParallelTracks_Expand(t *testing.T) {
 	}
 	assertPatternGolden(t, grid, filepath.Join("testdata", "phase-roadmap", "parallel_tracks.golden.json"))
 }
+
+// The description row (and parallel-track bars) were sized from the theme-font
+// model alone. On a Calibri template that model measures with the embedded
+// Carlito metric clone, narrower than the writer's autofit font, so short
+// descriptions that wrap one line more in the writer's measure were written
+// shrunk below the 12pt floor and generation refused them: examples/
+// phase-roadmap.json slide 3 on modern (11.5pt) and patterns-smoke slide 10 on
+// business-template (11.0pt). The rows must hold the writer's own fit.
+func TestPhaseRoadmapWrittenFitOnShortAreas(t *testing.T) {
+	threePhase := &PhaseRoadmapValues{Phases: []PhaseRoadmapPhase{
+		{Name: "Discovery", DateLabel: "Q1", Description: "Stakeholder interviews and current-state mapping."},
+		{Name: "Design", DateLabel: "Q2", Description: "Target-state architecture and transition plan."},
+		{Name: "Delivery", DateLabel: "Q3–Q4", Description: "Wave-based execution against backlog."},
+	}}
+	fourPhase := &PhaseRoadmapValues{Phases: []PhaseRoadmapPhase{
+		{Name: "Plan", DateLabel: "Mar–Apr 2025", Description: "Define scope, governance, stakeholders."},
+		{Name: "Build", DateLabel: "May–Jul 2025", Description: "Implement core capabilities and run pilot.", Active: true, Milestone: "Pilot go-live"},
+		{Name: "Scale", DateLabel: "Aug–Oct 2025", Description: "Roll out to remaining business units."},
+		{Name: "Optimize", DateLabel: "Nov–Dec 2025", Description: "Tune cost, capture lessons, hand to BAU."},
+	}}
+	assertWrittenFitOnShortAreas(t, "phase-roadmap", map[string]writtenFitCase{
+		"three-phase": {values: threePhase, fits: true},
+		"four-phase":  {values: fourPhase, fits: true},
+	})
+}
