@@ -9,6 +9,10 @@ description: >-
 
 # Deck Generation Skill
 
+**Visual standard:** Follow [native slide composition](RULES.md#native-slide-composition):
+flat, template-led presentation layouts with clear exhibits and restrained grouping.
+Unnecessary web UI styling is a visual-review failure even when fit and structure pass.
+
 Call `get_started` first, passing this frontmatter's `schema_version` as
 `skill_version`. If it returns `skill_warning`, run `make install-skill`
 before relying on installed instructions. Check `get_started.runtime`: if render

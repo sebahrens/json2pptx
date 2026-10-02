@@ -2,6 +2,36 @@
 
 Non-negotiable. Violating these causes broken or incorrect slides.
 
+## Native slide composition
+
+The default is a template-native consulting presentation. Build within the
+template's title, body and source frames, using its fonts, alignment and
+hierarchy. Prefer an open canvas with aligned text, substantial exhibits,
+columns and fine rules. A grid is an alignment tool; its cells do not each
+need a visible container.
+
+- Choose a chart, table, comparison or process structure for what it explains.
+  Give the evidence the space it needs; do not shrink it into a dashboard tile
+  to accommodate decoration or a row of unrelated metrics.
+- Group with whitespace, headings and rules first. Use boxes, fills and icons
+  when they communicate a boundary, relationship, status or emphasis. Preserve
+  legitimate template styling and meaningful KPI, matrix and process groups.
+- Avoid app navigation, button-like calls to action, pills, nested panels,
+  repeated rounded cards and decorative shadows unless they are part of the
+  supplied design or an actual product screenshot being discussed. A decision
+  belongs in clear slide text, not a simulated clickable control.
+- Size grouping shapes to their content. Do not stretch short paragraphs into
+  large equal-height cards or leave a small exhibit floating inside a panel.
+  Removing a frame that communicates nothing should improve the composition.
+- Judge the rendered slide at presentation size: it should read as a slide
+  authored in the template, with a clear visual hierarchy. Valid OOXML, native
+  shapes and a high automated score do not establish that visual quality.
+
+Appearance and editability are separate checks. Keep text and supported tables
+and diagrams as native objects; never flatten the slide into an image to obtain
+a look. SVG chart pictures are not editable Office chart objects. Describe the
+actual output accurately when editability matters.
+
 ## Shape Grid
 
 | # | Rule | Rationale |

@@ -124,6 +124,15 @@ Thresholds (see docs/VISUAL_CRITERIA.md for full rationale):
 
 **Aesthetic Quality (consulting-grade polish)**
 
+Apply [native slide composition](../generate-deck/RULES.md#native-slide-composition)
+to the actual images. Flag unnecessary web UI containers or app chrome and
+explain which element should become open text, a rule, or a larger exhibit.
+Do not flag a box solely because it exists: process steps, matrices, meaningful
+KPI groups, supplied template styling and screenshots can justify it. Record
+this as a manual P1 finding in `submit_visual_review` with category
+`Native slide composition`; it requires authoring judgment, not an invented
+automatic repair code. Structural rhythm scores do not clear this visual check.
+
 These checks target presentation polish beyond rendering correctness. Each finding has a stable code and severity that maps into the structured output below.
 
 - **Accent hue count** — count distinct accent hues visible on the slide (excluding background, neutrals, and text colors). More than 2 distinct accent hues on one slide reads as visual noise. Finding code: `ACCENT_OVERLOAD`. Severity: `warning`.

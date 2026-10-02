@@ -36,6 +36,7 @@ After running `TEST_MODE=all ./scripts/e2e_visual_test.sh`, review slide images 
 21. Overlap Check — no text overlapping with chart/diagram boundaries
 22. Placeholder Utilization — all available placeholders in the layout are used (no empty placeholders visible)
 23. Consulting Standard — slide quality acceptable for professional consulting presentation (McKinsey/BCG level)
+24. Native Slide Composition — apply [the authoring standard](../skills/generate-deck/RULES.md#native-slide-composition) to rendered slides: open template-led composition, substantial exhibits and purposeful grouping. Identify unnecessary web UI styling even when automated checks pass. Include the local, gitignored p-style template in repository layout/output-quality reviews; record a coverage exception if it is unavailable.
 
 ## Composition (Deck-Level)
 

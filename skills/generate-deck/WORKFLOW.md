@@ -187,11 +187,14 @@ the wrong visual show only in pixels. **Images are truth.**
    | 7 | Balanced whitespace | content crammed in one corner or a strip floating in white space | P2 |
    | 8 | Meaningful accents | colour that encodes nothing, or highlights the wrong item | P2 |
    | 9 | Evidence | chart without units/axis label, data without `source`, no `takeaway` | P1 |
+   | 10 | Native slide composition | unnecessary dashboard tiles, nested cards, button-like labels or app chrome dominate the content; see RULES.md → Native slide composition | P1 |
 
 3. **Record it.** Every failed check is a finding on that slide in
    `submit_visual_review` (`{severity, category, description, location}`,
    category = the check name). A P0/P1 finding makes the deck verdict
-   `changes_requested`; approve a slide only when it passes all nine.
+   `changes_requested`; approve a slide only when it passes all ten. Identify
+   the specific element and a content-preserving layout repair for check 10;
+   a meaningful process box, KPI group or supplied screenshot is not a failure.
 4. **Repair.** Edit the spec at the finding's `semantic_path` (or the field
    the rubric names), send `deck_id` + `patch`, re-render and re-check
    `changed_slides`, then review the whole final revision once and submit.
