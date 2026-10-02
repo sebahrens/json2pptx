@@ -1456,17 +1456,19 @@ func generateDiagramCellInserts(cell shapegrid.ResolvedCell, diagCtx *GridDiagra
 	}}, warnings, result.Findings, nil
 }
 
-// generateDiagramCell renders one diagram cell. SWOT and five forces are
-// native OOXML shapes, not svggen pictures, so they are emitted as a shape
-// group at the cell bounds (go-slide-creator-ngbnf); every other type is an
-// svggen picture with its render-time fit findings.
+// generateDiagramCell renders one diagram cell. Native diagram types (SWOT,
+// PESTEL, BMC, the panel family, ...) are OOXML shapes, not svggen pictures,
+// so they are emitted as a shape group at the cell bounds through the same
+// bounded adapter the placeholder path uses (go-slide-creator-ngbnf,
+// go-slide-creator-3grgs); every other type is an svggen picture with its
+// render-time fit findings.
 func generateDiagramCell(cell shapegrid.ResolvedCell, alloc *pptx.ShapeIDAllocator, diagCtx *GridDiagramContext, slideIdx int) ([][]byte, []generator.IconInsert, []string, []patterns.FitFinding, error) {
 	if generator.IsGridNativeDiagram(cell.DiagramSpec) {
-		xml, err := generateNativeDiagramCellXML(cell, alloc, diagCtx)
+		d, err := generateNativeDiagramCell(cell, alloc, diagCtx, slideIdx)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
-		return [][]byte{xml}, nil, nil, nil, nil
+		return [][]byte{[]byte(d.XML)}, d.Icons, d.Warnings, d.Findings, nil
 	}
 	icons, warnings, renderFindings, err := generateDiagramCellInserts(cell, diagCtx)
 	if err != nil {
@@ -1478,23 +1480,30 @@ func generateDiagramCell(cell shapegrid.ResolvedCell, alloc *pptx.ShapeIDAllocat
 	return nil, icons, warnings, findings, nil
 }
 
-// generateNativeDiagramCellXML renders a native-shape diagram (SWOT, five
-// forces) as a group at the cell bounds, reserving its shape IDs from alloc so
-// they cannot collide with the grid's other shapes.
-func generateNativeDiagramCellXML(cell shapegrid.ResolvedCell, alloc *pptx.ShapeIDAllocator, diagCtx *GridDiagramContext) ([]byte, error) {
-	var themeColors []types.ThemeColor
-	var font string
-	if diagCtx != nil {
-		themeColors = diagCtx.ThemeColors
-		font = diagCtx.FontFamily
+// generateNativeDiagramCell renders a native-shape diagram as a group at the
+// cell bounds, reserving its shape IDs from alloc so they cannot collide with
+// the grid's other shapes. A cell too small for the diagram's text is refused
+// with the DIAGRAM_REGION_TOO_SMALL message naming the size that would work.
+func generateNativeDiagramCell(cell shapegrid.ResolvedCell, alloc *pptx.ShapeIDAllocator, diagCtx *GridDiagramContext, slideIdx int) (*generator.GridNativeDiagram, error) {
+	region := generator.NativeDiagramRegion{
+		Bounds:     types.BoundingBox{X: cell.Bounds.X, Y: cell.Bounds.Y, Width: cell.Bounds.CX, Height: cell.Bounds.CY},
+		SlideIndex: slideIdx,
+		Path:       slidepath.GridCellField(slideIdx, cell.RowIdx, cell.ColIdx, "diagram"),
 	}
-	base := alloc.AllocN(generator.GridNativeDiagramShapeIDs(cell.DiagramSpec))
-	bounds := types.BoundingBox{X: cell.Bounds.X, Y: cell.Bounds.Y, Width: cell.Bounds.CX, Height: cell.Bounds.CY}
-	xml, err := generator.GenerateGridNativeDiagramXML(cell.DiagramSpec, bounds, base, themeColors, font, generator.DiagramAltTextFor(cell.DiagramSpec))
+	if diagCtx != nil {
+		region.ThemeColors = diagCtx.ThemeColors
+		region.FontName = diagCtx.FontFamily
+	}
+	d, err := generator.GenerateGridNativeDiagram(cell.DiagramSpec, region, generator.DiagramAltTextFor(cell.DiagramSpec), alloc.AllocN)
 	if err != nil {
 		return nil, fmt.Errorf("diagram in grid row %d, column %d: %w", cell.RowIdx+1, cell.ColIdx+1, err)
 	}
-	return []byte(xml), nil
+	if diagCtx != nil {
+		for i, w := range d.Warnings {
+			d.Warnings[i] = fmt.Sprintf("slide %d: %s", diagCtx.SlideNum, w)
+		}
+	}
+	return d, nil
 }
 
 // diagramFallbackSizePx gives the raster fallback at least 150 pixels per

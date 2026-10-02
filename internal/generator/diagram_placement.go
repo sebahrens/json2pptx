@@ -1,18 +1,24 @@
 package generator
 
-import "github.com/sebahrens/json2pptx/svggen"
+import (
+	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
+)
 
 // DiagramPlacementInfo describes the render pipeline and placement support for
-// a diagram type. This is the single canonical source of truth for placement-aware
-// render behavior, derived from the native-intercept checks in media.go and the
-// grid-cell SVG path in shapegrid/.
+// a diagram type. It is derived from the renderer dispatch itself — the
+// native-diagram set the placeholder and region paths both route through the
+// bounded adapter, and the svggen registry — so get_diagram_capabilities,
+// recommend_visual's placement guidance and validate's grid checks cannot
+// advertise a placement generation does not draw (go-slide-creator-6x9bt).
 type DiagramPlacementInfo struct {
 	// PlaceholderPipeline is the render strategy when the diagram is placed in a
 	// standard content placeholder: "native_ooxml" or "svg".
 	PlaceholderPipeline string
 
 	// GridCellPipeline is the render strategy when the diagram is placed inside a
-	// shape_grid cell. Empty string means the diagram is not supported in grid cells.
+	// shape_grid cell or compose segment. Empty string means the diagram is not
+	// supported in grid cells.
 	GridCellPipeline string
 
 	// AuthoringSurface describes which pipeline owns the implementation:
@@ -24,71 +30,70 @@ type DiagramPlacementInfo struct {
 	AuthoringSurface string
 }
 
-// diagramPlacementRegistry is the canonical static mapping from diagram type to
-// placement-aware render truth. Each entry reflects the actual code path in
-// processDiagramContent (media.go) and the shape_grid diagram cell path.
-//
-// Native-intercepted types: the is*Diagram() guards in media.go route these to
-// process*NativeShapes() before the SVG path. In shape_grid cells, these same
-// types fall through to the SVG renderer because grid cells don't support native
-// OOXML grouped shapes.
-//
-// SVG-only types: these always render via svggen, both in placeholders and grid cells.
-var diagramPlacementRegistry = map[string]DiagramPlacementInfo{
-	// --- Native-intercepted in placeholder, SVG in grid cells ---
-	"panel_layout":          {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
-	"swot":                  {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
-	"pestel":                {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
-	"nine_box_talent":       {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
-	"value_chain":           {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
-	"kpi_dashboard":         {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
-	"porters_five_forces":   {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
-	"business_model_canvas": {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
-	"process_flow":          {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
-	"heatmap":               {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
-	"pyramid":               {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
-	"house_diagram":         {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
-	// icon_columns / icon_rows / stat_cards are layout-mode aliases for
-	// panel_layout; their implementation lives in panel_shapes.go (native_ooxml).
-	"icon_columns": {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
-	"icon_rows":    {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
-	"stat_cards":   {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
-
-	// --- SVG-only in both placements ---
-	"timeline":   {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
-	"venn":       {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
-	"org_chart":  {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
-	"gantt":      {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
-	"matrix_2x2": {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
-	"fishbone":   {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
+// DiagramGridPipeline is the pipeline a shape_grid cell or compose segment
+// dispatches spec to: "native_ooxml" for the native types (drawn through the
+// same bounded adapter as the placeholder path), "svg" for a type registered
+// in svggen, or "" when no renderer owns it.
+func DiagramGridPipeline(spec *types.DiagramSpec) string {
+	if spec == nil || spec.Type == "" {
+		return ""
+	}
+	if IsGridNativeDiagram(spec) {
+		return "native_ooxml"
+	}
+	if svggen.DefaultRegistry().Get(spec.Type) != nil {
+		return "svg"
+	}
+	return ""
 }
 
-// DiagramPlacementFor returns the placement info for a diagram type, or nil if unknown.
+// diagramPlaceholderPipeline is the pipeline processDiagramContent dispatches
+// spec to in a body placeholder, or "" when no renderer owns it.
+func diagramPlaceholderPipeline(spec *types.DiagramSpec) string {
+	if spec == nil || spec.Type == "" {
+		return ""
+	}
+	if IsNativeDiagramType(spec) {
+		return "native_ooxml"
+	}
+	if svggen.DefaultRegistry().Get(spec.Type) != nil {
+		return "svg"
+	}
+	return ""
+}
+
+// DiagramPlacementFor returns the placement info for a diagram type, derived
+// from the renderer dispatch, or nil when no renderer owns the type.
 func DiagramPlacementFor(diagramType string) *DiagramPlacementInfo {
-	info, ok := diagramPlacementRegistry[diagramType]
-	if !ok {
+	spec := &types.DiagramSpec{Type: diagramType}
+	placeholder := diagramPlaceholderPipeline(spec)
+	if placeholder == "" {
 		return nil
 	}
-	return &info
+	info := &DiagramPlacementInfo{
+		PlaceholderPipeline: placeholder,
+		GridCellPipeline:    DiagramGridPipeline(spec),
+		AuthoringSurface:    "svggen",
+	}
+	if placeholder == "native_ooxml" {
+		info.AuthoringSurface = "native_ooxml"
+	}
+	return info
 }
 
 // ApplyPlacementMetadata enriches a slice of DiagramCapability with placement-aware
-// fields from the canonical registry. Capabilities without a registry entry get
-// a default SVG-only placement. This is called by the MCP handler to merge type-level
-// limits (from svggen) with placement truth (from internal/generator).
+// fields derived from the renderer dispatch. A type no renderer owns gets no
+// placements and grid_cell_support false. This is called by the MCP handler to
+// merge type-level limits (from svggen) with placement truth (from
+// internal/generator).
 func ApplyPlacementMetadata(caps []svggen.DiagramCapability) []svggen.DiagramCapability {
 	result := make([]svggen.DiagramCapability, len(caps))
 	copy(result, caps)
 	for i := range result {
 		info := DiagramPlacementFor(result[i].Type)
 		if info == nil {
-			// Unknown type: assume SVG-only, grid-cell supported.
-			result[i].Placements = []svggen.DiagramPlacement{
-				{Context: "placeholder", Pipeline: "svg"},
-				{Context: "shape_grid", Pipeline: "svg"},
-			}
-			result[i].GridCellSupport = boolP(true)
-			result[i].AuthoringSurface = strP("svggen")
+			result[i].Placements = nil
+			result[i].GridCellSupport = boolP(false)
 			continue
 		}
 		result[i].Placements = []svggen.DiagramPlacement{

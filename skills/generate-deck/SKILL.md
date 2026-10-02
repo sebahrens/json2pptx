@@ -54,7 +54,12 @@ kinds with `list_slide_kinds` using its compact fields, requesting
 repeat. For a chart or diagram no kind covers (gantt, venn, pestel, ...), a
 `recommend_visual` chart/diagram candidate carries `data_contract` and a
 runnable `next_tool_call` (`render_deck_spec` with a `raw_json2pptx` slide);
-replace its title and data. Read [DECKSPEC.md](DECKSPEC.md) for budgets,
+replace its title and data. Native diagrams (swot, pestel, bmc, heatmap, the
+panel family, ...) also render as editable shapes in a `shape_grid` cell or
+`compose` segment — `get_diagram_capabilities` reports each placement's real
+`pipeline` — and a region too small for their text is refused with
+`DIAGRAM_REGION_TOO_SMALL` (`fix.params.min_width_emu` / `min_height_emu`).
+Read [DECKSPEC.md](DECKSPEC.md) for budgets,
 degradation, required-layout coverage, handles, and revision rules.
 
 Use raw `PresentationInput` only for a feature the semantic schema cannot

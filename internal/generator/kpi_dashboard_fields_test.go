@@ -102,7 +102,7 @@ func TestProcessKPIDashboard_EnforcesMaxMetrics(t *testing.T) {
 		Type:          ContentDiagram,
 		Value:         &types.DiagramSpec{Type: "kpi_dashboard", Data: map[string]any{"metrics": metricsData}},
 	}
-	ctx.processKPIDashboardNativeShapes(1, 1, item, 0)
+	ctx.processNativeDiagramShapes(1, 1, item, 0)
 
 	var dropped *patterns.FitFinding
 	for i := range ctx.fitFindings {
@@ -129,7 +129,7 @@ func TestProcessKPIDashboard_EnforcesMaxMetrics(t *testing.T) {
 		Type:          ContentDiagram,
 		Value:         &types.DiagramSpec{Type: "kpi_dashboard", Data: map[string]any{"metrics": metricsData[:kpiMaxMetrics]}},
 	}
-	quiet.processKPIDashboardNativeShapes(1, 0, exact, 0)
+	quiet.processNativeDiagramShapes(1, 0, exact, 0)
 	for _, f := range quiet.fitFindings {
 		if f.Code == patterns.ErrCodeContentDropped {
 			t.Errorf("exactly %d metrics must not report a drop: %+v", kpiMaxMetrics, f)

@@ -86,46 +86,6 @@ func isPyramidDiagram(spec *types.DiagramSpec) bool {
 	return spec.Type == "pyramid"
 }
 
-// processPyramidNativeShapes parses pyramid data from a DiagramSpec and
-// registers a panelShapeInsert for native OOXML shape generation.
-func (ctx *singlePassContext) processPyramidNativeShapes(slideNum int, item ContentItem, shapeIdx int) {
-	diagramSpec, ok := item.Value.(*types.DiagramSpec)
-	if !ok {
-		slog.Warn("pyramid native shapes: invalid diagram spec", "slide", slideNum)
-		return
-	}
-
-	panels, err := pyramidPanels(diagramSpec)
-	if err != nil {
-		slog.Warn("pyramid native shapes: parse failed", "slide", slideNum, "error", err)
-		return
-	}
-
-	if len(panels) == 0 {
-		slog.Warn("pyramid native shapes: no levels parsed", "slide", slideNum)
-		return
-	}
-	levels := panels
-
-	// Get placeholder bounds from the shape being replaced.
-	slide := ctx.templateSlideData[slideNum]
-	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
-	placeholderBounds := getPlaceholderBounds(shape, nil)
-
-	slog.Info("native pyramid shapes: registered",
-		"slide", slideNum,
-		"levels", len(levels),
-		"bounds", fmt.Sprintf("%dx%d+%d+%d", placeholderBounds.Width, placeholderBounds.Height, placeholderBounds.X, placeholderBounds.Y))
-
-	ctx.panelShapeInserts[slideNum] = append(ctx.panelShapeInserts[slideNum], panelShapeInsert{
-		altText:        diagramAltText(item),
-		placeholderIdx: shapeIdx,
-		bounds:         placeholderBounds,
-		panels:         panels,
-		pyramidMode:    true,
-	})
-}
-
 // pyramidPanels encodes a pyramid spec's levels into panels for the
 // panelShapeInsert system.
 func pyramidPanels(diagramSpec *types.DiagramSpec) ([]nativePanelData, error) {

@@ -263,8 +263,9 @@ func DiagramCapabilitiesReady() []DiagramCapability {
 // registry (svggen/init.go) and render as SVG. "native_ooxml" types are
 // implemented in internal/generator/ as grouped OOXML shapes.
 //
-// Keep this map in sync with svggen/init.go (builtinDiagrams) and
-// internal/generator/diagram_placement.go (diagramPlacementRegistry). The
+// Keep this map in sync with svggen/init.go (builtinDiagrams) and the native
+// set in internal/generator/native_diagrams.go (placement metadata is derived
+// from that dispatch in internal/generator/diagram_placement.go). The
 // table-driven test in capabilities_test.go enforces the svggen side of this
 // invariant: every "svggen" entry must resolve in DefaultRegistry().Get(); no
 // "native_ooxml" entry may resolve there.

@@ -1,37 +1,20 @@
 package generator
 
 import (
-	"fmt"
-
-	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
-// fitNativeFramework sizes a framework to its measured text while retaining the
-// authored width and hanging the result from the placeholder top. Dense frameworks
-// keep their original geometry. A sparse finding describes the remaining lack
-// of content, rather than suggesting a shape-grid-only repair for a diagram.
+// fitNativeFramework is fitNativeFrameworkAt for a body placeholder: the
+// sparse finding, if any, is emitted against the authored content item.
 func (ctx *singlePassContext) fitNativeFramework(slideNum, contentIdx int, kind string, bounds types.BoundingBox, panels []nativePanelData, meta houseDiagramMeta) types.BoundingBox {
-	if bounds.Width <= 0 || bounds.Height <= 0 || len(panels) == 0 {
-		return bounds
-	}
-	size := nativeFrameworkSize(kind, bounds, panels, meta, ctx.themeFontName)
-	if size.box <= 0 {
-		return bounds
-	}
-	if f := DetectSparseLayout(SparseLayoutInput{
-		SlideIndex: slideNum - 1, Path: slidepath.ContentIndex(slideNum-1, contentIdx),
-		BoundsHeightEMU: bounds.Height, ContentHeightEMU: size.ink, AreaMeasured: size.ink == 0,
-	}); f != nil {
-		f.Pattern = kind
-		f.Message = fmt.Sprintf("%s diagram text occupies %.0f%% of its allocated height; add supporting detail or use a smaller diagram region", kind, 100*float64(size.ink)/float64(bounds.Height))
-		f.Fix = &patterns.FixSuggestion{Kind: "add_detail_or_resize", Params: map[string]any{
-			"diagram_type": kind, "content_height": size.ink, "bounds_height": bounds.Height,
-		}}
+	fit, f := fitNativeFrameworkAt(kind, bounds, panels, meta, ctx.themeFontName, nativeDiagramSite{
+		slideIndex: slideNum - 1, path: slidepath.ContentIndex(slideNum-1, contentIdx),
+	})
+	if f != nil {
 		ctx.emitFitFinding(*f)
 	}
-	return fitBoundsToFramework(bounds, size)
+	return fit
 }
 
 // nativeFrameworkSize measures a content-sized framework's height, or returns

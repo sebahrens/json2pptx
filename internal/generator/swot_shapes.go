@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"fmt"
 	"log/slog"
 	"strings"
 
@@ -106,38 +105,6 @@ func swotPanels(spec *types.DiagramSpec) []nativePanelData {
 		})
 	}
 	return panels
-}
-
-// processSWOTNativeShapes parses SWOT data from a DiagramSpec and registers
-// a panelShapeInsert for native OOXML shape generation.
-func (ctx *singlePassContext) processSWOTNativeShapes(slideNum, contentIdx int, item ContentItem, shapeIdx int) {
-	diagramSpec, ok := item.Value.(*types.DiagramSpec)
-	if !ok {
-		slog.Warn("swot native shapes: invalid diagram spec", "slide", slideNum)
-		return
-	}
-
-	panels := swotPanels(diagramSpec)
-
-	// Get placeholder bounds from the shape being replaced.
-	slide := ctx.templateSlideData[slideNum]
-	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
-	placeholderBounds := getPlaceholderBounds(shape, nil)
-	placeholderBounds = ctx.fitNativeFramework(slideNum, contentIdx, "swot", placeholderBounds, panels, houseDiagramMeta{})
-
-	slog.Info("native swot shapes: registered",
-		"slide", slideNum,
-		"bounds", fmt.Sprintf("%dx%d+%d+%d", placeholderBounds.Width, placeholderBounds.Height, placeholderBounds.X, placeholderBounds.Y))
-
-	ctx.panelShapeInserts[slideNum] = append(ctx.panelShapeInserts[slideNum], panelShapeInsert{
-		altText:        diagramAltText(item),
-		placeholderIdx: shapeIdx,
-		bounds:         placeholderBounds,
-		panels:         panels,
-		// groupXML is generated during finalizePanelGroupXML via generateSWOTGroupXML
-		swotMode:      true,
-		taxonomyTints: taxonomyPalette(diagramSpec, 4, swotDefaultTint),
-	})
 }
 
 // generateSWOTGroupXML produces the complete <p:grpSp> XML for a 2x2 SWOT grid.

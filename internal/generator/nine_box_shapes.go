@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"fmt"
 	"log/slog"
 	"strings"
 
@@ -131,37 +130,6 @@ type nineBoxCellData struct {
 	col   int
 	label string
 	items []string // item/person names
-}
-
-// processNineBoxNativeShapes parses nine_box_talent data from a DiagramSpec and
-// registers a panelShapeInsert for native OOXML shape generation.
-func (ctx *singlePassContext) processNineBoxNativeShapes(slideNum int, item ContentItem, shapeIdx int) {
-	diagramSpec, ok := item.Value.(*types.DiagramSpec)
-	if !ok {
-		slog.Warn("nine_box native shapes: invalid diagram spec", "slide", slideNum)
-		return
-	}
-
-	panels, cells := nineBoxPanels(diagramSpec)
-
-	// Get placeholder bounds from the shape being replaced.
-	slide := ctx.templateSlideData[slideNum]
-	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
-	placeholderBounds := getPlaceholderBounds(shape, nil)
-
-	slog.Info("native nine_box shapes: registered",
-		"slide", slideNum,
-		"cells", cells,
-		"bounds", fmt.Sprintf("%dx%d+%d+%d", placeholderBounds.Width, placeholderBounds.Height, placeholderBounds.X, placeholderBounds.Y))
-
-	ctx.panelShapeInserts[slideNum] = append(ctx.panelShapeInserts[slideNum], panelShapeInsert{
-		altText:        diagramAltText(item),
-		placeholderIdx: shapeIdx,
-		bounds:         placeholderBounds,
-		panels:         panels,
-		nineBoxMode:    true,
-		nineBoxTints:   nineBoxSemanticTints(ctx.semanticAccents),
-	})
 }
 
 // nineBoxPanels converts a nine_box_talent spec to panel data — the axis

@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"fmt"
 	"log/slog"
 	"sort"
 	"strings"
@@ -228,39 +227,6 @@ type bmcSectionData struct {
 // isBMCDiagram returns true if the diagram spec is a business_model_canvas type.
 func isBMCDiagram(spec *types.DiagramSpec) bool {
 	return spec.Type == "business_model_canvas"
-}
-
-// processBMCNativeShapes parses BMC data from a DiagramSpec and registers
-// a panelShapeInsert for native OOXML shape generation.
-func (ctx *singlePassContext) processBMCNativeShapes(slideNum int, item ContentItem, shapeIdx int) {
-	diagramSpec, ok := item.Value.(*types.DiagramSpec)
-	if !ok {
-		slog.Warn("bmc native shapes: invalid diagram spec", "slide", slideNum)
-		return
-	}
-
-	panels := bmcPanels(diagramSpec)
-	if ignored := BMCIgnoredKeys(diagramSpec.Data); len(ignored) > 0 {
-		slog.Warn("native bmc: data keys are not canvas sections and are not drawn",
-			"slide", slideNum, "keys", ignored)
-	}
-
-	slide := ctx.templateSlideData[slideNum]
-	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
-	placeholderBounds := getPlaceholderBounds(shape, nil)
-
-	slog.Info("native bmc shapes: registered",
-		"slide", slideNum,
-		"bounds", fmt.Sprintf("%dx%d+%d+%d", placeholderBounds.Width, placeholderBounds.Height, placeholderBounds.X, placeholderBounds.Y))
-
-	ctx.panelShapeInserts[slideNum] = append(ctx.panelShapeInserts[slideNum], panelShapeInsert{
-		altText:        diagramAltText(item),
-		placeholderIdx: shapeIdx,
-		bounds:         placeholderBounds,
-		panels:         panels,
-		bmcMode:        true,
-		taxonomyTints:  taxonomyPalette(diagramSpec, len(bmcSectionOrder), bmcDefaultTint),
-	})
 }
 
 // bmcPanels converts a BMC spec to panel data. Sections are stored in

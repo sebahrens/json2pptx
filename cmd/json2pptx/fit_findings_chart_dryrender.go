@@ -267,7 +267,18 @@ func dryRenderGridSpecInBounds(
 	viewingMode tokens.ViewingMode,
 ) []patterns.FitFinding {
 	findings := dryRenderSpecInBounds(spec, themeColors, bodyFont, strictFit, path, true, bounds, viewingMode)
-	if converterAvailable || spec == nil || spec.Type == "" || generator.IsNativeDiagramType(spec) {
+	// A native diagram in a region is laid out at the region's actual size
+	// with the same bounded adapter generate uses; a region too small for
+	// readable text is refused here first (go-slide-creator-3grgs).
+	if generator.DiagramGridPipeline(spec) == "native_ooxml" {
+		if f := generator.NativeDiagramRegionPreflight(spec, generator.NativeDiagramRegion{
+			Bounds: bounds, ThemeColors: themeColors, FontName: bodyFont, Path: path,
+		}); f != nil {
+			findings = append(findings, *f)
+		}
+		return findings
+	}
+	if converterAvailable || spec == nil || spec.Type == "" {
 		return findings
 	}
 	return append(findings, patterns.FitFinding{

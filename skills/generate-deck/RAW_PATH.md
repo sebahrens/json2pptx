@@ -120,10 +120,22 @@ after embedding a chart or diagram. A diagram collision or unreadable
 native text is a content/layout problem: shorten labels or give the diagram
 more space, then render the slide to pixels again.
 
-A `swot` or `porters_five_forces` diagram also renders as native shapes in a
-`shape_grid` cell (`{"diagram": {"type": "swot", ...}}`), so it can sit on
-`blank-title` under the same title as pattern slides; the other native-only
-types (pestel, bmc, value_chain, ...) still need a body placeholder.
+Every native diagram type (`swot`, `porters_five_forces`, `pestel`,
+`business_model_canvas`, `value_chain`, `nine_box_talent`, `kpi_dashboard`,
+`process_flow`, `heatmap`, `pyramid`, `house_diagram`, `panel_layout` and its
+aliases `icon_columns` / `icon_rows` / `stat_cards`) also renders as native,
+editable shapes in a `shape_grid` cell (`{"diagram": {"type": "pestel", ...}}`)
+or a `compose` diagram segment — the same builders as in a body placeholder,
+sized to the region. `get_diagram_capabilities` derives each placement from
+that dispatch: these types report `grid_cell_support: true` with a
+`shape_grid` placement whose `pipeline` is `native_ooxml` (svggen types report
+`svg`). The region is laid out at its actual size: when the diagram's text
+would shrink below the 7pt floor generation publishes, `validate_input`
+(fit report) and `generate_presentation` refuse it with
+`DIAGRAM_REGION_TOO_SMALL`, whose `fix.params` give `min_width_emu` /
+`min_height_emu` (when a region up to 3x larger works) and the alternatives:
+a larger cell or segment, a body placeholder (`diagram_value`), or fewer
+items. Dense canvases (BMC, large heatmaps) usually need most of the slide.
 
 Diagrams use one hue by default: timeline bars/milestones, matrix_2x2
 points and org_chart levels stay in accent1 and its tints (org levels take

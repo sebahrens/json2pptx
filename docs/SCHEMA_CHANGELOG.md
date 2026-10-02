@@ -1,5 +1,27 @@
 # Schema Changelog
 
+- **2026-10-02 — Native diagrams render in shape_grid cells and compose segments; placement capabilities derived from dispatch (`go-slide-creator-3grgs`, `-6x9bt`).**
+  - Every native diagram type (pestel, business_model_canvas, value_chain,
+    nine_box_talent, kpi_dashboard, process_flow, heatmap, pyramid,
+    house_diagram, panel_layout and the icon_columns / icon_rows / stat_cards
+    aliases, alongside swot and porters_five_forces) now renders as native
+    shapes in a `shape_grid` cell or `compose` segment through one bounded
+    adapter shared with the body-placeholder path, instead of failing with
+    "svggen: unknown diagram type". Panel icons ride along as SVG overlays.
+  - New finding **`DIAGRAM_REGION_TOO_SMALL`** (`refuse`, advisory
+    `simplify_or_enlarge_diagram`): validate and generate lay a region
+    placement out at its actual size and refuse it when its text would fall
+    below the 7pt floor, naming `min_width_emu` / `min_height_emu`.
+  - `get_diagram_capabilities` placements, `recommend_visual` placement
+    guidance and validate's grid checks share one contract derived from the
+    renderer dispatch (`generator.DiagramGridPipeline`): native types report a
+    `shape_grid` placement with `pipeline: "native_ooxml"` (was `"svg"`); a
+    type no renderer owns reports no placements and `grid_cell_support:
+    false`. Response shapes are unchanged; no `SchemaVersion` bump.
+  - Native groups now reserve the shape IDs they actually draw (the heatmap
+    colour scale and the stat-card / row panel builders drew past their
+    estimate, so a following native group on the slide could reuse IDs).
+
 - **2026-10-02 — plan_deck keeps whole comparisons and drafts an option matrix for "compare A with B" (`go-slide-creator-ze5u7`, `-fu6uy`).**
   - Brief facts are no longer truncated at 120 characters: a long clause is
     split (at a joining word, then at a word boundary outside brackets, never

@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"fmt"
 	"log/slog"
 	"strings"
 
@@ -114,40 +113,6 @@ var vcPrimaryColors = []struct {
 // isValueChainDiagram returns true if the diagram spec is a value_chain diagram type.
 func isValueChainDiagram(spec *types.DiagramSpec) bool {
 	return spec.Type == "value_chain"
-}
-
-// processValueChainNativeShapes parses Value Chain data from a DiagramSpec and
-// registers a panelShapeInsert for native OOXML shape generation.
-func (ctx *singlePassContext) processValueChainNativeShapes(slideNum int, item ContentItem, shapeIdx int) {
-	diagramSpec, ok := item.Value.(*types.DiagramSpec)
-	if !ok {
-		slog.Warn("value_chain native shapes: invalid diagram spec", "slide", slideNum)
-		return
-	}
-
-	panels, meta := parseValueChainData(diagramSpec.Data)
-	if len(panels) == 0 {
-		slog.Warn("value_chain native shapes: no activities parsed", "slide", slideNum)
-		return
-	}
-
-	slide := ctx.templateSlideData[slideNum]
-	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
-	placeholderBounds := getPlaceholderBounds(shape, nil)
-
-	slog.Info("native value_chain shapes: registered",
-		"slide", slideNum,
-		"panels", len(panels),
-		"bounds", fmt.Sprintf("%dx%d+%d+%d", placeholderBounds.Width, placeholderBounds.Height, placeholderBounds.X, placeholderBounds.Y))
-
-	ctx.panelShapeInserts[slideNum] = append(ctx.panelShapeInserts[slideNum], panelShapeInsert{
-		altText:        diagramAltText(item),
-		placeholderIdx: shapeIdx,
-		bounds:         placeholderBounds,
-		panels:         panels,
-		valueChainMode: true,
-		valueChainMeta: meta,
-	})
 }
 
 // valueChainMeta holds metadata about value chain structure beyond the panel list.

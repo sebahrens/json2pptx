@@ -3,6 +3,7 @@ package generator
 import (
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 )
 
@@ -15,8 +16,8 @@ func TestDiagramPlacementFor_NativeIntercept(t *testing.T) {
 	if info.PlaceholderPipeline != "native_ooxml" {
 		t.Errorf("placeholder pipeline = %q, want native_ooxml", info.PlaceholderPipeline)
 	}
-	if info.GridCellPipeline != "svg" {
-		t.Errorf("grid cell pipeline = %q, want svg", info.GridCellPipeline)
+	if info.GridCellPipeline != "native_ooxml" {
+		t.Errorf("grid cell pipeline = %q, want native_ooxml", info.GridCellPipeline)
 	}
 	if info.AuthoringSurface != "native_ooxml" {
 		t.Errorf("authoring surface = %q, want native_ooxml", info.AuthoringSurface)
@@ -95,8 +96,8 @@ func TestApplyPlacementMetadata_NativeInterceptHasDualPlacements(t *testing.T) {
 		if c.Placements[0].Context != "placeholder" || c.Placements[0].Pipeline != "native_ooxml" {
 			t.Errorf("bmc placeholder placement = %+v, want {placeholder, native_ooxml}", c.Placements[0])
 		}
-		if c.Placements[1].Context != "shape_grid" || c.Placements[1].Pipeline != "svg" {
-			t.Errorf("bmc grid placement = %+v, want {shape_grid, svg}", c.Placements[1])
+		if c.Placements[1].Context != "shape_grid" || c.Placements[1].Pipeline != "native_ooxml" {
+			t.Errorf("bmc grid placement = %+v, want {shape_grid, native_ooxml}", c.Placements[1])
 		}
 		return
 	}
@@ -145,5 +146,54 @@ func TestDiagramPlacementRegistry_CoverageVsCapabilities(t *testing.T) {
 		if info == nil {
 			t.Errorf("diagram type %q is in capabilities but missing from placement registry", c.Type)
 		}
+	}
+}
+
+// go-slide-creator-6x9bt: placement support is derived from the renderer
+// dispatch, and every advertised placement actually renders. A shape_grid
+// placement advertised as native_ooxml must generate the type's short fixture
+// through GenerateGridNativeDiagram (the dispatch generateDiagramCell uses);
+// one advertised as svg must resolve in the svggen registry. Every native
+// type and panel alias is covered by a fixture, so a new native type cannot
+// be advertised without a render check.
+func TestAdvertisedDiagramPlacementsRender(t *testing.T) {
+	fixtures := nativePlacementMatrix()
+	region := NativeDiagramRegion{Bounds: types.BoundingBox{X: 457200, Y: 1600200, Width: 7680960, Height: 4572000}}
+	for _, c := range ApplyPlacementMetadata(svggen.DiagramCapabilities()) {
+		for _, p := range c.Placements {
+			switch p.Pipeline {
+			case "native_ooxml":
+				fx, ok := fixtures[c.Type]
+				if !ok {
+					t.Errorf("%s advertises %s native_ooxml but the placement matrix has no fixture", c.Type, p.Context)
+					continue
+				}
+				if p.Context == "shape_grid" {
+					if _, err := GenerateGridNativeDiagram(fx.spec, region, "", func(int) uint32 { return 1 }); err != nil {
+						t.Errorf("%s advertises shape_grid native_ooxml but does not render: %v", c.Type, err)
+					}
+				} else if _, err := layoutNativeDiagram(fx.spec, region.Bounds, nativeDiagramEnv{}, nativeDiagramSite{}); err != nil {
+					t.Errorf("%s advertises placeholder native_ooxml but does not lay out: %v", c.Type, err)
+				}
+			case "svg":
+				if svggen.DefaultRegistry().Get(c.Type) == nil {
+					t.Errorf("%s advertises %s svg but svggen has no renderer for it", c.Type, p.Context)
+				}
+			default:
+				t.Errorf("%s advertises unknown pipeline %q", c.Type, p.Pipeline)
+			}
+		}
+		info := DiagramPlacementFor(c.Type)
+		if c.GridCellSupport == nil || *c.GridCellSupport != (info != nil && info.GridCellPipeline != "") {
+			t.Errorf("%s grid_cell_support disagrees with its placements", c.Type)
+		}
+	}
+	for name, fx := range fixtures {
+		if got := DiagramGridPipeline(fx.spec); got != "native_ooxml" {
+			t.Errorf("%s grid pipeline = %q, want native_ooxml", name, got)
+		}
+	}
+	if DiagramGridPipeline(&types.DiagramSpec{Type: "no_such_diagram"}) != "" {
+		t.Error("a type no renderer owns has no grid pipeline")
 	}
 }

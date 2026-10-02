@@ -394,75 +394,10 @@ func (ctx *singlePassContext) processDiagramContent(slideNum, contentIdx int, it
 	// Any native group registered below carries the authored diagram path, so a
 	// refusal on one of its shapes names the diagram, not a shape id.
 	defer ctx.tagNativeInserts(slideNum, len(ctx.panelShapeInserts[slideNum]), contentIdx, item)
-	// Native panel shapes: intercept panel_layout (columns/rows/stat_cards) before SVG rendering.
-	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isPanelNativeLayout(diagramSpec) {
-		ctx.processPanelNativeShapes(slideNum, item, shapeIdx)
-		return
-	}
-
-	// Native SWOT shapes: intercept swot diagrams before SVG rendering.
-	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isSWOTDiagram(diagramSpec) {
-		ctx.processSWOTNativeShapes(slideNum, contentIdx, item, shapeIdx)
-		return
-	}
-
-	// Native PESTEL shapes: intercept pestel diagrams before SVG rendering.
-	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isPESTELDiagram(diagramSpec) {
-		ctx.processPESTELNativeShapes(slideNum, contentIdx, item, shapeIdx)
-		return
-	}
-
-	// Native Nine Box Talent shapes: intercept nine_box_talent diagrams before SVG rendering.
-	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isNineBoxDiagram(diagramSpec) {
-		ctx.processNineBoxNativeShapes(slideNum, item, shapeIdx)
-		return
-	}
-
-	// Native Value Chain shapes: intercept value_chain diagrams before SVG rendering.
-	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isValueChainDiagram(diagramSpec) {
-		ctx.processValueChainNativeShapes(slideNum, item, shapeIdx)
-		return
-	}
-
-	// Native KPI Dashboard shapes: intercept kpi_dashboard diagrams before SVG rendering.
-	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isKPIDashboardDiagram(diagramSpec) {
-		ctx.processKPIDashboardNativeShapes(slideNum, contentIdx, item, shapeIdx)
-		return
-	}
-
-	// Native Porter's Five Forces shapes: intercept porters_five_forces diagrams before SVG rendering.
-	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isPortersFiveForcesDiagram(diagramSpec) {
-		ctx.processPortersFiveForceNativeShapes(slideNum, item, shapeIdx)
-		return
-	}
-
-	// Native Business Model Canvas shapes: intercept business_model_canvas diagrams before SVG rendering.
-	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isBMCDiagram(diagramSpec) {
-		ctx.processBMCNativeShapes(slideNum, item, shapeIdx)
-		return
-	}
-
-	// Native Process Flow shapes: intercept process_flow diagrams before SVG rendering.
-	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isProcessFlowDiagram(diagramSpec) {
-		ctx.processProcessFlowNativeShapes(slideNum, item, shapeIdx)
-		return
-	}
-
-	// Native Heatmap shapes: intercept heatmap diagrams before SVG rendering.
-	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isHeatmapDiagram(diagramSpec) {
-		ctx.processHeatmapNativeShapes(slideNum, contentIdx, item, shapeIdx)
-		return
-	}
-
-	// Native Pyramid shapes: intercept pyramid diagrams before SVG rendering.
-	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isPyramidDiagram(diagramSpec) {
-		ctx.processPyramidNativeShapes(slideNum, item, shapeIdx)
-		return
-	}
-
-	// Native House Diagram shapes: intercept house_diagram diagrams before SVG rendering.
-	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isHouseDiagram(diagramSpec) {
-		ctx.processHouseDiagramNativeShapes(slideNum, contentIdx, item, shapeIdx)
+	// Native diagrams (the panel family, SWOT, PESTEL, ...) are drawn as OOXML
+	// shapes through the shared bounded adapter, before SVG rendering.
+	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && IsNativeDiagramType(diagramSpec) {
+		ctx.processNativeDiagramShapes(slideNum, contentIdx, item, shapeIdx)
 		return
 	}
 
