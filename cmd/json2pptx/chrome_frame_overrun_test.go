@@ -45,27 +45,45 @@ func TestPatternBlockStaysAboveChrome(t *testing.T) {
 		{"label": "Review", "body": "Post-implementation review against the business case."},
 	}
 
+	// Six stacked-box / toc rows hold a label and no body (the documented
+	// budget), so those styles render the labels alone; six chevrons hold a
+	// detail body each. The bodied six-row payload is past the budget: it
+	// must report BODY_TOO_LONG, measured against the band-shortened zone,
+	// instead of rendering (go-slide-creator-ni71s).
+	labelsOnly := make([]map[string]string, len(steps))
+	for i, s := range steps {
+		labelsOnly[i] = map[string]string{"label": s["label"]}
+	}
+
 	for _, tpl := range testutil.CoreTemplateNames() {
 		for _, style := range []string{"stacked-box", "chevron", "toc"} {
 			for _, bands := range []string{"none", "takeaway", "takeaway+source"} {
 				name := fmt.Sprintf("%s/%s/%s", tpl, style, bands)
 				t.Run(name, func(t *testing.T) {
-					slide := map[string]any{
-						"slide_type": "content",
-						"layout_id":  "content",
-						"content": []any{map[string]any{
-							"placeholder_id": "title", "type": "text", "text_value": "How the rollout runs",
-						}},
-						"pattern": map[string]any{
-							"name":   "numbered-step-strip",
-							"values": map[string]any{"style": style, "steps": steps},
-						},
+					chromeSlide := func(steps []map[string]string) map[string]any {
+						slide := map[string]any{
+							"slide_type": "content",
+							"layout_id":  "content",
+							"content": []any{map[string]any{
+								"placeholder_id": "title", "type": "text", "text_value": "How the rollout runs",
+							}},
+							"pattern": map[string]any{
+								"name":   "numbered-step-strip",
+								"values": map[string]any{"style": style, "steps": steps},
+							},
+						}
+						if strings.Contains(bands, "takeaway") {
+							slide["takeaway"] = "Migration completes in Q3 with no service interruption."
+						}
+						if strings.Contains(bands, "source") {
+							slide["source"] = "Programme office, September 2026"
+						}
+						return slide
 					}
-					if strings.Contains(bands, "takeaway") {
-						slide["takeaway"] = "Migration completes in Q3 with no service interruption."
-					}
-					if strings.Contains(bands, "source") {
-						slide["source"] = "Programme office, September 2026"
+					slide := chromeSlide(steps)
+					if style != "chevron" {
+						assertChromeBodyTooLong(t, filepath.Join(templatesDir, tpl+".pptx"), slide)
+						slide = chromeSlide(labelsOnly)
 					}
 
 					pptxPath := generateDeckForChromeTest(t, templatesDir, tpl, slide)
@@ -117,6 +135,37 @@ func generateDeckForChromeTest(t *testing.T, templatesDir, tpl string, slide map
 		t.Fatalf("generate: %v", err)
 	}
 	return filepath.Join(dir, "chrome.pptx")
+}
+
+// assertChromeBodyTooLong checks that the fit report flags a slide's
+// numbered-step-strip payload with BODY_TOO_LONG.
+func assertChromeBodyTooLong(t *testing.T, templatePath string, slide map[string]any) {
+	t.Helper()
+	data, err := json.Marshal(slide)
+	if err != nil {
+		t.Fatalf("marshal slide: %v", err)
+	}
+	var in SlideInput
+	if err := json.Unmarshal(data, &in); err != nil {
+		t.Fatalf("decode slide: %v", err)
+	}
+	reader, err := template.OpenTemplate(templatePath)
+	if err != nil {
+		t.Fatalf("open template: %v", err)
+	}
+	defer func() { _ = reader.Close() }()
+	layouts, err := template.ParseLayouts(reader)
+	if err != nil {
+		t.Fatalf("parse layouts: %v", err)
+	}
+	w, h := template.ParseSlideDimensions(reader)
+	deck := &PresentationInput{Slides: []SlideInput{in}}
+	for _, f := range collectFitFindings(deck, layouts, w, h, nil) {
+		if f.Code == "BODY_TOO_LONG" && strings.Contains(f.Message, "numbered-step-strip") {
+			return
+		}
+	}
+	t.Errorf("six bodied rows are past the documented budget but the fit report has no BODY_TOO_LONG")
 }
 
 // chromeShapeName matches the shapes that ARE the chrome, which are allowed to

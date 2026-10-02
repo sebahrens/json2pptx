@@ -282,7 +282,19 @@ func (n *numberedStepStrip) PostExpandWarnings(ctx ExpandContext, values, overri
 		return nil
 	}
 	if vals.Style != numberedStepStripChevron {
-		return numberedStepRowWarnings(vals)
+		warnings := numberedStepRowWarnings(vals)
+		ovr, _ := overrides.(*NumberedStepStripOverrides)
+		if ovr == nil {
+			ovr = &NumberedStepStripOverrides{}
+		}
+		style := numberedStepStripStackedBox
+		if vals.Style == numberedStepStripTOC {
+			style = numberedStepStripTOC
+		}
+		if w := n.numberedStepRowsWarning(ctx, vals, ovr, style); w != "" {
+			warnings = append(warnings, w)
+		}
+		return warnings
 	}
 	var warnings []string
 	for i, step := range vals.Steps {
@@ -770,9 +782,26 @@ func buildChevronDescText(body string, size float64) json.RawMessage {
 // ---------------------------------------------------------------------------
 
 func (n *numberedStepStrip) expandStackedBox(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides, cellOverrides map[int]any) *jsonschema.ShapeGridInput {
+	spec := stackedBoxRowSpec(numberedStepsHaveIcons(vals)).withGutter(ctx)
+	lay := layoutNumberedStepRows(ctx, spec, sizeLabelPt, func(labelPt float64) []jsonschema.GridRowInput {
+		return n.stackedBoxRows(ctx, vals, ovr, cellOverrides, labelPt)
+	})
+	return lay.grid(spec)
+}
+
+// stackedBoxRowSpec is the stacked-box column geometry: number lane, optional
+// icon column, body column.
+func stackedBoxRowSpec(withIcons bool) numberedStepRowSpec {
+	if withIcons {
+		return numberedStepRowSpec{cols: `[1, 0.7, 8]`, weights: []float64{1, 0.7, 8}, colGapPt: stackedBoxColGapPt}
+	}
+	return numberedStepRowSpec{cols: `[1, 8]`, weights: []float64{1, 8}, colGapPt: stackedBoxColGapPt}
+}
+
+// stackedBoxRows builds the stacked-box rows with the step labels at labelSize.
+func (n *numberedStepStrip) stackedBoxRows(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides, cellOverrides map[int]any, labelSize float64) []jsonschema.GridRowInput {
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	numberSize := ResolveSize(ovr.HeaderSize, scaleLeadPt)
-	labelSize := sizeLabelPt
 	bodySize := ResolveSize(ovr.BodySize, scaleCaptionPt)
 	cellAccentMode := ovr.CellAccentMode
 	solid := ovr.Style == "solid"
@@ -824,60 +853,228 @@ func (n *numberedStepStrip) expandStackedBox(ctx ExpandContext, vals *NumberedSt
 		if withIcons {
 			cells = []*jsonschema.GridCellInput{numberCell, numberedStepIconCell(ctx, step, tip), bodyCell}
 		}
-		rows[i] = jsonschema.GridRowInput{
-			AutoHeight: true,
-			Cells:      cells,
-		}
+		rows[i] = jsonschema.GridRowInput{Cells: cells}
 	}
-
-	cols := json.RawMessage(`[1, 8]`)
-	weights := []float64{1, 8}
-	if withIcons {
-		cols = json.RawMessage(`[1, 0.7, 8]`)
-		weights = []float64{1, 0.7, 8}
-	}
-	return &jsonschema.ShapeGridInput{
-		Columns: cols,
-		Gap:     ctx.Gap(stackedBoxColGapPt),
-		RowGap:  stackedBoxRowGapPt(ctx, rows, weights),
-		Rows:    rows,
-	}
+	return rows
 }
 
 const (
 	stackedBoxColGapPt    = 8.0
+	tocColGapPt           = 10.0
 	stackedBoxRowGapMaxPt = 6.0
 	stackedBoxRowGapMinPt = 2.0
 )
 
-// stackedBoxRowGapPt is the gap between step rows: the full 6pt unless the
-// rows' written text (by the writer's own measure) plus the gaps would
-// overrun the content height, in which case the gap gives way first, down to
-// 2pt. Seven two-line steps on a short content area otherwise stored every
-// label at 98% autofit, below the body floor (go-slide-creator-n1muf).
-func stackedBoxRowGapPt(ctx ExpandContext, rows []jsonschema.GridRowInput, weights []float64) float64 {
-	if len(rows) < 2 {
-		return ctx.Gap(stackedBoxRowGapMaxPt)
-	}
-	contentW, contentH := contentAreaPt(ctx)
+// numberedStepRowSpec is the column geometry of a stacked-box / toc strip.
+type numberedStepRowSpec struct {
+	cols     string
+	weights  []float64
+	colGapPt float64
+}
+
+// withGutter scales the column gap by the template grid's gutter (unchanged
+// when no grid is declared), like every other pattern gap (go-slide-creator-5ms8c).
+func (s numberedStepRowSpec) withGutter(ctx ExpandContext) numberedStepRowSpec {
+	s.colGapPt = ctx.Gap(s.colGapPt)
+	return s
+}
+
+// colWidthsPt returns each column's width at the content width.
+func (s numberedStepRowSpec) colWidthsPt(areaW float64) []float64 {
 	total := 0.0
-	for _, w := range weights {
+	for _, w := range s.weights {
 		total += w
 	}
-	bodyW := (contentW - ctx.Gap(stackedBoxColGapPt)*float64(len(weights)-1)) * weights[len(weights)-1] / total
-	need := 0.0
-	for _, r := range rows {
-		body := r.Cells[len(r.Cells)-1]
-		if body == nil || body.Shape == nil {
-			continue
+	avail := areaW - s.colGapPt*float64(len(s.weights)-1)
+	out := make([]float64, len(s.weights))
+	for i, w := range s.weights {
+		out[i] = avail * w / total
+	}
+	return out
+}
+
+// numberedStepRowLayout is the sizing a stacked-box / toc strip renders at.
+type numberedStepRowLayout struct {
+	rows    []jsonschema.GridRowInput
+	rowPt   []float64
+	fullPt  []float64 // each row's fit with the full 0.5 cm margin
+	gapPt   float64
+	labelPt float64
+	needPt  float64 // rows plus the narrowest gaps
+	areaPt  float64
+	fits    bool
+}
+
+func (l numberedStepRowLayout) grid(spec numberedStepRowSpec) *jsonschema.ShapeGridInput {
+	return &jsonschema.ShapeGridInput{
+		Columns: json.RawMessage(spec.cols),
+		Gap:     spec.colGapPt,
+		RowGap:  l.gapPt,
+		Rows:    l.rows,
+	}
+}
+
+// layoutNumberedStepRows sizes stacked-box / toc rows against the content
+// area the strip renders into — the zone left after the title, the footer and
+// any takeaway / source band (go-slide-creator-ni71s). Rows used to be
+// AutoHeight, estimated from newline counts, so when the block was taller than
+// a zone shortened by chrome bands the grid scaled every row down and the
+// writer stored 12–14pt labels at 50–96% autofit (6–11.5pt): generation
+// refused the deck. Every row is now pinned at the writer's own fit of its
+// cells (writtenFitHeightPt at the real column widths), and when the rows do
+// not fit they give way in the written-fit order: air (the row gap 6 → 2pt),
+// geometry (single-line rows drop to the writer's clamped one-line margin),
+// then type (the label / title steps to 12pt). What still does not fit keeps
+// the larger step and is reported by PostExpandWarnings as BODY_TOO_LONG.
+func layoutNumberedStepRows(ctx ExpandContext, spec numberedStepRowSpec, fullLabelPt float64, build func(labelPt float64) []jsonschema.GridRowInput) numberedStepRowLayout {
+	areaW, areaH := contentAreaPt(ctx)
+	widths := spec.colWidthsPt(areaW)
+	type attempt struct {
+		labelPt float64
+		tight   bool
+	}
+	attempts := []attempt{{fullLabelPt, false}, {fullLabelPt, true}}
+	if fullLabelPt > scaleBodyPt {
+		attempts = append(attempts, attempt{scaleBodyPt, false}, attempt{scaleBodyPt, true})
+	}
+	var first numberedStepRowLayout
+	for i, a := range attempts {
+		lay := measureNumberedStepRows(build(a.labelPt), widths, a.tight)
+		lay.labelPt, lay.areaPt = a.labelPt, areaH
+		gaps := float64(max(len(lay.rows)-1, 0))
+		rowsPt := lay.needPt
+		lay.needPt = rowsPt + ctx.Gap(stackedBoxRowGapMinPt)*gaps
+		lay.gapPt = ctx.Gap(stackedBoxRowGapMaxPt)
+		if gaps > 0 && rowsPt+ctx.Gap(stackedBoxRowGapMaxPt)*gaps > areaH {
+			lay.gapPt = math.Max(ctx.Gap(stackedBoxRowGapMinPt), math.Floor((areaH-rowsPt)/gaps))
 		}
-		need += writtenFitHeightPt(body.Shape.Text, bodyW, 0)
+		lay.fits = lay.needPt <= areaH+0.5
+		if lay.fits {
+			if a.tight {
+				growTightRows(&lay, areaH, gaps)
+			}
+			return lay
+		}
+		// The type step is taken only when it makes the strip fit: content
+		// that overflows even there keeps the larger size, since the writer
+		// shrinks it either way.
+		if i == 1 {
+			first = lay
+		}
 	}
-	gaps := float64(len(rows) - 1)
-	if need+ctx.Gap(stackedBoxRowGapMaxPt)*gaps <= contentH {
-		return ctx.Gap(stackedBoxRowGapMaxPt)
+	return first
+}
+
+// measureNumberedStepRows pins each row at the writer's fit of its tallest
+// cell. tight measures single-line cells at the writer's clamped margin (one
+// line always fits a shape that holds it) instead of the full 0.5 cm margin.
+func measureNumberedStepRows(rows []jsonschema.GridRowInput, widths []float64, tight bool) numberedStepRowLayout {
+	lay := numberedStepRowLayout{rows: rows, rowPt: make([]float64, len(rows)), fullPt: make([]float64, len(rows))}
+	for i := range rows {
+		need, full := 0.0, 0.0
+		for c, cell := range rows[i].Cells {
+			if cell == nil || cell.Shape == nil || len(cell.Shape.Text) == 0 || c >= len(widths) {
+				continue
+			}
+			h := rowTextNeedPt(cell.Shape.Text, widths[c])
+			full = math.Max(full, h)
+			if tight && h < rowTextBeyondAreaPt {
+				h = writtenTightFitPt(cell.Shape.Text, widths[c], h)
+			}
+			need = math.Max(need, h)
+		}
+		lay.fullPt[i] = full
+		if need >= rowTextBeyondAreaPt {
+			need = rowTextBeyondAreaPt
+		}
+		lay.rowPt[i] = need
+		lay.needPt += need
+		if need > 0 && need < rowTextBeyondAreaPt {
+			rows[i].MinHeight, rows[i].MaxHeight = need, need
+		}
 	}
-	return math.Max(ctx.Gap(stackedBoxRowGapMinPt), math.Floor((contentH-need)/gaps))
+	return lay
+}
+
+// growTightRows shares the slack a clamped-margin layout leaves equally
+// among its rows, never past a row's full-margin fit, so rows that only fit
+// with the writer's clamp get back as much air as the zone allows.
+func growTightRows(lay *numberedStepRowLayout, areaH, gaps float64) {
+	slack := areaH - lay.gapPt*gaps
+	for _, h := range lay.rowPt {
+		slack -= h
+	}
+	for slack > 0.5 {
+		open := 0
+		for i, h := range lay.rowPt {
+			if h < lay.fullPt[i] {
+				open++
+			}
+		}
+		if open == 0 {
+			break
+		}
+		share := slack / float64(open)
+		for i, h := range lay.rowPt {
+			if h >= lay.fullPt[i] {
+				continue
+			}
+			grown := math.Min(lay.fullPt[i], h+share)
+			slack -= grown - h
+			lay.rowPt[i] = grown
+		}
+	}
+	for i, h := range lay.rowPt {
+		if h > 0 && h < rowTextBeyondAreaPt {
+			h = math.Floor(h*10) / 10
+			lay.rows[i].MinHeight, lay.rows[i].MaxHeight = h, h
+		}
+	}
+}
+
+// writtenTightFitPt is the smallest whole-point height at which the writer
+// stores text with no shrink, counting the margin clamp it applies to a shape
+// too short for one line plus the full margin (pptx.EffectiveTextInsets).
+// fitPt is a height known to fit.
+func writtenTightFitPt(text json.RawMessage, widthPt, fitPt float64) float64 {
+	lo, hi := 0.0, math.Ceil(fitPt)
+	if !writtenFitsAt(text, widthPt, hi) {
+		return fitPt
+	}
+	for hi-lo > 1 {
+		mid := math.Floor((lo + hi) / 2)
+		if writtenFitsAt(text, widthPt, mid) {
+			hi = mid
+		} else {
+			lo = mid
+		}
+	}
+	return hi
+}
+
+// numberedStepRowsWarning reports a stacked-box / toc strip whose rows do not
+// fit the measured content area even after the gap, margin and type give way.
+func (n *numberedStepStrip) numberedStepRowsWarning(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides, style string) string {
+	if ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 {
+		return ""
+	}
+	var lay numberedStepRowLayout
+	if style == numberedStepStripTOC {
+		spec := tocRowSpec(numberedStepsHaveIcons(vals)).withGutter(ctx)
+		lay = layoutNumberedStepRows(ctx, spec, scaleSubheadPt, func(labelPt float64) []jsonschema.GridRowInput {
+			return n.tocRows(ctx, vals, ovr, nil, labelPt)
+		})
+	} else {
+		spec := stackedBoxRowSpec(numberedStepsHaveIcons(vals)).withGutter(ctx)
+		lay = layoutNumberedStepRows(ctx, spec, sizeLabelPt, func(labelPt float64) []jsonschema.GridRowInput {
+			return n.stackedBoxRows(ctx, vals, ovr, nil, labelPt)
+		})
+	}
+	if lay.fits {
+		return ""
+	}
+	return fmt.Sprintf("%s: numbered-step-strip %d %s rows need %s at 12pt with 2pt gaps but the content area holds about %.0fpt (a takeaway or source band shortens it) — drop or shorten the step bodies, use fewer steps, or drop the takeaway / source",
+		ErrCodeBodyTooLong, len(vals.Steps), style, readableNeedPhrase(lay.needPt), lay.areaPt)
 }
 
 // numberedStepsHaveIcons reports whether any step carries an icon; the icon
@@ -911,9 +1108,25 @@ func numberedStepIconCell(ctx ExpandContext, step NumberedStepStripStep, tip str
 // ---------------------------------------------------------------------------
 
 func (n *numberedStepStrip) expandTOC(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides, cellOverrides map[int]any) *jsonschema.ShapeGridInput {
+	spec := tocRowSpec(numberedStepsHaveIcons(vals)).withGutter(ctx)
+	lay := layoutNumberedStepRows(ctx, spec, scaleSubheadPt, func(labelPt float64) []jsonschema.GridRowInput {
+		return n.tocRows(ctx, vals, ovr, cellOverrides, labelPt)
+	})
+	return lay.grid(spec)
+}
+
+// tocRowSpec is the toc column geometry: number, optional icon, title.
+func tocRowSpec(withIcons bool) numberedStepRowSpec {
+	if withIcons {
+		return numberedStepRowSpec{cols: `[1, 0.6, 6]`, weights: []float64{1, 0.6, 6}, colGapPt: tocColGapPt}
+	}
+	return numberedStepRowSpec{cols: `[1, 6]`, weights: []float64{1, 6}, colGapPt: tocColGapPt}
+}
+
+// tocRows builds the toc rows with the step titles at titleSize.
+func (n *numberedStepStrip) tocRows(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides, cellOverrides map[int]any, titleSize float64) []jsonschema.GridRowInput {
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	numberSize := ResolveSize(ovr.HeaderSize, sizeLeadPlusPt)
-	titleSize := scaleSubheadPt
 	bodySize := ResolveSize(ovr.BodySize, scaleCaptionPt)
 	cellAccentMode := ovr.CellAccentMode
 	solid := ovr.Style == "solid"
@@ -958,22 +1171,9 @@ func (n *numberedStepStrip) expandTOC(ctx ExpandContext, vals *NumberedStepStrip
 		if withIcons {
 			cells = []*jsonschema.GridCellInput{numberCell, numberedStepIconCell(ctx, step, badge), titleCell}
 		}
-		rows[i] = jsonschema.GridRowInput{
-			AutoHeight: true,
-			Cells:      cells,
-		}
+		rows[i] = jsonschema.GridRowInput{Cells: cells}
 	}
-
-	cols := json.RawMessage(`[1, 6]`)
-	if withIcons {
-		cols = json.RawMessage(`[1, 0.6, 6]`)
-	}
-	return &jsonschema.ShapeGridInput{
-		Columns: cols,
-		Gap:     ctx.Gap(10),
-		RowGap:  ctx.Gap(6),
-		Rows:    rows,
-	}
+	return rows
 }
 
 // ---------------------------------------------------------------------------
