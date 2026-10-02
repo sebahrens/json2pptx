@@ -695,8 +695,8 @@ func TestHandleGetDiagramSchemaKnown(t *testing.T) {
 // the renderer's accepted shape (e.g. pie slices vs labels/values) fails here.
 func TestGetDiagramSchemaExampleValuesAllTypes(t *testing.T) {
 	names := svggen.Types()
-	if len(names) != 21 {
-		t.Fatalf("expected 21 registered diagram types, got %d: %v", len(names), names)
+	if len(names) != 22 {
+		t.Fatalf("expected 22 registered diagram types, got %d: %v", len(names), names)
 	}
 	for _, canonical := range svggen.Types() {
 		names = append(names, svggen.Aliases(canonical)...)

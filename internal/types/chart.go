@@ -293,6 +293,9 @@ const (
 	ChartBubble      ChartType = "bubble"       // Bubble chart (scatter with size dimension)
 	ChartStackedArea ChartType = "stacked_area" // Stacked area chart for cumulative trends
 	ChartGroupedBar  ChartType = "grouped_bar"  // Grouped bar chart for side-by-side comparisons
+	// ChartSmallMultiples draws 2–6 line panels (one per named series) over
+	// shared categories on one shared y scale (go-slide-creator-sxpvy).
+	ChartSmallMultiples ChartType = "small_multiples"
 )
 
 // ChartStyle provides styling options for chart rendering.
@@ -418,21 +421,22 @@ func CalculateDynamicScale(placeholderWidthEMU EMU, outputWidth int) float64 {
 
 // chartTypeToSvggenType maps ChartType to svggen diagram type strings.
 var chartTypeToSvggenType = map[ChartType]string{
-	ChartBar:         "bar_chart",
-	ChartLine:        "line_chart",
-	ChartPie:         "pie_chart",
-	ChartDonut:       "donut_chart",
-	ChartArea:        "area_chart",
-	ChartRadar:       "radar_chart",
-	ChartScatter:     "scatter_chart",
-	ChartStackedBar:  "stacked_bar_chart",
-	ChartWaterfall:   "waterfall",
-	ChartFunnel:      "funnel_chart",
-	ChartGauge:       "gauge_chart",
-	ChartTreemap:     "treemap_chart",
-	ChartBubble:      "bubble_chart",
-	ChartStackedArea: "stacked_area_chart",
-	ChartGroupedBar:  "grouped_bar_chart",
+	ChartBar:            "bar_chart",
+	ChartLine:           "line_chart",
+	ChartPie:            "pie_chart",
+	ChartDonut:          "donut_chart",
+	ChartArea:           "area_chart",
+	ChartRadar:          "radar_chart",
+	ChartScatter:        "scatter_chart",
+	ChartStackedBar:     "stacked_bar_chart",
+	ChartWaterfall:      "waterfall",
+	ChartFunnel:         "funnel_chart",
+	ChartGauge:          "gauge_chart",
+	ChartTreemap:        "treemap_chart",
+	ChartBubble:         "bubble_chart",
+	ChartStackedArea:    "stacked_area_chart",
+	ChartGroupedBar:     "grouped_bar_chart",
+	ChartSmallMultiples: "small_multiples_chart",
 }
 
 // ToDiagramSpec converts a ChartSpec to a DiagramSpec.

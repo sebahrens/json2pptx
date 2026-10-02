@@ -54,7 +54,10 @@ kinds with `list_slide_kinds` using its compact fields, requesting
 repeat. For a chart or diagram no kind covers (gantt, venn, pestel, ...), a
 `recommend_visual` chart/diagram candidate carries `data_contract` and a
 runnable `next_tool_call` (`render_deck_spec` with a `raw_json2pptx` slide);
-replace its title and data. Read [DECKSPEC.md](DECKSPEC.md) for budgets,
+replace its title and data. To compare one measure across 2–6 groups over
+the same periods, use the `small_multiples` chart (one line panel per named
+series on a shared y scale; `data.y_scale: "independent"` only for shapes —
+see RULES.md 10i). Read [DECKSPEC.md](DECKSPEC.md) for budgets,
 degradation, required-layout coverage, handles, and revision rules.
 
 Use raw `PresentationInput` only for a feature the semantic schema cannot

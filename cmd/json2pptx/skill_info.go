@@ -974,6 +974,7 @@ func buildSupportedTypes() skillSupportedTypes {
 			"bubble",
 			"stacked_area",
 			"grouped_bar",
+			"small_multiples",
 			"waterfall",
 			"funnel",
 			"gauge",
@@ -1162,6 +1163,11 @@ func buildDataFormatHints() map[string]skillDataFormat {
 			RequiredKeys: []string{"categories", "series"},
 			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels", "highlight", "sort", "orientation"},
 			Description:  "categories: string[]; series: [{name, values: number[]}] (min 2 series). highlight: the series the slide is about (others grey); orientation: \"horizontal\"; sort: desc|asc|none by category total.",
+		},
+		"small_multiples": {
+			RequiredKeys: []string{"categories", "series"},
+			OptionalKeys: []string{"y_scale", "highlight", "colors", "footnote"},
+			Description:  "categories: string[] shared by every panel; series: 2–6 panels [{name (the panel title, required), values: number[] one per category}]. One y domain is computed from all panels so magnitudes compare (equal values sit at equal heights); y_scale: \"independent\" gives each panel its own axis and labels the chart \"compare shapes, not levels\". highlight: panel names or indices kept in the accent, the rest grey. When no panel grid fits the canvas above the readability floors the chart reports chart.plot_area_collapsed (shrink_or_split, fix.params.max_panels_per_slide): split the panels across slides.",
 		},
 		"waterfall": {
 			RequiredKeys: []string{"points"},

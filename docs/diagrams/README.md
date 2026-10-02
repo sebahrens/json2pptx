@@ -37,6 +37,7 @@ The `svggen` package provides built-in diagram types for creating professional b
 | `stacked_bar_chart` | Stacked category bars | Series + Categories |
 | `stacked_area_chart` | Cumulative filled areas | Series + Categories |
 | `grouped_bar_chart` | Side-by-side bars | Series + Categories |
+| `small_multiples_chart` | One line panel per group on a shared y scale | Categories + 2–6 named series |
 | `radar_chart` | Multi-axis profiling | Categories + Series |
 | `scatter_chart` | Correlation plotting | Series with X/Y values |
 | `bubble_chart` | Scatter + size dimension | Series with X/Y/size |

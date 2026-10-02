@@ -1023,7 +1023,8 @@ func isChartishDiagramType(t string) bool {
 	switch t {
 	case "bar", "bar_chart", "line", "line_chart", "area", "area_chart",
 		"scatter", "bubble", "pie", "donut", "stacked_bar", "grouped_bar",
-		"waterfall", "funnel", "radar", "gauge", "treemap":
+		"waterfall", "funnel", "radar", "gauge", "treemap",
+		"small_multiples", "small_multiples_chart":
 		return true
 	}
 	return false

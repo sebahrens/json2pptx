@@ -68,6 +68,16 @@ var visualRecipeData = map[string]map[string]any{
 		},
 		"highlight": []any{"Mobile app"},
 	},
+	// Small multiples share one y scale: the 10x region draws 10x taller.
+	"small_multiples": {
+		"categories": []any{"Q1", "Q2", "Q3", "Q4"},
+		"series": []any{
+			map[string]any{"name": "North", "values": []any{10, 20, 15, 25}},
+			map[string]any{"name": "South", "values": []any{100, 200, 150, 250}},
+			map[string]any{"name": "East", "values": []any{40, 45, 50, 48}},
+			map[string]any{"name": "West", "values": []any{30, 28, 35, 41}},
+		},
+	},
 	"area": {
 		"categories": []any{"Jan", "Feb", "Mar", "Apr"},
 		"series":     []any{map[string]any{"name": "Cumulative sign-ups (k)", "values": []any{10, 24, 41, 60}}},

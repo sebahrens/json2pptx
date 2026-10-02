@@ -91,7 +91,7 @@ func run() error {
 
 func renderDiagramTool() mcp.Tool {
 	return mcp.NewTool("render_diagram",
-		mcp.WithDescription("Render a diagram or chart to SVG or PNG format. Supports 21 registered types: bar_chart, line_chart, pie_chart, donut_chart, area_chart, radar_chart, scatter_chart, bubble_chart, stacked_bar_chart, stacked_area_chart, grouped_bar_chart, funnel_chart, gauge_chart, treemap_chart, waterfall, org_chart, gantt, timeline, venn, matrix_2x2, fishbone."),
+		mcp.WithDescription("Render a diagram or chart to SVG or PNG format. Supports 22 registered types: bar_chart, line_chart, small_multiples_chart, pie_chart, donut_chart, area_chart, radar_chart, scatter_chart, bubble_chart, stacked_bar_chart, stacked_area_chart, grouped_bar_chart, funnel_chart, gauge_chart, treemap_chart, waterfall, org_chart, gantt, timeline, venn, matrix_2x2, fishbone."),
 		mcp.WithString("type",
 			mcp.Required(),
 			mcp.Description("Diagram type: a canonical name (e.g., bar_chart, pie_chart, org_chart, gantt, timeline, waterfall, venn, matrix_2x2, fishbone) or an alias (bar, pie, funnel, gauge, treemap, org, matrix). Use list_diagram_types for the full list with aliases."),
@@ -975,6 +975,25 @@ func getSchemaForType(typ string) diagramSchema {
 				"series": []any{
 					map[string]any{"name": "Plan", "values": []any{100, 150, 120, 180}},
 					map[string]any{"name": "Actual", "values": []any{95, 160, 130, 175}},
+				},
+			},
+		},
+		"small_multiples_chart": {
+			description: "Small multiples: 2-6 line panels over shared categories, one named series per panel, on one shared y scale (y_scale \"independent\" gives each panel its own, labelled on the chart).",
+			minimal: map[string]any{
+				"categories": []any{"Q1", "Q2", "Q3", "Q4"},
+				"series": []any{
+					map[string]any{"name": "North", "values": []any{10, 20, 15, 25}},
+					map[string]any{"name": "South", "values": []any{100, 200, 150, 250}},
+				},
+			},
+			realistic: map[string]any{
+				"categories": []any{"Q1", "Q2", "Q3", "Q4"},
+				"series": []any{
+					map[string]any{"name": "North America", "values": []any{120, 135, 150, 170}},
+					map[string]any{"name": "Europe", "values": []any{90, 88, 95, 101}},
+					map[string]any{"name": "Asia-Pacific", "values": []any{40, 52, 61, 75}},
+					map[string]any{"name": "Latin America", "values": []any{12, 14, 13, 16}},
 				},
 			},
 		},

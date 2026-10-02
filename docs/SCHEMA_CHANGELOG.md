@@ -33,6 +33,33 @@
     regions' text and skip the run's region families.
     `dominant_visual` stays `compose`. No `SchemaVersion` bump.
 
+- **2026-10-02 — `small_multiples` chart: coordinated line facets on a shared scale (`go-slide-creator-sxpvy`).**
+  - New chart type `small_multiples` (svggen `small_multiples_chart`; alias
+    `small_multiples`) for `chart_value` / `diagram_value` and svggen
+    `render_diagram`: `{categories, series: [{name, values}]}` with 2–6 panels,
+    one per named series. The y domain is computed once from every panel and
+    applied to each (negative and constant data included), so equal values
+    land at identical positions on equal plots and a 10x panel draws visibly
+    larger. Plots are equal-sized with a common left gutter and one tick
+    precision, so panel-title length cannot misalign them.
+  - `data.y_scale`: `"shared"` (default) or `"independent"` (each panel its
+    own axis; the chart prints "Independent y-axes: each panel has its own
+    scale; compare shapes, not levels"). `data.highlight` greys the panels it
+    does not name; `data.colors` overrides per panel.
+  - Validation rejects <2 or >6 panels (with split advice), unnamed panels,
+    time-series panels, unknown `y_scale` and unknown data keys. The panel
+    grid is chosen to meet the readability floors (3-tick plot height,
+    category labels within their band, titles within the plot); when none
+    does, the existing `chart.plot_area_collapsed` code is emitted with
+    severity `shrink_or_split`, `fix.kind: truncate_or_split` and
+    `fix.params.max_panels_per_slide`.
+  - Surfaces: `get_chart_capabilities` / skill-info `chart_capabilities`
+    and `chart_types`, `get_data_format_hints`, `recommend_visual` (keyword
+    rule and recipe), svggen-mcp `get_diagram_schema` examples. Template
+    preview manifests carry the new rendering-source hash. Additive enum value
+    only; the raw input-schema fingerprint is unchanged, so no `SchemaVersion`
+    bump.
+
 - **2026-10-02 — plan_deck keeps whole comparisons and drafts an option matrix for "compare A with B" (`go-slide-creator-ze5u7`, `-fu6uy`).**
   - Brief facts are no longer truncated at 120 characters: a long clause is
     split (at a joining word, then at a word boundary outside brackets, never

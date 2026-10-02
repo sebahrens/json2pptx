@@ -94,7 +94,7 @@ Every generation (and every dry-run) emits structured **fit findings** (`code`, 
 - **JSON-to-PPTX conversion** -- structured slide definitions become polished PowerPoint files
 - **Bundled templates** -- `forest-green`, `midnight-blue`, `modern-template` and `warm-coral` receive full cross-template test coverage, alongside `abstract`, `blue-corporate`, `business-template`, `modern` and `modern-yellow`. A local gitignored `templates/p-style.pptx` joins cross-template tests when present but is not bundled. Call `list_templates` (or `json2pptx skill-info`) for the live list; any `.pptx` works as a template
 - **Template-aware layout selection** -- picks the right layout based on your content; synthesizes missing standard layouts
-- **15 chart types** -- bar, grouped_bar, stacked_bar, line, area, stacked_area, pie, donut, scatter, bubble, radar, waterfall, funnel, gauge, treemap
+- **16 chart types** -- bar, grouped_bar, stacked_bar, line, small_multiples, area, stacked_area, pie, donut, scatter, bubble, radar, waterfall, funnel, gauge, treemap
 - **21 diagram types** -- SWOT, timeline, process flow, pyramid, venn, org chart, Gantt, KPI dashboard, heatmap, fishbone, PESTEL, Porter's Five Forces, value chain, Business Model Canvas, nine box talent, house diagram, panel layout, icon columns/rows, stat cards, matrix 2x2
 - **Named patterns** -- agenda, arch-stack, before-after, bmc-canvas, card-grid, comparison-2col, icon-row, kpi-2up...kpi-6up (parametric), matrix-2x2, process-flow, pull-quote, pyramid, roadmap-phased, stat-hero, swimlane, timeline-horizontal and many more; `json2pptx patterns list` (or MCP `list_patterns`) prints the live registry
 - **Pattern composition** (`compose`) -- 2-4 patterns merged into one slide with vertical/horizontal layout

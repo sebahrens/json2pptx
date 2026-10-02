@@ -254,6 +254,7 @@ SVG chart rendered into a placeholder. Value: `ChartSpec` (via `chart_value`; th
 | `bubble` | Bubble chart (scatter + size) |
 | `stacked_area` | Stacked area chart |
 | `grouped_bar` | Grouped bar chart (side-by-side) |
+| `small_multiples` | 2–6 line panels, one per named series, on a shared y scale (`data.y_scale: "independent"` opts out, labelled) |
 | `waterfall` | Waterfall/bridge chart |
 | `funnel` | Funnel chart |
 | `gauge` | Gauge/speedometer |
