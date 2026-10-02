@@ -1,0 +1,1188 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-02",
+  "source_commit": "24cae08241bcfebb31dd64221aadffe6a4feba12",
+  "audit_task": "go-slide-creator-gr22h",
+  "scope": "Actual stdio MCP from current source; three decks, 18 original slides plus the four-slide revised pilot. Discovery, planning, validation, generation, scoring, thumbnails, visual approval and revision rejection. Focused code tracing; not exhaustive coverage of all templates, raw patterns, external assets or PowerPoint renderer fidelity.",
+  "environment": {
+    "protocol": "2025-06-18",
+    "profile": "deckspec",
+    "renderer": "Bundled LibreOfficeDev 26.8.0.0.alpha0 2c87e51eeaa2b413ff4ae097b2705eea1995d8e5",
+    "rasterizer": "ImageMagick resolved by internal/render",
+    "build": "go build -o /tmp/json2pptx-review ./cmd/json2pptx"
+  },
+  "findings": [
+    {
+      "id": "go-slide-creator-ze5u7",
+      "title": "plan_deck still discards the tail of long comparison facts while reporting unplaced_facts=[]",
+      "description": "## Steps to Reproduce\n\nObserved on HEAD 24cae082 via the real stdio MCP, protocol 2025-06-18. plan_deck(format=deckspec, slide_budget=8, template=warm-coral) with this brief: Board decision on a fictional service pilot. Revenue rose from €10m in 2024 to €12m in 2025. Gross margin fell from 45% to 38% because service costs rose. Compare building an internal support team (€0.8m per year, launch in 6 months) with outsourcing (€0.5m per year, launch in 2 months). Recommend the internal team to retain customer relationships. Pilot starts in January 2027; CFO owns funding approval in November 2026. Include backup assumptions.\nActual slots[].facts ends the comparison at \"with outsourcing (€\"; the €0.5m and 2-month alternative never appear in facts or unplaced_facts. unplaced_facts is empty. A using agent following the routed facts loses the economic case.\nRoot: internal/deckplan/facts.go extractBriefFacts truncates every remaining long clause with TruncateBrief(c,maxFactLen=120) after only splitting and/while/whereas/but. The discarded tail is never represented. balanceFactBrackets then scans a byte-index depth array whose UTF-8 continuation bytes retain zero depths, so the Euro sign can also leave an unmatched opening parenthesis. Full Brief is echoed, but this does not make the routed-facts preservation contract true.\nRelated closed issues csclk.48 (long-clause loss) and gvbw8 (bracketed comparisons); this is a verified residual case after their fixes. Evidence: .claude/review-evidence/2026-10-02/plan.json and tracked audit evidence. No production change requested by this audit.",
+      "acceptance_criteria": "Retain the full comparison in routed facts or return every omitted span in unplaced_facts with a clear truncation finding. Never truncate within a numeric/currency token. Test long parenthesized option comparisons with € and CJK text, clauses without the four recognized conjunctions, and verify every input amount/date survives. Test bracket balancing by rune rather than uninitialized UTF-8 byte slots.",
+      "status": "open",
+      "priority": 1,
+      "issue_type": "bug",
+      "owner": "platon2001@icloud.com",
+      "created_at": "2026-10-02T11:17:54Z",
+      "created_by": "platon2001",
+      "updated_at": "2026-10-02T11:21:47Z",
+      "labels": [
+        "mcp-dogfood-20261002"
+      ],
+      "dependencies": [
+        {
+          "id": "go-slide-creator-gr22h",
+          "title": "MCP dogfood and root-cause quality audit 2026-10-02",
+          "description": "Exercise the current stdio MCP as a using agent, generate and visually inspect representative decks, validate the repair/review loop, trace confirmed quality blockers to source, and file deduplicated Beads with reproduction evidence and acceptance criteria.",
+          "status": "closed",
+          "priority": 1,
+          "issue_type": "task",
+          "assignee": "platon2001",
+          "owner": "platon2001@icloud.com",
+          "created_at": "2026-10-02T11:04:21Z",
+          "created_by": "platon2001",
+          "updated_at": "2026-10-02T11:20:26Z",
+          "started_at": "2026-10-02T11:04:32Z",
+          "closed_at": "2026-10-02T11:20:26Z",
+          "close_reason": "Completed current-source stdio MCP dogfood: three decks/18 original slides plus the four-slide revised pilot inspected, normal approval and stale-revision rejection verified, four deduplicated root-cause bugs filed (ze5u7, fu6uy, sr3xk, z99un). Durable evidence in tests/quality/results/mcp-dogfood-root-causes-20261002.json. Focused deckplan/render tests pass; no production changes.",
+          "dependency_type": "discovered-from"
+        }
+      ],
+      "dependent_count": 0,
+      "dependency_count": 1,
+      "comment_count": 0
+    },
+    {
+      "id": "go-slide-creator-fu6uy",
+      "title": "DeckSpec planner misses explicit Compare A with B requests and recommends a single-stat slide",
+      "description": "## Steps to Reproduce\n\nReal MCP plan_deck(format=deckspec, slide_budget=12) brief: Compare internal support (€0.8m per year) with outsourcing (€0.5m per year) on cost and launch speed. Recommend internal support to retain customer relationships.\nActual: 8-slide storyline cover/agenda/sections + executive_summary, stat, decision, next_steps; no comparison or option_matrix. The entire two-price comparison routes to the single-number stat slot. The explicit recommendation and its rationale are absent from all slots[].facts and unplaced_facts=[]. Spare budget exists, so this is not budget pruning.\nRoot: internal/deckplan/deckspec_plan.go cueOptions accepts enumerated options, options evaluated against criteria, or build/buy wording but not compare X with Y. facts.go factOption similarly omits compare/compared; extractBriefFacts excludes recommendation clauses without a number, acronym, proper noun, or recognized option token before classifyFact can route them. The numeric comparison is then classified as one metric. This frustrates the advertised brief-sensitive storyline path.\nRelated closed khzni and gvbw8, but this exact ordinary comparison syntax remains broken. Evidence comparison-plan.json and decimal-plan.json in .claude/review-evidence/2026-10-02.",
+      "acceptance_criteria": "At adequate budget, Compare X with Y/on criteria creates a comparison or option_matrix before decision, routes both alternatives intact, and carries the explicit recommended alternative plus reason to the decision slot. Include positive Compare/compare with/compared to tests and negative benchmark cases (revenue compared with plan) so benchmark facts remain metrics.",
+      "status": "open",
+      "priority": 2,
+      "issue_type": "bug",
+      "owner": "platon2001@icloud.com",
+      "created_at": "2026-10-02T11:17:55Z",
+      "created_by": "platon2001",
+      "updated_at": "2026-10-02T11:21:47Z",
+      "labels": [
+        "mcp-dogfood-20261002"
+      ],
+      "dependencies": [
+        {
+          "id": "go-slide-creator-gr22h",
+          "title": "MCP dogfood and root-cause quality audit 2026-10-02",
+          "description": "Exercise the current stdio MCP as a using agent, generate and visually inspect representative decks, validate the repair/review loop, trace confirmed quality blockers to source, and file deduplicated Beads with reproduction evidence and acceptance criteria.",
+          "status": "closed",
+          "priority": 1,
+          "issue_type": "task",
+          "assignee": "platon2001",
+          "owner": "platon2001@icloud.com",
+          "created_at": "2026-10-02T11:04:21Z",
+          "created_by": "platon2001",
+          "updated_at": "2026-10-02T11:20:26Z",
+          "started_at": "2026-10-02T11:04:32Z",
+          "closed_at": "2026-10-02T11:20:26Z",
+          "close_reason": "Completed current-source stdio MCP dogfood: three decks/18 original slides plus the four-slide revised pilot inspected, normal approval and stale-revision rejection verified, four deduplicated root-cause bugs filed (ze5u7, fu6uy, sr3xk, z99un). Durable evidence in tests/quality/results/mcp-dogfood-root-causes-20261002.json. Focused deckplan/render tests pass; no production changes.",
+          "dependency_type": "discovered-from"
+        }
+      ],
+      "dependent_count": 0,
+      "dependency_count": 1,
+      "comment_count": 0
+    },
+    {
+      "id": "go-slide-creator-sr3xk",
+      "title": "Forced thumbnail refresh invalidates valid visual reviews because PNG metadata is hashed as pixels",
+      "description": "## Steps to Reproduce\n\nReal MCP reproduction at 24cae082: render examples/semantic/qbr.yaml using render_deck_spec; render_deck_thumbnails at density=100; retain all six returned image hashes; submit_visual_review with every image (accepted). Then call render_deck_thumbnails on the SAME pptx with density=100, slide_indices=[1], force=true. Resubmit the original all-slide review. It is rejected at slides[0] as an image that does not show this deck, although slide 0 was unchanged and was not even requested in the refresh. Three force calls reproduce it.\nThe original QBR slide-2 PNG and all three forced PNGs decode to identical RGB pixels, SHA256 a94ec66caa1c8a57542e8bdac673755247f18dc0255bd3a58bcecd6525219bac, but have distinct file hashes because ImageMagick preserves PDF/XMP creation and modification timestamps. Do not confuse this with a visual alignment bug: PDF positions and decoded pixels ruled that initial suspicion out.\nRoot: internal/render/render.go pdfToPNGs (~505) preserves volatile metadata; encodeImage (~583) and CachedSlideHashes (~1023) SHA256 entire PNG bytes; storeCachePNGs (~223) removes the previous source+density cache directory; deckPNGsContext rerenders ALL slides even for a selected refresh. cmd/json2pptx/mcp_visual_review_verify.go verifyReviewImages trusts only these most recent file hashes and describes them as pixel hashes. Immutable old artifact files still exist but their provenance is discarded. This forces needless full-deck rerender/review in a normal retry workflow.\nEvidence: qbr-thumbs.json, qbr-force1/2/3.json, qbr-review-after-force.json; retained transcripts in .claude/review-evidence/2026-10-02, tracked audit evidence. Renderer LibreOfficeDev 26.8.0.0.alpha0, ImageMagick via repository resolver. Scope is proven image identity/cache failure, not PowerPoint rendering fidelity.",
+      "acceptance_criteria": "A forced same-revision refresh must not reject an earlier legitimate review image for unchanged pixels. Canonicalize PNG metadata before identity hashing and/or retain an artifact+slide render provenance ledger across refreshes. Keep rejection of wrong-slide, foreign-deck and stale-PPTX evidence. Integration regression: full render, selected force refresh after time advances, submit retained images for all slides; verify success and no weakened provenance checks.",
+      "status": "open",
+      "priority": 1,
+      "issue_type": "bug",
+      "owner": "platon2001@icloud.com",
+      "created_at": "2026-10-02T11:17:55Z",
+      "created_by": "platon2001",
+      "updated_at": "2026-10-02T11:21:47Z",
+      "labels": [
+        "mcp-dogfood-20261002"
+      ],
+      "dependencies": [
+        {
+          "id": "go-slide-creator-gr22h",
+          "title": "MCP dogfood and root-cause quality audit 2026-10-02",
+          "description": "Exercise the current stdio MCP as a using agent, generate and visually inspect representative decks, validate the repair/review loop, trace confirmed quality blockers to source, and file deduplicated Beads with reproduction evidence and acceptance criteria.",
+          "status": "closed",
+          "priority": 1,
+          "issue_type": "task",
+          "assignee": "platon2001",
+          "owner": "platon2001@icloud.com",
+          "created_at": "2026-10-02T11:04:21Z",
+          "created_by": "platon2001",
+          "updated_at": "2026-10-02T11:20:26Z",
+          "started_at": "2026-10-02T11:04:32Z",
+          "closed_at": "2026-10-02T11:20:26Z",
+          "close_reason": "Completed current-source stdio MCP dogfood: three decks/18 original slides plus the four-slide revised pilot inspected, normal approval and stale-revision rejection verified, four deduplicated root-cause bugs filed (ze5u7, fu6uy, sr3xk, z99un). Durable evidence in tests/quality/results/mcp-dogfood-root-causes-20261002.json. Focused deckplan/render tests pass; no production changes.",
+          "dependency_type": "discovered-from"
+        }
+      ],
+      "dependent_count": 0,
+      "dependency_count": 1,
+      "comment_count": 0
+    },
+    {
+      "id": "go-slide-creator-z99un",
+      "title": "Shipped QBR example mixes Q2 review, completed Q4 results and ARR versus revenue measures",
+      "description": "## Steps to Reproduce\n\nThe recommended semantic authoring example examples/semantic/qbr.yaml renders cleanly and scores 99, but its evidence is internally inconsistent. Cover is Q2 FY26 / path to H2; summary says Q2 revenue grew 18% QoQ. The chart presents completed Q1–Q4 FY26 quarterly revenue [34,40,44,48], calls the Q4 launch already landed, then claims continued acceleration into H2. The chart Q2/Q1 growth is 17.65% (consistent with 18%), but future Q3/Q4 values are never marked forecast. Slide 3 calls $48M Annual recurring revenue; the chart labels the same 48 as quarterly revenue ($M) without distinguishing measures. A Q2 board deck cannot establish Q4 actuals and then discuss the coming H2 in the same fiscal year without explaining chronology.\nRoot: authored content in examples/semantic/qbr.yaml and the examples' semantic correctness coverage, not chart math or slide layout. Agents are explicitly encouraged to copy examples, so these labels can seed polished but misleading decks. Do not attempt a generic deterministic prose truth detector as the fix.\nEvidence: qbr-validate.json no issues; qbr-score.json overall 99, gate true; rendered slide 1 and 4, OOXML text. Existing closed zvu7c corrected duplicate callouts, not period/measure consistency.",
+      "acceptance_criteria": "Choose a coherent as-of date and period: use historical quarters through Q2, or label Q3/Q4 forecast explicitly, or convert the whole deck to a year-end review. Distinguish ARR from period revenue. Check every title, source, KPI label, chart and closing deadline against that same chronology, and add a focused fixture-content check for the chosen labels.",
+      "status": "open",
+      "priority": 2,
+      "issue_type": "bug",
+      "owner": "platon2001@icloud.com",
+      "created_at": "2026-10-02T11:17:55Z",
+      "created_by": "platon2001",
+      "updated_at": "2026-10-02T11:21:47Z",
+      "labels": [
+        "mcp-dogfood-20261002"
+      ],
+      "dependencies": [
+        {
+          "id": "go-slide-creator-gr22h",
+          "title": "MCP dogfood and root-cause quality audit 2026-10-02",
+          "description": "Exercise the current stdio MCP as a using agent, generate and visually inspect representative decks, validate the repair/review loop, trace confirmed quality blockers to source, and file deduplicated Beads with reproduction evidence and acceptance criteria.",
+          "status": "closed",
+          "priority": 1,
+          "issue_type": "task",
+          "assignee": "platon2001",
+          "owner": "platon2001@icloud.com",
+          "created_at": "2026-10-02T11:04:21Z",
+          "created_by": "platon2001",
+          "updated_at": "2026-10-02T11:20:26Z",
+          "started_at": "2026-10-02T11:04:32Z",
+          "closed_at": "2026-10-02T11:20:26Z",
+          "close_reason": "Completed current-source stdio MCP dogfood: three decks/18 original slides plus the four-slide revised pilot inspected, normal approval and stale-revision rejection verified, four deduplicated root-cause bugs filed (ze5u7, fu6uy, sr3xk, z99un). Durable evidence in tests/quality/results/mcp-dogfood-root-causes-20261002.json. Focused deckplan/render tests pass; no production changes.",
+          "dependency_type": "discovered-from"
+        }
+      ],
+      "dependent_count": 0,
+      "dependency_count": 1,
+      "comment_count": 0
+    }
+  ],
+  "test_results": {
+    "go test ./internal/deckplan ./internal/render -short": "PASS",
+    "production_code_changes": false
+  },
+  "decks": [
+    {
+      "template": "midnight-blue",
+      "slide_count": 6,
+      "content_hash": "a75196b4676ef45bd8f829b5809e077c68fc9f982b2b9246748fe838b2df017d",
+      "deterministic_ready": true,
+      "publishable": false,
+      "name": "qbr",
+      "score": 99
+    },
+    {
+      "template": "warm-coral",
+      "slide_count": 8,
+      "content_hash": "234fe242f9d5285ed8f376bfaa930bef20ba42b05df901736cc56f7a8cf1f8e3",
+      "deterministic_ready": false,
+      "publishable": false,
+      "name": "variety",
+      "score": 98
+    },
+    {
+      "template": "abstract",
+      "slide_count": 4,
+      "content_hash": "4818c7ebcbcb1c26e2c57932952ebe2ce60367215b61c02e55c7a74c5156ddd6",
+      "deterministic_ready": true,
+      "publishable": false,
+      "name": "pilot",
+      "score": 98
+    }
+  ],
+  "planner_evidence": {
+    "plan": {
+      "format": "deckspec",
+      "brief": "Board decision on a fictional service pilot. Revenue rose from €10m in 2024 to €12m in 2025. Gross margin fell from 45% to 38% because service costs rose. Compare building an internal support team (€0.8m per year, launch in 6 months) with outsourcing (€0.5m per year, launch in 2 months). Recommend the internal team to retain customer relationships. Pilot starts in January 2027; CFO owns funding approval in November 2026. Include backup assumptions.",
+      "slide_budget": 8,
+      "deck_spec": {
+        "meta": {
+          "chrome": {
+            "page_numbers": {
+              "enabled": true
+            },
+            "tracker": true
+          },
+          "date": "__FILL__",
+          "template": "warm-coral",
+          "title": "Board decision on a fictional service pilot"
+        },
+        "structure": {
+          "cover": {
+            "kind": "title",
+            "subtitle": "__FILL__",
+            "title": "Board decision on a fictional service pilot"
+          },
+          "auto_agenda": true,
+          "sections": [
+            {
+              "title": "Where we stand",
+              "slides": [
+                {
+                  "kind": "executive_summary",
+                  "title": "__FILL__"
+                },
+                {
+                  "kind": "kpi_snapshot",
+                  "title": "__FILL__"
+                }
+              ]
+            },
+            {
+              "title": "Recommendation and plan",
+              "slides": [
+                {
+                  "kind": "decision",
+                  "title": "__FILL__"
+                }
+              ]
+            }
+          ],
+          "closing": {
+            "kind": "next_steps",
+            "title": "__FILL__"
+          }
+        }
+      },
+      "slots": [
+        {
+          "slide_index": 0,
+          "path": "structure.cover",
+          "slot": "cover",
+          "kind": "title",
+          "guidance": "Deck title and a subtitle naming audience and date."
+        },
+        {
+          "slide_index": 1,
+          "path": "structure.sections[0].slides[0]",
+          "slot": "answer",
+          "kind": "executive_summary",
+          "section": "Where we stand",
+          "guidance": "The whole answer up front: 3-5 points, each a conclusion a later slide proves; the title is the single-sentence answer."
+        },
+        {
+          "slide_index": 2,
+          "path": "structure.sections[0].slides[1]",
+          "slot": "problem",
+          "kind": "kpi_snapshot",
+          "section": "Where we stand",
+          "guidance": "What is wrong or at stake, shown with the brief's own numbers; the title states the problem as a sentence carrying its number.",
+          "facts": [
+            "Revenue rose from €10m in 2024 to €12m in 2025",
+            "Gross margin fell from 45% to 38% because service costs rose",
+            "Compare building an internal support team (€0.8m per year, launch in 6 months) with outsourcing (€"
+          ]
+        },
+        {
+          "slide_index": 3,
+          "path": "structure.sections[1].slides[0]",
+          "slot": "ask",
+          "kind": "decision",
+          "section": "Recommendation and plan",
+          "guidance": "The decision needed now: the options, the recommended one, and the ask with owner and date.",
+          "facts": [
+            "CFO owns funding approval in November 2026"
+          ]
+        },
+        {
+          "slide_index": 4,
+          "path": "structure.closing",
+          "slot": "closing",
+          "kind": "next_steps",
+          "guidance": "Close on next steps, not \"Thank you\": 2-6 actions, each with an owner and a date, and the decisions requested. A plain closing kind stays available for a Q&A page.",
+          "facts": [
+            "Pilot starts in January 2027"
+          ]
+        }
+      ],
+      "unplaced_facts": [],
+      "response_fingerprint": "df16f609e14533e9b13142357ae8e421103345476a79292e7d13250106eea72a"
+    },
+    "decimal-plan": {
+      "format": "deckspec",
+      "brief": "Compare internal support (€0.8m per year) with outsourcing (€0.5m per year). Recommend internal support. Margin fell from 45% to 38%.",
+      "slide_budget": 6,
+      "deck_spec": {
+        "meta": {
+          "chrome": {
+            "page_numbers": {
+              "enabled": true
+            }
+          },
+          "date": "__FILL__",
+          "title": "Compare internal support (€0.8m per year) with outsourcing (€0.5m per year)"
+        },
+        "slides": [
+          {
+            "kind": "title",
+            "subtitle": "__FILL__",
+            "title": "Compare internal support (€0.8m per year) with outsourcing (€0.5m per year)"
+          },
+          {
+            "kind": "executive_summary",
+            "title": "__FILL__"
+          },
+          {
+            "kind": "kpi_snapshot",
+            "title": "__FILL__"
+          },
+          {
+            "kind": "chart_insight",
+            "title": "__FILL__"
+          },
+          {
+            "kind": "decision",
+            "title": "__FILL__"
+          },
+          {
+            "kind": "next_steps",
+            "title": "__FILL__"
+          }
+        ]
+      },
+      "slots": [
+        {
+          "slide_index": 0,
+          "path": "slides[0]",
+          "slot": "cover",
+          "kind": "title",
+          "guidance": "Deck title and a subtitle naming audience and date."
+        },
+        {
+          "slide_index": 1,
+          "path": "slides[1]",
+          "slot": "answer",
+          "kind": "executive_summary",
+          "guidance": "The whole answer up front: 3-5 points, each a conclusion a later slide proves; the title is the single-sentence answer."
+        },
+        {
+          "slide_index": 2,
+          "path": "slides[2]",
+          "slot": "problem",
+          "kind": "kpi_snapshot",
+          "guidance": "What is wrong or at stake, shown with the brief's own numbers; the title states the problem as a sentence carrying its number.",
+          "facts": [
+            "Compare internal support (€0.8m per year) with outsourcing (€0.5m per year)"
+          ]
+        },
+        {
+          "slide_index": 3,
+          "path": "slides[3]",
+          "slot": "evidence",
+          "kind": "chart_insight",
+          "guidance": "One chart that proves one claim: the title states the claim with its number; set takeaway and source; never invent data.",
+          "facts": [
+            "Margin fell from 45% to 38%"
+          ]
+        },
+        {
+          "slide_index": 4,
+          "path": "slides[4]",
+          "slot": "ask",
+          "kind": "decision",
+          "guidance": "The decision needed now: the options, the recommended one, and the ask with owner and date."
+        },
+        {
+          "slide_index": 5,
+          "path": "slides[5]",
+          "slot": "closing",
+          "kind": "next_steps",
+          "guidance": "Close on next steps, not \"Thank you\": 2-6 actions, each with an owner and a date, and the decisions requested. A plain closing kind stays available for a Q&A page."
+        }
+      ],
+      "unplaced_facts": [],
+      "response_fingerprint": "802ec05e837c92f53bd582b4414c14d54d5e2e75aa05a215bacd4fe5e3cebeea"
+    },
+    "comparison-plan": {
+      "format": "deckspec",
+      "brief": "Compare internal support (€0.8m per year) with outsourcing (€0.5m per year) on cost and launch speed. Recommend internal support to retain customer relationships.",
+      "slide_budget": 12,
+      "deck_spec": {
+        "meta": {
+          "chrome": {
+            "page_numbers": {
+              "enabled": true
+            },
+            "tracker": true
+          },
+          "date": "__FILL__",
+          "title": "Compare internal support (€0.8m per year) with outsourcing (€0.5m per year) o..."
+        },
+        "structure": {
+          "cover": {
+            "kind": "title",
+            "subtitle": "__FILL__",
+            "title": "Compare internal support (€0.8m per year) with outsourcing (€0.5m per year) o..."
+          },
+          "auto_agenda": true,
+          "sections": [
+            {
+              "title": "Where we stand",
+              "slides": [
+                {
+                  "kind": "executive_summary",
+                  "title": "__FILL__"
+                },
+                {
+                  "kind": "stat",
+                  "title": "__FILL__"
+                }
+              ]
+            },
+            {
+              "title": "Recommendation and plan",
+              "slides": [
+                {
+                  "kind": "decision",
+                  "title": "__FILL__"
+                }
+              ]
+            }
+          ],
+          "closing": {
+            "kind": "next_steps",
+            "title": "__FILL__"
+          }
+        }
+      },
+      "slots": [
+        {
+          "slide_index": 0,
+          "path": "structure.cover",
+          "slot": "cover",
+          "kind": "title",
+          "guidance": "Deck title and a subtitle naming audience and date."
+        },
+        {
+          "slide_index": 1,
+          "path": "structure.sections[0].slides[0]",
+          "slot": "answer",
+          "kind": "executive_summary",
+          "section": "Where we stand",
+          "guidance": "The whole answer up front: 3-5 points, each a conclusion a later slide proves; the title is the single-sentence answer."
+        },
+        {
+          "slide_index": 2,
+          "path": "structure.sections[0].slides[1]",
+          "slot": "context",
+          "kind": "stat",
+          "section": "Where we stand",
+          "guidance": "Where things stand, in the brief's own numbers; the title states the headline as a sentence carrying its number.",
+          "facts": [
+            "Compare internal support (€0.8m per year) with outsourcing (€0.5m per year) on cost and launch speed"
+          ]
+        },
+        {
+          "slide_index": 3,
+          "path": "structure.sections[1].slides[0]",
+          "slot": "ask",
+          "kind": "decision",
+          "section": "Recommendation and plan",
+          "guidance": "The decision needed now: the options, the recommended one, and the ask with owner and date."
+        },
+        {
+          "slide_index": 4,
+          "path": "structure.closing",
+          "slot": "closing",
+          "kind": "next_steps",
+          "guidance": "Close on next steps, not \"Thank you\": 2-6 actions, each with an owner and a date, and the decisions requested. A plain closing kind stays available for a Q&A page."
+        }
+      ],
+      "unplaced_facts": [],
+      "budget_note": "The storyline needs 8 of the 12 slides: it is not padded with repeated evidence slides. Add a slide only for a claim the brief can prove.",
+      "response_fingerprint": "4c5eb23666374781c56e34519d7340f4253d8ab2ae36aa6f22bd6985b3da37cc"
+    }
+  },
+  "review_workflow": {
+    "pilot_initial_approval": {
+      "ok": true,
+      "status": "visually_reviewed_current_revision",
+      "verdict": "approved",
+      "reviewer": "host",
+      "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02/output/service-pilot-funding-9cd2b0e8.pptx",
+      "artifact_sha256": "4818c7ebcbcb1c26e2c57932952ebe2ce60367215b61c02e55c7a74c5156ddd6",
+      "revision": "4818c7ebcbcb1c26e2c57932952ebe2ce60367215b61c02e55c7a74c5156ddd6",
+      "total_slides": 4,
+      "evidence": {
+        "artifact_sha256": "4818c7ebcbcb1c26e2c57932952ebe2ce60367215b61c02e55c7a74c5156ddd6",
+        "revision": "4818c7ebcbcb1c26e2c57932952ebe2ce60367215b61c02e55c7a74c5156ddd6",
+        "schema_valid": true,
+        "generated": true,
+        "fit_checked": true,
+        "structural_valid": true,
+        "pixels_rendered": true,
+        "visually_inspected": true,
+        "inspection_backend": "host",
+        "reviewed_slide_ids": [
+          "slide-1",
+          "slide-2",
+          "slide-3",
+          "slide-4"
+        ],
+        "total_slides": 4,
+        "visual_verdict": "approved",
+        "approved": true,
+        "needs_review": false
+      },
+      "review": {
+        "artifact_sha256": "4818c7ebcbcb1c26e2c57932952ebe2ce60367215b61c02e55c7a74c5156ddd6",
+        "revision": "4818c7ebcbcb1c26e2c57932952ebe2ce60367215b61c02e55c7a74c5156ddd6",
+        "backend": "host",
+        "slides": [
+          {
+            "index": 0,
+            "role": "slide",
+            "image_sha256": "3b52d18a63e585409ca85bbef95b9b7eb8f63da6815f294a0f3a646c4d95b6fa"
+          },
+          {
+            "index": 1,
+            "role": "slide",
+            "image_sha256": "d0761400533b832d8356eb4b5ac61d6229730e3965414bc5c972ffa8573fd9ed"
+          },
+          {
+            "index": 2,
+            "role": "slide",
+            "image_sha256": "eab6411af4daeb275baa1ab94f87ba9dafaf76a205bf789b5a53573460bb3bb3"
+          },
+          {
+            "index": 3,
+            "role": "slide",
+            "image_sha256": "14f676613870a83a0ff850297eb3d00f92bd4d8e20ca7f0b77057bf97b17dd48"
+          }
+        ],
+        "findings": [],
+        "verdict": "approved"
+      },
+      "image_verification": {
+        "status": "verified",
+        "method": "render_cache",
+        "verified_slides": 4,
+        "total_slides": 4
+      },
+      "manifest_updated": false,
+      "publishable": true
+    },
+    "pilot_patch_changed_slides": [
+      3
+    ],
+    "stale_revision_rejection": {
+      "schema_version": "1.0",
+      "tool": "json2pptx",
+      "subcommand": "mcp",
+      "ok": false,
+      "summary": "1 error",
+      "findings": [
+        {
+          "id": "input-1",
+          "code": "INPUT.INVALID_PARAMETER",
+          "severity": "error",
+          "category": "INPUT",
+          "message": "pptx_revision 4818c7ebcbcb1c26e2c57932952ebe2ce60367215b61c02e55c7a74c5156ddd6 is not the current file's sha256 70126affcd8c326c213eee6cf161726ab28dad852480eed8f335be4a5334994f: the PPTX changed since it was reviewed (or the hash is not its content_hash); re-render the thumbnails of the current file and resubmit with pptx_revision 70126affcd8c326c213eee6cf161726ab28dad852480eed8f335be4a5334994f",
+          "evidence": {
+            "expected_revision": "70126affcd8c326c213eee6cf161726ab28dad852480eed8f335be4a5334994f",
+            "expected_type": "string",
+            "path": "pptx_revision"
+          },
+          "next_tool_call": {
+            "tool": "submit_visual_review",
+            "args_template": {
+              "pptx_revision": "<provide value>"
+            }
+          },
+          "describe_command": "json2pptx describe-finding INVALID_PARAMETER"
+        }
+      ]
+    },
+    "pilot_final_approval": {
+      "ok": true,
+      "status": "visually_reviewed_current_revision",
+      "verdict": "approved",
+      "reviewer": "host",
+      "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02/output/pilot-revised.pptx",
+      "artifact_sha256": "70126affcd8c326c213eee6cf161726ab28dad852480eed8f335be4a5334994f",
+      "revision": "70126affcd8c326c213eee6cf161726ab28dad852480eed8f335be4a5334994f",
+      "total_slides": 4,
+      "evidence": {
+        "artifact_sha256": "70126affcd8c326c213eee6cf161726ab28dad852480eed8f335be4a5334994f",
+        "revision": "70126affcd8c326c213eee6cf161726ab28dad852480eed8f335be4a5334994f",
+        "schema_valid": true,
+        "generated": true,
+        "fit_checked": true,
+        "structural_valid": true,
+        "pixels_rendered": true,
+        "visually_inspected": true,
+        "inspection_backend": "host",
+        "reviewed_slide_ids": [
+          "slide-1",
+          "slide-2",
+          "slide-3",
+          "slide-4"
+        ],
+        "total_slides": 4,
+        "visual_verdict": "approved",
+        "approved": true,
+        "needs_review": false
+      },
+      "review": {
+        "artifact_sha256": "70126affcd8c326c213eee6cf161726ab28dad852480eed8f335be4a5334994f",
+        "revision": "70126affcd8c326c213eee6cf161726ab28dad852480eed8f335be4a5334994f",
+        "backend": "host",
+        "slides": [
+          {
+            "index": 0,
+            "role": "slide",
+            "image_sha256": "059ceb9f96105080e72bdf69b795efe763454944a3f51e3f46dca7030b058767"
+          },
+          {
+            "index": 1,
+            "role": "slide",
+            "image_sha256": "6f7d5ee807cb8c7f1877dc06a932f143719d2f6cf26e16ad3e6e5b5835e770e9"
+          },
+          {
+            "index": 2,
+            "role": "slide",
+            "image_sha256": "e630a584db833e1ebef3533351c06bbb6796354dbedd6a7cf419fda4a8d131a7"
+          },
+          {
+            "index": 3,
+            "role": "slide",
+            "image_sha256": "c987a3065f54e99086b4537af0ef52af35aaefa14896855947264f0210891c38"
+          }
+        ],
+        "findings": [],
+        "verdict": "approved"
+      },
+      "image_verification": {
+        "status": "verified",
+        "method": "render_cache",
+        "verified_slides": 4,
+        "total_slides": 4
+      },
+      "manifest_updated": false,
+      "publishable": true
+    },
+    "forced_refresh_rejection": {
+      "schema_version": "1.0",
+      "tool": "json2pptx",
+      "subcommand": "mcp",
+      "ok": false,
+      "summary": "1 error",
+      "findings": [
+        {
+          "id": "input-1",
+          "code": "INPUT.INVALID_PARAMETER",
+          "severity": "error",
+          "category": "INPUT",
+          "message": "visual review rejected: slides[0] image does not show slide 0 of this deck: pixel hash 3bd211d7f810… (image_sha256) matches no render of artifact a75196b4676e…. render this exact PPTX with render_deck_thumbnails (or render_slide_image per slide) and submit the returned slides[].path / content_hash — verification compares your pixel hashes against this server's own render of the artifact.",
+          "evidence": {
+            "expected_type": "array",
+            "path": "slides"
+          },
+          "next_tool_call": {
+            "tool": "submit_visual_review",
+            "args_template": {
+              "slides": "<provide value>"
+            }
+          },
+          "describe_command": "json2pptx describe-finding INVALID_PARAMETER"
+        }
+      ]
+    },
+    "qbr_content_review": {
+      "ok": true,
+      "status": "draft_needs_visual_review",
+      "verdict": "changes_requested",
+      "reviewer": "host",
+      "pptx_path": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02/output/q2-fy26-business-review-f3db2e02.pptx",
+      "artifact_sha256": "a75196b4676ef45bd8f829b5809e077c68fc9f982b2b9246748fe838b2df017d",
+      "revision": "a75196b4676ef45bd8f829b5809e077c68fc9f982b2b9246748fe838b2df017d",
+      "total_slides": 6,
+      "evidence": {
+        "artifact_sha256": "a75196b4676ef45bd8f829b5809e077c68fc9f982b2b9246748fe838b2df017d",
+        "revision": "a75196b4676ef45bd8f829b5809e077c68fc9f982b2b9246748fe838b2df017d",
+        "schema_valid": true,
+        "generated": true,
+        "fit_checked": true,
+        "structural_valid": true,
+        "pixels_rendered": true,
+        "visually_inspected": true,
+        "inspection_backend": "host",
+        "reviewed_slide_ids": [
+          "slide-1",
+          "slide-2",
+          "slide-3",
+          "slide-4",
+          "slide-5",
+          "slide-6"
+        ],
+        "total_slides": 6,
+        "visual_verdict": "changes_requested",
+        "approved": false,
+        "needs_review": true,
+        "reasons": [
+          "no explicit visual approval verdict for the current artifact"
+        ]
+      },
+      "review": {
+        "artifact_sha256": "a75196b4676ef45bd8f829b5809e077c68fc9f982b2b9246748fe838b2df017d",
+        "revision": "a75196b4676ef45bd8f829b5809e077c68fc9f982b2b9246748fe838b2df017d",
+        "backend": "host",
+        "slides": [
+          {
+            "index": 0,
+            "role": "slide",
+            "image_sha256": "890a4419090544b4b3d60ee80772ad495c814d08ed60061b797bf10c6f2f0da9"
+          },
+          {
+            "index": 1,
+            "role": "slide",
+            "image_sha256": "90a68ef55dc0d8c7f92ebec4acb402191cabbecf74602419f179f00241f4cbee"
+          },
+          {
+            "index": 2,
+            "role": "slide",
+            "image_sha256": "9f9383bab194246631e6a2bc895cdb006ff5af769d9dcc4c797a4fcd3450038d"
+          },
+          {
+            "index": 3,
+            "role": "slide",
+            "image_sha256": "796b968a2bf0e19ad76ababcb04332b88487d7880c3935a4d53051a1a931ac1f"
+          },
+          {
+            "index": 4,
+            "role": "slide",
+            "image_sha256": "964024dbcd362d711a338be03b6bc7f187d6036e93eb800e8753e11fa197c676"
+          },
+          {
+            "index": 5,
+            "role": "slide",
+            "image_sha256": "dfd3fba004334f1ecaaa6d9a54c252e2f34a2b86407254de1eccf81ea9405cbc"
+          }
+        ],
+        "findings": [
+          {
+            "slide_index": 3,
+            "slide_type": "",
+            "severity": "P1",
+            "category": "content",
+            "description": "Q2 FY26 deck presents Q4 FY26 as already completed, then forecasts acceleration into H2 without identifying forecasts. Period revenue and ARR also need distinct labels; see go-slide-creator-z99un.",
+            "location": "",
+            "source": "host"
+          }
+        ],
+        "verdict": "changes_requested"
+      },
+      "image_verification": {
+        "status": "verified",
+        "method": "render_cache",
+        "verified_slides": 6,
+        "total_slides": 6
+      },
+      "manifest_updated": false,
+      "publishable": false
+    }
+  },
+  "inputs": {
+    "qbr": {
+      "spec": "# Quarterly Business Review — semantic authoring example.\n#\n# This compact semantic spec compiles (via internal/semantic.Compile) to the raw\n# json2pptx PresentationInput model and exercises the MVP slide kinds: title,\n# executive_summary, kpi_snapshot, chart_insight, decision, and closing.\nmeta:\n  title: Q2 FY26 Business Review\n  subtitle: Revenue, Retention, and the Path to H2\n  archetype: qbr\n  template: midnight-blue\n  audience: Executive leadership team\n\nslides:\n  - kind: title\n    title: Q2 FY26 Business Review\n    subtitle: Revenue, Retention, and the Path to H2\n\n  - kind: executive_summary\n    title: Q2 beat plan on revenue, but SMB churn now threatens H2 retention\n    takeaway: Strong top-line growth, but retention needs deliberate investment in H2.\n    points:\n      - Revenue grew 18% QoQ, ahead of plan.\n      - Net revenue retention held at 118%.\n      - SMB logo churn ticked up to 2.4%.\n      - Sales cycle shortened to 41 days.\n\n  - kind: kpi_snapshot\n    title: ARR reached $48M and every metric improved except SMB churn\n    takeaway: Churn is the one number moving the wrong way, and it is concentrated in SMB.\n    source: Internal finance and CRM data, Q2 FY26 close\n    kpis:\n      - { value: \"$48M\", label: \"Annual recurring revenue\" }\n      - { value: \"118%\", label: \"Net revenue retention\" }\n      - { value: \"41d\", label: \"Average sales cycle\" }\n      - { value: \"2.4%\", label: \"Logo churn (SMB-weighted)\" }\n\n  - kind: chart_insight\n    title: Revenue grew 41% this year, with EMEA driving the Q4 step-up\n    insight: Q4 acceleration reflects the EMEA launch landing ahead of schedule.\n    source: Internal finance data, FY26 quarterly close\n    chart:\n      type: bar_chart\n      title: Quarterly revenue ($M)\n      data:\n        categories: [\"Q1\", \"Q2\", \"Q3\", \"Q4\"]\n        series:\n          - name: Revenue\n            values: [34, 40, 44, 48]\n    insights:\n      - Revenue grew 41% across the fiscal year, led by enterprise adoption.\n      - The Q4 step-up reflects the EMEA market launch landing early.\n      - Pipeline coverage points to continued acceleration into H2.\n\n  - kind: decision\n    title: Fund an SMB success pod in Q3 to protect 118% net retention\n    recommendation: Stand up a dedicated SMB customer-success pod in Q3 to arrest churn before it compounds.\n    options:\n      - label: Hold current coverage\n        detail: No new cost, and SMB churn keeps climbing through H2.\n      - label: Fund an SMB success pod\n        detail: Four people from Q3; protects net retention in the segment.\n        recommended: true\n      - label: Offshore SMB support\n        detail: Cheapest per seat, at the expense of response time.\n\n  - kind: closing\n    title: Approve the SMB success pod this month\n    subtitle: \"Protects H2 growth · Owner: VP Customer Success · decision by 31 July\"\n"
+    },
+    "variety": {
+      "spec": {
+        "meta": {
+          "title": "MCP quality probes",
+          "template": "warm-coral",
+          "date": "2 October 2026",
+          "source": "Illustrative test data from MCP examples"
+        },
+        "slides": [
+          {
+            "kind": "title",
+            "subtitle": "Board update, March 2026",
+            "title": "FY26 Growth Plan"
+          },
+          {
+            "criteria": [
+              "Capex",
+              "Payback",
+              "Execution risk",
+              "Customer impact"
+            ],
+            "decisive_criterion": "Payback",
+            "highlight_label": "Recommended",
+            "kind": "option_matrix",
+            "options": [
+              {
+                "detail": "Automate the three largest hubs",
+                "name": "Parcel automation",
+                "scores": [
+                  1,
+                  1,
+                  3,
+                  2
+                ]
+              },
+              {
+                "detail": "Close two hubs, expand one",
+                "name": "Hub consolidation",
+                "scores": [
+                  2,
+                  4,
+                  3,
+                  3
+                ]
+              },
+              {
+                "detail": "Outsource last mile in tier-2 cities",
+                "name": "Partner network",
+                "scores": [
+                  4,
+                  4,
+                  1,
+                  1
+                ]
+              }
+            ],
+            "recommended": "Hub consolidation",
+            "scale": "harvey",
+            "takeaway": "Hub consolidation pays back in two years at acceptable risk.",
+            "title": "Hub consolidation scores best on payback and risk"
+          },
+          {
+            "column_alignments": [
+              "left",
+              "right",
+              "right",
+              "right"
+            ],
+            "headers": [
+              "Segment",
+              "FY25 revenue",
+              "FY26 revenue",
+              "Change"
+            ],
+            "highlight_column": "FY26 revenue",
+            "kind": "table",
+            "rows": [
+              [
+                "Enterprise",
+                "$28.4M",
+                "$41.2M",
+                "+45%"
+              ],
+              [
+                "Mid-market",
+                "$12.1M",
+                "$14.8M",
+                "+22%"
+              ],
+              [
+                "SMB",
+                "$9.6M",
+                "$8.9M",
+                "-7%"
+              ],
+              [
+                "Total",
+                "$50.1M",
+                "$64.9M",
+                "+30%"
+              ]
+            ],
+            "source": "Illustrative test data from MCP examples",
+            "takeaway": "Enterprise added $12.8M; SMB gave back $0.7M.",
+            "title": "Enterprise carried the year; SMB did not",
+            "totals_row": true
+          },
+          {
+            "caption": "FY26, USD millions",
+            "columns": [
+              {
+                "label": "Revenue",
+                "type": "total",
+                "value": 120
+              },
+              {
+                "label": "COGS",
+                "type": "delta",
+                "value": -45
+              },
+              {
+                "label": "Gross profit",
+                "type": "subtotal"
+              },
+              {
+                "label": "OpEx",
+                "type": "delta",
+                "value": -30
+              },
+              {
+                "label": "EBITDA",
+                "type": "total",
+                "value": 45
+              }
+            ],
+            "kind": "bridge",
+            "source": "Illustrative test data from MCP examples",
+            "takeaway": "EBITDA closes at $45m after cost deductions.",
+            "title": "Revenue growth flowed through to EBITDA",
+            "unit": "$m"
+          },
+          {
+            "kind": "timeline",
+            "milestones": [
+              {
+                "body": "The regulator sets the T+1 date.",
+                "date": "Mar 2024",
+                "label": "Mandate published"
+              },
+              {
+                "body": "Board funds the first two waves.",
+                "date": "Sep 2024",
+                "label": "Programme approved"
+              },
+              {
+                "body": "Two of the three clearers migrated.",
+                "date": "Jun 2025",
+                "label": "Wave 1 live"
+              },
+              {
+                "body": "All settlement on the new platform.",
+                "date": "May 2027",
+                "label": "Deadline"
+              }
+            ],
+            "takeaway": "Three years of runway, two of them already spent.",
+            "title": "How we got here"
+          },
+          {
+            "kind": "process",
+            "steps": [
+              "Qualify",
+              "Discover",
+              "Propose",
+              "Close"
+            ],
+            "takeaway": "Discovery is where most deals stall.",
+            "title": "How a deal closes"
+          },
+          {
+            "foundation": "People · Data · Controls",
+            "kind": "pillars",
+            "objective": "Become the trusted settlement platform",
+            "pillars": [
+              {
+                "body": [
+                  "Transparent pricing",
+                  "Operational resilience"
+                ],
+                "title": "Customer trust"
+              },
+              {
+                "body": [
+                  "Weekly releases",
+                  "Shared platform"
+                ],
+                "title": "Product velocity"
+              },
+              {
+                "body": [
+                  "Enterprise focus",
+                  "Measured expansion"
+                ],
+                "title": "Disciplined growth"
+              }
+            ],
+            "takeaway": "The platform strategy rests on trust, speed, and disciplined growth.",
+            "title": "Three pillars support the FY27 plan"
+          },
+          {
+            "actions": [
+              {
+                "action": "Confirm pilot scope and success metrics",
+                "date": "15 Oct",
+                "owner": "COO"
+              },
+              {
+                "action": "Hire the four-person SMB success pod",
+                "date": "31 Oct",
+                "owner": "VP Customer"
+              },
+              {
+                "action": "Report first retention read-out to the board",
+                "date": "Jan board",
+                "owner": "CFO"
+              }
+            ],
+            "decisions": [
+              "Approve the €1.2M pod budget for FY27"
+            ],
+            "kind": "next_steps",
+            "title": "Three actions start the SMB pilot in October"
+          }
+        ]
+      }
+    },
+    "pilot": {
+      "spec": {
+        "meta": {
+          "title": "Service pilot funding",
+          "template": "abstract",
+          "date": "2 October 2026",
+          "source": "Illustrative service-pilot test data"
+        },
+        "slides": [
+          {
+            "kind": "title",
+            "title": "Service pilot funding",
+            "subtitle": "Fictional board decision • October 2026"
+          },
+          {
+            "kind": "chart_insight",
+            "title": "Revenue rose 20% while gross profit stayed flat",
+            "chart": {
+              "type": "bar_chart",
+              "title": "Revenue and gross profit (€m)",
+              "data": {
+                "categories": [
+                  "2024",
+                  "2025"
+                ],
+                "series": [
+                  {
+                    "name": "Revenue",
+                    "values": [
+                      10,
+                      12
+                    ]
+                  },
+                  {
+                    "name": "Gross profit",
+                    "values": [
+                      4.5,
+                      4.56
+                    ]
+                  }
+                ]
+              }
+            },
+            "insights": [
+              "Revenue increased from €10m to €12m.",
+              "Gross margin fell from 45% to 38%.",
+              "Gross profit increased only €0.06m."
+            ],
+            "takeaway": "The service pilot must protect margin as revenue grows."
+          },
+          {
+            "kind": "decision",
+            "title": "Fund an internal team to retain customer relationships",
+            "options": [
+              {
+                "label": "Internal support team",
+                "detail": "€0.8m per year; launch in 6 months.",
+                "recommended": true
+              },
+              {
+                "label": "Outsource support",
+                "detail": "€0.5m per year; launch in 2 months."
+              }
+            ],
+            "recommendation": "Approve the internal-team pilot with a six-month launch window."
+          },
+          {
+            "kind": "next_steps",
+            "title": "Approve funding in November for an April pilot",
+            "actions": [
+              {
+                "action": "Approve the €0.8m annual funding envelope",
+                "owner": "CFO",
+                "date": "Nov 2026"
+              },
+              {
+                "action": "Launch the internal service pilot",
+                "owner": "COO",
+                "date": "Apr 2027"
+              }
+            ],
+            "decisions": [
+              "Approve the internal-team pilot."
+            ]
+          }
+        ]
+      }
+    },
+    "pilot_patch": {
+      "deck_id": "deck_34308b79e33f1d0e712f3412f07ddccc",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/slides/3/title",
+          "value": "The CFO approves funding before the April pilot"
+        }
+      ],
+      "output_filename": "pilot-revised.pptx"
+    }
+  },
+  "pixel_identity": [
+    {
+      "case": "qbr-thumbs",
+      "file_sha256": "f6784284d89b35eb1d9da629d303fafd688d7968c23f30b4c47cc8739d492107",
+      "rgb_sha256": "a94ec66caa1c8a57542e8bdac673755247f18dc0255bd3a58bcecd6525219bac",
+      "size": [
+        1333,
+        750
+      ]
+    },
+    {
+      "case": "qbr-force1",
+      "file_sha256": "6d769e1ee116933a0ff6753db2f1a9fae70b55eb78593ba89b8c0140994949de",
+      "rgb_sha256": "a94ec66caa1c8a57542e8bdac673755247f18dc0255bd3a58bcecd6525219bac",
+      "size": [
+        1333,
+        750
+      ]
+    },
+    {
+      "case": "qbr-force2",
+      "file_sha256": "d7dc10a750497bd922d185e4ba77d23fbc83a9f6e1c850b78e19b9bd152cafe2",
+      "rgb_sha256": "a94ec66caa1c8a57542e8bdac673755247f18dc0255bd3a58bcecd6525219bac",
+      "size": [
+        1333,
+        750
+      ]
+    },
+    {
+      "case": "qbr-force3",
+      "file_sha256": "90a68ef55dc0d8c7f92ebec4acb402191cabbecf74602419f179f00241f4cbee",
+      "rgb_sha256": "a94ec66caa1c8a57542e8bdac673755247f18dc0255bd3a58bcecd6525219bac",
+      "size": [
+        1333,
+        750
+      ]
+    },
+    {
+      "case": "qbr-explicit-thumbs",
+      "file_sha256": "cf8952cecda915dc6a29d86e6a0de543d08430c6ceace4b55bc292bb92d822c1",
+      "rgb_sha256": "a94ec66caa1c8a57542e8bdac673755247f18dc0255bd3a58bcecd6525219bac",
+      "size": [
+        1333,
+        750
+      ]
+    }
+  ],
+  "excluded_findings": [
+    "Initial visual suspicion of number/date/header misalignment was not substantiated: PPTX/PDF coordinates are correct; original and forced renders and autofit variant decode to identical pixels. No alignment or autofit bug filed. PNG byte hashes differ due to metadata, which causes the independently reproduced review-cache failure."
+  ],
+  "visual_observations": {
+    "qbr": "All six slides inspected. No confirmed mechanical defect. Publication withheld for period and measure inconsistency described in z99un.",
+    "variety": "All eight slides inspected: option matrix, native financial table, waterfall, timeline, process, strategy pillars and next steps retained content. Standalone sample collection correctly failed storyline gate because it has no executive summary. Sparse process slide drew SLIDE_UNDERUSED; no new defect filed for deliberate sample density.",
+    "pilot": "All four original and four revised slides inspected. Data labels round 4.56 to 4.6 while prose preserves 0.06 change; factual inputs preserved, no clipping confirmed. Both complete current-revision reviews accepted; old revision rejected after patch."
+  }
+}
