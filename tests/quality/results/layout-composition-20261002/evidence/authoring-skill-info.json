@@ -1,0 +1,2897 @@
+{
+  "tool": {
+    "name": "json2pptx",
+    "version": "dev",
+    "commit": "unknown",
+    "built": "unknown"
+  },
+  "templates": [
+    {
+      "name": "midnight-blue",
+      "aspect_ratio": "16:9",
+      "slide_width_in": 13.333,
+      "slide_height_in": 7.5,
+      "layout_count": 7,
+      "sha256": "64bb8dd9297450f2ba21737168ded9fe4b88182439e2d21614e67eb586a4b689",
+      "metadata_version": "1.0",
+      "theme_colors": {
+        "accent1": "#2E5090",
+        "accent2": "#D4463A",
+        "accent3": "#E8A838",
+        "accent4": "#43A047",
+        "accent5": "#5C6BC0",
+        "accent6": "#26A69A",
+        "dk1": "#000000",
+        "dk2": "#1B2A4A",
+        "folHlink": "#7986CB",
+        "hlink": "#2E5090",
+        "lt1": "#FFFFFF",
+        "lt2": "#E8ECF1"
+      },
+      "color_roles": {
+        "primary_fill": "accent1",
+        "secondary_fill": "accent5",
+        "body_fill": "lt2",
+        "body_text": "dk1",
+        "white_text_safe": [
+          "accent1",
+          "accent5"
+        ],
+        "white_text_safe_body": [
+          "accent1",
+          "accent5"
+        ],
+        "white_text_safe_large": [
+          "accent1",
+          "accent2",
+          "accent4",
+          "accent5"
+        ],
+        "near_background_accents": [],
+        "ink_on_accent": {
+          "accent1": {
+            "ink": "lt1",
+            "ratio": 7.9
+          },
+          "accent2": {
+            "ink": "dk1",
+            "ratio": 4.7
+          },
+          "accent3": {
+            "ink": "dk2",
+            "ratio": 6.8
+          },
+          "accent4": {
+            "ink": "dk1",
+            "ratio": 6.4
+          },
+          "accent5": {
+            "ink": "lt1",
+            "ratio": 4.9
+          },
+          "accent6": {
+            "ink": "dk2",
+            "ratio": 4.7
+          }
+        }
+      },
+      "title_font": "Calibri",
+      "body_font": "Calibri",
+      "body_font_size_pt": 20,
+      "template_body_font_size_pt": 20,
+      "accent_usage_guide": {
+        "accent1": "#2E5090 primary emphasis: headers, bands, key figures; first chart series; carries white text (7.9:1)",
+        "accent2": "#D4463A semantic negative; white text only at 18pt+ or bold; use dk1 ink for body text on it",
+        "accent3": "#E8A838 supporting accent; fails white text: use dk2 ink on fills; weak as text on white",
+        "accent4": "#43A047 semantic positive; white text only at 18pt+ or bold; use dk1 ink for body text on it",
+        "accent5": "#5C6BC0 secondary emphasis: a second category or comparison side; semantic neutral; carries white text (4.9:1)",
+        "accent6": "#26A69A supporting accent; fails white text: use dk2 ink on fills; weak as text on white"
+      },
+      "grid": {
+        "margin_pct": 10.1,
+        "columns": 12,
+        "gutter_pt": 8,
+        "title_gap_pt": 18,
+        "content_frame": {
+          "title_bottom_pt": 133.1,
+          "content_top_pt": 143.8,
+          "left_pt": 97.2,
+          "right_pt": 894
+        }
+      },
+      "semantic_accents": {
+        "negative": "accent2",
+        "neutral": "accent5",
+        "positive": "accent4"
+      },
+      "surface_tints": {
+        "elevated": "lt2",
+        "inverse": "dk2",
+        "paper": "lt1",
+        "subtle": "lt2"
+      },
+      "data_palette": [
+        "accent1",
+        "accent2",
+        "accent3",
+        "accent4",
+        "accent6",
+        "accent5"
+      ],
+      "canonical_layout_ids": {
+        "blank": "slideLayout7",
+        "blank+title": "slideLayout7",
+        "blank-canvas": "slideLayout6",
+        "blank-title": "slideLayout7",
+        "closing": "slideLayout5",
+        "content": "slideLayout2",
+        "section": "slideLayout4",
+        "title": "slideLayout1",
+        "two-column": "slideLayout3",
+        "two-column-narrow-wide": "slideLayout3",
+        "two-column-wide-narrow": "slideLayout3"
+      },
+      "canonical_layout_availability": {
+        "available": [
+          "blank",
+          "blank+title",
+          "blank-canvas",
+          "blank-title",
+          "closing",
+          "content",
+          "section",
+          "title",
+          "two-column",
+          "two-column-narrow-wide",
+          "two-column-wide-narrow"
+        ],
+        "unavailable": [
+          "agenda",
+          "image-left",
+          "image-right",
+          "quote"
+        ]
+      },
+      "canonical_coverage": {
+        "one-content": {
+          "family": "one-content",
+          "present": true,
+          "layouts": [
+            "One Content",
+            "Two Content"
+          ]
+        },
+        "qa-closing": {
+          "family": "qa-closing",
+          "present": true,
+          "layouts": [
+            "Closing"
+          ]
+        },
+        "section-divider": {
+          "family": "section-divider",
+          "present": true,
+          "layouts": [
+            "Section Divider"
+          ]
+        },
+        "title-slide": {
+          "family": "title-slide",
+          "present": true,
+          "layouts": [
+            "Title Slide"
+          ]
+        }
+      },
+      "derivable_layouts": [
+        {
+          "name": "blank-title",
+          "ready": true,
+          "addressable_as": "blank-title",
+          "request_via": "layout_id"
+        },
+        {
+          "name": "comparison",
+          "ready": true,
+          "addressable_as": "two-column",
+          "request_via": "layout_id"
+        },
+        {
+          "name": "full-image",
+          "ready": true,
+          "addressable_as": null,
+          "request_via": "type:image"
+        },
+        {
+          "name": "journey",
+          "ready": true,
+          "addressable_as": null,
+          "request_via": "shape_grid_or_pattern"
+        },
+        {
+          "name": "panel-layout",
+          "ready": true,
+          "addressable_as": null,
+          "request_via": "shape_grid_or_pattern"
+        },
+        {
+          "name": "stat-grid",
+          "ready": true,
+          "addressable_as": null,
+          "request_via": "shape_grid_or_pattern"
+        },
+        {
+          "name": "timeline",
+          "ready": true,
+          "addressable_as": null,
+          "request_via": "shape_grid_or_pattern"
+        },
+        {
+          "name": "two-content",
+          "ready": true,
+          "addressable_as": "two-column",
+          "request_via": "layout_id"
+        }
+      ],
+      "layout_names": [
+        "Title Slide",
+        "One Content",
+        "Two Content",
+        "Section Divider",
+        "Closing",
+        "Blank",
+        "Blank + Title"
+      ],
+      "layout_summaries": [
+        {
+          "id": "slideLayout1",
+          "name": "Title Slide",
+          "canonical_type": "Title Slide",
+          "placeholders": [
+            {
+              "id": "title",
+              "type": "title",
+              "role": "title",
+              "max_chars": 69,
+              "max_chars_per_line": 23
+            },
+            {
+              "id": "subtitle",
+              "type": "subtitle",
+              "role": "subtitle",
+              "max_chars": 108
+            }
+          ]
+        },
+        {
+          "id": "slideLayout2",
+          "name": "One Content",
+          "canonical_type": "One Content",
+          "placeholders": [
+            {
+              "id": "title",
+              "type": "title",
+              "role": "title",
+              "max_chars": 78,
+              "max_chars_per_line": 26
+            },
+            {
+              "id": "body",
+              "type": "body",
+              "role": "body",
+              "max_chars": 472
+            }
+          ]
+        },
+        {
+          "id": "slideLayout3",
+          "name": "Two Content",
+          "canonical_type": "Two Content",
+          "placeholders": [
+            {
+              "id": "title",
+              "type": "title",
+              "role": "title",
+              "max_chars": 78,
+              "max_chars_per_line": 26
+            },
+            {
+              "id": "body",
+              "type": "body",
+              "role": "body",
+              "max_chars": 230
+            },
+            {
+              "id": "body_2",
+              "type": "body",
+              "role": "body",
+              "max_chars": 230
+            }
+          ]
+        },
+        {
+          "id": "slideLayout4",
+          "name": "Section Divider",
+          "canonical_type": "Section Divider",
+          "placeholders": [
+            {
+              "id": "title",
+              "type": "title",
+              "role": "title",
+              "max_chars": 54,
+              "max_chars_per_line": 18
+            },
+            {
+              "id": "Section Number",
+              "type": "body",
+              "auto_filled": true,
+              "role": "section_number",
+              "max_chars": 2
+            }
+          ]
+        },
+        {
+          "id": "slideLayout5",
+          "name": "Closing",
+          "canonical_type": "Closing",
+          "placeholders": [
+            {
+              "id": "title",
+              "type": "title",
+              "role": "title",
+              "max_chars": 69,
+              "max_chars_per_line": 23
+            },
+            {
+              "id": "subtitle",
+              "type": "subtitle",
+              "role": "subtitle",
+              "max_chars": 108
+            }
+          ]
+        },
+        {
+          "id": "slideLayout6",
+          "name": "Blank",
+          "canonical_type": "Blank"
+        },
+        {
+          "id": "slideLayout7",
+          "name": "Blank + Title",
+          "canonical_type": "Blank + Title",
+          "placeholders": [
+            {
+              "id": "title",
+              "type": "title",
+              "role": "title",
+              "max_chars": 78,
+              "max_chars_per_line": 26
+            }
+          ]
+        }
+      ],
+      "table_styles": []
+    }
+  ],
+  "supported_types": {
+    "slide_types": [
+      "title",
+      "content",
+      "two-column",
+      "image",
+      "chart",
+      "comparison",
+      "blank",
+      "section",
+      "diagram"
+    ],
+    "chart_types": [
+      "bar",
+      "line",
+      "pie",
+      "donut",
+      "area",
+      "radar",
+      "scatter",
+      "stacked_bar",
+      "bubble",
+      "stacked_area",
+      "grouped_bar",
+      "waterfall",
+      "funnel",
+      "gauge",
+      "treemap"
+    ],
+    "diagram_types": [
+      "timeline",
+      "process_flow",
+      "pyramid",
+      "venn",
+      "swot",
+      "org_chart",
+      "gantt",
+      "matrix_2x2",
+      "porters_five_forces",
+      "house_diagram",
+      "business_model_canvas",
+      "value_chain",
+      "nine_box_talent",
+      "kpi_dashboard",
+      "heatmap",
+      "fishbone",
+      "pestel",
+      "panel_layout",
+      "icon_columns",
+      "icon_rows",
+      "stat_cards"
+    ],
+    "chart_capabilities": [
+      {
+        "type": "bar",
+        "max_series": 50,
+        "max_points": 5000,
+        "max_categories": 200,
+        "supports_negatives": true,
+        "supports_log_scale": true,
+        "label_strategy": "labelled by default up to 16 bars: a value on every bar, no value axis or gridlines, a thin zero baseline (style.show_values:false or data.data_labels:false opts out); single-series non-time, non-ordinal categories sort descending (data.sort: desc|asc|none); category labels adapt: shrink→two-line wrap→rotate up to 90°→bounded ellipsis; never thin nominal categories",
+        "density_behavior": "category names over ~14 characters or a ranking read best as data.orientation \"horizontal\" (names in a left column, values past the bar ends); crowded categories recommend horizontal-bar-with-callouts or split; values spanning 1000x or more stay on a linear axis with value labels and report chart.wide_range_linear — log scale only when style.scale is \"log\", and a log axis is visibly titled \"log scale\"",
+        "status": "ready",
+        "authoring_surface": "svggen",
+        "aliases": [
+          "bar_chart"
+        ]
+      },
+      {
+        "type": "grouped_bar",
+        "max_series": 50,
+        "max_points": 5000,
+        "max_categories": 200,
+        "supports_negatives": true,
+        "supports_log_scale": true,
+        "label_strategy": "labelled by default up to 16 bars (categories x series); data.highlight names the series the slide is about (others turn neutral grey); data.orientation \"horizontal\" and data.sort available; category labels adapt: shrink→two-line wrap→rotate up to 90°→bounded ellipsis; never thin nominal categories",
+        "density_behavior": "crowded categories recommend horizontal-bar-with-callouts or split; values spanning 1000x or more stay on a linear axis with value labels and report chart.wide_range_linear — log scale only when style.scale is \"log\", and a log axis is visibly titled \"log scale\"",
+        "status": "ready",
+        "authoring_surface": "svggen",
+        "aliases": [
+          "grouped_bar_chart"
+        ]
+      },
+      {
+        "type": "stacked_bar",
+        "max_series": 50,
+        "max_points": 5000,
+        "max_categories": 200,
+        "supports_negatives": true,
+        "supports_log_scale": false,
+        "label_strategy": "segment labels (\u003e=10pt, the chart value format, dropped when a segment cannot hold them) plus a bold total above each stack, on by default up to 16 segments; data.data_labels:false drops both; category labels adapt: shrink→two-line wrap→rotate up to 90°→bounded ellipsis; never thin nominal categories",
+        "density_behavior": "crowded categories recommend horizontal-bar-with-callouts or split; log-scale disabled for stacked",
+        "status": "ready",
+        "authoring_surface": "svggen",
+        "aliases": [
+          "bar-stacked",
+          "stacked_bar_chart"
+        ]
+      },
+      {
+        "type": "line",
+        "max_series": 50,
+        "max_points": 5000,
+        "max_categories": 200,
+        "supports_negatives": true,
+        "supports_log_scale": false,
+        "label_strategy": "single-series lines up to 12 points carry value labels by default and then drop gridlines and value-axis ticks; data.highlight names the series the slide is about (accent1 2pt, labelled at its end; others dk1 38% 1pt without markers); markers drop when points x series \u003e 12; category labels adapt: shrink→two-line wrap→rotate up to 90°→bounded ellipsis; never thin nominal categories",
+        "density_behavior": "crowded categories recommend horizontal-bar-with-callouts or split",
+        "status": "ready",
+        "authoring_surface": "svggen",
+        "aliases": [
+          "line_chart"
+        ]
+      },
+      {
+        "type": "area",
+        "max_series": 50,
+        "max_points": 5000,
+        "max_categories": 200,
+        "supports_negatives": true,
+        "supports_log_scale": false,
+        "label_strategy": "single-series areas up to 12 points carry value labels by default and then drop gridlines and value-axis ticks; data.highlight names the series the slide is about; category labels adapt: shrink→two-line wrap→rotate up to 90°→bounded ellipsis; never thin nominal categories",
+        "density_behavior": "crowded categories recommend horizontal-bar-with-callouts or split",
+        "status": "ready",
+        "authoring_surface": "svggen",
+        "aliases": [
+          "area_chart"
+        ]
+      },
+      {
+        "type": "stacked_area",
+        "max_series": 50,
+        "max_points": 5000,
+        "max_categories": 200,
+        "supports_negatives": true,
+        "supports_log_scale": false,
+        "label_strategy": "adapt: shrink→two-line wrap→rotate up to 90°→bounded ellipsis; never thin nominal categories",
+        "density_behavior": "crowded categories recommend horizontal-bar-with-callouts or split; log-scale disabled for stacked",
+        "status": "ready",
+        "authoring_surface": "svggen",
+        "aliases": [
+          "stacked_area_chart"
+        ]
+      },
+      {
+        "type": "pie",
+        "max_series": 1,
+        "max_points": 5000,
+        "max_categories": 200,
+        "supports_negatives": false,
+        "supports_log_scale": false,
+        "label_strategy": "slices sorted largest-first clockwise from 12 o'clock (data.sort none keeps the authored order); up to 6 slices: direct \"Name NN%\" outside labels and no legend (style.show_legend forces it); above 6: legend plus outside pct labels; neighbouring outside labels are spread apart with leader lines so none overlap; data.highlight paints the named slices accent1 and the rest grey",
+        "density_behavior": "slices under 3% fold into one \"Other\" slice when two or more qualify (data.group_small_below_pct; 0 never folds); more than 7 slices raises CHART_OVERLOADED — use a bar chart; dynamic radius scaling for label fit; legend overflow capped at 45% height",
+        "status": "ready",
+        "authoring_surface": "svggen",
+        "aliases": [
+          "pie_chart"
+        ]
+      },
+      {
+        "type": "donut",
+        "max_series": 1,
+        "max_points": 5000,
+        "max_categories": 200,
+        "supports_negatives": false,
+        "supports_log_scale": false,
+        "label_strategy": "slices sorted largest-first clockwise from 12 o'clock (data.sort none keeps the authored order); up to 6 slices: direct \"Name NN%\" outside labels and no legend (style.show_legend forces it); above 6: legend plus outside pct labels; neighbouring outside labels are spread apart with leader lines so none overlap; data.highlight paints the named slices accent1 and the rest grey",
+        "density_behavior": "slices under 3% fold into one \"Other\" slice when two or more qualify (data.group_small_below_pct; 0 never folds); more than 7 slices raises CHART_OVERLOADED — use a bar chart; dynamic radius scaling for label fit; legend overflow capped at 45% height",
+        "status": "ready",
+        "authoring_surface": "svggen",
+        "aliases": [
+          "donut_chart"
+        ]
+      },
+      {
+        "type": "scatter",
+        "max_series": 50,
+        "max_points": 5000,
+        "max_categories": 200,
+        "supports_negatives": true,
+        "supports_log_scale": false,
+        "label_strategy": "point labels placed around the point (right, above, left, below) against a chart-wide collision set; font and length reduced from 10 labelled points. ABOVE 15 LABELLED POINTS NO LABELS ARE DRAWN — the labels would cover the plot — and chart.scatter_label_skipped says how many were dropped; set style.show_values to force them",
+        "density_behavior": "labels clamped to viewBox; no truncation. Past 15 labelled points the labels are dropped rather than overlaid — label the points that matter",
+        "status": "ready",
+        "authoring_surface": "svggen",
+        "aliases": [
+          "scatter_chart"
+        ]
+      },
+      {
+        "type": "bubble",
+        "max_series": 50,
+        "max_points": 5000,
+        "max_categories": 200,
+        "supports_negatives": true,
+        "supports_log_scale": false,
+        "label_strategy": "point labels placed around the bubble against a chart-wide collision set; font and length reduced from 10 labelled points. ABOVE 15 LABELLED POINTS NO LABELS ARE DRAWN and chart.scatter_label_skipped says how many were dropped; set style.show_values to force them",
+        "density_behavior": "bubble size range 4-20pt; labels clamped to viewBox. Past 15 labelled bubbles the labels are dropped rather than overlaid",
+        "status": "ready",
+        "authoring_surface": "svggen",
+        "aliases": [
+          "bubble_chart"
+        ]
+      },
+      {
+        "type": "radar",
+        "max_series": 50,
+        "max_points": 5000,
+        "max_categories": 200,
+        "supports_negatives": false,
+        "supports_log_scale": false,
+        "label_strategy": "radial axis labels; word-split; min 8pt font",
+        "density_behavior": "radius reduced at 8/12/16+ axes (80%/65%/60% of max)",
+        "status": "ready",
+        "authoring_surface": "svggen",
+        "aliases": [
+          "radar_chart"
+        ]
+      },
+      {
+        "type": "waterfall",
+        "max_series": 1,
+        "max_points": 5000,
+        "max_categories": 200,
+        "supports_negatives": true,
+        "supports_log_scale": false,
+        "label_strategy": "value on every bar; decreases accent1 (bold labels), increases a legible accent1 tint or shade (\u003e=3:1 on the background), totals dk1 60%; category labels adapt: shrink→two-line wrap→rotate up to 90°→bounded ellipsis; never thin nominal categories",
+        "density_behavior": "adaptive font 6+ points; broken-axis zoom; crowded categories recommend horizontal-bar-with-callouts or split",
+        "status": "ready",
+        "authoring_surface": "svggen"
+      },
+      {
+        "type": "funnel",
+        "max_series": 1,
+        "max_points": 5000,
+        "max_categories": 200,
+        "supports_negatives": false,
+        "supports_log_scale": false,
+        "label_strategy": "inside labels, each with its stage-to-stage conversion (\"25% of Visitors\") beneath it; overflow to external right-side labels with connectors. show_conversion:false drops the conversion line",
+        "density_behavior": "adaptive font+gap at 6+ segments (floor 7pt); plot area shrunk for external labels. Stage width is CLAMPED by default — interpolated between a 25%-of-plot floor and the full width — so a funnel spanning orders of magnitude does not end in a 2px stick; width_mode: proportional|equal|clamped. Stages take a single-hue ramp of accent1, not the categorical rotation, so no stage is painted in the template's alert red",
+        "status": "ready",
+        "authoring_surface": "svggen",
+        "aliases": [
+          "funnel_chart"
+        ]
+      },
+      {
+        "type": "gauge",
+        "max_series": 1,
+        "max_points": 1,
+        "max_categories": 1,
+        "supports_negatives": true,
+        "supports_log_scale": false,
+        "label_strategy": "radial tick labels; center value label",
+        "density_behavior": "single value display; threshold zones for context",
+        "status": "ready",
+        "authoring_surface": "svggen",
+        "aliases": [
+          "gauge_chart"
+        ]
+      },
+      {
+        "type": "treemap",
+        "max_series": 1,
+        "max_points": 5000,
+        "max_categories": 200,
+        "supports_negatives": false,
+        "supports_log_scale": false,
+        "label_strategy": "name plus formatted value (with its share of the whole when values are not already shares of 100) centred in each cell by default, ink measured against the cell fill; style.show_values:false or data.data_labels:false shows names only; omitted if cell \u003c LabelMinSize (12pt)",
+        "density_behavior": "squarify layout; labels hidden for small cells; recursive nesting supported",
+        "status": "ready",
+        "authoring_surface": "svggen",
+        "aliases": [
+          "treemap_chart"
+        ]
+      }
+    ],
+    "diagram_capabilities": [
+      {
+        "type": "timeline",
+        "max_nodes": 7,
+        "max_depth": 1,
+        "overflow_behavior": "all stops are laid out; past max_nodes the stops compress and labels shorten — split across slides to keep them legible",
+        "required_fields": [
+          "events"
+        ],
+        "optional_fields": [
+          "activities",
+          "milestones",
+          "show_today",
+          "time_unit",
+          "date",
+          "body",
+          "accent",
+          "connector"
+        ],
+        "status": "ready",
+        "authoring_surface": "svggen"
+      },
+      {
+        "type": "process_flow",
+        "max_nodes": 50,
+        "max_depth": 1,
+        "overflow_behavior": "font reduction for density",
+        "required_fields": [
+          "steps"
+        ],
+        "optional_fields": [
+          "description",
+          "connections"
+        ],
+        "status": "ready",
+        "authoring_surface": "native_ooxml"
+      },
+      {
+        "type": "pyramid",
+        "max_nodes": 20,
+        "max_depth": 1,
+        "overflow_behavior": "error if \u003e20 levels; font reduction at 8+",
+        "required_fields": [
+          "levels"
+        ],
+        "optional_fields": [
+          "description",
+          "gap",
+          "top_width_ratio"
+        ],
+        "status": "ready",
+        "authoring_surface": "native_ooxml"
+      },
+      {
+        "type": "venn",
+        "max_nodes": 3,
+        "max_depth": 1,
+        "overflow_behavior": "text wrapping and truncation within circles",
+        "required_fields": [
+          "circles"
+        ],
+        "optional_fields": [
+          "intersections",
+          "circle_opacity",
+          "overlap_ratio"
+        ],
+        "status": "ready",
+        "authoring_surface": "svggen"
+      },
+      {
+        "type": "swot",
+        "max_nodes": 4,
+        "max_depth": 1,
+        "overflow_behavior": "font reduction for dense bullet lists",
+        "required_fields": [
+          "strengths",
+          "weaknesses",
+          "opportunities",
+          "threats"
+        ],
+        "optional_fields": [
+          "footnote"
+        ],
+        "status": "ready",
+        "authoring_surface": "native_ooxml"
+      },
+      {
+        "type": "org_chart",
+        "max_nodes": 50,
+        "max_depth": 20,
+        "overflow_behavior": "siblings \u003e9 collapsed to +N more indicator; deepest level pruned when boxes would fall below the legible minimum (reported as diagram.org_chart_depth_pruned, with the remaining parent showing '+N reports' under its own title) — max_nodes is a ceiling, not a guarantee, and a deep tree hits the depth prune well below it",
+        "required_fields": [
+          "root"
+        ],
+        "optional_fields": [
+          "title",
+          "children",
+          "node_width",
+          "node_height",
+          "max_visible_siblings"
+        ],
+        "status": "ready",
+        "authoring_surface": "svggen",
+        "aliases": [
+          "org",
+          "orgchart"
+        ]
+      },
+      {
+        "type": "gantt",
+        "max_nodes": 50,
+        "max_depth": 1,
+        "overflow_behavior": "font reduction; task name truncation with ellipsis",
+        "required_fields": [
+          "tasks"
+        ],
+        "optional_fields": [
+          "milestones",
+          "time_unit",
+          "show_progress",
+          "footnote"
+        ],
+        "status": "ready",
+        "authoring_surface": "svggen"
+      },
+      {
+        "type": "matrix_2x2",
+        "max_nodes": 4,
+        "max_depth": 1,
+        "overflow_behavior": "fixed 2x2 grid; body text truncated at 200 chars. In numeric points mode, quadrant captions reserve collision space; a point that would cover one is moved just below it with diagram.text_overlap warning, so check exact y-position evidence. For named items without numeric coordinates, use the native matrix-2x2 pattern or quadrant lists.",
+        "required_fields": null,
+        "optional_fields": [
+          "x_axis_label",
+          "y_axis_label",
+          "top_left",
+          "top_right",
+          "bottom_left",
+          "bottom_right",
+          "highlight_quadrant"
+        ],
+        "status": "ready",
+        "authoring_surface": "svggen",
+        "aliases": [
+          "matrix"
+        ]
+      },
+      {
+        "type": "porters_five_forces",
+        "max_nodes": 5,
+        "max_depth": 1,
+        "overflow_behavior": "fixed 5-force layout; text wrapping within force regions. A force with no intensity is drawn unscored — neutral surface, no intensity line — rather than defaulting to Medium (50%)",
+        "required_fields": null,
+        "optional_fields": [
+          "industry_name",
+          "forces",
+          "rivalry",
+          "new_entrants",
+          "substitutes",
+          "suppliers",
+          "buyers"
+        ],
+        "status": "ready",
+        "authoring_surface": "native_ooxml"
+      },
+      {
+        "type": "house_diagram",
+        "max_nodes": 10,
+        "max_depth": 1,
+        "overflow_behavior": "font reduction for dense sections",
+        "required_fields": null,
+        "optional_fields": [
+          "roof",
+          "sections",
+          "foundation",
+          "footnote"
+        ],
+        "status": "ready",
+        "authoring_surface": "native_ooxml"
+      },
+      {
+        "type": "business_model_canvas",
+        "max_nodes": 9,
+        "max_depth": 1,
+        "overflow_behavior": "fixed 9-cell layout; 1-10 bullets per section; items \u003e200 chars truncated",
+        "required_fields": [
+          "key_partners",
+          "key_activities",
+          "key_resources",
+          "value_propositions",
+          "customer_relations",
+          "channels",
+          "customer_segments",
+          "cost_structure",
+          "revenue_streams"
+        ],
+        "optional_fields": null,
+        "status": "ready",
+        "authoring_surface": "native_ooxml"
+      },
+      {
+        "type": "value_chain",
+        "max_nodes": 20,
+        "max_depth": 1,
+        "overflow_behavior": "font reduction for many items",
+        "required_fields": null,
+        "optional_fields": [
+          "primary",
+          "support",
+          "margin_label",
+          "show_arrows"
+        ],
+        "status": "ready",
+        "authoring_surface": "native_ooxml"
+      },
+      {
+        "type": "nine_box_talent",
+        "max_nodes": 50,
+        "max_depth": 1,
+        "overflow_behavior": "dot collision; text truncation for overlapping badges",
+        "required_fields": null,
+        "optional_fields": [
+          "employees",
+          "cells",
+          "title",
+          "x_label",
+          "y_label",
+          "x_axis_label",
+          "y_axis_label",
+          "x_axis_labels",
+          "y_axis_labels"
+        ],
+        "status": "ready",
+        "authoring_surface": "native_ooxml"
+      },
+      {
+        "type": "kpi_dashboard",
+        "max_nodes": 12,
+        "max_depth": 1,
+        "overflow_behavior": "card grid layout; font reduction for many metrics. max_nodes IS enforced: metrics past it are dropped and reported as CONTENT_DROPPED naming how many",
+        "required_fields": [
+          "metrics"
+        ],
+        "optional_fields": [
+          "label",
+          "value",
+          "unit",
+          "change",
+          "trend"
+        ],
+        "status": "ready",
+        "authoring_surface": "native_ooxml"
+      },
+      {
+        "type": "heatmap",
+        "max_nodes": 200,
+        "max_depth": 1,
+        "overflow_behavior": "cell labels omitted when cells too small",
+        "required_fields": [
+          "values"
+        ],
+        "optional_fields": [
+          "row_labels",
+          "col_labels",
+          "color_scale"
+        ],
+        "status": "ready",
+        "authoring_surface": "native_ooxml"
+      },
+      {
+        "type": "fishbone",
+        "max_nodes": 10,
+        "max_depth": 2,
+        "overflow_behavior": "categories \u003e10 collapsed to overflow indicator",
+        "required_fields": [
+          "effect"
+        ],
+        "optional_fields": [
+          "categories"
+        ],
+        "status": "ready",
+        "authoring_surface": "svggen"
+      },
+      {
+        "type": "pestel",
+        "max_nodes": 6,
+        "max_depth": 1,
+        "overflow_behavior": "fixed 6-segment layout",
+        "required_fields": null,
+        "optional_fields": [
+          "political",
+          "economic",
+          "social",
+          "technological",
+          "environmental",
+          "legal"
+        ],
+        "status": "ready",
+        "authoring_surface": "native_ooxml"
+      },
+      {
+        "type": "panel_layout",
+        "max_nodes": 12,
+        "max_depth": 1,
+        "overflow_behavior": "font reduction for many panels",
+        "required_fields": [
+          "panels"
+        ],
+        "optional_fields": [
+          "layout",
+          "title",
+          "body",
+          "icon",
+          "color"
+        ],
+        "status": "ready",
+        "authoring_surface": "native_ooxml"
+      },
+      {
+        "type": "icon_columns",
+        "max_nodes": 5,
+        "max_depth": 1,
+        "overflow_behavior": "font reduction for many panels",
+        "required_fields": [
+          "panels"
+        ],
+        "optional_fields": [
+          "title",
+          "body",
+          "icon",
+          "color"
+        ],
+        "status": "ready",
+        "authoring_surface": "native_ooxml"
+      },
+      {
+        "type": "icon_rows",
+        "max_nodes": 5,
+        "max_depth": 1,
+        "overflow_behavior": "font reduction for many panels",
+        "required_fields": [
+          "panels"
+        ],
+        "optional_fields": [
+          "title",
+          "body",
+          "icon",
+          "color"
+        ],
+        "status": "ready",
+        "authoring_surface": "native_ooxml"
+      },
+      {
+        "type": "stat_cards",
+        "max_nodes": 4,
+        "max_depth": 1,
+        "overflow_behavior": "fixed 3-4 card layout",
+        "required_fields": [
+          "panels"
+        ],
+        "optional_fields": [
+          "title",
+          "value",
+          "icon",
+          "color"
+        ],
+        "status": "ready",
+        "authoring_surface": "native_ooxml"
+      }
+    ],
+    "grid_cell_types": [
+      "shape",
+      "table",
+      "icon",
+      "image",
+      "diagram",
+      "composite"
+    ],
+    "shape_geometries": [
+      "accentBorderCallout1",
+      "accentBorderCallout2",
+      "accentBorderCallout3",
+      "accentCallout1",
+      "accentCallout2",
+      "accentCallout3",
+      "actionButtonBackPrevious",
+      "actionButtonBeginning",
+      "actionButtonBlank",
+      "actionButtonDocument",
+      "actionButtonEnd",
+      "actionButtonForwardNext",
+      "actionButtonHelp",
+      "actionButtonHome",
+      "actionButtonInformation",
+      "actionButtonMovie",
+      "actionButtonReturn",
+      "actionButtonSound",
+      "arc",
+      "bentArrow",
+      "bentUpArrow",
+      "bevel",
+      "blockArc",
+      "borderCallout1",
+      "borderCallout2",
+      "borderCallout3",
+      "bracePair",
+      "bracketPair",
+      "callout1",
+      "callout2",
+      "callout3",
+      "can",
+      "chartPlus",
+      "chartStar",
+      "chartX",
+      "chevron",
+      "chord",
+      "circularArrow",
+      "cloud",
+      "cloudCallout",
+      "corner",
+      "cornerTabs",
+      "cross",
+      "cube",
+      "curvedDownArrow",
+      "curvedLeftArrow",
+      "curvedRightArrow",
+      "curvedUpArrow",
+      "decagon",
+      "diagStripe",
+      "diamond",
+      "dodecagon",
+      "donut",
+      "doubleWave",
+      "downArrow",
+      "downArrowCallout",
+      "ellipse",
+      "flowChartAlternateProcess",
+      "flowChartCollate",
+      "flowChartConnector",
+      "flowChartDecision",
+      "flowChartDelay",
+      "flowChartDisplay",
+      "flowChartDocument",
+      "flowChartExtract",
+      "flowChartInputOutput",
+      "flowChartInternalStorage",
+      "flowChartMagneticDisk",
+      "flowChartMagneticDrum",
+      "flowChartMagneticTape",
+      "flowChartManualInput",
+      "flowChartManualOperation",
+      "flowChartMerge",
+      "flowChartMultidocument",
+      "flowChartOfflineStorage",
+      "flowChartOffpageConnector",
+      "flowChartOnlineStorage",
+      "flowChartOr",
+      "flowChartPredefinedProcess",
+      "flowChartPreparation",
+      "flowChartProcess",
+      "flowChartPunchedCard",
+      "flowChartPunchedTape",
+      "flowChartSort",
+      "flowChartSummingJunction",
+      "flowChartTerminator",
+      "foldedCorner",
+      "frame",
+      "funnel",
+      "gear6",
+      "gear9",
+      "halfFrame",
+      "heart",
+      "heptagon",
+      "hexagon",
+      "homePlate",
+      "horizontalScroll",
+      "irregularSeal1",
+      "irregularSeal2",
+      "leftArrow",
+      "leftArrowCallout",
+      "leftBrace",
+      "leftBracket",
+      "leftCircularArrow",
+      "leftRightArrow",
+      "leftRightArrowCallout",
+      "leftRightCircularArrow",
+      "leftRightUpArrow",
+      "leftUpArrow",
+      "lightningBolt",
+      "line",
+      "lineInv",
+      "mathDivide",
+      "mathEqual",
+      "mathMinus",
+      "mathMultiply",
+      "mathNotEqual",
+      "mathPlus",
+      "moon",
+      "noSmoking",
+      "nonIsoscelesTrapezoid",
+      "notchedRightArrow",
+      "octagon",
+      "parallelogram",
+      "pentagon",
+      "pie",
+      "pieWedge",
+      "plaque",
+      "plaqueTabs",
+      "plus",
+      "quadArrow",
+      "quadArrowCallout",
+      "rect",
+      "ribbon",
+      "ribbon2",
+      "rightArrow",
+      "rightArrowCallout",
+      "rightBrace",
+      "rightBracket",
+      "round1Rect",
+      "round2DiagRect",
+      "round2SameRect",
+      "roundRect",
+      "rtTriangle",
+      "smileyFace",
+      "snip1Rect",
+      "snip2DiagRect",
+      "snip2SameRect",
+      "snipRoundRect",
+      "squareTabs",
+      "star10",
+      "star12",
+      "star16",
+      "star24",
+      "star32",
+      "star4",
+      "star5",
+      "star6",
+      "star7",
+      "star8",
+      "stripedRightArrow",
+      "sun",
+      "swooshArrow",
+      "teardrop",
+      "trapezoid",
+      "triangle",
+      "upArrow",
+      "upArrowCallout",
+      "upDownArrow",
+      "upDownArrowCallout",
+      "uturnArrow",
+      "verticalScroll",
+      "wave",
+      "wedgeEllipseCallout",
+      "wedgeRectCallout",
+      "wedgeRoundRectCallout"
+    ],
+    "data_format_hints": {
+      "area": {
+        "required_keys": [
+          "categories",
+          "series"
+        ],
+        "optional_keys": [
+          "colors",
+          "x_label",
+          "y_label",
+          "annotations",
+          "data_labels",
+          "highlight"
+        ],
+        "description": "categories: string array; series: [{name, values: number[]}]"
+      },
+      "bar": {
+        "required_keys": [
+          "categories",
+          "series"
+        ],
+        "optional_keys": [
+          "colors",
+          "x_label",
+          "y_label",
+          "annotations",
+          "data_labels",
+          "highlight",
+          "sort",
+          "orientation"
+        ],
+        "description": "categories: string array; series: [{name, values: number[]}]. Up to 16 bars are labelled by default (value on each bar, no value axis or gridlines; data_labels: false or style.show_values: false opts out). sort: desc|asc|none (default desc for a single series of non-time, non-ordinal categories). orientation: \"horizontal\" for rankings or category names over ~14 characters. highlight: category indices or names painted accent1 (single series)."
+      },
+      "bubble": {
+        "required_keys": [
+          "series"
+        ],
+        "optional_keys": [
+          "colors",
+          "x_label",
+          "y_label"
+        ],
+        "description": "series: [{name, points: [{x, y, size, label?}]}]"
+      },
+      "business_model_canvas": {
+        "required_keys": [
+          "key_partners",
+          "key_activities",
+          "key_resources",
+          "value_propositions",
+          "customer_relations",
+          "channels",
+          "customer_segments",
+          "cost_structure",
+          "revenue_streams"
+        ],
+        "description": "9 BMC sections, each a string[] (e.g., key_partners: [\"Partner A\", \"Partner B\"])"
+      },
+      "donut": {
+        "required_keys": [
+          "values"
+        ],
+        "optional_keys": [
+          "categories",
+          "colors",
+          "highlight",
+          "sort",
+          "group_small_below_pct"
+        ],
+        "description": "values: number[]; categories: string[] for slice labels. Same defaults as pie: sorted largest-first, direct \"Name NN%\" labels up to 6 slices, small slices folded into \"Other\", highlight for the slice the slide is about."
+      },
+      "fishbone": {
+        "required_keys": [
+          "effect"
+        ],
+        "optional_keys": [
+          "categories"
+        ],
+        "description": "effect: string (problem label); categories: [{name, causes: string[]}]"
+      },
+      "funnel": {
+        "required_keys": [
+          "values"
+        ],
+        "optional_keys": [
+          "categories",
+          "neck_width",
+          "gap",
+          "show_percentage",
+          "show_conversion"
+        ],
+        "description": "values: [{label, value}] or number[] with categories for labels; show_percentage adds percent of the largest stage (the first stage in a narrowing funnel; default false), show_conversion adds stage-to-stage percent (default true); set both false to suppress percentages"
+      },
+      "gantt": {
+        "required_keys": [
+          "tasks"
+        ],
+        "optional_keys": [
+          "milestones",
+          "time_unit",
+          "show_progress",
+          "footnote"
+        ],
+        "description": "tasks: [{id, label, start_date, end_date, progress?, group?}]; milestones: [{id, label, date}]"
+      },
+      "gauge": {
+        "required_keys": [
+          "value"
+        ],
+        "optional_keys": [
+          "min",
+          "max",
+          "thresholds",
+          "label",
+          "unit"
+        ],
+        "description": "value: number; min/max: number; thresholds: [{value, color, label}]"
+      },
+      "grouped_bar": {
+        "required_keys": [
+          "categories",
+          "series"
+        ],
+        "optional_keys": [
+          "colors",
+          "x_label",
+          "y_label",
+          "annotations",
+          "data_labels",
+          "highlight",
+          "sort",
+          "orientation"
+        ],
+        "description": "categories: string[]; series: [{name, values: number[]}] (min 2 series). highlight: the series the slide is about (others grey); orientation: \"horizontal\"; sort: desc|asc|none by category total."
+      },
+      "heatmap": {
+        "required_keys": [
+          "values"
+        ],
+        "optional_keys": [
+          "row_labels",
+          "col_labels",
+          "color_scale"
+        ],
+        "description": "values: number[][] (2D array); row_labels/col_labels: string[]; color_scale: sequential (default), diverging, or red"
+      },
+      "house_diagram": {
+        "required_keys": [],
+        "optional_keys": [
+          "roof",
+          "sections",
+          "floors",
+          "foundation",
+          "footnote"
+        ],
+        "description": "roof: string or {label, color}; sections: [{label, items?, color?}]; foundation: string or {label, color}"
+      },
+      "icon_columns": {
+        "required_keys": [
+          "panels"
+        ],
+        "optional_keys": [
+          "gap",
+          "icon_size"
+        ],
+        "description": "panels: [{title, body, icon?, color?}] — panel_layout with layout \"columns\"; one column per panel, icon above the title"
+      },
+      "icon_rows": {
+        "required_keys": [
+          "panels"
+        ],
+        "optional_keys": [
+          "gap",
+          "icon_size"
+        ],
+        "description": "panels: [{title, body, icon?, color?}] — panel_layout with layout \"rows\"; one full-width row per panel, icon beside the title"
+      },
+      "kpi_dashboard": {
+        "required_keys": [
+          "metrics"
+        ],
+        "optional_keys": [
+          "gap",
+          "max_columns"
+        ],
+        "description": "metrics: [{label, value, unit?, change?, trend?}] (alias: kpis)"
+      },
+      "line": {
+        "required_keys": [
+          "series"
+        ],
+        "optional_keys": [
+          "categories",
+          "colors",
+          "x_label",
+          "y_label",
+          "annotations",
+          "data_labels",
+          "highlight"
+        ],
+        "description": "series: [{name, values: number[]}]; categories required unless series contain time_strings or time_values. highlight: the series (names or indices) the slide is about — kept in accent1 and labelled at the line end, the rest grey context (defaults to the one series the slide title names). A single series up to 12 points is labelled by default; markers drop past 12 points."
+      },
+      "matrix_2x2": {
+        "required_keys": [],
+        "optional_keys": [
+          "points",
+          "quadrants",
+          "x_axis_label",
+          "y_axis_label",
+          "quadrant_labels",
+          "x_min",
+          "x_max",
+          "y_min",
+          "y_max"
+        ],
+        "description": "points: [{label, x, y, size?, color?}] with x/y on a 0-100 scale by default (origin bottom-left; quadrant split at 50, NOT 0-1) — override the range with x_min/x_max/y_min/y_max (set max=1 to use 0-1 coords); OR quadrants: [{position: \"top-left\"|\"top-right\"|\"bottom-left\"|\"bottom-right\", title, items}] for coordinate-free placement"
+      },
+      "nine_box_talent": {
+        "required_keys": [],
+        "optional_keys": [
+          "employees",
+          "cells",
+          "x_axis_label",
+          "y_axis_label",
+          "x_axis_labels",
+          "y_axis_labels"
+        ],
+        "description": "employees: [{name, performance, potential}] where performance/potential are \"low\"|\"medium\"|\"high\" strings (NOT 1-3 numbers) — performance picks column (low=left), potential picks row (high=top); OR cells: [{position: {row, col} 0-2 (row 0=top/high potential, col 0=left/low performance), label?, items: string[] or [{name}]}]"
+      },
+      "org_chart": {
+        "required_keys": [
+          "root"
+        ],
+        "optional_keys": [
+          "node_width",
+          "node_height"
+        ],
+        "description": "root: {name, title, children?: [{name, title, children?}...]}"
+      },
+      "panel_layout": {
+        "required_keys": [
+          "panels"
+        ],
+        "optional_keys": [
+          "layout",
+          "gap",
+          "icon_size"
+        ],
+        "description": "panels: [{title, body, icon?, color?}]; layout: \"columns\"|\"rows\"|\"stat_cards\"|\"stylish_panels\" (inside data). In stat_cards the NUMBER is the hero: an explicit value wins, otherwise a short body carrying a digit (\"EUR 184m\") is drawn large with title as its caption; a prose body stays small under the title"
+      },
+      "pestel": {
+        "required_keys": [],
+        "optional_keys": [
+          "segments",
+          "political",
+          "economic",
+          "social",
+          "technological",
+          "environmental",
+          "legal"
+        ],
+        "description": "segments: [{name, items: string[]}] or individual keys (political, economic, etc.): string[]"
+      },
+      "pie": {
+        "required_keys": [
+          "values"
+        ],
+        "optional_keys": [
+          "categories",
+          "colors",
+          "highlight",
+          "sort",
+          "group_small_below_pct"
+        ],
+        "description": "values: number[]; categories: string[] for slice labels. Slices sort largest-first (sort: none keeps the authored order); up to 6 slices are labelled \"Name NN%\" with no legend; slices under 3% fold into \"Other\" when two or more qualify (group_small_below_pct, 0 = never); highlight paints the named slices accent1 and the rest grey. More than 7 slices: use a bar chart."
+      },
+      "porters_five_forces": {
+        "required_keys": [],
+        "optional_keys": [
+          "forces",
+          "industry_name",
+          "rivalry",
+          "new_entrants",
+          "substitutes",
+          "suppliers",
+          "buyers"
+        ],
+        "description": "forces: [{type: \"rivalry\"|\"new_entrants\"|\"substitutes\"|\"suppliers\"|\"buyers\" (canonical only in array form), label?, intensity: 0.0-1.0, factors?: string[], description?}]; OR object-keyed: top-level force keys (rivalry/new_entrants/substitutes/supplier_power/buyer_power, synonyms accepted) each {label?, intensity: 0.0-1.0, description?|factors?}; industry_name: string"
+      },
+      "process_flow": {
+        "required_keys": [
+          "steps"
+        ],
+        "optional_keys": [
+          "connections",
+          "direction"
+        ],
+        "description": "steps: [{id, label, type?, color?}]; connections: [{from, to, label?}]; direction: \"horizontal\"|\"vertical\""
+      },
+      "pyramid": {
+        "required_keys": [
+          "levels"
+        ],
+        "optional_keys": [
+          "gap",
+          "top_width_ratio"
+        ],
+        "description": "levels: [{label, description?, color?}]"
+      },
+      "radar": {
+        "required_keys": [
+          "categories",
+          "series"
+        ],
+        "optional_keys": [
+          "colors",
+          "annotations",
+          "data_labels"
+        ],
+        "description": "categories: string[] (min 3 axes); series: [{name, values: number[]}]"
+      },
+      "scatter": {
+        "required_keys": [
+          "series"
+        ],
+        "optional_keys": [
+          "colors",
+          "x_label",
+          "y_label"
+        ],
+        "description": "series: [{name, points: [{x, y, label?}]}]"
+      },
+      "stacked_area": {
+        "required_keys": [
+          "categories",
+          "series"
+        ],
+        "optional_keys": [
+          "colors",
+          "x_label",
+          "y_label",
+          "annotations",
+          "data_labels"
+        ],
+        "description": "categories: string[]; series: [{name, values: number[]}]"
+      },
+      "stacked_bar": {
+        "required_keys": [
+          "categories",
+          "series"
+        ],
+        "optional_keys": [
+          "colors",
+          "x_label",
+          "y_label",
+          "annotations",
+          "data_labels",
+          "sort",
+          "orientation"
+        ],
+        "description": "categories: string[]; series: [{name, values: number[]}]. Up to 16 segments carry segment labels (\u003e= 10pt, one number format) and a bold total above each stack; data_labels: false drops both."
+      },
+      "stat_cards": {
+        "required_keys": [
+          "panels"
+        ],
+        "optional_keys": [
+          "gap",
+          "icon_size"
+        ],
+        "description": "panels: [{title, value|body, icon?, color?}] — panel_layout with layout \"stat_cards\". The NUMBER is the hero: an explicit value wins, otherwise a short body carrying a digit (\"EUR 184m\") is drawn large with title as its caption"
+      },
+      "swot": {
+        "required_keys": [
+          "strengths",
+          "weaknesses",
+          "opportunities",
+          "threats"
+        ],
+        "optional_keys": [
+          "footnote"
+        ],
+        "description": "strengths/weaknesses/opportunities/threats: string[] for each quadrant"
+      },
+      "timeline": {
+        "required_keys": [
+          "events"
+        ],
+        "optional_keys": [
+          "milestones",
+          "show_today",
+          "time_unit"
+        ],
+        "description": "events: [{label, start_date, end_date}] (alias: activities); milestones: [{label, date}]"
+      },
+      "treemap": {
+        "required_keys": [
+          "nodes"
+        ],
+        "optional_keys": [
+          "padding",
+          "corner_radius"
+        ],
+        "description": "nodes: [{label, value, children?, color?}] (alias: items or values). Cells print name + value (with share of the whole) by default; style.show_values: false shows names only."
+      },
+      "value_chain": {
+        "required_keys": [],
+        "optional_keys": [
+          "primary",
+          "support",
+          "margin_label",
+          "show_arrows"
+        ],
+        "description": "primary: [{label, description?, items?}]; support: [{label, description?, items?}]"
+      },
+      "venn": {
+        "required_keys": [
+          "circles"
+        ],
+        "optional_keys": [
+          "circle_opacity",
+          "overlap_ratio"
+        ],
+        "description": "circles: [{label, items: string[]}] (min 2; alias: sets)"
+      },
+      "waterfall": {
+        "required_keys": [
+          "points"
+        ],
+        "optional_keys": [
+          "colors",
+          "footnote"
+        ],
+        "description": "points: [{label, value, type: \"increase\"|\"decrease\"|\"total\"}]"
+      }
+    }
+  },
+  "patterns_compact": [
+    {
+      "name": "agenda",
+      "cells": "2-10",
+      "use_when": "Numbered agenda or table of contents listing deck sections; prefer icon-row when items are visual categories, card-grid when items need body text",
+      "not_when": "Items are visual categories with icons (use icon-row), items need multi-line descriptions (use card-grid), or content is a sequential process (use process-flow)",
+      "category": "narrative",
+      "narrative_role": [
+        "open",
+        "frame"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "card-grid",
+        "stat-hero"
+      ],
+      "density_class": "low",
+      "accent_weight": "subtle",
+      "estimated_prompt_size_bytes": 2143
+    },
+    {
+      "name": "agenda-with-images",
+      "cells": "3-6",
+      "use_when": "Agenda or table-of-contents slide where each section needs a visual preview (image placeholder or pull quote) alongside the numbered title; prefer plain `agenda` when items are bare titles, card-grid when items need multi-line body text",
+      "not_when": "Items are bare titles only (use `agenda`), items are visual categories without numeric order (use `icon-row`), or items need dense multi-line bodies (use `card-grid`)",
+      "category": "narrative",
+      "narrative_role": [
+        "open",
+        "frame"
+      ],
+      "pairs_with": [
+        "scqa-summary",
+        "stat-hero",
+        "kpi-3up"
+      ],
+      "density_class": "medium",
+      "accent_weight": "subtle",
+      "estimated_prompt_size_bytes": 3017
+    },
+    {
+      "name": "arch-stack",
+      "cells": "3-6 tiers + rails",
+      "use_when": "Architecture layers or technology stack with vertical ordering; prefer pyramid when the hierarchy narrows visually, process-flow when layers have sequential flow",
+      "not_when": "Hierarchy narrows top-to-bottom like Maslow (use pyramid), or layers are sequential steps (use process-flow)",
+      "category": "structural",
+      "narrative_role": [
+        "frame",
+        "evidence"
+      ],
+      "pairs_with": [
+        "card-grid",
+        "process-flow",
+        "swimlane"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 2165
+    },
+    {
+      "name": "before-after",
+      "cells": "2 + header",
+      "use_when": "Exactly two states showing transformation (before→after, current→future); prefer comparison-2col when comparing options without temporal change",
+      "not_when": "Comparing two options without a temporal dimension (use comparison-2col), or more than two states (use process-flow or timeline-horizontal)",
+      "category": "narrative",
+      "narrative_role": [
+        "compare"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "process-flow",
+        "pull-quote"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 1353
+    },
+    {
+      "name": "before-after-compact",
+      "cells": "2 + header",
+      "use_when": "Brief before→after with short bullet lists (1-4 items each) where the transformation is context, not the slide hero; prefer full before-after when items need more vertical space",
+      "not_when": "Each column has 5+ items needing full height (use before-after), comparing options without temporal change (use comparison-2col)",
+      "category": "narrative",
+      "narrative_role": [
+        "compare"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "process-flow",
+        "pull-quote"
+      ],
+      "density_class": "low",
+      "accent_weight": "normal",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 1205
+    },
+    {
+      "name": "bmc-canvas",
+      "cells": "9",
+      "use_when": "Standard Osterwalder 9-cell Business Model Canvas only; prefer card-grid for arbitrary card layouts, matrix-2x2 for 4-quadrant positioning",
+      "not_when": "Arbitrary card layouts not following Osterwalder's 9 blocks (use card-grid), or a 4-quadrant positioning exercise (use matrix-2x2)",
+      "category": "structural",
+      "narrative_role": [
+        "frame"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "card-grid",
+        "pull-quote"
+      ],
+      "density_class": "high",
+      "accent_weight": "subtle",
+      "estimated_prompt_size_bytes": 3671
+    },
+    {
+      "name": "capability-heatmap",
+      "cells": "(3-8 columns) × (1-6 cells) + legend",
+      "use_when": "Rating many activities grouped under 3-8 functions on one 2-4 level scale (automation or AI potential, capability strength, maturity by function) where colour carries the rating and columns may hold different numbers of activities; prefer table-highlight for options scored against shared criteria, value-chain for a described step sequence, card-grid for unrated tiles",
+      "not_when": "Options scored against the same criteria (use table-highlight), a sequence of described steps (use value-chain), items without a rating tier (use card-grid or stylish-panels), items placed on two axes (use matrix-2x2), a two-track process (use process-grid-2row), or a numeric intensity matrix with shared rows and columns (use a heatmap chart)",
+      "category": "data-display",
+      "narrative_role": [
+        "evidence",
+        "frame"
+      ],
+      "pairs_with": [
+        "chart-insights-split",
+        "exec-summary",
+        "phase-roadmap"
+      ],
+      "density_class": "high",
+      "accent_weight": "strong",
+      "estimated_prompt_size_bytes": 5243
+    },
+    {
+      "name": "card-grid",
+      "cells": "rows × cols",
+      "use_when": "4-9 freeform titled cards with custom content per cell; prefer kpi-3up for exactly 3 KPIs, comparison-2col for 2-column tradeoffs, bmc-canvas for a 9-block business model",
+      "not_when": "Exactly 3 numeric KPIs (use kpi-3up), two-column pros/cons (use comparison-2col), standard BMC (use bmc-canvas), or a single hero metric (use stat-hero)",
+      "category": "data-display",
+      "narrative_role": [
+        "evidence"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "process-flow",
+        "pull-quote"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 1913
+    },
+    {
+      "name": "chart-insights-split",
+      "cells": "1 + 1",
+      "use_when": "Pair a chart/data visual with 2–6 narrative takeaways on the same slide; prefer comparison-2col when both sides are text, card-grid when there is no single dominant chart",
+      "not_when": "The slide has no insights to narrate (use a plain chart slide) or the focal content is a single big number (use stat-hero)",
+      "category": "data-display",
+      "narrative_role": [
+        "evidence",
+        "conclude"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "comparison-2col",
+        "pull-quote"
+      ],
+      "composes_with": [
+        "pull-quote",
+        "stat-hero"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 2313
+    },
+    {
+      "name": "comparison-2col",
+      "cells": "2 + header",
+      "use_when": "Two options evaluated side-by-side (pros/cons, option A vs B); prefer before-after when showing temporal transformation, card-grid when comparing more than 2 items",
+      "not_when": "Comparing a temporal before→after state (use before-after), more than 2 items (use card-grid), or positioned on two axes (use matrix-2x2)",
+      "category": "narrative",
+      "narrative_role": [
+        "compare",
+        "evidence"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "process-flow",
+        "pull-quote"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 1159
+    },
+    {
+      "name": "contact-directory",
+      "cells": "1-4 groups × 1-24 people",
+      "use_when": "Key contacts / 'who to call' / directory slide listing up to 24 people by name and title, optionally grouped under 1–4 headings (regions, offices, practices), each with a small circular headshot or initials; prefer team-bios when each person needs a short bio (≤8 people, no groups), dual-org-ladder for paired client / consultant roles",
+      "not_when": "People need a biography or credentials sentence (use team-bios), roles are paired across two organisations (use dual-org-ladder), the slide is a reporting hierarchy (use an org_chart diagram), or there are more than 24 contacts (split across slides)",
+      "category": "structural",
+      "narrative_role": [
+        "frame",
+        "conclude"
+      ],
+      "pairs_with": [
+        "team-bios",
+        "agenda",
+        "text-sidebar"
+      ],
+      "density_class": "medium",
+      "accent_weight": "subtle",
+      "estimated_prompt_size_bytes": 4268
+    },
+    {
+      "name": "driver-tree",
+      "cells": "root + 2-4 branches + 1-4 leaves each (+ optional annotations)",
+      "use_when": "Value driver, cost driver, or KPI decomposition where a top-level metric (with unit) breaks down into 2-4 contributing branches, each with 1-4 leaf items; prefer process-flow for sequential steps, pyramid for narrowing hierarchies, swimlane for cross-actor flows, and svggen org_chart for people/role hierarchies",
+      "not_when": "Hierarchy describes people or roles (use svggen org_chart), content is a sequential process (use process-flow), levels narrow visually toward a single point (use pyramid), or there is only one branch (use a labelled card-grid)",
+      "category": "structural",
+      "narrative_role": [
+        "frame",
+        "evidence"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "waterfall-bridge",
+        "chart-insights-split"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 2308
+    },
+    {
+      "name": "dual-org-ladder",
+      "cells": "2-4 rows",
+      "use_when": "Engagement-team, joint-venture, or paired-organisation slide showing 2–4 matched roles across two orgs side by side; prefer team-bios for a single org's team page, comparison-2col when the columns are pros/cons rather than role pairs, and an svggen org_chart diagram when the structure is hierarchical (parent/child)",
+      "not_when": "Single-org team page (use team-bios), hierarchical org chart with reporting lines (use svggen org_chart), pros-and-cons or option comparison (use comparison-2col), or more than 4 paired rows (split across slides)",
+      "category": "structural",
+      "narrative_role": [
+        "frame",
+        "evidence"
+      ],
+      "pairs_with": [
+        "team-bios",
+        "swimlane",
+        "scqa-summary"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "estimated_prompt_size_bytes": 3227
+    },
+    {
+      "name": "exec-summary",
+      "cells": "3-5 (rows)",
+      "use_when": "Executive summary or key-messages slide stating 3–5 conclusions as bold lead-ins with one supporting sentence each (answer-first / pyramid-principle style); prefer scqa-summary when the story must follow Situation / Complication / Questions / Answer, pull-quote for a single takeaway, card-grid when items are parallel features rather than conclusions, labeled-rows when each row is a keyword label (WHY / WHAT / HOW) with body text, metric-list when each row leads with a number",
+      "not_when": "The narrative is an explicit SCQA arc (use scqa-summary), there is one headline message (use pull-quote or stat-hero), items are a deck section list (use agenda), or there are fewer than 3 / more than 5 messages (split or merge)",
+      "category": "narrative",
+      "narrative_role": [
+        "open",
+        "conclude"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "chart-insights-split",
+        "table-highlight"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "estimated_prompt_size_bytes": 4009
+    },
+    {
+      "name": "framework-grid",
+      "cells": "(2-6 rows) × (label + 1-4 cards)",
+      "use_when": "A framework whose rows are named dimensions (people / process / technology, levers by dimension, change-management building blocks) and whose cells are 1-4 short titled levers per dimension that need not line up as the same criteria; prefer card-grid for a flat set of tiles without row labels, table-highlight for options scored against shared criteria, stylish-panels for 3-5 pillars with bullet lists",
+      "not_when": "Cards form a flat catalog with no dimension labels (use card-grid), every row answers the same scored criteria (use table-highlight), items are rated on a scale (use capability-heatmap), each row is a sequence of phases (use process-grid-2row), items sit on two axes (use matrix-2x2), a single ordered chain of steps (use value-chain), or each group needs bullet lists (use stylish-panels)",
+      "category": "structural",
+      "narrative_role": [
+        "frame",
+        "evidence"
+      ],
+      "pairs_with": [
+        "phase-roadmap",
+        "kpi-3up",
+        "exec-summary"
+      ],
+      "density_class": "high",
+      "accent_weight": "normal",
+      "estimated_prompt_size_bytes": 3616
+    },
+    {
+      "name": "hero-detail",
+      "cells": "1 + 2-4",
+      "use_when": "One dominant metric plus 2-4 supporting detail bullets; prefer stat-hero when no details are needed, kpi-3up when all metrics have equal weight",
+      "not_when": "No supporting details (use stat-hero), all items have equal weight (use kpi-3up or kpi-4up), or content is a quote (use pull-quote)",
+      "category": "hero",
+      "narrative_role": [
+        "evidence"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "chart",
+        "process-flow"
+      ],
+      "density_class": "low",
+      "accent_weight": "strong",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 1396
+    },
+    {
+      "name": "horizontal-bar-with-callouts",
+      "cells": "3-8 (rows)",
+      "use_when": "Ranked horizontal comparison where each item (vendor scorecard, opportunity sizing, driver list) needs its own short insight bound to that bar; prefer chart-insights-split when insights are shared, kpi-Nup when items are big-number metrics, comparison-2col when the slide is purely textual",
+      "not_when": "All callouts are interchangeable (use chart-insights-split with a bar chart), items are big-number KPIs without per-item narrative (use kpi-Nup), bars represent time-series rather than ranked items (use a chart), or item count is below 3 / above 8",
+      "category": "data-display",
+      "narrative_role": [
+        "evidence",
+        "compare"
+      ],
+      "pairs_with": [
+        "chart-insights-split",
+        "kpi-3up",
+        "pull-quote"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 3261
+    },
+    {
+      "name": "icon-row",
+      "cells": "3-5",
+      "use_when": "3-6 short labeled icons in a single row; prefer process-flow when steps have sequence, card-grid when items need multi-line body text",
+      "not_when": "Items are sequential steps (use process-flow), items need body text beyond a caption (use card-grid), or content is a single metric (use stat-hero)",
+      "category": "data-display",
+      "narrative_role": [
+        "evidence"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "card-grid",
+        "process-flow"
+      ],
+      "composes_with": [
+        "stylish-panels",
+        "pull-quote",
+        "kpi-3up"
+      ],
+      "role_on_slide": [
+        "foundation",
+        "banner"
+      ],
+      "density_class": "low",
+      "accent_weight": "strong",
+      "estimated_prompt_size_bytes": 780
+    },
+    {
+      "name": "image-text-split",
+      "cells": "1 image + 1 text column (+ 1-3 metrics)",
+      "use_when": "One image (photo, screenshot, site visit, product shot) paired with a short narrative — case study, customer story, location or product spotlight; prefer chart-insights-split when the visual is a data chart, team-bios for several people, agenda-with-images for an agenda with thumbnails",
+      "not_when": "The visual is a chart (use chart-insights-split), there are several people (use team-bios) or several images (use card-grid / agenda-with-images), or the slide is text-only (use exec-summary or card-grid)",
+      "category": "narrative",
+      "narrative_role": [
+        "evidence",
+        "open"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "pull-quote",
+        "table-highlight"
+      ],
+      "density_class": "medium",
+      "accent_weight": "subtle",
+      "estimated_prompt_size_bytes": 2418
+    },
+    {
+      "name": "journey-maturity-model",
+      "cells": "3-6",
+      "use_when": "Capability or digital maturity model with 3-6 named stages where progression matters and a single stage represents the current state; prefer value-chain when stages have no progression semantics, phase-roadmap when stages are time-anchored, and process-flow for short action steps without descriptions",
+      "not_when": "Stages are time-anchored milestones (use phase-roadmap), the sequence has no progression semantics (use value-chain), steps are short actions without descriptions (use process-flow), or the ladder has fewer than 3 / more than 6 stages",
+      "category": "structural",
+      "narrative_role": [
+        "frame",
+        "evidence"
+      ],
+      "pairs_with": [
+        "value-chain",
+        "phase-roadmap",
+        "process-flow",
+        "kpi-3up"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "estimated_prompt_size_bytes": 2865
+    },
+    {
+      "name": "kpi-2up",
+      "cells": "2",
+      "use_when": "Exactly 2 big-number KPIs with short captions; prefer stat-hero for a single dominant metric, card-grid when items need multi-line body text, metric-list when 3–7 numbers read top to bottom each with a label and detail line",
+      "not_when": "Items need multi-line descriptions (use card-grid), a single metric should dominate (use stat-hero), or items are not numeric KPIs (use icon-row)",
+      "category": "data-display",
+      "narrative_role": [
+        "evidence"
+      ],
+      "pairs_with": [
+        "process-flow",
+        "comparison-2col",
+        "card-grid"
+      ],
+      "composes_with": [
+        "stylish-panels",
+        "pull-quote",
+        "process-flow",
+        "icon-row"
+      ],
+      "role_on_slide": [
+        "banner",
+        "foundation"
+      ],
+      "density_class": "low",
+      "accent_weight": "strong",
+      "estimated_prompt_size_bytes": 711
+    },
+    {
+      "name": "kpi-3up",
+      "cells": "3",
+      "use_when": "Exactly 3 big-number KPIs with short captions; prefer stat-hero for a single dominant metric, card-grid when items need multi-line body text, metric-list when 3–7 numbers read top to bottom each with a label and detail line",
+      "not_when": "Items need multi-line descriptions (use card-grid), a single metric should dominate (use stat-hero), or items are not numeric KPIs (use icon-row)",
+      "category": "data-display",
+      "narrative_role": [
+        "evidence"
+      ],
+      "pairs_with": [
+        "process-flow",
+        "comparison-2col",
+        "card-grid"
+      ],
+      "composes_with": [
+        "stylish-panels",
+        "pull-quote",
+        "process-flow",
+        "icon-row"
+      ],
+      "role_on_slide": [
+        "banner",
+        "foundation"
+      ],
+      "density_class": "low",
+      "accent_weight": "strong",
+      "estimated_prompt_size_bytes": 1023
+    },
+    {
+      "name": "kpi-4up",
+      "cells": "4",
+      "use_when": "Exactly 4 big-number KPIs with short captions; prefer stat-hero for a single dominant metric, card-grid when items need multi-line body text, metric-list when 3–7 numbers read top to bottom each with a label and detail line",
+      "not_when": "Items need multi-line descriptions (use card-grid), a single metric should dominate (use stat-hero), or items are not numeric KPIs (use icon-row)",
+      "category": "data-display",
+      "narrative_role": [
+        "evidence"
+      ],
+      "pairs_with": [
+        "process-flow",
+        "comparison-2col",
+        "card-grid"
+      ],
+      "composes_with": [
+        "stylish-panels",
+        "pull-quote",
+        "process-flow",
+        "icon-row"
+      ],
+      "role_on_slide": [
+        "banner",
+        "foundation"
+      ],
+      "density_class": "medium",
+      "accent_weight": "strong",
+      "estimated_prompt_size_bytes": 1327
+    },
+    {
+      "name": "kpi-5up",
+      "cells": "5",
+      "use_when": "Exactly 5 big-number KPIs with short captions; prefer stat-hero for a single dominant metric, card-grid when items need multi-line body text, metric-list when 3–7 numbers read top to bottom each with a label and detail line",
+      "not_when": "Items need multi-line descriptions (use card-grid), a single metric should dominate (use stat-hero), or items are not numeric KPIs (use icon-row)",
+      "category": "data-display",
+      "narrative_role": [
+        "evidence"
+      ],
+      "pairs_with": [
+        "process-flow",
+        "comparison-2col",
+        "card-grid"
+      ],
+      "composes_with": [
+        "stylish-panels",
+        "pull-quote",
+        "process-flow",
+        "icon-row"
+      ],
+      "role_on_slide": [
+        "banner",
+        "foundation"
+      ],
+      "density_class": "medium",
+      "accent_weight": "strong",
+      "estimated_prompt_size_bytes": 1629
+    },
+    {
+      "name": "kpi-6up",
+      "cells": "6",
+      "use_when": "Exactly 6 big-number KPIs with short captions; prefer stat-hero for a single dominant metric, card-grid when items need multi-line body text, metric-list when 3–7 numbers read top to bottom each with a label and detail line",
+      "not_when": "Items need multi-line descriptions (use card-grid), a single metric should dominate (use stat-hero), or items are not numeric KPIs (use icon-row)",
+      "category": "data-display",
+      "narrative_role": [
+        "evidence"
+      ],
+      "pairs_with": [
+        "process-flow",
+        "comparison-2col",
+        "card-grid"
+      ],
+      "composes_with": [
+        "stylish-panels",
+        "pull-quote",
+        "process-flow",
+        "icon-row"
+      ],
+      "role_on_slide": [
+        "banner",
+        "foundation"
+      ],
+      "density_class": "high",
+      "accent_weight": "strong",
+      "estimated_prompt_size_bytes": 1943
+    },
+    {
+      "name": "kpi-inline",
+      "cells": "2-6",
+      "use_when": "2-6 KPIs as a compact supporting bar (not the hero); prefer kpi-Nup when KPIs are the main slide content, stat-hero for a single dominant metric",
+      "not_when": "KPIs are the primary slide content (use kpi-Nup), a single metric should dominate (use stat-hero), or items need multi-line descriptions (use card-grid)",
+      "category": "data-display",
+      "narrative_role": [
+        "evidence"
+      ],
+      "pairs_with": [
+        "process-flow",
+        "before-after",
+        "pull-quote",
+        "card-grid"
+      ],
+      "density_class": "low",
+      "accent_weight": "normal",
+      "estimated_prompt_size_bytes": 1124
+    },
+    {
+      "name": "labeled-rows",
+      "cells": "2-6 (rows)",
+      "use_when": "2–6 parallel themes each introduced by a short keyword label (WHY / WHAT / HOW, Smarter / Faster / Leaner, Adopt / Adapt / Assemble) followed by 1–4 lines of explanation; prefer exec-summary for 3–5 numbered sentence-length conclusions, metric-list when each row leads with a number, comparison-2col for two options side by side, scqa-summary for a Situation / Complication / Questions / Answer arc",
+      "not_when": "Each row leads with a number (use metric-list or kpi-Nup), the rows are sentence-length conclusions rather than keyword labels (use exec-summary), the content compares two options (use comparison-2col), the story is an SCQA arc (use scqa-summary), rows are ordered steps (use numbered-step-strip), or there is a single message (use pull-quote or stat-hero)",
+      "category": "narrative",
+      "narrative_role": [
+        "frame",
+        "evidence",
+        "conclude"
+      ],
+      "pairs_with": [
+        "metric-list",
+        "kpi-3up",
+        "chart-insights-split"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "estimated_prompt_size_bytes": 2607
+    },
+    {
+      "name": "matrix-2x2",
+      "cells": "4 + axes",
+      "use_when": "Items positioned on two named axes (priority/effort, impact/feasibility); prefer comparison-2col when only one dimension matters, card-grid when items don't map to axes",
+      "not_when": "Only one comparison dimension (use comparison-2col), items are unstructured cards (use card-grid), or layout is a standard BMC (use bmc-canvas)",
+      "category": "structural",
+      "narrative_role": [
+        "frame",
+        "compare"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "card-grid",
+        "pull-quote"
+      ],
+      "density_class": "medium",
+      "accent_weight": "subtle",
+      "estimated_prompt_size_bytes": 2945
+    },
+    {
+      "name": "metric-list",
+      "cells": "3-7 (rows)",
+      "use_when": "3–7 headline numbers read top-to-bottom as a list, each needing a one-line label and an optional detail line (stat stack / 'by the numbers' / proof-point column); prefer kpi-3up..kpi-6up for 2–6 equally weighted KPI cards side by side, stat-hero or hero-detail when one number dominates, exec-summary when the rows are sentences rather than numbers, labeled-rows when each row is a keyword label with body text",
+      "not_when": "Metrics should sit side by side as cards (use kpi-Nup), one number dominates (use stat-hero or hero-detail), rows are conclusions without a number (use exec-summary) or keyword-labelled paragraphs (use labeled-rows), the values are a ranked series to compare visually (use horizontal-bar-with-callouts or a bar chart), or there are fewer than 3 / more than 7 metrics",
+      "category": "data-display",
+      "narrative_role": [
+        "evidence",
+        "conclude"
+      ],
+      "pairs_with": [
+        "exec-summary",
+        "chart-insights-split",
+        "labeled-rows"
+      ],
+      "density_class": "medium",
+      "accent_weight": "strong",
+      "estimated_prompt_size_bytes": 3494
+    },
+    {
+      "name": "next-steps",
+      "cells": "2-6 (actions) + 0-3 decisions",
+      "use_when": "The deck's closing slide: what happens next, who owns each action and by when, and the decisions the audience is asked to take; use it instead of a 'Thank you' closer",
+      "not_when": "The steps are a process to explain rather than actions to assign (use numbered-step-strip or process-flow), the plan is a dated multi-phase schedule (use phase-roadmap), or the slide weighs options rather than assigning actions (use table-highlight / the decision kind)",
+      "category": "narrative",
+      "narrative_role": [
+        "conclude"
+      ],
+      "pairs_with": [
+        "exec-summary",
+        "phase-roadmap",
+        "table-highlight"
+      ],
+      "density_class": "medium",
+      "accent_weight": "subtle",
+      "estimated_prompt_size_bytes": 4221
+    },
+    {
+      "name": "numbered-step-strip",
+      "cells": "3-7",
+      "use_when": "Ordered steps or a table of contents that need numbering and an optional short explanation per item but NOT decision branching (3-7 steps; chevron holds at most 6); use stacked-box for a scorecard look, chevron for a compact ribbon, toc to replace a plain agenda",
+      "not_when": "The flow has decision points/branches (use process-flow with type:decision), steps belong to different actors (use swimlane), stops are calendar dates (use timeline-horizontal), or items are unordered categories (use icon-row or card-grid)",
+      "category": "structural",
+      "narrative_role": [
+        "open",
+        "frame",
+        "evidence"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "card-grid",
+        "stat-hero"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 2227
+    },
+    {
+      "name": "phase-roadmap",
+      "cells": "3-6 phases (× 3-4 rows)",
+      "use_when": "Project roadmap with 3-6 named phases each having date range and short description, optionally with an active phase highlight or per-phase milestone; prefer roadmap-phased when multiple parallel workstreams cross the phases, timeline-horizontal when stops are date milestones not phases with descriptions",
+      "not_when": "Multiple parallel workstreams cross the phases (use roadmap-phased), stops are single-line date milestones without descriptions (use timeline-horizontal), or steps are actions/decisions not time-bound phases (use process-flow)",
+      "category": "structural",
+      "narrative_role": [
+        "frame",
+        "evidence"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "stylish-panels",
+        "process-flow"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 3261
+    },
+    {
+      "name": "process-flow",
+      "cells": "3-8",
+      "use_when": "Sequential steps in a single-lane workflow (3-8 steps); prefer swimlane when multiple actors own different steps, timeline-horizontal when stops are date-based",
+      "not_when": "Steps belong to different actors/roles (use swimlane), stops are calendar-based milestones (use timeline-horizontal), or items are unordered (use icon-row or card-grid)",
+      "category": "structural",
+      "narrative_role": [
+        "frame",
+        "evidence"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "card-grid",
+        "before-after"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 1088
+    },
+    {
+      "name": "process-flow-compact",
+      "cells": "3-8",
+      "use_when": "3-8 short-label steps where the process is supporting context (not the hero content); prefer full process-flow when steps have long labels or fill the slide",
+      "not_when": "Steps have long labels needing vertical space (use process-flow), or steps belong to different actors (use swimlane)",
+      "category": "structural",
+      "narrative_role": [
+        "frame",
+        "evidence"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "card-grid",
+        "pull-quote"
+      ],
+      "density_class": "low",
+      "accent_weight": "normal",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 1134
+    },
+    {
+      "name": "process-grid-2row",
+      "cells": "2 × (3-6)",
+      "use_when": "Double-track processes where two parallel workstreams share the same N phase columns (e.g., Design / Production, Strategy / Execution); prefer process-flow for a single linear track, swimlane when steps are owned by distinct actors with potentially different step counts",
+      "not_when": "A single linear sequence (use process-flow), more than two parallel tracks or unequal step counts per track (use swimlane), or tracks need phase descriptions beyond a short label (use roadmap-phased)",
+      "category": "structural",
+      "narrative_role": [
+        "frame",
+        "evidence"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "card-grid",
+        "process-flow"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 2769
+    },
+    {
+      "name": "pull-quote",
+      "cells": "1",
+      "use_when": "Emphasize a single quote or testimonial; prefer stat-hero when the focal point is a number, not words",
+      "not_when": "The focal content is a number/metric (use stat-hero), or multiple quotes need comparison (use card-grid)",
+      "category": "hero",
+      "narrative_role": [
+        "open",
+        "conclude"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "card-grid",
+        "before-after"
+      ],
+      "composes_with": [
+        "stylish-panels",
+        "kpi-3up",
+        "card-grid",
+        "icon-row",
+        "arch-stack"
+      ],
+      "role_on_slide": [
+        "callout",
+        "banner"
+      ],
+      "density_class": "low",
+      "accent_weight": "subtle",
+      "estimated_prompt_size_bytes": 613
+    },
+    {
+      "name": "pyramid",
+      "cells": "3-5",
+      "use_when": "Hierarchy that narrows visually top-to-bottom (3-5 tiers, Maslow-style); prefer arch-stack when layers are equal-width technology tiers, process-flow when tiers are sequential",
+      "not_when": "Layers are equal-width technology tiers (use arch-stack), layers are sequential steps (use process-flow), or more than 5 levels needed (use card-grid)",
+      "category": "structural",
+      "narrative_role": [
+        "frame"
+      ],
+      "pairs_with": [
+        "card-grid",
+        "kpi-3up",
+        "icon-row"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 1288
+    },
+    {
+      "name": "quote-cluster",
+      "cells": "3-8",
+      "use_when": "Voice-of-customer or stakeholder research slide showing 3–8 short quotes from different people; prefer pull-quote when only one quote is the focal point, card-grid for non-quote text cards",
+      "not_when": "Single quote (use pull-quote), more than 8 quotes (split across slides), or items are non-quote feature cards (use card-grid)",
+      "category": "narrative",
+      "narrative_role": [
+        "evidence",
+        "frame"
+      ],
+      "pairs_with": [
+        "stat-hero",
+        "kpi-3up",
+        "card-grid"
+      ],
+      "density_class": "medium",
+      "accent_weight": "subtle",
+      "estimated_prompt_size_bytes": 2661
+    },
+    {
+      "name": "roadmap-phased",
+      "cells": "workstreams × phases",
+      "use_when": "Multi-phase roadmap with workstreams across time columns (quarterly plan, release timeline); prefer timeline-horizontal for a single-track sequence of milestones, swimlane for cross-actor process",
+      "not_when": "Single-track linear milestones without parallel workstreams (use timeline-horizontal), or steps are owned by actors not workstreams (use swimlane)",
+      "category": "structural",
+      "narrative_role": [
+        "frame"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "timeline-horizontal",
+        "card-grid"
+      ],
+      "density_class": "high",
+      "accent_weight": "normal",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 4420
+    },
+    {
+      "name": "scqa-summary",
+      "cells": "8 (4 labels + 4 content)",
+      "use_when": "Executive summary or problem-framing slide following the SCQA narrative arc (situation → complication → questions → answer); prefer pull-quote for a single takeaway, agenda for a deck section list, comparison-2col when comparing two options side-by-side",
+      "not_when": "Content is a deck section list (use agenda), a single attributed takeaway (use pull-quote), a two-option side-by-side comparison (use comparison-2col), or a temporal before/after transformation (use before-after)",
+      "category": "narrative",
+      "narrative_role": [
+        "open",
+        "frame",
+        "conclude"
+      ],
+      "pairs_with": [
+        "agenda",
+        "kpi-3up",
+        "stat-hero",
+        "pull-quote"
+      ],
+      "density_class": "medium",
+      "accent_weight": "strong",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 2317
+    },
+    {
+      "name": "stat-hero",
+      "cells": "1",
+      "use_when": "One big number dominates the slide; prefer kpi-3up when showing 3+ metrics side-by-side, pull-quote when the focal content is words not a number",
+      "not_when": "Multiple KPIs need equal weight (use kpi-3up or kpi-4up), or the focal content is a quote (use pull-quote)",
+      "category": "hero",
+      "narrative_role": [
+        "open",
+        "evidence"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "card-grid",
+        "process-flow"
+      ],
+      "density_class": "low",
+      "accent_weight": "strong",
+      "estimated_prompt_size_bytes": 293
+    },
+    {
+      "name": "state-shift-hub",
+      "cells": "1 hub + 3-4 pairs (2 nodes + 2 text blocks each)",
+      "use_when": "A current-state vs target-state (today vs future, as-is vs to-be) shift told as 3-4 numbered stage pairs around one central theme, each side with a short title and 1-3 line description; prefer before-after for a single before/after block with bullets, comparison-2col for non-temporal options or pros/cons, and journey-maturity-model for a staged maturity ladder",
+      "not_when": "Only one before/after contrast with bullet lists (use before-after), the two columns are options or pros/cons rather than today vs future (use comparison-2col), the stages form a maturity progression (use journey-maturity-model), or there are fewer than 3 or more than 6 pairs (use before-after or split the slide)",
+      "category": "structural",
+      "narrative_role": [
+        "frame",
+        "compare"
+      ],
+      "pairs_with": [
+        "phase-roadmap",
+        "kpi-3up",
+        "exec-summary"
+      ],
+      "density_class": "medium",
+      "accent_weight": "strong",
+      "estimated_prompt_size_bytes": 4368
+    },
+    {
+      "name": "strategy-house",
+      "cells": "objective + 3-5 pillars + foundation (+0-3 roof badges)",
+      "use_when": "Strategic framework with a top-level objective, 3-5 pillars supporting it, and a foundation row of enablers; prefer arch-stack when layers stack vertically without a single objective/foundation framing, stylish-panels when pillars stand alone without banner/foundation",
+      "not_when": "Layers stack without a single objective and foundation framing (use arch-stack), pillars stand alone without banner/foundation (use stylish-panels), or content is a hierarchy that narrows (use pyramid)",
+      "category": "structural",
+      "narrative_role": [
+        "frame",
+        "conclude"
+      ],
+      "pairs_with": [
+        "stylish-panels",
+        "kpi-3up",
+        "process-flow"
+      ],
+      "density_class": "medium",
+      "accent_weight": "strong",
+      "estimated_prompt_size_bytes": 2315
+    },
+    {
+      "name": "stylish-panels",
+      "cells": "3-5",
+      "use_when": "3-5 titled content blocks with bullet lists, each representing a pillar, capability, or workstream; prefer card-grid when items need only header+body without bullets, icon-row when items are icon+caption pairs",
+      "not_when": "Items are icon+caption pairs (use icon-row), items need only header+body text (use card-grid), or content is a single metric (use stat-hero)",
+      "category": "structural",
+      "narrative_role": [
+        "frame",
+        "evidence"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "process-flow",
+        "pull-quote"
+      ],
+      "composes_with": [
+        "pull-quote",
+        "kpi-3up",
+        "icon-row",
+        "arch-stack"
+      ],
+      "role_on_slide": [
+        "pillars"
+      ],
+      "density_class": "medium",
+      "accent_weight": "strong",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 1911
+    },
+    {
+      "name": "swimlane",
+      "cells": "lanes × steps",
+      "use_when": "Cross-functional process where steps are owned by different actors/roles; prefer process-flow when all steps belong to one actor, roadmap-phased when lanes are workstreams over time",
+      "not_when": "All steps belong to a single actor (use process-flow), lanes represent time-phased workstreams (use roadmap-phased), or responsibilities are a simple list (use card-grid)",
+      "category": "structural",
+      "narrative_role": [
+        "frame"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "arch-stack",
+        "process-flow"
+      ],
+      "density_class": "high",
+      "accent_weight": "normal",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 3463
+    },
+    {
+      "name": "table-highlight",
+      "cells": "(2-6 options + header) × (2-6 criteria + name)",
+      "use_when": "Evaluating 2–6 options against 2–6 criteria where each cell is a rating (Harvey ball 0–4, RAG status, or a short value) and one option is recommended; prefer comparison-2col for two options described in prose, horizontal-bar-with-callouts for a single ranked score per item, and a plain table content block for raw numeric data",
+      "not_when": "Only two options described in sentences (use comparison-2col), one score per item (use horizontal-bar-with-callouts), dense numeric data (use a table content block or chart), or more than 6 options / criteria (split the matrix)",
+      "category": "data-display",
+      "narrative_role": [
+        "compare",
+        "evidence",
+        "conclude"
+      ],
+      "pairs_with": [
+        "exec-summary",
+        "comparison-2col",
+        "phase-roadmap"
+      ],
+      "density_class": "high",
+      "accent_weight": "normal",
+      "estimated_prompt_size_bytes": 10526
+    },
+    {
+      "name": "team-bios",
+      "cells": "1-8",
+      "use_when": "Team or 'Our People' slide with 1–8 members, each with a headshot (members[].photo) or an initials placeholder above name + role + short bio; prefer card-grid when items are generic features rather than people, agenda-with-images for narrative agenda rows",
+      "not_when": "Items are generic feature cards without a person photo (use card-grid), a key-contacts / directory page of names and titles without bios, grouped by region or with more than 8 people (use contact-directory), more than 8 members with bios (split across slides), or items are numbered agenda sections (use agenda-with-images)",
+      "category": "narrative",
+      "narrative_role": [
+        "frame",
+        "evidence"
+      ],
+      "pairs_with": [
+        "agenda",
+        "stat-hero",
+        "card-grid"
+      ],
+      "density_class": "medium",
+      "accent_weight": "subtle",
+      "estimated_prompt_size_bytes": 2498
+    },
+    {
+      "name": "text-sidebar",
+      "cells": "1 text column + 1 sidebar",
+      "use_when": "Introduction / foreword / context page written as prose — 1–4 paragraphs (plus up to 6 bullets) with ONE key message pulled out into a sidebar panel; prefer pull-quote when the callout is an attributed quotation, image-text-split when a photo sits beside the text, exec-summary when the content is 3–5 parallel conclusions",
+      "not_when": "The callout is someone's attributed quote (use pull-quote), the visual is a photo or screenshot (use image-text-split), the content is 3–5 bold conclusions with evidence (use exec-summary), or the text is a bullet list with no narrative (use card-grid or a plain content slide)",
+      "category": "narrative",
+      "narrative_role": [
+        "open",
+        "frame"
+      ],
+      "pairs_with": [
+        "exec-summary",
+        "agenda",
+        "kpi-3up"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "estimated_prompt_size_bytes": 1744
+    },
+    {
+      "name": "timeline-horizontal",
+      "cells": "3-7",
+      "use_when": "Linear sequence of 3-7 date-based or ordered milestones; prefer roadmap-phased when multiple parallel workstreams exist, process-flow when steps are actions not events",
+      "not_when": "Multiple parallel workstreams across time (use roadmap-phased), steps are actions/decisions not milestones (use process-flow), or events belong to different actors (use swimlane)",
+      "category": "structural",
+      "narrative_role": [
+        "frame",
+        "evidence"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "roadmap-phased",
+        "card-grid"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "estimated_prompt_size_bytes": 1812
+    },
+    {
+      "name": "value-chain",
+      "cells": "4-10",
+      "use_when": "Porter-style value chain or supply/operations sequence of 4-10 steps where each step needs a short label and a 1-3 line description; prefer process-flow for 3-8 action steps without descriptions, timeline-horizontal when stops are date-based",
+      "not_when": "Steps have no description beyond the label (use process-flow), stops are calendar milestones (use timeline-horizontal), steps belong to different actors (use swimlane), or chain has fewer than 4 / more than 10 steps",
+      "category": "structural",
+      "narrative_role": [
+        "frame",
+        "evidence"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "card-grid",
+        "stylish-panels"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "supports_callout": true,
+      "estimated_prompt_size_bytes": 2226
+    },
+    {
+      "name": "waterfall-bridge",
+      "cells": "3-10",
+      "use_when": "P\u0026L walk, cost-driver decomposition, gap-to-target analysis, or any composition where positive/negative components reconcile a start total to an end total in a single visual; prefer chart-insights-split when the chart needs paired commentary, kpi-Nup when only the end totals matter, and value-chain when the sequence is operational rather than additive",
+      "not_when": "All values are independent (use a chart or kpi-Nup), the sequence is not additive (use value-chain or process-flow), only the end total matters without component attribution (use stat-hero), or column count is below 3 / above 10",
+      "category": "data-display",
+      "narrative_role": [
+        "evidence",
+        "compare"
+      ],
+      "pairs_with": [
+        "kpi-3up",
+        "chart-insights-split",
+        "stat-hero",
+        "scqa-summary"
+      ],
+      "density_class": "medium",
+      "accent_weight": "normal",
+      "estimated_prompt_size_bytes": 4570
+    }
+  ],
+  "compose": {
+    "description": "Compose envelope: stack two or more sibling patterns on one slide. Each segment hosts a leaf pattern, a nested compose, or a standalone svggen diagram. Direction picks vertical stack or horizontal side-by-side; size_pct controls share (defaults to equal). Use recommend_visual to discover high-affinity pattern pairs (Category=='compose'). Optional banner (above) and callout (below) decoration bands attach to the envelope without consuming a segment slot.",
+    "directions": [
+      "vertical",
+      "horizontal"
+    ],
+    "max_segments": 8,
+    "max_nesting_depth": 2,
+    "max_leaf_patterns": 12,
+    "smart_compose": true,
+    "nested_compose": true,
+    "supports_banner": true,
+    "supports_callout": true,
+    "supports_diagram_segments": true,
+    "examples": [
+      {
+        "title": "Vertical: panels above a pull-quote",
+        "description": "Stylish-panels (65% height) sit above a pull-quote (35%). Common for executive recap slides.",
+        "json": {
+          "type": "blank",
+          "compose": {
+            "direction": "vertical",
+            "gap": 12,
+            "segments": [
+              {
+                "pattern": {
+                  "name": "stylish-panels",
+                  "values": {
+                    "panels": [
+                      {
+                        "title": "Pillar A"
+                      },
+                      {
+                        "title": "Pillar B"
+                      },
+                      {
+                        "title": "Pillar C"
+                      }
+                    ]
+                  }
+                },
+                "size_pct": 65
+              },
+              {
+                "pattern": {
+                  "name": "pull-quote",
+                  "values": {
+                    "quote": "Strategy is choice.",
+                    "attribution": "PM lead"
+                  }
+                },
+                "size_pct": 35
+              }
+            ]
+          }
+        }
+      },
+      {
+        "title": "Horizontal: KPI strip beside a process flow",
+        "description": "kpi-3up on the left, process-flow on the right, sized by content density.",
+        "json": {
+          "type": "blank",
+          "compose": {
+            "direction": "horizontal",
+            "gap": 12,
+            "smart_compose": true,
+            "segments": [
+              {
+                "pattern": {
+                  "name": "kpi-3up",
+                  "values": {
+                    "kpis": [
+                      {
+                        "value": "42%",
+                        "label": "Win rate"
+                      },
+                      {
+                        "value": "$1.2M",
+                        "label": "ARR"
+                      },
+                      {
+                        "value": "12",
+                        "label": "Logos"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "pattern": {
+                  "name": "process-flow",
+                  "values": {
+                    "steps": [
+                      {
+                        "label": "Discover"
+                      },
+                      {
+                        "label": "Pilot"
+                      },
+                      {
+                        "label": "Scale"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "title": "Horizontal: native pattern + svggen diagram",
+        "description": "Pyramid (native pattern) on the left, svggen process_flow diagram on the right — diagram segment is a third XOR alternative to pattern/compose, so the native pattern is not flattened through a single-cell grid.",
+        "json": {
+          "type": "blank",
+          "compose": {
+            "direction": "horizontal",
+            "gap": 12,
+            "segments": [
+              {
+                "size_pct": 50,
+                "pattern": {
+                  "name": "pyramid",
+                  "values": {
+                    "tiers": [
+                      "Strategy",
+                      "Tactics",
+                      "Operations"
+                    ]
+                  }
+                }
+              },
+              {
+                "size_pct": 50,
+                "diagram": {
+                  "type": "process_flow",
+                  "data": {
+                    "steps": [
+                      "Plan",
+                      "Build",
+                      "Ship"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "input_formats": [
+    "json"
+  ],
+  "output_formats": [
+    "pptx"
+  ],
+  "icon_policy": {
+    "no_emoji": true,
+    "accepted_sources": [
+      "name",
+      "path",
+      "url",
+      "svg_data"
+    ],
+    "description": "Emoji codepoints are rejected anywhere in deck JSON (icon fields, pattern values, shape text, titles, bullets). Use a bundled SVG icon name (preferred) or supply a user icon via path / url / svg_data. Exactly one of name|path|url|svg_data must be set per IconInput.",
+    "bundled_catalog": "list_icons (MCP) or `json2pptx icons list` (CLI)"
+  },
+  "deprecations": [
+    {
+      "feature": "value (untyped content field)",
+      "replacement": "Use typed fields: text_value, bullets_value, table_value, chart_value, diagram_value, image_value, body_and_bullets_value, bullet_groups_value",
+      "note": "The legacy \"value\" field (json.RawMessage) is still accepted for backward compatibility but should not be used in new decks. Typed fields provide schema validation and clearer intent."
+    },
+    {
+      "feature": "Raw template placeholder names (e.g. \"Title 1\", \"Content Placeholder 2\")",
+      "replacement": "Use portable placeholder IDs: title, subtitle, body, body_2",
+      "note": "Raw OOXML placeholder names are template-specific and resolved via semantic fallback. Portable IDs work across all templates and resolve at the exact tier."
+    }
+  ],
+  "side_effects": {
+    "preview_cache_writes": false,
+    "read_only": true,
+    "preview_cache_dir": "/Users/seb/.cache/json2pptx/layout-previews",
+    "disable_with": "--no-preview"
+  }
+}

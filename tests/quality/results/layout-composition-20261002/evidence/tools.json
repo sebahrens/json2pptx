@@ -1,0 +1,16 @@
+{
+  "advertised_tools": [
+    "describe_finding",
+    "examine_template",
+    "get_started",
+    "list_slide_kinds",
+    "list_templates",
+    "plan_deck",
+    "recommend_visual",
+    "render_deck_spec",
+    "render_deck_thumbnails",
+    "score_deck",
+    "submit_visual_review",
+    "validate_deck_spec"
+  ]
+}

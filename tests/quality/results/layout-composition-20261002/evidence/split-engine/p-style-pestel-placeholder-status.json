@@ -1,0 +1,9 @@
+{
+  "template": "p-style",
+  "case": "pestel-placeholder",
+  "exit_code": 0,
+  "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/p-style-pestel-placeholder.json",
+  "stdout": "",
+  "stderr": "2026/10/02 14:17:45 INFO native pestel shapes: registered slide=1 segments=6 bounds=11421056x2823792+397665+1946276\n",
+  "report": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/p-style-pestel-placeholder-report.json"
+}

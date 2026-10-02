@@ -1,0 +1,92 @@
+{
+  "template": "p-style",
+  "slides": [
+    {
+      "layout_id": "blank-title",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Revenue and margin"
+        }
+      ],
+      "shape_grid": {
+        "columns": [
+          60,
+          40
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "diagram": {
+                  "type": "bar_chart",
+                  "data": {
+                    "categories": [
+                      "Q1",
+                      "Q2",
+                      "Q3"
+                    ],
+                    "series": [
+                      {
+                        "name": "Revenue",
+                        "values": [
+                          8,
+                          9,
+                          12
+                        ]
+                      }
+                    ]
+                  },
+                  "alt": "Revenue increases from 8 to 12."
+                }
+              },
+              {
+                "grid": {
+                  "columns": 1,
+                  "rows": [
+                    {
+                      "height": 45,
+                      "cells": [
+                        {
+                          "shape": {
+                            "geometry": "rect",
+                            "fill": "none",
+                            "text": "Margin 42%"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "height": 55,
+                      "cells": [
+                        {
+                          "table": {
+                            "headers": [
+                              "Metric",
+                              "Actual"
+                            ],
+                            "rows": [
+                              [
+                                "Margin",
+                                "42%"
+                              ],
+                              [
+                                "Revenue",
+                                "$12M"
+                              ]
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

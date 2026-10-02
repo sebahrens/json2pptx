@@ -1,0 +1,60 @@
+{
+  "template": "p-style",
+  "slides": [
+    {
+      "layout_id": "blank-title",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "PESTEL beside margin"
+        }
+      ],
+      "shape_grid": {
+        "columns": [
+          70,
+          30
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "diagram": {
+                  "type": "pestel",
+                  "data": {
+                    "political": [
+                      "Trade"
+                    ],
+                    "economic": [
+                      "Growth"
+                    ],
+                    "social": [
+                      "Demand"
+                    ],
+                    "technological": [
+                      "AI"
+                    ],
+                    "environmental": [
+                      "Energy"
+                    ],
+                    "legal": [
+                      "Privacy"
+                    ]
+                  },
+                  "alt": "Six macro factors."
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": "Margin 42%"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

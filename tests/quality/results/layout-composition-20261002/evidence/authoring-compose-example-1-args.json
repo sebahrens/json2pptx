@@ -1,0 +1,57 @@
+{
+  "presentation": {
+    "template": "midnight-blue",
+    "slides": [
+      {
+        "type": "blank",
+        "compose": {
+          "direction": "horizontal",
+          "gap": 12,
+          "smart_compose": true,
+          "segments": [
+            {
+              "pattern": {
+                "name": "kpi-3up",
+                "values": {
+                  "kpis": [
+                    {
+                      "value": "42%",
+                      "label": "Win rate"
+                    },
+                    {
+                      "value": "$1.2M",
+                      "label": "ARR"
+                    },
+                    {
+                      "value": "12",
+                      "label": "Logos"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "pattern": {
+                "name": "process-flow",
+                "values": {
+                  "steps": [
+                    {
+                      "label": "Discover"
+                    },
+                    {
+                      "label": "Pilot"
+                    },
+                    {
+                      "label": "Scale"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "fit_report": true
+}

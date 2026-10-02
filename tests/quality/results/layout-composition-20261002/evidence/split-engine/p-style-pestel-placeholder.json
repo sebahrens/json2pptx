@@ -1,0 +1,43 @@
+{
+  "template": "p-style",
+  "slides": [
+    {
+      "layout_id": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "PESTEL beside margin"
+        },
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "pestel",
+            "data": {
+              "political": [
+                "Trade"
+              ],
+              "economic": [
+                "Growth"
+              ],
+              "social": [
+                "Demand"
+              ],
+              "technological": [
+                "AI"
+              ],
+              "environmental": [
+                "Energy"
+              ],
+              "legal": [
+                "Privacy"
+              ]
+            },
+            "alt": "Six macro factors."
+          }
+        }
+      ]
+    }
+  ]
+}

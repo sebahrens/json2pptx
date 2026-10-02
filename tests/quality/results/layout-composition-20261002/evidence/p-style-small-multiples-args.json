@@ -1,0 +1,85 @@
+{
+  "spec": {
+    "meta": {
+      "template": "p-style",
+      "title": "Small-multiple scale control",
+      "source": "Illustrative comparison data"
+    },
+    "slides": [
+      {
+        "kind": "raw_json2pptx",
+        "slide": {
+          "layout_id": "blank-title",
+          "content": [
+            {
+              "placeholder_id": "title",
+              "type": "text",
+              "text_value": "Region B has ten times the revenue of Region A"
+            }
+          ],
+          "compose": {
+            "direction": "horizontal",
+            "segments": [
+              {
+                "size_pct": 50,
+                "diagram": {
+                  "type": "line_chart",
+                  "title": "Region A revenue (\u20acm)",
+                  "alt": "Region A revenue over four quarters",
+                  "data": {
+                    "categories": [
+                      "Q1",
+                      "Q2",
+                      "Q3",
+                      "Q4"
+                    ],
+                    "series": [
+                      {
+                        "name": "Region A",
+                        "values": [
+                          10,
+                          20,
+                          15,
+                          25
+                        ]
+                      }
+                    ],
+                    "data_labels": false
+                  }
+                }
+              },
+              {
+                "size_pct": 50,
+                "diagram": {
+                  "type": "line_chart",
+                  "title": "Region B revenue (\u20acm)",
+                  "alt": "Region B revenue over four quarters",
+                  "data": {
+                    "categories": [
+                      "Q1",
+                      "Q2",
+                      "Q3",
+                      "Q4"
+                    ],
+                    "series": [
+                      {
+                        "name": "Region B",
+                        "values": [
+                          100,
+                          200,
+                          150,
+                          250
+                        ]
+                      }
+                    ],
+                    "data_labels": false
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

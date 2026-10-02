@@ -1,0 +1,81 @@
+{
+  "ok": true,
+  "slide_count": 1,
+  "template": "midnight-blue",
+  "findings": {
+    "schema_version": "1.0",
+    "tool": "json2pptx",
+    "subcommand": "semantic compile",
+    "input_sha256": "52c14a6318148756f0f9ae3141f8001f211c9d3eb8a15eba6ea369f9e6fe01d8",
+    "ok": true,
+    "summary": "no issues",
+    "findings": []
+  },
+  "compiled_json": {
+    "template": "midnight-blue",
+    "design_mode": "constrained",
+    "type_scale": "comfortable",
+    "chrome": {
+      "page_numbers": {
+        "enabled": true
+      }
+    },
+    "source": "Illustrative",
+    "slides": [
+      {
+        "layout_id": "blank-title",
+        "content": [
+          {
+            "placeholder_id": "title",
+            "type": "text",
+            "text_value": "Revenue and margin"
+          }
+        ],
+        "compose": {
+          "direction": "horizontal",
+          "segments": [
+            {
+              "pattern": {
+                "name": "",
+                "values": null
+              },
+              "diagram": {
+                "type": "bar_chart",
+                "data": {
+                  "categories": [
+                    "Q1",
+                    "Q2",
+                    "Q3"
+                  ],
+                  "series": [
+                    {
+                      "name": "Revenue",
+                      "values": [
+                        8,
+                        9,
+                        12
+                      ]
+                    }
+                  ]
+                },
+                "alt": "Revenue increases from 8 to 12."
+              },
+              "size_pct": 60
+            },
+            {
+              "pattern": {
+                "name": "stat-hero",
+                "values": {
+                  "context": "Ahead of plan",
+                  "label": "Margin",
+                  "value": "42%"
+                }
+              },
+              "size_pct": 40
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

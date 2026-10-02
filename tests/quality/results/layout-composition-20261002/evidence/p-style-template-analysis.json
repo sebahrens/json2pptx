@@ -1,0 +1,873 @@
+{
+  "date": "2026-10-02",
+  "head": "7adb9861",
+  "user_requirement": "Always analyze p-style alongside tracked templates; local/gitignored status does not justify excluding it.",
+  "template": "templates/p-style.pptx",
+  "local_gitignored": true,
+  "excluded_from_analysis": false,
+  "commands": [
+    "/tmp/json2pptx-review skill-info --mode=full --template=p-style --no-preview",
+    "/tmp/json2pptx-review examine-template templates/p-style.pptx --out .claude/review-evidence/2026-10-02-layout-composition/p-style-examination --no-png",
+    "/tmp/json2pptx-review examine-template templates/modern-yellow.pptx --out .claude/review-evidence/2026-10-02-layout-composition/p-style-modern-yellow-examination --no-png"
+  ],
+  "p_style": {
+    "template": "p-style.pptx",
+    "sha256": "87134dde6d741a594088314c84f22e1047e3dbcc79f6b68590685b673794444d",
+    "slide": {
+      "width_emu": 12192000,
+      "height_emu": 6858000,
+      "width_in": 13.333,
+      "height_in": 7.5
+    },
+    "theme": {
+      "name": "P-Style Slide Master",
+      "title_font": "Georgia",
+      "body_font": "Arial",
+      "colors": {
+        "accent1": "#FD5108",
+        "accent2": "#FE7C39",
+        "accent3": "#FFAA72",
+        "accent4": "#A1A8B3",
+        "accent5": "#B5BCC4",
+        "accent6": "#CBD1D6",
+        "dk1": "#000000",
+        "dk2": "#000000",
+        "folHlink": "#A1A8B3",
+        "hlink": "#000000",
+        "lt1": "#FFFFFF",
+        "lt2": "#EBEBEB"
+      }
+    },
+    "grid": {
+      "margin_pct": 3.3,
+      "columns": 12,
+      "gutter_pt": 8,
+      "title_gap_pt": 18,
+      "content_frame": {
+        "title_bottom_pt": 133.7,
+        "content_top_pt": 153.3,
+        "left_pt": 31.3,
+        "right_pt": 930.6
+      }
+    },
+    "layouts": [
+      {
+        "id": "slideLayout3",
+        "name": "Closing",
+        "tags": [
+          "title-slide",
+          "closing"
+        ],
+        "xml_path": "ppt/slideLayouts/slideLayout3.xml",
+        "content_zone_emu": {
+          "left_emu": 609600,
+          "top_emu": 3429000,
+          "right_emu": 11582400,
+          "bottom_emu": 4823926
+        },
+        "placeholder_fonts_and_bounds": [
+          {
+            "id": "title",
+            "role": "title",
+            "font_pt": 66,
+            "max_chars": 48,
+            "bounds": {
+              "x_emu": 353658,
+              "y_emu": 1946275,
+              "w_emu": 6629400,
+              "h_emu": 1482725,
+              "x_in": 0.387,
+              "y_in": 2.128,
+              "w_in": 7.25,
+              "h_in": 1.622
+            }
+          },
+          {
+            "id": "legal_disclosure",
+            "role": "disclosure",
+            "font_pt": 11,
+            "max_chars": 373,
+            "bounds": {
+              "x_emu": 5197150,
+              "y_emu": 4823926,
+              "w_emu": 6604325,
+              "h_emu": 1655540,
+              "x_in": 5.684,
+              "y_in": 5.276,
+              "w_in": 7.223,
+              "h_in": 1.811
+            }
+          },
+          {
+            "id": "subtitle",
+            "role": "subtitle",
+            "font_pt": 22,
+            "max_chars": 56,
+            "bounds": {
+              "x_emu": 353658,
+              "y_emu": 3650000,
+              "w_emu": 6629400,
+              "h_emu": 1000000,
+              "x_in": 0.387,
+              "y_in": 3.992,
+              "w_in": 7.25,
+              "h_in": 1.094
+            }
+          }
+        ]
+      },
+      {
+        "id": "slideLayout2",
+        "name": "One Content",
+        "tags": [
+          "content"
+        ],
+        "xml_path": "ppt/slideLayouts/slideLayout2.xml",
+        "content_zone_emu": {
+          "left_emu": 397665,
+          "top_emu": 1697735,
+          "right_emu": 11818721,
+          "bottom_emu": 6406001
+        },
+        "placeholder_fonts_and_bounds": [
+          {
+            "id": "title",
+            "role": "title",
+            "font_pt": 28,
+            "max_chars": 114,
+            "bounds": {
+              "x_emu": 397666,
+              "y_emu": 402336,
+              "w_emu": 11421056,
+              "h_emu": 1295399,
+              "x_in": 0.435,
+              "y_in": 0.44,
+              "w_in": 12.49,
+              "h_in": 1.417
+            }
+          },
+          {
+            "id": "body",
+            "role": "body",
+            "font_pt": 20,
+            "max_chars": 472,
+            "bounds": {
+              "x_emu": 397665,
+              "y_emu": 1946276,
+              "w_emu": 11421056,
+              "h_emu": 4000502,
+              "x_in": 0.435,
+              "y_in": 2.128,
+              "w_in": 12.49,
+              "h_in": 4.375
+            }
+          }
+        ]
+      },
+      {
+        "id": "slideLayout1",
+        "name": "Title Slide",
+        "tags": [
+          "title-slide"
+        ],
+        "xml_path": "ppt/slideLayouts/slideLayout1.xml",
+        "content_zone_emu": {
+          "left_emu": 609600,
+          "top_emu": 3792295,
+          "right_emu": 11582400,
+          "bottom_emu": 6406001
+        },
+        "placeholder_fonts_and_bounds": [
+          {
+            "id": "title",
+            "role": "title",
+            "font_pt": 48,
+            "max_chars": 60,
+            "bounds": {
+              "x_emu": 401904,
+              "y_emu": 1963495,
+              "w_emu": 8000000,
+              "h_emu": 1828800,
+              "x_in": 0.44,
+              "y_in": 2.147,
+              "w_in": 8.749,
+              "h_in": 2
+            }
+          },
+          {
+            "id": "subtitle",
+            "role": "subtitle",
+            "font_pt": 22,
+            "max_chars": 53,
+            "bounds": {
+              "x_emu": 401904,
+              "y_emu": 4000000,
+              "w_emu": 5664555,
+              "h_emu": 1100000,
+              "x_in": 0.44,
+              "y_in": 4.374,
+              "w_in": 6.195,
+              "h_in": 1.203
+            }
+          }
+        ]
+      },
+      {
+        "id": "slideLayout5",
+        "name": "Two Content",
+        "tags": [
+          "content",
+          "two-column",
+          "comparison"
+        ],
+        "xml_path": "ppt/slideLayouts/slideLayout5.xml",
+        "content_zone_emu": {
+          "left_emu": 397665,
+          "top_emu": 1697735,
+          "right_emu": 11818721,
+          "bottom_emu": 6406001
+        },
+        "placeholder_fonts_and_bounds": [
+          {
+            "id": "title",
+            "role": "title",
+            "font_pt": 28,
+            "max_chars": 114,
+            "bounds": {
+              "x_emu": 397666,
+              "y_emu": 402336,
+              "w_emu": 11421056,
+              "h_emu": 1295399,
+              "x_in": 0.435,
+              "y_in": 0.44,
+              "w_in": 12.49,
+              "h_in": 1.417
+            }
+          },
+          {
+            "id": "body",
+            "role": "body",
+            "font_pt": 20,
+            "max_chars": 230,
+            "bounds": {
+              "x_emu": 397665,
+              "y_emu": 1946276,
+              "w_emu": 5583528,
+              "h_emu": 4000502,
+              "x_in": 0.435,
+              "y_in": 2.128,
+              "w_in": 6.106,
+              "h_in": 4.375
+            }
+          },
+          {
+            "id": "body_2",
+            "role": "body",
+            "font_pt": 20,
+            "max_chars": 230,
+            "bounds": {
+              "x_emu": 6235193,
+              "y_emu": 1946276,
+              "w_emu": 5583528,
+              "h_emu": 4000502,
+              "x_in": 6.819,
+              "y_in": 2.128,
+              "w_in": 6.106,
+              "h_in": 4.375
+            }
+          }
+        ]
+      },
+      {
+        "id": "slideLayout4",
+        "name": "Section Divider",
+        "tags": [
+          "title-at-bottom",
+          "section-header",
+          "compact-title"
+        ],
+        "xml_path": "ppt/slideLayouts/slideLayout4.xml",
+        "content_zone_emu": {
+          "left_emu": 609600,
+          "top_emu": 342900,
+          "right_emu": 11582400,
+          "bottom_emu": 6406001
+        },
+        "placeholder_fonts_and_bounds": [
+          {
+            "id": "title",
+            "role": "title",
+            "font_pt": 48,
+            "max_chars": 42,
+            "bounds": {
+              "x_emu": 397772,
+              "y_emu": 3459958,
+              "w_emu": 5645841,
+              "h_emu": 2593275,
+              "x_in": 0.435,
+              "y_in": 3.784,
+              "w_in": 6.174,
+              "h_in": 2.836
+            }
+          },
+          {
+            "id": "Section Number",
+            "role": "section_number",
+            "font_pt": 350,
+            "max_chars": 0,
+            "bounds": {
+              "x_emu": 8193823,
+              "y_emu": 572408,
+              "w_emu": 3462095,
+              "h_emu": 4308872,
+              "x_in": 8.961,
+              "y_in": 0.626,
+              "w_in": 3.786,
+              "h_in": 4.712
+            }
+          }
+        ]
+      },
+      {
+        "id": "slideLayout6",
+        "name": "Blank",
+        "tags": [
+          "blank"
+        ],
+        "xml_path": "ppt/slideLayouts/slideLayout6.xml",
+        "content_zone_emu": {
+          "left_emu": 609600,
+          "top_emu": 342900,
+          "right_emu": 11582400,
+          "bottom_emu": 6406001
+        },
+        "placeholder_fonts_and_bounds": []
+      },
+      {
+        "id": "slideLayout7",
+        "name": "Blank + Title",
+        "tags": [
+          "title-slide",
+          "blank-title"
+        ],
+        "xml_path": "ppt/slideLayouts/slideLayout7.xml",
+        "content_zone_emu": {
+          "left_emu": 609600,
+          "top_emu": 1697735,
+          "right_emu": 11582400,
+          "bottom_emu": 6406001
+        },
+        "placeholder_fonts_and_bounds": [
+          {
+            "id": "title",
+            "role": "title",
+            "font_pt": 28,
+            "max_chars": 114,
+            "bounds": {
+              "x_emu": 397666,
+              "y_emu": 402336,
+              "w_emu": 11421056,
+              "h_emu": 1295399,
+              "x_in": 0.435,
+              "y_in": 0.44,
+              "w_in": 12.49,
+              "h_in": 1.417
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "tracked_reference": {
+    "template": "modern-yellow.pptx",
+    "sha256": "e7ce02d595d2657623e2b231ff4fe14781b863df3b3fe88baab9f4e521a674dc",
+    "slide": {
+      "width_emu": 12192000,
+      "height_emu": 6858000,
+      "width_in": 13.333,
+      "height_in": 7.5
+    },
+    "theme": {
+      "name": "Office Theme",
+      "title_font": "Segoe UI Semibold",
+      "body_font": "Segoe UI",
+      "colors": {
+        "accent1": "#4472C4",
+        "accent2": "#ED7D31",
+        "accent3": "#A5A5A5",
+        "accent4": "#FFC000",
+        "accent5": "#5B9BD5",
+        "accent6": "#70AD47",
+        "dk1": "#000000",
+        "dk2": "#44546A",
+        "folHlink": "#954F72",
+        "hlink": "#0563C1",
+        "lt1": "#FFFFFF",
+        "lt2": "#E7E6E6"
+      }
+    },
+    "grid": {
+      "margin_pct": 6.9,
+      "columns": 12,
+      "gutter_pt": 8,
+      "title_gap_pt": 18,
+      "content_frame": {
+        "title_bottom_pt": 133.1,
+        "content_top_pt": 161.5,
+        "left_pt": 66,
+        "right_pt": 925.5
+      }
+    },
+    "layouts": [
+      {
+        "id": "slideLayout8",
+        "name": "Closing",
+        "tags": [
+          "title-slide",
+          "closing"
+        ],
+        "xml_path": "ppt/slideLayouts/slideLayout8.xml",
+        "content_zone_emu": {
+          "left_emu": 609600,
+          "top_emu": 3886200,
+          "right_emu": 11582400,
+          "bottom_emu": 6264910
+        },
+        "placeholder_fonts_and_bounds": [
+          {
+            "id": "title",
+            "role": "title",
+            "font_pt": 60,
+            "max_chars": 87,
+            "bounds": {
+              "x_emu": 397665,
+              "y_emu": 2286000,
+              "w_emu": 11396670,
+              "h_emu": 1600200,
+              "x_in": 0.435,
+              "y_in": 2.5,
+              "w_in": 12.464,
+              "h_in": 1.75
+            }
+          },
+          {
+            "id": "subtitle",
+            "role": "subtitle",
+            "font_pt": 24,
+            "max_chars": 65,
+            "bounds": {
+              "x_emu": 397665,
+              "y_emu": 4000500,
+              "w_emu": 11396670,
+              "h_emu": 800100,
+              "x_in": 0.435,
+              "y_in": 4.375,
+              "w_in": 12.464,
+              "h_in": 0.875
+            }
+          }
+        ]
+      },
+      {
+        "id": "slideLayout3",
+        "name": "One Content",
+        "tags": [
+          "content"
+        ],
+        "xml_path": "ppt/slideLayouts/slideLayout3.xml",
+        "content_zone_emu": {
+          "left_emu": 792164,
+          "top_emu": 1690688,
+          "right_emu": 11753386,
+          "bottom_emu": 6264910
+        },
+        "placeholder_fonts_and_bounds": [
+          {
+            "id": "body",
+            "role": "body",
+            "font_pt": 28,
+            "max_chars": 213,
+            "bounds": {
+              "x_emu": 792164,
+              "y_emu": 2051050,
+              "w_emu": 10961222,
+              "h_emu": 3692525,
+              "x_in": 0.866,
+              "y_in": 2.243,
+              "w_in": 11.987,
+              "h_in": 4.038
+            }
+          },
+          {
+            "id": "title",
+            "role": "title",
+            "font_pt": 44,
+            "max_chars": 81,
+            "bounds": {
+              "x_emu": 838200,
+              "y_emu": 365125,
+              "w_emu": 10515600,
+              "h_emu": 1325563,
+              "x_in": 0.917,
+              "y_in": 0.399,
+              "w_in": 11.5,
+              "h_in": 1.45
+            }
+          }
+        ]
+      },
+      {
+        "id": "slideLayout2",
+        "name": "Section Divider",
+        "tags": [
+          "title-at-bottom",
+          "section-header",
+          "compact-title"
+        ],
+        "xml_path": "ppt/slideLayouts/slideLayout2.xml",
+        "content_zone_emu": {
+          "left_emu": 609600,
+          "top_emu": 342900,
+          "right_emu": 11582400,
+          "bottom_emu": 6264910
+        },
+        "placeholder_fonts_and_bounds": [
+          {
+            "id": "Section Number",
+            "role": "section_number",
+            "font_pt": 208,
+            "max_chars": 1,
+            "bounds": {
+              "x_emu": 7270595,
+              "y_emu": 814389,
+              "w_emu": 4461030,
+              "h_emu": 2614612,
+              "x_in": 7.951,
+              "y_in": 0.891,
+              "w_in": 4.879,
+              "h_in": 2.859
+            }
+          },
+          {
+            "id": "title",
+            "role": "title",
+            "font_pt": 48,
+            "max_chars": 87,
+            "bounds": {
+              "x_emu": 334963,
+              "y_emu": 4433888,
+              "w_emu": 11396662,
+              "h_emu": 1516062,
+              "x_in": 0.366,
+              "y_in": 4.849,
+              "w_in": 12.464,
+              "h_in": 1.658
+            }
+          }
+        ]
+      },
+      {
+        "id": "slideLayout1",
+        "name": "Title Slide",
+        "tags": [
+          "title-slide"
+        ],
+        "xml_path": "ppt/slideLayouts/slideLayout1.xml",
+        "content_zone_emu": {
+          "left_emu": 609600,
+          "top_emu": 342900,
+          "right_emu": 11582400,
+          "bottom_emu": 6264910
+        },
+        "placeholder_fonts_and_bounds": [
+          {
+            "id": "title",
+            "role": "title",
+            "font_pt": 44,
+            "max_chars": 72,
+            "bounds": {
+              "x_emu": 2423931,
+              "y_emu": 3429000,
+              "w_emu": 9310869,
+              "h_emu": 1325563,
+              "x_in": 2.651,
+              "y_in": 3.75,
+              "w_in": 10.182,
+              "h_in": 1.45
+            }
+          },
+          {
+            "id": "subtitle",
+            "role": "subtitle",
+            "font_pt": 24,
+            "max_chars": 53,
+            "bounds": {
+              "x_emu": 2423931,
+              "y_emu": 4900000,
+              "w_emu": 9310869,
+              "h_emu": 800000,
+              "x_in": 2.651,
+              "y_in": 5.359,
+              "w_in": 10.182,
+              "h_in": 0.875
+            }
+          }
+        ]
+      },
+      {
+        "id": "slideLayout5",
+        "name": "Two Content",
+        "tags": [
+          "content",
+          "two-column",
+          "comparison"
+        ],
+        "xml_path": "ppt/slideLayouts/slideLayout5.xml",
+        "content_zone_emu": {
+          "left_emu": 838200,
+          "top_emu": 1690688,
+          "right_emu": 11353800,
+          "bottom_emu": 6264910
+        },
+        "placeholder_fonts_and_bounds": [
+          {
+            "id": "title",
+            "role": "title",
+            "font_pt": 44,
+            "max_chars": 81,
+            "bounds": {
+              "x_emu": 838200,
+              "y_emu": 365125,
+              "w_emu": 10515600,
+              "h_emu": 1325563,
+              "x_in": 0.917,
+              "y_in": 0.399,
+              "w_in": 11.5,
+              "h_in": 1.45
+            }
+          },
+          {
+            "id": "body",
+            "role": "body",
+            "font_pt": 18,
+            "max_chars": 239,
+            "bounds": {
+              "x_emu": 838200,
+              "y_emu": 2051050,
+              "w_emu": 5076825,
+              "h_emu": 3692525,
+              "x_in": 0.917,
+              "y_in": 2.243,
+              "w_in": 5.552,
+              "h_in": 4.038
+            }
+          },
+          {
+            "id": "body_2",
+            "role": "body",
+            "font_pt": 18,
+            "max_chars": 239,
+            "bounds": {
+              "x_emu": 6276975,
+              "y_emu": 2051050,
+              "w_emu": 5076825,
+              "h_emu": 3692525,
+              "x_in": 6.865,
+              "y_in": 2.243,
+              "w_in": 5.552,
+              "h_in": 4.038
+            }
+          }
+        ]
+      },
+      {
+        "id": "slideLayout4",
+        "name": "Statement",
+        "tags": [
+          "statement"
+        ],
+        "xml_path": "ppt/slideLayouts/slideLayout4.xml",
+        "content_zone_emu": {
+          "left_emu": 763588,
+          "top_emu": 342900,
+          "right_emu": 7881938,
+          "bottom_emu": 6264910
+        },
+        "placeholder_fonts_and_bounds": [
+          {
+            "id": "body",
+            "role": "body",
+            "font_pt": 28,
+            "max_chars": 254,
+            "bounds": {
+              "x_emu": 763588,
+              "y_emu": 3217863,
+              "w_emu": 7118350,
+              "h_emu": 2800350,
+              "x_in": 0.835,
+              "y_in": 3.519,
+              "w_in": 7.785,
+              "h_in": 3.063
+            }
+          }
+        ]
+      },
+      {
+        "id": "slideLayout6",
+        "name": "Blank",
+        "tags": [
+          "blank"
+        ],
+        "xml_path": "ppt/slideLayouts/slideLayout6.xml",
+        "content_zone_emu": {
+          "left_emu": 609600,
+          "top_emu": 342900,
+          "right_emu": 11582400,
+          "bottom_emu": 6264910
+        },
+        "placeholder_fonts_and_bounds": []
+      },
+      {
+        "id": "slideLayout7",
+        "name": "Blank + Title",
+        "tags": [
+          "title-slide",
+          "blank-title"
+        ],
+        "xml_path": "ppt/slideLayouts/slideLayout7.xml",
+        "content_zone_emu": {
+          "left_emu": 609600,
+          "top_emu": 1690688,
+          "right_emu": 11582400,
+          "bottom_emu": 6264910
+        },
+        "placeholder_fonts_and_bounds": [
+          {
+            "id": "title",
+            "role": "title",
+            "font_pt": 44,
+            "max_chars": 81,
+            "bounds": {
+              "x_emu": 838200,
+              "y_emu": 365125,
+              "w_emu": 10515600,
+              "h_emu": 1325563,
+              "x_in": 0.917,
+              "y_in": 0.399,
+              "w_in": 11.5,
+              "h_in": 1.45
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "canonical_layout_bindings": {
+    "blank": "slideLayout7",
+    "blank+title": "slideLayout7",
+    "blank-canvas": "slideLayout6",
+    "blank-title": "slideLayout7",
+    "closing": "slideLayout3",
+    "content": "slideLayout2",
+    "section": "slideLayout4",
+    "title": "slideLayout1",
+    "two-column": "slideLayout5",
+    "two-column-narrow-wide": "slideLayout5",
+    "two-column-wide-narrow": "slideLayout5"
+  },
+  "optional_availability": {
+    "available": [
+      "blank",
+      "blank+title",
+      "blank-canvas",
+      "blank-title",
+      "closing",
+      "content",
+      "section",
+      "title",
+      "two-column",
+      "two-column-narrow-wide",
+      "two-column-wide-narrow"
+    ],
+    "unavailable": [
+      "agenda",
+      "image-left",
+      "image-right",
+      "quote"
+    ]
+  },
+  "conformance": {
+    "validate_template_valid": true,
+    "template_check_pass": true,
+    "examination_findings": {
+      "schema_version": "1.0",
+      "tool": "json2pptx",
+      "subcommand": "examine-template",
+      "input_sha256": "87134dde6d741a594088314c84f22e1047e3dbcc79f6b68590685b673794444d",
+      "template": "p-style.pptx",
+      "ok": true,
+      "summary": "no issues",
+      "findings": []
+    }
+  },
+  "comparison": {
+    "slide_canvas": "Both 12192000 \u00d7 6858000 EMU, 13\u2153 \u00d7 7\u00bd inches (16:9).",
+    "canonical_roles": "p-style has all seven mandatory native roles: title\u2192slideLayout1, content\u2192slideLayout2, closing\u2192slideLayout3, section\u2192slideLayout4, two-column\u2192slideLayout5, blank-canvas\u2192slideLayout6, blank-title\u2192slideLayout7. No synthesized required role.",
+    "optional_roles": "p-style lacks native agenda, quote, image-left, image-right aliases. modern-yellow additionally resolves quote to its Statement layout. Existing named patterns and raw compose supply those compositions, so optional native absence is not a new missing renderer finding.",
+    "fonts": "p-style title font Georgia, body Arial; normal content/blank-title titles 28pt and native content body 20pt. modern-yellow title Segoe UI Semibold/body Segoe UI; discovery body size 18pt normalized, native template body 28pt. Shape-grid role sizes still follow shared tokens.",
+    "content_frames_pt": {
+      "p_style": {
+        "title_bottom_pt": 133.7,
+        "content_top_pt": 153.3,
+        "left_pt": 31.3,
+        "right_pt": 930.6
+      },
+      "modern_yellow": {
+        "title_bottom_pt": 133.1,
+        "content_top_pt": 161.5,
+        "left_pt": 66,
+        "right_pt": 925.5
+      }
+    },
+    "interpretation": "p-style ordinary body starts at 153.3pt, 8.2pt above modern-yellow 161.5pt; reported body width 899.3pt versus859.5pt. p-style is a meaningful wider/serif/native-font reference, not a substitute excluded in favor of a tracked template.",
+    "zone_note": "Examination content_zone is a layout-derived structural rectangle. It differs from the grid content_frame body-start line and from profile reserved source/takeaway bands; preserve exact fields rather than equating all three.",
+    "closing_disclosure": "p-style Closing has a separate legal_disclosure (Georgia11pt; x5197150,y4823926,w6604325,h1655540 EMU), ordinary subtitle Arial22pt, and title66pt. Disclosure must remain independently addressed and reserved.",
+    "section": "p-style Section Divider has title-at-bottom/compact-title tags:48pt title max_chars_per_line14;350pt auto-filled orange Section Number. This is template variation, not missing slide composition."
+  },
+  "effect_on_layout_conclusions": {
+    "new_layout_defects_confirmed": false,
+    "coordinated_small_multiples": "Still missing. Generated actual p-style PPTX with two equal compose regions; low/high revenue values10\u00d7 apart retain identical y-coordinate trajectory though high values use axis ticks100\u2013300 versus10\u201330. Different tick widths slightly change x plot padding, providing a second reason a coordinated composition needs common plot geometry.",
+    "image_source_anchors": "Unchanged: source-coordinate attachment is absent from template-independent overlay model; different frame widths reinforce need for resolving picture placement/crop.",
+    "existing_compositions": "p-style provides title canvas and native two-column support required for current mixed raw layout; parent independently rendered chart+stat+timeline legibly and found no new defect.",
+    "semantic_planner_recommender": "No template-specific exception adds typed region semantics or changes pattern-only composed recommendation; parent p-style recommendation probe also misses the requested chart+KPI+timeline composed candidate."
+  },
+  "p_style_small_multiple_control": {
+    "input": "small-multiple-p-style-input.json",
+    "pptx": "small-multiple-p-style.pptx",
+    "generate_report": "small-multiple-p-style-generate-report.json",
+    "embedded_svg_analysis": "small-multiple-p-style-svg-analysis.json",
+    "generation_success": true,
+    "raster_visual_inspection": "Not performed by this subtask; runtime rendering left to parent/split_engine as directed.",
+    "low_series_path": "M110.5265 420.1843L241.1269 241.6854L371.7273 330.9348L502.3277 152.4359",
+    "high_series_path": "M114.5765 420.1843L244.0198 241.6854L373.463 330.9348L502.9063 152.4359",
+    "equal_y_coordinates": [
+      420.1843,
+      241.6854,
+      330.9348,
+      152.4359
+    ],
+    "note": "These paths differ slightly in x because of independent y-label padding; the10\u00d7 magnitude differences map to identical y positions. The generic earlier repro had byte-identical complete paths."
+  },
+  "exact_references": [
+    "p-style-skill-info-full.json: templates[0].canonical_layout_ids/grid/layouts",
+    "p-style-examination/report.json: slide/theme/grid/layouts[*].content_zone/profile",
+    "p-style-examination/conformance.json: validate_template/template_check",
+    "p-style-examination/layouts/slideLayout2__one-content.xml: native body/title geometry",
+    "p-style-examination/layouts/slideLayout3__qa-closing.xml: separate legal_disclosure",
+    "p-style-modern-yellow-examination/report.json: tracked reference geometry",
+    "svggen/charts.go:1454,1458,1505,1866: independent domains/plot layout",
+    "internal/jsonschema/shapegrid.go:261,269: overlay endpoint model"
+  ],
+  "production_or_template_changes": false,
+  "previous_finalized_reports_modified": false
+}

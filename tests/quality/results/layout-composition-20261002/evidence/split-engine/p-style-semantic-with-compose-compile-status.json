@@ -1,0 +1,5 @@
+{
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "Error: semantic compile: semantic deck cannot compile: 1 blocking error(s)\n"
+}

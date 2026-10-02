@@ -1,0 +1,91 @@
+{
+  "success": true,
+  "output_path": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/output-pestel-placeholder/output.pptx",
+  "slide_count": 1,
+  "content_hash": "f82c30d03333f07d04ca3dc5a84e22245d1d4335c143c0c80cdacf5d16fb6d3b",
+  "duration_ms": 25,
+  "quality": {
+    "score": 100,
+    "basis": "input",
+    "slide_scores": [
+      {
+        "slide_number": 1,
+        "score": 100
+      }
+    ],
+    "scope": "input_heuristic",
+    "evidence": {
+      "artifact_sha256": "f82c30d03333f07d04ca3dc5a84e22245d1d4335c143c0c80cdacf5d16fb6d3b",
+      "schema_valid": true,
+      "generated": true,
+      "fit_checked": true,
+      "structural_valid": true,
+      "pixels_rendered": false,
+      "visually_inspected": false,
+      "reviewed_slide_ids": [],
+      "total_slides": 1,
+      "approved": false,
+      "needs_review": true,
+      "reasons": [
+        "current artifact was not pixel-rendered",
+        "no explicit visual approval verdict for the current artifact"
+      ]
+    }
+  },
+  "fit_findings": [
+    {
+      "pattern": "",
+      "path": "/slides/0/content/0",
+      "code": "TITLE_NOT_ACTION",
+      "message": "slide 1: title \"PESTEL beside margin\" names a topic, not the slide's point — state the takeaway as a sentence with a verb or a number",
+      "fix": {
+        "kind": "review",
+        "params": {
+          "current_words": 3,
+          "hint": "rewrite as an action title, e.g. \"Market Overview\" -\u003e \"Mid-market demand doubled while enterprise stalled\"",
+          "max_words": 15,
+          "placeholder_id": "title",
+          "reason": "no_verb_or_number"
+        }
+      },
+      "action": "review",
+      "severity": "info"
+    },
+    {
+      "pattern": "pestel",
+      "path": "/slides/0/content/1",
+      "code": "sparse_layout",
+      "message": "pestel diagram text occupies 30% of its allocated height; add supporting detail or use a smaller diagram region",
+      "fix": {
+        "kind": "add_detail_or_resize",
+        "params": {
+          "bounds_height": 4351338,
+          "content_height": 1295400,
+          "diagram_type": "pestel"
+        }
+      },
+      "action": "review",
+      "measured": {
+        "width_emu": 0,
+        "height_emu": 1295400
+      },
+      "allowed": {
+        "width_emu": 0,
+        "height_emu": 4351338
+      },
+      "overflow_ratio": 0.2977015345624725,
+      "severity": "info"
+    }
+  ],
+  "slides": [
+    {
+      "index": 0,
+      "resolved_layout_id": "slideLayout2",
+      "placeholders_used": [
+        "title",
+        "body"
+      ],
+      "occupancy_pct": 100
+    }
+  ]
+}

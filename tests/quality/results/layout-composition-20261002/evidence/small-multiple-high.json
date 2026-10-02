@@ -1,0 +1,28 @@
+{
+  "type": "line_chart",
+  "title": "high segment ($M)",
+  "data": {
+    "categories": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "Q4"
+    ],
+    "series": [
+      {
+        "name": "Revenue",
+        "values": [
+          100,
+          200,
+          150,
+          250
+        ]
+      }
+    ],
+    "data_labels": false
+  },
+  "output": {
+    "width": 420,
+    "height": 270
+  }
+}

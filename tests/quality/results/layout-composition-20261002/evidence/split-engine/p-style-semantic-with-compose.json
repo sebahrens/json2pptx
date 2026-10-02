@@ -1,0 +1,55 @@
+{
+  "meta": {
+    "title": "Revenue and margin",
+    "template": "p-style",
+    "source": "Illustrative"
+  },
+  "slides": [
+    {
+      "kind": "stat",
+      "title": "Revenue and margin",
+      "value": "42%",
+      "label": "Margin",
+      "compose": {
+        "direction": "horizontal",
+        "segments": [
+          {
+            "diagram": {
+              "type": "bar_chart",
+              "data": {
+                "categories": [
+                  "Q1",
+                  "Q2",
+                  "Q3"
+                ],
+                "series": [
+                  {
+                    "name": "Revenue",
+                    "values": [
+                      8,
+                      9,
+                      12
+                    ]
+                  }
+                ]
+              },
+              "alt": "Revenue increases from 8 to 12."
+            },
+            "size_pct": 60
+          },
+          {
+            "pattern": {
+              "name": "stat-hero",
+              "values": {
+                "value": "42%",
+                "label": "Margin",
+                "context": "Ahead of plan"
+              }
+            },
+            "size_pct": 40
+          }
+        ]
+      }
+    }
+  ]
+}

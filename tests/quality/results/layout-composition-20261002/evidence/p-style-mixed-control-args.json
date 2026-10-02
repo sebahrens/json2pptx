@@ -1,0 +1,93 @@
+{
+  "spec": {
+    "meta": {
+      "title": "Mixed-region capability control",
+      "template": "p-style",
+      "source": "Illustrative figures for composition testing"
+    },
+    "slides": [
+      {
+        "kind": "raw_json2pptx",
+        "slide": {
+          "layout_id": "blank-title",
+          "content": [
+            {
+              "placeholder_id": "title",
+              "type": "text",
+              "text_value": "Growth supports the launch plan at a 32% margin"
+            }
+          ],
+          "compose": {
+            "direction": "horizontal",
+            "segments": [
+              {
+                "size_pct": 65,
+                "diagram": {
+                  "type": "line_chart",
+                  "title": "Quarterly revenue (\u20acm)",
+                  "data": {
+                    "categories": [
+                      "Q1",
+                      "Q2",
+                      "Q3",
+                      "Q4"
+                    ],
+                    "series": [
+                      {
+                        "name": "Revenue",
+                        "values": [
+                          12,
+                          14,
+                          17,
+                          21
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "size_pct": 35,
+                "compose": {
+                  "direction": "vertical",
+                  "segments": [
+                    {
+                      "size_pct": 40,
+                      "pattern": {
+                        "name": "stat-hero",
+                        "values": {
+                          "value": "32%",
+                          "label": "Gross margin"
+                        }
+                      }
+                    },
+                    {
+                      "size_pct": 60,
+                      "pattern": {
+                        "name": "timeline-horizontal",
+                        "values": [
+                          {
+                            "date": "Oct",
+                            "label": "Design"
+                          },
+                          {
+                            "date": "Nov",
+                            "label": "Pilot"
+                          },
+                          {
+                            "date": "Dec",
+                            "label": "Rollout"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

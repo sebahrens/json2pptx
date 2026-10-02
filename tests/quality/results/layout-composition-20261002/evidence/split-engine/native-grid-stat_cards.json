@@ -1,0 +1,52 @@
+{
+  "template": "midnight-blue",
+  "slides": [
+    {
+      "layout_id": "blank-title",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Stat Cards"
+        }
+      ],
+      "shape_grid": {
+        "columns": [
+          70,
+          30
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "diagram": {
+                  "type": "stat_cards",
+                  "data": {
+                    "panels": [
+                      {
+                        "title": "Revenue",
+                        "body": "12M"
+                      },
+                      {
+                        "title": "Margin",
+                        "body": "42%"
+                      }
+                    ]
+                  },
+                  "alt": "Test diagram"
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": "Margin 42%"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

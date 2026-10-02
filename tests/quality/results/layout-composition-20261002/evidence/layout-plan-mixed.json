@@ -1,0 +1,84 @@
+{
+  "jsonrpc": "2.0",
+  "id": 18,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"brief\":\"Create a three-slide executive review. Slide 1 is the title. Slide 2 must divide the canvas into three regions: left \u2026\",\"format\":\"deckspec\",\"response_fingerprint\":\"84ac1a4cd89b5a21f249331b7933fa1285703976d5ff9077c17f82cb79fbfc91\"}"
+      }
+    ],
+    "structuredContent": {
+      "format": "deckspec",
+      "brief": "Create a three-slide executive review. Slide 1 is the title. Slide 2 must divide the canvas into three regions: left two-thirds a line chart of quarterly revenue Q1=12, Q2=14, Q3=17, Q4=21 million; upper right a 32% gross margin KPI; lower right a three-step launch timeline (Design October, Pilot November, Rollout December). Keep those content types together so executives see the performance, profitability and delivery plan on one slide. Slide 3 asks the COO to approve the rollout on 9 October.",
+      "slide_budget": 3,
+      "deck_spec": {
+        "meta": {
+          "audience": "executive committee",
+          "chrome": {
+            "page_numbers": {
+              "enabled": true
+            }
+          },
+          "date": "__FILL__",
+          "template": "modern-yellow",
+          "title": "Create a three-slide executive review"
+        },
+        "slides": [
+          {
+            "kind": "title",
+            "subtitle": "__FILL__",
+            "title": "Create a three-slide executive review"
+          },
+          {
+            "kind": "decision",
+            "title": "__FILL__"
+          },
+          {
+            "kind": "next_steps",
+            "title": "__FILL__"
+          }
+        ]
+      },
+      "slots": [
+        {
+          "slide_index": 0,
+          "path": "slides[0]",
+          "slot": "cover",
+          "kind": "title",
+          "guidance": "Deck title and a subtitle naming audience and date."
+        },
+        {
+          "slide_index": 1,
+          "path": "slides[1]",
+          "slot": "ask",
+          "kind": "decision",
+          "guidance": "The decision needed now: the options, the recommended one, and the ask with owner and date.",
+          "facts": [
+            "Slide 3 asks the COO to approve the rollout on 9 October"
+          ]
+        },
+        {
+          "slide_index": 2,
+          "path": "slides[2]",
+          "slot": "closing",
+          "kind": "next_steps",
+          "guidance": "Close on next steps, not \"Thank you\": 2-6 actions, each with an owner and a date, and the decisions requested. A plain closing kind stays available for a Q&A page.",
+          "facts": [
+            "lower right a three-step launch timeline (Design October, Pilot November, Rollout December)",
+            "left two-thirds a line chart of quarterly revenue Q1=12",
+            "Q2=14",
+            "Q3=17"
+          ]
+        }
+      ],
+      "unplaced_facts": [
+        "Slide 1 is the title",
+        "Slide 2 must divide the canvas into three regions",
+        "Q4=21 million",
+        "upper right a 32% gross margin KPI"
+      ],
+      "response_fingerprint": "84ac1a4cd89b5a21f249331b7933fa1285703976d5ff9077c17f82cb79fbfc91"
+    }
+  }
+}

@@ -1,0 +1,92 @@
+[
+  {
+    "type": "business_model_canvas",
+    "exit": 1,
+    "stderr": "Error: invalid slide specification: slide 1: shape_grid: diagram in grid row 1, column 1: svggen render failed: svggen: unknown diagram type \"business_model_canvas\" (allowed types: area_chart, bar_chart, bubble_chart, donut_chart, fishbone, funnel_chart, gantt, gauge_chart, grouped_bar_chart, line_chart, matrix_2x2, org_chart, pie_chart, radar_chart, scatter_chart, stacked_area_chart, stacked_bar_chart, timeline, treemap_chart, venn, waterfall)",
+    "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/native-grid-business_model_canvas.json"
+  },
+  {
+    "type": "value_chain",
+    "exit": 1,
+    "stderr": "Error: invalid slide specification: slide 1: shape_grid: diagram in grid row 1, column 1: svggen render failed: svggen: unknown diagram type \"value_chain\" (allowed types: area_chart, bar_chart, bubble_chart, donut_chart, fishbone, funnel_chart, gantt, gauge_chart, grouped_bar_chart, line_chart, matrix_2x2, org_chart, pie_chart, radar_chart, scatter_chart, stacked_area_chart, stacked_bar_chart, timeline, treemap_chart, venn, waterfall)",
+    "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/native-grid-value_chain.json"
+  },
+  {
+    "type": "nine_box_talent",
+    "exit": 1,
+    "stderr": "Error: invalid slide specification: slide 1: shape_grid: diagram in grid row 1, column 1: svggen render failed: svggen: unknown diagram type \"nine_box_talent\" (allowed types: area_chart, bar_chart, bubble_chart, donut_chart, fishbone, funnel_chart, gantt, gauge_chart, grouped_bar_chart, line_chart, matrix_2x2, org_chart, pie_chart, radar_chart, scatter_chart, stacked_area_chart, stacked_bar_chart, timeline, treemap_chart, venn, waterfall)",
+    "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/native-grid-nine_box_talent.json"
+  },
+  {
+    "type": "pestel",
+    "exit": 1,
+    "stderr": "Error: invalid slide specification: slide 1: shape_grid: diagram in grid row 1, column 1: svggen render failed: svggen: unknown diagram type \"pestel\" (allowed types: area_chart, bar_chart, bubble_chart, donut_chart, fishbone, funnel_chart, gantt, gauge_chart, grouped_bar_chart, line_chart, matrix_2x2, org_chart, pie_chart, radar_chart, scatter_chart, stacked_area_chart, stacked_bar_chart, timeline, treemap_chart, venn, waterfall)",
+    "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/native-grid-pestel.json"
+  },
+  {
+    "type": "process_flow",
+    "exit": 1,
+    "stderr": "Error: invalid slide specification: slide 1: shape_grid: diagram in grid row 1, column 1: svggen render failed: svggen: unknown diagram type \"process_flow\" (allowed types: area_chart, bar_chart, bubble_chart, donut_chart, fishbone, funnel_chart, gantt, gauge_chart, grouped_bar_chart, line_chart, matrix_2x2, org_chart, pie_chart, radar_chart, scatter_chart, stacked_area_chart, stacked_bar_chart, timeline, treemap_chart, venn, waterfall)",
+    "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/native-grid-process_flow.json"
+  },
+  {
+    "type": "pyramid",
+    "exit": 1,
+    "stderr": "Error: invalid slide specification: slide 1: shape_grid: diagram in grid row 1, column 1: svggen render failed: svggen: unknown diagram type \"pyramid\" (allowed types: area_chart, bar_chart, bubble_chart, donut_chart, fishbone, funnel_chart, gantt, gauge_chart, grouped_bar_chart, line_chart, matrix_2x2, org_chart, pie_chart, radar_chart, scatter_chart, stacked_area_chart, stacked_bar_chart, timeline, treemap_chart, venn, waterfall)",
+    "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/native-grid-pyramid.json"
+  },
+  {
+    "type": "house_diagram",
+    "exit": 1,
+    "stderr": "Error: invalid slide specification: slide 1: shape_grid: diagram in grid row 1, column 1: svggen render failed: svggen: unknown diagram type \"house_diagram\" (allowed types: area_chart, bar_chart, bubble_chart, donut_chart, fishbone, funnel_chart, gantt, gauge_chart, grouped_bar_chart, line_chart, matrix_2x2, org_chart, pie_chart, radar_chart, scatter_chart, stacked_area_chart, stacked_bar_chart, timeline, treemap_chart, venn, waterfall)",
+    "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/native-grid-house_diagram.json"
+  },
+  {
+    "type": "kpi_dashboard",
+    "exit": 1,
+    "stderr": "Error: invalid slide specification: slide 1: shape_grid: diagram in grid row 1, column 1: svggen render failed: svggen: unknown diagram type \"kpi_dashboard\" (allowed types: area_chart, bar_chart, bubble_chart, donut_chart, fishbone, funnel_chart, gantt, gauge_chart, grouped_bar_chart, line_chart, matrix_2x2, org_chart, pie_chart, radar_chart, scatter_chart, stacked_area_chart, stacked_bar_chart, timeline, treemap_chart, venn, waterfall)",
+    "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/native-grid-kpi_dashboard.json"
+  },
+  {
+    "type": "heatmap",
+    "exit": 1,
+    "stderr": "Error: invalid slide specification: slide 1: shape_grid: diagram in grid row 1, column 1: svggen render failed: svggen: unknown diagram type \"heatmap\" (allowed types: area_chart, bar_chart, bubble_chart, donut_chart, fishbone, funnel_chart, gantt, gauge_chart, grouped_bar_chart, line_chart, matrix_2x2, org_chart, pie_chart, radar_chart, scatter_chart, stacked_area_chart, stacked_bar_chart, timeline, treemap_chart, venn, waterfall)",
+    "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/native-grid-heatmap.json"
+  },
+  {
+    "type": "panel_layout",
+    "exit": 1,
+    "stderr": "Error: invalid slide specification: slide 1: shape_grid: diagram in grid row 1, column 1: svggen render failed: svggen: unknown diagram type \"panel_layout\" (allowed types: area_chart, bar_chart, bubble_chart, donut_chart, fishbone, funnel_chart, gantt, gauge_chart, grouped_bar_chart, line_chart, matrix_2x2, org_chart, pie_chart, radar_chart, scatter_chart, stacked_area_chart, stacked_bar_chart, timeline, treemap_chart, venn, waterfall)",
+    "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/native-grid-panel_layout.json"
+  },
+  {
+    "type": "icon_columns",
+    "exit": 1,
+    "stderr": "Error: invalid slide specification: slide 1: shape_grid: diagram in grid row 1, column 1: svggen render failed: svggen: unknown diagram type \"icon_columns\" (allowed types: area_chart, bar_chart, bubble_chart, donut_chart, fishbone, funnel_chart, gantt, gauge_chart, grouped_bar_chart, line_chart, matrix_2x2, org_chart, pie_chart, radar_chart, scatter_chart, stacked_area_chart, stacked_bar_chart, timeline, treemap_chart, venn, waterfall)",
+    "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/native-grid-icon_columns.json"
+  },
+  {
+    "type": "icon_rows",
+    "exit": 1,
+    "stderr": "Error: invalid slide specification: slide 1: shape_grid: diagram in grid row 1, column 1: svggen render failed: svggen: unknown diagram type \"icon_rows\" (allowed types: area_chart, bar_chart, bubble_chart, donut_chart, fishbone, funnel_chart, gantt, gauge_chart, grouped_bar_chart, line_chart, matrix_2x2, org_chart, pie_chart, radar_chart, scatter_chart, stacked_area_chart, stacked_bar_chart, timeline, treemap_chart, venn, waterfall)",
+    "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/native-grid-icon_rows.json"
+  },
+  {
+    "type": "stat_cards",
+    "exit": 1,
+    "stderr": "Error: invalid slide specification: slide 1: shape_grid: diagram in grid row 1, column 1: svggen render failed: svggen: unknown diagram type \"stat_cards\" (allowed types: area_chart, bar_chart, bubble_chart, donut_chart, fishbone, funnel_chart, gantt, gauge_chart, grouped_bar_chart, line_chart, matrix_2x2, org_chart, pie_chart, radar_chart, scatter_chart, stacked_area_chart, stacked_bar_chart, timeline, treemap_chart, venn, waterfall)",
+    "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/native-grid-stat_cards.json"
+  },
+  {
+    "type": "swot",
+    "exit": 0,
+    "stderr": "",
+    "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/native-grid-swot.json"
+  },
+  {
+    "type": "porters_five_forces",
+    "exit": 0,
+    "stderr": "",
+    "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/native-grid-porters_five_forces.json"
+  }
+]

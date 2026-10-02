@@ -1,0 +1,85 @@
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"schema_version\":\"1.0\",\"tool\":\"json2pptx\",\"subcommand\":\"mcp\",\"ok\":false,\"summary\":\"1 error, 1 warning, 1 info\",\"findings\":[{\"id\":\"input-1\",\"code\":\"INPUT.unknown_key\",\"severity\":\"warning\",\"category\":\"INPUT\",\"where\":{\"slide\":0},\"message\":\"unknown field \\\"type\\\" at /slides/0/type\",\"evidence\":{\"path\":\"/slides/0/type\",\"pattern\":\"input\"},\"describe_command\":\"json2pptx describe-finding unknown_key\"},{\"id\":\"input-2\",\"code\":\"INPUT.required\",\"severity\":\"error\",\"category\":\"INPUT\",\"where\":{\"slide\":0},\"message\":\"slide 1: layout_id or slide_type is required\",\"evidence\":{\"path\":\"/slides/0/layout_id\"},\"remediation\":{\"primary\":{\"action\":\"replace_value\",\"params\":{\"field\":\"layout_id_or_slide_type\",\"kind\":\"provide_value\"}}},\"describe_command\":\"json2pptx describe-finding required\"},{\"id\":\"input-3\",\"code\":\"INPUT.MISSING_ALT_TEXT\",\"severity\":\"info\",\"category\":\"INPUT\",\"where\":{\"slide\":0},\"message\":\"slide 1: diagram has no alt text \u2014 a screen reader gets the description derived from its data; set alt to one sentence saying what it shows\",\"evidence\":{\"action\":\"review\",\"path\":\"/slides/0/shape_grid/rows/0/cells/1/grid/rows/0/cells/0/diagram\"},\"remediation\":{\"primary\":{\"action\":\"replace_value\",\"params\":{\"field\":\"alt\",\"kind\":\"provide_value\",\"on\":\"diagram\"}}},\"describe_command\":\"json2pptx describe-finding MISSING_ALT_TEXT\"}]}"
+      }
+    ],
+    "isError": true,
+    "structuredContent": {
+      "schema_version": "1.0",
+      "tool": "json2pptx",
+      "subcommand": "mcp",
+      "ok": false,
+      "summary": "1 error, 1 warning, 1 info",
+      "findings": [
+        {
+          "id": "input-1",
+          "code": "INPUT.unknown_key",
+          "severity": "warning",
+          "category": "INPUT",
+          "where": {
+            "slide": 0
+          },
+          "message": "unknown field \"type\" at /slides/0/type",
+          "evidence": {
+            "path": "/slides/0/type",
+            "pattern": "input"
+          },
+          "describe_command": "json2pptx describe-finding unknown_key"
+        },
+        {
+          "id": "input-2",
+          "code": "INPUT.required",
+          "severity": "error",
+          "category": "INPUT",
+          "where": {
+            "slide": 0
+          },
+          "message": "slide 1: layout_id or slide_type is required",
+          "evidence": {
+            "path": "/slides/0/layout_id"
+          },
+          "remediation": {
+            "primary": {
+              "action": "replace_value",
+              "params": {
+                "field": "layout_id_or_slide_type",
+                "kind": "provide_value"
+              }
+            }
+          },
+          "describe_command": "json2pptx describe-finding required"
+        },
+        {
+          "id": "input-3",
+          "code": "INPUT.MISSING_ALT_TEXT",
+          "severity": "info",
+          "category": "INPUT",
+          "where": {
+            "slide": 0
+          },
+          "message": "slide 1: diagram has no alt text \u2014 a screen reader gets the description derived from its data; set alt to one sentence saying what it shows",
+          "evidence": {
+            "action": "review",
+            "path": "/slides/0/shape_grid/rows/0/cells/1/grid/rows/0/cells/0/diagram"
+          },
+          "remediation": {
+            "primary": {
+              "action": "replace_value",
+              "params": {
+                "field": "alt",
+                "kind": "provide_value",
+                "on": "diagram"
+              }
+            }
+          },
+          "describe_command": "json2pptx describe-finding MISSING_ALT_TEXT"
+        }
+      ]
+    }
+  }
+}

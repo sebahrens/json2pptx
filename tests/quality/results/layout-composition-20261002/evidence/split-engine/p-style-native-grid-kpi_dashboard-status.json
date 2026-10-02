@@ -1,0 +1,9 @@
+{
+  "template": "p-style",
+  "case": "native-grid-kpi_dashboard",
+  "exit_code": 1,
+  "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/p-style-native-grid-kpi_dashboard.json",
+  "stdout": "",
+  "stderr": "Error: invalid slide specification: slide 1: shape_grid: diagram in grid row 1, column 1: svggen render failed: svggen: unknown diagram type \"kpi_dashboard\" (allowed types: area_chart, bar_chart, bubble_chart, donut_chart, fishbone, funnel_chart, gantt, gauge_chart, grouped_bar_chart, line_chart, matrix_2x2, org_chart, pie_chart, radar_chart, scatter_chart, stacked_area_chart, stacked_bar_chart, timeline, treemap_chart, venn, waterfall)\n",
+  "report": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/p-style-native-grid-kpi_dashboard-report.json"
+}

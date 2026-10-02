@@ -1,0 +1,85 @@
+{
+  "success": true,
+  "output_path": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/output-p-style-grid-chart-table-text/output.pptx",
+  "slide_count": 1,
+  "content_hash": "59be847d671e4204549b38e184c92e8dd28389009f5887415733d150a6d546bb",
+  "duration_ms": 117,
+  "warnings": [
+    "deck has a cover slide but no closing slide — consider adding a closing/thank-you slide"
+  ],
+  "quality": {
+    "score": 98,
+    "basis": "input",
+    "slide_scores": [
+      {
+        "slide_number": 1,
+        "score": 100
+      }
+    ],
+    "issues": [
+      "1 pipeline warning(s)"
+    ],
+    "scope": "input_heuristic",
+    "evidence": {
+      "artifact_sha256": "59be847d671e4204549b38e184c92e8dd28389009f5887415733d150a6d546bb",
+      "schema_valid": true,
+      "generated": true,
+      "fit_checked": true,
+      "structural_valid": true,
+      "pixels_rendered": false,
+      "visually_inspected": false,
+      "reviewed_slide_ids": [],
+      "total_slides": 1,
+      "approved": false,
+      "needs_review": true,
+      "reasons": [
+        "current artifact was not pixel-rendered",
+        "no explicit visual approval verdict for the current artifact"
+      ]
+    }
+  },
+  "fit_findings": [
+    {
+      "pattern": "",
+      "path": "/slides/0/shape_grid/rows/0/cells/1/grid/rows/1/cells/0/table",
+      "code": "MISSING_ALT_TEXT",
+      "message": "slide 1: table has no alt text — a screen reader gets the description derived from its data; set alt to one sentence saying what it shows",
+      "fix": {
+        "kind": "provide_value",
+        "params": {
+          "field": "alt",
+          "kind": "table",
+          "on": "table"
+        }
+      },
+      "action": "review",
+      "next_tool_call": {
+        "tool": "repair_slide",
+        "args_template": {
+          "fixes": [
+            {
+              "kind": "provide_value",
+              "params": {
+                "field": "alt",
+                "kind": "table",
+                "on": "table"
+              }
+            }
+          ],
+          "slide_index": 0
+        }
+      },
+      "severity": "info"
+    }
+  ],
+  "slides": [
+    {
+      "index": 0,
+      "resolved_layout_id": "slideLayout7",
+      "placeholders_used": [
+        "title"
+      ],
+      "occupancy_pct": 100
+    }
+  ]
+}

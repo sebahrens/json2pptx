@@ -1,0 +1,614 @@
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"fields\":[\"diagram_capabilities\"]}"
+      }
+    ],
+    "structuredContent": {
+      "diagram_capabilities": [
+        {
+          "type": "timeline",
+          "max_nodes": 7,
+          "max_depth": 1,
+          "overflow_behavior": "all stops are laid out; past max_nodes the stops compress and labels shorten \u2014 split across slides to keep them legible",
+          "required_fields": [
+            "events"
+          ],
+          "optional_fields": [
+            "activities",
+            "milestones",
+            "show_today",
+            "time_unit",
+            "date",
+            "body",
+            "accent",
+            "connector"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "svg"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "svggen"
+        },
+        {
+          "type": "process_flow",
+          "max_nodes": 50,
+          "max_depth": 1,
+          "overflow_behavior": "font reduction for density",
+          "required_fields": [
+            "steps"
+          ],
+          "optional_fields": [
+            "description",
+            "connections"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "native_ooxml"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "native_ooxml"
+        },
+        {
+          "type": "pyramid",
+          "max_nodes": 20,
+          "max_depth": 1,
+          "overflow_behavior": "error if >20 levels; font reduction at 8+",
+          "required_fields": [
+            "levels"
+          ],
+          "optional_fields": [
+            "description",
+            "gap",
+            "top_width_ratio"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "native_ooxml"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "native_ooxml"
+        },
+        {
+          "type": "venn",
+          "max_nodes": 3,
+          "max_depth": 1,
+          "overflow_behavior": "text wrapping and truncation within circles",
+          "required_fields": [
+            "circles"
+          ],
+          "optional_fields": [
+            "intersections",
+            "circle_opacity",
+            "overlap_ratio"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "svg"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "svggen"
+        },
+        {
+          "type": "swot",
+          "max_nodes": 4,
+          "max_depth": 1,
+          "overflow_behavior": "font reduction for dense bullet lists",
+          "required_fields": [
+            "strengths",
+            "weaknesses",
+            "opportunities",
+            "threats"
+          ],
+          "optional_fields": [
+            "footnote"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "native_ooxml"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "native_ooxml"
+        },
+        {
+          "type": "org_chart",
+          "max_nodes": 50,
+          "max_depth": 20,
+          "overflow_behavior": "siblings >9 collapsed to +N more indicator; deepest level pruned when boxes would fall below the legible minimum (reported as diagram.org_chart_depth_pruned, with the remaining parent showing '+N reports' under its own title) \u2014 max_nodes is a ceiling, not a guarantee, and a deep tree hits the depth prune well below it",
+          "required_fields": [
+            "root"
+          ],
+          "optional_fields": [
+            "title",
+            "children",
+            "node_width",
+            "node_height",
+            "max_visible_siblings"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "svg"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "svggen",
+          "aliases": [
+            "org",
+            "orgchart"
+          ]
+        },
+        {
+          "type": "gantt",
+          "max_nodes": 50,
+          "max_depth": 1,
+          "overflow_behavior": "font reduction; task name truncation with ellipsis",
+          "required_fields": [
+            "tasks"
+          ],
+          "optional_fields": [
+            "milestones",
+            "time_unit",
+            "show_progress",
+            "footnote"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "svg"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "svggen"
+        },
+        {
+          "type": "matrix_2x2",
+          "max_nodes": 4,
+          "max_depth": 1,
+          "overflow_behavior": "fixed 2x2 grid; body text truncated at 200 chars. In numeric points mode, quadrant captions reserve collision space; a point that would cover one is moved just below it with diagram.text_overlap warning, so check exact y-position evidence. For named items without numeric coordinates, use the native matrix-2x2 pattern or quadrant lists.",
+          "required_fields": null,
+          "optional_fields": [
+            "x_axis_label",
+            "y_axis_label",
+            "top_left",
+            "top_right",
+            "bottom_left",
+            "bottom_right",
+            "highlight_quadrant"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "svg"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "svggen",
+          "aliases": [
+            "matrix"
+          ]
+        },
+        {
+          "type": "porters_five_forces",
+          "max_nodes": 5,
+          "max_depth": 1,
+          "overflow_behavior": "fixed 5-force layout; text wrapping within force regions. A force with no intensity is drawn unscored \u2014 neutral surface, no intensity line \u2014 rather than defaulting to Medium (50%)",
+          "required_fields": null,
+          "optional_fields": [
+            "industry_name",
+            "forces",
+            "rivalry",
+            "new_entrants",
+            "substitutes",
+            "suppliers",
+            "buyers"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "native_ooxml"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "native_ooxml"
+        },
+        {
+          "type": "house_diagram",
+          "max_nodes": 10,
+          "max_depth": 1,
+          "overflow_behavior": "font reduction for dense sections",
+          "required_fields": null,
+          "optional_fields": [
+            "roof",
+            "sections",
+            "foundation",
+            "footnote"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "native_ooxml"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "native_ooxml"
+        },
+        {
+          "type": "business_model_canvas",
+          "max_nodes": 9,
+          "max_depth": 1,
+          "overflow_behavior": "fixed 9-cell layout; 1-10 bullets per section; items >200 chars truncated",
+          "required_fields": [
+            "key_partners",
+            "key_activities",
+            "key_resources",
+            "value_propositions",
+            "customer_relations",
+            "channels",
+            "customer_segments",
+            "cost_structure",
+            "revenue_streams"
+          ],
+          "optional_fields": null,
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "native_ooxml"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "native_ooxml"
+        },
+        {
+          "type": "value_chain",
+          "max_nodes": 20,
+          "max_depth": 1,
+          "overflow_behavior": "font reduction for many items",
+          "required_fields": null,
+          "optional_fields": [
+            "primary",
+            "support",
+            "margin_label",
+            "show_arrows"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "native_ooxml"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "native_ooxml"
+        },
+        {
+          "type": "nine_box_talent",
+          "max_nodes": 50,
+          "max_depth": 1,
+          "overflow_behavior": "dot collision; text truncation for overlapping badges",
+          "required_fields": null,
+          "optional_fields": [
+            "employees",
+            "cells",
+            "title",
+            "x_label",
+            "y_label",
+            "x_axis_label",
+            "y_axis_label",
+            "x_axis_labels",
+            "y_axis_labels"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "native_ooxml"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "native_ooxml"
+        },
+        {
+          "type": "kpi_dashboard",
+          "max_nodes": 12,
+          "max_depth": 1,
+          "overflow_behavior": "card grid layout; font reduction for many metrics. max_nodes IS enforced: metrics past it are dropped and reported as CONTENT_DROPPED naming how many",
+          "required_fields": [
+            "metrics"
+          ],
+          "optional_fields": [
+            "label",
+            "value",
+            "unit",
+            "change",
+            "trend"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "native_ooxml"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "native_ooxml"
+        },
+        {
+          "type": "heatmap",
+          "max_nodes": 200,
+          "max_depth": 1,
+          "overflow_behavior": "cell labels omitted when cells too small",
+          "required_fields": [
+            "values"
+          ],
+          "optional_fields": [
+            "row_labels",
+            "col_labels",
+            "color_scale"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "native_ooxml"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "native_ooxml"
+        },
+        {
+          "type": "fishbone",
+          "max_nodes": 10,
+          "max_depth": 2,
+          "overflow_behavior": "categories >10 collapsed to overflow indicator",
+          "required_fields": [
+            "effect"
+          ],
+          "optional_fields": [
+            "categories"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "svg"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "svggen"
+        },
+        {
+          "type": "pestel",
+          "max_nodes": 6,
+          "max_depth": 1,
+          "overflow_behavior": "fixed 6-segment layout",
+          "required_fields": null,
+          "optional_fields": [
+            "political",
+            "economic",
+            "social",
+            "technological",
+            "environmental",
+            "legal"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "native_ooxml"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "native_ooxml"
+        },
+        {
+          "type": "panel_layout",
+          "max_nodes": 12,
+          "max_depth": 1,
+          "overflow_behavior": "font reduction for many panels",
+          "required_fields": [
+            "panels"
+          ],
+          "optional_fields": [
+            "layout",
+            "title",
+            "body",
+            "icon",
+            "color"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "native_ooxml"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "native_ooxml"
+        },
+        {
+          "type": "icon_columns",
+          "max_nodes": 5,
+          "max_depth": 1,
+          "overflow_behavior": "font reduction for many panels",
+          "required_fields": [
+            "panels"
+          ],
+          "optional_fields": [
+            "title",
+            "body",
+            "icon",
+            "color"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "native_ooxml"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "native_ooxml"
+        },
+        {
+          "type": "icon_rows",
+          "max_nodes": 5,
+          "max_depth": 1,
+          "overflow_behavior": "font reduction for many panels",
+          "required_fields": [
+            "panels"
+          ],
+          "optional_fields": [
+            "title",
+            "body",
+            "icon",
+            "color"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "native_ooxml"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "native_ooxml"
+        },
+        {
+          "type": "stat_cards",
+          "max_nodes": 4,
+          "max_depth": 1,
+          "overflow_behavior": "fixed 3-4 card layout",
+          "required_fields": [
+            "panels"
+          ],
+          "optional_fields": [
+            "title",
+            "value",
+            "icon",
+            "color"
+          ],
+          "status": "ready",
+          "placements": [
+            {
+              "context": "placeholder",
+              "pipeline": "native_ooxml"
+            },
+            {
+              "context": "shape_grid",
+              "pipeline": "svg"
+            }
+          ],
+          "grid_cell_support": true,
+          "authoring_surface": "native_ooxml"
+        }
+      ]
+    }
+  }
+}

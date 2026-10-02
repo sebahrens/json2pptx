@@ -1,0 +1,120 @@
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"schema_version\":\"1.0\",\"tool\":\"json2pptx\",\"subcommand\":\"mcp\",\"ok\":false,\"summary\":\"2 errors, 1 warning, 1 info\",\"findings\":[{\"id\":\"input-1\",\"code\":\"INPUT.unknown_key\",\"severity\":\"warning\",\"category\":\"INPUT\",\"where\":{\"slide\":0},\"message\":\"unknown field \\\"type\\\" at /slides/0/type\",\"evidence\":{\"path\":\"/slides/0/type\",\"pattern\":\"input\"},\"describe_command\":\"json2pptx describe-finding unknown_key\"},{\"id\":\"input-2\",\"code\":\"INPUT.required\",\"severity\":\"error\",\"category\":\"INPUT\",\"where\":{\"slide\":0},\"message\":\"slide 1: layout_id or slide_type is required\",\"evidence\":{\"path\":\"/slides/0/layout_id\"},\"remediation\":{\"primary\":{\"action\":\"replace_value\",\"params\":{\"field\":\"layout_id_or_slide_type\",\"kind\":\"provide_value\"}}},\"describe_command\":\"json2pptx describe-finding required\"},{\"id\":\"input-3\",\"code\":\"INPUT.invalid_shape\",\"severity\":\"error\",\"category\":\"INPUT\",\"where\":{\"slide\":0},\"message\":\"slide 1: kpi-3up: values must be an array where each item is a string or an object {big, small, comparator?, icon?, sub?}, not an object wrapping one; the key \\\"kpis\\\" is never read \u2014 send its value as values directly (generate would refuse this deck)\",\"evidence\":{\"path\":\"/slides/0/compose/values\",\"pattern\":\"kpi-3up\"},\"remediation\":{\"primary\":{\"action\":\"replace_value\",\"params\":{\"expected\":\"array\",\"got\":\"object\",\"items\":3,\"kind\":\"reshape_value\",\"path\":\"/slides/0/compose/values\",\"unwrap_key\":\"kpis\"}}},\"next_tool_call\":{\"tool\":\"show_pattern\",\"args_template\":{\"name\":\"kpi-3up\"}},\"describe_command\":\"json2pptx describe-finding invalid_shape\"},{\"id\":\"input-4\",\"code\":\"INPUT.DATA_WITHOUT_SOURCE\",\"severity\":\"info\",\"category\":\"INPUT\",\"where\":{\"slide\":0},\"message\":\"slide 1: shows the kpi-3up pattern but cites no source \u2014 set the slide's source (origin and base, or \\\"Illustrative\\\") so the numbers can be traced\",\"evidence\":{\"action\":\"review\",\"path\":\"/slides/0/source\"},\"remediation\":{\"primary\":{\"action\":\"replace_value\",\"params\":{\"data\":\"the kpi-3up pattern\",\"field\":\"source\",\"hint\":\"set the slide's source, or a deck-level default once (raw top-level source, DeckSpec meta.source); \\\"Illustrative\\\" is accepted for estimates\",\"kind\":\"provide_value\"}}},\"describe_command\":\"json2pptx describe-finding DATA_WITHOUT_SOURCE\"}]}"
+      }
+    ],
+    "isError": true,
+    "structuredContent": {
+      "schema_version": "1.0",
+      "tool": "json2pptx",
+      "subcommand": "mcp",
+      "ok": false,
+      "summary": "2 errors, 1 warning, 1 info",
+      "findings": [
+        {
+          "id": "input-1",
+          "code": "INPUT.unknown_key",
+          "severity": "warning",
+          "category": "INPUT",
+          "where": {
+            "slide": 0
+          },
+          "message": "unknown field \"type\" at /slides/0/type",
+          "evidence": {
+            "path": "/slides/0/type",
+            "pattern": "input"
+          },
+          "describe_command": "json2pptx describe-finding unknown_key"
+        },
+        {
+          "id": "input-2",
+          "code": "INPUT.required",
+          "severity": "error",
+          "category": "INPUT",
+          "where": {
+            "slide": 0
+          },
+          "message": "slide 1: layout_id or slide_type is required",
+          "evidence": {
+            "path": "/slides/0/layout_id"
+          },
+          "remediation": {
+            "primary": {
+              "action": "replace_value",
+              "params": {
+                "field": "layout_id_or_slide_type",
+                "kind": "provide_value"
+              }
+            }
+          },
+          "describe_command": "json2pptx describe-finding required"
+        },
+        {
+          "id": "input-3",
+          "code": "INPUT.invalid_shape",
+          "severity": "error",
+          "category": "INPUT",
+          "where": {
+            "slide": 0
+          },
+          "message": "slide 1: kpi-3up: values must be an array where each item is a string or an object {big, small, comparator?, icon?, sub?}, not an object wrapping one; the key \"kpis\" is never read \u2014 send its value as values directly (generate would refuse this deck)",
+          "evidence": {
+            "path": "/slides/0/compose/values",
+            "pattern": "kpi-3up"
+          },
+          "remediation": {
+            "primary": {
+              "action": "replace_value",
+              "params": {
+                "expected": "array",
+                "got": "object",
+                "items": 3,
+                "kind": "reshape_value",
+                "path": "/slides/0/compose/values",
+                "unwrap_key": "kpis"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "show_pattern",
+            "args_template": {
+              "name": "kpi-3up"
+            }
+          },
+          "describe_command": "json2pptx describe-finding invalid_shape"
+        },
+        {
+          "id": "input-4",
+          "code": "INPUT.DATA_WITHOUT_SOURCE",
+          "severity": "info",
+          "category": "INPUT",
+          "where": {
+            "slide": 0
+          },
+          "message": "slide 1: shows the kpi-3up pattern but cites no source \u2014 set the slide's source (origin and base, or \"Illustrative\") so the numbers can be traced",
+          "evidence": {
+            "action": "review",
+            "path": "/slides/0/source"
+          },
+          "remediation": {
+            "primary": {
+              "action": "replace_value",
+              "params": {
+                "data": "the kpi-3up pattern",
+                "field": "source",
+                "hint": "set the slide's source, or a deck-level default once (raw top-level source, DeckSpec meta.source); \"Illustrative\" is accepted for estimates",
+                "kind": "provide_value"
+              }
+            }
+          },
+          "describe_command": "json2pptx describe-finding DATA_WITHOUT_SOURCE"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "template": "p-style",
+  "case": "native-grid-swot",
+  "exit_code": 0,
+  "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/p-style-native-grid-swot.json",
+  "stdout": "",
+  "stderr": "",
+  "report": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/p-style-native-grid-swot-report.json"
+}

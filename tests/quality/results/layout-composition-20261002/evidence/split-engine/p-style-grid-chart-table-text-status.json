@@ -1,0 +1,9 @@
+{
+  "template": "p-style",
+  "case": "grid-chart-table-text",
+  "exit_code": 0,
+  "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/p-style-grid-chart-table-text.json",
+  "stdout": "",
+  "stderr": "",
+  "report": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/p-style-grid-chart-table-text-report.json"
+}

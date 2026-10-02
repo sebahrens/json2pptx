@@ -1,0 +1,81 @@
+{
+  "ok": true,
+  "slide_count": 1,
+  "template": "p-style",
+  "findings": {
+    "schema_version": "1.0",
+    "tool": "json2pptx",
+    "subcommand": "semantic compile",
+    "input_sha256": "ce540033560b83b2b306231a09fa118f97c6af7c756ecc4e5bcb35e318f2eee8",
+    "ok": true,
+    "summary": "no issues",
+    "findings": []
+  },
+  "compiled_json": {
+    "template": "p-style",
+    "design_mode": "constrained",
+    "type_scale": "comfortable",
+    "chrome": {
+      "page_numbers": {
+        "enabled": true
+      }
+    },
+    "source": "Illustrative",
+    "slides": [
+      {
+        "layout_id": "blank-title",
+        "content": [
+          {
+            "placeholder_id": "title",
+            "type": "text",
+            "text_value": "Revenue and margin"
+          }
+        ],
+        "compose": {
+          "direction": "horizontal",
+          "segments": [
+            {
+              "pattern": {
+                "name": "",
+                "values": null
+              },
+              "diagram": {
+                "type": "bar_chart",
+                "data": {
+                  "categories": [
+                    "Q1",
+                    "Q2",
+                    "Q3"
+                  ],
+                  "series": [
+                    {
+                      "name": "Revenue",
+                      "values": [
+                        8,
+                        9,
+                        12
+                      ]
+                    }
+                  ]
+                },
+                "alt": "Revenue increases from 8 to 12."
+              },
+              "size_pct": 60
+            },
+            {
+              "pattern": {
+                "name": "stat-hero",
+                "values": {
+                  "context": "Ahead of plan",
+                  "label": "Margin",
+                  "value": "42%"
+                }
+              },
+              "size_pct": 40
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

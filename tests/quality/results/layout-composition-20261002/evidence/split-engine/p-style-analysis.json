@@ -1,0 +1,78 @@
+{
+  "template": "p-style",
+  "template_file": "templates/p-style.pptx",
+  "template_gitignored": true,
+  "scope": "Required follow-up: repeat every engine/semantic placement control on p-style and visually inspect successful native-placeholder/mixed-grid output.",
+  "native_grid_failures": [
+    "business_model_canvas",
+    "value_chain",
+    "nine_box_talent",
+    "pestel",
+    "process_flow",
+    "pyramid",
+    "house_diagram",
+    "kpi_dashboard",
+    "heatmap",
+    "panel_layout",
+    "icon_columns",
+    "icon_rows",
+    "stat_cards"
+  ],
+  "native_grid_passes": [
+    "swot",
+    "porters_five_forces"
+  ],
+  "controls": [
+    {
+      "case": "PESTEL native body-placeholder",
+      "exit_code": 0,
+      "status": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/p-style-pestel-placeholder-status.json",
+      "png": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/p-style-pestel-placeholder.png",
+      "visual_inspection": "All six factors and section headings appear correctly, clear title clearance, consistent 3-column/2-row grid, no clipping or overlapping shapes. Sparse cells reflect minimal control data; no new template-specific issue."
+    },
+    {
+      "case": "PESTEL shape_grid region",
+      "exit_code": 1,
+      "status": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/p-style-pestel-grid-status.json",
+      "observed": "Unknown svggen diagram type pestel, identical root cause to midnight-blue."
+    },
+    {
+      "case": "PESTEL compose.diagram region beside stat",
+      "exit_code": 1,
+      "status": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/p-style-pestel-compose-status.json",
+      "observed": "Unknown svggen diagram type pestel in nested subgrid, identical root cause to midnight-blue."
+    },
+    {
+      "case": "Mixed chart+table+text with nested raw grid",
+      "exit_code": 0,
+      "status": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/p-style-grid-chart-table-text-status.json",
+      "png": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/p-style-grid-chart-table-text.png",
+      "visual_inspection": "Q1/Q2/Q3 chart correctly occupies left 60%; margin annotation upper-right and 2-row native table lower-right are intact. Native chart values/category labels and table cells appear legible, balanced regions and title band do not overlap. Serif heading and sans body follow p-style theme. No new template-specific issue."
+    },
+    {
+      "case": "Normal stat kind plus compose",
+      "validation_exit_code": 1,
+      "compile_exit_code": 1,
+      "validation": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/p-style-semantic-with-compose-validation.json",
+      "observed": "SEMANTIC_UNKNOWN_FIELD at slides[0].compose, same semantic expressibility limitation as midnight-blue."
+    },
+    {
+      "case": "Same raw compose carried by raw_json2pptx",
+      "validation_exit_code": 0,
+      "compile_exit_code": 0,
+      "compiled": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/p-style-semantic-raw-escape-compiled.json",
+      "observed": "Preserves full diagram+stat composition, one slide and no compile findings, same supported raw escape as midnight-blue."
+    }
+  ],
+  "full_sweep": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/p-style-sweep.json",
+  "renderer": {
+    "method": "render_deck_thumbnails MCP in separate stdio client",
+    "path_prefix": ".claude/review-evidence/2026-10-02/render-bin",
+    "fontconfig": "output/blue-number-repair-20260927-v1/fonts.conf",
+    "desktop_libreoffice_used": false,
+    "pngs_visually_inspected": true
+  },
+  "conclusion": "All three existing split-engine candidates reproduce on p-style. The native-grid support failures are template-independent; SWOT and five forces remain the two successful native-grid controls. The working mixed raw-grid output retains correct regions on p-style. No new p-style-specific output issue found in these controls.",
+  "production_code_changes": false,
+  "new_beads_candidates": []
+}

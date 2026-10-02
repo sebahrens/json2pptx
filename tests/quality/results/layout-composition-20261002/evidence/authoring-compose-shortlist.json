@@ -1,0 +1,57 @@
+{
+  "jsonrpc": "2.0",
+  "id": 6,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"query_understood_as\":\"intent=\\\"panels and quote side by side on one slide\\\"\",\"response_fingerprint\":\"d994c60d531537e0ff7c56a9a4d3f25519ba1c6d54eb2ecf0460f1c5f0b95c91\"}"
+      }
+    ],
+    "structuredContent": {
+      "candidates": [
+        {
+          "category": "named_pattern",
+          "name": "stylish-panels",
+          "score": 0.85,
+          "rationale": "Accent-banded panels with ribbon headers, ideal for 3-5 pillars, capabilities, or workstreams with bullet details",
+          "confidence_band": "high",
+          "placement": {
+            "preferred_placement": "placeholder",
+            "host_strategy": "pattern_expansion",
+            "grid_embeddable": false,
+            "render_pipeline": "native_ooxml",
+            "composable_with": [
+              "pull-quote",
+              "kpi-3up",
+              "icon-row",
+              "arch-stack"
+            ]
+          }
+        },
+        {
+          "category": "raw_shape_grid",
+          "name": "compose:pull-quote+stylish-panels",
+          "score": 0,
+          "rationale": "Unknown candidate name; not found in placeholder, pattern, chart, or diagram catalogs.",
+          "confidence_band": "low",
+          "placement": {
+            "preferred_placement": "placeholder",
+            "host_strategy": "grid_cell",
+            "grid_embeddable": false,
+            "render_pipeline": "native_ooxml",
+            "composable_with": [
+              "chart",
+              "diagram"
+            ]
+          }
+        }
+      ],
+      "query_understood_as": "intent=\"panels and quote side by side on one slide\"",
+      "disambiguating_questions": [
+        "How many items will this slide contain?"
+      ],
+      "response_fingerprint": "d994c60d531537e0ff7c56a9a4d3f25519ba1c6d54eb2ecf0460f1c5f0b95c91"
+    }
+  }
+}

@@ -1,0 +1,151 @@
+{
+  "description": "Compose envelope: stack two or more sibling patterns on one slide. Each segment hosts a leaf pattern, a nested compose, or a standalone svggen diagram. Direction picks vertical stack or horizontal side-by-side; size_pct controls share (defaults to equal). Use recommend_visual to discover high-affinity pattern pairs (Category=='compose'). Optional banner (above) and callout (below) decoration bands attach to the envelope without consuming a segment slot.",
+  "directions": [
+    "vertical",
+    "horizontal"
+  ],
+  "max_segments": 8,
+  "max_nesting_depth": 2,
+  "max_leaf_patterns": 12,
+  "smart_compose": true,
+  "nested_compose": true,
+  "supports_banner": true,
+  "supports_callout": true,
+  "supports_diagram_segments": true,
+  "examples": [
+    {
+      "title": "Vertical: panels above a pull-quote",
+      "description": "Stylish-panels (65% height) sit above a pull-quote (35%). Common for executive recap slides.",
+      "json": {
+        "type": "blank",
+        "compose": {
+          "direction": "vertical",
+          "gap": 12,
+          "segments": [
+            {
+              "pattern": {
+                "name": "stylish-panels",
+                "values": {
+                  "panels": [
+                    {
+                      "title": "Pillar A"
+                    },
+                    {
+                      "title": "Pillar B"
+                    },
+                    {
+                      "title": "Pillar C"
+                    }
+                  ]
+                }
+              },
+              "size_pct": 65
+            },
+            {
+              "pattern": {
+                "name": "pull-quote",
+                "values": {
+                  "quote": "Strategy is choice.",
+                  "attribution": "PM lead"
+                }
+              },
+              "size_pct": 35
+            }
+          ]
+        }
+      }
+    },
+    {
+      "title": "Horizontal: KPI strip beside a process flow",
+      "description": "kpi-3up on the left, process-flow on the right, sized by content density.",
+      "json": {
+        "type": "blank",
+        "compose": {
+          "direction": "horizontal",
+          "gap": 12,
+          "smart_compose": true,
+          "segments": [
+            {
+              "pattern": {
+                "name": "kpi-3up",
+                "values": {
+                  "kpis": [
+                    {
+                      "value": "42%",
+                      "label": "Win rate"
+                    },
+                    {
+                      "value": "$1.2M",
+                      "label": "ARR"
+                    },
+                    {
+                      "value": "12",
+                      "label": "Logos"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "pattern": {
+                "name": "process-flow",
+                "values": {
+                  "steps": [
+                    {
+                      "label": "Discover"
+                    },
+                    {
+                      "label": "Pilot"
+                    },
+                    {
+                      "label": "Scale"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "title": "Horizontal: native pattern + svggen diagram",
+      "description": "Pyramid (native pattern) on the left, svggen process_flow diagram on the right \u2014 diagram segment is a third XOR alternative to pattern/compose, so the native pattern is not flattened through a single-cell grid.",
+      "json": {
+        "type": "blank",
+        "compose": {
+          "direction": "horizontal",
+          "gap": 12,
+          "segments": [
+            {
+              "size_pct": 50,
+              "pattern": {
+                "name": "pyramid",
+                "values": {
+                  "tiers": [
+                    "Strategy",
+                    "Tactics",
+                    "Operations"
+                  ]
+                }
+              }
+            },
+            {
+              "size_pct": 50,
+              "diagram": {
+                "type": "process_flow",
+                "data": {
+                  "steps": [
+                    "Plan",
+                    "Build",
+                    "Ship"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

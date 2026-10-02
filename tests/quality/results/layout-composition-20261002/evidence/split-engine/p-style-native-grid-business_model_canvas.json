@@ -1,0 +1,69 @@
+{
+  "template": "p-style",
+  "slides": [
+    {
+      "layout_id": "blank-title",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Business Model Canvas"
+        }
+      ],
+      "shape_grid": {
+        "columns": [
+          70,
+          30
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "diagram": {
+                  "type": "business_model_canvas",
+                  "data": {
+                    "key_partners": [
+                      "Partners"
+                    ],
+                    "key_activities": [
+                      "Develop"
+                    ],
+                    "key_resources": [
+                      "People"
+                    ],
+                    "value_proposition": [
+                      "Value"
+                    ],
+                    "customer_relationships": [
+                      "Support"
+                    ],
+                    "channels": [
+                      "Sales"
+                    ],
+                    "customer_segments": [
+                      "Teams"
+                    ],
+                    "cost_structure": [
+                      "Payroll"
+                    ],
+                    "revenue_streams": [
+                      "Sales"
+                    ]
+                  },
+                  "alt": "Test diagram"
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": "Margin 42%"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

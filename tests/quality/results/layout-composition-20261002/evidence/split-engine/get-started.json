@@ -1,0 +1,211 @@
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"fast_path_tool\":\"render_deck_spec\",\"next_tools\":[\"list_slide_kinds\",\"validate_deck_spec\",\"render_deck_spec\",\"render_deck_thumbnails\"],\"task\":\"brief\"}"
+      }
+    ],
+    "structuredContent": {
+      "task": "brief",
+      "skill_schema_version": "4.156.0",
+      "task_warning": "Unknown task \"create\" \u2014 answering with \"brief\". Valid tasks: brief, onboard-template, revise, validate-only.",
+      "fast_path": {
+        "tool": "render_deck_spec",
+        "when_to_call": "RECOMMENDED PATH for a new deck from a brief \u2014 write a compact DeckSpec ({meta:{title, archetype}, slides:[{kind, \u2026}]}) carrying the user's real content, then render it in one call. Follow `steps`: list_slide_kinds (compact kind summaries + copy-ready examples; request item_schema for chosen kinds) \u2192 validate_deck_spec \u2192 render_deck_spec \u2192 render_deck_thumbnails (look at every slide). A ~30-line DeckSpec yields a real 6-slide deck; the compiler picks patterns, layouts, and rhythm. Fix findings at their semantic_path in the spec and re-render. make_deck is NOT this path: it is a skeleton/wireframe only (exemplar placeholder copy, gate always fails). `sequence` is this same path with plan_deck (format:\"deckspec\") in front and submit_visual_review at the end. Drop to the raw primitives in `raw_sequence` (recommend_visual \u2192 \u2026 \u2192 generate_presentation) only when you need a feature outside the DeckSpec schema.",
+        "steps": [
+          {
+            "tool": "list_slide_kinds",
+            "when_to_call": "Pick a kind per slide from the compact catalog and copy its example. For fields you need to author beyond the example, call list_slide_kinds again with kinds:[chosen kind] and fields:[item_schema]; add compositions when choosing a pattern/layout override (anything outside that list is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE). Unknown fields report SEMANTIC_UNKNOWN_FIELD. A kind reaches 29 of the 51 patterns; for one of the other 22 (swimlane, pyramid, value-chain, scqa-summary and the rest \u2014 SKILL.md lists them all) use kind raw_json2pptx and carry the pattern block verbatim, as its example shows."
+          },
+          {
+            "tool": "validate_deck_spec",
+            "when_to_call": "Check the DeckSpec; fix every blocking SEMANTIC_UNKNOWN_FIELD error and each SEMANTIC_DENSITY warning at its path.",
+            "args_template": {
+              "spec": "<DeckSpec>",
+              "strict": "warn"
+            }
+          },
+          {
+            "tool": "render_deck_spec",
+            "when_to_call": "Compile and render the DeckSpec to a .pptx; diagnostics map back to semantic_path.",
+            "args_template": {
+              "spec": "<DeckSpec>",
+              "template": "<template id from list_templates>"
+            }
+          },
+          {
+            "tool": "render_deck_thumbnails",
+            "when_to_call": "Render ALL slides and inspect every returned image; repair the spec and re-render until every slide looks right.",
+            "args_template": {
+              "pptx_path": "<path from the render/generate response>"
+            }
+          }
+        ],
+        "falls_back_to": [
+          "get_capabilities",
+          "list_templates",
+          "plan_deck",
+          "recommend_visual",
+          "validate_input",
+          "preview_presentation_plan",
+          "generate_presentation",
+          "score_deck",
+          "render_deck_thumbnails",
+          "inspect_slide_images"
+        ]
+      },
+      "sequence": [
+        {
+          "tool": "plan_deck",
+          "when_to_call": "Draft the storyline as a DeckSpec: format:\"deckspec\" returns deck_spec (a kind per narrative slot \u2014 answer, problem, cause, evidence, plan, roadmap, ask) with __FILL__ titles, slot guidance and the brief's facts routed to each slot. Rewrite every title as a full-sentence action title that carries its number (SKILL.md \u2192 QUALITY.md). Optional for decks of 1-4 slides.",
+          "args_template": {
+            "brief": "<the user's brief>",
+            "format": "deckspec"
+          }
+        },
+        {
+          "tool": "list_slide_kinds",
+          "when_to_call": "Fill each drafted slide: the compact catalog gives every kind's fields and a copy-ready example; request kinds:[chosen] with fields:[item_schema] for fields beyond the example."
+        },
+        {
+          "tool": "validate_deck_spec",
+          "when_to_call": "Check the DeckSpec; fix every blocking error and each SEMANTIC_DENSITY warning at its semantic_path. Keep the returned deck_id and revise with deck_id + patch.",
+          "args_template": {
+            "spec": "<DeckSpec>",
+            "strict": "warn"
+          }
+        },
+        {
+          "tool": "render_deck_spec",
+          "when_to_call": "Compile and render the DeckSpec; diagnostics map back to semantic_path. deterministic_ready is a precondition for review, not approval.",
+          "args_template": {
+            "spec": "<DeckSpec>",
+            "template": "<template id from list_templates>"
+          }
+        },
+        {
+          "tool": "render_deck_thumbnails",
+          "when_to_call": "Render ALL slides of this revision and look at every image against the per-slide rubric (WORKFLOW.md): action title of at most two lines, body proves the title, readable text, aligned edges, no orphans, balanced whitespace, meaningful accents, chart units and source. Repair at semantic_path, re-render changed_slides, at most three repair rounds.",
+          "args_template": {
+            "pptx_path": "<path from the render/generate response>"
+          }
+        },
+        {
+          "tool": "submit_visual_review",
+          "when_to_call": "Record the verdict for every slide of the current revision with the image_path/image_sha256 you inspected and each open rubric failure as a finding (P0/P1 blocks approval). Only an all-slide, current-revision approval completes the deck.",
+          "args_template": {
+            "pptx_path": "<path from the render/generate response>",
+            "pptx_revision": "<content_hash from that same response>"
+          }
+        }
+      ],
+      "raw_sequence": [
+        {
+          "tool": "get_capabilities",
+          "when_to_call": "First \u2014 detect schema_version drift and feature flags before doing anything else. The default sections ([runtime, features, deprecations], ~6 KB) are all you need; pass sections:[\"tools\"] only if you want the catalogue tools/list already sent.",
+          "args_template": {
+            "sections": [
+              "runtime",
+              "features"
+            ]
+          }
+        },
+        {
+          "tool": "list_templates",
+          "when_to_call": "Pick a template; read canonical_layout_ids, color_roles, layout_summaries, table_styles.",
+          "args_template": {
+            "fields": "compact"
+          }
+        },
+        {
+          "tool": "plan_deck",
+          "when_to_call": "Turn the user's brief into an ordered slide outline with per-slide patterns and narrative roles. Recommended for any deck > 4 slides.",
+          "args_template": {
+            "brief": "<the user's brief>"
+          }
+        },
+        {
+          "tool": "recommend_visual",
+          "when_to_call": "Per slide intent, rank candidate layouts/patterns/charts/diagrams before committing to one.",
+          "args_template": {
+            "intent": "<what this slide should show>"
+          }
+        },
+        {
+          "tool": "validate_input",
+          "when_to_call": "Once the full deck JSON is assembled, run schema + fit checks (pass fit_report: true). Cheapest single gate before preview/generate; SKILL.md lists this as a precondition for generate_presentation.",
+          "args_template": {
+            "fit_report": true,
+            "presentation": "<deck JSON>"
+          }
+        },
+        {
+          "tool": "preview_presentation_plan",
+          "when_to_call": "Dry-run the validated deck JSON to verify layout selection, placeholder mapping, and fit findings without rendering.",
+          "args_template": {
+            "presentation": "<deck JSON>"
+          }
+        },
+        {
+          "tool": "generate_presentation",
+          "when_to_call": "Produce the PPTX once validate + preview are clean. Pass strict_fit: \"warn\" (default) or \"strict\" for refuse-on-overflow.",
+          "args_template": {
+            "presentation": "<deck JSON>",
+            "strict_fit": "warn"
+          }
+        },
+        {
+          "tool": "score_deck",
+          "when_to_call": "Structural rules over the generated deck (0-100, basis=structural); no pixels, so this score cannot visually approve a deck.",
+          "args_template": {
+            "presentation": "<deck JSON>"
+          }
+        },
+        {
+          "tool": "render_deck_thumbnails",
+          "when_to_call": "Render the current PPTX revision to pixels; every slide must have an image.",
+          "args_template": {
+            "pptx_path": "<path from the render/generate response>"
+          }
+        },
+        {
+          "tool": "inspect_slide_images",
+          "when_to_call": "Inspect every rendered slide with a configured provider or host/manual reviewer (a host/manual reviewer records its all-slide verdict with submit_visual_review against the current pptx_revision); repair findings, then render and inspect the new revision again.",
+          "args_template": {
+            "slide_images": "<images from render_deck_thumbnails>"
+          }
+        }
+      ],
+      "available_tasks": [
+        "brief",
+        "onboard-template",
+        "revise",
+        "validate-only"
+      ],
+      "notes": [
+        "`sequence` is the DeckSpec path (plan_deck format:\"deckspec\" \u2192 list_slide_kinds \u2192 validate_deck_spec \u2192 render_deck_spec \u2192 render_deck_thumbnails \u2192 submit_visual_review): author the user's real content as a compact DeckSpec and render it. `raw_sequence` is the raw-primitive path you drop to only for features outside the DeckSpec schema.",
+        "make_deck is a skeleton/wireframe tool, not a deck builder: it fills every slide with pattern exemplar placeholder copy, so it always reports gate_passed=false, uses_exemplar_content=true, and \"exemplar_content\" in blocking_reasons. Never ship its output.",
+        "COMPLETION: A deck is done only after every slide of the CURRENT revision has been rendered (render_deck_thumbnails) and looked at by you. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After a repair, re-render and re-inspect the slides that changed (render_deck_thumbnails with slide_indices), then make one full-deck pass over the final revision: the revision you ship is the one that has to have been seen.",
+        "NO VISION PROVIDER? Render every slide with render_deck_thumbnails (image content blocks), inspect each image yourself, then record the verdict with submit_visual_review {pptx_path, pptx_revision, slides:[{index, verdict, image_path|image_sha256, findings?}], reviewer: host|manual}. Submit the paths/content_hashes render_deck_thumbnails returned for THIS pptx: each image is checked against the server's own render of that slide, and a recycled or foreign image is rejected. Only a complete, current-revision review with verified images and no P0/P1 findings marks the deck visually_reviewed_current_revision; an unverifiable review is recorded as reviewed_unverified_images.",
+        "raw_sequence is the controllable raw-deck fallback; its steps do not add requirements to the DeckSpec path.",
+        "For decks of 1-4 slides you may skip plan_deck and write the DeckSpec directly.",
+        "On the raw PresentationInput path, validate_input is mandatory before generate_presentation; the DeckSpec path uses validate_deck_spec instead.",
+        "DECK CHROME AND SECTIONS. On the fast_path (DeckSpec): `meta.chrome` {confidentiality, client_name, project_code, footer_date, section_crumb, tracker, page_numbers:{enabled, format, skip}} (tracker sets the current section name above each content slide's title) \u2014 footer_date defaults to meta.date; with no `meta.chrome` the deck still gets page numbers (title and closing skipped), the meta.date footer and, with sections, the tracker, and `page_numbers.enabled: false` turns numbering off \u2014 plus `meta.viewing_mode`, `meta.type_scale` (compact|comfortable|presentation; comfortable default), and `meta.accent_strategy`; every slide kind also takes `notes` (speaker notes) and `source` (footnote line). Use `structure` ({cover, closing, auto_agenda, sections:[{title, slides[]}]}) instead of flat `slides` when chapters should generate an agenda, sequential dividers, and section crumbs. On the raw path (generate_presentation), the same block is top-level `chrome` and the same mutually exclusive `structure` form expands before rendering. See get_capabilities.features.{deck_chrome, page_numbers, section_structure, section_crumb}."
+      ],
+      "completion_protocol": {
+        "draft_status": "draft_needs_visual_review",
+        "complete_status": "visually_reviewed_current_revision",
+        "rule": "A deck is done only after every slide of the CURRENT revision has been rendered (render_deck_thumbnails) and looked at by you. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After a repair, re-render and re-inspect the slides that changed (render_deck_thumbnails with slide_indices), then make one full-deck pass over the final revision: the revision you ship is the one that has to have been seen."
+      },
+      "runtime": {
+        "render_available": true,
+        "templates_dir": "/Users/seb/projects/json2pptx/templates",
+        "output_dir": "/Users/seb/projects/json2pptx/.claude/review-evidence/2026-10-02-layout-composition/split-engine/output-split-engine",
+        "settings_write_enabled": false
+      }
+    }
+  }
+}

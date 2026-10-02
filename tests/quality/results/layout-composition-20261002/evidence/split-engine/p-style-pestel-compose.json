@@ -1,0 +1,58 @@
+{
+  "template": "p-style",
+  "slides": [
+    {
+      "layout_id": "blank-title",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "PESTEL beside margin"
+        }
+      ],
+      "compose": {
+        "direction": "horizontal",
+        "segments": [
+          {
+            "diagram": {
+              "type": "pestel",
+              "data": {
+                "political": [
+                  "Trade"
+                ],
+                "economic": [
+                  "Growth"
+                ],
+                "social": [
+                  "Demand"
+                ],
+                "technological": [
+                  "AI"
+                ],
+                "environmental": [
+                  "Energy"
+                ],
+                "legal": [
+                  "Privacy"
+                ]
+              },
+              "alt": "Six macro factors."
+            },
+            "size_pct": 70
+          },
+          {
+            "pattern": {
+              "name": "stat-hero",
+              "values": {
+                "value": "42%",
+                "label": "Margin",
+                "context": "Ahead of plan"
+              }
+            },
+            "size_pct": 30
+          }
+        ]
+      }
+    }
+  ]
+}

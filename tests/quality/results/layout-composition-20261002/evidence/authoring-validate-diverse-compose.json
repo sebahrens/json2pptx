@@ -1,0 +1,51 @@
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"findings_count\":0,\"valid\":true}"
+      }
+    ],
+    "structuredContent": {
+      "valid": true,
+      "slide_count": 3,
+      "chart_count": 0,
+      "diagram_count": 0,
+      "table_count": 0,
+      "shape_count": 0,
+      "slides": [
+        {
+          "slide_number": 1,
+          "layout_id": "slideLayout7",
+          "layout_name": "Blank + Title",
+          "placeholders": []
+        },
+        {
+          "slide_number": 2,
+          "layout_id": "slideLayout7",
+          "layout_name": "Blank + Title",
+          "placeholders": []
+        },
+        {
+          "slide_number": 3,
+          "layout_id": "slideLayout7",
+          "layout_name": "Blank + Title",
+          "placeholders": []
+        }
+      ],
+      "findings": {
+        "schema_version": "1.0",
+        "tool": "json2pptx",
+        "subcommand": "validate_input",
+        "input_sha256": "d9a9b045429cf572b665ca18e5a90040f5f638bd4e58628e1f7759d3cd018ec3",
+        "template": "midnight-blue",
+        "ok": true,
+        "summary": "no issues",
+        "findings": []
+      },
+      "response_fingerprint": "d4ce04a7993253baf7a4ce0afc1ef2c661c7d2a14c579bb99118a159a7419593"
+    }
+  }
+}

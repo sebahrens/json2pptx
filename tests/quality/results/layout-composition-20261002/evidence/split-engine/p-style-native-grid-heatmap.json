@@ -1,0 +1,60 @@
+{
+  "template": "p-style",
+  "slides": [
+    {
+      "layout_id": "blank-title",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Heatmap"
+        }
+      ],
+      "shape_grid": {
+        "columns": [
+          70,
+          30
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "diagram": {
+                  "type": "heatmap",
+                  "data": {
+                    "row_labels": [
+                      "A",
+                      "B"
+                    ],
+                    "col_labels": [
+                      "Q1",
+                      "Q2"
+                    ],
+                    "values": [
+                      [
+                        1,
+                        2
+                      ],
+                      [
+                        3,
+                        4
+                      ]
+                    ]
+                  },
+                  "alt": "Test diagram"
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": "Margin 42%"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "presentation": {
+    "template": "midnight-blue",
+    "slides": [
+      {
+        "type": "blank",
+        "compose": {
+          "direction": "vertical",
+          "gap": 12,
+          "segments": [
+            {
+              "pattern": {
+                "name": "stylish-panels",
+                "values": {
+                  "panels": [
+                    {
+                      "title": "Pillar A"
+                    },
+                    {
+                      "title": "Pillar B"
+                    },
+                    {
+                      "title": "Pillar C"
+                    }
+                  ]
+                }
+              },
+              "size_pct": 65
+            },
+            {
+              "pattern": {
+                "name": "pull-quote",
+                "values": {
+                  "quote": "Strategy is choice.",
+                  "attribution": "PM lead"
+                }
+              },
+              "size_pct": 35
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "fit_report": true
+}

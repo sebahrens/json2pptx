@@ -1,0 +1,406 @@
+{
+  "jsonrpc": "2.0",
+  "id": 17,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"query_understood_as\":\"intent=\\\"a single executive review slide divided into a large left revenue trend chart, a top-right kpi tile and a bot\u2026\",\"response_fingerprint\":\"dd901beee56d2644f8f8a67ffe7a43e0c596b6febb6bfc4e9f11e3137da74628\"}"
+      }
+    ],
+    "structuredContent": {
+      "candidates": [
+        {
+          "category": "chart",
+          "name": "line",
+          "score": 1,
+          "rationale": "Line chart for showing trends over time; chart data is already available",
+          "confidence_band": "high",
+          "placement": {
+            "preferred_placement": "either",
+            "host_strategy": "placeholder_content",
+            "grid_embeddable": true,
+            "render_pipeline": "svg",
+            "composable_with": [
+              "named_pattern"
+            ]
+          },
+          "template_support": {
+            "status": "supported",
+            "reasons": [
+              "chart hosted on the slide content area",
+              "template data_palette (6 colours) will style series"
+            ],
+            "required_layout": "grid base"
+          },
+          "example": {
+            "template_hash": "e7ce02d595d2657623e2b231ff4fe14781b863df3b3fe88baab9f4e521a674dc",
+            "metadata_only": true,
+            "layout_id": "slideLayout3",
+            "layout_preview_png_path": "/Users/seb/projects/json2pptx/templates/previews/modern-yellow/slideLayout3.png"
+          },
+          "data_contract": {
+            "required_keys": [
+              "series"
+            ],
+            "optional_keys": [
+              "categories",
+              "colors",
+              "x_label",
+              "y_label",
+              "annotations",
+              "data_labels",
+              "highlight"
+            ],
+            "description": "series: [{name, values: number[]}]; categories required unless series contain time_strings or time_values. highlight: the series (names or indices) the slide is about \u2014 kept in accent1 and labelled at the line end, the rest grey context (defaults to the one series the slide title names). A single series up to 12 points is labelled by default; markers drop past 12 points.",
+            "field_path": "slides[0].slide.content[1].chart_value.data"
+          },
+          "next_tool_call": {
+            "tool": "render_deck_spec",
+            "args_template": {
+              "spec": {
+                "meta": {
+                  "template": "modern-yellow",
+                  "title": "Recommended line"
+                },
+                "slides": [
+                  {
+                    "kind": "raw_json2pptx",
+                    "slide": {
+                      "content": [
+                        {
+                          "placeholder_id": "title",
+                          "text_value": "Replace with the action title this line supports",
+                          "type": "text"
+                        },
+                        {
+                          "chart_value": {
+                            "alt": "Replace with one sentence saying what this line shows",
+                            "data": {
+                              "categories": [
+                                "Jan",
+                                "Feb",
+                                "Mar",
+                                "Apr",
+                                "May",
+                                "Jun"
+                              ],
+                              "highlight": [
+                                "Mobile app"
+                              ],
+                              "series": [
+                                {
+                                  "name": "Mobile app",
+                                  "values": [
+                                    85,
+                                    92,
+                                    98,
+                                    110,
+                                    125,
+                                    138
+                                  ]
+                                },
+                                {
+                                  "name": "Web",
+                                  "values": [
+                                    120,
+                                    118,
+                                    121,
+                                    119,
+                                    117,
+                                    116
+                                  ]
+                                }
+                              ]
+                            },
+                            "type": "line"
+                          },
+                          "placeholder_id": "body",
+                          "type": "chart"
+                        }
+                      ],
+                      "slide_type": "content",
+                      "source": "Illustrative sample data; replace with the real source"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "category": "chart",
+          "name": "bar",
+          "score": 0.95,
+          "rationale": "Bar chart for comparing categories; chart data is already available; a ranking reads best as horizontal bars sorted largest first (data.orientation \"horizontal\")",
+          "confidence_band": "high",
+          "placement": {
+            "preferred_placement": "either",
+            "host_strategy": "placeholder_content",
+            "grid_embeddable": true,
+            "render_pipeline": "svg",
+            "composable_with": [
+              "named_pattern"
+            ]
+          },
+          "template_support": {
+            "status": "supported",
+            "reasons": [
+              "chart hosted on the slide content area",
+              "template data_palette (6 colours) will style series"
+            ],
+            "required_layout": "grid base"
+          },
+          "example": {
+            "template_hash": "e7ce02d595d2657623e2b231ff4fe14781b863df3b3fe88baab9f4e521a674dc",
+            "metadata_only": true,
+            "layout_id": "slideLayout3",
+            "layout_preview_png_path": "/Users/seb/projects/json2pptx/templates/previews/modern-yellow/slideLayout3.png"
+          },
+          "data_contract": {
+            "required_keys": [
+              "categories",
+              "series"
+            ],
+            "optional_keys": [
+              "colors",
+              "x_label",
+              "y_label",
+              "annotations",
+              "data_labels",
+              "highlight",
+              "sort",
+              "orientation"
+            ],
+            "description": "categories: string array; series: [{name, values: number[]}]. Up to 16 bars are labelled by default (value on each bar, no value axis or gridlines; data_labels: false or style.show_values: false opts out). sort: desc|asc|none (default desc for a single series of non-time, non-ordinal categories). orientation: \"horizontal\" for rankings or category names over ~14 characters. highlight: category indices or names painted accent1 (single series).",
+            "field_path": "slides[0].slide.content[1].chart_value.data"
+          },
+          "next_tool_call": {
+            "tool": "render_deck_spec",
+            "args_template": {
+              "spec": {
+                "meta": {
+                  "template": "modern-yellow",
+                  "title": "Recommended bar"
+                },
+                "slides": [
+                  {
+                    "kind": "raw_json2pptx",
+                    "slide": {
+                      "content": [
+                        {
+                          "placeholder_id": "title",
+                          "text_value": "Replace with the action title this bar supports",
+                          "type": "text"
+                        },
+                        {
+                          "chart_value": {
+                            "alt": "Replace with one sentence saying what this bar shows",
+                            "data": {
+                              "categories": [
+                                "Germany",
+                                "France",
+                                "United Kingdom",
+                                "Italy",
+                                "Spain"
+                              ],
+                              "orientation": "horizontal",
+                              "series": [
+                                {
+                                  "name": "Revenue ($M)",
+                                  "values": [
+                                    42,
+                                    35,
+                                    31,
+                                    18,
+                                    12
+                                  ]
+                                }
+                              ]
+                            },
+                            "type": "bar"
+                          },
+                          "placeholder_id": "body",
+                          "type": "chart"
+                        }
+                      ],
+                      "slide_type": "content",
+                      "source": "Illustrative sample data; replace with the real source"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "category": "named_pattern",
+          "name": "kpi-3up",
+          "score": 0.9,
+          "rationale": "Best for exactly 3 big-number KPIs with short captions",
+          "confidence_band": "high",
+          "placement": {
+            "preferred_placement": "placeholder",
+            "host_strategy": "pattern_expansion",
+            "grid_embeddable": false,
+            "render_pipeline": "native_ooxml",
+            "composable_with": [
+              "stylish-panels",
+              "pull-quote",
+              "process-flow",
+              "icon-row"
+            ]
+          },
+          "template_support": {
+            "status": "supported",
+            "reasons": [
+              "pattern expands into a shape_grid overlaid on the slide content area (low-density pattern; cell budgets are template-independent)"
+            ],
+            "required_layout": "grid base"
+          },
+          "example": {
+            "template_hash": "e7ce02d595d2657623e2b231ff4fe14781b863df3b3fe88baab9f4e521a674dc",
+            "capacity": "3",
+            "metadata_only": true,
+            "layout_id": "slideLayout3",
+            "layout_preview_png_path": "/Users/seb/projects/json2pptx/templates/previews/modern-yellow/slideLayout3.png"
+          }
+        },
+        {
+          "category": "named_pattern",
+          "name": "kpi-inline",
+          "score": 0.8,
+          "rationale": "Compact horizontal KPI bar (2-6 metrics) for supporting context, not hero content",
+          "confidence_band": "medium",
+          "placement": {
+            "preferred_placement": "placeholder",
+            "host_strategy": "pattern_expansion",
+            "grid_embeddable": false,
+            "render_pipeline": "native_ooxml"
+          },
+          "template_support": {
+            "status": "supported",
+            "reasons": [
+              "pattern expands into a shape_grid overlaid on the slide content area (low-density pattern; cell budgets are template-independent)"
+            ],
+            "required_layout": "grid base"
+          },
+          "example": {
+            "template_hash": "e7ce02d595d2657623e2b231ff4fe14781b863df3b3fe88baab9f4e521a674dc",
+            "capacity": "2-6",
+            "metadata_only": true,
+            "layout_id": "slideLayout3",
+            "layout_preview_png_path": "/Users/seb/projects/json2pptx/templates/previews/modern-yellow/slideLayout3.png"
+          }
+        },
+        {
+          "category": "diagram",
+          "name": "timeline",
+          "score": 0.8,
+          "rationale": "Timeline diagram for chronological events",
+          "confidence_band": "medium",
+          "placement": {
+            "preferred_placement": "either",
+            "host_strategy": "placeholder_content",
+            "grid_embeddable": true,
+            "render_pipeline": "svg",
+            "composable_with": [
+              "named_pattern"
+            ]
+          },
+          "template_support": {
+            "status": "supported",
+            "reasons": [
+              "diagram hosted on the slide content area",
+              "template data_palette (6 colours) will style series"
+            ],
+            "required_layout": "grid base"
+          },
+          "example": {
+            "template_hash": "e7ce02d595d2657623e2b231ff4fe14781b863df3b3fe88baab9f4e521a674dc",
+            "metadata_only": true,
+            "layout_id": "slideLayout3",
+            "layout_preview_png_path": "/Users/seb/projects/json2pptx/templates/previews/modern-yellow/slideLayout3.png"
+          },
+          "data_contract": {
+            "required_keys": [
+              "events"
+            ],
+            "optional_keys": [
+              "milestones",
+              "show_today",
+              "time_unit"
+            ],
+            "description": "events: [{label, start_date, end_date}] (alias: activities); milestones: [{label, date}]",
+            "field_path": "slides[0].slide.content[1].diagram_value.data"
+          },
+          "next_tool_call": {
+            "tool": "render_deck_spec",
+            "args_template": {
+              "spec": {
+                "meta": {
+                  "template": "modern-yellow",
+                  "title": "Recommended timeline"
+                },
+                "slides": [
+                  {
+                    "kind": "raw_json2pptx",
+                    "slide": {
+                      "content": [
+                        {
+                          "placeholder_id": "title",
+                          "text_value": "Replace with the action title this timeline supports",
+                          "type": "text"
+                        },
+                        {
+                          "diagram_value": {
+                            "alt": "Replace with one sentence saying what this timeline shows",
+                            "data": {
+                              "events": [
+                                {
+                                  "end_date": "2026-03-31",
+                                  "label": "Discovery",
+                                  "start_date": "2026-01-01"
+                                },
+                                {
+                                  "end_date": "2026-08-31",
+                                  "label": "Build",
+                                  "start_date": "2026-04-01"
+                                },
+                                {
+                                  "end_date": "2026-12-31",
+                                  "label": "Rollout",
+                                  "start_date": "2026-09-01"
+                                }
+                              ],
+                              "milestones": [
+                                {
+                                  "date": "2026-09-01",
+                                  "label": "Go-live"
+                                }
+                              ]
+                            },
+                            "type": "timeline"
+                          },
+                          "placeholder_id": "body",
+                          "type": "diagram"
+                        }
+                      ],
+                      "slide_type": "content"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "query_understood_as": "intent=\"a single executive review slide divided into a large left revenue trend chart, a top-right kpi tile and a bottom-right action timeline. preserve all three different content types in their own regions.\", item_count=3, has_metrics=true, has_chart=true, columns=2",
+      "disambiguating_questions": [
+        "How many data points or categories are in the dataset?",
+        "Is this a single series or multiple series comparison?"
+      ],
+      "response_fingerprint": "dd901beee56d2644f8f8a67ffe7a43e0c596b6febb6bfc4e9f11e3137da74628"
+    }
+  }
+}

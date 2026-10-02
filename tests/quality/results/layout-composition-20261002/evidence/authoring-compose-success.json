@@ -1,0 +1,248 @@
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"query_understood_as\":\"intent=\\\"panels and quote side by side on one slide\\\"\",\"response_fingerprint\":\"9a9636dea73c33aa82a25397e392fd5af3607f9a885bb88b3523e1a0c8151826\"}"
+      }
+    ],
+    "structuredContent": {
+      "candidates": [
+        {
+          "category": "compose",
+          "name": "compose:pull-quote+stylish-panels",
+          "score": 0.99,
+          "rationale": "Compose envelope combining \"pull-quote\" and \"stylish-panels\" \u2014 the intent requests a multi-pattern layout and the pair declares mutual compose-affinity.",
+          "confidence_band": "high",
+          "placement": {
+            "preferred_placement": "placeholder",
+            "host_strategy": "pattern_expansion",
+            "grid_embeddable": false,
+            "render_pipeline": "native_ooxml",
+            "composable_with": [
+              "pull-quote",
+              "stylish-panels"
+            ]
+          }
+        },
+        {
+          "category": "chart",
+          "name": "grouped_bar",
+          "score": 0.96,
+          "rationale": "Grouped bar chart for multi-series category comparison",
+          "confidence_band": "high",
+          "placement": {
+            "preferred_placement": "either",
+            "host_strategy": "placeholder_content",
+            "grid_embeddable": true,
+            "render_pipeline": "svg",
+            "composable_with": [
+              "named_pattern"
+            ]
+          },
+          "data_contract": {
+            "required_keys": [
+              "categories",
+              "series"
+            ],
+            "optional_keys": [
+              "colors",
+              "x_label",
+              "y_label",
+              "annotations",
+              "data_labels",
+              "highlight",
+              "sort",
+              "orientation"
+            ],
+            "description": "categories: string[]; series: [{name, values: number[]}] (min 2 series). highlight: the series the slide is about (others grey); orientation: \"horizontal\"; sort: desc|asc|none by category total.",
+            "field_path": "slides[0].slide.content[1].chart_value.data"
+          },
+          "next_tool_call": {
+            "tool": "render_deck_spec",
+            "args_template": {
+              "spec": {
+                "meta": {
+                  "template": "midnight-blue",
+                  "title": "Recommended grouped bar"
+                },
+                "slides": [
+                  {
+                    "kind": "raw_json2pptx",
+                    "slide": {
+                      "content": [
+                        {
+                          "placeholder_id": "title",
+                          "text_value": "Replace with the action title this grouped bar supports",
+                          "type": "text"
+                        },
+                        {
+                          "chart_value": {
+                            "alt": "Replace with one sentence saying what this grouped bar shows",
+                            "data": {
+                              "categories": [
+                                "North",
+                                "South",
+                                "East"
+                              ],
+                              "highlight": [
+                                "2026"
+                              ],
+                              "series": [
+                                {
+                                  "name": "2025",
+                                  "values": [
+                                    120,
+                                    98,
+                                    145
+                                  ]
+                                },
+                                {
+                                  "name": "2026",
+                                  "values": [
+                                    135,
+                                    112,
+                                    152
+                                  ]
+                                }
+                              ]
+                            },
+                            "type": "grouped_bar"
+                          },
+                          "placeholder_id": "body",
+                          "type": "chart"
+                        }
+                      ],
+                      "slide_type": "content",
+                      "source": "Illustrative sample data; replace with the real source"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "category": "placeholder_layout",
+          "name": "two-column",
+          "score": 0.96,
+          "rationale": "Two-column layout for side-by-side content",
+          "confidence_band": "high",
+          "placement": {
+            "preferred_placement": "placeholder",
+            "host_strategy": "standalone_slide",
+            "grid_embeddable": false,
+            "render_pipeline": "template_driven"
+          }
+        },
+        {
+          "category": "named_pattern",
+          "name": "pull-quote",
+          "score": 0.92,
+          "rationale": "Italic quote block with attribution, ideal for testimonials or key takeaways",
+          "confidence_band": "high",
+          "placement": {
+            "preferred_placement": "placeholder",
+            "host_strategy": "pattern_expansion",
+            "grid_embeddable": false,
+            "render_pipeline": "native_ooxml",
+            "composable_with": [
+              "stylish-panels",
+              "kpi-3up",
+              "card-grid",
+              "icon-row",
+              "arch-stack"
+            ]
+          }
+        },
+        {
+          "category": "diagram",
+          "name": "panel_layout",
+          "score": 0.9,
+          "rationale": "Panel layout for organized information display",
+          "confidence_band": "high",
+          "placement": {
+            "preferred_placement": "placeholder",
+            "host_strategy": "placeholder_content",
+            "grid_embeddable": true,
+            "render_pipeline": "native_ooxml",
+            "composable_with": [
+              "named_pattern"
+            ]
+          },
+          "data_contract": {
+            "required_keys": [
+              "panels"
+            ],
+            "optional_keys": [
+              "layout",
+              "gap",
+              "icon_size"
+            ],
+            "description": "panels: [{title, body, icon?, color?}]; layout: \"columns\"|\"rows\"|\"stat_cards\"|\"stylish_panels\" (inside data). In stat_cards the NUMBER is the hero: an explicit value wins, otherwise a short body carrying a digit (\"EUR 184m\") is drawn large with title as its caption; a prose body stays small under the title",
+            "field_path": "slides[0].slide.content[1].diagram_value.data"
+          },
+          "next_tool_call": {
+            "tool": "render_deck_spec",
+            "args_template": {
+              "spec": {
+                "meta": {
+                  "template": "midnight-blue",
+                  "title": "Recommended panel layout"
+                },
+                "slides": [
+                  {
+                    "kind": "raw_json2pptx",
+                    "slide": {
+                      "content": [
+                        {
+                          "placeholder_id": "title",
+                          "text_value": "Replace with the action title this panel layout supports",
+                          "type": "text"
+                        },
+                        {
+                          "diagram_value": {
+                            "alt": "Replace with one sentence saying what this panel layout shows",
+                            "data": {
+                              "layout": "columns",
+                              "panels": [
+                                {
+                                  "body": "Ship weekly",
+                                  "title": "Speed"
+                                },
+                                {
+                                  "body": "Zero P1 defects",
+                                  "title": "Quality"
+                                },
+                                {
+                                  "body": "10x volume",
+                                  "title": "Scale"
+                                }
+                              ]
+                            },
+                            "type": "panel_layout"
+                          },
+                          "placeholder_id": "body",
+                          "type": "diagram"
+                        }
+                      ],
+                      "slide_type": "content"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "query_understood_as": "intent=\"panels and quote side by side on one slide\"",
+      "disambiguating_questions": [
+        "Should this slide show data (chart/diagram) or structured text (pattern/layout)?",
+        "How many items will this slide contain?"
+      ],
+      "response_fingerprint": "9a9636dea73c33aa82a25397e392fd5af3607f9a885bb88b3523e1a0c8151826"
+    }
+  }
+}

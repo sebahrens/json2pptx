@@ -1,0 +1,79 @@
+{
+  "template": "midnight-blue",
+  "slides": [
+    {
+      "layout_id": "blank-title",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Porters Five Forces"
+        }
+      ],
+      "shape_grid": {
+        "columns": [
+          70,
+          30
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "diagram": {
+                  "type": "porters_five_forces",
+                  "data": {
+                    "forces": [
+                      {
+                        "type": "rivalry",
+                        "label": "Rivalry",
+                        "factors": [
+                          "One factor"
+                        ]
+                      },
+                      {
+                        "type": "new_entrants",
+                        "label": "New Entrants",
+                        "factors": [
+                          "One factor"
+                        ]
+                      },
+                      {
+                        "type": "substitutes",
+                        "label": "Substitutes",
+                        "factors": [
+                          "One factor"
+                        ]
+                      },
+                      {
+                        "type": "suppliers",
+                        "label": "Suppliers",
+                        "factors": [
+                          "One factor"
+                        ]
+                      },
+                      {
+                        "type": "buyers",
+                        "label": "Buyers",
+                        "factors": [
+                          "One factor"
+                        ]
+                      }
+                    ]
+                  },
+                  "alt": "Test diagram"
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": "Margin 42%"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

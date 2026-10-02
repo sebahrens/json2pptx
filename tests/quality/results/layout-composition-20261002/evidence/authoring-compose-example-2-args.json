@@ -1,0 +1,43 @@
+{
+  "presentation": {
+    "template": "midnight-blue",
+    "slides": [
+      {
+        "type": "blank",
+        "compose": {
+          "direction": "horizontal",
+          "gap": 12,
+          "segments": [
+            {
+              "size_pct": 50,
+              "pattern": {
+                "name": "pyramid",
+                "values": {
+                  "tiers": [
+                    "Strategy",
+                    "Tactics",
+                    "Operations"
+                  ]
+                }
+              }
+            },
+            {
+              "size_pct": 50,
+              "diagram": {
+                "type": "process_flow",
+                "data": {
+                  "steps": [
+                    "Plan",
+                    "Build",
+                    "Ship"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "fit_report": true
+}

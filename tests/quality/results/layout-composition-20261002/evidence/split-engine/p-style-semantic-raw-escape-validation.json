@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "tool": "json2pptx",
+  "subcommand": "semantic validate",
+  "input_sha256": "ce540033560b83b2b306231a09fa118f97c6af7c756ecc4e5bcb35e318f2eee8",
+  "ok": true,
+  "summary": "no issues",
+  "findings": []
+}

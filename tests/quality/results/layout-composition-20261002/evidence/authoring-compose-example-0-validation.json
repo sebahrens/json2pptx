@@ -1,0 +1,94 @@
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"schema_version\":\"1.0\",\"tool\":\"json2pptx\",\"subcommand\":\"mcp\",\"ok\":false,\"summary\":\"2 errors, 1 warning\",\"findings\":[{\"id\":\"input-1\",\"code\":\"INPUT.unknown_key\",\"severity\":\"warning\",\"category\":\"INPUT\",\"where\":{\"slide\":0},\"message\":\"unknown field \\\"type\\\" at /slides/0/type\",\"evidence\":{\"path\":\"/slides/0/type\",\"pattern\":\"input\"},\"describe_command\":\"json2pptx describe-finding unknown_key\"},{\"id\":\"input-2\",\"code\":\"INPUT.required\",\"severity\":\"error\",\"category\":\"INPUT\",\"where\":{\"slide\":0},\"message\":\"slide 1: layout_id or slide_type is required\",\"evidence\":{\"path\":\"/slides/0/layout_id\"},\"remediation\":{\"primary\":{\"action\":\"replace_value\",\"params\":{\"field\":\"layout_id_or_slide_type\",\"kind\":\"provide_value\"}}},\"describe_command\":\"json2pptx describe-finding required\"},{\"id\":\"input-3\",\"code\":\"INPUT.invalid_shape\",\"severity\":\"error\",\"category\":\"INPUT\",\"where\":{\"slide\":0},\"message\":\"slide 1: stylish-panels: values must be an array of objects {body, title}, not an object wrapping one; the key \\\"panels\\\" is never read \u2014 send its value as values directly (generate would refuse this deck)\",\"evidence\":{\"path\":\"/slides/0/compose/values\",\"pattern\":\"stylish-panels\"},\"remediation\":{\"primary\":{\"action\":\"replace_value\",\"params\":{\"expected\":\"array\",\"got\":\"object\",\"items\":3,\"kind\":\"reshape_value\",\"path\":\"/slides/0/compose/values\",\"unwrap_key\":\"panels\"}}},\"next_tool_call\":{\"tool\":\"show_pattern\",\"args_template\":{\"name\":\"stylish-panels\"}},\"describe_command\":\"json2pptx describe-finding invalid_shape\"}]}"
+      }
+    ],
+    "isError": true,
+    "structuredContent": {
+      "schema_version": "1.0",
+      "tool": "json2pptx",
+      "subcommand": "mcp",
+      "ok": false,
+      "summary": "2 errors, 1 warning",
+      "findings": [
+        {
+          "id": "input-1",
+          "code": "INPUT.unknown_key",
+          "severity": "warning",
+          "category": "INPUT",
+          "where": {
+            "slide": 0
+          },
+          "message": "unknown field \"type\" at /slides/0/type",
+          "evidence": {
+            "path": "/slides/0/type",
+            "pattern": "input"
+          },
+          "describe_command": "json2pptx describe-finding unknown_key"
+        },
+        {
+          "id": "input-2",
+          "code": "INPUT.required",
+          "severity": "error",
+          "category": "INPUT",
+          "where": {
+            "slide": 0
+          },
+          "message": "slide 1: layout_id or slide_type is required",
+          "evidence": {
+            "path": "/slides/0/layout_id"
+          },
+          "remediation": {
+            "primary": {
+              "action": "replace_value",
+              "params": {
+                "field": "layout_id_or_slide_type",
+                "kind": "provide_value"
+              }
+            }
+          },
+          "describe_command": "json2pptx describe-finding required"
+        },
+        {
+          "id": "input-3",
+          "code": "INPUT.invalid_shape",
+          "severity": "error",
+          "category": "INPUT",
+          "where": {
+            "slide": 0
+          },
+          "message": "slide 1: stylish-panels: values must be an array of objects {body, title}, not an object wrapping one; the key \"panels\" is never read \u2014 send its value as values directly (generate would refuse this deck)",
+          "evidence": {
+            "path": "/slides/0/compose/values",
+            "pattern": "stylish-panels"
+          },
+          "remediation": {
+            "primary": {
+              "action": "replace_value",
+              "params": {
+                "expected": "array",
+                "got": "object",
+                "items": 3,
+                "kind": "reshape_value",
+                "path": "/slides/0/compose/values",
+                "unwrap_key": "panels"
+              }
+            }
+          },
+          "next_tool_call": {
+            "tool": "show_pattern",
+            "args_template": {
+              "name": "stylish-panels"
+            }
+          },
+          "describe_command": "json2pptx describe-finding invalid_shape"
+        }
+      ]
+    }
+  }
+}

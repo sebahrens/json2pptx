@@ -1,0 +1,9 @@
+{
+  "template": "p-style",
+  "case": "native-grid-porters_five_forces",
+  "exit_code": 0,
+  "input": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/p-style-native-grid-porters_five_forces.json",
+  "stdout": "",
+  "stderr": "",
+  "report": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/p-style-native-grid-porters_five_forces-report.json"
+}

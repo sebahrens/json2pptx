@@ -1,0 +1,52 @@
+{
+  "template": "midnight-blue",
+  "slides": [
+    {
+      "layout_id": "blank-title",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Icon Rows"
+        }
+      ],
+      "shape_grid": {
+        "columns": [
+          70,
+          30
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "diagram": {
+                  "type": "icon_rows",
+                  "data": {
+                    "panels": [
+                      {
+                        "title": "Growth",
+                        "body": "Scale"
+                      },
+                      {
+                        "title": "Control",
+                        "body": "Manage"
+                      }
+                    ]
+                  },
+                  "alt": "Test diagram"
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": "Margin 42%"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

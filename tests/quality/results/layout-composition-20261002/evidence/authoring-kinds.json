@@ -1,0 +1,398 @@
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"slide_kinds_count\":3,\"slide_kinds_names\":[\"chart_insight\",\"kpi_snapshot\",\"raw_json2pptx\"]}"
+      }
+    ],
+    "structuredContent": {
+      "slide_kinds": [
+        {
+          "kind": "chart_insight",
+          "summary": "A chart paired with an interpretive insight.",
+          "required_fields": [
+            "chart"
+          ],
+          "typical_fields": [
+            "title",
+            "insights",
+            "source",
+            "takeaway"
+          ],
+          "item_schema": {
+            "additionalProperties": false,
+            "description": "A chart paired with an interpretive insight.",
+            "properties": {
+              "chart": {
+                "additionalProperties": false,
+                "description": "Required payload field. Chart: {type, title?, data}. For bar/line/area charts data is {categories:[\u2026], series:[{name, values:[\u2026]}]}; for pie/donut {categories:[\u2026], values:[\u2026]}.",
+                "properties": {
+                  "data": {
+                    "description": "Chart data. Bar/line/area: {categories:[\u2026], series:[{name, values:[\u2026]}]}. Pie/donut: {categories:[\u2026], values:[\u2026]}.",
+                    "type": "object"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "description": "Chart type, e.g. bar_chart, line_chart, pie_chart (see get_chart_capabilities).",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "insight": {
+                "description": "Single implication rendered as a so-what callout; when insights bullets are present, keep it distinct from them.",
+                "type": "string"
+              },
+              "insights": {
+                "description": "Typical (optional) payload field. 1\u20136 insight bullets rendered beside the chart.",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "body": {
+                          "type": "string"
+                        },
+                        "caption": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "detail": {
+                          "type": "string"
+                        },
+                        "heading": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "phase": {
+                          "type": "string"
+                        },
+                        "step": {
+                          "type": "string"
+                        },
+                        "summary": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              "kind": {
+                "const": "chart_insight"
+              },
+              "layout": {
+                "description": "Optional composition override: one of this kind's alternative layouts (list_slide_kinds \u2192 compositions[], or explain_deck_spec slides[].alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE.",
+                "type": "string"
+              },
+              "notes": {
+                "description": "Speaker notes for this slide (rendered into the PPTX notes slide, never shown on the slide).",
+                "type": "string"
+              },
+              "pattern": {
+                "description": "Optional composition override: one of this kind's alternative patterns (list_slide_kinds \u2192 compositions[], or explain_deck_spec slides[].alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE.",
+                "type": "string"
+              },
+              "source": {
+                "description": "Typical (optional) payload field. Source / footnote line shown under the slide content.",
+                "type": "string"
+              },
+              "takeaway": {
+                "description": "Typical (optional) payload field. One-line takeaway footer.",
+                "type": "string"
+              },
+              "title": {
+                "description": "Typical (optional) payload field. Slide title.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "chart"
+            ],
+            "title": "chart_insight slide",
+            "type": "object"
+          },
+          "example": {
+            "chart": {
+              "data": {
+                "categories": [
+                  "Q1",
+                  "Q2",
+                  "Q3",
+                  "Q4"
+                ],
+                "series": [
+                  {
+                    "name": "Revenue",
+                    "values": [
+                      34,
+                      40,
+                      44,
+                      48
+                    ]
+                  }
+                ]
+              },
+              "title": "Quarterly revenue ($M)",
+              "type": "bar_chart"
+            },
+            "insights": [
+              "Revenue grew 41% across the year.",
+              "The Q4 step-up reflects the EMEA launch."
+            ],
+            "kind": "chart_insight",
+            "source": "Company filings, FY26",
+            "takeaway": "Momentum supports the H2 targets.",
+            "title": "Revenue accelerated through the year"
+          },
+          "compositions": [
+            {
+              "pattern": "chart-insights-split",
+              "layout": "blank-title",
+              "reason": "chart with up to 6 insights"
+            },
+            {
+              "layout": "two-column",
+              "reason": "native chart and full insight list when density exceeds the pattern"
+            }
+          ]
+        },
+        {
+          "kind": "kpi_snapshot",
+          "summary": "Snapshot of big-number key performance indicators.",
+          "required_fields": [
+            "kpis"
+          ],
+          "required_aliases": {
+            "kpis": [
+              "metrics"
+            ]
+          },
+          "typical_fields": [
+            "title",
+            "takeaway"
+          ],
+          "item_schema": {
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "anyOf": [
+                  {
+                    "required": [
+                      "kpis"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "metrics"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "description": "Snapshot of big-number key performance indicators.",
+            "properties": {
+              "kind": {
+                "const": "kpi_snapshot"
+              },
+              "kpis": {
+                "description": "Required payload field. 2\u20136 KPI objects {value, label, delta?, comparator?}. comparator (alias vs, \u226424 chars) is the reference the number is read against, e.g. \"vs plan +4 pts\".",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "big": {
+                      "type": "string"
+                    },
+                    "caption": {
+                      "type": "string"
+                    },
+                    "change": {
+                      "type": "string"
+                    },
+                    "comparator": {
+                      "type": "string"
+                    },
+                    "delta": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "small": {
+                      "type": "string"
+                    },
+                    "sub": {
+                      "type": "string"
+                    },
+                    "trend": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "string"
+                    },
+                    "vs": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "layout": {
+                "description": "Optional composition override: one of this kind's alternative layouts (list_slide_kinds \u2192 compositions[], or explain_deck_spec slides[].alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE.",
+                "type": "string"
+              },
+              "metrics": {
+                "$ref": "#/properties/kpis",
+                "description": "Alias for kpis."
+              },
+              "notes": {
+                "description": "Speaker notes for this slide (rendered into the PPTX notes slide, never shown on the slide).",
+                "type": "string"
+              },
+              "pattern": {
+                "description": "Optional composition override: one of this kind's alternative patterns (list_slide_kinds \u2192 compositions[], or explain_deck_spec slides[].alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE.",
+                "type": "string"
+              },
+              "source": {
+                "description": "Source / footnote line shown under the slide content.",
+                "type": "string"
+              },
+              "takeaway": {
+                "description": "Typical (optional) payload field. One-line takeaway footer.",
+                "type": "string"
+              },
+              "title": {
+                "description": "Typical (optional) payload field. Slide title.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "title": "kpi_snapshot slide",
+            "type": "object"
+          },
+          "example": {
+            "kind": "kpi_snapshot",
+            "kpis": [
+              {
+                "delta": "+41%",
+                "label": "Annual revenue",
+                "value": "$48M"
+              },
+              {
+                "label": "Net retention",
+                "value": "118%"
+              },
+              {
+                "delta": "-6d",
+                "label": "Sales cycle",
+                "value": "41d"
+              }
+            ],
+            "source": "Q4 board pack",
+            "takeaway": "Growth and efficiency both improved.",
+            "title": "Q4 at a glance"
+          },
+          "compositions": [
+            {
+              "pattern": "kpi-3up",
+              "layout": "blank-title",
+              "reason": "compact visual for 2-6 readable metrics"
+            },
+            {
+              "layout": "content",
+              "reason": "native bullets preserve out-of-range or long metrics"
+            }
+          ]
+        },
+        {
+          "kind": "raw_json2pptx",
+          "summary": "Escape hatch carrying a raw json2pptx slide payload verbatim.",
+          "required_fields": [
+            "slide"
+          ],
+          "item_schema": {
+            "additionalProperties": false,
+            "description": "Escape hatch carrying a raw json2pptx slide payload verbatim.",
+            "properties": {
+              "kind": {
+                "const": "raw_json2pptx"
+              },
+              "notes": {
+                "description": "Speaker notes for this slide (rendered into the PPTX notes slide, never shown on the slide).",
+                "type": "string"
+              },
+              "slide": {
+                "description": "Required payload field. A raw json2pptx slide object (validated strictly as PresentationInput.slides[]).",
+                "type": "object"
+              },
+              "source": {
+                "description": "Source / footnote line shown under the slide content.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "slide"
+            ],
+            "title": "raw_json2pptx slide",
+            "type": "object"
+          },
+          "example": {
+            "kind": "raw_json2pptx",
+            "slide": {
+              "content": [
+                {
+                  "placeholder_id": "title",
+                  "text_value": "The steering committee will not move the go-live date",
+                  "type": "text"
+                }
+              ],
+              "layout_id": "blank-title",
+              "pattern": {
+                "name": "pull-quote",
+                "values": {
+                  "attribution": "Amara Okafor",
+                  "quote": "We will not move the date. Everything else is negotiable.",
+                  "role": "Chair, settlement steering committee"
+                }
+              },
+              "slide_type": "content"
+            }
+          }
+        }
+      ],
+      "takeaway_budget": {
+        "font_pt": 14,
+        "max_lines": 1,
+        "note": "Keep takeaway (or chart insight) to one 14pt line in the template's chrome band. Width varies by template; validate_deck_spec reports BODY_TOO_LONG at slides[i].takeaway when measured text wraps."
+      }
+    }
+  }
+}

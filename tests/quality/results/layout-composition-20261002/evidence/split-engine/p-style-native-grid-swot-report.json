@@ -1,0 +1,51 @@
+{
+  "success": true,
+  "output_path": ".claude/review-evidence/2026-10-02-layout-composition/split-engine/output-p-style-native-grid-swot/output.pptx",
+  "slide_count": 1,
+  "content_hash": "2bdcaadf0e5bb36e189ec5dd147ef98553e66ac61d231540f4aa56d0dd24f55a",
+  "duration_ms": 33,
+  "warnings": [
+    "deck has a cover slide but no closing slide — consider adding a closing/thank-you slide"
+  ],
+  "quality": {
+    "score": 98,
+    "basis": "input",
+    "slide_scores": [
+      {
+        "slide_number": 1,
+        "score": 100
+      }
+    ],
+    "issues": [
+      "1 pipeline warning(s)"
+    ],
+    "scope": "input_heuristic",
+    "evidence": {
+      "artifact_sha256": "2bdcaadf0e5bb36e189ec5dd147ef98553e66ac61d231540f4aa56d0dd24f55a",
+      "schema_valid": true,
+      "generated": true,
+      "fit_checked": true,
+      "structural_valid": true,
+      "pixels_rendered": false,
+      "visually_inspected": false,
+      "reviewed_slide_ids": [],
+      "total_slides": 1,
+      "approved": false,
+      "needs_review": true,
+      "reasons": [
+        "current artifact was not pixel-rendered",
+        "no explicit visual approval verdict for the current artifact"
+      ]
+    }
+  },
+  "slides": [
+    {
+      "index": 0,
+      "resolved_layout_id": "slideLayout7",
+      "placeholders_used": [
+        "title"
+      ],
+      "occupancy_pct": 100
+    }
+  ]
+}

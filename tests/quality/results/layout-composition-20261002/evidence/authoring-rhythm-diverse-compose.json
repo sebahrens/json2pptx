@@ -1,0 +1,71 @@
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"composition_score\":80}"
+      }
+    ],
+    "structuredContent": {
+      "per_slide": [
+        {
+          "slide_index": 0,
+          "pattern": "compose",
+          "density_class": "med",
+          "accent_role": "none",
+          "dominant_visual": "compose",
+          "within_slide_accent_variety": 0
+        },
+        {
+          "slide_index": 1,
+          "pattern": "compose",
+          "density_class": "med",
+          "accent_role": "none",
+          "dominant_visual": "compose",
+          "within_slide_accent_variety": 0
+        },
+        {
+          "slide_index": 2,
+          "pattern": "compose",
+          "density_class": "med",
+          "accent_role": "none",
+          "dominant_visual": "compose",
+          "within_slide_accent_variety": 0
+        }
+      ],
+      "aggregates": {
+        "pattern_runs": [
+          {
+            "name": "compose",
+            "start": 0,
+            "len": 3
+          }
+        ],
+        "longest_run": 3,
+        "repetition_index": 0.67,
+        "accent_balance": {},
+        "density_cv": 0,
+        "density_distribution": {
+          "underfilled_cells": 0,
+          "optimal_cells": 0,
+          "overflow_cells": 0
+        }
+      },
+      "recommendations": [
+        {
+          "code": "break_run",
+          "slide_index": 2,
+          "message": "break a compose run (length 3); consider inserting a different pattern at slide 2",
+          "recommended_break_patterns": [
+            "labeled-rows",
+            "text-sidebar",
+            "framework-grid"
+          ]
+        }
+      ],
+      "composition_score": 80
+    }
+  }
+}

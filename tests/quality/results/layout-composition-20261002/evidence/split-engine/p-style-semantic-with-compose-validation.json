@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "tool": "json2pptx",
+  "subcommand": "semantic validate",
+  "input_sha256": "74f9bcfd3cac67d2f807156c4f20e1dcca117d92ccba488f368d5874552ae9d6",
+  "ok": false,
+  "summary": "1 error",
+  "findings": [
+    {
+      "id": "input-1",
+      "code": "INPUT.SEMANTIC_UNKNOWN_FIELD",
+      "severity": "error",
+      "category": "INPUT",
+      "where": {
+        "slide": 0
+      },
+      "message": "unknown field \"compose\" on stat slide is ignored by the compiler and its content is DROPPED; expected one of \"caption\", \"context\", \"description\", \"detail\", \"label\", \"layout\", \"metric\", \"notes\", \"number\", \"pattern\", \"source\", \"stat\", \"subtitle\", \"suffix\", \"takeaway\", \"title\", \"unit\", \"value\"",
+      "evidence": {
+        "path": "slides[0].compose"
+      },
+      "describe_command": "json2pptx describe-finding SEMANTIC_UNKNOWN_FIELD"
+    }
+  ]
+}
