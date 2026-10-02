@@ -1,19 +1,19 @@
 {
   "schema_version": 1,
   "recipe": "native-layout-thumbnail-v2",
-  "template_sha256": "e1d36dfec0905c9f0348ff77fce19049229a2e13b814c1dfa6034ef6743cdff2",
-  "rendering_source_sha256": "7f0ee07b61271df8f944f7924d308671f6611b66518af79ee87e6015419c0b74",
-  "render_cache_identity": "f0b58ac2de1cc239e3b835ce9dd4f2ff502210bea19c77d15fef84729741335e",
+  "template_sha256": "3dd5ff25a5ef5a35c19e7d0d01f879a927c69fbf0e183515dc4c68e04c299021",
+  "rendering_source_sha256": "35a99112b94f620195405b9316384c3d09de18527ef52f4af1b35342b534bda3",
+  "render_cache_identity": "dd8db0ab51d41c74c63822962899856052da3084cbd045f750dfa0623feb9e32",
   "width": 320,
   "dpi": 60,
   "png_sha256": {
     "slideLayout1": "2efba90613b45cce21893b2115c18aceed8c6d175cbf8c588513ceb6b97896ac",
     "slideLayout2": "c96e74ec874207765482e04c833c2a2d3b9fdda16d725ca5361d225041b8773c",
-    "slideLayout3": "05a2a31abd9878d82395338dd5d7e2c537d2f8bfbb8183d92c3b1c7d9627f478",
+    "slideLayout3": "0f308b312a40303e801ac83f5f68da3380e6c983155ac9bb40ec700da455f4ac",
     "slideLayout4": "1fca08ebf71f4d8c077605a74a42244231e3362e8ef00167b9a1952768df0749",
     "slideLayout5": "c7c3acf4d6bed40150f5929e5e95a57ec797d12ce7aae99993439d53892f873f",
     "slideLayout6": "4b972876cdb813f46f7521d6b71127bb5e6fa58dea6ac9444aed76be44643abd",
-    "slideLayout7": "ff68a247ac68d84d50b5f4d82e8d73e8749b0825a98895e6b60ee73a067b94d0"
+    "slideLayout7": "3fe76587ecb4d2697543dab291db3a12d9e991b08e45e5cafb2c0e3d49458e84"
   },
   "source_content": {
     "slideLayout1": [
@@ -23,7 +23,8 @@
         "Value": "Closing",
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       },
       {
         "PlaceholderID": "subtitle",
@@ -31,7 +32,8 @@
         "Value": "Subtitle placeholder",
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       }
     ],
     "slideLayout2": [
@@ -41,7 +43,8 @@
         "Value": "Section",
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       },
       {
         "PlaceholderID": "Section Number",
@@ -49,7 +52,8 @@
         "Value": "01",
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       }
     ],
     "slideLayout3": [
@@ -59,7 +63,8 @@
         "Value": "One Content",
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       },
       {
         "PlaceholderID": "subtitle",
@@ -67,7 +72,8 @@
         "Value": "Subtitle placeholder",
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       },
       {
         "PlaceholderID": "body",
@@ -79,7 +85,8 @@
         ],
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       }
     ],
     "slideLayout4": [
@@ -89,7 +96,8 @@
         "Value": "Title Slide",
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       },
       {
         "PlaceholderID": "subtitle",
@@ -97,7 +105,8 @@
         "Value": "Subtitle placeholder",
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       }
     ],
     "slideLayout5": [
@@ -107,7 +116,8 @@
         "Value": "Two Content",
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       },
       {
         "PlaceholderID": "body",
@@ -119,7 +129,8 @@
         ],
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       },
       {
         "PlaceholderID": "body_2",
@@ -131,7 +142,8 @@
         ],
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       }
     ],
     "slideLayout6": null,
@@ -142,7 +154,8 @@
         "Value": "Blank + Title",
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       }
     ]
   }

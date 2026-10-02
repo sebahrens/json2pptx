@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "recipe": "native-layout-thumbnail-v2",
-  "template_sha256": "2d125de20e95e33f4485b179a14691f684244e8b111dd59c4b976855856b3999",
-  "rendering_source_sha256": "7f0ee07b61271df8f944f7924d308671f6611b66518af79ee87e6015419c0b74",
-  "render_cache_identity": "78ccfbcd28ceae0f8786878592536952fe79c47ef014fff5f0558990744149c5",
+  "template_sha256": "64bb8dd9297450f2ba21737168ded9fe4b88182439e2d21614e67eb586a4b689",
+  "rendering_source_sha256": "35a99112b94f620195405b9316384c3d09de18527ef52f4af1b35342b534bda3",
+  "render_cache_identity": "d652d10c5e513df88e2be139b4fd1c055cf74ca87ed3d9db1343390dda47b8ef",
   "width": 320,
   "dpi": 60,
   "png_sha256": {
@@ -23,7 +23,8 @@
         "Value": "Title Slide",
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       },
       {
         "PlaceholderID": "subtitle",
@@ -31,7 +32,8 @@
         "Value": "Subtitle placeholder",
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       }
     ],
     "slideLayout2": [
@@ -41,7 +43,8 @@
         "Value": "One Content",
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       },
       {
         "PlaceholderID": "body",
@@ -53,7 +56,8 @@
         ],
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       }
     ],
     "slideLayout3": [
@@ -63,7 +67,8 @@
         "Value": "Two Content",
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       },
       {
         "PlaceholderID": "body",
@@ -75,7 +80,8 @@
         ],
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       },
       {
         "PlaceholderID": "body_2",
@@ -87,7 +93,8 @@
         ],
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       }
     ],
     "slideLayout4": [
@@ -97,7 +104,8 @@
         "Value": "Section",
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       },
       {
         "PlaceholderID": "Section Number",
@@ -105,7 +113,8 @@
         "Value": "01",
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       }
     ],
     "slideLayout5": [
@@ -115,7 +124,8 @@
         "Value": "Closing",
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       },
       {
         "PlaceholderID": "subtitle",
@@ -123,7 +133,8 @@
         "Value": "Subtitle placeholder",
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       }
     ],
     "slideLayout6": null,
@@ -134,7 +145,8 @@
         "Value": "Blank + Title",
         "FontSize": 0,
         "TextColor": "",
-        "Link": null
+        "Link": null,
+        "ColumnHeader": false
       }
     ]
   }
