@@ -148,7 +148,7 @@ func quoteClusterBudgetCopy(length int) string {
 }
 
 func quoteClusterHeight(grid *jsonschema.ShapeGridInput) float64 {
-	height := float64(len(grid.Rows)-1) * 10
+	height := float64(len(grid.Rows)-1) * grid.RowGap
 	for _, row := range grid.Rows {
 		height += row.MaxHeight
 	}
@@ -310,8 +310,8 @@ func (q *quoteCluster) Expand(ctx ExpandContext, values, overrides any, cellOver
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(fmt.Sprintf(`%d`, quoteClusterColumns)),
-		Gap:           contentSizedRowGapPt,
-		RowGap:        10,
+		Gap:           ctx.Gap(contentSizedRowGapPt),
+		RowGap:        ctx.Gap(10),
 		Rows:          rows,
 		VerticalAlign: GridVerticalAlignDefault,
 	}

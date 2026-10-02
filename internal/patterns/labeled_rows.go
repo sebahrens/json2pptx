@@ -254,6 +254,7 @@ type labeledRowsLayout struct {
 	rowPt                         []float64
 	unfitLabels                   []int // rows whose keyword breaks mid-word even at the floor
 	labelTextW, bodyFrameW, areaH float64
+	rowGapPt                      float64 // labeledRowsRowGapPt on the template grid
 }
 
 func (l labeledRowsLayout) natural() float64 {
@@ -262,7 +263,7 @@ func (l labeledRowsLayout) natural() float64 {
 	for _, r := range l.rowPt {
 		h += r
 	}
-	return h + float64(2*n-2)*labeledRowsRowGapPt
+	return h + float64(2*n-2)*l.rowGapPt
 }
 
 // labeledRowsScales is the default type scale, largest first: label, body,
@@ -299,10 +300,10 @@ func layoutLabeledRows(ctx ExpandContext, vals *LabeledRowsValues, ovr *LabeledR
 }
 
 func measureLabeledRows(ctx ExpandContext, vals *LabeledRowsValues, cols []float64, filled bool, labelSize, bodySize, areaW float64) labeledRowsLayout {
-	usableW := areaW - labeledRowsColGapPt
+	usableW := areaW - ctx.Gap(labeledRowsColGapPt)
 	labelColW := usableW * cols[0] / 100
 	bodyColW := usableW * cols[1] / 100
-	lay := labeledRowsLayout{cols: cols, filled: filled, bodySize: bodySize, subSize: labeledRowsSubSize(bodySize), rowPt: make([]float64, len(vals.Rows))}
+	lay := labeledRowsLayout{rowGapPt: ctx.Gap(labeledRowsRowGapPt), cols: cols, filled: filled, bodySize: bodySize, subSize: labeledRowsSubSize(bodySize), rowPt: make([]float64, len(vals.Rows))}
 
 	// The keyword may wrap between words ("More / Resilient") but never inside
 	// one: shrink one shared size until every word of every label fits.
@@ -473,8 +474,8 @@ func (l *labeledRows) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	colsJSON, _ := json.Marshal(lay.cols)
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
-		ColGap:  labeledRowsColGapPt,
-		RowGap:  labeledRowsRowGapPt,
+		ColGap:  ctx.Gap(labeledRowsColGapPt),
+		RowGap:  ctx.Gap(labeledRowsRowGapPt),
 		Rows:    rows,
 	}
 	fillCappedRows(ctx, grid.Rows, grid.RowGap, labeledRowsMinFillFrac, func(i int) bool { return i%2 == 0 })

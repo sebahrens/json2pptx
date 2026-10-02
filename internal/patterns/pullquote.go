@@ -279,13 +279,13 @@ func (pq *pullQuote) Expand(ctx ExpandContext, values, overrides any, cellOverri
 	if photoCell != nil {
 		photoCell.RowSpan = 2
 		imgPct = clampPct(ovr.ImageWidthPct, pullQuoteImageDefaultPct, pullQuoteImageMinPct, pullQuoteImageMaxPct)
-		usableW = math.Max(usableW-pullQuoteRuleGapPt, 1)
+		usableW = math.Max(usableW-ctx.Gap(pullQuoteRuleGapPt), 1)
 	}
 
 	rulePct := 0.0
 	if accentSide != "none" {
 		rulePct = math.Max(pctOf(pullQuoteRulePt, usableW), pullQuoteRuleMinPct)
-		usableW = math.Max(usableW-pullQuoteRuleGapPt, 1)
+		usableW = math.Max(usableW-ctx.Gap(pullQuoteRuleGapPt), 1)
 	}
 	textW := usableW * (100 - rulePct - imgPct) / 100
 
@@ -350,7 +350,7 @@ func (pq *pullQuote) Expand(ctx ExpandContext, values, overrides any, cellOverri
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
-		ColGap:  pullQuoteRuleGapPt,
+		ColGap:  ctx.Gap(pullQuoteRuleGapPt),
 		RowGap:  pullQuoteRowGapPt,
 		Rows: []jsonschema.GridRowInput{
 			{MaxHeight: quoteRowPt, Cells: quoteCells},

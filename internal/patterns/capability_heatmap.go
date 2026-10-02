@@ -348,7 +348,7 @@ func chmMeasure(ctx ExpandContext, v *CapabilityHeatmapValues, ovr *CapabilityHe
 	contentW, contentH := contentAreaPt(ctx)
 	n := max(len(v.Columns), 1)
 	l := chmLayout{areaHPt: contentH}
-	l.colWPt = equalColumnWidthPt(contentW, n, chmColGapPt)
+	l.colWPt = equalColumnWidthPt(contentW, n, ctx.Gap(chmColGapPt))
 	l.cellTextW = math.Max(l.colWPt-2*defaultShapeInsetLRPt, 1)
 	if chmPointed(ovr) {
 		l.headerTextW = (l.colWPt - 2*defaultShapeInsetLRPt - chmHeaderPointPt/2) * chmFitSafetyFrac
@@ -401,9 +401,9 @@ func chmMeasure(ctx ExpandContext, v *CapabilityHeatmapValues, ovr *CapabilityHe
 		l.legendHPt = chmLegendRowPt(ctx, v, contentW)
 	}
 
-	fixed := l.headerHPt + l.legendHPt + chmRowGapPt*float64(l.maxCells)
+	fixed := l.headerHPt + l.legendHPt + ctx.Gap(chmRowGapPt)*float64(l.maxCells)
 	if l.legendHPt > 0 {
-		fixed += chmRowGapPt
+		fixed += ctx.Gap(chmRowGapPt)
 	}
 	l.neededHPt = fixed + float64(l.maxCells)*l.cellContentH
 
@@ -480,7 +480,7 @@ func chmLegendTextJSON(t CapabilityHeatmapTier) json.RawMessage {
 }
 
 func chmLegendRowPt(ctx ExpandContext, v *CapabilityHeatmapValues, contentW float64) float64 {
-	return chmLegendTextPt(ctx, v, contentW) + chmLegendGapPt
+	return chmLegendTextPt(ctx, v, contentW) + ctx.Gap(chmLegendGapPt)
 }
 
 // ---------------------------------------------------------------------------
@@ -638,8 +638,8 @@ func (p *capabilityHeatmap) Expand(ctx ExpandContext, values, overrides any, cel
 	colsJSON, _ := json.Marshal(n)
 	return &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(colsJSON),
-		ColGap:        chmColGapPt,
-		RowGap:        chmRowGapPt,
+		ColGap:        ctx.Gap(chmColGapPt),
+		RowGap:        ctx.Gap(chmRowGapPt),
 		Rows:          rows,
 		VerticalAlign: GridVerticalAlignDefault,
 	}, nil

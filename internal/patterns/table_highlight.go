@@ -1130,7 +1130,7 @@ func thLegendCell(ctx ExpandContext, v *TableHighlightValues, kind string, symbo
 		ColSpan: span,
 		Grid: &jsonschema.ShapeGridInput{
 			Columns: json.RawMessage(colsJSON),
-			ColGap:  2,
+			ColGap:  ctx.Gap(2),
 			// Without an explicit height the nested row collapsed to ~10pt
 			// inside its 32pt cell and the labels autofit down to ~2pt
 			// (go-slide-creator-z0up).

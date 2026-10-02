@@ -255,7 +255,7 @@ func (p *pyramid) Expand(ctx ExpandContext, values, overrides any, cellOverrides
 	grid := &jsonschema.ShapeGridInput{
 		Columns: colsJSON,
 		ColGap:  pyramidColGapPt,
-		RowGap:  pyramidRowGapPt,
+		RowGap:  ctx.Gap(pyramidRowGapPt),
 		Rows:    rows,
 	}
 
@@ -300,7 +300,7 @@ func pyramidTrapezoidAdj(ctx ExpandContext, n int, sidePct float64) int64 {
 	if w <= 0 || h <= 0 || n <= 1 {
 		return 0
 	}
-	rowGapEMU := int64(pyramidRowGapPt * 12700)
+	rowGapEMU := int64(ctx.Gap(pyramidRowGapPt) * 12700)
 	rowH := float64(h-int64(n-1)*rowGapEMU) / float64(n)
 	if rowH <= 0 {
 		return 0
@@ -319,7 +319,7 @@ func expandContentSize(ctx ExpandContext) (w, h int64) {
 	}
 	if ctx.SlideWidth > 0 && ctx.SlideHeight > 0 {
 		db := shapegrid.DefaultBounds(ctx.SlideWidth, ctx.SlideHeight)
-		return db.CX, db.CY
+		return ctx.gridDefaultArea(db.CX, db.CY, ctx.SlideWidth)
 	}
 	return 0, 0
 }

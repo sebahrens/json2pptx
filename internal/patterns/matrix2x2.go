@@ -484,7 +484,7 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(`[12, 44, 44]`),
-		Gap:     matrix2x2GapPt,
+		Gap:     ctx.Gap(matrix2x2GapPt),
 		Rows:    rows,
 	}
 
@@ -517,10 +517,10 @@ type matrix2x2Layout struct {
 // two quadrant rows would not otherwise fit; an authored header_size is kept.
 func layoutMatrix2x2(ctx ExpandContext, v *Matrix2x2Values, ovr *Matrix2x2Overrides) matrix2x2Layout {
 	areaW, areaH := sizingAreaPt(ctx)
-	quadW := (areaW - 2*matrix2x2GapPt) * 0.44
+	quadW := (areaW - 2*ctx.Gap(matrix2x2GapPt)) * 0.44
 	lay := matrix2x2Layout{
 		bodySize: ResolveSize(ovr.BodySize, scaleBodyPt),
-		availPt:  (areaH - 2*matrix2x2GapPt) * (1 - matrix2x2AxisRowPct/100),
+		availPt:  (areaH - 2*ctx.Gap(matrix2x2GapPt)) * (1 - matrix2x2AxisRowPct/100),
 	}
 	sizes := []float64{ResolveSize(ovr.HeaderSize, sizeHeaderPt)}
 	if ovr.HeaderSize == 0 {

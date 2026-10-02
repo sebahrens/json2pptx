@@ -431,7 +431,7 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 		// labels get the one-line diamond marker. One wrapping label switches
 		// the whole row, so the markers stay consistent.
 		areaW, _ := sizingAreaPt(ctx)
-		colW := equalColumnWidthPt(areaW, n, 6)
+		colW := equalColumnWidthPt(areaW, n, ctx.Gap(6))
 		msH := phaseRoadmapMilestoneRowPt(milestoneSize)
 		wraps := false
 		for _, p := range vals.Phases {
@@ -499,7 +499,7 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 	// The row hugs the tallest description (go-slide-creator-7km8) instead of
 	// flexing over the rest of the slide; the grid centres the block.
 	contentW, _ := contentAreaPt(ctx)
-	descW := equalColumnWidthPt(contentW, n, 6) - 2*defaultShapeInsetLRPt
+	descW := equalColumnWidthPt(contentW, n, ctx.Gap(6)) - 2*defaultShapeInsetLRPt
 	descH := 0.0
 	descCells := make([]*jsonschema.GridCellInput, n)
 	for i, p := range vals.Phases {
@@ -535,8 +535,8 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(fmt.Sprintf(`%d`, n)),
-		Gap:           6,
-		RowGap:        4,
+		Gap:           ctx.Gap(6),
+		RowGap:        ctx.Gap(4),
 		Rows:          rows,
 		VerticalAlign: GridVerticalAlignDefault,
 	}
@@ -576,7 +576,7 @@ type phaseRoadmapTracks struct {
 func buildPhaseRoadmapTracks(ctx ExpandContext, vals *PhaseRoadmapValues, accent string, bodySize, headerSize float64) *phaseRoadmapTracks {
 	k := len(vals.ParallelTracks)
 	contentW, _ := contentAreaPt(ctx)
-	barTextW := contentW*(100-phaseRoadmapTrackLabelColPct)/100 - phaseRoadmapTrackGapPt - 2*defaultShapeInsetLRPt
+	barTextW := contentW*(100-phaseRoadmapTrackLabelColPct)/100 - ctx.Gap(phaseRoadmapTrackGapPt) - 2*defaultShapeInsetLRPt
 	barTextH := bodySize * contentLineHeight
 	for _, t := range vals.ParallelTracks {
 		barTextH = math.Max(barTextH, textBlockHeightPt(ctx.Theme.BodyFont, barTextW, textParagraph{text: t, size: bodySize}))
@@ -626,12 +626,12 @@ func buildPhaseRoadmapTracks(ctx ExpandContext, vals *PhaseRoadmapValues, accent
 	}
 
 	colsJSON, _ := json.Marshal([]float64{phaseRoadmapTrackLabelColPct, 100 - phaseRoadmapTrackLabelColPct})
-	blockPt := float64(k)*barPt + float64(k-1)*phaseRoadmapTrackGapPt
+	blockPt := float64(k)*barPt + float64(k-1)*ctx.Gap(phaseRoadmapTrackGapPt)
 	return &phaseRoadmapTracks{
 		grid: &jsonschema.ShapeGridInput{
 			Columns:       json.RawMessage(colsJSON),
-			ColGap:        phaseRoadmapTrackGapPt,
-			RowGap:        phaseRoadmapTrackGapPt,
+			ColGap:        ctx.Gap(phaseRoadmapTrackGapPt),
+			RowGap:        ctx.Gap(phaseRoadmapTrackGapPt),
 			Rows:          rows,
 			VerticalAlign: "bottom",
 		},
@@ -673,7 +673,7 @@ func phaseRoadmapMilestoneCell(ctx ExpandContext, phases int, label string, size
 	// column spans the rest of the text margin and the label starts where
 	// the dates and descriptions start.
 	areaW, _ := sizingAreaPt(ctx)
-	markerPct := phaseRoadmapMarkerPct(equalColumnWidthPt(areaW, phases, 6) - 2*SubGridInsetPt)
+	markerPct := phaseRoadmapMarkerPct(equalColumnWidthPt(areaW, phases, ctx.Gap(6)) - 2*SubGridInsetPt)
 	text := buildPhaseRoadmapPlainText(label, size, true, "dk1", "l")
 	var obj map[string]any
 	if json.Unmarshal(text, &obj) == nil {
@@ -822,7 +822,7 @@ func phaseRoadmapTrackedRowPcts(ctx ExpandContext, vals *PhaseRoadmapValues, blo
 	n := len(vals.Phases)
 	contentW, _ := contentAreaPt(ctx)
 	_, areaH := sizingAreaPt(ctx)
-	textW := equalColumnWidthPt(contentW, n, 6) - 2*defaultShapeInsetLRPt
+	textW := equalColumnWidthPt(contentW, n, ctx.Gap(6)) - 2*defaultShapeInsetLRPt
 	var nameH, dateH float64
 	for _, p := range vals.Phases {
 		nameH = math.Max(nameH, textBlockHeightPt(ctx.Theme.BodyFont, textW, textParagraph{text: p.Name, size: headerSize, bold: true}))
@@ -832,7 +832,7 @@ func phaseRoadmapTrackedRowPcts(ctx ExpandContext, vals *PhaseRoadmapValues, blo
 	dateNeed := pctOf(math.Max(dateH+2*defaultShapeInsetTBPt, phaseRoadmapDateMinPt(ctx, vals, dateSize)), areaH)
 
 	timeline, date = 6.0, 8.0
-	want := phaseRoadmapHeaderPct - pctOf(blockPt+4, areaH)
+	want := phaseRoadmapHeaderPct - pctOf(blockPt+ctx.Gap(4), areaH)
 	header = math.Max(headerNeed, want)
 	deficit := header - want
 	if deficit > 0 {
@@ -856,7 +856,7 @@ func phaseRoadmapDateMinPt(ctx ExpandContext, vals *PhaseRoadmapValues, dateSize
 		return 0
 	}
 	contentW, _ := contentAreaPt(ctx)
-	colW := equalColumnWidthPt(contentW, n, 6)
+	colW := equalColumnWidthPt(contentW, n, ctx.Gap(6))
 	need := 0.0
 	for _, p := range vals.Phases {
 		if p.DateLabel == "" {

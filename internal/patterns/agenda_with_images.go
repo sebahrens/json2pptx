@@ -325,7 +325,7 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 	// 389pt content zone. Give the rows a substantial shared footprint while
 	// retaining the 48pt readability floor for denser six-row agendas.
 	rowCount := float64(len(v.Items))
-	minRowPt := (areaH*0.70 - (rowCount-1)*agendaDividerHeightPct*areaH/100 - (2*rowCount-2)*agendaRowGapPt) / rowCount
+	minRowPt := (areaH*0.70 - (rowCount-1)*agendaDividerHeightPct*areaH/100 - (2*rowCount-2)*ctx.Gap(agendaRowGapPt)) / rowCount
 	minRowPt = max(minRowPt, 48)
 	// Each row is floored at the written height of its own title cell; when
 	// the rows would not fit at the default title size, the titles step to
@@ -426,8 +426,8 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 	grid := &jsonschema.ShapeGridInput{
 		// 18% / 48% / 32% from the layout spec, expressed as fractional units.
 		Columns: json.RawMessage(`[1.8, 4.8, 3.2]`),
-		Gap:     8,
-		RowGap:  4,
+		Gap:     ctx.Gap(8),
+		RowGap:  ctx.Gap(4),
 		Rows:    rows,
 	}
 
@@ -493,14 +493,15 @@ func buildAgendaWithImagesTitleText(title, subtitle string, titleSize, subtitleS
 // that size and the height all rows need together with dividers and gaps.
 func agendaWithImagesFit(ctx ExpandContext, v *AgendaWithImagesValues, ovr *AgendaWithImagesOverrides) (float64, []float64, float64) {
 	areaW, areaH := sizingAreaPt(ctx)
-	const gridGapPt, units = 8.0, 1.8 + 4.8 + 3.2
+	const units = 1.8 + 4.8 + 3.2
+	gridGapPt := ctx.Gap(8)
 	unitW := (areaW - 2*gridGapPt) / units
 	titleW := 4.8 * unitW
 	if !anyAgendaImageLabel(v.Items) {
 		titleW = 8*unitW + gridGapPt // the title spans the image column
 	}
 	n := float64(len(v.Items))
-	fixed := (n-1)*agendaDividerHeightPct*areaH/100 + (2*n-2)*agendaRowGapPt
+	fixed := (n-1)*agendaDividerHeightPct*areaH/100 + (2*n-2)*ctx.Gap(agendaRowGapPt)
 	subtitleSize := ResolveSize(ovr.SubtitleSize, scaleCaptionPt)
 	sizes := []float64{ResolveSize(ovr.TitleSize, scaleSubheadPt)}
 	if ovr.TitleSize == 0 {
@@ -582,7 +583,7 @@ func agendaBadgeWidthPct(ctx ExpandContext, n int) float64 {
 		return 100
 	}
 	dividers := float64(n-1) * h * agendaDividerHeightPct / 100
-	gaps := float64(2*n-2) * agendaRowGapPt
+	gaps := float64(2*n-2) * ctx.Gap(agendaRowGapPt)
 	rowHeight := (h - dividers - gaps) / float64(n)
 	if rowHeight <= 0 || rowHeight >= colWidth {
 		return 100

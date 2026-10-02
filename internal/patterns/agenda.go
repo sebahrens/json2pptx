@@ -293,6 +293,7 @@ type agendaLayout struct {
 	numberSize, titleSize float64
 	numberPct             float64
 	rowPt                 []float64
+	rowGapPt              float64 // agendaListRowGapPt on the template grid
 }
 
 func (l agendaLayout) natural() float64 {
@@ -301,7 +302,7 @@ func (l agendaLayout) natural() float64 {
 	for _, r := range l.rowPt {
 		h += r
 	}
-	return h + float64(2*n-2)*agendaListRowGapPt
+	return h + float64(2*n-2)*l.rowGapPt
 }
 
 func measureAgenda(ctx ExpandContext, v *AgendaValues, numberSize, titleSize float64, highlight int) agendaLayout {
@@ -309,7 +310,7 @@ func measureAgenda(ctx ExpandContext, v *AgendaValues, numberSize, titleSize flo
 	// The numeral column holds "10" at the numeral size plus the text margin.
 	numberColPt := numberSize*1.3 + 2*defaultShapeInsetLRPt
 	pct := math.Min(20, math.Max(6, math.Ceil(numberColPt/areaW*100)))
-	lay := agendaLayout{numberSize: numberSize, titleSize: titleSize, numberPct: pct}
+	lay := agendaLayout{numberSize: numberSize, titleSize: titleSize, numberPct: pct, rowGapPt: ctx.Gap(agendaListRowGapPt)}
 	numberW, titleW := lay.columnWidths(areaW)
 	numberRow := numberSize*sizingLineSpacing + 2*sizingInsetTBPt
 	for i, title := range v.Items {
@@ -403,7 +404,7 @@ func agendaFitValues(ctx ExpandContext, v *AgendaValues, ovr *AgendaOverrides) (
 func agendaFlexShrinks(ctx ExpandContext, v *AgendaValues, lay agendaLayout, highlight int) bool {
 	areaW, areaH := sizingAreaPt(ctx)
 	n := float64(len(v.Items))
-	rowH := (areaH - (n-1)*agendaRulePt - (2*n-2)*agendaListRowGapPt) / n
+	rowH := (areaH - (n-1)*agendaRulePt - (2*n-2)*ctx.Gap(agendaListRowGapPt)) / n
 	numberW, titleW := lay.columnWidths(areaW)
 	for i, title := range v.Items {
 		for _, cell := range []struct {
@@ -519,14 +520,14 @@ func (a *agenda) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 			}
 		}
 	} else {
-		fillCappedRows(ctx, rows, agendaListRowGapPt, agendaMinFillFrac, func(i int) bool { return itemRow[i] })
+		fillCappedRows(ctx, rows, ctx.Gap(agendaListRowGapPt), agendaMinFillFrac, func(i int) bool { return itemRow[i] })
 	}
 
 	colsJSON, _ := json.Marshal([]float64{lay.numberPct, 100 - lay.numberPct})
 	grid := &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(colsJSON),
 		ColGap:        agendaColGapPt,
-		RowGap:        agendaListRowGapPt,
+		RowGap:        ctx.Gap(agendaListRowGapPt),
 		Rows:          rows,
 		VerticalAlign: "center", // an agenda is a balanced contents page, not a body block
 	}

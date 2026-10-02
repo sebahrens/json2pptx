@@ -309,7 +309,7 @@ func (sh *strategyHouse) Expand(ctx ExpandContext, values, overrides any, cellOv
 	roofIdx := numPillars + 2
 
 	fullW, areaH := contentAreaPt(ctx)
-	pillarW := equalColumnWidthPt(fullW, numPillars, strategyHouseColGapPt)
+	pillarW := equalColumnWidthPt(fullW, numPillars, ctx.Gap(strategyHouseColGapPt))
 
 	var rows []jsonschema.GridRowInput
 
@@ -406,8 +406,8 @@ func (sh *strategyHouse) Expand(ctx ExpandContext, values, overrides any, cellOv
 	// is a content-sized block middle-anchored in the body zone.
 	grid := &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(fmt.Sprintf(`%d`, numPillars)),
-		Gap:           strategyHouseColGapPt,
-		RowGap:        6,
+		Gap:           ctx.Gap(strategyHouseColGapPt),
+		RowGap:        ctx.Gap(6),
 		Rows:          rows,
 		VerticalAlign: GridVerticalAlignDefault,
 	}

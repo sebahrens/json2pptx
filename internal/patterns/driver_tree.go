@@ -528,8 +528,8 @@ func (dt *driverTree) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
-		ColGap:  driverTreeColGapPt, // room for the elbow connectors between columns
-		RowGap:  4,
+		ColGap:  ctx.Gap(driverTreeColGapPt), // room for the elbow connectors between columns
+		RowGap:  ctx.Gap(4),
 		Rows:    rows,
 	}
 

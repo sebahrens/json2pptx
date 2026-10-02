@@ -391,7 +391,7 @@ func (sp *stylishPanels) Expand(ctx ExpandContext, values, overrides any, cellOv
 	// body row hugs the longest bullet list; the grid centres the block.
 	font := ctx.Theme.BodyFont
 	contentW, _ := contentAreaPt(ctx)
-	colW := equalColumnWidthPt(contentW, n, 12) - 2*defaultShapeInsetLRPt
+	colW := equalColumnWidthPt(contentW, n, ctx.Gap(12)) - 2*defaultShapeInsetLRPt
 	titles := make([]string, n)
 	bodyH := 0.0
 	for i, item := range *items {
@@ -411,7 +411,7 @@ func (sp *stylishPanels) Expand(ctx ExpandContext, values, overrides any, cellOv
 	}
 	grid := &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(fmt.Sprintf(`%d`, n)),
-		Gap:           stylishPanelsGapPt,
+		Gap:           ctx.Gap(stylishPanelsGapPt),
 		VerticalAlign: GridVerticalAlignDefault,
 		Rows: []jsonschema.GridRowInput{
 			{Cells: headerCells, MinHeight: headerPt, MaxHeight: headerPt},
@@ -450,7 +450,7 @@ func stylishPanelsFit(ctx ExpandContext, items []StylishPanelsItem, ovr *Stylish
 		steps = append(steps, step{scaleSubheadPt, scaleBodyPt})
 	}
 	areaW, areaH := sizingAreaPt(ctx)
-	colW := equalColumnWidthPt(areaW, len(items), stylishPanelsGapPt)
+	colW := equalColumnWidthPt(areaW, len(items), ctx.Gap(stylishPanelsGapPt))
 	titles := make([]string, len(items))
 	for i, item := range items {
 		titles[i] = item.Title
@@ -463,7 +463,7 @@ func stylishPanelsFit(ctx ExpandContext, items []StylishPanelsItem, ovr *Stylish
 			r.headerPt = math.Max(r.headerPt, writtenNeedOrOverflowPt(ctx.Theme.BodyFont, buildStylishHeaderText(item.Title, st.header), colW))
 			r.bodyPt = math.Max(r.bodyPt, writtenNeedOrOverflowPt(ctx.Theme.BodyFont, buildStylishBodyText(item.Body, st.body, "accent2"), colW))
 		}
-		r.totalPt = r.headerPt + stylishPanelsGapPt + r.bodyPt
+		r.totalPt = r.headerPt + ctx.Gap(stylishPanelsGapPt) + r.bodyPt
 		r.fits = r.totalPt <= areaH
 		return r
 	}

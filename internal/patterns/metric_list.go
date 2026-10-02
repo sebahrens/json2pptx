@@ -276,6 +276,7 @@ type metricListLayout struct {
 	rowPt                            float64 // uniform item row height
 	calloutPt                        float64 // 0 = no callout
 	unfitValues                      []int   // items whose value wraps even at the floor
+	rowGapPt                         float64 // metricListRowGapPt on the template grid
 }
 
 func (l metricListLayout) natural(n int) float64 {
@@ -285,7 +286,7 @@ func (l metricListLayout) natural(n int) float64 {
 		rows++
 		h += l.calloutPt
 	}
-	return h + float64(rows-1)*metricListRowGapPt
+	return h + float64(rows-1)*l.rowGapPt
 }
 
 // minimal is natural without the callout band's air (the spacer above it, the
@@ -294,7 +295,7 @@ func (l metricListLayout) natural(n int) float64 {
 func (l metricListLayout) minimal(n int) float64 {
 	h := l.natural(n)
 	if l.calloutPt > 0 {
-		h -= TakeawaySpacerPt(metricListRowGapPt) + 2*SubGridInsetPt + takeawaySafetyPt
+		h -= TakeawaySpacerPt(l.rowGapPt) + 2*SubGridInsetPt + takeawaySafetyPt
 	}
 	return h
 }
@@ -367,7 +368,7 @@ func measureMetricList(ctx ExpandContext, vals *MetricListValues, cols []float64
 	usableW := areaW - metricListColGapPt
 	valueColW := usableW * cols[0] / 100
 	textColW := usableW * cols[1] / 100
-	lay := metricListLayout{cols: cols, labelSize: labelSize, detailSize: metricListDetailSize(labelSize)}
+	lay := metricListLayout{cols: cols, labelSize: labelSize, detailSize: metricListDetailSize(labelSize), rowGapPt: ctx.Gap(metricListRowGapPt)}
 
 	// One shared value size: the largest that puts every value on one line.
 	font := ctx.Theme.BodyFont
@@ -401,7 +402,7 @@ func measureMetricList(ctx ExpandContext, vals *MetricListValues, cols []float64
 	}
 	lay.rowPt = math.Ceil(row)
 	if strings.TrimSpace(vals.Callout) != "" {
-		lay.calloutPt = TakeawayRowHeightPt(ctx, metricListTakeaway(vals.Callout, "", emphasis), areaW, metricListRowGapPt)
+		lay.calloutPt = TakeawayRowHeightPt(ctx, metricListTakeaway(vals.Callout, "", emphasis), areaW, ctx.Gap(metricListRowGapPt))
 	}
 	return lay
 }
@@ -536,7 +537,7 @@ func (m *metricList) Expand(ctx ExpandContext, values, overrides any, cellOverri
 		// The so-what is the shared takeaway band, not a solid accent banner
 		// (go-slide-creator-7b5o6).
 		areaW, _ := sizingAreaPt(ctx)
-		rows = append(rows, TakeawayRow(ctx, metricListTakeaway(vals.Callout, baseAccent, ovr.TakeawayEmphasis), 2, areaW, metricListRowGapPt))
+		rows = append(rows, TakeawayRow(ctx, metricListTakeaway(vals.Callout, baseAccent, ovr.TakeawayEmphasis), 2, areaW, ctx.Gap(metricListRowGapPt)))
 		itemRow = append(itemRow, false)
 	}
 
@@ -544,7 +545,7 @@ func (m *metricList) Expand(ctx ExpandContext, values, overrides any, cellOverri
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
 		ColGap:  metricListColGapPt,
-		RowGap:  metricListRowGapPt,
+		RowGap:  ctx.Gap(metricListRowGapPt),
 		Rows:    rows,
 	}
 	fillCappedRows(ctx, grid.Rows, grid.RowGap, metricListMinFillFrac, func(i int) bool { return itemRow[i] })

@@ -340,7 +340,7 @@ func (p *imageTextSplit) Expand(ctx ExpandContext, values, overrides any, cellOv
 	colsJSON, _ := json.Marshal(cols)
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
-		ColGap:  itsColGapPt,
+		ColGap:  ctx.Gap(itsColGapPt),
 		Rows:    []jsonschema.GridRowInput{{MinHeight: lay.heightPt, MaxHeight: lay.heightPt, Cells: cells}},
 	}
 	return grid, nil
@@ -365,8 +365,8 @@ func itsMeasure(ctx ExpandContext, v *ImageTextSplitValues, ovr *ImageTextSplitO
 func itsMeasureAt(ctx ExpandContext, v *ImageTextSplitValues, ovr *ImageTextSplitOverrides, areaW, areaH, imgPct float64) (itsLayout, float64) {
 	lay := itsLayout{imgPct: imgPct}
 	lay.textPct = 100 - lay.imgPct
-	lay.imgW = (areaW - itsColGapPt) * lay.imgPct / 100
-	lay.textW = (areaW - itsColGapPt) * lay.textPct / 100
+	lay.imgW = (areaW - ctx.Gap(itsColGapPt)) * lay.imgPct / 100
+	lay.textW = (areaW - ctx.Gap(itsColGapPt)) * lay.textPct / 100
 	if len(v.Metrics) > 0 {
 		lay.metricsPt = itsMetricValuePt*sizingLineSpacing + 2*itsMetricLabelPt*sizingLineSpacing + 2*sizingInsetTBPt + sizingSafetyPt
 	}
@@ -392,7 +392,7 @@ func itsMeasureAt(ctx ExpandContext, v *ImageTextSplitValues, ovr *ImageTextSpli
 			writtenFitHeightPt(itsTextJSON(ctx, v, lay, "accent1"), textW, 0))
 		column = lay.textPt
 		if lay.metricsPt > 0 {
-			column += itsRowGapPt + itsMetricRowPt(lay) + 2*itsSubGridInsetPt
+			column += ctx.Gap(itsRowGapPt) + itsMetricRowPt(lay) + 2*itsSubGridInsetPt
 		}
 		if column <= areaH {
 			break
@@ -400,7 +400,7 @@ func itsMeasureAt(ctx ExpandContext, v *ImageTextSplitValues, ovr *ImageTextSpli
 	}
 	imageColumn := lay.imgW * itsImageAspect
 	if lay.captionPt > 0 {
-		imageColumn += itsRowGapPt + lay.captionPt
+		imageColumn += ctx.Gap(itsRowGapPt) + lay.captionPt
 	}
 	lay.heightPt = math.Min(math.Max(math.Max(column, imageColumn), areaH*itsMinFillPct/100), areaH)
 	return lay, column
@@ -469,10 +469,10 @@ func itsImageColumn(ctx ExpandContext, v *ImageTextSplitValues, lay itsLayout) *
 		VerticalAlign: "t",
 	})
 	caption := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`), Text: capJSON}}
-	capPct := pctOf(lay.captionPt, lay.heightPt-itsRowGapPt)
+	capPct := pctOf(lay.captionPt, lay.heightPt-ctx.Gap(itsRowGapPt))
 	return &jsonschema.GridCellInput{Grid: &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(`1`),
-		RowGap:  itsRowGapPt,
+		RowGap:  ctx.Gap(itsRowGapPt),
 		Rows: []jsonschema.GridRowInput{
 			{Height: 100 - capPct, Cells: []*jsonschema.GridCellInput{picture}},
 			{Height: capPct, Cells: []*jsonschema.GridCellInput{caption}},
@@ -534,12 +534,12 @@ func itsTextColumn(ctx ExpandContext, v *ImageTextSplitValues, lay itsLayout, ac
 	metricRowPt := itsMetricRowPt(lay)
 	return &jsonschema.GridCellInput{Grid: &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(`1`),
-		RowGap:  itsRowGapPt,
+		RowGap:  ctx.Gap(itsRowGapPt),
 		Rows: []jsonschema.GridRowInput{
 			{Cells: []*jsonschema.GridCellInput{text}},
 			{MinHeight: metricRowPt, MaxHeight: metricRowPt, Cells: []*jsonschema.GridCellInput{{Grid: &jsonschema.ShapeGridInput{
 				Columns: json.RawMessage(fmt.Sprintf("%d", len(metricCells))),
-				ColGap:  12,
+				ColGap:  ctx.Gap(12),
 				Rows:    []jsonschema.GridRowInput{{Cells: metricCells}},
 			}}}},
 		},

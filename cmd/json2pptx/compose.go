@@ -126,13 +126,13 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 	var merged *jsonschema.ShapeGridInput
 	switch c.Direction {
 	case "vertical":
-		g, err := mergeVertical(expandedGrids, sizes, c.Gap)
+		g, err := mergeVertical(expandedGrids, sizes, composeGapPt(c, ctx))
 		if err != nil {
 			return nil, warnings, err
 		}
 		merged = g
 	case "horizontal":
-		g, mergeWarnings, err := mergeHorizontal(expandedGrids, sizes, c.Gap)
+		g, mergeWarnings, err := mergeHorizontal(expandedGrids, sizes, composeGapPt(c, ctx))
 		if err != nil {
 			return nil, warnings, err
 		}
@@ -207,6 +207,15 @@ func expandComposeSegments(c *ComposeInput, ctx patterns.ExpandContext, bounds [
 	return grids, warnings, nil
 }
 
+// composeGapPt is the gap between compose segments: the authored gap, else
+// the template grid's gutter (default 8pt, go-slide-creator-5ms8c).
+func composeGapPt(c *ComposeInput, ctx patterns.ExpandContext) float64 {
+	if c.Gap != 0 {
+		return c.Gap
+	}
+	return ctx.GutterPt()
+}
+
 // composeSegmentBounds translates size_pct shares into each segment's actual
 // axis allocation, accounting for the gaps the merged grid subtracts before
 // distributing rows or columns. Smart-compose shares are fixed by the probe's
@@ -217,11 +226,7 @@ func composeSegmentBounds(c *ComposeInput, ctx patterns.ExpandContext, grids []*
 		db := shapegrid.DefaultBounds(ctx.SlideWidth, ctx.SlideHeight)
 		base = patterns.LayoutBounds{X: db.X, Y: db.Y, Width: db.CX, Height: db.CY}
 	}
-	gapPt := c.Gap
-	if gapPt == 0 {
-		gapPt = 8
-	}
-	gap := int64(math.Round(gapPt * 12700))
+	gap := int64(math.Round(composeGapPt(c, ctx) * 12700))
 	units := make([]int, len(grids))
 	totalUnits := 0
 	for i, grid := range grids {

@@ -177,6 +177,16 @@ func ResolveChromeFrame(layout, reference *types.LayoutMetadata, slideWidth, sli
 	bareLeft, bareRight := left, right
 	left, right = excludeSideDecor(decorLayout, left, right, top, y, w, h)
 	frame.SideDecorInset = left != bareLeft || right != bareRight
+	// A template grid's margin_pct (go-slide-creator-5ms8c) narrows the
+	// content column — and with it placeholder charts, tables and bodies
+	// clamped to the frame, and the takeaway / source bands — to the declared
+	// outer margin. It never widens the column over template artwork.
+	if grid := frameTemplateGrid(layout, reference); grid != nil && grid.MarginPct > 0 {
+		margin := int64(grid.MarginPct / 100 * float64(w))
+		if l, r := max(left, margin), min(right, w-margin); r > l {
+			left, right = l, r
+		}
+	}
 	if hasTakeaway {
 		frame.Takeaway.X, frame.Takeaway.CX = left, right-left
 	}
@@ -418,6 +428,18 @@ func FindLayout(layouts []types.LayoutMetadata, id string) *types.LayoutMetadata
 		if layouts[i].ID == id {
 			return &layouts[i]
 		}
+	}
+	return nil
+}
+
+// frameTemplateGrid returns the template grid carried by the slide's layout,
+// else by the reference layout (ParseLayouts attaches it to every layout).
+func frameTemplateGrid(layout, reference *types.LayoutMetadata) *types.TemplateGrid {
+	if layout != nil && layout.TemplateGrid != nil {
+		return layout.TemplateGrid
+	}
+	if reference != nil {
+		return reference.TemplateGrid
 	}
 	return nil
 }

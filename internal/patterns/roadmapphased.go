@@ -401,8 +401,8 @@ func (r *roadmapPhased) Expand(ctx ExpandContext, values, overrides any, cellOve
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
-		Gap:     6,
-		RowGap:  4,
+		Gap:     ctx.Gap(6),
+		RowGap:  ctx.Gap(4),
 		Rows:    rows,
 	}
 

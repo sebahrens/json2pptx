@@ -442,7 +442,7 @@ func cdMeasureN(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirect
 	// empty slide.
 	var stacked cdLayout
 	if personRows <= 2 {
-		stackW := (areaW - cdStackColGapPt*float64(n-1)) / float64(n)
+		stackW := (areaW - ctx.Gap(cdStackColGapPt)*float64(n-1)) / float64(n)
 		stackMax := math.Min(cdStackPhotoMaxPt, math.Floor(stackW*0.6))
 	stackSearch:
 		for _, st := range steps {
@@ -465,7 +465,7 @@ func cdMeasureN(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirect
 
 // cdMeasureSide measures the side-by-side layout (headshot left of the text).
 func cdMeasureSide(ctx ExpandContext, v *ContactDirectoryValues, n int, steps []cdTypeStep, photoMax, areaW, areaH float64, opt cdOpts) cdLayout {
-	usable := areaW - cdColGapPt*float64(2*n-1)
+	usable := areaW - ctx.Gap(cdColGapPt)*float64(2*n-1)
 	personW := usable / float64(n)
 	// A narrow area still measures at the minimum headshot rather than
 	// skipping the search and returning an empty layout.
@@ -508,7 +508,7 @@ func cdMeasureAt(ctx ExpandContext, v *ContactDirectoryValues, n int, nameSize, 
 	for g, grp := range v.Groups {
 		head := math.Ceil(lay.headSize*sizingLineSpacing + cdTextPadPt + cdSafetyPt)
 		if g > 0 {
-			head += opt.groupGapPt()
+			head += ctx.Gap(opt.groupGapPt())
 		}
 		lay.headPt = append(lay.headPt, head)
 		lay.naturalPt += head
@@ -526,7 +526,7 @@ func cdMeasureAt(ctx ExpandContext, v *ContactDirectoryValues, n int, nameSize, 
 		}
 		lay.rowPt = append(lay.rowPt, heights)
 	}
-	lay.rowGapPt = opt.rowGapPt()
+	lay.rowGapPt = ctx.Gap(opt.rowGapPt())
 	lay.naturalPt += lay.rowGapPt * float64(rows-1)
 	lay.fits = lay.naturalPt <= areaH && lay.namesFit(ctx, v) && (!opt.oneLine || lay.namesOneLine(ctx, v))
 	return lay
@@ -549,7 +549,7 @@ func cdMeasureStacked(ctx ExpandContext, v *ContactDirectoryValues, n int, nameS
 	for g, grp := range v.Groups {
 		head := math.Ceil(lay.headSize*sizingLineSpacing + cdTextPadPt + cdSafetyPt)
 		if g > 0 {
-			head += opt.groupGapPt()
+			head += ctx.Gap(opt.groupGapPt())
 		}
 		lay.headPt = append(lay.headPt, head)
 		lay.naturalPt += head
@@ -570,7 +570,7 @@ func cdMeasureStacked(ctx ExpandContext, v *ContactDirectoryValues, n int, nameS
 		lay.rowPt = append(lay.rowPt, photos)
 		lay.textRowPt = append(lay.textRowPt, texts)
 	}
-	lay.rowGapPt = opt.rowGapPt()
+	lay.rowGapPt = ctx.Gap(opt.rowGapPt())
 	lay.naturalPt += lay.rowGapPt * float64(rows-1)
 	lay.fits = lay.naturalPt <= areaH && lay.namesFit(ctx, v) && (!opt.oneLine || lay.namesOneLine(ctx, v))
 	return lay
@@ -683,14 +683,14 @@ func (c *contactDirectory) Expand(ctx ExpandContext, values, overrides any, cell
 	if len(lay.headPt) != len(v.Groups) || len(lay.rowPt) != len(v.Groups) || (!lay.stacked && lay.textW <= 0) {
 		return nil, fmt.Errorf("contact-directory: the content area (%.0fpt wide) is too narrow for %d people per row — give the pattern more width", areaW, n)
 	}
-	usable := areaW - cdColGapPt*float64(2*n-1)
+	usable := areaW - ctx.Gap(cdColGapPt)*float64(2*n-1)
 
 	// Columns: photo, text, photo, text, … as percentages of the width left
 	// after the gaps. A stacked (sparse) directory has one column per person.
-	span, colGap := 2*n, cdColGapPt
+	span, colGap := 2*n, ctx.Gap(cdColGapPt)
 	var cols []float64
 	if lay.stacked {
-		span, colGap = n, cdStackColGapPt
+		span, colGap = n, ctx.Gap(cdStackColGapPt)
 		for i := 0; i < n; i++ {
 			cols = append(cols, math.Round(1000/float64(n))/10)
 		}

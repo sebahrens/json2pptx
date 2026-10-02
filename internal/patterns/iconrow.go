@@ -273,7 +273,7 @@ func (ir *iconRow) Expand(ctx ExpandContext, values, overrides any, cellOverride
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(fmt.Sprintf(`%d`, len(*items))),
-		Gap:     iconRowGapPt,
+		Gap:     ctx.Gap(iconRowGapPt),
 		Rows: []jsonschema.GridRowInput{
 			{Cells: gridCells},
 		},
@@ -348,7 +348,7 @@ func iconRowCardNeedPt(ctx ExpandContext, cells []*jsonschema.GridCellInput) (ne
 	if n == 0 || areaW <= 0 || areaH <= 0 {
 		return 0, areaH
 	}
-	cardW := equalColumnWidthPt(areaW, n, iconRowGapPt)
+	cardW := equalColumnWidthPt(areaW, n, ctx.Gap(iconRowGapPt))
 	textW := cardW - 2*defaultShapeInsetLRPt
 	if textW <= 0 {
 		return 0, areaH

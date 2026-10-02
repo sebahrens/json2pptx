@@ -254,8 +254,8 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
-		Gap:     valueChainGapPt,
-		RowGap:  4,
+		Gap:     ctx.Gap(valueChainGapPt),
+		RowGap:  ctx.Gap(4),
 		Rows: []jsonschema.GridRowInput{
 			{
 				Height:    25,
@@ -320,7 +320,7 @@ const valueChainMinLabelPt = shapegrid.MinTextSizePt
 // (go-slide-creator-vo0j1).
 func fitValueChainLabels(ctx ExpandContext, steps []ValueChainStep, labelPt float64) (float64, []string) {
 	contentW, _ := contentAreaPt(ctx)
-	textW := equalColumnWidthPt(contentW, len(steps), valueChainGapPt) - 2*defaultShapeInsetLRPt
+	textW := equalColumnWidthPt(contentW, len(steps), ctx.Gap(valueChainGapPt)) - 2*defaultShapeInsetLRPt
 	if textW <= 0 || len(steps) == 0 {
 		return labelPt, nil
 	}
@@ -348,7 +348,7 @@ func fitValueChainLabels(ctx ExpandContext, steps []ValueChainStep, labelPt floa
 // tallest description at the step column width.
 func valueChainDescRowHeightPt(ctx ExpandContext, cells []*jsonschema.GridCellInput, cols int) float64 {
 	contentW, _ := contentAreaPt(ctx)
-	colW := equalColumnWidthPt(contentW, cols, valueChainGapPt)
+	colW := equalColumnWidthPt(contentW, cols, ctx.Gap(valueChainGapPt))
 	textW := colW - 2*defaultShapeInsetLRPt
 	if textW <= 0 {
 		return 0

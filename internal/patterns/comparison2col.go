@@ -386,11 +386,11 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(`2`),
-		Gap:           comparisonGapPt,
+		Gap:           ctx.Gap(comparisonGapPt),
 		Rows:          plan.rows,
 		VerticalAlign: GridVerticalAlignDefault,
 	}
-	if plan.rowGap != comparisonGapPt {
+	if plan.rowGap != ctx.Gap(comparisonGapPt) {
 		grid.RowGap = plan.rowGap
 	}
 	if ovr.Connectors {
@@ -509,9 +509,9 @@ func comparisonLayout(ctx ExpandContext, vals *Comparison2colValues, ovr *Compar
 	headerSize := ResolveSize(ovr.HeaderSize, scaleLeadPt)
 	bodySize := ResolveSize(ovr.BodySize, scaleSubheadPt)
 	type step struct{ header, body, gap float64 }
-	steps := []step{{headerSize, bodySize, comparisonGapPt}, {headerSize, bodySize, comparisonMinRowGapPt}}
+	steps := []step{{headerSize, bodySize, ctx.Gap(comparisonGapPt)}, {headerSize, bodySize, ctx.Gap(comparisonMinRowGapPt)}}
 	if ovr.HeaderSize == 0 || ovr.BodySize == 0 {
-		st := step{headerSize, bodySize, comparisonMinRowGapPt}
+		st := step{headerSize, bodySize, ctx.Gap(comparisonMinRowGapPt)}
 		if ovr.HeaderSize == 0 {
 			st.header = comparisonMinHeaderPt
 		}
@@ -544,7 +544,7 @@ const (
 // each row's written fit at the real text-column width.
 func comparisonMeasure(ctx ExpandContext, vals *Comparison2colValues, ovr *Comparison2colOverrides, cellOverrides map[int]any, headerSize, bodySize, rowGap float64) comparisonPlan {
 	areaW, areaH := sizingAreaPt(ctx)
-	textW := (areaW - comparisonGapPt) / 2
+	textW := (areaW - ctx.Gap(comparisonGapPt)) / 2
 	if ovr.Connectors {
 		textW = (areaW - 2*comparisonConnectorColGap) * comparisonConnectorColPct / 100
 	}

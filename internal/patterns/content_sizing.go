@@ -136,7 +136,14 @@ func sizingAreaPt(ctx ExpandContext) (w, h float64) {
 		sw, sh = 12192000, 6858000
 	}
 	db := shapegrid.DefaultBounds(sw, sh)
-	return float64(db.CX) * sizingDefaultWidthFrac / sizingEMUPerPt, float64(db.CY) * sizingDefaultHeightFrac / sizingEMUPerPt
+	w, h = float64(db.CX)*sizingDefaultWidthFrac/sizingEMUPerPt, float64(db.CY)*sizingDefaultHeightFrac/sizingEMUPerPt
+	// A template grid narrows the estimate the way it narrows the real zone
+	// (margin_pct, title_gap_pt); without one the estimate is unchanged.
+	if ctx.TemplateGrid() != nil {
+		gw, gh := ctx.gridDefaultArea(int64(w*sizingEMUPerPt), int64(h*sizingEMUPerPt), sw)
+		w, h = min(w, float64(gw)/sizingEMUPerPt), min(h, float64(gh)/sizingEMUPerPt)
+	}
+	return w, h
 }
 
 // pctOf converts a point extent into a percentage of total (rounded to 0.1).

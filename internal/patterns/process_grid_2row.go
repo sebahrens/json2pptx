@@ -386,7 +386,7 @@ func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellO
 	// flexing over whatever height is left. Their cell_overrides indices come
 	// after the tracks so existing indices stay stable.
 	contentW, _ := contentAreaPt(ctx)
-	colTextW := contentW*phaseWidth/100 - processGrid2RowGapPt - 2*defaultShapeInsetLRPt
+	colTextW := contentW*phaseWidth/100 - ctx.Gap(processGrid2RowGapPt) - 2*defaultShapeInsetLRPt
 	// Track rows flex over the height the optional rows leave, each floored
 	// at the written fit of its tallest cell.
 	floorFlexRowsAtNeeds(rows, lay.trackNeeds[:], lay.trackAvailPt)
@@ -413,8 +413,8 @@ func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellO
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
-		Gap:     processGrid2RowGapPt,
-		RowGap:  processGrid2RowGapPt,
+		Gap:     ctx.Gap(processGrid2RowGapPt),
+		RowGap:  ctx.Gap(processGrid2RowGapPt),
 		Rows:    rows,
 	}
 
@@ -446,7 +446,7 @@ func fitProcessGrid2RowLabels(ctx ExpandContext, vals *ProcessGrid2RowValues, la
 	areaW, _ := contentAreaPt(ctx)
 	font := ctx.Theme.BodyFont
 	textW := func(colPct float64) float64 {
-		return math.Max(areaW*colPct/100-processGrid2RowGapPt-2*defaultShapeInsetLRPt, 1)
+		return math.Max(areaW*colPct/100-ctx.Gap(processGrid2RowGapPt)-2*defaultShapeInsetLRPt, 1)
 	}
 	fits := func(size, colPct float64) bool {
 		w := textfit.AtomicTokenWidthPt(font, textW(colPct))
@@ -511,18 +511,18 @@ func layoutProcessGrid2Row(ctx ExpandContext, vals *ProcessGrid2RowValues, ovr *
 		if n == 0 || n != len(vals.Row2Phases) {
 			return lay
 		}
-		usable := areaW - float64(n)*processGrid2RowGapPt
+		usable := areaW - float64(n)*ctx.Gap(processGrid2RowGapPt)
 		labelW := usable * lay.label.colPct / 100
 		phaseW := usable * (100 - lay.label.colPct) / 100 / float64(n)
-		colTextW := contentW*(100-lay.label.colPct)/float64(n)/100 - processGrid2RowGapPt - 2*defaultShapeInsetLRPt
-		fixed := processGrid2RowGapPt // between the two tracks
+		colTextW := contentW*(100-lay.label.colPct)/float64(n)/100 - ctx.Gap(processGrid2RowGapPt) - 2*defaultShapeInsetLRPt
+		fixed := ctx.Gap(processGrid2RowGapPt) // between the two tracks
 		if len(vals.ColumnHeaders) == n {
 			row := buildProcessGrid2RowHeaderRow(ctx, vals.ColumnHeaders, "accent1", math.Max(phaseSize, size-2), colTextW)
 			lay.headerPt = row.MinHeight
 			for _, c := range row.Cells[1:] {
 				lay.headerPt = math.Max(lay.headerPt, math.Ceil(writtenFitHeightPt(c.Shape.Text, phaseW, 0)+processGrid2RowUnderlinePt+2))
 			}
-			fixed += lay.headerPt + processGrid2RowGapPt
+			fixed += lay.headerPt + ctx.Gap(processGrid2RowGapPt)
 		}
 		if len(vals.Outcomes) == n {
 			row := buildProcessGrid2RowOutcomeRow(ctx, vals.Outcomes, "accent1", phaseSize, colTextW)
@@ -530,7 +530,7 @@ func layoutProcessGrid2Row(ctx ExpandContext, vals *ProcessGrid2RowValues, ovr *
 			for _, c := range row.Cells[1:] {
 				lay.outcomePt = math.Max(lay.outcomePt, math.Ceil(writtenFitHeightPt(c.Shape.Text, phaseW, 0)+8))
 			}
-			fixed += lay.outcomePt + processGrid2RowGapPt
+			fixed += lay.outcomePt + ctx.Gap(processGrid2RowGapPt)
 		}
 		lay.trackAvailPt = areaH - fixed
 		for r, track := range [2]struct {

@@ -364,7 +364,7 @@ type kpiCardGeometry struct {
 // icon placement; kpiRowMaxHeightPt sizes the rendered row to its content.
 func kpiCardGeometryFor(ctx ExpandContext, n int) kpiCardGeometry {
 	w, h := contentAreaPt(ctx)
-	return kpiCardGeometry{wPt: equalColumnWidthPt(w, n, kpiCardGapPt), hPt: h * kpiBaseCardHeightFrac}
+	return kpiCardGeometry{wPt: equalColumnWidthPt(w, n, ctx.Gap(kpiCardGapPt)), hPt: h * kpiBaseCardHeightFrac}
 }
 
 // kpiRowMaxHeightPt returns the KPI row's max_height: the tallest card's

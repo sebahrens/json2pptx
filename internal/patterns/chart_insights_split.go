@@ -459,7 +459,7 @@ func (cis *chartInsightsSplit) Expand(ctx ExpandContext, values, overrides any, 
 	if v.Chart == nil {
 		grid := &jsonschema.ShapeGridInput{
 			Columns: json.RawMessage(`1`),
-			Gap:     8,
+			Gap:     ctx.Gap(8),
 			Rows: []jsonschema.GridRowInput{
 				{Cells: []*jsonschema.GridCellInput{insightsCell}},
 			},
@@ -522,7 +522,7 @@ func (cis *chartInsightsSplit) Expand(ctx ExpandContext, values, overrides any, 
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
-		Gap:     8,
+		Gap:     ctx.Gap(8),
 		Rows:    rows,
 	}
 
@@ -826,7 +826,7 @@ func buildChartWithCaption(ctx ExpandContext, chart *jsonschema.GridCellInput, l
 	capPct := pctOf(cisCaptionPt, areaH)
 	return &jsonschema.GridCellInput{Grid: &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(`1`),
-		RowGap:  2,
+		RowGap:  ctx.Gap(2),
 		Rows: []jsonschema.GridRowInput{
 			{Height: capPct, Cells: []*jsonschema.GridCellInput{{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`), Text: textJSON}}}},
 			{Height: 100 - capPct, Cells: []*jsonschema.GridCellInput{chart}},
@@ -908,13 +908,13 @@ func stackInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *Ch
 	areaW, areaH := sizingAreaPt(ctx)
 	// The column's inner frame: the nested grid resolves inside the cell less
 	// the sub-grid inset on every side.
-	colW := (areaW-cisColGapPt)*(100-chartPct)/100 - 2*SubGridInsetPt
+	colW := (areaW-ctx.Gap(cisColGapPt))*(100-chartPct)/100 - 2*SubGridInsetPt
 	if v.Chart == nil {
 		colW = areaW - 2*SubGridInsetPt
 	}
 	colH := areaH - 2*SubGridInsetPt
 	if v.Source != "" {
-		colH -= cisSourceRowPt + cisColGapPt // source row + row gap
+		colH -= cisSourceRowPt + ctx.Gap(cisColGapPt) // source row + row gap
 	}
 
 	var rows []jsonschema.GridRowInput
@@ -947,8 +947,8 @@ func stackInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *Ch
 		if compact && v.Chart != nil {
 			spec.SizePt = scaleBodyPt
 		}
-		h := TakeawayRowHeightPt(ctx, spec, colW, cisColumnRowGapPt)
-		row := TakeawayRow(ctx, spec, 1, colW, cisColumnRowGapPt)
+		h := TakeawayRowHeightPt(ctx, spec, colW, ctx.Gap(cisColumnRowGapPt))
+		row := TakeawayRow(ctx, spec, 1, colW, ctx.Gap(cisColumnRowGapPt))
 		soWhatRow = &row
 		used += h
 	}
@@ -962,10 +962,10 @@ func stackInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *Ch
 	if soWhatRow != nil {
 		rows = append(rows, *soWhatRow)
 	}
-	short := used + need + cisColumnRowGapPt*float64(len(rows)-1) - colH
+	short := used + need + ctx.Gap(cisColumnRowGapPt)*float64(len(rows)-1) - colH
 	return &jsonschema.GridCellInput{Grid: &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(`1`),
-		RowGap:  cisColumnRowGapPt,
+		RowGap:  ctx.Gap(cisColumnRowGapPt),
 		Rows:    rows,
 	}}, short
 }

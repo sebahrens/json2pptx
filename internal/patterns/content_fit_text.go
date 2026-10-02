@@ -105,7 +105,7 @@ func contentSizedRow(ctx ExpandContext, cells []*jsonschema.GridCellInput, cols 
 
 	font := ctx.Theme.BodyFont
 	contentW, _ := contentAreaPt(ctx)
-	cardW := equalColumnWidthPt(contentW, cols, contentSizedRowGapPt)
+	cardW := equalColumnWidthPt(contentW, cols, ctx.Gap(contentSizedRowGapPt))
 	textW := cardW - 2*defaultShapeInsetLRPt
 
 	textHs := make([]float64, len(cells))

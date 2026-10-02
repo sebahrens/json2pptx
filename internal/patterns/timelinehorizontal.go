@@ -425,8 +425,8 @@ func (th *timelineHorizontal) expandDots(ctx ExpandContext, stops *TimelineHoriz
 
 	return &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(fmt.Sprintf(`%d`, n)),
-		ColGap:        timelineDotsColGapPt,
-		RowGap:        timelineDotsRowGapPt,
+		ColGap:        ctx.Gap(timelineDotsColGapPt),
+		RowGap:        ctx.Gap(timelineDotsRowGapPt),
 		Rows:          rows,
 		VerticalAlign: GridVerticalAlignDefault,
 	}, nil
@@ -460,7 +460,7 @@ func measureTimelineDots(ctx ExpandContext, stops TimelineHorizontalValues, ovr 
 	n := len(stops)
 	font := ctx.Theme.BodyFont
 	contentW, contentH := contentAreaPt(ctx)
-	colW := equalColumnWidthPt(contentW, n, timelineDotsColGapPt)
+	colW := equalColumnWidthPt(contentW, n, ctx.Gap(timelineDotsColGapPt))
 	textW := colW - 2*defaultShapeInsetLRPt
 	pad := 2*defaultShapeInsetTBPt + 4
 
@@ -482,10 +482,10 @@ func measureTimelineDots(ctx ExpandContext, stops TimelineHorizontalValues, ovr 
 			dateNeed = math.Max(dateNeed, writtenFitHeightPt(text, colW, 0))
 		}
 	}
-	fit.stopAvailPt = contentH - timelineDotSizePt - timelineDotsRowGapPt
+	fit.stopAvailPt = contentH - timelineDotSizePt - ctx.Gap(timelineDotsRowGapPt)
 	if hasDates {
 		fit.dateRowPt = math.Max(math.Round(dateH+pad), dateNeed)
-		fit.stopAvailPt -= fit.dateRowPt + timelineDotsRowGapPt
+		fit.stopAvailPt -= fit.dateRowPt + ctx.Gap(timelineDotsRowGapPt)
 	}
 	fit.stopAvailPt = math.Floor(fit.stopAvailPt)
 
@@ -697,8 +697,8 @@ func timelineChevronRowFit(ctx ExpandContext, cells []*jsonschema.GridCellInput,
 	contentW, contentH := contentAreaPt(ctx)
 	// The grid's Gap 0 resolves to the shape-grid default gap between the
 	// links and above the date row.
-	colW := equalColumnWidthPt(contentW, len(cells), timelineChevronResolvedGapPt)
-	fit := timelineRowFit{capPt: math.Round(contentH * timelineChevronMaxHeightFrac), availPt: math.Floor(contentH - dateRowPt - timelineChevronResolvedGapPt)}
+	colW := equalColumnWidthPt(contentW, len(cells), ctx.Gap(timelineChevronResolvedGapPt))
+	fit := timelineRowFit{capPt: math.Round(contentH * timelineChevronMaxHeightFrac), availPt: math.Floor(contentH - dateRowPt - ctx.Gap(timelineChevronResolvedGapPt))}
 	for _, c := range cells {
 		if c != nil && c.Shape != nil {
 			fit.needPt = math.Max(fit.needPt, writtenFitHeightPt(c.Shape.Text, colW, 0))
@@ -801,7 +801,7 @@ func (th *timelineHorizontal) expandGantt(ctx ExpandContext, stops *TimelineHori
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(cols),
-		Gap:           timelineGanttGapPt,
+		Gap:           ctx.Gap(timelineGanttGapPt),
 		Rows:          rows,
 		VerticalAlign: GridVerticalAlignDefault,
 	}
@@ -850,10 +850,10 @@ func timelineGanttRowFit(ctx ExpandContext, rows []jsonschema.GridRowInput, labe
 	// LibreOffice shrinks it. Rows are measured at the atomic-token width.
 	font := ctx.Theme.BodyFont
 	widths := []float64{
-		textfit.AtomicTokenWidthPt(font, (contentW-timelineGanttGapPt)*labelPct/100),
-		textfit.AtomicTokenWidthPt(font, (contentW-timelineGanttGapPt)*(100-labelPct)/100),
+		textfit.AtomicTokenWidthPt(font, (contentW-ctx.Gap(timelineGanttGapPt))*labelPct/100),
+		textfit.AtomicTokenWidthPt(font, (contentW-ctx.Gap(timelineGanttGapPt))*(100-labelPct)/100),
 	}
-	fit := timelineGanttFit{labelPct: labelPct, needs: make([]float64, len(rows)), availPt: contentH - float64(max(len(rows)-1, 0))*timelineGanttGapPt}
+	fit := timelineGanttFit{labelPct: labelPct, needs: make([]float64, len(rows)), availPt: contentH - float64(max(len(rows)-1, 0))*ctx.Gap(timelineGanttGapPt)}
 	for i, row := range rows {
 		oneLine := 0.0
 		for j, c := range row.Cells {

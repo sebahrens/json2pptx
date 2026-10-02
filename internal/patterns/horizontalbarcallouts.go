@@ -454,8 +454,8 @@ func (h *horizontalBarCallouts) Expand(ctx ExpandContext, values, overrides any,
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
-		Gap:     8,
-		RowGap:  6,
+		Gap:     ctx.Gap(8),
+		RowGap:  ctx.Gap(6),
 		Rows:    rows,
 	}
 	return grid, nil
@@ -543,7 +543,7 @@ func buildHorizontalBarRowCell(ctx ExpandContext, bar HorizontalBarCalloutsBar, 
 	subColsJSON, _ := json.Marshal(cols)
 	subGrid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(subColsJSON),
-		Gap:     2,
+		Gap:     ctx.Gap(2),
 		Rows: []jsonschema.GridRowInput{
 			{Cells: cells},
 		},
