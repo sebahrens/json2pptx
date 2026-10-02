@@ -103,6 +103,34 @@
   - The PresentationInput fingerprint is unchanged (overlay and image-cell
     structs sit outside the hashed set). Existing decks render byte-identical.
 
+- **2026-10-02 — recommend_visual compose candidates are runnable; shortlist round-trips; same-slide region briefs compose (`go-slide-creator-okg00`, `-cny8c`, `-lp0o8`).**
+  - Every `compose` candidate now carries `composition` — `direction`,
+    `regions[]` (`category` named_pattern / chart / diagram / compose,
+    `name`, `size_pct`, `position`, `segment_path`, nested `compose`,
+    per-region `data_contract` with `field_path`) and `instructions` — and a
+    runnable `next_tool_call`: `render_deck_spec` with a complete DeckSpec
+    whose one `raw_json2pptx` slide uses `layout_id: "blank-title"`, a title
+    and `compose.segments` with sample content in every region (pattern
+    exemplar values, chart / diagram sample data). It validates and renders
+    with default-profile tools only. Pattern regions' `data_contract` lists
+    the pattern's values keys.
+  - Compose names are canonical: `compose:` + sorted constituents joined
+    with `+`; a named pattern is its bare name, a chart / diagram region
+    `chart:<type>` / `diagram:<type>`. Shortlist mode (`candidates`) now
+    resolves them to the same compose candidate (category, placement,
+    composition, recipe) instead of an unknown `raw_shape_grid` at score 0;
+    a malformed name or unknown constituent returns category `compose`,
+    score 0 and the precise reason.
+  - An explicit same-slide brief naming two or more different views with
+    positions or same-slide wording ("line chart left 65%, KPI upper-right,
+    timeline lower-right") yields a heterogeneous composition (e.g.
+    `compose:chart:line+diagram:timeline+stat-hero`: 65/35 outer split, the
+    right column stacked 40/60), ranked above every partial single view.
+    Explicit shares are kept. Briefs without regions are unchanged.
+  - Pattern-pair layouts: side-by-side intents place the body pattern left
+    (65/35); stacked pairs split 50/50 with a banner (KPI row) on top. No
+    `SchemaVersion` bump (recommend_visual response shape only).
+
 - **2026-10-02 — plan_deck keeps whole comparisons and drafts an option matrix for "compare A with B" (`go-slide-creator-ze5u7`, `-fu6uy`).**
   - Brief facts are no longer truncated at 120 characters: a long clause is
     split (at a joining word, then at a word boundary outside brackets, never

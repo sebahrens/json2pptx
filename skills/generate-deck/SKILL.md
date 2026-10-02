@@ -57,7 +57,18 @@ runnable `next_tool_call` (`render_deck_spec` with a `raw_json2pptx` slide);
 replace its title and data. To compare one measure across 2–6 groups over
 the same periods, use the `small_multiples` chart (one line panel per named
 series on a shared y scale; `data.y_scale: "independent"` only for shapes —
-see RULES.md 10i). Read [DECKSPEC.md](DECKSPEC.md) for budgets,
+see RULES.md 10i).
+Several views on one slide (panels + quote, or an
+explicit "line chart left 65%, KPI upper-right, timeline lower-right" brief)
+come back as a `compose` candidate (`compose:pull-quote+stylish-panels`,
+`compose:chart:line+diagram:timeline+stat-hero`) ranked above the partial
+single views, with the same runnable `next_tool_call` (a `blank-title`
+`raw_json2pptx` slide with `compose.segments`) and a `composition`: its
+`direction` and `regions[]` (`category`, `name`, `size_pct`, `position`,
+`segment_path`, nested `compose`, per-region `data_contract.field_path` of
+the sample content to replace). Copy that one slide into your DeckSpec; the
+other slides stay semantic kinds. A `compose:` name resent in `candidates`
+resolves to the same candidate. Read [DECKSPEC.md](DECKSPEC.md) for budgets,
 degradation, required-layout coverage, handles, and revision rules.
 
 Several views proving one title (chart, KPIs, dated plan) may share a slide;

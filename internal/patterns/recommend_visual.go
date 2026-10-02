@@ -100,6 +100,15 @@ type VisualCandidate struct {
 	// DeckSpec (one raw_json2pptx slide carrying sample data). Populated by the
 	// MCP layer for chart and diagram candidates; nil otherwise.
 	NextToolCall *ToolCallSuggestion `json:"next_tool_call,omitempty"`
+	// Composition is the region layout of a compose candidate: direction,
+	// per-region size_pct shares and nested envelopes. Set on every compose
+	// candidate; the MCP layer fills each region's segment_path and
+	// data_contract and builds next_tool_call from it.
+	Composition *VisualComposition `json:"composition,omitempty"`
+
+	// intentCompound marks, in shortlist mode, the intent's own same-slide
+	// composition until rankShortlistCompound scores it.
+	intentCompound bool
 }
 
 // VisualDataContract is the data shape of a chart / diagram type — the same
@@ -329,6 +338,11 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 		}
 	}
 
+	// 6. An explicit same-slide request for several different views (a chart
+	// left, a KPI upper-right, a timeline lower-right) is one heterogeneous
+	// composition, ranked above every partial view (go-slide-creator-lp0o8).
+	all = scoreCompoundCompose(reg, intentLower, hints, all)
+
 	// Sort by score descending.
 	sort.Slice(all, func(i, j int) bool {
 		if all[i].Score != all[j].Score {
@@ -400,8 +414,34 @@ func recommendVisualOnlyCandidates(reg *Registry, intentLower string, hints *Vis
 		readyDiagrams[d.Type] = true
 	}
 
+	// scoreLeaf scores one constituent of a compose name in its own
+	// category: "chart:pyramid"-style tokens never resolve to the pattern.
+	scoreLeaf := func(l composeLeaf) VisualCandidate {
+		switch l.category {
+		case VisualCategoryChart:
+			if cr, ok := chartByType[l.name]; ok {
+				return VisualCandidate{Category: l.category, Name: l.name, Score: roundScore(scoreChartRule(cr, intentLower, hints))}
+			}
+		case VisualCategoryDiagram:
+			if dr, ok := diagramByType[l.name]; ok {
+				return VisualCandidate{Category: l.category, Name: l.name, Score: roundScore(scoreKeywords(dr.keywords, intentLower, dr.baseScore))}
+			}
+		default:
+			return scoreVisualCandidate(reg, intentLower, hints, l.name,
+				placeholderByType, chartByType, diagramByType, readyCharts, readyDiagrams,
+				recencyCount, applyVariety)
+		}
+		return VisualCandidate{Category: l.category, Name: l.name}
+	}
+
 	out := make([]VisualCandidate, 0, len(names))
 	for _, name := range names {
+		if strings.HasPrefix(name, "compose:") {
+			// Own emitted compose names resolve to the same candidate normal
+			// mode returns (go-slide-creator-cny8c).
+			out = append(out, scoreComposeShortlistCandidate(reg, intentLower, hints, name, scoreLeaf))
+			continue
+		}
 		out = append(out, scoreVisualCandidate(reg, intentLower, hints, name,
 			placeholderByType, chartByType, diagramByType, readyCharts, readyDiagrams,
 			recencyCount, applyVariety))
@@ -409,6 +449,7 @@ func recommendVisualOnlyCandidates(reg *Registry, intentLower string, hints *Vis
 	preferNativeLabelledMatrix(out, intentLower)
 	applyChartHint(out, hints, intentLower)
 	out = adjustConsultingIntentScores(out, intentLower, hints)
+	out = rankShortlistCompound(out)
 
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Score != out[j].Score {
@@ -1017,6 +1058,7 @@ func scoreCompose(reg *Registry, intentLower string, patternCandidates []VisualC
 			RenderPipeline:     "native_ooxml",
 			ComposableWith:     []string{bestPair.left, bestPair.right},
 		},
+		Composition: pairComposition(reg, bestPair.left, bestPair.right, intentLower),
 	}}
 }
 
