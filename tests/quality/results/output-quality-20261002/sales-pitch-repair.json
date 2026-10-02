@@ -1,0 +1,42 @@
+{
+  "repair_date": "2026-10-02",
+  "bead": "go-slide-creator-3i61q",
+  "audit_task": "go-slide-creator-7xwlf",
+  "scope": "Example authoring only: examples/semantic/sales_pitch.yaml. No engine change; decisionLabelMax=60 guard in internal/semantic/slides/decision.go retained.",
+  "method": "json2pptx semantic render of the before (HEAD 5f8623cb) and after spec on warm-coral (archetype default) and the local gitignored p-style template, soffice -> PDF -> pdftoppm; all 7 slides of each of the 4 decks inspected by eye.",
+  "before": {
+    "images": ["sales-market-source.png", "sales-decision-fallback.png", "sales-closing.png"],
+    "diagnostics": ["SEMANTIC_PATTERN_DEGRADED slides[5].options: decision option 2's label is 66 characters; a step holds 60", "SLIDE_UNDERUSED slides[1] (24% of safe area)"],
+    "quality_score": 99,
+    "defects": [
+      "Market chart in $B rendered under 'Acme customer benchmark, 2025 (n = 42 deployments)'; no illustrative disclosure; 2026 shown as if actual",
+      "Decision slide fell back to a recommendation paragraph plus dashed bullets; the recommendation restated option 1",
+      "Closing slide 'Let's Build the Pilot / Thank you — we're ready to start when you are.' with no action, owner or timing"
+    ]
+  },
+  "after": {
+    "images": [
+      {"file": "sales-after-market-source.png", "template": "warm-coral", "slide_index": 2, "sha256": "64005a3c5cc7bcfbd828b9ac494264a34e629930b0f5584f26fca2abe585b003"},
+      {"file": "sales-after-decision.png", "template": "warm-coral", "slide_index": 5, "sha256": "160a62aacf46781b770bb723e6dc6ed287441ba6de77c94ef64dc54576235be4"},
+      {"file": "sales-after-closing.png", "template": "warm-coral", "slide_index": 6, "sha256": "43678fcf563a66ea10a8ff87b95e8c2a077f88519261fa7e9d65e833f3473c61"},
+      {"file": "sales-after-market-source-p-style.png", "template": "p-style", "slide_index": 2, "sha256": "fadc5a3b927006549c7a8bbb523b492ecd42a7481cf90a2da64a82c0776ebae7"},
+      {"file": "sales-after-decision-p-style.png", "template": "p-style", "slide_index": 5, "sha256": "c10937c4f5db11e0ae11e2e6abb1bd9cac9302eef0eedd073f2161e77a605d56"},
+      {"file": "sales-after-closing-p-style.png", "template": "p-style", "slide_index": 6, "sha256": "acd251fbec149137e3c3e20bbfff480a1765a2f8e2ab34459c802f597c6f0da1"}
+    ],
+    "diagnostics": {"warm-coral": [], "p-style": ["contrast_predicted on the section-number placeholder (pre-existing, template-level, auto-fixed)"]},
+    "quality_score": 100,
+    "changes": [
+      "meta.date 'October 2026' dates the deck (footer); meta.source is now an illustrative-data disclosure",
+      "Market chart has its own source 'Illustrative market model: 2023–2025 estimates, 2026F forecast; not Acme customer data', title marks '$B, illustrative; 2026F = forecast', category 2026 -> 2026F, insights cite actual-vs-forecast figures",
+      "KPI slide has its own source 'Illustrative — Acme customer benchmark, 2025 (n = 42 deployments)'",
+      "Executive summary points carry supporting sentences (clears SLIDE_UNDERUSED); unsourced 'rivals react twice as fast' claim removed",
+      "Decision options are short labels (29, 20, 30 chars) each with a cost/yield detail; renders as the numbered-step-strip with the recommended option highlighted; recommendation band gives the reason ('Choose option 1: evidence ... within one quarter, at a capped fixed fee') instead of restating the option",
+      "Closing is a next_steps slide: four pilot actions with an accountable role and timing relative to approval (Week 1/2/3, Day 90) plus 'Decisions requested: Approve the 90-day pilot and name an executive sponsor'"
+    ],
+    "residual_observations": [
+      "KPI slide keeps a large empty band between the cards and the takeaway on both templates (pattern sizing, unchanged by this repair)",
+      "Decision slide leaves the lower third empty on both templates (numbered-step-strip sizes to content)"
+    ]
+  },
+  "regression_test": "internal/semantic/sales_pitch_example_credibility_test.go TestSalesPitchExample_CredibleAndActionable (fails on the before fixture with 11 findings)"
+}
