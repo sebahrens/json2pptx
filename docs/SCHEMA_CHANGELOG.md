@@ -47,7 +47,10 @@
     cells, and grid findings (JSON Pointer paths) map back to the region.
   - A shape-grid table cell too short for its rows reports
     `table_rows_truncated` (refuse) instead of rendering "…and N more rows"
-    silently. Raw PresentationInput fields are unchanged (fingerprint
+    silently: generation refuses the slide, and validate predicts it in the
+    cell generation lays out. Validate also measures the text of patterns
+    nested in grid cells for `TEXT_BELOW_READABLE_MIN`, so it refuses what
+    render refuses. Raw PresentationInput fields are unchanged (fingerprint
     unchanged).
 
 - **2026-10-02 — Default chart precision keeps small rates true; negative bar labels clear the category names (`go-slide-creator-6te2e`, `-5na8e`).**

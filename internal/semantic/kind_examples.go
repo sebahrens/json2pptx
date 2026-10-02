@@ -61,11 +61,16 @@ var kindExamples = map[SlideKind]map[string]any{
 					"series":     []any{map[string]any{"name": "Revenue", "values": []any{12, 14, 17, 21}}},
 				}},
 			},
-			map[string]any{"kind": "stat", "size_pct": 40, "value": "32%", "label": "Gross margin, Q4"},
-			map[string]any{"kind": "timeline", "size_pct": 60, "heading": "Launch plan", "milestones": []any{
-				map[string]any{"label": "Design", "date": "Oct"},
-				map[string]any{"label": "Pilot", "date": "Nov"},
-				map[string]any{"label": "Rollout", "date": "Dec"},
+			// An even split with the months in the timeline heading: on the
+			// short content area of the modern template a 40% stat shrinks
+			// its label below the floor and a dated timeline in 60% writes
+			// its labels at 2.4pt (go-slide-creator-fn2ka). This is clean on
+			// every shipped template from a 45/55 to a 60/40 split.
+			map[string]any{"kind": "stat", "size_pct": 50, "value": "32%", "label": "Gross margin, Q4"},
+			map[string]any{"kind": "timeline", "size_pct": 50, "heading": "Launch plan, Oct–Dec", "milestones": []any{
+				map[string]any{"label": "Design"},
+				map[string]any{"label": "Pilot"},
+				map[string]any{"label": "Rollout"},
 			}},
 		},
 		"source":   "Finance ledger, FY26",

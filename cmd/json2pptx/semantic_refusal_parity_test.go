@@ -206,3 +206,47 @@ func TestDeckSpecReadabilityVerdictParityAllKindsAllTemplates(t *testing.T) {
 		}
 	}
 }
+
+// regionsTimelineOnModernSpec is the first regions kind example, whose 40/60
+// right-hand stack leaves its dated timeline too short on the modern template:
+// generation writes the milestone labels at 2.4pt and refuses.
+const regionsTimelineOnModernSpec = `{"meta":{"template":"modern","title":"Parity"},"slides":[{"kind":"regions","title":"Revenue growth funds the launch at a 32% gross margin","arrangement":"main_left","regions":[{"kind":"chart","size_pct":65,"heading":"Quarterly revenue","unit":"€m","chart":{"type":"line_chart","data":{"categories":["Q1","Q2","Q3","Q4"],"series":[{"name":"Revenue","values":[12,14,17,21]}]}}},{"kind":"stat","size_pct":40,"value":"32%","label":"Gross margin, Q4"},{"kind":"timeline","size_pct":60,"heading":"Launch plan","milestones":[{"label":"Design","date":"Oct"},{"label":"Pilot","date":"Nov"},{"label":"Rollout","date":"Dec"}]}],"source":"Finance ledger, FY26","takeaway":"Revenue nearly doubled in a year; the margin pays for the rollout."}]}`
+
+// go-slide-creator-fn2ka: text written by a pattern nested in a grid cell (a
+// regions slide's timeline) is measured by validate too. The readability check
+// skipped nested patterns, so validate approved a slide render refused.
+func TestDeckSpecNestedPatternReadabilityParity(t *testing.T) {
+	ctx := context.Background()
+	mc := refusalTestConfig(t)
+	spec := decodeSpecObject(t, regionsTimelineOnModernSpec)
+
+	vres, err := mc.handleValidateDeckSpec(ctx, makeRequest(map[string]any{"spec": spec}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var env deckSpecEnvelopeResponse
+	structuredInto(t, vres.StructuredContent, &env)
+	var refusal *diagnostics.Finding
+	for i := range env.Findings {
+		if env.Findings[i].Code == "INPUT.TEXT_BELOW_READABLE_MIN" && env.Findings[i].Severity == diagnostics.SeverityError {
+			refusal = &env.Findings[i]
+			break
+		}
+	}
+	if env.OK || refusal == nil {
+		t.Fatalf("validate must refuse the unreadable nested timeline: %+v", env.Findings)
+	}
+	if got, _ := refusal.Evidence["path"].(string); got != "slides[0].regions[2]" {
+		t.Errorf("refusal path = %q, want the timeline region slides[0].regions[2]", got)
+	}
+
+	rres, err := mc.handleRenderDeckSpec(ctx, makeRequest(map[string]any{"spec": spec}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var render renderDeckSpecResponse
+	structuredInto(t, rres.StructuredContent, &render)
+	if render.OK {
+		t.Fatal("render must refuse the slide validate refused")
+	}
+}

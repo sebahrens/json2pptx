@@ -107,7 +107,7 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 
 	// 2c. Readability policy: shape_grid text the renderer would shrink below
 	// the viewing_mode floor for its role (TEXT_BELOW_READABLE_MIN).
-	findings = append(findings, collectReadabilityFindings(input, layouts, slideWidth, slideHeight)...)
+	findings = append(findings, collectReadabilityFindingsWithTheme(input, layouts, slideWidth, slideHeight, theme)...)
 
 	// 3. Grid alignment (grid_violation): rendered titles, body content,
 	// grid / pattern blocks and takeaway bands against the deck's grid when
@@ -152,7 +152,7 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// table_rows_truncated, column_width_deficit, text_trimmed,
 	// readability_trimmed. These mirror the renderer's scaling/trimming logic
 	// without rendering.
-	findings = append(findings, collectTablePreflightFindings(input, layouts)...)
+	findings = append(findings, collectTablePreflightFindings(input, layouts, slideWidth, slideHeight)...)
 	findings = append(findings, collectTextAutofitPreflightFindings(input, layouts)...)
 
 	// 6. Contrast prediction (contrast_predicted) — runs only when theme
@@ -1505,8 +1505,9 @@ func inferGridColumns(grid *ShapeGridInput) int {
 // collectTablePreflightFindings walks all content-level tables and shape_grid
 // embedded tables, predicting render-time scaling/truncation/deficit findings
 // using only the JSON content and template-resolved bounds.
-func collectTablePreflightFindings(input *PresentationInput, layouts []types.LayoutMetadata) []patterns.FitFinding {
+func collectTablePreflightFindings(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) []patterns.FitFinding {
 	var findings []patterns.FitFinding
+	rhythm := resolvedValidRhythmGrid(input, layouts, slideWidth, slideHeight)
 
 	for si, slide := range input.Slides {
 		layout := findLayoutForSlide(&slide, layouts)
@@ -1532,9 +1533,16 @@ func collectTablePreflightFindings(input *PresentationInput, layouts []types.Lay
 			})...)
 		}
 
-		// Shape-grid embedded tables: bounds derived from the resolved grid.
+		// Shape-grid embedded tables: bounds derived from the grid resolved in
+		// the content zone generation lays it out in. Resolving it in the
+		// default slide bounds measured a cell taller than the rendered one,
+		// so validate passed tables generation then truncated
+		// (go-slide-creator-fn2ka).
 		if slide.ShapeGrid != nil {
-			findings = append(findings, collectGridTablePreflight(slide.ShapeGrid, si)...)
+			geom, _ := patternExpansionGeometry(slide, layouts, slideWidth, slideHeight, rhythm)
+			if result := resolveGridForStructural(slide.ShapeGrid, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight); result != nil {
+				findings = append(findings, collectGridTablePreflightResolved(slide.ShapeGrid, result, slidepath.ShapeGrid(si), 0)...)
+			}
 		}
 	}
 

@@ -1187,6 +1187,9 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			annotateImageInsertSources(spec.ImageInserts, imageSources)
 			warnings = append(warnings, gridResult.Warnings...)
 			slideFitFindings = append(slideFitFindings, gridResult.FitFindings...)
+			if err := gridTableSourceLoss(gridResult.FitFindings); err != nil {
+				return generator.SlideSpec{}, nil, nil, err
+			}
 		}
 
 		// Slide-level overlays (arrows, lines, badges) render on top of the
