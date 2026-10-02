@@ -3,6 +3,14 @@
 # This compact semantic spec compiles (via internal/semantic.Compile) to the raw
 # json2pptx PresentationInput model and exercises the MVP slide kinds: title,
 # executive_summary, kpi_snapshot, chart_insight, decision, and closing.
+#
+# Chronology: the deck is a Q2 FY26 review written at the Q2 close (fiscal year
+# = calendar year, so Q2 ends 30 June). Every number is an actual through Q2
+# FY26; H2 (Q3–Q4) appears only as forward-looking plans, never as results.
+# Measures: ARR is the annualized recurring-revenue run-rate at the Q2 close
+# (4 x Q2 recurring revenue); the chart shows period (quarterly) revenue. The two
+# are labelled as different measures and are not interchangeable.
+# internal/semantic/qbr_example_chronology_test.go pins these rules.
 meta:
   title: Q2 FY26 Business Review
   subtitle: Revenue, Retention, and the Path to H2
@@ -19,7 +27,7 @@ slides:
     title: Q2 beat plan on revenue, but SMB churn now threatens H2 retention
     takeaway: Strong top-line growth, but retention needs deliberate investment in H2.
     points:
-      - Revenue grew 18% QoQ, ahead of plan.
+      - Q2 revenue grew 18% QoQ to $12.0M, ahead of plan.
       - Net revenue retention held at 118%.
       - SMB logo churn ticked up to 2.4%.
       - Sales cycle shortened to 41 days.
@@ -29,27 +37,27 @@ slides:
     takeaway: Churn is the one number moving the wrong way, and it is concentrated in SMB.
     source: Internal finance and CRM data, Q2 FY26 close
     kpis:
-      - { value: "$48M", label: "Annual recurring revenue" }
+      - { value: "$48M", label: "ARR (annualized run-rate)" }
       - { value: "118%", label: "Net revenue retention" }
       - { value: "41d", label: "Average sales cycle" }
       - { value: "2.4%", label: "Logo churn (SMB-weighted)" }
 
   - kind: chart_insight
-    title: Revenue grew 41% this year, with EMEA driving the Q4 step-up
-    insight: Q4 acceleration reflects the EMEA launch landing ahead of schedule.
-    source: Internal finance data, FY26 quarterly close
+    title: Quarterly revenue rose 41% in four quarters, with EMEA driving the Q2 step-up
+    insight: Q2 acceleration reflects the EMEA launch landing ahead of schedule.
+    source: Internal finance data, quarterly actuals through Q2 FY26 close
     chart:
       type: bar_chart
-      title: Quarterly revenue ($M)
+      title: Quarterly revenue ($M, actuals)
       data:
-        categories: ["Q1", "Q2", "Q3", "Q4"]
+        categories: ["Q3 FY25", "Q4 FY25", "Q1 FY26", "Q2 FY26"]
         series:
-          - name: Revenue
-            values: [34, 40, 44, 48]
+          - name: Quarterly revenue
+            values: [8.5, 9.4, 10.2, 12.0]
     insights:
-      - Revenue grew 41% across the fiscal year, led by enterprise adoption.
-      - The Q4 step-up reflects the EMEA market launch landing early.
-      - Pipeline coverage points to continued acceleration into H2.
+      - Revenue rose from $8.5M to $12.0M a quarter, led by enterprise adoption.
+      - The Q2 step-up (+18% QoQ) reflects the EMEA launch landing early.
+      - Pipeline supports further H2 growth (forecast, not yet booked).
 
   - kind: decision
     title: Fund an SMB success pod in Q3 to protect 118% net retention

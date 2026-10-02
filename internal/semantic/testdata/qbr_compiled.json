@@ -39,7 +39,7 @@
         "values": {
           "points": [
             {
-              "lead": "Revenue grew 18% QoQ, ahead of plan."
+              "lead": "Q2 revenue grew 18% QoQ to $12.0M, ahead of plan."
             },
             {
               "lead": "Net revenue retention held at 118%."
@@ -70,7 +70,7 @@
         "values": [
           {
             "big": "$48M",
-            "small": "Annual recurring revenue"
+            "small": "ARR (annualized run-rate)"
           },
           {
             "big": "118%",
@@ -100,7 +100,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Revenue grew 41% this year, with EMEA driving the Q4 step-up"
+          "text_value": "Quarterly revenue rose 41% in four quarters, with EMEA driving the Q2 step-up"
         }
       ],
       "pattern": {
@@ -108,34 +108,34 @@
         "values": {
           "chart": {
             "type": "bar_chart",
-            "title": "Quarterly revenue ($M)",
+            "title": "Quarterly revenue ($M, actuals)",
             "data": {
               "categories": [
-                "Q1",
-                "Q2",
-                "Q3",
-                "Q4"
+                "Q3 FY25",
+                "Q4 FY25",
+                "Q1 FY26",
+                "Q2 FY26"
               ],
               "series": [
                 {
-                  "name": "Revenue",
+                  "name": "Quarterly revenue",
                   "values": [
-                    34,
-                    40,
-                    44,
-                    48
+                    8.5,
+                    9.4,
+                    10.2,
+                    12
                   ]
                 }
               ]
             }
           },
           "insights": [
-            "Revenue grew 41% across the fiscal year, led by enterprise adoption.",
-            "The Q4 step-up reflects the EMEA market launch landing early.",
-            "Pipeline coverage points to continued acceleration into H2."
+            "Revenue rose from $8.5M to $12.0M a quarter, led by enterprise adoption.",
+            "The Q2 step-up (+18% QoQ) reflects the EMEA launch landing early.",
+            "Pipeline supports further H2 growth (forecast, not yet booked)."
           ],
-          "so_what": "Q4 acceleration reflects the EMEA launch landing ahead of schedule.",
-          "source": "Internal finance data, FY26 quarterly close"
+          "so_what": "Q2 acceleration reflects the EMEA launch landing ahead of schedule.",
+          "source": "Internal finance data, quarterly actuals through Q2 FY26 close"
         },
         "overrides": {
           "title_size": 14,
