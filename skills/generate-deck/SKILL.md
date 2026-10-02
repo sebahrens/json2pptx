@@ -66,6 +66,8 @@ is unclear) → `list_patterns` / `show_pattern` → `expand_pattern` →
 `get_input_schema` has the raw fields. How patterns fit text, shrink, and
 report `BODY_TOO_LONG` / `TEXT_EXCEEDS_SHAPE` is in [PATTERNS.md](PATTERNS.md);
 patterns spend at most one solid accent block, in `color_roles.primary_fill`.
+Pattern text is sized and written in the same theme face (Calibri measures as
+Carlito on every host), so a clean `fit_report` means no stored autofit shrink.
 
 Both render tools return `deterministic_ready`, `publishable` (false on a fresh
 render), `blocking_reasons` and `next_tool_call` (blocking fix, else
