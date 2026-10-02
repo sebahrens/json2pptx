@@ -51,6 +51,7 @@ var RenderingPackageDirs = []string{
 	"internal/layout",
 	"internal/layoutpreview",
 	"internal/patterns",
+	"internal/pixelhash",
 	"internal/placeholderrole",
 	"internal/pptx",
 	"internal/render",

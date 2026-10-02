@@ -17,6 +17,20 @@
     relationships") is a brief fact and routes to the `decision` slot. No
     response-shape or `SchemaVersion` change.
 
+- **2026-10-02 — Render image identity is a pixel hash (`go-slide-creator-sr3xk`).**
+  - `content_hash` on `render_slide_image` / `render_deck_thumbnails` slides,
+    the content-addressed artifact filename, the render-cache hashes
+    `submit_visual_review` verifies against, and the `image_sha256` it derives
+    from `image_path` are now SHA-256 over the decoded image dimensions + 8-bit
+    RGBA pixels (domain-separated), not over the PNG file bytes. PNG metadata
+    (ImageMagick's tIME / `date:*` chunks and the PDF's XMP timestamps) no
+    longer changes an image's identity, so a forced thumbnail refresh of an
+    unchanged revision no longer rejects an earlier review's images.
+    Rasterisation also strips that metadata (`-strip`,
+    `png:exclude-chunks=date,time`), keeping re-rendered files byte-stable.
+    Non-PNG bytes keep their plain sha256. Wrong-slide, foreign-deck and
+    stale-revision images are still rejected. No `SchemaVersion` bump.
+
 - **2026-10-02 — Schema 4.156.0 · Appendix page numbering (`go-slide-creator-khzni`).**
   - Back-matter slides (after an `appendix: true` / Appendix-titled divider,
     in a `structure.sections[]` entry with `appendix: true`, or after a

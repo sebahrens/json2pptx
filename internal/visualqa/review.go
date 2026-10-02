@@ -1,10 +1,10 @@
 package visualqa
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"sort"
+
+	"github.com/sebahrens/json2pptx/internal/pixelhash"
 )
 
 // ReviewRecord is the vendor-neutral completion contract shared by configured
@@ -66,4 +66,9 @@ func (r *ReviewRecord) ValidateCompletion(artifactHash, revision string, totalSl
 	return nil
 }
 
-func PixelHash(data []byte) string { sum := sha256.Sum256(data); return hex.EncodeToString(sum[:]) }
+// PixelHash is the identity of a submitted review image: the canonical pixel
+// hash (dimensions + decoded RGBA, PNG metadata ignored) that the render cache
+// and render responses' content_hash also carry, so a review image matches a
+// re-render of the same slide even when the PNG's timestamp chunks differ
+// (go-slide-creator-sr3xk). Non-PNG bytes fall back to their plain sha256.
+func PixelHash(data []byte) string { return pixelhash.Sum(data) }

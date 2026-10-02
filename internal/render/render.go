@@ -18,6 +18,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/sebahrens/json2pptx/internal/pixelhash"
 )
 
 // pngIndexFromName extracts the integer N from a filename matching "slide-N.png".
@@ -230,10 +232,11 @@ type SlideImage struct {
 	Height  int    `json:"height,omitempty"`
 	SizeErr string `json:"size_error,omitempty"`
 
-	// ContentHash is the SHA-256 (hex) of the rendered PNG bytes. It is the
-	// stable identity of this image regardless of delivery (inline or path), and
-	// is what makes Path collision-free: two renders share a Path only when their
-	// ContentHash is identical.
+	// ContentHash is the pixel hash (pixelhash.Sum: SHA-256 over the decoded
+	// dimensions + RGBA pixels, ignoring PNG metadata) of the rendered image. It
+	// is the stable identity of this image regardless of delivery (inline or
+	// path) and of re-encoding, and is what makes Path collision-free: two
+	// renders share a Path only when their pixels are identical.
 	ContentHash string `json:"content_hash,omitempty"`
 	// SourceHash identifies the upstream artifact this image was rendered from —
 	// the PPTX file content hash for deck/slide renders, or the caller-supplied
@@ -507,6 +510,13 @@ func pdfToPNGs(ctx context.Context, pdfPath, outDir string, density int) ([]stri
 		"-density", fmt.Sprintf("%d", density),
 		pdfPath,
 		"-quality", "95",
+		// Drop metadata that is not pixels: ImageMagick otherwise copies the
+		// PDF's XMP create/modify timestamps into every PNG and stamps tIME /
+		// date:* with the wall clock, so a re-render of an unchanged slide
+		// produced different bytes (go-slide-creator-sr3xk). Identity is the
+		// pixel hash regardless; this keeps the files byte-stable too.
+		"-strip",
+		"-define", "png:exclude-chunks=date,time",
 		pattern,
 	)
 	if err != nil {
@@ -551,14 +561,15 @@ func artifactsDir() string {
 // needs a filesystem path for every image, e.g. the visual-QA loop recording
 // thumbnail paths in its trace. Identical bytes always map to the same path.
 func WriteArtifact(data []byte) (string, error) {
-	sum := sha256.Sum256(data)
-	return writeArtifact(data, hex.EncodeToString(sum[:]))
+	return writeArtifact(data, pixelhash.Sum(data))
 }
 
 // writeArtifact writes PNG bytes to a content-addressed path under artifactsDir
-// and returns that path. The filename embeds contentHash, so identical content
-// always maps to the same path and different content never collides. An existing
-// file of the same size already holds identical bytes, so the write is skipped.
+// and returns that path. The filename embeds contentHash (the pixel hash), so
+// identical pixels always map to the same path and different pixels never
+// collide. An existing file of the same size is taken to hold the same image, so
+// the write is skipped; one that differs only in encoding is replaced, which is
+// harmless because it shows the same pixels.
 func writeArtifact(data []byte, contentHash string) (string, error) {
 	if err := os.MkdirAll(artifactsDir(), 0755); err != nil {
 		return "", err
@@ -580,8 +591,7 @@ func writeArtifact(data []byte, contentHash string) (string, error) {
 // path. ContentHash and SourceHash are always populated; Cleanup is set only when
 // a Path artifact is produced. sourceHash identifies the upstream deck/input.
 func SlideImageFromBytes(index int, data []byte, sourceHash string) (*SlideImage, error) {
-	sum := sha256.Sum256(data)
-	contentHash := hex.EncodeToString(sum[:])
+	contentHash := pixelhash.Sum(data)
 	img := &SlideImage{
 		Index:       index,
 		ContentHash: contentHash,
@@ -983,7 +993,8 @@ func InvalidateCache() error {
 	return os.RemoveAll(cacheDir())
 }
 
-// CachedSlideHashes returns the content hashes of every rendered slide this
+// CachedSlideHashes returns the pixel hashes (pixelhash.Sum, the same identity
+// SlideImage.ContentHash carries) of every rendered slide this
 // process has cached for one PPTX, keyed by 0-based slide index. A slide can map
 // to several hashes — one per density the deck was rendered at — because the
 // cache stores one directory per (source hash, density) pair.
@@ -1020,8 +1031,7 @@ func CachedSlideHashes(sourceHash string) map[int][]string {
 			if rerr != nil {
 				continue
 			}
-			sum := sha256.Sum256(data)
-			hash := hex.EncodeToString(sum[:])
+			hash := pixelhash.Sum(data)
 			if !containsString(out[idx], hash) {
 				out[idx] = append(out[idx], hash)
 			}

@@ -171,7 +171,7 @@ func visualReviewSlideItemSchema() map[string]any {
 			},
 			"image_sha256": map[string]any{
 				"type":        "string",
-				"description": "sha256 of the rendered PNG you inspected (the content_hash render_deck_thumbnails returns). Required unless image_path is given.",
+				"description": "Pixel hash of the rendered PNG you inspected (the content_hash render_deck_thumbnails returns; SHA-256 over decoded pixels, PNG metadata ignored). Required unless image_path is given.",
 			},
 			"role": map[string]any{
 				"type":        "string",
