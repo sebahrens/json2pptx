@@ -28,13 +28,25 @@ import (
 // auto-detection below run without overriding an explicit choice.
 const defaultValueFormat = "%.0f"
 
-// maxAutoDecimals caps the auto-detected precision. Beyond two decimals a data
-// label stops being readable at chart size.
+// maxAutoDecimals is the precision exactValueFormat stays within: beyond two
+// decimals a data label gets harder to read at chart size. autoValueFormat
+// treats it as a preference, not a cap — see maxPreservingDecimals.
 const maxAutoDecimals = 2
 
+// maxPreservingDecimals is how far autoValueFormat may go when fewer decimals
+// would misreport the data: collapse distinct values into one label, or print
+// a nonzero value as zero. A failure-rate line [0.035, 0.030, 0.025, 0.022]
+// printed "0.04 0.03 0.03 0.02" under the old two-decimal cap: the week at a
+// 0.030% rollback threshold and the week below it read the same, and the
+// endpoints implied a 50% fall rather than 37% (go-slide-creator-6te2e). A
+// longer true label beats a shorter false one; an author who wants fewer
+// digits still sets the format explicitly, and that always wins.
+const maxPreservingDecimals = 4
+
 // autoValueFormat returns the format to use for a set of values: the caller's
-// format when they chose one, otherwise a precision that keeps the labels
-// distinct.
+// format when they chose one, otherwise the fewest decimals — one precision
+// for every label — that keep the labels distinct and keep every nonzero value
+// off zero.
 //
 // "Distinct" is the test that matters. [4.6, 4.9, 5.2, 5.5, 5.8, 6.2, 6.5] at
 // %.0f collapses to three labels across seven bars; at %.1f all seven differ.
@@ -45,13 +57,28 @@ func autoValueFormat(format string, values []float64) string {
 	if !anyFractional(values) {
 		return defaultValueFormat
 	}
-	for decimals := 1; decimals <= maxAutoDecimals; decimals++ {
+	for decimals := 1; decimals <= maxPreservingDecimals; decimals++ {
 		f := "%." + strconv.Itoa(decimals) + "f"
-		if labelsAreDistinct(values, f) {
+		if labelsAreDistinct(values, f) && nonzeroStaysNonzero(values, f) {
 			return f
 		}
 	}
-	return "%." + strconv.Itoa(maxAutoDecimals) + "f"
+	return "%." + strconv.Itoa(maxPreservingDecimals) + "f"
+}
+
+// nonzeroStaysNonzero reports whether every nonzero value keeps a nonzero
+// label at the given format. A 0.004 rate printed as "0.00" claims there were
+// no failures at all (go-slide-creator-6te2e).
+func nonzeroStaysNonzero(values []float64, format string) bool {
+	for _, v := range values {
+		if math.Abs(v) < 1e-9 {
+			continue
+		}
+		if strings.Trim(fmt.Sprintf(format, math.Abs(v)), "0.") == "" {
+			return false
+		}
+	}
+	return true
 }
 
 // exactValueFormat returns the fewest decimals (up to maxAutoDecimals) that

@@ -1,5 +1,19 @@
 # Schema Changelog
 
+- **2026-10-02 — Default chart precision keeps small rates true; negative bar labels clear the category names (`go-slide-creator-6te2e`, `-5na8e`).**
+  - With no `data.data_labels.format` / `style.value_format`, labels take the
+    fewest decimals — one precision per chart, now up to 4 instead of capped
+    at 2 — that keep every label distinct and print no nonzero value as zero.
+    A failure-rate line `[0.035, 0.030, 0.025, 0.022]` read
+    `0.04 0.03 0.03 0.02` (the threshold week and the week below it
+    identical, a 37% fall shown as 50%); it now reads
+    `0.035 0.030 0.025 0.022`. An explicit format still wins.
+  - Value-labelled vertical bar charts reserve measured room below the
+    lowest negative bar for its label, so `[9, 4, 0, -2]` no longer prints
+    "−2" over "East" when the domain floor lands on a tick. The zero baseline
+    and the positive top headroom are unchanged. No response-shape or
+    `SchemaVersion` change.
+
 - **2026-10-02 — plan_deck keeps whole comparisons and drafts an option matrix for "compare A with B" (`go-slide-creator-ze5u7`, `-fu6uy`).**
   - Brief facts are no longer truncated at 120 characters: a long clause is
     split (at a joining word, then at a word boundary outside brackets, never

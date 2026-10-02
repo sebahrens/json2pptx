@@ -362,6 +362,12 @@ func (bs *BarSeries) drawValueLabel(x, y, value, width, baseY float64) {
 	}
 
 	barHeight := baseY - y
+	// A zero bar must label above the baseline. baseY and y come from scales
+	// built with different arithmetic, so a zero-height bar can measure a
+	// hair negative once the domain floor is not a round number.
+	if math.Abs(barHeight) < 1e-6 {
+		barHeight = 0
+	}
 	if bs.config.Orientation == SeriesVertical {
 		labelX = x
 		switch bs.config.ValuePosition {
