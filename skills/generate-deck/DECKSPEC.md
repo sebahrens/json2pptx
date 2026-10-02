@@ -172,7 +172,8 @@ font size in constrained mode is refused; use free mode only when low-level
 control is intentional. For a visual beyond semantic reach, query the
 chosen kind's `compositions`; an unsupported override reports
 `SEMANTIC_PATTERN_NOT_AVAILABLE`. Use a minimal raw slide rather than
-lowering the entire deck unnecessarily.
+lowering the entire deck unnecessarily — also for a multi-region slide
+(WORKFLOW.md → spatial planning).
 
 Runnable examples live in [examples/semantic](../../examples/semantic/).
 The compiler architecture and schema are in

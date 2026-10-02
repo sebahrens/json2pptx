@@ -33,6 +33,9 @@ gets an action title. If you cannot write one, the slide has no message yet.
 ## 3. One message per slide
 
 The body proves the title and nothing else. Two conclusions mean two slides.
+One message is not one visual: a chart, its KPIs and the dated plan that all
+prove the same title may share the slide as regions (WORKFLOW.md → spatial
+planning).
 Delete bullets that restate the title, repeat another slide, or would be true
 of any company. Order supporting points by importance, not by discovery.
 

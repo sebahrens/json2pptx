@@ -938,6 +938,13 @@ type slideKindListEntry struct {
 	// anywhere, so an agent varying a monotonous run had no way to know what it
 	// could ask for (go-slide-creator-u5az).
 	Compositions []slideKindComposition `json:"compositions,omitempty"`
+	// ComposedExample is a copy-ready raw_json2pptx slide whose compose
+	// envelope puts several supporting views that prove ONE title on one
+	// slide (dominant chart + KPI region + timeline footer). It rides only the
+	// raw_json2pptx row and only when kinds names raw_json2pptx, so the
+	// compact catalog stays small. Same source as skill-info's last compose
+	// example (go-slide-creator-tknmi).
+	ComposedExample map[string]any `json:"composed_example,omitempty"`
 }
 
 // slideKindComposition is one composition a kind can be asked for.
@@ -949,7 +956,7 @@ type slideKindComposition struct {
 
 func mcpListSlideKindsTool() mcp.Tool {
 	return mcp.NewTool("list_slide_kinds",
-		mcp.WithDescription(`Discover DeckSpec slide kinds. Default response lists every kind with summary, required_fields, required_aliases, typical_fields and one copy-ready example, plus the takeaway budget. Pass kinds:["kpi_snapshot"] to filter by exact kind. Request fields:["item_schema"] for that kind's closed JSON Schema, or fields:["compositions"] for its supported pattern/layout overrides; both are omitted by default to keep discovery small. Takeaways fit one 14pt line in a template-sized band; validate_deck_spec checks measured fit.`),
+		mcp.WithDescription(`Discover DeckSpec slide kinds. Default response lists every kind with summary, required_fields, required_aliases, typical_fields and one copy-ready example, plus the takeaway budget. Pass kinds:["kpi_snapshot"] to filter by exact kind. Request fields:["item_schema"] for that kind's closed JSON Schema, or fields:["compositions"] for its supported pattern/layout overrides; both are omitted by default to keep discovery small. kinds:["raw_json2pptx"] also returns composed_example: one slide whose compose envelope puts several supporting views (chart + KPIs + timeline) proving one title side by side. Takeaways fit one 14pt line in a template-sized band; validate_deck_spec checks measured fit.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaListSlideKinds)),
 		mcp.WithArray("kinds",
 			mcp.Description("Exact kind names to return. Omit to list all kinds."),
@@ -1009,6 +1016,9 @@ func handleListSlideKinds(ctx context.Context, request mcp.CallToolRequest) (*mc
 		}
 		if fieldFilter["compositions"] {
 			entry.Compositions = slideKindCompositions(k)
+		}
+		if k == semantic.KindRawJSON2pptx && kindFilter[string(k)] {
+			entry.ComposedExample = composedProofSlideExample()
 		}
 		out = append(out, entry)
 	}

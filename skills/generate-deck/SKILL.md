@@ -57,6 +57,11 @@ runnable `next_tool_call` (`render_deck_spec` with a `raw_json2pptx` slide);
 replace its title and data. Read [DECKSPEC.md](DECKSPEC.md) for budgets,
 degradation, required-layout coverage, handles, and revision rules.
 
+Several views proving one title (chart, KPIs, dated plan) may share a slide;
+unrelated conclusions get separate slides. Make only that slide
+`raw_json2pptx`, starting from `list_slide_kinds` `kinds:["raw_json2pptx"]` →
+`composed_example`; [WORKFLOW.md](WORKFLOW.md) → spatial planning has the rules.
+
 Use raw `PresentationInput` only for a feature the semantic schema cannot
 express, a targeted low-level repair, or an existing raw deck. Read
 [RAW_PATH.md](RAW_PATH.md) first; its preconditions are **not** universal

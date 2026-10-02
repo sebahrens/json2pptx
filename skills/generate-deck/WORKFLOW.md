@@ -60,6 +60,49 @@ argument before applying the coverage constraint:
 6. A `blank-canvas` content slide carries its title into the raw slide's
    `headline`; the rest of the canvas holds the visual.
 
+### One slide or several: spatial planning
+
+Decide per action title, before choosing kinds:
+
+- **Same title: may share a slide.** Views that each prove the *same* title
+  (the trend, the KPIs that move with it, the dated plan that follows) can sit
+  on one slide as regions. A conclusion the title does not state gets its own
+  slide (QUALITY.md §3). One visual that proves the title stays the default.
+- **DeckSpec path.** A kind renders one visual and has no region field: keep
+  the DeckSpec as the source and make only that slide `raw_json2pptx`.
+  `list_slide_kinds` `kinds:["raw_json2pptx"]` returns `composed_example`
+  (dominant line chart beside a `metric-list` KPI column, above a
+  `timeline-horizontal` footer; action title; `"Illustrative"` source). It
+  validates and renders as returned; swap in your title, data and source.
+  `json2pptx skill-info` `compose.examples` has it plus three more complete
+  compose slides. Do not re-derive the envelope.
+
+| Need | Use |
+|------|-----|
+| Several regions, each a whole pattern or chart, proving one title | slide `compose`: each `segments[]` entry holds one `pattern`, one `diagram` (svggen; give it `alt`) or a nested `compose` |
+| One small block inside a grid or pattern cell (`kpi-3up` in a `matrix-2x2` quadrant) | cell-level `pattern` / `grid` (RULES.md 6c) |
+| More table rows than one slide holds | raw `split_slide` (`split.by: "table.rows"`) paginates; it never combines views, and `compose` never paginates |
+
+- `direction: "horizontal"` sets segments side by side, `"vertical"` stacks
+  them; nest a `compose` for chart | KPIs above a footer (at most 8 segments,
+  nesting depth 2, 12 leaves; `get_capabilities().features.compose`).
+- `size_pct` is a segment's share of width (horizontal) or height
+  (vertical); omitted shares split equally, `smart_compose: true` balances
+  by content. Give the dominant evidence the largest share. `gap` is in
+  points (default 8).
+- One action title and one slide `source` cover every region; each chart
+  region's own title names measure and unit.
+
+Narrow regions: each segment is fit-checked in its own rectangle
+(`BODY_TOO_LONG` names `segment[i]` and the measured target). In the
+composed example the 38%-wide KPI column holds three value + label metrics
+with no detail lines and needs about 65% of the height on modern-template
+(174pt); the 35% timeline footer fits only with the month in the label — a
+separate date row needs about 42%, which the KPI column cannot spare.
+Cut copy or add share rather than shrink type, and inspect the composed
+thumbnail: a one-word pyramid apex wraps mid-word in a 50% column with no
+finding.
+
 Reject the plan before rendering when it produces an isolated numeric divider,
 an untitled visual canvas, one slide per required layout, or a deck made only
 of bullets and coloured rectangles. Evidence-oriented decks need at least one
@@ -70,7 +113,9 @@ analysis, process and chapter structure.
 
 ## Phase 2: VARY — check the sequence
 
-The compiler picks patterns and layouts per kind; your job is the sequence.
+The compiler picks patterns and layouts per kind; your job is the sequence
+(and, for a slide whose title needs several views, its regions; see Phase 1
+→ spatial planning).
 `explain_deck_spec` (full profile) previews each slide's resolved visual
 without rendering, and `analyze_deck_rhythm` accepts the `deck_id`.
 

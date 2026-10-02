@@ -2684,7 +2684,8 @@ var outputSchemaListSlideKinds = json.RawMessage(`{
           "typical_fields":  {"type": "array", "items": {"type": "string"}},
           "item_schema":     {"type": "object", "description": "Closed JSON Schema for one slide of this kind; present only when fields includes item_schema."},
           "example":         {"type": "object", "description": "Minimal copy-ready slide of this kind (includes kind); validates with zero findings."},
-          "compositions":    {"type": "array", "description": "Supported pattern/layout overrides; present only when fields includes compositions.", "items": {"type": "object", "properties": {"pattern": {"type": "string"}, "layout": {"type": "string"}, "reason": {"type": "string"}}}}
+          "compositions":    {"type": "array", "description": "Supported pattern/layout overrides; present only when fields includes compositions.", "items": {"type": "object", "properties": {"pattern": {"type": "string"}, "layout": {"type": "string"}, "reason": {"type": "string"}}}},
+          "composed_example": {"type": "object", "description": "raw_json2pptx row only, present when kinds names raw_json2pptx: a copy-ready DeckSpec slide whose compose envelope places several supporting regions (dominant chart, KPI region, timeline footer) that prove one title on one slide."}
         },
         "required": ["kind", "summary", "example"]
       }
