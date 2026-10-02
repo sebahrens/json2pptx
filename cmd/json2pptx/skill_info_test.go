@@ -759,23 +759,12 @@ func TestBuildComposeEntry_PopulatedWithExamples(t *testing.T) {
 	if len(entry.Directions) < 2 {
 		t.Errorf("compose directions should list vertical and horizontal; got %v", entry.Directions)
 	}
-	if len(entry.Examples) < 2 {
-		t.Fatalf("compose entry should ship ≥2 examples; got %d", len(entry.Examples))
-	}
-	// Each example's JSON must round-trip through json.Unmarshal so consumers
-	// can splice it into a deck without re-quoting.
+	// The examples themselves are validated (fit_report) and generated as
+	// complete decks by TestComposeExamplesRoundTrip; a syntax-only check
+	// here let examples the live contract rejects ship (go-slide-creator-8wv63).
 	for i, ex := range entry.Examples {
-		if ex.Title == "" {
-			t.Errorf("example[%d] missing title", i)
-		}
-		var raw map[string]any
-		if err := json.Unmarshal(ex.JSON, &raw); err != nil {
-			t.Errorf("example[%d] JSON is not valid: %v", i, err)
-			continue
-		}
-		// Must contain a compose envelope.
-		if _, ok := raw["compose"]; !ok {
-			t.Errorf("example[%d] JSON missing top-level \"compose\" key", i)
+		if ex.Title == "" || ex.Description == "" {
+			t.Errorf("example[%d] missing title or description", i)
 		}
 	}
 }

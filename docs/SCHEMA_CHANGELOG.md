@@ -60,6 +60,26 @@
     only; the raw input-schema fingerprint is unchanged, so no `SchemaVersion`
     bump.
 
+- **2026-10-02 — Copy-ready compose examples and a spatial-planning branch (`go-slide-creator-8wv63`, `-tknmi`).**
+  - `json2pptx skill-info` `compose.examples[].json` are now complete raw
+    slides (`slide_type` + `layout_id`, an action title, `source:
+    "Illustrative"` on numeric examples) with current pattern value shapes
+    (`stylish-panels` / `kpi-3up` take the array itself). The obsolete
+    `type: "blank"` envelopes and `{panels:[…]}` / `{kpis:[…]}` wrappers,
+    rejected by `validate_input`, are gone, and the svggen segment uses a
+    real diagram type (`bar_chart`; `process_flow` is not an svggen type).
+    A fourth example nests a dominant chart + KPI column above a timeline
+    footer. Every example is validated (`fit_report`) and generated on
+    tracked templates and p-style by `TestComposeExamplesRoundTrip`.
+  - `list_slide_kinds` gains an optional `composed_example` on the
+    `raw_json2pptx` row, present when `kinds` names `raw_json2pptx`: that
+    composed slide as a DeckSpec `raw_json2pptx` slide (same source as the
+    skill-info example).
+  - `get_started(task:"brief")` notes, SKILL.md, WORKFLOW.md (Phase 1 →
+    spatial planning), QUALITY.md §3 and DECKSPEC.md teach when several
+    views proving one title share a slide and point at that example. Additive,
+    opt-in response field; no `SchemaVersion` bump.
+
 - **2026-10-02 — plan_deck keeps whole comparisons and drafts an option matrix for "compare A with B" (`go-slide-creator-ze5u7`, `-fu6uy`).**
   - Brief facts are no longer truncated at 120 characters: a long clause is
     split (at a joining word, then at a word boundary outside brackets, never

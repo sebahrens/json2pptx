@@ -989,49 +989,144 @@ func buildSupportedTypes() skillSupportedTypes {
 	}
 }
 
-// buildComposeEntry returns the compose envelope skill-info descriptor with
-// the capability caps drawn from composeCapabilities() and two hand-authored
-// examples (vertical and horizontal) so an agent can copy-adapt without
-// reading the raw input schema. The caps and the examples are kept in one
-// place to make compose discoverable from a single skill-info read.
-func buildComposeEntry() *skillComposeEntry {
-	caps := composeCapabilities()
-	verticalExample := json.RawMessage(`{
-  "type": "blank",
+// composeExampleSlides are the copy-ready compose examples skill-info
+// advertises. Each is a COMPLETE json2pptx slide — slide_type + layout_id, an
+// action title, a source on every numeric example — so it validates and
+// renders as the only slide of a deck exactly as emitted. Pattern values
+// follow each pattern's current schema (array-valued patterns take the array
+// itself, never an object wrapping it). They used to be bare
+// {"type":"blank", "compose":…} fragments with {panels:[…]} / {kpis:[…]}
+// wrappers that validate_input rejected (go-slide-creator-8wv63);
+// TestComposeExamplesRoundTrip now validates (fit_report) and generates every
+// one on tracked templates and p-style.
+//
+// The last example is the composed proof slide — a dominant chart, a KPI
+// region and a timeline footer all proving one title — that list_slide_kinds
+// returns as raw_json2pptx's composed_example (composedProofSlideExample), so
+// the DeckSpec path and skill-info share one copy (go-slide-creator-tknmi).
+var composeExampleSlides = []skillComposeExample{
+	{
+		Title:       "Vertical: panels above a pull-quote",
+		Description: "Stylish-panels (65% height) sit above a pull-quote (35%): the pillars and the line that frames them prove one title. stylish-panels values are the panel array itself.",
+		JSON: json.RawMessage(`{
+  "slide_type": "content",
+  "layout_id": "blank-title",
+  "content": [{"placeholder_id": "title", "type": "text", "text_value": "The strategy rests on three pillars, and each one means saying no to something"}],
   "compose": {
     "direction": "vertical",
     "gap": 12,
     "segments": [
-      {"pattern": {"name": "stylish-panels", "values": {"panels": [{"title": "Pillar A"}, {"title": "Pillar B"}, {"title": "Pillar C"}]}}, "size_pct": 65},
-      {"pattern": {"name": "pull-quote", "values": {"quote": "Strategy is choice.", "attribution": "PM lead"}}, "size_pct": 35}
+      {"size_pct": 65, "pattern": {"name": "stylish-panels", "values": [
+        {"title": "Focus the core", "body": ["Exit two sub-scale markets", "Reinvest in the top three accounts"]},
+        {"title": "Build the platform", "body": ["One shared data layer", "Self-serve onboarding"]},
+        {"title": "Grow the people", "body": ["Leadership bench for each region", "Skills academy for analysts"]}
+      ]}},
+      {"size_pct": 35, "pattern": {"name": "pull-quote", "values": {"quote": "Strategy is choosing what not to do.", "attribution": "Chief Executive"}}}
     ]
   }
-}`)
-	horizontalExample := json.RawMessage(`{
-  "type": "blank",
+}`),
+	},
+	{
+		Title:       "Vertical: KPI strip above a step strip",
+		Description: "kpi-3up (40% height) states the result, a chevron numbered-step-strip (60%) the plan it justifies. kpi-3up values are the KPI array itself; the slide cites a source because it shows numbers.",
+		JSON: json.RawMessage(`{
+  "slide_type": "content",
+  "layout_id": "blank-title",
+  "source": "Illustrative",
+  "content": [{"placeholder_id": "title", "type": "text", "text_value": "A 42% win rate justifies scaling the pilot to every region"}],
+  "compose": {
+    "direction": "vertical",
+    "gap": 12,
+    "segments": [
+      {"size_pct": 40, "pattern": {"name": "kpi-3up", "values": [
+        {"big": "42%", "small": "Win rate"},
+        {"big": "$1.2M", "small": "New ARR"},
+        {"big": "12", "small": "New logos"}
+      ]}},
+      {"size_pct": 60, "pattern": {"name": "numbered-step-strip", "values": {"style": "chevron", "steps": [
+        {"label": "Discover", "body": "Qualify 40 target accounts with the pilot playbook"},
+        {"label": "Pilot", "body": "Run two regions for one quarter and track win rate weekly"},
+        {"label": "Scale", "body": "Roll out to all six regions once win rate holds above 40%"}
+      ]}}}
+    ]
+  }
+}`),
+	},
+	{
+		Title:       "Horizontal: svggen chart beside a native pattern",
+		Description: "An svggen bar_chart diagram segment (55% width) beside native labeled-rows (45%). The diagram segment is the third XOR alternative to pattern/compose, so the native pattern is not flattened through a single-cell grid; give it alt text.",
+		JSON: json.RawMessage(`{
+  "slide_type": "content",
+  "layout_id": "blank-title",
+  "source": "Illustrative",
+  "content": [{"placeholder_id": "title", "type": "text", "text_value": "Qualification loses 60% of leads, so the next sales hire goes there"}],
   "compose": {
     "direction": "horizontal",
     "gap": 12,
-    "smart_compose": true,
     "segments": [
-      {"pattern": {"name": "kpi-3up", "values": {"kpis": [{"value": "42%", "label": "Win rate"}, {"value": "$1.2M", "label": "ARR"}, {"value": "12", "label": "Logos"}]}}},
-      {"pattern": {"name": "process-flow", "values": {"steps": [{"label": "Discover"}, {"label": "Pilot"}, {"label": "Scale"}]}}}
+      {"size_pct": 55, "diagram": {"type": "bar_chart", "title": "Leads lost at each stage (%)", "alt": "Qualification loses 60% of leads; later stages lose 25% or less",
+        "data": {"categories": ["Qualify", "Propose", "Negotiate", "Close"], "series": [{"name": "Leads lost", "values": [60, 25, 15, 10]}]}}},
+      {"size_pct": 45, "pattern": {"name": "labeled-rows", "values": {"rows": [
+        {"label": "Cause", "body": "Inbound leads reach a rep before anyone checks budget or fit."},
+        {"label": "Fix", "body": "A dedicated qualifier screens every lead within one day."},
+        {"label": "Ask", "body": "Approve one qualifier role for Q1."}
+      ]}}}
     ]
   }
-}`)
-	diagramSegmentExample := json.RawMessage(`{
-  "type": "blank",
+}`),
+	},
+	{
+		Title:       "Nested: dominant chart + KPI region + timeline footer",
+		Description: "Several supporting views proving ONE title: a vertical envelope whose top 65% nests a horizontal split (line chart 62% | metric-list 38%) above a full-width timeline footer (35%). The narrow KPI column holds 3 short metrics with no detail lines; the footer stops carry the month in the label (a separate date row needs a taller footer than this split leaves). This is the slide list_slide_kinds returns as raw_json2pptx composed_example.",
+		JSON: json.RawMessage(`{
+  "slide_type": "content",
+  "layout_id": "blank-title",
+  "source": "Illustrative",
+  "content": [{"placeholder_id": "title", "type": "text", "text_value": "Revenue grew 75% in four quarters, so the launch can hold a 32% margin"}],
   "compose": {
-    "direction": "horizontal",
-    "gap": 12,
+    "direction": "vertical",
+    "gap": 6,
     "segments": [
-      {"size_pct": 50, "pattern": {"name": "pyramid", "values": {"tiers": ["Strategy", "Tactics", "Operations"]}}},
-      {"size_pct": 50, "diagram": {"type": "process_flow", "data": {"steps": ["Plan", "Build", "Ship"]}}}
+      {"size_pct": 65, "compose": {"direction": "horizontal", "gap": 6, "segments": [
+        {"size_pct": 62, "diagram": {"type": "line_chart", "title": "Quarterly revenue (€m)", "alt": "Quarterly revenue rises from €12m in Q1 to €21m in Q4",
+          "data": {"categories": ["Q1", "Q2", "Q3", "Q4"], "series": [{"name": "Revenue", "values": [12, 14, 17, 21]}]}}},
+        {"size_pct": 38, "pattern": {"name": "metric-list", "values": {"items": [
+          {"value": "+75%", "label": "Revenue growth"},
+          {"value": "32%", "label": "Gross margin"},
+          {"value": "4", "label": "Markets live"}
+        ]}}}
+      ]}},
+      {"size_pct": 35, "pattern": {"name": "timeline-horizontal", "values": [
+        {"label": "Oct: Design"},
+        {"label": "Nov: Pilot"},
+        {"label": "Dec: Rollout"}
+      ]}}
     ]
   }
-}`)
+}`),
+	},
+}
+
+// composedProofSlideExample returns the composed proof slide (the last
+// composeExampleSlides entry) wrapped as a DeckSpec raw_json2pptx slide, the
+// form list_slide_kinds hands a DeckSpec author: the semantic spec stays the
+// source and only this one slide drops to raw json2pptx.
+func composedProofSlideExample() map[string]any {
+	var slide map[string]any
+	if err := json.Unmarshal(composeExampleSlides[len(composeExampleSlides)-1].JSON, &slide); err != nil {
+		panic(fmt.Sprintf("composed proof slide example is not valid JSON: %v", err))
+	}
+	return map[string]any{"kind": "raw_json2pptx", "slide": slide}
+}
+
+// buildComposeEntry returns the compose envelope skill-info descriptor with
+// the capability caps drawn from composeCapabilities() and the copy-ready
+// composeExampleSlides, so an agent can copy-adapt without reading the raw
+// input schema.
+func buildComposeEntry() *skillComposeEntry {
+	caps := composeCapabilities()
 	return &skillComposeEntry{
-		Description:             "Compose envelope: stack two or more sibling patterns on one slide. Each segment hosts a leaf pattern, a nested compose, or a standalone svggen diagram. Direction picks vertical stack or horizontal side-by-side; size_pct controls share (defaults to equal). Use recommend_visual to discover high-affinity pattern pairs (Category=='compose'). Optional banner (above) and callout (below) decoration bands attach to the envelope without consuming a segment slot.",
+		Description:             "Compose envelope: stack two or more sibling regions on one slide when they all prove the slide's one title (unrelated conclusions belong on separate slides). Each segment hosts a leaf pattern, a nested compose, or a standalone svggen diagram. Direction picks vertical stack or horizontal side-by-side; size_pct controls share (defaults to equal). Every example is a complete slide (slide_type + layout_id + action title, source on numbers) that validates as emitted; pattern values follow show_pattern's schema. Use recommend_visual to discover high-affinity pattern pairs (Category=='compose'). Optional banner (above) and callout (below) decoration bands attach to the envelope without consuming a segment slot.",
 		Directions:              append([]string(nil), caps.Directions...),
 		MaxSegments:             caps.MaxSegments,
 		MaxNestingDepth:         caps.MaxNestingDepth,
@@ -1041,23 +1136,7 @@ func buildComposeEntry() *skillComposeEntry {
 		SupportsBanner:          true,
 		SupportsCallout:         true,
 		SupportsDiagramSegments: caps.SupportsDiagramSegments,
-		Examples: []skillComposeExample{
-			{
-				Title:       "Vertical: panels above a pull-quote",
-				Description: "Stylish-panels (65% height) sit above a pull-quote (35%). Common for executive recap slides.",
-				JSON:        verticalExample,
-			},
-			{
-				Title:       "Horizontal: KPI strip beside a process flow",
-				Description: "kpi-3up on the left, process-flow on the right, sized by content density.",
-				JSON:        horizontalExample,
-			},
-			{
-				Title:       "Horizontal: native pattern + svggen diagram",
-				Description: "Pyramid (native pattern) on the left, svggen process_flow diagram on the right — diagram segment is a third XOR alternative to pattern/compose, so the native pattern is not flattened through a single-cell grid.",
-				JSON:        diagramSegmentExample,
-			},
-		},
+		Examples:                append([]skillComposeExample(nil), composeExampleSlides...),
 	}
 }
 
