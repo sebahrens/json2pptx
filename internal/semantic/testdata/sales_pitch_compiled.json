@@ -3,12 +3,13 @@
   "design_mode": "constrained",
   "type_scale": "comfortable",
   "chrome": {
+    "footer_date": "October 2026",
     "page_numbers": {
       "enabled": true
     },
     "tracker": true
   },
-  "source": "Acme customer benchmark, 2025 (n = 42 deployments)",
+  "source": "Illustrative example data — not real Acme, customer or market figures",
   "slides": [
     {
       "layout_id": "title",
@@ -41,16 +42,20 @@
         "values": {
           "points": [
             {
-              "lead": "Teams rebuild the same reports weekly."
+              "lead": "Teams rebuild the same reports weekly.",
+              "support": "Analyst time goes to refreshing dashboards, not answering new questions."
             },
             {
-              "lead": "Decisions wait days for busy analysts."
+              "lead": "Decisions wait days for busy analysts.",
+              "support": "Operational calls queue behind the weekly reporting cycle."
             },
             {
-              "lead": "Real-time rivals react twice as fast."
+              "lead": "Real-time competitors react within the same shift.",
+              "support": "Live decisioning is where market spend is now moving (next slide)."
             },
             {
-              "lead": "The data exists but drives no decision."
+              "lead": "The data exists but drives no decision.",
+              "support": "Nothing connects today's signals to the person who must act on them."
             }
           ],
           "bottom_line": "Your teams are data-rich but decision-poor — and the gap is widening."
@@ -64,7 +69,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Real-time decisioning spend overtakes batch reporting in 2025"
+          "text_value": "Real-time decisioning spend overtook batch reporting in 2025"
         }
       ],
       "pattern": {
@@ -72,13 +77,13 @@
         "values": {
           "chart": {
             "type": "bar_chart",
-            "title": "Decision-analytics spend ($B)",
+            "title": "Decision-analytics spend ($B, illustrative; 2026F = forecast)",
             "data": {
               "categories": [
                 "2023",
                 "2024",
                 "2025",
-                "2026"
+                "2026F"
               ],
               "series": [
                 {
@@ -103,11 +108,12 @@
             }
           },
           "insights": [
-            "Real-time decisioning overtakes batch reporting within the window.",
-            "Buyers are consolidating onto platforms that close the loop.",
-            "Early adopters report faster cycle times within a quarter."
+            "Real-time decisioning passed batch reporting in 2025 ($16B vs $10B).",
+            "The 2026 forecast puts real-time spend at more than 2.5x batch.",
+            "Buyers are consolidating onto platforms that close the loop."
           ],
-          "so_what": "Spend is shifting decisively from batch reporting to live decisioning."
+          "so_what": "Spend is shifting from batch reporting to live decisioning, and the 2026 forecast widens the gap.",
+          "source": "Illustrative market model: 2023–2025 estimates, 2026F forecast; not Acme customer data"
         },
         "overrides": {
           "title_size": 14,
@@ -150,6 +156,7 @@
           "small_size": 16
         }
       },
+      "source": "Illustrative — Acme customer benchmark, 2025 (n = 42 deployments)",
       "takeaway": "Early customers are already seeing the decision gap close."
     },
     {
@@ -164,42 +171,81 @@
       ]
     },
     {
+      "layout_id": "blank-title",
       "slide_type": "content",
       "content": [
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "A 90-day pilot on two workflows proves the value before scaling"
-        },
-        {
-          "placeholder_id": "body",
-          "type": "body_and_bullets",
-          "body_and_bullets_value": {
-            "body": "Run a 90-day pilot with your operations team, instrumenting the two workflows that cost the most analyst time today.",
-            "bullets": [
-              "Recommended: Stand up a 90-day pilot on the two highest-cost workflows.",
-              "Begin with a paid discovery to map data sources before committing.",
-              "Defer to next budget cycle and revisit once headcount frees up."
-            ]
-          }
+          "text_value": "A 90-day pilot proves value on your own workflows before you scale"
         }
-      ]
+      ],
+      "pattern": {
+        "name": "numbered-step-strip",
+        "values": {
+          "style": "stacked-box",
+          "steps": [
+            {
+              "label": "90-day pilot on two workflows",
+              "body": "Instrument the two workflows that cost the most analyst time; success criteria agreed up front, scale only if they are met.",
+              "recommended": true
+            },
+            {
+              "label": "Paid discovery first",
+              "body": "Six weeks mapping data sources before committing; lower spend, but no decision-cycle evidence until next quarter."
+            },
+            {
+              "label": "Defer to the next budget cycle",
+              "body": "No spend this year; analysts keep rebuilding reports and the gap to real-time competitors widens."
+            }
+          ]
+        },
+        "callout": {
+          "text": "Choose option 1: evidence on your own decisions within one quarter, at a capped fixed fee.",
+          "emphasis": "bold"
+        }
+      }
     },
     {
-      "layout_id": "closing",
-      "slide_type": "title",
+      "layout_id": "blank-title",
+      "slide_type": "content",
       "content": [
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Let's Build the Pilot"
-        },
-        {
-          "placeholder_id": "subtitle",
-          "type": "text",
-          "text_value": "Thank you — we're ready to start when you are."
+          "text_value": "Approve the pilot now to review results within 90 days"
         }
-      ]
+      ],
+      "pattern": {
+        "name": "next-steps",
+        "values": {
+          "actions": [
+            {
+              "action": "Confirm the two pilot workflows and success metrics",
+              "owner": "Your VP of Operations",
+              "date": "Week 1"
+            },
+            {
+              "action": "Sign the pilot scope and grant read access to source data",
+              "owner": "Procurement and IT",
+              "date": "Week 2"
+            },
+            {
+              "action": "Kick off and baseline today's decision cycle time",
+              "owner": "Acme engagement lead",
+              "date": "Week 3"
+            },
+            {
+              "action": "Go / no-go review on scaling beyond the pilot",
+              "owner": "Joint steering group",
+              "date": "Day 90"
+            }
+          ],
+          "decisions": [
+            "Approve the 90-day pilot and name an executive sponsor"
+          ]
+        }
+      }
     }
   ]
 }

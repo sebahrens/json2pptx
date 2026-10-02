@@ -4,16 +4,35 @@
 # archetype (sales_pitch, which prefers the warm-coral template and is not an
 # "executive" archetype) and a different slide rhythm than the QBR example:
 # it opens with the opportunity, sizes the market, shows traction, breaks with a
-# `section` divider, and lands a partnership ask. The mix of structural / text /
-# chart / kpi families is deliberately varied so the deck-rhythm rules stay
-# quiet — this file is meant to validate cleanly at the default strictness.
+# `section` divider, weighs the partnership options and closes on next steps.
+# The mix of structural / text / chart / kpi families is deliberately varied so
+# the deck-rhythm rules stay quiet — this file is meant to validate cleanly at
+# the default strictness.
+#
+# Every company, customer and market figure here is ILLUSTRATIVE, and the deck
+# says so wherever a number appears. Conventions an author copying this file
+# should keep:
+# - Each data slide names its own source. Market sizing is a model, not customer
+#   data: the chart's source says it is an illustrative estimate, and a forecast
+#   period is marked as one ("2026F") — meta.date puts the deck in October
+#   2026, so 2026 is not yet an actual. Customer KPIs cite the customer benchmark instead.
+# - Decision options are a short label (≤60 characters, the numbered-strip
+#   budget) plus a detail saying what each option costs and yields; longer
+#   labels degrade the slide to plain bullets (SEMANTIC_PATTERN_DEGRADED).
+#   The recommendation band says why the chosen option wins, not the option
+#   again.
+# - The deck closes on next steps — an action, an accountable role and timing —
+#   not on "Thank you". Owners are roles and timing is relative to approval,
+#   because an example must not invent real people or calendar commitments.
 meta:
   title: Acme Analytics — Partnership Proposal
   subtitle: Turn your operational data into decisions
   archetype: sales_pitch
   audience: VP of Operations and the buying committee
-  # Deck-level default source: every data slide without its own source renders it.
-  source: Acme customer benchmark, 2025 (n = 42 deployments)
+  # The as-of date: 2025 is the last full year of actuals; 2026 is a forecast.
+  date: October 2026
+  # Deck-level fallback source for any data slide without its own.
+  source: Illustrative example data — not real Acme, customer or market figures
 
 slides:
   - kind: title
@@ -24,32 +43,38 @@ slides:
     title: Your teams hold the data but still wait days for decisions
     takeaway: Your teams are data-rich but decision-poor — and the gap is widening.
     points:
-      - Teams rebuild the same reports weekly.
-      - Decisions wait days for busy analysts.
-      - Real-time rivals react twice as fast.
-      - The data exists but drives no decision.
+      - lead: Teams rebuild the same reports weekly.
+        support: Analyst time goes to refreshing dashboards, not answering new questions.
+      - lead: Decisions wait days for busy analysts.
+        support: Operational calls queue behind the weekly reporting cycle.
+      - lead: Real-time competitors react within the same shift.
+        support: Live decisioning is where market spend is now moving (next slide).
+      - lead: The data exists but drives no decision.
+        support: Nothing connects today's signals to the person who must act on them.
 
   - kind: chart_insight
-    title: Real-time decisioning spend overtakes batch reporting in 2025
-    insight: Spend is shifting decisively from batch reporting to live decisioning.
+    title: Real-time decisioning spend overtook batch reporting in 2025
+    insight: Spend is shifting from batch reporting to live decisioning, and the 2026 forecast widens the gap.
+    source: "Illustrative market model: 2023–2025 estimates, 2026F forecast; not Acme customer data"
     chart:
       type: bar_chart
-      title: Decision-analytics spend ($B)
+      title: Decision-analytics spend ($B, illustrative; 2026F = forecast)
       data:
-        categories: ["2023", "2024", "2025", "2026"]
+        categories: ["2023", "2024", "2025", "2026F"]
         series:
           - name: Batch reporting
             values: [12, 11, 10, 9]
           - name: Real-time decisioning
             values: [6, 10, 16, 24]
     insights:
-      - Real-time decisioning overtakes batch reporting within the window.
+      - Real-time decisioning passed batch reporting in 2025 ($16B vs $10B).
+      - The 2026 forecast puts real-time spend at more than 2.5x batch.
       - Buyers are consolidating onto platforms that close the loop.
-      - Early adopters report faster cycle times within a quarter.
 
   - kind: kpi_snapshot
     title: 60+ operations teams already decide 4.2x faster with Acme
     takeaway: Early customers are already seeing the decision gap close.
+    source: Illustrative — Acme customer benchmark, 2025 (n = 42 deployments)
     kpis:
       - { value: "60+", label: "Operations teams live" }
       - { value: "4.2x", label: "Faster decision cycle" }
@@ -60,14 +85,23 @@ slides:
     title: The Partnership We Propose
 
   - kind: decision
-    title: A 90-day pilot on two workflows proves the value before scaling
-    recommendation: Run a 90-day pilot with your operations team, instrumenting the two workflows that cost the most analyst time today.
+    title: A 90-day pilot proves value on your own workflows before you scale
+    recommendation: "Choose option 1: evidence on your own decisions within one quarter, at a capped fixed fee."
     options:
-      - label: Stand up a 90-day pilot on the two highest-cost workflows.
+      - label: 90-day pilot on two workflows
+        detail: Instrument the two workflows that cost the most analyst time; success criteria agreed up front, scale only if they are met.
         recommended: true
-      - Begin with a paid discovery to map data sources before committing.
-      - Defer to next budget cycle and revisit once headcount frees up.
+      - label: Paid discovery first
+        detail: Six weeks mapping data sources before committing; lower spend, but no decision-cycle evidence until next quarter.
+      - label: Defer to the next budget cycle
+        detail: No spend this year; analysts keep rebuilding reports and the gap to real-time competitors widens.
 
-  - kind: closing
-    title: Let's Build the Pilot
-    subtitle: Thank you — we're ready to start when you are.
+  - kind: next_steps
+    title: Approve the pilot now to review results within 90 days
+    actions:
+      - { action: "Confirm the two pilot workflows and success metrics", owner: "Your VP of Operations", date: "Week 1" }
+      - { action: "Sign the pilot scope and grant read access to source data", owner: "Procurement and IT", date: "Week 2" }
+      - { action: "Kick off and baseline today's decision cycle time", owner: "Acme engagement lead", date: "Week 3" }
+      - { action: "Go / no-go review on scaling beyond the pilot", owner: "Joint steering group", date: "Day 90" }
+    decisions:
+      - Approve the 90-day pilot and name an executive sponsor
