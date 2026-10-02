@@ -1198,17 +1198,18 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			if gridResult != nil {
 				cells = gridResult.Cells
 			}
-			overlayShapes, err := resolveOverlays(slide.Overlays, cells, overlayAlloc, slideWidth, slideHeight, overlayThemeColors(slideDiagCtx))
+			overlayShapes, overlayFindings, err := resolveOverlays(slide.Overlays, cells, overlayAlloc, slideWidth, slideHeight, overlayEnvFor(i, slideDiagCtx))
 			if err != nil {
 				return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: overlays: %w", i+1, err)
 			}
 			spec.OverlayShapeXML = append(spec.OverlayShapeXML, overlayShapes...)
+			slideFitFindings = append(slideFitFindings, overlayFindings...)
 		}
 	} else if len(slide.Overlays) > 0 {
 		// Allow overlays on slides without a shape_grid (purely floating shapes).
 		overlayAlloc := &pptx.ShapeIDAllocator{}
 		overlayAlloc.SetMinID(400)
-		overlayShapes, err := resolveOverlays(slide.Overlays, nil, overlayAlloc, slideWidth, slideHeight, overlayThemeColors(diagCtx))
+		overlayShapes, _, err := resolveOverlays(slide.Overlays, nil, overlayAlloc, slideWidth, slideHeight, overlayEnvFor(i, diagCtx))
 		if err != nil {
 			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: overlays: %w", i+1, err)
 		}

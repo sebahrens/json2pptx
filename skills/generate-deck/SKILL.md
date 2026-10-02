@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.156.0
+schema_version: 4.157.0
 description: >-
   Create or revise PowerPoint decks with json2pptx. Use for presentation and
   slide-deck requests that need template-aware authoring, validation, rendering,
@@ -93,7 +93,8 @@ executable one.
   review rubric (recorded in `submit_visual_review`), and the three-round
   repair cap. Read before the first render.
 - [RAW_PATH.md](RAW_PATH.md): raw preconditions, planning and rhythm, strict
-  output validation, repair, images and assets, SVG/diagram integration.
+  output validation, repair, images and assets (screenshot callouts via
+  overlay `anchor_image`), SVG/diagram integration.
 - [TOOLS.md](TOOLS.md): phase map, tool-profile discovery, MCP-only
   operations, and composition recipes.
 - [RULES.md](RULES.md): shape-grid, chart, table, content, contrast,

@@ -148,9 +148,14 @@ type GridImageInput struct {
 	// Geometry is the picture's frame shape: "rect" (default) or "ellipse".
 	// An ellipse clips the cover-cropped picture to a circle when the frame is
 	// square (headshots), without editing the image itself.
-	Geometry string              `json:"geometry,omitempty"`
-	Overlay  *GridOverlayInput   `json:"overlay,omitempty"` // Semi-transparent overlay on top of image
-	Text     *GridImageTextInput `json:"text,omitempty"`    // Text label on top of image
+	Geometry string `json:"geometry,omitempty"`
+	// Fit places a raster picture in its frame (the whole cell, or the
+	// centred square a cell-level fit selects): "cover" (default) fills the
+	// frame and centre-crops the long axis, "contain" keeps the whole picture
+	// centred in it. SVG pictures are always drawn to the frame.
+	Fit     string              `json:"fit,omitempty"`
+	Overlay *GridOverlayInput   `json:"overlay,omitempty"` // Semi-transparent overlay on top of image
+	Text    *GridImageTextInput `json:"text,omitempty"`    // Text label on top of image
 }
 
 // GridOverlayInput defines a semi-transparent color overlay on an image.
@@ -241,27 +246,45 @@ type ShapeFillInput struct {
 // from/to point.
 //
 // Use cases: diagonal arrows between matrix quadrants, floating "roof" badges
-// labelling a strategy-house tier, callout pointers, watermark stripes.
+// labelling a strategy-house tier, callout pointers, watermark stripes, and
+// exhibit callouts: kind "callout" draws a native label at `from` and a
+// leader to `to`, usually an anchor_image point on a screenshot.
 //
 // Overlays render *after* the grid so they always appear on top.
 type OverlayShapeInput struct {
-	Kind   string             `json:"kind"`             // "arrow", "line", "badge"
-	From   *OverlayPointInput `json:"from,omitempty"`   // Start point (required for arrow/line; defines top-left for badge)
-	To     *OverlayPointInput `json:"to,omitempty"`     // End point (required for arrow/line; defines bottom-right for badge when set)
-	Color  string             `json:"color,omitempty"`  // Line/arrow stroke color or badge fill (hex or scheme name; default "accent1")
-	Width  float64            `json:"width,omitempty"`  // Line/arrow stroke width in points (default 1.5); badge: width in slide-percent when To is omitted
-	Height float64            `json:"height,omitempty"` // Badge: height in slide-percent when To is omitted (ignored for line/arrow)
-	Dash   string             `json:"dash,omitempty"`   // "solid", "dash", "dot", "lgDash", "dashDot" (line/arrow)
-	Text   string             `json:"text,omitempty"`   // Badge label text
+	Kind   string             `json:"kind"`             // "arrow", "line", "badge", "callout"
+	From   *OverlayPointInput `json:"from,omitempty"`   // Start point (required for arrow/line; defines top-left for badge and callout label)
+	To     *OverlayPointInput `json:"to,omitempty"`     // End point (required for arrow/line; callout target; defines bottom-right for badge when set)
+	Color  string             `json:"color,omitempty"`  // Line/arrow stroke color or badge/callout fill (hex or scheme name; default "accent1")
+	Width  float64            `json:"width,omitempty"`  // Line/arrow stroke width in points (default 1.5); badge: width in slide-percent when To is omitted; callout: label width in slide-percent (default: sized to the text)
+	Height float64            `json:"height,omitempty"` // Badge: height in slide-percent when To is omitted; callout: label height in slide-percent (default: sized to the text)
+	Dash   string             `json:"dash,omitempty"`   // "solid", "dash", "dot", "lgDash", "dashDot" (line/arrow/callout leader)
+	Text   string             `json:"text,omitempty"`   // Badge / callout label text (callout: required; 12pt bold native text)
 	Link   *LinkInput         `json:"link,omitempty"`   // Badge click target
 }
 
-// OverlayPointInput specifies a position via percent-of-slide or via
-// cell-anchor reference. AnchorCell, when set, overrides X/Y.
+// OverlayPointInput specifies a position via percent-of-slide, a cell-anchor
+// reference, or a point on an image cell's source picture. AnchorCell or
+// AnchorImage, when set, overrides X/Y; setting both is an error.
 type OverlayPointInput struct {
-	X          float64                 `json:"x,omitempty"`           // Percent of slide width (0–100)
-	Y          float64                 `json:"y,omitempty"`           // Percent of slide height (0–100)
-	AnchorCell *OverlayAnchorCellInput `json:"anchor_cell,omitempty"` // Optional cell reference (overrides x/y)
+	X           float64                  `json:"x,omitempty"`            // Percent of slide width (0–100)
+	Y           float64                  `json:"y,omitempty"`            // Percent of slide height (0–100)
+	AnchorCell  *OverlayAnchorCellInput  `json:"anchor_cell,omitempty"`  // Optional cell reference (overrides x/y)
+	AnchorImage *OverlayAnchorImageInput `json:"anchor_image,omitempty"` // Optional source-image point on an image cell (overrides x/y)
+}
+
+// OverlayAnchorImageInput targets a point on the source picture of a
+// shape_grid image cell, in normalized source coordinates (x, y in 0–1 from
+// the image's top-left corner) or intrinsic pixels (units "px"). The point
+// resolves through the same cover / contain transform that places the
+// picture, so it stays on its pixel when the frame aspect, fit or template
+// changes. A point the crop trims away reports OVERLAY_TARGET_CROPPED.
+type OverlayAnchorImageInput struct {
+	Row   int     `json:"row"`             // 0-based row index of the image cell in the resolved grid
+	Col   int     `json:"col"`             // 0-based column index of the image cell
+	X     float64 `json:"x"`               // Source x: fraction of the image width (default units) or pixel column
+	Y     float64 `json:"y"`               // Source y: fraction of the image height (default units) or pixel row
+	Units string  `json:"units,omitempty"` // "fraction" (default) or "px"
 }
 
 // OverlayAnchorCellInput references a cell in the slide's shape_grid by

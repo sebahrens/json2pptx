@@ -1,21 +1,41 @@
 package generator
 
 import (
+	"strings"
+
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
-// gridImageCoverCrop returns the a:srcRect that cover-fills a shape_grid
-// image cell: the picture keeps its aspect ratio and is centre-cropped to the
-// cell's frame instead of being stretched (which distorted every photo whose
-// aspect differed from the cell). Nil when the image already matches the
-// frame or its size cannot be read (the plain stretch is then kept).
-func gridImageCoverCrop(img ImageInsert) *pptx.SrcRect {
-	c, ok := utils.CoverCropForFile(img.Path, img.ExtentCX, img.ExtentCY)
-	if !ok {
-		return nil
+// GridImagePlacement returns where a shape_grid image cell's picture lands
+// inside its frame and how it is cropped. fit is the cell's image fit:
+// "cover" (also the default) cover-fills the frame — the picture keeps its
+// aspect ratio and is centre-cropped instead of being stretched — and
+// "contain" keeps the whole picture centred in the frame. An image whose
+// size cannot be read is stretched to the frame.
+//
+// Picture insertion and the overlay resolver (anchor_image targets) both call
+// this, so a callout endpoint is computed with exactly the transform that
+// places the picture.
+func GridImagePlacement(path string, frame types.BoundingBox, fit string) utils.ImagePlacement {
+	w, h, err := utils.ImagePixelSize(path)
+	if err != nil {
+		return utils.PlaceImage(0, 0, frame, utils.PlaceStretch)
 	}
-	return imageCoverCrop(c)
+	mode := utils.PlaceCover
+	if strings.EqualFold(fit, utils.PlaceContain) {
+		mode = utils.PlaceContain
+	}
+	return utils.PlaceImage(w, h, frame, mode)
+}
+
+// gridImagePlacement places a shape_grid picture insert: its on-slide frame
+// and the a:srcRect crop (nil when nothing is trimmed).
+func gridImagePlacement(img ImageInsert) (types.BoundingBox, *pptx.SrcRect) {
+	frame := types.BoundingBox{X: img.OffsetX, Y: img.OffsetY, Width: img.ExtentCX, Height: img.ExtentCY}
+	p := GridImagePlacement(img.Path, frame, img.Fit)
+	return p.Bounds, imageCoverCrop(p.Crop)
 }
 
 func imageCoverCrop(c utils.CropRect) *pptx.SrcRect {

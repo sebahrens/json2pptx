@@ -191,6 +191,7 @@ type ImageInsert struct {
 	Path     string // File path to the image
 	Alt      string // Alt text for accessibility
 	Geometry string // Frame preset: "" / "rect" or "ellipse" (circular headshots)
+	Fit      string // Raster placement in the frame: "" / "cover" (crop to fill) or "contain" (whole picture, centred)
 	OffsetX  int64  // X position in EMU
 	OffsetY  int64  // Y position in EMU
 	ExtentCX int64  // Width in EMU

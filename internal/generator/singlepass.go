@@ -517,16 +517,17 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 				continue
 			}
 			mediaFileName := ctx.allocateMediaSlot(img.Path)
+			placed, crop := gridImagePlacement(img)
 			ctx.slideRelUpdates[slideNum] = append(ctx.slideRelUpdates[slideNum], mediaRel{
 				imagePath:      img.Path,
 				mediaFileName:  mediaFileName,
 				description:    img.Alt,
-				offsetX:        img.OffsetX,
-				offsetY:        img.OffsetY,
-				extentCX:       img.ExtentCX,
-				extentCY:       img.ExtentCY,
+				offsetX:        placed.X,
+				offsetY:        placed.Y,
+				extentCX:       placed.Width,
+				extentCY:       placed.Height,
 				placeholderIdx: -1, // No placeholder to remove — injected as new p:pic
-				crop:           gridImageCoverCrop(img),
+				crop:           crop,
 				geometry:       img.Geometry,
 			})
 		}

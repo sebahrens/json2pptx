@@ -25,31 +25,33 @@ func ValidateImageFit(fit string) error {
 // imagePlacement applies the same placement to raster pictures and native SVG
 // fallback pairs. Contain retains the whole source and centers its original
 // aspect ratio in the native frame; it never stretches or crops evidence.
+// The transform itself is utils.PlaceImage, shared with shape_grid pictures
+// and the overlay resolver that points callouts at source-image pixels.
 func imagePlacement(path string, frame types.BoundingBox, fit string) (types.BoundingBox, *pptx.SrcRect, error) {
-	if fit == fitContainStart {
-		return containStartPlacement(path, frame)
-	}
-	if err := ValidateImageFit(fit); err != nil {
-		return frame, nil, err
+	if fit != fitContainStart {
+		if err := ValidateImageFit(fit); err != nil {
+			return frame, nil, err
+		}
 	}
 	if frame.Width <= 0 || frame.Height <= 0 {
 		return frame, nil, fmt.Errorf("image frame must have positive dimensions")
 	}
-	if strings.EqualFold(fit, "contain") {
-		bounds, err := utils.ScaleImageToFit(path, frame)
-		if err != nil {
-			return frame, nil, fmt.Errorf("read image dimensions: %w", err)
-		}
-		if bounds.Width <= 0 || bounds.Height <= 0 {
-			return frame, nil, fmt.Errorf("contained image has zero extent")
-		}
-		return bounds, nil, nil
+	mode := strings.ToLower(fit)
+	if mode == "" {
+		mode = utils.PlaceCover
 	}
-	crop, ok := utils.CoverCropForFile(path, frame.Width, frame.Height)
-	if !ok {
-		return frame, nil, fmt.Errorf("failed to read image dimensions for %s", path)
+	w, h, err := utils.ImagePixelSize(path)
+	if err != nil {
+		if mode == utils.PlaceCover {
+			return frame, nil, fmt.Errorf("failed to read image dimensions for %s", path)
+		}
+		return frame, nil, fmt.Errorf("read image dimensions: %w", err)
 	}
-	return frame, imageCoverCrop(crop), nil
+	p := utils.PlaceImage(w, h, frame, mode)
+	if mode != utils.PlaceCover && (p.Bounds.Width <= 0 || p.Bounds.Height <= 0) {
+		return frame, nil, fmt.Errorf("contained image has zero extent")
+	}
+	return p.Bounds, imageCoverCrop(p.Crop), nil
 }
 
 // fitContainStart is the internal placement used when an image with no
@@ -77,23 +79,6 @@ func effectiveImageFit(fit string, shape *shapeXML) string {
 		}
 	}
 	return fitContainStart
-}
-
-// containStartPlacement scales the image to fit the frame without cropping
-// and anchors it to the frame's top-left corner.
-func containStartPlacement(path string, frame types.BoundingBox) (types.BoundingBox, *pptx.SrcRect, error) {
-	if frame.Width <= 0 || frame.Height <= 0 {
-		return frame, nil, fmt.Errorf("image frame must have positive dimensions")
-	}
-	bounds, err := utils.ScaleImageToFit(path, frame)
-	if err != nil {
-		return frame, nil, fmt.Errorf("read image dimensions: %w", err)
-	}
-	if bounds.Width <= 0 || bounds.Height <= 0 {
-		return frame, nil, fmt.Errorf("contained image has zero extent")
-	}
-	bounds.X, bounds.Y = frame.X, frame.Y
-	return bounds, nil, nil
 }
 
 // coverDiscardFraction returns the larger share of either axis a cover crop

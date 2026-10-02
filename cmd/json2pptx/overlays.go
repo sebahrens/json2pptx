@@ -3,10 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 )
@@ -21,9 +26,34 @@ func overlayThemeColors(diagCtx *GridDiagramContext) []types.ThemeColor {
 	return diagCtx.ThemeColors
 }
 
+// overlayEnvFor builds the overlay context for slide slideIdx.
+func overlayEnvFor(slideIdx int, diagCtx *GridDiagramContext) overlayEnv {
+	env := overlayEnv{SlideIdx: slideIdx, ThemeColors: overlayThemeColors(diagCtx)}
+	if diagCtx != nil {
+		env.FontFamily = diagCtx.FontFamily
+	}
+	return env
+}
+
+// overlayEnv carries the per-slide context overlays resolve against.
+type overlayEnv struct {
+	SlideIdx    int                // 0-based slide index, for finding paths
+	ThemeColors []types.ThemeColor // stroke-contrast flips and callout label ink
+	FontFamily  string             // theme body face, for sizing callout labels
+}
+
+// overlayCtx is the state shared by one slide's overlay renderers.
+type overlayCtx struct {
+	env                     overlayEnv
+	cellByRC                map[[2]int]shapegrid.ResolvedCell
+	slideWidth, slideHeight int64
+	findings                []patterns.FitFinding
+}
+
 // resolveOverlays converts the slide-level Overlays DTO list into raw <p:sp> /
 // <p:cxnSp> XML fragments. Cells (if present) are indexed by (row, col) so
-// anchor_cell references can resolve to absolute EMU coordinates.
+// anchor_cell and anchor_image references can resolve to absolute EMU
+// coordinates. Findings report image targets the picture's crop trims away.
 //
 // Returns an error if a referenced anchor cell does not exist or if a
 // required field is missing for the given overlay kind.
@@ -32,10 +62,10 @@ func resolveOverlays(
 	cells []shapegrid.ResolvedCell,
 	alloc *pptx.ShapeIDAllocator,
 	slideWidth, slideHeight int64,
-	themeColors []types.ThemeColor,
-) ([][]byte, error) {
+	env overlayEnv,
+) ([][]byte, []patterns.FitFinding, error) {
 	if len(overlays) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	if slideWidth <= 0 {
@@ -56,58 +86,57 @@ func resolveOverlays(
 		}
 	}
 
+	ctx := &overlayCtx{env: env, cellByRC: cellByRC, slideWidth: slideWidth, slideHeight: slideHeight}
 	out := make([][]byte, 0, len(overlays))
 	for i, ov := range overlays {
 		if ov == nil {
 			continue
 		}
-		frag, err := renderOverlay(i, ov, cellByRC, alloc, slideWidth, slideHeight, themeColors)
+		frags, err := ctx.renderOverlay(i, ov, alloc)
 		if err != nil {
-			return nil, fmt.Errorf("overlay %d: %w", i, err)
+			return nil, nil, fmt.Errorf("overlay %d: %w", i, err)
 		}
-		if frag != nil {
-			out = append(out, frag)
-		}
+		out = append(out, frags...)
 	}
-	return out, nil
+	return out, ctx.findings, nil
 }
 
 // renderOverlay dispatches to the per-kind renderer.
-func renderOverlay(
-	idx int,
-	ov *OverlayShapeInput,
-	cellByRC map[[2]int]shapegrid.ResolvedCell,
-	alloc *pptx.ShapeIDAllocator,
-	slideWidth, slideHeight int64,
-	themeColors []types.ThemeColor,
-) ([]byte, error) {
+func (ctx *overlayCtx) renderOverlay(idx int, ov *OverlayShapeInput, alloc *pptx.ShapeIDAllocator) ([][]byte, error) {
 	kind := strings.ToLower(strings.TrimSpace(ov.Kind))
 	if ov.Link != nil && kind != "badge" {
 		return nil, fmt.Errorf("link is supported only on badge overlays")
 	}
+	var frag []byte
+	var err error
 	switch kind {
 	case "arrow":
-		return renderOverlayConnector(idx, ov, cellByRC, alloc, slideWidth, slideHeight, true, themeColors)
+		frag, err = ctx.renderOverlayConnector(idx, ov, alloc, true)
 	case "line":
-		return renderOverlayConnector(idx, ov, cellByRC, alloc, slideWidth, slideHeight, false, themeColors)
+		frag, err = ctx.renderOverlayConnector(idx, ov, alloc, false)
 	case "badge":
-		return renderOverlayBadge(idx, ov, cellByRC, alloc, slideWidth, slideHeight)
+		frag, err = ctx.renderOverlayBadge(idx, ov, alloc)
+	case "callout":
+		return ctx.renderOverlayCallout(idx, ov, alloc)
 	case "":
-		return nil, fmt.Errorf("kind is required (arrow, line, or badge)")
+		return nil, fmt.Errorf("kind is required (arrow, line, badge, or callout)")
 	default:
-		return nil, fmt.Errorf("unsupported kind %q (expected arrow, line, or badge)", ov.Kind)
+		return nil, fmt.Errorf("unsupported kind %q (expected arrow, line, badge, or callout)", ov.Kind)
 	}
+	if err != nil || frag == nil {
+		return nil, err
+	}
+	return [][]byte{frag}, nil
 }
 
-// renderOverlayConnector emits a p:cxnSp for a line or arrow overlay.
-func renderOverlayConnector(
+// renderOverlayConnector emits a p:cxnSp for a line or arrow overlay. An
+// endpoint on an image point the crop trims away omits the connector (and
+// reports OVERLAY_TARGET_CROPPED) rather than pointing at other pixels.
+func (ctx *overlayCtx) renderOverlayConnector(
 	idx int,
 	ov *OverlayShapeInput,
-	cellByRC map[[2]int]shapegrid.ResolvedCell,
 	alloc *pptx.ShapeIDAllocator,
-	slideWidth, slideHeight int64,
 	withArrowhead bool,
-	themeColors []types.ThemeColor,
 ) ([]byte, error) {
 	if ov.From == nil {
 		return nil, fmt.Errorf("%s overlay requires 'from'", ov.Kind)
@@ -116,14 +145,19 @@ func renderOverlayConnector(
 		return nil, fmt.Errorf("%s overlay requires 'to'", ov.Kind)
 	}
 
-	startX, startY, err := resolveOverlayPoint(ov.From, cellByRC, slideWidth, slideHeight)
+	start, err := ctx.resolveOverlayPoint(ov.From)
 	if err != nil {
 		return nil, fmt.Errorf("from: %w", err)
 	}
-	endX, endY, err := resolveOverlayPoint(ov.To, cellByRC, slideWidth, slideHeight)
+	end, err := ctx.resolveOverlayPoint(ov.To)
 	if err != nil {
 		return nil, fmt.Errorf("to: %w", err)
 	}
+	omitted := fmt.Sprintf("the %s was omitted", strings.ToLower(ov.Kind))
+	if ctx.reportCropped(idx, "from", start, omitted) || ctx.reportCropped(idx, "to", end, omitted) {
+		return nil, nil
+	}
+	startX, startY, endX, endY := start.X, start.Y, end.X, end.Y
 
 	// Reroute arrow endpoints around cell-center text labels. When both
 	// endpoints reference grid cells with anchor_cell at "center" and those
@@ -132,48 +166,14 @@ func renderOverlayConnector(
 	// the opposite endpoint so the arrow travels through the inter-cell gap
 	// instead of across labels.
 	if withArrowhead && isCenterAnchoredCell(ov.From) && isCenterAnchoredCell(ov.To) {
-		fromCell, fromOK := lookupAnchorCell(ov.From, cellByRC)
-		toCell, toOK := lookupAnchorCell(ov.To, cellByRC)
+		fromCell, fromOK := lookupAnchorCell(ov.From, ctx.cellByRC)
+		toCell, toOK := lookupAnchorCell(ov.To, ctx.cellByRC)
 		if fromOK && toOK && cellHasText(fromCell) && cellHasText(toCell) {
 			startX, startY = snapAnchorToCornerToward(anchorRect(fromCell), [2]int64{endX, endY}, 0.10)
 			endX, endY = snapAnchorToCornerToward(anchorRect(toCell), [2]int64{startX, startY}, 0.10)
 		}
 	}
 
-	// Compute connector bounds and required flip flags so that the line is
-	// drawn from (startX,startY) to (endX,endY) regardless of direction.
-	minX := startX
-	if endX < minX {
-		minX = endX
-	}
-	minY := startY
-	if endY < minY {
-		minY = endY
-	}
-	w := endX - startX
-	if w < 0 {
-		w = -w
-	}
-	h := endY - startY
-	if h < 0 {
-		h = -h
-	}
-	if w == 0 {
-		w = 1
-	}
-	if h == 0 {
-		h = 1
-	}
-	// straightConnector1 draws from top-left of bounds to bottom-right by default.
-	// If the actual start is on the right or bottom, flip the connector so the
-	// arrowhead lands at the user-specified `to` endpoint.
-	flipH := endX < startX
-	flipV := endY < startY
-
-	widthPt := ov.Width
-	if widthPt <= 0 {
-		widthPt = 1.5
-	}
 	color := strings.TrimSpace(ov.Color)
 	if color == "" {
 		color = "000000"
@@ -182,49 +182,82 @@ func renderOverlayConnector(
 	// cell's fill (e.g., dark stroke on a dark accent quadrant). Only applies
 	// to anchor_cell endpoints with a resolvable fill — free-floating
 	// percent-positioned arrows are left untouched.
-	color = adjustOverlayStrokeForContrast(color, ov, cellByRC, themeColors)
+	color = adjustOverlayStrokeForContrast(color, ov, ctx.cellByRC, ctx.env.ThemeColors)
+	var head *pptx.ArrowHead
+	if withArrowhead {
+		head = &pptx.ArrowHead{Type: "triangle", W: "med", Len: "med"}
+	}
+	return overlayConnectorXML(alloc.Alloc(), fmt.Sprintf("Overlay %s %d", strings.ToLower(ov.Kind), idx+1),
+		startX, startY, endX, endY, ov.Width, color, ov.Dash, head)
+}
+
+// overlayConnectorXML emits a straight connector drawn from (startX,startY)
+// to (endX,endY), with an optional head at the end point.
+func overlayConnectorXML(id uint32, name string, startX, startY, endX, endY int64, widthPt float64, color, dash string, head *pptx.ArrowHead) ([]byte, error) {
+	// Compute connector bounds and required flip flags so that the line is
+	// drawn from (startX,startY) to (endX,endY) regardless of direction.
+	minX, w := spanEMU(startX, endX)
+	minY, h := spanEMU(startY, endY)
+	// straightConnector1 draws from top-left of bounds to bottom-right by default.
+	// If the actual start is on the right or bottom, flip the connector so the
+	// arrowhead lands at the user-specified `to` endpoint.
+	flipH := endX < startX
+	flipV := endY < startY
+
+	if widthPt <= 0 {
+		widthPt = 1.5
+	}
 	line := pptx.ResolveColorLinePoints(widthPt, color)
-	if d := strings.TrimSpace(ov.Dash); d != "" {
+	if d := strings.TrimSpace(dash); d != "" {
 		line.Dash = d
 	}
 
-	opts := pptx.ConnectorOptions{
-		ID:       alloc.Alloc(),
-		Name:     fmt.Sprintf("Overlay %s %d", strings.ToLower(ov.Kind), idx+1),
+	return pptx.GenerateConnector(pptx.ConnectorOptions{
+		ID:       id,
+		Name:     name,
 		Geometry: pptx.GeomStraightConnector1,
 		Bounds:   pptx.RectEmu{X: minX, Y: minY, CX: w, CY: h},
 		Line:     line,
 		FlipH:    flipH,
 		FlipV:    flipV,
+		TailEnd:  head,
+	})
+}
+
+// spanEMU returns the lower of a and b and the (at least 1 EMU) distance
+// between them.
+func spanEMU(a, b int64) (lo, extent int64) {
+	lo, hi := a, b
+	if b < a {
+		lo, hi = b, a
 	}
-	if withArrowhead {
-		opts.TailEnd = &pptx.ArrowHead{Type: "triangle", W: "med", Len: "med"}
+	if hi-lo == 0 {
+		return lo, 1
 	}
-	return pptx.GenerateConnector(opts)
+	return lo, hi - lo
 }
 
 // renderOverlayBadge emits a p:sp roundRect with centered text.
-func renderOverlayBadge(
-	idx int,
-	ov *OverlayShapeInput,
-	cellByRC map[[2]int]shapegrid.ResolvedCell,
-	alloc *pptx.ShapeIDAllocator,
-	slideWidth, slideHeight int64,
-) ([]byte, error) {
+func (ctx *overlayCtx) renderOverlayBadge(idx int, ov *OverlayShapeInput, alloc *pptx.ShapeIDAllocator) ([]byte, error) {
 	if ov.From == nil {
 		return nil, fmt.Errorf("badge overlay requires 'from'")
 	}
-	x0, y0, err := resolveOverlayPoint(ov.From, cellByRC, slideWidth, slideHeight)
+	from, err := ctx.resolveOverlayPoint(ov.From)
 	if err != nil {
 		return nil, fmt.Errorf("from: %w", err)
 	}
+	const clamped = "the badge was placed at the nearest visible picture edge"
+	ctx.reportCropped(idx, "from", from, clamped)
+	x0, y0 := from.X, from.Y
 
 	var x1, y1 int64
 	if ov.To != nil {
-		x1, y1, err = resolveOverlayPoint(ov.To, cellByRC, slideWidth, slideHeight)
+		to, err := ctx.resolveOverlayPoint(ov.To)
 		if err != nil {
 			return nil, fmt.Errorf("to: %w", err)
 		}
+		ctx.reportCropped(idx, "to", to, clamped)
+		x1, y1 = to.X, to.Y
 	} else {
 		// Derive bottom-right from width/height percent-of-slide.
 		wPct := ov.Width
@@ -235,8 +268,8 @@ func renderOverlayBadge(
 		if hPct <= 0 {
 			hPct = 6.0 // default badge height: 6% of slide height
 		}
-		x1 = x0 + int64(float64(slideWidth)*wPct/100.0)
-		y1 = y0 + int64(float64(slideHeight)*hPct/100.0)
+		x1 = x0 + int64(float64(ctx.slideWidth)*wPct/100.0)
+		y1 = y0 + int64(float64(ctx.slideHeight)*hPct/100.0)
 	}
 
 	// Normalize ordering so (x0,y0) is top-left.
@@ -295,34 +328,260 @@ func renderOverlayBadge(
 	return pptx.GenerateShape(opts)
 }
 
+// Callout label metrics: 12pt bold native text (the body readability floor
+// for an annotation), padded 0.1" left/right and 0.05" top/bottom.
+const (
+	calloutFontPt      = 12.0
+	calloutInsetXEMU   = int64(91440)
+	calloutInsetYEMU   = int64(45720)
+	calloutMaxWidthPct = 35.0
+)
+
+// renderOverlayCallout emits a native label box at `from` (its top-left)
+// and a leader from the box edge facing the target to `to`, ending in a dot
+// on the target. The leader starts on the label's boundary, so it never
+// crosses its own text. `to` is usually an anchor_image point, which keeps
+// the leader on the same source pixel whatever the frame or crop. A target
+// the crop trims away keeps the label (and its wording) and omits the leader.
+func (ctx *overlayCtx) renderOverlayCallout(idx int, ov *OverlayShapeInput, alloc *pptx.ShapeIDAllocator) ([][]byte, error) {
+	text := strings.TrimSpace(ov.Text)
+	if text == "" {
+		return nil, fmt.Errorf("callout overlay requires 'text'")
+	}
+	if ov.From == nil {
+		return nil, fmt.Errorf("callout overlay requires 'from' (the label's top-left)")
+	}
+	if ov.To == nil {
+		return nil, fmt.Errorf("callout overlay requires 'to' (the target point)")
+	}
+	from, err := ctx.resolveOverlayPoint(ov.From)
+	if err != nil {
+		return nil, fmt.Errorf("from: %w", err)
+	}
+	ctx.reportCropped(idx, "from", from, "the label was placed at the nearest visible picture edge")
+	target, err := ctx.resolveOverlayPoint(ov.To)
+	if err != nil {
+		return nil, fmt.Errorf("to: %w", err)
+	}
+
+	label := ctx.calloutLabelRect(from.X, from.Y, text, ov.Width, ov.Height)
+	color := strings.TrimSpace(ov.Color)
+	if color == "" {
+		color = "accent1"
+	}
+
+	var paras []pptx.Paragraph
+	for _, line := range strings.Split(text, "\n") {
+		paras = append(paras, pptx.Paragraph{
+			Align: "ctr",
+			Runs: []pptx.Run{{
+				Text:     line,
+				FontSize: int(calloutFontPt * 100),
+				Bold:     true,
+				Color:    pptx.SolidFill(calloutInk(color, ctx.env.ThemeColors)),
+			}},
+		})
+	}
+	labelXML, err := pptx.GenerateShape(pptx.ShapeOptions{
+		ID:       alloc.Alloc(),
+		Name:     fmt.Sprintf("Overlay callout %d", idx+1),
+		Geometry: pptx.GeomRoundRect,
+		Bounds:   label,
+		Fill:     pptx.ResolveColorString(color),
+		Line:     pptx.NoLine(),
+		Text: &pptx.TextBody{
+			Wrap:       "square",
+			Anchor:     "ctr",
+			AnchorCtr:  true,
+			Insets:     [4]int64{calloutInsetXEMU, calloutInsetYEMU, calloutInsetXEMU, calloutInsetYEMU},
+			Paragraphs: paras,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if ctx.reportCropped(idx, "to", target, "the leader was omitted; the label is kept") {
+		return [][]byte{labelXML}, nil
+	}
+	if pointInRect(target.X, target.Y, label) {
+		return nil, fmt.Errorf("callout target lies inside its own label; move 'from' so the label sits beside the target")
+	}
+	sx, sy := rectEdgeToward(label, target.X, target.Y)
+	leaderXML, err := overlayConnectorXML(alloc.Alloc(), fmt.Sprintf("Overlay callout leader %d", idx+1),
+		sx, sy, target.X, target.Y, 0, color, ov.Dash, &pptx.ArrowHead{Type: "oval", W: "med", Len: "med"})
+	if err != nil {
+		return nil, err
+	}
+	return [][]byte{labelXML, leaderXML}, nil
+}
+
+// calloutLabelRect sizes a callout label at (x, y): width / height are
+// slide percentages when given, otherwise the measured 12pt bold text plus
+// insets, capped at calloutMaxWidthPct of the slide width (the text then
+// wraps onto more lines).
+func (ctx *overlayCtx) calloutLabelRect(x, y int64, text string, wPct, hPct float64) pptx.RectEmu {
+	lines := strings.Split(text, "\n")
+	maxW := int64(float64(ctx.slideWidth) * calloutMaxWidthPct / 100)
+	var textW int64
+	for _, line := range lines {
+		lw, err := textfit.MeasureStyledLineWidth(line, ctx.env.FontFamily, calloutFontPt, true)
+		if err != nil || lw <= 0 {
+			lw = int64(float64(len([]rune(line))) * calloutFontPt * 0.6 * 12700)
+		}
+		textW = max(textW, lw)
+	}
+	// 6% slack: rendering engines kern and hint differently.
+	w := textW + textW*6/100 + 2*calloutInsetXEMU
+	nLines := len(lines)
+	if w > maxW {
+		nLines += int((w - 1) / maxW)
+		w = maxW
+	}
+	h := int64(float64(nLines)*calloutFontPt*1.2*12700) + 2*calloutInsetYEMU
+	if wPct > 0 {
+		w = int64(float64(ctx.slideWidth) * wPct / 100)
+	}
+	if hPct > 0 {
+		h = int64(float64(ctx.slideHeight) * hPct / 100)
+	}
+	return pptx.RectEmu{X: x, Y: y, CX: max(w, 1), CY: max(h, 1)}
+}
+
+// calloutInk returns white or near-black, whichever contrasts more with the
+// label fill (white when the fill cannot be resolved).
+func calloutInk(fill string, themeColors []types.ThemeColor) string {
+	fc, err := svggen.ParseColor(resolveColorRefToHex(fill, themeColors))
+	if err != nil {
+		return "FFFFFF"
+	}
+	white, _ := svggen.ParseColor("#FFFFFF")
+	dark, _ := svggen.ParseColor("#1A1A1A")
+	if dark.ContrastWith(fc) > white.ContrastWith(fc) {
+		return "1A1A1A"
+	}
+	return "FFFFFF"
+}
+
+// pointInRect reports whether (x, y) lies inside r (edges included).
+func pointInRect(x, y int64, r pptx.RectEmu) bool {
+	return x >= r.X && x <= r.X+r.CX && y >= r.Y && y <= r.Y+r.CY
+}
+
+// rectEdgeToward returns where the ray from r's centre to (tx, ty) leaves r.
+func rectEdgeToward(r pptx.RectEmu, tx, ty int64) (int64, int64) {
+	cx := float64(r.X) + float64(r.CX)/2
+	cy := float64(r.Y) + float64(r.CY)/2
+	dx := float64(tx) - cx
+	dy := float64(ty) - cy
+	s := math.Inf(1)
+	if dx != 0 {
+		s = math.Min(s, float64(r.CX)/2/math.Abs(dx))
+	}
+	if dy != 0 {
+		s = math.Min(s, float64(r.CY)/2/math.Abs(dy))
+	}
+	if math.IsInf(s, 1) {
+		return int64(cx), int64(cy)
+	}
+	return int64(math.Round(cx + dx*s)), int64(math.Round(cy + dy*s))
+}
+
+// resolvedPoint is an overlay endpoint in slide EMU. cropped is set when the
+// point is an anchor_image target the picture's crop trims away; X/Y are
+// then clamped to the nearest visible picture edge.
+type resolvedPoint struct {
+	X, Y    int64
+	cropped *croppedTarget
+}
+
+// croppedTarget describes an off-crop anchor_image target for the finding.
+type croppedTarget struct {
+	row, col       int
+	u, v           float64 // target as source fractions
+	x0, x1, y0, y1 float64 // visible source interval
+}
+
+// reportCropped records OVERLAY_TARGET_CROPPED for an off-crop endpoint and
+// reports whether it was one. consequence says what the renderer did.
+func (ctx *overlayCtx) reportCropped(idx int, field string, pt resolvedPoint, consequence string) bool {
+	c := pt.cropped
+	if c == nil {
+		return false
+	}
+	path := slidepath.SlideField(ctx.env.SlideIdx, fmt.Sprintf("overlays/%d/%s/anchor_image", idx, field))
+	ctx.findings = append(ctx.findings, patterns.OverlayTargetCropped(path, idx, c.row, c.col,
+		[2]float64{c.u, c.v}, [4]float64{c.x0, c.x1, c.y0, c.y1}, consequence))
+	return true
+}
+
 // resolveOverlayPoint converts an OverlayPointInput to absolute EMU
-// coordinates. When AnchorCell is set it overrides X/Y.
-func resolveOverlayPoint(
-	pt *OverlayPointInput,
-	cellByRC map[[2]int]shapegrid.ResolvedCell,
-	slideWidth, slideHeight int64,
-) (int64, int64, error) {
+// coordinates. AnchorImage or AnchorCell, when set, overrides X/Y.
+func (ctx *overlayCtx) resolveOverlayPoint(pt *OverlayPointInput) (resolvedPoint, error) {
 	if pt == nil {
-		return 0, 0, fmt.Errorf("missing point")
+		return resolvedPoint{}, fmt.Errorf("missing point")
+	}
+	if pt.AnchorImage != nil {
+		if pt.AnchorCell != nil {
+			return resolvedPoint{}, fmt.Errorf("set either anchor_cell or anchor_image, not both")
+		}
+		return ctx.resolveImageAnchor(pt.AnchorImage)
 	}
 	if pt.AnchorCell != nil {
 		ac := pt.AnchorCell
-		cell, ok := cellByRC[[2]int{ac.Row, ac.Col}]
+		cell, ok := ctx.cellByRC[[2]int{ac.Row, ac.Col}]
 		if !ok {
-			return 0, 0, fmt.Errorf("anchor_cell row=%d col=%d not found in shape_grid", ac.Row, ac.Col)
+			return resolvedPoint{}, fmt.Errorf("anchor_cell row=%d col=%d not found in shape_grid", ac.Row, ac.Col)
 		}
-		b := cell.Bounds
-		// CellBounds is the pre-fit rectangle; use it when Bounds has been
-		// shrunk by a fit mode so anchor points still hit the visual cell.
-		if cell.CellBounds.CX > 0 && cell.CellBounds.CY > 0 {
-			b = cell.CellBounds
-		}
-		x, y := pointOnRect(b, ac.At)
-		return x, y, nil
+		x, y := pointOnRect(anchorRect(cell), ac.At)
+		return resolvedPoint{X: x, Y: y}, nil
 	}
-	x := int64(float64(slideWidth) * clampPct(pt.X) / 100.0)
-	y := int64(float64(slideHeight) * clampPct(pt.Y) / 100.0)
-	return x, y, nil
+	x := int64(float64(ctx.slideWidth) * clampPct(pt.X) / 100.0)
+	y := int64(float64(ctx.slideHeight) * clampPct(pt.Y) / 100.0)
+	return resolvedPoint{X: x, Y: y}, nil
+}
+
+// resolveImageAnchor maps a point on a shape_grid image cell's source picture
+// to slide EMU through generator.GridImagePlacement — the transform that
+// places the picture itself — so the endpoint follows its pixel through any
+// frame aspect, fit or template change.
+func (ctx *overlayCtx) resolveImageAnchor(ai *OverlayAnchorImageInput) (resolvedPoint, error) {
+	cell, ok := ctx.cellByRC[[2]int{ai.Row, ai.Col}]
+	if !ok {
+		return resolvedPoint{}, fmt.Errorf("anchor_image row=%d col=%d not found in shape_grid", ai.Row, ai.Col)
+	}
+	if cell.Kind != shapegrid.CellKindImage || cell.ImageSpec == nil {
+		return resolvedPoint{}, fmt.Errorf("anchor_image row=%d col=%d is not an image cell", ai.Row, ai.Col)
+	}
+	frame := types.BoundingBox{X: cell.Bounds.X, Y: cell.Bounds.Y, Width: cell.Bounds.CX, Height: cell.Bounds.CY}
+	place := generator.GridImagePlacement(cell.ImageSpec.Path, frame, cell.ImageSpec.Fit)
+
+	u, v := ai.X, ai.Y
+	switch strings.ToLower(strings.TrimSpace(ai.Units)) {
+	case "", "fraction":
+		if u < 0 || u > 1 || v < 0 || v > 1 {
+			return resolvedPoint{}, fmt.Errorf("anchor_image x=%g y=%g outside the image; fraction units run 0–1 from the top-left corner", ai.X, ai.Y)
+		}
+	case "px":
+		if place.PixelW <= 0 || place.PixelH <= 0 {
+			return resolvedPoint{}, fmt.Errorf("anchor_image units \"px\" need a raster image whose pixel size can be read; use units \"fraction\"")
+		}
+		if u < 0 || u > float64(place.PixelW) || v < 0 || v > float64(place.PixelH) {
+			return resolvedPoint{}, fmt.Errorf("anchor_image x=%g y=%g px outside the %dx%d image", ai.X, ai.Y, place.PixelW, place.PixelH)
+		}
+		u /= float64(place.PixelW)
+		v /= float64(place.PixelH)
+	default:
+		return resolvedPoint{}, fmt.Errorf("anchor_image units %q invalid; use \"fraction\" (default) or \"px\"", ai.Units)
+	}
+
+	x, y, visible := place.SourceToSlide(u, v)
+	pt := resolvedPoint{X: x, Y: y}
+	if !visible {
+		x0, x1, y0, y1 := place.VisibleSource()
+		pt.cropped = &croppedTarget{row: ai.Row, col: ai.Col, u: u, v: v, x0: x0, x1: x1, y0: y0, y1: y1}
+	}
+	return pt, nil
 }
 
 // pointOnRect returns a named anchor point on a rectangle.

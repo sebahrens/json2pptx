@@ -233,6 +233,13 @@ const (
 	// (go-slide-creator-dk5sk). Advisory.
 	ErrCodeImageHeavyCrop = "IMAGE_HEAVY_CROP"
 
+	// ErrCodeOverlayTargetCropped marks an overlay endpoint on an image
+	// cell's source picture (anchor_image) that the picture's cover crop
+	// trims away. The engine omits the arrow / line / callout leader rather
+	// than pointing it at a different part of the picture, and keeps the
+	// label wording (go-slide-creator-kkc5t). Review.
+	ErrCodeOverlayTargetCropped = "OVERLAY_TARGET_CROPPED"
+
 	// ErrCodeChromeOverImage marks a slide whose footer band (footer text,
 	// page number, date) would sit on an inserted picture. The engine omits
 	// that chrome rather than drawing it unverified over photo pixels
@@ -331,9 +338,11 @@ var (
 
 	ErrImageAssetUnavailable = errors.New("authored image could not be embedded; its frame renders empty")
 
-	ErrImageHeavyCrop  = errors.New("cover fit discards a large share of the picture")
-	ErrChromeOverImage = errors.New("footer chrome omitted because a picture covers the footer band")
-	ErrSubtitleWraps   = errors.New("title-slide subtitle wraps onto a second line")
+	ErrImageHeavyCrop = errors.New("cover fit discards a large share of the picture")
+
+	ErrOverlayTargetCropped = errors.New("overlay image target is cropped out of the visible picture")
+	ErrChromeOverImage      = errors.New("footer chrome omitted because a picture covers the footer band")
+	ErrSubtitleWraps        = errors.New("title-slide subtitle wraps onto a second line")
 
 	ErrComparisonPreferPattern = errors.New("slide_type comparison renders plain columns; a comparison pattern is designed for it")
 
@@ -411,6 +420,7 @@ var codeSentinel = map[string]error{
 	ErrCodeTextOverImageUnverified: ErrTextOverImageUnverified,
 	ErrCodeImageAssetUnavailable:   ErrImageAssetUnavailable,
 	ErrCodeImageHeavyCrop:          ErrImageHeavyCrop,
+	ErrCodeOverlayTargetCropped:    ErrOverlayTargetCropped,
 	ErrCodeChromeOverImage:         ErrChromeOverImage,
 	ErrCodeSubtitleWraps:           ErrSubtitleWraps,
 	ErrCodeComparisonPreferPattern: ErrComparisonPreferPattern,

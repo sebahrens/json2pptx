@@ -104,6 +104,9 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// PresentationInput hash advances.
 	// 4.156.0 adds the raw slide-level `appendix` divider flag
 	// (go-slide-creator-khzni), so the PresentationInput hash advances.
+	// 4.157.0 adds overlay anchor_image endpoints, the overlay `callout` kind
+	// and shape_grid image `fit` (go-slide-creator-kkc5t); those structs sit
+	// outside the hashed set, so the hash is unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "2ffaa76c5867d6cc"
 

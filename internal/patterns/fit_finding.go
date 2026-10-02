@@ -568,6 +568,29 @@ func ImageHeavyCrop(path, placeholderID string, discarded float64, defaulted boo
 	}
 }
 
+// OverlayTargetCropped builds the OVERLAY_TARGET_CROPPED review finding for
+// an overlay endpoint whose anchor_image target (source fractions uv) lies
+// outside the visible source interval vis = [x0, x1, y0, y1] of image cell
+// [row, col]. consequence says what the renderer did instead of pointing
+// elsewhere (go-slide-creator-kkc5t).
+func OverlayTargetCropped(path string, overlayIdx, row, col int, uv [2]float64, vis [4]float64, consequence string) FitFinding {
+	return FitFinding{
+		ValidationError: ValidationError{
+			Path: path,
+			Code: ErrCodeOverlayTargetCropped,
+			Message: fmt.Sprintf("overlay %d: image target (%.3f, %.3f) on shape_grid image cell [%d,%d] is cropped away — the frame shows source x %.3f–%.3f, y %.3f–%.3f; %s",
+				overlayIdx, uv[0], uv[1], row, col, vis[0], vis[1], vis[2], vis[3], consequence),
+			Fix: &FixSuggestion{Kind: "review", Params: map[string]any{
+				"path":      path,
+				"visible_x": []float64{vis[0], vis[1]},
+				"visible_y": []float64{vis[2], vis[3]},
+				"hint":      "set the image cell's image.fit to \"contain\" to keep the whole picture, give the cell a frame closer to the picture's aspect, or move the target inside the visible interval",
+			}},
+		},
+		Action: "review",
+	}
+}
+
 // ChromeOverImage builds the CHROME_OVER_IMAGE info finding for a slide whose
 // footer chrome was omitted because a picture covers the footer band
 // (go-slide-creator-3bph8).

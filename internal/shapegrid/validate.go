@@ -115,6 +115,9 @@ func Validate(grid *Grid) error { //nolint:gocognit,gocyclo
 			if cell.Image != nil && cell.Image.Geometry != "" && cell.Image.Geometry != "rect" && cell.Image.Geometry != "ellipse" {
 				errs = append(errs, fmt.Errorf("row %d col %d: invalid image geometry %q; valid values are \"rect\" or \"ellipse\" (omit for rect)", r, ci, cell.Image.Geometry))
 			}
+			if cell.Image != nil && cell.Image.Fit != "" && cell.Image.Fit != "cover" && cell.Image.Fit != "contain" {
+				errs = append(errs, fmt.Errorf("row %d col %d: invalid image fit %q; valid values are \"cover\" or \"contain\" (omit for cover)", r, ci, cell.Image.Fit))
+			}
 
 			// Empty spacer cells are not skipped: they claim their
 			// col_span × row_span footprint exactly as Resolve does, so span

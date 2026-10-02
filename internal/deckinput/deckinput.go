@@ -48,6 +48,7 @@ type TableStyleInput = jsonschema.TableStyleInput
 type OverlayShapeInput = jsonschema.OverlayShapeInput
 type OverlayPointInput = jsonschema.OverlayPointInput
 type OverlayAnchorCellInput = jsonschema.OverlayAnchorCellInput
+type OverlayAnchorImageInput = jsonschema.OverlayAnchorImageInput
 
 // SplitSlideExpander is the hook used by PresentationInput.UnmarshalJSON to
 // expand split_slide entries. The expansion logic (expandSplitSlide) lives in
