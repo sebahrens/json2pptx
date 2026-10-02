@@ -98,6 +98,9 @@ func runHeadlessRoundTrip(t *testing.T, soffice, baseTmp, templatesDir, exampleP
 		t.Fatalf("parse example JSON: %v", err)
 	}
 	input["template"] = tmpl
+	// The patched copy lives in caseDir, so pin relative image paths to the
+	// example's own directory, where the CLI would resolve them.
+	absolutizeImagePaths(input, filepath.Dir(examplePath))
 	outputFilename := base + "_" + tmpl + ".pptx"
 	input["output_filename"] = outputFilename
 
@@ -248,4 +251,24 @@ func findSofficeBinary() string {
 		return path
 	}
 	return ""
+}
+
+// absolutizeImagePaths rewrites every relative "path" inside an "image" object
+// to an absolute path under dir.
+func absolutizeImagePaths(v any, dir string) {
+	switch n := v.(type) {
+	case map[string]any:
+		for k, child := range n {
+			if img, ok := child.(map[string]any); ok && k == "image" {
+				if p, ok := img["path"].(string); ok && p != "" && !filepath.IsAbs(p) && !strings.Contains(p, "://") {
+					img["path"] = filepath.Join(dir, p)
+				}
+			}
+			absolutizeImagePaths(child, dir)
+		}
+	case []any:
+		for _, child := range n {
+			absolutizeImagePaths(child, dir)
+		}
+	}
 }

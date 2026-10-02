@@ -53,6 +53,9 @@ func TestContrastParityCorpus(t *testing.T) {
 				}
 				input.Template = templateName
 				input.OutputFilename = "contrast-parity.pptx"
+				// Resolve relative image paths against the example's own
+				// directory, as the CLI does for a -json file.
+				resolveLocalAssetPaths(input.Slides, filepath.Dir(examplePath))
 				applyDefaults(&input)
 				resolveCanonicalLayoutIDs(input.Slides, layouts)
 				effectiveTheme := *theme
