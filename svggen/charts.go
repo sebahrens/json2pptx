@@ -576,9 +576,7 @@ func (bc *BarChart) Draw(data ChartData) error {
 
 		// Annotations not supported on log-scale charts (no linear yScale)
 	} else {
-		yScale := NewLinearScale(yMin, withBarTopHeadroom(yMax))
-		yScale.SetRangeLinear(plotArea.H, 0)
-		yScale.Nice(true)
+		yScale := barLinearYScale(yMin, yMax, plotArea.H, barNegativeLabelClearance(b, style, bc.config, yMin))
 
 		bc.drawLinearGridAndAxes(plotArea, xScale, yScale, axisFontSize, xLabelRotation, labelStep)
 
@@ -761,9 +759,7 @@ func barDirectLabelGeometry(b *SVGBuilder, style *StyleGuide, data ChartData, pl
 	if yMin > 0 {
 		yMin = 0
 	}
-	yScale := NewLinearScale(yMin, withBarTopHeadroom(yMax))
-	yScale.SetRangeLinear(plotArea.H, 0)
-	yScale.Nice(true)
+	yScale := barLinearYScale(yMin, yMax, plotArea.H, barNegativeLabelClearance(b, style, cfg, yMin))
 	baseY := plotArea.Y + yScale.Scale(0)
 	fontSize := style.Typography.SizeSmall
 
@@ -937,6 +933,60 @@ func withBarTopHeadroom(yMax float64) float64 {
 		return yMax * barTopHeadroomFactor
 	}
 	return yMax
+}
+
+// barLinearYScale builds the value scale of a vertical linear bar chart over a
+// plot plotH tall: top headroom for the tallest bar's label, Nice() rounding,
+// and — when lowerClearance > 0 — at least lowerClearance points between the
+// lowest negative bar end and the plot bottom.
+//
+// A negative bar's value label hangs BELOW its end (drawValueLabel), and the
+// category labels sit just below the plot. With [9, 4, 0, -2] Nice() put the
+// domain floor exactly at -2, so the "−2" label landed on top of "East"
+// (go-slide-creator-5na8e). Top headroom never helped: it only grows the max.
+// Every bar y-scale is built here so the drawn bars, their labels, the axes
+// and the direct-label geometry share one domain.
+func barLinearYScale(yMin, yMax, plotH, lowerClearance float64) *LinearScale {
+	lo, hi := yMin, withBarTopHeadroom(yMax)
+	var s *LinearScale
+	// Nice() may widen the domain again after the floor moves, which shrinks
+	// the room in points; re-check a few times rather than solve in closed form.
+	for range 6 {
+		s = NewLinearScale(lo, hi)
+		s.SetRangeLinear(plotH, 0)
+		s.Nice(true)
+		if yMin >= 0 || lowerClearance <= 0 || lowerClearance >= plotH {
+			return s
+		}
+		room := plotH - s.Scale(yMin)
+		if room >= lowerClearance-1e-6 {
+			return s
+		}
+		// Floor L such that (yMin-L)/(max-L)·plotH = lowerClearance.
+		_, niceMax := s.DomainBounds()
+		lo = (yMin*plotH - lowerClearance*niceMax) / (plotH - lowerClearance)
+	}
+	return s
+}
+
+// barNegativeLabelClearance is the room, in points, a vertical bar chart must
+// leave below its lowest negative bar for that bar's value label: the label
+// gap, the measured label height and a small separation from the category
+// labels under the plot. It is zero when no label hangs below a bar — no
+// negative values, values not shown, or a stacked / log / horizontal chart
+// whose labels are placed elsewhere.
+func barNegativeLabelClearance(b *SVGBuilder, style *StyleGuide, cfg BarChartConfig, yMin float64) float64 {
+	if yMin >= 0 || !cfg.ShowValues || cfg.Stacked || cfg.Horizontal || cfg.Scale == "log" {
+		return 0
+	}
+	// Linear, non-stacked, value-labelled vertical bars always draw in the
+	// labelled layout, so the label uses its font and gap (applyLabelledMode).
+	b.Push()
+	b.SetFontSize(labelledValueFontPt)
+	_, h := b.MeasureText(TrueMinus(cfg.ValueFmt.FormatOr(yMin, cfg.ValueFormat)))
+	b.Pop()
+	h = math.Max(h, labelledValueFontPt)
+	return labelledValueGapPt + h + style.Spacing.XS
 }
 
 // needsLogScale identifies wide positive ranges for a linear-axis warning.
