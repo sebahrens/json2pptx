@@ -106,6 +106,8 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// (go-slide-creator-khzni), so the PresentationInput hash advances.
 	// 4.157.0 adds the DeckSpec regions kind (go-slide-creator-fn2ka); the raw
 	// PresentationInput hash is unchanged.
+	// 4.158.0 adds plan_deck region planning (regions slot, composition role,
+	// unsupported_regions; go-slide-creator-vae7f); the hash is unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "2ffaa76c5867d6cc"
 

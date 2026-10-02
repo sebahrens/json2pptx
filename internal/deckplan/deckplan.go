@@ -32,8 +32,8 @@ import (
 // Slide describes one slide in the planned deck outline.
 type Slide struct {
 	SlideIndex         int    `json:"slide_index"`
-	NarrativeRole      string `json:"narrative_role"`      // "opening", "evidence", "comparison", "emphasis", "framework", "closing"
-	RecommendedPattern string `json:"recommended_pattern"` // "" for the title (opening) and closing slides — they use a structural layout, not a pattern
+	NarrativeRole      string `json:"narrative_role"`      // "opening", "evidence", "comparison", "emphasis", "framework", "composition", "closing"
+	RecommendedPattern string `json:"recommended_pattern"` // "" for the title (opening) and closing slides — they use a structural layout, not a pattern — and for a composition slide, whose skeleton is a shape_grid of regions
 
 	// Layout is the canonical layout_id the slide should use: "title" for the
 	// opening slide, "closing" for the closing slide, and "blank-title" for
@@ -85,6 +85,10 @@ type Slide struct {
 	// recommendation helper (the same one recommend_visual uses); nil when no
 	// template context was supplied (template-agnostic plan, unchanged).
 	TemplateSupport *patterns.TemplateSupport `json:"template_support,omitempty"`
+
+	// Regions describes a composition slide's regions: each one's skeleton
+	// path, position, role, kind and brief facts (go-slide-creator-vae7f).
+	Regions []RegionSlot `json:"regions,omitempty"`
 }
 
 // CellBudget is a single (columns × rows) configuration with the character
@@ -141,6 +145,10 @@ type Result struct {
 	// the deck with repeats (go-slide-creator-whp97). Empty when the plan used
 	// the whole budget.
 	BudgetNote string `json:"budget_note,omitempty"`
+
+	// UnsupportedRegions lists same-slide region requirements the plan could
+	// not honour as asked, each with the reason (go-slide-creator-vae7f).
+	UnsupportedRegions []UnsupportedRegion `json:"unsupported_regions,omitempty"`
 
 	// ResponseFingerprint is a sha256 hex digest of the canonical JSON of this
 	// response with the field zeroed. Agents may use it as a cache key. The
@@ -289,28 +297,40 @@ var narrativeRoleToTaxonomy = map[string][]string{
 // predictor supplies per-slide cell-budget and fit-finding forecasts; pass nil
 // to skip them.
 func BuildDeckPlan(reg *patterns.Registry, p Params, predictor Predictor) *Result {
+	// 0. Region clauses ("left two-thirds a line chart …; upper right a KPI")
+	//    become one composition slide; the rest of the brief is planned as
+	//    before, in the budget that slide leaves (go-slide-creator-vae7f).
+	req := parseRegionRequest(p.Brief)
+	brief, budget := p.Brief, p.SlideBudget
+	if req != nil {
+		brief = req.remainder
+	}
+	if req.draftable() {
+		budget--
+	}
+
 	// 1. Distribute slides across narrative roles.
-	roleSlots, budgetNote := distributeRoles(reg, p.Brief, p.SlideBudget)
+	roleSlots, budgetNote := distributeRoles(reg, brief, budget)
 
 	// 2. Assign patterns to each slot.
-	slides := assignPatterns(reg, p.Brief, p.Audience, roleSlots, p.MustInclude)
+	slides := assignPatterns(reg, brief, p.Audience, roleSlots, p.MustInclude)
 
 	// 3. Enforce rhythm rules — break runs of 3+ and cap emphasis / repeats.
-	slides = enforceRhythm(reg, slides, p.Brief)
+	slides = enforceRhythm(reg, slides, brief)
 
 	// 3b. A straight sequence is a numbered step strip, not a flowchart.
-	preferStepStrip(slides, p.Brief)
+	preferStepStrip(slides, brief)
 
 	// 4. With template context, replace any recommended pattern the template
 	//    cannot host with a supported alternative. Done before predictions so the
 	//    cell budgets / findings / skeleton reflect the final pattern.
 	if p.TemplateCtx != nil {
-		swapInfeasiblePatterns(reg, p.TemplateCtx, slides, p.Brief, p.Audience)
+		swapInfeasiblePatterns(reg, p.TemplateCtx, slides, brief, p.Audience)
 	}
 
 	// 4b. Route the brief's facts (quantities, named entities) into the content
 	//     seeds of the final pattern slots; leftovers become unplaced_facts.
-	unplaced := assignBriefFacts(slides, p.Brief)
+	unplaced := assignBriefFacts(slides, brief)
 
 	// 4c. Drop evidence / comparison / emphasis slots the brief gave nothing
 	//     to show (go-slide-creator-tu35a): placeholder prose is not content.
@@ -322,10 +342,15 @@ func BuildDeckPlan(reg *patterns.Registry, p Params, predictor Predictor) *Resul
 		budgetNote += note
 	}
 
+	// 4d. The composition slide goes right after the opening.
+	if req.draftable() {
+		slides = insertCompositionSlide(slides, req)
+	}
+
 	// 5. Attach per-slot predictions: cell budgets, fit findings, ranked
 	//    alternatives, suggested-pattern triplet, and skeleton. Done after
 	//    rhythm enforcement so the predictions reflect the final pattern choice.
-	attachSlidePredictions(reg, slides, p.Brief, p.Audience, predictor)
+	attachSlidePredictions(reg, slides, brief, p.Audience, predictor)
 
 	// 6. With template context, annotate each slide and alternative with the
 	//    shared recommendation helper's support assessment.
@@ -336,7 +361,7 @@ func BuildDeckPlan(reg *patterns.Registry, p Params, predictor Predictor) *Resul
 	// 7. Build rhythm check.
 	check := computeRhythmCheck(slides)
 
-	return &Result{
+	res := &Result{
 		Slides:        slides,
 		Brief:         p.Brief,
 		SlideBudget:   p.SlideBudget,
@@ -345,6 +370,46 @@ func BuildDeckPlan(reg *patterns.Registry, p Params, predictor Predictor) *Resul
 		Template:      p.TemplateName,
 		BudgetNote:    budgetNote,
 	}
+	if req != nil {
+		res.UnsupportedRegions = req.unsupported
+	}
+	return res
+}
+
+// compositionRole is the narrative role of a slide the brief laid out in
+// regions.
+const compositionRole = "composition"
+
+// insertCompositionSlide adds the regions slide after the opening, with the
+// raw shape_grid skeleton the DeckSpec regions kind compiles to and each
+// region's cell path and facts.
+func insertCompositionSlide(slides []Slide, req *regionRequest) []Slide {
+	skeleton, pathOf, err := req.rawRegionsSlide()
+	if err != nil {
+		return slides
+	}
+	facts := req.facts()
+	comp := Slide{
+		NarrativeRole: compositionRole,
+		Layout:        LayoutPattern,
+		ContentSeed:   strings.Join(facts, ". ") + " — the slide the brief laid out in regions: one title, each region filled from its facts",
+		Facts:         facts,
+		Rationale:     "the brief places these visuals on one slide (arrangement " + req.arrangement + ")",
+		Skeleton:      skeleton,
+		Regions:       req.regionSlots(pathOf),
+	}
+	at := 0
+	if len(slides) > 0 && slides[0].NarrativeRole == "opening" {
+		at = 1
+	}
+	out := make([]Slide, 0, len(slides)+1)
+	out = append(out, slides[:at]...)
+	out = append(out, comp)
+	out = append(out, slides[at:]...)
+	for i := range out {
+		out[i].SlideIndex = i
+	}
+	return out
 }
 
 // patternFeasibleForTemplate reports whether the named pattern can be hosted by
@@ -1330,6 +1395,9 @@ func attachSlidePredictions(reg *patterns.Registry, slides []Slide, brief, audie
 	for i := range slides {
 		if slides[i].Layout == "" {
 			slides[i].Layout = layoutForRole(slides[i].NarrativeRole)
+		}
+		if slides[i].NarrativeRole == compositionRole {
+			continue // its skeleton is the compiled regions grid
 		}
 		if slides[i].RecommendedPattern == "" {
 			// Structural title / closing slide: no pattern, so no pattern

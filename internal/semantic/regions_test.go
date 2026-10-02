@@ -289,6 +289,21 @@ func TestRegionsContract(t *testing.T) {
 	}
 }
 
+// Shares the author left unset split by region kind: a stat takes less than
+// the timeline stacked under it (go-slide-creator-vae7f).
+func TestCompileRegions_UnsetSharesByKind(t *testing.T) {
+	body := chartStatTimeline()
+	for _, r := range body["regions"].([]any) {
+		delete(r.(map[string]any), "size_pct")
+	}
+	slide, _ := compileRegionsOK(t, body)
+	g := slide.ShapeGrid
+	side := g.Rows[0].Cells[1].Grid
+	if string(g.Columns) != "[60,40]" || side.Rows[0].Height != 40 || side.Rows[1].Height != 60 {
+		t.Fatalf("want columns [60,40] and a 40/60 stat/timeline stack, got %s / %g/%g", g.Columns, side.Rows[0].Height, side.Rows[1].Height)
+	}
+}
+
 // A regions slide counts as its main region's visual family, and as data
 // evidence when it shows figures.
 func TestNormalizeRegionsFamily(t *testing.T) {

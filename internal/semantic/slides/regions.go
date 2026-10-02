@@ -143,33 +143,52 @@ func RegionSizePct(region map[string]any) float64 {
 	return 0
 }
 
-// ResolveShares fills unset shares (0) with an equal split of what the set
-// ones leave, so the group sums to 100. It reports an error when the set
-// shares leave nothing for the unset ones or, with every share set, do not
-// sum to 100 (±1 for rounding).
-func ResolveShares(shares []float64) ([]float64, error) {
+// regionWeight is a region kind's claim on space a share was not authored
+// for: a stat needs less than the timeline or table stacked with it, and a
+// chart more than either (go-slide-creator-vae7f).
+var regionWeight = map[string]float64{RegionStat: 2, RegionChart: 4}
+
+func regionWeightOf(r map[string]any) float64 {
+	if w, ok := regionWeight[strField(r, "kind")]; ok {
+		return w
+	}
+	return 3
+}
+
+// ResolveShares fills unset shares (0) with what the set ones leave, split in
+// proportion to weights (nil: equally), so the group sums to 100. It reports
+// an error when an unset share would fall under RegionMinSizePct or, with
+// every share set, the shares do not sum to 100 (±1 for rounding).
+func ResolveShares(shares, weights []float64) ([]float64, error) {
 	out := append([]float64(nil), shares...)
-	sum, unset := 0.0, 0
-	for _, s := range shares {
+	sum, unsetWeight := 0.0, 0.0
+	weight := func(i int) float64 {
+		if i < len(weights) && weights[i] > 0 {
+			return weights[i]
+		}
+		return 1
+	}
+	for i, s := range shares {
 		if s > 0 {
 			sum += s
 		} else {
-			unset++
+			unsetWeight += weight(i)
 		}
 	}
-	if unset == 0 {
+	if unsetWeight == 0 {
 		if math.Abs(sum-100) > 1 {
 			return nil, fmt.Errorf("the size_pct values sum to %g; they must sum to 100", sum)
 		}
 		return out, nil
 	}
 	rest := 100 - sum
-	if rest/float64(unset) < RegionMinSizePct {
-		return nil, fmt.Errorf("the set size_pct values sum to %g, leaving %g%% for %d region(s) without one; each region needs at least %d%%", sum, math.Max(rest, 0), unset, RegionMinSizePct)
-	}
 	for i := range out {
-		if out[i] <= 0 {
-			out[i] = rest / float64(unset)
+		if out[i] > 0 {
+			continue
+		}
+		out[i] = math.Round(rest*weight(i)/unsetWeight*100) / 100
+		if out[i] < RegionMinSizePct {
+			return nil, fmt.Errorf("the set size_pct values sum to %g, leaving %g%% for the region(s) without one; each region needs at least %d%%", sum, math.Max(rest, 0), RegionMinSizePct)
 		}
 	}
 	return out, nil
@@ -178,15 +197,18 @@ func ResolveShares(shares []float64) ([]float64, error) {
 // RegionGroupShares resolves the shares of the two size groups of a regions
 // payload: the main axis (columns / rows: every region; main_*: the main
 // region and the stack) and, for main_* arrangements, the stack's own split.
+// Unset shares are split by region kind (see regionWeight).
 func RegionGroupShares(body map[string]any) (axis, stack []float64, err error) {
 	regions := RegionList(body)
 	arrangement := RegionArrangementOf(body)
 	if !IsMainArrangement(arrangement) {
 		shares := make([]float64, len(regions))
+		weights := make([]float64, len(regions))
 		for i, r := range regions {
 			shares[i] = RegionSizePct(r)
+			weights[i] = regionWeightOf(r)
 		}
-		axis, err = ResolveShares(shares)
+		axis, err = ResolveShares(shares, weights)
 		return axis, nil, err
 	}
 	if len(regions) != 3 {
@@ -197,7 +219,9 @@ func RegionGroupShares(body map[string]any) (axis, stack []float64, err error) {
 		main = RegionDefaultMainPct
 	}
 	axis = []float64{main, 100 - main}
-	stack, err = ResolveShares([]float64{RegionSizePct(regions[1]), RegionSizePct(regions[2])})
+	stack, err = ResolveShares(
+		[]float64{RegionSizePct(regions[1]), RegionSizePct(regions[2])},
+		[]float64{regionWeightOf(regions[1]), regionWeightOf(regions[2])})
 	return axis, stack, err
 }
 
