@@ -357,6 +357,26 @@ With no `fit`, an image in a **body / content** placeholder (every template with
 }
 ```
 
+### `OVERLAY_TARGET_CROPPED`
+
+**Action:** `review`
+**Fix kind:** `review`
+**Emitted at:** render (generate / render_deck_spec / score_deck)
+
+A slide overlay endpoint uses `anchor_image` to target a point on a `shape_grid` image cell's source picture, and the cover crop of that cell's frame trims the point away (a 1600×900 screenshot cover-filled into a square shows only source x 0.219–0.781). The engine never points the overlay at a different part of the picture: an `arrow` / `line` is omitted, a `callout` keeps its label (wording unchanged) without its leader, and a `badge` is placed at the nearest visible picture edge. `fix.params.visible_x` / `visible_y` give the source interval the frame shows (go-slide-creator-kkc5t).
+
+Fix: set the image cell's `image.fit` to `"contain"` (the whole picture stays visible), give the cell a frame closer to the picture's aspect, or move the target inside the visible interval.
+
+```json
+{
+  "path": "/slides/2/overlays/0/to/anchor_image",
+  "code": "OVERLAY_TARGET_CROPPED",
+  "message": "overlay 0: image target (0.080, 0.200) on shape_grid image cell [0,0] is cropped away — the frame shows source x 0.219–0.781, y 0.000–1.000; the leader was omitted; the label is kept",
+  "fix": { "kind": "review", "params": { "path": "/slides/2/overlays/0/to/anchor_image", "visible_x": [0.21875, 0.78125], "visible_y": [0, 1], "hint": "set the image cell's image.fit to \"contain\" to keep the whole picture, give the cell a frame closer to the picture's aspect, or move the target inside the visible interval" } },
+  "action": "review"
+}
+```
+
 ### `CHROME_OVER_IMAGE`
 
 **Action:** `info`

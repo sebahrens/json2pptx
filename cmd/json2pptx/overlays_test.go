@@ -71,7 +71,7 @@ func TestResolveOverlays_MatrixDiagonalArrows(t *testing.T) {
 	}
 
 	alloc := newAllocFrom(400)
-	frags, err := resolveOverlays(overlays, cells, alloc, 0, 0, nil)
+	frags, _, err := resolveOverlays(overlays, cells, alloc, 0, 0, overlayEnv{})
 	if err != nil {
 		t.Fatalf("resolveOverlays: %v", err)
 	}
@@ -144,7 +144,7 @@ func TestResolveOverlays_CenterArrowsAvoidLabelCenters(t *testing.T) {
 	}
 
 	alloc := newAllocFrom(400)
-	frags, err := resolveOverlays(overlays, cells, alloc, 0, 0, nil)
+	frags, _, err := resolveOverlays(overlays, cells, alloc, 0, 0, overlayEnv{})
 	if err != nil {
 		t.Fatalf("resolveOverlays: %v", err)
 	}
@@ -199,7 +199,7 @@ func TestResolveOverlays_StrokeColorFlipsForContrast(t *testing.T) {
 	}
 
 	alloc := newAllocFrom(400)
-	frags, err := resolveOverlays(overlays, cells, alloc, 0, 0, nil)
+	frags, _, err := resolveOverlays(overlays, cells, alloc, 0, 0, overlayEnv{})
 	if err != nil {
 		t.Fatalf("resolveOverlays: %v", err)
 	}
@@ -244,7 +244,7 @@ func TestResolveOverlays_StrokeColorFlipUsesTheme(t *testing.T) {
 	theme = append(theme, types.ThemeColor{Name: "dk1", RGB: "#000000"})
 
 	alloc := newAllocFrom(400)
-	frags, err := resolveOverlays(overlays, cells, alloc, 0, 0, theme)
+	frags, _, err := resolveOverlays(overlays, cells, alloc, 0, 0, overlayEnv{ThemeColors: theme})
 	if err != nil {
 		t.Fatalf("resolveOverlays: %v", err)
 	}
@@ -283,7 +283,7 @@ func TestResolveOverlays_LinePercent(t *testing.T) {
 	}
 	alloc := newAllocFrom(400)
 	// Use 16:9 default: 9144000 x 5143500 EMU.
-	frags, err := resolveOverlays(overlays, nil, alloc, 9144000, 5143500, nil)
+	frags, _, err := resolveOverlays(overlays, nil, alloc, 9144000, 5143500, overlayEnv{})
 	if err != nil {
 		t.Fatalf("resolveOverlays: %v", err)
 	}
@@ -316,7 +316,7 @@ func TestResolveOverlays_Badge(t *testing.T) {
 		},
 	}
 	alloc := newAllocFrom(400)
-	frags, err := resolveOverlays(overlays, nil, alloc, 9144000, 5143500, nil)
+	frags, _, err := resolveOverlays(overlays, nil, alloc, 9144000, 5143500, overlayEnv{})
 	if err != nil {
 		t.Fatalf("resolveOverlays: %v", err)
 	}
@@ -346,7 +346,7 @@ func TestResolveOverlays_AnchorOutOfRangeError(t *testing.T) {
 		},
 	}
 	alloc := newAllocFrom(400)
-	_, err := resolveOverlays(overlays, makeMatrix2x2Cells(), alloc, 9144000, 5143500, nil)
+	_, _, err := resolveOverlays(overlays, makeMatrix2x2Cells(), alloc, 9144000, 5143500, overlayEnv{})
 	if err == nil {
 		t.Fatal("expected error for missing anchor cell")
 	}
@@ -372,7 +372,7 @@ func TestResolveOverlays_MissingFieldsErrors(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			alloc := newAllocFrom(400)
-			_, err := resolveOverlays([]*OverlayShapeInput{tc.ov}, nil, alloc, 9144000, 5143500, nil)
+			_, _, err := resolveOverlays([]*OverlayShapeInput{tc.ov}, nil, alloc, 9144000, 5143500, overlayEnv{})
 			if err == nil {
 				t.Fatal("expected error")
 			}

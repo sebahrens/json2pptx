@@ -278,6 +278,19 @@ var findingMetaRegistry = map[string]FindingMeta{
 		ExampleAfter:  `{"type":"image","image_value":{"path":"portrait.jpg","fit":"contain"}}`,
 		RelatedCodes:  []string{ErrCodeTextOverImageUnverified},
 	},
+	ErrCodeOverlayTargetCropped: {
+		Code:        ErrCodeOverlayTargetCropped,
+		Summary:     "An overlay endpoint targets a source-image point the picture's crop trims away, so its leader was omitted.",
+		Severity:    "review",
+		WhenEmitted: "Render-time resolution of a slide overlay whose from / to uses anchor_image on a shape_grid image cell, when the cover crop of that cell's frame hides the target. An arrow or line is omitted, a callout keeps its label (wording unchanged) without a leader, and a badge is placed at the nearest visible picture edge — never silently pointed at another region. fix.params.visible_x / visible_y give the source interval the frame shows.",
+		RemediationSteps: []string{
+			"Set the image cell's image.fit to \"contain\" so the whole picture (and every target) stays visible.",
+			"Or give the image cell a frame closer to the picture's aspect (image.fit \"cover\" in a cell of matching shape), or move the target inside the reported visible interval.",
+		},
+		ExampleBefore: `{"kind":"callout","text":"1 Delayed queue","from":{"x":70,"y":30},"to":{"anchor_image":{"row":0,"col":0,"x":0.08,"y":0.4}}}`,
+		ExampleAfter:  `{"image":{"path":"screens/queue.png","fit":"contain"}}`,
+		RelatedCodes:  []string{ErrCodeImageHeavyCrop},
+	},
 	ErrCodeChromeOverImage: {
 		Code:        ErrCodeChromeOverImage,
 		Summary:     "Footer text / page number / date were omitted on a slide where a picture covers the footer band.",

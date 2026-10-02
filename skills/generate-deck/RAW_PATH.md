@@ -100,7 +100,11 @@ A `slide_type: "image"` slide on a template without a picture layout fills
 One Content's body with the whole picture (no crop); cover discarding over 30%
 reports `IMAGE_HEAVY_CROP`, and a photo over the footer band drops that
 slide's chrome (`CHROME_OVER_IMAGE`). A shape-grid `image` cell accepts
-`geometry: "ellipse"` for a circular frame (RULES.md 6d).
+`geometry: "ellipse"` for a circular frame and `fit: "contain"` to keep a
+screenshot whole (RULES.md 6d). Numbered callouts on a screenshot use overlay
+`kind: "callout"` with an `anchor_image` target in source-image fractions or
+pixels, so leaders stay on their pixels through crop and layout changes; a
+target the crop hides reports `OVERLAY_TARGET_CROPPED` (RULES.md 6f).
 
 Use bundled icon names from `list_icons`, qualified by set when necessary;
 do not put emoji codepoints in deck JSON. A pattern icon slot may take a

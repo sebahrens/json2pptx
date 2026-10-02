@@ -1,0 +1,234 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "exhibit-callouts.pptx",
+  "slides": [
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Payments settlement is 47 minutes behind while every other queue is current"
+        }
+      ],
+      "shape_grid": {
+        "columns": [
+          64,
+          36
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "image": {
+                  "path": "images/ops-console.png",
+                  "alt": "OpsConsole queue health table: payments.settle holds 14,860 messages, oldest 47 min, status DELAYED",
+                  "fit": "cover"
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "The backlog sits in one queue. Settlement retries pile up behind a single slow downstream call, so the fix is scoped to the Payments team.",
+                    "align": "l",
+                    "vertical_align": "b"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "overlays": [
+        {
+          "kind": "callout",
+          "text": "1  Delayed queue",
+          "from": {
+            "x": 68,
+            "y": 24
+          },
+          "to": {
+            "anchor_image": {
+              "row": 0,
+              "col": 0,
+              "x": 560,
+              "y": 484,
+              "units": "px"
+            }
+          }
+        },
+        {
+          "kind": "callout",
+          "text": "2  Status badge: DELAYED",
+          "from": {
+            "x": 68,
+            "y": 40
+          },
+          "to": {
+            "anchor_image": {
+              "row": 0,
+              "col": 0,
+              "x": 1182,
+              "y": 484,
+              "units": "px"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "The same callouts stay on their pixels in a square, cover-cropped frame"
+        }
+      ],
+      "shape_grid": {
+        "columns": [
+          48,
+          52
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "fit": "contain",
+                "image": {
+                  "path": "images/ops-console.png",
+                  "alt": "OpsConsole queue health table: payments.settle holds 14,860 messages, oldest 47 min, status DELAYED"
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "A square frame shows only the middle of the screenshot, yet both leaders still land on the queue name and its status badge.",
+                    "align": "l",
+                    "vertical_align": "b"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "overlays": [
+        {
+          "kind": "callout",
+          "text": "1  Delayed queue",
+          "from": {
+            "x": 56,
+            "y": 24
+          },
+          "to": {
+            "anchor_image": {
+              "row": 0,
+              "col": 0,
+              "x": 560,
+              "y": 484,
+              "units": "px"
+            }
+          }
+        },
+        {
+          "kind": "callout",
+          "text": "2  Status badge: DELAYED",
+          "from": {
+            "x": 56,
+            "y": 40
+          },
+          "to": {
+            "anchor_image": {
+              "row": 0,
+              "col": 0,
+              "x": 1182,
+              "y": 484,
+              "units": "px"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Kept whole with fit contain, the screenshot letterboxes and the leaders follow it"
+        }
+      ],
+      "shape_grid": {
+        "columns": [
+          72,
+          28
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "image": {
+                  "path": "images/ops-console.png",
+                  "alt": "OpsConsole queue health table: payments.settle holds 14,860 messages, oldest 47 min, status DELAYED",
+                  "fit": "contain"
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "Contain never crops evidence: every target stays reachable whatever the frame.",
+                    "align": "l",
+                    "vertical_align": "b"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "overlays": [
+        {
+          "kind": "callout",
+          "text": "1  Delayed queue",
+          "from": {
+            "x": 75,
+            "y": 24
+          },
+          "to": {
+            "anchor_image": {
+              "row": 0,
+              "col": 0,
+              "x": 560,
+              "y": 484,
+              "units": "px"
+            }
+          }
+        },
+        {
+          "kind": "callout",
+          "text": "2  Status badge: DELAYED",
+          "from": {
+            "x": 75,
+            "y": 40
+          },
+          "to": {
+            "anchor_image": {
+              "row": 0,
+              "col": 0,
+              "x": 1182,
+              "y": 484,
+              "units": "px"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

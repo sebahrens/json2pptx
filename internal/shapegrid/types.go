@@ -269,8 +269,11 @@ type ImageSpec struct {
 	Alt  string // Alt text / description for accessibility
 	// Geometry is the picture frame's preset shape: "" / "rect" or "ellipse".
 	Geometry string
-	Overlay  *OverlaySpec // Optional semi-transparent overlay on top of image
-	Text     *ImageText   // Optional text label rendered on top of image (and overlay)
+	// Fit is the raster placement inside the frame: "" / "cover" or
+	// "contain" (whole picture, centred).
+	Fit     string
+	Overlay *OverlaySpec // Optional semi-transparent overlay on top of image
+	Text    *ImageText   // Optional text label rendered on top of image (and overlay)
 }
 
 // OverlaySpec defines a semi-transparent color overlay rendered on top of an image.

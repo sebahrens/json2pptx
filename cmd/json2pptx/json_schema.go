@@ -31,6 +31,7 @@ type TableStyleInput = jsonschema.TableStyleInput
 type OverlayShapeInput = jsonschema.OverlayShapeInput
 type OverlayPointInput = jsonschema.OverlayPointInput
 type OverlayAnchorCellInput = jsonschema.OverlayAnchorCellInput
+type OverlayAnchorImageInput = jsonschema.OverlayAnchorImageInput
 
 // ---------------------------------------------------------------------------
 // Type aliases for the raw deck input model now defined in internal/deckinput.

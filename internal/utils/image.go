@@ -2,10 +2,8 @@
 package utils
 
 import (
-	"image"
 	_ "image/jpeg" // Register JPEG decoder
 	_ "image/png"  // Register PNG decoder
-	"os"
 
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -23,44 +21,9 @@ const EMUsPerPixel = int64(types.EMUPerPixel)
 // fitting within the provided bounds. The resulting position is centered within
 // the original bounds.
 func ScaleImageToFit(imagePath string, bounds types.BoundingBox) (types.BoundingBox, error) {
-	// Open image to get dimensions
-	f, err := os.Open(imagePath)
+	w, h, err := ImagePixelSize(imagePath)
 	if err != nil {
 		return bounds, err
 	}
-	defer func() { _ = f.Close() }()
-
-	img, _, err := image.DecodeConfig(f)
-	if err != nil {
-		return bounds, err
-	}
-
-	// Convert pixel dimensions to EMUs
-	imgWidthEMU := int64(img.Width) * EMUsPerPixel
-	imgHeightEMU := int64(img.Height) * EMUsPerPixel
-
-	// Calculate scale factors
-	scaleX := float64(bounds.Width) / float64(imgWidthEMU)
-	scaleY := float64(bounds.Height) / float64(imgHeightEMU)
-
-	// Use the smaller scale to maintain aspect ratio
-	scale := scaleX
-	if scaleY < scaleX {
-		scale = scaleY
-	}
-
-	// Calculate new dimensions
-	newWidth := int64(float64(imgWidthEMU) * scale)
-	newHeight := int64(float64(imgHeightEMU) * scale)
-
-	// Center the image in the placeholder
-	offsetX := bounds.X + (bounds.Width-newWidth)/2
-	offsetY := bounds.Y + (bounds.Height-newHeight)/2
-
-	return types.BoundingBox{
-		X:      offsetX,
-		Y:      offsetY,
-		Width:  newWidth,
-		Height: newHeight,
-	}, nil
+	return containBounds(w, h, bounds), nil
 }

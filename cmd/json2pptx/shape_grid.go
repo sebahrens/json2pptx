@@ -1061,6 +1061,7 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 			Path:     c.Image.Path,
 			Alt:      c.Image.Alt,
 			Geometry: c.Image.Geometry,
+			Fit:      c.Image.Fit,
 		}
 		if c.Image.Overlay != nil {
 			imgSpec.Overlay = &shapegrid.OverlaySpec{
@@ -1315,6 +1316,7 @@ func generateImageCellXML(cell shapegrid.ResolvedCell, alloc *pptx.ShapeIDAlloca
 		Path:     cell.ImageSpec.Path,
 		Alt:      cell.ImageSpec.Alt,
 		Geometry: cell.ImageSpec.Geometry,
+		Fit:      cell.ImageSpec.Fit,
 		OffsetX:  cell.Bounds.X,
 		OffsetY:  cell.Bounds.Y,
 		ExtentCX: cell.Bounds.CX,

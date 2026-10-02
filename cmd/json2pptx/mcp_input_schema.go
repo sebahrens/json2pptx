@@ -197,6 +197,7 @@ var enumMap = map[string]map[string][]string{
 	},
 	"GridImageInput": {
 		"geometry": {"rect", "ellipse"},
+		"fit":      {"cover", "contain"},
 	},
 	"ImageInput": {"fit": generator.ValidImageFits()},
 	"BackgroundInput": {

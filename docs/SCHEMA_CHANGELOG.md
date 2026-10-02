@@ -80,6 +80,29 @@
     views proving one title share a slide and point at that example. Additive,
     opt-in response field; no `SchemaVersion` bump.
 
+- **2026-10-02 — Schema 4.157.0 · Exhibit callouts anchored to source-image points (`go-slide-creator-kkc5t`).**
+  - Overlay endpoints (`from` / `to`) gain **`anchor_image: {row, col, x, y,
+    units?}`**: a point on a `shape_grid` image cell's source picture, in
+    0–1 fractions (default) or intrinsic pixels (`units: "px"`). It resolves
+    through the same cover / contain placement as the picture
+    (`generator.GridImagePlacement` → `utils.PlaceImage`, now also used by
+    native placeholder images), so leaders stay on their pixels across frame
+    aspect, fit and template changes. Both `anchor_cell` and `anchor_image`,
+    coordinates outside the image, or `px` on an image whose size cannot be
+    read are errors.
+  - New overlay **`kind: "callout"`**: a native 12pt bold label (`text`
+    required; top-left at `from`; sized to its text unless `width` / `height`
+    slide-percent are set; ink chosen for contrast with `color`) plus a leader
+    from the label edge to `to`, ending in a dot.
+  - `shape_grid` image cells gain **`image.fit`**: `"cover"` (default,
+    unchanged output) or `"contain"` (whole raster picture centred in its
+    frame).
+  - New review finding **`OVERLAY_TARGET_CROPPED`**: an `anchor_image` target
+    the cover crop hides; the arrow / line is omitted, a callout keeps its
+    label without a leader, a badge sits at the nearest visible edge.
+  - The PresentationInput fingerprint is unchanged (overlay and image-cell
+    structs sit outside the hashed set). Existing decks render byte-identical.
+
 - **2026-10-02 — plan_deck keeps whole comparisons and drafts an option matrix for "compare A with B" (`go-slide-creator-ze5u7`, `-fu6uy`).**
   - Brief facts are no longer truncated at 120 characters: a long clause is
     split (at a joining word, then at a word boundary outside brackets, never

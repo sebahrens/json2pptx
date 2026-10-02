@@ -34,7 +34,7 @@ func TestHyperlinkInputConversion(t *testing.T) {
 	if err != nil || !strings.Contains(string(gridXML), `action="ppaction://hlinksldjump"`) {
 		t.Fatalf("grid link not emitted: %s, %v", gridXML, err)
 	}
-	overlays, err := resolveOverlays(slide.Overlays, nil, &pptx.ShapeIDAllocator{}, 10000000, 6000000, nil)
+	overlays, _, err := resolveOverlays(slide.Overlays, nil, &pptx.ShapeIDAllocator{}, 10000000, 6000000, overlayEnv{})
 	if err != nil || len(overlays) != 1 || !strings.Contains(string(overlays[0]), `r:id="json2pptx_overlay_link_0"`) {
 		t.Fatalf("badge link not emitted: %v, %v", overlays, err)
 	}
