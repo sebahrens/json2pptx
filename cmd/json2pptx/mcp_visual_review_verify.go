@@ -11,7 +11,10 @@
 //
 // Verification compares each submitted pixel hash against the renders this
 // server already produced for that exact PPTX (the render cache keys by file
-// hash + density, so every density the deck was rendered at counts). It never
+// hash + density, so every density the deck was rendered at counts). A "pixel
+// hash" is pixelhash.Sum — decoded dimensions + RGBA, PNG metadata ignored — so
+// a forced re-render of an unchanged slide, whose PNG carries fresh timestamp
+// chunks, still matches an image reviewed earlier (go-slide-creator-sr3xk). It never
 // invokes LibreOffice: a deck with no cached render is *unverifiable*, not
 // *wrong*, and an unverifiable review is recorded without the completion status
 // instead of being rejected.

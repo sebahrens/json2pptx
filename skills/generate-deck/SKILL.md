@@ -75,7 +75,9 @@ render), `blocking_reasons` and `next_tool_call` (blocking fix, else
 `content_hash`). `deterministic_ready` is a precondition, not proof anybody
 looked: submit a verdict only after inspecting each current-revision image; it
 never clears deterministic blockers (`reviewed_deterministic_blockers`).
-Any changed slide invalidates its previous visual verdict. If a finding is
+Any changed slide invalidates its previous visual verdict. Image identity
+(`content_hash`, `image_sha256`) is a pixel hash, so a forced re-render of an
+unchanged revision keeps earlier image paths/hashes valid for the review. If a finding is
 unfamiliar, call `describe_finding`; use
 `get_capabilities().vocabularies.repair_fix_kinds` to distinguish executable
 repairs from advice. Do not retry an advisory fix kind as though it were an
