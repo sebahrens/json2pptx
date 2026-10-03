@@ -442,9 +442,9 @@ func schemaMaximumValues(pat patterns.Pattern) (any, string) {
 var schemaMaximaShrinkPt = map[string]float64{
 	"agenda":                       7.8, // Rule-based agenda (go-slide-creator-r3gsw): wider item column; nested cells measured (bzh34).
 	"agenda-with-images":           4.3,
-	"arch-stack":                   4.1, // twelve 40-character component blocks per tier (go-slide-creator-6h1fy)
-	"before-after":                 5.5, // rows floored at written fit (n1muf)
-	"before-after-compact":         7.2, // rows floored at written fit (n1muf); real bullets, no typed "• " prefix (zieyk)
+	"arch-stack":                   4.1,  // twelve 40-character component blocks per tier (go-slide-creator-6h1fy)
+	"before-after":                 5.5,  // rows floored at written fit (n1muf)
+	"before-after-compact":         11.0, // rows floored at written fit (n1muf); real bullets (zieyk); no 60% bounds box, the pinned rows share the whole area (yhzxt)
 	"bmc-canvas":                   2.4,
 	"capability-heatmap":           3.8,
 	"card-grid":                    2.4,

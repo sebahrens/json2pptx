@@ -509,6 +509,23 @@ func measureTimelineDots(ctx ExpandContext, stops TimelineHorizontalValues, ovr 
 		stages = append(stages, stage{label: label})
 	}
 	stages = append(stages, stage{label, timelineTrimOuter}, stage{label, timelineTrimAll})
+	// A sparse timeline — a few stops with one-line descriptions — promotes
+	// its date and body to the label's size: three stops at 12pt under their
+	// dots left most of the slide to the axis (go-slide-creator-yhzxt). The
+	// promotion is taken only when the promoted block needs no more than
+	// timelineSparseMaxFrac of the area, so a timeline that carries real copy,
+	// or sits in a short cell, keeps the sizes its budgets are measured at.
+	if ovr.LabelSize == 0 && ovr.BodySize == 0 && ovr.DateSize == 0 {
+		promoted := *ovr
+		promoted.BodySize, promoted.DateSize = scaleSubheadPt, scaleSubheadPt
+		fit := measureTimelineDotsAt(ctx, stops, &promoted, cellOverrides, accent, scaleSubheadPt, timelineTrimNone)
+		_, contentH := contentAreaPt(ctx)
+		block := fit.dateRowPt + timelineDotSizePt + math.Max(fit.stopNeedPt, fit.modelStopPt) + 2*ctx.Gap(timelineDotsRowGapPt)
+		if fit.fits() && block <= contentH*timelineSparseMaxFrac && timelineStopsHoldLeadStep(ctx, stops) {
+			fit.stopRowPt = math.Max(fit.modelStopPt, fit.stopNeedPt)
+			return fit
+		}
+	}
 	var fit timelineDotsFit
 	for _, st := range stages {
 		if fit = measureTimelineDotsAt(ctx, stops, ovr, cellOverrides, accent, st.label, st.trim); fit.fits() {
@@ -520,6 +537,34 @@ func measureTimelineDots(ctx ExpandContext, stops TimelineHorizontalValues, ovr 
 		fit.stopRowPt = math.Max(fit.modelStopPt, math.Min(fit.stopNeedPt, fit.stopAvailPt))
 	}
 	return fit
+}
+
+// timelineStopsHoldLeadStep reports whether every date stays on one line and
+// every label word stays whole in its stop column at the lead step — the size
+// the placement policy may step a promoted timeline to. Narrow stop columns
+// (many stops, a regions cell) keep the pattern's own sizes.
+func timelineStopsHoldLeadStep(ctx ExpandContext, stops TimelineHorizontalValues) bool {
+	contentW, _ := contentAreaPt(ctx)
+	textW := equalColumnWidthPt(contentW, len(stops), ctx.Gap(timelineDotsColGapPt)) - 2*defaultShapeInsetLRPt
+	font := ctx.Theme.BodyFont
+	for _, stop := range stops {
+		if stop.Date != "" && measuredLines(stop.Date, font, true, scaleLeadPt, textW*0.9) > 1 {
+			return false
+		}
+		for _, word := range strings.Fields(stop.Label) {
+			if measuredLines(word, font, true, scaleLeadPt, textW*0.9) > 1 {
+				return false
+			}
+		}
+		// A description short enough to be a label stays on one line: the
+		// step refuses to wrap one (shapegrid.ComposeLabelMaxWords), and the
+		// promoted timeline would then be left unstepped.
+		if len(strings.Fields(stop.Body)) <= shapegrid.ComposeLabelMaxWords && measuredLines(stop.Body, font, false, scaleSubheadPt, textW) == 1 &&
+			measuredLines(stop.Body, font, false, scaleLeadPt, textW*0.9) > 1 {
+			return false
+		}
+	}
+	return true
 }
 
 // measureTimelineDotsAt measures one stage of measureTimelineDots.
@@ -613,6 +658,9 @@ const (
 	timelineDotsMinRowGapPt = 0.1
 	// timelineStopMaxHeightFrac caps the label/body zone under each dot.
 	timelineStopMaxHeightFrac = 0.4
+	// timelineSparseMaxFrac is the share of the content height a dots
+	// timeline may need at its promoted sizes and still count as sparse.
+	timelineSparseMaxFrac = 0.6
 	// timelineChevronMaxHeightFrac caps the chevron row in chevron style.
 	timelineChevronMaxHeightFrac = 0.25
 )

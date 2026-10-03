@@ -696,7 +696,7 @@ func resolveGridBounds(input *ShapeGridInput, overrideBounds *pptx.RectEmu, zone
 // vertical_align: "center" centres it in the content area (which already
 // excludes the takeaway/source chrome band — see reserveTakeawayBand),
 // "bottom" anchors it at the bottom. This is how height-capped patterns
-// (numbered-step-strip, *-compact, kpi-inline) avoid leaving the lower half of
+// (numbered-step-strip's chevron style) avoid leaving the lower half of
 // the slide empty. Explicit non-zero y offsets are kept as authored.
 //
 // A top-placed box (explicit top, or auto on a box under 60% of the area)
@@ -751,8 +751,10 @@ func boxBlockComposed(input *ShapeGridInput, overrideBounds *pptx.RectEmu, zone 
 // boxComposes is the composition policy's test for a bounds box b inside
 // content: vertical_align "auto", clearly smaller than the area, and the box
 // itself is the block — its rows fill it. A box whose rows are content-sized
-// inside it (the *-compact variants cap a band and size the rows within) is a
-// band under the title by design and keeps hanging from the body line.
+// inside it is not: its block is smaller than the box. No bundled pattern
+// emits one any more (the *-compact variants pin their rows and set no box,
+// so shapegrid's Grid.Compose places them); a hand-built grid that does keeps
+// hanging from the body line.
 func boxComposes(input *ShapeGridInput, align shapegrid.VerticalAlign, b, content pptx.RectEmu) bool {
 	if align != shapegrid.VAlignAuto || !shapegrid.IsSparseBlock(b.CY, content.CY) {
 		return false

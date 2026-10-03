@@ -4,12 +4,13 @@
   "columns": [
     1,
     0.7,
-    8
+    2.88,
+    5.12
   ],
   "rows": [
     {
-      "min_height": 59,
-      "max_height": 59,
+      "min_height": 50,
+      "max_height": 50,
       "cells": [
         {
           "shape": {
@@ -54,7 +55,19 @@
                   "bold": true,
                   "color": "dk1",
                   "align": "l"
-                },
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
                 {
                   "content": "Map the current state and surface the constraints.",
                   "size": 10,
@@ -70,8 +83,8 @@
       ]
     },
     {
-      "min_height": 59,
-      "max_height": 59,
+      "min_height": 50,
+      "max_height": 50,
       "cells": [
         {
           "shape": {
@@ -110,12 +123,6 @@
                   "bold": true,
                   "color": "dk1",
                   "align": "l"
-                },
-                {
-                  "content": "Shape the target operating model and the roadmap.",
-                  "size": 10,
-                  "color": "dk2",
-                  "align": "l"
                 }
               ],
               "align": "l",
@@ -127,12 +134,30 @@
             "color": "accent1",
             "width": 4
           }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Shape the target operating model and the roadmap.",
+                  "size": 10,
+                  "color": "dk2",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
         }
       ]
     },
     {
-      "min_height": 59,
-      "max_height": 59,
+      "min_height": 50,
+      "max_height": 50,
       "cells": [
         {
           "shape": {
@@ -177,7 +202,19 @@
                   "bold": true,
                   "color": "dk1",
                   "align": "l"
-                },
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
                 {
                   "content": "Stand up the capability and migrate the workload.",
                   "size": 10,

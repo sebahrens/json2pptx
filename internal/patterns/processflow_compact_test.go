@@ -26,13 +26,14 @@ func TestProcessFlowCompactPointedStepsKeepReadableTextWidth(t *testing.T) {
 			if err != nil {
 				t.Fatalf("expand: %v", err)
 			}
-			if grid.Bounds == nil {
-				t.Fatal("missing compact bounds")
+			if grid.Bounds != nil || grid.Rows[0].MaxHeight <= 0 {
+				t.Fatalf("compact band must be a content-sized row with no bounds box: bounds %+v, max_height %v", grid.Bounds, grid.Rows[0].MaxHeight)
 			}
 			width, bandCap := processFlowCompactCellSize(ctx, len(tc.steps), processFlowStepGapPt(ctx, tc.steps), true)
 			_, contentHeight := contentAreaPt(ctx)
 			// Content-sized at or below the pointed cap (go-slide-creator-xb06p).
-			height := grid.Bounds.Height / 100 * contentHeight
+			height := grid.Rows[0].MaxHeight
+			_ = contentHeight
 			if height <= 0 || height > bandCap+0.01 {
 				t.Fatalf("rendered band height = %.2fpt, want content-sized within the %.2fpt cap", height, bandCap)
 			}
@@ -118,16 +119,17 @@ func TestProcessFlowCompact_ExpandBasic(t *testing.T) {
 		t.Fatalf("Expand: %v", err)
 	}
 
-	// Bounds are content-sized at or below the compact cap
-	// (go-slide-creator-xb06p).
-	if grid.Bounds == nil {
-		t.Fatal("expected bounds to be set for compact variant")
+	// The band is content-sized at or below the compact cap
+	// (go-slide-creator-xb06p), as a pinned row (go-slide-creator-yhzxt).
+	if grid.Bounds != nil {
+		t.Fatalf("compact variant sets a bounds box %+v; its band is a content-sized row", grid.Bounds)
 	}
-	if grid.Bounds.Height <= 0 || grid.Bounds.Height > processFlowCompactHeightPct {
-		t.Errorf("expected bounds height within (0, %v], got %v", processFlowCompactHeightPct, grid.Bounds.Height)
+	_, areaH := contentAreaPt(ExpandContext{})
+	if h := grid.Rows[0].MaxHeight; h <= 0 || h > areaH*processFlowCompactHeightPct/100+0.5 {
+		t.Errorf("expected band height within (0, %.0fpt], got %v", areaH*processFlowCompactHeightPct/100, h)
 	}
-	if grid.Bounds.Width != 100 {
-		t.Errorf("expected bounds width 100, got %v", grid.Bounds.Width)
+	if grid.VerticalAlign != GridVerticalAlignDefault {
+		t.Errorf("vertical_align = %q, want %q", grid.VerticalAlign, GridVerticalAlignDefault)
 	}
 
 	if len(grid.Rows) != 1 {

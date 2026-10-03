@@ -98,13 +98,52 @@ func driverTreeNeedPt(fonts pptx.ThemeFonts, text json.RawMessage, widthPt, size
 }
 
 // expandNodes renders the tree as label-sized nodes joined by elbow links.
+func (dt *driverTree) expandNodes(ctx ExpandContext, vals *DriverTreeValues, ovr *DriverTreeOverrides, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
+	// A small tree — a root, two branches and a handful of one-line leaves —
+	// drawn at the dense sizes is a cluster of chips in the middle of the
+	// slide. It is laid out one type step up (18 / 14 / 14pt) when the tree at
+	// those sizes still needs no more than driverTreeSparseMaxFrac of the
+	// content height at one node height per leaf; a tree with real content
+	// keeps the sizes its budgets are measured at (go-slide-creator-yhzxt).
+	if ovr.HeaderSize == 0 && ovr.BodySize == 0 {
+		_, contentH := contentAreaPt(ctx)
+		for _, grow := range []float64{driverTreeSparseRowGrow, 1} {
+			grid, total, uniform := dt.expandNodesAt(ctx, vals, ovr, cellOverrides, driverTreeSizes{scaleLeadPt, scaleSubheadPt, scaleSubheadPt, grow})
+			if uniform && contentH > 0 && total <= contentH*driverTreeSparseMaxFrac {
+				return grid, nil
+			}
+		}
+	}
+	grid, _, _ := dt.expandNodesAt(ctx, vals, ovr, cellOverrides, driverTreeSizes{
+		root:   ResolveSize(ovr.HeaderSize, scaleSubheadPt),
+		branch: ResolveSize(ovr.HeaderSize, scaleBodyPt),
+		leaf:   ResolveSize(ovr.BodySize, sizeDenseCaptionPt),
+		grow:   1,
+	})
+	return grid, nil
+}
+
+// driverTreeSizes are the node text sizes of one layout attempt.
+// grow is the node-height growth that goes with them (1 = written fit).
+type driverTreeSizes struct{ root, branch, leaf, grow float64 }
+
+// driverTreeSparseRowGrow is the node height of a promoted tree relative to
+// its written fit — the row growth the placement policy pairs with a type
+// step (shapegrid composeRowScales), well inside the 1.6x content cap.
+const driverTreeSparseRowGrow = 1.2
+
+// driverTreeSparseMaxFrac is the share of the content height a tree may need
+// at the promoted sizes and still count as small.
+const driverTreeSparseMaxFrac = 0.85
+
+// expandNodesAt lays the tree out at the given sizes. It also returns the
+// height of the rows with their gaps and whether the first row plan (every
+// leaf at one node height) fits the content area.
 //
 //nolint:gocognit,gocyclo // one pass builds the nodes, a second sizes columns and rows
-func (dt *driverTree) expandNodes(ctx ExpandContext, vals *DriverTreeValues, ovr *DriverTreeOverrides, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
+func (dt *driverTree) expandNodesAt(ctx ExpandContext, vals *DriverTreeValues, ovr *DriverTreeOverrides, cellOverrides map[int]any, sizes driverTreeSizes) (*jsonschema.ShapeGridInput, float64, bool) {
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	rootSize := ResolveSize(ovr.HeaderSize, scaleSubheadPt)
-	branchSize := ResolveSize(ovr.HeaderSize, scaleBodyPt)
-	leafSize := ResolveSize(ovr.BodySize, sizeDenseCaptionPt)
+	rootSize, branchSize, leafSize := sizes.root, sizes.branch, sizes.leaf
 	fonts := ctx.themeFonts()
 
 	totalLeaves, hasAnnotation := 0, false
@@ -265,7 +304,9 @@ func (dt *driverTree) expandNodes(ctx ExpandContext, vals *DriverTreeValues, ovr
 	rowGap := ctx.Gap(driverTreeRowGapPt)
 	groupGap := driverTreeGroupGapPt + 2*rowGap
 	fits := func(total float64) bool { return contentH <= 0 || total <= contentH+1 }
-	rowH, total := plan(tallest, rowGap, groupGap)
+	rowH, total := plan(tallest*sizes.grow, rowGap, groupGap)
+	uniform := fits(total)
+	blockPt := total + float64(max(totalLeaves+nBranches-2, 0))*rowGap
 	if !fits(total) {
 		rowH, total = plan(0, rowGap, groupGap)
 	}
@@ -297,12 +338,12 @@ func (dt *driverTree) expandNodes(ctx ExpandContext, vals *DriverTreeValues, ovr
 			var cells []*jsonschema.GridCellInput
 			if i == 0 && j == 0 {
 				rootCell.RowSpan = totalLeaves + spacers
-				rootCell.MaxHeight = driverTreeNeedPt(fonts, rootCell.Shape.Text, widths[0], rootSize)
+				rootCell.MaxHeight = math.Ceil(sizes.grow * driverTreeNeedPt(fonts, rootCell.Shape.Text, widths[0], rootSize))
 				cells = append(cells, rootCell)
 			}
 			if j == 0 {
 				g.branch.RowSpan = len(g.leaves)
-				g.branch.MaxHeight = branchNeed[i]
+				g.branch.MaxHeight = math.Ceil(sizes.grow * branchNeed[i])
 				cells = append(cells, g.branch)
 				link(0, 0, first, 1)
 			}
@@ -327,5 +368,5 @@ func (dt *driverTree) expandNodes(ctx ExpandContext, vals *DriverTreeValues, ovr
 		Rows:          rows,
 		Links:         links,
 		VerticalAlign: GridVerticalAlignDefault,
-	}, nil
+	}, blockPt, uniform
 }

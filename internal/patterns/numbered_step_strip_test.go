@@ -260,8 +260,8 @@ func TestNumberedStepStrip_Expand_StackedBoxShape(t *testing.T) {
 		t.Fatalf("expected one row per step, got %d", len(grid.Rows))
 	}
 	for i, row := range grid.Rows {
-		if len(row.Cells) != 2 {
-			t.Fatalf("row %d: expected 2 cells (number + body), got %d", i, len(row.Cells))
+		if len(row.Cells) != 3 {
+			t.Fatalf("row %d: expected 3 cells (number + label + detail), got %d", i, len(row.Cells))
 		}
 		number := row.Cells[0]
 		body := row.Cells[1]
@@ -398,9 +398,10 @@ func TestNumberedStepStrip_Expand_DefaultStyleIsStackedBox(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
-	// stacked-box is one row per step with 2 cells each.
-	if len(grid.Rows) != 4 || len(grid.Rows[0].Cells) != 2 {
-		t.Errorf("expected default stacked-box layout (4 rows × 2 cells), got %d rows", len(grid.Rows))
+	// stacked-box is one row per step: number, label and (one-line bodies)
+	// the detail column.
+	if len(grid.Rows) != 4 || len(grid.Rows[0].Cells) != 3 {
+		t.Errorf("expected default stacked-box layout (4 rows × 3 cells), got %d rows", len(grid.Rows))
 	}
 }
 
@@ -713,8 +714,8 @@ func TestNumberedStepStrip_Icons(t *testing.T) {
 
 	for _, style := range []string{"stacked-box", "toc"} {
 		plain, _ := p.Expand(ExpandContext{}, validNumberedStepStripValues(style, 3), nil, nil)
-		if len(plain.Rows[0].Cells) != 2 {
-			t.Fatalf("style=%s without icons must keep 2 columns", style)
+		if len(plain.Rows[0].Cells) != 3 {
+			t.Fatalf("style=%s without icons must keep number + label + detail", style)
 		}
 		v := validNumberedStepStripValues(style, 3)
 		v.Steps[0].Icon = &IconRef{Name: "flag"}
@@ -725,8 +726,8 @@ func TestNumberedStepStrip_Icons(t *testing.T) {
 			t.Fatalf("style=%s Expand: %v", style, err)
 		}
 		for i, row := range grid.Rows {
-			if len(row.Cells) != 3 {
-				t.Fatalf("style=%s row %d: want number + icon + body, got %d cells", style, i, len(row.Cells))
+			if len(row.Cells) != 4 {
+				t.Fatalf("style=%s row %d: want number + icon + label + detail, got %d cells", style, i, len(row.Cells))
 			}
 		}
 		if ic := grid.Rows[0].Cells[1]; ic.Icon == nil || ic.Icon.Name != "flag" || ic.MaxHeight <= 0 {
@@ -741,5 +742,73 @@ func TestNumberedStepStrip_Icons(t *testing.T) {
 		if style == "stacked-box" {
 			assertPatternGolden(t, grid, "testdata/numbered-step-strip/icons.golden.json")
 		}
+	}
+}
+
+// go-slide-creator-yhzxt: one-line labels with one-line bodies stacked in a
+// single column ended before mid-slide and left the right half empty. Such
+// rows put the body in a detail column beside the label; a body that needs
+// more than a line, or a recommended tile, keeps the stacked cell.
+func TestNumberedStepStrip_DetailColumnForOneLineBodies(t *testing.T) {
+	p, _ := Default().Get("numbered-step-strip")
+	for _, style := range []string{"stacked-box", "toc"} {
+		short := validNumberedStepStripValues(style, 4)
+		grid, err := p.Expand(ExpandContext{}, short, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i, row := range grid.Rows {
+			if len(row.Cells) != 3 {
+				t.Fatalf("%s row %d: %d cells, want number + label + detail", style, i, len(row.Cells))
+			}
+			var label, detail numberedStepTextObj
+			if err := json.Unmarshal(row.Cells[1].Shape.Text, &label); err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal(row.Cells[2].Shape.Text, &detail); err != nil {
+				t.Fatal(err)
+			}
+			if len(label.Paragraphs) != 1 || label.Paragraphs[0].Content != short.Steps[i].Label || !label.Paragraphs[0].Bold {
+				t.Errorf("%s row %d label cell = %+v, want the bold label alone", style, i, label.Paragraphs)
+			}
+			if len(detail.Paragraphs) != 1 || detail.Paragraphs[0].Content != short.Steps[i].Body || detail.Paragraphs[0].Bold {
+				t.Errorf("%s row %d detail cell = %+v, want the body alone", style, i, detail.Paragraphs)
+			}
+		}
+		var cols []float64
+		if err := json.Unmarshal(grid.Columns, &cols); err != nil || len(cols) != 3 || cols[2] <= cols[1] {
+			t.Errorf("%s columns = %s, want number, label and a wider detail column", style, grid.Columns)
+		}
+
+		long := validNumberedStepStripValues(style, 4)
+		long.Steps[2].Body = strings.Repeat("Stand up the capability and migrate the workload. ", 3)
+		grid, err = p.Expand(ExpandContext{}, long, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(grid.Rows[0].Cells) != 2 {
+			t.Errorf("%s with a multi-line body: %d cells, want the stacked number + body", style, len(grid.Rows[0].Cells))
+		}
+
+		bare := validNumberedStepStripValues(style, 4)
+		for i := range bare.Steps {
+			bare.Steps[i].Body = ""
+		}
+		grid, err = p.Expand(ExpandContext{}, bare, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(grid.Rows[0].Cells) != 2 {
+			t.Errorf("%s without bodies: %d cells, want number + label", style, len(grid.Rows[0].Cells))
+		}
+	}
+	rec := validNumberedStepStripValues("stacked-box", 3)
+	rec.Steps[1].Recommended = true
+	grid, err := p.Expand(ExpandContext{}, rec, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(grid.Rows[1].Cells) != 2 {
+		t.Errorf("recommended row: %d cells, want the stacked tile", len(grid.Rows[1].Cells))
 	}
 }

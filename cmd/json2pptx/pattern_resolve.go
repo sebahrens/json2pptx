@@ -389,16 +389,22 @@ func expandNestedCellPatterns(grid *jsonschema.ShapeGridInput, ctx patterns.Expa
 	if b.CX <= 0 || b.CY <= 0 {
 		b = shapegrid.DefaultBounds(ctx.SlideWidth, ctx.SlideHeight)
 	}
-	return expandNestedCellPatternsInBounds(grid, ctx, b, reg)
+	return expandNestedCellPatternsInBounds(grid, ctx, b, reg, true)
 }
 
 // expandNestedCellPatternsInBounds gives each nested pattern its own cell's
 // usable rectangle, matching the inset rectangle used by renderNestedSubGrids.
-func expandNestedCellPatternsInBounds(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandContext, parentBounds pptx.RectEmu, reg *patterns.Registry) error {
+//
+// slideBlock says grid is the slide's own block, which generation resolves
+// under the composition policy (shapegrid.Grid.Compose): a sparse block's rows
+// are grown with its type step, so the cells a nested pattern is expanded for
+// are the ones it renders in (go-slide-creator-yhzxt). Grids nested in a cell
+// are not composed.
+func expandNestedCellPatternsInBounds(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandContext, parentBounds pptx.RectEmu, reg *patterns.Registry, slideBlock bool) error {
 	if !hasNestedCellPattern(grid) {
 		return nil
 	}
-	cellBounds, err := nestedPatternCellBounds(grid, ctx, parentBounds)
+	cellBounds, err := nestedPatternCellBounds(grid, ctx, parentBounds, slideBlock)
 	if err != nil {
 		return err
 	}
@@ -414,7 +420,7 @@ func expandNestedCellPatternsInBounds(grid *jsonschema.ShapeGridInput, ctx patte
 				}
 			}
 			if cell.Grid != nil {
-				if err := expandNestedCellPatternsInBounds(cell.Grid, ctx, cellBounds[[2]int{ri, ci}], reg); err != nil {
+				if err := expandNestedCellPatternsInBounds(cell.Grid, ctx, cellBounds[[2]int{ri, ci}], reg, false); err != nil {
 					// Keep the outer cell's coordinates on a finding raised
 					// deeper down (a region's pattern sits under its heading
 					// row's sub-grid).
@@ -450,7 +456,7 @@ func expandPatternInCell(cell *jsonschema.GridCellInput, ctx patterns.ExpandCont
 	return nil
 }
 
-func nestedPatternCellBounds(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandContext, parentBounds pptx.RectEmu) (map[[2]int]pptx.RectEmu, error) {
+func nestedPatternCellBounds(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandContext, parentBounds pptx.RectEmu, slideBlock bool) (map[[2]int]pptx.RectEmu, error) {
 	bounds := resolveGridBounds(grid, &parentBounds, nil, ctx.SlideWidth, ctx.SlideHeight)
 	cols, err := resolveColumnsDTO(grid.Columns, grid.Rows)
 	if err != nil {
@@ -475,7 +481,10 @@ func nestedPatternCellBounds(grid *jsonschema.ShapeGridInput, ctx patterns.Expan
 	if !ok {
 		return nil, fmt.Errorf("shape_grid: invalid vertical_align %q", grid.VerticalAlign)
 	}
-	resolved, err := shapegrid.Resolve(&shapegrid.Grid{Bounds: bounds, Columns: cols, Rows: rows, ColGap: colGap, RowGap: rowGap, VAlign: align}, pptx.NewShapeIDAllocator(nil))
+	resolved, err := shapegrid.Resolve(&shapegrid.Grid{
+		Bounds: bounds, TypeScale: grid.TypeScale, Columns: cols, Rows: rows, ColGap: colGap, RowGap: rowGap, VAlign: align,
+		Compose: slideBlock && composesSlideBlock(grid), KeepTextSizes: grid.KeepTextSizes,
+	}, pptx.NewShapeIDAllocator(nil))
 	if err != nil {
 		return nil, err
 	}

@@ -3,10 +3,11 @@
   "template": "midnight-blue",
   "labels": {
     "1": {"label": "weak", "codes": ["VERTICAL_IMBALANCE"], "evidence": "A13 / B15 / A15: a row of cards in the top third over an empty lower half"},
-    "2": {"label": "weak", "codes": ["HORIZONTAL_IMBALANCE", "TITLE_NOT_ACTION"], "evidence": "C15: 'Savings funnel' fills the left half only"},
+    "2": {"label": "label_title", "codes": ["TITLE_NOT_ACTION"], "evidence": "C15: 'Savings funnel' is a label over a takeaway. Its four short steps filled the left half only until numbered-step-strip gave one-line bodies a detail column (go-slide-creator-yhzxt); the left-half fault is kept as the hand-built slide 6"},
     "3": {"label": "weak", "codes": ["TEXT_WRAPS_NARROW"], "evidence": "C17: eight flow boxes, each wrapped to 5-6 lines of 2-3 words"},
     "4": {"label": "label_title", "codes": ["TITLE_NOT_ACTION"], "evidence": "C15: 'Monthly spend trend' is a label over a takeaway"},
-    "5": {"label": "label_title", "codes": ["TITLE_NOT_ACTION"], "evidence": "C15: 'Savings by lever (1/2)' — the part marker is not a number in the claim"}
+    "5": {"label": "label_title", "codes": ["TITLE_NOT_ACTION"], "evidence": "C15: 'Savings by lever (1/2)' — the part marker is not a number in the claim"},
+    "6": {"label": "weak", "codes": ["HORIZONTAL_IMBALANCE"], "evidence": "C15: four short rows that end before mid-slide; the right half of the slide is empty"}
   },
   "spec": {
     "meta": {
@@ -65,6 +66,21 @@
          ["Storage lifecycle policies", "€1.4M", "Low", "Low", "Data"]
        ],
        "takeaway": "Four levers deliver 9.0 million euros of the 9.6 million euro target."},
+      {"kind": "raw_json2pptx", "slide": {
+        "layout_id": "blank-title",
+        "slide_type": "content",
+        "content": [{"placeholder_id": "title", "type": "text", "text_value": "Only €0.9M of the €9.6M committed has been delivered"}],
+        "shape_grid": {
+          "columns": [1, 9],
+          "gap": 8,
+          "rows": [
+            {"cells": [{"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "01", "bold": true}}}, {"shape": {"geometry": "rect", "fill": "none", "text": {"content": "Identified: €14.2M", "align": "l"}}}]},
+            {"cells": [{"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "02", "bold": true}}}, {"shape": {"geometry": "rect", "fill": "none", "text": {"content": "Validated: €11.0M", "align": "l"}}}]},
+            {"cells": [{"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "03", "bold": true}}}, {"shape": {"geometry": "rect", "fill": "none", "text": {"content": "Committed: €9.6M", "align": "l"}}}]},
+            {"cells": [{"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "04", "bold": true}}}, {"shape": {"geometry": "rect", "fill": "none", "text": {"content": "Delivered: €0.9M", "align": "l"}}}]}
+          ]
+        }
+      }},
       {"kind": "closing", "title": "Approve option B and start on 1 November"}
     ]
   }

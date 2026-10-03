@@ -56,6 +56,9 @@ const (
 	// composeFitMargin keeps stepped text a little inside its cell: the fit
 	// is measured in a stand-in face.
 	composeFitMargin = 0.96
+	// ComposeLabelMaxWords: a paragraph of at most this many words is a
+	// label, which the step must not wrap onto a second line.
+	ComposeLabelMaxWords = 3
 )
 
 // composeRowScales are the row-height and row-gap growths tried with a type
@@ -434,6 +437,17 @@ func stepFit(plan *composePlan, before, after *ShapeSpec, bounds pptx.RectEmu, o
 		toks := strings.Fields(p.text)
 		if p.role == "kpi-value" {
 			toks = []string{strings.TrimSpace(p.text)} // a value stays with its unit
+		}
+		// A short label (a KPI caption, a stop name) that sat on one line
+		// stays on one line: "Logo churn (SMB-" over "weighted)" at the
+		// stepped size reads worse than the label whole at its own size.
+		if text := strings.TrimSpace(p.text); len(strings.Fields(text)) <= ComposeLabelMaxWords && p.role != "kpi-value" {
+			w0, err0 := textfit.MeasureStyledLineWidth(text, "Liberation Sans", parasBefore[i].fontPt, p.bold)
+			w1, err1 := textfit.MeasureStyledLineWidth(text, "Liberation Sans", p.fontPt, p.bold)
+			if err0 == nil && err1 == nil && float64(w0) <= line && float64(w1) > line {
+				plan.brokenToken = true
+				return
+			}
 		}
 		for _, tok := range toks {
 			w0, err0 := textfit.MeasureStyledLineWidth(tok, "Liberation Sans", parasBefore[i].fontPt, p.bold)

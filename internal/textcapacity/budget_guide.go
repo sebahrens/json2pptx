@@ -129,6 +129,11 @@ func computeConfigBudget(
 		ColGap:    colGap,
 		RowGap:    rowGap,
 		VAlign:    vAlign,
+		// A budget guide describes the pattern alone on a slide: a sparse
+		// configuration is measured as the composition policy renders it
+		// (stepped type, grown rows), like generation (go-slide-creator-yhzxt).
+		Compose:       grid.Bounds == nil,
+		KeepTextSizes: grid.KeepTextSizes,
 	}
 
 	if vErr := shapegrid.Validate(sgGrid); vErr != nil {

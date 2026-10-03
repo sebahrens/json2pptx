@@ -4,8 +4,8 @@
   "columns": 3,
   "rows": [
     {
-      "min_height": 47,
-      "max_height": 47,
+      "min_height": 49,
+      "max_height": 49,
       "cells": [
         {
           "shape": {
@@ -15,7 +15,7 @@
               "paragraphs": [
                 {
                   "content": "Q1 2025",
-                  "size": 12,
+                  "size": 14,
                   "bold": true,
                   "color": "accent1",
                   "align": "ctr"
@@ -34,7 +34,7 @@
               "paragraphs": [
                 {
                   "content": "Q2 2025",
-                  "size": 12,
+                  "size": 14,
                   "bold": true,
                   "color": "accent1",
                   "align": "ctr"
@@ -53,7 +53,7 @@
               "paragraphs": [
                 {
                   "content": "Q3 2025",
-                  "size": 12,
+                  "size": 14,
                   "bold": true,
                   "color": "accent1",
                   "align": "ctr"
@@ -102,7 +102,7 @@
       }
     },
     {
-      "max_height": 64,
+      "max_height": 66,
       "cells": [
         {
           "shape": {
@@ -119,7 +119,7 @@
                 },
                 {
                   "content": "Planning",
-                  "size": 12,
+                  "size": 14,
                   "color": "dk1",
                   "align": "ctr"
                 }
@@ -144,7 +144,7 @@
                 },
                 {
                   "content": "Development",
-                  "size": 12,
+                  "size": 14,
                   "color": "dk1",
                   "align": "ctr"
                 }
@@ -169,7 +169,7 @@
                 },
                 {
                   "content": "Launch",
-                  "size": 12,
+                  "size": 14,
                   "color": "dk1",
                   "align": "ctr"
                 }

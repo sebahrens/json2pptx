@@ -1,5 +1,26 @@
 # Schema Changelog
 
+- **2026-10-03 — placement policy reaches the remaining sparse patterns; whitespace imbalance counts toward the problem-slide share (`go-slide-creator-yhzxt`, `-wwmod`).**
+  - **No field, enum or finding code is added.** Default looks that change:
+    `before-after-compact` and `process-flow-compact` no longer emit a
+    `bounds` box (their rows are pinned; alone on a slide they are composed —
+    stepped type, optical centre — instead of hanging under the title;
+    `pattern.vertical_align: "top"` restores the band). `numbered-step-strip`
+    `stacked-box` / `toc` rows whose labels and bodies are each one line put
+    the body in a detail column beside the label (one more grid column in
+    `expand_pattern` output). `agenda` no longer sets `vertical_align:
+    "center"` and promotes two to four one-line items to 18pt. A sparse dots
+    `timeline-horizontal` starts from 14 / 14 / 14pt and a small `driver-tree`
+    from 18 / 14 / 14pt. Authored sizes are kept in every case.
+  - **Placement policy:** the type step is skipped when it would wrap a label
+    of at most three words that fit on one line.
+  - **Capacity advice:** `expand_pattern` `cell_budgets`, pattern budget
+    guides and nested cell-pattern areas are resolved under the placement
+    policy, so they describe the stepped block generation renders.
+  - **Scoring:** `VERTICAL_IMBALANCE` and `HORIZONTAL_IMBALANCE` now count
+    toward `max_problem_slides_pct` and the breadth penalty (they already cost
+    25 points on their slide). `SLIDE_UNDERUSED` counts `agenda` and
+    `swimlane` text by its row slot, like the other open patterns.
 - **2026-10-03 — recommend_visual: every candidate is authorable, DeckSpec kinds come first, one chart-type vocabulary (`go-slide-creator-x97m6`, `-bdvhj`, `-3ujfq`, `-7sqof`).**
   - **Every candidate carries `data_contract` and a runnable
     `next_tool_call`** (`render_deck_spec` with a complete one-slide DeckSpec

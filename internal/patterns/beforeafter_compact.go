@@ -217,14 +217,14 @@ func (b *beforeAfterCompact) Expand(ctx ExpandContext, values, overrides any, ce
 	colsJSON := json.RawMessage(`[45, 10, 45]`)
 
 	// Compact means compact (go-slide-creator-3i7c): a header band sized to
-	// the header text and a body row that hugs the bullets, the whole block
-	// capped at 60% of the content area and centred there. The cap gives way
-	// (up to the whole area) before any row drops below the written fit of
-	// its text (go-slide-creator-n1muf).
+	// the header text and a body row that hugs the bullets, laid out for 60%
+	// of the content area; the cap gives way (up to the whole area) before
+	// any row drops below the written fit of its text (go-slide-creator-n1muf).
+	// The rows are pinned, so the grid needs no bounds box of its own: the
+	// block is placed like every other content-sized block
+	// (go-slide-creator-yhzxt) — composed on a slide of its own, filling its
+	// cell as a compose segment.
 	grid := &jsonschema.ShapeGridInput{
-		Bounds: &jsonschema.GridBoundsInput{
-			X: 0, Y: 0, Width: 100, Height: plan.heightPct,
-		},
 		Columns:       colsJSON,
 		Gap:           ctx.Gap(beforeAfterCompactVariant.gapPt),
 		VerticalAlign: GridVerticalAlignDefault,

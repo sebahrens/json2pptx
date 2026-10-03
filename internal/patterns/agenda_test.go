@@ -93,12 +93,14 @@ func TestAgendaRuleBasedStyle(t *testing.T) {
 			t.Errorf("row %d numeral = %+v, want 28pt +mj-lt accent1", i, num)
 		}
 		title := agendaCellPara(t, row.Cells[1].Shape.Text)
-		if title.Size != agendaTitleSize || title.Bold || title.Color != "dk1" || title.Alpha != 0 {
-			t.Errorf("row %d item = %+v, want plain 14pt dk1", i, title)
+		// Three items are a short agenda: promoted to the lead step.
+		if title.Size != scaleLeadPt || title.Bold || title.Color != "dk1" || title.Alpha != 0 {
+			t.Errorf("row %d item = %+v, want plain 18pt dk1", i, title)
 		}
 	}
-	if grid.VerticalAlign != "center" {
-		t.Errorf("vertical_align = %q, want center", grid.VerticalAlign)
+	// The block is placed by the shared policy, not pinned by the pattern.
+	if grid.VerticalAlign != GridVerticalAlignDefault {
+		t.Errorf("vertical_align = %q, want %q", grid.VerticalAlign, GridVerticalAlignDefault)
 	}
 }
 

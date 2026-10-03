@@ -215,7 +215,7 @@ func expandNestedPatternsForReadability(grid *ShapeGridInput, base string, g nes
 	if g.theme != nil {
 		ctx.Theme = *g.theme
 	}
-	if err := expandNestedCellPatternsInBounds(cloned, ctx, g.contentBounds, patterns.Default()); err != nil {
+	if err := expandNestedCellPatternsInBounds(cloned, ctx, g.contentBounds, patterns.Default(), true); err != nil {
 		return grid, nil, err
 	}
 	nested := nestedPatternCells{}
