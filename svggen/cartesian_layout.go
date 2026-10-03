@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 	"strings"
+
+	"github.com/sebahrens/json2pptx/svggen/core"
 )
 
 // =============================================================================
@@ -824,4 +826,106 @@ func longestLabelLen(labels []string) int {
 		}
 	}
 	return longest
+}
+
+// valueLabelAscentEm is how far above its anchor a bottom-anchored value
+// label's glyphs reach, in ems of the label font.
+const valueLabelAscentEm = 1.2
+
+// Readable plot heights, in tick-label (SizeSmall) line heights. A chart with
+// a value axis needs three y ticks 1.6 lines apart — the floor small multiples
+// already holds its panels to. A labelled chart (no value axis; the values
+// printed at the marks) needs room for the marks to differ in height under
+// their labels.
+const (
+	minAxisPlotLines     = smallMultiplesMinPlotLines
+	minLabelledPlotLines = 2.0
+)
+
+// ReserveTopLabelHeadroom lowers the plot's top edge so a value label reaching
+// reach above the highest mark stays on the canvas. In a short embedded chart
+// the scaled top margin was smaller than the label, and the topmost value
+// labels were clipped by the viewBox with no finding (go-slide-creator-qpd9c).
+func ReserveTopLabelHeadroom(plotArea *Rect, reach float64) {
+	if d := reach - plotArea.Y; d > 0 {
+		plotArea.Y += d
+		plotArea.H = math.Max(0, plotArea.H-d)
+	}
+}
+
+// fitPlotUnderLabels keeps a vertical bar chart's top value label — the
+// tallest bar's label, or a stack's total — on the canvas, and reports a plot
+// left too short to read.
+func (bc *BarChart) fitPlotUnderLabels(style *StyleGuide, plotArea *Rect) {
+	if bc.config.ShowValues {
+		font := labelledValueFontPt
+		if bc.config.Stacked {
+			font = stackLabelFont(style)
+		}
+		ReserveTopLabelHeadroom(plotArea, valueLabelReach(bc.builder, labelledValueGapPt, font))
+	}
+	ReportCollapsedPlot(bc.builder, plotArea.H, bc.config.Height, bc.config.ShowAxes && !bc.labelledMode)
+}
+
+// fitPlotUnderLabels keeps a line chart's top point label on the canvas and
+// reports a plot left too short to read.
+func (lc *LineChart) fitPlotUnderLabels(style *StyleGuide, plotArea *Rect) {
+	if lc.config.ShowValues {
+		ReserveTopLabelHeadroom(plotArea, valueLabelReach(lc.builder, lc.config.MarkerSize+style.Spacing.SM, style.Typography.SizeSmall))
+	}
+	ReportCollapsedPlot(lc.builder, plotArea.H, lc.config.Height, lc.config.ShowAxes && !lc.labelled)
+}
+
+// valueLabelReach is how far above a mark's top a value label drawn gap above
+// it at fontSize reaches.
+func valueLabelReach(b *SVGBuilder, gap, fontSize float64) float64 {
+	return gap + valueLabelAscentEm*math.Max(fontSize, b.MinFontSize())
+}
+
+// ReportCollapsedPlot reports chart.plot_area_collapsed when the plot left
+// after the title, legend, axes and label headroom is shorter than a readable
+// plot: a value-axis chart needs minAxisPlotLines tick-label lines, a
+// labelled one minLabelledPlotLines. The chart is still drawn; the finding
+// says how much taller its space must be — a percentage share of a stacked
+// region or grid cell cannot know that the axis, legend and labels take a
+// fixed height (go-slide-creator-9re9p, go-slide-creator-qpd9c).
+func ReportCollapsedPlot(b *SVGBuilder, plotH, canvasH float64, valueAxis bool) {
+	style := b.StyleGuide()
+	if style == nil || style.Typography == nil || style.Typography.SizeSmall <= 0 || canvasH <= 0 {
+		return
+	}
+	lines := minLabelledPlotLines
+	if valueAxis {
+		lines = minAxisPlotLines
+	}
+	minPlotH := lines * style.Typography.SizeSmall
+	if plotH >= minPlotH {
+		return
+	}
+	for _, f := range b.Findings() {
+		if f.Code == FindingPlotAreaCollapsed {
+			return // CapXLabelBand already named the cause: the x labels
+		}
+	}
+	// The decoration does not grow with the canvas, so the whole deficit is
+	// extra height; ratio is what to multiply the chart's space by.
+	plotH = math.Max(0, plotH)
+	ratio := math.Ceil((canvasH+minPlotH-plotH)/canvasH*10) / 10
+	b.AddFinding(Finding{
+		Field:    "data",
+		Code:     FindingPlotAreaCollapsed,
+		Severity: core.SeverityShrinkOrSplit,
+		Message: fmt.Sprintf(
+			"the plot is %.0f%% of the chart's height after its title, legend, axis labels and value-label headroom, under the %.1f label lines a readable plot needs; give the chart at least %.1fx its height (a larger size_pct or a taller placeholder), place it beside the other content instead of above or below it, or split the slide",
+			plotH/canvasH*100, lines, ratio),
+		Fix: &FixSuggestion{
+			Kind: FixKindIncreaseCanvas,
+			Params: map[string]any{
+				"plot_height_px":     math.Round(plotH),
+				"min_plot_height_px": math.Round(minPlotH),
+				"height_ratio":       ratio,
+				"alternative":        "side_by_side_or_split_slide",
+			},
+		},
+	})
 }
