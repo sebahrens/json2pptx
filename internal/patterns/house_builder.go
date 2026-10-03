@@ -226,90 +226,119 @@ func BuildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLa
 		}
 	}
 
-	// Roof: the objective, under the badge line when there is one.
-	// A roof with nothing to say is the bare gable.
-	var roofText json.RawMessage
-	var roofBar *jsonschema.AccentBarInput
-	roofBand, roofPad := 0.0, houseRoofPadPt
-	if len(m.Badges) > 0 {
-		roofPad = 0
-	}
-	if strings.TrimSpace(m.Roof) != "" || len(m.Badges) > 0 {
-		roofText, roofBar = buildHouseRoofText(m, st, override)
-		roofBand = houseNeedPt(st.Fonts, roofText, widthPt)
-	}
-
 	type levelRow struct {
 		cells  []*jsonschema.GridCellInput
 		need   float64 // text height at its written size
 		pad    float64 // breathing room when the height allows it
+		margin float64 // top + bottom text margin the cells are written with
 		pillar bool
 	}
-	rows := make([]levelRow, 0, len(m.Levels))
-	for _, l := range m.Levels {
-		n := len(l.Cells)
-		if n == 0 {
-			continue
+	var (
+		roofText                 json.RawMessage
+		roofBar                  *jsonschema.AccentBarInput
+		roofBand, roofMargin     float64
+		rows                     []levelRow
+		lean, pads, ink, roofPad float64
+	)
+	gaps := 0.0
+	// measure builds the roof text and every level at a band text margin of
+	// padPt (0: the uniform margin) and sums what they need.
+	measure := func(padPt float64) {
+		bandMargin := 2*defaultShapeInsetTBPt - rowPadTrimPt(padPt)
+		// Roof: the objective, under the badge line when there is one.
+		// A roof with nothing to say is the bare gable.
+		roofText, roofBar, roofBand, roofMargin, roofPad = nil, nil, 0, bandMargin, houseRoofPadPt
+		if len(m.Badges) > 0 {
+			roofPad = 0
 		}
-		w := cellWidth(n)
-		span := cols / n
-		lr := levelRow{pillar: l.Kind == HousePillars, pad: houseBandPadPt}
-		if lr.pillar {
-			lr.pad = cardPadPt
+		if strings.TrimSpace(m.Roof) != "" || len(m.Badges) > 0 {
+			roofText, roofBar = buildHouseRoofText(m, st, override)
+			roofText = houseTextPad(roofText, padPt)
+			roofBand = houseNeedPt(st.Fonts, roofText, widthPt)
 		}
-		anyBody := false
-		for _, c := range l.Cells {
-			anyBody = anyBody || len(c.Body) > 0
-		}
-		for i, c := range l.Cells {
-			cell := &jsonschema.GridCellInput{ColSpan: span}
-			accent := st.Accent
+
+		rows = make([]levelRow, 0, len(m.Levels))
+		for _, l := range m.Levels {
+			n := len(l.Cells)
+			if n == 0 {
+				continue
+			}
+			w := cellWidth(n)
+			span := cols / n
+			lr := levelRow{pillar: l.Kind == HousePillars, pad: houseBandPadPt, margin: bandMargin}
 			if lr.pillar {
-				if st.PillarAccent != nil {
-					accent = st.PillarAccent(i)
-				}
-				cell.Shape = &jsonschema.ShapeSpecInput{
-					Geometry: "rect",
-					Fill:     st.PillarSurface,
-					Text:     buildHousePillarText(c, st.HeaderPt, st.BodyPt, accent, anyBody),
-				}
-				cell.AccentBar = &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: 4}
-			} else {
-				cell.Shape = &jsonschema.ShapeSpecInput{
-					Geometry: "rect",
-					Fill:     neutralFillJSON(NeutralTint16),
-					Text:     buildHouseBandText(c, st.BandPt, st.BodyPt),
-				}
+				// A pillar keeps the uniform margin: its text hangs under the
+				// accent rule along its top edge.
+				lr.pad, lr.margin = cardPadPt, 2*defaultShapeInsetTBPt
 			}
-			if l.OverrideIndex >= 0 {
-				override(l.OverrideIndex+i, cell, accent)
+			anyBody := false
+			for _, c := range l.Cells {
+				anyBody = anyBody || len(c.Body) > 0
 			}
-			lr.need = math.Max(lr.need, houseNeedPt(st.Fonts, cell.Shape.Text, w))
-			lr.cells = append(lr.cells, cell)
+			for i, c := range l.Cells {
+				cell := &jsonschema.GridCellInput{ColSpan: span}
+				accent := st.Accent
+				if lr.pillar {
+					if st.PillarAccent != nil {
+						accent = st.PillarAccent(i)
+					}
+					cell.Shape = &jsonschema.ShapeSpecInput{
+						Geometry: "rect",
+						Fill:     st.PillarSurface,
+						Text:     buildHousePillarText(c, st.HeaderPt, st.BodyPt, accent, anyBody),
+					}
+					cell.AccentBar = &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: 4}
+				} else {
+					cell.Shape = &jsonschema.ShapeSpecInput{
+						Geometry: "rect",
+						Fill:     neutralFillJSON(NeutralTint16),
+						Text:     buildHouseBandText(c, st.BandPt, st.BodyPt),
+					}
+				}
+				if l.OverrideIndex >= 0 {
+					override(l.OverrideIndex+i, cell, accent)
+				}
+				if !lr.pillar {
+					cell.Shape.Text = houseTextPad(cell.Shape.Text, padPt)
+				}
+				lr.need = math.Max(lr.need, houseNeedPt(st.Fonts, cell.Shape.Text, w))
+				lr.cells = append(lr.cells, cell)
+			}
+			rows = append(rows, lr)
 		}
-		rows = append(rows, lr)
+
+		gaps = float64(len(rows)) * st.RowGapPt
+		lean, pads = roofBand+gaps, 0.0
+		if roofBand > 0 {
+			pads = roofPad
+		}
+		ink = math.Max(roofBand-roofMargin, 0)
+		for _, lr := range rows {
+			lean += lr.need
+			pads += lr.pad
+			ink += math.Max(lr.need-lr.margin, 0)
+		}
 	}
 
 	// Heights. Every level needs its text; what is left over is spent, in
 	// order, on a gable at the minimum pitch, on breathing room around the
 	// text, on the designed pitch, on slightly taller pillars and on a steeper
 	// gable.
-	// A house short of height gives them back in the reverse order, and only
-	// then squeezes its pillars.
-	gaps := float64(len(rows)) * st.RowGapPt
-	lean, pads := roofBand+gaps, 0.0
-	if roofBand > 0 {
-		pads = roofPad
-	}
-	ink := math.Max(roofBand-2*defaultShapeInsetTBPt, 0)
-	for _, lr := range rows {
-		lean += lr.need
-		pads += lr.pad
-		ink += math.Max(lr.need-2*defaultShapeInsetTBPt, 0)
-	}
+	// A house short of height gives them back in the reverse order. Before the
+	// gable goes below the minimum pitch, the roof's eaves band and the band
+	// levels give up text margin (rowPadStepsPt): a house on a short content
+	// area is drawn with slimmer bands under a roof that still reads as one
+	// (go-slide-creator-vg73u). Only then is the gable flattened, and last the
+	// pillars squeezed.
 	floorRise := math.Max(math.Round(widthPt*houseRoofFloorPitch), houseRoofFloorPt)
 	minRise := math.Max(math.Round(widthPt*houseRoofMinPitch), floorRise)
 	rise := math.Max(math.Round(widthPt*houseRoofPitch), minRise)
+	for _, padPt := range append([]float64{0}, rowPadStepsPt...) {
+		measure(padPt)
+		if availPt <= 0 || availPt-lean >= minRise {
+			break
+		}
+	}
 	layout := &HouseLayout{NeedPt: lean + floorRise, InkPt: ink}
 	padShare, spare := 1.0, 0.0
 	if availPt > 0 {
@@ -366,15 +395,15 @@ func BuildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLa
 	// alone being crushed between full-size bands.
 	if layout.Tight && ink > 0 {
 		squeeze := math.Max(availPt-rise-(lean-ink), 0) / ink
-		shrink := func(h float64) float64 {
-			margin := math.Min(2*defaultShapeInsetTBPt, h)
+		shrink := func(h, margin float64) float64 {
+			margin = math.Min(margin, h)
 			return math.Max(math.Floor(margin+(h-margin)*squeeze), 1)
 		}
 		if roofBand > 0 {
-			roofBand = shrink(roofBand)
+			roofBand = shrink(roofBand, roofMargin)
 		}
 		for i := range rows {
-			rows[i].need = shrink(rows[i].need)
+			rows[i].need = shrink(rows[i].need, rows[i].margin)
 		}
 	}
 
@@ -467,6 +496,25 @@ type houseTextObj struct {
 	Paragraphs    []houseParagraph `json:"paragraphs"`
 	Align         string           `json:"align"`
 	VerticalAlign string           `json:"vertical_align"`
+}
+
+// houseTextPad sets a band's top and bottom text margin to padPt
+// (rowPadStepsPt); 0 leaves the uniform margin.
+func houseTextPad(text json.RawMessage, padPt float64) json.RawMessage {
+	top, bottom := rowPadInsets(padPt, 0)
+	if top == nil || len(text) == 0 {
+		return text
+	}
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(text, &obj); err != nil || obj == nil {
+		return text
+	}
+	obj["inset_top"], obj["inset_bottom"] = marshalRaw(*top), marshalRaw(*bottom)
+	out, err := json.Marshal(obj)
+	if err != nil {
+		return text
+	}
+	return out
 }
 
 func houseText(paras []houseParagraph, align, vAlign string) json.RawMessage {

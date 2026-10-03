@@ -21,13 +21,16 @@ import (
 // overfullExecSummarySpec is the agent-journey A2 / C5 deck: an executive
 // summary whose five points need more height than the "modern" template's
 // content area. Generation refuses it, and the cause is the pattern's height
-// deficit, not any one of the ten shrunk fields.
+// deficit, not any one of the ten shrunk fields. The journey's own copy (five
+// two-line supports) fits modern since the rows give up padding before text
+// (go-slide-creator-vg73u), so two supports here run to a third line: 327pt
+// against modern's 311pt, inside the 347-360pt of the standard templates.
 const overfullExecSummarySpec = `{"meta":{"title":"Cost programme","archetype":"strategy_proposal"},"slides":[
  {"kind":"title","title":"Cost programme delivers EUR 40m by 2027","subtitle":"Steering committee, October 2026"},
  {"kind":"executive_summary","title":"Three levers deliver EUR 40m of savings by 2027","points":[
-   {"lead":"Procurement consolidation saves EUR 18m","support":"Moving from 14 regional contracts to three frame agreements cuts unit prices by 9 percent across categories."},
+   {"lead":"Procurement consolidation saves EUR 18m","support":"Moving from 14 regional contracts to three frame agreements cuts unit prices by 9 percent across categories, and the first two agreements are already signed with incumbent suppliers."},
    {"lead":"Shared services save EUR 12m","support":"Finance and HR transactional work moves to the Krakow centre in two waves during 2026 and early 2027."},
-   {"lead":"Footprint reduction saves EUR 10m","support":"Closing two of nine warehouses removes fixed cost while keeping next-day delivery for 96 percent of orders."},
+   {"lead":"Footprint reduction saves EUR 10m","support":"Closing two of nine warehouses removes fixed cost while keeping next-day delivery for 96 percent of orders, because the remaining seven sites absorb the volume without new capacity."},
    {"lead":"One-off costs stay under EUR 15m","support":"Severance, lease exits and system migration are phased so that payback arrives within fourteen months."},
    {"lead":"Risks are concentrated in supplier transition","support":"Dual sourcing for the first two quarters protects service levels while new agreements ramp up."}
  ],"takeaway":"Approve the programme now to book the first EUR 9m in 2026."},
@@ -49,16 +52,13 @@ const sevenSlidePitchSpec = `{"meta":{"title":"Tidewater seed round"%s},"slides"
 
 func pitchSpec(meta string) string { return strings.Replace(sevenSlidePitchSpec, "%s", meta, 1) }
 
-// templateSensitiveSpec is overfullExecSummarySpec with four points: it fits
-// every shipped template except "modern", whose content area is 311pt against
-// 336-360pt elsewhere. This is agent-journey C5: validated without a template,
-// then rendered on modern.
+// templateSensitiveSpec is overfullExecSummarySpec read as the deck that
+// depends on its template: it fits the standard templates and not "modern",
+// whose content area is 311pt against 347-360pt there. This is agent-journey
+// C5: validated without a template, then rendered on modern.
 func templateSensitiveSpec(t *testing.T) map[string]any {
 	t.Helper()
-	spec := decodeSpecObject(t, overfullExecSummarySpec)
-	summary := spec["slides"].([]any)[1].(map[string]any)
-	summary["points"] = summary["points"].([]any)[:4]
-	return spec
+	return decodeSpecObject(t, overfullExecSummarySpec)
 }
 
 // topicTitleSpec trips the gate on an aggregate criterion alone: more than a
@@ -574,7 +574,8 @@ func TestDeckSpecRootCauseCarriesSymptoms(t *testing.T) {
 		t.Errorf("root cause does not state the deficit: %q", root.Message)
 	}
 	for _, s := range root.Symptoms {
-		if s.Code != patterns.ErrCodeTextBelowReadableMin || !strings.HasPrefix(s.Path, "slides[1].points[") {
+		// The points, and the takeaway band squeezed with them.
+		if s.Code != patterns.ErrCodeTextBelowReadableMin || !(strings.HasPrefix(s.Path, "slides[1].points[") || s.Path == "slides[1].takeaway") {
 			t.Errorf("symptom = %+v", s)
 		}
 	}

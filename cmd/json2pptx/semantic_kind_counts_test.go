@@ -72,22 +72,14 @@ func kindAtCount(t *testing.T, kind semantic.SlideKind, list string, n int) map[
 	return slide
 }
 
-// knownCountRefusals are the documented counts a layout does not hold yet,
-// by "kind count" and template ("*" for every template). Each is a slide the
-// kind's schema promises and the pattern refuses with its leanest copy; they
-// are listed so the test fails on a new one, and each is to be removed when
-// its pattern learns to fit (go-slide-creator-vg73u, open).
-var knownCountRefusals = map[string][]string{
-	// Six numbered rows under a header, plus the decisions band, need 449pt.
-	"next_steps 6": {"*"},
-	// Six option rows under the criteria header, legend and takeaway need 354pt.
-	"option_matrix 6": {"*"},
-	// Five points and the bottom line on the two shortest content areas.
-	"executive_summary 5": {"modern", "modern-template"},
-	// The house's roof, pillars and foundation on the same two.
-	"pillars 3": {"modern", "modern-template"},
-	"pillars 5": {"modern"},
-}
+// knownCountRefusals are the documented counts a layout does not hold, by
+// "kind count" and template ("*" for every template). It is empty: next_steps
+// at six actions, option_matrix at six options, executive_summary at five
+// points and the pillars house on the two shortest content areas were listed
+// here until their rows and bands learned to give up padding before text
+// (go-slide-creator-vg73u). A new entry is a kind schema that promises a
+// count its pattern refuses with its leanest copy.
+var knownCountRefusals = map[string][]string{}
 
 func knownCountRefusal(kind semantic.SlideKind, n int, template string) bool {
 	for _, tpl := range knownCountRefusals[fmt.Sprintf("%s %d", kind, n)] {

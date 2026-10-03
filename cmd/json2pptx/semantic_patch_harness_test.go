@@ -18,8 +18,11 @@ import (
 
 // optionMatrixTightSpec is the e-revise journey's option matrix: three options
 // by four criteria whose recommended row carries a detail line. It was refused
-// with the option's name quoted as the text to shorten.
-const optionMatrixTightSpec = `{"meta":{"title":"Tidewater Carbon investor update","template":"modern-yellow","source":"Management assessment"},"slides":[
+// with the option's name quoted as the text to shorten. The journey ran it on
+// modern-yellow, where it fits since the rows give up padding before text
+// (go-slide-creator-vg73u); under modern-template's two-line title it is
+// still one line too tall.
+const optionMatrixTightSpec = `{"meta":{"title":"Tidewater Carbon investor update","template":"modern-template","source":"Management assessment"},"slides":[
  {"kind":"title","title":"Tidewater Carbon investor update","subtitle":"October 2026"},
  {"kind":"option_matrix","title":"We lead two competitors on cost and deployment speed","criteria":["Cost per tonne","Energy use","Deployment speed","Commercial traction"],
   "options":[{"name":"Tidewater Carbon","detail":"Modular units, pilot plant in Q1 2027","scores":[4,3,4,2]},{"name":"Northgate Capture","detail":"Large fixed plants, long build times","scores":[2,2,1,3]},{"name":"Helio Sorbents","detail":"Low energy use, pre-revenue","scores":[2,4,2,1]}],

@@ -396,8 +396,9 @@ remediation and recommended edit a corpus raises through both tools: a
 snake_case word in it is a field of the slide's kind
 (`semantic.PayloadVocabulary`), a tool, or a gate criterion.
 `TestEveryKindRendersAtItsDocumentedCounts` renders every kind at the
-smallest and largest count it documents on every shipped template; the
-counts a layout does not hold yet are listed in `knownCountRefusals`.
+smallest and largest count it documents on every shipped template.
+`knownCountRefusals` — the counts a layout does not hold — is empty: rows and
+house bands give up padding before a documented count is refused.
 
 ### Unknown kinds and keys
 

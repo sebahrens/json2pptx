@@ -449,8 +449,9 @@ func ResolveTextInput(raw json.RawMessage) (*pptx.TextBody, error) {
 // shapeTextInsets resolves a text object's inset_* fields (points) to EMU.
 // Every side defaults to the uniform shape text margin (pptx.ShapeTextInsets,
 // 0.5 cm); an inset the deck author writes explicitly — including 0 — replaces
-// that side only. Named patterns never write inset_*, so the margin is uniform
-// on every pattern shape.
+// that side only. Named patterns write inset_* only to align baselines and to
+// tighten the rows of a list that would not otherwise fit (docs/PATTERNS.md),
+// so the margin is uniform on every other pattern shape.
 func shapeTextInsets(l, t, r, b *float64) [4]int64 {
 	insets := pptx.ShapeTextInsets()
 	for i, v := range [4]*float64{l, t, r, b} {

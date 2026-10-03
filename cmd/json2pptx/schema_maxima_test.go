@@ -494,7 +494,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"scqa-summary":        5.5, // content-weighted rows (k3eb3)
 	"stat-hero":           0.0, // unit is a 40% suffix run, no longer display size (yn2pw)
 	"state-shift-hub":     5.8, // rows sized to written fit, hub gives way (k3eb3)
-	"strategy-house":      4.1,
+	"strategy-house":      5.3,
 	"stylish-panels":      2.8,
 	"swimlane":            4.3,
 	"table-highlight":     4.6,
@@ -553,7 +553,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"scqa-summary":                 6.0,
 	"stat-hero":                    0.0, // unit as a 40% suffix run (yn2pw)
 	"state-shift-hub":              6.7,
-	"strategy-house":               4.6,
+	"strategy-house":               6.0,
 	"stylish-panels":               2.8,
 	"swimlane":                     4.8,
 	"table-highlight":              5.3,

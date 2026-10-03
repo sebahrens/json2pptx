@@ -194,9 +194,10 @@ func (e *execSummary) PostExpandWarnings(ctx ExpandContext, values, overrides an
 	if ovr == nil {
 		ovr = &ExecSummaryOverrides{}
 	}
-	_, lay := layoutExecSummary(ctx, v, ovr)
+	cols, lay := layoutExecSummary(ctx, v, ovr)
 	if _, areaH := sizingAreaPt(ctx); lay.writtenNatural() > areaH+1 {
-		warnings = append(warnings, fmt.Sprintf("%s: exec-summary needs %.0fpt at the smallest readable type scale but the content area holds about %.0fpt — shorten the leads and supporting sentences, shorten the bottom line, or use fewer points", ErrCodeBodyTooLong, lay.writtenNatural(), areaH))
+		need := math.Min(lay.writtenNatural(), execSummaryLeastHeightPt(ctx, v, ovr, cols))
+		warnings = append(warnings, fmt.Sprintf("%s: exec-summary needs %.0fpt at the smallest readable type scale but the content area holds about %.0fpt — shorten the leads and supporting sentences, shorten the bottom line, or use fewer points", ErrCodeBodyTooLong, need, areaH))
 	}
 	return warnings
 }
@@ -362,9 +363,9 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		tallest := leadSize
 		if numbered {
 			tallest = numSize
-			cells = append(cells, execSummaryNumberCell(i, numSize, inkOnLight(ctx, accent, 3.0)))
+			cells = append(cells, execSummaryNumberCell(i, numSize, inkOnLight(ctx, accent, 3.0), lay.padPt))
 		}
-		leadCell := execSummaryLeadCell(p.Lead, leadSize, tallest, leadInk)
+		leadCell := execSummaryLeadCell(p.Lead, leadSize, tallest, leadInk, lay.padPt)
 		if co, ok := cellOverrides[i].(*ExecSummaryCellOverride); ok {
 			applyCellTextOverride(leadCell, co)
 			if co.AccentBar {
@@ -373,7 +374,7 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		}
 		cells = append(cells, leadCell)
 		if len(cells) < len(cols) {
-			cells = append(cells, execSummarySupportCell(p.Support, supportSize, tallest))
+			cells = append(cells, execSummarySupportCell(p.Support, supportSize, tallest, lay.padPt))
 		}
 		rows = append(rows, jsonschema.GridRowInput{MinHeight: rowPt[i], MaxHeight: rowPt[i], Cells: cells})
 	}
@@ -424,7 +425,7 @@ func layoutExecSummary(ctx ExpandContext, vals *ExecSummaryValues, ovr *ExecSumm
 	var lay execSummaryLayout
 	for _, gap := range []float64{ctx.Gap(execSummaryRowGapPt), ctx.Gap(execSummaryMinGapPt)} {
 		for _, st := range steps {
-			lay = measureExecSummary(ctx, vals, cols, numbered, st[0], st[1], areaW, gap, ovr.TakeawayEmphasis)
+			lay = measureExecSummary(ctx, vals, cols, numbered, st[0], st[1], areaW, gap, ovr.TakeawayEmphasis, 0)
 			if lay.natural() <= areaH {
 				return cols, lay
 			}
@@ -433,16 +434,33 @@ func layoutExecSummary(ctx ExpandContext, vals *ExecSummaryValues, ovr *ExecSumm
 	// The sizing estimate is conservative. When no step fits by it, the
 	// writer's own measure decides: rows sized to their written fit store every
 	// run unshrunk, where rows the grid squeezes to share the area would not.
-	for _, st := range steps {
-		l := measureExecSummary(ctx, vals, cols, numbered, st[0], st[1], areaW, ctx.Gap(execSummaryMinGapPt), ovr.TakeawayEmphasis)
-		if l.writtenNatural() <= areaH {
-			for i, w := range l.writtenPt {
-				l.rowPt[i] = math.Ceil(w)
+	// Then the padding inside the rows gives way, largest type first at each
+	// padding step: five points and a bottom line on a short content area are
+	// set tighter, not refused (go-slide-creator-vg73u).
+	for _, padPt := range append([]float64{0}, rowPadStepsPt...) {
+		for _, st := range steps {
+			l := measureExecSummary(ctx, vals, cols, numbered, st[0], st[1], areaW, ctx.Gap(execSummaryMinGapPt), ovr.TakeawayEmphasis, padPt)
+			if l.writtenNatural() <= areaH {
+				for i, w := range l.writtenPt {
+					l.rowPt[i] = math.Ceil(w)
+				}
+				return cols, l
 			}
-			return cols, l
 		}
 	}
 	return cols, lay
+}
+
+// execSummaryLeastHeightPt is the height the summary needs at its smallest
+// type and tightest rows: what a refusal reports.
+func execSummaryLeastHeightPt(ctx ExpandContext, vals *ExecSummaryValues, ovr *ExecSummaryOverrides, cols []float64) float64 {
+	areaW, _ := sizingAreaPt(ctx)
+	st := execSummarySteps[len(execSummarySteps)-1]
+	if ovr.HeaderSize > 0 || ovr.BodySize > 0 {
+		st = [2]float64{ResolveSize(ovr.HeaderSize, st[0]), ResolveSize(ovr.BodySize, st[1])}
+	}
+	numbered := ovr.Numbered == nil || *ovr.Numbered
+	return measureExecSummary(ctx, vals, cols, numbered, st[0], st[1], areaW, ctx.Gap(execSummaryMinGapPt), ovr.TakeawayEmphasis, rowPadStepsPt[len(rowPadStepsPt)-1]).writtenNatural()
 }
 
 // execSummaryHasSupport reports whether any point carries a supporting
@@ -484,13 +502,18 @@ func execSummaryTakeaway(bottomLine, accent, emphasis string) TakeawaySpec {
 // execSummaryTextCell builds one unfilled row cell: paragraphs, a vertical
 // anchor, and a baseline nudge in points that puts the first baseline where
 // the row wants it. The nudge is ADDED to the uniform top margin — a pattern
-// may push text further from an edge to align baselines, never closer.
-func execSummaryTextCell(paras []chartInsightsParagraph, vAlign string, nudge float64) *jsonschema.GridCellInput {
-	insetTop := 0.0
+// may push text further from an edge to align baselines, never closer. padPt,
+// when set, is the row's top / bottom text margin (rowPadStepsPt): a summary
+// too tall for its content area tightens every cell of every row together.
+func execSummaryTextCell(paras []chartInsightsParagraph, vAlign string, nudge, padPt float64) *jsonschema.GridCellInput {
+	insetTop, insetBottom := 0.0, 0.0
 	if nudge > 0 {
 		insetTop = defaultShapeInsetTBPt + nudge
 	}
-	textJSON, _ := json.Marshal(chartInsightsText{Paragraphs: paras, Align: "l", VerticalAlign: vAlign, InsetTop: insetTop})
+	if top, bottom := rowPadInsets(padPt, nudge); top != nil {
+		insetTop, insetBottom = *top, *bottom
+	}
+	textJSON, _ := json.Marshal(chartInsightsText{Paragraphs: paras, Align: "l", VerticalAlign: vAlign, InsetTop: insetTop, InsetBottom: insetBottom})
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
@@ -509,22 +532,22 @@ func execSummaryTextCell(paras []chartInsightsParagraph, vAlign string, nudge fl
 // the row cells, shared by measureExecSummary and Expand so a row is sized on
 // exactly the text it is written with. tallest is the row's largest size,
 // which sets the baseline every cell is nudged to.
-func execSummaryNumberCell(i int, size float64, ink string) *jsonschema.GridCellInput {
+func execSummaryNumberCell(i int, size float64, ink string, padPt float64) *jsonschema.GridCellInput {
 	return execSummaryTextCell([]chartInsightsParagraph{
 		{Content: strconv.Itoa(i + 1), Size: size, Bold: true, Color: ink, Align: "l"},
-	}, "t", 0)
+	}, "t", 0, padPt)
 }
 
-func execSummaryLeadCell(lead string, size, tallest float64, ink string) *jsonschema.GridCellInput {
+func execSummaryLeadCell(lead string, size, tallest float64, ink string, padPt float64) *jsonschema.GridCellInput {
 	return execSummaryTextCell([]chartInsightsParagraph{
 		{Content: pptx.ConvertMarkdownEmphasis(lead), Size: size, Bold: true, Color: ink, Align: "l"},
-	}, "t", baselineInsetPt(tallest, size))
+	}, "t", baselineInsetPt(tallest, size), padPt)
 }
 
-func execSummarySupportCell(support string, size, tallest float64) *jsonschema.GridCellInput {
+func execSummarySupportCell(support string, size, tallest, padPt float64) *jsonschema.GridCellInput {
 	return execSummaryTextCell([]chartInsightsParagraph{
 		{Content: pptx.ConvertMarkdownEmphasis(support), Size: size, Color: "dk1", Align: "l"},
-	}, "t", baselineInsetPt(tallest, size))
+	}, "t", baselineInsetPt(tallest, size), padPt)
 }
 
 // execSummaryAscentRatio approximates a font's ascent as a fraction of its
@@ -549,6 +572,7 @@ type execSummaryLayout struct {
 	writtenPt                      []float64 // the writer's own unshrunk height per point row
 	bottomPt                       float64   // bottom-line takeaway row height (0 = none)
 	rowGapPt                       float64   // gap between grid rows
+	padPt                          float64   // top / bottom text margin of the point rows; 0 = the uniform margin
 }
 
 func (l execSummaryLayout) rules() int { return len(l.rowPt) - 1 }
@@ -589,7 +613,8 @@ func (l execSummaryLayout) writtenNatural() float64 {
 }
 
 // measureExecSummary measures every row at the given lead / support sizes.
-func measureExecSummary(ctx ExpandContext, vals *ExecSummaryValues, cols []float64, numbered bool, leadSize, supportSize, areaW, rowGapPt float64, emphasis string) execSummaryLayout {
+func measureExecSummary(ctx ExpandContext, vals *ExecSummaryValues, cols []float64, numbered bool, leadSize, supportSize, areaW, rowGapPt float64, emphasis string, padPt float64) execSummaryLayout {
+	trim := rowPadTrimPt(padPt)
 	usableW := areaW - ctx.Gap(execSummaryColGapPt)*float64(len(cols)-1)
 	colW := func(i int) float64 { return usableW * cols[i] / 100 }
 	leadCol := 0
@@ -608,6 +633,7 @@ func measureExecSummary(ctx ExpandContext, vals *ExecSummaryValues, cols []float
 		rowPt:       make([]float64, len(vals.Points)),
 		rowGapPt:    rowGapPt,
 		writtenPt:   make([]float64, len(vals.Points)),
+		padPt:       padPt,
 	}
 	tallest := leadSize
 	if numbered {
@@ -615,18 +641,18 @@ func measureExecSummary(ctx ExpandContext, vals *ExecSummaryValues, cols []float
 	}
 	for i, p := range vals.Points {
 		// A baseline nudge adds to the cell's top margin (execSummaryTextCell).
-		h := sizedBlockHeightPt(ctx, []sizedPara{{text: p.Lead, sizePt: leadSize, bold: true}}, colW(leadCol)) + baselineInsetPt(tallest, leadSize)
+		h := sizedBlockHeightPt(ctx, []sizedPara{{text: p.Lead, sizePt: leadSize, bold: true}}, colW(leadCol)) + baselineInsetPt(tallest, leadSize) - trim
 		// The row is never below what the writer needs to store each cell
 		// unshrunk at its real column width, baseline nudge included
 		// (go-slide-creator-k3eb3).
-		written := writtenFitHeightPt(ctx.themeFonts(), execSummaryLeadCell(p.Lead, leadSize, tallest, "dk2").Shape.Text, colW(leadCol), 0)
+		written := writtenFitHeightPt(ctx.themeFonts(), execSummaryLeadCell(p.Lead, leadSize, tallest, "dk2", padPt).Shape.Text, colW(leadCol), 0)
 		if supportCol >= 0 {
-			h = math.Max(h, sizedBlockHeightPt(ctx, []sizedPara{{text: p.Support, sizePt: supportSize}}, colW(supportCol))+baselineInsetPt(tallest, supportSize))
-			written = math.Max(written, writtenFitHeightPt(ctx.themeFonts(), execSummarySupportCell(p.Support, supportSize, tallest).Shape.Text, colW(supportCol), 0))
+			h = math.Max(h, sizedBlockHeightPt(ctx, []sizedPara{{text: p.Support, sizePt: supportSize}}, colW(supportCol))+baselineInsetPt(tallest, supportSize)-trim)
+			written = math.Max(written, writtenFitHeightPt(ctx.themeFonts(), execSummarySupportCell(p.Support, supportSize, tallest, padPt).Shape.Text, colW(supportCol), 0))
 		}
 		if numbered {
-			h = math.Max(h, lay.numSize*sizingLineSpacing+2*sizingInsetTBPt)
-			written = math.Max(written, writtenFitHeightPt(ctx.themeFonts(), execSummaryNumberCell(i, lay.numSize, "dk1").Shape.Text, colW(0), 0))
+			h = math.Max(h, lay.numSize*sizingLineSpacing+2*sizingInsetTBPt-trim)
+			written = math.Max(written, writtenFitHeightPt(ctx.themeFonts(), execSummaryNumberCell(i, lay.numSize, "dk1", padPt).Shape.Text, colW(0), 0))
 		}
 		lay.writtenPt[i] = written
 		lay.rowPt[i] = math.Ceil(math.Max(h, written))
