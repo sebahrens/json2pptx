@@ -1096,13 +1096,24 @@ func semanticDiagFromFitWithIR(sm *semantic.SourceMap, ir *semantic.DeckIR, f pa
 	d := semanticDiagFromFitField(sm, ir, f)
 	// A render finding always names where in the DeckSpec to act. A slide-level
 	// finding with no source link (MISSING_TITLE addresses the whole raw slide)
-	// came back with a raw_path and no semantic_path at all
-	// (go-slide-creator-y81vn); it now carries the slide's own locator, and
-	// MISSING_TITLE the field to write.
-	if rawIdx := slidepath.SlideIndex(f.Path); d.SemanticPath == "" && rawIdx >= 0 {
-		d.SemanticPath = slideSemanticPath(sm, rawIdx)
-		if f.Code == patterns.ErrCodeMissingTitle {
-			d.SemanticPath += ".title"
+	// carries the slide's own locator, and MISSING_TITLE the field to write
+	// (go-slide-creator-y81vn).
+	rawIdx := slidepath.SlideIndex(f.Path)
+	if rawIdx < 0 {
+		return d
+	}
+	slide := slideSemanticPath(sm, rawIdx)
+	path := d.SemanticPath
+	if path == "" {
+		path = slide
+	}
+	if f.Code == patterns.ErrCodeMissingTitle && path != "" && path == slide {
+		path += ".title"
+	}
+	if path != d.SemanticPath {
+		d.SemanticPath = path
+		if d.diag != nil {
+			d.diag.Path = path
 		}
 	}
 	return d
