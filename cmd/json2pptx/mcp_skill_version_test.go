@@ -104,9 +104,17 @@ func TestProjectedDiscoveryOutputSchemas(t *testing.T) {
 			var schema struct {
 				Properties map[string]any `json:"properties"`
 				Required   []string       `json:"required"`
+				// get_started answers with a workflow (the first branch) or,
+				// given tool, with tool_detail alone.
+				AnyOf []struct {
+					Required []string `json:"required"`
+				} `json:"anyOf"`
 			}
 			if err := json.Unmarshal(tt.raw, &schema); err != nil {
 				t.Fatal(err)
+			}
+			if len(schema.Required) == 0 && len(schema.AnyOf) > 0 {
+				schema.Required = schema.AnyOf[0].Required
 			}
 			required := map[string]bool{}
 			for _, name := range schema.Required {

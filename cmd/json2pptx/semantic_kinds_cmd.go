@@ -127,10 +127,16 @@ func runSemanticKinds() error {
 }
 
 // oneLineSummary cuts a kind's summary to its first sentence (at most ~110
-// characters) for the listing; `semantic kinds <kind>` prints it in full.
+// characters) for the listing; `semantic kinds <kind>` prints it in full. It
+// is what the list_slide_kinds catalogue carries per kind
+// (go-slide-creator-mvdt5), and applying it to its own result changes nothing.
 func oneLineSummary(summary string) string {
 	s := strings.Join(strings.Fields(summary), " ")
 	for _, stop := range []string{". ", ": ", " — "} {
+		if stop != ". " && (strings.HasSuffix(s, ".") || strings.HasSuffix(s, "…")) {
+			// Already one sentence (or one cut to length): keep it whole.
+			break
+		}
 		if i := strings.Index(s, stop); i > 0 && i < len(s)-len(stop) {
 			s = s[:i]
 			if stop == ". " {

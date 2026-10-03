@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -12,6 +15,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/semantic"
+	"github.com/sebahrens/json2pptx/templates"
 )
 
 // fileReference matches a pointer to a Markdown file: an MCP-only agent has
@@ -233,16 +237,46 @@ func onboardingBytes(t *testing.T, res *mcp.CallToolResult) int {
 	return len(raw)
 }
 
+// shippedTemplatesDir writes the templates the binary embeds into a fresh
+// directory. A budget measured on the checkout's templates/ grows with a
+// local, gitignored template (p-style.pptx): the listing it measures must be
+// the one a shipped binary serves.
+func shippedTemplatesDir(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	entries, err := fs.ReadDir(templates.Embedded, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".pptx") {
+			continue
+		}
+		data, err := fs.ReadFile(templates.Embedded, e.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, e.Name()), data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
 // TestOnboardingPayloadBudgets is the go-slide-creator-mvdt5 acceptance test.
 // What a default-profile agent reads before it can author a slide was about
 // 95 KB (tools/list 41.6, get_started 12.2, list_slide_kinds 22.9,
-// list_templates 17.9). Each piece now has a ceiling well under that, and so
-// does their sum; depth (examples, field schemas, a template's colour roles)
-// is fetched for the kinds and the template the agent chose.
+// list_templates 17.9). First contact now has a 40 KiB budget and each piece
+// a ceiling inside it; depth (a tool's full description, examples, field
+// schemas, a template's colour roles) is fetched for the tool, the kinds and
+// the template the agent chose.
 func TestOnboardingPayloadBudgets(t *testing.T) {
 	withToolProfile(t, toolProfileDeckSpec)
 	withRenderStatus(t, true, nil)
 	mc := refusalTestConfig(t)
+	// Only the shipped templates: a local templates/p-style.pptx must not
+	// move a budget.
+	mc.templatesDir = shippedTemplatesDir(t)
 
 	rawTools, _ := listToolsOverWire(t, newJSON2PPTXMCPServer(profileTestConfig(t), toolProfileDeckSpec))
 	started := onboardingBytes(t, mustCall(t, mc.handleGetStarted, map[string]any{"task": "brief"}))
@@ -258,8 +292,8 @@ func TestOnboardingPayloadBudgets(t *testing.T) {
 	}{
 		{"initialize instructions", instructions, 1536, 1355},
 		{"tools/list", len(rawTools), deckSpecToolListByteBudget, 40628},
-		{"get_started(brief)", started, 6 * 1024, 12066},
-		{"list_slide_kinds catalogue", kinds, 12 * 1024, 21661},
+		{"get_started(brief)", started, 5632, 12066},
+		{"list_slide_kinds catalogue", kinds, 6 * 1024, 21661},
 		{"list_templates fields:names", names, 2 * 1024, 14652},
 		{"list_templates compact", compact, 15 * 1024, 14652},
 	} {
@@ -270,11 +304,45 @@ func TestOnboardingPayloadBudgets(t *testing.T) {
 	}
 	// The path get_started lays out: tools/list, get_started, the template
 	// names and the kind catalogue.
-	const firstContactBudget = 52 * 1024
+	const firstContactBudget = 40 * 1024
 	total := instructions + len(rawTools) + started + kinds + names
 	t.Logf("first contact: %d bytes (budget %d)", total, firstContactBudget)
 	if total > firstContactBudget {
 		t.Errorf("first contact is %d bytes, over the %d-byte budget", total, firstContactBudget)
+	}
+	// The ceilings themselves fit the budget, so no piece can grow into
+	// another's room unnoticed.
+	if sum := 1536 + deckSpecToolListByteBudget + 5632 + 6*1024 + 2*1024; sum > firstContactBudget {
+		t.Errorf("the per-piece ceilings sum to %d bytes, over the %d-byte first-contact budget", sum, firstContactBudget)
+	}
+
+	// The catalogue is one line per kind; the rest comes with a named kind.
+	var catalogue struct {
+		SlideKinds []slideKindListEntry `json:"slide_kinds"`
+	}
+	structuredInto(t, mustCall(t, mc.handleListSlideKinds, map[string]any{}).StructuredContent, &catalogue)
+	if len(catalogue.SlideKinds) != len(semantic.AllSlideKinds()) {
+		t.Errorf("catalogue lists %d kinds, want %d", len(catalogue.SlideKinds), len(semantic.AllSlideKinds()))
+	}
+	for _, k := range catalogue.SlideKinds {
+		info, _ := semantic.LookupKind(semantic.SlideKind(k.Kind))
+		if k.Summary == "" || len(k.Summary) > 200 || strings.Contains(k.Summary, ". ") {
+			t.Errorf("catalogue line for %s is not one short sentence: %q", k.Kind, k.Summary)
+		}
+		if len(k.RequiredFields) != len(info.RequiredFields) {
+			t.Errorf("catalogue dropped required_fields of %s", k.Kind)
+		}
+		if k.Example != nil || len(k.TypicalFields) > 0 {
+			t.Errorf("catalogue row for %s carries authoring detail", k.Kind)
+		}
+	}
+	var named struct {
+		SlideKinds []slideKindListEntry `json:"slide_kinds"`
+	}
+	structuredInto(t, mustCall(t, mc.handleListSlideKinds, map[string]any{"kinds": []any{"agenda"}}).StructuredContent, &named)
+	if info, _ := semantic.LookupKind("agenda"); len(named.SlideKinds) != 1 || named.SlideKinds[0].Summary != info.Summary ||
+		len(named.SlideKinds[0].TypicalFields) == 0 || named.SlideKinds[0].Example == nil {
+		t.Errorf("a named kind does not return its full summary, typical fields and example: %+v", named.SlideKinds)
 	}
 
 	// get_started sends the agent to the names projection, not the compact one.

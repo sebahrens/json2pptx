@@ -381,13 +381,20 @@ when the `claude` CLI is on `PATH`; otherwise they print that command for you to
 
 Skip skill installation with `--skip-skill` (shell) or `-SkipSkill` (PowerShell).
 
-The skills are also embedded in the binary: `json2pptx skill install [--dest DIR]`
-writes the copy that matches it (default `~/.claude/skills`, or
-`$JSON2PPTX_SKILL_DIR`), and `json2pptx skill status` reports whether the
-installed `generate-deck` skill is current. `get-started`, `capabilities`,
-`semantic` and `generate` print one line on stderr when the installed skill is
-older than the binary or lacks files it ships (`JSON2PPTX_SKILL_CHECK=off`
-silences it).
+The skills and that snapshot are embedded in the binary, and every installer
+runs the same command: `json2pptx skill install [--dest DIR]` writes the copy
+that matches the binary (default `~/.claude/skills`, or `$JSON2PPTX_SKILL_DIR`)
+and ends every Markdown file in a version stamp
+(`<!-- json2pptx-skill schema_version: X.Y.Z -->`). `json2pptx skill status`
+checks each installed file: missing, unstamped, stamped by an older binary, or
+(examples, images) different from the shipped bytes. `get-started`,
+`capabilities`, `semantic` and `generate` print one line on stderr when the
+installed skill is older than the binary or lacks files it ships — once per
+mismatch, remembered in `generate-deck/.json2pptx-skill-warned` (or the user
+cache directory when the skill directory is read-only);
+`JSON2PPTX_SKILL_CHECK=off` silences it. `json2pptx skill cli-map
+[--tools deckspec|core|all] [--format json|md]` prints the MCP-tool → CLI-command
+table, generated from the tool classifications.
 
 ### MCP Server
 

@@ -225,7 +225,7 @@ Commands:
   shape-catalog       List available preset geometries
   audit-palette       Render PPTX to PNG and compare chart colors with theme accents/tints
   semantic            Validate/compile/render compact semantic deck specs (kinds|validate|compile|render|explain|schema)
-  skill               Install the agent skills that match this binary, or check the installed copy (install|status)
+  skill               Install the agent skills that match this binary, check the installed copy, or print the MCP-to-CLI table (install|status|cli-map)
   serve               Start HTTP API server
   mcp                 Start MCP (Model Context Protocol) server over stdio
   version             Show version information
