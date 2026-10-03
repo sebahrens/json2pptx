@@ -120,10 +120,9 @@ content.
 
 ## Several visuals on one slide
 
-When content types must be read together (chart left, KPI over timeline
-right) use `kind: regions`, not a raw compose: 2–3 typed chart / stat / kpis
-/ table / timeline / image / text regions in a bounded arrangement with
-`size_pct` shares (budgets: `list_slide_kinds`;
+For visuals read together, use `kind: regions`, not a raw compose: 2–3
+typed chart / stat / kpis / table / timeline / image / text regions in a
+bounded arrangement with `size_pct` shares (budgets: `list_slide_kinds`;
 `examples/semantic/regions.yaml`), each rule an error at
 `slides[N].regions[k]`. A stacked region holds one visual's worth; leave its
 share unset (raised to what its kind reads in), and on a
@@ -141,14 +140,15 @@ final verdict from `submit_visual_review`'s current-revision status; a
 re-render is a new unreviewed response, and a verdict never clears blockers
 (`reviewed_deterministic_blockers`). Edit a diagnostic's `semantic_path`
 (`raw_path` only as fallback). Keep the DeckSpec as the source of truth.
-Grid text generation would shrink below its readable floor is an `error`
-in `validate_deck_spec` too. If render still refuses (`success: false`), the
-refusal is a diagnostic (`code`, `severity`, `semantic_path`,
+Grid text generation would shrink below its floor is a `validate_deck_spec`
+`error` too; its patch cuts one field to `max_chars` (`repair:
+"composition"`: cut rows or detail). If render still refuses (`success:
+false`), the refusal is a diagnostic (`code`, `severity`, `semantic_path`,
 `evidence.measured`/`allowed`) whose `next_tool_call` — also top level — is a
 `validate_deck_spec` patch: rewrite the named field, or for a list, switch
-the slide to its native layout (`/slides/N/layout: "content"`). Inside a
-`raw_json2pptx` slide its `semantic_path` is the slide's `slides[N].slide`
-payload. HTTP: `POST /api/v1/semantic/render` (`docs/api/README.md`).
+the slide to its native layout (`/slides/N/layout: "content"`). In a
+`raw_json2pptx` slide, `semantic_path` is `slides[N].slide`. HTTP:
+`POST /api/v1/semantic/render` (`docs/api/README.md`).
 After each revision, render and inspect the affected slides, then inspect all
 slides of the final revision as required by [SKILL.md](SKILL.md).
 

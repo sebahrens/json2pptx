@@ -28,7 +28,8 @@ import (
 //   caption (italic)  $12M    -30%    4 wks   ← result metrics
 //
 // A real image (path or url) renders as a shape_grid image cell, which the
-// generator cover-crops to the frame (no distortion). Without an image the
+// generator cover-crops to the frame (no distortion), or places whole when
+// image.fit is "contain". Without an image the
 // pattern draws a dashed wireframe placeholder labelled with image_label.
 // The grid is content-sized: its height is the larger of the text column's
 // measured height and a ~4:3 image frame, capped at the content area and
@@ -172,6 +173,7 @@ func (p *imageTextSplit) Schema() *Schema {
 		"path": StringSchema(0).WithDescription("Local .png / .jpg file (relative paths resolve against the deck JSON directory)"),
 		"url":  StringSchema(0).WithDescription("HTTPS image URL (downloaded and cached)"),
 		"alt":  StringSchema(200).WithDescription("Alt text (defaults to the caption or heading)"),
+		"fit":  EnumSchema("cover", "contain").WithDescription("\"cover\" (default) fills the frame and crops the long axis (photos); \"contain\" keeps the whole picture (screenshots, exhibits)").WithDefault("cover"),
 	}, nil).WithAdditionalProperties(false).WithDescription("The picture; omit to render a dashed placeholder labelled with image_label")
 
 	metric := ObjectSchema(map[string]*Schema{
@@ -229,7 +231,10 @@ func (p *imageTextSplit) Validate(values, overrides any, cellOverrides map[int]a
 				"image-text-split: image needs a path or url (omit image to render a placeholder)", ProvideValueFix("image.path")))
 		}
 		if v.Image.Overlay != nil || v.Image.Text != nil {
-			errs = append(errs, errUnknownKey(name, "image", "overlay/text", "path, url, alt"))
+			errs = append(errs, errUnknownKey(name, "image", "overlay/text", "path, url, alt, fit"))
+		}
+		if err := validatePhotoFit(name, "image", v.Image.Fit); err != nil {
+			errs = append(errs, err)
 		}
 	}
 	if strings.TrimSpace(v.Body) == "" && len(v.Bullets) == 0 {
@@ -429,7 +434,10 @@ func itsTextParas(v *ImageTextSplitValues, headingSize, bodySize float64) []size
 func itsImageColumn(ctx ExpandContext, v *ImageTextSplitValues, lay itsLayout) *jsonschema.GridCellInput {
 	var picture *jsonschema.GridCellInput
 	if v.Image != nil && (v.Image.Path != "" || v.Image.URL != "") {
-		img := &jsonschema.GridImageInput{Path: v.Image.Path, URL: v.Image.URL, Alt: v.Image.Alt}
+		// Fit reaches the grid cell unchanged: cover (the default) for a
+		// photograph, contain for a screenshot or exhibit whose header and
+		// footer are part of the evidence (go-slide-creator-zifd3).
+		img := &jsonschema.GridImageInput{Path: v.Image.Path, URL: v.Image.URL, Alt: v.Image.Alt, Fit: v.Image.Fit}
 		if strings.TrimSpace(img.Alt) == "" {
 			img.Alt = firstNonEmpty(v.Caption, v.Heading, v.ImageLabel, "Image")
 		}

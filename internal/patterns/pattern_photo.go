@@ -2,6 +2,7 @@ package patterns
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -51,6 +52,18 @@ func validatePatternPhoto(pattern, path string, img *jsonschema.GridImageInput, 
 		errs = append(errs, errUnknownKey(pattern, path, "overlay/text", "path, url, alt"))
 	}
 	return errs
+}
+
+// validatePhotoFit rejects a picture fit outside the shape_grid image
+// vocabulary: "cover" (the default) or "contain".
+func validatePhotoFit(pattern, path, fit string) error {
+	switch fit {
+	case "", "cover", "contain":
+		return nil
+	}
+	return newValidationError(pattern, path+".fit", ErrCodeUnknownEnum,
+		fmt.Sprintf("%s: %s.fit %q is not a fit; use \"cover\" (default) or \"contain\"", pattern, path, fit),
+		UseOneOfFix(path+".fit", []string{"cover", "contain"}))
 }
 
 // patternPhotoCell builds the image cell for a resolved picture reference, or

@@ -34,6 +34,9 @@ type imageCaseImage struct {
 	Path string `json:"path,omitempty"`
 	URL  string `json:"url,omitempty"`
 	Alt  string `json:"alt,omitempty"`
+	// Fit is "cover" (default: fill the frame, crop the long axis) or
+	// "contain" (keep the whole screenshot or exhibit) (go-slide-creator-zifd3).
+	Fit string `json:"fit,omitempty"`
 }
 
 // imageCaseMetric is one result figure beside the story.
@@ -170,7 +173,7 @@ func compileImageCaseTwoColumn(in Input, v imageCaseValues) (*deckinput.SlideInp
 		bullets = append(bullets, m.Value+" — "+m.Label)
 	}
 
-	img := &deckinput.ImageInput{Path: v.Image.Path, URL: v.Image.URL, Alt: firstNonEmpty(v.Image.Alt, v.Caption, v.ImageLabel)}
+	img := &deckinput.ImageInput{Path: v.Image.Path, URL: v.Image.URL, Alt: firstNonEmpty(v.Image.Alt, v.Caption, v.ImageLabel), Fit: v.Image.Fit}
 	contents := []deckinput.ContentInput{{PlaceholderID: imagePH, Type: "image", ImageValue: img}}
 	var textItem deckinput.ContentInput
 	var textField string
@@ -231,6 +234,15 @@ func ImageCaseHasImage(body map[string]any) bool {
 	return imageCaseImageFrom(body) != nil
 }
 
+// ImageCaseFit returns the picture's authored fit (lower-cased), or "" when
+// none is set (go-slide-creator-zifd3).
+func ImageCaseFit(body map[string]any) string {
+	if img := imageCaseImageFrom(body); img != nil {
+		return img.Fit
+	}
+	return ""
+}
+
 // imageCaseImageFrom reads the picture: a path or url string, or an object.
 func imageCaseImageFrom(body map[string]any) *imageCaseImage {
 	for _, key := range []string{"image", "photo", "screenshot"} {
@@ -247,6 +259,7 @@ func imageCaseImageFrom(body map[string]any) *imageCaseImage {
 				Path: strField(t, "path"),
 				URL:  strField(t, "url"),
 				Alt:  strField(t, "alt"),
+				Fit:  strings.ToLower(strField(t, "fit")),
 			}
 			if img.Path != "" || img.URL != "" {
 				return img

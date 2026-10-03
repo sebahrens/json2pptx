@@ -1,5 +1,22 @@
 # Schema Changelog
 
+- **2026-10-03 — Whole-exhibit image fit for image cases; shared-cell readability repairs budget the field they edit (`go-slide-creator-zifd3`, `go-slide-creator-ifcng`).** SchemaVersion unchanged (pattern values and DeckSpec payload only; raw input-schema fingerprint unchanged).
+  - `image-text-split` `values.image` gains `fit`: `"cover"` (default,
+    unchanged — fills the frame and crops the long axis) or `"contain"`
+    (keeps the whole picture, centred). Any other value is `UNKNOWN_ENUM` at
+    `image.fit`. DeckSpec `image_case` `image: {path|url, alt, fit}` carries
+    it to the pattern (and to the two-column fallback's `image_value.fit`);
+    a `regions` image region takes it too. A screenshot's header and
+    action row no longer disappear under the default crop.
+  - `TEXT_BELOW_READABLE_MIN` on a shared grid cell (predicted autofit
+    shrink): `fix.params` keep the cell's `max_chars` and add `edit_text` +
+    `field_max_chars` (the paragraph whose cut, re-measured on the
+    re-expanded slide, clears the cell) or `repair: "composition"` when no
+    single field can within half its length. `validate_deck_spec` patches
+    `edit_text`'s field with `max_chars` = `field_max_chars` and reports the
+    cell's as `cell_max_chars`; a composition repair carries no `max_chars`
+    and prefers the native-layout switch.
+
 - **2026-10-03 — Narrow regions keep words whole; native diagrams report the ones they cannot (`go-slide-creator-v74wv`).**
   - The writer's margin clamp now leaves 5% of room over a word's measured
     width (20% for a host-dependent theme face measured in the Liberation

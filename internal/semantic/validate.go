@@ -869,6 +869,10 @@ func validateFramework(path string, slide SlideSpec, s *semDiags) {
 // nothing said about it is a plain image slide, which the pattern refuses too
 // (go-slide-creator-q31s).
 func validateImageCase(path string, slide SlideSpec, s *semDiags) {
+	if fit := slides.ImageCaseFit(slide.Body); fit != "" && fit != "cover" && fit != "contain" {
+		s.hard(path+".image.fit", diagnostics.CodeSemanticFieldType,
+			fmt.Sprintf("image.fit %q is not a fit; use \"cover\" (default, crops to fill the frame) or \"contain\" (keeps a whole screenshot or exhibit)", fit))
+	}
 	if over := slides.ImageCaseOverBudget(slide.Body); over != "" {
 		s.degrade(path+".body",
 			fmt.Sprintf("image case %s (otherwise it degrades to a content slide)", over),

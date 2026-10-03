@@ -97,7 +97,7 @@ Each content-bearing kind compiles to the named pattern its plan advertises (the
 | `matrix_2x2` | `matrix-2x2` | `x_axis`, `y_axis`, `quadrants: [{header, body?}] x4` | exactly 4 headed quadrants and both axes named; header ≤80 chars, body ≤200, x axis ≤16, y axis ≤60, axis end ≤11 |
 | `framework` (`bmc`) | `bmc-canvas` | `sections: {key_partners…revenue_streams}` | all 9 cells present; ≤10 items each, ≤200 chars per item |
 | `framework` (`swot`, `porters_five_forces`) | *native diagram, no pattern* | `sections: {strengths…threats}` / `{rivalry…buyers}` | all 4 / all 5 parts present |
-| `image_case` | `image-text-split` | `body` or `bullets` (+ `image?`, `eyebrow?`, `heading?`, `metrics?`, `caption?`) | body ≤300 chars, eyebrow ≤30, heading ≤80, ≤5 bullets ≤140 each, ≤3 metrics |
+| `image_case` | `image-text-split` | `body` or `bullets` (+ `image?` (`fit: contain` keeps a whole screenshot), `eyebrow?`, `heading?`, `metrics?`, `caption?`) | body ≤300 chars, eyebrow ≤30, heading ≤80, ≤5 bullets ≤140 each, ≤3 metrics |
 | `decision` | `numbered-step-strip` / `card-grid` | `options: [{label, detail?}]`, `recommendation` | 3–6 options (label ≤60 chars, detail ≤180), or exactly 2 each with a detail |
 | `next_steps` | `next-steps` | `actions: [{action, owner?, date?}]` (aliases `next_steps`, `steps`), `decisions?: [string]`, `decisions_label?` | 2–6 actions (action ≤90, owner ≤30, date ≤20) and 0–3 decisions ≤120; otherwise bullets that keep owner, date and each decision. `plan_deck format:"deckspec"` closes on it; `closing` stays the plain Q&A page |
 | `process` | `numbered-step-strip` / `process-flow` | `steps: [{label, description?, type?}]` | 3–6 described steps (label ≤60 chars, description ≤180), or 3–8 bare / branching ones (≤80 per box) |
