@@ -339,6 +339,32 @@ func TestTableHighlight_CellOverrideAccentBar(t *testing.T) {
 	}
 }
 
+// go-slide-creator-3hcw6: highlight_rows marks further rows the way
+// highlight_row marks one — accent bar and the highlight tag on each.
+func TestTableHighlight_HighlightRows(t *testing.T) {
+	p := tableHighlightPattern(t)
+	v := decodeTableHighlight(t, `{"criteria":["A","B"],"highlight_row":0,"highlight_rows":[2],"highlight_label":"Recommended",
+		"options":[{"name":"x","scores":[1,2]},{"name":"y","scores":[2,3]},{"name":"z","scores":[3,3]}]}`)
+	if err := p.Validate(v, nil, nil); err != nil {
+		t.Fatalf("validate: %v", err)
+	}
+	grid, err := p.Expand(fullThemeCtx(), v, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for option, want := range []bool{true, false, true} {
+		cell := grid.Rows[2+2*option].Cells[0]
+		tagged := strings.Contains(string(cell.Shape.Text), "Recommended")
+		if (cell.AccentBar != nil) != want || tagged != want {
+			t.Errorf("option %d: accent bar %v, tag %v; want both %v", option, cell.AccentBar != nil, tagged, want)
+		}
+	}
+	bad := decodeTableHighlight(t, `{"criteria":["A","B"],"highlight_rows":[3],"options":[{"name":"x","scores":[1,2]},{"name":"y","scores":[2,3]}]}`)
+	if err := p.Validate(bad, nil, nil); err == nil || !strings.Contains(err.Error(), "highlight_rows[0]") {
+		t.Errorf("an out-of-range highlight_rows entry should be refused at its path, got %v", err)
+	}
+}
+
 func TestTableHighlight_Recommend(t *testing.T) {
 	res := Recommend(Default(), "evaluate vendor options against criteria with harvey balls", &ContentHints{ItemCount: 4}, 3)
 	if len(res.Candidates) == 0 || res.Candidates[0].PatternName != "table-highlight" {

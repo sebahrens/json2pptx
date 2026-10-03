@@ -45,9 +45,15 @@ type overlayEnv struct {
 // overlayCtx is the state shared by one slide's overlay renderers.
 type overlayCtx struct {
 	env                     overlayEnv
+	cells                   []shapegrid.ResolvedCell
 	cellByRC                map[[2]int]shapegrid.ResolvedCell
 	slideWidth, slideHeight int64
 	findings                []patterns.FitFinding
+	// calloutTargets are the resolved targets of every callout on the slide
+	// and calloutLabels the labels placed so far: an auto-placed label keeps
+	// clear of both.
+	calloutTargets [][2]int64
+	calloutLabels  []pptx.RectEmu
 }
 
 // resolveOverlays converts the slide-level Overlays DTO list into raw <p:sp> /
@@ -86,7 +92,15 @@ func resolveOverlays(
 		}
 	}
 
-	ctx := &overlayCtx{env: env, cellByRC: cellByRC, slideWidth: slideWidth, slideHeight: slideHeight}
+	ctx := &overlayCtx{env: env, cells: cells, cellByRC: cellByRC, slideWidth: slideWidth, slideHeight: slideHeight}
+	for _, ov := range overlays {
+		if ov == nil || ov.To == nil || !strings.EqualFold(strings.TrimSpace(ov.Kind), "callout") {
+			continue
+		}
+		if target, err := ctx.resolveOverlayPoint(ov.To); err == nil {
+			ctx.calloutTargets = append(ctx.calloutTargets, [2]int64{target.X, target.Y})
+		}
+	}
 	out := make([][]byte, 0, len(overlays))
 	for i, ov := range overlays {
 		if ov == nil {
@@ -343,28 +357,36 @@ const (
 // crosses its own text. `to` is usually an anchor_image point, which keeps
 // the leader on the same source pixel whatever the frame or crop. A target
 // the crop trims away keeps the label (and its wording) and omits the leader.
+// With `from` omitted and an anchor_image target the label is placed beside
+// its target, inside the picture's frame (autoCalloutLabel).
 func (ctx *overlayCtx) renderOverlayCallout(idx int, ov *OverlayShapeInput, alloc *pptx.ShapeIDAllocator) ([][]byte, error) {
 	text := strings.TrimSpace(ov.Text)
 	if text == "" {
 		return nil, fmt.Errorf("callout overlay requires 'text'")
 	}
-	if ov.From == nil {
-		return nil, fmt.Errorf("callout overlay requires 'from' (the label's top-left)")
-	}
 	if ov.To == nil {
 		return nil, fmt.Errorf("callout overlay requires 'to' (the target point)")
 	}
-	from, err := ctx.resolveOverlayPoint(ov.From)
-	if err != nil {
-		return nil, fmt.Errorf("from: %w", err)
+	if ov.From == nil && ov.To.AnchorImage == nil {
+		return nil, fmt.Errorf("callout overlay requires 'from' (the label's top-left); only an anchor_image target places its own label")
 	}
-	ctx.reportCropped(idx, "from", from, "the label was placed at the nearest visible picture edge")
 	target, err := ctx.resolveOverlayPoint(ov.To)
 	if err != nil {
 		return nil, fmt.Errorf("to: %w", err)
 	}
 
-	label := ctx.calloutLabelRect(from.X, from.Y, text, ov.Width, ov.Height)
+	var label pptx.RectEmu
+	if ov.From != nil {
+		from, ferr := ctx.resolveOverlayPoint(ov.From)
+		if ferr != nil {
+			return nil, fmt.Errorf("from: %w", ferr)
+		}
+		ctx.reportCropped(idx, "from", from, "the label was placed at the nearest visible picture edge")
+		label = ctx.calloutLabelRect(from.X, from.Y, text, ov.Width, ov.Height)
+	} else {
+		label = ctx.autoCalloutLabel(ov.To.AnchorImage, target, ctx.calloutLabelRect(0, 0, text, ov.Width, ov.Height))
+	}
+	ctx.calloutLabels = append(ctx.calloutLabels, label)
 	color := strings.TrimSpace(ov.Color)
 	if color == "" {
 		color = "accent1"
@@ -414,6 +436,86 @@ func (ctx *overlayCtx) renderOverlayCallout(idx int, ov *OverlayShapeInput, allo
 		return nil, err
 	}
 	return [][]byte{labelXML, leaderXML}, nil
+}
+
+// calloutLeaderEMU is the gap an auto-placed label keeps from its target: long
+// enough for the leader and its dot to read, short enough that the label
+// plainly belongs to the point (0.3in).
+const calloutLeaderEMU = int64(274320)
+
+// autoCalloutLabel places a callout label of the given size beside its
+// anchor_image target (go-slide-creator-n3j96). It tries the eight positions
+// around the target, starting on the side facing the middle of the picture's
+// frame, and takes the first that stays inside the frame and covers neither
+// another callout's target nor a label already placed. When none does, the
+// first position is used, kept on the slide.
+func (ctx *overlayCtx) autoCalloutLabel(ai *OverlayAnchorImageInput, target resolvedPoint, size pptx.RectEmu) pptx.RectEmu {
+	frame := pptx.RectEmu{CX: ctx.slideWidth, CY: ctx.slideHeight}
+	if cell, ok := ctx.imageCell(ai); ok && cell.Bounds.CX >= size.CX && cell.Bounds.CY >= size.CY {
+		frame = cell.Bounds
+	}
+	sx, sy := int64(1), int64(1)
+	if target.X > frame.X+frame.CX/2 {
+		sx = -1
+	}
+	if target.Y > frame.Y+frame.CY/2 {
+		sy = -1
+	}
+	var fallback *pptx.RectEmu
+	for _, dir := range [][2]int64{{sx, sy}, {sx, 0}, {sx, -sy}, {0, sy}, {0, -sy}, {-sx, sy}, {-sx, 0}, {-sx, -sy}} {
+		r := pptx.RectEmu{X: target.X - size.CX/2, Y: target.Y - size.CY/2, CX: size.CX, CY: size.CY}
+		switch dir[0] {
+		case 1:
+			r.X = target.X + calloutLeaderEMU
+		case -1:
+			r.X = target.X - calloutLeaderEMU - size.CX
+		}
+		switch dir[1] {
+		case 1:
+			r.Y = target.Y + calloutLeaderEMU
+		case -1:
+			r.Y = target.Y - calloutLeaderEMU - size.CY
+		}
+		r.X = clampEMU(r.X, frame.X, frame.X+frame.CX-size.CX)
+		r.Y = clampEMU(r.Y, frame.Y, frame.Y+frame.CY-size.CY)
+		if fallback == nil {
+			first := r
+			fallback = &first
+		}
+		if ctx.calloutLabelClear(r) {
+			return r
+		}
+	}
+	return *fallback
+}
+
+// clampEMU keeps v inside [lo, hi]; lo wins when the range is empty.
+func clampEMU(v, lo, hi int64) int64 {
+	if v > hi {
+		v = hi
+	}
+	if v < lo {
+		v = lo
+	}
+	return v
+}
+
+// calloutLabelClear reports whether a label rectangle covers no callout
+// target (its own included: the leader needs room) and no placed label.
+func (ctx *overlayCtx) calloutLabelClear(r pptx.RectEmu) bool {
+	const pad = int64(45720)
+	grown := pptx.RectEmu{X: r.X - pad, Y: r.Y - pad, CX: r.CX + 2*pad, CY: r.CY + 2*pad}
+	for _, t := range ctx.calloutTargets {
+		if pointInRect(t[0], t[1], grown) {
+			return false
+		}
+	}
+	for _, placed := range ctx.calloutLabels {
+		if grown.X < placed.X+placed.CX && placed.X < grown.X+grown.CX && grown.Y < placed.Y+placed.CY && placed.Y < grown.Y+grown.CY {
+			return false
+		}
+	}
+	return true
 }
 
 // calloutLabelRect sizes a callout label at (x, y): width / height are
@@ -546,11 +648,11 @@ func (ctx *overlayCtx) resolveOverlayPoint(pt *OverlayPointInput) (resolvedPoint
 // places the picture itself — so the endpoint follows its pixel through any
 // frame aspect, fit or template change.
 func (ctx *overlayCtx) resolveImageAnchor(ai *OverlayAnchorImageInput) (resolvedPoint, error) {
-	cell, ok := ctx.cellByRC[[2]int{ai.Row, ai.Col}]
-	if !ok {
+	if _, ok := ctx.cellByRC[[2]int{ai.Row, ai.Col}]; !ok {
 		return resolvedPoint{}, fmt.Errorf("anchor_image row=%d col=%d not found in shape_grid", ai.Row, ai.Col)
 	}
-	if cell.Kind != shapegrid.CellKindImage || cell.ImageSpec == nil {
+	cell, ok := ctx.imageCell(ai)
+	if !ok {
 		return resolvedPoint{}, fmt.Errorf("anchor_image row=%d col=%d is not an image cell", ai.Row, ai.Col)
 	}
 	frame := types.BoundingBox{X: cell.Bounds.X, Y: cell.Bounds.Y, Width: cell.Bounds.CX, Height: cell.Bounds.CY}
@@ -582,6 +684,39 @@ func (ctx *overlayCtx) resolveImageAnchor(ai *OverlayAnchorImageInput) (resolved
 		pt.cropped = &croppedTarget{row: ai.Row, col: ai.Col, u: u, v: v, x0: x0, x1: x1, y0: y0, y1: y1}
 	}
 	return pt, nil
+}
+
+// imageCell returns the image cell an anchor_image addresses: the cell at
+// (row, col), or — when that cell hosts a nested grid — the one picture inside
+// it. A pattern that stacks a caption under its picture (image-text-split)
+// nests the picture one grid down, and the author addressing the picture's
+// column should not have to know that.
+func (ctx *overlayCtx) imageCell(ai *OverlayAnchorImageInput) (shapegrid.ResolvedCell, bool) {
+	cell, ok := ctx.cellByRC[[2]int{ai.Row, ai.Col}]
+	if !ok {
+		return shapegrid.ResolvedCell{}, false
+	}
+	if cell.Kind == shapegrid.CellKindImage && cell.ImageSpec != nil {
+		return cell, true
+	}
+	if cell.Kind != shapegrid.CellKindSubGrid {
+		return shapegrid.ResolvedCell{}, false
+	}
+	var found []shapegrid.ResolvedCell
+	host := cell.Bounds
+	for _, c := range ctx.cells {
+		if c.Kind != shapegrid.CellKindImage || c.ImageSpec == nil {
+			continue
+		}
+		b := c.Bounds
+		if b.X >= host.X && b.Y >= host.Y && b.X+b.CX <= host.X+host.CX && b.Y+b.CY <= host.Y+host.CY {
+			found = append(found, c)
+		}
+	}
+	if len(found) != 1 {
+		return shapegrid.ResolvedCell{}, false
+	}
+	return found[0], true
 }
 
 // pointOnRect returns a named anchor point on a rectangle.

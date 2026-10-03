@@ -192,6 +192,64 @@
     weight and counts toward `max_topic_title_pct`. A continuation marker is
     not a number in the claim.
 
+- **2026-10-03 — `list_slide_kinds` reports per-field text budgets, measured on the template (`go-slide-creator-iubjb`).**
+  - **New `template` argument and `fields: ["budgets"]`.** Either adds
+    `slide_kinds[].budgets[]` — `{field, max_chars?, max_chars_per_line?,
+    max_lines?, min_items?, max_items?, basis, note?}` — plus `budget_basis`
+    and `takeaway_budget.max_chars`. `basis: "measured"` budgets (`title`,
+    `subtitle`, `takeaway`) come from the template's own placeholders and
+    takeaway band: the named template's, or with no `template` the tightest
+    across the shipped templates (`budget_basis.templates`), so copy inside
+    them fits every one. `basis: "fixed"` budgets are the compiler's own
+    limits and hold on every template. The compact default response is
+    unchanged. `json2pptx semantic kinds <kind> [--template <name>]` prints
+    the same table.
+  - **Budget statements agree.** Schema descriptions now state the budgets
+    that were missing (`executive_summary` lead ≤90 / support ≤200 /
+    `bottom_line` ≤160, `kpi_snapshot` value and delta ≤12, `bridge` label
+    ≤40, `option_matrix` `highlight_label` / `corner_label` ≤24, `stat`
+    combined label + context + source ≈120). The `closing` summary no longer
+    quotes a character count (the title budget is per template), an `agenda`
+    title or subtitle over its budget is reported as that budget rather than
+    as a section count, and a `process` step past the flow box also names
+    the numbered row's budgets (label 60, description 180).
+
+- **2026-10-03 — `decision` and `option_matrix` take a combined recommendation (`go-slide-creator-3hcw6`).**
+  - `option_matrix.recommended` (and `recommended_option`) accepts a list of
+    option names or 0-based indices; each named row is highlighted. A single
+    value compiles exactly as before.
+  - `decision` accepts two or more `options[].recommended: true`, and a new
+    slide-level `recommended` (a label, a 0-based index, or a list of them).
+    It used to be refused with "requires exactly one option"; no recommended
+    option is still an error.
+  - With two or more recommended options and no authored `recommendation` /
+    `takeaway`, the band reads `Recommended: A and B`. An authored one is kept.
+    A list entry that matches no option reports
+    `SEMANTIC_REFERENCE_UNRESOLVED` at `recommended[i]`.
+  - `table-highlight` gains `values.highlight_rows` (0-based rows highlighted
+    like `highlight_row`, each carrying `highlight_label`).
+
+- **2026-10-03 — `image_case` takes `callouts` on its picture (`go-slide-creator-n3j96`).**
+  - `callouts: [{label, x, y, units?}]` (up to 6; label ≤40 chars): `x` / `y`
+    are the point the label points at, in fractions of the image (0–1 from
+    its top-left corner) or, with `units: "px"`, the file's own pixels. They
+    compile to `callout` overlays anchored on the pattern's picture
+    (`anchor_image`); a point the cover crop hides reports
+    `OVERLAY_TARGET_CROPPED` at `slides[i].callouts[j]`. Callouts without an
+    `image`, without a label or numeric point, or outside the image are
+    errors; the content fallbacks keep the labels as bullets.
+  - Raw `overlays[]`: a `callout` whose `to` is an `anchor_image` point may
+    omit `from` — the label is placed beside its target inside the picture's
+    frame, clear of the other callouts. `anchor_image` addressing a cell that
+    hosts a nested grid resolves to the one picture inside it.
+
+- **2026-10-03 — `submit_visual_review` enumerates finding severities and categories (`go-slide-creator-lk37o`).**
+  - `slides[].findings[]` is typed: `severity` (`P0`–`P3`) and `category`
+    (17 values) are required enums whose descriptions give each value's
+    meaning. A value outside them is rejected (`INVALID_PARAMETER` at
+    `slides[i].findings[j].severity|category`, `details.allowed` listing the
+    values) and nothing is recorded; it used to be recorded without comment.
+
 - **2026-10-03 — Native framework diagrams share the patterns' surface style (`go-slide-creator-amtkg`).**
   - **Default look changed** for `swot`, `business_model_canvas`, `pestel`,
     `nine_box_talent`, `porters_five_forces`, `value_chain`, `kpi_dashboard`

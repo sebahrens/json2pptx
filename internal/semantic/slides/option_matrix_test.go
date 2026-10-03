@@ -82,6 +82,49 @@ func TestOptionMatrixOutscored(t *testing.T) {
 	}
 }
 
+// go-slide-creator-3hcw6: recommended takes a list. Every named row is
+// highlighted, the band names them when no takeaway was authored, and a single
+// value emits exactly what it always has.
+func TestOptionMatrixRecommendedList(t *testing.T) {
+	body := harveyMatrix(map[string]any{"recommended": []any{"consolidate", float64(2), "Consolidate"}, "highlight_label": "Recommended"})
+	values, ok := compiledMatrix(t, body)
+	if !ok {
+		t.Fatal("matrix did not reach table-highlight")
+	}
+	if values.HighlightRow == nil || *values.HighlightRow != 1 || len(values.HighlightRows) != 1 || values.HighlightRows[0] != 2 {
+		t.Errorf("highlight_row = %v, highlight_rows = %v; want 1 and [2]", values.HighlightRow, values.HighlightRows)
+	}
+	slide, links, err := CompileOptionMatrix(Input{Title: "Options", Body: body})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slide.Takeaway != "Recommended: Consolidate and Partner" {
+		t.Errorf("band = %q, want it to name both options", slide.Takeaway)
+	}
+	if got := semanticFor(links, "slides[0].takeaway"); got != "slides[0].recommended" {
+		t.Errorf("band maps to %q, want slides[0].recommended", got)
+	}
+	if unresolved := OptionMatrixUnresolvedReferences(harveyMatrix(map[string]any{"recommended": []any{"Consolidate", "Merge"}})); len(unresolved) != 1 || unresolved[0] != "recommended[1]" {
+		t.Errorf("unresolved = %v, want [recommended[1]]", unresolved)
+	}
+
+	authored, _, err := CompileOptionMatrix(Input{Title: "Options", Takeaway: "Do both", Body: body})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if authored.Takeaway != "Do both" {
+		t.Errorf("an authored takeaway must be kept, got %q", authored.Takeaway)
+	}
+
+	single, _, err := CompileOptionMatrix(Input{Title: "Options", Body: harveyMatrix(map[string]any{"recommended": "Consolidate"})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if single.Takeaway != "" || strings.Contains(string(single.Pattern.Values), "highlight_rows") || !strings.Contains(string(single.Pattern.Values), `"highlight_row":1`) {
+		t.Errorf("a single recommendation changed: takeaway %q, values %s", single.Takeaway, single.Pattern.Values)
+	}
+}
+
 func TestOptionMatrixCompilesToTableHighlight(t *testing.T) {
 	values, ok := compiledMatrix(t, harveyMatrix(nil))
 	if !ok {

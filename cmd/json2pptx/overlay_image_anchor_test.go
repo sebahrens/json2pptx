@@ -166,6 +166,90 @@ func TestCallout_LeaderStartsOnLabelEdge(t *testing.T) {
 	}
 }
 
+// fragRect reads a shape fragment's bounds.
+func fragRect(frag []byte) pptx.RectEmu {
+	s := string(frag)
+	x, _ := strconv.ParseInt(extractAttr(s, "<a:off ", "x"), 10, 64)
+	y, _ := strconv.ParseInt(extractAttr(s, "<a:off ", "y"), 10, 64)
+	cx, _ := strconv.ParseInt(extractAttr(s, "<a:ext ", "cx"), 10, 64)
+	cy, _ := strconv.ParseInt(extractAttr(s, "<a:ext ", "cy"), 10, 64)
+	return pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy}
+}
+
+// TestCallout_AutoPlacedLabel (go-slide-creator-n3j96): a callout with no
+// `from` and an anchor_image target places its own label — inside the
+// picture's frame, clear of every callout target and of the other labels —
+// and still draws the leader to the target. Without an anchor_image target
+// `from` stays required.
+func TestCallout_AutoPlacedLabel(t *testing.T) {
+	frame := pptx.RectEmu{X: 500000, Y: 1000000, CX: 5000000, CY: 2812500}
+	cells := []shapegrid.ResolvedCell{imageCell(screenshotPath, "contain", frame)}
+	points := [][2]float64{{0.35, 0.54}, {0.62, 0.54}, {0.97, 0.05}}
+	overlays := make([]*OverlayShapeInput, 0, len(points))
+	for i, p := range points {
+		overlays = append(overlays, &OverlayShapeInput{Kind: "callout", Text: fmt.Sprintf("%d  Label", i+1),
+			To: &OverlayPointInput{AnchorImage: &OverlayAnchorImageInput{X: p[0], Y: p[1]}}})
+	}
+	frags, findings, err := resolveOverlays(overlays, cells, newAllocFrom(400), 12192000, 6858000, overlayEnv{})
+	if err != nil || len(findings) != 0 || len(frags) != 2*len(points) {
+		t.Fatalf("frags=%d findings=%v err=%v", len(frags), findings, err)
+	}
+	place := generator.GridImagePlacement(screenshotPath, types.BoundingBox{X: frame.X, Y: frame.Y, Width: frame.CX, Height: frame.CY}, "contain")
+	var labels []pptx.RectEmu
+	for i, p := range points {
+		label := fragRect(frags[2*i])
+		if label.X < frame.X || label.Y < frame.Y || label.X+label.CX > frame.X+frame.CX || label.Y+label.CY > frame.Y+frame.CY {
+			t.Errorf("label %d %+v leaves the picture frame %+v", i, label, frame)
+		}
+		for j, q := range points {
+			if tx, ty, _ := place.SourceToSlide(q[0], q[1]); pointInRect(tx, ty, label) {
+				t.Errorf("label %d covers the target of callout %d", i, j)
+			}
+		}
+		for j, other := range labels {
+			if label.X < other.X+other.CX && other.X < label.X+label.CX && label.Y < other.Y+other.CY && other.Y < label.Y+label.CY {
+				t.Errorf("label %d overlaps label %d", i, j)
+			}
+		}
+		labels = append(labels, label)
+		wantX, wantY, _ := place.SourceToSlide(p[0], p[1])
+		if x, y := connectorEnd(t, frags[2*i+1]); !near(x, wantX, 2) || !near(y, wantY, 2) {
+			t.Errorf("leader %d ends at (%d,%d), want (%d,%d)", i, x, y, wantX, wantY)
+		}
+	}
+
+	_, _, err = resolveOverlays([]*OverlayShapeInput{{Kind: "callout", Text: "x", To: &OverlayPointInput{X: 50, Y: 50}}},
+		cells, newAllocFrom(400), 0, 0, overlayEnv{})
+	if err == nil || !strings.Contains(err.Error(), "requires 'from'") {
+		t.Errorf("a callout to a slide point still needs from: %v", err)
+	}
+}
+
+// TestAnchorImage_PictureInsideNestedGrid: a pattern that stacks a caption
+// under its picture nests the picture one grid down. anchor_image addressing
+// the hosting cell resolves to the one picture inside it; a host with two
+// pictures stays an error.
+func TestAnchorImage_PictureInsideNestedGrid(t *testing.T) {
+	host := shapegrid.ResolvedCell{Kind: shapegrid.CellKindSubGrid, Bounds: pptx.RectEmu{X: 400000, Y: 900000, CX: 4200000, CY: 3600000}}
+	picture := imageCell(screenshotPath, "contain", pptx.RectEmu{X: 500000, Y: 1000000, CX: 4000000, CY: 2250000})
+	caption := shapegrid.ResolvedCell{Kind: shapegrid.CellKindShape, RowIdx: 1, Bounds: pptx.RectEmu{X: 500000, Y: 3400000, CX: 4000000, CY: 400000}}
+	overlay := []*OverlayShapeInput{{Kind: "arrow", From: &OverlayPointInput{X: 90, Y: 10},
+		To: &OverlayPointInput{AnchorImage: &OverlayAnchorImageInput{X: 0.5, Y: 0.5}}}}
+
+	frags, _, err := resolveOverlays(overlay, []shapegrid.ResolvedCell{host, picture, caption}, newAllocFrom(400), 0, 0, overlayEnv{})
+	if err != nil || len(frags) != 1 {
+		t.Fatalf("frags=%d err=%v", len(frags), err)
+	}
+	if x, y := connectorEnd(t, frags[0]); !near(x, 2500000, 2) || !near(y, 2125000, 2) {
+		t.Errorf("arrow ends at (%d,%d), want the nested picture's centre (2500000,2125000)", x, y)
+	}
+
+	second := imageCell(screenshotPath, "contain", pptx.RectEmu{X: 500000, Y: 3400000, CX: 4000000, CY: 1000000})
+	if _, _, err := resolveOverlays(overlay, []shapegrid.ResolvedCell{host, picture, second}, newAllocFrom(400), 0, 0, overlayEnv{}); err == nil || !strings.Contains(err.Error(), "not an image cell") {
+		t.Errorf("a host with two pictures is ambiguous: err = %v", err)
+	}
+}
+
 // TestAnchorImage_Errors covers authoring mistakes that cannot render.
 func TestAnchorImage_Errors(t *testing.T) {
 	frame := pptx.RectEmu{X: 0, Y: 0, CX: 1000000, CY: 1000000}

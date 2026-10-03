@@ -12,6 +12,30 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
+// takeawayBandBudget returns the takeaway band of a slide on these layouts and
+// the 14pt text budget it holds: the text width generation writes into, and
+// the lines and characters that fit. It is the one measurement both the
+// takeaway fit finding and list_slide_kinds' takeaway budget report
+// (go-slide-creator-iubjb).
+func takeawayBandBudget(slide SlideInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) (bandHeight, textWidth int64, budget textcapacity.Density) {
+	band := slideChromeFrame(slide, "", layouts, slideWidth, slideHeight).Takeaway
+	// The band carries the uniform shape text margin, clamped on a band
+	// too short for it (pptx.EffectiveTextInsets). textcapacity and
+	// textfit assume the OOXML 7.2pt / 3.6pt default sides, so hand them
+	// the written text rectangle grown by those defaults.
+	in := pptx.EffectiveTextInsets(&pptx.TextBody{
+		Insets:     pptx.ShapeTextInsets(),
+		Paragraphs: []pptx.Paragraph{{Runs: []pptx.Run{{Text: slide.Takeaway, FontSize: tokens.TypeScaleSubheadHPt}}}},
+	}, pptx.RectEmu{CX: band.CX, CY: band.CY})
+	textWidth = band.CX - in[0] - in[2] + 2*91440
+	height := band.CY - in[1] - in[3] + 2*45720
+	budget = textcapacity.ForPlaceholder(types.PlaceholderInfo{
+		Bounds:   types.BoundingBox{Width: textWidth, Height: height},
+		FontSize: tokens.TypeScaleSubheadHPt,
+	}, slide.Takeaway)
+	return band.CY, textWidth, budget
+}
+
 // collectTakeawayFitFindings measures the late-injected 14pt takeaway against
 // the same chrome frame generation uses. No other text-fit pass sees this shape.
 func collectTakeawayFitFindings(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) []patterns.FitFinding {
@@ -23,22 +47,8 @@ func collectTakeawayFitFindings(input *PresentationInput, layouts []types.Layout
 		if slide.Takeaway == "" {
 			continue
 		}
-		band := slideChromeFrame(slide, "", layouts, slideWidth, slideHeight).Takeaway
-		// The band carries the uniform shape text margin, clamped on a band
-		// too short for it (pptx.EffectiveTextInsets). textcapacity and
-		// textfit assume the OOXML 7.2pt / 3.6pt default sides, so hand them
-		// the written text rectangle grown by those defaults.
+		bandHeight, width, budget := takeawayBandBudget(slide, layouts, slideWidth, slideHeight)
 		fontPt := float64(tokens.TypeScaleSubheadHPt) / 100
-		in := pptx.EffectiveTextInsets(&pptx.TextBody{
-			Insets:     pptx.ShapeTextInsets(),
-			Paragraphs: []pptx.Paragraph{{Runs: []pptx.Run{{Text: slide.Takeaway, FontSize: tokens.TypeScaleSubheadHPt}}}},
-		}, pptx.RectEmu{CX: band.CX, CY: band.CY})
-		width := band.CX - in[0] - in[2] + 2*91440
-		height := band.CY - in[1] - in[3] + 2*45720
-		budget := textcapacity.ForPlaceholder(types.PlaceholderInfo{
-			Bounds:   types.BoundingBox{Width: width, Height: height},
-			FontSize: tokens.TypeScaleSubheadHPt,
-		}, slide.Takeaway)
 		measured, err := textfit.MeasureRun(slide.Takeaway, "Liberation Sans", fontPt, width, budget.MaxLines)
 		if err != nil || measured.Lines <= budget.MaxLines {
 			continue
@@ -56,7 +66,7 @@ func collectTakeawayFitFindings(input *PresentationInput, layouts []types.Layout
 			},
 			Action:   "refuse",
 			Measured: &patterns.Extent{HeightEMU: measured.RequiredEMU},
-			Allowed:  &patterns.Extent{HeightEMU: band.CY},
+			Allowed:  &patterns.Extent{HeightEMU: bandHeight},
 		})
 	}
 	return findings

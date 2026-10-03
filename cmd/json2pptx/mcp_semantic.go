@@ -1148,6 +1148,12 @@ type slideKindListEntry struct {
 	// compact catalog stays small. Same source as skill-info's last compose
 	// example (go-slide-creator-tknmi).
 	ComposedExample map[string]any `json:"composed_example,omitempty"`
+	// Budgets are the kind's per-field text budgets: title, subtitle and
+	// takeaway measured on the requested template (or the tightest of the
+	// shipped ones), then the fixed budgets the compiler enforces. Present
+	// only when a template or fields:["budgets"] is requested
+	// (go-slide-creator-iubjb).
+	Budgets []slideKindBudget `json:"budgets,omitempty"`
 }
 
 // slideKindComposition is one composition a kind can be asked for.
@@ -1159,15 +1165,18 @@ type slideKindComposition struct {
 
 func mcpListSlideKindsTool() mcp.Tool {
 	return mcp.NewTool("list_slide_kinds",
-		mcp.WithDescription(`Discover DeckSpec slide kinds. Default response lists every kind with summary, required_fields, required_aliases, typical_fields and one copy-ready example, plus the takeaway budget. Pass kinds:["kpi_snapshot"] to filter by exact kind. Request fields:["item_schema"] for that kind's closed JSON Schema, or fields:["compositions"] for its supported pattern/layout overrides; both are omitted by default to keep discovery small. kinds:["raw_json2pptx"] also returns composed_example: one slide whose compose envelope puts several supporting views (chart + KPIs + timeline) proving one title side by side. Takeaways fit one 14pt line in a template-sized band; validate_deck_spec checks measured fit.`),
+		mcp.WithDescription(`Discover DeckSpec slide kinds: each kind's summary, required_fields, required_aliases, typical_fields and one copy-ready example. fields adds detail, omitted by default: item_schema (the kind's closed JSON Schema), compositions (its pattern/layout overrides), budgets (per-field text budgets; title, subtitle and takeaway measured on template, else the tightest across shipped templates). kinds:["raw_json2pptx"] also returns composed_example: one slide whose compose envelope puts several views (chart + KPIs + timeline) under one title.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaListSlideKinds)),
 		mcp.WithArray("kinds",
-			mcp.Description("Exact kind names to return. Omit to list all kinds."),
+			mcp.Description("Exact kind names to return, e.g. [\"kpi_snapshot\"]. Omit for all."),
 			mcp.Items(map[string]any{"type": "string"}),
 		),
 		mcp.WithArray("fields",
-			mcp.Description("Optional detail fields to include: item_schema and/or compositions. Omit for the compact catalog."),
-			mcp.Items(map[string]any{"type": "string", "enum": []string{"item_schema", "compositions"}}),
+			mcp.Description("Detail to include."),
+			mcp.Items(map[string]any{"type": "string", "enum": []string{"item_schema", "compositions", "budgets"}}),
+		),
+		mcp.WithString("template",
+			mcp.Description("Template name; adds budgets measured on it."),
 		),
 	)
 }
@@ -1191,12 +1200,51 @@ func slideKindCompositions(k semantic.SlideKind) []slideKindComposition {
 	return out
 }
 
+// handleListSlideKinds serves list_slide_kinds without a server config: the
+// CLI's `semantic kinds` reads the same catalogue through it.
 func handleListSlideKinds(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return (&mcpConfig{cache: newBudgetTemplateCache()}).handleListSlideKinds(ctx, request)
+}
+
+// slideKindBudgetSource resolves the measured budgets a request asks for: the
+// named template's, or the tightest across the shipped templates when budgets
+// are requested without one. wanted is false when the request asks for none.
+func (mc *mcpConfig) slideKindBudgetSource(request mcp.CallToolRequest, budgetsField bool) (measured templateTextBudgets, basis *slideKindBudgetBasis, wanted bool, errRes *mcp.CallToolResult) {
+	name := strings.TrimSpace(request.GetString("template", ""))
+	if name == "" {
+		if !budgetsField {
+			return measured, nil, false, nil
+		}
+		tightest, names, err := tightestShippedBudgets()
+		if err != nil {
+			return measured, nil, false, api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to measure the shipped templates: %v", err))
+		}
+		return tightest, &slideKindBudgetBasis{Templates: names,
+			Note: "title, subtitle and takeaway budgets are the tightest across the shipped templates: copy within them fits every one. Pass template for that template's own."}, true, nil
+	}
+	path, cleanup, err := resolveTemplatePath(name, mc.templatesDir)
+	if err != nil {
+		return measured, nil, false, mcpErrorWithNext("TEMPLATE_NOT_FOUND", templateNotFoundError(name, mc.templatesDir), nextCallListTemplates())
+	}
+	defer cleanup()
+	analysis, err := getOrAnalyzeTemplate(path, mc.cache)
+	if err != nil {
+		return measured, nil, false, mcpErrorWithNext("TEMPLATE_ERROR", fmt.Sprintf("failed to analyze template %q: %v", name, err), nextCallListTemplates())
+	}
+	return measureTemplateBudgets(analysis), &slideKindBudgetBasis{Template: strings.TrimSuffix(name, ".pptx"),
+		Note: "title, subtitle and takeaway budgets are measured on this template; fixed budgets hold on every template."}, true, nil
+}
+
+func (mc *mcpConfig) handleListSlideKinds(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	kindFilter, errRes := slideKindListSelection(request, "kinds", false)
 	if errRes != nil {
 		return errRes, nil
 	}
 	fieldFilter, errRes := slideKindListSelection(request, "fields", true)
+	if errRes != nil {
+		return errRes, nil
+	}
+	measured, budgetBasis, withBudgets, errRes := mc.slideKindBudgetSource(request, fieldFilter["budgets"])
 	if errRes != nil {
 		return errRes, nil
 	}
@@ -1223,15 +1271,23 @@ func handleListSlideKinds(ctx context.Context, request mcp.CallToolRequest) (*mc
 		if k == semantic.KindRawJSON2pptx && kindFilter[string(k)] {
 			entry.ComposedExample = composedProofSlideExample()
 		}
+		if withBudgets {
+			entry.Budgets = slideKindBudgets(k, measured)
+		}
 		out = append(out, entry)
 	}
-	mcpResult, err := api.MCPSuccessResult(ctx, map[string]any{
-		"slide_kinds": out,
-		"takeaway_budget": map[string]any{
-			"font_pt": 14, "max_lines": 1,
-			"note": "Keep takeaway (or chart insight) to one 14pt line in the template's chrome band. Width varies by template; validate_deck_spec reports BODY_TOO_LONG at slides[i].takeaway when measured text wraps.",
-		},
-	})
+	takeaway := map[string]any{
+		"font_pt": 14, "max_lines": 1,
+		"note": "Keep takeaway (or chart insight) to one 14pt line in the template's chrome band. Width varies by template; validate_deck_spec reports BODY_TOO_LONG at slides[i].takeaway when measured text wraps.",
+	}
+	result := map[string]any{"slide_kinds": out, "takeaway_budget": takeaway}
+	if withBudgets {
+		if measured.Takeaway.MaxChars > 0 {
+			takeaway["max_chars"] = measured.Takeaway.MaxChars
+		}
+		result["budget_basis"] = budgetBasis
+	}
+	mcpResult, err := api.MCPSuccessResult(ctx, result)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal list_slide_kinds response: %v", err)), nil
 	}
@@ -1252,6 +1308,7 @@ func slideKindListSelection(request mcp.CallToolRequest, arg string, detail bool
 	if detail {
 		allowed["item_schema"] = true
 		allowed["compositions"] = true
+		allowed["budgets"] = true
 	} else {
 		for _, k := range semantic.AllSlideKinds() {
 			allowed[string(k)] = true

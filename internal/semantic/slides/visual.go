@@ -677,7 +677,14 @@ func ProcessOverBudget(body map[string]any) string {
 	}
 	for i, st := range steps {
 		if runeLen(st.flowLabel()) > processFlowLabelMax {
-			return fmt.Sprintf("step %d reads %d characters with its description; a flow box holds %d", i+1, runeLen(st.flowLabel()), processFlowLabelMax)
+			reason := fmt.Sprintf("step %d reads %d characters with its description; a flow box holds %d", i+1, runeLen(st.flowLabel()), processFlowLabelMax)
+			// Steps with descriptions were written for the numbered rows: say
+			// what a row holds too, so the author is not sent to cut every step
+			// to a flow box (go-slide-creator-iubjb).
+			if processDescribed(steps) && len(steps) <= processStripMax {
+				reason += fmt.Sprintf(", and a numbered row holds a label of %d and a description of %d", processStripLabelMax, processStripBodyMax)
+			}
+			return reason
 		}
 	}
 	return ""

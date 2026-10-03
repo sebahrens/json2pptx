@@ -106,6 +106,9 @@ var matrixQuadrantKeys = []string{
 // imageCaseMetricKeys are the keys a result-metric object may carry.
 var imageCaseMetricKeys = []string{"value", "number", "stat", "label", "caption", "name"}
 
+// imageCaseCalloutKeys are the keys a callout on the picture may carry.
+var imageCaseCalloutKeys = []string{"label", "x", "y", "units"}
+
 // imageCaseImageKeys are the keys the image object may carry.
 var imageCaseImageKeys = []string{"path", "url", "alt", "fit"}
 
@@ -203,19 +206,19 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"title": strField("Slide title."),
 		"points": {
 			typ: "array", itemStrings: true, itemKeys: execSummaryPointKeys,
-			desc: "3–5 key messages, most important first. A string is the conclusion alone; {lead, support} adds the evidence sentence under it. Outside 3–5 the slide degrades to bullets.",
+			desc: "3–5 key messages, most important first. A string is the conclusion alone; {lead, support} adds the evidence sentence under it (lead ≤90 chars, support ≤200). Outside 3–5 the slide degrades to bullets.",
 		},
 		"takeaways": {
 			typ: "array", itemStrings: true, itemKeys: execSummaryPointKeys,
 			desc: "Alias for points.",
 		},
-		"bottom_line": strField("Optional recommendation / ask rendered as a tinted bar under the points."),
+		"bottom_line": strField("Optional recommendation / ask rendered as a tinted bar under the points. ≤160 chars."),
 		"takeaway":    strField("One-line takeaway footer."),
 	}, compositionFields()), universalFields()),
 	KindKPISnapshot: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
 		"takeaway": strField("One-line takeaway footer."),
-		"kpis":     {typ: "array", desc: "2–6 KPI objects {value, label, delta?, comparator?}. comparator (alias vs, ≤24 chars) is the reference the number is read against, e.g. \"vs plan +4 pts\".", itemKeys: kpiItemKeys},
+		"kpis":     {typ: "array", desc: "2–6 KPI objects {value, label, delta?, comparator?}; value and delta ≤12 chars each. comparator (alias vs, ≤24 chars) is the reference the number is read against, e.g. \"vs plan +4 pts\".", itemKeys: kpiItemKeys},
 		"metrics":  {typ: "array", desc: "Alias for kpis.", itemKeys: kpiItemKeys},
 	}, compositionFields()), universalFields()),
 	KindChartInsight: withFields(withFields(map[string]payloadField{
@@ -223,7 +226,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"takeaway": strField("One-line takeaway footer."),
 		"source":   strField("Data source note."),
 		"insight":  strField("Single implication rendered as a so-what callout; when insights bullets are present, keep it distinct from them."),
-		"insights": textList("1–6 insight bullets rendered beside the chart."),
+		"insights": textList("1–6 insight bullets rendered beside the chart; the fit check measures their length against the column."),
 		"chart": {typ: "object", desc: "Chart: {type, title?, data}. For bar/line/area charts data is {categories:[…], series:[{name, values:[…]}]}; for pie/donut {categories:[…], values:[…]}.",
 			objectKeys: chartObjectKeys},
 	}, compositionFields()), universalFields()),
@@ -250,12 +253,13 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 			typ: "array", itemKeys: optionMatrixOptionKeys, itemKeySchemas: optionMatrixDetailKeySchemas(),
 			desc: "Alias for options.",
 		},
-		"scale":              strField("Score vocabulary: harvey (0–4 or none/quarter/half/three-quarter/full, the default), rag (red/amber/green), or text (≤24 chars). Use \"-\" for n/a."),
-		"recommended":        strField("The recommended option, named (matched against options[].name) or as a row index — its row is highlighted."),
-		"recommended_option": strField("Alias for recommended."),
+		"scale": strField("Score vocabulary: harvey (0–4 or none/quarter/half/three-quarter/full, the default), rag (red/amber/green), or text (≤24 chars). Use \"-\" for n/a."),
+		"recommended": {typ: "string", schema: recommendedSchema,
+			desc: "The recommended option, named (matched against options[].name) or as a 0-based row index — its row is highlighted. A list recommends several options together: each row is highlighted and, with no takeaway, the band reads \"Recommended: A and B\"."},
+		"recommended_option": {typ: "string", schema: recommendedSchema, desc: "Alias for recommended."},
 		"decisive_criterion": strField("The criterion that decides it, named (matched against criteria[].label) or as a column index — its column is highlighted."),
-		"highlight_label":    strField("Badge on the highlighted row (e.g. \"Recommended\")."),
-		"corner_label":       strField("Label for the table's empty top-left corner cell."),
+		"highlight_label":    strField("Badge on the highlighted row (e.g. \"Recommended\"). ≤24 chars."),
+		"corner_label":       strField("Label for the table's empty top-left corner cell. ≤24 chars."),
 		"takeaway":           strField("One-line takeaway footer."),
 	}, compositionFields()), universalFields()),
 	KindTable: withFields(withFields(map[string]payloadField{
@@ -318,7 +322,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 	KindBridge: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
 		"takeaway": strField("One-line takeaway footer."),
-		"columns": {typ: "array", desc: "3–10 ordered {label, type, value?} bars. type is total, delta, or subtotal; subtotal may omit value to use the running total.", itemKeys: bridgeColumnKeys, itemRequired: []string{"label", "type"}, itemKeySchemas: map[string]any{
+		"columns": {typ: "array", desc: "3–10 ordered {label, type, value?} bars (label ≤40 chars). type is total, delta, or subtotal; subtotal may omit value to use the running total.", itemKeys: bridgeColumnKeys, itemRequired: []string{"label", "type"}, itemKeySchemas: map[string]any{
 			"value": map[string]any{"type": "number", "minimum": -1e12, "maximum": 1e12},
 			"type":  map[string]any{"type": "string", "enum": []any{"total", "delta", "subtotal"}},
 		}},
@@ -352,7 +356,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"people": {typ: "array", desc: "Alias for members.", itemStrings: true, itemKeys: teamMemberKeys},
 		"team":   {typ: "array", desc: "Alias for members.", itemStrings: true, itemKeys: teamMemberKeys},
 	}, compositionFields()), universalFields()),
-	KindStat: withFields(withFields(map[string]payloadField{
+	KindStat: withFields(withFields(withFields(map[string]payloadField{
 		"title":       strField("Slide title."),
 		"takeaway":    strField("One-line takeaway footer."),
 		"value":       strField("The number itself, formatted as it should read (e.g. \"$2.4B\", \"118%\"). ≤20 chars."),
@@ -364,11 +368,13 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"subtitle":    strField("Alias for label."),
 		"unit":        strField("Short suffix beside the number (e.g. \"TAM\", \"MRR\"), set at 40% of the number's size. ≤10 chars."),
 		"suffix":      strField("Alias for unit."),
-		"context":     strField("One line of context beneath the label. ≤120 chars."),
 		"detail":      strField("Alias for context."),
 		"description": strField("Alias for context."),
-		"source":      strField("Source footnote. ≤80 chars."),
-	}, compositionFields()), universalFields()),
+	}, compositionFields()), universalFields()), map[string]payloadField{
+		// After the universal fields: the stat's source line has its own budget.
+		"source":  strField("Source footnote. ≤80 chars."),
+		"context": strField("One line of context beneath the label. ≤120 chars; label, context and source together hold about 120 before the text shrinks."),
+	}),
 	KindTimeline: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
 		"takeaway": strField("One-line takeaway footer."),
@@ -434,6 +440,13 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"bullets":     {typ: "array", desc: "Up to 5 supporting points, ≤140 chars each.", itemStrings: true},
 		"metrics":     {typ: "array", desc: "Up to 3 result figures: {value (≤10 chars), label (≤40)}. Both are required — a figure with no words is half a claim.", itemKeys: imageCaseMetricKeys},
 		"caption":     strField("Italic line under the picture. ≤120 chars."),
+		"callouts": {typ: "array", itemKeys: imageCaseCalloutKeys, itemRequired: []string{"label", "x", "y"},
+			itemKeySchemas: map[string]any{
+				"x":     map[string]any{"type": "number", "minimum": 0},
+				"y":     map[string]any{"type": "number", "minimum": 0},
+				"units": map[string]any{"type": "string", "enum": []any{"fraction", "px"}},
+			},
+			desc: "Up to 6 callouts on the picture: {label (≤40 chars), x, y, units?}. x / y are the point the label points at, as fractions of the image (0–1 from its top-left corner) or, with units \"px\", its own pixels; the label is placed beside the point and stays on it under any crop or template. A point the crop hides reports OVERLAY_TARGET_CROPPED at callouts[i] — use image.fit \"contain\"."},
 		"image_side":  strField("Which side the picture sits on: \"left\" (default) or \"right\"."),
 		"image_label": strField("Label for the placeholder when no picture is given. ≤40 chars."),
 	}, compositionFields()), universalFields()),
@@ -457,11 +470,13 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"title":          strField("Slide title."),
 		"takeaway":       strField("One-line takeaway footer."),
 		"recommendation": strField("The ask, rendered in the callout band beneath the options (or as the lead-in paragraph on the content fallback)."),
+		"recommended": {typ: "string", schema: recommendedSchema,
+			desc: "The recommended option(s) by label or 0-based index, instead of options[].recommended: one value, or a list to recommend several together."},
 		"options": {
 			typ: "array",
 			desc: "2–6 options: strings (\"Label\", or \"Label | detail\") or {label, detail?}. " +
 				"3–6 become numbered boxes (label ≤60 chars, detail ≤180); exactly 2, each WITH a detail, become numbered cards side by side (label ≤80, detail ≤300); 7–12, each WITH a detail, become a card grid (label ≤80, detail ≤160; 7 as 4 + 3). " +
-				"Mark exactly one object with recommended: true; that option gets an accent-filled Recommended badge. Anything else renders as the recommendation plus option bullets.",
+				"Mark the recommended option with recommended: true; it gets an accent-filled Recommended badge. Mark two or more to recommend them together: each gets the badge and, with no recommendation text, the band reads \"Recommended: A and B\". Anything else renders as the recommendation plus option bullets.",
 			itemStrings:    true,
 			itemKeys:       decisionOptionKeys,
 			itemKeySchemas: map[string]any{"recommended": map[string]any{"type": "boolean"}},
@@ -634,6 +649,17 @@ func joinQuoted(keys []string) string {
 		out += fmt.Sprintf("%q", k)
 	}
 	return out
+}
+
+// recommendedSchema is a recommendation reference: one option by name or
+// 0-based index, or a list of them for a combined recommendation
+// (go-slide-creator-3hcw6).
+func recommendedSchema() map[string]any {
+	ref := map[string]any{"type": []any{"string", "integer"}}
+	return map[string]any{"oneOf": []any{
+		ref,
+		map[string]any{"type": "array", "minItems": 1, "items": ref},
+	}}
 }
 
 // pillarsFoundationSchema is the pillars foundation: one band, or a list of

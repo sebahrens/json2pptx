@@ -27,7 +27,112 @@ const (
 	imageCaseMaxMetrics     = 3
 	imageCaseMetricValueMax = 10
 	imageCaseMetricLabelMax = 40
+	// ImageCaseMaxCallouts / ImageCaseCalloutLabelMax bound the callouts on
+	// the picture: past six the labels crowd the screenshot they explain, and
+	// a label is a tag (it is set on one 12pt bold line), not a sentence.
+	ImageCaseMaxCallouts     = 6
+	ImageCaseCalloutLabelMax = 40
 )
+
+// ImageCaseCallout is one callout on the picture: a label and the point on
+// the source image it points at, in fractions of the image (0–1 from its
+// top-left corner) or, with units "px", the file's own pixels
+// (go-slide-creator-n3j96).
+type ImageCaseCallout struct {
+	// Index is the callout's position in the authored list.
+	Index int
+	Label string
+	X, Y  float64
+	Units string
+	// HasPoint reports whether both x and y were given as numbers.
+	HasPoint bool
+}
+
+// ImageCaseCallouts reads the authored callouts, one per object entry.
+func ImageCaseCallouts(body map[string]any) []ImageCaseCallout {
+	raw, _ := body["callouts"].([]any)
+	var out []ImageCaseCallout
+	for i, e := range raw {
+		m, ok := e.(map[string]any)
+		if !ok {
+			continue
+		}
+		x, xok := numberField(m, "x")
+		y, yok := numberField(m, "y")
+		out = append(out, ImageCaseCallout{
+			Index: i, Label: strField(m, "label"), X: x, Y: y,
+			Units: strings.ToLower(strField(m, "units")), HasPoint: xok && yok,
+		})
+	}
+	return out
+}
+
+// Usable reports whether the callout can be drawn: a label, a point, and a
+// point inside the image when it is given in fractions.
+func (c ImageCaseCallout) Usable() bool {
+	if c.Label == "" || !c.HasPoint || (c.Units != "" && c.Units != "fraction" && c.Units != "px") {
+		return false
+	}
+	if c.Units == "px" {
+		return c.X >= 0 && c.Y >= 0
+	}
+	return c.X >= 0 && c.X <= 1 && c.Y >= 0 && c.Y <= 1
+}
+
+func numberField(m map[string]any, key string) (float64, bool) {
+	switch t := m[key].(type) {
+	case float64:
+		return t, true
+	case int:
+		return float64(t), true
+	case json.Number:
+		f, err := t.Float64()
+		return f, err == nil
+	}
+	return 0, false
+}
+
+// imageCaseOverlays compiles the callouts to anchored callout overlays on the
+// pattern's picture. The picture is the grid's first column, or its second
+// when image_side is right; the engine resolves a captioned picture's nested
+// cell and places each label beside its target.
+func imageCaseOverlays(in Input) ([]*deckinput.OverlayShapeInput, []SourceLink) {
+	col := 0
+	if imageCaseSide(in.Body) == "right" {
+		col = 1
+	}
+	var overlays []*deckinput.OverlayShapeInput
+	var links []SourceLink
+	for _, c := range ImageCaseCallouts(in.Body) {
+		if !c.Usable() {
+			continue
+		}
+		links = append(links, SourceLink{
+			RawPath:      fmt.Sprintf("%s.overlays[%d]", in.rawSlide(), len(overlays)),
+			SemanticPath: fmt.Sprintf("%s.callouts[%d]", in.semSlide(), c.Index),
+		})
+		overlays = append(overlays, &deckinput.OverlayShapeInput{
+			Kind: "callout",
+			Text: c.Label,
+			To: &deckinput.OverlayPointInput{AnchorImage: &deckinput.OverlayAnchorImageInput{
+				Row: 0, Col: col, X: c.X, Y: c.Y, Units: c.Units,
+			}},
+		})
+	}
+	return overlays, links
+}
+
+// imageCaseCalloutLabels are the callout labels as text, for the fallbacks
+// that cannot draw them on the picture.
+func imageCaseCalloutLabels(body map[string]any) []string {
+	var out []string
+	for _, c := range ImageCaseCallouts(body) {
+		if c.Label != "" {
+			out = append(out, c.Label)
+		}
+	}
+	return out
+}
 
 // imageCaseImage is the pattern's image reference.
 type imageCaseImage struct {
@@ -89,6 +194,11 @@ func CompileImageCase(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 		RawPath:      in.rawSlide() + ".pattern.values",
 		SemanticPath: in.semSlide() + ".body",
 	})
+	if values.Image != nil {
+		overlays, overlayLinks := imageCaseOverlays(in)
+		slide.Overlays = overlays
+		links = append(links, overlayLinks...)
+	}
 	links = append(links, applyTakeaway(slide, in)...)
 	return slide, links, nil
 }
@@ -125,6 +235,7 @@ func compileImageCaseFallback(in Input, v imageCaseValues) (*deckinput.SlideInpu
 	for _, m := range v.Metrics {
 		bullets = append(bullets, m.Value+" — "+m.Label)
 	}
+	bullets = append(bullets, imageCaseCalloutLabels(in.Body)...)
 	if caption := firstNonEmpty(v.Caption, imageCaseAlt(v)); caption != "" {
 		bullets = append(bullets, "Image: "+caption)
 	}
@@ -172,6 +283,9 @@ func compileImageCaseTwoColumn(in Input, v imageCaseValues) (*deckinput.SlideInp
 	for _, m := range v.Metrics {
 		bullets = append(bullets, m.Value+" — "+m.Label)
 	}
+	// The two-column picture is a placeholder image, not a grid cell, so the
+	// callouts cannot be anchored to it: their labels stay as text.
+	bullets = append(bullets, imageCaseCalloutLabels(in.Body)...)
 
 	img := &deckinput.ImageInput{Path: v.Image.Path, URL: v.Image.URL, Alt: firstNonEmpty(v.Image.Alt, v.Caption, v.ImageLabel), Fit: v.Image.Fit}
 	contents := []deckinput.ContentInput{{PlaceholderID: imagePH, Type: "image", ImageValue: img}}

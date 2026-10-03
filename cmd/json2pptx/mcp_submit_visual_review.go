@@ -126,21 +126,19 @@ func lookupDeterministicGate(sha string) ([]string, bool) {
 
 func mcpSubmitVisualReviewTool() mcp.Tool {
 	return mcp.NewTool("submit_visual_review",
-		mcp.WithDescription(`Record a host/manual visual review verdict for a rendered PPTX — the completion path when no vision provider (ANTHROPIC_API_KEY) is configured, or when you or a human inspected the rendered slides.
+		mcp.WithDescription(`Record a host/manual visual review verdict for a rendered PPTX — the completion path when you or a human inspected the rendered slides.
 
-Inputs: pptx_path; pptx_revision (the sha256 content_hash of the exact PPTX reviewed, as the render response returned it); slides[] with EVERY slide exactly once: {index, verdict: approved|changes_requested|inconclusive, image_path or image_sha256, findings?}; reviewer "host" (default) or "manual"; optional semantic revision. Partial coverage or a stale revision is rejected (INVALID_PARAMETER) and nothing is recorded.
+slides[] must cover EVERY slide exactly once. Partial coverage, a stale pptx_revision or a finding severity/category outside the schema's enums is rejected (INVALID_PARAMETER) and nothing is recorded. Each image must be this server's render of that slide of this PPTX (the path / content_hash render_deck_thumbnails returned); any other is rejected. With no server render to compare, status is reviewed_unverified_images.
 
-The images are evidence: each must be this server's render of that slide of this exact PPTX — submit the path / content_hash render_deck_thumbnails returned. Another slide's or deck's image is rejected, naming the slide it really is. With no server render to compare, the review is recorded as reviewed_unverified_images, never the completion status.
-
-status is "visually_reviewed_current_revision" only when every slide is approved with no P0/P1 finding, output validation passes, the images verify, and (for a render_deck_spec artifact) the deterministic gate passed; otherwise "reviewed_deterministic_blockers" with blocking_reasons and publishable=false.`),
+status is "visually_reviewed_current_revision" only when every slide is approved with no P0/P1 finding, the images verify and the render's deterministic gate passed; a failed gate gives "reviewed_deterministic_blockers" with blocking_reasons and publishable=false.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaSubmitVisualReview)),
 		mcp.WithString("pptx_path", mcp.Required(), mcp.Description("Path to the reviewed PPTX file.")),
-		mcp.WithString("pptx_revision", mcp.Required(), mcp.Description("sha256 (content_hash) of the PPTX that was reviewed; must match the current file.")),
+		mcp.WithString("pptx_revision", mcp.Required(), mcp.Description("sha256 (content_hash) of the reviewed PPTX, as the render returned it; must match the current file.")),
 		mcp.WithArray("slides", mcp.Required(),
-			mcp.Description(`One entry per slide: [{"index":0,"verdict":"approved","image_path":"/tmp/thumbs/slide-1.png","findings":[]}, ...]. Every slide must be covered, and each entry must carry the image you inspected — image_path OR image_sha256, from render_deck_thumbnails. A submission without one is rejected: the image is the evidence. A recycled or foreign image is rejected too.`),
+			mcp.Description("One entry per slide, each with the image you inspected."),
 			mcp.Items(visualReviewSlideItemSchema())),
 		mcp.WithString("reviewer", mcp.Description(`Who reviewed: "host" (default, the calling agent) or "manual" (a human).`)),
-		mcp.WithString("revision", mcp.Description("Optional semantic revision (render_deck_spec revision); when given it must match the deck's authoring manifest.")),
+		mcp.WithString("revision", mcp.Description("Optional render_deck_spec revision; must match the deck's authoring manifest.")),
 	)
 }
 
@@ -158,29 +156,28 @@ func visualReviewSlideItemSchema() map[string]any {
 			"index": map[string]any{
 				"type":        "integer",
 				"minimum":     0,
-				"description": "0-based slide index. Every slide of the deck must appear exactly once.",
+				"description": "0-based slide index.",
 			},
 			"verdict": map[string]any{
-				"type":        "string",
-				"enum":        []any{"approved", "changes_requested", "inconclusive"},
-				"description": "Your verdict for this slide.",
+				"type": "string",
+				"enum": []any{"approved", "changes_requested", "inconclusive"},
 			},
 			"image_path": map[string]any{
 				"type":        "string",
-				"description": "Path to the rendered PNG you inspected (render_deck_thumbnails slides[].path). Required unless image_sha256 is given.",
+				"description": "The PNG you inspected (render_deck_thumbnails slides[].path), or give image_sha256.",
 			},
 			"image_sha256": map[string]any{
 				"type":        "string",
-				"description": "Pixel hash of the rendered PNG you inspected (the content_hash render_deck_thumbnails returns; SHA-256 over decoded pixels, PNG metadata ignored). Required unless image_path is given.",
+				"description": "Its pixel hash (slides[].content_hash), instead of image_path.",
 			},
 			"role": map[string]any{
 				"type":        "string",
-				"description": "Optional label for the slide's role in the deck. Defaults to \"slide\".",
+				"description": "Optional role label.",
 			},
 			"findings": map[string]any{
 				"type":        "array",
-				"description": "Optional per-slide findings: [{severity, category, description, location?, bbox?}].",
-				"items":       map[string]any{"type": "object"},
+				"description": "Open defects on this slide.",
+				"items":       visualReviewFindingItemSchema(),
 			},
 		},
 		"required": []any{"index", "verdict"},
@@ -189,6 +186,57 @@ func visualReviewSlideItemSchema() map[string]any {
 			map[string]any{"required": []any{"image_sha256"}},
 		},
 	}
+}
+
+// visualReviewFindingItemSchema types one finding: the severities and
+// categories the review accepts, each with its one-line meaning. The item used
+// to be {type: object} under a prose hint, so an agent guessed "whitespace" and
+// had it recorded without comment (go-slide-creator-lk37o).
+func visualReviewFindingItemSchema() map[string]any {
+	vocabulary := func(entries []visualqa.VocabularyEntry, suffix string) map[string]any {
+		names := make([]any, 0, len(entries))
+		meanings := make([]string, 0, len(entries))
+		for _, e := range entries {
+			names = append(names, e.Name)
+			meanings = append(meanings, e.Name+": "+e.Meaning)
+		}
+		return map[string]any{"type": "string", "enum": names, "description": strings.Join(meanings, "; ") + suffix}
+	}
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"severity":    vocabulary(visualqa.SeverityVocabulary(), ". P0/P1 block approval."),
+			"category":    vocabulary(visualqa.CategoryVocabulary(), "."),
+			"description": map[string]any{"type": "string"},
+			"location":    map[string]any{"type": "string"},
+		},
+		"required": []any{"severity", "category"},
+	}
+}
+
+// vocabularyNames lists a vocabulary's names for a rejection.
+func vocabularyNames(entries []visualqa.VocabularyEntry) []string {
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		names = append(names, e.Name)
+	}
+	return names
+}
+
+// checkReviewFinding rejects a finding whose severity or category is outside
+// the vocabulary, naming the allowed values.
+func checkReviewFinding(slide, idx int, f visualqa.Finding) error {
+	if !visualqa.ValidSeverity(f.Severity) {
+		allowed := vocabularyNames(visualqa.SeverityVocabulary())
+		return rejectReview(fmt.Sprintf("slides[%d].findings[%d].severity", slide, idx), map[string]any{"allowed": allowed},
+			"slides[%d].findings[%d].severity %q is not a severity; use one of %s", slide, idx, f.Severity, strings.Join(allowed, ", "))
+	}
+	if !visualqa.ValidCategory(f.Category) {
+		allowed := vocabularyNames(visualqa.CategoryVocabulary())
+		return rejectReview(fmt.Sprintf("slides[%d].findings[%d].category", slide, idx), map[string]any{"allowed": allowed},
+			"slides[%d].findings[%d].category %q is not a category; use one of %s", slide, idx, f.Category, strings.Join(allowed, ", "))
+	}
+	return nil
 }
 
 // visualReviewSlideInput is one slide verdict submitted by the reviewer.
@@ -525,7 +573,10 @@ func appendReviewSlides(record *visualqa.ReviewRecord, slides []visualReviewSlid
 			role = "slide"
 		}
 		record.Slides = append(record.Slides, visualqa.ReviewSlide{Index: *s.Index, Role: role, ImagePath: s.ImagePath, ImageSHA256: pixelHash})
-		for _, f := range s.Findings {
+		for j, f := range s.Findings {
+			if err := checkReviewFinding(i, j, f); err != nil {
+				return err
+			}
 			f.SlideIndex = *s.Index
 			f.Source = reviewer
 			record.Findings = append(record.Findings, f)

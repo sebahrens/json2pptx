@@ -39,7 +39,9 @@ func TestDecisionRequiresOneUsableRecommendedOption(t *testing.T) {
 	}{
 		{"one selected", "options", []any{map[string]any{"label": "A", "recommended": true}, "B"}, "", ""},
 		{"none selected", "options", []any{map[string]any{"label": "A"}, "B"}, diagnostics.CodeSemanticRequired, "slides[0].options"},
-		{"two selected", "choices", []any{map[string]any{"label": "A", "recommended": true}, map[string]any{"label": "B", "recommended": true}}, diagnostics.CodeSemanticRequired, "slides[0].choices"},
+		// Two recommended options are a combined recommendation, not an error
+		// (go-slide-creator-3hcw6).
+		{"two selected", "choices", []any{map[string]any{"label": "A", "recommended": true}, map[string]any{"label": "B", "recommended": true}}, "", ""},
 		{"wrong type", "alternatives", []any{map[string]any{"label": "A", "recommended": "true"}, map[string]any{"label": "B", "recommended": true}}, diagnostics.CodeSemanticFieldType, "slides[0].alternatives[0].recommended"},
 		{"blank selected", "options", []any{map[string]any{"detail": "orphan", "recommended": true}, map[string]any{"label": "B"}}, diagnostics.CodeSemanticRequired, "slides[0].options[0]"},
 	} {
@@ -56,6 +58,109 @@ func TestDecisionRequiresOneUsableRecommendedOption(t *testing.T) {
 				t.Fatalf("missing %s at %s: %v", tc.code, tc.path, ds)
 			}
 		})
+	}
+}
+
+// TestDecisionRecommendedList pins the slide-level recommended field: one
+// label or index, or a list that recommends several options together, and a
+// reference that matches nothing is reported where it was written
+// (go-slide-creator-3hcw6).
+func TestDecisionRecommendedList(t *testing.T) {
+	options := []any{"Renegotiate now", map[string]any{"label": "Start re-platforming"}, "Wait a year"}
+	validate := func(recommended any) []diagnostics.Diagnostic {
+		return Validate(&DeckSpec{Meta: DeckMeta{Title: "Decision"}, Slides: []SlideSpec{{Kind: KindDecision, Body: map[string]any{
+			"title": "Choose", "options": options, "recommended": recommended,
+		}}}}, StrictnessWarn)
+	}
+	for name, recommended := range map[string]any{
+		"one label": "renegotiate now",
+		"one index": float64(1),
+		"a list":    []any{"Renegotiate now", float64(1)},
+	} {
+		if ds := validate(recommended); diagnostics.HasErrors(ds) || hasCode(ds, diagnostics.CodeSemanticReferenceUnresolved) {
+			t.Errorf("%s: unexpected findings: %v", name, ds)
+		}
+	}
+	ds := validate([]any{"Renegotiate now", "Re-platform"})
+	if _, ok := findAt(ds, diagnostics.CodeSemanticReferenceUnresolved, "slides[0].recommended[1]"); !ok {
+		t.Errorf("an unmatched list entry should be reported at its own path: %v", ds)
+	}
+	if ds := validate("Nothing"); !diagnostics.HasErrors(ds) {
+		t.Errorf("a recommended value that matches no option leaves the decision without a recommendation: %v", ds)
+	}
+}
+
+// TestOptionMatrixRecommendedList pins the list form on option_matrix: every
+// named row resolves, an unmatched entry is reported at its own path, and a
+// combined recommendation is not compared row against row.
+func TestOptionMatrixRecommendedList(t *testing.T) {
+	body := func(recommended any) map[string]any {
+		return map[string]any{
+			"title": "Options", "criteria": []any{"Cost", "Speed"}, "recommended": recommended,
+			"options": []any{
+				map[string]any{"name": "Renegotiate", "scores": []any{float64(2), float64(2)}},
+				map[string]any{"name": "Re-platform", "scores": []any{float64(1), float64(1)}},
+				map[string]any{"name": "Wait", "scores": []any{float64(4), float64(4)}},
+			},
+		}
+	}
+	validate := func(recommended any) []diagnostics.Diagnostic {
+		return Validate(&DeckSpec{Meta: DeckMeta{Title: "Matrix"}, Slides: []SlideSpec{{Kind: KindOptionMatrix, Body: body(recommended)}}}, StrictnessWarn)
+	}
+	ds := validate([]any{"Renegotiate", "re-platform"})
+	if diagnostics.HasErrors(ds) || hasCode(ds, diagnostics.CodeSemanticReferenceUnresolved) || hasCode(ds, diagnostics.CodeSemanticRecommendationOutscored) {
+		t.Errorf("a two-option recommendation should validate clean of reference and outscored findings: %v", ds)
+	}
+	ds = validate([]any{"Renegotiate", "Rebuild"})
+	if _, ok := findAt(ds, diagnostics.CodeSemanticReferenceUnresolved, "slides[0].recommended[1]"); !ok {
+		t.Errorf("an unmatched list entry should be reported at its own path: %v", ds)
+	}
+	if ds := validate("Renegotiate"); !hasCode(ds, diagnostics.CodeSemanticRecommendationOutscored) {
+		t.Errorf("a single outscored recommendation is still reported: %v", ds)
+	}
+}
+
+// TestImageCaseCalloutValidation pins go-slide-creator-n3j96: a callout that
+// cannot be drawn is an error at the entry that has the problem, never a
+// silent drop.
+func TestImageCaseCalloutValidation(t *testing.T) {
+	validate := func(image any, callouts ...any) []diagnostics.Diagnostic {
+		body := map[string]any{"title": "Case", "body": "The story.", "takeaway": "So what.", "callouts": callouts}
+		if image != nil {
+			body["image"] = image
+		}
+		return Validate(&DeckSpec{Meta: DeckMeta{Title: "Case"}, Slides: []SlideSpec{{Kind: KindImageCase, Body: body}}}, StrictnessWarn)
+	}
+	callout := func(label string, x, y any, units string) map[string]any {
+		m := map[string]any{"label": label, "x": x, "y": y}
+		if units != "" {
+			m["units"] = units
+		}
+		return m
+	}
+	if ds := validate("shot.png", callout("Delayed queue", 0.35, 0.54, ""), callout("Oldest", float64(560), float64(484), "px")); diagnostics.HasErrors(ds) {
+		t.Fatalf("valid callouts were refused: %v", ds)
+	}
+	many := make([]any, 7)
+	for i := range many {
+		many[i] = callout("Point", 0.5, 0.5, "")
+	}
+	for name, tc := range map[string]struct {
+		ds         []diagnostics.Diagnostic
+		code, path string
+	}{
+		"no picture":       {validate(nil, callout("A", 0.5, 0.5, "")), diagnostics.CodeSemanticRequired, "slides[0].callouts"},
+		"too many":         {validate("shot.png", many...), diagnostics.CodeSemanticDensity, "slides[0].callouts"},
+		"no label":         {validate("shot.png", callout("", 0.5, 0.5, "")), diagnostics.CodeSemanticRequired, "slides[0].callouts[0].label"},
+		"long label":       {validate("shot.png", callout("A label that explains the whole finding at length", 0.5, 0.5, "")), diagnostics.CodeSemanticDensity, "slides[0].callouts[0].label"},
+		"no point":         {validate("shot.png", callout("A", "left", 0.5, "")), diagnostics.CodeSemanticRequired, "slides[0].callouts[0]"},
+		"bad units":        {validate("shot.png", callout("A", 0.5, 0.5, "pct")), diagnostics.CodeSemanticFieldType, "slides[0].callouts[0].units"},
+		"outside fraction": {validate("shot.png", callout("A", float64(560), float64(484), "")), diagnostics.CodeSemanticFieldType, "slides[0].callouts[0]"},
+		"not an object":    {validate("shot.png", "Delayed queue"), diagnostics.CodeSemanticFieldType, "slides[0].callouts[0]"},
+	} {
+		if d, ok := findAt(tc.ds, tc.code, tc.path); !ok || d.Severity != diagnostics.SeverityError {
+			t.Errorf("%s: want an error %s at %s, got %v", name, tc.code, tc.path, tc.ds)
+		}
 	}
 }
 

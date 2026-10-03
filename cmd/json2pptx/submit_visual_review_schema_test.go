@@ -106,3 +106,68 @@ func TestAppendReviewSlidesRequiresAnImage(t *testing.T) {
 		t.Errorf("role should default to %q, got %q", "slide", record.Slides[0].Role)
 	}
 }
+
+// TestSubmitVisualReviewFindingVocabulary pins go-slide-creator-lk37o: the
+// findings item schema enumerates every severity and category the review
+// accepts, each with a one-line meaning, and a value outside them is rejected
+// with the list rather than recorded.
+func TestSubmitVisualReviewFindingVocabulary(t *testing.T) {
+	finding := visualReviewSlideItemSchema()["properties"].(map[string]any)["findings"].(map[string]any)["items"].(map[string]any)
+	props := finding["properties"].(map[string]any)
+	for field, vocabulary := range map[string][]visualqa.VocabularyEntry{
+		"severity": visualqa.SeverityVocabulary(),
+		"category": visualqa.CategoryVocabulary(),
+	} {
+		schema := props[field].(map[string]any)
+		enum := schema["enum"].([]any)
+		desc := schema["description"].(string)
+		if len(enum) != len(vocabulary) {
+			t.Errorf("%s enum has %d values, want %d", field, len(enum), len(vocabulary))
+		}
+		for i, e := range vocabulary {
+			if i < len(enum) && enum[i] != e.Name {
+				t.Errorf("%s enum[%d] = %v, want %s", field, i, enum[i], e.Name)
+			}
+			if e.Meaning == "" || !strings.Contains(desc, e.Name+": "+e.Meaning) {
+				t.Errorf("%s description does not give the meaning of %q: %q", field, e.Name, desc)
+			}
+		}
+	}
+
+	idx := 0
+	for _, tc := range []struct {
+		name    string
+		finding visualqa.Finding
+		path    string
+		lists   string
+	}{
+		{"unknown category", visualqa.Finding{Severity: visualqa.SeverityP2, Category: "whitespace"}, "slides[0].findings[0].category", "layout_balance"},
+		{"unknown severity", visualqa.Finding{Severity: "minor", Category: "spacing"}, "slides[0].findings[0].severity", "P0, P1, P2, P3"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := appendReviewSlides(&visualqa.ReviewRecord{}, []visualReviewSlideInput{
+				{Index: &idx, Verdict: "approved", ImageSHA256: "abcdef", Findings: []visualqa.Finding{tc.finding}},
+			}, "host")
+			var rejection *visualReviewRejection
+			if !errors.As(err, &rejection) {
+				t.Fatalf("want a review rejection, got %v", err)
+			}
+			if rejection.Path != tc.path {
+				t.Errorf("path = %q, want %q", rejection.Path, tc.path)
+			}
+			if !strings.Contains(rejection.Message, tc.lists) {
+				t.Errorf("message does not list the allowed values: %q", rejection.Message)
+			}
+			if allowed, _ := rejection.Details["allowed"].([]string); len(allowed) == 0 {
+				t.Errorf("details.allowed is empty: %v", rejection.Details)
+			}
+		})
+	}
+
+	record := &visualqa.ReviewRecord{}
+	if err := appendReviewSlides(record, []visualReviewSlideInput{
+		{Index: &idx, Verdict: "changes_requested", ImageSHA256: "abcdef", Findings: []visualqa.Finding{{Severity: visualqa.SeverityP3, Category: "layout_balance"}}},
+	}, "host"); err != nil || len(record.Findings) != 1 {
+		t.Errorf("a finding inside the vocabulary should be recorded: %v, %+v", err, record.Findings)
+	}
+}

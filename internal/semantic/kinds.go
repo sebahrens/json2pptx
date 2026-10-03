@@ -132,7 +132,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindOptionMatrix: {
 		Kind:            KindOptionMatrix,
-		Summary:         "Options scored against shared criteria — the evaluation matrix a recommendation is argued on. 2–6 criteria × 2–6 options render as the table-highlight pattern with the recommended row and decisive column highlighted; outside that it degrades to a scored bullet list.",
+		Summary:         "Options scored against shared criteria — the evaluation matrix a recommendation is argued on. 2–6 criteria × 2–6 options render as the table-highlight pattern with the recommended row(s) and decisive column highlighted; outside that it degrades to a scored bullet list.",
 		RequiredFields:  []string{"criteria", "options"},
 		RequiredAliases: map[string][]string{"criteria": {"columns"}, "options": {"rows"}},
 		TypicalFields:   []string{"title", "scale", "recommended", "decisive_criterion", "highlight_label", "takeaway"},
@@ -224,10 +224,10 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindImageCase: {
 		Kind:            KindImageCase,
-		Summary:         "A photo or screenshot beside the words about it — the case study or customer story slide. Needs a body or at least one bullet; without a picture it draws a labelled placeholder. Up to 5 bullets and 3 result metrics; past its text budgets it degrades to a content slide. For spoken testimony use the quote kind.",
+		Summary:         "A photo or screenshot beside the words about it — the case study or customer story slide; callouts point at parts of it. Needs a body or a bullet; no picture draws a placeholder. Up to 5 bullets, 3 result metrics and 6 callouts; past its text budgets it degrades to a content slide. For testimony use quote.",
 		RequiredFields:  []string{"body"},
 		RequiredAliases: map[string][]string{"body": {"text", "story", "description", "bullets"}},
-		TypicalFields:   []string{"title", "image", "eyebrow", "heading", "bullets", "metrics", "caption", "image_side", "image_label", "takeaway"},
+		TypicalFields:   []string{"title", "image", "callouts", "eyebrow", "heading", "bullets", "metrics", "caption", "image_side", "image_label", "takeaway"},
 	},
 	KindProcess: {
 		Kind:           KindProcess,
@@ -243,7 +243,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindDecision: {
 		Kind:            KindDecision,
-		Summary:         "The ask: the options considered and the one being recommended. 3–6 options render as numbered boxes and exactly 2 or 7–12 (each with a detail) as cards, with the recommendation in the callout band beneath them; outside that it is the recommendation as a lead-in over option bullets.",
+		Summary:         "The ask: the options considered and the one (or ones) recommended. 3–6 options render as numbered boxes and exactly 2 or 7–12 (each with a detail) as cards, with the recommendation in the band beneath them; outside that it is the recommendation as a lead-in over option bullets.",
 		RequiredFields:  []string{"title"},
 		RequiredAliases: map[string][]string{"options": {"choices", "alternatives"}},
 		TypicalFields:   []string{"options", "recommendation", "takeaway"},
@@ -257,7 +257,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindClosing: {
 		Kind:           KindClosing,
-		Summary:        "Plain closing slide on the template's own closing layout (a title of at most ~40 characters and a subtitle), or a content slide with a few bullets. A consulting deck should close on next_steps instead; keep this for a Q&A or contact page.",
+		Summary:        "Plain closing slide on the template's closing layout (a short display title and a subtitle), or a content slide with a few bullets. Consulting decks should close on next_steps; keep this for a Q&A or contact page.",
 		RequiredFields: []string{"title"},
 		TypicalFields:  []string{"subtitle"},
 	},
