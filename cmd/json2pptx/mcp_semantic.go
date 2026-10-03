@@ -335,21 +335,17 @@ func (mc *mcpConfig) handleValidateDeckSpec(ctx context.Context, request mcp.Cal
 		return errRes, nil
 	}
 
-	ds := semantic.Check(filename, data, strictness)
-	enrichSemanticKindDiagnostics(ds)
 	parsedSpec, parseDiags := semantic.Parse(filename, data)
 	// Check() sees only the spec. Everything else an agent ships — a wrapped
 	// title, a pattern that needs more height than the template gives it, a raw
 	// slide whose pattern rejects a key — is found by rendering, so validate
 	// renders: the same run render_deck_spec makes, into a scratch directory
-	// (go-slide-creator-05wn, go-slide-creator-3rn3s).
-	var eval specEvaluation
-	if parsedSpec != nil && !parseDiags.HasErrors() {
-		eval = mc.evaluateDeckSpec(ctx, request, src, parsedSpec, strictness, argTemplate)
-		if eval.Evaluated {
-			ds = envelopeDiagnostics(eval.Diagnostics)
-		}
-	}
+	// (go-slide-creator-05wn, go-slide-creator-3rn3s). A spec with blocking
+	// spec-level errors is still evaluated, with the errors set aside
+	// (go-slide-creator-ipahe).
+	eval, ds := evaluateSpecFindings(filename, data, strictness, func(spec *semantic.DeckSpec, _ []byte) specEvaluation {
+		return mc.evaluateDeckSpec(ctx, request, src, spec, strictness, argTemplate)
+	})
 	envelope := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
 		Subcommand:  "validate_deck_spec",
 		InputSHA256: diagnostics.ComputeInputSHA256(data),
@@ -370,6 +366,7 @@ func (mc *mcpConfig) handleValidateDeckSpec(ctx context.Context, request mcp.Cal
 		return staleDeckSpecResult("validate_deck_spec", src.DeckID), nil
 	}
 	semanticizeFindings(&envelope, data, outcome.DeckID)
+	expandCollapsedPatches(&envelope, eval.Diagnostics, data, outcome.DeckID)
 	for i := range envelope.Findings {
 		f := &envelope.Findings[i]
 		if !outcome.Stored {
@@ -381,6 +378,10 @@ func (mc *mcpConfig) handleValidateDeckSpec(ctx context.Context, request mcp.Cal
 			}
 		}
 	}
+	trimEnvelopeForMCP(&envelope)
+	// One address per finding: a JSON Pointer into the spec the author sent,
+	// and the slide's 1-based number (go-slide-creator-pilpn).
+	shapeEnvelopeFindings(&envelope, eval.Diagnostics, newSpecDoc(filename, data))
 
 	// Hand back a handle so the next call in the loop — a render, or a patched
 	// re-validate — does not have to re-upload the spec (go-slide-creator-voxp).
@@ -425,6 +426,13 @@ type specEvaluation struct {
 	Warnings       []string
 	Waivers        []findingWaiver
 	Choice         specTemplateChoice
+	// CompileFailed reports that the spec did not compile: Diagnostics are the
+	// compile diagnostics and nothing was rendered.
+	CompileFailed bool
+	// Salvaged reports that the spec has blocking spec-level errors and
+	// Diagnostics also carry the findings of the rest of it
+	// (go-slide-creator-ipahe).
+	Salvaged bool
 }
 
 // evaluateDeckSpec compiles a parsed spec and runs it exactly as
@@ -439,6 +447,7 @@ func (mc *mcpConfig) evaluateDeckSpec(ctx context.Context, request mcp.CallToolR
 		// A spec that does not compile reports what render reports for it: the
 		// compile diagnostics, which include the post-compile preflight that
 		// the spec-level check does not run.
+		eval.CompileFailed = true
 		if err != nil && compileResult != nil {
 			eval.Evaluated = true
 			eval.Diagnostics = buildSemanticRenderFailure(compileResult, err).Diagnostics
@@ -634,11 +643,17 @@ func handleCompileDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*m
 		return errRes, nil
 	}
 
+	doc := newSpecDoc(filename, data)
 	spec, parseDiags := semantic.Parse(filename, data)
 	if parseDiags.HasErrors() {
 		ds := parseDiags.ToDiagnostics()
 		enrichSemanticKindDiagnostics(ds)
-		return api.MCPDiagnosticsError(ds), nil
+		result := api.MCPDiagnosticsError(ds)
+		if envelope, ok := result.StructuredContent.(diagnostics.FindingEnvelope); ok {
+			shapeEnvelopeFindings(&envelope, nil, doc)
+			result.StructuredContent = envelope
+		}
+		return result, nil
 	}
 
 	input, result, err := semantic.Compile(spec, semantic.CompileOptions{
@@ -652,6 +667,7 @@ func handleCompileDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*m
 				res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(d))
 			}
 		}
+		shapeRenderDiagnostics(res.Diagnostics, doc)
 		return semanticSuccessOrInternal(ctx, "compile_deck_spec", res)
 	}
 
@@ -670,6 +686,7 @@ func handleCompileDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*m
 	for _, d := range designViolations {
 		res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(d))
 	}
+	shapeRenderDiagnostics(res.Diagnostics, doc)
 	if err := blockingDesignModeError(designViolations); err != nil {
 		res.Error = err.Error()
 		return semanticSuccessOrInternal(ctx, "compile_deck_spec", res)
@@ -778,7 +795,7 @@ func semanticRenderToMCP(r semanticRenderResult, explanation *semantic.DeckExpla
 
 func mcpRenderDeckSpecTool() mcp.Tool {
 	return withSpecOrDeckIDChoice(mcp.NewTool("render_deck_spec", withToolOptions([]mcp.ToolOption{
-		mcp.WithDescription(`Compile a DeckSpec and render it to a .pptx — the recommended one-call path for a NEW deck. Returns {success, pptx_path, deterministic_ready, publishable, blocking_reasons[], quality_summary, diagnostics[], waivers[], explanation_summary}. success/ok mean the artifact was WRITTEN; deterministic_ready means no blocking diagnostic (severity error, blocking:true) remains, and deterministic_blocking_reasons names each by code and path. publishable also needs an approved all-slide visual verdict and is false on a fresh render: render every slide with render_deck_thumbnails, inspect the images, then record the verdict with submit_visual_review. diagnostics are validate_deck_spec's findings for the same spec and template, at semantic source paths; quality_summary is an input heuristic (0-100, basis="input"; not a visual verdict). Parse/template errors use a finding envelope; other failures use success=false. Mirrors the ` + "`json2pptx semantic render`" + ` CLI.`),
+		mcp.WithDescription(`Compile a DeckSpec and render it to a .pptx — the recommended one-call path for a NEW deck. Returns {success, pptx_path, deterministic_ready, publishable, blocking_reasons[], quality_summary, diagnostics[], waivers[], explanation_summary}. success/ok mean the artifact was WRITTEN; deterministic_ready means no blocking diagnostic (severity error, blocking:true) remains, and deterministic_blocking_reasons names each by code and path. publishable also needs an approved all-slide visual verdict and is false on a fresh render: render every slide with render_deck_thumbnails, inspect the images, then record the verdict with submit_visual_review. diagnostics are validate_deck_spec's findings for the same spec and template, at JSON Pointer paths; quality_summary is an input heuristic (0-100, basis="input"; not a visual verdict). Parse/template errors use a finding envelope; other failures use success=false. Mirrors the ` + "`json2pptx semantic render`" + ` CLI.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRenderDeckSpec)),
 		deckSpecOrHandleArg("The semantic DeckSpec to render, as a JSON object ({meta:{…}, slides:[{kind, …}]}) or a YAML/JSON string."),
 	}, deckHandleToolParams("render_deck_spec"), []mcp.ToolOption{
@@ -886,10 +903,12 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	if parseDiags.HasErrors() {
 		mc.logRenderEvent(ctx, mcp.LoggingLevelWarning, "deck spec parse failed", map[string]any{"tool": "render_deck_spec"})
 		// The findings validate_deck_spec reports for the same spec: every
-		// spec-level problem in one pass, not only the ones that stop the parse.
-		ds := semantic.Check(filename, data, strictness)
-		enrichSemanticKindDiagnostics(ds)
-		return api.MCPDiagnosticsError(ds), nil
+		// spec-level problem in one pass, and the findings of the slides the
+		// errors do not touch (go-slide-creator-ipahe).
+		eval, ds := evaluateSpecFindings(filename, data, strictness, func(reduced *semantic.DeckSpec, _ []byte) specEvaluation {
+			return mc.evaluateDeckSpec(ctx, request, src, reduced, strictness, argTemplate)
+		})
+		return specFailureResult(filename, data, eval, ds), nil
 	}
 
 	// meta.template outranks the template / template_path arguments. That was
@@ -923,8 +942,17 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	})
 	if err != nil {
 		mc.logRenderEvent(ctx, mcp.LoggingLevelWarning, "deck spec compilation failed", map[string]any{"tool": "render_deck_spec"})
-		res := semanticRenderToMCP(buildSemanticRenderFailure(compileResult, err), &explanation)
-		return finish(res)
+		failure := buildSemanticRenderFailure(compileResult, err)
+		// A spec that does not compile still reports the findings of the slides
+		// its errors do not touch, as validate_deck_spec does.
+		if eval, ok := salvagedEvaluation(filename, data, strictness, func(reduced *semantic.DeckSpec, _ []byte) specEvaluation {
+			return mc.evaluateDeckSpec(ctx, request, src, reduced, strictness, argTemplate)
+		}); ok {
+			failure.Diagnostics = eval.Diagnostics
+			failure.Warnings = append(failure.Warnings, eval.Warnings...)
+			failure.Waivers = eval.Waivers
+		}
+		return finish(semanticRenderToMCP(failure, &explanation))
 	}
 
 	reconcileExplanationWithCompiled(&explanation, input)
@@ -1355,6 +1383,7 @@ func (mc *mcpConfig) finishRenderDeckSpec(ctx context.Context, res renderDeckSpe
 	res.DeckID, res.Stored, res.Revision = outcome.DeckID, outcome.Stored, outcome.Revision
 	res.ChangedSlides, res.SlideChanges = outcome.Changed, outcome.Changes
 	res.Slides = outcome.State.refs()
+	res.Diagnostics = collapseDiagnostics(res.Diagnostics)
 	semanticizeRenderDiagnostics(res.Diagnostics, src.Data, res.DeckID)
 	for i := range res.Diagnostics {
 		d := &res.Diagnostics[i]
@@ -1363,6 +1392,7 @@ func (mc *mcpConfig) finishRenderDeckSpec(ctx context.Context, res renderDeckSpe
 		}
 		d.SlideID = outcome.State.slideIDForPath(d.SemanticPath)
 	}
+	shapeRenderDiagnostics(res.Diagnostics, newSpecDoc(src.Filename, src.Data))
 	completeRenderDeckSpecResponse(&res, f.TemplateWarnings)
 	// A patch on a deck the agent has already seen rendered gets the compact
 	// response; a first render keeps the full one.
@@ -1434,7 +1464,12 @@ func compactRenderResponse(res *renderDeckSpecResponse) {
 	kept := res.Diagnostics[:0:0]
 	for _, d := range res.Diagnostics {
 		blocking := d.Blocking || d.Severity == "error" || d.Action == "refuse"
-		if blocking || d.SlideIndex == nil || visual[*d.SlideIndex] {
+		onChanged := d.SlideIndex == nil || visual[*d.SlideIndex]
+		for _, m := range d.members {
+			// A folded entry is kept when any slide it stands for changed.
+			onChanged = onChanged || m.SlideIndex == nil || visual[*m.SlideIndex]
+		}
+		if blocking || onChanged {
 			kept = append(kept, d)
 		}
 	}

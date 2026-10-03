@@ -150,6 +150,16 @@ func execSummaryBudgets(points int, bottomLine string) (lead, support int) {
 	}
 }
 
+// ExecSummaryTextBudgets returns the exec-summary text budgets for a point
+// count: the readable lead and support lengths (what PostExpandWarnings
+// measures against without a template) and the pattern's hard limits, past
+// which the pattern refuses the values. A finding that asks for a rewrite names
+// the readable budget, so one rewrite lands inside both.
+func ExecSummaryTextBudgets(points int, bottomLine string) (lead, support, leadMax, supportMax int) {
+	lead, support = execSummaryBudgets(points, bottomLine)
+	return lead, support, execSummaryLeadMax, execSummarySupportMax
+}
+
 // execSummaryBottomLineBudget is the readable bottom-line length: the schema
 // maximum with three points, about 102 characters with four or five.
 func execSummaryBottomLineBudget(points int) int {

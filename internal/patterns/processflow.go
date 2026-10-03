@@ -129,6 +129,13 @@ func (p *processFlow) NewValues() any       { return &ProcessFlowValues{} }
 func (p *processFlow) NewOverrides() any    { return &ProcessFlowOverrides{} }
 func (p *processFlow) NewCellOverride() any { return &ProcessFlowCellOverride{} }
 
+// ProcessFlowLabelBudget returns the readable label length of a process-flow
+// step for a step count: the length PostExpandWarnings reports past. A finding
+// that asks for a shorter step names this budget, so one rewrite fits the box.
+func ProcessFlowLabelBudget(steps int, pointed bool) (wordLike, unbroken int) {
+	return processFlowLabelBudget(steps, pointed)
+}
+
 func processFlowLabelBudget(steps int, pointed bool) (wordLike, unbroken int) {
 	// Measured against the written size on every shipped template, every
 	// shape keeping the uniform 0.5 cm text margin (go-slide-creator-n1muf).

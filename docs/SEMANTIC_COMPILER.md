@@ -189,11 +189,115 @@ template.
 - **Raw slides.** A `raw_json2pptx` slide's pattern values and chart / diagram
   data are checked against the contracts generation enforces, and each failure
   is reported inside the raw slide, e.g.
-  `slides[2].slide.pattern.values.current` or
-  `slides[2].slide.content[1].diagram_value.data.primary[2].highlight`.
+  `/slides/2/slide/pattern/values/current` or
+  `/slides/2/slide/content/1/diagram_value/data/primary/2/highlight`.
 - **Refusals.** A refused render reports the fit findings on every slide, not
   only the first refused paragraph, and folds per-field refusals under the
   slide's capacity finding (`symptoms[]`).
+
+### One address per finding
+
+Every finding of `validate_deck_spec`, `render_deck_spec`, `semantic validate`
+and `semantic render` is addressed in the spec the author sent:
+
+| field | meaning |
+|-------|---------|
+| `path` | JSON Pointer (RFC 6901, 0-based) into the authored spec: the notation a `patch` uses. It always resolves. In the structure form it reads `/structure/sections/1/slides/0/kpis`. |
+| `missing_path` | The field the finding is about when the spec does not have it (a required field, a takeaway to add). `path` is then its nearest existing parent. |
+| `slide_number` | 1-based position of the slide in the rendered deck, generated agenda and dividers counted. The one index meant for a person; "slide N" in a message is this number. Absent on a deck-level finding and on an entry that spans slides. |
+| `slide_id` (render), `evidence.slide_id` (validate) | The stored deck's stable slide id. |
+| `debug` | Locators into the compiled deck (`raw_path`, `cell_path`, `fix_path`), for a maintainer. Nothing outside `debug` names an object the author did not write. |
+
+These surfaces report no `semantic_path`, `raw_path`, `slide_index`, `where` or
+`evidence.path`. Messages, `deterministic_blocking_reasons` and `error` name a
+location by the same pointer (`BODY_TOO_LONG at /slides/1`). A finding the
+source map cannot trace to a field is placed on its slide. Inside the pipeline
+a path keeps the dotted form the semantic package writes
+(`slides[2].kpis[0].label`); it is converted once, on the way out
+(`cmd/json2pptx/semantic_paths.go`), and `TestEveryDeckSpecFindingPathResolves`
+checks every emitted path against the spec that produced it. The HTTP
+`POST /api/v1/semantic/validate` endpoint runs the spec-level check only and
+still reports `evidence.path` in the dotted form.
+
+### Everything knowable in the first response
+
+A spec with a blocking spec-level error (an unknown kind, a misspelled key, an
+invalid `meta.archetype`, a chart series one value short) does not compile.
+The tools still evaluate what the errors do not touch
+(`cmd/json2pptx/semantic_salvage.go`):
+
+- a key with a `did_you_mean` is read under the name it was meant to have, so
+  what followed from its being dropped is not reported as a second cause (a
+  `SEMANTIC_TAKEAWAY_REQUIRED` beside the unknown `takeway`; a comparison that
+  "degrades" because its third column wrote `bulets`);
+- any other unknown key is left out, as the compiler leaves it out, and a
+  finding that follows from it carries `evidence.caused_by` (the key's
+  pointer) and says so;
+- a slide that still has an error is left out of the run, with every finding
+  known about it;
+- an invalid `meta` field is left out.
+
+What remains is compiled and rendered into the scratch directory, and its
+findings are reported at the authored paths. `warnings[]` says what was done:
+`measured with each misspelled key read as its did_you_mean (takeway →
+takeaway at /slides/2)` and `checks_not_run: /slides/4 did not compile, so
+their fit and the deck-wide checks (rhythm, executive summary, quality gate)
+wait for their errors to be fixed`. The deck-wide checks are skipped only when
+a slide was left out. A refused `render_deck_spec` / `semantic render` reports
+the same set.
+
+A list reports every item over a text budget in one response, each at its own
+path with the length measured and the length that fits (`evidence.measured`,
+`evidence.allowed`, `remediation.primary.params.max_chars`): decision option
+labels and details, process steps (the budget is the flow box's readable
+length for the step count, less the label), and executive-summary leads and
+supports (the readable budget for the point count). A count finding names its
+range in `min_items` / `max_items`. `SEMANTIC_RHYTHM_MONOTONY` lists the
+slides of its run in `evidence.run`.
+
+`TestTwelveFlawDraftCleanInThreeRoundTrips` replays the review's twelve-flaw
+draft with an agent that only applies findings: it is clean on the third
+validate on every shipped template (it took seven).
+
+### One entry per cause
+
+Findings with the same code and the same cause are one entry with
+`occurrences` and `paths`; a slide that fell back from its visual lists the
+fit findings about the fallback under `symptoms`. See
+[FIT_FINDINGS.md](FIT_FINDINGS.md#severity-and-blocking-on-the-deckspec-surfaces).
+An MCP response offers `describe_finding` as `next_tool_call` on the first
+finding of each code only and leaves out `describe_command`.
+
+### Unknown kinds and keys
+
+An unknown `kind` names the kind to use: the nearest spelling, the kind a
+common word means (`kpi` → `kpi_snapshot`), or — when the name is a chart or
+diagram type — the kind that hosts it (`funnel` → `chart_insight` with
+`chart {type: "funnel", data: {categories, values}}`; `swot` → `framework`; a
+diagram with no kind of its own → `raw_json2pptx`). The finding carries
+`remediation.primary.params.did_you_mean` (and `hosted_type`, `hosted_as`),
+and `next_tool_call` asks `list_slide_kinds` for that kind alone;
+`evidence.available` lists every kind only when nothing is close. An unknown
+key gets `did_you_mean` whenever there is a close match by spelling or by word
+family (`bulets` / `bullets` → `items`, `stages` → `steps`, `metrics` →
+`kpis`), whichever pass found it. An unknown archetype lists
+`evidence.available`.
+
+### Placeholder copy
+
+Placeholder strings the product itself emits are registered in
+`internal/policy/placeholder` (`Registered()`, `Detect`): the `__FILL__` token
+of plan drafts and pattern skeletons, the recommend_visual recipes' action
+title, alt text and sample source (built with `RecipeActionTitle`,
+`RecipeAltText`, `RecipeSampleSource`), and any text field that is nothing but
+an `<instruction>` (every `args_template` hint and suggested-patch value). A
+producer that adds placeholder wording registers it there; detection reads the
+registry. In any text field of a DeckSpec — `meta` included — a registered
+placeholder is a `SEMANTIC_WEAK_CONTENT` finding with `evidence.placeholder`
+naming the marker. It is a blocking error on the DeckSpec surfaces whatever
+`strict` is: the deck is still written, `deterministic_ready` is false and
+`deterministic_blocking_reasons` leads with `exemplar_content`. Authored filler
+(`TBD`, `lorem ipsum`) stays a warning.
 
 ### Waiving storyline findings
 
@@ -361,11 +465,11 @@ internal/
 
 ## Diagnostics and repair
 
-Semantic validation returns the shared `FindingEnvelope` from `internal/diagnostics`. Findings prefer semantic paths such as `slides[2].kpis[1].label`. When a compiled raw deck triggers a fit or output-validation finding, the compiler maps the raw JSON pointer back through its `SourceMap` (exact match first, then nearest ancestor) and preserves the generated pointer as fallback evidence. The semantic slide index is recovered from the raw `slides[N]` prefix even when no mapping exists, so a finding always carries at least a slide-level locator. For the common density/overflow failures — an overlong metric label/value, an overfull KPI snapshot, an overlong takeaway, a dense comparison side, or a crowded roadmap phase list — the finding also carries a `recommended_edit` (`shorten_text`, `split_slide`, `reduce_items`, `simplify_side`, or `split_phases`) so an agent repairs the semantic source it authored rather than the generated shape_grid JSON.
+Semantic validation returns the shared `FindingEnvelope` from `internal/diagnostics`. Findings are addressed in the authored spec (`/slides/2/kpis/1/label`; see [One address per finding](#one-address-per-finding)). When a compiled raw deck triggers a fit or output-validation finding, the compiler maps the raw JSON pointer back through its `SourceMap` (exact match first, then nearest ancestor) and keeps the generated pointer under `debug.raw_path`. The semantic slide index is recovered from the raw `slides[N]` prefix even when no mapping exists, so a finding always carries at least a slide-level locator. For the common density/overflow failures — an overlong metric label/value, an overfull KPI snapshot, an overlong takeaway, a dense comparison side, or a crowded roadmap phase list — the finding also carries a `recommended_edit` (`shorten_text`, `split_slide`, `reduce_items`, `simplify_side`, or `split_phases`) so an agent repairs the semantic source it authored rather than the generated shape_grid JSON.
 
 ### Post-compile raw preflight
 
-After lowering a `DeckSpec` to a raw `PresentationInput`, `Compile` runs a **post-compile raw preflight** (`internal/semantic/preflight.go`) over every emitted pattern slide and every pattern nested in a shape-grid cell (a `regions` slide's stat or timeline), whose findings map to the region that wrote it. It applies the same pattern-validation gate the renderer enforces in `expandPattern` (via the reusable `deckinput.ValidatePattern` helper) without expanding the grid, so a slide whose lowered pattern would be rejected at render — for example a KPI cell value that exceeds the `kpi-Nup` big-number budget, or a list with the wrong item count — is caught **at compile/validate time** instead of failing deep in generation. Preflight findings are error severity and block the compile (no `PresentationInput` is emitted), each mapped back through the `SourceMap` to the semantic source path with the raw pattern pointer retained under `evidence.raw_path` and a `recommended_edit` attached for the length/count failures. Because this runs inside `Compile`, it applies uniformly to `compile_deck_spec`, `render_deck_spec`, and the HTTP `compile`/`render` endpoints. The `kpi_snapshot` length degradation above pre-empts the preflight for the one kind that has a natural bullet fallback; other kinds surface the blocking preflight finding so the author edits the offending field.
+After lowering a `DeckSpec` to a raw `PresentationInput`, `Compile` runs a **post-compile raw preflight** (`internal/semantic/preflight.go`) over every emitted pattern slide and every pattern nested in a shape-grid cell (a `regions` slide's stat or timeline), whose findings map to the region that wrote it. It applies the same pattern-validation gate the renderer enforces in `expandPattern` (via the reusable `deckinput.ValidatePattern` helper) without expanding the grid, so a slide whose lowered pattern would be rejected at render — for example a KPI cell value that exceeds the `kpi-Nup` big-number budget, or a list with the wrong item count — is caught **at compile/validate time** instead of failing deep in generation. Preflight findings are error severity and block the compile (no `PresentationInput` is emitted), each mapped back through the `SourceMap` to the semantic source path with the raw pattern pointer retained under `debug.raw_path` and a `recommended_edit` attached for the length/count failures. Because this runs inside `Compile`, it applies uniformly to `compile_deck_spec`, `render_deck_spec`, and the HTTP `compile`/`render` endpoints. The `kpi_snapshot` length degradation above pre-empts the preflight for the one kind that has a natural bullet fallback; other kinds surface the blocking preflight finding so the author edits the offending field.
 
 Agents should repair semantic YAML/JSON first. Raw `PresentationInput` and `repair_slide` remain available for mechanical fixes and advanced escape-hatch workflows.
 

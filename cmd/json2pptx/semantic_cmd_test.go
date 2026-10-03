@@ -135,7 +135,7 @@ slides:
 	}
 	found := false
 	for _, finding := range env.Findings {
-		if strings.HasSuffix(finding.Code, string(diagnostics.CodeTemplateNotFound)) && finding.Evidence["path"] == "meta.template" {
+		if strings.HasSuffix(finding.Code, string(diagnostics.CodeTemplateNotFound)) && findingPath(finding) == "meta.template" {
 			found = true
 		}
 	}

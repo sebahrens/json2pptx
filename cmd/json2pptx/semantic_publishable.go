@@ -32,7 +32,7 @@ func blockingDiagnosticReasons(diags []semanticDiagnostic) []string {
 		}
 		byCode[d.Code]++
 		if _, seen := paths[d.Code]; !seen {
-			paths[d.Code] = firstNonEmpty(d.SemanticPath, d.RawPath)
+			paths[d.Code] = diagnosticPointer(d)
 		}
 	}
 	if len(byCode) == 0 {

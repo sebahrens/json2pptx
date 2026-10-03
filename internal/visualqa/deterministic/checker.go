@@ -385,6 +385,10 @@ func BlockingProfile(code, declaredAction string) (blocks, when string) {
 		return BlocksAlways, "Always blocks: reported with severity error and blocking:true."
 	case patterns.ErrCodeTextBelowReadableMin:
 		return BlocksSometimes, "Blocks (severity error) when the size was measured on authored or generated text, or generation refused it; a predicted shrink is an info."
+	case "SEMANTIC_WEAK_CONTENT":
+		return BlocksSometimes, "Blocks (severity error) when the text is placeholder copy the product itself emitted: a plan draft's __FILL__, a recommend_visual recipe's title, alt text or sample source, a suggested patch's \"<…>\" hint. Authored filler (TBD, lorem ipsum) is a warning."
+	case "SEMANTIC_PATTERN_DEGRADED", "SEMANTIC_DENSITY":
+		return BlocksSometimes, "A warning on its own. Blocks (severity error) when what the slide renders as instead does not fit: the fit findings about that fallback are listed under symptoms."
 	case patterns.ErrCodeTitleNotAction:
 		return BlocksSometimes, "An info on its own slide. When topic titles exceed max_topic_title_pct of the deck the gate fails and one QUALITY_GATE error reports it, unless meta.waivers names TITLE_NOT_ACTION."
 	}

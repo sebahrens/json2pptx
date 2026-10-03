@@ -1,6 +1,11 @@
 package semantic
 
-import "github.com/sebahrens/json2pptx/internal/diagnostics"
+import (
+	"fmt"
+
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/semantic/slides"
+)
 
 // Degrade advisories (go-slide-creator-kjc8l).
 //
@@ -55,4 +60,32 @@ func (s *semDiags) degradeFix(path, msg string, fix *diagnostics.Fix, from, to, 
 	fix.Params["to"] = to
 	fix.Params["reason"] = reason
 	s.advisoryFix(path, diagnostics.CodeSemanticPatternDegraded, msg, fix)
+}
+
+// degradeItems reports every over-budget item of a slide at the item's own
+// field, with the length measured and the length that fits
+// (go-slide-creator-ipahe). One finding per list used to name the first
+// offender only, so an agent fixed one item per validate. The findings share a
+// code, a slide and a cause, so a DeckSpec response folds them into one entry
+// that lists the affected paths.
+func (s *semDiags) degradeItems(slidePath string, items []slides.BudgetItem, tail, from, to string) {
+	for _, item := range items {
+		n := len(s.out)
+		s.degradeFix(slidePath+"."+item.Field,
+			fmt.Sprintf("%s (%s)", item.Message(), tail),
+			&diagnostics.Fix{Kind: "restore_visual", Params: map[string]any{"max_chars": item.Allowed}},
+			from, to, degradeBudgetExceeded)
+		if len(s.out) > n {
+			s.out[n].Details = map[string]any{"measured": item.Measured, "allowed": item.Allowed}
+		}
+	}
+}
+
+// degradeCount is degrade for a list whose length is outside the range the
+// visual holds. The fix names the range (min_items, max_items), so an agent
+// reads the limit as a number and a stored deck gets the removals as a patch.
+func (s *semDiags) degradeCount(path, msg, from, to string, minItems, maxItems int) {
+	s.degradeFix(path, msg,
+		&diagnostics.Fix{Kind: "restore_visual", Params: map[string]any{"min_items": minItems, "max_items": maxItems}},
+		from, to, degradeCountOutOfRange)
 }

@@ -113,7 +113,7 @@ func TestRecommendVisualRecipesRenderForEveryType(t *testing.T) {
 				t.Fatalf("recipe for %s did not render: error=%q diags=%+v", name, verdict.Error, verdict.Diagnostics)
 			}
 			for _, d := range verdict.Diagnostics {
-				if d.Severity == "error" {
+				if d.Severity == "error" && !isPlaceholderFinding(d) {
 					t.Errorf("recipe for %s raised error diagnostic %+v", name, d)
 				}
 			}
@@ -228,9 +228,7 @@ func TestRecommendVisualDiagramIntentsReachRunnableSpec(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if res.IsError || strings.Contains(resultText(res), `"severity":"error"`) {
-				t.Errorf("recipe spec for %s does not validate: %s", want, resultText(res))
-			}
+			assertOnlyPlaceholdersBlock(t, "recipe spec for "+want, res)
 		})
 	}
 }

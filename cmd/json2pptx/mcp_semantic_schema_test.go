@@ -146,7 +146,7 @@ func TestSemanticMCP_UnknownKPIFieldDiagnostic(t *testing.T) {
 	}
 	found := false
 	for _, f := range env.Findings {
-		if f.Evidence["path"] == "slides[0].kpis[1].lable" && strings.HasSuffix(f.Code, diagnostics.CodeSemanticUnknownField) {
+		if f.Path != nil && *f.Path == "/slides/0/kpis/1/lable" && strings.HasSuffix(f.Code, diagnostics.CodeSemanticUnknownField) {
 			found = true
 		}
 	}

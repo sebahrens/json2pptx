@@ -125,6 +125,21 @@ func rawContractSpec(slide string) map[string]any {
 	}
 }
 
+// findingPath is a DeckSpec finding's address in the pipeline's dotted form:
+// the field the finding is about (missing_path when the spec does not have
+// it), else path. A finding that was not shaped for a DeckSpec surface (an
+// argument error) keeps evidence.path.
+func findingPath(f diagnostics.Finding) string {
+	switch {
+	case f.MissingPath != "":
+		return dottedPath(f.MissingPath)
+	case f.Path != nil:
+		return dottedPath(*f.Path)
+	}
+	p, _ := f.Evidence["path"].(string)
+	return p
+}
+
 // findingKey is what two tools must agree on for one finding.
 type findingKey struct{ Code, Path, Severity string }
 
@@ -149,7 +164,7 @@ func envelopeKeys(t *testing.T, label string, env diagnostics.FindingEnvelope) [
 	t.Helper()
 	keys := make([]findingKey, 0, len(env.Findings))
 	for _, f := range env.Findings {
-		path, _ := f.Evidence["path"].(string)
+		path := findingPath(f)
 		keys = append(keys, findingKey{f.Code, path, string(f.Severity)})
 		if f.Blocking == nil {
 			continue // a transport error envelope carries no gate verdict
@@ -374,7 +389,7 @@ func TestDeckSpecRawSlideContractParity(t *testing.T) {
 			}
 			inside := false
 			for _, f := range v.Validate.Findings {
-				path, _ := f.Evidence["path"].(string)
+				path := findingPath(f)
 				if f.Severity == diagnostics.SeverityError && strings.HasPrefix(path, c.wantPath) {
 					inside = true
 				}
@@ -412,7 +427,7 @@ func TestDeckSpecBlockingFindingIsNamedError(t *testing.T) {
 		}
 		named := false
 		for _, r := range v.Render.DeterministicBlockingReasons {
-			if strings.HasPrefix(r, code+" at "+path) {
+			if strings.HasPrefix(r, code+" at "+specPointer(path)) {
 				named = true
 			}
 		}
@@ -444,10 +459,10 @@ func TestDeckSpecAggregateGateFailureIsAFinding(t *testing.T) {
 		t.Fatalf("no %s diagnostic on a deck of topic titles: %+v (gate %+v)", codeQualityGate, v.Render.Diagnostics, v.Render.Quality.QualityGate)
 	}
 	if !gate.Blocking || gate.Severity != "error" || gate.SemanticPath != "slides" ||
-		!strings.Contains(gate.Message, "lack an action title") || !strings.Contains(gate.Message, "TITLE_NOT_ACTION at slides[") {
+		!strings.Contains(gate.Message, "lack an action title") || !strings.Contains(gate.Message, "TITLE_NOT_ACTION at /slides/") {
 		t.Errorf("gate finding = %+v", *gate)
 	}
-	if len(v.Render.DeterministicBlockingReasons) != 1 || !strings.HasPrefix(v.Render.DeterministicBlockingReasons[0], codeQualityGate+" at slides: ") {
+	if len(v.Render.DeterministicBlockingReasons) != 1 || !strings.HasPrefix(v.Render.DeterministicBlockingReasons[0], codeQualityGate+" at /slides: ") {
 		t.Errorf("blocking reasons = %v", v.Render.DeterministicBlockingReasons)
 	}
 
@@ -520,7 +535,7 @@ func TestDeckSpecStorylineWaivers(t *testing.T) {
 		bad := deckSpecVerdicts(t, mc, map[string]any{"spec": decodeSpecObject(t, pitchSpec(`,"waivers":[`+waiver+`]`)), "template": "warm-coral"})
 		rejected := false
 		for _, f := range bad.Validate.Findings {
-			path, _ := f.Evidence["path"].(string)
+			path := findingPath(f)
 			if f.Severity == diagnostics.SeverityError && strings.HasPrefix(path, "meta.waivers[0]") {
 				rejected = true
 			}
@@ -713,7 +728,7 @@ func TestSemanticCLIExitFollowsBlockingFindings(t *testing.T) {
 				for _, d := range res.Diagnostics {
 					if d.Blocking {
 						blocking++
-						if !strings.Contains(res.Error, d.Code+" at "+d.SemanticPath) {
+						if !strings.Contains(res.Error, d.Code+" at "+specPointer(d.SemanticPath)) {
 							t.Errorf("error does not name %s at %s: %q", d.Code, d.SemanticPath, res.Error)
 						}
 					}

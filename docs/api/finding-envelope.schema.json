@@ -132,6 +132,33 @@
         },
         "severity": { "$ref": "#/$defs/severity" },
         "category": { "$ref": "#/$defs/namespace" },
+        "blocking": {
+          "type": "boolean",
+          "description": "DeckSpec surfaces: true exactly when severity is error."
+        },
+        "path": {
+          "type": "string",
+          "description": "DeckSpec surfaces: JSON Pointer (RFC 6901, 0-based) into the spec that was sent. It always resolves there."
+        },
+        "missing_path": {
+          "type": "string",
+          "description": "DeckSpec surfaces: the field the finding is about when the spec does not have it; path is then its nearest existing parent."
+        },
+        "slide_number": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "DeckSpec surfaces: 1-based position of the slide in the rendered deck. Absent on a deck-level finding and on an entry that spans slides."
+        },
+        "occurrences": {
+          "type": "integer",
+          "minimum": 2,
+          "description": "DeckSpec surfaces: how many findings with this code and cause the entry stands for."
+        },
+        "paths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "DeckSpec surfaces: the path of each finding the entry stands for. Evidence facts that differ per item (measured) are lists in this order."
+        },
         "where": { "$ref": "#/$defs/where" },
         "message": { "type": "string" },
         "evidence": {
@@ -142,6 +169,10 @@
         "next_tool_call": { "$ref": "#/$defs/tool_call_suggestion" },
         "example_value": {
           "description": "Representative valid value for the offending argument/field. Any JSON type."
+        },
+        "debug": {
+          "type": "object",
+          "description": "DeckSpec surfaces: locators into the compiled deck (raw_path, cell_path). They name objects the author did not write."
         },
         "doc_url": { "type": "string" },
         "describe_command": {

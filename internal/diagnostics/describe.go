@@ -1117,7 +1117,7 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		Severity:    describeSeverityRefuse,
 		WhenEmitted: "semantic validation finds a required field absent — e.g. meta.title, a slide's kind-specific required payload, or a chart_insight series.",
 		RemediationSteps: []string{
-			"Add the field named in evidence.path to the semantic spec.",
+			"Add the field named in missing_path to the semantic spec (path is the object it belongs in).",
 			"Consult the semantic schema (json2pptx semantic schema) for the required fields of each slide kind.",
 		},
 		ExampleBefore: `{"meta": {}, "slides": [...]}`,
@@ -1130,7 +1130,7 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		Severity:    describeSeverityRefuse,
 		WhenEmitted: "semantic validation finds a slide whose kind is missing or not one of the registered slide kinds.",
 		RemediationSteps: []string{
-			"Set the slide's kind at evidence.path to a registered kind.",
+			"Set the slide's kind at path to remediation.primary.params.did_you_mean when it is given; hosted_type says the name was a chart or diagram type and that kind hosts it. Otherwise choose from evidence.available.",
 			"List the registered kinds via json2pptx semantic schema.",
 		},
 		ExampleBefore: `{"kind": "bogus_kind", "title": "Oops"}`,
@@ -1167,7 +1167,7 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		Severity:    describeSeverityReview,
 		WhenEmitted: "semantic validation finds a content-bearing slide (executive_summary, kpi_snapshot, chart_insight, comparison, process, roadmap, decision) with no takeaway (or insight) line. An executive_summary with a bottom_line (or recommendation) and a decision with a recommendation are exempt: that callout is their takeaway, and a distinct takeaway renders in its own band beneath it. Promoted to an error under strict validation.",
 		RemediationSteps: []string{
-			"Add a takeaway line at evidence.path stating the slide's single message.",
+			"Add a takeaway at missing_path stating the slide's single message (paths lists every slide that needs one).",
 			"For a chart_insight slide an insight line satisfies the requirement.",
 		},
 		RelatedCodes: []string{CodeSemanticWeakContent, CodeSemanticDensity},
@@ -1178,7 +1178,7 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		Severity:    describeSeverityReview,
 		WhenEmitted: "semantic validation finds a count or shape outside the advisory range for the slide kind WITHOUT losing the planned visual — e.g. a table wider or taller than the renderer lays out, a row with fewer cells than the header, an unbalanced comparison that a card-grid still draws, or a dropped table-highlight badge. When the count or budget costs the slide its visual, SEMANTIC_PATTERN_DEGRADED is emitted instead. Promoted to an error under strict validation.",
 		RemediationSteps: []string{
-			"Adjust the item count at evidence.path into the recommended range.",
+			"Adjust the item count at path into the recommended range.",
 			"Split overflowing content across multiple slides, or merge sparse slides.",
 		},
 		RelatedCodes: []string{CodeSemanticPatternDegraded, CodeSemanticTakeawayRequired, CodeSemanticRequired},
@@ -1190,7 +1190,7 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		WhenEmitted: "semantic validation finds a count or a text budget the planned pattern cannot take, and the compiler will silently fall back — e.g. kpi_snapshot kpis not in 2–6 or a KPI value past the card's character budget, executive_summary points not in 3–5 or a lead over 90 characters, agenda sections not in 2–10, process steps, roadmap phases, architecture tiers, timeline milestones, a 2x2 short of four headed quadrants, a team-bios roster past its budgets, a comparison that no comparison pattern can hold, a table-highlight matrix outside 2–6 x 2–6 or carrying a score its scale cannot read, a chart_insight with no chart data or more insights than the split renders. The slide still renders, which is why the fallback used to go unnoticed. Promoted to an error under strict validation.",
 		RemediationSteps: []string{
 			"Read fix.params: from is the pattern that was refused, to is what renders instead (content-bullets, content-slide, native-two-column), and reason is why (count_out_of_range, budget_exceeded, columns_unbalanced, scores_incomplete, score_unreadable, chart_data_missing).",
-			"For count_out_of_range, bring the list at evidence.path into the pattern's range — drop, merge or split items.",
+			"For count_out_of_range, bring the list at path into the pattern's range — drop, merge or split items.",
 			"For budget_exceeded, shorten the over-budget text the message names rather than changing the count.",
 			"Or accept the fallback: the content is never lost, only the visual.",
 		},
@@ -1202,9 +1202,9 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		Code:        CodeSemanticWeakContent,
 		Summary:     "A field still contains placeholder or filler text.",
 		Severity:    describeSeverityReview,
-		WhenEmitted: "semantic validation finds placeholder markers (TBD, lorem ipsum, __FILL__, TODO, FIXME, placeholder) in a text field. Promoted to an error under strict validation.",
+		WhenEmitted: "semantic validation finds placeholder markers (TBD, lorem ipsum, TODO, FIXME, placeholder) in a text field: a warning, promoted to an error under strict validation. Placeholder copy the product itself emitted — a plan draft's __FILL__, a recommend_visual recipe's \"Replace with the action title …\", alt text or sample source, a suggested patch's \"<…>\" hint — is a blocking error in any text field, meta included; evidence.placeholder names the marker and render_deck_spec leads deterministic_blocking_reasons with \"exemplar_content\".",
 		RemediationSteps: []string{
-			"Replace the placeholder text at evidence.path with real content.",
+			"Replace the placeholder text at path (every entry of paths, when given) with real content.",
 		},
 		ExampleBefore: `{"kind": "section", "title": "TBD"}`,
 		ExampleAfter:  `{"kind": "section", "title": "Financial Review"}`,
@@ -1239,7 +1239,7 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		Severity:    describeSeverityReview,
 		WhenEmitted: "semantic validation finds a field whose value is not the type its kind's compiler reads — e.g. a numeric or boolean title, or points/steps/columns supplied as a scalar instead of an array. The compiler silently drops wrong-typed values, so the content would otherwise vanish without a finding. Promoted to an error under strict validation.",
 		RemediationSteps: []string{
-			"Give the field at evidence.path the expected type: a string for title/subtitle/takeaway/insight/source/recommendation, an array for points/steps/phases/columns/options/insights/kpis.",
+			"Give the field at path the expected type: a string for title/subtitle/takeaway/insight/source/recommendation, an array for points/steps/phases/columns/options/insights/kpis.",
 			"For list fields, wrap a single value in an array (e.g. \"points\": [\"one point\"] rather than \"points\": \"one point\").",
 		},
 		ExampleBefore: `{"kind": "executive_summary", "title": "Q3", "points": "single point"}`,
@@ -1278,7 +1278,7 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		Severity:    describeSeverityReview,
 		WhenEmitted: "semantic validation walks a bridge's columns and finds a \"total\" column after deltas whose value differs from the running sum by more than rounding (0.5% of the larger magnitude). The waterfall draws the authored total, so the walk visibly does not add up. Promoted to an error under strict validation.",
 		RemediationSteps: []string{
-			"Correct the total at evidence.path, or the deltas before it, so the walk adds up.",
+			"Correct the total at path, or the deltas before it, so the walk adds up.",
 			"Use a \"subtotal\" column with no value to have the engine compute the running total.",
 		},
 		ExampleBefore: `{"columns": [{"label": "Start", "type": "total", "value": 100}, {"label": "Cost", "type": "delta", "value": -10}, {"label": "End", "type": "total", "value": 999}]}`,

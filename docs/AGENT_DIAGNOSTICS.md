@@ -35,8 +35,13 @@ converters remain the **adapter input**: callers build envelopes from
 The semantic compiler uses the same envelope. Semantic validation and render
 surfaces (`json2pptx semantic validate`, `json2pptx semantic render`,
 `validate_deck_spec`, `render_deck_spec`, and the semantic HTTP endpoints) emit
-findings whose `evidence.path` points to the semantic authoring field whenever
-possible. The semantic family is `INPUT`-namespaced and declared in
+findings addressed in the spec the author sent: `path` is a JSON Pointer
+(RFC 6901, 0-based) that always resolves in that spec, `missing_path` names a
+field the spec does not have yet, and `slide_number` is the slide's 1-based
+position in the rendered deck (see
+[SEMANTIC_COMPILER.md](SEMANTIC_COMPILER.md#one-address-per-finding)). These
+surfaces report no `where` and no `evidence.path`; pointers into the compiled
+deck appear only under `debug`. The semantic family is `INPUT`-namespaced and declared in
 `internal/diagnostics/codes.go`: the per-spec gates `SEMANTIC_REQUIRED`,
 `SEMANTIC_UNKNOWN_KIND`, `SEMANTIC_UNKNOWN_FIELD`, `SEMANTIC_UNKNOWN_ARCHETYPE`,
 `SEMANTIC_TAKEAWAY_REQUIRED`, `SEMANTIC_DENSITY`, `SEMANTIC_WEAK_CONTENT`,
@@ -49,9 +54,10 @@ the deck-rhythm advisories `SEMANTIC_RHYTHM_MONOTONY`, `SEMANTIC_RHYTHM_DENSITY`
 {
   "code": "INPUT.SEMANTIC_DENSITY",
   "severity": "error",
-  "where": {"slide": 2},
+  "blocking": true,
+  "path": "/slides/2/kpis",
+  "slide_number": 3,
   "message": "kpi snapshot has 9 usable KPIs; 2–6 is recommended",
-  "evidence": {"path": "slides[2].kpis"},
   "describe_command": "json2pptx describe-finding SEMANTIC_DENSITY"
 }
 ```
@@ -120,14 +126,20 @@ escape hatch for advanced repairs.
 | `code`             | string        | yes      | Dotted, namespaced code, e.g. `"FIT.placeholder_overflow"`.        |
 | `severity`         | enum          | yes      | `error` \| `warning` \| `info`.                                    |
 | `category`         | enum          | yes      | The namespace prefix of `code` (see §2.4).                          |
-| `where`            | `Where`       | no       | Location in the deck/template (see §2.3).                           |
+| `path`             | string        | no       | DeckSpec surfaces: JSON Pointer (0-based) into the spec that was sent; always resolves there. |
+| `missing_path`     | string        | no       | DeckSpec surfaces: the field the finding is about when the spec does not have it; `path` is then its nearest existing parent. |
+| `slide_number`     | integer       | no       | DeckSpec surfaces: 1-based position of the slide in the rendered deck. |
+| `occurrences`      | integer       | no       | DeckSpec surfaces: how many findings of one code and cause this entry stands for, when more than one. |
+| `paths`            | string[]      | no       | DeckSpec surfaces: the `path` of each of them; evidence facts that differ per item are lists in this order. |
+| `where`            | `Where`       | no       | Location in the deck/template (see §2.3). Not set on the DeckSpec surfaces. |
 | `message`          | string        | yes      | Human-readable description.                                         |
 | `evidence`         | object        | no       | Numeric/enum facts only — never prose.                             |
 | `remediation`      | `Remediation` | no       | Structured repair (see §2.5).                                      |
 | `next_tool_call`   | object        | no       | Replayable tool-call hop to recover/investigate: `{tool, args_template}`. |
 | `example_value`    | any           | no       | Representative valid value for the offending argument/field.        |
 | `doc_url`          | string        | no       | Human documentation for the code.                                  |
-| `describe_command` | string        | no       | Executable lookup, `json2pptx describe-finding <code>`.            |
+| `debug`            | object        | no       | DeckSpec surfaces: locators into the compiled deck (`raw_path`, `cell_path`). Not addresses in the spec. |
+| `describe_command` | string        | no       | Executable lookup, `json2pptx describe-finding <code>`. The MCP DeckSpec tools leave it out and offer `describe_finding` as `next_tool_call` on the first finding of each code. |
 
 `evidence` carries only machine-actionable facts: measured-vs-allowed extents,
 overflow ratios, the offending JSON `path`, the `expected_type`, the fit
