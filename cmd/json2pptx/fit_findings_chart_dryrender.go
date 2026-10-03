@@ -184,7 +184,16 @@ func collectGridDryRenderFindingsResolved(
 				continue
 			}
 			cellPath := fmt.Sprintf("%s/rows/%d/cells/%d", basePath, ri, ci)
-			diagramBounds := resolvedGridCellBounds(result, ri, ci, shapegrid.CellKindDiagram)
+			// Bounds are resolved by column, which differs from ci after a
+			// column-spanning cell — every horizontal compose segment after a
+			// multi-column one. Looking them up by ci found none, and the
+			// segment's diagrams were never dry-rendered
+			// (go-slide-creator-epch2).
+			col, ok := gridCellResolvedColumn(grid, ri, ci)
+			if !ok {
+				col = ci
+			}
+			diagramBounds := resolvedGridCellBounds(result, ri, col, shapegrid.CellKindDiagram)
 			if cell.Diagram != nil {
 				findings = append(findings, dryRenderGridSpecInBounds(
 					cell.Diagram, themeColors, bodyFont, strictFit, cellPath+"/diagram", converterAvailable, diagramBounds, viewingMode)...)
@@ -195,7 +204,7 @@ func collectGridDryRenderFindingsResolved(
 			}
 			if cell.Grid != nil {
 				var nested *shapegrid.ResolveResult
-				if parent := resolvedGridCellBounds(result, ri, ci, shapegrid.CellKindSubGrid); parent.Width > 0 && parent.Height > 0 {
+				if parent := resolvedGridCellBounds(result, ri, col, shapegrid.CellKindSubGrid); parent.Width > 0 && parent.Height > 0 {
 					inset := pptx.RectEmu{X: parent.X + subGridInsetEMU, Y: parent.Y + subGridInsetEMU,
 						CX: parent.Width - 2*subGridInsetEMU, CY: parent.Height - 2*subGridInsetEMU}
 					if inset.CX <= 0 || inset.CY <= 0 {

@@ -1579,7 +1579,9 @@ func collectGridTablePreflightResolved(grid *ShapeGridInput, result *shapegrid.R
 		if cell == nil {
 			continue
 		}
-		path := fmt.Sprintf("%s/rows/%d/cells/%d", base, rc.RowIdx, rc.ColIdx)
+		// The authored cell (a JSON pointer into the row), as generation
+		// reports table_rows_truncated (go-slide-creator-epch2).
+		path := authoredGridCellPath(base, grid, rc.RowIdx, rc.ColIdx)
 		if cell.Table != nil {
 			spec := cell.Table.ToTableSpec()
 			findings = append(findings, generator.DetectTablePreflight(generator.TablePreflightInput{
