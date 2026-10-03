@@ -148,24 +148,23 @@ func TestCompileComparison_ProsConsFallbackKeepsContent(t *testing.T) {
 }
 
 // go-slide-creator-3bgf: three columns are a three-panel visual. A comparison
-// degrades to bullets only past what any of the patterns can hold — six or more
-// columns, or a column with no header.
+// degrades to bullets only past what any of the patterns can hold — more than
+// twelve columns, or a column with no header.
 func TestCompileComparison_DegradesPastEveryVisual(t *testing.T) {
+	thirteen := make([]any, 13)
+	for i := range thirteen {
+		thirteen[i] = map[string]any{"title": string(rune('A' + i)), "items": []any{"1"}}
+	}
+	long := make([]any, 7)
+	for i := range long {
+		long[i] = map[string]any{"title": string(rune('A' + i)), "items": []any{strings.Repeat("x", 161)}}
+	}
 	tests := []struct {
 		name string
 		cols []any
 	}{
-		{
-			name: "six columns exceed card-grid's five",
-			cols: []any{
-				map[string]any{"title": "A", "items": []any{"1"}},
-				map[string]any{"title": "B", "items": []any{"2"}},
-				map[string]any{"title": "C", "items": []any{"3"}},
-				map[string]any{"title": "D", "items": []any{"4"}},
-				map[string]any{"title": "E", "items": []any{"5"}},
-				map[string]any{"title": "F", "items": []any{"6"}},
-			},
-		},
+		{name: "thirteen columns exceed card-grid's twelve", cols: thirteen},
+		{name: "seven columns too long for a two-row card", cols: long},
 		{
 			name: "a headerless column has nothing to title a panel with",
 			cols: []any{
@@ -186,6 +185,38 @@ func TestCompileComparison_DegradesPastEveryVisual(t *testing.T) {
 			}
 			assertNoGoMapLeak(t, slide)
 		})
+	}
+}
+
+// go-slide-creator-0w4va: six to twelve columns are cards the pattern arranges
+// from their count, odd counts included — seven used to fall back to bullets.
+func TestCompileComparison_ManyColumnsEmitCards(t *testing.T) {
+	for _, n := range []int{6, 7, 11, 12} {
+		cols := make([]any, n)
+		for i := range cols {
+			cols[i] = map[string]any{"title": string(rune('A' + i)), "items": []any{"one", "two"}}
+		}
+		body := map[string]any{"columns": cols}
+		if got := ComparisonPattern(body); got != "card-grid" {
+			t.Fatalf("%d columns: ComparisonPattern = %q, want card-grid", n, got)
+		}
+		slide, _, err := CompileComparison(Input{Title: "Options", Body: body})
+		if err != nil {
+			t.Fatalf("%d columns: %v", n, err)
+		}
+		if slide.Pattern == nil || slide.Pattern.Name != "card-grid" {
+			t.Fatalf("%d columns: expected card-grid, got %+v", n, slide.Pattern)
+		}
+		var values map[string]any
+		if err := json.Unmarshal(slide.Pattern.Values, &values); err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := values["columns"]; ok {
+			t.Errorf("%d columns: the grid shape is the pattern's to derive, got %v", n, values["columns"])
+		}
+		if cells, _ := values["cells"].([]any); len(cells) != n {
+			t.Errorf("%d columns: %d cells", n, len(cells))
+		}
 	}
 }
 

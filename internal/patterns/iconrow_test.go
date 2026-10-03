@@ -282,13 +282,13 @@ func TestIconRow(t *testing.T) {
 	}
 
 	// Expand tests
-	t.Run("expand_default_3_items", func(t *testing.T) {
+	t.Run("expand_tile_3_items", func(t *testing.T) {
 		vals := IconRowValues{
 			{Icon: &IconRef{Name: "rocket"}, Caption: "Launch"},
 			{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
 			{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
 		}
-		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+		grid, err := p.Expand(ExpandContext{}, &vals, &IconRowOverrides{Style: "tile"}, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
@@ -354,7 +354,7 @@ func TestIconRow(t *testing.T) {
 			{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
 			{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
 		}
-		ovr := &IconRowOverrides{Accent: "accent3"}
+		ovr := &IconRowOverrides{Accent: "accent3", Style: "tile"}
 		grid, err := p.Expand(ExpandContext{}, &vals, ovr, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
@@ -379,7 +379,7 @@ func TestIconRow(t *testing.T) {
 		cellOvr := map[int]any{
 			1: &IconRowCellOverride{AccentBar: true},
 		}
-		grid, err := p.Expand(ExpandContext{}, &vals, nil, cellOvr)
+		grid, err := p.Expand(ExpandContext{}, &vals, &IconRowOverrides{Style: "tile"}, cellOvr)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
@@ -435,7 +435,8 @@ func TestIconRow(t *testing.T) {
 	})
 }
 
-// TestIconRow_ContentSizedRow pins the fix for go-slide-creator-tee7: the row
+// TestIconRow_ContentSizedRow pins the fix for go-slide-creator-tee7 on the
+// tile style: the row
 // used to carry no max_height and no vertical_align, so its cards stretched to
 // the whole content zone with the icon and a five-word caption floating in a
 // box three times taller than its content.
@@ -448,7 +449,7 @@ func TestIconRow_ContentSizedRow(t *testing.T) {
 		for i := range items {
 			items[i] = IconRowItem{Icon: &IconRef{Name: "rocket"}, Caption: "Launch the platform"}
 		}
-		grid, err := p.Expand(ctx, &items, nil, nil)
+		grid, err := p.Expand(ctx, &items, &IconRowOverrides{Style: "tile"}, nil)
 		if err != nil {
 			t.Fatalf("n=%d Expand: %v", n, err)
 		}
@@ -486,11 +487,12 @@ func TestIconRow_LongCaptionGrowsTheRow(t *testing.T) {
 	copy(long, short)
 	long[3].Caption = "Hire the delivery pod and run the onboarding programme"
 
-	shortGrid, err := p.Expand(ctx, &short, nil, nil)
+	tile := &IconRowOverrides{Style: "tile"}
+	shortGrid, err := p.Expand(ctx, &short, tile, nil)
 	if err != nil {
 		t.Fatalf("Expand short: %v", err)
 	}
-	longGrid, err := p.Expand(ctx, &long, nil, nil)
+	longGrid, err := p.Expand(ctx, &long, tile, nil)
 	if err != nil {
 		t.Fatalf("Expand long: %v", err)
 	}

@@ -46,7 +46,7 @@ func TestBeforeAfter_ExpandBasic(t *testing.T) {
 		After:  BeforeAfterColumn{Header: "After", Items: []string{"Fast", "Automated"}},
 	}
 
-	grid, err := p.Expand(ExpandContext{}, vals, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, vals, &BeforeAfterOverrides{Style: "panels"}, nil)
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestBeforeAfterFullPanelsHugContent(t *testing.T) {
 		Before: BeforeAfterColumn{Header: "Today", Items: []string{"Manual", "Slow"}},
 		After:  BeforeAfterColumn{Header: "Target", Items: []string{"Automated", "Fast"}},
 	}
-	grid, err := pat.Expand(fullThemeCtx(), vals, nil, nil)
+	grid, err := pat.Expand(fullThemeCtx(), vals, &BeforeAfterOverrides{Style: "panels"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestBeforeAfterFullPanelsHaveHalfCentimeterTextMargins(t *testing.T) {
 		Before: BeforeAfterColumn{Header: "Today", Items: []string{"Manual handoffs"}},
 		After:  BeforeAfterColumn{Header: "Target", Items: []string{"Automated routing"}},
 	}
-	grid, err := (&beforeAfter{}).Expand(fullThemeCtx(), vals, nil, nil)
+	grid, err := (&beforeAfter{}).Expand(fullThemeCtx(), vals, &BeforeAfterOverrides{Style: "panels"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,8 +125,8 @@ func TestBeforeAfterPanelsAreNeutralForEveryAccent(t *testing.T) {
 		After:  BeforeAfterColumn{Header: "Target", Items: []string{"Automated"}},
 	}
 	for name, ovr := range map[string]*BeforeAfterOverrides{
-		"hex":       {Accent: "#2E5090"},
-		"alternate": {CellAccentMode: "alternate"},
+		"hex":       {TextOverrides: TextOverrides{Accent: "#2E5090"}, Style: "panels"},
+		"alternate": {TextOverrides: TextOverrides{CellAccentMode: "alternate"}, Style: "panels"},
 	} {
 		grid, err := (&beforeAfter{}).Expand(fullThemeCtx(), vals, ovr, nil)
 		if err != nil {

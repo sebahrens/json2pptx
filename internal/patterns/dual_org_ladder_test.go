@@ -12,12 +12,12 @@ func TestDualOrgLadderDenseTitleWarning(t *testing.T) {
 	for i := 0; i < 4; i++ {
 		values.Rows = append(values.Rows, DualOrgLadderRow{ANameField: "Alex Chen", ATitle: "Programme Lead", BNameField: "Bob Jones", BTitle: "Partner"})
 	}
-	values.Rows[2].ATitle = strings.Repeat("T", 66)
+	values.Rows[2].ATitle = strings.Repeat("T", 63)
 	got := p.PostExpandWarnings(ExpandContext{}, values, nil)
-	if len(got) != 1 || !strings.Contains(got[0], "rows[2].a_title") || !strings.Contains(got[0], "about 65") {
+	if len(got) != 1 || !strings.Contains(got[0], "rows[2].a_title") || !strings.Contains(got[0], "about 62") {
 		t.Fatalf("dense title warning: %v", got)
 	}
-	values.Rows[2].ATitle = strings.Repeat("T", 65)
+	values.Rows[2].ATitle = strings.Repeat("T", 62)
 	if got := p.PostExpandWarnings(ExpandContext{}, values, nil); len(got) != 0 {
 		t.Fatalf("measured four-row target should fit: %v", got)
 	}
@@ -163,7 +163,7 @@ func TestDualOrgLadder_Validate_CellOverrideOutOfRange(t *testing.T) {
 func TestDualOrgLadder_Expand_DefaultLayout(t *testing.T) {
 	p, _ := Default().Get("dual-org-ladder")
 	v := validDualOrgLadderValues(4)
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, v, &DualOrgLadderOverrides{Style: "tiles"}, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -187,7 +187,7 @@ func TestDualOrgLadder_Expand_BoundaryRowCounts(t *testing.T) {
 	p, _ := Default().Get("dual-org-ladder")
 	for _, n := range []int{2, 6} {
 		v := validDualOrgLadderValues(n)
-		grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+		grid, err := p.Expand(ExpandContext{}, v, &DualOrgLadderOverrides{Style: "tiles"}, nil)
 		if err != nil {
 			t.Fatalf("n=%d: Expand failed: %v", n, err)
 		}
@@ -200,7 +200,7 @@ func TestDualOrgLadder_Expand_BoundaryRowCounts(t *testing.T) {
 func TestDualOrgLadder_Expand_HeaderCellsUseAccentFill(t *testing.T) {
 	p, _ := Default().Get("dual-org-ladder")
 	v := validDualOrgLadderValues(3)
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, v, &DualOrgLadderOverrides{Style: "tiles"}, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -231,7 +231,7 @@ func TestDualOrgLadder_Expand_HeaderCellsUseAccentFill(t *testing.T) {
 func TestDualOrgLadder_Expand_AuthoredAccentBWins(t *testing.T) {
 	p, _ := Default().Get("dual-org-ladder")
 	v := validDualOrgLadderValues(3)
-	grid, err := p.Expand(ExpandContext{}, v, &DualOrgLadderOverrides{AccentB: "accent4"}, nil)
+	grid, err := p.Expand(ExpandContext{}, v, &DualOrgLadderOverrides{AccentB: "accent4", Style: "tiles"}, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -243,7 +243,7 @@ func TestDualOrgLadder_Expand_AuthoredAccentBWins(t *testing.T) {
 func TestDualOrgLadder_Expand_HeaderTextIsWhiteAndBold(t *testing.T) {
 	p, _ := Default().Get("dual-org-ladder")
 	v := validDualOrgLadderValues(2)
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, v, &DualOrgLadderOverrides{Style: "tiles"}, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -276,7 +276,7 @@ func TestDualOrgLadder_Expand_HeaderTextIsWhiteAndBold(t *testing.T) {
 func TestDualOrgLadder_Expand_BodyCellsAreTintedNotOutlined(t *testing.T) {
 	p, _ := Default().Get("dual-org-ladder")
 	v := validDualOrgLadderValues(2)
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, v, &DualOrgLadderOverrides{Style: "tiles"}, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -294,7 +294,7 @@ func TestDualOrgLadder_Expand_BodyCellsAreTintedNotOutlined(t *testing.T) {
 func TestDualOrgLadder_Expand_ConnectorsDefaultOn(t *testing.T) {
 	p, _ := Default().Get("dual-org-ladder")
 	v := validDualOrgLadderValues(3)
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, v, &DualOrgLadderOverrides{Style: "tiles"}, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -321,7 +321,7 @@ func TestDualOrgLadder_Expand_ConnectorsExplicitlyDisabled(t *testing.T) {
 	v := validDualOrgLadderValues(3)
 	off := false
 	v.ShowConnectors = &off
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, v, &DualOrgLadderOverrides{Style: "tiles"}, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -335,7 +335,7 @@ func TestDualOrgLadder_Expand_ConnectorsExplicitlyDisabled(t *testing.T) {
 func TestDualOrgLadder_Expand_AccentOverrides(t *testing.T) {
 	p, _ := Default().Get("dual-org-ladder")
 	v := validDualOrgLadderValues(3)
-	ovr := &DualOrgLadderOverrides{AccentA: "accent4", AccentB: "accent5"}
+	ovr := &DualOrgLadderOverrides{AccentA: "accent4", AccentB: "accent5", Style: "tiles"}
 	grid, err := p.Expand(ExpandContext{}, v, ovr, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
@@ -358,7 +358,7 @@ func TestDualOrgLadder_Expand_AppliesCellOverride(t *testing.T) {
 	co := map[int]any{
 		2: &DualOrgLadderCellOverride{AccentBar: true},
 	}
-	grid, err := p.Expand(ExpandContext{}, v, nil, co)
+	grid, err := p.Expand(ExpandContext{}, v, &DualOrgLadderOverrides{Style: "tiles"}, co)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}

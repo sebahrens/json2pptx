@@ -43,7 +43,8 @@ func TestBeforeAfter_HeaderBandAndContentBody(t *testing.T) {
 	}
 	// The transition chevron is a compact 24pt marker centred on the whole
 	// block (go-slide-creator-7z5we), not a full-height column.
-	bodies := rowCells(res.Cells, 1)
+	// Row 1 holds the rules under the two headings; the bodies are row 2.
+	bodies := rowCells(res.Cells, 2)
 	if len(bodies) != 2 {
 		t.Fatalf("expected two body panels, got %d", len(bodies))
 	}

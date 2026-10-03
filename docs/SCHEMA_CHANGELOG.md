@@ -411,6 +411,103 @@
   - Findings whose raw path maps to no DeckSpec field carry the slide's path
     as `semantic_path` instead of none.
 
+- **2026-10-03 — framework-grid and dual-org-ladder no longer fill every cell (`go-slide-creator-rpz53`).**
+  - `framework-grid` renders unfilled labels and cards with hairline rules
+    between the dimension rows. New `overrides.style`: `open` (default) /
+    `tiles`; new `rows[].highlight` (boolean, at most one) tints one row.
+  - `dual-org-ladder` keeps tiles for the two org headers only; roles are
+    open entries joined by a pairing line. New `overrides.style`: `open`
+    (default) / `tiles`; new `rows[].highlight` (boolean, at most one) tints
+    one pair. `show_connectors: false` drops the pairing line.
+  - `dual-org-ladder` four-row budget re-measured: about 62 title characters
+    per role (was 65), 47 each when name and title are both long (was 49);
+    `BODY_TOO_LONG` reports past them.
+
+- **2026-10-03 — matrix-2x2 draws crossing axes (`go-slide-creator-jnkiq`).**
+  - `matrix-2x2` renders two axis lines crossing through the matrix with
+    open quadrants; the y-axis title with its high / low ends runs along the
+    left edge and the x-axis title with its low / high ends along the bottom.
+    New `overrides.style`: `open` (default) / `tiles` (the previous four
+    filled tiles with arrow axes).
+  - New quadrant field `highlight` (boolean, at most one across the four —
+    a second is `invalid_shape`): an accent tint, the only filled area.
+  - Quadrant copy budgets are unchanged; the open quadrants are larger.
+
+- **2026-10-03 — stylish-panels and before-after are open columns (`go-slide-creator-xvpu2`).**
+  - `stylish-panels` renders each column as a heading over an accent rule
+    and an open bullet list. New `overrides.style`: `open` (default) /
+    `ribbon` (the previous ribbon header over a body tile); setting
+    `overrides.ribbon` alone still selects ribbons. New
+    `values[].highlight` (boolean, at most one): that heading takes the
+    solid accent.
+  - `before-after` and `before-after-compact` render each state as a heading
+    over a rule (neutral for before, accent for after) and an open bullet
+    list; the chevron is kept. New `overrides.style`: `open` (default) /
+    `panels`; new `overrides.emphasis`: `before` / `after` fills that heading
+    with the solid accent.
+  - Bullet budgets are unchanged (the open blocks are exactly as tall as the
+    tiled ones).
+  - Fit findings: `SLIDE_UNDERUSED` / `sparse_layout` count the unfilled text
+    cells of the open-by-default patterns by their content-sized slot;
+    `pattern_overcrowded` counts text cells for `comparison-2col`,
+    `icon-row` and `card-grid`, whose recommended maximum is now 12.
+
+- **2026-10-03 — comparison-2col rows are open (`go-slide-creator-zawui`).**
+  - `comparison-2col` renders headers as bold headings over an accent rule
+    and body rows as unfilled text separated by hairline rules, aligned
+    across the two columns. New `overrides.style`: `open` (default) /
+    `tiles` (the previous filled tiles and zebra striping).
+  - New `rows[].highlight` (boolean, at most one) tints a row; new
+    `overrides.highlight_column` (`left` / `right`) gives a column a solid
+    accent header and an accent tint band. Setting both is `invalid_shape`.
+  - `overrides.connectors` keeps the centre gutter and badge in the open
+    style, without the left stripe, right tint and joining rule (those stay
+    in `tiles`). `row_fill` is unchanged. Per-cell copy budgets are unchanged
+    (the open block is as tall as the tile block). `pattern_overcrowded`
+    counts only text cells for this pattern.
+
+- **2026-10-03 — quote-cluster reads as quotes (`go-slide-creator-5cie9`).**
+  - `quote-cluster` renders open quotes by default: an accent opening quote
+    mark, the italic quote, and one attribution line (bold name, title), with
+    no tile. New `overrides.style`: `open` (default) / `bubble`
+    (speech-bubble shapes with the attribution under the tail; 7–8 quotes
+    take four columns) / `tile` (the previous tinted tiles with accent
+    names).
+  - New `quotes[].highlight` (boolean, at most one — a second is
+    `invalid_shape`): the highlighted quote is the only accent-coloured
+    element (tint band and accent mark in `open`, solid accent fill in
+    `bubble` / `tile`).
+  - Copy budgets are unchanged (re-measured): 4–6 quotes about 161 text
+    characters beside maximal attributions; 7–8 about 81 beside a name of
+    about 20 and a title of about 27 characters.
+
+- **2026-10-03 — icon-row is open by default (`go-slide-creator-hjqn2`).**
+  - `icon-row` renders accent icons and captions on the slide with no
+    container. New `overrides.style`: `open` (default) / `tile` (the previous
+    neutral tile under an accent rule). New optional `values[].description`
+    (≤80 characters, one line under the caption). `overrides.icon_size` is
+    the icon height in points in the open style (default: 26% of the content
+    area height, 40–88pt); captions default to 14pt bold there.
+  - Items carrying a `secondary` chart render as tiles in either style.
+    Open rows that do not fit the content area report `BODY_TOO_LONG`.
+
+- **2026-10-03 — card-grid takes any card count (`go-slide-creator-0w4va`).**
+  - `card-grid` `values.columns` and `values.rows` are optional. Omitted,
+    the cards are arranged from their count (5 as 3 + 2, 7 as 4 + 3, 11 as
+    4 + 4 + 3); with one given the other is derived; with both, the grid only
+    has to hold the cards and a last row that is not full is left short at
+    the same card width. New `overrides.last_row`: `center` (default) /
+    `left`. Inputs whose count equals `columns × rows` render as before.
+  - Fewer cards than `columns × rows` is no longer an error. More cards
+    than the grid holds is still `count_mismatch` (message "cells holds N
+    cards but the grid has room for M"), without the `wrong_pattern` swap
+    hint it used to carry. An explicit `"columns": 0` / `"rows": 0` now
+    means "not given".
+  - DeckSpec: `comparison` with 6–12 columns (each column's items joining to
+    at most 160 characters) and `decision` with 7–12 options (each with a
+    detail of at most 160 characters, label at most 80) compile to
+    `card-grid` instead of falling back to bullets.
+
 - **2026-10-03 — Composition overrides compile to what explain reports (`go-slide-creator-vj549`).** SchemaVersion unchanged (no new tools, codes or fix kinds).
   - A `pattern` / `layout` override listed in `compositions[]` is honoured
     only when the slide actually compiles to it, and the compiler is held to

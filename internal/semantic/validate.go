@@ -1321,7 +1321,7 @@ func validateComparison(path string, slide SlideSpec, s *semDiags) {
 			return
 		}
 		s.degrade(path+".columns",
-			fmt.Sprintf("a comparison renders as a visual with 2 columns (comparison-2col) or 3–5 (stylish-panels / card-grid); found %d, so this slide degrades to a bullet list — split it, or use kind raw_json2pptx with a table-highlight pattern for a wider matrix", len(cols)),
+			fmt.Sprintf("a comparison renders as a visual with 2 columns (comparison-2col), 3–5 (stylish-panels / card-grid) or 6–12 short ones (card-grid, each column's items within 160 characters); found %d that fit none of them, so this slide degrades to a bullet list — shorten or split it, or use kind raw_json2pptx with a table-highlight pattern for a wider matrix", len(cols)),
 			"comparison-2col", degradeToBullets, degradeCountOutOfRange)
 		return
 	}

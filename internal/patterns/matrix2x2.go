@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -61,6 +62,9 @@ type Matrix2x2Quadrant struct {
 	Header string   `json:"header"`
 	Body   string   `json:"body,omitempty"`
 	Icon   *IconRef `json:"icon,omitempty"` // Icon: bundled-name string shorthand or {name|path|url|svg_data, fill?, alt?, position?} object
+	// Highlight tints this quadrant (at most one): the quadrant the slide is
+	// about, and the only filled area of the open matrix.
+	Highlight bool `json:"highlight,omitempty"`
 }
 
 // UnmarshalJSON supports string shorthand "Header | Body" or object {header, body}.
@@ -147,6 +151,19 @@ func (v *Matrix2x2Values) UnmarshalJSON(data []byte) error {
 type Matrix2x2Overrides struct {
 	TextOverrides
 	LabelSize float64 `json:"label_size,omitempty"`
+	// Style is "open" (default: two crossing axis lines, open quadrants, axis
+	// titles and low / high ends along the left and bottom edges) or "tiles"
+	// (four filled quadrant tiles with arrow axes above and beside them, the
+	// look before go-slide-creator-jnkiq).
+	Style string `json:"style,omitempty"`
+}
+
+// matrix2x2Styles are the accepted overrides.style values.
+var matrix2x2Styles = []string{"open", "tiles"}
+
+// matrix2x2Open reports whether the matrix renders in the open style.
+func matrix2x2Open(ovr *Matrix2x2Overrides) bool {
+	return ovr == nil || ovr.Style != "tiles"
 }
 
 // Matrix2x2CellOverride is an alias for the shared CellOverride struct.
@@ -237,9 +254,10 @@ func (m *matrix2x2) Schema() *Schema {
 	// by 5 (4 named slots + 1 array form).
 	quadrantObjSchema := ObjectSchema(
 		map[string]*Schema{
-			"header": StringSchema(80).WithDescription("Quadrant header text"),
-			"body":   StringSchema(200).WithDescription("Quadrant body text; keep unbroken runs near 163 characters (126 beside a long header; 40 and at most 40 characters of copy beside a header with an unbroken run over 47) or add word breaks"),
-			"icon":   IconRefSchema(""),
+			"header":    StringSchema(80).WithDescription("Quadrant header text"),
+			"body":      StringSchema(200).WithDescription("Quadrant body text; keep unbroken runs near 163 characters (126 beside a long header; 40 and at most 40 characters of copy beside a header with an unbroken run over 47) or add word breaks"),
+			"icon":      IconRefSchema(""),
+			"highlight": BooleanSchema().WithDescription("Tint this quadrant (at most one): the only filled area of the open matrix"),
 		},
 		[]string{"header"},
 	).WithAdditionalProperties(false)
@@ -295,6 +313,7 @@ func (m *matrix2x2) Schema() *Schema {
 					"header_size":     NumberSchema(6, 120).WithDescription("Font size for quadrant headers in points"),
 					"body_size":       NumberSchema(6, 120).WithDescription("Font size for quadrant body text in points"),
 					"label_size":      NumberSchema(6, 120).WithDescription("Font size for axis labels in points"),
+					"style":           EnumSchema(matrix2x2Styles...).WithDescription("open (default: two crossing axis lines through the matrix, open quadrants, axis titles with low / high ends along the left and bottom edges) or tiles (four filled quadrant tiles with arrow axes)").WithDefault("open"),
 				},
 				nil,
 			).WithAdditionalProperties(false),
@@ -373,6 +392,13 @@ func (m *matrix2x2) Validate(values, overrides any, cellOverrides map[int]any) e
 		}
 	}
 
+	errs = append(errs, singleHighlightErrors(name, "quadrant", "quadrants", len(quads),
+		func(i int) bool { return quads[i].q.Highlight },
+		func(i int) string { return quads[i].name + ".highlight" })...)
+	if ovr, ok := overrides.(*Matrix2x2Overrides); ok && ovr != nil && ovr.Style != "" && !slices.Contains(matrix2x2Styles, ovr.Style) {
+		errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, matrix2x2Styles))
+	}
+
 	// Validate cell_overrides: indices 0-3 only
 	const totalCells = 4
 	if coErr := validateCellOverrideKeys(name, cellOverrides, totalCells, "(hint: 0=top_left, 1=top_right, 2=bottom_left, 3=bottom_right)"); coErr != nil {
@@ -400,6 +426,9 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	lay := layoutMatrix2x2(ctx, vals, ovr)
 	headerSize, bodySize := lay.headerSize, lay.bodySize
 	labelSize := ResolveSize(ovr.LabelSize, scaleSubheadPt)
+	if matrix2x2Open(ovr) {
+		return expandMatrix2x2Open(ctx, vals, lay, labelSize, accent, cellOverrides), nil
+	}
 
 	// Layout: 3 columns [y-axis label, left quadrants, right quadrants]
 	// Row 0: [empty corner, x-axis label (col_span=2)]
@@ -511,6 +540,144 @@ type matrix2x2Layout struct {
 	availPt              float64
 }
 
+// Open matrix geometry (go-slide-creator-jnkiq).
+const (
+	// matrix2x2AxisLinePt is the thickness of the two crossing axis lines.
+	matrix2x2AxisLinePt = 1.0
+	// matrix2x2OpenGapPt is the open grid's gap: the axis lines and the
+	// quadrants touch, so the lines cross and a highlighted quadrant's tint
+	// runs up to both axes.
+	matrix2x2OpenGapPt = 0.01
+	// matrix2x2YStripPct is the width of the y-axis strip (title and ends)
+	// left of the matrix, the share the tile style's axis column takes.
+	matrix2x2YStripPct = 12.0
+)
+
+// matrix2x2AxisLineTone is the ink of the crossing axis lines.
+var matrix2x2AxisLineTone = fillTone{Color: "dk1", Alpha: 50}
+
+// matrix2x2XStripPt is the height of the x-axis strip under the open matrix:
+// the written fit of its title and end labels, plus the nested grid's inset.
+func matrix2x2XStripPt(ctx ExpandContext, v *Matrix2x2Values, labelSize float64) float64 {
+	areaW, _ := sizingAreaPt(ctx)
+	stripW := areaW*(100-matrix2x2YStripPct)/100 - 2*SubGridInsetPt
+	low, high := axisEnds(v.XLow, v.XHigh)
+	endSize := math.Max(labelSize-3, 9)
+	need := rowTextNeedPt(ctx.themeFonts(), buildMatrix2x2LabelContent(v.XAxisLabel, labelSize, "dk1", "ctr", ""), stripW*0.64)
+	for _, end := range []string{low, high} {
+		need = math.Max(need, rowTextNeedPt(ctx.themeFonts(), matrix2x2AxisEndText(end, endSize, "l", "ctr"), stripW*0.18))
+	}
+	return math.Ceil(need + 2*SubGridInsetPt)
+}
+
+// expandMatrix2x2Open draws the matrix as two crossing axis lines with open
+// quadrants. Columns are [y strip | left | vertical axis | right]; rows are
+// [top | horizontal axis | bottom | x strip]. The y strip (HIGH above the
+// rotated title above LOW) runs the height of the vertical axis and the x
+// strip (LOW, title, HIGH) the width of the horizontal one, so every title
+// and end label sits along its own axis.
+func expandMatrix2x2Open(ctx ExpandContext, vals *Matrix2x2Values, lay matrix2x2Layout, labelSize float64, accent string, cellOverrides map[int]any) *jsonschema.ShapeGridInput {
+	areaW, _ := sizingAreaPt(ctx)
+	linePct := matrix2x2AxisLinePt / areaW * 100
+	quadPct := (100 - matrix2x2YStripPct - linePct) / 2
+
+	quadrants := []Matrix2x2Quadrant{vals.TopLeft, vals.TopRight, vals.BottomLeft, vals.BottomRight}
+	cells := make([]*jsonschema.GridCellInput, 4)
+	for i, q := range quadrants {
+		shape := &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`), Line: noLine}
+		headerInk, bodyInk := accentInkOnLight(ctx, accent, 4.5), "dk1"
+		if q.Highlight {
+			surface := inactiveTintTone(accent)
+			shape.Fill = surface.fillJSON()
+			headerInk = inkOnFill(ctx, accent, surface, 4.5)
+			bodyInk = readableTextOn(ctx, surface, "dk1")
+		}
+		shape.Text = recolorTextInk(buildMatrix2x2QuadrantContent(q, lay.headerSize, lay.bodySize, headerInk), "dk1", bodyInk)
+		if q.Icon != nil {
+			if icon := q.Icon.Resolve(iconFillOn(ctx, shape.Fill, accent), "top"); icon != nil {
+				shape.Icon = icon
+			}
+		}
+		cells[i] = &jsonschema.GridCellInput{Shape: shape}
+		applyMatrix2x2CellOverride(cells[i], cellOverrides, i, accent)
+	}
+
+	line := func() *jsonschema.GridCellInput {
+		return &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: matrix2x2AxisLineTone.fillJSON(), Line: noLine}}
+	}
+	xLow, xHigh := axisEnds(vals.XLow, vals.XHigh)
+	yLow, yHigh := axisEnds(vals.YLow, vals.YHigh)
+	yStrip := &jsonschema.GridCellInput{RowSpan: 3, Grid: buildMatrix2x2YStrip(vals.YAxisLabel, yLow, yHigh, labelSize)}
+	vAxis := line()
+	vAxis.RowSpan = 3
+	xStrip := &jsonschema.GridCellInput{ColSpan: 3, Grid: buildMatrix2x2XStrip(vals.XAxisLabel, xLow, xHigh, labelSize)}
+	xStripPt := matrix2x2XStripPt(ctx, vals, labelSize)
+
+	rows := []jsonschema.GridRowInput{
+		{Cells: []*jsonschema.GridCellInput{yStrip, cells[0], vAxis, cells[1]}},
+		{MinHeight: matrix2x2AxisLinePt, MaxHeight: matrix2x2AxisLinePt, Cells: []*jsonschema.GridCellInput{line(), line()}},
+		{Cells: []*jsonschema.GridCellInput{cells[2], cells[3]}},
+		{MinHeight: xStripPt, MaxHeight: xStripPt, Cells: []*jsonschema.GridCellInput{{}, xStrip}},
+	}
+	// The quadrant rows share the height equally unless one pair's written
+	// fit needs more than half (go-slide-creator-n1muf).
+	quadRows := []jsonschema.GridRowInput{rows[0], rows[2]}
+	floorFlexRowsAtNeeds(quadRows, lay.needs[:], lay.availPt)
+	rows[0], rows[2] = quadRows[0], quadRows[1]
+
+	colsJSON, _ := json.Marshal([]float64{matrix2x2YStripPct, quadPct, linePct, quadPct})
+	return &jsonschema.ShapeGridInput{
+		Columns: colsJSON,
+		ColGap:  matrix2x2OpenGapPt,
+		RowGap:  matrix2x2OpenGapPt,
+		Rows:    rows,
+	}
+}
+
+// buildMatrix2x2XStrip is the x axis under the open matrix: [low | title |
+// high], the ends under the two ends of the horizontal axis line.
+func buildMatrix2x2XStrip(label, low, high string, size float64) *jsonschema.ShapeGridInput {
+	endSize := math.Max(size-3, 9)
+	title := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+		Geometry: "rect",
+		Fill:     json.RawMessage(`"none"`),
+		Text:     buildMatrix2x2LabelContent(label, size, "dk1", "ctr", ""),
+	}}
+	return &jsonschema.ShapeGridInput{
+		Columns: json.RawMessage(`[18, 64, 18]`),
+		ColGap:  4,
+		RowGap:  0.01,
+		Rows: []jsonschema.GridRowInput{{Cells: []*jsonschema.GridCellInput{
+			matrix2x2EndCell(low, endSize, "l", "ctr"),
+			title,
+			matrix2x2EndCell(high, endSize, "r", "ctr"),
+		}}},
+	}
+}
+
+// buildMatrix2x2YStrip is the y axis beside the open matrix: [high / title /
+// low], the title reading bottom-to-top (vert270; no shape is rotated,
+// J2P-MATRIX-005) and the ends level with the two ends of the vertical axis
+// line.
+func buildMatrix2x2YStrip(label, low, high string, size float64) *jsonschema.ShapeGridInput {
+	endSize := math.Max(size-3, 9)
+	title := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+		Geometry: "rect",
+		Fill:     json.RawMessage(`"none"`),
+		Text:     buildMatrix2x2LabelContent(label, size, "dk1", "ctr", "vert270"),
+	}}
+	return &jsonschema.ShapeGridInput{
+		Columns: json.RawMessage(`1`),
+		ColGap:  0.01,
+		RowGap:  4,
+		Rows: []jsonschema.GridRowInput{
+			{Height: 12, Cells: []*jsonschema.GridCellInput{matrix2x2EndCell(high, endSize, "ctr", "t")}},
+			{Height: 76, Cells: []*jsonschema.GridCellInput{title}},
+			{Height: 12, Cells: []*jsonschema.GridCellInput{matrix2x2EndCell(low, endSize, "ctr", "b")}},
+		},
+	}
+}
+
 // layoutMatrix2x2 measures each quadrant cell as the writer will write it
 // (writtenFitHeightPt at the quadrant's real width, plus the top icon zone)
 // and steps the default 16pt header through 14pt to the 12pt floor when the
@@ -521,6 +688,12 @@ func layoutMatrix2x2(ctx ExpandContext, v *Matrix2x2Values, ovr *Matrix2x2Overri
 	lay := matrix2x2Layout{
 		bodySize: ResolveSize(ovr.BodySize, scaleBodyPt),
 		availPt:  (areaH - 2*ctx.Gap(matrix2x2GapPt)) * (1 - matrix2x2AxisRowPct/100),
+	}
+	if matrix2x2Open(ovr) {
+		// Open: the quadrants take everything beside the y strip and above
+		// the content-sized x strip — more room than the tiles had.
+		quadW = (areaW*(100-matrix2x2YStripPct)/100 - matrix2x2AxisLinePt) / 2
+		lay.availPt = areaH - matrix2x2AxisLinePt - matrix2x2XStripPt(ctx, v, ResolveSize(ovr.LabelSize, scaleSubheadPt))
 	}
 	sizes := []float64{ResolveSize(ovr.HeaderSize, sizeHeaderPt)}
 	if ovr.HeaderSize == 0 {

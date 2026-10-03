@@ -243,7 +243,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindDecision: {
 		Kind:            KindDecision,
-		Summary:         "The ask: the options considered and the one being recommended. 3–6 options render as numbered boxes and exactly 2 (each with a detail) as numbered cards, with the recommendation in the callout band beneath them; outside that it is the recommendation as a lead-in over option bullets.",
+		Summary:         "The ask: the options considered and the one being recommended. 3–6 options render as numbered boxes and exactly 2 or 7–12 (each with a detail) as cards, with the recommendation in the callout band beneath them; outside that it is the recommendation as a lead-in over option bullets.",
 		RequiredFields:  []string{"title"},
 		RequiredAliases: map[string][]string{"options": {"choices", "alternatives"}},
 		TypicalFields:   []string{"options", "recommendation", "takeaway"},

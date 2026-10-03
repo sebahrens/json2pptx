@@ -697,7 +697,7 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 	case KindDecision:
 		return []CompositionCandidate{
 			visual("numbered-step-strip", "3-6 options as numbered boxes, the recommendation in the callout band"),
-			visual("card-grid", "exactly 2 options, each with a detail, as two cards side by side"),
+			visual("card-grid", "2 or 7-12 options, each with a detail, as cards (7 arranged as 4 + 3)"),
 			{Layout: "content", Reason: "the recommendation as a lead-in, then the options as bullets"},
 		}
 	case KindTitle, KindSection, KindClosing:
@@ -712,8 +712,8 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 		return []CompositionCandidate{
 			visual("comparison-2col", "balanced two-column comparison"),
 			visual("stylish-panels", "3-5 columns, each a titled panel with its own bullets"),
-			visual("card-grid", "2-5 columns as titled cards when panels do not fit"),
-			{Layout: "content", Reason: "native bullets preserve six or more columns"},
+			visual("card-grid", "2-12 columns as titled cards when panels do not fit (7 arranged as 4 + 3)"),
+			{Layout: "content", Reason: "native bullets preserve more than twelve columns, or columns too long for cards"},
 		}
 	case KindOptionMatrix:
 		return []CompositionCandidate{

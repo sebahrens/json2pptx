@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -75,8 +76,61 @@ type BeforeAfterValues struct {
 	After  BeforeAfterColumn `json:"after"`
 }
 
-// BeforeAfterOverrides is the standard text overrides.
-type BeforeAfterOverrides = TextOverrides
+// BeforeAfterOverrides is the standard text overrides plus the style and the
+// optional emphasis of both before-after variants.
+type BeforeAfterOverrides struct {
+	TextOverrides
+	// Style is "open" (default: each state is a heading over a rule and an
+	// open bullet list — a neutral rule for the before state, the accent rule
+	// for the after state) or "panels" (a header tile over a body tile per
+	// state, the look before go-slide-creator-xvpu2).
+	Style string `json:"style,omitempty"`
+	// Emphasis fills one state's header with the solid accent in the open
+	// style: "before" or "after". Omitted, nothing is filled.
+	Emphasis string `json:"emphasis,omitempty"`
+}
+
+var (
+	// beforeAfterStyles are the accepted overrides.style values.
+	beforeAfterStyles = []string{"open", "panels"}
+	// beforeAfterEmphases are the accepted overrides.emphasis values.
+	beforeAfterEmphases = []string{"before", "after"}
+)
+
+// beforeAfterOpen reports whether a before-after variant renders open.
+func beforeAfterOpen(ovr *BeforeAfterOverrides) bool {
+	return ovr == nil || ovr.Style != "panels"
+}
+
+// beforeAfterRulePt is the rule under an open state's heading.
+const beforeAfterRulePt = 1.5
+
+// beforeAfterOverridesSchema is the overrides schema both variants share.
+func beforeAfterOverridesSchema() *Schema {
+	sch := textOverridesSchema()
+	sch.raw.Properties["style"] = EnumSchema(beforeAfterStyles...).WithDescription("open (default: each state is a heading over a rule and an open bullet list; the after state carries the accent rule) or panels (a header tile over a body tile per state)").WithDefault("open")
+	sch.raw.Properties["emphasis"] = EnumSchema(beforeAfterEmphases...).WithDescription("Open style: fill this state's header with the solid accent, the only solid fill (before or after)")
+	return sch
+}
+
+// validateBeforeAfterOverrides checks the overrides both variants share.
+func validateBeforeAfterOverrides(name string, overrides any) []error {
+	ovr, ok := overrides.(*BeforeAfterOverrides)
+	if !ok || ovr == nil {
+		return nil
+	}
+	var errs []error
+	if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
+		errs = append(errs, err)
+	}
+	if ovr.Style != "" && !slices.Contains(beforeAfterStyles, ovr.Style) {
+		errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, beforeAfterStyles))
+	}
+	if ovr.Emphasis != "" && !slices.Contains(beforeAfterEmphases, ovr.Emphasis) {
+		errs = append(errs, errInvalidEnum(name, "overrides.emphasis", ovr.Emphasis, beforeAfterEmphases))
+	}
+	return errs
+}
 
 // BeforeAfterCellOverride is the shared per-cell override.
 type BeforeAfterCellOverride = CellOverride
@@ -119,7 +173,7 @@ func (b *beforeAfter) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"values":         valuesSchema,
-			"overrides":      textOverridesSchema(),
+			"overrides":      beforeAfterOverridesSchema(),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
@@ -137,14 +191,7 @@ func (b *beforeAfter) Validate(values, overrides any, cellOverrides map[int]any)
 	const name = "before-after"
 	var errs []error
 
-	// Validate cell_accent_mode
-	if overrides != nil {
-		if ovr, ok := overrides.(*BeforeAfterOverrides); ok {
-			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
-				errs = append(errs, err)
-			}
-		}
-	}
+	errs = append(errs, validateBeforeAfterOverrides(name, overrides)...)
 
 	// Validate before column
 	if vals.Before.Header == "" {
@@ -230,6 +277,10 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	if plan.rowGap != ctx.Gap(beforeAfterFullVariant.gapPt) {
 		grid.RowGap = plan.rowGap
 	}
+	if beforeAfterOpen(ovr) {
+		plan.ruleRows(grid)
+		return grid, nil
+	}
 	// No stretch-to-fill (go-slide-creator-wntyw): the panels hug their
 	// bullets and the block is middle-anchored in the body zone. Stretching
 	// them to 60% of the zone left four bullets floating in a 200pt panel.
@@ -264,6 +315,9 @@ const beforeAfterMinRowGapPt = 4.0
 // order.
 type beforeAfterCells struct {
 	beforeHeader, chevron, afterHeader, beforeBody, afterBody *jsonschema.GridCellInput
+	// beforeRule / afterRule are the rules under the open style's headings;
+	// nil in the panels style.
+	beforeRule, afterRule *jsonschema.GridCellInput
 }
 
 // beforeAfterPlan is the chosen layout: the cells at the chosen header size,
@@ -300,6 +354,26 @@ func (p beforeAfterPlan) gridRows() []jsonschema.GridRowInput {
 			MaxHeight: p.bodyMaxPt,
 			Cells:     []*jsonschema.GridCellInput{c.beforeBody, c.afterBody},
 		},
+	}
+}
+
+// ruleRows turns the two-row grid into the open style's three: the rules under
+// the headings take the gap the header and body tiles had between them (two
+// half gaps and the rule are as tall as that gap), so the block keeps its
+// height and its measured budgets. The chevron spans all three rows.
+func (p beforeAfterPlan) ruleRows(grid *jsonschema.ShapeGridInput) {
+	c := p.cells
+	if c.beforeRule == nil || c.afterRule == nil || len(grid.Rows) != 2 {
+		return
+	}
+	colGap := grid.Gap
+	grid.Gap, grid.ColGap = 0, colGap
+	grid.RowGap = math.Max((p.rowGap-beforeAfterRulePt)/2, 0.01)
+	c.chevron.RowSpan = 3
+	grid.Rows = []jsonschema.GridRowInput{
+		grid.Rows[0],
+		{MinHeight: beforeAfterRulePt, MaxHeight: beforeAfterRulePt, Cells: []*jsonschema.GridCellInput{c.beforeRule, c.afterRule}},
+		grid.Rows[1],
 	}
 }
 
@@ -454,7 +528,6 @@ func buildBeforeAfterCells(ctx ExpandContext, vals *BeforeAfterValues, ovr *Befo
 			Text:     buildBeforeAfterTextContent(vals.Before.Header, headerSize, true, "lt1", "l"),
 		},
 	}
-	applyBeforeAfterCellOverride(c.beforeHeader, cellOverrides, 0, beforeAccent)
 
 	c.chevron = beforeAfterChevronCell(baseAccent)
 	applyBeforeAfterCellOverride(c.chevron, cellOverrides, 1, baseAccent)
@@ -466,7 +539,6 @@ func buildBeforeAfterCells(ctx ExpandContext, vals *BeforeAfterValues, ovr *Befo
 			Text:     buildBeforeAfterTextContent(vals.After.Header, headerSize, true, "lt1", "l"),
 		},
 	}
-	applyBeforeAfterCellOverride(c.afterHeader, cellOverrides, 2, afterAccent)
 
 	// Body row: before items | after items on neutral panels. The chevron
 	// reserves the middle column through its row span, so no separate spacer
@@ -478,7 +550,6 @@ func buildBeforeAfterCells(ctx ExpandContext, vals *BeforeAfterValues, ovr *Befo
 			Text:     buildBeforeAfterBulletContent(vals.Before.Items, bodySize),
 		},
 	}
-	applyBeforeAfterCellOverride(c.beforeBody, cellOverrides, 3, beforeAccent)
 
 	c.afterBody = &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
@@ -487,8 +558,51 @@ func buildBeforeAfterCells(ctx ExpandContext, vals *BeforeAfterValues, ovr *Befo
 			Text:     buildBeforeAfterBulletContent(vals.After.Items, bodySize),
 		},
 	}
+	if beforeAfterOpen(ovr) {
+		openBeforeAfterCells(ctx, &c, vals, ovr, headerSize, beforeAccent, afterAccent)
+	}
+	applyBeforeAfterCellOverride(c.beforeHeader, cellOverrides, 0, beforeAccent)
+	applyBeforeAfterCellOverride(c.afterHeader, cellOverrides, 2, afterAccent)
+	applyBeforeAfterCellOverride(c.beforeBody, cellOverrides, 3, beforeAccent)
 	applyBeforeAfterCellOverride(c.afterBody, cellOverrides, 4, afterAccent)
 	return c
+}
+
+// beforeAfterNeutralRule is the before state's rule: the state being left
+// behind is set in neutral ink, and the accent marks where the slide is going.
+var beforeAfterNeutralRule = fillTone{Color: "dk1", Alpha: 40}
+
+// openBeforeAfterCells restyles the cells for the open style
+// (go-slide-creator-xvpu2): each state is a bold heading over a rule and an
+// open bullet list. The two states differ by their rules — neutral for
+// before, the accent for after — not by filled boxes. overrides.emphasis
+// fills one heading with the solid accent, the slide's only solid fill.
+func openBeforeAfterCells(ctx ExpandContext, c *beforeAfterCells, vals *BeforeAfterValues, ovr *BeforeAfterOverrides, headerSize float64, beforeAccent, afterAccent string) {
+	none := json.RawMessage(`"none"`)
+	rule := func(fill json.RawMessage) *jsonschema.GridCellInput {
+		return &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: fill, Line: noLine}}
+	}
+	c.beforeRule = rule(beforeAfterNeutralRule.fillJSON())
+	c.afterRule = rule(accentFillJSON(afterAccent))
+	for _, st := range []struct {
+		header *jsonschema.GridCellInput
+		body   *jsonschema.GridCellInput
+		text   string
+		accent string
+		name   string
+	}{
+		{c.beforeHeader, c.beforeBody, vals.Before.Header, beforeAccent, "before"},
+		{c.afterHeader, c.afterBody, vals.After.Header, afterAccent, "after"},
+	} {
+		st.body.Shape.Fill, st.body.Shape.Line = none, noLine
+		st.header.Shape.Fill, st.header.Shape.Line = none, noLine
+		st.header.Shape.Text = buildBeforeAfterTextContent(st.text, headerSize, true, "dk1", "l")
+		if ovr.Emphasis == st.name {
+			tone, ink := accentFillAndInk(ctx, fillTone{Color: st.accent}, 4.5)
+			st.header.Shape.Fill = tone.fillJSON()
+			st.header.Shape.Text = buildBeforeAfterTextContent(st.text, headerSize, true, ink, "l")
+		}
+	}
 }
 
 // beforeAfterChevronPt is the transition chevron's size: a small marker

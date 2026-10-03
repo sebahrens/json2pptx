@@ -349,7 +349,7 @@ func TestComparison2col(t *testing.T) {
 				{Left: "Reliable", Right: "Complex"},
 			},
 		}
-		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+		grid, err := p.Expand(ExpandContext{}, &vals, &Comparison2colOverrides{Style: "tiles"}, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
@@ -404,7 +404,7 @@ func TestComparison2col(t *testing.T) {
 				{Left: "A", Right: "B"},
 			},
 		}
-		ovr := &Comparison2colOverrides{TextOverrides: TextOverrides{Accent: "accent5"}}
+		ovr := &Comparison2colOverrides{TextOverrides: TextOverrides{Accent: "accent5"}, Style: "tiles"}
 		grid, err := p.Expand(ExpandContext{}, &vals, ovr, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
@@ -454,7 +454,7 @@ func TestComparison2col(t *testing.T) {
 				{Left: "C", Right: "D"},
 			},
 		}
-		ovr := &Comparison2colOverrides{RowFill: "lt2"}
+		ovr := &Comparison2colOverrides{RowFill: "lt2", Style: "tiles"}
 		grid, err := p.Expand(ExpandContext{}, &vals, ovr, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
@@ -481,13 +481,13 @@ func TestComparison2col(t *testing.T) {
 		}
 	})
 
-	t.Run("expand_row_fill_default_neutral", func(t *testing.T) {
+	t.Run("expand_tiles_row_fill_default_neutral", func(t *testing.T) {
 		vals := Comparison2colValues{
 			Rows: []Comparison2colRow{
 				{Left: "A", Right: "B"},
 			},
 		}
-		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+		grid, err := p.Expand(ExpandContext{}, &vals, &Comparison2colOverrides{Style: "tiles"}, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
@@ -496,7 +496,7 @@ func TestComparison2col(t *testing.T) {
 		}
 	})
 
-	t.Run("expand_body_rows_zebra_striped_by_default", func(t *testing.T) {
+	t.Run("expand_tiles_body_rows_zebra_striped", func(t *testing.T) {
 		// Three body rows, no headers, no explicit row_fill: body rows should
 		// alternate between two surface tints so sparse rows read as grouped.
 		vals := Comparison2colValues{
@@ -507,7 +507,7 @@ func TestComparison2col(t *testing.T) {
 			},
 		}
 		ctx := ExpandContext{Metadata: &types.TemplateMetadata{SurfaceTints: map[string]string{"subtle": "lt2", "paper": "lt1"}}}
-		grid, err := p.Expand(ctx, &vals, nil, nil)
+		grid, err := p.Expand(ctx, &vals, &Comparison2colOverrides{Style: "tiles"}, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
@@ -601,7 +601,7 @@ func TestComparison2colConnectors(t *testing.T) {
 		}
 	})
 
-	grid, err := p.Expand(ExpandContext{}, &vals, &Comparison2colOverrides{Connectors: true}, nil)
+	grid, err := p.Expand(ExpandContext{}, &vals, &Comparison2colOverrides{Connectors: true, Style: "tiles"}, nil)
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
 	}
