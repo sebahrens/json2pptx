@@ -1370,6 +1370,21 @@ func collectStructuralSmellFindings(input *PresentationInput) []patterns.FitFind
 	return findings
 }
 
+// ganttTimelineContentCells returns the content-cell count of a gantt-style
+// timeline-horizontal: a label and a bar per stop. Its track is cut into one
+// column per date segment so each bar spans the dates it covers; those
+// columns are geometry, not content.
+func ganttTimelineContentCells(p *PatternInput) (int, bool) {
+	if p == nil || p.Name != "timeline-horizontal" || timelineHorizontalStyle(p.Overrides) != "gantt" {
+		return 0, false
+	}
+	var stops []json.RawMessage
+	if json.Unmarshal(p.Values, &stops) != nil {
+		return 0, false
+	}
+	return 2 * len(stops), true
+}
+
 func collectGridOccupancyFindings(input *PresentationInput) []patterns.FitFinding {
 	var findings []patterns.FitFinding
 
@@ -1428,6 +1443,9 @@ func collectGridOccupancyFindings(input *PresentationInput) []patterns.FitFindin
 			// content cells; count only the left/right items.
 			if patternName == "comparison-2col" && numCols == 3 {
 				crowdSlots -= len(grid.Rows)
+			}
+			if n, ok := ganttTimelineContentCells(slide.Pattern); ok {
+				crowdSlots = n
 			}
 			if f := generator.DetectPatternOvercrowded(generator.GridOccupancyInput{
 				SlideIndex:     si,

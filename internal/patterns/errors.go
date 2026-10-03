@@ -185,6 +185,10 @@ const (
 	ErrCodeChartShapeInferred    = "chart_shape_inferred"
 	ErrCodeChartDataEmpty        = "chart_data_empty"
 	ErrCodeChartPlaceholderEmpty = "CHART_PLACEHOLDER_EMPTY"
+	// ErrCodeTimelineDateUnparseable reports a gantt-style timeline stop whose
+	// date or end_date could not be read, so no bar is drawn for it
+	// (go-slide-creator-o34er).
+	ErrCodeTimelineDateUnparseable = "TIMELINE_DATE_UNPARSEABLE"
 
 	// Grid visual cell finding codes (emitted for diagram/icon/image grid cells).
 	ErrCodeGridDiagramNarrow     = "grid_diagram_narrow"
@@ -318,10 +322,11 @@ var (
 	ErrTitleTooLong      = errors.New("content slide title renders on more than two lines")
 	ErrContentDropped    = errors.New("author-provided content was dropped without being placed")
 
-	ErrChartValueCoerced     = errors.New("non-numeric chart value coerced to zero")
-	ErrChartShapeInferred    = errors.New("chart data shape inferred from flat input")
-	ErrChartDataEmpty        = errors.New("chart data is empty; output will be blank")
-	ErrChartPlaceholderEmpty = errors.New("chart placeholder rendered without chart spec")
+	ErrChartValueCoerced       = errors.New("non-numeric chart value coerced to zero")
+	ErrChartShapeInferred      = errors.New("chart data shape inferred from flat input")
+	ErrChartDataEmpty          = errors.New("chart data is empty; output will be blank")
+	ErrChartPlaceholderEmpty   = errors.New("chart placeholder rendered without chart spec")
+	ErrTimelineDateUnparseable = errors.New("gantt timeline date could not be placed on the time axis")
 
 	ErrPlaceholderRemapped   = errors.New("placeholder remapped to fallback target")
 	ErrTextTrimmed           = errors.New("trailing paragraphs trimmed to fit placeholder")
@@ -409,6 +414,7 @@ var codeSentinel = map[string]error{
 	ErrCodeChartShapeInferred:      ErrChartShapeInferred,
 	ErrCodeChartDataEmpty:          ErrChartDataEmpty,
 	ErrCodeChartPlaceholderEmpty:   ErrChartPlaceholderEmpty,
+	ErrCodeTimelineDateUnparseable: ErrTimelineDateUnparseable,
 	ErrCodePlaceholderRemapped:     ErrPlaceholderRemapped,
 	ErrCodeTextTrimmed:             ErrTextTrimmed,
 	ErrCodeTextOverflow:            ErrTextOverflow,

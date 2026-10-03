@@ -1,5 +1,43 @@
 # Schema Changelog
 
+- **2026-10-03 — Gantt timelines are drawn to scale on a labelled time axis (`go-slide-creator-o34er`).**
+  - `timeline-horizontal` with `overrides.style: "gantt"` (and the DeckSpec
+    `timeline` kind, which compiles to it when a milestone has an
+    `end_date`) reads `date` / `end_date` as dates and positions each stop
+    on a shared axis: a range is a bar from the start of `date` to the end
+    of `end_date`, a stop without `end_date` is a diamond marker at its
+    date, and a row of unit labels (days, weeks, months, quarters,
+    half-years or years; at most 8) over a rule heads the track. It used
+    to draw one identical full-width bar per stop and score 100.
+  - Accepted date forms: `2026-03-15`, `2026-03`, `2026`, `Mar 2026`,
+    `5 Mar 2026`, `Mar 5, 2026`, `Q1 2026`, `H1 2026`, and the yearless
+    `Mar`, `Apr 30`, `Q2`, `H1` when no stop names a year.
+  - New fit-finding code `TIMELINE_DATE_UNPARSEABLE` (action `review`,
+    path `/slides/N/pattern`): a value that is not a date, an `end_date`
+    before its `date`, or a yearless date beside dated stops gets no bar
+    (the row keeps its label and date text) and is named as
+    `values[i].date` / `values[i].end_date`. Such input stays valid.
+  - The date text sits inside a bar that holds it, else beside the bar.
+    `PATTERN_OVERCROWDED` counts a gantt as two cells per stop. An empty
+    shape_grid cell keeps its `col_span` / `row_span` footprint on the JSON
+    path (it was reset to 1×1).
+
+- **2026-10-03 — Timeline diagram labels wrap and stagger before any truncation (`go-slide-creator-ze6qs`).**
+  - The svggen `timeline` places event labels whole: one line above the
+    marker, then staggered above / below, then wrapped onto two lines, then
+    at a smaller shared size (down to the small label size). A date-only
+    item is centred on its own marker when its neighbours are measured, so
+    `examples/diagrams/timeline.json` no longer renders "Frontend D…".
+  - A label that still cannot be shown is cut with an ellipsis and reported
+    as `chart.label_truncated` / `diagram.label_truncated` with severity
+    `shrink_or_split` (was `info`), at the item's path
+    (`…/diagram_value/data/items/N`), with
+    `fix.params: {original, truncated, font_size, diagram_type}`. Validate
+    and render report the same labels. `label_position` `left` / `right` /
+    `below` report a truncation at the same severity.
+  - Descriptions under bars wrap in the slot between neighbouring described
+    bars, and start below a row's staggered labels instead of beside them.
+
 - **2026-10-03 — Composition overrides compile to what explain reports (`go-slide-creator-vj549`).** SchemaVersion unchanged (no new tools, codes or fix kinds).
   - A `pattern` / `layout` override listed in `compositions[]` is honoured
     only when the slide actually compiles to it, and the compiler is held to

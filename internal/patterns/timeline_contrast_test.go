@@ -2,6 +2,8 @@ package patterns
 
 import (
 	"encoding/json"
+	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -34,9 +36,20 @@ func TestTimelineGradientTextStaysReadable(t *testing.T) {
 		{Label: "Close", Date: "Dec 2025", EndDate: "Dec 2025", Body: "Handover"},
 	}
 
+	// A gantt bar carries its dates only when they fit inside it, so the gantt
+	// walk uses ranges long enough to hold them on every row.
+	ganttStops := make(TimelineHorizontalValues, len(stops))
+	for i, stop := range stops {
+		ganttStops[i] = TimelineStop{Label: stop.Label, Date: fmt.Sprintf("2025-%02d", i+1), EndDate: fmt.Sprintf("2025-%02d", i+6)}
+	}
+
 	for themeName, colors := range iconColorThemes {
 		ctx := ExpandContext{Theme: types.ThemeInfo{Colors: colors}}
 		for _, style := range []string{"gantt", "chevron"} {
+			stops := stops
+			if style == "gantt" {
+				stops = ganttStops
+			}
 			grid, err := p.Expand(ctx, &stops, &TimelineHorizontalOverrides{Style: style}, nil)
 			if err != nil {
 				t.Fatalf("%s/%s: Expand: %v", themeName, style, err)
@@ -132,6 +145,14 @@ func TestTimelineGradientWithoutThemeUsesDarkInkOnTintedStops(t *testing.T) {
 	}
 	for _, style := range []string{"chevron", "gantt"} {
 		t.Run(style, func(t *testing.T) {
+			stops := stops
+			if style == "gantt" {
+				// Ranges, so every row is a bar with its dates inside.
+				stops = slices.Clone(stops)
+				for i := range stops {
+					stops[i].Body, stops[i].EndDate = "", "Q4"
+				}
+			}
 			grid, err := p.Expand(ExpandContext{}, &stops, &TimelineHorizontalOverrides{Style: style}, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -139,7 +160,7 @@ func TestTimelineGradientWithoutThemeUsesDarkInkOnTintedStops(t *testing.T) {
 			for i := 4; i < 7; i++ {
 				var cell *jsonschema.GridCellInput
 				if style == "gantt" {
-					cell = grid.Rows[i].Cells[1]
+					cell = ganttBarCell(t, grid, i)
 				} else {
 					cell = grid.Rows[0].Cells[i]
 				}

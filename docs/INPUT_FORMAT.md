@@ -192,6 +192,8 @@ Supported diagram types: `timeline`, `process_flow`, `pyramid`, `venn`, `swot`, 
 
 **Taxonomy framework colours.** `business_model_canvas`, `pestel` and `swot` fill their cells from the deck's own accent rather than rotating through `accent1`–`accent6`. Colour carries no information in these frameworks — the cells are named, laid out in a fixed grid and separated by gaps — so rotating hue was noise that also overrode `accent_strategy`. BMC and PESTEL use one hue, with the BMC Value Proposition a step deeper because the canvas privileges it; SWOT keeps two, matching its one real contrast (Strengths/Opportunities against Weaknesses/Threats). `porters_five_forces` is unaffected: its colour tracks each force's `intensity`, which is information. Set `style.colors` to override — entries apply in cell order and a short list repeats, so `["accent1","accent2","accent3","accent4","accent5","accent6"]` restores the old per-cell rotation and `["accent4"]` recolours the whole framework.
 
+**Timeline event labels.** The `timeline` diagram draws every event label whole: on one line above its marker, staggered above / below when neighbours are close, wrapped onto two lines, and at a smaller shared size, in that order. A label that still cannot be shown is cut with an ellipsis and reported as `diagram.label_truncated` with action `shrink_or_split` — shorten it, use fewer events or spread their dates. Descriptions wrap in the slot between the neighbouring described events.
+
 Charts and diagrams render to SVG and embed into the slide.
 
 ## Theme override

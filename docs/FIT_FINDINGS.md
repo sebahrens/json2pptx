@@ -1064,6 +1064,8 @@ A funnel stage is larger than the stage above it. A funnel reads as progressive 
 
 A gauge whose `value` lies outside `[min, max]` reports the existing `chart.point_out_of_range` (fix kind `explicit_scale`, params `value`, `min`, `max`): the needle is pinned at the nearest end of the dial while the label prints the real value. A timeline `date` string that neither parses nor serves as the item's label reports `chart.invalid_time_format` (fix kind `replace_value`, params `invalid_dates`); when no item has a parseable date the items are spaced evenly in authored order and no date axis is drawn.
 
+A timeline event label is never shortened while it can be shown whole (go-slide-creator-ze6qs). The svggen timeline places labels on one line above their markers, then staggers them above / below, then wraps onto two lines, then steps the one shared label size down to the small size; only when all of those fail is a label cut with an ellipsis. That cut is source loss, so it is reported as `chart.label_truncated` (`diagram.label_truncated` in a fit report) with severity `shrink_or_split` rather than the advisory `info` other label truncations carry, at the item's own path (`…/diagram_value/data/items/2` from validate; the render pass keeps renderer findings on the content item), with `fix.kind: "truncate_or_split"` and `fix.params: {original, truncated, font_size, diagram_type: "timeline"}`. Validate (dry render) and render report the same labels. The `left` / `right` / `below` `label_position` values keep their per-label fit and report a truncation at the same severity.
+
 ### `CHART_PLACEHOLDER_EMPTY`
 
 **Action:** `review`
@@ -1078,6 +1080,26 @@ The `chart-insights-split` pattern was expanded without a `chart` spec, so the l
   "path": "/slides/2/pattern",
   "code": "CHART_PLACEHOLDER_EMPTY",
   "message": "slide 3: chart-insights-split: chart-insights-split rendered insights-only; provide a chart spec to fill the left panel",
+  "action": "review"
+}
+```
+
+### `TIMELINE_DATE_UNPARSEABLE`
+
+**Action:** `review`
+**Pattern:** `timeline-horizontal` (`style: "gantt"`; the DeckSpec `timeline` kind compiles to it when a milestone has an `end_date`)
+**Fix kind:** — (no auto-fix; the agent rewrites the dates or changes the style)
+
+Gantt style places each stop on a shared time axis from its `date` and `end_date`: a range is a bar from the start of `date` to the end of `end_date`, and a stop without `end_date` is a diamond marker. A value that cannot be placed — text that is not a date (`"Summer"`, `"TBD"`), an `end_date` before its `date`, an empty `date`, or a yearless date (`"Q3"`) beside stops that name a year — gets **no bar**: the row keeps its label and its date text. One finding per slide names every value, as `values[i].date` / `values[i].end_date`. It used to render as a full-width bar identical to every other stop's, with nothing reported (go-slide-creator-o34er).
+
+Accepted forms: `2026-03-15`, `2026-03`, `2026`, `Mar 2026`, `5 Mar 2026`, `Mar 5, 2026`, `Q1 2026`, `H1 2026`, and the yearless `Mar`, `Apr 30`, `Q2`, `H1` when **no** stop names a year.
+
+```json
+{
+  "pattern": "timeline-horizontal",
+  "path": "/slides/2/pattern",
+  "code": "TIMELINE_DATE_UNPARSEABLE",
+  "message": "slide 3: timeline-horizontal: timeline-horizontal gantt draws no bar for a stop whose dates it cannot place on the time axis (values[1].date \"Autumn\" is not a date) — write dates as 2026-03-15, 2026-03, Mar 2026, Q1 2026, H1 2026 or 2026 (every stop with a year, or every stop without), or use dots style for stops that are not dated",
   "action": "review"
 }
 ```

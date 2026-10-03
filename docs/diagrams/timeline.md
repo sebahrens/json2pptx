@@ -56,6 +56,18 @@ time axis, labels beneath (staggered onto a second line when neighbours would
 collide), so no diamond or label touches a bar. All event labels share one font
 size.
 
+Event labels are drawn whole. With the default label position (above the
+marker) the renderer tries, in order: every label on one line; alternating
+above / below; a two-line wrap at the most balanced space; and a smaller shared
+size, down to the small label size. Only when all of those fail is a label cut
+with an ellipsis, and that is reported as `chart.label_truncated` with severity
+`shrink_or_split` and `fix.params` `{original, truncated, font_size,
+diagram_type}` at the item's path (`data.items[2]`) — the label is source text
+the slide has lost. `label_position` `left`, `right` and `below` fit each label
+on its own and report a truncation at the same severity. Descriptions wrap in
+the slot between the neighbouring described bars and start below the row's
+staggered labels.
+
 ## Date Fields
 
 For `activity` and `phase` types:
