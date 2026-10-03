@@ -1,5 +1,32 @@
 # Schema Changelog
 
+- **2026-10-03 — Native framework diagrams share the patterns' surface style (`go-slide-creator-amtkg`).**
+  - **Default look changed** for `swot`, `business_model_canvas`, `pestel`,
+    `nine_box_talent`, `porters_five_forces`, `value_chain`, `kpi_dashboard`
+    and the panel family (`panel_layout` columns / rows, `icon_columns`,
+    `icon_rows`, `stat_cards`): square corners (no `roundRect`), cards on the
+    neutral `dk1` tints (4%; 8% for a panel header band and the value-chain
+    margin; 16% for value-chain primary activities), no outline, bold
+    left-aligned titles in the template's primary accent where it reads on
+    the card (else a theme ink). No input field changed; labels, values and
+    geometry are as before.
+  - **One accent plus neutrals.** `swot` drops the second-accent tint of its
+    negative half; `business_model_canvas` drops the deeper Value Proposition
+    tint and now matches the `bmc-canvas` pattern; `value_chain` drops the
+    accent1–6 rotation; panel bodies are no longer white boxes outlined in
+    black; panel bullets take the text ink. Kept as data: nine-box score
+    bands, Porter intensity tints (an unscored force is the neutral card, no
+    `lt2` box with a `dk2` outline; connectors are `accent1`), heatmap
+    scales, KPI / stat-card trend ink. `house_diagram`, `process_flow`,
+    `pyramid`, `heatmap` and `stylish_panels` are not restyled (stylish
+    panel bullets follow the shared bullet ink).
+  - **`style.colors` is the opt-in to accent-tinted cards**, and now also
+    applies to the panel family (header bands, stat cards), `kpi_dashboard`
+    (cards) and `value_chain` (support bars and primary activities, each
+    counted from the first entry), as it already did to `swot`, `pestel` and
+    `business_model_canvas`. `["accent1","accent2"]` restores the two-tone
+    SWOT. Rounded corners are not restorable.
+
 - **2026-10-03 — `plan_deck` places or lists every clause of the brief, follows an enumerated outline, and accounts for the budget (`go-slide-creator-hf8tf`, `go-slide-creator-58qda`).**
   - **Every clause after the topic is a fact.** It is in a slide's
     `facts` or in `unplaced_facts`; a clause used to qualify only with a

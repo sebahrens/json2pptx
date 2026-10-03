@@ -250,9 +250,9 @@ func TestGeneratePortersFiveGroupXML_Basic(t *testing.T) {
 		}
 	}
 
-	// Should use roundRect geometry
-	if !strings.Contains(result, `prst="roundRect"`) {
-		t.Error("should use roundRect geometry")
+	// One surface style: square corners, as the patterns (go-slide-creator-amtkg).
+	if strings.Contains(result, "roundRect") || !strings.Contains(result, `prst="rect"`) {
+		t.Error("cards should be square-cornered rects, not roundRect")
 	}
 
 	// Should contain connectors
@@ -365,8 +365,11 @@ func TestPorterIntensityColor(t *testing.T) {
 			}
 		})
 	}
-	if scheme, mod, off := porterIntensityColor(nil); scheme != porterNeutralScheme || mod != 0 || off != 0 {
-		t.Errorf("unstated intensity = (%q, %d, %d), want (%q, 0, 0)", scheme, mod, off, porterNeutralScheme)
+	// An unscored force sits on the shared neutral card, not on an outlined
+	// lt2 box (go-slide-creator-amtkg).
+	wantMod, wantOff := patterns.NeutralSurfaceMods(patterns.NeutralTint4)
+	if scheme, mod, off := porterIntensityColor(nil); scheme != porterNeutralScheme || mod != wantMod || off != wantOff {
+		t.Errorf("unstated intensity = (%q, %d, %d), want (%q, %d, %d)", scheme, mod, off, porterNeutralScheme, wantMod, wantOff)
 	}
 }
 
@@ -487,9 +490,9 @@ func TestAllocatePanelIconRelIDs_PortersMode(t *testing.T) {
 		t.Error("groupXML should be generated for Porter's Five Forces mode")
 	}
 
-	// Should use roundRect (Porter's style)
-	if !strings.Contains(inserts[0].groupXML, `prst="roundRect"`) {
-		t.Error("Porters groupXML should use roundRect geometry")
+	// One surface style: square corners, as the patterns (go-slide-creator-amtkg).
+	if strings.Contains(inserts[0].groupXML, "roundRect") || !strings.Contains(inserts[0].groupXML, `prst="rect"`) {
+		t.Error("cards should be square-cornered rects, not roundRect")
 	}
 
 	// Should contain Porters Five Forces group name

@@ -105,24 +105,27 @@ func TestGenerateSWOTGroupXML_Basic(t *testing.T) {
 		}
 	}
 
-	// Two accents, matching the framework's one real contrast: the positive
-	// half (Strengths, Opportunities) against the negative one (Weaknesses,
-	// Threats). Four accents matched nothing (go-slide-creator-w0kj).
-	for _, want := range []string{"accent1", "accent2"} {
-		if !strings.Contains(result, want) {
-			t.Errorf("should contain scheme color %q", want)
-		}
+	// One accent — the title ink — on the shared neutral card
+	// (go-slide-creator-amtkg). The quadrants took four accents, then two.
+	if !strings.Contains(result, `val="accent1"`) {
+		t.Error("titles should take the accent ink")
 	}
-	for i := 3; i <= 6; i++ {
+	if !strings.Contains(result, `schemeClr val="dk1"><a:lumMod val="4000"/><a:lumOff val="96000"/>`) {
+		t.Error("quadrants should sit on the neutral 4% surface")
+	}
+	if strings.Contains(result, `algn="ctr"`) {
+		t.Error("quadrant titles should be left-aligned, not centred tabs")
+	}
+	for i := 2; i <= 6; i++ {
 		accent := fmt.Sprintf("accent%d", i)
 		if strings.Contains(result, accent) {
-			t.Errorf("SWOT should not reach for %q; it has two halves, not four", accent)
+			t.Errorf("SWOT should not reach for %q by default", accent)
 		}
 	}
 
-	// Should use roundRect geometry
-	if !strings.Contains(result, `prst="roundRect"`) {
-		t.Error("should use roundRect geometry")
+	// One surface style: square corners, as the patterns (go-slide-creator-amtkg).
+	if strings.Contains(result, "roundRect") || !strings.Contains(result, `prst="rect"`) {
+		t.Error("cards should be square-cornered rects, not roundRect")
 	}
 
 	// Should NOT contain srgbClr (no hardcoded hex)
@@ -278,9 +281,9 @@ func TestAllocatePanelIconRelIDs_SWOTMode(t *testing.T) {
 		t.Error("groupXML should be generated for SWOT mode")
 	}
 
-	// Should use roundRect (SWOT style) not rect (panel style)
-	if !strings.Contains(inserts[0].groupXML, `prst="roundRect"`) {
-		t.Error("SWOT groupXML should use roundRect geometry")
+	// One surface style: square corners, as the patterns (go-slide-creator-amtkg).
+	if strings.Contains(inserts[0].groupXML, "roundRect") || !strings.Contains(inserts[0].groupXML, `prst="rect"`) {
+		t.Error("cards should be square-cornered rects, not roundRect")
 	}
 
 	// Should contain SWOT Analysis group name
