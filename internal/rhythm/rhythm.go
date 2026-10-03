@@ -79,6 +79,15 @@ type Slide struct {
 	// extend a pattern run and do not count toward bullets_heavy
 	// (go-slide-creator-khzni).
 	Appendix bool
+	// Motif is the visual motif the slide draws (a patterns.Motif value:
+	// "tiles", "open-columns", "table", "chart", …), resolved by the caller
+	// from the pattern and its explicit style. Empty lets the analyzer derive
+	// it from the pattern's default look or the slide's content kinds; a
+	// hand-built grid or a composed slide has none (go-slide-creator-rd7oj).
+	Motif string
+	// MotifVariant tells two slides of a distinctive motif apart: the chart or
+	// diagram type. Three different charts are not a look-alike run.
+	MotifVariant string
 }
 
 // Compose is the structural projection of a compose envelope: its direction
@@ -109,6 +118,7 @@ type SlideInfo struct {
 	DensityClass             string `json:"density_class"`               // "low", "med", "high"
 	AccentRole               string `json:"accent_role"`                 // primary accent color used, or "none"
 	DominantVisual           string `json:"dominant_visual"`             // "chart", "diagram", "table", "text", "grid", "pattern"
+	Motif                    string `json:"motif"`                       // visual motif ("tiles", "open-columns", "table", …) or "none"
 	WithinSlideAccentVariety int    `json:"within_slide_accent_variety"` // distinct accent slots used across cells
 	cellCount                int    // internal: total cells in shape_grid (not serialized)
 	appendix                 bool   // internal: back matter, outside the run checks
@@ -116,10 +126,17 @@ type SlideInfo struct {
 
 // PatternRun describes a consecutive run of one visual family. Name is the
 // canonical family name (and remains the pattern name for ungrouped patterns).
+// Len counts exhibits: the parts of a continued slide ("(1/2)", "(2/2)") are
+// one (go-slide-creator-xy51l). Start and End are slide indices, End
+// inclusive.
 type PatternRun struct {
 	Name  string `json:"name"`
 	Start int    `json:"start"`
+	End   int    `json:"end"`
 	Len   int    `json:"len"`
+
+	// members are the first slide index of each exhibit in the run.
+	members []int
 }
 
 // AccentBalance maps accent role names to their usage fraction (0.0–1.0).
@@ -140,6 +157,13 @@ type Aggregates struct {
 	AccentBalance       AccentBalance       `json:"accent_balance"`
 	DensityCV           float64             `json:"density_cv"` // coefficient of variation of density scores
 	DensityDistribution DensityDistribution `json:"density_distribution"`
+	// MotifRuns lists runs of 3+ consecutive content slides drawn in one
+	// visual motif, whatever patterns drew them. MotifShare is each motif's
+	// share of the content slides; DominantMotif names the one covering more
+	// than half of them, when there is one (go-slide-creator-rd7oj).
+	MotifRuns     []MotifRun         `json:"motif_runs"`
+	MotifShare    map[string]float64 `json:"motif_share"`
+	DominantMotif string             `json:"dominant_motif,omitempty"`
 }
 
 // Recommendation is an actionable suggestion to improve deck rhythm.
@@ -159,6 +183,9 @@ type Result struct {
 	Aggregates       Aggregates       `json:"aggregates"`
 	Recommendations  []Recommendation `json:"recommendations"`
 	CompositionScore int              `json:"composition_score"` // 0–100
+
+	// motif is what the motif and continuation checks cost the score.
+	motif motifPenalty
 }
 
 // Analyze performs the core rhythm analysis on the slide projections.
@@ -174,10 +201,21 @@ func Analyze(slides []Slide) *Result {
 	// reason, and a validating MCP client rejects them
 	// (go-slide-creator-vtqo). Empty-but-present is also the friendlier shape:
 	// a caller can iterate without a nil check.
-	runs := detectPatternRuns(perSlide)
+	titles := make([]string, len(slides))
+	for i, s := range slides {
+		titles[i] = s.Title
+	}
+	units := ContinuationUnits(titles)
+	runs := detectPatternRuns(perSlide, units)
 	if runs == nil {
 		runs = []PatternRun{}
 	}
+	mSlides := motifSlides(slides, perSlide, units)
+	motifRuns := detectMotifRuns(mSlides)
+	if motifRuns == nil {
+		motifRuns = []MotifRun{}
+	}
+	shares, dominant, dominantSlides, contentSlides := motifShares(slides, mSlides)
 	longestRun := 0
 	for _, r := range runs {
 		if r.Len > longestRun {
@@ -196,10 +234,16 @@ func Analyze(slides []Slide) *Result {
 			AccentBalance:       computeAccentBalance(slides),
 			DensityCV:           computeDensityCV(perSlide),
 			DensityDistribution: dd,
+			MotifRuns:           motifRuns,
+			MotifShare:          shares,
+			DominantMotif:       motifLabel(dominant),
 		},
 	}
 
 	result.Recommendations = generateRecommendations(slides, perSlide, runs, dd)
+	motifRecs, penalty := motifRecommendations(slides, mSlides, runs, motifRuns, dominant, dominantSlides, contentSlides)
+	result.Recommendations = append(result.Recommendations, motifRecs...)
+	result.motif = penalty
 	if result.Recommendations == nil {
 		result.Recommendations = []Recommendation{}
 	}
@@ -248,6 +292,9 @@ func fingerprint(idx int, s Slide) SlideInfo {
 	info.WithinSlideAccentVariety = countDistinctAccents(s)
 	info.cellCount = s.CellCount
 	info.appendix = s.Appendix
+	if info.Motif, _ = slideMotif(s); info.Motif == "" {
+		info.Motif = "none"
+	}
 
 	return info
 }
@@ -461,8 +508,11 @@ func visualFamily(name string) string {
 	}
 }
 
-// detectPatternRuns finds consecutive runs of the same visual family.
-func detectPatternRuns(slides []SlideInfo) []PatternRun {
+// detectPatternRuns finds consecutive runs of the same visual family. units
+// maps each slide to the first slide of the exhibit it belongs to
+// (ContinuationUnits); the later parts of a continued exhibit extend a run's
+// span without adding to its length.
+func detectPatternRuns(slides []SlideInfo, units []int) []PatternRun {
 	if len(slides) == 0 {
 		return nil
 	}
@@ -475,21 +525,31 @@ func detectPatternRuns(slides []SlideInfo) []PatternRun {
 		}
 		return visualFingerprint(slides[i])
 	}
+	unitOf := func(i int) int {
+		if i < len(units) {
+			return units[i]
+		}
+		return i
+	}
 
 	var runs []PatternRun
-	current := PatternRun{Name: visualFamily(slides[0].Pattern), Start: 0, Len: 1}
+	current := PatternRun{Name: visualFamily(slides[0].Pattern), Start: 0, End: 0, Len: 1, members: []int{0}}
 	currentKey := keyOf(0)
 
 	for i := 1; i < len(slides); i++ {
 		family := visualFamily(slides[i].Pattern)
 		key := keyOf(i)
 		if key == currentKey {
-			current.Len++
+			current.End = i
+			if unitOf(i) != unitOf(i-1) {
+				current.Len++
+				current.members = append(current.members, i)
+			}
 		} else {
 			if current.Len >= 2 {
 				runs = append(runs, current)
 			}
-			current = PatternRun{Name: family, Start: i, Len: 1}
+			current = PatternRun{Name: family, Start: i, End: i, Len: 1, members: []int{i}}
 			currentKey = key
 		}
 	}
@@ -616,9 +676,9 @@ func generateRecommendations(inputs []Slide, slides []SlideInfo, runs []PatternR
 			continue
 		}
 
-		// Recommend break points at every 3rd slide in the run.
-		for offset := 2; offset < run.Len; offset += 3 {
-			insertIdx := run.Start + offset
+		// Recommend break points at every 3rd exhibit in the run.
+		for offset := 2; offset < len(run.members); offset += 3 {
+			insertIdx := run.members[offset]
 			recs = append(recs, Recommendation{
 				Code:             CodeBreakRun,
 				SlideIndex:       insertIdx,
@@ -654,8 +714,9 @@ func generateRecommendations(inputs []Slide, slides []SlideInfo, runs []PatternR
 }
 
 // suggestBreakPatterns ranks the full registered catalog, excluding the run's
-// visual family. A slide's content kinds take precedence over the run's usual
-// topic so chart/table slides receive relevant alternatives.
+// visual family and — so the break actually looks different — the patterns
+// that draw the run's motif. A slide's content kinds take precedence over the
+// run's usual topic so chart/table slides receive relevant alternatives.
 func suggestBreakPatterns(runFamily string, slide Slide) []string {
 	intent := runFamily
 	priority := map[string]int{"chart": 4, "table": 3, "diagram": 2, "image": 1}
@@ -675,15 +736,35 @@ func suggestBreakPatterns(runFamily string, slide Slide) []string {
 		// not a fixed list (go-slide-creator-hl17m).
 		preferences = contentBreakPreferences(signals)
 	}
+	motif := ""
+	if slide.PatternName != "" || slide.Motif != "" {
+		motif, _ = slideMotif(slide)
+	}
+	return rankBreakPatterns(slide, runFamily, motif, signals, preferences)
+}
+
+// rankBreakPatterns orders the registered patterns as alternatives for slide:
+// preferences first (in order), then its pairs_with siblings, then narrative
+// patterns. It leaves out the run's own family, the patterns a composed slide
+// already shows, the patterns whose default look is leaveMotif (a break must
+// look different, go-slide-creator-rd7oj), and time-based patterns when the
+// slide carries no dates.
+func rankBreakPatterns(slide Slide, runFamily, leaveMotif string, signals contentSignals, preferences []string) []string {
 	preferenceRank := make(map[string]int, len(preferences))
 	for i, name := range preferences {
-		preferenceRank[name] = len(preferences) - i
+		if _, seen := preferenceRank[name]; !seen {
+			preferenceRank[name] = len(preferences) - i
+		}
 	}
 
 	// A run of composed slides already shows its regions' patterns; breaking
 	// it with one of them would repeat the same visual.
 	runRegions := map[string]bool{}
 	composeRegionFamilies(slide.Compose, runRegions)
+
+	// The distinctive motifs (chart, diagram) differ slide to slide, so
+	// another chart is a fair break for a run of one chart type.
+	excludeMotif := leaveMotif != "" && !patterns.Motif(leaveMotif).Distinctive()
 
 	registry := patterns.Default()
 	pairs := map[string]bool{}
@@ -700,6 +781,9 @@ func suggestBreakPatterns(runFamily string, slide Slide) []string {
 	for _, pat := range registry.List() {
 		name := pat.Name()
 		if family := visualFamily(name); family == runFamily || runRegions[family] {
+			continue
+		}
+		if excludeMotif && string(patterns.PatternMotif(name)) == leaveMotif {
 			continue
 		}
 		// A timeline without dates is decoration (RULES.md): only propose the
@@ -779,6 +863,19 @@ func computeCompositionScore(r *Result) int {
 			score -= float64(run.Len-3) * 5
 		}
 	}
+
+	// Look-alike runs no pattern run already accounts for cost the same as a
+	// pattern run; a motif that dominates the deck across several patterns
+	// and a continued exhibit with a slide between its parts cost 10 each
+	// (go-slide-creator-rd7oj, -xy51l).
+	for _, run := range r.motif.runs {
+		score -= 10
+		score -= float64(run.Len-motifRunMinLen) * 5
+	}
+	if r.motif.dominant {
+		score -= 10
+	}
+	score -= float64(r.motif.gaps) * 10
 
 	// Penalize high repetition index.
 	if r.Aggregates.RepetitionIndex > 0.7 {

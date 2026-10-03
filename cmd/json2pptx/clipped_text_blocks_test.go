@@ -78,8 +78,19 @@ func TestShortLabelsPassTheGateAgain(t *testing.T) {
 			t.Fatalf("short labels raised a blocking finding: %s", f.Message)
 		}
 	}
-	if !gate.Passed {
-		t.Errorf("a strip whose labels fit should pass: %v", gate.Reasons)
+	// The labels raise nothing that blocks. The gate's score floor is not
+	// asserted: a bare strip of six words is a thin band on an empty slide,
+	// which the whitespace checks score on their own (go-slide-creator-wwmod).
+	criteria := deterministic.DefaultQualityGateCriteria()
+	for _, f := range findings {
+		if deterministic.BlocksGate(f, criteria) {
+			t.Errorf("a strip whose labels fit raised a blocking finding: %s %s", f.Code, f.Message)
+		}
+	}
+	for _, reason := range gate.Reasons {
+		if !strings.HasPrefix(reason, "score ") {
+			t.Errorf("a strip whose labels fit failed the gate on %q", reason)
+		}
 	}
 }
 

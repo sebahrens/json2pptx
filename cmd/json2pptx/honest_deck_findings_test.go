@@ -104,9 +104,15 @@ func TestVerticalImbalance(t *testing.T) {
 		t.Errorf("centred block reported: %+v", f)
 	}
 	// go-slide-creator-e17xy: a block hung from the template's body line
-	// leaves its band below as the normal bottom margin.
-	if f := checkVerticalImbalance(top, safe, slide, 0, "", safe.Y+12700); f != nil {
-		t.Errorf("block hung from the body line reported: %+v", f)
+	// leaves its band below as the normal bottom margin — until the band is
+	// 40% of the area or more (go-slide-creator-wwmod): content in the top
+	// half only is reported wherever it hangs from.
+	hung := []pptx.RectEmu{{X: 0, Y: 0, CX: 9144000, CY: 2971800}} // 65% of the area
+	if f := checkVerticalImbalance(hung, safe, slide, 0, "", safe.Y+12700); f != nil {
+		t.Errorf("block hung from the body line over a 35%% band reported: %+v", f)
+	}
+	if f := checkVerticalImbalance(top, safe, slide, 0, "", safe.Y+12700); f == nil {
+		t.Errorf("block hung from the body line over a 60%% empty band not reported")
 	}
 	slide.Takeaway = "The takeaway renders below the grid."
 	if f := checkVerticalImbalance(top, safe, slide, 0, "", 0); f != nil {

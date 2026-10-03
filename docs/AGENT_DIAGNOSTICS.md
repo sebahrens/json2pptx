@@ -42,7 +42,9 @@ possible. The semantic family is `INPUT`-namespaced and declared in
 `SEMANTIC_TAKEAWAY_REQUIRED`, `SEMANTIC_DENSITY`, `SEMANTIC_WEAK_CONTENT`,
 `SEMANTIC_FIELD_TYPE`, plus
 the deck-rhythm advisories `SEMANTIC_RHYTHM_MONOTONY`, `SEMANTIC_RHYTHM_DENSITY`,
-`SEMANTIC_RHYTHM_SECTIONING`, and `SEMANTIC_RHYTHM_SYNTHESIS`. Each resolves via
+`SEMANTIC_RHYTHM_SECTIONING`, `SEMANTIC_RHYTHM_SYNTHESIS`, and
+`SEMANTIC_RHYTHM_CONTINUATION_SPLIT` (a slide between the parts of a continued
+exhibit). Each resolves via
 `json2pptx describe-finding <code>` like any other code. For example:
 
 ```json

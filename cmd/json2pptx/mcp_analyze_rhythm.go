@@ -138,6 +138,7 @@ func toRhythmSlide(s SlideInput) rhythm.Slide {
 		HasSource:    strings.TrimSpace(s.Source) != "" || s.SourceLink != nil,
 	}
 	_, rs.Title = extractTitleText(s)
+	rs.Motif, rs.MotifVariant = rhythmMotif(s)
 	var text []string
 	if s.Pattern != nil {
 		rs.PatternName = s.Pattern.Name
@@ -161,6 +162,33 @@ func toRhythmSlide(s SlideInput) rhythm.Slide {
 		rs.Grid = buildDensityGrid(s.ShapeGrid)
 	}
 	return rs
+}
+
+// rhythmMotif resolves the visual motif a slide draws
+// (go-slide-creator-rd7oj): the pattern's declared motif for its explicit
+// style, or the chart / diagram / table / image the content carries. A
+// hand-built shape_grid and a composed slide have no single motif; a slide of
+// text and bullets is left to the analyzer, which knows the structural roles.
+func rhythmMotif(s SlideInput) (motif, variant string) {
+	switch {
+	case s.Compose != nil, s.ShapeGrid != nil:
+		return "", ""
+	case s.Pattern != nil:
+		return string(patterns.MotifFor(s.Pattern.Name, s.Pattern.Values, s.Pattern.Overrides)), patterns.Default().ResolveAlias(s.Pattern.Name)
+	}
+	for i := range s.Content {
+		item := &s.Content[i]
+		switch {
+		case item.ChartValue != nil && item.ChartValue.Type != "":
+			return string(patterns.MotifChart), string(item.ChartValue.Type)
+		case item.DiagramValue != nil && item.DiagramValue.Type != "":
+			if isChartishDiagramType(item.DiagramValue.Type) {
+				return string(patterns.MotifChart), item.DiagramValue.Type
+			}
+			return string(patterns.MotifDiagram), item.DiagramValue.Type
+		}
+	}
+	return "", ""
 }
 
 // rhythmCompose projects a compose envelope into the analyzer's region

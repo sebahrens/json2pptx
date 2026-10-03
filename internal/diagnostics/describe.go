@@ -1328,7 +1328,7 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		Code:        CodeSemanticRhythmMonotony,
 		Summary:     "Three or more consecutive slides share the same visual family.",
 		Severity:    describeSeverityReview,
-		WhenEmitted: "deck-rhythm analysis finds a run of 3+ adjacent slides that compile to the same visual family (e.g. three KPI slides back-to-back), which reads as monotonous. Promoted to an error under strict validation.",
+		WhenEmitted: "deck-rhythm analysis finds a run of 3+ adjacent slides that compile to the same visual family (e.g. three KPI slides back-to-back), which reads as monotonous. The parts of a continued exhibit (titles ending (1/2), (2/2) or (cont.)) count once, so a table split across two slides is not a run of two. Promoted to an error under strict validation.",
 		RemediationSteps: []string{
 			"Vary the slide kinds across the run, or move a section divider into the middle of it.",
 			"Reorder slides so similar treatments are not adjacent.",
@@ -1355,6 +1355,17 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 			"Add one or more `section` slides to group the deck into chapters.",
 		},
 		RelatedCodes: []string{CodeSemanticRhythmMonotony},
+	},
+	CodeSemanticRhythmContinuationSplit: {
+		Code:        CodeSemanticRhythmContinuationSplit,
+		Summary:     "Another slide sits between the parts of a continued exhibit.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "two slides whose titles mark them as parts of one exhibit (\"Savings by lever (1/2)\" and \"(2/2)\", or a trailing \"(cont.)\") are separated by up to three other slides, typically a section divider inserted to break a run. The parts are one unit of the argument, and a divider between them labels the second part with the wrong section. Promoted to an error under strict validation.",
+		RemediationSteps: []string{
+			"Move the slide in between before the first part or after the last part.",
+			"Continuation parts never count as a monotony run, so no divider is needed between them.",
+		},
+		RelatedCodes: []string{CodeSemanticRhythmMonotony, CodeSemanticDensity},
 	},
 	CodeSemanticRhythmSynthesis: {
 		Code:        CodeSemanticRhythmSynthesis,

@@ -38,9 +38,36 @@ var substantiveReviewWeight = map[string]int{
 	patterns.ErrCodeLowContrastHighlight: 15,
 }
 
+// CompositionFaultWeight is what a visible composition fault costs its slide:
+// content in one half of the slide over an empty other half, a box whose text
+// wraps into a column of fragments, peer headers at two sizes. Each is an
+// ordinary review advisory by action — it does not block by itself, a deck
+// may carry one — but at review weight (5) a slide with three of them scored
+// 85 and a deck of them scored 100, so agents learned to ignore the score
+// (go-slide-creator-wwmod). 25 puts a slide carrying one below the gate's
+// min_score (80), so a deck of weak slides fails the score floor. Sparseness
+// alone (SLIDE_UNDERUSED, SPARSE_FILL) is not in this set: a centred hero
+// number is sparse by design.
+//
+// The text faults (TEXT_WRAPS_NARROW, SIBLING_SIZE_MISMATCH) also count
+// toward the problem-slide share. The two whitespace faults do not: the
+// calibration corpus's best non-spec deck (G2, three content-sized blocks
+// hung from the body line) was graded good by a human, and a share criterion
+// on top of the 25 points failed it — "false blocks are worse than misses"
+// (TestCalibrationRanking).
+var CompositionFaultWeight = map[string]int{
+	patterns.ErrCodeVerticalImbalance:   25,
+	patterns.ErrCodeHorizontalImbalance: 25,
+	patterns.ErrCodeTextWrapsNarrow:     25,
+	patterns.ErrCodeSiblingSizeMismatch: 25,
+}
+
 func findingWeight(f patterns.FitFinding) int {
 	if f.Action == "review" && substantiveReviewWeight[f.Code] > 0 {
 		return substantiveReviewWeight[f.Code]
+	}
+	if f.Action == "review" && CompositionFaultWeight[f.Code] > 0 {
+		return CompositionFaultWeight[f.Code]
 	}
 	return SeverityWeight[f.Action]
 }
@@ -555,9 +582,12 @@ var breadthExemptCodes = map[string]bool{
 	patterns.ErrCodeNoExecutiveSummary:      true,
 	patterns.ErrCodeClosingWithoutNextSteps: true,
 	// Layout-balance advisories belong with the airiness family above
-	// (go-slide-creator-u9xfy).
-	patterns.ErrCodeVerticalImbalance: true,
-	patterns.ErrCodeSparsePlaceholder: true,
+	// (go-slide-creator-u9xfy). The two imbalance codes cost
+	// CompositionFaultWeight on their slide (go-slide-creator-wwmod) but stay
+	// outside the share: see CompositionFaultWeight.
+	patterns.ErrCodeVerticalImbalance:   true,
+	patterns.ErrCodeHorizontalImbalance: true,
+	patterns.ErrCodeSparsePlaceholder:   true,
 }
 
 // isBreadthProblem reports whether a finding makes its slide count as a problem

@@ -265,6 +265,9 @@ func TestAnalyze_RecommendationIndices(t *testing.T) {
 
 	expectedIndices := map[int]bool{2: true, 5: true, 8: true}
 	for _, rec := range result.Recommendations {
+		if rec.Code != rhythm.CodeBreakRun {
+			continue // the deck-level motif_dominant advice is not a break point
+		}
 		if !expectedIndices[rec.SlideIndex] {
 			t.Errorf("unexpected recommendation at slide_index=%d", rec.SlideIndex)
 		}

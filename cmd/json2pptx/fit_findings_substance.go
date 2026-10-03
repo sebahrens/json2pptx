@@ -25,6 +25,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/placeholderrole"
 	"github.com/sebahrens/json2pptx/internal/policy/textwalk"
+	"github.com/sebahrens/json2pptx/internal/rhythm"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -517,12 +518,17 @@ const (
 func collectMonotonyFindings(input *PresentationInput, layouts ...types.LayoutMetadata) []patterns.FitFinding {
 	var out []patterns.FitFinding
 	runStart, runShape := -1, ""
+	// runUnits counts the run's exhibits: the parts of a continued slide
+	// ("(1/2)", "(2/2)", "(cont.)") are one, so a table split across two
+	// slides as SEMANTIC_DENSITY advises is not two table slides
+	// (go-slide-creator-xy51l).
+	runUnits, prevTitle := 0, ""
 	runVisuals := map[string]bool{}
 	flush := func(end int) {
 		if runStart < 0 {
 			return
 		}
-		runLen := end - runStart
+		runLen := runUnits
 		if runLen < monotonyRunReview || runShape == "" {
 			return
 		}
@@ -561,11 +567,17 @@ func collectMonotonyFindings(input *PresentationInput, layouts ...types.LayoutMe
 		if backMatter[i] {
 			shape = ""
 		}
+		_, title := extractTitleText(slide)
 		if shape != runShape {
 			flush(i)
 			runStart, runShape = i, shape
+			runUnits = 0
 			runVisuals = map[string]bool{}
 		}
+		if runUnits == 0 || !rhythm.Continues(prevTitle, title) {
+			runUnits++
+		}
+		prevTitle = title
 		for _, v := range slideVisualTypes(slide) {
 			runVisuals[v] = true
 		}

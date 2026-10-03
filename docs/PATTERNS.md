@@ -43,6 +43,7 @@ Every pattern PR must include all of these:
   - `Expand()` returning `*jsonschema.ShapeGridInput`
   - `CellsHint()` (part of the core `Pattern` interface)
   - `Taxonomy()` returning `PatternTaxonomy` (see below)
+  - A **motif** entry in `patternMotifs` (`internal/patterns/motif.go`, see "Visual motif" below) — `TestEveryPatternDeclaresMotif` fails without one
 - [ ] **Tests** (`internal/patterns/<name>_test.go`)
   - Metadata: `Name()`, `UseWhen()`, `NotWhen()` non-empty (D6), `Version()`
   - Taxonomy: all fields populated with valid values
@@ -274,6 +275,34 @@ Guidelines:
 - **RoleOnSlide**: which slot(s) this pattern occupies in a compose envelope. Patterns can fill more than one role (e.g. `kpi-3up` works as either `banner` or `foundation`). Leave empty for patterns not intended for compose-envelope use.
 - **DensityClass**: visual density — affects rhythm analysis and variety recommendations
 - **AccentWeight**: how much accent color this pattern uses — "strong" patterns (KPIs, stat-hero) need breathing room before/after
+
+## Visual motif (every pattern declares one)
+
+A pattern's **motif** is what its slide looks like at a glance, whatever the pattern is called. `analyze_deck_rhythm` and `score_deck` count motif runs and each motif's share of the content slides next to pattern runs, because a deck that alternates `kpi-4up`, `stylish-panels` and `icon-row` uses three patterns and shows the audience a row of open columns three times (go-slide-creator-rd7oj).
+
+Declare the motif in the `patternMotifs` table in `internal/patterns/motif.go` — one entry per registered pattern; `TestEveryPatternDeclaresMotif` fails for a pattern without one, and `TestMotifStyleKeysAreSchemaStyles` fails when an entry switches on a style the schema does not accept.
+
+| Motif | What the eye sees | Patterns (default look) |
+|-------|-------------------|-------------------------|
+| `tiles` | a row or grid of filled tiles / cards | `card-grid`, `bmc-canvas`, `capability-heatmap`, `process-grid-2row` |
+| `open-columns` | peer columns standing open on the slide (a heading, number, icon or portrait over text), no tile | `kpi-2up` … `kpi-6up`, `kpi-inline`, `stylish-panels`, `icon-row`, `quote-cluster`, `team-bios`, `contact-directory`, `before-after`, `before-after-compact`, `comparison-2col`, `dual-org-ladder` |
+| `open-list` | a stack of rows separated by rules or whitespace | `agenda`, `agenda-with-images`, `exec-summary`, `scqa-summary`, `labeled-rows`, `metric-list`, `next-steps`, `numbered-step-strip`, `framework-grid` |
+| `table` | a grid read by row and column headers | `table-highlight`, `roadmap-phased` |
+| `chart` | a data chart | `chart-insights-split`, `horizontal-bar-with-callouts`, `waterfall-bridge` |
+| `diagram` | a drawing whose shape carries the meaning | `pyramid`, `strategy-house`, `state-shift-hub`, `driver-tree`, `matrix-2x2`, `arch-stack`, `journey-maturity-model` |
+| `flow` | steps or stops along one line | `process-flow`, `process-flow-compact`, `value-chain`, `timeline-horizontal`, `phase-roadmap`, `swimlane` |
+| `hero-number` | one dominant number | `stat-hero`, `hero-detail` |
+| `quote` | one dominant quotation | `pull-quote` |
+| `split` | running text beside an image or a sidebar panel | `image-text-split`, `text-sidebar` |
+
+Rules:
+
+- **Derive it from the render, not the name.** Generate the pattern's exemplar on a template and name what it draws today. When a default look changes (tiles → open), change the entry in the same commit.
+- **An explicit style that changes the look changes the motif.** List it under `overrideStyles` (an `overrides.style` value) or `valueStyles` (a `values.style` value): `stylish-panels` `ribbon`, `kpi-Nup` `tiles`, `icon-row` `tile`, `comparison-2col` / `framework-grid` / `dual-org-ladder` / `matrix-2x2` `tiles`, `before-after` `panels`, `quote-cluster` `bubble` / `tile` and `kpi-inline` `tinted` / `solid` are `tiles`; `numbered-step-strip` `values.style: chevron` and `journey-maturity-model` `flat` are `flow`. A style that only recolours (tinted / solid fills on a pattern that is tiles either way) needs no entry.
+- **`chart` and `diagram` are distinctive**: two slides of these motifs are look-alikes only when the same pattern (or chart type) drew them — a pyramid, a house and a driver tree are three different slides. Every other motif forms runs across patterns.
+- A hand-built `shape_grid` and a `compose` slide have no motif (`none`) and take no part in motif runs or shares. Content slides without a pattern take theirs from the content: `chart` (with its type), `diagram`, `table`, `image`, else `text`.
+
+`patterns.MotifFor(name, values, overrides)` resolves a slide's motif; `patterns.PatternMotif(name)` is the default look's.
 
 ## Restrained accent defaults (authoring contract)
 

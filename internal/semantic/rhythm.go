@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/rhythm"
 )
 
 const (
@@ -59,6 +60,7 @@ func (ir *DeckIR) RhythmWarnings() []RhythmWarning {
 	var out []RhythmWarning
 	out = append(out, ir.monotonyWarnings()...)
 	out = append(out, ir.densityWarnings()...)
+	out = append(out, ir.continuationWarnings()...)
 	if w, ok := ir.sectioningWarning(); ok {
 		out = append(out, w)
 	}
@@ -112,14 +114,41 @@ func (ir *DeckIR) visualFamilyWarning() (RhythmWarning, bool) {
 func (ir *DeckIR) monotonyWarnings() []RhythmWarning {
 	var out []RhythmWarning
 	for _, run := range familyRuns(ir.Slides) {
-		if run.family == FamilyRaw || run.family == FamilyStructural || run.length <= maxConsecutiveSameFamily {
+		if run.family == FamilyRaw || run.family == FamilyStructural || run.units <= maxConsecutiveSameFamily {
 			continue
 		}
 		out = append(out, RhythmWarning{
 			Code: string(diagnostics.CodeSemanticRhythmMonotony),
-			Message: fmt.Sprintf("%d consecutive %s slides read as monotonous; vary the slide kinds or insert a section break",
-				run.length, run.family),
+			Message: fmt.Sprintf("%d consecutive %s slides (%s to %s) read as monotonous; vary the slide kinds or insert a section break",
+				run.units, run.family, ir.slidePath(run.start), ir.slidePath(run.start+run.length-1)),
 			Path: ir.slidePath(run.start),
+		})
+	}
+	return out
+}
+
+// continuationWarnings flags a continued exhibit whose parts do not follow
+// each other: "Savings by lever (1/2)", a section divider, "(2/2)". The parts
+// are one unit of the argument, and the divider's section then labels the
+// wrong slides (go-slide-creator-xy51l).
+func (ir *DeckIR) continuationWarnings() []RhythmWarning {
+	titles := make([]string, len(ir.Slides))
+	for i := range ir.Slides {
+		titles[i] = ir.Slides[i].Title
+	}
+	var out []RhythmWarning
+	for _, gap := range rhythm.ContinuationGaps(titles) {
+		between := ir.Slides[gap.Between[0]]
+		what := "a slide"
+		if between.Visual.Family == FamilyStructural {
+			what = fmt.Sprintf("a %s slide", between.Kind)
+		}
+		out = append(out, RhythmWarning{
+			Code: string(diagnostics.CodeSemanticRhythmContinuationSplit),
+			Message: fmt.Sprintf("%s sits between %q and its continuation %q; a continued exhibit is one unit — move %s before %s or after %s",
+				what, ir.Slides[gap.Before].Title, ir.Slides[gap.After].Title,
+				ir.slidePath(gap.Between[0]), ir.slidePath(gap.Before), ir.slidePath(gap.After)),
+			Path: ir.slidePath(gap.Between[0]),
 		})
 	}
 	return out
@@ -200,6 +229,9 @@ type familyRun struct {
 	family VisualFamily
 	start  int // index into the slice of the run's first slide
 	length int
+	// units is the run's length in exhibits: the parts of a continued slide
+	// ("(1/2)", "(2/2)", "(cont.)") count once (go-slide-creator-xy51l).
+	units int
 }
 
 // slidePath is the DeckSpec locator of ir.Slides[i]: its authored source path
@@ -237,9 +269,12 @@ func familyRuns(slides []SlideIR) []familyRun {
 		}
 		if n := len(runs); n > 0 && runs[n-1].family == fam {
 			runs[n-1].length++
+			if !rhythm.Continues(slides[i-1].Title, slides[i].Title) {
+				runs[n-1].units++
+			}
 			continue
 		}
-		runs = append(runs, familyRun{family: fam, start: i, length: 1})
+		runs = append(runs, familyRun{family: fam, start: i, length: 1, units: 1})
 	}
 	return runs
 }

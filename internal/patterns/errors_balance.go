@@ -32,13 +32,13 @@ func init() {
 		Code:        ErrCodeVerticalImbalance,
 		Summary:     "A grid or pattern slide's content hugs one edge of the content zone, leaving a large empty band on the other side.",
 		Severity:    "review",
-		WhenEmitted: "Preflight resolves the slide's grid geometry and finds the empty band above or below the visible content is at least 1.25in and at least 30% of the content-zone height larger than the band on the opposite side. Slides that also carry body placeholder content, and slides already reported as SLIDE_UNDERUSED, are skipped; on a slide with a takeaway the band below the grid is not counted (the takeaway renders there).",
+		WhenEmitted: "Preflight resolves the slide's grid geometry and finds the empty band above or below the visible content is at least 1.25in and at least 30% of the content-zone height larger than the band on the opposite side. Slides that also carry body placeholder content, and slides already reported as SLIDE_UNDERUSED, are skipped; the content area ends above a slide's takeaway band, so empty space between the content and the takeaway counts. A block that hangs from the template's body line (where native body text starts) may leave up to 40% of the content area empty beneath it; beyond that — content in the top half only — it is reported like any other lopsided slide. The check reads the measured ink position, so a block the layout centres or stretches is not reported whatever its pattern. Costs 25 points on its slide; it does not block by itself.",
 		RemediationSteps: []string{
-			"Centre the block vertically (shape_grid vertical_align) or size the grid to its content.",
+			"Centre or stretch the block vertically (pattern vertical_align / shape_grid vertical_align) or size the grid to its content.",
 			"Use the empty band: add a supporting zone, takeaway or source line.",
 			"Or choose a pattern whose rows fill the zone for this amount of content.",
 		},
-		RelatedCodes: []string{ErrCodeSlideUnderused, ErrCodeSparseFill},
+		RelatedCodes: []string{ErrCodeSlideUnderused, ErrCodeSparseFill, ErrCodeHorizontalImbalance},
 	}
 	findingMetaRegistry[ErrCodeSparsePlaceholder] = FindingMeta{
 		Code:        ErrCodeSparsePlaceholder,
@@ -56,7 +56,7 @@ func init() {
 		Code:        ErrCodeTitleNotAction,
 		Summary:     "A content slide's title names a topic instead of stating the slide's point.",
 		Severity:    "review",
-		WhenEmitted: "The title of a content slide (not a cover, section, agenda or next-steps slide, and not a short label on the deck's last slide) is (a) longer than 15 words, (b) a stock label (Overview, Summary, Executive summary, Key metrics, Next steps, Background, Recommendations, ... or \"<topic> overview / analysis / update\"), or (c) has no digit and no verb from the action-title lexicon (an -ed / -s form counts). Check (c) skips titles of six or more words written in sentence case, and slides that state their point in a takeaway (the DeckSpec title + takeaway convention); (a) and (b) apply regardless. fix.params.reason names the check (too_long, stock_label, no_verb_or_number). Review weight (5 points); feeds the quality gate's require_action_titles criterion.",
+		WhenEmitted: "The title of a content slide (not a cover, section, agenda or next-steps slide, and not a short label on the deck's last slide) is (a) longer than 15 words, (b) a stock label (Overview, Summary, Executive summary, Key metrics, Next steps, Background, Recommendations, ... or \"<topic> overview / analysis / update\"), or (c) has no digit and no verb from the action-title lexicon (an -ed / -s form counts). Check (c) skips titles of six or more words written in sentence case; on a slide that states its point in a takeaway (the DeckSpec title + takeaway convention) it applies only to a bare label of at most four words (reason topic_label: \"Savings funnel\", \"Monthly spend trend\"), and a continuation marker such as (1/2) does not count as a number. (a) and (b) apply regardless. fix.params.reason names the check (too_long, stock_label, no_verb_or_number, topic_label). Review weight (5 points); feeds the quality gate's require_action_titles criterion.",
 		RemediationSteps: []string{
 			"Rewrite the title as the claim the slide proves — a full sentence of at most 15 words with a verb, carrying its number.",
 			"Keep the topic as a section divider or eyebrow if it helps navigation.",

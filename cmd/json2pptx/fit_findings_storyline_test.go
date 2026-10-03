@@ -77,7 +77,14 @@ func TestTitleNotActionReasons(t *testing.T) {
 		{"Margin Analysis", false, "stock_label"},
 		{"Churn", false, "no_verb_or_number"},
 		{"Customer Journey Maturity Model", false, "no_verb_or_number"},
-		{"Churn", true, ""},
+		// A short label over a takeaway is still a label (wwmod); a longer
+		// topic phrase with a takeaway stays the DeckSpec convention.
+		{"Churn", true, "topic_label"},
+		{"Monthly spend trend", true, "topic_label"},
+		{"Savings by lever (1/2)", true, "topic_label"},
+		{"Savings by lever (1/2)", false, "no_verb_or_number"},
+		{"Regional Performance Across The Fiscal Year", true, ""},
+		{"Monthly spend rose 35% in six months", true, ""},
 		{"Three drivers explain the SMB churn increase", false, ""},
 		{"Every headline metric improved in Q3 except SMB churn", false, ""},
 		// Sentence case, six words or more: a sentence even when its verb is

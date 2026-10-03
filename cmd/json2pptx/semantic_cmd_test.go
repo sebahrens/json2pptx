@@ -278,10 +278,10 @@ structure:
   sections:
     - title: One
       slides:
-        - {kind: stat, title: Growth, value: "10%", takeaway: Growth is durable}
+        - {kind: stat, title: Growth held at 10%, value: "10%", takeaway: Growth is durable}
     - title: Two
       slides:
-        - {kind: stat, title: Margin, value: "20%", takeaway: Margin is expanding}
+        - {kind: stat, title: Margin reached 20%, value: "20%", takeaway: Margin is expanding}
   closing: {kind: closing, title: Questions}
 `)
 	out := filepath.Join(t.TempDir(), "structured.pptx")
