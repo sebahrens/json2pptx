@@ -119,7 +119,9 @@ that would fall below the 7pt floor is refused (`validate_input` fit report,
 `generate_presentation`) with `DIAGRAM_REGION_TOO_SMALL`:
 `fix.params.min_width_emu` / `min_height_emu` (if ≤ 3x larger works) and the
 alternatives — larger region, body placeholder (`diagram_value`), fewer
-items. Dense canvases (BMC, big heatmaps) need most of the slide.
+items. Dense canvases (BMC, big heatmaps) need most of the slide. A word too
+wide for its native shape (narrow pyramid apex, value-chain step) reports
+`TEXT_EXCEEDS_SHAPE` with `fix.params.words`: shorten it or widen the region.
 
 Diagrams use one hue by default: timeline bars/milestones, matrix_2x2
 points and org_chart levels stay in accent1 and its tints (org levels take

@@ -31,6 +31,21 @@ type TextBody struct {
 	// face pattern sizing measured (go-slide-creator-ohhb2). Zero measures
 	// with the Arial-compatible Liberation Sans.
 	ThemeFonts ThemeFonts
+
+	// ExplicitInsets marks Insets as declared even when they are all zero:
+	// a shape whose declared margin the degenerate-axis clamp took to zero on
+	// both axes (EffectiveTextInsets). All-zero Insets otherwise mean "renderer
+	// defaults" and are not written, which handed a clamped shape the 0.1"
+	// default margin back — and the autofit measure took the same defaults off
+	// the width, storing a 66% shrink for a figure that fits
+	// (go-slide-creator-v74wv).
+	ExplicitInsets bool
+}
+
+// declaresInsets reports whether the body's insets are written: any non-zero
+// inset, or explicitly declared zeros.
+func (tb *TextBody) declaresInsets() bool {
+	return tb.Insets != [4]int64{} || tb.ExplicitInsets
 }
 
 // ThemeFonts is a template theme's heading (major) and body (minor) latin
@@ -128,7 +143,7 @@ func (tb TextBody) writeBodyPr(buf *bytes.Buffer) {
 	if tb.Vert != "" {
 		fmt.Fprintf(buf, ` vert="%s"`, tb.Vert)
 	}
-	if tb.Insets != [4]int64{} {
+	if tb.declaresInsets() {
 		fmt.Fprintf(buf, ` lIns="%d" tIns="%d" rIns="%d" bIns="%d"`,
 			tb.Insets[0], tb.Insets[1], tb.Insets[2], tb.Insets[3])
 	}

@@ -1,5 +1,24 @@
 # Schema Changelog
 
+- **2026-10-03 — Narrow regions keep words whole; native diagrams report the ones they cannot (`go-slide-creator-v74wv`).**
+  - The writer's margin clamp now leaves 5% of room over a word's measured
+    width (20% for a host-dependent theme face measured in the Liberation
+    Sans stand-in), counts a paragraph's `marL` / `marR` against the line,
+    measures a `trapezoid`'s real text rectangle, and writes explicit zero
+    insets when it takes every margin to zero (they used to fall back to the
+    0.1" renderer default). A timeline in a 33% column ("Desig / n"), a
+    pyramid apex in a 33–50% compose column ("Stra / teg / y") and a native
+    value chain at 70% ("Sourcin / g") render their words whole.
+  - `TEXT_EXCEEDS_SHAPE` gains a native-diagram source: validate lays the
+    diagram out in its placeholder / region with the generator's builders
+    and scans the written shapes; generation scans the group it writes. One
+    finding per diagram at the authored diagram path, `pattern` = diagram
+    type, `fix.kind` `widen_shape_text_area` with `params.diagram_type`,
+    `params.words`, `word`, `required_pt`, `available_pt`, `hint`.
+  - The geometry detector no longer reports a word the writer's autofit
+    shrink keeps on one line (above 12pt, down to 12pt / 60%). No input
+    field changed (fingerprint unchanged).
+
 - **2026-10-02 — Schema 4.159.0 · plan_deck plans same-slide regions (`go-slide-creator-vae7f`).**
   - A bounded cue grammar reads region clauses: a segment that starts with a
     position (left, right, top, bottom, upper/lower left/right, centre),
