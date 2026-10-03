@@ -148,12 +148,10 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 		// and before go-slide-creator-zmjs only chart_insight could carry a
 		// source — an option matrix or financial case could not cite anything.
 		applyUniversalSlideFields(compiled, si, ir.SourceMap)
-		// The raw pipeline's deck-source default does not look inside a
-		// shape grid, so a regions slide's chart or table would go out
-		// unsourced; it takes meta.source here (go-slide-creator-fn2ka).
-		if si.Kind == KindRegions && compiled.Source == "" && regionsCarryData(si.Body) {
-			compiled.Source = ir.Source
-		}
+		// meta.source reaches every data slide through the raw pipeline's
+		// deck-source default, which reads shape-grid cells too, so a table,
+		// regions or option-matrix slide needs no per-kind copy here
+		// (go-slide-creator-fn2ka, go-slide-creator-q2emv).
 		// DATA_WITHOUT_SOURCE addresses the slide's source field, which a
 		// data slide without one never set; map its pointer to the DeckSpec
 		// field the author fills (go-slide-creator-cuszt).

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -12,7 +13,8 @@ import (
 // will ask "according to whom?" about: charts, bridges, ranked bars and the
 // KPI / stat families. Qualitative data_visual patterns (matrix-2x2,
 // table-highlight's Harvey balls, capability-heatmap ratings) are left out —
-// a source line under a judgement call is noise (go-slide-creator-cuszt).
+// a source line under a judgement call is noise (go-slide-creator-cuszt). A
+// table-highlight of figures is caught by patternDataKind instead.
 var dataSourcePatterns = map[string]bool{
 	"chart-insights-split":         true,
 	"waterfall-bridge":             true,
@@ -127,8 +129,12 @@ func applyDeckSourceDefault(input *PresentationInput) {
 	}
 }
 
-// slideDataKind names the data a slide shows ("a chart", "a table", "the
-// kpi-4up pattern"), or "" when it shows none.
+// slideDataKind names the data a slide shows ("a chart", "a table of
+// figures", "the kpi-4up pattern"), or "" when it shows none. It is the one
+// rule both the deck-source default and DATA_WITHOUT_SOURCE use, and it looks
+// wherever a slide can carry figures: content items, a pattern, a compose
+// tree and shape-grid cells — the shape every semantic table, region and
+// matrix compiles to (go-slide-creator-q2emv, go-slide-creator-1jtn7).
 func slideDataKind(slide SlideInput) string {
 	for _, item := range slide.Content {
 		switch {
@@ -142,27 +148,104 @@ func slideDataKind(slide SlideInput) string {
 			}
 		}
 	}
-	if slide.Pattern != nil && dataSourcePatterns[slide.Pattern.Name] {
-		return "the " + slide.Pattern.Name + " pattern"
+	if slide.Pattern != nil {
+		if what := patternDataKind(slide.Pattern.Name, slide.Pattern.Values); what != "" {
+			return what
+		}
 	}
 	if slide.Compose != nil {
-		if name := composeDataPattern(slide.Compose); name != "" {
-			return "the " + name + " pattern"
+		if what := composeDataKind(slide.Compose); what != "" {
+			return what
+		}
+	}
+	if slide.ShapeGrid != nil {
+		return gridDataKind(slide.ShapeGrid)
+	}
+	return ""
+}
+
+// patternDataKind names the data a pattern shows, or "". The data patterns
+// always count; a table-highlight counts only when a text-scale cell holds a
+// figure ("$1.2m", "25k") — Harvey and RAG judgements stay exempt.
+func patternDataKind(name string, values json.RawMessage) string {
+	switch {
+	case dataSourcePatterns[name]:
+		return "the " + name + " pattern"
+	case name == "table-highlight" && tableHighlightHasFigures(values):
+		return "a matrix of figures"
+	}
+	return ""
+}
+
+// tableHighlightHasFigures reports whether any text-scale cell of a
+// table-highlight holds a figure (a digit: "$1.2m", "25k", "Q3"). A matrix of
+// Harvey balls or RAG dots is a judgement call; one of figures is data an
+// audience will ask to see sourced (go-slide-creator-1jtn7). A column's scale
+// falls back to values.scale, then to the pattern default, harvey.
+func tableHighlightHasFigures(values json.RawMessage) bool {
+	var v patterns.TableHighlightValues
+	if len(values) == 0 || json.Unmarshal(values, &v) != nil {
+		return false
+	}
+	for _, o := range v.Options {
+		for col, s := range o.Scores {
+			scale := v.Scale
+			if col < len(v.Criteria) && v.Criteria[col].Scale != "" {
+				scale = v.Criteria[col].Scale
+			}
+			if strings.EqualFold(strings.TrimSpace(scale), "text") && strings.ContainsAny(string(s), "0123456789") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func composeDataKind(c *ComposeInput) string {
+	for i := range c.Segments {
+		seg := &c.Segments[i]
+		if seg.HasPattern() {
+			if what := patternDataKind(seg.Pattern.Name, seg.Pattern.Values); what != "" {
+				return what
+			}
+		}
+		if seg.Compose != nil {
+			if what := composeDataKind(seg.Compose); what != "" {
+				return what
+			}
 		}
 	}
 	return ""
 }
 
-func composeDataPattern(c *ComposeInput) string {
-	for i := range c.Segments {
-		seg := &c.Segments[i]
-		if seg.HasPattern() && dataSourcePatterns[seg.Pattern.Name] {
-			return seg.Pattern.Name
-		}
-		if seg.Compose != nil {
-			if name := composeDataPattern(seg.Compose); name != "" {
-				return name
+// gridDataKind names the data a shape grid's cells show, recursing into
+// sub-grids and cell-hosted patterns, or "" when it shows none.
+func gridDataKind(g *ShapeGridInput) string {
+	for _, row := range g.Rows {
+		for _, cell := range row.Cells {
+			if what := cellDataKind(cell); what != "" {
+				return what
 			}
+		}
+	}
+	return ""
+}
+
+func cellDataKind(cell *GridCellInput) string {
+	switch {
+	case cell == nil:
+		return ""
+	case cell.Table != nil && tableInputHasNumbers(cell.Table):
+		return "a table of figures"
+	case cell.Diagram != nil && isChartishDiagramType(cell.Diagram.Type),
+		cell.Composite != nil && cell.Composite.SubDiagram != nil && isChartishDiagramType(cell.Composite.SubDiagram.Type):
+		return "a chart"
+	case cell.Grid != nil:
+		return gridDataKind(cell.Grid)
+	case len(cell.Pattern) > 0:
+		var p PatternInput
+		if json.Unmarshal(cell.Pattern, &p) == nil {
+			return patternDataKind(p.Name, p.Values)
 		}
 	}
 	return ""
@@ -176,7 +259,11 @@ func tableHasNumbers(item ContentInput) bool {
 		return false
 	}
 	table, ok := resolved.(*TableInput)
-	if !ok || table == nil {
+	return ok && tableInputHasNumbers(table)
+}
+
+func tableInputHasNumbers(table *TableInput) bool {
+	if table == nil {
 		return false
 	}
 	for _, row := range table.Rows {
