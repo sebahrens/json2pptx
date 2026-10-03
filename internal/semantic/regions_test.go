@@ -151,12 +151,14 @@ func TestCompileRegions_Arrangements(t *testing.T) {
 			}
 		}},
 		{"main_top", func(t *testing.T, g *deckinput.ShapeGridInput) {
-			if len(g.Rows) != 2 || g.Rows[0].Cells[0].Diagram == nil || g.Rows[0].Height != 60 || g.Rows[1].Cells[0].Grid.Rows[0].Cells[1].Shape == nil {
+			if len(g.Rows) != 2 || g.Rows[0].Cells[0].Diagram == nil || g.Rows[0].Height != 55 || g.Rows[1].Cells[0].Grid.Rows[0].Cells[1].Shape == nil {
 				t.Fatalf("main_top: %+v", g)
 			}
 		}},
 		{"main_bottom", func(t *testing.T, g *deckinput.ShapeGridInput) {
-			if g.Rows[1].Cells[0].Diagram == nil || g.Rows[1].Height != 60 || g.Rows[0].Height != 40 {
+			// The band's two-row table needs 45% of the height, so the unset
+			// main share gives up 5 of its default 60 (go-slide-creator-umev3).
+			if g.Rows[1].Cells[0].Diagram == nil || g.Rows[1].Height != 55 || g.Rows[0].Height != 45 {
 				t.Fatalf("main_bottom: %+v", g)
 			}
 		}},

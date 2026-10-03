@@ -125,7 +125,8 @@ right) use `kind: regions`, not a raw compose: 2–3 typed chart / stat / kpis
 / table / timeline / image / text regions in a bounded arrangement with
 `size_pct` shares (budgets: `list_slide_kinds`;
 `examples/semantic/regions.yaml`), each rule an error at
-`slides[N].regions[k]`. A stacked region holds one visual's worth; on a
+`slides[N].regions[k]`. A stacked region holds one visual's worth; leave its
+share unset (raised to what its kind reads in), and on a
 readability refusal raise `size_pct`, or cut.
 
 ## Render and revise

@@ -21,7 +21,7 @@ import (
 func regionCommonFields() map[string]payloadField {
 	return map[string]payloadField{
 		"kind":     {typ: "string", desc: "Region kind.", enum: slides.RegionKinds},
-		"size_pct": {typ: "number", desc: "This region's share (15–85) along the arrangement's axis; for main_* stacks, of its side."},
+		"size_pct": {typ: "number", desc: "This region's share (15–85) along the arrangement's axis; for main_* stacks, of its side. Unset shares split by kind, and a stacked region's is raised to the height its kind reads in on the shortest shipped content area."},
 		"heading":  strField("Optional bold label above the region, ≤60 chars."),
 		"source":   strField("Source of this region's figures; joins the slide's source line."),
 	}

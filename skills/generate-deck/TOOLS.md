@@ -71,6 +71,7 @@ signature or schema registry.
   `compose:pull-quote+stylish-panels`,
   `compose:chart:line+diagram:timeline+stat-hero`) resolve in `candidates`;
   a malformed one returns category `compose`, score 0 and the reason.
+  Recipe patterns carry no size overrides: each sizes to its segment.
   A `placeholder_layout` candidate named `table` is a native table (content
   type `table` / DeckSpec kind `table`, `totals_row`); financials, P&L,
   price lists and risk registers rank it first. Intents route by meaning:
