@@ -149,7 +149,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `agenda` | Numbered section list for agenda / table-of-contents slides: 28pt serif accent numerals, 14pt items, 0.5pt rules, no tiles; `highlight` bolds the current section and dims the rest to 50%; optional `subtitles` set a muted line under each item |
 | `agenda-with-images` | Numbered agenda rows (3–6) with title/subtitle and image/quote placeholder per row; the placeholder column is all-or-nothing |
 | `arch-stack` | Architecture stack diagram with tiers and optional side rails |
-| `before-after` | Two-column before/after with transition chevron |
+| `before-after` | Two-column before/after with transition chevron: each state a heading over a rule (neutral before, accent after) and open bullets; `overrides.style` `panels` for tiles, `overrides.emphasis` fills one heading |
 | `before-after-compact` | Compact before/after, height-capped at ~60% for brief content |
 | `bmc-canvas` | Formal 9-cell Business Model Canvas (Osterwalder) |
 | `capability-heatmap` | Capability / automation heatmap: 3–8 function columns with pointed headers (bold title + optional sublabel) over 1–6 activity cells each, filled by rating tier (2–4 levels, darkest = highest, text ink measured per fill) with a tier legend; shorter columns leave the bottom empty |
@@ -189,7 +189,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `state-shift-hub` | Central accent hub circle (short label) with 3–4 numbered today/future stage pairs on an arc around it: today items right-aligned on the left, future items left-aligned on the right, optional column headers |
 | `stat-hero` | Single oversized statistic with label and optional context |
 | `strategy-house` | Strategy-house framework: objective banner + 3-5 pillars + foundation row (optional roof badges) |
-| `stylish-panels` | Accent-banded panels with ribbon headers for pillars, capabilities, or workstreams |
+| `stylish-panels` | 3–5 titled columns for pillars, capabilities, or workstreams: heading, accent rule and open bullets; one `values[].highlight` column takes the only solid fill; `overrides.style` `ribbon` for ribbon headers over body tiles |
 | `swimlane` | Horizontal swimlane diagram with actors and steps |
 | `table-highlight` | Options × criteria evaluation matrix (2–6 × 2–6) scored with Harvey balls (0–4), RAG dots or short text, with a highlighted recommended row / decisive column and a legend (content-sized rows) |
 | `team-bios` | Team / 'Our People' grid of 1–8 members with a headshot (`members[].photo`) or initials placeholder + name + role + short bio (up to 4 per row); emits `BODY_TOO_LONG` when a bio exceeds the ~2-line budget |

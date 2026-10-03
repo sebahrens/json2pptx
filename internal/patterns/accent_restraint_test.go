@@ -241,9 +241,10 @@ func stylishItems() *StylishPanelsValues {
 // ribbon is the structural dark tone rather than a row of solid accents.
 func TestStylishPanels_VisibleBodiesAndRestrainedRibbons(t *testing.T) {
 	ctx := restraintCtx()
-	grid := expandFor(t, "stylish-panels", ctx, stylishItems(), nil)
+	ribbon := &StylishPanelsOverrides{Style: "ribbon"}
+	grid := expandFor(t, "stylish-panels", ctx, stylishItems(), ribbon)
 	if n := solidAccentCells(grid); n != 0 {
-		t.Errorf("default stylish-panels has %d solid accent cells, want 0", n)
+		t.Errorf("ribbon stylish-panels has %d solid accent cells, want 0", n)
 	}
 	for i, c := range grid.Rows[1].Cells {
 		if isPageColor(strings.Trim(string(c.Shape.Fill), `"`)) {

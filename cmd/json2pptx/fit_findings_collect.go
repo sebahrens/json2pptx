@@ -912,6 +912,9 @@ func measuredGridContentHeightEMU(grid *ShapeGridInput, resolved *shapegrid.Reso
 		return 0
 	}
 	densities := textcapacity.ForResolvedGrid(resolved)
+	// A compose segment expanded from an open-column pattern counts its
+	// content-sized slots, as SLIDE_UNDERUSED does (openColumnPatterns).
+	slotInk := grid != nil && openColumnPatterns[strings.TrimPrefix(grid.Source, patternSourcePrefix)]
 	var paintedArea float64
 	for i, cell := range resolved.Cells {
 		visible := clippedGridCellBounds(cell.Bounds, bounds)
@@ -934,6 +937,9 @@ func measuredGridContentHeightEMU(grid *ShapeGridInput, resolved *shapegrid.Reso
 		}
 		inkH := int64(math.Round(densities[i].RequiredHeightPt * 12700))
 		if cell.Kind != shapegrid.CellKindShape && cell.Kind != shapegrid.CellKindSubGrid || cell.ShapeSpec != nil && sparseVisibleFill(cell.ShapeSpec.Fill) {
+			inkH = visible.CY
+		}
+		if slotInk && cell.Kind == shapegrid.CellKindShape && cell.ShapeSpec != nil && len(cell.ShapeSpec.Text) > 0 {
 			inkH = visible.CY
 		}
 		if cell.IconBounds.CY > inkH {
@@ -1333,7 +1339,7 @@ func simpleContrastGridCell(cell *GridCellInput) bool {
 // unit — and every conforming timeline, down to three stops, was reported as
 // overcrowded (go-slide-creator-wrsb).
 var patternRecommendedMax = map[string]int{
-	"card-grid": 9,
+	"card-grid": 12, // the pattern arranges up to twelve cards (4 x 3)
 	"icon-row":  5,
 	"kpi-3up":   3,
 	"kpi-4up":   4,
@@ -1431,7 +1437,11 @@ func collectGridOccupancyFindings(input *PresentationInput) []patterns.FitFindin
 			}
 			// Its open style separates rows with rule rows. A rule is not a
 			// content cell either: count the cells that carry text.
-			if patternName == "comparison-2col" {
+			// The same holds for icon-row's open style (an icon row over a
+			// caption row: one item is its caption) and for a ragged
+			// card-grid (cards span two columns beside empty spacers).
+			switch patternName {
+			case "comparison-2col", "icon-row", "card-grid":
 				crowdSlots = min(crowdSlots, textGridCells(grid))
 			}
 			if f := generator.DetectPatternOvercrowded(generator.GridOccupancyInput{
@@ -1458,12 +1468,16 @@ func collectGridOccupancyFindings(input *PresentationInput) []patterns.FitFindin
 	return findings
 }
 
-// textGridCells counts the cells of grid whose shape carries text.
+// textGridCells counts the cells of grid that carry text: a text shape, or a
+// composite (text over a secondary chart).
 func textGridCells(grid *ShapeGridInput) int {
 	n := 0
 	for _, row := range grid.Rows {
 		for _, cell := range row.Cells {
-			if cell != nil && cell.Shape != nil && len(cell.Shape.Text) > 0 {
+			if cell == nil {
+				continue
+			}
+			if cell.Composite != nil || cell.Shape != nil && len(cell.Shape.Text) > 0 {
 				n++
 			}
 		}

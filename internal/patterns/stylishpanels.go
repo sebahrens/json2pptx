@@ -12,7 +12,8 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// stylish-panels pattern — accent-banded panels with ribbon headers
+// stylish-panels pattern — titled columns: a heading over an accent rule and
+// an open bullet list (ribbon headers over body tiles as a style)
 // ---------------------------------------------------------------------------
 
 func init() {
@@ -23,7 +24,7 @@ type stylishPanels struct{}
 
 func (sp *stylishPanels) Name() string { return "stylish-panels" }
 func (sp *stylishPanels) Description() string {
-	return "Accent-banded panels with ribbon headers for pillars, capabilities, or workstreams"
+	return "3-5 titled columns for pillars, capabilities, or workstreams: a heading over an accent rule and an open bullet list, one column optionally emphasised"
 }
 func (sp *stylishPanels) UseWhen() string {
 	return "3-5 titled content blocks with bullet lists, each representing a pillar, capability, or workstream; prefer card-grid when items need only header+body without bullets, icon-row when items are icon+caption pairs"
@@ -41,7 +42,7 @@ func (sp *stylishPanels) Taxonomy() PatternTaxonomy {
 		ComposesWith:  []string{"pull-quote", "kpi-3up", "icon-row", "arch-stack"},
 		RoleOnSlide:   []string{"pillars"},
 		DensityClass:  "medium",
-		AccentWeight:  "strong",
+		AccentWeight:  "normal",
 	}
 }
 func (sp *stylishPanels) SupportsCallout() bool        { return true }
@@ -71,6 +72,9 @@ func (sp *stylishPanels) ExemplarValues() any {
 type StylishPanelsItem struct {
 	Title string   `json:"title"`
 	Body  []string `json:"body"`
+	// Highlight emphasises this column (at most one): its header takes the
+	// solid accent, the only solid fill on the slide.
+	Highlight bool `json:"highlight,omitempty"`
 }
 
 // UnmarshalJSON supports object {title, body} form.
@@ -98,7 +102,24 @@ type StylishPanelsOverrides struct {
 	// a 60% neutral when dk2 is black) or "accent" (accent-filled ribbons;
 	// cell_accent_mode applies).
 	Ribbon string `json:"ribbon,omitempty"`
+	// Style is "open" (default: a heading over an accent rule and an open
+	// bullet list per column) or "ribbon" (a filled ribbon header over a
+	// tinted body tile per column, the look before go-slide-creator-xvpu2).
+	// Setting ribbon selects the ribbon style.
+	Style string `json:"style,omitempty"`
 }
+
+// stylishPanelsStyles are the accepted overrides.style values.
+var stylishPanelsStyles = []string{"open", "ribbon"}
+
+// stylishPanelsOpen reports whether the panels render in the open style: the
+// default, unless the author asked for ribbons by style or by ribbon colour.
+func stylishPanelsOpen(ovr *StylishPanelsOverrides) bool {
+	return ovr.Style != "ribbon" && (ovr.Style == "open" || ovr.Ribbon == "")
+}
+
+// stylishPanelsRulePt is the accent rule under an open column's heading.
+const stylishPanelsRulePt = 1.5
 
 // stylishPanelsRibbons are the accepted overrides.ribbon values.
 var stylishPanelsRibbons = []string{"dark", "accent"}
@@ -221,11 +242,12 @@ func stylishPanelsBudgetWarnings(v *StylishPanelsValues) []string {
 func (sp *stylishPanels) Schema() *Schema {
 	itemSchema := ObjectSchema(
 		map[string]*Schema{
-			"title": StringSchema(80).WithDescription("Panel header title; longer ribbon titles leave less height for every panel's bullets"),
-			"body":  ArraySchema(StringSchema(200), 1, 8).WithDescription("Bullets share one panel body; readable characters per bullet on average at short titles, by 1-8 bullets: 3 panels 200/200/161/121/81/75/75/40, 4 panels 200/200/115/83/53/52/52/38, 5 panels 200/141/81/61/41/41/41/38. Long titles reduce dense limits; fit warnings name the measured target. A single bullet beside short neighbors may use 121 characters with 3 panels, 83 with 4, 38 with 5"),
+			"title":     StringSchema(80).WithDescription("Panel header title; longer titles leave less height for every panel's bullets"),
+			"highlight": BooleanSchema().WithDescription("Emphasise this column (at most one): its header takes the solid accent, the only solid fill"),
+			"body":      ArraySchema(StringSchema(200), 1, 8).WithDescription("Bullets share one panel body; readable characters per bullet on average at short titles, by 1-8 bullets: 3 panels 200/200/161/121/81/75/75/40, 4 panels 200/200/115/83/53/52/52/38, 5 panels 200/141/81/61/41/41/41/38. Long titles reduce dense limits; fit warnings name the measured target. A single bullet beside short neighbors may use 121 characters with 3 panels, 83 with 4, 38 with 5"),
 		},
 		[]string{"title", "body"},
-	).WithAdditionalProperties(false).WithDescription("Panel with titled header and bulleted body")
+	).WithAdditionalProperties(false).WithDescription("Column with a title and a bulleted body")
 
 	return ObjectSchema(
 		map[string]*Schema{
@@ -237,7 +259,8 @@ func (sp *stylishPanels) Schema() *Schema {
 					"header_size":      NumberSchema(6, 120).WithDescription("Font size for panel headers in points"),
 					"body_size":        NumberSchema(6, 120).WithDescription("Font size for body bullet text in points"),
 					"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation for ribbon=accent: uniform (default), alternate, progressive").WithDefault("uniform"),
-					"ribbon":           EnumSchema(stylishPanelsRibbons...).WithDescription("Ribbon header fill: dark (default: the template's structural dark tone, dk2 or a 60% neutral when dk2 is black, so three to five panels are not a wall of accent) or accent (accent-filled ribbons; cell_accent_mode applies)").WithDefault("dark"),
+					"style":            EnumSchema(stylishPanelsStyles...).WithDescription("open (default: a heading over an accent rule and an open bullet list per column) or ribbon (a filled ribbon header over a tinted body tile per column)").WithDefault("open"),
+					"ribbon":           EnumSchema(stylishPanelsRibbons...).WithDescription("Ribbon style header fill (setting it selects style ribbon): dark (the template's structural dark tone) or accent (accent-filled ribbons; cell_accent_mode applies)"),
 				},
 				nil,
 			).WithAdditionalProperties(false),
@@ -246,7 +269,7 @@ func (sp *stylishPanels) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Accent-banded panels with ribbon headers for pillars, capabilities, or workstreams")
+	}).WithDescription("Titled columns for pillars, capabilities, or workstreams: heading, accent rule and open bullets")
 }
 
 func (sp *stylishPanels) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -267,6 +290,9 @@ func (sp *stylishPanels) Validate(values, overrides any, cellOverrides map[int]a
 			if ovr.Ribbon != "" && !slices.Contains(stylishPanelsRibbons, ovr.Ribbon) {
 				errs = append(errs, errInvalidEnum(name, "overrides.ribbon", ovr.Ribbon, stylishPanelsRibbons))
 			}
+			if ovr.Style != "" && !slices.Contains(stylishPanelsStyles, ovr.Style) {
+				errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, stylishPanelsStyles))
+			}
 		}
 	}
 
@@ -277,7 +303,14 @@ func (sp *stylishPanels) Validate(values, overrides any, cellOverrides map[int]a
 		errs = append(errs, errMaxItems(name, "values", 5, len(*items), ""))
 	}
 
+	highlighted := 0
 	for i, item := range *items {
+		if item.Highlight {
+			if highlighted++; highlighted == 2 {
+				errs = append(errs, newValidationError(name, fmt.Sprintf("values[%d].highlight", i), ErrCodeInvalidShape,
+					"stylish-panels: at most one column may set highlight; an emphasis shared by several columns is no emphasis", nil))
+			}
+		}
 		titlePath := fmt.Sprintf("values[%d].title", i)
 		if item.Title == "" {
 			errs = append(errs, errRequired(name, titlePath))
@@ -338,11 +371,14 @@ func (sp *stylishPanels) Expand(ctx ExpandContext, values, overrides any, cellOv
 	// Row 1: ribbon header cells (short, coloured band). The default ribbon
 	// is the structural dark tone: three to five solid accent ribbons were a
 	// wall of colour (go-slide-creator-fl11f).
+	open := stylishPanelsOpen(ovr)
 	headerCells := make([]*jsonschema.GridCellInput, n)
+	ruleCells := make([]*jsonschema.GridCellInput, n)
 	for i, item := range *items {
+		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 		ribbon := structuralDarkTone(ctx)
-		if ovr.Ribbon == "accent" {
-			ribbon = fillTone{Color: ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)}
+		if ovr.Ribbon == "accent" || item.Highlight {
+			ribbon = fillTone{Color: accent}
 		}
 		headerCells[i] = &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
@@ -352,12 +388,29 @@ func (sp *stylishPanels) Expand(ctx ExpandContext, values, overrides any, cellOv
 				Text:     buildStylishHeaderText(item.Title, headerSize),
 			},
 		}
+		if !open {
+			continue
+		}
+		// Open: the heading stands on the slide over an accent rule. Only the
+		// highlighted column's heading is filled — the one solid fill.
+		ruleCells[i] = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: accentFillJSON(accent), Line: noLine}}
+		if item.Highlight {
+			tone, ink := accentFillAndInk(ctx, fillTone{Color: accent}, 4.5)
+			headerCells[i].Shape.Fill = tone.fillJSON()
+			headerCells[i].Shape.Text = buildStylishHeadingText(item.Title, headerSize, ink, "ctr")
+			continue
+		}
+		headerCells[i].Shape.Fill = json.RawMessage(`"none"`)
+		headerCells[i].Shape.Text = buildStylishHeadingText(item.Title, headerSize, "dk1", "b")
 	}
 
 	// Row 2: body cells (neutral tint, with bullet text). An lt1 body
 	// vanished on white-paper templates, leaving bullets hanging under the
 	// ribbons (go-slide-creator-95tp7).
 	bodyFill := surfaceFillJSON(ctx, "subtle", NeutralTint4)
+	if open {
+		bodyFill = json.RawMessage(`"none"`)
+	}
 	bodyCells := make([]*jsonschema.GridCellInput, n)
 	for i, item := range *items {
 		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
@@ -418,6 +471,19 @@ func (sp *stylishPanels) Expand(ctx ExpandContext, values, overrides any, cellOv
 			bodyRow,
 		},
 	}
+	if open {
+		// The rule sits in the gap the ribbon and its tile had between them:
+		// two half gaps and the rule are as tall as that gap, so the columns
+		// keep the height (and the bullet budgets) of the ribbon style.
+		gap := ctx.Gap(stylishPanelsGapPt)
+		grid.Gap, grid.ColGap = 0, gap
+		grid.RowGap = math.Max((gap-stylishPanelsRulePt)/2, 0.01)
+		grid.Rows = []jsonschema.GridRowInput{
+			grid.Rows[0],
+			{Cells: ruleCells, MinHeight: stylishPanelsRulePt, MaxHeight: stylishPanelsRulePt},
+			bodyRow,
+		}
+	}
 
 	return grid, nil
 }
@@ -475,6 +541,17 @@ func stylishPanelsFit(ctx ExpandContext, items []StylishPanelsItem, ovr *Stylish
 	// Nothing fits: keep the first (default or authored) sizes, so an
 	// overflowing payload is not also set smaller before it is shrunk.
 	return measure(steps[0])
+}
+
+// buildStylishHeadingText is an open column's heading: bold, left-aligned, in
+// ink — bottom-anchored on its rule, or centred in the highlighted column's
+// filled band. It is the ribbon text's size and weight, so both measure alike.
+func buildStylishHeadingText(title string, headerSize float64, ink, vAlign string) json.RawMessage {
+	return insetText{
+		Paragraphs:    []chartInsightsParagraph{{Content: title, Size: headerSize, Bold: true, Color: ink, Align: "l"}},
+		Align:         "l",
+		VerticalAlign: vAlign,
+	}.json()
 }
 
 // buildStylishHeaderText creates bold centered white text for the accent header band.

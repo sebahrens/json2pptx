@@ -1,5 +1,24 @@
 # Schema Changelog
 
+- **2026-10-03 — stylish-panels and before-after are open columns (`go-slide-creator-xvpu2`).**
+  - `stylish-panels` renders each column as a heading over an accent rule
+    and an open bullet list. New `overrides.style`: `open` (default) /
+    `ribbon` (the previous ribbon header over a body tile); setting
+    `overrides.ribbon` alone still selects ribbons. New
+    `values[].highlight` (boolean, at most one): that heading takes the
+    solid accent.
+  - `before-after` and `before-after-compact` render each state as a heading
+    over a rule (neutral for before, accent for after) and an open bullet
+    list; the chevron is kept. New `overrides.style`: `open` (default) /
+    `panels`; new `overrides.emphasis`: `before` / `after` fills that heading
+    with the solid accent.
+  - Bullet budgets are unchanged (the open blocks are exactly as tall as the
+    tiled ones).
+  - Fit findings: `SLIDE_UNDERUSED` / `sparse_layout` count the unfilled text
+    cells of the open-by-default patterns by their content-sized slot;
+    `pattern_overcrowded` counts text cells for `comparison-2col`,
+    `icon-row` and `card-grid`, whose recommended maximum is now 12.
+
 - **2026-10-03 — comparison-2col rows are open (`go-slide-creator-zawui`).**
   - `comparison-2col` renders headers as bold headings over an accent rule
     and body rows as unfilled text separated by hairline rules, aligned

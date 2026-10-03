@@ -135,7 +135,7 @@ func collectGeometryFindings(input *PresentationInput, layouts []types.LayoutMet
 		if result == nil {
 			continue
 		}
-		acc := &geomAccumulator{m: m, slideArea: slideWidth * slideHeight, slideWidth: slideWidth, slideHeight: slideHeight}
+		acc := &geomAccumulator{m: m, slideArea: slideWidth * slideHeight, slideWidth: slideWidth, slideHeight: slideHeight, slotInk: openColumnPatterns[patternName]}
 		acc.walk(grid, result, basePath, 0)
 		explicitPatternBounds := slide.Pattern != nil && slide.Pattern.Bounds != nil
 		findings = append(findings, acc.findings(patternName, explicitPatternBounds)...)
@@ -172,17 +172,30 @@ type geomAccumulator struct {
 	slideArea               int64
 	slideWidth, slideHeight int64
 	ink                     []pptx.RectEmu
-	exceeds                 []textExceedsHit
-	sparse                  []sparseFillHit
+	// slotInk counts an unfilled text cell (and a standalone icon) by its
+	// content-sized grid slot instead of its glyph block (openColumnPatterns).
+	slotInk bool
+	exceeds []textExceedsHit
+	sparse  []sparseFillHit
 }
 
 func (a *geomAccumulator) walk(input *ShapeGridInput, result *shapegrid.ResolveResult, basePath string, depth int) {
+	// A grid a named pattern expanded says so (compose segments are stamped
+	// per segment): its own pattern decides how its cells count, and the
+	// enclosing grid's rule is restored once it has been walked.
+	if input != nil && strings.HasPrefix(input.Source, patternSourcePrefix) {
+		outer := a.slotInk
+		a.slotInk = openColumnPatterns[strings.TrimPrefix(input.Source, patternSourcePrefix)]
+		defer func() { a.slotInk = outer }()
+	}
 	for _, cell := range result.Cells {
 		cellPath := fmt.Sprintf("%s/rows/%d/cells/%d", basePath, cell.RowIdx, cell.ColIdx)
 		switch cell.Kind {
 		case shapegrid.CellKindShape:
 			a.shapeCell(cell, cellPath)
-		case shapegrid.CellKindTable, shapegrid.CellKindIcon, shapegrid.CellKindImage, shapegrid.CellKindDiagram, shapegrid.CellKindComposite:
+		case shapegrid.CellKindIcon:
+			a.ink = append(a.ink, a.slotOr(cell, cell.Bounds))
+		case shapegrid.CellKindTable, shapegrid.CellKindImage, shapegrid.CellKindDiagram, shapegrid.CellKindComposite:
 			a.ink = append(a.ink, cell.Bounds)
 		case shapegrid.CellKindSubGrid:
 			a.subGrid(input, cell, cellPath, depth)
@@ -267,7 +280,7 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 		blockW, blockH = blockH, blockW
 	}
 	if !filled {
-		a.ink = append(a.ink, placeTextBlock(cell.Bounds, txt, blockW, blockH))
+		a.ink = append(a.ink, a.slotOr(cell, placeTextBlock(cell.Bounds, txt, blockW, blockH)))
 		return
 	}
 	shapeArea := float64(cell.Bounds.CX) * float64(cell.Bounds.CY)
@@ -277,6 +290,35 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 	if frac := blockW * blockH / (shapeArea / (emuPerPt * emuPerPt)); frac < sparseFillMaxTextFrac {
 		a.sparse = append(a.sparse, sparseFillHit{path: cellPath + "/shape", textFrac: frac, areaFrac: shapeArea / float64(a.slideArea)})
 	}
+}
+
+// openColumnPatterns are the patterns whose default look is open: headings,
+// rules and text standing on the slide in content-sized columns and rows, with
+// no tile behind them (layout nativeness, 2026-10-03). Their visual unit is
+// the column or row slot, exactly the rectangle the tile they replaced
+// filled, so an unfilled text cell or a standalone icon counts as its slot:
+// removing a container must not turn the same content into an "underused"
+// slide. The slots are sized to their content by the pattern, so a sparse
+// payload is still a small block and still reports.
+var openColumnPatterns = map[string]bool{
+	"icon-row":             true,
+	"quote-cluster":        true,
+	"comparison-2col":      true,
+	"stylish-panels":       true,
+	"before-after":         true,
+	"before-after-compact": true,
+	"matrix-2x2":           true,
+	"framework-grid":       true,
+	"dual-org-ladder":      true,
+}
+
+// slotOr returns the cell's grid slot when the slide's pattern counts ink by
+// slot, else rect.
+func (a *geomAccumulator) slotOr(cell shapegrid.ResolvedCell, rect pptx.RectEmu) pptx.RectEmu {
+	if a.slotInk && cell.CellBounds.CX > 0 && cell.CellBounds.CY > 0 {
+		return cell.CellBounds
+	}
+	return rect
 }
 
 // findings converts the accumulated hits into (at most) one

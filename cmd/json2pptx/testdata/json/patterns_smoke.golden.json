@@ -285,9 +285,10 @@
   },
   {
     "pattern_name": "before-after-compact",
-    "row_count": 2,
+    "row_count": 3,
     "cell_counts": [
       3,
+      2,
       2
     ]
   },
@@ -348,8 +349,9 @@
   },
   {
     "pattern_name": "stylish-panels",
-    "row_count": 2,
+    "row_count": 3,
     "cell_counts": [
+      3,
       3,
       3
     ]
