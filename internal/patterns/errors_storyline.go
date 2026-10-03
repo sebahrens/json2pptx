@@ -15,7 +15,14 @@ import "errors"
 //   - SlideTextDense: a slide's placeholder body text is a wall — more than six
 //     bullets, more words than the viewing mode's budget, or a bullet that wraps
 //     past two lines at its rendered size.
+//
+// QualityGate is not a fit finding: the DeckSpec surfaces report it when the
+// quality gate fails on a criterion no single finding accounts for (the score
+// floor, the action-title share, the composition floor, the problem-slide
+// share), so a failed gate always has a finding to name
+// (go-slide-creator-x9rhq).
 const (
+	ErrCodeQualityGate             = "QUALITY_GATE"
 	ErrCodeNoExecutiveSummary      = "NO_EXECUTIVE_SUMMARY"
 	ErrCodeClosingWithoutNextSteps = "CLOSING_WITHOUT_NEXT_STEPS"
 	ErrCodeSlideTextDense          = "SLIDE_TEXT_DENSE"
@@ -36,6 +43,18 @@ func init() {
 	contentCodes[ErrCodeClosingWithoutNextSteps] = true
 	contentCodes[ErrCodeSlideTextDense] = true
 
+	findingMetaRegistry[ErrCodeQualityGate] = FindingMeta{
+		Code:        ErrCodeQualityGate,
+		Summary:     "The deck fails a quality-gate criterion that no single finding accounts for.",
+		Severity:    "refuse",
+		WhenEmitted: "validate_deck_spec, render_deck_spec and `semantic validate` / `semantic render` report it at `slides` when the quality gate fails on an aggregate criterion: the structural score is under min_score, too many slides lack an action title (max_topic_title_pct), the composition score is under min_composition_score, or too many slides carry findings (max_problem_slides_pct). The message carries the gate's own sentence and names the advisories counted. Always severity error and blocking; every other gate failure is reported on the finding that caused it.",
+		RemediationSteps: []string{
+			"Read the message: it states the criterion and the measured value against its threshold.",
+			"Resolve the advisories it names (rewrite topic titles as action titles, fix the review findings on the slides listed) until the criterion is met; re-validate.",
+			"For a deck whose brief rules out action titles, waive TITLE_NOT_ACTION in meta.waivers with a reason.",
+		},
+		RelatedCodes: []string{ErrCodeTitleNotAction, ErrCodeNoExecutiveSummary, ErrCodeClosingWithoutNextSteps},
+	}
 	findingMetaRegistry[ErrCodeNoExecutiveSummary] = FindingMeta{
 		Code:        ErrCodeNoExecutiveSummary,
 		Summary:     "A deck of six or more slides has no executive summary up front.",

@@ -9,6 +9,8 @@ import (
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/visualqa/deterministic"
 )
 
 // ---------------------------------------------------------------------------
@@ -26,7 +28,7 @@ import (
 
 func mcpDescribeFindingTool() mcp.Tool {
 	return mcp.NewTool("describe_finding",
-		mcp.WithDescription(`Look up an agent-facing description for a single finding code. Returns {code, summary, severity, when_emitted, remediation_steps[], example_before, example_after, related_codes[]}. Use after any tool returns a finding/error you do not recognize — resolves the meaning in one extra tool call without scanning docs/FIT_FINDINGS.md or SKILL.md.
+		mcp.WithDescription(`Look up an agent-facing description for a single finding code. Returns {code, summary, severity, blocks, blocks_when, when_emitted, remediation_steps[], example_before, example_after, related_codes[]}; blocks (always | sometimes | never) says whether it is a blocking error. Use after any tool returns a finding/error you do not recognize — resolves the meaning in one extra tool call without scanning docs/FIT_FINDINGS.md or SKILL.md.
 
 Covers every code emitted across the pipeline: the fit/pattern codes, chart.* and string-literal codes (contrast_autofixed, findings_truncated), and every diagnostics taxonomy code (MISSING_PARAMETER, TEMPLATE_NOT_FOUND, RENDER_FAILED, INTERNAL, …). Accepts either the bare legacy code or the dotted namespaced code from a finding envelope (INPUT.MISSING_PARAMETER, FIT.placeholder_overflow) — the namespace prefix is stripped before lookup, so a finding's describe_command runs verbatim. Unknown codes return a structured error carrying fix.params.did_you_mean (the closest known code) — or fix.params.allowed with the full vocabulary when nothing is close.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaDescribeFinding)),
@@ -35,6 +37,17 @@ Covers every code emitted across the pipeline: the fit/pattern codes, chart.* an
 			mcp.Description("The finding code to describe (e.g., \"placeholder_overflow\", \"accent_overload\", \"chart.zero_sum_pie\")."),
 		),
 	)
+}
+
+// describeFindingResponse is a finding's catalogue entry plus its blocking
+// profile on the DeckSpec tools.
+type describeFindingResponse struct {
+	*patterns.FindingMeta
+	// Blocks is "always", "sometimes" or "never": whether validate_deck_spec /
+	// render_deck_spec report this code with severity error and blocking:true.
+	Blocks string `json:"blocks"`
+	// BlocksWhen states the condition.
+	BlocksWhen string `json:"blocks_when"`
 }
 
 func handleDescribeFinding(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -70,7 +83,11 @@ func handleDescribeFinding(ctx context.Context, request mcp.CallToolRequest) (*m
 		), nil
 	}
 
-	mcpResult, err := api.MCPSuccessResult(ctx, meta)
+	// One severity model across the DeckSpec tools: say whether this code
+	// blocks, in the words the gate uses (go-slide-creator-x9rhq). "severity"
+	// stays the action rank raw fit_findings carry.
+	blocks, when := deterministic.BlockingProfile(meta.Code, meta.Severity)
+	mcpResult, err := api.MCPSuccessResult(ctx, describeFindingResponse{FindingMeta: meta, Blocks: blocks, BlocksWhen: when})
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal describe_finding response: %v", err)), nil
 	}

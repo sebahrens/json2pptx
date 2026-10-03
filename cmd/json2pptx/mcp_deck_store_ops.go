@@ -36,6 +36,12 @@ type deckCommit struct {
 	// rather than the stored one: what a render changed is what the agent has
 	// not looked at yet.
 	AgainstRender bool
+	// RenderIdentity is the template the render used when that is not the
+	// template the deck is bound to (a one-off template argument on a bound
+	// deck_id). The change list and the last-render baseline are then
+	// measured on it, so the next render on the bound template reports the
+	// slides as restyled rather than unchanged.
+	RenderIdentity string
 }
 
 // deckOutcome is what the store did, and what the call changed.
@@ -87,7 +93,7 @@ func (mc *mcpConfig) commitDeck(c deckCommit) deckOutcome {
 		// A spec seen for the first time has no earlier revision to differ from.
 		baseline = out.State
 	}
-	out.Changes = classifySlideChanges(baseline, out.State, c.Src.MovedIDs)
+	out.Changes = classifySlideChanges(baseline, out.State.renderedOn(c.RenderIdentity), c.Src.MovedIDs)
 	out.Changed = visualSlideIndices(out.Changes)
 	return out
 }
@@ -103,6 +109,7 @@ func (mc *mcpConfig) storeCommit(c deckCommit) (string, bool) {
 		h.Template = ""
 	}
 	h.storeTool, h.pendingRenderPptx, h.storeMoved = c.Tool, c.RenderedPptx, c.Src.MovedIDs
+	h.pendingRenderIdentity = c.RenderIdentity
 	if c.Src.Restore > 0 {
 		h.storeNote = fmt.Sprintf("restored revision %d", c.Src.Restore)
 	}

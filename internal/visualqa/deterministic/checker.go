@@ -329,6 +329,92 @@ func EvaluateQualityGate(ds *DeckScore, findings []patterns.FitFinding, criteria
 	return gate
 }
 
+// BlocksGate reports whether one finding fails the quality gate by itself
+// under criteria: a refuse or shrink_or_split action, a substantive review
+// defect, a chart or matrix without its takeaway, a storyline gap, or accent
+// overload. It is the per-finding half of EvaluateQualityGate, exported so a
+// surface can give exactly these findings the blocking severity instead of
+// leaving an "info" to stop the gate (go-slide-creator-x9rhq). The aggregate
+// criteria (score floor, action-title share, composition floor, problem-slide
+// share) have no single finding behind them and stay with the gate's reasons.
+func BlocksGate(f patterns.FitFinding, criteria QualityGateCriteria) bool {
+	switch f.Action {
+	case "refuse":
+		return criteria.MaxP0Findings <= 0
+	case "shrink_or_split":
+		return criteria.MaxP1Findings <= 0
+	}
+	if IsSubstantiveReview(f) {
+		return true
+	}
+	switch f.Code {
+	case patterns.ErrCodeTakeawayMissing:
+		return criteria.RequireTakeawayOnCharts
+	case patterns.ErrCodeAccentOverload:
+		return !criteria.AllowAccentOverload
+	case patterns.ErrCodeNoExecutiveSummary, patterns.ErrCodeClosingWithoutNextSteps:
+		return criteria.RequireStoryline
+	}
+	return false
+}
+
+// Blocking profiles: whether a finding code blocks the gate whenever it is
+// emitted, only under a stated condition, or never.
+const (
+	BlocksAlways    = "always"
+	BlocksSometimes = "sometimes"
+	BlocksNever     = "never"
+)
+
+// BlockingProfile describes, for one finding code and the action it declares
+// by default, whether the default quality gate blocks on it and when. It is
+// the static description of BlocksGate that describe_finding reports, so a
+// code's documentation and the severity an agent sees on a finding are derived
+// from the same rule (go-slide-creator-x9rhq).
+func BlockingProfile(code, declaredAction string) (blocks, when string) {
+	switch declaredAction {
+	case "refuse", "shrink_or_split":
+		return BlocksAlways, "Always blocks: reported with severity error and blocking:true."
+	}
+	switch code {
+	case patterns.ErrCodeNoExecutiveSummary:
+		return BlocksSometimes, "Blocks (severity error) unless waived: meta.waivers names it with a reason, or meta.archetype is one that does not call for an executive summary (sales_pitch, project_roadmap, market_analysis). Waived, it is an info."
+	case patterns.ErrCodeClosingWithoutNextSteps, patterns.ErrCodeTakeawayMissing:
+		return BlocksSometimes, "Blocks (severity error) unless meta.waivers names it with a reason; waived, it is an info."
+	case patterns.ErrCodeAccentOverload:
+		return BlocksAlways, "Always blocks: reported with severity error and blocking:true."
+	case patterns.ErrCodeTextBelowReadableMin:
+		return BlocksSometimes, "Blocks (severity error) when the size was measured on authored or generated text, or generation refused it; a predicted shrink is an info."
+	case patterns.ErrCodeTitleNotAction:
+		return BlocksSometimes, "An info on its own slide. When topic titles exceed max_topic_title_pct of the deck the gate fails and one QUALITY_GATE error reports it, unless meta.waivers names TITLE_NOT_ACTION."
+	}
+	if substantiveReviewWeight[code] > 0 {
+		return BlocksSometimes, "Blocks (severity error) when emitted with action review, shrink_or_split or refuse; an instance emitted as info is an advisory."
+	}
+	return BlocksNever, "Advisory: never blocks by itself. Review-level advisories cost score points; a deck whose score or share of affected slides fails the gate reports one QUALITY_GATE error naming them."
+}
+
+// AggregateGateReasons returns the gate reasons that no single finding
+// accounts for: the score floor, the action-title share, the composition floor
+// and the problem-slide share. Every other reason EvaluateQualityGate gives is
+// the sum of findings BlocksGate reports.
+func AggregateGateReasons(gate *QualityGate) []string {
+	if gate == nil {
+		return nil
+	}
+	var out []string
+	for _, r := range gate.Reasons {
+		switch {
+		case strings.HasPrefix(r, "score "),
+			strings.HasPrefix(r, "composition "),
+			strings.Contains(r, "lack an action title"),
+			strings.Contains(r, "slides carry findings"):
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
 // compositionGateReason applies the deck-rhythm floor. Only when the score was
 // computed over the whole deck — ds.Composition is nil on the slide_indices
 // path, where a rhythm verdict would be meaningless.

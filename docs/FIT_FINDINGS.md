@@ -177,6 +177,56 @@ Actions indicate severity and recommended remediation. They are ranked from most
 
 The `ActionRank(action)` function returns these numeric ranks. Unknown actions return -1.
 
+### Severity and blocking on the DeckSpec surfaces
+
+`validate_deck_spec`, `render_deck_spec`, `json2pptx semantic validate` and
+`json2pptx semantic render` use one severity model (go-slide-creator-x9rhq):
+
+- A finding **blocks** exactly when its `severity` is `error`, and every
+  finding states it: `blocking: true` / `false` on a render diagnostic and on
+  an envelope finding. Nothing reported as `warning` or `info` blocks.
+- A fit finding is an `error` exactly when the default quality gate blocks on
+  it alone (`deterministic.BlocksGate`): action `refuse` or `shrink_or_split`;
+  a substantive `review` defect (`BODY_TOO_LONG`, `SLIDE_NEARLY_EMPTY`,
+  `LOW_CONTRAST_HIGHLIGHT`, and `TEXT_BELOW_READABLE_MIN` measured on authored
+  or generated text); `takeaway_missing`; `accent_overload`;
+  `NO_EXECUTIVE_SUMMARY` and `CLOSING_WITHOUT_NEXT_STEPS`. Every other fit
+  finding is an `info`. The raw surfaces (`validate_input`,
+  `generate_presentation`, `score_deck`) keep the action-derived severity.
+- A gate criterion that no single finding accounts for — the score floor, the
+  action-title share, the composition floor, the problem-slide share — is
+  reported as one [`QUALITY_GATE`](#quality_gate) error at `slides`.
+- `deterministic_blocking_reasons` names each blocking finding as
+  `CODE at path` (`CODE at a, b, c (+N more)` when one code blocks in several
+  places); `deterministic_ready` is true exactly when there is none.
+  `semantic render` exits 0 exactly when the deck was written and none
+  remains, and its printed `ok` agrees with the exit status;
+  `semantic validate` / `validate_deck_spec` report `ok: false` for the same
+  specs.
+- `describe_finding` adds `blocks` (`always` / `sometimes` / `never`) and
+  `blocks_when` to each code, derived from the same rule. Its `severity` field
+  stays the action rank.
+
+Both validate tools obtain their findings by running the render into a scratch
+directory, so for one spec revision and template they report the render's own
+diagnostics: same code, path and severity (go-slide-creator-3rn3s).
+
+**Waivers.** A storyline finding (`NO_EXECUTIVE_SUMMARY`,
+`CLOSING_WITHOUT_NEXT_STEPS`, `TITLE_NOT_ACTION`, `takeaway_missing`) named in
+the DeckSpec's `meta.waivers` with a reason becomes an `info` with
+`waived: <reason>` and no longer counts toward the score or the gate. A
+registered archetype that does not expect a synthesis slide (`sales_pitch`,
+`project_roadmap`, `market_analysis`) waives `NO_EXECUTIVE_SUMMARY` by itself.
+The result's `waivers[]` records each one as `{code, reason, source, findings}`
+(go-slide-creator-oh3qr).
+
+**Root causes.** When a slide's pattern, compose envelope or shape grid
+carries a `BODY_TOO_LONG` capacity finding and its fields are refused as
+`TEXT_BELOW_READABLE_MIN`, the capacity finding is the one blocking finding
+for that slide: it is reported at the slide's DeckSpec path with severity
+`error`, and the per-field refusals are listed under it as `symptoms[]`
+(`evidence.symptoms` in the envelope) instead of as separate errors.
+
 ### Sort invariant
 
 Every `fit_report` / `findings` array crosses serialization boundaries in the canonical order
@@ -1611,6 +1661,29 @@ A slide shows data but cites no source (go-slide-creator-cuszt). Data means a `c
 }
 ```
 
+### `QUALITY_GATE`
+
+**Severity:** `error` (always blocking)
+**Emitted at:** `validate_deck_spec`, `render_deck_spec`, `semantic validate`, `semantic render`; reported on `slides`
+
+Not a fit finding. The DeckSpec surfaces report it when the quality gate fails
+on a criterion no single finding accounts for: the structural score is under
+`min_score`, more than `max_topic_title_pct` of the slides lack an action
+title, the composition score is under `min_composition_score`, or more than
+`max_problem_slides_pct` of the slides carry findings. The message is the
+gate's own sentence followed by the advisories counted; every other gate
+failure is carried by the finding that caused it (go-slide-creator-x9rhq).
+
+```json
+{
+  "code": "QUALITY_GATE",
+  "severity": "error",
+  "blocking": true,
+  "semantic_path": "slides",
+  "message": "quality gate: 2 of 5 slides lack an action title (40%, TITLE_NOT_ACTION) — exceeds max_topic_title_pct 25 — advisories counted: TITLE_NOT_ACTION at slides[1].title, TITLE_NOT_ACTION at slides[3].title"
+}
+```
+
 ### `NO_EXECUTIVE_SUMMARY`
 
 **Action:** `review`
@@ -1618,7 +1691,7 @@ A slide shows data but cites no source (go-slide-creator-cuszt). Data means a `c
 **Fix kind:** `adopt_pattern` (advisory; `params.pattern: "exec-summary"`, `params.kind: "executive_summary"`)
 **Emitted at:** preflight (every surface that calls the shared fit collector), reported on `/slides/1`
 
-A deck of six or more slides has no executive summary (go-slide-creator-kuurd): no `exec-summary` or `scqa-summary` pattern (DeckSpec `executive_summary` compiles to one, also as a `compose` segment) and no slide whose title contains "executive summary", "summary", "key takeaways", "at a glance" or "bottom line". A consulting deck opens with the whole answer. Fails `score_deck`'s gate criterion `require_storyline` (reason `deck storyline incomplete (require_storyline: NO_EXECUTIVE_SUMMARY)`); exempt from the problem-slide share.
+A deck of six or more slides has no executive summary (go-slide-creator-kuurd): no `exec-summary` or `scqa-summary` pattern (DeckSpec `executive_summary` compiles to one, also as a `compose` segment) and no slide whose title contains "executive summary", "summary", "key takeaways", "at a glance" or "bottom line". A consulting deck opens with the whole answer. Fails `score_deck`'s gate criterion `require_storyline` (reason `deck storyline incomplete (require_storyline: NO_EXECUTIVE_SUMMARY)`); exempt from the problem-slide share. On the DeckSpec surfaces it is a blocking `error` unless waived by `meta.waivers` or by a non-executive `meta.archetype` (`sales_pitch`, `project_roadmap`, `market_analysis`), in which case it is an `info` carrying `waived`.
 
 ```json
 {
@@ -1637,7 +1710,7 @@ A deck of six or more slides has no executive summary (go-slide-creator-kuurd): 
 **Fix kind:** `adopt_pattern` (advisory; `params.pattern: "next-steps"`, `params.kind: "next_steps"`)
 **Emitted at:** preflight, reported on the closing slide's title
 
-The last slide of a deck of three or more is a courtesy closer — titled "Thank you", "Thanks", "Questions", "Any questions?", "Q&A" or "Discussion" — and the deck never states its ask: no `next-steps` pattern slide (DeckSpec `next_steps`) and no slide title containing "next step", "decision", "we ask", "the ask", "approve", "call to action" or "action plan" (go-slide-creator-kuurd). Fails `score_deck`'s gate criterion `require_storyline`; exempt from the problem-slide share. End on the ask, or retitle the closer as the action ("Approve the pilot budget by 15 March to launch in Q3").
+The last slide of a deck of three or more is a courtesy closer — titled "Thank you", "Thanks", "Questions", "Any questions?", "Q&A" or "Discussion" — and the deck never states its ask: no `next-steps` pattern slide (DeckSpec `next_steps`) and no slide title containing "next step", "decision", "we ask", "the ask", "approve", "call to action" or "action plan" (go-slide-creator-kuurd). Fails `score_deck`'s gate criterion `require_storyline`; exempt from the problem-slide share. On the DeckSpec surfaces it is a blocking `error` unless `meta.waivers` names it with a reason. End on the ask, or retitle the closer as the action ("Approve the pilot budget by 15 March to launch in Q3").
 
 ```json
 {
