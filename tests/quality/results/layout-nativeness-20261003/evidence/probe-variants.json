@@ -1,0 +1,262 @@
+{
+ "template": "midnight-blue",
+ "output_filename": "probe.pptx",
+ "slides": [
+  {
+   "layout_id": "blank-title",
+   "slide_type": "content",
+   "source": "Illustrative",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "KPI cards with icons use the accent fill"
+    }
+   ],
+   "pattern": {
+    "name": "kpi-3up",
+    "values": [
+     {
+      "big": "$4.2M",
+      "small": "ARR",
+      "icon": "currency-dollar"
+     },
+     {
+      "big": "127%",
+      "small": "NRR",
+      "icon": "trending-up"
+     },
+     {
+      "big": "12d",
+      "small": "Sales cycle",
+      "icon": "clock"
+     }
+    ]
+   }
+  },
+  {
+   "layout_id": "blank-title",
+   "slide_type": "content",
+   "source": "Illustrative",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "KPI cards without icons"
+    }
+   ],
+   "pattern": {
+    "name": "kpi-3up",
+    "values": [
+     {
+      "big": "$4.2M",
+      "small": "ARR"
+     },
+     {
+      "big": "127%",
+      "small": "NRR"
+     },
+     {
+      "big": "12d",
+      "small": "Sales cycle"
+     }
+    ]
+   }
+  },
+  {
+   "layout_id": "blank-title",
+   "slide_type": "content",
+   "source": "Illustrative",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Compact before/after sits under the title"
+    }
+   ],
+   "pattern": {
+    "name": "before-after-compact",
+    "values": {
+     "before": {
+      "header": "Current",
+      "items": [
+       "Manual",
+       "Slow"
+      ]
+     },
+     "after": {
+      "header": "Future",
+      "items": [
+       "Automated",
+       "Fast"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "layout_id": "blank-title",
+   "slide_type": "content",
+   "source": "Illustrative",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Icon row leaves most of the slide empty"
+    }
+   ],
+   "pattern": {
+    "name": "icon-row",
+    "values": [
+     {
+      "icon": "rocket",
+      "caption": "Launch"
+     },
+     {
+      "icon": "trending-up",
+      "caption": "Growth"
+     },
+     {
+      "icon": "currency-dollar",
+      "caption": "Revenue"
+     }
+    ]
+   }
+  },
+  {
+   "layout_id": "blank-title",
+   "slide_type": "content",
+   "source": "Illustrative",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "House with five uneven pillars"
+    }
+   ],
+   "pattern": {
+    "name": "strategy-house",
+    "values": {
+     "objective": "Become the trusted platform for global commerce",
+     "roof_badges": [
+      "Vision",
+      "Mission"
+     ],
+     "pillars": [
+      {
+       "title": "Trust",
+       "body": [
+        "Privacy by default",
+        "Transparent pricing",
+        "Audited controls",
+        "Regional data residency"
+       ]
+      },
+      {
+       "title": "Excellence",
+       "body": [
+        "99.99% uptime"
+       ]
+      },
+      {
+       "title": "Velocity",
+       "body": [
+        "Weekly releases",
+        "Continuous experimentation"
+       ]
+      },
+      {
+       "title": "Reach",
+       "body": []
+      },
+      {
+       "title": "Talent",
+       "body": [
+        "Hire evaluation talent"
+       ]
+      }
+     ],
+     "foundation": "People \u00b7 Technology \u00b7 Data"
+    }
+   }
+  },
+  {
+   "layout_id": "blank-title",
+   "slide_type": "content",
+   "source": "Illustrative",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "House with three pillars and no roof"
+    }
+   ],
+   "pattern": {
+    "name": "strategy-house",
+    "values": {
+     "objective": "Become the trusted platform for global commerce",
+     "pillars": [
+      {
+       "title": "Trust",
+       "body": [
+        "Privacy by default"
+       ]
+      },
+      {
+       "title": "Excellence",
+       "body": [
+        "99.99% uptime"
+       ]
+      },
+      {
+       "title": "Velocity",
+       "body": [
+        "Weekly releases"
+       ]
+      }
+     ],
+     "foundation": "People \u00b7 Technology \u00b7 Data"
+    }
+   }
+  },
+  {
+   "layout_id": "blank-title",
+   "slide_type": "content",
+   "source": "Illustrative",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Three panels with uneven content"
+    }
+   ],
+   "pattern": {
+    "name": "stylish-panels",
+    "values": [
+     {
+      "title": "Strategy",
+      "body": [
+       "Market analysis",
+       "Growth targets"
+      ]
+     },
+     {
+      "title": "Execution",
+      "body": [
+       "Sprint planning"
+      ]
+     },
+     {
+      "title": "Measurement",
+      "body": [
+       "KPI tracking",
+       "Quarterly reviews",
+       "Course correction",
+       "Board reporting"
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

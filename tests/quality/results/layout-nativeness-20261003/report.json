@@ -1,0 +1,325 @@
+{
+ "review": "Layout nativeness and content-driven structure",
+ "date": "2026-10-03",
+ "source_commit": "20dfa1aebaf84e2699dec8e0d7ea6e5036ebfcce",
+ "audit_bead": "go-slide-creator-aw69g",
+ "method": [
+  "All 51 named patterns rendered with their exemplar values through json2pptx generate (one titled slide each) on midnight-blue and p-style; every slide inspected.",
+  "The 16 examples/diagrams decks (native and svggen diagrams) rendered on midnight-blue and inspected.",
+  "json2pptx preview-patterns output rendered for the same patterns and compared with generated output.",
+  "A probe deck of count and level variants (KPI with/without icons, five uneven pillars, roofless house, uneven panels, five cards) on both templates."
+ ],
+ "clean_patterns": [
+  "agenda",
+  "exec-summary",
+  "labeled-rows",
+  "next-steps",
+  "table-highlight",
+  "team-bios",
+  "contact-directory",
+  "capability-heatmap",
+  "horizontal-bar-with-callouts",
+  "waterfall-bridge",
+  "chart-insights-split",
+  "image-text-split",
+  "state-shift-hub",
+  "pyramid",
+  "stat-hero",
+  "hero-detail",
+  "pull-quote",
+  "text-sidebar",
+  "scqa-summary",
+  "phase-roadmap",
+  "timeline-horizontal",
+  "bmc-canvas",
+  "process-grid-2row",
+  "numbered-step-strip",
+  "agenda-with-images"
+ ],
+ "limits": "Visual judgement from LibreOffice renders at 50-70 DPI on two templates; no production code changed; fixes are not designed here beyond each bead's expected behaviour.",
+ "findings": [
+  {
+   "bead": "go-slide-creator-vlef3",
+   "key": "house-roof",
+   "type": "feature",
+   "priority": 1,
+   "title": "strategy-house draws its roof as a flat grey strip instead of a roof shape",
+   "evidence": [
+    "evidence/user-reference-strategy-house.jpg",
+    "evidence/patterns-generated-midnight-blue-3.jpg",
+    "evidence/patterns-generated-p-style-3.jpg",
+    "evidence/probe-variants.jpg",
+    "evidence/diagram-examples-midnight-blue-0.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-bjxb9",
+   "key": "house-levels",
+   "type": "feature",
+   "priority": 1,
+   "title": "strategy-house has a fixed three-level shape; levels and cells cannot follow the content",
+   "evidence": [
+    "evidence/probe-variants.jpg",
+    "evidence/patterns-generated-midnight-blue-3.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-qad87",
+   "key": "pillars-guidance",
+   "type": "feature",
+   "priority": 2,
+   "title": "Agents always author a 3-pillar, one-foundation house; teach count and levels from content",
+   "evidence": [
+    "evidence/probe-variants.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-x25dq",
+   "key": "native-house",
+   "type": "bug",
+   "priority": 2,
+   "title": "Native house_diagram gives each pillar a different pastel hue and fills a third of the placeholder",
+   "evidence": [
+    "evidence/diagram-examples-midnight-blue-0.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-yhzxt",
+   "key": "vertical-anchor",
+   "type": "bug",
+   "priority": 1,
+   "title": "Content-sized patterns hug the top of the content area and leave the lower half of the slide blank",
+   "evidence": [
+    "evidence/patterns-generated-midnight-blue-0.jpg",
+    "evidence/patterns-generated-midnight-blue-1.jpg",
+    "evidence/patterns-generated-midnight-blue-2.jpg",
+    "evidence/patterns-generated-midnight-blue-3.jpg",
+    "evidence/patterns-generated-midnight-blue-4.jpg",
+    "evidence/probe-variants.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-0w4va",
+   "key": "card-grid-count",
+   "type": "bug",
+   "priority": 1,
+   "title": "card-grid refuses any card count that is not exactly columns x rows",
+   "evidence": [
+    "evidence/probe-variants.json"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-rd7oj",
+   "key": "motif-rhythm",
+   "type": "feature",
+   "priority": 2,
+   "title": "Deck rhythm treats every tile-row pattern as different, so a deck of look-alike box rows scores as varied",
+   "evidence": [
+    "evidence/patterns-generated-midnight-blue-0.jpg",
+    "evidence/patterns-generated-midnight-blue-1.jpg",
+    "evidence/patterns-generated-midnight-blue-3.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-hjqn2",
+   "key": "icon-row",
+   "type": "feature",
+   "priority": 2,
+   "title": "icon-row puts each icon and caption in a tile; the row is three boxes over an empty slide",
+   "evidence": [
+    "evidence/patterns-generated-midnight-blue-1.jpg",
+    "evidence/probe-variants.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-zawui",
+   "key": "comparison-rows",
+   "type": "feature",
+   "priority": 2,
+   "title": "comparison-2col wraps every bullet in its own grey tile",
+   "evidence": [
+    "evidence/patterns-generated-midnight-blue-0.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-5cie9",
+   "key": "quote-cluster",
+   "type": "feature",
+   "priority": 2,
+   "title": "quote-cluster renders stakeholder quotes as a grid of grey tiles",
+   "evidence": [
+    "evidence/patterns-generated-midnight-blue-3.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-8zles",
+   "key": "kpi-open",
+   "type": "feature",
+   "priority": 2,
+   "title": "KPI rows always draw tinted tiles; offer the open KPI strip as the default for plain numbers",
+   "evidence": [
+    "evidence/patterns-generated-midnight-blue-1.jpg",
+    "evidence/patterns-generated-midnight-blue-2.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-xvpu2",
+   "key": "panels",
+   "type": "feature",
+   "priority": 2,
+   "title": "stylish-panels and before-after are a dark header bar over a grey body box per column",
+   "evidence": [
+    "evidence/patterns-generated-midnight-blue-3.jpg",
+    "evidence/patterns-generated-midnight-blue-0.jpg",
+    "evidence/probe-variants.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-rpz53",
+   "key": "tile-walls",
+   "type": "feature",
+   "priority": 3,
+   "title": "framework-grid and dual-org-ladder fill every cell with a grey tile",
+   "evidence": [
+    "evidence/patterns-generated-midnight-blue-1.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-4a0sm",
+   "key": "roadmap-spans",
+   "type": "feature",
+   "priority": 2,
+   "title": "roadmap-phased draws one tile per period cell; an item cannot span periods",
+   "evidence": [
+    "evidence/patterns-generated-midnight-blue-3.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-gm4q9",
+   "key": "value-chain",
+   "type": "feature",
+   "priority": 2,
+   "title": "value-chain pattern draws plain rectangles with 4pt arrows instead of chain-link arrows",
+   "evidence": [
+    "evidence/patterns-generated-midnight-blue-4.jpg",
+    "evidence/diagram-examples-midnight-blue-1.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-j8t7o",
+   "key": "maturity-steps",
+   "type": "feature",
+   "priority": 2,
+   "title": "journey-maturity-model is a flat row of equal boxes; maturity does not rise",
+   "evidence": [
+    "evidence/patterns-generated-midnight-blue-1.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-66ojb",
+   "key": "process-connectors",
+   "type": "bug",
+   "priority": 2,
+   "title": "process-flow and process-flow-compact connectors are a few points wide and the flow uses a thin strip",
+   "evidence": [
+    "evidence/patterns-generated-midnight-blue-2.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-6shxx",
+   "key": "native-process-flow",
+   "type": "bug",
+   "priority": 2,
+   "title": "Native process_flow diagram renders small outlined boxes in a strip that fills a fifth of the placeholder",
+   "evidence": [
+    "evidence/diagram-examples-midnight-blue-0.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-xj2sl",
+   "key": "driver-tree",
+   "type": "feature",
+   "priority": 2,
+   "title": "driver-tree draws full-height slabs; it reads as table columns, not a tree",
+   "evidence": [
+    "evidence/patterns-generated-midnight-blue-0.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-jz5r9",
+   "key": "swimlane-bands",
+   "type": "bug",
+   "priority": 2,
+   "title": "swimlane has no lanes: steps float beside three label tiles",
+   "evidence": [
+    "evidence/patterns-generated-midnight-blue-3.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-jnkiq",
+   "key": "matrix-axes",
+   "type": "feature",
+   "priority": 2,
+   "title": "matrix-2x2 pattern is four grey tiles with detached axis labels",
+   "evidence": [
+    "evidence/patterns-generated-midnight-blue-2.jpg",
+    "evidence/diagram-examples-midnight-blue-0.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-6h1fy",
+   "key": "arch-stack",
+   "type": "feature",
+   "priority": 3,
+   "title": "arch-stack tiers are identical grey slabs with their components as one subtitle string",
+   "evidence": [
+    "evidence/patterns-generated-midnight-blue-0.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-amtkg",
+   "key": "native-style",
+   "type": "bug",
+   "priority": 2,
+   "title": "Native framework diagrams use rounded pastel multi-hue cards, a different visual language from the patterns",
+   "evidence": [
+    "evidence/diagram-examples-midnight-blue-0.jpg",
+    "evidence/diagram-examples-midnight-blue-1.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-ze6qs",
+   "key": "timeline-truncation",
+   "type": "bug",
+   "priority": 2,
+   "title": "svggen timeline truncates milestone labels although the chart has free space",
+   "evidence": [
+    "evidence/diagram-examples-midnight-blue-1.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-r1uy7",
+   "key": "preview-tool",
+   "type": "bug",
+   "priority": 1,
+   "title": "preview-patterns renders patterns through a separate path that misrepresents generated output",
+   "evidence": [
+    "evidence/patterns-preview-tool-midnight-blue-0.jpg",
+    "evidence/patterns-preview-tool-midnight-blue-1.jpg",
+    "evidence/patterns-preview-tool-midnight-blue-2.jpg",
+    "evidence/patterns-preview-tool-midnight-blue-3.jpg"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-1vmsk",
+   "key": "metric-list-size",
+   "type": "bug",
+   "priority": 2,
+   "title": "metric-list values render at 18pt on a titled slide, below its documented 24-40pt ladder",
+   "evidence": [
+    "evidence/metric-list-midnight-blue.jpg",
+    "evidence/patterns-preview-tool-midnight-blue-2.jpg"
+   ]
+  }
+ ]
+}
