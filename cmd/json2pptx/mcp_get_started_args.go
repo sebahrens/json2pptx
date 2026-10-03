@@ -26,8 +26,10 @@ var getStartedArgTemplates = map[string]map[string]any{
 	"list_patterns":    {"fields": "compact"},
 
 	// Gates that are materially weaker without the flag.
-	"validate_input":     {"presentation": "<deck JSON>", "fit_report": true},
-	"validate_deck_spec": {"spec": "<DeckSpec>", "strict": "warn"},
+	"validate_input": {"presentation": "<deck JSON>", "fit_report": true},
+	// template: findings are measured on a template, so validate names the one
+	// the deck will render on (go-slide-creator-2dit4).
+	"validate_deck_spec": {"spec": "<DeckSpec>", "template": "<template id from list_templates>", "strict": "warn"},
 
 	// The path-carrying steps: naming where the value comes from is the whole
 	// hint, because the wrong path silently reviews the wrong deck.

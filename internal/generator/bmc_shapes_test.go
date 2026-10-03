@@ -197,8 +197,16 @@ func TestGenerateBMCGroupXML_Basic(t *testing.T) {
 	// One hue, not nine (go-slide-creator-w0kj). The canvas is named and laid
 	// out in a fixed grid, so rotating accent1-6 carried no information and
 	// rendered as a rainbow on any template whose accent3-6 are unrelated hues.
-	if !strings.Contains(result, "accent1") {
-		t.Error("should fill cells with the deck's accent1")
+	// The cells are the bmc-canvas pattern's: neutral cards whose one accent
+	// is the section title (go-slide-creator-amtkg).
+	if !strings.Contains(result, `val="accent1"`) {
+		t.Error("section titles should take the accent ink")
+	}
+	if !strings.Contains(result, `schemeClr val="dk1"><a:lumMod val="4000"/><a:lumOff val="96000"/>`) {
+		t.Error("cells should sit on the neutral 4% surface")
+	}
+	if strings.Contains(result, "<a:tint") {
+		t.Error("cells should not be accent tints by default")
 	}
 	for i := 2; i <= 6; i++ {
 		accent := fmt.Sprintf("accent%d", i)
@@ -207,9 +215,9 @@ func TestGenerateBMCGroupXML_Basic(t *testing.T) {
 		}
 	}
 
-	// Should use roundRect geometry
-	if !strings.Contains(result, `prst="roundRect"`) {
-		t.Error("should use roundRect geometry")
+	// One surface style: square corners, as the patterns (go-slide-creator-amtkg).
+	if strings.Contains(result, "roundRect") || !strings.Contains(result, `prst="rect"`) {
+		t.Error("cards should be square-cornered rects, not roundRect")
 	}
 
 	// Should NOT contain srgbClr (no hardcoded hex)
@@ -335,9 +343,9 @@ func TestAllocatePanelIconRelIDs_BMCMode(t *testing.T) {
 		t.Error("groupXML should be generated for BMC mode")
 	}
 
-	// Should use roundRect (BMC style)
-	if !strings.Contains(inserts[0].groupXML, `prst="roundRect"`) {
-		t.Error("BMC groupXML should use roundRect geometry")
+	// One surface style: square corners, as the patterns (go-slide-creator-amtkg).
+	if strings.Contains(inserts[0].groupXML, "roundRect") || !strings.Contains(inserts[0].groupXML, `prst="rect"`) {
+		t.Error("cards should be square-cornered rects, not roundRect")
 	}
 
 	// Should contain BMC group name

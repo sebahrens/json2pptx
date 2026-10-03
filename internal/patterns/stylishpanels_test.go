@@ -94,7 +94,7 @@ func TestStylishPanels_Expand(t *testing.T) {
 		SlideWidth:  12192000,
 		SlideHeight: 6858000,
 	}
-	grid, err := p.Expand(ctx, vals, nil, nil)
+	grid, err := p.Expand(ctx, vals, &StylishPanelsOverrides{Style: "ribbon"}, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}

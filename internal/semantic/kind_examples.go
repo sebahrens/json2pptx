@@ -178,11 +178,14 @@ var kindExamples = map[SlideKind]map[string]any{
 	KindPillars: {
 		// Four uneven pillars over a two-level foundation: the count and the
 		// levels come from the content, not from a 3 x 2 default
-		// (go-slide-creator-qad87).
+		// (go-slide-creator-qad87). At most two bullets a pillar: with a third
+		// the house fills its region on the default templates and the roof is
+		// flattened, which validate now reports as it renders
+		// (go-slide-creator-3rn3s).
 		"kind": "pillars", "title": "Four pillars carry the FY27 plan on one shared platform",
 		"objective": "Become the trusted settlement platform",
 		"pillars": []any{
-			map[string]any{"title": "Customer trust", "body": []any{"Transparent pricing", "Operational resilience", "Same-day dispute handling"}},
+			map[string]any{"title": "Customer trust", "body": []any{"Transparent pricing", "Operational resilience"}},
 			map[string]any{"title": "Product velocity", "body": []any{"Weekly releases", "Shared platform"}},
 			map[string]any{"title": "Disciplined growth", "body": []any{"Enterprise focus"}},
 			map[string]any{"title": "Partner reach", "body": []any{"Bank alliances in six markets", "Open settlement API"}},

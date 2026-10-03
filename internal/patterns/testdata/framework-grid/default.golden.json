@@ -1,6 +1,6 @@
 {
-  "col_gap": 8,
-  "row_gap": 8,
+  "col_gap": 0.01,
+  "row_gap": 4,
   "columns": [
     18,
     27.33,
@@ -9,17 +9,13 @@
   ],
   "rows": [
     {
-      "min_height": 94,
-      "max_height": 94,
+      "min_height": 83,
+      "max_height": 83,
       "cells": [
         {
           "shape": {
             "geometry": "rect",
-            "fill": {
-              "color": "dk1",
-              "lumMod": 8000,
-              "lumOff": 92000
-            },
+            "fill": "none",
             "line": "none",
             "text": {
               "paragraphs": [
@@ -32,18 +28,15 @@
                 }
               ],
               "align": "l",
-              "vertical_align": "ctr"
+              "vertical_align": "t",
+              "inset_top": 26
             }
           }
         },
         {
           "shape": {
             "geometry": "rect",
-            "fill": {
-              "color": "dk1",
-              "lumMod": 4000,
-              "lumOff": 96000
-            },
+            "fill": "none",
             "line": "none",
             "text": {
               "paragraphs": [
@@ -64,18 +57,14 @@
               ],
               "align": "l",
               "vertical_align": "t",
-              "inset_top": 24
+              "inset_top": 26
             }
           }
         },
         {
           "shape": {
             "geometry": "rect",
-            "fill": {
-              "color": "dk1",
-              "lumMod": 4000,
-              "lumOff": 96000
-            },
+            "fill": "none",
             "line": "none",
             "text": {
               "paragraphs": [
@@ -96,18 +85,14 @@
               ],
               "align": "l",
               "vertical_align": "t",
-              "inset_top": 24
+              "inset_top": 26
             }
           }
         },
         {
           "shape": {
             "geometry": "rect",
-            "fill": {
-              "color": "dk1",
-              "lumMod": 4000,
-              "lumOff": 96000
-            },
+            "fill": "none",
             "line": "none",
             "text": {
               "paragraphs": [
@@ -128,24 +113,37 @@
               ],
               "align": "l",
               "vertical_align": "t",
-              "inset_top": 24
+              "inset_top": 26
             }
           }
         }
       ]
     },
     {
-      "min_height": 94,
-      "max_height": 94,
+      "min_height": 0.75,
+      "max_height": 0.75,
       "cells": [
         {
+          "col_span": 4,
           "shape": {
             "geometry": "rect",
             "fill": {
               "color": "dk1",
-              "lumMod": 8000,
-              "lumOff": 92000
+              "alpha": 30
             },
+            "line": "none"
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 83,
+      "max_height": 83,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
             "line": "none",
             "text": {
               "paragraphs": [
@@ -158,18 +156,15 @@
                 }
               ],
               "align": "l",
-              "vertical_align": "ctr"
+              "vertical_align": "t",
+              "inset_top": 26
             }
           }
         },
         {
           "shape": {
             "geometry": "rect",
-            "fill": {
-              "color": "dk1",
-              "lumMod": 4000,
-              "lumOff": 96000
-            },
+            "fill": "none",
             "line": "none",
             "text": {
               "paragraphs": [
@@ -190,18 +185,14 @@
               ],
               "align": "l",
               "vertical_align": "t",
-              "inset_top": 24
+              "inset_top": 26
             }
           }
         },
         {
           "shape": {
             "geometry": "rect",
-            "fill": {
-              "color": "dk1",
-              "lumMod": 4000,
-              "lumOff": 96000
-            },
+            "fill": "none",
             "line": "none",
             "text": {
               "paragraphs": [
@@ -222,7 +213,7 @@
               ],
               "align": "l",
               "vertical_align": "t",
-              "inset_top": 24
+              "inset_top": 26
             }
           }
         },
@@ -230,17 +221,30 @@
       ]
     },
     {
-      "min_height": 94,
-      "max_height": 94,
+      "min_height": 0.75,
+      "max_height": 0.75,
       "cells": [
         {
+          "col_span": 4,
           "shape": {
             "geometry": "rect",
             "fill": {
               "color": "dk1",
-              "lumMod": 8000,
-              "lumOff": 92000
+              "alpha": 30
             },
+            "line": "none"
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 83,
+      "max_height": 83,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
             "line": "none",
             "text": {
               "paragraphs": [
@@ -253,18 +257,15 @@
                 }
               ],
               "align": "l",
-              "vertical_align": "ctr"
+              "vertical_align": "t",
+              "inset_top": 26
             }
           }
         },
         {
           "shape": {
             "geometry": "rect",
-            "fill": {
-              "color": "dk1",
-              "lumMod": 4000,
-              "lumOff": 96000
-            },
+            "fill": "none",
             "line": "none",
             "text": {
               "paragraphs": [
@@ -285,18 +286,14 @@
               ],
               "align": "l",
               "vertical_align": "t",
-              "inset_top": 24
+              "inset_top": 26
             }
           }
         },
         {
           "shape": {
             "geometry": "rect",
-            "fill": {
-              "color": "dk1",
-              "lumMod": 4000,
-              "lumOff": 96000
-            },
+            "fill": "none",
             "line": "none",
             "text": {
               "paragraphs": [
@@ -317,18 +314,14 @@
               ],
               "align": "l",
               "vertical_align": "t",
-              "inset_top": 24
+              "inset_top": 26
             }
           }
         },
         {
           "shape": {
             "geometry": "rect",
-            "fill": {
-              "color": "dk1",
-              "lumMod": 4000,
-              "lumOff": 96000
-            },
+            "fill": "none",
             "line": "none",
             "text": {
               "paragraphs": [
@@ -349,7 +342,7 @@
               ],
               "align": "l",
               "vertical_align": "t",
-              "inset_top": 24
+              "inset_top": 26
             }
           }
         }

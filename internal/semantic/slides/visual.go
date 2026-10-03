@@ -47,9 +47,11 @@ type cardGridCell struct {
 }
 
 // cardGridValues mirrors patterns.CardGridValues for emission.
+// Columns and Rows are omitted past one row of cards: the pattern arranges the
+// cards from their count and leaves a last row that is not full short.
 type cardGridValues struct {
-	Columns int            `json:"columns"`
-	Rows    int            `json:"rows"`
+	Columns int            `json:"columns,omitempty"`
+	Rows    int            `json:"rows,omitempty"`
 	Cells   []cardGridCell `json:"cells"`
 }
 
@@ -62,6 +64,8 @@ type cardGridValues struct {
 //     column;
 //   - 2–5 columns stylish-panels cannot hold (an unbalanced pair, an over-long
 //     bullet) → card-grid, one titled card per column;
+//   - 6–12 columns → card-grid, the cards arranged from their count (7 as
+//     4 + 3: the pattern leaves a last row that is not full short);
 //   - anything else → a content slide listing each column's items.
 //
 // Before go-slide-creator-3bgf only the first case had a visual: "compare us to
@@ -157,16 +161,20 @@ const (
 	// floor (below it the pattern tells the caller to use card-grid).
 	comparisonMinPanels = 3
 	comparisonMaxPanels = 5
-	// comparisonMaxCards is card-grid's column cap for a single row.
-	comparisonMaxCards = 5
+	// comparisonMaxRowCards is card-grid's column cap for a single row;
+	// comparisonMaxCards the most cards it arranges over several rows.
+	comparisonMaxRowCards = 5
+	comparisonMaxCards    = 12
 	// comparisonPanelMaxBullets / comparisonPanelBulletMax are stylish-panels'
 	// per-panel bullet count and per-bullet length budgets.
 	comparisonPanelMaxBullets = 8
 	comparisonPanelBulletMax  = 200
 	// comparisonHeaderMax is the shared title/header budget of both patterns.
 	comparisonHeaderMax = 80
-	// comparisonCardBodyMax is card-grid's per-card body budget.
-	comparisonCardBodyMax = 300
+	// comparisonCardBodyMax is card-grid's per-card body budget;
+	// comparisonGridCardBodyMax the budget once the cards take several rows.
+	comparisonCardBodyMax     = 300
+	comparisonGridCardBodyMax = 160
 	// comparisonCardItemJoin separates a column's items inside one card body.
 	// card-grid renders the body as a single wrapped paragraph, so the items
 	// need a visible separator rather than a newline the run builder would drop.
@@ -204,10 +212,12 @@ func comparisonPanelsFeasible(body map[string]any) bool {
 	return ok
 }
 
-// comparisonCards builds a one-row card-grid from 2–5 columns that each carry a
-// header and at least one item, joining the items into the card body. It is the
+// comparisonCards builds a card-grid from 2–12 columns that each carry a header
+// and at least one item, joining the items into the card body: one row for 2–5
+// columns, and the pattern's own arrangement (7 as 4 + 3) for 6–12. It is the
 // fallback visual for a comparison stylish-panels cannot hold — an unbalanced
-// pair, or a column whose bullets are too many or too long for panels.
+// pair, a column whose bullets are too many or too long for panels, or more
+// columns than panels take.
 func comparisonCards(body map[string]any) (*cardGridValues, bool) {
 	cols := mapList(body, "columns")
 	if len(cols) < 2 || len(cols) > comparisonMaxCards {
@@ -221,10 +231,17 @@ func comparisonCards(body map[string]any) (*cardGridValues, bool) {
 			return nil, false
 		}
 		cardBody := strings.Join(items, comparisonCardItemJoin)
-		if cardBody == "" || runeLen(cardBody) > comparisonCardBodyMax {
+		bodyMax := comparisonCardBodyMax
+		if len(cols) > comparisonMaxRowCards {
+			bodyMax = comparisonGridCardBodyMax
+		}
+		if cardBody == "" || runeLen(cardBody) > bodyMax {
 			return nil, false
 		}
 		cells = append(cells, cardGridCell{Header: header, Body: cardBody})
+	}
+	if len(cells) > comparisonMaxRowCards {
+		return &cardGridValues{Cells: cells}, true
 	}
 	return &cardGridValues{Columns: len(cells), Rows: 1, Cells: cells}, true
 }

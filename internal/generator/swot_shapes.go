@@ -9,40 +9,34 @@ import (
 )
 
 // =============================================================================
-// SWOT Native Shapes — 2x2 Grid of roundRect Quadrants
+// SWOT Native Shapes — 2x2 Grid of Quadrant Cards
 // =============================================================================
 //
 // Replaces SVG-rendered SWOT diagrams with native OOXML grouped shapes.
-// Each quadrant is a roundRect with a scheme-colored tint fill, a bold header
-// paragraph, and bulleted body items. All 4 quadrants are wrapped in a single
-// p:grpSp with identity child transform.
+// Each quadrant is a square-cornered card on the shared neutral surface with
+// a bold accent title and bulleted body items (native_surface_style.go). All
+// 4 quadrants are wrapped in a single p:grpSp with identity child transform.
 //
 // Layout:
 //
 //   ┌─────────────────┐  gap  ┌─────────────────┐
 //   │   Strengths     │       │   Weaknesses     │
-//   │   (accent1)     │       │   (accent2)      │
+//   │                 │       │                  │
 //   └─────────────────┘       └─────────────────┘
 //          gap                        gap
 //   ┌─────────────────┐  gap  ┌─────────────────┐
 //   │  Opportunities  │       │   Threats        │
-//   │   (accent3)     │       │   (accent4)      │
+//   │                 │       │                  │
 //   └─────────────────┘       └─────────────────┘
 //
-// Color strategy: each quadrant uses a different accent scheme color with
-// high lumMod/lumOff tints so the fill is a light pastel. Text is dk1.
-// This ensures theme-awareness across all templates.
+// Color strategy: neutral cards, one accent (the titles). style.colors
+// recolours the quadrants as accent tints, in quadrant order.
 
 // SWOT EMU constants.
 const (
 	// swotGap is the gap between quadrants in EMU.
 	// ~0.08" = 7315 EMU — tight gap for 2x2 grid.
 	swotGap int64 = 73152
-
-	// swotCornerRadius is the roundRect adjustment value.
-	// 16667 = OOXML default ~1/6 of shortest side; we use a smaller
-	// fixed value for a subtle rounded look.
-	swotCornerRadius int64 = 8000
 
 	// swotHeaderFontSize is the quadrant header font size (hundredths of a point).
 	// 1400 = 14pt
@@ -67,16 +61,18 @@ var swotQuadrantColors = [4]struct {
 	{"Strengths"}, {"Weaknesses"}, {"Opportunities"}, {"Threats"},
 }
 
-// swotDefaultTint is the one framework here whose colour means something: the
-// grid's left column is the positive half (Strengths, Opportunities) and the
-// right column the negative one (Weaknesses, Threats). Two accents, matching
-// the split — not four accents matching nothing (go-slide-creator-w0kj).
-func swotDefaultTint(i int) taxonomyTint {
-	if i == 1 || i == 3 { // Weaknesses, Threats
-		return taxonomyNegative
-	}
-	return taxonomyLight
-}
+// swotDefaultTint is the template-independent default quadrant: the shared
+// neutral card with an accent title (native_surface_style.go). The quadrants
+// used to take two accent pastels, positive against negative; the polarity is
+// already carried by the four labels and the fixed grid, and the second hue
+// was the one thing separating a SWOT from every pattern on the deck
+// (go-slide-creator-amtkg). swotPolarityColors restores the two-tone look.
+func swotDefaultTint(int) taxonomyTint { return nativeSurface{}.cardTint(swotHeaderFontSize) }
+
+// swotPolarityColors is the style.colors value that restores the two-accent
+// polarity tints: Strengths / Opportunities in accent1, Weaknesses / Threats
+// in accent2.
+var swotPolarityColors = []string{"accent1", "accent2"}
 
 // isSWOTDiagram returns true if the diagram spec is a swot diagram type.
 func isSWOTDiagram(spec *types.DiagramSpec) bool {
@@ -109,7 +105,7 @@ func swotPanels(spec *types.DiagramSpec) []nativePanelData {
 
 // generateSWOTGroupXML produces the complete <p:grpSp> XML for a 2x2 SWOT grid.
 // tints are the resolved per-quadrant fills (see taxonomy_palette.go).
-// Each quadrant is a roundRect with a tinted scheme fill, bold header, and bulleted body.
+// Each quadrant is a card in its tint with a bold header and a bulleted body.
 func generateSWOTGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, tints []taxonomyTint) string {
 	if len(panels) != 4 {
 		slog.Warn("generateSWOTGroupXML: expected 4 panels", "got", len(panels))
@@ -146,17 +142,17 @@ func generateSWOTGroupXML(panels []nativePanelData, bounds types.BoundingBox, sh
 		headerID := shapeIDBase + uint32(i*2) + 1
 		bodyID := shapeIDBase + uint32(i*2) + 2
 
-		// Header shape: roundRect with scheme fill, centered bold text
+		// Header shape: the card fill under a bold left-aligned title
 		headerXML := generateSWOTHeaderXML(
 			panel.title, pos.x, pos.y, quadW, headerCY,
-			headerID, qc.scheme, qc.lumMod, qc.lumOff,
+			headerID, qc,
 		)
 		children = append(children, []byte(headerXML))
 
-		// Body shape: roundRect with same scheme fill, top-aligned bulleted text
+		// Body shape: the same fill, top-aligned bulleted text
 		bodyXML := generateSWOTBodyXML(
 			panel.body, pos.x, pos.y+headerCY, quadW, bodyCY,
-			bodyID, qc.scheme, qc.lumMod, qc.lumOff,
+			bodyID, qc,
 		)
 		children = append(children, []byte(bodyXML))
 	}
@@ -175,20 +171,17 @@ func generateSWOTGroupXML(panels []nativePanelData, bounds types.BoundingBox, sh
 	return string(b)
 }
 
-// generateSWOTHeaderXML produces a roundRect header shape for a SWOT quadrant.
-func generateSWOTHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, schemeColor string, lumMod, lumOff int) string {
-	text := swotHeaderText(title, schemeColor)
+// generateSWOTHeaderXML produces the header shape of a SWOT quadrant.
+func generateSWOTHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, tint taxonomyTint) string {
+	text := swotHeaderText(title, tint)
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     "SWOT " + title,
 		Bounds:   pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
-		Geometry: pptx.GeomRoundRect,
-		Adjustments: []pptx.AdjustValue{
-			{Name: "adj", Value: swotCornerRadius},
-		},
-		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
-		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
-		Text: &text,
+		Geometry: nativeSurfaceGeometry,
+		Fill:     tint.fill(),
+		Line:     pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
+		Text:     &text,
 	})
 	if err != nil {
 		slog.Warn("generateSWOTHeaderXML failed", "error", err)
@@ -199,14 +192,14 @@ func generateSWOTHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, sch
 
 // swotHeaderText is a quadrant header's text body: the uniform margin on its
 // visible edges and the seam inset against its own body below.
-func swotHeaderText(title, schemeColor string) pptx.TextBody {
+func swotHeaderText(title string, tint taxonomyTint) pptx.TextBody {
 	return pptx.TextBody{
 		Wrap:    "square",
 		Anchor:  "ctr",
 		Insets:  nativeCardHeaderInsets(),
 		AutoFit: "noAutofit",
 		Paragraphs: []pptx.Paragraph{{
-			Align:    "ctr",
+			Align:    nativeHeaderAlign,
 			NoBullet: true,
 			Runs: []pptx.Run{{
 				Text:     title,
@@ -214,7 +207,7 @@ func swotHeaderText(title, schemeColor string) pptx.TextBody {
 				FontSize: swotHeaderFontSize,
 				Bold:     true,
 				Dirty:    true,
-				Color:    diagramPanelTextFill(schemeColor),
+				Color:    tint.titleFill(),
 			}},
 		}},
 	}
@@ -251,7 +244,7 @@ func swotBodyText(body, schemeColor string) pptx.TextBody {
 func swotHeaderHeight(panels []nativePanelData, quadW, quadH int64) int64 {
 	headerCY := int64(float64(quadH) * swotHeaderHeightRatio)
 	for _, p := range panels {
-		probe := swotHeaderText(p.title, "")
+		probe := swotHeaderText(p.title, taxonomyTint{})
 		probe.AutoFit = "normAutofit"
 		headerCY = max(headerCY, nativeTextNeedEMU(probe, quadW, quadH))
 	}
@@ -268,7 +261,7 @@ func swotGridHeight(panels []nativePanelData, bounds types.BoundingBox) nativeFr
 	limit := 4 * bounds.Height
 	var header, body, ink int64
 	for _, p := range panels {
-		probe := swotHeaderText(p.title, "")
+		probe := swotHeaderText(p.title, taxonomyTint{})
 		probe.AutoFit = "normAutofit"
 		h := nativeTextNeedEMU(probe, quadW, limit)
 		b := max(nativeTextNeedEMU(swotBodyText(p.body, ""), quadW, limit),
@@ -281,20 +274,17 @@ func swotGridHeight(panels []nativePanelData, bounds types.BoundingBox) nativeFr
 	return nativeFrameworkHeight{box: rows*quadNeed + (rows-1)*swotGap, ink: ink / 2}
 }
 
-// generateSWOTBodyXML produces a roundRect body shape for a SWOT quadrant.
-func generateSWOTBodyXML(body string, x, y, cx, cy int64, shapeID uint32, schemeColor string, lumMod, lumOff int) string {
-	text := swotBodyText(body, schemeColor)
+// generateSWOTBodyXML produces the body shape of a SWOT quadrant.
+func generateSWOTBodyXML(body string, x, y, cx, cy int64, shapeID uint32, tint taxonomyTint) string {
+	text := swotBodyText(body, tint.scheme)
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     "SWOT Body",
 		Bounds:   pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
-		Geometry: pptx.GeomRoundRect,
-		Adjustments: []pptx.AdjustValue{
-			{Name: "adj", Value: swotCornerRadius},
-		},
-		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
-		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
-		Text: &text,
+		Geometry: nativeSurfaceGeometry,
+		Fill:     tint.fill(),
+		Line:     pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
+		Text:     &text,
 	})
 	if err != nil {
 		slog.Warn("generateSWOTBodyXML failed", "error", err)

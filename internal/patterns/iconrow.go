@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -20,8 +21,10 @@ func init() {
 
 type iconRow struct{}
 
-func (ir *iconRow) Name() string        { return "icon-row" }
-func (ir *iconRow) Description() string { return "Horizontal row of icon+caption pairs" }
+func (ir *iconRow) Name() string { return "icon-row" }
+func (ir *iconRow) Description() string {
+	return "Horizontal row of 3-5 open icons, each over a caption and an optional one-line description"
+}
 func (ir *iconRow) UseWhen() string {
 	return "3-6 short labeled icons in a single row; prefer process-flow when steps have sequence, card-grid when items need multi-line body text"
 }
@@ -38,7 +41,7 @@ func (ir *iconRow) Taxonomy() PatternTaxonomy {
 		ComposesWith:       []string{"stylish-panels", "pull-quote", "kpi-3up"},
 		RoleOnSlide:        []string{"foundation", "banner"},
 		DensityClass:       "low",
-		AccentWeight:       "strong",
+		AccentWeight:       "normal",
 		SparseThresholdPct: 15,
 	}
 }
@@ -64,9 +67,10 @@ func (ir *iconRow) ExemplarValues() any {
 // secondary is allowed per item (enforced by the field being a single pointer
 // rather than an array).
 type IconRowItem struct {
-	Icon      *IconRef        `json:"icon"`                // Bundled icon name string shorthand or {name|path|url|svg_data, fill?, alt?, position?} object. Emoji glyphs are rejected.
-	Caption   string          `json:"caption"`             // Short caption text
-	Secondary *SecondaryChart `json:"secondary,omitempty"` // Optional embedded chart (one per item)
+	Icon        *IconRef        `json:"icon"`                  // Bundled icon name string shorthand or {name|path|url|svg_data, fill?, alt?, position?} object. Emoji glyphs are rejected.
+	Caption     string          `json:"caption"`               // Short caption text
+	Description string          `json:"description,omitempty"` // Optional one-line description under the caption
+	Secondary   *SecondaryChart `json:"secondary,omitempty"`   // Optional embedded chart (one per item)
 }
 
 // UnmarshalJSON supports string shorthand "Caption" or "icon | Caption", or object {icon, caption}.
@@ -104,7 +108,18 @@ type IconRowOverrides struct {
 	IconSize       float64 `json:"icon_size,omitempty"`
 	CaptionSize    float64 `json:"caption_size,omitempty"`
 	CellAccentMode string  `json:"cell_accent_mode,omitempty"` // uniform | alternate | progressive
+	// Style is "open" (default: the icon and its caption stand on the slide,
+	// no container) or "tile" (each item in a neutral tile under an accent
+	// rule, the look before go-slide-creator-hjqn2).
+	Style string `json:"style,omitempty"`
 }
+
+// iconRowStyles are the accepted overrides.style values.
+var iconRowStyles = []string{"open", "tile"}
+
+// iconRowDescriptionMax bounds the optional description: one line under the
+// caption on a five-item row is about this many characters.
+const iconRowDescriptionMax = 80
 
 // IconRowCellOverride is an alias for the shared CellOverride struct.
 type IconRowCellOverride = CellOverride
@@ -122,13 +137,14 @@ func (ir *iconRow) Schema() *Schema {
 		StringSchema(0).WithDescription("Shorthand: \"Caption\" or \"icon | Caption\""),
 		ObjectSchema(
 			map[string]*Schema{
-				"icon":      IconRefSchema("Icon: bundled name string shorthand or {name|path|url|svg_data, fill?, alt?, position?} object. Emoji glyphs and unknown bundled names are rejected."),
-				"caption":   StringSchema(60).WithDescription("Short caption text"),
-				"secondary": SecondaryChartSchema(),
+				"icon":        IconRefSchema("Icon: bundled name string shorthand or {name|path|url|svg_data, fill?, alt?, position?} object. Emoji glyphs and unknown bundled names are rejected."),
+				"caption":     StringSchema(60).WithDescription("Short caption text"),
+				"description": StringSchema(iconRowDescriptionMax).WithDescription("Optional one-line description under the caption (about 40 characters stay on one line with five items)"),
+				"secondary":   SecondaryChartSchema(),
 			},
 			[]string{"icon", "caption"},
 		).WithAdditionalProperties(false),
-	).WithDescription("Item: string \"icon | Caption\" or {icon, caption, secondary?}")
+	).WithDescription("Item: string \"icon | Caption\" or {icon, caption, description?, secondary?}")
 
 	return ObjectSchema(
 		map[string]*Schema{
@@ -137,9 +153,10 @@ func (ir *iconRow) Schema() *Schema {
 				map[string]*Schema{
 					"accent":           StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
 					"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-					"icon_size":        NumberSchema(6, 120).WithDescription("Font size for icon in points"),
+					"icon_size":        NumberSchema(6, 120).WithDescription("Icon height in points for the open style (default: scaled to the content area, 40-88)"),
 					"caption_size":     NumberSchema(6, 120).WithDescription("Font size for caption in points"),
 					"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation: uniform (default, all cells same accent), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
+					"style":            EnumSchema(iconRowStyles...).WithDescription("open (default: accent icons and captions on the slide, no container) or tile (each item in a neutral tile under an accent rule). Items with a secondary chart always render as tiles.").WithDefault("open"),
 				},
 				nil,
 			).WithAdditionalProperties(false),
@@ -148,7 +165,7 @@ func (ir *iconRow) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Horizontal row of icon+caption pairs")
+	}).WithDescription("Horizontal row of open icons over captions")
 }
 
 func (ir *iconRow) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -165,6 +182,9 @@ func (ir *iconRow) Validate(values, overrides any, cellOverrides map[int]any) er
 		if ovr, ok := overrides.(*IconRowOverrides); ok {
 			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
 				errs = append(errs, err)
+			}
+			if ovr.Style != "" && !slices.Contains(iconRowStyles, ovr.Style) {
+				errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, iconRowStyles))
 			}
 		}
 	}
@@ -188,6 +208,9 @@ func (ir *iconRow) Validate(values, overrides any, cellOverrides map[int]any) er
 			errs = append(errs, errRequired(name, captionPath))
 		} else if runeLen(item.Caption) > 60 {
 			errs = append(errs, errMaxLength(name, captionPath, 60, runeLen(item.Caption)))
+		}
+		if n := runeLen(item.Description); n > iconRowDescriptionMax {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("values[%d].description", i), iconRowDescriptionMax, n))
 		}
 		if item.Secondary != nil {
 			errs = append(errs, validateSecondaryChart(name, fmt.Sprintf("values[%d].secondary", i), item.Secondary)...)
@@ -217,9 +240,11 @@ func (ir *iconRow) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	}
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	// icon_size override is retained on the schema for backward compatibility but
-	// is unused now that icons render as an SVG overlay that sizes itself relative
-	// to the cell. caption_size still controls the caption font size.
+	if iconRowOpen(*items, ovr) {
+		return expandIconRowOpen(ctx, *items, ovr, cellOverrides, baseAccent), nil
+	}
+	// Tile style: the icon is an SVG overlay that sizes itself relative to its
+	// tile, so icon_size is unused here. caption_size controls the caption.
 	captionSize := ResolveSize(ovr.CaptionSize, scaleBodyPt)
 	cellAccentMode := ovr.CellAccentMode
 
@@ -231,7 +256,7 @@ func (ir *iconRow) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		// Validate has already rejected any icon that doesn't classify as a loadable
 		// kind, so the loader is guaranteed to receive a bundled name, inline SVG,
 		// data URI, URL, or file path.
-		captionContent := buildIconRowCaptionOnly(item.Caption, captionSize)
+		captionContent := buildIconRowTileText(item, captionSize)
 		shape := &jsonschema.ShapeSpecInput{
 			Geometry: "roundRect",
 			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
@@ -291,6 +316,118 @@ func (ir *iconRow) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	}
 
 	return grid, nil
+}
+
+// iconRowOpen reports whether the row renders in the open style: the default,
+// unless overrides.style is "tile" or an item carries a secondary chart (the
+// chart needs the composite tile it has always rendered in).
+func iconRowOpen(items IconRowValues, ovr *IconRowOverrides) bool {
+	return ovr.Style != "tile" && !iconRowHasSecondary(items)
+}
+
+// Open icon-row geometry (go-slide-creator-hjqn2).
+const (
+	// iconRowOpenIconFrac is the icon height's share of the content-area
+	// height, so the icons grow with the slide instead of staying a fixed
+	// small glyph; iconRowOpenIconMinPt / MaxPt bound it.
+	iconRowOpenIconFrac  = 0.26
+	iconRowOpenIconMinPt = 40.0
+	iconRowOpenIconMaxPt = 88.0
+	// iconRowOpenIconWidthFrac keeps an icon inside its column on narrow rows.
+	iconRowOpenIconWidthFrac = 0.5
+	// iconRowOpenRowGapPt separates the icon row from the caption row; the
+	// caption's own top margin does the rest.
+	iconRowOpenRowGapPt = 2.0
+	// iconRowOpenGapPt is the gutter between items.
+	iconRowOpenGapPt = 16.0
+)
+
+// iconRowOpenIconPt is the icon height of the open style: icon_size when the
+// author set one, else a share of the content-area height, bounded and never
+// wider than half its column.
+func iconRowOpenIconPt(ctx ExpandContext, n int, ovr *IconRowOverrides) float64 {
+	areaW, areaH := sizingAreaPt(ctx)
+	colW := equalColumnWidthPt(areaW, n, ctx.Gap(iconRowOpenGapPt))
+	size := clampPt(areaH*iconRowOpenIconFrac, iconRowOpenIconMinPt, iconRowOpenIconMaxPt)
+	if ovr.IconSize > 0 {
+		size = ovr.IconSize
+	}
+	return math.Round(math.Min(size, math.Max(colW*iconRowOpenIconWidthFrac, 1)))
+}
+
+// iconRowOpenCaptionSize is the caption size of the open style: a bold
+// subhead under a large icon unless the author set caption_size.
+func iconRowOpenCaptionSize(ovr *IconRowOverrides) float64 {
+	return ResolveSize(ovr.CaptionSize, scaleSubheadPt)
+}
+
+// expandIconRowOpen renders the items without containers: a row of accent
+// icons standing on the slide, and under it a row of top-anchored captions
+// (bold) with an optional muted description line. Both rows are one per item
+// column, so every icon sits on one line and every caption starts on one
+// baseline whatever its neighbours' length.
+func expandIconRowOpen(ctx ExpandContext, items IconRowValues, ovr *IconRowOverrides, cellOverrides map[int]any, baseAccent string) *jsonschema.ShapeGridInput {
+	n := len(items)
+	captionSize := iconRowOpenCaptionSize(ovr)
+	areaW, _ := sizingAreaPt(ctx)
+	colW := equalColumnWidthPt(areaW, n, ctx.Gap(iconRowOpenGapPt))
+
+	iconCells := make([]*jsonschema.GridCellInput, n)
+	captionCells := make([]*jsonschema.GridCellInput, n)
+	captionPt := 0.0
+	for i, item := range items {
+		accent := ctx.ResolveCellAccent(baseAccent, i, ovr.CellAccentMode)
+		iconCells[i] = &jsonschema.GridCellInput{}
+		if item.Icon != nil {
+			iconCells[i].Icon = item.Icon.Resolve(iconFillOn(ctx, nil, accent), "")
+			iconCells[i].Fit = "contain"
+		}
+		captionCells[i] = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+			Geometry: "rect",
+			Fill:     json.RawMessage(`"none"`),
+			Line:     noLine,
+			Text:     buildIconRowOpenText(item, captionSize),
+		}}
+		if co, ok := cellOverrides[i].(*IconRowCellOverride); ok {
+			applyCellTextOverride(captionCells[i], co)
+			if co.AccentBar {
+				captionCells[i].AccentBar = &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: peerRuleWidthPt}
+			}
+		}
+		captionPt = math.Max(captionPt, rowTextNeedPt(ctx.themeFonts(), captionCells[i].Shape.Text, colW))
+	}
+
+	iconPt := iconRowOpenIconPt(ctx, n, ovr)
+	captionPt = math.Ceil(captionPt)
+	return &jsonschema.ShapeGridInput{
+		Columns:       json.RawMessage(fmt.Sprintf(`%d`, n)),
+		ColGap:        ctx.Gap(iconRowOpenGapPt),
+		RowGap:        iconRowOpenRowGapPt,
+		VerticalAlign: GridVerticalAlignDefault,
+		Rows: []jsonschema.GridRowInput{
+			{MinHeight: iconPt, MaxHeight: iconPt, Cells: iconCells},
+			{MinHeight: captionPt, MaxHeight: captionPt, Cells: captionCells},
+		},
+	}
+}
+
+// iconRowOpenNeedPt is the open row's height (icon, gap, tallest caption) and
+// the content-area height it has to fit.
+func iconRowOpenNeedPt(ctx ExpandContext, items IconRowValues, ovr *IconRowOverrides) (need, areaH float64) {
+	grid := expandIconRowOpen(ctx, items, ovr, nil, "accent1")
+	_, areaH = sizingAreaPt(ctx)
+	return grid.Rows[0].MaxHeight + grid.RowGap + grid.Rows[1].MaxHeight, areaH
+}
+
+// buildIconRowOpenText is the open style's caption cell: a bold centred
+// caption and, when given, a description line in the body size.
+func buildIconRowOpenText(item IconRowItem, captionSize float64) json.RawMessage {
+	paras := []chartInsightsParagraph{{Content: item.Caption, Size: captionSize, Bold: true, Color: "dk1", Align: "ctr"}}
+	if d := strings.TrimSpace(item.Description); d != "" {
+		paras[0].SpaceAfter = 2
+		paras = append(paras, chartInsightsParagraph{Content: d, Size: scaleBodyPt, Color: "dk1", Align: "ctr"})
+	}
+	return insetText{Paragraphs: paras, Align: "ctr", VerticalAlign: "t"}.json()
 }
 
 const (
@@ -380,10 +517,17 @@ func (ir *iconRow) PostExpandWarnings(ctx ExpandContext, values, overrides any) 
 	if ovr == nil {
 		ovr = &IconRowOverrides{}
 	}
+	if iconRowOpen(*items, ovr) {
+		need, areaH := iconRowOpenNeedPt(ctx, *items, ovr)
+		if need <= areaH+1 {
+			return nil
+		}
+		return []string{fmt.Sprintf("%s: icon-row icons and captions need %.0fpt at readable sizes but the content area holds about %.0fpt — shorten the captions or descriptions, or use fewer items", ErrCodeBodyTooLong, need, areaH)}
+	}
 	captionSize := ResolveSize(ovr.CaptionSize, scaleBodyPt)
 	cells := make([]*jsonschema.GridCellInput, len(*items))
 	for i, item := range *items {
-		cells[i] = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Text: buildIconRowCaptionOnly(item.Caption, captionSize)}}
+		cells[i] = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Text: buildIconRowTileText(item, captionSize)}}
 		if item.Icon != nil && !item.Icon.IsEmpty() {
 			cells[i].Shape.Icon = &jsonschema.IconInput{Position: "top"}
 		}
@@ -393,6 +537,19 @@ func (ir *iconRow) PostExpandWarnings(ctx ExpandContext, values, overrides any) 
 		return nil
 	}
 	return []string{fmt.Sprintf("%s: icon-row captions need %.0fpt cards at readable sizes but the content area holds about %.0fpt — shorten the captions or use fewer items", ErrCodeBodyTooLong, need, areaH)}
+}
+
+// buildIconRowTileText is the tile style's text: the caption, and the optional
+// description as a second line.
+func buildIconRowTileText(item IconRowItem, captionSize float64) json.RawMessage {
+	if strings.TrimSpace(item.Description) == "" {
+		return buildIconRowCaptionOnly(item.Caption, captionSize)
+	}
+	paras := []chartInsightsParagraph{
+		{Content: item.Caption, Size: captionSize, Bold: true, Color: "lt1", Align: "ctr"},
+		{Content: strings.TrimSpace(item.Description), Size: captionSize, Color: "lt1", Align: "ctr"},
+	}
+	return insetText{Paragraphs: paras, Align: "ctr", VerticalAlign: "ctr"}.json()
 }
 
 // buildIconRowCaptionOnly creates a JSON text object with caption only (for SVG icon mode).

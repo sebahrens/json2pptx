@@ -9,6 +9,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -334,25 +335,24 @@ const (
 	panelGapHeightRatio = 0.0228
 )
 
-// Panel scheme color constants for theme-aware rendering.
-// These use OOXML scheme color references so panels inherit template theme colors.
+// Panel surfaces (go-slide-creator-amtkg). The reference panel drew an accent
+// pastel header over a white body outlined in black; the shared surface style
+// (native_surface_style.go) has no outlined white boxes and one accent. A
+// panel is now a header band a neutral step darker than its body, the title
+// in the accent, and no outline.
 const (
-	// panelHeaderFillSchemeColor is the scheme color for header rectangle fill.
-	// accent1 with luminance modifiers produces a tinted background.
-	panelHeaderFillSchemeColor = "accent1"
-	panelHeaderFillLumMod      = 15000
-	panelHeaderFillLumOff      = 85000
+	// panelHeaderTint and panelBodyTint are the neutral steps of a panel's
+	// header band and body; a stat or KPI card is one body-step surface.
+	panelHeaderTint = patterns.NeutralTint8
+	panelBodyTint   = patterns.NeutralTint4
 
-	// panelHeaderTextSchemeColor is the scheme color for header title text.
-	// dk1 (dark 1) maps to the primary dark text color in all themes.
-	panelHeaderTextSchemeColor = "dk1"
+	// panelCaptionTextSchemeColor is the scheme color of a card's caption
+	// under its hero value: the primary dark text color in all themes.
+	panelCaptionTextSchemeColor = "dk1"
 
-	// panelBodyBorderSchemeColor is the scheme color for body rectangle border.
-	// tx1 maps to the primary text color (typically black/dark).
-	panelBodyBorderSchemeColor = "tx1"
-
-	// panelBulletSchemeColor is the scheme color for bullet characters.
-	panelBulletSchemeColor = "accent1"
+	// panelBulletSchemeColor is the scheme color for bullet characters: the
+	// text ink, so a panel's one accent is its title.
+	panelBulletSchemeColor = "dk1"
 )
 
 // panelAliasLayoutMode maps a panel-family alias diagram type to the panel
@@ -447,15 +447,15 @@ func panelBulletsToOOXML(text string, fontSizeHundredths int) string {
 	return buf.String()
 }
 
-// generatePanelHeaderXML produces a p:sp element for a panel header rectangle.
-// The header has a scheme-colored fill with luminance modifiers and centered bold text.
-func generatePanelHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, schemeColor string, lumMod, lumOff int) string {
+// generatePanelHeaderXML produces a p:sp element for a panel header rectangle:
+// the neutral header band with the bold title in the surface's accent ink.
+func generatePanelHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, tint taxonomyTint) string {
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     "Panel Header",
 		Bounds:   pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
-		Geometry: pptx.GeomRect,
-		Fill:     diagramTintFill(schemeColor, lumMod, lumOff),
+		Geometry: nativeSurfaceGeometry,
+		Fill:     tint.fill(),
 		Line:     pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:    "square",
@@ -463,7 +463,7 @@ func generatePanelHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, sc
 			Insets:  pptx.ShapeTextInsets(),
 			AutoFit: "noAutofit",
 			Paragraphs: []pptx.Paragraph{{
-				Align:    "ctr",
+				Align:    nativeHeaderAlign,
 				NoBullet: true,
 				Runs: []pptx.Run{{
 					Text:     title,
@@ -471,7 +471,7 @@ func generatePanelHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, sc
 					FontSize: panelHeaderFontSize,
 					Bold:     true,
 					Dirty:    true,
-					Color:    pptx.SchemeFill(panelHeaderTextSchemeColor),
+					Color:    tint.titleFill(),
 				}},
 			}},
 		},
@@ -483,25 +483,17 @@ func generatePanelHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, sc
 	return string(b)
 }
 
-// generatePanelBodyXML produces a p:sp element for a panel body rectangle.
-// The body has no fill, a scheme-colored border, and bulleted text content.
-func generatePanelBodyXML(body string, x, y, cx, cy int64, shapeID uint32, borderSchemeColor string, fontSizeHundredths int) string {
+// generatePanelBodyXML produces a p:sp element for a panel body rectangle:
+// the neutral card surface, no outline, and bulleted text content.
+func generatePanelBodyXML(body string, x, y, cx, cy int64, shapeID uint32, fontSizeHundredths int) string {
 	paras := panelBulletsParagraphs(body, fontSizeHundredths)
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     "Panel Body",
 		Bounds:   pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
-		Geometry: pptx.GeomRect,
-		Fill:     pptx.NoFill(),
-		Line: pptx.Line{
-			Width:    panelBorderWidth,
-			Fill:     pptx.SchemeFill(borderSchemeColor),
-			Cap:      "flat",
-			Compound: "sng",
-			Align:    "ctr",
-			Dash:     "solid",
-			Join:     "round",
-		},
+		Geometry: nativeSurfaceGeometry,
+		Fill:     nativeNeutralFill(panelBodyTint),
+		Line:     pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "t",
@@ -520,7 +512,7 @@ func generatePanelBodyXML(body string, x, y, cx, cy int64, shapeID uint32, borde
 // generatePanelGroupXML produces the complete <p:grpSp> XML for a set of panels.
 // Each panel gets a header rectangle and a body rectangle arranged as equal-width
 // columns within the given bounding box. Uses identity child transform (chOff=off, chExt=ext).
-func generatePanelGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, fontName string) string {
+func generatePanelGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, fontName string, surface nativeSurface) string {
 	n := len(panels)
 	if n == 0 {
 		return ""
@@ -555,7 +547,7 @@ func generatePanelGroupXML(panels []nativePanelData, bounds types.BoundingBox, s
 			panel.title,
 			panelX, headerY, panelWidth, headerCY,
 			headerID,
-			panelHeaderFillSchemeColor, panelHeaderFillLumMod, panelHeaderFillLumOff,
+			surface.tint(i, panelHeaderTint, panelHeaderFontSize),
 		)
 		children = append(children, []byte(headerXML))
 
@@ -564,7 +556,6 @@ func generatePanelGroupXML(panels []nativePanelData, bounds types.BoundingBox, s
 			panel.body,
 			panelX, bodyY, panelWidth, bodyCY,
 			bodyID,
-			panelBodyBorderSchemeColor,
 			panelBodyFontSize,
 		)
 		children = append(children, []byte(bodyXML))
@@ -602,9 +593,9 @@ const (
 )
 
 // generatePanelRowsGroupXML produces the complete <p:grpSp> XML for panels arranged
-// as horizontal rows. Each row has a scheme-colored header rect on the left and a
-// bordered body rect on the right.
-func generatePanelRowsGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32) string {
+// as horizontal rows. Each row has a neutral header rect on the left and a
+// neutral body rect, one step lighter, on the right.
+func generatePanelRowsGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, surface nativeSurface) string {
 	n := len(panels)
 	if n == 0 {
 		return ""
@@ -635,21 +626,20 @@ func generatePanelRowsGroupXML(panels []nativePanelData, bounds types.BoundingBo
 		headerID := shapeIDBase + uint32(i*3) + 1
 		bodyID := shapeIDBase + uint32(i*3) + 2
 
-		// Header rect — scheme-colored fill, vertically centered bold text
+		// Header rect — neutral band, vertically centered bold accent title
 		headerXML := generatePanelHeaderXML(
 			panel.title,
 			rowX, rowY, headerCX, rowHeight,
 			headerID,
-			panelHeaderFillSchemeColor, panelHeaderFillLumMod, panelHeaderFillLumOff,
+			surface.tint(i, panelHeaderTint, panelHeaderFontSize),
 		)
 		children = append(children, []byte(headerXML))
 
-		// Body rect — bordered with bulleted text
+		// Body rect — neutral card with bulleted text
 		bodyXML := generatePanelBodyXML(
 			panel.body,
 			rowX+headerCX+rowHeaderBodyGap, rowY, bodyCX, rowHeight,
 			bodyID,
-			panelBodyBorderSchemeColor,
 			panelBodyFontSize,
 		)
 		children = append(children, []byte(bodyXML))
@@ -719,7 +709,7 @@ func statCardGridLayout(n int) (cols, rows int) {
 // generateStatCardsGroupXML produces the complete <p:grpSp> XML for a grid of stat cards.
 // Each card has a hero value (large accent-colored text), a title label, and optional body text.
 // Cards with a body field that starts with "+" or "-" get an upArrow or downArrow delta indicator.
-func generateStatCardsGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, fontName string) string {
+func generateStatCardsGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, fontName string, surface nativeSurface) string {
 	n := len(panels)
 	if n == 0 {
 		return ""
@@ -752,7 +742,7 @@ func generateStatCardsGroupXML(panels []nativePanelData, bounds types.BoundingBo
 			// Each stat card uses up to 3 shape IDs: background, value text, label/body text
 			baseID := shapeIDBase + uint32(panelIdx*3) + 1
 
-			cardXML := generateStatCardXML(panel, cardX, cardY, cardW, cardH, baseID)
+			cardXML := generateStatCardXML(panel, cardX, cardY, cardW, cardH, baseID, surface.tint(panelIdx, panelBodyTint, statCardValueFontSize))
 			children = append(children, []byte(cardXML))
 
 			panelIdx++
@@ -809,7 +799,7 @@ func statLikeBody(body string) bool {
 
 // generateStatCardXML produces the shapes for a single stat card.
 // Returns a background rect with all text zones rendered as paragraphs in a single text body.
-func generateStatCardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint32) string {
+func generateStatCardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint32, tint taxonomyTint) string {
 	displayValue, caption, body := statCardParts(panel)
 
 	// Determine if body indicates a delta (starts with + or -)
@@ -837,7 +827,7 @@ func generateStatCardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint
 				FontSize: statCardValueFontSize,
 				Bold:     true,
 				Dirty:    true,
-				Color:    pptx.SchemeFill("accent1"),
+				Color:    tint.titleFill(),
 			}},
 		})
 	}
@@ -854,7 +844,7 @@ func generateStatCardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint
 				FontSize: statCardLabelFontSize,
 				Bold:     true,
 				Dirty:    true,
-				Color:    pptx.SchemeFill(panelHeaderTextSchemeColor),
+				Color:    pptx.SchemeFill(panelCaptionTextSchemeColor),
 			}},
 		})
 	}
@@ -880,17 +870,14 @@ func generateStatCardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint
 	// When the card has an icon, reserve a top band so the text sits below it.
 	topInset := statCardInset + statCardIconBandCY(cy, len(panel.iconSVG) > 0)
 
-	// Single rect with light fill and all text in one text body
+	// Single neutral card with all text in one text body
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     "Stat Card",
 		Bounds:   pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
-		Geometry: pptx.GeomRoundRect,
-		Adjustments: []pptx.AdjustValue{
-			{Name: "adj", Value: 5000}, // subtle rounding
-		},
-		Fill: diagramTintFill(panelHeaderFillSchemeColor, panelHeaderFillLumMod, panelHeaderFillLumOff),
-		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
+		Geometry: nativeSurfaceGeometry,
+		Fill:     tint.fill(),
+		Line:     pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "ctr",

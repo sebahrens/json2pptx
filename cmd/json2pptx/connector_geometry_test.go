@@ -10,14 +10,18 @@ import (
 
 // resolvePatternGrid expands a registered pattern and resolves it to absolute
 // geometry exactly as the generate path does (minus XML emission).
-func resolvePatternGrid(t *testing.T, name string, values any) *shapegrid.ResolveResult {
+func resolvePatternGrid(t *testing.T, name string, values any, overrides ...any) *shapegrid.ResolveResult {
 	t.Helper()
 	p, ok := patterns.Default().Get(name)
 	if !ok {
 		t.Fatalf("pattern %q not registered", name)
 	}
 	ctx := patterns.ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}
-	in, err := p.Expand(ctx, values, nil, nil)
+	var ovr any
+	if len(overrides) > 0 {
+		ovr = overrides[0]
+	}
+	in, err := p.Expand(ctx, values, ovr, nil)
 	if err != nil {
 		t.Fatalf("expand %s: %v", name, err)
 	}
@@ -64,7 +68,9 @@ func TestDualOrgLadder_ConnectorsStayInGap(t *testing.T) {
 			{ANameField: "Sara Patel", ATitle: "Programme Lead", BNameField: "Tom Becker", BTitle: "Delivery Lead"},
 		},
 	}
-	res := resolvePatternGrid(t, "dual-org-ladder", vals)
+	// The connector between two role cards is the tiles style's; the open
+	// default draws its pairing line as a rule in the gutter column.
+	res := resolvePatternGrid(t, "dual-org-ladder", vals, &patterns.DualOrgLadderOverrides{Style: "tiles"})
 	if len(res.Connectors) != 3 {
 		t.Fatalf("want one connector per paired row (3), got %d", len(res.Connectors))
 	}

@@ -23,7 +23,7 @@ func TestBeforeAfterCompact_ExpandBasic(t *testing.T) {
 		After:  BeforeAfterColumn{Header: "After", Items: []string{"Fast"}},
 	}
 
-	grid, err := p.Expand(ExpandContext{}, vals, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, vals, &BeforeAfterOverrides{Style: "panels"}, nil)
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestBeforeAfterCompact_LightPanelsTallChevronAndMargins(t *testing.T) {
 		Before: BeforeAfterColumn{Header: "Today", Items: []string{"Manual handoffs"}},
 		After:  BeforeAfterColumn{Header: "Target", Items: []string{"Automated routing"}},
 	}
-	grid, err := (&beforeAfterCompact{}).Expand(fullThemeCtx(), vals, nil, nil)
+	grid, err := (&beforeAfterCompact{}).Expand(fullThemeCtx(), vals, &BeforeAfterOverrides{Style: "panels"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

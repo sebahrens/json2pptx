@@ -128,7 +128,7 @@ func (b *beforeAfterCompact) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"values":         valuesSchema,
-			"overrides":      textOverridesSchema(),
+			"overrides":      beforeAfterOverridesSchema(),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
@@ -146,13 +146,7 @@ func (b *beforeAfterCompact) Validate(values, overrides any, cellOverrides map[i
 	const name = "before-after-compact"
 	var errs []error
 
-	if overrides != nil {
-		if ovr, ok := overrides.(*BeforeAfterOverrides); ok {
-			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
-				errs = append(errs, err)
-			}
-		}
-	}
+	errs = append(errs, validateBeforeAfterOverrides(name, overrides)...)
 
 	// Validate before column
 	if vals.Before.Header == "" {
@@ -238,6 +232,9 @@ func (b *beforeAfterCompact) Expand(ctx ExpandContext, values, overrides any, ce
 	}
 	if plan.rowGap != ctx.Gap(beforeAfterCompactVariant.gapPt) {
 		grid.RowGap = plan.rowGap
+	}
+	if beforeAfterOpen(ovr) {
+		plan.ruleRows(grid)
 	}
 
 	return grid, nil

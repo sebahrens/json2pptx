@@ -9,11 +9,11 @@ import (
 )
 
 // =============================================================================
-// Nine Box Talent Native Shapes — 3x3 Grid of roundRect Cells
+// Nine Box Talent Native Shapes — 3x3 Grid of Cells
 // =============================================================================
 //
 // Replaces SVG-rendered nine_box_talent diagrams with native OOXML grouped shapes.
-// Each cell is a roundRect with a scheme-colored tint fill, a bold label at the
+// Each cell is a square-cornered card in its score band's tint, a bold label at the
 // top, and item names listed below. All 9 cells plus axis label text boxes are
 // wrapped in a single p:grpSp with identity child transform.
 //
@@ -45,9 +45,6 @@ const (
 	// nineBoxGap is the gap between cells in EMU.
 	// Same as SWOT/PESTEL gap for visual consistency.
 	nineBoxGap int64 = 73152
-
-	// nineBoxCornerRadius is the roundRect adjustment value.
-	nineBoxCornerRadius int64 = 8000
 
 	// nineBoxLabelFontSize is the cell label font size (hundredths of a point).
 	// 1100 = 11pt
@@ -95,11 +92,11 @@ func nineBoxSemanticTints(semanticAccents map[string]string) []taxonomyTint {
 	// therefore shares one meaning; only the outer bands need a lightness step
 	// to preserve the five-level progression.
 	band := [5]taxonomyTint{
-		{negative, 35000, 65000},
-		{negative, 20000, 80000},
-		{neutral, 25000, 75000},
-		{positive, 20000, 80000},
-		{positive, 35000, 65000},
+		{scheme: negative, lumMod: 35000, lumOff: 65000},
+		{scheme: negative, lumMod: 20000, lumOff: 80000},
+		{scheme: neutral, lumMod: 25000, lumOff: 75000},
+		{scheme: positive, lumMod: 20000, lumOff: 80000},
+		{scheme: positive, lumMod: 35000, lumOff: 65000},
 	}
 	out := make([]taxonomyTint, 0, 9)
 	for row := 0; row < 3; row++ {
@@ -280,17 +277,17 @@ func generateNineBoxGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 			shapeIdx++
 			bodyID := shapeIDBase + shapeIdx
 
-			// Label shape: roundRect with scheme fill, centered bold text
+			// Label shape: the score band's fill under a bold left-aligned title
 			labelXML := generateNineBoxCellLabelXML(
 				panel.title, cellX, cellY, cellW, labelCY,
-				labelID, colors.scheme, colors.lumMod, colors.lumOff,
+				labelID, colors,
 			)
 			children = append(children, []byte(labelXML))
 
-			// Body shape: roundRect with same scheme fill, top-aligned bulleted text
+			// Body shape: the same fill, top-aligned names
 			bodyXML := generateNineBoxCellBodyXML(
 				panel.body, cellX, cellY+labelCY, cellW, bodyCY,
-				bodyID, colors.scheme, colors.lumMod, colors.lumOff,
+				bodyID, colors,
 			)
 			children = append(children, []byte(bodyXML))
 		}
@@ -391,25 +388,22 @@ func generateNineBoxGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 	return string(b)
 }
 
-// generateNineBoxCellLabelXML produces a roundRect label shape for a nine box cell.
-func generateNineBoxCellLabelXML(label string, x, y, cx, cy int64, shapeID uint32, schemeColor string, lumMod, lumOff int) string {
+// generateNineBoxCellLabelXML produces the label shape of a nine box cell.
+func generateNineBoxCellLabelXML(label string, x, y, cx, cy int64, shapeID uint32, tint taxonomyTint) string {
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     "NineBox " + label,
 		Bounds:   pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
-		Geometry: pptx.GeomRoundRect,
-		Adjustments: []pptx.AdjustValue{
-			{Name: "adj", Value: nineBoxCornerRadius},
-		},
-		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
-		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
+		Geometry: nativeSurfaceGeometry,
+		Fill:     tint.fill(),
+		Line:     pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:    "square",
 			Anchor:  "ctr",
 			Insets:  nativeCardHeaderInsets(),
 			AutoFit: "noAutofit",
 			Paragraphs: []pptx.Paragraph{{
-				Align:    "ctr",
+				Align:    nativeHeaderAlign,
 				NoBullet: true,
 				Runs: []pptx.Run{{
 					Text:     label,
@@ -417,7 +411,7 @@ func generateNineBoxCellLabelXML(label string, x, y, cx, cy int64, shapeID uint3
 					FontSize: nineBoxLabelFontSize,
 					Bold:     true,
 					Dirty:    true,
-					Color:    diagramPanelTextFill(schemeColor),
+					Color:    tint.titleFill(),
 				}},
 			}},
 		},
@@ -429,8 +423,8 @@ func generateNineBoxCellLabelXML(label string, x, y, cx, cy int64, shapeID uint3
 	return string(b)
 }
 
-// generateNineBoxCellBodyXML produces a roundRect body shape for a nine box cell.
-func generateNineBoxCellBodyXML(body string, x, y, cx, cy int64, shapeID uint32, schemeColor string, lumMod, lumOff int) string {
+// generateNineBoxCellBodyXML produces the body shape of a nine box cell.
+func generateNineBoxCellBodyXML(body string, x, y, cx, cy int64, shapeID uint32, tint taxonomyTint) string {
 	// A cell lists names, one per line: the 6pt panel bullet spacing left a
 	// four-name cell on a short content area at a third of its size
 	// (go-slide-creator-zbo58).
@@ -446,24 +440,21 @@ func generateNineBoxCellBodyXML(body string, x, y, cx, cy int64, shapeID uint32,
 	}
 
 	// Use the same accent color for bullets but with full strength.
-	bulletColor := pptx.ResolveColorString(schemeColor)
+	bulletColor := pptx.ResolveColorString(tint.scheme)
 	for i := range paras {
 		if paras[i].Bullet != nil {
 			paras[i].Bullet.Color = bulletColor
 		}
 	}
-	diagramPanelBodyColors(paras, schemeColor)
+	diagramPanelBodyColors(paras, tint.scheme)
 
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     "NineBox Body",
 		Bounds:   pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
-		Geometry: pptx.GeomRoundRect,
-		Adjustments: []pptx.AdjustValue{
-			{Name: "adj", Value: nineBoxCornerRadius},
-		},
-		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
-		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
+		Geometry: nativeSurfaceGeometry,
+		Fill:     tint.fill(),
+		Line:     pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "t",
@@ -530,7 +521,7 @@ func generateNineBoxAxisTitleVerticalXML(text string, x, y, cx, cy int64, shapeI
 			Insets:  pptx.ShapeTextInsets(),
 			AutoFit: "noAutofit",
 			Paragraphs: []pptx.Paragraph{{
-				Align:    "ctr",
+				Align:    nativeHeaderAlign,
 				NoBullet: true,
 				Runs: []pptx.Run{{
 					Text:     text,

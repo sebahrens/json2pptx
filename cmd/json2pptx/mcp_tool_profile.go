@@ -263,7 +263,7 @@ func withDeckSpecOutlineInput(tool mcp.Tool) mcp.Tool {
 		return tool
 	}
 	spec := map[string]any{
-		"description": "The semantic DeckSpec to validate, as a JSON object ({meta:{…}, slides:[{kind, …}]}); a raw YAML/JSON string is also accepted. Send this OR deck_id, not both." + deckSpecOutlineNote,
+		"description": "The semantic DeckSpec to validate, as a JSON object ({meta:{…}, slides:[{kind, …}]}) or a YAML/JSON string. Send this OR deck_id, not both." + deckSpecOutlineNote,
 	}
 	withDeckSpecOutline()(spec)
 	props["spec"] = spec

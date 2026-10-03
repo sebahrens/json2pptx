@@ -147,16 +147,6 @@ func storedByoTemplatePath(tool string, src specSource, argTemplate, rawTemplate
 	return resolveGuardedTemplatePath(tool, "template_path", src.TemplatePath, src.BaseDir)
 }
 
-// specTemplateFile opens the template a compiled spec validates against: the
-// handle's vetted bring-your-own file when there is one, else the registered
-// name.
-func (mc *mcpConfig) specTemplateFile(name, byoTemplatePath string) (string, func(), error) {
-	if byoTemplatePath != "" {
-		return byoTemplatePath, func() {}, nil
-	}
-	return resolveTemplatePath(name, mc.templatesDir)
-}
-
 // withServerSVGConfig fills the SVG knobs from the server's effective config
 // (defaults + config file + SVG_* env overrides), the same values
 // generate_presentation hands the generator. render_deck_spec used to build a

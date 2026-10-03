@@ -236,7 +236,7 @@ func TestQuoteCluster_Expand_AlternatingFills(t *testing.T) {
 	p, _ := Default().Get("quote-cluster")
 	v := validQuoteClusterValues(6)
 	ctx := ExpandContext{Metadata: &types.TemplateMetadata{SurfaceTints: map[string]string{"subtle": "lt2", "paper": "lt1"}}}
-	grid, err := p.Expand(ctx, v, nil, nil)
+	grid, err := p.Expand(ctx, v, &QuoteClusterOverrides{Style: "tile"}, nil)
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
 	}
@@ -262,7 +262,7 @@ func TestQuoteCluster_Expand_AlternatingFills(t *testing.T) {
 func TestQuoteCluster_Expand_QuoteUsesAccentColorForName(t *testing.T) {
 	p, _ := Default().Get("quote-cluster")
 	v := validQuoteClusterValues(3)
-	ovr := &QuoteClusterOverrides{Accent: "accent3"}
+	ovr := &QuoteClusterOverrides{Accent: "accent3", Style: "tile"}
 	grid, err := p.Expand(ExpandContext{}, v, ovr, nil)
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
@@ -288,7 +288,7 @@ func TestQuoteCluster_Expand_QuoteUsesAccentColorForName(t *testing.T) {
 func TestQuoteCluster_Expand_QuoteIsItalicized(t *testing.T) {
 	p, _ := Default().Get("quote-cluster")
 	v := validQuoteClusterValues(3)
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, v, &QuoteClusterOverrides{Style: "tile"}, nil)
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
 	}
@@ -318,7 +318,7 @@ func TestQuoteCluster_Expand_OmittedTitleDropsParagraph(t *testing.T) {
 			{Text: "Three.", Name: "C. Solo"},
 		},
 	}
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, v, &QuoteClusterOverrides{Style: "tile"}, nil)
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
 	}
@@ -396,7 +396,7 @@ func TestQuoteCluster_RowsAreContentSized(t *testing.T) {
 		{Text: "The reconciliation model saved us a full week every month, and the finance team noticed within the first cycle.", Name: "CFO", Title: "logistics"},
 		{Text: "Onboarding was fast.", Name: "IT director", Title: "healthcare"},
 	}}
-	grid, err := p.Expand(ctx, vals, nil, nil)
+	grid, err := p.Expand(ctx, vals, &QuoteClusterOverrides{Style: "tile"}, nil)
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
 	}

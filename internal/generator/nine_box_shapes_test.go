@@ -356,9 +356,9 @@ func TestGenerateNineBoxGroupXML_Basic(t *testing.T) {
 		t.Error("should use scheme colors for theme awareness")
 	}
 
-	// Should contain roundRect geometry.
-	if !strings.Contains(result, "roundRect") {
-		t.Error("should use roundRect preset geometry")
+	// One surface style: square corners, as the patterns (go-slide-creator-amtkg).
+	if strings.Contains(result, "roundRect") || !strings.Contains(result, `prst="rect"`) {
+		t.Error("cards should be square-cornered rects, not roundRect")
 	}
 }
 

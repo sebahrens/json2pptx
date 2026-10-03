@@ -71,13 +71,20 @@ func firstNonEmpty(vals ...string) string {
 // for the *current* artifact. It reuses the facade's two-stage contract:
 // deterministic_ready can be reached on the render call, while publishable
 // additionally requires an approved all-slide review of matching bytes.
+//
+// Every deterministic blocker is a finding (go-slide-creator-x9rhq): the
+// reasons name each blocking finding by code and path, and the quality gate's
+// verdict is carried by the findings that failed it (a per-finding blocker, or
+// a QUALITY_GATE finding for a criterion no single finding accounts for)
+// rather than by a sentence that names neither.
 func semanticPublicationStatus(diags []semanticDiagnostic, q *QualityScore, currentHash string) facadeStatus {
-	diagnosticReasons := blockingDiagnosticReasons(diags)
-	reasons := append([]string(nil), diagnosticReasons...)
+	reasons := blockingFindingReasons(diags)
 	gatePassed := q != nil && q.QualityGate != nil && q.QualityGate.Passed
 	if q == nil || q.QualityGate == nil {
 		reasons = append(reasons, "quality gate: missing")
-	} else if !q.QualityGate.Passed {
+	} else if !q.QualityGate.Passed && len(reasons) == 0 {
+		// qualityGateDiagnostics guarantees a blocking finding for a failed
+		// gate; keep the gate's own words if a caller skipped it.
 		for _, r := range q.QualityGate.Reasons {
 			reasons = append(reasons, "quality gate: "+r)
 		}
@@ -85,7 +92,7 @@ func semanticPublicationStatus(diags []semanticDiagnostic, q *QualityScore, curr
 			reasons = append(reasons, "quality gate: failed")
 		}
 	}
-	gatePassed = gatePassed && len(diagnosticReasons) == 0
+	gatePassed = gatePassed && len(reasons) == 0
 
 	evidenceComplete, outputValid, visuallyApproved := false, false, false
 	if q != nil && q.Evidence != nil {

@@ -177,6 +177,56 @@ Actions indicate severity and recommended remediation. They are ranked from most
 
 The `ActionRank(action)` function returns these numeric ranks. Unknown actions return -1.
 
+### Severity and blocking on the DeckSpec surfaces
+
+`validate_deck_spec`, `render_deck_spec`, `json2pptx semantic validate` and
+`json2pptx semantic render` use one severity model (go-slide-creator-x9rhq):
+
+- A finding **blocks** exactly when its `severity` is `error`, and every
+  finding states it: `blocking: true` / `false` on a render diagnostic and on
+  an envelope finding. Nothing reported as `warning` or `info` blocks.
+- A fit finding is an `error` exactly when the default quality gate blocks on
+  it alone (`deterministic.BlocksGate`): action `refuse` or `shrink_or_split`;
+  a substantive `review` defect (`BODY_TOO_LONG`, `SLIDE_NEARLY_EMPTY`,
+  `LOW_CONTRAST_HIGHLIGHT`, and `TEXT_BELOW_READABLE_MIN` measured on authored
+  or generated text); `takeaway_missing`; `accent_overload`;
+  `NO_EXECUTIVE_SUMMARY` and `CLOSING_WITHOUT_NEXT_STEPS`. Every other fit
+  finding is an `info`. The raw surfaces (`validate_input`,
+  `generate_presentation`, `score_deck`) keep the action-derived severity.
+- A gate criterion that no single finding accounts for — the score floor, the
+  action-title share, the composition floor, the problem-slide share — is
+  reported as one [`QUALITY_GATE`](#quality_gate) error at `slides`.
+- `deterministic_blocking_reasons` names each blocking finding as
+  `CODE at path` (`CODE at a, b, c (+N more)` when one code blocks in several
+  places); `deterministic_ready` is true exactly when there is none.
+  `semantic render` exits 0 exactly when the deck was written and none
+  remains, and its printed `ok` agrees with the exit status;
+  `semantic validate` / `validate_deck_spec` report `ok: false` for the same
+  specs.
+- `describe_finding` adds `blocks` (`always` / `sometimes` / `never`) and
+  `blocks_when` to each code, derived from the same rule. Its `severity` field
+  stays the action rank.
+
+Both validate tools obtain their findings by running the render into a scratch
+directory, so for one spec revision and template they report the render's own
+diagnostics: same code, path and severity (go-slide-creator-3rn3s).
+
+**Waivers.** A storyline finding (`NO_EXECUTIVE_SUMMARY`,
+`CLOSING_WITHOUT_NEXT_STEPS`, `TITLE_NOT_ACTION`, `takeaway_missing`) named in
+the DeckSpec's `meta.waivers` with a reason becomes an `info` with
+`waived: <reason>` and no longer counts toward the score or the gate. A
+registered archetype that does not expect a synthesis slide (`sales_pitch`,
+`project_roadmap`, `market_analysis`) waives `NO_EXECUTIVE_SUMMARY` by itself.
+The result's `waivers[]` records each one as `{code, reason, source, findings}`
+(go-slide-creator-oh3qr).
+
+**Root causes.** When a slide's pattern, compose envelope or shape grid
+carries a `BODY_TOO_LONG` capacity finding and its fields are refused as
+`TEXT_BELOW_READABLE_MIN`, the capacity finding is the one blocking finding
+for that slide: it is reported at the slide's DeckSpec path with severity
+`error`, and the per-field refusals are listed under it as `symptoms[]`
+(`evidence.symptoms` in the envelope) instead of as separate errors.
+
 ### Sort invariant
 
 Every `fit_report` / `findings` array crosses serialization boundaries in the canonical order
@@ -650,7 +700,7 @@ An authored raw grid has less than 50% of its declared slots populated. Pattern 
 
 A pattern grid exceeds the pattern's recommended maximum cell count. The fix suggests splitting across two slides using `split_pattern`, with params indicating the recommended split point.
 
-The limit counts **grid cells**, not the pattern's items: a pattern that draws each item as a stack of cells (`timeline-horizontal`'s dots layout emits a date, a dot and a label per stop) carries a limit scaled accordingly. Cells that carry no content are not counted: `comparison-2col`'s `connectors` gutter (one badge or spacer per row) is excluded, so a 3-row comparison with headers and connectors is not reported (go-slide-creator-csclk.111).
+The limit counts **grid cells**, not the pattern's items: a pattern that draws each item as a stack of cells (`timeline-horizontal`'s dots layout emits a date, a dot and a label per stop) carries a limit scaled accordingly. Cells that carry no content are not counted: `comparison-2col`, `icon-row` and `card-grid` count only their text cells (rule rows, the open icon row and a ragged row's spacers are not content; `card-grid`'s limit is 12), and `comparison-2col`'s `connectors` gutter (one badge or spacer per row) is excluded, so a 3-row comparison with headers and connectors is not reported (go-slide-creator-csclk.111).
 
 On a raw `shape_grid` slide the params carry `first` / `second` (the cell split point). On a named-pattern slide they are omitted: those counts are in grid cells, while `repair_slide` splits a pattern slide by its `pattern.values` array, so it halves that list instead.
 
@@ -1611,6 +1661,29 @@ A slide shows data but cites no source (go-slide-creator-cuszt). Data means a `c
 }
 ```
 
+### `QUALITY_GATE`
+
+**Severity:** `error` (always blocking)
+**Emitted at:** `validate_deck_spec`, `render_deck_spec`, `semantic validate`, `semantic render`; reported on `slides`
+
+Not a fit finding. The DeckSpec surfaces report it when the quality gate fails
+on a criterion no single finding accounts for: the structural score is under
+`min_score`, more than `max_topic_title_pct` of the slides lack an action
+title, the composition score is under `min_composition_score`, or more than
+`max_problem_slides_pct` of the slides carry findings. The message is the
+gate's own sentence followed by the advisories counted; every other gate
+failure is carried by the finding that caused it (go-slide-creator-x9rhq).
+
+```json
+{
+  "code": "QUALITY_GATE",
+  "severity": "error",
+  "blocking": true,
+  "semantic_path": "slides",
+  "message": "quality gate: 2 of 5 slides lack an action title (40%, TITLE_NOT_ACTION) — exceeds max_topic_title_pct 25 — advisories counted: TITLE_NOT_ACTION at slides[1].title, TITLE_NOT_ACTION at slides[3].title"
+}
+```
+
 ### `NO_EXECUTIVE_SUMMARY`
 
 **Action:** `review`
@@ -1618,7 +1691,7 @@ A slide shows data but cites no source (go-slide-creator-cuszt). Data means a `c
 **Fix kind:** `adopt_pattern` (advisory; `params.pattern: "exec-summary"`, `params.kind: "executive_summary"`)
 **Emitted at:** preflight (every surface that calls the shared fit collector), reported on `/slides/1`
 
-A deck of six or more slides has no executive summary (go-slide-creator-kuurd): no `exec-summary` or `scqa-summary` pattern (DeckSpec `executive_summary` compiles to one, also as a `compose` segment) and no slide whose title contains "executive summary", "summary", "key takeaways", "at a glance" or "bottom line". A consulting deck opens with the whole answer. Fails `score_deck`'s gate criterion `require_storyline` (reason `deck storyline incomplete (require_storyline: NO_EXECUTIVE_SUMMARY)`); exempt from the problem-slide share.
+A deck of six or more slides has no executive summary (go-slide-creator-kuurd): no `exec-summary` or `scqa-summary` pattern (DeckSpec `executive_summary` compiles to one, also as a `compose` segment) and no slide whose title contains "executive summary", "summary", "key takeaways", "at a glance" or "bottom line". A consulting deck opens with the whole answer. Fails `score_deck`'s gate criterion `require_storyline` (reason `deck storyline incomplete (require_storyline: NO_EXECUTIVE_SUMMARY)`); exempt from the problem-slide share. On the DeckSpec surfaces it is a blocking `error` unless waived by `meta.waivers` or by a non-executive `meta.archetype` (`sales_pitch`, `project_roadmap`, `market_analysis`), in which case it is an `info` carrying `waived`.
 
 ```json
 {
@@ -1637,7 +1710,7 @@ A deck of six or more slides has no executive summary (go-slide-creator-kuurd): 
 **Fix kind:** `adopt_pattern` (advisory; `params.pattern: "next-steps"`, `params.kind: "next_steps"`)
 **Emitted at:** preflight, reported on the closing slide's title
 
-The last slide of a deck of three or more is a courtesy closer — titled "Thank you", "Thanks", "Questions", "Any questions?", "Q&A" or "Discussion" — and the deck never states its ask: no `next-steps` pattern slide (DeckSpec `next_steps`) and no slide title containing "next step", "decision", "we ask", "the ask", "approve", "call to action" or "action plan" (go-slide-creator-kuurd). Fails `score_deck`'s gate criterion `require_storyline`; exempt from the problem-slide share. End on the ask, or retitle the closer as the action ("Approve the pilot budget by 15 March to launch in Q3").
+The last slide of a deck of three or more is a courtesy closer — titled "Thank you", "Thanks", "Questions", "Any questions?", "Q&A" or "Discussion" — and the deck never states its ask: no `next-steps` pattern slide (DeckSpec `next_steps`) and no slide title containing "next step", "decision", "we ask", "the ask", "approve", "call to action" or "action plan" (go-slide-creator-kuurd). Fails `score_deck`'s gate criterion `require_storyline`; exempt from the problem-slide share. On the DeckSpec surfaces it is a blocking `error` unless `meta.waivers` names it with a reason. End on the ask, or retitle the closer as the action ("Approve the pilot budget by 15 March to launch in Q3").
 
 ```json
 {
@@ -1810,7 +1883,7 @@ A filled shape covering more than **10% of the slide area** holds text whose est
 **Fix kind:** `add_detail_or_resize`
 **Emitted at:** preflight, deterministic geometry
 
-The union of the slide's content "ink" covers too little of the safe content area (the layout's content zone below the title, as used for `bounds_relative_to_content_area`). This does not count white space between distant elements or count overlapping rectangles twice. Ink is every filled shape with content, every table / image / icon / diagram / composite cell, accent bars, and — for unfilled text shapes — the estimated text block placed by the text's `align` / `vertical_align`. An explicitly text-empty filled card is not counted as content and can also receive `SPARSE_FILL`; a fill-only shape with no text field can still be deliberate chrome. Slides that also put content into a non-title placeholder are skipped (the grid then shares the area); a near-empty placeholder slide is `SLIDE_NEARLY_EMPTY`'s business, not this one. Content-sized blocks (KPI rows, before-after panels, card grids) are middle-anchored with equal bands above and below by design and are judged only by their ink share, against a 20% threshold (`kpi-*`, `card-grid`, `before-after`, `before-after-compact`, `strategy-house`, `process-flow`, `arch-stack`, `comparison-2col`; content-sized time-line strips hung from the body line — `phase-roadmap`, `timeline-horizontal` — 22%, so a three-phase roadmap or four-stop timeline with one-line descriptions passes while bare phase names / labels still report (go-slide-creator-e17xy); other patterns 29%, author-capped bands 45%): boxes are never stretched to fill the zone, so the former "KPI row leaves a 0.75in empty band" clause (and its `largest_empty_band_in` param) is gone (go-slide-creator-wntyw). On DeckSpec renders, the finding maps to the semantic slide and recommends adding useful detail, choosing a denser kind, or merging slides.
+The union of the slide's content "ink" covers too little of the safe content area (the layout's content zone below the title, as used for `bounds_relative_to_content_area`). This does not count white space between distant elements or count overlapping rectangles twice. Ink is every filled shape with content, every table / image / icon / diagram / composite cell, accent bars, and — for unfilled text shapes — the estimated text block placed by the text's `align` / `vertical_align`. For the open-by-default patterns (`icon-row`, `quote-cluster`, `comparison-2col`, `stylish-panels`, `before-after[-compact]`, `matrix-2x2`, `framework-grid`, `dual-org-ladder`) an unfilled text cell or standalone icon counts as its content-sized grid slot — the rectangle the tile it replaced filled — including when the pattern is a compose segment. An explicitly text-empty filled card is not counted as content and can also receive `SPARSE_FILL`; a fill-only shape with no text field can still be deliberate chrome. Slides that also put content into a non-title placeholder are skipped (the grid then shares the area); a near-empty placeholder slide is `SLIDE_NEARLY_EMPTY`'s business, not this one. Content-sized blocks (KPI rows, before-after panels, card grids) are middle-anchored with equal bands above and below by design and are judged only by their ink share, against a 20% threshold (`kpi-*`, `card-grid`, `before-after`, `before-after-compact`, `strategy-house`, `process-flow`, `arch-stack`, `comparison-2col`; content-sized time-line strips hung from the body line — `phase-roadmap`, `timeline-horizontal` — 22%, so a three-phase roadmap or four-stop timeline with one-line descriptions passes while bare phase names / labels still report (go-slide-creator-e17xy); other patterns 29%, author-capped bands 45%): boxes are never stretched to fill the zone, so the former "KPI row leaves a 0.75in empty band" clause (and its `largest_empty_band_in` param) is gone (go-slide-creator-wntyw). On DeckSpec renders, the finding maps to the semantic slide and recommends adding useful detail, choosing a denser kind, or merging slides.
 
 **The threshold depends on whether the author imposed a restrictive size cap** (`fix.params.band_capped_by`):
 

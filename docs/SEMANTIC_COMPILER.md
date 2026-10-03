@@ -98,14 +98,14 @@ Each content-bearing kind compiles to the named pattern its plan advertises (the
 | `framework` (`bmc`) | `bmc-canvas` | `sections: {key_partners…revenue_streams}` | all 9 cells present; ≤10 items each, ≤200 chars per item |
 | `framework` (`swot`, `porters_five_forces`) | *native diagram, no pattern* | `sections: {strengths…threats}` / `{rivalry…buyers}` | all 4 / all 5 parts present |
 | `image_case` | `image-text-split` | `body` or `bullets` (+ `image?` (`fit: contain` keeps a whole screenshot), `eyebrow?`, `heading?`, `metrics?`, `caption?`) | body ≤300 chars, eyebrow ≤30, heading ≤80, ≤5 bullets ≤140 each, ≤3 metrics |
-| `decision` | `numbered-step-strip` / `card-grid` | `options: [{label, detail?}]`, `recommendation` | 3–6 options (label ≤60 chars, detail ≤180), or exactly 2 each with a detail |
+| `decision` | `numbered-step-strip` / `card-grid` | `options: [{label, detail?}]`, `recommendation` | 3–6 options (label ≤60 chars, detail ≤180), exactly 2 each with a detail, or 7–12 each with a detail (label ≤80, detail ≤160) |
 | `next_steps` | `next-steps` | `actions: [{action, owner?, date?}]` (aliases `next_steps`, `steps`), `decisions?: [string]`, `decisions_label?` | 2–6 actions (action ≤90, owner ≤30, date ≤20) and 0–3 decisions ≤120; otherwise bullets that keep owner, date and each decision. `plan_deck format:"deckspec"` closes on it; `closing` stays the plain Q&A page |
 | `pillars` | `strategy-house` / `stylish-panels` | `pillars: [{title, body?: [string]}]`, `objective?`, `foundation?` (a string, or a list of levels each a string or a list of strings), `beam?`, `roof_badges?` | 3–5 pillars; a house when `objective` and `foundation` are both given: ≤3 foundation levels, ≤5 cells per split level (≤40 chars each, bands ≤140), cell counts that share a column grid with the pillars. `foundation[i]` and `foundation[i][j]` map to the same paths in the compiled `pattern.values` |
 | `process` | `numbered-step-strip` / `process-flow` | `steps: [{label, description?, type?}]` | 3–6 described steps (label ≤60 chars, description ≤180), or 3–8 bare / branching ones (≤80 per box) |
 | `roadmap` | `phase-roadmap` | `phases: [{name, date_label?, description?, active?, milestone?}]` | 3–6 named phases |
 | `regions` | *one shape grid; nested `stat-hero` / `kpi-Nup` / `timeline-horizontal` per region* | `arrangement`, `regions: [{kind, size_pct?, heading?, source?, …}]` | 2–3 regions (`columns`/`rows`) or exactly 3 (`main_left`/`main_right`/`main_top`/`main_bottom`), each share 15–85%; region kinds `chart`, `stat`, `kpis` (2–4), `table` (≤4×5), `timeline` (3–7), `image`, `text`. No degrade: a region outside its budget is an error at `slides[i].regions[k]`. A `kpis` region renders through `kpi-Nup` like `kpi_snapshot` (an open strip for plain value + label metrics), steps its type down to fit its share (40/14 → 28/12 → 24/12pt), and when even that does not fit is refused with an error `fit_overflow` at `slides[i].regions[k]` from both `validate_deck_spec` and `render_deck_spec` |
 
-`option_matrix` compiles to `table-highlight` within its 2–6 × 2–6 bounds and to a scored bullet list outside them. `table` compiles to a native table content block styled by the template's own table style (a layout, not a pattern), and to bullets when there is no header row. `comparison` compiles to `comparison-2col` for a balanced pair, `stylish-panels` for 3–5 columns (each a titled panel with its own bullets), `card-grid` for 2–5 columns those cannot hold, and bullets beyond that. `executive_summary` compiles to the `exec-summary` pattern at 3–5 points and to a plain content slide (bullets) otherwise; its plan advertises the pattern only when the payload will actually reach it. `architecture` compiles to `arch-stack` for 3–6 tiers that fit the pattern's label/detail/rail budgets, and to a bullet list carrying every word outside them (never a truncation, and never a blocking maxLength). `stat` compiles to `stat-hero` — one number, the words beneath it, and optionally a context line and a source — and to a content slide carrying every word past any of those budgets; its `label` defaults to the slide title, since an author who wrote only a title meant it as the words under the number, and its `source` is left to the slide's attribution band rather than repeated as a bullet. `timeline` compiles to `timeline-horizontal` for 3–7 dated milestones and to a dated bullet list outside them; a payload where any milestone carries an `end_date` is compiled with `style: gantt`, because the pattern rejects an end date in any other style and a milestone that spans a period is a bar rather than a dot. The gantt places every milestone on a shared, labelled time axis: a range is a bar from the start of `date` to the end of `end_date`, a milestone without `end_date` is a diamond marker at its date, and a value that is not a date (`"Autumn"`) gets no bar and reports `TIMELINE_DATE_UNPARSEABLE` at the slide's milestones (go-slide-creator-o34er; it used to draw one identical full-width bar per milestone). `roadmap` keeps `phase-roadmap`: phases with workstreams are a different slide from dates on a line. `matrix_2x2` compiles to `matrix-2x2` when it has four headed quadrants and two named axes, and to a bullet list otherwise — one that names each quadrant's position and both axes with their ends, because a quadrant stripped of where it sits on the axes has lost the point of the slide. Its `quadrants` list is read clockwise from the top left. `framework` is the one kind that reaches a native diagram: `bmc` compiles to the `bmc-canvas` pattern, while `swot` and `porters_five_forces` compile to the native OOXML diagram of that name in a one-cell shape grid on `blank-title` — so their plan advertises a layout only, which is what compile emits. All three degrade to bullets grouped under each part's own heading when a part is missing: a SWOT without its threats is not a SWOT, and an empty quadrant reads as a rendering bug rather than as missing content. `image_case` compiles to `image-text-split` — a picture beside the story and up to three result metrics — and to a content slide past the column's budgets, where the caption or the image's alt text stands in for the picture that cannot come with it. A picture with nothing said about it is a plain image slide rather than a case study, and is refused by the kind and by the pattern alike. `process` compiles to `numbered-step-strip` when its steps carry descriptions — a bold label over its own detail line — and to `process-flow` when they are bare labels or the process branches (`type: decision`), which is what the diamonds are for. The two used to be one path: the description was concatenated onto the label and centred in a flow box at ~9pt reversed out of solid accent (go-slide-creator-61up). `decision` compiles to `numbered-step-strip` (stacked-box) for 3–6 options and to a two-card `card-grid` for exactly two that each carry a detail, with the `recommendation` in the pattern's callout band beneath them; outside those it keeps the content slide it has always produced — the recommendation as a lead-in over option bullets. The ask is the slide a board deck exists for, and it used to be the plainest page in it (go-slide-creator-4ndv). Structural kinds (`title`, `section`, `closing`) and the `raw_json2pptx` escape hatch carry no pattern either. The explain↔compile parity gate (`internal/semantic.TestExplainCompileParity`) asserts every kind's advertised pattern equals the one compile emits.
+`option_matrix` compiles to `table-highlight` within its 2–6 × 2–6 bounds and to a scored bullet list outside them. `table` compiles to a native table content block styled by the template's own table style (a layout, not a pattern), and to bullets when there is no header row. `comparison` compiles to `comparison-2col` for a balanced pair, `stylish-panels` for 3–5 columns (each a titled panel with its own bullets), `card-grid` for 2–5 columns those cannot hold and for 6–12 columns whose items join to at most 160 characters (the pattern arranges the cards from their count — 7 as 4 + 3 — so an odd count is not a fallback), and bullets beyond that. `executive_summary` compiles to the `exec-summary` pattern at 3–5 points and to a plain content slide (bullets) otherwise; its plan advertises the pattern only when the payload will actually reach it. `architecture` compiles to `arch-stack` for 3–6 tiers that fit the pattern's label/detail/rail budgets, and to a bullet list carrying every word outside them (never a truncation, and never a blocking maxLength). `stat` compiles to `stat-hero` — one number, the words beneath it, and optionally a context line and a source — and to a content slide carrying every word past any of those budgets; its `label` defaults to the slide title, since an author who wrote only a title meant it as the words under the number, and its `source` is left to the slide's attribution band rather than repeated as a bullet. `timeline` compiles to `timeline-horizontal` for 3–7 dated milestones and to a dated bullet list outside them; a payload where any milestone carries an `end_date` is compiled with `style: gantt`, because the pattern rejects an end date in any other style and a milestone that spans a period is a bar rather than a dot. The gantt places every milestone on a shared, labelled time axis: a range is a bar from the start of `date` to the end of `end_date`, a milestone without `end_date` is a diamond marker at its date, and a value that is not a date (`"Autumn"`) gets no bar and reports `TIMELINE_DATE_UNPARSEABLE` at the slide's milestones (go-slide-creator-o34er; it used to draw one identical full-width bar per milestone). `roadmap` keeps `phase-roadmap`: phases with workstreams are a different slide from dates on a line. `matrix_2x2` compiles to `matrix-2x2` when it has four headed quadrants and two named axes, and to a bullet list otherwise — one that names each quadrant's position and both axes with their ends, because a quadrant stripped of where it sits on the axes has lost the point of the slide. Its `quadrants` list is read clockwise from the top left. `framework` is the one kind that reaches a native diagram: `bmc` compiles to the `bmc-canvas` pattern, while `swot` and `porters_five_forces` compile to the native OOXML diagram of that name in a one-cell shape grid on `blank-title` — so their plan advertises a layout only, which is what compile emits. All three degrade to bullets grouped under each part's own heading when a part is missing: a SWOT without its threats is not a SWOT, and an empty quadrant reads as a rendering bug rather than as missing content. `image_case` compiles to `image-text-split` — a picture beside the story and up to three result metrics — and to a content slide past the column's budgets, where the caption or the image's alt text stands in for the picture that cannot come with it. A picture with nothing said about it is a plain image slide rather than a case study, and is refused by the kind and by the pattern alike. `process` compiles to `numbered-step-strip` when its steps carry descriptions — a bold label over its own detail line — and to `process-flow` when they are bare labels or the process branches (`type: decision`), which is what the diamonds are for. The two used to be one path: the description was concatenated onto the label and centred in a flow box at ~9pt reversed out of solid accent (go-slide-creator-61up). `decision` compiles to `numbered-step-strip` (stacked-box) for 3–6 options to a two-card `card-grid` for exactly two that each carry a detail, and to a `card-grid` the pattern arranges from the count for 7–12 that each carry a detail (label ≤80, detail ≤160), with the `recommendation` in the pattern's callout band beneath them; outside those it keeps the content slide it has always produced — the recommendation as a lead-in over option bullets. The ask is the slide a board deck exists for, and it used to be the plainest page in it (go-slide-creator-4ndv). Structural kinds (`title`, `section`, `closing`) and the `raw_json2pptx` escape hatch carry no pattern either. The explain↔compile parity gate (`internal/semantic.TestExplainCompileParity`) asserts every kind's advertised pattern equals the one compile emits.
 
 For `executive_summary` and visual `decision` slides, the bottom-line or recommendation callout is the slide's takeaway, so `SEMANTIC_TAKEAWAY_REQUIRED` is not emitted when one is present. A slide carries one conclusion band (go-slide-creator-zvu7c): when the exec-summary pattern or a numbered-option / paired-card decision visual renders, a `takeaway` written beside `bottom_line` / `recommendation` is moved to the speaker notes (`Takeaway: …`, after any authored `notes`) instead of stacking a second near-duplicate band, and validation emits `SEMANTIC_DUPLICATE_CALLOUT` — "repeats" for near-duplicate wording, "moved to the speaker notes" for a distinct one. If the executive-summary bottom line alone exceeds its 160-character pattern budget, the slide degrades to bullets with the bottom line and takeaway both retained.
 
@@ -125,6 +125,7 @@ CLI:
 
 ```bash
 json2pptx semantic validate --spec deck.yaml
+json2pptx semantic validate --spec deck.yaml --template modern  # measure on the template you will render on
 json2pptx semantic compile --spec deck.yaml --output compiled.json
 json2pptx semantic compile --spec deck.yaml --envelope          # compiled_json + diagnostics
 json2pptx semantic render --spec deck.yaml --output deck.pptx
@@ -155,6 +156,67 @@ narrative planning; `semantic explain` exposes
 layout names, not the broader feasibility labels in
 `recommend_visual.template_support.required_layout` (such as `full-image` or
 `grid base`).
+
+### One finding set for validate and render
+
+`semantic validate` and `validate_deck_spec` do not predict a render: they run
+the same compiled-spec run `semantic render` / `render_deck_spec` make, into a
+scratch directory that is removed, and report that run's diagnostics. For one
+spec revision and one template the two tools therefore return the same findings
+(code, path, severity), and `validate` is `ok` exactly when the render would be
+`deterministic_ready`. `TestDeckSpecFindingParityCorpus` asserts it over the
+shipped examples, every slide kind and the agent-journey decks on every shipped
+template.
+
+- **Template.** Findings are measured on a template. Precedence is
+  `meta.template` > the call's `template` (`--template`) > the template a
+  `deck_id` is bound to > the archetype default. The validate envelope echoes
+  `template` and `template_source` (`meta.template`, `template argument`,
+  `deck_id`, `archetype default`) and adds a `warnings[]` entry when the spec
+  pins none. A `deck_id` is bound by the first call that names a template and
+  follows `meta.template`; a later call naming a different template is
+  evaluated on it for that call only (with a warning), so a deck's template
+  changes only by a patch to `/meta/template`. `fork: true` with that patch
+  binds the new `deck_id` to the new template and leaves the source deck's
+  binding alone; `restore` follows the restored revision's `meta.template`.
+- **Severity.** A finding blocks exactly when its severity is `error`
+  (`blocking: true`); see
+  [FIT_FINDINGS.md](FIT_FINDINGS.md#severity-and-blocking-on-the-deckspec-surfaces).
+  `semantic validate` and `semantic render` exit 0 exactly when no blocking
+  finding remains (render: and the deck was written), whatever
+  `--output-validation` is; `ok` in the printed result agrees with the exit
+  status. A deck with blocking findings is still written.
+- **Raw slides.** A `raw_json2pptx` slide's pattern values and chart / diagram
+  data are checked against the contracts generation enforces, and each failure
+  is reported inside the raw slide, e.g.
+  `slides[2].slide.pattern.values.current` or
+  `slides[2].slide.content[1].diagram_value.data.primary[2].highlight`.
+- **Refusals.** A refused render reports the fit findings on every slide, not
+  only the first refused paragraph, and folds per-field refusals under the
+  slide's capacity finding (`symptoms[]`).
+
+### Waiving storyline findings
+
+```yaml
+meta:
+  title: Seed round
+  archetype: sales_pitch          # does not call for an executive summary
+  waivers:
+    - code: CLOSING_WITHOUT_NEXT_STEPS
+      reason: The brief fixes seven slides; the ask is made verbally.
+```
+
+`meta.waivers[]` takes `{code, reason}` for the storyline codes
+`NO_EXECUTIVE_SUMMARY`, `CLOSING_WITHOUT_NEXT_STEPS`, `TITLE_NOT_ACTION` and
+`takeaway_missing`; any other code, a repeated code or an empty reason is a
+blocking `SEMANTIC_REQUIRED` at `meta.waivers[i]`. A waived finding stays in
+the list as an `info` with `waived: <reason>` and is left out of the score and
+the gate. A registered archetype whose defaults are not executive
+(`sales_pitch`, `project_roadmap`, `market_analysis`) waives
+`NO_EXECUTIVE_SUMMARY` without a `waivers` entry. Validate and render results
+record what was waived under `waivers[]` as `{code, reason, source, findings}`,
+`source` being `meta.waivers` or `meta.archetype`. Without a waiver nothing
+changes.
 
 Pass `--spec -` to read the spec from stdin (e.g. `… --spec - < deck.yaml`), portable across platforms. Each subcommand's `-h`/`--help` prints usage and exits **0**, so automated probes can introspect the surface without treating help as a failure.
 
@@ -235,6 +297,14 @@ slide as `{id, index, slide_number, change, was_index?}`:
 After a successful render `next_tool_call` asks `render_deck_thumbnails` for
 `changed_slides` only (the whole deck when every slide changed) and is absent
 when a re-render changed nothing visible.
+
+The validating render `validate_deck_spec` runs is not a render of the deck: it
+writes into a scratch directory, marks no revision as rendered and leaves the
+last-render baseline alone (it stores the spec as any validate does, and
+nothing under `dry_run`). A render on a template the `deck_id` is not bound to
+(a one-off `template` argument) keeps the binding and the revision, and reports
+every slide as `restyled`; so does the next render back on the bound template,
+because the baseline is what was last rendered.
 
 **Compact patch responses.** A `deck_id` + `patch` (or `restore`) render of a
 deck that has rendered before returns the verdict, the change list, every
