@@ -534,15 +534,26 @@ func chapterDraft(ordered []deckSpecSlotDef, priority map[string]int, budget int
 	}
 }
 
-// recordCuts lists the slots of before that are missing from after.
+// recordCuts lists the slots of before that are missing from after. A cut
+// slot whose name the plan still carries (the storyline drafts two evidence
+// slides and keeps one) is named as the further one, so the account does not
+// read as cutting a slide the plan shows.
 func recordCuts(account *Budget, before, after []deckSpecSlotDef, reason string) {
+	kept := map[string]bool{}
+	for _, d := range after {
+		kept[d.slot] = true
+	}
 	j := 0
 	for _, d := range before {
 		if j < len(after) && after[j] == d {
 			j++
 			continue
 		}
-		account.cut(fmt.Sprintf("%s (%s)", d.slot, d.kind), reason)
+		what := fmt.Sprintf("%s (%s)", d.slot, d.kind)
+		if kept[d.slot] {
+			what = "a further " + what
+		}
+		account.cut(what, reason)
 	}
 }
 

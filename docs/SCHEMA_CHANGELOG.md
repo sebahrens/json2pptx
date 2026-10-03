@@ -1,5 +1,20 @@
 # Schema Changelog
 
+- **2026-10-04 — The agent journey is a tracked check; `plan_deck` names a cut it also keeps as "a further …" (`go-slide-creator-3pxl6`).**
+  - **`plan_deck` `budget.cut[].what` and `budget_note`**: when the budget
+    drops one of two slots of the same name (the storyline drafts two
+    `evidence` slides and keeps one), the cut reads `a further evidence
+    (chart_insight)`. It read `evidence (chart_insight)` beside a planned
+    `chart_insight`, which looked like the plan cutting a slide it shows. A
+    cut slot the plan carries none of is worded as before.
+  - No other response changes. Contributor-facing: `TestAgentJourneyMetrics`
+    compares first-contact bytes, round-trips to a clean render,
+    validate/render parity and patch clearance with the last row of
+    `tests/quality/journey/results.jsonl`; `TestAgentJourneyDelights` keeps
+    the behaviours the 2026-10-03 journey agents named as delights. The
+    harness (stdio-MCP bridge, five persona briefs) moved to
+    `tests/quality/journey/`; see its README and CONTRIBUTING.md.
+
 - **2026-10-04 — First contact under 40 KiB; one skill installer, stamped and checked per file (`go-slide-creator-mvdt5`, `-4eu2o`).**
   - **Default (`deckspec`) `tools/list` is abridged: 22.2 KB (was 33.3).** Each
     tool's description says what it does and returns; argument descriptions

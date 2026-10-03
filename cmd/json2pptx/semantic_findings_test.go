@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
@@ -231,6 +233,15 @@ func deckSpecVerdicts(t *testing.T, mc *mcpConfig, args map[string]any) deckSpec
 // path, severity) and the same verdict.
 func assertFindingParity(t *testing.T, label string, v deckSpecVerdict) {
 	t.Helper()
+	for _, problem := range findingParityProblems(t, label, v) {
+		t.Error(problem)
+	}
+}
+
+// findingParityProblems lists where validate and render disagree on one spec
+// and template; none is parity.
+func findingParityProblems(t *testing.T, label string, v deckSpecVerdict) (problems []string) {
+	t.Helper()
 	got := envelopeKeys(t, label+" validate", v.Validate.FindingEnvelope)
 	var want []findingKey
 	renderReady := false
@@ -240,15 +251,16 @@ func assertFindingParity(t *testing.T, label string, v deckSpecVerdict) {
 		want = diagnosticKeys(t, label+" render", v.Render.Diagnostics)
 		renderReady = v.Render.OK && v.Render.DeterministicReady != nil && *v.Render.DeterministicReady
 		if v.Render.OK && v.Validate.Template != v.Render.Template {
-			t.Errorf("%s: validate measured on template %q, render used %q", label, v.Validate.Template, v.Render.Template)
+			problems = append(problems, fmt.Sprintf("%s: validate measured on template %q, render used %q", label, v.Validate.Template, v.Render.Template))
 		}
 	}
 	if !equalFindingKeys(got, want) {
-		t.Errorf("%s: validate and render disagree\n  validate: %s\n  render:   %s", label, formatKeys(got), formatKeys(want))
+		problems = append(problems, fmt.Sprintf("%s: validate and render disagree\n  validate: %s\n  render:   %s", label, formatKeys(got), formatKeys(want)))
 	}
 	if v.Validate.OK != renderReady {
-		t.Errorf("%s: validate ok=%v but render deterministic_ready=%v (error %q, reasons %v)", label, v.Validate.OK, renderReady, v.Render.Error, v.Render.DeterministicBlockingReasons)
+		problems = append(problems, fmt.Sprintf("%s: validate ok=%v but render deterministic_ready=%v (error %q, reasons %v)", label, v.Validate.OK, renderReady, v.Render.Error, v.Render.DeterministicBlockingReasons))
 	}
+	return problems
 }
 
 func equalFindingKeys(a, b []findingKey) bool {
@@ -333,35 +345,71 @@ func parityCorpus(t *testing.T) map[string]map[string]any {
 	return corpus
 }
 
-// TestDeckSpecFindingParityCorpus is the go-slide-creator-3rn3s / -2dit4
-// acceptance test: over a corpus of specs and every shipped template,
-// validate_deck_spec and render_deck_spec return the same findings (code,
-// path, severity) and the same verdict.
-func TestDeckSpecFindingParityCorpus(t *testing.T) {
-	templates := shippedTemplateNames(t)
-	corpus := parityCorpus(t)
-	if testing.Short() {
-		// The template with the tightest content area, without the deck of
-		// every kind (the long run renders each kind on each template).
-		templates = []string{"modern"}
-		delete(corpus, "all-kinds")
-	}
+// parityRun is what comparing validate with render over a corpus found: the
+// (template, spec) pairs compared and every disagreement.
+type parityRun struct {
+	Pairs    int
+	Problems []string
+}
+
+// runParityCorpus compares validate_deck_spec with render_deck_spec for every
+// spec of the corpus on every template.
+func runParityCorpus(t *testing.T, mc *mcpConfig, templates []string, corpus map[string]map[string]any) (run parityRun) {
+	t.Helper()
 	names := make([]string, 0, len(corpus))
 	for name := range corpus {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	mc := refusalTestConfig(t)
 	for _, tpl := range templates {
 		for _, name := range names {
 			label := tpl + "/" + name
 			v := deckSpecVerdicts(t, mc, map[string]any{"spec": corpus[name], "template": tpl})
-			assertFindingParity(t, label, v)
+			run.Pairs++
+			run.Problems = append(run.Problems, findingParityProblems(t, label, v)...)
 			// A spec that does not parse was measured on nothing.
 			if v.RenderEnvelope == nil && v.Validate.Template != tpl {
-				t.Errorf("%s: validate echoed template %q", label, v.Validate.Template)
+				run.Problems = append(run.Problems, fmt.Sprintf("%s: validate echoed template %q", label, v.Validate.Template))
 			}
 		}
+	}
+	return run
+}
+
+// shortParityRun is the short run's parity corpus, compared once per test
+// binary: the template with the tightest content area, without the deck of
+// every kind (the long run renders each kind on each template). The parity
+// test and TestAgentJourneyMetrics both read it.
+func shortParityRun(t *testing.T) parityRun {
+	t.Helper()
+	shortParity.once.Do(func() {
+		corpus := parityCorpus(t)
+		delete(corpus, "all-kinds")
+		shortParity.run = runParityCorpus(t, refusalTestConfig(t), []string{"modern"}, corpus)
+	})
+	return shortParity.run
+}
+
+var shortParity struct {
+	once sync.Once
+	run  parityRun
+}
+
+// TestDeckSpecFindingParityCorpus is the go-slide-creator-3rn3s / -2dit4
+// acceptance test: over a corpus of specs and every shipped template,
+// validate_deck_spec and render_deck_spec return the same findings (code,
+// path, severity) and the same verdict.
+func TestDeckSpecFindingParityCorpus(t *testing.T) {
+	mc := refusalTestConfig(t)
+	corpus := parityCorpus(t)
+	var run parityRun
+	if testing.Short() {
+		run = shortParityRun(t)
+	} else {
+		run = runParityCorpus(t, mc, shippedTemplateNames(t), corpus)
+	}
+	for _, problem := range run.Problems {
+		t.Error(problem)
 	}
 
 	// A template that does not resolve is the same single finding in both.
