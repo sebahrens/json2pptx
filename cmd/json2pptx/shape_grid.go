@@ -819,17 +819,22 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 	// generator cover-crops them) instead of shapegrid's centred square.
 	fillDefaultFitImages(result, defaultFitImageSpecs(input.Rows, rows))
 
-	// Generate XML fragments, icon inserts, and image inserts from resolved cells
+	// Generate XML fragments, icon inserts, and image inserts from resolved
+	// cells. What they report is pinned at the authored cell
+	// (go-slide-creator-epch2).
+	authored := authoredCellPaths(input, slideIdx)
 	out, err := generateGridOutput(result, alloc, diagCtx, slideIdx)
 	if err != nil {
+		authored.refusal(err)
 		return nil, err
 	}
+	authored.findings(out.FitFindings)
 
 	// Recursively render any nested sub-grids in this grid. Cells with
 	// Placeholder=true produce CellKindSubGrid ResolvedCells whose bounds
 	// define the sub-grid's render rectangle. The accompanying DTO cell
 	// (input.Rows[r].Cells[c]) supplies the nested ShapeGridInput.
-	if err := renderNestedSubGrids(input, out, alloc, slideWidth, slideHeight, diagCtx); err != nil {
+	if err := renderNestedSubGrids(input, out, alloc, slideWidth, slideHeight, diagCtx, slideIdx, authored); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -844,7 +849,8 @@ const subGridInsetEMU int64 = 50800 // 4pt = 4 * 12700
 // placeholders, and recursively resolves their accompanying sub-grids using
 // the placeholder's bounds (with a small inset). Resulting shapes/icons are
 // appended to out so the caller receives a single unified render result.
-func renderNestedSubGrids(input *ShapeGridInput, out *ShapeGridResult, alloc *pptx.ShapeIDAllocator, slideWidth, slideHeight int64, diagCtx *GridDiagramContext) error {
+// authored maps this grid's resolved cell paths to the authored ones.
+func renderNestedSubGrids(input *ShapeGridInput, out *ShapeGridResult, alloc *pptx.ShapeIDAllocator, slideWidth, slideHeight int64, diagCtx *GridDiagramContext, slideIdx int, authored gridPathMapper) error {
 	if input == nil || out == nil {
 		return nil
 	}
@@ -870,12 +876,18 @@ func renderNestedSubGrids(input *ShapeGridInput, out *ShapeGridResult, alloc *pp
 			inset = rc.Bounds
 		}
 		sub, err := resolveShapeGrid(src.Grid, alloc, &inset, nil, slideWidth, slideHeight, diagCtx)
+		// The sub-grid was resolved as if it were the slide's grid: re-root
+		// what it reports under the authored cell hosting it, at any depth
+		// (go-slide-creator-epch2).
+		nested := nestedGridPaths(slideIdx, authored(slidepath.GridCell(slideIdx, rc.RowIdx, rc.ColIdx)))
 		if err != nil {
+			nested.refusal(err)
 			return fmt.Errorf("nested sub-grid at row %d, column %d: %w", rc.RowIdx+1, rc.ColIdx+1, err)
 		}
 		if sub == nil {
 			continue
 		}
+		nested.findings(sub.FitFindings)
 		out.Shapes = append(out.Shapes, sub.Shapes...)
 		out.IconInserts = append(out.IconInserts, sub.IconInserts...)
 		out.ImageInserts = append(out.ImageInserts, sub.ImageInserts...)
@@ -896,7 +908,41 @@ func renderNestedSubGrids(input *ShapeGridInput, out *ShapeGridResult, alloc *pp
 // coordinates differ from slice indexes when earlier cells span columns or
 // rows, so it follows the same occupancy walk as shapegrid.Resolve.
 func gridCellAtResolved(grid *ShapeGridInput, rowIdx, colIdx int) *GridCellInput {
-	if grid == nil || rowIdx < 0 || rowIdx >= len(grid.Rows) || colIdx < 0 {
+	k, ok := gridCellIndexAtResolved(grid, rowIdx, colIdx)
+	if !ok {
+		return nil
+	}
+	return grid.Rows[rowIdx].Cells[k]
+}
+
+// gridCellIndexAtResolved is the index in grid.Rows[rowIdx].Cells of the
+// authored cell gridCellAtResolved returns.
+func gridCellIndexAtResolved(grid *ShapeGridInput, rowIdx, colIdx int) (int, bool) {
+	if colIdx < 0 {
+		return 0, false
+	}
+	for k, col := range gridRowCellColumns(grid, rowIdx) {
+		if col == colIdx {
+			return k, true
+		}
+	}
+	return 0, false
+}
+
+// gridCellResolvedColumn is the inverse: the resolved column of the authored
+// cell grid.Rows[rowIdx].Cells[cellIdx].
+func gridCellResolvedColumn(grid *ShapeGridInput, rowIdx, cellIdx int) (int, bool) {
+	cols := gridRowCellColumns(grid, rowIdx)
+	if cellIdx < 0 || cellIdx >= len(cols) || cols[cellIdx] < 0 {
+		return 0, false
+	}
+	return cols[cellIdx], true
+}
+
+// gridRowCellColumns returns the resolved column of each authored cell in
+// grid.Rows[rowIdx], or -1 for a cell that does not fit in the row.
+func gridRowCellColumns(grid *ShapeGridInput, rowIdx int) []int {
+	if grid == nil || rowIdx < 0 || rowIdx >= len(grid.Rows) {
 		return nil
 	}
 	cols := inferColumnCount(grid)
@@ -904,17 +950,21 @@ func gridCellAtResolved(grid *ShapeGridInput, rowIdx, colIdx int) *GridCellInput
 	for r := range occupied {
 		occupied[r] = make([]bool, cols)
 	}
+	out := make([]int, len(grid.Rows[rowIdx].Cells))
+	for k := range out {
+		out[k] = -1
+	}
 	for r := 0; r <= rowIdx; r++ {
 		col := 0
-		for _, cell := range grid.Rows[r].Cells {
+		for k, cell := range grid.Rows[r].Cells {
 			for col < cols && occupied[r][col] {
 				col++
 			}
 			if col >= cols {
 				break
 			}
-			if r == rowIdx && col == colIdx {
-				return cell
+			if r == rowIdx {
+				out[k] = col
 			}
 			if !gridCellHasContent(cell) {
 				col++
@@ -933,7 +983,7 @@ func gridCellAtResolved(grid *ShapeGridInput, rowIdx, colIdx int) *GridCellInput
 			col += colSpan
 		}
 	}
-	return nil
+	return out
 }
 
 func gridCellHasContent(cell *GridCellInput) bool {

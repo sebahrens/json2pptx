@@ -23,6 +23,20 @@
     `SEMANTIC_UNKNOWN_FIELD`). The process `numbered-step-strip` reason reads
     3-6 steps (the compiler's bound), not 3-7.
 
+- **2026-10-03 — Generate-time grid findings carry validate's path at any nesting depth (`go-slide-creator-epch2`).** SchemaVersion unchanged (no new fields, codes or fix kinds).
+  - A finding or refusal raised while generating a nested sub-grid (a
+    nested compose segment, an authored `grid` cell) — `TEXT_EXCEEDS_SHAPE`
+    on a native diagram, `DIAGRAM_REGION_TOO_SMALL`, `table_rows_truncated`,
+    svggen `chart.*` / `diagram.*` — is reported at the full nested path
+    (`.../cells/{c}/grid/rows/{r}/cells/{c}/...`) instead of a second,
+    top-level cell path, so it de-duplicates against validate's.
+  - Those paths, and validate's grid-table preflight path, index the
+    authored cell (`rows[r].cells[i]`) rather than its resolved column,
+    which differ after a column-spanning cell — every horizontal compose
+    segment after a multi-column one. Validate now also dry-renders the
+    diagrams in such segments (it looked their bounds up by the wrong
+    column and skipped them).
+
 - **2026-10-03 — Narrow regions keep words whole; native diagrams report the ones they cannot (`go-slide-creator-v74wv`).**
   - The writer's margin clamp now leaves 5% of room over a word's measured
     width (20% for a host-dependent theme face measured in the Liberation
