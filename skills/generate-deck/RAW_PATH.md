@@ -39,11 +39,10 @@ and shape-grid properties are in
 template to verify actual bounds. A raw deck may use top-level
 `structure` instead of `slides[]`, but not both.
 
-Raw content supports URL and internal links. Put `link:{url:"https://…"}`
-on a text/bullet item, `source_link:{url:"https://…"}` beside a slide source,
-or `link:{slide:N}` on a grid shape or overlay badge. `N` is the destination
-slide number in the **final** deck (1-based); validate after pagination or
-reordering. See [INPUT_FORMAT.md](../../docs/INPUT_FORMAT.md).
+Raw content supports links: `link:{url:"https://…"}` on a text/bullet item,
+`source_link:{url:"https://…"}` beside a slide source, or `link:{slide:N}`
+on a grid shape or overlay badge (`N` is the 1-based slide number in the
+**final** deck). See [INPUT_FORMAT.md](../../docs/INPUT_FORMAT.md).
 
 ## Diagnose and repair
 
@@ -68,9 +67,8 @@ inspection.
 The raw `deck_id` from generation is a short-lived handle that can replace
 the `presentation` payload on preview, repair, score, rhythm and regenerate
 calls. Keep your own source JSON: `read_presentation` is for inspection, not
-a round-trip `PresentationInput` (it includes grouped shapes such as native
-swot / pestel / bmc diagrams, connectors, `pictures[]` and `hyperlinks`). A `FONT_SUBSTITUTED` warning means renders may wrap where fit
-findings did not; trust the image (Calibri measures with the embedded, metric-identical Carlito on every host and is not reported). `apply_deck_patch` is an atomic structural
+a round-trip `PresentationInput`. A `FONT_SUBSTITUTED` warning means renders
+may wrap where fit findings did not; trust the image. `apply_deck_patch` is an atomic structural
 transform for insertion, removal, replacement, move, duplicate, or existing
 field replacement; validate and inspect the resulting deck before shipping.
 
@@ -79,20 +77,17 @@ field replacement; validate and inspect the resulting deck before shipping.
 For a local relative asset, send an absolute `base_dir` to MCP calls (CLI
 resolves relative to the input file). `base_dir` bounds relative paths only:
 an absolute image, background or icon path is read wherever it points unless
-the server sets `ALLOWED_IMAGE_PATHS` (`icon.path` obeys it too). Asset paths expand only
-`$HOME`, `$BRAND_ASSETS`, `$JSON2PPTX_*`. Unsafe traversal, symlink escapes,
-missing files, unset variables, oversized assets, bad remote types, and unsafe
-SVG XML have distinct findings; a picture that cannot be embedded is
+the server sets `ALLOWED_IMAGE_PATHS`. Asset paths expand only `$HOME`,
+`$BRAND_ASSETS`, `$JSON2PPTX_*`. A picture that cannot be embedded is
 refuse-class `IMAGE_ASSET_UNAVAILABLE` at the authored field and blocks
-`deterministic_ready`. `score_deck` fetches image `url`s like generation
-(`URL_FETCH_FAILED` refuses); a `deck_id` keeps the authored `url`,
-re-fetched on each render.
+`deterministic_ready`; `score_deck` fetches image `url`s like generation
+(`URL_FETCH_FAILED` refuses).
 
 A `slide_type: "image"` slide on a template without a picture layout fills
-One Content's body with the whole picture (no crop); cover discarding over 30%
-reports `IMAGE_HEAVY_CROP`, and a photo over the footer band drops that
-slide's chrome (`CHROME_OVER_IMAGE`). Image-cell `geometry` / `fit`: RULES.md
-6d; screenshot callouts (`anchor_image`): RULES.md 6f.
+One Content's body with the whole picture; cover discarding over 30% reports
+`IMAGE_HEAVY_CROP`, and a photo over the footer band drops that slide's
+chrome (`CHROME_OVER_IMAGE`). Image-cell `geometry` / `fit`: RULES.md 6d;
+screenshot callouts (`anchor_image`): RULES.md 6f.
 
 Use bundled icon names from `list_icons` (set-qualified when needed), never
 emoji. A pattern icon slot takes a bundled-name string or an `IconInput`
@@ -112,34 +107,27 @@ Native types (`swot`, `porters_five_forces`, `pestel`,
 `business_model_canvas`, `value_chain`, `nine_box_talent`, `kpi_dashboard`,
 `process_flow`, `heatmap`, `pyramid`, `house_diagram`, `panel_layout`; aliases
 `icon_columns` / `icon_rows` / `stat_cards`) also render as editable shapes in
-a `shape_grid` cell or `compose` segment, sized to it
-(`get_diagram_capabilities`: `grid_cell_support`, `pipeline` `native_ooxml`;
-svggen `svg`). Text under the 7pt floor is refused with
-`DIAGRAM_REGION_TOO_SMALL` (`fix.params.min_width_emu` / `min_height_emu`):
-enlarge the region, use a body placeholder (`diagram_value`) or cut items;
-dense canvases need most of the slide. A word too wide for its shape reports
-`TEXT_EXCEEDS_SHAPE` (`fix.params.words`). All diagram/chart data keys are
-strict at every level: an undrawn key (`levels[].title`) is `unknown_key`.
+a `shape_grid` cell or `compose` segment, sized to it. Text under the 7pt
+floor is refused with `DIAGRAM_REGION_TOO_SMALL` (`fix.params.min_width_emu`
+/ `min_height_emu`): enlarge the region, use a body placeholder
+(`diagram_value`) or cut items. A word too wide for its shape reports
+`TEXT_EXCEEDS_SHAPE` (`fix.params.words`). Diagram/chart data keys are
+strict at every level: an undrawn key is `unknown_key`.
 
-Diagrams use one hue by default: timeline bars/milestones, matrix_2x2
-points and org_chart levels stay in accent1 and its tints (org levels take
-one accent each only under `accent_strategy` `rotate` / `section-keyed`),
-and matrix_2x2 quadrants share a neutral wash. To make
+Diagrams use one hue by default (accent1 and its tints, neutral surfaces;
+framework diagrams take accent-tinted cards only with `style.colors`). To make
 one quadrant carry the message, set `data.highlight_quadrant` (index 0-3,
 `"top-left"`-style position, or the quadrant's label); give points a `series`
 only when they really belong to different groups.
 
 ## Raw planning
 
-The storyline rules (QUALITY.md) are the same on this path. Region clauses
-plan one `composition` slide (a `shape_grid` skeleton with `regions[]` cell
-paths; misses in `unsupported_regions[]`). `plan_deck`
+The storyline rules (QUALITY.md) are the same on this path. `plan_deck`
 (default `format: "raw"`) returns ordered slides with a canonical `layout`
 (`title` first, `closing` last, `blank-title` + a pattern between), a
-`recommended_pattern`, `suggested_pattern_fallback`, narrative role and
-`content_seed`, with brief facts verbatim in `facts[]` and the rest in
-`unplaced_facts[]`. Comparison slots use only `comparison-2col` /
-`before-after`; emphasis patterns are capped at ceil(n/5). Each slide's
+`recommended_pattern`, narrative role and `content_seed`, with brief facts
+verbatim in `facts[]` and the rest in `unplaced_facts[]`; region clauses plan
+one `composition` slide (misses in `unsupported_regions[]`). Each slide's
 `skeleton` is a partial `SlideInput`: copy it, replace every `__FILL__`,
 review the typed choices in its `__CHOOSE__` speaker note and delete that
 note. Leftover tokens are `unresolved_placeholder` warnings; run the
@@ -159,19 +147,27 @@ or `fields="full"`.
 (pattern, density class, accent role, `within_slide_accent_variety`) and
 `aggregates` — `longest_run` (target ≤ 2), `repetition_index` (< 0.5),
 `accent_balance` (no accent > 80%), `density_cv` (> 0.1 on 4+ slides),
-`density_distribution` — plus `composition_score` and `recommendations` with
-`recommended_break_patterns` and a `code`. Swap the middle slide of a run
-of 3 (`break_run`) to a suggested pattern (picked from content: numbers → KPI,
-options → comparison, dates → timeline); add detail or a smaller grid when
+`density_distribution`, `motif_runs` (3+ consecutive content slides in one
+visual motif, whatever patterns drew them; target none), `motif_share`,
+`dominant_motif` (one motif on more than half of 4+ content slides) — plus
+`composition_score` and `recommendations` with `recommended_break_patterns`
+and a `code`. `per_slide[].motif` is what the slide looks like (`tiles`,
+`open-columns`, `open-list`, `table`, `chart`, `diagram`, `flow`,
+`hero-number`, `quote`, `split`, `text`, `image`, or `none`); an explicit
+style changes it (`stylish-panels` `ribbon` and `kpi-Nup` `tiles` are
+`tiles`). Swap the middle slide of a run of 3 (`break_run`;
+`break_motif_run` when the patterns differ but the look does not) to a
+suggested pattern (picked from content: numbers → KPI, options → comparison,
+dates → timeline; never one that repeats the motif being left); keep the
+parts of a `(1/2)` / `(2/2)` exhibit adjacent (`continuation_interrupted`;
+they count as one slide in every run); add detail or a smaller grid when
 underfilled cells pass 30% (`underfilled_cells`). Narrative checks:
 `missing_executive_summary` (6+ slides), `missing_next_steps` (no
 next-steps close), `missing_sections` (10+ content slides, no divider or
 agenda), `evidence_missing_takeaway_or_source`, `bullets_heavy` (3+
 bullets-only slides). A `compose` slide's `pattern` names its structure
-(direction, region families, `*` = region ≥ 12.5 points over an equal share,
-nesting: `compose:v[kpi*+pull-quote]`, `compose:h[chart+compose:v[kpi+pull-quote]]`);
-reordered, re-split or same-family swaps (`kpi-3up` → `kpi-4up`) still form a
-run, and `break_run` skips the run's families. Accent checks: `accent_heavy_slide`,
+(`compose:h[chart+compose:v[kpi+pull-quote]]`); reordered, re-split or
+same-family swaps (`kpi-3up` → `kpi-4up`) still form a run. Accent checks: `accent_heavy_slide`,
 `strong_accent_run` (see RULES.md). `accent_balance` counts pattern slides
 by their resolved accent (`accent_strategy` or `overrides.accent`).
 Iterate until the score is ≥ 70 and the narrative codes are gone.
@@ -201,16 +197,12 @@ mapping and fit without writing a PPTX.
 evidence — `split_bullets` (`max_items`) for native bullet columns,
 `split_at_row` for tables, `shorten_title` only when meaning survives;
 `reduce_text` / `reduce_cell_text` truncate and are last resorts. Wrong
-layout → `swap_layout`. Surprise grey from `contrast_autofixed` → an accent
-with ≥ 3:1 against white, `dk1` text, or `contrast_check: false` only after
-verifying contrast yourself. For vision findings, `repair_slide` with
-`{kind: "autofix_visual", params: {category}}` tries the mapped kinds in
-order (e.g. `text_overflow` → `reduce_cell_text`, `split_at_row`,
-`reshape_grid`).
+layout → `swap_layout`. Surprise grey from `contrast_autofixed`: RULES.md
+16. For vision findings, `{kind: "autofix_visual", params: {category}}`
+tries the mapped kinds in order.
 
 ## Finish
 
-Render with `render_deck_thumbnails`, then apply the per-slide rubric, the
-submission and the three-round loop cap in [WORKFLOW.md](WORKFLOW.md) → Phase
-4 — the review protocol is identical on both paths. If the server lacks
-render tooling, say the artifact is **UNREVIEWED**.
+Render with `render_deck_thumbnails`, then follow [WORKFLOW.md](WORKFLOW.md)
+→ Phase 4: the review protocol is identical on both paths. If the server
+lacks render tooling, say the artifact is **UNREVIEWED**.

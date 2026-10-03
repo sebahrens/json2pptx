@@ -10,6 +10,87 @@
   before are unchanged. The `next-steps` `FIT.BODY_TOO_LONG` message now reads
   "needs Npt at the smallest type scale and its tightest rows".
 
+- **2026-10-03 — Onboarding: profile-aware first contact, half the reading, compact kind lookup, skills installed by the binary (`go-slide-creator-7bdn6`, `-mvdt5`, `-l6mcj`, `-4eu2o`).**
+  - **`get_started` is written for the profile it is served in.** In the
+    default `deckspec` profile every step names a listed tool: `brief` is
+    `plan_deck` → `list_templates {fields:"names"}` → `list_slide_kinds` →
+    `validate_deck_spec` → `render_deck_spec {deck_id}` →
+    `render_deck_thumbnails` → `submit_visual_review`; `revise` is
+    `validate_deck_spec {deck_id, patch}` → `render_deck_spec {deck_id}` →
+    `render_deck_thumbnails {slide_indices}` → `submit_visual_review` (its
+    templates showed `spec`); `validate-only` and `onboard-template` use
+    `validate_deck_spec` / `render_deck_spec {template_path}`. There is no
+    `raw_sequence` and `fast_path.falls_back_to` is empty there; `fast_path`
+    carries no `steps` (they duplicated `sequence`). **New field
+    `hidden_tools {names[], note}`** (`get_started`, `describe_finding`):
+    the tools a response mentions that the active profile's `tools/list`
+    does not carry, callable by name. No response points at `SKILL.md`,
+    `QUALITY.md`, `WORKFLOW.md` or `docs/`: the per-slide rubric and the
+    action-title rule are stated in the step that needs them. `--tools core`
+    / `all` keep `raw_sequence`. The server `instructions` name `make_deck` /
+    `repair_slide` / `inspect_slide_images` only in profiles that list them;
+    the `get_input_schema` / `list_patterns` / `inspect_slide_images`
+    next-call helpers are dropped where the tool is unlisted.
+  - **`list_slide_kinds` projections changed.** Without `kinds` the response
+    is the catalogue: `kind`, `summary`, `required_fields`,
+    `required_aliases`, `typical_fields` — **no `example`** (it was half of a
+    22 KB response) — plus `detail`, saying how to fetch more. `kinds:[…]`
+    without `fields` returns each named kind's `example` too. `fields`
+    selects detail instead and the row carries only what it names: new
+    `brief` (each canonical field → a one-line signature: type, entry keys,
+    `required`; `budgets` come with it; under 3 KB for every kind;
+    `brief_note` names the fields every kind takes), `item_schema`,
+    `budgets`, `compositions`, new `example`, new `item_schema_full`.
+    **`item_schema` now lists canonical fields only**: an alternative
+    spelling the compiler accepts is named in the field's `aliases`
+    annotation instead of being a property of its own, at the top level and
+    on list-entry keys (`kpis[].value` `aliases: ["big"]`); an alternative of
+    another shape (`quote`, a string, beside `quotes`) stays a field. A spec
+    written with an alias is still accepted but is not valid against
+    `item_schema`; `item_schema_full` is the closed schema with every alias
+    (what `item_schema` was). With budgets, `takeaway_budget` carries no
+    `note`. CLI `semantic kinds <kind>` prints aliases as "(also written:
+    …)"; `--format json` carries both schemas.
+  - **`list_templates` `fields: "names"`** (new): one row per template —
+    `name`, `aspect_ratio`, `layout_count`, `title_font`, `body_font`,
+    `primary_fill` — about 1.5 KB for the shipped set. Compact stays the
+    default.
+  - **`--tools all` lists no `outputSchema` by default** (it was 200 KB of a
+    335 KB listing; now about 145 KB). `json2pptx mcp --output-schemas` or
+    `JSON2PPTX_MCP_OUTPUT_SCHEMAS=1` restores them; **new `get_capabilities`
+    argument `output_schema: "<tool>"`** returns one tool's result schema.
+  - **Tool descriptions shortened** (`describe_finding`, `examine_template`,
+    `get_started`, `list_templates`, `plan_deck` `template`,
+    `render_deck_thumbnails`, `score_deck`; same behaviour) and, in the
+    default profile, `render_deck_spec` `spec` points at
+    `validate_deck_spec`'s outline instead of repeating it. Default
+    `tools/list`: 33 KB (was 40.6); budget 34,816 bytes. First contact
+    (instructions + `tools/list` + `get_started` + template names + kind
+    catalogue) is about 52 KB (was about 90) and pinned by
+    `TestOnboardingPayloadBudgets`.
+  - **`json2pptx skill install [--dest DIR]` / `skill status`** (new CLI
+    group). The binary embeds the four skills and writes the copy that
+    matches it (default `~/.claude/skills`, env `JSON2PPTX_SKILL_DIR`), with
+    a manifest `generate-deck/.json2pptx-skill.json` `{schema_version,
+    binary_version, files}`; links into the repository become
+    `https://github.com/sebahrens/json2pptx/blob/main/…` (`make
+    install-skill` still installs an offline reference snapshot). `skill
+    status` prints `{dir, installed, current, installed_schema_version,
+    binary_schema_version, missing_files, message, refresh}`. `get-started`,
+    `capabilities`, `semantic …` and `generate` print one line on stderr when
+    the installed `generate-deck` skill has no `schema_version`, an older
+    one, or lacks files the binary ships (`JSON2PPTX_SKILL_CHECK=off`
+    silences it); `get-started` also carries it as `skill_warning`, which
+    now names `json2pptx skill install`.
+  - **`validate_deck_spec` `warnings[]` reworded** (shorter):
+    `misspelled keys read as their did_you_mean (…)` and `checks_not_run:
+    <paths> did not compile: their fit and the deck-wide checks (rhythm,
+    executive summary, quality gate) wait for those errors`.
+  - **Pattern descriptions corrected** (`list_patterns`, `show_pattern`):
+    `before-after-compact`, `process-flow-compact` and `kpi-inline` are no
+    longer described as height-capped (they have emitted no `bounds` since
+    the placement-policy change).
+
 - **2026-10-03 — Previews are the generated slide, returned as images (`go-slide-creator-ueopl`, `-r1uy7`).**
   - **New argument `preview` (boolean) on `list_slide_kinds` and
     `recommend_visual`**, both in the default profile.

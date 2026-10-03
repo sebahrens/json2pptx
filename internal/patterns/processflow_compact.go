@@ -10,7 +10,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// process-flow-compact — same as process-flow but height-capped at 35%
+// process-flow-compact — process-flow as one content-sized band
 // ---------------------------------------------------------------------------
 
 func init() {
@@ -21,7 +21,7 @@ type processFlowCompact struct{}
 
 func (p *processFlowCompact) Name() string { return "process-flow-compact" }
 func (p *processFlowCompact) Description() string {
-	return "Compact left-to-right process flow, height-capped for short content"
+	return "Compact left-to-right process flow: one content-sized band for short labels, for a compose segment or cell"
 }
 func (p *processFlowCompact) UseWhen() string {
 	return "3-8 short-label steps where the process is supporting context (not the hero content); prefer full process-flow when steps have long labels or fill the slide"
@@ -134,7 +134,7 @@ func (p *processFlowCompact) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Compact left-to-right process flow, height-capped at ~35% of content area")
+	}).WithDescription("Compact left-to-right process flow: one content-sized band for short labels. Alone on a slide it is composed like any sparse block and reports SLIDE_UNDERUSED; pair it with a second zone or use process-flow")
 }
 
 func (p *processFlowCompact) Validate(values, overrides any, cellOverrides map[int]any) error {

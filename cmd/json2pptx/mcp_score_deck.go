@@ -27,11 +27,11 @@ func mcpScoreDeckTool() mcp.Tool {
 	return withPresentationOrDeckIDChoice(mcp.NewTool("score_deck",
 		mcp.WithDescription(`Score a presentation's STRUCTURAL quality using deterministic rules. Returns overall_score on the shared 0-100 scale with basis="structural", per-slide scores, and structured findings with fix suggestions. It never looks at rendered pixels, so it cannot visually approve a deck; render (render_deck_thumbnails) and look at the slides for that.
 
-Runs a full generation pass (to a temporary directory) so the score reflects the GENERATED deck structure — including pagination, autofit shrink, contrast swaps, and layout synthesis — not just the input JSON. Static analysis alone (without generation) misses these generation-time effects.
+It generates the deck into a temporary directory, so the score reflects the GENERATED structure (pagination, autofit shrink, contrast swaps, layout synthesis), not only the input.
 
 Score: per-slide 100 minus finding weights and a deck-wide breadth penalty. Weights: refuse=25, shrink_or_split=15, review=5, info=0. Severe reviews cost 15–20; only confirmed defects block.
 
-Use it with a DeckSpec deck_id, or a raw deck / deck_id, for structured feedback without vision tokens. Generation-time autofix can change the score.`),
+Use it with a DeckSpec deck_id, or a raw deck / deck_id, for structured feedback without vision tokens.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaScoreDeck)),
 		mcp.WithObject("presentation",
 			mcp.Description("Raw json2pptx presentation JSON (PresentationInput). Not a DeckSpec: send its deck_id instead."),
@@ -45,18 +45,18 @@ Use it with a DeckSpec deck_id, or a raw deck / deck_id, for structured feedback
 			mcp.Description("Template name override. If omitted, uses the template field from the presentation object."),
 		),
 		mcp.WithString("mode",
-			mcp.Description("Scoring mode. Only 'deterministic' is implemented (default, zero false positives). 'with_heuristics' is reserved and currently rejected with UNSUPPORTED_MODE — for visual QA, render thumbnails and review them."),
+			mcp.Description("Only 'deterministic' (default) is implemented; 'with_heuristics' is rejected with UNSUPPORTED_MODE."),
 			mcp.Enum("deterministic", "with_heuristics"),
 		),
 		mcp.WithArray("slide_indices",
-			mcp.Description("Optional array of 0-based slide indices to score. When provided, only those slides are rendered + scored — skipping the rest is significantly faster for iterative single-slide refinement. Findings on other slides are omitted; per_slide contains only the requested indices. summary.slide_count still reflects the full deck size. composition is omitted because it only meaningfully scores the full deck."),
+			mcp.Description("0-based slides to score; the rest are skipped (faster). per_slide and findings cover only these, summary.slide_count the whole deck, and composition is omitted."),
 			mcp.Items(map[string]any{"type": "integer", "minimum": 0}),
 		),
 		mcp.WithString("base_dir",
-			mcp.Description("Absolute directory used as the root for resolving relative local-asset paths (image_value.path, background.image, shape_grid image/icon paths). Required when any slide references a relative path and the agent cannot guarantee the server CWD matches the JSON's authoring directory. When omitted, the server falls back to its process CWD (not portable). Must be an absolute path to an existing directory."),
+			mcp.Description("Absolute directory relative asset paths (images, backgrounds, icons) resolve against. Default: the server CWD."),
 		),
 		mcp.WithBoolean("allow_degraded_scoring",
-			mcp.Description("Permit scoring to proceed when the render pass fails (slide conversion, temp-dir creation, or generation). Default false: a render failure emits a blocking RENDER_EVIDENCE_INCOMPLETE finding (refuse action) so the quality gate cannot pass on static-only evidence. Set true to score on static analysis alone — the response then carries render_evidence with complete=false and degraded=true, and the diagnostic drops to advisory (review action)."),
+			mcp.Description("true: score on static analysis when the render pass fails (render_evidence complete=false, degraded=true). Default false: a render failure is a blocking RENDER_EVIDENCE_INCOMPLETE finding."),
 		),
 	))
 }

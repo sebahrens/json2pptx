@@ -69,6 +69,12 @@ func dispatch() error { //nolint:gocyclo
 	}
 
 	subcmd := os.Args[1]
+	switch subcmd {
+	case "get-started", "capabilities", "semantic", "generate":
+		// The commands an agent starts with say when its installed skill is
+		// behind the binary (go-slide-creator-4eu2o).
+		warnIfSkillStale()
+	}
 
 	// Shift args so each subcommand sees its own flags
 	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
@@ -158,6 +164,8 @@ func dispatch() error { //nolint:gocyclo
 		return runAuditPalette()
 	case "semantic":
 		return runSemantic()
+	case "skill":
+		return runSkill()
 	case "version", "--version", "-V":
 		return runVersion()
 	case "help", "-h", "--help":
@@ -217,6 +225,7 @@ Commands:
   shape-catalog       List available preset geometries
   audit-palette       Render PPTX to PNG and compare chart colors with theme accents/tints
   semantic            Validate/compile/render compact semantic deck specs (kinds|validate|compile|render|explain|schema)
+  skill               Install the agent skills that match this binary, or check the installed copy (install|status)
   serve               Start HTTP API server
   mcp                 Start MCP (Model Context Protocol) server over stdio
   version             Show version information

@@ -17,6 +17,8 @@ import (
 const (
 	listFieldsCompact = "compact"
 	listFieldsFull    = "full"
+	// listFieldsNames is list_templates' smallest projection.
+	listFieldsNames   = "names"
 	listFieldsOmitted = "When fields is omitted, compact is used without a warning."
 )
 

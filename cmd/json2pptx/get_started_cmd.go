@@ -41,6 +41,12 @@ func runGetStarted() error {
 		// prose workflow is not a duplicate for them (go-slide-creator-bxve).
 		"verbose": true,
 	}
+	// The installed skill's stamp, so the response carries skill_warning when
+	// it is behind this binary (go-slide-creator-4eu2o).
+	skill := checkInstalledSkill(skillInstallDir())
+	if skill.InstalledVersion != "" {
+		args["skill_version"] = skill.InstalledVersion
+	}
 	if *task != "" {
 		// The MCP tool answers an unknown task with the default and a warning;
 		// on a command line a mistyped task is a usage error, not something to
@@ -64,10 +70,13 @@ func runGetStarted() error {
 		return printMCPResultJSON(result)
 	}
 
-	var raw json.RawMessage
+	var raw getStartedResponse
 	text := cliResultText(result)
 	if err := json.Unmarshal([]byte(text), &raw); err != nil {
 		return printMCPResultJSON(result)
+	}
+	if skill.Installed && !skill.Current && raw.SkillWarning == "" {
+		raw.SkillWarning = skill.Message
 	}
 	pretty, err := json.MarshalIndent(raw, "", "  ")
 	if err != nil {

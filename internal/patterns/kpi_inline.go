@@ -12,7 +12,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// kpi-inline — horizontal inline KPIs, height-capped for supporting context
+// kpi-inline — horizontal inline KPIs, one content-sized row for supporting context
 // ---------------------------------------------------------------------------
 
 func init() {
@@ -23,7 +23,7 @@ type kpiInline struct{}
 
 func (k *kpiInline) Name() string { return "kpi-inline" }
 func (k *kpiInline) Description() string {
-	return "Horizontal inline KPI bar, height-capped for supporting context"
+	return "Horizontal inline KPI bar: one content-sized row for supporting context in a compose segment or cell"
 }
 func (k *kpiInline) UseWhen() string {
 	return "2-6 KPIs as a compact supporting bar (not the hero); prefer kpi-Nup when KPIs are the main slide content, stat-hero for a single dominant metric"
@@ -137,7 +137,7 @@ func (k *kpiInline) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Horizontal inline KPI bar, height-capped at ~25% of content area")
+	}).WithDescription("Horizontal inline KPI bar: one content-sized row. Alone on a slide it is composed like any sparse block; vertical_align \"top\" keeps it under the title")
 }
 
 func (k *kpiInline) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -185,7 +185,7 @@ func (k *kpiInline) Validate(values, overrides any, cellOverrides map[int]any) e
 			// The compact bar is height-capped: a comparator line would push
 			// every caption below the readable floor.
 			errs = append(errs, newValidationError(name, fmt.Sprintf("values[%d].comparator", i), ErrCodeUnknownKey,
-				fmt.Sprintf("%s: values[%d].comparator: the height-capped kpi-inline bar has no comparator line — use a kpi-Nup card row for KPIs read against plan or prior year, or fold the reference into the delta (\"+4 vs plan\")", name, i),
+				fmt.Sprintf("%s: values[%d].comparator: the one-row kpi-inline bar has no comparator line — use a kpi-Nup card row for KPIs read against plan or prior year, or fold the reference into the delta (\"+4 vs plan\")", name, i),
 				RemoveFieldFix(fmt.Sprintf("values[%d].comparator", i))))
 		}
 		if cell.Icon != nil {

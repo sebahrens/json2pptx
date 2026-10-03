@@ -21,16 +21,15 @@ applies to both paths. Storyline rules are in [QUALITY.md](QUALITY.md).
    chart; upper right a KPI") draft a `regions` slide whose slot lists each
    region's `path`, `role`, `kind` and clause; `unsupported_regions[]` names
    what it could not draft.
-3. **Template.** `list_templates` gives names, `canonical_layout_ids` and
-   `color_roles`. Set `meta.template`; leave `meta.accent_strategy` at
-   `primary` unless Phase 2 → Accent monotony says otherwise. Fill with
-   `color_roles.primary_fill` (not always `accent1`); text on an accent fill
-   uses `color_roles.ink_on_accent[accentN].ink`. With `fields="full"`,
-   `accent_usage_guide` gives each accent's role; with
-   `accent_usage_guide_derived: true` the template authored none (contrast
-   facts only) — keep to `primary_fill` and the `semantic_accents`, never a
-   `near_background_accents` entry for text. `grid` gives margin, columns,
-   gutter and the content frame lines content starts on.
+3. **Template.** `list_templates` gives names (`fields:"names"` alone is
+   enough to pick one), `canonical_layout_ids` and `color_roles`. Set
+   `meta.template`; leave `meta.accent_strategy` at `primary` unless Phase 2
+   → Accent monotony says otherwise. Fill with `color_roles.primary_fill`
+   (not always `accent1`); text on an accent fill uses
+   `color_roles.ink_on_accent[accentN].ink`. With `fields="full"`,
+   `accent_usage_guide` gives each accent's role (with
+   `accent_usage_guide_derived: true` keep to `primary_fill` and the
+   `semantic_accents`, never a `near_background_accents` entry for text).
 4. **Chapters.** Use `structure.sections` (with `auto_agenda` for two or more
    sections) instead of hand-made dividers; the engine numbers them.
 5. **Chrome.** Page numbers (title and closing skipped) and the date are on
@@ -48,19 +47,13 @@ Deck: [title] · Template: [name]
 ### Layout coverage requests
 
 When the brief asks for a complete deck that also showcases layouts, plan the
-argument before applying the coverage constraint:
-
-1. Write the story and section outline without counting layouts as slides.
-2. Choose a slide budget that supports the subject; "complete" usually needs
-   repeated content layouts and more slides than required layouts.
-3. Put chapter boundaries in `structure.sections`.
-4. Add canonical IDs to `meta.required_layouts`, run `explain_deck_spec`,
-   review every `layout_coverage.assigned` entry and resolve `missing` by
-   adding a compatible narrative slide.
-5. Keep DeckSpec as the source; use `raw_json2pptx` only for the smallest
-   visual the semantic kinds cannot express.
-6. A `blank-canvas` content slide carries its title into the raw slide's
-   `headline`; the rest of the canvas holds the visual.
+argument first: write the story and section outline without counting layouts
+as slides, choose a slide budget that supports the subject, put chapter
+boundaries in `structure.sections`, then add canonical IDs to
+`meta.required_layouts`, run `explain_deck_spec` and resolve each
+`layout_coverage.missing` entry with a compatible narrative slide
+(DECKSPEC.md). A `blank-canvas` content slide carries its title into the raw
+slide's `headline`.
 
 ### One slide or several: spatial planning
 
@@ -71,9 +64,8 @@ Prefer `kind: regions` (DECKSPEC.md). When its region kinds cannot express
 the slide (pattern panels, quotes, native diagrams), make only that slide
 `raw_json2pptx` and start from `list_slide_kinds` `kinds:["raw_json2pptx"]`
 → `composed_example` (line chart beside a `metric-list` KPI column above a
-`timeline-horizontal` footer, `"Illustrative"` source; renders as returned —
-swap title, data, source; `json2pptx skill-info` `compose.examples` has
-three more). Do not re-derive the envelope.
+`timeline-horizontal` footer; renders as returned — swap title, data,
+source). Do not re-derive the envelope.
 
 | Need | Use |
 |------|-----|
@@ -91,17 +83,12 @@ three more). Do not re-derive the envelope.
   region's title names measure and unit.
 
 Each segment is fit-checked in its own rectangle (`BODY_TOO_LONG` names
-`segment[i]`). In `composed_example` the 38%-wide KPI column (three value +
-label metrics) needs ~65% of the height on modern-template, so the 35%
-timeline footer fits only with the month in the label. Cut copy or add share
-rather than shrink type, and inspect the thumbnail: a one-word pyramid apex
-wraps mid-word in a 50% column with no finding.
+`segment[i]`). Cut copy or add share rather than shrink type, and inspect
+the thumbnail.
 
 Reject the plan before rendering when it produces an isolated numeric divider,
 an untitled visual canvas, one slide per required layout, or a deck made only
-of bullets and coloured rectangles. Evidence-oriented decks need at least one
-data-bearing visual and enough distinct visual families to separate evidence,
-analysis, process and chapter structure.
+of bullets and coloured rectangles.
 
 ---
 
@@ -111,14 +98,18 @@ The compiler picks patterns and layouts per kind; your job is the sequence.
 `explain_deck_spec` (full profile) previews each slide's resolved visual
 without rendering, and `analyze_deck_rhythm` accepts the `deck_id`.
 
-- No visual family three times in a row (alternating `kpi-3up` and `kpi-4up`
-  is still one run, as are composed slides with the same regions); follow a
-  dense slide (table, grid) with a light one (stat, quote, section).
+- No visual family and no motif three times in a row (`longest_run`,
+  `motif_runs`: `kpi-4up` → `stylish-panels` → `icon-row` are three rows of
+  open columns, whatever the patterns), and no motif on more than half the
+  content slides (`dominant_motif`); follow a dense slide (table, grid) with
+  a light one (stat, quote, section).
 - Every evidence slide has a `takeaway` and a `source`.
 - Clear `analyze_deck_rhythm`'s narrative codes (`missing_executive_summary`,
   `missing_next_steps`, `missing_sections`,
-  `evidence_missing_takeaway_or_source`, `bullets_heavy`) and accent codes
-  (`accent_heavy_slide`, `strong_accent_run`) — RAW_PATH.md lists them.
+  `evidence_missing_takeaway_or_source`, `bullets_heavy`), run codes
+  (`break_run`, `break_motif_run`, `motif_dominant`,
+  `continuation_interrupted`) and accent codes (`accent_heavy_slide`,
+  `strong_accent_run`) — RAW_PATH.md lists them.
 - `composition_score < 70` or `longest_run ≥ 3` → change the kind of the
   middle slide, not its content.
 
@@ -127,9 +118,12 @@ without rendering, and `analyze_deck_rhythm` accepts the `deck_id`.
 The most common agent mistake: the same pattern slide after slide makes a
 flat deck. Break runs with a family that fits the content (card-grid →
 comparison-2col → stat-hero → matrix-2x2 → icon-row); a stat or quote only
-for a single number or a stakeholder voice, never as filler. Appendix back
-matter is exempt from `break_run`, `DECK_MONOTONY` and
-`SEMANTIC_RHYTHM_MONOTONY`.
+for a single number or a stakeholder voice, never as filler. A split exhibit
+titled `… (1/2)` / `… (2/2)` (or `(cont.)`) is one slide for every run check;
+keep the parts adjacent — a slide between them is reported
+(`continuation_interrupted`, `SEMANTIC_RHYTHM_CONTINUATION_SPLIT`). Appendix
+back matter is exempt from `break_run`, `DECK_MONOTONY` and
+`SEMANTIC_RHYTHM_MONOTONY` (whose message and `evidence.run` name the run).
 
 ### Accent monotony
 
@@ -140,13 +134,11 @@ This is the one place the skill sets accent strategy; other guides defer here.
 - `section-keyed` gives each chapter its own accent — use it when the deck has
   `structure.sections` / section dividers.
 - `rotate` cycles pattern slides through the template's **safe** accents only
-  (light body text readable on the fill, not the negative accent, not a grey
-  or pastel slot under 2:1 on `lt1`), keyed to each pattern's content so
-  inserting a slide recolours nothing; every `kpi-*` pattern shares one accent. Validation
-  reports the excluded accents once per deck (`ROTATED_ACCENT_UNREADABLE`,
-  info, at `/accent_strategy`). Use it only when that safe set has three or
-  more accents and the deck has many pattern slides; otherwise it adds noise,
-  not variety.
+  (readable under light text, not the negative accent, not a grey or pastel
+  slot), keyed to each pattern's content so inserting a slide recolours
+  nothing. Validation reports the excluded accents once per deck
+  (`ROTATED_ACCENT_UNREADABLE`, info). Use it only when that safe set has
+  three or more accents and the deck has many pattern slides.
 
 Do not switch strategy just to move `accent_balance`; judge the rendered slides.
 
@@ -154,10 +146,14 @@ Do not switch strategy just to move `accent_balance`; judge the rendered slides.
 
 ## Phase 3: RENDER
 
-`validate_deck_spec` → `render_deck_spec`; fix blockers at `semantic_path`.
-`SEMANTIC_PATTERN_DEGRADED` means the requested visual changed (DECKSPEC.md).
-`deterministic_ready` is not approval. Retain `deck_id`; revise with `patch`
-and re-render `changed_slides`.
+`validate_deck_spec` → `render_deck_spec`; fix blockers at their `path`.
+The first validation reports everything knowable, even when a slide does not
+compile: fix every finding in one pass, then re-validate (`warnings[]` says
+what was assumed and which checks wait). `templates: ["modern", …]` also
+reports the spec on other templates. `SEMANTIC_PATTERN_DEGRADED` means the
+requested visual changed (DECKSPEC.md). `deterministic_ready` is not
+approval. Retain `deck_id`; revise with `patch` and re-render
+`changed_slides`.
 
 ---
 
@@ -189,13 +185,16 @@ the wrong visual show only in pixels. **Images are truth.**
    | 10 | Native slide composition | decorative web UI dominates the content (RULES.md → Native slide composition) | P1 |
 
 3. **Record it.** Every failed check is a finding on that slide in
-   `submit_visual_review` (`{severity, category, description, location}`,
-   category = the check name). A P0/P1 finding makes the deck verdict
+   `submit_visual_review` (`{severity, category, description, location}`:
+   `severity` P0–P3 and `category` from the tool schema's enums — whitespace
+   is `layout_balance`; any other value is rejected and nothing is
+   recorded). A P0/P1 finding makes the deck verdict
    `changes_requested`; approve only when all ten pass. For check 10, name
    the needless UI element and a repair that preserves its content.
-4. **Repair.** Edit the spec at the finding's `semantic_path` (or the field
-   the rubric names), send `deck_id` + `patch`, re-render and re-check
-   `changed_slides`, then review the whole final revision once and submit.
+4. **Repair.** Edit the spec at the finding's `path` (or the field the
+   rubric names), send `deck_id` + `patch`, re-render and re-check
+   `changed_slides` (pass them, or slide ids, as `slide_indices`), then
+   review the whole final revision once and submit.
    Deterministic repairs: RAW_PATH.md; finding semantics:
    [FINDINGS.md](FINDINGS.md).
 5. **Loop cap.** Stop after **three** repair rounds. If slides still fail,
@@ -209,13 +208,11 @@ submitted and approved, or you have said exactly what could not be verified.
 
 ## Automated vision QA (`inspect_slide_images`)
 
-`inspect_slide_images` runs the Claude-vision QA agent of `testrand qa` on
-rendered images (`{index, path | png_base64, slide_type?, title?}`; the
-optional fields improve precision): per-slide findings whose
-`suggested_fixes[]` map to `repair_slide` kinds, plus a `findings`
-FindingEnvelope (P0/P1 → `error`; `findings.ok` is false exactly when a
-slide needs repair). Without `ANTHROPIC_API_KEY` it is `mode:"heuristic"`
-(blank / edge-overflow / aspect-ratio, all P3). `image_quality`,
-`aspect_ratio` and `border_style` have no automatic fix: surface them. About
-60% of layout flags on correct decks are false positives, so P2/P3 are
-advisory. It supplements your own look at every slide, never replaces it.
+`inspect_slide_images` (CLI `json2pptx inspect`) runs the Claude-vision QA
+agent on rendered images (`{index, path | png_base64, slide_type?, title?}`):
+per-slide findings whose `suggested_fixes[]` map to `repair_slide` kinds,
+plus a `findings` FindingEnvelope (P0/P1 → `error`). Without
+`ANTHROPIC_API_KEY` it is `mode:"heuristic"` (blank / edge-overflow /
+aspect-ratio, all P3). About 60% of layout flags on correct decks are false
+positives, so P2/P3 are advisory. It supplements your own look at every
+slide, never replaces it.

@@ -45,11 +45,20 @@ const (
 	// toolProfileEnv selects the profile when the --tools flag is not given.
 	toolProfileEnv = "JSON2PPTX_MCP_TOOLS"
 
+	// outputSchemasEnv set to 1 / true makes the "all" profile advertise each
+	// tool's outputSchema inline (--output-schemas does the same).
+	outputSchemasEnv = "JSON2PPTX_MCP_OUTPUT_SCHEMAS"
+
 	// deckSpecToolLimit and deckSpecToolListByteBudget cap the default
 	// profile (TestDeckSpecToolProfileBudget). 40KB is ~10K tokens: the
 	// go-slide-creator-355t7 target of 8–10K tokens before the first call.
 	deckSpecToolLimit          = 12
-	deckSpecToolListByteBudget = 40 * 1024
+	deckSpecToolListByteBudget = 34 * 1024
+
+	// allToolListByteBudget caps the "all" profile's default listing, which
+	// carries no outputSchema (go-slide-creator-mvdt5): it was 335 KB, 200 KB
+	// of it output schemas no model needs to choose or call a tool.
+	allToolListByteBudget = 144 * 1024
 
 	// coreToolLimit caps the core profile. TestCoreToolProfileBudget enforces it
 	// together with coreToolListByteBudget.
@@ -150,6 +159,24 @@ var coreToolNames = []string{
 	"submit_visual_review",
 }
 
+// advertiseOutputSchemas is set by `json2pptx mcp --output-schemas`.
+var advertiseOutputSchemas bool
+
+// outputSchemasInline reports whether the "all" profile lists each tool's
+// outputSchema in tools/list. Off by default: the schemas were 200 KB of a
+// 335 KB listing, and get_capabilities output_schema:"<tool>" returns any one
+// of them on request (go-slide-creator-mvdt5).
+func outputSchemasInline() bool {
+	if advertiseOutputSchemas {
+		return true
+	}
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(outputSchemasEnv))) {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
+}
+
 // toolSet returns names as a lookup set.
 func toolSet(names []string) map[string]bool {
 	set := make(map[string]bool, len(names))
@@ -206,11 +233,18 @@ func resolveToolProfile(flagValue string, flagSet bool) (string, error) {
 func toolProfileFilter(profile string) server.ToolFilterFunc {
 	if profile == toolProfileAll {
 		return func(_ context.Context, tools []mcp.Tool) []mcp.Tool {
+			inline := outputSchemasInline()
 			out := make([]mcp.Tool, 0, len(tools))
 			for _, t := range tools {
-				if _, folded := foldedTools[t.Name]; !folded {
-					out = append(out, t)
+				if _, folded := foldedTools[t.Name]; folded {
+					continue
 				}
+				if !inline {
+					// get_capabilities output_schema:"<tool>" serves one.
+					t.RawOutputSchema = nil
+					t.OutputSchema = mcp.ToolOutputSchema{}
+				}
+				out = append(out, t)
 			}
 			return out
 		}
@@ -221,8 +255,11 @@ func toolProfileFilter(profile string) server.ToolFilterFunc {
 		out := filterCoreTools(tools, set)
 		if deckSpec {
 			for i := range out {
-				if out[i].Name == "validate_deck_spec" {
+				switch out[i].Name {
+				case "validate_deck_spec":
 					out[i] = withDeckSpecOutlineInput(out[i])
+				case "render_deck_spec":
+					out[i] = withDeckSpecReferenceInput(out[i])
 				}
 			}
 		}
@@ -267,6 +304,37 @@ func withDeckSpecOutlineInput(tool mcp.Tool) mcp.Tool {
 	}
 	withDeckSpecOutline()(spec)
 	props["spec"] = spec
+	delete(schema, "$defs")
+	raw, err := json.Marshal(schema)
+	if err != nil {
+		return tool
+	}
+	tool.RawInputSchema = raw
+	return tool
+}
+
+// withDeckSpecReferenceInput replaces render_deck_spec's copy of the DeckSpec
+// outline with a pointer to validate_deck_spec's, which the default profile
+// lists right beside it: the same 3 KB outline was advertised twice
+// (go-slide-creator-mvdt5). The accepted payload is unchanged.
+func withDeckSpecReferenceInput(tool mcp.Tool) mcp.Tool {
+	var schema map[string]any
+	if len(tool.RawInputSchema) == 0 || json.Unmarshal(tool.RawInputSchema, &schema) != nil {
+		return tool
+	}
+	props, _ := schema["properties"].(map[string]any)
+	if props == nil {
+		return tool
+	}
+	props["spec"] = map[string]any{
+		"type":        []any{"object", "string"},
+		"description": "The semantic DeckSpec to render, as a JSON object or a YAML/JSON string: the shape validate_deck_spec's spec documents. Send this OR deck_id, not both.",
+		"oneOf": []any{
+			map[string]any{"type": "object", "required": []any{"slides"}, "not": map[string]any{"required": []any{"structure"}}},
+			map[string]any{"type": "object", "required": []any{"structure"}, "not": map[string]any{"required": []any{"slides"}}},
+			map[string]any{"type": "string", "minLength": 1},
+		},
+	}
 	delete(schema, "$defs")
 	raw, err := json.Marshal(schema)
 	if err != nil {

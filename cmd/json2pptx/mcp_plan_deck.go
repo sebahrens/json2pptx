@@ -44,7 +44,7 @@ The plan's slides[] are advisory records, NOT SlideInput objects. For a raw deck
 			mcp.Enum("raw", deckplan.FormatDeckSpec),
 		),
 		mcp.WithString("template",
-			mcp.Description("Optional template name (e.g., midnight-blue) to make the plan template-aware. When supplied, every planned slide (and each alternative) carries a template_support object {status: supported|risky|unsupported, reasons[], required_layout} grounded in the template's canonical layouts, derivable layouts, font-aware placeholder capacities, and palette — the same helper recommend_visual uses. A pattern the template cannot host is replaced with a supported alternative when one exists. Use list_templates to discover names."),
+			mcp.Description("Template name. Every planned slide then carries template_support {status: supported|risky|unsupported, reasons[], required_layout}, and a pattern the template cannot host is replaced with a supported alternative."),
 		),
 	)
 }

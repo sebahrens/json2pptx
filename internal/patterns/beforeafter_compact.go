@@ -9,7 +9,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// before-after-compact — height-capped variant of before-after
+// before-after-compact — the content-sized band variant of before-after
 // ---------------------------------------------------------------------------
 
 func init() {
@@ -20,7 +20,7 @@ type beforeAfterCompact struct{}
 
 func (b *beforeAfterCompact) Name() string { return "before-after-compact" }
 func (b *beforeAfterCompact) Description() string {
-	return "Compact two-column before/after with transition chevron, height-capped"
+	return "Compact two-column before/after with transition chevron: content-sized rows for brief lists, for a compose segment or cell"
 }
 func (b *beforeAfterCompact) UseWhen() string {
 	return "Brief before→after with short bullet lists (1-4 items each) where the transformation is context, not the slide hero; prefer full before-after when items need more vertical space"
@@ -134,7 +134,7 @@ func (b *beforeAfterCompact) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Compact two-column before/after with transition chevron, height-capped at ~60% of content area")
+	}).WithDescription("Compact two-column before/after with transition chevron: content-sized rows for brief lists. Alone on a slide it is composed like any sparse block; vertical_align \"top\" keeps it under the title")
 }
 
 func (b *beforeAfterCompact) Validate(values, overrides any, cellOverrides map[int]any) error {

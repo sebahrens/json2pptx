@@ -123,6 +123,13 @@ func cliCommandClassifications() map[string]cliCommandClass {
 				"for shell callers that need only a name to put in the deck's template field. Over MCP the same names come from " +
 				"list_templates (compact by default, paginated); the CLI's skill-info is its full counterpart.",
 		},
+		"skill": {
+			AgentFacing: true,
+			CLIOnlyReason: "Writes the agent skill files this binary was built with to the host's skill directory " +
+				"(install) and compares the installed copy with the binary (status). It manages files on the agent's " +
+				"own machine, which an MCP server may not share; over MCP, get_started(skill_version) reports a stale " +
+				"skill as skill_warning and the json2pptx://skill resource serves the current SKILL.md.",
+		},
 		"preview-patterns": {
 			AgentFacing: true,
 			CLIOnlyReason: "Renders every named pattern on every template into a local PNG gallery — a batch step that " +

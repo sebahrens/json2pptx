@@ -120,6 +120,8 @@ func cliConventions() map[string]cliConvention {
 		"semantic explain":           {Input: "spec"},
 		"semantic schema":            {},
 		"semantic kinds":             {Positional: true, JSONFlag: "json"},
+		"skill install":              {},
+		"skill status":               {},
 		"serve":                      {Server: true},
 		"mcp":                        {Server: true, Out: "output"},
 	}

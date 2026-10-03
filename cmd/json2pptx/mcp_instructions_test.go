@@ -45,7 +45,7 @@ func TestMCPInitializeCarriesInstructions(t *testing.T) {
 	if err := json.Unmarshal(raw, &init); err != nil {
 		t.Fatal(err)
 	}
-	if init.Instructions != mcpQualityWorkflow {
+	if init.Instructions != mcpQualityWorkflow() {
 		t.Fatalf("initialize instructions = %q, want mcpQualityWorkflow", init.Instructions)
 	}
 	for _, want := range []string{"get_started", "render_deck_spec", "render_deck_thumbnails", "at their path in the DeckSpec", "exemplar"} {
@@ -60,7 +60,7 @@ func TestMCPInitializeCarriesInstructions(t *testing.T) {
 func TestGetStartedEchoesQualityWorkflow(t *testing.T) {
 	for _, task := range getStartedAvailableTasks() {
 		resp := buildGetStartedResponse(task, testRenderReady())
-		if resp.QualityWorkflow != mcpQualityWorkflow {
+		if resp.QualityWorkflow != mcpQualityWorkflow() {
 			t.Errorf("task %q: quality_workflow does not echo the instructions const", task)
 		}
 		if resp.Completion.Rule != mcpCompletionRule {

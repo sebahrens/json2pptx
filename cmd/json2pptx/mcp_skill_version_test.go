@@ -83,7 +83,7 @@ func TestGetStartedSkillVersionWarning(t *testing.T) {
 			if (payload.SkillWarning != "") != tt.warn {
 				t.Errorf("skill_warning = %q, want warning=%v", payload.SkillWarning, tt.warn)
 			}
-			if tt.warn && !strings.Contains(payload.SkillWarning, "run make install-skill") {
+			if tt.warn && !strings.Contains(payload.SkillWarning, "run "+skillRefreshCommand) {
 				t.Errorf("warning has no repair action: %q", payload.SkillWarning)
 			}
 		})

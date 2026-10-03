@@ -128,11 +128,11 @@ func listTemplatesToolDescription() string {
 	if !toolIsAdvertised("get_data_format_hints") {
 		hints = "data_format_hints_digest (a stable hash of the chart/diagram data-format hints; chart_capabilities and diagram_capabilities in this same response carry the per-type field requirements)."
 	}
-	return `List presentation templates with their layouts, theme colors and capabilities.
+	return `List presentation templates.
 
-Compact is the DEFAULT projection: name, aspect_ratio, layout_count, table_styles, canonical layout availability and IDs, color_roles (including contrast-safe and near-background accents, readable primary/secondary fills and ink_on_accent per accent), title/body fonts, body_font_size_pt (generated nominal size) and template_body_font_size_pt, plus authored semantic_accents and metadata_version when present. fields="full" (or legacy mode="compact") adds sha256, theme_colors, surface_tints, data_palette, accent_usage_guide (derived from theme contrast and flagged accent_usage_guide_derived when the template authors none), grid (margin, columns, gutter, title gap, content_frame), canonical_coverage, derivable_layouts, layout_names, layout_summaries and full per-layout placeholder detail, plus supported_types (slide/chart/diagram/grid types, shape_geometries, chart_capabilities, diagram_capabilities) — static per-server data, omitted from compact. ` + hints + `
+fields="names": one small row per template (name, aspect_ratio, layout_count, fonts, primary_fill) — enough to pick one. Compact is the DEFAULT projection: also table_styles, canonical layout availability and IDs, color_roles (contrast-safe and near-background accents, readable fills, ink_on_accent per accent), body_font_size_pt and template_body_font_size_pt, semantic_accents. fields="full" (or legacy mode="compact") adds sha256, theme_colors, surface_tints, data_palette, accent_usage_guide (accent_usage_guide_derived when the template authors none), grid, canonical_coverage, derivable_layouts, layout_names, layout_summaries, per-layout placeholder detail and supported_types (chart_capabilities, diagram_capabilities, shape_geometries). ` + hints + `
 
-Pagination: cursor + page_size; total_count and page_size are always present, next_cursor only when more remain. filter="<substring>" (case-insensitive name match) applies before pagination.`
+Pagination: cursor + page_size; total_count and page_size are always present, next_cursor only when more remain. filter="<substring>" matches names before pagination.`
 }
 
 func mcpListTemplatesTool() mcp.Tool {
@@ -143,18 +143,18 @@ func mcpListTemplatesTool() mcp.Tool {
 			mcp.Description("Analyze a single template by name (optional, omit to list all)."),
 		),
 		mcp.WithString("template_path",
-			mcp.Description("Analyze a single LOCAL .pptx that is not registered on the server — the bring-your-own template path. Resolved against base_dir (the server CWD when absent) and MUST stay inside it. Mutually exclusive with template. On the raw path, pass the same value as presentation.template_path to render with it."),
+			mcp.Description("Analyze a single LOCAL .pptx the server has not registered. Resolved against base_dir (the server CWD when absent) and MUST stay inside it. Not with template."),
 		),
 		mcp.WithString("base_dir",
-			mcp.Description("Absolute directory that bounds template_path resolution (the allowed root). Relative template_path values resolve against it; the resolved file must stay inside it. Ignored when template_path is absent."),
+			mcp.Description("Absolute directory template_path resolves against and must stay inside."),
 		),
 		mcp.WithString("mode",
-			mcp.Description("Legacy detail level: list (names only), compact (names + theme), or full (all placeholders). Prefer fields=compact|full; mode is honored when fields is unset."),
+			mcp.Description("Legacy detail level (list | compact | full); prefer fields."),
 			mcp.Enum("list", "compact", "full"),
 		),
 		mcp.WithString("fields",
-			mcp.Description("Field projection: compact (identity, capacity, concrete canonical layout IDs, fonts, color roles, semantic accents) or full (surface tints, data palette, layout detail). "+listFieldsOmitted+" Explicit legacy mode is honored."),
-			mcp.Enum(listFieldsCompact, listFieldsFull),
+			mcp.Description("Projection: names, compact or full. "+listFieldsOmitted),
+			mcp.Enum(listFieldsNames, listFieldsCompact, listFieldsFull),
 		),
 		mcp.WithString("filter",
 			mcp.Description("Case-insensitive substring filter on template name. Applied before pagination."),
@@ -166,7 +166,7 @@ func mcpListTemplatesTool() mcp.Tool {
 			mcp.Description("Maximum number of template entries to return. Default: 50. Clamped to [1, 200]."),
 		),
 		mcp.WithBoolean("read_only",
-			mcp.Description("Read-only discovery: skip layout-preview PNG generation so the call writes no cache files (preview_png_path is then omitted from layout summaries / layouts). Set this when gathering template context in a read-only planning context. The response's side_effects block reports whether preview cache writes occurred and the cache directory. Default: false (default mode may write preview PNGs to the cache dir when LibreOffice + ImageMagick are present)."),
+			mcp.Description("true: write no layout-preview PNGs to the cache (preview_png_path is then omitted). side_effects reports what was written."),
 			mcp.DefaultBool(false),
 		),
 	)
@@ -731,9 +731,12 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 	// The legacy mode flag still reaches the intermediate "compact" detail level
 	// (theme + layout_summaries, no placeholder geometry); agents that want it
 	// must pin mode=compact explicitly.
+	// fields:"names" is the listing an agent picks a template from: one small
+	// row per template (go-slide-creator-mvdt5). It analyses like compact.
+	namesOnly := templateNamesRequested(&request)
 	fieldsMode, fieldsExplicit, fErrField, fErrMsg := listFieldsParam(request)
 	if fErrMsg != "" {
-		return argInvalidValue("list_templates", "INVALID_PARAMETER", fErrField, fErrMsg, "string", "compact", nil), nil
+		return argInvalidValue("list_templates", "INVALID_PARAMETER", fErrField, strings.Replace(fErrMsg, "compact or full", "names, compact or full", 1), "string", "compact", nil), nil
 	}
 	// Compact is the DEFAULT. list_templates{} measured 153,266 B on the wire
 	// while list_templates{fields:"compact"} measured 44,705 B, and get_started
@@ -842,6 +845,10 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 		templates = append(templates, info)
 	}
 
+	if namesOnly {
+		return templateNamesResult(ctx, templates, totalCount, pageSize, nextCursor), nil
+	}
+
 	// supported_types is static per-server data — diagram_capabilities,
 	// chart_capabilities and shape_geometries alone were 14,388 B — and it was
 	// attached to every list_templates response regardless of the projection,
@@ -880,6 +887,59 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 	}
 
 	return mcpResult, nil
+}
+
+// templateNamesRequested reports whether the call asks for fields:"names",
+// and rewrites the arguments to a read-only compact call: the names
+// projection analyses a template the same way and returns less of it.
+func templateNamesRequested(request *mcp.CallToolRequest) bool {
+	raw, ok := request.GetArguments()["fields"].(string)
+	if !ok || !strings.EqualFold(strings.TrimSpace(raw), listFieldsNames) {
+		return false
+	}
+	args := request.GetArguments()
+	args["fields"] = listFieldsCompact
+	// A list of names needs no layout previews: write nothing.
+	args["read_only"] = true
+	request.Params.Arguments = args
+	return true
+}
+
+// templateNamesResult projects analysed templates to the names listing.
+func templateNamesResult(ctx context.Context, templates []skillTemplateInfo, totalCount, pageSize int, nextCursor string) *mcp.CallToolResult {
+	rows := make([]templateNameRow, 0, len(templates))
+	for _, t := range templates {
+		row := templateNameRow{Name: t.Name, AspectRatio: t.AspectRatio, LayoutCount: t.LayoutCount, TitleFont: t.TitleFont, BodyFont: t.BodyFont, Error: t.Error}
+		if t.ColorRoles != nil {
+			row.PrimaryFill = t.ColorRoles.PrimaryFill
+		}
+		rows = append(rows, row)
+	}
+	names := map[string]any{
+		"tool":          skillToolInfo{Name: "json2pptx", Version: Version},
+		"input_formats": []string{"json"}, "output_formats": []string{"pptx"},
+		"templates": rows, "total_count": totalCount, "page_size": pageSize,
+		"detail": "template:\"<name>\" returns one template's layouts, colour roles and table styles.",
+	}
+	if nextCursor != "" {
+		names["next_cursor"] = nextCursor
+	}
+	mcpResult, err := api.MCPSuccessResult(ctx, names)
+	if err != nil {
+		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err))
+	}
+	return mcpResult
+}
+
+// templateNameRow is one template in the fields:"names" projection.
+type templateNameRow struct {
+	Name        string `json:"name"`
+	AspectRatio string `json:"aspect_ratio,omitempty"`
+	LayoutCount int    `json:"layout_count,omitempty"`
+	TitleFont   string `json:"title_font,omitempty"`
+	BodyFont    string `json:"body_font,omitempty"`
+	PrimaryFill string `json:"primary_fill,omitempty"`
+	Error       string `json:"error,omitempty"`
 }
 
 // dataFormatHintsResponse is the JSON envelope for get_data_format_hints.
@@ -2513,18 +2573,27 @@ Cost note: one image block per call; the JSON metadata stays under 1KB.`),
 	)
 }
 
+// pptxPathDescription names where a render tool's pptx_path comes from, in
+// the tools the active profile lists.
+func pptxPathDescription() string {
+	if !toolIsAdvertised("generate_presentation") {
+		return "Path to the PPTX to render: render_deck_spec returns pptx_path."
+	}
+	return "Path to the PPTX to render: generate_presentation returns output_path; render_deck_spec returns pptx_path."
+}
+
 func mcpRenderDeckThumbnailsTool() mcp.Tool {
 	return mcp.NewTool("render_deck_thumbnails",
-		mcp.WithDescription(`Render a PPTX's slides and return them as native MCP image content blocks (one JPEG per slide, in slide order) that you can look at directly, plus a small JSON metadata block: slides[].index / path / content_hash / image_content_index, and image_mime_type once at the top level. slides[].path is the full-resolution PNG on disk (what submit_visual_review verifies); the image block itself is a downscaled JPEG. Legacy clients: include_base64_json=true returns base64 PNGs inside the JSON instead.
+		mcp.WithDescription(`Render a PPTX's slides and return them as native MCP image content blocks (one JPEG per slide, in slide order) that you can look at directly, plus a small JSON metadata block: slides[].index / path / content_hash / image_content_index, and image_mime_type once at the top level. slides[].path is the full-resolution PNG on disk (what submit_visual_review verifies); the image block itself is a downscaled JPEG.
 
 Requires LibreOffice and ImageMagick (magick) on PATH. Cached by file content hash; force=true re-renders. With _meta.progressToken, emits notifications/progress per slide; cancelling returns CANCELLED.
 
-Cost: image payload grows with density and slide count — a 15-slide pass is ~600KB at the default density 50 and over 1MB at 100. Use density 50–75 for full-deck passes; go higher only for a few slides via slide_indices ([i] renders one slide). After a repair, pass only the changed slides (render_deck_spec's changed_slides) as slide_indices; max_slides caps a first look at a large deck.`),
+Cost: a 15-slide pass is ~600KB at the default density 50 and over 1MB at 100. Use density 50–75 for full-deck passes; go higher only for a few slides via slide_indices. After a repair, pass only render_deck_spec's changed_slides; max_slides caps a first look at a large deck.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRenderDeckThumbnails)),
 		includeBase64JSONOption(),
 		mcp.WithString("pptx_path",
 			mcp.Required(),
-			mcp.Description("Path to the PPTX to render: generate_presentation returns output_path; render_deck_spec returns pptx_path."),
+			mcp.Description(pptxPathDescription()),
 		),
 		mcp.WithNumber("density",
 			mcp.Description("DPI for thumbnails. Default 50; use 50–75 for a full-deck pass (density 100 about doubles the payload). Range: 25-150."),
@@ -2537,7 +2606,7 @@ Cost: image payload grows with density and slide count — a 15-slide pass is ~6
 			mcp.Items(map[string]any{"type": []string{"integer", "string"}, "minimum": 0}),
 		),
 		mcp.WithBoolean("force",
-			mcp.Description("If true, bypass the render cache and re-convert even if a cached result exists. Default: false."),
+			mcp.Description("true: bypass the render cache and re-convert."),
 		),
 	)
 }

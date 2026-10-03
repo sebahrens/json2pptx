@@ -194,7 +194,8 @@ func runMCP() error {
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
 	outputDir := fs.String("output", "./output", "Output directory for generated PPTX files")
 	configPath := fs.String("config", "", "Path to config file (optional)")
-	toolsProfile := fs.String("tools", toolProfileDeckSpec, "Tool profile advertised in tools/list: deckspec (default; the DeckSpec authoring tools, no outputSchema), core (alias raw; adds the raw-JSON path, flagged in_core_profile by get_capabilities) or all (full catalog minus folded aliases). Hidden tools stay callable by name. Env: "+toolProfileEnv)
+	toolsProfile := fs.String("tools", toolProfileDeckSpec, "Tool profile advertised in tools/list: deckspec (default; the DeckSpec authoring tools), core (alias raw; adds the raw-JSON path, flagged in_core_profile by get_capabilities) or all (full catalog minus folded aliases). Hidden tools stay callable by name. Env: "+toolProfileEnv)
+	outputSchemas := fs.Bool("output-schemas", false, "With --tools all: list every tool's outputSchema in tools/list (about 200 KB more). Default: omitted; get_capabilities output_schema:\"<tool>\" returns one. Env: "+outputSchemasEnv+"=1")
 	textFallback := fs.String("text-fallback", string(api.TextFallbackAuto),
 		"Text content alongside structuredContent: "+
 			"auto (default; up to 1 KB synopsis for protocol 2025-06-18 or later, full JSON for older clients), "+
@@ -229,6 +230,7 @@ func runMCP() error {
 	if err != nil {
 		return err
 	}
+	advertiseOutputSchemas = *outputSchemas
 
 	// Fail fast if the font subsystem is broken.
 	if err := fontcache.Verify(); err != nil {

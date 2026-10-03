@@ -160,7 +160,7 @@ func TestSemanticMCP_UnknownKPIFieldDiagnostic(t *testing.T) {
 // the sparse-layout advisories its render reports.
 func TestSemanticMCP_ListSlideKindsExamplesValidate(t *testing.T) {
 	ctx := context.Background()
-	res, err := handleListSlideKinds(ctx, makeRequest(map[string]any{"fields": []any{"item_schema"}}))
+	res, err := handleListSlideKinds(ctx, makeRequest(map[string]any{"fields": []any{"example", "item_schema", "item_schema_full"}}))
 	if err != nil || res.IsError {
 		t.Fatalf("list_slide_kinds failed: %v", err)
 	}
@@ -172,12 +172,20 @@ func TestSemanticMCP_ListSlideKindsExamplesValidate(t *testing.T) {
 		t.Fatalf("got %d kinds, want %d", len(out.SlideKinds), len(semantic.AllSlideKinds()))
 	}
 	for _, k := range out.SlideKinds {
-		if k.Example == nil || k.ItemSchema == nil {
-			t.Errorf("%s: missing example or item_schema", k.Kind)
+		if k.Example == nil || k.ItemSchema == nil || k.ItemSchemaFull == nil {
+			t.Errorf("%s: missing example, item_schema or item_schema_full", k.Kind)
 			continue
 		}
-		if k.ItemSchema["additionalProperties"] != false {
-			t.Errorf("%s: item_schema must be closed", k.Kind)
+		if k.ItemSchema["additionalProperties"] != false || k.ItemSchemaFull["additionalProperties"] != false {
+			t.Errorf("%s: item_schema and item_schema_full must be closed", k.Kind)
+		}
+		// The example is written in canonical fields: every key of it is a
+		// field of the compact schema, not an alias folded away.
+		compactProps, _ := k.ItemSchema["properties"].(map[string]any)
+		for key := range k.Example {
+			if _, ok := compactProps[key]; !ok {
+				t.Errorf("%s: example key %q is not a canonical field of item_schema", k.Kind, key)
+			}
 		}
 		spec := map[string]any{
 			"meta":   map[string]any{"title": "Example deck"},
@@ -221,9 +229,25 @@ func TestSemanticMCP_ListSlideKindsProjection(t *testing.T) {
 		t.Fatalf("compact returned %d kinds, want %d", len(summary.SlideKinds), len(semantic.AllSlideKinds()))
 	}
 	for _, k := range summary.SlideKinds {
-		if k.Kind == "" || k.Summary == "" || k.Example == nil {
+		if k.Kind == "" || k.Summary == "" {
 			t.Fatalf("compact entry missing authoring context: %+v", k)
 		}
+		// The catalogue is for choosing a kind: its example comes with the
+		// kinds an agent names (go-slide-creator-mvdt5).
+		if k.Example != nil {
+			t.Fatalf("the catalogue row for %s carries an example", k.Kind)
+		}
+	}
+	named, err := handleListSlideKinds(ctx, makeRequest(map[string]any{"kinds": []any{"decision", "stat"}}))
+	if err != nil || named.IsError {
+		t.Fatalf("named list failed: %v, %+v", err, named)
+	}
+	var chosen struct {
+		SlideKinds []slideKindListEntry `json:"slide_kinds"`
+	}
+	structuredInto(t, named.StructuredContent, &chosen)
+	if len(chosen.SlideKinds) != 2 || chosen.SlideKinds[0].Example == nil || chosen.SlideKinds[1].Example == nil {
+		t.Fatalf("named kinds do not return their examples: %+v", chosen.SlideKinds)
 	}
 
 	full, err := handleListSlideKinds(ctx, makeRequest(map[string]any{

@@ -29,6 +29,8 @@ A title states the conclusion the slide proves, as a full sentence:
 
 Cover, section and closing slides may keep short labels; every content slide
 gets an action title. If you cannot write one, the slide has no message yet.
+A takeaway does not excuse a label title: a two- to four-word title with no
+verb or number ("Monthly spend trend") is reported even beside a takeaway.
 
 ## 3. One message per slide
 
@@ -87,16 +89,12 @@ Pick the DeckSpec kind that matches what the title claims, then confirm with
 | what people said | `quote` |
 | the whole answer up front | `executive_summary` |
 
-Back matter goes in an appendix (`structure.sections[].appendix: true`;
-DECKSPEC.md).
-
 Do not choose a visual because it looks varied; a card grid of topics proves
 nothing. Rhythm tools come after the message is right.
 
 ## 7. Before you render: self-check
 
 - The ghost deck reads as one argument; no two titles make the same point.
-- Every content title is a full sentence of ≤15 words carrying its number.
 - Each body proves its title; evidence slides have a `takeaway` and a `source`.
 - The executive summary's points match the section titles that follow.
 - The closing states the decision or next step, with owner and date

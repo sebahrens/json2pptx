@@ -15,10 +15,10 @@ import (
 // nextCallGetInputSchema points the agent at the authoritative input schema
 // when their JSON failed to parse or required fields were missing.
 func nextCallGetInputSchema() *patterns.ToolCallSuggestion {
-	return &patterns.ToolCallSuggestion{
+	return substituteUnadvertised(&patterns.ToolCallSuggestion{
 		Tool:         "get_input_schema",
 		ArgsTemplate: map[string]any{},
-	}
+	})
 }
 
 // nextCallListTemplates points the agent at the available templates when a
@@ -33,22 +33,22 @@ func nextCallListTemplates() *patterns.ToolCallSuggestion {
 // nextCallListPatterns points the agent at the pattern catalog when a pattern
 // name was unknown or unsupported in the requested context.
 func nextCallListPatterns() *patterns.ToolCallSuggestion {
-	return &patterns.ToolCallSuggestion{
+	return substituteUnadvertised(&patterns.ToolCallSuggestion{
 		Tool:         "list_patterns",
 		ArgsTemplate: map[string]any{},
-	}
+	})
 }
 
 // nextCallInspectSlideImages points the agent at the canonical vision-based
 // visual QA tool. Used when a caller asks for a heuristic/vision pass on a
 // tool that only ships the deterministic axis.
 func nextCallInspectSlideImages() *patterns.ToolCallSuggestion {
-	return &patterns.ToolCallSuggestion{
+	return substituteUnadvertised(&patterns.ToolCallSuggestion{
 		Tool: "inspect_slide_images",
 		ArgsTemplate: map[string]any{
 			"slide_images": "<array of {index, path} from render_deck_thumbnails slides[]>",
 		},
-	}
+	})
 }
 
 // nextCallReadPresentation suggests read_presentation against a concrete file
