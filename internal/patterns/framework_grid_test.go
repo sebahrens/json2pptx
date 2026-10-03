@@ -115,7 +115,7 @@ func TestFrameworkGrid_Validate(t *testing.T) {
 func TestFrameworkGrid_ExpandStructure(t *testing.T) {
 	p, _ := Default().Get("framework-grid")
 	v := frameworkValues(t)
-	grid, err := p.Expand(ExpandContext{}, v, nil, map[int]any{4: &CellOverride{AccentBar: true}})
+	grid, err := p.Expand(ExpandContext{}, v, &FrameworkGridOverrides{Style: "tiles"}, map[int]any{4: &CellOverride{AccentBar: true}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +166,7 @@ func TestFrameworkGrid_CellAccentModes(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.mode+"/"+tc.base, func(t *testing.T) {
-			grid, err := p.Expand(ExpandContext{}, frameworkValues(t), &FrameworkGridOverrides{Accent: tc.base, CellAccentMode: tc.mode}, nil)
+			grid, err := p.Expand(ExpandContext{}, frameworkValues(t), &FrameworkGridOverrides{Accent: tc.base, CellAccentMode: tc.mode, Style: "tiles"}, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

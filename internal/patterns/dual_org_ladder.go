@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -14,7 +15,9 @@ import (
 // dual-org-ladder pattern — two parallel org columns (joint-venture team slides)
 // ---------------------------------------------------------------------------
 //
-// Two columns of paired role cards with an org-name header above each column.
+// Two columns of paired roles with an org-name header above each column. The
+// roles are open entries joined by a pairing line; only the two org headers
+// are tiles (the tiles style fills every role card too).
 // Unlike a hierarchical org chart, the rows carry no parent/child semantics —
 // they line up matching roles between two organisations (e.g. client sponsor
 // paired with consulting partner). An optional thin accent connector renders
@@ -28,7 +31,7 @@ type dualOrgLadder struct{}
 
 func (d *dualOrgLadder) Name() string { return "dual-org-ladder" }
 func (d *dualOrgLadder) Description() string {
-	return "Two parallel org columns with org-name headers and 2–4 paired role cards (engagement-team / joint-venture slides)"
+	return "Two parallel org columns: org-name header tiles over 2–4 paired roles joined by a pairing line (engagement-team / joint-venture slides)"
 }
 func (d *dualOrgLadder) UseWhen() string {
 	return "Engagement-team, joint-venture, or paired-organisation slide showing 2–4 matched roles across two orgs side by side; prefer team-bios for a single org's team page, comparison-2col when the columns are pros/cons rather than role pairs, and an svggen org_chart diagram when the structure is hierarchical (parent/child)"
@@ -71,6 +74,9 @@ type DualOrgLadderRow struct {
 	ATitle     string `json:"a_title"`
 	BNameField string `json:"b_name"`
 	BTitle     string `json:"b_title"`
+	// Highlight tints this pair (at most one): the only filled area beside
+	// the two org headers.
+	Highlight bool `json:"highlight,omitempty"`
 }
 
 // DualOrgLadderValues holds the two org names and the paired role rows.
@@ -94,7 +100,31 @@ type DualOrgLadderOverrides struct {
 	OrgSize   float64 `json:"org_size,omitempty"`
 	NameSize  float64 `json:"name_size,omitempty"`
 	TitleSize float64 `json:"title_size,omitempty"`
+	// Style is "open" (default: unfilled role entries joined by a pairing
+	// line in the gutter) or "tiles" (every role a filled card with a stub
+	// connector, the look before go-slide-creator-rpz53).
+	Style string `json:"style,omitempty"`
 }
+
+// dualOrgStyles are the accepted overrides.style values.
+var dualOrgStyles = []string{"open", "tiles"}
+
+// dualOrgOpen reports whether the ladder renders in the open style.
+func dualOrgOpen(ovr *DualOrgLadderOverrides) bool {
+	return ovr == nil || ovr.Style != "tiles"
+}
+
+// Open ladder geometry.
+const (
+	// dualOrgLinkPt is the width of the gutter between the two org columns
+	// in the open style, and so the length of the pairing line.
+	dualOrgLinkPt = 40.0
+	// dualOrgLinkLinePt is the pairing line's thickness.
+	dualOrgLinkLinePt = 1.0
+	// dualOrgOpenColGapPt is the open grid's column gap: the pairing line
+	// reaches both role entries.
+	dualOrgOpenColGapPt = 0.01
+)
 
 // DualOrgLadderCellOverride is the shared per-cell override, indexed by row
 // (the header row is index 0; body rows are indices 1..N).
@@ -128,13 +158,14 @@ func (d *dualOrgLadder) PostExpandWarnings(_ ExpandContext, values, _ any) []str
 	var warnings []string
 	for i, row := range v.Rows {
 		// Measured against the written size on every shipped template
-		// (go-slide-creator-n1muf): about 65 title characters beside a short
-		// name, or 49 each when name and title are both long.
+		// (go-slide-creator-n1muf): about 62 title characters beside a short
+		// name, or 47 each when name and title are both long (re-measured for the open
+		// entries, whose pairing gutter is wider than the tiles' gap).
 		for _, field := range []struct{ name, text, person string }{{"a_title", row.ATitle, row.ANameField}, {"b_title", row.BTitle, row.BNameField}} {
-			if runeLen(field.text) > 65 {
-				warnings = append(warnings, fmt.Sprintf("%s: dual-org-ladder rows[%d].%s has %d characters; four role rows hold about 65 title characters per card — shorten the title or split the team across slides", ErrCodeBodyTooLong, i, field.name, runeLen(field.text)))
-			} else if runeLen(field.person) > 49 && runeLen(field.text) > 49 {
-				warnings = append(warnings, fmt.Sprintf("%s: dual-org-ladder rows[%d].%s has %d characters beside a %d-character name; four role rows hold about 49 characters each when both are long — shorten the name or title, or split the team across slides", ErrCodeBodyTooLong, i, field.name, runeLen(field.text), runeLen(field.person)))
+			if runeLen(field.text) > 62 {
+				warnings = append(warnings, fmt.Sprintf("%s: dual-org-ladder rows[%d].%s has %d characters; four role rows hold about 62 title characters per card — shorten the title or split the team across slides", ErrCodeBodyTooLong, i, field.name, runeLen(field.text)))
+			} else if runeLen(field.person) > 47 && runeLen(field.text) > 47 {
+				warnings = append(warnings, fmt.Sprintf("%s: dual-org-ladder rows[%d].%s has %d characters beside a %d-character name; four role rows hold about 47 characters each when both are long — shorten the name or title, or split the team across slides", ErrCodeBodyTooLong, i, field.name, runeLen(field.text), runeLen(field.person)))
 			}
 		}
 	}
@@ -144,10 +175,11 @@ func (d *dualOrgLadder) PostExpandWarnings(_ ExpandContext, values, _ any) []str
 func (d *dualOrgLadder) Schema() *Schema {
 	rowSchema := ObjectSchema(
 		map[string]*Schema{
-			"a_name":  StringSchema(dualOrgLadderNameMaxChars).WithDescription("Name of the org A member on this row (rendered bold)"),
-			"a_title": StringSchema(dualOrgLadderTitleMaxChars).WithDescription("Role / title of the org A member; target about 65 characters with four role rows (49 when the name is also long)"),
-			"b_name":  StringSchema(dualOrgLadderNameMaxChars).WithDescription("Name of the org B member on this row (rendered bold)"),
-			"b_title": StringSchema(dualOrgLadderTitleMaxChars).WithDescription("Role / title of the org B member; target about 65 characters with four role rows (49 when the name is also long)"),
+			"a_name":    StringSchema(dualOrgLadderNameMaxChars).WithDescription("Name of the org A member on this row (rendered bold)"),
+			"a_title":   StringSchema(dualOrgLadderTitleMaxChars).WithDescription("Role / title of the org A member; target about 62 characters with four role rows (47 when the name is also long)"),
+			"b_name":    StringSchema(dualOrgLadderNameMaxChars).WithDescription("Name of the org B member on this row (rendered bold)"),
+			"b_title":   StringSchema(dualOrgLadderTitleMaxChars).WithDescription("Role / title of the org B member; target about 62 characters with four role rows (47 when the name is also long)"),
+			"highlight": BooleanSchema().WithDescription("Tint this pair (at most one): the only filled area beside the org headers"),
 		},
 		[]string{"a_name", "a_title", "b_name", "b_title"},
 	).WithAdditionalProperties(false)
@@ -157,7 +189,7 @@ func (d *dualOrgLadder) Schema() *Schema {
 			"org_a":           StringSchema(dualOrgLadderOrgMaxChars).WithDescription("Name of organisation A (rendered in the left header)"),
 			"org_b":           StringSchema(dualOrgLadderOrgMaxChars).WithDescription("Name of organisation B (rendered in the right header)"),
 			"rows":            ArraySchema(rowSchema, dualOrgLadderMinRows, dualOrgLadderMaxRows).WithDescription("2–4 paired role rows; each row aligns one org A member with one org B member"),
-			"show_connectors": BooleanSchema().WithDescription("When true (default), draw a thin accent connector line between the paired cards on every body row").WithDefault(true),
+			"show_connectors": BooleanSchema().WithDescription("When true (default), draw the accent pairing line between the two roles on every body row").WithDefault(true),
 		},
 		[]string{"org_a", "org_b", "rows"},
 	).WithAdditionalProperties(false)
@@ -169,6 +201,7 @@ func (d *dualOrgLadder) Schema() *Schema {
 			"org_size":   NumberSchema(6, 40).WithDescription("Font size for the org-name headers in points (default 14)"),
 			"name_size":  NumberSchema(6, 40).WithDescription("Font size for member names in points (default 12)"),
 			"title_size": NumberSchema(6, 40).WithDescription("Font size for member titles in points (default 10)"),
+			"style":      EnumSchema(dualOrgStyles...).WithDescription("open (default: unfilled role entries joined by a pairing line; only the org headers are tiles) or tiles (every role a filled card with a stub connector)").WithDefault("open"),
 		},
 		nil,
 	).WithAdditionalProperties(false)
@@ -182,7 +215,7 @@ func (d *dualOrgLadder) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Two parallel org columns: org-name headers above 2–4 paired role rows. Use for engagement-team / joint-venture slides where matched roles align horizontally without reporting hierarchy.")
+	}).WithDescription("Two parallel org columns: org-name header tiles above 2–4 paired roles joined by a pairing line. Use for engagement-team / joint-venture slides where matched roles align horizontally without reporting hierarchy.")
 }
 
 func (d *dualOrgLadder) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -210,6 +243,19 @@ func (d *dualOrgLadder) Validate(values, overrides any, cellOverrides map[int]an
 	}
 	if len(v.Rows) > dualOrgLadderMaxRows {
 		errs = append(errs, errMaxItems(name, "rows", dualOrgLadderMaxRows, len(v.Rows), "(hint: split the team across two slides — each slide supports up to 4 paired rows)"))
+	}
+
+	if ovr, ok := overrides.(*DualOrgLadderOverrides); ok && ovr != nil && ovr.Style != "" && !slices.Contains(dualOrgStyles, ovr.Style) {
+		errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, dualOrgStyles))
+	}
+	highlighted := 0
+	for i, row := range v.Rows {
+		if row.Highlight {
+			if highlighted++; highlighted == 2 {
+				errs = append(errs, newValidationError(name, fmt.Sprintf("rows[%d].highlight", i), ErrCodeInvalidShape,
+					"dual-org-ladder: at most one pair may set highlight; an emphasis shared by several pairs is no emphasis", nil))
+			}
+		}
 	}
 
 	for i, row := range v.Rows {
@@ -275,6 +321,7 @@ func (d *dualOrgLadder) Expand(ctx ExpandContext, values, overrides any, cellOve
 		showConnectors = *v.ShowConnectors
 	}
 
+	open := dualOrgOpen(ovr)
 	headerRow := jsonschema.GridRowInput{
 		Height: 18, // header is shorter than body rows
 		Cells: []*jsonschema.GridCellInput{
@@ -301,6 +348,9 @@ func (d *dualOrgLadder) Expand(ctx ExpandContext, values, overrides any, cellOve
 	// (go-slide-creator-n1muf).
 	contentW, _ := contentAreaPt(ctx)
 	cardW := (contentW - ctx.Gap(dualOrgColGapPt)) / 2
+	if open {
+		cardW = (contentW - dualOrgLinkPt) / 2
+	}
 	bodyMinPt := 0.0
 	for _, row := range v.Rows {
 		for _, c := range []*jsonschema.GridCellInput{
@@ -318,7 +368,34 @@ func (d *dualOrgLadder) Expand(ctx ExpandContext, values, overrides any, cellOve
 			buildDualOrgRoleCell(row.BNameField, row.BTitle, nameSize, titleSize),
 		}
 		gridRow := jsonschema.GridRowInput{Cells: cells, MinHeight: bodyMinPt}
-		if showConnectors {
+		if open {
+			// Open role entries: no card, the pair joined by a line in the
+			// gutter. A highlighted pair is one tinted band.
+			link := &jsonschema.GridCellInput{}
+			fill, line := json.RawMessage(`"none"`), noLine
+			if row.Highlight {
+				tone := inactiveTintTone(accentA)
+				fill = tone.fillJSON()
+				// Outlined in its own colour so the band shows no seams.
+				line = metricListBandLine(tone)
+				ink := readableTextOn(ctx, tone, "dk1")
+				for _, c := range cells {
+					c.Shape.Text = recolorTextInk(recolorTextInk(c.Shape.Text, "dk1", ink), "dk2", ink)
+				}
+				link = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: fill, Line: line}}
+			}
+			for _, c := range cells {
+				c.Shape.Fill, c.Shape.Line = fill, line
+			}
+			if showConnectors && !row.Highlight {
+				link = &jsonschema.GridCellInput{
+					MaxHeight: dualOrgLinkLinePt,
+					Shape:     &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: accentFillJSON(accentA), Line: noLine},
+				}
+			}
+			gridRow.Cells = []*jsonschema.GridCellInput{cells[0], link, cells[1]}
+		}
+		if showConnectors && !open {
 			gridRow.Connector = &jsonschema.ConnectorSpecInput{
 				Style: "line",
 				Color: accentA,
@@ -328,11 +405,11 @@ func (d *dualOrgLadder) Expand(ctx ExpandContext, values, overrides any, cellOve
 		// Cell override key i+1 (header is index 0).
 		if co, ok := cellOverrides[i+1]; ok {
 			if cellOvr, ok2 := co.(*DualOrgLadderCellOverride); ok2 {
-				applyCellTextOverride(gridRow.Cells[0], cellOvr)
-				applyCellTextOverride(gridRow.Cells[1], cellOvr)
+				applyCellTextOverride(cells[0], cellOvr)
+				applyCellTextOverride(cells[1], cellOvr)
 				if cellOvr.AccentBar {
-					gridRow.Cells[0].AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accentA, Width: 3}
-					gridRow.Cells[1].AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: barBColor(accentA, accentB, usePeerToneForB), Width: 3}
+					cells[0].AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accentA, Width: 3}
+					cells[1].AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: barBColor(accentA, accentB, usePeerToneForB), Width: 3}
 				}
 			}
 		}
@@ -344,12 +421,23 @@ func (d *dualOrgLadder) Expand(ctx ExpandContext, values, overrides any, cellOve
 	rows = append(rows, bodyRows...)
 
 	colsJSON, _ := json.Marshal(2)
-	return &jsonschema.ShapeGridInput{
+	grid := &jsonschema.ShapeGridInput{
 		Columns: colsJSON,
 		ColGap:  ctx.Gap(dualOrgColGapPt), // visible gap between the two columns
 		RowGap:  ctx.Gap(6),
 		Rows:    rows,
-	}, nil
+	}
+	if open {
+		// [org A | link | org B]: the link column is the gutter the pairing
+		// line runs through, touching both role entries.
+		areaW, _ := sizingAreaPt(ctx)
+		linkPct := dualOrgLinkPt / areaW * 100
+		grid.Columns, _ = json.Marshal([]float64{(100 - linkPct) / 2, linkPct, (100 - linkPct) / 2})
+		grid.ColGap = dualOrgOpenColGapPt
+		header := grid.Rows[0].Cells
+		grid.Rows[0].Cells = []*jsonschema.GridCellInput{header[0], {}, header[1]}
+	}
+	return grid, nil
 }
 
 // ---------------------------------------------------------------------------

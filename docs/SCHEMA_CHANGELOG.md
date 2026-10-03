@@ -1,5 +1,17 @@
 # Schema Changelog
 
+- **2026-10-03 — framework-grid and dual-org-ladder no longer fill every cell (`go-slide-creator-rpz53`).**
+  - `framework-grid` renders unfilled labels and cards with hairline rules
+    between the dimension rows. New `overrides.style`: `open` (default) /
+    `tiles`; new `rows[].highlight` (boolean, at most one) tints one row.
+  - `dual-org-ladder` keeps tiles for the two org headers only; roles are
+    open entries joined by a pairing line. New `overrides.style`: `open`
+    (default) / `tiles`; new `rows[].highlight` (boolean, at most one) tints
+    one pair. `show_connectors: false` drops the pairing line.
+  - `dual-org-ladder` four-row budget re-measured: about 62 title characters
+    per role (was 65), 47 each when name and title are both long (was 49);
+    `BODY_TOO_LONG` reports past them.
+
 - **2026-10-03 — matrix-2x2 draws crossing axes (`go-slide-creator-jnkiq`).**
   - `matrix-2x2` renders two axis lines crossing through the matrix with
     open quadrants; the y-axis title with its high / low ends runs along the

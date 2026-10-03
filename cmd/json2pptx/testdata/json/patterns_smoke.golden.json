@@ -160,11 +160,11 @@
     "pattern_name": "dual-org-ladder",
     "row_count": 5,
     "cell_counts": [
-      2,
-      2,
-      2,
-      2,
-      2
+      3,
+      3,
+      3,
+      3,
+      3
     ]
   },
   {
@@ -247,10 +247,12 @@
   },
   {
     "pattern_name": "framework-grid",
-    "row_count": 3,
+    "row_count": 5,
     "cell_counts": [
       4,
+      1,
       4,
+      1,
       4
     ]
   },
