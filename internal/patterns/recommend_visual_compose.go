@@ -512,8 +512,12 @@ func bestChartFor(clause string, hints *VisualHints) string {
 			continue
 		}
 		s := scoreChartRule(r, clause, hints)
-		if strings.Contains(clause, strings.ReplaceAll(r.chartType, "_", " ")) {
-			s += 0.2 // the clause names the type outright
+		if intentContainsPhrase(intentWords(clause), intentWords(strings.ReplaceAll(r.chartType, "_", " "))) {
+			// The clause names the type outright ("a revenue line chart"):
+			// that is the chart, whatever its other words score
+			// (go-slide-creator-3ujfq). A longer name ("stacked bar") beats
+			// the shorter one it contains ("bar").
+			s = 2 + float64(len(r.chartType))/100
 		}
 		if s > bestScore {
 			best, bestScore = r.chartType, s
@@ -812,16 +816,144 @@ func scoreCompoundCompose(reg *Registry, intentLower string, hints *VisualHints,
 	}
 	score := roundScore(math.Min(1, math.Max(top, 0.9)+0.02))
 	name := composeCandidateName(leaves)
-	all = demoteBelow(all, score, name)
-	return append(all, VisualCandidate{
+	// When the DeckSpec regions kind can hold the same views it is the
+	// first answer — typed, validated, one kind — and the raw compose
+	// envelope stays as the form for what regions cannot express
+	// (go-slide-creator-3ujfq).
+	arrangement, _, regionsOK := RegionsArrangement(comp)
+	composeScore := score
+	if regionsOK {
+		composeScore = roundScore(score - 0.01)
+	}
+	all = demoteBelow(all, composeScore, name)
+	all = append(all, VisualCandidate{
 		Category:       VisualCategoryCompose,
 		Name:           name,
-		Score:          score,
+		Score:          composeScore,
 		Rationale:      compoundRationale(ci, comp),
-		ConfidenceBand: confidenceBand(score),
+		ConfidenceBand: confidenceBand(composeScore),
 		Placement:      composePlacementFor(leaves),
 		Composition:    comp,
 	})
+	if regionsOK {
+		all = append(all, VisualCandidate{
+			Category:       VisualCategoryKind,
+			Name:           RegionsKindName,
+			Score:          score,
+			Rationale:      regionsRationale(arrangement, comp),
+			ConfidenceBand: confidenceBand(score),
+			Composition:    cloneComposition(comp),
+		})
+	}
+	return all
+}
+
+// RegionsKindName is the DeckSpec kind a regions candidate recommends.
+const RegionsKindName = "regions"
+
+// RegionKindFor maps a composition leaf to the region kind of the DeckSpec
+// regions slide that shows it, or "" when no region kind does: a chart is a
+// chart region, a stat-hero a stat, a kpi-2up … kpi-4up row a kpis region and
+// a timeline diagram a timeline region. Quotes and the other diagrams have no
+// region kind.
+func RegionKindFor(r *VisualRegion) string {
+	switch {
+	case r.Category == VisualCategoryChart:
+		return "chart"
+	case r.Category == VisualCategoryPattern && r.Name == "stat-hero":
+		return "stat"
+	case r.Category == VisualCategoryPattern && (r.Name == "kpi-2up" || r.Name == "kpi-3up" || r.Name == "kpi-4up"):
+		return "kpis"
+	case r.Category == VisualCategoryDiagram && r.Name == "timeline",
+		r.Category == VisualCategoryPattern && r.Name == "timeline-horizontal":
+		return "timeline"
+	}
+	return ""
+}
+
+// RegionsArrangement maps a composition onto the DeckSpec regions kind: the
+// arrangement and the leaves in the kind's region order (the main region
+// first for a main_* arrangement). ok is false when the kind cannot hold the
+// composition — more than three views, a view with no region kind, or a
+// nesting the four main_* arrangements do not cover.
+func RegionsArrangement(comp *VisualComposition) (arrangement string, ordered []*VisualRegion, ok bool) {
+	if comp == nil {
+		return "", nil, false
+	}
+	leaves := comp.Leaves()
+	if len(leaves) < 2 || len(leaves) > 3 {
+		return "", nil, false
+	}
+	for _, l := range leaves {
+		if RegionKindFor(l) == "" {
+			return "", nil, false
+		}
+	}
+	horizontal := comp.Direction == "horizontal"
+	flat := true
+	for i := range comp.Regions {
+		flat = flat && comp.Regions[i].Compose == nil
+	}
+	if flat {
+		if horizontal {
+			return "columns", leaves, true
+		}
+		return "rows", leaves, true
+	}
+	if len(comp.Regions) != 2 {
+		return "", nil, false
+	}
+	first, second := &comp.Regions[0], &comp.Regions[1]
+	nestedOK := func(r *VisualRegion) bool {
+		if r.Compose == nil || len(r.Compose.Regions) != 2 || r.Compose.Direction == comp.Direction {
+			return false
+		}
+		return r.Compose.Regions[0].Compose == nil && r.Compose.Regions[1].Compose == nil
+	}
+	switch {
+	case first.Compose == nil && nestedOK(second):
+		arrangement = "main_top"
+		if horizontal {
+			arrangement = "main_left"
+		}
+		return arrangement, []*VisualRegion{first, &second.Compose.Regions[0], &second.Compose.Regions[1]}, true
+	case second.Compose == nil && nestedOK(first):
+		arrangement = "main_bottom"
+		if horizontal {
+			arrangement = "main_right"
+		}
+		return arrangement, []*VisualRegion{second, &first.Compose.Regions[0], &first.Compose.Regions[1]}, true
+	}
+	return "", nil, false
+}
+
+// regionsRationale explains a regions candidate.
+func regionsRationale(arrangement string, comp *VisualComposition) string {
+	_, ordered, _ := RegionsArrangement(comp)
+	parts := make([]string, len(ordered))
+	for i, r := range ordered {
+		parts[i] = RegionKindFor(r)
+		if r.Category == VisualCategoryChart {
+			parts[i] = r.Name + " chart"
+		}
+	}
+	return "DeckSpec kind regions (arrangement " + arrangement + "): one slide, one title, a typed region each for " +
+		strings.Join(parts, ", ") + ". The intent asks for these views together on one slide and a slide kind holds them, so it ranks first; the compose candidate is the raw form of the same slide."
+}
+
+// cloneComposition deep-copies a composition so two candidates never share
+// the regions the MCP layer annotates.
+func cloneComposition(c *VisualComposition) *VisualComposition {
+	if c == nil {
+		return nil
+	}
+	out := &VisualComposition{Direction: c.Direction, Instructions: c.Instructions}
+	out.Regions = make([]VisualRegion, len(c.Regions))
+	for i, r := range c.Regions {
+		out.Regions[i] = r
+		out.Regions[i].Compose = cloneComposition(r.Compose)
+	}
+	return out
 }
 
 // demoteBelow caps every candidate other than keep strictly below score, so
@@ -950,30 +1082,60 @@ func explicitComposeIntent(intentLower string) bool {
 // rankShortlistCompound places the intent's own heterogeneous composition
 // just above every other shortlist entry, mirroring normal mode.
 func rankShortlistCompound(out []VisualCandidate) []VisualCandidate {
-	idx := -1
-	for i, c := range out {
+	var compound, rest []VisualCandidate
+	hasKind := false
+	top := 0.0
+	for _, c := range out {
 		if c.intentCompound {
-			idx = i
-			break
+			compound = append(compound, c)
+			hasKind = hasKind || c.Category == VisualCategoryKind
+			continue
 		}
+		rest = append(rest, c)
+		top = math.Max(top, c.Score)
 	}
-	if idx < 0 {
+	if len(compound) == 0 {
 		return out
 	}
-	top := 0.0
-	for i, c := range out {
-		if i != idx {
-			top = math.Max(top, c.Score)
+	score := roundScore(math.Min(1, math.Max(top, 0.9)+0.02))
+	floor := score
+	for i := range compound {
+		c := &compound[i]
+		c.intentCompound = false
+		c.Score = score
+		// As in normal mode, the regions kind leads the raw composition.
+		if hasKind && c.Category != VisualCategoryKind {
+			c.Score = roundScore(score - 0.01)
+		}
+		c.ConfidenceBand = confidenceBand(c.Score)
+		floor = math.Min(floor, c.Score)
+	}
+	rest = demoteBelow(rest, floor, "")
+	return append(rest, compound...)
+}
+
+// scoreRegionsShortlistCandidate resolves the "regions" name in shortlist
+// mode: the intent's own same-slide views when the regions kind can hold
+// them, else a low-scored entry saying what the kind is for.
+func scoreRegionsShortlistCandidate(reg *Registry, intentLower string, hints *VisualHints) VisualCandidate {
+	if ci := parseCompoundIntent(reg, intentLower, hints); ci != nil {
+		comp := buildRegionComposition(ci.regions)
+		if arrangement, _, ok := RegionsArrangement(comp); ok {
+			return VisualCandidate{
+				Category:       VisualCategoryKind,
+				Name:           RegionsKindName,
+				Rationale:      regionsRationale(arrangement, comp),
+				Composition:    comp,
+				intentCompound: true,
+			}
 		}
 	}
-	score := roundScore(math.Min(1, math.Max(top, 0.9)+0.02))
-	keep := out[idx]
-	keep.intentCompound = false
-	keep.Score = score
-	keep.ConfidenceBand = confidenceBand(score)
-	rest := make([]VisualCandidate, 0, len(out)-1)
-	rest = append(rest, out[:idx]...)
-	rest = append(rest, out[idx+1:]...)
-	rest = demoteBelow(rest, score, keep.Name)
-	return append(rest, keep)
+	const score = 0.40
+	return VisualCandidate{
+		Category:       VisualCategoryKind,
+		Name:           RegionsKindName,
+		Score:          score,
+		Rationale:      "DeckSpec kind regions puts 2–3 different views (chart, stat, kpis, table, timeline, image, text) under one title; this intent does not ask for several views on one slide.",
+		ConfidenceBand: confidenceBand(score),
+	}
 }

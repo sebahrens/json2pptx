@@ -55,6 +55,11 @@ func TestRecommendVisualComposeRecipes(t *testing.T) {
 				}
 				rec := recommendVisualFor(t, mc, args)
 				top := rec.Candidates[0]
+				// Views the regions kind can hold lead with that kind; the
+				// compose recipe is the next candidate (go-slide-creator-3ujfq).
+				if top.Category == patterns.VisualCategoryKind && len(rec.Candidates) > 1 {
+					top = rec.Candidates[1]
+				}
 				if top.Category != patterns.VisualCategoryCompose || top.Name != tc.want {
 					t.Fatalf("top candidate = %s %q, want compose %q: %+v", top.Category, top.Name, tc.want, rec.Candidates)
 				}

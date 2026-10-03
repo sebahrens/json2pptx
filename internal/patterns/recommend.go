@@ -1584,6 +1584,19 @@ func scoreRuleContextBonus(pattern, intentLower string, hints *ContentHints) flo
 		if hints.ItemCount == 1 {
 			bonus += 0.06
 		}
+		// "one highlighted step" highlights a step, not a number: the word
+		// alone does not ask for a hero statistic (go-slide-creator-bdvhj).
+		if n, _ := matchIntentKeywords(statHeroNumberKeywords, intentLower); n == 0 {
+			bonus -= 0.40
+		}
+	case "bmc-canvas":
+		// One block name ("two customer segments") is ordinary business
+		// vocabulary; the canvas needs its own name or several of its blocks.
+		named, _ := matchIntentKeywords([]string{"bmc", "business model", "canvas", "osterwalder"}, intentLower)
+		blocks, _ := matchIntentKeywords(bmcBlockKeywords, intentLower)
+		if named == 0 && blocks < 2 {
+			bonus -= 0.45
+		}
 	case "table-highlight":
 		words := intentWords(intentLower)
 		if intentContainsPhrase(words, []string{"options"}) && intentContainsPhrase(words, []string{"criteria"}) {
@@ -1613,6 +1626,14 @@ func scoreRuleContextBonus(pattern, intentLower string, hints *ContentHints) flo
 	}
 	return bonus
 }
+
+// statHeroNumberKeywords are the stat-hero keywords that speak of a number;
+// "highlight" and "emphasis" alone do not.
+var statHeroNumberKeywords = []string{"hero", "big number", "headline", "stats", "statistic", "metric", "single metric", "tam", "revenue", "total", "single", "one number", "number", "figure", "kpi"}
+
+// bmcBlockKeywords are the Business Model Canvas block names the bmc-canvas
+// rule matches on.
+var bmcBlockKeywords = []string{"value proposition", "key partners", "key activities", "key resources", "customer segments", "revenue streams", "cost structure", "channels", "customer relationships"}
 
 // SuggestSwap finds registered patterns whose item-count constraints accept
 // itemCount, excluding currentPattern. It returns swap suggestions sorted by

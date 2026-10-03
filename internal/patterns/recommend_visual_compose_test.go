@@ -153,11 +153,16 @@ func TestRecommendVisual_CompoundIntentComposesRegions(t *testing.T) {
 		"a single executive review slide divided into a large left revenue trend chart, a top-right kpi tile and a bottom-right action timeline. preserve all three different content types in their own regions.",
 	} {
 		res := RecommendVisual(reg, intent, hints, 5)
-		top := res.Candidates[0]
-		if top.Category != VisualCategoryCompose || top.Name != "compose:chart:line+diagram:timeline+stat-hero" {
-			t.Fatalf("%q: top = %s %q, want the chart+KPI+timeline composition: %+v", intent, top.Category, top.Name, res.Candidates)
+		// The DeckSpec regions kind holds these three views, so it leads and
+		// the raw composition follows it (go-slide-creator-3ujfq).
+		if kind := res.Candidates[0]; kind.Category != VisualCategoryKind || kind.Name != RegionsKindName {
+			t.Fatalf("%q: top = %s %q, want the regions kind: %+v", intent, kind.Category, kind.Name, res.Candidates)
 		}
-		for _, c := range res.Candidates[1:] {
+		top := res.Candidates[1]
+		if top.Category != VisualCategoryCompose || top.Name != "compose:chart:line+diagram:timeline+stat-hero" {
+			t.Fatalf("%q: second = %s %q, want the chart+KPI+timeline composition: %+v", intent, top.Category, top.Name, res.Candidates)
+		}
+		for _, c := range res.Candidates[2:] {
 			if c.Score >= top.Score {
 				t.Errorf("%q: partial view %s %q (%v) ties or beats the composition (%v)", intent, c.Category, c.Name, c.Score, top.Score)
 			}
@@ -185,8 +190,10 @@ func TestRecommendVisual_CompoundIntentComposesRegions(t *testing.T) {
 
 	// The explicit 65% share survives.
 	res := RecommendVisual(reg, "line chart left 65%, KPI upper-right, timeline lower-right", hints, 5)
-	if got := res.Candidates[0].Composition.Regions[0].SizePct; got != 65 {
-		t.Errorf("explicit left share = %v, want 65", got)
+	for _, c := range res.Candidates[:2] {
+		if got := c.Composition.Regions[0].SizePct; got != 65 {
+			t.Errorf("%s: explicit left share = %v, want 65", c.Name, got)
+		}
 	}
 }
 
@@ -215,7 +222,7 @@ func TestRecommendVisual_ShortlistCompoundRoundTrip(t *testing.T) {
 	reg := Default()
 	intent := "line chart left 65%, KPI upper-right, timeline lower-right"
 	first := RecommendVisual(reg, intent, nil, 5)
-	name := first.Candidates[0].Name
+	name := first.Candidates[1].Name
 	res := RecommendVisual(reg, intent, nil, 5, &RecommendOptions{Candidates: []string{"line", name, "stat-hero", "timeline"}})
 	if len(res.Candidates) != 4 {
 		t.Fatalf("got %d candidates, want 4", len(res.Candidates))
@@ -231,6 +238,20 @@ func TestRecommendVisual_ShortlistCompoundRoundTrip(t *testing.T) {
 		if c.Score >= top.Score {
 			t.Errorf("partial view %q (%v) not below the composition (%v)", c.Name, c.Score, top.Score)
 		}
+	}
+
+	// Shortlisted beside the composition, the regions kind leads as it does
+	// in normal mode; shortlisted for a one-view intent it is ranked last.
+	both := RecommendVisual(reg, intent, nil, 5, &RecommendOptions{Candidates: []string{name, "line", RegionsKindName}})
+	if k, c := both.Candidates[0], both.Candidates[1]; k.Category != VisualCategoryKind || k.Name != RegionsKindName || c.Name != name || k.Score <= c.Score {
+		t.Errorf("shortlist with regions = %+v, want regions then the composition", both.Candidates)
+	}
+	if both.Candidates[0].Composition == nil {
+		t.Error("shortlisted regions kind lost its composition")
+	}
+	one := RecommendVisual(reg, "quarterly revenue", nil, 5, &RecommendOptions{Candidates: []string{RegionsKindName, "bar"}})
+	if k := findCandidate(one.Candidates, RegionsKindName); k == nil || k.Category != VisualCategoryKind || k.Score >= 0.5 {
+		t.Errorf("regions for a one-view intent = %+v, want a low-scored kind candidate", k)
 	}
 
 	// A heterogeneous name the intent does not ask for is still resolved

@@ -75,6 +75,29 @@ func intentIsRiskMatrix(words []string) bool {
 	return intentIsRisk(words) && intentHasAny(words, "matrix", "heat map", "heatmap", "likelihood", "probability", "impact", "severity")
 }
 
+// intentIsOptionMatrix reports an options-against-criteria evaluation: "three
+// vendors on five criteria", "score the options against cost and risk".
+func intentIsOptionMatrix(words []string) bool {
+	if !intentHasAny(words, "criteria", "criterion", "dimensions") {
+		return false
+	}
+	return intentHasAny(words, "option", "vendor", "supplier", "provider", "alternative", "candidate", "solution",
+		"platform", "tool", "bidder", "partner", "compare", "comparison", "evaluate", "evaluation", "assess",
+		"assessment", "score", "scoring", "shortlist", "recommendation")
+}
+
+// intentIsTwoWayComparison reports two things set against each other ("SMB
+// 2.1% vs enterprise 0.6%"): a contrast word plus a count of two.
+func intentIsTwoWayComparison(words []string, hints *VisualHints) bool {
+	if !intentHasAny(words, "vs", "versus", "contrast", "against", "compared with", "compared to") {
+		return false
+	}
+	if hints != nil && hints.ItemCount > 0 {
+		return hints.ItemCount == 2
+	}
+	return intentHasAny(words, "two", "2", "both", "pair")
+}
+
 func intentIsTabular(words []string) bool {
 	return intentHasAny(words, "table", "tabular", "p&l", "profit and loss", "income statement", "balance sheet",
 		"financials", "financial statement", "price list", "rate card", "segment split", "line items",
@@ -133,6 +156,18 @@ func applyConsultingIntentRouting(all []VisualCandidate, intentLower string, hin
 		ensure(VisualCategoryDiagram, "org_chart", 0.96,
 			"Organizational chart for reporting structures")
 	}
+	if intentIsOptionMatrix(words) && !intentIsRiskMatrix(words) {
+		ensure(VisualCategoryPattern, "table-highlight", 0.93,
+			"Options scored against shared criteria: one row per option, one column per criterion (Harvey balls, RAG or short text), the recommended row highlighted")
+	} else if intentIsTwoWayComparison(words, hints) {
+		ensure(VisualCategoryPattern, "comparison-2col", 0.90,
+			"Two things set against each other: one column each, the figures in the headers")
+	}
+	if intentIsExecSummary(words) && !intentHasAny(words, "scqa", "situation", "complication") {
+		ensure(VisualCategoryPattern, "exec-summary", 0.90,
+			"Executive summary of 3-5 bold lead-in statements, each with one supporting sentence")
+	}
+	all = ensureNamedOutright(all, words)
 	return adjustConsultingIntentScores(all, intentLower, hints)
 }
 
@@ -207,6 +242,21 @@ func adjustConsultingIntentScores(all []VisualCandidate, intentLower string, hin
 	if intentIsTabular(words) {
 		cs.keepTableOnTop()
 	}
+	if intentIsOptionMatrix(words) && !intentIsRiskMatrix(words) && !intentIsTabular(words) {
+		cs.makeTop(cs.find(VisualCategoryPattern, "table-highlight"), "options against criteria is an evaluation matrix, not a chart of one measure")
+	} else if intentIsTwoWayComparison(words, hints) {
+		// Two values are a comparison, not a time series: "monthly churn" names
+		// the measure. A trend chart needs the trend asked for.
+		if !intentHasAny(words, "trend", "over time", "time series", "trajectory") {
+			cmp := cs.find(VisualCategoryPattern, "comparison-2col")
+			for _, name := range []string{"line", "area", "stacked_area", "small_multiples"} {
+				if c := cs.find(VisualCategoryChart, name); c != nil && cmp != nil && c.Score >= cmp.Score-0.10 {
+					setCandidateScore(c, cmp.Score-0.15, "two values compared are not a time series")
+				}
+			}
+		}
+		cs.makeTop(cs.find(VisualCategoryPattern, "comparison-2col"), "")
+	}
 	return all
 }
 
@@ -280,4 +330,58 @@ func (cs candidateSet) keepTableOnTop() {
 			setCandidateScore(c, table.Score-0.05, "")
 		}
 	}
+}
+
+// makeTop lifts c clear of every other candidate by more than a near tie;
+// when the scale's top stops it, the others are capped below instead.
+func (cs candidateSet) makeTop(c *VisualCandidate, note string) {
+	if c == nil {
+		return
+	}
+	const gap = differsByMargin + 0.01
+	top := cs.bestScore(func(o VisualCandidate) bool {
+		return o.Category != c.Category || o.Name != c.Name
+	})
+	if c.Score >= top+gap {
+		return
+	}
+	setCandidateScore(c, math.Min(1, top+gap), note)
+	for i := range cs {
+		o := &cs[i]
+		if o == c || o.Score <= c.Score-gap {
+			continue
+		}
+		setCandidateScore(o, c.Score-gap, "")
+	}
+}
+
+// namedOutrightScore is the score a visual the intent names outright enters
+// the ranking with when no keyword rule produced it.
+const namedOutrightScore = 0.90
+
+// ensureNamedOutright adds the chart / diagram the intent names outright
+// when keyword scoring produced no candidate for it: "a line chart of weekly
+// active users" carries no trend keyword, yet names its chart
+// (go-slide-creator-3ujfq). Patterns are left to their rules, which cover
+// every pattern name.
+func ensureNamedOutright(all []VisualCandidate, words []string) []VisualCandidate {
+	cs := candidateSet(all)
+	readyCharts, readyDiagrams := readyChartTypes(), readyDiagramTypes()
+	for _, r := range chartRules {
+		c := VisualCandidate{Category: VisualCategoryChart, Name: r.chartType}
+		if !readyCharts[r.chartType] || cs.find(c.Category, c.Name) != nil || !namedOutright(c, words) {
+			continue
+		}
+		c.Score, c.Rationale, c.ConfidenceBand = namedOutrightScore, r.rationale, confidenceBand(namedOutrightScore)
+		all = append(all, c)
+	}
+	for _, r := range diagramRules {
+		c := VisualCandidate{Category: VisualCategoryDiagram, Name: r.diagramType}
+		if !readyDiagrams[r.diagramType] || cs.find(c.Category, c.Name) != nil || !namedOutright(c, words) {
+			continue
+		}
+		c.Score, c.Rationale, c.ConfidenceBand = namedOutrightScore, r.rationale, confidenceBand(namedOutrightScore)
+		all = append(all, c)
+	}
+	return all
 }

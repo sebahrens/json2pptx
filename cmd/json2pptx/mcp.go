@@ -1803,8 +1803,13 @@ func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.Call
 		}
 	}
 
-	// Chart / diagram candidates carry their data contract and a runnable
-	// render_deck_spec call (go-slide-creator-b7qqg.24).
+	// Template-support reordering and truncation changed which candidates sit
+	// next to each other, so the near-tie lines are recomputed on the final
+	// list (go-slide-creator-bdvhj).
+	patterns.AnnotateDiffersBy(reg, rec.Candidates)
+
+	// Every candidate carries its data contract and a runnable
+	// render_deck_spec call (go-slide-creator-b7qqg.24, -x97m6).
 	attachVisualRecipes(&rec, templateNameFromRequest(request))
 
 	if err := api.ComputeResponseFingerprint(&rec); err != nil {

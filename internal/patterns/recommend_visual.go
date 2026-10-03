@@ -24,6 +24,11 @@ const (
 	// always carry placement.composable_with populated from the high-affinity
 	// pattern pair that triggered the suggestion.
 	VisualCategoryCompose VisualCategory = "compose"
+	// VisualCategoryKind is a DeckSpec slide kind recommended in its own
+	// right, with no single pattern / chart / diagram behind it: the regions
+	// kind for a same-slide request of 2–3 different views. Candidates of the
+	// other categories name their DeckSpec kind in deckspec instead.
+	VisualCategoryKind VisualCategory = "deckspec_kind"
 )
 
 // PlacementGuidance describes how to author and place a recommended candidate.
@@ -91,14 +96,29 @@ type VisualCandidate struct {
 	// template-agnostic results.
 	TemplateSupport *TemplateSupport `json:"template_support,omitempty"`
 	Example         *VisualExample   `json:"example,omitempty"`
-	// DataContract names the data keys a chart / diagram candidate takes and
-	// where they go in NextToolCall's spec. Populated by the MCP layer for
-	// chart and diagram candidates; nil otherwise.
+	// DiffersBy is one line saying what sets this candidate apart from the
+	// candidate it nearly ties with (scores within 0.02): which of the two can
+	// do what. Empty when no other candidate is that close.
+	DiffersBy string `json:"differs_by,omitempty"`
+	// DeckSpec is the DeckSpec slide kind that compiles to this visual, when
+	// one does: the kind, its fields and where the copy-ready example sits in
+	// NextToolCall. Populated by the MCP layer; nil when no kind reaches the
+	// visual (DataContract.Form is then "raw_json2pptx").
+	DeckSpec *VisualDeckSpecForm `json:"deckspec,omitempty"`
+	// AlsoAs cross-references the other forms of the same visual (the diagram
+	// behind a pattern, the pattern behind a diagram, the kind over either)
+	// with the field differences between them.
+	AlsoAs []VisualFormRef `json:"also_as,omitempty"`
+	// DataContract is the data shape of the candidate as NextToolCall authors
+	// it: the fields of the DeckSpec kind, the values of a raw pattern, or the
+	// data keys of a raw chart / diagram, and where they sit in the spec.
+	// Populated by the MCP layer for every candidate it can render.
 	DataContract *VisualDataContract `json:"data_contract,omitempty"`
-	// NextToolCall is a runnable call that renders this chart / diagram
-	// candidate on the default MCP profile: render_deck_spec with a complete
-	// DeckSpec (one raw_json2pptx slide carrying sample data). Populated by the
-	// MCP layer for chart and diagram candidates; nil otherwise.
+	// NextToolCall is a runnable call that renders this candidate on the
+	// default MCP profile: render_deck_spec with a complete DeckSpec — one
+	// slide of the candidate's DeckSpec kind, or one raw_json2pptx slide when
+	// no kind compiles to it — carrying sample content. Populated by the MCP
+	// layer.
 	NextToolCall *ToolCallSuggestion `json:"next_tool_call,omitempty"`
 	// Composition is the region layout of a compose candidate: direction,
 	// per-region size_pct shares and nested envelopes. Set on every compose
@@ -111,16 +131,76 @@ type VisualCandidate struct {
 	intentCompound bool
 }
 
-// VisualDataContract is the data shape of a chart / diagram type — the same
-// entry get_data_format_hints serves — plus where that data sits in the
-// candidate's runnable spec.
+// VisualDataContract is the data shape of a candidate as its runnable spec
+// authors it, plus where that data sits in the spec. For a chart / diagram it
+// is the entry get_data_format_hints serves; for a named pattern the keys of
+// its values with their item counts and character budgets; for a DeckSpec
+// kind the kind's payload fields.
 type VisualDataContract struct {
+	// Form says what the keys belong to: "deckspec_kind" (fields of the kind
+	// slide at field_path) or "raw_json2pptx" (no kind compiles to this
+	// visual; the keys are pattern values or chart / diagram data inside a raw
+	// slide). Empty on a compose region's contract.
+	Form         string   `json:"form,omitempty"`
 	RequiredKeys []string `json:"required_keys"`
 	OptionalKeys []string `json:"optional_keys,omitempty"`
-	Description  string   `json:"description"`
+	// Limits lists the item counts and character budgets of the keys that
+	// have one, by path below field_path ("lanes", "lanes[].steps[].label").
+	Limits      []VisualFieldLimit `json:"limits,omitempty"`
+	Description string             `json:"description"`
 	// FieldPath is the path of the data object inside next_tool_call's
 	// args_template.spec (e.g. slides[0].slide.content[1].diagram_value.data).
 	FieldPath string `json:"field_path"`
+}
+
+// Contract forms: what a data contract's keys belong to.
+const (
+	ContractFormKind = "deckspec_kind"
+	ContractFormRaw  = "raw_json2pptx"
+)
+
+// VisualFieldLimit is the item-count range of a list field or the character
+// budget of a text field in a candidate's data contract.
+type VisualFieldLimit struct {
+	// Path is the field below the contract's field_path; "[]" marks the items
+	// of a list.
+	Path     string `json:"path"`
+	MinItems int    `json:"min_items,omitempty"`
+	MaxItems int    `json:"max_items,omitempty"`
+	MaxChars int    `json:"max_chars,omitempty"`
+}
+
+// VisualDeckSpecForm is the DeckSpec form of a candidate: the slide kind that
+// compiles to it and the kind's fields. The copy-ready example is the slide
+// at ExamplePath in next_tool_call, which validates as it stands.
+type VisualDeckSpecForm struct {
+	Kind string `json:"kind"`
+	// Fields lists the kind's payload keys under their canonical names.
+	Fields VisualKindFields `json:"fields"`
+	// Aliases maps each accepted alternative key to the canonical field it
+	// stands for; write the canonical name.
+	Aliases map[string]string `json:"aliases,omitempty"`
+	// ExamplePath is where the example slide of this kind sits in the
+	// candidate (next_tool_call.args_template.spec.slides[0]).
+	ExamplePath string `json:"example_path"`
+	// DiffersFromRaw says where the kind's field names differ from the raw
+	// pattern / chart / diagram form of the same visual.
+	DiffersFromRaw string `json:"differs_from_raw,omitempty"`
+}
+
+// VisualKindFields are a DeckSpec kind's required and optional payload keys.
+type VisualKindFields struct {
+	Required []string `json:"required"`
+	Optional []string `json:"optional,omitempty"`
+}
+
+// VisualFormRef names another form of the same visual.
+type VisualFormRef struct {
+	// Form is "kind" (DeckSpec slide kind), "pattern", "diagram" or "chart".
+	Form string `json:"form"`
+	Name string `json:"name"`
+	// Differs says what that form takes or does differently.
+	Differs string `json:"differs,omitempty"`
 }
 
 // VisualExample connects a recommendation to compact template-specific visual
@@ -211,7 +291,7 @@ var chartRules = []chartRule{
 	// Specialized
 	{chartType: "radar", keywords: []string{"radar", "spider", "capability", "competency", "multi-dimension", "assessment"}, baseScore: 0.90, rationale: "Radar/spider chart for multi-dimensional comparison"},
 	{chartType: "waterfall", keywords: []string{"waterfall", "bridge", "variance", "change breakdown", "incremental", "moved from", "reconcile", "walk", "drivers"}, baseScore: 0.92, rationale: "Waterfall chart for showing incremental changes"},
-	{chartType: "funnel", keywords: []string{"funnel", "conversion", "pipeline", "stages", "attrition", "drop-off"}, baseScore: 0.92, rationale: "Funnel chart for conversion pipeline visualization"},
+	{chartType: "funnel", keywords: []string{"funnel", "conversion", "pipeline", "attrition", "drop-off"}, baseScore: 0.92, rationale: "Funnel chart for conversion pipeline visualization"},
 	{chartType: "gauge", keywords: []string{"gauge", "meter", "speedometer", "target", "threshold", "progress toward"}, baseScore: 0.90, rationale: "Gauge for single-value progress or target tracking"},
 }
 
@@ -296,7 +376,12 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 	// Explicit-candidates mode: rank only the supplied shortlist across all
 	// visual categories with no threshold cutoff and no truncation.
 	if options != nil && len(options.Candidates) > 0 {
-		return recommendVisualOnlyCandidates(reg, intentLower, hints, options.Candidates, recencyCount, applyVariety)
+		names := make([]string, len(options.Candidates))
+		for i, n := range options.Candidates {
+			// "bar_chart" and "bar" are one chart type (go-slide-creator-7sqof).
+			names[i] = canonicalCandidateName(reg, n)
+		}
+		return recommendVisualOnlyCandidates(reg, intentLower, hints, names, recencyCount, applyVariety)
 	}
 
 	var all []VisualCandidate
@@ -338,7 +423,13 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 		}
 	}
 
-	// 6. An explicit same-slide request for several different views (a chart
+	// 6. A visual the intent names outright outranks incidental keyword
+	// matches, and an ability only one form of a visual has breaks the tie
+	// between its forms (go-slide-creator-bdvhj).
+	applyLiteralNameRouting(all, intentLower)
+	applyTwinCueRouting(all, intentLower)
+
+	// 7. An explicit same-slide request for several different views (a chart
 	// left, a KPI upper-right, a timeline lower-right) is one heterogeneous
 	// composition, ranked above every partial view (go-slide-creator-lp0o8).
 	all = scoreCompoundCompose(reg, intentLower, hints, all)
@@ -380,6 +471,7 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 	}
 
 	result.DisambiguatingQuestions = suggestVisualQuestions(hints, intentLower, filtered)
+	AnnotateDiffersBy(reg, result.Candidates)
 
 	return result
 }
@@ -442,6 +534,10 @@ func recommendVisualOnlyCandidates(reg *Registry, intentLower string, hints *Vis
 			out = append(out, scoreComposeShortlistCandidate(reg, intentLower, hints, name, scoreLeaf))
 			continue
 		}
+		if name == RegionsKindName {
+			out = append(out, scoreRegionsShortlistCandidate(reg, intentLower, hints))
+			continue
+		}
 		out = append(out, scoreVisualCandidate(reg, intentLower, hints, name,
 			placeholderByType, chartByType, diagramByType, readyCharts, readyDiagrams,
 			recencyCount, applyVariety))
@@ -449,6 +545,8 @@ func recommendVisualOnlyCandidates(reg *Registry, intentLower string, hints *Vis
 	preferNativeLabelledMatrix(out, intentLower)
 	applyChartHint(out, hints, intentLower)
 	out = adjustConsultingIntentScores(out, intentLower, hints)
+	applyLiteralNameRouting(out, intentLower)
+	applyTwinCueRouting(out, intentLower)
 	out = rankShortlistCompound(out)
 
 	sort.Slice(out, func(i, j int) bool {
@@ -458,6 +556,7 @@ func recommendVisualOnlyCandidates(reg *Registry, intentLower string, hints *Vis
 		return out[i].Name < out[j].Name
 	})
 
+	AnnotateDiffersBy(reg, out)
 	return RecommendVisualResult{
 		Candidates:              out,
 		QueryUnderstood:         summarizeVisualIntent(intentLower, hints),
