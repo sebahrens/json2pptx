@@ -51,7 +51,7 @@ func renderSemanticForHTTP(ctx context.Context, cfg config.Config, req api.Seman
 	spec, parseDiags := semantic.Parse(req.Filename, req.Spec)
 	if parseDiags.HasErrors() {
 		res := semanticRenderResult{OK: false, Error: "semantic render: spec could not be parsed"}
-		for _, d := range parseDiags.ToDiagnostics() {
+		for _, d := range semantic.Check(req.Filename, req.Spec, req.Strict) {
 			res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(d))
 		}
 		return res, "", nil
@@ -151,8 +151,7 @@ func renderSemanticForHTTP(ctx context.Context, cfg config.Config, req api.Seman
 		if ctx.Err() != nil {
 			return semanticRenderResult{}, "", ctx.Err()
 		}
-		res := buildSemanticRenderFailure(compileResult, renderErr)
-		res.Diagnostics = append(res.Diagnostics, semanticAssetDiagnostics(compileResult, assetDiags)...)
+		res := buildSemanticRunFailure(input, compileResult, runRes, renderErr, semanticAssetDiagnostics(compileResult, assetDiags)...)
 		prependWarning(&res, precedenceWarning)
 		return res, "", nil
 	}

@@ -68,8 +68,8 @@ var heroRunRe = regexp.MustCompile(`sz="3200"[^>]*/?>(?:<[^>]+>)*?<a:t>([^<]*)</
 // stat_cards type's {title, value} — must agree about which field is the 32pt
 // number.
 func TestStatCardPathsAgreeOnTheHero(t *testing.T) {
-	fromBody := generateStatCardXML(nativePanelData{title: "ARR", body: "EUR 184m"}, 0, 0, 2000000, 1000000, 10)
-	fromValue := generateStatCardXML(nativePanelData{title: "ARR", value: "EUR 184m"}, 0, 0, 2000000, 1000000, 10)
+	fromBody := generateStatCardXML(nativePanelData{title: "ARR", body: "EUR 184m"}, 0, 0, 2000000, 1000000, 10, nativeSurface{}.tint(0, panelBodyTint, statCardValueFontSize))
+	fromValue := generateStatCardXML(nativePanelData{title: "ARR", value: "EUR 184m"}, 0, 0, 2000000, 1000000, 10, nativeSurface{}.tint(0, panelBodyTint, statCardValueFontSize))
 
 	for name, xml := range map[string]string{"panel_layout {title, body}": fromBody, "stat_cards {title, value}": fromValue} {
 		hero := heroRunRe.FindStringSubmatch(xml)

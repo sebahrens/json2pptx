@@ -325,17 +325,21 @@ func TestGeometry_SparseSemanticPatternKindsReportUnderfill(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		values string
+		extra  string
 	}{
-		{"team-bios", `{"members":[{"name":"Amara Okafor","role":"Partner","bio":"Leads the work."},{"name":"Jonas Weber","role":"Delivery lead","bio":"Runs the plan."},{"name":"Priya Raman","role":"Data lead","bio":"Owns reporting."}]}`},
+		{name: "team-bios", values: `{"members":[{"name":"Amara Okafor","role":"Partner","bio":"Leads the work."},{"name":"Jonas Weber","role":"Delivery lead","bio":"Runs the plan."},{"name":"Priya Raman","role":"Data lead","bio":"Owns reporting."}]}`},
 		// Bare phase names: the header boxes alone (go-slide-creator-e17xy
 		// moved roadmaps with one-line descriptions to the strip threshold).
-		{"phase-roadmap", `{"phases":[{"name":"Pilot"},{"name":"Expand"},{"name":"Launch"}]}`},
-		{"agenda", `{"items":["Performance","Risks","Investment"]}`},
-		{"icon-row", `[{"icon":"rocket","caption":"Launch"},{"icon":"trending-up","caption":"Growth"},{"icon":"currency-dollar","caption":"Revenue"}]`},
-		{"quote-cluster", `{"quotes":[{"text":"Faster decisions.","name":"A. Lee"},{"text":"Better data.","name":"J. Smith"},{"text":"Less rework.","name":"P. Kim"}]}`},
+		{name: "phase-roadmap", values: `{"phases":[{"name":"Pilot"},{"name":"Expand"},{"name":"Launch"}]}`},
+		{name: "agenda", values: `{"items":["Performance","Risks","Investment"]}`},
+		// icon-row's tile style: three one-word tiles. Its open default
+		// scales the icons with the content area (go-slide-creator-hjqn2),
+		// so the same three items fill enough of it not to report.
+		{name: "icon-row", values: `[{"icon":"rocket","caption":"Launch"},{"icon":"trending-up","caption":"Growth"},{"icon":"currency-dollar","caption":"Revenue"}]`, extra: `,"overrides":{"style":"tile"}`},
+		{name: "quote-cluster", values: `{"quotes":[{"text":"Faster decisions.","name":"A. Lee"},{"text":"Better data.","name":"J. Smith"},{"text":"Less rework.","name":"P. Kim"}]}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			in := geomSlides(t, `[{"layout_id":"content","pattern":{"name":"`+tc.name+`","values":`+tc.values+`}}]`)
+			in := geomSlides(t, `[{"layout_id":"content","pattern":{"name":"`+tc.name+`","values":`+tc.values+tc.extra+`}}]`)
 			fs := findingsByCode(collectGeometryFindings(in, nil, 0, 0, nil), patterns.ErrCodeSlideUnderused)
 			if len(fs) != 1 {
 				t.Fatalf("sparse %s should report slide underfill: %+v", tc.name, fs)

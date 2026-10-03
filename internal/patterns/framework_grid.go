@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -14,8 +15,9 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// framework-grid pattern — 2-6 dimension rows, each a bold row label on a
-// tinted band followed by 1-4 small cards (accent title + short body).
+// framework-grid pattern — 2-6 dimension rows, each a bold row label followed
+// by 1-4 open cards (accent title + short body), rows separated by hairline
+// rules. The tiles style fills the label band and every card.
 //
 //   [ People      ][ Leadership ][ Skills     ][ Incentives ]
 //   [ Process     ][ Governance ][ Workflows  ]
@@ -58,7 +60,7 @@ const (
 
 func (p *frameworkGrid) Name() string { return fgName }
 func (p *frameworkGrid) Description() string {
-	return "Framework grid: 2-6 dimension rows, each a bold row label on a tinted band followed by 1-4 small cards (accent title + short body); shorter rows leave trailing space empty"
+	return "Framework grid: 2-6 dimension rows separated by hairline rules, each a bold row label followed by 1-4 open cards (accent title + short body); shorter rows leave trailing space empty and one row can be highlighted"
 }
 func (p *frameworkGrid) UseWhen() string {
 	return "A framework whose rows are named dimensions (people / process / technology, levers by dimension, change-management building blocks) and whose cells are 1-4 short titled levers per dimension that need not line up as the same criteria; prefer card-grid for a flat set of tiles without row labels, table-highlight for options scored against shared criteria, stylish-panels for 3-5 pillars with bullet lists"
@@ -121,6 +123,9 @@ type FrameworkGridCard struct {
 type FrameworkGridRow struct {
 	Label string              `json:"label"`
 	Cards []FrameworkGridCard `json:"cards"`
+	// Highlight tints this row (at most one): the dimension the slide is
+	// about, and the only filled area of the open framework.
+	Highlight bool `json:"highlight,omitempty"`
 }
 
 // FrameworkGridValues holds the dimension rows top to bottom.
@@ -136,7 +141,29 @@ type FrameworkGridOverrides struct {
 	TitleSize      float64 `json:"title_size,omitempty"`
 	BodySize       float64 `json:"body_size,omitempty"`
 	CellAccentMode string  `json:"cell_accent_mode,omitempty"` // uniform | alternate | progressive
+	// Style is "open" (default: unfilled labels and cards, rows separated by
+	// hairline rules) or "tiles" (a filled label band and a filled tile per
+	// card, the look before go-slide-creator-rpz53).
+	Style string `json:"style,omitempty"`
 }
+
+// fgStyles are the accepted overrides.style values.
+var fgStyles = []string{"open", "tiles"}
+
+// fgOpen reports whether the framework renders in the open style.
+func fgOpen(ovr *FrameworkGridOverrides) bool {
+	return ovr == nil || ovr.Style != "tiles"
+}
+
+// Open framework geometry.
+const (
+	// fgRulePt is the hairline between two dimension rows.
+	fgRulePt = 0.75
+	// fgOpenColGapPt is the open style's column gap: the cells of a row
+	// touch, so a highlighted row is one unbroken band; the cards' own text
+	// margins keep the columns apart.
+	fgOpenColGapPt = 0.01
+)
 
 // FrameworkGridCellOverride is the shared per-cell override, indexed row by
 // row: each row's label, then its cards.
@@ -157,8 +184,9 @@ func (p *frameworkGrid) Schema() *Schema {
 	}, []string{"title"}).WithAdditionalProperties(false)
 
 	rowSchema := ObjectSchema(map[string]*Schema{
-		"label": StringSchema(fgLabelMax).WithDescription("Dimension name shown bold in the left band"),
-		"cards": ArraySchema(cardSchema, fgMinCards, fgMaxCards).WithDescription("1-4 cards; the longest row sets the column count and shorter rows leave trailing space empty"),
+		"label":     StringSchema(fgLabelMax).WithDescription("Dimension name shown bold at the left of its row"),
+		"highlight": BooleanSchema().WithDescription("Tint this row (at most one): the only filled area of the open framework"),
+		"cards":     ArraySchema(cardSchema, fgMinCards, fgMaxCards).WithDescription("1-4 cards; the longest row sets the column count and shorter rows leave trailing space empty"),
 	}, []string{"label", "cards"}).WithAdditionalProperties(false)
 
 	valuesSchema := ObjectSchema(map[string]*Schema{
@@ -172,6 +200,7 @@ func (p *frameworkGrid) Schema() *Schema {
 		"title_size":       NumberSchema(12, 40).WithDescription("Card title and row label size in points (default 14)"),
 		"body_size":        NumberSchema(12, 40).WithDescription("Card body size in points (default 12)"),
 		"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-column accent variation: uniform (default), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
+		"style":            EnumSchema(fgStyles...).WithDescription("open (default: unfilled labels and cards, rows separated by hairline rules) or tiles (a filled label band and a filled tile per card)").WithDefault("open"),
 	}, nil).WithAdditionalProperties(false)
 
 	return ObjectSchema(map[string]*Schema{
@@ -207,7 +236,13 @@ func (p *frameworkGrid) Validate(values, overrides any, cellOverrides map[int]an
 		if ovr.BodySize != 0 && (ovr.BodySize < 12 || ovr.BodySize > 40) {
 			errs = append(errs, errOutOfRange(fgName, "overrides.body_size", 12, 40, int(ovr.BodySize)))
 		}
+		if ovr.Style != "" && !slices.Contains(fgStyles, ovr.Style) {
+			errs = append(errs, errInvalidEnum(fgName, "overrides.style", ovr.Style, fgStyles))
+		}
 	}
+	errs = append(errs, singleHighlightErrors(fgName, "row", "rows", len(vals.Rows),
+		func(i int) bool { return vals.Rows[i].Highlight },
+		func(i int) string { return fmt.Sprintf("rows[%d].highlight", i) })...)
 
 	if len(vals.Rows) < fgMinRows {
 		errs = append(errs, errMinItems(fgName, "rows", fgMinRows, len(vals.Rows), "(hint: a single row of cards is a card-grid)"))
@@ -299,7 +334,11 @@ func fgMeasureAt(ctx ExpandContext, v *FrameworkGridValues, ovr *FrameworkGridOv
 	if ovr.LabelWidthPct > 0 {
 		l.labelPct = clampPt(ovr.LabelWidthPct, fgMinLabelPct, fgMaxLabelPct)
 	}
-	gridW := contentW - ctx.Gap(fgColGapPt)*float64(l.cols)
+	colGap := ctx.Gap(fgColGapPt)
+	if fgOpen(ovr) {
+		colGap = fgOpenColGapPt
+	}
+	gridW := contentW - colGap*float64(l.cols)
 	l.labelTextW = math.Max(gridW*l.labelPct/100-2*defaultShapeInsetLRPt, 1)
 	cardW := gridW * (100 - l.labelPct) / 100 / float64(l.cols)
 	l.cardTextW = math.Max(cardW-2*defaultShapeInsetLRPt, 1)
@@ -328,6 +367,10 @@ func fgMeasureAt(ctx ExpandContext, v *FrameworkGridValues, ovr *FrameworkGridOv
 	}
 	n := float64(len(v.Rows))
 	gaps := rowGapPt * math.Max(n-1, 0)
+	if fgOpen(ovr) {
+		// Each gap holds a hairline rule between its two halves.
+		gaps += fgRulePt * math.Max(n-1, 0)
+	}
 	l.neededHPt = gaps + n*l.contentHPt
 
 	// Every row takes the tallest row's height so the grid reads as a grid,
@@ -407,13 +450,31 @@ func (p *frameworkGrid) Expand(ctx ExpandContext, values, overrides any, cellOve
 	base := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	l := fgMeasure(ctx, vals, ovr)
 
+	open := fgOpen(ovr)
 	labelTone := fgLabelTone(base)
 	labelInk := readableTextOn(ctx, labelTone, "dk2")
+	page := fillTone{Color: "lt1"}
+	none := json.RawMessage(`"none"`)
 
 	rows := make([]jsonschema.GridRowInput, 0, len(vals.Rows))
 	idx := 0
 	insetTop := math.Round(defaultShapeInsetTBPt + l.padPt + (l.rowHPt-l.contentHPt)/2)
-	for _, row := range vals.Rows {
+	for ri, row := range vals.Rows {
+		// Open rows carry no fill: only a highlighted row is a tinted band.
+		rowFill, rowSurface, rowLine := none, page, noLine
+		if open && row.Highlight {
+			rowSurface = inactiveTintTone(base)
+			rowFill = rowSurface.fillJSON()
+			// Outlined in its own colour: the cells of the band sit a hair
+			// apart and the page would show through as seams.
+			rowLine = metricListBandLine(rowSurface)
+		}
+		if open && ri > 0 {
+			rows = append(rows, jsonschema.GridRowInput{MinHeight: fgRulePt, MaxHeight: fgRulePt, Cells: []*jsonschema.GridCellInput{{
+				ColSpan: l.cols + 1,
+				Shape:   &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: fillTone{Color: "dk1", Alpha: 30}.fillJSON(), Line: noLine},
+			}}})
+		}
 		// Label cell, then one cell per card column.
 		label := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
@@ -421,18 +482,32 @@ func (p *frameworkGrid) Expand(ctx ExpandContext, values, overrides any, cellOve
 			Line:     json.RawMessage(`"none"`),
 			Text:     fgLabelTextJSON(row.Label, l.titlePt, labelInk),
 		}}
+		if open {
+			// The label is top-anchored at the cards' inset, so it shares
+			// the card titles' baseline.
+			label.Shape.Fill, label.Shape.Line = rowFill, rowLine
+			label.Shape.Text = fgOpenLabelTextJSON(row.Label, l.titlePt, readableTextOn(ctx, rowSurface, "dk2"), insetTop)
+		}
 		fgApplyCellOverride(label, cellOverrides, idx, base)
 		cells := []*jsonschema.GridCellInput{label}
 		idx++
 
 		for j := 0; j < l.cols; j++ {
 			if j >= len(row.Cards) {
-				cells = append(cells, &jsonschema.GridCellInput{})
+				empty := &jsonschema.GridCellInput{}
+				if open && row.Highlight {
+					// The band of a highlighted ragged row runs to the edge.
+					empty.Shape = &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: rowFill, Line: rowLine}
+				}
+				cells = append(cells, empty)
 				continue
 			}
 			card := row.Cards[j]
 			accent := ctx.ResolveCellAccent(base, j, ovr.CellAccentMode)
 			tone := fgCardTone(accent)
+			if open {
+				tone = rowSurface
+			}
 			body := strings.TrimSpace(card.Body)
 			// Every card is top-anchored at the same inset, so titles line up
 			// across the row; the inset centres the row's tallest card, which
@@ -446,6 +521,9 @@ func (p *frameworkGrid) Expand(ctx ExpandContext, values, overrides any, cellOve
 					Text:     text,
 				},
 			}
+			if open {
+				cell.Shape.Fill, cell.Shape.Line = rowFill, rowLine
+			}
 			fgApplyCellOverride(cell, cellOverrides, idx, accent)
 			cells = append(cells, cell)
 			idx++
@@ -458,13 +536,20 @@ func (p *frameworkGrid) Expand(ctx ExpandContext, values, overrides any, cellOve
 		cols = append(cols, math.Round((100-l.labelPct)/float64(l.cols)*100)/100)
 	}
 	colsJSON, _ := json.Marshal(cols)
-	return &jsonschema.ShapeGridInput{
+	grid := &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(colsJSON),
 		ColGap:        ctx.Gap(fgColGapPt),
 		RowGap:        l.rowGapPt,
 		Rows:          rows,
 		VerticalAlign: GridVerticalAlignDefault,
-	}, nil
+	}
+	if open {
+		// A rule sits between the two halves of the gap the tiles had
+		// between rows (fgMeasure counts the rules).
+		grid.ColGap = fgOpenColGapPt
+		grid.RowGap = l.rowGapPt / 2
+	}
+	return grid, nil
 }
 
 // fgApplyCellOverride applies the D15 per-cell override (accent_bar).
@@ -510,6 +595,17 @@ func fgLabelTextJSON(label string, sizePt float64, ink string) json.RawMessage {
 		Paragraphs:    []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(label), Size: sizePt, Bold: true, Color: ink, Align: "l"}},
 		Align:         "l",
 		VerticalAlign: "ctr",
+	}.json()
+}
+
+// fgOpenLabelTextJSON is the open style's row label: top-anchored at the
+// cards' inset so it starts on the card titles' line.
+func fgOpenLabelTextJSON(label string, sizePt float64, ink string, insetTop float64) json.RawMessage {
+	return patternTextObj{
+		Paragraphs:    []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(label), Size: sizePt, Bold: true, Color: ink, Align: "l"}},
+		Align:         "l",
+		VerticalAlign: "t",
+		InsetTop:      insetTop,
 	}.json()
 }
 

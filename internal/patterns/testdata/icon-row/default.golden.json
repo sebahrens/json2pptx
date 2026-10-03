@@ -1,76 +1,96 @@
 {
-  "gap": 12,
+  "col_gap": 16,
+  "row_gap": 2,
   "columns": 3,
   "rows": [
     {
-      "max_height": 115,
+      "min_height": 86,
+      "max_height": 86,
+      "cells": [
+        {
+          "fit": "contain",
+          "icon": {
+            "name": "rocket",
+            "fill": "accent1"
+          }
+        },
+        {
+          "fit": "contain",
+          "icon": {
+            "name": "trending-up",
+            "fill": "accent1"
+          }
+        },
+        {
+          "fit": "contain",
+          "icon": {
+            "name": "currency-dollar",
+            "fill": "accent1"
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 46,
+      "max_height": 46,
       "cells": [
         {
           "shape": {
-            "geometry": "roundRect",
-            "fill": "accent1",
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "Launch",
-                  "size": 12,
-                  "color": "lt1",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
                   "align": "ctr"
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr"
-            },
-            "icon": {
-              "name": "rocket",
-              "fill": "lt1",
-              "position": "top"
+              "vertical_align": "t"
             }
           }
         },
         {
           "shape": {
-            "geometry": "roundRect",
-            "fill": "accent1",
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "Growth",
-                  "size": 12,
-                  "color": "lt1",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
                   "align": "ctr"
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr"
-            },
-            "icon": {
-              "name": "trending-up",
-              "fill": "lt1",
-              "position": "top"
+              "vertical_align": "t"
             }
           }
         },
         {
           "shape": {
-            "geometry": "roundRect",
-            "fill": "accent1",
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "Revenue",
-                  "size": 12,
-                  "color": "lt1",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
                   "align": "ctr"
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr"
-            },
-            "icon": {
-              "name": "currency-dollar",
-              "fill": "lt1",
-              "position": "top"
+              "vertical_align": "t"
             }
           }
         }

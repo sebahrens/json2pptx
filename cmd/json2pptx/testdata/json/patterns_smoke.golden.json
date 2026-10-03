@@ -24,10 +24,11 @@
   },
   {
     "pattern_name": "matrix-2x2",
-    "row_count": 3,
+    "row_count": 4,
     "cell_counts": [
+      4,
       2,
-      3,
+      2,
       2
     ]
   },
@@ -57,15 +58,20 @@
   },
   {
     "pattern_name": "icon-row",
-    "row_count": 1,
+    "row_count": 2,
     "cell_counts": [
+      4,
       4
     ]
   },
   {
     "pattern_name": "comparison-2col",
-    "row_count": 5,
+    "row_count": 9,
     "cell_counts": [
+      2,
+      2,
+      2,
+      2,
       2,
       2,
       2,
@@ -154,11 +160,11 @@
     "pattern_name": "dual-org-ladder",
     "row_count": 5,
     "cell_counts": [
-      2,
-      2,
-      2,
-      2,
-      2
+      3,
+      3,
+      3,
+      3,
+      3
     ]
   },
   {
@@ -241,10 +247,12 @@
   },
   {
     "pattern_name": "framework-grid",
-    "row_count": 3,
+    "row_count": 5,
     "cell_counts": [
       4,
+      1,
       4,
+      1,
       4
     ]
   },
@@ -280,9 +288,10 @@
   },
   {
     "pattern_name": "before-after-compact",
-    "row_count": 2,
+    "row_count": 3,
     "cell_counts": [
       3,
+      2,
       2
     ]
   },
@@ -348,8 +357,9 @@
   },
   {
     "pattern_name": "stylish-panels",
-    "row_count": 2,
+    "row_count": 3,
     "cell_counts": [
+      3,
       3,
       3
     ]

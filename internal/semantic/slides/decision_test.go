@@ -175,6 +175,39 @@ func TestDecisionDegradesWithAReason(t *testing.T) {
 	}
 }
 
+// go-slide-creator-0w4va: past the strip's six, options with details become
+// cards, whatever the count — card-grid arranges seven as 4 + 3.
+func TestDecisionManyOptionsBecomeCards(t *testing.T) {
+	for _, n := range []int{7, 9, 12} {
+		opts := make([]any, n)
+		for i := range opts {
+			opts[i] = option(string(rune('A'+i)), "What it means.")
+		}
+		body := decisionBody(opts...)
+		if got := DecisionPattern(body); got != "card-grid" {
+			t.Fatalf("%d options: DecisionPattern = %q, want card-grid", n, got)
+		}
+		slide, _, err := CompileDecision(Input{Body: body})
+		if err != nil {
+			t.Fatalf("%d options: %v", n, err)
+		}
+		var values decisionCardValues
+		if err := json.Unmarshal(slide.Pattern.Values, &values); err != nil {
+			t.Fatal(err)
+		}
+		if values.Columns != 0 || values.Rows != 0 || len(values.Cells) != n {
+			t.Errorf("%d options: values = %+v, want %d cells and no stated grid", n, values, n)
+		}
+	}
+	opts := make([]any, 13)
+	for i := range opts {
+		opts[i] = option(string(rune('A'+i)), "What it means.")
+	}
+	if got := DecisionPattern(decisionBody(opts...)); got != "" {
+		t.Errorf("13 options: DecisionPattern = %q, want the content slide", got)
+	}
+}
+
 // Three bare labels still fit the numbered boxes: the strip needs a label, not
 // a detail. It is the two-card treatment that needs both.
 func TestDecisionBareLabelsStillGetTheStrip(t *testing.T) {

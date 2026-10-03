@@ -541,8 +541,21 @@ func (h *deckHandle) applyPendingRender() {
 	if h.pendingRenderPptx == "" {
 		return
 	}
-	h.Rendered, h.RenderedPptx = h.State, h.pendingRenderPptx
-	h.pendingRenderPptx = ""
+	h.Rendered, h.RenderedPptx = h.State.renderedOn(h.pendingRenderIdentity), h.pendingRenderPptx
+	h.pendingRenderPptx, h.pendingRenderIdentity = "", ""
+}
+
+// renderedOn returns the state as it looks when rendered on template: the
+// state itself for "" or its own template, else a copy carrying that template.
+// A deck_id rendered once on a template it is not bound to keeps its binding,
+// but what the agent last saw is that other template (go-slide-creator-2dit4).
+func (s *deckState) renderedOn(template string) *deckState {
+	if s == nil || template == "" || template == s.Template {
+		return s
+	}
+	shown := *s
+	shown.Template = template
+	return &shown
 }
 
 func (h *deckHandle) templateIdentity() string {

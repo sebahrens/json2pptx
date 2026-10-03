@@ -245,7 +245,7 @@ func TestMatrix2x2(t *testing.T) {
 			BottomLeft:  Matrix2x2Quadrant{Header: "Cash Cows", Body: "Low growth, high share"},
 			BottomRight: Matrix2x2Quadrant{Header: "Dogs", Body: "Low growth, low share"},
 		}
-		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+		grid, err := p.Expand(ExpandContext{}, &vals, &Matrix2x2Overrides{Style: "tiles"}, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
@@ -362,7 +362,7 @@ func TestMatrix2x2(t *testing.T) {
 			BottomLeft:  Matrix2x2Quadrant{Header: "C"},
 			BottomRight: Matrix2x2Quadrant{Header: "D"},
 		}
-		ovr := &Matrix2x2Overrides{TextOverrides: TextOverrides{Accent: "accent5"}}
+		ovr := &Matrix2x2Overrides{TextOverrides: TextOverrides{Accent: "accent5"}, Style: "tiles"}
 		grid, err := p.Expand(ExpandContext{}, &vals, ovr, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
@@ -389,7 +389,7 @@ func TestMatrix2x2(t *testing.T) {
 		cellOvr := map[int]any{
 			0: &Matrix2x2CellOverride{AccentBar: true},
 		}
-		grid, err := p.Expand(ExpandContext{}, &vals, nil, cellOvr)
+		grid, err := p.Expand(ExpandContext{}, &vals, &Matrix2x2Overrides{Style: "tiles"}, cellOvr)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
@@ -416,7 +416,7 @@ func TestMatrix2x2(t *testing.T) {
 			BottomLeft:  Matrix2x2Quadrant{Header: "C"},
 			BottomRight: Matrix2x2Quadrant{Header: "D"},
 		}
-		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+		grid, err := p.Expand(ExpandContext{}, &vals, &Matrix2x2Overrides{Style: "tiles"}, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
@@ -528,7 +528,7 @@ func TestMatrix2x2(t *testing.T) {
 		if err := json.Unmarshal([]byte(input), &vals); err != nil {
 			t.Fatalf("unmarshal: %v", err)
 		}
-		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+		grid, err := p.Expand(ExpandContext{}, &vals, &Matrix2x2Overrides{Style: "tiles"}, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
@@ -550,7 +550,7 @@ func TestMatrix2x2(t *testing.T) {
 			BottomLeft:  Matrix2x2Quadrant{Header: "Cash Cows", Body: "Low growth, high share"},
 			BottomRight: Matrix2x2Quadrant{Header: "Dogs", Body: "Low growth, low share"},
 		}
-		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+		grid, err := p.Expand(ExpandContext{}, &vals, &Matrix2x2Overrides{Style: "tiles"}, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
@@ -601,7 +601,7 @@ func TestMatrix2x2_AxisEndLabels(t *testing.T) {
 		t.Error("raw pattern accepted an axis end that would shrink below readable size")
 	}
 	vals.YHigh = "Major"
-	grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, &vals, &Matrix2x2Overrides{Style: "tiles"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -9,38 +9,35 @@ import (
 )
 
 // =============================================================================
-// PESTEL Native Shapes — 3x2 Grid of roundRect Segments
+// PESTEL Native Shapes — 3x2 Grid of Segment Cards
 // =============================================================================
 //
 // Replaces SVG-rendered PESTEL diagrams with native OOXML grouped shapes.
-// Each segment is a roundRect with a scheme-colored tint fill, a bold header
-// paragraph, and bulleted body items. All 6 segments are wrapped in a single
+// Each segment is a square-cornered card on the shared neutral surface with a
+// bold accent title and bulleted body items (native_surface_style.go). All 6 segments are wrapped in a single
 // p:grpSp with identity child transform.
 //
 // Layout (3 columns x 2 rows):
 //
 //   ┌──────────┐  gap  ┌──────────┐  gap  ┌──────────┐
 //   │ Political │       │ Economic │       │  Social  │
-//   │ (accent1) │       │ (accent2) │       │ (accent3) │
+//   │           │       │           │       │           │
 //   └──────────┘       └──────────┘       └──────────┘
 //         gap                gap                gap
 //   ┌──────────┐  gap  ┌──────────┐  gap  ┌──────────┐
 //   │Technology│       │Environmtl│       │  Legal   │
-//   │ (accent4) │       │ (accent5) │       │ (accent6) │
+//   │           │       │           │       │           │
 //   └──────────┘       └──────────┘       └──────────┘
 //
-// Color strategy: one hue — the deck's accent1 — at a single tint. PESTEL's
-// six forces are peers, so nothing should stand out (go-slide-creator-w0kj).
-// with lumMod/lumOff tints so the fill is a light pastel. Text is dk1.
+// Color strategy: neutral cards and one accent (the titles). PESTEL's six
+// forces are peers, so nothing stands out (go-slide-creator-w0kj);
+// style.colors recolours the segments as accent tints.
 
 // PESTEL EMU constants.
 const (
 	// pestelGap is the gap between segments in EMU.
 	// Same as SWOT gap for visual consistency.
 	pestelGap int64 = 73152
-
-	// pestelCornerRadius is the roundRect adjustment value.
-	pestelCornerRadius int64 = 8000
 
 	// pestelHeaderFontSize is the segment header font size (hundredths of a point).
 	// 1400 = 14pt
@@ -159,7 +156,7 @@ func parsePESTELSegmentsArray(v any) []nativePanelData {
 }
 
 // generatePESTELGroupXML produces the complete <p:grpSp> XML for a 3x2 PESTEL grid.
-// Each segment is a roundRect with a tinted scheme fill, bold header, and bulleted body.
+// Each segment is a card in its tint with a bold header and a bulleted body.
 func generatePESTELGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, tints []taxonomyTint) string {
 	n := len(panels)
 	if n == 0 {
@@ -203,17 +200,17 @@ func generatePESTELGroupXML(panels []nativePanelData, bounds types.BoundingBox, 
 		headerID := shapeIDBase + uint32(i*2) + 1
 		bodyID := shapeIDBase + uint32(i*2) + 2
 
-		// Header shape: roundRect with scheme fill, centered bold text
+		// Header shape: the card fill under a bold left-aligned title
 		headerXML := generatePESTELHeaderXML(
 			panel.title, cellX, cellY, cellW, headerCY,
-			headerID, sc.scheme, sc.lumMod, sc.lumOff,
+			headerID, sc,
 		)
 		children = append(children, []byte(headerXML))
 
-		// Body shape: roundRect with same scheme fill, top-aligned bulleted text
+		// Body shape: the same fill, top-aligned bulleted text
 		bodyXML := generatePESTELBodyXML(
 			panel.body, cellX, cellY+headerCY, cellW, bodyCY,
-			bodyID, sc.scheme, sc.lumMod, sc.lumOff,
+			bodyID, sc,
 		)
 		children = append(children, []byte(bodyXML))
 	}
@@ -232,25 +229,22 @@ func generatePESTELGroupXML(panels []nativePanelData, bounds types.BoundingBox, 
 	return string(b)
 }
 
-// generatePESTELHeaderXML produces a roundRect header shape for a PESTEL segment.
-func generatePESTELHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, schemeColor string, lumMod, lumOff int) string {
+// generatePESTELHeaderXML produces the header shape of a PESTEL segment.
+func generatePESTELHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, tint taxonomyTint) string {
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     "PESTEL " + title,
 		Bounds:   pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
-		Geometry: pptx.GeomRoundRect,
-		Adjustments: []pptx.AdjustValue{
-			{Name: "adj", Value: pestelCornerRadius},
-		},
-		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
-		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
+		Geometry: nativeSurfaceGeometry,
+		Fill:     tint.fill(),
+		Line:     pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:    "square",
 			Anchor:  "ctr",
 			Insets:  pptx.ShapeTextInsets(),
 			AutoFit: "noAutofit",
 			Paragraphs: []pptx.Paragraph{{
-				Align:    "ctr",
+				Align:    nativeHeaderAlign,
 				NoBullet: true,
 				Runs: []pptx.Run{{
 					Text:     title,
@@ -258,7 +252,7 @@ func generatePESTELHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, s
 					FontSize: pestelHeaderFontSize,
 					Bold:     true,
 					Dirty:    true,
-					Color:    diagramPanelTextFill(schemeColor),
+					Color:    tint.titleFill(),
 				}},
 			}},
 		},
@@ -270,29 +264,26 @@ func generatePESTELHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, s
 	return string(b)
 }
 
-// generatePESTELBodyXML produces a roundRect body shape for a PESTEL segment.
-func generatePESTELBodyXML(body string, x, y, cx, cy int64, shapeID uint32, schemeColor string, lumMod, lumOff int) string {
+// generatePESTELBodyXML produces the body shape of a PESTEL segment.
+func generatePESTELBodyXML(body string, x, y, cx, cy int64, shapeID uint32, tint taxonomyTint) string {
 	paras := panelBulletsParagraphs(body, pestelBodyFontSize)
 
 	// Use the same accent color for bullets but with full strength
-	bulletColor := pptx.ResolveColorString(schemeColor)
+	bulletColor := pptx.ResolveColorString(tint.scheme)
 	for i := range paras {
 		if paras[i].Bullet != nil {
 			paras[i].Bullet.Color = bulletColor
 		}
 	}
-	diagramPanelBodyColors(paras, schemeColor)
+	diagramPanelBodyColors(paras, tint.scheme)
 
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     "PESTEL Body",
 		Bounds:   pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
-		Geometry: pptx.GeomRoundRect,
-		Adjustments: []pptx.AdjustValue{
-			{Name: "adj", Value: pestelCornerRadius},
-		},
-		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
-		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
+		Geometry: nativeSurfaceGeometry,
+		Fill:     tint.fill(),
+		Line:     pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "t",

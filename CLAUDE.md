@@ -149,21 +149,21 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `agenda` | Numbered section list for agenda / table-of-contents slides: 28pt serif accent numerals, 14pt items, 0.5pt rules, no tiles; `highlight` bolds the current section and dims the rest to 50%; optional `subtitles` set a muted line under each item |
 | `agenda-with-images` | Numbered agenda rows (3–6) with title/subtitle and image/quote placeholder per row; the placeholder column is all-or-nothing |
 | `arch-stack` | Architecture stack diagram with tiers and optional side rails |
-| `before-after` | Two-column before/after with transition chevron |
+| `before-after` | Two-column before/after with transition chevron: each state a heading over a rule (neutral before, accent after) and open bullets; `overrides.style` `panels` for tiles, `overrides.emphasis` fills one heading |
 | `before-after-compact` | Compact before/after, height-capped at ~60% for brief content |
 | `bmc-canvas` | Formal 9-cell Business Model Canvas (Osterwalder) |
 | `capability-heatmap` | Capability / automation heatmap: 3–8 function columns with pointed headers (bold title + optional sublabel) over 1–6 activity cells each, filled by rating tier (2–4 levels, darkest = highest, text ink measured per fill) with a tier legend; shorter columns leave the bottom empty |
-| `card-grid` | Parameterized N×M grid of titled cards |
+| `card-grid` | Grid of 2–12 titled cards; `columns` / `rows` are optional and a last row that is not full stays short (5 = 3 + 2, 7 = 4 + 3) |
 | `chart-insights-split` | Left chart panel + right insights column (65/35 split, 75/25 when the insights are sparse) with optional headline number and so-what callout, a series/unit caption and auto data labels; falls back to insights-only when chart is omitted, emitting `CHART_PLACEHOLDER_EMPTY` |
-| `comparison-2col` | Two-column comparison with optional headers; `overrides.connectors` draws a per-row accent connector badge in a centre gutter ("from → to" shifts) |
+| `comparison-2col` | Two-column comparison: optional headers over open rows separated by hairline rules and aligned across the columns (`overrides.style` `tiles` for filled tiles; one `rows[].highlight` or `overrides.highlight_column`); `overrides.connectors` draws a per-row accent connector badge in a centre gutter ("from → to" shifts) |
 | `contact-directory` | Key-contacts directory: 1–4 groups (regions / practices), each an accent heading over a rule, then up to 24 people in rows of 3–5 — circular headshot (`photo`) or initials disc + bold name + muted title; sparse directories stack a large headshot above a centred name |
 | `driver-tree` | Value / cost driver tree: root metric → 2–4 branches → 1–4 leaf items each, with optional per-branch annotations and connector lines (use svggen `org_chart` for people/role hierarchies) |
-| `dual-org-ladder` | Two parallel org columns with 2–4 paired role cards and an org-name header above each column (joint-venture / engagement-team slides) |
+| `dual-org-ladder` | Two parallel org columns: an org-name header tile above each and 2–4 paired open role entries joined by a pairing line (joint-venture / engagement-team slides); one optional `rows[].highlight` pair, `overrides.style` `tiles` for role cards |
 | `exec-summary` | Executive summary of 3–5 bold lead-in statements, each with one supporting sentence, separated by rules, plus an optional bottom-line takeaway band (content-sized rows) |
-| `framework-grid` | Framework of 2–6 labelled dimension rows (bold label on a tinted band) each followed by 1–4 small cards (accent title + short body); the longest row sets the column count and shorter rows leave trailing space empty |
+| `framework-grid` | Framework of 2–6 labelled dimension rows separated by hairline rules, each a bold label followed by 1–4 open cards (accent title + short body); one optional `rows[].highlight` band, `overrides.style` `tiles` for filled tiles; the longest row sets the column count and shorter rows leave trailing space empty |
 | `hero-detail` | One dominant metric with 2–4 supporting detail bullets; use `stat-hero` for the metric alone or `kpi-3up` for equally weighted metrics |
 | `horizontal-bar-with-callouts` | Ranked horizontal bars (3–8) on the left with a per-bar accent-anchored insight callout on the right; callouts are optional and the column is dropped when none are given |
-| `icon-row` | Horizontal row of icon+caption pairs |
+| `icon-row` | Horizontal row of 3–5 open icons, each over a caption and an optional one-line `description`; `overrides.style` `tile` puts each item in a tile |
 | `image-text-split` | One photo / screenshot beside a text column (eyebrow, heading, body, up to 5 bullets) with 0–3 result metrics; real images are cover-cropped, otherwise a dashed placeholder (case study / customer story slides) |
 | `journey-maturity-model` | Horizontal maturity ladder of 3–6 stage columns with numbered headers, descriptions, and an optional 'where we are' marker on the current stage |
 | `kpi-2up` | Two big-number KPI cards with short captions (kpi-Nup cells take an optional `comparator` line, e.g. "vs plan +4 pts") |
@@ -173,7 +173,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `kpi-6up` | Six big-number KPI cards with short captions |
 | `kpi-inline` | Horizontal inline KPI bar, height-capped for supporting context |
 | `labeled-rows` | 2–6 rows of a keyword label block (WHY / WHAT / HOW; `label_style` `tinted` (default) neutral block under an accent rule, `filled` accent block or accent `text`) with optional sublabel beside 1–4 lines of body text, rules between content-sized rows |
-| `matrix-2x2` | 2×2 quadrant matrix with axis labels |
+| `matrix-2x2` | 2×2 matrix: two crossing axis lines with open quadrants, axis titles and low/high ends along the left and bottom edges, one optional `highlight` quadrant; `overrides.style` `tiles` for filled quadrant tiles with arrow axes |
 | `metric-list` | Vertical "by the numbers" stack of 3–7 metrics: big right-aligned accent value + bold label + optional detail line, hairline rules, optional highlighted row (`highlight: true`, at most one) and a bottom takeaway-band callout |
 | `next-steps` | Closing next-steps slide: 2–6 numbered action rows (action / owner / date; empty owner or date columns drop) separated by 0.5pt rules, plus an optional "Decisions requested" band (left accent rule, no outline, no fill) — the closer instead of "Thank you" |
 | `numbered-step-strip` | Ordered numbered steps (3–7; chevron ≤6) WITHOUT flowchart diamonds, in `chevron` / `stacked-box` / `toc` styles, each with an optional per-step detail zone and (stacked-box / toc) an optional `steps[].icon` |
@@ -183,13 +183,13 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `pull-quote` | Italic quote block with attribution and an optional headshot column (`values.image`) |
 | `phase-roadmap` | Single-track phased roadmap: phase boxes + timeline bar + date labels + per-phase descriptions + optional milestones and 0–4 full-width `parallel_tracks` bars ("In parallel" workstreams) |
 | `pyramid` | Stacked trapezoid hierarchy (3-5 tiers) |
-| `quote-cluster` | Structured 3-column grid of 3–8 attributed stakeholder quote bubbles (voice-of-customer slides), with alternating tinted fills |
+| `quote-cluster` | Structured 3-column grid of 3–8 attributed stakeholder quotes (voice-of-customer slides): open quotes under a quote mark by default, `overrides.style` `bubble` (speech bubbles) or `tile`, one optional `quotes[].highlight` |
 | `roadmap-phased` | Phased roadmap with workstreams and time periods |
 | `scqa-summary` | 4-row SCQA executive summary (Situation / Complication / Questions / Answer) |
 | `state-shift-hub` | Central accent hub circle (short label) with 3–4 numbered today/future stage pairs on an arc around it: today items right-aligned on the left, future items left-aligned on the right, optional column headers |
 | `stat-hero` | Single oversized statistic with label and optional context |
 | `strategy-house` | Strategy-house framework: gabled roof carrying the objective (and optional roof badges) + optional `beam` band + 3-5 pillars + a foundation of 1–3 levels, each a band or a row of 2–5 cells; shares one builder with the native `house_diagram` |
-| `stylish-panels` | Accent-banded panels with ribbon headers for pillars, capabilities, or workstreams |
+| `stylish-panels` | 3–5 titled columns for pillars, capabilities, or workstreams: heading, accent rule and open bullets; one `values[].highlight` column takes the only solid fill; `overrides.style` `ribbon` for ribbon headers over body tiles |
 | `swimlane` | Horizontal swimlane diagram with actors and steps |
 | `table-highlight` | Options × criteria evaluation matrix (2–6 × 2–6) scored with Harvey balls (0–4), RAG dots or short text, with a highlighted recommended row / decisive column and a legend (content-sized rows) |
 | `team-bios` | Team / 'Our People' grid of 1–8 members with a headshot (`members[].photo`) or initials placeholder + name + role + short bio (up to 4 per row); emits `BODY_TOO_LONG` when a bio exceeds the ~2-line budget |

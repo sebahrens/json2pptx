@@ -80,18 +80,20 @@ func TestNativeDiagramBuildersEmitAccentTints(t *testing.T) {
 		build func() string
 	}{
 		{"value chain", func() string {
-			return generateVCSupportBarXML(panels[0], 0, 0, 2000000, 500000, 1, "accent4", 40000, 60000)
+			return generateVCSupportBarXML(panels[0], 0, 0, 2000000, 500000, 1, taxonomyTint{scheme: "accent4", lumMod: 40000, lumOff: 60000})
 		}},
 		{"SWOT", func() string {
-			return generateSWOTHeaderXML("Strengths", 0, 0, 2000000, 500000, 1, "accent4", 20000, 80000)
+			return generateSWOTHeaderXML("Strengths", 0, 0, 2000000, 500000, 1, taxonomyTint{scheme: "accent4", lumMod: 20000, lumOff: 80000})
 		}},
 		{"PESTEL", func() string {
-			return generatePESTELHeaderXML("Political", 0, 0, 2000000, 500000, 1, "accent4", 20000, 80000)
+			return generatePESTELHeaderXML("Political", 0, 0, 2000000, 500000, 1, taxonomyTint{scheme: "accent4", lumMod: 20000, lumOff: 80000})
 		}},
 		{"nine box", func() string {
-			return generateNineBoxCellLabelXML("Star", 0, 0, 2000000, 500000, 1, "accent4", 20000, 80000)
+			return generateNineBoxCellLabelXML("Star", 0, 0, 2000000, 500000, 1, taxonomyTint{scheme: "accent4", lumMod: 20000, lumOff: 80000})
 		}},
-		{"KPI dashboard", func() string { return generateKPICardXML(panels[0], 0, 0, 2000000, 1500000, 1, nil) }},
+		{"KPI dashboard", func() string {
+			return generateKPICardXML(panels[0], 0, 0, 2000000, 1500000, 1, taxonomyTint{scheme: "accent4", lumMod: 20000, lumOff: 80000}, nil)
+		}},
 		{"pyramid", func() string { return generatePyramidGroupXML(panels, bounds, 1, "Arial") }},
 		{"stylish panels", func() string { return generateStylishPanelsGroupXML(panels, bounds, 1) }},
 	}
@@ -111,11 +113,25 @@ func TestAuthoredTaxonomyPanelsUseReadableTextAndBullets(t *testing.T) {
 		header func(string) string
 		body   func(string) string
 	}{
-		{"SWOT", func(c string) string { return generateSWOTHeaderXML("Title", 0, 0, 2000000, 400000, 1, c, 0, 0) }, func(c string) string { return generateSWOTBodyXML("- Detail", 0, 0, 2000000, 1000000, 2, c, 0, 0) }},
-		{"PESTEL", func(c string) string { return generatePESTELHeaderXML("Title", 0, 0, 2000000, 400000, 1, c, 0, 0) }, func(c string) string { return generatePESTELBodyXML("- Detail", 0, 0, 2000000, 1000000, 2, c, 0, 0) }},
-		{"business canvas", func(c string) string { return generateBMCCellHeaderXML("Title", 0, 0, 2000000, 400000, 1, c, 0, 0) }, func(c string) string { return generateBMCCellBodyXML("- Detail", 0, 0, 2000000, 1000000, 2, c, 0, 0) }},
-		{"nine box", func(c string) string { return generateNineBoxCellLabelXML("Title", 0, 0, 2000000, 400000, 1, c, 0, 0) }, func(c string) string {
-			return generateNineBoxCellBodyXML("- Detail", 0, 0, 2000000, 1000000, 2, c, 0, 0)
+		{"SWOT", func(c string) string {
+			return generateSWOTHeaderXML("Title", 0, 0, 2000000, 400000, 1, taxonomyTint{scheme: c})
+		}, func(c string) string {
+			return generateSWOTBodyXML("- Detail", 0, 0, 2000000, 1000000, 2, taxonomyTint{scheme: c})
+		}},
+		{"PESTEL", func(c string) string {
+			return generatePESTELHeaderXML("Title", 0, 0, 2000000, 400000, 1, taxonomyTint{scheme: c})
+		}, func(c string) string {
+			return generatePESTELBodyXML("- Detail", 0, 0, 2000000, 1000000, 2, taxonomyTint{scheme: c})
+		}},
+		{"business canvas", func(c string) string {
+			return generateBMCCellHeaderXML("Title", 0, 0, 2000000, 400000, 1, taxonomyTint{scheme: c})
+		}, func(c string) string {
+			return generateBMCCellBodyXML("- Detail", 0, 0, 2000000, 1000000, 2, taxonomyTint{scheme: c})
+		}},
+		{"nine box", func(c string) string {
+			return generateNineBoxCellLabelXML("Title", 0, 0, 2000000, 400000, 1, taxonomyTint{scheme: c})
+		}, func(c string) string {
+			return generateNineBoxCellBodyXML("- Detail", 0, 0, 2000000, 1000000, 2, taxonomyTint{scheme: c})
 		}},
 	}
 	for _, color := range []struct{ hex, text string }{{"#102030", "FFFFFF"}, {"#F5F5F5", "000000"}} {

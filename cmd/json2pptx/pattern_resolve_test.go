@@ -21,7 +21,7 @@ var _ = patterns.Default()
 func TestRotatingPatternAccentIsReadableAndStableAfterInsertion(t *testing.T) {
 	p := &PatternInput{
 		Name: "icon-row", Values: json.RawMessage(`[{"icon":"rocket","caption":"Launch"},{"icon":"rocket","caption":"Build"},{"icon":"rocket","caption":"Measure"}]`),
-		Overrides: json.RawMessage(`{"cell_accent_mode":"progressive"}`),
+		Overrides: json.RawMessage(`{"cell_accent_mode":"progressive","style":"tile"}`),
 	}
 	theme := types.ThemeInfo{Colors: []types.ThemeColor{
 		{Name: "lt1", RGB: "FFFFFF"}, {Name: "accent1", RGB: "003366"},
@@ -84,7 +84,7 @@ func TestRotateSubstitutionSurfacesInGeneratedFitFindings(t *testing.T) {
 }
 
 func TestRotateNegativeAccentParityBetweenPreflightAndGenerate(t *testing.T) {
-	p := &PatternInput{Name: "icon-row", Values: json.RawMessage(`[{"icon":"rocket","caption":"Launch"},{"icon":"rocket","caption":"Build"},{"icon":"rocket","caption":"Measure"}]`)}
+	p := &PatternInput{Name: "icon-row", Values: json.RawMessage(`[{"icon":"rocket","caption":"Launch"},{"icon":"rocket","caption":"Build"},{"icon":"rocket","caption":"Measure"}]`), Overrides: json.RawMessage(`{"style":"tile"}`)}
 	colors := []types.ThemeColor{
 		{Name: "lt1", RGB: "FFFFFF"},
 		{Name: "accent1", RGB: "003366"}, {Name: "accent2", RGB: "003366"},
@@ -516,13 +516,14 @@ func TestExpandPattern_CalloutComparison2col(t *testing.T) {
 		t.Fatalf("expandPattern with callout failed: %v", err)
 	}
 
-	// comparison-2col with headers: 1 header row + 1 body row + 1 callout row = 3
-	if len(grid.Rows) != 3 {
-		t.Fatalf("expected 3 rows, got %d", len(grid.Rows))
+	// comparison-2col with headers: 1 header row + its rule + 1 body row +
+	// 1 callout row = 4
+	if len(grid.Rows) != 4 {
+		t.Fatalf("expected 4 rows, got %d", len(grid.Rows))
 	}
 
 	// The accent colours the band's bar, not a filled strip.
-	bar, _ := calloutBandCells(t, grid.Rows[2])
+	bar, _ := calloutBandCells(t, grid.Rows[3])
 	var fill string
 	if err := json.Unmarshal(bar.Shape.Fill, &fill); err != nil {
 		t.Fatalf("fill unmarshal: %v", err)

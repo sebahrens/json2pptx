@@ -113,6 +113,19 @@ func deckMetaSchema() map[string]any {
 				"items":       map[string]any{"type": "string", "enum": stringEnum(layout.CanonicalNames())},
 				"description": "Canonical layout IDs the planned deck must cover.",
 			},
+			"waivers": map[string]any{
+				"type": "array",
+				"description": "Storyline findings this deck waives on purpose; each becomes an advisory and is recorded under waivers in the validate and render results. " +
+					"A non-executive archetype (sales_pitch, project_roadmap, market_analysis) already waives NO_EXECUTIVE_SUMMARY.",
+				"items": map[string]any{
+					"type": "object", "required": []any{"code", "reason"},
+					"properties": map[string]any{
+						"code":   map[string]any{"type": "string", "enum": stringEnum(WaivableFindingCodes())},
+						"reason": map[string]any{"type": "string", "minLength": 1, "description": "Why the rule does not apply to this deck."},
+					},
+					"additionalProperties": false,
+				},
+			},
 		},
 		"additionalProperties": false,
 	}

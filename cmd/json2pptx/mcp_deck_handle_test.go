@@ -22,7 +22,7 @@ const handleTestSpec = `{
     {"kind": "section", "title": "Where we stand"},
     {"kind": "kpi_snapshot", "title": "The numbers", "kpis": [{"value": "42%", "label": "Growth"}, {"value": "1.2M", "label": "ARR"}]},
     {"kind": "section", "title": "What we do next"},
-    {"kind": "closing", "title": "Questions?"}
+    {"kind": "closing", "title": "Approve the plan"}
   ]
 }`
 

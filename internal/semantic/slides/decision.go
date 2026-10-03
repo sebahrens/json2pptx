@@ -28,6 +28,12 @@ const (
 	decisionPairCardBodyMax = 300
 	// decisionPairHeaderMax is card-grid's header budget.
 	decisionPairHeaderMax = 80
+	// decisionMaxCards is the most options the card treatment takes: past the
+	// strip's six, card-grid arranges 7–12 over several rows (7 as 4 + 3).
+	decisionMaxCards = 12
+	// decisionGridCardBodyMax is the body budget of a card once the cards
+	// take several rows.
+	decisionGridCardBodyMax = 160
 )
 
 // decisionOption is one resolved option: what it is, and what it means.
@@ -59,8 +65,8 @@ type decisionCard struct {
 
 // decisionCardValues is the card-grid pattern's values object.
 type decisionCardValues struct {
-	Columns int            `json:"columns"`
-	Rows    int            `json:"rows"`
+	Columns int            `json:"columns,omitempty"`
+	Rows    int            `json:"rows,omitempty"`
 	Cells   []decisionCard `json:"cells"`
 }
 
@@ -69,9 +75,10 @@ type decisionCardOverrides struct {
 	Style string `json:"style,omitempty"`
 }
 
-// CompileDecision compiles a decision slide. Three or more options become a
-// numbered step strip; exactly two, each with a detail, become a pair of cards;
-// anything else keeps the content slide this kind has always produced.
+// CompileDecision compiles a decision slide. Three to six options become a
+// numbered step strip; exactly two, or seven to twelve, each with a detail,
+// become cards (card-grid arranges any count: 7 as 4 + 3); anything else keeps
+// the content slide this kind has always produced.
 // Whichever visual it reaches, the recommendation takes the callout band
 // beneath it.
 func CompileDecision(in Input) (*deckinput.SlideInput, []SourceLink, error) {
@@ -111,7 +118,12 @@ func compileDecisionCards(in Input, options []decisionOption) (*deckinput.SlideI
 	for _, o := range options {
 		cells = append(cells, decisionCard{Header: o.Label, Body: o.Detail, Recommended: o.Recommended})
 	}
-	encoded, err := json.Marshal(decisionCardValues{Columns: len(cells), Rows: 1, Cells: cells})
+	values := decisionCardValues{Columns: len(cells), Rows: 1, Cells: cells}
+	if len(cells) > 2 {
+		// Past the pair the pattern arranges the cards from their count.
+		values = decisionCardValues{Cells: cells}
+	}
+	encoded, err := json.Marshal(values)
 	if err != nil {
 		return nil, nil, fmt.Errorf("marshal card-grid values: %w", err)
 	}
@@ -276,15 +288,21 @@ func decisionStripFits(options []decisionOption) bool {
 	return true
 }
 
-// decisionCardsFit reports whether the options fit the two-card treatment. Both
-// cards need a detail: card-grid requires a body, and a card with a heading and
-// a blank space beneath it reads as missing data.
+// decisionCardsFit reports whether the options fit the card treatment: a pair,
+// or the 7–12 the strip cannot hold. Every card needs a detail: card-grid
+// requires a body, and a card with a heading and a blank space beneath it
+// reads as missing data.
 func decisionCardsFit(options []decisionOption) bool {
-	if len(options) != 2 {
+	n := len(options)
+	if n != 2 && (n <= decisionMaxSteps || n > decisionMaxCards) {
 		return false
 	}
+	bodyMax := decisionPairCardBodyMax
+	if n > 2 {
+		bodyMax = decisionGridCardBodyMax
+	}
 	for _, o := range options {
-		if o.Detail == "" || runeLen(o.Label) > decisionPairHeaderMax || runeLen(o.Detail) > decisionPairCardBodyMax {
+		if o.Detail == "" || runeLen(o.Label) > decisionPairHeaderMax || runeLen(o.Detail) > bodyMax {
 			return false
 		}
 	}
@@ -317,8 +335,10 @@ func DecisionOverBudget(body map[string]any) string {
 		return "has one option; a decision slide needs at least two to be a choice"
 	case len(options) == 2:
 		return "has two options and one of them says only what it is called; give both a detail for the two-card treatment"
+	case len(options) > decisionMaxCards:
+		return fmt.Sprintf("has %d options; the numbered strip holds %d and the cards %d", len(options), decisionMaxSteps, decisionMaxCards)
 	case len(options) > decisionMaxSteps:
-		return fmt.Sprintf("has %d options; the numbered strip holds %d", len(options), decisionMaxSteps)
+		return fmt.Sprintf("has %d options, past the numbered strip's %d; they become cards when each has a detail of at most %d characters and a label of at most %d", len(options), decisionMaxSteps, decisionGridCardBodyMax, decisionPairHeaderMax)
 	}
 	for i, o := range options {
 		switch {

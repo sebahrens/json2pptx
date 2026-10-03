@@ -189,7 +189,7 @@ func generateStylishPanelsGroupXML(panels []nativePanelData, bounds types.Boundi
 						FontSize: stylishHeaderFontSize,
 						Bold:     true,
 						Dirty:    true,
-						Color:    pptx.SchemeFill(panelHeaderTextSchemeColor),
+						Color:    pptx.SchemeFill(panelCaptionTextSchemeColor),
 					}},
 				}},
 			},

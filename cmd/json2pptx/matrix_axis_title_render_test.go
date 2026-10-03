@@ -38,6 +38,9 @@ func TestMatrixAxisTitleClearsArrow(t *testing.T) {
 						"top_left":{"header":"Quick wins"},"top_right":{"header":"Strategic bets"},
 						"bottom_left":{"header":"Maintenance"},"bottom_right":{"header":"Defer"}
 					}`, axisTitle)),
+					// The arrow axes are the tiles style's; the open default
+					// draws crossing axis lines with no arrow to clear.
+					Overrides: json.RawMessage(`{"style":"tiles"}`),
 				}}},
 			}
 			result, cleanup, err := RunPresentation(context.Background(), input, RenderOptions{

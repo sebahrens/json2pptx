@@ -147,13 +147,19 @@ func RunValidatePass(cfg LoopConfig, jsonPath string) ([]fitFinding, error) { //
 				return nil, fmt.Errorf("validate command returned malformed error findings: %w", err)
 			}
 		} else {
+			// validate answers a passing and a refused deck in one shape: the
+			// finding envelope, with its own ok, nested under "findings".
 			var nested struct {
+				OK       *bool         `json:"ok,omitempty"`
 				Findings []wireFinding `json:"findings"`
 			}
 			if err := json.Unmarshal(env.Findings, &nested); err != nil {
 				return nil, fmt.Errorf("validate command returned malformed findings envelope: %w", err)
 			}
 			wireFindings = nested.Findings
+			if env.OK == nil {
+				env.OK = nested.OK
+			}
 		}
 		if runErr != nil && (env.OK == nil || *env.OK || len(wireFindings) == 0) {
 			return nil, fmt.Errorf("validate command failed: %w: %s", runErr, strings.TrimSpace(stderr.String()))

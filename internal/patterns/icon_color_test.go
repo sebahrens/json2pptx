@@ -89,12 +89,20 @@ func TestIconRow_IconContrastsWithCell(t *testing.T) {
 			{Icon: &IconRef{Name: "rocket"}, Caption: "Launch"},
 			{Icon: &IconRef{Name: "shield"}, Caption: "Trust"},
 		}
-		grid, err := p.Expand(ctx, &vals, nil, nil)
+		grid, err := p.Expand(ctx, &vals, &IconRowOverrides{Style: "tile"}, nil)
 		if err != nil {
 			t.Fatalf("%s: Expand: %v", name, err)
 		}
 		for _, c := range grid.Rows[0].Cells {
 			assertIconReadable(t, ctx, name+"/icon-row", c.Shape)
+		}
+		// The open style's icons stand on the slide background.
+		open, err := p.Expand(ctx, &vals, nil, nil)
+		if err != nil {
+			t.Fatalf("%s: Expand open: %v", name, err)
+		}
+		for _, c := range open.Rows[0].Cells {
+			assertIconReadable(t, ctx, name+"/icon-row-open", &jsonschema.ShapeSpecInput{Fill: json.RawMessage(`"lt1"`), Icon: c.Icon})
 		}
 	}
 }
