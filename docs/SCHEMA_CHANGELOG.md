@@ -1,5 +1,15 @@
 # Schema Changelog
 
+- **2026-10-03 — icon-row is open by default (`go-slide-creator-hjqn2`).**
+  - `icon-row` renders accent icons and captions on the slide with no
+    container. New `overrides.style`: `open` (default) / `tile` (the previous
+    neutral tile under an accent rule). New optional `values[].description`
+    (≤80 characters, one line under the caption). `overrides.icon_size` is
+    the icon height in points in the open style (default: 26% of the content
+    area height, 40–88pt); captions default to 14pt bold there.
+  - Items carrying a `secondary` chart render as tiles in either style.
+    Open rows that do not fit the content area report `BODY_TOO_LONG`.
+
 - **2026-10-03 — card-grid takes any card count (`go-slide-creator-0w4va`).**
   - `card-grid` `values.columns` and `values.rows` are optional. Omitted,
     the cards are arranged from their count (5 as 3 + 2, 7 as 4 + 3, 11 as

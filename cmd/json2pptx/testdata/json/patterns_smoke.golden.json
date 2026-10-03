@@ -57,8 +57,9 @@
   },
   {
     "pattern_name": "icon-row",
-    "row_count": 1,
+    "row_count": 2,
     "cell_counts": [
+      4,
       4
     ]
   },
