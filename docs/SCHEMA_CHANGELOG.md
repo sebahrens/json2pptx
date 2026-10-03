@@ -1,5 +1,34 @@
 # Schema Changelog
 
+- **2026-10-03 — KPI rows: open strip, one baseline, short-region refusal; metric-list values stay on their ladder (`go-slide-creator-8zles`, `go-slide-creator-0cy3p`, `go-slide-creator-uj9zq`, `go-slide-creator-1vmsk`).**
+  - New `overrides.style` on `kpi-2up`…`kpi-6up`: `open` (value and
+    caption on the canvas between 0.75pt neutral hairline dividers) or
+    `tiles` (tinted card under an accent rule, the previous look). Unset,
+    plain value + caption cells render `open`; a row with an icon,
+    `semantic_accent` or a non-uniform `cell_accent_mode` keeps `tiles`.
+    `kpi-inline` `overrides.style` gains `open` and defaults to it for plain
+    cells (`tinted` with icons / semantic or per-cell accents; `solid`
+    unchanged). DeckSpec `kpi_snapshot` slides and `regions` `kpis` cells
+    render the same way.
+  - KPI cell text is top-anchored: values, captions, deltas and comparators
+    share baselines across a row whatever the caption line counts. Top icons
+    sit directly above the value at 1.1× its size.
+  - A `kpi-Nup` row in an area too short for 40/14pt steps to 28/12pt, then
+    24/12pt, then drops its vertical text margin. A row that still does not
+    fit is refused: `fit_overflow` at `refuse` (error) on the pattern's
+    `values` — `slides[i].regions[k]` on a DeckSpec `kpis` region — from
+    `validate -fit-report`, `validate_input`, `validate_deck_spec`,
+    `generate_presentation` and `render_deck_spec` alike. It used to render
+    with the value over its caption and an info-level `fit_overflow` row
+    finding. Authored `big_size` / `small_size` are measured as given.
+    `kpi-inline` grows its 25% band to the row on short content areas instead
+    of refusing a bar with a delta line.
+  - `metric-list` default values stay on 40/36/32/28/24pt and never go under
+    24pt: the value column widens from 28% up to 40% for a long value, the
+    rows drop their vertical text margin at 24pt, and a list that still does
+    not fit reports `BODY_TOO_LONG` naming the row count instead of
+    shrinking the values. `overrides.value_size` is honoured as before.
+
 - **2026-10-03 — Composition overrides compile to what explain reports (`go-slide-creator-vj549`).** SchemaVersion unchanged (no new tools, codes or fix kinds).
   - A `pattern` / `layout` override listed in `compositions[]` is honoured
     only when the slide actually compiles to it, and the compiler is held to

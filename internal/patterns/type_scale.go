@@ -112,6 +112,8 @@ const (
 // (offScaleDefaultReasons) may also appear in a ladder as its first step.
 var offScaleLadderReasons = map[string]string{
 	"sizeHeroDetailFigurePt": "hero-detail's dominant figure, an oversized display figure measured to fit",
+	"metricListValue36Pt":    "metric-list value ladder step between the 40pt KPI and 28pt display steps; a display figure, not snapped",
+	"metricListValue32Pt":    "metric-list value ladder step between the 40pt KPI and 28pt display steps; a display figure, not snapped",
 }
 
 // snapPt settles a derived size (a ladder step plus a bump) onto the type

@@ -1,108 +1,127 @@
 {
-  "gap": 12,
+  "gap": 4.75,
   "columns": 4,
   "rows": [
     {
-      "max_height": 105,
+      "max_height": 98,
       "cells": [
         {
           "shape": {
-            "geometry": "roundRect",
-            "fill": "accent1",
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "$4.2M",
                   "size": 40,
                   "bold": true,
-                  "color": "lt1",
+                  "color": "accent1",
                   "align": "ctr"
                 },
                 {
                   "content": "ARR",
                   "size": 14,
-                  "color": "lt1",
+                  "color": "dk1",
                   "align": "ctr"
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr"
+              "vertical_align": "t"
             }
           }
         },
         {
           "shape": {
-            "geometry": "roundRect",
-            "fill": "accent1",
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "127%",
                   "size": 40,
                   "bold": true,
-                  "color": "lt1",
+                  "color": "accent1",
                   "align": "ctr"
                 },
                 {
                   "content": "NRR",
                   "size": 14,
-                  "color": "lt1",
+                  "color": "dk1",
                   "align": "ctr"
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr"
+              "vertical_align": "t"
             }
+          },
+          "accent_bar": {
+            "position": "left",
+            "color": "dk1",
+            "width": 0.75
           }
         },
         {
           "shape": {
-            "geometry": "roundRect",
-            "fill": "accent1",
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "12d",
                   "size": 40,
                   "bold": true,
-                  "color": "lt1",
+                  "color": "accent1",
                   "align": "ctr"
                 },
                 {
                   "content": "Sales cycle",
                   "size": 14,
-                  "color": "lt1",
+                  "color": "dk1",
                   "align": "ctr"
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr"
+              "vertical_align": "t"
             }
+          },
+          "accent_bar": {
+            "position": "left",
+            "color": "dk1",
+            "width": 0.75
           }
         },
         {
           "shape": {
-            "geometry": "roundRect",
-            "fill": "accent1",
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "98%",
                   "size": 40,
                   "bold": true,
-                  "color": "lt1",
+                  "color": "accent1",
                   "align": "ctr"
                 },
                 {
                   "content": "CSAT",
                   "size": 14,
-                  "color": "lt1",
+                  "color": "dk1",
                   "align": "ctr"
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr"
+              "vertical_align": "t"
             }
+          },
+          "accent_bar": {
+            "position": "left",
+            "color": "dk1",
+            "width": 0.75
           }
         }
       ]

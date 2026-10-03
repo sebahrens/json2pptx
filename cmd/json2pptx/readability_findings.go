@@ -68,10 +68,15 @@ func collectReadability(input *PresentationInput, layouts []types.LayoutMetadata
 			continue
 		}
 		geom, contentBounds := patternExpansionGeometry(slide, layouts, slideWidth, slideHeight, rhythm)
-		grid, nested := expandNestedPatternsForReadability(slide.ShapeGrid, slidepath.ShapeGrid(si), nestedExpansionGeometry{
+		grid, nested, nestedErr := expandNestedPatternsForReadability(slide.ShapeGrid, slidepath.ShapeGrid(si), nestedExpansionGeometry{
 			geom: geom, contentBounds: contentBounds, slideWidth: slideWidth, slideHeight: slideHeight,
 			theme: theme, strategy: patterns.AccentStrategy(input.AccentStrategy), slideIdx: si, sectionIdx: sectionIndices[si],
 		})
+		// A nested pattern that refuses the cell it was given (a kpis region
+		// too short for a value over its caption) stops generation; report it
+		// here so validate does not approve the slide
+		// (go-slide-creator-uj9zq).
+		findings = append(findings, patternAreaRefusals(nestedErr, slidepath.ShapeGrid(si))...)
 		result := resolveGridForStructural(grid, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
 		if result == nil {
 			continue
@@ -188,15 +193,15 @@ type nestedExpansionGeometry struct {
 // Generation measures and refuses the text those patterns write; skipping
 // them let validate approve a regions slide that render refused
 // (go-slide-creator-fn2ka). The source grid is never mutated. When nothing is
-// nested, or expansion fails (generation reports that error itself), the
-// source grid is returned with no nested cells.
-func expandNestedPatternsForReadability(grid *ShapeGridInput, base string, g nestedExpansionGeometry) (*ShapeGridInput, nestedPatternCells) {
+// nested, or expansion fails, the source grid is returned with no nested
+// cells; the expansion error is returned for the caller to report.
+func expandNestedPatternsForReadability(grid *ShapeGridInput, base string, g nestedExpansionGeometry) (*ShapeGridInput, nestedPatternCells, error) {
 	if !hasNestedCellPattern(grid) {
-		return grid, nil
+		return grid, nil, nil
 	}
 	cloned, err := cloneShapeGrid(grid)
 	if err != nil {
-		return grid, nil
+		return grid, nil, nil
 	}
 	ctx := patterns.ExpandContext{
 		ContentZone:    g.geom.Zone,
@@ -211,11 +216,11 @@ func expandNestedPatternsForReadability(grid *ShapeGridInput, base string, g nes
 		ctx.Theme = *g.theme
 	}
 	if err := expandNestedCellPatternsInBounds(cloned, ctx, g.contentBounds, patterns.Default()); err != nil {
-		return grid, nil
+		return grid, nil, err
 	}
 	nested := nestedPatternCells{}
 	collectNestedPatternCells(grid, base, nested, 0)
-	return cloned, nested
+	return cloned, nested, nil
 }
 
 func collectNestedPatternCells(grid *ShapeGridInput, base string, out nestedPatternCells, depth int) {

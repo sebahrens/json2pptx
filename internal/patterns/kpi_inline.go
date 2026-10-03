@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"strconv"
 
@@ -58,20 +59,21 @@ func (k *kpiInline) NewOverrides() any { return &KPIInlineOverrides{} }
 // KPIInlineOverrides is the KPI overrides plus the bar style.
 type KPIInlineOverrides struct {
 	KPIOverrides
-	// Style is "tinted" (default: neutral cells with dark text under a thin
-	// accent rule, like the kpi-Nup cards) or "solid" (every KPI a solid
-	// accent block; legacy look).
+	// Style is "open" (value and caption on the canvas between hairline
+	// dividers; the default for plain cells), "tinted" (neutral cells with
+	// dark text under a thin accent rule, like the kpi-Nup tiles; the default
+	// when a cell has an icon or the bar sets semantic_accent or a
+	// non-uniform cell_accent_mode) or "solid" (every KPI a solid accent
+	// block; legacy look).
 	Style string `json:"style,omitempty"`
 }
 
 // kpiInlineStyles are the accepted overrides.style values.
-var kpiInlineStyles = []string{"tinted", "solid"}
+var kpiInlineStyles = []string{kpiStyleOpen, kpiStyleTinted, kpiStyleSolid}
 
-// kpiInlineOverridesSchema is the KPI overrides schema plus style.
+// kpiInlineOverridesSchema is the KPI overrides schema with the bar's styles.
 func kpiInlineOverridesSchema() *Schema {
-	s := kpiOverridesSchema()
-	s.raw.Properties["style"] = EnumSchema(kpiInlineStyles...).WithDescription("tinted (default): neutral cells with dark text under a thin accent rule, matching the kpi-Nup cards, so a supporting bar does not outshout the slide. solid: every KPI a solid accent block (legacy look)").WithDefault("tinted")
-	return s
+	return kpiOverridesSchema(EnumSchema(kpiInlineStyles...).WithDescription("open: value and caption on the canvas between hairline dividers, so a supporting bar does not outshout the slide. tinted: neutral cells with dark text under a thin accent rule, matching the kpi-Nup tiles. solid: every KPI a solid accent block (legacy look). Default open for plain value + caption cells, tinted when a cell has an icon or the bar sets semantic_accent or a non-uniform cell_accent_mode"))
 }
 func (k *kpiInline) NewCellOverride() any { return &KPICellOverride{} }
 
@@ -199,6 +201,24 @@ func (k *kpiInline) Validate(values, overrides any, cellOverrides map[int]any) e
 	return errors.Join(errs...)
 }
 
+// kpiInlineBandPct is the share of the content height the bar is capped at.
+const kpiInlineBandPct = 25
+
+// kpiInlineIconScale mirrors shapegrid's default overlay scale: the bar's
+// left icon is that share of the cell's shorter side.
+const kpiInlineIconScale = 0.6
+
+// style resolves the bar's container style.
+func (o *KPIInlineOverrides) style(cells []KPICell) string {
+	switch {
+	case o.Style != "":
+		return o.Style
+	case kpiDefaultOpen(cells, &o.KPIOverrides):
+		return kpiStyleOpen
+	}
+	return kpiStyleTinted
+}
+
 func (k *kpiInline) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
 	const name = "kpi-inline"
 
@@ -216,50 +236,80 @@ func (k *kpiInline) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	}
 
 	baseAccent := resolveKPIAccent(&ovr.KPIOverrides, ctx)
-	// Tinted by default: three saturated accent bars dominated a slide this
-	// pattern only supports (go-slide-creator-061ag).
-	solid := ovr.Style == "solid"
+	// Open by default: three saturated accent bars dominated a slide this
+	// pattern only supports (go-slide-creator-061ag), and a row of tinted
+	// tiles is still a row of cards (go-slide-creator-8zles).
+	style := ovr.style(*cells)
 	// Smaller sizes for inline variant
 	bigSize := ResolveSize(ovr.BigSize, sizeFigurePt)
 	smallSize := ResolveSize(ovr.SmallSize, scaleDenseBodyPt)
 	cellAccentMode := ovr.CellAccentMode
 
 	n := len(*cells)
+	gap := ctx.Gap(10)
+	if style == kpiStyleOpen {
+		gap = ctx.Gap(kpiOpenGapPt)
+	}
+	areaW, areaH := contentAreaPt(ctx)
+	cardW := equalColumnWidthPt(areaW, n, gap)
+	bandPt := areaH * kpiInlineBandPct / 100
+	// A left icon narrows the text beside it.
+	widthOf := func(i int) float64 {
+		w := cardW - 2*defaultShapeInsetLRPt
+		if icon := (*cells)[i].Icon; icon != nil && !icon.IsEmpty() {
+			w -= math.Min(kpiInlineIconScale*math.Min(cardW, bandPt), kpiLeftIconMaxWFrac*cardW) + 2*kpiIconGapPt
+		}
+		return w
+	}
+	pads := kpiCaptionPadLines(ctx.Theme.BodyFont, *cells, smallSize, widthOf)
+
+	rowPt := 0.0
 	gridCells := make([]*jsonschema.GridCellInput, n)
 	for i, cell := range *cells {
 		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
-		textContent := buildKPITextContent(cell.Big, bigSize, cell.Small, smallSize, cell.Sub, false, "", false)
-		fillJSON := json.RawMessage(fmt.Sprintf(`"%s"`, accent))
-		if !solid {
-			fillJSON = neutralFillJSON(NeutralTint4)
-			textContent = recolorTextInk(textContent, "lt1", "dk1")
+		// Compact bars reserve no empty delta line: the text is top-anchored,
+		// so a cell without a delta just ends one line earlier.
+		text := kpiText{
+			big: cell.Big, bigSize: bigSize, small: cell.Small, smallSize: smallSize, padLines: pads[i],
+			sub: cell.Sub, valueInk: "lt1", ink: "lt1",
 		}
 
-		shape := &jsonschema.ShapeSpecInput{
-			Geometry: "roundRect",
-			Fill:     fillJSON,
-			Text:     textContent,
+		var gc *jsonschema.GridCellInput
+		switch style {
+		case kpiStyleOpen:
+			text.valueInk, text.ink = kpiOpenInks(ctx, accent)
+			gc = kpiOpenCell(ctx, i, text.json())
+		case kpiStyleSolid:
+			gc = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+				Geometry: "roundRect",
+				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+				Text:     text.json(),
+			}}
+		default:
+			gc = &jsonschema.GridCellInput{
+				Shape: &jsonschema.ShapeSpecInput{
+					Geometry: "rect",
+					Fill:     neutralFillJSON(NeutralTint4),
+					Line:     noLine,
+					Text:     recolorTextInk(text.json(), "lt1", "dk1"),
+				},
+				AccentBar: &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: peerRuleWidthPt},
+			}
 		}
-		if !solid {
-			shape.Geometry = "rect"
-			shape.Line = noLine
-		}
+		shape := gc.Shape
+		// The bar is as tall as its tallest cell needs to store its text
+		// unshrunk, never more than the band.
+		rowPt = math.Max(rowPt, writtenFitHeightPt(ctx.themeFonts(), shape.Text, widthOf(i)+2*defaultShapeInsetLRPt, 0))
 		if cell.Icon != nil {
 			if icon := cell.Icon.Resolve(iconFillOn(ctx, shape.Fill, accent), "left"); icon != nil {
 				shape.Icon = icon
 			}
 		}
 
-		gc := &jsonschema.GridCellInput{
-			Shape: shape,
-		}
-		if !solid {
-			gc.AccentBar = &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: peerRuleWidthPt}
-		}
-
 		if co, coOk := cellOverrides[i]; coOk {
 			cellOvr, ok2 := co.(*KPICellOverride)
 			if !ok2 {
+				gridCells[i] = gc
 				continue
 			}
 			if cellOvr.AccentBar {
@@ -275,16 +325,27 @@ func (k *kpiInline) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		gridCells[i] = gc
 	}
 
+	row := jsonschema.GridRowInput{Cells: gridCells}
+	bandPct := float64(kpiInlineBandPct)
+	if rowPt > 0 {
+		row.MaxHeight = math.Ceil(rowPt + kpiRowSlackPt)
+		// On a short content area a quarter of the height does not hold a
+		// value, a caption and a delta: the band grows to the row rather
+		// than have the writer shrink the caption below its floor.
+		if row.MaxHeight > bandPt && areaH > 0 {
+			bandPct = math.Min(100, math.Ceil(row.MaxHeight/areaH*100))
+		}
+	}
 	colsJSON := json.RawMessage(strconv.Itoa(n))
 	grid := &jsonschema.ShapeGridInput{
 		Bounds: &jsonschema.GridBoundsInput{
-			X: 0, Y: 0, Width: 100, Height: 25,
+			X: 0, Y: 0, Width: 100, Height: bandPct,
 		},
 		Columns: colsJSON,
-		Gap:     ctx.Gap(10),
-		Rows: []jsonschema.GridRowInput{
-			{Cells: gridCells},
-		},
+		Gap:     gap,
+		Rows:    []jsonschema.GridRowInput{row},
+		// The bar hangs from the top of its band, where it has always sat.
+		VerticalAlign: "top",
 	}
 
 	return grid, nil

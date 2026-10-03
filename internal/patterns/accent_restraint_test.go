@@ -197,13 +197,17 @@ func TestHeroDetail_MinimalDefaultTopAnchored(t *testing.T) {
 	}
 }
 
-// go-slide-creator-061ag: kpi-inline cells are a neutral tint under a thin
-// accent rule; style "solid" restores the accent blocks.
-func TestKPIInline_TintedByDefault(t *testing.T) {
+// go-slide-creator-061ag: tinted kpi-inline cells are a neutral tint under a
+// thin accent rule; style "solid" restores the accent blocks. Neither is the
+// default for plain cells (go-slide-creator-8zles): that is the open strip.
+func TestKPIInline_TintedStyle(t *testing.T) {
 	vals := (&kpiInline{}).ExemplarValues().(*KPINupValues)
-	grid := expandFor(t, "kpi-inline", restraintCtx(), vals, nil)
-	if n := solidAccentCells(grid); n != 0 {
+	if n := solidAccentCells(expandFor(t, "kpi-inline", restraintCtx(), vals, nil)); n != 0 {
 		t.Errorf("default kpi-inline has %d solid accent cells, want 0", n)
+	}
+	grid := expandFor(t, "kpi-inline", restraintCtx(), vals, &KPIInlineOverrides{Style: "tinted"})
+	if n := solidAccentCells(grid); n != 0 {
+		t.Errorf("tinted kpi-inline has %d solid accent cells, want 0", n)
 	}
 	for i, c := range grid.Rows[0].Cells {
 		if c.AccentBar == nil || c.AccentBar.Position != "top" {

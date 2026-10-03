@@ -18,14 +18,15 @@ import (
 // generation path (the ContentZone the pattern expands against carries it),
 // so a pattern's cards sit one template gutter apart in proportion — the
 // kpi-Nup card gap is authored as 12pt against the 8pt default, so a 16pt
-// gutter opens it to 24pt (go-slide-creator-5ms8c).
+// gutter opens it to 24pt (go-slide-creator-5ms8c). The cards are the tiles
+// style; an open strip's cells are a divider's width apart.
 func TestTemplateGridGutterReachesPatternGaps(t *testing.T) {
 	plain, w, h := parseTemplateLayouts(t, filepath.Join("..", "..", "templates", "midnight-blue.pptx"))
 	gridded, _, _ := parseTemplateLayouts(t, writeTemplateWithGrid(t, "midnight-blue", map[string]any{"gutter_pt": 16}))
 
 	title := "Results so far"
 	var slide SlideInput
-	if err := json.Unmarshal([]byte(`{"layout_id":"content","pattern":{"name":"kpi-3up","values":[
+	if err := json.Unmarshal([]byte(`{"layout_id":"content","pattern":{"name":"kpi-3up","overrides":{"style":"tiles"},"values":[
 		{"big":"42%","small":"Faster resolution"},{"big":"$3.1M","small":"Annual savings"},{"big":"4.6","small":"CSAT score"}]}}`), &slide); err != nil {
 		t.Fatal(err)
 	}

@@ -43,7 +43,8 @@ func TestKPINupMetricUsesHardCeilingAndMeasuredFitWarning(t *testing.T) {
 	if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Text, &text); err != nil {
 		t.Fatal(err)
 	}
-	width := kpiCardGeometryFor(kpiTestCtx(), 4).valueWidthPt(nil, "")
+	// Plain cells are an open strip, whose cells are a hairline gap apart.
+	width := kpiCardGeometryWithGap(kpiTestCtx(), 4, kpiOpenGapPt).valueWidthPt(nil, "")
 	if lines := measuredLines(text.Paragraphs[0].Content, "", true, text.Paragraphs[0].Size, width); lines != 1 {
 		t.Fatalf("accepted metric renders on %d lines at %.0fpt", lines, text.Paragraphs[0].Size)
 	}

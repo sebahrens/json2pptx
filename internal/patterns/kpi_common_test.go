@@ -2,6 +2,7 @@ package patterns
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -161,30 +162,27 @@ func TestKPIRowHeightInvariant(t *testing.T) {
 	}
 }
 
-// Content that needs more than the zone is clipped to the content box, never
-// beyond it.
-func TestKPIRowHeightIsRaisedNotCapped(t *testing.T) {
+// Content that needs more than its area is refused, not written into it: the
+// row used to be clipped to the content box and its lines shrunk into each
+// other (go-slide-creator-uj9zq).
+func TestKPIRowTallerThanItsAreaIsRefused(t *testing.T) {
 	// A short content zone makes even modest content exceed the zone.
 	ctx := ExpandContext{
 		SlideWidth: 12192000, SlideHeight: 6858000,
 		LayoutBounds: LayoutBounds{Width: 10515600, Height: 1200000},
 	}
-	_, contentH := contentAreaPt(ctx)
 	vals := KPINupValues{
 		{Big: "1,240.5", Sub: "Wirtschaftlichkeitsberechnung", Small: "Geschaeftsbereichsverantwortliche across all four regions must sign off before the tranche"},
 		{Big: "980.25", Sub: "Lieferantenrahmenvertraege", Small: "Procurement consolidation delivers addressable spend reduction once renegotiated"},
 		{Big: "870.10", Sub: "Bestandsfuehrungssysteme", Small: "Customer onboarding still requires seventeen manual handoffs between teams"},
 	}
 	p, _ := Default().Get("kpi-3up")
-	grid, err := p.Expand(ctx, &vals, nil, nil)
-	if err != nil {
-		t.Fatalf("Expand: %v", err)
+	_, err := p.Expand(ctx, &vals, nil, nil)
+	var ve *ValidationError
+	if !errors.As(err, &ve) || ve.Code != ErrCodeFitOverflow || ve.Path != "values" {
+		t.Fatalf("Expand error = %v, want a fit_overflow refusal at values", err)
 	}
-	got := grid.Rows[0].MaxHeight
-	if got > contentH+0.5 {
-		t.Errorf("row max_height %.1fpt exceeds the %.1fpt content box", got, contentH)
-	}
-	if got < contentH*0.9 {
-		t.Errorf("row max_height %.1fpt should rise to the %.1fpt content box for content that needs it", got, contentH)
+	if !strings.Contains(ve.Message, "3 KPIs need") || !strings.Contains(ve.Message, "94pt tall") {
+		t.Errorf("refusal does not name the need and the area: %s", ve.Message)
 	}
 }

@@ -1090,6 +1090,18 @@ The `chart-insights-split` pattern was expanded without a `chart` spec, so the l
 
 Text exceeds the height available to it. The `split_at_row` fix includes a `row` parameter suggesting where to split the table.
 
+On a **named pattern that measures its own area** it is the pattern's refusal, at `refuse`: a `kpi-Nup` row whose area (a DeckSpec `kpis` region, a compose segment, a grid cell, author `bounds`) cannot hold a 24pt value over a 12pt caption even without its vertical text margin. The path is the pattern's `values` (`/slides/0/shape_grid/rows/0/cells/0/pattern/values` for a nested pattern; a DeckSpec finding maps to `slides[i].regions[k]`), there is no fix kind — the message names the height needed and the height available — and generation refuses the slide with the same message, so validate and render agree (go-slide-creator-uj9zq). It replaces the info-level row finding ("row content ~93pt exceeds max_height 66pt") such a row used to get while its number was drawn over its label.
+
+```json
+{
+  "pattern": "kpi-4up",
+  "path": "/slides/0/shape_grid/rows/0/cells/0/pattern/values",
+  "code": "fit_overflow",
+  "message": "kpi-4up: 4 KPIs need 58pt of height for the minimum 24pt value over a 12pt caption, but their area is 27pt tall — give the region or segment more height (a larger size_pct), shorten the captions, drop the delta / comparator lines, or use kpi-inline",
+  "action": "refuse"
+}
+```
+
 On a **table** whose frame is known (a `shape_grid` cell, or a body placeholder on a resolved layout), each cell is wrapped at the renderer's content-aware column width and judged against the most lines its row could take while every other row keeps its minimum height. Table rows grow with their content, so the old equal "row share" of the frame refused cells that render cleanly ("needs 4 lines @ 14pt; cell allows 3" on the sovereign-ai risk table, go-slide-creator-fabz4). Whole-table overflow is predicted from the renderer's own row plan as `table_rows_truncated`. Without a known frame the legacy slide-proportion estimate applies.
 
 On a **shape_grid cell** it is emitted only when the wrapped text does not fit **even at the smallest autofit shrink the renderer applies** (`textcapacity.AutofitFloorScale`, 20%) — i.e. text is genuinely clipped. A cell the renderer merely shrinks into (density >110% but `fits`) renders every word; the defect there is the resulting size, reported as `TEXT_BELOW_READABLE_MIN` at `refuse` (generation refuses the same written run). Reporting the shrink itself as `refuse` refused the project's own showcase decks — `business-model-canvas` scored 62 with 4 refusals on cells whose bullets are fully visible (go-slide-creator-lmpu). The fix is `reduce_cell_text` with the cell's own `cell_path` and `max_chars` budget — apply it verbatim. `reduce_text` walks *content items* and cannot reach grid text, so aiming it at a cell answers `code: "wrong_kind_for_target"` with `did_you_mean: "reduce_cell_text"` and a corrected `next_tool_call` (go-slide-creator-9zof). A **grid row** whose content exceeds its `max_height` is not itself a text target: its finding carries the advisory `increase_row_height` (guidance + `reshape_grid` / `reduce_cell_text` alternatives), while each overfull cell in it carries its own executable fix.

@@ -244,15 +244,22 @@ func TestFullPatternsOccupyContentZone(t *testing.T) {
 	}
 }
 
-// TestKPI3up_CardFillsZoneAndCentred covers the full-size occupancy policy.
-func TestKPI3up_CardFillsZoneAndCentred(t *testing.T) {
+// TestKPI3up_CardsHugContentAndCentred covers the KPI card occupancy policy:
+// cards (a row with an icon keeps them) share one height sized to the tallest
+// card's icon, value and caption, and the row is centred. The row used to be
+// sized from an icon zone estimated against 70% of the content height, which
+// left a card over 60% of the zone tall around 60pt of text.
+func TestKPI3up_CardsHugContentAndCentred(t *testing.T) {
 	res, grid := resolvePatternForTest(t, "kpi-3up", `[{"big":"$4.2M","small":"ARR added in H1","icon":"currency-dollar"},{"big":"127%","small":"Net revenue retention"},{"big":"12 days","small":"Median sales cycle"}]`)
 	if grid.VerticalAlign != patterns.GridVerticalAlignDefault {
 		t.Errorf("pattern grid vertical_align = %q, want %q", grid.VerticalAlign, patterns.GridVerticalAlignDefault)
 	}
 	for _, c := range res.Cells {
-		if float64(c.CellBounds.CY) < 0.59*float64(contentRect.CY) {
-			t.Errorf("KPI card height %d < 60%% of content height %d", c.CellBounds.CY, contentRect.CY)
+		if c.CellBounds.CY != res.Cells[0].CellBounds.CY {
+			t.Errorf("KPI card heights differ: %d vs %d", c.CellBounds.CY, res.Cells[0].CellBounds.CY)
+		}
+		if share := float64(c.CellBounds.CY) / float64(contentRect.CY); share < 0.25 || share > 0.6 {
+			t.Errorf("KPI card height is %.0f%% of the content height, want a content-sized card (25-60%%)", share*100)
 		}
 	}
 	assertCentred(t, "kpi-3up", res.Cells)

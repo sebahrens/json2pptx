@@ -286,3 +286,162 @@ func TestMetricList_PostExpandWarnings(t *testing.T) {
 		t.Error("nil values should not warn")
 	}
 }
+
+// metricListLadder is the documented default value ladder.
+var metricListLadder = map[float64]bool{40: true, 36: true, 32: true, 28: true, 24: true}
+
+// go-slide-creator-1vmsk: default values stay on the 40/36/32/28/24pt ladder
+// whatever the area and however long the longest value is. The exemplar under
+// a title used to draw 18pt values beside 12pt labels.
+func TestMetricList_ValuesStayOnTheLadder(t *testing.T) {
+	p := metricListPattern(t)
+	exemplar := (&metricList{}).ExemplarValues().(*MetricListValues)
+	seven := &MetricListValues{Items: metricItems(7)}
+	for i := range seven.Items {
+		seven.Items[i].Detail = ""
+	}
+	for _, vals := range []*MetricListValues{exemplar, {Items: metricItems(3)}, {Items: metricItems(5)}, seven} {
+		for h := 180.0; h <= 420; h += 20 {
+			ctx := fullThemeCtx()
+			ctx.LayoutBounds = LayoutBounds{Width: 660 * 12700, Height: int64(h * 12700)}
+			rows := expandMetricRows(t, p, ctx, vals, nil, nil)
+			size := rows[0].value.Paragraphs[0].Size
+			if !metricListLadder[size] {
+				t.Errorf("%d rows in %.0fpt: value size %vpt is off the 40/36/32/28/24 ladder", len(vals.Items), h, size)
+			}
+			for _, r := range rows {
+				if r.value.Paragraphs[0].Size != size {
+					t.Errorf("%d rows in %.0fpt: values do not share one size", len(vals.Items), h)
+				}
+				if r.text.Paragraphs[0].Size >= size {
+					t.Errorf("%d rows in %.0fpt: %vpt label is not led by its %vpt value", len(vals.Items), h, r.text.Paragraphs[0].Size, size)
+				}
+			}
+		}
+	}
+
+	// The exemplar on a titled slide (about 660 x 300pt of content).
+	ctx := fullThemeCtx()
+	ctx.LayoutBounds = LayoutBounds{Width: 660 * 12700, Height: 300 * 12700}
+	if size := expandMetricRows(t, p, ctx, exemplar, nil, nil)[0].value.Paragraphs[0].Size; size < 24 {
+		t.Errorf("exemplar values render at %vpt, want 24pt or larger", size)
+	}
+	if got := p.(PostExpandWarner).PostExpandWarnings(ctx, exemplar, nil); len(got) != 0 {
+		t.Errorf("exemplar warns: %v", got)
+	}
+}
+
+// One long value widens the value column instead of shrinking every value.
+func TestMetricList_LongValueWidensItsColumn(t *testing.T) {
+	p := metricListPattern(t)
+	ctx := fullThemeCtx()
+	ctx.LayoutBounds = LayoutBounds{Width: 660 * 12700, Height: 400 * 12700}
+	short := &MetricListValues{Items: metricItems(3)}
+	long := &MetricListValues{Items: metricItems(3)}
+	long.Items[1].Value = "$186.4M→$2B"
+	cols := func(v *MetricListValues, ovr any) []float64 {
+		grid, err := p.Expand(ctx, v, ovr, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var c []float64
+		if err := json.Unmarshal(grid.Columns, &c); err != nil {
+			t.Fatal(err)
+		}
+		return c
+	}
+	if c := cols(short, nil); c[0] != metricListDefaultValuePct {
+		t.Errorf("short values: value column %v%%, want the default %v%%", c[0], metricListDefaultValuePct)
+	}
+	c := cols(long, nil)
+	if c[0] <= metricListDefaultValuePct || c[0] > metricListAutoMaxValuePct {
+		t.Errorf("long value: value column %v%%, want it widened within %v-%v%%", c[0], metricListDefaultValuePct, metricListAutoMaxValuePct)
+	}
+	rows := expandMetricRows(t, p, ctx, long, nil, nil)
+	size := rows[1].value.Paragraphs[0].Size
+	if !metricListLadder[size] {
+		t.Errorf("long value: size %vpt is off the ladder", size)
+	}
+	valueTextW := (660-metricListColGapPt)*c[0]/100 - 2*defaultShapeInsetLRPt
+	if lines := measuredLines(long.Items[1].Value, ctx.Theme.BodyFont, true, size, valueTextW); lines != 1 {
+		t.Errorf("long value wraps to %d lines at %vpt in its %v%% column", lines, size, c[0])
+	}
+	// An authored column width is kept.
+	if c := cols(long, &MetricListOverrides{ValueWidthPct: 20}); c[0] != 20 {
+		t.Errorf("authored value_width_pct 20 became %v", c[0])
+	}
+}
+
+// A list too tall for 24pt values at the uniform row margin drops the margin
+// first; one that still does not fit keeps its 24pt values and is reported
+// with its row count.
+func TestMetricList_TallListDropsSpacingThenReports(t *testing.T) {
+	p := metricListPattern(t)
+	seven := &MetricListValues{Items: metricItems(7)}
+	for i := range seven.Items {
+		seven.Items[i].Detail = ""
+	}
+	tightRows := func(ctx ExpandContext) (size float64, tight bool) {
+		grid, err := p.Expand(ctx, seven, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, r := range grid.Rows {
+			if len(r.Cells) != 2 {
+				continue
+			}
+			var txt struct {
+				Paragraphs []struct {
+					Size float64 `json:"size"`
+				} `json:"paragraphs"`
+				InsetTop *float64 `json:"inset_top"`
+			}
+			if err := json.Unmarshal(r.Cells[0].Shape.Text, &txt); err != nil {
+				t.Fatal(err)
+			}
+			return txt.Paragraphs[0].Size, txt.InsetTop != nil
+		}
+		t.Fatal("no item row")
+		return 0, false
+	}
+	warner := p.(PostExpandWarner)
+
+	roomy := fullThemeCtx()
+	roomy.LayoutBounds = LayoutBounds{Width: 660 * 12700, Height: 460 * 12700}
+	if _, tight := tightRows(roomy); tight {
+		t.Error("a list that fits keeps the uniform row margin")
+	}
+
+	snug := fullThemeCtx()
+	snug.LayoutBounds = LayoutBounds{Width: 660 * 12700, Height: 300 * 12700}
+	size, tight := tightRows(snug)
+	if size != 24 || !tight {
+		t.Errorf("7 rows in 300pt: value %vpt, tight margin %v; want 24pt values on tight rows", size, tight)
+	}
+	if got := warner.PostExpandWarnings(snug, seven, nil); len(got) != 0 {
+		t.Errorf("7 rows that fit on tight rows warn: %v", got)
+	}
+
+	short := fullThemeCtx()
+	short.LayoutBounds = LayoutBounds{Width: 660 * 12700, Height: 200 * 12700}
+	if size, _ := tightRows(short); size != 24 {
+		t.Errorf("7 rows in 200pt: value %vpt, want the 24pt floor kept", size)
+	}
+	got := warner.PostExpandWarnings(short, seven, nil)
+	if len(got) != 1 || !strings.HasPrefix(got[0], ErrCodeBodyTooLong+":") || !strings.Contains(got[0], "7 rows need") || !strings.Contains(got[0], "24pt values") {
+		t.Errorf("7 rows in 200pt: want one BODY_TOO_LONG naming the row count and the 24pt values, got %v", got)
+	}
+}
+
+// overrides.value_size is still honoured, and still shrinks for a long value.
+func TestMetricList_AuthoredValueSizeHonoured(t *testing.T) {
+	p := metricListPattern(t)
+	ctx := fullThemeCtx()
+	ctx.LayoutBounds = LayoutBounds{Width: 660 * 12700, Height: 400 * 12700}
+	for _, size := range []float64{20, 30, 48} {
+		rows := expandMetricRows(t, p, ctx, &MetricListValues{Items: metricItems(3)}, &MetricListOverrides{ValueSize: size}, nil)
+		if got := rows[0].value.Paragraphs[0].Size; got != size {
+			t.Errorf("value_size %v rendered at %v", size, got)
+		}
+	}
+}
