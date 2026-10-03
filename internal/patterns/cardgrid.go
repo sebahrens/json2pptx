@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -24,16 +25,18 @@ func init() {
 
 type cardGrid struct{}
 
-func (c *cardGrid) Name() string        { return "card-grid" }
-func (c *cardGrid) Description() string { return "Parameterized N×M grid of titled cards" }
+func (c *cardGrid) Name() string { return "card-grid" }
+func (c *cardGrid) Description() string {
+	return "Grid of 2–12 titled cards; columns and rows are optional and a last row that is not full stays short"
+}
 func (c *cardGrid) UseWhen() string {
-	return "4-9 freeform titled cards with custom content per cell; prefer kpi-3up for exactly 3 KPIs, comparison-2col for 2-column tradeoffs, bmc-canvas for a 9-block business model"
+	return "2-12 freeform titled cards with custom content per cell, any count (5 render as 3 + 2, 7 as 4 + 3); prefer kpi-3up for exactly 3 KPIs, comparison-2col for 2-column tradeoffs, bmc-canvas for a 9-block business model"
 }
 func (c *cardGrid) NotWhen() string {
 	return "Exactly 3 numeric KPIs (use kpi-3up), two-column pros/cons (use comparison-2col), standard BMC (use bmc-canvas), or a single hero metric (use stat-hero)"
 }
 func (c *cardGrid) Version() int      { return 2 }
-func (c *cardGrid) CellsHint() string { return "rows × cols" }
+func (c *cardGrid) CellsHint() string { return "2-12" }
 func (c *cardGrid) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
 		Category:      "data-display",
@@ -52,16 +55,20 @@ func (c *cardGrid) SupportsCallout() bool { return true }
 // padding are reserved before measuring the body; budgets are capped at the
 // schema's 300-character hard limit.
 func CardGridBodyBudgets(ctx ExpandContext, v *CardGridValues, o *CardGridOverrides) []int {
-	if v == nil || v.Columns <= 0 || v.Rows <= 0 {
+	if v == nil {
+		return nil
+	}
+	columns, gridRows, ok := v.Shape()
+	if !ok {
 		return nil
 	}
 	if o == nil {
 		o = &CardGridOverrides{}
 	}
 	areaW, areaH := sizingAreaPt(ctx)
-	cardW := equalColumnWidthPt(areaW, v.Columns, ctx.Gap(contentSizedRowGapPt))
+	cardW := equalColumnWidthPt(areaW, columns, ctx.Gap(contentSizedRowGapPt))
 	textW := cardW - 2*defaultShapeInsetLRPt
-	rowH := (areaH - float64(v.Rows-1)*ctx.Gap(contentSizedRowGapPt)) / float64(v.Rows)
+	rowH := (areaH - float64(gridRows-1)*ctx.Gap(contentSizedRowGapPt)) / float64(gridRows)
 	if textW <= 0 || rowH <= 0 {
 		return make([]int, len(v.Cells))
 	}
@@ -70,7 +77,7 @@ func CardGridBodyBudgets(ctx ExpandContext, v *CardGridValues, o *CardGridOverri
 	bodySize := ResolveSize(o.BodySize, scaleBodyPt)
 	budgets := make([]int, len(v.Cells))
 	headerHeights := make([]float64, len(v.Cells))
-	rowHeaderHeights := make([]float64, v.Rows)
+	rowHeaderHeights := make([]float64, gridRows)
 	cellWidths := make([]float64, len(v.Cells))
 	cellHeights := make([]float64, len(v.Cells))
 	for i, cell := range v.Cells {
@@ -81,14 +88,14 @@ func CardGridBodyBudgets(ctx ExpandContext, v *CardGridValues, o *CardGridOverri
 			headerH += 9 * contentLineHeight
 		}
 		headerHeights[i] = headerH
-		row := i / v.Columns
+		row := i / columns
 		if row < len(rowHeaderHeights) && headerH > rowHeaderHeights[row] {
 			rowHeaderHeights[row] = headerH
 		}
 	}
 	for i := range v.Cells {
 		headerH := headerHeights[i]
-		if row := i / v.Columns; row < len(rowHeaderHeights) && rowHeaderHeights[row] > headerH {
+		if row := i / columns; row < len(rowHeaderHeights) && rowHeaderHeights[row] > headerH {
 			headerH = rowHeaderHeights[row]
 		}
 		bodyH := cellHeights[i] - headerH
@@ -265,11 +272,73 @@ func (c *CardGridCell) UnmarshalJSON(data []byte) error {
 }
 
 // CardGridValues is the values type for card-grid.
+//
+// Columns and Rows are optional (go-slide-creator-0w4va): the grid follows the
+// cards, not the other way round. With neither set the cards are arranged by
+// count (cardGridAutoColumns); with one set the other is derived; with both
+// set the grid may be larger than the card count, and the last row is then
+// left short instead of the input being refused. See Shape.
 type CardGridValues struct {
-	Columns int            `json:"columns"`
-	Rows    int            `json:"rows"`
+	Columns int            `json:"columns,omitempty"`
+	Rows    int            `json:"rows,omitempty"`
 	Cells   []CardGridCell `json:"cells"`
 }
+
+// Card-grid bounds: an explicit column or row count, and the cards one grid
+// holds.
+const (
+	cardGridMaxColumns = 5
+	cardGridMaxRows    = 5
+	cardGridMaxCells   = cardGridMaxColumns * cardGridMaxRows
+)
+
+// cardGridAutoColumns is the column count for n cards when the author gives
+// neither columns nor rows: a balanced arrangement whose short last row is at
+// most one card shorter than the rows above it where the count allows
+// (5 = 3 + 2, 7 = 4 + 3, 11 = 4 + 4 + 3).
+func cardGridAutoColumns(n int) int {
+	switch {
+	case n <= 3:
+		return max(n, 1)
+	case n == 4:
+		return 2
+	case n <= 6, n == 9:
+		return 3
+	case n == 10:
+		return 5
+	case n <= 12:
+		return 4
+	default:
+		return cardGridMaxColumns
+	}
+}
+
+// Shape resolves the grid the cards are laid out on: the column count and the
+// number of rows actually used. ok is false when the cards cannot be placed —
+// no cards, a column or row count outside 1–5, or more cards than the stated
+// grid holds; Validate reports which.
+func (v *CardGridValues) Shape() (columns, rows int, ok bool) {
+	n := len(v.Cells)
+	if n == 0 || v.Columns < 0 || v.Rows < 0 || v.Columns > cardGridMaxColumns || v.Rows > cardGridMaxRows {
+		return 0, 0, false
+	}
+	columns = v.Columns
+	if columns == 0 {
+		if v.Rows > 0 {
+			columns = (n + v.Rows - 1) / v.Rows
+		} else {
+			columns = cardGridAutoColumns(n)
+		}
+	}
+	rows = (n + columns - 1) / columns
+	if columns > cardGridMaxColumns || rows > cardGridMaxRows || (v.Rows > 0 && rows > v.Rows) {
+		return 0, 0, false
+	}
+	return columns, rows, true
+}
+
+// cardGridLastRowAligns are the accepted overrides.last_row values.
+var cardGridLastRowAligns = []string{"center", "left"}
 
 // CardGridOverrides extends TextOverrides with a Style field for visual variants
 // plus generic surface overrides (card_fill, line_color, line_width, border) that
@@ -292,6 +361,9 @@ type CardGridOverrides struct {
 	// (thin dk1 hairline), or "accent" (1pt accent-colored border). Ignored when
 	// LineColor/LineWidth are set.
 	Border string `json:"border,omitempty"`
+	// LastRow places a last row that holds fewer cards than the rows above
+	// it: "center" (default) or "left". Card widths are the same either way.
+	LastRow string `json:"last_row,omitempty"`
 }
 
 // validCardGridStyles enumerates the allowed style values.
@@ -341,11 +413,11 @@ func (c *cardGrid) Schema() *Schema {
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
-			"columns": IntegerSchema(1, 5).WithDescription("Number of columns (1–5)"),
-			"rows":    IntegerSchema(1, 5).WithDescription("Number of rows (1–5)"),
-			"cells":   ArraySchema(cellSchema, 1, 25).WithDescription("Cards in row-major order (length must equal columns × rows)"),
+			"columns": IntegerSchema(1, cardGridMaxColumns).WithDescription("Optional columns (1–5); omitted, the cards are arranged by count (5 as 3 + 2, 7 as 4 + 3)"),
+			"rows":    IntegerSchema(1, cardGridMaxRows).WithDescription("Optional rows (1–5); a grid larger than the card count leaves the last row short"),
+			"cells":   ArraySchema(cellSchema, 1, cardGridMaxCells).WithDescription("Cards in row-major order (2–12 read well); the count need not equal columns × rows"),
 		},
-		[]string{"columns", "rows", "cells"},
+		[]string{"cells"},
 	).WithAdditionalProperties(false)
 
 	overridesSchema := ObjectSchema(
@@ -360,6 +432,7 @@ func (c *cardGrid) Schema() *Schema {
 			"line_color":       StringSchema(0).WithDescription("Card border color as a hex value or scheme color name. Takes precedence over border when set."),
 			"line_width":       NumberSchema(0, 12).WithDescription("Card border width in points (0–12). Defaults to 1 when line_color is set without a width."),
 			"border":           EnumSchema("none", "subtle", "accent").WithDescription("Border keyword: none (explicit no border), subtle (thin dk1 hairline), accent (1pt accent-colored border). Ignored when line_color/line_width are set."),
+			"last_row":         EnumSchema(cardGridLastRowAligns...).WithDescription("Placement of a short last row: center (default) or left; card widths stay equal").WithDefault("center"),
 		},
 		nil,
 	).WithAdditionalProperties(false)
@@ -373,7 +446,7 @@ func (c *cardGrid) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Parameterized N×M grid of titled cards")
+	}).WithDescription("Grid of titled cards; columns and rows are optional and a last row that is not full stays short")
 }
 
 func (c *cardGrid) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -388,33 +461,30 @@ func (c *cardGrid) Validate(values, overrides any, cellOverrides map[int]any) er
 	// Validate overrides enums
 	errs = append(errs, validateCardGridOverrides(name, overrides)...)
 
-	// Columns range
-	if vals.Columns < 1 || vals.Columns > 5 {
-		errs = append(errs, errOutOfRange(name, "columns", 1, 5, vals.Columns))
+	// columns and rows are optional; a stated one must be 1–5.
+	if vals.Columns != 0 && (vals.Columns < 1 || vals.Columns > cardGridMaxColumns) {
+		errs = append(errs, errOutOfRange(name, "columns", 1, cardGridMaxColumns, vals.Columns))
 	}
-	// Rows range
-	if vals.Rows < 1 || vals.Rows > 5 {
-		errs = append(errs, errOutOfRange(name, "rows", 1, 5, vals.Rows))
+	if vals.Rows != 0 && (vals.Rows < 1 || vals.Rows > cardGridMaxRows) {
+		errs = append(errs, errOutOfRange(name, "rows", 1, cardGridMaxRows, vals.Rows))
+	}
+	if len(vals.Cells) == 0 {
+		errs = append(errs, errMinItems(name, "cells", 1, 0, ""))
 	}
 
-	// Cell count must equal columns × rows (D4: hard error, no truncation)
-	expectedCells := vals.Columns * vals.Rows
-	countMatches := expectedCells > 0 && len(vals.Cells) == expectedCells
-	if expectedCells > 0 && !countMatches {
-		e := errCountMismatch(name, "cells", expectedCells, len(vals.Cells), "")
-		e.Message = fmt.Sprintf("card-grid: cells must contain exactly %d items (columns=%d × rows=%d), got %d",
-			expectedCells, vals.Columns, vals.Rows, len(vals.Cells))
+	// The grid only has to hold the cards (go-slide-creator-0w4va): fewer
+	// cards than columns × rows leave the last row short. More cards than the
+	// grid holds is the one count that cannot be placed.
+	_, _, placed := vals.Shape()
+	if capacity := cardGridCapacity(vals); capacity > 0 && len(vals.Cells) > capacity {
+		e := errCountMismatch(name, "cells", capacity, len(vals.Cells), "")
+		e.Message = fmt.Sprintf("card-grid: cells holds %d cards but the grid has room for %d %s", len(vals.Cells), capacity, cardGridCapacityHint(vals))
 		errs = append(errs, e)
-
-		// Reverse-recommend: suggest alternative patterns that accept the actual cell count.
-		if swaps := SuggestSwap(Default(), name, len(vals.Cells), false); len(swaps) > 0 {
-			errs = append(errs, ErrWrongPatternFor(name, len(vals.Cells), swaps))
-		}
 	}
 
-	// When the cell count is valid but all headers look like KPI metrics,
+	// When the cards can be placed but all headers look like KPI metrics,
 	// suggest the more specific KPI pattern (fewer tokens, better semantics).
-	if countMatches && len(vals.Cells) > 0 && cellsLookLikeKPIs(vals.Cells) {
+	if placed && cellsLookLikeKPIs(vals.Cells) {
 		if swaps := SuggestSwap(Default(), name, len(vals.Cells), true); len(swaps) > 0 {
 			errs = append(errs, ErrWrongPatternFor(name, len(vals.Cells), swaps))
 		}
@@ -455,6 +525,37 @@ func (c *cardGrid) Validate(values, overrides any, cellOverrides map[int]any) er
 	return errors.Join(errs...)
 }
 
+// cardGridCapacity is the most cards the stated grid holds: columns × rows
+// when both are given, else the given dimension × 5 (the other is derived, up
+// to its maximum), else 25. It is 0 when a stated dimension is out of range,
+// which Validate reports on its own.
+func cardGridCapacity(v *CardGridValues) int {
+	if v.Columns < 0 || v.Rows < 0 || v.Columns > cardGridMaxColumns || v.Rows > cardGridMaxRows {
+		return 0
+	}
+	columns, rows := v.Columns, v.Rows
+	if columns == 0 {
+		columns = cardGridMaxColumns
+	}
+	if rows == 0 {
+		rows = cardGridMaxRows
+	}
+	return columns * rows
+}
+
+// cardGridCapacityHint says how to make room for cards the grid cannot hold.
+func cardGridCapacityHint(v *CardGridValues) string {
+	switch {
+	case v.Columns > 0 && v.Rows > 0:
+		return fmt.Sprintf("(columns=%d × rows=%d; raise columns or rows, or omit both and the grid is arranged from the card count)", v.Columns, v.Rows)
+	case v.Columns > 0:
+		return fmt.Sprintf("(columns=%d allows at most %d rows; raise columns or omit it)", v.Columns, cardGridMaxRows)
+	case v.Rows > 0:
+		return fmt.Sprintf("(rows=%d allows at most %d columns; raise rows or omit it)", v.Rows, cardGridMaxColumns)
+	}
+	return "(hint: split the cards across two slides)"
+}
+
 func validateRecommendedCardStyle(cell CardGridCell, style string, index int) error {
 	if cell.Recommended && style != "soft-card" {
 		return newValidationError("card-grid", fmt.Sprintf("cells[%d].recommended", index), ErrCodeInvalidShape,
@@ -486,12 +587,28 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	}
 	cellAccentMode := ovr.CellAccentMode
 
+	columns, gridRows, ok := vals.Shape()
+	if !ok {
+		return nil, fmt.Errorf("card-grid: %d cells cannot be placed on columns=%d rows=%d", len(vals.Cells), vals.Columns, vals.Rows)
+	}
+	// A last row that is not full keeps the card width of the rows above it
+	// and is centred by default. Centring needs half-column steps, so a
+	// ragged grid is laid out on twice the columns with every card spanning
+	// two; a full grid keeps one column per card, as before.
+	short := columns*gridRows - len(vals.Cells)
+	centred := short > 0 && ovr.LastRow != "left"
+	span := 1
+	if centred {
+		span = 2
+	}
+
 	var rows []jsonschema.GridRowInput
 	cellIdx := 0
 
-	for r := 0; r < vals.Rows; r++ {
-		gridCells := make([]*jsonschema.GridCellInput, vals.Columns)
-		for col := 0; col < vals.Columns; col++ {
+	for r := 0; r < gridRows; r++ {
+		inRow := min(columns, len(vals.Cells)-cellIdx)
+		gridCells := make([]*jsonschema.GridCellInput, inRow)
+		for col := 0; col < inRow; col++ {
 			cell := vals.Cells[cellIdx]
 			accent := ctx.ResolveCellAccent(baseAccent, cellIdx, cellAccentMode)
 			gc := c.expandCell(ctx, cell, cellIdx, style, accent, headerSize, bodySize, ovr)
@@ -513,11 +630,15 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 			gridCells[col] = gc
 			cellIdx++
 		}
-		rows = append(rows, cardGridContentRow(ctx, gridCells, vals.Columns))
+		// Sized on the cards alone, at the full row's card width: the short
+		// row shares the body baseline rule and the content-sized height.
+		row := cardGridContentRow(ctx, gridCells, columns)
+		row.Cells = cardGridPlaceRow(gridCells, columns, span, centred)
+		rows = append(rows, row)
 	}
 
 	grid := &jsonschema.ShapeGridInput{
-		Columns:       json.RawMessage(fmt.Sprintf(`%d`, vals.Columns)),
+		Columns:       json.RawMessage(fmt.Sprintf(`%d`, columns*span)),
 		Gap:           ctx.Gap(10),
 		Rows:          rows,
 		VerticalAlign: GridVerticalAlignDefault,
@@ -527,6 +648,33 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	// zone, so a sparse card never becomes a mostly empty panel.
 
 	return grid, nil
+}
+
+// cardGridPlaceRow places one row's cards on the grid: each card spans span
+// grid columns, and a row with fewer cards than columns is padded with empty
+// spacer cells — after the cards (left-aligned) or split around them
+// (centred), where the half-column step of span 2 keeps an odd shortfall
+// centred.
+func cardGridPlaceRow(cards []*jsonschema.GridCellInput, columns, span int, centred bool) []*jsonschema.GridCellInput {
+	if span > 1 {
+		for _, c := range cards {
+			c.ColSpan = span
+		}
+	}
+	missing := columns - len(cards)
+	if missing <= 0 {
+		return cards
+	}
+	out := make([]*jsonschema.GridCellInput, 0, len(cards)+2)
+	if centred {
+		// span is 2 here: the missing cards are missing × 2 grid columns,
+		// half of them on each side.
+		out = append(out, &jsonschema.GridCellInput{ColSpan: missing})
+		out = append(out, cards...)
+		return append(out, &jsonschema.GridCellInput{ColSpan: missing})
+	}
+	out = append(out, cards...)
+	return append(out, &jsonschema.GridCellInput{ColSpan: missing * span})
 }
 
 // cardGridContentRow builds a card-grid row whose height hugs its tallest
@@ -846,6 +994,9 @@ func validateCardGridOverrides(name string, overrides any) []error {
 			Code:    "invalid_enum",
 			Message: fmt.Sprintf("card-grid: overrides.border must be one of none, subtle, accent; got %q", ovr.Border),
 		})
+	}
+	if ovr.LastRow != "" && !slices.Contains(cardGridLastRowAligns, ovr.LastRow) {
+		errs = append(errs, errInvalidEnum(name, "overrides.last_row", ovr.LastRow, cardGridLastRowAligns))
 	}
 	if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
 		errs = append(errs, err)

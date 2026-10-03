@@ -153,7 +153,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `before-after-compact` | Compact before/after, height-capped at ~60% for brief content |
 | `bmc-canvas` | Formal 9-cell Business Model Canvas (Osterwalder) |
 | `capability-heatmap` | Capability / automation heatmap: 3–8 function columns with pointed headers (bold title + optional sublabel) over 1–6 activity cells each, filled by rating tier (2–4 levels, darkest = highest, text ink measured per fill) with a tier legend; shorter columns leave the bottom empty |
-| `card-grid` | Parameterized N×M grid of titled cards |
+| `card-grid` | Grid of 2–12 titled cards; `columns` / `rows` are optional and a last row that is not full stays short (5 = 3 + 2, 7 = 4 + 3) |
 | `chart-insights-split` | Left chart panel + right insights column (65/35 split, 75/25 when the insights are sparse) with optional headline number and so-what callout, a series/unit caption and auto data labels; falls back to insights-only when chart is omitted, emitting `CHART_PLACEHOLDER_EMPTY` |
 | `comparison-2col` | Two-column comparison with optional headers; `overrides.connectors` draws a per-row accent connector badge in a centre gutter ("from → to" shifts) |
 | `contact-directory` | Key-contacts directory: 1–4 groups (regions / practices), each an accent heading over a rule, then up to 24 people in rows of 3–5 — circular headshot (`photo`) or initials disc + bold name + muted title; sparse directories stack a large headshot above a centred name |

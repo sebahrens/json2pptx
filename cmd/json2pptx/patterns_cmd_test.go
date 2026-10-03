@@ -236,9 +236,9 @@ func TestPatternsValidate(t *testing.T) {
 	})
 
 	t.Run("multi_error_split", func(t *testing.T) {
-		// card-grid with columns=0, rows=0 produces two validation errors;
+		// card-grid with columns=6, rows=9 produces several validation errors;
 		// they must appear as separate entries (not collapsed into one).
-		multiErrValues := `{"columns":0,"rows":0,"cells":[]}`
+		multiErrValues := `{"columns":6,"rows":9,"cells":[]}`
 		multiErrFile := writeTestFile(t, dir, "multi_err.json", multiErrValues)
 
 		out, err := runBin(bin, "patterns", "validate", "--json", "card-grid", multiErrFile)

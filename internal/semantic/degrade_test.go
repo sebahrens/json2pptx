@@ -47,6 +47,13 @@ func degradeCases() map[string]SlideSpec {
 				map[string]any{"header": "D", "items": []any{"w"}},
 				map[string]any{"header": "E", "items": []any{"v"}},
 				map[string]any{"header": "F", "items": []any{"u"}},
+				map[string]any{"header": "G", "items": []any{"u"}},
+				map[string]any{"header": "H", "items": []any{"u"}},
+				map[string]any{"header": "I", "items": []any{"u"}},
+				map[string]any{"header": "J", "items": []any{"u"}},
+				map[string]any{"header": "K", "items": []any{"u"}},
+				map[string]any{"header": "L", "items": []any{"u"}},
+				map[string]any{"header": "M", "items": []any{"u"}},
 			},
 		}},
 		"option_matrix": {Kind: KindOptionMatrix, Body: map[string]any{

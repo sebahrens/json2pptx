@@ -368,9 +368,11 @@ func TestSuggestSwap_NoMetricsExcludesKPI(t *testing.T) {
 	}
 }
 
-func TestCardGrid_WrongPattern_9Cells(t *testing.T) {
-	// 9 cells with 2x3 grid (expects 6) should produce both count_mismatch
-	// and wrong_pattern diagnostics.
+func TestCardGrid_TooManyCells_NoPatternSwap(t *testing.T) {
+	// 9 cells on a 2x3 grid (room for 6) is a count_mismatch whose fix is the
+	// grid. It used to carry a wrong_pattern hint as well, which sent a
+	// five-card slide to a different pattern for want of a sixth card
+	// (go-slide-creator-0w4va).
 	p := &cardGrid{}
 	cells := make([]CardGridCell, 9)
 	for i := range cells {
@@ -382,46 +384,18 @@ func TestCardGrid_WrongPattern_9Cells(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected validation error for 9 cells in 2x3 grid")
 	}
-
-	// Should contain count_mismatch.
 	if !errors.Is(err, ErrCountMismatch) {
 		t.Error("expected count_mismatch error")
 	}
-
-	// Should contain wrong_pattern.
-	if !errors.Is(err, ErrWrongPattern) {
-		t.Error("expected wrong_pattern error")
+	if errors.Is(err, ErrWrongPattern) {
+		t.Errorf("a card count the grid cannot hold must not suggest another pattern: %v", err)
 	}
 
-	// Extract the wrong_pattern error and verify the fix.
-	var joined interface{ Unwrap() []error }
-	if !errors.As(err, &joined) {
-		t.Fatal("expected joined error")
+	// Fewer cards than the grid holds is not an error at all.
+	vals = &CardGridValues{Columns: 3, Rows: 2, Cells: cells[:5]}
+	if err := p.Validate(vals, nil, nil); err != nil {
+		t.Errorf("5 cells on a 3x2 grid: %v", err)
 	}
-	for _, e := range joined.Unwrap() {
-		var ve *ValidationError
-		if errors.As(e, &ve) && ve.Code == ErrCodeWrongPattern {
-			if ve.Fix == nil {
-				t.Fatal("wrong_pattern error should have a Fix")
-			}
-			if ve.Fix.Kind != "swap_pattern" {
-				t.Errorf("expected Fix.Kind=swap_pattern, got %q", ve.Fix.Kind)
-			}
-			suggested, ok := ve.Fix.Params["suggested"]
-			if !ok {
-				t.Fatal("Fix.Params should contain 'suggested'")
-			}
-			sugSlice, ok := suggested.([]any)
-			if !ok {
-				t.Fatalf("suggested should be []any, got %T", suggested)
-			}
-			if len(sugSlice) == 0 {
-				t.Error("expected at least one swap suggestion")
-			}
-			return
-		}
-	}
-	t.Error("did not find a wrong_pattern ValidationError in joined errors")
 }
 
 func TestRecommend_VarietyPenaltyDemotsRepeated(t *testing.T) {

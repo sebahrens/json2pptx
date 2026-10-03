@@ -1,5 +1,22 @@
 # Schema Changelog
 
+- **2026-10-03 — card-grid takes any card count (`go-slide-creator-0w4va`).**
+  - `card-grid` `values.columns` and `values.rows` are optional. Omitted,
+    the cards are arranged from their count (5 as 3 + 2, 7 as 4 + 3, 11 as
+    4 + 4 + 3); with one given the other is derived; with both, the grid only
+    has to hold the cards and a last row that is not full is left short at
+    the same card width. New `overrides.last_row`: `center` (default) /
+    `left`. Inputs whose count equals `columns × rows` render as before.
+  - Fewer cards than `columns × rows` is no longer an error. More cards
+    than the grid holds is still `count_mismatch` (message "cells holds N
+    cards but the grid has room for M"), without the `wrong_pattern` swap
+    hint it used to carry. An explicit `"columns": 0` / `"rows": 0` now
+    means "not given".
+  - DeckSpec: `comparison` with 6–12 columns (each column's items joining to
+    at most 160 characters) and `decision` with 7–12 options (each with a
+    detail of at most 160 characters, label at most 80) compile to
+    `card-grid` instead of falling back to bullets.
+
 - **2026-10-03 — Composition overrides compile to what explain reports (`go-slide-creator-vj549`).** SchemaVersion unchanged (no new tools, codes or fix kinds).
   - A `pattern` / `layout` override listed in `compositions[]` is honoured
     only when the slide actually compiles to it, and the compiler is held to

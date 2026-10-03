@@ -286,8 +286,10 @@ func computePatternCellBudgets(grid *jsonschema.ShapeGridInput, ctx patterns.Exp
 		// A severely overfull content-sized grid may not resolve at all. The
 		// pre-authoring budget still exists and must not disappear with it.
 		budgets = make([]cellBudgetEntry, len(bodyBudgets))
-		for i := range budgets {
-			budgets[i] = cellBudgetEntry{CellIndex: i, Row: i / values.Columns, Col: i % values.Columns}
+		if columns, _, ok := values.Shape(); ok {
+			for i := range budgets {
+				budgets[i] = cellBudgetEntry{CellIndex: i, Row: i / columns, Col: i % columns}
+			}
 		}
 	}
 	limit := min(len(budgets), len(bodyBudgets))

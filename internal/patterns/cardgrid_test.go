@@ -181,7 +181,9 @@ func TestCardGrid(t *testing.T) {
 			wantNoErr: true,
 		},
 		{
-			name: "cell_count_mismatch",
+			// A grid larger than the card count leaves the last row short
+			// (go-slide-creator-0w4va).
+			name: "fewer_cells_than_grid",
 			values: CardGridValues{
 				Columns: 2,
 				Rows:    2,
@@ -191,7 +193,28 @@ func TestCardGrid(t *testing.T) {
 					{Header: "E", Body: "F"},
 				},
 			},
-			wantErr: "cells must contain exactly 4",
+			wantNoErr: true,
+		},
+		{
+			name: "no_columns_or_rows",
+			values: CardGridValues{
+				Cells: []CardGridCell{
+					{Header: "A", Body: "B"},
+					{Header: "C", Body: "D"},
+					{Header: "E", Body: "F"},
+					{Header: "G", Body: "H"},
+					{Header: "I", Body: "J"},
+				},
+			},
+			wantNoErr: true,
+		},
+		{
+			name: "columns_only_too_many_rows",
+			values: CardGridValues{
+				Columns: 1,
+				Cells:   make([]CardGridCell, 6),
+			},
+			wantErr: "columns=1 allows at most 5 rows",
 		},
 		{
 			name: "columns_too_high",
@@ -203,13 +226,21 @@ func TestCardGrid(t *testing.T) {
 			wantErr: "columns must be 1–5",
 		},
 		{
-			name: "rows_zero",
+			name: "rows_negative",
 			values: CardGridValues{
 				Columns: 2,
-				Rows:    0,
-				Cells:   []CardGridCell{},
+				Rows:    -1,
+				Cells:   []CardGridCell{{Header: "A", Body: "B"}},
 			},
 			wantErr: "rows must be 1–5",
+		},
+		{
+			name: "no_cells",
+			values: CardGridValues{
+				Columns: 2,
+				Cells:   []CardGridCell{},
+			},
+			wantErr: "cells must contain at least 1",
 		},
 		{
 			name: "missing_header",
@@ -264,7 +295,7 @@ func TestCardGrid(t *testing.T) {
 			wantNoErr: true, // 3x3 = 9 cells, matches
 		},
 		{
-			name: "bmc_sibling_hint_mismatch",
+			name: "more_cells_than_grid",
 			values: CardGridValues{
 				Columns: 2,
 				Rows:    2,
@@ -276,7 +307,9 @@ func TestCardGrid(t *testing.T) {
 					return cells
 				}(),
 			},
-			wantErr: "bmc-canvas",
+			// More cards than the grid holds: the fix is the grid, not a
+			// different pattern.
+			wantErr: "cells holds 9 cards but the grid has room for 4",
 		},
 		{
 			name: "invalid_cell_override_key",

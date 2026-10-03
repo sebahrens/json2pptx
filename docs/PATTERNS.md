@@ -112,6 +112,19 @@ Where an index addresses a composite of several shapes, the text keys land on th
 
 All other patterns apply the text keys to the one shape the index addresses (banner / pillar / foundation / roof in `strategy-house`, a quadrant in `matrix-2x2`, a card in `card-grid`, and so on). The `kpi-*` family already did this through the same helper (formerly `applyKPICellTextOverrides`).
 
+## card-grid shape: the grid follows the cards
+
+`values.columns` and `values.rows` are optional (go-slide-creator-0w4va). `CardGridValues.Shape()` resolves the grid every caller uses (Validate, Expand, `CardGridBodyBudgets`):
+
+| Given | Grid |
+|---|---|
+| neither | arranged from the card count: 1–3 in one row, 4 as 2 × 2, 5 as 3 + 2, 6 as 3 × 2, 7 as 4 + 3, 8 as 4 × 2, 9 as 3 × 3, 10 as 5 × 2, 11 as 4 + 4 + 3, 12 as 4 × 3, 13–25 on five columns |
+| `columns` only | rows = ceil(cards / columns), at most 5 |
+| `rows` only | columns = ceil(cards / rows), at most 5 |
+| both | the grid only has to hold the cards: fewer cards than `columns × rows` leave the last row short (an unused row is dropped); more is `count_mismatch` naming the room the grid has |
+
+A last row that is not full keeps the card width of the rows above it and is centred (`overrides.last_row: "left"` aligns it left). Centring is done on a grid of twice the columns with every card spanning two, so an odd shortfall still centres; a full grid is emitted exactly as before. The short row is sized like any other: content-sized height, headers padded to one body baseline at the full row's card width. A count the grid cannot hold no longer carries a `wrong_pattern` swap hint — the fix is the grid, not another pattern; the KPI-shaped-headers hint is unchanged.
+
 ## card-grid styles + surface overrides
 
 `card-grid` (`cardgrid.go`) exposes two complementary knobs through pattern-level `overrides` (distinct from the per-cell `cell_overrides` whitelist above):
