@@ -97,8 +97,11 @@ func TestGeometry_ChevronTextExceedsShape(t *testing.T) {
 }
 
 func TestGeometry_RectLongWordAndShortLabelOK(t *testing.T) {
-	in := geomSlides(t, `[{"layout_id":"content","shape_grid":{"columns":8,"rows":[{"cells":[
-		{"shape":{"geometry":"rect","fill":"accent1","text":{"content":"Decommissioning","size":16}}},
+	// 12pt: a larger word the writer shrinks onto one line is written whole
+	// and not reported (go-slide-creator-v74wv).
+	in := geomSlides(t, `[{"layout_id":"content","shape_grid":{"columns":10,"rows":[{"cells":[
+		{"shape":{"geometry":"rect","fill":"accent1","text":{"content":"Decommissioning","size":12}}},
+		{"shape":{"geometry":"rect","fill":"accent1","text":"Ok"}},{"shape":{"geometry":"rect","fill":"accent1","text":"Ok"}},
 		{"shape":{"geometry":"rect","fill":"accent1","text":"Ok"}},{"shape":{"geometry":"rect","fill":"accent1","text":"Ok"}},
 		{"shape":{"geometry":"rect","fill":"accent1","text":"Ok"}},{"shape":{"geometry":"rect","fill":"accent1","text":"Ok"}},
 		{"shape":{"geometry":"rect","fill":"accent1","text":"Ok"}},{"shape":{"geometry":"rect","fill":"accent1","text":"Ok"}},

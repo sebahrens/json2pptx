@@ -250,7 +250,10 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 		availW = cell.Bounds.CY - in[1] - in[3]
 	}
 	availPt := math.Max(float64(availW)/emuPerPt, 0)
-	if word, wordPt, minGlyphPt := a.m.widestWord(txt); word != "" && wordPt > availPt*textExceedsTolerance {
+	// A word the writer shrinks onto one line (pptx.WordShrinkRescues) is
+	// written whole, not broken (go-slide-creator-v74wv).
+	if word, wordPt, minGlyphPt := a.m.widestWord(txt); word != "" && wordPt > availPt*textExceedsTolerance &&
+		!pptx.WordShrinkRescues(txt.body, wordPt, availPt) {
 		geometry := cell.ShapeSpec.Geometry
 		if geometry == "" {
 			geometry = "rect"

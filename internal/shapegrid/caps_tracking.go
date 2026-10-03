@@ -41,7 +41,9 @@ func trackCapsLabels(tb *pptx.TextBody, bounds pptx.RectEmu) {
 		return
 	}
 	insets := pptx.EffectiveTextInsets(tb, bounds)
-	width := bounds.CX - insets[0] - insets[2]
+	// The clamp's room for renderer variance is not room for tracking
+	// (go-slide-creator-v74wv).
+	width := int64(float64(bounds.CX-insets[0]-insets[2]) / pptx.WordFitSlackFor(tb))
 	for i := range tb.Paragraphs {
 		p := &tb.Paragraphs[i]
 		sizeHPt, ok := capsLabelSize(p)

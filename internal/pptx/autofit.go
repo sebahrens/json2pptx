@@ -210,12 +210,12 @@ func autofitMeasureInput(tb *TextBody, bounds RectEmu) (autofitInput, bool) {
 	}
 
 	availablePt := float64(heightEMU) / float64(types.EMUPerPoint)
-	if tb.Insets == [4]int64{} {
+	if !tb.declaresInsets() {
 		// No declared insets: the renderer still applies its defaults.
 		availablePt -= 2 * autofitDefaultInsetPt
 	}
 	measureW := widthEMU
-	if tb.Insets != [4]int64{} {
+	if tb.declaresInsets() {
 		// textfit.MeasureRun removes the OOXML default 0.1in sides from the
 		// width it is handed. A body with declared insets has already had its
 		// own removed (textAreaEMU), so hand the measurement that allowance
@@ -241,21 +241,13 @@ func autofitMeasureInput(tb *TextBody, bounds RectEmu) (autofitInput, bool) {
 // KPI value or a label word to (fitSingleLineSize), so a value fitted
 // edge-to-edge is not written shrunk (go-slide-creator-ohhb2).
 func longestWordScale(tb *TextBody, widthEMU int64, face autofitFace) float64 {
-	if tb.Insets == [4]int64{} {
+	if !tb.declaresInsets() {
 		widthEMU -= 2 * autofitDefaultInsetLREMU
 	}
-	// fontScale shrinks every paragraph alike, so the smallest text in the
-	// body sets how far the whole body may shrink.
-	minPt := math.Inf(1)
-	for _, p := range tb.Paragraphs {
-		if text, pt := paragraphTextAndSize(p); strings.TrimSpace(text) != "" && pt > 0 {
-			minPt = math.Min(minPt, pt)
-		}
-	}
-	if minPt <= autofitWordMinPt || math.IsInf(minPt, 1) {
+	floor := wordShrinkFloor(tb)
+	if floor >= 1 {
 		return 1
 	}
-	floor := math.Max(autofitWordFloorScale, autofitWordMinPt/minPt)
 	safety := autofitWordSafety
 	if face.exact {
 		safety = 1
@@ -282,6 +274,47 @@ func longestWordScale(tb *TextBody, widthEMU int64, face autofitFace) float64 {
 		}
 	}
 	return scale
+}
+
+// WordShrinkFloor is the smallest fontScale the writer applies to keep a
+// normAutofit body's widest word on one line (longestWordScale): 1 when the
+// body does not shrink for a word — not normAutofit, or its smallest text is
+// already at the readable minimum.
+func WordShrinkFloor(tb *TextBody) float64 {
+	if tb == nil || tb.AutoFit != "normAutofit" {
+		return 1
+	}
+	return wordShrinkFloor(tb)
+}
+
+// WordShrinkRescues reports whether the writer shrinks tb until a word
+// wordW wide fits a line availW wide (both in the same unit, measured at the
+// authored size) — so the word is written whole, not broken. Fit detectors
+// that measure at the authored size use it to report only the words the
+// writer cannot save (go-slide-creator-v74wv).
+func WordShrinkRescues(tb *TextBody, wordW, availW float64) bool {
+	floor := WordShrinkFloor(tb)
+	safety := autofitWordSafety
+	if autofitMeasureFace(tb).exact {
+		safety = 1
+	}
+	return floor < 1 && wordW*floor <= availW*safety
+}
+
+// wordShrinkFloor is WordShrinkFloor without the autofit-mode gate. fontScale
+// shrinks every paragraph alike, so the smallest text in the body sets how
+// far the whole body may shrink.
+func wordShrinkFloor(tb *TextBody) float64 {
+	minPt := math.Inf(1)
+	for _, p := range tb.Paragraphs {
+		if text, pt := paragraphTextAndSize(p); strings.TrimSpace(text) != "" && pt > 0 {
+			minPt = math.Min(minPt, pt)
+		}
+	}
+	if minPt <= autofitWordMinPt || math.IsInf(minPt, 1) {
+		return 1
+	}
+	return math.Max(autofitWordFloorScale, autofitWordMinPt/minPt)
 }
 
 // paragraphBold reports whether any of the paragraph's text is bold — the

@@ -943,6 +943,10 @@ func (ctx *singlePassContext) finalizePanelGroupXML() {
 			inserts[i].groupXML = pptx.SetGroupDescription(inserts[i].groupXML, inserts[i].altText)
 			nextShapeID += nativeInsertIDSpan(&inserts[i], inserts[i].groupXML, base)
 			if inserts[i].contentPath != "" {
+				// A word the shapes break mid-word (go-slide-creator-v74wv).
+				if f := nativeWordFitFinding(inserts[i].diagramType, inserts[i].contentPath, inserts[i].groupXML, env.fontName); f != nil {
+					ctx.emitFitFinding(*f)
+				}
 				ctx.nativeShapeSources = append(ctx.nativeShapeSources, nativeShapeSource{
 					slideIndex: slideNum - ctx.calculateStartingSlideNum(),
 					lo:         base, hi: nextShapeID,

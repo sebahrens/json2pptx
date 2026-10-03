@@ -93,6 +93,9 @@ func GenerateGridNativeDiagram(spec *types.DiagramSpec, region NativeDiagramRegi
 		Findings: layout.findings,
 		Warnings: layout.warnings,
 	}
+	if f := nativeWordFitFinding(spec.Type, region.Path, xml, env.fontName); f != nil {
+		out.Findings = append(out.Findings, *f)
+	}
 	if layout.panelLayout != "" && panelsHaveIcons(layout.insert.panels) {
 		rects := panelIconRects(layout.panelLayout, layout.insert.bounds, layout.insert.panels, env.fontName)
 		for i, p := range layout.insert.panels {

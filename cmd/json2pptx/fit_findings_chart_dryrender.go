@@ -116,6 +116,10 @@ func collectChartDryRenderFindingsResolved(
 				// (go-slide-creator-y72c3).
 				findings = append(findings, generator.NativeDiagramReadabilityPreflight(
 					item.DiagramValue, bounds, bodyFont, themeColors, viewingMode, path)...)
+				// ... and the words its shapes break mid-word
+				// (go-slide-creator-v74wv).
+				findings = append(findings, generator.NativeDiagramWordFitPreflight(
+					item.DiagramValue, bounds, bodyFont, themeColors, path)...)
 			}
 		}
 
@@ -275,7 +279,9 @@ func dryRenderGridSpecInBounds(
 			Bounds: bounds, ThemeColors: themeColors, FontName: bodyFont, Path: path,
 		}); f != nil {
 			findings = append(findings, *f)
+			return findings
 		}
+		findings = append(findings, generator.NativeDiagramWordFitPreflight(spec, bounds, bodyFont, themeColors, path)...)
 		return findings
 	}
 	if converterAvailable || spec == nil || spec.Type == "" {

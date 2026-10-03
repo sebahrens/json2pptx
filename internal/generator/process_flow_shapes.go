@@ -318,7 +318,10 @@ func pfTextArea(step processFlowStep, font string, width, height int64) (int64, 
 	w, h := pfTextAreaPercent(step.stepType)
 	rectW, rectH := width*w/100, height*h/100
 	lineH := int64(pfLabelFontSize) * 127 * 12 / 10
-	return max(1, rectW-2*pptx.UniformInsetFor(rectW, pfWidestLabelWordEMU(step, font))),
+	// Native bodies carry no theme fonts, so the writer's clamp measures them
+	// in its stand-in face and leaves the stand-in slack.
+	wordNeed := int64(math.Ceil(float64(pfWidestLabelWordEMU(step, font)) * pptx.StandInWordFitSlack))
+	return max(1, rectW-2*pptx.UniformInsetFor(rectW, wordNeed)),
 		max(1, rectH-2*pptx.UniformInsetFor(rectH, lineH))
 }
 

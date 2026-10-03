@@ -43,6 +43,28 @@ func ShapeTextInsets() [4]int64 {
 // largest run size — the same 1.2 the autofit measure uses.
 const oneLineFactor = autofitLineSpacing
 
+// WordFitSlack is the room a clamped axis leaves around its widest word, as a
+// multiple of the word's measured width, when the word is measured in the face
+// it renders in. Renderers measure with their own hinting and rounding: a word
+// handed exactly its measured width wrapped its last glyph onto a second line
+// ("Desig / n" under a timeline dot, go-slide-creator-v74wv).
+const WordFitSlack = 1.05
+
+// StandInWordFitSlack is WordFitSlack for a word measured in the Liberation
+// Sans stand-in because its own face is host-dependent (autofitMeasureFace).
+// The face the renderer substitutes can be far wider: LibreOffice draws Segoe
+// UI as Verdana, whose bold is 16–21% wider, and broke "Octob / er" on
+// modern-yellow.
+const StandInWordFitSlack = 1.2
+
+// wordFitSlackFor is the slack the clamp gives tb's widest word.
+func wordFitSlackFor(tb *TextBody) float64 {
+	if autofitMeasureFace(tb).exact {
+		return WordFitSlack
+	}
+	return StandInWordFitSlack
+}
+
 // EffectiveTextInsets returns the insets a body is written with inside bounds.
 // It is the declared insets, except on an axis where they leave less than one
 // line of the body's text: there both sides shrink proportionally until one
@@ -50,8 +72,10 @@ const oneLineFactor = autofitLineSpacing
 // no declared insets (renderer defaults) or no text is returned unchanged.
 //
 // The vertical need is one line at the largest run size; the horizontal need is
-// the widest single word, since wrapping can break anywhere else. Vertical text
-// (vert / vert270 / …) swaps the two axes.
+// the widest single word plus its paragraph's side margins (a bulleted item's
+// text starts at marL), with WordFitSlack (StandInWordFitSlack for a
+// host-dependent face) of room, since wrapping can break
+// anywhere else. Vertical text (vert / vert270 / …) swaps the two axes.
 func EffectiveTextInsets(tb *TextBody, bounds RectEmu) [4]int64 {
 	if tb == nil {
 		return [4]int64{}
@@ -71,7 +95,7 @@ func EffectiveTextInsets(tb *TextBody, bounds RectEmu) [4]int64 {
 		if room >= wordBound {
 			return 0
 		}
-		return widestWordEMU(tb)
+		return int64(math.Ceil(float64(widestWordEMU(tb)) * wordFitSlackFor(tb)))
 	}
 	if tb.Vert != "" && tb.Vert != "horz" {
 		in[1], in[3] = clampInsetPair(in[1], in[3], bounds.CY, wordW(bounds.CY-in[1]-in[3]))
@@ -112,6 +136,7 @@ func clampInsetPair(a, b, extent, need int64) (int64, int64) {
 func oneLineBoundsEMU(tb *TextBody) (lineH, wordBound int64) {
 	maxHPt := 0
 	for _, p := range tb.Paragraphs {
+		margins := paragraphSideMarginsEMU(p)
 		for _, r := range p.Runs {
 			if strings.TrimSpace(r.Text) == "" {
 				continue
@@ -121,7 +146,8 @@ func oneLineBoundsEMU(tb *TextBody) (lineH, wordBound int64) {
 				maxHPt = size
 			}
 			for _, w := range strings.FieldsFunc(r.Text, unicode.IsSpace) {
-				if b := int64(len([]rune(w))) * int64(size) * 127; b > wordBound {
+				b := int64(float64(int64(len([]rune(w)))*int64(size)*127)*StandInWordFitSlack) + margins + runTrackingEMU(r, w)
+				if b > wordBound {
 					wordBound = b
 				}
 			}
@@ -133,11 +159,32 @@ func oneLineBoundsEMU(tb *TextBody) (lineH, wordBound int64) {
 	return int64(float64(maxHPt) * oneLineFactor * 127), wordBound
 }
 
-// widestWordEMU measures the widest single word of the body at its run size.
+// runTrackingEMU is the width a run's letter-spacing adds to word w.
+func runTrackingEMU(r Run, w string) int64 {
+	return int64(len([]rune(w))*max(r.Spacing, 0)) * 127
+}
+
+// WordFitSlackFor is the slack EffectiveTextInsets leaves around tb's widest
+// word: WordFitSlack when tb is measured in its own face, StandInWordFitSlack
+// otherwise. Anything that spends a clamped body's width (caps tracking)
+// must leave it.
+func WordFitSlackFor(tb *TextBody) float64 {
+	return wordFitSlackFor(tb)
+}
+
+// paragraphSideMarginsEMU is the line width a paragraph's own left and right
+// margins take from the text area.
+func paragraphSideMarginsEMU(p Paragraph) int64 {
+	return max(p.MarginL, 0) + max(p.MarginR, 0)
+}
+
+// widestWordEMU measures the widest single word of the body at its run size,
+// plus its paragraph's side margins.
 func widestWordEMU(tb *TextBody) int64 {
 	var widest int64
 	font := autofitMeasureFace(tb).name
 	for _, p := range tb.Paragraphs {
+		margins := paragraphSideMarginsEMU(p)
 		for _, r := range p.Runs {
 			size := runSizeHPt(r)
 			for _, w := range strings.FieldsFunc(r.Text, unicode.IsSpace) {
@@ -146,7 +193,7 @@ func widestWordEMU(tb *TextBody) int64 {
 					// No measurement font: a conservative 0.6em per rune.
 					ww = int64(float64(len([]rune(w))) * float64(size) * 0.6 * 127)
 				}
-				if ww > widest {
+				if ww += margins + runTrackingEMU(r, w); ww > widest {
 					widest = ww
 				}
 			}
@@ -223,6 +270,14 @@ func PresetTextRectSize(geometry string, adj int64, bounds RectEmu) (int64, int6
 		tw, th = w*19564/21600, h*15274/21600
 	case "ellipse", "flowChartConnector":
 		tw, th = w*math.Sqrt2/2, h*math.Sqrt2/2
+	case "trapezoid":
+		// il = wd3·a/maxAdj with maxAdj = 50000·w/ss, it likewise: the text
+		// rectangle loses il on each side and it at the top. Measured as the
+		// whole shape, a pyramid apex broke "Stra / tegy" (go-slide-creator-v74wv).
+		maxAdj := 50000 * w / ss
+		v := math.Min(math.Max(a(25000), 0), maxAdj)
+		tw = w - 2*(w/3)*v/maxAdj
+		th = h - (h/3)*v/maxAdj
 	case "hexagon":
 		tw = w - 2*ss*a(25000)/100000
 	case "octagon":

@@ -104,14 +104,16 @@ func TestPredictedTextExceedsShapeStaysAdvisory(t *testing.T) {
 	// skipping on the very regression it guards (go-slide-creator-gdi5r). A
 	// raw shape_grid whose word overshoots its cell by ~1.2x is an estimate,
 	// not a measurement: it must surface as advisory and leave the gate open.
-	cells := make([]*GridCellInput, 4)
+	// The word is at the 12pt floor: a larger one the writer shrinks onto one
+	// line is written whole and not reported (go-slide-creator-v74wv).
+	cells := make([]*GridCellInput, 9)
 	for i := range cells {
-		cells[i] = &GridCellInput{Shape: &ShapeSpecInput{Geometry: "rect", Text: json.RawMessage(`{"content":"Internationalisation","size":28}`)}}
+		cells[i] = &GridCellInput{Shape: &ShapeSpecInput{Geometry: "rect", Text: json.RawMessage(`{"content":"Internationalisation","size":12}`)}}
 	}
 	predicted := &PresentationInput{Template: "midnight-blue", Slides: []SlideInput{{
 		SlideType: "content", LayoutID: "content",
 		Content:   []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("Predicted overflow")}},
-		ShapeGrid: &ShapeGridInput{Columns: json.RawMessage(`4`), Rows: []GridRowInput{{Cells: cells}}},
+		ShapeGrid: &ShapeGridInput{Columns: json.RawMessage(`9`), Rows: []GridRowInput{{Cells: cells}}},
 	}}}
 	_, gate, findings := gateFor(t, predicted)
 	sawPredicted := false

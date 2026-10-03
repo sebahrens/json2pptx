@@ -80,6 +80,9 @@ func GenerateShape(opts ShapeOptions) ([]byte, error) {
 	// Degenerate shapes keep one line of text: an axis too small for the
 	// margin plus one line has its insets clamped (EffectiveTextInsets).
 	if opts.Text != nil {
+		if opts.Text.Insets != [4]int64{} {
+			opts.Text.ExplicitInsets = true
+		}
 		opts.Text.Insets = EffectiveTextInsets(opts.Text, presetTextBounds(opts))
 	}
 	applyAutofitScale(opts.Text, opts.Bounds)
