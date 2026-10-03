@@ -625,33 +625,39 @@ func TestTwelveFlawDraftCleanInThreeRoundTrips(t *testing.T) {
 	}
 	for _, tpl := range templates {
 		t.Run(tpl, func(t *testing.T) {
-			mc := refusalTestConfig(t)
-			agent := newJourneyAgent(t, twelveFlawDraft(t))
-			send := agent.finishRound()
-			const maxRoundTrips = 3
-			for round := 1; ; round++ {
-				env := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": send, "template": tpl}))
-				t.Logf("validate %d: ok=%v, %s", round, env.OK, env.Summary)
-				for _, f := range env.Findings {
-					t.Logf("  %s %s %v: %s", f.Severity, f.Code, pathsOf(f), f.Message)
-				}
-				if journeyClean(env, tpl == "modern" || tpl == "midnight-blue") {
-					// What validate calls clean, render writes and calls ready.
-					render := renderDeckSpecCall(t, mc, map[string]any{"spec": send, "template": tpl})
-					if !render.Success || render.DeterministicReady == nil || !*render.DeterministicReady {
-						t.Errorf("the clean spec does not render ready: %q %v", render.Error, render.DeterministicBlockingReasons)
-					}
-					return
-				}
-				if round == maxRoundTrips {
-					t.Fatalf("validate %d is not clean: %s", round, env.Summary)
-				}
-				agent.response = env.Findings
-				for _, f := range env.Findings {
-					agent.apply(f)
-				}
-				send = agent.finishRound()
-			}
+			twelveFlawJourney(t, refusalTestConfig(t), tpl, tpl == "modern" || tpl == "midnight-blue", 3)
 		})
+	}
+}
+
+// twelveFlawJourney plays the draft to a clean validate and a ready render on
+// one template, applying each finding of each response, and returns the
+// validate round-trips that took. It fails the test when validate
+// maxRoundTrips is not clean. strict rules out info-level notes too.
+func twelveFlawJourney(t *testing.T, mc *mcpConfig, tpl string, strict bool, maxRoundTrips int) (validates int) {
+	agent := newJourneyAgent(t, twelveFlawDraft(t))
+	send := agent.finishRound()
+	for round := 1; ; round++ {
+		env := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": send, "template": tpl}))
+		t.Logf("validate %d: ok=%v, %s", round, env.OK, env.Summary)
+		for _, f := range env.Findings {
+			t.Logf("  %s %s %v: %s", f.Severity, f.Code, pathsOf(f), f.Message)
+		}
+		if journeyClean(env, strict) {
+			// What validate calls clean, render writes and calls ready.
+			render := renderDeckSpecCall(t, mc, map[string]any{"spec": send, "template": tpl})
+			if !render.Success || render.DeterministicReady == nil || !*render.DeterministicReady {
+				t.Errorf("the clean spec does not render ready: %q %v", render.Error, render.DeterministicBlockingReasons)
+			}
+			return round
+		}
+		if round == maxRoundTrips {
+			t.Fatalf("validate %d is not clean: %s", round, env.Summary)
+		}
+		agent.response = env.Findings
+		for _, f := range env.Findings {
+			agent.apply(f)
+		}
+		send = agent.finishRound()
 	}
 }

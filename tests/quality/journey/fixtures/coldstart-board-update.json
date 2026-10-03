@@ -1,0 +1,193 @@
+{
+ "meta": {
+  "title": "Q3 FY26 board update for Northwind Logistics",
+  "date": "October 2026",
+  "source": "Northwind management accounts, Q3 FY26",
+  "chrome": {
+   "page_numbers": {
+    "enabled": true
+   }
+  }
+ },
+ "slides": [
+  {
+   "kind": "title",
+   "title": "Q3 FY26 board update for Northwind Logistics",
+   "subtitle": "Board of directors, October 2026"
+  },
+  {
+   "kind": "executive_summary",
+   "title": "Q3 beat plan on revenue and margin; SMB churn needs a EUR 1.2M fix",
+   "points": [
+    {
+     "lead": "Revenue and margin are ahead of plan.",
+     "support": "Revenue reached EUR 48.2M, up 12% year on year, at a 14.1% EBITDA margin against a 13% plan."
+    },
+    {
+     "lead": "Operations are holding.",
+     "support": "On-time delivery was 96.4% in the quarter."
+    },
+    {
+     "lead": "SMB churn is the one real risk.",
+     "support": "Quarterly SMB churn rose from 2.2% to 3.1%."
+    },
+    {
+     "lead": "A dedicated success team is the best fix.",
+     "support": "It costs EUR 1.2M, half the price of a self-serve portal, and can be live by Q2 FY27."
+    }
+   ],
+   "bottom_line": "Approve EUR 1.2M and eight hires for an SMB success team."
+  },
+  {
+   "kind": "kpi_snapshot",
+   "title": "Three of four headline KPIs beat plan; SMB churn rose to 3.1%",
+   "kpis": [
+    {
+     "label": "Revenue",
+     "value": "€48.2M",
+     "delta": "+12% YoY"
+    },
+    {
+     "label": "EBITDA margin",
+     "value": "14.1%",
+     "delta": "plan 13%"
+    },
+    {
+     "label": "On-time delivery",
+     "value": "96.4%"
+    },
+    {
+     "label": "SMB churn",
+     "value": "3.1%",
+     "delta": "from 2.2%"
+    }
+   ],
+   "takeaway": "Growth and margin are ahead; retention in SMB is not."
+  },
+  {
+   "kind": "chart_insight",
+   "title": "Revenue grew every quarter for a year to reach EUR 48.2M",
+   "chart": {
+    "type": "bar",
+    "title": "Quarterly revenue (EUR M)",
+    "data": {
+     "categories": [
+      "Q3 FY25",
+      "Q4 FY25",
+      "Q1 FY26",
+      "Q2 FY26",
+      "Q3 FY26"
+     ],
+     "series": [
+      {
+       "name": "Revenue",
+       "values": [
+        43.0,
+        44.1,
+        45.6,
+        46.9,
+        48.2
+       ]
+      }
+     ]
+    }
+   },
+   "insights": [
+    "Revenue is up 12% on Q3 FY25.",
+    "Each quarter added EUR 1.1M to 1.5M."
+   ],
+   "takeaway": "Four straight quarters of growth put FY26 ahead of plan."
+  },
+  {
+   "kind": "option_matrix",
+   "title": "A success team fixes SMB churn at half the cost of a portal",
+   "criteria": [
+    "Cost",
+    "Time to impact",
+    "Churn impact",
+    "Execution risk"
+   ],
+   "options": [
+    {
+     "name": "Do nothing",
+     "detail": "No cost; churn keeps rising",
+     "scores": [
+      4,
+      1,
+      0,
+      3
+     ]
+    },
+    {
+     "name": "Success team",
+     "detail": "EUR 1.2M, eight hires",
+     "scores": [
+      3,
+      3,
+      4,
+      3
+     ]
+    },
+    {
+     "name": "Self-serve portal",
+     "detail": "EUR 2.4M build",
+     "scores": [
+      1,
+      1,
+      3,
+      2
+     ]
+    }
+   ],
+   "recommended": "Success team",
+   "decisive_criterion": "Churn impact",
+   "highlight_label": "Recommended",
+   "scale": "harvey",
+   "takeaway": "The success team scores best on churn impact and speed."
+  },
+  {
+   "kind": "decision",
+   "title": "Approve EUR 1.2M and eight hires for an SMB success team",
+   "options": [
+    {
+     "label": "Do nothing",
+     "detail": "No new cost, and SMB churn keeps climbing."
+    },
+    {
+     "label": "Dedicated success team",
+     "detail": "EUR 1.2M and eight hires; live by Q2 FY27.",
+     "recommended": true
+    },
+    {
+     "label": "Self-serve portal",
+     "detail": "EUR 2.4M build with a slower effect on churn."
+    }
+   ],
+   "recommendation": "Fund a dedicated SMB success team for EUR 1.2M."
+  },
+  {
+   "kind": "next_steps",
+   "title": "Three steps take the success team to full rollout by Q2 FY27",
+   "actions": [
+    {
+     "action": "Hire the eight-person success team",
+     "owner": "VP Customer",
+     "date": "Q4 FY26"
+    },
+    {
+     "action": "Run the pilot with the 200 largest SMB accounts",
+     "owner": "COO",
+     "date": "Q1 FY27"
+    },
+    {
+     "action": "Roll out to all SMB accounts",
+     "owner": "COO",
+     "date": "Q2 FY27"
+    }
+   ],
+   "decisions": [
+    "Approve EUR 1.2M and eight hires"
+   ]
+  }
+ ]
+}

@@ -258,6 +258,18 @@ go test ./... -cover -coverprofile=coverage.out
 go tool cover -html=coverage.out
 ```
 
+### The Agent-Journey Check
+
+How long and how heavy an agent's path to a rendered deck is, is tracked: `TestAgentJourneyMetrics` (in `cmd/json2pptx`, part of `go test ./...`) measures first-contact bytes, round-trips to a clean render, validate/render parity and whether every offered patch clears its finding, holds each to a threshold and compares the set with the last row of `tests/quality/journey/results.jsonl`. `TestAgentJourneyDelights` keeps what first-time agents said worked well.
+
+If your change moves a number on purpose (a longer tool description, a new finding), record a row and commit it with the change:
+
+```bash
+JOURNEY_RECORD=1 go test -short ./cmd/json2pptx -run TestAgentJourneyMetrics
+```
+
+The harness the agents themselves run through (a stdio-MCP bridge and five persona briefs), what to record from a run, and how to add its row are in [tests/quality/journey/README.md](tests/quality/journey/README.md). Run it after a change to what agents read first (`get_started`, tool descriptions, finding messages).
+
 ## Adding a Template
 
 Every file under `templates/*.pptx` MUST pass `json2pptx template-check` with **zero FAIL and zero WARN** before it ships. The gate is enforced by the corpus test `internal/template/conformance_corpus_test.go`, which runs as part of `go test ./...` (and therefore on every PR in CI).

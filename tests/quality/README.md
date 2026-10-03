@@ -66,6 +66,7 @@ tests/quality/
   results.csv      # Current run output (gitignored)
   run.sh           # Shell runner (mechanical + optional visual QA)
   quality_test.go  # Go test harness
+  journey/         # Agent-journey harness (MCP bridge, persona briefs) and results.jsonl; see journey/README.md
   README.md        # This file
 ```
 

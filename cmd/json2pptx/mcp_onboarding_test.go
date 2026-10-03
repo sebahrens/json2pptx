@@ -271,31 +271,21 @@ func shippedTemplatesDir(t *testing.T) string {
 // schemas, a template's colour roles) is fetched for the tool, the kinds and
 // the template the agent chose.
 func TestOnboardingPayloadBudgets(t *testing.T) {
-	withToolProfile(t, toolProfileDeckSpec)
-	withRenderStatus(t, true, nil)
-	mc := refusalTestConfig(t)
-	// Only the shipped templates: a local templates/p-style.pptx must not
-	// move a budget.
-	mc.templatesDir = shippedTemplatesDir(t)
-
-	rawTools, _ := listToolsOverWire(t, newJSON2PPTXMCPServer(profileTestConfig(t), toolProfileDeckSpec))
-	started := onboardingBytes(t, mustCall(t, mc.handleGetStarted, map[string]any{"task": "brief"}))
-	kinds := onboardingBytes(t, mustCall(t, mc.handleListSlideKinds, map[string]any{}))
-	names := onboardingBytes(t, mustCall(t, mc.handleListTemplates, map[string]any{"fields": "names"}))
-	compact := onboardingBytes(t, mustCall(t, mc.handleListTemplates, map[string]any{"read_only": true}))
-	instructions := len(mcpInstructionsFor(true, nil))
+	// Measured on the shipped templates only: a local templates/p-style.pptx
+	// must not move a budget.
+	mc, p := measureOnboardingPayload(t)
 
 	for _, b := range []struct {
 		name          string
 		got, ceiling  int
 		measuredToday int // on main before this change
 	}{
-		{"initialize instructions", instructions, 1536, 1355},
-		{"tools/list", len(rawTools), deckSpecToolListByteBudget, 40628},
-		{"get_started(brief)", started, 5632, 12066},
-		{"list_slide_kinds catalogue", kinds, 6 * 1024, 21661},
-		{"list_templates fields:names", names, 2 * 1024, 14652},
-		{"list_templates compact", compact, 15 * 1024, 14652},
+		{"initialize instructions", p.Instructions, 1536, 1355},
+		{"tools/list", p.ToolsList, deckSpecToolListByteBudget, 40628},
+		{"get_started(brief)", p.GetStarted, 5632, 12066},
+		{"list_slide_kinds catalogue", p.SlideKinds, 6 * 1024, 21661},
+		{"list_templates fields:names", p.TemplateNames, 2 * 1024, 14652},
+		{"list_templates compact", p.TemplatesCompact, 15 * 1024, 14652},
 	} {
 		t.Logf("%-28s %6d bytes (ceiling %d, was %d)", b.name, b.got, b.ceiling, b.measuredToday)
 		if b.got > b.ceiling {
@@ -305,7 +295,7 @@ func TestOnboardingPayloadBudgets(t *testing.T) {
 	// The path get_started lays out: tools/list, get_started, the template
 	// names and the kind catalogue.
 	const firstContactBudget = 40 * 1024
-	total := instructions + len(rawTools) + started + kinds + names
+	total := p.firstContact()
 	t.Logf("first contact: %d bytes (budget %d)", total, firstContactBudget)
 	if total > firstContactBudget {
 		t.Errorf("first contact is %d bytes, over the %d-byte budget", total, firstContactBudget)

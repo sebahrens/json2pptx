@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
@@ -125,25 +126,63 @@ func completePatch(t *testing.T, f diagnostics.Finding, ops []any) (filled []any
 	return filled, template
 }
 
+// patchHarnessRun is what the harness found: the patches offered, how many of
+// them the server had verified, and every failure.
+type patchHarnessRun struct {
+	Patches  int
+	Verified int
+	Problems []string
+}
+
+// shortPatchHarnessRun is the short run's harness (the cases of the review,
+// and one kind past and at its documented count), run once per test binary.
+// The harness test and TestAgentJourneyMetrics both read it.
+func shortPatchHarnessRun(t *testing.T) patchHarnessRun {
+	t.Helper()
+	shortPatchHarness.once.Do(func() {
+		shortPatchHarness.run = runPatchHarness(t, shortHarnessDeck)
+	})
+	return shortPatchHarness.run
+}
+
+var shortPatchHarness struct {
+	once sync.Once
+	run  patchHarnessRun
+}
+
 func TestEveryEmittedPatchClearsItsFinding(t *testing.T) {
+	wantPatches, wantVerified := 12, 4
+	var run patchHarnessRun
+	if testing.Short() {
+		run, wantPatches, wantVerified = shortPatchHarnessRun(t), 8, 3
+	} else {
+		run = runPatchHarness(t, func(string) bool { return true })
+	}
+	for _, problem := range run.Problems {
+		t.Error(problem)
+	}
+	t.Logf("%d patches applied, %d of them verified by the server", run.Patches, run.Verified)
+	if run.Patches < wantPatches || run.Verified < wantVerified {
+		t.Errorf("the corpus exercised %d patches (%d verified); it no longer covers the patch kinds", run.Patches, run.Verified)
+	}
+}
+
+// runPatchHarness applies every patch the decks of the corpus that keep
+// selects are offered, and validates again.
+func runPatchHarness(t *testing.T, keep func(name string) bool) (run patchHarnessRun) {
+	t.Helper()
+	fail := func(format string, args ...any) {
+		run.Problems = append(run.Problems, fmt.Sprintf(format, args...))
+	}
 	mc := refusalTestConfig(t)
 	corpus := patchHarnessCorpus(t)
 	names := make([]string, 0, len(corpus))
 	for name := range corpus {
-		names = append(names, name)
+		if keep(name) {
+			names = append(names, name)
+		}
 	}
 	sort.Strings(names)
-	wantPatches, wantVerified := 12, 4
-	if testing.Short() {
-		kept := names[:0]
-		for _, name := range names {
-			if shortHarnessDeck(name) {
-				kept = append(kept, name)
-			}
-		}
-		names, wantPatches, wantVerified = kept, 8, 3
-	}
-	patches, verified := 0, 0
 	for _, name := range names {
 		args := map[string]any{"spec": corpus[name]["spec"]}
 		if tpl, _ := corpus[name]["template"].(string); tpl != "" {
@@ -160,25 +199,25 @@ func TestEveryEmittedPatchClearsItsFinding(t *testing.T) {
 			label := fmt.Sprintf("%s: %s at %s", name, f.Code, *f.Path)
 			isPatch := f.NextToolCall != nil && f.NextToolCall.Tool == "validate_deck_spec"
 			if f.Remediation != nil && f.Remediation.Primary != nil && f.Remediation.Primary.Action == diagnostics.ActionApplyPatch && !isPatch {
-				t.Errorf("%s: the remediation says apply_patch and no patch is offered", label)
+				fail("%s: the remediation says apply_patch and no patch is offered", label)
 			}
 			if !isPatch {
 				if f.PatchVerified {
-					t.Errorf("%s: patch_verified without a patch", label)
+					fail("%s: patch_verified without a patch", label)
 				}
 				continue
 			}
-			patches++
+			run.Patches++
 			ops := patchOf(t, f.NextToolCall)
 			filled, template := completePatch(t, f, ops)
 			if template == f.PatchVerified {
-				t.Errorf("%s: patch_verified=%v on a patch that is complete=%v: %v", label, f.PatchVerified, !template, ops)
+				fail("%s: patch_verified=%v on a patch that is complete=%v: %v", label, f.PatchVerified, !template, ops)
 			}
 			if strings.HasSuffix(f.Code, diagnostics.CodeTemplateNotFound) && template {
 				continue // the author picks a template; any text is not one
 			}
 			if f.PatchVerified {
-				verified++
+				run.Verified++
 			}
 			again := map[string]any{"deck_id": env.DeckID, "patch": filled, "dry_run": true}
 			if tpl, ok := args["template"]; ok {
@@ -193,18 +232,15 @@ func TestEveryEmittedPatchClearsItsFinding(t *testing.T) {
 				if g.Code == f.Code {
 					for _, p := range pathsOf(g) {
 						if subjects[p] {
-							t.Errorf("%s: still reported after its patch %v: %s", label, filled, g.Message)
+							fail("%s: still reported after its patch %v: %s", label, filled, g.Message)
 						}
 					}
 				}
 				if g.Severity == diagnostics.SeverityError && !blocked[harnessKey(g.Code, *g.Path)] {
-					t.Errorf("%s: its patch %v raises a new error: %s at %s: %s", label, filled, g.Code, *g.Path, g.Message)
+					fail("%s: its patch %v raises a new error: %s at %s: %s", label, filled, g.Code, *g.Path, g.Message)
 				}
 			}
 		}
 	}
-	t.Logf("%d patches applied, %d of them verified by the server", patches, verified)
-	if patches < wantPatches || verified < wantVerified {
-		t.Errorf("the corpus exercised %d patches (%d verified); it no longer covers the patch kinds", patches, verified)
-	}
+	return run
 }

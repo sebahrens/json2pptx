@@ -538,19 +538,25 @@ func TestFindingsDownstreamOfADroppedField(t *testing.T) {
 	}
 }
 
+// twelveFlawFirstResponse validates the twelve-flaw draft as an agent first
+// sends it and returns the response with the size of its structured content.
+func twelveFlawFirstResponse(t *testing.T, mc *mcpConfig) (deckSpecEnvelopeResponse, int) {
+	t.Helper()
+	res := mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": twelveFlawDraft(t), "strict": "warn"})
+	structured, err := json.Marshal(res.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return deckSpecEnvelope(t, res), len(structured)
+}
+
 // The first response to the twelve-flaw draft carries every tier of findings
 // in fewer entries than the first tier alone took before
 // (go-slide-creator-c2j5b). It took 17 findings and 11.5 KB to report the
 // spec-level tier; the fit tier followed in a 21.5 KB response of its own.
 func TestTwelveFlawDraftFirstResponse(t *testing.T) {
-	mc := refusalTestConfig(t)
-	res := mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": twelveFlawDraft(t), "strict": "warn"})
-	env := deckSpecEnvelope(t, res)
-	structured, err := json.Marshal(res.StructuredContent)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("first response: %d findings, %d bytes of structured content", len(env.Findings), len(structured))
+	env, size := twelveFlawFirstResponse(t, refusalTestConfig(t))
+	t.Logf("first response: %d findings, %d bytes of structured content", len(env.Findings), size)
 	if len(env.Findings) > 16 {
 		t.Errorf("%d findings; the draft's twelve flaws used to take 17 for the first tier alone", len(env.Findings))
 	}
@@ -560,8 +566,8 @@ func TestTwelveFlawDraftFirstResponse(t *testing.T) {
 	// describe_finding pointer on every code, the symptoms' sentences and the
 	// category that repeats each code's prefix.
 	const ceiling = 8192
-	if len(structured) > ceiling {
-		t.Errorf("first response is %d bytes of structured content, over the %d-byte ceiling", len(structured), ceiling)
+	if size > ceiling {
+		t.Errorf("first response is %d bytes of structured content, over the %d-byte ceiling", size, ceiling)
 	}
 	seen := map[string]int{}
 	for _, f := range env.Findings {
