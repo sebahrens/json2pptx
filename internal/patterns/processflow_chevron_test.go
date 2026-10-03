@@ -53,7 +53,7 @@ func TestProcessFlowChevronKeepsItsLabelOutOfTheNotch(t *testing.T) {
 		t.Errorf("a row of chevrons still carries a connector: %+v", grid.Rows[0].Connector)
 	}
 
-	width, height := processFlowCellSize(ctx, len(vals.Steps), true)
+	width, height := processFlowCellSize(ctx, len(vals.Steps), processFlowStepGapPt(ctx, vals.Steps), true)
 	notch := float64(chevronAdj) / 100000 * math.Min(width, height)
 	if notch <= 0 {
 		t.Fatal("notch depth computed as zero")
@@ -137,7 +137,7 @@ func TestProcessFlowPlainStepsKeepTheirConnectors(t *testing.T) {
 	// A row that is not all-pointed is content-sized: at least the box
 	// proportion of its step width, at most the plain cap
 	// (go-slide-creator-xb06p).
-	plainWidth, plainHeight := processFlowCellSize(ctx, len(vals.Steps), false)
+	plainWidth, plainHeight := processFlowCellSize(ctx, len(vals.Steps), processFlowStepGapPt(ctx, vals.Steps), false)
 	if got := grid.Rows[0].MaxHeight; got > plainHeight || got < math.Round(plainWidth*processFlowBoxAspect)-1 && got < plainHeight {
 		t.Errorf("row max_height = %.0f, want between the %.0f box floor and the %.0f cap", got, plainWidth*processFlowBoxAspect, plainHeight)
 	}

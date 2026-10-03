@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -78,8 +80,29 @@ type ValueChainValues struct {
 	HighlightColor string           `json:"highlight_color,omitempty"`
 }
 
-// ValueChainOverrides is the standard text overrides.
-type ValueChainOverrides = TextOverrides
+// ValueChainOverrides is the standard text overrides plus the step style.
+type ValueChainOverrides struct {
+	TextOverrides
+	// Style is "arrows" (default: the label row is a pentagon followed by
+	// interlocking chevrons) or "boxes" (rectangular labels joined by small
+	// connector arrows — the look before go-slide-creator-gm4q9).
+	Style string `json:"style,omitempty"`
+}
+
+// The accepted overrides.style values.
+const (
+	valueChainStyleArrows = "arrows"
+	valueChainStyleBoxes  = "boxes"
+)
+
+var valueChainStyles = []string{valueChainStyleArrows, valueChainStyleBoxes}
+
+// valueChainOverridesSchema is the text overrides plus the step style.
+func valueChainOverridesSchema() *Schema {
+	s := textOverridesSchema()
+	s.raw.Properties["style"] = EnumSchema(valueChainStyles...).WithDescription("arrows (default): step labels are interlocking arrows — a pentagon, then chevrons whose tails tuck under the point before them; labels wrap at spaces inside the arrow, and a word no arrow can hold is reported as TEXT_EXCEEDS_SHAPE. boxes: rectangular one-line labels joined by small connector arrows (the earlier look)").WithDefault(valueChainStyleArrows)
+	return s
+}
 
 // ValueChainCellOverride is the shared per-cell override; indexed by step.
 type ValueChainCellOverride = CellOverride
@@ -113,13 +136,13 @@ func (vc *valueChain) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"values":         valuesSchema,
-			"overrides":      textOverridesSchema(),
+			"overrides":      valueChainOverridesSchema(),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Horizontal value chain of 4-10 equal-width step columns, each with a label box and a description, with per-step highlight support")
+	}).WithDescription("Horizontal value chain of 4-10 equal-width step columns, each with an interlocking arrow label and a description, with per-step highlight support")
 }
 
 func (vc *valueChain) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -135,6 +158,9 @@ func (vc *valueChain) Validate(values, overrides any, cellOverrides map[int]any)
 		if ovr, ok := overrides.(*ValueChainOverrides); ok {
 			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
 				errs = append(errs, err)
+			}
+			if ovr.Style != "" && !slices.Contains(valueChainStyles, ovr.Style) {
+				errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, valueChainStyles))
 			}
 		}
 	}
@@ -180,7 +206,15 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	labelSize, _ := fitValueChainLabels(ctx, vals.Steps, ResolveSize(ovr.HeaderSize, scaleBodyPt))
+	arrows := ovr.Style != valueChainStyleBoxes
+	var arrowFit valueChainArrowFit
+	var labelSize float64
+	if arrows {
+		arrowFit = fitValueChainArrows(ctx, vals.Steps, ResolveSize(ovr.HeaderSize, scaleBodyPt))
+		labelSize = arrowFit.labelPt
+	} else {
+		labelSize, _ = fitValueChainLabels(ctx, vals.Steps, ResolveSize(ovr.HeaderSize, scaleBodyPt))
+	}
 	descSize := ResolveSize(ovr.BodySize, sizeDenseCaptionPt)
 	cellAccentMode := ovr.CellAccentMode
 
@@ -215,6 +249,15 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 				Fill:     tone.fillJSON(),
 				Text:     labelText,
 			},
+		}
+		if arrows {
+			// A pentagon opens the chain and every later step is a chevron
+			// whose tail tucks under the point before it. The preset's text
+			// rectangle already stops short of the point and the notch, so
+			// the label keeps only a small margin inside it.
+			labelCell.Shape.Geometry = arrowFit.geometry(i)
+			labelCell.Shape.Text = withTextInsets(labelText, valueChainArrowInsetPt)
+			labelCell.BleedLeft = arrowFit.bleedPt(i)
 		}
 
 		descContent := strings.TrimSpace(step.Description)
@@ -252,23 +295,37 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 	colsJSON, _ := json.Marshal(n)
 
+	gap := ctx.Gap(valueChainGapPt)
+	labelRow := jsonschema.GridRowInput{
+		Height:    25,
+		Cells:     labelCells,
+		Connector: &jsonschema.ConnectorSpecInput{Style: "arrow", Color: baseAccent, Width: 1.5},
+	}
+	if arrows {
+		// The arrows say "next" themselves, so no connector is drawn, and the
+		// row is as tall as its tallest label needs — not a quarter of the
+		// slide (go-slide-creator-gm4q9).
+		gap = valueChainArrowGapPt
+		rowH := arrowFit.rowHeightPt(ctx.themeFonts(), labelCells)
+		for i, c := range labelCells {
+			c.Shape.Adjustments = map[string]int64{"adj": arrowFit.adj(i, rowH)}
+		}
+		labelRow = jsonschema.GridRowInput{MinHeight: rowH, MaxHeight: rowH, Cells: labelCells}
+	}
+
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
-		Gap:     ctx.Gap(valueChainGapPt),
+		Gap:     gap,
 		RowGap:  ctx.Gap(4),
 		Rows: []jsonschema.GridRowInput{
-			{
-				Height:    25,
-				Cells:     labelCells,
-				Connector: &jsonschema.ConnectorSpecInput{Style: "arrow", Color: baseAccent, Width: 1.5},
-			},
+			labelRow,
 			{
 				// Size the description row to its own text. Uncapped it took
 				// the remaining 75% of the content area and centred the
 				// descriptions inside it, so a full-width empty stripe ran
 				// between the step boxes and their descriptions and the bottom
 				// third of the slide was blank (go-slide-creator-pr3g).
-				MaxHeight: valueChainDescRowHeightPt(ctx, descCells, n),
+				MaxHeight: valueChainDescRowHeightPt(ctx, descCells, n, gap),
 				Cells:     descCells,
 			},
 		},
@@ -344,11 +401,149 @@ func fitValueChainLabels(ctx ExpandContext, steps []ValueChainStep, labelPt floa
 	return size, unfit
 }
 
+// Arrow-style geometry (go-slide-creator-gm4q9).
+const (
+	// valueChainArrowGapPt is the column gap of the arrow style, and the
+	// width of the slanted gap between one arrow's point and the next arrow's
+	// notch. It is a hairline between interlocking shapes, so it is not
+	// scaled with the template gutter.
+	valueChainArrowGapPt = 4.0
+	// valueChainArrowInsetPt is the label margin inside the arrow's own text
+	// rectangle, which already excludes the point and the notch.
+	valueChainArrowInsetPt = 4.0
+	// valueChainArrowAspect, MinHPt and MaxHPt size the arrow row from the
+	// step width: a wide step gets a taller arrow, a ten-step chain a
+	// shallower one, and a label that wraps grows the row past the cap.
+	valueChainArrowAspect = 0.33
+	valueChainArrowMinHPt = 36.0
+	valueChainArrowMaxHPt = 66.0
+	// valueChainNotchFrac is the deepest point / notch as a share of the
+	// arrow height; valueChainMinNotchPt is the shallowest the fit goes to
+	// before the label shrinks. Below it the shape reads as a box.
+	valueChainNotchFrac  = 0.32
+	valueChainMinNotchPt = 6.0
+)
+
+// valueChainArrowFit is the geometry the arrow row renders at: one point
+// depth and one label size for the whole chain.
+type valueChainArrowFit struct {
+	colWPt  float64  // step column width
+	rowHPt  float64  // arrow height before any label needs more
+	notchPt float64  // depth of every point and notch
+	labelPt float64  // label size
+	unfit   []string // labels with a word no arrow can hold on one line
+}
+
+// geometry is step i's preset: a pentagon first, chevrons after it.
+func (f valueChainArrowFit) geometry(i int) string {
+	if i == 0 {
+		return "homePlate"
+	}
+	return "chevron"
+}
+
+// bleedPt is how far step i's shape reaches left of its column: far enough
+// for its notch to sit valueChainArrowGapPt off the point before it.
+func (f valueChainArrowFit) bleedPt(i int) float64 {
+	if i == 0 {
+		return 0
+	}
+	return f.notchPt
+}
+
+// textRectPt is the width of step i's preset text rectangle
+// (pptx.PresetTextRectSize): a pentagon gives up half its point, a chevron
+// its point and its notch.
+func (f valueChainArrowFit) textRectPt(i int) float64 {
+	if i == 0 {
+		return f.colWPt - f.notchPt/2
+	}
+	return f.colWPt + f.bleedPt(i) - 2*f.notchPt
+}
+
+// adj is step i's preset adjustment for a row rowHPt tall: the point depth
+// as a share (x100000) of the shape's shorter side.
+func (f valueChainArrowFit) adj(i int, rowHPt float64) int64 {
+	short := math.Min(f.colWPt+f.bleedPt(i), rowHPt)
+	if short <= 0 {
+		return 0
+	}
+	return int64(math.Round(f.notchPt / short * 100000))
+}
+
+// rowHeightPt is the arrow row's height: the base height, or the written fit
+// of the tallest label inside its own text rectangle when a label wraps.
+func (f valueChainArrowFit) rowHeightPt(fonts pptx.ThemeFonts, cells []*jsonschema.GridCellInput) float64 {
+	h := f.rowHPt
+	for i, c := range cells {
+		if c == nil || c.Shape == nil {
+			continue
+		}
+		h = math.Max(h, writtenFitHeightPt(fonts, c.Shape.Text, f.textRectPt(i), 0))
+	}
+	return math.Ceil(h)
+}
+
+// unfitLabels returns the labels with a word wider than their arrow's text
+// rectangle at the fit's point depth and label size — the words a renderer
+// breaks mid-word. The word is measured as the writer measures it
+// (pptx.WordLineNeedEMU), against the bare rectangle: the writer gives a
+// word the label margin back before it lets it break
+// (pptx.EffectiveTextInsets).
+func (f valueChainArrowFit) unfitLabels(steps []ValueChainStep, font string) []string {
+	var unfit []string
+	for i, step := range steps {
+		availPt := f.textRectPt(i)
+		for _, word := range strings.Fields(step.Label) {
+			if utf8.RuneCountInString(word) < 2 {
+				continue
+			}
+			need, ok := pptx.WordLineNeedEMU(word, font, f.labelPt, true, 0)
+			if !ok {
+				if measuredLines(word, font, true, f.labelPt, availPt) <= 1 {
+					continue
+				}
+			} else if float64(need) <= availPt*sizingEMUPerPt {
+				continue
+			}
+			unfit = append(unfit, step.Label)
+			break
+		}
+	}
+	return unfit
+}
+
+// fitValueChainArrows finds the deepest point and the largest label size at
+// which every label word stays whole inside its arrow, and reports the
+// labels that cannot. The point gives way first — the arrow reads the same a
+// little blunter — and the label only shrinks to the readable floor.
+func fitValueChainArrows(ctx ExpandContext, steps []ValueChainStep, labelPt float64) valueChainArrowFit {
+	contentW, _ := contentAreaPt(ctx)
+	colW := equalColumnWidthPt(contentW, len(steps), valueChainArrowGapPt)
+	rowH := clampPt(math.Round(colW*valueChainArrowAspect), valueChainArrowMinHPt, valueChainArrowMaxHPt)
+	fit := valueChainArrowFit{colWPt: colW, rowHPt: rowH, labelPt: labelPt}
+	font := ctx.Theme.BodyFont
+
+	deepest := math.Max(math.Round(rowH*valueChainNotchFrac), valueChainMinNotchPt)
+	floor := math.Min(labelPt, valueChainMinLabelPt)
+	for size := labelPt; size >= floor; size-- {
+		fit.labelPt = size
+		for d := deepest; d >= valueChainMinNotchPt; d-- {
+			fit.notchPt = d
+			if len(fit.unfitLabels(steps, font)) == 0 {
+				return fit
+			}
+		}
+	}
+	fit.unfit = fit.unfitLabels(steps, font)
+	return fit
+}
+
 // valueChainDescRowHeightPt is the height the description row needs for its
 // tallest description at the step column width.
-func valueChainDescRowHeightPt(ctx ExpandContext, cells []*jsonschema.GridCellInput, cols int) float64 {
+func valueChainDescRowHeightPt(ctx ExpandContext, cells []*jsonschema.GridCellInput, cols int, gapPt float64) float64 {
 	contentW, _ := contentAreaPt(ctx)
-	colW := equalColumnWidthPt(contentW, cols, ctx.Gap(valueChainGapPt))
+	colW := equalColumnWidthPt(contentW, cols, gapPt)
 	textW := colW - 2*defaultShapeInsetLRPt
 	if textW <= 0 {
 		return 0
@@ -443,7 +638,17 @@ func (vc *valueChain) PostExpandWarnings(ctx ExpandContext, values, overrides an
 	if ovr == nil {
 		ovr = &ValueChainOverrides{}
 	}
-	if size, unfit := fitValueChainLabels(ctx, v.Steps, ResolveSize(ovr.HeaderSize, scaleBodyPt)); len(unfit) > 0 {
+	if ovr.Style != valueChainStyleBoxes {
+		if fit := fitValueChainArrows(ctx, v.Steps, ResolveSize(ovr.HeaderSize, scaleBodyPt)); len(fit.unfit) > 0 {
+			noun, verb, pronoun := "label", "has", "it"
+			if len(fit.unfit) > 1 {
+				noun, verb, pronoun = "labels", "have", "them"
+			}
+			out = append(out, fmt.Sprintf(
+				"%s: value-chain step %s %s %s a word wider than the step arrow at %d steps even at %.0fpt — the renderer breaks %s mid-word; shorten %s or use fewer steps",
+				ErrCodeTextExceedsShape, noun, listFirstN(fit.unfit, 3), verb, len(v.Steps), fit.labelPt, pronoun, pronoun))
+		}
+	} else if size, unfit := fitValueChainLabels(ctx, v.Steps, ResolveSize(ovr.HeaderSize, scaleBodyPt)); len(unfit) > 0 {
 		noun, verb, pronoun := "label", "does", "it"
 		if len(unfit) > 1 {
 			noun, verb, pronoun = "labels", "do", "them"

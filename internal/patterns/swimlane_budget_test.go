@@ -14,6 +14,12 @@ func budgetSwimlane(steps, lanes int) *SwimlaneValues {
 		}
 		v.Lanes = append(v.Lanes, lane)
 	}
+	// A full grid shares every column, so it states its own order.
+	for i := 0; i < lanes; i++ {
+		for j := 0; j < steps; j++ {
+			v.Flow = append(v.Flow, [2]int{i, j})
+		}
+	}
 	return v
 }
 

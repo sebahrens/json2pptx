@@ -616,6 +616,21 @@ func coherentMaximum(pattern string, v any) any {
 				}
 			}
 		}
+	case "swimlane":
+		// flow pairs must name real, distinct steps: visit every step of the
+		// maximal lanes once, lane by lane.
+		if m, ok := v.(map[string]any); ok {
+			lanes, _ := m["lanes"].([]any)
+			var flow []any
+			for i, raw := range lanes {
+				lane, _ := raw.(map[string]any)
+				steps, _ := lane["steps"].([]any)
+				for j := range steps {
+					flow = append(flow, []any{i, j})
+				}
+			}
+			m["flow"] = flow
+		}
 	case "numbered-step-strip":
 		// Seven steps and per-step icons are stacked-box / toc only; chevron
 		// (the first enum value) holds six without icons. Measure the style

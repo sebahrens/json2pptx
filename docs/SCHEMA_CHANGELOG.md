@@ -1,5 +1,54 @@
 # Schema Changelog
 
+- **2026-10-03 — Process layouts read as processes (`go-slide-creator-gm4q9`, `-j8t7o`, `-66ojb`, `-6shxx`, `-jz5r9`, `-v786r`).**
+  - **`value-chain`** draws its steps as interlocking arrows — a pentagon,
+    then chevrons — instead of rectangles with a 4pt arrowhead in the gap.
+    Labels wrap at spaces inside the arrow's own text rectangle; the point
+    gets blunter before a label shrinks, a label never goes below 12pt, and
+    a word no arrow can hold is `TEXT_EXCEEDS_SHAPE`. New
+    `overrides.style`: `"arrows"` (default) or `"boxes"` (the earlier
+    look). `overrides.accent` now colours only the `boxes` connectors and a
+    `cell_overrides` accent bar.
+  - **`journey-maturity-model`** is an ascending staircase: each stage's
+    header starts one rise above the last, its description hangs beneath
+    it, and all columns end on one baseline. New `overrides.style`:
+    `"staircase"` (default) or `"flat"` (the earlier look, with its
+    connector arrows).
+  - **`process-flow` / `process-flow-compact`** connectors are 32pt / 26pt /
+    20pt long at up to 5 / 6 / 7–8 steps (the step gap is the connector's
+    length, no longer the 12pt grid gap, and is not scaled with the template
+    gutter) on a 2pt accent line with the large arrowhead. A decision whose
+    longest word needs a wider diamond takes a wider column; one that still
+    cannot fit is `TEXT_EXCEEDS_SHAPE`. Rows of only chevron / arrow steps
+    are unchanged.
+  - **`swimlane`** bounds every lane with full-width hairline rules; the
+    actor label is unfilled bold text at the left, step tiles share one
+    neutral tint and are content-sized inside their lane. New
+    `values.flow`: the arrow order as `[lane, step]` pairs (0-based). New
+    finding **`SWIMLANE_FLOW_AMBIGUOUS`** (`review`) when two lanes hold a
+    step in one column and `flow` is not set.
+  - **Native `process_flow` diagram** wraps into balanced rows (seven steps
+    as 4 + 3, right-to-left on the second row with a straight drop between
+    them) when one row would leave the steps too narrow for their labels
+    at 18pt or for a description (1.75"); more than three rows go
+    vertical. Fills, outlines and connectors are the `process-flow`
+    pattern's: neutral steps with no outline, accent-outlined decisions,
+    2pt accent connectors with the large arrowhead. The per-type accent
+    tints (accent3 decisions, accent6 terminators, accent2 subprocesses)
+    are gone.
+  - **`shape_grid`**: a cell takes `bleed_left` / `bleed_top` (points) — its
+    shape extends that far past the cell's left / top edge without moving
+    any cell — and `inset_top` / `inset_bottom`, which pull the shape's edge
+    in from the cell's. A row takes `rule` (`"above"` / `"below"` /
+    `"both"`): a full-width hairline in the row gap that takes no height
+    and no row index. A `connector` takes `head` (`"sm"` / `"med"` /
+    `"lg"`, default `"med"`).
+  - Row and cell addresses are unchanged in every pattern above: swimlane
+    lane `i` is still grid row `i`, and journey-maturity keeps its header /
+    description / marker rows (the marker row is omitted when no stage is
+    `current`), so `links` and overlay `anchor_cell` references keep
+    resolving.
+
 - **2026-10-03 — Composition overrides compile to what explain reports (`go-slide-creator-vj549`).** SchemaVersion unchanged (no new tools, codes or fix kinds).
   - A `pattern` / `layout` override listed in `compositions[]` is honoured
     only when the slide actually compiles to it, and the compiler is held to

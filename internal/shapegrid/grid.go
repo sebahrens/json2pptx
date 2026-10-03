@@ -239,8 +239,21 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 				continue
 			}
 
+			shapeRect := ApplyFitMode(fitMode, cellRect)
+			if bleed := PtToEMU(cell.BleedLeft); bleed > 0 {
+				shapeRect.X -= bleed
+				shapeRect.CX += bleed
+			}
+			if bleed := PtToEMU(cell.BleedTop); bleed > 0 {
+				shapeRect.Y -= bleed
+				shapeRect.CY += bleed
+			}
+			if top, bottom := PtToEMU(cell.InsetTop), PtToEMU(cell.InsetBottom); (top > 0 || bottom > 0) && top >= 0 && bottom >= 0 && top+bottom < shapeRect.CY {
+				shapeRect.Y += top
+				shapeRect.CY -= top + bottom
+			}
 			rc := ResolvedCell{
-				Bounds:     ApplyFitMode(fitMode, cellRect),
+				Bounds:     shapeRect,
 				CellBounds: cellRect,
 				ID:         alloc.Alloc(),
 				RowIdx:     r,
@@ -293,6 +306,7 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 		}
 	}
 
+	accentBars = append(accentBars, resolveRowRules(grid, rowYOffsets, rowHeightsEMU, rowGapEMU, alloc)...)
 	connectors := resolveRowConnectors(grid, cells, rowCellIDs, rowYOffsets, rowHeightsEMU, alloc)
 	connectors = append(connectors, resolveLinks(grid, cells, rowCellIDs, alloc)...)
 	alignFirstColumnText(cells, gridX, grid.TextLeft)
@@ -582,9 +596,41 @@ func ptToPct(pt float64, availHeightEMU int64) float64 {
 // writer clamps the margin of a shape too short for one line plus the margin
 // (pptx.EffectiveTextInsets); a multi-line cell needs its lines plus the full
 // margin.
+// rowRuleFill is a row rule's fill: dk1 at 30% opacity.
+var rowRuleFill = json.RawMessage(`{"color":"dk1","alpha":30}`)
+
+// resolveRowRules returns the full-width hairlines of rows that ask for one
+// (Row.Rule), centred in the gap above / below the row. They are emitted as
+// accent bars: a filled rectangle with no outline that belongs to no cell.
+func resolveRowRules(grid *Grid, rowY, rowH []int64, rowGapEMU int64, alloc *pptx.ShapeIDAllocator) []ResolvedAccentBar {
+	thick := PtToEMU(RowRulePt)
+	var out []ResolvedAccentBar
+	add := func(centreY int64) {
+		out = append(out, ResolvedAccentBar{
+			Bounds: pptx.RectEmu{X: grid.Bounds.X, Y: centreY - thick/2, CX: grid.Bounds.CX, CY: thick},
+			ID:     alloc.Alloc(),
+			Spec:   &AccentBarSpec{Fill: rowRuleFill, Width: RowRulePt},
+		})
+	}
+	for r, row := range grid.Rows {
+		if row.Rule == "above" || row.Rule == "both" {
+			add(rowY[r] - rowGapEMU/2)
+		}
+		if row.Rule == "below" || row.Rule == "both" {
+			add(rowY[r] + rowH[r] + rowGapEMU/2)
+		}
+	}
+	return out
+}
+
 func estimateRowTextHeightEMU(row Row) int64 {
 	var maxH int64
 	for _, cell := range row.Cells {
+		// A cell that spans rows is as tall as all of them: this row's
+		// max_height does not bound its text.
+		if cell.RowSpan > 1 || cell.BleedTop > 0 {
+			continue
+		}
 		h, lines, padEMU := cellTextEstimateEMU(cell)
 		if lines == 1 {
 			h -= padEMU

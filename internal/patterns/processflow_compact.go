@@ -1,7 +1,6 @@
 package patterns
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -188,12 +187,12 @@ const processFlowCompactBoxAspect = 0.28
 // processFlowCompactCellSize returns the compact step width and band height in
 // points. Pointed presets need a shallow band so their own text rectangle
 // retains useful width after the point and notch.
-func processFlowCompactCellSize(ctx ExpandContext, steps int, pointed bool) (width, height float64) {
+func processFlowCompactCellSize(ctx ExpandContext, steps int, gapPt float64, pointed bool) (width, height float64) {
 	if steps < 1 {
 		steps = 1
 	}
 	contentW, contentH := contentAreaPt(ctx)
-	width = (contentW - ctx.Gap(processFlowGapPt)*float64(steps-1)) / float64(steps)
+	width = (contentW - gapPt*float64(steps-1)) / float64(steps)
 	height = contentH * processFlowCompactHeightPct / 100
 	if width <= 0 || height <= 0 {
 		return 0, 0
@@ -230,8 +229,6 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 
 	cells := buildProcessFlowCells(ctx, vals.Steps, ovr, cellOverrides, bodySize)
 
-	colsJSON, _ := json.Marshal(len(vals.Steps))
-
 	row := jsonschema.GridRowInput{
 		Cells:     cells,
 		Connector: processFlowConnector(ctx, ovr),
@@ -240,13 +237,15 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 		row.Connector = nil
 	}
 
-	cellW, bandCap := processFlowCompactCellSize(ctx, len(vals.Steps), pointedRow)
+	gap := processFlowStepGapPt(ctx, vals.Steps)
+	cellW, bandCap := processFlowCompactCellSize(ctx, len(vals.Steps), gap, pointedRow)
+	colsJSON, widths := processFlowColumns(ctx, vals.Steps, bodySize, cellW)
 	_, contentHeight := contentAreaPt(ctx)
 	// The band is content-sized below its cap, shallower than process-flow's
 	// steps (go-slide-creator-xb06p). The cap gives way to the written fit of
 	// the tallest label (never past the content area) before the writer would
 	// shrink it below the readable floor (go-slide-creator-n1muf).
-	need := processFlowWrittenNeedPt(ctx.themeFonts(), cells, cellW)
+	need := processFlowWrittenNeedPt(ctx.themeFonts(), cells, widths)
 	bandHeight := processFlowContentHeight(need, cellW, processFlowCompactBoxAspect, bandCap)
 	bandHeight = math.Max(bandHeight, math.Min(need, contentHeight))
 	bandHeightPct := processFlowCompactHeightPct
@@ -257,8 +256,8 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 		Bounds: &jsonschema.GridBoundsInput{
 			X: 0, Y: 0, Width: 100, Height: bandHeightPct,
 		},
-		Columns: json.RawMessage(colsJSON),
-		Gap:     ctx.Gap(processFlowGapPt),
+		Columns: colsJSON,
+		Gap:     gap,
 		Rows:    []jsonschema.GridRowInput{row},
 		// The compact band is supporting context: it sits under the title
 		// and leaves the space below for other content, instead of floating

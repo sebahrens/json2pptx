@@ -78,7 +78,9 @@ func TestPatternGapsFollowTemplateGutter(t *testing.T) {
 
 	// swimlane's gaps are connector channels sized against its step-text
 	// budget (TestSchemaMaximaStayReadable), not gutters: they stay fixed.
-	fixedGaps := map[string]bool{"swimlane": true}
+	// process-flow's step gap is its connector's length, a fixed minimum that
+	// must not depend on the grid gap (go-slide-creator-66ojb).
+	fixedGaps := map[string]bool{"swimlane": true, "process-flow": true, "process-flow-compact": true}
 
 	scaledPatterns := 0
 	for _, p := range Default().List() {

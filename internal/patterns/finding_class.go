@@ -55,8 +55,10 @@ var contentCodes = map[string]bool{
 	// An authored highlight that does not read as one is a colour choice, not
 	// a render defect (go-slide-creator-ah5s).
 	ErrCodeLowContrastHighlight: true,
-	ErrCodeDuplicateTitle:       true,
-	ErrCodeTakeawayMissing:      true,
+	// An unstated step order is an authoring gap (go-slide-creator-v786r).
+	ErrCodeSwimlaneFlowAmbiguous: true,
+	ErrCodeDuplicateTitle:        true,
+	ErrCodeTakeawayMissing:       true,
 	// A missing attribution is an authoring gap (go-slide-creator-cuszt).
 	ErrCodeDataWithoutSource: true,
 	// Content-substance codes: what the slide says (go-slide-creator-q7ar).

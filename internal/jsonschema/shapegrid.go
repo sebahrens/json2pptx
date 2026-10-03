@@ -74,6 +74,7 @@ type GridRowInput struct {
 	MaxHeight  float64             `json:"max_height,omitempty"`  // Maximum row height in points (0 = no maximum)
 	Cells      []*GridCellInput    `json:"cells"`
 	Connector  *ConnectorSpecInput `json:"connector,omitempty"` // Optional connector lines between adjacent cells
+	Rule       string              `json:"rule,omitempty"`      // Full-width hairline in the gap "above" / "below" the row, or "both"; takes no height
 }
 
 // GridLinkInput is one explicit connector from cell [row, col] to cell
@@ -90,6 +91,7 @@ type ConnectorSpecInput struct {
 	Color string  `json:"color,omitempty"` // Hex color or scheme ref (default: "000000")
 	Width float64 `json:"width,omitempty"` // Width in points (default: 1.0)
 	Dash  string  `json:"dash,omitempty"`  // "solid", "dash", "dot", "lgDash", "dashDot" (default: "solid")
+	Head  string  `json:"head,omitempty"`  // Arrowhead size for style "arrow": "sm", "med" (default) or "lg"
 }
 
 // GridCellInput defines a single cell in the shape grid.
@@ -103,21 +105,25 @@ type ConnectorSpecInput struct {
 // Grid hosts a raw sub-grid (recursive ShapeGridInput) rendered within the cell.
 // Pattern and Grid are mutually exclusive; setting both is a validation error.
 type GridCellInput struct {
-	ColSpan    int                `json:"col_span,omitempty"`
-	RowSpan    int                `json:"row_span,omitempty"`
-	MaxHeight  float64            `json:"max_height,omitempty"` // Maximum rendered cell height in points (0 = row height)
-	Fit        string             `json:"fit,omitempty"`        // "contain", "fit-width", "fit-height" (default: stretch)
-	Group      bool               `json:"group,omitempty"`      // Wrap cell content in a p:grpSp group shape
-	Shape      *ShapeSpecInput    `json:"shape,omitempty"`
-	Table      *TableInput        `json:"table,omitempty"`
-	Icon       *IconInput         `json:"icon,omitempty"`
-	Image      *GridImageInput    `json:"image,omitempty"`
-	Diagram    *types.DiagramSpec `json:"diagram,omitempty"`     // Chart/diagram rendered via svggen
-	Composite  *CompositeInput    `json:"composite,omitempty"`   // Composite stack: native text + sub-diagram (KPI + sparkline)
-	Pattern    json.RawMessage    `json:"pattern,omitempty"`     // Nested PatternInput (expanded to a sub-grid before resolution)
-	Grid       *ShapeGridInput    `json:"grid,omitempty"`        // Recursive sub-grid rendered within the cell rectangle
-	AccentBar  *AccentBarInput    `json:"accent_bar,omitempty"`  // Optional decorative accent bar
-	NamedStyle string             `json:"named_style,omitempty"` // Named cell style reference resolved from template settings
+	ColSpan     int                `json:"col_span,omitempty"`
+	RowSpan     int                `json:"row_span,omitempty"`
+	MaxHeight   float64            `json:"max_height,omitempty"`   // Maximum rendered cell height in points (0 = row height)
+	BleedLeft   float64            `json:"bleed_left,omitempty"`   // Points the shape extends past the cell's left edge, over the gap (interlocking chevrons)
+	BleedTop    float64            `json:"bleed_top,omitempty"`    // Points the shape extends above the cell's top edge, into the row above
+	InsetTop    float64            `json:"inset_top,omitempty"`    // Points the shape's top edge is pulled in from the cell's
+	InsetBottom float64            `json:"inset_bottom,omitempty"` // Points the shape's bottom edge is pulled in from the cell's
+	Fit         string             `json:"fit,omitempty"`          // "contain", "fit-width", "fit-height" (default: stretch)
+	Group       bool               `json:"group,omitempty"`        // Wrap cell content in a p:grpSp group shape
+	Shape       *ShapeSpecInput    `json:"shape,omitempty"`
+	Table       *TableInput        `json:"table,omitempty"`
+	Icon        *IconInput         `json:"icon,omitempty"`
+	Image       *GridImageInput    `json:"image,omitempty"`
+	Diagram     *types.DiagramSpec `json:"diagram,omitempty"`     // Chart/diagram rendered via svggen
+	Composite   *CompositeInput    `json:"composite,omitempty"`   // Composite stack: native text + sub-diagram (KPI + sparkline)
+	Pattern     json.RawMessage    `json:"pattern,omitempty"`     // Nested PatternInput (expanded to a sub-grid before resolution)
+	Grid        *ShapeGridInput    `json:"grid,omitempty"`        // Recursive sub-grid rendered within the cell rectangle
+	AccentBar   *AccentBarInput    `json:"accent_bar,omitempty"`  // Optional decorative accent bar
+	NamedStyle  string             `json:"named_style,omitempty"` // Named cell style reference resolved from template settings
 }
 
 // CompositeInput defines a composite cell that stacks a native text shape and

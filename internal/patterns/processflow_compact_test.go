@@ -29,7 +29,7 @@ func TestProcessFlowCompactPointedStepsKeepReadableTextWidth(t *testing.T) {
 			if grid.Bounds == nil {
 				t.Fatal("missing compact bounds")
 			}
-			width, bandCap := processFlowCompactCellSize(ctx, len(tc.steps), true)
+			width, bandCap := processFlowCompactCellSize(ctx, len(tc.steps), processFlowStepGapPt(ctx, tc.steps), true)
 			_, contentHeight := contentAreaPt(ctx)
 			// Content-sized at or below the pointed cap (go-slide-creator-xb06p).
 			height := grid.Bounds.Height / 100 * contentHeight

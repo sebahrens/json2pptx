@@ -17,7 +17,26 @@ import (
 
 // processFlowDecisionLinePt is the accent outline of a decision diamond that
 // does not take the solid fill.
-const processFlowDecisionLinePt = 1.5
+const processFlowDecisionLinePt = ProcessFlowDecisionLinePt
+
+// The tinted process-flow look, shared with the native process_flow diagram
+// (internal/generator) so a flow reads the same whichever route draws it
+// (go-slide-creator-6shxx): steps on a neutral dk1 tint with no outline,
+// decisions outlined in the accent, connectors in the accent on a 2pt line
+// with the large arrowhead.
+const (
+	// ProcessFlowStepTintPct is the neutral step fill: dk1 at this ink
+	// coverage (lumMod pct, lumOff 100-pct).
+	ProcessFlowStepTintPct = NeutralTint8
+	// ProcessFlowDecisionLinePt is a decision diamond's accent outline.
+	ProcessFlowDecisionLinePt = 1.5
+	// ProcessFlowConnectorLinePt and ProcessFlowConnectorHead are the
+	// connector's line width and arrowhead size.
+	ProcessFlowConnectorLinePt = processFlowConnectorLinePt
+	ProcessFlowConnectorHead   = processFlowConnectorHead
+	// ProcessFlowConnectorMinPt is the shortest connector either route draws.
+	ProcessFlowConnectorMinPt = processFlowConnectorMinPt
+)
 
 // processFlowDiamondInsetPt is the text margin inside a decision diamond. The
 // preset's text rectangle is already the inner half of the shape; the uniform
@@ -117,7 +136,7 @@ func buildProcessFlowCells(ctx ExpandContext, steps []ProcessFlowStep, ovr *Proc
 			pointed = true
 		}
 
-		fill, ink, line := neutralFillJSON(NeutralTint8), "dk1", noLine
+		fill, ink, line := neutralFillJSON(ProcessFlowStepTintPct), "dk1", noLine
 		switch {
 		case solid || i == emphasis:
 			fill, ink, line = json.RawMessage(fmt.Sprintf(`"%s"`, accent)), "lt1", nil
@@ -184,9 +203,14 @@ func processFlowEmphasisIndex(steps []ProcessFlowStep) int {
 	return -1
 }
 
-// processFlowConnector is the arrow between steps, drawn in the accent like
-// value-chain's and journey-maturity's arrows (it was dk1, the one black
-// connector in the pattern family).
+// processFlowConnector is the arrow between steps, drawn in the accent (it
+// was dk1, the one black connector in the pattern family) on a 2pt line with
+// the large arrowhead, so the direction reads at presentation size.
 func processFlowConnector(ctx ExpandContext, ovr *ProcessFlowOverrides) *jsonschema.ConnectorSpecInput {
-	return &jsonschema.ConnectorSpecInput{Style: "arrow", Color: ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent), Width: 1.5}
+	return &jsonschema.ConnectorSpecInput{
+		Style: "arrow",
+		Color: ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent),
+		Width: processFlowConnectorLinePt,
+		Head:  processFlowConnectorHead,
+	}
 }

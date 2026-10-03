@@ -9,6 +9,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
 // ---------------------------------------------------------------------------
@@ -258,13 +259,13 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	bodySize := ResolveSize(ovr.BodySize, processFlowFullFontPt(vals.Steps))
 	cells := buildProcessFlowCells(ctx, vals.Steps, ovr, cellOverrides, bodySize)
 
-	colsJSON, _ := json.Marshal(len(vals.Steps))
-
 	// Steps are capped at processFlowMaxHeightFrac of the content height
 	// (go-slide-creator-7km8) instead of stretching into full-height pillars
 	// with needle-thin diamonds; the grid centres the row vertically.
 	pointedRow := allStepsPointed(vals.Steps)
-	cellW, rowCap := processFlowCellSize(ctx, len(vals.Steps), pointedRow)
+	gap := processFlowStepGapPt(ctx, vals.Steps)
+	cellW, rowCap := processFlowCellSize(ctx, len(vals.Steps), gap, pointedRow)
+	colsJSON, widths := processFlowColumns(ctx, vals.Steps, bodySize, cellW)
 	// Steps are content-sized: the written fit of the tallest label, floored
 	// at a box proportion so a one-word step still reads as a box, and capped
 	// at processFlowMaxHeightFrac (go-slide-creator-xb06p). The cap gives way
@@ -272,7 +273,7 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	// before the writer would shrink it below the readable floor
 	// (go-slide-creator-n1muf).
 	_, contentH := contentAreaPt(ctx)
-	need := processFlowWrittenNeedPt(ctx.themeFonts(), cells, cellW)
+	need := processFlowWrittenNeedPt(ctx.themeFonts(), cells, widths)
 	rowHeight := processFlowContentHeight(need, cellW, processFlowBoxAspect, rowCap)
 	rowHeight = math.Max(rowHeight, math.Min(need, math.Round(contentH)))
 	row := jsonschema.GridRowInput{
@@ -288,8 +289,8 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 
 	grid := &jsonschema.ShapeGridInput{
-		Columns:       json.RawMessage(colsJSON),
-		Gap:           ctx.Gap(processFlowGapPt),
+		Columns:       colsJSON,
+		Gap:           gap,
 		Rows:          []jsonschema.GridRowInput{row},
 		VerticalAlign: GridVerticalAlignDefault,
 	}
@@ -304,12 +305,13 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 // needs twice the fit of its label at half the step width; measured at the
 // full width, a content-sized row left "Within policy?" to be shrunk by the
 // renderer (go-slide-creator-xb06p).
-func processFlowWrittenNeedPt(fonts pptx.ThemeFonts, cells []*jsonschema.GridCellInput, cellW float64) float64 {
+func processFlowWrittenNeedPt(fonts pptx.ThemeFonts, cells []*jsonschema.GridCellInput, widths []float64) float64 {
 	need := 0.0
-	for _, c := range cells {
-		if c == nil || c.Shape == nil {
+	for i, c := range cells {
+		if c == nil || c.Shape == nil || i >= len(widths) {
 			continue
 		}
+		cellW := widths[i]
 		if c.Shape.Geometry == "diamond" {
 			need = math.Max(need, 2*writtenFitHeightPt(fonts, c.Shape.Text, cellW/2, 0))
 			continue
@@ -325,19 +327,21 @@ func processFlowWrittenNeedPt(fonts pptx.ThemeFonts, cells []*jsonschema.GridCel
 func processFlowStepsNeedPt(ctx ExpandContext, steps []ProcessFlowStep, bodySize float64, compact bool) (need, areaH float64) {
 	cells := buildProcessFlowCells(ctx, steps, &ProcessFlowOverrides{}, nil, bodySize)
 	var cellW float64
+	gap := processFlowStepGapPt(ctx, steps)
 	if compact {
-		cellW, _ = processFlowCompactCellSize(ctx, len(steps), false)
+		cellW, _ = processFlowCompactCellSize(ctx, len(steps), gap, false)
 	} else {
-		cellW, _ = processFlowCellSize(ctx, len(steps), false)
+		cellW, _ = processFlowCellSize(ctx, len(steps), gap, false)
 	}
 	_, areaH = contentAreaPt(ctx)
-	return processFlowWrittenNeedPt(ctx.themeFonts(), cells, cellW), areaH
+	_, widths := processFlowColumns(ctx, steps, bodySize, cellW)
+	return processFlowWrittenNeedPt(ctx.themeFonts(), cells, widths), areaH
 }
 
 // processFlowAreaWarning reports steps whose written fit needs more height
 // than the template's content area holds (go-slide-creator-n1muf).
 func processFlowAreaWarning(ctx ExpandContext, name string, steps []ProcessFlowStep, overrides any, compact bool) []string {
-	if ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 || len(steps) == 0 {
+	if len(steps) == 0 {
 		return nil
 	}
 	ovr, _ := overrides.(*ProcessFlowOverrides)
@@ -348,11 +352,120 @@ func processFlowAreaWarning(ctx ExpandContext, name string, steps []ProcessFlowS
 	if compact {
 		size = processFlowDefaultFontPt(len(steps))
 	}
-	need, areaH := processFlowStepsNeedPt(ctx, steps, ResolveSize(ovr.BodySize, size), compact)
+	bodySize := ResolveSize(ovr.BodySize, size)
+	gap := processFlowStepGapPt(ctx, steps)
+	var equalW float64
+	if compact {
+		equalW, _ = processFlowCompactCellSize(ctx, len(steps), gap, false)
+	} else {
+		equalW, _ = processFlowCellSize(ctx, len(steps), gap, false)
+	}
+	_, widths := processFlowColumns(ctx, steps, bodySize, equalW)
+	if broken := processFlowBrokenDecisionWords(ctx, name, steps, bodySize, widths); len(broken) > 0 {
+		return broken
+	}
+	// The height check needs the template's real content area.
+	if ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 {
+		return nil
+	}
+	need, areaH := processFlowStepsNeedPt(ctx, steps, bodySize, compact)
 	if need <= areaH+1 {
 		return nil
 	}
 	return []string{fmt.Sprintf("%s: %s step labels need %.0fpt at readable sizes but the content area holds about %.0fpt — shorten the labels or use fewer steps", ErrCodeBodyTooLong, name, need, areaH)}
+}
+
+// Decision width (go-slide-creator-66ojb). A diamond's text rectangle is the
+// middle half of its width, so in a row of equal columns a decision holds a
+// word half as long as its neighbours do — "Approved?" broke after "Approv"
+// in an eight-step flow. A decision whose longest word needs more takes a
+// wider column, and the other steps give up at most
+// processFlowDecisionMaxGiveFrac of their width for it.
+const processFlowDecisionMaxGiveFrac = 0.25
+
+// processFlowDecisionNeedPt is the column width a decision needs for its
+// longest word to stay whole inside the diamond's text rectangle with the
+// diamond text margin; fits is false when the word cannot be measured.
+func processFlowDecisionNeedPt(label, font string, sizePt float64) (need float64, fits bool) {
+	// The renderer raises a label below its readable floor back to the floor.
+	sizePt = shapegrid.EffectiveTextSizePt(sizePt)
+	widest := int64(0)
+	for _, word := range strings.Fields(label) {
+		w, ok := pptx.WordLineNeedEMU(word, font, sizePt, true, 0)
+		if !ok {
+			return 0, false
+		}
+		widest = max(widest, w)
+	}
+	return 2 * (float64(widest)/sizingEMUPerPt + 2*processFlowDiamondInsetPt), true
+}
+
+// processFlowColumns returns the grid columns and every step's width in
+// points. Columns are equal (the plain step count) unless a decision's
+// longest word needs a wider diamond; then the columns are percentages, the
+// decisions as wide as they need and the other steps sharing the rest, never
+// narrower than 1-processFlowDecisionMaxGiveFrac of the equal width.
+func processFlowColumns(ctx ExpandContext, steps []ProcessFlowStep, sizePt, equalW float64) (json.RawMessage, []float64) {
+	n := len(steps)
+	widths := make([]float64, n)
+	for i := range widths {
+		widths[i] = equalW
+	}
+	equal, _ := json.Marshal(n)
+	if n == 0 || equalW <= 0 {
+		return equal, widths
+	}
+	font := ctx.Theme.BodyFont
+	extra := make([]float64, n)
+	totalExtra, others := 0.0, 0
+	for i, st := range steps {
+		if st.Type != "decision" {
+			others++
+			continue
+		}
+		if need, ok := processFlowDecisionNeedPt(pptx.ConvertMarkdownEmphasis(st.Label), font, sizePt); ok && need > equalW {
+			extra[i] = need - equalW
+			totalExtra += extra[i]
+		}
+	}
+	if totalExtra == 0 || others == 0 {
+		return equal, widths
+	}
+	give := math.Min(totalExtra, processFlowDecisionMaxGiveFrac*equalW*float64(others))
+	sum := 0.0
+	for i, st := range steps {
+		switch {
+		case extra[i] > 0:
+			widths[i] = equalW + extra[i]*give/totalExtra
+		case st.Type != "decision":
+			widths[i] = equalW - give/float64(others)
+		}
+		sum += widths[i]
+	}
+	pcts := make([]float64, n)
+	for i, w := range widths {
+		pcts[i] = math.Round(w/sum*100000) / 1000
+	}
+	cols, _ := json.Marshal(pcts)
+	return cols, widths
+}
+
+// processFlowBrokenDecisionWords reports the decisions whose longest word is
+// wider than the diamond's bare text rectangle at the width it renders at —
+// the words a renderer breaks mid-word.
+func processFlowBrokenDecisionWords(ctx ExpandContext, name string, steps []ProcessFlowStep, sizePt float64, widths []float64) []string {
+	var out []string
+	for i, st := range steps {
+		if st.Type != "decision" || i >= len(widths) {
+			continue
+		}
+		need, ok := processFlowDecisionNeedPt(pptx.ConvertMarkdownEmphasis(st.Label), ctx.Theme.BodyFont, sizePt)
+		if !ok || need-4*processFlowDiamondInsetPt <= widths[i] {
+			continue
+		}
+		out = append(out, fmt.Sprintf("%s: %s steps[%d].label %q has a word wider than its decision diamond at %d steps — the renderer breaks it mid-word; shorten the label, use fewer steps, or make it a plain step", ErrCodeTextExceedsShape, name, i, st.Label, len(steps)))
+	}
+	return out
 }
 
 // processFlowMaxHeightFrac caps process-flow steps at this share of the
@@ -395,21 +508,60 @@ func processFlowFullFontPt(steps []ProcessFlowStep) float64 {
 	}
 }
 
-// processFlowGapPt is the gap between steps, in points. The notch calculation
-// reads it, so the two cannot drift.
+// processFlowGapPt is the gap between the steps of a row of chevrons or
+// arrows, which draw their own direction and take no connector.
 const processFlowGapPt = 12.0
+
+// Connector geometry (go-slide-creator-66ojb). The connector between two
+// steps used to be as long as the 12pt grid gap, with a 4pt arrowhead: at
+// presentation size the arrows vanished and the flow read as a row of
+// buttons. The step gap is now the connector's own length — a fixed number
+// of points per step count, never scaled with the template gutter — and the
+// arrowhead is the large preset on a 2pt line (about 10pt long and wide).
+const (
+	// processFlowConnectorMinPt is the shortest connector, used at 7-8
+	// steps: a 10pt shaft plus the 10pt arrowhead.
+	processFlowConnectorMinPt = 20.0
+	// processFlowConnectorLinePt is the connector line width; with
+	// processFlowConnectorHead it sets the arrowhead size.
+	processFlowConnectorLinePt = 2.0
+	processFlowConnectorHead   = "lg"
+)
+
+// processFlowConnectorLenPt is the connector length for a flow of n steps:
+// longer where the steps can spare the width, never below
+// processFlowConnectorMinPt.
+func processFlowConnectorLenPt(n int) float64 {
+	switch {
+	case n <= 5:
+		return 32
+	case n == 6:
+		return 26
+	default:
+		return processFlowConnectorMinPt
+	}
+}
+
+// processFlowStepGapPt is the gap between steps: the connector length when
+// connectors are drawn, the plain grid gap for a row of pointed steps.
+func processFlowStepGapPt(ctx ExpandContext, steps []ProcessFlowStep) float64 {
+	if allStepsPointed(steps) {
+		return ctx.Gap(processFlowGapPt)
+	}
+	return processFlowConnectorLenPt(len(steps))
+}
 
 // processFlowCellSize is one step's width and the row's height in points.
 // A row of pointed steps is additionally capped to half its step width: the
 // notch is a fraction of the SHORTER side, so a tall chevron eats its own
 // label — at four steps an uncapped row left 110pt of text width in a 198pt
 // shape, and even "Board sign-off" broke mid-word (go-slide-creator-czk4).
-func processFlowCellSize(ctx ExpandContext, steps int, pointed bool) (width, height float64) {
+func processFlowCellSize(ctx ExpandContext, steps int, gapPt float64, pointed bool) (width, height float64) {
 	if steps < 1 {
 		steps = 1
 	}
 	contentW, contentH := contentAreaPt(ctx)
-	width = (contentW - ctx.Gap(processFlowGapPt)*float64(steps-1)) / float64(steps)
+	width = (contentW - gapPt*float64(steps-1)) / float64(steps)
 	height = math.Round(contentH * processFlowMaxHeightFrac)
 	if pointed {
 		height = math.Min(height, math.Round(width*chevronMaxAspectH))

@@ -6,6 +6,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -24,11 +25,21 @@ import (
 // Connectors use straightConnector1 or bentConnector3 with triangle arrowheads.
 // Layout supports horizontal (single/multi-row with zigzag) and vertical flows.
 // All shapes wrapped in a single p:grpSp.
+//
+// Fills, outlines and connectors are the process-flow pattern's tinted look
+// (patterns.ProcessFlow*): neutral steps without an outline, decisions
+// outlined in the accent, accent connectors on a 2pt line with the large
+// arrowhead (go-slide-creator-6shxx).
 
 // Process flow EMU constants.
 const (
-	// pfGap is the gap between steps (EMU). ~0.25"
-	pfGap int64 = 228600
+	// pfGap is the gap between the steps of a horizontal flow (EMU), 0.3":
+	// the connector's length, above the process-flow pattern's 20pt minimum.
+	pfGap int64 = 274320
+
+	// pfVerticalStepGap is the gap between the steps of a vertical flow
+	// (EMU), 0.25", before pfVerticalGap fits it to the frame.
+	pfVerticalStepGap int64 = 228600
 
 	// pfCornerRadius is the roundRect adjustment value for process steps.
 	pfCornerRadius int64 = 8000
@@ -46,8 +57,21 @@ const (
 	// shape text margin.
 	pfTextInset = pptx.ShapeTextInsetEMU
 
-	// pfConnectorWidth is the connector line width in EMU. 12700 = 1pt
-	pfConnectorWidth int64 = 12700
+	// pfConnectorWidth is the connector line width in EMU: the process-flow
+	// pattern's 2pt.
+	pfConnectorWidth = int64(patterns.ProcessFlowConnectorLinePt * 12700)
+
+	// pfAccent is the scheme colour of decision outlines and connectors.
+	pfAccent = "accent1"
+
+	// pfMinDescStepWidth is the narrowest step that carries a description
+	// (EMU, 1.75"): about eighteen characters of 14pt text per line. Narrower
+	// and a one-sentence description becomes a five-line column.
+	pfMinDescStepWidth int64 = 1600200
+
+	// pfMaxRows is the most rows a horizontal flow wraps into before it
+	// switches to the vertical layout.
+	pfMaxRows = 3
 
 	// pfMinStepWidth is the minimum step width (EMU). ~1.0"
 	pfMinStepWidth int64 = 914400
@@ -251,25 +275,21 @@ func computeProcessFlowLayout(steps []processFlowStep, connections []processFlow
 	if len(fonts) > 0 && fonts[0] != "" {
 		font = fonts[0]
 	}
+	// A horizontal flow holds as many steps in a row as stay readable; the
+	// rest wrap. More rows than pfMaxRows read better as a vertical flow.
+	perRow := n
+	if direction == "horizontal" {
+		perRow = pfStepsPerRow(steps, bounds, font)
+		if rows := (n + perRow - 1) / perRow; rows > pfMaxRows && n > 4 {
+			direction = "vertical"
+			perRow = n
+		}
+	}
 	layouts := make([]pfStepLayout, n)
 	for i, s := range steps {
-		layouts[i].cx, layouts[i].cy = pfStepDimensions(s, bounds, n)
+		layouts[i].cx, layouts[i].cy = pfStepDimensions(s, bounds, perRow)
 		pfGrowTextHeight(&layouts[i], s, font)
 		pfWidenDecision(&layouts[i], s, font, bounds)
-	}
-
-	// Auto-switch to vertical if horizontal would be too crowded.
-	if direction == "horizontal" {
-		totalW := int64(0)
-		for i, l := range layouts {
-			totalW += l.cx
-			if i > 0 {
-				totalW += pfGap
-			}
-		}
-		if totalW > bounds.Width*2 && n > 4 {
-			direction = "vertical"
-		}
 	}
 
 	if direction == "vertical" {
@@ -294,6 +314,50 @@ func computeProcessFlowLayout(steps []processFlowStep, connections []processFlow
 	}
 
 	return pfLayoutMultiRow(layouts, steps, bounds, maxH, n)
+}
+
+// pfReadableStepWidth is the narrowest step in which every label keeps its
+// widest word whole at the label size inside the uniform text margin, and a
+// description gets a readable line length.
+func pfReadableStepWidth(steps []processFlowStep, font string) int64 {
+	minW := pfMinStepWidth
+	for _, s := range steps {
+		if s.stepType == pfDecisionType {
+			// A decision sizes itself (pfWidenDecision).
+			continue
+		}
+		// Half the uniform margin on each side: the writer gives a word the
+		// rest of the margin back before it lets it break
+		// (pptx.EffectiveTextInsets), so the full margin is not the floor.
+		word := int64(math.Ceil(float64(pfWidestLabelWordEMU(s, font)) * pptx.StandInWordFitSlack))
+		wPct, _ := pfTextAreaPercent(s.stepType)
+		minW = max(minW, (word+pfTextInset)*100/wPct)
+		if s.description != "" {
+			minW = max(minW, pfMinDescStepWidth)
+		}
+	}
+	return minW
+}
+
+// pfStepsPerRow is how many steps a horizontal flow puts in one row: all of
+// them when each still gets a readable width (and always for four or fewer),
+// otherwise the rows are balanced — seven steps wrap 4 + 3, not 6 + 1. Small
+// outlined boxes in one strip left most of a body placeholder empty and the
+// text below body size (go-slide-creator-6shxx).
+func pfStepsPerRow(steps []processFlowStep, bounds types.BoundingBox, font string) int {
+	n := len(steps)
+	if n <= 4 || bounds.Width <= 0 {
+		return max(n, 1)
+	}
+	fit := int((bounds.Width + pfGap) / (pfReadableStepWidth(steps, font) + pfGap))
+	if fit < 1 {
+		fit = 1
+	}
+	if n <= fit {
+		return n
+	}
+	rows := (n + fit - 1) / fit
+	return (n + rows - 1) / rows
 }
 
 // Preset text rectangles are narrower than the exterior geometry. In
@@ -387,12 +451,16 @@ func pfStepHeight(bounds types.BoundingBox) int64 {
 	return h
 }
 
-// pfStepDimensions returns width and height for a step based on its type and available space.
-func pfStepDimensions(step processFlowStep, bounds types.BoundingBox, stepCount int) (cx, cy int64) {
-	// Base dimensions scale with available space and step count.
-	availPerStep := bounds.Width / int64(stepCount)
-	if availPerStep > pfMinStepWidth*3 {
-		availPerStep = pfMinStepWidth * 3
+// pfStepDimensions returns width and height for a step based on its type and
+// available space; perRow is the number of steps sharing its row.
+func pfStepDimensions(step processFlowStep, bounds types.BoundingBox, perRow int) (cx, cy int64) {
+	// A row's steps share its width, gaps included, up to 3" each.
+	if perRow < 1 {
+		perRow = 1
+	}
+	availPerStep := (bounds.Width + pfGap) / int64(perRow)
+	if availPerStep > pfMinStepWidth*3+pfGap {
+		availPerStep = pfMinStepWidth*3 + pfGap
 	}
 
 	baseW := availPerStep - pfGap
@@ -558,7 +626,7 @@ func pfVerticalGap(stepCount int, height int64) int64 {
 	if stepCount <= 1 {
 		return 0
 	}
-	gap := pfGap
+	gap := pfVerticalStepGap
 	// Connectors and their 0.2" labels get at most one third of the frame;
 	// dense flows retain visible gaps without pushing the final step outside.
 	if maxGap := height / (3 * int64(stepCount-1)); gap > maxGap {
@@ -741,6 +809,20 @@ func pfLayoutMultiRow(layouts []pfStepLayout, steps []processFlowStep, bounds ty
 	scaledTotalH := int64(numRows)*maxH + int64(numRows-1)*rowSpacing
 	startY := bounds.Y + (bounds.Height-scaledTotalH)/2
 
+	// The widest row sets the block every row aligns to.
+	gridW := int64(0)
+	for start := 0; start < n; start += perRow {
+		rowW := int64(0)
+		for i := start; i < min(start+perRow, n); i++ {
+			rowW += layouts[i].cx
+			if i > start {
+				rowW += pfGap
+			}
+		}
+		gridW = max(gridW, rowW)
+	}
+	gridX := bounds.X + (bounds.Width-gridW)/2
+
 	for rowIdx := 0; rowIdx < numRows; rowIdx++ {
 		startIdx := rowIdx * perRow
 		endIdx := startIdx + perRow
@@ -757,8 +839,14 @@ func pfLayoutMultiRow(layouts []pfStepLayout, steps []processFlowStep, bounds ty
 			}
 		}
 
+		// Rows share one left and one right edge, so the turn from a row's
+		// last step to the next row's first is a straight drop: a short last
+		// row hangs from the side the flow arrives on.
 		rowCenterY := startY + int64(rowIdx)*(maxH+rowSpacing) + maxH/2
-		rowStartX := bounds.X + (bounds.Width-rowW)/2
+		rowStartX := gridX
+		if rowIdx%2 == 1 {
+			rowStartX = gridX + gridW - rowW
+		}
 
 		if rowIdx%2 == 0 {
 			// Left to right.
@@ -1128,25 +1216,23 @@ func pfGeometryForStepType(st processFlowStepType) pptx.PresetGeometry {
 	}
 }
 
-// pfColorsForStepType returns fill and line for each step type using scheme colors.
+// pfColorsForStepType returns fill and line for each step type: the
+// process-flow pattern's tinted look. Every step sits on the same neutral
+// tint; the preset shape says what kind of step it is. A decision is
+// outlined in the accent, a subprocess keeps a hairline so its side bars
+// draw, and plain steps and terminators have no outline. The steps used to
+// be four accent tints with matching outlines — a different diagram from the
+// pattern of the same name (go-slide-creator-6shxx).
 func pfColorsForStepType(st processFlowStepType) (fill pptx.Fill, line pptx.Line) {
+	tint := patterns.ProcessFlowStepTintPct * 1000
+	fill = pptx.SchemeFill("dk1", pptx.LumMod(tint), pptx.LumOff(100000-tint))
 	switch st {
 	case pfDecisionType:
-		// Warning-tinted fill (accent3 light tint).
-		return diagramTintFill("accent3", 20000, 80000),
-			pptx.Line{Width: panelBorderWidth, Fill: pptx.SchemeFill("accent3")}
-	case pfStartType, pfEndType:
-		// Success-tinted fill (accent6 light tint).
-		return diagramTintFill("accent6", 20000, 80000),
-			pptx.Line{Width: panelBorderWidth, Fill: pptx.SchemeFill("accent6")}
+		return fill, pptx.Line{Width: int64(patterns.ProcessFlowDecisionLinePt * 12700), Fill: pptx.SchemeFill(pfAccent)}
 	case pfSubprocessType:
-		// Accent2 fill for subprocess.
-		return diagramTintFill("accent2", 20000, 80000),
-			pptx.Line{Width: panelBorderWidth, Fill: pptx.SchemeFill("accent2")}
+		return fill, pptx.Line{Width: panelBorderWidth, Fill: pptx.SchemeFill("dk1", pptx.LumMod(50000), pptx.LumOff(50000))}
 	default:
-		// Primary accent1 fill for regular steps.
-		return diagramTintFill("accent1", 20000, 80000),
-			pptx.Line{Width: panelBorderWidth, Fill: pptx.SchemeFill("accent1")}
+		return fill, pptx.Line{Width: 0, Fill: pptx.NoFill()}
 	}
 }
 
@@ -1154,9 +1240,10 @@ func pfColorsForStepType(st processFlowStepType) (fill pptx.Fill, line pptx.Line
 func pfGenerateConnector(connID uint32, src, tgt pptx.ShapeOptions, srcShapeID, tgtShapeID uint32, conn processFlowConnection, direction string) []byte {
 	connBounds, startSite, endSite := pptx.RouteBetween(src, tgt)
 
+	// The pattern's connector: accent, 2pt, large arrowhead.
 	lineOpts := pptx.Line{
 		Width: pfConnectorWidth,
-		Fill:  pptx.SchemeFill("tx1", pptx.LumMod(50000), pptx.LumOff(50000)),
+		Fill:  pptx.SchemeFill(pfAccent),
 	}
 	if conn.style == "dashed" {
 		lineOpts.Dash = "dash"
@@ -1199,8 +1286,8 @@ func pfGenerateConnector(connID uint32, src, tgt pptx.ShapeOptions, srcShapeID, 
 		Line:     lineOpts,
 		TailEnd: &pptx.ArrowHead{
 			Type: "triangle",
-			W:    "med",
-			Len:  "med",
+			W:    patterns.ProcessFlowConnectorHead,
+			Len:  patterns.ProcessFlowConnectorHead,
 		},
 		StartConn: &pptx.ConnectionRef{
 			ShapeID: srcShapeID,

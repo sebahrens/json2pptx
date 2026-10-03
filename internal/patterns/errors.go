@@ -110,6 +110,10 @@ const (
 	// that does not read as a highlight against the structure it sits in
 	// (go-slide-creator-ah5s).
 	ErrCodeLowContrastHighlight = "LOW_CONTRAST_HIGHLIGHT"
+	// ErrCodeSwimlaneFlowAmbiguous reports a swimlane whose lanes share a
+	// step column while values.flow is unset: the arrows are derived column
+	// by column and are unlikely to be the process (go-slide-creator-v786r).
+	ErrCodeSwimlaneFlowAmbiguous = "SWIMLANE_FLOW_AMBIGUOUS"
 	// ErrCodeFilledShapeOutlined reports an authored shape_grid shape with both
 	// an opaque fill and a visible outline. Pattern expanders never outline a
 	// filled shape; separation comes from gutters and neutral tints
