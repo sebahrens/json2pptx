@@ -71,6 +71,26 @@ func expandedSlides(spec *DeckSpec) []sourcedSlide {
 	return out
 }
 
+// ExpandedSlide is one slide of the expanded stream: the slide, and the spec
+// path it came from. Generated agenda and divider slides carry the path of the
+// structure field that produced them.
+type ExpandedSlide struct {
+	Slide      SlideSpec
+	SourcePath string
+}
+
+// ExpandedSlideSources returns the slide stream the flat or structured form
+// produces, in rendered order, with each slide's source path. It has the same
+// cardinality as ExpandedSlidePayloads.
+func ExpandedSlideSources(spec *DeckSpec) []ExpandedSlide {
+	expanded := expandedSlides(spec)
+	out := make([]ExpandedSlide, len(expanded))
+	for i := range expanded {
+		out[i] = ExpandedSlide{Slide: expanded[i].Slide, SourcePath: expanded[i].SourcePath}
+	}
+	return out
+}
+
 // ExpandedSlidePayloads returns one stable semantic payload for every slide
 // produced by the flat or structured authoring form. Generated agenda and
 // divider slides are included, so render metadata has the same cardinality as

@@ -328,9 +328,13 @@ func TestSpecPatchOps(t *testing.T) {
 			contain: "FY26 Q3",
 		},
 		{
-			name:    "insert a slide shifts the tail",
+			// The inserted divider is new, and the divider after it is now
+			// chapter 3 instead of 2. The two slides that only shifted are
+			// renumbered, which changed_slides no longer lists
+			// (go-slide-creator-v5e9h).
+			name:    "insert a slide: the tail only shifts",
 			ops:     []any{map[string]any{"op": "add", "path": "/slides/2", "value": newSlide}},
-			want:    []int{2, 3, 4, 5},
+			want:    []int{2, 4},
 			slides:  6,
 			contain: "Competition",
 		},
@@ -341,9 +345,10 @@ func TestSpecPatchOps(t *testing.T) {
 			slides: 6,
 		},
 		{
+			// Removing the first divider renumbers the second one's chapter.
 			name:   "remove a slide",
 			ops:    []any{map[string]any{"op": "remove", "path": "/slides/1"}},
-			want:   []int{1, 2, 3},
+			want:   []int{2},
 			slides: 4,
 		},
 		{

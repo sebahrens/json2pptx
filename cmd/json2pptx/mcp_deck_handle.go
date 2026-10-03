@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -60,6 +61,27 @@ type deckHandle struct {
 	// (go-slide-creator-b7qqg.8). A handle holds a Template OR a TemplatePath.
 	TemplatePath string
 	BaseDir      string
+
+	// Revision is the number of the stored spec revision, starting at 1, and
+	// Revisions the kept history (go-slide-creator-rq1z9). NextSlideID is the
+	// counter behind assigned slide ids (go-slide-creator-1w3uo). State is the
+	// stored revision's per-slide digests; Rendered the same for the last
+	// revision that rendered, which is what a render's changed_slides is
+	// measured against (go-slide-creator-v5e9h). A stored handle is never
+	// mutated: every store replaces it.
+	Revision     int
+	Revisions    []deckRevision
+	NextSlideID  int
+	State        *deckState
+	Rendered     *deckState
+	RenderedPptx string
+
+	// storeTool / storeNote label the revision this handle creates when it is
+	// stored; pendingRenderPptx marks it as rendered. All three are consumed
+	// by inherit under the store lock.
+	storeTool, storeNote string
+	storeMoved           map[string]bool
+	pendingRenderPptx    string
 }
 
 // deckHandleStore is a per-process, TTL'd map of handles. Same scope as the
@@ -98,6 +120,7 @@ func (s *deckHandleStore) Save(h *deckHandle) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	pruneTTLEntries(s.entries, s.now(), maxSessionStoreEntries, func(e deckHandleEntry) time.Time { return e.expiresAt })
+	h.inherit(nil, h.storeTool, h.storeNote, s.now())
 	s.entries[id] = deckHandleEntry{handle: h, expiresAt: s.now().Add(s.ttl)}
 	return id
 }
@@ -137,6 +160,7 @@ func (s *deckHandleStore) Update(id string, base []byte, h *deckHandle) bool {
 	if h.Filename == "" {
 		h.Filename = entry.handle.Filename
 	}
+	h.inherit(entry.handle, h.storeTool, h.storeNote, s.now())
 	s.entries[id] = deckHandleEntry{handle: h, expiresAt: s.now().Add(s.ttl)}
 	return true
 }
@@ -200,9 +224,17 @@ type specSource struct {
 	Filename string
 	// DeckID is the handle the call named, empty when the caller sent a spec.
 	DeckID string
-	// ChangedSlides lists the 0-based slides a patch on this call touched; nil
-	// for a plain spec or an unpatched handle.
-	ChangedSlides []int
+	// Handle is the stored handle DeckID named, as loaded for this call.
+	Handle *deckHandle
+	// DryRun asks the call not to store its result; Fork to store it under a
+	// new deck_id; Restore names the kept revision the call started from (0
+	// when it started from the current one). RawPatch is the patch as sent.
+	DryRun   bool
+	Fork     bool
+	Restore  int
+	RawPatch []any
+	// MovedIDs names the slides this call's move ops picked up.
+	MovedIDs map[string]bool
 	// Template is the template the handle's last render resolved to. A
 	// handle-driven re-render that names no template falls back to it, so
 	// patching a deck cannot silently restyle it.
@@ -253,20 +285,64 @@ func (mc *mcpConfig) resolveSpecSource(tool string, request mcp.CallToolRequest)
 			"deck_id names a raw presentation, not a DeckSpec; use a raw-deck tool or send a DeckSpec", "string", nil, nil)
 	}
 
-	patched, changed, errRes := applySpecPatchArg(tool, request, handle)
-	if errRes != nil {
+	src := specSource{
+		Filename:     handle.Filename,
+		DeckID:       rawID,
+		Handle:       handle,
+		Template:     handle.Template,
+		TemplatePath: handle.TemplatePath,
+		BaseDir:      handle.BaseDir,
+		BaseSpec:     handle.Spec,
+	}
+	var errRes *mcp.CallToolResult
+	if src.DryRun, src.Fork, errRes = deckStoreFlags(tool, request); errRes != nil {
 		return specSource{}, errRes
 	}
-	return specSource{
-		Data:          patched,
-		Filename:      handle.Filename,
-		DeckID:        rawID,
-		ChangedSlides: changed,
-		Template:      handle.Template,
-		TemplatePath:  handle.TemplatePath,
-		BaseDir:       handle.BaseDir,
-		BaseSpec:      handle.Spec,
-	}, nil
+	start := handle.Spec
+	if src.Restore, errRes = restoreArg(tool, request); errRes != nil {
+		return specSource{}, errRes
+	}
+	if src.Restore > 0 {
+		rev, kept := handle.revision(src.Restore)
+		if !kept {
+			return specSource{}, argInvalidValue(tool, diagnostics.CodeInvalidParameter, "restore",
+				fmt.Sprintf("revision %d is not kept for this deck_id (kept: %s); read:\"history\" on validate_deck_spec lists them", src.Restore, handle.keptRevisions()),
+				"integer", handle.Revision, nil)
+		}
+		start = rev.Spec
+	}
+	if src.Data, src.RawPatch, src.MovedIDs, errRes = applySpecPatchArg(tool, request, start, handle.NextSlideID); errRes != nil {
+		return specSource{}, errRes
+	}
+	return src, nil
+}
+
+// mutated reports whether the call changed the spec its deck_id holds.
+func (src specSource) mutated() bool {
+	return src.DeckID != "" && !bytes.Equal(src.Data, src.BaseSpec)
+}
+
+// deckStoreFlags reads dry_run and fork.
+func deckStoreFlags(tool string, request mcp.CallToolRequest) (dryRun, fork bool, errRes *mcp.CallToolResult) {
+	if dryRun, errRes = semanticOptionalBool(tool, "dry_run", request); errRes != nil {
+		return false, false, errRes
+	}
+	fork, errRes = semanticOptionalBool(tool, "fork", request)
+	return dryRun, fork, errRes
+}
+
+// restoreArg reads the optional revision number to start from.
+func restoreArg(tool string, request mcp.CallToolRequest) (int, *mcp.CallToolResult) {
+	raw, ok := request.GetArguments()["restore"]
+	if !ok || raw == nil {
+		return 0, nil
+	}
+	n, isNumber := raw.(float64)
+	if !isNumber || n < 1 || n != float64(int(n)) {
+		return 0, argInvalidValue(tool, diagnostics.CodeInvalidParameter, "restore",
+			fmt.Sprintf("restore must be a revision number (an integer of at least 1), got %v", raw), "integer", 1, nil)
+	}
+	return int(n), nil
 }
 
 // specSourceFromSpec handles the stateless form: a spec in the call itself.
@@ -287,65 +363,105 @@ func (mc *mcpConfig) specSourceFromSpec(tool string, request mcp.CallToolRequest
 			NextToolCall: nextCallRetry(tool, "deck_id"),
 		})
 	}
+	if raw, restoring := args["restore"]; restoring && raw != nil {
+		return specSource{}, argInvalidValue(tool, diagnostics.CodeInvalidParameter, "restore",
+			"restore starts from a revision this server kept, so it needs deck_id", "integer", nil, nextCallRetry(tool, "deck_id"))
+	}
 	data, name, errRes := semanticSpecBytes(tool, request)
 	if errRes != nil {
 		return specSource{}, errRes
 	}
-	return specSource{Data: data, Filename: name}, nil
+	src := specSource{Data: data, Filename: name}
+	// A spec sent in the call always starts a new handle, so fork has nothing
+	// to protect; dry_run still means "do not store".
+	if src.DryRun, _, errRes = deckStoreFlags(tool, request); errRes != nil {
+		return specSource{}, errRes
+	}
+	return src, nil
 }
 
-// applySpecPatchArg applies the call's patch (when present) to a handle's spec
-// and returns the resulting bytes plus the slide indices that changed. With no
-// patch it returns the stored spec unchanged.
-func applySpecPatchArg(tool string, request mcp.CallToolRequest, handle *deckHandle) ([]byte, []int, *mcp.CallToolResult) {
+// applySpecPatchArg applies the call's patch (when present) to spec — the
+// stored revision the call starts from — and returns the resulting bytes plus
+// the patch as sent. With no patch it returns spec unchanged. Slides the patch
+// added get their id here (counting on from nextSlideID), so the response can
+// name them even when the result is not stored.
+func applySpecPatchArg(tool string, request mcp.CallToolRequest, spec []byte, nextSlideID int) ([]byte, []any, map[string]bool, *mcp.CallToolResult) {
 	rawPatch, ok := request.GetArguments()["patch"]
 	if !ok || rawPatch == nil {
-		return handle.Spec, nil, nil
+		return spec, nil, nil, nil
 	}
 	ops, errRes := parseSpecPatchOps(tool, rawPatch)
 	if errRes != nil {
-		return nil, nil, errRes
+		return nil, nil, nil, errRes
 	}
 	if len(ops) == 0 {
-		return handle.Spec, nil, nil
+		return spec, nil, nil, nil
 	}
 
 	var doc any
-	if err := json.Unmarshal(handle.Spec, &doc); err != nil {
-		return nil, nil, argInvalidValue(tool, diagnostics.CodeInvalidParameter, "deck_id",
+	if err := json.Unmarshal(spec, &doc); err != nil {
+		return nil, nil, nil, argInvalidValue(tool, diagnostics.CodeInvalidParameter, "deck_id",
 			fmt.Sprintf("the stored spec could not be decoded for patching: %v", err), "string", nil, nil)
 	}
+	moved := map[string]bool{}
 	for i, op := range ops {
 		var err error
+		if op.Op == specPatchMove {
+			if from, perr := parsePointer(op.From); perr == nil {
+				if slide, verr := pointerValue(doc, from); verr == nil {
+					if m, ok := slide.(map[string]any); ok {
+						if id, ok := m["id"].(string); ok {
+							moved[id] = true
+						}
+					}
+				}
+			}
+		}
 		doc, err = op.apply(doc)
 		if err != nil {
-			return nil, nil, argError(argErrorEnvelope{
+			path := fmt.Sprintf("patch[%d].path", i)
+			var fromErr *patchFromError
+			if errors.As(err, &fromErr) {
+				path = fmt.Sprintf("patch[%d].from", i)
+			}
+			return nil, nil, nil, argError(argErrorEnvelope{
 				Code:         diagnostics.CodeInvalidParameter,
-				Path:         fmt.Sprintf("patch[%d].path", i),
+				Path:         path,
 				Message:      fmt.Sprintf("patch[%d] %s %s: %v", i, op.Op, op.Path, err),
 				ExpectedType: "string",
 				ExampleValue: "/slides/3/title",
 			})
 		}
+		if id, dup := duplicateSlideID(doc); dup {
+			return nil, nil, nil, argError(argErrorEnvelope{
+				Code:         diagnostics.CodeInvalidParameter,
+				Path:         fmt.Sprintf("patch[%d].value", i),
+				Message:      fmt.Sprintf("patch[%d] %s %s: slide id %q is already used by another slide; ids must be unique, so drop the id (one is assigned) or choose another", i, op.Op, op.Path, id),
+				ExpectedType: "string",
+			})
+		}
 	}
+	assignSlideIDs(doc, nextSlideID)
 	patched, err := json.Marshal(doc)
 	if err != nil {
-		return nil, nil, argInvalidValue(tool, diagnostics.CodeInvalidParameter, "patch",
+		return nil, nil, nil, argInvalidValue(tool, diagnostics.CodeInvalidParameter, "patch",
 			fmt.Sprintf("the patched spec could not be re-encoded: %v", err), "array", nil, nil)
 	}
-	return patched, changedSlideIndices(handle, patched), nil
+	sent, _ := rawPatch.([]any)
+	return patched, sent, moved, nil
 }
 
 // --- patch ops ---
 
-// specPatchOp is one JSON-Pointer-addressed edit to a stored spec. The
-// vocabulary is deliberately the three operations a deck revision needs —
-// replace a field, add a slide, remove a slide — rather than all of RFC 6902:
-// an agent revising a deck does not need move/copy/test, and a smaller
-// vocabulary is one an agent can use correctly from the tool description alone.
+// specPatchOp is one JSON-Pointer-addressed edit to a stored spec: the RFC
+// 6902 operations a deck revision needs. move and copy arrived with the
+// e-revise journey (go-slide-creator-83kru): without them a reorder meant
+// removing a slide and re-sending it whole from the agent's memory. test is
+// still left out — a patch is already all-or-nothing.
 type specPatchOp struct {
 	Op    string `json:"op"`
 	Path  string `json:"path"`
+	From  string `json:"from,omitempty"`
 	Value any    `json:"value,omitempty"`
 }
 
@@ -354,7 +470,15 @@ const (
 	specPatchReplace = "replace"
 	specPatchAdd     = "add"
 	specPatchRemove  = "remove"
+	specPatchMove    = "move"
+	specPatchCopy    = "copy"
 )
+
+// patchFromError marks a failure at an op's from pointer rather than its path.
+type patchFromError struct{ err error }
+
+func (e *patchFromError) Error() string { return "from " + e.err.Error() }
+func (e *patchFromError) Unwrap() error { return e.err }
 
 // parseSpecPatchOps decodes and validates the patch argument.
 func parseSpecPatchOps(tool string, raw any) ([]specPatchOp, *mcp.CallToolResult) {
@@ -369,15 +493,26 @@ func parseSpecPatchOps(tool string, raw any) ([]specPatchOp, *mcp.CallToolResult
 			fmt.Sprintf("patch must be an array of {op, path, value}: %v", err), "array", specPatchExample(), nil)
 	}
 	for i, op := range ops {
+		reads := false
 		switch op.Op {
 		case specPatchReplace, specPatchAdd, specPatchRemove:
+		case specPatchMove, specPatchCopy:
+			reads = true
 		default:
 			return nil, argInvalidValue(tool, diagnostics.CodeUnknownEnum, fmt.Sprintf("patch[%d].op", i),
-				fmt.Sprintf("unknown patch op %q; use replace, add or remove", op.Op), "string", specPatchExample(), nil)
+				fmt.Sprintf("unknown patch op %q; use replace, add, remove, move or copy", op.Op), "string", specPatchExample(), nil)
 		}
 		if !strings.HasPrefix(op.Path, "/") {
 			return nil, argInvalidValue(tool, diagnostics.CodeInvalidParameter, fmt.Sprintf("patch[%d].path", i),
 				fmt.Sprintf("path must be a JSON Pointer into the spec, e.g. /slides/3/title; got %q", op.Path), "string", specPatchExample(), nil)
+		}
+		if reads {
+			if !strings.HasPrefix(op.From, "/") {
+				return nil, argInvalidValue(tool, diagnostics.CodeMissingParameter, fmt.Sprintf("patch[%d].from", i),
+					fmt.Sprintf("%s needs from: the JSON Pointer of the value to %s, e.g. /slides/5; got %q", op.Op, op.Op, op.From), "string",
+					[]any{map[string]any{"op": op.Op, "from": "/slides/5", "path": "/slides/7"}}, nil)
+			}
+			continue
 		}
 		if op.Op != specPatchRemove && op.Value == nil {
 			return nil, argInvalidValue(tool, diagnostics.CodeMissingParameter, fmt.Sprintf("patch[%d].value", i),
@@ -401,7 +536,89 @@ func (op specPatchOp) apply(doc any) (any, error) {
 	if len(segments) == 0 {
 		return nil, fmt.Errorf("the whole document cannot be replaced; patch a field under it")
 	}
+	switch op.Op {
+	case specPatchMove, specPatchCopy:
+		return op.applyFrom(doc, segments)
+	}
 	return applyPointer(doc, segments, op)
+}
+
+// applyFrom performs move and copy: read the value at from, then (for move)
+// remove it there, then add it at path. As in RFC 6902 the path is resolved
+// after the removal, so "move /slides/5 to /slides/7" lands the slide at index
+// 7 of the resulting deck; a slide id as the last path segment inserts before
+// that slide.
+func (op specPatchOp) applyFrom(doc any, segments []string) (any, error) {
+	from, err := parsePointer(op.From)
+	if err != nil || len(from) == 0 {
+		if err == nil {
+			err = fmt.Errorf("must name a field, not the document root")
+		}
+		return nil, &patchFromError{err}
+	}
+	value, err := pointerValue(doc, from)
+	if err != nil {
+		return nil, &patchFromError{err}
+	}
+	if op.Op == specPatchMove {
+		if strings.HasPrefix(op.Path+"/", op.From+"/") && op.Path != op.From {
+			return nil, fmt.Errorf("a value cannot be moved into itself")
+		}
+		if doc, err = applyPointer(doc, from, specPatchOp{Op: specPatchRemove}); err != nil {
+			return nil, &patchFromError{err}
+		}
+	} else {
+		value = deepCopyJSON(value)
+		// A copied slide is a new slide: it must not share the original's id.
+		if slide, ok := value.(map[string]any); ok && len(segments) >= 2 && segments[len(segments)-2] == "slides" {
+			delete(slide, "id")
+		}
+	}
+	return applyPointer(doc, segments, specPatchOp{Op: specPatchAdd, Value: value})
+}
+
+// deepCopyJSON copies a decoded JSON value so a copy op shares nothing with
+// its source.
+func deepCopyJSON(v any) any {
+	switch node := v.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(node))
+		for k, child := range node {
+			out[k] = deepCopyJSON(child)
+		}
+		return out
+	case []any:
+		out := make([]any, len(node))
+		for i, child := range node {
+			out[i] = deepCopyJSON(child)
+		}
+		return out
+	}
+	return v
+}
+
+// pointerValue returns the value a pointer addresses.
+func pointerValue(doc any, segments []string) (any, error) {
+	node := doc
+	for _, seg := range segments {
+		switch current := node.(type) {
+		case map[string]any:
+			child, ok := current[seg]
+			if !ok {
+				return nil, fmt.Errorf("%q does not exist", seg)
+			}
+			node = child
+		case []any:
+			idx, err := listIndex(seg, current, false)
+			if err != nil {
+				return nil, err
+			}
+			node = current[idx]
+		default:
+			return nil, fmt.Errorf("%q is not a container", seg)
+		}
+	}
+	return node, nil
 }
 
 // parsePointer splits a JSON Pointer into its unescaped segments.
@@ -441,7 +658,7 @@ func applyPointer(doc any, segments []string, op specPatchOp) (any, error) {
 		node[head] = updated
 		return node, nil
 	case []any:
-		idx, err := listIndex(head, len(node), false)
+		idx, err := listIndex(head, node, false)
 		if err != nil {
 			return nil, err
 		}
@@ -483,7 +700,7 @@ func applyHere(doc any, segment string, op specPatchOp) (any, error) {
 			}
 			return append(node, op.Value), nil
 		}
-		idx, err := listIndex(segment, len(node), op.Op == specPatchAdd)
+		idx, err := listIndex(segment, node, op.Op == specPatchAdd)
 		if err != nil {
 			return nil, err
 		}
@@ -491,7 +708,7 @@ func applyHere(doc any, segment string, op specPatchOp) (any, error) {
 		case specPatchRemove:
 			return append(node[:idx], node[idx+1:]...), nil
 		case specPatchReplace:
-			node[idx] = op.Value
+			node[idx] = keepSlideID(node[idx], op.Value)
 			return node, nil
 		case specPatchAdd:
 			node = append(node, nil)
@@ -505,10 +722,48 @@ func applyHere(doc any, segment string, op specPatchOp) (any, error) {
 	}
 }
 
-// listIndex parses an array index, allowing one past the end for an insert.
-func listIndex(segment string, length int, allowAppend bool) (int, error) {
+// keepSlideID carries an element's id onto the object that replaces it when
+// the replacement names none: replacing /slides/2 rewrites that slide, it does
+// not swap it for a stranger.
+func keepSlideID(old, replacement any) any {
+	was, ok := old.(map[string]any)
+	next, isObject := replacement.(map[string]any)
+	if !ok || !isObject {
+		return replacement
+	}
+	id, hasID := was["id"].(string)
+	if _, named := next["id"]; hasID && !named {
+		next["id"] = id
+	}
+	return replacement
+}
+
+// listIndex resolves an array segment: a 0-based index (one past the end is
+// allowed for an insert), or the id of an element, so /slides/s4/title keeps
+// addressing the same slide when an insert shifts its index
+// (go-slide-creator-1w3uo). An id starts with a letter, so the two never clash.
+func listIndex(segment string, node []any, allowAppend bool) (int, error) {
+	length := len(node)
 	idx, err := strconv.Atoi(segment)
 	if err != nil {
+		var ids []string
+		for i, el := range node {
+			m, ok := el.(map[string]any)
+			if !ok {
+				continue
+			}
+			id, ok := m["id"].(string)
+			if !ok {
+				continue
+			}
+			if id == segment {
+				return i, nil
+			}
+			ids = append(ids, id)
+		}
+		if len(ids) > 0 {
+			return 0, fmt.Errorf("no element with id %q here (ids: %s); address it by id or by 0-based index", segment, strings.Join(ids, ", "))
+		}
 		return 0, fmt.Errorf("%q is not an array index", segment)
 	}
 	limit := length
@@ -719,23 +974,52 @@ func (mc *mcpConfig) rememberRawDeck(existingID string, previous, presentation [
 
 // --- tool parameters ---
 
-const deckIDParamDescription = "Optional handle for a spec this server already holds, returned as deck_id by a previous validate_deck_spec or render_deck_spec call. Send it INSTEAD of spec to act on the stored deck without re-uploading it. Combine it with patch to change part of the deck — a one-line title fix costs a ~120-byte call instead of the whole spec. Handles are per-process and expire after 1 hour; an unknown or expired one is an error, not a silent miss, so send the spec again to start a fresh handle."
+const deckIDParamDescription = "Handle of a spec this server holds: the deck_id a validate_deck_spec or render_deck_spec response returned. Send it INSTEAD of spec; add patch to edit part of the deck. Per-process, expires after 1 hour; an unknown or expired id is an error, so send the spec again."
 
-const deckPatchParamDescription = `Optional edits to apply to the deck named by deck_id before this call acts on it: [{op, path, value}] where op is replace | add | remove and path is a JSON Pointer into the spec (e.g. /slides/3/title, /meta/template, /slides/6 with add to insert a slide, "-" as the last segment to append). Requires deck_id. The stored deck is updated, so the next call sees the edit; the response's changed_slides names the slides that differ.`
+const deckPatchParamDescription = `Edits to deck_id's spec, applied before the call acts: [{op, path, value | from}]. op: replace | add | remove | move | copy (move, copy read from). path is a JSON Pointer; a slide is named by index or id (/slides/3/title, /slides/s4/title, /meta/template); add at /slides/6 inserts, "-" appends. All ops apply or none. The response has stored, revision, changed_slides (slides that look different) and slide_changes (edited | inserted | restyled | moved | renumbered | notes_only | removed). A refused render stores nothing.`
 
-// deckHandleToolParams declares deck_id and patch on a spec tool.
-func deckHandleToolParams() []mcp.ToolOption {
+// deckHandleToolParams declares the deck-store arguments of a spec tool:
+// deck_id and patch, plus how the result is stored. Every spec tool takes the
+// same five, so the listing spells them out once — on render_deck_spec, the
+// revise fast path — and the others point there: the default tools/list is
+// budgeted (TestDeckSpecToolProfileBudget).
+func deckHandleToolParams(tool string) []mcp.ToolOption {
+	deckID, patch := deckIDParamDescription, deckPatchParamDescription
+	dryRun := "true: run without storing anything."
+	fork := "true: store the result under a NEW deck_id; this one stays as it is."
+	restore := `Revision of deck_id to start from (validate_deck_spec read:"history" lists them); patch applies on top and the result is a new revision.`
+	if tool != "render_deck_spec" {
+		const see = "; see render_deck_spec."
+		deckID = "Stored spec handle, sent INSTEAD of spec" + see
+		patch = "Edits to deck_id's spec, applied before the call acts" + see
+		if tool == "validate_deck_spec" {
+			patch = "Edits to deck_id's spec, applied before the call acts and stored when the result parses" + see
+		}
+		dryRun, fork, restore = "Store nothing.", "Store under a new deck_id.", "Revision to start from."
+	}
 	return []mcp.ToolOption{
-		mcp.WithString("deck_id", mcp.Description(deckIDParamDescription)),
-		mcp.WithArray("patch", mcp.Description(deckPatchParamDescription),
+		mcp.WithString("deck_id", mcp.Description(deckID)),
+		mcp.WithArray("patch", mcp.Description(patch),
 			mcp.Items(map[string]any{
 				"type": "object", "required": []string{"op", "path"}, "additionalProperties": false,
 				"properties": map[string]any{
-					"op":    map[string]any{"type": "string", "enum": []string{specPatchReplace, specPatchAdd, specPatchRemove}},
+					"op":    map[string]any{"type": "string", "enum": []string{specPatchReplace, specPatchAdd, specPatchRemove, specPatchMove, specPatchCopy}},
 					"path":  map[string]any{"type": "string"},
+					"from":  map[string]any{"type": "string"},
 					"value": map[string]any{},
 				},
 			}),
 		),
+		mcp.WithBoolean("dry_run", mcp.Description(dryRun)),
+		mcp.WithBoolean("fork", mcp.Description(fork)),
+		mcp.WithNumber("restore", mcp.Description(restore)),
 	}
+}
+
+// withToolOptions appends option groups to a tool definition's own options.
+func withToolOptions(base []mcp.ToolOption, groups ...[]mcp.ToolOption) []mcp.ToolOption {
+	for _, g := range groups {
+		base = append(base, g...)
+	}
+	return base
 }

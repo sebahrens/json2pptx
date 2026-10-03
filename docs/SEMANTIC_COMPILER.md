@@ -168,6 +168,99 @@ MCP:
 - `list_deck_archetypes`
 - `list_slide_kinds`
 
+### Revising a stored deck (`deck_id`)
+
+`validate_deck_spec` and `render_deck_spec` store the spec they act on and
+return its `deck_id`. A revision then sends `deck_id` (not `spec`) plus a
+`patch`. The handle is per-process and expires an hour after its last stored
+revision.
+
+**Slide ids.** Every slide accepts an optional `id` (a letter, then letters,
+digits, `_` or `-`; at most 40 characters; unique in the deck). It never
+renders. On first store, slides without one are assigned `s1`, `s2`, …; an
+assigned id is never reused. An id survives inserts, removals and moves, and
+it replaces the index in a patch path: `/slides/s4/title` and
+`/slides/3/title` address the same slide while it sits at index 3. Index
+addressing keeps working. A malformed or duplicate authored id is a
+`SEMANTIC_FIELD_TYPE` error at `slides[i].id`; a patch that would duplicate
+an id is refused. The structured form gets ids on `cover`, `closing` and
+every `sections[].slides[]` entry; generated agenda and divider slides have
+none.
+
+**Patch ops** (`[{op, path, value | from}]`, applied in order, all or
+nothing):
+
+| op | effect |
+|----|--------|
+| `replace` | Set an existing field or array element. Replacing a whole slide keeps its id unless the new slide names one. |
+| `add` | Create a field; in an array, insert before the index or id named (`-` appends). |
+| `remove` | Delete a field or element. |
+| `move` | Read `from`, remove it there, add it at `path`. As in RFC 6902 `path` is resolved after the removal: `{"op":"move","from":"/slides/5","path":"/slides/7"}` puts the slide at index 7 of the result. |
+| `copy` | Add a deep copy of `from` at `path`. A copied slide gets a new id. |
+
+**What is stored.** Responses carry `stored` and `revision`.
+
+- `render_deck_spec`: the patch is transactional with the render. A refused
+  render (`success:false`) stores nothing and reports `stored:false`; the
+  suggested `next_tool_call` patch then carries the unstored ops, so it
+  applies to the deck as stored. A spec sent in the call (no `deck_id`) is
+  still stored when its render is refused, so it can be patched into shape.
+- `validate_deck_spec`: stores whatever parses, findings or not — the way to
+  keep an edit that does not render yet.
+- `dry_run: true` (either tool): run the patch, store nothing.
+- `fork: true`: store the result under a new `deck_id` (history starts at
+  revision 1, slide ids are kept); the source deck is left as it was.
+- `restore: N`: start from kept revision `N` instead of the current one; a
+  `patch` applies on top and the result is a new revision. Up to 50 revisions
+  are kept per handle.
+
+**What changed.** `changed_slides` is always present. It lists the 0-based
+slides that look different from the baseline — for `validate_deck_spec` the
+stored revision the call started from, for `render_deck_spec` the last
+rendered revision (so every slide on a first render, and edits validated
+since the last render count). `slide_changes` classifies every affected
+slide as `{id, index, slide_number, change, was_index?}`:
+
+| change | meaning | in `changed_slides` |
+|--------|---------|---------------------|
+| `edited` | Visible content differs (includes a section divider whose chapter number changed). | yes |
+| `inserted` | New since the baseline. | yes |
+| `restyled` | Same content; `meta`, structure options or the template changed. | yes |
+| `moved` | Same content, reordered relative to its neighbours. | no |
+| `renumbered` | Same content and order; index shifted by an insert or removal. | no |
+| `notes_only` | Only speaker notes differ. | no |
+| `removed` | Gone since the baseline (no `index`). | no |
+
+After a successful render `next_tool_call` asks `render_deck_thumbnails` for
+`changed_slides` only (the whole deck when every slide changed) and is absent
+when a re-render changed nothing visible.
+
+**Compact patch responses.** A `deck_id` + `patch` (or `restore`) render of a
+deck that has rendered before returns the verdict, the change list, every
+blocking diagnostic, and the scores, plan rows and findings of the slides in
+`changed_slides`; `diagnostics_omitted` counts what was left out and
+`verbose: true` returns the full response. Other renders are unchanged and
+include `slides[{id, index, slide_number, kind}]`. Render diagnostics carry
+`slide_id`; validate findings carry `evidence.slide_id`.
+
+**Reading the store** (`validate_deck_spec`; these return without validating
+or storing):
+
+- `read: "spec"` → `spec`, the stored DeckSpec with ids.
+- `read: "<slide id or 0-based index>"` → `slide` and `slide_ref`.
+- `read: "history"` → `revisions[{revision, time, tool, note, changes}]` and
+  `slides[{id, index, slide_number, kind, title, last_changed, last_change}]`:
+  the last revision that changed each slide, and how.
+- `find: "9.4"` → `hits[{path, slide_id, index, excerpt}]` and `hit_count`
+  over every string and number in the spec (meta, titles, bodies, chart data,
+  notes). Text matches ignore ASCII case; a query that starts or ends with a
+  digit matches whole numbers only (`9.4` finds `$9.4m`, not `19.4` or
+  `9.45`). `id`, `kind`, `type`, `pattern`, `layout`, `template` and
+  `archetype` values are not searched.
+- `find` + `replace` rewrites every hit as one patch, then validates and
+  stores it like any patch. A numeric hit is replaced only by a numeric
+  replacement; otherwise it is reported with `skipped`.
+
 HTTP:
 
 - `GET /api/v1/semantic/schema`

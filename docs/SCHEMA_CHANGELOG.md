@@ -1,5 +1,43 @@
 # Schema Changelog
 
+- **2026-10-03 — Revising a stored DeckSpec: slide ids, move/copy, change classes, history, transactional patches (`go-slide-creator-1w3uo`, `-83kru`, `-v5e9h`, `-yxf1k`, `-rq1z9`, `-j77xe`, `-veqn2`, `-6ffgv`).** No new tools; new arguments and response fields on `validate_deck_spec` / `render_deck_spec` (and `explain_deck_spec`).
+  - **Slide ids.** Every DeckSpec slide kind accepts an optional `id`
+    (letter first, then letters, digits, `_`, `-`; unique). Stored decks
+    assign `s1`, `s2`, … to slides without one. A patch path may name a slide
+    by id (`/slides/s4/title`); index paths keep working. Render responses
+    list `slides[{id, index, slide_number, kind}]`; render diagnostics carry
+    `slide_id` and validate findings `evidence.slide_id`. A malformed or
+    duplicate id is `SEMANTIC_FIELD_TYPE`.
+  - **Patch ops** gain `move` and `copy` (`from` + `path`, RFC 6902).
+  - **`changed_slides` changed meaning**: it is always present (`[]` when
+    nothing changed) and lists only slides that LOOK different — `edited`,
+    `inserted`, `restyled`. Slides that only shifted, moved or had notes
+    edited are no longer in it. On `render_deck_spec` the baseline is the last
+    rendered revision, so a first render lists every slide. New
+    `slide_changes[{id, index, slide_number, change, was_index}]` classifies
+    every affected slide (`edited | inserted | restyled | moved | renumbered |
+    notes_only | removed`). `next_tool_call` asks for thumbnails of
+    `changed_slides` only and is absent when a re-render changed nothing
+    visible.
+  - **`stored` and `revision`** on both responses. A patched render that is
+    refused no longer stores the patch (`stored:false`); `dry_run: true`
+    stores nothing; `fork: true` stores under a new `deck_id`; `restore: N`
+    starts from a kept revision. `validate_deck_spec` still stores any spec
+    that parses.
+  - **Compact patch renders.** `deck_id` + `patch` on an already-rendered
+    deck returns summaries for the changed slides only, with
+    `diagnostics_omitted`; `verbose: true` restores the full response.
+  - **`validate_deck_spec` reads the store**: `read: "spec" | "history" |
+    <slide id or index>`, `find`, and `find` + `replace` (response fields
+    `spec`, `slide`, `slide_ref`, `revisions`, `slides`, `hits`,
+    `hit_count`).
+  - **Thumbnail identity.** `render_deck_thumbnails` returns the image first
+    rendered for a slide's visible content (slide part, layout, master,
+    theme, media) at a density, in whichever deck revision it appears, so
+    `content_hash` no longer changes when LibreOffice converts an unchanged
+    slide differently; `force: true` re-renders and replaces it.
+  - See [SEMANTIC_COMPILER.md](SEMANTIC_COMPILER.md#revising-a-stored-deck-deck_id).
+
 - **2026-10-03 — Composition overrides compile to what explain reports (`go-slide-creator-vj549`).** SchemaVersion unchanged (no new tools, codes or fix kinds).
   - A `pattern` / `layout` override listed in `compositions[]` is honoured
     only when the slide actually compiles to it, and the compiler is held to

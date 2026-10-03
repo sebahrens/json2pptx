@@ -345,7 +345,46 @@ func Validate(spec *DeckSpec, strict Strictness) []diagnostics.Diagnostic {
 	for _, source := range expandedSlides(spec) {
 		validateSlideAt(source.SourcePath, source.Slide, s)
 	}
+	validateSlideIDs(spec, s)
 	return s.out
+}
+
+// slideIDPattern is the shape of a slide id: it starts with a letter so it can
+// never be mistaken for an array index in a patch path (/slides/3 vs
+// /slides/risk), and stays short enough to type.
+var slideIDPattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]{0,39}$`)
+
+// ValidSlideID reports whether id is usable as a slide handle.
+func ValidSlideID(id string) bool { return slideIDPattern.MatchString(id) }
+
+// validateSlideIDs checks the optional per-slide id: a patch addresses a slide
+// by it, so it must be well-formed and name exactly one slide
+// (go-slide-creator-1w3uo).
+func validateSlideIDs(spec *DeckSpec, s *semDiags) {
+	seen := map[string]string{}
+	for _, source := range expandedSlides(spec) {
+		raw, present := source.Slide.Body["id"]
+		if !present {
+			continue
+		}
+		path := source.SourcePath + ".id"
+		id, ok := raw.(string)
+		if !ok {
+			s.hard(path, diagnostics.CodeSemanticFieldType, fmt.Sprintf("slide id must be a string, got %T", raw))
+			continue
+		}
+		if !ValidSlideID(id) {
+			s.hard(path, diagnostics.CodeSemanticFieldType, fmt.Sprintf(
+				"slide id %q is not usable: start with a letter, then letters, digits, _ or - (at most 40 characters)", id))
+			continue
+		}
+		if first, dup := seen[id]; dup {
+			s.hard(path, diagnostics.CodeSemanticFieldType, fmt.Sprintf(
+				"slide id %q is already used by %s; ids must be unique so a patch can address one slide", id, first))
+			continue
+		}
+		seen[id] = source.SourcePath
+	}
 }
 
 // Check parses a semantic document and validates the resulting spec, returning
