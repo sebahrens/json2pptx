@@ -160,48 +160,34 @@ func TestRenderDeckSpecRefusalIsSourceAddressedAndRepairable(t *testing.T) {
 }
 
 // go-slide-creator-b7qqg.3 acceptance: validate and render agree on the
-// readable floors for every kind's example on every shipped template.
+// readable floors for every kind's example on every shipped template. Since
+// go-slide-creator-3rn3s they agree on every finding: validate reports the
+// render's own diagnostics, so the two sets are compared whole.
 func TestDeckSpecReadabilityVerdictParityAllKindsAllTemplates(t *testing.T) {
 	if testing.Short() {
 		t.Skip("renders every kind on every template")
 	}
-	ctx := context.Background()
 	mc := refusalTestConfig(t)
-	for _, tpl := range []string{"abstract", "blue-corporate", "business-template", "forest-green", "midnight-blue", "modern", "modern-template", "modern-yellow", "warm-coral"} {
+	for _, tpl := range shippedTemplateNames(t) {
 		for _, k := range semantic.AllSlideKinds() {
 			spec := map[string]any{
 				"meta":   map[string]any{"template": tpl, "title": "Parity"},
 				"slides": []any{semantic.KindExample(k)},
 			}
-			vres, err := mc.handleValidateDeckSpec(ctx, makeRequest(map[string]any{"spec": spec}))
-			if err != nil {
-				t.Fatal(err)
+			label := tpl + "/" + string(k)
+			v := deckSpecVerdicts(t, mc, map[string]any{"spec": spec})
+			assertFindingParity(t, label, v)
+			if v.RenderEnvelope != nil {
+				t.Errorf("%s: render answered with an error envelope: %+v", label, v.RenderEnvelope.Findings)
+				continue
 			}
-			var env deckSpecEnvelopeResponse
-			structuredInto(t, vres.StructuredContent, &env)
-			validateRefuses := false
-			for _, f := range env.Findings {
-				if f.Code == "INPUT.TEXT_BELOW_READABLE_MIN" && f.Severity == diagnostics.SeverityError {
-					validateRefuses = true
+			for _, d := range v.Render.Diagnostics {
+				if !d.Blocking {
+					continue
 				}
-			}
-			rres, err := mc.handleRenderDeckSpec(ctx, makeRequest(map[string]any{"spec": spec}))
-			if err != nil {
-				t.Fatal(err)
-			}
-			var render renderDeckSpecResponse
-			structuredInto(t, rres.StructuredContent, &render)
-			renderRefuses := false
-			for _, d := range render.Diagnostics {
-				if d.Code == "TEXT_BELOW_READABLE_MIN" && d.Severity == "error" && !render.OK {
-					renderRefuses = true
-					if d.SemanticPath == "" || d.NextToolCall == nil {
-						t.Errorf("%s/%s: render refusal not source-addressed: %+v", tpl, k, d)
-					}
+				if d.SemanticPath == "" || d.NextToolCall == nil {
+					t.Errorf("%s: blocking diagnostic not source-addressed: %+v", label, d)
 				}
-			}
-			if validateRefuses != renderRefuses {
-				t.Errorf("%s/%s: validate refuses=%v but render refuses=%v (render error %q)", tpl, k, validateRefuses, renderRefuses, render.Error)
 			}
 		}
 	}

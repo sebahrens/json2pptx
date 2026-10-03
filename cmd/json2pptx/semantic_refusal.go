@@ -37,7 +37,7 @@ func semanticRefusalDiagnostic(cr *semantic.CompileResult, err error) *semanticD
 		sm, ir = cr.SourceMap, cr.IR
 	}
 	d := semanticDiagFromFit(sm, patterns.FitFinding{ValidationError: *loss, Action: "refuse"})
-	d.Severity = "error"
+	setDiagnosticSeverity(&d, diagnostics.SeverityError)
 	d.Action = "refuse"
 
 	var evidence generator.ReadabilityEvidence
@@ -89,12 +89,12 @@ func semanticRefusalDiagnostic(cr *semantic.CompileResult, err error) *semanticD
 // finding on a pattern-generated grid cell. The source map stops at the
 // pattern's values, so a cell path (/slides/0/pattern/rows/0/cells/0/…) has no
 // entry; the paragraph's text identifies the authored field instead.
-func generatedCellSemanticPath(cr *semantic.CompileResult, f patterns.FitFinding) string {
-	if cr == nil || f.Code != patterns.ErrCodeTextBelowReadableMin || f.Fix == nil {
+func generatedCellSemanticPath(ir *semantic.DeckIR, f patterns.FitFinding) string {
+	if ir == nil || f.Code != patterns.ErrCodeTextBelowReadableMin || f.Fix == nil {
 		return ""
 	}
 	text, _ := f.Fix.Params["paragraph_text"].(string)
-	return semanticFieldForText(cr.IR, slidepath.SlideIndex(f.Path), text)
+	return semanticFieldForText(ir, slidepath.SlideIndex(f.Path), text)
 }
 
 // compositionPatchDetail is the Details / evidence key a validate diagnostic
@@ -111,8 +111,8 @@ const editPathDetail = "edit_path"
 // the same evidence and fallback a render refusal carries: measured against
 // allowed size, and the composition switch to suggest when the authored field
 // is a list no single rewrite can fix.
-func decorateReadabilityRefusal(d *diagnostics.Diagnostic, cr *semantic.CompileResult, f patterns.FitFinding) {
-	if cr == nil || f.Code != patterns.ErrCodeTextBelowReadableMin || f.Action != "refuse" {
+func decorateReadabilityRefusal(d *diagnostics.Diagnostic, ir *semantic.DeckIR, sm *semantic.SourceMap, f patterns.FitFinding) {
+	if ir == nil || f.Code != patterns.ErrCodeTextBelowReadableMin || f.Action != "refuse" {
 		return
 	}
 	if d.Details == nil {
@@ -129,12 +129,12 @@ func decorateReadabilityRefusal(d *diagnostics.Diagnostic, cr *semantic.CompileR
 	rawIdx := slidepath.SlideIndex(f.Path)
 	if f.Fix != nil {
 		if text, _ := f.Fix.Params["edit_text"].(string); text != "" {
-			if field := semanticFieldForText(cr.IR, rawIdx, text); field != "" && field != d.Path {
+			if field := semanticFieldForText(ir, rawIdx, text); field != "" && field != d.Path {
 				d.Details[editPathDetail] = field
 			}
 		}
 	}
-	if patch := compositionSwitchPatch(cr.IR, rawIdx, slideSemanticPath(cr.SourceMap, rawIdx)); patch != nil {
+	if patch := compositionSwitchPatch(ir, rawIdx, slideSemanticPath(sm, rawIdx)); patch != nil {
 		d.Details[compositionPatchDetail] = patch
 	}
 }

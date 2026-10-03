@@ -276,7 +276,13 @@ func TestRefusedRenderSuggestionCarriesTheUnstoredPatch(t *testing.T) {
 // validate has nothing to differ from.
 func TestChangedSlidesAlwaysPresent(t *testing.T) {
 	mc := handleTestConfig(t)
-	first := mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": revisionTestSpec})
+	// The storyline rules the four-slide fixture cannot meet are waived, so the
+	// deck is deterministic_ready and the next step is about what changed.
+	spec := strings.Replace(revisionTestSpec, `"template": "midnight-blue"`,
+		`"template": "midnight-blue", "waivers": [`+
+			`{"code": "CLOSING_WITHOUT_NEXT_STEPS", "reason": "Fixture closes on questions."}, `+
+			`{"code": "NO_EXECUTIVE_SUMMARY", "reason": "Fixture is a short review."}]`, 1)
+	first := mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": spec})
 	if !strings.Contains(resultText(first), `"changed_slides":[]`) {
 		t.Errorf("a first validate should report changed_slides: [], got:\n%s", resultText(first))
 	}

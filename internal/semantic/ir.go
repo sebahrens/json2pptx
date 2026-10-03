@@ -182,6 +182,8 @@ type DeckIR struct {
 	// Executive is true when the deck's archetype expects a synthesis/decision
 	// slide; it drives the rhythm synthesis rule.
 	Executive bool `json:"executive,omitempty"`
+	// Waivers are the storyline findings the deck waives (meta.waivers).
+	Waivers []FindingWaiver `json:"waivers,omitempty"`
 	// Slides are the normalized, planned slides in source order.
 	Slides []SlideIR `json:"slides"`
 	// Rhythm is the deck-level rhythm summary.
@@ -489,6 +491,7 @@ func Normalize(spec *DeckSpec) *DeckIR {
 	ir.TypeScale = spec.Meta.TypeScale
 	ir.DesignMode = spec.Meta.DesignMode
 	ir.AccentStrategy = spec.Meta.AccentStrategy
+	ir.Waivers = append([]FindingWaiver(nil), spec.Meta.Waivers...)
 
 	defaults := DefaultsFor(spec.Meta.Archetype)
 	ir.ArchetypeTemplate = defaults.Template

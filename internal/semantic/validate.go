@@ -477,6 +477,34 @@ func validateMeta(spec *DeckSpec, s *semDiags) {
 		s.hard("meta.archetype", diagnostics.CodeSemanticUnknownArchetype,
 			fmt.Sprintf("unknown archetype %q; expected one of %s", spec.Meta.Archetype, joinArchetypes()))
 	}
+	validateMetaWaivers(spec, s)
+	validateMetaRequiredLayouts(spec, s)
+}
+
+// validateMetaWaivers checks meta.waivers: each names a waivable finding once
+// and says why the rule does not apply.
+func validateMetaWaivers(spec *DeckSpec, s *semDiags) {
+	seenWaivers := map[string]bool{}
+	for i, w := range spec.Meta.Waivers {
+		path := fmt.Sprintf("meta.waivers[%d]", i)
+		code, waivable := CanonicalWaivableCode(w.Code)
+		switch {
+		case !waivable:
+			s.hard(path+".code", diagnostics.CodeSemanticRequired,
+				fmt.Sprintf("finding %q cannot be waived; meta.waivers accepts %s", w.Code, strings.Join(WaivableFindingCodes(), ", ")))
+		case seenWaivers[code]:
+			s.hard(path+".code", diagnostics.CodeSemanticRequired, fmt.Sprintf("finding %q is waived more than once", code))
+		}
+		seenWaivers[code] = true
+		if strings.TrimSpace(w.Reason) == "" {
+			s.hard(path+".reason", diagnostics.CodeSemanticRequired, "a waiver needs a reason: say why the rule does not apply to this deck")
+		}
+	}
+}
+
+// validateMetaRequiredLayouts checks meta.required_layouts: canonical names,
+// each listed once.
+func validateMetaRequiredLayouts(spec *DeckSpec, s *semDiags) {
 	seenLayouts := map[string]bool{}
 	for i, requested := range spec.Meta.RequiredLayouts {
 		normalized := strings.ToLower(strings.TrimSpace(requested))

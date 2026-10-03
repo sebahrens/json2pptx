@@ -51,8 +51,10 @@ type deckHandle struct {
 	// SlideDigests is the per-slide content digest of the last stored spec, so
 	// changed_slides reflects which slides a patch actually changed.
 	SlideDigests []string
-	// Template is the template the last render used, echoed so a re-render
-	// without an explicit template keeps the deck looking the same.
+	// Template is the template the deck is bound to: the first template a call
+	// named for it, or the spec's meta.template. A re-render without an
+	// explicit template keeps the deck looking the same, and the binding
+	// changes only by a patch to /meta/template (go-slide-creator-2dit4).
 	Template string
 	// TemplatePath is the vetted, absolute bring-your-own .pptx the last render
 	// used (render_deck_spec template_path), and BaseDir the allowed root it was
@@ -79,9 +81,10 @@ type deckHandle struct {
 	// storeTool / storeNote label the revision this handle creates when it is
 	// stored; pendingRenderPptx marks it as rendered. All three are consumed
 	// by inherit under the store lock.
-	storeTool, storeNote string
-	storeMoved           map[string]bool
-	pendingRenderPptx    string
+	storeTool, storeNote  string
+	storeMoved            map[string]bool
+	pendingRenderPptx     string
+	pendingRenderIdentity string
 }
 
 // deckHandleStore is a per-process, TTL'd map of handles. Same scope as the
@@ -235,7 +238,7 @@ type specSource struct {
 	RawPatch []any
 	// MovedIDs names the slides this call's move ops picked up.
 	MovedIDs map[string]bool
-	// Template is the template the handle's last render resolved to. A
+	// Template is the template the handle is bound to (go-slide-creator-2dit4). A
 	// handle-driven re-render that names no template falls back to it, so
 	// patching a deck cannot silently restyle it.
 	Template string
@@ -976,7 +979,7 @@ func (mc *mcpConfig) rememberRawDeck(existingID string, previous, presentation [
 
 const deckIDParamDescription = "Handle of a spec this server holds: the deck_id a validate_deck_spec or render_deck_spec response returned. Send it INSTEAD of spec; add patch to edit part of the deck. Per-process, expires after 1 hour; an unknown or expired id is an error, so send the spec again."
 
-const deckPatchParamDescription = `Edits to deck_id's spec, applied before the call acts: [{op, path, value | from}]. op: replace | add | remove | move | copy (move, copy read from). path is a JSON Pointer; a slide is named by index or id (/slides/3/title, /slides/s4/title, /meta/template); add at /slides/6 inserts, "-" appends. All ops apply or none. The response has stored, revision, changed_slides (slides that look different) and slide_changes (edited | inserted | restyled | moved | renumbered | notes_only | removed). A refused render stores nothing.`
+const deckPatchParamDescription = `Edits to deck_id's spec, applied before the call acts: [{op, path, value | from}]. move and copy read from. path is a JSON Pointer; a slide is named by index or id (/slides/3/title, /slides/s4/title, /meta/template); add at /slides/6 inserts, "-" appends. All ops apply or none. The response has stored, revision, changed_slides (slides that look different) and slide_changes (edited | inserted | restyled | moved | renumbered | notes_only | removed). A refused render stores nothing.`
 
 // deckHandleToolParams declares the deck-store arguments of a spec tool:
 // deck_id and patch, plus how the result is stored. Every spec tool takes the

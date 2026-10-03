@@ -1,5 +1,11 @@
 package semantic
 
+import (
+	"strings"
+
+	"github.com/sebahrens/json2pptx/internal/patterns"
+)
+
 // DeckSpec is the top-level semantic authoring model. It is intentionally
 // compact: deck-level intent lives in Meta, and each slide is a kind-tagged
 // payload. Later compiler phases validate and compile a DeckSpec into the raw
@@ -77,6 +83,55 @@ type DeckMeta struct {
 	// RequiredLayouts constrains planning to cover these canonical template
 	// layout IDs without turning the list into a one-slide-per-layout outline.
 	RequiredLayouts []string `json:"required_layouts,omitempty" yaml:"required_layouts,omitempty"`
+	// Waivers turn named storyline findings into advisories for a deck whose
+	// requested shape breaks the rule on purpose (a seven-slide pitch has no
+	// executive summary). Each waiver names one finding code and says why; the
+	// render and validate results record it (go-slide-creator-oh3qr).
+	Waivers []FindingWaiver `json:"waivers,omitempty" yaml:"waivers,omitempty"`
+}
+
+// FindingWaiver waives one storyline finding code for the whole deck.
+type FindingWaiver struct {
+	// Code is the finding code to waive (see WaivableFindingCodes).
+	Code string `json:"code" yaml:"code"`
+	// Reason says why the rule does not apply to this deck. Required.
+	Reason string `json:"reason" yaml:"reason"`
+}
+
+// waivableFindingCodes are the storyline rules a deck may waive: they judge the
+// deck's shape against a consulting storyline, which a user's brief can
+// legitimately override. Fit, readability and contrast findings describe a
+// broken slide and are never waivable.
+var waivableFindingCodes = []string{
+	patterns.ErrCodeClosingWithoutNextSteps,
+	patterns.ErrCodeNoExecutiveSummary,
+	patterns.ErrCodeTitleNotAction,
+	patterns.ErrCodeTakeawayMissing,
+}
+
+// WaivableFindingCodes returns the finding codes meta.waivers accepts, sorted.
+func WaivableFindingCodes() []string {
+	return append([]string(nil), waivableFindingCodes...)
+}
+
+// IsWaivableFindingCode reports whether meta.waivers may name code.
+func IsWaivableFindingCode(code string) bool {
+	_, ok := CanonicalWaivableCode(code)
+	return ok
+}
+
+// CanonicalWaivableCode returns the finding code a waiver names, in the
+// spelling findings carry. Codes are matched without regard to case: the
+// catalogue mixes TITLE_NOT_ACTION with takeaway_missing, and a waiver should
+// not fail on that.
+func CanonicalWaivableCode(code string) (string, bool) {
+	code = strings.TrimSpace(code)
+	for _, c := range waivableFindingCodes {
+		if strings.EqualFold(c, code) {
+			return c, true
+		}
+	}
+	return "", false
 }
 
 // ChromeSpec mirrors deckinput.ChromeInput: the deck furniture rendered into
