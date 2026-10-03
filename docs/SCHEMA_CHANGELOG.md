@@ -1,5 +1,11 @@
 # Schema Changelog
 
+- **2026-10-04 — Schema 4.160.0 · layout nativeness and the agent journey (labels `layout-nativeness-20261003`, `agent-journey-20261003`).**
+  - One version for every dated bullet below this one down to the 4.159.0
+    entry: those bullets were written by parallel branches without a version
+    and all ship in 4.160.0. The schema fingerprint advances
+    (`2ffaa76c5867d6cc` → `e62605a0f9ee3236`).
+
 - **2026-10-04 — The agent journey is a tracked check; `plan_deck` names a cut it also keeps as "a further …" (`go-slide-creator-3pxl6`).**
   - **`plan_deck` `budget.cut[].what` and `budget_note`**: when the budget
     drops one of two slots of the same name (the storyline drafts two

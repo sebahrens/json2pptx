@@ -111,8 +111,13 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// PresentationInput hash is unchanged.
 	// 4.159.0 adds plan_deck region planning (regions slot, composition role,
 	// unsupported_regions; go-slide-creator-vae7f); the hash is unchanged.
+	// 4.160.0 is the layout-nativeness and agent-journey wave (labels
+	// layout-nativeness-20261003, agent-journey-20261003): new pattern values
+	// and overrides (arch-stack components, roadmap-phased bars, driver-tree
+	// nodes, open-style defaults, table-highlight highlight_rows), so the
+	// PresentationInput hash advances.
 	// If this fails, see file header comment.
-	const wantFingerprint = "2ffaa76c5867d6cc"
+	const wantFingerprint = "e62605a0f9ee3236"
 
 	got := schemaFingerprint()
 
