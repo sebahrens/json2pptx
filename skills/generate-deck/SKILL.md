@@ -13,9 +13,10 @@ description: >-
 
 Call `get_started` first, passing this frontmatter's `schema_version` as
 `skill_version`. If it returns `skill_warning`, run `json2pptx skill install`
-(`make install-skill` in a checkout) before relying on installed instructions. Check `get_started.runtime`: if render
+before relying on installed instructions. Check `get_started.runtime`: if render
 tooling is unavailable, deliver the PPTX as **UNREVIEWED**, not as a finished deck.
-Use the live MCP schemas and `get_capabilities` for arguments and availability;
+Use the live MCP schemas for arguments (the default `tools/list` is abridged:
+`get_started` `tool:"<name>"` returns a tool's full description and schema);
 do not infer a tool's signature from an old example.
 
 **Completion rule (single source — same text as `get_started.completion_protocol.rule` and the MCP

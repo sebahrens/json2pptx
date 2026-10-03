@@ -50,10 +50,12 @@ const (
 	outputSchemasEnv = "JSON2PPTX_MCP_OUTPUT_SCHEMAS"
 
 	// deckSpecToolLimit and deckSpecToolListByteBudget cap the default
-	// profile (TestDeckSpecToolProfileBudget). 40KB is ~10K tokens: the
-	// go-slide-creator-355t7 target of 8–10K tokens before the first call.
+	// profile (TestDeckSpecToolProfileBudget). 40KB (~10K tokens) was the
+	// go-slide-creator-355t7 target for tools/list alone; it is now the budget
+	// for the whole of first contact (go-slide-creator-mvdt5), so the listing
+	// is abridged (mcp_tool_listing_abridged.go) and capped well under it.
 	deckSpecToolLimit          = 12
-	deckSpecToolListByteBudget = 34 * 1024
+	deckSpecToolListByteBudget = 24 * 1024
 
 	// allToolListByteBudget caps the "all" profile's default listing, which
 	// carries no outputSchema (go-slide-creator-mvdt5): it was 335 KB, 200 KB
@@ -261,6 +263,9 @@ func toolProfileFilter(profile string) server.ToolFilterFunc {
 				case "render_deck_spec":
 					out[i] = withDeckSpecReferenceInput(out[i])
 				}
+				// The listing an agent chooses and calls from; get_started
+				// tool:"<name>" returns the rest (go-slide-creator-mvdt5).
+				out[i] = withAbridgedListing(out[i])
 			}
 		}
 		return out

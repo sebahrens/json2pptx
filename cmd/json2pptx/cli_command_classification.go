@@ -125,8 +125,9 @@ func cliCommandClassifications() map[string]cliCommandClass {
 		},
 		"skill": {
 			AgentFacing: true,
-			CLIOnlyReason: "Writes the agent skill files this binary was built with to the host's skill directory " +
-				"(install) and compares the installed copy with the binary (status). It manages files on the agent's " +
+			CLIOnlyReason: "Writes the agent skill files this binary was built with, and the docs they link to, to the host's " +
+				"skill directory (install), compares each installed file with the binary (status) and prints the MCP-tool " +
+				"to CLI-command table (cli-map). It manages files on the agent's " +
 				"own machine, which an MCP server may not share; over MCP, get_started(skill_version) reports a stale " +
 				"skill as skill_warning and the json2pptx://skill resource serves the current SKILL.md.",
 		},

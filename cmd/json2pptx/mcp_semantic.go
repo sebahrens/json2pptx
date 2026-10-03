@@ -1354,7 +1354,7 @@ type slideKindComposition struct {
 
 func mcpListSlideKindsTool() mcp.Tool {
 	return mcp.NewTool("list_slide_kinds",
-		mcp.WithDescription(`Discover DeckSpec slide kinds. Without kinds: every kind's summary, required_fields and typical_fields. With kinds: also each named kind's copy-ready example. fields selects detail instead: brief (each canonical field's one-line signature, with budgets), item_schema (canonical fields with descriptions, aliases named once), budgets (per-field text budgets; title, subtitle and takeaway measured on template, else the tightest across shipped templates), compositions (pattern/layout overrides), example, item_schema_full (closed JSON Schema with every alias, for validators). kinds:["raw_json2pptx"] also returns composed_example: one slide whose compose envelope puts several views under one title.`),
+		mcp.WithDescription(`Discover DeckSpec slide kinds. Without kinds: one line per kind with its required_fields. With kinds: each named kind's full summary, typical_fields and copy-ready example. fields selects detail instead: brief (each canonical field's one-line signature, with budgets), item_schema (canonical fields with descriptions, aliases named once), budgets (per-field text budgets; title, subtitle and takeaway measured on template, else the tightest across shipped templates), compositions (pattern/layout overrides), example, item_schema_full (closed JSON Schema with every alias, for validators). kinds:["raw_json2pptx"] also returns composed_example: one slide whose compose envelope puts several views under one title.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaListSlideKinds)),
 		mcp.WithArray("kinds",
 			mcp.Description("Exact kind names to return, e.g. [\"kpi_snapshot\"]. Omit for all."),
@@ -1470,7 +1470,7 @@ func (mc *mcpConfig) handleListSlideKinds(ctx context.Context, request mcp.CallT
 		result["brief_note"] = slideKindBriefNote
 	}
 	if kindFilter == nil && len(fieldFilter) == 0 {
-		result["detail"] = "kinds:[<chosen kinds>] returns each kind's copy-ready example; fields:[\"brief\"] its field signatures and text budgets, fields:[\"item_schema\"] descriptions and aliases."
+		result["detail"] = "One line per kind. kinds:[<chosen kinds>] returns each kind's full summary (count bounds, what it degrades to), typical_fields and copy-ready example; fields:[\"brief\"] its field signatures and text budgets, fields:[\"item_schema\"] descriptions and aliases."
 	}
 	if withBudgets {
 		if measured.Takeaway.MaxChars > 0 {
@@ -1505,8 +1505,18 @@ func slideKindEntry(k semantic.SlideKind, kindFilter, fieldFilter map[string]boo
 		RequiredFields: info.RequiredFields,
 		TypicalFields:  info.TypicalFields,
 	}
-	// The catalogue is for choosing; a named kind is for authoring; an
-	// explicit fields list returns what it names.
+	// The catalogue is for choosing: one line per kind and the fields it
+	// cannot do without, under either spelling. The rest of the summary (count
+	// bounds, what the kind degrades to) and the typical fields come with the
+	// kinds the agent then names (go-slide-creator-mvdt5).
+	if kindFilter == nil && len(fieldFilter) == 0 {
+		entry.Summary = oneLineSummary(info.Summary)
+		entry.TypicalFields = nil
+		entry.RequiredAliases = info.RequiredAliases
+		return entry
+	}
+	// A named kind is for authoring; an explicit fields list returns what it
+	// names.
 	if (kindFilter != nil && len(fieldFilter) == 0) || fieldFilter["example"] {
 		entry.Example = semantic.KindExample(k)
 	}

@@ -2344,6 +2344,7 @@ var outputSchemaValidateOutput = json.RawMessage(`{
 var outputSchemaGetStarted = json.RawMessage(`{
   "type": "object",
   "properties": {
+    "tool_detail": {"type": "object", "description": "The whole response when tool was given: that tool's full description and input schema, which the default profile's tools/list abridges.", "properties": {"tool": {"type": "string"}, "description": {"type": "string"}, "input_schema": {"type": "object"}, "listed": {"type": "boolean", "description": "Whether this server's tools/list carries the tool."}, "note": {"type": "string"}}, "required": ["tool", "description", "input_schema", "listed"]},
     "task":            {"type": "string"},
     "task_warning":    {"type": "string", "description": "Present when the requested task was not recognised: the response still carries the brief workflow, and this names the task asked for and the valid ones."},
     "skill_schema_version": {"type": "string"},
@@ -2415,7 +2416,10 @@ var outputSchemaGetStarted = json.RawMessage(`{
       "required": ["draft_status", "complete_status", "rule"]
     }
   },
-  "required": ["task", "skill_schema_version", "sequence", "available_tasks", "completion_protocol", "runtime"]
+  "anyOf": [
+    {"required": ["task", "skill_schema_version", "sequence", "available_tasks", "completion_protocol", "runtime"]},
+    {"required": ["tool_detail"]}
+  ]
 }`)
 
 // --- get_input_schema ---

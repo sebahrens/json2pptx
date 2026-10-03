@@ -117,8 +117,8 @@ preconditions, [RAW_PATH.md](RAW_PATH.md); the four phases are in
   produces a nonpublishable exemplar skeleton.
 - `register_template_setting` and `delete_template_setting` are write
   tools gated by `JSON2PPTX_ALLOW_SETTINGS_WRITE=1`, never part of ordinary
-  deck authoring. `get_capabilities().cli_only_commands` explains commands
-  without an MCP counterpart; MCP-only tools have no exact CLI replacement.
+  deck authoring. `json2pptx skill cli-map` prints each tool's CLI command
+  (generated; an MCP-only tool says why).
 - Results use compact `structuredContent`; `content[0].text` may be a
   bounded synopsis, so read the structured data. A tool's `next_tool_call`
   is a suggested recovery path (`{tool, args_template}`; `slide_index: -1`

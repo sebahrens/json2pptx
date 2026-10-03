@@ -433,6 +433,9 @@ func mcpGetStartedTool() mcp.Tool {
 		mcp.WithString("skill_version",
 			mcp.Description("schema_version from the installed generate-deck skill's frontmatter. When it is older than this server, the response carries skill_warning with the refresh command."),
 		),
+		mcp.WithString("tool",
+			mcp.Description("A tool name: return tool_detail (its full description and input schema) instead of a workflow."),
+		),
 	)
 }
 
@@ -514,6 +517,24 @@ func compareSkillSchemaVersions(installed, current string) (int, error) {
 }
 
 func (mc *mcpConfig) handleGetStarted(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// tool:"<name>" is the detail the default profile's abridged tools/list
+	// leaves out (go-slide-creator-mvdt5).
+	if raw, ok := request.GetArguments()["tool"]; ok && raw != nil {
+		name, _ := raw.(string)
+		detail, err := fullToolListing(strings.TrimSpace(name))
+		if err != nil {
+			listed := advertisedToolNames()
+			return argInvalidValue("get_started", diagnostics.CodeInvalidParameter, "tool",
+				fmt.Sprintf("tool must name a tool of this server; listed: %s", strings.Join(listed, ", ")),
+				"string", "render_deck_spec", nil), nil
+		}
+		mcpResult, err := api.MCPSuccessResult(ctx, toolDetailResponse(detail))
+		if err != nil {
+			return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal get_started response: %v", err)), nil
+		}
+		return mcpResult, nil
+	}
+
 	task := ""
 	if raw, ok := request.GetArguments()["task"]; ok && raw != nil {
 		// A non-string task used to be ignored silently: get_started answered

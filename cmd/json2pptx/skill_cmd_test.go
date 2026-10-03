@@ -34,35 +34,143 @@ func TestSkillInstallMatchesTheBinary(t *testing.T) {
 			t.Errorf("generate-deck/%s was not installed: %v", name, err)
 		}
 	}
-	// Every installed guide is byte-identical to the source apart from its
-	// links into the repository, and none of those is left relative.
-	source := filepath.Join("..", "..", "skills")
+	// Every installed file is its source: a skill file from skills/, a
+	// snapshot file from the repository path it mirrors. A Markdown file adds
+	// the version stamp, and a skill's own guide has its links into the
+	// repository rerouted to the snapshot.
+	repo := filepath.Join("..", "..")
+	references := 0
 	for _, name := range manifest.Files {
 		installed, err := os.ReadFile(filepath.Join(dest, filepath.FromSlash(name)))
 		if err != nil {
 			t.Fatal(err)
 		}
-		original, err := os.ReadFile(filepath.Join(source, filepath.FromSlash(name)))
+		sourcePath := filepath.Join(repo, "skills", filepath.FromSlash(name))
+		guide := strings.HasSuffix(name, ".md") && strings.Count(name, "/") == 1
+		if rest, ok := strings.CutPrefix(name, skillReferencesDir+"/"); ok {
+			references++
+			sourcePath, guide = filepath.Join(repo, filepath.FromSlash(rest)), false
+		}
+		original, err := os.ReadFile(sourcePath)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !strings.HasSuffix(name, ".md") || strings.Count(name, "/") != 1 {
+		if !strings.HasSuffix(name, ".md") {
 			if !bytes.Equal(installed, original) {
 				t.Errorf("%s changed on install", name)
 			}
 			continue
 		}
-		if repositoryLink.Match(installed) {
-			t.Errorf("%s still links into a repository checkout", name)
+		if !strings.HasSuffix(string(installed), "\n\n"+skillStamp()+"\n") {
+			t.Errorf("%s does not end in the version stamp", name)
 		}
-		if want := repositoryLink.ReplaceAll(original, []byte("]("+skillRepositoryURL+"$1/")); !bytes.Equal(installed, want) {
-			t.Errorf("%s differs from the source beyond its repository links", name)
+		want := original
+		if guide {
+			if repositoryLink.Match(installed) {
+				t.Errorf("%s still links into a repository checkout", name)
+			}
+			want = repositoryLink.ReplaceAll(original, []byte("](../"+skillReferencesDir+"/$1/"))
+		}
+		if !bytes.Equal(installed, stampSkillFile(want)) {
+			t.Errorf("%s differs from the source beyond its stamp and repository links", name)
+		}
+	}
+	if references == 0 {
+		t.Error("the install wrote no reference snapshot")
+	}
+	// What the installed guides link to is there: the docs, an example, the
+	// evidence deck's image.
+	for _, name := range []string{"docs/PATTERNS.md", "docs/FIT_FINDINGS.md", "docs/INPUT_FORMAT_ADVANCED.md", "examples/semantic/qbr.yaml",
+		"skills/generate-deck/SKILL.md", "tests/quality/evidence/connectors/midnight-blue/powerpoint-slide-4.png"} {
+		if _, err := os.Stat(filepath.Join(dest, filepath.FromSlash(skillReferencesDir), filepath.FromSlash(name))); err != nil {
+			t.Errorf("reference snapshot lacks %s: %v", name, err)
+		}
+	}
+	// No installed link leaves the skills directory or points at nothing.
+	for _, name := range manifest.Files {
+		if !strings.HasSuffix(name, ".md") {
+			continue
+		}
+		file := filepath.Join(dest, filepath.FromSlash(name))
+		body, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, match := range skillLinkRE.FindAllStringSubmatch(string(body), -1) {
+			target, _, _ := strings.Cut(match[1], "#")
+			if target == "" || strings.Contains(target, ":") {
+				continue
+			}
+			resolved := filepath.Clean(filepath.Join(filepath.Dir(file), target))
+			if rel, err := filepath.Rel(dest, resolved); err != nil || strings.HasPrefix(rel, "..") {
+				t.Errorf("%s: link %s leaves the skills directory", name, target)
+				continue
+			}
+			if _, err := os.Stat(resolved); err != nil {
+				t.Errorf("%s: link %s points at nothing", name, target)
+			}
 		}
 	}
 
 	status := checkInstalledSkill(dest)
 	if !status.Installed || !status.Current || status.InstalledVersion != SchemaVersion || status.Message != "" {
 		t.Errorf("a fresh install is not current: %+v", status)
+	}
+	if status.FilesChecked != len(manifest.Files) {
+		t.Errorf("status checked %d files, the install wrote %d", status.FilesChecked, len(manifest.Files))
+	}
+
+	// status checks each file, not only SKILL.md: one whose stamp is gone,
+	// one stamped by an older binary, an example that was edited, one deleted.
+	rewrite := func(name string, edit func(string) string) {
+		t.Helper()
+		file := filepath.Join(dest, filepath.FromSlash(name))
+		body, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(file, []byte(edit(string(body))), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rewrite("generate-deck/TOOLS.md", func(s string) string { return strings.Replace(s, skillStamp(), "", 1) })
+	if s := checkInstalledSkill(dest); s.Current || len(s.UnstampedFiles) != 1 || s.UnstampedFiles[0] != "TOOLS.md" || !strings.Contains(s.Message, "no version stamp") {
+		t.Errorf("an unstamped file was not reported: %+v", s)
+	}
+	rewrite("generate-deck/QUALITY.md", func(s string) string {
+		return strings.Replace(s, skillStamp(), skillStampPrefix+"1.2.3 -->", 1)
+	})
+	if s := checkInstalledSkill(dest); s.Current || len(s.StaleFiles) != 1 || s.StaleFiles[0] != "QUALITY.md" || !strings.Contains(s.Message, "older version (QUALITY.md)") {
+		t.Errorf("a file stamped by an older binary was not reported: %+v", s)
+	}
+	var example string
+	for _, name := range manifest.Files {
+		if strings.HasPrefix(name, "generate-deck/examples/") && !strings.HasSuffix(name, ".md") {
+			example = name
+			break
+		}
+	}
+	if example == "" {
+		t.Fatal("the generate-deck skill ships no example to check")
+	}
+	if _, err := installSkills(dest); err != nil {
+		t.Fatal(err)
+	}
+	rewrite(example, func(s string) string { return s + " " })
+	if s := checkInstalledSkill(dest); s.Current || len(s.ChangedFiles) != 1 || !strings.Contains(s.Message, "differ from the ones this binary ships") {
+		t.Errorf("an edited example was not reported: %+v", s)
+	}
+	if err := os.Remove(filepath.Join(dest, filepath.FromSlash(skillReferencesDir), "docs", "PATTERNS.md")); err != nil {
+		t.Fatal(err)
+	}
+	if s := checkInstalledSkill(dest); s.Current || !strings.Contains(strings.Join(s.MissingFiles, " "), "references/repository/docs/PATTERNS.md") {
+		t.Errorf("a missing reference file was not reported: %+v", s)
+	}
+	if _, err := installSkills(dest); err != nil {
+		t.Fatal(err)
+	}
+	if s := checkInstalledSkill(dest); !s.Current {
+		t.Errorf("reinstalling did not repair the copy: %+v", s)
 	}
 
 	// Installing again leaves a file the user added alone.
@@ -161,20 +269,46 @@ func TestCLIEntryPointsWarnAboutAStaleSkill(t *testing.T) {
 		}
 		return out.String(), errOut.String()
 	}
-	staleEnv := []string{skillDirEnv + "=" + stale, skillCheckEnv + "="}
-	for _, args := range [][]string{
+	envFor := func(dir string) []string { return []string{skillDirEnv + "=" + dir, skillCheckEnv + "="} }
+	commands := [][]string{
 		{"get-started"},
 		{"capabilities"},
 		{"semantic", "kinds"},
 		{"generate", deck, "--templates-dir", templates, "--out", filepath.Join(work, "out")},
-	} {
-		_, stderr := run(staleEnv, args...)
+	}
+	// Each entry point says it, given a mismatch nobody has been told about.
+	for _, args := range commands {
+		_, stderr := run(envFor(staleSkillDir(t, "schema_version: 1.2.3\n")), args...)
 		if n := strings.Count(stderr, skillRefreshCommand); n != 1 {
 			t.Errorf("%v: stderr names the refresh command %d times, want once:\n%s", args, n, stderr)
 		}
 		if !strings.Contains(stderr, "older than this binary") {
 			t.Errorf("%v: stderr does not say the skill is older:\n%s", args, stderr)
 		}
+	}
+	// Once per mismatch, not once per process: the first command says it and
+	// records it beside the skill; the commands after it stay quiet.
+	staleEnv := envFor(stale)
+	if _, stderr := run(staleEnv, "semantic", "kinds"); !strings.Contains(stderr, skillRefreshCommand) {
+		t.Fatalf("the first command did not warn:\n%s", stderr)
+	}
+	if _, err := os.Stat(filepath.Join(stale, "generate-deck", skillWarnedName)); err != nil {
+		t.Errorf("the warning was not recorded beside the skill: %v", err)
+	}
+	for _, args := range commands {
+		if _, stderr := run(staleEnv, args...); strings.Contains(stderr, skillRefreshCommand) {
+			t.Errorf("%v: warned again about a mismatch already reported:\n%s", args, stderr)
+		}
+	}
+	// A different mismatch (the copy changed) is said again, once.
+	if err := os.WriteFile(filepath.Join(stale, "generate-deck", "SKILL.md"), []byte("---\nname: generate-deck\nschema_version: 1.2.4\n---\n# old\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, stderr := run(staleEnv, "capabilities"); !strings.Contains(stderr, "is at 1.2.4") {
+		t.Errorf("a new mismatch was not reported:\n%s", stderr)
+	}
+	if _, stderr := run(staleEnv, "capabilities"); strings.Contains(stderr, skillRefreshCommand) {
+		t.Errorf("the new mismatch was reported twice:\n%s", stderr)
 	}
 
 	// get-started also carries it in the result, for a caller that reads stdout.

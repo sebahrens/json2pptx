@@ -1,5 +1,52 @@
 # Schema Changelog
 
+- **2026-10-04 — First contact under 40 KiB; one skill installer, stamped and checked per file (`go-slide-creator-mvdt5`, `-4eu2o`).**
+  - **Default (`deckspec`) `tools/list` is abridged: 22.2 KB (was 33.3).** Each
+    tool's description says what it does and returns; argument descriptions
+    are one line; `validate_deck_spec.spec` no longer inlines the `meta` /
+    `structure` outline or the kind enum. Every argument, type, enum,
+    `required` list and `oneOf` is unchanged, and the `core` / `all` profiles
+    list the tools in full. **`get_started` takes `tool: "<name>"`** and then
+    returns only `tool_detail {tool, description, input_schema, listed, note?}`
+    — the full description and input schema of that tool (`hidden_tools` marks
+    unlisted tools it names). An unknown name is `INVALID_PARAMETER` listing
+    the tools this server lists. The `get_started` output schema is now
+    `anyOf` the workflow fields or `tool_detail`.
+  - **`list_slide_kinds` with no arguments is one line per kind: 5.3 KB (was
+    10.8).** Each row is `{kind, summary, required_fields, required_aliases?}`
+    with `summary` cut to its first sentence (at most 110 characters — the
+    `json2pptx semantic kinds` line) and no `typical_fields`. `kinds:[…]`
+    returns the full summary, `typical_fields` and `example` as before; a
+    `fields` list is unchanged.
+  - **Budgets** (`TestOnboardingPayloadBudgets`, measured on the shipped
+    templates only, so a local `templates/p-style.pptx` does not move them):
+    instructions 1,254 (ceiling 1,536) + `tools/list` 22,175 (24,576) +
+    `get_started` 4,938 (5,632) + kind catalogue 5,299 (6,144) + template
+    names 1,470 (2,048) = 35.1 KB against a 40,960-byte first-contact budget.
+  - **`json2pptx skill install`** now also writes
+    `generate-deck/references/repository/` — the docs, semantic examples,
+    token sources and evidence examples the skills link to, embedded in the
+    binary (+0.68 MB) — and reroutes the guides' links to it instead of to
+    GitHub. `make install-skill`, `install.sh`, `install.ps1` and the dist
+    staging all run this command (`scripts/stage-skills.sh` is a wrapper), so
+    there is one installer. Its result adds `reference_file_count`.
+  - **Every installed Markdown file ends in
+    `<!-- json2pptx-skill schema_version: X.Y.Z -->`.** `json2pptx skill status`
+    checks every shipped file and adds `files_checked`, `unstamped_files`,
+    `stale_files` (stamped by an older binary) and `changed_files`
+    (non-Markdown files whose bytes differ) beside `missing_files`.
+  - **The stale-skill line on stderr is said once per mismatch**, not once per
+    command: the mismatch is recorded in
+    `generate-deck/.json2pptx-skill-warned` (the user cache directory when the
+    skill directory is read-only); a different binary version or a changed
+    copy is a new mismatch, and `skill install` clears it. `skill status` and
+    `get-started`'s `skill_warning` always report it.
+  - **`json2pptx skill cli-map [--tools deckspec|core|all] [--format json|md]`**
+    (new): the MCP-tool → CLI-command table, generated from the tool
+    classifications `get_capabilities` serves — `{tool, cli, cli_counterpart,
+    mcp_only, mcp_only_reason?}` per tool. `TestSkillCLIMapNamesRealCommands`
+    fails when a mapped command or flag does not exist.
+
 - **2026-10-03 — Every kind renders at its documented maximum on every shipped template (`go-slide-creator-vg73u`).**
   No schema or response-shape change. `next_steps` (6 actions), `option_matrix`
   (6 options), `executive_summary` (5 points with `bottom_line`) and the

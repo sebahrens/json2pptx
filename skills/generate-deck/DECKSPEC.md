@@ -1,8 +1,8 @@
 # Semantic DeckSpec authoring
 
 Read this when authoring or revising a DeckSpec. `list_slide_kinds` is the
-live catalogue (summary, required and typical fields); for a kind you intend
-to use, `kinds:["<kind>"]` returns its copy-ready example and
+live catalogue (one line and the required fields per kind); for a kind you
+use, `kinds:["<kind>"]` returns its full summary, typical fields and example,
 `fields:["brief"]` its field signatures and text budgets (`"item_schema"`:
 canonical fields with descriptions, each naming its `aliases` once;
 `"compositions"`: pattern / layout overrides; `"item_schema_full"`: the

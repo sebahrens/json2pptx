@@ -194,46 +194,17 @@ if (-not $SkipSkill) {
         Write-Host "    Removed old skill: $OldSkillDst"
     }
 
-    # PowerShell port of scripts/stage-skills.sh (what `make install` runs):
-    # every skill under skills\, the references\repository snapshot, and
-    # ../../docs-style links rewritten so they resolve inside ~\.claude\skills.
-    $SkillsRoot = Join-Path $ScriptDir "skills"
+    # The binary installs the skills it was built with: every skill under
+    # skills\, the generate-deck\references\repository snapshot of the files
+    # they link to, and a version stamp on each Markdown file. This is what
+    # scripts/stage-skills.sh (make install) runs too.
     $SkillsDst = Join-Path $env:USERPROFILE ".claude\skills"
-    foreach ($SkillDir in Get-ChildItem $SkillsRoot -Directory) {
-        $SkillDst = Join-Path $SkillsDst $SkillDir.Name
-        New-Item -ItemType Directory -Force -Path $SkillDst | Out-Null
-        Copy-Item (Join-Path $SkillDir.FullName "*") $SkillDst -Recurse -Force
-        Write-Host "    $SkillDst"
+    & (Join-Path $BinDir "json2pptx.exe") skill install --dest $SkillsDst | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ERROR: json2pptx skill install failed." -ForegroundColor Red
+        exit 1
     }
-
-    $Refs = Join-Path $SkillsDst "generate-deck\references\repository"
-    foreach ($Sub in @("docs", "examples", "internal")) {
-        New-Item -ItemType Directory -Force -Path (Join-Path $Refs $Sub) | Out-Null
-    }
-    foreach ($Doc in @("INPUT_FORMAT", "FIT_FINDINGS", "SEMANTIC_COMPILER", "TEMPLATE_SPEC", "PATH_GRAMMAR", "PATTERNS", "TEMPLATE_ANALYSIS")) {
-        Copy-Item (Join-Path $ScriptDir "docs\$Doc.md") (Join-Path $Refs "docs") -Force
-    }
-    Copy-Item (Join-Path $ScriptDir "examples\semantic") (Join-Path $Refs "examples") -Recurse -Force
-    Copy-Item (Join-Path $ScriptDir "internal\tokens") (Join-Path $Refs "internal") -Recurse -Force
-    Copy-Item $SkillsRoot $Refs -Recurse -Force
-    $Evidence = "tests\quality\evidence\connectors\midnight-blue"
-    $EvidenceDst = Join-Path $Refs $Evidence
-    New-Item -ItemType Directory -Force -Path $EvidenceDst | Out-Null
-    foreach ($Resource in @("source-aware-evidence-route.json", "readable-source-companion-route.json", "powerpoint-slide-4.png")) {
-        Copy-Item (Join-Path $ScriptDir "$Evidence\$Resource") $EvidenceDst -Force
-    }
-
-    # Only installed entrypoint guides (skills\<name>\*.md) need rerouting.
-    foreach ($SkillDir in Get-ChildItem $SkillsRoot -Directory) {
-        foreach ($Source in Get-ChildItem $SkillDir.FullName -Filter "*.md" -File) {
-            $Guide = Join-Path (Join-Path $SkillsDst $SkillDir.Name) $Source.Name
-            $Text = [IO.File]::ReadAllText($Guide)
-            foreach ($Sub in @("docs", "examples", "internal", "tests")) {
-                $Text = $Text.Replace("](../../$Sub/", "](../generate-deck/references/repository/$Sub/")
-            }
-            [IO.File]::WriteAllText($Guide, $Text)
-        }
-    }
+    Write-Host "    $SkillsDst"
 }
 
 # --- Install MCP config ---
