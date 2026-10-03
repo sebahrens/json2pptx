@@ -146,11 +146,11 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 
 | Pattern | Description |
 |---------|-------------|
-| `agenda` | Numbered section list for agenda / table-of-contents slides: 28pt serif accent numerals, 14pt items, 0.5pt rules, no tiles; `highlight` bolds the current section and dims the rest to 50%; optional `subtitles` set a muted line under each item |
+| `agenda` | Numbered section list for agenda / table-of-contents slides: 28pt serif accent numerals, 14pt items (18pt for two to four one-line items), 0.5pt rules, no tiles; `highlight` bolds the current section and dims the rest to 50%; optional `subtitles` set a muted line under each item |
 | `agenda-with-images` | Numbered agenda rows (3–6) with title/subtitle and image/quote placeholder per row; the placeholder column is all-or-nothing |
 | `arch-stack` | Architecture stack of 3–6 tier bands, each with one block per component (`tiers[].components`, 1–12; 7+ wrap to two rows) or a line of detail, plus optional accent-tinted cross-cutting side rails |
 | `before-after` | Two-column before/after with transition chevron: each state a heading over a rule (neutral before, accent after) and open bullets; `overrides.style` `panels` for tiles, `overrides.emphasis` fills one heading |
-| `before-after-compact` | Compact before/after, height-capped at ~60% for brief content |
+| `before-after-compact` | Compact before/after for brief lists: content-sized rows, no `bounds` box; alone on a slide it is composed like any sparse block (`vertical_align: "top"` keeps the band under the title) |
 | `bmc-canvas` | Formal 9-cell Business Model Canvas (Osterwalder) |
 | `capability-heatmap` | Capability / automation heatmap: 3–8 function columns with pointed headers (bold title + optional sublabel) over 1–6 activity cells each, filled by rating tier (2–4 levels, darkest = highest, text ink measured per fill) with a tier legend; shorter columns leave the bottom empty |
 | `card-grid` | Grid of 2–12 titled cards; `columns` / `rows` are optional and a last row that is not full stays short (5 = 3 + 2, 7 = 4 + 3) |
@@ -171,14 +171,14 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `kpi-4up` | Four big-number KPI cards with short captions |
 | `kpi-5up` | Five big-number KPI cards with short captions |
 | `kpi-6up` | Six big-number KPI cards with short captions |
-| `kpi-inline` | Horizontal inline KPI bar, height-capped for supporting context |
+| `kpi-inline` | Horizontal inline KPI bar: one content-sized row for supporting context in a compose segment or cell (alone on a slide it is composed like any sparse block) |
 | `labeled-rows` | 2–6 rows of a keyword label block (WHY / WHAT / HOW; `label_style` `tinted` (default) neutral block under an accent rule, `filled` accent block or accent `text`) with optional sublabel beside 1–4 lines of body text, rules between content-sized rows |
 | `matrix-2x2` | 2×2 matrix: two crossing axis lines with open quadrants, axis titles and low/high ends along the left and bottom edges, one optional `highlight` quadrant; `overrides.style` `tiles` for filled quadrant tiles with arrow axes |
 | `metric-list` | Vertical "by the numbers" stack of 3–7 metrics: big right-aligned accent value + bold label + optional detail line, hairline rules, optional highlighted row (`highlight: true`, at most one) and a bottom takeaway-band callout |
 | `next-steps` | Closing next-steps slide: 2–6 numbered action rows (action / owner / date; empty owner or date columns drop) separated by 0.5pt rules, plus an optional "Decisions requested" band (left accent rule, no outline, no fill) — the closer instead of "Thank you" |
-| `numbered-step-strip` | Ordered numbered steps (3–7; chevron ≤6) WITHOUT flowchart diamonds, in `chevron` / `stacked-box` / `toc` styles, each with an optional per-step detail zone and (stacked-box / toc) an optional `steps[].icon` |
+| `numbered-step-strip` | Ordered numbered steps (3–7; chevron ≤6) WITHOUT flowchart diamonds, in `chevron` / `stacked-box` / `toc` styles, each with an optional per-step detail zone (stacked-box / toc rows of one-line labels and bodies put the body in a detail column beside the label) and an optional `steps[].icon` |
 | `process-flow` | Left-to-right process flow with steps and decision points |
-| `process-flow-compact` | Compact process flow, height-capped at ~35% for short labels |
+| `process-flow-compact` | Compact process flow for short labels: one content-sized band, no `bounds` box; alone on a slide it reports `SLIDE_UNDERUSED` — pair it with a second zone or use `process-flow` |
 | `process-grid-2row` | Two parallel process tracks: dk2 row-label column on the left + 3–6 equal-width phase boxes per row (e.g., Design / Production, Strategy / Execution), with optional per-column `column_headers` and `outcomes` pills |
 | `pull-quote` | Italic quote block with attribution and an optional headshot column (`values.image`) |
 | `phase-roadmap` | Single-track phased roadmap: phase boxes + timeline bar + date labels + per-phase descriptions + optional milestones and 0–4 full-width `parallel_tracks` bars ("In parallel" workstreams) |
@@ -194,7 +194,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `table-highlight` | Options × criteria evaluation matrix (2–6 × 2–6) scored with Harvey balls (0–4), RAG dots or short text, with a highlighted recommended row / decisive column and a legend (content-sized rows) |
 | `team-bios` | Team / 'Our People' grid of 1–8 members with a headshot (`members[].photo`) or initials placeholder + name + role + short bio (up to 4 per row); emits `BODY_TOO_LONG` when a bio exceeds the ~2-line budget |
 | `text-sidebar` | Narrative intro / foreword page: main column (optional heading, 1–4 paragraphs, 0–6 bullets) beside a tinted or accent-filled sidebar panel with one large bold key message (`sidebar_side`, `sidebar_style`, `sidebar_width_pct`) |
-| `timeline-horizontal` | Linear horizontal timeline with stops |
+| `timeline-horizontal` | Linear horizontal timeline with stops (dots, chevron or `gantt` style: bars drawn to scale on a labelled time axis); a sparse dots timeline renders date, label and body at one size |
 | `value-chain` | Horizontal value chain of 4–10 step columns (bold label + per-step description, optional highlight) |
 | `waterfall-bridge` | Waterfall / bridge bar chart of 3–10 columns showing P&L walks or cost-driver decomposition; floating delta bars with auto-computed subtotals, optional `caption` for the scale |
 

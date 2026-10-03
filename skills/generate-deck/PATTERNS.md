@@ -1,9 +1,5 @@
 # Pattern Library and Text Capacity
 
-How to pick a named pattern, size content for its cells, and read the pre-flight density reports.
-
----
-
 ## Pattern Library
 
 Named patterns expand into validated `shape_grid` structures. Choose from
@@ -16,7 +12,8 @@ a diagram, not a text grid, for data-driven or topologically complex graphics.
 - **Browse:** `list_patterns` (MCP) or `json2pptx patterns list` (CLI).
 - **Schema:** `show_pattern` (MCP) or `json2pptx patterns show <name>` (CLI) returns the value schema, `example_values` (use them as the template for `values`) and, for grid-shaped patterns, a `text_budget_guide` with per-configuration `body_max_chars` / `header_max_chars`.
 - **Validate:** `validate_pattern` (MCP) or `json2pptx patterns validate <name> <values.json>` (CLI) checks values and fit. Pass `theme_template` (MCP) or `--template` + `--templates-dir` (CLI) for the intended template; CLI `--json` returns the findings envelope and exits non-zero on blocking findings.
-- **Expand + density pre-flight:** `expand_pattern` (MCP) or `json2pptx patterns expand` (CLI) returns `cell_budgets[]`, `capacity_warnings[]`, `density_warnings` for embedded tables over the TDR ceilings (RULES.md Rule 20) and, when all populated cells are suboptimal, `layout_suggestions[]`. With `theme_template` the response's `bounds_source` is `"template"`, else `"default_fallback"`.
+- **See it:** `recommend_visual(intent, template, candidates: [<pattern>], preview: true)` returns the pattern's recipe rendered through generation, as an image (no committed gallery paths).
+- **Expand + density pre-flight:** `expand_pattern` (MCP) or `json2pptx patterns expand` (CLI) returns `cell_budgets[]` (for a sparse slide-level pattern they describe the composed block generation renders), `capacity_warnings[]`, `density_warnings` for embedded tables over the TDR ceilings (RULES.md Rule 20) and, when all populated cells are suboptimal, `layout_suggestions[]`. With `theme_template` the response's `bounds_source` is `"template"`, else `"default_fallback"`.
 - **Per-cell styling:** `cell_overrides` (`{"<index>": {...}}`, index meaning in each pattern's schema) accepts `accent_bar`, `font_size`, `emphasis`, `align`, `vertical_align` and `color`. Text keys restyle every paragraph of that cell's primary text (so `font_size` flattens a header/body hierarchy) — e.g. `strategy-house` index 0 (objective banner), an `agenda` row's title, a `metric-list` item's big value. Use pattern-level `overrides` for deck-consistent sizes.
 
 Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid` — never both):
@@ -32,11 +29,11 @@ KPI `values` is a JSON **array**, one cell per metric: an object `{"big", "small
 
 Do NOT hand-roll shape grids when a named pattern exists; let the engine handle grid structure, bounds, and gap arithmetic.
 
-**Callouts.** Patterns with `supports_callout=true` accept an envelope-level `callout: {text, emphasis?, accent?}` — the takeaway band below the pattern (3pt accent bar, 14pt bold dk1 text, no box; budget two lines). `emphasis`: `bold` (default), `italic`/`bold-italic`, `subtle` (5% neutral tint) or `strong` (solid accent, measured-contrast text). KPI patterns refuse callouts (`callout_unsupported`). exec-summary `bottom_line`, metric-list `callout` and chart-insights-split `so_what` render the same band; their `overrides.takeaway_emphasis` takes `subtle` / `strong`.
+**Callouts.** Patterns with `supports_callout=true` accept an envelope-level `callout: {text, emphasis?, accent?}` — the takeaway band below the pattern (3pt accent bar, 14pt bold dk1 text, no box; budget two lines). `emphasis`: `bold` (default), `italic`/`bold-italic`, `subtle` or `strong` (solid accent). KPI patterns refuse callouts (`callout_unsupported`). exec-summary `bottom_line`, metric-list `callout` and chart-insights-split `so_what` render the same band.
 
-**Accent is restrained by default.** Patterns spend at most one solid accent block, in the template's `color_roles.primary_fill` (the default accent). Structural cells are neutral tints with dark text; accent rules, connectors and numerals mark structure. `overrides.style: "solid"` restores accent fills on `roadmap-phased`, `process-flow[-compact]`, `kpi-inline`, `agenda-with-images`, `numbered-step-strip` (number lanes; not `values.style`) and `process-grid-2row`; likewise `labeled-rows` `label_style: "filled"`, `hero-detail` `style: "cards"`, `stylish-panels` `overrides.ribbon: "accent"`. A process flow spends its one solid accent on `steps[].highlight` (at most one) or its single decision. Ask for an accent fill only where it is the slide's one emphasis.
+**Accent is restrained by default.** Patterns spend at most one solid accent block, in the template's `color_roles.primary_fill` (the default accent). Structural cells are neutral tints with dark text; accent rules, connectors and numerals mark structure. Many patterns are open by default (text on the canvas between rules) and take an `overrides.style` that restores tiles or solid fills (`tiles`, `panels`, `solid`, `ribbon`, …): each pattern's `show_pattern` overrides schema lists its values. A process flow spends its one solid accent on `steps[].highlight` (at most one) or its single decision. Ask for an accent fill only where it is the slide's one emphasis.
 
-**Chrome bands shrink row budgets.** A `takeaway` (and `source`) band takes 70–100pt off the content zone. `numbered-step-strip` stacked-box / toc rows are measured against what is left and report `BODY_TOO_LONG` ("N stacked-box rows need …pt … the content area holds about …pt") when they cannot fit at 12pt: under a takeaway, keep stacked-box / toc to labels only from five rows up (four toc rows hold a body), or drop the band.
+**Chrome bands shrink row budgets.** A `takeaway` (and `source`) band takes 70–100pt off the content zone. `numbered-step-strip` stacked-box / toc rows are measured against what is left and report `BODY_TOO_LONG` when they cannot fit at 12pt: under a takeaway, keep them to labels only from five rows up, or drop the band. When every label and body is one short line, each row is `number | label | detail`.
 
 ### Copy budgets and what happens when text does not fit
 
@@ -47,14 +44,9 @@ for every supported count. Limits: `state-shift-hub` takes 3–4 pairs,
 `dual-org-ladder` at most 4 rows.
 
 Budgets assume the template's full content area. On a short or narrow
-template, or under a `takeaway`, the content-sized patterns
-(`chart-insights-split`, `table-highlight`, `exec-summary`, `scqa-summary`,
-`bmc-canvas`, `agenda-with-images`, `state-shift-hub`, `metric-list`,
-`next-steps`, `matrix-2x2`, `process-grid-2row`, `stylish-panels`,
-`team-bios`, `framework-grid`, `contact-directory`, `agenda`,
-`before-after[-compact]`, `comparison-2col`, `hero-detail`,
-`timeline-horizontal`, `pull-quote`) first give up air, headshot size or type
-down to the 12pt floor (a `pull-quote` quote 36 → 20pt), then report
+template, or under a `takeaway`, content-sized patterns (`exec-summary`,
+`table-highlight`, `metric-list`, `team-bios`, `pull-quote`, …) first give up
+air, headshot size or type down to the 12pt floor, then report
 `BODY_TOO_LONG` naming what to drop. `icon-row`, `labeled-rows`,
 `process-flow` and `process-flow-compact` grow their cards, rows or band to the
 text's written fit before reporting it. Validation predicts grid text
@@ -62,54 +54,44 @@ text's written fit before reporting it. Validation predicts grid text
 `TEXT_BELOW_READABLE_MIN` (DeckSpec render refusals: DECKSPEC.md).
 
 KPI values ("$4.2M", "127%") and label words are never wrapped mid-token: a
-value shrinks (a `kpi-6up` "$4.2M" may render near 28pt); a
-`process-grid-2row` row-label column widens up to 22% (the `scqa-summary`
-label column up to 1.3 : 4) before its label shrinks. What cannot fit at the
-floor is reported — `BODY_TOO_LONG` on `values[i].big`, `TEXT_EXCEEDS_SHAPE`
-naming the label word: shorten or abbreviate it.
+value shrinks and a label column widens before its label does. What cannot
+fit at the floor is reported — `BODY_TOO_LONG` on `values[i].big`,
+`TEXT_EXCEEDS_SHAPE` naming the label word: shorten or abbreviate it.
 
 **Placement.** Box patterns are content-sized: `kpi-Nup` cards, `card-grid`
 rows, `before-after` panels and `strategy-house` pillars hug their text (≤
-1.6× its height). Pattern blocks hang from the native body-text line, below
-a top-anchored title's measured lines (tracked, bold or substituted faces
-included). `pattern.vertical_align` (default `auto`) takes `center` /
-`bottom` / `stretch`. Space below a short block is intended — do not pad.
-`SLIDE_UNDERUSED` judges them at 20% ink (`phase-roadmap` /
-`timeline-horizontal` 22%, others 29%); `VERTICAL_IMBALANCE` ignores the band
-below a body-line block. When it fires, add a supporting zone (`compose`), a
-`takeaway`, or merge slides.
+1.6× its height). A slide's own pattern block that needs under 75% of the
+content area is composed: its text steps up one type-scale step (12→14pt,
+14→18pt, KPI figures up to 48pt; skipped when that would wrap a short label)
+and the block sits at the optical centre. Do not add filler, spacer rows or
+`bounds` to "fill" a sparse slide. `pattern.vertical_align` (default `auto`)
+takes `top` (the block under the title at the pattern's own sizes),
+`center`, `bottom` or `stretch`; an explicit value, `bounds` and
+`max_height_pct` are honoured as authored; `type_scale: "compact"` keeps the
+sizes and only centres. Dense blocks (75% or more), compose segments, nested
+cell patterns and `regions` cells hang from the native body-text line as
+before. The compact variants (`kpi-inline`, `before-after-compact`,
+`process-flow-compact`) emit no `bounds`: use them as a compose segment or
+region cell; alone on a slide they are composed like any sparse block.
+`VERTICAL_IMBALANCE` / `HORIZONTAL_IMBALANCE` (25 points each) fire when 40%
+or more of the content area stays empty below / beside a block (or between
+it and its conclusion band): set `vertical_align` (`center` / `stretch`),
+add a supporting zone (`compose`) or pick a pattern that fills the area. A
+remaining `SLIDE_UNDERUSED` means the content is thin — add real detail,
+pair it with a second zone, or merge slides; on `stat-hero`, `pull-quote`
+and a lone `process-flow-compact` it is info by design.
 
 ---
 
 ## Text Capacity Awareness
 
-`density_pct` is a **height** ratio: each paragraph wrapped at its own font size, line heights summed, compared with the cell's text height — computed from embedded font metrics (no OS dependency). `max_chars` is the derived character hint at the cell's dominant size. Target **35–110%**; patterns leave whitespace on purpose, so a well-authored cell fills about half its box.
+`density_pct` is a **height** ratio: each paragraph wrapped at its own font size, line heights summed, compared with the cell's text height (embedded font metrics, no OS dependency). `max_chars` is the derived character hint at the cell's dominant size. Target **35–110%**: under 35% is `underfilled` (info), over 110% `overflow` (warning: it will clip or shrink hard); a well-authored cell fills about half its box.
 
-| Band | Density % | Status | Severity | Meaning |
-|------|-----------|--------|----------|---------|
-| Underfilled | < 35% | `underfilled` | info | Content doesn't justify the space |
-| Optimal | 35–110% | `optimal` | — | Fits with appropriate whitespace |
-| Overflow | > 110% | `overflow` | warning | Will clip or need aggressive shrinking |
+**Pick a configuration.** `show_pattern` returns `text_budget_guide.target_density` (a *character* target) and `configurations[]` (`columns`, `rows`, `body_max_chars` at 12pt, `header_max_chars` at 16pt). Pick the one whose `body_max_chars` is closest to `planned_chars / 0.85`, write to it, then check every `expand_pattern` `cell_budgets[]` entry (`cell_index`, `row`, `col`, `max_chars`, `actual_chars`, `density_pct`, `status`, `font_size_pt`) lands in 35–110%. Non-grid patterns (`pull-quote`, `stat-hero`) have no guide: use per-placeholder `max_chars` from `list_templates` `mode="compact"` or `fields="full"`. Rewrite before rendering — cheaper than repairing after generation.
 
-### Picking a grid configuration with `text_budget_guide`
+- **Underfilled:** add supporting detail; for inherently short content use a sparse pattern (`kpi-3up`, not `card-grid`) or a smaller configuration (2×2, not 3×2).
+- **Overflow, or `fit_overflow` / `density_exceeded` after generation:** (1) rewrite — shorter sentences, fewer bullets; (2) a larger configuration or higher-capacity pattern (`repair_slide` `swap_layout`, or `layout_suggestions[]`, offered when all populated cells are underfilled or all overflow); (3) `repair_slide` `split_at_row` / `reduce_text`; (4) last resort for verbatim content: `reduce_cell_text` (truncates one cell to `max_chars` with an ellipsis), then re-validate with `fit_report: true`.
 
-`show_pattern` returns `text_budget_guide.target_density` (a *character* target) and `text_budget_guide.configurations[]` (`columns`, `rows`, `body_max_chars` at 12pt, `header_max_chars` at 16pt). Pick the configuration whose `body_max_chars` is closest to `planned_chars / 0.85` (~85% density), write to it, then check every `expand_pattern` `cell_budgets[]` entry lands in 35–110%. Non-grid patterns (`pull-quote`, `stat-hero`) have no guide: use per-placeholder `max_chars` from `list_templates` `mode="compact"` or `fields="full"` (the default `fields="compact"` omits them).
+**Bounds.** A sparse slide-level block is composed automatically (Placement above). To pin a region yourself pass `max_height_pct` (1–99% of the content area) or `bounds` (percent rectangle; wins) to `expand_pattern` or as slide-level `pattern.bounds` / `pattern.max_height_pct`; density math then uses the reduced area and `bounds_assumption` reports `"explicit_override"`. An underfilled `capacity_warnings[]` entry and `density_class_divergence` (average density far below the pattern's `density_class`) carry a `next_tool_call` with a recommended `max_height_pct` or a sparser pattern — follow it.
 
-`cell_budgets[]` entries carry `cell_index` (zero-based), `row`, `col`, `max_chars`, `actual_chars`, `density_pct`, `status` and `font_size_pt`. Rewrite before rendering — cheaper than repairing after generation.
-
-### Decision rules
-
-- **Underfilled (< 35%):** add supporting detail; for inherently short content (a metric, a status) use a sparse pattern (`kpi-3up`, not `card-grid`); when most cells are underfilled, use a smaller configuration (2×2, not 3×2).
-- **Overflow (> 110%), or `fit_overflow` / `density_exceeded` after generation:** (1) rewrite — shorter sentences, fewer bullets; (2) a larger configuration or higher-capacity pattern (`repair_slide` `swap_layout`, or `layout_suggestions[]`); (3) `repair_slide` `split_at_row` / `reduce_text`; (4) last resort, only for verbatim content: `reduce_cell_text` (truncates one cell to `max_chars` with an ellipsis), then re-validate with `fit_report: true`.
-- **`layout_suggestions[]`** appears only when **all** populated cells are underfilled or all overflow (alternative patterns + overrides + `reason`); mixed grids need manual adjustment.
-
-### Bounds override: `bounds` and `max_height_pct`
-
-For short content in tall cells, prefer a compact variant (`process-flow-compact`, `before-after-compact`, `kpi-inline`), else pass `max_height_pct` (1–99% of the content area, = `bounds: {x:0, y:0, width:100, height:<value>}`) or `bounds` (percent rectangle; wins) to `expand_pattern` or as slide-level `pattern.bounds` / `pattern.max_height_pct`. Density math then uses the reduced area (no false `cell_underfilled`); `bounds_assumption` reports `"full_content_area"` or `"explicit_override"`.
-
-An underfilled `capacity_warnings[]` entry without explicit bounds carries a `next_tool_call` re-expanding with a recommended `max_height_pct` — follow it. `density_class_divergence` fires when average density is far below the pattern's `density_class` (<15% medium, <30% high); its `next_tool_call` suggests a compact variant or a `max_height_pct`.
-
-### `recommend_visual` inputs
-
-- `content_hints.density_hint` (`low` / `medium` / `high`): a matching `density_class` scores higher, a distant one lower.
-- `candidates` (2–8 names) ranks an **explicit shortlist** instead of the catalog: every name returns `score`, `rationale` and `confidence_band`, bypassing the 0.5 cutoff, top-K, near-misses and diversity bonus; `category` is auto-resolved (placeholder layout / named pattern / chart / diagram / raw_shape_grid) and unknown names score 0 with a rationale.
+**`recommend_visual` inputs.** `content_hints.density_hint` (`low` / `medium` / `high`) favours a matching `density_class`. `candidates` (1–8 names) ranks an explicit shortlist instead of the catalog: every name returns `score`, `rationale` and `confidence_band`; `category` is auto-resolved and unknown names score 0 with a rationale.

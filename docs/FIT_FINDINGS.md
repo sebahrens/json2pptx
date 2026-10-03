@@ -2017,6 +2017,8 @@ The slide's grid content fills one side of the content area: the empty band left
 
 A paragraph in a narrow box wraps into a column of fragments: **5 or more lines** averaging **at most 3 words a line**, wrapped at the width the shape's geometry and insets leave, with the same font metrics as `TEXT_EXCEEDS_SHAPE` (go-slide-creator-wwmod; eight flow boxes that each validated under the 80-character budget and rendered as five or six lines of two words). A list of short bullets is many one-line paragraphs and is not a hit; a long paragraph in a wide column runs eight to twelve words a line and is not a hit. One finding per slide: `fix.params.cells` lists every box, `max_lines` the tallest, `fit_lines` (4) the line count a label still scans at, and `max_words` the paragraph length that fits in `fit_lines` at the narrowest box. Composition fault: 25 points.
 
+**On a DeckSpec slide** (`validate_deck_spec` / `render_deck_spec`) the advice is in the message, which ends "a column of fragments, not a label: cut each box to a label, or use fewer boxes so each is wider" and names no raw pattern. `remediation.primary` is `shorten_text` with `params.max_words`; there is no `params.hint`. `evidence.pattern` is the pattern the kind compiled to (absent on an entry that spans slides): to use fewer boxes of the same visual, split the slide and set each part's `pattern` to it.
+
 ### `SIBLING_SIZE_MISMATCH`
 
 **Action:** `review`

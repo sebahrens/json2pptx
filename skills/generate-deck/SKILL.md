@@ -12,8 +12,8 @@ description: >-
 **Visual standard:** Apply [native slide composition](RULES.md#native-slide-composition).
 
 Call `get_started` first, passing this frontmatter's `schema_version` as
-`skill_version`. If it returns `skill_warning`, run `make install-skill`
-before relying on installed instructions. Check `get_started.runtime`: if render
+`skill_version`. If it returns `skill_warning`, run `json2pptx skill install`
+(`make install-skill` in a checkout) before relying on installed instructions. Check `get_started.runtime`: if render
 tooling is unavailable, deliver the PPTX as **UNREVIEWED**, not as a finished deck.
 Use the live MCP schemas and `get_capabilities` for arguments and availability;
 do not infer a tool's signature from an old example.
@@ -47,16 +47,21 @@ Default for content-bearing decks: author real content as a DeckSpec; call `list
 
 For a new content-bearing deck, write a semantic **DeckSpec** (`meta` plus
 `slides[].kind`, or chapter-based `structure`). `get_started(task:"brief")`
-returns this path as its `sequence` (the raw chain is `raw_sequence`).
-`plan_deck` with `format:"deckspec"` drafts the storyline as a DeckSpec; discover
-kinds with `list_slide_kinds` using its compact fields, requesting
-`item_schema` and `compositions` only for selected kinds. Then call
-`validate_deck_spec`, `render_deck_spec`, `render_deck_thumbnails`, and
-`submit_visual_review`. Edit the spec at a finding's `semantic_path` and
-repeat. For a chart or diagram no kind covers (gantt, venn, pestel, ...), a
-`recommend_visual` chart/diagram candidate carries `data_contract` and a
-runnable `next_tool_call` (`render_deck_spec` with a `raw_json2pptx` slide);
-replace its title and data. One measure across 2–6 groups over the same
+returns this path as its `sequence`, written for the tools the server lists
+(`hidden_tools` names the callable rest). `plan_deck` with
+`format:"deckspec"` drafts the storyline. `list_slide_kinds` lists the kinds;
+`kinds:[chosen]` returns their copy-ready examples and `fields:["brief"]`
+(field signatures and text budgets, measured on `template`) or
+`["item_schema"]` (descriptions, aliases) their fields; `preview: true`
+returns each example as a rendered image. Then call `validate_deck_spec`,
+`render_deck_spec`, `render_deck_thumbnails`, and `submit_visual_review`.
+Edit the spec at a finding's `path`, send a `patch_verified` `next_tool_call`
+as given, and repeat ([FINDINGS.md](FINDINGS.md)). For a visual no kind
+covers (gantt, venn, swimlane, ...), a `recommend_visual` candidate carries
+`data_contract` and a runnable `next_tool_call` (`render_deck_spec` with a
+`raw_json2pptx` slide); rewrite every `Replace with …` string and the sample
+data — rendered as handed out it is blocked as `exemplar_content`.
+One measure across 2–6 groups over the same
 periods: the `small_multiples` chart (RULES.md 10i). Several views proving
 one title may share a slide; unrelated conclusions get separate slides.
 Prefer `kind: regions` (`plan_deck` drafts it from region clauses, listing
@@ -76,8 +81,6 @@ is unclear) → `list_patterns` / `show_pattern` → `expand_pattern` →
 `get_input_schema` has the raw fields. How patterns fit text, shrink, and
 report `BODY_TOO_LONG` / `TEXT_EXCEEDS_SHAPE` is in [PATTERNS.md](PATTERNS.md);
 patterns spend at most one solid accent block, in `color_roles.primary_fill`.
-Pattern text is sized and written in the same theme face (Calibri measures as
-Carlito on every host), so a clean `fit_report` means no stored autofit shrink.
 
 Both render tools return `deterministic_ready` (a precondition, not proof
 anybody looked), `publishable` (false on a fresh render), `blocking_reasons`
@@ -102,18 +105,16 @@ executable one.
   review rubric (recorded in `submit_visual_review`), and the three-round
   repair cap. Read before the first render.
 - [RAW_PATH.md](RAW_PATH.md): raw preconditions, planning and rhythm, strict
-  output validation, repair, images and assets (screenshot callouts), SVG/diagram
-  integration.
+  output validation, repair, images and assets, SVG/diagram integration.
 - [TOOLS.md](TOOLS.md): phase map, tool-profile discovery, MCP-only
   operations, and composition recipes.
 - [RULES.md](RULES.md): shape-grid, chart, table, content, contrast,
-  typography, and anti-pattern rules (chart labelling, highlight, sorting,
-  percent scale and the default table look live here).
-- [PATTERNS.md](PATTERNS.md): pattern selection, text capacity, content-sized
-  degradation and accent defaults; the live catalog, schemas and per-field
-  copy targets come from `list_patterns` / `show_pattern`.
-- [FINDINGS.md](FINDINGS.md): finding and fix semantics not yet covered by
-  `describe_finding`; prefer the live tool for known codes.
+  typography, and anti-pattern rules.
+- [PATTERNS.md](PATTERNS.md): pattern selection, placement, text capacity and
+  accent defaults; the live catalog and schemas come from `list_patterns` /
+  `show_pattern`.
+- [FINDINGS.md](FINDINGS.md): how to read and repair a finding (DeckSpec and
+  raw); `describe_finding` explains a code.
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):
   template/layout fields and raw slide structure.
 
@@ -128,8 +129,14 @@ For a standalone SVG diagram, use the `svggen-mcp` server and its
 Start the deck server with `json2pptx mcp`; its default `deckspec`
 `tools/list` carries only the DeckSpec path. `--tools core` adds the raw
 path and `get_capabilities().mcp_tools_available` (tools callable by name);
-`--tools all` (or `JSON2PPTX_MCP_TOOLS=all`) lists the rest. `list_templates`
-`read_only: true` avoids preview-cache writes. Args over 2 MiB of text are refused; a raced
+`--tools all` (or `JSON2PPTX_MCP_TOOLS=all`) lists the rest, without output
+schemas (`--output-schemas` lists them). `list_templates`
+`read_only: true` avoids preview-cache writes. A `template` argument on the
+spec tools overrides `meta.template` for that call only (`warnings[]` says
+so); patch `/meta/template` to switch for good. A CLI command that answers in
+JSON prints exactly one JSON document on stdout, also when it fails
+(`{subcommand, ok:false, findings:[{code, message}]}`); stderr is logs.
+Args over 2 MiB of text are refused; a raced
 `deck_id` patch returns `STALE_REVISION` (reload, re-apply).
 `render_deck_spec` resolves relative asset paths (image, photos) against
 `base_dir` and fetches `url` assets like `generate_presentation`; a missing

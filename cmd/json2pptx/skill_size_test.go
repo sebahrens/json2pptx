@@ -19,11 +19,11 @@ var generateDeckSkillCaps = []struct {
 	{"SKILL.md", 12 * 1024},
 	{"QUALITY.md", 8 * 1024},
 	{"DECKSPEC.md", 16 * 1024},
-	{"RAW_PATH.md", 20 * 1024},
+	{"RAW_PATH.md", 14 * 1024},
 	{"TOOLS.md", 10 * 1024},
-	{"FINDINGS.md", 6 * 1024},
+	{"FINDINGS.md", 9 * 1024},
 	{"WORKFLOW.md", 16 * 1024},
-	{"RULES.md", 24 * 1024},
+	{"RULES.md", 22 * 1024},
 	{"PATTERNS.md", 16 * 1024},
 }
 
