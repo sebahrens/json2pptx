@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
-	"github.com/sebahrens/json2pptx/internal/semantic"
 )
 
 // findingAt returns the finding of a code at a path.
@@ -29,11 +28,13 @@ func TestFitFindingNamesTheCutThatClearsIt(t *testing.T) {
 	mc := refusalTestConfig(t)
 	env := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": decodeSpecObject(t, optionMatrixTightSpec)}))
 	f := findingAt(t, env, "BODY_TOO_LONG", "/slides/1")
-	want := []any{map[string]any{"op": "remove", "path": "/slides/1/options/0/detail"}}
+	// On modern-template the cheapest line whose removal clears it is the
+	// second option's detail, which wraps in that template's wider face.
+	want := []any{map[string]any{"op": "remove", "path": "/slides/1/options/1/detail"}}
 	if got := patchOf(t, f.NextToolCall); !f.PatchVerified || fmt.Sprint(got) != fmt.Sprint(want) {
-		t.Errorf("patch %v verified=%v, want the verified removal of the recommended row's detail", got, f.PatchVerified)
+		t.Errorf("patch %v verified=%v, want the verified removal of one option's detail", got, f.PatchVerified)
 	}
-	if !strings.Contains(f.Message, "verified fix: removing /slides/1/options/0/detail (37 characters) clears this") {
+	if !strings.Contains(f.Message, "verified fix: removing /slides/1/options/1/detail (36 characters) clears this") {
 		t.Errorf("the message does not name the cut: %s", f.Message)
 	}
 	if text, quoted := f.Evidence["text"]; quoted {
@@ -60,17 +61,32 @@ func TestFitFindingNamesTheCutThatClearsIt(t *testing.T) {
 	}
 
 	// When the limit is the number of rows, the finding says so and gives the
-	// count that fits: five one-line points on the shortest content area.
-	summary := map[string]any{
+	// count that fits: six two-line actions and a decision on a standard
+	// content area, where no single line's removal clears it. (Five one-line
+	// points on the shortest area were the case here until they fitted,
+	// go-slide-creator-vg73u.)
+	var actions []any
+	for _, a := range []string{
+		"Confirm the pilot scope and the success metrics with the regional sales leads and finance",
+		"Hire the four-person SMB success pod and agree the onboarding plan with the people team",
+		"Report the first retention read-out to the board with the cohort view by customer segment",
+		"Migrate the SMB accounts to the new health score and brief every account owner on its use",
+		"Agree the escalation path for at-risk accounts with support, product and the finance team",
+		"Review the pilot against its success metrics and decide whether to extend it to mid-market",
+	} {
+		actions = append(actions, map[string]any{"action": a, "owner": "COO", "date": "15 Oct"})
+	}
+	list := map[string]any{
 		"meta": map[string]any{"title": "Counts", "source": "Illustrative"},
 		"slides": []any{
 			map[string]any{"kind": "title", "title": "Counts every kind documents", "subtitle": "October 2026"},
-			kindAtCount(t, semantic.KindExecutiveSummary, "points", 5),
+			map[string]any{"kind": "next_steps", "title": "Six actions start the SMB pilot in October", "actions": actions,
+				"decisions": []any{"Approve the €1.2M pod budget for FY27"}},
 		},
 	}
-	counted := findingAt(t, deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": summary, "template": "modern"})), "BODY_TOO_LONG", "/slides/1")
-	if !counted.PatchVerified || !strings.Contains(counted.Message, "the limit here is the number of points: 4 fit") {
-		t.Errorf("the finding does not say how many points fit: verified=%v %s", counted.PatchVerified, counted.Message)
+	counted := findingAt(t, deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": list, "template": "midnight-blue"})), "BODY_TOO_LONG", "/slides/1")
+	if !counted.PatchVerified || !strings.Contains(counted.Message, "the limit here is the number of actions: 5 fit") {
+		t.Errorf("the finding does not say how many actions fit: verified=%v %s", counted.PatchVerified, counted.Message)
 	}
 }
 

@@ -122,8 +122,9 @@ func houseContentHeight(panels []nativePanelData, meta houseDiagramMeta, bounds 
 		return nativeFrameworkHeight{}
 	}
 	box := int64(layout.HeightPt * float64(types.EMUPerPoint))
-	if layout.Tight {
-		// A house short of height needs all of it.
+	if layout.Tight || layout.RoofFlattened {
+		// A house short of height needs all of it: one whose gable is
+		// flattened has already given up everything but its text.
 		box = bounds.Height
 	}
 	return nativeFrameworkHeight{box: box, ink: int64(layout.InkPt * float64(types.EMUPerPoint))}

@@ -1,5 +1,15 @@
 # Schema Changelog
 
+- **2026-10-03 — Every kind renders at its documented maximum on every shipped template (`go-slide-creator-vg73u`).**
+  No schema or response-shape change. `next_steps` (6 actions), `option_matrix`
+  (6 options), `executive_summary` (5 points with `bottom_line`) and the
+  `pillars` house were refused with one-line copy on some or all templates;
+  `next-steps`, `table-highlight`, `exec-summary` and the house builder now
+  tighten the top / bottom text margin of their rows and bands (10 → 7 → 5pt)
+  before any text goes below 12pt or the gable is flattened. Slides that fit
+  before are unchanged. The `next-steps` `FIT.BODY_TOO_LONG` message now reads
+  "needs Npt at the smallest type scale and its tightest rows".
+
 - **2026-10-03 — Previews are the generated slide, returned as images (`go-slide-creator-ueopl`, `-r1uy7`).**
   - **New argument `preview` (boolean) on `list_slide_kinds` and
     `recommend_visual`**, both in the default profile.

@@ -641,6 +641,9 @@ type chartInsightsText struct {
 	// first baseline (go-slide-creator-kol0); it never goes below the uniform
 	// margin. Zero (omitted) keeps the uniform margin.
 	InsetTop float64 `json:"inset_top,omitempty"`
+	// InsetBottom, in points, is set with InsetTop by a list that tightens its
+	// row padding to fit (rowPadStepsPt). Zero (omitted) keeps the uniform margin.
+	InsetBottom float64 `json:"inset_bottom,omitempty"`
 }
 
 // chartInsightsDefaultPct is the standard chart panel width, and

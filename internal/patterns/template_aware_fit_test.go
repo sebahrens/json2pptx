@@ -33,9 +33,22 @@ func TestTableHighlight_FitsShortContentArea(t *testing.T) {
 		t.Errorf("unexpected warning: %s", w)
 	}
 
-	// modern's shorter area cannot hold three two-line options, the tag line
-	// and a legend at 12pt: say so before generation.
-	short := ExpandContext{LayoutBounds: LayoutBounds{Width: 10831550, Height: 3340690}}
+	// modern's shorter area holds three two-line options, the tag line and a
+	// legend at 12pt once the rows give up padding (go-slide-creator-vg73u):
+	// the text keeps its size and the rows are tighter.
+	modern := ExpandContext{LayoutBounds: LayoutBounds{Width: 10831550, Height: 3340690}}
+	lm := newTHLayout(modern, v, &TableHighlightOverrides{})
+	lm.fit()
+	if lm.padPt <= 0 || lm.total() > lm.areaH || lm.bodySize < scaleBodyPt {
+		t.Fatalf("table should fit %.1fpt with tighter rows at 12pt: pad=%v total=%.1f body=%v", lm.areaH, lm.padPt, lm.total(), lm.bodySize)
+	}
+	for _, w := range (&tableHighlight{}).PostExpandWarnings(modern, v, nil) {
+		t.Errorf("unexpected warning: %s", w)
+	}
+
+	// An area that cannot hold them even at the tightest rows is reported
+	// before generation.
+	short := ExpandContext{LayoutBounds: LayoutBounds{Width: 10831550, Height: 2413000}}
 	warnings := (&tableHighlight{}).PostExpandWarnings(short, v, nil)
 	if len(warnings) != 1 || !strings.HasPrefix(warnings[0], ErrCodeBodyTooLong) || !strings.Contains(warnings[0], "content area") {
 		t.Fatalf("want one template-aware BODY_TOO_LONG, got %v", warnings)
