@@ -32,7 +32,7 @@ type execSummaryValues struct {
 func CompileExecutiveSummary(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	points, srcField := execSummaryPoints(in.Body)
 	values, ok := execSummaryPatternValues(in.Body, points)
-	if !ok {
+	if !ok || in.wantsContent() {
 		return compileExecutiveSummaryFallback(in)
 	}
 	var dropped string

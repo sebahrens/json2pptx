@@ -46,7 +46,7 @@ type teamBiosValues struct {
 // to a bullet list when the payload does not fit the pattern's budgets.
 func CompileTeam(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	members := TeamMembers(in.Body)
-	if !teamBiosFits(members) {
+	if in.wantsContent() || !teamBiosFits(members) {
 		return compileTeamFallback(in, members)
 	}
 

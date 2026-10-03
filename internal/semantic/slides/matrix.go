@@ -64,7 +64,7 @@ var matrixPositionLabels = map[string]string{
 // back to a quadrant bullet list when the payload does not fit it.
 func CompileMatrix(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	values, ok := matrixPatternValues(in.Body)
-	if !ok {
+	if !ok || in.wantsContent() {
 		return compileMatrixFallback(in)
 	}
 

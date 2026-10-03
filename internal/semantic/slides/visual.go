@@ -70,6 +70,14 @@ type cardGridValues struct {
 // yrs; Low risk' — on a page that was 60% empty, while the engine had the right
 // patterns all along and only a hand-written raw pattern block could reach them.
 func CompileComparison(in Input) (*deckinput.SlideInput, []SourceLink, error) {
+	switch {
+	case in.wantsContent():
+		return compileComparisonFallback(in)
+	case in.Override.Pattern == "stylish-panels" && comparisonPanelsFeasible(in.Body):
+		return compileComparisonPanels(in)
+	case in.Override.Pattern == "card-grid" && comparisonCardsFeasible(in.Body):
+		return compileComparisonCards(in)
+	}
 	if headers, rows, ok := comparisonRows(in.Body); ok {
 		encoded, err := json.Marshal(comparison2colValues{Headers: headers, Rows: rows})
 		if err != nil {
@@ -77,21 +85,39 @@ func CompileComparison(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 		}
 		return comparisonPatternSlide(in, "comparison-2col", encoded, ".pattern.values.rows")
 	}
-	if panels, ok := comparisonPanels(in.Body); ok {
-		encoded, err := json.Marshal(panels)
-		if err != nil {
-			return nil, nil, fmt.Errorf("marshal stylish-panels values: %w", err)
-		}
-		return comparisonPatternSlide(in, "stylish-panels", encoded, ".pattern.values")
+	if comparisonPanelsFeasible(in.Body) {
+		return compileComparisonPanels(in)
 	}
-	if cards, ok := comparisonCards(in.Body); ok {
-		encoded, err := json.Marshal(cards)
-		if err != nil {
-			return nil, nil, fmt.Errorf("marshal card-grid values: %w", err)
-		}
-		return comparisonPatternSlide(in, "card-grid", encoded, ".pattern.values.cells")
+	if comparisonCardsFeasible(in.Body) {
+		return compileComparisonCards(in)
 	}
 	return compileComparisonFallback(in)
+}
+
+// compileComparisonPanels emits one stylish panel per column.
+func compileComparisonPanels(in Input) (*deckinput.SlideInput, []SourceLink, error) {
+	panels, ok := comparisonPanels(in.Body)
+	if !ok {
+		return compileComparisonFallback(in)
+	}
+	encoded, err := json.Marshal(panels)
+	if err != nil {
+		return nil, nil, fmt.Errorf("marshal stylish-panels values: %w", err)
+	}
+	return comparisonPatternSlide(in, "stylish-panels", encoded, ".pattern.values")
+}
+
+// compileComparisonCards emits one titled card per column.
+func compileComparisonCards(in Input) (*deckinput.SlideInput, []SourceLink, error) {
+	cards, ok := comparisonCards(in.Body)
+	if !ok {
+		return compileComparisonFallback(in)
+	}
+	encoded, err := json.Marshal(cards)
+	if err != nil {
+		return nil, nil, fmt.Errorf("marshal card-grid values: %w", err)
+	}
+	return comparisonPatternSlide(in, "card-grid", encoded, ".pattern.values.cells")
 }
 
 // comparisonPatternSlide assembles the slide around a resolved comparison
@@ -317,16 +343,66 @@ type processFlowValues struct {
 // the numbered step strip, which has a place to put one; bare labels and
 // branching processes take process-flow. Outside both it degrades to a content
 // slide listing the steps, so the deck still compiles.
+//
+// A pattern / layout override the steps fit wins over that choice. It used to
+// be reported by explain and then ignored here, so layout:content and
+// pattern:process-flow both still rendered the strip (go-slide-creator-vj549).
 func CompileProcess(in Input) (*deckinput.SlideInput, []SourceLink, error) {
+	if in.wantsContent() {
+		return compileStepBulletsFallback(in)
+	}
 	steps := ProcessStepDetails(in.Body)
-	switch ProcessPattern(in.Body) {
+	pattern := ProcessPattern(in.Body)
+	if in.Override.Pattern != "" && ProcessCompositionProblem(in.Body, in.Override.Pattern) == "" {
+		pattern = in.Override.Pattern
+	}
+	switch pattern {
 	case "numbered-step-strip":
 		return compileProcessStrip(in, steps)
 	case "process-flow", processFlowSparsePattern:
-		return compileProcessFlow(in, steps)
+		return compileProcessFlow(in, steps, pattern)
 	default:
 		return compileStepBulletsFallback(in)
 	}
+}
+
+// ProcessCompositionProblem says why the steps cannot take the named process
+// pattern, or "" when they can. Validation reports it against an override the
+// compiler has to decline.
+func ProcessCompositionProblem(body map[string]any, pattern string) string {
+	steps := ProcessStepDetails(body)
+	switch pattern {
+	case "numbered-step-strip":
+		if processBranches(steps) {
+			return "a step has a type (a decision or other branch shape) the numbered strip cannot draw"
+		}
+		if len(steps) < processStripMin || len(steps) > processStripMax {
+			return fmt.Sprintf("has %d usable steps; the numbered strip holds %d–%d", len(steps), processStripMin, processStripMax)
+		}
+		for i, st := range steps {
+			if n := runeLen(st.Label); n > processStripLabelMax {
+				return fmt.Sprintf("step %d's label reads %d characters; a strip label holds %d", i+1, n, processStripLabelMax)
+			}
+			if n := runeLen(st.Description); n > processStripBodyMax {
+				return fmt.Sprintf("step %d's description reads %d characters; a strip detail line holds %d", i+1, n, processStripBodyMax)
+			}
+		}
+	case "process-flow", processFlowSparsePattern:
+		if len(steps) < processFlowMin || len(steps) > processFlowMax {
+			return fmt.Sprintf("has %d usable steps; the flow holds %d–%d", len(steps), processFlowMin, processFlowMax)
+		}
+		for i, st := range steps {
+			// process-flow has no detail zone: the description rides in the
+			// box after the label, so the pair is what has to fit.
+			if n := runeLen(st.flowLabel()); n > processFlowLabelMax {
+				return fmt.Sprintf("step %d reads %d characters with its description; a flow box holds %d (layout content keeps every word as native bullets)", i+1, n, processFlowLabelMax)
+			}
+		}
+		if pattern == processFlowSparsePattern && !processFlowSparse(flowSteps(steps)) {
+			return fmt.Sprintf("the compact band holds %d–%d steps averaging under %d characters", processFlowMin, processFlowSparseMaxSteps, processFlowSparseMaxAvgChars)
+		}
+	}
+	return ""
 }
 
 // compileProcessStrip emits the numbered rows, each a bold label over its own
@@ -355,7 +431,7 @@ func compileProcessStrip(in Input, steps []processStepDetail) (*deckinput.SlideI
 // a step that carries a description keeps it appended to the label rather than
 // losing it — that only happens on the branching path, where the diamonds are
 // the reason to be here at all.
-func compileProcessFlow(in Input, steps []processStepDetail) (*deckinput.SlideInput, []SourceLink, error) {
+func compileProcessFlow(in Input, steps []processStepDetail, pattern string) (*deckinput.SlideInput, []SourceLink, error) {
 	flow := flowSteps(steps)
 	encoded, err := json.Marshal(processFlowValues{Steps: flow})
 	if err != nil {
@@ -366,11 +442,8 @@ func compileProcessFlow(in Input, steps []processStepDetail) (*deckinput.SlideIn
 	// half the content height stretched its rows over that whole band — four
 	// ~200px boxes around one word each above an empty lower half
 	// (go-slide-creator-xb06p) — and the uncapped flow is the
-	// SPARSE_SINGLE_ROW_FLOW smell.
-	pattern := "process-flow"
-	if processFlowSparse(flow) {
-		pattern = processFlowSparsePattern
-	}
+	// SPARSE_SINGLE_ROW_FLOW smell. ProcessPattern makes that call; an explicit
+	// process-flow override keeps the full flow.
 	return processPatternSlide(in, pattern, encoded)
 }
 
@@ -627,7 +700,7 @@ type phaseRoadmapValues struct {
 // content slide listing the phases, so the deck still compiles.
 func CompileRoadmap(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	phases := roadmapPhases(in.Body)
-	if len(phases) < 3 || len(phases) > 6 {
+	if in.wantsContent() || len(phases) < 3 || len(phases) > 6 {
 		return compilePhaseBulletsFallback(in)
 	}
 

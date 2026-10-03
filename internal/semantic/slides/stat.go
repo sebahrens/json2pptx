@@ -40,7 +40,7 @@ type statHeroValues struct {
 // to a content slide when the payload does not fit the pattern's budgets.
 func CompileStat(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	values := statValues(in.Body)
-	if StatOverBudget(in.Body) != "" {
+	if in.wantsContent() || StatOverBudget(in.Body) != "" {
 		return compileStatFallback(in, values)
 	}
 

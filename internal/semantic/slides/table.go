@@ -31,7 +31,7 @@ const TableMaxRows = jsonschema.TDRMaxRows
 func CompileTable(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	headers := tableHeaders(in.Body)
 	rows := tableRows(in.Body, len(headers))
-	if len(headers) == 0 || len(rows) == 0 {
+	if len(headers) == 0 || len(rows) == 0 || in.wantsContent() {
 		// Without a header row there is no table to render; the rows still say
 		// something, so they degrade to bullets rather than vanishing.
 		return compileTableFallback(in, headers, rows)

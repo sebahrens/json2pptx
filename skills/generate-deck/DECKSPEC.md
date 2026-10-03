@@ -169,10 +169,11 @@ pass the pattern schema, and has the same
 `meta.design_mode` constraints as a raw deck. A raw hex fill or absolute
 font size in constrained mode is refused; use free mode only when low-level
 control is intentional. For a visual beyond semantic reach, query the
-chosen kind's `compositions`; an unsupported override reports
-`SEMANTIC_PATTERN_NOT_AVAILABLE`. Use a minimal raw slide (also for a
-multi-region slide: WORKFLOW.md → spatial planning), not a lowered deck.
+chosen kind's `compositions`; an override the kind or payload cannot
+take reports `SEMANTIC_PATTERN_NOT_AVAILABLE`. Use a minimal raw slide
+(also for a multi-region slide: WORKFLOW.md → spatial planning), not a
+lowered deck.
 
-Runnable examples live in [examples/semantic](../../examples/semantic/).
-The compiler architecture and schema are in
+Runnable examples: [examples/semantic](../../examples/semantic/).
+Compiler architecture and schema:
 [docs/SEMANTIC_COMPILER.md](../../docs/SEMANTIC_COMPILER.md).

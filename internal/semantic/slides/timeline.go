@@ -47,7 +47,7 @@ type timelineOverrides struct {
 // back to a dated bullet list when the milestones do not fit the pattern.
 func CompileTimeline(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	stops := TimelineStops(in.Body)
-	if !timelineFits(stops) {
+	if in.wantsContent() || !timelineFits(stops) {
 		return compileTimelineFallback(in, stops)
 	}
 

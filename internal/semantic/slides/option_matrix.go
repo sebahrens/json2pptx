@@ -59,7 +59,7 @@ const (
 // listing each option and its scores, so the slide always renders.
 func CompileOptionMatrix(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	values, ok := optionMatrixValuesFrom(in.Body)
-	if !ok {
+	if !ok || in.wantsContent() {
 		return compileOptionMatrixFallback(in)
 	}
 	encoded, err := json.Marshal(values)

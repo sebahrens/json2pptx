@@ -77,6 +77,8 @@ func CompileAgenda(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	current := AgendaCurrentIndex(in.Body, sections)
 
 	switch {
+	case in.wantsContent():
+		return compileAgendaFallback(in, sections, current)
 	case in.Pattern == "agenda-with-images" && agendaImagesFits(sections):
 		return compileAgendaWithImages(in, sections)
 	case agendaFits(sections):

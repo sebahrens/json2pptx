@@ -76,6 +76,9 @@ type decisionCardOverrides struct {
 // beneath it.
 func CompileDecision(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	options := DecisionOptions(in.Body)
+	if in.wantsContent() {
+		return compileDecisionContent(in)
+	}
 	switch DecisionPattern(in.Body) {
 	case "numbered-step-strip":
 		return compileDecisionStrip(in, options)

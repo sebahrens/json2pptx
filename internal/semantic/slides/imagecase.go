@@ -63,7 +63,7 @@ type imageCaseOverrides struct {
 // pattern, falling back to a content slide when the payload does not fit it.
 func CompileImageCase(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	values := imageCaseFrom(in.Body)
-	if ImageCaseOverBudget(in.Body) != "" {
+	if in.wantsContent() || ImageCaseOverBudget(in.Body) != "" {
 		return compileImageCaseFallback(in, values)
 	}
 

@@ -74,7 +74,7 @@ func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) 
 	// (go-slide-creator-pyxn).
 	in.Takeaway = dropDuplicateTakeaway(in.Takeaway, insights)
 
-	if len(insights) == 0 || len(insights) > ChartInsightMaxInsights {
+	if len(insights) == 0 || len(insights) > ChartInsightMaxInsights || in.Override.Layout == "two-column" {
 		return compileChartFallback(in, insights, insightsField)
 	}
 

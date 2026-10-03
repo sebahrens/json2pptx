@@ -62,7 +62,7 @@ type quoteClusterValues struct {
 // outside what either pattern can hold.
 func CompileQuote(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	quotes := Quotes(in.Body)
-	if QuoteOverBudget(in.Body) != "" || len(quotes) == 0 {
+	if in.wantsContent() || QuoteOverBudget(in.Body) != "" || len(quotes) == 0 {
 		return compileQuoteFallback(in, quotes)
 	}
 
