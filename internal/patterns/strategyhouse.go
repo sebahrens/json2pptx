@@ -1,18 +1,19 @@
 package patterns
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
+	"regexp"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
-	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
 // ---------------------------------------------------------------------------
-// strategy-house pattern — objective banner over N pillars over a foundation
+// strategy-house pattern — gabled roof (objective) over N pillars over a
+// foundation of one or more levels
 // ---------------------------------------------------------------------------
 
 func init() {
@@ -23,17 +24,17 @@ type strategyHouse struct{}
 
 func (sh *strategyHouse) Name() string { return "strategy-house" }
 func (sh *strategyHouse) Description() string {
-	return "Strategy House diagram with optional roof badges, an objective banner, 3-5 pillar columns, and a foundation row"
+	return "Strategy House: gabled roof carrying the objective (and optional badges), an optional cross-cutting beam, 3-5 pillar columns, and a foundation of 1-3 levels (each a band or a row of 2-5 named cells) — take the pillar count and the levels from the content"
 }
 func (sh *strategyHouse) UseWhen() string {
-	return "Strategic framework with a top-level objective, 3-5 pillars supporting it, and a foundation row of enablers; prefer arch-stack when layers stack vertically without a single objective/foundation framing, stylish-panels when pillars stand alone without banner/foundation"
+	return "Strategic framework with a top-level objective, 3-5 pillars supporting it, and a foundation of enablers; one pillar per independent theme and one foundation level per kind of enabler (split a level into cells when the enablers are separate things); prefer arch-stack when layers stack vertically without a single objective/foundation framing, stylish-panels when pillars stand alone without banner/foundation"
 }
 func (sh *strategyHouse) NotWhen() string {
 	return "Layers stack without a single objective and foundation framing (use arch-stack), pillars stand alone without banner/foundation (use stylish-panels), or content is a hierarchy that narrows (use pyramid)"
 }
 func (sh *strategyHouse) Version() int { return 1 }
 func (sh *strategyHouse) CellsHint() string {
-	return "objective + 3-5 pillars + foundation (+0-3 roof badges)"
+	return "objective + 3-5 pillars + 1-3 foundation levels of 1-5 cells (+beam, +0-3 roof badges)"
 }
 func (sh *strategyHouse) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
@@ -56,14 +57,21 @@ func (sh *strategyHouse) BudgetConfigurations() []BudgetConfig {
 }
 
 func (sh *strategyHouse) ExemplarValues() any {
+	// Four uneven pillars over a two-level foundation: the shape follows the
+	// content, so the exemplar is not the 3 x 2 silhouette agents copied
+	// whatever they had to say (go-slide-creator-qad87).
 	return &StrategyHouseValues{
 		Objective: "Become the trusted platform for global commerce",
 		Pillars: []StrategyHousePillar{
-			{Title: "Customer Trust", Body: []string{"Privacy by default", "Transparent pricing"}},
+			{Title: "Customer Trust", Body: []string{"Privacy by default", "Transparent pricing", "Regional data residency"}},
 			{Title: "Operational Excellence", Body: []string{"99.99% uptime", "Automated quality gates"}},
 			{Title: "Product Velocity", Body: []string{"Weekly releases", "Continuous experimentation"}},
+			{Title: "Partner Reach", Body: []string{"Marketplace live in 12 markets"}},
 		},
-		Foundation: "People · Technology · Data",
+		FoundationLayers: []StrategyHouseLayer{
+			{"One operating model in every market"},
+			{"People", "Technology", "Data"},
+		},
 		RoofBadges: []string{"Vision", "Mission"},
 	}
 }
@@ -78,14 +86,148 @@ type StrategyHousePillar struct {
 	Body  []string `json:"body,omitempty"`
 }
 
-// StrategyHouseValues holds the four regions of the strategy house: optional
-// roof badges, a required objective banner, 3-5 pillar columns, and a
-// foundation row of enablers.
+// StrategyHouseLayer is one foundation level: a single entry is a full-width
+// band, several entries are a row of equal cells.
+type StrategyHouseLayer []string
+
+// StrategyHouseValues holds the house top to bottom: optional roof badges and
+// the objective in the roof, an optional cross-cutting beam, 3-5 pillar
+// columns, and a foundation of one or more levels.
+//
+// The foundation is authored either as a string — one band, held in
+// Foundation — or as a list of levels, each a string (band) or a list of
+// short strings (a row of cells), held in FoundationLayers.
 type StrategyHouseValues struct {
+	Objective        string
+	Beam             string
+	Pillars          []StrategyHousePillar
+	Foundation       string
+	FoundationLayers []StrategyHouseLayer
+	RoofBadges       []string
+}
+
+// strategyHouseValuesJSON is the wire shape of StrategyHouseValues.
+type strategyHouseValuesJSON struct {
 	Objective  string                `json:"objective"`
+	Beam       string                `json:"beam,omitempty"`
 	Pillars    []StrategyHousePillar `json:"pillars"`
-	Foundation string                `json:"foundation"`
+	Foundation json.RawMessage       `json:"foundation"`
 	RoofBadges []string              `json:"roof_badges,omitempty"`
+}
+
+// MarshalJSON writes foundation in the form it was authored in.
+func (v StrategyHouseValues) MarshalJSON() ([]byte, error) {
+	out := strategyHouseValuesJSON{Objective: v.Objective, Beam: v.Beam, Pillars: v.Pillars, RoofBadges: v.RoofBadges}
+	if len(v.FoundationLayers) > 0 {
+		layers := make([]any, len(v.FoundationLayers))
+		for i, l := range v.FoundationLayers {
+			if len(l) == 1 {
+				layers[i] = l[0]
+			} else {
+				layers[i] = []string(l)
+			}
+		}
+		out.Foundation, _ = json.Marshal(layers)
+	} else {
+		out.Foundation, _ = json.Marshal(v.Foundation)
+	}
+	return json.Marshal(out)
+}
+
+// UnmarshalJSON reads foundation as a string or as a list of levels.
+func (v *StrategyHouseValues) UnmarshalJSON(data []byte) error {
+	var in strategyHouseValuesJSON
+	if err := json.Unmarshal(data, &in); err != nil {
+		return err
+	}
+	*v = StrategyHouseValues{Objective: in.Objective, Beam: in.Beam, Pillars: in.Pillars, RoofBadges: in.RoofBadges}
+	raw := bytes.TrimSpace(in.Foundation)
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil
+	}
+	if raw[0] != '[' {
+		return json.Unmarshal(raw, &v.Foundation)
+	}
+	var levels []json.RawMessage
+	if err := json.Unmarshal(raw, &levels); err != nil {
+		return err
+	}
+	v.FoundationLayers = make([]StrategyHouseLayer, len(levels))
+	for i, level := range levels {
+		var band string
+		if err := json.Unmarshal(level, &band); err == nil {
+			v.FoundationLayers[i] = StrategyHouseLayer{band}
+			continue
+		}
+		var cells []string
+		if err := json.Unmarshal(level, &cells); err != nil {
+			return fmt.Errorf("foundation[%d] must be a string (a full-width band) or a list of strings (a row of cells)", i)
+		}
+		v.FoundationLayers[i] = StrategyHouseLayer(cells)
+	}
+	return nil
+}
+
+// foundationLayers returns the foundation as levels, whichever form it was
+// authored in.
+func (v *StrategyHouseValues) foundationLayers() []StrategyHouseLayer {
+	if len(v.FoundationLayers) > 0 {
+		return v.FoundationLayers
+	}
+	if strings.TrimSpace(v.Foundation) == "" {
+		return nil
+	}
+	return []StrategyHouseLayer{{v.Foundation}}
+}
+
+// foundationPath is the values path of cell j of foundation level i.
+func (v *StrategyHouseValues) foundationPath(i, j int) string {
+	if len(v.FoundationLayers) == 0 {
+		return "foundation"
+	}
+	if len(v.FoundationLayers[i]) == 1 {
+		return fmt.Sprintf("foundation[%d]", i)
+	}
+	return fmt.Sprintf("foundation[%d][%d]", i, j)
+}
+
+// strategyHouseCells maps the cell_overrides indices:
+//
+//	0        = roof (the objective)
+//	1..N     = pillar columns
+//	N+1..    = foundation cells in reading order
+//	then     = beam (when present)
+//	last     = roof badge line (when roof_badges are present)
+//
+// A house with one foundation band and no beam keeps the indices it always
+// had: N+1 foundation, N+2 roof badges.
+type strategyHouseCells struct {
+	foundation []int // first index of each foundation level
+	beam       int   // -1 when absent
+	badges     int   // -1 when absent
+	total      int
+}
+
+func (v *StrategyHouseValues) cells() strategyHouseCells {
+	c := strategyHouseCells{beam: -1, badges: -1}
+	next := 1 + len(v.Pillars)
+	for _, l := range v.foundationLayers() {
+		c.foundation = append(c.foundation, next)
+		next += len(l)
+	}
+	if len(v.FoundationLayers) == 0 && len(c.foundation) == 0 {
+		next++ // the required foundation band keeps its index while it is invalid
+	}
+	if strings.TrimSpace(v.Beam) != "" {
+		c.beam = next
+		next++
+	}
+	if len(v.RoofBadges) > 0 {
+		c.badges = next
+		next++
+	}
+	c.total = next
+	return c
 }
 
 // StrategyHouseOverrides is the standard text overrides.
@@ -126,17 +268,46 @@ const strategyHouseSingleBulletMax = 62
 // strategyHouseBandBudget is the readable objective / foundation length.
 const strategyHouseBandBudget = 132
 
-func (sh *strategyHouse) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+// Foundation and beam limits. More levels or cells than these cannot stay
+// readable under 3-5 pillars on one slide.
+const (
+	strategyHouseMaxLayers    = 3
+	strategyHouseMaxCells     = HouseMaxLevelCells
+	strategyHouseCellMaxChars = 40
+	strategyHouseBandMaxChars = 140
+)
+
+func (sh *strategyHouse) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*StrategyHouseValues)
 	if !ok || v == nil || len(v.Pillars) < 3 {
 		return nil
 	}
-	var bandWarnings []string
-	for _, band := range []struct{ name, text string }{{"objective", v.Objective}, {"foundation", v.Foundation}} {
-		if n := runeLen(band.text); n > strategyHouseBandBudget {
-			bandWarnings = append(bandWarnings, fmt.Sprintf("%s: strategy-house %s is %d characters; the band holds about %d readable characters — shorten it", ErrCodeBodyTooLong, band.name, n, strategyHouseBandBudget))
+	var warnings []string
+	bands := []struct{ name, text string }{{"objective", v.Objective}, {"beam", v.Beam}}
+	for i, layer := range v.foundationLayers() {
+		if len(layer) == 1 {
+			bands = append(bands, struct{ name, text string }{v.foundationPath(i, 0), layer[0]})
 		}
 	}
+	for _, band := range bands {
+		if n := runeLen(band.text); n > strategyHouseBandBudget {
+			warnings = append(warnings, fmt.Sprintf("%s: strategy-house %s is %d characters; the band holds about %d readable characters — shorten it", ErrCodeBodyTooLong, band.name, n, strategyHouseBandBudget))
+		}
+	}
+	warnings = append(warnings, strategyHouseShapeWarnings(v)...)
+	if w := strategyHouseBulletWarning(v); w != "" {
+		return append(warnings, w)
+	}
+	// The table above is the budget of the classic three-level house. Extra
+	// levels take their height from the pillars, so a house the table passes
+	// is still measured against the height it really has.
+	if w := sh.heightWarning(ctx, v, overrides); w != "" {
+		warnings = append(warnings, w)
+	}
+	return warnings
+}
+
+func strategyHouseBulletWarning(v *StrategyHouseValues) string {
 	totalBullets, totalChars := 0, 0
 	for _, pillar := range v.Pillars {
 		for _, bullet := range pillar.Body {
@@ -145,7 +316,7 @@ func (sh *strategyHouse) PostExpandWarnings(_ ExpandContext, values, _ any) []st
 		}
 	}
 	if totalBullets == 0 {
-		return bandWarnings
+		return ""
 	}
 	bulletsPerPillar := (totalBullets + len(v.Pillars) - 1) / len(v.Pillars)
 	budget := strategyHouseBulletBudget(len(v.Pillars), bulletsPerPillar, len(v.RoofBadges) > 0)
@@ -154,31 +325,114 @@ func (sh *strategyHouse) PostExpandWarnings(_ ExpandContext, values, _ any) []st
 			for i, pillar := range v.Pillars {
 				for j, bullet := range pillar.Body {
 					if n := runeLen(bullet); n > strategyHouseSingleBulletMax {
-						return append(bandWarnings, fmt.Sprintf("%s: strategy-house pillars[%d].body[%d] is %d characters; five pillars hold about %d characters in one bullet — shorten the bullet", ErrCodeBodyTooLong, i, j, n, strategyHouseSingleBulletMax))
+						return fmt.Sprintf("%s: strategy-house pillars[%d].body[%d] is %d characters; five pillars hold about %d characters in one bullet — shorten the bullet", ErrCodeBodyTooLong, i, j, n, strategyHouseSingleBulletMax)
 					}
 				}
 			}
 		}
-		return bandWarnings
+		return ""
 	}
-	return append(bandWarnings, fmt.Sprintf("%s: strategy-house pillars.body averages %.0f characters across %d bullets; this %d-pillar layout holds about %d characters per bullet at its current density — shorten bullet copy, use fewer bullets, or split the house", ErrCodeBodyTooLong, float64(totalChars)/float64(totalBullets), totalBullets, len(v.Pillars), budget))
+	return fmt.Sprintf("%s: strategy-house pillars.body averages %.0f characters across %d bullets; this %d-pillar layout holds about %d characters per bullet at its current density — shorten bullet copy, use fewer bullets, or split the house", ErrCodeBodyTooLong, float64(totalChars)/float64(totalBullets), totalBullets, len(v.Pillars), budget)
+}
+
+// heightWarning reports a house whose levels need more height than its
+// region has: the pillar rows are then squeezed and their text is written
+// below its size. It is how a house placed in a region too small for it —
+// a narrow compose or regions cell — is reported instead of clipped.
+func (sh *strategyHouse) heightWarning(ctx ExpandContext, v *StrategyHouseValues, overrides any) string {
+	ovr, _ := overrides.(*StrategyHouseOverrides)
+	if ovr == nil {
+		ovr = &StrategyHouseOverrides{}
+	}
+	fullW, areaH := contentAreaPt(ctx)
+	m := v.model()
+	layout, err := BuildHouse(m, v.style(ctx, ovr, nil), fullW, areaH)
+	if err != nil || !layout.RoofFlattened {
+		return ""
+	}
+	if !layout.Tight {
+		return fmt.Sprintf("%s: strategy-house fills this %.0fpt-high region with its %d levels, so the roof is flattened to a %.0fpt gable and no longer reads as a roof — shorten the pillars, drop a level, or give the house a taller region", ErrCodeBodyTooLong, areaH, len(m.Levels), layout.RoofRisePt)
+	}
+	return fmt.Sprintf("%s: strategy-house needs about %.0fpt of height for its roof and %d levels but this region has %.0fpt, so the pillar text is written smaller — shorten the pillars, drop a level, or give the house a taller region", ErrCodeBodyTooLong, layout.NeedPt, len(m.Levels), areaH)
+}
+
+// ErrCodeHouseShapeForced reports a house whose content was pressed into the
+// default one-band, equal-pillar shape (go-slide-creator-qad87).
+const ErrCodeHouseShapeForced = "HOUSE_SHAPE_FORCED"
+
+// strategyHouseListSplit separates the items of a joined list.
+var strategyHouseListSplit = regexp.MustCompile(`\s*[·•|;,/]\s*|\s+\+\s+|\s+&\s+`)
+
+// strategyHouseJoinedItems returns the short items a band string packs
+// together ("People · Technology · Data"), or nil when it reads as one
+// statement.
+func strategyHouseJoinedItems(band string) []string {
+	parts := strategyHouseListSplit.Split(strings.TrimSpace(band), -1)
+	if len(parts) < 3 {
+		return nil
+	}
+	for _, p := range parts {
+		if p == "" || runeLen(p) > 30 || len(strings.Fields(p)) > 4 {
+			return nil
+		}
+	}
+	return parts
+}
+
+// strategyHouseShapeWarnings nudges when the content was forced into the
+// default silhouette: separate enablers joined into one foundation string,
+// or a pillar left empty beside full ones.
+func strategyHouseShapeWarnings(v *StrategyHouseValues) []string {
+	var out []string
+	for i, layer := range v.foundationLayers() {
+		if len(layer) != 1 {
+			continue
+		}
+		items := strategyHouseJoinedItems(layer[0])
+		if len(items) == 0 || len(items) > strategyHouseMaxCells {
+			continue
+		}
+		quoted, _ := json.Marshal(items)
+		out = append(out, fmt.Sprintf("%s: strategy-house %s joins %d separate items into one band; give each its own box by writing the level as a list — \"foundation\": [%s] — or keep the band if they are one idea", ErrCodeHouseShapeForced, v.foundationPath(i, 0), len(items), quoted))
+	}
+	most := 0
+	for _, p := range v.Pillars {
+		most = max(most, len(p.Body))
+	}
+	if most >= 3 {
+		for i, p := range v.Pillars {
+			if len(p.Body) == 0 {
+				out = append(out, fmt.Sprintf("%s: strategy-house pillars[%d] (%q) has no body while other pillars carry up to %d bullets; give it its own points, merge it into a neighbouring pillar, or move it to a beam or foundation level", ErrCodeHouseShapeForced, i, p.Title, most))
+			}
+		}
+	}
+	return out
 }
 
 func (sh *strategyHouse) Schema() *Schema {
 	pillarSchema := ObjectSchema(
 		map[string]*Schema{
 			"title": StringSchema(60).WithDescription("Pillar title"),
-			"body":  ArraySchema(StringSchema(120), 0, 5).WithDescription("Pillar bullet items (0-5); dense average targets depend on pillar count, bullet count and roof: three pillars hold about 80 characters per bullet at four (40 at five; one fewer bullet each with roof badges), four pillars 115/77/52/38 at two/three/four/five (83/52/38/35 with a roof), five pillars 82/61/41/38 (62/41/38/25 with a roof); one bullet beside concise neighbours in five pillars holds about 62"),
+			"body":  ArraySchema(StringSchema(120), 0, 5).WithDescription("Pillar bullet items (0-5); pillars need not match in count — write what each theme has; dense average targets depend on pillar count, bullet count and roof badges: three pillars hold about 80 characters per bullet at four (40 at five; one fewer bullet each with roof badges), four pillars 115/77/52/38 at two/three/four/five (83/52/38/35 with badges), five pillars 82/61/41/38 (62/41/38/25 with badges); one bullet beside concise neighbours in five pillars holds about 62"),
 		},
 		[]string{"title"},
 	).WithAdditionalProperties(false).WithDescription("Pillar column with title and optional bullet body")
 
+	layerSchema := OneOfSchema(
+		StringSchema(strategyHouseBandMaxChars).WithDescription("Full-width band; about 132 readable characters"),
+		ArraySchema(StringSchema(strategyHouseCellMaxChars), 1, strategyHouseMaxCells).WithDescription("Row of 2-5 equal cells, one short label each (a single entry is a band)"),
+	)
+
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
-			"objective":   StringSchema(140).WithDescription("Strategic objective rendered as the banner above the pillars; about 132 readable characters"),
-			"pillars":     ArraySchema(pillarSchema, 3, 5).WithDescription("3-5 pillar columns supporting the objective"),
-			"foundation":  StringSchema(140).WithDescription("Foundation row text rendered beneath the pillars (enablers, principles, or capabilities); about 132 readable characters"),
-			"roof_badges": ArraySchema(StringSchema(24), 0, 3).WithDescription("Optional badges rendered above the banner (0-3, e.g. vision/mission tags)"),
+			"objective": StringSchema(strategyHouseBandMaxChars).WithDescription("Strategic objective, drawn in the gabled roof above the pillars; about 132 readable characters"),
+			"beam":      StringSchema(strategyHouseBandMaxChars).WithDescription("Optional cross-cutting band between the roof and the pillars (a principle or constraint every pillar shares); about 132 readable characters"),
+			"pillars":   ArraySchema(pillarSchema, 3, 5).WithDescription("3-5 pillar columns supporting the objective: one pillar per independent theme in the content — do not merge or pad themes to reach three"),
+			"foundation": OneOfSchema(
+				StringSchema(strategyHouseBandMaxChars).WithDescription("One foundation band under the pillars; about 132 readable characters"),
+				ArraySchema(layerSchema, 1, strategyHouseMaxLayers).WithDescription("1-3 foundation levels, top to bottom: one level per kind of enabler, each a string (band) or a list of short strings (a row of cells)"),
+			).WithDescription("Foundation under the pillars: a string for one band, or a list of 1-3 levels where each level is a string (full-width band) or a list of 2-5 short strings (a row of equal cells, e.g. [\"Shared platform\", [\"People\", \"Data\", \"Controls\"]]); split a level into cells when the enablers are separate things rather than joining them with separators"),
+			"roof_badges": ArraySchema(StringSchema(24), 0, 3).WithDescription("Optional badges drawn inside the roof above the objective (0-3, e.g. vision/mission tags)"),
 		},
 		[]string{"objective", "pillars", "foundation"},
 	).WithAdditionalProperties(false)
@@ -192,10 +446,10 @@ func (sh *strategyHouse) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Strategy House: banner objective above 3-5 pillars above a foundation, with optional roof badges")
+	}).WithDescription("Strategy House: gabled roof with the objective above 3-5 pillars above a foundation of 1-3 levels, with an optional beam and roof badges")
 }
 
-func (sh *strategyHouse) Validate(values, overrides any, cellOverrides map[int]any) error {
+func (sh *strategyHouse) Validate(values, overrides any, cellOverrides map[int]any) error { //nolint:gocognit,gocyclo // one block per field
 	vals, ok := values.(*StrategyHouseValues)
 	if !ok || vals == nil {
 		return fmt.Errorf("strategy-house: values must be *StrategyHouseValues, got %T", values)
@@ -214,14 +468,47 @@ func (sh *strategyHouse) Validate(values, overrides any, cellOverrides map[int]a
 
 	if strings.TrimSpace(vals.Objective) == "" {
 		errs = append(errs, errRequired(name, "objective"))
-	} else if runeLen(vals.Objective) > 140 {
-		errs = append(errs, errMaxLength(name, "objective", 140, runeLen(vals.Objective)))
+	} else if runeLen(vals.Objective) > strategyHouseBandMaxChars {
+		errs = append(errs, errMaxLength(name, "objective", strategyHouseBandMaxChars, runeLen(vals.Objective)))
+	}
+	if runeLen(vals.Beam) > strategyHouseBandMaxChars {
+		errs = append(errs, errMaxLength(name, "beam", strategyHouseBandMaxChars, runeLen(vals.Beam)))
 	}
 
-	if strings.TrimSpace(vals.Foundation) == "" {
+	layers := vals.foundationLayers()
+	if len(layers) == 0 {
 		errs = append(errs, errRequired(name, "foundation"))
-	} else if runeLen(vals.Foundation) > 140 {
-		errs = append(errs, errMaxLength(name, "foundation", 140, runeLen(vals.Foundation)))
+	}
+	if len(layers) > strategyHouseMaxLayers {
+		errs = append(errs, errMaxItems(name, "foundation", strategyHouseMaxLayers, len(layers), "(hint: a house stays readable with at most 3 foundation levels; merge levels or move one to the beam)"))
+	}
+	counts := []int{len(vals.Pillars)}
+	for i, layer := range layers {
+		levelPath := fmt.Sprintf("foundation[%d]", i)
+		if len(vals.FoundationLayers) == 0 {
+			levelPath = "foundation"
+		}
+		if len(layer) == 0 {
+			errs = append(errs, errMinItems(name, levelPath, 1, 0, "(hint: a level is a string or a list of 2-5 short strings)"))
+			continue
+		}
+		if len(layer) > strategyHouseMaxCells {
+			errs = append(errs, errMaxItems(name, levelPath, strategyHouseMaxCells, len(layer), "(hint: a level split into more than 5 cells cannot keep its labels readable; group the cells or use two levels)"))
+			continue
+		}
+		counts = append(counts, len(layer))
+		maxChars := strategyHouseBandMaxChars
+		if len(layer) > 1 {
+			maxChars = strategyHouseCellMaxChars
+		}
+		for j, cell := range layer {
+			path := vals.foundationPath(i, j)
+			if strings.TrimSpace(cell) == "" {
+				errs = append(errs, errRequired(name, path))
+			} else if runeLen(cell) > maxChars {
+				errs = append(errs, errMaxLength(name, path, maxChars, runeLen(cell)))
+			}
+		}
 	}
 
 	if len(vals.Pillars) < 3 {
@@ -229,6 +516,11 @@ func (sh *strategyHouse) Validate(values, overrides any, cellOverrides map[int]a
 	}
 	if len(vals.Pillars) > 5 {
 		errs = append(errs, errMaxItems(name, "pillars", 5, len(vals.Pillars), ""))
+	} else if len(vals.Pillars) >= 3 && !HouseColumnsFit(counts...) {
+		errs = append(errs, &ValidationError{
+			Pattern: name, Path: "foundation", Code: ErrCodeCountMismatch,
+			Message: fmt.Sprintf("%s: %d pillars over foundation levels of %s cells cannot share one column grid; give the split levels the same cell count, or a count that divides evenly with the pillars", name, len(vals.Pillars), strategyHouseCountList(counts[1:])),
+		})
 	}
 
 	for i, p := range vals.Pillars {
@@ -263,20 +555,65 @@ func (sh *strategyHouse) Validate(values, overrides any, cellOverrides map[int]a
 		}
 	}
 
-	// Total addressable cells for cell_overrides:
-	//   0           = objective banner
-	//   1..N        = pillar columns
-	//   N+1         = foundation
-	//   N+2         = roof (when roof_badges present)
-	totalCells := 2 + len(vals.Pillars)
-	if len(vals.RoofBadges) > 0 {
-		totalCells++
-	}
-	if coErr := validateCellOverrideKeys(name, cellOverrides, totalCells, ""); coErr != nil {
+	if coErr := validateCellOverrideKeys(name, cellOverrides, vals.cells().total, ""); coErr != nil {
 		errs = append(errs, coErr)
 	}
 
 	return errors.Join(errs...)
+}
+
+func strategyHouseCountList(counts []int) string {
+	parts := make([]string, len(counts))
+	for i, n := range counts {
+		parts[i] = fmt.Sprintf("%d", n)
+	}
+	return strings.Join(parts, " and ")
+}
+
+// model maps the values onto the shared house model: the roof, then the
+// beam, the pillars and the foundation levels, top to bottom.
+func (v *StrategyHouseValues) model() HouseModel {
+	cells := v.cells()
+	m := HouseModel{Roof: v.Objective, Badges: v.RoofBadges, RoofOverrideIndex: 0, BadgeOverrideIndex: cells.badges}
+	if cells.beam >= 0 {
+		m.Levels = append(m.Levels, HouseLevel{Kind: HouseBand, Cells: []HouseCell{{Title: v.Beam}}, OverrideIndex: cells.beam})
+	}
+	pillars := HouseLevel{Kind: HousePillars, OverrideIndex: 1}
+	for _, p := range v.Pillars {
+		pillars.Cells = append(pillars.Cells, HouseCell(p))
+	}
+	m.Levels = append(m.Levels, pillars)
+	for i, layer := range v.foundationLayers() {
+		level := HouseLevel{Kind: HouseBand, OverrideIndex: cells.foundation[i]}
+		for _, text := range layer {
+			level.Cells = append(level.Cells, HouseCell{Title: text})
+		}
+		m.Levels = append(m.Levels, level)
+	}
+	return m
+}
+
+// style resolves the house's look from the template and the overrides.
+func (v *StrategyHouseValues) style(ctx ExpandContext, ovr *StrategyHouseOverrides, cellOverrides map[int]any) HouseStyle {
+	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
+	return HouseStyle{
+		Fonts:  ctx.themeFonts(),
+		Accent: baseAccent,
+		PillarAccent: func(i int) string {
+			return ctx.ResolveCellAccent(baseAccent, i, ovr.CellAccentMode)
+		},
+		// The pillar surface used to be lt1 — white on a white slide — so a
+		// column was invisible below its last bullet (go-slide-creator-pr3g).
+		// Generic light roles become the neutral 4% step (go-slide-creator-8xsj3).
+		PillarSurface: surfaceFillJSON(ctx, "subtle", NeutralTint4),
+		HeaderPt:      ResolveSize(ovr.HeaderSize, sizeHeaderPt),
+		BodyPt:        ResolveSize(ovr.BodySize, scaleBodyPt),
+		ColGapPt:      ctx.Gap(strategyHouseColGapPt),
+		RowGapPt:      ctx.Gap(houseRowGapPt),
+		Override: func(idx int, cell *jsonschema.GridCellInput, accent string) {
+			applyStrategyHouseOverride(cell, cellOverrides, idx, accent)
+		},
+	}
 }
 
 func (sh *strategyHouse) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
@@ -293,237 +630,22 @@ func (sh *strategyHouse) Expand(ctx ExpandContext, values, overrides any, cellOv
 		}
 	}
 
-	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	headerSize := ResolveSize(ovr.HeaderSize, sizeHeaderPt)
-	bodySize := ResolveSize(ovr.BodySize, scaleBodyPt)
-	cellAccentMode := ovr.CellAccentMode
-
-	numPillars := len(vals.Pillars)
-	hasRoof := len(vals.RoofBadges) > 0
-
-	// Cell index map (for cell_overrides):
-	//   0 = banner, 1..N = pillars, N+1 = foundation, N+2 = roof (if present)
-	bannerIdx := 0
-	pillarIdx0 := 1
-	foundationIdx := numPillars + 1
-	roofIdx := numPillars + 2
-
+	// The house is content-sized (go-slide-creator-wntyw): the roof's eaves
+	// band and every band level are pinned to their text, the pillar row hugs
+	// its tallest column, and the block is middle-anchored in the body zone.
 	fullW, areaH := contentAreaPt(ctx)
-	pillarW := equalColumnWidthPt(fullW, numPillars, ctx.Gap(strategyHouseColGapPt))
-
-	var rows []jsonschema.GridRowInput
-
-	// Optional roof row: badges as a tinted strip
-	if hasRoof {
-		roofCell := &jsonschema.GridCellInput{
-			ColSpan: numPillars,
-			Shape: &jsonschema.ShapeSpecInput{
-				Geometry: "rect",
-				Fill:     neutralFillJSON(NeutralTint8),
-				Text:     buildStrategyHouseRoofText(vals.RoofBadges, baseAccent),
-			},
-		}
-		applyStrategyHouseOverride(roofCell, cellOverrides, roofIdx, baseAccent)
-		rows = append(rows, strategyHouseBandRow(ctx.themeFonts(), roofCell, fullW, 0.12*areaH))
+	layout, err := BuildHouse(vals.model(), vals.style(ctx, ovr, cellOverrides), fullW, areaH)
+	if err != nil {
+		return nil, fmt.Errorf("strategy-house: %w", err)
 	}
-
-	// Banner row: objective on a strong accent fill
-	bannerCell := &jsonschema.GridCellInput{
-		ColSpan: numPillars,
-		Shape: &jsonschema.ShapeSpecInput{
-			Geometry: "rect",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, baseAccent)),
-			Text:     buildStrategyHouseBannerText(vals.Objective, headerSize),
-		},
-	}
-	applyStrategyHouseOverride(bannerCell, cellOverrides, bannerIdx, baseAccent)
-	bannerShare := 0.18
-	if hasRoof {
-		bannerShare = 0.16
-	}
-	rows = append(rows, strategyHouseBandRow(ctx.themeFonts(), bannerCell, fullW, bannerShare*areaH))
-
-	// Pillar row: N cells on the template's subtle surface, with bold titles
-	// and bullet bodies. The fill used to be lt1 — white on a white slide — so
-	// a pillar column was invisible below its last bullet and the space between
-	// the bullets and the foundation read as a large empty band rather than as
-	// the pillars holding the house up (go-slide-creator-pr3g).
-	// Generic light roles become the neutral 4% step (go-slide-creator-8xsj3).
-	pillarSurface := surfaceFillJSON(ctx, "subtle", NeutralTint4)
-	pillarCells := make([]*jsonschema.GridCellInput, numPillars)
-	for i, p := range vals.Pillars {
-		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
-		pillarCells[i] = &jsonschema.GridCellInput{
-			Shape: &jsonschema.ShapeSpecInput{
-				Geometry: "rect",
-				Fill:     pillarSurface,
-				Text:     buildStrategyHousePillarText(p.Title, p.Body, headerSize, bodySize, accent),
-			},
-			AccentBar: &jsonschema.AccentBarInput{
-				Position: "top",
-				Color:    accent,
-				Width:    4,
-			},
-		}
-		applyStrategyHouseOverride(pillarCells[i], cellOverrides, pillarIdx0+i, accent)
-	}
-	// Content-sized pillars (go-slide-creator-wntyw): the row hugs the
-	// longest pillar's title + bullets plus card padding instead of taking
-	// every point the banner and foundation leave, which left the pillars
-	// ~60% empty. The cap is a max_height on a flex row: content that needs more than
-	// the zone leaves still takes whatever the bands leave (and a text that
-	// cannot be sized at all leaves the row uncapped).
-	pillarRow := jsonschema.GridRowInput{Cells: pillarCells}
-	pillarPt := 0.0
-	for _, c := range pillarCells {
-		need := writtenFitHeightPt(ctx.themeFonts(), c.Shape.Text, pillarW, 0)
-		if need <= 0 {
-			pillarPt = 0
-			break
-		}
-		pillarPt = math.Max(pillarPt, need)
-	}
-	if pillarPt > 0 {
-		pillarRow.MaxHeight = math.Round(pillarPt + cardPadPt)
-	}
-	rows = append(rows, pillarRow)
-
-	// Foundation row: structure under the pillars, a neutral 16% band with
-	// dk1 text. The objective banner is the slide's one solid-accent element;
-	// a second full-width accent slab competed with it (go-slide-creator-8xsj3).
-	foundationCell := &jsonschema.GridCellInput{
-		ColSpan: numPillars,
-		Shape: &jsonschema.ShapeSpecInput{
-			Geometry: "rect",
-			Fill:     neutralFillJSON(NeutralTint16),
-			Text:     buildStrategyHouseFoundationText(vals.Foundation, headerSize-2),
-		},
-	}
-	applyStrategyHouseOverride(foundationCell, cellOverrides, foundationIdx, baseAccent)
-	rows = append(rows, strategyHouseBandRow(ctx.themeFonts(), foundationCell, fullW, 0.18*areaH))
-
-	// Bands are pinned and the pillar row is capped in points, so the house
-	// is a content-sized block middle-anchored in the body zone.
-	grid := &jsonschema.ShapeGridInput{
-		Columns:       json.RawMessage(fmt.Sprintf(`%d`, numPillars)),
-		Gap:           ctx.Gap(strategyHouseColGapPt),
-		RowGap:        ctx.Gap(6),
-		Rows:          rows,
-		VerticalAlign: GridVerticalAlignDefault,
-	}
-
-	return grid, nil
+	return layout.Grid, nil
 }
 
 // strategyHouseColGapPt is the gutter between pillars.
-const strategyHouseColGapPt = 8.0
+const strategyHouseColGapPt = houseColGapPt
 
-// strategyHouseBandPadPt is the breathing room a full-width band (roof,
-// objective banner, foundation) gets around its text.
-const strategyHouseBandPadPt = 10.0
-
-// strategyHouseBandRow pins a full-width band row to its text height plus
-// strategyHouseBandPadPt, never taller than maxPt (the share of the zone the
-// band used to take as a fixed percentage; longer text autofits there).
-func strategyHouseBandRow(fonts pptx.ThemeFonts, cell *jsonschema.GridCellInput, widthPt, maxPt float64) jsonschema.GridRowInput {
-	need := writtenFitHeightPt(fonts, cell.Shape.Text, widthPt, 0)
-	h := maxPt
-	if need > 0 {
-		h = math.Min(need+strategyHouseBandPadPt, maxPt)
-	}
-	h = math.Round(h)
-	return jsonschema.GridRowInput{MinHeight: h, MaxHeight: h, Cells: []*jsonschema.GridCellInput{cell}}
-}
-
-// ---------------------------------------------------------------------------
-// Text builders
-// ---------------------------------------------------------------------------
-
-type strategyHouseParagraph struct {
-	Content string  `json:"content"`
-	Size    float64 `json:"size"`
-	Bold    bool    `json:"bold,omitempty"`
-	Color   string  `json:"color,omitempty"`
-	Align   string  `json:"align,omitempty"`
-	Bullet  bool    `json:"bullet,omitempty"`
-}
-
-type strategyHouseTextObj struct {
-	Paragraphs    []strategyHouseParagraph `json:"paragraphs"`
-	Align         string                   `json:"align"`
-	VerticalAlign string                   `json:"vertical_align"`
-}
-
-func buildStrategyHouseBannerText(objective string, size float64) json.RawMessage {
-	textObj := strategyHouseTextObj{
-		Paragraphs: []strategyHouseParagraph{
-			{Content: pptx.ConvertMarkdownEmphasis(objective), Size: size, Bold: true, Color: "lt1", Align: "ctr"},
-		},
-		Align:         "ctr",
-		VerticalAlign: "ctr",
-	}
-	data, _ := json.Marshal(textObj)
-	return data
-}
-
-func buildStrategyHouseFoundationText(foundation string, size float64) json.RawMessage {
-	textObj := strategyHouseTextObj{
-		Paragraphs: []strategyHouseParagraph{
-			{Content: pptx.ConvertMarkdownEmphasis(foundation), Size: size, Bold: true, Color: "dk1", Align: "ctr"},
-		},
-		Align:         "ctr",
-		VerticalAlign: "ctr",
-	}
-	data, _ := json.Marshal(textObj)
-	return data
-}
-
-func buildStrategyHouseRoofText(badges []string, accent string) json.RawMessage {
-	joined := strings.Join(badges, "   ·   ")
-	textObj := strategyHouseTextObj{
-		Paragraphs: []strategyHouseParagraph{
-			{Content: joined, Size: scaleDenseBodyPt, Bold: true, Color: accent, Align: "ctr"},
-		},
-		Align:         "ctr",
-		VerticalAlign: "ctr",
-	}
-	data, _ := json.Marshal(textObj)
-	return data
-}
-
-func buildStrategyHousePillarText(title string, body []string, titleSize, bodySize float64, accent string) json.RawMessage {
-	var paras []strategyHouseParagraph
-	paras = append(paras, strategyHouseParagraph{
-		Content: pptx.ConvertMarkdownEmphasis(title),
-		Size:    titleSize,
-		Bold:    true,
-		Color:   accent,
-		Align:   "ctr",
-	})
-	for _, b := range body {
-		paras = append(paras, strategyHouseParagraph{
-			Bullet:  true,
-			Content: pptx.ConvertMarkdownEmphasis(b),
-			Size:    bodySize,
-			Color:   "dk1",
-			Align:   "l",
-		})
-	}
-	verticalAlign := "ctr"
-	bodyAlign := "ctr"
-	if len(body) > 0 {
-		verticalAlign = "t"
-		bodyAlign = "l"
-	}
-	textObj := strategyHouseTextObj{
-		Paragraphs:    paras,
-		Align:         bodyAlign,
-		VerticalAlign: verticalAlign,
-	}
-	data, _ := json.Marshal(textObj)
-	return data
-}
-
+// applyStrategyHouseOverride applies one cell_overrides entry: the text keys
+// and the accent bar (on the roof, a thin rule under the eaves).
 func applyStrategyHouseOverride(cell *jsonschema.GridCellInput, cellOverrides map[int]any, idx int, accent string) {
 	if cell == nil {
 		return
@@ -537,7 +659,7 @@ func applyStrategyHouseOverride(cell *jsonschema.GridCellInput, cellOverrides ma
 		return
 	}
 	applyCellTextOverride(cell, cellOvr)
-	if cellOvr.AccentBar {
+	if cellOvr.AccentBar && cell.Shape != nil && cell.Shape.Geometry == "rect" {
 		cell.AccentBar = &jsonschema.AccentBarInput{
 			Position: "top",
 			Color:    accent,

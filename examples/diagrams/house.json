@@ -32,6 +32,32 @@
           }
         }
       ]
+    },
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Strategy House with Enabling Levels"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "house_diagram",
+            "data": {
+              "roof": "Leader in digital payments",
+              "sections": [
+                {"label": "Technology", "items": ["Cloud platform", "Open APIs"]},
+                {"label": "Product", "items": ["Mobile wallet"]},
+                {"label": "People", "items": ["Talent", "Culture"]}
+              ],
+              "floors": [
+                "Shared data platform",
+                {"sections": ["Risk", "Controls", "Partners"]}
+              ],
+              "foundation": "Trust and compliance"
+            }
+          }
+        }
+      ]
     }
   ]
 }

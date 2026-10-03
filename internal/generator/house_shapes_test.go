@@ -204,7 +204,7 @@ func TestGenerateHouseDiagramGroupXML(t *testing.T) {
 		floors:          []houseFloorMeta{{floorType: "parallel", sectionCount: 3}},
 	}
 
-	xml := generateHouseDiagramGroupXML(panels, bounds, 10000, meta)
+	xml := generateHouseDiagramGroupXML(panels, bounds, 10000, meta, nativeDiagramEnv{})
 	if xml == "" {
 		t.Fatal("generateHouseDiagramGroupXML returned empty string")
 	}
@@ -231,9 +231,9 @@ func TestGenerateHouseDiagramGroupXML(t *testing.T) {
 		t.Error("output should contain foundation label")
 	}
 
-	// Should contain triangle geometry for roof.
-	if !strings.Contains(xml, "triangle") {
-		t.Error("output should contain triangle geometry for roof")
+	// The roof is the gable pentagon shared with the strategy-house pattern.
+	if !strings.Contains(xml, `prst="upArrow"`) {
+		t.Error("output should contain the gable geometry for the roof")
 	}
 
 	// Should contain rect geometry for pillars/foundation.
@@ -275,7 +275,7 @@ func TestGenerateHouseDiagramGroupXML_MultiFloor(t *testing.T) {
 		},
 	}
 
-	xml := generateHouseDiagramGroupXML(panels, bounds, 20000, meta)
+	xml := generateHouseDiagramGroupXML(panels, bounds, 20000, meta, nativeDiagramEnv{})
 	if xml == "" {
 		t.Fatal("generateHouseDiagramGroupXML returned empty string for multi-floor")
 	}
@@ -293,7 +293,7 @@ func TestGenerateHouseDiagramGroupXML_MultiFloor(t *testing.T) {
 
 func TestGenerateHouseDiagramGroupXML_Empty(t *testing.T) {
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 5000000}
-	result := generateHouseDiagramGroupXML(nil, bounds, 10000, houseDiagramMeta{})
+	result := generateHouseDiagramGroupXML(nil, bounds, 10000, houseDiagramMeta{}, nativeDiagramEnv{})
 	if result != "" {
 		t.Error("expected empty string for nil panels")
 	}
@@ -315,13 +315,13 @@ func TestGenerateHouseDiagramGroupXML_RoofAndFoundationOnly(t *testing.T) {
 		foundationLabel: "Foundation",
 	}
 
-	xml := generateHouseDiagramGroupXML(panels, bounds, 10000, meta)
+	xml := generateHouseDiagramGroupXML(panels, bounds, 10000, meta, nativeDiagramEnv{})
 	if xml == "" {
 		t.Fatal("generateHouseDiagramGroupXML returned empty string for roof+foundation only")
 	}
 
-	if !strings.Contains(xml, "triangle") {
-		t.Error("output should contain triangle geometry for roof")
+	if !strings.Contains(xml, `prst="upArrow"`) {
+		t.Error("output should contain the gable geometry for the roof")
 	}
 	if !strings.Contains(xml, "Roof") {
 		t.Error("output should contain roof label")
@@ -338,8 +338,8 @@ func TestGenerateHouseDiagramGroupXML_RoofAndFoundationOnly(t *testing.T) {
 func TestHouseDiagramEstimateShapeCount(t *testing.T) {
 	panels := make([]nativePanelData, 5) // roof + 3 pillars + foundation
 	got := houseDiagramEstimateShapeCount(panels)
-	if got != 7 { // 1 group + 5 shapes + the roof label overlay
-		t.Errorf("houseDiagramEstimateShapeCount() = %d, want 7", got)
+	if got != 11 { // 1 group + 5 shapes + up to one accent rule per shape
+		t.Errorf("houseDiagramEstimateShapeCount() = %d, want 11", got)
 	}
 }
 

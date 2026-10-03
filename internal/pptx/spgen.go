@@ -85,7 +85,7 @@ func GenerateShape(opts ShapeOptions) ([]byte, error) {
 		}
 		opts.Text.Insets = EffectiveTextInsets(opts.Text, presetTextBounds(opts))
 	}
-	applyAutofitScale(opts.Text, opts.Bounds)
+	applyAutofitScale(opts.Text, autofitBounds(opts))
 
 	var buf bytes.Buffer
 

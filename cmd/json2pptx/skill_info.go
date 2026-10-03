@@ -1317,7 +1317,7 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		"house_diagram": {
 			RequiredKeys: []string{},
 			OptionalKeys: []string{"roof", "sections", "floors", "foundation", "footnote"},
-			Description:  "roof: string or {label, color}; sections: [{label, items?, color?}]; foundation: string or {label, color}",
+			Description:  "roof: string or {label}; sections: [{label, items?}] — the pillar row (strings allowed); floors: further levels drawn top to bottom under the pillar row, each a string or {label, items?} (a full-width band) or {sections: [...]} (a row of cells) — any other floors shape is refused; foundation: string or {label} — the bottom band. Example: {\"roof\": \"Leader in digital payments\", \"sections\": [{\"label\": \"Technology\", \"items\": [\"Cloud platform\"]}, {\"label\": \"Product\", \"items\": [\"Mobile wallet\"]}, {\"label\": \"People\", \"items\": [\"Talent\"]}], \"floors\": [\"Shared data platform\", {\"sections\": [\"Risk\", \"Controls\", \"Partners\"]}], \"foundation\": \"Trust and compliance\"}. Without sections, floors alone lists every level in order. One accent, neutral surfaces; at most 12 cells per level",
 		},
 		"business_model_canvas": {
 			RequiredKeys: []string{"key_partners", "key_activities", "key_resources", "value_propositions", "customer_relations", "channels", "customer_segments", "cost_structure", "revenue_streams"},

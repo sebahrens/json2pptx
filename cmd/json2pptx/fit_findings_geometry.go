@@ -257,7 +257,7 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 	}
 	// Rotated text runs along the shape's height: the line length it has is the
 	// box's height, not its width.
-	tw, th := pptx.PresetTextRectSize(cell.ShapeSpec.Geometry, geometryAdj(cell.ShapeSpec), cell.Bounds)
+	tw, th := pptx.PresetTextRect(cell.ShapeSpec.Geometry, cell.ShapeSpec.Adjustments, cell.Bounds)
 	in := txt.writtenInsets(pptx.RectEmu{CX: tw, CY: th}, cell.TextInsets)
 	availW := geometryTextWidthEMU(cell.ShapeSpec, cell.Bounds) - in[0] - in[2]
 	if txt.rotated() {
@@ -289,6 +289,12 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 		return
 	}
 	shapeArea := float64(cell.Bounds.CX) * float64(cell.Bounds.CY)
+	if cell.ShapeSpec.Geometry == string(pptx.GeomUpArrow) {
+		// An arrow's head — the gable of a strategy-house roof — is the
+		// shape's form, not a box waiting for text: the text belongs to the
+		// shaft, so that is the area it is measured against.
+		shapeArea = float64(tw) * float64(th)
+	}
 	if a.slideArea <= 0 || shapeArea <= float64(a.slideArea)*sparseFillMinShapeSlideFrac {
 		return
 	}

@@ -1755,6 +1755,34 @@ What deliberately does **not** fire, because a false mismatch on a conforming de
 }
 ```
 
+### `HOUSE_SHAPE_FORCED`
+
+**Action:** `info`
+**Pattern:** `strategy-house` (also reached from the DeckSpec `pillars` kind)
+**Fix kind:** none — the message names the edit
+**Emitted at:** preflight, from the pattern's `PostExpandWarnings`
+
+A strategy house whose content was pressed into the default one-band, equal-pillar shape (go-slide-creator-qad87). The house renders; the finding is a nudge that the pillar count and the levels should follow the content. Two rules:
+
+| Fires when | Suggests |
+|-----------|----------|
+| a foundation band (the `foundation` string, or a string level of a listed foundation) splits on `·` `•` `\|` `;` `,` `/` `+` `&` into 3–5 items that are each short (≤30 characters, ≤4 words) — `"People · Technology · Data"` | writing that level as a list of cells: `"foundation": [["People","Technology","Data"]]` |
+| a pillar has no `body` while another pillar carries 3 or more bullets | giving it its own points, merging it into a neighbour, or moving it to the beam or a foundation level |
+
+A band that reads as one statement (`"Governance, security and cost tracking for every production agent"`) does not fire, nor does an empty pillar beside one- and two-bullet neighbours.
+
+```json
+{
+  "pattern": "strategy-house",
+  "path": "/slides/4/pattern",
+  "code": "HOUSE_SHAPE_FORCED",
+  "message": "slide 5: strategy-house: strategy-house foundation joins 3 separate items into one band; give each its own box by writing the level as a list — \"foundation\": [[\"People\",\"Technology\",\"Data\"]] — or keep the band if they are one idea",
+  "action": "info"
+}
+```
+
+A strategy house also reports `BODY_TOO_LONG` from the same hook when its levels need more height than its region has: first when the gable has to flatten below the pitch that reads as a roof, then when the pillar rows are squeezed and their text is written smaller. Shorten the pillars, drop a level, or give the house a taller region (a full slide rather than a `compose` segment).
+
 ### `SPARSE_FILL`
 
 **Action:** `review`

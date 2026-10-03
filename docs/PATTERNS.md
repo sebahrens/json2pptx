@@ -110,7 +110,7 @@ Where an index addresses a composite of several shapes, the text keys land on th
 | `timeline-horizontal` | stop → label cell (`dots`), chevron (`chevron`), bar or marker (`gantt`) |
 | `value-chain`, `waterfall-bridge` | step / column → label cell |
 
-All other patterns apply the text keys to the one shape the index addresses (banner / pillar / foundation / roof in `strategy-house`, a quadrant in `matrix-2x2`, a card in `card-grid`, and so on). The `kpi-*` family already did this through the same helper (formerly `applyKPICellTextOverrides`).
+All other patterns apply the text keys to the one shape the index addresses (roof objective / pillar / foundation cell / beam / roof badge line in `strategy-house` — see [its index map](#strategy-house-and-house_diagram-one-house-builder) — a quadrant in `matrix-2x2`, a card in `card-grid`, and so on). The `kpi-*` family already did this through the same helper (formerly `applyKPICellTextOverrides`).
 
 ## card-grid styles + surface overrides
 
@@ -593,6 +593,28 @@ tiles:
   to the fixer, which swaps in a literal colour. `BODY_TOO_LONG` names the
   tallest row when the grid cannot fit. `cell_overrides` index row by row: the
   label, then that row's cards.
+
+## strategy-house and house_diagram (one house builder)
+
+The `strategy-house` pattern, the DeckSpec `pillars` kind that compiles to it, and the native `house_diagram` are drawn by one builder, `BuildHouse` in `internal/patterns/house_builder.go` (go-slide-creator-vlef3, -bjxb9, -x25dq). Each caller maps its input onto a `HouseModel` — a roof plus levels, top to bottom — and places the returned grid; `TestHouseDiagramMatchesTheStrategyHousePattern` fails if the two outputs differ for the same content. Change the house in the builder, never in a caller.
+
+**Shape.** The roof is one gable pentagon (`upArrow` with `adj1` 100000, so there is no seam between gable and eaves) in the slide's accent; the objective — under the roof-badge line when `roof_badges` are given — sits in the eaves band, the preset's own text rectangle. Under it come the levels: an optional `beam` band, the pillar row (neutral surface, 4pt accent rule, accent title, `dk1` bullets), and the foundation levels (neutral 16% bands, bold `dk1` labels). A pillar without bullets beside bulleted ones is top-aligned with them.
+
+**`foundation`** is a string (one band — the shape every existing deck uses) or a list of 1–3 levels, top to bottom, where each level is a string (a full-width band) or a list of 2–5 short strings (a row of equal cells, ≤40 characters each):
+
+```json
+"foundation": ["One operating model in every market", ["People", "Technology", "Data"]]
+```
+
+Validation refuses, with the counts, more than 3 levels, more than 5 cells in a level, and levels whose cell counts cannot share one column grid with the pillars (the least common multiple of the pillar count and the split levels' counts must be at most 24 — 5 pillars over a 3-cell and a 4-cell level is refused).
+
+**Heights come from the content, not from percentages.** Every band is pinned to its measured text (`writtenFitHeightPt`), the pillar row to its tallest column. What is left of the region is spent, in order, on a gable at the minimum pitch (rise = width / 20), on breathing room around the text, on the designed pitch (width / 12, at most 22% of the region height) and on pillars up to 1.2× their content. A house short of height gives these back in reverse order: breathing room first, then the gable down to a floor (width / 40), and only then the pillar rows, whose text is then written smaller. `PostExpandWarnings` reports the last two states as `BODY_TOO_LONG` (roof flattened; pillars squeezed), which is how a house in a region too small for it — a narrow `compose` segment — is reported rather than clipped.
+
+**`cell_overrides` indices.** `0` roof objective, `1..N` pillars, then the foundation cells in reading order, then the beam (when present), then the roof-badge line (when `roof_badges` are present). A house with one foundation band and no beam keeps the indices it always had (`N+1` foundation, `N+2` badges). `accent_bar` on index 0 draws a thin rule under the eaves.
+
+**Advisory `HOUSE_SHAPE_FORCED`** (go-slide-creator-qad87, see [FIT_FINDINGS.md](FIT_FINDINGS.md)) nudges when a foundation band joins three or more short items with separators, or a pillar has no body beside pillars with three or more bullets. The exemplar and the DeckSpec `pillars` example are deliberately not the 3 × 2 silhouette: four uneven pillars over a band and a three-cell level.
+
+**Native `house_diagram`** maps `roof` / `sections` / `floors` / `foundation` onto the same model (`docs/diagrams/house.md`); six or more sections in a row switch to the dense type sizes. The native path has no template metadata, so its pillar surface is always the neutral 4% step where the pattern uses the template's declared `subtle` surface.
 
 ## Composition
 

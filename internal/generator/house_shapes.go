@@ -5,68 +5,40 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // =============================================================================
-// House Diagram Native Shapes — Triangle Roof + Pillar Columns + Foundation
+// House Diagram Native Shapes — gabled roof over pillar and band levels
 // =============================================================================
 //
-// Replaces SVG-rendered house diagrams with native OOXML grouped shapes.
-// The "strategy house" diagram has three zones:
+// The house_diagram is drawn by the same builder as the strategy-house
+// pattern (patterns.BuildHouse), so the two cannot drift
+// (go-slide-creator-x25dq): one accent for the roof and the pillar rules,
+// neutral pillar and band surfaces, a gable pitched from the width, and
+// levels sized from their text.
 //
-//              /\
-//             /  \           ← Triangle (roof: vision/mission)
-//            /    \
-//           /______\
-//          |  P  P  P |     ← Rect columns (strategic pillars)
-//          |  I  I  I |
-//          |  L  L  L |
-//          |__________|
-//          | FOUNDATION |   ← Rect (values/culture)
+//	        /\
+//	   ____/  \____      roof (vision / objective)
+//	  |____________|
+//	  [P1][P2][P3][P4]   sections: the pillar row
+//	  [ floor       ]    floors: bands and rows of cells, top to bottom
+//	  [ foundation  ]    foundation band
 //
-// Multi-floor mode supports alternating single (full-width band) and
-// parallel (vertical pillar) floors between roof and foundation.
-//
-// Color strategy: roof=accent1 (full), pillars=accent1..accent6 (light tint),
-// foundation=accent1 (darker tint). All scheme color refs for theme awareness.
+// This file only maps the diagram's data onto the shared house model and
+// places the builder's grid in the diagram's bounds.
 
-// House diagram EMU constants.
 const (
-	// houseGapEMU is the vertical gap between roof, floors, and foundation.
-	// ~0.04" = 36576 EMU
-	houseGapEMU int64 = 36576
-
-	// housePillarGapEMU is the horizontal gap between pillar columns.
-	// ~0.03" = 27432 EMU
-	housePillarGapEMU int64 = 27432
-
-	// houseTextInsetEMU is the text inset for shapes: the uniform 0.5 cm
-	// shape text margin.
-	houseTextInsetEMU = pptx.ShapeTextInsetEMU
-
-	// houseLabelFontSize is the section label font size (hundredths of a point).
-	// 1100 = 11pt
-	houseLabelFontSize int = 1100
-
-	// houseLabelFontSizeSmall is for houses with many pillars (6+).
-	// 900 = 9pt
-	houseLabelFontSizeSmall int = 900
-
-	// houseItemFontSize is the bullet item font size (hundredths of a point).
-	// 900 = 9pt
-	houseItemFontSize int = 900
-
-	// houseItemFontSizeSmall is for houses with many pillars (6+).
-	// 700 = 7pt
-	houseItemFontSizeSmall int = 700
-
-	// houseFoundationHeightRatio is the fraction of total height for the foundation.
-	houseFoundationHeightRatio float64 = 0.13
-
-	// houseMaxSectionsPerFloor is the max number of pillars per floor.
+	// houseMaxSectionsPerFloor is the most cells one level may carry.
 	houseMaxSectionsPerFloor int = 12
+	// houseDenseSections is the row width from which the house switches to
+	// the dense type sizes.
+	houseDenseSections = 6
 )
 
 // houseSectionData holds parsed data for a single pillar section.
@@ -75,7 +47,7 @@ type houseSectionData struct {
 	items []string
 }
 
-// houseFloorMeta describes one floor between roof and foundation.
+// houseFloorMeta describes one level between roof and foundation.
 type houseFloorMeta struct {
 	floorType    string // "single" or "parallel"
 	sectionCount int    // 1 for single, N for parallel
@@ -98,25 +70,11 @@ func isHouseDiagram(spec *types.DiagramSpec) bool {
 // and metadata describing the floor structure.
 func parseHouseDiagramNativeData(data map[string]any) ([]nativePanelData, houseDiagramMeta, error) {
 	var meta houseDiagramMeta
-
-	// Parse roof.
 	meta.roofLabel = parseHouseRoofLabel(data)
-
-	// Parse foundation.
 	meta.foundationLabel = parseHouseFoundationLabel(data)
-
-	// Parse floors (multi-story) or sections (classic single-band).
 	floors, floorSections := parseHouseNativeFloors(data)
 
-	// Encode into flat panel list: [roof, ...floor sections..., foundation]
-	var panels []nativePanelData
-
-	// Panel 0: roof
-	panels = append(panels, nativePanelData{
-		title: meta.roofLabel,
-	})
-
-	// Floor panels
+	panels := []nativePanelData{{title: meta.roofLabel}}
 	for i, floor := range floors {
 		meta.floors = append(meta.floors, floor)
 		for _, sec := range floorSections[i] {
@@ -128,19 +86,56 @@ func parseHouseDiagramNativeData(data map[string]any) ([]nativePanelData, houseD
 				}
 				body = strings.Join(bulletLines, "\n")
 			}
-			panels = append(panels, nativePanelData{
-				title: sec.label,
-				body:  body,
-			})
+			panels = append(panels, nativePanelData{title: sec.label, body: body})
 		}
 	}
-
-	// Last panel: foundation
-	panels = append(panels, nativePanelData{
-		title: meta.foundationLabel,
-	})
-
+	panels = append(panels, nativePanelData{title: meta.foundationLabel})
 	return panels, meta, nil
+}
+
+// houseModel maps the parsed panels onto the shared house model: the roof,
+// one level per floor, and the foundation band.
+//
+// A row of sections is a pillar row; a later row whose sections carry labels
+// only is a level split into cells.
+func houseModel(panels []nativePanelData, meta houseDiagramMeta) patterns.HouseModel {
+	m := patterns.HouseModel{RoofOverrideIndex: -1, BadgeOverrideIndex: -1}
+	if len(panels) < 2 {
+		return m
+	}
+	m.Roof = panels[0].title
+	last := len(panels) - 1
+	idx, pillarRows := 1, 0
+	for _, floor := range meta.floors {
+		level := patterns.HouseLevel{Kind: patterns.HouseBand, OverrideIndex: -1}
+		hasItems := false
+		for j := 0; j < max(floor.sectionCount, 1) && idx < last; j++ {
+			cell := patterns.HouseCell{Title: panels[idx].title}
+			for _, line := range strings.Split(panels[idx].body, "\n") {
+				if item := strings.TrimSpace(strings.TrimPrefix(line, "- ")); item != "" {
+					cell.Body = append(cell.Body, item)
+				}
+			}
+			hasItems = hasItems || len(cell.Body) > 0
+			level.Cells = append(level.Cells, cell)
+			idx++
+		}
+		if len(level.Cells) == 0 {
+			continue
+		}
+		if floor.floorType == "parallel" && (pillarRows == 0 || hasItems) {
+			level.Kind = patterns.HousePillars
+			pillarRows++
+		}
+		m.Levels = append(m.Levels, level)
+	}
+	if foundation := panels[last].title; strings.TrimSpace(foundation) != "" {
+		m.Levels = append(m.Levels, patterns.HouseLevel{
+			Kind: patterns.HouseBand, OverrideIndex: -1,
+			Cells: []patterns.HouseCell{{Title: foundation}},
+		})
+	}
+	return m
 }
 
 // parseHouseRoofLabel extracts the roof label from data.
@@ -175,118 +170,94 @@ func parseHouseFoundationLabel(data map[string]any) string {
 	return ""
 }
 
-// parseHouseNativeFloors parses floors or sections from data.
-// Returns a list of floor metadata and their corresponding section data.
-func parseHouseNativeFloors(data map[string]any) ([]houseFloorMeta, [][]houseSectionData) { //nolint:gocognit
-	// Try "floors" key first (multi-story layout).
-	if rawFloors, ok := data["floors"].([]any); ok && len(rawFloors) > 0 {
-		var metas []houseFloorMeta
-		var allSections [][]houseSectionData
+// parseHouseNativeFloors returns the levels between roof and foundation, top
+// to bottom, with their sections.
+//
+// "sections" (alias "pillars" / "columns") is the pillar row. "floors" lists
+// further levels: a string or {label, items?} is a full-width band, and
+// {sections: [...]} is a row of cells. When both are given the pillar row
+// comes first and the floors follow under it; floors alone are drawn in the
+// order written. ValidateNativeDiagramData refuses every other floors shape,
+// so nothing reaches this parser that it would skip.
+func parseHouseNativeFloors(data map[string]any) ([]houseFloorMeta, [][]houseSectionData) {
+	var metas []houseFloorMeta
+	var allSections [][]houseSectionData
 
-		for _, item := range rawFloors {
-			m, ok := item.(map[string]any)
-			if !ok {
+	if sections := parseHouseNativeSections(data); len(sections) > 0 {
+		metas = append(metas, houseFloorMeta{floorType: "parallel", sectionCount: len(sections)})
+		allSections = append(allSections, sections)
+	}
+	rawFloors, _ := data["floors"].([]any)
+	for _, item := range rawFloors {
+		switch v := item.(type) {
+		case string:
+			metas = append(metas, houseFloorMeta{floorType: "single", sectionCount: 1})
+			allSections = append(allSections, []houseSectionData{{label: v}})
+		case map[string]any:
+			if inferHouseFloorType(v) == "single" {
+				label, _ := v["label"].(string)
+				metas = append(metas, houseFloorMeta{floorType: "single", sectionCount: 1})
+				allSections = append(allSections, []houseSectionData{{label: label, items: houseStringList(v["items"])}})
 				continue
 			}
-
-			floorType := inferHouseFloorType(m)
-			if floorType == "single" {
-				label, _ := m["label"].(string)
-				var items []string
-				if rawItems, ok := m["items"].([]any); ok {
-					for _, it := range rawItems {
-						if s, ok := it.(string); ok {
-							items = append(items, s)
-						}
-					}
-				}
-				metas = append(metas, houseFloorMeta{floorType: "single", sectionCount: 1})
-				allSections = append(allSections, []houseSectionData{{label: label, items: items}})
-			} else {
-				// Parallel floor: parse sections.
-				sections := parseHouseNativeSections(m)
-				if len(sections) == 0 {
-					continue
-				}
-				metas = append(metas, houseFloorMeta{floorType: "parallel", sectionCount: len(sections)})
-				allSections = append(allSections, sections)
+			sections := parseHouseNativeSections(v)
+			if len(sections) == 0 {
+				continue
 			}
-		}
-
-		if len(metas) > 0 {
-			return metas, allSections
+			metas = append(metas, houseFloorMeta{floorType: "parallel", sectionCount: len(sections)})
+			allSections = append(allSections, sections)
 		}
 	}
-
-	// Fallback: "sections"/"pillars"/"columns" as a single parallel floor.
-	sections := parseHouseNativeSections(data)
-	if len(sections) > 0 {
-		return []houseFloorMeta{{floorType: "parallel", sectionCount: len(sections)}},
-			[][]houseSectionData{sections}
+	if len(metas) > 0 {
+		return metas, allSections
 	}
 
 	// Fallback: outer_elements (hub-and-spoke format).
-	if oe, ok := data["outer_elements"].([]any); ok && len(oe) > 0 {
-		var sections []houseSectionData
-		for _, item := range oe {
-			switch v := item.(type) {
-			case string:
-				sections = append(sections, houseSectionData{label: v})
-			case map[string]any:
-				sec := houseSectionData{}
-				if label, ok := v["label"].(string); ok {
-					sec.label = label
-				}
-				if items, ok := v["items"].([]any); ok {
-					for _, it := range items {
-						if s, ok := it.(string); ok {
-							sec.items = append(sec.items, s)
-						}
-					}
-				}
-				sections = append(sections, sec)
-			}
-		}
-		if len(sections) > 0 {
-			return []houseFloorMeta{{floorType: "parallel", sectionCount: len(sections)}},
-				[][]houseSectionData{sections}
-		}
+	if sections := houseSectionList(data["outer_elements"]); len(sections) > 0 {
+		return []houseFloorMeta{{floorType: "parallel", sectionCount: len(sections)}},
+			[][]houseSectionData{sections}
 	}
-
 	return nil, nil
 }
 
+// houseSectionKeys are the spellings of a row of sections.
+var houseSectionKeys = []string{"sections", "pillars", "columns"}
+
 // parseHouseNativeSections parses sections/pillars/columns from a data map.
 func parseHouseNativeSections(dataMap map[string]any) []houseSectionData {
-	for _, key := range []string{"sections", "pillars", "columns"} {
-		raw, ok := dataMap[key].([]any)
-		if !ok || len(raw) == 0 {
-			continue
+	for _, key := range houseSectionKeys {
+		if sections := houseSectionList(dataMap[key]); len(sections) > 0 {
+			return sections
 		}
-
-		var sections []houseSectionData
-		for _, item := range raw {
-			switch v := item.(type) {
-			case string:
-				sections = append(sections, houseSectionData{label: v})
-			case map[string]any:
-				sec := houseSectionData{}
-				if label, ok := v["label"].(string); ok {
-					sec.label = label
-				}
-				if items, ok := v["items"].([]any); ok {
-					for _, it := range items {
-						if s, ok := it.(string); ok {
-							sec.items = append(sec.items, s)
-						}
-					}
-				}
-				sections = append(sections, sec)
-			}
-		}
-		return sections
 	}
 	return nil
+}
+
+// houseSectionList parses a list of sections: strings or {label, items?}.
+func houseSectionList(value any) []houseSectionData {
+	raw, _ := value.([]any)
+	var sections []houseSectionData
+	for _, item := range raw {
+		switch v := item.(type) {
+		case string:
+			sections = append(sections, houseSectionData{label: v})
+		case map[string]any:
+			label, _ := v["label"].(string)
+			sections = append(sections, houseSectionData{label: label, items: houseStringList(v["items"])})
+		}
+	}
+	return sections
+}
+
+func houseStringList(value any) []string {
+	raw, _ := value.([]any)
+	var out []string
+	for _, it := range raw {
+		if s, ok := it.(string); ok {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // inferHouseFloorType determines the floor type from a floor map entry.
@@ -298,7 +269,7 @@ func inferHouseFloorType(m map[string]any) string {
 		return "parallel"
 	}
 	// Infer: if sections/pillars/columns present, it's parallel.
-	for _, key := range []string{"sections", "pillars", "columns"} {
+	for _, key := range houseSectionKeys {
 		if _, ok := m[key].([]any); ok {
 			return "parallel"
 		}
@@ -307,187 +278,144 @@ func inferHouseFloorType(m map[string]any) string {
 }
 
 // =============================================================================
-// Group XML Generation
+// Layout and group XML generation
 // =============================================================================
 
+// houseStyle is the look of a native house: the template's primary accent,
+// neutral surfaces, and the pattern's type sizes — dense sizes once a row
+// carries six or more sections.
+func houseStyle(meta houseDiagramMeta, env nativeDiagramEnv) patterns.HouseStyle {
+	st := patterns.HouseStyle{
+		Fonts:  pptx.ThemeFonts{Major: env.fontName, Minor: env.fontName},
+		Accent: patterns.PrimaryFill(env.themeColors),
+	}
+	for _, floor := range meta.floors {
+		if floor.sectionCount >= houseDenseSections {
+			st.HeaderPt, st.BandPt, st.BodyPt = tokens.TypeScaleBodyPt, tokens.TypeScaleBodyPt, tokens.BodyTextMinPt
+			break
+		}
+	}
+	return st
+}
+
+// layoutHouse lays the house out in bounds with the shared builder.
+func layoutHouse(panels []nativePanelData, meta houseDiagramMeta, bounds types.BoundingBox, env nativeDiagramEnv) (*patterns.HouseLayout, error) {
+	if bounds.Width <= 0 || bounds.Height <= 0 {
+		return nil, fmt.Errorf("house_diagram: empty bounds")
+	}
+	return patterns.BuildHouse(houseModel(panels, meta), houseStyle(meta, env),
+		float64(bounds.Width)/float64(types.EMUPerPoint), float64(bounds.Height)/float64(types.EMUPerPoint))
+}
+
+// houseGrid converts the builder's grid — shape cells with optional accent
+// bars, one pinned row per level — to the layout engine's grid in bounds.
+func houseGrid(in *jsonschema.ShapeGridInput, cols int, bounds types.BoundingBox, fonts pptx.ThemeFonts) (*shapegrid.Grid, error) {
+	widths, err := shapegrid.ResolveColumns(cols, nil)
+	if err != nil {
+		return nil, err
+	}
+	grid := &shapegrid.Grid{
+		Bounds:  pptx.RectEmu{X: bounds.X, Y: bounds.Y, CX: bounds.Width, CY: bounds.Height},
+		Columns: widths,
+		ColGap:  in.Gap,
+		RowGap:  in.RowGap,
+		VAlign:  shapegrid.VAlignTop,
+	}
+	for _, r := range in.Rows {
+		row := shapegrid.Row{MinHeight: r.MinHeight, MaxHeight: r.MaxHeight}
+		for _, c := range r.Cells {
+			cell := shapegrid.Cell{ColSpan: c.ColSpan}
+			if c.Shape != nil {
+				cell.Shape = &shapegrid.ShapeSpec{
+					Geometry:    c.Shape.Geometry,
+					TypeScale:   c.Shape.TypeScale,
+					Fill:        c.Shape.Fill,
+					Line:        c.Shape.Line,
+					Text:        c.Shape.Text,
+					Adjustments: c.Shape.Adjustments,
+					ThemeFonts:  fonts,
+				}
+			}
+			if c.AccentBar != nil {
+				cell.AccentBar = &shapegrid.AccentBarSpec{Position: c.AccentBar.Position, Color: c.AccentBar.Color, Width: c.AccentBar.Width}
+			}
+			row.Cells = append(row.Cells, cell)
+		}
+		grid.Rows = append(grid.Rows, row)
+	}
+	return grid, nil
+}
+
+// houseColumnCount is the number of grid columns the house's rows span.
+func houseColumnCount(in *jsonschema.ShapeGridInput) int {
+	cols := 1
+	for _, r := range in.Rows {
+		n := 0
+		for _, c := range r.Cells {
+			n += max(c.ColSpan, 1)
+		}
+		cols = max(cols, n)
+	}
+	return cols
+}
+
 // generateHouseDiagramGroupXML produces the complete <p:grpSp> XML for a house diagram.
-func generateHouseDiagramGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, meta houseDiagramMeta) string {
+func generateHouseDiagramGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, meta houseDiagramMeta, env nativeDiagramEnv) string {
 	if len(panels) < 2 {
 		return "" // Need at least roof + foundation
 	}
-
-	// Layout calculation: roof, floors, foundation with gaps.
-	labelFont, itemFont := houseTextFonts(meta)
-	roofH, foundH := houseEndBandHeights(panels, bounds.Width, labelFont, "")
-	// Keep the familiar architectural proportions when the authored region is
-	// generous. A content-sized group uses the measured end bands so a long
-	// foundation label never stretches the pillars.
-	// The roof is not stretched with them: it stays as tall as its label
-	// needs (go-slide-creator-n0zpq).
-	if bounds.Height > houseContentHeight(panels, meta, bounds, "").box {
-		foundH = max(foundH, int64(float64(bounds.Height)*houseFoundationHeightRatio))
-	}
-
-	nFloors := len(meta.floors)
-	if nFloors == 0 {
-		nFloors = 1
-	}
-
-	// Gaps: roof-to-floor + between-floors + floor-to-foundation
-	totalGaps := int64(nFloors+1) * houseGapEMU
-	totalFloorH := bounds.Height - roofH - foundH - totalGaps
-	if totalFloorH < 0 {
-		totalFloorH = bounds.Height / 4
-	}
-	floorH := totalFloorH / int64(nFloors)
-
-	var children [][]byte
-	shapeIdx := uint32(0)
-
-	// --- Roof (triangle) ---
-	roofY := bounds.Y
-	roofTitle := panels[0].title //nolint:gosec // safe: len(panels) >= 2 checked above
-	shapeIdx++
-	roofShape, err := pptx.GenerateShape(pptx.ShapeOptions{
-		ID:       shapeIDBase + shapeIdx,
-		Name:     "House Roof",
-		Bounds:   pptx.RectEmu{X: bounds.X, Y: roofY, CX: bounds.Width, CY: roofH},
-		Geometry: pptx.GeomTriangle,
-		Fill:     pptx.SchemeFill("accent1"),
-		Line:     pptx.Line{Width: 0, Fill: pptx.NoFill()},
-	})
+	layout, err := layoutHouse(panels, meta, bounds, env)
 	if err != nil {
-		slog.Warn("house diagram: roof shape failed", "error", err)
-	} else {
-		children = append(children, roofShape)
+		slog.Warn("house diagram: layout failed", "error", err)
+		return ""
 	}
-	// The roof label is an overlay box centred in the triangle's middle
-	// third (houseRoofTextBox), not the triangle's own text, whose preset
-	// text rectangle is its lower half.
-	if roofTitle != "" {
-		top, textH, textW := houseRoofTextBox(roofTitle, "", labelFont, bounds.Width, roofH)
-		shapeIdx++
-		label, err := pptx.GenerateShape(pptx.ShapeOptions{
-			ID:       shapeIDBase + shapeIdx,
-			Name:     "House Roof Label",
-			Bounds:   pptx.RectEmu{X: bounds.X + (bounds.Width-textW)/2, Y: roofY + top, CX: textW, CY: textH},
-			Geometry: pptx.GeomRect,
-			Fill:     pptx.NoFill(),
-			Line:     pptx.Line{Width: 0, Fill: pptx.NoFill()},
-			TxBox:    true,
-			Text: &pptx.TextBody{
-				Wrap:   "square",
-				Anchor: "ctr",
-				Paragraphs: []pptx.Paragraph{{
-					Align:    "ctr",
-					NoBullet: true,
-					Runs: []pptx.Run{{
-						Text:     roofTitle,
-						Lang:     "en-US",
-						FontSize: labelFont,
-						Bold:     true,
-						Dirty:    true,
-						Color:    pptx.SchemeFill("lt1"),
-					}},
-				}},
-			},
-		})
+	// The pass every expanded pattern gets: an accent too light for the
+	// roof's white text is deepened, exactly as the strategy-house's is.
+	patterns.ApplyReadableInk(patterns.ExpandContext{Theme: types.ThemeInfo{Colors: env.themeColors}}, layout.Grid)
+	fonts := pptx.ThemeFonts{Major: env.fontName, Minor: env.fontName}
+	grid, err := houseGrid(layout.Grid, houseColumnCount(layout.Grid), bounds, fonts)
+	if err != nil {
+		slog.Warn("house diagram: grid failed", "error", err)
+		return ""
+	}
+	alloc := pptx.NewShapeIDAllocator(nil)
+	alloc.SetMinID(shapeIDBase + 1)
+	resolved, err := shapegrid.Resolve(grid, alloc)
+	if err != nil {
+		slog.Warn("house diagram: resolve failed", "error", err)
+		return ""
+	}
+
+	names := houseShapeNames(houseModel(panels, meta), strings.TrimSpace(panels[len(panels)-1].title) != "")
+	var children [][]byte
+	for i, cell := range resolved.Cells {
+		if cell.Kind != shapegrid.CellKindShape || cell.ShapeSpec == nil {
+			continue
+		}
+		xml, err := shapegrid.GenerateCellShapeXML(cell)
 		if err != nil {
-			slog.Warn("house diagram: roof label failed", "error", err)
-		} else {
-			children = append(children, label)
+			slog.Warn("house diagram: shape failed", "error", err, "id", cell.ID)
+			continue
 		}
-	}
-
-	// --- Floor sections ---
-	curY := roofY + roofH + houseGapEMU
-	panelIdx := 1 // Skip panel 0 (roof)
-
-	for _, floor := range meta.floors {
-		if floor.floorType == "single" {
-			// Full-width band
-			if panelIdx < len(panels)-1 {
-				shapeIdx++
-				singleShape := generateHouseSingleFloorShape(
-					shapeIDBase+shapeIdx, panels[panelIdx],
-					bounds.X, curY, bounds.Width, floorH,
-					labelFont, itemFont,
-				)
-				if singleShape != nil {
-					children = append(children, singleShape)
-				}
-				panelIdx++
-			}
-		} else {
-			// Parallel pillars
-			n := floor.sectionCount
-			if n > houseMaxSectionsPerFloor {
-				n = houseMaxSectionsPerFloor
-			}
-			totalPillarGaps := int64(n-1) * housePillarGapEMU
-			pillarW := (bounds.Width - totalPillarGaps) / int64(n)
-
-			for j := 0; j < n && panelIdx < len(panels)-1; j++ {
-				px := bounds.X + int64(j)*(pillarW+housePillarGapEMU)
-				accentIdx := j % 6
-
-				shapeIdx++
-				pillarShape := generateHousePillarShape(
-					shapeIDBase+shapeIdx, panels[panelIdx],
-					px, curY, pillarW, floorH,
-					accentIdx, labelFont, itemFont,
-				)
-				if pillarShape != nil {
-					children = append(children, pillarShape)
-				}
-				panelIdx++
-			}
+		if i < len(names) && names[i] != "" {
+			xml = []byte(strings.Replace(string(xml),
+				fmt.Sprintf(`name="Shape %d"`, cell.ID), fmt.Sprintf(`name="%s"`, pptxEscapeAttr(names[i])), 1))
 		}
-		curY += floorH + houseGapEMU
+		children = append(children, xml)
 	}
-
-	// --- Foundation ---
-	foundY := curY
-	if panelIdx < len(panels) {
-		shapeIdx++
-		foundShape, err := pptx.GenerateShape(pptx.ShapeOptions{
-			ID:       shapeIDBase + shapeIdx,
-			Name:     "House Foundation",
-			Bounds:   pptx.RectEmu{X: bounds.X, Y: foundY, CX: bounds.Width, CY: foundH},
-			Geometry: pptx.GeomRect,
-			Fill:     pptx.SchemeFill("accent1", pptx.LumMod(75000), pptx.LumOff(0)),
-			Line:     pptx.Line{Width: 0, Fill: pptx.NoFill()},
-			Text: &pptx.TextBody{
-				Wrap:    "square",
-				Anchor:  "ctr",
-				Insets:  pptx.ShapeTextInsets(),
-				AutoFit: "normAutofit",
-				Paragraphs: []pptx.Paragraph{{
-					Align:    "ctr",
-					NoBullet: true,
-					Runs: []pptx.Run{{
-						Text:     panels[panelIdx].title,
-						Lang:     "en-US",
-						FontSize: labelFont,
-						Bold:     true,
-						Dirty:    true,
-						Color:    pptx.SchemeFill("lt1"),
-					}},
-				}},
-			},
-		})
+	for i := range resolved.AccentBars {
+		xml, err := shapegrid.GenerateAccentBarXML(&resolved.AccentBars[i])
 		if err != nil {
-			slog.Warn("house diagram: foundation shape failed", "error", err)
-		} else {
-			children = append(children, foundShape)
+			slog.Warn("house diagram: accent rule failed", "error", err)
+			continue
 		}
+		children = append(children, xml)
 	}
 
-	groupBounds := pptx.RectEmu{X: bounds.X, Y: bounds.Y, CX: bounds.Width, CY: bounds.Height}
 	b, err := pptx.GenerateGroup(pptx.GroupOptions{
 		ID:       shapeIDBase,
 		Name:     "House Diagram",
-		Bounds:   groupBounds,
+		Bounds:   pptx.RectEmu{X: bounds.X, Y: bounds.Y, CX: bounds.Width, CY: bounds.Height},
 		Children: children,
 	})
 	if err != nil {
@@ -497,128 +425,32 @@ func generateHouseDiagramGroupXML(panels []nativePanelData, bounds types.Boundin
 	return string(b)
 }
 
-// generateHouseSingleFloorShape generates a full-width band shape for a single floor.
-func generateHouseSingleFloorShape(id uint32, panel nativePanelData, x, y, w, h int64, labelFont, itemFont int) []byte {
-	var paras []pptx.Paragraph
-	paras = append(paras, pptx.Paragraph{
-		Align:    "ctr",
-		NoBullet: true,
-		Runs: []pptx.Run{{
-			Text:     panel.title,
-			Lang:     "en-US",
-			FontSize: labelFont,
-			Bold:     true,
-			Dirty:    true,
-			Color:    pptx.SchemeFill("dk1"),
-		}},
-	})
-
-	// Add bullet items from body.
-	if panel.body != "" {
-		for _, line := range strings.Split(panel.body, "\n") {
-			text := strings.TrimPrefix(line, "- ")
-			paras = append(paras, pptx.Paragraph{
-				Align:    "ctr",
-				NoBullet: true,
-				Runs: []pptx.Run{{
-					Text:     text,
-					Lang:     "en-US",
-					FontSize: itemFont,
-					Dirty:    true,
-					Color:    pptx.SchemeFill("dk1"),
-				}},
-			})
+// houseShapeNames names the house's shapes in drawing order: the roof, then
+// every level's cells.
+func houseShapeNames(m patterns.HouseModel, foundation bool) []string {
+	names := []string{"House Roof"}
+	for i, level := range m.Levels {
+		for _, c := range level.Cells {
+			switch {
+			case foundation && i == len(m.Levels)-1:
+				names = append(names, "House Foundation")
+			case level.Kind == patterns.HousePillars:
+				names = append(names, "Pillar "+c.Title)
+			default:
+				names = append(names, "Floor "+c.Title)
+			}
 		}
 	}
-
-	b, err := pptx.GenerateShape(pptx.ShapeOptions{
-		ID:       id,
-		Name:     fmt.Sprintf("Floor %s", panel.title),
-		Bounds:   pptx.RectEmu{X: x, Y: y, CX: w, CY: h},
-		Geometry: pptx.GeomRect,
-		Fill:     diagramTintFill("accent1", 20000, 80000),
-		Line:     pptx.Line{Width: 6350, Fill: diagramTintFill("accent1", 40000, 60000)},
-		Text: &pptx.TextBody{
-			Wrap:       "square",
-			Anchor:     "ctr",
-			Insets:     pptx.ShapeTextInsets(),
-			AutoFit:    "normAutofit",
-			Paragraphs: paras,
-		},
-	})
-	if err != nil {
-		slog.Warn("house diagram: single floor shape failed", "error", err, "id", id)
-		return nil
-	}
-	return b
+	return names
 }
 
-// generateHousePillarShape generates a pillar rectangle for a parallel floor.
-func generateHousePillarShape(id uint32, panel nativePanelData, x, y, w, h int64, accentIdx, labelFont, itemFont int) []byte {
-	// Cycle through accent1..accent6 with light tint fills.
-	accentName := fmt.Sprintf("accent%d", (accentIdx%6)+1)
-	fill := diagramTintFill(accentName, 20000, 80000)
-	lineFill := diagramTintFill(accentName, 50000, 50000)
-	textColor := pptx.SchemeFill("dk1")
-
-	var paras []pptx.Paragraph
-
-	// Title paragraph.
-	paras = append(paras, pptx.Paragraph{
-		Align:    "ctr",
-		NoBullet: true,
-		Runs: []pptx.Run{{
-			Text:     panel.title,
-			Lang:     "en-US",
-			FontSize: labelFont,
-			Bold:     true,
-			Dirty:    true,
-			Color:    textColor,
-		}},
-	})
-
-	// Bullet items from body.
-	if panel.body != "" {
-		for _, line := range strings.Split(panel.body, "\n") {
-			text := strings.TrimPrefix(line, "- ")
-			paras = append(paras, pptx.Paragraph{
-				Align:    "ctr",
-				NoBullet: true,
-				Runs: []pptx.Run{{
-					Text:     "\u2022 " + text,
-					Lang:     "en-US",
-					FontSize: itemFont,
-					Dirty:    true,
-					Color:    textColor,
-				}},
-			})
-		}
-	}
-
-	b, err := pptx.GenerateShape(pptx.ShapeOptions{
-		ID:       id,
-		Name:     fmt.Sprintf("Pillar %s", panel.title),
-		Bounds:   pptx.RectEmu{X: x, Y: y, CX: w, CY: h},
-		Geometry: pptx.GeomRect,
-		Fill:     fill,
-		Line:     pptx.Line{Width: 6350, Fill: lineFill},
-		Text: &pptx.TextBody{
-			Wrap:       "square",
-			Anchor:     "t",
-			Insets:     pptx.ShapeTextInsets(),
-			AutoFit:    "normAutofit",
-			Paragraphs: paras,
-		},
-	})
-	if err != nil {
-		slog.Warn("house diagram: pillar shape failed", "error", err, "id", id)
-		return nil
-	}
-	return b
+// pptxEscapeAttr escapes a shape name for an XML attribute.
+func pptxEscapeAttr(s string) string {
+	return strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;").Replace(s)
 }
 
-// houseDiagramEstimateShapeCount returns the estimated number of shapes for ID allocation.
-// 1 (group) + 1 (roof) + 1 (roof label) + N (floor sections) + 1 (foundation)
+// houseDiagramEstimateShapeCount returns the estimated number of shapes for ID allocation:
+// the group, one shape per panel, and one accent rule per pillar.
 func houseDiagramEstimateShapeCount(panels []nativePanelData) uint32 {
-	return uint32(2 + len(panels))
+	return uint32(1 + 2*len(panels))
 }

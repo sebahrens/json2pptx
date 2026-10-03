@@ -326,12 +326,14 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"caption": strField("Scale note above the bars, at most 60 characters."),
 	}, compositionFields()), universalFields()),
 	KindPillars: withFields(withFields(map[string]payloadField{
-		"title":       strField("Slide title."),
-		"takeaway":    strField("One-line takeaway footer."),
-		"pillars":     {typ: "array", desc: "3–5 named pillars; each {title, body?}. Body is a list of short bullet strings.", itemKeys: pillarItemKeys, itemRequired: []string{"title"}, itemKeySchemas: map[string]any{"body": map[string]any{"type": "array", "items": map[string]any{"type": "string"}}}},
-		"objective":   strField("Strategy-house objective banner; supply with foundation."),
-		"foundation":  strField("Strategy-house foundation row; supply with objective."),
-		"roof_badges": {typ: "array", itemStrings: true, desc: "Up to three short string badges above a strategy house."},
+		"title":     strField("Slide title."),
+		"takeaway":  strField("One-line takeaway footer."),
+		"pillars":   {typ: "array", desc: "3–5 named pillars; each {title, body?}. Body is a list of short bullet strings. Take the count from the content: one pillar per independent theme — do not merge a fourth theme or pad to three — and give each pillar the bullets it has (0–5; they need not match).", itemKeys: pillarItemKeys, itemRequired: []string{"title"}, itemKeySchemas: map[string]any{"body": map[string]any{"type": "array", "items": map[string]any{"type": "string"}}}},
+		"objective": strField("Strategy-house objective, drawn in the gabled roof; supply with foundation."),
+		"beam":      strField("Optional cross-cutting band between the roof and the pillars of a strategy house (something every pillar shares)."),
+		"foundation": {typ: "string", schema: pillarsFoundationSchema,
+			desc: "Strategy-house foundation; supply with objective. A string is one band. A list is 1–3 levels, top to bottom — one level per kind of enabler — where each level is a string (a full-width band) or a list of 2–5 short strings (a row of cells), e.g. [\"Shared platform\", [\"People\", \"Data\", \"Controls\"]]. Separate enablers belong in a split level, not joined into one string."},
+		"roof_badges": {typ: "array", itemStrings: true, desc: "Up to three short string badges inside the roof of a strategy house."},
 	}, compositionFields()), universalFields()),
 	KindOrg: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
@@ -632,4 +634,15 @@ func joinQuoted(keys []string) string {
 		out += fmt.Sprintf("%q", k)
 	}
 	return out
+}
+
+// pillarsFoundationSchema is the pillars foundation: one band, or a list of
+// levels that are each a band or a row of cells.
+func pillarsFoundationSchema() map[string]any {
+	band := map[string]any{"type": "string", "maxLength": 140}
+	cells := map[string]any{"type": "array", "minItems": 1, "maxItems": 5, "items": map[string]any{"type": "string", "maxLength": 40}}
+	return map[string]any{"oneOf": []any{
+		band,
+		map[string]any{"type": "array", "minItems": 1, "maxItems": 3, "items": map[string]any{"oneOf": []any{band, cells}}},
+	}}
 }

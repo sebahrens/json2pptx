@@ -275,6 +275,49 @@
     `current`), so `links` and overlay `anchor_cell` references keep
     resolving.
 
+- **2026-10-03 — The strategy house has a roof, and its levels follow the content (`go-slide-creator-vlef3`, `-bjxb9`, `-qad87`, `-x25dq`, `-8hmdq`).**
+  - **One house builder.** The `strategy-house` pattern, the DeckSpec
+    `pillars` kind and the native `house_diagram` are drawn by one builder:
+    a gable-pentagon roof in the slide's accent carrying the objective (and
+    the `roof_badges`, which used to be a separate grey strip above the
+    banner), neutral pillar and band surfaces, levels sized from their
+    text. `house_diagram` no longer gives each pillar its own pastel hue or
+    stops at the top third of its placeholder. Existing inputs render with
+    the new roof; no field was removed.
+  - **`strategy-house` values.** `foundation` accepts a string (unchanged)
+    or a list of 1–3 levels, each a string (band) or a list of 2–5 short
+    strings (a row of cells, ≤40 chars each):
+    `"foundation": ["Shared platform", ["People", "Data", "Controls"]]`.
+    New optional `beam` (≤140 chars): a band between roof and pillars.
+    Validation refuses more than 3 levels (`max_items`), more than 5 cells
+    in a level (`max_items`) and cell counts that cannot share a column
+    grid with the pillars (`count_mismatch`). `cell_overrides` indices:
+    0 roof, 1..N pillars, foundation cells in reading order, beam, roof
+    badge line — unchanged for a one-band house.
+  - **DeckSpec `pillars`.** `foundation` takes the same string-or-list
+    shape and `beam` is a new field; `foundation[i]` / `foundation[i][j]`
+    map to the same paths in the compiled pattern values. The kind example
+    is four uneven pillars over a two-level foundation.
+  - **New advisory `HOUSE_SHAPE_FORCED`** (action `info`): a foundation
+    band that joins 3–5 short items with separators, or a pillar with no
+    body beside pillars with 3+ bullets. A house whose levels do not fit
+    its region reports `BODY_TOO_LONG` (roof flattened, then pillars
+    squeezed) instead of clipping.
+  - **`plan_deck`.** A drafted strategy-house skeleton has as many pillars
+    as the brief names (an enumerated list after "pillars" / "themes", or a
+    stated count of three to five); a DeckSpec `pillars` slot's guidance
+    names the count.
+  - **`house_diagram` data contract.** `floors` is documented and drawn:
+    levels under the pillar row, each a string or `{label, items?}` (band)
+    or `{sections: [...]}` (row of cells); with no `sections`, `floors`
+    lists every level in order. String floors used to vanish and object
+    floors beside `sections` used to hide every pillar. Any other shape — a
+    non-list `floors`, a number or nested-list floor, an object with
+    neither or both of `label` / `sections`, non-string `items`, the pillar
+    row given twice, more than 12 cells in a level, cell counts with no
+    common column grid — is refused by validate and generate at its field
+    with the expected shape.
+
 - **2026-10-03 — Composition overrides compile to what explain reports (`go-slide-creator-vj549`).** SchemaVersion unchanged (no new tools, codes or fix kinds).
   - A `pattern` / `layout` override listed in `compositions[]` is honoured
     only when the slide actually compiles to it, and the compiler is held to

@@ -286,15 +286,70 @@ func PresetTextRectSize(geometry string, adj int64, bounds RectEmu) (int64, int6
 	return int64(math.Max(tw, 0)), int64(math.Max(th, 0))
 }
 
-// presetTextBounds is the text rectangle a shape's insets are clamped
-// against: the preset's own text rectangle, sized as PresetTextRectSize says.
-func presetTextBounds(opts ShapeOptions) RectEmu {
-	adj := int64(-1)
-	for _, av := range opts.Adjustments {
-		if av.Name == "adj" {
-			adj = av.Value
-		}
+// UpArrowTextRectSize returns the width and height of an upArrow's text
+// rectangle inside bounds: the shaft, plus the part of the head directly above
+// it that the shaft's width reaches into. adj1 is the shaft width and adj2 the
+// head length (OOXML 1/100000 units; negative takes the preset default 50000).
+//
+// A full-width shaft (adj1 100000) is a gable pentagon — the strategy house's
+// roof — whose text rectangle is the band under the slope, not the whole
+// shape: measured as the whole shape, text sized to the band was predicted to
+// fit a box a gable taller than the one it is drawn in.
+func UpArrowTextRectSize(adj1, adj2 int64, bounds RectEmu) (int64, int64) {
+	w, h := float64(bounds.CX), float64(bounds.CY)
+	ss := math.Min(w, h)
+	if ss <= 0 {
+		return bounds.CX, bounds.CY
 	}
-	cx, cy := PresetTextRectSize(string(opts.Geometry), adj, opts.Bounds)
+	a1, a2 := 50000.0, 50000.0
+	if adj1 >= 0 {
+		a1 = float64(adj1)
+	}
+	if adj2 >= 0 {
+		a2 = float64(adj2)
+	}
+	a1 = math.Min(a1, 100000)
+	a2 = math.Min(a2, 100000*h/ss)
+	head := ss * a2 / 100000
+	shaft := w * a1 / 100000
+	// The rectangle's top climbs the head's slope until it meets the shaft's
+	// outer edge: y1 = head - x1·head/(w/2), with x1 the shaft's left edge.
+	top := head - (w-shaft)/2*head/(w/2)
+	return int64(math.Max(shaft, 0)), int64(math.Max(h-top, 0))
+}
+
+// PresetTextRect returns the size of a preset geometry's text rectangle given
+// all of the shape's adjustments by name. It is PresetTextRectSize for the
+// presets with a single "adj" handle, plus the two-handle upArrow.
+func PresetTextRect(geometry string, adjustments map[string]int64, bounds RectEmu) (int64, int64) {
+	get := func(name string) int64 {
+		if v, ok := adjustments[name]; ok {
+			return v
+		}
+		return -1
+	}
+	if geometry == string(GeomUpArrow) {
+		return UpArrowTextRectSize(get("adj1"), get("adj2"), bounds)
+	}
+	return PresetTextRectSize(geometry, get("adj"), bounds)
+}
+
+// presetTextBounds is the text rectangle a shape's insets are clamped
+// against: the preset's own text rectangle, sized as PresetTextRect says.
+func presetTextBounds(opts ShapeOptions) RectEmu {
+	adjustments := make(map[string]int64, len(opts.Adjustments))
+	for _, av := range opts.Adjustments {
+		adjustments[av.Name] = av.Value
+	}
+	cx, cy := PresetTextRect(string(opts.Geometry), adjustments, opts.Bounds)
 	return RectEmu{X: opts.Bounds.X, Y: opts.Bounds.Y, CX: cx, CY: cy}
+}
+
+// autofitBounds is the box a shape's stored autofit shrink is measured in: the
+// shape, except for an upArrow, whose text lives in its shaft.
+func autofitBounds(opts ShapeOptions) RectEmu {
+	if opts.Geometry == GeomUpArrow {
+		return presetTextBounds(opts)
+	}
+	return opts.Bounds
 }

@@ -644,6 +644,16 @@ func BuildDeckSpecPlan(p Params) *DeckSpecPlan {
 		d = storylineDraft(brief, audience, budget, req, chapters, chaptersAsked, &account)
 	}
 
+	// The first pillars slot carries the brief's named themes.
+	if pillarNote := pillarCountGuidance(brief); pillarNote != "" {
+		for i := range d.slots {
+			if d.slots[i].Kind == "pillars" {
+				d.slots[i].Guidance += pillarNote
+				break
+			}
+		}
+	}
+
 	topic := sentenceCase(deckTopic(topicBrief))
 	// The cover carries the topic — and the source the brief names — so every
 	// date and name in them is in a slot's facts.

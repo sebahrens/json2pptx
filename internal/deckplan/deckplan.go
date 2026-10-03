@@ -1576,6 +1576,11 @@ func attachSlidePredictions(reg *patterns.Registry, slides []Slide, brief, audie
 			slides[i].SuggestedPatternFallback = slides[i].Alternatives[0].PatternName
 		}
 		if skel, err := patterns.SkeletonForPattern(reg, slides[i].RecommendedPattern, slides[i].NarrativeRole); err == nil {
+			// A house is drafted with as many pillars as the brief names
+			// themes, not with the exemplar's count (go-slide-creator-qad87).
+			if slides[i].RecommendedPattern == "strategy-house" {
+				skel = resizeHousePillars(skel, housePillarCount(brief))
+			}
 			slides[i].Skeleton = withLayoutID(skel, slides[i].Layout)
 		}
 	}

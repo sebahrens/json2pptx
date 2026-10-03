@@ -361,7 +361,7 @@ func renderNativeInsert(ins *panelShapeInsert, base uint32, env nativeDiagramEnv
 	case ins.pyramidMode:
 		return generatePyramidGroupXML(ins.panels, ins.bounds, base, env.fontName)
 	case ins.houseDiagramMode:
-		return generateHouseDiagramGroupXML(ins.panels, ins.bounds, base, ins.houseDiagramMeta)
+		return generateHouseDiagramGroupXML(ins.panels, ins.bounds, base, ins.houseDiagramMeta, env)
 	case ins.stylishPanelsMode:
 		return generateStylishPanelsGroupXML(ins.panels, ins.bounds, base)
 	case ins.rowsMode:
@@ -404,7 +404,7 @@ func nativeInsertShapeIDs(ins *panelShapeInsert) uint32 {
 		// 1 (group) + N level shapes
 		return pyramidEstimateShapeCount(ins.panels)
 	case ins.houseDiagramMode:
-		// 1 (group) + 1 (roof) + N (floor sections) + 1 (foundation)
+		// 1 (group) + one shape per panel + one accent rule per pillar
 		return houseDiagramEstimateShapeCount(ins.panels)
 	case ins.stylishPanelsMode:
 		// N accents + N bodies + 1 ribbon + N headers + 1 group

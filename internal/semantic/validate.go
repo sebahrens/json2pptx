@@ -134,8 +134,9 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 		"attribution": shapeString, "name": shapeString, "speaker": shapeString,
 		"author": shapeString, "role": shapeString, "takeaway": shapeString,
 	},
-	KindBridge:  {"title": shapeString, "columns": shapeArray, "unit": shapeString, "caption": shapeString, "takeaway": shapeString},
-	KindPillars: {"title": shapeString, "pillars": shapeArray, "objective": shapeString, "foundation": shapeString, "roof_badges": shapeArray, "takeaway": shapeString},
+	KindBridge: {"title": shapeString, "columns": shapeArray, "unit": shapeString, "caption": shapeString, "takeaway": shapeString},
+	// foundation is a string or a list of levels; the pillars resolver types it.
+	KindPillars: {"title": shapeString, "pillars": shapeArray, "objective": shapeString, "beam": shapeString, "roof_badges": shapeArray, "takeaway": shapeString},
 	KindOrg:     {"title": shapeString, "nodes": shapeArray, "takeaway": shapeString},
 	KindTeam: {
 		"title": shapeString, "members": shapeArray, "people": shapeArray,

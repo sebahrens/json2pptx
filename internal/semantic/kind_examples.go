@@ -176,15 +176,22 @@ var kindExamples = map[SlideKind]map[string]any{
 		"takeaway": "EBITDA closes at $45m after cost deductions.",
 	},
 	KindPillars: {
-		"kind": "pillars", "title": "Three pillars support the FY27 plan",
+		// Four uneven pillars over a two-level foundation: the count and the
+		// levels come from the content, not from a 3 x 2 default
+		// (go-slide-creator-qad87).
+		"kind": "pillars", "title": "Four pillars carry the FY27 plan on one shared platform",
 		"objective": "Become the trusted settlement platform",
 		"pillars": []any{
-			map[string]any{"title": "Customer trust", "body": []any{"Transparent pricing", "Operational resilience"}},
+			map[string]any{"title": "Customer trust", "body": []any{"Transparent pricing", "Operational resilience", "Same-day dispute handling"}},
 			map[string]any{"title": "Product velocity", "body": []any{"Weekly releases", "Shared platform"}},
-			map[string]any{"title": "Disciplined growth", "body": []any{"Enterprise focus", "Measured expansion"}},
+			map[string]any{"title": "Disciplined growth", "body": []any{"Enterprise focus"}},
+			map[string]any{"title": "Partner reach", "body": []any{"Bank alliances in six markets", "Open settlement API"}},
 		},
-		"foundation": "People · Data · Controls",
-		"takeaway":   "The platform strategy rests on trust, speed, and disciplined growth.",
+		"foundation": []any{
+			"One operating model across every market",
+			[]any{"People", "Data", "Controls"},
+		},
+		"takeaway": "The strategy rests on trust, speed, growth and reach, all on one operating model.",
 	},
 	KindOrg: {
 		"kind": "org", "title": "Programme governance", "takeaway": "One steering group owns the decision; three leads own delivery.",

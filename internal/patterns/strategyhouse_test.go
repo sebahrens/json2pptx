@@ -202,12 +202,16 @@ func TestStrategyHouse_Expand_WithRoof(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
-	// With roof: 4 rows
-	if got := len(grid.Rows); got != 4 {
-		t.Fatalf("expected 4 rows with roof, got %d", got)
+	// Badges sit inside the roof with the objective: still 3 rows
+	// (go-slide-creator-vlef3).
+	if got := len(grid.Rows); got != 3 {
+		t.Fatalf("expected 3 rows with roof badges, got %d", got)
 	}
 	if grid.Rows[0].Cells[0].ColSpan != 3 {
 		t.Errorf("roof ColSpan = %d, want 3", grid.Rows[0].Cells[0].ColSpan)
+	}
+	if text := string(grid.Rows[0].Cells[0].Shape.Text); !strings.Contains(text, "Vision") || !strings.Contains(text, "Mission") {
+		t.Errorf("roof badges missing from the roof text: %s", text)
 	}
 }
 

@@ -1,6 +1,8 @@
 # House Diagram
 
-Radial relationship diagram with a central concept and surrounding elements.
+A strategy house: a gabled roof (the vision or objective) over a row of pillars, any further levels, and a foundation band.
+
+`house_diagram` is drawn as native PowerPoint shapes by the same builder as the [`strategy-house` pattern](../PATTERNS.md#strategy-house-and-house_diagram-one-house-builder), so the two look alike on a template: one accent for the roof and the pillar rules, neutral pillar and band surfaces, a gable pitched from the house's width, and levels sized from their text.
 
 ## Type Identifier
 
@@ -8,185 +10,125 @@ Radial relationship diagram with a central concept and surrounding elements.
 
 ## Use Cases
 
-- McKinsey 7S Framework
-- Organizational structure
-- Concept relationships
-- Hub-and-spoke models
+- Strategy house: vision, strategic pillars, shared foundation
+- Operating model: principles over capabilities over enablers
+- Framework with one frame and parallel elements (the 7S elements under shared values)
+
+Prefer the `strategy-house` pattern (or the DeckSpec `pillars` kind) on a pattern slide; use `house_diagram` where a diagram is placed — a body placeholder, a `shape_grid` cell or a `compose` segment.
 
 ## Data Structure
 
 ```json
 {
   "type": "house_diagram",
-  "title": "McKinsey 7S Framework",
   "data": {
-    "center_element": {"label": "Shared Values"},
-    "outer_elements": [
-      {"label": "Strategy"},
-      {"label": "Structure"},
-      {"label": "Systems"},
-      {"label": "Style"},
-      {"label": "Staff"},
-      {"label": "Skills"}
+    "roof": "Leader in digital payments",
+    "sections": [
+      {"label": "Technology", "items": ["Cloud platform", "Open APIs"]},
+      {"label": "Product", "items": ["Mobile wallet"]},
+      {"label": "People", "items": ["Talent", "Culture"]}
     ],
-    "show_connectors": true
+    "floors": [
+      "Shared data platform",
+      {"sections": ["Risk", "Controls", "Partners"]}
+    ],
+    "foundation": "Trust and compliance"
   }
 }
 ```
 
-## Required Fields
+## Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `center_element` | `object` | Central hub element |
-| `center_element.label` | `string` | Center label |
-| `outer_elements` | `object[]` | Surrounding elements (2-12) |
-| `outer_elements[].label` | `string` | Element label |
+| `roof` | `string` or `{label}` | Text in the roof. Omitted: a bare gable. |
+| `sections` | `(string \| {label, items?})[]` | The pillar row (aliases: `pillars`, `columns`; give one). `items` are bullets. |
+| `floors` | `floor[]` | Further levels, drawn top to bottom under the pillar row. |
+| `foundation` | `string` or `{label}` | The bottom band. |
 
-## Optional Fields
+A **floor** is one of:
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `show_connectors` | `bool` | `true` | Draw lines from center to outer |
-| `title` | `string` | - | Diagram title |
-| `subtitle` | `string` | - | Subtitle |
-| `footnote` | `string` | - | Footnote text |
+| Shape | Drawn as |
+|-------|----------|
+| `"Band label"` | a full-width band |
+| `{"label": "Band label", "items"?: ["…"]}` | a full-width band; items on one line under the label |
+| `{"sections": [{"label": "…", "items"?: ["…"]}]}` | a row of cells (strings allowed). A row with `items` is a pillar row; a label-only row is a level split into boxes |
 
-## Element Optional Fields
+`"type": "single"` / `"parallel"` may be written on a floor object and must agree with its shape.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | `string` | Unique identifier |
-| `description` | `string` | Additional details |
-| `icon` | `string` | Emoji or icon |
-| `color` | `string` | Custom color |
-| `size` | `number` | Relative size multiplier (1.0 = normal) |
+Without `sections`, `floors` alone lists every level in the order drawn (a band above the pillars, the pillar row, bands below).
 
-## Examples
+`center_element` (for `roof`) and `outer_elements` (for `sections`) are read when the house has no `roof` / no `sections` and no `floors`.
 
-### McKinsey 7S Model
+## What Is Refused
 
-```json
-{
-  "type": "house_diagram",
-  "title": "McKinsey 7S Framework",
-  "subtitle": "Organizational Analysis",
-  "data": {
-    "center_element": {
-      "label": "Shared Values",
-      "description": "Core beliefs and culture"
-    },
-    "outer_elements": [
-      {"label": "Strategy", "description": "Plans for competitive advantage"},
-      {"label": "Structure", "description": "Organization hierarchy"},
-      {"label": "Systems", "description": "Processes and procedures"},
-      {"label": "Style", "description": "Leadership approach"},
-      {"label": "Staff", "description": "Employees and HR"},
-      {"label": "Skills", "description": "Capabilities and competencies"}
-    ],
-    "show_connectors": true
-  }
-}
-```
+Validation and generation refuse, at the field, anything the builder would not draw:
 
-### Product Ecosystem
-
-```json
-{
-  "type": "house_diagram",
-  "title": "Platform Ecosystem",
-  "data": {
-    "center_element": {
-      "label": "Core Platform",
-      "icon": "⚡"
-    },
-    "outer_elements": [
-      {"label": "API", "icon": "🔌"},
-      {"label": "Mobile App", "icon": "📱"},
-      {"label": "Web App", "icon": "🌐"},
-      {"label": "Analytics", "icon": "📊"},
-      {"label": "Integrations", "icon": "🔗"}
-    ]
-  }
-}
-```
-
-### Stakeholder Map
-
-```json
-{
-  "type": "house_diagram",
-  "title": "Project Stakeholders",
-  "data": {
-    "center_element": {
-      "label": "Project",
-      "description": "Digital Transformation"
-    },
-    "outer_elements": [
-      {"label": "Executive Sponsor", "size": 1.2},
-      {"label": "IT Team"},
-      {"label": "Business Users"},
-      {"label": "Customers"},
-      {"label": "Partners"},
-      {"label": "Compliance"}
-    ]
-  }
-}
-```
-
-### Competency Model
-
-```json
-{
-  "type": "house_diagram",
-  "title": "Leadership Competencies",
-  "data": {
-    "center_element": {"label": "Leadership"},
-    "outer_elements": [
-      {"label": "Vision", "color": "#3B82F6"},
-      {"label": "Communication", "color": "#10B981"},
-      {"label": "Execution", "color": "#F59E0B"},
-      {"label": "Empathy", "color": "#EC4899"},
-      {"label": "Decision Making", "color": "#8B5CF6"},
-      {"label": "Accountability", "color": "#EF4444"}
-    ]
-  }
-}
-```
-
-### Minimal Diagram
-
-```json
-{
-  "type": "house_diagram",
-  "title": "Core Values",
-  "data": {
-    "center_element": {"label": "Mission"},
-    "outer_elements": [
-      {"label": "Integrity"},
-      {"label": "Innovation"},
-      {"label": "Excellence"}
-    ],
-    "show_connectors": true
-  }
-}
-```
+- a `floors` value that is not a list, or a floor that is not one of the shapes above (a number, a nested list, an object with neither `label` nor `sections`, an object with both)
+- `sections` entries that are not a string or an object; `items` that are not a list of strings
+- the pillar row given twice (`sections` and `pillars`), or `outer_elements` beside `sections` / `floors`
+- more than 12 cells in a level
+- levels whose cell counts cannot share one column grid (the least common multiple of the counts must be at most 24: 4 over 2, 3 over 6, 5 over 5)
+- unknown keys (`title` for `label`, `bullets` for `items`), with the key that is drawn
 
 ## Layout Notes
 
-- Elements are distributed evenly around the center
-- First element starts at the top (12 o'clock)
-- Elements proceed clockwise
-- Connectors are drawn as straight lines from center to each outer element
-- Optimal number of outer elements: 4-8
+- The roof is a gable pentagon spanning the house; its text sits in the band under the slope. The gable rises one twelfth of the width where the height allows and flattens toward one twentieth as the levels need the height.
+- Every band is as tall as its text; a pillar row is as tall as its tallest column and grows slightly into spare height. The house hangs from the top of its region.
+- Six or more sections in a row switch the house to the dense type sizes (12pt labels, 11pt items).
+- A region too small for the levels' text is reported (`DIAGRAM_REGION_TOO_SMALL`, `diagram.text_below_readable_min`), not clipped.
 
-## Output Formats
+## Examples
 
-- SVG (default)
-- PNG (requires `output.format: "png"`)
-- PDF (requires `output.format: "pdf"`)
+### Classic house
+
+```json
+{
+  "type": "house_diagram",
+  "data": {
+    "roof": "Vision: Be the Global Leader in Digital Payments",
+    "sections": [
+      {"label": "Technology", "items": ["Cloud infrastructure", "API platform", "Security"]},
+      {"label": "Product", "items": ["Mobile payments", "Merchant tools", "Analytics"]},
+      {"label": "People", "items": ["Talent development", "Culture", "Leadership"]},
+      {"label": "Operations", "items": ["Process excellence", "Compliance", "Risk management"]}
+    ],
+    "foundation": "Core Values: Integrity, Innovation, Customer Focus, Collaboration"
+  }
+}
+```
+
+### Every level in `floors`
+
+```json
+{
+  "type": "house_diagram",
+  "data": {
+    "roof": "Mission",
+    "floors": [
+      {"label": "One operating model", "items": ["Group standards", "Local execution"]},
+      {"sections": [{"label": "Grow", "items": ["New markets"]}, {"label": "Run", "items": ["Lean core"]}]},
+      "Enablers"
+    ],
+    "foundation": "Values"
+  }
+}
+```
+
+### 7S elements under shared values
+
+```json
+{
+  "type": "house_diagram",
+  "data": {
+    "center_element": {"label": "Shared Values"},
+    "outer_elements": ["Strategy", "Structure", "Systems", "Style", "Staff", "Skills"]
+  }
+}
+```
 
 ## See Also
 
-- [Process Flow](./process_flow.md) - For sequential relationships
+- [Patterns: strategy-house](../PATTERNS.md#strategy-house-and-house_diagram-one-house-builder)
+- [Pyramid](./pyramid.md) - For a hierarchy that narrows
 - [Business Model Canvas](./business_model_canvas.md) - For structured frameworks

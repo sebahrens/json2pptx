@@ -312,6 +312,10 @@ func patternWarningAction(code string) string {
 	case patterns.ErrCodeFilledShapeOutlined:
 		// Advisory: the authored border renders as asked (go-slide-creator-pgdkp).
 		return "info"
+	case patterns.ErrCodeHouseShapeForced:
+		// A nudge: the house renders, its shape is the default one rather than
+		// the content's (go-slide-creator-qad87).
+		return "info"
 	case patterns.ErrCodeChartPlaceholderEmpty:
 		// The chart panel rendered without a chart spec — actionable, agent
 		// should either provide a chart or switch to an insights-only pattern.
