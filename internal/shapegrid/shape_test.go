@@ -936,6 +936,47 @@ func TestGenerateImageTextXML(t *testing.T) {
 	})
 }
 
+// The reported shape: one rect whose text is "2. Enabler bar: funded first"
+// was written with <a:buAutoNum type="arabicPeriod"/> and the "2." stripped.
+// A list that starts at N keeps its typed numbers; a list from 1 is
+// auto-numbered as before.
+func TestGenerateShapeXML_NumberedTextRendersAsWritten(t *testing.T) {
+	bounds := pptx.RectEmu{X: 0, Y: 0, CX: 4000000, CY: 1500000}
+	render := func(text string) string {
+		t.Helper()
+		raw, err := json.Marshal(text)
+		if err != nil {
+			t.Fatal(err)
+		}
+		xml, err := GenerateShapeXML(&ShapeSpec{Geometry: "rect", Text: raw}, 7, bounds)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(xml)
+	}
+
+	lone := render("2. Enabler bar: funded first")
+	if strings.Contains(lone, "buAutoNum") {
+		t.Errorf("a lone numbered line was turned into a list: %s", lone)
+	}
+	if !strings.Contains(lone, "<a:t>2. Enabler bar: funded first</a:t>") {
+		t.Errorf("the authored number is gone: %s", lone)
+	}
+
+	list := render("3. Third thing\n4. Fourth thing")
+	if strings.Contains(list, "buAutoNum") {
+		t.Errorf("a list starting at 3 must not be auto-numbered (it would count from 1): %s", list)
+	}
+	if !strings.Contains(list, "<a:t>3. Third thing</a:t>") || !strings.Contains(list, "<a:t>4. Fourth thing</a:t>") {
+		t.Errorf("a list starting at 3 should keep its typed numbers: %s", list)
+	}
+
+	fromOne := render("1. One\n2. Two")
+	if got := strings.Count(fromOne, `<a:buAutoNum type="arabicPeriod"/>`); got != 2 {
+		t.Errorf("a list from 1 should be auto-numbered without startAt, got %d: %s", got, fromOne)
+	}
+}
+
 func TestBuildTextBody_BulletDetection(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -945,8 +986,12 @@ func TestBuildTextBody_BulletDetection(t *testing.T) {
 	}{
 		{"plain line", "Hello world", false, "Hello world"},
 		{"dash bullet", "- First item", true, "First item"},
-		{"numbered item", "1. Step one", true, "Step one"},
-		{"multi-digit numbered", "12. Step twelve", true, "Step twelve"},
+		// A lone line that opens with a number is text, not a one-item list:
+		// stripped to auto-numbering it rendered "1." whatever the author
+		// typed (go-slide-creator-zdzk2).
+		{"numbered item", "1. Step one", false, "1. Step one"},
+		{"lone line numbered two", "2. Enabler bar: funded first", false, "2. Enabler bar: funded first"},
+		{"multi-digit numbered", "12. Step twelve", false, "12. Step twelve"},
 		{"not a bullet", "- ", true, ""},
 		{"no space after dash", "-noSpace", false, "-noSpace"},
 		{"no space after number", "1.noSpace", false, "1.noSpace"},

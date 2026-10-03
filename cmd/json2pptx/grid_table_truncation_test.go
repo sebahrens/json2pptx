@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -27,7 +28,7 @@ func TestGenerateTableCell_ReportsTruncation(t *testing.T) {
 		Bounds:    pptx.RectEmu{X: 0, Y: 0, CX: 4000000, CY: 900000},
 		TableSpec: &types.TableSpec{Headers: []string{"Segment", "Revenue"}, Rows: rows},
 	}
-	xml, findings, err := generateTableCell(cell, 2)
+	xml, findings, err := generateTableCell(cell, 2, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +43,7 @@ func TestGenerateTableCell_ReportsTruncation(t *testing.T) {
 	}
 
 	cell.Bounds.CY = 9000000
-	if _, findings, _ := generateTableCell(cell, 2); len(findings) != 0 {
+	if _, findings, _ := generateTableCell(cell, 2, nil); len(findings) != 0 {
 		t.Errorf("a table that fits reports nothing, got %+v", findings)
 	}
 }
@@ -87,5 +88,33 @@ func TestGridTableTruncationRefusedAndPredicted(t *testing.T) {
 	loss := generationRefusal(err)
 	if loss == nil || loss.Code != patterns.ErrCodeTableRowsTruncated || loss.Path != "/slides/0/shape_grid/rows/0/cells/0/table" {
 		t.Fatalf("generation must refuse the dropped rows, got err=%v", err)
+	}
+}
+
+// A grid table's highlight column is a tint of the template's primary fill,
+// like a placeholder table's — not accent3, which is blue on forest-green
+// (go-slide-creator-290o9).
+func TestGenerateTableCell_HighlightColumnUsesTemplatePrimaryFill(t *testing.T) {
+	spec := &types.TableSpec{
+		Headers: []string{"Segment", "Revenue"},
+		Rows:    [][]types.TableCell{{{Content: "North", ColSpan: 1, RowSpan: 1}, {Content: "€14m", ColSpan: 1, RowSpan: 1}}},
+		Style:   types.TableStyle{HighlightColumn: 2},
+	}
+	cell := shapegrid.ResolvedCell{
+		Kind:      shapegrid.CellKindTable,
+		Bounds:    pptx.RectEmu{CX: 4000000, CY: 2000000},
+		TableSpec: spec,
+	}
+	// A pale accent1 cannot carry white text, so the primary fill is accent2.
+	theme := []types.ThemeColor{{Name: "accent1", RGB: "#FFD0C0"}, {Name: "accent2", RGB: "#8E2B1F"}, {Name: "accent3", RGB: "#1565C0"}}
+	xml, _, err := generateTableCell(cell, 0, theme)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(xml), `<a:schemeClr val="accent2"><a:lumMod val="20000"/><a:lumOff val="80000"/></a:schemeClr>`) {
+		t.Errorf("highlight column is not an accent2 tint:\n%s", xml)
+	}
+	if spec.Style.HighlightAccent != "" {
+		t.Error("the caller's table spec was mutated")
 	}
 }

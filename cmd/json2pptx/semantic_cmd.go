@@ -1093,6 +1093,35 @@ func uniqueBodyFieldWithText(slide semantic.SlideIR, text string) string {
 }
 
 func semanticDiagFromFitWithIR(sm *semantic.SourceMap, ir *semantic.DeckIR, f patterns.FitFinding) semanticDiagnostic {
+	d := semanticDiagFromFitField(sm, ir, f)
+	// A render finding always names where in the DeckSpec to act. A slide-level
+	// finding with no source link (MISSING_TITLE addresses the whole raw slide)
+	// carries the slide's own locator, and MISSING_TITLE the field to write
+	// (go-slide-creator-y81vn).
+	rawIdx := slidepath.SlideIndex(f.Path)
+	if rawIdx < 0 {
+		return d
+	}
+	slide := slideSemanticPath(sm, rawIdx)
+	path := d.SemanticPath
+	if path == "" {
+		path = slide
+	}
+	if f.Code == patterns.ErrCodeMissingTitle && path != "" && path == slide {
+		path += ".title"
+	}
+	if path != d.SemanticPath {
+		d.SemanticPath = path
+		if d.diag != nil {
+			d.diag.Path = path
+		}
+	}
+	return d
+}
+
+// semanticDiagFromFitField is semanticDiagFromFit plus the field-level
+// attribution of a rendered shape's text that the source map cannot make.
+func semanticDiagFromFitField(sm *semantic.SourceMap, ir *semantic.DeckIR, f patterns.FitFinding) semanticDiagnostic {
 	d := semanticDiagFromFit(sm, f)
 	resolveLateBoundSemanticPath(&d, ir, f)
 	rawIdx := slidepath.SlideIndex(f.Path)

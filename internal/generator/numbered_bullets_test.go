@@ -21,6 +21,7 @@ func TestNumberedList(t *testing.T) {
 		},
 		{"partly numbered", []string{"1. Freeze", "Replay", "3. Cut over"}, nil},
 		{"starts at two", []string{"2. Replay", "3. Cut over"}, nil},
+		{"starts at zero", []string{"0. Freeze", "1. Replay"}, nil},
 		{"repeats a number", []string{"1. Freeze", "1. Replay"}, nil},
 		{"skips a number", []string{"1. Freeze", "3. Cut over"}, nil},
 		{"a lone line that opens with a number is prose", []string{"2024. A big year"}, nil},
@@ -126,6 +127,40 @@ func TestSetBulletParagraphsNumbersOrderedLists(t *testing.T) {
 				t.Errorf("paragraph %d still carries the typed prefix: %q", i, run.Text)
 			}
 		}
+	}
+
+	// A list continued from an earlier slide keeps the numbers the author
+	// typed, as its only marker: no auto-numbering (which would count from 1)
+	// and no layout glyph beside the number (go-slide-creator-zdzk2).
+	continued := &shapeXML{TextBody: &textBodyXML{}}
+	if err := setBulletParagraphs(continued, "body", []string{"4. Fourth step", "5. Fifth step"}, 0); err != nil {
+		t.Fatalf("setBulletParagraphs: %v", err)
+	}
+	for i, want := range []string{"4. Fourth step", "5. Fifth step"} {
+		para := continued.TextBody.Paragraphs[i]
+		if para.Properties == nil || strings.Contains(para.Properties.Inner, "buAutoNum") ||
+			strings.Contains(para.Properties.Inner, "buChar") || !strings.Contains(para.Properties.Inner, "<a:buNone/>") {
+			t.Errorf("continued paragraph %d should carry buNone only: %+v", i, para.Properties)
+		}
+		if len(para.Runs) == 0 || para.Runs[0].Text != want {
+			t.Errorf("continued paragraph %d text = %+v, want %q", i, para.Runs, want)
+		}
+	}
+	if _, start, ok := NumberedListStart([]string{"4. Fourth step", "5. Fifth step"}); !ok || start != 4 {
+		t.Errorf("NumberedListStart = %d, %v; want 4, true", start, ok)
+	}
+	if _, _, ok := NumberedListStart([]string{"4. Fourth step", "6. Sixth step"}); ok {
+		t.Error("a list that skips a number is not an ordered list")
+	}
+
+	// A lone bullet that opens with a number is prose and keeps its number.
+	lone := &shapeXML{TextBody: &textBodyXML{}}
+	if err := setBulletParagraphs(lone, "body", []string{"2. Enabler bar: funded first"}, 0); err != nil {
+		t.Fatalf("setBulletParagraphs: %v", err)
+	}
+	if p := lone.TextBody.Paragraphs[0]; (p.Properties != nil && strings.Contains(p.Properties.Inner, "buAutoNum")) ||
+		len(p.Runs) == 0 || !strings.HasPrefix(p.Runs[0].Text, "2. ") {
+		t.Errorf("a lone numbered bullet lost its literal number: %+v", p)
 	}
 
 	// An unordered list is untouched.

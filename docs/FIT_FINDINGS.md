@@ -1471,13 +1471,20 @@ Emitted when a bullet list nests more than two levels deep. Depth is measured pe
 **Pattern:** *(none — content lint)*
 **Fix kind:** `renumber_bullets`
 
-Emitted when a bullets list carries typed `"N. "` prefixes the renderer will NOT turn into OOXML auto-numbering, so the author's numbers print beside the layout's own bullet glyph: `• 1. First do this` (go-slide-creator-6or2).
+Emitted when a bullets list carries typed `"N. "` prefixes that are not an ordered list, so the author's numbers print beside the layout's own bullet glyph: `• 1. First do this` (go-slide-creator-6or2).
 
-A list is auto-numbered — `<a:buAutoNum type="arabicPeriod"/>` on every paragraph, with the typed prefixes removed from the text — only when EVERY entry carries a prefix and the numbers run 1, 2, 3 … with no gaps. That is the shape an author writing an ordered list produces, and it cannot be reached by accident. Anything else keeps the text verbatim and draws this finding:
+A list is ordered when EVERY entry carries a prefix and the numbers count up by one with no gaps. That is the shape an author writing an ordered list produces, and it cannot be reached by accident. It renders with one marker per item and draws no finding:
+
+- **from 1** — auto-numbered: `<a:buAutoNum type="arabicPeriod"/>` on every paragraph, with the typed prefixes removed from the text;
+- **from a later number** (`["4. …", "5. …", "6. …"]`, steps continued from the previous slide) — the typed numbers stay in the text and the layout's glyph is dropped (`<a:buNone/>`), so the list reads 4, 5, 6 (go-slide-creator-zdzk2). It is not auto-numbered with `startAt`: PowerPoint continues a list only when every paragraph repeats the same `startAt`, and LibreOffice restarts at `startAt` on each such paragraph ("4. 4. 4."), so the typed number is the one form every renderer draws the same.
+
+Anything else keeps the text verbatim, glyph included, and draws this finding:
 
 - a partially numbered list (`["1. …", "…", "3. …"]`)
-- a list that starts at another number, repeats one, or skips one
+- a list that repeats a number or skips one
 - a list of one item (a single line opening with a number is prose — `"2024. A big year"` — and is exempt entirely)
+
+The same rule holds outside placeholders. In `shape_grid` text, two or more consecutive lines numbered 1, 2, 3 … are auto-numbered; a lone `"2. Enabler bar: funded first"`, a run that starts above 1 and a number after an unnumbered line keep the number as typed (they used to be stripped to an auto-numbered paragraph that rendered "1."). Titles, body text and table cells never convert a leading number.
 
 `repair_slide(kind: "renumber_bullets", params: {path})` renumbers the list from 1; `params: {path, strip: true}` removes the prefixes instead.
 
@@ -1485,7 +1492,7 @@ A list is auto-numbered — `<a:buAutoNum type="arabicPeriod"/>` on every paragr
 {
   "path": "/slides/2/content/body",
   "code": "NUMBERED_LIST_NOT_APPLIED",
-  "message": "slide 3: 2 of 3 bullets start with a typed \"N. \" but the list is not numbered 1..3, so the numbers print beside the layout's bullet glyph as a double marker — number every bullet from 1 (the engine then supplies the numbers) or drop the prefixes",
+  "message": "slide 3: 2 of 3 bullets start with a typed \"N. \" but the list does not count up by one on every bullet, so the numbers print beside the layout's bullet glyph as a double marker — number every bullet consecutively (from 1 the engine supplies the numbers; from a later number the typed ones replace the glyph) or drop the prefixes",
   "fix": { "kind": "renumber_bullets", "params": { "path": "/slides/2/content/body", "prefixed": 2, "total": 3, "expected_format": "1. , 2. , 3. …" } },
   "action": "review"
 }

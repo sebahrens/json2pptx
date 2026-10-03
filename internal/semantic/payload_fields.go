@@ -286,7 +286,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"side_rails": textList("Alias for rails."),
 	}, compositionFields()), universalFields()),
 	KindAgenda: withFields(withFields(map[string]payloadField{
-		"title":    strField("Slide title (defaults to the template's own)."),
+		"title":    strField("Slide title (optional; defaults to \"Agenda\")."),
 		"takeaway": strField("One-line takeaway footer."),
 		"sections": {
 			typ:         "array",

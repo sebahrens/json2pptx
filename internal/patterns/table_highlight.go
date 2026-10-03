@@ -914,6 +914,15 @@ func (l *thLayout) headerCells() []*jsonschema.GridCellInput {
 		cells = append(cells, thTextCellAnchored(tones.header, colInk, "ctr", "b",
 			[]chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(c.Label), Size: l.headerSize, Bold: true}}))
 	}
+	// The header row is one line of sibling labels and keeps the header size.
+	// The grid's type scale grows sparse text cell by cell: a short label grew
+	// to 14pt while a label whose longest word would not fit its column wider
+	// stayed at 12pt — two sizes in one row (go-slide-creator-fr538). At one
+	// declared size the row also shares one autofit shrink when the table is
+	// too tall for its area.
+	for _, cell := range cells {
+		cell.Shape.TypeScale = "compact"
+	}
 	return cells
 }
 

@@ -1296,6 +1296,24 @@ type cellBorderOverrides struct {
 	totalsTopBorder bool // When true, render a dk1 top border for totals row
 }
 
+// highlightColumnFillXML is the fill of a highlight_column body cell: the
+// template's primary fill at a 20% tint. It used to be accent3 whatever the
+// template, and accent3 is an unrelated hue on most themes — blue (#1565C0) on
+// forest-green (go-slide-creator-290o9). The slot is the one patterns default
+// to and list_templates reports as color_roles.primary_fill. The renderer that
+// knows the template sets it on Style.HighlightAccent; a config carrying a
+// theme resolves it here; accent1 when the theme is unknown.
+func highlightColumnFillXML(config TableRenderConfig) string {
+	slot := config.Style.HighlightAccent
+	if slot == "" && config.Theme != nil {
+		slot = patterns.PrimaryFill(config.Theme.Colors)
+	}
+	if slot == "" {
+		slot = "accent1"
+	}
+	return `<a:solidFill><a:schemeClr val="` + slot + `"><a:lumMod val="20000"/><a:lumOff val="80000"/></a:schemeClr></a:solidFill>`
+}
+
 // generateCellProperties generates the <a:tcPr> element with borders and fill.
 // The overrides parameter controls border suppression for merged cells (nil = no overrides).
 // colIdx, isTotalsRow, conditional and cellContent are used for highlight
@@ -1323,8 +1341,7 @@ func generateCellProperties(config TableRenderConfig, isHeader bool, rowIdx int,
 			fillXML = resolveConditionalFill(conditional, cellContent)
 		}
 		if fillXML == "" && !isHeader && config.Style.HighlightColumn > 0 && colIdx == config.Style.HighlightColumn-1 {
-			// Highlight column: accent3 at 20% tint
-			fillXML = `<a:solidFill><a:schemeClr val="accent3"><a:lumMod val="20000"/><a:lumOff val="80000"/></a:schemeClr></a:solidFill>`
+			fillXML = highlightColumnFillXML(config)
 		}
 
 		if fillXML != "" {

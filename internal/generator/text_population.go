@@ -185,12 +185,18 @@ func setTextParagraph(shape *shapeXML, placeholderID string, value interface{}, 
 
 	// Create paragraph(s) with preserved template styling.
 	// Body text may contain multiple paragraphs separated by "\n".
+	// A title or subtitle keeps the case of its number-unit tokens on
+	// templates that set titles in capitals (go-slide-creator-3rg5f).
+	headline := isHeadlineShape(shape, placeholderID)
 	var paras []paragraphXML
 	for _, seg := range strings.Split(text, "\n") {
 		if seg == "" {
 			continue
 		}
 		runs := createFormattedRuns(seg, templateRProps)
+		if headline {
+			runs = preserveUnitCase(runs)
+		}
 		paras = append(paras, paragraphXML{
 			Properties: textPProps,
 			Runs:       runs,
@@ -352,7 +358,9 @@ func setTitleSlideTitle(shape *shapeXML, placeholderID string, value interface{}
 		if seg == "" {
 			continue
 		}
-		runs := createFormattedRuns(seg, templateRProps)
+		// "€2.2m" must not become "€2.2M" on an all-caps title
+		// (go-slide-creator-3rg5f).
+		runs := preserveUnitCase(createFormattedRuns(seg, templateRProps))
 		paras = append(paras, paragraphXML{
 			Properties: templatePProps,
 			Runs:       runs,
@@ -458,8 +466,11 @@ func setBulletParagraphs(shape *shapeXML, placeholderID string, value interface{
 	// auto-numbering and the typed prefixes removed, so it shows one marker
 	// rather than the layout's glyph beside the author's number
 	// (go-slide-creator-6or2).
-	texts, numbered := NumberedList(stripped)
-	if !numbered {
+	// An ordered list that starts above 1 (steps continued from the previous
+	// slide) keeps its typed numbers and drops the layout's glyph instead
+	// (go-slide-creator-zdzk2).
+	texts, numberStart, numbered := NumberedListStart(stripped)
+	if !numbered || numberStart != 1 {
 		texts = stripped
 	}
 
@@ -469,8 +480,11 @@ func setBulletParagraphs(shape *shapeXML, placeholderID string, value interface{
 		// bullet picks up the master's smaller size and secondary glyph
 		// instead of the parent's.
 		pProps, rProps := getBulletStyleForLevel(templateStyles, bulletParagraphLevel(bulletLevel, depths[i]))
-		if numbered {
+		switch {
+		case numbered && numberStart == 1:
 			applyAutoNumbering(pProps)
+		case numbered:
+			applyTypedNumbering(pProps)
 		}
 
 		// Parse inline tag formatting and create runs

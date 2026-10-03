@@ -84,7 +84,8 @@ type TableStyle struct {
 	Striped          *bool    // Alternating row colors (nil = default on, explicit false = off)
 	StyleID          string   // OOXML table style GUID (e.g., "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}")
 	UseTableStyle    bool     // When true, suppress all explicit formatting and let the table style control appearance
-	HighlightColumn  int      // 1-indexed column to highlight with accent3 tint fill (0 = none)
+	HighlightColumn  int      // 1-indexed column to highlight with a 20% tint of HighlightAccent (0 = none)
+	HighlightAccent  string   // Theme slot the highlight column tints; set by the renderer to the template's primary fill ("" = accent1). Not an input field.
 	TotalsRow        bool     // When true, last data row rendered bold with top border
 	ColumnTypes      []string // Per-column type: "text", "number", "currency", "percent", "delta"
 }
