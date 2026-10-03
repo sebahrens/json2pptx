@@ -1178,6 +1178,9 @@ func mcpListSlideKindsTool() mcp.Tool {
 		mcp.WithString("template",
 			mcp.Description("Template name; adds budgets measured on it."),
 		),
+		mcp.WithBoolean("preview",
+			mcp.Description("true: also return an image of each named kind's example (kinds: 1-4) as render_deck_spec renders it on template."),
+		),
 	)
 }
 
@@ -1248,6 +1251,15 @@ func (mc *mcpConfig) handleListSlideKinds(ctx context.Context, request mcp.CallT
 	if errRes != nil {
 		return errRes, nil
 	}
+	wantPreview, errRes := previewArg("list_slide_kinds", request)
+	if errRes != nil {
+		return errRes, nil
+	}
+	if wantPreview && (len(kindFilter) == 0 || len(kindFilter) > maxPreviewImages) {
+		return argInvalidValue("list_slide_kinds", "INVALID_PARAMETER", "kinds",
+			fmt.Sprintf("preview renders one image per kind: name 1 to %d kinds", maxPreviewImages), "array", []string{"kpi_snapshot"},
+			&patterns.ToolCallSuggestion{Tool: "list_slide_kinds", ArgsTemplate: map[string]any{"kinds": []string{"kpi_snapshot"}, "preview": true}}), nil
+	}
 	out := make([]slideKindListEntry, 0)
 	for _, k := range semantic.AllSlideKinds() {
 		if kindFilter != nil && !kindFilter[string(k)] {
@@ -1287,7 +1299,17 @@ func (mc *mcpConfig) handleListSlideKinds(ctx context.Context, request mcp.CallT
 		}
 		result["budget_basis"] = budgetBasis
 	}
-	mcpResult, err := api.MCPSuccessResult(ctx, result)
+	// Each selected kind's example, rendered as render_deck_spec renders it
+	// (go-slide-creator-ueopl).
+	var previewImages []api.MCPImage
+	if wantPreview {
+		names := make([]string, len(out))
+		for i := range out {
+			names[i] = out[i].Kind
+		}
+		result["previews"], previewImages = mc.renderPreviews(ctx, kindPreviewRequests(names, strings.TrimSpace(request.GetString("template", ""))))
+	}
+	mcpResult, err := previewableResult(ctx, result, previewImages)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal list_slide_kinds response: %v", err)), nil
 	}

@@ -379,6 +379,8 @@ fmt-check:
 		test -z "$$unformatted" || { echo "Please run 'make fmt'"; printf '%s\n' "$$unformatted"; exit 1; }
 
 # ─── Pattern Previews ─────────────────────────────────────────────────
+# A local gallery (gitignored): every pattern on every template, each the
+# one-slide deck generation produces for the pattern's example values.
 
 preview-patterns: build
 	./bin/json2pptx$(EXE) preview-patterns -templates-dir templates -output assets/pattern-previews

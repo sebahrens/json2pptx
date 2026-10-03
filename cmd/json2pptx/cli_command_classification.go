@@ -125,11 +125,12 @@ func cliCommandClassifications() map[string]cliCommandClass {
 		},
 		"preview-patterns": {
 			AgentFacing: true,
-			CLIOnlyReason: "Pre-renders PNG previews for every named pattern — a local gallery-build/CI step that " +
-				"needs the render toolchain (LibreOffice + ImageMagick). Over MCP, reproduce a single pattern's preview " +
-				"by composing list_patterns -> show_pattern -> expand_pattern -> render_slide_image_from_json, then loop " +
-				"over the patterns/templates you care about and assemble your own manifest; the batch gallery itself stays " +
-				"CLI-only. See skills/generate-deck/TOOLS.md (Composition recipes).",
+			CLIOnlyReason: "Renders every named pattern on every template into a local PNG gallery — a batch step that " +
+				"needs the render toolchain (LibreOffice + ImageMagick) and writes files. Over MCP, one pattern's picture is " +
+				"one call: recommend_visual(intent, template, candidates:[<pattern>], preview:true) returns the same image " +
+				"(the pattern's recipe through the generation pipeline). The raw-JSON equivalent is list_patterns -> " +
+				"show_pattern -> expand_pattern -> render_slide_image_from_json; the batch gallery itself stays CLI-only. " +
+				"See skills/generate-deck/TOOLS.md (Composition recipes).",
 		},
 	}
 }

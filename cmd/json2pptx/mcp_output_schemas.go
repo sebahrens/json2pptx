@@ -523,6 +523,8 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
       "type": "array",
       "items": {"type": "string"}
     },
+    "previews": {"type": "array", "description": "Present with preview:true: one entry per rendered preview, in image order. Each image is the named candidate's next_tool_call rendered through render_deck_spec's pipeline on template.", "items": {"type": "object", "properties": {"name": {"type": "string"}, "template": {"type": "string"}, "image_content_index": {"type": "integer", "description": "Position of the image block in the result's content array (content[0] is this JSON)."}, "content_hash": {"type": "string", "description": "Pixel hash of the rendered PNG; equals render_deck_thumbnails' content_hash for the same spec rendered at density 72."}, "error": {"type": "string", "description": "Why there is no image (render toolchain missing, or the recipe was refused); the rest of the response is unaffected."}}, "required": ["name"]}},
+    "preview_call": {"type": "object", "description": "Present without preview:true: the recommend_visual call that returns an image of each leading candidate.", "properties": {"tool": {"type": "string"}, "args_template": {"type": "object"}}, "required": ["tool", "args_template"]},
     "response_fingerprint": {"type": "string", "description": "Lowercase sha256 hex (64 chars) over the canonical JSON of this response (with the field zeroed). Use as cache key / drift detector."}
   },
   "required": ["candidates", "query_understood_as"],
@@ -576,12 +578,12 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
     },
     "visual_example": {
       "type": "object",
-      "description": "Compact template-specific example metadata. metadata_only=true means no renderer-produced PNG was available.",
+      "description": "Compact template-specific example metadata. metadata_only=true means the example names no layout thumbnail; pictures of a candidate come from preview:true as images, never as a path.",
       "properties": {
         "template_hash":   {"type": "string"},
         "preview_png_path": {"type": "string"},
         "capacity":        {"type": "string"},
-        "renderer":        {"type": "string", "description": "pre-rendered (pattern gallery PNG) or template-preview (shipped layout thumbnail)."},
+        "renderer":        {"type": "string", "description": "template-preview (shipped layout thumbnail). A rendered picture of any candidate comes from preview:true."},
         "metadata_only":   {"type": "boolean"},
         "layout_id":       {"type": "string", "description": "Template layout the candidate renders on (matching layout for placeholder candidates, else the One Content layout)."},
         "layout_preview_png_path": {"type": "string", "description": "Absolute path to the shipped 320px thumbnail of layout_id (templates/previews/<template>/<layout_id>.png)."}
@@ -2816,6 +2818,7 @@ var outputSchemaListDeckArchetypes = json.RawMessage(`{
 var outputSchemaListSlideKinds = json.RawMessage(`{
   "type": "object",
   "properties": {
+    "previews": {"type": "array", "description": "Present with preview:true: one entry per rendered preview, in image order. Each image is the named kind's example rendered through render_deck_spec's pipeline on template.", "items": {"type": "object", "properties": {"name": {"type": "string"}, "template": {"type": "string"}, "image_content_index": {"type": "integer", "description": "Position of the image block in the result's content array (content[0] is this JSON)."}, "content_hash": {"type": "string", "description": "Pixel hash of the rendered PNG; equals render_deck_thumbnails' content_hash for the same spec rendered at density 72."}, "error": {"type": "string", "description": "Why there is no image (render toolchain missing, or the recipe was refused); the rest of the response is unaffected."}}, "required": ["name"]}},
     "takeaway_budget": {"type": "object", "description": "Measured fit contract for the universal takeaway chrome band; width depends on the template.", "properties": {"font_pt": {"type": "number"}, "max_lines": {"type": "integer"}, "max_chars": {"type": "integer", "description": "Characters the band holds on one line; present with budgets (template or fields:[\"budgets\"])."}, "note": {"type": "string"}}, "required": ["font_pt", "max_lines", "note"]},
     "budget_basis": {"type": "object", "description": "What the measured budgets were measured on; present with budgets.", "properties": {"template": {"type": "string", "description": "The template named in the call."}, "templates": {"type": "array", "items": {"type": "string"}, "description": "The shipped templates whose tightest budget is reported when no template was named."}, "note": {"type": "string"}}, "required": ["note"]},
     "slide_kinds": {

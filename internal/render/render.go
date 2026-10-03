@@ -751,6 +751,10 @@ func RenderSlideWithCacheKeyContext(ctx context.Context, pptxPath string, slideI
 			return nil, err
 		}
 
+		// A slide rendered under a caller's key is the same picture as that
+		// slide rendered from any deck (go-slide-creator-6ffgv): a preview of
+		// a recipe and the deck rendered from it share one image.
+		stabilizeSlidePNGs(pptxPath, pngs, density, force)
 		storeCachePNGs(fullKey, pngs)
 		if err := ctx.Err(); err != nil {
 			return nil, err

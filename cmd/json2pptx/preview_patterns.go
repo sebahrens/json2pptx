@@ -2,23 +2,27 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
-	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
-	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/template"
-	"github.com/sebahrens/json2pptx/internal/types"
 )
 
+// preview-patterns builds a local gallery: every named pattern on every
+// template, each as the one-slide deck render_deck_spec produces for the
+// pattern's exemplar values under a title (go-slide-creator-r1uy7). It shares
+// renderSpecPreview with list_slide_kinds(preview:true) and
+// recommend_visual(preview:true), so a gallery tile is the generated slide,
+// not a separate drawing of the pattern.
+//
+// The gallery is not committed: 51 patterns on nine templates is several
+// hundred images that go stale with every layout change. Agents get the same
+// picture on demand, as an MCP image, through the render cache.
 func runPreviewPatterns() error {
 	fs := flag.NewFlagSet("preview-patterns", flag.ContinueOnError)
 
@@ -26,11 +30,13 @@ func runPreviewPatterns() error {
 	outputDir := fs.String("output", "./assets/pattern-previews", "Output directory for pattern preview PNGs")
 	density := fs.Int("density", 150, "DPI for rendered PNGs")
 	patternFilter := fs.String("pattern", "", "Generate preview for a single pattern only")
+	templateFilter := fs.String("template", "", "Generate previews on a single template only")
 	manifest := fs.Bool("manifest", false, "Emit a JSON success manifest (written PNG paths, kind, byte length, sha256, and per-pattern warnings) to stdout instead of relying on the stderr progress log.")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx preview-patterns [options]\n\n")
-		fmt.Fprintf(os.Stderr, "Generate PNG preview images for all named patterns using each template.\n")
+		fmt.Fprintf(os.Stderr, "Render every named pattern on each template as the one-slide deck\n")
+		fmt.Fprintf(os.Stderr, "generation produces for its example values, and write one PNG per pattern.\n")
 		fmt.Fprintf(os.Stderr, "Requires LibreOffice and ImageMagick on PATH.\n\n")
 		fmt.Fprintf(os.Stderr, "Output structure:\n")
 		fmt.Fprintf(os.Stderr, "  <output>/<template-name>/<pattern-name>.png\n\n")
@@ -42,63 +48,56 @@ func runPreviewPatterns() error {
 		return err
 	}
 
-	if !hasLOBinary() || !hasMagickBinary() {
-		return fmt.Errorf("preview-patterns requires LibreOffice and ImageMagick on PATH")
+	if err := render.CheckDependencies(); err != nil {
+		return fmt.Errorf("preview-patterns requires LibreOffice and ImageMagick on PATH: %w", err)
 	}
 
-	// Discover templates
 	templateFiles, err := filepath.Glob(filepath.Join(*templatesDir, "*.pptx"))
 	if err != nil || len(templateFiles) == 0 {
 		return fmt.Errorf("no templates found in %s", *templatesDir)
 	}
 
-	// Collect patterns with ExemplarValues
 	reg := patterns.Default()
-	allPatterns := reg.List()
-	var exemplarPatterns []patterns.Pattern
-	for _, p := range allPatterns {
-		if _, ok := p.(patterns.Exemplar); ok {
-			if *patternFilter != "" && p.Name() != *patternFilter {
-				continue
-			}
-			exemplarPatterns = append(exemplarPatterns, p)
+	var names []string
+	for _, p := range reg.List() {
+		if *patternFilter != "" && p.Name() != *patternFilter {
+			continue
 		}
+		names = append(names, p.Name())
+	}
+	if len(names) == 0 {
+		return fmt.Errorf("no pattern named %q", *patternFilter)
 	}
 
-	if len(exemplarPatterns) == 0 {
-		return fmt.Errorf("no patterns with ExemplarValues found")
-	}
-
-	cache := template.NewMemoryCache(0)
+	mc := &mcpConfig{templatesDir: *templatesDir, cache: template.NewMemoryCache(0)}
+	ctx := context.Background()
 	var written []artifactSpec
 	var warnings []string
+	matchedTemplate := false
 	for _, tplPath := range templateFiles {
 		tplName := strings.TrimSuffix(filepath.Base(tplPath), ".pptx")
+		if *templateFilter != "" && tplName != *templateFilter {
+			continue
+		}
+		matchedTemplate = true
 		tplOutDir := filepath.Join(*outputDir, tplName)
 		if err := os.MkdirAll(tplOutDir, 0755); err != nil {
 			return fmt.Errorf("mkdir %s: %w", tplOutDir, err)
 		}
-
-		// Analyze template
-		analysis, err := getOrAnalyzeTemplate(tplPath, cache)
-		if err != nil {
-			warn := fmt.Sprintf("skip template %s: %v", tplName, err)
-			warnings = append(warnings, warn)
-			fmt.Fprintf(os.Stderr, "WARN: %s\n", warn)
-			continue
-		}
-
-		for _, pat := range exemplarPatterns {
-			pngPath := filepath.Join(tplOutDir, pat.Name()+".png")
-			if err := generateOnePatternPreview(tplPath, analysis, pat, pngPath, *density); err != nil {
-				warn := fmt.Sprintf("%s/%s: %v", tplName, pat.Name(), err)
+		for _, name := range names {
+			pngPath := filepath.Join(tplOutDir, name+".png")
+			if err := mc.writePatternPreview(ctx, reg, name, tplName, pngPath, *density); err != nil {
+				warn := fmt.Sprintf("%s/%s: %v", tplName, name, err)
 				warnings = append(warnings, warn)
 				fmt.Fprintf(os.Stderr, "WARN: %s\n", warn)
 				continue
 			}
 			written = append(written, artifactSpec{path: pngPath, kind: "pattern-preview"})
-			fmt.Fprintf(os.Stderr, "  %s/%s.png\n", tplName, pat.Name())
+			fmt.Fprintf(os.Stderr, "  %s/%s.png\n", tplName, name)
 		}
+	}
+	if !matchedTemplate {
+		return fmt.Errorf("no template named %q in %s", *templateFilter, *templatesDir)
 	}
 
 	fmt.Fprintf(os.Stderr, "\nGenerated %d pattern preview PNGs in %s\n", len(written), *outputDir)
@@ -113,221 +112,20 @@ func runPreviewPatterns() error {
 	return nil
 }
 
-func generateOnePatternPreview(
-	templatePath string,
-	analysis *types.TemplateAnalysis,
-	pat patterns.Pattern,
-	outputPNG string,
-	dpi int,
-) error {
-	exemplar, ok := pat.(patterns.Exemplar)
-	if !ok {
-		return fmt.Errorf("pattern %s does not implement Exemplar", pat.Name())
-	}
-
-	// Use template slide dimensions or standard 16:9 defaults
-	slideWidth := analysis.SlideWidth
-	slideHeight := analysis.SlideHeight
-	if slideWidth == 0 {
-		slideWidth = 9144000
-	}
-	if slideHeight == 0 {
-		slideHeight = 5143500
-	}
-
-	// Build expand context with template theme
-	expandCtx := patterns.ExpandContext{
-		Theme:       analysis.Theme,
-		SlideWidth:  slideWidth,
-		SlideHeight: slideHeight,
-		LayoutBounds: patterns.LayoutBounds{
-			X: 457200, Y: 457200,
-			Width: slideWidth - 914400, Height: slideHeight - 914400,
-		},
-	}
-	if analysis.Metadata != nil {
-		expandCtx.Metadata = analysis.Metadata
-	}
-
-	// Expand the pattern with exemplar values
-	grid, err := pat.Expand(expandCtx, exemplar.ExemplarValues(), nil, nil)
-	if err != nil {
-		return fmt.Errorf("expand: %w", err)
-	}
-	patterns.ApplyGridDefaults(grid)
-	// Convert the jsonschema.ShapeGridInput to our local ShapeGridInput type
-	// (both use the same JSON schema, but are different Go types)
-	gridJSON, err := json.Marshal(grid)
-	if err != nil {
-		return fmt.Errorf("marshal grid: %w", err)
-	}
-	var localGrid ShapeGridInput
-	if err := json.Unmarshal(gridJSON, &localGrid); err != nil {
-		return fmt.Errorf("unmarshal grid: %w", err)
-	}
-
-	// Resolve shape_grid to raw XML
-	alloc := &pptx.ShapeIDAllocator{}
-	alloc.SetMinID(200)
-	// The preview is the slide's own block: composed like a generated slide.
-	gridResult, err := resolveShapeGridAs(&localGrid, alloc, nil, nil, slideWidth, slideHeight, nil, true)
-	if err != nil {
-		return fmt.Errorf("resolve grid: %w", err)
-	}
-	if gridResult == nil {
-		return fmt.Errorf("empty grid result")
-	}
-
-	// Pick a blank-ish layout (fewest placeholders) that physically exists in
-	// the template package. Preview generation runs against the original
-	// TemplatePath without materializing synthetic layout files, so a
-	// synthesized-only ID would make generator.Generate fail to resolve it.
-	layoutID := pickPreviewLayout(analysis.Layouts, analysis.Synthesis)
-
-	// Build single-slide spec
-	spec := generator.SlideSpec{
-		LayoutID:     layoutID,
-		RawShapeXML:  gridResult.Shapes,
-		IconInserts:  gridResult.IconInserts,
-		ImageInserts: gridResult.ImageInserts,
-	}
-
-	// Generate PPTX in temp dir
-	tmpDir, err := os.MkdirTemp("", "patternpreview-*")
+// writePatternPreview renders one pattern's preview on one template and
+// writes the PNG.
+func (mc *mcpConfig) writePatternPreview(ctx context.Context, reg *patterns.Registry, name, templateName, outputPNG string, dpi int) error {
+	spec, err := patternPreviewSpec(reg, name, templateName)
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmpDir)
-
-	pptxPath := filepath.Join(tmpDir, "pattern.pptx")
-	ctx := context.Background()
-	_, err = generator.Generate(ctx, generator.GenerationRequest{
-		TemplatePath:          templatePath,
-		OutputPath:            pptxPath,
-		Slides:                []generator.SlideSpec{spec},
-		ExcludeTemplateSlides: true,
-	})
+	img, err := mc.renderSpecPreview(ctx, spec, dpi)
 	if err != nil {
-		return fmt.Errorf("generate: %w", err)
+		return err
 	}
-
-	// Convert PPTX -> PDF via LibreOffice, in a profile nothing else owns:
-	// sharing the default profile with another soffice makes this exit 0 and
-	// write no PDF (go-slide-creator-0ixs).
-	loBin := findLOBinary()
-	loProfile := filepath.Join(tmpDir, "lo-profile")
-	cmd := exec.Command(loBin, "-env:UserInstallation=file://"+filepath.ToSlash(loProfile), //nolint:gosec
-		"--headless", "--convert-to", "pdf", "--outdir", tmpDir, pptxPath)
-	cmd.Stdout = io.Discard
-	cmd.Stderr = io.Discard
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("libreoffice: %w", err)
-	}
-
-	pdfPath := filepath.Join(tmpDir, "pattern.pdf")
-	if _, err := os.Stat(pdfPath); err != nil {
-		return fmt.Errorf("pdf not created")
-	}
-
-	// PDF -> PNG via ImageMagick
-	magickBin := findMagickBinary()
-	pageSpec := fmt.Sprintf("%s[0]", pdfPath)
-	cmd = exec.Command(magickBin, "-density", fmt.Sprintf("%d", dpi), pageSpec, "-quality", "90", outputPNG) //nolint:gosec
-	cmd.Stdout = io.Discard
-	cmd.Stderr = io.Discard
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("imagemagick: %w", err)
-	}
-
-	return nil
-}
-
-// pickPreviewLayout selects a layout with few placeholders for clean pattern
-// rendering. It skips synthesized-only layouts — those minted by template
-// synthesis (e.g. a "slideLayout5" present only in the SynthesisManifest, not in
-// the physical template package). Preview generation runs against the original
-// TemplatePath without materializing synthetic files, so returning a synthesized
-// ID makes generator.Generate fail with "layout_id ... not found".
-func pickPreviewLayout(layouts []types.LayoutMetadata, synthesis *types.SynthesisManifest) string {
-	synthetic := syntheticLayoutIDs(synthesis)
-	bestID := ""
-	bestCount := 0
-	for i := range layouts {
-		if synthetic[layouts[i].ID] {
-			continue
-		}
-		n := len(layouts[i].Placeholders)
-		if bestID == "" || n < bestCount {
-			bestID = layouts[i].ID
-			bestCount = n
-		}
-	}
-	if bestID == "" {
-		// No physical layout available (empty list, or every layout is
-		// synthesized): fall back to the canonical first layout, which is
-		// always present in a well-formed package.
-		return "slideLayout1"
-	}
-	return bestID
-}
-
-// syntheticLayoutIDs returns the set of layout IDs that exist only in the
-// synthesis manifest (e.g. "slideLayout5") and are therefore absent from the
-// physical template package. Manifest keys are layout XML paths such as
-// "ppt/slideLayouts/slideLayout5.xml"; the matching .rels entries are ignored.
-func syntheticLayoutIDs(synthesis *types.SynthesisManifest) map[string]bool {
-	ids := make(map[string]bool)
-	if synthesis == nil {
-		return ids
-	}
-	for path := range synthesis.SyntheticFiles {
-		base := filepath.Base(path)
-		if filepath.Ext(base) != ".xml" {
-			continue // skip .rels and any non-layout entries
-		}
-		ids[strings.TrimSuffix(base, ".xml")] = true
-	}
-	return ids
-}
-
-// findPatternPreviewPNGs looks for pre-generated pattern preview PNGs in the
-// assets/pattern-previews directory adjacent to the templates directory.
-// Returns absolute paths to any found PNGs for the given pattern across all templates.
-func findPatternPreviewPNGs(templatesDir, patternName string) []string {
-	// Preview PNGs live at <project-root>/assets/pattern-previews/<template>/<pattern>.png
-	// The templates dir is typically at <project-root>/templates, so go up one level.
-	projectRoot := filepath.Dir(templatesDir)
-	previewsDir := filepath.Join(projectRoot, "assets", "pattern-previews")
-
-	matches, err := filepath.Glob(filepath.Join(previewsDir, "*", patternName+".png"))
-	if err != nil || len(matches) == 0 {
-		return nil
-	}
-	return matches
-}
-
-// The render binaries are resolved by internal/render, the single place that
-// knows libreoffice/soffice and magick/convert are the same tool under
-// different names (go-slide-creator-rdql).
-func hasLOBinary() bool {
-	_, err := render.OfficeCommand()
-	return err == nil
-}
-
-func findLOBinary() string {
-	bin, err := render.OfficeCommand()
+	data, err := readSlideImageBytes(img)
 	if err != nil {
-		return "soffice"
+		return err
 	}
-	return bin
-}
-
-func hasMagickBinary() bool {
-	_, err := render.ImageMagickCommand()
-	return err == nil
-}
-
-func findMagickBinary() string {
-	path, _ := render.ImageMagickCommand()
-	return path
+	return os.WriteFile(outputPNG, data, 0644) //nolint:gosec // a gallery image the caller asked for at this path
 }

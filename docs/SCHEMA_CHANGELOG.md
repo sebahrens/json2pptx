@@ -1,5 +1,47 @@
 # Schema Changelog
 
+- **2026-10-03 — Previews are the generated slide, returned as images (`go-slide-creator-ueopl`, `-r1uy7`).**
+  - **New argument `preview` (boolean) on `list_slide_kinds` and
+    `recommend_visual`**, both in the default profile.
+    `list_slide_kinds(kinds:[1–4 names], template, preview:true)` returns one
+    MCP image per named kind: the kind's `example` as a one-slide DeckSpec on
+    `template` (default `midnight-blue`), through `render_deck_spec`'s
+    compiler and runner. `recommend_visual(intent, template, preview:true)`
+    returns one image per leading candidate (at most 4; name them with
+    `candidates` to choose): that candidate's `next_tool_call` rendered, so
+    patterns, charts, diagrams, layouts, compose candidates and the regions
+    kind are all covered. `preview` without `kinds`, or with more than 4
+    kinds, is `INVALID_PARAMETER`.
+  - **New response field `previews[]`** `{name, template,
+    image_content_index, content_hash, error}` on both tools, present with
+    `preview:true`. `image_content_index` is the image's position in the
+    result's content array (`content[0]` is the JSON). `content_hash` equals
+    the slide's `content_hash` from `render_deck_thumbnails(density: 72)` on
+    the deck `render_deck_spec` writes for the same spec. A preview that
+    cannot be rendered (no LibreOffice / ImageMagick, or a refused recipe)
+    sets `error` on its entry and leaves the rest of the response intact.
+  - **New `recommend_visual` field `preview_call`** `{tool, args_template}`,
+    present when `preview` was not asked for: the same call with the leading
+    candidates named and `preview:true`.
+  - **Removed:** the pattern-gallery path in `recommend_visual`
+    `candidates[].example.preview_png_path` (renderer `pre-rendered`) and
+    `recommend_pattern` `candidates[].preview_png_paths`. They pointed at
+    `assets/pattern-previews/`, a committed set of 20 patterns on 3 templates
+    drawn by a separate path (solid tiles, no title, no chrome) that a remote
+    client could not open. The set is deleted. `example.preview_png_path`
+    remains for placeholder-layout candidates (the shipped layout thumbnail,
+    renderer `template-preview`), next to `layout_preview_png_path`.
+  - **`json2pptx preview-patterns` renders through generation.** Each tile is
+    the one-slide deck (`raw_json2pptx` slide: title + `pattern` with the
+    exemplar values) rendered by the same function the two tools use; it
+    covers every registered pattern, gains `-template <name>`, and writes to
+    a gitignored `assets/pattern-previews/`. Images are cached under the
+    slide's visible identity, so a preview and the deck rendered from the
+    same recipe share one image and an engine change cannot serve a stale
+    one. `render_slide_image_from_json` results now share that identity too.
+  - `recommend_visual` argument descriptions for `candidates` and `template`
+    were shortened (same behaviour).
+
 - **2026-10-03 — recommend_visual: every candidate is authorable, DeckSpec kinds come first, one chart-type vocabulary (`go-slide-creator-x97m6`, `-bdvhj`, `-3ujfq`, `-7sqof`).**
   - **Every candidate carries `data_contract` and a runnable
     `next_tool_call`** (`render_deck_spec` with a complete one-slide DeckSpec
