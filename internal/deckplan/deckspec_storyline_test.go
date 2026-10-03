@@ -237,8 +237,12 @@ func TestDeckSpecChaptersAndRuns(t *testing.T) {
 				if chrome["tracker"] != true {
 					t.Errorf("budget %d: a chaptered draft must turn the tracker on: %v", budget, chrome)
 				}
-			} else if budget >= 10 && brief != reviewBriefProduct {
+			} else if budget >= 16 && brief != reviewBriefProduct {
 				t.Errorf("budget %d: a %d-slide board draft should be chaptered: %v", budget, budget, kinds)
+			}
+			// 58qda: no agenda or dividers under 12 slides unless asked.
+			if budget < chapterBudget && p.DeckSpec.Structure != nil {
+				t.Errorf("budget %d: a draft under %d slides must stay flat: %+v", budget, chapterBudget, p.DeckSpec.Structure)
 			}
 			if rendered > budget {
 				t.Errorf("budget %d: draft renders %d slides", budget, rendered)

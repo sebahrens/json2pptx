@@ -142,3 +142,170 @@ func TestPlanDeckRejectsUnknownFormat(t *testing.T) {
 		t.Fatalf("unknown format should be an INVALID_PARAMETER on format: %v %s", err, textContent(res))
 	}
 }
+
+// The three briefs of the 2026-10-03 agent-journey review, driven through the
+// plan_deck handler exactly as the journey agents called it
+// (tests/quality/results/agent-journey-20261003/*/log-calls.jsonl):
+// go-slide-creator-hf8tf, go-slide-creator-58qda.
+func TestPlanDeckJourneyBriefs(t *testing.T) {
+	mc := testMCPConfig(t)
+	cases := []struct {
+		name string
+		args map[string]any
+		// kinds is the draft's slide kinds in order.
+		kinds []string
+		// facts must each be one slot's fact, verbatim.
+		facts []string
+		// constraint is the slide-count instruction, which is no fact.
+		constraint string
+		planned    int
+	}{
+		{
+			name: "A5 board results",
+			args: map[string]any{
+				"brief":    "Board deck on our Q3 FY26 results, 9-10 slides. Facts: revenue \u20ac48.2m (+14% YoY, plan \u20ac46.0m); gross margin 61.5% (Q2: 63.0%) because cloud costs rose 22%; net revenue retention 112%; churn 2.1% monthly in SMB vs 0.6% enterprise; quarterly revenue last 5 quarters 41.0, 42.3, 44.1, 45.9, 48.2; three options to fix margin: renegotiate cloud contract (saves \u20ac1.2m/yr, 2 months), re-platform storage tier (saves \u20ac2.0m/yr, 6 months, \u20ac0.8m one-off), raise SMB prices 5% (adds \u20ac0.9m/yr, churn risk); recommendation: renegotiate now and start re-platforming; next steps with owners CFO / CTO / CRO and dates in October\u2013December 2026; source: management accounts Q3 FY26.",
+				"audience": "board of directors", "format": "deckspec", "slide_budget": float64(10), "template": "warm-coral",
+			},
+			facts: []string{
+				"quarterly revenue last 5 quarters 41.0, 42.3, 44.1, 45.9, 48.2",
+				"re-platform storage tier (saves \u20ac2.0m/yr, 6 months, \u20ac0.8m one-off)",
+				"raise SMB prices 5% (adds \u20ac0.9m/yr, churn risk)",
+				"recommendation: renegotiate now and start re-platforming",
+			},
+			constraint: "9-10 slides", planned: 10,
+		},
+		{
+			name: "E1/E2 investor update",
+			args: map[string]any{
+				"brief":  "Investor update for a fictional climate-tech company, 8 slides: headline results, ARR grew from $6.1m to $9.4m in 12 months, burn fell from $1.1m to $0.7m a month, 18 months runway, three product milestones (pilot plant Q1 2027, first commercial unit Q3 2027, series B Q4 2027), main risk is permitting delay, ask is introductions to two strategic partners.",
+				"format": "deckspec", "slide_budget": float64(8), "audience": "investors", "template": "modern-yellow",
+			},
+			kinds:      []string{"title", "executive_summary", "chart_insight", "chart_insight", "stat", "timeline", "table", "next_steps"},
+			facts:      []string{"main risk is permitting delay", "ask is introductions to two strategic partners", "18 months runway"},
+			constraint: "8 slides", planned: 8,
+		},
+		{
+			name: "A14 investor pitch",
+			args: map[string]any{
+				"brief":  "7-slide investor pitch deck for a fictional climate-tech startup: problem, solution, market size chart, traction KPIs, business model, team of 4, the ask",
+				"format": "deckspec", "slide_budget": float64(7),
+			},
+			kinds:      []string{"title", "pillars", "pillars", "chart_insight", "kpi_snapshot", "pillars", "team", "next_steps"},
+			facts:      []string{"problem", "solution", "market size chart", "traction KPIs", "business model", "team of 4", "the ask"},
+			constraint: "7-slide", planned: 8,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := mc.handlePlanDeck(context.Background(), makeRequest(tc.args))
+			if err != nil || res == nil || res.IsError {
+				t.Fatalf("plan_deck failed: %v %s", err, textContent(res))
+			}
+			body := textContent(res)
+			var plan deckplan.DeckSpecPlan
+			if err := json.Unmarshal([]byte(body), &plan); err != nil {
+				t.Fatal(err)
+			}
+
+			// 58qda: flat under 12 slides, and the budget is always stated.
+			if plan.DeckSpec.Structure != nil {
+				t.Errorf("draft spends the budget on an agenda and dividers: %+v", plan.DeckSpec.Structure)
+			}
+			var kinds, all []string
+			for _, s := range plan.DeckSpec.Slides {
+				kinds = append(kinds, s["kind"].(string))
+			}
+			for _, k := range kinds {
+				if k == "agenda" || k == "section" {
+					t.Errorf("draft carries a %s slide the brief did not ask for: %v", k, kinds)
+				}
+			}
+			if tc.kinds != nil && strings.Join(kinds, " ") != strings.Join(tc.kinds, " ") {
+				t.Errorf("kinds = %v, want one slide per outline item: %v", kinds, tc.kinds)
+			}
+			b := plan.Budget
+			if b.Requested != plan.SlideBudget || b.Planned != tc.planned || b.Planned != len(kinds) || b.Structural != 1 || b.Content != tc.planned-1 {
+				t.Errorf("budget = %+v, want %d planned: the cover and %d content slides", b, tc.planned, tc.planned-1)
+			}
+			if !strings.Contains(body, `"budget_note":"Planned `) || !strings.Contains(body, `"cut":[]`) {
+				t.Errorf("response must always carry budget_note and budget.cut: %s", body)
+			}
+
+			// hf8tf: the facts reach a slot whole; the instruction is a
+			// constraint and reaches none.
+			for _, s := range plan.Slots {
+				all = append(all, s.Facts...)
+				for _, f := range s.Facts {
+					if strings.Contains(f, tc.constraint) {
+						t.Errorf("deck instruction %q routed to slot %s as the fact %q", tc.constraint, s.Slot, f)
+					}
+				}
+			}
+			for _, want := range tc.facts {
+				found := false
+				for _, f := range all {
+					found = found || f == want
+				}
+				if !found {
+					t.Errorf("fact %q is on no slot (unplaced: %q)", want, plan.UnplacedFacts)
+				}
+			}
+			if len(plan.Constraints) != 1 || plan.Constraints[0].Kind != deckplan.ConstraintSlideCount || plan.Constraints[0].Text != tc.constraint {
+				t.Errorf("constraints = %+v, want the slide count %q", plan.Constraints, tc.constraint)
+			}
+
+			// The draft parses, and validate flags every __FILL__ it carries
+			// — meta.date included (E18).
+			raw, err := json.Marshal(plan.DeckSpec)
+			if err != nil {
+				t.Fatal(err)
+			}
+			spec, diags := semantic.ParseJSON(raw)
+			if spec == nil {
+				t.Fatalf("draft does not parse as a DeckSpec: %+v\n%s", diags, raw)
+			}
+			if n := semantic.ExpandedSlideCount(spec); n != tc.planned {
+				t.Errorf("draft renders %d slides, budget.planned says %d", n, tc.planned)
+			}
+			flagged := false
+			for _, d := range semantic.Validate(spec, semantic.StrictnessWarn) {
+				flagged = flagged || (d.Code == "SEMANTIC_WEAK_CONTENT" && d.Path == "meta.date")
+			}
+			if !flagged {
+				t.Errorf("validate did not flag meta.date %q", spec.Meta.Date)
+			}
+		})
+	}
+}
+
+// Without slide_budget the plan takes the slide count the brief states; the
+// raw format follows an enumerated outline too.
+func TestPlanDeckBudgetFromBriefAndRawOutline(t *testing.T) {
+	mc := &mcpConfig{templatesDir: "../../templates"}
+	brief := "7-slide investor pitch deck for a fictional climate-tech startup: problem, solution, market size chart, traction KPIs, business model, team of 4, the ask"
+	res, err := mc.handlePlanDeck(context.Background(), makeRequest(map[string]any{"brief": brief}))
+	if err != nil || res == nil || res.IsError {
+		t.Fatalf("plan_deck failed: %v %s", err, textContent(res))
+	}
+	var plan deckplan.Result
+	if err := json.Unmarshal([]byte(textContent(res)), &plan); err != nil {
+		t.Fatal(err)
+	}
+	if plan.SlideBudget != 7 || plan.Budget.Requested != 7 {
+		t.Errorf("slide_budget = %d, want the 7 the brief states", plan.SlideBudget)
+	}
+	var got []string
+	for _, s := range plan.Slides {
+		got = append(got, s.RecommendedPattern)
+		if s.RecommendedPattern != "" && len(s.Skeleton) == 0 {
+			t.Errorf("slide %d (%s) has no skeleton", s.SlideIndex, s.RecommendedPattern)
+		}
+	}
+	want := " card-grid card-grid chart-insights-split kpi-3up card-grid team-bios next-steps"
+	if strings.Join(got, " ") != want {
+		t.Errorf("raw outline patterns = %q, want %q", strings.Join(got, " "), want)
+	}
+	if plan.Budget.Planned != 8 || plan.Budget.Content != 7 || !strings.Contains(plan.BudgetNote, "1 over the budget") {
+		t.Errorf("budget = %+v, note %q", plan.Budget, plan.BudgetNote)
+	}
+}

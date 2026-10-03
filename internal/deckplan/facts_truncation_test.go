@@ -12,14 +12,6 @@ import (
 // euro amount inside each option's parenthetical.
 const reviewBriefPilot = "Board decision on a fictional service pilot. Revenue rose from €10m in 2024 to €12m in 2025. Gross margin fell from 45% to 38% because service costs rose. Compare building an internal support team (€0.8m per year, launch in 6 months) with outsourcing (€0.5m per year, launch in 2 months). Recommend the internal team to retain customer relationships. Pilot starts in January 2027; CFO owns funding approval in November 2026. Include backup assumptions."
 
-func factTexts(fs []briefFact) []string {
-	out := make([]string, 0, len(fs))
-	for _, f := range fs {
-		out = append(out, f.text)
-	}
-	return out
-}
-
 // assertFactsWellFormed checks what every fact must be: valid UTF-8, never
 // cut with an ellipsis, with balanced brackets.
 func assertFactsWellFormed(t *testing.T, facts []string) {
@@ -156,7 +148,7 @@ func TestSplitOpenBrackets(t *testing.T) {
 	}
 
 	facts := factTexts(extractBriefFacts("Q3 review.\n- ARR reached €12.5m (up 31%; ahead of plan)"))
-	if !reflect.DeepEqual(facts, []string{"ARR reached €12.5m", "up 31%"}) {
+	if !reflect.DeepEqual(facts, []string{"ARR reached €12.5m", "up 31%", "ahead of plan"}) {
 		t.Errorf("bracketed tail dropped: %q", facts)
 	}
 }

@@ -137,7 +137,10 @@ type makeDeckPlanSlide struct {
 // makeDeckStyleHints carries the optional shaping knobs the agent can pass to
 // influence pattern selection and visual rhythm. Every field is optional.
 type makeDeckStyleHints struct {
-	SlideBudget    int      `json:"slide_budget"`
+	SlideBudget int `json:"slide_budget"`
+	// budgetExplicit reports that the caller chose SlideBudget; otherwise a
+	// slide count the outline states replaces the default.
+	budgetExplicit bool
 	Audience       string   `json:"audience"`
 	AccentStrategy string   `json:"accent_strategy"`
 	MustInclude    []string `json:"must_include"`
@@ -274,10 +277,11 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 	// plans template-agnostically (nil context) — the template is applied during
 	// expansion and the auto_repair loop.
 	plan := deckplan.BuildDeckPlan(reg, deckplan.Params{
-		Brief:       outline,
-		SlideBudget: hints.SlideBudget,
-		Audience:    hints.Audience,
-		MustInclude: hints.MustInclude,
+		Brief:          outline,
+		SlideBudget:    hints.SlideBudget,
+		BudgetExplicit: hints.budgetExplicit,
+		Audience:       hints.Audience,
+		MustInclude:    hints.MustInclude,
 	}, planPredictor{reg: reg})
 
 	// Phase 2: expand each planned slide with exemplar content. The cold-start
@@ -454,6 +458,7 @@ func extractMakeDeckStyleHints(request mcp.CallToolRequest) (makeDeckStyleHints,
 	}
 	if parsed.SlideBudget > 0 {
 		hints.SlideBudget = parsed.SlideBudget
+		hints.budgetExplicit = true
 	}
 	hints.Audience = parsed.Audience
 	hints.AccentStrategy = parsed.AccentStrategy
