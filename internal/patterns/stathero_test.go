@@ -33,6 +33,91 @@ func TestStatHeroCombinedWideCopyWarning(t *testing.T) {
 	}
 }
 
+// TestStatHeroSizesToItsCell pins go-slide-creator-hidji: the 120pt figure
+// is for a whole slide; in a compose segment, regions cell or grid cell the
+// stack is sized to that rectangle (no stored shrink, so no figure drawn
+// over its label), keeps the figure dominant, and reports BODY_TOO_LONG only
+// when even the floor sizes do not fit.
+func TestStatHeroSizesToItsCell(t *testing.T) {
+	p := &statHero{}
+	v := &StatHeroValues{Value: "32%", Label: "Gross margin", Context: "Up 4 points on plan"}
+	cell := func(wPt, hPt float64) ExpandContext {
+		ctx := testThemeCtx()
+		ctx.LayoutBounds = LayoutBounds{Width: int64(wPt * 12700), Height: int64(hPt * 12700)}
+		return ctx
+	}
+	sizes := func(ctx ExpandContext) (value, label float64, fits bool) {
+		t.Helper()
+		grid, err := p.Expand(ctx, v, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		text := grid.Rows[0].Cells[0].Shape.Text
+		tb, err := shapegrid.ResolveTextInput(text)
+		if err != nil {
+			t.Fatal(err)
+		}
+		value = float64(tb.Paragraphs[0].Runs[0].FontSize) / 100
+		label = float64(tb.Paragraphs[1].Runs[0].FontSize) / 100
+		w, h := contentAreaPt(ctx)
+		return value, label, writtenFitsAt(ctx.themeFonts(), text, w, h)
+	}
+
+	// The whole content area keeps the 120pt figure.
+	if value, label, _ := sizes(cell(830, 400)); value != sizeHeroFigurePt || label != scaleLeadPt {
+		t.Errorf("full slide: figure %.0fpt label %.0fpt, want %.0f / %.0f", value, label, sizeHeroFigurePt, scaleLeadPt)
+	}
+	prev := sizeHeroFigurePt + 1
+	for _, c := range []struct{ w, h float64 }{{300, 260}, {300, 150}, {290, 120}, {220, 100}} {
+		ctx := cell(c.w, c.h)
+		value, label, fits := sizes(ctx)
+		if !fits {
+			t.Errorf("%.0f×%.0fpt: the stack (figure %.0fpt, label %.0fpt) is written shrunk", c.w, c.h, value, label)
+		}
+		if value < statHeroMinValuePt || value < 2*label {
+			t.Errorf("%.0f×%.0fpt: figure %.0fpt no longer dominates the %.0fpt label", c.w, c.h, value, label)
+		}
+		if value > prev {
+			t.Errorf("%.0f×%.0fpt: figure %.0fpt grew in a smaller cell (was %.0fpt)", c.w, c.h, value, prev)
+		}
+		t.Logf("%.0f×%.0fpt: figure %.0fpt label %.0fpt", c.w, c.h, value, label)
+		prev = value
+		if w := p.PostExpandWarnings(ctx, v, nil); len(w) != 0 {
+			t.Errorf("%.0f×%.0fpt: a stack that fits warned: %v", c.w, c.h, w)
+		}
+	}
+
+	// Below the floor the figure stays at the minimum and a finding says so.
+	tiny := cell(160, 50)
+	if value, _, _ := sizes(tiny); value != statHeroMinValuePt {
+		t.Errorf("tiny cell figure %.0fpt, want the %.0fpt floor", value, statHeroMinValuePt)
+	}
+	if w := p.PostExpandWarnings(tiny, v, nil); len(w) != 1 || !strings.Contains(w[0], ErrCodeBodyTooLong) {
+		t.Errorf("tiny cell should report BODY_TOO_LONG: %v", w)
+	}
+
+	// A figure wider than its cell shrinks rather than breaking mid-number.
+	wide := &StatHeroValues{Value: "€1,234,567", Label: "Savings"}
+	grid, err := p.Expand(cell(220, 300), wide, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tb, _ := shapegrid.ResolveTextInput(grid.Rows[0].Cells[0].Shape.Text)
+	if got := float64(tb.Paragraphs[0].Runs[0].FontSize) / 100; got >= sizeHeroFigurePt || !statHeroValueUnbroken("", wide.Value, got, 220-2*defaultShapeInsetLRPt) {
+		t.Errorf("wide figure in a narrow cell kept %.0fpt", got)
+	}
+
+	// Authored sizes are kept.
+	grid, err = p.Expand(cell(290, 120), v, &StatHeroOverrides{ValueSize: 60}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tb, _ = shapegrid.ResolveTextInput(grid.Rows[0].Cells[0].Shape.Text)
+	if got := tb.Paragraphs[0].Runs[0].FontSize; got != 6000 {
+		t.Errorf("authored value_size 60 became %d (pt×100)", got)
+	}
+}
+
 func budgetLikeCopy(length int) string {
 	return strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
 }

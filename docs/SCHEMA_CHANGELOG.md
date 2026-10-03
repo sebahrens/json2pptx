@@ -1,5 +1,23 @@
 # Schema Changelog
 
+- **2026-10-03 — stat-hero sizes to its cell; unset region shares keep each kind readable (`go-slide-creator-hidji`, `go-slide-creator-umev3`).** SchemaVersion unchanged (no new fields, tools or fix kinds).
+  - `stat-hero` sizes its figure to the rectangle it is expanded into: 120pt
+    on a whole slide (unchanged), and in a compose segment, regions cell or
+    grid cell the largest size whose stack writes unshrunk with no word of
+    the number wrapped — 120 → 40pt at the 18/14pt label/context, 40 → 28pt
+    at 14/12pt, then without the top/bottom text inset. Authored sizes are
+    kept. A stack that does not fit even then reports `BODY_TOO_LONG`. The
+    shrunk 120pt figure used to be drawn over its own label.
+  - `recommend_visual` compose recipes no longer add `overrides.value_size`
+    to a `stat-hero` segment, and a `regions` stat no longer carries a fixed
+    36/16/14pt `overrides` set (both drafts from `plan_deck` included).
+  - `regions`: an unset share in a vertical group (rows; a main_left /
+    main_right stack; main_top / main_bottom's main row versus its band) is
+    raised to its kind's readable minimum — stat 30% (35% with context),
+    timeline 55%, table 15% per line with the header, chart / kpis 30%,
+    +10% for a heading — taken from the other unset shares. Authored shares
+    are kept. Drafted regions slides validate on every shipped template.
+
 - **2026-10-02 — Schema 4.159.0 · plan_deck plans same-slide regions (`go-slide-creator-vae7f`).**
   - A bounded cue grammar reads region clauses: a segment that starts with a
     position (left, right, top, bottom, upper/lower left/right, centre),

@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"sort"
 	"strings"
 
@@ -46,7 +45,7 @@ func attachComposeRecipe(c *patterns.VisualCandidate, templateName string, reg *
 		return
 	}
 	comp := c.Composition
-	compose, hasData, err := composeRecipeEnvelope(comp, composeRecipeSlidePath+".compose", 1, reg, hints)
+	compose, hasData, err := composeRecipeEnvelope(comp, composeRecipeSlidePath+".compose", reg, hints)
 	if err != nil {
 		return
 	}
@@ -78,18 +77,14 @@ func attachComposeRecipe(c *patterns.VisualCandidate, templateName string, reg *
 
 // composeRecipeEnvelope builds one compose envelope (direction + segments)
 // from a composition, filling each region's segment_path / data_contract.
-// area is the envelope's fraction of the slide content area. hasData reports
+// hasData reports
 // a region showing figures (chart, diagram, KPI), which needs a source line.
-func composeRecipeEnvelope(comp *patterns.VisualComposition, path string, area float64, reg *patterns.Registry, hints map[string]skillDataFormat) (envelope map[string]any, hasData bool, err error) {
+func composeRecipeEnvelope(comp *patterns.VisualComposition, path string, reg *patterns.Registry, hints map[string]skillDataFormat) (envelope map[string]any, hasData bool, err error) {
 	segments := make([]any, 0, len(comp.Regions))
 	for i := range comp.Regions {
 		r := &comp.Regions[i]
 		segPath := fmt.Sprintf("%s.segments[%d]", path, i)
 		r.SegmentPath = segPath
-		share := 1.0
-		if r.SizePct > 0 {
-			share = r.SizePct / 100
-		}
 		seg := map[string]any{}
 		if r.SizePct > 0 {
 			seg["size_pct"] = r.SizePct
@@ -99,7 +94,7 @@ func composeRecipeEnvelope(comp *patterns.VisualComposition, path string, area f
 			if r.Compose == nil {
 				return nil, false, fmt.Errorf("region %s has no nested composition", segPath)
 			}
-			inner, innerData, err := composeRecipeEnvelope(r.Compose, segPath+".compose", area*share, reg, hints)
+			inner, innerData, err := composeRecipeEnvelope(r.Compose, segPath+".compose", reg, hints)
 			if err != nil {
 				return nil, false, err
 			}
@@ -112,11 +107,9 @@ func composeRecipeEnvelope(comp *patterns.VisualComposition, path string, area f
 			}
 			contract.FieldPath = segPath + ".pattern.values"
 			r.DataContract = contract
-			pattern := map[string]any{"name": r.Name, "values": values}
-			if ov := patternRegionOverrides(r.Name, area*share); ov != nil {
-				pattern["overrides"] = ov
-			}
-			seg["pattern"] = pattern
+			// No size overrides: a pattern sizes itself to its segment
+			// (stat-hero's figure included, go-slide-creator-hidji).
+			seg["pattern"] = map[string]any{"name": r.Name, "values": values}
 			if pat, ok := reg.Get(r.Name); ok && (pat.Taxonomy().Category == "data-display" || r.Name == "stat-hero") {
 				hasData = true
 			}
@@ -146,22 +139,6 @@ func composeRecipeEnvelope(comp *patterns.VisualComposition, path string, area f
 		segments = append(segments, seg)
 	}
 	return map[string]any{"direction": comp.Direction, "segments": segments}, hasData, nil
-}
-
-// statHeroFullValueSize is stat-hero's default value size (pt) on a whole
-// slide.
-const statHeroFullValueSize = 120
-
-// patternRegionOverrides sizes a pattern to its region. stat-hero's 120pt
-// number is drawn for a whole slide and collides with its label in a corner
-// region, so the recipe scales value_size with the region's linear size
-// (sqrt of its area share), never below the 40pt KPI step.
-func patternRegionOverrides(name string, area float64) map[string]any {
-	if name != "stat-hero" || area >= 0.5 {
-		return nil
-	}
-	size := math.Round(statHeroFullValueSize * math.Sqrt(area))
-	return map[string]any{"value_size": math.Max(40, size)}
 }
 
 // patternRegionRecipe returns a pattern's exemplar values (JSON-shaped, ready

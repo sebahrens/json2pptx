@@ -79,8 +79,6 @@ const (
 	// slide holds fewer columns and rows than the whole one.
 	RegionTableMaxColumns = 4
 	RegionTableMaxRows    = 6
-	// regionStatValuePt is a stat region's figure size.
-	regionStatValuePt = 36
 	// regionHeadingRowPt / regionCaptionRowPt are the fixed heights of a
 	// region's heading and caption rows (one bold line; up to two italic
 	// ones). An auto-height row's estimate was generous, and in a stacked
@@ -194,34 +192,130 @@ func ResolveShares(shares, weights []float64) ([]float64, error) {
 	return out, nil
 }
 
+// regionMinHeightPct is the least share of a vertical group — the rows of a
+// rows arrangement, a main_left / main_right stack, the main row and the
+// band beneath or above it in main_top / main_bottom — a region reads in on
+// the shortest shipped content area (modern: about 215pt under a title and
+// takeaway). The values are measured with validate_deck_spec on every
+// shipped template (go-slide-creator-umev3): a stat needs 30% (35% with a
+// context line), a three-stop timeline 55%, a table 15% per line including
+// the header, and a heading row another 10%. A stat weighted under a
+// timeline or table used to fall below these on modern, and drafted regions
+// slides were refused.
+func regionMinHeightPct(r map[string]any) float64 {
+	var pct float64
+	switch strField(r, "kind") {
+	case RegionStat:
+		pct = 30
+		if strField(r, "context") != "" {
+			pct = 35
+		}
+	case RegionTimeline:
+		pct = 55
+	case RegionTable:
+		rows, _ := r["rows"].([]any)
+		pct = 15 * float64(len(rows)+1)
+	case RegionKPIs, RegionChart:
+		pct = 30
+	case RegionImage:
+		pct = 25
+	default:
+		pct = RegionMinSizePct
+	}
+	if RegionHeading(r) != "" {
+		pct += 10
+	}
+	return math.Min(pct, RegionMaxSizePct)
+}
+
+// raiseToMinimums lifts every unset share below its minimum to it, taking
+// the difference from the other unset shares in proportion to what they
+// hold above their own minimums. Authored shares are kept. When the others
+// cannot give enough, each short share gets the same fraction of its
+// deficit, and validation reports the region that still does not read.
+func raiseToMinimums(shares []float64, unset []bool, mins []float64) []float64 {
+	out := append([]float64(nil), shares...)
+	need, avail := 0.0, 0.0
+	for i := range out {
+		if !unset[i] {
+			continue
+		}
+		if out[i] < mins[i] {
+			need += mins[i] - out[i]
+		} else {
+			avail += out[i] - mins[i]
+		}
+	}
+	if need == 0 || avail == 0 {
+		return out
+	}
+	take := math.Min(need, avail)
+	for i := range out {
+		if !unset[i] {
+			continue
+		}
+		if out[i] < mins[i] {
+			out[i] += (mins[i] - out[i]) * take / need
+		} else {
+			out[i] -= (out[i] - mins[i]) * take / avail
+		}
+		out[i] = math.Round(out[i]*100) / 100
+	}
+	return out
+}
+
 // RegionGroupShares resolves the shares of the two size groups of a regions
 // payload: the main axis (columns / rows: every region; main_*: the main
 // region and the stack) and, for main_* arrangements, the stack's own split.
-// Unset shares are split by region kind (see regionWeight).
+// Unset shares are split by region kind (see regionWeight), then any unset
+// share of a vertical group is raised to its kind's readable minimum (see
+// regionMinHeightPct).
 func RegionGroupShares(body map[string]any) (axis, stack []float64, err error) {
 	regions := RegionList(body)
 	arrangement := RegionArrangementOf(body)
 	if !IsMainArrangement(arrangement) {
 		shares := make([]float64, len(regions))
 		weights := make([]float64, len(regions))
+		unset := make([]bool, len(regions))
+		mins := make([]float64, len(regions))
 		for i, r := range regions {
 			shares[i] = RegionSizePct(r)
 			weights[i] = regionWeightOf(r)
+			unset[i] = shares[i] <= 0
+			mins[i] = regionMinHeightPct(r)
 		}
 		axis, err = ResolveShares(shares, weights)
+		if err == nil && arrangement == ArrangeRows {
+			axis = raiseToMinimums(axis, unset, mins)
+		}
 		return axis, nil, err
 	}
 	if len(regions) != 3 {
 		return nil, nil, fmt.Errorf("%s takes exactly 3 regions", arrangement)
 	}
 	main := RegionSizePct(regions[0])
-	if main <= 0 {
+	mainUnset := main <= 0
+	if mainUnset {
 		main = RegionDefaultMainPct
 	}
 	axis = []float64{main, 100 - main}
-	stack, err = ResolveShares(
-		[]float64{RegionSizePct(regions[1]), RegionSizePct(regions[2])},
+	stackShares := []float64{RegionSizePct(regions[1]), RegionSizePct(regions[2])}
+	stack, err = ResolveShares(stackShares,
 		[]float64{regionWeightOf(regions[1]), regionWeightOf(regions[2])})
+	if err != nil {
+		return axis, stack, err
+	}
+	switch arrangement {
+	case ArrangeMainLeft, ArrangeMainRight:
+		// The stack splits the column's height.
+		stack = raiseToMinimums(stack, []bool{stackShares[0] <= 0, stackShares[1] <= 0},
+			[]float64{regionMinHeightPct(regions[1]), regionMinHeightPct(regions[2])})
+	default:
+		// The main region and the band split the height; the band is as
+		// tall as its taller-needing region.
+		band := math.Max(regionMinHeightPct(regions[1]), regionMinHeightPct(regions[2]))
+		axis = raiseToMinimums(axis, []bool{mainUnset, mainUnset}, []float64{regionMinHeightPct(regions[0]), band})
+	}
 	return axis, stack, err
 }
 
@@ -528,16 +622,11 @@ func regionStat(r map[string]any) (regionBuild, error) {
 	if err != nil {
 		return regionBuild{}, fmt.Errorf("marshal stat-hero values: %w", err)
 	}
-	// stat-hero's 120pt figure is sized for a whole slide; in a region it
-	// leaves the label one shrink-to-fit away from unreadable. A region's
-	// figure is set at a third of that, the label and context at their
-	// card sizes.
-	sizes, err := json.Marshal(patterns.StatHeroOverrides{ValueSize: regionStatValuePt, LabelSize: 16, ContextSize: 14})
-	if err != nil {
-		return regionBuild{}, fmt.Errorf("marshal stat-hero overrides: %w", err)
-	}
+	// No size overrides: stat-hero sizes its figure, label and context to
+	// the region's cell (go-slide-creator-hidji). The fixed 36/16/14pt set
+	// it used to carry was shrunk below the 12pt floor in a short region.
 	return regionBuild{
-		cell: patternCell(deckinput.PatternInput{Name: "stat-hero", Values: encoded, Overrides: sizes}),
+		cell: patternCell(deckinput.PatternInput{Name: "stat-hero", Values: encoded}),
 		links: []SourceLink{
 			{RawPath: ".pattern.values.value", SemanticPath: "." + statValueField(r)},
 			{RawPath: ".pattern.values.label", SemanticPath: ".label"},
