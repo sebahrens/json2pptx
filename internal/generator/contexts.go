@@ -100,7 +100,11 @@ type panelShapeInsert struct {
 	// taxonomyTints are the per-cell fills for a taxonomy framework (SWOT /
 	// PESTEL / BMC), resolved at registration where the diagram spec — and so
 	// any authored style.colors — is still in hand (go-slide-creator-w0kj).
-	taxonomyTints    []taxonomyTint
+	taxonomyTints []taxonomyTint
+	// authoredTints are the diagram's style.colors, for the builders that
+	// take their surface from nativeSurface (panel family, kpi_dashboard,
+	// value_chain); empty means the neutral default (go-slide-creator-amtkg).
+	authoredTints    []taxonomyTint
 	processFlowMode  bool             // True for Process Flow diagram layout
 	processFlowMeta  processFlowMeta  // Metadata for process flow layout
 	heatmapMode      bool             // True for Heatmap NxM grid layout

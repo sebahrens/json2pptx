@@ -12,11 +12,11 @@ import (
 )
 
 // =============================================================================
-// Porter's Five Forces Native Shapes — Central + 4 Peripheral roundRects
+// Porter's Five Forces Native Shapes — Central + 4 Peripheral Boxes
 // =============================================================================
 //
 // Replaces SVG-rendered Porter's Five Forces diagrams with native OOXML grouped
-// shapes. Central rivalry roundRect + 4 peripheral force roundRects in cross
+// shapes. Central rivalry box + 4 peripheral force boxes (square corners) in cross
 // pattern, connected by straightConnector1 with triangle arrowheads. Each box
 // has a scheme-colored fill, bold header, intensity indicator text, and factor
 // bullet list. All shapes wrapped in a single p:grpSp.
@@ -45,9 +45,6 @@ import (
 
 // Porter EMU constants.
 const (
-	// porterCornerRadius is the roundRect adjustment value.
-	porterCornerRadius int64 = 8000
-
 	// porterCenterWidthRatio is the center box width as a fraction of total width.
 	porterCenterWidthRatio = 0.30
 
@@ -121,24 +118,31 @@ func clampPorterIntensity(v float64) float64 {
 	}
 }
 
-// porterNeutralScheme is the surface an unscored force takes: the template's
-// own light neutral, which asserts nothing.
-const porterNeutralScheme = "lt2"
+// porterNeutralScheme is the surface an unscored force takes: the shared
+// neutral card (native_surface_style.go), which asserts nothing. It was the
+// template's lt2 under a dk2 outline — an outlined box, the one surface the
+// shared style does not draw (go-slide-creator-amtkg).
+const porterNeutralScheme = patterns.NeutralSurfaceColor
+
+// porterAccent is the one hue of the diagram: the intensity steps and the
+// connectors.
+const porterAccent = "accent1"
 
 // porterIntensityColor maps ordinal intensity to three RGB tint steps of the
 // same template accent. An unstated intensity takes the neutral surface:
 // colour-coding a force nobody scored asserts a reading the author never made.
 func porterIntensityColor(intensity *float64) (scheme string, lumMod, lumOff int) {
 	if intensity == nil {
-		return porterNeutralScheme, 0, 0
+		lumMod, lumOff = patterns.NeutralSurfaceMods(patterns.NeutralTint4)
+		return porterNeutralScheme, lumMod, lumOff
 	}
 	switch {
 	case *intensity >= 0.67:
-		return "accent1", 60000, 40000 // strongest tint
+		return porterAccent, 60000, 40000 // strongest tint
 	case *intensity >= 0.34:
-		return "accent1", 40000, 60000 // middle tint
+		return porterAccent, 40000, 60000 // middle tint
 	default:
-		return "accent1", 20000, 80000 // lightest tint
+		return porterAccent, 20000, 80000 // lightest tint
 	}
 }
 
@@ -456,7 +460,7 @@ func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.Bounding
 	// The same literals were corrected for shapegrid in 13e4292; this caller was
 	// missed (go-slide-creator-2zej). Naming the sides keeps them in step.
 	site := func(sd pptx.ConnectionSide) int {
-		return pptx.ConnectionSiteIndex(pptx.GeomRoundRect, sd)
+		return pptx.ConnectionSiteIndex(nativeSurfaceGeometry, sd)
 	}
 	connectorPairs := []struct {
 		from     porterForceType
@@ -481,12 +485,12 @@ func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.Bounding
 			continue
 		}
 
-		// Find force for color
-		f := forceMap[cp.from]
-		scheme, _, _ := porterIntensityColor(f.intensity)
+		// Connectors carry the diagram's accent, as a pattern's do; a force's
+		// own colour is its intensity, and an unscored force has none.
+		scheme := porterAccent
 		route := pptx.Route(
-			pptx.ShapeOptions{Bounds: shapeBounds[cp.from], Geometry: pptx.GeomRoundRect},
-			pptx.ShapeOptions{Bounds: shapeBounds[cp.to], Geometry: pptx.GeomRoundRect},
+			pptx.ShapeOptions{Bounds: shapeBounds[cp.from], Geometry: nativeSurfaceGeometry},
+			pptx.ShapeOptions{Bounds: shapeBounds[cp.to], Geometry: nativeSurfaceGeometry},
 			false,
 		)
 
@@ -531,7 +535,7 @@ func porterIntensityTextColor(scheme string, lumMod, lumOff int, themeColors []t
 	}
 	fill := base
 	if lumOff > 0 {
-		fill = patterns.EffectiveColorMods(base, patterns.ColorMods{Tint: lumMod}, light)
+		fill = patterns.EffectiveColorMods(base, taxonomyTint{scheme: scheme, lumMod: lumMod, lumOff: lumOff}.mods(), light)
 	}
 	if light.ContrastWith(fill) > dark.ContrastWith(fill) {
 		return "lt1"
@@ -539,25 +543,15 @@ func porterIntensityTextColor(scheme string, lumMod, lumOff int, themeColors []t
 	return "dk2"
 }
 
-// porterBoxFill keeps unscored boxes neutral and lightens scored accents with
-// an RGB tint, matching the color used for intensity-text contrast checks.
+// porterBoxFill keeps unscored boxes on the neutral surface and lightens
+// scored accents with an RGB tint, matching the color used for
+// intensity-text contrast checks.
 func porterBoxFill(scheme string, lumMod, lumOff int) pptx.Fill {
-	if lumMod == 0 && lumOff == 0 {
-		return pptx.SchemeFill(scheme)
-	}
-	return diagramTintFill(scheme, lumMod, lumOff)
+	return taxonomyTint{scheme: scheme, lumMod: lumMod, lumOff: lumOff}.fill()
 }
 
-// porterOutlineScheme keeps an unscored box's outline visible: lt2 on white is
-// not an edge, so the neutral box is drawn with the structural dark instead.
-func porterOutlineScheme(fillScheme string) string {
-	if fillScheme == porterNeutralScheme {
-		return "dk2"
-	}
-	return fillScheme
-}
-
-// generatePorterForceBoxXML produces a single roundRect shape for a force box.
+// generatePorterForceBoxXML produces a single square-cornered shape for a
+// force box. A filled surface carries no outline.
 func generatePorterForceBoxXML(f porterForceData, x, y, w, h int64, shapeID uint32, isCenter bool, themeColors []types.ThemeColor) string {
 	scheme, lumMod, lumOff := porterIntensityColor(f.intensity)
 	text := porterForceText(f, isCenter, themeColors)
@@ -565,13 +559,10 @@ func generatePorterForceBoxXML(f porterForceData, x, y, w, h int64, shapeID uint
 		ID:       shapeID,
 		Name:     fmt.Sprintf("Porter %s", f.label),
 		Bounds:   pptx.RectEmu{X: x, Y: y, CX: w, CY: h},
-		Geometry: pptx.GeomRoundRect,
-		Adjustments: []pptx.AdjustValue{
-			{Name: "adj", Value: porterCornerRadius},
-		},
-		// An unscored force keeps the template's neutral surface unmodified.
+		Geometry: nativeSurfaceGeometry,
+		// An unscored force sits on the shared neutral surface.
 		Fill: porterBoxFill(scheme, lumMod, lumOff),
-		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.SchemeFill(porterOutlineScheme(scheme))},
+		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &text,
 	})
 	if err != nil {
@@ -632,13 +623,13 @@ func porterForceText(f porterForceData, isCenter bool, themeColors []types.Theme
 	// Build text paragraphs: header + intensity label + factors
 	var paras []pptx.Paragraph
 
-	// Header paragraph — bold, centered
+	// Header paragraph — bold, left-aligned like every native card title
 	headerSize := porterHeaderFontSize
 	if isCenter {
 		headerSize = porterHeaderFontSize + 200 // 14pt for center
 	}
 	paras = append(paras, pptx.Paragraph{
-		Align:    "ctr",
+		Align:    nativeHeaderAlign,
 		NoBullet: true,
 		Runs: []pptx.Run{{
 			Text:     f.label,
@@ -656,7 +647,7 @@ func porterForceText(f porterForceData, isCenter bool, themeColors []types.Theme
 	if f.intensity != nil {
 		intensityText := fmt.Sprintf("%s (%.0f%%)", porterIntensityLabel(*f.intensity), *f.intensity*100)
 		paras = append(paras, pptx.Paragraph{
-			Align:    "ctr",
+			Align:    nativeHeaderAlign,
 			NoBullet: true,
 			Runs: []pptx.Run{{
 				Text:     intensityText,
@@ -691,7 +682,7 @@ func porterForceText(f porterForceData, isCenter bool, themeColors []types.Theme
 					// in the bullet colour (go-slide-creator-2zej). Arial is
 					// the same buFont pptx.BulletOptions defaults to.
 					Font:  pptx.DefaultBulletFont,
-					Color: pptx.SchemeFill(porterOutlineScheme(scheme)),
+					Color: pptx.SchemeFill(scheme),
 				},
 				Runs: []pptx.Run{{
 					Text:     factor,

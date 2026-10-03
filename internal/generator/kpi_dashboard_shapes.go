@@ -16,7 +16,7 @@ import (
 // =============================================================================
 //
 // Replaces SVG-rendered KPI dashboards with native OOXML grouped shapes.
-// Each metric card is a single roundRect with scheme-colored fill containing
+// Each metric card is a single square-cornered neutral card containing
 // three text zones: hero value (large, accent-colored), label (small, bold),
 // and delta/trend indicator (colored by trend direction).
 //
@@ -28,19 +28,16 @@ import (
 //   │ ▲ +17%   │       │ ▲ +8%    │       │ ▲ +5     │       │ ▼ -0.3%  │
 //   └──────────┘       └──────────┘       └──────────┘       └──────────┘
 //
-// Color strategy: card fills use accent1 with high lumMod/lumOff tints.
-// Hero values use accent1. Labels use dk1. Delta text uses accent6 (up/green)
-// or accent2 (down/red). All scheme-based for theme awareness.
+// Color strategy: cards sit on the shared neutral surface
+// (native_surface_style.go). Hero values take the accent ink, labels dk1.
+// Delta text uses accent6 (up/green) or accent2 (down/red) — trend direction
+// is data, the one place a second hue is kept. All scheme-based.
 
 // KPI dashboard EMU constants.
 const (
 	// kpiGap is the gap between metric cards in EMU.
 	// ~0.15" = 137160 EMU — matches stat card gap.
 	kpiGap int64 = 137160
-
-	// kpiCornerRadius is the roundRect adjustment value.
-	// 5000 = subtle rounding, same as stat cards.
-	kpiCornerRadius int64 = 5000
 
 	// kpiValueFontSize is the hero value font size (hundredths of a point).
 	// 2800 = 28pt — slightly smaller than stat cards (32pt) to leave room for delta.
@@ -98,8 +95,8 @@ func isKPIDashboardDiagram(spec *types.DiagramSpec) bool {
 }
 
 // generateKPIDashboardGroupXML produces the complete <p:grpSp> XML for a KPI dashboard.
-// Each metric is a roundRect card with hero value, label, and delta/trend indicator.
-func generateKPIDashboardGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, themeColors []types.ThemeColor) string {
+// Each metric is a neutral card with hero value, label, and delta/trend indicator.
+func generateKPIDashboardGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, surface nativeSurface) string {
 	n := len(panels)
 	if n == 0 {
 		return ""
@@ -130,7 +127,7 @@ func generateKPIDashboardGroupXML(panels []nativePanelData, bounds types.Boundin
 			// Each KPI card uses 1 shape ID.
 			shapeID := shapeIDBase + uint32(idx) + 1
 
-			cardXML := generateKPICardXML(panel, cardX, cardY, cardW, cardH, shapeID, themeColors)
+			cardXML := generateKPICardXML(panel, cardX, cardY, cardW, cardH, shapeID, surface.tint(idx, panelBodyTint, kpiValueFontSize), surface.colors)
 			children = append(children, []byte(cardXML))
 
 			idx++
@@ -151,9 +148,9 @@ func generateKPIDashboardGroupXML(panels []nativePanelData, bounds types.Boundin
 	return string(b)
 }
 
-// generateKPICardXML produces a single KPI metric card as a roundRect shape
-// with hero value, label, and delta/trend paragraphs.
-func generateKPICardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint32, themeColors []types.ThemeColor) string {
+// generateKPICardXML produces a single KPI metric card on the card tint with
+// hero value, label, and delta/trend paragraphs.
+func generateKPICardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint32, tint taxonomyTint, themeColors []types.ThemeColor) string {
 	var paras []pptx.Paragraph
 
 	// Hero value paragraph — large, bold, accent-colored, centered.
@@ -168,7 +165,7 @@ func generateKPICardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint3
 				FontSize: kpiValueFontSize,
 				Bold:     true,
 				Dirty:    true,
-				Color:    pptx.SchemeFill("accent1"),
+				Color:    tint.titleFill(),
 			}},
 		})
 	}
@@ -201,11 +198,11 @@ func generateKPICardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint3
 		// Color based on trend: body starts with ▲ for up, ▼ for down.
 		switch {
 		case strings.HasPrefix(panel.body, "\u25B2"): // ▲ up
-			deltaRun.Color = kpiTrendFill("accent6", themeColors)
+			deltaRun.Color = kpiTrendFill("accent6", tint, themeColors)
 		case strings.HasPrefix(panel.body, "\u25BC"): // ▼ down
-			deltaRun.Color = kpiTrendFill("accent2", themeColors)
+			deltaRun.Color = kpiTrendFill("accent2", tint, themeColors)
 		default:
-			deltaRun.Color = kpiTrendFill("dk1", themeColors)
+			deltaRun.Color = kpiTrendFill("dk1", tint, themeColors)
 		}
 		paras = append(paras, pptx.Paragraph{
 			Align:    "ctr",
@@ -218,12 +215,9 @@ func generateKPICardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint3
 		ID:       shapeID,
 		Name:     "KPI Card",
 		Bounds:   pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
-		Geometry: pptx.GeomRoundRect,
-		Adjustments: []pptx.AdjustValue{
-			{Name: "adj", Value: kpiCornerRadius},
-		},
-		Fill: diagramTintFill(panelHeaderFillSchemeColor, panelHeaderFillLumMod, panelHeaderFillLumOff),
-		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
+		Geometry: nativeSurfaceGeometry,
+		Fill:     tint.fill(),
+		Line:     pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "ctr",
@@ -243,10 +237,10 @@ func generateKPICardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint3
 // only as far as needed to clear WCAG AA for the 10pt delta text. In p-style,
 // accent6 is near-white gray: using it raw makes an up trend nearly vanish on
 // the pale card. The arrow still carries direction when an accent needs shade.
-func kpiTrendFill(scheme string, themeColors []types.ThemeColor) pptx.Fill {
+func kpiTrendFill(scheme string, cardTint taxonomyTint, themeColors []types.ThemeColor) pptx.Fill {
 	const fallbackShade = 35000
 	baseHex := resolveSchemeColorToHex(scheme, themeColors)
-	cardHex := resolveSchemeColorToHex(panelHeaderFillSchemeColor, themeColors)
+	cardHex := resolveSchemeColorToHex(cardTint.scheme, themeColors)
 	if baseHex == "" || cardHex == "" {
 		return pptx.SchemeFill(scheme, pptx.Shade(fallbackShade))
 	}
@@ -256,7 +250,7 @@ func kpiTrendFill(scheme string, themeColors []types.ThemeColor) pptx.Fill {
 		return pptx.SchemeFill(scheme, pptx.Shade(fallbackShade))
 	}
 	white := svggen.Color{R: 255, G: 255, B: 255, A: 1}
-	card := patterns.EffectiveColorMods(cardBase, patterns.ColorMods{Tint: panelHeaderFillLumMod}, white)
+	card := patterns.EffectiveColorMods(cardBase, cardTint.mods(), white)
 	for shade := 100000; shade >= 10000; shade -= 5000 {
 		candidate := patterns.EffectiveColorMods(base, patterns.ColorMods{Shade: shade}, white)
 		if candidate.ContrastWith(card) >= svggen.WCAGAANormal {

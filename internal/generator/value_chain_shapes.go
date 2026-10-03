@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -56,9 +57,6 @@ const (
 	// vcPrimaryHeightRatio is the primary section height as a fraction of total height.
 	vcPrimaryHeightRatio = 0.52
 
-	// vcCornerRadius is the roundRect adjustment value for support bars.
-	vcCornerRadius int64 = 5000
-
 	// vcLabelFontSize is the font size for activity labels (hundredths of a point).
 	// 1200 = 12pt
 	vcLabelFontSize int = 1200
@@ -80,35 +78,19 @@ const (
 	vcHomePlateAdj int64 = 35000
 )
 
-// vcSupportColors defines scheme colors for support activity bars.
-// Uses accent1-4 with light tints.
-var vcSupportColors = []struct {
-	scheme string
-	lumMod int
-	lumOff int
-}{
-	{"accent1", 40000, 60000},
-	{"accent2", 40000, 60000},
-	{"accent3", 40000, 60000},
-	{"accent4", 40000, 60000},
-	{"accent5", 40000, 60000},
-	{"accent6", 40000, 60000},
-}
-
-// vcPrimaryColors defines scheme colors for primary activity chevrons.
-// Uses accent colors with moderate tints (darker than support).
-var vcPrimaryColors = []struct {
-	scheme string
-	lumMod int
-	lumOff int
-}{
-	{"accent1", 60000, 40000},
-	{"accent2", 60000, 40000},
-	{"accent3", 60000, 40000},
-	{"accent4", 60000, 40000},
-	{"accent5", 60000, 40000},
-	{"accent6", 60000, 40000},
-}
+// Value chain surfaces (go-slide-creator-amtkg). Support bars and primary
+// chevrons used to rotate through accent1–6 at 40% and 60% — up to six hues on
+// one diagram, none of them carrying information. They now take the shared
+// neutral ladder, as the value-chain pattern does: support activities on the
+// card surface, primary activities on the structural step, the margin between
+// the two. The diagram's one accent is the ink of the support and margin
+// titles. style.colors recolours the bars and the chevrons in order
+// (["accent1",…,"accent6"] restores a per-activity rotation).
+const (
+	vcSupportTint = patterns.NeutralTint4
+	vcMarginTint  = patterns.NeutralTint8
+	vcPrimaryTint = patterns.NeutralTint16
+)
 
 // isValueChainDiagram returns true if the diagram spec is a value_chain diagram type.
 func isValueChainDiagram(spec *types.DiagramSpec) bool {
@@ -202,7 +184,7 @@ func extractActivityList(data map[string]any, keys ...string) []nativePanelData 
 }
 
 // generateValueChainGroupXML produces the complete <p:grpSp> XML for a value chain.
-func generateValueChainGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, meta valueChainMeta) string {
+func generateValueChainGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, meta valueChainMeta, surface nativeSurface) string {
 	if meta.primaryCount == 0 && meta.supportCount == 0 {
 		slog.Warn("generateValueChainGroupXML: no activities provided")
 		return ""
@@ -255,11 +237,9 @@ func generateValueChainGroupXML(panels []nativePanelData, bounds types.BoundingB
 			}
 			panel := panels[i] //nolint:gosec // bounds checked by i >= len(panels) break above
 			barY := bounds.Y + int64(i)*(barH+vcGap)
-			sc := vcSupportColors[i%len(vcSupportColors)]
-
 			xml := generateVCSupportBarXML(
 				panel, bounds.X, barY, contentWidth, barH,
-				nextID, sc.scheme, sc.lumMod, sc.lumOff,
+				nextID, surface.tint(i, vcSupportTint, vcLabelFontSize),
 			)
 			children = append(children, []byte(xml))
 			nextID++
@@ -274,12 +254,15 @@ func generateValueChainGroupXML(panels []nativePanelData, bounds types.BoundingB
 		for i := 0; i < meta.primaryCount; i++ {
 			panel := panels[meta.supportCount+i]
 			chevronX := bounds.X + int64(i)*(chevronW+vcGap)
-			sc := vcPrimaryColors[i%len(vcPrimaryColors)]
 			isLast := i == meta.primaryCount-1
+			// A step label is centred on a structural fill, not a card
+			// title: it stays in the text ink.
+			tint := surface.tint(i, vcPrimaryTint, vcLabelFontSize)
+			tint.ink = ""
 
 			xml := generateVCPrimaryChevronXML(
 				panel, chevronX, primaryY, chevronW, primaryH,
-				nextID, sc.scheme, sc.lumMod, sc.lumOff, isLast,
+				nextID, tint, isLast,
 			)
 			children = append(children, []byte(xml))
 			nextID++
@@ -291,7 +274,7 @@ func generateValueChainGroupXML(panels []nativePanelData, bounds types.BoundingB
 		marginX := bounds.X + contentWidth + vcMarginGap
 		xml := generateVCMarginXML(
 			meta.marginLabel, marginX, bounds.Y, marginW, totalHeight,
-			nextID,
+			nextID, nativeSurface{colors: surface.colors}.tint(0, vcMarginTint, vcMarginFontSize),
 		)
 		children = append(children, []byte(xml))
 	}
@@ -311,7 +294,7 @@ func generateValueChainGroupXML(panels []nativePanelData, bounds types.BoundingB
 }
 
 // generateVCSupportBarXML produces a horizontal rect bar for a support activity.
-func generateVCSupportBarXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint32, schemeColor string, lumMod, lumOff int) string {
+func generateVCSupportBarXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint32, tint taxonomyTint) string {
 	// Build paragraphs: bold title left-aligned, then items inline if space
 	var paras []pptx.Paragraph
 
@@ -322,8 +305,9 @@ func generateVCSupportBarXML(panel nativePanelData, x, y, cx, cy int64, shapeID 
 		FontSize: vcLabelFontSize,
 		Bold:     true,
 		Dirty:    true,
-		Color:    pptx.SchemeFill("dk1"),
+		Color:    tint.titleFill(),
 	}
+	bodyInk := diagramPanelTextFill(tint.scheme)
 
 	// If there are body items, append them as a lighter suffix on the same line
 	if panel.body != "" {
@@ -347,7 +331,7 @@ func generateVCSupportBarXML(panel nativePanelData, x, y, cx, cy int64, shapeID 
 						Lang:     "en-US",
 						FontSize: vcBodyFontSize,
 						Dirty:    true,
-						Color:    pptx.SchemeFill("dk1"),
+						Color:    bodyInk,
 					},
 				},
 			})
@@ -370,12 +354,9 @@ func generateVCSupportBarXML(panel nativePanelData, x, y, cx, cy int64, shapeID 
 		ID:       shapeID,
 		Name:     "VC Support " + panel.title,
 		Bounds:   pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
-		Geometry: pptx.GeomRoundRect,
-		Adjustments: []pptx.AdjustValue{
-			{Name: "adj", Value: vcCornerRadius},
-		},
-		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
-		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
+		Geometry: nativeSurfaceGeometry,
+		Fill:     tint.fill(),
+		Line:     pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "ctr",
@@ -392,13 +373,12 @@ func generateVCSupportBarXML(panel nativePanelData, x, y, cx, cy int64, shapeID 
 }
 
 // generateVCPrimaryChevronXML produces a homePlate or rect shape for a primary activity.
-func generateVCPrimaryChevronXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint32, schemeColor string, lumMod, lumOff int, isLast bool) string {
+func generateVCPrimaryChevronXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint32, tint taxonomyTint, isLast bool) string {
 	// Use homePlate for all but last, rect for last
 	geom := pptx.GeomHomePlate
 	var adjustments []pptx.AdjustValue
 	if isLast {
-		geom = pptx.GeomRoundRect
-		adjustments = []pptx.AdjustValue{{Name: "adj", Value: vcCornerRadius}}
+		geom = nativeSurfaceGeometry
 	} else {
 		adjustments = []pptx.AdjustValue{{Name: "adj", Value: vcHomePlateAdj}}
 	}
@@ -416,19 +396,20 @@ func generateVCPrimaryChevronXML(panel nativePanelData, x, y, cx, cy int64, shap
 			FontSize: vcLabelFontSize,
 			Bold:     true,
 			Dirty:    true,
-			Color:    pptx.SchemeFill("dk1"),
+			Color:    tint.titleFill(),
 		}},
 	})
 
 	// Body bullets
 	if panel.body != "" {
 		bodyParas := panelBulletsParagraphs(panel.body, vcBodyFontSize)
-		bulletColor := pptx.SchemeFill(schemeColor)
+		bulletColor := pptx.ResolveColorString(tint.scheme)
 		for i := range bodyParas {
 			if bodyParas[i].Bullet != nil {
 				bodyParas[i].Bullet.Color = bulletColor
 			}
 		}
+		diagramPanelBodyColors(bodyParas, tint.scheme)
 		paras = append(paras, bodyParas...)
 	}
 
@@ -446,7 +427,7 @@ func generateVCPrimaryChevronXML(panel nativePanelData, x, y, cx, cy int64, shap
 		Bounds:      pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
 		Geometry:    geom,
 		Adjustments: adjustments,
-		Fill:        diagramTintFill(schemeColor, lumMod, lumOff),
+		Fill:        tint.fill(),
 		Line:        pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:       "square",
@@ -464,18 +445,14 @@ func generateVCPrimaryChevronXML(panel nativePanelData, x, y, cx, cy int64, shap
 }
 
 // generateVCMarginXML produces a vertical rect for the margin/profit section.
-func generateVCMarginXML(label string, x, y, cx, cy int64, shapeID uint32) string {
-	// Use last accent color (accent6) with a distinct tint for margin
+func generateVCMarginXML(label string, x, y, cx, cy int64, shapeID uint32, tint taxonomyTint) string {
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     "VC Margin",
 		Bounds:   pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
-		Geometry: pptx.GeomRoundRect,
-		Adjustments: []pptx.AdjustValue{
-			{Name: "adj", Value: vcCornerRadius},
-		},
-		Fill: diagramTintFill("accent6", 30000, 70000),
-		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
+		Geometry: nativeSurfaceGeometry,
+		Fill:     tint.fill(),
+		Line:     pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:    "square",
 			Anchor:  "ctr",
@@ -491,7 +468,7 @@ func generateVCMarginXML(label string, x, y, cx, cy int64, shapeID uint32) strin
 					FontSize: vcMarginFontSize,
 					Bold:     true,
 					Dirty:    true,
-					Color:    pptx.SchemeFill("dk1"),
+					Color:    tint.titleFill(),
 				}},
 			}},
 		},
