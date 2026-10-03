@@ -2636,9 +2636,10 @@ var outputSchemaValidateDeckSpec = json.RawMessage(`{
     "subcommand":     {"type": "string"},
     "input_sha256":   {"type": "string"},
     "template":       {"type": "string", "description": "Template the findings were measured on."},
-    "template_source": {"type": "string", "description": "What chose it: meta.template, template argument, deck_id or archetype default."},
+    "template_source": {"type": "string", "description": "What chose it: template argument (which overrides meta.template for the call), meta.template, deck_id or archetype default."},
     "warnings":       {"type": "array", "items": {"type": "string"}, "description": "Call-level notes, e.g. an unpinned template."},
     "waivers":        {"type": "array", "items": {"type": "object"}, "description": "Waived storyline findings: {code, reason, source, findings}."},
+    "template_results": {"type": "array", "description": "templates: the spec's verdict on each listed template. findings are that template's errors and warnings; notes are counted in summary.", "items": {"type": "object", "properties": {"template": {"type": "string"}, "ok": {"type": "boolean"}, "summary": {"type": "string"}, "findings": {"type": "array", "items": {"type": "object", "properties": {"code": {"type": "string"}, "severity": {"type": "string"}, "path": {"type": "string"}, "slide_number": {"type": "integer"}, "occurrences": {"type": "integer"}, "message": {"type": "string"}}, "required": ["code", "severity", "path", "message"]}}}, "required": ["template", "ok", "summary"]}},
     "ok":             {"type": "boolean", "description": "True when no finding blocks."},
     "deck_id":        {"type": "string", "description": "Stored DeckSpec handle for subsequent semantic patch or analysis calls."},
     "stored":         {"type": "boolean", "description": "True when deck_id now holds the spec this call acted on. False for dry_run and an unparseable spec: the stored deck is then unchanged."},
@@ -2661,7 +2662,6 @@ var outputSchemaValidateDeckSpec = json.RawMessage(`{
         "properties": {
           "id":       {"type": "string"},
           "code":     {"type": "string", "description": "Namespaced finding code."},
-          "category": {"type": "string"},
           "severity": {"type": "string", "enum": ["error", "warning", "info"]},
           "blocking": {"type": "boolean", "description": "True exactly when severity is error."},
           "path":     {"type": "string", "description": "JSON Pointer (0-based) into the spec that was sent; always resolves there and is usable in a patch."},
@@ -2672,9 +2672,11 @@ var outputSchemaValidateDeckSpec = json.RawMessage(`{
           "message":  {"type": "string"},
           "evidence": {"type": "object", "description": "Facts: measured / allowed, slide_id, waived (reason), symptoms[] (findings this one is the cause of), caused_by (the dropped key this finding follows from), placeholder (the registered marker)."},
           "debug":    {"type": "object", "description": "Compiled-deck locators (raw_path, cell_path); not addresses in the spec."},
-          "next_tool_call": {"type": "object", "description": "Semantic validate_deck_spec patch suggestion, or describe_finding when no safe scalar patch exists.", "properties": {"tool": {"type": "string"}, "args_template": {"type": "object"}}, "required": ["tool", "args_template"]}
+          "remediation": {"type": "object", "description": "primary {action, params}: what to do and the budgets it must meet (max_chars, max_words, max_items, min_items, max_rows, did_you_mean), a list in the order of paths when they differ per item. Facts only; the patch is in next_tool_call."},
+          "next_tool_call": {"type": "object", "description": "The validate_deck_spec patch that resolves the finding, a discovery call, or describe_finding on a blocking finding with no remedy of its own. A patch value written as <instruction> is for the author to write.", "properties": {"tool": {"type": "string"}, "args_template": {"type": "object"}}, "required": ["tool", "args_template"]},
+          "patch_verified": {"type": "boolean", "description": "True when next_tool_call's patch is complete as written and the server applied it to the spec and validated the result: this finding is gone and nothing new blocks. Never false: a complete patch that does not do that is not offered."}
         },
-        "required": ["id", "code", "category", "severity", "message"]
+        "required": ["id", "code", "severity", "message"]
       }
     }
   },
@@ -2712,6 +2714,7 @@ var outputSchemaCompileDeckSpec = json.RawMessage(`{
         "action":        {"type": "string"},
         "recommended_edit": {"type": "object"},
         "next_tool_call": {"type": "object", "properties": {"tool": {"type": "string"}, "args_template": {"type": "object"}}, "required": ["tool", "args_template"]},
+        "patch_verified": {"type": "boolean", "description": "True when next_tool_call's patch is complete as written and was applied and validated by the server: this finding is gone and nothing new blocks."},
         "evidence":      {"type": "object", "description": "A generation refusal's measurement: measured.font_pt against allowed.min_font_pt, role, viewing_mode, measurement_source and the refused paragraph text."}
       },
       "required": ["code", "message"]
@@ -2771,6 +2774,7 @@ var outputSchemaRenderDeckSpec = json.RawMessage(`{
         "action":        {"type": "string"},
         "recommended_edit": {"type": "object"},
         "next_tool_call": {"type": "object", "properties": {"tool": {"type": "string"}, "args_template": {"type": "object"}}, "required": ["tool", "args_template"]},
+        "patch_verified": {"type": "boolean", "description": "True when next_tool_call's patch is complete as written and was applied and validated by the server: this finding is gone and nothing new blocks."},
         "evidence":      {"type": "object", "description": "A generation refusal's measurement: measured.font_pt against allowed.min_font_pt, role, viewing_mode, measurement_source and the refused paragraph text."}
       },
       "required": ["code", "message"]

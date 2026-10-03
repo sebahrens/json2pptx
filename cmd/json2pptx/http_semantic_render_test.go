@@ -30,6 +30,7 @@ func newSemanticRenderTestServer(t *testing.T, cfg config.Config) *httptest.Serv
 		TemplatesDir:     cfg.Templates.Dir,
 		OutputDir:        cfg.Storage.OutputDir,
 		SemanticRenderer: newHTTPSemanticRenderer(cfg),
+		SemanticFindings: finishSemanticFindingsForHTTP,
 	})
 	ts := httptest.NewServer(srv)
 	t.Cleanup(ts.Close)
@@ -229,8 +230,8 @@ func TestHTTPSemanticRender_JSONAndYAMLProducePPTX(t *testing.T) {
 }
 
 // A registered template named by the template query parameter renders the
-// deck when the spec pins none; the spec's meta.template wins over it and the
-// response says so.
+// deck, whether or not the spec pins one; when it replaces the spec's
+// meta.template the response says so (go-slide-creator-ifkxs).
 func TestHTTPSemanticRender_RegisteredTemplate(t *testing.T) {
 	ts := newSemanticRenderTestServer(t, semanticRenderTestConfig(t))
 
@@ -244,11 +245,14 @@ func TestHTTPSemanticRender_RegisteredTemplate(t *testing.T) {
 	}
 
 	code, res = postRender(t, ts, "?template=warm-coral", "application/x-yaml", strings.NewReader(validSemanticSpec))
-	if code != http.StatusOK || res.Template != "midnight-blue" {
+	if code != http.StatusOK || res.Template != "warm-coral" {
 		t.Fatalf("pinned render: %d %+v", code, res)
 	}
-	if len(res.Warnings) == 0 || !strings.Contains(res.Warnings[0], "meta.template") {
-		t.Errorf("no template-precedence warning: %v", res.Warnings)
+	if len(res.Warnings) == 0 || !strings.Contains(res.Warnings[0], `overrides meta.template "midnight-blue"`) {
+		t.Errorf("the response does not say the template argument replaced the pin: %v", res.Warnings)
+	}
+	if got := themeName(t, downloadDeck(t, ts, res.FileURL)); got != want {
+		t.Errorf("pinned deck theme %q, want warm-coral's %q", got, want)
 	}
 
 	code, res = postRender(t, ts, "?template=no-such-template", "application/json", strings.NewReader(httpNoTemplateSpec))
@@ -432,5 +436,47 @@ func TestHTTPSemanticRender_InvalidSpec(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("no source-addressed error diagnostic: %+v", res.Diagnostics)
+	}
+}
+
+// The HTTP validate endpoint addresses its findings as the DeckSpec tools do:
+// path is a JSON Pointer that resolves in the spec that was sent, a field the
+// spec lacks is missing_path, and nothing reports a dotted evidence.path
+// (go-slide-creator-pilpn).
+func TestHTTPSemanticValidate_FindingsUseTheAuthoredAddress(t *testing.T) {
+	ts := newSemanticRenderTestServer(t, semanticRenderTestConfig(t))
+	resp, err := http.Post(ts.URL+"/api/v1/semantic/validate", "application/json", strings.NewReader(journeyRT3Spec))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	var out struct {
+		Valid    bool `json:"valid"`
+		Findings struct {
+			Findings []map[string]any `json:"findings"`
+		} `json:"findings"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Valid || len(out.Findings.Findings) == 0 {
+		t.Fatalf("the spec with unknown keys validated clean: %+v", out)
+	}
+	var doc any
+	_ = json.Unmarshal([]byte(journeyRT3Spec), &doc)
+	unknown := false
+	for _, f := range out.Findings.Findings {
+		assertAuthoredAddress(t, "http validate", doc, f)
+		if ev, ok := f["evidence"].(map[string]any); ok {
+			if _, dotted := ev["path"]; dotted {
+				t.Errorf("finding still reports evidence.path: %v", f)
+			}
+		}
+		if f["path"] == "/slides/2/steps/0/value" {
+			unknown = true
+		}
+	}
+	if !unknown {
+		t.Errorf("no finding at /slides/2/steps/0/value: %+v", out.Findings.Findings)
 	}
 }

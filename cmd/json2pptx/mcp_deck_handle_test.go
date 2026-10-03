@@ -182,14 +182,27 @@ func TestValidateDeckHandleUsesRememberedTemplateForDiagnostics(t *testing.T) {
 	}
 }
 
+// The spec's pin is the deck's template: it outranks a remembered default, and
+// a call's template argument replaces it for that call only
+// (go-slide-creator-ifkxs).
 func TestPinnedTemplateOverridesRememberedOrRequestedTemplate(t *testing.T) {
 	mc := handleTestConfig(t)
 	pinned := renderDeckSpec(t, mc, map[string]any{
 		"spec":     renderSpecWithTitle("Pinned template"),
 		"template": "forest-green",
 	})
-	if pinned.Template != "midnight-blue" || pinned.Explanation == nil || pinned.Explanation.Template != "midnight-blue" {
-		t.Errorf("spec pin did not win: template=%q explanation=%+v", pinned.Template, pinned.Explanation)
+	if pinned.Template != "forest-green" || pinned.Explanation == nil || pinned.Explanation.Template != "forest-green" {
+		t.Errorf("the template argument did not render this call: template=%q explanation=%+v", pinned.Template, pinned.Explanation)
+	}
+	if len(pinned.Warnings) == 0 || !strings.Contains(pinned.Warnings[0], `overrides meta.template "midnight-blue" for this call only`) {
+		t.Errorf("the response does not say the pin was replaced: %v", pinned.Warnings)
+	}
+	if h, ok := mc.deckHandles.Load(pinned.DeckID); !ok || h.Template != "midnight-blue" {
+		t.Errorf("the deck is not bound to its pin: %+v", h)
+	}
+	back := renderDeckSpec(t, mc, map[string]any{"deck_id": pinned.DeckID})
+	if back.Template != "midnight-blue" {
+		t.Errorf("the next render without the argument is on %q, want the pin", back.Template)
 	}
 	explainedResult := mustCall(t, mc.handleExplainDeckSpec, map[string]any{"deck_id": pinned.DeckID})
 	if explainedResult.IsError {

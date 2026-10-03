@@ -46,8 +46,9 @@ func TestSemanticImageCaseCallouts(t *testing.T) {
 
 	var res struct {
 		Diagnostics []struct {
-			Code         string `json:"code"`
-			SemanticPath string `json:"path"`
+			Code    string `json:"code"`
+			Path    string `json:"path"`
+			Message string `json:"message"`
 		} `json:"diagnostics"`
 	}
 	if err := json.Unmarshal([]byte(stdout), &res); err != nil {
@@ -56,7 +57,12 @@ func TestSemanticImageCaseCallouts(t *testing.T) {
 	var cropped []string
 	for _, d := range res.Diagnostics {
 		if d.Code == "OVERLAY_TARGET_CROPPED" {
-			cropped = append(cropped, d.SemanticPath)
+			cropped = append(cropped, d.Path)
+			// go-slide-creator-vg73u: the author wrote a callout on a picture,
+			// not "overlay 0" on a "shape_grid image cell".
+			if strings.Contains(d.Message, "overlay") || strings.Contains(d.Message, "shape_grid") || !strings.Contains(d.Message, "this callout") {
+				t.Errorf("the finding is worded for the compiled deck: %s", d.Message)
+			}
 		}
 	}
 	if len(cropped) != 1 || cropped[0] != "/slides/0/callouts/0" {

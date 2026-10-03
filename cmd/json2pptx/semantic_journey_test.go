@@ -171,6 +171,45 @@ func (a *journeyAgent) set(pointer string, value any) {
 	}
 }
 
+// patch applies remove, move and add ops to the working spec in place.
+func (a *journeyAgent) patch(ops []any) {
+	a.t.Helper()
+	take := func(pointer string) any {
+		holder, key := a.parent(pointer)
+		switch cur := holder.(type) {
+		case map[string]any:
+			v := cur[key]
+			delete(cur, key)
+			return v
+		case []any:
+			i, _ := strconv.Atoi(key)
+			v := cur[i]
+			grand, name := a.parent(pointer[:strings.LastIndexByte(pointer, '/')])
+			grand.(map[string]any)[name] = append(cur[:i:i], cur[i+1:]...)
+			return v
+		}
+		a.t.Fatalf("cannot remove %s", pointer)
+		return nil
+	}
+	for _, raw := range ops {
+		op, _ := raw.(map[string]any)
+		path, _ := op["path"].(string)
+		switch op["op"] {
+		case "remove":
+			take(path)
+		case "move":
+			from, _ := op["from"].(string)
+			v := take(from)
+			holder, key := a.parent(path)
+			holder.(map[string]any)[key] = v
+		case "add", "replace":
+			a.set(path, op["value"])
+		default:
+			a.t.Fatalf("the agent cannot apply op %v", op)
+		}
+	}
+}
+
 // slideOf returns the slide object a pointer sits in.
 func (a *journeyAgent) slideOf(pointer string) map[string]any {
 	toks := pointerTokens(pointer)
@@ -238,6 +277,17 @@ func (a *journeyAgent) apply(f diagnostics.Finding) {
 	a.t.Helper()
 	code := f.Code[strings.IndexByte(f.Code, '.')+1:]
 	params := fixParams(f)
+	if f.PatchVerified {
+		// The server tried this patch on the spec: the agent runs it as given
+		// (go-slide-creator-vihnl), once the round's other findings — which
+		// address list items by today's indexes — are applied.
+		patch, _ := f.NextToolCall.ArgsTemplate["patch"].([]any)
+		if f.NextToolCall.Tool != "validate_deck_spec" || len(patch) == 0 {
+			a.t.Fatalf("%s is marked patch_verified but carries no patch: %+v", f.Code, f.NextToolCall)
+		}
+		a.deferred = append(a.deferred, func() { a.patch(patch) })
+		return
+	}
 	switch code {
 	case "SEMANTIC_UNKNOWN_ARCHETYPE":
 		available, _ := f.Evidence["available"].([]any)
@@ -448,8 +498,7 @@ func (a *journeyAgent) apply(f diagnostics.Finding) {
 		// which the agent titles as it has learned to.
 		slide := a.slideOf(*f.Path)
 		steps, isProcess := slide["steps"].([]any)
-		hint, _ := params["hint"].(string)
-		if !isProcess || len(steps) < 6 || !strings.Contains(hint, "use fewer boxes") {
+		if !isProcess || len(steps) < 6 || !strings.Contains(f.Message, "use fewer boxes") {
 			a.t.Fatalf("the agent does not know how to apply %s at %s: %s\n  params %+v", code, *f.Path, f.Message, params)
 		}
 		// Fewer boxes of the same visual: evidence.pattern names it, and the

@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -122,45 +120,42 @@ func TestListSlideKindsBudgetsAreOptIn(t *testing.T) {
 }
 
 // renderDiagnostic is one diagnostic of `semantic render`: the address is the
-// DeckSpec JSON Pointer in path (go-slide-creator-pilpn).
+// DeckSpec JSON Pointer in path (go-slide-creator-pilpn). One entry may stand
+// for several findings of the same kind (paths); renderSpecDiagnostics returns
+// one diagnostic per finding.
 type renderDiagnostic struct {
-	Code        string `json:"code"`
-	Path        string `json:"path"`
-	SlideNumber int    `json:"slide_number"`
-	Message     string `json:"message"`
-	Edit        *struct {
+	Code    string   `json:"code"`
+	Path    string   `json:"path"`
+	Paths   []string `json:"paths"`
+	Message string   `json:"message"`
+	Edit    *struct {
 		Params map[string]any `json:"params"`
 	} `json:"recommended_edit"`
-	// Symptoms are the fit findings a cause absorbed (go-slide-creator-c2j5b):
-	// what the degraded slide's fallback does not fit. They carry a code and a
-	// message, no address and no edit.
-	Symptoms []struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
-	} `json:"symptoms"`
+	// member is the finding's position in a collapsed entry's paths.
+	member int
 }
 
-// takeawayQuote matches the length a takeaway finding's message quotes.
-var takeawayQuote = regexp.MustCompile(`about (\d+) average-width characters`)
-
-// onTakeaway reports whether a finding, or a symptom folded under its slide's
-// cause, is about the slide's takeaway.
+// onTakeaway reports whether a finding is about a slide's takeaway.
 func (d renderDiagnostic) onTakeaway() bool {
-	return strings.HasSuffix(d.Path, "/takeaway") || strings.Contains(d.Message, ": takeaway needs ")
+	return strings.HasSuffix(d.Path, "/takeaway")
 }
 
 // quotedMaxChars is the length the finding tells the author to write to: the
-// edit's max_chars, or for a symptom (which carries no edit) the length its
-// message states.
+// edit's max_chars. In a collapsed entry a budget every finding shares is one
+// number and a budget that differs per finding is a list in the order of paths.
 func (d renderDiagnostic) quotedMaxChars() int {
-	if d.Edit != nil {
-		if n, ok := d.Edit.Params["max_chars"].(float64); ok {
-			return int(n)
-		}
+	if d.Edit == nil {
+		return 0
 	}
-	if m := takeawayQuote.FindStringSubmatch(d.Message); m != nil {
-		n, _ := strconv.Atoi(m[1])
-		return n
+	switch n := d.Edit.Params["max_chars"].(type) {
+	case float64:
+		return int(n)
+	case []any:
+		if d.member < len(n) {
+			if f, ok := n[d.member].(float64); ok {
+				return int(f)
+			}
+		}
 	}
 	return 0
 }
@@ -191,12 +186,17 @@ func renderSpecDiagnostics(t *testing.T, spec map[string]any) []renderDiagnostic
 	if err := json.Unmarshal([]byte(stdout), &res); err != nil {
 		t.Fatalf("render output is not JSON: %v\n%s\n%s", err, stdout, stderr)
 	}
-	// A symptom reads as a finding on its cause's slide.
-	out := res.Diagnostics
+	// A collapsed entry reads as one finding per path.
+	var out []renderDiagnostic
 	for _, d := range res.Diagnostics {
-		for _, sym := range d.Symptoms {
-			out = append(out, renderDiagnostic{Code: sym.Code, Message: sym.Message, SlideNumber: d.SlideNumber,
-				Path: fmt.Sprintf("/slides/%d", d.SlideNumber-1)})
+		if len(d.Paths) < 2 {
+			out = append(out, d)
+			continue
+		}
+		for i, path := range d.Paths {
+			one := d
+			one.Path, one.member = path, i
+			out = append(out, one)
 		}
 	}
 	return out

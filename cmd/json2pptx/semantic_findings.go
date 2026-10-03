@@ -386,10 +386,7 @@ func groupCapacityCauses(diags []semanticDiagnostic) []semanticDiagnostic {
 		if len(root.Symptoms) == 0 {
 			adoptSymptomRepair(root, d)
 		}
-		if d.Action == "refuse" && d.Evidence != nil && root.Evidence == nil {
-			// The generation refusal carries the measured size; keep it.
-			root.Evidence = d.Evidence
-		}
+		adoptRefusalMeasurement(root, d)
 		root.Symptoms = append(root.Symptoms, findingSymptom{Code: d.Code, Path: firstNonEmpty(d.SemanticPath, d.RawPath), Message: d.Message})
 		drop[i] = true
 	}
@@ -414,6 +411,23 @@ func groupCapacityCauses(diags []semanticDiagnostic) []semanticDiagnostic {
 		out = append(out, d)
 	}
 	return out
+}
+
+// adoptRefusalMeasurement gives a capacity finding the measured size of the
+// generation refusal folded under it. The paragraph the refusal quotes is one
+// symptom, not the cause: naming it sent an author to shorten an option's
+// name when the row's detail line was what did not fit
+// (go-slide-creator-4mmvb).
+func adoptRefusalMeasurement(root *semanticDiagnostic, refusal semanticDiagnostic) {
+	if refusal.Action != "refuse" || refusal.Evidence == nil || root.Evidence != nil {
+		return
+	}
+	root.Evidence = map[string]any{}
+	for _, k := range []string{"measured", "allowed", "viewing_mode"} {
+		if v, ok := refusal.Evidence[k]; ok {
+			root.Evidence[k] = v
+		}
+	}
 }
 
 // symptomsDetail is the Details / evidence key a root-cause finding lists its
@@ -615,6 +629,7 @@ func buildSemanticRunFailure(input *PresentationInput, cr *semantic.CompileResul
 	policy := newFindingPolicy(ir)
 	policy.applyWaivers(res.Diagnostics)
 	res.Waivers = policy.recorded()
+	deckSpecWording(res.Diagnostics, input, ir)
 	res.Diagnostics = groupRootCauses(res.Diagnostics)
 
 	// A failed render always has an error to point at. A failure no finding

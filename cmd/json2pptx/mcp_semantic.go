@@ -278,7 +278,7 @@ func withSpecOrDeckIDChoice(tool mcp.Tool) mcp.Tool {
 
 func mcpValidateDeckSpecTool() mcp.Tool {
 	return withSpecOrDeckIDChoice(mcp.NewTool("validate_deck_spec", withToolOptions([]mcp.ToolOption{
-		mcp.WithDescription(`Validate a DeckSpec by running its render into a scratch directory: the same findings render_deck_spec reports for that spec and template, in the shared envelope. template echoes the template measured on. A finding blocks only when severity is error (blocking:true); ok=false means one does. Also reads a stored deck (read, find). Mirrors ` + "`json2pptx semantic validate`" + `.`),
+		mcp.WithDescription(`Validate a DeckSpec by running its render into a scratch directory: the same findings render_deck_spec reports for that spec and template. template echoes the template measured on. A finding blocks only when severity is error (blocking:true); ok=false means one does. patch_verified:true: the finding's next_tool_call patch was tried and clears it. Also reads a stored deck (read, find).`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaValidateDeckSpec)),
 		deckSpecFullSchemaArg("The semantic DeckSpec to validate, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
 	}, deckHandleToolParams("validate_deck_spec"), []mcp.ToolOption{
@@ -296,7 +296,10 @@ func mcpValidateDeckSpecTool() mcp.Tool {
 			mcp.Enum("off", "warn", "strict"),
 		),
 		mcp.WithString("template",
-			mcp.Description("Template to measure on when meta.template is absent (the one you will render on); binds the deck_id."),
+			mcp.Description("Template to measure on; overrides meta.template for this call."),
+		),
+		mcp.WithArray("templates", mcp.WithStringItems(),
+			mcp.Description(`Also measure on these, or ["all"]: template_results[{template, ok, summary, findings}].`),
 		),
 		mcp.WithString("base_dir",
 			mcp.Description("Root for relative asset paths, as on render_deck_spec."),
@@ -365,8 +368,16 @@ func (mc *mcpConfig) handleValidateDeckSpec(ctx context.Context, request mcp.Cal
 	if outcome.Stale {
 		return staleDeckSpecResult("validate_deck_spec", src.DeckID), nil
 	}
-	semanticizeFindings(&envelope, data, outcome.DeckID)
-	expandCollapsedPatches(&envelope, eval.Diagnostics, data, outcome.DeckID)
+	// One remedy per finding; a patch that is complete as written is tried on
+	// the spec before it is offered (go-slide-creator-micna, -vihnl).
+	remedies := newRemedyContext(filename, data, outcome.DeckID)
+	remedies.run = mc.specTrialRunner(ctx, request, src, strictness, argTemplate)
+	remedies.before = trialFindingsOfSpecCheck(ds)
+	if eval.Evaluated {
+		remedies.before = trialFindings(eval.Diagnostics)
+	}
+	remedies.gateUnknown = eval.RunFailed
+	remedies.remedyEnvelope(&envelope, eval.Diagnostics)
 	for i := range envelope.Findings {
 		f := &envelope.Findings[i]
 		if !outcome.Stored {
@@ -379,9 +390,20 @@ func (mc *mcpConfig) handleValidateDeckSpec(ctx context.Context, request mcp.Cal
 		}
 	}
 	trimEnvelopeForMCP(&envelope)
+	for i := range envelope.Findings {
+		// The code carries its namespace; a second copy on every finding is
+		// 300 bytes of a twelve-flaw response (go-slide-creator-c2j5b).
+		envelope.Findings[i].Category = ""
+	}
 	// One address per finding: a JSON Pointer into the spec the author sent,
 	// and the slide's 1-based number (go-slide-creator-pilpn).
 	shapeEnvelopeFindings(&envelope, eval.Diagnostics, newSpecDoc(filename, data))
+	// The other templates the call asked about, each as its blocking findings
+	// and warnings (go-slide-creator-ifkxs).
+	templateResults, errRes := mc.templateResults(ctx, request, src, strictness, eval, envelope)
+	if errRes != nil {
+		return errRes, nil
+	}
 
 	// Hand back a handle so the next call in the loop — a render, or a patched
 	// re-validate — does not have to re-upload the spec (go-slide-creator-voxp).
@@ -390,6 +412,7 @@ func (mc *mcpConfig) handleValidateDeckSpec(ctx context.Context, request mcp.Cal
 		TemplateSource:  eval.TemplateSource,
 		Warnings:        eval.Warnings,
 		Waivers:         eval.Waivers,
+		TemplateResults: templateResults,
 		DeckID:          outcome.DeckID,
 		Stored:          outcome.Stored,
 		Revision:        outcome.Revision,
@@ -429,6 +452,9 @@ type specEvaluation struct {
 	// CompileFailed reports that the spec did not compile: Diagnostics are the
 	// compile diagnostics and nothing was rendered.
 	CompileFailed bool
+	// RunFailed reports that the run was refused or failed, so the checks made
+	// on a finished deck (the quality gate) did not run.
+	RunFailed bool
 	// Salvaged reports that the spec has blocking spec-level errors and
 	// Diagnostics also carry the findings of the rest of it
 	// (go-slide-creator-ipahe).
@@ -439,6 +465,7 @@ type specEvaluation struct {
 // render_deck_spec would, returning that run's diagnostics.
 func (mc *mcpConfig) evaluateDeckSpec(ctx context.Context, request mcp.CallToolRequest, src specSource, spec *semantic.DeckSpec, strictness semantic.Strictness, argTemplate string) specEvaluation {
 	choice := resolveSpecTemplate(spec.Meta.Template, argTemplate, "", src)
+	spec = choice.evaluated(spec)
 	eval := specEvaluation{Choice: choice, TemplateSource: choice.Source, Warnings: choice.Warnings}
 	eval.Template = explainSpecWithTemplate(spec, choice.Default).Template
 
@@ -502,10 +529,116 @@ func (mc *mcpConfig) evaluateDeckSpec(ctx context.Context, request mcp.CallToolR
 	}
 	eval.Diagnostics = run.Result.Diagnostics
 	eval.Waivers = run.Result.Waivers
+	eval.RunFailed = !run.Result.OK
 	if spec.Meta.Template == "" && choice.Source != "deck_id" {
 		eval.Warnings = append(eval.Warnings, unpinnedTemplateWarning(eval.Template, choice.Source))
 	}
 	return eval
+}
+
+// templateResult is a spec's verdict on one template: whether it renders
+// ready there, and the findings that block or warn. Notes (info) are counted
+// in the summary and left out.
+type templateResult struct {
+	Template string                  `json:"template"`
+	OK       bool                    `json:"ok"`
+	Summary  string                  `json:"summary"`
+	Findings []templateResultFinding `json:"findings,omitempty"`
+}
+
+type templateResultFinding struct {
+	Code        string `json:"code"`
+	Severity    string `json:"severity"`
+	Path        string `json:"path"`
+	SlideNumber int    `json:"slide_number,omitempty"`
+	Occurrences int    `json:"occurrences,omitempty"`
+	Message     string `json:"message"`
+}
+
+// maxTemplateResults bounds how many templates one call measures on.
+const maxTemplateResults = 16
+
+// templateResults evaluates the spec on every template the call's templates
+// argument lists. The call's own template, when listed, is reported from the
+// evaluation already made.
+func (mc *mcpConfig) templateResults(ctx context.Context, request mcp.CallToolRequest, src specSource, strictness semantic.Strictness, own specEvaluation, ownEnvelope diagnostics.FindingEnvelope) ([]templateResult, *mcp.CallToolResult) {
+	raw, present := request.GetArguments()["templates"]
+	if !present || raw == nil {
+		return nil, nil
+	}
+	list, ok := raw.([]any)
+	if !ok || len(list) == 0 {
+		return nil, argInvalidValue("validate_deck_spec", diagnostics.CodeInvalidParameter, "templates",
+			`templates must be a non-empty list of template names, or ["all"]`, "array", []any{"midnight-blue", "modern"}, nil)
+	}
+	var names []string
+	for _, v := range list {
+		name, isText := v.(string)
+		name = strings.TrimSpace(name)
+		if !isText || name == "" {
+			return nil, argInvalidValue("validate_deck_spec", diagnostics.CodeInvalidParameter, "templates",
+				`templates must be a non-empty list of template names, or ["all"]`, "array", []any{"midnight-blue", "modern"}, nil)
+		}
+		if name == "all" {
+			names = append(names, embeddedTemplateNames()...)
+			continue
+		}
+		names = append(names, name)
+	}
+	seen := map[string]bool{}
+	out := make([]templateResult, 0, len(names))
+	doc := newSpecDoc(src.Filename, src.Data)
+	for _, name := range names {
+		if seen[name] || len(out) == maxTemplateResults {
+			continue
+		}
+		seen[name] = true
+		if name == own.Template {
+			out = append(out, summarizeTemplateResult(name, ownEnvelope))
+			continue
+		}
+		eval, ds := evaluateSpecFindings(src.Filename, src.Data, strictness, func(spec *semantic.DeckSpec, _ []byte) specEvaluation {
+			return mc.evaluateDeckSpec(ctx, request, src, spec, strictness, name)
+		})
+		envelope := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{Subcommand: "validate_deck_spec", Template: name}, ds)
+		shapeEnvelopeFindings(&envelope, eval.Diagnostics, doc)
+		out = append(out, summarizeTemplateResult(name, envelope))
+	}
+	return out, nil
+}
+
+// summarizeTemplateResult reduces one template's finding envelope, already
+// addressed in the authored spec, to its verdict.
+func summarizeTemplateResult(name string, envelope diagnostics.FindingEnvelope) templateResult {
+	res := templateResult{Template: name, OK: envelope.OK, Summary: envelope.Summary}
+	for _, f := range envelope.Findings {
+		if f.Severity == diagnostics.SeverityInfo || f.Path == nil {
+			continue
+		}
+		entry := templateResultFinding{Code: f.Code, Severity: string(f.Severity), Path: *f.Path, Occurrences: f.Occurrences, Message: f.Message}
+		if f.SlideNumber != nil {
+			entry.SlideNumber = *f.SlideNumber
+		}
+		res.Findings = append(res.Findings, entry)
+	}
+	return res
+}
+
+// specTrialRunner returns the function that validates a variant of the call's
+// spec exactly as the call's own spec is validated: same template choice, same
+// strictness, a scratch render. It stores nothing.
+func (mc *mcpConfig) specTrialRunner(ctx context.Context, request mcp.CallToolRequest, src specSource, strictness semantic.Strictness, argTemplate string) func([]byte) ([]trialFinding, bool) {
+	return func(spec []byte) ([]trialFinding, bool) {
+		trial := src
+		trial.Data, trial.Filename = spec, jsonSpecFilename(src.Filename)
+		eval, ds := evaluateSpecFindings(trial.Filename, spec, strictness, func(parsed *semantic.DeckSpec, _ []byte) specEvaluation {
+			return mc.evaluateDeckSpec(ctx, request, trial, parsed, strictness, argTemplate)
+		})
+		if eval.Evaluated {
+			return trialFindings(eval.Diagnostics), true
+		}
+		return trialFindingsOfSpecCheck(ds), true
+	}
 }
 
 // templateFreeDiagnostics is the finding set of a compiled deck with no
@@ -521,6 +654,7 @@ func templateFreeDiagnostics(input *PresentationInput, cr *semantic.CompileResul
 	diags = append(diags, finishFitDiagnostics(cr.SourceMap, cr.IR, fit)...)
 	policy := newFindingPolicy(cr.IR)
 	policy.applyWaivers(diags)
+	deckSpecWording(diags, input, cr.IR)
 	return groupRootCauses(diags), policy.recorded()
 }
 
@@ -538,7 +672,10 @@ type deckSpecEnvelopeResponse struct {
 	Warnings []string `json:"warnings,omitempty"`
 	// Waivers records the storyline findings the deck waived.
 	Waivers []findingWaiver `json:"waivers,omitempty"`
-	DeckID  string          `json:"deck_id,omitempty"`
+	// TemplateResults is the spec's verdict on each template the call listed in
+	// templates (go-slide-creator-ifkxs).
+	TemplateResults []templateResult `json:"template_results,omitempty"`
+	DeckID          string           `json:"deck_id,omitempty"`
 	// Stored says whether deck_id now holds the spec this call acted on, and
 	// Revision which revision that is (go-slide-creator-j77xe).
 	Stored   bool `json:"stored"`
@@ -693,6 +830,14 @@ func handleCompileDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*m
 		res.Error = err.Error()
 		return semanticSuccessOrInternal(ctx, "compile_deck_spec", res)
 	}
+	// A blocking diagnostic is never beside ok:true: placeholder copy the
+	// product itself emitted compiles, and still is not a deck
+	// (go-slide-creator-327g6).
+	if blocking := blockingFindingReasons(res.Diagnostics); len(blocking) > 0 {
+		res.OK = false
+		res.Error = "the spec compiles but is not ready: " + strings.Join(blocking, "; ")
+		return semanticSuccessOrInternal(ctx, "compile_deck_spec", res)
+	}
 	if includeJSON {
 		raw, err := json.Marshal(input)
 		if err != nil {
@@ -797,7 +942,7 @@ func semanticRenderToMCP(r semanticRenderResult, explanation *semantic.DeckExpla
 
 func mcpRenderDeckSpecTool() mcp.Tool {
 	return withSpecOrDeckIDChoice(mcp.NewTool("render_deck_spec", withToolOptions([]mcp.ToolOption{
-		mcp.WithDescription(`Compile a DeckSpec and render it to a .pptx — the recommended one-call path for a NEW deck. Returns {success, pptx_path, deterministic_ready, publishable, blocking_reasons[], quality_summary, diagnostics[], waivers[], explanation_summary}. success/ok mean the artifact was WRITTEN; deterministic_ready means no blocking diagnostic (severity error, blocking:true) remains, and deterministic_blocking_reasons names each by code and path. publishable also needs an approved all-slide visual verdict and is false on a fresh render: render every slide with render_deck_thumbnails, inspect the images, then record the verdict with submit_visual_review. diagnostics are validate_deck_spec's findings for the same spec and template, at JSON Pointer paths; quality_summary is an input heuristic (0-100, basis="input"; not a visual verdict). Parse/template errors use a finding envelope; other failures use success=false. Mirrors the ` + "`json2pptx semantic render`" + ` CLI.`),
+		mcp.WithDescription(`Compile a DeckSpec and render it to a .pptx — the recommended one-call path for a NEW deck. Returns {success, pptx_path, deterministic_ready, publishable, blocking_reasons[], quality_summary, diagnostics[], waivers[], explanation_summary}. success/ok mean the artifact was WRITTEN; deterministic_ready means no blocking diagnostic (severity error, blocking:true) remains, and deterministic_blocking_reasons names each by code and path. publishable also needs an approved all-slide visual verdict and is false on a fresh render: render every slide with render_deck_thumbnails, inspect the images, then record the verdict with submit_visual_review. diagnostics are validate_deck_spec's findings for the same spec and template, at JSON Pointer paths; quality_summary is an input heuristic (0-100, basis="input"; not a visual verdict). Parse/template errors use a finding envelope; other failures use success=false.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRenderDeckSpec)),
 		deckSpecOrHandleArg("The semantic DeckSpec to render, as a JSON object ({meta:{…}, slides:[{kind, …}]}) or a YAML/JSON string."),
 	}, deckHandleToolParams("render_deck_spec"), []mcp.ToolOption{
@@ -809,10 +954,10 @@ func mcpRenderDeckSpecTool() mcp.Tool {
 			mcp.Enum("off", "warn", "strict"),
 		),
 		mcp.WithString("template",
-			mcp.Description("Default template when the spec pins none (meta.template > this > archetype default); list_templates lists names. The first one named binds the deck_id."),
+			mcp.Description("Template for this call; overrides meta.template (patch /meta/template to keep it). list_templates lists names. The first one named binds the deck_id."),
 		),
 		mcp.WithString("template_path",
-			mcp.Description("Local .pptx to render with, for a template that is not registered on the server. Resolved against base_dir and MUST stay inside it. Mutually exclusive with template; a template pinned by the spec's meta.template wins over both. Run examine_template(template_path=...) first to check the file has the layouts a deck needs."),
+			mcp.Description("Local .pptx to render with (a template the server does not have); resolved against base_dir and MUST stay inside it. Not with template; meta.template wins over it. Run examine_template(template_path=...) first to check its layouts."),
 		),
 		mcp.WithString("base_dir",
 			mcp.Description("Absolute directory relative paths resolve against: asset references in the spec (image.path, photos, raw_json2pptx images / icons / backgrounds), with the same guards as raw deck generation, and template_path, which must stay inside it. Defaults to the deck_id's last render root, else the server CWD. The deck_id remembers it along with a template_path, so later deck_id-only calls reuse the same template file and root."),
@@ -894,9 +1039,11 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 		if choice.OneOff {
 			renderIdentity = firstNonEmpty(byoTemplatePath, res.Template)
 		}
-		return mc.finishRenderDeckSpec(ctx, res, renderDeckSpecFinish{
-			Src: src, Template: stored, RenderIdentity: renderIdentity, TemplateWarnings: choice.Warnings, Verbose: verbose,
-		})
+		fin := renderDeckSpecFinish{Src: src, Template: stored, RenderIdentity: renderIdentity, TemplateWarnings: choice.Warnings, Verbose: verbose}
+		if rawTemplatePath == "" {
+			fin.Trial = mc.specTrialRunner(ctx, request, src, strictness, argTemplate)
+		}
+		return mc.finishRenderDeckSpec(ctx, res, fin)
 	}
 
 	// Parse the spec. A parse error is fatal and has no source map yet, so the
@@ -917,6 +1064,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	// silent: an agent that passed template=X rendered Y and never knew why
 	// (go-slide-creator-6p9mm). Say which one won and how to switch.
 	choice = resolveSpecTemplate(spec.Meta.Template, argTemplate, rawTemplatePath, src)
+	spec = choice.evaluated(spec)
 	templateName = choice.Default
 
 	// Every render used to land on <output_dir>/output.pptx, so two calls in one
@@ -1394,19 +1542,14 @@ func semanticSuccessOrInternal(ctx context.Context, tool string, v any) (*mcp.Ca
 	return mcpResult, nil
 }
 
-// templatePrecedenceWarning explains a template / template_path argument the
-// spec's meta.template overrides; empty when nothing was overridden.
+// templatePrecedenceWarning explains a template_path argument the spec's
+// meta.template overrides; empty when nothing was overridden. (A template
+// argument overrides meta.template: see resolveSpecTemplate.)
 func templatePrecedenceWarning(metaTemplate, argTemplate, argTemplatePath string) string {
-	if metaTemplate == "" {
+	if metaTemplate == "" || argTemplatePath == "" {
 		return ""
 	}
-	switch {
-	case argTemplate != "" && argTemplate != metaTemplate:
-		return fmt.Sprintf("template argument %q was ignored: the spec pins meta.template %q, which wins (meta.template > template/template_path > archetype default); to render with %q, patch [{\"op\":\"replace\",\"path\":\"/meta/template\",\"value\":%q}] or remove meta.template", argTemplate, metaTemplate, argTemplate, argTemplate)
-	case argTemplatePath != "":
-		return fmt.Sprintf("template_path %q was ignored: the spec pins meta.template %q, which wins (meta.template > template/template_path > archetype default); remove meta.template to render with the file", argTemplatePath, metaTemplate)
-	}
-	return ""
+	return fmt.Sprintf("template_path %q was ignored: the spec pins meta.template %q, which wins over a template file (template > meta.template > template_path > archetype default); remove meta.template to render with the file", argTemplatePath, metaTemplate)
 }
 
 // completeRenderDeckSpecResponse adds the template-precedence warning and the
@@ -1437,6 +1580,9 @@ type renderDeckSpecFinish struct {
 	// TemplateWarnings explain the template choice (go-slide-creator-2dit4).
 	TemplateWarnings []string
 	Verbose          bool
+	// Trial validates a variant of the spec as validate_deck_spec would; nil
+	// when the render used a template file a trial would not resolve.
+	Trial func([]byte) ([]trialFinding, bool)
 }
 
 // finishRenderDeckSpec commits the rendered spec to the deck store and
@@ -1467,7 +1613,9 @@ func (mc *mcpConfig) finishRenderDeckSpec(ctx context.Context, res renderDeckSpe
 	res.Diagnostics = collapseDiagnostics(res.Diagnostics)
 	// The image tools resolve a slide id against this exact file.
 	recordRenderedSlides(renderedPptx, res.Slides)
-	semanticizeRenderDiagnostics(res.Diagnostics, src.Data, res.DeckID)
+	remedies := newRemedyContext(src.Filename, src.Data, res.DeckID)
+	remedies.run, remedies.before, remedies.gateUnknown = f.Trial, trialFindings(res.Diagnostics), !res.OK
+	remedies.remedyDiagnostics(res.Diagnostics)
 	for i := range res.Diagnostics {
 		d := &res.Diagnostics[i]
 		if !outcome.Stored {

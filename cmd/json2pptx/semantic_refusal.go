@@ -66,7 +66,7 @@ func semanticRefusalDiagnostic(cr *semantic.CompileResult, err error) *semanticD
 	if d.RecommendedEdit == nil {
 		d.RecommendedEdit = &semantic.SemanticEdit{
 			Kind: semantic.EditShortenText,
-			Hint: "Preserve the meaning at a readable size: shorten this field, move detail to another slide, or switch the slide to a composition with more room (explain_deck_spec lists them).",
+			Hint: "Preserve the meaning at a readable size: shorten this field, move detail to another slide, or switch the slide to a composition with more room (list_slide_kinds lists each kind's compositions).",
 		}
 	}
 	if evidence.MinPt > 0 {

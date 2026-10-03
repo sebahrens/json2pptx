@@ -33,7 +33,9 @@ type Server struct {
 	healthHandler   *HealthHandler
 	patternsHandler *PatternsHandler
 	semanticRender  http.HandlerFunc
-	logger          *slog.Logger
+	// semanticFindings shapes the findings of semantic validate / compile.
+	semanticFindings SemanticFindingsFinisher
+	logger           *slog.Logger
 }
 
 // ServerConfig holds configuration for creating a server.
@@ -66,6 +68,12 @@ type ServerConfig struct {
 	// runtime configuration the server runs with (templates dir, SVG
 	// strategy, ALLOWED_IMAGE_PATHS). Nil leaves the endpoint answering 501.
 	SemanticRenderer SemanticRenderer
+	// SemanticFindings gives the findings of the semantic validate and compile
+	// endpoints the address and remedy form the DeckSpec tools use (path as a
+	// JSON Pointer into the spec, slide_number, blocking). It lives in
+	// cmd/json2pptx with the rest of that shaping. Nil leaves the findings as
+	// the envelope builder made them.
+	SemanticFindings SemanticFindingsFinisher
 }
 
 // NewServer creates a new API server with all handlers configured.
@@ -95,7 +103,8 @@ func NewServer(cfg ServerConfig) *Server {
 		patternsHandler: patternsHandler,
 		semanticRender: SemanticRenderHandler(cfg.SemanticRenderer, cfg.OutputDir,
 			cfg.FileRetention, convertService.convertSem),
-		logger: cfg.Logger,
+		semanticFindings: cfg.SemanticFindings,
+		logger:           cfg.Logger,
 	}
 
 	s.setupRoutes()
@@ -110,8 +119,8 @@ func (s *Server) setupRoutes() {
 	s.mux.Handle("GET /api/v1/templates/{name}", s.templateService.GetTemplateDetailsHandler())
 	s.mux.Handle("GET /api/v1/slide-types", SlideTypesHandler())
 	s.mux.Handle("GET /api/v1/semantic/schema", SemanticSchemaHandler())
-	s.mux.Handle("POST /api/v1/semantic/validate", SemanticValidateHandler())
-	s.mux.Handle("POST /api/v1/semantic/compile", SemanticCompileHandler())
+	s.mux.Handle("POST /api/v1/semantic/validate", SemanticValidateHandler(s.semanticFindings))
+	s.mux.Handle("POST /api/v1/semantic/compile", SemanticCompileHandler(s.semanticFindings))
 	s.mux.Handle("POST /api/v1/semantic/render", s.semanticRender)
 	s.mux.Handle("POST /api/v1/convert", s.convertService.ConvertHandler())
 	s.mux.Handle("GET /api/v1/download/{filename}", s.convertService.DownloadHandler())

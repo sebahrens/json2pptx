@@ -62,6 +62,21 @@ type semanticCompileResponse struct {
 	Error        string                      `json:"error,omitempty"`
 }
 
+// SemanticFindingsFinisher rewrites a finding envelope built from a spec's
+// diagnostics into the form the DeckSpec tools report: each finding at a JSON
+// Pointer into the spec that was sent.
+type SemanticFindingsFinisher func(filename string, spec []byte, env *diagnostics.FindingEnvelope)
+
+// finishFindings applies the first non-nil finisher.
+func finishFindings(finish []SemanticFindingsFinisher, filename string, spec []byte, env *diagnostics.FindingEnvelope) {
+	for _, f := range finish {
+		if f != nil {
+			f(filename, spec, env)
+			return
+		}
+	}
+}
+
 // SemanticSchemaHandler returns GET /api/v1/semantic/schema — the JSON Schema
 // (draft 2020-12) describing the compact semantic DeckSpec authoring format.
 func SemanticSchemaHandler() http.HandlerFunc {
@@ -76,7 +91,7 @@ func SemanticSchemaHandler() http.HandlerFunc {
 // optional strict query parameter (off|warn|strict, default warn) controls
 // advisory-rule severity. Always responds 200: validation completing is the
 // success case, and valid/findings.ok report whether the spec is clean.
-func SemanticValidateHandler() http.HandlerFunc {
+func SemanticValidateHandler(finish ...SemanticFindingsFinisher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, filename, ok := readSemanticBody(w, r)
 		if !ok {
@@ -92,6 +107,7 @@ func SemanticValidateHandler() http.HandlerFunc {
 			Subcommand:  "semantic_validate",
 			InputSHA256: diagnostics.ComputeInputSHA256(data),
 		}, ds)
+		finishFindings(finish, filename, data, &env)
 		writeJSON(w, http.StatusOK, semanticValidateResponse{Valid: env.OK, Findings: env})
 	}
 }
@@ -103,7 +119,7 @@ func SemanticValidateHandler() http.HandlerFunc {
 // template when the spec pins none), and include_compiled_json (when true, the
 // full compiled PresentationInput is returned under compiled_json). A blocking
 // parse/compile failure responds 422 with ok=false and the blocking findings.
-func SemanticCompileHandler() http.HandlerFunc {
+func SemanticCompileHandler(finish ...SemanticFindingsFinisher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, filename, ok := readSemanticBody(w, r)
 		if !ok {
@@ -124,6 +140,7 @@ func SemanticCompileHandler() http.HandlerFunc {
 		spec, parseDiags := semantic.Parse(filename, data)
 		if parseDiags.HasErrors() {
 			env := diagnostics.BuildEnvelope(envOpts, parseDiags.ToDiagnostics())
+			finishFindings(finish, filename, data, &env)
 			writeJSON(w, http.StatusUnprocessableEntity, semanticCompileResponse{
 				OK:       false,
 				Findings: env,
@@ -141,6 +158,7 @@ func SemanticCompileHandler() http.HandlerFunc {
 			ds = result.Diagnostics
 		}
 		env := diagnostics.BuildEnvelope(envOpts, ds)
+		finishFindings(finish, filename, data, &env)
 
 		if err != nil {
 			writeJSON(w, http.StatusUnprocessableEntity, semanticCompileResponse{

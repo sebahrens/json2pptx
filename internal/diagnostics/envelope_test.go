@@ -225,6 +225,7 @@ func TestActionVocabulary_StableAndValid(t *testing.T) {
 	want := []Action{
 		"shorten_text", "replace_value", "apply_patch", "switch_layout",
 		"split_slide", "move_to_placeholder", "remove_emoji", "regenerate_pattern",
+		"reduce_items",
 	}
 	got := AllActions()
 	if len(got) != len(want) {

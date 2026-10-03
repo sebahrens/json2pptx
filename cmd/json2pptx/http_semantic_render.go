@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/api"
@@ -43,6 +44,15 @@ func newHTTPSemanticRenderer(cfg config.Config) api.SemanticRenderer {
 	}
 }
 
+// finishSemanticFindingsForHTTP gives the findings of the HTTP validate and
+// compile endpoints the form validate_deck_spec reports: blocking, the remedy's
+// facts, and path as a JSON Pointer into the spec that was sent.
+func finishSemanticFindingsForHTTP(filename string, spec []byte, env *diagnostics.FindingEnvelope) {
+	stampEnvelopeFindings(env, nil)
+	cliRemedyContext(filename, spec).remedyEnvelope(env, nil)
+	shapeEnvelopeFindings(env, nil, newSpecDoc(filename, spec))
+}
+
 // renderSemanticForHTTP is the render flow; a returned error is an internal
 // failure, a refused render is a result with OK=false.
 func renderSemanticForHTTP(ctx context.Context, cfg config.Config, req api.SemanticRenderRequest) (semanticRenderResult, string, error) { //nolint:gocognit // Mirrors the CLI/MCP render orchestration step for step.
@@ -61,7 +71,11 @@ func renderSemanticForHTTP(ctx context.Context, cfg config.Config, req api.Seman
 	if req.TemplatePath != "" {
 		uploadLabel = "uploaded template " + req.TemplateFilename
 	}
-	precedenceWarning := templatePrecedenceWarning(spec.Meta.Template, req.Template, uploadLabel)
+	// The request's template replaces meta.template for this render, as on
+	// render_deck_spec (go-slide-creator-ifkxs).
+	choice := resolveSpecTemplate(spec.Meta.Template, req.Template, uploadLabel, specSource{})
+	spec = choice.evaluated(spec)
+	precedenceWarning := strings.Join(choice.Warnings, "; ")
 
 	input, compileResult, err := semantic.Compile(spec, semantic.CompileOptions{
 		Strict:          req.Strict,

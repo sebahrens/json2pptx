@@ -149,12 +149,31 @@ type specTemplateChoice struct {
 	// OneOff reports that the call's template argument applies to this call
 	// only: the handle is already bound to another template.
 	OneOff bool
+	// Override is the template argument when it replaces the spec's own
+	// meta.template for this call (go-slide-creator-ifkxs).
+	Override string
+}
+
+// evaluated returns the spec as this call evaluates it: the spec itself, or a
+// copy whose meta.template is the call's template argument.
+func (c specTemplateChoice) evaluated(spec *semantic.DeckSpec) *semantic.DeckSpec {
+	if c.Override == "" || spec == nil {
+		return spec
+	}
+	out := *spec
+	out.Meta.Template = c.Override
+	return &out
 }
 
 // resolveSpecTemplate applies the DeckSpec template precedence and the deck
-// handle's binding rule. meta.template wins; then the call's template (or
-// template_path) argument; then the template the deck_id is bound to; then
-// the archetype default.
+// handle's binding rule. The call's template argument wins for that call;
+// then meta.template; then a template_path argument; then the template the
+// deck_id is bound to; then the archetype default.
+//
+// A template argument that differs from meta.template used to be ignored with
+// a warning, so trying a finished spec on a second template meant editing the
+// spec (go-slide-creator-ifkxs). It now replaces meta.template for the call,
+// and the response says so; the spec and the deck's binding keep the pin.
 //
 // A deck_id is bound by the first call that names a template for it, and the
 // binding then changes only through a patch to /meta/template: a later call
@@ -166,6 +185,12 @@ func resolveSpecTemplate(metaTemplate, argTemplate, argTemplatePath string, src 
 	c := specTemplateChoice{Default: argTemplate}
 	bound := firstNonEmpty(src.Template, src.TemplatePath)
 	switch {
+	case metaTemplate != "" && argTemplate != "" && argTemplate != metaTemplate:
+		c.Source = "template argument"
+		c.Override = argTemplate
+		c.Bind = metaTemplate
+		c.Warnings = append(c.Warnings, templateOverrideWarning(metaTemplate, argTemplate))
+		return c
 	case metaTemplate != "":
 		// The spec's own pin is the deck's template, and the handle follows
 		// it: patching /meta/template is how a deck changes template.
@@ -196,6 +221,12 @@ func resolveSpecTemplate(metaTemplate, argTemplate, argTemplatePath string, src 
 			firstNonEmpty(argTemplate, argTemplatePath), bound))
 	}
 	return c
+}
+
+// templateOverrideWarning says that the call's template replaced the spec's.
+func templateOverrideWarning(metaTemplate, argTemplate string) string {
+	return fmt.Sprintf("template argument %q overrides meta.template %q for this call only: the spec still pins %q; to keep %q, set meta.template to it (patch [{\"op\":\"replace\",\"path\":\"/meta/template\",\"value\":%q}])",
+		argTemplate, metaTemplate, metaTemplate, argTemplate, argTemplate)
 }
 
 // unpinnedTemplateWarning tells the caller that nothing in the spec fixes the

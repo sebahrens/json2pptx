@@ -625,9 +625,79 @@ func TestValidateDeckSpecEchoesAndWarnsAboutTemplate(t *testing.T) {
 	if pin.Template != "midnight-blue" || pin.TemplateSource != "meta.template" || len(pin.Warnings) != 0 {
 		t.Errorf("pinned validate: template %q source %q warnings %v", pin.Template, pin.TemplateSource, pin.Warnings)
 	}
+	// go-slide-creator-ifkxs: the call's template replaces the spec's pin for
+	// that call, and the response says so; the deck stays bound to the pin.
 	over := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": pinned, "template": "modern"}))
-	if over.Template != "midnight-blue" || len(over.Warnings) != 1 || !strings.Contains(over.Warnings[0], "was ignored") {
-		t.Errorf("overridden argument: template %q warnings %v", over.Template, over.Warnings)
+	if over.Template != "modern" || over.TemplateSource != "template argument" || over.OK {
+		t.Errorf("template argument beside a pin: template %q source %q ok=%v", over.Template, over.TemplateSource, over.OK)
+	}
+	if len(over.Warnings) != 1 || !strings.Contains(over.Warnings[0], `overrides meta.template "midnight-blue" for this call only`) {
+		t.Errorf("the response does not say the pin was overridden: %v", over.Warnings)
+	}
+	if h, ok := mc.deckHandles.Load(over.DeckID); !ok || h.Template != "midnight-blue" {
+		t.Errorf("the deck is no longer bound to its pinned template: %+v", h)
+	}
+	assertFindingParity(t, "pinned, rendered on modern", deckSpecVerdicts(t, mc, map[string]any{"spec": pinned, "template": "modern"}))
+	again := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"deck_id": over.DeckID}))
+	if again.Template != "midnight-blue" || !again.OK {
+		t.Errorf("the next call without the argument is not back on the pin: template %q ok=%v", again.Template, again.OK)
+	}
+}
+
+// go-slide-creator-ifkxs: one validate call says on which templates a spec
+// renders cleanly.
+func TestValidateDeckSpecAcrossTemplates(t *testing.T) {
+	mc := refusalTestConfig(t)
+	spec := templateSensitiveSpec(t)
+	spec["meta"].(map[string]any)["template"] = "midnight-blue"
+
+	env := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": spec, "templates": []any{"midnight-blue", "modern"}}))
+	if env.Template != "midnight-blue" || !env.OK || len(env.TemplateResults) != 2 {
+		t.Fatalf("template %q ok=%v results %+v", env.Template, env.OK, env.TemplateResults)
+	}
+	own, modern := env.TemplateResults[0], env.TemplateResults[1]
+	if own.Template != "midnight-blue" || !own.OK || len(own.Findings) != 0 {
+		t.Errorf("the spec's own template is not reported clean: %+v", own)
+	}
+	if modern.Template != "modern" || modern.OK || len(modern.Findings) == 0 {
+		t.Fatalf("modern is not reported as refusing the spec: %+v", modern)
+	}
+	alone := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": spec, "template": "modern"}))
+	want := map[string]bool{}
+	for _, f := range alone.Findings {
+		if f.Severity != diagnostics.SeverityInfo {
+			want[f.Code+" "+*f.Path] = true
+		}
+	}
+	for _, f := range modern.Findings {
+		if !want[f.Code+" "+f.Path] || f.Message == "" || !strings.HasPrefix(f.Path, "/") {
+			t.Errorf("modern's entry lists a finding a validate on modern does not report: %+v", f)
+		}
+		delete(want, f.Code+" "+f.Path)
+	}
+	if len(want) != 0 {
+		t.Errorf("modern's entry leaves out blocking findings or warnings: %v", want)
+	}
+	if h, ok := mc.deckHandles.Load(env.DeckID); !ok || h.Template != "midnight-blue" {
+		t.Errorf("checking other templates rebound the deck: %+v", h)
+	}
+
+	// "all" is every template shipped with the server.
+	all := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": spec, "templates": []any{"all"}}))
+	if len(all.TemplateResults) != len(embeddedTemplateNames()) {
+		t.Errorf("all: %d results for %d shipped templates", len(all.TemplateResults), len(embeddedTemplateNames()))
+	}
+	for _, r := range all.TemplateResults {
+		if r.Template == "" || r.Summary == "" {
+			t.Errorf("an entry does not name its template or its result: %+v", r)
+		}
+	}
+
+	// A name that is not a template is that entry's finding, not the call's.
+	bad := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": spec, "templates": []any{"no-such-template"}}))
+	if !bad.OK || len(bad.TemplateResults) != 1 || bad.TemplateResults[0].OK || len(bad.TemplateResults[0].Findings) != 1 ||
+		!strings.HasSuffix(bad.TemplateResults[0].Findings[0].Code, "TEMPLATE_NOT_FOUND") {
+		t.Errorf("unknown template: ok=%v results %+v", bad.OK, bad.TemplateResults)
 	}
 }
 

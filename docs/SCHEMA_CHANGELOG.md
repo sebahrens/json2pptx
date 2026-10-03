@@ -136,6 +136,104 @@
     toward `max_problem_slides_pct` and the breadth penalty (they already cost
     25 points on their slide). `SLIDE_UNDERUSED` counts `agenda` and
     `swimlane` text by its row slot, like the other open patterns.
+
+- **2026-10-03 — DeckSpec findings: one remedy each, patches tried before they are offered, advice in the fields of the spec, several templates per validate (`go-slide-creator-vihnl`, `-micna`, `-4mmvb`, `-vg73u`, `-ifkxs`, `-c2j5b`).**
+  - **New finding field `patch_verified`** (`validate_deck_spec` findings,
+    `render_deck_spec` / `semantic render` diagnostics): `true` when
+    `next_tool_call`'s patch is complete as written and the server applied it
+    to the spec and validated the result — the finding is gone, nothing
+    blocks that did not block before, and no slide lost its visual in
+    exchange. Only ever `true`: a complete patch that does not do that is not
+    offered. A patch with a value written as `<instruction>` is a rewrite for
+    the author to complete and has no flag.
+  - **`remediation.primary` is the action and its facts only** (validate
+    findings; `recommended_edit.params` on a render diagnostic). `params`
+    carries `max_chars`, `max_words`, `max_items`, `min_items`, `max_rows`,
+    `row`, `did_you_mean`, `hosted_type`, `hosted_as`, `expected_shape`,
+    `example`, `available`, `allowed`, `original`, `samples`, and — on
+    `SEMANTIC_PATTERN_DEGRADED` only — `from`, the pattern whose budget the
+    slide missed (not on a rename, where it repeated the key at `path`, and
+    not when it is empty), and nothing else. `TEXT_WRAPS_NARROW` on a DeckSpec
+    slide states its advice in the message ("cut each box to a label, or use
+    fewer boxes so each is wider"), no longer in `params.hint`. An entry that
+    stands for findings on several slides carries no `evidence.pattern` (it
+    was the first slide's).
+    **Removed from `params`:** the copy of the patch (`op`, `path`, `value`,
+    `ops` — read `next_tool_call.args_template.patch`), `hint`, `fix_kind`,
+    `to` / `reason`, `threshold_pct` and every other measurement, and
+    all compiled-deck names (`pattern`, `role`, `paragraph_text`,
+    `placeholder_id`, `strategy`, `repair`, `cell_max_chars`). A collapsed
+    finding's budget is one value when its items share it and a list in the
+    order of `paths` when they differ (it was the first item's alone).
+    `action` is `apply_patch` exactly when `next_tool_call` carries a complete
+    patch; otherwise `shorten_text`, `reduce_items`, `split_slide` or
+    `replace_value`. A finding with neither a fact nor a patch has no
+    `remediation`.
+  - **New action `reduce_items`** in the remediation vocabulary (drop or merge
+    list items to `max_items`); `docs/api/finding-envelope.schema.json` lists
+    it and `patch_verified`.
+  - **Patches changed.** An unknown key: `move` to its `did_you_mean`, else
+    `remove` (it was a `replace` of the unknown key's value, which changed
+    nothing). `CONTENT_DROPPED` and an optional second line with no room:
+    `remove`. `TEMPLATE_NOT_FOUND` with a near name: the `replace`. An
+    over-full slide: the smallest single removal that clears it, found by
+    validating candidates, with the message ending `— verified fix: …`; the
+    switch to the kind's text layout (`add /slides/i/layout`) only after
+    that, and only when it clears the finding. A rewrite is offered for a
+    capacity finding only with a budget; the "composition-level repair"
+    instruction value is gone.
+  - **`describe_finding` as `next_tool_call`** only on a blocking finding with
+    no remedy of its own (it was on the first finding of every code).
+    **`validate_deck_spec` findings no longer carry `category`** (the code
+    starts with it) **or `evidence.action`**; an unknown archetype's message
+    ends `evidence.available lists the choices` instead of repeating them.
+    The twelve-flaw draft's first response is 8.1 KB (11.4 KB).
+  - **Messages reworded on a kind's slide** (not on `raw_json2pptx`): no
+    `<pattern>: <pattern>` lead; a pattern value (`steps[3].body`) is written
+    as its pointer in the spec (`/slides/1/options/3/detail`), which becomes
+    the finding's `path`, with `max_chars` when the sentence states a budget;
+    the pattern's item words become the kind's; no `show_legend`,
+    `max_height_pct`, "dots or chevron style", `explain_deck_spec` or
+    `max_height`. `TEXT_BELOW_READABLE_MIN` reads `text renders at 10.8pt,
+    below the 12pt minimum: the slide holds more than fits at a readable
+    size`; when the text is the layout's own it adds `— the text is
+    "RECOMMENDED", a label the layout writes, not copy from the spec (it marks
+    the option with recommended: true)`. `OVERLAY_TARGET_CROPPED` on an
+    `image_case` callout starts `this callout points at x …, y … of the
+    picture`.
+  - **Symptoms.** A fallback's symptoms (`evidence.symptoms` under
+    `SEMANTIC_PATTERN_DEGRADED` / `SEMANTIC_DENSITY`) carry `code` only; a
+    finding at a slide's `takeaway`, `title` or `source` is no longer folded
+    as one. A capacity finding that adopted a refusal's measurement no longer
+    carries that paragraph's `text` / `role`. Suffixes: `— N like this on
+    this slide` (no `(see paths)`), `— and the fallback does not fit (see
+    symptoms)`.
+  - **`template` overrides `meta.template` for the call** (`validate_deck_spec`,
+    `render_deck_spec`, `semantic validate|render --template`, HTTP
+    `?template=`). It was ignored with a warning. The response's `template` is
+    the argument, `template_source` is `template argument`, and `warnings[]`
+    carries `template argument "X" overrides meta.template "Y" for this call
+    only: …`; the spec and the `deck_id` binding keep the pin. `template_path`
+    still yields to `meta.template`.
+  - **New `validate_deck_spec` argument `templates`** (list of names, or
+    `["all"]`; at most 16) and response field
+    `template_results[{template, ok, summary, findings[{code, severity, path,
+    slide_number?, occurrences?, message}]}]`: the spec's errors and warnings
+    on each template.
+  - **`compile_deck_spec` answers `ok: false`** with `error: "the spec
+    compiles but is not ready: …"` when a diagnostic blocks (placeholder copy
+    the product emitted); it returned `ok: true` beside the blocking
+    diagnostic.
+  - **HTTP `POST /api/v1/semantic/validate` and `/compile`** report findings
+    as the DeckSpec tools do: `path` (JSON Pointer), `missing_path`,
+    `slide_number`, `blocking`, the remediation's facts; no `evidence.path`.
+  - `semantic.PayloadVocabulary(kind)` lists every key a kind's payload can
+    carry. Tests: `TestEveryEmittedPatchClearsItsFinding`,
+    `TestDeckSpecAdviceNamesOnlyFieldsOfTheKind`,
+    `TestEveryKindRendersAtItsDocumentedCounts` (the counts a layout does not
+    hold yet are in `knownCountRefusals`), `TestValidateDeckSpecAcrossTemplates`,
+    `TestTwelveFlawDraftFirstResponse` (ceiling 8,192 bytes).
+
 - **2026-10-03 — recommend_visual: every candidate is authorable, DeckSpec kinds come first, one chart-type vocabulary (`go-slide-creator-x97m6`, `-bdvhj`, `-3ujfq`, `-7sqof`).**
   - **Every candidate carries `data_contract` and a runnable
     `next_tool_call`** (`render_deck_spec` with a complete one-slide DeckSpec

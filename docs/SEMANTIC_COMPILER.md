@@ -180,17 +180,34 @@ spec revision and one template the two tools therefore return the same findings
 shipped examples, every slide kind and the agent-journey decks on every shipped
 template.
 
-- **Template.** Findings are measured on a template. Precedence is
-  `meta.template` > the call's `template` (`--template`) > the template a
-  `deck_id` is bound to > the archetype default. The validate envelope echoes
-  `template` and `template_source` (`meta.template`, `template argument`,
-  `deck_id`, `archetype default`) and adds a `warnings[]` entry when the spec
-  pins none. A `deck_id` is bound by the first call that names a template and
-  follows `meta.template`; a later call naming a different template is
-  evaluated on it for that call only (with a warning), so a deck's template
-  changes only by a patch to `/meta/template`. `fork: true` with that patch
-  binds the new `deck_id` to the new template and leaves the source deck's
-  binding alone; `restore` follows the restored revision's `meta.template`.
+- **Template.** Findings are measured on a template. Precedence is the
+  call's `template` (`--template`, the HTTP `?template=`) > `meta.template` >
+  a `template_path` > the template a `deck_id` is bound to > the archetype
+  default. A `template` argument that differs from `meta.template` replaces
+  it for that call only (go-slide-creator-ifkxs): the response's `template`
+  is the argument, `template_source` is `template argument`, and `warnings[]`
+  says `template argument "X" overrides meta.template "Y" for this call only`
+  with the patch that keeps it. The spec and the deck's binding keep the pin,
+  so the next call without the argument is back on it. The validate envelope
+  echoes `template` and `template_source` (`template argument`,
+  `meta.template`, `deck_id`, `archetype default`) and adds a `warnings[]`
+  entry when the spec pins none. A `deck_id` is bound by the first call that
+  names a template and follows `meta.template`; a later call naming a
+  different template is evaluated on it for that call only (with a warning),
+  so a deck's template changes only by a patch to `/meta/template`.
+  `fork: true` with that patch binds the new `deck_id` to the new template and
+  leaves the source deck's binding alone; `restore` follows the restored
+  revision's `meta.template`.
+- **Several templates in one call.** `validate_deck_spec` takes
+  `templates: ["midnight-blue", "modern"]` (or `["all"]`, every template
+  shipped with the server; at most 16) and adds
+  `template_results[{template, ok, summary, findings[]}]`: the spec's verdict
+  on each, with that template's errors and warnings as
+  `{code, severity, path, slide_number?, occurrences?, message}` (notes are
+  counted in `summary`). The call's own findings, `template` and `deck_id`
+  binding are those of the template it would have used without the argument;
+  a listed name that is not a template is that entry's one
+  `TEMPLATE_NOT_FOUND` finding.
 - **Severity.** A finding blocks exactly when its severity is `error`
   (`blocking: true`); see
   [FIT_FINDINGS.md](FIT_FINDINGS.md#severity-and-blocking-on-the-deckspec-surfaces).
@@ -228,8 +245,10 @@ a path keeps the dotted form the semantic package writes
 (`slides[2].kpis[0].label`); it is converted once, on the way out
 (`cmd/json2pptx/semantic_paths.go`), and `TestEveryDeckSpecFindingPathResolves`
 checks every emitted path against the spec that produced it. The HTTP
-`POST /api/v1/semantic/validate` endpoint runs the spec-level check only and
-still reports `evidence.path` in the dotted form.
+`POST /api/v1/semantic/validate` and `/compile` endpoints run the spec-level
+check only and report it in the same form (`path`, `missing_path`,
+`slide_number`, `blocking`; no `evidence.path`): the server injects the
+shaping into `internal/api` as `ServerConfig.SemanticFindings`.
 
 ### Everything knowable in the first response
 
@@ -287,8 +306,98 @@ Findings with the same code and the same cause are one entry with
 `occurrences` and `paths`; a slide that fell back from its visual lists the
 fit findings about the fallback under `symptoms`. See
 [FIT_FINDINGS.md](FIT_FINDINGS.md#severity-and-blocking-on-the-deckspec-surfaces).
-An MCP response offers `describe_finding` as `next_tool_call` on the first
-finding of each code only and leaves out `describe_command`.
+An MCP response leaves out `describe_command`, and `validate_deck_spec`
+leaves out `category` (the code starts with it). `describe_finding` is offered
+as `next_tool_call` only on a blocking finding that carries no remedy of its
+own, once per code.
+
+### One remedy per finding
+
+A finding says each thing once (go-slide-creator-micna, -vihnl, -4mmvb;
+`cmd/json2pptx/semantic_remedy.go`):
+
+| where | what |
+|-------|------|
+| `message` | What is wrong and what to do, in the fields of the spec. |
+| `remediation.primary` (`recommended_edit` on a render diagnostic) | `action` and the facts it must meet in `params`: `max_chars`, `max_words`, `max_items`, `min_items`, `max_rows`, `row`, `did_you_mean`, `hosted_type`, `hosted_as`, `expected_shape`, `example`, `available`, `allowed`, `original`, `samples`. No prose, no patch, no compiled-deck locator. A collapsed entry's budget is one value when every item shares it and a list in the order of `paths` when they differ. |
+| `next_tool_call` | The `validate_deck_spec` patch (`deck_id` + `patch`) when there is one. |
+| `patch_verified: true` | The patch is complete as written and the server applied it to the spec and validated the result: this finding is gone, nothing blocks that did not block before, and no slide lost its visual in exchange. |
+
+Actions: `apply_patch` (a complete patch is in `next_tool_call`; it is always
+`patch_verified` on the MCP tools), `shorten_text` (`max_chars` /
+`max_words`), `reduce_items` (`max_items` / `min_items`), `split_slide`
+(`max_rows`, `row`), `replace_value` (a value to write or choose). A patch
+whose value is an `<instruction>` is a rewrite for the author to complete and
+carries no flag; applied as it is, the instruction is refused as placeholder
+copy.
+
+A complete patch is tried before it is offered, and one that does not clear
+its finding is not offered — the finding then carries its message and its
+facts. The patches:
+
+- an unknown key: `move` to its `did_you_mean`, else `remove` (never a rewrite
+  of the unknown key's value);
+- a list over its `max_items`: the removals from the end;
+- a template that is not found, with a near name: the `replace`;
+- text the slide does not draw (`CONTENT_DROPPED`), or an optional second line
+  a layout has no room for: its removal;
+- an over-full slide (`BODY_TOO_LONG`, `TEXT_BELOW_READABLE_MIN`,
+  `fit_overflow`, `density_exceeded` that blocks): the smallest single removal
+  that clears it. The candidates are one optional line of one list entry
+  (`detail`, `description`, `body`, `support`, `bio`, `subtitle`,
+  `comparator`), the takeaway, the last entry of a list, and — when the
+  finding sits on a list inside the slide — that list's entries; they are
+  validated cheapest first on the slide alone (at most 8, on at most two
+  slides per response) and the one that clears it is validated in the deck.
+  The message then ends `— verified fix: removing /slides/7/options/0/detail
+  (37 characters) clears this; the rest fits as written`, or, when the limit
+  is the number of rows, `the limit here is the number of points: 4 fit, so
+  removing /slides/1/points/4 clears this`;
+- last, the switch to the kind's own text layout (`add /slides/i/layout`),
+  which keeps every word and gives up the visual. When a cut was found and
+  the switch works too, the message names it as the alternative.
+
+A response spends at most 24 validations on this. The CLI and the HTTP
+endpoints have no stored deck: they report the remediation's facts and no
+patch. `render_deck_spec` called with a `template_path` offers complete
+patches untried (no flag), since a trial would not resolve the file.
+`TestEveryEmittedPatchClearsItsFinding` applies every patch offered for a
+corpus of flawed decks — rewrites filled with text at the stated budget — and
+validates again.
+
+### Findings in the words of the spec
+
+A fit finding is written by the pattern a slide compiled to. On a kind's slide
+it is reworded before it is reported (`cmd/json2pptx/semantic_wording.go`; a
+`raw_json2pptx` slide keeps the pattern's wording, since its author wrote the
+pattern):
+
+- the `<pattern>: <pattern>` lead comes off;
+- a value the pattern names (`steps[3].body`) is located in the spec by the
+  text it carries and written as its pointer (`/slides/1/options/3/detail`),
+  which also becomes the finding's `path`; a budget the sentence states
+  ("holds about 36 … characters") becomes `max_chars`;
+- the pattern's words for its items become the kind's (`steps` / `bodies` →
+  `options` / `details` on a decision);
+- advice that names a control the kind does not have is replaced by what the
+  kind can do: no `show_legend`, `max_height_pct`, "dots or chevron style" or
+  `explain_deck_spec`; a timeline is told that a body is not drawn while a
+  milestone has an `end_date`;
+- a readability finding reads `text renders at 10.8pt, below the 12pt
+  minimum: the slide holds more than fits at a readable size`, without text
+  roles and autofit percentages, and when the text that shrank is the
+  layout's own (`"RECOMMENDED"`, `"Decisions requested"`) it says so and
+  names what controls it (`recommended: true`, `decisions_label`);
+- a callout the picture's crop hides (`OVERLAY_TARGET_CROPPED`) is "this
+  callout", not "overlay 0 on shape_grid image cell [0,0]".
+
+`TestDeckSpecAdviceNamesOnlyFieldsOfTheKind` scans every message, symptom,
+remediation and recommended edit a corpus raises through both tools: a
+snake_case word in it is a field of the slide's kind
+(`semantic.PayloadVocabulary`), a tool, or a gate criterion.
+`TestEveryKindRendersAtItsDocumentedCounts` renders every kind at the
+smallest and largest count it documents on every shipped template; the
+counts a layout does not hold yet are listed in `knownCountRefusals`.
 
 ### Unknown kinds and keys
 

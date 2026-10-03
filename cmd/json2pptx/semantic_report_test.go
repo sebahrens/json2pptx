@@ -554,11 +554,12 @@ func TestTwelveFlawDraftFirstResponse(t *testing.T) {
 	if len(env.Findings) > 16 {
 		t.Errorf("%d findings; the draft's twelve flaws used to take 17 for the first tier alone", len(env.Findings))
 	}
-	// A ceiling on the structured content (the text block beside it is a
-	// synopsis of at most 1 KB). The bead's target is 8 KB; what is left above
-	// it is the remediation blocks (about 3.4 KB), which this change leaves as
-	// they are. The ceiling keeps the response from growing back.
-	const ceiling = 11500
+	// The bead's target: under 8 KB of structured content (the text block
+	// beside it is a synopsis of at most 1 KB). It was 11.4 KB; what came off
+	// is the remediation blocks' prose and patch copies (2.7 KB to 1 KB), the
+	// describe_finding pointer on every code, the symptoms' sentences and the
+	// category that repeats each code's prefix.
+	const ceiling = 8192
 	if len(structured) > ceiling {
 		t.Errorf("first response is %d bytes of structured content, over the %d-byte ceiling", len(structured), ceiling)
 	}

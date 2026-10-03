@@ -643,13 +643,8 @@ func specFailureResult(filename string, data []byte, eval specEvaluation, ds []d
 		return result
 	}
 	stampEnvelopeFindings(&envelope, eval.Diagnostics)
-	for i := range envelope.Findings {
-		// A refused render has no deck handle to patch.
-		if strings.HasSuffix(envelope.Findings[i].Code, diagnostics.CodeSemanticUnknownKind) {
-			continue
-		}
-		semanticizeFinding(&envelope.Findings[i], data, "")
-	}
+	// A refused render has no deck handle to patch.
+	newRemedyContext(filename, data, "").remedyEnvelope(&envelope, eval.Diagnostics)
 	shapeEnvelopeFindings(&envelope, eval.Diagnostics, newSpecDoc(filename, data))
 	trimEnvelopeForMCP(&envelope)
 	result.StructuredContent = envelope
