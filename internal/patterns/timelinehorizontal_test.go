@@ -471,34 +471,28 @@ func TestTimelineHorizontal(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
-		// Each stop is its own row with 2 cells (label + bar)
-		if len(grid.Rows) != 3 {
-			t.Fatalf("expected 3 rows, got %d", len(grid.Rows))
+		// Two axis rows (unit labels, rule) head one row per stop.
+		if len(grid.Rows) != 5 {
+			t.Fatalf("expected 5 rows, got %d", len(grid.Rows))
 		}
-		for i, row := range grid.Rows {
-			if len(row.Cells) != 2 {
-				t.Errorf("row[%d] expected 2 cells, got %d", i, len(row.Cells))
-			}
-		}
-		// Columns should be [30, 70]
-		var cols []int
+		// The label column keeps its 30% share; the track is cut at every
+		// tick and bar edge.
+		var cols []float64
 		if err := json.Unmarshal(grid.Columns, &cols); err != nil {
 			t.Fatalf("columns unmarshal: %v", err)
 		}
-		if len(cols) != 2 || cols[0] != 30 || cols[1] != 70 {
-			t.Errorf("columns = %v, want [30, 70]", cols)
+		if len(cols) < 3 || cols[0] != 30 {
+			t.Errorf("columns = %v, want the 30%% label column and a segmented track", cols)
 		}
-		// Bar cell should contain date range in text
-		var barText struct {
-			Paragraphs []struct {
-				Content string `json:"content"`
-			} `json:"paragraphs"`
+		// The date range is written on the stop's row, inside or beside its bar.
+		found := false
+		for _, cell := range grid.Rows[2].Cells {
+			if cell != nil && cell.Shape != nil && strings.Contains(string(cell.Shape.Text), "Apr 30 → May 15") {
+				found = true
+			}
 		}
-		if err := json.Unmarshal(grid.Rows[0].Cells[1].Shape.Text, &barText); err != nil {
-			t.Fatalf("bar text unmarshal: %v", err)
-		}
-		if barText.Paragraphs[0].Content != "Apr 30 → May 15" {
-			t.Errorf("bar text = %q, want %q", barText.Paragraphs[0].Content, "Apr 30 → May 15")
+		if !found {
+			t.Errorf("row of the first stop does not carry its date range %q", "Apr 30 → May 15")
 		}
 	})
 

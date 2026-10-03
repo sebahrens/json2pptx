@@ -1029,7 +1029,9 @@ func convertGridRows(inputRows []GridRowInput) []shapegrid.Row {
 				continue
 			}
 			if c.Shape == nil && c.Table == nil && c.Icon == nil && c.Image == nil && c.Diagram == nil && c.Composite == nil {
-				cells[j] = shapegrid.Cell{}
+				// An empty spacer keeps its footprint, so the cells after it
+				// land where they were placed (the gantt track relies on it).
+				cells[j] = shapegrid.Cell{ColSpan: c.ColSpan, RowSpan: c.RowSpan}
 				continue
 			}
 			cells[j] = convertGridCell(c)

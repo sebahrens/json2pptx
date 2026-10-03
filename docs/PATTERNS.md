@@ -107,7 +107,7 @@ Where an index addresses a composite of several shapes, the text keys land on th
 | `stylish-panels` | panel → body (not the ribbon header) |
 | `table-highlight` | option → option-name cell (not the score cells) |
 | `team-bios` | member → name/role/bio text cell (not the photo) |
-| `timeline-horizontal` | stop → label cell (`dots`), chevron (`chevron`), bar (`gantt`) |
+| `timeline-horizontal` | stop → label cell (`dots`), chevron (`chevron`), bar or marker (`gantt`) |
 | `value-chain`, `waterfall-bridge` | step / column → label cell |
 
 All other patterns apply the text keys to the one shape the index addresses (banner / pillar / foundation / roof in `strategy-house`, a quadrant in `matrix-2x2`, a card in `card-grid`, and so on). The `kpi-*` family already did this through the same helper (formerly `applyKPICellTextOverrides`).
@@ -549,6 +549,18 @@ The same rule applies to the text a pattern paints INSIDE a fill it tints itself
 - In `timeline-horizontal` chevrons, measure the label and body against the chevron's usable text width and capped row height. Emit `BODY_TOO_LONG` with the available body-line count when the description would clip; a raw character limit misses narrow seven-stop layouts.
 - Chevron `body_size` controls both the emitted paragraph and its fit budget. Sizes below shape-grid's 12pt rendering floor are measured and emitted at 12pt, including the default derived from `label_size`.
 - Chevron dates use that same 12pt rendering floor for their one-line row height. A date that wraps at the effective font size and template width receives a `BODY_TOO_LONG` fit finding instead of relying on a fixed character count.
+
+## timeline-horizontal `gantt`: bars on a time axis (go-slide-creator-o34er)
+
+`style: "gantt"` used to draw every stop as one full-width bar: a point milestone, a three-month range and a seven-month range were the same length, with no axis. The style now reads `date` / `end_date` as dates (`internal/patterns/timeline_dates.go`) and lays the track out as a time axis (`timeline_gantt.go`):
+
+- **Grammar.** `2026-03-15`, `2026-03`, `2026`, `Mar 2026`, `March 2026`, `Mar '26`, `5 Mar 2026`, `Mar 5, 2026`, `05-Mar-2026`, `Q1 2026`, `2026 Q1`, `2026Q1`, `H1 2026`, and the yearless forms `Mar`, `Apr 30`, `Q2`, `H1`. Each names a period (a day, month, quarter, half-year or year). Yearless stops are ordered among themselves in authored order (`Nov`, `Dec`, `Jan` runs on across the year end) and the axis prints no year; a yearless stop beside dated ones cannot be placed.
+- **Bars and markers.** A stop with `end_date` is a bar from the start of `date` to the end of `end_date` (`Oct 2026` → `Dec 2026` is three months). A stop without `end_date` is a diamond marker at the middle of the period its `date` names; give `end_date` (it may equal `date`) for a bar.
+- **Columns are date segments.** The grid's columns are the label column (30%, widening to 45% for wrapped labels) followed by one column per segment between consecutive ticks, bar edges and marker edges, with a 0.01pt column gap, so a cell's `col_span` is exactly the dates it covers. Empty stretches are spacer cells (`{"col_span": N}` with no content), which the resolver keeps as footprint. A bar edge within 2pt of a tick shares its boundary; the shortest bar is 6pt and a marker 14pt.
+- **Axis.** A row of unit labels, each starting at its tick, over a 0.75pt rule. The unit is the finest of days, weeks, months, quarters, half-years, years (then 2 / 5 / 10 / 25 / 50 years) that covers the stops in at most 8 divisions of at least 46pt; the year is printed on the first label and on each January / Q1 / H1 (`Oct '26`, `Nov`, `Dec`, `Jan '27`).
+- **Date text.** The `date → end_date` text sits inside a bar that holds it on one line, else beside the bar (after it, or before it when there is no room after), measured at the size the writer writes it at. Unfilled track text (axis labels, dates beside a bar) carries a 3pt side margin and no vertical margin so it starts at the tick or bar edge.
+- **Dates that cannot be read.** A value that is not a date (`Summer`, `TBD`), an `end_date` before its `date`, or a yearless date beside dated stops is not an error: the row keeps its label and date text but gets no bar, and `PostExpandWarnings` emits one `TIMELINE_DATE_UNPARSEABLE` line naming every `values[i].date` / `.end_date` it could not place. With no stop placed there is no axis either. Never draw a bar of invented length.
+- **Density.** `collectGridOccupancyFindings` counts a gantt as two cells per stop; the segment columns are geometry, not content.
 
 ## capability-heatmap and framework-grid (column- and row-structured frameworks)
 

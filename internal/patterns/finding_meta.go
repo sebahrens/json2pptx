@@ -940,6 +940,17 @@ var findingMetaRegistry = map[string]FindingMeta{
 		},
 		RelatedCodes: []string{ErrCodeChartDataEmpty},
 	},
+	ErrCodeTimelineDateUnparseable: {
+		Code:        ErrCodeTimelineDateUnparseable,
+		Summary:     "A gantt-style timeline stop has a date the engine cannot place on the time axis.",
+		Severity:    "review",
+		WhenEmitted: "timeline-horizontal in gantt style (and the DeckSpec timeline kind, which uses it when a milestone has an end_date) positions each bar from its date and end_date. A value that is not a date (\"Summer\", \"TBD\"), an end_date before its date, or a yearless date beside dated stops cannot be placed: that stop is drawn as its date text with no bar.",
+		RemediationSteps: []string{
+			"Write the dates as 2026-03-15, 2026-03, Mar 2026, Q1 2026, H1 2026 or 2026 — every stop with a year, or every stop without one.",
+			"Or use dots or chevron style (drop end_date) when the stops are not dated.",
+		},
+		RelatedCodes: []string{ErrCodeContentDropped},
+	},
 
 	ErrCodeLowContrastHighlight: {
 		Code:        ErrCodeLowContrastHighlight,
@@ -1358,10 +1369,11 @@ var findingMetaRegistry = map[string]FindingMeta{
 		Code:        "chart.label_truncated",
 		Summary:     "An axis or data label was truncated to fit available width.",
 		Severity:    "review",
-		WhenEmitted: "svggen layout pass shortens a label string that would exceed available width.",
+		WhenEmitted: "svggen layout pass shortens a label string that would exceed available width. A timeline event label is shortened only after one line, staggering above / below, a two-line wrap and the smaller shared size have all failed, and is then reported as shrink_or_split (blocking) at the item's own path with fix.params.original / truncated.",
 		RemediationSteps: []string{
 			"Shorten the source label.",
 			"Or widen the chart cell so the full label fits.",
+			"On a timeline: use fewer events or spread their dates.",
 		},
 		RelatedCodes: []string{"chart.label_ellipsized", "chart.label_clipped"},
 	},

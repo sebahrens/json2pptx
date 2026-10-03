@@ -9,7 +9,6 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
-	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
 // ---------------------------------------------------------------------------
@@ -60,7 +59,7 @@ func (th *timelineHorizontal) ExemplarValues() any {
 type TimelineStop struct {
 	Label   string `json:"label"`
 	Date    string `json:"date,omitempty"`
-	EndDate string `json:"end_date,omitempty"` // Only used in gantt style
+	EndDate string `json:"end_date,omitempty"` // Only used in gantt style: the bar ends at the end of this period
 	Body    string `json:"body,omitempty"`
 }
 
@@ -172,9 +171,13 @@ func (th *timelineHorizontal) PostExpandWarnings(ctx ExpandContext, values, over
 			}
 		}
 	}
+	// A gantt bar is placed by its dates; one that cannot be read is not
+	// drawn to scale, and says so (go-slide-creator-o34er).
+	budgetWarned := len(warnings) > 0
+	warnings = append(warnings, timelineGanttDateWarnings(style, *v)...)
 	// The budgets assume a typical content area; with the template's own area
 	// the rows are also measured against it (go-slide-creator-n1muf).
-	if len(warnings) > 0 {
+	if budgetWarned {
 		return warnings
 	}
 	if w := th.measuredWarning(ctx, v, ovr, style); w != "" {
@@ -195,11 +198,7 @@ func (th *timelineHorizontal) measuredWarning(ctx ExpandContext, v *TimelineHori
 	}
 	switch style {
 	case "gantt":
-		grid, err := th.expandGantt(ctx, v, ovr, nil)
-		if err != nil {
-			return ""
-		}
-		if fit := timelineGanttFitRows(ctx, grid.Rows); !fit.fits {
+		if _, fit := th.ganttFit(ctx, *v, ovr, nil); !fit.fits {
 			return fmt.Sprintf("%s: timeline-horizontal gantt rows need %.0fpt for their wrapped labels but the content area holds about %.0fpt — shorten the labels to one line or use fewer stops", ErrCodeBodyTooLong, fit.totalPt, fit.availPt)
 		}
 	case "chevron":
@@ -267,7 +266,7 @@ func (th *timelineHorizontal) Schema() *Schema {
 		map[string]*Schema{
 			"label":    StringSchema(60).WithDescription("Stop label (e.g. \"Q1 2025\", \"Launch\"); about 36 readable characters in gantt style"),
 			"date":     StringSchema(30).WithDescription("Optional date or time annotation. Chevron dates have a one-line row at the effective font size (12pt minimum); BODY_TOO_LONG reports wrapping for the chosen template width. Dots and gantt retain the 30-character schema limit."),
-			"end_date": StringSchema(30).WithDescription("End date for gantt style (creates a range bar from date to end_date); date and end_date together hold about 32 readable characters"),
+			"end_date": StringSchema(30).WithDescription("End date for gantt style: the bar runs from the start of date to the end of end_date on a shared time axis (a stop without end_date is a diamond marker at its date). Write both as 2026-03-15, 2026-03, Mar 2026, Q1 2026, H1 2026 or 2026 — every stop with a year, or every stop without; a value that is not a date gets no bar and reports TIMELINE_DATE_UNPARSEABLE. date and end_date together hold about 32 readable characters"),
 			"body":     StringSchema(200).WithDescription("Optional body for dots and chevron stops; gantt does not render body and emits CONTENT_DROPPED if set. Dots readable chars for short/long labels by stop count: 3: 200/161, 4: 150/77, 5: 101/40, 6: 75/40, 7: 52/0 (a 7-stop label over 50 characters leaves no body). Chevron body capacity is measured from its actual width, height, label wrapping, and font sizes; BODY_TOO_LONG reports the line limit for the chosen layout. Shorten descriptions or use fewer stops when warned."),
 		},
 		[]string{"label"},
@@ -283,7 +282,7 @@ func (th *timelineHorizontal) Schema() *Schema {
 					"label_size":      NumberSchema(6, 120).WithDescription("Font size for stop labels in points"),
 					"date_size":       NumberSchema(6, 120).WithDescription("Font size for dates in points; chevron style uses the shape-grid 12pt rendering floor for row height and wrap warnings"),
 					"body_size":       NumberSchema(6, 120).WithDescription("Font size for body text in points; chevron style honors this override and applies the shape-grid 12pt readable floor"),
-					"style":           EnumSchema("dots", "chevron", "gantt").WithDescription("Visual style: dots (default: horizontal axis with accent dots, dates above, label/body below), chevron (connected arrow shapes with gradient), gantt (horizontal range bars)").WithDefault("dots"),
+					"style":           EnumSchema("dots", "chevron", "gantt").WithDescription("Visual style: dots (default: horizontal axis with accent dots, dates above, label/body below), chevron (connected arrow shapes with gradient), gantt (one row per stop on a labelled time axis: bars positioned and sized by date / end_date, diamond markers for stops without end_date)").WithDefault("dots"),
 				},
 				nil,
 			).WithAdditionalProperties(false),
@@ -788,171 +787,6 @@ func timelineChevronRowFit(ctx ExpandContext, cells []*jsonschema.GridCellInput,
 	if fit.needPt > fit.capPt {
 		fit.rowPt = math.Max(fit.capPt, math.Min(fit.needPt, fit.availPt))
 	}
-	return fit
-}
-
-// expandGantt renders horizontal bars representing date ranges.
-// Label left-aligned in bar, date range shown as bar width hint.
-func (th *timelineHorizontal) expandGantt(ctx ExpandContext, stops *TimelineHorizontalValues, ovr *TimelineHorizontalOverrides, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
-	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	labelSize := ResolveSize(ovr.LabelSize, scaleDenseBodyPt)
-	dateSize := ResolveSize(ovr.DateSize, sizeDenseCaptionPt)
-
-	n := len(*stops)
-	// Bars are capped (go-slide-creator-7km8) so 3 stops do not become three
-	// slide-height slabs; the grid centres the stack vertically.
-	_, contentH := contentAreaPt(ctx)
-	ganttBarMaxPt := math.Round(math.Max(contentH*0.12, labelSize*contentLineHeight*2+2*defaultShapeInsetTBPt))
-
-	// Each stop becomes a row with: label cell (col 1) + bar cell (col 2)
-	rows := make([]jsonschema.GridRowInput, n)
-	for i, stop := range *stops {
-		// Label cell
-		labelText := json.RawMessage(fmt.Sprintf(
-			`{"paragraphs":[{"content":%q,"size":%g,"bold":true,"align":"right"}],"align":"right","vertical_align":"ctr"}`,
-			stop.Label, labelSize,
-		))
-		labelShape := &jsonschema.ShapeSpecInput{
-			Geometry: "rect",
-			Fill:     json.RawMessage(`"none"`),
-			Text:     labelText,
-		}
-
-		// Date range text inside bar
-		dateLabel := stop.Date
-		if stop.EndDate != "" {
-			dateLabel = stop.Date + " → " + stop.EndDate
-		}
-		// Tint gradient per row, and the text colour that reads on this row's
-		// own tint rather than a hardcoded lt1.
-		tone := chevronGradientTone(accent, i, n)
-		barText := json.RawMessage(fmt.Sprintf(
-			`{"paragraphs":[{"content":%q,"size":%g,"color":%q,"align":"left"}],"align":"left","vertical_align":"ctr"}`,
-			dateLabel, dateSize, timelineGradientTextColor(ctx, tone),
-		))
-
-		barShape := &jsonschema.ShapeSpecInput{
-			Geometry: "roundRect",
-			Fill:     tone.fillJSON(),
-			Text:     barText,
-		}
-
-		barCell := &jsonschema.GridCellInput{Shape: barShape}
-
-		// Apply cell overrides
-		if co, ok := cellOverrides[i]; ok {
-			cellOvr, coOk := co.(*TimelineHorizontalCellOverride)
-			if coOk {
-				applyCellTextOverride(barCell, cellOvr)
-			}
-			if coOk && cellOvr.AccentBar {
-				barCell.AccentBar = &jsonschema.AccentBarInput{
-					Position: "left",
-					Color:    accent,
-					Width:    4,
-				}
-			}
-		}
-
-		rows[i] = jsonschema.GridRowInput{
-			Cells: []*jsonschema.GridCellInput{
-				{Shape: labelShape},
-				barCell,
-			},
-			MaxHeight: ganttBarMaxPt,
-		}
-	}
-
-	// A bar whose label wraps is held at its written fit instead of being
-	// squeezed to the cap; one-line rows keep giving way, since the writer
-	// clamps a short shape's margin so one line always fits. When the wrapped
-	// rows do not fit, the label column widens before they are left to shrink
-	// (go-slide-creator-n1muf).
-	fit := timelineGanttFitRows(ctx, rows)
-	if fit.fits {
-		for i := range rows {
-			if fit.needs[i] > 0 {
-				rows[i].MinHeight = fit.needs[i]
-				rows[i].MaxHeight = math.Max(rows[i].MaxHeight, fit.needs[i])
-			}
-		}
-	}
-	cols := fmt.Sprintf(`[%g, %g]`, fit.labelPct, 100-fit.labelPct)
-
-	grid := &jsonschema.ShapeGridInput{
-		Columns:       json.RawMessage(cols),
-		Gap:           ctx.Gap(timelineGanttGapPt),
-		Rows:          rows,
-		VerticalAlign: GridVerticalAlignDefault,
-	}
-
-	return grid, nil
-}
-
-const (
-	// timelineGanttGapPt separates the label column from the bars, and the rows.
-	timelineGanttGapPt = 8.0
-	// timelineGanttLabelPct is the label column's default share of the grid,
-	// and timelineGanttLabelMaxPct the widest it grows to hold wrapped labels.
-	timelineGanttLabelPct    = 30.0
-	timelineGanttLabelMaxPct = 45.0
-)
-
-// timelineGanttFit is the written-fit measurement of a gantt stack.
-type timelineGanttFit struct {
-	labelPct float64
-	needs    []float64 // written fit of a row whose text wraps; 0 for one-line rows
-	totalPt  float64   // the stack's minimum height: wrapped rows at their fit, one-line rows at one line
-	availPt  float64
-	fits     bool
-}
-
-// timelineGanttFitRows measures the stack at the default label column and,
-// while the wrapped rows do not fit, at wider ones in 5-point steps. With no
-// width that fits it reports the default column.
-func timelineGanttFitRows(ctx ExpandContext, rows []jsonschema.GridRowInput) timelineGanttFit {
-	first := timelineGanttRowFit(ctx, rows, timelineGanttLabelPct)
-	for pct := timelineGanttLabelPct + 5; !first.fits && pct <= timelineGanttLabelMaxPct; pct += 5 {
-		if fit := timelineGanttRowFit(ctx, rows, pct); fit.fits {
-			return fit
-		}
-	}
-	return first
-}
-
-// timelineGanttRowFit measures each gantt row's label and bar text at their
-// real column widths for a label column labelPct of the grid.
-func timelineGanttRowFit(ctx ExpandContext, rows []jsonschema.GridRowInput, labelPct float64) timelineGanttFit {
-	contentW, contentH := contentAreaPt(ctx)
-	// A substituted template face draws wider than its stand-in, and a label
-	// that only just fits one line wraps in the renderer — where the clamped
-	// margin of a one-line row leaves no room for the second line, so
-	// LibreOffice shrinks it. Rows are measured at the atomic-token width.
-	font := ctx.Theme.BodyFont
-	widths := []float64{
-		textfit.AtomicTokenWidthPt(font, (contentW-ctx.Gap(timelineGanttGapPt))*labelPct/100),
-		textfit.AtomicTokenWidthPt(font, (contentW-ctx.Gap(timelineGanttGapPt))*(100-labelPct)/100),
-	}
-	fit := timelineGanttFit{labelPct: labelPct, needs: make([]float64, len(rows)), availPt: contentH - float64(max(len(rows)-1, 0))*ctx.Gap(timelineGanttGapPt)}
-	for i, row := range rows {
-		oneLine := 0.0
-		for j, c := range row.Cells {
-			if c == nil || c.Shape == nil || j >= len(widths) {
-				continue
-			}
-			tb, err := shapegrid.ResolveTextInput(c.Shape.Text)
-			if err != nil || tb == nil {
-				continue
-			}
-			line := largestRunPt(tb) * contentLineHeight
-			oneLine = math.Max(oneLine, line)
-			if need := writtenFitHeightPt(ctx.themeFonts(), c.Shape.Text, widths[j], 0); need > math.Ceil(2*defaultShapeInsetTBPt+line) {
-				fit.needs[i] = math.Max(fit.needs[i], need)
-			}
-		}
-		fit.totalPt += math.Max(fit.needs[i], oneLine)
-	}
-	fit.fits = fit.totalPt <= fit.availPt+1
 	return fit
 }
 
