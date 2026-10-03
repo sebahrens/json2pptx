@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/tokens"
@@ -207,12 +208,13 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	// cannot fit even at the minimum scale, keep the maximum reduction and
 	// report TITLE_OVERFLOW so the author shortens it.
 	if cfg.isTitle {
+		var brokenWord string
 		if cfg.sectionTitle {
-			result = capScaleForLongestWord(shape, params, result)
+			result, brokenWord = capScaleForLongestWord(shape, params, result, &cfg)
 		}
 		if cfg.findings != nil {
 			if cfg.sectionTitle && (result.Overflow || result.LnSpcReduction > 0) {
-				*cfg.findings = append(*cfg.findings, newSectionTitleFloorFinding(cfg.findingPath, strings.Join(texts, " "), params))
+				*cfg.findings = append(*cfg.findings, newSectionTitleFloorFinding(cfg.findingPath, strings.Join(texts, " "), params, brokenWord))
 			} else if result.Overflow {
 				*cfg.findings = append(*cfg.findings, newTitleOverflowFinding(cfg.findingPath, strings.Join(texts, " "), params, result))
 			}
@@ -262,50 +264,149 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 // list style.
 var letterSpacingRegexp = regexp.MustCompile(`\bspc="(-?\d+)"`)
 
+// lstBoldRegexp finds the b attribute of a list style's run defaults.
+var lstBoldRegexp = regexp.MustCompile(`<a:defRPr\b[^>]*\bb="([01]|true|false)"`)
+
 // capScaleForLongestWord shrinks a divider title until its longest word fits
 // on one line. textfit counts a word wider than the box as wrapping by
 // character, so a single long all-caps word ("PERFORMANCE") "fitted" as
-// PERFORMAN / CE (go-slide-creator-csclk.96). A 3% margin absorbs bold weight
-// and inset differences the regular-weight word measurement does not see.
-// When even the divider floor cannot hold the word, the result is marked as
-// overflowing so the section-title floor finding reports it.
-func capScaleForLongestWord(shape *shapeXML, p textfit.Params, res textfit.FitResult) textfit.FitResult {
+// PERFORMAN / CE (go-slide-creator-csclk.96). The word is measured as it
+// renders — inherited all-caps, weight and letter spacing — against the box's
+// real insets, with the renderer slack the shape writer leaves its widest
+// word (pptx.WordLineNeedEMU): Abstract's Tenorite is measured in a stand-in,
+// and a 3% margin there still broke BOTTLENEC / K at 43.5pt
+// (go-slide-creator-akues). When even the divider floor cannot hold the word,
+// the result is marked as overflowing and the word that breaks is returned
+// for the section-title floor finding.
+func capScaleForLongestWord(shape *shapeXML, p textfit.Params, res textfit.FitResult, cfg *autofitConfig) (textfit.FitResult, string) {
 	if p.FontSizeHPt <= 0 || len(p.Paragraphs) == 0 {
-		return res
+		return res, ""
 	}
+	ws := sectionTitleWordStyleFor(shape, cfg)
 	text := strings.Join(p.Paragraphs, " ")
-	// Character spacing (spc, hundredths of a point, not scaled by the font
-	// scale) widens every letter of the word; take it off the usable width.
-	width := p.WidthEMU
-	if shape.TextBody.ListStyle != nil {
-		if m := letterSpacingRegexp.FindStringSubmatch(shape.TextBody.ListStyle.Inner); m != nil {
-			if spc, err := strconv.Atoi(m[1]); err == nil && spc > 0 {
-				longest := 0
-				for _, w := range strings.Fields(text) {
-					longest = max(longest, len([]rune(w)))
-				}
-				width -= int64(longest) * int64(spc) * 127 // hPt -> EMU
-			}
-		}
+	if ws.caps {
+		text = strings.ToUpper(text)
 	}
-	maxHPt := textfit.MaxFontForWidth(text, width, p.FontName) * 97 / 100
+	var marginPt float64
+	for _, m := range p.LeftMarginsPt {
+		marginPt = max(marginPt, m)
+	}
+	avail := p.WidthEMU - titleInsetsEMU(shape.TextBody.BodyProperties) - int64(marginPt*12700)
+	maxHPt := maxHPtForWholeWords(text, avail, p.FontName, ws)
 	if maxHPt <= 0 {
-		return res
+		return res, ""
 	}
 	scale := res.FontScale
 	if scale == 0 {
 		scale = 100000
 	}
 	if p.FontSizeHPt*scale/100000 <= maxHPt {
-		return res
+		return res, ""
 	}
 	newScale := maxHPt * 100000 / p.FontSizeHPt
+	var broken string
 	if p.MinFontScalePct > 0 && newScale < p.MinFontScalePct*1000 {
 		newScale = p.MinFontScalePct * 1000
 		res.Overflow = true
+		broken = wordBrokenAt(text, p.FontSizeHPt*newScale/100000, avail, p.FontName, ws)
 	}
 	res.FontScale = newScale
-	return res
+	return res, broken
+}
+
+// titleWordStyle is what a title's words render with beyond face and size.
+type titleWordStyle struct {
+	caps, bold bool
+	spcHPt     int
+}
+
+// sectionTitleWordStyleFor resolves the divider title's all-caps, weight and
+// letter spacing: the shape's own list style over the inherited master style.
+func sectionTitleWordStyleFor(shape *shapeXML, cfg *autofitConfig) titleWordStyle {
+	var ws titleWordStyle
+	if cfg.inherited != nil {
+		ws = titleWordStyle{caps: cfg.inherited.CapsAll, bold: cfg.inherited.Bold, spcHPt: cfg.inherited.SpcHPt}
+	}
+	if shape.TextBody.ListStyle == nil {
+		return ws
+	}
+	lst := shape.TextBody.ListStyle.Inner
+	ws.caps = template.InheritedTextStyle{CapsAll: ws.caps}.OverrideFromListStyle(lst).CapsAll
+	if m := lstBoldRegexp.FindStringSubmatch(lst); m != nil {
+		ws.bold = m[1] == "1" || m[1] == "true"
+	}
+	if m := letterSpacingRegexp.FindStringSubmatch(lst); m != nil {
+		if spc, err := strconv.Atoi(m[1]); err == nil {
+			ws.spcHPt = spc
+		}
+	}
+	return ws
+}
+
+// titleInsetsEMU is the width a body's left and right insets take (the OOXML
+// 0.1" default on a side that declares none).
+func titleInsetsEMU(bp *bodyPropertiesXML) int64 {
+	const defaultInsetEMU = 91440
+	l, r := int64(defaultInsetEMU), int64(defaultInsetEMU)
+	if bp != nil && bp.LIns != nil {
+		l = *bp.LIns
+	}
+	if bp != nil && bp.RIns != nil {
+		r = *bp.RIns
+	}
+	return l + r
+}
+
+// wordBrokenAt returns the first word of text that does not fit one line of
+// availEMU at hpt (hundredths of a point), or "" when all do or none can be
+// measured.
+func wordBrokenAt(text string, hpt int, availEMU int64, fontName string, ws titleWordStyle) string {
+	if ws.caps {
+		text = strings.ToUpper(text)
+	}
+	for _, w := range strings.Fields(text) {
+		if need, ok := pptx.WordLineNeedEMU(w, fontName, float64(hpt)/100, ws.bold, ws.spcHPt); ok && need > availEMU {
+			return w
+		}
+	}
+	return ""
+}
+
+// maxHPtForWholeWords is the largest size (hundredths of a point) at which
+// every word of text keeps to one line of availEMU, measured as
+// pptx.WordLineNeedEMU measures it. 0 means it cannot be measured.
+func maxHPtForWholeWords(text string, availEMU int64, fontName string, ws titleWordStyle) int {
+	words := strings.Fields(text)
+	if len(words) == 0 || availEMU <= 0 {
+		return 0
+	}
+	fits := func(hpt int) (bool, bool) {
+		for _, w := range words {
+			need, ok := pptx.WordLineNeedEMU(w, fontName, float64(hpt)/100, ws.bold, ws.spcHPt)
+			if !ok {
+				return false, false
+			}
+			if need > availEMU {
+				return false, true
+			}
+		}
+		return true, true
+	}
+	lo, hi := 100, 50000 // 1pt .. 500pt
+	if ok, measured := fits(lo); !measured {
+		return 0
+	} else if !ok {
+		return lo
+	}
+	for lo < hi {
+		mid := (lo + hi + 1) / 2
+		if ok, _ := fits(mid); ok {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
+	}
+	return lo
 }
 
 // handleNoAutofitDirective respects an explicit <a:noAutofit/> in the template

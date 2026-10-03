@@ -126,3 +126,64 @@ func TestGridReadabilityRefusesFramesWithoutUsableTextArea(t *testing.T) {
 		})
 	}
 }
+
+// kpiStatShape is the mixed figure / caption box a stat region writes: a 36pt
+// figure over a KPI caption under a stored autofit.
+func kpiStatShape(scale, captionHPt string) string {
+	return `<p:sp><p:nvSpPr><p:cNvPr id="206" name="Shape 206"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>` +
+		`<p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="4625277" cy="908500"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>` +
+		`<p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="180000" tIns="179930" rIns="180000" bIns="179930"><a:normAutofit fontScale="` + scale + `" lnSpcReduction="14000"/></a:bodyPr><a:lstStyle/>` +
+		`<a:p><a:r><a:rPr sz="3600" b="1"/><a:t>17%</a:t></a:r></a:p>` +
+		`<a:p><a:r><a:rPr sz="` + captionHPt + `"/><a:t>FY26 EBIT margin</a:t></a:r></a:p></p:txBody></p:sp>`
+}
+
+// TestUnreadableAutofitHonoursGridRoles: the generic stored-autofit scan read a
+// whole stat box as body text, so a 14pt KPI caption at 72% (10.08pt, above the
+// 10pt caption floor) was reported as "body text below 12pt" and blocked
+// deterministic readiness although the role-aware grid check accepted it
+// (go-slide-creator-ntvhh).
+func TestUnreadableAutofitHonoursGridRoles(t *testing.T) {
+	path := func(id string) string { return "/slides/7/rendered_shapes/" + id }
+	present := tokens.ViewingModePresentation
+	kpiRoles := map[uint32][]tokens.TextRole{206: {tokens.TextRoleKPIValue, tokens.TextRoleCaption}}
+
+	shape := kpiStatShape("72000", "1400")
+	if got := unreadableAutofitFindings(shape, present, path, kpiRoles); len(got) != 0 {
+		t.Fatalf("10.08pt KPI caption reported against the body floor: %+v", got)
+	}
+	// A shape no grid source describes is still held to the body floor.
+	if got := unreadableAutofitFindings(shape, present, path, nil); len(got) != 1 || !strings.Contains(got[0].Message, "body text") {
+		t.Fatalf("role-less shape must keep the body floor: %+v", got)
+	}
+	// Roles that do not line up with the paragraphs are not trusted.
+	if got := unreadableAutofitFindings(shape, present, path, map[uint32][]tokens.TextRole{206: {tokens.TextRoleCaption}}); len(got) != 1 {
+		t.Fatalf("misaligned roles must not exempt the shape: %+v", got)
+	}
+
+	// The role-aware grid check owns the role-known paragraphs: the caption
+	// passes at 10.08pt, while a caption genuinely under 10pt (13pt at 72% =
+	// 9.36pt) or a body paragraph under 12pt is refused against its own floor.
+	for _, tc := range []struct {
+		name, caption string
+		role          tokens.TextRole
+		refuse        bool
+	}{
+		{"caption at 10.08pt", "1400", tokens.TextRoleCaption, false},
+		{"caption at 9.36pt", "1300", tokens.TextRoleCaption, true},
+		{"body at 10.08pt", "1400", tokens.TextRoleBody, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			raw := kpiStatShape("72000", tc.caption)
+			roles := map[uint32][]tokens.TextRole{206: {tokens.TextRoleKPIValue, tc.role}}
+			ctx := &singlePassContext{}
+			ctx.viewingMode = present
+			ctx.reportGridReadability([][]byte{[]byte(raw)}, roles, 7)
+			if got := len(ctx.fitFindings) == 1 && ctx.fitFindings[0].Action == "refuse"; got != tc.refuse {
+				t.Fatalf("grid refusal = %v, want %v: %+v", got, tc.refuse, ctx.fitFindings)
+			}
+			if got := unreadableAutofitFindings(raw, present, path, roles); len(got) != 0 {
+				t.Fatalf("generic scan double-reports a role-judged paragraph: %+v", got)
+			}
+		})
+	}
+}

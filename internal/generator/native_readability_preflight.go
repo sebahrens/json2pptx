@@ -44,7 +44,7 @@ func NativeDiagramReadabilityPreflight(spec *types.DiagramSpec, bounds types.Bou
 	}
 	var first *patterns.FitFinding
 	shapes := 0
-	for _, f := range unreadableAutofitFindings(group, mode, func(string) string { return path }) {
+	for _, f := range unreadableAutofitFindings(group, mode, func(string) string { return path }, nil) {
 		if f.Action != "refuse" {
 			continue
 		}

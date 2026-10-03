@@ -96,30 +96,53 @@ func DetectSectionTitleFloor(path string, in TitleFitInput) *patterns.FitFinding
 	in.MinFontHPt = SectionTitleMinHPt
 	p := titleFitParams(in)
 	if in.Style.SizeHPt > 0 && in.Style.SizeHPt < SectionTitleMinHPt {
-		f := newSectionTitleFloorFinding(path, in.Title, p)
+		f := newSectionTitleFloorFinding(path, in.Title, p, "")
 		return &f
 	}
 	res, err := textfit.Calculate(p)
-	if err != nil || (!res.Overflow && res.LnSpcReduction == 0) {
+	if err != nil {
 		return nil
 	}
-	f := newSectionTitleFloorFinding(path, in.Title, p)
+	word := SectionTitleWordBrokenAtFloor(in)
+	if !res.Overflow && res.LnSpcReduction == 0 && word == "" {
+		return nil
+	}
+	f := newSectionTitleFloorFinding(path, in.Title, p, word)
 	return &f
 }
 
-func newSectionTitleFloorFinding(path, title string, p textfit.Params) patterns.FitFinding {
+// SectionTitleWordBrokenAtFloor returns the first word of a divider title
+// that cannot stay whole on one line at the 28pt floor, measured as the
+// generator's capScaleForLongestWord measures it (inherited caps, weight and
+// letter spacing, default insets), or "" when every word fits. Generation
+// would split that word mid-word (go-slide-creator-akues).
+func SectionTitleWordBrokenAtFloor(in TitleFitInput) string {
+	ws := titleWordStyle{caps: in.Style.CapsAll, bold: in.Style.Bold, spcHPt: in.Style.SpcHPt}
+	return wordBrokenAt(in.Title, SectionTitleMinHPt, in.WidthEMU-titleInsetsEMU(nil), in.FontName, ws)
+}
+
+// newSectionTitleFloorFinding refuses a divider title that cannot fit at the
+// 28pt floor. brokenWord, when set, is a word that cannot stay whole on one
+// line there: the shortening target then stops before it.
+func newSectionTitleFloorFinding(path, title string, p textfit.Params, brokenWord string) patterns.FitFinding {
 	maxChars := 0
 	if p.FontSizeHPt >= SectionTitleMinHPt {
 		maxChars = longestFittingPrefix(p, func(r textfit.FitResult) bool {
 			return !r.Overflow && r.LnSpcReduction == 0
 		})
 	}
+	msg := fmt.Sprintf("section title (%d chars) cannot fit its divider box at the 28pt floor without losing text or compressing line spacing; shorten to about %d chars", len([]rune(title)), maxChars)
+	if brokenWord != "" {
+		before, _, _ := strings.Cut(strings.ToUpper(title), strings.ToUpper(brokenWord))
+		maxChars = min(maxChars, len([]rune(strings.TrimSpace(before))))
+		msg = fmt.Sprintf("section title word %q is too wide for one line of its divider box at the 28pt floor and would break mid-word; use a shorter word (about %d chars fit before it)", brokenWord, maxChars)
+	}
 	return patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
 			Pattern: "placeholder",
 			Path:    path,
 			Code:    patterns.ErrCodeTitleTruncated,
-			Message: fmt.Sprintf("section title (%d chars) cannot fit its divider box at the 28pt floor without losing text or compressing line spacing; shorten to about %d chars", len([]rune(title)), maxChars),
+			Message: msg,
 			Fix: &patterns.FixSuggestion{Kind: "shorten_title", Params: map[string]any{
 				"current_chars": len([]rune(title)), "max_chars": maxChars, "min_font_pt": 28,
 			}},
@@ -299,6 +322,8 @@ func TitleFitInputForPlaceholder(text string, ph *types.PlaceholderInfo) TitleFi
 			SizeHPt:        ph.FontSize,
 			CapsAll:        ph.TextCaps,
 			LineSpacingPct: ph.LineSpacingPct,
+			Bold:           ph.TextBold,
+			SpcHPt:         ph.CharSpacingHPt,
 		},
 		FontName: ph.FontFamily,
 	}

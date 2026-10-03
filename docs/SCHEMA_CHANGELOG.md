@@ -1,5 +1,18 @@
 # Schema Changelog
 
+- **2026-10-03 — Divider titles keep words whole on stand-in faces; KPI captions keep their role in the rendered-shape scan (`go-slide-creator-akues`, `go-slide-creator-ntvhh`).** SchemaVersion unchanged (no new fields, codes or fix kinds).
+  - The divider longest-word guard measures the word as it renders
+    (inherited all-caps, weight, letter spacing) against the box's written
+    insets, with the shape writer's word slack (20% for a host-dependent face
+    such as Abstract's Tenorite). "BOTTLENECK" / "COMMITTING" on Abstract
+    render at 37–38pt instead of breaking at 43.5pt. A word too wide even at
+    28pt is refused as `TITLE_TRUNCATED` by validate and generate alike, the
+    message naming the word and `max_chars` stopping before it.
+  - The generated-shape `TEXT_BELOW_READABLE_MIN` scan no longer holds a
+    shape_grid paragraph with a known source role to the body floor (the
+    role-aware written-run check owns it): a 10.08pt KPI caption under its
+    figure is not "body text below 12pt".
+
 - **2026-10-03 — Narrow regions keep words whole; native diagrams report the ones they cannot (`go-slide-creator-v74wv`).**
   - The writer's margin clamp now leaves 5% of room over a word's measured
     width (20% for a host-dependent theme face measured in the Liberation

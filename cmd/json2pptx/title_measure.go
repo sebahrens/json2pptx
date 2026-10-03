@@ -39,6 +39,9 @@ type titleMeasurement struct {
 	// the current text, is generator.TitlePlaceholderCapacityChars.
 	Chars    int
 	MaxChars int
+	// BrokenWord is a divider-title word too wide for one line at the 28pt
+	// floor (it refuses the title); "" otherwise.
+	BrokenWord string
 
 	input  generator.TitleFitInput
 	result textfit.FitResult
@@ -89,16 +92,21 @@ func measureTitleInPlaceholder(text string, ph *types.PlaceholderInfo, sectionTi
 	if err != nil {
 		return titleMeasurement{}
 	}
+	brokenWord := ""
+	if isSection {
+		brokenWord = generator.SectionTitleWordBrokenAtFloor(in)
+	}
 	m := titleMeasurement{
-		OK:       true,
-		Overflow: res.Overflow,
-		Refuse:   isSection && (res.Overflow || res.LnSpcReduction > 0),
-		Shrinks:  !isSection && generator.TitleNeedsShortening(res, ph.FontSize),
-		ScalePct: 100,
-		FontPt:   float64(ph.FontSize) / 100.0,
-		Chars:    len([]rune(text)),
-		input:    in,
-		result:   res,
+		OK:         true,
+		Overflow:   res.Overflow,
+		Refuse:     isSection && (res.Overflow || res.LnSpcReduction > 0 || brokenWord != ""),
+		BrokenWord: brokenWord,
+		Shrinks:    !isSection && generator.TitleNeedsShortening(res, ph.FontSize),
+		ScalePct:   100,
+		FontPt:     float64(ph.FontSize) / 100.0,
+		Chars:      len([]rune(text)),
+		input:      in,
+		result:     res,
 	}
 	if res.FontScale > 0 {
 		m.ScalePct = res.FontScale / 1000
@@ -125,6 +133,9 @@ func measureTitleInPlaceholder(text string, ph *types.PlaceholderInfo, sectionTi
 
 // describe renders a one-line human explanation of a flagged measurement.
 func (m titleMeasurement) describe() string {
+	if m.Refuse && m.BrokenWord != "" {
+		return fmt.Sprintf("section title word %q is too wide for one line of its divider at the 28pt floor and would break mid-word; use a shorter word", m.BrokenWord)
+	}
 	if m.Refuse {
 		return fmt.Sprintf("section title (%d chars) cannot fit its divider at the 28pt floor; shorten to about %d chars", m.Chars, m.MaxChars)
 	}
