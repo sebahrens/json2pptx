@@ -100,6 +100,7 @@ func runAuditPalette() error {
 // of the path before handing them to the standard parser. A literal -- ends
 // option scanning and protects paths that begin with a dash.
 func parseAuditPaletteArgs(fs *flag.FlagSet, args []string) error {
+	cliApplyConvention(fs)
 	flags, positional := make([]string, 0, len(args)), make([]string, 0, 1)
 	for i := 0; i < len(args); i++ {
 		arg := args[i]

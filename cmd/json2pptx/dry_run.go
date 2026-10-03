@@ -1165,6 +1165,55 @@ func isValidFillColor(s string) bool {
 	return hexColorRe.MatchString(s) || schemeColorNames[s]
 }
 
+// countPatternVisuals adds the charts and diagrams a slide-level pattern draws
+// to the deck's content counts. A pattern slide carries no content items and no
+// shape_grid until it is expanded, so a deck whose only chart sat inside
+// chart-insights-split was summarised as "Charts: 0 | Diagrams: 0"
+// (go-slide-creator-pikfw).
+func countPatternVisuals(output *dryRunOutput, input *PresentationInput, analysis *types.TemplateAnalysis) {
+	if input == nil || analysis == nil {
+		return
+	}
+	expanded, fromPattern := expandPatternsForFit(input, analysis.SlideWidth, analysis.SlideHeight, &analysis.Theme, analysis.Layouts...)
+	for i := range fromPattern {
+		charts, diagrams := countGridVisuals(expanded.Slides[i].ShapeGrid)
+		output.ChartCount += charts
+		output.DiagramCount += diagrams
+	}
+}
+
+// countGridVisuals counts the charts and other diagrams a grid draws,
+// including those in nested sub-grids and composite cells.
+func countGridVisuals(grid *jsonschema.ShapeGridInput) (charts, diagrams int) {
+	if grid == nil {
+		return 0, 0
+	}
+	count := func(spec *types.DiagramSpec) {
+		switch {
+		case spec == nil:
+		case strings.HasSuffix(spec.Type, "_chart") || spec.Type == "waterfall":
+			charts++
+		default:
+			diagrams++
+		}
+	}
+	for _, row := range grid.Rows {
+		for _, cell := range row.Cells {
+			if cell == nil {
+				continue
+			}
+			count(cell.Diagram)
+			if cell.Composite != nil {
+				count(cell.Composite.SubDiagram)
+			}
+			c, d := countGridVisuals(cell.Grid)
+			charts += c
+			diagrams += d
+		}
+	}
+	return charts, diagrams
+}
+
 // gridContentCounts holds counts of content types found inside shape_grid cells.
 type gridContentCounts struct {
 	Shapes   int

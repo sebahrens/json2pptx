@@ -236,6 +236,6 @@ func toolClassifications() map[string]toolClassification {
 		},
 		"explain_deck_spec":    {Kind: toolKindDiagnostic, Phase: toolPhasePlan, CLICounterpart: "semantic explain"},
 		"list_deck_archetypes": {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "semantic schema"},
-		"list_slide_kinds":     {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "semantic schema"},
+		"list_slide_kinds":     {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "semantic kinds"},
 	}
 }

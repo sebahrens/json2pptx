@@ -468,7 +468,7 @@ func runSkillInfo() error {
 
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
 	templateName := fs.String("template", "", "Analyze a single template by name (optional)")
-	mode := fs.String("mode", "compact", "Output mode: list, compact, or full (full emits patterns_full with JSON schemas; ~39K tokens)")
+	mode := fs.String("mode", "compact", "Output mode: list (large, ~80 KB), compact (large, ~200 KB), or full (huge, ~800 KB: adds patterns_full with JSON schemas). For template names only use 'json2pptx templates' (under 2 KB)")
 	// Deprecated: --mode=full now always includes full pattern schemas. The flag
 	// is accepted for backward compatibility but has no effect; agents should
 	// drop it. Kept here so existing callers don't break with an "unknown flag"
@@ -484,7 +484,7 @@ func runSkillInfo() error {
 		printDoubleDashUsage(fs)
 	}
 
-	if err := fs.Parse(os.Args[1:]); err != nil {
+	if err := cliParse(fs, os.Args[1:]); err != nil {
 		return err
 	}
 

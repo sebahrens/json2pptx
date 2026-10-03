@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -117,21 +118,49 @@ func mcpRequestWithArgs(args map[string]any) mcpgo.CallToolRequest {
 	}
 }
 
+// cliResultText returns the JSON text of an MCP CallToolResult, or "" when the
+// result carries none.
+func cliResultText(result *mcpgo.CallToolResult) string {
+	if result == nil || len(result.Content) == 0 {
+		return ""
+	}
+	tc, ok := result.Content[0].(mcpgo.TextContent)
+	if !ok {
+		return ""
+	}
+	return tc.Text
+}
+
+// errCLIReported marks a failure whose detail is already on stdout as a
+// finding envelope; main prints only a one-line pointer for it on stderr.
+var errCLIReported = errors.New("failed — see the finding envelope on stdout")
+
+// cliErrorEnvelopeText rewrites a shared tool handler's error envelope for a
+// CLI caller: the handlers stamp "subcommand":"mcp", which is the wrong name
+// for someone who ran `json2pptx render-thumbnails` (go-slide-creator-pikfw).
+func cliErrorEnvelopeText(text string) string {
+	if cliCurrentCommand == "" {
+		return text
+	}
+	// The envelope is compact JSON with "subcommand" in its header, ahead of
+	// any finding text, so the first occurrence is the field itself.
+	return strings.Replace(text, `"subcommand":"mcp"`, `"subcommand":`+string(jsonStringRaw(cliCurrentCommand)), 1)
+}
+
 // printMCPResultJSON extracts the JSON text from an MCP CallToolResult and
-// pretty-prints it to stdout. If the result is an error, it prints to stderr
-// and returns an error.
+// pretty-prints it to stdout. An error result is a result too: its finding
+// envelope goes to stdout like every other command's output, stamped with the
+// CLI subcommand name, and the returned error makes the process exit non-zero.
 func printMCPResultJSON(result *mcpgo.CallToolResult) error {
 	if result == nil {
 		return fmt.Errorf("nil result")
 	}
 
 	if result.IsError {
-		if len(result.Content) > 0 {
-			if tc, ok := result.Content[0].(mcpgo.TextContent); ok {
-				fmt.Fprintln(os.Stderr, tc.Text)
-			}
+		if text := cliResultText(result); text != "" {
+			fmt.Fprintln(os.Stdout, cliErrorEnvelopeText(text))
 		}
-		return fmt.Errorf("tool returned an error")
+		return errCLIReported
 	}
 
 	if len(result.Content) == 0 {
@@ -159,6 +188,14 @@ func printMCPResultJSON(result *mcpgo.CallToolResult) error {
 
 	_, err = os.Stdout.Write(append(pretty, '\n'))
 	return err
+}
+
+// cliPrintJSON writes v to stdout as one line of JSON without HTML escaping,
+// so a "<placeholder>" in a command line reads as written.
+func cliPrintJSON(v any) error {
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetEscapeHTML(false)
+	return enc.Encode(v)
 }
 
 // readJSONInput reads JSON from a file path or stdin (when path is "-").

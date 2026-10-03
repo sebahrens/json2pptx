@@ -358,7 +358,8 @@ func TestSemanticRender_InvalidSpecFails(t *testing.T) {
 	os.Args = []string{"json2pptx", "render", "--spec", path, "--output", out, "--templates-dir", testTemplatesDir}
 
 	var err error
-	stderr := captureStderr(t, func() { err = runSemantic() })
+	// The failure result is the command's result: stdout, like a success.
+	stderr := captureStdout(t, func() { err = runSemantic() })
 	if err == nil {
 		t.Fatal("expected render to fail on a spec with blocking findings")
 	}
@@ -368,7 +369,7 @@ func TestSemanticRender_InvalidSpecFails(t *testing.T) {
 
 	var res semanticRenderResult
 	if jerr := json.Unmarshal([]byte(stderr), &res); jerr != nil {
-		t.Fatalf("failure result is not a semanticRenderResult: %v\nstderr=%s", jerr, stderr)
+		t.Fatalf("failure result is not a semanticRenderResult: %v\nstdout=%s", jerr, stderr)
 	}
 	if res.OK {
 		t.Error("failure result OK = true")
@@ -486,9 +487,10 @@ func TestSemanticRender_RawSlideRejectsMissingImage(t *testing.T) {
 	os.Args = []string{"json2pptx", "render", "--spec", specPath, "--output", out, "--templates-dir", testTemplatesDir}
 
 	var err error
-	stderr := captureStderr(t, func() { err = runSemantic() })
+	// The failure result is the command's result: stdout, like a success.
+	stderr := captureStdout(t, func() { err = runSemantic() })
 	if err == nil {
-		t.Fatalf("expected render to fail on a missing relative image; stderr=%s", stderr)
+		t.Fatalf("expected render to fail on a missing relative image; stdout=%s", stderr)
 	}
 	if _, statErr := os.Stat(out); statErr == nil {
 		t.Error("render wrote an output file despite the missing-asset rejection")
@@ -496,7 +498,7 @@ func TestSemanticRender_RawSlideRejectsMissingImage(t *testing.T) {
 
 	var res semanticRenderResult
 	if jerr := json.Unmarshal([]byte(stderr), &res); jerr != nil {
-		t.Fatalf("failure result is not a semanticRenderResult: %v\nstderr=%s", jerr, stderr)
+		t.Fatalf("failure result is not a semanticRenderResult: %v\nstdout=%s", jerr, stderr)
 	}
 	if res.OK {
 		t.Error("failure result OK = true")

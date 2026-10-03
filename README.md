@@ -642,10 +642,27 @@ per-command flags. A handful of MCP tools have no direct subcommand (e.g.
 `expand_patterns`, `propose_repairs`) — `json2pptx help` prints the CLI workaround
 for each under "MCP-only tools".
 
+Every command follows one convention (`json2pptx help` prints it):
+
+- the primary input is the first argument — `json2pptx validate deck.json`,
+  `json2pptx generate deck.json`, `json2pptx semantic render deck.yaml`,
+  `json2pptx render-thumbnails deck.pptx` (the older `--json` / `--spec` /
+  `--pptx <file>` spellings still work);
+- `--out <path>` names the output file or directory (`--output`,
+  `--output-dir`, `--out-dir` still work);
+- `--format json|text` selects the output shape where a command has both
+  (`--json` still works);
+- `-h` / `--help` print to stdout and exit 0, and flags may come before or
+  after the arguments;
+- the result — including the path of anything written — is printed on stdout;
+  logs go to stderr, warnings and errors only unless `--verbose` (or
+  `JSON2PPTX_LOG_LEVEL=info`) is set.
+
 | Command | Description |
 |---------|-------------|
 | `generate` | Convert JSON input to PPTX (default if subcommand omitted) |
-| `semantic` | Validate, compile, render, explain, and print schema for semantic deck specs |
+| `semantic` | List slide kinds (`semantic kinds [<kind>]`), validate, compile, render, explain, and print schema for semantic deck specs |
+| `templates` | List template names, one line each (under 2 KB) |
 | `read` | Read PPTX and output extracted content as JSON |
 | `export` | Export an existing PPTX to PDF or a speaker-notes handout |
 | `validate` | Validate JSON input without generating (see [docs/FIT_FINDINGS.md](docs/FIT_FINDINGS.md) for `-fit-report`) |
@@ -655,12 +672,12 @@ for each under "MCP-only tools".
 | `template-check` | Check template conformance against `docs/TEMPLATE_SPEC.md` |
 | `examine-template` | Emit a full template capability report (visual + XML + canonical roles) |
 | `patterns` | List, show, validate, and expand named patterns |
-| `icons` | List available icon sets and icons |
+| `icons` | Search icons (`icons search <term>`) or list them (`icons list [--names]`) |
 | `preview-icon` | Render a single icon spec to SVG + PNG preview |
 | `tables` | Table style guide and density reference |
 | `skill-info` | Show template capabilities for Claude Code skill integration |
 | `capabilities` | Show schema version, tools (with classification), features, and vocabularies |
-| `get-started` | Print the recommended fast path + manual sequence for a task (brief/revise/validate-only) |
+| `get-started` | Print the recommended fast path + manual sequence for a task (`get-started [brief\|revise\|validate-only]`), with the CLI command for each step |
 | `describe-finding` | Print the agent-facing description for a single finding code |
 | `input-schema` | Print the JSON input schema |
 | `resolve-theme` | Resolve theme colors and fonts for a template |
@@ -675,10 +692,10 @@ for each under "MCP-only tools".
 | `score-candidates` | Rank candidate slides for one slot without rendering |
 | `inspect` | Run vision-based visual QA on rendered slide images |
 | `analyze-rhythm` | Analyze deck visual rhythm and pattern repetition |
-| `render-slide` | Render a single slide to PNG (requires LibreOffice + ImageMagick) |
-| `render-slide-from-json` | Render one slide directly from JSON (no full deck render) |
-| `render-thumbnails` | Render all slides as PNG thumbnails (requires LibreOffice + ImageMagick) |
-| `purge-render-cache` | Reclaim the on-disk render cache |
+| `render-slide` | Render a single slide to a PNG file (`--out slide.png`; requires LibreOffice + ImageMagick) |
+| `render-slide-from-json` | Render one slide directly from JSON to a PNG file (no full deck render) |
+| `render-thumbnails` | Write every slide as `slide-<index>.png` into `--out-dir` and print a manifest (paths, sha256, sizes); `--base64` for the old JSON envelope |
+| `purge-render-cache` | Reclaim the on-disk render cache and stale LibreOffice profile directories |
 | `audit-palette` | Render PPTX to PNG and report ΔE between chart pics and adjacent solid-filled shapes |
 | `template-settings` | Manage named styles (list/register/delete) |
 | `data-format-hints` | Show data format hints for chart/diagram types |
@@ -691,6 +708,10 @@ for each under "MCP-only tools".
 
 `json2pptx generate -h` is authoritative. Fit findings come from
 `json2pptx validate -fit-report` (a `validate` flag, not a `generate` flag).
+`generate` prints a one-line JSON result on stdout (`success`, `output_path`,
+`slide_count`, `content_hash`, `warnings`); `--json-output-report <file|->`
+writes the full report instead. A chart or diagram that fails to render makes
+`generate` exit non-zero and leaves no deck, at every `--strict-fit` level.
 
 | Flag | Default | Description |
 |------|---------|-------------|

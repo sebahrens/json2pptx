@@ -16,7 +16,7 @@ func runExportDeck() error {
 		fmt.Fprintln(os.Stderr, "Usage: json2pptx export --pptx <file.pptx> --format pdf|notes [--output-dir DIR]")
 		printDoubleDashUsage(fs)
 	}
-	if err := fs.Parse(os.Args[1:]); err != nil {
+	if err := cliParse(fs, os.Args[1:]); err != nil {
 		return err
 	}
 	if *pptxPath == "" {

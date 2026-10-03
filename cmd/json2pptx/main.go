@@ -2,6 +2,8 @@
 package main
 
 import (
+	"errors"
+	"flag"
 	"fmt"
 	"os"
 
@@ -24,7 +26,8 @@ var (
 const SchemaVersion = "4.159.0"
 
 func main() {
-	err := dispatch()
+	setupCLILogging()
+	err := run()
 	// The private LibreOffice profile (~0.5 MB) would otherwise outlive every
 	// render CLI call in TMPDIR (go-slide-creator-csclk.27).
 	render.CleanupLibreOfficeProfile()
@@ -32,6 +35,25 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// run dispatches the command line. Help is a result, not a diagnostic: when the
+// arguments ask for it (no command, a help command, -h / --help), everything
+// the usage printers write goes to stdout and the process exits 0, for every
+// subcommand (go-slide-creator-e6gsz). The usage printers write to os.Stderr —
+// they also run when a required flag is missing — so the stream is swapped for
+// the duration of a help request instead of threading a writer through each.
+func run() error {
+	if cliHelpRequested(os.Args[1:]) {
+		stderr := os.Stderr
+		os.Stderr = os.Stdout
+		defer func() { os.Stderr = stderr }()
+	}
+	err := dispatch()
+	if errors.Is(err, flag.ErrHelp) {
+		return nil
+	}
+	return err
 }
 
 func dispatch() error { //nolint:gocyclo
@@ -72,6 +94,8 @@ func dispatch() error { //nolint:gocyclo
 		return runPatterns()
 	case "icons":
 		return runIcons()
+	case "templates":
+		return runTemplates()
 	case "preview-icon":
 		return runPreviewIcon()
 	case "tables":
@@ -144,7 +168,7 @@ func dispatch() error { //nolint:gocyclo
 }
 
 func printUsage() {
-	fmt.Fprintf(os.Stderr, `Usage: json2pptx <command> [options]
+	fmt.Fprint(os.Stderr, `Usage: json2pptx <command> [options]
 
 Commands:
   generate            Convert JSON to PPTX (default if omitted)
@@ -157,12 +181,13 @@ Commands:
   template-check      Check template conformance against spec
   examine-template    Emit a full template capability report (visual + XML + canonical roles)
   patterns            Discover, validate, and expand named patterns
-  icons               List available icon names
+  templates           List template names, one line each (under 2 KB)
+  icons               List or search icon names (icons search <term>)
   preview-icon        Render a single icon spec to SVG + PNG preview
   tables              Table density and sizing reference
   skill-info          Show template capabilities for Claude Code skill
   capabilities        Show schema version, tools, features, and vocabularies
-  get-started         Print the recommended MCP-call sequence for a task (brief|revise|validate-only)
+  get-started         Print the recommended call sequence for a task, with the CLI command for each step (brief|revise|validate-only)
   describe-finding    Print the agent-facing description for a single finding code
   input-schema        Print the JSON input schema
   resolve-theme       Resolve theme colors and fonts for a template
@@ -185,7 +210,7 @@ Commands:
   data-format-hints   Show data format hints for chart/diagram types
   shape-catalog       List available preset geometries
   audit-palette       Render PPTX to PNG and compare chart colors with theme accents/tints
-  semantic            Validate/compile/inspect compact semantic deck specs (validate|compile|render|explain|schema)
+  semantic            Validate/compile/render compact semantic deck specs (kinds|validate|compile|render|explain|schema)
   serve               Start HTTP API server
   mcp                 Start MCP (Model Context Protocol) server over stdio
   version             Show version information
@@ -219,6 +244,33 @@ CLI parity gaps (CLI accepts a subset of the matching MCP tool's parameters):
   recommend-visual    CLI takes -intent only. MCP recommend_visual also accepts
                       content_hints, recent_patterns, prefer_variety, slide_index,
                       and candidates (explicit shortlist) — call via 'json2pptx mcp'.
+
+CLI quick path (DeckSpec, the recommended authoring path):
+  json2pptx get-started                         # the steps below, with arguments
+  json2pptx templates                           # template names
+  json2pptx semantic kinds                      # slide kinds, one line each
+  json2pptx semantic kinds <kind>               # fields, budgets, copy-ready example
+  json2pptx semantic validate deck.yaml         # findings envelope
+  json2pptx semantic render deck.yaml --out deck.pptx
+  json2pptx render-thumbnails deck.pptx --out-dir slides/   # slide-0.png, slide-1.png, ...
+
+Conventions (every command):
+  <input>             The primary input is the first argument (older --json / --spec /
+                      --pptx <file> spellings still work).
+  --out <path>        Output file or directory (older --output / --output-dir still work).
+  --format json|text  Output shape, where a command has both (older --json still works).
+  --verbose           INFO logs on stderr. Default: warnings and errors only.
+  -h, --help          Help on stdout, exit 0. Flags may come before or after arguments.
+  Results (including the output path) go to stdout; logs go to stderr.
+
+Discovery commands by output size:
+  small  (<5 KB)      templates, semantic kinds, semantic kinds <kind>,
+                      icons search <term>, describe-finding <code>
+  medium (5-25 KB)    get-started, patterns list, patterns show <name>,
+                      data-format-hints, shape-catalog
+  large  (25-250 KB)  input-schema, skill-info --mode=list, capabilities,
+                      icons list [--names], semantic schema, skill-info
+  huge   (>250 KB)    icons list --json, skill-info --mode=full
 
 Examples:
   json2pptx generate --json slides.json --template corporate

@@ -159,6 +159,9 @@ func GenerateContext(ctx context.Context, templatePath string, analysis *types.T
 	if _, err := os.Stat(markerPath); err == nil {
 		if result, _ := collectCachedPreviews(previewDir, analysis); result != nil {
 			result.CacheIdentity = hash
+			// A hit counts as use: the sweep ages sets by their marker.
+			now := time.Now()
+			_ = os.Chtimes(markerPath, now, now)
 			return result, nil
 		}
 		// Stale marker with no PNGs — regenerate
@@ -190,6 +193,9 @@ func GenerateContext(ctx context.Context, templatePath string, analysis *types.T
 	if err := os.WriteFile(markerPath, []byte(time.Now().Format(time.RFC3339)), 0644); err != nil {
 		return nil, fmt.Errorf("mark layout previews complete: %w", err)
 	}
+	// A new set was just added, so this is the moment the cache can have
+	// outgrown its bound; hits above never pay for the walk.
+	_, _ = SweepCache(cacheDir, CacheMaxAge, CacheMaxBytes, previewDir)
 	return result, nil
 }
 

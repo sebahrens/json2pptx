@@ -17,7 +17,7 @@ func runGenerate() error {
 	configPath := fs.String("config", "", "Path to config file (optional)")
 	verbose := fs.Bool("verbose", false, "Enable verbose output")
 	jsonInput := fs.String("json", "", "Path to JSON input file (use - for stdin)")
-	jsonOutputReport := fs.String("json-output-report", "", "Path for the JSON result report (success, review findings, warnings, quality score) in headless mode")
+	jsonOutputReport := fs.String("json-output-report", "", "Path for the full JSON result report (success, review findings, warnings, quality score); use - for stdout. Without it, a one-line JSON result (success, output_path, slide_count, content_hash, warnings) is printed on stdout")
 	jsonOutput := fs.String("json-output", "", "DEPRECATED: alias for --json-output-report")
 	chartPNG := fs.Bool("chart-png", false, "DEPRECATED: Use PNG instead of native SVG for charts. Native SVG is now the default and recommended strategy.")
 	dryRun := fs.Bool("dry-run", false, "Validate input and show layout selections without generating output")
@@ -44,7 +44,7 @@ func runGenerate() error {
 		printDoubleDashUsage(fs)
 	}
 
-	if err := fs.Parse(os.Args[1:]); err != nil {
+	if err := cliParse(fs, os.Args[1:]); err != nil {
 		return err
 	}
 
@@ -62,7 +62,7 @@ func runGenerate() error {
 			jsonOutputReportSet = true
 		case "templates-dir":
 			templatesDirSet = true
-		case "output":
+		case "output", "out":
 			outputDirSet = true
 		}
 	})
@@ -122,7 +122,13 @@ func runGenerate() error {
 	if *dryRun {
 		return runJSONDryRun(*jsonInput, *templateName, effTemplatesDir, *configPath, *designMode, *strictUnknownKeys)
 	}
-	return runJSONMode(*jsonInput, resolvedJSONOutput, effTemplatesDir, effOutputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit, *partial, *outputValidation, *designMode, *strictUnknownKeys)
+	runErr := runJSONMode(*jsonInput, resolvedJSONOutput, effTemplatesDir, effOutputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit, *partial, *outputValidation, *designMode, *strictUnknownKeys)
+	if runErr != nil && resolvedJSONOutput == "" {
+		// Without a report destination the failure used to be a stderr line
+		// only; the result shape is the same on stdout either way.
+		_ = printGenerateSummary(JSONOutput{Success: false, Error: runErr.Error()})
+	}
+	return runErr
 }
 
 // resolveJSONOutputReport reconciles the deprecated --json-output flag with its

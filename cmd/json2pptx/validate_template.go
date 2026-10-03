@@ -87,8 +87,10 @@ func runValidateTemplate() error {
 	strict := fs.Bool("strict", false, "fail on warnings, not just errors")
 	jsonOutput := fs.Bool("json", false, "output as JSON")
 	verbose := fs.Bool("verbose", false, "show placeholder details")
+	fs.Usage = cliDefaultUsage(fs, "validate-template [options] <template.pptx>",
+		"Check that a template has the layouts and theme the engine needs.")
 
-	if err := fs.Parse(os.Args[1:]); err != nil {
+	if err := cliParse(fs, os.Args[1:]); err != nil {
 		return err
 	}
 

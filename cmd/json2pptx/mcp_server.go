@@ -207,7 +207,7 @@ func runMCP() error {
 		printDoubleDashUsage(fs)
 	}
 
-	if err := fs.Parse(os.Args[1:]); err != nil {
+	if err := cliParse(fs, os.Args[1:]); err != nil {
 		return err
 	}
 
@@ -218,7 +218,7 @@ func runMCP() error {
 		switch f.Name {
 		case "templates-dir":
 			templatesDirSet = true
-		case "output":
+		case "output", "out":
 			outputDirSet = true
 		case "tools":
 			toolsSet = true

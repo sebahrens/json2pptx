@@ -17,8 +17,10 @@ import (
 func runTemplateCheck() error {
 	fs := flag.NewFlagSet("template-check", flag.ContinueOnError)
 	jsonOutput := fs.Bool("json", false, "output as JSON")
+	fs.Usage = cliDefaultUsage(fs, "template-check [options] <template.pptx>",
+		"Check a template against the conformance spec (docs/TEMPLATE_SPEC.md).")
 
-	if err := fs.Parse(os.Args[1:]); err != nil {
+	if err := cliParse(fs, os.Args[1:]); err != nil {
 		return err
 	}
 

@@ -117,6 +117,12 @@ func cliCommandClassifications() map[string]cliCommandClass {
 		// explain_deck_spec / list_deck_archetypes / list_slide_kinds), so it has
 		// MCP parity via the mcpToCLI table and carries no CLIOnlyReason.
 		"semantic": {AgentFacing: true},
+		"templates": {
+			AgentFacing: true,
+			CLIOnlyReason: "Names-only projection of the template list (name, aspect ratio, layout count, fonts; under 2 KB) " +
+				"for shell callers that need only a name to put in the deck's template field. Over MCP the same names come from " +
+				"list_templates (compact by default, paginated); the CLI's skill-info is its full counterpart.",
+		},
 		"preview-patterns": {
 			AgentFacing: true,
 			CLIOnlyReason: "Pre-renders PNG previews for every named pattern — a local gallery-build/CI step that " +

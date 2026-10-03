@@ -69,7 +69,7 @@ var mcpToCLI = map[string]string{
 	"render_deck_spec":     "semantic render",
 	"explain_deck_spec":    "semantic explain",
 	"list_deck_archetypes": "semantic schema", // archetype enum is embedded in `semantic schema`
-	"list_slide_kinds":     "semantic schema", // slide-kind enum is embedded in `semantic schema`
+	"list_slide_kinds":     "semantic kinds",
 }
 
 // TestEveryMCPToolHasCLI asserts that every tool registered in the MCP server

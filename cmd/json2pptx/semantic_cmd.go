@@ -34,7 +34,7 @@ import (
 func runSemantic() error {
 	if len(os.Args) < 2 {
 		printSemanticUsage()
-		return fmt.Errorf("semantic requires a subcommand: validate, compile, or schema")
+		return fmt.Errorf("semantic requires a subcommand: kinds, validate, compile, render, explain, or schema")
 	}
 
 	sub := os.Args[1]
@@ -58,6 +58,8 @@ func runSemantic() error {
 // by any handler's flag parsing on -h/--help) into a clean exit.
 func dispatchSemanticSub(sub string) error {
 	switch sub {
+	case "kinds":
+		return runSemanticKinds()
 	case "validate":
 		return runSemanticValidate()
 	case "compile":
@@ -84,13 +86,22 @@ Compile compact semantic deck specs (DeckSpec) into the raw json2pptx
 PresentationInput model.
 
 Subcommands:
+  kinds      List slide kinds (one line each); 'kinds <kind>' prints fields,
+             budgets and a copy-ready example
   validate   Validate a semantic spec; emit the shared finding envelope
   compile    Compile a semantic spec to raw PresentationInput JSON
   render     Compile a semantic spec and render it straight to a .pptx
   explain    Print the compiler's planned decisions and rhythm warnings
-  schema     Print the DeckSpec JSON Schema (draft 2020-12)
+  schema     Print the DeckSpec JSON Schema (draft 2020-12; large, ~170 KB)
+
+The spec file is the first argument (--spec <file> still works); --out names
+the output (--output still works).
 
 Examples:
+  json2pptx semantic kinds
+  json2pptx semantic kinds kpi_snapshot
+  json2pptx semantic validate deck.yaml
+  json2pptx semantic render deck.yaml --out deck.pptx
   json2pptx semantic validate --spec deck.yaml
   json2pptx semantic validate --spec deck.yaml --strict strict
   json2pptx semantic compile --spec deck.yaml --output compiled.json
@@ -149,7 +160,7 @@ func runSemanticValidate() error {
 		printDoubleDashUsage(fs)
 	}
 
-	if err := fs.Parse(os.Args[1:]); err != nil {
+	if err := cliParse(fs, os.Args[1:]); err != nil {
 		return err
 	}
 	if *specPath == "" {
@@ -244,7 +255,7 @@ func runSemanticCompile() error {
 		printDoubleDashUsage(fs)
 	}
 
-	if err := fs.Parse(os.Args[1:]); err != nil {
+	if err := cliParse(fs, os.Args[1:]); err != nil {
 		return err
 	}
 	if *specPath == "" {
@@ -274,7 +285,7 @@ func runSemanticCompile() error {
 			_ = writeCompileOutput(*output, res)
 			return fmt.Errorf("semantic compile: spec could not be parsed")
 		}
-		_ = fprintJSONIndent(os.Stderr, envelope)
+		_ = fprintJSONIndent(os.Stdout, envelope)
 		return fmt.Errorf("semantic compile: spec could not be parsed")
 	}
 
@@ -293,7 +304,7 @@ func runSemanticCompile() error {
 			_ = writeCompileOutput(*output, res)
 			return fmt.Errorf("semantic compile: %w", err)
 		}
-		_ = fprintJSONIndent(os.Stderr, envelope)
+		_ = fprintJSONIndent(os.Stdout, envelope)
 		return fmt.Errorf("semantic compile: %w", err)
 	}
 
@@ -399,7 +410,7 @@ type semanticDiagnostic struct {
 // maps raw render findings back to the semantic source paths the author wrote
 // (falling back to the raw path only when no mapping exists), and prints a
 // compact result with a quality summary. Blocking failures print the same
-// compact result (OK=false) to stderr and exit non-zero.
+// compact result (OK=false) to stdout and exit non-zero.
 func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, compilation, rendering, and atomic manifest persistence.
 	fs := flag.NewFlagSet("semantic render", flag.ContinueOnError)
 	specPath := fs.String("spec", "", "Path to the semantic deck spec (.yaml/.yml/.json); use - for stdin")
@@ -408,16 +419,21 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 	templateName := fs.String("template", "", "Default template used when the spec pins none")
 	templatesDir := fs.String("templates-dir", "", "Template search directory")
 	outputValidation := fs.String("output-validation", "strict", "Post-generation output validation: off, warn, or strict")
+	noManifest := fs.Bool("no-manifest", false, "Do not write the <deck>.pptx.authoring.json sidecar next to the deck")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx semantic render --spec <file> --output <file.pptx> [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx semantic render <spec> --out <file.pptx> [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Compile a semantic deck spec and render it straight to a .pptx using the\n")
 		fmt.Fprintf(os.Stderr, "shared generation pipeline. Strict output validation is the default.\n\n")
+		fmt.Fprintf(os.Stderr, "Files written: the deck, and beside it <deck>.pptx.authoring.json - the authoring\n")
+		fmt.Fprintf(os.Stderr, "manifest (spec, compiled input, source map, revision) that lets a later patch or\n")
+		fmt.Fprintf(os.Stderr, "visual review be tied to this exact deck. It is named in the result's manifest_path,\n")
+		fmt.Fprintf(os.Stderr, "is written only when the deck was written, and --no-manifest turns it off.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
 
-	if err := fs.Parse(os.Args[1:]); err != nil {
+	if err := cliParse(fs, os.Args[1:]); err != nil {
 		return err
 	}
 	if *specPath == "" {
@@ -426,8 +442,12 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 	}
 	if *output == "" {
 		fs.Usage()
-		return fmt.Errorf("--output is required")
+		return fmt.Errorf("--out is required")
 	}
+	// A render that fails must not leave a sidecar describing a deck that is
+	// not there: an earlier render's manifest for the same path is removed
+	// when this call ends without a deck at that path (go-slide-creator-12dkn).
+	defer removeOrphanAuthoringManifest(*output)
 	strictness, err := parseStrictness(*strict)
 	if err != nil {
 		return err
@@ -453,7 +473,7 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 		for _, d := range parseDiags.ToDiagnostics() {
 			res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(d))
 		}
-		_ = fprintJSONIndent(os.Stderr, res)
+		_ = fprintJSONIndent(os.Stdout, res)
 		return fmt.Errorf("%s", res.Error)
 	}
 
@@ -465,7 +485,7 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 	})
 	if err != nil {
 		res := buildSemanticRenderFailure(compileResult, err)
-		_ = fprintJSONIndent(os.Stderr, res)
+		_ = fprintJSONIndent(os.Stdout, res)
 		return fmt.Errorf("semantic render: %w", err)
 	}
 
@@ -485,7 +505,7 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 		appendCompiledDesignModeDiags(compileResult, input)
 		err := blockingDesignModeError(designViolations)
 		res := buildSemanticRenderFailure(compileResult, err)
-		_ = fprintJSONIndent(os.Stderr, res)
+		_ = fprintJSONIndent(os.Stdout, res)
 		return fmt.Errorf("semantic render: %w", err)
 	}
 
@@ -569,29 +589,62 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 	defer cleanup()
 	if renderErr != nil {
 		res := buildSemanticRenderFailure(compileResult, renderErr)
-		_ = fprintJSONIndent(os.Stderr, res)
+		_ = fprintJSONIndent(os.Stdout, res)
 		return fmt.Errorf("semantic render: %w", renderErr)
 	}
 
 	res := buildSemanticRenderSuccess(input, compileResult, runRes, startTime)
 	res.Warnings = append(res.Warnings, preConvertWarnings...)
-	compiledJSON, marshalErr := json.Marshal(input)
-	if marshalErr != nil {
-		return fmt.Errorf("semantic render: marshal authoring input: %w", marshalErr)
+	if *noManifest {
+		_ = os.Remove(runRes.OutputPath + authoringManifestSuffix)
+		return emitSemanticRenderResult(res, *outputValidation)
 	}
-	slidePayloads, payloadErr := semantic.ExpandedSlidePayloads(spec)
-	if payloadErr != nil {
-		return fmt.Errorf("semantic render: build manifest slide payloads: %w", payloadErr)
+	if err := writeAuthoringSidecar(&res, spec, data, *specPath, input, compileResult, runRes); err != nil {
+		return err
+	}
+	return emitSemanticRenderResult(res, *outputValidation)
+}
+
+// writeAuthoringSidecar writes <deck>.pptx.authoring.json beside a rendered
+// deck — the spec, the compiled input, the source map and the revision that
+// tie a later patch or visual review to this exact file — and records its path
+// and revision on the result.
+func writeAuthoringSidecar(res *semanticRenderResult, spec *semantic.DeckSpec, source []byte, specPath string, input *PresentationInput, cr *semantic.CompileResult, rr RenderResult) error {
+	compiledJSON, err := json.Marshal(input)
+	if err != nil {
+		return fmt.Errorf("semantic render: marshal authoring input: %w", err)
+	}
+	slidePayloads, err := semantic.ExpandedSlidePayloads(spec)
+	if err != nil {
+		return fmt.Errorf("semantic render: build manifest slide payloads: %w", err)
 	}
 	diagnosticJSON, _ := json.Marshal(res.Diagnostics)
-	manifest := pipeline.NewAuthoringManifest(data, strings.TrimPrefix(strings.ToLower(filepath.Ext(*specPath)), "."), runRes.TemplatePath, runRes.TemplateHash, compiledJSON, runRes.OutputPath, res.ContentHash, compileResult.SourceMap, slidePayloads, diagnosticJSON)
-	manifestPath := runRes.OutputPath + ".authoring.json"
-	if writeErr := pipeline.WriteAuthoringManifest(manifestPath, manifest); writeErr != nil {
-		return fmt.Errorf("semantic render: write authoring manifest: %w", writeErr)
+	format := strings.TrimPrefix(strings.ToLower(filepath.Ext(specPath)), ".")
+	manifest := pipeline.NewAuthoringManifest(source, format, rr.TemplatePath, rr.TemplateHash, compiledJSON, rr.OutputPath, res.ContentHash, cr.SourceMap, slidePayloads, diagnosticJSON)
+	manifestPath := rr.OutputPath + authoringManifestSuffix
+	if err := pipeline.WriteAuthoringManifest(manifestPath, manifest); err != nil {
+		return fmt.Errorf("semantic render: write authoring manifest: %w", err)
 	}
 	res.Revision = manifest.Revision
 	res.ManifestPath = manifestPath
-	return emitSemanticRenderResult(res, *outputValidation)
+	return nil
+}
+
+// authoringManifestSuffix is appended to a deck's path to name its authoring
+// manifest sidecar.
+const authoringManifestSuffix = ".authoring.json"
+
+// removeOrphanAuthoringManifest deletes <deck>.pptx.authoring.json when the
+// deck it describes does not exist. output is the --out value; only a .pptx
+// file destination names a deck path that can be checked.
+func removeOrphanAuthoringManifest(output string) {
+	if !strings.HasSuffix(strings.ToLower(output), ".pptx") {
+		return
+	}
+	if _, err := os.Stat(output); err == nil {
+		return
+	}
+	_ = os.Remove(output + authoringManifestSuffix)
 }
 
 // newSlideURLResolver creates the guarded URL resolver a deck needs, or returns
@@ -944,7 +997,7 @@ func runSemanticExplain() error {
 		printDoubleDashUsage(fs)
 	}
 
-	if err := fs.Parse(os.Args[1:]); err != nil {
+	if err := cliParse(fs, os.Args[1:]); err != nil {
 		return err
 	}
 	if *specPath == "" {
@@ -963,7 +1016,7 @@ func runSemanticExplain() error {
 			Subcommand:  "semantic explain",
 			InputSHA256: diagnostics.ComputeInputSHA256(data),
 		}, parseDiags.ToDiagnostics())
-		_ = fprintJSONIndent(os.Stderr, envelope)
+		_ = fprintJSONIndent(os.Stdout, envelope)
 		return fmt.Errorf("semantic explain: spec could not be parsed")
 	}
 
@@ -977,7 +1030,7 @@ func runSemanticExplain() error {
 			Subcommand:  "semantic explain",
 			InputSHA256: diagnostics.ComputeInputSHA256(data),
 		}, []diagnostics.Diagnostic{*templateDiagnostic})
-		_ = fprintJSONIndent(os.Stderr, envelope)
+		_ = fprintJSONIndent(os.Stdout, envelope)
 		return fmt.Errorf("semantic explain: template is unavailable")
 	}
 	return printJSONIndent(explanation)
@@ -994,7 +1047,7 @@ func runSemanticSchema() error {
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
-	if err := fs.Parse(os.Args[1:]); err != nil {
+	if err := cliParse(fs, os.Args[1:]); err != nil {
 		return err
 	}
 

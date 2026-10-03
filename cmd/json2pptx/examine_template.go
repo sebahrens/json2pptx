@@ -84,20 +84,16 @@ func runExamineTemplate() error {
 
 	// Accept the template path either before the flags (the documented
 	// `examine-template <path> [options]` order) or after them.
-	rest := os.Args[1:]
-	var templatePath string
-	if len(rest) > 0 && !strings.HasPrefix(rest[0], "-") {
-		templatePath = rest[0]
-		rest = rest[1:]
-	}
-	if err := fs.Parse(rest); err != nil {
+	if err := cliParse(fs, os.Args[1:]); err != nil {
 		return err
 	}
-	if templatePath == "" && fs.NArg() > 0 {
+	var templatePath string
+	if fs.NArg() > 0 {
 		templatePath = fs.Arg(0)
-	} else if templatePath != "" && fs.NArg() > 0 {
+	}
+	if fs.NArg() > 1 {
 		fs.Usage()
-		return fmt.Errorf("examine-template: unexpected extra arguments: %v", fs.Args())
+		return fmt.Errorf("examine-template: unexpected extra arguments: %v", fs.Args()[1:])
 	}
 	if templatePath == "" {
 		fs.Usage()
