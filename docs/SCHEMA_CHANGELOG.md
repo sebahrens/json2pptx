@@ -1,5 +1,34 @@
 # Schema Changelog
 
+- **2026-10-03 — findings and recipes agree after the wave merge (integration of `go-slide-creator-iubjb`, `-ipahe`, `-327g6`, `-x97m6`).**
+  - **`QUALITY_GATE` carries `evidence.criterion`** (`min_score`,
+    `max_topic_title_pct`, `min_composition_score`, `max_problem_slides_pct`)
+    **and `evidence.counted[]`** (`{code, path}` for every advisory counted,
+    not only the six the message names), on `validate_deck_spec` and
+    `render_deck_spec`.
+  - **Every recommend_visual recipe is blocked as exemplar content until it
+    is rewritten.** A DeckSpec-kind recipe's title is now the registered
+    placeholder (`Replace with the action title this <visual> supports`)
+    instead of the kind example's title, and recipe body copy (`Replace with
+    the one-line takeaway.`, `… the first point, one line`, `… the first
+    block`, …) is a registered placeholder too: `SEMANTIC_WEAK_CONTENT` with
+    `evidence.placeholder: "recipe_copy"`, a blocking error. Two recipe titles
+    are reworded: `… this slide supports` (content / two-column / blank /
+    shape-grid recipes) and `… this set of views supports` (regions).
+  - **`process` steps with descriptions are measured against the numbered
+    row** when their count is 3–6: `SEMANTIC_PATTERN_DEGRADED` at the label
+    (`max_chars: 60`) or the description (`max_chars: 180`) with `params.from:
+    "numbered-step-strip"`. They used to be measured against the flow box
+    (80 for label and description together), which had a 61-character label
+    answered by "shorten the description to 16".
+  - **`list_slide_kinds` budgets state count-dependent lengths in `note`:**
+    `executive_summary` `points[].lead` (90; 57 / 52 with four points and a
+    bottom line / five points), `points[].support` (200; 193, 182, 128, 65,
+    60) and `bottom_line` (160; 102 with four or five points), and the
+    `process` flow box (80; 72 with seven steps, 71 with eight). `max_chars`
+    stays the most the field ever holds; findings quote the length for the
+    slide's own count.
+
 - **2026-10-03 — recommend_visual: every candidate is authorable, DeckSpec kinds come first, one chart-type vocabulary (`go-slide-creator-x97m6`, `-bdvhj`, `-3ujfq`, `-7sqof`).**
   - **Every candidate carries `data_contract` and a runnable
     `next_tool_call`** (`render_deck_spec` with a complete one-slide DeckSpec

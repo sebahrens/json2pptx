@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/policy/placeholder"
 )
 
 // composeRecipeTemplates are the template families compose recipes are
@@ -178,17 +179,52 @@ func lookupSpecPath(root any, path string) any {
 	return cur
 }
 
-// assertRecipeValidates runs the recipe through validate_deck_spec.
+// assertRecipeValidates holds a recipe to the one rule every recommend_visual
+// recipe follows (go-slide-creator-x97m6, go-slide-creator-327g6): exactly as
+// handed out it validates to ok:false, blocked by its registered placeholder
+// copy and nothing else; with that copy written over it validates. Every
+// "Replace with …" line it carries is registered, so none survives the
+// rewrite as content.
 func assertRecipeValidates(t *testing.T, mc *mcpConfig, c patterns.VisualCandidate) {
 	t.Helper()
-	raw, _ := json.Marshal(c.NextToolCall.ArgsTemplate)
-	var args map[string]any
-	_ = json.Unmarshal(raw, &args)
+	args := recipeArgs(t, c)
+	walkJSONStrings(args, func(s string) {
+		if _, ok := placeholder.Detect(s); !ok && strings.Contains(strings.ToLower(s), "replace with") {
+			t.Errorf("%s %q: recipe copy %q is not a registered placeholder; build it with a constructor of internal/policy/placeholder", c.Category, c.Name, s)
+		}
+	})
 	res, err := mc.handleValidateDeckSpec(context.Background(), makeRequest(args))
 	if err != nil {
 		t.Fatal(err)
 	}
 	assertOnlyPlaceholdersBlock(t, "recipe", res)
+
+	filled, _ := fillPlaceholders(recipeArgs(t, c))
+	res, err = mc.handleValidateDeckSpec(context.Background(), makeRequest(filled.(map[string]any)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var env deckSpecEnvelopeResponse
+	structuredInto(t, res.StructuredContent, &env)
+	if res.IsError || !env.OK {
+		t.Errorf("%s %q: the recipe with its placeholders written over does not validate: isError=%v ok=%v\n%s", c.Category, c.Name, res.IsError, env.OK, resultText(res))
+	}
+}
+
+// walkJSONStrings calls visit for every string in a decoded JSON value.
+func walkJSONStrings(v any, visit func(string)) {
+	switch t := v.(type) {
+	case string:
+		visit(t)
+	case map[string]any:
+		for _, child := range t {
+			walkJSONStrings(child, visit)
+		}
+	case []any:
+		for _, child := range t {
+			walkJSONStrings(child, visit)
+		}
+	}
 }
 
 // assertThreeRegionContentVisible checks the three-region render keeps every

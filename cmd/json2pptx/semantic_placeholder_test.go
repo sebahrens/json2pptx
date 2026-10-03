@@ -59,13 +59,29 @@ func assertOnlyPlaceholdersBlock(t *testing.T, label string, res *mcp.CallToolRe
 	}
 }
 
+// placeholderFill is the copy an author writes over each kind of placeholder.
+// A line of recipe copy keeps what it stood for, so the lines of one list stay
+// distinct.
+func placeholderFill(m placeholder.Marker, text string) string {
+	switch m.Name {
+	case placeholder.NameRecipeAltText:
+		return "Unit sales by region for the last four quarters"
+	case placeholder.NameRecipeSampleSource:
+		return "Company sales ledger, FY2026"
+	case placeholder.NameRecipeCopy:
+		slot := strings.TrimSuffix(strings.TrimSpace(text[len("Replace with "):]), ".")
+		return "North region sales rose 12% (" + slot + ")"
+	}
+	return "Unit sales grew 12% in the north region"
+}
+
 // fillPlaceholders replaces every registered placeholder in a decoded JSON
 // value with real copy, returning how many it replaced.
 func fillPlaceholders(v any) (any, int) {
 	switch t := v.(type) {
 	case string:
-		if _, ok := placeholder.Detect(t); ok {
-			return "Unit sales grew 12% in the north region", 1
+		if m, ok := placeholder.Detect(t); ok {
+			return placeholderFill(m, t), 1
 		}
 		return t, 0
 	case map[string]any:
@@ -255,6 +271,7 @@ func TestProductPlaceholdersAreDetectedInAnyField(t *testing.T) {
 		placeholder.NameRecipeTitle:        placeholder.RecipeActionTitle("bar chart"),
 		placeholder.NameRecipeAltText:      placeholder.RecipeAltText("bar chart"),
 		placeholder.NameRecipeSampleSource: placeholder.RecipeSampleSource,
+		placeholder.NameRecipeCopy:         placeholder.RecipeCopy(placeholder.SlotTakeaway),
 		placeholder.NameArgumentHint:       rewriteHint("INPUT.SEMANTIC_DENSITY", map[string]any{"max_chars": 40}),
 	}
 	for _, m := range placeholder.Registered() {

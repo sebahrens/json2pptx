@@ -47,7 +47,7 @@ func TestSemanticImageCaseCallouts(t *testing.T) {
 	var res struct {
 		Diagnostics []struct {
 			Code         string `json:"code"`
-			SemanticPath string `json:"semantic_path"`
+			SemanticPath string `json:"path"`
 		} `json:"diagnostics"`
 	}
 	if err := json.Unmarshal([]byte(stdout), &res); err != nil {
@@ -59,8 +59,8 @@ func TestSemanticImageCaseCallouts(t *testing.T) {
 			cropped = append(cropped, d.SemanticPath)
 		}
 	}
-	if len(cropped) != 1 || cropped[0] != "slides[0].callouts[0]" {
-		t.Errorf("OVERLAY_TARGET_CROPPED at %v, want only slides[0].callouts[0]\n%s", cropped, stdout)
+	if len(cropped) != 1 || cropped[0] != "/slides/0/callouts/0" {
+		t.Errorf("OVERLAY_TARGET_CROPPED at %v, want only /slides/0/callouts/0\n%s", cropped, stdout)
 	}
 
 	for slideNum, want := range map[int]struct{ labels, leaders int }{

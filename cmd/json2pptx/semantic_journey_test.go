@@ -69,26 +69,28 @@ var journeyCopy = struct {
 	archetype string
 }{
 	titles: map[string]string{
-		"Executive summary":       "Cloud spend is 23% over budget and a FinOps team recovers €9.6M",
-		"Key metrics":             "Spend is €7.8M over budget with a third of compute idle",
-		"Monthly spend trend":     "Monthly spend rose 26% in six months",
-		"Savings funnel":          "€9.6M of €14.2M identified savings is committed",
-		"Options comparison":      "Option B saves three times more than a clean-up",
-		"Savings by lever":        "Three levers deliver 80% of the savings",
-		"Savings by lever (2/2)":  "Five smaller levers add the last €2M",
-		"Decision":                "We ask for a decision on option B today",
-		"Implementation approach": "Eight steps deliver the savings in 12 months",
-		"Thank you":               "Approve option B and start on 1 November",
+		"Executive summary":             "Cloud spend is 23% over budget and a FinOps team recovers €9.6M",
+		"Key metrics":                   "Spend is €7.8M over budget with a third of compute idle",
+		"Monthly spend trend":           "Monthly spend rose 26% in six months",
+		"Savings funnel":                "€9.6M of €14.2M identified savings is committed",
+		"Options comparison":            "Option B saves three times more than a clean-up",
+		"Savings by lever":              "Three levers deliver 80% of the savings",
+		"Savings by lever (2/2)":        "Five smaller levers add the last €2M",
+		"Decision":                      "We ask for a decision on option B today",
+		"Implementation approach":       "Eight steps deliver the savings in 12 months",
+		"Implementation approach (2/2)": "The last four steps lock the savings in by month 12",
+		"Thank you":                     "Approve option B and start on 1 November",
 	},
 	takeaways: map[string]string{
-		"Executive summary":       "Approve option B to recover €9.6M a year.",
-		"Key metrics":             "Spend is out of control.",
-		"Monthly spend trend":     "Spend grows every month.",
-		"Savings funnel":          "Most identified savings are already committed.",
-		"Options comparison":      "Option B pays back fastest.",
-		"Savings by lever":        "Compute and commitments carry the case.",
-		"Savings by lever (2/2)":  "The long tail is worth €2M.",
-		"Implementation approach": "Each step has an owner and a date.",
+		"Executive summary":             "Approve option B to recover €9.6M a year.",
+		"Key metrics":                   "Spend is out of control.",
+		"Monthly spend trend":           "Spend grows every month.",
+		"Savings funnel":                "Most identified savings are already committed.",
+		"Options comparison":            "Option B pays back fastest.",
+		"Savings by lever":              "Compute and commitments carry the case.",
+		"Savings by lever (2/2)":        "The long tail is worth €2M.",
+		"Implementation approach":       "Each step has an owner and a date.",
+		"Implementation approach (2/2)": "Tracking starts before the last commitment is signed.",
 	},
 	source:    "Cloud billing exports, Oct 2025 to Sep 2026",
 	archetype: "strategy_proposal",
@@ -104,6 +106,9 @@ type journeyAgent struct {
 	// round's field edits are done.
 	inserts  []journeyInsert
 	deferred []func()
+	// response is the findings of the validate being applied: a finding that
+	// counts others (QUALITY_GATE) is checked against them.
+	response []diagnostics.Finding
 }
 
 type journeyInsert struct {
@@ -420,6 +425,57 @@ func (a *journeyAgent) apply(f diagnostics.Finding) {
 			a.t.Fatalf("%s does not name a category to shorten: %+v", code, params)
 		}
 
+	case "QUALITY_GATE":
+		// An aggregate criterion: it is cleared by the findings it counts,
+		// which evidence.counted lists as {code, path}. Each must be a finding
+		// of this response, so applying them is all there is to do.
+		counted, _ := f.Evidence["counted"].([]any)
+		if criterion, _ := f.Evidence["criterion"].(string); criterion == "" || len(counted) == 0 {
+			a.t.Fatalf("%s names no criterion or no counted findings: %s\n  evidence %+v", code, f.Message, f.Evidence)
+		}
+		for _, c := range counted {
+			entry, _ := c.(map[string]any)
+			if !a.inResponse(entry["code"], entry["path"]) {
+				a.t.Fatalf("%s counts %v at %v, which is not a finding of this response", code, entry["code"], entry["path"])
+			}
+		}
+
+	case "TEXT_WRAPS_NARROW":
+		// "use fewer boxes so each is wider": on a process slide the boxes are
+		// the steps. A box cut to params.max_words words would be a sparse
+		// lane (OVERTALL_FLOW_LANE), so the agent keeps every word and halves
+		// the boxes instead: the second half moves to a slide of its own,
+		// which the agent titles as it has learned to.
+		slide := a.slideOf(*f.Path)
+		steps, isProcess := slide["steps"].([]any)
+		hint, _ := params["hint"].(string)
+		if !isProcess || len(steps) < 6 || !strings.Contains(hint, "use fewer boxes") {
+			a.t.Fatalf("the agent does not know how to apply %s at %s: %s\n  params %+v", code, *f.Path, f.Message, params)
+		}
+		// Fewer boxes of the same visual: evidence.pattern names it, and the
+		// slide says so, or four described steps would compile to numbered
+		// rows instead.
+		pattern, _ := f.Evidence["pattern"].(string)
+		if pattern == "" {
+			a.t.Fatalf("%s does not name the pattern whose boxes wrap: %+v", code, f.Evidence)
+		}
+		slide["pattern"] = pattern
+		second := map[string]any{}
+		for k, v := range slide {
+			second[k] = v
+		}
+		keep := (len(steps) + 1) / 2
+		slide["steps"], second["steps"] = steps[:keep], steps[keep:]
+		second["draft_title"] = draftTitle(slide) + " (2/2)"
+		title, ok := journeyCopy.titles[second["draft_title"].(string)]
+		if !ok {
+			a.t.Fatalf("no action title written for %q", second["draft_title"])
+		}
+		second["title"] = title
+		second["takeaway"] = journeyCopy.takeaways[second["draft_title"].(string)]
+		delete(second, "id")
+		a.inserts = append(a.inserts, journeyInsert{after: slide, slide: second})
+
 	case "CLOSING_WITHOUT_NEXT_STEPS":
 		slide := a.slideOf(*f.Path)
 		slide["draft_title"] = draftTitle(slide)
@@ -435,6 +491,22 @@ func (a *journeyAgent) apply(f diagnostics.Finding) {
 		}
 		a.t.Fatalf("the agent does not know how to apply %s at %v: %s\n  evidence %+v\n  params %+v", f.Code, pathsOf(f), f.Message, f.Evidence, params)
 	}
+}
+
+// inResponse reports whether the response being applied carries a finding
+// with this bare code at this path.
+func (a *journeyAgent) inResponse(code, path any) bool {
+	for _, f := range a.response {
+		if f.Code[strings.IndexByte(f.Code, '.')+1:] != code {
+			continue
+		}
+		for _, p := range pathsOf(f) {
+			if p == path {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // journeyClean reports whether a validate response leaves the agent nothing to
@@ -525,6 +597,7 @@ func TestTwelveFlawDraftCleanInThreeRoundTrips(t *testing.T) {
 				if round == maxRoundTrips {
 					t.Fatalf("validate %d is not clean: %s", round, env.Summary)
 				}
+				agent.response = env.Findings
 				for _, f := range env.Findings {
 					agent.apply(f)
 				}

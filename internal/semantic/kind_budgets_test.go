@@ -152,7 +152,11 @@ func TestKindBudgetsAgreeWithFindings(t *testing.T) {
 			ds := Validate(&DeckSpec{Meta: DeckMeta{Title: "Budgets"}, Slides: []SlideSpec{{Kind: kind, Body: body}}}, StrictnessWarn)
 			quoted := false
 			for _, d := range ds {
-				if hasNumber(d.Message, b.MaxChars) {
+				// A budget that tightens with the item count is quoted at the
+				// length this slide's count holds, which the budget's note
+				// states beside the most the field ever holds.
+				allowed, counted := d.Details["allowed"].(int)
+				if hasNumber(d.Message, b.MaxChars) || (counted && hasNumber(b.Note, allowed) && hasNumber(d.Message, allowed)) {
 					quoted = true
 				}
 			}

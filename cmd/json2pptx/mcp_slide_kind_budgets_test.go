@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -119,14 +121,48 @@ func TestListSlideKindsBudgetsAreOptIn(t *testing.T) {
 	}
 }
 
-// renderDiagnostic is one diagnostic of `semantic render`.
+// renderDiagnostic is one diagnostic of `semantic render`: the address is the
+// DeckSpec JSON Pointer in path (go-slide-creator-pilpn).
 type renderDiagnostic struct {
-	Code         string `json:"code"`
-	SemanticPath string `json:"semantic_path"`
-	Message      string `json:"message"`
-	Edit         *struct {
+	Code        string `json:"code"`
+	Path        string `json:"path"`
+	SlideNumber int    `json:"slide_number"`
+	Message     string `json:"message"`
+	Edit        *struct {
 		Params map[string]any `json:"params"`
 	} `json:"recommended_edit"`
+	// Symptoms are the fit findings a cause absorbed (go-slide-creator-c2j5b):
+	// what the degraded slide's fallback does not fit. They carry a code and a
+	// message, no address and no edit.
+	Symptoms []struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"symptoms"`
+}
+
+// takeawayQuote matches the length a takeaway finding's message quotes.
+var takeawayQuote = regexp.MustCompile(`about (\d+) average-width characters`)
+
+// onTakeaway reports whether a finding, or a symptom folded under its slide's
+// cause, is about the slide's takeaway.
+func (d renderDiagnostic) onTakeaway() bool {
+	return strings.HasSuffix(d.Path, "/takeaway") || strings.Contains(d.Message, ": takeaway needs ")
+}
+
+// quotedMaxChars is the length the finding tells the author to write to: the
+// edit's max_chars, or for a symptom (which carries no edit) the length its
+// message states.
+func (d renderDiagnostic) quotedMaxChars() int {
+	if d.Edit != nil {
+		if n, ok := d.Edit.Params["max_chars"].(float64); ok {
+			return int(n)
+		}
+	}
+	if m := takeawayQuote.FindStringSubmatch(d.Message); m != nil {
+		n, _ := strconv.Atoi(m[1])
+		return n
+	}
+	return 0
 }
 
 // renderSpecDiagnostics renders a DeckSpec through the CLI path and returns
@@ -155,7 +191,15 @@ func renderSpecDiagnostics(t *testing.T, spec map[string]any) []renderDiagnostic
 	if err := json.Unmarshal([]byte(stdout), &res); err != nil {
 		t.Fatalf("render output is not JSON: %v\n%s\n%s", err, stdout, stderr)
 	}
-	return res.Diagnostics
+	// A symptom reads as a finding on its cause's slide.
+	out := res.Diagnostics
+	for _, d := range res.Diagnostics {
+		for _, sym := range d.Symptoms {
+			out = append(out, renderDiagnostic{Code: sym.Code, Message: sym.Message, SlideNumber: d.SlideNumber,
+				Path: fmt.Sprintf("/slides/%d", d.SlideNumber-1)})
+		}
+	}
+	return out
 }
 
 // wordsWithin returns ordinary words filling at most n characters.
@@ -198,8 +242,8 @@ func TestSlideKindBudgetsAgreeWithRenderFindings(t *testing.T) {
 				},
 			})
 			for _, d := range within {
-				if titleCodes[d.Code] || (d.Code == "BODY_TOO_LONG" && strings.HasSuffix(d.SemanticPath, ".takeaway")) {
-					t.Errorf("copy inside the reported budgets drew %s at %s: %s", d.Code, d.SemanticPath, d.Message)
+				if titleCodes[d.Code] || (d.Code == "BODY_TOO_LONG" && d.onTakeaway()) {
+					t.Errorf("copy inside the reported budgets drew %s at %s: %s", d.Code, d.Path, d.Message)
 				}
 			}
 
@@ -215,26 +259,22 @@ func TestSlideKindBudgetsAgreeWithRenderFindings(t *testing.T) {
 				},
 			})
 			var sawCombined bool
-			tightestQuote := 0
+			tightestQuote, takeaways := 0, 0
 			for _, d := range past {
 				if d.Code != "BODY_TOO_LONG" {
 					continue
 				}
 				switch {
-				case strings.HasSuffix(d.SemanticPath, ".takeaway"):
-					quoted := 0
-					if d.Edit != nil {
-						if n, ok := d.Edit.Params["max_chars"].(float64); ok {
-							quoted = int(n)
-						}
-					}
+				case d.onTakeaway():
+					takeaways++
+					quoted := d.quotedMaxChars()
 					if quoted < takeaway.MaxChars {
-						t.Errorf("takeaway finding at %s quotes max_chars %d, below the reported budget %d", d.SemanticPath, quoted, takeaway.MaxChars)
+						t.Errorf("takeaway finding at %s quotes max_chars %d, below the reported budget %d", d.Path, quoted, takeaway.MaxChars)
 					}
 					if tightestQuote == 0 || quoted < tightestQuote {
 						tightestQuote = quoted
 					}
-				case strings.HasPrefix(d.SemanticPath, "slides[1]") && strings.Contains(d.Message, "stack beneath the number"):
+				case strings.HasPrefix(d.Path, "/slides/1") && strings.Contains(d.Message, "stack beneath the number"):
 					sawCombined = true
 					if !strings.Contains(d.Message, fmt.Sprintf("holds about %d", combined.MaxChars)) {
 						t.Errorf("stat stack finding does not quote the reported combined budget %d: %s", combined.MaxChars, d.Message)
@@ -243,6 +283,9 @@ func TestSlideKindBudgetsAgreeWithRenderFindings(t *testing.T) {
 			}
 			if tightestQuote != takeaway.MaxChars {
 				t.Errorf("the tightest takeaway finding quotes max_chars %d, list_slide_kinds reports %d", tightestQuote, takeaway.MaxChars)
+			}
+			if takeaways != 2 {
+				t.Errorf("%d takeaway findings, want one per content layout (the pattern slide and the bullet fallback): %+v", takeaways, past)
 			}
 			if !sawCombined {
 				t.Errorf("a stat past its combined budget was not reported: %+v", past)

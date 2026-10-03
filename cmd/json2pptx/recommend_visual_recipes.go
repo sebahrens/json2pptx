@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/policy/placeholder"
 )
 
 // recommend_visual recipes (go-slide-creator-b7qqg.24).
@@ -364,16 +365,16 @@ func visualRecipeDeckSpecFrom(category patterns.VisualCategory, name, dataKey, t
 	slide := map[string]any{
 		"slide_type": "content",
 		"content": []any{
-			map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Replace with the action title this " + label + " supports"},
+			map[string]any{"placeholder_id": "title", "type": "text", "text_value": placeholder.RecipeActionTitle(label)},
 			map[string]any{"placeholder_id": "body", "type": itemType, valueKey: map[string]any{
 				"type": name,
 				"data": deepCopyAny(data),
-				"alt":  "Replace with one sentence saying what this " + label + " shows",
+				"alt":  placeholder.RecipeAltText(label),
 			}},
 		},
 	}
 	if category == patterns.VisualCategoryChart {
-		slide["source"] = "Illustrative sample data; replace with the real source"
+		slide["source"] = placeholder.RecipeSampleSource
 	}
 	return map[string]any{
 		"meta":   map[string]any{"title": "Recommended " + label, "template": templateName},

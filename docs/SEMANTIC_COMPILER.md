@@ -259,11 +259,21 @@ the same set.
 A list reports every item over a text budget in one response, each at its own
 path with the length measured and the length that fits (`evidence.measured`,
 `evidence.allowed`, `remediation.primary.params.max_chars`): decision option
-labels and details, process steps (the budget is the flow box's readable
-length for the step count, less the label), and executive-summary leads and
-supports (the readable budget for the point count). A count finding names its
-range in `min_items` / `max_items`. `SEMANTIC_RHYTHM_MONOTONY` lists the
-slides of its run in `evidence.run`.
+labels and details, process steps, and executive-summary leads and supports
+(the readable budget for the point count). Process steps that carry a
+description, in a count the numbered rows hold (3–6), are measured against a
+row — label 60, description 180, `params.from: numbered-step-strip` — which is
+the budget `list_slide_kinds` states; any other process is measured against
+the flow box's readable length for the step count, less the label. A budget
+that tightens with the item count is stated in the budget table at the most
+the field ever holds, with the tighter lengths in its `note`
+(`executive_summary` lead, support and bottom line; the `process` flow box);
+a finding quotes the length for the slide's own count, which
+`TestKindBudgetsAgreeWithFindings` checks against the note. A count finding
+names its range in `min_items` / `max_items`. `SEMANTIC_RHYTHM_MONOTONY`
+lists the slides of its run in `evidence.run`. `QUALITY_GATE` names the
+criterion that failed in `evidence.criterion` and every advisory counted
+against it in `evidence.counted[] {code, path}`.
 
 `TestTwelveFlawDraftCleanInThreeRoundTrips` replays the review's twelve-flaw
 draft with an agent that only applies findings: it is clean on the third
@@ -298,11 +308,18 @@ family (`bulets` / `bullets` → `items`, `stages` → `steps`, `metrics` →
 Placeholder strings the product itself emits are registered in
 `internal/policy/placeholder` (`Registered()`, `Detect`): the `__FILL__` token
 of plan drafts and pattern skeletons, the recommend_visual recipes' action
-title, alt text and sample source (built with `RecipeActionTitle`,
-`RecipeAltText`, `RecipeSampleSource`), and any text field that is nothing but
-an `<instruction>` (every `args_template` hint and suggested-patch value). A
-producer that adds placeholder wording registers it there; detection reads the
-registry. In any text field of a DeckSpec — `meta` included — a registered
+title, alt text, sample source and body copy (built with `RecipeActionTitle`,
+`RecipeAltText`, `RecipeSampleSource` and `RecipeCopy(slot)`; marker
+`recipe_copy` matches a whole field that is "Replace with " and a registered
+slot, so authored copy opening with those words is not caught), and any text
+field that is nothing but an `<instruction>` (every `args_template` hint and
+suggested-patch value). A producer that adds placeholder wording registers it
+there; detection reads the registry. Every recommend_visual recipe carries the
+registered action title — a DeckSpec-kind recipe too, in place of the kind
+example's own title — so one rule holds for all of them
+(`assertRecipeValidates`, `assertRecipeRenders`): as handed out a recipe
+validates to `ok:false` blocked by its placeholders and nothing else; with
+them written over it validates and renders without an error. In any text field of a DeckSpec — `meta` included — a registered
 placeholder is a `SEMANTIC_WEAK_CONTENT` finding with `evidence.placeholder`
 naming the marker. It is a blocking error on the DeckSpec surfaces whatever
 `strict` is: the deck is still written, `deterministic_ready` is false and

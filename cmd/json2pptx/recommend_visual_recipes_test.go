@@ -27,9 +27,23 @@ func recommendVisualFor(t *testing.T, mc *mcpConfig, args map[string]any) patter
 	return rec
 }
 
-// renderRecipe runs a candidate's next_tool_call through render_deck_spec and
-// returns the verdict.
+// renderRecipe runs a candidate's next_tool_call through render_deck_spec,
+// exactly as handed out, and returns the verdict. The recipe's placeholder
+// copy is reported (isPlaceholderFinding); renderFilledRecipe renders it as an
+// author would, with that copy written over.
 func renderRecipe(t *testing.T, mc *mcpConfig, c patterns.VisualCandidate) renderDeckSpecResponse {
+	t.Helper()
+	return renderRecipeArgs(t, mc, c, false)
+}
+
+// renderFilledRecipe renders the recipe with every registered placeholder
+// replaced by real copy.
+func renderFilledRecipe(t *testing.T, mc *mcpConfig, c patterns.VisualCandidate) renderDeckSpecResponse {
+	t.Helper()
+	return renderRecipeArgs(t, mc, c, true)
+}
+
+func renderRecipeArgs(t *testing.T, mc *mcpConfig, c patterns.VisualCandidate, fill bool) renderDeckSpecResponse {
 	t.Helper()
 	if c.NextToolCall == nil {
 		t.Fatalf("%s %q has no next_tool_call", c.Category, c.Name)
@@ -48,6 +62,11 @@ func renderRecipe(t *testing.T, mc *mcpConfig, c patterns.VisualCandidate) rende
 	var args map[string]any
 	if err := json.Unmarshal(raw, &args); err != nil {
 		t.Fatal(err)
+	}
+	if fill {
+		if _, n := fillPlaceholders(args); n == 0 {
+			t.Errorf("%s %q: the recipe carries no registered placeholder", c.Category, c.Name)
+		}
 	}
 	res, err := mc.handleRenderDeckSpec(context.Background(), makeRequest(args))
 	if err != nil {

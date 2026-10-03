@@ -1704,8 +1704,13 @@ on a criterion no single finding accounts for: the structural score is under
 `min_score`, more than `max_topic_title_pct` of the slides lack an action
 title, the composition score is under `min_composition_score`, or more than
 `max_problem_slides_pct` of the slides carry findings. The message is the
-gate's own sentence followed by the advisories counted; every other gate
-failure is carried by the finding that caused it (go-slide-creator-x9rhq).
+gate's own sentence followed by the advisories counted (the first six); every
+other gate failure is carried by the finding that caused it
+(go-slide-creator-x9rhq). `evidence.criterion` names the criterion
+(`min_score`, `max_topic_title_pct`, `min_composition_score`,
+`max_problem_slides_pct`) and `evidence.counted[]` lists every advisory
+counted as `{code, path}` — findings of the same response, whose fixes clear
+the gate.
 
 ```json
 {
@@ -1713,7 +1718,14 @@ failure is carried by the finding that caused it (go-slide-creator-x9rhq).
   "severity": "error",
   "blocking": true,
   "path": "/slides",
-  "message": "quality gate: 2 of 5 slides lack an action title (40%, TITLE_NOT_ACTION) — exceeds max_topic_title_pct 25 — advisories counted: TITLE_NOT_ACTION at /slides/1/title, TITLE_NOT_ACTION at /slides/3/title"
+  "message": "quality gate: 2 of 5 slides lack an action title (40%, TITLE_NOT_ACTION) — exceeds max_topic_title_pct 25 — advisories counted: TITLE_NOT_ACTION at /slides/1/title, TITLE_NOT_ACTION at /slides/3/title",
+  "evidence": {
+    "criterion": "max_topic_title_pct",
+    "counted": [
+      {"code": "TITLE_NOT_ACTION", "path": "/slides/1/title"},
+      {"code": "TITLE_NOT_ACTION", "path": "/slides/3/title"}
+    ]
+  }
 }
 ```
 
