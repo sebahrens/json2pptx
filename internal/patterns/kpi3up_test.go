@@ -324,7 +324,9 @@ func TestKpi3up(t *testing.T) {
 			{Big: "127%", Small: "NRR"},
 			{Big: "12d", Small: "Sales cycle"},
 		}
-		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+		// The accent fill is the tiles style; plain cells are an open strip by
+		// default (TestKPIOpenStripIsDefaultForPlainCells).
+		grid, err := p.Expand(ExpandContext{}, &vals, &Kpi3upOverrides{Style: "tiles"}, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
@@ -358,7 +360,7 @@ func TestKpi3up(t *testing.T) {
 			{Big: "127%", Small: "NRR"},
 			{Big: "12d", Small: "Sales cycle"},
 		}
-		ovr := &Kpi3upOverrides{Accent: "accent3"}
+		ovr := &Kpi3upOverrides{Accent: "accent3", Style: "tiles"}
 		grid, err := p.Expand(ExpandContext{}, &vals, ovr, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)

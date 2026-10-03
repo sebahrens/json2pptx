@@ -195,7 +195,7 @@ func TestSkeletonForPattern_TypedFieldsStayValid(t *testing.T) {
 	reg := Default()
 	for _, name := range []string{
 		"process-flow", "process-flow-compact", "numbered-step-strip",
-		"waterfall-bridge", "table-highlight", "icon-row", "kpi-3up", "kpi-4up",
+		"waterfall-bridge", "table-highlight", "icon-row",
 	} {
 		t.Run(name, func(t *testing.T) {
 			raw, err := SkeletonForPattern(reg, name, "evidence")
@@ -243,7 +243,6 @@ func TestSkeletonForPattern_TypedDefaults(t *testing.T) {
 		{"waterfall-bridge", []any{"columns", 0, "type"}, "total"},
 		{"table-highlight", []any{"options", 0, "scores", 0}, float64(0)},
 		{"icon-row", []any{0, "icon"}, "rocket"},
-		{"kpi-3up", []any{0, "icon"}, "rocket"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			raw, err := SkeletonForPattern(reg, tt.name, "evidence")

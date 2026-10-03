@@ -32,10 +32,14 @@ import (
 // be highlighted: its row is tinted with the accent and carries an accent bar,
 // and the value ink is measured against the tint rather than assumed.
 //
-// Every value shares one type size, shrunk until the longest value fits its
-// column on one line (a stat that wraps reads as two numbers). Item rows are
-// uniform in height — a stack whose rows differ looks ragged — and sized from
-// the tallest measured label + detail.
+// Every value shares one type size on the 40 / 36 / 32 / 28 / 24pt ladder: the
+// largest step at which every value fits its column on one line (a stat that
+// wraps reads as two numbers) and the list fits its area. The value column
+// widens for a long value, and the rows give up their vertical text margin,
+// before a value goes under 24pt — it never does: a list that cannot hold
+// 24pt values is reported (go-slide-creator-1vmsk). Item rows are uniform in
+// height — a stack whose rows differ looks ragged — and sized from the tallest
+// measured label + detail.
 
 func init() {
 	Default().Register(&metricList{})
@@ -55,6 +59,9 @@ const (
 	metricListDefaultValuePct = 28.0
 	metricListMinValuePct     = 15.0
 	metricListMaxValuePct     = 50.0
+	// metricListAutoMaxValuePct is how far the value column widens by itself
+	// so the longest value stays on one line at the size the list holds.
+	metricListAutoMaxValuePct = 40.0
 
 	// metricListColGapPt is near zero on purpose: a highlighted row tints both
 	// its cells, and a real column gap would show as a white seam through the
@@ -66,8 +73,21 @@ const (
 	metricListRowGapPt    = 2.0
 	metricListRulePt      = 0.75
 	metricListBarPt       = 4.0 // highlight accent bar width
-	metricListMinValuePt  = 16.0
 	metricListMinFillFrac = 0.68
+
+	// metricListAuthoredMinValuePt is the floor an authored
+	// overrides.value_size still shrinks to so its longest value stays on one
+	// line. Default values never go under the ladder's 24pt floor
+	// (metricListScales): under it the number no longer leads its label.
+	metricListAuthoredMinValuePt = 16.0
+	// metricListTightInsetPt is the top / bottom text margin of a list that
+	// only fits without the uniform 0.5 cm one: the rows drop their spacing
+	// before the values leave the ladder.
+	metricListTightInsetPt = 4.0
+	// metricListValue36Pt / metricListValue32Pt are the ladder's steps
+	// between the 40pt KPI step and the 28pt display step.
+	metricListValue36Pt = 36.0
+	metricListValue32Pt = 32.0
 )
 
 func (m *metricList) Name() string { return "metric-list" }
@@ -147,7 +167,7 @@ func (m *metricList) NewCellOverride() any { return &MetricListCellOverride{} }
 func (m *metricList) Schema() *Schema {
 	itemSchema := ObjectSchema(
 		map[string]*Schema{
-			"value":     StringSchema(metricListValueMax).WithDescription("The number, short (≤12 chars): \"3.8x\", \"~30%\", \"$4.2M\", \"16→33%\". Every value shares one size, shrunk until the longest fits its column on one line"),
+			"value":     StringSchema(metricListValueMax).WithDescription("The number, short (≤12 chars): \"3.8x\", \"~30%\", \"$4.2M\", \"16→33%\". Every value shares one size on the 40/36/32/28/24pt ladder, the largest at which the longest value fits its column on one line"),
 			"label":     StringSchema(metricListLabelMax).WithDescription("What the number measures, one line (≤60 chars)"),
 			"detail":    StringSchema(metricListDetailMax).WithDescription("Optional smaller context line under the label (≤120 chars). 3 items hold the full 120 at default sizes, 4 items about 98, 5 items about 40; with 6-7 items omit detail lines"),
 			"highlight": BooleanSchema().WithDescription("Emphasise this row with an accent-tinted band and accent bar; at most one item"),
@@ -167,9 +187,9 @@ func (m *metricList) Schema() *Schema {
 		map[string]*Schema{
 			"accent":            StringSchema(0).WithDescription("Accent scheme color for the values, highlight and callout (default accent1)").WithDefault("accent1"),
 			"semantic_accent":   EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-			"value_size":        NumberSchema(16, 72).WithDescription("Value font size in points (default: the largest of 40/36/32/28/24 that fits; still shrinks so the longest value stays on one line)"),
+			"value_size":        NumberSchema(16, 72).WithDescription("Value font size in points (default: the largest of 40/36/32/28/24 at which every value fits its column on one line and the list fits its area — never under 24; an authored size still shrinks, down to 16, so the longest value stays on one line)"),
 			"label_size":        NumberSchema(12, 32).WithDescription("Label font size in points (default 18 stepping down to 14 as items are added); the detail line is 4pt smaller, never below 12"),
-			"value_width_pct":   NumberSchema(metricListMinValuePct, metricListMaxValuePct).WithDescription("Width of the right-aligned value column as a percentage of the pattern width (default 28)"),
+			"value_width_pct":   NumberSchema(metricListMinValuePct, metricListMaxValuePct).WithDescription("Width of the right-aligned value column as a percentage of the pattern width (default 28, widening up to 40 for a long value)"),
 			"cell_accent_mode":  EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-row accent rotation for the values"),
 			"takeaway_emphasis": TakeawayEmphasisSchema(),
 		},
@@ -277,6 +297,18 @@ type metricListLayout struct {
 	calloutPt                        float64 // 0 = no callout
 	unfitValues                      []int   // items whose value wraps even at the floor
 	rowGapPt                         float64 // metricListRowGapPt on the template grid
+	tight                            bool    // rows use metricListTightInsetPt
+	fits                             bool    // the list fits its area at this scale
+}
+
+// insetTB is the rows' top / bottom text margin: nil for the uniform shape
+// margin, metricListTightInsetPt on a tight list.
+func (l metricListLayout) insetTB() *float64 {
+	if !l.tight {
+		return nil
+	}
+	pt := metricListTightInsetPt
+	return &pt
 }
 
 func (l metricListLayout) natural(n int) float64 {
@@ -301,30 +333,38 @@ func (l metricListLayout) minimal(n int) float64 {
 }
 
 // metricListScales is the default type scale, largest first: value, label.
-// The last step sets the label at the 12pt floor so a tall list picks a
-// readable size itself instead of leaving the writer to shrink it
-// (go-slide-creator-k3eb3).
 //
-// Values are display figures: they step from the 40pt KPI step to the 28pt
-// display step to the 18pt lead step; labels from lead to subhead to body
-// (go-slide-creator-vmdfm).
-var metricListScales = [][2]float64{{scaleKPIPt, scaleLeadPt}, {scaleDisplayPt, scaleSubheadPt}, {scaleLeadPt, scaleBodyPt}}
+// Values are display figures on the documented 40 / 36 / 32 / 28 / 24pt
+// ladder and never leave it: the last two steps keep the 24pt value and take
+// the label from subhead to body, so a tall list gives up label size, then
+// row spacing, and is reported when even that does not fit — the number has
+// to lead its label (go-slide-creator-1vmsk). It once stepped 40 / 28 / 18,
+// and four exemplar rows under a title drew 18pt values beside 12pt labels.
+var metricListScales = [][2]float64{
+	{scaleKPIPt, scaleLeadPt},
+	{metricListValue36Pt, scaleLeadPt},
+	{metricListValue32Pt, scaleSubheadPt},
+	{scaleDisplayPt, scaleSubheadPt},
+	{sizeFigurePt, scaleSubheadPt},
+	{sizeFigurePt, scaleBodyPt},
+}
+
+// metricListDenseFrom is the first ladder step a list of six or seven rows
+// tries: the 40 and 36pt steps never fit one.
+const metricListDenseFrom = 2
 
 func metricListDetailSize(label float64) float64 { return math.Max(12, label-4) }
 
-// layoutMetricList picks the largest type scale whose natural height fits the
-// content area and measures every row at it.
+// layoutMetricList picks the largest type scale at which every value fits its
+// column on one line and the list fits the content area, and measures every
+// row at it.
 func layoutMetricList(ctx ExpandContext, vals *MetricListValues, ovr *MetricListOverrides) metricListLayout {
-	valuePct := metricListDefaultValuePct
-	if ovr.ValueWidthPct > 0 {
-		valuePct = clampPt(ovr.ValueWidthPct, metricListMinValuePct, metricListMaxValuePct)
-	}
-	cols := []float64{valuePct, 100 - valuePct}
 	areaW, areaH := sizingAreaPt(ctx)
+	n := len(vals.Items)
 
 	scales := metricListScales
-	if len(vals.Items) >= 6 {
-		scales = scales[1:]
+	if n >= 6 {
+		scales = scales[metricListDenseFrom:]
 	}
 	// A list with no detail lines gives the label the whole row: set it 2pt
 	// larger, settled onto the scale (a 12pt label becomes 14pt), so the
@@ -336,48 +376,82 @@ func layoutMetricList(ctx ExpandContext, vals *MetricListValues, ovr *MetricList
 			break
 		}
 	}
-	if ovr.ValueSize > 0 || ovr.LabelSize > 0 {
+	authored := ovr.ValueSize > 0 || ovr.LabelSize > 0
+	if authored {
 		scales = [][2]float64{{ResolveSize(ovr.ValueSize, scales[0][0]), ResolveSize(ovr.LabelSize, snapPt(scales[0][1]+labelBump))}}
 		labelBump = 0
 	}
-	var over metricListLayout
-	for i, sc := range scales {
+	measure := func(sc [2]float64, tight bool) metricListLayout {
 		label := sc[1]
 		if labelBump > 0 {
 			label = snapPt(label + labelBump)
 		}
-		lay := measureMetricList(ctx, vals, cols, sc[0], label, areaW, ovr.TakeawayEmphasis)
-		if lay.natural(len(vals.Items)) <= areaH {
+		lay := measureMetricList(ctx, vals, ovr, sc[0], label, areaW, tight)
+		// The air above the callout band gives way before the type does.
+		lay.fits = lay.minimal(n) <= areaH
+		return lay
+	}
+
+	var lay metricListLayout
+	for i, sc := range scales {
+		lay = measure(sc, false)
+		// A default step whose longest value would wrap is not taken: the
+		// next step down is tried instead of shrinking the value between
+		// steps. The last step keeps its wrap for the finding.
+		if lay.fits && (authored || len(lay.unfitValues) == 0 || i == len(scales)-1) {
 			return lay
-		}
-		// At the floor the air above the callout band may give way too.
-		if i == len(scales)-1 && lay.minimal(len(vals.Items)) <= areaH {
-			return lay
-		}
-		// The floor step is taken only when it makes the list fit: a list
-		// that overflows even there keeps the larger step, since the writer
-		// shrinks it either way and a smaller start only ends smaller.
-		if i < len(scales)-1 || len(scales) == 1 {
-			over = lay
 		}
 	}
-	return over
+	// Nothing fits at the uniform row margin: the smallest scale gives up
+	// the rows' vertical text margin. A list that overflows even so keeps
+	// this layout and PostExpandWarnings reports it.
+	return measure(scales[len(scales)-1], true)
 }
 
-func measureMetricList(ctx ExpandContext, vals *MetricListValues, cols []float64, valueSize, labelSize, areaW float64, emphasis string) metricListLayout {
+// metricListValuePct returns the value column's share: the authored one, or
+// the default widened — up to metricListAutoMaxValuePct — until every value
+// fits on one line at valueSize.
+func metricListValuePct(ctx ExpandContext, vals *MetricListValues, ovr *MetricListOverrides, valueSize, areaW float64) float64 {
+	if ovr.ValueWidthPct > 0 {
+		return clampPt(ovr.ValueWidthPct, metricListMinValuePct, metricListMaxValuePct)
+	}
+	font := ctx.Theme.BodyFont
+	usableW := areaW - metricListColGapPt
+	for pct := metricListDefaultValuePct; pct < metricListAutoMaxValuePct; pct++ {
+		textW := usableW*pct/100 - 2*defaultShapeInsetLRPt
+		fits := true
+		for _, it := range vals.Items {
+			if strings.TrimSpace(it.Value) != "" && measuredLines(it.Value, font, true, valueSize, textW) > 1 {
+				fits = false
+				break
+			}
+		}
+		if fits {
+			return pct
+		}
+	}
+	return metricListAutoMaxValuePct
+}
+
+func measureMetricList(ctx ExpandContext, vals *MetricListValues, ovr *MetricListOverrides, valueSize, labelSize, areaW float64, tight bool) metricListLayout {
+	valuePct := metricListValuePct(ctx, vals, ovr, valueSize, areaW)
+	cols := []float64{valuePct, 100 - valuePct}
 	usableW := areaW - metricListColGapPt
 	valueColW := usableW * cols[0] / 100
 	textColW := usableW * cols[1] / 100
-	lay := metricListLayout{cols: cols, labelSize: labelSize, detailSize: metricListDetailSize(labelSize), rowGapPt: ctx.Gap(metricListRowGapPt)}
+	lay := metricListLayout{cols: cols, labelSize: labelSize, detailSize: metricListDetailSize(labelSize), rowGapPt: ctx.Gap(metricListRowGapPt), tight: tight}
 
-	// One shared value size: the largest that puts every value on one line.
 	font := ctx.Theme.BodyFont
 	// The highlight bar sits inside the value cell's left margin.
 	valueTextW := valueColW - 2*defaultShapeInsetLRPt
 	size := valueSize
-	for _, it := range vals.Items {
-		if s := fitSingleLineSize(it.Value, font, true, size, metricListMinValuePt, valueTextW); s < size {
-			size = s
+	if ovr.ValueSize > 0 {
+		// An authored size is not a ladder step: it shrinks continuously so
+		// its longest value stays on one line.
+		for _, it := range vals.Items {
+			if s := fitSingleLineSize(it.Value, font, true, size, metricListAuthoredMinValuePt, valueTextW); s < size {
+				size = s
+			}
 		}
 	}
 	lay.valueSize = size
@@ -387,22 +461,28 @@ func measureMetricList(ctx ExpandContext, vals *MetricListValues, cols []float64
 		}
 	}
 
+	insetPt := sizingInsetTBPt
+	if tight {
+		insetPt = metricListTightInsetPt
+	}
 	textFrameW := textColW
-	row := size*sizingLineSpacing + 2*sizingInsetTBPt
+	row := size*sizingLineSpacing + 2*insetPt
 	for _, it := range vals.Items {
-		paras := []sizedPara{{text: it.Label, sizePt: labelSize, bold: true, spaceAfterPt: 2}}
-		if strings.TrimSpace(it.Detail) != "" {
-			paras = append(paras, sizedPara{text: it.Detail, sizePt: lay.detailSize})
+		if !tight {
+			paras := []sizedPara{{text: it.Label, sizePt: labelSize, bold: true, spaceAfterPt: 2}}
+			if strings.TrimSpace(it.Detail) != "" {
+				paras = append(paras, sizedPara{text: it.Detail, sizePt: lay.detailSize})
+			}
+			row = math.Max(row, sizedBlockHeightPt(ctx, paras, textFrameW))
 		}
-		row = math.Max(row, sizedBlockHeightPt(ctx, paras, textFrameW))
 		// The row is never below what the writer needs to store the text
 		// unshrunk at the real column widths (go-slide-creator-k3eb3).
-		row = math.Max(row, writtenFitHeightPt(ctx.themeFonts(), metricListTextJSON(it, labelSize, lay.detailSize, "dk2", "dk1"), textFrameW, 0))
-		row = math.Max(row, writtenFitHeightPt(ctx.themeFonts(), metricListValueJSON(it.Value, size, "dk1"), valueColW, 0))
+		row = math.Max(row, writtenFitHeightPt(ctx.themeFonts(), metricListTextJSON(it, labelSize, lay.detailSize, "dk2", "dk1", lay.insetTB()), textFrameW, 0))
+		row = math.Max(row, writtenFitHeightPt(ctx.themeFonts(), metricListValueJSON(it.Value, size, "dk1", lay.insetTB()), valueColW, 0))
 	}
 	lay.rowPt = math.Ceil(row)
 	if strings.TrimSpace(vals.Callout) != "" {
-		lay.calloutPt = TakeawayRowHeightPt(ctx, metricListTakeaway(vals.Callout, "", emphasis), areaW, ctx.Gap(metricListRowGapPt))
+		lay.calloutPt = TakeawayRowHeightPt(ctx, metricListTakeaway(vals.Callout, "", ovr.TakeawayEmphasis), areaW, ctx.Gap(metricListRowGapPt))
 	}
 	return lay
 }
@@ -426,12 +506,16 @@ func metricListBandLine(tone fillTone) json.RawMessage {
 	return data
 }
 
-// insetText is a paragraphs cell text object. It carries no inset_* fields:
-// every pattern shape keeps the uniform shape text margin.
+// insetText is a paragraphs cell text object. It carries no horizontal
+// inset_* fields: every pattern shape keeps the uniform shape text margin.
 type insetText struct {
 	Paragraphs    []chartInsightsParagraph `json:"paragraphs"`
 	Align         string                   `json:"align"`
 	VerticalAlign string                   `json:"vertical_align"`
+	// InsetTop / InsetBottom are set only by a metric-list too tall for the
+	// uniform margin.
+	InsetTop    *float64 `json:"inset_top,omitempty"`
+	InsetBottom *float64 `json:"inset_bottom,omitempty"`
 }
 
 func (t insetText) json() json.RawMessage {
@@ -515,7 +599,7 @@ func (m *metricList) Expand(ctx ExpandContext, values, overrides any, cellOverri
 			Geometry: "rect",
 			Fill:     fill,
 			Line:     line,
-			Text:     metricListValueJSON(it.Value, lay.valueSize, valueInk),
+			Text:     metricListValueJSON(it.Value, lay.valueSize, valueInk, lay.insetTB()),
 		}}
 		// The big value is the item's primary text (D15 text keys).
 		applyCellTextOverride(valueCell, co)
@@ -527,7 +611,7 @@ func (m *metricList) Expand(ctx ExpandContext, values, overrides any, cellOverri
 			Geometry: "rect",
 			Fill:     fill,
 			Line:     line,
-			Text:     metricListTextJSON(it, lay.labelSize, lay.detailSize, rowLabelInk, detailInk),
+			Text:     metricListTextJSON(it, lay.labelSize, lay.detailSize, rowLabelInk, detailInk, lay.insetTB()),
 		}}
 		rows = append(rows, jsonschema.GridRowInput{MinHeight: lay.rowPt, MaxHeight: lay.rowPt, Cells: []*jsonschema.GridCellInput{valueCell, textCell}})
 		itemRow = append(itemRow, true)
@@ -553,8 +637,8 @@ func (m *metricList) Expand(ctx ExpandContext, values, overrides any, cellOverri
 }
 
 // PostExpandWarnings reports what the stack measured and could not fix: a
-// value that wraps even at the floor size, and a list too tall for the content
-// area at the smallest type scale.
+// value that wraps even at the 24pt floor in the widest column, and a list too
+// tall for its area with 24pt values and no row spacing left to give.
 func (m *metricList) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*MetricListValues)
 	if !ok || v == nil || len(v.Items) == 0 {
@@ -574,28 +658,28 @@ func (m *metricList) PostExpandWarnings(ctx ExpandContext, values, overrides any
 	_, areaH := sizingAreaPt(ctx)
 	if need := lay.minimal(len(v.Items)); need > areaH+1 {
 		out = append(out, fmt.Sprintf(
-			"%s: metric-list items need %.0fpt at the smallest type scale but the content area holds about %.0fpt — 4 items hold about 98 detail characters each, 5 items about 40 and 6-7 items none; shorten or drop the detail lines, drop the callout, or use fewer items",
-			ErrCodeBodyTooLong, need, areaH))
+			"%s: metric-list: %d rows need %.0fpt with %.0fpt values and %.0fpt labels at the tightest row spacing, but the area holds about %.0fpt — the values stay on the 24-40pt ladder, so the list overflows instead of shrinking; use fewer rows, shorten or drop the detail lines (4 rows hold about 98 detail characters each, 5 rows about 40, 6-7 rows none), or drop the callout",
+			ErrCodeBodyTooLong, len(v.Items), need, lay.valueSize, lay.labelSize, areaH))
 	}
 	return out
 }
 
 // metricListValueJSON is the value cell text; measureMetricList sizes the row
 // on the same text Expand writes.
-func metricListValueJSON(value string, size float64, ink string) json.RawMessage {
+func metricListValueJSON(value string, size float64, ink string, insetTB *float64) json.RawMessage {
 	return insetText{
 		Paragraphs: []chartInsightsParagraph{{Content: value, Size: size, Bold: true, Color: ink, Align: "r"}},
-		Align:      "r", VerticalAlign: "ctr",
+		Align:      "r", VerticalAlign: "ctr", InsetTop: insetTB, InsetBottom: insetTB,
 	}.json()
 }
 
 // metricListTextJSON is the label + detail cell text.
-func metricListTextJSON(it MetricListItem, labelSize, detailSize float64, labelInk, detailInk string) json.RawMessage {
+func metricListTextJSON(it MetricListItem, labelSize, detailSize float64, labelInk, detailInk string, insetTB *float64) json.RawMessage {
 	paras := []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(it.Label), Size: labelSize, Bold: true, Color: labelInk, Align: "l", SpaceAfter: 2}}
 	if strings.TrimSpace(it.Detail) != "" {
 		paras = append(paras, chartInsightsParagraph{Content: pptx.ConvertMarkdownEmphasis(it.Detail), Size: detailSize, Color: detailInk, Align: "l"})
 	}
-	return insetText{Paragraphs: paras, Align: "l", VerticalAlign: "ctr"}.json()
+	return insetText{Paragraphs: paras, Align: "l", VerticalAlign: "ctr", InsetTop: insetTB, InsetBottom: insetTB}.json()
 }
 
 // metricListTakeaway is the callout as a takeaway band spec.

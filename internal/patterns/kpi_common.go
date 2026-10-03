@@ -7,6 +7,10 @@ import (
 	"fmt"
 	"math"
 	"strings"
+
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // ---------------------------------------------------------------------------
@@ -132,6 +136,39 @@ type KPIOverrides struct {
 	BigSize        float64 `json:"big_size,omitempty"`
 	SmallSize      float64 `json:"small_size,omitempty"`
 	CellAccentMode string  `json:"cell_accent_mode,omitempty"` // uniform | alternate | progressive
+	// Style picks the container: "open" sets the numbers on the canvas between
+	// hairline dividers, "tiles" keeps a tinted card under an accent rule
+	// (kpi-inline calls that "tinted" and also takes "solid"). Unset, plain
+	// value + caption cells are open, and cells with icons or a semantic /
+	// per-cell accent keep their container (go-slide-creator-8zles).
+	Style string `json:"style,omitempty"`
+}
+
+// KPI container styles (overrides.style).
+const (
+	kpiStyleOpen   = "open"
+	kpiStyleTiles  = "tiles"
+	kpiStyleTinted = "tinted" // kpi-inline's name for tiles
+	kpiStyleSolid  = "solid"  // kpi-inline only
+)
+
+// kpiNupStyles are the overrides.style values kpi-Nup accepts.
+var kpiNupStyles = []string{kpiStyleOpen, kpiStyleTiles}
+
+// kpiDefaultOpen reports whether a KPI row with no authored style is drawn
+// open: plain value + caption cells in one accent. An icon, a semantic accent
+// and a per-cell accent mode all carry meaning the container holds, so those
+// rows keep it.
+func kpiDefaultOpen(cells []KPICell, ovr *KPIOverrides) bool {
+	if ovr != nil && (ovr.SemanticAccent != "" || (ovr.CellAccentMode != "" && ovr.CellAccentMode != "uniform")) {
+		return false
+	}
+	for _, c := range cells {
+		if c.Icon != nil && !c.Icon.IsEmpty() {
+			return false
+		}
+	}
+	return true
 }
 
 // KPICellOverride is an alias for the shared CellOverride struct.
@@ -241,26 +278,55 @@ func kpiCellSchema(bigMaxChars, comparatorMaxChars int) *Schema {
 }
 
 // kpiOverridesSchema returns the JSON Schema for KPI pattern-level overrides.
-func kpiOverridesSchema() *Schema {
+// style is the pattern's own container-style enum.
+func kpiOverridesSchema(style *Schema) *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
+			"style":            style,
 			"accent":           StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
 			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-			"big_size":         NumberSchema(6, 120).WithDescription("Font size for big number in points"),
-			"small_size":       NumberSchema(6, 120).WithDescription("Font size for small caption in points"),
+			"big_size":         NumberSchema(6, 120).WithDescription("Font size for big number in points (kpi-Nup default 40, stepping to 28 then 24 in an area too short for it)"),
+			"small_size":       NumberSchema(6, 120).WithDescription("Font size for small caption in points (kpi-Nup default 14, 12 on the smaller value steps)"),
 			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation: uniform (default, all cells same accent), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
 		},
 		nil,
 	).WithAdditionalProperties(false)
 }
 
-// buildKPITextContent creates a JSON text object with paragraphs for a KPI cell.
-// The caption stays directly below the value; the smaller delta/trend line and
-// the comparator line ("vs plan +4 pts") follow in one shared style. Each has a
-// reserved slot on full-size cards when any card in the row carries one, so all
-// cards keep the same baseline. Compact inline bars omit the empty slots. The
-// text color stays "lt1" on the accent fill.
-func buildKPITextContent(big string, bigSize float64, small string, smallSize float64, sub string, fixedDeltaSlot bool, comparator string, fixedComparatorSlot bool) json.RawMessage {
+// kpiText is one KPI cell's text: the value, its caption, and the optional
+// delta and comparator lines ("vs plan +4 pts") in one shared style.
+type kpiText struct {
+	big       string
+	bigSize   float64
+	small     string
+	smallSize float64
+	// padLines are blank caption lines under a caption shorter than the row's
+	// longest, so the delta and comparator lines of every cell sit on one
+	// baseline.
+	padLines   int
+	sub        string
+	comparator string
+	// reserveDelta / reserveComparator keep the line on every cell when any
+	// cell of the row carries one.
+	reserveDelta, reserveComparator bool
+	// valueInk / ink colour the value and the lines under it. Cards write
+	// "lt1" for both: the peer-fill and readable-ink passes recolour them for
+	// the surface the card ends up on.
+	valueInk, ink string
+	// tight replaces the uniform 0.5 cm top / bottom text margin with
+	// kpiTightInsetPt: the last thing a row gives up before it is refused.
+	tight bool
+}
+
+// kpiBlankLine is a visually blank line. An empty <a:t> may be collapsed by
+// PowerPoint / LibreOffice; a non-breaking space reserves exactly one line.
+const kpiBlankLine = " "
+
+// json renders the cell text. It is anchored to the TOP of its box: every
+// cell of a row has the same box, so the values share one baseline and the
+// captions start on one line whatever their line counts. A centred block rode
+// up by half a line for every extra caption line (go-slide-creator-0cy3p).
+func (t kpiText) json() json.RawMessage {
 	type paragraph struct {
 		Content string  `json:"content"`
 		Size    float64 `json:"size"`
@@ -268,38 +334,67 @@ func buildKPITextContent(big string, bigSize float64, small string, smallSize fl
 		Color   string  `json:"color,omitempty"`
 		Align   string  `json:"align,omitempty"`
 	}
+	line := func(content string, size float64) paragraph {
+		return paragraph{Content: content, Size: size, Color: t.ink, Align: "ctr"}
+	}
 
 	paragraphs := []paragraph{
-		{Content: big, Size: bigSize, Bold: true, Color: "lt1", Align: "ctr"},
-		{Content: small, Size: smallSize, Color: "lt1", Align: "ctr"},
+		{Content: t.big, Size: t.bigSize, Bold: true, Color: t.valueInk, Align: "ctr"},
+		line(t.small, t.smallSize),
 	}
-	if sub == "" && fixedDeltaSlot {
-		// An empty <a:t> may be collapsed by PowerPoint/LibreOffice. A non-
-		// breaking space reserves exactly one visually blank delta line.
-		sub = "\u00a0"
+	for i := 0; i < t.padLines; i++ {
+		paragraphs = append(paragraphs, line(kpiBlankLine, t.smallSize))
+	}
+	sub := t.sub
+	if sub == "" && t.reserveDelta {
+		sub = kpiBlankLine
 	}
 	if sub != "" {
-		paragraphs = append(paragraphs, paragraph{Content: sub, Size: kpiSubSize(smallSize), Color: "lt1", Align: "ctr"})
+		paragraphs = append(paragraphs, line(sub, kpiSubSize(t.smallSize)))
 	}
-	if comparator == "" && fixedComparatorSlot {
-		comparator = "\u00a0"
+	comparator := t.comparator
+	if comparator == "" && t.reserveComparator {
+		comparator = kpiBlankLine
 	}
 	if comparator != "" {
-		paragraphs = append(paragraphs, paragraph{Content: comparator, Size: kpiSubSize(smallSize), Color: "lt1", Align: "ctr"})
+		paragraphs = append(paragraphs, line(comparator, kpiSubSize(t.smallSize)))
 	}
 
-	textObj := struct {
+	var inset *float64
+	if t.tight {
+		tightPt := kpiTightInsetPt
+		inset = &tightPt
+	}
+	data, _ := json.Marshal(struct {
 		Paragraphs    []paragraph `json:"paragraphs"`
 		Align         string      `json:"align"`
 		VerticalAlign string      `json:"vertical_align"`
-	}{
-		Paragraphs:    paragraphs,
-		Align:         "ctr",
-		VerticalAlign: "ctr",
-	}
-
-	data, _ := json.Marshal(textObj)
+		InsetTop      *float64    `json:"inset_top,omitempty"`
+		InsetBottom   *float64    `json:"inset_bottom,omitempty"`
+	}{paragraphs, "ctr", "t", inset, inset})
 	return data
+}
+
+// kpiCaptionPadLines returns, per cell, the blank caption lines that bring its
+// caption up to the row's longest (measured at the caption size in each cell's
+// own text width). It is all zeros when no cell carries a delta or a
+// comparator: nothing sits under the caption to align.
+func kpiCaptionPadLines(font string, cells []KPICell, smallSize float64, widthOf func(i int) float64) []int {
+	pads := make([]int, len(cells))
+	if delta, comparator := kpiReservedSlots(cells); !delta && !comparator {
+		return pads
+	}
+	size := shapegrid.EffectiveTextSizePt(smallSize)
+	lines := make([]int, len(cells))
+	most := 0
+	for i, c := range cells {
+		lines[i] = max(1, measuredLines(c.Small, font, false, size, widthOf(i)))
+		most = max(most, lines[i])
+	}
+	for i := range pads {
+		pads[i] = most - lines[i]
+	}
+	return pads
 }
 
 // kpiReservedSlots reports whether any card in the row carries a delta and a
@@ -324,7 +419,60 @@ func kpiSubSize(smallSize float64) float64 {
 }
 
 // ---------------------------------------------------------------------------
-// KPI card geometry (go-slide-creator-5lbo)
+// Open strip (go-slide-creator-8zles)
+// ---------------------------------------------------------------------------
+
+const (
+	// kpiDividerPt is the open strip's vertical hairline.
+	kpiDividerPt = 0.75
+	// kpiDividerInkPct is the divider's dk1 ink coverage: the tone of the
+	// pattern row rules.
+	kpiDividerInkPct = 30
+	// kpiOpenGapPt is the column gap of an open strip. Its cells are
+	// unpainted, so the gap only has to hold the divider: a left accent bar
+	// sits 2pt outside its cell, and this gap centres it between two cells.
+	kpiOpenGapPt = 2*2 + kpiDividerPt
+)
+
+// kpiOpenInks returns the value and caption inks of an open KPI cell, which
+// sits on the slide background: the accent when it clears the large-text 3:1
+// there (else its minimal in-hue darken), over dk1 captions.
+func kpiOpenInks(ctx ExpandContext, accent string) (valueInk, ink string) {
+	valueInk = accent
+	if v, ok := accentInkOn(ctx, accent, fillTone{Color: "lt1"}, svggen.WCAGAALarge); ok {
+		valueInk = v
+	}
+	return valueInk, "dk1"
+}
+
+// kpiDivider is the hairline between two open KPI cells: a neutral step of the
+// template's own ink, resolved to a colour because an accent bar takes no
+// tint. Without a theme it falls back to the ink itself.
+func kpiDivider(ctx ExpandContext) *jsonschema.AccentBarInput {
+	color := "dk1"
+	if c, ok := effectiveFillColor(ctx, neutralTone(kpiDividerInkPct)); ok {
+		color = c.Hex()
+	}
+	return &jsonschema.AccentBarInput{Position: "left", Color: color, Width: kpiDividerPt}
+}
+
+// kpiOpenCell is an unpainted KPI cell; every cell after the first carries the
+// divider on its left.
+func kpiOpenCell(ctx ExpandContext, index int, text json.RawMessage) *jsonschema.GridCellInput {
+	gc := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+		Geometry: "rect",
+		Fill:     json.RawMessage(`"none"`),
+		Line:     noLine,
+		Text:     text,
+	}}
+	if index > 0 {
+		gc.AccentBar = kpiDivider(ctx)
+	}
+	return gc
+}
+
+// ---------------------------------------------------------------------------
+// KPI row layout (go-slide-creator-5lbo, go-slide-creator-uj9zq)
 // ---------------------------------------------------------------------------
 
 const (
@@ -332,82 +480,191 @@ const (
 	kpiCardGapPt = 12.0
 	// kpiMinBigSize is the floor the big number shrinks to before it may wrap.
 	kpiMinBigSize = 16.0
-	// Mirrors shapegrid's overlay defaults: 0.6 icon scale, 3pt gap, and
-	// the left-icon cap of 25% of the card width.
+	// Mirrors shapegrid's overlay defaults: 3pt gap, and the left-icon cap of
+	// 25% of the card width.
 	kpiIconGapPt        = 3.0
 	kpiLeftIconMaxWFrac = 0.25
-	// Default KPI icon footprint (the icon is an accent, not the headline):
-	// a top icon is at most 28% of the card height / 45% of its width, a left
-	// icon at most 40% of the card height / 20% of its width.
-	kpiTopIconHFrac  = 0.28
-	kpiTopIconWFrac  = 0.45
-	kpiLeftIconHFrac = 0.4
-	kpiLeftIconWFrac = 0.2
-	// kpiBaseCardHeightFrac is the share of the content height used as the
-	// card-height ESTIMATE that sets the default icon footprint before the
-	// row is sized. It is neither a floor nor a cap on the rendered card:
-	// kpiRowMaxHeightPt sizes the row to its content (go-slide-creator-wntyw).
+	// Default KPI icon footprint (the icon is an accent, not the headline): a
+	// top icon is as tall as the value it sits over and at most 45% of the
+	// card width; a left icon at most 40% of the card height / 20% of its
+	// width.
+	kpiTopIconValueRatio = 1.1
+	kpiTopIconHFrac      = 0.28
+	kpiTopIconWFrac      = 0.45
+	kpiLeftIconHFrac     = 0.4
+	kpiLeftIconWFrac     = 0.2
+	// kpiBaseCardHeightFrac is the share of the area height used as the
+	// card-height ESTIMATE a left icon's footprint is taken from while the
+	// value is fitted to its width. It is neither a floor nor a cap on the
+	// rendered card: the row is sized to its content.
 	kpiBaseCardHeightFrac = 0.70
-	// kpiCardPadPt is the minimum vertical breathing room (beyond the text
-	// insets) a card keeps around its text; short content gets up to
-	// contentStretchMax x its height instead.
-	kpiCardPadPt = 12.0
+	// kpiRowSlackPt is the air a row keeps beyond what the writer needs to
+	// store its text unshrunk; the text is top-anchored, so it falls under
+	// the last line.
+	kpiRowSlackPt = 4.0
+	// kpiTightInsetPt is the top / bottom text margin of a row that only fits
+	// its area without the uniform 0.5 cm one; kpiTightSlackPt its slack.
+	kpiTightInsetPt = 6.0
+	kpiTightSlackPt = 2.0
+	// kpiFitTolerancePt absorbs the rounding between the row's measured
+	// height and the area the caller resolved for it.
+	kpiFitTolerancePt = 1.0
 )
 
-// kpiCardGeometry is the estimated size (points) of one KPI card.
+// kpiNupSteps is the type ladder a KPI row walks when its area is too short
+// for the 40pt figure: value and caption, largest first. The last step is the
+// minimum — below a 24pt figure over a 12pt caption the row is refused rather
+// than drawn with its lines touching (go-slide-creator-uj9zq).
+var kpiNupSteps = [][2]float64{{scaleKPIPt, scaleSubheadPt}, {scaleDisplayPt, scaleBodyPt}, {sizeFigurePt, scaleBodyPt}}
+
+// kpiCardGeometry is the size (points) of one KPI card.
 type kpiCardGeometry struct {
 	wPt, hPt float64
 }
 
 // kpiCardGeometryFor estimates the card size for n cards spread across the
-// content area. The height is the kpiBaseCardHeightFrac estimate used for
-// icon placement; kpiRowMaxHeightPt sizes the rendered row to its content.
+// content area with the tile gap. The height is the kpiBaseCardHeightFrac
+// estimate; layoutKPIRow sizes the rendered row to its content.
 func kpiCardGeometryFor(ctx ExpandContext, n int) kpiCardGeometry {
-	w, h := contentAreaPt(ctx)
-	return kpiCardGeometry{wPt: equalColumnWidthPt(w, n, ctx.Gap(kpiCardGapPt)), hPt: h * kpiBaseCardHeightFrac}
+	return kpiCardGeometryWithGap(ctx, n, ctx.Gap(kpiCardGapPt))
 }
 
-// kpiRowMaxHeightPt returns the KPI row's max_height: the tallest card's
-// content (top icon zone + value + sub + caption) plus its padding, at most
-// contentStretchMax x that content, never above the content height.
-func kpiRowMaxHeightPt(ctx ExpandContext, cells []KPICell, geo kpiCardGeometry, iconPos string, bigSize, smallSize float64) float64 {
-	_, contentH := contentAreaPt(ctx)
-	font := ctx.Theme.BodyFont
-	textW := geo.wPt - 2*defaultShapeInsetLRPt
-	need := 0.0
-	reserveDelta, reserveComparator := kpiReservedSlots(cells)
-	for _, c := range cells {
-		w := geo.valueWidthPt(c.Icon, iconPos)
-		if w <= 0 {
-			w = textW
-		}
-		sub := c.Sub
-		if sub == "" && reserveDelta {
-			sub = "\u00a0" // same reserved baseline as buildKPITextContent
-		}
-		comparator := c.Comparator
-		if comparator == "" && reserveComparator {
-			comparator = "\u00a0"
-		}
-		h := textBlockHeightPt(font, w,
-			textParagraph{text: c.Big, size: bigSize, bold: true},
-			textParagraph{text: c.Small, size: smallSize},
-			textParagraph{text: sub, size: kpiSubSize(smallSize)},
-			textParagraph{text: comparator, size: kpiSubSize(smallSize)},
-		)
-		pos := effectiveIconPos(c.Icon, iconPos)
-		if c.Icon != nil && !c.Icon.IsEmpty() && pos == "top" {
-			h += math.Min(geo.wPt, geo.hPt)*geo.iconScale(c.Icon, pos) + 2*kpiIconGapPt
-		}
-		need = math.Max(need, math.Max(h*contentStretchMax, h+kpiCardPadPt+2*defaultShapeInsetTBPt))
+func kpiCardGeometryWithGap(ctx ExpandContext, n int, gapPt float64) kpiCardGeometry {
+	w, h := contentAreaPt(ctx)
+	return kpiCardGeometry{wPt: equalColumnWidthPt(w, n, gapPt), hPt: h * kpiBaseCardHeightFrac}
+}
+
+// kpiRowLayout is a KPI row measured at one type step.
+type kpiRowLayout struct {
+	geo                kpiCardGeometry // card width and the row's final height
+	iconPos            string          // default icon position
+	bigSize, smallSize float64
+	rowPt              float64 // row max_height: the tallest cell's content
+	needPt             float64 // rowPt before it was held to the area
+	availPt            float64 // height of the area the row sits in
+	fits               bool    // needPt fits availPt
+	authored           bool    // the sizes are overrides, not a ladder step
+	texts              []kpiText
+	iconScales         []float64 // overlay scale per cell (0 = no icon)
+}
+
+// layoutKPIRow sizes a KPI row to its content: every value on one line at one
+// shared size, every cell tall enough that the writer stores its text
+// unshrunk, and the row as tall as its tallest cell. In an area too short for
+// the default sizes it steps down kpiNupSteps; authored sizes are measured as
+// given. A row that still does not fit gives up its vertical text margin
+// before anything else; fits is false when it is taller than the area even so.
+func layoutKPIRow(ctx ExpandContext, cells []KPICell, ovr *KPIOverrides, gapPt float64) kpiRowLayout {
+	steps := kpiNupSteps
+	authored := ovr != nil && (ovr.BigSize > 0 || ovr.SmallSize > 0)
+	if authored {
+		steps = [][2]float64{{resolveKPIBigSize(ovr), resolveKPISmallSize(ovr)}}
 	}
-	// Content-sized (go-slide-creator-wntyw): the card hugs its value and
-	// caption — at most contentStretchMax x the text block, or the text plus
-	// the padding and insets when that is larger — and the row is
-	// middle-anchored in the body zone. geo.hPt is no longer a floor: a 70%
-	// base gave a 270pt card around 60pt of content. The content box stays
-	// the ceiling.
-	return clampPt(need, 0, contentH)
+	var lay kpiRowLayout
+	for _, st := range steps {
+		lay = measureKPIRow(ctx, cells, gapPt, st[0], st[1], false)
+		if lay.fits {
+			break
+		}
+	}
+	if !lay.fits {
+		last := steps[len(steps)-1]
+		lay = measureKPIRow(ctx, cells, gapPt, last[0], last[1], true)
+	}
+	lay.authored = authored
+	return lay
+}
+
+// measureKPIRow measures the row at one value / caption size.
+func measureKPIRow(ctx ExpandContext, cells []KPICell, gapPt, bigSize, smallSize float64, tight bool) kpiRowLayout {
+	insetPt, slackPt := defaultShapeInsetTBPt, kpiRowSlackPt
+	if tight {
+		insetPt, slackPt = kpiTightInsetPt, kpiTightSlackPt
+	}
+	_, availPt := contentAreaPt(ctx)
+	est := kpiCardGeometryWithGap(ctx, len(cells), gapPt)
+	lay := kpiRowLayout{
+		iconPos:    est.iconPosition(),
+		smallSize:  smallSize,
+		availPt:    availPt,
+		texts:      make([]kpiText, len(cells)),
+		iconScales: make([]float64, len(cells)),
+	}
+	lay.bigSize = kpiFitBigSize(ctx, cells, bigSize, est, lay.iconPos)
+
+	font := ctx.Theme.BodyFont
+	widthOf := func(i int) float64 { return est.valueWidthPt(cells[i].Icon, lay.iconPos) }
+	pads := kpiCaptionPadLines(font, cells, smallSize, widthOf)
+	reserveDelta, reserveComparator := kpiReservedSlots(cells)
+	textPt := make([]float64, len(cells))
+	for i, c := range cells {
+		t := kpiText{
+			big: c.Big, bigSize: lay.bigSize, small: c.Small, smallSize: smallSize, padLines: pads[i],
+			sub: c.Sub, comparator: c.Comparator, reserveDelta: reserveDelta, reserveComparator: reserveComparator,
+			valueInk: "lt1", ink: "lt1", tight: tight,
+		}
+		lay.texts[i] = t
+		// The height the writer needs to store this text unshrunk in the
+		// cell's text width (a left icon narrows it).
+		textPt[i] = writtenFitHeightPt(ctx.themeFonts(), t.json(), widthOf(i)+2*defaultShapeInsetLRPt, 0)
+		if textPt[i] <= 0 {
+			textPt[i] = 2*insetPt + textBlockHeightPt(font, widthOf(i),
+				textParagraph{text: c.Big, size: lay.bigSize, bold: true},
+				textParagraph{text: c.Small, size: smallSize})
+		}
+	}
+
+	// A top icon takes its zone above the text. An authored scale is a share
+	// of the card's shorter side, which depends on the row height the icon
+	// itself adds to, so the row is settled over a few passes.
+	icons := make([]float64, len(cells))
+	row := 0.0
+	for pass := 0; pass < 4; pass++ {
+		next := 0.0
+		for i, c := range cells {
+			icons[i] = est.topIconPt(c.Icon, lay.iconPos, lay.bigSize, row)
+			h := textPt[i]
+			if icons[i] > 0 {
+				h += icons[i] + 2*kpiIconGapPt
+			}
+			next = math.Max(next, h)
+		}
+		if next == row {
+			break
+		}
+		row = next
+	}
+	lay.needPt = math.Ceil(row + slackPt)
+	lay.fits = lay.needPt <= availPt+kpiFitTolerancePt
+	lay.rowPt = clampPt(lay.needPt, 0, availPt)
+	lay.geo = kpiCardGeometry{wPt: est.wPt, hPt: lay.rowPt}
+	for i, c := range cells {
+		if c.Icon == nil || c.Icon.IsEmpty() {
+			continue
+		}
+		if icons[i] > 0 {
+			if minDim := math.Min(lay.geo.wPt, lay.geo.hPt); minDim > 0 {
+				lay.iconScales[i] = math.Min(1, icons[i]/minDim)
+			}
+			continue
+		}
+		lay.iconScales[i] = lay.geo.iconScale(c.Icon, effectiveIconPos(c.Icon, lay.iconPos))
+	}
+	return lay
+}
+
+// errKPIRowTooTall refuses a KPI row whose area cannot hold a value over its
+// caption: the lines would be written shrunk into each other.
+func errKPIRowTooTall(patternName string, n int, lay kpiRowLayout) *ValidationError {
+	sizes := fmt.Sprintf("the minimum %.0fpt value over a %.0fpt caption", lay.bigSize, shapegrid.EffectiveTextSizePt(lay.smallSize))
+	advice := "give the region or segment more height (a larger size_pct), shorten the captions, drop the delta / comparator lines, or use kpi-inline"
+	if lay.authored {
+		sizes = fmt.Sprintf("the %.0fpt value over a %.0fpt caption set in overrides", lay.bigSize, shapegrid.EffectiveTextSizePt(lay.smallSize))
+		advice = "lower or remove overrides.big_size / small_size, or give the row more height"
+	}
+	return newValidationError(patternName, "values", ErrCodeFitOverflow,
+		fmt.Sprintf("%s: %d KPIs need %.0fpt of height for %s, but their area is %.0fpt tall — %s",
+			patternName, n, lay.needPt, sizes, lay.availPt, advice), nil)
 }
 
 // iconPosition is the default overlay icon position: "top" for every
@@ -418,6 +675,24 @@ func kpiRowMaxHeightPt(ctx ExpandContext, cells []KPICell, geo kpiCardGeometry, 
 // (go-slide-creator-ux1le). An authored icon.position still wins.
 func (g kpiCardGeometry) iconPosition() string {
 	return "top"
+}
+
+// topIconPt returns the edge (points) of a cell's top icon, or 0 when the
+// cell has no icon or it sits elsewhere. By default it follows the value it
+// sits over; an authored scale is taken of the card's shorter side, with
+// rowPt the row height measured so far.
+func (g kpiCardGeometry) topIconPt(icon *IconRef, pos string, bigSize, rowPt float64) float64 {
+	if icon == nil || icon.IsEmpty() || effectiveIconPos(icon, pos) != "top" {
+		return 0
+	}
+	if icon.Scale > 0 && icon.Scale <= 1 {
+		side := g.wPt
+		if rowPt > 0 {
+			side = math.Min(side, rowPt)
+		}
+		return icon.Scale * side
+	}
+	return math.Min(bigSize*kpiTopIconValueRatio, g.wPt*kpiTopIconWFrac)
 }
 
 // iconSizePt returns the default icon edge (points) for a card at pos.

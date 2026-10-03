@@ -174,9 +174,23 @@ type geomAccumulator struct {
 	ink                     []pptx.RectEmu
 	exceeds                 []textExceedsHit
 	sparse                  []sparseFillHit
+	// openCells is set while walking an open KPI strip: its unpainted cells
+	// are delimited by hairline dividers and count as content like the tiles
+	// they replace, so a content-sized KPI row does not start reading as an
+	// underused slide because it lost its card fills
+	// (go-slide-creator-8zles).
+	openCells bool
+}
+
+// isKPIStripGrid reports whether grid is the expansion of a KPI row pattern.
+func isKPIStripGrid(grid *ShapeGridInput) bool {
+	return grid != nil && strings.HasPrefix(grid.Source, patternSourcePrefix+"kpi-")
 }
 
 func (a *geomAccumulator) walk(input *ShapeGridInput, result *shapegrid.ResolveResult, basePath string, depth int) {
+	outer := a.openCells
+	a.openCells = isKPIStripGrid(input)
+	defer func() { a.openCells = outer }()
 	for _, cell := range result.Cells {
 		cellPath := fmt.Sprintf("%s/rows/%d/cells/%d", basePath, cell.RowIdx, cell.ColIdx)
 		switch cell.Kind {
@@ -267,6 +281,10 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 		blockW, blockH = blockH, blockW
 	}
 	if !filled {
+		if a.openCells {
+			a.ink = append(a.ink, cell.Bounds)
+			return
+		}
 		a.ink = append(a.ink, placeTextBlock(cell.Bounds, txt, blockW, blockH))
 		return
 	}

@@ -108,7 +108,7 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	// Expand
 	grid, err := pat.Expand(reserveCalloutBand(expandCtx, p.Callout), values, overrides, cellOverrides)
 	if err != nil {
-		return nil, nil, fmt.Errorf("pattern %q: expand failed: %w", p.Name, err)
+		return nil, nil, patternExpandError(p.Name, err)
 	}
 	if grid.Bounds != nil {
 		grid.BoundsRelativeToContentArea = true
@@ -168,6 +168,18 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	)
 
 	return grid, warnings, nil
+}
+
+// patternExpandError wraps a failed Pattern.Expand. A pattern that measures
+// its content against its area and refuses it (a kpi-Nup row in a region too
+// short for a value over its caption, go-slide-creator-uj9zq) reports a
+// located finding like Validate does, so it reaches the caller with the
+// pattern's path instead of as prose.
+func patternExpandError(name string, err error) error {
+	if ves := patternValidationFindings(err); len(ves) > 0 {
+		return newPatternInputError(name, rootPatternFindingPaths(ves))
+	}
+	return fmt.Errorf("pattern %q: expand failed: %w", name, err)
 }
 
 // Stamp a pattern's resolved policy on each shape as well as the grid. Compose
@@ -403,7 +415,10 @@ func expandNestedCellPatternsInBounds(grid *jsonschema.ShapeGridInput, ctx patte
 			}
 			if cell.Grid != nil {
 				if err := expandNestedCellPatternsInBounds(cell.Grid, ctx, cellBounds[[2]int{ri, ci}], reg); err != nil {
-					return err
+					// Keep the outer cell's coordinates on a finding raised
+					// deeper down (a region's pattern sits under its heading
+					// row's sub-grid).
+					return prefixPatternFindingPaths(err, fmt.Sprintf("rows[%d].cells[%d].grid.", ri, ci))
 				}
 			}
 		}

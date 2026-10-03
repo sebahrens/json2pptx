@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -91,7 +92,7 @@ func (k *kpiNup) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"values":         ArraySchema(kpiCellSchema(kpiNupBigMaxChars, kpiComparatorMaxChars), n, n).WithDescription(fmt.Sprintf("Exactly %d KPI cells; metric values have a 12-character hard maximum and a measured fit warning when they cannot stay on one line", n)),
-			"overrides":      kpiOverridesSchema(),
+			"overrides":      kpiOverridesSchema(EnumSchema(kpiNupStyles...).WithDescription("open: value and caption on the canvas between hairline dividers. tiles: each KPI in a tinted card under an accent rule. Default open for plain value + caption cells, tiles when a cell has an icon or the row sets semantic_accent or a non-uniform cell_accent_mode")),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
@@ -107,11 +108,14 @@ func (k *kpiNup) Validate(values, overrides any, cellOverrides map[int]any) erro
 		return fmt.Errorf("%s: values must be []KPICell, got %T", name, values)
 	}
 
-	// Validate cell_accent_mode
+	// Validate cell_accent_mode and style
 	var accentModeErr error
 	if overrides != nil {
-		if ovr, ok := overrides.(*KPIOverrides); ok {
+		if ovr, ok := overrides.(*KPIOverrides); ok && ovr != nil {
 			accentModeErr = ValidateCellAccentMode(name, ovr.CellAccentMode)
+			if ovr.Style != "" && !slices.Contains(kpiNupStyles, ovr.Style) {
+				accentModeErr = errors.Join(accentModeErr, errInvalidEnum(name, "overrides.style", ovr.Style, kpiNupStyles))
+			}
 		}
 	}
 
@@ -125,6 +129,33 @@ func (k *kpiNup) Validate(values, overrides any, cellOverrides map[int]any) erro
 	return cellErr
 }
 
+// nupOverrides returns the typed overrides (never nil) and whether the value
+// had the right type.
+func nupOverrides(overrides any) (*KPIOverrides, bool) {
+	if overrides == nil {
+		return &KPIOverrides{}, true
+	}
+	ovr, ok := overrides.(*KPIOverrides)
+	if !ok {
+		return &KPIOverrides{}, false
+	}
+	if ovr == nil {
+		return &KPIOverrides{}, true
+	}
+	return ovr, true
+}
+
+// layout measures the row in the style it will be drawn in: an open strip
+// has a hairline gap between its cells, tiles the card gap.
+func (k *kpiNup) layout(ctx ExpandContext, cells []KPICell, ovr *KPIOverrides) (kpiRowLayout, bool) {
+	open := ovr.Style == kpiStyleOpen || (ovr.Style == "" && kpiDefaultOpen(cells, ovr))
+	gap := ctx.Gap(kpiCardGapPt)
+	if open {
+		gap = ctx.Gap(kpiOpenGapPt)
+	}
+	return layoutKPIRow(ctx, cells, ovr, gap), open
+}
+
 // PostExpandWarnings applies the same hard-ceiling/soft-fit distinction as
 // card-grid. A legal metric may still be too wide for the chosen template,
 // density, icon position, or font at the readable 16pt floor.
@@ -133,18 +164,16 @@ func (k *kpiNup) PostExpandWarnings(ctx ExpandContext, values, overrides any) []
 	if !ok || cells == nil || len(*cells) == 0 {
 		return nil
 	}
-	ovr, _ := overrides.(*KPIOverrides)
-	geo := kpiCardGeometryFor(ctx, k.cfg.Count)
-	iconPos := geo.iconPosition()
-	bigSize := kpiFitBigSize(ctx, *cells, resolveKPIBigSize(ovr), geo, iconPos)
+	ovr, _ := nupOverrides(overrides)
+	lay, _ := k.layout(ctx, *cells, ovr)
 	var warnings []string
 	for i, cell := range *cells {
-		width := geo.valueWidthPt(cell.Icon, iconPos)
+		width := lay.geo.valueWidthPt(cell.Icon, lay.iconPos)
 		// The same atomic-token width kpiFitBigSize fits against: a value that
 		// only fits edge-to-edge in a stand-in face renders as "$4.2" / "M"
 		// (go-slide-creator-b7qqg.14).
-		if measuredLines(cell.Big, ctx.Theme.BodyFont, true, bigSize, textfit.AtomicTokenWidthPt(ctx.Theme.BodyFont, width)) > 1 {
-			warnings = append(warnings, fmt.Sprintf("%s: %s values[%d].big cannot fit on one line at the %.0fpt effective size in a %.0fpt-wide card — shorten the metric, move/remove its icon, or use fewer KPI cards", ErrCodeBodyTooLong, k.Name(), i, bigSize, width))
+		if measuredLines(cell.Big, ctx.Theme.BodyFont, true, lay.bigSize, textfit.AtomicTokenWidthPt(ctx.Theme.BodyFont, width)) > 1 {
+			warnings = append(warnings, fmt.Sprintf("%s: %s values[%d].big cannot fit on one line at the %.0fpt effective size in a %.0fpt-wide card — shorten the metric, move/remove its icon, or use fewer KPI cards", ErrCodeBodyTooLong, k.Name(), i, lay.bigSize, width))
 		}
 	}
 	return warnings
@@ -158,54 +187,51 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 	if !ok {
 		return nil, fmt.Errorf("%s: values must be *[]KPICell, got %T", name, values)
 	}
-	ovr := &KPIOverrides{}
-	if overrides != nil {
-		var ovrOk bool
-		ovr, ovrOk = overrides.(*KPIOverrides)
-		if !ovrOk {
-			return nil, fmt.Errorf("%s: overrides must be *KPIOverrides, got %T", name, overrides)
-		}
+	ovr, ovrOk := nupOverrides(overrides)
+	if !ovrOk {
+		return nil, fmt.Errorf("%s: overrides must be *KPIOverrides, got %T", name, overrides)
 	}
 
 	baseAccent := resolveKPIAccent(ovr, ctx)
-	bigSize := resolveKPIBigSize(ovr)
-	smallSize := resolveKPISmallSize(ovr)
 	cellAccentMode := ovr.CellAccentMode
 
-	geo := kpiCardGeometryFor(ctx, n)
-	iconPos := geo.iconPosition()
-	bigSize = kpiFitBigSize(ctx, *cells, bigSize, geo, iconPos)
-	rowMaxPt := kpiRowMaxHeightPt(ctx, *cells, geo, iconPos, bigSize, smallSize)
-	// Icons are sized against the final card height.
-	cardGeo := kpiCardGeometry{wPt: geo.wPt, hPt: rowMaxPt}
-	reserveDelta, reserveComparator := kpiReservedSlots(*cells)
+	lay, open := k.layout(ctx, *cells, ovr)
+	if !lay.fits {
+		// A row whose area cannot hold a value over its caption is refused:
+		// written anyway, the lines shrink into each other
+		// (go-slide-creator-uj9zq).
+		return nil, errKPIRowTooTall(name, len(*cells), lay)
+	}
 
 	gridCells := make([]*jsonschema.GridCellInput, n)
 	for i, cell := range *cells {
 		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
-		textContent := buildKPITextContent(cell.Big, bigSize, cell.Small, smallSize, cell.Sub, reserveDelta, cell.Comparator, reserveComparator)
-		fillJSON := json.RawMessage(fmt.Sprintf(`"%s"`, accent))
+		text := lay.texts[i]
 
-		shape := &jsonschema.ShapeSpecInput{
-			Geometry: "roundRect",
-			Fill:     fillJSON,
-			Text:     textContent,
+		var gc *jsonschema.GridCellInput
+		if open {
+			text.valueInk, text.ink = kpiOpenInks(ctx, accent)
+			gc = kpiOpenCell(ctx, i, text.json())
+		} else {
+			gc = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+				Geometry: "roundRect",
+				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+				Text:     text.json(),
+			}}
 		}
+		shape := gc.Shape
 		if cell.Icon != nil {
-			if icon := cell.Icon.Resolve(iconFillOn(ctx, shape.Fill, accent), iconPos); icon != nil {
-				icon.Scale = cardGeo.iconScale(cell.Icon, icon.Position)
+			if icon := cell.Icon.Resolve(iconFillOn(ctx, shape.Fill, accent), lay.iconPos); icon != nil {
+				icon.Scale = lay.iconScales[i]
 				shape.Icon = icon
 			}
-		}
-
-		gc := &jsonschema.GridCellInput{
-			Shape: shape,
 		}
 
 		// Apply cell overrides (D15)
 		if co, ok := cellOverrides[i]; ok {
 			cellOvr, coOk := co.(*KPICellOverride)
 			if !coOk {
+				gridCells[i] = gc
 				continue
 			}
 			if cellOvr.AccentBar {
@@ -221,14 +247,18 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 		gridCells[i] = gc
 	}
 
+	gap := ctx.Gap(kpiCardGapPt)
+	if open {
+		gap = ctx.Gap(kpiOpenGapPt)
+	}
 	colsJSON := json.RawMessage(strconv.Itoa(n))
 	grid := &jsonschema.ShapeGridInput{
 		Columns: colsJSON,
-		Gap:     ctx.Gap(kpiCardGapPt),
+		Gap:     gap,
 		Rows: []jsonschema.GridRowInput{
 			{
 				Cells:     gridCells,
-				MaxHeight: math.Round(rowMaxPt),
+				MaxHeight: math.Round(lay.rowPt),
 			},
 		},
 		VerticalAlign: GridVerticalAlignDefault,

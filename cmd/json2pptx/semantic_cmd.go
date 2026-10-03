@@ -740,6 +740,17 @@ func buildSemanticRenderFailure(cr *semantic.CompileResult, err error) semanticR
 	if d := semanticRefusalDiagnostic(cr, err); d != nil {
 		res.Diagnostics = append(res.Diagnostics, *d)
 	}
+	// A pattern that refused the area it was given (a kpis region too short
+	// for a value over its caption) names the region to resize
+	// (go-slide-creator-uj9zq).
+	var spe *slidePatternError
+	if errors.As(err, &spe) {
+		for _, f := range patternAreaRefusals(spe.err, slidepath.SlideField(spe.slideIdx, spe.field)) {
+			d := semanticDiagFromFit(sm, f)
+			d.Severity = string(diagnostics.SeverityError)
+			res.Diagnostics = append(res.Diagnostics, d)
+		}
+	}
 	return res
 }
 
