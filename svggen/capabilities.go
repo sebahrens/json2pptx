@@ -412,9 +412,9 @@ func DiagramCapabilities() []DiagramCapability {
 			Type:             "house_diagram",
 			MaxNodes:         intPtr(10),
 			MaxDepth:         intPtr(1),
-			OverflowBehavior: strPtr("font reduction for dense sections"),
+			OverflowBehavior: strPtr("levels are sized from their text under a gabled roof; six or more sections in a row use the dense type sizes; more than 12 cells in a level, or a floors entry that is not a band or a row of cells, is refused"),
 			RequiredFields:   nil,
-			OptionalFields:   []string{"roof", "sections", "foundation", "footnote"},
+			OptionalFields:   []string{"roof", "sections", "floors", "foundation", "footnote"},
 			Status:           "ready",
 		},
 		{

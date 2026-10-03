@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -198,6 +200,9 @@ func NativeDiagramDataErrors(spec *types.DiagramSpec) []*NativeDiagramDataError 
 	var out []*NativeDiagramDataError
 	seen := map[string]*NativeDiagramDataError{}
 	checkNativeDataShape(spec.Type, "data", spec.Data, schema, &out, seen)
+	if isHouseDiagram(spec) {
+		out = append(out, houseDataShapeErrors(spec.Data)...)
+	}
 	if len(out) == 0 {
 		if reason := nativeDiagramAllLabelsEmpty(spec); reason != "" {
 			out = append(out, &NativeDiagramDataError{DiagramType: spec.Type, Field: "data", Reason: reason})
@@ -386,4 +391,144 @@ func nativePanelTexts(panels []nativePanelData) []string {
 		texts = append(texts, p.title, p.body)
 	}
 	return texts
+}
+
+// House levels (go-slide-creator-8hmdq).
+//
+// The key check above passes a house whose "floors" are strings, or whose
+// floors are bands beside top-level "sections": both parsed cleanly and one
+// of the two silently vanished. The house contract is therefore checked by
+// shape as well as by key, and every shape the builder would skip is refused
+// with the shape it draws.
+
+// houseFloorsShape is the documented shape of house_diagram "floors".
+const houseFloorsShape = `a list of levels drawn top to bottom under the pillar row, each a string or {"label": "…", "items"?: ["…"]} (a full-width band) or {"sections": [{"label": "…", "items"?: ["…"]}]} (a row of cells)`
+
+// houseSectionsShape is the documented shape of a row of sections.
+const houseSectionsShape = `a list of strings or {"label": "…", "items"?: ["…"]} objects`
+
+func houseDataShapeErrors(data map[string]any) []*NativeDiagramDataError { //nolint:gocognit,gocyclo // one check per level shape
+	var out []*NativeDiagramDataError
+	bad := func(field, reason string) {
+		out = append(out, &NativeDiagramDataError{DiagramType: "house_diagram", Field: field, Reason: reason})
+	}
+	// sections reports a row of sections that is not the documented shape
+	// and returns its cell count.
+	sections := func(field string, value any) int {
+		raw, ok := value.([]any)
+		if !ok || len(raw) == 0 {
+			bad(field, "must be "+houseSectionsShape+"; nothing else is drawn")
+			return 0
+		}
+		for i, item := range raw {
+			switch v := item.(type) {
+			case string:
+			case map[string]any:
+				if items, present := v["items"]; present && !isStringList(items) {
+					bad(fmt.Sprintf("%s[%d].items", field, i), "must be a list of strings; other values are not drawn")
+				}
+			default:
+				bad(fmt.Sprintf("%s[%d]", field, i), "must be a string or a {label, items?} object; other values are not drawn")
+			}
+		}
+		if len(raw) > houseMaxSectionsPerFloor {
+			bad(field, fmt.Sprintf("has %d cells; a level holds at most %d — split it into two levels", len(raw), houseMaxSectionsPerFloor))
+		}
+		return len(raw)
+	}
+
+	counts := []int{}
+	pillarRow := ""
+	for _, key := range houseSectionKeys {
+		if value, present := data[key]; present {
+			if pillarRow != "" {
+				bad("data."+key, fmt.Sprintf("the pillar row is already given as %q; use one of sections, pillars or columns", pillarRow))
+				continue
+			}
+			pillarRow = key
+			counts = append(counts, sections("data."+key, value))
+		}
+	}
+	if value, present := data["outer_elements"]; present {
+		if pillarRow != "" || data["floors"] != nil {
+			bad("data.outer_elements", "is only drawn when the house has no sections and no floors; move its entries into sections")
+		} else {
+			counts = append(counts, sections("data.outer_elements", value))
+		}
+	}
+	if _, roof := data["roof"]; roof && data["center_element"] != nil {
+		bad("data.center_element", "is only drawn when the house has no roof; keep one of the two")
+	}
+
+	if value, present := data["floors"]; present {
+		floors, ok := value.([]any)
+		if !ok {
+			bad("data.floors", "must be "+houseFloorsShape)
+			return out
+		}
+		for i, item := range floors {
+			field := fmt.Sprintf("data.floors[%d]", i)
+			switch v := item.(type) {
+			case string:
+				if strings.TrimSpace(v) == "" {
+					bad(field, "is an empty band; floors is "+houseFloorsShape)
+				}
+			case map[string]any:
+				rowKey := ""
+				for _, key := range houseSectionKeys {
+					if _, has := v[key]; has {
+						rowKey = key
+						break
+					}
+				}
+				kind, _ := v["type"].(string)
+				label, _ := v["label"].(string)
+				switch {
+				case kind != "" && kind != "single" && kind != "parallel":
+					bad(field+".type", fmt.Sprintf("is %q; a floor's type is \"single\" (a band) or \"parallel\" (a row of cells) and may be omitted", kind))
+				case rowKey != "" && (kind == "single" || strings.TrimSpace(label) != "" || v["items"] != nil):
+					bad(field, "mixes a band (label / items) with a row of cells ("+rowKey+"); a floor is one or the other — floors is "+houseFloorsShape)
+				case rowKey != "":
+					counts = append(counts, sections(field+"."+rowKey, v[rowKey]))
+				case kind == "parallel":
+					bad(field, "is \"parallel\" but has no sections; floors is "+houseFloorsShape)
+				case strings.TrimSpace(label) == "":
+					bad(field, "has neither a label nor sections, so nothing is drawn; floors is "+houseFloorsShape)
+				default:
+					if items, present := v["items"]; present && !isStringList(items) {
+						bad(field+".items", "must be a list of strings; other values are not drawn")
+					}
+				}
+			default:
+				bad(field, "is not a level; floors is "+houseFloorsShape)
+			}
+		}
+	}
+	if len(out) == 0 && !patterns.HouseColumnsFit(counts...) {
+		bad("data", fmt.Sprintf("levels of %s cells cannot share one column grid; use cell counts that divide a common number of at most %d (4 over 2, 3 over 6)", joinInts(counts), shapegrid.MaxColumns))
+	}
+	return out
+}
+
+func isStringList(value any) bool {
+	raw, ok := value.([]any)
+	if !ok {
+		return false
+	}
+	for _, it := range raw {
+		if _, ok := it.(string); !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func joinInts(values []int) string {
+	parts := make([]string, 0, len(values))
+	for _, v := range values {
+		if v > 1 {
+			parts = append(parts, fmt.Sprintf("%d", v))
+		}
+	}
+	return strings.Join(parts, ", ")
 }

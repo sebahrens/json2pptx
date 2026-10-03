@@ -302,6 +302,13 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 			b["roof_badges"] = []any{s}
 			return b
 		}, rendered: true},
+		"beam": {inject: func(s string) map[string]any {
+			b := pillarsCoverageBody()
+			b["objective"] = "Grow trust"
+			b["foundation"] = []any{"Shared platform", []any{"People", "Data", "Controls"}}
+			b["beam"] = s
+			return b
+		}, rendered: true},
 	},
 	KindOrg: {
 		"nodes": {inject: func(s string) map[string]any {

@@ -531,8 +531,14 @@ func BuildDeckSpecPlan(p Params) *DeckSpecPlan {
 	}
 
 	slots := make([]DeckSpecSlot, len(ordered))
+	pillarNote := pillarCountGuidance(brief)
 	for i, s := range ordered {
 		slots[i] = DeckSpecSlot{SlideIndex: i, Slot: s.slot, Kind: s.kind, Guidance: s.guidance}
+		if s.kind == "pillars" && pillarNote != "" {
+			// The first pillars slot carries the brief's named themes.
+			slots[i].Guidance += pillarNote
+			pillarNote = ""
+		}
 	}
 	unplaced := routeDeckSpecFacts(ordered, slots, facts)
 	for i := range slots {

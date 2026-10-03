@@ -92,9 +92,6 @@ func TestNativeDiagramBuildersEmitAccentTints(t *testing.T) {
 			return generateNineBoxCellLabelXML("Star", 0, 0, 2000000, 500000, 1, "accent4", 20000, 80000)
 		}},
 		{"KPI dashboard", func() string { return generateKPICardXML(panels[0], 0, 0, 2000000, 1500000, 1, nil) }},
-		{"house", func() string {
-			return string(generateHouseSingleFloorShape(1, panels[0], 0, 0, 2000000, 500000, 1200, 1000))
-		}},
 		{"pyramid", func() string { return generatePyramidGroupXML(panels, bounds, 1, "Arial") }},
 		{"stylish panels", func() string { return generateStylishPanelsGroupXML(panels, bounds, 1) }},
 	}

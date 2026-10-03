@@ -746,6 +746,18 @@ var findingMetaRegistry = map[string]FindingMeta{
 		},
 		RelatedCodes: []string{ErrCodeDeckMonotony},
 	},
+	ErrCodeHouseShapeForced: {
+		Code:        ErrCodeHouseShapeForced,
+		Summary:     "A strategy house was pressed into the default shape instead of following its content.",
+		Severity:    "info",
+		WhenEmitted: "A strategy-house foundation band joins three or more short items with separators (\"People · Technology · Data\"), or one pillar has no body while another carries three or more bullets. The house renders; the shape is the default one-band, equal-pillar silhouette rather than the content's own.",
+		RemediationSteps: []string{
+			"For joined enablers, write foundation as a list with a split level — \"foundation\": [[\"People\", \"Technology\", \"Data\"]] — so each gets its own box; add a band level above or below when the house has two kinds of enabler.",
+			"For an empty pillar, give it its own points, merge it into a neighbouring pillar, or move it to the beam or a foundation level; pillars need not carry the same number of bullets.",
+			"Keep the band as written when the items are one idea; the finding is advisory.",
+		},
+		RelatedCodes: []string{ErrCodePatternContentMismatch, ErrCodeBodyTooLong},
+	},
 	ErrCodeChartOverloaded: {
 		Code:        ErrCodeChartOverloaded,
 		Summary:     "A chart has more categories than a reader can follow.",

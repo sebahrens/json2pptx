@@ -50,7 +50,7 @@ The `svggen` package provides built-in diagram types for creating professional b
 | `business_model_canvas` | Business strategy | 9 sections |
 | `value_chain` | Operations flow | Primary + Support activities |
 | `nine_box_talent` | HR assessment | 3x3 grid with items |
-| `house_diagram` | Radial relationships | Center + Outer elements |
+| `house_diagram` | Strategy house | Roof + pillar sections + floors + foundation |
 | `funnel_chart` | Conversion stages | Stages + values |
 | `gauge_chart` | KPI thresholds | Value + thresholds |
 | `treemap_chart` | Hierarchical breakdown | Nested categories |
@@ -119,8 +119,8 @@ What are you visualizing?
 ├── Content layouts?
 │   └── Icon/stat cards? → panel_layout
 │
-└── Relationships?
-    └── Central concept + related items? → house_diagram
+└── Frameworks?
+    └── One objective over pillars over a foundation? → house_diagram
 ```
 
 ## Diagram Details
@@ -415,23 +415,20 @@ HR performance/potential assessment.
 > Alternatively use the auto-routed `employees: [{name, performance, potential}]` form. Ratings accept `"low"`/`"medium"`/`"high"` or numbers `1`/`2`/`3` (1=low, 2=medium, 3=high). See [nine_box_talent.md](./nine_box_talent.md).
 
 #### House Diagram (`house_diagram`)
-Radial relationship diagram (e.g., McKinsey 7S).
+Strategy house: a gabled roof over a pillar row, optional further levels and a foundation band, drawn by the same builder as the `strategy-house` pattern. See [house.md](./house.md) for the `floors` shape.
 
 ```json
 {
   "type": "house_diagram",
-  "title": "McKinsey 7S Framework",
   "data": {
-    "center_element": {"label": "Shared Values"},
-    "outer_elements": [
-      {"label": "Strategy"},
-      {"label": "Structure"},
-      {"label": "Systems"},
-      {"label": "Style"},
-      {"label": "Staff"},
-      {"label": "Skills"}
+    "roof": "Leader in digital payments",
+    "sections": [
+      {"label": "Technology", "items": ["Cloud platform", "Open APIs"]},
+      {"label": "Product", "items": ["Mobile wallet"]},
+      {"label": "People", "items": ["Talent", "Culture"]}
     ],
-    "show_connectors": true
+    "floors": ["Shared data platform", {"sections": ["Risk", "Controls", "Partners"]}],
+    "foundation": "Trust and compliance"
   }
 }
 ```

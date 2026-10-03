@@ -173,9 +173,9 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindPillars: {
 		Kind:           KindPillars,
-		Summary:        "Three to five named pillars render as stylish-panels, or as strategy-house when both objective and foundation are supplied. Over-budget or incomplete framing degrades to complete bullets with a finding.",
+		Summary:        "Three to five named pillars render as stylish-panels, or as strategy-house (gabled roof, pillars, foundation levels) when both objective and foundation are supplied. The pillar count and the foundation levels follow the content: one pillar per theme, one level per kind of enabler. Over-budget or incomplete framing degrades to complete bullets with a finding.",
 		RequiredFields: []string{"pillars"},
-		TypicalFields:  []string{"title", "objective", "foundation", "roof_badges", "takeaway"},
+		TypicalFields:  []string{"title", "objective", "foundation", "beam", "roof_badges", "takeaway"},
 	},
 	KindOrg: {
 		Kind:           KindOrg,

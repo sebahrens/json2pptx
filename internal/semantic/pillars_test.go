@@ -168,3 +168,143 @@ func TestPillarsExplicitContentLayoutUsesFallback(t *testing.T) {
 		t.Fatalf("override compiled = %+v", input.Slides[0])
 	}
 }
+
+// TestPillarsHouseLevels pins go-slide-creator-bjxb9 for the pillars kind: a
+// listed foundation and a beam compile to the strategy-house's levels, and
+// every level and cell maps back to its DeckSpec path.
+func TestPillarsHouseLevels(t *testing.T) {
+	items := append(pillarItems(), map[string]any{"title": "Reach", "body": []any{"Partner network"}})
+	body := map[string]any{
+		"title": "Four pillars on one platform", "pillars": items, "objective": "Trusted platform",
+		"beam":       "One operating model",
+		"foundation": []any{"Shared data platform", []any{"People", "Data", "Controls"}},
+		"takeaway":   "Four pillars rest on one platform and three enablers.",
+	}
+	plan := Normalize(pillarsSpec(body))
+	if got := plan.Slides[0].Visual.Pattern; got != "strategy-house" {
+		t.Fatalf("plan pattern = %q", got)
+	}
+	input, result, err := Compile(pillarsSpec(body), CompileOptions{})
+	if err != nil {
+		t.Fatalf("compile: %v; %+v", err, result.Diagnostics)
+	}
+	if hasCode(result.Diagnostics, diagnostics.CodeSemanticPatternDegraded) {
+		t.Fatalf("unexpected degradation: %+v", result.Diagnostics)
+	}
+	p := input.Slides[0].Pattern
+	pat, _ := patterns.Default().Get(p.Name)
+	values := pat.NewValues()
+	if err := json.Unmarshal(p.Values, values); err != nil {
+		t.Fatal(err)
+	}
+	if err := pat.Validate(values, nil, nil); err != nil {
+		t.Fatalf("pattern values: %v", err)
+	}
+	house := values.(*patterns.StrategyHouseValues)
+	if house.Beam != "One operating model" || len(house.Pillars) != 4 || len(house.FoundationLayers) != 2 || len(house.FoundationLayers[1]) != 3 {
+		t.Fatalf("house = %+v", house)
+	}
+	for raw, want := range map[string]string{
+		"slides[0].pattern.values.beam":             "slides[0].beam",
+		"slides[0].pattern.values.foundation":       "slides[0].foundation",
+		"slides[0].pattern.values.foundation[0]":    "slides[0].foundation[0]",
+		"slides[0].pattern.values.foundation[1]":    "slides[0].foundation[1]",
+		"slides[0].pattern.values.foundation[1][2]": "slides[0].foundation[1][2]",
+		"slides[0].pattern.values.pillars[3].title": "slides[0].pillars",
+	} {
+		if got, _, ok := result.SourceMap.ResolveSemantic(raw); !ok || got != want {
+			t.Errorf("source path %s -> %q (mapped %t), want %q", raw, got, ok, want)
+		}
+	}
+}
+
+// TestPillarsHouseLevelProblems: a malformed level is a typed error at its
+// path; more levels or cells than a house keeps readable degrade to bullets
+// that keep every enabler.
+func TestPillarsHouseLevelProblems(t *testing.T) {
+	house := func(foundation any) map[string]any {
+		return map[string]any{"pillars": pillarItems(), "objective": "Trusted platform", "foundation": foundation, "takeaway": "Three pillars carry the plan."}
+	}
+	for _, tc := range []struct {
+		name       string
+		foundation any
+		path       string
+	}{
+		{"object level", []any{map[string]any{"label": "People"}}, "slides[0].foundation[0]"},
+		{"number cell", []any{[]any{"People", 3}}, "slides[0].foundation[0][1]"},
+		{"number foundation", 7, "slides[0].foundation"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			input, result, err := Compile(pillarsSpec(house(tc.foundation)), CompileOptions{})
+			if err == nil || input != nil {
+				t.Fatalf("malformed foundation compiled: %+v", input)
+			}
+			found := false
+			for _, d := range result.Diagnostics {
+				if d.Path == tc.path && d.Severity == diagnostics.SeverityError {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatalf("no error at %s: %+v", tc.path, result.Diagnostics)
+			}
+		})
+	}
+
+	tooMany := house([]any{"One", "Two", "Three", []any{"People", "Data"}})
+	input, result, err := Compile(pillarsSpec(tooMany), CompileOptions{})
+	if err != nil {
+		t.Fatalf("compile: %v", err)
+	}
+	if input.Slides[0].Pattern != nil || !hasCode(result.Diagnostics, diagnostics.CodeSemanticPatternDegraded) {
+		t.Fatalf("four foundation levels should degrade: %+v", result.Diagnostics)
+	}
+	var joined string
+	for _, c := range input.Slides[0].Content {
+		if c.BulletsValue != nil {
+			joined = strings.Join(*c.BulletsValue, " | ")
+		}
+	}
+	for _, want := range []string{"Foundation: One", "Foundation: Three", "Foundation: People · Data"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("fallback lost %q: %s", want, joined)
+		}
+	}
+}
+
+// TestPillarsExampleIsNotTheDefaultSilhouette pins go-slide-creator-qad87: the
+// kind example shows a pillar count and levels taken from content — not three
+// equal pillars over one joined string — and compiles clean.
+func TestPillarsExampleIsNotTheDefaultSilhouette(t *testing.T) {
+	ex := KindExample(KindPillars)
+	pillars := ex["pillars"].([]any)
+	if len(pillars) == 3 {
+		t.Error("the example still has three pillars")
+	}
+	counts := map[int]bool{}
+	for _, p := range pillars {
+		counts[len(p.(map[string]any)["body"].([]any))] = true
+	}
+	if len(counts) < 2 {
+		t.Error("every example pillar has the same number of bullets")
+	}
+	if _, isString := ex["foundation"].(string); isString {
+		t.Error("the example foundation is one string")
+	}
+	body := map[string]any{}
+	for k, v := range ex {
+		if k != "kind" {
+			body[k] = v
+		}
+	}
+	input, result, err := Compile(pillarsSpec(body), CompileOptions{})
+	if err != nil || input.Slides[0].Pattern == nil || input.Slides[0].Pattern.Name != "strategy-house" {
+		t.Fatalf("example does not compile to a house: %v %+v", err, result.Diagnostics)
+	}
+	fields := kindPayloadFields[KindPillars]
+	for field, want := range map[string]string{"pillars": "one pillar per independent theme", "foundation": "one level per kind of enabler"} {
+		if !strings.Contains(fields[field].desc, want) {
+			t.Errorf("%s description does not say how to choose the shape: %q", field, fields[field].desc)
+		}
+	}
+}

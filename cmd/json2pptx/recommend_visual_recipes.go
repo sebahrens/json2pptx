@@ -231,6 +231,10 @@ var visualRecipeData = map[string]map[string]any{
 			map[string]any{"label": "Product", "items": []any{"Mobile wallet", "Merchant tools", "Analytics"}},
 			map[string]any{"label": "People", "items": []any{"Talent", "Culture", "Leadership"}},
 		},
+		"floors": []any{
+			"Shared data platform",
+			map[string]any{"sections": []any{"Risk", "Controls", "Partners"}},
+		},
 		"foundation": "Trust and compliance",
 	},
 	"business_model_canvas": {

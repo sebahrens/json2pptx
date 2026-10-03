@@ -706,7 +706,7 @@
               "body": ["Weekly releases", "Continuous experiments"]
             }
           ],
-          "foundation": "People · Technology · Data"
+          "foundation": ["One operating model in every market", ["People", "Technology", "Data"]]
         }
       }
     },

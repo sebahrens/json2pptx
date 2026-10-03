@@ -188,7 +188,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `scqa-summary` | 4-row SCQA executive summary (Situation / Complication / Questions / Answer) |
 | `state-shift-hub` | Central accent hub circle (short label) with 3–4 numbered today/future stage pairs on an arc around it: today items right-aligned on the left, future items left-aligned on the right, optional column headers |
 | `stat-hero` | Single oversized statistic with label and optional context |
-| `strategy-house` | Strategy-house framework: objective banner + 3-5 pillars + foundation row (optional roof badges) |
+| `strategy-house` | Strategy-house framework: gabled roof carrying the objective (and optional roof badges) + optional `beam` band + 3-5 pillars + a foundation of 1–3 levels, each a band or a row of 2–5 cells; shares one builder with the native `house_diagram` |
 | `stylish-panels` | Accent-banded panels with ribbon headers for pillars, capabilities, or workstreams |
 | `swimlane` | Horizontal swimlane diagram with actors and steps |
 | `table-highlight` | Options × criteria evaluation matrix (2–6 × 2–6) scored with Harvey balls (0–4), RAG dots or short text, with a highlighted recommended row / decisive column and a legend (content-sized rows) |
