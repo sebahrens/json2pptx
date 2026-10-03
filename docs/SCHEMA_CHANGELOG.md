@@ -1,5 +1,17 @@
 # Schema Changelog
 
+- **2026-10-03 — `timeline-horizontal` dots fit is monotonic in height; regions timeline minimum 55% → 45% (`go-slide-creator-wj8uz`).** SchemaVersion unchanged (no new fields, findings or fix kinds).
+  - In a short area (regions cell, compose segment) the dots layout trims
+    before it overflows: after the 14 → 12pt label step the date and stop
+    cells drop their top / bottom text inset (outer side first), so the date
+    row is its 12pt line instead of a fixed 47pt. A timeline that still does
+    not fit scales whole and reports `BODY_TOO_LONG`; its labels were laid
+    out in zero height at 25% of a stack and passed validation unread. More
+    height never turns a fitting timeline into a refused one. Whole-slide
+    timelines are byte-identical.
+  - `regions`: an unset timeline share is raised to 45% (was 55%), +10% for
+    a heading — measured on every shipped template and p-style.
+
 - **2026-10-03 — Narrow regions keep words whole; native diagrams report the ones they cannot (`go-slide-creator-v74wv`).**
   - The writer's margin clamp now leaves 5% of room over a word's measured
     width (20% for a host-dependent theme face measured in the Liberation

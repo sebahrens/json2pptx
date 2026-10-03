@@ -211,7 +211,7 @@ func (th *timelineHorizontal) measuredWarning(ctx ExpandContext, v *TimelineHori
 			return fmt.Sprintf("%s: timeline-horizontal chevrons need %.0fpt for their labels and bodies but the content area holds about %.0fpt — shorten the longest labels or bodies, use fewer stops, or choose dots style", ErrCodeBodyTooLong, fit.needPt, fit.availPt)
 		}
 	default:
-		if fit := measureTimelineDots(ctx, *v, ovr, nil, "accent1"); fit.stopNeedPt > fit.stopAvailPt+1 {
+		if fit := measureTimelineDots(ctx, *v, ovr, nil, "accent1"); !fit.fits() {
 			return fmt.Sprintf("%s: timeline-horizontal stops need %.0fpt below the axis at the readable minimum but the content area leaves about %.0fpt — shorten the longest labels or bodies, or use fewer stops", ErrCodeBodyTooLong, fit.stopNeedPt, fit.stopAvailPt)
 		}
 	}
@@ -417,16 +417,32 @@ func (th *timelineHorizontal) expandDots(ctx ExpandContext, stops *TimelineHoriz
 		Connector: &jsonschema.ConnectorSpecInput{Style: "line", Color: accent, Width: timelineRulePt},
 	})
 	stopRow := jsonschema.GridRowInput{Cells: fit.stopCells, MaxHeight: fit.stopRowPt}
-	if fit.stopNeedPt > fit.modelStopPt {
-		// The row is held at its written fit (go-slide-creator-n1muf).
+	if fit.stopNeedPt > fit.modelStopPt || fit.trim != timelineTrimNone {
+		// The row is held at its written fit (go-slide-creator-n1muf). A
+		// trimmed row that does not fit is scaled with the others rather than
+		// given what they leave, which on a short area was nothing: the
+		// labels were written into a zero-height box (go-slide-creator-wj8uz).
 		stopRow.MinHeight = math.Min(fit.stopNeedPt, fit.stopRowPt)
 	}
 	rows = append(rows, stopRow)
 
+	// A timeline that does not fit even trimmed is scaled as a whole, its row
+	// gaps with its rows. Kept whole, the gaps took an area as short as they
+	// are and the rows were laid out in nothing — no text written, so nothing
+	// reported (go-slide-creator-wj8uz).
+	rowGap := ctx.Gap(timelineDotsRowGapPt)
+	if !fit.fits() {
+		_, contentH := contentAreaPt(ctx)
+		gaps := rowGap * float64(len(rows)-1)
+		if total := fit.dateRowPt + timelineDotSizePt + fit.stopNeedPt + gaps; total > contentH {
+			rowGap = math.Max(rowGap*math.Max(contentH, 0)/total, timelineDotsMinRowGapPt)
+		}
+	}
+
 	return &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(fmt.Sprintf(`%d`, n)),
 		ColGap:        ctx.Gap(timelineDotsColGapPt),
-		RowGap:        ctx.Gap(timelineDotsRowGapPt),
+		RowGap:        rowGap,
 		Rows:          rows,
 		VerticalAlign: GridVerticalAlignDefault,
 	}, nil
@@ -435,6 +451,7 @@ func (th *timelineHorizontal) expandDots(ctx ExpandContext, stops *TimelineHoriz
 // timelineDotsFit is the measured layout of a dots-style timeline.
 type timelineDotsFit struct {
 	labelSize   float64
+	trim        timelineTrim
 	dateCells   []*jsonschema.GridCellInput
 	stopCells   []*jsonschema.GridCellInput
 	dateRowPt   float64 // 0 when no stop has a date
@@ -444,6 +461,25 @@ type timelineDotsFit struct {
 	stopRowPt   float64 // the stop row height handed to the grid
 }
 
+// fits reports whether the stops, written at their fit, fit below the date
+// row and the axis.
+func (f timelineDotsFit) fits() bool { return f.stopNeedPt <= f.stopAvailPt }
+
+// timelineTrim is how much of the top and bottom text inset of the unfilled
+// date and stop cells a stage of measureTimelineDots gives up.
+type timelineTrim int
+
+const (
+	// timelineTrimNone keeps the inset all round, and 4pt more.
+	timelineTrimNone timelineTrim = iota
+	// timelineTrimOuter drops the inset above the date and below the stop
+	// text: the rows hug their text and the space around the axis stays.
+	timelineTrimOuter
+	// timelineTrimAll drops every top and bottom inset: the date and the
+	// label sit a row gap from their dot.
+	timelineTrimAll
+)
+
 // measureTimelineDots builds the date and stop cells and sizes their rows.
 // The stop row was pinned to the theme-font estimate, capped at 40% of the
 // content height, and on the short template areas the documented budgets were
@@ -451,10 +487,44 @@ type timelineDotsFit struct {
 // tallest cell at the real column width; when that leaves no room the default
 // 14pt label steps to 12pt, and a stop that still does not fit is left to
 // the measured BODY_TOO_LONG in PostExpandWarnings (go-slide-creator-n1muf).
+//
+// A short area (a regions cell, a compose segment) then gets the trimmed
+// stages: the date row — 47pt of inset and padding around a 12pt date —
+// shrinks to its line, and the stop row to its text. The stages run from
+// roomiest to tightest and the first that fits wins, so more height never
+// turns a fitting timeline into one that does not; the whole content area
+// fits the first stage, so a full-slide timeline is unchanged
+// (go-slide-creator-wj8uz).
 func measureTimelineDots(ctx ExpandContext, stops TimelineHorizontalValues, ovr *TimelineHorizontalOverrides, cellOverrides map[int]any, accent string) timelineDotsFit {
 	if ovr == nil {
 		ovr = &TimelineHorizontalOverrides{}
 	}
+	label := ResolveSize(ovr.LabelSize, scaleSubheadPt)
+	type stage struct {
+		label float64
+		trim  timelineTrim
+	}
+	stages := []stage{{label: label}}
+	if ovr.LabelSize == 0 {
+		label = shapegrid.MinTextSizePt
+		stages = append(stages, stage{label: label})
+	}
+	stages = append(stages, stage{label, timelineTrimOuter}, stage{label, timelineTrimAll})
+	var fit timelineDotsFit
+	for _, st := range stages {
+		if fit = measureTimelineDotsAt(ctx, stops, ovr, cellOverrides, accent, st.label, st.trim); fit.fits() {
+			break
+		}
+	}
+	fit.stopRowPt = fit.modelStopPt
+	if fit.stopNeedPt > fit.modelStopPt {
+		fit.stopRowPt = math.Max(fit.modelStopPt, math.Min(fit.stopNeedPt, fit.stopAvailPt))
+	}
+	return fit
+}
+
+// measureTimelineDotsAt measures one stage of measureTimelineDots.
+func measureTimelineDotsAt(ctx ExpandContext, stops TimelineHorizontalValues, ovr *TimelineHorizontalOverrides, cellOverrides map[int]any, accent string, labelSize float64, trim timelineTrim) timelineDotsFit {
 	dateSize := ResolveSize(ovr.DateSize, scaleBodyPt)
 	bodySize := ResolveSize(ovr.BodySize, scaleBodyPt)
 	n := len(stops)
@@ -464,14 +534,14 @@ func measureTimelineDots(ctx ExpandContext, stops TimelineHorizontalValues, ovr 
 	textW := colW - 2*defaultShapeInsetLRPt
 	pad := 2*defaultShapeInsetTBPt + 4
 
-	fit := timelineDotsFit{dateCells: make([]*jsonschema.GridCellInput, n)}
+	fit := timelineDotsFit{labelSize: labelSize, trim: trim, dateCells: make([]*jsonschema.GridCellInput, n)}
 	hasDates := false
 	var dateH, dateNeed float64
 	for i, stop := range stops {
 		if stop.Date != "" {
 			hasDates = true
 		}
-		text := buildTimelineDotsText([]timelineDotsPara{{stop.Date, dateSize, true, accent}}, "b")
+		text := buildTimelineDotsText([]timelineDotsPara{{stop.Date, dateSize, true, accent}}, "b", trim >= timelineTrimOuter, trim == timelineTrimAll)
 		fit.dateCells[i] = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
 			Fill:     json.RawMessage(`"none"`),
@@ -484,50 +554,46 @@ func measureTimelineDots(ctx ExpandContext, stops TimelineHorizontalValues, ovr 
 	}
 	fit.stopAvailPt = contentH - timelineDotSizePt - ctx.Gap(timelineDotsRowGapPt)
 	if hasDates {
-		fit.dateRowPt = math.Max(math.Round(dateH+pad), dateNeed)
+		fit.dateRowPt = dateNeed
+		if trim == timelineTrimNone {
+			fit.dateRowPt = math.Max(math.Round(dateH+pad), dateNeed)
+		}
 		fit.stopAvailPt -= fit.dateRowPt + ctx.Gap(timelineDotsRowGapPt)
 	}
 	fit.stopAvailPt = math.Floor(fit.stopAvailPt)
 
-	build := func(labelSize float64) {
-		fit.labelSize = labelSize
-		fit.stopCells = make([]*jsonschema.GridCellInput, n)
-		var labelH float64
-		fit.stopNeedPt = 0
-		for i, stop := range stops {
-			paras := []timelineDotsPara{{stop.Label, labelSize, true, "dk1"}}
-			if stop.Body != "" {
-				paras = append(paras, timelineDotsPara{stop.Body, bodySize, false, "dk1"})
-			}
-			cell := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
-				Geometry: "rect",
-				Fill:     json.RawMessage(`"none"`),
-				Text:     buildTimelineDotsText(paras, "t"),
-			}}
-			if co, ok := cellOverrides[i]; ok {
-				if cellOvr, coOk := co.(*TimelineHorizontalCellOverride); coOk {
-					applyCellTextOverride(cell, cellOvr)
-					if cellOvr.AccentBar {
-						cell.AccentBar = &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: 4}
-					}
+	fit.stopCells = make([]*jsonschema.GridCellInput, n)
+	var labelH float64
+	for i, stop := range stops {
+		paras := []timelineDotsPara{{stop.Label, labelSize, true, "dk1"}}
+		if stop.Body != "" {
+			paras = append(paras, timelineDotsPara{stop.Body, bodySize, false, "dk1"})
+		}
+		cell := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+			Geometry: "rect",
+			Fill:     json.RawMessage(`"none"`),
+			Text:     buildTimelineDotsText(paras, "t", trim == timelineTrimAll, trim >= timelineTrimOuter),
+		}}
+		if co, ok := cellOverrides[i]; ok {
+			if cellOvr, coOk := co.(*TimelineHorizontalCellOverride); coOk {
+				applyCellTextOverride(cell, cellOvr)
+				if cellOvr.AccentBar {
+					cell.AccentBar = &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: 4}
 				}
 			}
-			fit.stopCells[i] = cell
-			labelH = math.Max(labelH, textBlockHeightPt(font, textW,
-				textParagraph{text: stop.Label, size: labelSize, bold: true},
-				textParagraph{text: stop.Body, size: bodySize}))
-			fit.stopNeedPt = math.Max(fit.stopNeedPt, writtenFitHeightPt(ctx.themeFonts(), cell.Shape.Text, colW, 0))
 		}
+		fit.stopCells[i] = cell
+		labelH = math.Max(labelH, textBlockHeightPt(font, textW,
+			textParagraph{text: stop.Label, size: labelSize, bold: true},
+			textParagraph{text: stop.Body, size: bodySize}))
+		fit.stopNeedPt = math.Max(fit.stopNeedPt, writtenFitHeightPt(ctx.themeFonts(), cell.Shape.Text, colW, 0))
+	}
+	if trim != timelineTrimNone {
+		// A trimmed stop row is its written fit: no estimate, no padding.
+		fit.modelStopPt = fit.stopNeedPt
+	} else {
 		stopH := math.Min(labelH+pad, contentH*timelineStopMaxHeightFrac)
 		fit.modelStopPt = math.Round(math.Max(stopH, labelSize*contentLineHeight+pad))
-	}
-	build(ResolveSize(ovr.LabelSize, scaleSubheadPt))
-	if fit.stopNeedPt > fit.stopAvailPt && ovr.LabelSize == 0 {
-		build(shapegrid.MinTextSizePt)
-	}
-	fit.stopRowPt = fit.modelStopPt
-	if fit.stopNeedPt > fit.modelStopPt {
-		fit.stopRowPt = math.Max(fit.modelStopPt, math.Min(fit.stopNeedPt, fit.stopAvailPt))
 	}
 	return fit
 }
@@ -543,6 +609,9 @@ const (
 	timelineDotsColGapPt = 16.0
 	// timelineDotsRowGapPt separates the date, axis and stop rows.
 	timelineDotsRowGapPt = 6.0
+	// timelineDotsMinRowGapPt is the least a scaled row gap gets: a grid's
+	// row gap of 0 means the shape-grid default.
+	timelineDotsMinRowGapPt = 0.1
 	// timelineStopMaxHeightFrac caps the label/body zone under each dot.
 	timelineStopMaxHeightFrac = 0.4
 	// timelineChevronMaxHeightFrac caps the chevron row in chevron style.
@@ -557,8 +626,9 @@ type timelineDotsPara struct {
 	color   string
 }
 
-// buildTimelineDotsText renders centred paragraphs anchored at vAlign.
-func buildTimelineDotsText(paras []timelineDotsPara, vAlign string) json.RawMessage {
+// buildTimelineDotsText renders centred paragraphs anchored at vAlign,
+// without the top and / or bottom text inset when asked.
+func buildTimelineDotsText(paras []timelineDotsPara, vAlign string, noTopInset, noBottomInset bool) json.RawMessage {
 	type paragraph struct {
 		Content string  `json:"content"`
 		Size    float64 `json:"size"`
@@ -574,11 +644,21 @@ func buildTimelineDotsText(paras []timelineDotsPara, vAlign string) json.RawMess
 		}
 		out = append(out, paragraph{Content: content, Size: p.size, Bold: p.bold, Color: p.color, Align: "ctr"})
 	}
-	data, _ := json.Marshal(struct {
+	obj := struct {
 		Paragraphs    []paragraph `json:"paragraphs"`
 		Align         string      `json:"align"`
 		VerticalAlign string      `json:"vertical_align"`
-	}{Paragraphs: out, Align: "ctr", VerticalAlign: vAlign})
+		InsetTop      *float64    `json:"inset_top,omitempty"`
+		InsetBottom   *float64    `json:"inset_bottom,omitempty"`
+	}{Paragraphs: out, Align: "ctr", VerticalAlign: vAlign}
+	zero := 0.0
+	if noTopInset {
+		obj.InsetTop = &zero
+	}
+	if noBottomInset {
+		obj.InsetBottom = &zero
+	}
+	data, _ := json.Marshal(obj)
 	return data
 }
 
