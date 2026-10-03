@@ -49,11 +49,12 @@ var substantiveReviewWeight = map[string]int{
 // alone (SLIDE_UNDERUSED, SPARSE_FILL) is not in this set: a centred hero
 // number is sparse by design.
 //
-// The text faults (TEXT_WRAPS_NARROW, SIBLING_SIZE_MISMATCH) also count
-// toward the problem-slide share. The two whitespace faults do not: the
-// calibration corpus's best non-spec deck (G2, three content-sized blocks
-// hung from the body line) was graded good by a human, and a share criterion
-// on top of the 25 points failed it — "false blocks are worse than misses"
+// All four also count toward the problem-slide share, so a deck where the
+// fault is widespread fails the gate's share criterion as well. The two
+// whitespace faults were held out of the share while content-sized blocks
+// hung from the body line by default (the calibration corpus's good deck G2
+// carried three); the placement policy now composes such blocks
+// (go-slide-creator-yhzxt), so one that still reports is a fault
 // (TestCalibrationRanking).
 var CompositionFaultWeight = map[string]int{
 	patterns.ErrCodeVerticalImbalance:   25,
@@ -581,13 +582,13 @@ var breadthExemptCodes = map[string]bool{
 	patterns.ErrCodeTakeawayMissing:         true,
 	patterns.ErrCodeNoExecutiveSummary:      true,
 	patterns.ErrCodeClosingWithoutNextSteps: true,
-	// Layout-balance advisories belong with the airiness family above
-	// (go-slide-creator-u9xfy). The two imbalance codes cost
-	// CompositionFaultWeight on their slide (go-slide-creator-wwmod) but stay
-	// outside the share: see CompositionFaultWeight.
-	patterns.ErrCodeVerticalImbalance:   true,
-	patterns.ErrCodeHorizontalImbalance: true,
-	patterns.ErrCodeSparsePlaceholder:   true,
+	// A few lines at the top of a body placeholder is airiness
+	// (go-slide-creator-u9xfy). The two imbalance codes are not in this set:
+	// with the placement policy composing sparse blocks
+	// (go-slide-creator-yhzxt), content left in one half of the slide is a
+	// composition fault like the others in CompositionFaultWeight and counts
+	// toward the problem-slide share (go-slide-creator-wwmod).
+	patterns.ErrCodeSparsePlaceholder: true,
 }
 
 // isBreadthProblem reports whether a finding makes its slide count as a problem
