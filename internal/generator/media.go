@@ -322,6 +322,15 @@ func (ctx *singlePassContext) processTableContent(slideNum, contentIdx int, item
 		},
 	}
 
+	if tableSpec.Style.HighlightColumn > 0 && len(ctx.themeColors) > 0 {
+		// The highlight column is a tint of the template's primary fill, not
+		// of a fixed accent slot (go-slide-creator-290o9). Set on a copy: the
+		// spec belongs to the caller.
+		themed := *tableSpec
+		themed.Style.HighlightAccent = patterns.PrimaryFill(ctx.themeColors)
+		tableSpec = &themed
+	}
+
 	result, err := PopulateTableInShape(tableSpec, placeholder, nil, styleResolver,
 		ctx.hasPopulatedSiblingBody(slideNum, shapeIdx))
 	if err != nil {

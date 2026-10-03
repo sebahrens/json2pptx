@@ -41,6 +41,10 @@ const (
 	agendaSubtitleMax = 160
 )
 
+// AgendaDefaultTitle is the title an agenda slide renders with when the spec
+// gives none.
+const AgendaDefaultTitle = "Agenda"
+
 // agendaSection is one resolved agenda entry. It carries the same shape as
 // agendaImagesItem — the two are separate because one is the semantic payload
 // and the other is what the pattern reads — so a row converts directly.
@@ -73,6 +77,13 @@ type agendaImagesValues struct {
 // agenda-with-images pattern, falling back to a numbered bullet list when the
 // payload does not fit either.
 func CompileAgenda(in Input) (*deckinput.SlideInput, []SourceLink, error) {
+	// The title is optional and the kind says so, yet an untitled agenda
+	// compiled to a slide with an empty title band and drew MISSING_TITLE on
+	// the render (go-slide-creator-y81vn). It takes the title a structure-mode
+	// deck's generated agenda carries.
+	if strings.TrimSpace(in.Title) == "" {
+		in.Title = AgendaDefaultTitle
+	}
 	sections := AgendaSections(in.Body)
 	current := AgendaCurrentIndex(in.Body, sections)
 

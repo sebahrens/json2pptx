@@ -174,11 +174,12 @@ func lintBulletGroups(slideIdx int, path string, content *ContentInput) []patter
 // as a double marker — the symptom that made ordered lists unusable in a
 // placeholder at all (go-slide-creator-6or2).
 //
-// A complete list numbered from 1 is auto-numbered and its prefixes removed, so
-// it draws nothing here. A single line that merely opens with a number is
+// A complete list counting up by one draws nothing here: from 1 it is
+// auto-numbered and its prefixes removed, and from N (steps continued from an
+// earlier slide) its typed numbers replace the layout's glyph. A single line that merely opens with a number is
 // prose, not a list, and is left alone.
 func numberedListFinding(slideIdx int, path string, bullets []string) *patterns.FitFinding {
-	if _, numbered := generator.NumberedList(bullets); numbered {
+	if _, _, numbered := generator.NumberedListStart(bullets); numbered {
 		return nil
 	}
 	prefixed := 0
@@ -195,8 +196,8 @@ func numberedListFinding(slideIdx int, path string, bullets []string) *patterns.
 			Path: path,
 			Code: patterns.ErrCodeNumberedListNotApplied,
 			Message: fmt.Sprintf(
-				"slide %d: %d of %d bullets start with a typed \"N. \" but the list is not numbered 1..%d, so the numbers print beside the layout's bullet glyph as a double marker — number every bullet from 1 (the engine then supplies the numbers) or drop the prefixes",
-				slideIdx+1, prefixed, len(bullets), len(bullets)),
+				"slide %d: %d of %d bullets start with a typed \"N. \" but the list does not count up by one on every bullet, so the numbers print beside the layout's bullet glyph as a double marker — number every bullet consecutively (from 1 the engine supplies the numbers; from a later number the typed ones replace the glyph) or drop the prefixes",
+				slideIdx+1, prefixed, len(bullets)),
 			Fix: &patterns.FixSuggestion{
 				Kind: "renumber_bullets",
 				Params: map[string]any{

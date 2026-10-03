@@ -2313,9 +2313,64 @@ func TestGenerateTableXML_HighlightColumn(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Should contain accent3 tint fill for highlighted column cells
-	if !strings.Contains(result.XML, `val="accent3"`) {
-		t.Error("expected highlight column fill with accent3 scheme color")
+	// Without a theme the highlight is an accent1 tint.
+	if !strings.Contains(result.XML, `<a:schemeClr val="accent1"><a:lumMod val="20000"/><a:lumOff val="80000"/></a:schemeClr>`) {
+		t.Error("expected highlight column fill with an accent1 tint")
+	}
+	if strings.Contains(result.XML, `val="accent3"`) {
+		t.Error("highlight column must not hardcode accent3")
+	}
+}
+
+// The highlight column was an accent3 tint on every template, and accent3 is
+// an unrelated hue on most themes: blue (#1565C0) on forest-green
+// (go-slide-creator-290o9). It is the template's primary fill — the slot
+// patterns default to — so it stays in the template's palette.
+func TestGenerateTableXML_HighlightColumnUsesTemplatePrimaryFill(t *testing.T) {
+	table := &types.TableSpec{
+		Headers: []string{"Feature", "Score"},
+		Rows: [][]types.TableCell{
+			{{Content: "A", ColSpan: 1, RowSpan: 1}, {Content: "8", ColSpan: 1, RowSpan: 1}},
+		},
+		Style: types.TableStyle{HighlightColumn: 2},
+	}
+	themes := map[string]struct {
+		colors []types.ThemeColor
+		want   string
+	}{
+		// forest-green: accent1 green carries white text; accent3 is blue.
+		"accent1 carries white text": {[]types.ThemeColor{
+			{Name: "accent1", RGB: "#2E7D32"}, {Name: "accent2", RGB: "#F9A825"}, {Name: "accent3", RGB: "#1565C0"},
+		}, "accent1"},
+		// A pale accent1 (the warm-coral shape): the first slot that carries
+		// white text, as ExpandContext.DefaultAccent picks.
+		"pale accent1": {[]types.ThemeColor{
+			{Name: "accent1", RGB: "#FFD0C0"}, {Name: "accent2", RGB: "#8E2B1F"}, {Name: "accent3", RGB: "#1565C0"},
+		}, "accent2"},
+	}
+	for name, tc := range themes {
+		t.Run(name, func(t *testing.T) {
+			want := `<a:schemeClr val="` + tc.want + `"><a:lumMod val="20000"/><a:lumOff val="80000"/></a:schemeClr>`
+			// The slot the renderer hands over (it knows the template) …
+			style := table.Style
+			style.HighlightAccent = patterns.PrimaryFill(tc.colors)
+			bounds := types.BoundingBox{Width: 8229600, Height: 4572000}
+			result, err := GenerateTableXML(table, TableRenderConfig{Bounds: bounds, Style: style})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(result.XML, want) {
+				t.Errorf("highlight column fill is not a %s tint:\n%s", tc.want, result.XML)
+			}
+			// … and the same slot from a config that carries the theme.
+			result, err = GenerateTableXML(table, TableRenderConfig{Bounds: bounds, Style: table.Style, Theme: &types.ThemeInfo{Colors: tc.colors}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(result.XML, want) {
+				t.Errorf("themed config: highlight column fill is not a %s tint:\n%s", tc.want, result.XML)
+			}
+		})
 	}
 }
 

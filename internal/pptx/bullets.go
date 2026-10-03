@@ -26,14 +26,16 @@ type BulletTextOptions struct {
 	SpaceAfter  int    // Space after bullet paragraphs in hundredths of a point
 
 	// Detection controls
-	DetectNumbered bool // Also detect "N. " numbered list prefixes
+	DetectNumbered bool // Also detect "N. " numbered lists (two or more consecutive lines counting 1, 2, 3 …)
 	InlineTags     bool // Parse <b>, <i>, <u> inline formatting tags
 }
 
 // ParseBulletText splits text on newlines and detects bullet prefixes.
 // Lines starting with "- " or "• " become bulleted paragraphs. If DetectNumbered
-// is true, lines matching "N. " (digits + dot + space) also become bullets.
-// Plain lines become regular paragraphs with the same run styling.
+// is true, a numbered list — two or more consecutive "N. " lines counting 1, 2,
+// 3 … — becomes auto-numbered paragraphs; any other line that merely opens
+// with a number keeps its text as written (see NumberedRuns). Plain lines become regular paragraphs with the
+// same run styling.
 func ParseBulletText(text string, opts BulletTextOptions) []Paragraph {
 	bulletChar := opts.BulletChar
 	if bulletChar == "" {
@@ -46,8 +48,12 @@ func ParseBulletText(text string, opts BulletTextOptions) []Paragraph {
 
 	lines := strings.Split(text, "\n")
 	paragraphs := make([]Paragraph, 0, len(lines))
+	var inList []bool
+	if opts.DetectNumbered {
+		inList = NumberedRuns(lines)
+	}
 
-	for _, line := range lines {
+	for i, line := range lines {
 		run := Run{
 			Text:       line,
 			FontSize:   opts.FontSize,
@@ -68,19 +74,17 @@ func ParseBulletText(text string, opts BulletTextOptions) []Paragraph {
 		} else if strings.HasPrefix(line, "\u2022 ") {
 			run.Text = strings.TrimPrefix(line, "\u2022 ")
 			isBullet = true
-		} else if opts.DetectNumbered {
-			if _, rest, ok := ParseNumberedPrefix(line); ok {
-				run.Text = rest
-				isBullet = true
-				isNumberedLine = true
-			}
+		} else if inList != nil && inList[i] {
+			_, run.Text, _ = ParseNumberedPrefix(line)
+			isBullet = true
+			isNumberedLine = true
 		}
 
 		if isBullet {
 			para.MarginL = BulletMarginLeft
 			para.Indent = BulletIndent
 			para.SpaceAfter = opts.SpaceAfter
-			if opts.DetectNumbered && isNumberedLine {
+			if isNumberedLine {
 				// Use OOXML auto-numbering for numbered lists.
 				// The hanging indent from MarginL+Indent ensures multi-line
 				// wraps align under the text, not under the number.
@@ -107,6 +111,49 @@ func ParseBulletText(text string, opts BulletTextOptions) []Paragraph {
 	}
 
 	return paragraphs
+}
+
+// NumberedRuns finds the numbered lists in a block of lines that the renderer
+// can number itself. The result has one entry per line: true when the line
+// belongs to such a list, false when it must be written as authored.
+//
+// A list is two or more consecutive lines that each open with "N. " and count
+// 1, 2, 3 …. Auto-numbering counts from 1 at every list, so a line can only
+// hand its number to the renderer when the renderer will count to that number
+// again: a lone "2. Enabler bar: funded first" used to be stripped to an
+// auto-numbered paragraph and rendered "1. Enabler bar: funded first", and a
+// list typed 3, 4, 5 rendered 1, 2, 3 (go-slide-creator-zdzk2). Those lines
+// keep their literal number.
+//
+// A list that starts above 1 is deliberately not auto-numbered with startAt:
+// PowerPoint continues a list only when every paragraph repeats the same
+// startAt, and LibreOffice — which draws the thumbnails an author checks —
+// restarts at startAt on every such paragraph ("3. 3. 3."). The typed numbers
+// are the one form both draw the same.
+func NumberedRuns(lines []string) []bool {
+	numbered := make([]bool, len(lines))
+	for i := 0; i < len(lines); {
+		first, rest, ok := ParseNumberedPrefix(lines[i])
+		if !ok || first != 1 || strings.TrimSpace(rest) == "" {
+			i++
+			continue
+		}
+		end := i + 1
+		for end < len(lines) {
+			n, rest, ok := ParseNumberedPrefix(lines[end])
+			if !ok || n != 1+(end-i) || strings.TrimSpace(rest) == "" {
+				break
+			}
+			end++
+		}
+		if end-i >= 2 {
+			for j := i; j < end; j++ {
+				numbered[j] = true
+			}
+		}
+		i = end
+	}
+	return numbered
 }
 
 // ParseNumberedPrefix checks if line starts with a numbered list prefix like "1. ", "12. ".

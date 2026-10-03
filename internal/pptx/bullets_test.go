@@ -123,7 +123,7 @@ func TestParseBulletText_NumberedDisabledByDefault(t *testing.T) {
 }
 
 func TestParseBulletText_NumberedEnabled(t *testing.T) {
-	paras := ParseBulletText("1. Item one\n12. Item twelve", BulletTextOptions{
+	paras := ParseBulletText("1. Item one\n2. Item twelve", BulletTextOptions{
 		FontSize:       1400,
 		DetectNumbered: true,
 	})
@@ -140,6 +140,70 @@ func TestParseBulletText_NumberedEnabled(t *testing.T) {
 	}
 	if paras[1].Runs[0].Text != "Item twelve" {
 		t.Errorf("paragraph 1 text: got %q", paras[1].Runs[0].Text)
+	}
+	for i, p := range paras {
+		if p.Bullet.AutoNum != "arabicPeriod" {
+			t.Errorf("paragraph %d: bullet = %+v, want arabicPeriod", i, p.Bullet)
+		}
+	}
+}
+
+// A shape whose text is "2. Enabler bar: funded first" was written as an
+// auto-numbered paragraph with the "2." stripped and no start value, so the
+// slide showed "1. Enabler bar: funded first" (go-slide-creator-zdzk2). The
+// renderer may only take over a number it will count to again.
+func TestParseBulletText_NumbersRenderAsWritten(t *testing.T) {
+	opts := BulletTextOptions{FontSize: 1400, DetectNumbered: true}
+	type para struct {
+		text string
+		auto bool // auto-numbered by the renderer
+	}
+	cases := []struct {
+		name string
+		in   string
+		want []para
+	}{
+		{"a lone numbered line keeps its number", "2. Enabler bar: funded first",
+			[]para{{"2. Enabler bar: funded first", false}}},
+		{"a lone line numbered one keeps its number too", "1. Enabler bar",
+			[]para{{"1. Enabler bar", false}}},
+		{"a list from one", "1. One\n2. Two\n3. Three",
+			[]para{{"One", true}, {"Two", true}, {"Three", true}}},
+		{"a list that starts at three keeps its typed numbers", "3. Third\n4. Fourth\n5. Fifth",
+			[]para{{"3. Third", false}, {"4. Fourth", false}, {"5. Fifth", false}}},
+		{"numbers that do not count up stay literal", "1. One\n12. Twelve",
+			[]para{{"1. One", false}, {"12. Twelve", false}}},
+		{"a line between two numbers breaks the list", "Intro\n2. Odd one\nMiddle\n7. Seven\n8. Eight",
+			[]para{{"Intro", false}, {"2. Odd one", false}, {"Middle", false}, {"7. Seven", false}, {"8. Eight", false}}},
+		{"a list after a heading line", "Steps\n1. One\n2. Two",
+			[]para{{"Steps", false}, {"One", true}, {"Two", true}}},
+		{"a repeated number ends the list", "1. One\n2. Two\n2. Two again",
+			[]para{{"One", true}, {"Two", true}, {"2. Two again", false}}},
+		{"a year is prose", "2024. A big year", []para{{"2024. A big year", false}}},
+		{"a decimal is not a prefix", "2.5 points", []para{{"2.5 points", false}}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			paras := ParseBulletText(tc.in, opts)
+			if len(paras) != len(tc.want) {
+				t.Fatalf("got %d paragraphs, want %d", len(paras), len(tc.want))
+			}
+			for i, w := range tc.want {
+				p := paras[i]
+				if got := p.Runs[0].Text; got != w.text {
+					t.Errorf("paragraph %d text = %q, want %q", i, got, w.text)
+				}
+				if !w.auto {
+					if p.Bullet != nil {
+						t.Errorf("paragraph %d is %+v, want plain text", i, p.Bullet)
+					}
+					continue
+				}
+				if p.Bullet == nil || p.Bullet.AutoNum != "arabicPeriod" {
+					t.Errorf("paragraph %d bullet = %+v, want auto-numbering", i, p.Bullet)
+				}
+			}
+		})
 	}
 }
 
