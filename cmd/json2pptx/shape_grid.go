@@ -662,7 +662,7 @@ func resolveGridBounds(input *ShapeGridInput, overrideBounds *pptx.RectEmu, zone
 			if zone != nil {
 				anchorY = zone.BodyTop
 			}
-			return alignRelativeBounds(b, contentBounds, input, anchorY)
+			return alignRelativeBounds(b, contentBounds, input, anchorY, zone != nil)
 		}
 		bounds := shapegrid.BoundsFromPercentages(input.Bounds.X, input.Bounds.Y, input.Bounds.Width, input.Bounds.Height, slideWidth, slideHeight)
 		// Clamp explicit bounds against ContentZone to prevent overlapping chrome.
@@ -702,11 +702,18 @@ func resolveGridBounds(input *ShapeGridInput, overrideBounds *pptx.RectEmu, zone
 // A top-placed box (explicit top, or auto on a box under 60% of the area)
 // hangs from anchorY — the template's body placeholder top — as far as the
 // area's slack allows (go-slide-creator-e17xy).
-func alignRelativeBounds(b, content pptx.RectEmu, input *ShapeGridInput, anchorY int64) pptx.RectEmu {
+func alignRelativeBounds(b, content pptx.RectEmu, input *ShapeGridInput, anchorY int64, slideLevel bool) pptx.RectEmu {
 	if input.Bounds == nil || input.Bounds.Y != 0 || b.CY >= content.CY {
 		return b
 	}
 	align, _ := shapegrid.ParseVerticalAlign(input.VerticalAlign)
+	// A pattern-capped box that needs clearly less than the area is placed
+	// by the composition policy, like a content-sized row block
+	// (go-slide-creator-yhzxt): at the optical centre, not under the title.
+	if slideLevel && boxComposes(input, align, b, content) {
+		b.Y = content.Y + shapegrid.ComposedTopOffset(b.CY, content.CY, max(anchorY-content.Y, 0))
+		return b
+	}
 	switch align.AnchoredAuto(anchorY).ResolveAuto(b.CY, content.CY) {
 	case shapegrid.VAlignTop:
 		if anchorY > b.Y {
@@ -718,6 +725,44 @@ func alignRelativeBounds(b, content pptx.RectEmu, input *ShapeGridInput, anchorY
 		b.Y = content.Y + content.CY - b.CY
 	}
 	return b
+}
+
+// composesSlideBlock reports whether a slide's own grid is placed by the
+// composition policy (shapegrid.Grid.Compose): a grid that fills its area's
+// bounds. A grid with its own bounds box is placed as a box by
+// alignRelativeBounds, and its rows fill that box.
+func composesSlideBlock(input *ShapeGridInput) bool {
+	return input != nil && input.Bounds == nil
+}
+
+// boxBlockComposed reports whether the grid's own bounds box is one
+// alignRelativeBounds places by the composition policy: a top-anchored,
+// content-relative box with vertical_align "auto" that needs clearly less
+// than its content area.
+func boxBlockComposed(input *ShapeGridInput, overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64) bool {
+	if input == nil || zone == nil || input.Bounds == nil || !input.BoundsRelativeToContentArea || input.Bounds.Y != 0 {
+		return false
+	}
+	align, _ := shapegrid.ParseVerticalAlign(input.VerticalAlign)
+	content := contentRelativeBoundsBase(overrideBounds, zone, slideWidth, slideHeight)
+	return boxComposes(input, align, boundsFromRectPercentages(content, input.Bounds), content)
+}
+
+// boxComposes is the composition policy's test for a bounds box b inside
+// content: vertical_align "auto", clearly smaller than the area, and the box
+// itself is the block — its rows fill it. A box whose rows are content-sized
+// inside it (the *-compact variants cap a band and size the rows within) is a
+// band under the title by design and keeps hanging from the body line.
+func boxComposes(input *ShapeGridInput, align shapegrid.VerticalAlign, b, content pptx.RectEmu) bool {
+	if align != shapegrid.VAlignAuto || !shapegrid.IsSparseBlock(b.CY, content.CY) {
+		return false
+	}
+	for _, row := range input.Rows {
+		if row.MaxHeight > 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func contentRelativeBoundsBase(overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64) pptx.RectEmu {
@@ -794,6 +839,7 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 		grid.AnchorY = zone.BodyTop
 		grid.TextLeft = zone.TextLeft
 		grid.DefaultGapPt = zone.GutterPt
+		grid.Compose = composesSlideBlock(input)
 	}
 	grid.KeepTextSizes = input.KeepTextSizes
 	grid.Links = convertGridLinks(input.Links)

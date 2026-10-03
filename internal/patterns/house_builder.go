@@ -139,6 +139,12 @@ const (
 	houseRoofFloorPt    = 8.0
 	// houseRoofMaxShare caps the gable at a share of the height available.
 	houseRoofMaxShare = 0.22
+	// houseRoofSteepPitch and houseRoofSteepMaxShare are the gable a house
+	// with height to spare rises to once its text, its breathing room and its
+	// pillars have theirs: one in four of the half-span, at most 30% of the
+	// height available.
+	houseRoofSteepPitch    = 1.0 / 8
+	houseRoofSteepMaxShare = 0.30
 	// housePillarGrow is how far a pillar row may grow past its text to use
 	// spare height; beyond it the columns read as empty boxes.
 	housePillarGrow = 1.2
@@ -286,7 +292,8 @@ func BuildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLa
 
 	// Heights. Every level needs its text; what is left over is spent, in
 	// order, on a gable at the minimum pitch, on breathing room around the
-	// text, on the designed pitch and on slightly taller pillars.
+	// text, on the designed pitch, on slightly taller pillars and on a steeper
+	// gable.
 	// A house short of height gives them back in the reverse order, and only
 	// then squeezes its pillars.
 	gaps := float64(len(rows)) * st.RowGapPt
@@ -343,6 +350,12 @@ func BuildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLa
 			rows[i].need += grow
 			spare -= grow
 			pillars--
+		}
+		// Height still spare goes into the roof: a steeper gable, up to the
+		// steep pitch, before the house is left short in its area
+		// (go-slide-creator-yhzxt).
+		if steep := math.Min(math.Round(widthPt*houseRoofSteepPitch), math.Round(availPt*houseRoofSteepMaxShare)); steep > rise {
+			rise += math.Min(math.Floor(spare), steep-rise)
 		}
 	}
 	layout.RoofRisePt = rise

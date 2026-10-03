@@ -12,10 +12,20 @@ import (
 
 // Resolve converts a Grid into a ResolveResult containing resolved cells and
 // connectors with absolute EMU coordinates and allocated shape IDs.
-func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) { //nolint:gocognit,gocyclo
+func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 	if grid == nil || len(grid.Rows) == 0 {
 		return nil, nil
 	}
+	if composable(grid) {
+		return resolveComposed(grid, alloc)
+	}
+	return resolveGrid(grid, alloc, nil)
+}
+
+// resolveGrid is Resolve for one grid as given. plan, when set, is the
+// composition policy's decision for a sparse block (compose.go): where the
+// block goes and which type step its text takes.
+func resolveGrid(grid *Grid, alloc *pptx.ShapeIDAllocator, plan *composePlan) (*ResolveResult, error) { //nolint:gocognit,gocyclo
 
 	numCols := len(grid.Columns)
 	numRows := len(grid.Rows)
@@ -102,6 +112,13 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 	rowHeightsEMU, blockOffset := layoutRowsEMU(rowHeights, availH, effectiveVAlign(grid))
 	if blockOffset == 0 && grid.AnchorY > gridY && effectiveVAlign(grid) != VAlignStretch {
 		blockOffset = anchoredTopOffset(rowHeightsEMU, availH, grid.AnchorY-gridY, effectiveVAlign(grid))
+	}
+	if plan != nil && plan.place {
+		var used int64
+		for _, h := range rowHeightsEMU {
+			used += h
+		}
+		blockOffset = ComposedTopOffset(used, availH, max(grid.AnchorY-gridY, 0))
 	}
 	rowYOffsets := make([]int64, numRows)
 	y := gridY + blockOffset
@@ -317,6 +334,11 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 			if mode == "" {
 				mode = grid.TypeScale
 			}
+			if plan != nil && len(plan.sizes) > 0 && mode != "compact" {
+				stepped := stepShapeText(cell.ShapeSpec, plan.sizes, grid.KeepTextSizes)
+				stepFit(plan, cell.ShapeSpec, stepped, cell.Bounds, cell.TextInsets)
+				cell.ShapeSpec = stepped
+			}
 			if mode != "" && mode != "compact" {
 				cell.ShapeSpec = growShapeText(cell.ShapeSpec, cell.Bounds, cell.TextInsets, mode)
 			}
@@ -332,6 +354,7 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 		Connectors:   connectors,
 		AccentBars:   accentBars,
 		RowOverflows: rowOverflows,
+		Composed:     plan != nil && plan.place,
 	}, nil
 }
 

@@ -22,16 +22,19 @@ func TestAlignRelativeBounds(t *testing.T) {
 		{"top", 0, 1000},
 		{"", 0, 1000},
 		{"center", 10, 1000}, // authored y offset is kept
+		// A sparse auto box on a slide sits at the optical centre: 45% of the
+		// 6000 spare above it (go-slide-creator-yhzxt).
+		{"auto", 0, 1000 + 2700},
 	}
 	for _, tc := range cases {
 		in := &ShapeGridInput{VerticalAlign: tc.align, Bounds: &GridBoundsInput{Y: tc.y, Width: 100, Height: 25}}
-		if got := alignRelativeBounds(box, content, in, 0).Y; got != tc.want {
+		if got := alignRelativeBounds(box, content, in, 0, true).Y; got != tc.want {
 			t.Errorf("align=%q y=%v: got Y=%d want %d", tc.align, tc.y, got, tc.want)
 		}
 	}
 	// A box as tall as the area is left alone.
 	in := &ShapeGridInput{VerticalAlign: "center", Bounds: &GridBoundsInput{Width: 100, Height: 100}}
-	if got := alignRelativeBounds(content, content, in, 0); got != content {
+	if got := alignRelativeBounds(content, content, in, 0, true); got != content {
 		t.Errorf("full-height box must not move: %+v", got)
 	}
 }

@@ -1,5 +1,42 @@
 # Schema Changelog
 
+- **2026-10-03 — Sparse content-sized pattern blocks are composed: one type step up, then the optical centre (`go-slide-creator-yhzxt`).**
+  - **Default placement changed** for a slide's own pattern (or raw
+    `shape_grid` with `vertical_align: "auto"` and no `bounds`) whose
+    content-sized block needs **under 75% of the content area**: it no longer
+    hangs from the body line over a blank lower half. Its text takes one step
+    up the type scale (12→14pt, 14→18pt; 18pt and larger stays; display
+    figures ×1.2 up to 48pt), its capped rows and row gap grow by the first of
+    1.15× / 1.25× / 1.35× at which the stepped text fits, and the block sits
+    at the optical centre (45% of the spare height above it, never above the
+    body line). The step is all-or-nothing and is skipped when it would close
+    two type levels onto one size, break a word or a KPI value that fit its
+    line, need more than 1.35× the row, or take the block past 85% of the
+    area; the block is then centred at its own sizes. One policy in the grid
+    resolver, no per-pattern rule; visible on sparse `kpi-Nup`, `kpi-inline`,
+    `icon-row`, `before-after`, `comparison-2col`, `stylish-panels`,
+    `process-flow`, `quote-cluster`, `timeline-horizontal`, `value-chain`,
+    `hero-detail`, `card-grid` and short `numbered-step-strip` /
+    `framework-grid` / `strategy-house` slides.
+  - **Unchanged:** a block needing 75% or more (dense slides), `bounds` /
+    `max_height_pct`, an explicit `pattern.vertical_align`, nested cell
+    patterns, compose segments and DeckSpec `regions` cells. The takeaway /
+    source band keeps its place under the content.
+    **`pattern.vertical_align: "top"` restores the previous look** (block on
+    the body line at the pattern's sizes); `type_scale: "compact"` keeps the
+    sizes and only places the block.
+  - `kpi-inline` no longer expands with a 25% `bounds` band and
+    `vertical_align: "top"`: its bar is one `max_height`-capped row with
+    `vertical_align: "auto"`, so `expand_pattern` output for it has no
+    `bounds`. Rendering inside a compose segment or a cell is unchanged.
+  - `strategy-house` / `house_diagram`: height still spare after the text,
+    padding, the 1:12 roof and the 1.2× pillars steepens the gable up to 1:8
+    (at most 30% of the height available).
+  - Findings: `grid_violation` no longer reports `content_top` for a
+    composed block. `SLIDE_UNDERUSED` / `VERTICAL_IMBALANCE` rules and
+    thresholds are unchanged; the composed geometry is what they measure.
+    No field, enum or finding code was added.
+
 - **2026-10-03 — Native framework diagrams share the patterns' surface style (`go-slide-creator-amtkg`).**
   - **Default look changed** for `swot`, `business_model_canvas`, `pestel`,
     `nine_box_talent`, `porters_five_forces`, `value_chain`, `kpi_dashboard`

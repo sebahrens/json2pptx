@@ -6,16 +6,95 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
 var shapeOffYRegexp = regexp.MustCompile(`<a:off x="-?\d+" y="(\d+)"`)
 
-// go-slide-creator-e17xy: a short pattern block on a content layout starts
-// where the template's native body text starts (the body placeholder top),
-// not hard under the title and not floating mid-slide.
+// go-slide-creator-yhzxt: at the default placement a sparse content-sized
+// block is composed — one type step up and the optical centre of the content
+// area — and raises neither SLIDE_UNDERUSED, VERTICAL_IMBALANCE nor a
+// content-top grid_violation; a dense block keeps its sizes and its place.
+func TestSparsePatternBlockIsComposed(t *testing.T) {
+	templates := []string{"midnight-blue", "modern-template"}
+	if _, err := os.Stat(filepath.Join("..", "..", "templates", "p-style.pptx")); err == nil {
+		templates = append(templates, "p-style")
+	}
+	sparse := `{"layout_id":"content","pattern":{"name":"kpi-3up","values":[{"big":"42%","small":"Faster resolution"},{"big":"$3.1M","small":"Annual savings"},{"big":"4.6","small":"CSAT score"}]}}`
+	dense := `{"layout_id":"content","pattern":{"name":"labeled-rows","values":{"rows":[` +
+		`{"label":"WHY","body":"The industry grew 11% in 2025, but 80% of revenue growth came from market performance while fee compression continues across every segment we serve."},` +
+		`{"label":"WHAT","body":"Rebuilt with AI at its core: 2x to 5x research coverage, 3x client coverage per relationship manager, and 300 to 500 bps of value across the P&L."},` +
+		`{"label":"HOW","body":"Three plays, starting with two or three workflows reimagined end to end, owned by the business and funded from the savings of the first wave."},` +
+		`{"label":"WHEN","body":"Wave one in the first two quarters, wave two by year end, and the operating model changes that hold the gains in place the year after."},` +
+		`{"label":"WHO","body":"A joint team of business owners, engineers and risk partners, with one accountable executive per workflow and a single steering group."}]}}}`
+	for _, name := range templates {
+		t.Run(name, func(t *testing.T) {
+			tctx, err := loadPreviewTemplate(filepath.Join("..", "..", "templates", name+".pptx"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = tctx.reader.Close() }()
+			in := geomSlides(t, "["+sparse+","+dense+"]")
+			title := "Results so far"
+			for i := range in.Slides {
+				in.Slides[i].Content = []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: &title}}
+			}
+			for _, f := range collectFitFindings(in, tctx.layouts, tctx.slideWidth, tctx.slideHeight, nil) {
+				// The composed block's top is off the frame's content line on
+				// purpose; that must not read as a grid_violation.
+				composedFrame := f.Code == "grid_violation" && strings.HasPrefix(f.Path, "/slides/0/")
+				if f.Code == patterns.ErrCodeSlideUnderused || f.Code == patterns.ErrCodeVerticalImbalance || composedFrame {
+					t.Errorf("%s: %s %s", f.Path, f.Code, f.Message)
+				}
+			}
+			expanded, _ := expandPatternsForFit(in, tctx.slideWidth, tctx.slideHeight, nil, tctx.layouts...)
+			for si, wantComposed := range []bool{true, false} {
+				slide := expanded.Slides[si]
+				geom := resolveGridGeometry(slide, tctx.layouts, tctx.slideWidth, tctx.slideHeight)
+				res := resolveGridForStructural(slide.ShapeGrid, geom.OverrideBounds, geom.Zone, tctx.slideWidth, tctx.slideHeight)
+				if res == nil {
+					t.Fatalf("slide %d did not resolve", si)
+				}
+				if res.Composed != wantComposed {
+					t.Fatalf("slide %d: composed = %v, want %v", si, res.Composed, wantComposed)
+				}
+				area := resolveGridBounds(slide.ShapeGrid, geom.OverrideBounds, geom.Zone, tctx.slideWidth, tctx.slideHeight)
+				top, bottom := blockExtent(res.Cells)
+				above, below := top-area.Y, area.Y+area.CY-bottom
+				if !wantComposed {
+					if geom.Zone != nil && geom.Zone.BodyTop > 0 && top > max(geom.Zone.BodyTop, area.Y)+bodyLineToleranceEMU {
+						t.Errorf("dense block starts %.1fpt below the body line", float64(top-geom.Zone.BodyTop)/12700)
+					}
+					continue
+				}
+				// Optical centre: a little more room below than above.
+				if share := float64(above) / float64(above+below); share < 0.35 || share > 0.5 {
+					t.Errorf("sparse block has %.0f%% of its spare height above it (above %.0fpt, below %.0fpt), want about %.0f%%",
+						share*100, float64(above)/12700, float64(below)/12700, shapegrid.ComposeOpticalTop*100)
+				}
+				// One step up: the caption leaves the 14pt subhead step.
+				stepped := false
+				for _, c := range res.Cells {
+					if c.ShapeSpec != nil && strings.Contains(string(c.ShapeSpec.Text), `"size":18`) {
+						stepped = true
+					}
+				}
+				if !stepped {
+					t.Errorf("sparse KPI row kept its type sizes; want the caption stepped to 18pt")
+				}
+			}
+		})
+	}
+}
+
+// go-slide-creator-e17xy: a short pattern block placed with vertical_align
+// "top" starts where the template's native body text starts (the body
+// placeholder top), not hard under the title. The default placement composes
+// a sparse block instead (TestSparsePatternBlockIsComposed).
 func TestShortPatternStartsAtBodyPlaceholderTop(t *testing.T) {
 	templates := []string{"abstract", "forest-green", "modern-template"}
 	if _, err := os.Stat(filepath.Join("..", "..", "templates", "p-style.pptx")); err == nil {
@@ -32,7 +111,7 @@ func TestShortPatternStartsAtBodyPlaceholderTop(t *testing.T) {
 			slide := SlideInput{
 				LayoutID: "content",
 				Content:  []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: &title}},
-				Pattern: &PatternInput{Name: "card-grid", Values: json.RawMessage(`{"columns":3,"rows":1,"cells":[` +
+				Pattern: &PatternInput{Name: "card-grid", VerticalAlign: "top", Values: json.RawMessage(`{"columns":3,"rows":1,"cells":[` +
 					`{"header":"People","body":"Retrain 40 agents on the unified playbook"},` +
 					`{"header":"Process","body":"Single intake form with skill-based routing"},` +
 					`{"header":"Technology","body":"Consolidate onto one ITSM platform"}]}`)},
@@ -97,7 +176,8 @@ func TestStretchPatternStartsAtBodyLine(t *testing.T) {
 				slide := SlideInput{
 					LayoutID: "content",
 					Content:  []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: &title}},
-					Pattern:  &PatternInput{Name: tc.pattern, Values: json.RawMessage(tc.values)},
+					// Placed "top": the default composes these sparse blocks.
+					Pattern: &PatternInput{Name: tc.pattern, VerticalAlign: "top", Values: json.RawMessage(tc.values)},
 				}
 				specs, _, _, err := convertPresentationSlides([]SlideInput{slide}, tctx.layouts, tctx.slideWidth, tctx.slideHeight, tctx.metadata, nil, "", nil, false)
 				if err != nil {
@@ -143,9 +223,10 @@ func TestStretchPatternStartsAtBodyLine(t *testing.T) {
 }
 
 // go-slide-creator-e17xy (b): the roadmap, timeline and team kind examples
-// hang from the body line at their content height instead of floating a
-// thin band mid-slide: no SLIDE_UNDERUSED / VERTICAL_IMBALANCE, and their
-// content tops agree within ~10pt on blank-title.
+// raise no SLIDE_UNDERUSED / VERTICAL_IMBALANCE at their default placement (a
+// dense block on the body line, a sparse one composed —
+// go-slide-creator-yhzxt), and placed with vertical_align "top" they hang
+// from the body line: their content tops agree within ~10pt on blank-title.
 func TestKindDefaultsHangFromBodyLine(t *testing.T) {
 	templates := []string{"abstract", "midnight-blue"}
 	if _, err := os.Stat(filepath.Join("..", "..", "templates", "p-style.pptx")); err == nil {
@@ -173,6 +254,9 @@ func TestKindDefaultsHangFromBodyLine(t *testing.T) {
 				if f.Code == patterns.ErrCodeSlideUnderused || f.Code == patterns.ErrCodeVerticalImbalance {
 					t.Errorf("%s: %s %s", f.Path, f.Code, f.Message)
 				}
+			}
+			for i := range in.Slides {
+				in.Slides[i].Pattern.VerticalAlign = "top"
 			}
 			specs, _, _, err := convertPresentationSlides(in.Slides, tctx.layouts, tctx.slideWidth, tctx.slideHeight, tctx.metadata, nil, "", nil, false)
 			if err != nil {

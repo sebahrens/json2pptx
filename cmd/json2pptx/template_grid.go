@@ -266,7 +266,11 @@ func frameGridFindings(frame contentFrame, si int, slide *SlideInput, layouts []
 	}
 	path := slidepath.ShapeGrid(si)
 	var out []patterns.FitFinding
-	if f, ok := frameDeviation(frame, path, "content_top", block.Y, frame.ContentTopY, frame.SlideHeight, frame.TopTolerance); ok {
+	// A sparse content-sized block is placed at the optical centre of the
+	// content area on purpose (go-slide-creator-yhzxt); its top is not held
+	// to the frame's content line. Its left edge still is.
+	composed := res.Composed || boxBlockComposed(slide.ShapeGrid, geom.OverrideBounds, geom.Zone, frame.SlideWidth, frame.SlideHeight)
+	if f, ok := frameDeviation(frame, path, "content_top", block.Y, frame.ContentTopY, frame.SlideHeight, frame.TopTolerance); ok && !composed {
 		out = append(out, f)
 	}
 	if f, ok := frameDeviation(frame, path, "left_margin", block.X, frame.LeftX, frame.SlideWidth, frame.LeftTolerance); ok {

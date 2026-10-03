@@ -25,12 +25,17 @@ func TestKPIInline_ExpandBasic(t *testing.T) {
 		t.Fatalf("Expand: %v", err)
 	}
 
-	// Must have bounds set to ~25% height
-	if grid.Bounds == nil {
-		t.Fatal("expected bounds to be set for inline variant")
+	// The bar is one content-sized row placed by the shared policy: no band
+	// bounds, a max_height no taller than a quarter of the content area.
+	if grid.Bounds != nil {
+		t.Errorf("inline bar must not set its own bounds, got %+v", grid.Bounds)
 	}
-	if grid.Bounds.Height != 25 {
-		t.Errorf("expected bounds height 25, got %v", grid.Bounds.Height)
+	if grid.VerticalAlign != GridVerticalAlignDefault {
+		t.Errorf("vertical_align = %q, want %q", grid.VerticalAlign, GridVerticalAlignDefault)
+	}
+	_, areaH := contentAreaPt(ExpandContext{})
+	if len(grid.Rows) == 1 && (grid.Rows[0].MaxHeight <= 0 || grid.Rows[0].MaxHeight > areaH*kpiInlineBandPct/100) {
+		t.Errorf("row max_height = %v, want within the %d%% band (%.0fpt)", grid.Rows[0].MaxHeight, kpiInlineBandPct, areaH*kpiInlineBandPct/100)
 	}
 
 	if len(grid.Rows) != 1 {

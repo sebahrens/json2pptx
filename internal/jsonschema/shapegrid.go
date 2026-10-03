@@ -31,9 +31,9 @@ type ShapeGridInput struct {
 	// VerticalAlign places a content-sized row block inside the bounds when
 	// the rows (fixed heights, auto heights, flex rows capped by max_height)
 	// sum to less than the bounds: "stretch" (default for raw grids — rows
-	// are re-scaled to fill), "top", "center", "bottom". Named patterns
-	// default to "center" so capped cards/steps sit mid-slide instead of
-	// stretching or leaving the bottom of the slide empty.
+	// are re-scaled to fill), "top", "center", "bottom", "auto". Named
+	// patterns default to "auto": a dense block hangs from the body line and
+	// a sparse one is composed at the optical centre (shapegrid/compose.go).
 	VerticalAlign string `json:"vertical_align,omitempty"`
 	// Source records that this grid came out of the engine's own pattern
 	// expander, as "pattern:<name>". expand_pattern stamps it so its output can

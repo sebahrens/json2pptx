@@ -3,6 +3,7 @@ package patterns
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 	"testing"
 
@@ -277,6 +278,15 @@ func TestStrategyHouseSmallRegionIsReported(t *testing.T) {
 	layout, err = BuildHouse(light.model(), light.style(half, &StrategyHouseOverrides{}, nil), 400, 340)
 	if err != nil || layout.RoofFlattened || layout.RoofRisePt < 400*houseRoofMinPitch {
 		t.Fatalf("half-width roof = %+v (%v)", layout, err)
+	}
+	// Height to spare goes into a steeper gable before the house is left
+	// short in its area (go-slide-creator-yhzxt): past the designed pitch,
+	// up to the steep one, never more than fits.
+	if want := math.Round(400 * houseRoofSteepPitch); layout.RoofRisePt != want {
+		t.Errorf("roof rise with height to spare = %.0fpt, want the steep %.0fpt", layout.RoofRisePt, want)
+	}
+	if layout.HeightPt > 340 {
+		t.Errorf("house is %.0fpt tall in a 340pt area", layout.HeightPt)
 	}
 }
 

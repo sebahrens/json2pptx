@@ -104,6 +104,9 @@ func fitSingleLineSize(text, font string, bold bool, sizePt, minPt, widthPt floa
 // (go-slide-creator-7km8); "auto" hangs the block from the template's body
 // line — the line native body text starts on — and, on a template without
 // one, centres a block filling over 60% of the area (go-slide-creator-e17xy).
+// On a slide of its own, a block that needs under 75% of the area is composed
+// instead: one type step up, then the optical centre (shapegrid/compose.go,
+// go-slide-creator-yhzxt).
 // A slide-level pattern
 // vertical_align ("center", "top", ...) overrides it.
 const GridVerticalAlignDefault = "auto"

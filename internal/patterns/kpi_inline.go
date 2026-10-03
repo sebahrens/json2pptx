@@ -325,27 +325,22 @@ func (k *kpiInline) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		gridCells[i] = gc
 	}
 
-	row := jsonschema.GridRowInput{Cells: gridCells}
-	bandPct := float64(kpiInlineBandPct)
+	// The bar is one content-sized row, as tall as its tallest cell needs and
+	// otherwise capped at the band. On a short content area a quarter of the
+	// height does not hold a value, a caption and a delta: the row outgrows
+	// the band rather than have the writer shrink the caption below its floor.
+	// Being content-sized, it is placed like every other content-sized block
+	// (go-slide-creator-yhzxt) instead of hanging from the top of a band.
+	row := jsonschema.GridRowInput{Cells: gridCells, MaxHeight: math.Max(math.Floor(bandPt), 1)}
 	if rowPt > 0 {
 		row.MaxHeight = math.Ceil(rowPt + kpiRowSlackPt)
-		// On a short content area a quarter of the height does not hold a
-		// value, a caption and a delta: the band grows to the row rather
-		// than have the writer shrink the caption below its floor.
-		if row.MaxHeight > bandPt && areaH > 0 {
-			bandPct = math.Min(100, math.Ceil(row.MaxHeight/areaH*100))
-		}
 	}
 	colsJSON := json.RawMessage(strconv.Itoa(n))
 	grid := &jsonschema.ShapeGridInput{
-		Bounds: &jsonschema.GridBoundsInput{
-			X: 0, Y: 0, Width: 100, Height: bandPct,
-		},
-		Columns: colsJSON,
-		Gap:     gap,
-		Rows:    []jsonschema.GridRowInput{row},
-		// The bar hangs from the top of its band, where it has always sat.
-		VerticalAlign: "top",
+		Columns:       colsJSON,
+		Gap:           gap,
+		Rows:          []jsonschema.GridRowInput{row},
+		VerticalAlign: GridVerticalAlignDefault,
 	}
 
 	return grid, nil

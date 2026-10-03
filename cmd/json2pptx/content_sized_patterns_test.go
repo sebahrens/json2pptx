@@ -70,7 +70,9 @@ func TestGeneratePatternUsesTemplateContentHeight(t *testing.T) {
 		t.Fatal(err)
 	}
 	sw, sh := template.ParseSlideDimensions(reader)
-	slide := SlideInput{LayoutID: "content", Pattern: &PatternInput{Name: "kpi-3up", Values: json.RawMessage(`["$4.2M | ARR", "127% | NRR", "12 days | Cycle"]`)}}
+	// Placed "top": the default placement composes a sparse row one type
+	// step up (go-slide-creator-yhzxt), which is not what this compares.
+	slide := SlideInput{LayoutID: "content", Pattern: &PatternInput{Name: "kpi-3up", VerticalAlign: "top", Values: json.RawMessage(`["$4.2M | ARR", "127% | NRR", "12 days | Cycle"]`)}}
 	_, content := patternExpansionGeometry(slide, layouts, sw, sh, nil)
 	if content.CY <= 0 || content.CY >= shapegrid.DefaultBounds(sw, sh).CY {
 		t.Fatalf("unexpected midnight-blue content height: %d EMU", content.CY)
@@ -176,9 +178,11 @@ func blockExtent(cells []shapegrid.ResolvedCell) (top, bottom int64) {
 }
 
 // assertCentred checks the default "auto" placement of a content-sized
-// block (go-slide-creator-e17xy): one that fills under 60% of the content
-// zone hangs from its top, where native body text starts; a fuller one is
-// centred (go-slide-creator-7km8).
+// block resolved without a content zone: a pattern-capped box that needs
+// clearly less than the area sits at its optical centre
+// (go-slide-creator-yhzxt); a row block under 60% of the area hangs from
+// its top (go-slide-creator-e17xy) and a fuller one is centred
+// (go-slide-creator-7km8).
 func assertCentred(t *testing.T, name string, cells []shapegrid.ResolvedCell) {
 	t.Helper()
 	top, bottom := blockExtent(cells)
@@ -188,6 +192,10 @@ func assertCentred(t *testing.T, name string, cells []shapegrid.ResolvedCell) {
 	d := above - below
 	centred := d <= 12700 && d >= -12700
 	fill := float64(bottom-top) / float64(contentRect.CY)
+	o := above - int64(float64(above+below)*shapegrid.ComposeOpticalTop)
+	if fill < shapegrid.ComposeSparseFill && o <= 12700 && o >= -12700 {
+		return // composed
+	}
 	switch {
 	case fill < shapegrid.AutoCenterMinFill-0.02 && !topAnchored:
 		t.Errorf("%s: short block (%.0f%%) not top-anchored (above=%d below=%d)", name, fill*100, above, below)
