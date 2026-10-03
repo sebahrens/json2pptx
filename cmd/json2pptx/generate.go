@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -126,7 +127,12 @@ func runGenerate() error {
 	if runErr != nil && resolvedJSONOutput == "" {
 		// Without a report destination the failure used to be a stderr line
 		// only; the result shape is the same on stdout either way.
-		_ = printGenerateSummary(JSONOutput{Success: false, Error: runErr.Error()})
+		summary := JSONOutput{Success: false, Error: runErr.Error()}
+		var refusal *StrictFitRefusal
+		if errors.As(runErr, &refusal) {
+			summary.FitFindings = refusal.Findings
+		}
+		_ = printGenerateSummary(summary)
 	}
 	return runErr
 }

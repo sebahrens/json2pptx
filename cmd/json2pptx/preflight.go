@@ -121,16 +121,16 @@ func runPreflight() error {
 			Details:  map[string]any{"stage": preflightStageInput},
 		}})
 		_ = printPreflightEnvelope(env)
-		os.Exit(2)
+		cliExit(2)
 	}
 
 	env := runPreflightCore(data, preflightOptions{templatesDir: *templatesDir, strict: *strict})
 	if perr := printPreflightEnvelope(env); perr != nil {
 		fmt.Fprintf(os.Stderr, "preflight: failed to write output: %v\n", perr)
-		os.Exit(preflightExitInternal)
+		cliExit(preflightExitInternal)
 	}
-	os.Exit(preflightExitCode(env, *strict))
-	return nil // unreachable; os.Exit does not return.
+	cliExit(preflightExitCode(env, *strict))
+	return nil // unreachable; cliExit does not return.
 }
 
 // runPreflightCore runs every static-check stage on a deck JSON and returns the

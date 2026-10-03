@@ -27,10 +27,16 @@ const SchemaVersion = "4.159.0"
 
 func main() {
 	setupCLILogging()
+	cliStartStdoutTap(os.Args[1:])
 	err := run()
 	// The private LibreOffice profile (~0.5 MB) would otherwise outlive every
 	// render CLI call in TMPDIR (go-slide-creator-csclk.27).
 	render.CleanupLibreOfficeProfile()
+	// A JSON command that failed without writing a result gets the catch-all
+	// finding envelope on stdout (go-slide-creator-pikfw).
+	if written, tapped := cliStopStdoutTap(); tapped {
+		cliReportFailure(os.Stdout, err, written)
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)

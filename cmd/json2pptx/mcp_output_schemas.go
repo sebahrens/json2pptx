@@ -694,6 +694,7 @@ var outputSchemaRenderSlideImage = json.RawMessage(`{
   "type": "object",
   "properties": {
     "index":        {"type": "integer"},
+    "id":           {"type": "string", "description": "The slide's stable DeckSpec id, when this file was written by render_deck_spec (image_content mode)."},
     "png_base64":   {"type": "string"},
     "path":         {"type": "string", "description": "Content-addressed artifact path, returned instead of png_base64 when the image exceeds the inline cap (~200KB). The filename embeds the pixel content hash, so the path is collision-free across decks and never overwritten with different content."},
     "width":        {"type": "integer"},
@@ -746,6 +747,7 @@ var outputSchemaRenderDeckThumbnails = json.RawMessage(`{
         "type": "object",
         "properties": {
           "index":        {"type": "integer"},
+          "id":           {"type": "string", "description": "The slide's stable DeckSpec id, when this file was written by render_deck_spec (image_content mode)."},
           "png_base64":   {"type": "string"},
           "path":         {"type": "string", "description": "Full-resolution PNG on disk (content-addressed; the filename embeds its hash). In image_content mode the image block is a downscaled JPEG of it (top-level image_mime_type); submit this path or content_hash to submit_visual_review. In the legacy envelope it replaces png_base64 when a thumbnail exceeds the inline cap (~200KB)."},
           "width":        {"type": "integer"},
@@ -2646,6 +2648,7 @@ var outputSchemaValidateDeckSpec = json.RawMessage(`{
     "slide_ref":      {"type": "object", "description": "Where the read slide sits: id, index, slide_number, kind."},
     "hits":           {"type": "array", "description": "find: occurrences of the query (first 100).", "items": {"type": "object", "properties": {"path": {"type": "string", "description": "JSON Pointer usable in a patch."}, "slide_id": {"type": "string"}, "index": {"type": "integer"}, "excerpt": {"type": "string"}, "skipped": {"type": "string", "description": "Why replace left this hit alone."}}, "required": ["path", "excerpt"]}},
     "hit_count":      {"type": "integer", "description": "find: total occurrences."},
+    "diff":           {"type": "object", "description": "read:\"diff:A..B\": how revision to differs from revision from. changes[] rows are slide_changes rows (indices of to; a removed slide has only was_index); an edited slide also lists the top-level fields that differ. changed_slides holds the indices that look different.", "properties": {"from": {"type": "integer"}, "to": {"type": "integer"}, "changes": {"type": "array", "items": {"type": "object"}}}, "required": ["from", "to", "changes"]},
     "revisions":      {"type": "array", "description": "read:\"history\": kept revisions, oldest first.", "items": {"type": "object", "properties": {"revision": {"type": "integer"}, "time": {"type": "string"}, "tool": {"type": "string"}, "note": {"type": "string"}, "changes": {"type": "array", "items": {"type": "object"}}}, "required": ["revision", "time", "changes"]}},
     "slides":         {"type": "array", "description": "read:\"history\": each current slide with the last revision that changed it.", "items": {"type": "object", "properties": {"id": {"type": "string"}, "index": {"type": "integer"}, "slide_number": {"type": "integer"}, "kind": {"type": "string"}, "title": {"type": "string"}, "last_changed": {"type": "integer"}, "last_change": {"type": "string"}}, "required": ["index", "slide_number", "last_changed", "last_change"]}},
     "summary":        {"type": "string"},

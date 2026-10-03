@@ -48,6 +48,9 @@ func wantsBase64JSON(request mcp.CallToolRequest) bool {
 // ImageContent block. It never carries base64 pixel data.
 type renderedSlideMeta struct {
 	Index int `json:"index"`
+	// ID is the slide's stable DeckSpec id, when the deck's ids are known for
+	// this file (go-slide-creator-1w3uo).
+	ID string `json:"id,omitempty"`
 	// Path is a content-addressed PNG artifact on disk (full resolution). It
 	// is always populated in image_content mode so the image can be handed to
 	// inspect_slide_images or opened locally. The image block delivered
@@ -112,7 +115,7 @@ func slideImageToMCP(img render.SlideImage, contentIndex int) (renderedSlideMeta
 	}
 	data, path := materializeThumbnail(img)
 	if len(data) == 0 {
-		return meta, api.MCPImage{}, fmt.Errorf("slide %d: rendered image bytes unavailable", img.Index)
+		return meta, api.MCPImage{}, fmt.Errorf("slide index %d: rendered image bytes unavailable", img.Index)
 	}
 	meta.Path = path
 	if path != "" {
@@ -125,7 +128,7 @@ func slideImageToMCP(img render.SlideImage, contentIndex int) (renderedSlideMeta
 	}
 	enc, w, h, err := api.EncodeImageForMCP(data, api.MCPImageMaxWidth, api.MCPImageJPEGQuality)
 	if err != nil {
-		return meta, api.MCPImage{}, fmt.Errorf("slide %d: %w", img.Index, err)
+		return meta, api.MCPImage{}, fmt.Errorf("slide index %d: %w", img.Index, err)
 	}
 	meta.ImageContentIndex = contentIndex
 	meta.ImageMIMEType = enc.MIMEType
@@ -154,7 +157,9 @@ func slideImageMCPResult(ctx context.Context, request mcp.CallToolRequest, img *
 	if err != nil {
 		return api.MCPSimpleError("RENDER_FAILED", err.Error())
 	}
-	res, err := api.MCPImageResult(ctx, renderedSlideImageResponse{renderedSlideMeta: meta, Delivery: deliveryImageContent}, []api.MCPImage{enc})
+	one := []renderedSlideMeta{meta}
+	stampSlideIDs(request.GetString("pptx_path", ""), one)
+	res, err := api.MCPImageResult(ctx, renderedSlideImageResponse{renderedSlideMeta: one[0], Delivery: deliveryImageContent}, []api.MCPImage{enc})
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err))
 	}
@@ -219,6 +224,7 @@ func deckThumbnailsMCPResult(ctx context.Context, request mcp.CallToolRequest, d
 		images = append(images, enc)
 	}
 	if pptxPath := request.GetString("pptx_path", ""); pptxPath != "" {
+		stampSlideIDs(pptxPath, resp.Slides)
 		if artifact, aerr := describeArtifact(pptxPath, "pptx"); aerr == nil {
 			resp.NextToolCall = nextCallSubmitVisualReview(pptxPath, artifact.SHA256)
 		}

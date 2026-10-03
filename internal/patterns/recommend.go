@@ -901,6 +901,15 @@ var rules = []rule{
 		baseScore: 0.92,
 		rationale: "One image (photo / screenshot) beside a heading, short narrative and optional result metrics",
 	},
+	// A picture with callouts pointing at parts of it: the DeckSpec image_case
+	// kind compiles to this pattern and anchors its callouts on the picture
+	// (go-slide-creator-n3j96).
+	{
+		pattern:   "image-text-split",
+		keywords:  []string{"screenshot with callout", "screenshot callout", "callouts on a screenshot", "callouts on the screenshot", "annotated screenshot", "annotate a screenshot", "annotate the screenshot", "annotated image", "annotated photo", "image with callout", "picture with callout", "photo with callout", "callouts pointing", "labelled screenshot", "labeled screenshot"},
+		baseScore: 0.95,
+		rationale: "A screenshot or photo with callouts pointing at parts of it: image_case callouts [{label, x, y}] are anchored on the picture and stay on their point under any crop or template",
+	},
 	{
 		pattern:   "image-text-split",
 		keywords:  []string{"photo", "image", "picture", "screenshot", "spotlight", "showcase"},

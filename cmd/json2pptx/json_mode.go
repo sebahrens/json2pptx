@@ -586,16 +586,19 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	if renderErr != nil {
 		// Preserve each historical error shape:
 		//   - PreConvert (URL/asset) failures surface verbatim, as before.
-		//   - strict_fit refusal dumps NDJSON to stderr then returns the error.
+		//   - strict_fit refusal carries its findings in the result.
 		//   - output-validation strict failure aggregates blocking findings.
 		if preConvertErr != nil {
 			return writeJSONError(jsonOutputPath, preConvertErr)
 		}
 		switch e := renderErr.(type) {
 		case *StrictFitRefusal:
-			enc := json.NewEncoder(os.Stderr)
-			for _, f := range e.Findings {
-				_ = enc.Encode(f)
+			// The findings are reported once, in the result: the report when
+			// one was asked for, else the summary runGenerate prints on
+			// stdout. They used to be dumped on stderr as NDJSON as well
+			// (go-slide-creator-pikfw).
+			if jsonOutputPath == "" {
+				return e
 			}
 			return writeJSONErrorWithFindings(jsonOutputPath, e.Err, e.Findings)
 		case *OutputValidationFailure:

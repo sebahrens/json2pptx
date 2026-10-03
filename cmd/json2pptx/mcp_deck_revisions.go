@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
@@ -45,6 +47,9 @@ type slideChange struct {
 	SlideNumber int    `json:"slide_number,omitempty"`
 	Change      string `json:"change"`
 	WasIndex    *int   `json:"was_index,omitempty"`
+	// Fields names the slide's top-level fields that differ, on an edited
+	// slide of a revision diff (read "diff:A..B").
+	Fields []string `json:"fields,omitempty"`
 }
 
 // visual reports whether the change alters the rendered slide.
@@ -641,4 +646,123 @@ func (h *deckHandle) history() ([]deckRevisionEntry, []deckSlideHistory) {
 		}
 	}
 	return revisions, slides
+}
+
+// --- diff of two revisions ---
+
+// deckRevisionDiff is what read "diff:A..B" answers: how revision To differs
+// from revision From, slide by slide. Indices are those of To; a removed slide
+// carries only the index it had in From (go-slide-creator-rq1z9).
+type deckRevisionDiff struct {
+	From    int           `json:"from"`
+	To      int           `json:"to"`
+	Changes []slideChange `json:"changes"`
+}
+
+// revisionDiffPrefix starts the read value that asks for a diff.
+const revisionDiffPrefix = "diff:"
+
+var revisionDiffSpec = regexp.MustCompile(`^diff:\s*([0-9]{1,6})\s*(?:\.\.\s*([0-9]{1,6})\s*)?$`)
+
+// parseRevisionDiff reads "diff:A..B", or "diff:A" for A against the current
+// revision.
+func parseRevisionDiff(read string, current int) (from, to int, err error) {
+	m := revisionDiffSpec.FindStringSubmatch(read)
+	if m == nil {
+		return 0, 0, fmt.Errorf("read %q is not a revision diff; write \"diff:A..B\" with two revision numbers from read \"history\" (\"diff:A\" compares A with the current revision)", read)
+	}
+	from, _ = strconv.Atoi(m[1])
+	to = current
+	if m[2] != "" {
+		to, _ = strconv.Atoi(m[2])
+	}
+	return from, to, nil
+}
+
+// diffRevisions compares two kept revisions of the handle. The comparison is
+// the one a store makes between neighbouring revisions, so a diff of N-1..N
+// reads the same as revision N's history row.
+func (h *deckHandle) diffRevisions(from, to int) (*deckRevisionDiff, error) {
+	a, okA := h.revision(from)
+	b, okB := h.revision(to)
+	for _, miss := range []struct {
+		n  int
+		ok bool
+	}{{from, okA}, {to, okB}} {
+		if !miss.ok {
+			return nil, fmt.Errorf("revision %d is not kept for this deck (kept: %s; current: %d)", miss.n, h.keptRevisions(), h.Revision)
+		}
+	}
+	template := h.templateIdentity()
+	before := specDeckState(h.Filename, a.Spec, template)
+	after := specDeckState(h.Filename, b.Spec, template)
+	if before == nil || after == nil {
+		return nil, fmt.Errorf("revision %d or %d does not parse as a DeckSpec, so the two cannot be compared", from, to)
+	}
+	changes := classifySlideChanges(before, after, nil)
+	was, now := slidesByID(a.Spec), slidesByID(b.Spec)
+	for i := range changes {
+		if c := &changes[i]; c.Change == slideChangeEdited && c.ID != "" {
+			c.Fields = changedSlideFields(was[c.ID], now[c.ID])
+		}
+	}
+	return &deckRevisionDiff{From: from, To: to, Changes: changes}, nil
+}
+
+// slidesByID indexes a spec's authored slides by id.
+func slidesByID(spec []byte) map[string]map[string]any {
+	var doc any
+	if err := json.Unmarshal(spec, &doc); err != nil {
+		return nil
+	}
+	out := map[string]map[string]any{}
+	for _, s := range authoredSlides(doc) {
+		if id, ok := s["id"].(string); ok {
+			out[id] = s
+		}
+	}
+	return out
+}
+
+// changedSlideFields names the top-level fields whose value differs between
+// two versions of a slide, sorted.
+func changedSlideFields(before, after map[string]any) []string {
+	var out []string
+	for k, v := range after {
+		old, had := before[k]
+		if !had || !sameJSONValue(old, v) {
+			out = append(out, k)
+		}
+	}
+	for k := range before {
+		if _, kept := after[k]; !kept {
+			out = append(out, k)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+func sameJSONValue(a, b any) bool {
+	x, errA := json.Marshal(a)
+	y, errB := json.Marshal(b)
+	return errA == nil && errB == nil && bytes.Equal(x, y)
+}
+
+// summary counts a diff's changes by class, in a fixed order.
+func (d *deckRevisionDiff) summary() string {
+	if len(d.Changes) == 0 {
+		return fmt.Sprintf("revision %d and revision %d are identical", d.From, d.To)
+	}
+	counts := map[string]int{}
+	for _, c := range d.Changes {
+		counts[c.Change]++
+	}
+	var parts []string
+	for _, class := range []string{slideChangeEdited, slideChangeInserted, slideChangeRemoved, slideChangeRestyled, slideChangeMoved, slideChangeNotesOnly, slideChangeRenumbered} {
+		if n := counts[class]; n > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", n, class))
+		}
+	}
+	return fmt.Sprintf("revision %d → %d: %s", d.From, d.To, strings.Join(parts, ", "))
 }

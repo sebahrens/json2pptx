@@ -50,6 +50,8 @@
     {"intent": "contact details of the key people per region", "expect": ["contact-directory"]},
     {"intent": "a bar chart of headcount by department", "expect": ["bar"]},
     {"intent": "a line chart of weekly active users", "expect": ["line"]},
-    {"intent": "four strategic pillars", "hints": {"item_count": 4}, "expect": ["stylish-panels", "strategy-house"]}
+    {"intent": "four strategic pillars", "hints": {"item_count": 4}, "expect": ["stylish-panels", "strategy-house"]},
+    {"intent": "a screenshot with callouts pointing at parts of it", "expect": ["image-text-split"], "must": true},
+    {"intent": "an annotated screenshot of the admin dashboard", "expect": ["image-text-split"]}
   ]
 }

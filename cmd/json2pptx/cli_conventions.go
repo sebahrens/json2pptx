@@ -131,6 +131,14 @@ func cliConventions() map[string]cliConvention {
 // a CLI caller does not read "subcommand":"mcp" (go-slide-creator-pikfw).
 var cliCurrentCommand string
 
+// cliCurrentFlagSet is the flag set cliParse most recently parsed, and
+// cliParseFailed whether that parse refused the arguments; the catch-all error
+// envelope reads both (cli_error_envelope.go).
+var (
+	cliCurrentFlagSet *flag.FlagSet
+	cliParseFailed    bool
+)
+
 // cliFormatValue implements --format for a command that does not define its
 // own: it maps json|text onto the command's legacy --json boolean.
 type cliFormatValue struct {
@@ -206,6 +214,15 @@ func cliApplyConvention(fs *flag.FlagSet) cliConvention {
 // input when the legacy input flag was not given. After it returns, fs.Args()
 // holds the positional arguments the command itself should read.
 func cliParse(fs *flag.FlagSet, args []string) error {
+	cliCurrentFlagSet, cliParseFailed = fs, true
+	if err := cliParseArgs(fs, args); err != nil {
+		return err
+	}
+	cliParseFailed = false
+	return nil
+}
+
+func cliParseArgs(fs *flag.FlagSet, args []string) error {
 	conv := cliApplyConvention(fs)
 
 	// Everything after a literal "--" is positional.

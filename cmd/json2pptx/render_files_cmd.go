@@ -28,6 +28,8 @@ import (
 type cliSlideFile struct {
 	// Index is the 0-based slide index, the N in slide-N.png.
 	Index int `json:"index"`
+	// ID is the slide's stable DeckSpec id, when the deck's sidecar names one.
+	ID string `json:"id,omitempty"`
 	// Path is the PNG on disk.
 	Path string `json:"path"`
 	// SHA256 is the hash of the bytes at Path.
@@ -118,11 +120,11 @@ func cliPrintRenderManifest(result *mcpgo.CallToolResult, outDir string, dest fu
 		}
 		sum, size, err := copyFileHashed(s.Path, path)
 		if err != nil {
-			return fmt.Errorf("slide %d: %w", s.Index, err)
+			return fmt.Errorf("slide index %d: %w", s.Index, err)
 		}
 		written[filepath.Base(path)] = true
 		manifest.Slides = append(manifest.Slides, cliSlideFile{
-			Index: s.Index, Path: path, SHA256: sum, Bytes: size, Width: s.Width, Height: s.Height,
+			Index: s.Index, ID: s.ID, Path: path, SHA256: sum, Bytes: size, Width: s.Width, Height: s.Height,
 		})
 	}
 	if dest == nil {

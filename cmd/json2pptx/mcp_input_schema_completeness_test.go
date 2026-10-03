@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -94,12 +96,21 @@ func TestPublishedListAndHintItemSchemas(t *testing.T) {
 		{mcpRepairSlideTool(), "fixes", "object"},
 		{mcpRepairSlidesBatchTool(), "fixes", "object"},
 		{mcpScoreDeckTool(), "slide_indices", "integer"},
-		{mcpRenderDeckThumbnailsTool(), "slide_indices", "integer"},
+		// An index or a slide id (go-slide-creator-1w3uo).
+		{mcpRenderDeckThumbnailsTool(), "slide_indices", "integer|string"},
 	} {
 		t.Run(tt.tool.Name+"/"+tt.arg, func(t *testing.T) {
 			prop := schemaProperty(t, publishedInputSchema(t, tt.tool), tt.arg)
 			items, _ := prop["items"].(map[string]any)
-			if items["type"] != tt.want {
+			got := fmt.Sprint(items["type"])
+			if union, ok := items["type"].([]any); ok {
+				names := make([]string, len(union))
+				for i, n := range union {
+					names[i] = fmt.Sprint(n)
+				}
+				got = strings.Join(names, "|")
+			}
+			if got != tt.want {
 				t.Errorf("%s.items.type = %v, want %s", tt.arg, items["type"], tt.want)
 			}
 		})
