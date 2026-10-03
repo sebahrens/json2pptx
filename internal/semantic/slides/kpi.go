@@ -31,7 +31,7 @@ func CompileKPISnapshot(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	// so up front rather than promising a visual this function will not emit
 	// (go-slide-creator-5ok4).
 	patternName, _ := kpiPatternPlan(in.Body)
-	if patternName == "" {
+	if patternName == "" || in.wantsContent() {
 		return compileKPIFallback(in, cells, srcField)
 	}
 

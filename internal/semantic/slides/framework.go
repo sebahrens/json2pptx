@@ -97,7 +97,7 @@ type bmcCell struct {
 func CompileFramework(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	name := FrameworkName(in.Body)
 	sections := FrameworkContent(in.Body)
-	if !frameworkComplete(name, sections) || FrameworkOverBudget(in.Body) != "" {
+	if in.wantsContent() || !frameworkComplete(name, sections) || FrameworkOverBudget(in.Body) != "" {
 		return compileFrameworkFallback(in, name, sections)
 	}
 

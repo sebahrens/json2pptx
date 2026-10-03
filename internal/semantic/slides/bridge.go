@@ -160,7 +160,7 @@ func BridgePattern(body map[string]any) string {
 }
 
 func CompileBridge(in Input) (*deckinput.SlideInput, []SourceLink, error) {
-	if BridgePattern(in.Body) == "" {
+	if in.wantsContent() || BridgePattern(in.Body) == "" {
 		return compileBridgeFallback(in)
 	}
 	raw, ok := in.Body["columns"].([]any)

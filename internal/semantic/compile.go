@@ -117,6 +117,7 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 			Pattern:     si.Visual.Pattern,
 			Layout:      si.Visual.Layout,
 			Body:        si.Body,
+			Override:    si.Override,
 		}
 		compiled, links, err := compileSlide(si.Kind, in)
 		if err != nil {
@@ -201,9 +202,9 @@ func NativeLayoutAlternative(slide SlideIR) string {
 			SourcePath:  slide.SourcePath,
 			Title:       slide.Title,
 			Takeaway:    slide.Takeaway,
-			Pattern:     slide.Visual.Pattern,
 			Layout:      alt.Layout,
 			Body:        slide.Body,
+			Override:    slides.Composition{Layout: alt.Layout},
 		})
 		if err == nil && compiled != nil && compiled.Pattern == nil && compiled.ShapeGrid == nil && compiled.Compose == nil {
 			return alt.Layout

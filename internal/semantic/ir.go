@@ -14,6 +14,7 @@ package semantic
 // PresentationInput in a later phase.
 
 import (
+	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/semantic/slides"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -126,6 +127,13 @@ type SlideIR struct {
 	Visual VisualPlan `json:"visual"`
 	// Body is the carried kind-specific payload, retained for the compiler.
 	Body map[string]any `json:"-"`
+	// Override is the author's pattern / layout override when this payload
+	// compiles to it; the compiler is held to it (go-slide-creator-vj549).
+	Override slides.Composition `json:"-"`
+	// overrideDeclined is set when the author asked for one of the kind's
+	// compositions that this payload cannot take: the plan keeps the
+	// compiler's own choice and validation reports the override.
+	overrideDeclined bool
 }
 
 // RhythmPlan summarizes deck-level rhythm: how slides distribute across visual
@@ -542,45 +550,111 @@ func normalizeSlide(index int, slide SlideSpec) SlideIR {
 		plan.family = regionsFamily(slide.Body)
 	}
 	alternatives := compositionCandidates(slide.Kind, pattern)
-	if requested := slide.String("pattern"); requested != "" {
-		for _, candidate := range alternatives {
-			if candidate.Pattern == requested {
-				pattern = requested
-				plan.layout = candidate.Layout
-				break
-			}
-		}
-	}
-	if requested := slide.String("layout"); requested != "" {
-		for _, candidate := range alternatives {
-			if candidate.Layout == requested {
-				plan.layout = requested
-				if slide.Kind == KindPillars && requested == "content" {
-					pattern = ""
-				}
-				break
-			}
-		}
-	}
-	if slide.Kind == KindOrg && !slides.OrgFits(slide.Body) {
-		plan.layout = "content"
-	}
-
-	return SlideIR{
+	ir := SlideIR{
 		SourceIndex: index,
 		Kind:        slide.Kind,
 		Title:       slide.String("title"),
 		Takeaway:    slideTakeaway(slide),
 		Role:        plan.role,
-		Visual: VisualPlan{
-			Family:       plan.family,
-			Density:      plan.density,
-			Pattern:      pattern,
-			Layout:       plan.layout,
-			Alternatives: alternatives,
-		},
-		Body: slide.Body,
+		Body:        slide.Body,
 	}
+	// An override is honoured only when the payload actually compiles to it.
+	// The plan used to take any listed composition on trust while the
+	// compiler re-derived its own choice from the body, so explain promised
+	// layout content or process-flow and the deck rendered the numbered strip
+	// (go-slide-creator-vj549).
+	if want, ok := requestedComposition(slide, alternatives, pattern); ok {
+		if compilesTo(ir, want) {
+			pattern, plan.layout = want.Pattern, want.Layout
+			ir.Override = want
+		} else {
+			ir.overrideDeclined = true
+		}
+	}
+	if slide.Kind == KindOrg && !slides.OrgFits(slide.Body) {
+		plan.layout = "content"
+	}
+	ir.Visual = VisualPlan{
+		Family:       plan.family,
+		Density:      plan.density,
+		Pattern:      pattern,
+		Layout:       plan.layout,
+		Alternatives: alternatives,
+	}
+	return ir
+}
+
+// requestedComposition resolves the slide's pattern / layout override against
+// the kind's candidates. A pattern names its candidate outright; a layout
+// names its layout-only candidate, or — for a layout the kind's visuals share,
+// such as blank-title — keeps the planner's own pattern on that layout. ok is
+// false when there is no override or the kind does not list it (validation
+// reports that case).
+func requestedComposition(slide SlideSpec, alternatives []CompositionCandidate, planned string) (slides.Composition, bool) {
+	if requested := slide.String("pattern"); requested != "" {
+		for _, c := range alternatives {
+			if c.Pattern == requested {
+				return slides.Composition{Pattern: c.Pattern, Layout: c.Layout}, true
+			}
+		}
+	}
+	requested := slide.String("layout")
+	if requested == "" {
+		return slides.Composition{}, false
+	}
+	listed := false
+	for _, c := range alternatives {
+		if c.Layout != requested {
+			continue
+		}
+		if c.Pattern == "" {
+			return slides.Composition{Layout: requested}, true
+		}
+		listed = true
+	}
+	if listed {
+		return slides.Composition{Pattern: planned, Layout: requested}, true
+	}
+	return slides.Composition{}, false
+}
+
+// compilesTo reports whether the slide compiles to the composition when the
+// compiler is asked for it.
+func compilesTo(slide SlideIR, want slides.Composition) bool {
+	got, ok := trialComposition(slide, want)
+	return ok && got == want
+}
+
+// trialComposition compiles the slide with the override and returns the
+// composition that comes out; ok is false when it does not compile at all.
+func trialComposition(slide SlideIR, want slides.Composition) (slides.Composition, bool) {
+	compiled, _, err := compileSlide(slide.Kind, slides.Input{
+		Title:    slide.Title,
+		Takeaway: slide.Takeaway,
+		Pattern:  want.Pattern,
+		Layout:   want.Layout,
+		Body:     slide.Body,
+		Override: want,
+	})
+	if err != nil || compiled == nil {
+		return slides.Composition{}, false
+	}
+	return compiledComposition(compiled), true
+}
+
+// compiledComposition is the pattern / layout a compiled slide actually takes.
+// A slide with no pinned layout is matched by its slide type, which is how a
+// content fallback names itself.
+func compiledComposition(s *deckinput.SlideInput) slides.Composition {
+	var c slides.Composition
+	if s.Pattern != nil {
+		c.Pattern = s.Pattern.Name
+	}
+	c.Layout = s.LayoutID
+	if c.Layout == "" {
+		c.Layout = s.SlideType
+	}
+	return c
 }
 
 // SlideAlternatives returns the compositions a slide of this kind can be asked
@@ -711,7 +785,7 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 		}
 	case KindProcess:
 		return []CompositionCandidate{
-			visual("numbered-step-strip", "3-7 steps that each carry a description, as numbered rows"),
+			visual("numbered-step-strip", "3-6 steps that each carry a description, as numbered rows"),
 			visual("process-flow", "3-8 bare or branching steps as a flow diagram"),
 			visual("process-flow-compact", "3-6 short labels (averaging under 40 characters) as a shallow flow band under the title"),
 			{Layout: "content", Reason: "native bullets preserve shorter or longer processes"},

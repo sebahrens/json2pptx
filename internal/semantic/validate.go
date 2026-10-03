@@ -1763,6 +1763,74 @@ func validateCompositionOverride(path string, slide SlideSpec, s *semDiags) {
 				Params: map[string]any{"path": path + ".layout", "allowed": layouts},
 			})
 	}
+	validateDeclinedOverride(path, slide, alternatives, s)
+}
+
+// validateDeclinedOverride reports a listed composition this payload cannot
+// take. The compiler keeps its own choice for it, so without this the override
+// would be the same silent no-op an unlisted one used to be
+// (go-slide-creator-vj549).
+func validateDeclinedOverride(path string, slide SlideSpec, alternatives []CompositionCandidate, s *semDiags) {
+	planned := normalizeSlide(0, slide)
+	if !planned.overrideDeclined {
+		return
+	}
+	field, requested := "pattern", slide.String("pattern")
+	if requested == "" || !candidateHasPattern(alternatives, requested) {
+		field, requested = "layout", slide.String("layout")
+	}
+	want, _ := requestedComposition(slide, alternatives, planned.Visual.Pattern)
+	reason := "it does not compile"
+	if got, ok := trialComposition(planned, want); ok {
+		reason = "asked for it, this payload still compiles to " + compositionLabel(got)
+	}
+	if slide.Kind == KindProcess && want.Pattern != "" {
+		if p := slides.ProcessCompositionProblem(slide.Body, want.Pattern); p != "" {
+			reason = p
+		}
+	}
+	// allowed holds the values of the overridden field that this payload does
+	// compile to; fits names every such composition for the message.
+	var fits, allowed []string
+	for _, c := range alternatives {
+		want := slides.Composition{Pattern: c.Pattern, Layout: c.Layout}
+		if !compilesTo(planned, want) {
+			continue
+		}
+		fits = append(fits, compositionLabel(want))
+		switch {
+		case field == "pattern" && c.Pattern != "":
+			allowed = append(allowed, c.Pattern)
+		case field == "layout" && c.Pattern == "" && !containsString(allowed, c.Layout):
+			allowed = append(allowed, c.Layout)
+		}
+	}
+	got := compositionLabel(slides.Composition{Pattern: planned.Visual.Pattern, Layout: planned.Visual.Layout})
+	s.advisoryFix(path+"."+field, diagnostics.CodeSemanticPatternNotAvailable,
+		fmt.Sprintf("%s %q is one of the %q compositions, but this payload cannot take it — %s; the override is ignored and the slide compiles to %s; compositions this payload takes: %s",
+			field, requested, slide.Kind, reason, got, joinOrNone(fits)),
+		&diagnostics.Fix{
+			Kind:   "use_one_of",
+			Params: map[string]any{"path": path + "." + field, "allowed": allowed},
+		})
+}
+
+// candidateHasPattern reports whether any candidate names the pattern.
+func candidateHasPattern(alternatives []CompositionCandidate, pattern string) bool {
+	for _, c := range alternatives {
+		if c.Pattern == pattern {
+			return true
+		}
+	}
+	return false
+}
+
+// compositionLabel spells a composition the way an override names it.
+func compositionLabel(c slides.Composition) string {
+	if c.Pattern != "" {
+		return "pattern " + c.Pattern
+	}
+	return "layout " + c.Layout
 }
 
 // containsString reports whether list holds v.

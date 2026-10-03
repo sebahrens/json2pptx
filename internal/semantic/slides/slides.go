@@ -43,6 +43,24 @@ type Input struct {
 	Layout string
 	// Body is the kind-specific semantic payload.
 	Body map[string]any
+	// Override is the composition the author asked for with the slide's
+	// pattern / layout field, already matched against the kind's advertised
+	// candidates; zero when there is none. A compiler that offers the
+	// composition must emit it when the payload fits, rather than re-deriving
+	// its own choice from the body (go-slide-creator-vj549).
+	Override Composition
+}
+
+// Composition is a pattern / layout pair a slide can be asked to take.
+type Composition struct {
+	Pattern string
+	Layout  string
+}
+
+// wantsContent reports whether the author asked for the native content-slide
+// composition: source-complete bullets, no pattern.
+func (in Input) wantsContent() bool {
+	return in.Override.Pattern == "" && in.Override.Layout == "content"
 }
 
 func diagramContent(placeholderID string, diagram *types.DiagramSpec) deckinput.ContentInput {

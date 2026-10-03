@@ -42,7 +42,7 @@ var (
 // falling back to bullets when it does not fit.
 func CompileNextSteps(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	values := nextStepsPayload(in.Body)
-	if NextStepsPattern(in.Body) == "" {
+	if in.wantsContent() || NextStepsPattern(in.Body) == "" {
 		return compileNextStepsFallback(in, values)
 	}
 	encoded, err := json.Marshal(values)

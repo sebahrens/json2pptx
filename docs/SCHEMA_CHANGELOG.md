@@ -1,5 +1,28 @@
 # Schema Changelog
 
+- **2026-10-03 — Composition overrides compile to what explain reports (`go-slide-creator-vj549`).** SchemaVersion unchanged (no new tools, codes or fix kinds).
+  - A `pattern` / `layout` override listed in `compositions[]` is honoured
+    only when the slide actually compiles to it, and the compiler is held to
+    it: `layout: "content"` emits the kind's source-complete native bullet
+    slide with no pattern on every visual kind, and a process `pattern`
+    (`numbered-step-strip`, `process-flow`, `process-flow-compact`) or
+    comparison `pattern` (`stylish-panels`, `card-grid`) selects that
+    compiler instead of the one the body implied. `explain_deck_spec`
+    `pattern` / `layout` and `explanation_summary` now equal the compiled
+    slide; a process slide used to report `layout: content` or
+    `process-flow` and render the numbered strip.
+  - A listed override this payload cannot take (described steps longer
+    than the 80-character flow box asked for `process-flow`; a 3-option
+    `decision` asked for `card-grid`) is reported as
+    `SEMANTIC_PATTERN_NOT_AVAILABLE` at `slides[i].pattern` / `.layout`
+    with the measured reason, the
+    composition the slide compiles to instead, and `fix.params.allowed`
+    limited to the values this payload does take.
+  - `executive_summary` and `next_steps` accept the `pattern` / `layout`
+    override their `compositions[]` already listed (it was refused as
+    `SEMANTIC_UNKNOWN_FIELD`). The process `numbered-step-strip` reason reads
+    3-6 steps (the compiler's bound), not 3-7.
+
 - **2026-10-03 — Narrow regions keep words whole; native diagrams report the ones they cannot (`go-slide-creator-v74wv`).**
   - The writer's margin clamp now leaves 5% of room over a word's measured
     width (20% for a host-dependent theme face measured in the Liberation

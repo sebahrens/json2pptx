@@ -195,7 +195,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"title":    strField("Section name. For supporting copy, use a content slide: section layouts reserve body slots for decorative numbering."),
 		"appendix": {typ: "boolean", desc: "true marks an appendix / backup divider: no chapter number, and later sections are not renumbered. Dividers titled Appendix, Backup, Annex, Q&A or Thank you are unnumbered automatically."},
 	}, universalFields()),
-	KindExecutiveSummary: withFields(map[string]payloadField{
+	KindExecutiveSummary: withFields(withFields(map[string]payloadField{
 		"title": strField("Slide title."),
 		"points": {
 			typ: "array", itemStrings: true, itemKeys: execSummaryPointKeys,
@@ -207,7 +207,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		},
 		"bottom_line": strField("Optional recommendation / ask rendered as a tinted bar under the points."),
 		"takeaway":    strField("One-line takeaway footer."),
-	}, universalFields()),
+	}, compositionFields()), universalFields()),
 	KindKPISnapshot: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
 		"takeaway": strField("One-line takeaway footer."),
@@ -463,7 +463,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"choices":      {typ: "array", desc: "Alias for options.", itemStrings: true, itemKeys: decisionOptionKeys, itemKeySchemas: map[string]any{"recommended": map[string]any{"type": "boolean"}}},
 		"alternatives": {typ: "array", desc: "Alias for options.", itemStrings: true, itemKeys: decisionOptionKeys, itemKeySchemas: map[string]any{"recommended": map[string]any{"type": "boolean"}}},
 	}, compositionFields()), universalFields()),
-	KindNextSteps: withFields(map[string]payloadField{
+	KindNextSteps: withFields(withFields(map[string]payloadField{
 		"title": strField("Slide title, e.g. \"Three actions start the pilot in October\"."),
 		"actions": {
 			typ:         "array",
@@ -477,7 +477,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"asks":                textList("Alias for decisions."),
 		"decisions_label":     strField("Band label (default \"Decisions requested\")."),
 		"takeaway":            strField("One-line takeaway footer."),
-	}, universalFields()),
+	}, compositionFields()), universalFields()),
 	KindClosing: withFields(map[string]payloadField{
 		"title":    strField("Closing headline."),
 		"subtitle": strField("Subtitle line."),
