@@ -27,6 +27,9 @@ type BudgetItem struct {
 	Measured, Allowed int
 	// Holds says what the budget belongs to ("a step holds 60").
 	Holds string
+	// Visual names the pattern the budget belongs to when it is not the one
+	// the caller reports the slide as losing ("numbered-step-strip").
+	Visual string
 }
 
 // Message is the item's finding sentence, without the "otherwise it degrades"
@@ -100,18 +103,25 @@ func DecisionBudgetItems(body map[string]any) []BudgetItem {
 	return out
 }
 
-// ProcessBudgetItems lists every step whose label and description together
-// overflow a flow box. The description is the field to shorten when there is
-// one: its budget is what the box leaves beside the label.
+// ProcessBudgetItems lists every step too long for the visual its steps were
+// written for. Steps with descriptions, in a count the numbered rows hold, are
+// measured against a row (a label of 60, a description of 180): that is the
+// budget list_slide_kinds states and the smaller rewrite, where the flow box
+// would have each description cut to what 80 leaves beside the label.
+// Otherwise a step's label and description together overflow a flow box, and
+// the description is the field to shorten when there is one: its budget is
+// what the box leaves beside the label.
 func ProcessBudgetItems(body map[string]any) []BudgetItem {
 	if ProcessOverBudget(body) == "" {
 		return nil
 	}
 	raw, _ := body["steps"].([]any)
-	count := len(ProcessStepDetails(body))
+	details := ProcessStepDetails(body)
+	count := len(details)
 	if count < processFlowMin || count > processFlowMax {
 		return nil
 	}
+	rows := !processBranches(details) && processDescribed(details) && count >= processStripMin && count <= processStripMax
 	var out []BudgetItem
 	n := 0
 	for i, e := range raw {
@@ -140,6 +150,17 @@ func ProcessBudgetItems(body map[string]any) []BudgetItem {
 			continue
 		}
 		n++
+		if rows {
+			if l := runeLen(st.Label); l > processStripLabelMax {
+				out = append(out, BudgetItem{Field: field, What: fmt.Sprintf("step %d's label", n), Measured: l, Allowed: processStripLabelMax,
+					Holds: fmt.Sprintf("a numbered row holds a label of %d", processStripLabelMax), Visual: "numbered-step-strip"})
+			}
+			if l := runeLen(st.Description); l > processStripBodyMax {
+				out = append(out, BudgetItem{Field: descField, What: fmt.Sprintf("step %d's description", n), Measured: l, Allowed: processStripBodyMax,
+					Holds: fmt.Sprintf("a numbered row holds a description of %d", processStripBodyMax), Visual: "numbered-step-strip"})
+			}
+			continue
+		}
 		total := runeLen(st.flowLabel())
 		if total <= processFlowLabelMax {
 			continue

@@ -71,6 +71,10 @@ func (s *semDiags) degradeFix(path, msg string, fix *diagnostics.Fix, from, to, 
 func (s *semDiags) degradeItems(slidePath string, items []slides.BudgetItem, tail, from, to string) {
 	for _, item := range items {
 		n := len(s.out)
+		from := from
+		if item.Visual != "" {
+			from = item.Visual
+		}
 		s.degradeFix(slidePath+"."+item.Field,
 			fmt.Sprintf("%s (%s)", item.Message(), tail),
 			&diagnostics.Fix{Kind: "restore_visual", Params: map[string]any{"max_chars": item.Allowed}},

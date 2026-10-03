@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/policy/placeholder"
 	"github.com/sebahrens/json2pptx/internal/semantic"
 )
 
@@ -178,14 +179,14 @@ func kindSlideForChart(chartType, dataKey string) map[string]any {
 	label := strings.ReplaceAll(chartType, "_", " ")
 	return map[string]any{
 		"kind":  "chart_insight",
-		"title": "Replace with the action title this " + label + " chart supports",
+		"title": placeholder.RecipeActionTitle(label + " chart"),
 		"chart": map[string]any{"type": chartType, "data": deepCopyAny(data)},
 		"insights": []any{
-			"Replace with what the chart shows.",
-			"Replace with why it matters.",
+			placeholder.RecipeCopy(placeholder.SlotChartShows),
+			placeholder.RecipeCopy(placeholder.SlotWhyItMatters),
 		},
-		"source":   "Illustrative sample data; replace with the real source",
-		"takeaway": "Replace with the one-line takeaway.",
+		"source":   placeholder.RecipeSampleSource,
+		"takeaway": placeholder.RecipeCopy(placeholder.SlotTakeaway),
 	}
 }
 
@@ -210,20 +211,20 @@ func kindSlideForLayout(slideType string) map[string]any {
 // rawSlideForLayout returns the raw slide for a placeholder layout no kind
 // stands for, and the path of its content below the slide.
 func rawSlideForLayout(slideType string) (slide map[string]any, contentPath string, keys []string, desc string) {
-	title := map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Replace with the action title of this slide"}
+	title := map[string]any{"placeholder_id": "title", "type": "text", "text_value": placeholder.RecipeActionTitle("slide")}
 	switch slideType {
 	case "content":
 		return map[string]any{"slide_type": "content", "content": []any{
 				title,
 				map[string]any{"placeholder_id": "body", "type": "bullets", "bullets_value": []any{
-					"Replace with the first point, one line", "Replace with the second point", "Replace with the third point"}},
+					placeholder.RecipeCopy(placeholder.SlotFirstPoint), placeholder.RecipeCopy(placeholder.SlotSecondPoint), placeholder.RecipeCopy(placeholder.SlotThirdPoint)}},
 			}}, "content[1].bullets_value", []string{"bullets_value"},
 			"Content slide: a title and one body placeholder. The body item is type bullets (bullets_value: 3–6 one-line strings), text (text_value), body_and_bullets, table, chart or diagram."
 	case "two-column":
 		return map[string]any{"slide_type": "two-column", "content": []any{
 				title,
-				map[string]any{"placeholder_id": "body", "type": "bullets", "bullets_value": []any{"Replace with the first left point", "Replace with the second left point"}},
-				map[string]any{"placeholder_id": "body_2", "type": "bullets", "bullets_value": []any{"Replace with the first right point", "Replace with the second right point"}},
+				map[string]any{"placeholder_id": "body", "type": "bullets", "bullets_value": []any{placeholder.RecipeCopy(placeholder.SlotLeftFirst), placeholder.RecipeCopy(placeholder.SlotLeftSecond)}},
+				map[string]any{"placeholder_id": "body_2", "type": "bullets", "bullets_value": []any{placeholder.RecipeCopy(placeholder.SlotRightFirst), placeholder.RecipeCopy(placeholder.SlotRightSecond)}},
 			}}, "content", []string{"body", "body_2"},
 			"Two-column slide: content items for placeholder_id body (left) and body_2 (right), each bullets, text, table, chart, diagram or image. Keep the two columns balanced."
 	case "blank":
@@ -356,7 +357,7 @@ func rawPatternSlide(reg *patterns.Registry, name string) (map[string]any, *patt
 		"slide_type": "content",
 		"layout_id":  composeRecipeLayoutID,
 		"content": []any{
-			map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Replace with the action title this " + label + " supports"},
+			map[string]any{"placeholder_id": "title", "type": "text", "text_value": placeholder.RecipeActionTitle(label)},
 		},
 		"pattern": map[string]any{"name": name, "values": values},
 	}
@@ -385,11 +386,35 @@ func setKindRecipe(c *patterns.VisualCandidate, slide map[string]any, templateNa
 	}
 	c.DeckSpec = form
 	c.DataContract = contract
+	label := strings.ReplaceAll(c.Name, "_", " ")
+	// A kind's example reads as a finished slide. The recipe is scaffolding,
+	// so its title is the registered placeholder: rendered verbatim it is
+	// refused as exemplar content, like every other recipe
+	// (go-slide-creator-327g6).
+	if title, _ := slide["title"].(string); !isRecipePlaceholder(title) {
+		slide["title"] = placeholder.RecipeActionTitle(recipeVisualLabel(c))
+	}
 	c.NextToolCall = &patterns.ToolCallSuggestion{
 		Tool:         "render_deck_spec",
-		ArgsTemplate: map[string]any{"spec": recipeSpec(strings.ReplaceAll(c.Name, "_", " "), templateName, slide)},
+		ArgsTemplate: map[string]any{"spec": recipeSpec(label, templateName, slide)},
 	}
 	return true
+}
+
+// isRecipePlaceholder reports whether text is registered placeholder copy.
+func isRecipePlaceholder(text string) bool {
+	_, ok := placeholder.Detect(text)
+	return ok
+}
+
+// recipeVisualLabel names a candidate's visual inside a recipe title ("kpi
+// 3up", "org chart", "title slide").
+func recipeVisualLabel(c *patterns.VisualCandidate) string {
+	label := strings.NewReplacer("_", " ", "-", " ").Replace(c.Name)
+	if c.Category == patterns.VisualCategoryPlaceholder {
+		label += " slide"
+	}
+	return label
 }
 
 // kindVersusRaw says, for the kinds whose field names differ from the raw
@@ -538,8 +563,8 @@ func recipeShapeGrid() map[string]any {
 		"rows": []any{
 			// Neutral fills: default text ink reads on lt2 on every template,
 			// which it does not on an accent fill.
-			map[string]any{"cells": []any{cell("Replace with the first block", "lt2"), cell("Replace with the second block", "lt2")}},
-			map[string]any{"cells": []any{cell("Replace with the third block", "lt2"), cell("Replace with the fourth block", "lt2")}},
+			map[string]any{"cells": []any{cell(placeholder.RecipeCopy(placeholder.SlotFirstBlock), "lt2"), cell(placeholder.RecipeCopy(placeholder.SlotSecondBlock), "lt2")}},
+			map[string]any{"cells": []any{cell(placeholder.RecipeCopy(placeholder.SlotThirdBlock), "lt2"), cell(placeholder.RecipeCopy(placeholder.SlotFourthBlock), "lt2")}},
 		},
 	}
 }
@@ -551,7 +576,7 @@ func attachShapeGridRecipe(c *patterns.VisualCandidate, templateName string) {
 		"slide_type": "content",
 		"layout_id":  composeRecipeLayoutID,
 		"content": []any{
-			map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Replace with the action title of this slide"},
+			map[string]any{"placeholder_id": "title", "type": "text", "text_value": placeholder.RecipeActionTitle("slide")},
 		},
 		"shape_grid": recipeShapeGrid(),
 	}
@@ -662,11 +687,11 @@ func attachRegionsRecipe(c *patterns.VisualCandidate, templateName string) {
 		}
 		slide = map[string]any{
 			"kind":        "regions",
-			"title":       "Replace with the action title these views support together",
+			"title":       placeholder.RecipeActionTitle("set of views"),
 			"arrangement": arrangement,
 			"regions":     regions,
-			"source":      "Illustrative sample data; replace with the real source",
-			"takeaway":    "Replace with the one-line takeaway.",
+			"source":      placeholder.RecipeSampleSource,
+			"takeaway":    placeholder.RecipeCopy(placeholder.SlotTakeaway),
 		}
 		c.Composition.Instructions = "Copy " + recipeExamplePath + " into your DeckSpec slides: one regions slide, arrangement " + arrangement +
 			". Each composition region's segment_path is its entry in regions[]; replace the sample content there and keep kind, arrangement and size_pct."

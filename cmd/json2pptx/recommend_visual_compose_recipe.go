@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/policy/placeholder"
 )
 
 // Compose recipes (go-slide-creator-okg00).
@@ -56,12 +57,12 @@ func attachComposeRecipe(c *patterns.VisualCandidate, templateName string, reg *
 	slide := map[string]any{
 		"layout_id": composeRecipeLayoutID,
 		"content": []any{
-			map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Replace with the action title this " + label + " supports"},
+			map[string]any{"placeholder_id": "title", "type": "text", "text_value": placeholder.RecipeActionTitle(label)},
 		},
 		"compose": compose,
 	}
 	if hasData {
-		slide["source"] = "Illustrative sample data; replace with the real source"
+		slide["source"] = placeholder.RecipeSampleSource
 	}
 	c.NextToolCall = &patterns.ToolCallSuggestion{
 		Tool: "render_deck_spec",
@@ -123,7 +124,7 @@ func composeRecipeEnvelope(comp *patterns.VisualComposition, path string, reg *p
 			seg["diagram"] = map[string]any{
 				"type": r.Name,
 				"data": deepCopyAny(data),
-				"alt":  "Replace with one sentence saying what this " + label + " shows",
+				"alt":  placeholder.RecipeAltText(label),
 			}
 			if h, ok := hints[r.Name]; ok {
 				r.DataContract = &patterns.VisualDataContract{

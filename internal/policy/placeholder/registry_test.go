@@ -10,6 +10,8 @@ func TestDetectRegisteredPlaceholders(t *testing.T) {
 		"REPLACE WITH THE ACTION TITLE this one": NameRecipeTitle,
 		RecipeAltText("swot diagram"):            NameRecipeAltText,
 		RecipeSampleSource:                       NameRecipeSampleSource,
+		RecipeCopy(SlotTakeaway):                 NameRecipeCopy,
+		" replace with the first block ":         NameRecipeCopy,
 		"<rewrite this field to resolve INPUT.SEMANTIC_DENSITY while preserving meaning; at most 40 characters>": NameArgumentHint,
 		"<the point this slide makes>": NameArgumentHint,
 		" <DeckSpec> ":                 NameArgumentHint,
@@ -23,6 +25,9 @@ func TestDetectRegisteredPlaceholders(t *testing.T) {
 	for _, text := range []string{
 		"",
 		"Replace legacy billing with usage-based pricing by 2027",
+		"Replace with usage-based pricing",
+		"Replace with the second plant's line by 2027",
+		"Option B: replace with the one-line takeaway. Then stop.",
 		"Margins stay <5% until the second plant opens",
 		"Churn < 2% and NRR > 110%",
 		"<b>bold</b> claims need a source",
@@ -47,8 +52,8 @@ func TestRegisteredMarkersAreComplete(t *testing.T) {
 			t.Errorf("marker %s is registered twice", m.Name)
 		}
 		seen[m.Name] = true
-		if m.Name == NameArgumentHint {
-			continue // a shape, not a phrase
+		if m.Name == NameArgumentHint || m.Name == NameRecipeCopy {
+			continue // a whole-field shape, not a phrase
 		}
 		if got, ok := Detect("x " + m.Phrase + " y"); !ok || got.Name != m.Name {
 			t.Errorf("marker %s is not detected by its phrase %q", m.Name, m.Phrase)

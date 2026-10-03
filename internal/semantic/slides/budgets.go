@@ -14,7 +14,10 @@ type Budget struct {
 	MaxChars int
 	// MinItems / MaxItems bound a list field, 0 when unbounded.
 	MinItems, MaxItems int
-	// Note says when the budget applies, for a kind with more than one visual.
+	// Note says when the budget applies, for a kind with more than one visual
+	// or a budget that tightens with the item count: MaxChars is then the most
+	// the field ever holds and the note states the tighter lengths, which are
+	// the ones a finding quotes for a slide that has them.
 	Note string
 }
 
@@ -25,9 +28,9 @@ type Budget struct {
 var kindBudgets = map[string][]Budget{
 	"executive_summary": {
 		{Field: "points", MinItems: execSummaryMinPoints, MaxItems: execSummaryMaxPoints},
-		{Field: "points[].lead", MaxChars: patterns.ExecSummaryLeadMax},
-		{Field: "points[].support", MaxChars: patterns.ExecSummarySupportMax},
-		{Field: "bottom_line", MaxChars: patterns.ExecSummaryBottomLineMax},
+		{Field: "points[].lead", MaxChars: patterns.ExecSummaryLeadMax, Note: "3 points, or 4 without a bottom line; 57 with 4 points and a bottom line, 52 with 5 points"},
+		{Field: "points[].support", MaxChars: patterns.ExecSummarySupportMax, Note: "3 points and no bottom line; 193 beside a bottom line (182 when it is over 40 characters), 128 with 4 points (65 with a bottom line), 60 with 5 points"},
+		{Field: "bottom_line", MaxChars: patterns.ExecSummaryBottomLineMax, Note: "3 points; 102 with 4 or 5 points"},
 	},
 	"kpi_snapshot": {
 		{Field: "kpis", MinItems: 2, MaxItems: 6},
@@ -114,7 +117,7 @@ var kindBudgets = map[string][]Budget{
 	},
 	"process": {
 		{Field: "steps", MinItems: processStripMin, MaxItems: processStripMax, Note: "numbered rows (steps with a description); the flow diagram takes 3–8 bare labels"},
-		{Field: "steps[].label", MaxChars: processStripLabelMax, Note: "numbered rows; a flow box holds 80 for label and description together"},
+		{Field: "steps[].label", MaxChars: processStripLabelMax, Note: "numbered rows; a flow box holds 80 for label and description together (72 with 7 steps, 71 with 8)"},
 		{Field: "steps[].description", MaxChars: processStripBodyMax, Note: "numbered rows"},
 	},
 	"decision": {

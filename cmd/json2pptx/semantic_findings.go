@@ -202,20 +202,67 @@ func qualityGateDiagnostics(gate *deterministic.QualityGate, diags []semanticDia
 	out := make([]semanticDiagnostic, 0, len(reasons))
 	for _, r := range reasons {
 		msg := "quality gate: " + r
-		if names := gateReasonContributors(r, diags); names != "" {
+		counted := gateReasonCounted(r, diags)
+		if names := gateReasonContributors(counted); names != "" {
 			msg += " — " + names
 		}
-		d := diagnostics.Diagnostic{Code: codeQualityGate, Path: "slides", Message: msg, Severity: diagnostics.SeverityError}
-		out = append(out, semanticDiagFromCompile(d))
+		// The evidence rides in Details for the validate envelope and in
+		// Evidence for the render verdict: both report the same facts.
+		evidence := gateReasonEvidence(r, counted)
+		d := diagnostics.Diagnostic{Code: codeQualityGate, Path: "slides", Message: msg, Severity: diagnostics.SeverityError, Details: evidence}
+		sd := semanticDiagFromCompile(d)
+		sd.Evidence = evidence
+		out = append(out, sd)
 	}
 	return out
 }
 
-// gateReasonContributors names the advisories behind an aggregate gate reason:
-// the topic titles for the action-title share, the scored fit advisories for
-// the score floor and the problem-slide share.
-func gateReasonContributors(reason string, diags []semanticDiagnostic) string {
-	var names []string
+// gateCriterion names the quality-gate criterion an aggregate reason is about.
+func gateCriterion(reason string) string {
+	switch {
+	case strings.Contains(reason, "lack an action title"):
+		return "max_topic_title_pct"
+	case strings.Contains(reason, "slides carry findings"):
+		return "max_problem_slides_pct"
+	case strings.HasPrefix(reason, "composition "):
+		return "min_composition_score"
+	case strings.HasPrefix(reason, "score "):
+		return "min_score"
+	}
+	return ""
+}
+
+// gateReasonEvidence is a QUALITY_GATE finding's evidence: the criterion that
+// failed and every advisory counted against it, as {code, path} — the findings
+// of this same response whose fixes clear the gate. The message names the
+// first six; an agent reads them all here instead of parsing the sentence.
+func gateReasonEvidence(reason string, counted []semanticDiagnostic) map[string]any {
+	evidence := map[string]any{}
+	if c := gateCriterion(reason); c != "" {
+		evidence["criterion"] = c
+	}
+	if len(counted) > 0 {
+		list := make([]any, 0, len(counted))
+		for _, d := range counted {
+			entry := map[string]any{"code": d.Code}
+			if p := diagnosticPointer(d); p != "" {
+				entry["path"] = p
+			}
+			list = append(list, entry)
+		}
+		evidence["counted"] = list
+	}
+	if len(evidence) == 0 {
+		return nil
+	}
+	return evidence
+}
+
+// gateReasonCounted lists the advisories behind an aggregate gate reason: the
+// topic titles for the action-title share, the scored fit advisories for the
+// score floor and the problem-slide share.
+func gateReasonCounted(reason string, diags []semanticDiagnostic) []semanticDiagnostic {
+	var counted []semanticDiagnostic
 	wantTitle := strings.Contains(reason, "lack an action title")
 	for _, d := range diags {
 		if d.Blocking || d.Waived != "" || d.Action == "" || d.Action == "info" {
@@ -224,6 +271,15 @@ func gateReasonContributors(reason string, diags []semanticDiagnostic) string {
 		if wantTitle != (d.Code == patterns.ErrCodeTitleNotAction) {
 			continue
 		}
+		counted = append(counted, d)
+	}
+	return counted
+}
+
+// gateReasonContributors names the counted advisories in the gate's sentence.
+func gateReasonContributors(counted []semanticDiagnostic) string {
+	names := make([]string, 0, len(counted))
+	for _, d := range counted {
 		names = append(names, diagnosticName(d))
 	}
 	const limit = 6

@@ -53,9 +53,12 @@ func compileRecipe(t *testing.T, c patterns.VisualCandidate) (pattern string, ra
 	return pattern, string(out)
 }
 
+// assertRecipeRenders is the second half of the recipe rule (the first is
+// assertRecipeValidates): with its placeholder copy written over, the recipe
+// renders without an error diagnostic.
 func assertRecipeRenders(t *testing.T, mc *mcpConfig, c patterns.VisualCandidate) {
 	t.Helper()
-	verdict := renderRecipe(t, mc, c)
+	verdict := renderFilledRecipe(t, mc, c)
 	if !verdict.Success {
 		t.Fatalf("%s %q: recipe did not render: error=%q diags=%+v", c.Category, c.Name, verdict.Error, verdict.Diagnostics)
 	}
@@ -452,7 +455,7 @@ func TestRecommendVisualEvalTopCandidateRenders(t *testing.T) {
 			if got := spec["meta"].(map[string]any)["template"]; got != tmpl {
 				t.Errorf("%s / %q: recipe names template %v", tmpl, tc.Intent, got)
 			}
-			verdict := renderRecipe(t, mc, top)
+			verdict := renderFilledRecipe(t, mc, top)
 			if !verdict.Success {
 				t.Errorf("%s / %q: top %s %q did not render: error=%q diags=%+v", tmpl, tc.Intent, top.Category, top.Name, verdict.Error, verdict.Diagnostics)
 				continue
