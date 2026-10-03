@@ -477,10 +477,12 @@ type semanticDiagnosticWire struct {
 	Action          string                 `json:"action,omitempty"`
 	RecommendedEdit *semantic.SemanticEdit `json:"recommended_edit,omitempty"`
 	NextToolCall    json.RawMessage        `json:"next_tool_call,omitempty"`
-	Evidence        map[string]any         `json:"evidence,omitempty"`
-	Waived          string                 `json:"waived,omitempty"`
-	Symptoms        []findingSymptomWire   `json:"symptoms,omitempty"`
-	Debug           map[string]any         `json:"debug,omitempty"`
+	// PatchVerified: next_tool_call's patch was applied and validated.
+	PatchVerified bool                 `json:"patch_verified,omitempty"`
+	Evidence      map[string]any       `json:"evidence,omitempty"`
+	Waived        string               `json:"waived,omitempty"`
+	Symptoms      []findingSymptomWire `json:"symptoms,omitempty"`
+	Debug         map[string]any       `json:"debug,omitempty"`
 }
 
 type findingSymptomWire struct {
@@ -512,6 +514,7 @@ func (d semanticDiagnostic) MarshalJSON() ([]byte, error) {
 		Code: d.Code, Severity: d.Severity, Blocking: d.Blocking, Message: pointerNotation(d.Message),
 		Path: addr.Path, MissingPath: addr.Missing, SlideNumber: addr.SlideNumber, SlideID: d.SlideID,
 		Action: d.Action, RecommendedEdit: d.RecommendedEdit, Evidence: d.Evidence, Waived: d.Waived,
+		PatchVerified: d.patchVerified,
 	}
 	if len(d.members) > 1 {
 		w.Occurrences = len(d.members)
@@ -562,6 +565,7 @@ func (d *semanticDiagnostic) UnmarshalJSON(data []byte) error {
 		Code: w.Code, Severity: w.Severity, Blocking: w.Blocking, Message: w.Message,
 		SemanticPath: dottedPath(firstNonEmpty(w.MissingPath, w.Path)), SlideID: w.SlideID,
 		Action: w.Action, RecommendedEdit: w.RecommendedEdit, Evidence: w.Evidence, Waived: w.Waived,
+		patchVerified: w.PatchVerified,
 	}
 	if w.SlideNumber > 0 {
 		idx := w.SlideNumber - 1

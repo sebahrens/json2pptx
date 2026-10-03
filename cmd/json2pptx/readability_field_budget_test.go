@@ -152,29 +152,38 @@ func TestValidateDeckSpecSharedCellRepairNeverInflatesTheEyebrow(t *testing.T) {
 	if found == nil {
 		t.Skipf("this template build fits the shared cell; nothing to repair: %+v", env.Findings)
 	}
-	if found.Remediation == nil || found.Remediation.Primary == nil {
-		t.Fatalf("no primary remediation: %+v", found)
-	}
-	params := found.Remediation.Primary.Params
 	if _, leaked := found.Evidence[editPathDetail]; leaked {
 		t.Error("internal edit_path detail leaked into evidence")
-	}
-	if params["path"] == "/slides/0/eyebrow" {
-		t.Errorf("the patch edits the 12-char eyebrow, which cannot absorb the shared cell's overflow: %v", params)
 	}
 	fields := map[string]string{
 		"/slides/0/eyebrow": "Pilot design", "/slides/0/heading": "Turn missing ownership into a daily decision",
 		"/slides/0/body": "The workbench puts unowned cases beside assigned work. The market lead assigns a resolver each morning; finance checks closure evidence at day-end.",
 	}
-	path, _ := params["path"].(string)
-	if n, ok := intFixParam(params, "max_chars"); ok {
-		if src, known := fields[path]; !known || n >= utf8.RuneCountInString(src) {
+	// go-slide-creator-micna / -vihnl: the patch lives in next_tool_call. A
+	// rewrite carries the budget of the field it patches; a patch that is
+	// complete as written was tried on the spec first.
+	if found.NextToolCall == nil {
+		t.Fatalf("no patch offered: %+v", found)
+	}
+	for _, raw := range patchOf(t, found.NextToolCall) {
+		op := raw.(map[string]any)
+		path, _ := op["path"].(string)
+		value, rewrite := op["value"].(string)
+		if !rewrite || !strings.HasPrefix(value, "<") {
+			if !found.PatchVerified {
+				t.Errorf("a patch that is complete as written was not verified: %v", op)
+			}
+			continue
+		}
+		if path == "/slides/0/eyebrow" {
+			t.Errorf("the patch rewrites the 12-char eyebrow, which cannot absorb the shared cell's overflow: %v", op)
+		}
+		n, ok := intFixParam(found.Remediation.Primary.Params, "max_chars")
+		if src, known := fields[path]; !ok || !known || n >= utf8.RuneCountInString(src) {
 			t.Errorf("max_chars %d at %s does not shorten the field it patches", n, path)
 		}
-	} else if params["repair"] != "composition" {
-		t.Errorf("no field budget and no composition label: %v", params)
-	}
-	if v, _ := params["value"].(string); strings.Contains(v, "532") {
-		t.Errorf("hint still carries the whole-cell budget: %s", v)
+		if strings.Contains(value, "532") {
+			t.Errorf("hint still carries the whole-cell budget: %s", value)
+		}
 	}
 }

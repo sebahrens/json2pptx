@@ -167,7 +167,7 @@ func runSemanticValidate() error {
 	fs := flag.NewFlagSet("semantic validate", flag.ContinueOnError)
 	specPath := fs.String("spec", "", "Path to the semantic deck spec (.yaml/.yml/.json); use - for stdin")
 	strict := fs.String("strict", "warn", "Advisory-rule strictness: off, warn, or strict")
-	templateName := fs.String("template", "", "Default template used when the spec pins none (pass the one you will render on)")
+	templateName := fs.String("template", "", "Template to measure on; replaces the spec's meta.template for this run")
 	templatesDir := fs.String("templates-dir", "", "Template search directory")
 
 	fs.Usage = func() {
@@ -221,6 +221,9 @@ func runSemanticValidate() error {
 		Template:    eval.Template,
 	}, ds)
 	stampEnvelopeFindings(&out.FindingEnvelope, eval.Diagnostics)
+	// The CLI has no stored deck to patch: a finding carries its remedy's
+	// facts, in the fields of the spec.
+	cliRemedyContext(*specPath, data).remedyEnvelope(&out.FindingEnvelope, eval.Diagnostics)
 	shapeEnvelopeFindings(&out.FindingEnvelope, eval.Diagnostics, newSpecDoc(*specPath, data))
 
 	if err := printJSONIndent(out); err != nil {
@@ -236,6 +239,7 @@ func runSemanticValidate() error {
 // would, into a scratch directory.
 func evaluateSpecCLI(specPath string, spec *semantic.DeckSpec, strictness semantic.Strictness, argTemplate, templatesDir string) (specEvaluation, error) {
 	choice := resolveSpecTemplate(spec.Meta.Template, argTemplate, "", specSource{})
+	spec = choice.evaluated(spec)
 	eval := specEvaluation{Choice: choice, TemplateSource: choice.Source, Warnings: choice.Warnings}
 	eval.Template = explainSpecWithTemplate(spec, argTemplate).Template
 
@@ -517,6 +521,10 @@ type semanticDiagnostic struct {
 	// debug holds the compiled-deck locators moved out of Evidence and the
 	// recommended edit's params.
 	debug map[string]any
+	// patchVerified reports that NextToolCall's patch was applied to the spec
+	// and validated: the finding is gone and nothing new blocks
+	// (go-slide-creator-vihnl).
+	patchVerified bool
 }
 
 // runSemanticRender implements "semantic render": the target one-command flow
@@ -532,7 +540,7 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 	specPath := fs.String("spec", "", "Path to the semantic deck spec (.yaml/.yml/.json); use - for stdin")
 	output := fs.String("output", "", "Output .pptx path (or directory); required")
 	strict := fs.String("strict", "warn", "Advisory-rule strictness: off, warn, or strict")
-	templateName := fs.String("template", "", "Default template used when the spec pins none")
+	templateName := fs.String("template", "", "Template to render on; replaces the spec's meta.template for this run")
 	templatesDir := fs.String("templates-dir", "", "Template search directory")
 	outputValidation := fs.String("output-validation", "strict", "Post-generation output validation: off, warn, or strict")
 	noManifest := fs.Bool("no-manifest", false, "Do not write the <deck>.pptx.authoring.json sidecar next to the deck")
@@ -591,6 +599,7 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 	doc := newSpecDoc(*specPath, data)
 	finishDiagnostics := func(res *semanticRenderResult) {
 		res.Diagnostics = collapseDiagnostics(res.Diagnostics)
+		cliRemedyContext(*specPath, data).remedyDiagnostics(res.Diagnostics)
 		shapeRenderDiagnostics(res.Diagnostics, doc)
 	}
 	evaluateReduced := func(reduced *semantic.DeckSpec, _ []byte) specEvaluation {
@@ -617,6 +626,11 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 		_ = fprintJSONIndent(os.Stdout, res)
 		return fmt.Errorf("%s", res.Error)
 	}
+
+	// --template replaces meta.template for this render, and the result says
+	// so (go-slide-creator-ifkxs).
+	choice := resolveSpecTemplate(spec.Meta.Template, *templateName, "", specSource{})
+	spec = choice.evaluated(spec)
 
 	// Validate + compile to a raw PresentationInput. Blocking findings abort the
 	// render with the diagnostics surfaced on the result.
@@ -659,6 +673,9 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 	res, runRes, runErr := runCompiledSpecCLI(*specPath, input, compileResult, *templatesDir, outputDir, *outputValidation, startTime)
 	if runErr != nil {
 		return runErr
+	}
+	if choice.Override != "" {
+		res.Warnings = append(append([]string{}, choice.Warnings...), res.Warnings...)
 	}
 	finishDiagnostics(&res)
 	if !res.OK {
@@ -932,6 +949,7 @@ func buildSemanticRenderSuccess(input *PresentationInput, cr *semantic.CompileRe
 	// A gate criterion no single finding accounts for is reported as one
 	// deck-level error, so the gate never fails without a finding to name.
 	diags = append(diags, qualityGateDiagnostics(res.Quality.QualityGate, diags)...)
+	deckSpecWording(diags, input, ir)
 	res.Diagnostics = groupRootCauses(diags)
 	if rr.GenResult != nil {
 		res.SlideCount = rr.GenResult.SlideCount

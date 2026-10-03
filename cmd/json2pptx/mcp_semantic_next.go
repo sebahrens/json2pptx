@@ -101,6 +101,9 @@ func semanticPatchOps(data []byte, path, code string, params map[string]any) []a
 	if !ok {
 		return nil
 	}
+	if bareCode(code) == string(diagnostics.CodeSemanticUnknownField) {
+		return unknownFieldOps(data, path, pointer, params)
+	}
 	switch v := node.(type) {
 	case string:
 		return []any{map[string]any{"op": "replace", "path": pointer, "value": rewriteHint(code, params)}}
@@ -117,6 +120,22 @@ func semanticPatchOps(data []byte, path, code string, params map[string]any) []a
 		return ops
 	}
 	return nil
+}
+
+// unknownFieldOps is the patch for a key the kind does not read: a move to the
+// key it was meant to be, or its removal. A rewrite of the key's value
+// (go-slide-creator-vihnl) left the key where it was, and the same error came
+// back.
+func unknownFieldOps(data []byte, path, pointer string, params map[string]any) []any {
+	if name, _ := params["did_you_mean"].(string); name != "" {
+		at := strings.LastIndexByte(pointer, '/')
+		target := pointer[:at+1] + escapePointerSegment(name)
+		// Never overwrite a key the author also wrote.
+		if _, _, taken := semanticNodeAt(data, parentDotted(path, false)+"."+name); !taken {
+			return []any{map[string]any{"op": "move", "from": pointer, "path": target}}
+		}
+	}
+	return []any{map[string]any{"op": "remove", "path": pointer}}
 }
 
 func rewriteHint(code string, params map[string]any) string {
@@ -242,74 +261,10 @@ func enrichSemanticKindDiagnostics(ds []diagnostics.Diagnostic) {
 // unknownKindRE reads the rejected kind out of an unknown-kind message.
 var unknownKindRE = regexp.MustCompile(`^unknown slide kind "([^"]*)"`)
 
+// semanticizeFindings gives the findings of a DeckSpec envelope their remedy
+// without trying any patch; see remedyEnvelope.
 func semanticizeFindings(envelope *diagnostics.FindingEnvelope, data []byte, deckID string) {
-	for i := range envelope.Findings {
-		f := &envelope.Findings[i]
-		if strings.HasSuffix(f.Code, diagnostics.CodeSemanticUnknownKind) {
-			if f.NextToolCall == nil || f.NextToolCall.Tool != "list_slide_kinds" {
-				f.NextToolCall = &patterns.ToolCallSuggestion{Tool: "list_slide_kinds", ArgsTemplate: map[string]any{}}
-			}
-			continue
-		}
-		semanticizeFinding(f, data, deckID)
-	}
-}
-
-// semanticizeFinding rewrites one finding's remediation for the DeckSpec.
-// Raw PresentationInput locators are not DeckSpec edits, but the fix's budgets
-// are: keep them rather than dropping max_chars / max_items / threshold_pct
-// with the locators (go-slide-creator-pi6ea).
-func semanticizeFinding(f *diagnostics.Finding, data []byte, deckID string) {
-	templateNotFound := strings.HasSuffix(f.Code, diagnostics.CodeTemplateNotFound)
-	templateRemediation := f.Remediation
-	rawAction, fixParams := findingFixParams(f.Remediation)
-	f.NextToolCall = nil
-	f.Remediation = nil
-	fallback, _ := f.Evidence[compositionPatchDetail].([]any)
-	delete(f.Evidence, compositionPatchDetail)
-	editPath, _ := f.Evidence[editPathDetail].(string)
-	delete(f.Evidence, editPathDetail)
-	if path, ok := f.Evidence["path"].(string); ok && deckID != "" {
-		if editPath != "" {
-			path = editPath
-		}
-		var ops []any
-		if fixParams["repair"] != "composition" || len(fallback) == 0 {
-			ops = semanticPatchOps(data, path, f.Code, fixParams)
-		}
-		usedFallback := false
-		if len(ops) == 0 && len(fallback) > 0 {
-			// A refused list has no single field to rewrite; switching the
-			// slide to its native-layout composition keeps every item
-			// (go-slide-creator-b7qqg.4).
-			ops, usedFallback = fallback, true
-		}
-		if len(ops) > 0 {
-			f.NextToolCall = semanticPatchSuggestion(deckID, ops)
-			params := patchRemediationParams(path, ops, fixParams)
-			if first, ok := ops[0].(map[string]any); ok && usedFallback {
-				params["path"] = first["path"]
-			}
-			if match := templateDidYouMean(templateNotFound, templateRemediation); match != nil {
-				params["did_you_mean"] = match
-			}
-			f.Remediation = &diagnostics.Remediation{Primary: &diagnostics.RemediationAction{
-				Action: diagnostics.ActionApplyPatch,
-				Params: params,
-			}}
-			return
-		}
-	}
-	switch {
-	case templateNotFound:
-		f.NextToolCall = nextCallListTemplates()
-		f.Remediation = templateRemediation
-	default:
-		f.NextToolCall = &patterns.ToolCallSuggestion{Tool: "describe_finding", ArgsTemplate: map[string]any{"code": f.Code}}
-		if fixParams != nil {
-			f.Remediation = &diagnostics.Remediation{Primary: &diagnostics.RemediationAction{Action: rawAction, Params: fixParams}}
-		}
-	}
+	newRemedyContext("spec.json", data, deckID).remedyEnvelope(envelope, nil)
 }
 
 // findingFixParams returns a finding's raw action and its DeckSpec-safe params.
@@ -322,60 +277,6 @@ func findingFixParams(r *diagnostics.Remediation) (diagnostics.Action, map[strin
 		kind = string(r.Primary.Action)
 	}
 	return r.Primary.Action, semanticFixParams(kind, r.Primary.Params)
-}
-
-// patchRemediationParams describes a semantic patch as remediation params:
-// the target pointer, the first op (and every op when there are several), and
-// the raw budgets it satisfies.
-func patchRemediationParams(path string, ops []any, fixParams map[string]any) map[string]any {
-	pointer, _ := semanticPointer(path)
-	params := map[string]any{"path": pointer}
-	for k, v := range fixParams {
-		params[k] = v
-	}
-	if first, ok := ops[0].(map[string]any); ok {
-		params["op"] = first["op"]
-		if value, ok := first["value"]; ok {
-			params["value"] = value
-		}
-	}
-	if len(ops) > 1 {
-		params["ops"] = ops
-	}
-	return params
-}
-
-func templateDidYouMean(templateNotFound bool, r *diagnostics.Remediation) any {
-	if !templateNotFound || r == nil || r.Primary == nil {
-		return nil
-	}
-	return r.Primary.Params["did_you_mean"]
-}
-
-func semanticizeRenderDiagnostics(ds []semanticDiagnostic, data []byte, deckID string) {
-	described := map[string]bool{}
-	for i := range ds {
-		ds[i].NextToolCall = nil
-		if deckID != "" {
-			var params map[string]any
-			if ds[i].RecommendedEdit != nil {
-				params = ds[i].RecommendedEdit.Params
-			}
-			if ops := collapsedPatchOps(data, ds[i]); len(ops) > 1 {
-				ds[i].NextToolCall = semanticPatchSuggestion(deckID, ops)
-			} else if ops := semanticPatchOps(data, ds[i].SemanticPath, ds[i].Code, params); len(ops) > 0 {
-				ds[i].NextToolCall = semanticPatchSuggestion(deckID, ops)
-			} else if len(ds[i].fallbackPatch) > 0 {
-				ds[i].NextToolCall = semanticPatchSuggestion(deckID, ds[i].fallbackPatch)
-			}
-		}
-		// describe_finding is offered once per code: the explanation is the
-		// same for every finding that carries it (go-slide-creator-c2j5b).
-		if ds[i].NextToolCall == nil && !described[ds[i].Code] {
-			described[ds[i].Code] = true
-			ds[i].NextToolCall = &patterns.ToolCallSuggestion{Tool: "describe_finding", ArgsTemplate: map[string]any{"code": ds[i].Code}}
-		}
-	}
 }
 
 // trimEnvelopeForMCP drops what an MCP DeckSpec response repeats: the CLI

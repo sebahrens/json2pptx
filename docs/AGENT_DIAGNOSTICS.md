@@ -70,8 +70,8 @@ On these surfaces every finding also carries `blocking` (true exactly when
 [SEMANTIC_COMPILER.md](SEMANTIC_COMPILER.md#one-finding-set-for-validate-and-render).
 
 (`SEMANTIC_DENSITY` and the other advisory codes are `info`/`warning` by
-default and become `error` under `strict`; they carry no `remediation` of their
-own.) Content-bearing list fields are counted **after** the compiler's own
+default and become `error` under `strict`; one that names a count or a budget
+carries it as `remediation.primary.params`.) Content-bearing list fields are counted **after** the compiler's own
 trimming/extraction, not by raw entry count: a required list whose entries are
 all blank or labelless (e.g. `steps: ["", " "]`, KPI cells with neither a number
 nor a caption, columns with no header or items) clears the raw presence gate but
@@ -93,8 +93,7 @@ to a `two-column` slide: chart in `body`, the full insight list in `body_2`), so
 validation flags the over-cap count rather than passing the raw shape. After compilation, raw validation/fit/output findings are mapped back
 through the semantic source map. For example, a raw overflow at
 `/slides/2/shape_grid/rows/0/cells/1/shape/text/content` is reported to agents
-as `slides[1].kpis[1]` with the raw path preserved only as fallback evidence
-(`evidence.raw_path`) when useful, and — for the common density/overflow
+as `/slides/1/kpis/1` with the raw path preserved only as `debug.raw_path`, and — for the common density/overflow
 failures — a `recommended_edit` (`shorten_text`, `split_slide`, `reduce_items`,
 `simplify_side`, or `split_phases`) naming the semantic edit that resolves it.
 A **post-compile raw preflight** runs the renderer's pattern-validation gate over
@@ -127,7 +126,7 @@ escape hatch for advanced repairs.
 | `id`               | string        | yes      | Unique within the envelope, e.g. `"fit-1"`.                         |
 | `code`             | string        | yes      | Dotted, namespaced code, e.g. `"FIT.placeholder_overflow"`.        |
 | `severity`         | enum          | yes      | `error` \| `warning` \| `info`.                                    |
-| `category`         | enum          | yes      | The namespace prefix of `code` (see §2.4).                          |
+| `category`         | enum          | yes      | The namespace prefix of `code` (see §2.4). `validate_deck_spec` leaves it out: the code starts with it. |
 | `path`             | string        | no       | DeckSpec surfaces: JSON Pointer (0-based) into the spec that was sent; always resolves there. |
 | `missing_path`     | string        | no       | DeckSpec surfaces: the field the finding is about when the spec does not have it; `path` is then its nearest existing parent. |
 | `slide_number`     | integer       | no       | DeckSpec surfaces: 1-based position of the slide in the rendered deck. |
@@ -137,11 +136,12 @@ escape hatch for advanced repairs.
 | `message`          | string        | yes      | Human-readable description.                                         |
 | `evidence`         | object        | no       | Numeric/enum facts only — never prose.                             |
 | `remediation`      | `Remediation` | no       | Structured repair (see §2.5).                                      |
-| `next_tool_call`   | object        | no       | Replayable tool-call hop to recover/investigate: `{tool, args_template}`. |
+| `next_tool_call`   | object        | no       | Replayable tool-call hop to recover/investigate: `{tool, args_template}`. On the DeckSpec tools: the patch that resolves the finding, when there is one. |
+| `patch_verified`   | boolean       | no       | DeckSpec tools: `next_tool_call`'s patch is complete as written and the server applied it to the spec and validated the result — this finding is gone and nothing new blocks. Only ever `true`. |
 | `example_value`    | any           | no       | Representative valid value for the offending argument/field.        |
 | `doc_url`          | string        | no       | Human documentation for the code.                                  |
 | `debug`            | object        | no       | DeckSpec surfaces: locators into the compiled deck (`raw_path`, `cell_path`). Not addresses in the spec. |
-| `describe_command` | string        | no       | Executable lookup, `json2pptx describe-finding <code>`. The MCP DeckSpec tools leave it out and offer `describe_finding` as `next_tool_call` on the first finding of each code. |
+| `describe_command` | string        | no       | Executable lookup, `json2pptx describe-finding <code>`. The MCP DeckSpec tools leave it out and offer `describe_finding` as `next_tool_call` on a blocking finding that carries no remedy of its own, once per code. |
 
 `evidence` carries only machine-actionable facts: measured-vs-allowed extents,
 overflow ratios, the offending JSON `path`, the `expected_type`, the fit
@@ -220,10 +220,18 @@ Each `RemediationAction` has an `action` from the fixed vocabulary and an
 | `move_to_placeholder` | Move content to a different placeholder.                  |
 | `remove_emoji`        | Strip emoji per content policy.                           |
 | `regenerate_pattern`  | Re-expand the pattern with corrected values.              |
+| `reduce_items`        | Drop or merge list items to fit `max_items`.              |
 
 Legacy `Fix.Kind` values are mapped onto this vocabulary by
 `diagnostics.mapFixKindToAction`; the original kind is preserved in `params`
 when it is not already an action verb.
+
+On the DeckSpec surfaces the remediation is narrower
+(go-slide-creator-micna): `params` holds only the budgets and choices the
+action must meet (`max_chars`, `max_items`, `did_you_mean`, …), `apply_patch`
+means `next_tool_call` carries a complete patch, and neither a prose `hint`,
+the raw fix kind nor a compiled-deck locator is reported. See
+[SEMANTIC_COMPILER.md](SEMANTIC_COMPILER.md#one-remedy-per-finding).
 
 ## 3. Adoption status
 

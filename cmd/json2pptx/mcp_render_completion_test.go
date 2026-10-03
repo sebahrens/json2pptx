@@ -123,14 +123,21 @@ func TestUnknownRepairKindRetriesDidYouMean(t *testing.T) {
 }
 
 func TestTemplatePrecedenceWarning(t *testing.T) {
-	if w := templatePrecedenceWarning("midnight-blue", "forest-green", ""); !strings.Contains(w, "forest-green") || !strings.Contains(w, "/meta/template") {
+	// A template argument replaces the pin for the call and says how to keep it.
+	over := resolveSpecTemplate("midnight-blue", "forest-green", "", specSource{})
+	if over.Override != "forest-green" || over.Bind != "midnight-blue" || len(over.Warnings) != 1 ||
+		!strings.Contains(over.Warnings[0], "forest-green") || !strings.Contains(over.Warnings[0], "/meta/template") {
+		t.Errorf("override = %+v", over)
+	}
+	if same := resolveSpecTemplate("midnight-blue", "midnight-blue", "", specSource{}); same.Override != "" || len(same.Warnings) != 0 {
+		t.Errorf("same template: %+v", same)
+	}
+	if unpinned := resolveSpecTemplate("", "forest-green", "", specSource{}); unpinned.Override != "" || len(unpinned.Warnings) != 0 {
+		t.Errorf("unpinned spec: %+v", unpinned)
+	}
+	// A template file does not replace the pin.
+	if w := templatePrecedenceWarning("midnight-blue", "", "brand.pptx"); !strings.Contains(w, "brand.pptx") || !strings.Contains(w, "was ignored") {
 		t.Errorf("warning = %q", w)
-	}
-	if w := templatePrecedenceWarning("midnight-blue", "midnight-blue", ""); w != "" {
-		t.Errorf("same template warned: %q", w)
-	}
-	if w := templatePrecedenceWarning("", "forest-green", ""); w != "" {
-		t.Errorf("unpinned spec warned: %q", w)
 	}
 }
 
@@ -149,7 +156,9 @@ func TestSlideNumberMessage(t *testing.T) {
 }
 
 // go-slide-creator-pi6ea: DeckSpec findings keep the raw fix budgets and emit
-// structural patches for lists.
+// structural patches for lists. go-slide-creator-micna: the remediation holds
+// the action and its budgets, the patch lives in next_tool_call alone, and a
+// measurement that is no budget (threshold_pct) stays in the message.
 func TestSemanticizeFindingsKeepsFixParams(t *testing.T) {
 	data := []byte(`{"meta":{"title":"T"},"slides":[{"kind":"content","title":"A long title","bullets":["a","b","c","d"]}]}`)
 	envelope := diagnostics.FindingEnvelope{Findings: []diagnostics.Finding{
@@ -163,11 +172,18 @@ func TestSemanticizeFindingsKeepsFixParams(t *testing.T) {
 	semanticizeFindings(&envelope, data, "deck_1")
 
 	title := envelope.Findings[0]
-	if title.Remediation == nil || title.Remediation.Primary.Params["max_chars"] != 20 || title.Remediation.Primary.Params["path"] != "/slides/0/title" {
-		t.Errorf("title remediation lost max_chars or kept the raw path: %+v", title.Remediation)
+	if title.Remediation == nil || title.Remediation.Primary.Action != diagnostics.ActionShortenText || len(title.Remediation.Primary.Params) != 1 || title.Remediation.Primary.Params["max_chars"] != 20 {
+		t.Errorf("title remediation is not shorten_text {max_chars: 20}: %+v", title.Remediation.Primary)
 	}
-	if v, _ := title.Remediation.Primary.Params["value"].(string); !strings.Contains(v, "20 characters") {
+	rewrite, _ := title.NextToolCall.ArgsTemplate["patch"].([]any)
+	if len(rewrite) != 1 || rewrite[0].(map[string]any)["path"] != "/slides/0/title" {
+		t.Fatalf("title patch = %+v", rewrite)
+	}
+	if v, _ := rewrite[0].(map[string]any)["value"].(string); !strings.Contains(v, "20 characters") {
 		t.Errorf("rewrite hint does not name the budget: %q", v)
+	}
+	if title.PatchVerified {
+		t.Error("a patch the author has to complete is marked verified")
 	}
 
 	list := envelope.Findings[1]
@@ -176,8 +192,12 @@ func TestSemanticizeFindingsKeepsFixParams(t *testing.T) {
 		t.Errorf("list patch = %+v", ops)
 	}
 
+	if list.Remediation == nil || list.Remediation.Primary.Action != diagnostics.ActionApplyPatch || list.Remediation.Primary.Params["max_items"] != 2 {
+		t.Errorf("list remediation = %+v, want apply_patch {max_items: 2}", list.Remediation)
+	}
+
 	other := envelope.Findings[2]
-	if other.Remediation == nil || other.Remediation.Primary.Params["threshold_pct"] != 80 {
-		t.Errorf("unpatchable finding dropped its params: %+v", other.Remediation)
+	if other.Remediation != nil || other.NextToolCall != nil {
+		t.Errorf("a finding with no budget and no patch carries a remedy: %+v %+v", other.Remediation, other.NextToolCall)
 	}
 }

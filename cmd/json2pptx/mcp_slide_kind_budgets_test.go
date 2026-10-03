@@ -121,8 +121,11 @@ func TestListSlideKindsBudgetsAreOptIn(t *testing.T) {
 
 // renderDiagnostic is one diagnostic of `semantic render`.
 type renderDiagnostic struct {
-	Code         string `json:"code"`
-	SemanticPath string `json:"semantic_path"`
+	Code string `json:"code"`
+	// Path is the finding's JSON Pointer; SemanticPath the same in the dotted
+	// notation these tests compare.
+	Path         string `json:"path"`
+	SemanticPath string `json:"-"`
 	Message      string `json:"message"`
 	Edit         *struct {
 		Params map[string]any `json:"params"`
@@ -154,6 +157,9 @@ func renderSpecDiagnostics(t *testing.T, spec map[string]any) []renderDiagnostic
 	}
 	if err := json.Unmarshal([]byte(stdout), &res); err != nil {
 		t.Fatalf("render output is not JSON: %v\n%s\n%s", err, stdout, stderr)
+	}
+	for i := range res.Diagnostics {
+		res.Diagnostics[i].SemanticPath = dottedPath(res.Diagnostics[i].Path)
 	}
 	return res.Diagnostics
 }
@@ -224,8 +230,17 @@ func TestSlideKindBudgetsAgreeWithRenderFindings(t *testing.T) {
 				case strings.HasSuffix(d.SemanticPath, ".takeaway"):
 					quoted := 0
 					if d.Edit != nil {
-						if n, ok := d.Edit.Params["max_chars"].(float64); ok {
+						// One entry stands for every slide whose takeaway is over its
+						// band; a budget that differs per slide is a list.
+						switch n := d.Edit.Params["max_chars"].(type) {
+						case float64:
 							quoted = int(n)
+						case []any:
+							for _, v := range n {
+								if f, ok := v.(float64); ok && (quoted == 0 || int(f) < quoted) {
+									quoted = int(f)
+								}
+							}
 						}
 					}
 					if quoted < takeaway.MaxChars {

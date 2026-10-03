@@ -533,6 +533,35 @@ func PayloadFieldNames(k SlideKind) []string {
 	return out
 }
 
+// PayloadVocabulary returns every key a kind's payload can carry: its fields
+// and the keys of their list entries and objects. A finding that advises an
+// author of that kind may name these and no other field (go-slide-creator-micna).
+func PayloadVocabulary(k SlideKind) []string {
+	fields, ok := kindPayloadFields[k]
+	if !ok {
+		return nil
+	}
+	seen := map[string]bool{}
+	for name, f := range fields {
+		seen[name] = true
+		for _, key := range f.itemKeys {
+			seen[key] = true
+		}
+		for key := range f.itemKeySchemas {
+			seen[key] = true
+		}
+		for _, key := range f.objectKeys {
+			seen[key] = true
+		}
+	}
+	out := make([]string, 0, len(seen))
+	for name := range seen {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // validateUnknownFields reports payload keys (and list-entry / chart keys) the
 // kind's compiler never reads. Without it such content vanishes silently.
 func validateUnknownFields(path string, slide SlideSpec, s *semDiags) {

@@ -64,7 +64,8 @@
         "split_slide",
         "move_to_placeholder",
         "remove_emoji",
-        "regenerate_pattern"
+        "regenerate_pattern",
+        "reduce_items"
       ]
     },
     "where": {
@@ -167,6 +168,10 @@
         },
         "remediation": { "$ref": "#/$defs/remediation" },
         "next_tool_call": { "$ref": "#/$defs/tool_call_suggestion" },
+        "patch_verified": {
+          "type": "boolean",
+          "description": "DeckSpec surfaces: next_tool_call's patch was applied to the spec and validated by the server; this finding is gone and no new blocking finding appeared. Only ever true, and only on a patch that is complete as written."
+        },
         "example_value": {
           "description": "Representative valid value for the offending argument/field. Any JSON type."
         },

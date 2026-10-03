@@ -20,9 +20,13 @@ import (
 // the second a description, so no tier has components.
 const archOnModernSpec = `{"meta":{"template":"modern","title":"Architecture validation mismatch"},"slides":[{"kind":"architecture","rails":["Security & compliance","Cost governance"],"takeaway":"Every tier ships independently; the rails are owned centrally.","tiers":[{"items":["Web console","Mobile approvals","Partner portal for resellers and distributors"],"label":"Experience"},{"description":"Orders, pricing, fulfilment, identity","label":"Services"},{"description":"Event stream, warehouse, feature store","label":"Data"},{"description":"Kubernetes, observability, secrets","label":"Platform"}],"title":"Four tiers, two concerns that cut across them"}]}`
 
-// wantArchPatch is the source-preserving fix both surfaces must hand back: the
-// kind's native-bullets composition keeps every tier item.
-var wantArchPatch = []any{map[string]any{"op": "add", "path": "/slides/0/layout", "value": "content"}}
+// wantArchPatch is the fix both surfaces must hand back, tried on the spec
+// before it is offered: the smallest cut that clears the refused tier — its
+// longest item (go-slide-creator-4mmvb). The source-preserving alternative,
+// the kind's native-bullets composition, is named beside it.
+var wantArchPatch = []any{map[string]any{"op": "remove", "path": "/slides/0/tiers/0/items/2"}}
+
+const wantArchAlternative = `set /slides/0/layout to "content"`
 
 func refusalTestConfig(t *testing.T) *mcpConfig {
 	t.Helper()
@@ -91,6 +95,12 @@ func TestValidateDeckSpecRefusesUnreadableGridTextLikeRender(t *testing.T) {
 	if patch := patchOf(t, found.NextToolCall); !reflect.DeepEqual(patch, wantArchPatch) {
 		t.Errorf("patch = %v, want %v", patch, wantArchPatch)
 	}
+	if !found.PatchVerified || !strings.Contains(found.Message, "verified fix") || !strings.Contains(found.Message, wantArchAlternative) {
+		t.Errorf("the patch is not marked verified, or the finding does not name the layout that keeps every word: verified=%v %s", found.PatchVerified, found.Message)
+	}
+	if found.Remediation == nil || found.Remediation.Primary.Action != diagnostics.ActionApplyPatch {
+		t.Errorf("remediation = %+v, want apply_patch", found.Remediation)
+	}
 }
 
 // go-slide-creator-b7qqg.4: the render refusal keeps its code, severity,
@@ -141,6 +151,9 @@ func TestRenderDeckSpecRefusalIsSourceAddressedAndRepairable(t *testing.T) {
 	if !reflect.DeepEqual(render.NextToolCall, d.NextToolCall) {
 		t.Errorf("top-level next_tool_call = %+v, want the refusal's patch", render.NextToolCall)
 	}
+	if !d.patchVerified || !strings.Contains(d.Message, wantArchAlternative) {
+		t.Errorf("the refusal's patch is not marked verified, or the alternative is not named: verified=%v %s", d.patchVerified, d.Message)
+	}
 
 	// The follow-up is executable: apply it, then render the stored deck.
 	vres, err := mc.handleValidateDeckSpec(ctx, makeRequest(map[string]any{"deck_id": render.DeckID, "patch": patch}))
@@ -189,7 +202,9 @@ func TestDeckSpecReadabilityVerdictParityAllKindsAllTemplates(t *testing.T) {
 				if !d.Blocking {
 					continue
 				}
-				if d.SemanticPath == "" || d.NextToolCall == nil {
+				// A blocking finding says where it is and what to do: a patch, or
+				// the edit and its budget.
+				if d.SemanticPath == "" || (d.NextToolCall == nil && d.RecommendedEdit == nil) {
 					t.Errorf("%s: blocking diagnostic not source-addressed: %+v", label, d)
 				}
 			}

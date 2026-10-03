@@ -192,7 +192,7 @@ func finishCollapsed(d *semanticDiagnostic) {
 	if spansSlides(d.members) {
 		where = "in the deck"
 	}
-	d.Message = d.baseMessage + fmt.Sprintf(" — %d like this %s (see paths)", n, where)
+	d.Message = d.baseMessage + fmt.Sprintf(" — %d like this %s", n, where)
 	if d.diag == nil {
 		return
 	}
@@ -231,43 +231,6 @@ func finishCollapsed(d *semanticDiagnostic) {
 		}
 	}
 	d.diag = &source
-}
-
-// collapsedPatchOps builds the DeckSpec patch for every member of a collapsed
-// finding, each with its own budget, so applying the suggestion clears the
-// whole entry rather than its first item.
-func collapsedPatchOps(data []byte, d semanticDiagnostic) []any {
-	if len(d.members) < 2 {
-		return nil
-	}
-	var ops []any
-	for _, m := range d.members {
-		ops = append(ops, semanticPatchOps(data, m.Path, d.Code, m.fixParams)...)
-	}
-	return ops
-}
-
-// expandCollapsedPatches replaces the single-item patch of each collapsed
-// envelope finding with the patch for all of its items. envelope and diags
-// are index-aligned.
-func expandCollapsedPatches(envelope *diagnostics.FindingEnvelope, diags []semanticDiagnostic, data []byte, deckID string) {
-	if deckID == "" {
-		return
-	}
-	for i := range envelope.Findings {
-		if i >= len(diags) {
-			return
-		}
-		f := &envelope.Findings[i]
-		ops := collapsedPatchOps(data, diags[i])
-		if len(ops) < 2 || f.NextToolCall == nil || f.NextToolCall.Tool != "validate_deck_spec" {
-			continue
-		}
-		f.NextToolCall = semanticPatchSuggestion(deckID, ops)
-		if f.Remediation != nil && f.Remediation.Primary != nil && f.Remediation.Primary.Params != nil {
-			f.Remediation.Primary.Params["ops"] = ops
-		}
-	}
 }
 
 // fallbackSymptomCodes are the fit findings that measure how much text a slide
@@ -316,6 +279,13 @@ func fallbackSymptomOf(i int, d semanticDiagnostic, roots map[string]int) (int, 
 	if slide == "" && d.SlideIndex != nil {
 		slide = fmt.Sprintf("slides[%d]", *d.SlideIndex)
 	}
+	// A finding at a field of its own (the takeaway band, the title) is about
+	// that field whatever the body renders as: its budget must stay visible.
+	if d.SemanticPath != "" && d.SemanticPath != slide {
+		if field := strings.TrimPrefix(d.SemanticPath, slide+"."); field == "takeaway" || field == "title" || field == "source" {
+			return 0, false
+		}
+	}
 	at, ok := roots[slide]
 	return at, ok && at != i
 }
@@ -338,16 +308,13 @@ func foldFallbackSymptoms(diags []semanticDiagnostic) []semanticDiagnostic {
 			continue
 		}
 		root := &diags[at]
-		// A symptom that blocks keeps its sentence (it is why the cause now
-		// blocks); the rest are named by code, since they describe a rendering
-		// the author did not ask for.
+		// Symptoms are named by code: they describe a rendering the author did
+		// not ask for, and what to do about it is the cause's sentence — "trim
+		// the bullets to 80 words" is not the remedy for a summary with one
+		// point too many.
 		symptom := findingSymptom{Code: d.Code}
 		if diagnosticBlocks(d) {
 			blocked[at] = true
-			// A row limit and its fit twin say the same thing; one sentence.
-			if root.Code != diagnostics.CodeSemanticDensity {
-				symptom.Message = d.Message
-			}
 		}
 		root.Symptoms = appendSymptom(root.Symptoms, symptom)
 		// A cause that names no fix of its own keeps the symptom's (a table
@@ -377,7 +344,7 @@ func foldFallbackSymptoms(diags []semanticDiagnostic) []semanticDiagnostic {
 		if len(d.Symptoms) > 0 {
 			if blocked[i] && !diagnosticBlocks(d) {
 				setDiagnosticSeverity(&d, diagnostics.SeverityError)
-				d.Message += " — and what renders instead does not fit (see symptoms)"
+				d.Message += " — and the fallback does not fit (see symptoms)"
 			}
 			if d.diag != nil {
 				source := *d.diag

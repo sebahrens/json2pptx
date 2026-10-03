@@ -408,12 +408,18 @@ curl -X POST "http://localhost:8080/api/v1/semantic/compile?include_compiled_jso
   --data-binary @qbr.yaml
 ```
 
-Semantic findings point to source fields such as `slides[2].metrics[1].label`.
-When a raw validator emits a generated JSON pointer, the semantic source map
-translates it back to the closest semantic field and preserves the raw path as
-fallback evidence.
+Semantic findings carry `path`, a JSON Pointer into the spec that was sent
+(`/slides/2/kpis/1/label`; it always resolves there), `missing_path` for a
+field the spec lacks, `slide_number` and `blocking` — the same form
+`validate_deck_spec` reports. When a raw validator emits a generated JSON
+pointer, the semantic source map translates it back to the closest semantic
+field and keeps the raw pointer under `debug`.
 
 #### Render
+
+The `template` query parameter names a registered template. It renders the
+deck whether or not the spec pins `meta.template`; when it replaces a pin the
+result's `warnings[]` says so.
 
 `POST /api/v1/semantic/render` runs the same presentation runner as the
 `json2pptx semantic render` CLI and the `render_deck_spec` MCP tool — same
@@ -427,7 +433,7 @@ The body is either the raw spec document (as for validate/compile) or
 | Part | Required | Description |
 |------|----------|-------------|
 | `spec` | Yes | The spec (file or field). A `.json` filename or a `{`-leading field parses as JSON, otherwise YAML |
-| `template` | No | A bring-your-own `.pptx`. Used when the spec pins no `meta.template` (`meta.template` wins and a warning says so) |
+| `template` | No | A bring-your-own `.pptx`. Used when the spec pins no `meta.template` (`meta.template` wins over an uploaded file and a warning says so) |
 | `assets` | No, repeatable | Asset files. Relative asset paths in the spec resolve against them by base filename |
 
 A relative asset path to a file that was not uploaded is refused. Local image

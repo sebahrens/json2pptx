@@ -155,6 +155,8 @@ func runServe() error {
 		// config so HTTP renders use this server's templates dir, SVG
 		// strategy and image allow-list (go-slide-creator-b7qqg.25).
 		SemanticRenderer: newHTTPSemanticRenderer(cfg),
+		// One address form on every DeckSpec surface (go-slide-creator-pilpn).
+		SemanticFindings: finishSemanticFindingsForHTTP,
 	})
 
 	// Start output file cleanup daemon (enforces FileRetention policy)

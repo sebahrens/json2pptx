@@ -77,6 +77,8 @@ const (
 	ActionMoveToPlaceholder Action = "move_to_placeholder"
 	ActionRemoveEmoji       Action = "remove_emoji"
 	ActionRegeneratePattern Action = "regenerate_pattern"
+	// ActionReduceItems: drop or merge list items to fit params.max_items.
+	ActionReduceItems Action = "reduce_items"
 )
 
 // AllActions returns every declared remediation action, in catalog order.
@@ -90,6 +92,7 @@ func AllActions() []Action {
 		ActionMoveToPlaceholder,
 		ActionRemoveEmoji,
 		ActionRegeneratePattern,
+		ActionReduceItems,
 	}
 }
 
@@ -160,8 +163,9 @@ type Finding struct {
 	// DeckSpec surfaces set it on every finding, and it is true exactly when
 	// Severity is "error"; surfaces that do not gate leave it absent.
 	Blocking *bool `json:"blocking,omitempty"`
-	// Category is the namespace prefix of Code (e.g. "FIT").
-	Category Namespace `json:"category"`
+	// Category is the namespace prefix of Code (e.g. "FIT"). validate_deck_spec
+	// leaves it out: the code already starts with it.
+	Category Namespace `json:"category,omitempty"`
 	// Path is the finding's address in the document the author sent, as a JSON
 	// Pointer (RFC 6901, 0-based). The DeckSpec surfaces set it on every finding
 	// and it always resolves in that document: a finding about a field that is
@@ -191,6 +195,11 @@ type Finding struct {
 	Evidence map[string]any `json:"evidence,omitempty"`
 	// Remediation is the structured repair suggestion, when one exists.
 	Remediation *Remediation `json:"remediation,omitempty"`
+	// PatchVerified reports that the server applied NextToolCall's patch to the
+	// spec and validated the result: this finding is gone and no new blocking
+	// finding appeared. Set by the DeckSpec surfaces, and only on a patch that
+	// is complete as written (no value left for the author to write).
+	PatchVerified bool `json:"patch_verified,omitempty"`
 	// NextToolCall is a machine-readable suggestion for the next tool call that
 	// would resolve the issue, replayable verbatim by an agent. It is distinct
 	// from Remediation: Remediation says *what* to change in the deck, while
