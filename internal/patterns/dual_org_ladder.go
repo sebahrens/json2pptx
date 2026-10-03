@@ -248,15 +248,9 @@ func (d *dualOrgLadder) Validate(values, overrides any, cellOverrides map[int]an
 	if ovr, ok := overrides.(*DualOrgLadderOverrides); ok && ovr != nil && ovr.Style != "" && !slices.Contains(dualOrgStyles, ovr.Style) {
 		errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, dualOrgStyles))
 	}
-	highlighted := 0
-	for i, row := range v.Rows {
-		if row.Highlight {
-			if highlighted++; highlighted == 2 {
-				errs = append(errs, newValidationError(name, fmt.Sprintf("rows[%d].highlight", i), ErrCodeInvalidShape,
-					"dual-org-ladder: at most one pair may set highlight; an emphasis shared by several pairs is no emphasis", nil))
-			}
-		}
-	}
+	errs = append(errs, singleHighlightErrors(name, "pair", "pairs", len(v.Rows),
+		func(i int) bool { return v.Rows[i].Highlight },
+		func(i int) string { return fmt.Sprintf("rows[%d].highlight", i) })...)
 
 	for i, row := range v.Rows {
 		if strings.TrimSpace(row.ANameField) == "" {
@@ -369,31 +363,7 @@ func (d *dualOrgLadder) Expand(ctx ExpandContext, values, overrides any, cellOve
 		}
 		gridRow := jsonschema.GridRowInput{Cells: cells, MinHeight: bodyMinPt}
 		if open {
-			// Open role entries: no card, the pair joined by a line in the
-			// gutter. A highlighted pair is one tinted band.
-			link := &jsonschema.GridCellInput{}
-			fill, line := json.RawMessage(`"none"`), noLine
-			if row.Highlight {
-				tone := inactiveTintTone(accentA)
-				fill = tone.fillJSON()
-				// Outlined in its own colour so the band shows no seams.
-				line = metricListBandLine(tone)
-				ink := readableTextOn(ctx, tone, "dk1")
-				for _, c := range cells {
-					c.Shape.Text = recolorTextInk(recolorTextInk(c.Shape.Text, "dk1", ink), "dk2", ink)
-				}
-				link = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: fill, Line: line}}
-			}
-			for _, c := range cells {
-				c.Shape.Fill, c.Shape.Line = fill, line
-			}
-			if showConnectors && !row.Highlight {
-				link = &jsonschema.GridCellInput{
-					MaxHeight: dualOrgLinkLinePt,
-					Shape:     &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: accentFillJSON(accentA), Line: noLine},
-				}
-			}
-			gridRow.Cells = []*jsonschema.GridCellInput{cells[0], link, cells[1]}
+			gridRow.Cells = dualOrgOpenPair(ctx, cells, row.Highlight, showConnectors, accentA)
 		}
 		if showConnectors && !open {
 			gridRow.Connector = &jsonschema.ConnectorSpecInput{
@@ -428,16 +398,50 @@ func (d *dualOrgLadder) Expand(ctx ExpandContext, values, overrides any, cellOve
 		Rows:    rows,
 	}
 	if open {
-		// [org A | link | org B]: the link column is the gutter the pairing
-		// line runs through, touching both role entries.
-		areaW, _ := sizingAreaPt(ctx)
-		linkPct := dualOrgLinkPt / areaW * 100
-		grid.Columns, _ = json.Marshal([]float64{(100 - linkPct) / 2, linkPct, (100 - linkPct) / 2})
-		grid.ColGap = dualOrgOpenColGapPt
-		header := grid.Rows[0].Cells
-		grid.Rows[0].Cells = []*jsonschema.GridCellInput{header[0], {}, header[1]}
+		dualOrgOpenColumns(ctx, grid)
 	}
 	return grid, nil
+}
+
+// dualOrgOpenPair is one open pair: the two role entries with no card, joined
+// by the pairing line in the gutter. A highlighted pair is one tinted band
+// instead.
+func dualOrgOpenPair(ctx ExpandContext, cells []*jsonschema.GridCellInput, highlight, showConnectors bool, accent string) []*jsonschema.GridCellInput {
+	link := &jsonschema.GridCellInput{}
+	fill, line := json.RawMessage(`"none"`), noLine
+	switch {
+	case highlight:
+		tone := inactiveTintTone(accent)
+		fill = tone.fillJSON()
+		// Outlined in its own colour so the band shows no seams.
+		line = metricListBandLine(tone)
+		ink := readableTextOn(ctx, tone, "dk1")
+		for _, c := range cells {
+			c.Shape.Text = recolorTextInk(recolorTextInk(c.Shape.Text, "dk1", ink), "dk2", ink)
+		}
+		link = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: fill, Line: line}}
+	case showConnectors:
+		link = &jsonschema.GridCellInput{
+			MaxHeight: dualOrgLinkLinePt,
+			Shape:     &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: accentFillJSON(accent), Line: noLine},
+		}
+	}
+	for _, c := range cells {
+		c.Shape.Fill, c.Shape.Line = fill, line
+	}
+	return []*jsonschema.GridCellInput{cells[0], link, cells[1]}
+}
+
+// dualOrgOpenColumns lays the open ladder on [org A | link | org B]: the link
+// column is the gutter the pairing line runs through, touching both role
+// entries.
+func dualOrgOpenColumns(ctx ExpandContext, grid *jsonschema.ShapeGridInput) {
+	areaW, _ := sizingAreaPt(ctx)
+	linkPct := dualOrgLinkPt / areaW * 100
+	grid.Columns, _ = json.Marshal([]float64{(100 - linkPct) / 2, linkPct, (100 - linkPct) / 2})
+	grid.ColGap = dualOrgOpenColGapPt
+	header := grid.Rows[0].Cells
+	grid.Rows[0].Cells = []*jsonschema.GridCellInput{header[0], {}, header[1]}
 }
 
 // ---------------------------------------------------------------------------

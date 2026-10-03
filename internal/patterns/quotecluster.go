@@ -222,16 +222,9 @@ func (q *quoteCluster) Validate(values, overrides any, cellOverrides map[int]any
 	if ovr, ok := overrides.(*QuoteClusterOverrides); ok && ovr != nil && ovr.Style != "" && !slices.Contains(quoteClusterStyles, ovr.Style) {
 		errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, quoteClusterStyles))
 	}
-	highlighted := 0
-	for i, qt := range v.Quotes {
-		if !qt.Highlight {
-			continue
-		}
-		if highlighted++; highlighted == 2 {
-			errs = append(errs, newValidationError(name, fmt.Sprintf("quotes[%d].highlight", i), ErrCodeInvalidShape,
-				"quote-cluster: at most one quote may set highlight; an emphasis shared by several quotes is no emphasis", nil))
-		}
-	}
+	errs = append(errs, singleHighlightErrors(name, "quote", "quotes", len(v.Quotes),
+		func(i int) bool { return v.Quotes[i].Highlight },
+		func(i int) string { return fmt.Sprintf("quotes[%d].highlight", i) })...)
 
 	if len(v.Quotes) < quoteClusterMinQuotes {
 		errs = append(errs, errMinItems(name, "quotes", quoteClusterMinQuotes, len(v.Quotes),

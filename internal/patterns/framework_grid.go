@@ -240,15 +240,9 @@ func (p *frameworkGrid) Validate(values, overrides any, cellOverrides map[int]an
 			errs = append(errs, errInvalidEnum(fgName, "overrides.style", ovr.Style, fgStyles))
 		}
 	}
-	highlighted := 0
-	for i, row := range vals.Rows {
-		if row.Highlight {
-			if highlighted++; highlighted == 2 {
-				errs = append(errs, newValidationError(fgName, fmt.Sprintf("rows[%d].highlight", i), ErrCodeInvalidShape,
-					fgName+": at most one row may set highlight; an emphasis shared by several rows is no emphasis", nil))
-			}
-		}
-	}
+	errs = append(errs, singleHighlightErrors(fgName, "row", "rows", len(vals.Rows),
+		func(i int) bool { return vals.Rows[i].Highlight },
+		func(i int) string { return fmt.Sprintf("rows[%d].highlight", i) })...)
 
 	if len(vals.Rows) < fgMinRows {
 		errs = append(errs, errMinItems(fgName, "rows", fgMinRows, len(vals.Rows), "(hint: a single row of cards is a card-grid)"))

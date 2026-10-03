@@ -348,23 +348,7 @@ func (c *comparison2col) Validate(values, overrides any, cellOverrides map[int]a
 			}
 		}
 	}
-	// One emphasis: a single highlighted row, or one highlighted column.
-	highlighted := 0
-	for i, row := range vals.Rows {
-		if !row.Highlight {
-			continue
-		}
-		highlighted++
-		ovr, _ := overrides.(*Comparison2colOverrides)
-		switch {
-		case highlighted == 2:
-			errs = append(errs, newValidationError(name, fmt.Sprintf("rows[%d].highlight", i), ErrCodeInvalidShape,
-				"comparison-2col: at most one row may set highlight; an emphasis shared by several rows is no emphasis", nil))
-		case highlighted == 1 && ovr != nil && ovr.HighlightColumn != "":
-			errs = append(errs, newValidationError(name, fmt.Sprintf("rows[%d].highlight", i), ErrCodeInvalidShape,
-				"comparison-2col: highlight a row or a column (overrides.highlight_column), not both", nil))
-		}
-	}
+	errs = append(errs, comparisonEmphasisErrors(name, vals, overrides)...)
 
 	// Rows required and count check
 	if len(vals.Rows) == 0 {
@@ -415,6 +399,26 @@ func (c *comparison2col) Validate(values, overrides any, cellOverrides map[int]a
 	}
 
 	return errors.Join(errs...)
+}
+
+// comparisonEmphasisErrors enforces the one emphasis of the open comparison:
+// a single highlighted row, or one highlighted column, never both.
+func comparisonEmphasisErrors(name string, vals *Comparison2colValues, overrides any) []error {
+	rowPath := func(i int) string { return fmt.Sprintf("rows[%d].highlight", i) }
+	errs := singleHighlightErrors(name, "row", "rows", len(vals.Rows),
+		func(i int) bool { return vals.Rows[i].Highlight }, rowPath)
+	ovr, _ := overrides.(*Comparison2colOverrides)
+	if ovr == nil || ovr.HighlightColumn == "" {
+		return errs
+	}
+	for i, row := range vals.Rows {
+		if row.Highlight {
+			errs = append(errs, newValidationError(name, rowPath(i), ErrCodeInvalidShape,
+				"comparison-2col: highlight a row or a column (overrides.highlight_column), not both", nil))
+			break
+		}
+	}
+	return errs
 }
 
 func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
@@ -781,22 +785,8 @@ func buildComparison2colRows(ctx ExpandContext, vals *Comparison2colValues, ovr 
 			},
 		}
 		if open {
-			// A header is a bold heading over its accent rule, not a filled
-			// band; only the highlighted column's header takes the accent.
-			for _, h := range []struct {
-				cell   *jsonschema.GridCellInput
-				text   string
-				accent string
-				side   string
-			}{{leftCell, vals.HeaderLeft, leftAccent, "left"}, {rightCell, vals.HeaderRight, rightAccent, "right"}} {
-				h.cell.Shape.Fill, h.cell.Shape.Line = json.RawMessage(`"none"`), noLine
-				h.cell.Shape.Text = buildComparison2colTextContent(h.text, headerSize, true, "dk1", "l")
-				if ovr.HighlightColumn == h.side {
-					tone, ink := accentFillAndInk(ctx, fillTone{Color: h.accent}, 4.5)
-					h.cell.Shape.Fill = tone.fillJSON()
-					h.cell.Shape.Text = buildComparison2colTextContent(h.text, headerSize, true, ink, "l")
-				}
-			}
+			openComparisonHeader(ctx, leftCell, vals.HeaderLeft, headerSize, leftAccent, ovr.HighlightColumn == "left")
+			openComparisonHeader(ctx, rightCell, vals.HeaderRight, headerSize, rightAccent, ovr.HighlightColumn == "right")
 		}
 		applyComparison2colCellOverride(leftCell, cellOverrides, cellIdx, leftAccent)
 		cellIdx++
@@ -863,18 +853,7 @@ func buildComparison2colRows(ctx ExpandContext, vals *Comparison2colValues, ovr 
 			rightCell.Shape.Line = nil
 		}
 		if open {
-			// The one emphasis: a highlighted row, or a highlighted column.
-			for _, side := range []struct {
-				cell *jsonschema.GridCellInput
-				text string
-				name string
-			}{{leftCell, row.Left, "left"}, {rightCell, row.Right, "right"}} {
-				if !row.Highlight && ovr.HighlightColumn != side.name {
-					continue
-				}
-				side.cell.Shape.Fill = rightTintJSON
-				side.cell.Shape.Text = buildComparison2colTextContent(pptx.ConvertMarkdownEmphasis(side.text), bodySize, false, rightTextColor, "l")
-			}
+			openComparisonEmphasis(leftCell, rightCell, row, ovr.HighlightColumn, bodySize, rightTintJSON, rightTextColor)
 		}
 		applyComparison2colCellOverride(rightCell, cellOverrides, cellIdx, baseAccent)
 		cellIdx++
@@ -898,6 +877,34 @@ func buildComparison2colRows(ctx ExpandContext, vals *Comparison2colValues, ovr 
 	}
 
 	return rows
+}
+
+// openComparisonHeader restyles a header cell for the open style: a bold
+// heading over its accent rule, not a filled band. Only a highlighted
+// column's header takes the solid accent.
+func openComparisonHeader(ctx ExpandContext, cell *jsonschema.GridCellInput, text string, size float64, accent string, highlight bool) {
+	cell.Shape.Fill, cell.Shape.Line = json.RawMessage(`"none"`), noLine
+	ink := "dk1"
+	if highlight {
+		var tone fillTone
+		tone, ink = accentFillAndInk(ctx, fillTone{Color: accent}, 4.5)
+		cell.Shape.Fill = tone.fillJSON()
+	}
+	cell.Shape.Text = buildComparison2colTextContent(text, size, true, ink, "l")
+}
+
+// openComparisonEmphasis tints the cells of the one emphasis of an open
+// comparison: both cells of a highlighted row, or the cell in the highlighted
+// column.
+func openComparisonEmphasis(left, right *jsonschema.GridCellInput, row Comparison2colRow, column string, bodySize float64, tint json.RawMessage, ink string) {
+	if row.Highlight || column == "left" {
+		left.Shape.Fill = tint
+		left.Shape.Text = buildComparison2colTextContent(pptx.ConvertMarkdownEmphasis(row.Left), bodySize, false, ink, "l")
+	}
+	if row.Highlight || column == "right" {
+		right.Shape.Fill = tint
+		right.Shape.Text = buildComparison2colTextContent(pptx.ConvertMarkdownEmphasis(row.Right), bodySize, false, ink, "l")
+	}
 }
 
 // Connector-mode geometry: each text column keeps comparisonConnectorColPct of

@@ -303,14 +303,10 @@ func (sp *stylishPanels) Validate(values, overrides any, cellOverrides map[int]a
 		errs = append(errs, errMaxItems(name, "values", 5, len(*items), ""))
 	}
 
-	highlighted := 0
+	errs = append(errs, singleHighlightErrors(name, "column", "columns", len(*items),
+		func(i int) bool { return (*items)[i].Highlight },
+		func(i int) string { return fmt.Sprintf("values[%d].highlight", i) })...)
 	for i, item := range *items {
-		if item.Highlight {
-			if highlighted++; highlighted == 2 {
-				errs = append(errs, newValidationError(name, fmt.Sprintf("values[%d].highlight", i), ErrCodeInvalidShape,
-					"stylish-panels: at most one column may set highlight; an emphasis shared by several columns is no emphasis", nil))
-			}
-		}
 		titlePath := fmt.Sprintf("values[%d].title", i)
 		if item.Title == "" {
 			errs = append(errs, errRequired(name, titlePath))

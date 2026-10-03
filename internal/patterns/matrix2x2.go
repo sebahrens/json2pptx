@@ -392,15 +392,9 @@ func (m *matrix2x2) Validate(values, overrides any, cellOverrides map[int]any) e
 		}
 	}
 
-	highlighted := 0
-	for _, qd := range quads {
-		if qd.q.Highlight {
-			if highlighted++; highlighted == 2 {
-				errs = append(errs, newValidationError(name, qd.name+".highlight", ErrCodeInvalidShape,
-					"matrix-2x2: at most one quadrant may set highlight; an emphasis shared by several quadrants is no emphasis", nil))
-			}
-		}
-	}
+	errs = append(errs, singleHighlightErrors(name, "quadrant", "quadrants", len(quads),
+		func(i int) bool { return quads[i].q.Highlight },
+		func(i int) string { return quads[i].name + ".highlight" })...)
 	if ovr, ok := overrides.(*Matrix2x2Overrides); ok && ovr != nil && ovr.Style != "" && !slices.Contains(matrix2x2Styles, ovr.Style) {
 		errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, matrix2x2Styles))
 	}
@@ -590,11 +584,10 @@ func expandMatrix2x2Open(ctx ExpandContext, vals *Matrix2x2Values, lay matrix2x2
 	quadrants := []Matrix2x2Quadrant{vals.TopLeft, vals.TopRight, vals.BottomLeft, vals.BottomRight}
 	cells := make([]*jsonschema.GridCellInput, 4)
 	for i, q := range quadrants {
-		surface := fillTone{Color: "lt1"}
 		shape := &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`), Line: noLine}
 		headerInk, bodyInk := accentInkOnLight(ctx, accent, 4.5), "dk1"
 		if q.Highlight {
-			surface = inactiveTintTone(accent)
+			surface := inactiveTintTone(accent)
 			shape.Fill = surface.fillJSON()
 			headerInk = inkOnFill(ctx, accent, surface, 4.5)
 			bodyInk = readableTextOn(ctx, surface, "dk1")
