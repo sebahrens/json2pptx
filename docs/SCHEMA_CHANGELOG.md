@@ -1,5 +1,46 @@
 # Schema Changelog
 
+- **2026-10-03 — Text, units and highlights render as written (`go-slide-creator-zdzk2`, `go-slide-creator-3rg5f`, `go-slide-creator-290o9`, `go-slide-creator-fr538`, `go-slide-creator-y81vn`).**
+  - **A typed number is the number that renders.** `shape_grid` text
+    `"2. Enabler bar: funded first"` was written as an auto-numbered
+    paragraph with the `2.` stripped and rendered "1. Enabler bar: funded
+    first". Shape text is auto-numbered only for two or more consecutive
+    lines numbered 1, 2, 3 …; a lone numbered line, a run that starts above
+    1 and a number after an unnumbered line keep the number as typed.
+    `bullets_value` that counts up from a later number (`4. …`, `5. …`,
+    `6. …`) keeps its typed numbers and drops the layout's glyph
+    (`<a:buNone/>`) instead of printing `• 4. …`, and no longer draws
+    `NUMBERED_LIST_NOT_APPLIED`; that finding's message now reads "the list
+    does not count up by one on every bullet". Lists from 1 are unchanged.
+    `startAt` is deliberately not used: LibreOffice restarts at `startAt` on
+    every paragraph that carries it. Titles, body text and table cells never
+    converted a leading number and still do not.
+  - **All-caps titles keep the case of number-unit tokens.** On templates
+    that capitalise titles (`modern-template`, `modern`, `abstract`,
+    `blue-corporate`) "€2.2m" rendered "€2.2M" and "6 mo" "6 MO". Title and
+    subtitle text now writes each number-unit token in a run of its own with
+    `cap="none"`: a number with one to four letters against it (`€2.2m`,
+    `12bn`, `40k`, `3pp`, `10x`, `200ms`; not ordinals) or a number, a space
+    and a unit abbreviation (`6 mo`, `2.5 pp`, `40 kWh`). A unit typed in
+    capitals is untouched. No input change.
+  - **Table `highlight_column` uses the template's primary fill.** It was an
+    `accent3` 20% tint on every template (blue on forest-green). It is now a
+    20% tint of `color_roles.primary_fill` — `accent1` on most templates,
+    `accent2` on warm-coral, `accent3` on business-template, `dk2` on
+    blue-corporate — in placeholder tables and `shape_grid` table cells.
+  - **`table-highlight` / `option_matrix` headers share one size.** With a
+    deck `type_scale` (`comfortable` / `presentation`, which the DeckSpec
+    compiler sets) a short criterion label grew to 14pt while a label whose
+    longest word would not fit wider stayed at 12pt. Header cells no longer
+    grow; the header row is written at `header_size` (12pt effective by
+    default) for 2–6 criteria.
+  - **An `agenda` without a `title` renders "Agenda"** and raises no
+    `MISSING_TITLE` (the field was documented as optional and still drew the
+    finding). `render_deck_spec` / `semantic render` diagnostics always carry
+    `semantic_path`: slide-level findings without a source link name the
+    slide (`slides[2]`), `MISSING_TITLE` the field to write
+    (`slides[2].title`).
+
 - **2026-10-03 — `plan_deck` places or lists every clause of the brief, follows an enumerated outline, and accounts for the budget (`go-slide-creator-hf8tf`, `go-slide-creator-58qda`).**
   - **Every clause after the topic is a fact.** It is in a slide's
     `facts` or in `unplaced_facts`; a clause used to qualify only with a

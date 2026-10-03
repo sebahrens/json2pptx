@@ -250,3 +250,54 @@ func TestAgendaSectionAliases(t *testing.T) {
 		t.Errorf("resolved %d sections, want the 2 with names", n)
 	}
 }
+
+// The agenda kind documents its title as optional, yet an untitled agenda
+// compiled to a slide with an empty title band and the render reported
+// MISSING_TITLE (go-slide-creator-y81vn). It renders the default title, linked
+// to the title field so a finding on it names the field to write.
+func TestCompileAgendaDefaultsItsTitle(t *testing.T) {
+	bodies := map[string]map[string]any{
+		"numbered list": {"sections": []any{"Performance", "Risks", "Investment"}},
+		"image rows": {"sections": []any{
+			subtitled("Where we are", strings.Repeat("Q3 against the plan ", 7)),
+			subtitled("What we found", "Three findings"),
+			subtitled("What we recommend", "The decision")}},
+		"bullet fallback": {"sections": []any{"Only one"}},
+	}
+	for name, body := range bodies {
+		t.Run(name, func(t *testing.T) {
+			slide, links, err := CompileAgenda(Input{SourceIndex: 1, OutputIndex: 1, Body: body})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var title string
+			for _, c := range slide.Content {
+				if c.PlaceholderID == "title" && c.TextValue != nil {
+					title = *c.TextValue
+				}
+			}
+			if title != AgendaDefaultTitle {
+				t.Errorf("title = %q, want %q", title, AgendaDefaultTitle)
+			}
+			linked := false
+			for _, l := range links {
+				if l.SemanticPath == "slides[1].title" {
+					linked = true
+				}
+			}
+			if !linked {
+				t.Errorf("the default title is not linked to slides[1].title: %+v", links)
+			}
+		})
+	}
+
+	// An authored title is kept.
+	slide, _, err := CompileAgenda(Input{SourceIndex: 1, OutputIndex: 1, Title: "What we will cover",
+		Body: map[string]any{"sections": []any{"Performance", "Risks"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := *slide.Content[0].TextValue; got != "What we will cover" {
+		t.Errorf("authored title replaced: %q", got)
+	}
+}

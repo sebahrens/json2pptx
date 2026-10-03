@@ -1198,7 +1198,16 @@ func collectDiagramCellFindings(cell shapegrid.ResolvedCell, slideIdx int) []pat
 // drops trailing rows; that is source loss, reported (and refused) like a
 // placeholder table's. It used to be discarded here, so a mixed-region slide
 // shipped "…and 2 more rows" with ok:true (go-slide-creator-fn2ka).
-func generateTableCell(cell shapegrid.ResolvedCell, slideIdx int) ([]byte, []patterns.FitFinding, error) {
+//
+// themeColors are the template's theme colours: the highlight column is a
+// tint of the template's primary fill, as in a placeholder table
+// (go-slide-creator-290o9).
+func generateTableCell(cell shapegrid.ResolvedCell, slideIdx int, themeColors []types.ThemeColor) ([]byte, []patterns.FitFinding, error) {
+	if len(themeColors) > 0 && cell.TableSpec.Style.HighlightColumn > 0 {
+		themed := *cell.TableSpec
+		themed.Style.HighlightAccent = patterns.PrimaryFill(themeColors)
+		cell.TableSpec = &themed
+	}
 	cfg := generator.TableRenderConfig{
 		Bounds: types.BoundingBox{
 			X:      cell.Bounds.X,
@@ -1274,7 +1283,7 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 			cellShapes = append(cellShapes, s...)
 			cellIcons = append(cellIcons, icons...)
 		case shapegrid.CellKindTable:
-			xml, findings, err := generateTableCell(cell, slideIdx)
+			xml, findings, err := generateTableCell(cell, slideIdx, overlayThemeColors(diagCtx))
 			if err != nil {
 				return nil, err
 			}

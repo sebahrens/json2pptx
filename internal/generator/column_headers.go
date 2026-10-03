@@ -78,7 +78,7 @@ func isColumnHeaderLine(bullets []string) bool {
 	if depth != 0 || first == "" || len([]rune(first)) > 48 {
 		return false
 	}
-	if _, numbered := NumberedList(bullets[:2]); numbered {
+	if _, _, numbered := NumberedListStart(bullets[:2]); numbered {
 		return false
 	}
 	words := len(strings.Fields(first))
