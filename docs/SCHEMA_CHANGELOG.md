@@ -1,5 +1,15 @@
 # Schema Changelog
 
+- **2026-10-03 — matrix-2x2 draws crossing axes (`go-slide-creator-jnkiq`).**
+  - `matrix-2x2` renders two axis lines crossing through the matrix with
+    open quadrants; the y-axis title with its high / low ends runs along the
+    left edge and the x-axis title with its low / high ends along the bottom.
+    New `overrides.style`: `open` (default) / `tiles` (the previous four
+    filled tiles with arrow axes).
+  - New quadrant field `highlight` (boolean, at most one across the four —
+    a second is `invalid_shape`): an accent tint, the only filled area.
+  - Quadrant copy budgets are unchanged; the open quadrants are larger.
+
 - **2026-10-03 — stylish-panels and before-after are open columns (`go-slide-creator-xvpu2`).**
   - `stylish-panels` renders each column as a heading over an accent rule
     and an open bullet list. New `overrides.style`: `open` (default) /

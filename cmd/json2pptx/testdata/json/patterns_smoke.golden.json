@@ -24,10 +24,11 @@
   },
   {
     "pattern_name": "matrix-2x2",
-    "row_count": 3,
+    "row_count": 4,
     "cell_counts": [
+      4,
       2,
-      3,
+      2,
       2
     ]
   },
