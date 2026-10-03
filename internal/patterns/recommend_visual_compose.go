@@ -324,7 +324,7 @@ type compoundIntent struct {
 }
 
 var (
-	pctRE         = regexp.MustCompile(`(\d{1,2}(?:\.\d+)?)\s*(?:%|percent\b|pct\b)`)
+	pctRE = regexp.MustCompile(`(\d{1,2}(?:\.\d+)?)\s*(?:%|percent\b|pct\b)`)
 	// relationRE finds "X above Y"-style relations inside one clause;
 	// relationPositions rewrites them into two positioned clauses.
 	relationRE    = regexp.MustCompile(`\b(?:above|on top of|below|beneath|underneath|to the left of|left of|to the right of|right of)\b`)
@@ -899,11 +899,11 @@ func scoreComposeShortlistCandidate(reg *Registry, intentLower string, hints *Vi
 	if ci := parseCompoundIntent(reg, intentLower, hints); ci != nil && sameLeafSet(compoundLeaves(ci), leaves) {
 		comp := buildRegionComposition(ci.regions)
 		return VisualCandidate{
-			Category:       VisualCategoryCompose,
-			Name:           canonical,
-			Rationale:      compoundRationale(ci, comp),
-			Placement:      composePlacementFor(leaves),
-			Composition:    comp,
+			Category:    VisualCategoryCompose,
+			Name:        canonical,
+			Rationale:   compoundRationale(ci, comp),
+			Placement:   composePlacementFor(leaves),
+			Composition: comp,
 			// Scored by rankShortlistCompound: just above every partial view.
 			intentCompound: true,
 		}
