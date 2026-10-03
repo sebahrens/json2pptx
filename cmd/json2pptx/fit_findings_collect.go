@@ -1443,25 +1443,7 @@ func collectGridOccupancyFindings(input *PresentationInput) []patterns.FitFindin
 			recMax = patternRecommendedMax[patternName]
 		}
 		if recMax > 0 {
-			crowdSlots := filledSlots
-			// comparison-2col's connectors mode inserts a centre gutter column
-			// holding one badge (or an empty spacer) per row. Those are not
-			// content cells; count only the left/right items.
-			if patternName == "comparison-2col" && numCols == 3 {
-				crowdSlots -= len(grid.Rows)
-			}
-			if n, ok := ganttTimelineContentCells(slide.Pattern); ok {
-				crowdSlots = n
-			}
-			// Its open style separates rows with rule rows. A rule is not a
-			// content cell either: count the cells that carry text.
-			// The same holds for icon-row's open style (an icon row over a
-			// caption row: one item is its caption) and for a ragged
-			// card-grid (cards span two columns beside empty spacers).
-			switch patternName {
-			case "comparison-2col", "icon-row", "card-grid":
-				crowdSlots = min(crowdSlots, textGridCells(grid))
-			}
+			crowdSlots := patternContentSlots(patternName, slide.Pattern, grid, filledSlots, numCols)
 			if f := generator.DetectPatternOvercrowded(generator.GridOccupancyInput{
 				SlideIndex:     si,
 				Path:           path,
@@ -1484,6 +1466,26 @@ func collectGridOccupancyFindings(input *PresentationInput) []patterns.FitFindin
 	}
 
 	return findings
+}
+
+// patternContentSlots counts the cells of an expanded pattern that carry
+// content, for the overcrowding check. Structural cells are not content:
+// comparison-2col's connector gutter (one badge or spacer per row), a gantt
+// timeline's axis segments, and the rule rows / icon rows / spacers of the
+// open comparison-2col, icon-row and ragged card-grid layouts.
+func patternContentSlots(patternName string, p *PatternInput, grid *ShapeGridInput, filledSlots, numCols int) int {
+	slots := filledSlots
+	if patternName == "comparison-2col" && numCols == 3 {
+		slots -= len(grid.Rows)
+	}
+	if n, ok := ganttTimelineContentCells(p); ok {
+		slots = n
+	}
+	switch patternName {
+	case "comparison-2col", "icon-row", "card-grid":
+		slots = min(slots, textGridCells(grid))
+	}
+	return slots
 }
 
 // textGridCells counts the cells of grid that carry text: a text shape, or a
