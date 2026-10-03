@@ -37,6 +37,15 @@ func collectReadabilityFindings(input *PresentationInput, layouts []types.Layout
 // template theme the renderer hands nested patterns: their content sizing
 // measures text in the theme body font.
 func collectReadabilityFindingsWithTheme(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, theme *types.ThemeInfo) []patterns.FitFinding {
+	return collectReadability(input, layouts, slideWidth, slideHeight, theme, true)
+}
+
+// collectReadability is collectReadabilityFindingsWithTheme; budgets says
+// whether to search each shared-cell finding for its field-level repair
+// budget, which re-runs this check (without budgets) on a cut copy of the
+// slide.
+func collectReadability(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, theme *types.ThemeInfo, budgets bool) []patterns.FitFinding {
+	authored := input
 	mode := tokens.ParseViewingMode(input.ViewingMode)
 	rhythm := resolvedValidRhythmGrid(input, layouts, slideWidth, slideHeight)
 	if slideWidth <= 0 {
@@ -104,6 +113,15 @@ func collectReadabilityFindingsWithTheme(input *PresentationInput, layouts []typ
 				// (go-slide-creator-b7qqg.3).
 				f.Action = "refuse"
 				rerootReadabilityFinding(f, slide, fromPattern[si], fromPattern, nested)
+				if budgets {
+					// max_chars is the whole cell's budget; name the paragraph
+					// whose cut actually clears the floor, with its own budget
+					// (go-slide-creator-ifcng).
+					fieldRepairBudget(f, fieldRepairScope{
+						authored: authored, slideIdx: si, layouts: layouts,
+						slideWidth: slideWidth, slideHeight: slideHeight, theme: theme,
+					}, paras)
+				}
 				findings = append(findings, *f)
 			}
 		}

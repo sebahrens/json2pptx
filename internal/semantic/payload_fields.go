@@ -107,7 +107,7 @@ var matrixQuadrantKeys = []string{
 var imageCaseMetricKeys = []string{"value", "number", "stat", "label", "caption", "name"}
 
 // imageCaseImageKeys are the keys the image object may carry.
-var imageCaseImageKeys = []string{"path", "url", "alt"}
+var imageCaseImageKeys = []string{"path", "url", "alt", "fit"}
 
 // decisionOptionKeys are the keys a decision option object may carry.
 var decisionOptionKeys = []string{
@@ -418,7 +418,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 	KindImageCase: withFields(withFields(map[string]payloadField{
 		"title":       strField("Slide title."),
 		"takeaway":    strField("One-line takeaway footer."),
-		"image":       {typ: "object", desc: "The picture: a path or url string, or {path|url, alt}. Omit it to draw a labelled placeholder.", itemKeys: imageCaseImageKeys},
+		"image":       {typ: "object", desc: "The picture: a path or url string, or {path|url, alt, fit}. fit \"cover\" (default) crops to fill the frame; \"contain\" keeps a whole screenshot or exhibit. Omit it to draw a labelled placeholder.", itemKeys: imageCaseImageKeys},
 		"eyebrow":     strField("Small kicker above the heading (e.g. \"Case study\"). ≤30 chars."),
 		"heading":     strField("The story's headline. ≤80 chars."),
 		"body":        strField("The story itself. ≤300 chars; give this or at least one bullet."),

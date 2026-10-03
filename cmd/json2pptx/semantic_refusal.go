@@ -101,6 +101,12 @@ func generatedCellSemanticPath(cr *semantic.CompileResult, f patterns.FitFinding
 // uses to hand semanticizeFinding its composition-switch fallback patch.
 const compositionPatchDetail = "composition_patch"
 
+// editPathDetail is the Details / evidence key naming the DeckSpec field the
+// repair edits when it differs from the field whose text is too small: in a
+// shared cell, shortening the body is what lifts a 12-char eyebrow back to
+// its floor (go-slide-creator-ifcng).
+const editPathDetail = "edit_path"
+
 // decorateReadabilityRefusal gives a validate_deck_spec readability refusal
 // the same evidence and fallback a render refusal carries: measured against
 // allowed size, and the composition switch to suggest when the authored field
@@ -121,6 +127,13 @@ func decorateReadabilityRefusal(d *diagnostics.Diagnostic, cr *semantic.CompileR
 		}
 	}
 	rawIdx := slidepath.SlideIndex(f.Path)
+	if f.Fix != nil {
+		if text, _ := f.Fix.Params["edit_text"].(string); text != "" {
+			if field := semanticFieldForText(cr.IR, rawIdx, text); field != "" && field != d.Path {
+				d.Details[editPathDetail] = field
+			}
+		}
+	}
 	if patch := compositionSwitchPatch(cr.IR, rawIdx, slideSemanticPath(cr.SourceMap, rawIdx)); patch != nil {
 		d.Details[compositionPatchDetail] = patch
 	}

@@ -57,6 +57,21 @@ func TestImageCaseWithoutImageWarns(t *testing.T) {
 	}
 }
 
+// go-slide-creator-zifd3: image.fit is cover or contain; anything else is
+// refused at the DeckSpec field rather than at the compiled pattern.
+func TestImageCaseImageFitValidated(t *testing.T) {
+	img := map[string]any{"path": "images/queue.png", "fit": "contain"}
+	body := map[string]any{"title": "Case", "body": "The cutover ran on the rehearsed plan.", "image": img}
+	spec := &DeckSpec{Meta: DeckMeta{Title: "Deck"}, Slides: []SlideSpec{{Kind: KindImageCase, Body: body}}}
+	if _, ok := findAt(Validate(spec, StrictnessWarn), diagnostics.CodeSemanticFieldType, "slides[0].image.fit"); ok {
+		t.Fatal("contain is a valid fit")
+	}
+	img["fit"] = "stretch"
+	if _, ok := findAt(Validate(spec, StrictnessWarn), diagnostics.CodeSemanticFieldType, "slides[0].image.fit"); !ok {
+		t.Fatal("fit stretch should be refused at slides[0].image.fit")
+	}
+}
+
 // go-slide-creator-zvu7c: a takeaway beside a decision's recommendation is
 // kept in the speaker notes, after any notes the author wrote.
 func TestDroppedTakeawayJoinsAuthoredNotes(t *testing.T) {

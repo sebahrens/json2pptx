@@ -55,7 +55,7 @@ var regionPayloadFields = map[string]map[string]payloadField{
 			desc: "3–7 milestones: strings or {label, date?, end_date?, body?}. Label ≤60 chars, date ≤30, body ≤200."},
 	}, regionCommonFields()),
 	slides.RegionImage: withFields(map[string]payloadField{
-		"image":   {typ: "object", objectKeys: imageCaseImageKeys, desc: "The picture: {path|url, alt?}."},
+		"image":   {typ: "object", objectKeys: imageCaseImageKeys, desc: "The picture: {path|url, alt?, fit?} (fit \"cover\" default, or \"contain\")."},
 		"caption": strField("Italic line under the picture. ≤120 chars."),
 	}, regionCommonFields()),
 	slides.RegionText: withFields(map[string]payloadField{

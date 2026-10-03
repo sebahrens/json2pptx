@@ -155,6 +155,40 @@ func TestImageTextSplit_ImageRightAndCaption(t *testing.T) {
 	}
 }
 
+// go-slide-creator-zifd3: a screenshot or exhibit asks for contain, and the
+// choice reaches the grid image cell; cover stays the default for photos.
+func TestImageTextSplit_ImageFitPassthrough(t *testing.T) {
+	p := imageTextSplitPattern(t)
+	for _, fit := range []string{"", "cover", "contain"} {
+		vals := &ImageTextSplitValues{
+			Image:   &jsonschema.GridImageInput{Path: "/tmp/dashboard.png", Alt: "Queue dashboard", Fit: fit},
+			Caption: "Illustrative dashboard",
+			Heading: "Heading",
+			Body:    "Body copy.",
+		}
+		if err := p.Validate(vals, nil, nil); err != nil {
+			t.Fatalf("fit %q: %v", fit, err)
+		}
+		grid, err := p.Expand(fullThemeCtx(), vals, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pic := grid.Rows[0].Cells[0].Grid.Rows[0].Cells[0]
+		if pic.Image == nil || pic.Image.Fit != fit || pic.Image.Alt != "Queue dashboard" {
+			t.Errorf("fit %q: image cell = %+v", fit, pic.Image)
+		}
+	}
+	schema, _ := json.Marshal(p.Schema())
+	if !strings.Contains(string(schema), `"contain"`) {
+		t.Error("schema does not advertise image.fit contain")
+	}
+	bad := &ImageTextSplitValues{Image: &jsonschema.GridImageInput{Path: "/tmp/x.png", Fit: "stretch"}, Body: "Body copy."}
+	err := p.Validate(bad, nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "image.fit") {
+		t.Errorf("fit stretch: err = %v, want an image.fit enum error", err)
+	}
+}
+
 func TestImageTextSplit_DenseStepsDownTypeScale(t *testing.T) {
 	p := imageTextSplitPattern(t)
 	bullets := make([]string, itsMaxBullets)

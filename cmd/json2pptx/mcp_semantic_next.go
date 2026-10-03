@@ -120,6 +120,10 @@ func semanticPatchOps(data []byte, path, code string, params map[string]any) []a
 }
 
 func rewriteHint(code string, params map[string]any) string {
+	if params["repair"] == "composition" {
+		// No single field's cut clears a shared cell (go-slide-creator-ifcng).
+		return "<composition-level repair for " + code + ": this field shares its box with the rest of the slide's text; shorten it and drop a bullet or row, or give the slide more room>"
+	}
 	hint := "<rewrite this field to resolve " + code + " while preserving meaning"
 	if n, ok := intFixParam(params, "max_chars"); ok && n > 0 {
 		hint += "; at most " + strconv.Itoa(n) + " characters"
@@ -156,6 +160,20 @@ func semanticFixParams(kind string, raw map[string]any) map[string]any {
 		}
 		out[k] = v
 	}
+	// A shared grid cell's max_chars budgets the whole cell; the DeckSpec
+	// patch edits one field, so it carries that field's own budget, or none
+	// when the repair is composition-level (go-slide-creator-ifcng).
+	if n, ok := out["field_max_chars"]; ok || out["repair"] == "composition" {
+		if cell, had := out["max_chars"]; had {
+			out["cell_max_chars"] = cell
+		}
+		delete(out, "max_chars")
+		delete(out, "field_max_chars")
+		if ok {
+			out["max_chars"] = n
+		}
+	}
+	delete(out, "edit_text")
 	if len(out) == 0 {
 		return nil
 	}
@@ -212,8 +230,16 @@ func semanticizeFinding(f *diagnostics.Finding, data []byte, deckID string) {
 	f.Remediation = nil
 	fallback, _ := f.Evidence[compositionPatchDetail].([]any)
 	delete(f.Evidence, compositionPatchDetail)
+	editPath, _ := f.Evidence[editPathDetail].(string)
+	delete(f.Evidence, editPathDetail)
 	if path, ok := f.Evidence["path"].(string); ok && deckID != "" {
-		ops := semanticPatchOps(data, path, f.Code, fixParams)
+		if editPath != "" {
+			path = editPath
+		}
+		var ops []any
+		if fixParams["repair"] != "composition" || len(fallback) == 0 {
+			ops = semanticPatchOps(data, path, f.Code, fixParams)
+		}
 		usedFallback := false
 		if len(ops) == 0 && len(fallback) > 0 {
 			// A refused list has no single field to rewrite; switching the

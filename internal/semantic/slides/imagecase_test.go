@@ -106,6 +106,47 @@ func TestImageCasePictureForms(t *testing.T) {
 	}
 }
 
+// go-slide-creator-zifd3: image.fit survives DeckSpec compile into the
+// pattern values, and into the two-column fallback's image.
+func TestImageCaseImageFitReachesThePattern(t *testing.T) {
+	img := map[string]any{"path": "/assets/queue.png", "alt": "Queue", "fit": "Contain"}
+	slide, _, err := CompileImageCase(Input{Body: imageCaseBody(map[string]any{"image": img})})
+	if err != nil {
+		t.Fatalf("compile: %v", err)
+	}
+	var vals imageCaseValues
+	if err := json.Unmarshal(slide.Pattern.Values, &vals); err != nil {
+		t.Fatal(err)
+	}
+	if vals.Image == nil || vals.Image.Fit != "contain" {
+		t.Fatalf("values.image = %+v, want fit contain", vals.Image)
+	}
+	plain, _, err := CompileImageCase(Input{Body: imageCaseBody(map[string]any{"image": "/assets/photo.jpg"})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(plain.Pattern.Values), `"fit"`) {
+		t.Errorf("no fit asked for, but values carry one: %s", plain.Pattern.Values)
+	}
+	long := imageCaseBody(map[string]any{"image": img, "body": strings.Repeat("A long story. ", 30)})
+	fallback, _, err := CompileImageCase(Input{Body: long})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sawImage := false
+	for _, c := range fallback.Content {
+		if c.ImageValue != nil {
+			sawImage = true
+			if c.ImageValue.Fit != "contain" {
+				t.Errorf("fallback image fit = %q, want contain", c.ImageValue.Fit)
+			}
+		}
+	}
+	if !sawImage {
+		t.Error("fallback dropped the picture")
+	}
+}
+
 // A figure with no words, or words with no figure, is half a claim.
 func TestImageCaseDropsHalfMetrics(t *testing.T) {
 	body := imageCaseBody(map[string]any{"metrics": []any{
