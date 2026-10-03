@@ -1,0 +1,58 @@
+# running log (c-repair)
+- n=1 get_started(brief): 9KB+. falls_back_to lists tools not in default profile (get_capabilities, validate_input, preview_presentation_plan, generate_presentation, inspect_slide_images).
+- n=2 list_slide_kinds {} 27.8KB; fine, examples copy-ready.
+- bridge: `@file` arg form in mcpd.py crashes (json.loads before @ check) -> harness, not product.
+- RT1 n=3 validate v0 (10 slides; brief said 8 but the flaw list needs 9 kinds + title): ok=false, 5 errors 12 warnings, 12.3KB. NO deck_id returned although get_started says "keep the returned deck_id".
+  - archetype "consulting" (my own guess) -> error lists allowed; good.
+  - only FIRST over-budget option/step reported (decision option 1; process step 1) - path points at slides[7].options not the label.
+  - exec summary: only count (6) reported, not the 200-char length.
+  - no finding for topic titles, missing sources, Thank-you closing, 8 process steps.
+  - restore_visual params from/to describe the degradation, not the fix; decision has from:"".
+  - bulets: no did_you_mean, takeway: did_you_mean.
+  - kpi takeway -> 2 findings (UNKNOWN_FIELD + TAKEAWAY_REQUIRED) same root cause.
+- n=4..10 describe_finding x7: severity vocabulary differs (finding: error/warning; describe: refuse/review). Docs say "Read fix.params" but envelope field is remediation.primary.params. Docs point to CLI "json2pptx semantic schema" (not an MCP tool). UNKNOWN_KIND: next_tool_call = list_slide_kinds {} (27.8KB again), no did_you_mean.
+- comparison DEGRADED message self-contradictory: "2 columns or 3-5; found 3, so this slide degrades".
+- RT2 n=11 validate v1 (full spec, 11 slides after table split): ok=false, 2 errors 5 warnings; deck_id NOW returned (RT1 with unknown kind/archetype returned none).
+  - ping-pong: exec summary count fix -> budget finding (no index, no measured length, three budgets listed, doesn't say which one was exceeded or whether a string point is a lead)
+  - ping-pong: funnel->process -> REQUIRED steps + UNKNOWN_FIELD stages (no did_you_mean) + TAKEAWAY_REQUIRED
+  - ping-pong: decision option 1 fixed -> option 2 reported; process step 1 fixed -> step 2 reported (one at a time)
+  - ping-pong: table split (as DENSITY told me) -> RHYTHM_MONOTONY "3 consecutive text slides" at slides[6]; run members not listed
+  - comparison DEGRADED vanished after bulets->items: its message blamed the column count (3) but real cause was the empty column.
+- RT3 n=14 validate deck_id+patch (7 ops): ok=false 4 errors 1 warning; changed_slides returned. exec summary OK after guessing lead/support split (text 1000->930 chars, no cut really needed; restructure was the fix). monotony gone after inserting section between table halves. process 8 steps OK at <=80 chars/step.
+  - NEW: with deck_id, findings carry concrete remediation patch + next_tool_call validate_deck_spec{deck_id,patch}. But for UNKNOWN_FIELD steps[i].value the suggested patch is `replace /slides/4/steps/0/value "<rewrite this field ...>"` - rewriting the value of an unknown field cannot fix an unknown field (needs rename/remove).
+  - 4 findings for one root cause (value on each step).
+  - decision: option 3 now (third round trip for the same slide).
+- RT4 n=15 validate deck_id+patch (literal suggested patches): the 4 UNKNOWN_FIELD errors return unchanged -> the suggested `replace .../value` patch is a no-op loop. Decision clean after 3rd round.
+- RT5 n=16 validate deck_id+patch (rename value->description): semantic errors cleared -> a SECOND TIER appears: 10 errors + 8 infos, 24.6KB. 
+  - 10x TEXT_BELOW_READABLE_MIN on exec summary (every lead and support, same 9.84pt) = 1 root cause (grid needs 420pt, area holds 349pt per FIT.BODY_TOO_LONG info). The previous DEGRADED finding told me lead<=90/support<=200 and I complied; now cell_max_chars says 49/55.
+  - message says "shorten the text"; params say fix_kind reduce_cell_text/strategy shorten; but the actual op/next_tool_call is `add /slides/1/layout "content"` (drop the visual).
+  - params.cell_path is /slides/1/shape_grid/rows/4/cells/2 (compiled, not authored). FIT.BODY_TOO_LONG path is "/slides/1/pattern" (pointer syntax, and not something I wrote) while others use slides[1].x.
+  - TITLE_NOT_ACTION (info) only for slides 1,2,9; not for "Monthly spend trend", "Savings funnel", "Options comparison", "Savings by lever (1/2)", "Implementation approach", "Thank you".
+  - DATA_WITHOUT_SOURCE info on 2,3,6,8. remediation action replace_value has no patch/next_tool_call (TITLE has).
+  - these were invisible in RT1-4 (staged validation).
+- n=17..20 describe_finding x4. TEXT_BELOW_READABLE_MIN: finding severity "error", evidence.action "refuse", describe_finding severity "review" (3 vocabularies, disagreeing). DATA_WITHOUT_SOURCE docs recommend repair_slide (not in default profile).
+- RT6 n=21 validate deck_id+patch (literal `add /slides/1/layout content` + 3 titles + meta.source): ok=TRUE, "4 infos". 
+  - PING-PONG: the suggested layout:content patch turned the executive_summary into bullets -> NO_EXECUTIVE_SUMMARY ("deck of 12 slides has no executive summary", path "/slides/1" - the slide IS kind executive_summary) + BODY_TOO_LONG (155 words, max 80) + SLIDE_TEXT_DENSE (same root cause, 2 findings).
+  - CLOSING_WITHOUT_NEXT_STEPS for "Thank you" appears only NOW (6th round trip); not in RT5 although RT5 already listed infos.
+  - changed_slides = all 12 after meta.source patch.
+- RT7 n=22 validate deck_id+patch (remove layout, exec summary to lead<=49/support<=55, retitle closer): ok=true "no issues", 316 bytes. Exec summary text: 1188 chars (6 pts) -> 449 chars (5 pts) = -62%; first budget message said support<=200.
+- RENDER1 n=23 render_deck_spec deck_id template=modern: success=true, pptx written, 13.4KB response, 335ms. deterministic_ready=FALSE: "quality gate: 1 substantive review finding(s) remain" = BODY_TOO_LONG severity "warning" action "review" on exec-summary (needs 337pt, holds ~311pt). validate had said "no issues" (and used 349pt as content area). Finding has raw_path /slides/1/pattern only: no semantic_path, no recommended_edit, no char budget. Blocking reason does not name the code or slide.
+  - render-only infos: SLIDE_UNDERUSED slides[4], SPARSE_FILL slides[9] (recommended_edit add_detail_or_merge).
+  - render diagnostics use a different envelope than validate findings (code w/o INPUT./FIT. prefix, semantic_path/raw_path/recommended_edit vs evidence.path/remediation).
+  - quality_gate criteria has max_topic_title_pct 25; 5/12 topic titles remain unflagged.
+- THUMBS1 n=24 render_deck_thumbnails all 12 slides: 2.3s, 6.2KB json + 12 jpegs. next_tool_call -> submit_visual_review with pptx_revision prefilled (nice).
+  visual: s1 exec summary every lead/support is ONE line with lots of horizontal whitespace, nothing clipped - yet it is the blocking BODY_TOO_LONG. s4 ex-funnel: 4 tiny rows, right 2/3 empty (only info SLIDE_UNDERUSED). s7: section divider "01 Savings levers" between table 1/2 and 2/2 (result of monotony fix) and its crumb "SAVINGS LEVERS" now labels decision + implementation slides. s10: 8 flow boxes, 2-3 words per line x 5-6 lines, label not distinguished ("Baseline — Tagged...") - validate clean. s3 chart has no unit; not flagged.
+- RENDER2 n=25 render deck_id+patch (supports cut again 55->~28 chars as message's first advice "shorten the leads and supporting sentences"): IDENTICAL finding "needs 337pt ... holds 311pt". Advice #1 does not work (rows already one line). changed_slides [1].
+- RENDER3 n=26 render deck_id+patch (remove points[3] -> 4 points): deterministic_ready=TRUE. So of the three advices only "use fewer points" worked; exec summary went 6 points/1188 chars -> 4 points.
+- RENDER4 n=29 render deck_id+patch (add detail to slides[4] steps + slides[9] option B detail): diagnostics empty, score 100, deterministic_ready true. recommended_edit "add detail" worked first time for both infos.
+- THUMBS2 n=30 full pass on final modern revision (3 changed, 9 pixel-identical). REVIEW n=31 submit_visual_review (12 approved, 4 P2 findings attached): status visually_reviewed_current_revision first try.
+- TEMPLATE SWITCH n=32 midnight-blue: deterministic_ready true, 0 diagnostics, score 100. n=33 p-style: deterministic_ready true, 2 infos: title_wraps (lowercase code) on slides[11].title "max_chars 20" (closing kind summary says ~40; CLOSING_WITHOUT_NEXT_STEPS told me to retitle as the action) and contrast_predicted at raw_path /slides/7/content/Section Number (no semantic_path; not authored by me; auto-fixed 2.8->3.0, still below 4.5?).
+- n=34,35 thumbnails both (12 each); looked at all 24 via 2x2 sheets. No layout breakage in either; same weaknesses as modern (flow boxes 5-6 lines, funnel half-empty, section divider between table halves, sparse exec summary). midnight-blue exec-summary rows have uneven heights (49/61/49px).
+- n=38 p-style + literal title_wraps patch (title <=20 chars "Approve option B now"): finding gone, no CLOSING_WITHOUT_NEXT_STEPS re-trigger. n=39 validate deck_id after reverting title: validate now reports p-style findings (title_wraps, contrast_predicted) -> deck_id remembers last render template; earlier validates were template-less. validate_deck_spec HAS a `template` param but get_started's validate args_template omits it.
+- PROBES n=40-42 (fresh specs, template=modern on validate): Y (RT7 state, 5 pts 49/55) -> ok=true "1 info" FIT.BODY_TOO_LONG severity INFO; the same finding at render was severity WARNING and blocked deterministic_ready. X (4 pts, long supports, 747 chars) -> 2 errors at 11.5pt. Z (5 pts long) -> 11 errors, 7.0pt, takeaway also flagged.
+- exec summary text: draft 1188 chars/6 pts -> final 270 chars/4 pts (-77%); first budget message allowed lead<=90+support<=200 x 5.
+- n=43-45 score_deck (deck_id, template modern / midnight-blue / p-style): 100 / 100 / 100, gate passed, composition 100, no findings (p-style: 3 contrast_autofixed infos on slides 2,7,9; render had reported only contrast_predicted on 7).
+- n=46-47 hi-res re-render of modern s1,s10 and p-style s9 (density 110) to check legibility.
+
+NOTE: call numbers written above in this file were my running guesses; authoritative numbering from log/calls.jsonl:
+2 get_started | 3 list_slide_kinds | 4 validate RT1 | 5-11 describe_finding | 12 validate RT2 | 13-14 describe | 16 validate RT3 | 17 validate RT4 | 18 validate RT5 | 19-22 describe | 23 validate RT6 | 24 validate RT7 (clean) | 25 render1 | 26 thumbs1 | 27 render2 | 28 render3 (deterministic_ready) | 29-30 describe | 31 render4 (0 diagnostics) | 32 thumbs2 | 33 submit_visual_review | 34 render midnight-blue | 35 render p-style | 36-37 thumbs | 38 render p-style title<=20 | 39 validate (revert title) | 40-42 probes Y,X,Z | 43-45 score_deck | 46-47 hi-res thumbs

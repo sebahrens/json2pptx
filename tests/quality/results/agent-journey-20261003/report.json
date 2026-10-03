@@ -1,0 +1,634 @@
+{
+ "review": "Agent user journey and layout discovery",
+ "date": "2026-10-03",
+ "source_commit": "039d78b8d6d7263c95560629e7752f6f08779810",
+ "audit_bead": "go-slide-creator-dik4y",
+ "personas": {
+  "a-coldstart": {
+   "tool_calls": 26,
+   "total_response_bytes": 2377531,
+   "attempts_to_first_valid_render": 2,
+   "wall_minutes": 8,
+   "enjoyment_1_to_10": 7,
+   "raw_findings": 17
+  },
+  "b-discovery": {
+   "tool_calls": 131,
+   "total_response_bytes": 3787940,
+   "attempts_to_first_valid_render": 2,
+   "wall_minutes": 9,
+   "enjoyment_1_to_10": 6,
+   "raw_findings": 20
+  },
+  "c-repair": {
+   "tool_calls": 45,
+   "total_response_bytes": 1879885,
+   "attempts_to_first_valid_render": 8,
+   "wall_minutes": 10,
+   "enjoyment_1_to_10": 6,
+   "raw_findings": 17
+  },
+  "d-cli": {
+   "tool_calls": 135,
+   "total_response_bytes": 3404023,
+   "attempts_to_first_valid_render": 1,
+   "wall_minutes": 10,
+   "enjoyment_1_to_10": 6,
+   "raw_findings": 16
+  },
+  "e-revise": {
+   "tool_calls": 50,
+   "total_response_bytes": 1983977,
+   "attempts_to_first_valid_render": 1,
+   "wall_minutes": 11,
+   "enjoyment_1_to_10": 7,
+   "raw_findings": 18
+  }
+ },
+ "onboarding_payload_bytes_default_profile": {
+  "tools/list": 41610,
+  "get_started(brief)": 12205,
+  "list_slide_kinds": 22887,
+  "list_templates": 17944
+ },
+ "coordinator_reproductions": [
+  "Shape text \"2. ...\" written as auto-numbered paragraph (renders \"1.\")",
+  "generate exits 0 for chart type stacked-bar with a placeholder image",
+  "validate <file> --json prints non-JSON"
+ ],
+ "delights": [
+  {
+   "persona": "a-coldstart",
+   "title": "deck_id + patch makes repair nearly free"
+  },
+  {
+   "persona": "a-coldstart",
+   "title": "Semantic validation errors are exact and one-step fixable"
+  },
+  {
+   "persona": "a-coldstart",
+   "title": "Speed: the whole loop is sub-second apart from thumbnails"
+  },
+  {
+   "persona": "a-coldstart",
+   "title": "Copy-ready examples: zero unknown-field errors while authoring, first render wrote a real deck"
+  },
+  {
+   "persona": "a-coldstart",
+   "title": "Pixel content hashes make the review protocol honest and cheap"
+  },
+  {
+   "persona": "a-coldstart",
+   "title": "Good defaults without asking: highlighted final bar and data labels, takeaway band, source line, date footer and page numbers"
+  },
+  {
+   "persona": "a-coldstart",
+   "title": "Refuses to shrink text below 12pt instead of shipping unreadable slides, and names the field"
+  },
+  {
+   "persona": "a-coldstart",
+   "title": "list_templates compact is small and useful"
+  },
+  {
+   "persona": "b-discovery",
+   "title": "Chart and diagram candidates come with a data_contract and a next_tool_call that runs verbatim"
+  },
+  {
+   "persona": "b-discovery",
+   "title": "Semantic kinds for org, 8 quotes, option matrix, funnel+insights and regions were valid on the first attempt and looked right"
+  },
+  {
+   "persona": "b-discovery",
+   "title": "`regions` kind: chart + stat + timeline in one slide from ~15 lines"
+  },
+  {
+   "persona": "b-discovery",
+   "title": "Render-time unknown-key errors name the key, why it matters and the accepted keys"
+  },
+  {
+   "persona": "b-discovery",
+   "title": "show_pattern is an authoritative contract: closed schema, min/max items, per-count character budgets, example_values"
+  },
+  {
+   "persona": "b-discovery",
+   "title": "validate_pattern answers a wrong key with did_you_mean, a patch and a pointer to show_pattern"
+  },
+  {
+   "persona": "b-discovery",
+   "title": "Single-slide render loop is fast and returns a real image"
+  },
+  {
+   "persona": "b-discovery",
+   "title": "Capacity strings on candidates ('3-8', 'objective + 3-5 pillars + foundation') and limits in kind summaries let me check item counts before authoring"
+  },
+  {
+   "persona": "b-discovery",
+   "title": "journey-maturity-model 'We are here' marker and value-chain highlight render exactly as intended"
+  },
+  {
+   "persona": "c-repair",
+   "title": "deck_id + patch makes repair rounds tiny and tells me what to re-inspect"
+  },
+  {
+   "persona": "c-repair",
+   "title": "Every validate finding carries a path into my spec, and dropped content is called out as DROPPED"
+  },
+  {
+   "persona": "c-repair",
+   "title": "Chart series/category mismatch caught before render with exact counts"
+  },
+  {
+   "persona": "c-repair",
+   "title": "Title, source and closing fixes worked first time; meta.source cleared four findings with one op"
+  },
+  {
+   "persona": "c-repair",
+   "title": "Thumbnails -> review hand-off is prefilled and the review was accepted first try"
+  },
+  {
+   "persona": "c-repair",
+   "title": "Fast: validate <0.25s, render 0.3-0.45s, 12 thumbnails ~2s"
+  },
+  {
+   "persona": "c-repair",
+   "title": "Same spec rendered on midnight-blue and p-style with no layout breakage"
+  },
+  {
+   "persona": "c-repair",
+   "title": "describe_finding for PATTERN_DEGRADED explains from/to/reason and says content is never lost"
+  },
+  {
+   "persona": "d-cli",
+   "title": "First DeckSpec was valid on the first try and rendered a good 7-slide deck in 0.3 s; thumbnails took 3 s"
+  },
+  {
+   "persona": "d-cli",
+   "title": "Schema descriptions state counts, character budgets and degradation behaviour per kind; `semantic explain` shows the chosen pattern, layout and alternatives per slide"
+  },
+  {
+   "persona": "d-cli",
+   "title": "Errors are specific, list everything in one pass and suggest the fix"
+  },
+  {
+   "persona": "d-cli",
+   "title": "Templates are embedded, so the CLI works with no --templates-dir"
+  },
+  {
+   "persona": "d-cli",
+   "title": "Output is deterministic and stdout JSON is never mixed with log lines"
+  },
+  {
+   "persona": "d-cli",
+   "title": "Placeholder copy is caught (WEAK_CONTENT) and capabilities carries a correct MCP-to-CLI mapping; top-level help lists MCP-only tools with CLI workarounds"
+  },
+  {
+   "persona": "e-revise",
+   "title": "deck_id + patch held state across 30+ calls; a whole-deck template switch was one 169-byte call"
+  },
+  {
+   "persona": "e-revise",
+   "title": "changed_slides + next_tool_call with slide_indices prefilled: one changed slide re-inspected in about 1.5 s and 37 KB instead of 268 KB"
+  },
+  {
+   "persona": "e-revise",
+   "title": "Patch errors are precise, and the patch is atomic"
+  },
+  {
+   "persona": "e-revise",
+   "title": "Unknown arguments are rejected with the accepted list rather than ignored"
+  },
+  {
+   "persona": "e-revise",
+   "title": "First render succeeded on the first attempt from catalog examples; turns 1, 4, 5, 6 and 8 each rendered on their first call"
+  },
+  {
+   "persona": "e-revise",
+   "title": "Thumbnails are content-addressed and cached: an old revision's slide came back in 0.01 s and its hash proved the title slide had not changed"
+  },
+  {
+   "persona": "e-revise",
+   "title": "Appendix handling just worked: section with appendix:true is unnumbered and the slide after it is paged 'A1'; notes landed in all ten notes slides"
+  },
+  {
+   "persona": "e-revise",
+   "title": "The slide list (index, kind, title) in every render response is a cheap way to confirm what sits at each index after a structural patch"
+  },
+  {
+   "persona": "e-revise",
+   "title": "submit_visual_review verified all ten image hashes against the server's own render in one call"
+  },
+  {
+   "persona": "e-revise",
+   "title": "Switching template surfaced template-specific findings with a ready patch"
+  }
+ ],
+ "findings": [
+  {
+   "bead": "go-slide-creator-4eu2o",
+   "key": "stale-skill",
+   "type": "bug",
+   "priority": 1,
+   "title": "Installed skill contradicts the binary and nothing tells the agent it is stale"
+  },
+  {
+   "bead": "go-slide-creator-7bdn6",
+   "key": "profile-aware",
+   "type": "bug",
+   "priority": 2,
+   "title": "Default-profile responses point agents at tools and documents they cannot reach"
+  },
+  {
+   "bead": "go-slide-creator-mvdt5",
+   "key": "onboarding-budget",
+   "type": "feature",
+   "priority": 2,
+   "title": "An agent reads about 23k tokens before it can author anything; the full profile costs 335 KB"
+  },
+  {
+   "bead": "go-slide-creator-l6mcj",
+   "key": "item-schema-size",
+   "type": "feature",
+   "priority": 2,
+   "title": "A kind's item_schema is 6-37 KB because every alias is expanded as its own property"
+  },
+  {
+   "bead": "go-slide-creator-x97m6",
+   "key": "pattern-contract",
+   "type": "bug",
+   "priority": 1,
+   "title": "Named-pattern recommendations give no data shape, example or next step in the default profile"
+  },
+  {
+   "bead": "go-slide-creator-bdvhj",
+   "key": "recommend-ranking",
+   "type": "bug",
+   "priority": 1,
+   "title": "recommend_visual ranks the wrong visual first for plain intents"
+  },
+  {
+   "bead": "go-slide-creator-3ujfq",
+   "key": "recommend-kinds",
+   "type": "feature",
+   "priority": 1,
+   "title": "recommend_visual answers in raw vocabulary and never recommends a DeckSpec kind"
+  },
+  {
+   "bead": "go-slide-creator-ueopl",
+   "key": "preview-delivery",
+   "type": "feature",
+   "priority": 1,
+   "title": "An agent cannot see a layout before authoring it"
+  },
+  {
+   "bead": "go-slide-creator-7sqof",
+   "key": "naming-consistency",
+   "type": "bug",
+   "priority": 2,
+   "title": "One visual has up to three names and three data shapes"
+  },
+  {
+   "bead": "go-slide-creator-hf8tf",
+   "key": "plan-facts",
+   "type": "bug",
+   "priority": 1,
+   "title": "plan_deck drops parts of the brief while reporting unplaced_facts: []"
+  },
+  {
+   "bead": "go-slide-creator-58qda",
+   "key": "plan-budget",
+   "type": "bug",
+   "priority": 2,
+   "title": "plan_deck spends the slide budget on an agenda and dividers without saying so"
+  },
+  {
+   "bead": "go-slide-creator-e7jxr",
+   "key": "cli-kinds",
+   "type": "feature",
+   "priority": 1,
+   "title": "The CLI has no kind catalogue: DeckSpec discovery is a 172 KB schema without examples"
+  },
+  {
+   "bead": "go-slide-creator-l7tg3",
+   "key": "cli-discovery-size",
+   "type": "feature",
+   "priority": 2,
+   "title": "CLI template and icon discovery returns 84 KB to 738 KB with no way to ask for names only"
+  },
+  {
+   "bead": "go-slide-creator-8hmdq",
+   "key": "house-floors",
+   "type": "bug",
+   "priority": 1,
+   "title": "house_diagram advertises `floors` but silently drops content either way"
+  },
+  {
+   "bead": "go-slide-creator-zdzk2",
+   "key": "auto-number",
+   "type": "bug",
+   "priority": 1,
+   "title": "Shape text that starts with \"2.\" is rendered as \"1.\""
+  },
+  {
+   "bead": "go-slide-creator-vg73u",
+   "key": "engine-labels",
+   "type": "bug",
+   "priority": 1,
+   "title": "Readability refusals blame the author for text the engine wrote"
+  },
+  {
+   "bead": "go-slide-creator-iubjb",
+   "key": "template-budgets",
+   "type": "feature",
+   "priority": 2,
+   "title": "Text budgets are missing from the catalogue and differ by template, so fit is learned by failing"
+  },
+  {
+   "bead": "go-slide-creator-3hcw6",
+   "key": "multi-recommend",
+   "type": "feature",
+   "priority": 3,
+   "title": "A recommendation that spans two options cannot be expressed"
+  },
+  {
+   "bead": "go-slide-creator-n3j96",
+   "key": "image-callouts-kind",
+   "type": "feature",
+   "priority": 2,
+   "title": "A screenshot with callouts pointing at parts of it cannot be authored in DeckSpec"
+  },
+  {
+   "bead": "go-slide-creator-v786r",
+   "key": "swimlane-order",
+   "type": "bug",
+   "priority": 3,
+   "title": "Swimlane arrows follow column order, and the idiom that makes them right is only in one example"
+  },
+  {
+   "bead": "go-slide-creator-o34er",
+   "key": "timeline-end-date",
+   "type": "bug",
+   "priority": 2,
+   "title": "A timeline with end dates draws identical full-width bars and still scores 100"
+  },
+  {
+   "bead": "go-slide-creator-uon4b",
+   "key": "validate-raw",
+   "type": "bug",
+   "priority": 1,
+   "title": "validate_deck_spec says \"no issues\" for raw pattern and diagram payloads that render then refuses"
+  },
+  {
+   "bead": "go-slide-creator-2dit4",
+   "key": "validate-template",
+   "type": "bug",
+   "priority": 1,
+   "title": "Validation runs without the render template, so its verdict differs from the render"
+  },
+  {
+   "bead": "go-slide-creator-3rn3s",
+   "key": "validate-render-parity",
+   "type": "bug",
+   "priority": 2,
+   "title": "validate and render report different finding sets for the same stored deck"
+  },
+  {
+   "bead": "go-slide-creator-x9rhq",
+   "key": "severity-model",
+   "type": "bug",
+   "priority": 1,
+   "title": "Severity does not say whether a finding blocks: info and warning findings stop the render gate"
+  },
+  {
+   "bead": "go-slide-creator-oh3qr",
+   "key": "storyline-waiver",
+   "type": "feature",
+   "priority": 2,
+   "title": "The storyline gate cannot be waived when the user asked for a deck shape that breaks it"
+  },
+  {
+   "bead": "go-slide-creator-ipahe",
+   "key": "tiered-findings",
+   "type": "bug",
+   "priority": 1,
+   "title": "Findings arrive in tiers and one item at a time, so a flawed draft takes seven validates"
+  },
+  {
+   "bead": "go-slide-creator-vihnl",
+   "key": "patch-verified",
+   "type": "bug",
+   "priority": 1,
+   "title": "Machine-suggested patches do not always clear the finding they come with"
+  },
+  {
+   "bead": "go-slide-creator-micna",
+   "key": "advice-surface",
+   "type": "bug",
+   "priority": 1,
+   "title": "Repair advice names controls the caller's surface does not have"
+  },
+  {
+   "bead": "go-slide-creator-4mmvb",
+   "key": "fit-names-cause",
+   "type": "bug",
+   "priority": 1,
+   "title": "Fit diagnostics name the wrong text and the wrong constraint"
+  },
+  {
+   "bead": "go-slide-creator-c2j5b",
+   "key": "dedupe-findings",
+   "type": "feature",
+   "priority": 2,
+   "title": "One root cause produces many findings and large responses"
+  },
+  {
+   "bead": "go-slide-creator-pilpn",
+   "key": "address-notation",
+   "type": "bug",
+   "priority": 2,
+   "title": "Slides are addressed in five notations with mixed index bases"
+  },
+  {
+   "bead": "go-slide-creator-t0c1m",
+   "key": "did-you-mean",
+   "type": "bug",
+   "priority": 2,
+   "title": "Unknown kinds and keys get uneven help, and their side effects are reported as separate causes"
+  },
+  {
+   "bead": "go-slide-creator-xy51l",
+   "key": "split-continuation",
+   "type": "bug",
+   "priority": 3,
+   "title": "Splitting a table as advised triggers a monotony finding, and a section divider can sit between the halves"
+  },
+  {
+   "bead": "go-slide-creator-327g6",
+   "key": "placeholder-gate",
+   "type": "bug",
+   "priority": 1,
+   "title": "Placeholder copy passes the deterministic gate"
+  },
+  {
+   "bead": "go-slide-creator-wwmod",
+   "key": "score-calibration",
+   "type": "bug",
+   "priority": 1,
+   "title": "score_deck gives 100 and passes the gate on slides that are visibly weak"
+  },
+  {
+   "bead": "go-slide-creator-fr538",
+   "key": "matrix-header-size",
+   "type": "bug",
+   "priority": 3,
+   "title": "Option matrix column headers render at two font sizes"
+  },
+  {
+   "bead": "go-slide-creator-0cy3p",
+   "key": "kpi-baseline",
+   "type": "bug",
+   "priority": 3,
+   "title": "A KPI card with a two-line label sits higher than its neighbours"
+  },
+  {
+   "bead": "go-slide-creator-290o9",
+   "key": "highlight-colour",
+   "type": "bug",
+   "priority": 3,
+   "title": "The table highlight column renders blue on the forest-green template"
+  },
+  {
+   "bead": "go-slide-creator-uj9zq",
+   "key": "kpi-region-overlap",
+   "type": "bug",
+   "priority": 2,
+   "title": "KPIs in a short region draw the number over its label with only an info finding"
+  },
+  {
+   "bead": "go-slide-creator-1w3uo",
+   "key": "slide-handles",
+   "type": "feature",
+   "priority": 1,
+   "title": "Slides have no stable handle; every address is an index that shifts"
+  },
+  {
+   "bead": "go-slide-creator-83kru",
+   "key": "move-readback",
+   "type": "feature",
+   "priority": 1,
+   "title": "No move or copy operation and no way to read back the stored spec"
+  },
+  {
+   "bead": "go-slide-creator-v5e9h",
+   "key": "changed-slides",
+   "type": "bug",
+   "priority": 2,
+   "title": "changed_slides is a positional diff: shifted and notes-only slides look edited"
+  },
+  {
+   "bead": "go-slide-creator-yxf1k",
+   "key": "deck-search",
+   "type": "feature",
+   "priority": 2,
+   "title": "No way to find a fact across the deck"
+  },
+  {
+   "bead": "go-slide-creator-rq1z9",
+   "key": "revisions",
+   "type": "feature",
+   "priority": 2,
+   "title": "No revision history, undo or fork for a deck handle"
+  },
+  {
+   "bead": "go-slide-creator-j77xe",
+   "key": "failed-patch-stored",
+   "type": "bug",
+   "priority": 2,
+   "title": "A patch is stored even when its render fails, and the response does not say so"
+  },
+  {
+   "bead": "go-slide-creator-veqn2",
+   "key": "delta-responses",
+   "type": "feature",
+   "priority": 3,
+   "title": "Every patch render returns 7-9.5 KB, most of it unchanged summaries"
+  },
+  {
+   "bead": "go-slide-creator-6ffgv",
+   "key": "thumb-hash-jitter",
+   "type": "bug",
+   "priority": 3,
+   "title": "A notes-only edit changes the 50-dpi thumbnail hash of unrelated slides"
+  },
+  {
+   "bead": "go-slide-creator-92gox",
+   "key": "cli-thumbnails",
+   "type": "bug",
+   "priority": 1,
+   "title": "The CLI cannot write slide PNGs; images arrive only as base64 inside JSON"
+  },
+  {
+   "bead": "go-slide-creator-gr64x",
+   "key": "chart-fail-success",
+   "type": "bug",
+   "priority": 1,
+   "title": "Raw validate and generate report success for a deck whose chart cannot render"
+  },
+  {
+   "bead": "go-slide-creator-e6gsz",
+   "key": "cli-flags",
+   "type": "bug",
+   "priority": 2,
+   "title": "CLI flags mean different things in different subcommands, and help exits 1"
+  },
+  {
+   "bead": "go-slide-creator-pikfw",
+   "key": "cli-noise",
+   "type": "bug",
+   "priority": 3,
+   "title": "CLI output is noisy and inconsistent: repeated log lines, two JSON shapes, wrong subcommand name"
+  },
+  {
+   "bead": "go-slide-creator-12dkn",
+   "key": "temp-cleanup",
+   "type": "bug",
+   "priority": 2,
+   "title": "Renders leave sidecars and hundreds of megabytes of temp files behind"
+  },
+  {
+   "bead": "go-slide-creator-ifkxs",
+   "key": "template-portability",
+   "type": "feature",
+   "priority": 2,
+   "title": "A spec that is clean on one template is refused on another, and nothing checks portability up front"
+  },
+  {
+   "bead": "go-slide-creator-3rg5f",
+   "key": "uppercase-units",
+   "type": "bug",
+   "priority": 2,
+   "title": "Templates that uppercase titles change the meaning of units"
+  },
+  {
+   "bead": "go-slide-creator-lk37o",
+   "key": "review-vocabulary",
+   "type": "bug",
+   "priority": 3,
+   "title": "submit_visual_review does not say which severities and categories it accepts"
+  },
+  {
+   "bead": "go-slide-creator-y81vn",
+   "key": "agenda-title",
+   "type": "bug",
+   "priority": 3,
+   "title": "An agenda without a title raises MISSING_TITLE with no path although the title is optional"
+  },
+  {
+   "bead": "go-slide-creator-3pxl6",
+   "key": "journey-eval",
+   "type": "feature",
+   "priority": 2,
+   "title": "No repeatable check that the agent journey stays good"
+  }
+ ],
+ "limits": "Five agent journeys on one machine and one day; enjoyment scores are self-reported by the agents; root causes were not investigated in code unless a bead says so."
+}

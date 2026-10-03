@@ -1,0 +1,282 @@
+{
+  "persona": "d-cli",
+  "metrics": {
+    "tool_calls": 135,
+    "tool_calls_note": "113 logged CLI invocations (log/*.out) plus about 22 unlogged help/describe calls. About 12 of them were the happy path to the first rendered deck; the rest were the requested consistency and error-handling audit.",
+    "total_response_bytes": 3404023,
+    "total_response_bytes_note": "stdout+stderr of all logged calls. The happy path alone (help, get-started, capabilities, skill-info list, semantic schema, plan-deck, data-format-hints, validate, render) was 394516 bytes.",
+    "attempts_to_first_valid_render": 1,
+    "attempts_note": "The first DeckSpec validated and rendered a structurally valid 7-slide PPTX on attempt 1. A second render cleared a fixable BODY_TOO_LONG, a third reordered content. No semantic render ever exited 0 (gate blocked by NO_EXECUTIVE_SUMMARY).",
+    "wall_minutes": 10,
+    "enjoyment_1_to_10": 6,
+    "enjoyment_reasons": [
+      "Authoring was pleasant: 80 lines of YAML, valid first time, good-looking slides in 0.3 s render plus 3 s thumbnails",
+      "Error messages are specific, complete in one pass and carry did-you-mean hints",
+      "The installed skill pointed me at a different (older) workflow than the CLI's own get-started, so I had to decide whom to believe",
+      "Discovery costs hundreds of KB per call and the CLI has no compact 'kinds with examples' or 'template names' command",
+      "The deck I was asked for can never exit 0 from semantic render, and PNGs only come back as base64 inside JSON"
+    ]
+  },
+  "findings": [
+    {
+      "id": "A1",
+      "title": "Installed skill teaches the raw-JSON/MCP workflow; the CLI's own get-started recommends a DeckSpec path the skill never mentions",
+      "severity": "major",
+      "journey_stage": "onboarding",
+      "what_happened": "SKILL.md opens with 'valid input for the generate_presentation MCP tool (or the CLI json2pptx generate -json)' and a recommend_visual -> show_pattern -> expand_pattern -> validate_input -> generate_presentation precondition chain. `json2pptx get-started` says the recommended path is a DeckSpec (list_slide_kinds -> validate_deck_spec -> render_deck_spec) and that the raw chain is a fallback. grep for DeckSpec / 'json2pptx semantic' / deck.yaml in the installed skill returns 0 hits. The skill also calls make_deck 'the recommended starting point when you don't need fine control' while get-started says 'make_deck is a skeleton/wireframe tool ... Never ship its output'. get-started points to 'SKILL.md -> QUALITY.md', which the installed skill does not contain. The skill carries no version stamp, so nothing told me it was behind (CLI reports skill_schema_version 4.159.0).",
+      "evidence": [
+        "/Users/seb/.claude/skills/generate-deck/SKILL.md:13-14 and :227 (make_deck row)",
+        "log/getstarted.out: fast_path.tool=render_deck_spec; notes[1] 'Never ship its output'",
+        "ls generate-deck/: FINDINGS, PATTERNS, RULES, SKILL, TOOLS, WORKFLOW (no QUALITY.md); files dated May 22",
+        "log/plj.out vs skill text: 11 of 51 patterns unmentioned (next-steps, table-highlight, metric-list, text-sidebar, labeled-rows, ...)"
+      ],
+      "expected": "The installed skill and the binary agree on the recommended workflow, or the binary tells me the skill is stale.",
+      "suggestion": "Stamp skill_schema_version in SKILL.md frontmatter and have `json2pptx skill-info` / `get-started` compare and warn; ship `json2pptx install-skill` (or `skill-info --check <dir>`) so the installed copy is refreshed with the binary."
+    },
+    {
+      "id": "A2",
+      "title": "Skill's CLI-equivalent column is wrong for 14 tools, and one documented flag fails",
+      "severity": "major",
+      "journey_stage": "onboarding",
+      "what_happened": "TOOLS.md lists '(CLI inlines)' or '(MCP-only)' for tools that have real subcommands, and points rendering at binaries that are not installed. SKILL.md documents an mcp flag that does not exist.",
+      "evidence": [
+        "SKILL.md:107 'json2pptx mcp [-templates-dir <path>] [-output-dir <path>]' -> log/e_mcp_outputdir.err: 'flag provided but not defined: -output-dir' (real flag: --output)",
+        "TOOLS.md:83,85 render_slide_image / render_deck_thumbnails -> `pptx2jpg`; WORKFLOW.md:125 same; `which pptx2jpg` -> not found; real: render-slide, render-thumbnails",
+        "TOOLS.md:82 inspect_slide_images -> `testrand qa` (not found); real: inspect",
+        "TOOLS.md:89 describe_finding -> (MCP-only), contradicting SKILL.md:314/320; real: describe-finding",
+        "TOOLS.md:60,64,68,69,74,80,86,87,101 '(CLI inlines)' for capabilities, resolve-theme, recommend-pattern, shape-catalog, repair, score, read, validate-output, template-settings; :72 preview_slide_wireframe '(MCP-only)' but preview-wireframe exists"
+      ],
+      "expected": "Every row maps to the subcommand `json2pptx --help` lists.",
+      "suggestion": "Generate the table from capabilities.mcp_tools_available[].cli_counterpart (it is already correct there) instead of maintaining it by hand."
+    },
+    {
+      "id": "A3",
+      "title": "get-started on the CLI speaks only MCP tool names; a positional task is silently ignored",
+      "severity": "major",
+      "journey_stage": "discovery",
+      "what_happened": "`json2pptx get-started` returns steps named list_slide_kinds, validate_deck_spec, render_deck_spec, render_deck_thumbnails, submit_visual_review with MCP args_template objects. Nothing says these are `semantic schema|validate|render` and `render-thumbnails` on the CLI. The mapping exists only as cli_counterpart inside the 90 KB `capabilities` output. Top-level help advertises 'get-started ... (brief|revise|validate-only)', but `get-started revise` answers task=brief with no warning; only --task works.",
+      "evidence": [
+        "log/getstarted.out: 14641 bytes, no occurrence of a CLI command",
+        "log/cap.out: 90394 bytes; list_slide_kinds -> 'semantic schema', render_deck_spec -> 'semantic render'",
+        "`get-started revise` -> \"task\": \"brief\"; `get-started --task revise` -> \"task\": \"revise\"",
+        "semantic render blocking_reasons also name MCP tools: 'render_deck_thumbnails + submit_visual_review supply it'"
+      ],
+      "expected": "When invoked from the CLI, each step carries the CLI command line to run.",
+      "suggestion": "Add a `cli` field per step (e.g. \"json2pptx semantic validate --spec <file>\"), accept the task positionally or reject unknown positionals, and add a 10-line 'CLI quick path' to top-level help."
+    },
+    {
+      "id": "A4",
+      "title": "No CLI equivalent of list_slide_kinds: kind discovery is a 172 KB JSON Schema without examples",
+      "severity": "major",
+      "journey_stage": "discovery",
+      "what_happened": "get-started promises 'compact kind summaries + copy-ready examples' from list_slide_kinds. Its CLI counterpart is `semantic schema`, which prints the whole draft 2020-12 schema (29 kinds, every alias duplicated in full) and has no examples. I wrote a Python filter to get a usable per-kind summary. Field descriptions point at MCP tools ('list_slide_kinds -> compositions[]', 'see get_chart_capabilities').",
+      "evidence": [
+        "log/sem_schema.out: 172170 bytes; 'examples' present on 0 of 29 Slide_* defs",
+        "Slide_team repeats the 12-property member item schema three times (members, people, team)"
+      ],
+      "expected": "A short listing of kinds with one-line purpose, required fields, limits and a copy-ready example, plus per-kind detail on request.",
+      "suggestion": "Add `json2pptx semantic kinds [--json]` and `json2pptx semantic kinds <kind>` (schema + example YAML), mirroring `patterns list` / `patterns show`."
+    },
+    {
+      "id": "A5",
+      "title": "Template and icon discovery returns 84 KB to 738 KB with no way to ask for just names",
+      "severity": "major",
+      "journey_stage": "discovery",
+      "what_happened": "The skill's 'List available templates' command, `skill-info --mode=list`, returns 84 KB, of which 34 KB is supported_types and 6 KB compose. `--mode=compact --template=forest-green` is 113 KB although the template block is 6 KB. `--mode=full` is 626 KB while its help says '~39K tokens'. `icons list --json` is 738 KB with no search or prefix filter. All of it lands on stdout.",
+      "evidence": [
+        "log/si_list.out 84243 B; log/x_si_compact.out 113118 B (templates: 5948 B); log/x_si_full.out 626168 B",
+        "log/x_iconsj.out 738184 B; log/x_icons.out 135734 B; `icons list -h` offers only -json and -set",
+        "TEMPLATE_GUIDE.md:90 '# List available templates / json2pptx skill-info --mode=list'"
+      ],
+      "expected": "A template-name listing in under 1 KB and an icon search that returns a handful of matches.",
+      "suggestion": "Add `json2pptx templates` (names + one-line description), `skill-info --sections templates,patterns,...`, and `icons search <term> [--limit N]`; fix the token estimate in the help text."
+    },
+    {
+      "id": "A6",
+      "title": "semantic render exits 1 while reporting ok:true, blocked by an info-level finding that cannot be waived",
+      "severity": "major",
+      "journey_stage": "render",
+      "what_happened": "Every `semantic render` of the requested deck wrote a valid PPTX, printed {\"ok\": true, ...} on stdout, then printed 'Error: semantic render: deck written ... but not deterministically ready' and exited 1. The only deterministic blocker left was NO_EXECUTIVE_SUMMARY (severity info; describe-finding says severity review). The user fixed the 7 slides, so adding an executive summary was not an option, and `--strict off` did not change the exit code. The byte-identical file produced by `semantic compile` + `generate` exits 0 with success:true and score 100 (semantic render: 99). The exit codes are not documented in `semantic render -h`.",
+      "evidence": [
+        "log/semrender3.out: \"ok\": true, \"deterministic_ready\": false; exit=1",
+        "log/semrender2_off.out: --strict off, exit=1, same blocking reason",
+        "sha256 6e8110fd351c... for both out/pitch.pptx (semantic render, exit 1) and raw/out/pitch_raw.pptx (generate, exit 0)",
+        "diagnostics: ('NO_EXECUTIVE_SUMMARY', 'info') vs blocking_reasons 'quality gate: deck storyline incomplete'"
+      ],
+      "expected": "Exit 0 when the deck is written and no error-severity finding remains; one verdict for one artifact across both CLI paths.",
+      "suggestion": "Reserve non-zero exit for errors; report gate state in JSON (or a distinct documented exit code such as 2, as preflight does). Add `--gate off|warn|strict` or `--no-require-storyline`, and make the archetype (sales_pitch) decide whether an executive summary is required."
+    },
+    {
+      "id": "A7",
+      "title": "render-thumbnails cannot write PNG files; images arrive only as base64 inside stdout JSON",
+      "severity": "major",
+      "journey_stage": "delivery",
+      "what_happened": "The user asked for PNGs. `render-thumbnails` and `render-slide` have no output flag; they print png_base64 per slide (169 KB for 7 slides at 100 dpi, 276 KB at 150). Unredirected, that floods an agent's context. I had to write a Python decode step and choose file names myself. `inspect --images <dir>` expects slide-0.png, slide-1.png, ..., which no CLI command produces. The returned content_hash does not equal the SHA-256 of the PNG bytes delivered, although the skill says 'content_hash (SHA-256 of the PNG)'.",
+      "evidence": [
+        "log/thumbs1.out: 168770 bytes, keys index/png_base64/content_hash/source_hash, no path",
+        "log/h_render-thumbnails.err: options are --density --force --max-slides --pptx --slides --templates-dir",
+        "slide 0: content_hash 67b5e5a4..., sha256(decoded png) 2d86b1b2...",
+        "preview-wireframe and export do have --out / --output-dir"
+      ],
+      "expected": "`render-thumbnails --pptx deck.pptx --out-dir slides/` writes slide-01.png ... and prints a small manifest of paths.",
+      "suggestion": "Add --out-dir (and make file output the CLI default, base64 opt-in), name files the way `inspect --images` reads them, and either hash the delivered bytes or document what content_hash covers."
+    },
+    {
+      "id": "A8",
+      "title": "Raw validate (without --fit-report) and generate both report success for a deck whose chart cannot render",
+      "severity": "major",
+      "journey_stage": "validation",
+      "what_happened": "Test deck with a typo'd key (contnt) and chart type stacked-bar. `validate --json` returned valid:true, exit 0, two warnings. `generate` returned exit 0 and success:true while its own report lists diagram_render_failed with severity error / action refuse and quality.issues '1 blocking finding(s)'; the PPTX contains a 'Data unavailable' placeholder and a blank first slide. Only `validate --fit-report` (exit 1), `preflight` (exit 2) and `generate --strict-fit=strict` (exit 1) refuse it. The --fit-report help text says only 'Run per-cell text overflow measurement'.",
+      "evidence": [
+        "log/e_typo_validate.out: valid true, findings.ok true, '2 warnings'",
+        "log/e_typo_generate.out: success true; fit_findings [('diagram_render_failed','error','refuse'), ...]; quality.score 44",
+        "log/e_typo_pre.out: ok false, 'RENDER.diagram_render_failed', exit 2"
+      ],
+      "expected": "A deck that will render a placeholder instead of its chart fails plain validate and makes generate exit non-zero by default.",
+      "suggestion": "Run the render-projection checks in default validate, make error/refuse findings fail generate unless --partial is set, and describe --fit-report accurately or fold it into the default."
+    },
+    {
+      "id": "A9",
+      "title": "semantic validate passes a spec that semantic render then blocks; the stat text budget is not in the schema",
+      "severity": "minor",
+      "journey_stage": "validation",
+      "what_happened": "`semantic validate` returned ok with one rhythm warning. Render then added BODY_TOO_LONG (stat label+context 129 chars against a combined ~120) and NO_EXECUTIVE_SUMMARY and blocked on both. The schema gives per-field limits (label <=80, context <=120), which my copy met; the combined limit only appears at render time. validate also takes no --template / --templates-dir, unlike compile and render.",
+      "evidence": [
+        "log/semval1.out: ok true, '1 warning'",
+        "log/semrender1.out: BODY_TOO_LONG 'use 129 characters but the stack beneath the number holds about 120'",
+        "semantic validate -h: only --spec and --strict"
+      ],
+      "expected": "validate reports everything render will block on.",
+      "suggestion": "Run the same gate in `semantic validate` (accept --template), and state the combined stat budget in the kind description."
+    },
+    {
+      "id": "A10",
+      "title": "Input, output and slide-selection flags mean different things in different subcommands",
+      "severity": "minor",
+      "journey_stage": "authoring",
+      "what_happened": "Input file: positional for validate / read / validate-output / validate-template / patterns; `--json <file>` for generate / preflight / score / analyze-rhythm / preview; `--spec` for semantic; `--pptx` for render-* and export. On validate, `--json` is a boolean meaning 'emit JSON'. Output: `--output` (generate, file or dir; semantic render), `--output-dir` (export), `--out` (preview-wireframe), none (render-thumbnails). Slides: `--slide <n>` (preview-wireframe), `--slide <file>` (render-slide-from-json), `--slide-index` (render-slide), `--slides 1,3` (render-thumbnails). Flags after a positional are read as file names.",
+      "evidence": [
+        "`score raw/pitch.json` -> usage + exit 1; `analyze-rhythm raw/pitch.json` -> 'Error: --json is required'",
+        "`validate raw/pitch.json --json` -> '--json: INVALID ... open --json: no such file or directory'",
+        "`render-thumbnails out/pitch.pptx` -> usage dump, exit 1"
+      ],
+      "expected": "One convention: the input file positional everywhere (flag kept as alias), --format json for output shape, --out for outputs, --slide N for indices.",
+      "suggestion": "Accept the positional input on every command, rename validate's boolean to --format json only (keep --json with a deprecation note), and say 'flags must come before the file' when a flag-looking token is parsed as a path."
+    },
+    {
+      "id": "A11",
+      "title": "Help goes to stderr and `-h` exits 1 on most subcommands",
+      "severity": "minor",
+      "journey_stage": "onboarding",
+      "what_happened": "`json2pptx --help` writes 5.5 KB to stderr and nothing to stdout. Of 25 subcommands probed, 21 exit 1 on -h and end with 'Error: flag: help requested'; patterns, semantic (and its subcommands), icons and tables exit 0. `icons list -h` and `purge-render-cache -h` print Go's default single-dash style while the rest print double-dash. Default output differs too: patterns list, patterns validate, icons, tables, validate print human text; skill-info, score, preview, recommend-* print JSON.",
+      "evidence": [
+        "log/help.out 0 B, log/help.err 5473 B, exit 0",
+        "generate -h: exit=1, last line 'Error: flag: help requested'; semantic validate -h: exit=0",
+        "icons list -h: 'Usage of icons list: -json ... -set string'"
+      ],
+      "expected": "Help on stdout with exit 0 everywhere, one flag style, one default output format.",
+      "suggestion": "Handle flag.ErrHelp centrally (stdout, exit 0), and pick JSON-by-default with --human, or the reverse, across all subcommands."
+    },
+    {
+      "id": "A12",
+      "title": "stderr carries repeated INFO logs and sometimes the only success signal or the error JSON",
+      "severity": "minor",
+      "journey_stage": "render",
+      "what_happened": "stdout JSON was never polluted, which is good. But one render logs each 'pattern expanded' line five times (30 lines for 6 patterns). A plain `generate` prints nothing on stdout; the output path is only in the stderr line 'INFO JSON conversion complete output=...'. `--json-output-report -` does print the report to stdout but that '-' is not in the help. Error envelopes go to stdout for `semantic validate` and `validate --json`, to stderr for `semantic render`, `render-thumbnails` and `describe-finding`; malformed JSON under `validate --json` yields plain text on stderr. Several CLI envelopes carry \"subcommand\":\"mcp\". With --strict-fit=strict the findings are printed twice (JSON on stdout, NDJSON on stderr).",
+      "evidence": [
+        "log/semrender3.err: 30 INFO lines, each unique line x5",
+        "log/gen2.out 0 B; log/gen2.err 'INFO JSON conversion complete output=raw/out2/output.pptx'",
+        "log/e_sem_badtpl_render: stdout 0 B, JSON on stderr; log/e_thumbs_missing.err: \"subcommand\":\"mcp\"",
+        "log/e_malformed_validate_json.err: 'Error: invalid JSON in err/malformed.json: invalid character ...' (no line/column, not an envelope)"
+      ],
+      "expected": "Result or error envelope always on stdout; logs quiet unless --verbose.",
+      "suggestion": "Default log level WARN (INFO under --verbose), dedupe the expansion log, print a one-line JSON result from generate, and send every envelope to stdout with the real subcommand name."
+    },
+    {
+      "id": "A13",
+      "title": "validate --json has two response shapes and mixed slide index bases",
+      "severity": "minor",
+      "journey_stage": "validation",
+      "what_happened": "On success the top level is {valid, slide_count, ..., findings:{ok, findings:[...]}}; on failure it is the bare envelope {ok:false, findings:[...]}. My one-liner that worked on the passing deck crashed on the failing one. Indices: where.slide and slides[4] are 0-based, quality.slide_scores[].slide_number is 1-based, and message text says 'slide 2' for /slides/1. The human summary reported 'Charts: 0' for a deck with a chart-insights-split chart.",
+      "evidence": [
+        "log/val_j.out findings is a dict; log/e_typo_valfit.out findings is a list (TypeError in my parser)",
+        "log/val_h.out: 'Slides: 7 | Charts: 0 | Diagrams: 0 | Tables: 1 | Shapes: 1'",
+        "INPUT.takeaway_missing: message 'slide 2: ...' with evidence.path /slides/1"
+      ],
+      "expected": "One shape with ok at a fixed location; one index base, or both given explicitly.",
+      "suggestion": "Always return the success shape with findings.ok false on failure, and add slide_index (0-based) and slide_number (1-based) to every finding."
+    },
+    {
+      "id": "A14",
+      "title": "plan-deck drops most of an explicitly enumerated outline",
+      "severity": "minor",
+      "journey_stage": "discovery",
+      "what_happened": "Brief: '7-slide investor pitch deck ...: problem, solution, market size chart, traction KPIs, business model, team of 4, the ask' with --slides 7 --format deckspec. Result: 5 slides (title, executive_summary, stat, pillars, next_steps), deck title set to the brief text, no archetype, no chart/KPI/team slide. The raw format also returned 5. I discarded the plan and wrote the spec by hand. The default is --format raw although get-started recommends deckspec.",
+      "evidence": [
+        "log/plan.out: budget_note 'The storyline needs 5 of the 7 slides'",
+        "log/plan_raw.out: 5 slides; slide 2 pairs team-bios with content_seed 'traction KPIs, business model'"
+      ],
+      "expected": "A comma-separated outline in the brief becomes one slide per item with a fitting kind (chart_insight, kpi_snapshot, team, ...).",
+      "suggestion": "Parse enumerated outlines into slots before applying the storyline template, honour --slides when the brief lists that many topics, and set meta.archetype from words like 'pitch'."
+    },
+    {
+      "id": "A15",
+      "title": "Slides scored 100 still show layout quirks: misaligned KPI value, blue highlight on a green template, half-empty slides",
+      "severity": "polish",
+      "journey_stage": "review",
+      "what_happened": "All slides were readable and shippable, but: on the KPI slide the card whose label wraps to two lines ('92%') sits higher than the other three; the table's highlight column and the corner triangle are blue (accent3 #1565C0) on forest-green; pillars, KPI and table slides fill roughly the top 40% and leave a blank band above the takeaway. None was reported. The one rhythm warning calls a table, team cards and a next-steps list '3 consecutive text slides'.",
+      "evidence": [
+        "out/slides/slide-04.png (92% card), slide-05.png (blue highlight column), slide-02.png (empty band)",
+        "log/semrender3.out: slide_scores 100 for slides 3-7",
+        "log/explain1.out: visual_family 'text' for table, team, next_steps"
+      ],
+      "expected": "Card values share a baseline; highlight uses the template's primary accent tint; sparse grids grow or centre vertically.",
+      "suggestion": "Align KPI values to a common baseline, tint highlight_column from accent1/lt2, vertically centre short grids, and give table / team / next-steps their own visual families."
+    },
+    {
+      "id": "A16",
+      "title": "Undocumented sidecar file and large caches left behind",
+      "severity": "minor",
+      "journey_stage": "delivery",
+      "what_happened": "`semantic render` writes <name>.pptx.authoring.json (24 KB) next to the deck; it is named in the stdout manifest_path but not in -h, and there is no flag to suppress it. `generate --output <dir>` names the file output.pptx. On this machine $TMPDIR holds 2465 json2pptx-lo-* directories (617 MB) and a 27 MB render cache, and ~/.cache/json2pptx/layout-previews holds 28322 files (311 MB). These predate my session (dates back to Sep 19) and a forced render of mine added none, so I cannot attribute them to the CLI path. skill-info reports preview_cache_writes: true unless --no-preview is passed.",
+      "evidence": [
+        "out/pitch.pptx.authoring.json 24400 B",
+        "`ls -d $TMPDIR/json2pptx-lo-* | wc -l` -> 2465; du total 617M",
+        "log/si_list.out side_effects: preview_cache_writes true"
+      ],
+      "expected": "Only the requested artefact is written, or sidecars are opt-in and documented; temp dirs are removed on exit.",
+      "suggestion": "Document the sidecar in `semantic render -h` with --no-manifest, default the output name to the input basename, and have purge-render-cache also sweep stale json2pptx-lo-* dirs."
+    }
+  ],
+  "delights": [
+    {
+      "title": "First DeckSpec was valid on the first try and rendered a good 7-slide deck in 0.3 s; thumbnails took 3 s",
+      "evidence": ["log/semval1.out ok true", "log/semrender1.out duration_ms 296", "out/slides/slide-01..07.png"]
+    },
+    {
+      "title": "Schema descriptions state counts, character budgets and degradation behaviour per kind; `semantic explain` shows the chosen pattern, layout and alternatives per slide",
+      "evidence": ["Slide_team: 'Name <=60 chars, role <=80, bio <=220 (~2 lines)'", "log/explain1.out"]
+    },
+    {
+      "title": "Errors are specific, list everything in one pass and suggest the fix",
+      "evidence": [
+        "log/e_sem1.out: 4 errors + 2 warnings with paths; 'unknown field \"kpi\" ... did you mean \"kpis\"?'",
+        "patterns show kpi-9up: 'did you mean \"kpi-2up\"?' plus full list",
+        "'template not found: forrest-green; available templates: [...]'",
+        "describe-finding <code> works for every code I met"
+      ]
+    },
+    {
+      "title": "Templates are embedded, so the CLI works with no --templates-dir",
+      "evidence": ["log/e_sem_no_tdir.out: template forest-green, same content_hash"]
+    },
+    {
+      "title": "Output is deterministic and stdout JSON is never mixed with log lines",
+      "evidence": ["identical sha256 6e8110fd... across semantic render, compile+generate and repeated runs", "every *.out parsed with json.load"]
+    },
+    {
+      "title": "Placeholder copy is caught (WEAK_CONTENT) and capabilities carries a correct MCP-to-CLI mapping; top-level help lists MCP-only tools with CLI workarounds",
+      "evidence": ["log/skel_val.out: 9 x INPUT.WEAK_CONTENT", "log/cap.out cli_counterpart for 54 tools", "log/help.err 'MCP-only tools' section"]
+    }
+  ]
+}

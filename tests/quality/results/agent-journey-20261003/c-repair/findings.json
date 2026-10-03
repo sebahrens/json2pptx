@@ -1,0 +1,324 @@
+{
+ "persona": "c-repair",
+ "metrics": {
+  "tool_calls": 45,
+  "total_response_bytes": 1879885,
+  "attempts_to_first_valid_render": 8,
+  "wall_minutes": 10,
+  "enjoyment_1_to_10": 6,
+  "enjoyment_reasons": [
+   "Fast calls and deck_id+patch made each round cheap",
+   "Paths, DROPPED wording and patch templates for titles/sources/closing were directly usable",
+   "Findings arrived in tiers: 7 validates and 3 renders before the gate passed",
+   "Two machine-suggested patches were wrong (layout swap, no-op replace)",
+   "Exec-summary budget moved four times and cost 77% of the text",
+   "Score 100 did not match the slides I looked at"
+  ],
+  "validate_round_trips_to_clean": 7,
+  "render_round_trips_to_deterministic_ready": 3,
+  "render_round_trips_to_zero_diagnostics": 4,
+  "thumbnail_passes_main_deck": 2,
+  "describe_finding_calls": 15,
+  "thumbnail_bytes": 1576011,
+  "non_image_bytes": 303874,
+  "text_cut": {
+   "exec_summary_chars": "1188 -> 270 (6 -> 4 points)",
+   "process_chars": "1075 -> 473",
+   "decision_labels": "81/80/78 -> 43/46/49",
+   "kpis": "7 -> 6",
+   "table": "9 rows -> 5 + 4 on two slides"
+  },
+  "slides_in_draft": 10,
+  "slides_final": 12
+ },
+ "findings": [
+  {
+   "id": "C1",
+   "title": "Findings are disclosed in tiers, so a draft with 12 planted flaws took 7 validate + 3 render round-trips",
+   "severity": "major",
+   "journey_stage": "validation",
+   "what_happened": "The first validate returned 5 errors + 12 warnings. Only after those semantic errors were cleared did a second tier appear (10 TEXT_BELOW_READABLE_MIN errors, TITLE_NOT_ACTION, DATA_WITHOUT_SOURCE), a third finding (CLOSING_WITHOUT_NEXT_STEPS for 'Thank you') first showed on the 6th validate, and BODY_TOO_LONG / SLIDE_UNDERUSED / SPARSE_FILL only at render. Each tier looked like 'nearly done'.",
+   "evidence": [
+    "call n=4: summary '5 errors, 12 warnings' (no title/source/closing/fit findings)",
+    "call n=18: '10 errors, 8 infos' right after the last semantic error was fixed",
+    "call n=23: first appearance of INPUT.CLOSING_WITHOUT_NEXT_STEPS",
+    "call n=24: 'no issues' -> call n=25: deterministic_ready=false"
+   ],
+   "expected": "One validate lists everything it can already know (topic titles, missing sources, 'Thank you' closer do not depend on the unknown kind on another slide), or says explicitly 'N further checks were skipped until errors are fixed'.",
+   "suggestion": "Run the advisory/fit passes on every slide that compiles even when other slides have errors; add a 'checks_not_run' field when a tier is skipped."
+  },
+  {
+   "id": "C2",
+   "title": "Suggested patch for TEXT_BELOW_READABLE_MIN swaps the layout instead of shortening, and creates three new findings",
+   "severity": "major",
+   "journey_stage": "repair",
+   "what_happened": "All 10 TEXT_BELOW_READABLE_MIN findings said 'shorten the text' (params: fix_kind reduce_cell_text, strategy shorten, cell_max_chars) but their op/next_tool_call was add /slides/1/layout = 'content'. Applied literally it turned the executive_summary into a bullet slide and the next validate reported NO_EXECUTIVE_SUMMARY ('deck of 12 slides has no executive summary', on a slide whose kind is executive_summary), BODY_TOO_LONG (155 words, max 80) and SLIDE_TEXT_DENSE.",
+   "evidence": [
+    "call n=18: next_tool_call patch [{op:add, path:/slides/1/layout, value:content}] with message '...shorten the text'",
+    "call n=23: 'INPUT.NO_EXECUTIVE_SUMMARY ... /slides/1', 'FIT.BODY_TOO_LONG ... 155 words; trim to 80', 'INPUT.SLIDE_TEXT_DENSE'"
+   ],
+   "expected": "The machine-applicable patch matches the message: a replace on the over-long field with a character budget.",
+   "suggestion": "Emit one finding per slide with patch ops per over-budget field (replace .../points/i/support, max_chars N); never offer a patch that the earlier PATTERN_DEGRADED warning told the agent to avoid."
+  },
+  {
+   "id": "C3",
+   "title": "Suggested patch for an unknown key on a list entry rewrites the unknown key's value (no-op loop)",
+   "severity": "major",
+   "journey_stage": "repair",
+   "what_happened": "For slides[4].steps[i].value (unknown field) the remediation and next_tool_call were replace /slides/4/steps/i/value '<rewrite this field ...>'. I applied that to all four; the identical four errors came back. The fix was a rename (value -> description), which only the message's 'expected one of' list hinted at.",
+   "evidence": [
+    "call n=16: remediation {op:replace, path:/slides/4/steps/0/value, value:'<rewrite this field to resolve INPUT.SEMANTIC_UNKNOWN_FIELD ...>'}",
+    "call n=17: same 4 errors after applying the 4 patches"
+   ],
+   "expected": "A rename (remove + add under the nearest accepted key) or a remove op.",
+   "suggestion": "For SEMANTIC_UNKNOWN_FIELD always emit remove (+ add under did_you_mean when there is one); never a replace on the unknown path."
+  },
+  {
+   "id": "C4",
+   "title": "Executive-summary budget changed four times; I cut 77% of the text where the first message asked for one fewer point",
+   "severity": "major",
+   "journey_stage": "repair",
+   "what_happened": "Draft: 6 points, 1188 chars. n=4 said only '3-5 points'. n=12 said 'lead <=90, support <=200' without saying which point or that a plain string is a lead. I restructured to 5 lead/support pairs (930 chars), which then failed n=18 with cell_max_chars 49 (lead) / 55 (support) hidden in params. Cutting to those (449 chars) gave 'no issues' at n=24, then render said 'needs 337pt, holds about 311pt - shorten the leads and supporting sentences, shorten the bottom line, or use fewer points'. Shortening again (n=27) changed nothing because every row was already one line; only removing a point worked (n=28). Final: 4 points, 270 chars, and the slide looks sparse.",
+   "evidence": [
+    "call n=12: 'exceeds an exec-summary text budget (lead <=90, support <=200, bottom line <=160 characters)'",
+    "call n=18: params cell_max_chars 55 for a 153-char support that satisfied <=200",
+    "call n=27: identical 'needs 337pt ... 311pt' after cutting supports from <=55 to ~28 chars",
+    "/tmp/jj/j/c-repair/img/modern_hi/s01.png"
+   ],
+   "expected": "One budget, stated once, that is true for the template being rendered: e.g. '4 points max on modern; or 5 points with no takeaway'.",
+   "suggestion": "Report the binding constraint (row count x row height vs available height) and which single change clears it; drop 'shorten the sentences' from the advice when all rows are already one line."
+  },
+  {
+   "id": "C5",
+   "title": "A finding that validate calls 'no issues' / info blocks the render gate as a 'warning' with action 'review'",
+   "severity": "major",
+   "journey_stage": "render",
+   "what_happened": "validate (n=24) returned 'no issues'. render (n=25) wrote the pptx but deterministic_ready=false with 'quality gate: 1 substantive review finding(s) remain (readability, empty content, or contrast)'. The cause was BODY_TOO_LONG severity 'warning', action 'review', raw_path /slides/1/pattern, no semantic_path, no recommended_edit. The blocking reason names neither the code nor the slide. Validating the same spec with template=modern (probe n=40) reports the same finding as severity 'info' with ok=true. The earlier validates were template-less because get_started's validate args_template has no template field.",
+   "evidence": [
+    "call n=24: ok:true summary 'no issues'",
+    "call n=25: deterministic_ready:false; diagnostics[0] {code:BODY_TOO_LONG, severity:warning, action:review, raw_path:/slides/1/pattern}",
+    "call n=40: 'ok True, 1 info' FIT.BODY_TOO_LONG",
+    "call n=2: validate args_template {spec, strict} vs render {spec, template}"
+   ],
+   "expected": "Severity predicts the gate: anything that will block deterministic_ready is an error (or flagged blocking:true) at validate, for the template that will be rendered.",
+   "suggestion": "Add template to get_started's validate args_template; put 'blocking': true and the code + slide into blocking_reasons; give render-time BODY_TOO_LONG a semantic_path."
+  },
+  {
+   "id": "C6",
+   "title": "Over-budget items are reported one per round-trip and the path points at the list, not the item",
+   "severity": "minor",
+   "journey_stage": "validation",
+   "what_happened": "Three decision option labels were 81/80/78 chars (budget 60). Validate reported option 1, then option 2, then option 3 in three successive calls. The process slide did the same (step 1, then step 2) until I shortened all eight unprompted. evidence.path is slides[7].options / slides[8].steps.",
+   "evidence": [
+    "call n=4: \"decision option 1's label is 81 characters; a step holds 60\" path slides[7].options",
+    "call n=12: \"decision option 2's label is 80 characters\"",
+    "call n=16: \"decision option 3's label is 78 characters\""
+   ],
+   "expected": "All over-budget items in one finding (or one each), path slides[7].options[0].label, with the budget in params.",
+   "suggestion": "List every offender with index, measured length and budget; emit replace ops per item."
+  },
+  {
+   "id": "C7",
+   "title": "Comparison PATTERN_DEGRADED blames the column count although 3 is inside its own stated range",
+   "severity": "minor",
+   "journey_stage": "validation",
+   "what_happened": "Message: 'a comparison renders as a visual with 2 columns or 3-5; found 3, so this slide degrades to a bullet list - split it, or use raw_json2pptx'. The actual cause was the third column's misspelled 'bulets' (dropped), reported separately. Fixing the typo made the degraded finding disappear.",
+   "evidence": [
+    "call n=4: input-11 'found 3, so this slide degrades' + input-10 unknown field \"bulets\"",
+    "call n=12: finding gone after bulets -> items"
+   ],
+   "expected": "The message names the real reason (column 3 has no items).",
+   "suggestion": "Report 'column 3 is empty' and suppress the count advice when the count is in range; link the two findings."
+  },
+  {
+   "id": "C8",
+   "title": "Following SEMANTIC_DENSITY ('split the table') triggers RHYTHM_MONOTONY; its literal fix leaves a section divider between table halves that nothing flags",
+   "severity": "minor",
+   "journey_stage": "repair",
+   "what_happened": "The 9-row table was split as told (n=4). The next validate raised RHYTHM_MONOTONY at slides[6] ('3 consecutive text slides') without listing the slides in the run. The suggested fix (section break) cleared it, but the deck now has divider '01 Savings levers' between 'Savings by lever (1/2)' and '(2/2)', and its crumb labels the decision and implementation slides. Validate, render and score_deck (100) are all silent about that.",
+   "evidence": [
+    "call n=4: 'table has 10 rows including the header; the renderer lays out at most 7 - split it across two slides'",
+    "call n=12: 'INPUT.SEMANTIC_RHYTHM_MONOTONY ... slides[6]'",
+    "/tmp/jj/j/c-repair/img/modern1/s07.png, s08.png, s09.png"
+   ],
+   "expected": "A table continuation does not count as monotony, or the finding lists the run and proposes a reorder.",
+   "suggestion": "Exempt consecutive slides produced by a split; include run indices in evidence; flag a single section divider that sits mid-deck with no sibling sections."
+  },
+  {
+   "id": "C9",
+   "title": "Unknown kind gives no nearest kind and costs four more round-trips once changed",
+   "severity": "minor",
+   "journey_stage": "repair",
+   "what_happened": "kind 'funnel' -> error lists all 27 kinds (twice: message and remediation.params.available), next_tool_call is list_slide_kinds {} (the 23KB catalogue). I picked process. That produced SEMANTIC_REQUIRED steps + UNKNOWN_FIELD stages + TAKEAWAY_REQUIRED (n=12), then UNKNOWN_FIELD value x4 (n=16), then the no-op patch (n=17), clean at n=18. The first validate also returned no deck_id although get_started says to keep it.",
+   "evidence": [
+    "call n=4: 'unknown slide kind \"funnel\"; expected one of agenda, architecture, ...' and no deck_id in the response",
+    "call n=12: 'process slide requires a \"steps\" field', 'unknown field \"stages\"'"
+   ],
+   "expected": "A short list of candidate kinds for the payload I sent (label/value stages -> process, kpi_snapshot, bridge) with the field renames each needs; a deck_id even when ok=false.",
+   "suggestion": "Rank kinds by field overlap with the rejected slide and return the item_schema of the top candidate inline; always return deck_id."
+  },
+  {
+   "id": "C10",
+   "title": "did_you_mean is inconsistent across typos",
+   "severity": "polish",
+   "journey_stage": "validation",
+   "what_happened": "'takeway' got did_you_mean 'takeaway' plus a rename patch. 'bulets' (for items) and 'stages' (for steps) got only the list of accepted keys and no remediation block.",
+   "evidence": [
+    "call n=4: input-5 params {did_you_mean: takeaway, fix_kind: rename_field}",
+    "call n=4: input-10 'unknown field \"bulets\" ... expected one of \"cons\", \"header\", \"items\", ...' with no remediation"
+   ],
+   "expected": "A suggestion whenever the accepted list has an obvious semantic match (bullets/bulets -> items).",
+   "suggestion": "Add alias-aware suggestions (bullets->items, stages->steps, value->description) beside edit distance."
+  },
+  {
+   "id": "C11",
+   "title": "Three severity vocabularies that disagree, and describe_finding refers to fields and tools the agent does not have",
+   "severity": "minor",
+   "journey_stage": "validation",
+   "what_happened": "TEXT_BELOW_READABLE_MIN: finding severity 'error', evidence.action 'refuse', describe_finding severity 'review'. UNKNOWN_FIELD: finding 'error', describe 'refuse'. describe_finding texts say 'Read fix.params' but the envelope field is remediation.primary.params; they point to 'json2pptx semantic schema' (CLI) and repair_slide (not in the default tool profile).",
+   "evidence": [
+    "call n=18: severity error / evidence.action refuse",
+    "call n=19: describe_finding TEXT_BELOW_READABLE_MIN severity 'review'",
+    "call n=7: 'Read fix.params: from is the pattern that was refused'",
+    "call n=22: 'Apply via repair_slide(kind=provide_value, ...)'"
+   ],
+   "expected": "One severity scale used by findings, diagnostics and describe_finding; docs that name the fields actually present.",
+   "suggestion": "Map describe_finding severity to the emitted one; replace fix.params with the real path; hide tool references outside the active profile."
+  },
+  {
+   "id": "C12",
+   "title": "Validate findings and render diagnostics use different envelopes, path syntaxes and code casing",
+   "severity": "minor",
+   "journey_stage": "render",
+   "what_happened": "validate: {id, code 'INPUT.X', evidence.path 'slides[1].points', remediation, where.slide}. render: {code 'X', semantic_path, raw_path, slide_index, recommended_edit}. Some paths point at compiled objects I never wrote (/slides/1/pattern, /slides/1/shape_grid/rows/4/cells/2, /slides/7/content/Section Number). Codes mix cases: INPUT.title_wraps, contrast_predicted, BODY_TOO_LONG. where.slide is 0-based while messages say 'option 1' (1-based) and quality_summary uses slide_number (1-based).",
+   "evidence": [
+    "call n=18: evidence.path '/slides/1/pattern' on FIT.BODY_TOO_LONG; params.cell_path '/slides/1/shape_grid/rows/4/cells/2'",
+    "call n=25: diagnostics[0] has raw_path only",
+    "call n=35: code 'title_wraps', 'contrast_predicted' raw_path '/slides/7/content/Section Number'"
+   ],
+   "expected": "One envelope and one path syntax; every finding carries a path into what I authored.",
+   "suggestion": "Reuse the validate envelope in render_deck_spec; always include semantic_path; normalise code casing and index base."
+  },
+  {
+   "id": "C13",
+   "title": "Duplicate findings for one root cause inflate responses",
+   "severity": "minor",
+   "journey_stage": "validation",
+   "what_happened": "10 TEXT_BELOW_READABLE_MIN errors (every lead and support, identical 9.84pt, identical patch) plus a BODY_TOO_LONG info for one overflowing grid: 21.5KB. 4 identical UNKNOWN_FIELD errors for 'value'. BODY_TOO_LONG + SLIDE_TEXT_DENSE for the same 155 words. 'takeway' produced both UNKNOWN_FIELD and TAKEAWAY_REQUIRED on the same slide. A 33-char lead was flagged with cell_max_chars 49.",
+   "evidence": [
+    "call n=18: response 21549 bytes, input-1..input-10 all 'renders at 9.8pt'",
+    "call n=23: fit-1 and input-3 both '155 words'"
+   ],
+   "expected": "One finding per root cause with the affected paths listed.",
+   "suggestion": "Group by (slide, code, cause); for uniform grid shrink report the grid once with the height deficit."
+  },
+  {
+   "id": "C14",
+   "title": "restore_visual remediation is labelled apply_patch but carries no patch, and from/to describe the damage",
+   "severity": "polish",
+   "journey_stage": "repair",
+   "what_happened": "PATTERN_DEGRADED remediation: action 'apply_patch', params {fix_kind: restore_visual, from: 'exec-summary', to: 'content-bullets', reason}. There is no op/path/value; from/to read like a patch direction but mean 'the pattern you lose' and 'what renders instead'. For the decision slide from is ''.",
+   "evidence": [
+    "call n=4: input-3 params {fix_kind: restore_visual, from: exec-summary, reason: count_out_of_range, to: content-bullets}",
+    "call n=4: input-15 params {from: \"\", to: content-slide}"
+   ],
+   "expected": "Either a real patch or an action name that does not promise one; the allowed range/budget in params.",
+   "suggestion": "Rename to lost_pattern / fallback, add min/max or max_chars, and fill the decision pattern name."
+  },
+  {
+   "id": "C15",
+   "title": "score_deck 100 and gate passed on a deck with four visibly weak slides and six topic-label titles",
+   "severity": "major",
+   "journey_stage": "review",
+   "what_happened": "score_deck: overall 100, composition 100, quality_gate passed, zero findings, on all three templates. In the images: exec summary is four one-line rows in a mostly empty slide; 'Savings funnel' fills the left half only; a section divider splits a table; the 8-box flow wraps 2-3 words per line over 5-6 lines. Titles 'Monthly spend trend', 'Savings funnel', 'Options comparison', 'Savings by lever (1/2)', '(2/2)', 'Implementation approach' were never flagged (TITLE_NOT_ACTION skips slides with a takeaway; gate has max_topic_title_pct 25). The chart has no unit and nothing said so.",
+   "evidence": [
+    "call n=43: overall_score 100, quality_gate.passed true, top_codes []",
+    "call n=18: TITLE_NOT_ACTION only for slides 1, 2, 9",
+    "/tmp/jj/j/c-repair/img/modern2/s04.png, img/modern_hi/s10.png, img/modern1/s07.png"
+   ],
+   "expected": "The score separates 'nothing broken' from 'good'; 100 should not be reachable with half of the content titles as labels.",
+   "suggestion": "Report topic-title share in score_deck even when exempt; cap the score when SLIDE_UNDERUSED was only cleared by padding; add a chart-unit check."
+  },
+  {
+   "id": "C16",
+   "title": "Closing-title guidance contradicts itself across findings and templates",
+   "severity": "polish",
+   "journey_stage": "repair",
+   "what_happened": "list_slide_kinds says the closing title holds ~40 characters. CLOSING_WITHOUT_NEXT_STEPS told me to retitle 'Thank you' as the action, so I wrote a 40-char title. On p-style the render then raised title_wraps with max_chars 20.",
+   "evidence": [
+    "call n=23: hint 'replace the closer with a next_steps slide ... or retitle it as the action' with a replace /slides/11/title patch",
+    "call n=35: title_wraps ... recommended_edit params {max_chars: 20}"
+   ],
+   "expected": "The retitle patch carries the title budget for the active template.",
+   "suggestion": "Add max_chars to the CLOSING_WITHOUT_NEXT_STEPS patch template; prefer suggesting kind next_steps as the patch."
+  },
+  {
+   "id": "C17",
+   "title": "The 80-character flow-box budget passes validation but yields 5-6 line boxes at 8 steps",
+   "severity": "minor",
+   "journey_stage": "review",
+   "what_happened": "'process step 1 reads 160 characters with its description; a flow box holds 80'. I cut all eight steps to <=80 (1075 -> 473 chars). The slide validated and scored 100, but each box wraps to 5-6 lines of 2-3 words and label and description run together ('Baseline — Tagged inventory...'). The message did not say that <=6 steps with descriptions would render as numbered rows.",
+   "evidence": [
+    "call n=4: input-16 'a flow box holds 80 (otherwise it degrades to a bullet list)'",
+    "/tmp/jj/j/c-repair/img/modern_hi/s10.png"
+   ],
+   "expected": "The budget depends on the step count, and the alternative layout is offered.",
+   "suggestion": "Scale the per-box budget by step count; mention 'use <=6 steps for numbered rows with a detail line'."
+  }
+ ],
+ "delights": [
+  {
+   "title": "deck_id + patch makes repair rounds tiny and tells me what to re-inspect",
+   "evidence": [
+    "call n=24: 543-byte response for a 3-op patch, changed_slides [1, 11]",
+    "call n=28: one remove op re-rendered the deck, changed_slides [1]"
+   ]
+  },
+  {
+   "title": "Every validate finding carries a path into my spec, and dropped content is called out as DROPPED",
+   "evidence": [
+    "call n=4: 'unknown field \"takeway\" ... its content is DROPPED; did you mean \"takeaway\"?' path slides[2].takeway"
+   ]
+  },
+  {
+   "title": "Chart series/category mismatch caught before render with exact counts",
+   "evidence": [
+    "call n=4: 'chart has 6 categories but series \"Spend\" has 5 value(s)' path slides[3].chart.data.series[0].values"
+   ]
+  },
+  {
+   "title": "Title, source and closing fixes worked first time; meta.source cleared four findings with one op",
+   "evidence": [
+    "call n=18: hint 'or a deck-level default once (... DeckSpec meta.source)'",
+    "call n=23: TITLE_NOT_ACTION and DATA_WITHOUT_SOURCE gone"
+   ]
+  },
+  {
+   "title": "Thumbnails -> review hand-off is prefilled and the review was accepted first try",
+   "evidence": [
+    "call n=32: next_tool_call submit_visual_review with pptx_path + pptx_revision",
+    "call n=33: status visually_reviewed_current_revision"
+   ]
+  },
+  {
+   "title": "Fast: validate <0.25s, render 0.3-0.45s, 12 thumbnails ~2s",
+   "evidence": [
+    "log/calls.jsonl: 47 calls, 16.6s total server time"
+   ]
+  },
+  {
+   "title": "Same spec rendered on midnight-blue and p-style with no layout breakage",
+   "evidence": [
+    "call n=34: midnight-blue 0 diagnostics",
+    "call n=35: p-style 2 infos",
+    "img/mb1/sheet*.png, img/ps1/sheet*.png"
+   ]
+  },
+  {
+   "title": "describe_finding for PATTERN_DEGRADED explains from/to/reason and says content is never lost",
+   "evidence": [
+    "call n=7"
+   ]
+  }
+ ]
+}

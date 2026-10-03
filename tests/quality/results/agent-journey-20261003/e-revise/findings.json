@@ -1,0 +1,348 @@
+{
+ "persona": "e-revise",
+ "metrics": {
+  "tool_calls": 50,
+  "total_response_bytes": 1983977,
+  "attempts_to_first_valid_render": 1,
+  "wall_minutes": 11,
+  "enjoyment_1_to_10": 7,
+  "enjoyment_reasons": [
+   "deck_id + patch makes small edits cheap and the state never got lost",
+   "changed_slides -> slide_indices gives a tight look-at-what-changed loop for in-place edits",
+   "error messages for bad patches are specific and safe (atomic)",
+   "structural edits (move, merge, insert) fall back to index arithmetic and resending whole slides from memory",
+   "no search, no history and no read-back: the agent has to be the deck's memory",
+   "one misleading fit diagnostic cost two failed renders and a redo"
+  ]
+ },
+ "findings": [
+  {
+   "id": "E1",
+   "title": "plan_deck silently dropped the brief's risk and ask and reported unplaced_facts: []",
+   "severity": "major",
+   "journey_stage": "discovery",
+   "what_happened": "plan_deck(format:deckspec, slide_budget:8) drafted 5 authored slots (cover, executive_summary, kpi_snapshot, roadmap, next_steps). 'main risk is permitting delay' and 'ask is introductions to two strategic partners' appear in no slots[].facts and unplaced_facts is empty, so nothing told me two of the brief's seven topics were missing. '8 slides' was routed to the KPI slot as a fact. I kept 4 of the 5 kinds and wrote 4 more slides myself.",
+   "evidence": [
+    "call n=5: slots[2].facts = [\"8 slides\", \"ARR grew from $6.1m to $9.4m in 12 months\", ...]",
+    "call n=5: \"unplaced_facts\": []",
+    "call n=5: closing slot has guidance only, no facts"
+   ],
+   "expected": "Every clause of the brief is either routed to a slot or listed in unplaced_facts; the slide-count instruction is consumed as slide_budget, not as content.",
+   "suggestion": "Route 'risk' clauses to a risk slot (table / matrix_2x2) and 'ask' clauses to the closing/decision slot; put anything unrouted in unplaced_facts; strip 'N slides' from facts."
+  },
+  {
+   "id": "E2",
+   "title": "plan_deck met the 8-slide budget with an agenda and two dividers instead of content slides, and gave no budget_note",
+   "severity": "minor",
+   "journey_stage": "discovery",
+   "what_happened": "The draft used the structure form (cover, auto_agenda, 2 sections, closing): 5 authored slides for a brief that lists 7 topics. The tool description promises a budget_note when slots are dropped; none came back. The KPI slot is labelled slot:'problem' with guidance 'What is wrong or at stake' for good-news numbers. I converted the draft to flat slides, so the plan's paths (structure.sections[0].slides[1]) were all discarded.",
+   "evidence": [
+    "call n=5: deck_spec.structure.auto_agenda true, sections 'Where we stand' / 'The way forward'",
+    "call n=5: slot 'problem', guidance 'What is wrong or at stake, shown with the brief's own numbers'",
+    "call n=7: unmodified draft -> '3 errors, 8 warnings'"
+   ],
+   "expected": "For an 8-slide investor update, 7 content slots after the cover, with a note saying what was merged or dropped and why.",
+   "suggestion": "Count only content slides against slide_budget for short decks (or skip agenda/dividers under ~10 slides); always return budget_note; pick slot labels from the sentiment of the facts."
+  },
+  {
+   "id": "E3",
+   "title": "TEXT_BELOW_READABLE_MIN on option_matrix named the option name as the text to shorten; the real cause was the detail line on the highlighted row",
+   "severity": "major",
+   "journey_stage": "repair",
+   "what_happened": "Inserting a 3x4 option_matrix was refused. The diagnostic quoted evidence.text 'Tidewater Carbon', recommended shorten_text, and gave semantic_path 'slides[7]' only. I shortened the name to 'Tidewater': identical refusal at the same 11.04pt. describe_finding and compositions gave nothing specific. Removing options[0].detail (37 chars; the schema allows 80) fixed it, and the full name then rendered fine, so I had to patch the name back. Cost: 2 failed renders, 4 lookups, 1 redo patch. The offered next_tool_call (layout:'content') would have degraded the matrix to bullets.",
+   "evidence": [
+    "call n=15: evidence.text \"Tidewater Carbon\", role card-title, semantic_path \"slides[7]\"",
+    "call n=16: same error with evidence.text \"Tidewater\", font_pt 11.04",
+    "call n=14: options detail '<=80 chars for up to 4 options x 4 criteria'",
+    "call n=20: remove /slides/7/options/0/detail -> ok:true",
+    "call n=23: name restored to 'Tidewater Carbon' -> ok:true",
+    "call n=25: catalog example (26-char detail) validates clean on modern-yellow"
+   ],
+   "expected": "The finding points at the field that actually overflows (slides[7].options[0].detail, or 'detail + highlight_label on the recommended row'), with the real character budget for that cell.",
+   "suggestion": "Attribute cell overflow to the semantic field(s) sharing the cell, not the first paragraph; publish the tighter budget for the recommended row when highlight_label is set; offer a field-level patch before a composition downgrade."
+  },
+  {
+   "id": "E4",
+   "title": "No stable slide handle: every address is a positional index that shifts on insert, remove and move",
+   "severity": "major",
+   "journey_stage": "authoring",
+   "what_happened": "Slide schemas are closed and have no id/name field, so the only address is /slides/N. The ask slide was /slides/7, then 8 after an insert, then 7 after a merge, then 7 with an appendix behind it; the risk slide went 5 -> 7 -> 6. Ops in one patch apply sequentially, so in 'remove /slides/3; replace /slides/4' the second index is post-shift and I did that arithmetic by hand. The user's 'slide 3' is 1-based; pointers and changed_slides are 0-based; quality_summary.slide_scores uses slide_number (1-based).",
+   "evidence": [
+    "call n=8: item_schema properties for 7 kinds contain no id field, additionalProperties:false",
+    "call n=15: changed_slides [7,8] after add /slides/7",
+    "call n=32: patch remove /slides/3 then replace /slides/4",
+    "call n=12: slide_scores[].slide_number 1..8 next to explanation_summary.slides[].index 0..7"
+   ],
+   "expected": "A slide id I set or the server assigns once, usable in patch paths and echoed in changed_slides, that survives reordering.",
+   "suggestion": "Accept an optional slides[].id (or return server-assigned ids) and allow /slides/@risk/title style paths; echo {id, index} pairs in changed_slides."
+  },
+  {
+   "id": "E5",
+   "title": "No move or copy op and no read-back of the stored spec, so a move or merge resends whole slides from the agent's memory",
+   "severity": "major",
+   "journey_stage": "authoring",
+   "what_happened": "'Move the risk slide before the ask' is not expressible: op 'move' is rejected (cleanly). I sent remove + add with the entire risk slide (752 B) rebuilt from memory, including the source field I had added by an earlier patch and that my local file no longer matched. Merging the burn chart and roadmap resent all chart data and milestones (1,155 B). No default-profile tool returns the stored spec, so the server is the source of truth but the agent must keep a shadow copy to do structural edits.",
+   "evidence": [
+    "call n=26: \"unknown patch op \\\"move\\\"; use replace, add or remove\"",
+    "call n=27: request 751 B for a reorder plus a title change",
+    "call n=32: request 1,155 B to combine two existing slides",
+    "tools/list: 12 tools, none returns a stored DeckSpec"
+   ],
+   "expected": "Reorder in ~80 bytes; reuse existing content by reference; read the current spec (or one slide) back.",
+   "suggestion": "Add RFC 6902 move and copy (from/path); add a get_deck_spec(deck_id, paths?) read tool or a return_spec flag."
+  },
+  {
+   "id": "E6",
+   "title": "changed_slides is a positional diff: shifted slides and notes-only slides are flagged like real edits",
+   "severity": "major",
+   "journey_stage": "review",
+   "what_happened": "After the move it returned [5,6,7] (one real edit, two renumbered). After the merge [3,4,5,6,7] (one new slide, four renumbered). After adding speaker notes plus two appendix slides it returned all ten, although notes never show on a slide. Following next_tool_call verbatim pulled 14 thumbnails that had no content change (about 500 KB of the 1.24 MB of thumbnail payload in turns 1-8). There is no way to tell 'edited' from 'page number changed' from 'notes only'.",
+   "evidence": [
+    "call n=27: changed_slides [5,6,7]",
+    "call n=32: changed_slides [3,4,5,6,7]",
+    "call n=40: changed_slides [0..9] for notes + 2 appended slides",
+    "call n=33: 184,862 B for 5 thumbnails, 1 with new content"
+   ],
+   "expected": "A diff that separates content-changed slides from renumbered ones and from notes-only edits, so I re-inspect only what looks different.",
+   "suggestion": "Return changes: [{index, id, was_index, change: edited|inserted|moved|renumbered|notes_only|restyled, fields:[...]}]; make next_tool_call.slide_indices cover only visible content changes, with the rest listed separately."
+  },
+  {
+   "id": "E7",
+   "title": "No way to find a fact across the deck: 'fix it everywhere' relied on my memory and an unzip + grep",
+   "severity": "major",
+   "journey_stage": "repair",
+   "what_happened": "For $9.4m -> $9.6m I listed occurrences from memory of what I had authored: two titles, an exec-summary support line, a chart insight, a takeaway and the chart series, plus the derived 54% -> 57% in three places. explanation_summary echoes titles and takeaways only. There is no search tool, no read-back and no replace-all op, and nothing confirms afterwards that no '9.4' is left. I checked by unzipping the pptx and grepping, which an MCP-only agent cannot do.",
+   "evidence": [
+    "call n=29: 6 replace ops, 786 B, changed_slides [1,2]",
+    "shell: unzip + grep '9\\.4|54%' over ppt/slides -> no text hits",
+    "tools/list: no search / find tool"
+   ],
+   "expected": "Ask the deck 'where does 9.4 occur?' and get paths back; optionally replace all in one op.",
+   "suggestion": "Add find_in_deck(deck_id, query) returning [{path, slide index, text}] across titles, bodies, chart data and notes; or a patch op {op:'replace_text', find, replace, scope} whose response lists every path touched."
+  },
+  {
+   "id": "E8",
+   "title": "No revision history, undo or per-slide change log",
+   "severity": "major",
+   "journey_stage": "repair",
+   "what_happened": "'Undo the last change to the title slide': there was no content change. I could establish that only from my own saved responses (slide 0 appears in changed_slides once, on the template switch) and by pulling slide 0 of the previous pptx and comparing its thumbnail content_hash with the first render. The product keeps no history: 'history' and 'undo' arguments are rejected, there is no revision list, no diff between revisions and no restore. An agent that had not logged every response could not answer the user, and a real undo means hand-authoring the inverse patch.",
+   "evidence": [
+    "call n=36: unknown argument \"history\"",
+    "call n=37: unknown argument \"undo\"",
+    "call n=39: v6 slide 0 content_hash fc938fa4... equals v1 slide 0 (n=11)",
+    "call n=34: changed_slides [0..7] is the only response that includes 0"
+   ],
+   "expected": "Ask what changed on slide N and when, and revert a slide or the deck to an earlier revision.",
+   "suggestion": "Keep a short revision log per deck_id (revision id, patch, changed slides); expose deck_history(deck_id, slide?) and patch-level undo or restore(revision). input_sha256 already identifies each spec revision."
+  },
+  {
+   "id": "E9",
+   "title": "A failed render still stores the patch, and the response does not say so",
+   "severity": "minor",
+   "journey_stage": "repair",
+   "what_happened": "When the option_matrix render was refused (success:false), the slide had nevertheless been inserted into the stored deck. I inferred it from changed_slides [7,8] and from the next error quoting my edited text. Every repair experiment therefore mutates the deck; there is no dry run and no rollback, so a wrong guess has to be patched back by hand (I did that once).",
+   "evidence": [
+    "call n=15: success:false with changed_slides [7,8] and a 9-row explanation_summary",
+    "call n=16: follow-up patch to /slides/7/options/0/name applied",
+    "call n=23: patch to put the name back"
+   ],
+   "expected": "An explicit patch_applied:true|false, and a way to try a patch without committing it.",
+   "suggestion": "Add patch_applied and stored_revision to every response; add dry_run:true (validate/render against the patch without storing) or roll back automatically when render refuses."
+  },
+  {
+   "id": "E10",
+   "title": "Every patch render returns 7-9.5 KB, about 88% of it unchanged summaries",
+   "severity": "minor",
+   "journey_stage": "render",
+   "what_happened": "Patch requests were 160-1,150 B (2.6 KB for ten ops). Each render_deck_spec response was 7.0-9.5 KB: explanation_summary 4.6 KB (every slide with its alternatives) and quality_summary 1.2 KB, repeated in full each time, even on a refused render. Eleven render calls in turns 1-8 returned 80 KB to carry about 8 KB of edits. The index/kind/title list is useful as a table of contents; the alternatives and criteria are not, on a revision.",
+   "evidence": [
+    "call n=34: request 169 B, response 8,676 B",
+    "call n=29: explanation_summary 4,589 B and quality_summary 1,173 B of 6,536 B",
+    "call n=16: refused render, response 7,811 B"
+   ],
+   "expected": "A patch response sized like the patch: what changed, new findings, and a compact slide list.",
+   "suggestion": "On deck_id + patch calls default to a delta response (changes, new/resolved diagnostics, score delta, compact slides[{index,id,kind,title}]); keep the full summaries behind verbose:true."
+  },
+  {
+   "id": "E11",
+   "title": "Slide addresses come in five notations within the same workflow",
+   "severity": "minor",
+   "journey_stage": "repair",
+   "what_happened": "Finding evidence.path is dotted ('slides[1].takeaway', 'structure.sections[0].slides[1].kpis'); patches need JSON Pointer ('/slides/1/takeaway'); render diagnostics add raw_path '/slides/7/rendered_shapes/206/paragraphs/0'; one validate response mixed '/slides/7/pattern/rows/2/cells/0/shape/text' with 'slides[7].options[1].name'; remediation params carry cell_path '/slides/7/shape_grid/rows/2/cells/0'. In structure form where.slide is section-relative: two different slides both reported {slide: 0}, and cover/closing had no where at all.",
+   "evidence": [
+    "call n=7: where {slide:0} for structure.sections[0].slides[0] and for structure.sections[1].slides[0]",
+    "call n=19: evidence.path '/slides/7/pattern/rows/2/cells/0/shape/text' and 'slides[7].options[1].name' in one response",
+    "call n=15: semantic_path 'slides[7]', raw_path '/slides/7/rendered_shapes/206/paragraphs/0'"
+   ],
+   "expected": "One address I can paste into a patch, everywhere.",
+   "suggestion": "Emit a patch-ready JSON Pointer (pointer field) on every finding at field level; make where.slide the rendered deck index in structure form."
+  },
+  {
+   "id": "E12",
+   "title": "validate_deck_spec and render_deck_spec disagreed about the same stored deck",
+   "severity": "minor",
+   "journey_stage": "validation",
+   "what_happened": "On the refused matrix slide, render reported one TEXT_BELOW_READABLE_MIN; validate on the same deck_id reported three (one per option row, with cell_max_chars 60 for the 9-character 'Tidewater' and 31 for the others). After I removed only row 0's detail, validate said 'no issues' and render succeeded, so the two findings on the untouched rows were not real.",
+   "evidence": [
+    "call n=16: render, 1 diagnostic",
+    "call n=19: validate, '3 errors, 1 info'",
+    "call n=21: validate after one-row fix, 'no issues'"
+   ],
+   "expected": "The same finding set from both tools, one per overflowing cell.",
+   "suggestion": "Share the measurement between validate and render; report autofit shrink per cell rather than once per row of a shared shrink group."
+  },
+  {
+   "id": "E13",
+   "title": "changed_slides is omitted when empty, and on the first render it is relative to the stored spec rather than to anything seen",
+   "severity": "minor",
+   "journey_stage": "review",
+   "what_happened": "A no-op patch returns no changed_slides key (not []), so 'nothing changed' and 'not computed' look the same; I used that omission as my only proof that the title slide text was unchanged. On the very first render (after validate, with a 2-op patch) changed_slides was [1,5] and next_tool_call suggested thumbnails for those two only, although none of the 8 slides had ever been rendered.",
+   "evidence": [
+    "call n=38: no-op patch, response has no changed_slides",
+    "call n=50: real change, changed_slides [0]",
+    "call n=10: first render, next_tool_call slide_indices [1,5]"
+   ],
+   "expected": "changed_slides: [] on a no-op, and a first render that asks for the full deck.",
+   "suggestion": "Always emit the key; track the last rendered (or last thumbnailed) revision per deck_id and diff against that for next_tool_call."
+  },
+  {
+   "id": "E14",
+   "title": "get_started(revise) templates contradict its prose and name tools the default profile does not have",
+   "severity": "minor",
+   "journey_stage": "onboarding",
+   "what_happened": "The fast_path prose says to send deck_id + patch, but each step's args_template is {\"spec\": \"<DeckSpec>\"}. falls_back_to, sequence and hints name get_capabilities, validate_input, preview_presentation_plan, repair_slide, generate_presentation, inspect_slide_images, analyze_deck_rhythm and explain_deck_spec; none is in the 12-tool default profile.",
+   "evidence": [
+    "call n=3: steps[0].args_template {\"spec\":\"<DeckSpec>\",\"strict\":\"warn\"}",
+    "call n=3: falls_back_to [get_capabilities, validate_input, ...]",
+    "call n=15: hint 'explain_deck_spec lists them'",
+    "call n=1: 12 tools listed"
+   ],
+   "expected": "Copy-ready revise templates and only tools I can call.",
+   "suggestion": "Make the revise args_template {deck_id, patch:[{op,path,value}]}; filter tool references by the active profile."
+  },
+  {
+   "id": "E15",
+   "title": "Option matrix column headers render at two font sizes while the score stays 100",
+   "severity": "polish",
+   "journey_stage": "review",
+   "what_happened": "On the competitor slide 'Cost per tonne' and 'Energy use' are visibly larger than 'Deployment speed' and 'Commercial traction'. quality_summary scored the slide 100 and the gate passed on both templates. I recorded it as a P2 in submit_visual_review.",
+   "evidence": [
+    "/tmp/jj/j/e-revise/images/v3-slide8-competitors-110dpi.jpeg",
+    "call n=23: quality score 100, gate passed"
+   ],
+   "expected": "Header cells in one row share one size.",
+   "suggestion": "Apply the smallest fitted size to all header cells of a table-highlight row; flag mixed sizes within a row."
+  },
+  {
+   "id": "E16",
+   "title": "A notes-only edit changed the default-density thumbnail hash of five slides",
+   "severity": "polish",
+   "journey_stage": "review",
+   "what_happened": "After adding speaker notes, slides 2-6 (those with a source line) got new content_hash values at density 50; the pixel difference is confined to the source line, whose glyph spacing differs between the two renders. At density 110 the same slide from both revisions is pixel-identical. Slides without a source line kept their hash. So a hash comparison cannot be trusted to prove 'looks the same'. Small text at density 50 also loses word spaces ('Pilotplantoperating').",
+   "evidence": [
+    "call n=35 vs n=41: slide 2 hash 9b04f6e4... vs 2e94d0b7...",
+    "/tmp/jj/j/e-revise/source_line_50dpi_v7_v8.png",
+    "call n=42 vs n=43: density 110, max pixel difference 0",
+    "/tmp/jj/j/e-revise/images/v1-slide7-roadmap-50dpi.jpeg"
+   ],
+   "expected": "Identical visible content gives an identical thumbnail hash.",
+   "suggestion": "Find why the source line rasterises differently once notes exist; consider reporting 'pixels unchanged since revision X' per slide so the agent need not diff hashes."
+  },
+  {
+   "id": "E17",
+   "title": "Looking up one kind's fields mid-revision costs 6-24 KB",
+   "severity": "minor",
+   "journey_stage": "discovery",
+   "what_happened": "To insert one option_matrix slide I fetched its item_schema (6.0 KB); regions was 11.9 KB; the first batch of seven kinds was 23.8 KB. Most of the bulk is alias lists repeated per item type (a dozen synonyms such as body/caption/description/detail/heading/label for every string-or-object field).",
+   "evidence": [
+    "call n=14: 6,038 B",
+    "call n=31: 11,946 B",
+    "call n=8: 23,819 B"
+   ],
+   "expected": "A field list with types, limits and one example in about 1 KB per kind.",
+   "suggestion": "Offer fields:[\"brief_schema\"] that lists canonical fields and budgets only and leaves aliases out."
+  },
+  {
+   "id": "E18",
+   "title": "validate did not flag meta.date \"__FILL__\" in the plan draft",
+   "severity": "polish",
+   "journey_stage": "validation",
+   "what_happened": "Validating the unmodified plan draft flagged __FILL__ in the cover subtitle and the slide titles, but not meta.date, which is the footer date on every content slide.",
+   "evidence": [
+    "call n=5: meta.date \"__FILL__\"",
+    "call n=7: 11 findings, none at meta.date"
+   ],
+   "expected": "Every __FILL__ token reported.",
+   "suggestion": "Run the placeholder check over meta.* strings too."
+  }
+ ],
+ "delights": [
+  {
+   "title": "deck_id + patch held state across 30+ calls; a whole-deck template switch was one 169-byte call",
+   "evidence": [
+    "call n=34: patch replace /meta/template -> ok, template abstract",
+    "same deck_id from n=9 to n=44"
+   ]
+  },
+  {
+   "title": "changed_slides + next_tool_call with slide_indices prefilled: one changed slide re-inspected in about 1.5 s and 37 KB instead of 268 KB",
+   "evidence": [
+    "call n=12: changed_slides [2]",
+    "call n=13: 36,574 B vs n=11: 268,134 B"
+   ]
+  },
+  {
+   "title": "Patch errors are precise, and the patch is atomic",
+   "evidence": [
+    "call n=46: 'index 9 is outside the array (length 2)', first op not applied (n=47)",
+    "call n=48: '\"notes\" does not exist; use add to create it'",
+    "call n=26: 'unknown patch op \"move\"; use replace, add or remove'"
+   ]
+  },
+  {
+   "title": "Unknown arguments are rejected with the accepted list rather than ignored",
+   "evidence": [
+    "call n=36: 'Accepted arguments: deck_id, patch, spec, strict, template'"
+   ]
+  },
+  {
+   "title": "First render succeeded on the first attempt from catalog examples; turns 1, 4, 5, 6 and 8 each rendered on their first call",
+   "evidence": [
+    "call n=9: ok, 1 warning, 1 info",
+    "call n=10: success, slide_count 8",
+    "calls n=12, 29, 32, 34, 40: success on first call"
+   ]
+  },
+  {
+   "title": "Thumbnails are content-addressed and cached: an old revision's slide came back in 0.01 s and its hash proved the title slide had not changed",
+   "evidence": [
+    "call n=39: 0.01 s, hash fc938fa4... equals n=11"
+   ]
+  },
+  {
+   "title": "Appendix handling just worked: section with appendix:true is unnumbered and the slide after it is paged 'A1'; notes landed in all ten notes slides",
+   "evidence": [
+    "/tmp/jj/j/e-revise/images/v8-slide10-assumptions.jpeg",
+    "unzip: ppt/notesSlides/notesSlide1..10.xml carry the note text"
+   ]
+  },
+  {
+   "title": "The slide list (index, kind, title) in every render response is a cheap way to confirm what sits at each index after a structural patch",
+   "evidence": [
+    "call n=27: explanation_summary.slides shows risk at index 7 after the move"
+   ]
+  },
+  {
+   "title": "submit_visual_review verified all ten image hashes against the server's own render in one call",
+   "evidence": [
+    "call n=44: status visually_reviewed_current_revision, image_verification verified 10/10"
+   ]
+  },
+  {
+   "title": "Switching template surfaced template-specific findings with a ready patch",
+   "evidence": [
+    "call n=34: SUBTITLE_WRAPS at slides[0].subtitle with next_tool_call patch"
+   ]
+  }
+ ]
+}

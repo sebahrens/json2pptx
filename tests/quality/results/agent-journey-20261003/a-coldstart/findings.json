@@ -1,0 +1,323 @@
+{
+ "persona": "a-coldstart",
+ "metrics": {
+  "tool_calls": 26,
+  "total_response_bytes": 2377531,
+  "response_bytes_excluding_thumbnails": 177411,
+  "tools_list_bytes": 41610,
+  "attempts_to_first_valid_render": 2,
+  "attempts_note": "2 validate calls (1 error, then ok) before the first render; render call 1 (n=13) wrote a pptx but deterministic_ready=false; render call 2 (n=14) was the first deterministic_ready=true. 4 warm-coral renders and 3 thumbnail passes in total; modern-template took 1 refused render, 3 validates, 1 render.",
+  "wall_minutes": 8,
+  "wall_note": "System clock 10:27:11 -> 10:35 for the whole journey; server time is negligible (validate <=0.17s, render <=0.51s, 10 thumbnails <=2.6s).",
+  "guessed_field_names": 0,
+  "guessed_values": [
+   "chart.type bar_chart (no enum; copied from the example)",
+   "submit_visual_review findings[].severity 'P2'/'P3' and category 'whitespace' (vocabulary not enumerated)"
+  ],
+  "guessed_layouts": 0,
+  "enjoyment_1_to_10": 7,
+  "enjoyment_reasons": [
+   "Fast, cheap loop: deck_id + patch repairs are a few hundred bytes and sub-second; changed_slides feeds slide_indices.",
+   "Catalog examples are copy-ready; I never hit an unknown-field error while authoring and the first render wrote a real 10-slide deck from a 6.4KB spec.",
+   "Default output is board-presentable: action titles, takeaway bands, source line, page numbers, highlighted last bar.",
+   "Lost points: the gantt timeline looked wrong while scoring 100; validator advice named knobs DeckSpec does not expose; the template swap was refused and needed content cuts on 3 slides; plan_deck and recommend_visual output was not usable as given."
+  ]
+ },
+ "findings": [
+  {
+   "id": "A1",
+   "title": "Timeline with end_date draws three identical full-width bars and scores 100",
+   "severity": "major",
+   "journey_stage": "review",
+   "what_happened": "Milestones with end_date switch the timeline kind to 'gantt' style. The render shows one full-width bar per milestone (a point milestone 'Oct 2026', 'Oct 2026 -> Dec 2026' and 'Oct 2026 -> Apr 2027' are all the same length), no time axis, and unexplained bar colours. Bar length carries no duration. The slide scored 100 and the deck was deterministic_ready.",
+   "evidence": [
+    "call n=14: slide_number 9 score 100, deterministic_ready true",
+    "/tmp/jj/j/a-coldstart/slides/img-1791016216822-9.jpeg"
+   ],
+   "expected": "Bars positioned and sized on a shared time axis (2 months visibly shorter than 6), a point milestone drawn as a marker, or a finding saying ranges cannot be drawn to scale.",
+   "suggestion": "Scale gantt bars to their dates on a month axis; if dates cannot be parsed, fall back to dots and say so. Add a check that flags range bars of identical extent with different date spans."
+  },
+  {
+   "id": "A2",
+   "title": "Template swap refused; render_deck_spec shows 1 of 10 errors and hides the root cause as info",
+   "severity": "major",
+   "journey_stage": "delivery",
+   "what_happened": "Patching /meta/template to modern-template on the approved deck failed. render_deck_spec returned a single TEXT_BELOW_READABLE_MIN on a 25-character lead ('Revenue is ahead of plan.'). validate_deck_spec on the same deck returned 10 errors on 3 slides plus 3 FIT.BODY_TOO_LONG infos that were the actual cause (e.g. 'exec-summary needs 310pt ... content area holds about 304pt'). The cause is severity info, the per-cell symptoms are errors. Fixing took 5 calls and content cuts on slides 1, 6 and 9.",
+   "evidence": [
+    "call n=21: is_error, one diagnostic, slides[1].points[0].lead",
+    "call n=22: '10 errors, 3 infos' 15.7KB",
+    "call n=22: FIT.BODY_TOO_LONG info 'needs 359pt ... holds about 336pt'"
+   ],
+   "expected": "One finding per over-full slide stating the height deficit and the cheapest cut, identical between render and validate.",
+   "suggestion": "Report the slide-level deficit as the error and fold the per-cell shrink findings under it; make render_deck_spec return the same finding set as validate. Offer a multi-template check (validate against [templates]) so a spec can be authored to fit both before either is rendered."
+  },
+  {
+   "id": "A3",
+   "title": "Following the option_matrix fit advice made the overflow worse",
+   "severity": "major",
+   "journey_stage": "repair",
+   "what_happened": "FIT.BODY_TOO_LONG on the option matrix said to 'drop the option details or highlight_label, hide the legend (show_legend: false), drop the slide takeaway, or split the table'. I removed highlight_label; the needed height went from 248pt to 262pt and the error stayed. show_legend is not a field in the option_matrix item_schema. Restoring the label and dropping the three option details fixed it.",
+   "evidence": [
+    "call n=22: 'needs about 248pt ... holds 239pt'",
+    "call n=23: 'needs about 262pt ... holds 239pt' after removing highlight_label",
+    "call n=24: 'no issues' after dropping details",
+    "call n=7: option_matrix item_schema has no show_legend"
+   ],
+   "expected": "Each listed remedy reduces the deficit, ordered by points saved, using DeckSpec field names only.",
+   "suggestion": "Compute the saving of each candidate cut and list them with numbers ('drop details: -30pt'); drop remedies that are not DeckSpec fields for the kind."
+  },
+  {
+   "id": "A4",
+   "title": "Validator advice names controls the DeckSpec kind does not have, and its own fix triggers the next warning",
+   "severity": "major",
+   "journey_stage": "validation",
+   "what_happened": "CONTENT_DROPPED on the timeline said body is not rendered in gantt style: 'move the detail into the label, choose dots or chevron style, or remove the body'. The timeline kind has no style field (a probe with style:'dots' returned SEMANTIC_UNKNOWN_FIELD). I moved detail into the labels as advised; the render then warned BODY_TOO_LONG 'a gantt bar holds about 36 readable label characters' although the item_schema says label <=60. Other hints had the same problem: SPARSE_FILL 'cap the grid height (bounds / max_height_pct)', SLIDE_UNDERUSED 'pair it with a supporting zone using compose', TEXT_BELOW_READABLE_MIN 'explain_deck_spec lists them' (tool not in the profile).",
+   "evidence": [
+    "call n=11: 'choose dots or chevron style'",
+    "call n=28: unknown field \"style\" on timeline slide",
+    "call n=13: 'values[1].label is 52 characters; a gantt bar holds about 36'",
+    "call n=7: milestones 'Label <=60 chars'",
+    "call n=13: 'cap the grid height (bounds / max_height_pct)'"
+   ],
+   "expected": "Remedies phrased in the fields of the kind I authored, with the budget that applies in the mode I am in.",
+   "suggestion": "Translate pattern-level hints to DeckSpec terms before returning them (for timeline: 'remove end_date to get dots, where body is shown'); state the gantt label budget in the item_schema; expose a style field or stop mentioning styles."
+  },
+  {
+   "id": "A5",
+   "title": "plan_deck routes the brief's facts to the wrong slides and ignores the slide budget",
+   "severity": "major",
+   "journey_stage": "discovery",
+   "what_happened": "With format deckspec and slide_budget 10, plan_deck returned 7 slots inside a structure with auto_agenda and two sections (10 slides only if agenda and dividers count; no budget_note). Facts were split on commas: '44.1, 45.9, 48.2' went to the executive summary, '41.0, 42.3' and '9-10 slides' to the KPI slide, the revenue headline to the chart slide, churn to the option matrix, and two of the three options landed in unplaced_facts. I kept the kind sequence and discarded the structure and the fact routing.",
+   "evidence": [
+    "call n=5: slot answer facts ['44.1','45.9','48.2']",
+    "call n=5: slot problem facts include '9-10 slides'",
+    "call n=5: unplaced_facts ['re-platform storage tier ...','raise SMB prices 5% ...']"
+   ],
+   "expected": "The five-quarter series kept whole on the chart slide, all three options on the option slide, instructions such as '9-10 slides' not treated as facts, and a note on how the budget was spent.",
+   "suggestion": "Split facts on semicolons and keep numeric lists and parenthetical groups intact; route 'three options: a, b, c' as one group; emit budget_note whenever agenda/dividers consume budget."
+  },
+  {
+   "id": "A6",
+   "title": "recommend_visual ranks a line chart and bmc-canvas for a two-segment comparison and answers in raw vocabulary",
+   "severity": "minor",
+   "journey_stage": "discovery",
+   "what_happened": "For 'contrast monthly churn in two customer segments: SMB 2.1% vs enterprise 0.6%' with item_count 2 the ranking was line chart 0.9 ('trends over time'), comparison-2col 0.85, bmc-canvas 0.69. Candidates are pattern or raw chart names and the next_tool_call is a raw_json2pptx slide, so nothing maps to the DeckSpec kinds I was told to author. The preview image it pointed to for comparison-2col shows four bare words on an empty slide.",
+   "evidence": [
+    "call n=8: name 'line' score 0.9; name 'bmc-canvas' score 0.69",
+    "/Users/seb/projects/json2pptx/assets/pattern-previews/warm-coral/comparison-2col.png"
+   ],
+   "expected": "A bar chart or two-KPI comparison first, expressed as a DeckSpec kind with its example.",
+   "suggestion": "Return the DeckSpec kind for each candidate, suppress framework patterns unless named in the intent, and render previews from a filled example with title and headers."
+  },
+  {
+   "id": "A7",
+   "title": "get_started points a default-profile agent at tools and documents it does not have",
+   "severity": "minor",
+   "journey_stage": "onboarding",
+   "what_happened": "The 12KB get_started response lists get_capabilities, validate_input, preview_presentation_plan, generate_presentation and inspect_slide_images in falls_back_to and raw_sequence, mentions make_deck three times, and cites SKILL.md, QUALITY.md and WORKFLOW.md. None of those tools are in the 12-tool default profile and a cold agent has no such files. item_schema text also references explain_deck_spec and get_chart_capabilities.",
+   "evidence": [
+    "call n=4: falls_back_to ['get_capabilities','list_templates','plan_deck',...,'inspect_slide_images']",
+    "call n=4: 'SKILL.md lists them all'",
+    "call n=7: 'see get_chart_capabilities'",
+    "call n=3: tools/list has 12 tools"
+   ],
+   "expected": "Only tools present in the active profile, and the rubric inline rather than by file name.",
+   "suggestion": "Filter get_started and schema descriptions by the active tool profile; inline the per-slide rubric (it is one sentence) and drop file references, or say how to enable the wider profile."
+  },
+  {
+   "id": "A8",
+   "title": "Text budgets are missing from the catalog and differ by template, so fit is learned by failing",
+   "severity": "minor",
+   "journey_stage": "authoring",
+   "what_happened": "Kind summaries say 'past its text budgets it degrades' without stating them. item_schema gives limits for some fields (next_steps, stat, decision, timeline) but none for kpi_snapshot, executive_summary leads/supports, chart insights or titles. The title-slide headline wrapped to 3 lines at 51pt and was reported only as info after validation. The same spec passed on warm-coral and was refused on modern-template.",
+   "evidence": [
+    "call n=6: 'past its text budgets it degrades to a content slide'",
+    "call n=11: INPUT.title_wraps overflow_ratio 3",
+    "call n=14 vs n=22: same content, deterministic_ready true vs 10 errors"
+   ],
+   "expected": "A character or line budget for every authored field, for the template named in the call.",
+   "suggestion": "Let list_slide_kinds take template and return per-field budgets measured for it; include title budgets (chars per line, max lines)."
+  },
+  {
+   "id": "A9",
+   "title": "A recommendation spanning two options cannot be expressed",
+   "severity": "minor",
+   "journey_stage": "authoring",
+   "what_happened": "The user's recommendation is 'renegotiate now and start re-platforming' (two of three options). decision rejects two recommended options and option_matrix.recommended takes one row. With one flagged, the slide badged only 'Renegotiate' under a title recommending both. I reframed the three options as two routes to keep the slide truthful.",
+   "evidence": [
+    "call n=10: 'decision requires exactly one option with recommended: true; found 2'",
+    "/tmp/jj/j/a-coldstart/slides/img-1791016216822-8.jpeg"
+   ],
+   "expected": "Either multiple recommended options, or guidance on modelling a combined recommendation.",
+   "suggestion": "Allow recommended on more than one option (badge each) and accept a list for option_matrix.recommended."
+  },
+  {
+   "id": "A10",
+   "title": "item_schema is large and padded with undocumented synonym keys",
+   "severity": "minor",
+   "journey_stage": "authoring",
+   "what_happened": "item_schema for 10 kinds was 36.7KB. Item objects list many alias keys with no description (kpis: big, caption, change, comparator, delta, label, small, sub, trend, value, vs; milestones: 17 keys; next_steps decisions objects: body, caption, phase, step ...). chart.type has no enum, so I copied bar_chart from the example. The layout/pattern/notes descriptions repeat verbatim in every kind.",
+   "evidence": [
+    "call n=7: response_bytes 36658",
+    "call n=7: kpis items properties big/caption/change/comparator/delta/label/small/sub/trend/value/vs",
+    "call n=7: chart.type 'e.g. bar_chart, line_chart, pie_chart (see get_chart_capabilities)'"
+   ],
+   "expected": "Canonical fields with a one-line meaning each, an enum for chart.type, aliases omitted or listed once.",
+   "suggestion": "Emit canonical keys only (accept aliases silently), enumerate chart types, and hoist the shared layout/pattern/notes/source/takeaway fields into one common block."
+  },
+  {
+   "id": "A11",
+   "title": "Findings mix index bases, path syntaxes and pattern-internal names",
+   "severity": "minor",
+   "journey_stage": "repair",
+   "what_happened": "quality_summary uses 1-based slide_number while diagnostics use 0-based slide_index. Paths appear as 'slides[7].options', '/slides/8/pattern' and '/slides/6/pattern/rows/2/cells/0/shape/text'. Several findings carry only a raw path that cannot be mapped to a DeckSpec field (which option is rows/2? which row is rows/10 on next-steps?), and messages refer to 'values[1].label' rather than milestones[1].label.",
+   "evidence": [
+    "call n=13: slide_number 9 issues BODY_TOO_LONG vs slide_index 8",
+    "call n=22: path '/slides/9/pattern/rows/10/cells/0/shape/text'",
+    "call n=13: BODY_TOO_LONG has raw_path only"
+   ],
+   "expected": "One index base and one path syntax, always resolvable to a field I wrote, usable directly in a patch.",
+   "suggestion": "Always return a JSON Pointer into the DeckSpec (the patch path syntax) plus slide_index; keep raw paths as optional debug data."
+  },
+  {
+   "id": "A12",
+   "title": "describe_finding and auto-remediation do not match the finding they are attached to",
+   "severity": "minor",
+   "journey_stage": "validation",
+   "what_happened": "describe_finding CONTENT_DROPPED gave a generic description with severity 'review' (the finding was 'info') and told me to read fix.params.locator and fix.params.reason, which the finding does not carry. The SEMANTIC_UNKNOWN_FIELD remediation proposes op 'replace' with value '<rewrite this field ...>' on the unknown field, where the fix is remove or rename.",
+   "evidence": [
+    "call n=12: 'Read the fix.params.locator and fix.params.reason'",
+    "call n=11: severity info",
+    "call n=28: remediation op replace path /slides/0/style"
+   ],
+   "expected": "The description to cover the emitted variant; the remediation to be an applicable patch.",
+   "suggestion": "Generate remediation per code (remove for unknown fields, with did_you_mean when close); align severities; add the gantt-body variant to CONTENT_DROPPED."
+  },
+  {
+   "id": "A13",
+   "title": "Whitespace and orphan problems pass at 100 while a tidy-up triggers an underuse finding",
+   "severity": "minor",
+   "journey_stage": "review",
+   "what_happened": "The decision slide (both the 3-box and 2-card forms) and kpi-4up leave 35-40% of the slide empty, with the recommendation band floating mid-slide while takeaway bands elsewhere sit at the bottom; both scored 100 with no finding in the final revision. A title with '22%' alone on line 2 was not flagged. Shortening two timeline bodies to remove orphan words produced SLIDE_UNDERUSED 'covers 22% of the safe content area (threshold 22%)' on warm-coral, and nothing on modern-template for the same slide.",
+   "evidence": [
+    "call n=18: SLIDE_UNDERUSED 'covers 22% ... (threshold 22%)'",
+    "call n=25: no diagnostics",
+    "/tmp/jj/j/a-coldstart/slides/img-1791016288422-8.jpeg",
+    "/tmp/jj/j/a-coldstart/slides/img-1791016288421-3.jpeg",
+    "/tmp/jj/j/a-coldstart/slides/img-1791016216821-5.jpeg"
+   ],
+   "expected": "Sparse patterns to grow or centre in the content area; checks that agree with what the eye sees.",
+   "suggestion": "Let card/KPI patterns fill the content height or anchor the callout band to the bottom; add a last-line orphan check for titles; fix the 22% vs 22% boundary message."
+  },
+  {
+   "id": "A14",
+   "title": "No way to fork a deck: patching for a second template overwrites the approved one, even when the render fails",
+   "severity": "minor",
+   "journey_stage": "delivery",
+   "what_happened": "meta.template wins over the template argument, so the only route to a second template was patching /meta/template on the same deck_id. The refused render still committed the patch, and the later content cuts mean the deck_id no longer reproduces the approved warm-coral deck. The two delivered files differ on slides 1, 6 and 9.",
+   "evidence": [
+    "call n=21: render refused",
+    "call n=22: deck_id-only validate already evaluates modern-template",
+    "render_deck_spec description: 'spec template > this > archetype default'"
+   ],
+   "expected": "Render the stored deck with a different template without mutating it.",
+   "suggestion": "Add a template override that beats meta.template for one call, or a fork op returning a new deck_id; do not persist a patch when the call fails."
+  },
+  {
+   "id": "A15",
+   "title": "render_deck_spec repeats 6-9KB of explanation on every call, and the first next_tool_call narrows thumbnails to patched slides",
+   "severity": "polish",
+   "journey_stage": "render",
+   "what_happened": "Each of 6 render responses was 8.5-11.5KB, mostly explanation_summary with per-slide alternatives that did not change, including on the refused render. On the very first render the suggested next call was render_deck_thumbnails with slide_indices [0,8] (the slides patched since validation) although no slide had been rendered yet.",
+   "evidence": [
+    "call n=13: response_bytes 11477, next_tool_call slide_indices [0,8]",
+    "call n=21: 8998 bytes on failure",
+    "call n=18: 9747 bytes for a one-slide change"
+   ],
+   "expected": "A compact response after the first render; a full-deck thumbnail suggestion until a full pass exists.",
+   "suggestion": "Return explanation_summary only for changed slides (or behind a verbose flag); track which slides have been thumbnailed and suggest the unseen ones."
+  },
+  {
+   "id": "A16",
+   "title": "modern-template uppercases titles and nothing says so before pixels",
+   "severity": "polish",
+   "journey_stage": "delivery",
+   "what_happened": "On modern-template every action title renders in capitals, turning '€2.2m' into '€2.2M' and making two-line sentence titles heavy. list_templates compact for the template lists fonts and colours but no text transform and no content-area height.",
+   "evidence": [
+    "call n=29: no caps or content height field",
+    "/tmp/jj/j/a-coldstart/slides/img-1791016361190-2.jpeg"
+   ],
+   "expected": "Template traits that change copy decisions (caps titles, shorter content area) visible at discovery.",
+   "suggestion": "Add title_case/all_caps and content_area_pt to the compact template projection, and a thumbnail of a filled sample slide per template."
+  },
+  {
+   "id": "A17",
+   "title": "submit_visual_review finding vocabulary is not specified",
+   "severity": "polish",
+   "journey_stage": "delivery",
+   "what_happened": "The slides[].findings schema is {type: object} with a prose hint '[{severity, category, description, location?, bbox?}]'. I guessed severity 'P2'/'P3' and category 'whitespace'; both were accepted without comment. The response has 'manifest_updated: false' with no explanation, and render_deck_spec returns no 'revision' field although the review tool refers to one.",
+   "evidence": [
+    "call n=20: findings echoed with severity P3/P2, manifest_updated false",
+    "call n=3: findings items {type: object}"
+   ],
+   "expected": "Enumerated severities and categories, and a note on what manifest_updated means.",
+   "suggestion": "Add enums to the findings item schema and reject unknown values; explain or drop manifest_updated."
+  }
+ ],
+ "delights": [
+  {
+   "title": "deck_id + patch makes repair nearly free",
+   "evidence": [
+    "call n=11: one remove op, 4.1KB response, changed_slides [7]",
+    "call n=24: 4 ops, 536-byte response 'no issues'",
+    "call n=17: slide_indices [0,4,7,8] returned 4 images instead of 10"
+   ]
+  },
+  {
+   "title": "Semantic validation errors are exact and one-step fixable",
+   "evidence": [
+    "call n=10: 'decision requires exactly one option with recommended: true; found 2' at slides[7].options"
+   ]
+  },
+  {
+   "title": "Speed: the whole loop is sub-second apart from thumbnails",
+   "evidence": [
+    "calls n=10-25: validate 0.0-0.17s, render 0.33-0.51s",
+    "call n=15: 10 thumbnails in 2.56s"
+   ]
+  },
+  {
+   "title": "Copy-ready examples: zero unknown-field errors while authoring, first render wrote a real deck",
+   "evidence": [
+    "call n=6: 22.9KB catalog with one example per kind",
+    "call n=13: success true, slide_count 10 from a 6.4KB spec"
+   ]
+  },
+  {
+   "title": "Pixel content hashes make the review protocol honest and cheap",
+   "evidence": [
+    "th1/th3 comparison: 9 of 10 final hashes already inspected",
+    "call n=20: image_verification verified 10/10, status visually_reviewed_current_revision on first submit"
+   ]
+  },
+  {
+   "title": "Good defaults without asking: highlighted final bar and data labels, takeaway band, source line, date footer and page numbers",
+   "evidence": [
+    "/tmp/jj/j/a-coldstart/slides/img-1791016288421-4.jpeg",
+    "/tmp/jj/j/a-coldstart/slides/img-1791016288422-10.jpeg"
+   ]
+  },
+  {
+   "title": "Refuses to shrink text below 12pt instead of shipping unreadable slides, and names the field",
+   "evidence": [
+    "call n=21: TEXT_BELOW_READABLE_MIN semantic_path slides[1].points[0].lead"
+   ]
+  },
+  {
+   "title": "list_templates compact is small and useful",
+   "evidence": [
+    "call n=9: 2.1KB for one template with colour roles and layout ids"
+   ]
+  }
+ ]
+}

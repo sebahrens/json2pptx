@@ -1,0 +1,8 @@
+{"n": 1, "method": "tools/list", "params": {}, "seconds": 0.0, "response_bytes": 41610, "is_error": false}
+{"n": 2, "method": "tools/list", "params": {}, "seconds": 0.0, "response_bytes": 41610, "is_error": false}
+{"n": 3, "method": "tools/call", "params": {"name": "get_started", "arguments": {"task": "brief"}}, "seconds": 0.0, "response_bytes": 12205, "is_error": false}
+{"n": 4, "method": "tools/call", "params": {"name": "list_slide_kinds", "arguments": {}}, "seconds": 0.0, "response_bytes": 22887, "is_error": false}
+{"n": 5, "method": "tools/call", "params": {"name": "list_templates", "arguments": {}}, "seconds": 0.07, "response_bytes": 17944, "is_error": false}
+{"n": 6, "method": "tools/call", "params": {"name": "list_slide_kinds", "arguments": {"kinds": ["pillars"], "fields": ["item_schema", "compositions"]}}, "seconds": 0.0, "response_bytes": 3759, "is_error": false}
+{"n": 7, "method": "tools/call", "params": {"name": "recommend_visual", "arguments": {"intent": "strategy house with four pillars and two enabling layers", "template": "midnight-blue"}}, "seconds": 0.07, "response_bytes": 9048, "is_error": false}
+{"n": 8, "method": "tools/call", "params": {"name": "get_started", "arguments": {"task": "brief"}}, "seconds": 0.0, "response_bytes": 12205, "is_error": false}

@@ -1,0 +1,380 @@
+{
+ "persona": "b-discovery",
+ "metrics": {
+  "tool_calls": 131,
+  "tool_calls_default_profile": 100,
+  "tool_calls_all_profile": 31,
+  "total_response_bytes": 3787940,
+  "response_bytes_default_profile": 1893760,
+  "response_bytes_all_profile": 1894180,
+  "non_image_bytes_default_profile": 369236,
+  "non_image_bytes_all_profile": 833411,
+  "tools_list_bytes": {
+   "default": 41610,
+   "all": 335063
+  },
+  "attempts_to_first_valid_render": 2,
+  "wall_minutes": 9,
+  "enjoyment_1_to_10": 6,
+  "enjoyment_reasons": [
+   "Semantic kinds and chart/diagram contracts worked first time and looked good (org, option matrix, regions, funnel, gantt, quotes)",
+   "Named patterns were a guessing game in the default profile: no shape, no example, errors one field at a time",
+   "validate passed things render refused; a gate passed a slide titled 'Replace with the action title...'",
+   "Recommender put the wrong visual first for swimlane, vendor matrix and Gantt",
+   "No current picture of a layout before authoring; shipped previews are stale",
+   "--tools all fixes discovery (show_pattern, validate_pattern, single-slide render) but costs 335 KB of tool definitions"
+  ]
+ },
+ "findings": [
+  {
+   "id": "B1",
+   "title": "Named-pattern recommendations carry no data shape, example or next step; default profile has no tool that does",
+   "severity": "major",
+   "journey_stage": "discovery",
+   "what_happened": "recommend_visual gives chart/diagram/compose candidates a data_contract and a runnable next_tool_call, but named_pattern candidates (the #1 answer for 9 of 14 intents) carry only name/capacity. The default profile has no show_pattern/list_patterns; raw_json2pptx's item_schema is `slide: object`; get_started says the 22 non-kind patterns are listed in SKILL.md, which an MCP-only agent cannot read. I had to guess `values` for card-grid, before-after, journey-maturity-model, value-chain, swimlane, roadmap-phased.",
+   "evidence": [
+    "default n=5..18: named_pattern candidates have no data_contract/next_tool_call; diagram/chart ones do",
+    "default n=19: raw_json2pptx item_schema slide = {type: object}",
+    "default n=3: 'for one of the other 22 ... SKILL.md lists them all'",
+    "all n=15: identical response, still no pointer to show_pattern"
+   ],
+   "expected": "Every candidate, whatever its category, tells me its exact data shape, limits and a runnable example.",
+   "suggestion": "Give named_pattern candidates the same data_contract + next_tool_call (example_values from show_pattern wrapped in a raw_json2pptx slide), name the DeckSpec kind that reaches the pattern when one exists (strategy-house -> pillars, table-highlight -> option_matrix, quote-cluster -> quote), and put show_pattern in the default profile."
+  },
+  {
+   "id": "B2",
+   "title": "validate_deck_spec says 'no issues' for raw pattern/diagram payloads that render_deck_spec then refuses",
+   "severity": "major",
+   "journey_stage": "validation",
+   "what_happened": "Two specs validated clean and then failed at render with a hard error about an unknown key. Validation is advertised as the gate before render.",
+   "evidence": [
+    "default n=39: ok=true (only TITLE_NOT_ACTION info) -> n=64: 'journey-maturity-model: unknown field \"current\" at values.current is dropped'",
+    "default n=41: ok=true 'no issues' -> n=66: 'value_chain: data.primary[2].highlight: unknown key \"highlight\"'"
+   ],
+   "expected": "validate_deck_spec reports everything render_deck_spec will refuse.",
+   "suggestion": "Run the same pattern-values and diagram-data key checks in validate_deck_spec for raw_json2pptx slides."
+  },
+  {
+   "id": "B3",
+   "title": "Raw pattern errors in the default profile leak the shape one field per round, with a path that is wrong",
+   "severity": "major",
+   "journey_stage": "authoring",
+   "what_happened": "card-grid needed 4 validate rounds: 'cells must contain exactly 5 items, got 0' at path slides[0].slide.pattern.cells; moving cells to that path gave 'unknown field \"cells\"'; cells actually lives in pattern.values; then 'cells[0].header is required' (my `title` key was never flagged). A swimlane with `teams` instead of `lanes` got 'lanes must contain at least 2 items, got 0' with no mention of the unknown key. The all-profile validate_pattern answers the same mistakes in one step with did_you_mean.",
+   "evidence": [
+    "default n=31, n=37, n=43, n=45 (card-grid)",
+    "default n=98: 'swimlane: lanes must contain at least 2 items, got 0' path slides[0].slide.pattern.lanes",
+    "all n=25: 'unknown field \"cards\" at values.cards ... did you mean \"cells\"?' + next_tool_call show_pattern"
+   ],
+   "expected": "First error names the unknown key, the correct path (pattern.values.cells) and the full expected item shape.",
+   "suggestion": "Route raw-slide pattern validation through the validate_pattern checker; fix the path to include `.values`; attach the values schema (or example_values) to any shape error."
+  },
+  {
+   "id": "B4",
+   "title": "decision kind refuses 5 options because the engine's own RECOMMENDED badge shrinks to 11.8pt",
+   "severity": "major",
+   "journey_stage": "authoring",
+   "what_happened": "Schema says 3-6 options render as numbered boxes and requires exactly one recommended:true. With 5 options, even 'Option 1'/'Short detail.', validation fails TEXT_BELOW_READABLE_MIN and tells me to 'shorten the text'; the offending paragraph_text is 'RECOMMENDED', which I did not write. Suggested patch is to fall back to layout 'content' (bullets). 4 options pass. Rendered result is numbered rows, not boxes/cards. card-grid with 5 columns and a recommended cell draws the same badge fine.",
+   "evidence": [
+    "default n=36: remediation.params.paragraph_text 'RECOMMENDED', actual_pt 11.76",
+    "default n=47 (5 minimal options) error; n=48 (4 options) ok",
+    "/tmp/jj/j/b-discovery/img/i02-decision-min4.jpg",
+    "/tmp/jj/j/b-discovery/img/a02-cardgrid-soft.jpg"
+   ],
+   "expected": "The documented 3-6 range works, and an error never asks me to shorten text the engine generated.",
+   "suggestion": "Size the badge so it fits at 5-6 options (or drop to 'Rec.'/accent fill only), and exclude engine-authored labels from shorten-the-text findings."
+  },
+  {
+   "id": "B5",
+   "title": "recommend_visual ranks the wrong visual first for several plain intents",
+   "severity": "major",
+   "journey_stage": "discovery",
+   "what_happened": "swimlane across three teams -> team-bios 0.92 first, swimlane 4th at 0.90 (keyword 'teams'). Three vendors x five criteria with a recommendation -> bar chart 0.85 first, table-highlight (the one that renders exactly this) last at 0.80. Gantt for 6 workstreams -> roadmap-phased 0.97 above gantt 0.92; roadmap-phased renders a grid of text cells, not bars on a time axis. Maturity model -> funnel chart 0.92 as #3. Value chain -> stat-hero 0.90. Screenshot intent -> list not sorted by score (0.76 listed before 0.88).",
+   "evidence": [
+    "default n=13, n=17, n=15, n=11, n=12, n=18",
+    "/tmp/jj/j/b-discovery/img/i11-roadmap-phased.jpg vs /tmp/jj/j/b-discovery/img/i11-gantt.jpg",
+    "/tmp/jj/j/b-discovery/img/i13-option-matrix.jpg"
+   ],
+   "expected": "The visual whose name the intent literally contains (swimlane, Gantt) or whose use_when matches (options x criteria + recommendation) ranks first.",
+   "suggestion": "Boost exact name/alias hits over incidental keywords; use item_count/criteria counts parsed from the intent; sort candidates by score; drop candidates that share no concept with the intent."
+  },
+  {
+   "id": "B6",
+   "title": "Same-slide chart+KPI+timeline: recommender swaps the requested line chart for a bar and never mentions the `regions` kind",
+   "severity": "major",
+   "journey_stage": "discovery",
+   "what_happened": "Intent said 'revenue line chart ... 3-milestone timeline'. Top candidate was compose:chart:bar+diagram:timeline+stat-hero with a range-bar timeline diagram (3 phases + 1 milestone). The DeckSpec `regions` kind (found only by reading list_slide_kinds) does exactly the brief in one attempt with a line chart and a 3-stop milestone line. Two unconnected ways to do the same slide, and the recommender picked the weaker one.",
+   "evidence": [
+    "default n=9: name 'compose:chart:bar+diagram:timeline+stat-hero'",
+    "default n=35/n=62 regions valid first time",
+    "/tmp/jj/j/b-discovery/img/i05-regions.jpg",
+    "/tmp/jj/j/b-discovery/img/i05-compose-verbatim.jpg"
+   ],
+   "expected": "The recommender honours the chart type in the intent and offers the semantic kind first.",
+   "suggestion": "Parse the chart type from the intent; emit a `regions` next_tool_call when the views map to region kinds, and keep compose for what regions cannot express."
+  },
+  {
+   "id": "B7",
+   "title": "Placeholder copy from next_tool_call passes the deterministic gate",
+   "severity": "major",
+   "journey_stage": "review",
+   "what_happened": "Rendering recommend_visual's args_template verbatim produced a slide titled 'Replace with the action title this bar + stat-hero + timeline composition supports' with deterministic_ready=true and no diagnostics, although the server instructions say never to ship placeholder content.",
+   "evidence": [
+    "default n=96: deterministic_ready true, zero diagnostics",
+    "/tmp/jj/j/b-discovery/img/i05-compose-verbatim.jpg"
+   ],
+   "expected": "Template strings the product itself emits are detected as placeholder content.",
+   "suggestion": "Flag 'Replace with ...' titles/alt text and the 'Illustrative sample data; replace with the real source' line with the existing exemplar_content blocking reason."
+  },
+  {
+   "id": "B8",
+   "title": "No trustworthy picture before authoring: previews are sparse, server-local file paths, and out of date",
+   "severity": "major",
+   "journey_stage": "discovery",
+   "what_happened": "Of the visuals I ended up using for the 14 intents, only 3 had a preview_png_path (card-grid, before-after, swimlane); kinds, charts, diagrams, compose and patterns such as strategy-house, journey-maturity-model, value-chain, quote-cluster, table-highlight had none. The path is a file inside the server's repo checkout, not an MCP image block, so a remote client cannot open it. The pictures do not match the render: card-grid preview is solid blue 3x2 cards filling the slide, render is light-grey cards with an accent rule in the top half; before-after preview has solid blue headers and a large chevron; swimlane preview has blue actor blocks and no arrows; matrix-2x2 preview shows a blue top banner and a stray stub line, render has arrow axes. list_slide_kinds and show_pattern carry no picture at all. The working preview in the all profile is show_pattern.example_values -> render_slide_image_from_json (2 calls, ~55 KB, 1.1 s), which nothing points to.",
+   "evidence": [
+    "default n=5..18: preview_png_path present on 15 of 26 distinct named-pattern candidates",
+    "/Users/seb/projects/json2pptx/assets/pattern-previews/midnight-blue/card-grid.png vs /tmp/jj/j/b-discovery/img/i02-raw-cardgrid.jpg",
+    "/Users/seb/projects/json2pptx/assets/pattern-previews/midnight-blue/matrix-2x2.png vs /tmp/jj/j/b-discovery/img/i10-matrix-kind.jpg",
+    "all n=16..18: render_slide_image_from_json of example_values, 48-64 KB, 1.1-1.9 s"
+   ],
+   "expected": "One call shows me a current thumbnail of any kind/pattern/diagram on my template, as image content.",
+   "suggestion": "Add a preview tool (or preview:true on list_slide_kinds / show_pattern / recommend_visual candidates) that renders the catalogued example on the chosen template and returns an image block; regenerate or drop the stale pre-rendered PNGs."
+  },
+  {
+   "id": "B9",
+   "title": "house_diagram `floors` is advertised but undocumented, and silently drops content either way",
+   "severity": "major",
+   "journey_stage": "authoring",
+   "what_happened": "data_contract lists floors as an optional key but the description never says what it takes. floors as strings: the floor vanished with no finding. floors as [{label}]: the two floors drew but all four `sections` (pillars) vanished. Both renders reported deterministic_ready=true with only a sparse_layout info.",
+   "evidence": [
+    "default n=5: optional_keys [roof, sections, floors, foundation, footnote], description omits floors",
+    "default n=24 + /tmp/jj/j/b-discovery/img/i01-house.jpg (floor missing)",
+    "default n=27 + /tmp/jj/j/b-discovery/img/i01-house2.jpg (pillars missing)"
+   ],
+   "expected": "An advertised key is described, and content that will not be drawn is reported.",
+   "suggestion": "Document floors (shape, and that it is mutually exclusive with sections) or support both; emit a finding when authored content is not drawn."
+  },
+  {
+   "id": "B10",
+   "title": "Screenshot with callouts pointing at parts of it cannot be expressed",
+   "severity": "major",
+   "journey_stage": "authoring",
+   "what_happened": "Default profile: only image_case / image-text-split (picture beside bullets). All profile: get_shape_catalog lists callout geometries, but shape_grid is a non-overlapping grid, get_input_schema gives shape_grid fields with no descriptions, and my wedgeRectCallout cells rendered as bare text with no fill, outline or pointer, with no warning.",
+   "evidence": [
+    "default n=18: candidates image-text-split, image (risky)",
+    "/tmp/jj/j/b-discovery/img/i14-image-case.jpg",
+    "all n=20, n=21 (GridCellInput/ShapeSpecInput properties have empty descriptions), n=22-23",
+    "/tmp/jj/j/b-discovery/img/a14-callouts.jpg"
+   ],
+   "expected": "An annotated-image visual: image plus N callouts each anchored at an x/y on the image.",
+   "suggestion": "Add an `annotations: [{x_pct, y_pct, label}]` field to image-text-split / image_case (numbered markers on the image keyed to the bullets is enough); have recommend_visual say 'unsupported: callouts on image' as it does for Sankey."
+  },
+  {
+   "id": "B11",
+   "title": "Shape text starting '2.' is rendered as '1.'",
+   "severity": "major",
+   "journey_stage": "render",
+   "what_happened": "A shape_grid cell with text '2. Enabler bar: funded first' rendered as '1. Enabler bar: funded first'. No finding. The slide now has two callouts both numbered 1.",
+   "evidence": [
+    "all n=22 (spec /tmp/jj/j/b-discovery/specs/a14-callouts.json)",
+    "/tmp/jj/j/b-discovery/img/a14-callouts.jpg"
+   ],
+   "expected": "Authored text is rendered verbatim.",
+   "suggestion": "Do not convert a single 'N. text' line into an auto-numbered list, or preserve its start number."
+  },
+  {
+   "id": "B12",
+   "title": "The same visual has up to three names and three data shapes",
+   "severity": "minor",
+   "journey_stage": "authoring",
+   "what_happened": "2x2: kind matrix_2x2 (x_axis, quadrants clockwise from top-left), pattern matrix-2x2 (x_axis_label, quadrants [TL,TR,BL,BR]), diagram matrix_2x2 (x_axis_label, quadrants [{position,title,items}] or points). Only the diagram plots items, which neither the kind summary nor the recommender rationale says. Also value-chain/value_chain, process-flow/process_flow, org/org_chart; quote {role} vs quote-cluster {title}; option_matrix recommended/decisive_criterion vs table-highlight highlight_row/highlight_col. Chart types are 'bar'/'line'/'funnel' in recommend_visual and get_data_format_hints but 'bar_chart'/'line_chart' in list_slide_kinds; a chart sits under chart_value on a content slide but under a `diagram` key inside compose.",
+   "evidence": [
+    "default n=14: matrix-2x2 (pattern) and matrix_2x2 (diagram) both 0.95",
+    "default n=21: matrix_2x2 kind 'clockwise from the top left'",
+    "all n=10: pattern quadrants 'Positional: [top_left, top_right, bottom_left, bottom_right]'",
+    "default n=9 compose segment {diagram:{type:'bar'}} vs n=7 chart_value"
+   ],
+   "expected": "One name per visual, one field vocabulary, and a stated difference when two renderers exist.",
+   "suggestion": "Publish a kind <-> pattern <-> diagram map with 'differs in' notes (e.g. 'diagram plots points; pattern holds text per quadrant'); align quadrant order and axis field names; accept one chart-type vocabulary everywhere."
+  },
+  {
+   "id": "B13",
+   "title": "Default-profile responses point at tools and files the agent cannot reach",
+   "severity": "minor",
+   "journey_stage": "onboarding",
+   "what_happened": "get_started lists get_capabilities, validate_input, preview_presentation_plan, generate_presentation, inspect_slide_images and make_deck; chart type descriptions say 'see get_chart_capabilities' (not in either profile); item_schema descriptions cite explain_deck_spec; guidance cites SKILL.md, QUALITY.md and WORKFLOW.md.",
+   "evidence": [
+    "default n=3: falls_back_to [...] and raw_sequence",
+    "default n=21: 'Chart type, e.g. bar_chart, line_chart, pie_chart (see get_chart_capabilities)'",
+    "all tools/list: no get_chart_capabilities among 49 tools"
+   ],
+   "expected": "Every tool or document a response names is callable/readable in the profile that returned it.",
+   "suggestion": "Filter references by the active profile; replace doc references with a tool call or inline text; list valid chart types in the schema enum."
+  },
+  {
+   "id": "B14",
+   "title": "--tools all costs 335 KB of tool definitions before the first call",
+   "severity": "major",
+   "journey_stage": "onboarding",
+   "what_happened": "tools/list is 41.6 KB for 12 tools in the default profile and 335 KB for 49 tools with --tools all (179 KB of it outputSchema, 107 KB inputSchema; validate_deck_spec alone is 35 KB). The four tools that fixed my discovery problems (list_patterns, show_pattern, validate_pattern, render_slide_image_from_json) are a small fraction of that.",
+   "evidence": [
+    "all n=1: tools/list response_bytes 335063",
+    "default n=1: 41610",
+    "/tmp/jj/j/b-discovery/tools-all.json"
+   ],
+   "expected": "The pattern catalogue is reachable without paying for 37 extra tools.",
+   "suggestion": "Move show_pattern (+ list_patterns, validate_pattern, single-slide render) into the default profile or add a 'discovery' profile; drop or shrink outputSchema."
+  },
+  {
+   "id": "B15",
+   "title": "Patterns leave the bottom 40-50% of the slide empty and the gate scores them 100",
+   "severity": "minor",
+   "journey_stage": "review",
+   "what_happened": "card-grid 5x1, before-after, value-chain and strategy-house all hang in the top half. The fix (pattern.vertical_align: 'stretch') is documented only in show_pattern, which the default profile lacks. Scores were 100 with no finding.",
+   "evidence": [
+    "/tmp/jj/j/b-discovery/img/i06-before-after.jpg",
+    "/tmp/jj/j/b-discovery/img/i08-value-chain.jpg",
+    "/tmp/jj/j/b-discovery/img/i02-raw-cardgrid.jpg",
+    "all n=9: vertical_align 'auto ... hangs a block filling under 60% of the area from its top'",
+    "/tmp/jj/j/b-discovery/img/a02-cardgrid-soft.jpg (stretch)"
+   ],
+   "expected": "A one-row pattern fills or centres in the content area by default, or a finding tells me how to make it.",
+   "suggestion": "Emit a sparse-slide finding naming vertical_align when a pattern fills under ~60% with nothing beneath it; expose vertical_align on the semantic kinds."
+  },
+  {
+   "id": "B16",
+   "title": "Swimlane arrows follow column order, and the idiom that makes them right is only in show_pattern's example",
+   "severity": "minor",
+   "journey_stage": "authoring",
+   "what_happened": "My first swimlane (3 steps per lane, aligned by column) validated and rendered with arrows running down each column then jumping to the next ('Fix bug' -> 'Approve fix'), which is not the process. The flow cannot be stated. show_pattern's example uses one step per column with empty strings elsewhere, which draws the correct staircase; I only saw that in the all profile.",
+   "evidence": [
+    "/tmp/jj/j/b-discovery/img/i09-swimlane.jpg",
+    "/tmp/jj/j/b-discovery/img/a09-swimlane.jpg",
+    "all n=9: example_values lanes with '' placeholders"
+   ],
+   "expected": "Either I state the step order, or the schema says 'one step per column; arrows connect columns left to right'.",
+   "suggestion": "Say so in the steps description and the recommender rationale; warn when two lanes have a step in the same column."
+  },
+  {
+   "id": "B17",
+   "title": "An info-severity finding blocks the gate at render after validate said ok",
+   "severity": "minor",
+   "journey_stage": "validation",
+   "what_happened": "validate_deck_spec: ok=true, '1 warning, 1 info' (NO_EXECUTIVE_SUMMARY is the info). render_deck_spec on the same spec: deterministic_ready=false, 'quality gate: deck storyline incomplete (require_storyline: NO_EXECUTIVE_SUMMARY)'.",
+   "evidence": [
+    "all n=29 vs all n=30"
+   ],
+   "expected": "Severity predicts whether something blocks.",
+   "suggestion": "Report gate-blocking findings as errors (or mark them blocking:true) in validate_deck_spec."
+  },
+  {
+   "id": "B18",
+   "title": "Responses repeat boilerplate; discovery of 14 slides cost ~230 KB of JSON before any picture",
+   "severity": "minor",
+   "journey_stage": "discovery",
+   "what_happened": "Default profile non-image payload was 369 KB over 76 calls: tools/list 41.6 KB, get_started 12.2 KB, list_slide_kinds 22.9 KB, 14 recommend_visual calls 71.9 KB (each candidate repeats template_hash, placement, template_support, layout_preview_png_path), item_schema for 13 kinds 59 KB (each kind repeats the same layout/pattern/source/takeaway descriptions and all alias fields), every single-slide render 3-3.8 KB (quality_gate criteria block each time). disambiguating_questions always asks 'How many items will this slide contain?' even for 'five option cards' and 'org chart of 7 people'.",
+   "evidence": [
+    "default n=4: 22887 B",
+    "default n=21: 58988 B for 13 kinds",
+    "default n=6 and n=8: disambiguating_questions despite stated counts",
+    "default n=23: 3476 B for a 1-slide render"
+   ],
+   "expected": "Payloads proportional to what is new.",
+   "suggestion": "Hoist per-response constants; a compact item_schema projection (fields + limits only); omit quality_gate.criteria unless it failed; skip disambiguating questions the intent already answers."
+  },
+  {
+   "id": "B19",
+   "title": "Small catalogue and doc slips",
+   "severity": "polish",
+   "journey_stage": "discovery",
+   "what_happened": "list_patterns returns 50 of 51 patterns by default, so one pattern needs a second page. show_pattern before-after describes `before` as 'Right column (future/after state)'. card-grid style default is documented as 'filled (default solid accent cards)' but the default render is light-grey cards. The pillars foundation type error is reported twice (warning and error) for one mistake. The gantt diagram reorders tasks by start date rather than keeping authored order.",
+   "evidence": [
+    "all n=3: total_count 51, page_size 50, next_cursor present",
+    "all n=6",
+    "all n=5 vs /tmp/jj/j/b-discovery/img/i02-raw-cardgrid.jpg",
+    "default n=22: input-1 warning + input-2 error on slides[0].foundation",
+    "/tmp/jj/j/b-discovery/img/i11-gantt.jpg"
+   ],
+   "expected": "Catalogue fits one page; descriptions match behaviour.",
+   "suggestion": "Default page_size >= catalogue size; fix the two descriptions; dedupe the type finding; keep authored task order (or document the sort)."
+  },
+  {
+   "id": "B20",
+   "title": "Strategy house cannot hold two enabling layers",
+   "severity": "minor",
+   "journey_stage": "authoring",
+   "what_happened": "pillars.foundation / strategy-house.foundation is a single string (max 140 chars). An array is rejected. The only native result is one grey bar with both enablers joined by a separator.",
+   "evidence": [
+    "default n=22: 'pillars foundation must be a string'",
+    "all n=4: foundation {type: string, maxLength: 140}",
+    "/tmp/jj/j/b-discovery/img/i01-pillars.jpg"
+   ],
+   "expected": "foundation accepts 1-2 rows.",
+   "suggestion": "Allow foundation: string | string[] (max 2-3 rows)."
+  }
+ ],
+ "delights": [
+  {
+   "title": "Chart and diagram candidates come with a data_contract and a next_tool_call that runs verbatim",
+   "evidence": [
+    "default n=7 funnel, n=15 gantt, n=14 matrix_2x2 points contract ('0-100 scale ... NOT 0-1')",
+    "default n=96: compose args_template rendered unchanged"
+   ]
+  },
+  {
+   "title": "Semantic kinds for org, 8 quotes, option matrix, funnel+insights and regions were valid on the first attempt and looked right",
+   "evidence": [
+    "default n=34/61, n=53/74, n=54/75, n=33/60, n=35/62",
+    "/tmp/jj/j/b-discovery/img/i04-org.jpg",
+    "/tmp/jj/j/b-discovery/img/i13-option-matrix.jpg",
+    "/tmp/jj/j/b-discovery/img/i05-regions.jpg",
+    "/tmp/jj/j/b-discovery/img/i12-quotes.jpg"
+   ]
+  },
+  {
+   "title": "`regions` kind: chart + stat + timeline in one slide from ~15 lines",
+   "evidence": [
+    "/tmp/jj/j/b-discovery/img/i05-regions.jpg"
+   ]
+  },
+  {
+   "title": "Render-time unknown-key errors name the key, why it matters and the accepted keys",
+   "evidence": [
+    "default n=66: 'expected keys: description, items, label, name, title'",
+    "default n=64: 'this pattern reads \"stages\"'"
+   ]
+  },
+  {
+   "title": "show_pattern is an authoritative contract: closed schema, min/max items, per-count character budgets, example_values",
+   "evidence": [
+    "all n=9 swimlane: 'Approximate readable chars per step by step columns x lanes'",
+    "all n=4..14: 5.5-9.6 KB each"
+   ]
+  },
+  {
+   "title": "validate_pattern answers a wrong key with did_you_mean, a patch and a pointer to show_pattern",
+   "evidence": [
+    "all n=24, n=25"
+   ]
+  },
+  {
+   "title": "Single-slide render loop is fast and returns a real image",
+   "evidence": [
+    "all n=16..18, n=26..28: 1.1-1.9 s, 48-72 KB"
+   ]
+  },
+  {
+   "title": "Capacity strings on candidates ('3-8', 'objective + 3-5 pillars + foundation') and limits in kind summaries let me check item counts before authoring",
+   "evidence": [
+    "default n=5, n=16; default n=4 summaries"
+   ]
+  },
+  {
+   "title": "journey-maturity-model 'We are here' marker and value-chain highlight render exactly as intended",
+   "evidence": [
+    "/tmp/jj/j/b-discovery/img/i07-maturity.jpg",
+    "/tmp/jj/j/b-discovery/img/i08-value-chain.jpg"
+   ]
+  }
+ ]
+}
