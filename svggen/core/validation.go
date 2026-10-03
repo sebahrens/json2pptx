@@ -19,6 +19,16 @@ type ValidationError struct {
 
 	// Value is the invalid value (if safe to include).
 	Value any `json:"value,omitempty"`
+
+	// Expected lists the keys accepted where an UNKNOWN_FIELD key was found.
+	Expected []string `json:"expected,omitempty"`
+
+	// DidYouMean is the expected key an UNKNOWN_FIELD key most likely meant.
+	DidYouMean string `json:"did_you_mean,omitempty"`
+
+	// Occurrences counts the elements of one list that carry an
+	// UNKNOWN_FIELD key (reported once for the whole list).
+	Occurrences int `json:"occurrences,omitempty"`
 }
 
 // Error implements the error interface.

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -89,19 +90,25 @@ func TestYzbo_InvalidPatternChartValidateMatchesGenerate(t *testing.T) {
 		t.Fatal("validate must mark the deck invalid when generate would abort")
 	}
 	errs := diagMessages(out.Diagnostics, diagnostics.SeverityError)
-	idx := strings.Index(genErr.Error(), "svggen: validation failed")
-	if idx < 0 {
+	if !strings.Contains(genErr.Error(), "svggen: validation failed") {
 		t.Fatalf("generate error has unexpected shape: %v", genErr)
 	}
-	want := genErr.Error()[idx:]
-	matched := false
-	for _, e := range errs {
-		if strings.Contains(e, want) {
-			matched = true
+	// Each unread key generate names is one validate error at that key
+	// (go-slide-creator-x9s5i), carrying svggen's per-key message.
+	for _, key := range []string{"Q1 2025", "Q2 2025"} {
+		want := fmt.Sprintf("bar does not accept field %q", key)
+		if !strings.Contains(genErr.Error(), want) {
+			t.Errorf("generate error does not name %q: %v", key, genErr)
 		}
-	}
-	if !matched {
-		t.Errorf("validate errors %v do not carry generate's error %q", errs, want)
+		matched := false
+		for _, e := range errs {
+			if strings.Contains(e, want) {
+				matched = true
+			}
+		}
+		if !matched {
+			t.Errorf("validate errors %v do not carry generate's %q", errs, want)
+		}
 	}
 
 	var refuse bool

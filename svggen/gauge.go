@@ -865,6 +865,25 @@ func parseGaugeData(req *RequestEnvelope) (GaugeData, error) {
 	return data, nil
 }
 
+// DataSchema returns the data contract for gauge charts.
+func (d *GaugeDiagram) DataSchema() *DataSchema {
+	return diagramDataSchema("Gauge showing one value on a range", map[string]*DataSchema{
+		"value":       NumberDataSchema("Value shown"),
+		"min":         NumberDataSchema("Range minimum"),
+		"max":         NumberDataSchema("Range maximum"),
+		"label":       StringDataSchema("Label under the value"),
+		"unit":        StringDataSchema("Unit suffix"),
+		"footnote":    StringDataSchema("Footnote text"),
+		"start_angle": NumberDataSchema("Arc start angle"),
+		"end_angle":   NumberDataSchema("Arc end angle"),
+		"thresholds": ArrayDataSchema("Colored range bands", ObjectDataSchema("A threshold", map[string]*DataSchema{
+			"value": NumberDataSchema("Band upper bound"),
+			"color": StringDataSchema("Band color"),
+			"label": StringDataSchema("Band label"),
+		}, nil), 0),
+	}, []string{"value"})
+}
+
 // parseThresholds parses threshold definitions from request data.
 func parseThresholds(raw []any) []GaugeThreshold {
 	thresholds := make([]GaugeThreshold, 0, len(raw))

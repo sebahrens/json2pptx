@@ -511,14 +511,10 @@ func TestMatrix2x2Diagram_RenderWithAxisMapFormat(t *testing.T) {
 		Title: "Strategic Matrix",
 		Data: map[string]any{
 			"x_axis": map[string]any{
-				"label":      "Impact",
-				"low_label":  "Low",
-				"high_label": "High",
+				"label": "Impact",
 			},
 			"y_axis": map[string]any{
-				"label":      "Effort",
-				"low_label":  "Low",
-				"high_label": "High",
+				"label": "Effort",
 			},
 			"quadrants": []any{
 				map[string]any{"label": "Quick Wins", "position": "top_left"},

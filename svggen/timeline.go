@@ -2074,6 +2074,56 @@ func appendInvalidTimelineDate(invalid []string, raw any, act TimelineActivity, 
 	return append(invalid, fmt.Sprintf("%s.date %q", where, dateStr))
 }
 
+// timelineItemSchema is the data contract of one timeline activity or
+// milestone: the keys parseTimelineActivity reads. An item may also be a
+// plain string (its label).
+func timelineItemSchema(desc string) *DataSchema {
+	return ArrayDataSchema(desc, ObjectDataSchema("A timeline item, or a plain string label", map[string]*DataSchema{
+		"id":          StringDataSchema("Item id"),
+		"label":       StringDataSchema("Item label (aliases: title, name, event)"),
+		"title":       StringDataSchema("Alias for label"),
+		"name":        StringDataSchema("Alias for label"),
+		"event":       StringDataSchema("Alias for label"),
+		"description": StringDataSchema("Detail line under the label"),
+		"icon":        StringDataSchema("Icon name"),
+		"type":        EnumDataSchema("Item kind", string(TimelineActivityTypeActivity), string(TimelineActivityTypeMilestone)),
+		"color":       StringDataSchema("Hex color override"),
+		"row":         NumberDataSchema("Row index (default: auto)"),
+		"progress":    NumberDataSchema("Completion 0-100"),
+		"start_date":  StringDataSchema("Start date, e.g. \"2024-01\" (alias: start)"),
+		"start":       StringDataSchema("Alias for start_date"),
+		"end_date":    StringDataSchema("End date (alias: end)"),
+		"end":         StringDataSchema("Alias for end_date"),
+		"date":        StringDataSchema("Point date or date range (\"Mar 2026\"); undated text becomes the label"),
+	}, nil), 0)
+}
+
+// DataSchema returns the data contract for timeline diagrams.
+func (d *Timeline) DataSchema() *DataSchema {
+	return diagramDataSchema("Timeline of activities and milestones", map[string]*DataSchema{
+		"activities":     timelineItemSchema("Activities (bars or points)"),
+		"events":         timelineItemSchema("Alias for activities"),
+		"items":          timelineItemSchema("Alias for activities"),
+		"phases":         timelineItemSchema("Alias for activities"),
+		"milestones":     timelineItemSchema("Milestones (diamonds)"),
+		"show_today":     BooleanDataSchema("Draw a today marker"),
+		"today_label":    StringDataSchema("Today marker label"),
+		"time_unit":      StringDataSchema("Axis unit: day, week, month, quarter, year"),
+		"show_progress":  BooleanDataSchema("Shade activity progress"),
+		"show_labels":    BooleanDataSchema("Draw item labels"),
+		"label_position": StringDataSchema("Label placement"),
+		"footnote":       StringDataSchema("Footnote text"),
+		"start_date":     StringDataSchema("Axis start override"),
+		"end_date":       StringDataSchema("Axis end override"),
+		// Listed by the capability metadata for the timeline pattern; the
+		// svggen renderer does not draw them.
+		"date":      ToleratedDataSchema("Not drawn by the svggen timeline"),
+		"body":      ToleratedDataSchema("Not drawn by the svggen timeline"),
+		"accent":    ToleratedDataSchema("Not drawn by the svggen timeline"),
+		"connector": ToleratedDataSchema("Not drawn by the svggen timeline"),
+	}, nil)
+}
+
 // parseTimelineActivity parses a single activity from map data.
 //
 //nolint:gocognit,gocyclo // complex chart rendering logic

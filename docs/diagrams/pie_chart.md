@@ -20,12 +20,8 @@ Display proportions of a whole as circular segments.
   "type": "pie_chart",
   "title": "Market Share",
   "data": {
-    "series": [
-      {"name": "Company A", "value": 45},
-      {"name": "Company B", "value": 30},
-      {"name": "Company C", "value": 15},
-      {"name": "Others", "value": 10}
-    ]
+    "categories": ["Company A", "Company B", "Company C", "Others"],
+    "values": [45, 30, 15, 10]
   },
   "style": {
     "show_legend": true,
@@ -38,9 +34,8 @@ Display proportions of a whole as circular segments.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `series` | `object[]` | Slice data |
-| `series[].name` | `string` | Slice label |
-| `series[].value` | `number` | Slice value (absolute or percentage) |
+| `values` | `number[]` | Slice values (absolute or percentage) |
+| `categories` | `string[]` | Slice labels, one per value (aliases: `labels`, `x_labels`) |
 
 ## Optional Fields
 
@@ -66,12 +61,8 @@ Display proportions of a whole as circular segments.
   "type": "pie_chart",
   "title": "Revenue by Region",
   "data": {
-    "series": [
-      {"name": "North America", "value": 40},
-      {"name": "Europe", "value": 30},
-      {"name": "Asia Pacific", "value": 20},
-      {"name": "Other", "value": 10}
-    ]
+    "categories": ["North America", "Europe", "Asia Pacific", "Other"],
+    "values": [40, 30, 20, 10]
   }
 }
 ```
@@ -83,12 +74,8 @@ Display proportions of a whole as circular segments.
   "type": "pie_chart",
   "title": "Budget Allocation",
   "data": {
-    "series": [
-      {"name": "Engineering", "value": 45},
-      {"name": "Marketing", "value": 25},
-      {"name": "Sales", "value": 20},
-      {"name": "Operations", "value": 10}
-    ]
+    "categories": ["Engineering", "Marketing", "Sales", "Operations"],
+    "values": [45, 25, 20, 10]
   },
   "style": {
     "show_legend": true,

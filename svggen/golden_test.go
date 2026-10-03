@@ -252,14 +252,10 @@ func TestGolden_AllDiagramTypes(t *testing.T) {
 				Data: map[string]any{
 					"title": "Strategic Matrix",
 					"x_axis": map[string]any{
-						"label":      "Impact",
-						"low_label":  "Low",
-						"high_label": "High",
+						"label": "Impact",
 					},
 					"y_axis": map[string]any{
-						"label":      "Effort",
-						"low_label":  "Low",
-						"high_label": "High",
+						"label": "Effort",
 					},
 					"quadrants": []any{
 						map[string]any{"label": "Quick Wins", "position": "top_left"},
@@ -733,14 +729,10 @@ func TestGolden_MultiColumnLayouts(t *testing.T) {
 				Data: map[string]any{
 					"title": "Priority Matrix",
 					"x_axis": map[string]any{
-						"label":      "Impact",
-						"low_label":  "Low",
-						"high_label": "High",
+						"label": "Impact",
 					},
 					"y_axis": map[string]any{
-						"label":      "Urgency",
-						"low_label":  "Low",
-						"high_label": "High",
+						"label": "Urgency",
 					},
 					"quadrants": []any{
 						map[string]any{"label": "Schedule", "position": "top_left"},
@@ -898,8 +890,6 @@ func TestGolden_MultiColumnLayouts(t *testing.T) {
 				Type:  "gantt",
 				Title: "Project Timeline",
 				Data: map[string]any{
-					"start_date": "2026-01-01",
-					"end_date":   "2026-06-30",
 					"tasks": []any{
 						map[string]any{"name": "Research", "start": "2026-01-01", "end": "2026-01-31", "progress": 100},
 						map[string]any{"name": "Design", "start": "2026-01-15", "end": "2026-02-28", "progress": 80},
@@ -922,8 +912,6 @@ func TestGolden_MultiColumnLayouts(t *testing.T) {
 				Type:  "gantt",
 				Title: "Project Timeline",
 				Data: map[string]any{
-					"start_date": "2026-01-01",
-					"end_date":   "2026-06-30",
 					"tasks": []any{
 						map[string]any{"name": "Research", "start": "2026-01-01", "end": "2026-01-31", "progress": 100},
 						map[string]any{"name": "Design", "start": "2026-01-15", "end": "2026-02-28", "progress": 80},
@@ -1005,14 +993,10 @@ func TestGolden_MultiColumnLayouts(t *testing.T) {
 				Data: map[string]any{
 					"title": "Risk Assessment",
 					"x_axis": map[string]any{
-						"label":      "Likelihood",
-						"low_label":  "Low",
-						"high_label": "High",
+						"label": "Likelihood",
 					},
 					"y_axis": map[string]any{
-						"label":      "Impact",
-						"low_label":  "Low",
-						"high_label": "High",
+						"label": "Impact",
 					},
 					"quadrants": []any{
 						map[string]any{"label": "Monitor", "position": "top_left"},

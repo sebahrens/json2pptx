@@ -1,5 +1,34 @@
 # Schema Changelog
 
+- **2026-10-03 — svggen diagram and chart data keys are validated at every level (`go-slide-creator-x9s5i`).**
+  - Every registered svggen type now has a closed `DataSchema` beside its
+    parser (timeline, venn, org_chart, gantt, matrix_2x2, fishbone,
+    waterfall, funnel, gauge and treemap gained one; charts already had a
+    top-level one), and the unknown-key check now descends into nested
+    objects and lists (`series[]`, timeline `items[]`, venn `circles[]` /
+    `intersections`, org `root.children[]`, ...). A key the renderer does not
+    read — timeline `items[].when`, venn `circles[].title`, bubble
+    `series[].sizes` — is refused by `validate`, `validate_input` and
+    `generate` in a body placeholder (where it used to degrade to a "Data
+    unavailable" image), a `shape_grid` cell and a `compose` segment:
+    `unknown_key` at the key's JSON Pointer with `rename_field {from, to,
+    accepted}` when a did-you-mean exists, else `use_one_of {available}`.
+    The same key repeated across one list is reported once. A timeline,
+    venn, org chart, gantt or fishbone payload whose labels all parse empty
+    is refused too (`INVALID_SLIDE`, `provide_value`).
+  - svggen `ValidationError` gains optional `expected`, `did_you_mean` and
+    `occurrences` fields on `UNKNOWN_FIELD` errors.
+  - `get_diagram_capabilities`: matrix_2x2 `optional_fields` listed
+    `top_left` / `top_right` / `bottom_left` / `bottom_right`, which the
+    svggen renderer never read (they belong to the `matrix-2x2` pattern); it
+    now lists `points`, `quadrants`, `x_axis_label`, `y_axis_label`,
+    `quadrant_labels`, `highlight_quadrant`.
+  - Docs: pie / donut examples used `series: [{name, value}]`, which svggen
+    always refused; they now use `categories` + `values`. The gauge README
+    example dropped the undrawn `target`.
+  - No schema version change: no field, enum or response shape of the deck
+    engine changed.
+
 - **2026-10-03 — Narrow regions keep words whole; native diagrams report the ones they cannot (`go-slide-creator-v74wv`).**
   - The writer's margin clamp now leaves 5% of room over a word's measured
     width (20% for a host-dependent theme face measured in the Liberation

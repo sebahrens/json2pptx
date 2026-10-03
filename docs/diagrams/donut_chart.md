@@ -20,12 +20,8 @@ Pie chart variant with a center hole, useful for displaying a central metric.
   "type": "donut_chart",
   "title": "Portfolio Allocation",
   "data": {
-    "series": [
-      {"name": "Stocks", "value": 60},
-      {"name": "Bonds", "value": 25},
-      {"name": "Cash", "value": 10},
-      {"name": "Real Estate", "value": 5}
-    ]
+    "categories": ["Stocks", "Bonds", "Cash", "Real Estate"],
+    "values": [60, 25, 10, 5]
   },
   "style": {
     "show_legend": true,
@@ -38,9 +34,8 @@ Pie chart variant with a center hole, useful for displaying a central metric.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `series` | `object[]` | Segment data |
-| `series[].name` | `string` | Segment label |
-| `series[].value` | `number` | Segment value |
+| `values` | `number[]` | Segment values |
+| `categories` | `string[]` | Segment labels, one per value (aliases: `labels`, `x_labels`) |
 
 ## Optional Fields
 
@@ -66,12 +61,8 @@ Pie chart variant with a center hole, useful for displaying a central metric.
   "type": "donut_chart",
   "title": "Time Allocation",
   "data": {
-    "series": [
-      {"name": "Development", "value": 50},
-      {"name": "Meetings", "value": 20},
-      {"name": "Planning", "value": 15},
-      {"name": "Admin", "value": 15}
-    ]
+    "categories": ["Development", "Meetings", "Planning", "Admin"],
+    "values": [50, 20, 15, 15]
   }
 }
 ```
@@ -83,11 +74,8 @@ Pie chart variant with a center hole, useful for displaying a central metric.
   "type": "donut_chart",
   "title": "Customer Segments",
   "data": {
-    "series": [
-      {"name": "Enterprise", "value": 35},
-      {"name": "SMB", "value": 40},
-      {"name": "Consumer", "value": 25}
-    ]
+    "categories": ["Enterprise", "SMB", "Consumer"],
+    "values": [35, 40, 25]
   },
   "style": {
     "show_legend": true,

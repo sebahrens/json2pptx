@@ -939,6 +939,26 @@ func inferWaterfallPointType(label string, value float64) WaterfallChartType {
 	}
 }
 
+// DataSchema returns the data contract for waterfall charts.
+func (d *WaterfallDiagram) DataSchema() *DataSchema {
+	return diagramDataSchema("Waterfall / bridge chart", map[string]*DataSchema{
+		"points": ArrayDataSchema("Bars in order", ObjectDataSchema("A bar", map[string]*DataSchema{
+			"label": StringDataSchema("Bar label"),
+			"value": NumberDataSchema("Delta (or total) value"),
+			"type":  EnumDataSchema("Bar kind (default: inferred)", "increase", "decrease", "total", "subtotal"),
+			"color": StringDataSchema("Hex color override"),
+		}, []string{"label", "value"}), 1),
+		"labels": stringListSchema("Bar labels (with values, instead of points)"),
+		"values": ArrayDataSchema("Bar values (with labels)", NumberDataSchema("Value"), 0),
+		"colors": ObjectDataSchema("Colors by bar kind", map[string]*DataSchema{
+			"increase": StringDataSchema("Increase color"),
+			"decrease": StringDataSchema("Decrease color"),
+			"total":    StringDataSchema("Total color"),
+		}, nil),
+		"footnote": StringDataSchema("Footnote text"),
+	}, nil)
+}
+
 func parseWaterfallData(req *RequestEnvelope) (WaterfallData, error) {
 	data := WaterfallData{
 		Title:    req.Title,

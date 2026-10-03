@@ -187,6 +187,9 @@ func renderMultiFormatInternal(r *Registry, req *RequestEnvelope, formats ...str
 	if err := d.Validate(req); err != nil {
 		return nil, nil, fmt.Errorf("svggen: validation failed for %q: %w", req.Type, err)
 	}
+	if err := blankPayloadError(d, req); err != nil {
+		return nil, nil, fmt.Errorf("svggen: validation failed for %q: %w", req.Type, err)
+	}
 
 	// Determine which formats to generate
 	formatSet := make(map[string]bool)

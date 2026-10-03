@@ -132,6 +132,9 @@ func NumberDataSchema(desc string) *DataSchema { return core.NumberDataSchema(de
 // BooleanDataSchema creates a boolean data schema.
 func BooleanDataSchema(desc string) *DataSchema { return core.BooleanDataSchema(desc) }
 
+// ToleratedDataSchema declares a documented key the renderer does not draw.
+func ToleratedDataSchema(desc string) *DataSchema { return core.ToleratedDataSchema(desc) }
+
 // EnumDataSchema creates a string enum data schema.
 func EnumDataSchema(desc string, values ...string) *DataSchema {
 	return core.EnumDataSchema(desc, values...)

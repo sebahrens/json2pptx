@@ -1276,6 +1276,49 @@ func matrixHighlightQuadrant(data map[string]any, labels [4]string) (int, bool) 
 	return 0, false
 }
 
+// DataSchema returns the data contract for matrix_2x2 diagrams: plotted
+// points, or coordinate-free quadrant lists.
+func (d *Matrix2x2Diagram) DataSchema() *DataSchema {
+	axis := ObjectDataSchema("Axis", map[string]*DataSchema{"label": StringDataSchema("Axis title")}, nil)
+	point := ObjectDataSchema("A plotted point", map[string]*DataSchema{
+		"label":       StringDataSchema("Point label"),
+		"x":           NumberDataSchema("X position (0-100 by default)"),
+		"y":           NumberDataSchema("Y position (0-100 by default)"),
+		"size":        NumberDataSchema("Bubble size"),
+		"color":       StringDataSchema("Hex color override"),
+		"description": StringDataSchema("Point description"),
+		"series":      StringDataSchema("Series / group name (aliases: group, category)"),
+		"group":       StringDataSchema("Alias for series"),
+		"category":    StringDataSchema("Alias for series"),
+	}, nil)
+	quadrant := ObjectDataSchema("A quadrant with its item list", map[string]*DataSchema{
+		"position":  StringDataSchema("Quadrant: top-left, top-right, bottom-left or bottom-right (underscores accepted)"),
+		"title":     StringDataSchema("Quadrant caption (alias: label)"),
+		"label":     StringDataSchema("Alias for title"),
+		"items":     ArrayDataSchema("Items listed in the quadrant: strings or {label}", ObjectDataSchema("An item, or a plain string", map[string]*DataSchema{"label": StringDataSchema("Item text")}, nil), 0),
+		"highlight": BooleanDataSchema("Accent this quadrant"),
+	}, nil)
+	return diagramDataSchema("2x2 matrix with plotted points or quadrant lists", map[string]*DataSchema{
+		"points":             ArrayDataSchema("Plotted points", point, 0),
+		"quadrants":          ArrayDataSchema("Quadrant captions and item lists", quadrant, 0),
+		"x_axis_label":       StringDataSchema("X axis title (aliases: x_label, x_axis.label)"),
+		"x_label":            StringDataSchema("Alias for x_axis_label"),
+		"x_axis":             axis,
+		"y_axis_label":       StringDataSchema("Y axis title (aliases: y_label, y_axis.label)"),
+		"y_label":            StringDataSchema("Alias for y_axis_label"),
+		"y_axis":             axis,
+		"quadrant_labels":    stringListSchema("Quadrant captions: top-left, top-right, bottom-left, bottom-right"),
+		"quadrant_colors":    stringListSchema("Quadrant fill colors"),
+		"quadrant_opacity":   NumberDataSchema("Quadrant fill opacity (with quadrant_colors)"),
+		"highlight_quadrant": &DataSchema{Description: "Quadrant to accent: index 0-3, position, or caption"},
+		"x_min":              NumberDataSchema("X axis minimum"),
+		"x_max":              NumberDataSchema("X axis maximum"),
+		"y_min":              NumberDataSchema("Y axis minimum"),
+		"y_max":              NumberDataSchema("Y axis maximum"),
+		"footnote":           StringDataSchema("Footnote text"),
+	}, nil)
+}
+
 // parseMatrix2x2Data parses the request data into Matrix2x2Data.
 //
 //nolint:gocognit,gocyclo // complex chart rendering logic

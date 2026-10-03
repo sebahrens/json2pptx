@@ -1133,6 +1133,34 @@ func (d *VennDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *SVG
 	})
 }
 
+// vennRegionSchema is one intersection region: an object or a plain label.
+var vennRegionSchema = ObjectDataSchema("Intersection region, or a plain string label", map[string]*DataSchema{
+	"label": StringDataSchema("Region label"),
+	"items": stringListSchema("Items in the region"),
+}, nil)
+
+// DataSchema returns the data contract for venn diagrams.
+func (d *VennDiagram) DataSchema() *DataSchema {
+	circles := ArrayDataSchema("2-3 circles", ObjectDataSchema("A circle", map[string]*DataSchema{
+		"label": StringDataSchema("Circle label"),
+		"items": stringListSchema("Items inside the circle"),
+	}, nil), 2)
+	return diagramDataSchema("Venn diagram of 2-3 overlapping sets", map[string]*DataSchema{
+		"circles": circles,
+		"sets":    circles,
+		"intersections": ObjectDataSchema("Intersection regions by circle letters", map[string]*DataSchema{
+			"ab":  vennRegionSchema,
+			"ac":  vennRegionSchema,
+			"bc":  vennRegionSchema,
+			"abc": vennRegionSchema,
+		}, nil),
+		"circle_opacity": NumberDataSchema("Circle fill opacity"),
+		"stroke_width":   NumberDataSchema("Circle outline width"),
+		"overlap_ratio":  NumberDataSchema("Fixed overlap ratio"),
+		"footnote":       StringDataSchema("Footnote text"),
+	}, nil)
+}
+
 // parseVennData parses the request data into VennData.
 func parseVennData(req *RequestEnvelope) (VennData, error) {
 	data := VennData{
