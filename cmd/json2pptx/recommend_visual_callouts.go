@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/policy/placeholder"
 	"github.com/sebahrens/json2pptx/internal/semantic"
 )
 
@@ -69,7 +70,7 @@ func attachCalloutRecipe(c *patterns.VisualCandidate) {
 	slide["image"] = map[string]any{"path": path, "alt": "Operations console showing the delayed queue", "fit": "contain"}
 	slide["callouts"] = sampleScreenshotCallouts()
 	delete(slide, "image_label")
-	slide["title"] = "One queue is holding settlement back"
+	slide["title"] = placeholder.RecipeActionTitle("screenshot")
 	slide["heading"] = "The delay sits in a single queue"
 	slide["body"] = "Retries pile up behind one slow downstream call; every other queue is healthy."
 	slide["caption"] = "Operations console, 09:40"

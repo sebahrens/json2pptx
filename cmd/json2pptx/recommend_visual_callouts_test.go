@@ -53,13 +53,11 @@ func TestRecommendVisualScreenshotCallouts(t *testing.T) {
 				}
 			}
 
-			// The recipe validates ...
-			validated := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, recipeArgs(t, top)))
-			if !validated.OK {
-				t.Errorf("%s / %q: the recipe does not validate: %+v", tmpl, intent, validated.Findings)
-			}
+			// The recipe is blocked only by its placeholders, validates once
+			// they are written over ...
+			assertRecipeValidates(t, mc, top)
 			// ... and renders, with every callout on the slide and none cropped.
-			verdict := renderRecipe(t, mc, top)
+			verdict := renderFilledRecipe(t, mc, top)
 			if !verdict.Success {
 				t.Errorf("%s / %q: the recipe did not render: %s %+v", tmpl, intent, verdict.Error, verdict.Diagnostics)
 				continue
