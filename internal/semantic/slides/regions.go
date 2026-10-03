@@ -199,10 +199,19 @@ func ResolveShares(shares, weights []float64) ([]float64, error) {
 // takeaway). The values are measured with validate_deck_spec on every
 // shipped template (go-slide-creator-umev3): a stat needs 30% (35% with a
 // context line), a three-stop timeline 55%, a table 15% per line including
-// the header, and a heading row another 10%. A stat weighted under a
+// the header, a chart what its decoration leaves room for
+// (regionChartMinPct), and a heading row another 10%. A stat weighted under a
 // timeline or table used to fall below these on modern, and drafted regions
 // slides were refused.
-func regionMinHeightPct(r map[string]any) float64 {
+//
+// With chartFloor a chart asks only the 30% floor it had before its
+// decoration was counted: shares are raised to the floors first, and a chart
+// then takes the rest of its need only from what the other regions hold above
+// their own minimums. A text, stat or timeline squeezed below its minimum is
+// refused, while a short chart is drawn and reported (chart.plot_area_collapsed
+// with a side-by-side alternative), so the chart is the region that yields
+// when the group cannot hold every minimum.
+func regionMinHeightPct(r map[string]any, chartFloor bool) float64 {
 	var pct float64
 	switch strField(r, "kind") {
 	case RegionStat:
@@ -215,8 +224,13 @@ func regionMinHeightPct(r map[string]any) float64 {
 	case RegionTable:
 		rows, _ := r["rows"].([]any)
 		pct = 15 * float64(len(rows)+1)
-	case RegionKPIs, RegionChart:
+	case RegionKPIs:
 		pct = 30
+	case RegionChart:
+		pct = 30
+		if !chartFloor {
+			pct = regionChartMinPct(r)
+		}
 	case RegionImage:
 		pct = 25
 	default:
@@ -226,6 +240,55 @@ func regionMinHeightPct(r map[string]any) float64 {
 		pct += 10
 	}
 	return math.Min(pct, RegionMaxSizePct)
+}
+
+// regionChartMinPct is the least height share a chart region's plot reads
+// in. A vertical cartesian chart's title, x-axis labels, value-label headroom,
+// value axis and legend take a fixed height that does not shrink with its
+// region, and svggen reports chart.plot_area_collapsed under it (fewer than
+// two label lines of labelled plot, or three ticks 1.6 lines apart on a value
+// axis). The steps are measured with validate_deck_spec on modern, the
+// shortest shipped content area (go-slide-creator-9re9p, go-slide-creator-
+// qpd9c): a single labelled bar series reads at 45%, a labelled line (its
+// markers add headroom) 50%, a value axis adds 15% and a legend — a stacked
+// chart, or more series than direct labels name — another 20%. A chart title
+// adds a header line, and a region heading costs a chart 15% rather than 10%.
+// Other charts keep the 30% they read in.
+func regionChartMinPct(r map[string]any) float64 {
+	chart := chartSpec(r)
+	if chart == nil {
+		return 30
+	}
+	kind := strings.TrimSuffix(chart.Type, "_chart")
+	switch kind {
+	case "bar", "column", "grouped_bar", "stacked_bar", "line", "area", "stacked_area", "waterfall":
+	default:
+		return 30
+	}
+	series := 1
+	if s, ok := chart.Data["series"].([]any); ok && len(s) > 0 {
+		series = len(s)
+	}
+	stacked := strings.HasPrefix(kind, "stacked")
+	pct := 45.0
+	if strings.HasSuffix(kind, "line") || strings.HasSuffix(kind, "area") {
+		pct += 5
+	}
+	if series > 1 || stacked {
+		pct += 15
+	}
+	if stacked || series > 4 {
+		pct += 20
+	}
+	if chart.Title != "" {
+		pct += 10
+	}
+	if RegionHeading(r) != "" {
+		// On top of the 10% every heading adds: the measured cost of a
+		// heading over a chart on modern is 15%.
+		pct += 5
+	}
+	return pct
 }
 
 // raiseToMinimums lifts every unset share below its minimum to it, taking
@@ -264,12 +327,20 @@ func raiseToMinimums(shares []float64, unset []bool, mins []float64) []float64 {
 	return out
 }
 
+// raiseToFloorsThenMinimums raises unset shares to every region's floor —
+// minsOf(true), where a chart asks only its 30% floor — and then a chart to
+// its decoration-sized minimum, minsOf(false), from what the others hold
+// above theirs.
+func raiseToFloorsThenMinimums(shares []float64, unset []bool, minsOf func(chartFloor bool) []float64) []float64 {
+	return raiseToMinimums(raiseToMinimums(shares, unset, minsOf(true)), unset, minsOf(false))
+}
+
 // RegionGroupShares resolves the shares of the two size groups of a regions
 // payload: the main axis (columns / rows: every region; main_*: the main
 // region and the stack) and, for main_* arrangements, the stack's own split.
 // Unset shares are split by region kind (see regionWeight), then any unset
 // share of a vertical group is raised to its kind's readable minimum (see
-// regionMinHeightPct).
+// regionMinHeightPct; a chart's decoration-sized minimum yields to the others).
 func RegionGroupShares(body map[string]any) (axis, stack []float64, err error) {
 	regions := RegionList(body)
 	arrangement := RegionArrangementOf(body)
@@ -277,16 +348,20 @@ func RegionGroupShares(body map[string]any) (axis, stack []float64, err error) {
 		shares := make([]float64, len(regions))
 		weights := make([]float64, len(regions))
 		unset := make([]bool, len(regions))
-		mins := make([]float64, len(regions))
 		for i, r := range regions {
 			shares[i] = RegionSizePct(r)
 			weights[i] = regionWeightOf(r)
 			unset[i] = shares[i] <= 0
-			mins[i] = regionMinHeightPct(r)
 		}
 		axis, err = ResolveShares(shares, weights)
 		if err == nil && arrangement == ArrangeRows {
-			axis = raiseToMinimums(axis, unset, mins)
+			axis = raiseToFloorsThenMinimums(axis, unset, func(chartFloor bool) []float64 {
+				mins := make([]float64, len(regions))
+				for i, r := range regions {
+					mins[i] = regionMinHeightPct(r, chartFloor)
+				}
+				return mins
+			})
 		}
 		return axis, nil, err
 	}
@@ -308,13 +383,16 @@ func RegionGroupShares(body map[string]any) (axis, stack []float64, err error) {
 	switch arrangement {
 	case ArrangeMainLeft, ArrangeMainRight:
 		// The stack splits the column's height.
-		stack = raiseToMinimums(stack, []bool{stackShares[0] <= 0, stackShares[1] <= 0},
-			[]float64{regionMinHeightPct(regions[1]), regionMinHeightPct(regions[2])})
+		stack = raiseToFloorsThenMinimums(stack, []bool{stackShares[0] <= 0, stackShares[1] <= 0}, func(chartFloor bool) []float64 {
+			return []float64{regionMinHeightPct(regions[1], chartFloor), regionMinHeightPct(regions[2], chartFloor)}
+		})
 	default:
 		// The main region and the band split the height; the band is as
 		// tall as its taller-needing region.
-		band := math.Max(regionMinHeightPct(regions[1]), regionMinHeightPct(regions[2]))
-		axis = raiseToMinimums(axis, []bool{mainUnset, mainUnset}, []float64{regionMinHeightPct(regions[0]), band})
+		axis = raiseToFloorsThenMinimums(axis, []bool{mainUnset, mainUnset}, func(chartFloor bool) []float64 {
+			band := math.Max(regionMinHeightPct(regions[1], chartFloor), regionMinHeightPct(regions[2], chartFloor))
+			return []float64{regionMinHeightPct(regions[0], chartFloor), band}
+		})
 	}
 	return axis, stack, err
 }

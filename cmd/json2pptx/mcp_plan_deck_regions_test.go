@@ -19,6 +19,12 @@ import (
 // validates with no blocking finding on every shipped template — and on the
 // local p-style when present. A stat drafted under a timeline used to get
 // 40% of a modern stack and shrink below the 12pt floor.
+//
+// A chart stacked above a band holding a timeline cannot get the height its
+// axis and value labels need on most templates: it was drawn ~70pt tall with
+// its top label clipped and no finding (go-slide-creator-qpd9c). That slide
+// must now report chart.plot_area_collapsed and nothing else, and the
+// side-by-side alternative the finding names must validate clean.
 func TestPlanDeckRegionsDraftsValidateOnEveryTemplate(t *testing.T) {
 	tpls, err := filepath.Glob("../../templates/*.pptx")
 	if err != nil || len(tpls) < 9 {
@@ -31,6 +37,26 @@ func TestPlanDeckRegionsDraftsValidateOnEveryTemplate(t *testing.T) {
 		"stat-table":    "left two-thirds a line chart of quarterly revenue; upper right a 32% gross margin KPI; lower right a table of revenue by region",
 	}
 	mc := refusalTestConfig(t)
+	validate := func(t *testing.T, tpl string, slide map[string]any) []string {
+		t.Helper()
+		spec, _ := json.Marshal(map[string]any{
+			"meta":   map[string]any{"template": tpl, "title": "Executive review"},
+			"slides": []any{map[string]any{"kind": "title", "title": "Executive review", "subtitle": "Board, October"}, slide},
+		})
+		env := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": string(spec)}))
+		onSlide := env.FindingEnvelope
+		onSlide.Findings = nil
+		for _, f := range env.Findings {
+			if f.Where == nil || f.Where.Slide == nil || *f.Where.Slide == 1 {
+				onSlide.Findings = append(onSlide.Findings, f)
+			}
+		}
+		bad := blockingFindings(onSlide)
+		if !env.OK && len(bad) == 0 {
+			bad = []string{"validate_deck_spec ok=false"}
+		}
+		return bad
+	}
 	for name, layout := range briefs {
 		brief := "Create a two-slide executive review. Slide 1 is the title. Slide 2 must divide the canvas into regions: " + layout + "."
 		for _, format := range []string{"deckspec", "raw"} {
@@ -42,25 +68,40 @@ func TestPlanDeckRegionsDraftsValidateOnEveryTemplate(t *testing.T) {
 			for _, tpl := range tpls {
 				tpl = strings.TrimSuffix(filepath.Base(tpl), ".pptx")
 				t.Run(name+"/"+format+"/"+tpl, func(t *testing.T) {
-					spec, _ := json.Marshal(map[string]any{
-						"meta":   map[string]any{"template": tpl, "title": "Executive review"},
-						"slides": []any{map[string]any{"kind": "title", "title": "Executive review", "subtitle": "Board, October"}, slide},
-					})
-					env := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": string(spec)}))
-					onSlide := env.FindingEnvelope
-					onSlide.Findings = nil
-					for _, f := range env.Findings {
-						if f.Where == nil || f.Where.Slide == nil || *f.Where.Slide == 1 {
-							onSlide.Findings = append(onSlide.Findings, f)
-						}
+					bad := validate(t, tpl, slide)
+					if len(bad) == 0 {
+						return
 					}
-					if bad := blockingFindings(onSlide); !env.OK || len(bad) > 0 {
-						t.Errorf("drafted regions slide does not validate (ok=%t):\n  %s", env.OK, strings.Join(bad, "\n  "))
+					if name != "chart-top" || !onlyPlotCollapsed(bad) {
+						t.Fatalf("drafted regions slide does not validate:\n  %s", strings.Join(bad, "\n  "))
+					}
+					if format != "deckspec" {
+						return // the deckspec run checks the alternative
+					}
+					var beside map[string]any
+					raw, _ := json.Marshal(slide)
+					if err := json.Unmarshal(raw, &beside); err != nil {
+						t.Fatal(err)
+					}
+					beside["arrangement"] = "main_left"
+					if bad := validate(t, tpl, beside); len(bad) > 0 {
+						t.Errorf("the side-by-side alternative chart.plot_area_collapsed names does not validate:\n  %s", strings.Join(bad, "\n  "))
 					}
 				})
 			}
 		}
 	}
+}
+
+// onlyPlotCollapsed reports whether every blocking finding is the chart's
+// plot_area_collapsed naming the side-by-side alternative.
+func onlyPlotCollapsed(bad []string) bool {
+	for _, b := range bad {
+		if !strings.Contains(b, "chart.plot_area_collapsed") || !strings.Contains(b, "beside the other content") {
+			return false
+		}
+	}
+	return true
 }
 
 // filledRegionsDraft returns plan_deck's drafted regions slide as a DeckSpec

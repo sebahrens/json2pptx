@@ -508,6 +508,7 @@ func (bc *BarChart) Draw(data ChartData) error {
 	if bc.config.ShowLegend && !useDirectLabels(bc.config.ChartConfig, len(data.Series)) {
 		RefineLegendHeightForced(b, style, data.Series, &plotArea, &legendHeight, bc.config.ForceLegendSingleSeries)
 	}
+	bc.fitPlotUnderLabels(style, &plotArea)
 
 	// Detect all-zero series: flat/blank chart.
 	if yMin == 0 && yMax == 0 {
@@ -1532,6 +1533,7 @@ func (lc *LineChart) Draw(data ChartData) error {
 			plotArea.H -= xLayout.ExtraBottomMargin
 		}
 	}
+	lc.fitPlotUnderLabels(style, &plotArea)
 
 	// Create scales
 	var xScale Scale

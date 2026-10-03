@@ -67,6 +67,28 @@
     cell's as `cell_max_chars`; a composition repair carries no `max_chars`
     and prefers the native-layout switch.
 
+- **2026-10-03 — Short charts keep their value labels and report a collapsed plot; region chart shares count decoration (`go-slide-creator-qpd9c`, `go-slide-creator-9re9p`).** SchemaVersion unchanged (no new fields, codes or fix kinds).
+  - svggen vertical bar / line / area charts lower the plot's top edge so the
+    topmost value label (a stack's total, a line point's label) stays on the
+    canvas; in a 61pt region it was clipped by the viewBox with no finding.
+  - The same charts report `chart.plot_area_collapsed` (`shrink_or_split`,
+    `fix.kind: increase_canvas`, `params.height_ratio`, `plot_height_px`,
+    `min_plot_height_px`, `alternative: side_by_side_or_split_slide`) when
+    the plot left under the title, legend, axis labels and label headroom is
+    under 2 tick-label lines (labelled) or 4.8 (value axis, three ticks).
+    validate_deck_spec / validate_input report it from the dry render, so
+    validate and render agree; the message names the side-by-side
+    alternative.
+  - `regions`: an unset chart share in a vertical group is raised to what
+    its decoration needs, measured on modern — labelled bar 45%, labelled
+    line 50%, +15% for a value axis, +20% for a legend (stacked, or more
+    than four series), +10% for a chart title, a region heading 15% —
+    instead of a flat 30%. The chart yields: shares are first raised to
+    every region's floor (chart 30%), and the chart then takes the rest only
+    from what the others hold above their minimums, so a timeline or stat is
+    never squeezed under its own minimum to feed it. A chart above a
+    stat-and-timeline band (main_top) that cannot fit reports the finding.
+
 - **2026-10-03 — Narrow regions keep words whole; native diagrams report the ones they cannot (`go-slide-creator-v74wv`).**
   - The writer's margin clamp now leaves 5% of room over a word's measured
     width (20% for a host-dependent theme face measured in the Liberation

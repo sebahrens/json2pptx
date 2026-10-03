@@ -114,9 +114,8 @@ listing; get exact fields and aliases from `list_slide_kinds`:
 
 
 These are authoring budgets, not an alternate schema. For a kind absent from
-this table, use the runtime example and schema. `list_slide_kinds` also
-returns `required_aliases`, but prefer its canonical field names in new
-content.
+this table, use the runtime example and schema. Prefer `list_slide_kinds`
+canonical field names over its `required_aliases`.
 
 ## Several visuals on one slide
 
@@ -125,8 +124,9 @@ typed chart / stat / kpis / table / timeline / image / text regions in a
 bounded arrangement with `size_pct` shares (budgets: `list_slide_kinds`;
 `examples/semantic/regions.yaml`), each rule an error at
 `slides[N].regions[k]`. A stacked region holds one visual's worth; leave its
-share unset (raised to what its kind reads in), and on a
-readability refusal raise `size_pct`, or cut.
+share unset (raised to what its kind reads in). On a readability refusal
+raise `size_pct` or cut; on `chart.plot_area_collapsed` put the chart
+beside, not above.
 
 ## Render and revise
 
