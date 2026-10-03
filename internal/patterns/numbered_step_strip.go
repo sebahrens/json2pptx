@@ -12,6 +12,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
 // ---------------------------------------------------------------------------
@@ -782,9 +783,9 @@ func buildChevronDescText(body string, size float64) json.RawMessage {
 // ---------------------------------------------------------------------------
 
 func (n *numberedStepStrip) expandStackedBox(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides, cellOverrides map[int]any) *jsonschema.ShapeGridInput {
-	spec := stackedBoxRowSpec(numberedStepsHaveIcons(vals)).withGutter(ctx)
+	spec := numberedStepDetailSpec(ctx, vals, ovr, stackedBoxRowSpec(numberedStepsHaveIcons(vals)).withGutter(ctx), sizeLabelPt)
 	lay := layoutNumberedStepRows(ctx, spec, sizeLabelPt, func(labelPt float64) []jsonschema.GridRowInput {
-		return n.stackedBoxRows(ctx, vals, ovr, cellOverrides, labelPt)
+		return n.stackedBoxRows(ctx, vals, ovr, cellOverrides, labelPt, spec.detailBeside)
 	})
 	return lay.grid(spec)
 }
@@ -799,7 +800,7 @@ func stackedBoxRowSpec(withIcons bool) numberedStepRowSpec {
 }
 
 // stackedBoxRows builds the stacked-box rows with the step labels at labelSize.
-func (n *numberedStepStrip) stackedBoxRows(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides, cellOverrides map[int]any, labelSize float64) []jsonschema.GridRowInput {
+func (n *numberedStepStrip) stackedBoxRows(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides, cellOverrides map[int]any, labelSize float64, detailBeside bool) []jsonschema.GridRowInput {
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	numberSize := ResolveSize(ovr.HeaderSize, scaleLeadPt)
 	bodySize := ResolveSize(ovr.BodySize, scaleCaptionPt)
@@ -849,9 +850,13 @@ func (n *numberedStepStrip) stackedBoxRows(ctx ExpandContext, vals *NumberedStep
 		}
 		applyNumberedStepOverride(bodyCell, cellOverrides, i, baseAccent)
 
-		cells := []*jsonschema.GridCellInput{numberCell, bodyCell}
+		cells := []*jsonschema.GridCellInput{numberCell}
 		if withIcons {
-			cells = []*jsonschema.GridCellInput{numberCell, numberedStepIconCell(ctx, step, tip), bodyCell}
+			cells = append(cells, numberedStepIconCell(ctx, step, tip))
+		}
+		cells = append(cells, bodyCell)
+		if detailBeside {
+			cells = append(cells, numberedStepDetailCell(bodyCell, step, labelSize, bodySize, cellOverrides, i))
 		}
 		rows[i] = jsonschema.GridRowInput{Cells: cells}
 	}
@@ -870,6 +875,105 @@ type numberedStepRowSpec struct {
 	cols     string
 	weights  []float64
 	colGapPt float64
+	// detailBeside puts each step's body in a detail column beside its label
+	// instead of on a line under it (numberedStepDetailSpec).
+	detailBeside bool
+}
+
+// numberedStepLabelShare is the label column's share of the label + detail
+// width in the detail-beside layout: the details start a third of the way
+// across the slide, so one-line details reach its right half.
+const numberedStepLabelShare = 0.36
+
+// numberedStepDetailGrowth is the size the one-line test allows for: the
+// composition policy may step a sparse strip's text up once.
+const numberedStepDetailGrowth = 1.2
+
+// numberedStepDetailSpec decides where the step bodies go. A body under its
+// label is right for rows of text that reach across the slide; when every
+// label and every body is one short line, the stacked rows end before
+// mid-slide and the right half stays empty (go-slide-creator-yhzxt). Such a
+// strip is a three-part row — number, label, detail — so the bodies move to a
+// detail column of their own and the row uses its width. It is taken only
+// when every label and every body stays on one line in its column (with room
+// for the placement policy's type step) and no step carries the recommended
+// tile; otherwise spec is returned unchanged.
+func numberedStepDetailSpec(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides, spec numberedStepRowSpec, labelPt float64) numberedStepRowSpec {
+	bodies := 0
+	for _, step := range vals.Steps {
+		if step.Recommended {
+			return spec
+		}
+		if strings.TrimSpace(step.Body) != "" {
+			bodies++
+		}
+	}
+	if bodies == 0 || len(spec.weights) < 2 {
+		return spec
+	}
+	last := len(spec.weights) - 1
+	areaW, _ := contentAreaPt(ctx)
+	bodyColW := spec.colWidthsPt(areaW)[last] - spec.colGapPt
+	if bodyColW <= 0 {
+		return spec
+	}
+	inset := 2 * float64(pptx.ShapeTextInsetEMU) / 12700
+	bodyPt := ResolveSize(ovr.BodySize, scaleCaptionPt)
+	font := ctx.Theme.BodyFont
+	lineWidthPt := func(text string, sizePt float64, bold bool) float64 {
+		w, err := textfit.MeasureStyledLineWidth(text, font, sizePt*numberedStepDetailGrowth, bold)
+		if err != nil {
+			return math.Inf(1)
+		}
+		return float64(w) / 12700
+	}
+	labelNeed := 0.0
+	for _, step := range vals.Steps {
+		labelNeed = math.Max(labelNeed, lineWidthPt(step.Label, labelPt, true))
+	}
+	// 1.1: the renderer's face may draw wider than the one measured.
+	share := numberedStepLabelShare
+	if (labelNeed*1.1+inset)/bodyColW > share {
+		return spec
+	}
+	detailW := bodyColW*(1-share) - inset
+	for _, step := range vals.Steps {
+		if body := strings.TrimSpace(step.Body); body != "" && lineWidthPt(body, bodyPt, false)*1.05 > detailW {
+			return spec
+		}
+	}
+
+	beside := spec
+	beside.detailBeside = true
+	beside.weights = append(append([]float64{}, spec.weights[:last]...), spec.weights[last]*share, spec.weights[last]*(1-share))
+	parts := make([]string, len(beside.weights))
+	for i, w := range beside.weights {
+		beside.weights[i] = math.Round(w*100) / 100
+		parts[i] = strconv.FormatFloat(beside.weights[i], 'f', -1, 64)
+	}
+	beside.cols = "[" + strings.Join(parts, ", ") + "]"
+	return beside
+}
+
+// numberedStepDetailCell splits a step's stacked label + body cell for the
+// detail-beside layout: labelCell keeps the label alone and the returned cell
+// carries the body. The step's text override applies to both.
+func numberedStepDetailCell(labelCell *jsonschema.GridCellInput, step NumberedStepStripStep, labelSize, bodySize float64, cellOverrides map[int]any, idx int) *jsonschema.GridCellInput {
+	labelCell.Shape.Text = buildNumberedStepStackedBody(pptx.ConvertMarkdownEmphasis(step.Label), labelSize, "", bodySize)
+	body := strings.TrimSpace(step.Body)
+	if body == "" {
+		return &jsonschema.GridCellInput{}
+	}
+	text, _ := json.Marshal(numberedStepTextObj{
+		Paragraphs:    []numberedStepParagraph{{Content: pptx.ConvertMarkdownEmphasis(body), Size: bodySize, Color: "dk2", Align: "l"}},
+		Align:         "l",
+		VerticalAlign: "ctr",
+	})
+	cell := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`), Text: text}}
+	if co, ok := cellOverrides[idx].(*NumberedStepStripCellOverride); ok {
+		applyCellTextOverride(cell, co)
+	}
+	return cell
 }
 
 // withGutter scales the column gap by the template grid's gutter (unchanged
@@ -1060,14 +1164,14 @@ func (n *numberedStepStrip) numberedStepRowsWarning(ctx ExpandContext, vals *Num
 	}
 	var lay numberedStepRowLayout
 	if style == numberedStepStripTOC {
-		spec := tocRowSpec(numberedStepsHaveIcons(vals)).withGutter(ctx)
+		spec := numberedStepDetailSpec(ctx, vals, ovr, tocRowSpec(numberedStepsHaveIcons(vals)).withGutter(ctx), scaleSubheadPt)
 		lay = layoutNumberedStepRows(ctx, spec, scaleSubheadPt, func(labelPt float64) []jsonschema.GridRowInput {
-			return n.tocRows(ctx, vals, ovr, nil, labelPt)
+			return n.tocRows(ctx, vals, ovr, nil, labelPt, spec.detailBeside)
 		})
 	} else {
-		spec := stackedBoxRowSpec(numberedStepsHaveIcons(vals)).withGutter(ctx)
+		spec := numberedStepDetailSpec(ctx, vals, ovr, stackedBoxRowSpec(numberedStepsHaveIcons(vals)).withGutter(ctx), sizeLabelPt)
 		lay = layoutNumberedStepRows(ctx, spec, sizeLabelPt, func(labelPt float64) []jsonschema.GridRowInput {
-			return n.stackedBoxRows(ctx, vals, ovr, nil, labelPt)
+			return n.stackedBoxRows(ctx, vals, ovr, nil, labelPt, spec.detailBeside)
 		})
 	}
 	if lay.fits {
@@ -1108,9 +1212,9 @@ func numberedStepIconCell(ctx ExpandContext, step NumberedStepStripStep, tip str
 // ---------------------------------------------------------------------------
 
 func (n *numberedStepStrip) expandTOC(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides, cellOverrides map[int]any) *jsonschema.ShapeGridInput {
-	spec := tocRowSpec(numberedStepsHaveIcons(vals)).withGutter(ctx)
+	spec := numberedStepDetailSpec(ctx, vals, ovr, tocRowSpec(numberedStepsHaveIcons(vals)).withGutter(ctx), scaleSubheadPt)
 	lay := layoutNumberedStepRows(ctx, spec, scaleSubheadPt, func(labelPt float64) []jsonschema.GridRowInput {
-		return n.tocRows(ctx, vals, ovr, cellOverrides, labelPt)
+		return n.tocRows(ctx, vals, ovr, cellOverrides, labelPt, spec.detailBeside)
 	})
 	return lay.grid(spec)
 }
@@ -1124,7 +1228,7 @@ func tocRowSpec(withIcons bool) numberedStepRowSpec {
 }
 
 // tocRows builds the toc rows with the step titles at titleSize.
-func (n *numberedStepStrip) tocRows(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides, cellOverrides map[int]any, titleSize float64) []jsonschema.GridRowInput {
+func (n *numberedStepStrip) tocRows(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides, cellOverrides map[int]any, titleSize float64, detailBeside bool) []jsonschema.GridRowInput {
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	numberSize := ResolveSize(ovr.HeaderSize, sizeLeadPlusPt)
 	bodySize := ResolveSize(ovr.BodySize, scaleCaptionPt)
@@ -1167,9 +1271,13 @@ func (n *numberedStepStrip) tocRows(ctx ExpandContext, vals *NumberedStepStripVa
 		}
 		applyNumberedStepOverride(titleCell, cellOverrides, i, baseAccent)
 
-		cells := []*jsonschema.GridCellInput{numberCell, titleCell}
+		cells := []*jsonschema.GridCellInput{numberCell}
 		if withIcons {
-			cells = []*jsonschema.GridCellInput{numberCell, numberedStepIconCell(ctx, step, badge), titleCell}
+			cells = append(cells, numberedStepIconCell(ctx, step, badge))
+		}
+		cells = append(cells, titleCell)
+		if detailBeside {
+			cells = append(cells, numberedStepDetailCell(titleCell, step, titleSize, bodySize, cellOverrides, i))
 		}
 		rows[i] = jsonschema.GridRowInput{Cells: cells}
 	}

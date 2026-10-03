@@ -207,11 +207,13 @@ func TestExpandPattern_MaxHeightPctMarksContentRelativeBounds(t *testing.T) {
 }
 
 func TestExpandPattern_PatternAuthoredBoundsAreContentRelative(t *testing.T) {
+	// The chevron strip is the pattern that still caps its own box; the
+	// *-compact variants pin their rows instead (go-slide-creator-yhzxt).
 	input := &PatternInput{
-		Name: "before-after-compact",
+		Name: "numbered-step-strip",
 		Values: json.RawMessage(`{
-			"before": {"header": "Before", "items": ["Slow"]},
-			"after": {"header": "After", "items": ["Fast"]}
+			"style": "chevron",
+			"steps": [{"label": "Plan"}, {"label": "Build"}, {"label": "Run"}]
 		}`),
 	}
 
@@ -220,13 +222,13 @@ func TestExpandPattern_PatternAuthoredBoundsAreContentRelative(t *testing.T) {
 		t.Fatalf("expandPattern failed: %v", err)
 	}
 	if grid.Bounds == nil {
-		t.Fatal("expected compact pattern to create bounds")
+		t.Fatal("expected the chevron strip to create bounds")
 	}
 	if !grid.BoundsRelativeToContentArea {
-		t.Fatal("pattern-authored compact bounds must be resolved relative to the content area")
+		t.Fatal("pattern-authored bounds must be resolved relative to the content area")
 	}
-	if got := grid.Bounds.Height; got != 60 {
-		t.Fatalf("bounds height = %v, want 60", got)
+	if got := grid.Bounds.Height; got <= 0 || got >= 100 {
+		t.Fatalf("bounds height = %v, want a capped share of the content area", got)
 	}
 }
 

@@ -321,6 +321,36 @@ func TestGeometry_SparsePanelsNowReportVisibleInk(t *testing.T) {
 	}
 }
 
+// go-slide-creator-yhzxt: an agenda and a swimlane are open row lists — rows
+// (lanes) between hairline rules, with no tile behind the text — so their
+// unfilled text counts by its row slot, like the other open patterns. A short
+// contents page and a six-step swimlane are full-slide exhibits, not
+// underused slides.
+func TestGeometry_OpenRowListsCountBySlot(t *testing.T) {
+	// (The swimlane exemplar is held on the shipped templates' own content
+	// areas by the exemplar sweep; on the layout-less default area it sits
+	// just under the threshold.)
+	for _, name := range []string{"agenda"} {
+		pat, ok := patterns.Default().Get(name)
+		if !ok {
+			t.Fatalf("%s is not registered", name)
+		}
+		values, err := json.Marshal(pat.(interface{ ExemplarValues() any }).ExemplarValues())
+		if err != nil {
+			t.Fatal(err)
+		}
+		in := geomSlides(t, `[{"layout_id":"content","pattern":{"name":"`+name+`","values":`+string(values)+`}}]`)
+		if fs := findingsByCode(collectGeometryFindings(in, nil, 0, 0, nil), patterns.ErrCodeSlideUnderused); len(fs) != 0 {
+			t.Errorf("%s exemplar reports SLIDE_UNDERUSED: %+v", name, fs)
+		}
+	}
+	// A lane of two bare steps is still a thin slide and still reports.
+	in := geomSlides(t, `[{"layout_id":"content","pattern":{"name":"swimlane","values":{"lanes":[{"actor":"Customer","steps":["Report","","Confirm"]},{"actor":"Service desk","steps":["","Fix",""]}]}}}]`)
+	if fs := findingsByCode(collectGeometryFindings(in, nil, 0, 0, nil), patterns.ErrCodeSlideUnderused); len(fs) != 1 {
+		t.Errorf("a three-step swimlane should still report SLIDE_UNDERUSED: %+v", fs)
+	}
+}
+
 func TestGeometry_SparseSemanticPatternKindsReportUnderfill(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
@@ -331,7 +361,6 @@ func TestGeometry_SparseSemanticPatternKindsReportUnderfill(t *testing.T) {
 		// Bare phase names: the header boxes alone (go-slide-creator-e17xy
 		// moved roadmaps with one-line descriptions to the strip threshold).
 		{name: "phase-roadmap", values: `{"phases":[{"name":"Pilot"},{"name":"Expand"},{"name":"Launch"}]}`},
-		{name: "agenda", values: `{"items":["Performance","Risks","Investment"]}`},
 		// icon-row's tile style: three one-word tiles. Its open default
 		// scales the icons with the content area (go-slide-creator-hjqn2),
 		// so the same three items fill enough of it not to report.

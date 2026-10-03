@@ -86,7 +86,7 @@ func TestNumberedStepRowsReadableOrReportedUnderChromeBands(t *testing.T) {
 func TestNumberedStepRowsWarningNamesTheArea(t *testing.T) {
 	vals := &NumberedStepStripValues{Style: "stacked-box"}
 	for i := 0; i < 5; i++ {
-		vals.Steps = append(vals.Steps, NumberedStepStripStep{Label: "Step", Body: rowFitWords(60, i)})
+		vals.Steps = append(vals.Steps, NumberedStepStripStep{Label: "Step", Body: rowFitWords(110, i)})
 	}
 	ctx := ExpandContext{LayoutBounds: LayoutBounds{Width: 828 * 12700, Height: 253 * 12700}}
 	var got []string

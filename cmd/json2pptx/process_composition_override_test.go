@@ -28,11 +28,13 @@ func disputeProcessSlide(override map[string]any) map[string]any {
 	return slide
 }
 
+// The descriptions run to two lines: one-line descriptions now sit in a detail
+// column beside their labels and the strip fits (go-slide-creator-yhzxt).
 var disputeDescriptions = []string{
-	"Finance creates one case record, links the invoice and assigns a reason code.",
-	"The market lead names a resolver; cases without an owner escalate after 24 hours.",
-	"The resolver agrees the action; credits above EUR25k require a second approval.",
-	"Finance verifies cash or credit, closes the case and updates recurring-cause rules.",
+	"Finance creates one case record, links the invoice and the contract, and assigns a reason code from the shared list.",
+	"The market lead names a resolver within one working day; cases without an owner escalate after 24 hours.",
+	"The resolver agrees the action with the customer; credits above EUR25k require a second approval from finance.",
+	"Finance verifies cash or credit, closes the case and updates the recurring-cause rules for the next cycle.",
 }
 
 func renderDisputeProcess(t *testing.T, mc *mcpConfig, override map[string]any) renderDeckSpecResponse {

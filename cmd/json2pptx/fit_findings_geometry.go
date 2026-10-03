@@ -413,6 +413,13 @@ var openColumnPatterns = map[string]bool{
 	"matrix-2x2":           true,
 	"framework-grid":       true,
 	"dual-org-ladder":      true,
+	// Numbered rows between hairline rules: the row is the unit, as in the
+	// tile list it replaced (go-slide-creator-r3gsw).
+	"agenda": true,
+	// Lanes are bands between full-width hairline rules; the actor label
+	// stands in its band where a filled lane tile used to be
+	// (go-slide-creator-jz5r9).
+	"swimlane": true,
 }
 
 // slotOr returns the cell's grid slot when the slide's pattern counts ink by
@@ -555,7 +562,7 @@ var contentSizedBoxPatterns = map[string]bool{
 	"strategy-house":       true,
 	// Content-sized since the restrained-accent pass (go-slide-creator-xb06p,
 	// -3nsll, -x0b82). process-flow-compact stays at the pattern threshold:
-	// its shallow top-anchored band is supporting context, and alone on a
+	// its shallow band is supporting context, and alone on a
 	// slide it should be paired with a zone.
 	"process-flow":    true,
 	"arch-stack":      true,

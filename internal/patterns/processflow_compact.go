@@ -248,21 +248,17 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 	need := processFlowWrittenNeedPt(ctx.themeFonts(), cells, widths)
 	bandHeight := processFlowContentHeight(need, cellW, processFlowCompactBoxAspect, bandCap)
 	bandHeight = math.Max(bandHeight, math.Min(need, contentHeight))
-	bandHeightPct := processFlowCompactHeightPct
-	if contentHeight > 0 {
-		bandHeightPct = bandHeight / contentHeight * 100
-	}
+	// The band is one content-sized row with no bounds box of its own, so on
+	// a slide of its own it is placed like every other sparse block
+	// (go-slide-creator-yhzxt) instead of hanging a shallow strip under the
+	// title; in a compose segment or a cell the cap exceeds the area and the
+	// row fills it.
+	row.MaxHeight = bandHeight
 	grid := &jsonschema.ShapeGridInput{
-		Bounds: &jsonschema.GridBoundsInput{
-			X: 0, Y: 0, Width: 100, Height: bandHeightPct,
-		},
-		Columns: colsJSON,
-		Gap:     gap,
-		Rows:    []jsonschema.GridRowInput{row},
-		// The compact band is supporting context: it sits under the title
-		// and leaves the space below for other content, instead of floating
-		// a shallow strip in the middle of the slide (go-slide-creator-xb06p).
-		VerticalAlign: "top",
+		Columns:       colsJSON,
+		Gap:           gap,
+		Rows:          []jsonschema.GridRowInput{row},
+		VerticalAlign: GridVerticalAlignDefault,
 	}
 
 	return grid, nil

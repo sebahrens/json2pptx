@@ -28,12 +28,15 @@ func TestBeforeAfterCompact_ExpandBasic(t *testing.T) {
 		t.Fatalf("Expand: %v", err)
 	}
 
-	// Must have bounds set to ~60% height
-	if grid.Bounds == nil {
-		t.Fatal("expected bounds to be set for compact variant")
+	// No bounds box: the rows are pinned and the block is placed by the
+	// shared policy (go-slide-creator-yhzxt).
+	if grid.Bounds != nil || grid.VerticalAlign != GridVerticalAlignDefault {
+		t.Errorf("compact variant sets bounds %+v / vertical_align %q; want none / auto", grid.Bounds, grid.VerticalAlign)
 	}
-	if grid.Bounds.Height != 60 {
-		t.Errorf("expected bounds height 60, got %v", grid.Bounds.Height)
+	for i, row := range grid.Rows {
+		if row.MaxHeight <= 0 {
+			t.Errorf("row %d is not content-sized (max_height %v)", i, row.MaxHeight)
+		}
 	}
 
 	if len(grid.Rows) != 2 {
@@ -53,8 +56,8 @@ func TestBeforeAfterCompact_LightPanelsTallChevronAndMargins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if grid.Bounds == nil || grid.Bounds.Height != 60 {
-		t.Errorf("compact height cap changed: %+v", grid.Bounds)
+	if grid.Bounds != nil {
+		t.Errorf("compact variant sets a bounds box: %+v", grid.Bounds)
 	}
 	separator := grid.Rows[0].Cells[1]
 	if separator.RowSpan != 2 || separator.Shape.Geometry != "chevron" || len(separator.Shape.Text) != 0 {

@@ -130,7 +130,10 @@ func TestProcessFlow_RestrainedByDefault(t *testing.T) {
 	}
 
 	compact := expandFor(t, "process-flow-compact", ctx, &ProcessFlowValues{Steps: processSteps()}, nil)
-	if compactH := compact.Bounds.Height / 100 * contentH; compactH >= row.MaxHeight {
+	if compact.Bounds != nil {
+		t.Fatalf("process-flow-compact sets a bounds box %+v; its band is a content-sized row", compact.Bounds)
+	}
+	if compactH := compact.Rows[0].MaxHeight; compactH <= 0 || compactH >= row.MaxHeight {
 		t.Errorf("compact band %.0fpt is not shorter than process-flow's %.0fpt", compactH, row.MaxHeight)
 	}
 

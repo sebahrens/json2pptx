@@ -1163,7 +1163,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			SectionIndex:   sectionIndices[i],
 			Theme:          patternThemeFromDiag(diagCtx),
 		}
-		if err := expandNestedCellPatternsInBounds(slide.ShapeGrid, nestedCtx, contentBounds, patterns.Default()); err != nil {
+		if err := expandNestedCellPatternsInBounds(slide.ShapeGrid, nestedCtx, contentBounds, patterns.Default(), true); err != nil {
 			return generator.SlideSpec{}, nil, nil, newSlidePatternError(i, "shape_grid", "nested pattern", err)
 		}
 	}

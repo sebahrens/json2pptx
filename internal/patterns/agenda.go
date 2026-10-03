@@ -244,6 +244,9 @@ const (
 	// agendaNumberFont is the theme's major (heading) font — the serif on a
 	// serif-headed template.
 	agendaNumberFont = "+mj-lt"
+	// agendaPromoteMaxFrac is the share of the content height a short agenda
+	// may need with its items promoted to the lead step.
+	agendaPromoteMaxFrac = 0.8
 )
 
 // agendaScales steps the numeral / item sizes down only when the default rows
@@ -367,6 +370,16 @@ var agendaFloorScale = [2]float64{scaleLeadPt, scaleBodyPt}
 // whether the rows fit at all.
 func layoutAgenda(ctx ExpandContext, v *AgendaValues, ovr *AgendaOverrides) (agendaLayout, bool) {
 	_, areaH := sizingAreaPt(ctx)
+	// A short agenda promotes its items to the lead step: the 28pt numeral
+	// already sets the row height, and two to four 14pt items beside it left
+	// the slide to the numerals (go-slide-creator-yhzxt). Taken only when the
+	// promoted rows stay inside agendaPromoteMaxFrac of the area.
+	if ovr.TitleSize == 0 && ovr.NumberSize == 0 {
+		promoted := measureAgenda(ctx, v, agendaNumberSize, scaleLeadPt, ovr.Highlight)
+		if promoted.natural() <= areaH*agendaPromoteMaxFrac {
+			return promoted, true
+		}
+	}
 	var lay agendaLayout
 	for _, sc := range agendaScales {
 		lay = measureAgenda(ctx, v, ResolveSize(ovr.NumberSize, sc[0]), ResolveSize(ovr.TitleSize, sc[1]), ovr.Highlight)
@@ -528,11 +541,15 @@ func (a *agenda) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 
 	colsJSON, _ := json.Marshal([]float64{lay.numberPct, 100 - lay.numberPct})
 	grid := &jsonschema.ShapeGridInput{
-		Columns:       json.RawMessage(colsJSON),
-		ColGap:        agendaColGapPt,
-		RowGap:        ctx.Gap(agendaListRowGapPt),
-		Rows:          rows,
-		VerticalAlign: "center", // an agenda is a balanced contents page, not a body block
+		Columns: json.RawMessage(colsJSON),
+		ColGap:  agendaColGapPt,
+		RowGap:  ctx.Gap(agendaListRowGapPt),
+		Rows:    rows,
+		// A short agenda is a sparse block like any other: the placement
+		// policy steps its type up and sets it at the optical centre
+		// (go-slide-creator-yhzxt). It used to pin "center" itself, which
+		// kept four 14pt items on a full slide.
+		VerticalAlign: GridVerticalAlignDefault,
 	}
 
 	return grid, nil
