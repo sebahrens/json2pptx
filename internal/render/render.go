@@ -675,6 +675,9 @@ func RenderSlideOptsContext(ctx context.Context, pptxPath string, slideIndex, de
 			return nil, err
 		}
 
+		// Same visible slide, same image, whichever revision it was rendered
+		// from (go-slide-creator-6ffgv).
+		stabilizeSlidePNGs(pptxPath, pngs, density, force)
 		storeCachePNGs(key, pngs)
 		if err := ctx.Err(); err != nil {
 			return nil, err
@@ -983,6 +986,7 @@ func deckPNGsContext(ctx context.Context, pptxPath string, density int, force bo
 		cleanup()
 		return nil, "", func() {}, err
 	}
+	stabilizeSlidePNGs(pptxPath, pngs, density, force)
 	storeCachePNGs(key, pngs)
 	if err := ctx.Err(); err != nil {
 		cleanup()

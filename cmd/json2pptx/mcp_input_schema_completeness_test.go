@@ -64,7 +64,7 @@ func TestSemanticToolInputSchemaChoiceAndEnums(t *testing.T) {
 				t.Errorf("patch item required = %v", items["required"])
 			}
 			op := schemaProperty(t, items, "op")
-			if !reflect.DeepEqual(op["enum"], []any{"replace", "add", "remove"}) {
+			if !reflect.DeepEqual(op["enum"], []any{"replace", "add", "remove", "move", "copy"}) {
 				t.Errorf("patch op enum = %v", op["enum"])
 			}
 			if tool.Name != "explain_deck_spec" {

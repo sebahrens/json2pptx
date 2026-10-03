@@ -170,8 +170,12 @@ func compositionFields() map[string]payloadField {
 // source/footnote line. They are per-slide strings with no layout impact, and
 // before go-slide-creator-zmjs only chart_insight could carry a source, so an
 // option matrix or financial case had nowhere to cite its numbers.
+//
+// id is the slide's stable handle (go-slide-creator-1w3uo): it is never
+// rendered, and a deck_id patch may use it in place of the slide's index.
 func universalFields() map[string]payloadField {
 	return map[string]payloadField{
+		"id":     strField("Optional stable handle for this slide (a letter, then letters, digits, _ or -; unique in the deck). Never rendered. A stored deck assigns s1, s2, … to slides without one; deck_id patches may address a slide by it (/slides/<id>/title)."),
 		"notes":  strField("Speaker notes for this slide (rendered into the PPTX notes slide, never shown on the slide)."),
 		"source": strField("Source / footnote line shown under the slide content."),
 	}

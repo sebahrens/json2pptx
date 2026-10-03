@@ -2524,7 +2524,7 @@ Cost: image payload grows with density and slide count — a 15-slide pass is ~6
 			mcp.Description("Maximum number of slides to render, counting from the first. Default: 50. Mutually exclusive with slide_indices."),
 		),
 		mcp.WithArray("slide_indices",
-			mcp.Description("Render ONLY these 0-based slides, e.g. [4, 9] — the narrowing knob for a repair loop, where re-pulling all 15 thumbnails to look at one changed slide is the whole cost. Pass render_deck_spec / validate_deck_spec's changed_slides verbatim. Returns one image block per index, ascending, with slide_count telling you how big the deck is and selected echoing what came back. An index the deck does not have is an error, not a silent omission. Mutually exclusive with max_slides."),
+			mcp.Description("Render ONLY these 0-based slides, e.g. [4, 9]: after a patch, pass render_deck_spec's changed_slides (the slides that look different) verbatim. Returns one image block per index, ascending; slide_count is the deck size and selected echoes what came back. An index the deck does not have is an error, not a silent omission. Mutually exclusive with max_slides."),
 			mcp.Items(map[string]any{"type": "integer", "minimum": 0}),
 		),
 		mcp.WithBoolean("force",
