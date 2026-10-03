@@ -23,7 +23,7 @@ type archStack struct{}
 
 func (a *archStack) Name() string { return "arch-stack" }
 func (a *archStack) Description() string {
-	return "Architecture stack diagram with tiers and optional side rails"
+	return "Architecture stack diagram: 3-6 tier bands, each with one block per component (or a line of detail), and optional cross-cutting side rails"
 }
 func (a *archStack) UseWhen() string {
 	return "Architecture layers or technology stack with vertical ordering; prefer pyramid when the hierarchy narrows visually, process-flow when layers have sequential flow"
@@ -32,7 +32,7 @@ func (a *archStack) NotWhen() string {
 	return "Hierarchy narrows top-to-bottom like Maslow (use pyramid), or layers are sequential steps (use process-flow)"
 }
 func (a *archStack) Version() int      { return 1 }
-func (a *archStack) CellsHint() string { return "3-6 tiers + rails" }
+func (a *archStack) CellsHint() string { return "3-6 tiers (1-12 components each) + rails" }
 func (a *archStack) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
 		Category:      "structural",
@@ -48,12 +48,12 @@ func (a *archStack) SupportsInlineMarkdown() bool { return true }
 func (a *archStack) ExemplarValues() any {
 	return &ArchStackValues{
 		Tiers: []ArchStackTier{
-			{Label: "Presentation", Description: "React, Next.js"},
-			{Label: "API Gateway", Description: "Kong, rate limiting"},
-			{Label: "Business Logic", Description: "Go services"},
-			{Label: "Data Layer", Description: "PostgreSQL, Redis"},
+			{Label: "Channels", Components: []string{"Web", "Mobile app", "Partner API"}},
+			{Label: "Experience", Components: []string{"API gateway", "Identity"}},
+			{Label: "Domain services", Components: []string{"Orders", "Pricing", "Inventory", "Billing"}},
+			{Label: "Data platform", Components: []string{"Operational DB", "Event stream", "Lakehouse"}},
 		},
-		SideRails: []string{"Security", "Monitoring"},
+		SideRails: []string{"Security", "Observability"},
 	}
 }
 
@@ -68,6 +68,10 @@ const archStackTierBarPt = 3
 type ArchStackTier struct {
 	Label       string `json:"label"`
 	Description string `json:"description,omitempty"`
+	// Components are the tier's building blocks, drawn as one block each
+	// inside the tier band (archstack_components.go). A tier has components
+	// or a description, not both.
+	Components []string `json:"components,omitempty"`
 }
 
 // ArchStackValues holds tiers (top to bottom) and optional side rails.
@@ -109,10 +113,19 @@ func archStackDescriptionBudgets(tiers, _ int) (words, wide int) {
 // archStackRailWideBudget is the widest unbroken run a side rail holds.
 const archStackRailWideBudget = 26
 
-func (a *archStack) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+func (a *archStack) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*ArchStackValues)
 	if !ok || v == nil {
 		return nil
+	}
+	if archStackHasComponents(v) {
+		// The component layout sizes every band to its content; what can
+		// still be written shrunk is a block's own name.
+		ovr, _ := overrides.(*ArchStackOverrides)
+		if ovr == nil {
+			ovr = &ArchStackOverrides{}
+		}
+		return archStackComponentWarnings(ctx, v, ovr)
 	}
 	words, wide := archStackDescriptionBudgets(len(v.Tiers), len(v.SideRails))
 	var warnings []string
@@ -146,7 +159,8 @@ func (a *archStack) Schema() *Schema {
 	tierSchema := ObjectSchema(
 		map[string]*Schema{
 			"label":       StringSchema(60).WithDescription("Tier/layer name"),
-			"description": StringSchema(120).WithDescription("Technologies or details for this tier; about 120 readable characters with 3-4 tiers, 40 with 5 tiers; 6 tiers hold no readable description (label only)"),
+			"description": StringSchema(120).WithDescription("Technologies or details for this tier as one line of text; about 120 readable characters with 3-4 tiers, 40 with 5 tiers; 6 tiers hold no readable description (label only). Use components instead when the tier is a set of named parts"),
+			"components":  ArraySchema(StringSchema(archStackComponentMaxLen), 1, archStackMaxComponents).WithDescription("The tier's parts, drawn as one block each inside the tier band beside its label (1-12; 7 or more wrap to two rows of blocks). Not together with description. When any tier has components the whole stack takes the band layout: labels on the left, a description-only tier shows its text in place of blocks"),
 		},
 		[]string{"label"},
 	).WithAdditionalProperties(false)
@@ -206,6 +220,21 @@ func (a *archStack) Validate(values, overrides any, cellOverrides map[int]any) e
 		if tier.Description != "" && runeLen(tier.Description) > 120 {
 			errs = append(errs, errMaxLength(name, fmt.Sprintf("tiers[%d].description", i), 120, runeLen(tier.Description)))
 		}
+		compPath := fmt.Sprintf("tiers[%d].components", i)
+		if len(tier.Components) > archStackMaxComponents {
+			errs = append(errs, errMaxItems(name, compPath, archStackMaxComponents, len(tier.Components), "(hint: group related components, or split the tier in two)"))
+		}
+		if len(tier.Components) > 0 && strings.TrimSpace(tier.Description) != "" {
+			errs = append(errs, newValidationError(name, fmt.Sprintf("tiers[%d].description", i), ErrCodeInvalidShape,
+				fmt.Sprintf("arch-stack: tiers[%d] sets both components and description; a tier draws its components as blocks or its description as text — keep one", i), nil))
+		}
+		for j, c := range tier.Components {
+			if strings.TrimSpace(c) == "" {
+				errs = append(errs, errRequired(name, fmt.Sprintf("%s[%d]", compPath, j)))
+			} else if runeLen(c) > archStackComponentMaxLen {
+				errs = append(errs, errMaxLength(name, fmt.Sprintf("%s[%d]", compPath, j), archStackComponentMaxLen, runeLen(c)))
+			}
+		}
 	}
 
 	if len(vals.SideRails) > 3 {
@@ -240,6 +269,13 @@ func (a *archStack) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		if !ovrOk {
 			return nil, fmt.Errorf("arch-stack: overrides must be *ArchStackOverrides, got %T", overrides)
 		}
+	}
+
+	if ovr == nil {
+		ovr = &ArchStackOverrides{}
+	}
+	if archStackHasComponents(vals) {
+		return a.expandComponents(ctx, vals, ovr, cellOverrides)
 	}
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)

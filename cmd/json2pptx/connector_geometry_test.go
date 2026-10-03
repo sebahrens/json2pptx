@@ -36,6 +36,7 @@ func resolvePatternGrid(t *testing.T, name string, values any) *shapegrid.Resolv
 		Bounds:  shapegrid.DefaultBounds(12192000, 6858000),
 		Columns: cols,
 		Rows:    convertGridRows(in.Rows),
+		Links:   convertGridLinks(in.Links),
 		ColGap:  colGap,
 		RowGap:  rowGap,
 	}

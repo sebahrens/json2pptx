@@ -277,7 +277,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"takeaway": strField("One-line takeaway footer."),
 		"tiers": {
 			typ:         "array",
-			desc:        "3–6 tiers, top layer first: strings or {label, description?|items?}; items are joined into the tier's detail line. Label ≤60 chars, detail ≤120.",
+			desc:        "3–6 tiers, top layer first: strings or {label, description?|items?}. items (1–12, each ≤40 chars) are drawn as one block each inside the tier band; description is one line of text (≤120 chars). Label ≤60 chars.",
 			itemStrings: true,
 			itemKeys:    archTierKeys,
 		},

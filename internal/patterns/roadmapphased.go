@@ -5,13 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
 // ---------------------------------------------------------------------------
-// roadmap-phased pattern — quarters across, workstreams down, pills per phase
+// roadmap-phased pattern — periods across as a time axis, workstreams down,
+// bars spanning the periods they run over (roadmapphased_bars.go). This file
+// holds the contract and the legacy "grid" layout (one tile per period cell).
 // ---------------------------------------------------------------------------
 
 func init() {
@@ -46,11 +49,22 @@ func (r *roadmapPhased) SupportsInlineMarkdown() bool { return true }
 
 func (r *roadmapPhased) ExemplarValues() any {
 	return &RoadmapPhasedValues{
-		Phases: []string{"Q1", "Q2", "Q3", "Q4"},
+		Phases:       []string{"Q1", "Q2", "Q3", "Q4"},
+		CurrentPhase: "Q2",
 		Workstreams: []RoadmapWorkstream{
-			{Name: "Platform", Items: []string{"Auth rewrite", "API v2", "Caching", "Scale testing"}},
-			{Name: "Frontend", Items: []string{"Design system", "Dashboard", "Mobile app", "PWA"}},
-			{Name: "Data", Items: []string{"Pipeline v2", "ML models", "Analytics", "Reporting"}},
+			{Name: "Platform", Bars: []RoadmapBar{
+				{Label: "Auth rewrite", Start: "Q1", End: "Q2"},
+				{Label: "API v2", Start: "Q2", End: "Q4"},
+			}},
+			{Name: "Frontend", Bars: []RoadmapBar{
+				{Label: "Design system", Start: "Q1", End: "Q2"},
+				{Label: "Mobile app", Start: "Q3", End: "Q4"},
+			}},
+			{Name: "Data", Bars: []RoadmapBar{
+				{Label: "Pipeline v2", Start: "Q1"},
+				{Label: "ML models", Start: "Q2", End: "Q3"},
+				{Label: "Reporting live", Start: "Q4", Milestone: true},
+			}},
 		},
 	}
 }
@@ -59,21 +73,42 @@ func (r *roadmapPhased) ExemplarValues() any {
 // Types
 // ---------------------------------------------------------------------------
 
-// RoadmapWorkstream represents one horizontal workstream with items per phase.
+// RoadmapBar is one activity of a workstream on the time axis: a bar from its
+// start period to its end period, or a milestone marker in one period.
+type RoadmapBar struct {
+	Label string `json:"label"`
+	// Start and End name periods of values.phases. End defaults to Start (a
+	// one-period bar); Span gives the length in periods instead of End.
+	Start string `json:"start"`
+	End   string `json:"end,omitempty"`
+	Span  int    `json:"span,omitempty"`
+	// Milestone draws a marker and the label in the start period, not a bar.
+	Milestone bool `json:"milestone,omitempty"`
+}
+
+// RoadmapWorkstream represents one horizontal workstream. It carries bars
+// (each with its own start and end period), or one item per phase.
 type RoadmapWorkstream struct {
-	Name  string   `json:"name"`
-	Items []string `json:"items"` // One item per phase (empty string = no activity)
+	Name  string       `json:"name"`
+	Items []string     `json:"items,omitempty"` // One item per phase (empty string = no activity)
+	Bars  []RoadmapBar `json:"bars,omitempty"`
 }
 
 // RoadmapPhasedValues holds phases (columns) and workstreams (rows).
 type RoadmapPhasedValues struct {
-	Phases      []string            `json:"phases"`
-	Workstreams []RoadmapWorkstream `json:"workstreams"`
+	Phases []string `json:"phases"`
+	// CurrentPhase names the period the roadmap is in; its header is filled.
+	CurrentPhase string              `json:"current_phase,omitempty"`
+	Workstreams  []RoadmapWorkstream `json:"workstreams"`
 }
 
 // RoadmapPhasedOverrides is the standard text overrides plus the grid style.
 type RoadmapPhasedOverrides struct {
 	TextOverrides
+	// Layout is "bars" (default: activities as bars on a time axis, stacked
+	// in lanes where they overlap) or "grid" (the legacy table: one equal tile
+	// per period cell; one-item-per-period input only).
+	Layout string `json:"layout,omitempty"`
 	// Style is "tinted" (default: neutral activity cells with dk1 text, phase
 	// headers marked by an accent rule) or "solid" (the legacy look: every
 	// header and activity filled with the accent).
@@ -147,10 +182,18 @@ func roadmapPhasedItemBudget(phases, workstreams int) int {
 	return roadmapPhasedItemBudgets[phases-2][workstreams-2]
 }
 
-func (r *roadmapPhased) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+func (r *roadmapPhased) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*RoadmapPhasedValues)
 	if !ok || v == nil {
 		return nil
+	}
+	var barWarnings []string
+	if roadmapHasBars(v) {
+		ovr, _ := overrides.(*RoadmapPhasedOverrides)
+		if ovr == nil {
+			ovr = &RoadmapPhasedOverrides{}
+		}
+		barWarnings = roadmapBarWarnings(ctx, v, ovr)
 	}
 	budget := roadmapPhasedItemBudget(len(v.Phases), len(v.Workstreams))
 	var warnings []string
@@ -167,28 +210,33 @@ func (r *roadmapPhased) PostExpandWarnings(_ ExpandContext, values, _ any) []str
 		}
 	}
 	for i, ws := range v.Workstreams {
+		if len(ws.Bars) > 0 {
+			continue
+		}
 		for j, item := range ws.Items {
 			if n := runeLen(item); n > budget {
 				warnings = append(warnings, fmt.Sprintf("%s: roadmap-phased workstreams[%d].items[%d] is %d characters; a %d-phase x %d-workstream roadmap holds about %d per activity pill before text shrinks below the readable minimum — shorten the activity or use fewer phases/workstreams", ErrCodeBodyTooLong, i, j, n, len(v.Phases), len(v.Workstreams), budget))
 			}
 		}
 	}
-	return warnings
+	return append(warnings, barWarnings...)
 }
 
 func (r *roadmapPhased) Schema() *Schema {
 	workstreamSchema := ObjectSchema(
 		map[string]*Schema{
 			"name":  StringSchema(40).WithDescription("Workstream name; about 40 readable characters with 2-3 workstreams, 38 with 4 (32 at 6+ phases), 20 with 5-6 (17 at 6+ phases)"),
-			"items": ArraySchema(StringSchema(80), 2, 8).WithDescription("One activity per phase (empty = none). Approximate readable chars per pill by phase count x workstream count (workstreams 2/3/4/5/6): phases 2: 80/80/80/51/51; 3: 80/80/61/31/31; 4: 80/62/42/22/22; 5: 80/47/31/16/16; 6: 62/32/22/12/12; 7: 60/30/20/10/10; 8: 32/17/12/7/7"),
+			"bars": ArraySchema(roadmapBarSchema(), 1, roadmapMaxBars).WithDescription("The workstream's activities on the time axis (1-12): each a bar from its start period to its end period, or a milestone marker. Bars that share a period stack in lanes. Use bars or items, not both"),
+			"items": ArraySchema(StringSchema(80), 2, 8).WithDescription("One activity per phase (empty = none), each drawn as a one-period bar; use bars for an activity that runs over several periods. Approximate readable chars per pill by phase count x workstream count (workstreams 2/3/4/5/6): phases 2: 80/80/80/51/51; 3: 80/80/61/31/31; 4: 80/62/42/22/22; 5: 80/47/31/16/16; 6: 62/32/22/12/12; 7: 60/30/20/10/10; 8: 32/17/12/7/7"),
 		},
-		[]string{"name", "items"},
+		[]string{"name"},
 	).WithAdditionalProperties(false)
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
-			"phases":      ArraySchema(StringSchema(20), 2, 8).WithDescription("Phase/period labels (column headers); about 20 readable characters up to 4 phases, 16/12/10/7 at 5/6/7/8"),
-			"workstreams": ArraySchema(workstreamSchema, 2, 6).WithDescription("Workstreams (rows) with items per phase"),
+			"phases":        ArraySchema(StringSchema(20), 2, 8).WithDescription("Phase/period labels, in order: the time axis; about 20 readable characters up to 4 phases, 16/12/10/7 at 5/6/7/8"),
+			"current_phase": StringSchema(20).WithDescription("The period the roadmap is in now (one of phases); its header is filled"),
+			"workstreams":   ArraySchema(workstreamSchema, 2, 6).WithDescription("Workstreams (rows), each with bars on the time axis or one item per phase"),
 		},
 		[]string{"phases", "workstreams"},
 	).WithAdditionalProperties(false)
@@ -205,10 +253,26 @@ func (r *roadmapPhased) Schema() *Schema {
 	}).WithDescription("Phased roadmap with workstreams and time periods")
 }
 
-// roadmapPhasedOverridesSchema is the standard text overrides plus style.
+// roadmapBarSchema is one entry of workstreams[].bars.
+func roadmapBarSchema() *Schema {
+	return ObjectSchema(
+		map[string]*Schema{
+			"label":     StringSchema(80).WithDescription("Activity name, written inside the bar; a longer bar holds a longer label"),
+			"start":     StringSchema(20).WithDescription("The period the bar starts in: one of phases"),
+			"end":       StringSchema(20).WithDescription("The period the bar ends in (inclusive): one of phases, not before start. Omit for a one-period bar"),
+			"span":      IntegerSchema(1, 8).WithDescription("Length in periods, counted from start; an alternative to end"),
+			"milestone": BooleanSchema().WithDescription("true: a marker with the label in the start period, not a bar (no end or span)"),
+		},
+		[]string{"label", "start"},
+	).WithAdditionalProperties(false)
+}
+
+// roadmapPhasedOverridesSchema is the standard text overrides plus style and
+// layout.
 func roadmapPhasedOverridesSchema() *Schema {
 	s := textOverridesSchema()
-	s.raw.Properties["style"] = EnumSchema(roadmapPhasedStyles...).WithDescription("tinted (default): activity cells on a neutral tint with dark text, workstream labels on a darker tint, phase headers bold with an accent rule — the accent marks structure without a wall of colour; emphasise one activity with cell_overrides accent_bar. solid: every phase header and activity filled with the accent (legacy look)").WithDefault("tinted")
+	s.raw.Properties["style"] = EnumSchema(roadmapPhasedStyles...).WithDescription("tinted (default): bars in a light tint of the accent with dark text, workstream labels on a neutral tint, period headers bold over an accent axis segment — the accent marks structure without a wall of colour; emphasise one activity with cell_overrides accent_bar. solid: every period header and bar filled with the accent").WithDefault("tinted")
+	s.raw.Properties["layout"] = EnumSchema(roadmapPhasedLayouts...).WithDescription("bars (default): period headers are a time axis and each activity is a bar over the periods it runs, stacked in lanes where bars overlap; rows are as tall as their text. grid: the legacy table of one equal tile per period cell, filling the slide (workstreams[].items only)").WithDefault("bars")
 	return s
 }
 
@@ -221,8 +285,18 @@ func (r *roadmapPhased) Validate(values, overrides any, cellOverrides map[int]an
 	const name = "roadmap-phased"
 	var errs []error
 
-	if ovr, ok := overrides.(*RoadmapPhasedOverrides); ok && ovr != nil && ovr.Style != "" && !slices.Contains(roadmapPhasedStyles, ovr.Style) {
-		errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, roadmapPhasedStyles))
+	gridLayout := false
+	if ovr, ok := overrides.(*RoadmapPhasedOverrides); ok && ovr != nil {
+		if ovr.Style != "" && !slices.Contains(roadmapPhasedStyles, ovr.Style) {
+			errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, roadmapPhasedStyles))
+		}
+		if ovr.Layout != "" && !slices.Contains(roadmapPhasedLayouts, ovr.Layout) {
+			errs = append(errs, errInvalidEnum(name, "overrides.layout", ovr.Layout, roadmapPhasedLayouts))
+		}
+		gridLayout = ovr.Layout == "grid"
+	}
+	if vals.CurrentPhase != "" && roadmapPhaseIndex(vals.Phases, vals.CurrentPhase) < 0 {
+		errs = append(errs, errInvalidEnum(name, "current_phase", vals.CurrentPhase, vals.Phases))
 	}
 
 	if len(vals.Phases) < 2 {
@@ -255,6 +329,11 @@ func (r *roadmapPhased) Validate(values, overrides any, cellOverrides map[int]an
 			errs = append(errs, errMaxLength(name, fmt.Sprintf("workstreams[%d].name", i), 40, runeLen(ws.Name)))
 		}
 
+		if len(ws.Bars) > 0 {
+			errs = append(errs, validateRoadmapBars(name, i, ws, vals.Phases, gridLayout)...)
+			continue
+		}
+
 		if len(ws.Items) != phaseCount {
 			errs = append(errs, newValidationError(name, fmt.Sprintf("workstreams[%d].items", i), ErrCodeCountMismatch,
 				fmt.Sprintf("roadmap-phased: workstreams[%d].items must have %d items (one per phase), got %d", i, phaseCount, len(ws.Items)),
@@ -268,11 +347,8 @@ func (r *roadmapPhased) Validate(values, overrides any, cellOverrides map[int]an
 		}
 	}
 
-	// Total cells: phase headers + workstream labels + workstream items
-	totalCells := len(vals.Phases) // header row
-	for _, ws := range vals.Workstreams {
-		totalCells += 1 + len(ws.Items) // name + items
-	}
+	// Total cells: phase headers + workstream labels + workstream items / bars
+	totalCells := roadmapBarsTotalCells(vals)
 	if coErr := validateCellOverrideKeys(name, cellOverrides, totalCells, ""); coErr != nil {
 		errs = append(errs, coErr)
 	}
@@ -294,6 +370,75 @@ func (r *roadmapPhased) Expand(ctx ExpandContext, values, overrides any, cellOve
 		}
 	}
 
+	if ovr == nil {
+		ovr = &RoadmapPhasedOverrides{}
+	}
+	if ovr.Layout != "grid" || roadmapHasBars(vals) {
+		return r.expandBars(ctx, vals, ovr, cellOverrides)
+	}
+	return r.expandGrid(ctx, vals, ovr, cellOverrides)
+}
+
+// validateRoadmapBars checks one workstream's bars against the phases.
+func validateRoadmapBars(name string, i int, ws RoadmapWorkstream, phases []string, gridLayout bool) []error {
+	var errs []error
+	path := fmt.Sprintf("workstreams[%d].bars", i)
+	if len(ws.Items) > 0 {
+		errs = append(errs, newValidationError(name, fmt.Sprintf("workstreams[%d].items", i), ErrCodeInvalidShape,
+			fmt.Sprintf("roadmap-phased: workstreams[%d] sets both bars and items; give its activities as bars (each with a start period) or as one item per phase — keep one", i), nil))
+	}
+	if gridLayout {
+		errs = append(errs, newValidationError(name, path, ErrCodeInvalidShape,
+			fmt.Sprintf("roadmap-phased: overrides.layout \"grid\" draws one tile per period cell and cannot draw workstreams[%d].bars; drop the layout override or give one item per phase", i), nil))
+	}
+	if len(ws.Bars) > roadmapMaxBars {
+		errs = append(errs, errMaxItems(name, path, roadmapMaxBars, len(ws.Bars), "(hint: merge short activities or split the workstream)"))
+	}
+	for j, bar := range ws.Bars {
+		at := fmt.Sprintf("%s[%d]", path, j)
+		if strings.TrimSpace(bar.Label) == "" {
+			errs = append(errs, errRequired(name, at+".label"))
+		} else if runeLen(bar.Label) > 80 {
+			errs = append(errs, errMaxLength(name, at+".label", 80, runeLen(bar.Label)))
+		}
+		from := roadmapPhaseIndex(phases, bar.Start)
+		switch {
+		case strings.TrimSpace(bar.Start) == "":
+			errs = append(errs, errRequired(name, at+".start"))
+			continue
+		case from < 0:
+			errs = append(errs, errInvalidEnum(name, at+".start", bar.Start, phases))
+			continue
+		}
+		if bar.Span < 0 {
+			errs = append(errs, newValidationError(name, at+".span", ErrCodeOutOfRange,
+				fmt.Sprintf("roadmap-phased: %s.span is %d; a span is at least 1 period", at, bar.Span), nil))
+		}
+		if (bar.End != "" && bar.Span > 0) || (bar.Milestone && (bar.End != "" || bar.Span > 1)) {
+			errs = append(errs, newValidationError(name, at, ErrCodeInvalidShape,
+				fmt.Sprintf("roadmap-phased: %s gives its length more than once; a bar takes end or span (not both) and a milestone neither", at), nil))
+			continue
+		}
+		if bar.End != "" {
+			switch to := roadmapPhaseIndex(phases, bar.End); {
+			case to < 0:
+				errs = append(errs, errInvalidEnum(name, at+".end", bar.End, phases))
+			case to < from:
+				errs = append(errs, newValidationError(name, at+".end", ErrCodeOutOfRange,
+					fmt.Sprintf("roadmap-phased: %s ends in %q, before it starts in %q; phases run %s", at, bar.End, bar.Start, strings.Join(phases, ", ")), nil))
+			}
+		}
+		if bar.Span > 0 && from+bar.Span > len(phases) {
+			errs = append(errs, newValidationError(name, at+".span", ErrCodeOutOfRange,
+				fmt.Sprintf("roadmap-phased: %s spans %d periods from %q, past the last of %d phases; use a span of at most %d", at, bar.Span, bar.Start, len(phases), len(phases)-from), nil))
+		}
+	}
+	return errs
+}
+
+// expandGrid is the legacy layout (overrides.layout "grid"): a table with one
+// equal tile per workstream and period, stretched over the content area.
+func (r *roadmapPhased) expandGrid(ctx ExpandContext, vals *RoadmapPhasedValues, ovr *RoadmapPhasedOverrides, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	headerSize := ResolveSize(ovr.HeaderSize, scaleDenseBodyPt)
 	bodySize := ResolveSize(ovr.BodySize, scaleCaptionPt)

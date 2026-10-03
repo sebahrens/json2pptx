@@ -22,9 +22,9 @@ func TestRoadmapPhased_ExpandBasic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
 	}
-	// 1 header row + 2 workstream rows = 3
-	if len(grid.Rows) != 3 {
-		t.Errorf("expected 3 rows, got %d", len(grid.Rows))
+	// 1 header row + 2 one-lane workstreams with a spacer row between = 4
+	if len(grid.Rows) != 4 {
+		t.Errorf("expected 4 rows, got %d", len(grid.Rows))
 	}
 	// 1 label col + 3 phases = 4
 	if len(grid.Rows[0].Cells) != 4 {

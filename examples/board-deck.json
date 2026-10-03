@@ -117,10 +117,10 @@
         "name": "arch-stack",
         "values": {
           "tiers": [
-            {"label": "Client Apps", "description": "Web, Mobile, API"},
-            {"label": "API Gateway", "description": "Auth, Rate Limiting, Routing"},
-            {"label": "Core Services", "description": "Analytics Engine, ML Pipeline"},
-            {"label": "Data Layer", "description": "PostgreSQL, Redis, S3"}
+            {"label": "Client Apps", "components": ["Web", "Mobile", "API"]},
+            {"label": "API Gateway", "components": ["Auth", "Rate Limiting", "Routing"]},
+            {"label": "Core Services", "components": ["Analytics Engine", "ML Pipeline"]},
+            {"label": "Data Layer", "components": ["PostgreSQL", "Redis", "S3"]}
           ],
           "side_rails": ["Security", "Observability"]
         }

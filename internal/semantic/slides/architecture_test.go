@@ -29,7 +29,8 @@ func archValues(t *testing.T, raw json.RawMessage) archStackValues {
 
 // TestCompileArchitectureToPattern is the go-slide-creator-162os acceptance
 // test: the payload an author writes compiles onto arch-stack, with a tier's
-// items joined into its detail line and the rails carried across.
+// items passed through as its components (go-slide-creator-6h1fy: one block
+// each, no longer joined into a detail line) and the rails carried across.
 func TestCompileArchitectureToPattern(t *testing.T) {
 	body := map[string]any{
 		"title": "Platform architecture",
@@ -53,9 +54,11 @@ func TestCompileArchitectureToPattern(t *testing.T) {
 	if len(values.Tiers) != 4 {
 		t.Fatalf("got %d tiers, want 4", len(values.Tiers))
 	}
-	if values.Tiers[0].Description != "Web console, mobile approvals, partner portal" &&
-		values.Tiers[0].Description != "Web console, Mobile approvals, Partner portal" {
-		t.Errorf("tier 1 detail = %q, want the items joined", values.Tiers[0].Description)
+	if got := values.Tiers[0]; got.Description != "" || strings.Join(got.Components, "|") != "Web console|Mobile approvals|Partner portal" {
+		t.Errorf("tier 1 = %+v, want the three items as components and no description", got)
+	}
+	if got := values.Tiers[1]; len(got.Components) != 0 {
+		t.Errorf("tier 2 components = %v, want none beside an explicit description", got.Components)
 	}
 	if values.Tiers[1].Description != "Orders, pricing, fulfilment, identity" {
 		t.Errorf("tier 2 detail = %q, want the explicit description", values.Tiers[1].Description)
@@ -211,5 +214,35 @@ func TestArchitectureDropsUnusableTiers(t *testing.T) {
 	}}
 	if n := UsableTierCount(body); n != 2 {
 		t.Errorf("UsableTierCount = %d, want 2", n)
+	}
+}
+
+// go-slide-creator-6h1fy: items the pattern cannot draw as blocks — more than
+// it holds, or a name past its budget — are joined into the detail line, and
+// the bullet fallback names a tier's components.
+func TestArchitectureItemsOutsideComponentBudgets(t *testing.T) {
+	many := make([]any, 13)
+	for i := range many {
+		many[i] = "Svc"
+	}
+	tiers := ArchitectureTiers(map[string]any{"tiers": []any{
+		map[string]any{"label": "Many", "items": many},
+		map[string]any{"label": "Long", "items": []any{"A", strings.Repeat("x", 41)}},
+		map[string]any{"label": "Fits", "items": []any{"Orders", "Pricing"}},
+	}})
+	if len(tiers) != 3 {
+		t.Fatalf("got %d tiers, want 3", len(tiers))
+	}
+	if len(tiers[0].Components) != 0 || strings.Count(tiers[0].Description, "Svc") != 13 {
+		t.Errorf("13 items = %+v, want them joined into the description", tiers[0])
+	}
+	if len(tiers[1].Components) != 0 || !strings.HasPrefix(tiers[1].Description, "A, x") {
+		t.Errorf("over-long item = %+v, want the items joined into the description", tiers[1])
+	}
+	if len(tiers[2].Components) != 2 || tiers[2].Description != "" {
+		t.Errorf("two short items = %+v, want components", tiers[2])
+	}
+	if got := tiers[2].detail(); got != "Orders, Pricing" {
+		t.Errorf("fallback detail = %q, want the components joined", got)
 	}
 }
