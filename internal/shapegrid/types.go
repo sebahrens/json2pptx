@@ -133,6 +133,12 @@ type Grid struct {
 	// (ContentZone.BodyTop). The block moves down to it only as far as its
 	// slack allows; 0 means the bounds top.
 	AnchorY int64
+	// Compose marks the grid as a slide's own content block. With VAlign
+	// "auto", a content-sized block that needs clearly less than the bounds
+	// is then composed instead of hung from the top: one type step up, then
+	// the optical centre (compose.go). Nested sub-grids and grids resolved
+	// for capacity estimates leave it unset.
+	Compose bool
 	// DefaultGapPt is the column / row gap (points) used when ColGap / RowGap
 	// are unset: the template grid's gutter_pt (ContentZone.GutterPt), else
 	// the built-in 8pt (go-slide-creator-5ms8c).
@@ -400,4 +406,8 @@ type ResolveResult struct {
 	Connectors   []ResolvedConnector
 	AccentBars   []ResolvedAccentBar
 	RowOverflows []RowOverflow // Rows whose content exceeded max_height
+	// Composed reports that the block was placed by the composition policy
+	// (compose.go): a sparse content-sized block at the optical centre of its
+	// area instead of hung from the body line.
+	Composed bool
 }

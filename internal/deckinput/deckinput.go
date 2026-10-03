@@ -565,8 +565,9 @@ type PatternInput struct {
 	Bounds        *jsonschema.GridBoundsInput `json:"bounds,omitempty"`
 	MaxHeightPct  float64                     `json:"max_height_pct,omitempty"`
 	// VerticalAlign places a content-sized pattern block in its area: "auto"
-	// (default; top-anchored under 60% fill, else centred), "top", "center",
-	// "bottom" or "stretch" (go-slide-creator-e17xy).
+	// (default; a dense block hangs from the body line, a sparse one is
+	// composed — one type step up, optical centre, go-slide-creator-yhzxt),
+	// "top", "center", "bottom" or "stretch" (go-slide-creator-e17xy).
 	VerticalAlign    string `json:"vertical_align,omitempty"`
 	DefaultTypeScale string `json:"-"` // inherited deck policy; overrides.type_scale wins
 }
