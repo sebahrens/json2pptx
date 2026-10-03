@@ -52,8 +52,7 @@ To preview the same input against another registered template without editing th
   "layout_id": "content",
   "content": [
     {"placeholder_id": "title", "type": "text", "text_value": "Highlights"},
-    {"placeholder_id": "body",  "type": "bullets",
-     "bullets_value": ["Revenue +25%", "NPS at all-time high", "OpEx flat"]}
+    {"placeholder_id": "body",  "type": "bullets", "bullets_value": ["Revenue +25%", "NPS at all-time high", "OpEx flat"]}
   ],
   "speaker_notes": "Hit the revenue point first."
 }
@@ -67,8 +66,7 @@ A slide's `content` array is a list of typed items, each targeting a placeholder
 - `type: "body_and_lead"`    → requires `body_and_lead_value` (`{"lead": "...", "bullets": [...]}`); the bullets are sized like plain bullets by the body density policy (18pt up to 6 paragraphs, 16pt from 7, 14pt from 10; an in-range template size is kept) and the bold, unbulleted lead one 2pt step above them (never under 16pt); autofit shrinks both together
 - `type: "bullet_groups"`    → requires `bullet_groups_value`; groups are spaced by proximity (a header sits closer to its first bullet than bullets sit to each other, and the gap before the next header is at least 1.5× the bullet gap), and sub-bullets are indented at most 24pt from the header edge, whatever the template master declares
 - `type: "table"`            → requires `table_value`
-- `type: "chart"`            → requires `chart_value`
-- `type: "diagram"`          → requires `diagram_value`
+- `type: "chart"` / `"diagram"` → requires `chart_value` / `diagram_value`
 - `type: "image"`            → requires `image_value`; with no `fit`, a picture placeholder cover-crops the image to its frame, while a body / content placeholder (every template without a picture layout) keeps the whole image, scaled to fit and anchored to the placeholder's top-left corner. `fit: "cover"` forces the crop (cover that discards more than 30% of an axis reports `IMAGE_HEAVY_CROP`); `fit: "contain"` keeps the whole picture centred. An image whose `placeholder_id` the layout lacks (`"image"` on a body-only layout, `"body"` on a picture-only one) is routed to the picture placeholder, else the largest free body, with an info `placeholder_remapped`. A picture that covers the footer band suppresses that slide's footer text / page number (`CHROME_OVER_IMAGE`). Legacy `value` image objects also accept `fit`. Check text/image contrast separately; see [native image guidance](../skills/template-deck/TEMPLATE_GUIDE.md#image).
 
 A `table_value`'s `style.highlight_column` (1-based) fills that column's body cells with a 20% tint of the template's primary fill — the slot `list_templates` reports as `color_roles.primary_fill` (`accent1` on most templates, `accent2` on warm-coral, `accent3` on business-template, `dk2` on blue-corporate), in placeholder tables and `shape_grid` table cells alike. It used to be `accent3` on every template, which is an unrelated hue on most themes (blue on forest-green).
