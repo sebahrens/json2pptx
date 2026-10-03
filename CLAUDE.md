@@ -148,7 +148,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 |---------|-------------|
 | `agenda` | Numbered section list for agenda / table-of-contents slides: 28pt serif accent numerals, 14pt items, 0.5pt rules, no tiles; `highlight` bolds the current section and dims the rest to 50%; optional `subtitles` set a muted line under each item |
 | `agenda-with-images` | Numbered agenda rows (3–6) with title/subtitle and image/quote placeholder per row; the placeholder column is all-or-nothing |
-| `arch-stack` | Architecture stack diagram with tiers and optional side rails |
+| `arch-stack` | Architecture stack of 3–6 tier bands, each with one block per component (`tiers[].components`, 1–12; 7+ wrap to two rows) or a line of detail, plus optional accent-tinted cross-cutting side rails |
 | `before-after` | Two-column before/after with transition chevron: each state a heading over a rule (neutral before, accent after) and open bullets; `overrides.style` `panels` for tiles, `overrides.emphasis` fills one heading |
 | `before-after-compact` | Compact before/after, height-capped at ~60% for brief content |
 | `bmc-canvas` | Formal 9-cell Business Model Canvas (Osterwalder) |
@@ -157,7 +157,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `chart-insights-split` | Left chart panel + right insights column (65/35 split, 75/25 when the insights are sparse) with optional headline number and so-what callout, a series/unit caption and auto data labels; falls back to insights-only when chart is omitted, emitting `CHART_PLACEHOLDER_EMPTY` |
 | `comparison-2col` | Two-column comparison: optional headers over open rows separated by hairline rules and aligned across the columns (`overrides.style` `tiles` for filled tiles; one `rows[].highlight` or `overrides.highlight_column`); `overrides.connectors` draws a per-row accent connector badge in a centre gutter ("from → to" shifts) |
 | `contact-directory` | Key-contacts directory: 1–4 groups (regions / practices), each an accent heading over a rule, then up to 24 people in rows of 3–5 — circular headshot (`photo`) or initials disc + bold name + muted title; sparse directories stack a large headshot above a centred name |
-| `driver-tree` | Value / cost driver tree: root metric → 2–4 branches → 1–4 leaf items each, with optional per-branch annotations and connector lines (use svggen `org_chart` for people/role hierarchies) |
+| `driver-tree` | Value / cost driver tree: root metric → 2–4 branches → 1–4 leaf items each as label-sized nodes centred on their children and joined by elbow connectors (root the only solid accent node; `overrides.style` `slabs` for the legacy full-height boxes), with optional per-branch annotations (use svggen `org_chart` for people/role hierarchies) |
 | `dual-org-ladder` | Two parallel org columns: an org-name header tile above each and 2–4 paired open role entries joined by a pairing line (joint-venture / engagement-team slides); one optional `rows[].highlight` pair, `overrides.style` `tiles` for role cards |
 | `exec-summary` | Executive summary of 3–5 bold lead-in statements, each with one supporting sentence, separated by rules, plus an optional bottom-line takeaway band (content-sized rows) |
 | `framework-grid` | Framework of 2–6 labelled dimension rows separated by hairline rules, each a bold label followed by 1–4 open cards (accent title + short body); one optional `rows[].highlight` band, `overrides.style` `tiles` for filled tiles; the longest row sets the column count and shorter rows leave trailing space empty |
@@ -184,7 +184,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `phase-roadmap` | Single-track phased roadmap: phase boxes + timeline bar + date labels + per-phase descriptions + optional milestones and 0–4 full-width `parallel_tracks` bars ("In parallel" workstreams) |
 | `pyramid` | Stacked trapezoid hierarchy (3-5 tiers) |
 | `quote-cluster` | Structured 3-column grid of 3–8 attributed stakeholder quotes (voice-of-customer slides): open quotes under a quote mark by default, `overrides.style` `bubble` (speech bubbles) or `tile`, one optional `quotes[].highlight` |
-| `roadmap-phased` | Phased roadmap with workstreams and time periods |
+| `roadmap-phased` | Phased roadmap on a shared time axis: workstream rows carry `bars` from a `start` to an `end` period (or `span`), overlaps stack in lanes, `milestone` markers, optional `current_phase`; one-item-per-period `items` render as one-period bars (`overrides.layout` `grid` for the legacy tile table) |
 | `scqa-summary` | 4-row SCQA executive summary (Situation / Complication / Questions / Answer) |
 | `state-shift-hub` | Central accent hub circle (short label) with 3–4 numbered today/future stage pairs on an arc around it: today items right-aligned on the left, future items left-aligned on the right, optional column headers |
 | `stat-hero` | Single oversized statistic with label and optional context |

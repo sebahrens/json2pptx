@@ -1,6 +1,8 @@
 package patterns
 
 import (
+	"encoding/json"
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"strings"
 	"testing"
 )
@@ -127,10 +129,14 @@ func TestDriverTree_Validate_CellOverrideOutOfRange(t *testing.T) {
 	}
 }
 
+// driverTreeSlabs selects the legacy layout the structural tests below pin:
+// root and branches spanning their rows at full height, row connectors.
+var driverTreeSlabs = &DriverTreeOverrides{Style: "slabs"}
+
 func TestDriverTree_Expand_DefaultLayout(t *testing.T) {
 	p, _ := Default().Get("driver-tree")
 	v := validDriverTreeValues(3, 2)
-	grid, err := p.Expand(ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}, v, driverTreeSlabs, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -150,7 +156,7 @@ func TestDriverTree_Expand_DefaultLayout(t *testing.T) {
 func TestDriverTree_Expand_RootSpansAllRows(t *testing.T) {
 	p, _ := Default().Get("driver-tree")
 	v := validDriverTreeValues(2, 3) // 6 total leaves
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, v, driverTreeSlabs, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -167,7 +173,7 @@ func TestDriverTree_Expand_RootSpansAllRows(t *testing.T) {
 func TestDriverTree_Expand_BranchSpansLeaves(t *testing.T) {
 	p, _ := Default().Get("driver-tree")
 	v := validDriverTreeValues(2, 3)
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, v, driverTreeSlabs, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -197,7 +203,7 @@ func TestDriverTree_Expand_AnnotationColumnPresent(t *testing.T) {
 	v := validDriverTreeValues(2, 2)
 	v.Branches[0].Annotation = "Primary value driver"
 	v.Branches[1].Annotation = "Secondary value driver"
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, v, driverTreeSlabs, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -221,7 +227,7 @@ func TestDriverTree_Expand_AnnotationColumnPresent(t *testing.T) {
 func TestDriverTree_Expand_AnnotationColumnAbsent(t *testing.T) {
 	p, _ := Default().Get("driver-tree")
 	v := validDriverTreeValues(2, 2)
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, v, driverTreeSlabs, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -238,7 +244,7 @@ func TestDriverTree_Expand_AnnotationColumnAbsent(t *testing.T) {
 func TestDriverTree_Expand_ConnectorPresent(t *testing.T) {
 	p, _ := Default().Get("driver-tree")
 	v := validDriverTreeValues(2, 2)
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, v, driverTreeSlabs, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -268,7 +274,7 @@ func TestDriverTree_Expand_RootFillIsAccent(t *testing.T) {
 func TestDriverTree_Expand_AccentOverride(t *testing.T) {
 	p, _ := Default().Get("driver-tree")
 	v := validDriverTreeValues(2, 2)
-	ovr := &DriverTreeOverrides{Accent: "accent4"}
+	ovr := &DriverTreeOverrides{TextOverrides: TextOverrides{Accent: "accent4"}, Style: "slabs"}
 	grid, err := p.Expand(ExpandContext{}, v, ovr, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
@@ -345,5 +351,118 @@ func TestDriverTree_Recommend(t *testing.T) {
 				t.Errorf("expected driver-tree in recommendations for intent %q; got %+v", tc.intent, result.Candidates)
 			}
 		})
+	}
+}
+
+// go-slide-creator-xj2sl: by default every node is sized to its label — the
+// root and each branch are capped at their written height, which centres them
+// on the rows of their children — and explicit elbow links join the levels.
+func TestDriverTree_NodesAreLabelSized(t *testing.T) {
+	p, _ := Default().Get("driver-tree")
+	v := validDriverTreeValues(3, 2)
+	v.Branches[1].Annotation = "Note on the second branch"
+	ctx := fullThemeCtx()
+	grid, err := p.Expand(ctx, v, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	// 6 leaf rows and a blank row between the three branches' groups.
+	if got := len(grid.Rows); got != 8 {
+		t.Fatalf("rows = %d, want 6 leaf rows + 2 group spacers", got)
+	}
+	_, contentH := contentAreaPt(ctx)
+	root := grid.Rows[0].Cells[0]
+	if root.RowSpan != 8 || root.MaxHeight <= 0 || root.MaxHeight > contentH/2 {
+		t.Errorf("root row_span=%d max_height=%.0f, want it spanning all rows and capped at its label (content %.0fpt)", root.RowSpan, root.MaxHeight, contentH)
+	}
+	solid := 0
+	for ri, row := range grid.Rows {
+		if row.Connector != nil {
+			t.Errorf("row %d carries a row connector; the nodes layout links cells explicitly", ri)
+		}
+		for _, c := range row.Cells {
+			if c == nil || c.Shape == nil {
+				continue
+			}
+			if string(c.Shape.Fill) == `"accent1"` {
+				solid++
+			}
+		}
+	}
+	if solid != 1 {
+		t.Errorf("%d solid accent nodes, want the root alone", solid)
+	}
+	branch := grid.Rows[0].Cells[1]
+	if branch.RowSpan != 2 || branch.MaxHeight <= 0 {
+		t.Errorf("branch row_span=%d max_height=%.0f, want it spanning its 2 leaves at its label height", branch.RowSpan, branch.MaxHeight)
+	}
+	// One link per branch (from the root) and one per leaf (from its branch).
+	if got := len(grid.Links); got != 3+6 {
+		t.Fatalf("links = %d, want 3 root->branch + 6 branch->leaf", got)
+	}
+	for i, l := range grid.Links {
+		if l.To[1] != l.From[1]+1 || l.Connector == nil || l.Connector.Color != "accent1" {
+			t.Errorf("link %d = %+v, want an accent link to the next level", i, l)
+		}
+	}
+	// The annotation stays in its branch's rows, behind a rule the height of
+	// the group, and is not a connector anchor.
+	var annot *jsonschema.GridCellInput
+	for _, c := range grid.Rows[3].Cells {
+		if c != nil && c.Shape != nil && strings.Contains(string(c.Shape.Text), "Note on the second branch") {
+			annot = c
+		}
+	}
+	if annot == nil || annot.RowSpan != 2 || annot.AccentBar == nil || string(annot.Shape.Fill) != `"none"` {
+		t.Errorf("annotation cell = %+v, want an unfilled 2-row cell with a rule in the second branch's first row", annot)
+	}
+}
+
+// go-slide-creator-xj2sl: a column is as wide as its widest label needs, so
+// short labels leave whitespace between the levels instead of wide boxes, and
+// long labels keep the column widths of the slabs layout.
+func TestDriverTree_ColumnsFollowLabels(t *testing.T) {
+	p, _ := Default().Get("driver-tree")
+	ctx := fullThemeCtx()
+	cols := func(v *DriverTreeValues) ([]float64, float64) {
+		t.Helper()
+		grid, err := p.Expand(ctx, v, nil, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		var c []float64
+		if err := json.Unmarshal(grid.Columns, &c); err != nil {
+			t.Fatal(err)
+		}
+		return c, grid.ColGap
+	}
+	short, shortGap := cols(validDriverTreeValues(2, 2))
+	long := validDriverTreeValues(2, 2)
+	for i := range long.Branches {
+		long.Branches[i].Label = strings.Repeat("Operating margin ", 3)
+		for j := range long.Branches[i].Leaves {
+			long.Branches[i].Leaves[j] = strings.Repeat("Procurement savings from suppliers ", 3)
+		}
+	}
+	wide, wideGap := cols(long)
+	if len(short) != 4 {
+		t.Fatalf("short tree columns = %v, want three levels and the empty remainder", short)
+	}
+	if short[2] >= wide[2] || short[1] >= wide[1] {
+		t.Errorf("short labels got columns %v, long labels %v; want the short tree's narrower", short, wide)
+	}
+	if shortGap < wideGap || shortGap > driverTreeMaxColGapPt {
+		t.Errorf("col_gap %.0f for short labels, %.0f for long; want the width given back in the gaps, up to %.0fpt", shortGap, wideGap, driverTreeMaxColGapPt)
+	}
+}
+
+func TestDriverTree_StyleValidated(t *testing.T) {
+	p, _ := Default().Get("driver-tree")
+	v := validDriverTreeValues(2, 2)
+	if err := p.Validate(v, &DriverTreeOverrides{Style: "slabs"}, nil); err != nil {
+		t.Errorf("style slabs: %v", err)
+	}
+	if err := p.Validate(v, &DriverTreeOverrides{Style: "blocks"}, nil); err == nil || !strings.Contains(err.Error(), "overrides.style") {
+		t.Errorf("unknown style: err = %v, want an overrides.style error", err)
 	}
 }

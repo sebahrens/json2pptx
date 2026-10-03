@@ -62,27 +62,35 @@ func roadmapValues() *RoadmapPhasedValues {
 	return (&roadmapPhased{}).ExemplarValues().(*RoadmapPhasedValues)
 }
 
-// go-slide-creator-k8x1p: activity cells are a neutral tint with dk1 text,
-// phase headers carry an accent rule, and style "solid" restores the legacy
-// all-accent grid.
+// go-slide-creator-k8x1p: activities are a light tint with dark text, period
+// headers carry an accent rule, and style "solid" fills headers and
+// activities with the accent. go-slide-creator-4a0sm made the activities bars
+// on a time axis; the one filled header is the current period.
 func TestRoadmapPhased_TintedByDefault(t *testing.T) {
-	grid := expandFor(t, "roadmap-phased", restraintCtx(), roadmapValues(), nil)
+	vals := roadmapValues()
+	vals.CurrentPhase = ""
+	grid := expandFor(t, "roadmap-phased", restraintCtx(), vals, nil)
 	if n := solidAccentCells(grid); n != 0 {
 		t.Errorf("default roadmap-phased has %d solid accent cells, want 0", n)
 	}
 	for i, c := range grid.Rows[0].Cells[1:] {
-		if c.AccentBar == nil || c.AccentBar.Color != "accent1" {
-			t.Errorf("phase header %d: accent bar = %+v, want an accent1 rule", i, c.AccentBar)
+		if c.AccentBar == nil || c.AccentBar.Color != "accent1" || c.AccentBar.Position != "bottom" {
+			t.Errorf("phase header %d: accent bar = %+v, want an accent1 axis segment under it", i, c.AccentBar)
 		}
 	}
 	item := grid.Rows[1].Cells[1].Shape
-	if !strings.Contains(string(item.Fill), "lumMod") || !strings.Contains(string(item.Text), `"color":"dk1"`) {
-		t.Errorf("activity cell fill/text = %s / %s, want a neutral tint with dk1 text", item.Fill, item.Text)
+	if !strings.Contains(string(item.Fill), "lumMod") || strings.Contains(string(item.Text), `"color":"lt1"`) {
+		t.Errorf("bar fill/text = %s / %s, want a light tint with dark text", item.Fill, item.Text)
 	}
 
-	solid := expandFor(t, "roadmap-phased", restraintCtx(), roadmapValues(), &RoadmapPhasedOverrides{Style: "solid"})
-	if n := solidAccentCells(solid); n != 16 {
-		t.Errorf("style solid: %d solid accent cells, want all 16", n)
+	current := expandFor(t, "roadmap-phased", restraintCtx(), roadmapValues(), nil)
+	if n := solidAccentCells(current); n != 1 {
+		t.Errorf("current_phase set: %d solid accent cells, want the current period's header alone", n)
+	}
+
+	solid := expandFor(t, "roadmap-phased", restraintCtx(), vals, &RoadmapPhasedOverrides{Style: "solid"})
+	if n, want := solidAccentCells(solid), 4+6; n != want {
+		t.Errorf("style solid: %d solid accent cells, want the 4 headers and 6 bars (%d)", n, want)
 	}
 	p, _ := Default().Get("roadmap-phased")
 	if err := p.Validate(roadmapValues(), &RoadmapPhasedOverrides{Style: "loud"}, nil); err == nil || !strings.Contains(err.Error(), "overrides.style") {
@@ -270,7 +278,17 @@ func TestStylishPanels_VisibleBodiesAndRestrainedRibbons(t *testing.T) {
 func TestArchStack_TiersContentSized(t *testing.T) {
 	ctx := restraintCtx()
 	_, contentH := contentAreaPt(ctx)
-	vals := (&archStack{}).ExemplarValues().(*ArchStackValues)
+	// The description layout: a stack with components sizes its bands to the
+	// blocks instead (TestArchStack_ComponentsRenderAsBlocks).
+	vals := &ArchStackValues{
+		Tiers: []ArchStackTier{
+			{Label: "Presentation", Description: "React, Next.js"},
+			{Label: "API Gateway", Description: "Kong, rate limiting"},
+			{Label: "Business Logic", Description: "Go services"},
+			{Label: "Data Layer", Description: "PostgreSQL, Redis"},
+		},
+		SideRails: []string{"Security", "Monitoring"},
+	}
 	grid := expandFor(t, "arch-stack", ctx, vals, nil)
 	if grid.VerticalAlign != GridVerticalAlignDefault {
 		t.Errorf("vertical_align = %q, want the stack centred", grid.VerticalAlign)

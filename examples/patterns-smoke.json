@@ -666,14 +666,23 @@
         "name": "roadmap-phased",
         "values": {
           "phases": ["Q1", "Q2", "Q3", "Q4"],
+          "current_phase": "Q2",
           "workstreams": [
             {
               "name": "Platform",
-              "items": ["Auth rewrite", "API v2", "Caching", "Scale tests"]
+              "bars": [
+                {"label": "Auth rewrite", "start": "Q1", "end": "Q2"},
+                {"label": "API v2", "start": "Q2", "end": "Q4"},
+                {"label": "Scale tests passed", "start": "Q4", "milestone": true}
+              ]
             },
             {
               "name": "Frontend",
-              "items": ["Design system", "Dashboard", "Mobile app", "Offline mode"]
+              "bars": [
+                {"label": "Design system", "start": "Q1", "end": "Q2"},
+                {"label": "Dashboard", "start": "Q2", "span": 2},
+                {"label": "Mobile app", "start": "Q3", "end": "Q4"}
+              ]
             },
             {
               "name": "Data",

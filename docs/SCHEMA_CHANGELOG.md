@@ -95,6 +95,47 @@
     `semantic_path`: slide-level findings without a source link name the
     slide (`slides[2]`), `MISSING_TITLE` the field to write
     (`slides[2].title`).
+
+- **2026-10-03 — Structure patterns draw their structure: driver-tree nodes, arch-stack components, roadmap-phased bars (`go-slide-creator-xj2sl`, `go-slide-creator-6h1fy`, `go-slide-creator-4a0sm`).**
+  - **`driver-tree` default look changed.** Root, branches and leaves are
+    boxes sized to their labels; a parent is centred on its children and
+    joined to them by elbow connectors; only the root is a solid accent box
+    (branches a light accent tint, leaves a neutral tint); columns shrink to
+    their widest label and the width given back becomes the space between
+    the levels. A branch's annotation sits beside its leaves behind a thin
+    rule. New `overrides.style`: `nodes` (default) | `slabs` (the previous
+    look: root and branch boxes as tall as the rows they decompose into).
+    Values and `cell_overrides` indices are unchanged.
+  - **`arch-stack` gains `tiers[].components`** (array of 1–12 strings, each
+    ≤40 characters). A tier with components is a band with its name on the
+    left and one block per component; 7–12 wrap to two rows of blocks. Once
+    any tier has components the whole stack takes the band layout, a
+    `description`-only tier shows its text where the blocks would be, and
+    the side rails take a tint of the accent. `components` and `description`
+    on one tier is `invalid_shape`; more than 12 is `max_items`. A block
+    whose name is written shrunk reports `BODY_TOO_LONG` at
+    `tiers[i].components[j]`. A stack with no components renders as before.
+  - **DeckSpec `architecture`** passes a tier's `items` through as
+    `components` (1–12 items, each ≤40 characters); a longer list or an
+    over-long name is joined into the tier's one-line `description` as
+    before, and an explicit `description` wins over `items`.
+  - **`roadmap-phased` gains `workstreams[].bars`** (1–12 per workstream):
+    `{label, start, end?, span?, milestone?}`. `start` / `end` name entries
+    of `phases` (case-insensitive); `span` (1–8) is the length in periods
+    instead of `end`; `milestone: true` draws a marker and the label in the
+    start period. Bars that share a period stack in lanes. New
+    `values.current_phase` (one of `phases`) fills that period's header.
+    `workstreams[].items` is no longer required and still renders: each
+    non-empty item is a one-period bar. A workstream sets `bars` or `items`,
+    not both (`invalid_shape`); an unknown period is `UNKNOWN_ENUM`; an end
+    before the start or a span past the last period is `out_of_range`.
+  - **`roadmap-phased` default look changed**: period headers are a time
+    axis, rows are as tall as their text and the block no longer stretches
+    over the slide. New `overrides.layout`: `bars` (default) | `grid` (the
+    previous table of equal tiles; `items` input only — `bars` with `grid`
+    is `invalid_shape`). `BODY_TOO_LONG` names a bar whose label is written
+    shrunk, or reports once when the lanes do not fit the slide.
+
 - **2026-10-03 — Native framework diagrams share the patterns' surface style (`go-slide-creator-amtkg`).**
   - **Default look changed** for `swot`, `business_model_canvas`, `pestel`,
     `nine_box_talent`, `porters_five_forces`, `value_chain`, `kpi_dashboard`

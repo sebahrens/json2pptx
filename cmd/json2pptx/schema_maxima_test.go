@@ -442,7 +442,7 @@ func schemaMaximumValues(pat patterns.Pattern) (any, string) {
 var schemaMaximaShrinkPt = map[string]float64{
 	"agenda":                       7.8, // Rule-based agenda (go-slide-creator-r3gsw): wider item column; nested cells measured (bzh34).
 	"agenda-with-images":           4.3,
-	"arch-stack":                   6.2,
+	"arch-stack":                   4.1, // twelve 40-character component blocks per tier (go-slide-creator-6h1fy)
 	"before-after":                 5.5, // rows floored at written fit (n1muf)
 	"before-after-compact":         7.2, // rows floored at written fit (n1muf); real bullets, no typed "• " prefix (zieyk)
 	"bmc-canvas":                   2.4,
@@ -490,7 +490,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"pull-quote":          0.0,
 	"pyramid":             7.3,
 	"quote-cluster":       6.2,
-	"roadmap-phased":      3.1,
+	"roadmap-phased":      6.0, // twelve one-period bars per workstream, lanes share the height (go-slide-creator-4a0sm)
 	"scqa-summary":        5.5, // content-weighted rows (k3eb3)
 	"stat-hero":           0.0, // unit is a 40% suffix run, no longer display size (yn2pw)
 	"state-shift-hub":     5.8, // rows sized to written fit, hub gives way (k3eb3)
@@ -513,7 +513,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"agenda":                       7.8,
 	"agenda-with-images":           4.8,
-	"arch-stack":                   7.4,
+	"arch-stack":                   4.6, // component blocks (go-slide-creator-6h1fy)
 	"before-after":                 5.5,
 	"before-after-compact":         0, // real bullets (zieyk)
 	"bmc-canvas":                   2.4,
@@ -549,7 +549,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"pull-quote":                   0,
 	"pyramid":                      8.4,
 	"quote-cluster":                7.0,
-	"roadmap-phased":               3.8,
+	"roadmap-phased":               6.0, // bars in lanes (go-slide-creator-4a0sm)
 	"scqa-summary":                 6.0,
 	"stat-hero":                    0.0, // unit as a 40% suffix run (yn2pw)
 	"state-shift-hub":              6.7,
@@ -597,6 +597,36 @@ func coherentMaximum(pattern string, v any) any {
 				}
 				if detail, ok := option["detail"].(string); ok && len([]rune(detail)) > limit {
 					option["detail"] = string([]rune(detail)[:limit])
+				}
+			}
+		}
+	case "arch-stack":
+		// A tier draws its components as blocks or its description as text,
+		// not both: the maximum is twelve blocks per tier.
+		if m, ok := v.(map[string]any); ok {
+			tiers, _ := m["tiers"].([]any)
+			for _, raw := range tiers {
+				if tier, isMap := raw.(map[string]any); isMap {
+					delete(tier, "description")
+				}
+			}
+		}
+	case "roadmap-phased":
+		// A workstream carries bars or one item per phase, and a bar gives its
+		// length once: the maximum is twelve one-period bars per workstream.
+		if m, ok := v.(map[string]any); ok {
+			streams, _ := m["workstreams"].([]any)
+			for _, raw := range streams {
+				ws, isMap := raw.(map[string]any)
+				if !isMap {
+					continue
+				}
+				delete(ws, "items")
+				bars, _ := ws["bars"].([]any)
+				for _, rawBar := range bars {
+					if bar, isBar := rawBar.(map[string]any); isBar {
+						delete(bar, "span")
+					}
 				}
 			}
 		}

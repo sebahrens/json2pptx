@@ -333,11 +333,15 @@
   },
   {
     "pattern_name": "roadmap-phased",
-    "row_count": 4,
+    "row_count": 8,
     "cell_counts": [
       5,
-      5,
-      5,
+      4,
+      2,
+      1,
+      3,
+      2,
+      1,
       5
     ]
   },

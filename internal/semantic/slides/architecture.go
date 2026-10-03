@@ -32,12 +32,27 @@ const (
 	archStackDescMax  = 120
 	// archStackMaxRails is how many cross-cutting rails the pattern draws.
 	archStackMaxRails = 3
+	// archStackMaxComponents and archStackComponentMax mirror the pattern's
+	// per-tier component count and component-name budgets.
+	archStackMaxComponents = 12
+	archStackComponentMax  = 40
 )
 
 // archTier is one resolved tier of an architecture payload.
 type archTier struct {
 	Label       string `json:"label"`
 	Description string `json:"description,omitempty"`
+	// Components are the tier's items, each drawn as a block in the tier
+	// band (go-slide-creator-6h1fy). A tier carries them or a description.
+	Components []string `json:"components,omitempty"`
+}
+
+// detail is the tier's content as one line of text, for the bullet fallback.
+func (t archTier) detail() string {
+	if t.Description != "" {
+		return t.Description
+	}
+	return strings.Join(t.Components, ", ")
 }
 
 // archStackValues is the arch-stack pattern's values object.
@@ -89,11 +104,11 @@ func CompileArchitecture(in Input) (*deckinput.SlideInput, []SourceLink, error) 
 func compileArchitectureFallback(in Input, tiers []archTier) (*deckinput.SlideInput, []SourceLink, error) {
 	bullets := make([]string, 0, len(tiers))
 	for _, t := range tiers {
-		if t.Description == "" {
+		if t.detail() == "" {
 			bullets = append(bullets, t.Label)
 			continue
 		}
-		bullets = append(bullets, t.Label+" — "+t.Description)
+		bullets = append(bullets, t.Label+" — "+t.detail())
 	}
 	for _, rail := range architectureRails(in.Body) {
 		bullets = append(bullets, "Across all tiers: "+rail)
@@ -116,8 +131,10 @@ func compileArchitectureFallback(in Input, tiers []archTier) (*deckinput.SlideIn
 
 // ArchitectureTiers resolves an architecture payload's tiers. A tier is a
 // string, or an object carrying a label and either a description or a list of
-// items (joined with ", ", which is how a stack diagram reads a layer's
-// contents). Tiers with no usable label are dropped.
+// items. Items pass through as the tier's components — one block each in the
+// tier band — when they sit inside the pattern's component budgets; a longer
+// list, or one with an over-long name, is joined with ", " into a description
+// instead. Tiers with no usable label are dropped.
 func ArchitectureTiers(body map[string]any) []archTier {
 	raw, ok := firstList(body, "tiers", "layers")
 	if !ok {
@@ -135,21 +152,39 @@ func ArchitectureTiers(body map[string]any) []archTier {
 			if label == "" {
 				continue
 			}
-			out = append(out, archTier{Label: label, Description: archTierDescription(t)})
+			tier := archTier{Label: label}
+			if d := firstNonEmpty(strField(t, "description"), strField(t, "detail"), strField(t, "summary"), strField(t, "text")); d != "" {
+				tier.Description = d
+			} else if items := archTierItems(t); archComponentsFit(items) {
+				tier.Components = items
+			} else {
+				tier.Description = strings.Join(items, ", ")
+			}
+			out = append(out, tier)
 		}
 	}
 	return out
 }
 
-// archTierDescription resolves a tier's detail line: an explicit description, or
-// the tier's items joined into one.
-func archTierDescription(tier map[string]any) string {
-	if d := firstNonEmpty(strField(tier, "description"), strField(tier, "detail"), strField(tier, "summary"), strField(tier, "text")); d != "" {
-		return d
+// archComponentsFit reports whether a tier's items can be drawn as component
+// blocks: at least one, no more than the pattern holds, none over-long.
+func archComponentsFit(items []string) bool {
+	if len(items) == 0 || len(items) > archStackMaxComponents {
+		return false
 	}
+	for _, item := range items {
+		if runeLen(item) > archStackComponentMax {
+			return false
+		}
+	}
+	return true
+}
+
+// archTierItems resolves a tier's items to their names.
+func archTierItems(tier map[string]any) []string {
 	items, ok := firstList(tier, "items", "components", "services", "elements")
 	if !ok {
-		return ""
+		return nil
 	}
 	var parts []string
 	for _, item := range items {
@@ -166,7 +201,7 @@ func archTierDescription(tier map[string]any) string {
 			}
 		}
 	}
-	return strings.Join(parts, ", ")
+	return parts
 }
 
 // architectureRails resolves the cross-cutting concerns drawn as side rails.

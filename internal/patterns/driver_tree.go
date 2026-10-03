@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -16,9 +17,11 @@ import (
 //
 // Layout: root node (left) → 2-4 branch nodes (middle) → 1-4 leaf items per
 // branch (right) → optional per-branch annotation column (far right). Elbow
-// connectors fan out root → each branch → each leaf (the shape-grid row
-// connector follows row_span parents into every child row); the unboxed
-// annotation column is never connected. The pattern is implemented
+// connectors fan out root → each branch → each leaf; the unboxed annotation
+// column is never connected. The default "nodes" style (driver_tree_nodes.go)
+// sizes every node to its label and centres a parent on its children; the
+// legacy "slabs" style spans root and branches over their rows and lets the
+// shape-grid row connector follow the row_span parents. The pattern is implemented
 // as a shape_grid with row spans, NOT via svggen — svggen's org_chart is for
 // people/role hierarchies and lacks horizontal-decomposition semantics
 // (metric/unit fields).
@@ -31,7 +34,7 @@ type driverTree struct{}
 
 func (dt *driverTree) Name() string { return "driver-tree" }
 func (dt *driverTree) Description() string {
-	return "Hierarchical value driver tree: root metric → 2-4 branch metrics → 1-4 leaf items per branch, with optional per-branch annotations and connector lines between levels"
+	return "Hierarchical value driver tree: root metric → 2-4 branch metrics → 1-4 leaf items per branch, drawn as label-sized nodes joined by elbow connectors (the root the one solid accent node), with optional per-branch annotations"
 }
 func (dt *driverTree) UseWhen() string {
 	return "Value driver, cost driver, or KPI decomposition where a top-level metric (with unit) breaks down into 2-4 contributing branches, each with 1-4 leaf items; prefer process-flow for sequential steps, pyramid for narrowing hierarchies, swimlane for cross-actor flows, and svggen org_chart for people/role hierarchies"
@@ -99,8 +102,25 @@ type DriverTreeValues struct {
 	Branches []DriverTreeBranch `json:"branches"`
 }
 
-// DriverTreeOverrides is the standard text overrides.
-type DriverTreeOverrides = TextOverrides
+// DriverTreeOverrides is the standard text overrides plus the tree style.
+type DriverTreeOverrides struct {
+	TextOverrides
+	// Style is "nodes" (default: every node as tall and as wide as its label,
+	// a parent centred on its children, the root the only solid accent node)
+	// or "slabs" (the legacy look: root and branches as tall as the rows they
+	// decompose into).
+	Style string `json:"style,omitempty"`
+}
+
+// driverTreeStyles are the accepted overrides.style values.
+var driverTreeStyles = []string{"nodes", "slabs"}
+
+// driverTreeOverridesSchema is the standard text overrides plus style.
+func driverTreeOverridesSchema() *Schema {
+	s := textOverridesSchema()
+	s.raw.Properties["style"] = EnumSchema(driverTreeStyles...).WithDescription("nodes (default): root, branches and leaves are boxes sized to their labels, each parent centred on its children and joined to them by elbow connectors; only the root is a solid accent box. slabs: root and branch boxes as tall as the rows they decompose into (legacy look)").WithDefault("nodes")
+	return s
+}
 
 // DriverTreeCellOverride is the shared per-cell override; cells are indexed in
 // the order: root, branches, leaves (flat across branches), annotations.
@@ -279,13 +299,29 @@ func (dt *driverTree) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"values":         valuesSchema,
-			"overrides":      textOverridesSchema(),
+			"overrides":      driverTreeOverridesSchema(),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
 	}).WithDescription("Hierarchical value driver tree: root metric decomposed into 2-4 branches each with 1-4 leaves, plus optional per-branch annotations")
+}
+
+// validateDriverTreeOverrides checks the accent mode and the tree style.
+func validateDriverTreeOverrides(name string, overrides any) []error {
+	ovr, ok := overrides.(*DriverTreeOverrides)
+	if !ok || ovr == nil {
+		return nil
+	}
+	var errs []error
+	if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
+		errs = append(errs, err)
+	}
+	if ovr.Style != "" && !slices.Contains(driverTreeStyles, ovr.Style) {
+		errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, driverTreeStyles))
+	}
+	return errs
 }
 
 func (dt *driverTree) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -297,13 +333,7 @@ func (dt *driverTree) Validate(values, overrides any, cellOverrides map[int]any)
 	const name = "driver-tree"
 	var errs []error
 
-	if overrides != nil {
-		if ovr, ok := overrides.(*DriverTreeOverrides); ok {
-			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
-				errs = append(errs, err)
-			}
-		}
-	}
+	errs = append(errs, validateDriverTreeOverrides(name, overrides)...)
 
 	if strings.TrimSpace(vals.Root.Label) == "" {
 		errs = append(errs, errRequired(name, "root.label"))
@@ -391,6 +421,18 @@ func (dt *driverTree) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		}
 	}
 
+	if ovr == nil {
+		ovr = &DriverTreeOverrides{}
+	}
+	if ovr.Style != "slabs" {
+		return dt.expandNodes(ctx, vals, ovr, cellOverrides)
+	}
+	return dt.expandSlabs(ctx, vals, ovr, cellOverrides)
+}
+
+// expandSlabs is the legacy look (overrides.style "slabs"): the root spans
+// every leaf row and each branch its own leaves' rows, at full height.
+func (dt *driverTree) expandSlabs(ctx ExpandContext, vals *DriverTreeValues, ovr *DriverTreeOverrides, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	rootSize := ResolveSize(ovr.HeaderSize, scaleSubheadPt)
 	branchSize := ResolveSize(ovr.HeaderSize, scaleBodyPt)
