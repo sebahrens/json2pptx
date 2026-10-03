@@ -92,6 +92,8 @@ func TestDeckSpecAdviceNamesOnlyFieldsOfTheKind(t *testing.T) {
 			corpus["address/"+name] = map[string]any{"spec": spec, "template": "modern"}
 		}
 	}
+	// Every kind's own example, on each template of the long run.
+	corpus["every kind"] = map[string]any{"spec": parityCorpus(t)["all-kinds"], "template": "modern"}
 	names := make([]string, 0, len(corpus))
 	for name := range corpus {
 		// The short run scans the review's decks and one kind past its count;

@@ -151,3 +151,32 @@ func TestCollapsedFindingCarriesEveryItemsBudget(t *testing.T) {
 		}
 	}
 }
+
+// compile_deck_spec answered ok:true beside a blocking diagnostic for
+// placeholder copy the product itself emitted (go-slide-creator-327g6): a
+// spec that compiles and is not a deck.
+func TestCompileDeckSpecIsNotOKBesideABlockingDiagnostic(t *testing.T) {
+	spec := map[string]any{"meta": map[string]any{"title": "Draft", "template": "midnight-blue"}, "slides": []any{
+		map[string]any{"kind": "title", "title": "Q3 __FILL__ results", "subtitle": "Board, October 2026"},
+	}}
+	res := mustCall(t, handleCompileDeckSpec, map[string]any{"spec": spec, "include_compiled_json": true})
+	var out compileDeckSpecResponse
+	structuredInto(t, res.StructuredContent, &out)
+	if out.OK || !strings.Contains(out.Error, "exemplar_content") || len(out.CompiledJSON) != 0 {
+		t.Errorf("ok=%v error=%q compiled_json=%d bytes, want a refusal that names the placeholder copy", out.OK, out.Error, len(out.CompiledJSON))
+	}
+	blocking := false
+	for _, d := range out.Diagnostics {
+		blocking = blocking || d.Blocking
+	}
+	if !blocking {
+		t.Errorf("no blocking diagnostic: %+v", out.Diagnostics)
+	}
+
+	clean := mustCall(t, handleCompileDeckSpec, map[string]any{"spec": validSemanticSpec})
+	var ok compileDeckSpecResponse
+	structuredInto(t, clean.StructuredContent, &ok)
+	if !ok.OK || ok.Error != "" {
+		t.Errorf("a clean spec no longer compiles ok: %+v", ok)
+	}
+}
