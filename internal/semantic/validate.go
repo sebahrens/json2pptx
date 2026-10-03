@@ -394,7 +394,9 @@ func dedupExact(in []diagnostics.Diagnostic) []diagnostics.Diagnostic {
 }
 
 // validateMeta enforces deck-level rules: a title is required and a present
-// archetype must be registered. Meta text is scanned for placeholder content.
+// archetype must be registered. Every meta string a reader sees (title,
+// subtitle, date, source, author, audience, chrome furniture) is scanned for
+// placeholder content.
 func validateMeta(spec *DeckSpec, s *semDiags) {
 	if v := spec.Meta.TypeScale; v != "" && v != "compact" && v != "comfortable" && v != "presentation" {
 		s.hard("meta.type_scale", diagnostics.CodeSemanticRequired, "type_scale must be compact, comfortable, or presentation")
@@ -417,6 +419,19 @@ func validateMeta(spec *DeckSpec, s *semDiags) {
 		scanWeak("meta.title", spec.Meta.Title, s)
 	}
 	scanWeak("meta.subtitle", spec.Meta.Subtitle, s)
+	// Every other meta string a reader sees is scanned too: a plan_deck draft
+	// ships meta.date "__FILL__", the footer date of every content slide, and
+	// validation used to pass it (go-slide-creator-hf8tf).
+	scanWeak("meta.date", spec.Meta.Date, s)
+	scanWeak("meta.source", spec.Meta.Source, s)
+	scanWeak("meta.author", spec.Meta.Author, s)
+	scanWeak("meta.audience", spec.Meta.Audience, s)
+	if c := spec.Meta.Chrome; c != nil {
+		scanWeak("meta.chrome.confidentiality", c.Confidentiality, s)
+		scanWeak("meta.chrome.client_name", c.ClientName, s)
+		scanWeak("meta.chrome.project_code", c.ProjectCode, s)
+		scanWeak("meta.chrome.footer_date", c.FooterDate, s)
+	}
 
 	if spec.Meta.Archetype != "" && !spec.Meta.Archetype.Valid() {
 		s.hard("meta.archetype", diagnostics.CodeSemanticUnknownArchetype,

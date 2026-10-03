@@ -1,7 +1,6 @@
 package deckplan
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 )
@@ -157,12 +156,13 @@ func dropUnsupportedSlots(slides []Slide) ([]Slide, int) {
 	return keep, dropped
 }
 
-// droppedSlotsNote explains a plan shortened by dropUnsupportedSlots.
+// droppedSlotsNote tells the agent what a plan shortened by
+// dropUnsupportedSlots needs; the budget account names how many slots went.
 func droppedSlotsNote(n int) string {
 	if n <= 0 {
 		return ""
 	}
-	return fmt.Sprintf("planned %d fewer slide(s) than the budget: no brief fact, option or quote supports them, and a slot with nothing to show would only carry placeholder prose — add the numbers, names, options or quotes those slides would prove", n)
+	return "a slot with nothing to show would only carry placeholder prose — add the numbers, names, options or quotes the cut slides would prove"
 }
 
 // cueBranching marks a brief whose process has decision points — the one

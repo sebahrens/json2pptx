@@ -16,20 +16,22 @@ import (
 
 func mcpPlanDeckTool() mcp.Tool {
 	return mcp.NewTool("plan_deck",
-		mcp.WithDescription(`Plan a deck from a brief — an ordered slide outline with narrative roles (opening, evidence, comparison, close), a canonical layout per slide (opening "title" and closing "closing" with no pattern; content slides "blank-title" plus a pattern) and content seeds. Rhythm: no 3 consecutive slides with the same pattern; emphasis (stat-hero, pull-quote) only for the brief's own headline number or quote, capped at ceil(n/5). Slots the brief gives nothing to show are dropped (budget_note says so).
+		mcp.WithDescription(`Plan a deck from a brief — an ordered slide outline with narrative roles (opening, evidence, comparison, close), a canonical layout per slide (opening "title" and closing "closing" with no pattern; content slides "blank-title" plus a pattern) and content seeds. Rhythm: no 3 consecutive slides with the same pattern; emphasis (stat-hero, pull-quote) only for the brief's own headline number or quote.
 
-format:"deckspec" (recommended) returns deck_spec: a DeckSpec draft whose kinds follow the brief (option_matrix before decision for an option evaluation, chart_insight only for a trend, decision only when the brief asks), with meta.chrome page numbers and structure chapters at 8+ slides; plus slots[] (path, guidance, facts) and unplaced_facts. Fill it from list_slide_kinds, then validate_deck_spec → render_deck_spec.
+format:"deckspec" (recommended) returns deck_spec: a DeckSpec draft whose kinds follow the brief (option_matrix for an option evaluation, chart_insight only for a trend, decision only when the brief asks), plus slots[] (path, guidance, facts). Fill it from list_slide_kinds, then validate_deck_spec → render_deck_spec.
 
-Brief facts are routed verbatim: metrics to KPI / stat / chart slides, to-dos and asks to plan / decision / next steps, dated milestones to the timeline; leftovers in unplaced_facts. Region clauses ("left a chart; upper right a KPI") draft one regions slide with regions[]; misses: unsupported_regions.
+A brief that lists its slides ("pitch: problem, solution, team, ask") gets one slide per item, in order. Deck instructions ("8 slides", "with an agenda") return as constraints[], not facts. No agenda or dividers under 12 slides unless asked; budget and budget_note say how the budget was spent and what was cut.
 
-The plan's slides[] are advisory records, NOT SlideInput objects. For a raw deck, copy each slides[i].skeleton (when present) into presentation.slides[], replace its __FILL__ tokens with real content and validate before generating; a slide without a skeleton is authored from its recommended pattern's schema.`),
+Every brief clause is routed verbatim (metrics to KPI / stat / chart, asks and to-dos to decision / next steps, dates to the timeline) or listed in unplaced_facts. Region clauses ("left a chart; upper right a KPI") draft one regions slide; misses: unsupported_regions.
+
+The plan's slides[] are advisory records, NOT SlideInput objects. For a raw deck, copy each slides[i].skeleton into presentation.slides[], replace its __FILL__ tokens and validate before generating.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaPlanDeck)),
 		mcp.WithString("brief",
 			mcp.Required(),
 			mcp.Description("Natural-language description of the deck purpose and content (e.g., 'Pitch our Series B for an AI infra company')."),
 		),
 		mcp.WithNumber("slide_budget",
-			mcp.Description("Target number of slides (default: 10, range: 3–30)."),
+			mcp.Description("Target number of slides (3–30). Default: the count the brief states, else 10."),
 		),
 		mcp.WithString("audience",
 			mcp.Description("Target audience (e.g., 'board of directors', 'engineering team', 'investors'). Influences pattern selection."),
@@ -55,10 +57,12 @@ func (mc *mcpConfig) handlePlanDeck(ctx context.Context, request mcp.CallToolReq
 		return argRequired(request, "plan_deck", "brief", "string", "Pitch our Q3 product launch to the executive team", nil), nil
 	}
 
-	slideBudget := 10
+	// Without slide_budget the plan takes the slide count the brief states
+	// ("8 slides"), else the default of 10.
+	slideBudget, budgetExplicit := 10, false
 	if sb, ok := request.GetArguments()["slide_budget"]; ok {
 		if f, ok := sb.(float64); ok {
-			slideBudget = int(f)
+			slideBudget, budgetExplicit = int(f), true
 		}
 	}
 	if slideBudget < 3 {
@@ -120,20 +124,22 @@ func (mc *mcpConfig) handlePlanDeck(ctx context.Context, request mcp.CallToolReq
 			templateName = ""
 		}
 		return planDeckSpecResult(ctx, deckplan.BuildDeckSpecPlan(deckplan.Params{
-			Brief:        brief,
-			SlideBudget:  slideBudget,
-			Audience:     audience,
-			TemplateName: templateName,
+			Brief:          brief,
+			SlideBudget:    slideBudget,
+			BudgetExplicit: budgetExplicit,
+			Audience:       audience,
+			TemplateName:   templateName,
 		}))
 	}
 
 	result := deckplan.BuildDeckPlan(reg, deckplan.Params{
-		Brief:        brief,
-		SlideBudget:  slideBudget,
-		Audience:     audience,
-		MustInclude:  mustInclude,
-		TemplateCtx:  tc,
-		TemplateName: templateName,
+		Brief:          brief,
+		SlideBudget:    slideBudget,
+		BudgetExplicit: budgetExplicit,
+		Audience:       audience,
+		MustInclude:    mustInclude,
+		TemplateCtx:    tc,
+		TemplateName:   templateName,
 	}, planPredictor{reg: reg})
 
 	if err := api.ComputeResponseFingerprint(result); err != nil {

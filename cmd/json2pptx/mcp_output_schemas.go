@@ -2067,7 +2067,7 @@ var outputSchemaPlanDeck = json.RawMessage(`{
           "regions":              {"type": "array", "description": "composition slides only: one entry per region of the skeleton's shape_grid, in regions order (main first).", "items": {"type": "object", "properties": {"path": {"type": "string", "description": "Where the region lives: deck_spec slides[i].regions[k] (format:\"deckspec\") or the raw skeleton's shape_grid cell path."}, "position": {"type": "string", "description": "The brief's placement: left, right, top, bottom, upper/lower left/right, centre."}, "role": {"type": "string", "enum": ["main", "supporting"]}, "kind": {"type": "string", "enum": ["chart", "stat", "kpis", "table", "timeline", "image", "text"]}, "visual": {"type": "string", "description": "The brief's own words for the visual."}, "size_pct": {"type": "number", "description": "The share the brief gave the region, when it gave one."}, "facts": {"type": "array", "items": {"type": "string"}, "description": "The brief clause that placed this region, verbatim."}}, "required": ["path", "position", "role", "kind", "visual", "facts"]}},
           "layout":               {"type": "string", "description": "Canonical layout_id for the slide: \"title\" (opening), \"closing\" (closing), \"blank-title\" (every pattern slide). Always equals skeleton.layout_id."},
           "content_seed":         {"type": "string", "description": "Hint of what belongs on the slide. When brief facts were routed here they are prefixed verbatim, joined by '; ', before an em dash and the role hint."},
-          "facts":                {"type": "array", "items": {"type": "string"}, "description": "Brief facts (quantity / named-entity clauses, verbatim) routed to this slide. Quantities go to KPI / stat / chart patterns first. Omitted when none; never set on title/closing slides."},
+          "facts":                {"type": "array", "items": {"type": "string"}, "description": "Brief facts (clauses, verbatim) routed to this slide. Quantities go to KPI / stat / chart patterns first; the options listed under one header stay on one comparison slide. Omitted when none; never set on title/closing slides. For an outline, facts[0] is the outline item."},
           "rationale":            {"type": "string"},
           "suggested_pattern":    {"type": "string", "description": "First-choice pattern (same value as recommended_pattern; kept as a separate field for the suggested_pattern / suggested_pattern_fallback / skeleton agent-facing triplet)."},
           "suggested_pattern_fallback": {"type": "string", "description": "Second-choice pattern when the suggested pattern's content shape does not fit. Drawn from alternatives[0] when available."},
@@ -2120,7 +2120,7 @@ var outputSchemaPlanDeck = json.RawMessage(`{
     "format":       {"type": "string", "enum": ["deckspec"], "description": "Present only for format:\"deckspec\", whose response carries deck_spec and slots instead of slides and rhythm_check."},
     "deck_spec": {
       "type": "object",
-      "description": "format:\"deckspec\" only: a DeckSpec draft in storyline order — {meta, slides:[{kind, title:\"__FILL__\"}]} for a flat deck, or {meta, structure:{cover, auto_agenda:true, sections:[{title, slides}], closing}} when the deck is drafted in chapters (budgets of 8+ slides; the generated agenda and one divider per section count toward the budget). When the brief has backup material (asks for backup / detail, names a methodology or assumptions, has facts the body could not hold, or 3+ figures) and the budget has room after the body, the draft ends with an appendix: a last section with appendix:true (the next_steps close then ends the last body chapter instead of structure.closing) or, in a flat draft, a {kind:\"section\", title:\"Appendix\", appendix:true} divider after the close followed by the backup slides; back matter is unnumbered, left out of the agenda and exempt from the deck-rhythm run checks. meta.chrome turns page numbers on (and the section tracker for a chaptered draft); meta.date is __FILL__. Fill every slide's fields from list_slide_kinds, write action titles, then validate_deck_spec.",
+      "description": "format:\"deckspec\" only: a DeckSpec draft in storyline order — {meta, slides:[{kind, title:\"__FILL__\"}]} for a flat deck, or {meta, structure:{cover, auto_agenda:true, sections:[{title, slides}], closing}} when the deck is drafted in chapters (budgets of 12+ slides, or any budget when the brief asks for an agenda or dividers; the generated agenda and one divider per section count toward the budget and are added only from room the content left, unless the brief asks for them). A brief that enumerates its slides (\"7-slide pitch: problem, solution, market size chart, …\", \"Slides: …\", numbered lines) is drafted flat, one slide per listed item in the brief's order. When the brief has backup material (asks for backup / detail, names a methodology or assumptions, has facts the body could not hold, or 3+ figures) and the budget has room after the body, the draft ends with an appendix: a last section with appendix:true (the next_steps close then ends the last body chapter instead of structure.closing) or, in a flat draft, a {kind:\"section\", title:\"Appendix\", appendix:true} divider after the close followed by the backup slides; back matter is unnumbered, left out of the agenda and exempt from the deck-rhythm run checks. meta.chrome turns page numbers on (and the section tracker for a chaptered draft); meta.date is __FILL__. Fill every slide's fields from list_slide_kinds, write action titles, then validate_deck_spec.",
       "properties": {
         "meta":      {"type": "object"},
         "slides":    {"type": "array", "items": {"type": "object", "properties": {"kind": {"type": "string"}, "title": {"type": "string"}}, "required": ["kind"]}},
@@ -2136,22 +2136,48 @@ var outputSchemaPlanDeck = json.RawMessage(`{
         "properties": {
           "slide_index": {"type": "integer"},
           "path":        {"type": "string", "description": "Where the slide lives in deck_spec: slides[i], structure.cover, structure.sections[s].slides[i] or structure.closing."},
-          "slot":        {"type": "string", "enum": ["cover", "answer", "context", "problem", "highlights", "evidence", "regions", "cause", "options", "plan", "roadmap", "ask", "closing", "appendix", "backup", "methodology"], "description": "appendix is a flat draft's appendix divider; backup and methodology are back-matter slides; regions is the one slide the brief laid out in regions (kind regions)."},
+          "slot":        {"type": "string", "enum": ["cover", "answer", "context", "problem", "highlights", "evidence", "regions", "cause", "options", "risks", "plan", "roadmap", "ask", "closing", "appendix", "backup", "methodology", "topic", "agenda"], "description": "appendix is a flat draft's appendix divider; backup and methodology are back-matter slides; regions is the one slide the brief laid out in regions (kind regions); risks is the slide for the risks the brief names; topic and agenda occur only when the brief enumerates its slides — an outline item that is none of the narrative slots, and an agenda the outline lists."},
           "kind":        {"type": "string"},
           "section":     {"type": "string", "description": "The chapter the slide belongs to, for a chaptered draft."},
           "guidance":    {"type": "string", "description": "What the slide must argue."},
-          "facts":       {"type": "array", "items": {"type": "string"}, "description": "Brief facts (verbatim) routed to this slot."},
+          "facts":       {"type": "array", "items": {"type": "string"}, "description": "Brief facts (verbatim) routed to this slot. Every clause of the brief after its topic is in one slot's facts or in unplaced_facts; the cover slot carries the topic and the source the brief names (also set as meta.source). A list the brief itemises under a header (\"three options: a, b, c\") stays on one slot, and a series written as a list of values on one chart slot. For an outline, facts[0] is the outline item."},
           "appendix":    {"type": "boolean", "description": "true for back-matter slots (appendix divider, backup slides): reference pages after the close, outside the deck-rhythm checks."},
           "regions":     {"type": "array", "description": "regions slot only: each drafted region's path, position, role, kind and facts.", "items": {"type": "object", "properties": {"path": {"type": "string", "description": "Where the region lives: deck_spec slides[i].regions[k] (format:\"deckspec\") or the raw skeleton's shape_grid cell path."}, "position": {"type": "string", "description": "The brief's placement: left, right, top, bottom, upper/lower left/right, centre."}, "role": {"type": "string", "enum": ["main", "supporting"]}, "kind": {"type": "string", "enum": ["chart", "stat", "kpis", "table", "timeline", "image", "text"]}, "visual": {"type": "string", "description": "The brief's own words for the visual."}, "size_pct": {"type": "number", "description": "The share the brief gave the region, when it gave one."}, "facts": {"type": "array", "items": {"type": "string"}, "description": "The brief clause that placed this region, verbatim."}}, "required": ["path", "position", "role", "kind", "visual", "facts"]}}
         },
         "required": ["slide_index", "path", "slot", "kind", "guidance"]
       }
     },
-    "budget_note":  {"type": "string", "description": "Why the plan is shorter than slide_budget, when it is."},
+    "budget_note":  {"type": "string", "description": "Always present. One line on how the budget was spent (\"Planned 8 of 8 slides: 7 content, 1 structural (cover). Nothing was cut.\"), then why the plan is shorter or longer than slide_budget when it is, and how many facts are unplaced."},
+    "budget": {
+      "type": "object",
+      "description": "Always present: how the plan spent the slide budget. Content slides are counted first: an agenda and section dividers are planned only at 12+ slides or when the brief asks for them. An enumerated outline is kept whole, so planned can exceed requested.",
+      "properties": {
+        "requested":         {"type": "integer", "description": "The budget planned to (same as slide_budget)."},
+        "planned":           {"type": "integer", "description": "Rendered length of the plan, generated agenda and dividers included."},
+        "content":           {"type": "integer", "description": "Slides that carry the brief's argument."},
+        "structural":        {"type": "integer", "description": "Slides that only frame it."},
+        "structural_slides": {"type": "array", "items": {"type": "string"}, "description": "Each structural slide: cover / title, agenda, \"divider: <section>\", appendix divider, closing (the raw plan's pattern-less closing page)."},
+        "cut":               {"type": "array", "description": "What the budget left out, [] when nothing.", "items": {"type": "object", "properties": {"what": {"type": "string"}, "reason": {"type": "string"}}, "required": ["what", "reason"]}}
+      },
+      "required": ["requested", "planned", "content", "structural", "structural_slides", "cut"]
+    },
+    "constraints": {
+      "type": "array",
+      "description": "Instructions about the deck itself that the brief states, lifted out before facts are read so they reach no slide. Present only when the brief states one. slide_count sets the budget when slide_budget is not passed; audience fills meta.audience when the audience argument is not passed; structure permits (or rules out) an agenda and dividers; template and duration are reported only — pass the template as the template argument.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind":  {"type": "string", "enum": ["slide_count", "template", "audience", "duration", "structure"]},
+          "text":  {"type": "string", "description": "The brief's own words."},
+          "value": {"type": "string", "description": "slide_count: \"8\" or \"9-10\"; template: the name; audience: who; duration: minutes; structure: agenda, dividers, no agenda, no dividers (comma-separated)."}
+        },
+        "required": ["kind", "text"]
+      }
+    },
     "unsupported_regions": {"type": "array", "description": "Same-slide region requirements the plan could not draft as asked — a visual no region kind draws (drafted as a text region) or positions outside the supported arrangements (no regions slide; the clauses stay in the brief's facts) — with the reason. Present only when there is one.", "items": {"type": "object", "properties": {"text": {"type": "string"}, "reason": {"type": "string"}}, "required": ["text", "reason"]}},
     "brief":        {"type": "string"},
-    "slide_budget":  {"type": "integer"},
-    "unplaced_facts": {"type": "array", "items": {"type": "string"}, "description": "Brief facts no slide had capacity for (always present; [] when all placed). Add slides or fold these into existing slides — they are not on any content seed."},
+    "slide_budget":  {"type": "integer", "description": "The budget planned to: the slide_budget argument, else the slide count the brief states (the upper end of a range), else 10."},
+    "unplaced_facts": {"type": "array", "items": {"type": "string"}, "description": "Brief clauses no slide had room for (always present; [] when all placed). Every clause of the brief after its topic — amounts, dates, names, risks, asks — is on a slide's facts or here; deck instructions are in constraints instead. Add slides or fold these into existing slides — they are not on any content seed."},
     "template":      {"type": "string", "description": "Echo of the template name the plan was vetted against (the 'template' argument). Present only when template context was supplied."},
     "rhythm_check": {
       "type": "object",
@@ -2166,7 +2192,7 @@ var outputSchemaPlanDeck = json.RawMessage(`{
     },
     "response_fingerprint": {"type": "string", "description": "Lowercase sha256 hex (64 chars) over the canonical JSON of this response (with the field zeroed). Use as cache key / drift detector."}
   },
-  "required": ["brief", "slide_budget", "unplaced_facts"],
+  "required": ["brief", "slide_budget", "unplaced_facts", "budget", "budget_note"],
   "$defs": {
     "template_support": {
       "type": "object",

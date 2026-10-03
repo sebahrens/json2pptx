@@ -677,6 +677,32 @@ func TestValidateWeakContent(t *testing.T) {
 	}
 }
 
+// go-slide-creator-hf8tf: a plan_deck draft ships meta.date "__FILL__" — the
+// footer date of every content slide — and validation passed it. Every meta
+// string a reader sees is scanned.
+func TestValidateWeakContentInMeta(t *testing.T) {
+	spec := &DeckSpec{
+		Meta: DeckMeta{
+			Title: "Deck", Date: "__FILL__", Source: "__FILL__", Author: "TBD", Audience: "__FILL__",
+			Chrome: &ChromeSpec{FooterDate: "__FILL__", ClientName: "__FILL__", Confidentiality: "__FILL__", ProjectCode: "__FILL__"},
+		},
+		Slides: []SlideSpec{{Kind: KindSection, Body: map[string]any{"title": "Where we stand"}}},
+	}
+	ds := Validate(spec, StrictnessWarn)
+	for _, path := range []string{
+		"meta.date", "meta.source", "meta.author", "meta.audience",
+		"meta.chrome.footer_date", "meta.chrome.client_name", "meta.chrome.confidentiality", "meta.chrome.project_code",
+	} {
+		if _, ok := findAt(ds, diagnostics.CodeSemanticWeakContent, path); !ok {
+			t.Errorf("expected SEMANTIC_WEAK_CONTENT at %s, got %v", path, ds)
+		}
+	}
+	spec.Meta = DeckMeta{Title: "Deck", Date: "October 2026", Source: "Management accounts Q3 FY26", Audience: "Board of directors"}
+	if hasCode(Validate(spec, StrictnessWarn), diagnostics.CodeSemanticWeakContent) {
+		t.Errorf("real meta text must not be flagged: %v", Validate(spec, StrictnessWarn))
+	}
+}
+
 // TestWeakMarkerWordBoundary is the regression guard for go-slide-creator-j572:
 // the short alpha markers (tbd/todo/fixme) must match only as whole tokens so
 // ordinary words that merely embed them ("Mastodon" -> "todo") do not trip the

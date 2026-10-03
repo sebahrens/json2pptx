@@ -42,47 +42,178 @@ const maxComparisonFactLen = 2 * maxFactLen
 // trailing whitespace, since CJK text has none (go-slide-creator-csclk.48).
 var factClauseSplit = regexp.MustCompile(`[.!?]+(?:\s+|$)|[;\n]+|,\s+|:\s+|\s+[-–—]\s+|[。！？；，、：]+`)
 
-// splitBriefClauses splits a brief into clauses with factClauseSplit, with two
-// list-preserving exceptions (go-slide-creator-gvbw8):
+// briefClause is one clause of the brief with its place in a list.
+type briefClause struct {
+	text string
+	// group names the list the clause was itemised under ("three options to
+	// fix margin: a, b, c" puts a, b and c in group "option"); "" otherwise.
+	group string
+	// header marks the clause that introduced a list.
+	header bool
+}
+
+// splitBriefClauses splits a brief into clauses with factClauseSplit, with
+// these list-preserving exceptions (go-slide-creator-gvbw8,
+// go-slide-creator-hf8tf):
 //
-//   - a comma inside brackets is not a boundary, so "(build, partner with
-//     Globex, acquire Initech)" stays one clause instead of being routed as the
-//     fragments "partner with Globex" and "acquire Initech) against cost";
+//   - a comma or colon inside brackets is not a boundary, so "(build, partner
+//     with Globex, acquire Initech)" and "(Q2: 63.0%)" stay inside their
+//     clause instead of being routed as fragments;
 //   - a short lower-case comma item (two words or fewer, e.g. "time-to-market"
 //     or "and risk") rejoins the clause before it, so "against cost,
-//     time-to-market, and risk" stays one list.
+//     time-to-market, and risk" stays one list;
+//   - a bare number after a comma rejoins the clause before it, so "revenue
+//     last 5 quarters 41.0, 42.3, 44.1, 45.9, 48.2" stays one series instead
+//     of five facts on four slides;
+//   - a short label keeps the clause it labels ("recommendation: renegotiate
+//     now", "source: management accounts"): the label alone says nothing and
+//     the clause alone lost what it was.
 //
-// Every other boundary — sentence ends, semicolons, newlines, colons, spaced
-// dashes — still splits wherever it appears (go-slide-creator-vmiy).
+// Every other boundary — sentence ends, semicolons, newlines, spaced dashes,
+// and a colon after the topic or a list header — still splits wherever it
+// appears (go-slide-creator-vmiy).
 func splitBriefClauses(brief string) []string {
-	depths := bracketDepths(brief)
-	var parts []string
-	var commaJoined []bool // part i was cut from part i-1 by a top-level comma
-	last := 0
-	joinedByComma := false
-	for _, loc := range factClauseSplit.FindAllStringIndex(brief, -1) {
-		isComma := strings.HasPrefix(brief[loc[0]:loc[1]], ",")
-		if isComma && loc[0] > 0 && depths[loc[0]-1] > 0 {
-			continue // a comma inside brackets is not a clause boundary
-		}
-		parts = append(parts, brief[last:loc[0]])
-		commaJoined = append(commaJoined, joinedByComma)
-		joinedByComma = isComma
-		last = loc[1]
-	}
-	parts = append(parts, brief[last:])
-	commaJoined = append(commaJoined, joinedByComma)
-
-	var out []string
-	for i, part := range parts {
-		trimmed := strings.TrimSpace(part)
-		if commaJoined[i] && len(out) > 0 && isShortListItem(trimmed) {
-			out[len(out)-1] = strings.TrimRight(out[len(out)-1], " \t") + ", " + trimmed
-			continue
-		}
-		out = append(out, part)
+	clauses := splitClauses(brief)
+	out := make([]string, len(clauses))
+	for i, c := range clauses {
+		out[i] = c.text
 	}
 	return out
+}
+
+// Separator kinds between two parts of a brief.
+const (
+	sepHard  = byte('x')
+	sepComma = byte(',')
+	sepColon = byte(':')
+)
+
+// splitClauses is splitBriefClauses with each clause's list membership.
+func splitClauses(brief string) []briefClause {
+	depths := bracketDepths(brief)
+	type part struct {
+		text          string
+		before, after byte
+	}
+	var parts []part
+	last := 0
+	before := sepHard
+	for _, loc := range factClauseSplit.FindAllStringIndex(brief, -1) {
+		sep := sepHard
+		switch {
+		case strings.HasPrefix(brief[loc[0]:loc[1]], ","):
+			sep = sepComma
+		case strings.HasPrefix(brief[loc[0]:loc[1]], ":"):
+			sep = sepColon
+		}
+		if sep != sepHard && loc[0] > 0 && depths[loc[0]-1] > 0 {
+			continue // a comma or colon inside brackets is not a clause boundary
+		}
+		parts = append(parts, part{brief[last:loc[0]], before, sep})
+		before = sep
+		last = loc[1]
+	}
+	parts = append(parts, part{brief[last:], before, sepHard})
+
+	var out []briefClause
+	group, label := "", ""
+	for i, p := range parts {
+		trimmed := strings.TrimSpace(p.text)
+		if p.before == sepHard {
+			group = ""
+		}
+		// Under a list header every comma item is an item of the list, however
+		// short; a bare number always continues the item before it.
+		if p.before == sepComma && len(out) > 0 && label == "" && ((group == "" && isShortListItem(trimmed)) || isBareNumber(trimmed)) {
+			out[len(out)-1].text = strings.TrimRight(out[len(out)-1].text, " \t") + ", " + trimmed
+			continue
+		}
+		text := p.text
+		if label != "" {
+			text, label = label+": "+trimmed, ""
+		}
+		if p.after == sepColon && i+1 < len(parts) {
+			name := strings.TrimSpace(factListMarker.ReplaceAllString(strings.TrimSpace(text), ""))
+			g := listHeaderGroup(name)
+			switch {
+			case len(out) == 0:
+				// The topic: what follows the colon is the brief itself, not
+				// a list the topic heads.
+				group = ""
+			case isFillerLabel(name):
+				group = ""
+				continue // "Facts:" introduces the brief's facts and is not one
+			case g != "":
+				out = append(out, briefClause{text: text, group: g, header: true})
+				group = g
+				continue
+			case isShortLabel(name):
+				label, group = name, ""
+				continue
+			default:
+				group = ""
+			}
+			out = append(out, briefClause{text: text})
+			continue
+		}
+		out = append(out, briefClause{text: text, group: group})
+	}
+	return out
+}
+
+// factBareNumber matches a list item that is only a number: "42.3", "€4m",
+// "12%", "and 48.2".
+var factBareNumber = regexp.MustCompile(`^(?i)(?:(?:and|or)\s+)?[+\-−±]?[$€£¥]?\d[\d.,]*\s*(?:%|[a-z]{1,3})?$`)
+
+// isBareNumber reports whether a comma-separated piece is a bare number, which
+// continues the list of numbers before it rather than starting a fact.
+func isBareNumber(s string) bool {
+	return factBareNumber.MatchString(s)
+}
+
+// factFillerLabel matches a label that only announces the brief's content.
+var factFillerLabel = regexp.MustCompile(`^(?i)(?:the\s+)?(?:key\s+|main\s+|hard\s+)?(?:facts?|data|data points?|details?|context|background|notes?|inputs?|figures|numbers|content|contents|brief|information|info)$`)
+
+// isFillerLabel reports whether a colon label only announces what follows
+// ("Facts:", "Key data:").
+func isFillerLabel(s string) bool {
+	return factFillerLabel.MatchString(strings.TrimSpace(s))
+}
+
+// isShortLabel reports whether a colon label names the clause after it
+// ("recommendation", "source", "main risk"): at most four words.
+func isShortLabel(s string) bool {
+	n := len(strings.Fields(s))
+	return n > 0 && n <= 4
+}
+
+// factListHeader matches the plural noun a list header counts, with the group
+// its items belong to.
+var factListHeader = regexp.MustCompile(`(?i)\b(?:(options|alternatives|scenarios|choices)|(milestones|phases|stages|deadlines)|(next steps|steps|actions|priorities|initiatives|workstreams|to-?dos)|(risks|threats|concerns)|(features|pillars|themes|drivers|reasons|goals|objectives|findings|recommendations|benefits|issues|problems|learnings|lessons|highlights|results|metrics|kpis))\b`)
+
+// List groups: what the items under a list header are.
+const (
+	groupOption    = "option"
+	groupMilestone = "milestone"
+	groupAction    = "action"
+	groupRisk      = "risk"
+	groupList      = "list"
+)
+
+// listHeaderGroup returns the group a colon label introduces ("three options
+// to fix margin" → option, "next steps" → action), or "" when the label is not
+// a list header.
+func listHeaderGroup(label string) string {
+	m := factListHeader.FindStringSubmatch(label)
+	if m == nil {
+		return ""
+	}
+	for i, g := range []string{groupOption, groupMilestone, groupAction, groupRisk, groupList} {
+		if m[i+1] != "" {
+			return g
+		}
+	}
+	return ""
 }
 
 // isShortListItem reports whether a comma-separated piece is a bare list item
@@ -406,6 +537,21 @@ type briefFact struct {
 	quote bool
 	// recommend marks the recommendation: the alternative backed and why.
 	recommend bool
+	// risk marks a clause that names a risk.
+	risk bool
+	// source marks the provenance of the brief's figures ("source: …").
+	source bool
+	// list marks a metric given as a list of three or more values — the one
+	// fact a chart can be drawn from as written.
+	list bool
+	// group is the list the fact was itemised under (groupOption, …), and
+	// header marks the clause that introduced the list.
+	group  string
+	header bool
+	// plain marks a clause with no quantity, name, option, quote or
+	// recommendation: a statement the brief makes that no slide kind is built
+	// for. It is still routed or reported, never dropped.
+	plain bool
 }
 
 // factMetricUnit matches a quantity that is a metric on its face: a percent,
@@ -503,6 +649,15 @@ var factBenchmark = regexp.MustCompile(`(?i)\b(?:vs\.?|versus|against)\s+(?:the\
 // 2 years versus $25M" is a comparison of two.
 var factMetricValue = regexp.MustCompile(`[$€£¥]\s*\d+(?:[.,]\d+)*|\d+(?:[.,]\d+)*\s*%`)
 
+// factRisk matches a clause that names a risk.
+var factRisk = regexp.MustCompile(`(?i)\b(?:risks?|threats?|blockers?|headwinds?)\b`)
+
+// factSource matches the provenance of the brief's figures.
+var factSource = regexp.MustCompile(`(?i)^sources?\s*:`)
+
+// factNumberList matches three or more comma-separated values: a series.
+var factNumberList = regexp.MustCompile(`\d(?:\.\d+)?\s*%?(?:,\s+(?:and\s+)?[+\-−]?[$€£¥]?\d+(?:\.\d+)?\s*%?){2,}`)
+
 // classifyFact sets a fact's routing flags from its text. quantity reports
 // whether the clause carries a standalone number at all.
 func classifyFact(text string, quantity bool) briefFact {
@@ -521,7 +676,15 @@ func classifyFact(text string, quantity bool) briefFact {
 		// clause is a to-do or a milestone.
 		f.numeric = true
 	}
-	f.series = f.numeric && (factSeries.MatchString(text) || len(factMetricValue.FindAllString(text, -1)) >= 3)
+	// "risk" as a criterion the options are weighed against is not a risk.
+	f.risk = !f.option && factRisk.MatchString(text)
+	f.source = factSource.MatchString(text)
+	if factNumberList.MatchString(text) {
+		// "41.0, 42.3, 44.1, 45.9, 48.2" is a series whatever else the clause
+		// says.
+		f.numeric, f.list = true, true
+	}
+	f.series = f.numeric && (f.list || factSeries.MatchString(text) || len(factMetricValue.FindAllString(text, -1)) >= 3)
 	if f.numeric && !f.ask {
 		// A metric that happens to contain a verb ("pipeline will grow 20%")
 		// is still a metric, not a to-do.
@@ -530,29 +693,24 @@ func classifyFact(text string, quantity bool) briefFact {
 	return f
 }
 
-// extractBriefFacts pulls quantity, named-entity, option and recommendation
-// clauses out of the brief, in brief order, de-duplicated. The brief's first
-// clause is treated as the deck topic (it already feeds the opening slide's
-// seed), so it only counts as a fact when it carries a quantity.
+// extractBriefFacts turns the brief into facts, in brief order, de-duplicated:
+// every clause after the topic is a fact (go-slide-creator-hf8tf). A clause
+// used to qualify only when it carried a quantity, a name, an option or a
+// recommendation, so "main risk is permitting delay" and "ask is introductions
+// to two strategic partners" reached neither a slot nor unplaced_facts. A
+// clause with none of those is now kept and marked plain. The brief's first
+// clause is the deck topic (it already feeds the opening slide), so it only
+// counts as a fact when it carries a quantity.
 //
 // No clause is truncated: a long clause is split into several facts, and a
 // clause that weighs alternatives keeps both of them, so every amount and
-// date in a qualifying clause reaches a slot or unplaced_facts
-// (go-slide-creator-ze5u7).
+// date reaches a slot or unplaced_facts (go-slide-creator-ze5u7).
 func extractBriefFacts(brief string) []briefFact {
-	var clauses []string
-	for _, c := range splitBriefClauses(brief) {
-		if len([]rune(strings.TrimSpace(c))) > maxFactLen && !isOptionText(c) {
-			clauses = append(clauses, splitTopLevel(c, factLongClauseSplit)...)
-			continue
-		}
-		clauses = append(clauses, c)
-	}
 	var out []briefFact
 	seen := make(map[string]bool)
 	first := true
-	for _, raw := range clauses {
-		c := strings.TrimSpace(strings.Trim(raw, " \t\"'"))
+	for _, clause := range splitLongClauses(splitClauses(brief)) {
+		c := strings.TrimSpace(strings.Trim(clause.text, " \t\"'"))
 		c = factListMarker.ReplaceAllString(c, "")
 		c = factLeadingConjunction.ReplaceAllString(c, "")
 		c = strings.TrimSpace(c)
@@ -561,39 +719,79 @@ func extractBriefFacts(brief string) []briefFact {
 		}
 		isFirst := first
 		first = false
-		quoted := cueQuote.MatchString(raw)
+		quoted := cueQuote.MatchString(clause.text)
 
 		// A clause cut inside a bracket splits at the open bracket; the
 		// bracketed tail is a piece of its own, never dropped.
 		for _, piece := range splitOpenBrackets(c) {
-			numeric := factQuantity.MatchString(piece)
-			entity := factAcronym.MatchString(piece) || factProperNoun.MatchString(piece)
-			option := factOption.MatchString(piece) || comparesAlternatives(piece)
-			recommend := factRecommend.MatchString(piece)
-			if !numeric && (!(entity || quoted || option || recommend) || isFirst) {
-				continue
+			if isFirst && !factQuantity.MatchString(piece) {
+				continue // the deck topic
 			}
-			limit := maxFactLen
-			if isOptionText(piece) {
-				limit = maxComparisonFactLen
-			}
-			for _, text := range chunkFact(piece, limit) {
-				key := strings.ToLower(text)
+			for _, f := range pieceFacts(piece, quoted) {
+				key := strings.ToLower(f.text)
 				if seen[key] {
 					continue
 				}
 				seen[key] = true
-				if quoted && strings.Count(text, "\"")%2 == 1 {
-					// The clause trim took one quote mark of the pair.
-					text = strings.ReplaceAll(text, "\"", "")
+				f.group, f.header = clause.group, clause.header
+				if f.group == groupOption {
+					f.option = true
 				}
-				f := classifyFact(text, factQuantity.MatchString(text))
-				f.quote = quoted
 				out = append(out, f)
 			}
 		}
 	}
 	return out
+}
+
+// splitLongClauses splits a clause longer than maxFactLen at its joining
+// words, keeping each piece in the clause's list. A clause that weighs
+// alternatives stays whole.
+func splitLongClauses(clauses []briefClause) []briefClause {
+	var out []briefClause
+	for _, c := range clauses {
+		if len([]rune(strings.TrimSpace(c.text))) > maxFactLen && !isOptionText(c.text) {
+			for _, piece := range splitTopLevel(c.text, factLongClauseSplit) {
+				out = append(out, briefClause{text: piece, group: c.group, header: c.header})
+			}
+			continue
+		}
+		out = append(out, c)
+	}
+	return out
+}
+
+// pieceFacts classifies one piece of a clause, chunking it when it is longer
+// than a fact may be. quoted says the clause quotes someone.
+func pieceFacts(piece string, quoted bool) []briefFact {
+	if !hasFactContent(piece) {
+		return nil
+	}
+	entity := factAcronym.MatchString(piece) || factProperNoun.MatchString(piece)
+	option := factOption.MatchString(piece) || comparesAlternatives(piece)
+	plain := !factQuantity.MatchString(piece) && !entity && !quoted && !option && !factRecommend.MatchString(piece)
+	limit := maxFactLen
+	if isOptionText(piece) {
+		limit = maxComparisonFactLen
+	}
+	var out []briefFact
+	for _, text := range chunkFact(piece, limit) {
+		if quoted && strings.Count(text, "\"")%2 == 1 {
+			// The clause trim took one quote mark of the pair.
+			text = strings.ReplaceAll(text, "\"", "")
+		}
+		f := classifyFact(text, factQuantity.MatchString(text))
+		f.quote = quoted
+		f.plain = plain
+		out = append(out, f)
+	}
+	return out
+}
+
+// hasFactContent reports whether a clause says anything: it holds a letter or
+// a digit.
+func hasFactContent(s string) bool {
+	return strings.IndexFunc(s, func(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }) >= 0
 }
 
 // numericFriendlyPatterns are patterns whose primary content is a number or a
@@ -644,13 +842,22 @@ func factCapacity(pattern string) int {
 // facts. The returned slice is never nil so unplaced_facts always serializes as
 // an array.
 func assignBriefFacts(slides []Slide, brief string) []string {
-	facts := extractBriefFacts(brief)
+	// The source the brief names belongs to the opening slide, with the
+	// topic (see openingSource), not to a content slide.
+	var facts []briefFact
+	for _, f := range extractBriefFacts(brief) {
+		if !f.source {
+			facts = append(facts, f)
+		}
+	}
 	unplaced := make([]string, 0)
 	if len(facts) == 0 {
 		return unplaced
 	}
 
 	placedGroup := placePercentSplitFacts(slides, facts, percentSplitFacts(brief))
+	placeListGroups(slides, facts, placedGroup)
+	placeSeriesLists(slides, facts, placedGroup)
 
 	// Phase 1: quantities to numeric-friendly patterns, quotes to pull-quote
 	// slides and options to comparison slides, in slide order.
@@ -703,6 +910,68 @@ func assignBriefFacts(slides []Slide, brief string) []string {
 		}
 	}
 	return unplaced
+}
+
+// openingSource adds the source the brief names to the opening slide's content
+// seed, next to the topic it already carries. Title and closing slides take no
+// facts in the raw plan; a source routed as a fact became a content slide
+// titled "Source: management accounts" (go-slide-creator-hf8tf).
+func openingSource(slides []Slide, brief string) {
+	if len(slides) == 0 || slides[0].NarrativeRole != "opening" {
+		return
+	}
+	for _, f := range extractBriefFacts(brief) {
+		if f.source {
+			slides[0].ContentSeed = strings.TrimRight(slides[0].ContentSeed, ". ") + ". " + sentenceCase(f.text)
+		}
+	}
+}
+
+// roadmapPatterns are the patterns that show a dated sequence.
+var roadmapPatterns = map[string]bool{"phase-roadmap": true, "roadmap-phased": true, "timeline-horizontal": true}
+
+// placeListGroups keeps a list the brief itemises under one header together
+// on the slide built for it, whatever that slide's capacity: the options
+// ("three options to fix margin: a, b, c") on the first comparison slide, the
+// phases or milestones on the first roadmap slide. Two of three options on
+// another slide, or in unplaced_facts, is no comparison
+// (go-slide-creator-hf8tf).
+func placeListGroups(slides []Slide, facts []briefFact, placed map[int]bool) {
+	homes := map[string]int{}
+	for i := range slides {
+		if !factEligible(slides[i]) {
+			continue
+		}
+		if _, ok := homes[groupOption]; !ok && slides[i].NarrativeRole == "comparison" {
+			homes[groupOption] = i
+		}
+		if _, ok := homes[groupMilestone]; !ok && roadmapPatterns[slides[i].RecommendedPattern] {
+			homes[groupMilestone] = i
+		}
+	}
+	for fi, f := range facts {
+		if home, ok := homes[f.group]; ok && !placed[fi] {
+			slides[home].Facts = append(slides[home].Facts, f.text)
+			placed[fi] = true
+		}
+	}
+}
+
+// placeSeriesLists puts a metric written out as a list of values on the chart
+// slide, the one pattern that can draw it as written.
+func placeSeriesLists(slides []Slide, facts []briefFact, placed map[int]bool) {
+	for fi, f := range facts {
+		if !f.list || placed[fi] {
+			continue
+		}
+		for i := range slides {
+			if factEligible(slides[i]) && slides[i].RecommendedPattern == "chart-insights-split" && factRoom(slides[i]) > 0 {
+				slides[i].Facts = append(slides[i].Facts, f.text)
+				placed[fi] = true
+				break
+			}
+		}
+	}
 }
 
 // factRoom is how many more facts a slide can take.

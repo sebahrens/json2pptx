@@ -125,10 +125,17 @@ type Alternative struct {
 
 // Result is the top-level plan_deck response.
 type Result struct {
-	Slides      []Slide     `json:"slides"`
-	Brief       string      `json:"brief"`
+	Slides []Slide `json:"slides"`
+	Brief  string  `json:"brief"`
+	// SlideBudget is the budget the plan was made to: the slide_budget
+	// argument, else the slide count the brief states, else the default.
 	SlideBudget int         `json:"slide_budget"`
 	RhythmCheck RhythmCheck `json:"rhythm_check"`
+
+	// Constraints lists the instructions about the deck itself that the brief
+	// states (slide count, template, audience, duration, agenda / dividers).
+	// They are not facts and reach no slide (go-slide-creator-hf8tf).
+	Constraints []Constraint `json:"constraints,omitempty"`
 
 	// UnplacedFacts lists brief facts (quantity / named-entity clauses) that no
 	// slide had capacity for, so none silently disappears. Always present;
@@ -139,12 +146,16 @@ type Result struct {
 	// template context was supplied. Empty for a template-agnostic plan.
 	Template string `json:"template,omitempty"`
 
-	// BudgetNote explains a plan shorter than slide_budget. The planner bounds
-	// each narrative role by the patterns and the brief content behind it, and
-	// when the surplus fits nowhere it returns fewer slides rather than padding
-	// the deck with repeats (go-slide-creator-whp97). Empty when the plan used
-	// the whole budget.
-	BudgetNote string `json:"budget_note,omitempty"`
+	// Budget is how the plan spent the slide budget: content and structural
+	// slides, and what was cut. Always present (go-slide-creator-58qda).
+	Budget Budget `json:"budget"`
+
+	// BudgetNote says how the budget was spent in one line, and explains a
+	// plan shorter than slide_budget. The planner bounds each narrative role
+	// by the patterns and the brief content behind it, and when the surplus
+	// fits nowhere it returns fewer slides rather than padding the deck with
+	// repeats (go-slide-creator-whp97). Always present.
+	BudgetNote string `json:"budget_note"`
 
 	// UnsupportedRegions lists same-slide region requirements the plan could
 	// not honour as asked, each with the reason (go-slide-creator-vae7f).
@@ -186,8 +197,12 @@ const mustIncludeRationale = "required by must_include"
 type Params struct {
 	Brief       string
 	SlideBudget int
-	Audience    string
-	MustInclude []string
+	// BudgetExplicit reports that the caller chose SlideBudget. When false,
+	// SlideBudget is the caller's default and a slide count the brief states
+	// ("8 slides", "9-10 slides") replaces it (go-slide-creator-hf8tf).
+	BudgetExplicit bool
+	Audience       string
+	MustInclude    []string
 
 	// TemplateCtx, when non-nil, makes the plan template-aware: a recommended
 	// pattern the template cannot host is swapped for a supported alternative
@@ -297,11 +312,21 @@ var narrativeRoleToTaxonomy = map[string][]string{
 // predictor supplies per-slide cell-budget and fit-finding forecasts; pass nil
 // to skip them.
 func BuildDeckPlan(reg *patterns.Registry, p Params, predictor Predictor) *Result {
-	// 0. Region clauses ("left two-thirds a line chart …; upper right a KPI")
-	//    become one composition slide; the rest of the brief is planned as
-	//    before, in the budget that slide leaves (go-slide-creator-vae7f).
-	req := parseRegionRequest(p.Brief)
-	brief, budget := p.Brief, p.SlideBudget
+	// 0. Instructions about the deck itself ("9-10 slides", "use the
+	//    warm-coral template") are constraints, not facts
+	//    (go-slide-creator-hf8tf).
+	cleaned, constraints := parseConstraints(p.Brief)
+	requested := effectiveBudget(p, constraints)
+	audience := p.Audience
+	if audience == "" {
+		audience = constraintValue(constraints, ConstraintAudience)
+	}
+
+	// 0b. Region clauses ("left two-thirds a line chart …; upper right a KPI")
+	//     become one composition slide; the rest of the brief is planned as
+	//     before, in the budget that slide leaves (go-slide-creator-vae7f).
+	req := parseRegionRequest(cleaned)
+	brief, budget := cleaned, requested
 	if req != nil {
 		brief = req.remainder
 	}
@@ -309,40 +334,84 @@ func BuildDeckPlan(reg *patterns.Registry, p Params, predictor Predictor) *Resul
 		budget--
 	}
 
-	// 1. Distribute slides across narrative roles.
-	roleSlots, budgetNote := distributeRoles(reg, brief, budget)
+	account := newBudget(requested)
+	var (
+		slides   []Slide
+		unplaced []string
+		notes    []string
+	)
+	var outline *briefOutline
+	if !req.draftable() {
+		outline = parseOutline(brief, outlineStatedCount(p, constraints, requested))
+	}
+	if outline != nil {
+		// 1. A brief that enumerates its slides gets one slide per listed
+		//    item, in the brief's order (go-slide-creator-hf8tf).
+		slides, unplaced = outlineSlides(reg, outline, cleaned, budget, &account)
+		switch {
+		case len(slides) > requested:
+			notes = append(notes, fmt.Sprintf("the brief's outline lists %d items and is kept whole, so the plan is %d over the budget: merge two items or drop the title slide to land on %d", len(outline.items), len(slides)-requested, requested))
+		case len(slides) < requested:
+			notes = append(notes, fmt.Sprintf("the brief's outline lists %d items: the plan follows it and is not padded to %d slides", len(outline.items), requested))
+		default:
+			notes = append(notes, fmt.Sprintf("one slide per item of the brief's outline, in its order (%d items)", len(outline.items)))
+		}
+	} else {
+		// 1. Distribute slides across narrative roles.
+		roleSlots, capacityNote := distributeRoles(reg, brief, budget)
+		if capacityNote != "" {
+			account.cut(fmt.Sprintf("%d slide(s)", budget-len(roleSlots)), "the brief supports fewer slots of a role than the budget gave it")
+			notes = append(notes, capacityNote)
+		}
 
-	// 2. Assign patterns to each slot.
-	slides := assignPatterns(reg, brief, p.Audience, roleSlots, p.MustInclude)
+		// 2. Assign patterns to each slot.
+		slides = assignPatterns(reg, brief, audience, roleSlots, p.MustInclude)
 
-	// 3. Enforce rhythm rules — break runs of 3+ and cap emphasis / repeats.
-	slides = enforceRhythm(reg, slides, brief)
+		// 3. Enforce rhythm rules — break runs of 3+ and cap emphasis / repeats.
+		slides = enforceRhythm(reg, slides, brief)
 
-	// 3b. A straight sequence is a numbered step strip, not a flowchart.
-	preferStepStrip(slides, brief)
+		// 3b. A straight sequence is a numbered step strip, not a flowchart.
+		preferStepStrip(slides, brief)
+
+		// 3c. No agenda under chapterBudget slides unless the brief asks for
+		//     one (go-slide-creator-58qda).
+		if allowed, _ := chaptersAllowed(requested, constraints); !allowed {
+			dropUnaskedAgenda(reg, slides)
+		}
+	}
 
 	// 4. With template context, replace any recommended pattern the template
 	//    cannot host with a supported alternative. Done before predictions so the
 	//    cell budgets / findings / skeleton reflect the final pattern.
 	if p.TemplateCtx != nil {
-		swapInfeasiblePatterns(reg, p.TemplateCtx, slides, brief, p.Audience)
+		swapInfeasiblePatterns(reg, p.TemplateCtx, slides, brief, audience)
 	}
 
-	// 4b. Route the brief's facts (quantities, named entities) into the content
-	//     seeds of the final pattern slots; leftovers become unplaced_facts.
-	unplaced := assignBriefFacts(slides, brief)
+	if outline == nil {
+		// 4b. Route the brief's facts (quantities, named entities) into the
+		//     content seeds of the final pattern slots; leftovers become
+		//     unplaced_facts.
+		unplaced = assignBriefFacts(slides, brief)
 
-	// 4c. Drop evidence / comparison / emphasis slots the brief gave nothing
-	//     to show (go-slide-creator-tu35a): placeholder prose is not content.
-	slides, dropped := dropUnsupportedSlots(slides)
-	if note := droppedSlotsNote(dropped); note != "" {
-		if budgetNote != "" {
-			budgetNote += "; "
+		// 4c. Drop evidence / comparison / emphasis slots the brief gave
+		//     nothing to show (go-slide-creator-tu35a): placeholder prose is
+		//     not content.
+		var dropped int
+		slides, dropped = dropUnsupportedSlots(slides)
+		if note := droppedSlotsNote(dropped); note != "" {
+			account.cut(fmt.Sprintf("%d evidence / comparison / emphasis slot(s)", dropped), "no brief fact, option or quote supports them")
+			notes = append(notes, note)
 		}
-		budgetNote += note
 	}
 
-	// 4d. The composition slide goes right after the opening.
+	// 4d. The opening carries the topic and the source the brief names.
+	if outline != nil {
+		openingSource(slides, outline.rest)
+	} else {
+		openingSource(slides, brief)
+	}
+
+	// 4e. The composition slide goes right after the opening.
 	if req.draftable() {
 		slides = insertCompositionSlide(slides, req)
 	}
@@ -350,7 +419,7 @@ func BuildDeckPlan(reg *patterns.Registry, p Params, predictor Predictor) *Resul
 	// 5. Attach per-slot predictions: cell budgets, fit findings, ranked
 	//    alternatives, suggested-pattern triplet, and skeleton. Done after
 	//    rhythm enforcement so the predictions reflect the final pattern choice.
-	attachSlidePredictions(reg, slides, brief, p.Audience, predictor)
+	attachSlidePredictions(reg, slides, brief, audience, predictor)
 
 	// 6. With template context, annotate each slide and alternative with the
 	//    shared recommendation helper's support assessment.
@@ -361,19 +430,107 @@ func BuildDeckPlan(reg *patterns.Registry, p Params, predictor Predictor) *Resul
 	// 7. Build rhythm check.
 	check := computeRhythmCheck(slides)
 
+	// 8. Account for the budget: the title and closing pages and an agenda
+	//    frame the deck; every other slide is content.
+	account.Planned = len(slides)
+	for _, s := range slides {
+		switch {
+		case s.NarrativeRole == "opening":
+			account.structural("title")
+		case s.NarrativeRole == "closing":
+			account.structural("closing")
+		case strings.HasPrefix(s.RecommendedPattern, "agenda"):
+			account.structural("agenda")
+		}
+	}
+	account.Content = account.Planned - account.Structural
+	if n := len(unplaced); n > 0 {
+		notes = append(notes, fmt.Sprintf("%d brief fact(s) found no slide and are in unplaced_facts: add a slide for them or fold them into one", n))
+	}
+
 	res := &Result{
 		Slides:        slides,
 		Brief:         p.Brief,
-		SlideBudget:   p.SlideBudget,
+		SlideBudget:   requested,
 		RhythmCheck:   check,
+		Constraints:   constraints,
 		UnplacedFacts: unplaced,
 		Template:      p.TemplateName,
-		BudgetNote:    budgetNote,
+		Budget:        account,
+		BudgetNote:    account.note(notes...),
 	}
 	if req != nil {
 		res.UnsupportedRegions = req.unsupported
 	}
 	return res
+}
+
+// outlineSlides lays an enumerated outline out as raw plan slides: the title,
+// one pattern slide per listed item in the brief's order, and the closing page
+// when the outline does not end on its own close and the budget has room. The
+// outline is kept whole even when it is longer than the budget.
+func outlineSlides(reg *patterns.Registry, o *briefOutline, brief string, budget int, account *Budget) ([]Slide, []string) {
+	var rest []briefFact
+	for _, f := range extractBriefFacts(o.rest) {
+		if !f.source {
+			rest = append(rest, f) // the source goes to the opening
+		}
+	}
+	unplaced := o.routeRest(rest)
+
+	slides := []Slide{{
+		NarrativeRole: "opening",
+		Layout:        LayoutTitle,
+		ContentSeed:   contentSeedForRole("opening", o.rest, 0, 0),
+		Rationale:     fmt.Sprintf("opening slide: use the template's %q layout with no pattern", LayoutTitle),
+	}}
+	for i, it := range o.items {
+		pattern := it.def.pattern
+		if _, ok := reg.Get(pattern); !ok {
+			pattern = "card-grid"
+		}
+		slides = append(slides, Slide{
+			NarrativeRole:      it.def.role,
+			RecommendedPattern: pattern,
+			Layout:             LayoutPattern,
+			Facts:              it.facts,
+			ContentSeed:        strings.Join(it.facts, ". ") + " — " + it.def.guidance,
+			Rationale:          fmt.Sprintf("outline item %d of %d in the brief: %q", i+1, len(o.items), it.text),
+		})
+	}
+	switch {
+	case o.endsOnClose():
+	case len(slides)+1 <= budget:
+		slides = append(slides, Slide{
+			NarrativeRole: "closing",
+			Layout:        LayoutClosing,
+			ContentSeed:   contentSeedForRole("closing", brief, 0, 0),
+			Rationale:     fmt.Sprintf("closing slide: use the template's %q layout with no pattern", LayoutClosing),
+		})
+	default:
+		account.cut("closing page", fmt.Sprintf("the outline's %d items fill the budget", len(o.items)))
+	}
+	for i := range slides {
+		slides[i].SlideIndex = i
+	}
+	return slides, unplaced
+}
+
+// dropUnaskedAgenda replaces an agenda pattern the brief did not ask for: in
+// a short deck it would spend a content slide on a contents page.
+// must_include placements are kept.
+func dropUnaskedAgenda(reg *patterns.Registry, slides []Slide) {
+	for i := range slides {
+		if !strings.HasPrefix(slides[i].RecommendedPattern, "agenda") || slides[i].Rationale == mustIncludeRationale {
+			continue
+		}
+		repl := nonEmphasisReplacement(reg, slides, i)
+		if strings.HasPrefix(repl, "agenda") {
+			repl = "card-grid"
+		}
+		slides[i].RecommendedPattern = repl
+		slides[i].Rationale = fmt.Sprintf("no agenda under %d slides unless the brief asks for one: %s carries the content instead", chapterBudget, repl)
+	}
 }
 
 // compositionRole is the narrative role of a slide the brief laid out in
@@ -678,6 +835,7 @@ func placeRemainingMustInclude(slides []Slide, mustInclude []string, mustInclude
 type evidenceSignals struct {
 	numericFacts     int
 	percentSplit     bool
+	seriesList       bool // a metric written out as a list of 3+ values
 	phaseSequence    bool
 	comparisonMatrix bool
 	slots            int
@@ -689,6 +847,7 @@ func collectEvidenceSignals(brief string, roleSlots []string) evidenceSignals {
 		if fact.numeric {
 			signals.numericFacts++
 		}
+		signals.seriesList = signals.seriesList || fact.list
 	}
 	signals.percentSplit = len(percentSplitFacts(brief)) == 3
 	signals.phaseSequence = briefHasPhaseSequence(brief)
@@ -711,7 +870,7 @@ func factDrivenEvidencePattern(signals evidenceSignals, index int) string {
 		}
 		return ""
 	}
-	if signals.percentSplit && (index == 1 || signals.slots == 1) {
+	if (signals.percentSplit || signals.seriesList) && (index == 1 || signals.slots == 1) {
 		return "chart-insights-split"
 	}
 	if index == 0 || (signals.phaseSequence && index == 1) {

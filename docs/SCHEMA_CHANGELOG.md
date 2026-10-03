@@ -1,5 +1,52 @@
 # Schema Changelog
 
+- **2026-10-03 — `plan_deck` places or lists every clause of the brief, follows an enumerated outline, and accounts for the budget (`go-slide-creator-hf8tf`, `go-slide-creator-58qda`).**
+  - **Every clause after the topic is a fact.** It is in a slide's
+    `facts` or in `unplaced_facts`; a clause used to qualify only with a
+    quantity, a name, a quote, an option or a recommendation, so `main risk
+    is permitting delay` and `ask is introductions to two strategic
+    partners` reached neither. Lists stay whole: a bare number rejoins the
+    clause before it (`revenue last 5 quarters 41.0, 42.3, 44.1, 45.9, 48.2`
+    is one series on one chart slot), a comma or colon inside brackets does
+    not split (`(Q2: 63.0%)`), a short label keeps its clause
+    (`recommendation: renegotiate now`, `source: …`), `Facts:` is dropped,
+    and the items under a list header (`three options to fix margin: a, b,
+    c`) are routed together to one slot whatever its capacity. deckspec: new
+    slot `risks` (kind `table`) for a risk the brief names; the `cover` slot
+    carries the topic and the source, which is also set as `meta.source`;
+    `next steps …` routes to `closing`; an ask that names an amount routes
+    to the ask, not a KPI card.
+  - **New response field `constraints[]`** (`{kind, text, value}`; kinds
+    `slide_count`, `template`, `audience`, `duration`, `structure`; omitted
+    when the brief states none): instructions about the deck itself are
+    lifted out of the brief before facts are read, so `9-10 slides` is no
+    longer a fact on a KPI slot. Without `slide_budget` the stated count is
+    the budget (`slide_budget` in the response is the effective budget;
+    `slide_budget` default is now "the count the brief states, else 10");
+    a stated audience fills `meta.audience` when `audience` is not passed;
+    `template` and `duration` are reported only.
+  - **Enumerated outlines.** A brief that lists its slides (`7-slide pitch:
+    problem, solution, market size chart, traction KPIs, business model,
+    team of 4, the ask`; `Slides: …`; numbered lines) gets one slide per
+    listed item in the brief's order, in both formats, each with the kind /
+    pattern the item names; deckspec slots `topic` and `agenda` are new for
+    it. The outline is kept whole when it is longer than the budget.
+  - **Budget.** No agenda or section dividers under 12 slides unless the
+    brief asks (`with an agenda`, `include section dividers`); `no agenda`
+    rules them out at any budget. Chapters were drafted from 8 slides and
+    could displace content. **New always-present `budget`**
+    `{requested, planned, content, structural, structural_slides[], cut[{what,
+    reason}]}`, and **`budget_note` is now always present** (it was omitted
+    when the plan used the whole budget) and opens `Planned N of M slides: X
+    content, Y structural (…)`. The appendix is drafted at 12+ slides or
+    when the brief asks for backup material.
+  - **`validate_deck_spec`**: `SEMANTIC_WEAK_CONTENT` now also scans
+    `meta.date`, `meta.source`, `meta.author`, `meta.audience` and the
+    `meta.chrome` strings (`confidentiality`, `client_name`, `project_code`,
+    `footer_date`); a draft's `meta.date: "__FILL__"` used to pass.
+  - CLI: `plan-deck --audience`; `--slides 0` (the default) takes the count
+    the brief states.
+
 - **2026-10-03 — Composition overrides compile to what explain reports (`go-slide-creator-vj549`).** SchemaVersion unchanged (no new tools, codes or fix kinds).
   - A `pattern` / `layout` override listed in `compositions[]` is honoured
     only when the slide actually compiles to it, and the compiler is held to
