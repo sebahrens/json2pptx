@@ -1,0 +1,222 @@
+{
+  "about": "Slides an expert would accept: the same programme as journey-weak.json, with action titles, content that uses the slide, and labels that fit their boxes. No slide may carry a composition-fault finding or score below the gate.",
+  "template": "midnight-blue",
+  "labels": {
+    "1": {
+      "label": "good"
+    },
+    "2": {
+      "label": "good"
+    },
+    "3": {
+      "label": "good"
+    },
+    "4": {
+      "label": "good"
+    },
+    "5": {
+      "label": "good"
+    },
+    "6": {
+      "label": "good"
+    }
+  },
+  "spec": {
+    "meta": {
+      "title": "Cloud cost reduction programme",
+      "archetype": "strategy_proposal",
+      "source": "Cloud billing exports, Oct 2025 to Sep 2026; FinOps utilisation scan, Sep 2026"
+    },
+    "slides": [
+      {
+        "kind": "title",
+        "title": "Cloud cost reduction programme",
+        "subtitle": "Steering committee, October 2026"
+      },
+      {
+        "kind": "executive_summary",
+        "title": "Cloud spend is 23% over budget; a FinOps programme recovers €9.6M a year",
+        "points": [
+          {
+            "lead": "Cloud spend is 23 percent over budget.",
+            "support": "Spend reached 41.8 million euros in twelve months."
+          },
+          {
+            "lead": "A third of running compute is idle.",
+            "support": "Rightsizing is the largest and fastest lever."
+          },
+          {
+            "lead": "Commitment coverage is half the benchmark.",
+            "support": "3.1 million euros a year is unclaimed."
+          },
+          {
+            "lead": "Cold data sits on premium storage.",
+            "support": "Archive classes save 1.4 million euros a year."
+          },
+          {
+            "lead": "The programme pays back in weeks.",
+            "support": "9.6 million euros a year for a one-off 1.2 million."
+          }
+        ],
+        "takeaway": "A FinOps programme removes 9.6 million euros of annual cloud run-rate within twelve months."
+      },
+      {
+        "kind": "chart_insight",
+        "title": "Monthly spend rose 35% in six months and is still accelerating",
+        "chart": {
+          "type": "bar_chart",
+          "title": "Monthly cloud spend (€M)",
+          "data": {
+            "categories": [
+              "Apr",
+              "May",
+              "Jun",
+              "Jul",
+              "Aug",
+              "Sep"
+            ],
+            "series": [
+              {
+                "name": "Spend",
+                "values": [
+                  3.1,
+                  3.3,
+                  3.4,
+                  3.6,
+                  3.9,
+                  4.2
+                ]
+              }
+            ]
+          }
+        },
+        "insights": [
+          "Spend grows every month",
+          "Compute is the main driver"
+        ],
+        "takeaway": "Without action the run-rate passes 50 million euros by March."
+      },
+      {
+        "kind": "process",
+        "title": "Only €0.9M of the €9.6M committed has been delivered so far",
+        "steps": [
+          {
+            "label": "Identified",
+            "description": "The September utilisation scan identified 14.2 million euros of savings across all seven levers and three business units."
+          },
+          {
+            "label": "Validated",
+            "description": "Product teams and finance validated 11.0 million euros of that total; the rest depends on workloads due to be retired."
+          },
+          {
+            "label": "Committed",
+            "description": "Teams committed 9.6 million euros in their budgets for the next twelve months, each lever with a named owner."
+          },
+          {
+            "label": "Delivered",
+            "description": "Rightsizing in non-production has delivered 0.9 million euros to date; production rightsizing starts in November."
+          }
+        ],
+        "takeaway": "Delivery, not identification, is the constraint."
+      },
+      {
+        "kind": "table",
+        "title": "Four levers deliver €9.0M of the €9.6M target",
+        "headers": [
+          "Lever",
+          "Annual saving",
+          "Effort",
+          "Risk",
+          "Owner"
+        ],
+        "rows": [
+          [
+            "Rightsize compute",
+            "€2.9M",
+            "Medium",
+            "Low",
+            "Platform"
+          ],
+          [
+            "Shut down non-prod at night",
+            "€1.6M",
+            "Low",
+            "Low",
+            "Platform"
+          ],
+          [
+            "Committed-use discounts",
+            "€3.1M",
+            "Low",
+            "Medium",
+            "Finance"
+          ],
+          [
+            "Storage lifecycle policies",
+            "€1.4M",
+            "Low",
+            "Low",
+            "Data"
+          ],
+          [
+            "Delete orphaned resources",
+            "€0.3M",
+            "Low",
+            "Low",
+            "Platform"
+          ]
+        ],
+        "takeaway": "The remaining levers add 0.6 million euros and can wait for phase two."
+      },
+      {
+        "kind": "decision",
+        "title": "We recommend option B: €9.6M savings for a €1.2M investment",
+        "options": [
+          {
+            "label": "Option A: tactical clean-up of idle compute",
+            "detail": "€3.2M of savings with no investment and no new team; the savings erode within a year as estates drift back."
+          },
+          {
+            "label": "Option B: FinOps programme with a team of five",
+            "detail": "€9.6M of annual savings for a one-off €1.2M; rightsizing, commitments and storage tiering under one accountable team.",
+            "recommended": true
+          },
+          {
+            "label": "Option C: re-platform the forty largest workloads",
+            "detail": "€12M of savings after 24 months for a €6M investment, at high delivery risk."
+          }
+        ],
+        "recommendation": "Approve option B"
+      },
+      {
+        "kind": "next_steps",
+        "title": "Three decisions start the programme on 1 November",
+        "steps": [
+          {
+            "action": "Approve the €1.2M programme budget and the team of five",
+            "owner": "Steering committee",
+            "due": "31 Oct"
+          },
+          {
+            "action": "Name an accountable owner for each of the seven levers",
+            "owner": "CTO office",
+            "due": "7 Nov"
+          },
+          {
+            "action": "Start production rightsizing in the three largest estates",
+            "owner": "Platform",
+            "due": "14 Nov"
+          },
+          {
+            "action": "Buy committed-use discounts for the steady baseline",
+            "owner": "Finance",
+            "due": "28 Nov"
+          }
+        ],
+        "decisions": [
+          "Approve option B and the programme budget"
+        ]
+      }
+    ]
+  }
+}

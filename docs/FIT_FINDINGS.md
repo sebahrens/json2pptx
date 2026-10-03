@@ -1624,9 +1624,10 @@ A content slide's title is not an action title (go-slide-creator-d830i, go-slide
 
 - `too_long` — more than 15 words: an action title states one claim and holds on two lines.
 - `stock_label` — a generic label: Overview, Summary, Executive summary, Key metrics, Key findings, Next steps, Background, Recommendations, Results, Options, Roadmap, … or a short (at most four words) `<topic> overview / analysis / update / summary / highlights / metrics / review / results / deep dive` title ("Revenue Overview", "Margin Analysis").
-- `no_verb_or_number` — no digit and no verb from the action-title lexicon (an `-ed` / `-s` form counts) at any length. Titles of six words or more written in sentence case are taken as sentences even when the verb is outside the lexicon (the check is biased toward false negatives).
+- `no_verb_or_number` — no digit and no verb from the action-title lexicon (an `-ed` / `-s` form counts) at any length. Titles of six words or more written in sentence case are taken as sentences even when the verb is outside the lexicon (the check is biased toward false negatives). A continuation marker — "(1/2)", "(cont.)" — is not a number in the claim.
+- `topic_label` — the same test on a slide that sets a `takeaway`, for a bare label of **at most four words** ("Savings funnel", "Monthly spend trend", "Savings by lever (1/2)"). A two- or three-word label over a takeaway is still a slide without a headline; six of them scored 100 (go-slide-creator-wwmod). The message tells the author to promote the takeaway to the title.
 
-`too_long` and `stock_label` apply even when the slide sets a `takeaway`; `no_verb_or_number` stands down there (the DeckSpec title + takeaway convention). Exempt: cover, section, title-type and blank slides; `agenda`, `agenda-with-images` and `next-steps` pattern slides (the DeckSpec `next_steps` closer, "Next steps", is a label by convention); navigation titles (Agenda, Contents, Appendix, Q&A, Thank you, …); and a short label (four words or fewer) on the deck's last slide — a courtesy closer is judged by `CLOSING_WITHOUT_NEXT_STEPS` instead.
+`too_long` and `stock_label` apply even when the slide sets a `takeaway`; a longer topic phrase with a takeaway stays acceptable (the DeckSpec title + takeaway convention), only the short label is reported. Exempt: cover, section, title-type and blank slides; `agenda`, `agenda-with-images` and `next-steps` pattern slides (the DeckSpec `next_steps` closer, "Next steps", is a label by convention); navigation titles (Agenda, Contents, Appendix, Q&A, Thank you, …); and a short label (four words or fewer) on the deck's last slide — a courtesy closer is judged by `CLOSING_WITHOUT_NEXT_STEPS` instead.
 
 Review weight: 5 points on the slide. It is exempt from the problem-slide share; instead `score_deck`'s gate criterion `max_topic_title_pct` (default 25) fails a deck when more than that share of its slides — and at least two — carry the finding (reason `N of M slides lack an action title (X%, TITLE_NOT_ACTION) — exceeds max_topic_title_pct 25`). `fix.params` carry `placeholder_id`, `current_words`, `max_words` (15), `reason` and a `hint`.
 
@@ -1925,7 +1926,54 @@ Typical hits: a slide on a layout whose body placeholder sits off the reference 
 **Fix kind:** `add_detail_or_resize`
 **Emitted at:** preflight, deterministic geometry
 
-The slide's grid content hugs one edge of the safe content area: the empty band above or below the ink is at least 1.25in and at least 30% of the zone height larger than the band on the other side — an empty band above a roadmap, or a row of cards pinned to the top (go-slide-creator-u9xfy). Centred content with equal margins is balanced and is not reported; a slide already reported as `SLIDE_UNDERUSED` is not reported twice; slides with body placeholder content are skipped; on a slide with a `takeaway` the band below the grid is not counted, because the takeaway renders there; and a block whose top sits on the template's body line (`ContentZone.BodyTop`, within 6pt) is not reported for the band below it — hanging content-sized blocks from the line native body text starts on is the intended placement (go-slide-creator-e17xy), and their sparseness is `SLIDE_UNDERUSED`'s business. `fix.params`: `empty_band_in`, `empty_band_side` (`above` / `below`) and a `hint`. Exempt from the gate's problem-slide share, like the other airiness codes.
+The slide's grid content hugs one edge of the safe content area: the empty band above or below the ink is at least 1.25in and at least 30% of the zone height larger than the band on the other side — an empty band above a roadmap, or a row of cards pinned to the top (go-slide-creator-u9xfy). Centred content with equal margins is balanced and is not reported; slides with body placeholder content are skipped.
+
+The check reads the **measured ink position**, not the pattern (go-slide-creator-wwmod):
+
+- The content area ends above the slide's `takeaway` band, so empty space between the content and the takeaway counts.
+- A block whose top sits on the template's body line (`ContentZone.BodyTop`, within 6pt) hangs from the line native body text starts on (go-slide-creator-e17xy). The band below it is not reported while it is under **40%** of the content area; at 40% or more — content in the top half only — it is reported like any other lopsided slide. A block the layout centres or stretches is unaffected.
+- A block at the top and a conclusion band at the bottom with an empty band of 40% or more of the area **between** them is reported too (`empty_band_side` `between`).
+
+It is independent of `SLIDE_UNDERUSED`: a centred hero number is sparse and balanced, a row of cards over an empty lower half is lopsided whether or not it is sparse, and a slide can carry both. `fix.params`: `empty_band_in`, `empty_band_pct` (share of the content area), `empty_band_side` (`above` / `below` / `between`) and a `hint`.
+
+**Score:** a composition fault. It costs **25 points** on its slide (a slide carrying one scores below the gate's `min_score` 80); it does not block by itself and, like the airiness codes, stays outside the problem-slide share. See [Composition faults](#composition-faults).
+
+### `HORIZONTAL_IMBALANCE`
+
+**Action:** `review`
+**Pattern:** the slide's pattern (empty for raw `shape_grid`)
+**Fix kind:** `add_detail_or_resize`
+**Emitted at:** preflight, deterministic geometry
+
+The slide's grid content fills one side of the content area: the empty band left or right of the ink is at least 40% of the area's width and at least 30% of that width larger than the band on the other side (go-slide-creator-wwmod; the journey slide "Savings funnel", four numbered rows whose text ended mid-slide). Text counts at its measured block width — never at its grid slot — and filled shapes, images and charts at their bounds, so a row layout whose sentences reach across the slide is balanced and the same layout with a short phrase per row is not. Reported only when the slide has no `VERTICAL_IMBALANCE`; slides with body placeholder content are skipped. `fix.params`: `empty_band_in`, `empty_band_pct`, `empty_band_side` (`left` / `right`) and a `hint`. Composition fault: 25 points.
+
+### `TEXT_WRAPS_NARROW`
+
+**Action:** `review`
+**Pattern:** the slide's pattern (empty for raw `shape_grid`)
+**Fix kind:** `shorten_or_restructure`
+**Emitted at:** preflight, deterministic geometry
+
+A paragraph in a narrow box wraps into a column of fragments: **5 or more lines** averaging **at most 3 words a line**, wrapped at the width the shape's geometry and insets leave, with the same font metrics as `TEXT_EXCEEDS_SHAPE` (go-slide-creator-wwmod; eight flow boxes that each validated under the 80-character budget and rendered as five or six lines of two words). A list of short bullets is many one-line paragraphs and is not a hit; a long paragraph in a wide column runs eight to twelve words a line and is not a hit. One finding per slide: `fix.params.cells` lists every box, `max_lines` the tallest, `fit_lines` (4) the line count a label still scans at, and `max_words` the paragraph length that fits in `fit_lines` at the narrowest box. Composition fault: 25 points.
+
+### `SIBLING_SIZE_MISMATCH`
+
+**Action:** `review`
+**Pattern:** the slide's pattern (empty for raw `shape_grid`)
+**Fix kind:** `shorten_or_restructure`
+**Emitted at:** preflight, deterministic geometry
+
+Cells that are peers in one grid row — authored with the same paragraph sizes and weights, as column headers and card titles are — render at visibly different font sizes: the smallest more than 8% below the largest (go-slide-creator-wwmod; the option-matrix headers "Deployment speed" and "Commercial traction" beside "Energy use"). The rendered size is the authored size times the autofit scale generation stores on the shape; for a one-line label in a box that holds one line and carries no stored scale, the check also allows for a renderer whose font runs up to 12% wider than the measured face, because such a label wraps there and is shrunk by the renderer while its shorter neighbours are not. One finding per slide, on the row with the widest spread. `fix.params`: `cells` (each `path`, `text`, `rendered_pt`, `shrunk`), `longest`, `authored_pt`, `min_pt`, `max_pt` and a `hint`. Composition fault: 25 points.
+
+### Composition faults
+
+`VERTICAL_IMBALANCE`, `HORIZONTAL_IMBALANCE`, `TEXT_WRAPS_NARROW` and `SIBLING_SIZE_MISMATCH` are the faults an expert sees at a glance and the score used to miss (go-slide-creator-wwmod: five agent journeys reached 100 on slides with content in the top half only, flow boxes of two-word lines and headers at two sizes). They share one scoring rule, `deterministic.CompositionFaultWeight`:
+
+- **25 points** on the slide instead of the review weight of 5, so a slide carrying one scores at most 75 — below `min_score` (80).
+- The two text faults (`TEXT_WRAPS_NARROW`, `SIBLING_SIZE_MISMATCH`) **count toward the problem-slide share** (`max_problem_slides_pct`, and the breadth penalty on `overall_score`), so three such slides in a deck of six fail the gate through a `QUALITY_GATE` finding that names them. The two whitespace faults do not: the calibration corpus's best deck carries three content-sized blocks hung from the body line and a human graded it good, so they act through the score floor only — a deck where most slides are lopsided averages below `min_score` and fails there.
+- They **do not block by themselves**: on the DeckSpec surfaces each is an `info`, never an `error`. One weak slide in a sound deck is reported and costs points; it does not stop `deterministic_ready`.
+
+Sparseness alone is not a composition fault: `SLIDE_UNDERUSED`, `SPARSE_FILL` and `SPARSE_PLACEHOLDER` keep review weight and stay outside the problem-slide share. The labelled set `cmd/json2pptx/testdata/quality_labelled/` (weak slides rebuilt from the journeys, good slides with the same content) is scored by `TestLabelledSlidesScoreOnTheRightSideOfTheGate`: add a slide there when calibrating a threshold.
 
 ### `SPARSE_PLACEHOLDER`
 

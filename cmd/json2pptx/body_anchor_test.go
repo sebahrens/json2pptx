@@ -144,8 +144,11 @@ func TestStretchPatternStartsAtBodyLine(t *testing.T) {
 
 // go-slide-creator-e17xy (b): the roadmap, timeline and team kind examples
 // hang from the body line at their content height instead of floating a
-// thin band mid-slide: no SLIDE_UNDERUSED / VERTICAL_IMBALANCE, and their
-// content tops agree within ~10pt on blank-title.
+// thin band mid-slide: no SLIDE_UNDERUSED, and their content tops agree
+// within ~10pt on blank-title. VERTICAL_IMBALANCE is no longer asserted
+// absent: a hung block that leaves 40% or more of the area empty beneath it
+// is reported from its measured ink (go-slide-creator-wwmod), whichever
+// placement policy put it there.
 func TestKindDefaultsHangFromBodyLine(t *testing.T) {
 	templates := []string{"abstract", "midnight-blue"}
 	if _, err := os.Stat(filepath.Join("..", "..", "templates", "p-style.pptx")); err == nil {
@@ -170,7 +173,7 @@ func TestKindDefaultsHangFromBodyLine(t *testing.T) {
 				in.Slides[i].Content = []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: &title}}
 			}
 			for _, f := range collectGeometryFindings(in, tctx.layouts, tctx.slideWidth, tctx.slideHeight, nil) {
-				if f.Code == patterns.ErrCodeSlideUnderused || f.Code == patterns.ErrCodeVerticalImbalance {
+				if f.Code == patterns.ErrCodeSlideUnderused {
 					t.Errorf("%s: %s %s", f.Path, f.Code, f.Message)
 				}
 			}

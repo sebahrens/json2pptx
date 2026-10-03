@@ -6,6 +6,7 @@ import (
 	"unicode"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/rhythm"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -193,7 +194,13 @@ func titleNotActionReason(title string, hasTakeaway bool) string {
 	case titleIsStockLabel(title):
 		return "stock_label"
 	}
-	if hasTakeaway || strings.ContainsAny(title, "0123456789") {
+	// A continuation marker is not a number in the claim: "Savings by lever
+	// (1/2)" is the label "Savings by lever".
+	if part, ok := rhythm.ParseContinuation(title); ok {
+		words = strings.Fields(part.Base)
+		title = part.Base
+	}
+	if strings.ContainsAny(title, "0123456789") {
 		return ""
 	}
 	if len(words) >= titleSentenceMinWords && titleInSentenceCase(words) {
@@ -204,8 +211,22 @@ func titleNotActionReason(title string, hasTakeaway bool) string {
 			return ""
 		}
 	}
+	if hasTakeaway {
+		// A slide that states its point in a takeaway may title the topic in
+		// a phrase (the DeckSpec title + takeaway convention), but a two- or
+		// three-word label over a takeaway is still a slide without a
+		// headline: six of them scored 100 (go-slide-creator-wwmod).
+		if len(words) <= titleTopicLabelMaxWords {
+			return "topic_label"
+		}
+		return ""
+	}
 	return "no_verb_or_number"
 }
+
+// titleTopicLabelMaxWords is the longest verbless, numberless title that
+// counts as a bare label on a slide that carries a takeaway.
+const titleTopicLabelMaxWords = 4
 
 // titleExemptFromAction reports slides whose title may stay a label: navigation
 // patterns, navigation titles, and a short label on the deck's last slide (the
@@ -230,6 +251,9 @@ func titleNotActionMessage(si int, title, reason string, words int) (string, str
 	case "stock_label":
 		return fmt.Sprintf("slide %d: title %q is a stock label, not the slide's point — state the conclusion the slide proves", si+1, title),
 			"rewrite as an action title, e.g. \"Key Metrics\" -> \"ARR reached $48M and every metric improved except SMB churn\""
+	case "topic_label":
+		return fmt.Sprintf("slide %d: title %q is a label; the slide's point sits in the takeaway — put the claim in the title", si+1, title),
+			"promote the takeaway to the title (a sentence with a verb or a number) and keep or drop the takeaway line"
 	default:
 		return fmt.Sprintf("slide %d: title %q names a topic, not the slide's point — state the takeaway as a sentence with a verb or a number", si+1, title),
 			"rewrite as an action title, e.g. \"Market Overview\" -> \"Mid-market demand doubled while enterprise stalled\""

@@ -14,7 +14,7 @@ func TestAdvisoryFindingsDoNotCountTowardProblemShare(t *testing.T) {
 	advisory := []string{
 		patterns.ErrCodeMissingAltText, patterns.ErrCodeAccentOverload, patterns.ErrCodeDuplicateTitle,
 		patterns.ErrCodeDeckMonotony, patterns.ErrCodeTableFontScaled, patterns.ErrCodeChartShapeInferred,
-		patterns.ErrCodeTitleTooLong, patterns.ErrCodeVerticalImbalance, patterns.ErrCodeSparsePlaceholder,
+		patterns.ErrCodeTitleTooLong, patterns.ErrCodeVerticalImbalance, patterns.ErrCodeHorizontalImbalance, patterns.ErrCodeSparsePlaceholder,
 	}
 	var findings []patterns.FitFinding
 	for i, code := range advisory {

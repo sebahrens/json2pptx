@@ -205,6 +205,12 @@ var fixKindRegistry = map[string]FixKindInfo{
 		Guidance:     "The slide's content will not fit the visual its kind promised, so it renders as bullets (or a plain content slide) instead. params.to says what you get and params.reason why; bring the count into range or shorten the over-budget text to keep params.from, or accept the fallback.",
 		Alternatives: []string{"reduce_items", "add_items", "reduce_text", "split_pattern"},
 	},
+	"shorten_or_restructure": {
+		Kind:         "shorten_or_restructure",
+		Class:        FixClassAdvisory,
+		Guidance:     "The text does not suit the boxes it was put in: a paragraph wraps into a column of two-word lines (TEXT_WRAPS_NARROW), or the labels of one row render at different sizes because some were shrunk to fit (SIBLING_SIZE_MISMATCH). Cut the text to a label of params.max_words words or the length of its shortest sibling, use fewer boxes so each is wider, or move to a pattern that gives each item a full-width row. Which of these keeps the slide's point is an authoring decision.",
+		Alternatives: []string{"reduce_text", "reduce_items", "swap_pattern"},
+	},
 	"review": {
 		Kind:     "review",
 		Class:    FixClassAdvisory,

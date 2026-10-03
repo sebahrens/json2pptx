@@ -1,8 +1,10 @@
 package main
 
 import (
+	"cmp"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -27,6 +29,13 @@ const (
 	// bodyLineToleranceEMU is how far (6pt) below the template's body line a
 	// block may start and still count as hung from it.
 	bodyLineToleranceEMU = 6 * 12700
+	// hungBlockMaxEmptyFrac is the share of the content zone a block hung
+	// from the body line may leave empty beneath it. Native body text that
+	// stops two thirds of the way down is an ordinary slide; a row of cards
+	// in the top half over an empty bottom half is not, and scored 100
+	// (go-slide-creator-wwmod). Measured on the ink, so a block the layout
+	// centres or stretches is unaffected whatever its pattern.
+	hungBlockMaxEmptyFrac = 0.40
 
 	// sparsePlaceholderMaxFrac: body text filling less than this share of its
 	// placeholder's height reads as a few lines stuck to the top of an empty box.
@@ -46,8 +55,13 @@ const (
 // unknown). A block whose top sits on it hangs from the line native body
 // text starts on — the deliberate placement for content-sized blocks
 // (go-slide-creator-e17xy) — so the band below it is the slide's normal
-// bottom margin, not imbalance.
-func checkVerticalImbalance(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInput, si int, patternName string, bodyLine int64) *patterns.FitFinding {
+// bottom margin, not imbalance, until it reaches hungBlockMaxEmptyFrac of the
+// zone: content in the top half only is reported wherever it hangs from.
+//
+// takeawayReserved says the zone already ends above the slide's takeaway
+// band (resolveGridGeometry reserves it); the band below the ink is then
+// empty space between the content and the takeaway, and counts.
+func checkVerticalImbalance(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInput, si int, patternName string, bodyLine int64, takeawayReserved ...bool) *patterns.FitFinding {
 	if safe.CY <= 0 || len(ink) == 0 || hasBodyPlaceholderContent(slide) {
 		return nil
 	}
@@ -64,7 +78,7 @@ func checkVerticalImbalance(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideI
 		return nil
 	}
 	top, bottom := first-safe.Y, safe.Y+safe.CY-last
-	if strings.TrimSpace(slide.Takeaway) != "" {
+	if strings.TrimSpace(slide.Takeaway) != "" && !(len(takeawayReserved) > 0 && takeawayReserved[0]) {
 		// The injected takeaway band renders in the bottom of the zone,
 		// outside the grid ink; the space below the grid is not empty.
 		bottom = 0
@@ -75,23 +89,120 @@ func checkVerticalImbalance(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideI
 	}
 	skew := math.Abs(float64(top-bottom)) / float64(safe.CY)
 	if band < verticalImbalanceMinGapEMU || skew < verticalImbalanceSkewFrac {
+		// The content reaches both ends of the zone, or sits centred in it.
+		// A block at the top and a conclusion band at the bottom with an
+		// empty band between them is the same top-heavy slide with its
+		// callout moved down (go-slide-creator-wwmod).
+		if gap := largestInkGap(ink, safe); float64(gap) >= hungBlockMaxEmptyFrac*float64(safe.CY) && gap >= verticalImbalanceMinGapEMU {
+			return verticalImbalanceFinding(si, patternName, gap, "between the content and the band beneath", minI64(top, bottom), safe)
+		}
 		return nil
 	}
-	if side == "below" && bodyLine > 0 && first <= max(safe.Y, bodyLine)+bodyLineToleranceEMU {
+	bandFrac := float64(band) / float64(safe.CY)
+	if side == "below" && bodyLine > 0 && first <= max(safe.Y, bodyLine)+bodyLineToleranceEMU && bandFrac < hungBlockMaxEmptyFrac {
+		return nil
+	}
+	return verticalImbalanceFinding(si, patternName, band, side+" it", minI64(top, bottom), safe)
+}
+
+// largestInkGap is the tallest horizontal band inside the content zone that
+// no ink rectangle touches, between the first and the last ink.
+func largestInkGap(ink []pptx.RectEmu, safe pptx.RectEmu) int64 {
+	spans := make([][2]int64, 0, len(ink))
+	for _, r := range ink {
+		r = intersectRect(r, safe)
+		if r.CY > 0 {
+			spans = append(spans, [2]int64{r.Y, r.Y + r.CY})
+		}
+	}
+	slices.SortFunc(spans, func(a, b [2]int64) int { return cmp.Compare(a[0], b[0]) })
+	var gap, end int64
+	for i, s := range spans {
+		if i > 0 && s[0]-end > gap {
+			gap = s[0] - end
+		}
+		end = maxI64(end, s[1])
+	}
+	return gap
+}
+
+func verticalImbalanceFinding(si int, patternName string, band int64, where string, other int64, safe pptx.RectEmu) *patterns.FitFinding {
+	bandFrac := float64(band) / float64(safe.CY)
+	side := strings.Fields(where)[0]
+	return &patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Pattern: patternName,
+			Path:    slidepath.Slide(si),
+			Code:    patterns.ErrCodeVerticalImbalance,
+			Message: fmt.Sprintf("content leaves a %.1fin empty band %s (%.0f%% of the content area; %.1fin on the other side) — the slide reads top-heavy or bottom-heavy", float64(band)/914400, where, 100*bandFrac, float64(other)/914400),
+			Fix: &patterns.FixSuggestion{
+				Kind: "add_detail_or_resize",
+				Params: map[string]any{
+					"empty_band_in":   round1(float64(band) / 914400),
+					"empty_band_pct":  math.Round(100 * bandFrac),
+					"empty_band_side": side,
+					"hint":            "centre or stretch the block (pattern vertical_align / shape_grid vertical_align), add a supporting zone in the empty band, or choose a pattern that fills the area with this amount of content",
+				},
+			},
+		},
+		Action: "review",
+	}
+}
+
+const (
+	// horizontalImbalanceMinBandFrac is the share of the content zone's width
+	// an empty band beside the content must reach to be reported, and
+	// horizontalImbalanceSkewFrac how much wider it must be than the band on
+	// the other side: rows of short text that end mid-slide fill the left
+	// half only (go-slide-creator-wwmod).
+	horizontalImbalanceMinBandFrac = 0.40
+	horizontalImbalanceSkewFrac    = 0.30
+)
+
+// checkHorizontalImbalance reports a grid / pattern slide whose visible
+// content sits against one side of the content zone. It is measured on the
+// ink — a text block counts at its measured width, a filled shape at its
+// bounds — so a row layout whose text reaches across the slide is balanced
+// and the same layout with one short phrase per row is not.
+func checkHorizontalImbalance(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInput, si int, patternName string) *patterns.FitFinding {
+	if safe.CX <= 0 || len(ink) == 0 || hasBodyPlaceholderContent(slide) {
+		return nil
+	}
+	first, last := safe.X+safe.CX, safe.X
+	for _, r := range ink {
+		r = intersectRect(r, safe)
+		if r.CX <= 0 {
+			continue
+		}
+		first = minI64(first, r.X)
+		last = maxI64(last, r.X+r.CX)
+	}
+	if last <= first {
+		return nil
+	}
+	left, right := first-safe.X, safe.X+safe.CX-last
+	band, side := left, "left of"
+	if right > left {
+		band, side = right, "right of"
+	}
+	bandFrac := float64(band) / float64(safe.CX)
+	skew := math.Abs(float64(left-right)) / float64(safe.CX)
+	if bandFrac < horizontalImbalanceMinBandFrac || skew < horizontalImbalanceSkewFrac {
 		return nil
 	}
 	return &patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
 			Pattern: patternName,
 			Path:    slidepath.Slide(si),
-			Code:    patterns.ErrCodeVerticalImbalance,
-			Message: fmt.Sprintf("content leaves a %.1fin empty band %s it (%.1fin on the other side) — the slide reads top-heavy or bottom-heavy", float64(band)/914400, side, float64(minI64(top, bottom))/914400),
+			Code:    patterns.ErrCodeHorizontalImbalance,
+			Message: fmt.Sprintf("content leaves a %.1fin empty band %s it (%.0f%% of the content width) — the slide fills one side only", float64(band)/914400, side, 100*bandFrac),
 			Fix: &patterns.FixSuggestion{
 				Kind: "add_detail_or_resize",
 				Params: map[string]any{
 					"empty_band_in":   round1(float64(band) / 914400),
-					"empty_band_side": side,
-					"hint":            "centre the block (vertical_align), add a supporting zone or takeaway in the empty band, or size the grid to its content",
+					"empty_band_pct":  math.Round(100 * bandFrac),
+					"empty_band_side": strings.TrimSuffix(side, " of"),
+					"hint":            "use the empty side (evidence, a chart, an image or a so-what column via compose), choose a pattern that spreads this content across the width, or write each row as a full sentence",
 				},
 			},
 		},

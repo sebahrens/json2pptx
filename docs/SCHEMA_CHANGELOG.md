@@ -1,5 +1,61 @@
 # Schema Changelog
 
+- **2026-10-03 — Deck rhythm counts visual motifs and continued exhibits; the score reports composition faults (`go-slide-creator-rd7oj`, `go-slide-creator-wwmod`, `go-slide-creator-xy51l`).**
+  - **Motifs (`analyze_deck_rhythm`, `score_deck`).** Every registered
+    pattern declares a visual motif (`tiles`, `open-columns`, `open-list`,
+    `table`, `chart`, `diagram`, `flow`, `hero-number`, `quote`, `split`;
+    content slides: `chart`, `diagram`, `table`, `image`, `text`), derived
+    from what it renders today; an explicit `overrides.style` /
+    `values.style` that changes the look changes the motif (`stylish-panels`
+    `ribbon` and `kpi-Nup` `tiles` are `tiles`, not `open-columns`).
+    `analyze_deck_rhythm` adds `per_slide[].motif` (`none` for structural
+    slides, hand-built grids and compose), `aggregates.motif_runs[]`
+    (`{motif, start, end, len}`: 3+ consecutive content slides in one motif,
+    whatever patterns drew them), `aggregates.motif_share` (share of the
+    content slides per motif) and `aggregates.dominant_motif` (present when
+    one motif covers more than half of 4+ content slides), and the
+    recommendation codes `break_motif_run` and `motif_dominant`
+    (`slide_index` -1). Their `recommended_break_patterns` — and `break_run`'s
+    — now leave out the patterns that draw the motif being left. `chart` and
+    `diagram` form a run only for the same pattern or chart type. A deck
+    alternating `kpi-4up` / `stylish-panels` / `card-grid` is reported; one
+    alternating chart / table / `card-grid` is not.
+  - **`score_deck` composition.** New diagnostics `motif_run`,
+    `motif_dominance` and `continuation_interrupted` (each a `warning` whose
+    message ends in the suggested patterns). A motif run costs what a pattern
+    run costs (10, plus 5 per slide beyond three) unless a pattern run already
+    covers it; a dominant motif spread over more than one pattern costs 10; an
+    interrupted continuation costs 10.
+  - **Continued exhibits are one unit.** Slides whose titles carry a part
+    marker — `Title (1/2)` / `(2/2)`, `[2 of 3]`, `– 2/3`, `(cont.)`,
+    `(continued)` — count once in `pattern_runs` / `motif_runs` (`len` is now
+    exhibits; the new `pattern_runs[].end` is the last slide index),
+    `DECK_MONOTONY` and the DeckSpec `SEMANTIC_RHYTHM_MONOTONY`, whose message
+    now names the run. A slide between two parts is reported:
+    `analyze_deck_rhythm` recommendation `continuation_interrupted`, and the
+    new DeckSpec warning `SEMANTIC_RHYTHM_CONTINUATION_SPLIT` at that slide.
+  - **Composition faults lower the score.** New fit findings
+    `HORIZONTAL_IMBALANCE` (content fills one side; the other 40%+ of the
+    width is empty), `TEXT_WRAPS_NARROW` (a paragraph wraps to 5+ lines of at
+    most 3 words; `fix.params.max_words`) and `SIBLING_SIZE_MISMATCH` (peer
+    cells of one row render more than 8% apart; `fix.params.cells[].rendered_pt`).
+    `VERTICAL_IMBALANCE` now reads the measured ink position: the content area
+    ends above the takeaway band, a block hung from the body line is reported
+    once it leaves 40% or more of the area empty beneath it, and so is a
+    40%+ empty band between a block and a conclusion band
+    (`empty_band_side: "between"`, new `empty_band_pct`). It is no longer
+    suppressed by `SLIDE_UNDERUSED`. These four cost **25 points** on their
+    slide (below `min_score` 80); `TEXT_WRAPS_NARROW` and
+    `SIBLING_SIZE_MISMATCH` also count toward `max_problem_slides_pct`. None
+    blocks by itself (DeckSpec severity `info`); a deck of them fails the
+    score floor and reports one `QUALITY_GATE` error naming them. New advisory
+    `fix.kind` `shorten_or_restructure`.
+  - **Topic labels over a takeaway are findings.** `TITLE_NOT_ACTION` gains
+    reason `topic_label`: a verbless, numberless title of at most four words
+    on a slide that sets a `takeaway` ("Savings funnel"). It costs the review
+    weight and counts toward `max_topic_title_pct`. A continuation marker is
+    not a number in the claim.
+
 - **2026-10-03 — Native framework diagrams share the patterns' surface style (`go-slide-creator-amtkg`).**
   - **Default look changed** for `swot`, `business_model_canvas`, `pestel`,
     `nine_box_talent`, `porters_five_forces`, `value_chain`, `kpi_dashboard`

@@ -1,0 +1,71 @@
+{
+  "about": "Weak slides from the 2026-10-03 agent journeys (tests/quality/results/agent-journey-20261003: c-repair C15/C17, a-coldstart A13, b-discovery B15, d-cli A15). Each scored 100 before go-slide-creator-wwmod.",
+  "template": "midnight-blue",
+  "labels": {
+    "1": {"label": "weak", "codes": ["VERTICAL_IMBALANCE"], "evidence": "A13 / B15 / A15: a row of cards in the top third over an empty lower half"},
+    "2": {"label": "weak", "codes": ["HORIZONTAL_IMBALANCE", "TITLE_NOT_ACTION"], "evidence": "C15: 'Savings funnel' fills the left half only"},
+    "3": {"label": "weak", "codes": ["TEXT_WRAPS_NARROW"], "evidence": "C17: eight flow boxes, each wrapped to 5-6 lines of 2-3 words"},
+    "4": {"label": "label_title", "codes": ["TITLE_NOT_ACTION"], "evidence": "C15: 'Monthly spend trend' is a label over a takeaway"},
+    "5": {"label": "label_title", "codes": ["TITLE_NOT_ACTION"], "evidence": "C15: 'Savings by lever (1/2)' — the part marker is not a number in the claim"}
+  },
+  "spec": {
+    "meta": {
+      "title": "Cloud cost reduction programme",
+      "archetype": "strategy_proposal",
+      "source": "Cloud billing exports, Oct 2025 to Sep 2026; FinOps utilisation scan, Sep 2026"
+    },
+    "slides": [
+      {"kind": "title", "title": "Cloud cost reduction programme", "subtitle": "Steering committee, October 2026"},
+      {"kind": "raw_json2pptx", "slide": {
+        "layout_id": "blank-title",
+        "slide_type": "content",
+        "content": [{"placeholder_id": "title", "type": "text", "text_value": "Three levers recover €9.6M of annual cloud spend"}],
+        "shape_grid": {
+          "bounds": {"x": 5, "y": 24, "width": 90, "height": 18},
+          "columns": 3,
+          "gap": 2,
+          "rows": [{"cells": [
+            {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Rightsize compute\n€2.9M a year"}}},
+            {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Commit to discounts\n€3.1M a year"}}},
+            {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Tier cold storage\n€1.4M a year"}}}
+          ]}]
+        }
+      }},
+      {"kind": "process", "title": "Savings funnel",
+       "steps": [
+         {"label": "Identified", "description": "€14.2M identified by the scan"},
+         {"label": "Validated", "description": "€11.0M validated with teams"},
+         {"label": "Committed", "description": "€9.6M committed in budgets"},
+         {"label": "Delivered", "description": "€0.9M delivered to date"}
+       ],
+       "takeaway": "Only 0.9 of the 9.6 million euros committed has been delivered so far."},
+      {"kind": "process", "title": "Eight steps take the programme from baseline to sustained savings",
+       "steps": [
+         {"label": "Baseline", "description": "Tagged inventory of all resources, reconciled to invoices."},
+         {"label": "Tag", "description": "Mandatory owner, product and environment tags on all spend."},
+         {"label": "Rightsize", "description": "Resize or terminate idle and oversized instances."},
+         {"label": "Schedule", "description": "Shut down dev and test outside working hours."},
+         {"label": "Commit", "description": "Buy committed-use discounts for the steady baseline."},
+         {"label": "Tier", "description": "Lifecycle policies move cold data to archive classes."},
+         {"label": "Showback", "description": "Monthly showback per team, reviewed with directors."},
+         {"label": "Sustain", "description": "Cost checks in the pipeline and architecture reviews."}
+       ],
+       "takeaway": "The programme reaches sustained savings in twelve months."},
+      {"kind": "chart_insight", "title": "Monthly spend trend",
+       "chart": {"type": "bar_chart", "title": "Monthly cloud spend (€M)",
+         "data": {"categories": ["Apr", "May", "Jun", "Jul", "Aug", "Sep"], "series": [{"name": "Spend", "values": [3.1, 3.3, 3.4, 3.6, 3.9, 4.2]}]}},
+       "insights": ["Spend grows every month", "Compute is the main driver"],
+       "takeaway": "Monthly spend has risen 35 percent in six months and is still accelerating."},
+      {"kind": "table", "title": "Savings by lever (1/2)",
+       "headers": ["Lever", "Annual saving", "Effort", "Risk", "Owner"],
+       "rows": [
+         ["Rightsize compute", "€2.9M", "Medium", "Low", "Platform"],
+         ["Shut down non-prod at night", "€1.6M", "Low", "Low", "Platform"],
+         ["Committed-use discounts", "€3.1M", "Low", "Medium", "Finance"],
+         ["Storage lifecycle policies", "€1.4M", "Low", "Low", "Data"]
+       ],
+       "takeaway": "Four levers deliver 9.0 million euros of the 9.6 million euro target."},
+      {"kind": "closing", "title": "Approve option B and start on 1 November"}
+    ]
+  }
+}

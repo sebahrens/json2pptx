@@ -113,6 +113,8 @@ func collectGeometryFindings(input *PresentationInput, layouts []types.LayoutMet
 		slideHeight = shapegrid.DefaultSlideHeightEMU
 	}
 	m := newGeomMeasurer(theme)
+	rhythmGrid := resolvedValidRhythmGrid(input, layouts, slideWidth, slideHeight)
+	sectionIndices := slideSectionIndices(input.Slides, layouts)
 	var findings []patterns.FitFinding
 	for si := range input.Slides {
 		slide := input.Slides[si]
@@ -139,14 +141,71 @@ func collectGeometryFindings(input *PresentationInput, layouts []types.LayoutMet
 		acc.walk(grid, result, basePath, 0)
 		explicitPatternBounds := slide.Pattern != nil && slide.Pattern.Bounds != nil
 		findings = append(findings, acc.findings(patternName, explicitPatternBounds)...)
+		if f := acc.narrowWrapFinding(patternName); f != nil {
+			findings = append(findings, *f)
+		}
 		safe := contentRelativeBoundsBase(geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
+		findings = append(findings, siblingSizeFindings(m, grid, result, basePath, patternName, slideWidth, slideHeight)...)
+		// Sparse overall (SLIDE_UNDERUSED, an airiness advisory) and lopsided
+		// are different facts: a centred hero number is sparse and balanced,
+		// a row of cards over an empty bottom half is lopsided whether or not
+		// it is sparse. One imbalance finding per slide: top-to-bottom, else
+		// left-to-right.
 		if f := checkSlideUnderused(acc.ink, safe, &slide, si, patternName, acc.heightSensitiveOverflow()); f != nil {
 			findings = append(findings, *f)
-		} else if f := checkVerticalImbalance(acc.ink, safe, &slide, si, patternName, zoneBodyTop(geom.Zone)); f != nil {
+		}
+		ctx := balanceContext{input: input, layouts: layouts, slideWidth: slideWidth, slideHeight: slideHeight, theme: theme, rhythmGrid: rhythmGrid, sectionIndices: sectionIndices}
+		if f := ctx.imbalanceFinding(acc, slide, si, grid, geom, basePath, patternName, safe); f != nil {
 			findings = append(findings, *f)
 		}
 	}
 	return findings
+}
+
+// balanceContext carries the deck-level inputs of the imbalance checks.
+type balanceContext struct {
+	input                   *PresentationInput
+	layouts                 []types.LayoutMetadata
+	slideWidth, slideHeight int64
+	theme                   *types.ThemeInfo
+	rhythmGrid              *resolvedGrid
+	sectionIndices          []int
+}
+
+// imbalanceFinding returns the slide's one imbalance finding: top-to-bottom,
+// else left-to-right.
+//
+// A pattern nested in a cell (a DeckSpec regions slide's kpis or timeline) has
+// no shapes until generation expands it, so its cell reads as empty. The
+// balance is measured on the expanded cells, and not at all when they cannot
+// be expanded: an empty band that is really a KPI row is not a finding.
+func (c balanceContext) imbalanceFinding(acc *geomAccumulator, slide SlideInput, si int, grid *ShapeGridInput, geom GridGeometry, basePath, patternName string, safe pptx.RectEmu) *patterns.FitFinding {
+	balance := acc
+	if hasNestedCellPattern(grid) {
+		balance = nil
+		g, contentBounds := patternExpansionGeometry(slide, c.layouts, c.slideWidth, c.slideHeight, c.rhythmGrid)
+		sectionIdx := 0
+		if si < len(c.sectionIndices) {
+			sectionIdx = c.sectionIndices[si]
+		}
+		expanded, _, err := expandNestedPatternsForReadability(grid, basePath, nestedExpansionGeometry{
+			geom: g, contentBounds: contentBounds, slideWidth: c.slideWidth, slideHeight: c.slideHeight,
+			theme: c.theme, strategy: patterns.AccentStrategy(c.input.AccentStrategy), slideIdx: si, sectionIdx: sectionIdx,
+		})
+		if err == nil && expanded != nil && !hasNestedCellPattern(expanded) {
+			if res := resolveGridForStructural(expanded, geom.OverrideBounds, geom.Zone, c.slideWidth, c.slideHeight); res != nil {
+				balance = &geomAccumulator{m: acc.m, slideArea: c.slideWidth * c.slideHeight, slideWidth: c.slideWidth, slideHeight: c.slideHeight, slotInk: openColumnPatterns[patternName]}
+				balance.walk(expanded, res, basePath, 0)
+			}
+		}
+	}
+	if balance == nil {
+		return nil
+	}
+	if f := checkVerticalImbalance(balance.ink, safe, &slide, si, patternName, zoneBodyTop(geom.Zone), true); f != nil {
+		return f
+	}
+	return checkHorizontalImbalance(balance.textInk, safe, &slide, si, patternName)
 }
 
 // maxGeomNestingDepth bounds recursion into nested sub-grids.
@@ -177,12 +236,27 @@ type geomAccumulator struct {
 	slotInk bool
 	exceeds []textExceedsHit
 	sparse  []sparseFillHit
+	// narrow lists the boxes whose text wraps into a tall column of very
+	// short lines (TEXT_WRAPS_NARROW).
+	narrow []narrowWrapHit
+	// textInk is ink with every unfilled text cell at its measured text block
+	// (never its slot): where the eye finds content left to right. An open
+	// column counts as its slot for coverage, but a slot whose text ends
+	// mid-slide still leaves the far side empty (HORIZONTAL_IMBALANCE).
+	textInk []pptx.RectEmu
 	// openCells is set while walking an open KPI strip: its unpainted cells
 	// are delimited by hairline dividers and count as content like the tiles
 	// they replace, so a content-sized KPI row does not start reading as an
 	// underused slide because it lost its card fills
 	// (go-slide-creator-8zles).
 	openCells bool
+}
+
+// addInk records a rectangle that is content in both views: coverage (ink)
+// and left-to-right position (textInk).
+func (a *geomAccumulator) addInk(r pptx.RectEmu) {
+	a.ink = append(a.ink, r)
+	a.textInk = append(a.textInk, r)
 }
 
 // isKPIStripGrid reports whether grid is the expansion of a KPI row pattern.
@@ -208,15 +282,15 @@ func (a *geomAccumulator) walk(input *ShapeGridInput, result *shapegrid.ResolveR
 		case shapegrid.CellKindShape:
 			a.shapeCell(cell, cellPath)
 		case shapegrid.CellKindIcon:
-			a.ink = append(a.ink, a.slotOr(cell, cell.Bounds))
+			a.addInk(a.slotOr(cell, cell.Bounds))
 		case shapegrid.CellKindTable, shapegrid.CellKindImage, shapegrid.CellKindDiagram, shapegrid.CellKindComposite:
-			a.ink = append(a.ink, cell.Bounds)
+			a.addInk(cell.Bounds)
 		case shapegrid.CellKindSubGrid:
 			a.subGrid(input, cell, cellPath, depth)
 		}
 	}
 	for _, ab := range result.AccentBars {
-		a.ink = append(a.ink, ab.Bounds)
+		a.addInk(ab.Bounds)
 	}
 }
 
@@ -229,7 +303,7 @@ func (a *geomAccumulator) subGrid(input *ShapeGridInput, cell shapegrid.Resolved
 		src = gridCellAtResolved(input, cell.RowIdx, cell.ColIdx)
 	}
 	if src == nil || src.Grid == nil || depth >= maxGeomNestingDepth {
-		a.ink = append(a.ink, cell.Bounds)
+		a.addInk(cell.Bounds)
 		return
 	}
 	inset := pptx.RectEmu{X: cell.Bounds.X + subGridInsetEMU, Y: cell.Bounds.Y + subGridInsetEMU, CX: cell.Bounds.CX - 2*subGridInsetEMU, CY: cell.Bounds.CY - 2*subGridInsetEMU}
@@ -238,7 +312,7 @@ func (a *geomAccumulator) subGrid(input *ShapeGridInput, cell shapegrid.Resolved
 	}
 	sub := resolveGridForStructural(src.Grid, &inset, nil, a.slideWidth, a.slideHeight)
 	if sub == nil {
-		a.ink = append(a.ink, cell.Bounds)
+		a.addInk(cell.Bounds)
 		return
 	}
 	a.walk(src.Grid, sub, cellPath+"/grid", depth+1)
@@ -261,12 +335,12 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 			return
 		}
 		if filled {
-			a.ink = append(a.ink, cell.Bounds)
+			a.addInk(cell.Bounds)
 		}
 		return
 	}
 	if filled {
-		a.ink = append(a.ink, cell.Bounds)
+		a.addInk(cell.Bounds)
 	}
 	// Rotated text runs along the shape's height: the line length it has is the
 	// box's height, not its width.
@@ -287,6 +361,9 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 		}
 		a.exceeds = append(a.exceeds, textExceedsHit{path: cellPath + "/shape/text", word: word, geometry: geometry, wordPt: wordPt, availPt: availPt, minGlyphPt: minGlyphPt})
 	}
+	if !txt.rotated() {
+		a.noteNarrowWrap(cellPath+"/shape/text", txt, availPt)
+	}
 	blockW, blockH := a.m.textBlockPt(txt, math.Max(availPt, 1))
 	if txt.rotated() {
 		// The block was measured along the text's own axis; on the slide it
@@ -294,11 +371,13 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 		blockW, blockH = blockH, blockW
 	}
 	if !filled {
+		block := placeTextBlock(cell.Bounds, txt, blockW, blockH)
+		a.textInk = append(a.textInk, block)
 		if a.openCells {
-			a.ink = append(a.ink, cell.Bounds)
+			a.addInk(cell.Bounds)
 			return
 		}
-		a.ink = append(a.ink, a.slotOr(cell, placeTextBlock(cell.Bounds, txt, blockW, blockH)))
+		a.ink = append(a.ink, a.slotOr(cell, block))
 		return
 	}
 	shapeArea := float64(cell.Bounds.CX) * float64(cell.Bounds.CY)
