@@ -1,5 +1,20 @@
 # Schema Changelog
 
+- **2026-10-03 — quote-cluster reads as quotes (`go-slide-creator-5cie9`).**
+  - `quote-cluster` renders open quotes by default: an accent opening quote
+    mark, the italic quote, and one attribution line (bold name, title), with
+    no tile. New `overrides.style`: `open` (default) / `bubble`
+    (speech-bubble shapes with the attribution under the tail; 7–8 quotes
+    take four columns) / `tile` (the previous tinted tiles with accent
+    names).
+  - New `quotes[].highlight` (boolean, at most one — a second is
+    `invalid_shape`): the highlighted quote is the only accent-coloured
+    element (tint band and accent mark in `open`, solid accent fill in
+    `bubble` / `tile`).
+  - Copy budgets are unchanged (re-measured): 4–6 quotes about 161 text
+    characters beside maximal attributions; 7–8 about 81 beside a name of
+    about 20 and a title of about 27 characters.
+
 - **2026-10-03 — icon-row is open by default (`go-slide-creator-hjqn2`).**
   - `icon-row` renders accent icons and captions on the slide with no
     container. New `overrides.style`: `open` (default) / `tile` (the previous

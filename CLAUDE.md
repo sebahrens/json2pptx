@@ -183,7 +183,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `pull-quote` | Italic quote block with attribution and an optional headshot column (`values.image`) |
 | `phase-roadmap` | Single-track phased roadmap: phase boxes + timeline bar + date labels + per-phase descriptions + optional milestones and 0–4 full-width `parallel_tracks` bars ("In parallel" workstreams) |
 | `pyramid` | Stacked trapezoid hierarchy (3-5 tiers) |
-| `quote-cluster` | Structured 3-column grid of 3–8 attributed stakeholder quote bubbles (voice-of-customer slides), with alternating tinted fills |
+| `quote-cluster` | Structured 3-column grid of 3–8 attributed stakeholder quotes (voice-of-customer slides): open quotes under a quote mark by default, `overrides.style` `bubble` (speech bubbles) or `tile`, one optional `quotes[].highlight` |
 | `roadmap-phased` | Phased roadmap with workstreams and time periods |
 | `scqa-summary` | 4-row SCQA executive summary (Situation / Complication / Questions / Answer) |
 | `state-shift-hub` | Central accent hub circle (short label) with 3–4 numbered today/future stage pairs on an arc around it: today items right-aligned on the left, future items left-aligned on the right, optional column headers |
