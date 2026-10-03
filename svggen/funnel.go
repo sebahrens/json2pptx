@@ -835,6 +835,28 @@ func parseFunnelSimpleValues(valuesRaw []any, categories []string) []FunnelDataP
 	return points
 }
 
+// DataSchema returns the data contract for funnel charts.
+func (d *FunnelDiagram) DataSchema() *DataSchema {
+	stage := ObjectDataSchema("A stage, or a plain number (labelled from categories)", map[string]*DataSchema{
+		"label": StringDataSchema("Stage label"),
+		"value": NumberDataSchema("Stage value"),
+		"color": StringDataSchema("Hex color override"),
+	}, nil)
+	return diagramDataSchema("Funnel of decreasing stages", map[string]*DataSchema{
+		"values":          ArrayDataSchema("Stages: {label, value} objects or numbers", stage, 0),
+		"stages":          ArrayDataSchema("Alias for values", stage, 0),
+		"points":          ArrayDataSchema("Stages as {label, value} objects", stage, 0),
+		"categories":      stringListSchema("Stage labels for numeric values"),
+		"footnote":        StringDataSchema("Footnote text"),
+		"neck_width":      NumberDataSchema("Neck width ratio"),
+		"gap":             NumberDataSchema("Gap between stages"),
+		"show_percentage": BooleanDataSchema("Show each stage's share"),
+		"label_position":  StringDataSchema("Label placement"),
+		"width_mode":      StringDataSchema("Stage width mode"),
+		"show_conversion": BooleanDataSchema("Show stage-to-stage conversion"),
+	}, nil)
+}
+
 // parseFunnelData parses the request data into FunnelData.
 func parseFunnelData(req *RequestEnvelope) (FunnelData, error) {
 	data := FunnelData{

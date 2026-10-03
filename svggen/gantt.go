@@ -1540,6 +1540,49 @@ func parseGanttData(req *RequestEnvelope) (GanttData, error) {
 	return data, nil
 }
 
+// DataSchema returns the data contract for gantt diagrams: the keys
+// parseGanttTask and parseGanttMilestone read.
+func (d *GanttDiagram) DataSchema() *DataSchema {
+	task := ObjectDataSchema("A task bar or milestone", map[string]*DataSchema{
+		"id":           StringDataSchema("Task id (for dependencies)"),
+		"label":        StringDataSchema("Task label (alias: name)"),
+		"name":         StringDataSchema("Alias for label"),
+		"category":     StringDataSchema("Category (alias: status)"),
+		"status":       StringDataSchema("Alias for category"),
+		"swimlane":     StringDataSchema("Swimlane (aliases: group, team)"),
+		"group":        StringDataSchema("Alias for swimlane"),
+		"team":         StringDataSchema("Alias for swimlane"),
+		"progress":     NumberDataSchema("Completion 0-100"),
+		"color":        StringDataSchema("Hex color override"),
+		"start":        StringDataSchema("Start date (alias: start_date)"),
+		"start_date":   StringDataSchema("Alias for start"),
+		"end":          StringDataSchema("End date (alias: end_date)"),
+		"end_date":     StringDataSchema("Alias for end"),
+		"date":         StringDataSchema("Milestone date"),
+		"type":         StringDataSchema("\"milestone\" draws a diamond"),
+		"dependencies": stringListSchema("Ids of tasks this one depends on"),
+		"depends_on":   StringDataSchema("Comma-separated dependency ids"),
+	}, nil)
+	milestone := ObjectDataSchema("A standalone milestone", map[string]*DataSchema{
+		"id":       StringDataSchema("Milestone id"),
+		"label":    StringDataSchema("Milestone label (alias: name)"),
+		"name":     StringDataSchema("Alias for label"),
+		"date":     StringDataSchema("Milestone date"),
+		"color":    StringDataSchema("Hex color override"),
+		"swimlane": StringDataSchema("Swimlane (alias: team)"),
+		"team":     StringDataSchema("Alias for swimlane"),
+	}, nil)
+	return diagramDataSchema("Gantt chart of dated tasks and milestones", map[string]*DataSchema{
+		"tasks":         ArrayDataSchema("Tasks", task, 0),
+		"milestones":    ArrayDataSchema("Standalone milestones", milestone, 0),
+		"footnote":      StringDataSchema("Footnote text"),
+		"time_unit":     StringDataSchema("Axis unit: day, week, month, quarter, year"),
+		"show_progress": BooleanDataSchema("Shade task progress"),
+		"show_grid":     BooleanDataSchema("Draw grid lines"),
+		"label_width":   NumberDataSchema("Task label column width"),
+	}, nil)
+}
+
 // mapStr returns the first non-empty string value for the given keys from a map.
 func mapStr(m map[string]any, keys ...string) string {
 	for _, k := range keys {

@@ -1439,6 +1439,9 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 				}
 				item.Value = chart.ToDiagramSpec()
 			}
+			if err := checkDiagramData(item.Value, slideNum, j+1); err != nil {
+				return nil, err
+			}
 
 		case "diagram":
 			item.Type = generator.ContentDiagram
@@ -1460,7 +1463,7 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 				}
 				item.Value = &diagram
 			}
-			if err := checkNativeDiagramData(item.Value, slideNum, j+1); err != nil {
+			if err := checkDiagramData(item.Value, slideNum, j+1); err != nil {
 				return nil, err
 			}
 
@@ -1786,17 +1789,27 @@ func validateDiagramSpec(spec *types.DiagramSpec, slideNum, contentNum int) stri
 	return ""
 }
 
-// checkNativeDiagramData refuses a native diagram whose data carries a key the
-// builder does not read, or whose every label parses empty: drawn, it would be
-// a diagram of blank shapes (go-slide-creator-hdx2l). value is the converted
-// content value; anything but a *types.DiagramSpec passes.
-func checkNativeDiagramData(value any, slideNum, contentNum int) error {
+// checkDiagramData refuses a diagram or chart whose data its renderer would
+// not draw: a native diagram whose data carries a key the builder does not
+// read, or whose every label parses empty (go-slide-creator-hdx2l), and an
+// svggen diagram or chart whose data carries a key the renderer does not read
+// at any level, or whose labels all parse empty (go-slide-creator-x9s5i). In a
+// body placeholder an svggen failure would only degrade to a "Data
+// unavailable" image, so the payload is refused before generation. value is
+// the converted content value; anything but a *types.DiagramSpec passes.
+func checkDiagramData(value any, slideNum, contentNum int) error {
 	spec, ok := value.(*types.DiagramSpec)
-	if !ok {
+	if !ok || spec == nil {
 		return nil
 	}
-	if err := generator.ValidateNativeDiagramData(spec); err != nil {
-		return fmt.Errorf("slide %d, content %d: diagram data: %w", slideNum, contentNum, err)
+	if generator.IsNativeDiagramType(spec) {
+		if err := generator.ValidateNativeDiagramData(spec); err != nil {
+			return fmt.Errorf("slide %d, content %d: diagram data: %w", slideNum, contentNum, err)
+		}
+		return nil
+	}
+	if err := svggen.CheckDataContract(spec.Type, spec.Data); err != nil {
+		return fmt.Errorf("slide %d, content %d: %s data: %w", slideNum, contentNum, spec.Type, err)
 	}
 	return nil
 }
@@ -1935,6 +1948,9 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 			}
 			// Convert ChartSpec to DiagramSpec at the API boundary
 			item.Value = chart.ToDiagramSpec()
+			if err := checkDiagramData(item.Value, slideNum, j+1); err != nil {
+				return nil, err
+			}
 
 		case "diagram":
 			// Diagram content type accepts DiagramSpec directly with map[string]any data.
@@ -1948,7 +1964,7 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 			if diagram.Type == "" {
 				return nil, fmt.Errorf("slide %d, content %d: diagram type is required", slideNum, j+1)
 			}
-			if err := checkNativeDiagramData(&diagram, slideNum, j+1); err != nil {
+			if err := checkDiagramData(&diagram, slideNum, j+1); err != nil {
 				return nil, err
 			}
 			item.Value = &diagram

@@ -23,6 +23,16 @@ The `svggen` package provides built-in diagram types for creating professional b
 > native builders do not draw (`gap`, `corner_radius`, `footnote`, ...) are
 > accepted and ignored. `business_model_canvas` reports unread keys as the
 > review finding `diagram.data_key_ignored` instead.
+>
+> The svggen types (charts, timeline, venn, org_chart, gantt, matrix_2x2,
+> fishbone, waterfall, funnel, gauge, treemap) have the same closed contract
+> at every level — `series[]`, `items[]`, `circles[]`, org `children[]` —
+> declared by each type's `DataSchema` beside its parser: a timeline item
+> written `{"title", "when"}` or a venn circle written `{"title"}` used to
+> render without its date or label (go-slide-creator-x9s5i). In a body
+> placeholder such a payload is now refused rather than drawn as a "Data
+> unavailable" placeholder. A payload whose labels all parse empty is refused
+> too.
 
 ## Quick Reference
 
@@ -146,7 +156,7 @@ Show KPI status against thresholds.
     "value": 0.92,
     "min": 0.0,
     "max": 1.0,
-    "target": 0.99
+    "label": "Uptime"
   }
 }
 ```
@@ -210,11 +220,8 @@ Display proportions of a whole.
   "type": "pie_chart",
   "title": "Market Share",
   "data": {
-    "series": [
-      {"name": "Product A", "value": 45},
-      {"name": "Product B", "value": 30},
-      {"name": "Product C", "value": 25}
-    ]
+    "categories": ["Product A", "Product B", "Product C"],
+    "values": [45, 30, 25]
   }
 }
 ```
@@ -227,11 +234,8 @@ Pie chart with center space (for metrics or text).
   "type": "donut_chart",
   "title": "Budget Allocation",
   "data": {
-    "series": [
-      {"name": "R&D", "value": 35},
-      {"name": "Marketing", "value": 25},
-      {"name": "Operations", "value": 40}
-    ]
+    "categories": ["R&D", "Marketing", "Operations"],
+    "values": [35, 25, 40]
   }
 }
 ```

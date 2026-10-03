@@ -60,6 +60,51 @@ func TestValidateUnknownFields(t *testing.T) {
 	})
 }
 
+func TestValidateUnknownFieldsNested(t *testing.T) {
+	item := core.ObjectDataSchema("item", map[string]*core.DataSchema{
+		"label":  core.StringDataSchema("Label"),
+		"legacy": core.ToleratedDataSchema("Accepted, not drawn"),
+	}, nil)
+	schema := core.ObjectDataSchema("test", map[string]*core.DataSchema{
+		"items": core.ArrayDataSchema("Items", item, 0),
+	}, nil)
+
+	data := map[string]any{"items": []any{
+		map[string]any{"title": "a", "legacy": 1},
+		"plain string",
+		map[string]any{"title": "b"},
+		map[string]any{"lable": "c"},
+	}}
+	ves := core.GetValidationErrors(core.ValidateUnknownFields(data, schema, "t"))
+	if len(ves) != 2 {
+		t.Fatalf("want 2 errors (title deduped, lable), got %+v", ves)
+	}
+	if ves[0].Field != "data.items[0].title" || ves[0].Occurrences != 2 || ves[0].DidYouMean != "label" {
+		t.Errorf("title error = %+v", ves[0])
+	}
+	if len(ves[0].Expected) != 1 || ves[0].Expected[0] != "label" {
+		t.Errorf("expected keys must omit tolerated ones: %v", ves[0].Expected)
+	}
+	if ves[1].Field != "data.items[3].lable" || ves[1].DidYouMean != "label" {
+		t.Errorf("lable error = %+v", ves[1])
+	}
+}
+
+func TestSuggestField(t *testing.T) {
+	expected := []string{"date", "label", "start", "values"}
+	for key, want := range map[string]string{
+		"when":   "date",
+		"title":  "label",
+		"vaules": "values",
+		"Label":  "label",
+		"zzzzzz": "",
+	} {
+		if got := core.SuggestField(key, expected); got != want {
+			t.Errorf("SuggestField(%q) = %q, want %q", key, got, want)
+		}
+	}
+}
+
 func TestValidateUnknownFieldsInRegistry(t *testing.T) {
 	// mockWithSchema implements DiagramWithSchema.
 	schema := core.ObjectDataSchema("test", map[string]*core.DataSchema{

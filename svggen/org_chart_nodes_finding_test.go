@@ -69,17 +69,21 @@ func TestOrgChart_InvalidNodesAreReported(t *testing.T) {
 			wants: "parent cycle",
 		},
 		{
-			name: "label_only_nodes",
+			// A node written with "label" is now refused before render
+			// (UNKNOWN_FIELD with did-you-mean "name", go-slide-creator-x9s5i);
+			// a node with no text key at all still draws empty and is reported.
+			name: "textless_nodes",
 			req: flatOrgRequest(
-				map[string]any{"id": "ceo", "label": "CEO"},
-				map[string]any{"id": "vp", "label": "VP", "parent": "ceo"},
+				map[string]any{"id": "ceo", "name": "Ada"},
+				map[string]any{"id": "vp", "parent": "ceo"},
+				map[string]any{"id": "cfo", "parent": "ceo"},
 			),
 			wants: "2 node(s) have neither name nor title",
 		},
 		{
 			name: "nested_empty_node",
 			req: &RequestEnvelope{Type: "org_chart", Data: map[string]any{
-				"root": map[string]any{"name": "Ada", "children": []any{map[string]any{"label": "x"}}},
+				"root": map[string]any{"name": "Ada", "children": []any{map[string]any{"name": ""}}},
 			}},
 			wants: "1 node(s) have neither name nor title",
 		},

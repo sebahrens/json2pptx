@@ -14,11 +14,11 @@
             "title": "Ishikawa Diagram",
             "data": {
               "effect": "Customer Churn Increasing",
-              "causes": [
-                {"category": "People", "items": ["Understaffed support", "Training gaps"]},
-                {"category": "Process", "items": ["Slow onboarding", "No escalation path"]},
-                {"category": "Technology", "items": ["Frequent outages", "Poor UX"]},
-                {"category": "Policy", "items": ["Rigid contracts", "No trial extension"]}
+              "categories": [
+                {"name": "People", "causes": ["Understaffed support", "Training gaps"]},
+                {"name": "Process", "causes": ["Slow onboarding", "No escalation path"]},
+                {"name": "Technology", "causes": ["Frequent outages", "Poor UX"]},
+                {"name": "Policy", "causes": ["Rigid contracts", "No trial extension"]}
               ]
             }
           }

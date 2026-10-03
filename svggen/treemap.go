@@ -743,6 +743,39 @@ func parseTreemapData(req *RequestEnvelope) (TreemapData, error) {
 	return data, nil
 }
 
+// treemapNodeSchema is the data contract of a node and its children,
+// nestedSchemaDepth levels deep. A node may also be a plain number in a
+// values list (labelled from categories).
+func treemapNodeSchema(depth int) *DataSchema {
+	fields := map[string]*DataSchema{
+		"label": StringDataSchema("Tile label"),
+		"value": NumberDataSchema("Tile value (leaf nodes)"),
+		"color": StringDataSchema("Hex color override"),
+	}
+	var children *DataSchema
+	if depth > 1 {
+		children = treemapNodeSchema(depth - 1)
+	}
+	fields["children"] = ArrayDataSchema("Child nodes", children, 0)
+	return ObjectDataSchema("A treemap node", fields, nil)
+}
+
+// DataSchema returns the data contract for treemap charts.
+func (d *TreemapDiagram) DataSchema() *DataSchema {
+	nodes := ArrayDataSchema("Nodes", treemapNodeSchema(nestedSchemaDepth), 0)
+	return diagramDataSchema("Treemap of shares of a whole", map[string]*DataSchema{
+		"nodes":          nodes,
+		"items":          nodes,
+		"values":         ArrayDataSchema("Node objects or numbers (with categories)", treemapNodeSchema(nestedSchemaDepth), 0),
+		"categories":     stringListSchema("Tile labels for numeric values"),
+		"footnote":       StringDataSchema("Footnote text"),
+		"padding":        NumberDataSchema("Tile padding"),
+		"corner_radius":  NumberDataSchema("Tile corner radius"),
+		"label_position": StringDataSchema("Label placement"),
+		"data_labels":    dataLabelsFieldSchema(),
+	}, nil)
+}
+
 // parseTreemapNodes recursively parses treemap nodes from raw data.
 func parseTreemapNodes(raw []any) []*TreemapNode {
 	nodes := make([]*TreemapNode, 0, len(raw))

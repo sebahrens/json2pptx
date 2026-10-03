@@ -431,9 +431,9 @@ func TestReferenceLineLabelIsDrawn(t *testing.T) {
 }
 
 // Declaring annotations/data_labels must not open the data object up: a
-// misspelled TOP-LEVEL key is still an UNKNOWN_FIELD. (ValidateUnknownFields is
-// top-level only by design, so keys nested inside an annotation object are not
-// checked here.)
+// misspelled TOP-LEVEL key is still an UNKNOWN_FIELD. (Keys nested inside an
+// annotation object are checked too since go-slide-creator-x9s5i; see
+// TestDataContract_RefusesUnreadKeys.)
 func TestChartSchemaStillRejectsUnknownTopLevelKeys(t *testing.T) {
 	for _, key := range []string{"annotation", "datalabels", "data_label"} {
 		t.Run(key, func(t *testing.T) {

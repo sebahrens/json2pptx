@@ -118,8 +118,8 @@ svggen `svg`). Text under the 7pt floor is refused with
 `DIAGRAM_REGION_TOO_SMALL` (`fix.params.min_width_emu` / `min_height_emu`):
 enlarge the region, use a body placeholder (`diagram_value`) or cut items;
 dense canvases need most of the slide. A word too wide for its shape reports
-`TEXT_EXCEEDS_SHAPE` (`fix.params.words`). Data keys are strict: an undrawn
-key (pyramid `levels[].title`, not `label`) is `unknown_key`, fix `rename_field`.
+`TEXT_EXCEEDS_SHAPE` (`fix.params.words`). All diagram/chart data keys are
+strict at every level: an undrawn key (`levels[].title`) is `unknown_key`.
 
 Diagrams use one hue by default: timeline bars/milestones, matrix_2x2
 points and org_chart levels stay in accent1 and its tints (org levels take

@@ -191,7 +191,10 @@ func TestComposeSvggenDiagramFailure_ValidateMatchesGenerate(t *testing.T) {
 	errs := hdx2lValidate(slide)
 	ok := false
 	for _, d := range errs {
-		if d.Code == string(diagnostics.CodeInvalidGrid) && strings.Contains(d.Path, "/compose/segments/0/diagram") && strings.Contains(d.Message, "colour") {
+		// An unread key is reported at the key with a did-you-mean
+		// (go-slide-creator-x9s5i).
+		if d.Code == patterns.ErrCodeUnknownKey && d.Path == "/slides/0/compose/segments/0/diagram/data/colour" &&
+			d.Fix != nil && d.Fix.Params["to"] == "colors" {
 			ok = true
 		}
 	}

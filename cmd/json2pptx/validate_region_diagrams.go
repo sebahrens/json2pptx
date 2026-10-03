@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 
@@ -20,6 +21,8 @@ import (
 //   - a native type whose data carries a key its builder does not read, or
 //     whose labels all parse empty (go-slide-creator-hdx2l);
 //   - native heatmap grid-shape problems (go-slide-creator-csclk.18);
+//   - an svggen type whose data carries a key its renderer does not read, at
+//     any level (go-slide-creator-x9s5i);
 //   - svggen data validation failures, via DryRender (go-slide-creator-yzbo).
 //
 // label names the region's owner ("shape_grid", "compose", "pattern X");
@@ -47,6 +50,11 @@ func regionDiagramValidationDiagnostics(spec *types.DiagramSpec, slideIdx int, l
 		// DryRender runs the same request validation + layout pass as the
 		// generate path, so the error text matches what generate reports.
 		if _, err := svggen.DryRender(&svggen.RequestEnvelope{Type: spec.Type, Title: spec.Title, Data: spec.Data}); err != nil {
+			// A key the renderer never reads is reported at the key with a
+			// did-you-mean, the way native diagrams are (go-slide-creator-x9s5i).
+			if dd := svggenUnknownKeyDiagnostics(spec, err, path, prefix); len(dd) > 0 {
+				return dd
+			}
 			return []diagnostics.Diagnostic{{
 				Code:     diagnostics.CodeInvalidGrid,
 				Path:     path,
@@ -141,27 +149,113 @@ func composeDiagramValidationDiagnostics(c *ComposeInput, slideIdx int, basePath
 	return out
 }
 
-// contentDiagramValidationDiagnostics checks a native diagram placed in a body
-// placeholder. generate refuses one whose data would draw empty labels, so
-// validate does too (go-slide-creator-hdx2l). Other content diagrams keep
-// their existing checks: an svggen failure there degrades to a placeholder
-// image and is predicted by the fit report, not refused.
+// svggenUnknownKeyDiagnostics turns the UNKNOWN_FIELD errors of an svggen
+// data-contract failure into blocking unknown_key diagnostics at the key's
+// JSON Pointer, with the fixes native diagrams use: rename_field when there is
+// a did-you-mean, otherwise use_one_of. It returns nil when err carries no
+// UNKNOWN_FIELD error.
+func svggenUnknownKeyDiagnostics(spec *types.DiagramSpec, err error, path, prefix string) []diagnostics.Diagnostic {
+	var out []diagnostics.Diagnostic
+	for _, ve := range svggen.GetValidationErrors(err) {
+		if ve.Code != svggen.ErrCodeUnknownField {
+			continue
+		}
+		key, _ := ve.Value.(string)
+		d := diagnostics.Diagnostic{
+			Code:     patterns.ErrCodeUnknownKey,
+			Path:     slidepath.Field(path, ve.Field),
+			Message:  fmt.Sprintf("%s: %s: %s: %s (generate would refuse this deck)", prefix, spec.Type, ve.Field, ve.Message),
+			Severity: diagnostics.SeverityError,
+		}
+		if ve.DidYouMean != "" {
+			d.Fix = &diagnostics.Fix{Kind: "rename_field", Params: map[string]any{"from": key, "to": ve.DidYouMean, "accepted": ve.Expected}}
+		} else {
+			d.Fix = &diagnostics.Fix{Kind: "use_one_of", Params: map[string]any{"available": ve.Expected}}
+		}
+		out = append(out, d)
+	}
+	return out
+}
+
+// svggenDataContractDiagnostics checks an svggen diagram or chart placed in a
+// body placeholder against its type's data contract. Rendered there, a
+// contract failure would only degrade to a "Data unavailable" image, so
+// generate refuses it up front and validate reports it as an error:
+// unknown_key at the key, or a payload whose labels all parse empty
+// (go-slide-creator-x9s5i).
+func svggenDataContractDiagnostics(spec *types.DiagramSpec, path, prefix string) []diagnostics.Diagnostic {
+	err := svggen.CheckDataContract(spec.Type, spec.Data)
+	if err == nil {
+		return nil
+	}
+	if dd := svggenUnknownKeyDiagnostics(spec, err, path, prefix); len(dd) > 0 {
+		return dd
+	}
+	return []diagnostics.Diagnostic{{
+		Code:     string(diagnostics.CodeInvalidSlide),
+		Path:     slidepath.Field(path, "data"),
+		Message:  fmt.Sprintf("%s: %v (generate would refuse this deck)", prefix, err),
+		Severity: diagnostics.SeverityError,
+		Fix:      &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "data", "diagram_type": spec.Type}},
+	}}
+}
+
+// contentDiagramValidationDiagnostics checks a diagram or chart placed in a
+// body placeholder against its type's data contract. generate refuses a
+// native diagram whose data would draw empty labels, and an svggen diagram or
+// chart whose data carries a key its renderer does not read, so validate does
+// too (go-slide-creator-hdx2l, go-slide-creator-x9s5i). Other svggen failures
+// keep their existing checks: they degrade to a placeholder image and are
+// predicted by the fit report, not refused.
 func contentDiagramValidationDiagnostics(item ContentInput, slideIdx, contentIdx int) []diagnostics.Diagnostic {
-	if item.Type != "diagram" {
+	spec := contentDiagramSpec(item)
+	if spec == nil {
+		return nil
+	}
+	field := item.Type + "_value"
+	if item.UsesLegacyValue() {
+		field = "value"
+	}
+	path := slidepath.ContentField(slideIdx, contentIdx, field)
+	prefix := fmt.Sprintf("slide %d, content %d", slideIdx+1, contentIdx+1)
+	if generator.IsNativeDiagramType(spec) {
+		return nativeDiagramDataDiagnostics(spec, path, prefix)
+	}
+	return svggenDataContractDiagnostics(spec, path, prefix)
+}
+
+// contentDiagramSpec returns the diagram spec a chart or diagram content item
+// draws, from the typed field or the legacy value, or nil.
+func contentDiagramSpec(item ContentInput) *types.DiagramSpec {
+	if item.Type != "diagram" && item.Type != "chart" {
 		return nil
 	}
 	resolved, err := item.ResolveValue()
 	if err != nil {
 		return nil // parse errors are reported elsewhere
 	}
-	spec, ok := resolved.(*types.DiagramSpec)
-	if !ok || spec == nil {
+	switch v := resolved.(type) {
+	case *types.DiagramSpec:
+		return v
+	case *types.ChartSpec: //nolint:staticcheck // backward compat
+		if v != nil {
+			return v.ToDiagramSpec()
+		}
 		return nil
 	}
-	field := "diagram_value"
-	if item.UsesLegacyValue() {
-		field = "value"
+	if len(item.Value) == 0 {
+		return nil
 	}
-	return nativeDiagramDataDiagnostics(spec, slidepath.ContentField(slideIdx, contentIdx, field),
-		fmt.Sprintf("slide %d, content %d", slideIdx+1, contentIdx+1))
+	if item.Type == "chart" {
+		var chart types.ChartSpec //nolint:staticcheck // backward compat
+		if json.Unmarshal(item.Value, &chart) != nil || chart.Type == "" {
+			return nil
+		}
+		return chart.ToDiagramSpec()
+	}
+	var diagram types.DiagramSpec
+	if json.Unmarshal(item.Value, &diagram) != nil || diagram.Type == "" {
+		return nil
+	}
+	return &diagram
 }

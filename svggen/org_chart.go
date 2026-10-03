@@ -1175,6 +1175,48 @@ func parseOrgChartData(req *RequestEnvelope) (OrgChartData, error) {
 	return data, nil
 }
 
+// orgNodeSchema is the data contract of a tree node and its children,
+// nestedSchemaDepth levels deep.
+func orgNodeSchema(depth int) *DataSchema {
+	fields := map[string]*DataSchema{
+		"name":  StringDataSchema("Person or unit name"),
+		"title": StringDataSchema("Role line under the name"),
+		"id":    ToleratedDataSchema("Node id (only read in the flat nodes form)"),
+	}
+	var children *DataSchema
+	if depth > 1 {
+		children = orgNodeSchema(depth - 1)
+	}
+	fields["children"] = ArrayDataSchema("Child nodes", children, 0)
+	return ObjectDataSchema("An org chart node", fields, nil)
+}
+
+// DataSchema returns the data contract for org chart diagrams: a root tree,
+// a flat nodes list with parent ids, or the root node's keys at top level.
+func (d *OrgChartDiagram) DataSchema() *DataSchema {
+	return diagramDataSchema("Org chart hierarchy", map[string]*DataSchema{
+		"root": orgNodeSchema(nestedSchemaDepth),
+		"nodes": ArrayDataSchema("Flat nodes linked by parent id", ObjectDataSchema("A flat org node", map[string]*DataSchema{
+			"id":     StringDataSchema("Node id"),
+			"parent": StringDataSchema("Parent node id"),
+			"name":   StringDataSchema("Person or unit name"),
+			"title":  StringDataSchema("Role line under the name"),
+		}, nil), 0),
+		"name":                 StringDataSchema("Flat root form: root node name"),
+		"title":                StringDataSchema("Flat root form: root node role"),
+		"children":             ArrayDataSchema("Flat root form: root's children", orgNodeSchema(nestedSchemaDepth-1), 0),
+		"footnote":             StringDataSchema("Footnote text"),
+		"node_width":           NumberDataSchema("Node box width"),
+		"node_height":          NumberDataSchema("Node box height"),
+		"horizontal_gap":       NumberDataSchema("Gap between siblings"),
+		"vertical_gap":         NumberDataSchema("Gap between levels"),
+		"corner_radius":        NumberDataSchema("Node corner radius"),
+		"max_visible_siblings": NumberDataSchema("Siblings shown before a +N summary node"),
+		"accent_strategy":      EnumDataSchema("Deck accent strategy (set by the generator)", "primary", "rotate", "section-keyed"),
+		orgNodeIssuesKey:       ToleratedDataSchema("Internal: node issues recorded by normalization"),
+	}, nil)
+}
+
 // parseOrgNode recursively parses a node map into an OrgNode.
 func parseOrgNode(m map[string]any) (OrgNode, error) {
 	node := OrgNode{}

@@ -321,6 +321,17 @@ func (d *ScatterChartDiagram) DataSchema() *DataSchema {
 	)
 }
 
+// bubbleSeriesSchema is scatterSeriesSchema plus the parallel bubble sizes
+// parseBubbleChartData reads.
+var bubbleSeriesSchema = ObjectDataSchema("A bubble series", map[string]*DataSchema{
+	"name":          StringDataSchema("Series name"),
+	"points":        ArrayDataSchema("Data points {x, y, size, label} (format 2)", scatterPointSchema, 1),
+	"values":        ArrayDataSchema("Y values (format 1, parallel arrays)", NumberDataSchema("Y value"), 1),
+	"x_values":      ArrayDataSchema("X values (format 1, parallel arrays)", NumberDataSchema("X value"), 1),
+	"bubble_values": ArrayDataSchema("Bubble sizes (format 1, parallel arrays)", NumberDataSchema("Bubble size"), 1),
+	"labels":        ArrayDataSchema("Point labels (format 1)", StringDataSchema("Label"), 0),
+}, nil)
+
 // DataSchema returns the JSON Schema for bubble_chart data.
 func (d *BubbleChartDiagram) DataSchema() *DataSchema {
 	return ObjectDataSchema(
@@ -329,7 +340,7 @@ func (d *BubbleChartDiagram) DataSchema() *DataSchema {
 			"categories":   ArrayDataSchema("Optional category labels", StringDataSchema("Category"), 0),
 			"labels":       ArrayDataSchema("Alias for categories", StringDataSchema("Label"), 0),
 			"x_labels":     ArrayDataSchema("Alias for categories", StringDataSchema("Label"), 0),
-			"series":       ArrayDataSchema("Point series array", scatterSeriesSchema, 1),
+			"series":       ArrayDataSchema("Point series array", bubbleSeriesSchema, 1),
 			"colors":       ArrayDataSchema("Custom hex color overrides", StringDataSchema("Hex color"), 0),
 			"footnote":     StringDataSchema("Chart footnote text"),
 			"x_label":      StringDataSchema("X-axis title"),

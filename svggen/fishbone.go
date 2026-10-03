@@ -942,7 +942,7 @@ func (d *FishboneDiagram) Validate(req *RequestEnvelope) error {
 		if problem, hasProblem := data["problem"]; hasProblem {
 			data["effect"] = problem
 		} else {
-			return fmt.Errorf("fishbone requires 'effect' (or 'problem') field. Expected format: {\"effect\": \"Low Sales\", \"causes\": [{\"category\": \"People\", \"items\": [\"Understaffed\"]}]}")
+			return fmt.Errorf("fishbone requires 'effect' (or 'problem') field. Expected format: {\"effect\": \"Low Sales\", \"categories\": [{\"name\": \"People\", \"causes\": [\"Understaffed\"]}]}")
 		}
 	}
 
@@ -972,6 +972,19 @@ func (d *FishboneDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, 
 		}
 		return nil
 	})
+}
+
+// DataSchema returns the data contract for fishbone diagrams.
+func (d *FishboneDiagram) DataSchema() *DataSchema {
+	return diagramDataSchema("Ishikawa cause-and-effect diagram", map[string]*DataSchema{
+		"effect":  StringDataSchema("Problem at the arrow head (alias: problem)"),
+		"problem": StringDataSchema("Alias for effect"),
+		"categories": ArrayDataSchema("Cause categories (bones)", ObjectDataSchema("A cause category", map[string]*DataSchema{
+			"name":   StringDataSchema("Bone label (alias: label)"),
+			"label":  StringDataSchema("Alias for name"),
+			"causes": stringListSchema("Causes on this bone"),
+		}, nil), 0),
+	}, nil)
 }
 
 // extractFishboneData extracts FishboneData from a request envelope.

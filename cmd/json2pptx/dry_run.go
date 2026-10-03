@@ -733,10 +733,12 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 				}
 				// Count content types
 				switch item.Type {
-				case "chart":
-					output.ChartCount++
-				case "diagram":
-					output.DiagramCount++
+				case "chart", "diagram":
+					if item.Type == "chart" {
+						output.ChartCount++
+					} else {
+						output.DiagramCount++
+					}
 					if dd := contentDiagramValidationDiagnostics(item, i, j); len(dd) > 0 {
 						output.Valid = false
 						output.Diagnostics = append(output.Diagnostics, dd...)
