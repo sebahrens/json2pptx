@@ -59,6 +59,8 @@ var remedyFactKeys = map[string]string{
 	"allowed":        "allowed",
 	"original":       "original",
 	"samples":        "samples",
+	// The pattern whose budget a degraded slide was measured against.
+	"from": "from",
 }
 
 // remedyFacts keeps the facts of a fix's params.
@@ -68,6 +70,13 @@ func remedyFacts(raw map[string]any) map[string]any {
 		name, ok := remedyFactKeys[k]
 		if !ok || v == nil {
 			continue
+		}
+		if k == "from" {
+			// A rename's from is the key at the finding's path, and a slide whose
+			// kind had not committed to a pattern has none to name.
+			if _, rename := raw["did_you_mean"]; rename || v == "" {
+				continue
+			}
 		}
 		if out == nil {
 			out = map[string]any{}

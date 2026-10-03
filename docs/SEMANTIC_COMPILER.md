@@ -319,7 +319,7 @@ A finding says each thing once (go-slide-creator-micna, -vihnl, -4mmvb;
 | where | what |
 |-------|------|
 | `message` | What is wrong and what to do, in the fields of the spec. |
-| `remediation.primary` (`recommended_edit` on a render diagnostic) | `action` and the facts it must meet in `params`: `max_chars`, `max_words`, `max_items`, `min_items`, `max_rows`, `row`, `did_you_mean`, `hosted_type`, `hosted_as`, `expected_shape`, `example`, `available`, `allowed`, `original`, `samples`. No prose, no patch, no compiled-deck locator. A collapsed entry's budget is one value when every item shares it and a list in the order of `paths` when they differ. |
+| `remediation.primary` (`recommended_edit` on a render diagnostic) | `action` and the facts it must meet in `params`: `max_chars`, `max_words`, `max_items`, `min_items`, `max_rows`, `row`, `did_you_mean`, `hosted_type`, `hosted_as`, `expected_shape`, `example`, `available`, `allowed`, `original`, `samples`, and on `SEMANTIC_PATTERN_DEGRADED` `from` (the pattern whose budget the slide missed; a value of the slide's `pattern` field). No prose, no patch, no compiled-deck locator. A collapsed entry's budget is one value when every item shares it and a list in the order of `paths` when they differ. |
 | `next_tool_call` | The `validate_deck_spec` patch (`deck_id` + `patch`) when there is one. |
 | `patch_verified: true` | The patch is complete as written and the server applied it to the spec and validated the result: this finding is gone, nothing blocks that did not block before, and no slide lost its visual in exchange. |
 

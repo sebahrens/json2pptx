@@ -67,6 +67,10 @@ var kindAdvice = []struct {
 	{regexp.MustCompile(`^overlay \d+: image target \(([0-9.]+), ([0-9.]+)\) on shape_grid image cell \[\d+,\d+\] is cropped away — the frame shows source x ([0-9.]+)–([0-9.]+), y ([0-9.]+)–([0-9.]+); `),
 		"this callout points at x ${1}, y ${2} of the picture, which the picture's frame crops away (it shows x ${3}–${4}, y ${5}–${6}): set image.fit to \"contain\" to keep the whole picture, or move the point inside that range; "},
 	{regexp.MustCompile(`^row content ~(\d+)pt exceeds max_height (\d+)pt`), "a row's content needs about ${1}pt of height and has ${2}pt"},
+	// The narrow-wrap finding kept its advice in params.hint, beside the names
+	// of raw patterns; the remedy of a DeckSpec finding is its sentence.
+	{regexp.MustCompile(`a column of fragments, not a label$`),
+		"a column of fragments, not a label: cut each box to a label, or use fewer boxes so each is wider"},
 }
 
 // proseBudgetRE reads the character budget a pattern states in its sentence:

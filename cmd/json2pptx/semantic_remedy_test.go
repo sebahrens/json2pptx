@@ -137,8 +137,11 @@ func TestCollapsedFindingCarriesEveryItemsBudget(t *testing.T) {
 			t.Errorf("op %d = %v, want a rewrite of %s to %v characters", i, op, steps.Paths[i], budgets[i])
 		}
 	}
-	if len(steps.Remediation.Primary.Params) != 1 {
-		t.Errorf("the remediation carries more than the budget: %v", steps.Remediation.Primary.Params)
+	// Beside the budget, only the pattern it belongs to (params.from).
+	for key := range steps.Remediation.Primary.Params {
+		if key != "max_chars" && key != "from" {
+			t.Errorf("the remediation carries more than the budget and its pattern: %v", steps.Remediation.Primary.Params)
+		}
 	}
 	for _, f := range env.Findings {
 		if f.Remediation == nil || f.Remediation.Primary == nil {

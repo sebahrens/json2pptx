@@ -193,6 +193,16 @@ func finishCollapsed(d *semanticDiagnostic) {
 		where = "in the deck"
 	}
 	d.Message = d.baseMessage + fmt.Sprintf(" — %d like this %s", n, where)
+	// The pattern is the first slide's alone: an entry that stands for several
+	// slides names none.
+	deckWide := spansSlides(d.members)
+	if _, named := d.Evidence["pattern"]; named && deckWide {
+		d.Evidence = copyFacts(d.Evidence)
+		delete(d.Evidence, "pattern")
+		if len(d.Evidence) == 0 {
+			d.Evidence = nil
+		}
+	}
 	if d.diag == nil {
 		return
 	}
@@ -200,6 +210,9 @@ func finishCollapsed(d *semanticDiagnostic) {
 	source.Message = d.Message
 	source.Details = map[string]any{}
 	for k, v := range d.diag.Details {
+		if k == "pattern" && deckWide {
+			continue
+		}
 		source.Details[k] = v
 	}
 	for _, k := range []string{"measured", "allowed"} {
