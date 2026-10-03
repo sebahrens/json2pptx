@@ -124,6 +124,7 @@ CLI:
 
 ```bash
 json2pptx semantic validate --spec deck.yaml
+json2pptx semantic validate --spec deck.yaml --template modern  # measure on the template you will render on
 json2pptx semantic compile --spec deck.yaml --output compiled.json
 json2pptx semantic compile --spec deck.yaml --envelope          # compiled_json + diagnostics
 json2pptx semantic render --spec deck.yaml --output deck.pptx
@@ -154,6 +155,65 @@ narrative planning; `semantic explain` exposes
 layout names, not the broader feasibility labels in
 `recommend_visual.template_support.required_layout` (such as `full-image` or
 `grid base`).
+
+### One finding set for validate and render
+
+`semantic validate` and `validate_deck_spec` do not predict a render: they run
+the same compiled-spec run `semantic render` / `render_deck_spec` make, into a
+scratch directory that is removed, and report that run's diagnostics. For one
+spec revision and one template the two tools therefore return the same findings
+(code, path, severity), and `validate` is `ok` exactly when the render would be
+`deterministic_ready`. `TestDeckSpecFindingParityCorpus` asserts it over the
+shipped examples, every slide kind and the agent-journey decks on every shipped
+template.
+
+- **Template.** Findings are measured on a template. Precedence is
+  `meta.template` > the call's `template` (`--template`) > the template a
+  `deck_id` is bound to > the archetype default. The validate envelope echoes
+  `template` and `template_source` (`meta.template`, `template argument`,
+  `deck_id`, `archetype default`) and adds a `warnings[]` entry when the spec
+  pins none. A `deck_id` is bound by the first call that names a template and
+  follows `meta.template`; a later call naming a different template is
+  evaluated on it for that call only (with a warning), so a deck's template
+  changes only by a patch to `/meta/template`.
+- **Severity.** A finding blocks exactly when its severity is `error`
+  (`blocking: true`); see
+  [FIT_FINDINGS.md](FIT_FINDINGS.md#severity-and-blocking-on-the-deckspec-surfaces).
+  `semantic validate` and `semantic render` exit 0 exactly when no blocking
+  finding remains (render: and the deck was written), whatever
+  `--output-validation` is; `ok` in the printed result agrees with the exit
+  status. A deck with blocking findings is still written.
+- **Raw slides.** A `raw_json2pptx` slide's pattern values and chart / diagram
+  data are checked against the contracts generation enforces, and each failure
+  is reported inside the raw slide, e.g.
+  `slides[2].slide.pattern.values.current` or
+  `slides[2].slide.content[1].diagram_value.data.primary[2].highlight`.
+- **Refusals.** A refused render reports the fit findings on every slide, not
+  only the first refused paragraph, and folds per-field refusals under the
+  slide's capacity finding (`symptoms[]`).
+
+### Waiving storyline findings
+
+```yaml
+meta:
+  title: Seed round
+  archetype: sales_pitch          # does not call for an executive summary
+  waivers:
+    - code: CLOSING_WITHOUT_NEXT_STEPS
+      reason: The brief fixes seven slides; the ask is made verbally.
+```
+
+`meta.waivers[]` takes `{code, reason}` for the storyline codes
+`NO_EXECUTIVE_SUMMARY`, `CLOSING_WITHOUT_NEXT_STEPS`, `TITLE_NOT_ACTION` and
+`takeaway_missing`; any other code, a repeated code or an empty reason is a
+blocking `SEMANTIC_REQUIRED` at `meta.waivers[i]`. A waived finding stays in
+the list as an `info` with `waived: <reason>` and is left out of the score and
+the gate. A registered archetype whose defaults are not executive
+(`sales_pitch`, `project_roadmap`, `market_analysis`) waives
+`NO_EXECUTIVE_SUMMARY` without a `waivers` entry. Validate and render results
+record what was waived under `waivers[]` as `{code, reason, source, findings}`,
+`source` being `meta.waivers` or `meta.archetype`. Without a waiver nothing
+changes.
 
 Pass `--spec -` to read the spec from stdin (e.g. `… --spec - < deck.yaml`), portable across platforms. Each subcommand's `-h`/`--help` prints usage and exits **0**, so automated probes can introspect the surface without treating help as a failure.
 

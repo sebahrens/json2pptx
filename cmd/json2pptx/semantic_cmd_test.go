@@ -269,6 +269,9 @@ func TestSemanticRender_StructuredManifestMatchesExpandedSlides(t *testing.T) {
 	path := writeSpec(t, "structured.yaml", `meta:
   title: Structured manifest
   template: midnight-blue
+  waivers:
+    - {code: NO_EXECUTIVE_SUMMARY, reason: Manifest fixture, not a storyline}
+    - {code: CLOSING_WITHOUT_NEXT_STEPS, reason: Manifest fixture, not a storyline}
 structure:
   cover: {kind: title, title: Structured manifest}
   auto_agenda: true

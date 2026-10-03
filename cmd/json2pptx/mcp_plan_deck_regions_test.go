@@ -10,6 +10,7 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
@@ -51,7 +52,14 @@ func TestPlanDeckRegionsDraftsValidateOnEveryTemplate(t *testing.T) {
 				onSlide.Findings = append(onSlide.Findings, f)
 			}
 		}
-		bad := blockingFindings(onSlide)
+		// What needs fixing is an error or a warning; an advisory never blocks
+		// (go-slide-creator-x9rhq).
+		var bad []string
+		for _, f := range onSlide.Findings {
+			if f.Severity != diagnostics.SeverityInfo {
+				bad = append(bad, string(f.Severity)+" "+f.Code+": "+f.Message)
+			}
+		}
 		if !env.OK && len(bad) == 0 {
 			bad = []string{"validate_deck_spec ok=false"}
 		}

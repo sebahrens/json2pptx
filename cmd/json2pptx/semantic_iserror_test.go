@@ -269,7 +269,7 @@ func TestSemanticRenderExitUsesDeterministicVerdict(t *testing.T) {
 		OK: true, OutputPath: "unreviewed.pptx",
 		DeterministicReady: &ready, Publishable: &unreviewed,
 	}
-	if err := emitSemanticRenderResult(clean, "strict"); err != nil {
+	if err := emitSemanticRenderResult(clean); err != nil {
 		t.Errorf("clean but unreviewed render should exit successfully: %v", err)
 	}
 	failed := semanticRenderResult{
@@ -277,7 +277,7 @@ func TestSemanticRenderExitUsesDeterministicVerdict(t *testing.T) {
 		DeterministicReady: &notReady, Publishable: &unreviewed,
 		DeterministicBlockingReasons: []string{"quality gate: failed"},
 	}
-	if err := emitSemanticRenderResult(failed, "strict"); err == nil {
+	if err := emitSemanticRenderResult(failed); err == nil {
 		t.Error("deterministic blocker should fail strict CLI render")
 	}
 }

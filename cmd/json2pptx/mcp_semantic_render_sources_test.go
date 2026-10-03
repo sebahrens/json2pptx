@@ -357,15 +357,33 @@ func TestRenderDeckSpec_BYOTemplateSurvivesDeckID(t *testing.T) {
 	}
 	assert4x3("raw", filepath.Join(mc.outputDir, "byo-raw.pptx"))
 
-	// An explicit registered template on the call replaces the BYO file.
+	// An explicit registered template on the call renders THIS call on it and
+	// says so; the deck_id stays bound to its BYO file
+	// (go-slide-creator-2dit4).
 	third := renderDeckSpecCall(t, mc, map[string]any{"deck_id": first.DeckID, "template": "midnight-blue", "output_filename": "byo-switch.pptx"})
 	if !third.Success {
-		t.Fatalf("switching template failed: %s", third.Error)
+		t.Fatalf("one-off template render failed: %s", third.Error)
 	}
 	if bytes.Contains(pptxParts(t, third.PptxPath)["ppt/presentation.xml"], []byte(fourByThreeSldSz)) {
 		t.Error("template=midnight-blue still rendered the 4:3 BYO file")
 	}
+	if len(third.Warnings) == 0 || !strings.Contains(third.Warnings[0], "stays bound") {
+		t.Errorf("one-off template render did not say the deck_id keeps its template: %v", third.Warnings)
+	}
+	if h, _ := mc.deckHandles.Load(first.DeckID); h == nil || h.TemplatePath == "" || h.Template != "" || h.BaseDir != repoRoot {
+		t.Errorf("a template argument rebound the handle: %+v", h)
+	}
+
+	// The deck's template changes by patch.
+	fourth := renderDeckSpecCall(t, mc, map[string]any{
+		"deck_id":         first.DeckID,
+		"patch":           []any{map[string]any{"op": "add", "path": "/meta/template", "value": "midnight-blue"}},
+		"output_filename": "byo-patched.pptx",
+	})
+	if !fourth.Success || fourth.Template != "midnight-blue" {
+		t.Fatalf("patching /meta/template failed: %s (template %q)", fourth.Error, fourth.Template)
+	}
 	if h, _ := mc.deckHandles.Load(first.DeckID); h == nil || h.TemplatePath != "" || h.Template != "midnight-blue" {
-		t.Errorf("handle after switching template: %+v", h)
+		t.Errorf("handle after patching /meta/template: %+v", h)
 	}
 }

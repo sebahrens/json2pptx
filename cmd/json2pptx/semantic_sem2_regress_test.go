@@ -28,14 +28,15 @@ func TestSemanticSlideScoresTakeStructuralDeductions(t *testing.T) {
 }
 
 // A gate-blocking review finding read as "info" with no semantic_path
-// (go-slide-creator-csclk.53).
-func TestGateBlockingFindingIsWarningWithSemanticPath(t *testing.T) {
+// (go-slide-creator-csclk.53). What blocks the gate is an error
+// (go-slide-creator-x9rhq).
+func TestGateBlockingFindingIsErrorWithSemanticPath(t *testing.T) {
 	ir := &semantic.DeckIR{Slides: []semantic.SlideIR{{
 		Kind: semantic.KindBridge, SourcePath: "slides[0]",
 		Body: map[string]any{"caption": "FY26, USD millions", "unit": "$m"},
 	}}}
 	d := semanticDiagFromFitWithIR(nil, ir, substantiveReadabilityFinding("/slides/0/rendered_shapes/200"))
-	if d.Severity != "warning" || d.SemanticPath != "slides[0].caption" {
+	if d.Severity != "error" || !d.Blocking || d.SemanticPath != "slides[0].caption" {
 		t.Fatalf("got severity %q path %q", d.Severity, d.SemanticPath)
 	}
 }

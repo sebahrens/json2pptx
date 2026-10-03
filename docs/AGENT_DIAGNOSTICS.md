@@ -56,6 +56,11 @@ the deck-rhythm advisories `SEMANTIC_RHYTHM_MONOTONY`, `SEMANTIC_RHYTHM_DENSITY`
 }
 ```
 
+On these surfaces every finding also carries `blocking` (true exactly when
+`severity` is `error`), and the envelope adds `template` / `template_source`
+(what the findings were measured on), `warnings[]` and `waivers[]`; see
+[SEMANTIC_COMPILER.md](SEMANTIC_COMPILER.md#one-finding-set-for-validate-and-render).
+
 (`SEMANTIC_DENSITY` and the other advisory codes are `info`/`warning` by
 default and become `error` under `strict`; they carry no `remediation` of their
 own.) Content-bearing list fields are counted **after** the compiler's own

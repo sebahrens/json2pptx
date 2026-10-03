@@ -50,8 +50,10 @@ type deckHandle struct {
 	// SlideDigests is the per-slide content digest of the last stored spec, so
 	// changed_slides reflects which slides a patch actually changed.
 	SlideDigests []string
-	// Template is the template the last render used, echoed so a re-render
-	// without an explicit template keeps the deck looking the same.
+	// Template is the template the deck is bound to: the first template a call
+	// named for it, or the spec's meta.template. A re-render without an
+	// explicit template keeps the deck looking the same, and the binding
+	// changes only by a patch to /meta/template (go-slide-creator-2dit4).
 	Template string
 	// TemplatePath is the vetted, absolute bring-your-own .pptx the last render
 	// used (render_deck_spec template_path), and BaseDir the allowed root it was

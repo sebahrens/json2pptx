@@ -1,5 +1,61 @@
 # Schema Changelog
 
+- **2026-10-03 — One finding set and one severity model for a DeckSpec (`go-slide-creator-x9rhq`, `-oh3qr`, `-2dit4`, `-3rn3s`, `-uon4b`).**
+  - **Same findings from validate and render.** `validate_deck_spec` and
+    `json2pptx semantic validate` run the render into a scratch directory and
+    report its diagnostics, so for one spec revision and template they return
+    the findings `render_deck_spec` / `semantic render` return (code, path,
+    severity). Geometry advisories (`SLIDE_UNDERUSED`, `SPARSE_FILL`,
+    `sparse_layout`, …) and generation-only findings (`title_wraps`,
+    `contrast_predicted`, `chart.*`) therefore appear at validate too. A
+    refused render now also reports the fit findings on the other slides, a
+    spec that does not parse gets every spec-level finding from render (it
+    listed only the parse errors), and a spec that does not compile gets the
+    compile diagnostics, post-compile preflight included, from validate.
+    Validation takes about as long as a render.
+  - **Severity says whether a finding blocks.** New `blocking` boolean on
+    every DeckSpec finding (`diagnostics[].blocking`, envelope
+    `findings[].blocking`), true exactly when `severity` is `error`. A fit
+    finding the quality gate blocks on is an `error` (a blocking
+    `BODY_TOO_LONG`, `NO_EXECUTIVE_SUMMARY`, `CLOSING_WITHOUT_NEXT_STEPS`,
+    `takeaway_missing`, `accent_overload`, any `shrink_or_split`); all other
+    fit findings are `info`. `deterministic_blocking_reasons` are now
+    `CODE at path` per blocking finding and no longer the gate's sentences.
+    New code `QUALITY_GATE` (error, at `slides`) carries a gate criterion no
+    single finding accounts for. `validate_deck_spec` `ok` is false exactly
+    when the render would not be `deterministic_ready`.
+  - **CLI.** `semantic render` exits 0 exactly when the deck was written and
+    no blocking finding remains — also under `--output-validation warn|off` —
+    and prints `ok: false` plus `error` otherwise. `semantic validate` gains
+    `--template` and `--templates-dir`, and its envelope gains `template`,
+    `template_source`, `warnings[]` and `waivers[]`.
+  - **Template.** `validate_deck_spec` echoes `template` and `template_source`
+    and warns in `warnings[]` when the spec pins none; it accepts `base_dir`.
+    `get_started`'s `validate_deck_spec` example passes `template`. A
+    `deck_id` is bound by the first `template` argument (or `meta.template`);
+    a later different `template` argument renders that call only and warns,
+    and the deck changes template by a patch to `/meta/template`. It used to
+    adopt the last render's template.
+  - **Waivers.** New `meta.waivers: [{code, reason}]` for
+    `NO_EXECUTIVE_SUMMARY`, `CLOSING_WITHOUT_NEXT_STEPS`, `TITLE_NOT_ACTION`,
+    `takeaway_missing`; a non-executive `meta.archetype` (`sales_pitch`,
+    `project_roadmap`, `market_analysis`) waives `NO_EXECUTIVE_SUMMARY`. A
+    waived finding is an `info` with `waived`; results record `waivers[]`
+    `{code, reason, source, findings}`.
+  - **Root cause.** A slide whose pattern lacks height reports one blocking
+    `BODY_TOO_LONG` at the slide with the per-field
+    `TEXT_BELOW_READABLE_MIN` refusals under `symptoms[]`
+    (`evidence.symptoms`), in place of one info and one error per field.
+  - **Raw slides.** Pattern-value and chart / diagram data-contract errors on
+    a `raw_json2pptx` slide are reported by validate and render at a path
+    inside the slide (`slides[i].slide.pattern.values.<key>`,
+    `slides[i].slide.content[j].diagram_value.data…`) instead of surfacing
+    only as a render error string.
+  - **describe_finding** adds `blocks` (`always` / `sometimes` / `never`) and
+    `blocks_when`.
+  - Findings whose raw path maps to no DeckSpec field carry the slide's path
+    as `semantic_path` instead of none.
+
 - **2026-10-03 — Composition overrides compile to what explain reports (`go-slide-creator-vj549`).** SchemaVersion unchanged (no new tools, codes or fix kinds).
   - A `pattern` / `layout` override listed in `compositions[]` is honoured
     only when the slide actually compiles to it, and the compiler is held to
