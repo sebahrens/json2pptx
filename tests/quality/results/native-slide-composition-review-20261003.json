@@ -64,6 +64,10 @@
   "validation": {
     "targeted_go_skill_contract_and_installation_tests": "pass",
     "git_diff_check": "pass",
-    "generic_skill_creator_validator": "Could not run: PyYAML absent in available Python environments. Repository-specific schema, workflow and installed-reference tests passed; frontmatter unchanged."
+    "generic_skill_creator_validator": "Could not run: PyYAML absent in available Python environments. Repository-specific schema, workflow and installed-reference tests passed; frontmatter unchanged.",
+    "all_skill_related_tests": "pass: go test ./cmd/json2pptx -run Test.*Skill|TestGetStartedEchoesQualityWorkflow -count=1",
+    "bundle_bytes": 102253,
+    "bundle_budget_bytes": 102400,
+    "ci_size_regression": "2e90ff05 failed the unchanged bundle cap. Follow-up qt4z0 moved detailed composition criteria to the existing visual-review skill, retained authoring links, and compacted workflow prose. All skill-related local tests now pass."
   }
 }

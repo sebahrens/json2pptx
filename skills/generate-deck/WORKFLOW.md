@@ -154,11 +154,10 @@ Do not switch strategy just to move `accent_balance`; judge the rendered slides.
 
 ## Phase 3: RENDER
 
-`validate_deck_spec` → `render_deck_spec`. Fix blocking diagnostics at their
-`semantic_path`; `SEMANTIC_PATTERN_DEGRADED` means the visual you asked for
-did not land (DECKSPEC.md). `deterministic_ready` is a precondition for
-review, never approval. Keep the returned `deck_id`: revisions are
-`deck_id` + `patch`, and `changed_slides` names what to re-render.
+`validate_deck_spec` → `render_deck_spec`; fix blockers at `semantic_path`.
+`SEMANTIC_PATTERN_DEGRADED` means the requested visual changed (DECKSPEC.md).
+`deterministic_ready` is not approval. Retain `deck_id`; revise with `patch`
+and re-render `changed_slides`.
 
 ---
 
@@ -187,14 +186,13 @@ the wrong visual show only in pixels. **Images are truth.**
    | 7 | Balanced whitespace | content crammed in one corner or a strip floating in white space | P2 |
    | 8 | Meaningful accents | colour that encodes nothing, or highlights the wrong item | P2 |
    | 9 | Evidence | chart without units/axis label, data without `source`, no `takeaway` | P1 |
-   | 10 | Native slide composition | unnecessary dashboard tiles, nested cards, button-like labels or app chrome dominate the content; see RULES.md → Native slide composition | P1 |
+   | 10 | Native slide composition | decorative web UI dominates the content (RULES.md → Native slide composition) | P1 |
 
 3. **Record it.** Every failed check is a finding on that slide in
    `submit_visual_review` (`{severity, category, description, location}`,
    category = the check name). A P0/P1 finding makes the deck verdict
-   `changes_requested`; approve a slide only when it passes all ten. Identify
-   the specific element and a content-preserving layout repair for check 10;
-   a meaningful process box, KPI group or supplied screenshot is not a failure.
+   `changes_requested`; approve only when all ten pass. For check 10, name
+   the needless UI element and a repair that preserves its content.
 4. **Repair.** Edit the spec at the finding's `semantic_path` (or the field
    the rubric names), send `deck_id` + `patch`, re-render and re-check
    `changed_slides`, then review the whole final revision once and submit.
