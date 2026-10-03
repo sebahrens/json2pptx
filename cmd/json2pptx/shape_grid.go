@@ -793,6 +793,16 @@ func boundsFromRectPercentages(base pptx.RectEmu, pct *GridBoundsInput) pptx.Rec
 // slideWidth and slideHeight are the template's actual slide dimensions in EMU (0 = use 16:9 defaults).
 // diagCtx provides template theme colors for diagram cells (nil = no theme injection).
 func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64, diagCtx *GridDiagramContext) (*ShapeGridResult, error) {
+	// A grid resolved in a content zone is the slide's own block; nested
+	// sub-grids arrive with their cell's bounds and no zone.
+	return resolveShapeGridAs(input, alloc, overrideBounds, zone, slideWidth, slideHeight, diagCtx, zone != nil)
+}
+
+// resolveShapeGridAs is resolveShapeGrid with the grid's role stated:
+// slideBlock marks the slide's own content block, which the composition
+// policy places (shapegrid.Grid.Compose). Callers that resolve a slide's grid
+// without a content zone (pattern previews) pass true.
+func resolveShapeGridAs(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64, diagCtx *GridDiagramContext, slideBlock bool) (*ShapeGridResult, error) {
 	if input == nil || len(input.Rows) == 0 {
 		return nil, nil
 	}
@@ -839,8 +849,8 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 		grid.AnchorY = zone.BodyTop
 		grid.TextLeft = zone.TextLeft
 		grid.DefaultGapPt = zone.GutterPt
-		grid.Compose = composesSlideBlock(input)
 	}
+	grid.Compose = slideBlock && composesSlideBlock(input)
 	grid.KeepTextSizes = input.KeepTextSizes
 	grid.Links = convertGridLinks(input.Links)
 
