@@ -207,10 +207,12 @@ func TestDeckSpecReadabilityVerdictParityAllKindsAllTemplates(t *testing.T) {
 	}
 }
 
-// regionsTimelineOnModernSpec is the first regions kind example, whose 40/60
-// right-hand stack leaves its dated timeline too short on the modern template:
-// generation writes the milestone labels at 2.4pt and refuses.
-const regionsTimelineOnModernSpec = `{"meta":{"template":"modern","title":"Parity"},"slides":[{"kind":"regions","title":"Revenue growth funds the launch at a 32% gross margin","arrangement":"main_left","regions":[{"kind":"chart","size_pct":65,"heading":"Quarterly revenue","unit":"€m","chart":{"type":"line_chart","data":{"categories":["Q1","Q2","Q3","Q4"],"series":[{"name":"Revenue","values":[12,14,17,21]}]}}},{"kind":"stat","size_pct":40,"value":"32%","label":"Gross margin, Q4"},{"kind":"timeline","size_pct":60,"heading":"Launch plan","milestones":[{"label":"Design","date":"Oct"},{"label":"Pilot","date":"Nov"},{"label":"Rollout","date":"Dec"}]}],"source":"Finance ledger, FY26","takeaway":"Revenue nearly doubled in a year; the margin pays for the rollout."}]}`
+// regionsTimelineOnModernSpec is the first regions kind example with its
+// right-hand stack at 75/25, which leaves the dated timeline under its heading
+// too short on the modern template even trimmed: generation writes the
+// milestone labels shrunk and refuses. (The example's own 40/60 stack reads
+// since the dots timeline trims its rows, go-slide-creator-wj8uz.)
+const regionsTimelineOnModernSpec = `{"meta":{"template":"modern","title":"Parity"},"slides":[{"kind":"regions","title":"Revenue growth funds the launch at a 32% gross margin","arrangement":"main_left","regions":[{"kind":"chart","size_pct":65,"heading":"Quarterly revenue","unit":"€m","chart":{"type":"line_chart","data":{"categories":["Q1","Q2","Q3","Q4"],"series":[{"name":"Revenue","values":[12,14,17,21]}]}}},{"kind":"stat","size_pct":75,"value":"32%","label":"Gross margin, Q4"},{"kind":"timeline","size_pct":25,"heading":"Launch plan","milestones":[{"label":"Design","date":"Oct"},{"label":"Pilot","date":"Nov"},{"label":"Rollout","date":"Dec"}]}],"source":"Finance ledger, FY26","takeaway":"Revenue nearly doubled in a year; the margin pays for the rollout."}]}`
 
 // go-slide-creator-fn2ka: text written by a pattern nested in a grid cell (a
 // regions slide's timeline) is measured by validate too. The readability check

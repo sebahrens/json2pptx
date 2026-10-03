@@ -198,7 +198,7 @@ func ResolveShares(shares, weights []float64) ([]float64, error) {
 // the shortest shipped content area (modern: about 215pt under a title and
 // takeaway). The values are measured with validate_deck_spec on every
 // shipped template (go-slide-creator-umev3): a stat needs 30% (35% with a
-// context line), a three-stop timeline 55%, a table 15% per line including
+// context line), a three-stop timeline 45%, a table 15% per line including
 // the header, a chart what its decoration leaves room for
 // (regionChartMinPct), and a heading row another 10%. A stat weighted under a
 // timeline or table used to fall below these on modern, and drafted regions
@@ -220,7 +220,12 @@ func regionMinHeightPct(r map[string]any, chartFloor bool) float64 {
 			pct = 35
 		}
 	case RegionTimeline:
-		pct = 55
+		// On modern a three-stop timeline reads from 35% of a rows or
+		// main_left stack (40% as a main_top band), and under a heading from
+		// 50% (55% as a band); the other templates need 5–10% less. It
+		// needed 55% while its fixed 47pt date row and inset stop text left
+		// the labels nothing at 35–45% (go-slide-creator-wj8uz).
+		pct = 45
 	case RegionTable:
 		rows, _ := r["rows"].([]any)
 		pct = 15 * float64(len(rows)+1)

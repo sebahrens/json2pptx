@@ -123,3 +123,89 @@ func TestTimelineHorizontalWrittenFitOnShortAreas(t *testing.T) {
 		}
 	}
 }
+
+// timelineDotsAt expands a dots timeline into a w×h area and reports whether
+// its text is written at or above the floor where the validator measures it
+// (a text cell laid out in no height is not measured), whether any text cell
+// was laid out in no height, and whether the pattern reported BODY_TOO_LONG.
+func timelineDotsAt(t *testing.T, w, h float64, v *TimelineHorizontalValues) (reads, hidden, warned bool) {
+	t.Helper()
+	p := &timelineHorizontal{}
+	below, warnings := patternWrittenBelowFloor(t, p, ExpandContext{}, w, h, v, &TimelineHorizontalOverrides{})
+	ctx := ExpandContext{LayoutBounds: LayoutBounds{Width: int64(w * 12700), Height: int64(h * 12700)}}
+	grid, err := p.Expand(ctx, v, &TimelineHorizontalOverrides{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ApplyGridDefaults(grid)
+	for _, c := range resolveGridAt(t, grid, pptx.RectEmu{CX: ctx.LayoutBounds.Width, CY: ctx.LayoutBounds.Height}).Cells {
+		if c.Kind == shapegrid.CellKindShape && c.ShapeSpec != nil && len(c.ShapeSpec.Text) > 0 && c.Bounds.CY <= 0 {
+			hidden = true
+		}
+	}
+	return len(below) == 0, hidden, len(warnings) > 0
+}
+
+// More height never turns a timeline that reads into one that does not
+// (go-slide-creator-wj8uz). The dots layout fixed a 47pt date row (a 12pt
+// date in 28pt of inset and 4pt of padding) and inset stop text. A
+// three-stop timeline in a regions cell passed validation at 25% of a stack
+// — the grid's row gaps took the area and the labels were laid out in zero
+// height, which nothing measures — was written shrunk at 35–45%, and read
+// again from 50%. The rows now trim to their text before the labels give way,
+// and a timeline that still does not fit is scaled whole: its text is always
+// laid out, and BODY_TOO_LONG is reported exactly when it is written shrunk.
+func TestTimelineHorizontalDotsFitMonotonicInHeight(t *testing.T) {
+	step := 2.0
+	if testing.Short() {
+		step = 6
+	}
+	type tc struct {
+		name              string
+		stops             int
+		label, date, body string
+		widths            []float64
+	}
+	cases := []tc{
+		{"3-short-dated", 3, "Design", "Oct", "", []float64{260, 450, 850}},
+		{"3-wrapping-label", 3, "Pilot in two regions", "Q2 2026", "", []float64{260, 450}},
+		{"3-undated", 3, "Rollout", "", "", []float64{450}},
+		{"4-body", 4, "Pilot", "Q1 2025", "Run the new model in two regions", []float64{450, 850}},
+		{"7-short", 7, "Phase", "2025", "", []float64{450, 850}},
+	}
+	for _, c := range cases {
+		v := make(TimelineHorizontalValues, c.stops)
+		for i := range v {
+			v[i] = TimelineStop{Label: c.label, Date: c.date, Body: c.body}
+		}
+		for _, w := range c.widths {
+			t.Run(fmt.Sprintf("%s/w%.0f", c.name, w), func(t *testing.T) {
+				readsFrom, quietFrom := 0.0, 0.0
+				for h := 12.0; h <= 360; h += step {
+					reads, hidden, warned := timelineDotsAt(t, w, h, &v)
+					if hidden {
+						t.Errorf("at %.0fpt text is laid out in no height", h)
+					}
+					if !reads && !warned {
+						t.Errorf("at %.0fpt text is written below the floor without BODY_TOO_LONG", h)
+					}
+					switch {
+					case reads && readsFrom == 0:
+						readsFrom = h
+					case !reads && readsFrom > 0:
+						t.Fatalf("reads at %.0fpt but not at %.0fpt", readsFrom, h)
+					}
+					switch {
+					case !warned && quietFrom == 0:
+						quietFrom = h
+					case warned && quietFrom > 0:
+						t.Fatalf("no BODY_TOO_LONG at %.0fpt but one at %.0fpt", quietFrom, h)
+					}
+				}
+				if readsFrom == 0 {
+					t.Fatal("never reads up to 360pt")
+				}
+			})
+		}
+	}
+}
