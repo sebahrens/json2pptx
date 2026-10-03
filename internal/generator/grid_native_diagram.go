@@ -72,6 +72,11 @@ func GenerateGridNativeDiagram(spec *types.DiagramSpec, region NativeDiagramRegi
 	if region.Bounds.Width <= 0 || region.Bounds.Height <= 0 {
 		return nil, fmt.Errorf("%s: empty region bounds", spec.Type)
 	}
+	// Data problems come first: a region size is meaningless for a payload
+	// whose labels would not be drawn at all (go-slide-creator-hdx2l).
+	if err := ValidateNativeDiagramData(spec); err != nil {
+		return nil, err
+	}
 	if f := NativeDiagramRegionPreflight(spec, region); f != nil {
 		return nil, &NativeRegionCapacityError{Finding: *f}
 	}

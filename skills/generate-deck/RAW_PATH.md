@@ -108,20 +108,18 @@ deck palette, pass `resolve_theme`'s `theme_colors` (same template and
 collision or unreadable native text means shorter labels or more space, then
 render the slide again.
 
-Native diagram types (`swot`, `porters_five_forces`, `pestel`,
+Native types (`swot`, `porters_five_forces`, `pestel`,
 `business_model_canvas`, `value_chain`, `nine_box_talent`, `kpi_dashboard`,
-`process_flow`, `heatmap`, `pyramid`, `house_diagram`, `panel_layout` and
-aliases `icon_columns` / `icon_rows` / `stat_cards`) also render as editable
-shapes in a `shape_grid` cell (`{"diagram": {"type": "pestel", ...}}`) or a
-`compose` segment, sized to the region; `get_diagram_capabilities` reports
-`grid_cell_support: true` and `pipeline` `native_ooxml` (svggen: `svg`). Text
-that would fall below the 7pt floor is refused (`validate_input` fit report,
-`generate_presentation`) with `DIAGRAM_REGION_TOO_SMALL`:
-`fix.params.min_width_emu` / `min_height_emu` (if ≤ 3x larger works) and the
-alternatives — larger region, body placeholder (`diagram_value`), fewer
-items. Dense canvases (BMC, big heatmaps) need most of the slide. A word too
-wide for its native shape (narrow pyramid apex, value-chain step) reports
-`TEXT_EXCEEDS_SHAPE` with `fix.params.words`: shorten it or widen the region.
+`process_flow`, `heatmap`, `pyramid`, `house_diagram`, `panel_layout`; aliases
+`icon_columns` / `icon_rows` / `stat_cards`) also render as editable shapes in
+a `shape_grid` cell or `compose` segment, sized to it
+(`get_diagram_capabilities`: `grid_cell_support`, `pipeline` `native_ooxml`;
+svggen `svg`). Text under the 7pt floor is refused with
+`DIAGRAM_REGION_TOO_SMALL` (`fix.params.min_width_emu` / `min_height_emu`):
+enlarge the region, use a body placeholder (`diagram_value`) or cut items;
+dense canvases need most of the slide. A word too wide for its shape reports
+`TEXT_EXCEEDS_SHAPE` (`fix.params.words`). Data keys are strict: an undrawn
+key (pyramid `levels[].title`, not `label`) is `unknown_key`, fix `rename_field`.
 
 Diagrams use one hue by default: timeline bars/milestones, matrix_2x2
 points and org_chart levels stay in accent1 and its tints (org levels take
@@ -162,20 +160,18 @@ or `fields="full"`.
 `aggregates` — `longest_run` (target ≤ 2), `repetition_index` (< 0.5),
 `accent_balance` (no accent > 80%), `density_cv` (> 0.1 on 4+ slides),
 `density_distribution` — plus `composition_score` and `recommendations` with
-`recommended_break_patterns` and a `code`. Act on it: swap the middle slide
-of a run of 3 (`break_run`) to a suggested break pattern — suggestions follow
-the slide's content (numbers → KPI / stat, options → comparison, dates →
-timeline; never a timeline without dates); add detail or use a smaller grid
-when underfilled cells pass 30% (`underfilled_cells`). Narrative checks:
+`recommended_break_patterns` and a `code`. Swap the middle slide of a run
+of 3 (`break_run`) to a suggested pattern (picked from content: numbers → KPI,
+options → comparison, dates → timeline); add detail or a smaller grid when
+underfilled cells pass 30% (`underfilled_cells`). Narrative checks:
 `missing_executive_summary` (6+ slides), `missing_next_steps` (no
 next-steps close), `missing_sections` (10+ content slides, no divider or
 agenda), `evidence_missing_takeaway_or_source`, `bullets_heavy` (3+
 bullets-only slides). A `compose` slide's `pattern` names its structure
-(direction, region families, `*` on a region ≥ 12.5 points over an equal
-share, nesting in place: `compose:v[kpi*+pull-quote]`,
-`compose:h[chart+compose:v[kpi+pull-quote]]`): differently composed slides
-break a run; reordered, re-split or same-family swaps (`kpi-3up` →
-`kpi-4up`) do not, and `break_run` skips the run's families. Accent checks: `accent_heavy_slide`,
+(direction, region families, `*` = region ≥ 12.5 points over an equal share,
+nesting: `compose:v[kpi*+pull-quote]`, `compose:h[chart+compose:v[kpi+pull-quote]]`);
+reordered, re-split or same-family swaps (`kpi-3up` → `kpi-4up`) still form a
+run, and `break_run` skips the run's families. Accent checks: `accent_heavy_slide`,
 `strong_accent_run` (see RULES.md). `accent_balance` counts pattern slides
 by their resolved accent (`accent_strategy` or `overrides.accent`).
 Iterate until the score is ≥ 70 and the narrative codes are gone.

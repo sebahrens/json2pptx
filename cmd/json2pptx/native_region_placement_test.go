@@ -34,7 +34,7 @@ var nativeRegionFixtures = map[string]struct {
 	"process_flow":          {map[string]any{"steps": []any{"Design", "Build", "Launch"}}, "Launch"},
 	"pyramid":               {map[string]any{"levels": []any{map[string]any{"label": "Strategy"}, map[string]any{"label": "Delivery"}, map[string]any{"label": "Operations"}}}, "Operations"},
 	"swot":                  {map[string]any{"strengths": []any{"Talent"}, "weaknesses": []any{"Scale"}, "opportunities": []any{"Growth"}, "threats": []any{"Rivals"}}, "Rivals"},
-	"value_chain":           {map[string]any{"primary": []any{map[string]any{"name": "Inbound", "activities": []any{"Receive"}}, map[string]any{"name": "Operations", "activities": []any{"Build"}}, map[string]any{"name": "Outbound", "activities": []any{"Ship"}}}, "support": []any{map[string]any{"name": "People", "activities": []any{"Train"}}}}, "Outbound"},
+	"value_chain":           {map[string]any{"primary": []any{map[string]any{"name": "Inbound", "items": []any{"Receive"}}, map[string]any{"name": "Operations", "items": []any{"Build"}}, map[string]any{"name": "Outbound", "items": []any{"Ship"}}}, "support": []any{map[string]any{"name": "People", "items": []any{"Train"}}}}, "Outbound"},
 	"icon_columns":          {map[string]any{"panels": []any{map[string]any{"title": "Growth", "body": "Scale"}, map[string]any{"title": "Control", "body": "Manage"}}}, "Manage"},
 	"icon_rows":             {map[string]any{"panels": []any{map[string]any{"title": "Growth", "body": "Scale"}, map[string]any{"title": "Control", "body": "Manage"}}}, "Manage"},
 	"stat_cards":            {map[string]any{"panels": []any{map[string]any{"title": "Revenue", "value": "12M"}, map[string]any{"title": "Margin", "value": "42%"}}}, "12M"},

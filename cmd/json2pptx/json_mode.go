@@ -1460,6 +1460,9 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 				}
 				item.Value = &diagram
 			}
+			if err := checkNativeDiagramData(item.Value, slideNum, j+1); err != nil {
+				return nil, err
+			}
 
 		case "image":
 			item.Type = generator.ContentImage
@@ -1783,6 +1786,21 @@ func validateDiagramSpec(spec *types.DiagramSpec, slideNum, contentNum int) stri
 	return ""
 }
 
+// checkNativeDiagramData refuses a native diagram whose data carries a key the
+// builder does not read, or whose every label parses empty: drawn, it would be
+// a diagram of blank shapes (go-slide-creator-hdx2l). value is the converted
+// content value; anything but a *types.DiagramSpec passes.
+func checkNativeDiagramData(value any, slideNum, contentNum int) error {
+	spec, ok := value.(*types.DiagramSpec)
+	if !ok {
+		return nil
+	}
+	if err := generator.ValidateNativeDiagramData(spec); err != nil {
+		return fmt.Errorf("slide %d, content %d: diagram data: %w", slideNum, contentNum, err)
+	}
+	return nil
+}
+
 // mergeTextItemsSamePlaceholder combines text/section-title items that target
 // the same placeholder ID. The first item's text becomes "first\nsecond".
 // Non-text items and items with unique placeholder IDs are left unchanged.
@@ -1929,6 +1947,9 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 			}
 			if diagram.Type == "" {
 				return nil, fmt.Errorf("slide %d, content %d: diagram type is required", slideNum, j+1)
+			}
+			if err := checkNativeDiagramData(&diagram, slideNum, j+1); err != nil {
+				return nil, err
 			}
 			item.Value = &diagram
 
