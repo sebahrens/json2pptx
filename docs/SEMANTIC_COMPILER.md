@@ -176,7 +176,9 @@ template.
   pins none. A `deck_id` is bound by the first call that names a template and
   follows `meta.template`; a later call naming a different template is
   evaluated on it for that call only (with a warning), so a deck's template
-  changes only by a patch to `/meta/template`.
+  changes only by a patch to `/meta/template`. `fork: true` with that patch
+  binds the new `deck_id` to the new template and leaves the source deck's
+  binding alone; `restore` follows the restored revision's `meta.template`.
 - **Severity.** A finding blocks exactly when its severity is `error`
   (`blocking: true`); see
   [FIT_FINDINGS.md](FIT_FINDINGS.md#severity-and-blocking-on-the-deckspec-surfaces).
@@ -295,6 +297,14 @@ slide as `{id, index, slide_number, change, was_index?}`:
 After a successful render `next_tool_call` asks `render_deck_thumbnails` for
 `changed_slides` only (the whole deck when every slide changed) and is absent
 when a re-render changed nothing visible.
+
+The validating render `validate_deck_spec` runs is not a render of the deck: it
+writes into a scratch directory, marks no revision as rendered and leaves the
+last-render baseline alone (it stores the spec as any validate does, and
+nothing under `dry_run`). A render on a template the `deck_id` is not bound to
+(a one-off `template` argument) keeps the binding and the revision, and reports
+every slide as `restyled`; so does the next render back on the bound template,
+because the baseline is what was last rendered.
 
 **Compact patch responses.** A `deck_id` + `patch` (or `restore`) render of a
 deck that has rendered before returns the verdict, the change list, every
