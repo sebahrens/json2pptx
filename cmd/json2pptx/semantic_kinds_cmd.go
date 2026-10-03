@@ -70,7 +70,11 @@ func runSemanticKinds() error {
 	args := map[string]any{}
 	if fs.NArg() == 1 {
 		args["kinds"] = []any{fs.Arg(0)}
-		args["fields"] = []any{"item_schema", "compositions", "budgets"}
+		args["fields"] = []any{"item_schema", "compositions", "budgets", "example"}
+		if *jsonOutput {
+			// A script validating a slide needs every accepted key.
+			args["fields"] = []any{"item_schema", "item_schema_full", "compositions", "budgets", "example"}
+		}
 		if *templateName != "" {
 			args["template"] = *templateName
 		}
@@ -151,16 +155,6 @@ func writeSemanticKindDetail(w io.Writer, k slideKindListEntry, takeawayBudget m
 	if len(k.RequiredFields) > 0 {
 		fmt.Fprintf(w, "Required: %s\n", strings.Join(k.RequiredFields, ", "))
 	}
-	if len(k.RequiredAliases) > 0 {
-		canon := make([]string, 0, len(k.RequiredAliases))
-		for name := range k.RequiredAliases {
-			canon = append(canon, name)
-		}
-		sort.Strings(canon)
-		for _, name := range canon {
-			fmt.Fprintf(w, "  %s may also be written: %s\n", name, strings.Join(k.RequiredAliases[name], ", "))
-		}
-	}
 	if len(k.TypicalFields) > 0 {
 		fmt.Fprintf(w, "Typical:  %s\n", strings.Join(k.TypicalFields, ", "))
 	}
@@ -193,7 +187,11 @@ func writeSemanticKindDetail(w io.Writer, k slideKindListEntry, takeawayBudget m
 			if required[name] {
 				label += " *"
 			}
-			fmt.Fprintf(tw, "  %s\t%s\t%s\t%s\n", label, schemaTypeLabel(prop), schemaBudgetLabel(prop), schemaDescription(prop))
+			meaning := schemaDescription(prop)
+			if aliases := schemaAliases(prop); aliases != "" {
+				meaning = strings.TrimSpace(meaning + " (also written: " + aliases + ")")
+			}
+			fmt.Fprintf(tw, "  %s\t%s\t%s\t%s\n", label, schemaTypeLabel(prop), schemaBudgetLabel(prop), meaning)
 		}
 		if err := tw.Flush(); err != nil {
 			return err
@@ -227,6 +225,18 @@ func writeSemanticKindDetail(w io.Writer, k slideKindListEntry, takeawayBudget m
 	}
 	fmt.Fprintf(w, "\nExample (paste under `slides:` in a DeckSpec; validates with zero findings):\n\n%s", example)
 	return nil
+}
+
+// schemaAliases joins a compact schema property's "aliases" annotation.
+func schemaAliases(prop map[string]any) string {
+	list, _ := prop["aliases"].([]any)
+	names := make([]string, 0, len(list))
+	for _, a := range list {
+		if s, ok := a.(string); ok {
+			names = append(names, s)
+		}
+	}
+	return strings.Join(names, ", ")
 }
 
 // writeSemanticKindBudgets prints a kind's per-field budgets and what the

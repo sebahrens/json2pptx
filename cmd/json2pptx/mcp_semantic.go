@@ -173,7 +173,7 @@ const deckSpecSchemaNote = " Schema: full closed DeckSpec contract. Call list_sl
 
 // deckSpecOutlineNote is the tail everywhere else: the shape is declared, the
 // per-kind contract is one call away, and the contract still binds.
-const deckSpecOutlineNote = " Schema: DeckSpec outline. Call list_slide_kinds for examples; pass kinds and fields:[item_schema] for a chosen kind's closed schema, then validate_deck_spec. Unknown payload fields still report SEMANTIC_UNKNOWN_FIELD."
+const deckSpecOutlineNote = " Schema: DeckSpec outline. Call list_slide_kinds for the kinds (kinds:[chosen] returns examples, fields:[brief] or [item_schema] a kind's fields), then validate_deck_spec. Unknown payload fields still report SEMANTIC_UNKNOWN_FIELD."
 
 // withDeckSpecOutline merges the DeckSpec outline into the property schema.
 func withDeckSpecOutline() mcp.PropertyOption {
@@ -1307,12 +1307,23 @@ type slideKindListEntry struct {
 	RequiredFields  []string            `json:"required_fields,omitempty"`
 	RequiredAliases map[string][]string `json:"required_aliases,omitempty"`
 	TypicalFields   []string            `json:"typical_fields,omitempty"`
-	// ItemSchema is the closed JSON Schema for one slide of this kind (every
-	// payload field the compiler reads; additionalProperties:false).
+	// ItemSchema is the schema an author reads for one slide of this kind:
+	// every canonical field once, the accepted alternative spellings named in
+	// an "aliases" annotation on it (go-slide-creator-l6mcj).
 	ItemSchema map[string]any `json:"item_schema,omitempty"`
+	// ItemSchemaFull is the closed JSON Schema a validator needs: every key
+	// the compiler reads, aliases included; additionalProperties:false.
+	ItemSchemaFull map[string]any `json:"item_schema_full,omitempty"`
 	// Example is a minimal copy-ready slide of this kind (including "kind")
-	// that validates with no error or warning.
-	Example map[string]any `json:"example"`
+	// that validates with no error or warning. The whole catalogue leaves it
+	// out (it was half of a 22 KB response); naming kinds returns it
+	// (go-slide-creator-mvdt5).
+	Example map[string]any `json:"example,omitempty"`
+	// Brief maps each canonical payload field to a one-line signature (type,
+	// entry keys, required); budgets ride beside it. Present with
+	// fields:["brief"] — the cheap lookup of one kind's fields
+	// (go-slide-creator-l6mcj).
+	Brief map[string]string `json:"brief,omitempty"`
 	// Compositions are the values this kind's optional "pattern" / "layout"
 	// override accepts, with the reason each exists. The override silently did
 	// nothing for anything outside this list, and the list was not published
@@ -1343,7 +1354,7 @@ type slideKindComposition struct {
 
 func mcpListSlideKindsTool() mcp.Tool {
 	return mcp.NewTool("list_slide_kinds",
-		mcp.WithDescription(`Discover DeckSpec slide kinds: each kind's summary, required_fields, required_aliases, typical_fields and one copy-ready example. fields adds detail, omitted by default: item_schema (the kind's closed JSON Schema), compositions (its pattern/layout overrides), budgets (per-field text budgets; title, subtitle and takeaway measured on template, else the tightest across shipped templates). kinds:["raw_json2pptx"] also returns composed_example: one slide whose compose envelope puts several views (chart + KPIs + timeline) under one title.`),
+		mcp.WithDescription(`Discover DeckSpec slide kinds. Without kinds: every kind's summary, required_fields and typical_fields. With kinds: also each named kind's copy-ready example. fields selects detail instead: brief (each canonical field's one-line signature, with budgets), item_schema (canonical fields with descriptions, aliases named once), budgets (per-field text budgets; title, subtitle and takeaway measured on template, else the tightest across shipped templates), compositions (pattern/layout overrides), example, item_schema_full (closed JSON Schema with every alias, for validators). kinds:["raw_json2pptx"] also returns composed_example: one slide whose compose envelope puts several views under one title.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaListSlideKinds)),
 		mcp.WithArray("kinds",
 			mcp.Description("Exact kind names to return, e.g. [\"kpi_snapshot\"]. Omit for all."),
@@ -1351,7 +1362,7 @@ func mcpListSlideKindsTool() mcp.Tool {
 		),
 		mcp.WithArray("fields",
 			mcp.Description("Detail to include."),
-			mcp.Items(map[string]any{"type": "string", "enum": []string{"item_schema", "compositions", "budgets"}}),
+			mcp.Items(map[string]any{"type": "string", "enum": []string{"brief", "item_schema", "budgets", "compositions", "example", "item_schema_full"}}),
 		),
 		mcp.WithString("template",
 			mcp.Description("Template name; adds budgets measured on it."),
@@ -1401,7 +1412,7 @@ func (mc *mcpConfig) slideKindBudgetSource(request mcp.CallToolRequest, budgetsF
 			return measured, nil, false, api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to measure the shipped templates: %v", err))
 		}
 		return tightest, &slideKindBudgetBasis{Templates: names,
-			Note: "title, subtitle and takeaway budgets are the tightest across the shipped templates: copy within them fits every one. Pass template for that template's own."}, true, nil
+			Note: "measured budgets (title, subtitle, takeaway) are the tightest across these templates; pass template for one template's own."}, true, nil
 	}
 	path, cleanup, err := resolveTemplatePath(name, mc.templatesDir)
 	if err != nil {
@@ -1413,7 +1424,7 @@ func (mc *mcpConfig) slideKindBudgetSource(request mcp.CallToolRequest, budgetsF
 		return measured, nil, false, mcpErrorWithNext("TEMPLATE_ERROR", fmt.Sprintf("failed to analyze template %q: %v", name, err), nextCallListTemplates())
 	}
 	return measureTemplateBudgets(analysis), &slideKindBudgetBasis{Template: strings.TrimSuffix(name, ".pptx"),
-		Note: "title, subtitle and takeaway budgets are measured on this template; fixed budgets hold on every template."}, true, nil
+		Note: "measured budgets (title, subtitle, takeaway) are this template's; fixed budgets hold on every template."}, true, nil
 }
 
 func (mc *mcpConfig) handleListSlideKinds(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -1425,7 +1436,7 @@ func (mc *mcpConfig) handleListSlideKinds(ctx context.Context, request mcp.CallT
 	if errRes != nil {
 		return errRes, nil
 	}
-	measured, budgetBasis, withBudgets, errRes := mc.slideKindBudgetSource(request, fieldFilter["budgets"])
+	measured, budgetBasis, withBudgets, errRes := mc.slideKindBudgetSource(request, fieldFilter["budgets"] || fieldFilter["brief"])
 	if errRes != nil {
 		return errRes, nil
 	}
@@ -1443,34 +1454,24 @@ func (mc *mcpConfig) handleListSlideKinds(ctx context.Context, request mcp.CallT
 		if kindFilter != nil && !kindFilter[string(k)] {
 			continue
 		}
-		info, _ := semantic.LookupKind(k)
-		entry := slideKindListEntry{
-			Kind:            string(k),
-			Summary:         info.Summary,
-			RequiredFields:  info.RequiredFields,
-			RequiredAliases: info.RequiredAliases,
-			TypicalFields:   info.TypicalFields,
-			Example:         semantic.KindExample(k),
-		}
-		if fieldFilter["item_schema"] {
-			entry.ItemSchema = semantic.KindItemSchema(k)
-		}
-		if fieldFilter["compositions"] {
-			entry.Compositions = slideKindCompositions(k)
-		}
-		if k == semantic.KindRawJSON2pptx && kindFilter[string(k)] {
-			entry.ComposedExample = composedProofSlideExample()
-		}
+		entry := slideKindEntry(k, kindFilter, fieldFilter)
 		if withBudgets {
 			entry.Budgets = slideKindBudgets(k, measured)
 		}
 		out = append(out, entry)
 	}
-	takeaway := map[string]any{
-		"font_pt": 14, "max_lines": 1,
-		"note": "Keep takeaway (or chart insight) to one 14pt line in the template's chrome band. Width varies by template; validate_deck_spec reports BODY_TOO_LONG at slides[i].takeaway when measured text wraps.",
+	takeaway := map[string]any{"font_pt": 14, "max_lines": 1}
+	if !withBudgets {
+		// With budgets each kind's takeaway row carries the measured length.
+		takeaway["note"] = "Keep takeaway (or chart insight) to one 14pt line in the template's chrome band. Width varies by template; validate_deck_spec reports BODY_TOO_LONG at slides[i].takeaway when measured text wraps."
 	}
 	result := map[string]any{"slide_kinds": out, "takeaway_budget": takeaway}
+	if fieldFilter["brief"] {
+		result["brief_note"] = slideKindBriefNote
+	}
+	if kindFilter == nil && len(fieldFilter) == 0 {
+		result["detail"] = "kinds:[<chosen kinds>] returns each kind's copy-ready example; fields:[\"brief\"] its field signatures and text budgets, fields:[\"item_schema\"] descriptions and aliases."
+	}
 	if withBudgets {
 		if measured.Takeaway.MaxChars > 0 {
 			takeaway["max_chars"] = measured.Takeaway.MaxChars
@@ -1494,6 +1495,44 @@ func (mc *mcpConfig) handleListSlideKinds(ctx context.Context, request mcp.CallT
 	return mcpResult, nil
 }
 
+// slideKindEntry builds one list_slide_kinds row: the catalogue fields, the
+// example when kinds are named (or asked for), and the detail fields names.
+func slideKindEntry(k semantic.SlideKind, kindFilter, fieldFilter map[string]bool) slideKindListEntry {
+	info, _ := semantic.LookupKind(k)
+	entry := slideKindListEntry{
+		Kind:           string(k),
+		Summary:        info.Summary,
+		RequiredFields: info.RequiredFields,
+		TypicalFields:  info.TypicalFields,
+	}
+	// The catalogue is for choosing; a named kind is for authoring; an
+	// explicit fields list returns what it names.
+	if (kindFilter != nil && len(fieldFilter) == 0) || fieldFilter["example"] {
+		entry.Example = semantic.KindExample(k)
+	}
+	if !fieldFilter["item_schema"] && !fieldFilter["brief"] {
+		// item_schema names each canonical field's aliases itself, and
+		// the brief leaves them out.
+		entry.RequiredAliases = info.RequiredAliases
+	}
+	if fieldFilter["brief"] {
+		entry.Brief = slideKindBrief(k)
+	}
+	if fieldFilter["item_schema"] {
+		entry.ItemSchema = semantic.KindItemSchemaCompact(k)
+	}
+	if fieldFilter["item_schema_full"] {
+		entry.ItemSchemaFull = semantic.KindItemSchema(k)
+	}
+	if fieldFilter["compositions"] {
+		entry.Compositions = slideKindCompositions(k)
+	}
+	if k == semantic.KindRawJSON2pptx && kindFilter[string(k)] {
+		entry.ComposedExample = composedProofSlideExample()
+	}
+	return entry
+}
+
 func slideKindListSelection(request mcp.CallToolRequest, arg string, detail bool) (map[string]bool, *mcp.CallToolResult) {
 	retryCatalog := &patterns.ToolCallSuggestion{Tool: "list_slide_kinds", ArgsTemplate: map[string]any{}}
 	raw, present := request.GetArguments()[arg]
@@ -1506,9 +1545,9 @@ func slideKindListSelection(request mcp.CallToolRequest, arg string, detail bool
 	}
 	allowed := make(map[string]bool)
 	if detail {
-		allowed["item_schema"] = true
-		allowed["compositions"] = true
-		allowed["budgets"] = true
+		for _, f := range []string{"brief", "item_schema", "item_schema_full", "compositions", "budgets", "example"} {
+			allowed[f] = true
+		}
 	} else {
 		for _, k := range semantic.AllSlideKinds() {
 			allowed[string(k)] = true

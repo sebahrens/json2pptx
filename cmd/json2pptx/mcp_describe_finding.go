@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -28,13 +29,13 @@ import (
 
 func mcpDescribeFindingTool() mcp.Tool {
 	return mcp.NewTool("describe_finding",
-		mcp.WithDescription(`Look up an agent-facing description for a single finding code. Returns {code, summary, severity, blocks, blocks_when, when_emitted, remediation_steps[], example_before, example_after, related_codes[]}; blocks (always | sometimes | never) says whether it is a blocking error. Use after any tool returns a finding/error you do not recognize — resolves the meaning in one extra tool call without scanning docs/FIT_FINDINGS.md or SKILL.md.
+		mcp.WithDescription(`Explain one finding code: {code, summary, severity, blocks (always | sometimes | never), blocks_when, when_emitted, remediation_steps[], example_before, example_after, related_codes[]}. Call it for a finding or error you do not recognize.
 
-Covers every code emitted across the pipeline: the fit/pattern codes, chart.* and string-literal codes (contrast_autofixed, findings_truncated), and every diagnostics taxonomy code (MISSING_PARAMETER, TEMPLATE_NOT_FOUND, RENDER_FAILED, INTERNAL, …). Accepts either the bare legacy code or the dotted namespaced code from a finding envelope (INPUT.MISSING_PARAMETER, FIT.placeholder_overflow) — the namespace prefix is stripped before lookup, so a finding's describe_command runs verbatim. Unknown codes return a structured error carrying fix.params.did_you_mean (the closest known code) — or fix.params.allowed with the full vocabulary when nothing is close.`),
+Covers every code a tool emits: fit and pattern codes, chart.*, SEMANTIC_*, and the input / template / render errors (MISSING_PARAMETER, TEMPLATE_NOT_FOUND, RENDER_FAILED, …). A namespaced code from a finding envelope (FIT.placeholder_overflow) is accepted. An unknown code returns the closest known one (fix.params.did_you_mean), or the vocabulary (fix.params.allowed) when nothing is close. hidden_tools names tools the remediation mentions that this server's tools/list does not carry.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaDescribeFinding)),
 		mcp.WithString("code",
 			mcp.Required(),
-			mcp.Description("The finding code to describe (e.g., \"placeholder_overflow\", \"accent_overload\", \"chart.zero_sum_pie\")."),
+			mcp.Description("The finding code, e.g. \"BODY_TOO_LONG\", \"chart.zero_sum_pie\"."),
 		),
 	)
 }
@@ -48,6 +49,9 @@ type describeFindingResponse struct {
 	Blocks string `json:"blocks"`
 	// BlocksWhen states the condition.
 	BlocksWhen string `json:"blocks_when"`
+	// HiddenTools names the tools the entry mentions that the active profile's
+	// tools/list does not carry (go-slide-creator-7bdn6).
+	HiddenTools *hiddenToolsNote `json:"hidden_tools,omitempty"`
 }
 
 func handleDescribeFinding(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -87,7 +91,11 @@ func handleDescribeFinding(ctx context.Context, request mcp.CallToolRequest) (*m
 	// blocks, in the words the gate uses (go-slide-creator-x9rhq). "severity"
 	// stays the action rank raw fit_findings carry.
 	blocks, when := deterministic.BlockingProfile(meta.Code, meta.Severity)
-	mcpResult, err := api.MCPSuccessResult(ctx, describeFindingResponse{FindingMeta: meta, Blocks: blocks, BlocksWhen: when})
+	resp := describeFindingResponse{FindingMeta: meta, Blocks: blocks, BlocksWhen: when}
+	if body, err := json.Marshal(resp); err == nil {
+		resp.HiddenTools = hiddenToolsIn(string(body))
+	}
+	mcpResult, err := api.MCPSuccessResult(ctx, resp)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal describe_finding response: %v", err)), nil
 	}

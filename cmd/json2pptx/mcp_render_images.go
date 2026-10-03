@@ -34,7 +34,7 @@ const deliveryImageContent = "image_content"
 // includeBase64JSONOption is the shared tool-parameter definition.
 func includeBase64JSONOption() mcp.ToolOption {
 	return mcp.WithBoolean(argIncludeBase64JSON,
-		mcp.Description("Legacy opt-in. Default false: each rendered slide is returned as a native MCP image content block (JPEG, max 1280px wide) that you can look at directly, plus a small JSON metadata block (no base64). Set true only for clients that cannot display MCP images — the response then carries png_base64 (or path) inside the JSON text instead."),
+		mcp.Description("Legacy: true returns png_base64 (or path) inside the JSON instead of MCP image blocks, for clients that cannot display images."),
 	)
 }
 

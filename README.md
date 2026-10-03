@@ -381,6 +381,14 @@ when the `claude` CLI is on `PATH`; otherwise they print that command for you to
 
 Skip skill installation with `--skip-skill` (shell) or `-SkipSkill` (PowerShell).
 
+The skills are also embedded in the binary: `json2pptx skill install [--dest DIR]`
+writes the copy that matches it (default `~/.claude/skills`, or
+`$JSON2PPTX_SKILL_DIR`), and `json2pptx skill status` reports whether the
+installed `generate-deck` skill is current. `get-started`, `capabilities`,
+`semantic` and `generate` print one line on stderr when the installed skill is
+older than the binary or lacks files it ships (`JSON2PPTX_SKILL_CHECK=off`
+silences it).
+
 ### MCP Server
 
 Start manually for debugging:

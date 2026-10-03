@@ -91,10 +91,14 @@ type getStartedResponse struct {
 	// Sequence is the DeckSpec path. SKILL.md makes DeckSpec the default, but
 	// brief's sequence used to BE the raw chain, so an agent following the
 	// numbered steps never authored a DeckSpec (go-slide-creator-waft9).
-	RawSequence    []getStartedStep   `json:"raw_sequence,omitempty"`
-	AvailableTasks []string           `json:"available_tasks"`
-	Notes          []string           `json:"notes,omitempty"`
-	Completion     completionProtocol `json:"completion_protocol"`
+	RawSequence    []getStartedStep `json:"raw_sequence,omitempty"`
+	AvailableTasks []string         `json:"available_tasks"`
+	Notes          []string         `json:"notes,omitempty"`
+	// HiddenTools names the tools this response mentions that the active
+	// profile's tools/list does not carry: callable by name, not listed
+	// (go-slide-creator-7bdn6).
+	HiddenTools *hiddenToolsNote   `json:"hidden_tools,omitempty"`
+	Completion  completionProtocol `json:"completion_protocol"`
 	// QualityWorkflow is the server's MCP `instructions` text, echoed verbatim
 	// (same Go const) so MCP clients that do not surface instructions still see
 	// the quality workflow.
@@ -140,9 +144,9 @@ func fastPathFor(task string, seq []getStartedStep) *getStartedFastPath {
 	case "brief":
 		return &getStartedFastPath{
 			Tool:       "render_deck_spec",
-			WhenToCall: "RECOMMENDED PATH for a new deck from a brief — write a compact DeckSpec ({meta:{title, archetype}, slides:[{kind, …}]}) carrying the user's real content, then render it in one call. Follow `steps`: list_slide_kinds (compact kind summaries + copy-ready examples; request item_schema for chosen kinds) → validate_deck_spec → render_deck_spec → render_deck_thumbnails (look at every slide). A ~30-line DeckSpec yields a real 6-slide deck; the compiler picks patterns, layouts, and rhythm. Fix findings at their semantic_path in the spec and re-render. make_deck is NOT this path: it is a skeleton/wireframe only (exemplar placeholder copy, gate always fails). `sequence` is this same path with plan_deck (format:\"deckspec\") in front and submit_visual_review at the end. Drop to the raw primitives in `raw_sequence` (recommend_visual → … → generate_presentation) only when you need a feature outside the DeckSpec schema.",
+			WhenToCall: "RECOMMENDED PATH for a new deck from a brief — write a compact DeckSpec ({meta:{title, archetype}, slides:[{kind, …}]}) carrying the user's real content, then render it in one call. Follow `steps`: list_slide_kinds (kind summaries; kinds:[chosen] returns copy-ready examples) → validate_deck_spec → render_deck_spec → render_deck_thumbnails (look at every slide). A ~30-line DeckSpec yields a real 6-slide deck; the compiler picks patterns, layouts, and rhythm. Fix findings at their path in the spec and re-render. make_deck is NOT this path: it is a skeleton/wireframe only (exemplar placeholder copy, gate always fails). `sequence` is this same path with plan_deck (format:\"deckspec\") in front and submit_visual_review at the end. Drop to the raw primitives in `raw_sequence` (recommend_visual → … → generate_presentation) only when you need a feature outside the DeckSpec schema.",
 			Steps: []getStartedStep{
-				{Tool: "list_slide_kinds", WhenToCall: fmt.Sprintf("Pick a kind per slide from the compact catalog and copy its example. For fields you need to author beyond the example, call list_slide_kinds again with kinds:[chosen kind] and fields:[item_schema]; add compositions when choosing a pattern/layout override (anything outside that list is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE). Unknown fields report SEMANTIC_UNKNOWN_FIELD. A kind reaches %d of the %d patterns; for one of the other %d (swimlane, pyramid, value-chain, scqa-summary and the rest — SKILL.md lists them all) use kind raw_json2pptx and carry the pattern block verbatim, as its example shows.", len(semantic.ReachablePatterns()), len(semantic.ReachablePatterns())+len(semantic.UnreachablePatterns()), len(semantic.UnreachablePatterns()))},
+				{Tool: "list_slide_kinds", WhenToCall: fmt.Sprintf("Pick a kind per slide from the catalog, then call list_slide_kinds again with kinds:[chosen kinds] and copy each example. For fields beyond the example add fields:[brief] (signatures and budgets) or fields:[item_schema] (descriptions and aliases); add compositions when choosing a pattern/layout override (anything outside that list is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE). Unknown fields report SEMANTIC_UNKNOWN_FIELD. A kind reaches %d of the %d patterns; for one of the other %d (swimlane, pyramid, value-chain, scqa-summary and the rest) use kind raw_json2pptx and carry the pattern block verbatim, as its example shows; recommend_visual returns that slide ready to run.", len(semantic.ReachablePatterns()), len(semantic.ReachablePatterns())+len(semantic.UnreachablePatterns()), len(semantic.UnreachablePatterns()))},
 				{Tool: "validate_deck_spec", WhenToCall: "Check the DeckSpec on the template you will render on (pass template, or set meta.template); the response echoes it. Fix every finding with blocking:true (severity error) at its path; warnings and infos never block."},
 				{Tool: "render_deck_spec", WhenToCall: "Compile and render the DeckSpec to a .pptx with the same template; it reports the same findings validate did, each at its path in the spec."},
 				{Tool: "render_deck_thumbnails", WhenToCall: "Render ALL slides and inspect every returned image; repair the spec and re-render until every slide looks right."},
@@ -158,7 +162,7 @@ func fastPathFor(task string, seq []getStartedStep) *getStartedFastPath {
 		// holds, and the cheapest form of that: a deck_id and a patch.
 		return &getStartedFastPath{
 			Tool:       "render_deck_spec",
-			WhenToCall: "RECOMMENDED PATH when the deck was authored as a DeckSpec (task=brief) — you do not resend it. Every validate_deck_spec / render_deck_spec response carries a deck_id: the spec this server is holding. Send deck_id INSTEAD of spec, with patch:[{op:\"replace\", path:\"/slides/3/title\", value:\"…\"}] — op is replace | add | remove | move | copy, path is a JSON Pointer into the spec (/meta/template to restyle the deck, /slides/6 with add to insert a slide, /slides/2 with remove to drop one, {op:\"move\", from:\"/slides/5\", path:\"/slides/7\"} to reorder). Every stored slide has an id (yours, or s1, s2, … assigned on first store) that survives inserts, removals and moves: /slides/s4/title addresses the same slide whatever its index. Findings' next_tool_call offers a semantic patch when a single text field can be identified. A four-edit revision is one call of a few hundred bytes instead of a full spec re-upload. The response's changed_slides names the 0-based slides that LOOK different from the last render, so render_deck_thumbnails them as slide_indices instead of pulling the whole deck again; slide_changes classifies every affected slide (edited | inserted | restyled | moved | renumbered | notes_only | removed). stored:false means the patch was not kept: a refused render stores nothing, and dry_run:true never does. validate_deck_spec also reads the stored deck back (read:\"spec\" | \"history\" | a slide id), finds or replaces a figure everywhere (find, replace), and restores a revision (restore); fork:true keeps this deck and stores the result under a new deck_id. score_deck and analyze_deck_rhythm also accept deck_id. repair_slide accepts deck_id only as a raw escape hatch: it returns patched raw JSON and does NOT update the stored semantic spec; use deck_id + patch for durable DeckSpec repairs. Handles live 1 hour per server process; if one expires, send the spec again. Still holding the spec and no handle? Edit it and call render_deck_spec — findings come back at semantic_path, so you fix the field the finding names. The raw chain in `sequence` is for a deck authored as raw json2pptx JSON, not as a DeckSpec.",
+			WhenToCall: "RECOMMENDED PATH when the deck was authored as a DeckSpec (task=brief) — you do not resend it. Every validate_deck_spec / render_deck_spec response carries a deck_id: the spec this server is holding. Send deck_id INSTEAD of spec, with patch:[{op:\"replace\", path:\"/slides/3/title\", value:\"…\"}] — op is replace | add | remove | move | copy, path is a JSON Pointer into the spec (/meta/template to restyle the deck, /slides/6 with add to insert a slide, /slides/2 with remove to drop one, {op:\"move\", from:\"/slides/5\", path:\"/slides/7\"} to reorder). Every stored slide has an id (yours, or s1, s2, … assigned on first store) that survives inserts, removals and moves: /slides/s4/title addresses the same slide whatever its index. Findings' next_tool_call offers a semantic patch when a single text field can be identified. A four-edit revision is one call of a few hundred bytes instead of a full spec re-upload. The response's changed_slides names the 0-based slides that LOOK different from the last render, so render_deck_thumbnails them as slide_indices instead of pulling the whole deck again; slide_changes classifies every affected slide (edited | inserted | restyled | moved | renumbered | notes_only | removed). stored:false means the patch was not kept: a refused render stores nothing, and dry_run:true never does. validate_deck_spec also reads the stored deck back (read:\"spec\" | \"history\" | a slide id), finds or replaces a figure everywhere (find, replace), and restores a revision (restore); fork:true keeps this deck and stores the result under a new deck_id. score_deck and analyze_deck_rhythm also accept deck_id. repair_slide accepts deck_id only as a raw escape hatch: it returns patched raw JSON and does NOT update the stored semantic spec; use deck_id + patch for durable DeckSpec repairs. Handles live 1 hour per server process; if one expires, send the spec again. Still holding the spec and no handle? Edit it and call render_deck_spec — findings come back at their path in the spec, so you fix the field the finding names. The raw chain in `sequence` is for a deck authored as raw json2pptx JSON, not as a DeckSpec.",
 			Steps: []getStartedStep{
 				{Tool: "validate_deck_spec", WhenToCall: "Send deck_id + patch to check an edit before rendering it; the patch is applied to the stored deck, so the next call sees it."},
 				{Tool: "render_deck_spec", WhenToCall: "Render the revision (deck_id + patch, or the edited spec). Omit template: the deck_id keeps the template it is bound to, and changes it only by a patch to /meta/template."},
@@ -217,11 +221,11 @@ func buildGetStartedResponseOpts(task string, rt getStartedRuntime, verbose bool
 	switch normalized {
 	case "brief":
 		seq = []getStartedStep{
-			{Tool: "plan_deck", WhenToCall: "Draft the storyline as a DeckSpec: format:\"deckspec\" returns deck_spec (a kind per narrative slot — answer, problem, cause, evidence, plan, roadmap, ask) with __FILL__ titles, slot guidance and the brief's facts routed to each slot. Rewrite every title as a full-sentence action title that carries its number (SKILL.md → QUALITY.md). Optional for decks of 1-4 slides.", ArgsTemplate: map[string]any{"brief": "<the user's brief>", "format": "deckspec"}},
-			{Tool: "list_slide_kinds", WhenToCall: "Fill each drafted slide: the compact catalog gives every kind's fields and a copy-ready example; request kinds:[chosen] with fields:[item_schema] for fields beyond the example."},
+			{Tool: "plan_deck", WhenToCall: "Draft the storyline as a DeckSpec: format:\"deckspec\" returns deck_spec (a kind per narrative slot — answer, problem, cause, evidence, plan, roadmap, ask) with __FILL__ titles, slot guidance and the brief's facts routed to each slot. Rewrite every title as a full-sentence action title of at most 15 words that carries its number. Optional for decks of 1-4 slides.", ArgsTemplate: map[string]any{"brief": "<the user's brief>", "format": "deckspec"}},
+			{Tool: "list_slide_kinds", WhenToCall: "Fill each drafted slide: the catalog gives every kind's summary and fields; kinds:[chosen] returns each kind's copy-ready example, fields:[brief] its field signatures and budgets, fields:[item_schema] descriptions and aliases."},
 			{Tool: "validate_deck_spec", WhenToCall: "Check the DeckSpec on the template you will render on; fix every blocking finding (severity error) at its path. Keep the returned deck_id and revise with deck_id + patch."},
 			{Tool: "render_deck_spec", WhenToCall: "Compile and render the DeckSpec; diagnostics name their path in the spec. deterministic_ready is a precondition for review, not approval."},
-			{Tool: "render_deck_thumbnails", WhenToCall: "Render ALL slides of this revision and look at every image against the per-slide rubric (WORKFLOW.md): action title of at most two lines, body proves the title, readable text, aligned edges, no orphans, balanced whitespace, meaningful accents, chart units and source. Repair at semantic_path, re-render changed_slides, at most three repair rounds."},
+			{Tool: "render_deck_thumbnails", WhenToCall: "Render ALL slides of this revision and look at every image against the per-slide rubric: action title of at most two lines, body proves the title, readable text, aligned edges, no orphans, balanced whitespace, meaningful accents, chart units and source. Repair at the finding's path, re-render changed_slides, at most three repair rounds."},
 			{Tool: "submit_visual_review", WhenToCall: "Record the verdict for every slide of the current revision with the image_path/image_sha256 you inspected and each open rubric failure as a finding (P0/P1 blocks approval). Only an all-slide, current-revision approval completes the deck."},
 		}
 		rawSeq = []getStartedStep{
@@ -229,7 +233,7 @@ func buildGetStartedResponseOpts(task string, rt getStartedRuntime, verbose bool
 			{Tool: "list_templates", WhenToCall: "Pick a template; read canonical_layout_ids, color_roles, layout_summaries, table_styles."},
 			{Tool: "plan_deck", WhenToCall: "Turn the user's brief into an ordered slide outline with per-slide patterns and narrative roles. Recommended for any deck > 4 slides."},
 			{Tool: "recommend_visual", WhenToCall: "Per slide intent, rank candidate layouts/patterns/charts/diagrams before committing to one."},
-			{Tool: "validate_input", WhenToCall: "Once the full deck JSON is assembled, run schema + fit checks (pass fit_report: true). Cheapest single gate before preview/generate; SKILL.md lists this as a precondition for generate_presentation."},
+			{Tool: "validate_input", WhenToCall: "Once the full deck JSON is assembled, run schema + fit checks (pass fit_report: true). Cheapest single gate before preview/generate, and a precondition for generate_presentation."},
 			{Tool: "preview_presentation_plan", WhenToCall: "Dry-run the validated deck JSON to verify layout selection, placeholder mapping, and fit findings without rendering."},
 			{Tool: "generate_presentation", WhenToCall: "Produce the PPTX once validate + preview are clean. Pass strict_fit: \"warn\" (default) or \"strict\" for refuse-on-overflow."},
 			{Tool: "score_deck", WhenToCall: "Structural rules over the generated deck (0-100, basis=structural); no pixels, so this score cannot visually approve a deck."},
@@ -313,6 +317,14 @@ func buildGetStartedResponseOpts(task string, rt getStartedRuntime, verbose bool
 	if fastPath != nil {
 		fastPath.Steps = withArgs(fastPath.Steps)
 	}
+	// The default profile lists no raw-path tool: it gets the workflow written
+	// for the tools it has.
+	var hidden *hiddenToolsNote
+	if activeToolProfile() == toolProfileDeckSpec {
+		if f, sq, n, h, ok := deckSpecProfileGetStarted(normalized); ok {
+			fastPath, seq, rawSeq, notes, hidden = f, sq, nil, n, h
+		}
+	}
 
 	resp := getStartedResponse{
 		Task:               normalized,
@@ -323,6 +335,7 @@ func buildGetStartedResponseOpts(task string, rt getStartedRuntime, verbose bool
 		RawSequence:        withArgs(rawSeq),
 		AvailableTasks:     getStartedAvailableTasks(),
 		Notes:              notes,
+		HiddenTools:        hidden,
 		Completion: completionProtocol{
 			DraftStatus:    "draft_needs_visual_review",
 			CompleteStatus: "visually_reviewed_current_revision",
@@ -367,7 +380,7 @@ func degradeForMissingRenderTooling(resp *getStartedResponse, missing []string) 
 		CompleteStatus: "draft_needs_visual_review",
 		Rule:           renderToolingWarning(missing),
 	}
-	resp.Notes = append([]string{"RENDER TOOLING MISSING (" + strings.Join(missing, ", ") + "): the render_* and inspect_slide_images tools fail on this server, so the visual-approval step in the completion rule cannot be performed here. The deck can still be authored, validated and delivered — say it is unreviewed. Install LibreOffice and ImageMagick to restore it."}, resp.Notes...)
+	resp.Notes = append([]string{"RENDER TOOLING MISSING (" + strings.Join(missing, ", ") + "): the render tools fail on this server, so the visual-approval step in the completion rule cannot be performed here. The deck can still be authored, validated and delivered — say it is unreviewed. Install LibreOffice and ImageMagick to restore it."}, resp.Notes...)
 }
 
 // closeWithDelivery turns the step a path now ends on into the delivery step,
@@ -411,14 +424,14 @@ func mcpGetStartedTool() mcp.Tool {
 		mcp.WithDescription(getStartedToolDescription()),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaGetStarted)),
 		mcp.WithString("task",
-			mcp.Description("Optional task scope: \"brief\" (new deck, default), \"revise\" (modify existing deck), \"validate-only\" (validate JSON without generating), or \"onboard-template\" (vet and render with a user-supplied .pptx). An unknown value answers with \"brief\" and says so in task_warning."),
+			mcp.Description("brief (default) | revise | validate-only | onboard-template. An unknown value answers with brief and says so in task_warning."),
 			mcp.DefaultString("brief"),
 		),
 		mcp.WithBoolean("verbose",
-			mcp.Description("Include quality_workflow, the prose workflow narrative. Omitted by default because it repeats the MCP initialize instructions verbatim, which every client already received; completion_protocol carries the same rule in structured form. Pass true if you did not read the initialize instructions."),
+			mcp.Description("true: include quality_workflow, the initialize instructions repeated."),
 		),
 		mcp.WithString("skill_version",
-			mcp.Description("Optional schema_version from the installed generate-deck skill frontmatter. If older than this server's skill_schema_version, get_started returns a one-line skill_warning telling you to run make install-skill."),
+			mcp.Description("schema_version from the installed generate-deck skill's frontmatter. When it is older than this server, the response carries skill_warning with the refresh command."),
 		),
 	)
 }
@@ -440,8 +453,11 @@ func getStartedToolDescription() string {
 	if !toolIsAdvertised("generate_presentation") {
 		// The default deckspec profile advertises no raw-path tool
 		// (go-slide-creator-355t7): say where they are instead of naming them.
-		workflowStatement = "Default for content-bearing decks: author real content as a DeckSpec; call `list_slide_kinds` → `validate_deck_spec` → `render_deck_spec`, then render and inspect every slide."
-		sequence = `- sequence: "brief" → the DeckSpec steps; raw_sequence / other tasks → the raw path (tools in --tools core).`
+		return `The recommended workflow for a task, written for the tools this server lists. Call it first.
+
+Default for content-bearing decks: author real content as a DeckSpec; call ` + "`list_slide_kinds` → `validate_deck_spec` → `render_deck_spec`" + `, then render and inspect every slide (completion_protocol.rule): a passing gate is never completion.
+
+task: "brief" (default, a new deck), "revise" (deck_id + patch), "validate-only", "onboard-template" (vet a user-supplied .pptx). sequence is the ordered steps, each with when_to_call and args_template; hidden_tools names tools that are callable but not listed here.`
 	}
 	return fmt.Sprintf(`The recommended workflow for a task. Call it first.
 
@@ -528,7 +544,7 @@ func (mc *mcpConfig) handleGetStarted(ctx context.Context, request mcp.CallToolR
 				err.Error(), "major.minor.patch", SchemaVersion, nil), nil
 		}
 		if comparison < 0 {
-			resp.SkillWarning = fmt.Sprintf("skill is stale (%s < %s): run make install-skill", version, SchemaVersion)
+			resp.SkillWarning = fmt.Sprintf("skill is stale (%s < %s): run %s (from a source checkout: make install-skill)", version, SchemaVersion, skillRefreshCommand)
 		}
 	}
 

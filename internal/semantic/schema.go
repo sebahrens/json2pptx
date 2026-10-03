@@ -325,7 +325,7 @@ func objectKeySchemas(keys []string) map[string]any {
 		case "data":
 			p["description"] = "Chart data. Bar/line/area: {categories:[…], series:[{name, values:[…]}]}. Pie/donut: {categories:[…], values:[…]}."
 		case "type":
-			p["description"] = "Chart type, e.g. bar, line, pie (see get_chart_capabilities). The \"_chart\" spellings (bar_chart, line_chart) are accepted aliases."
+			p["description"] = "Chart type, e.g. bar, line, pie, donut, stacked_bar, funnel (recommend_visual names the type for an intent). The \"_chart\" spellings (bar_chart, line_chart) are accepted aliases."
 		}
 		props[k] = p
 	}

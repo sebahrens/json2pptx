@@ -106,12 +106,12 @@ func TestGetStartedDegradesWithoutRenderTooling(t *testing.T) {
 // server cannot finish the workflow it is being handed.
 func TestInstructionsDegradeWithoutRenderTooling(t *testing.T) {
 	ready := mcpInstructionsFor(true, nil)
-	if ready != mcpQualityWorkflow {
+	if ready != mcpQualityWorkflow() {
 		t.Error("a ready server's instructions must be the workflow verbatim")
 	}
 
 	degraded := mcpInstructionsFor(false, []string{"libreoffice/soffice", "magick"})
-	if !strings.HasPrefix(degraded, mcpQualityWorkflow) {
+	if !strings.HasPrefix(degraded, mcpQualityWorkflow()) {
 		t.Error("the degraded instructions should still carry the whole workflow")
 	}
 	for _, want := range []string{
@@ -124,7 +124,7 @@ func TestInstructionsDegradeWithoutRenderTooling(t *testing.T) {
 	}
 
 	// An empty missing list is not a reason to warn.
-	if got := mcpInstructionsFor(false, nil); got != mcpQualityWorkflow {
+	if got := mcpInstructionsFor(false, nil); got != mcpQualityWorkflow() {
 		t.Error("no named missing command means nothing to warn about")
 	}
 }

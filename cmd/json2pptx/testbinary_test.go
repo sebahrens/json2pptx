@@ -22,6 +22,9 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	// The developer's own installed skill must not put a line on a test's
+	// stderr; the skill tests set their own directory.
+	_ = os.Setenv(skillCheckEnv, "off")
 	code := m.Run()
 	if sharedBinaryDir != "" {
 		_ = os.RemoveAll(sharedBinaryDir)

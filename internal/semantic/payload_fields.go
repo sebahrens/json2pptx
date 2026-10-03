@@ -17,6 +17,7 @@ package semantic
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/semantic/slides"
@@ -49,31 +50,40 @@ type payloadField struct {
 
 // objectTextKeys are the keys stringList reads from an object entry in a
 // string-list field (label + detail, rendered as "label — detail").
-var objectTextKeys = []string{
-	"title", "label", "name", "heading", "step", "phase", "text",
-	"description", "detail", "summary", "caption", "body",
-}
+var objectTextKeys = keyGroups(
+	[]string{"title", "label", "name", "heading", "step", "phase", "text"},
+	[]string{"description", "detail", "summary", "caption", "body"},
+)
 
 // execSummaryPointKeys are the keys execSummaryPoints reads from a point entry:
 // the bold conclusion and its supporting sentence, plus the aliases the field
 // actually accepts (go-slide-creator-ku6t).
-var execSummaryPointKeys = []string{
-	"lead", "point", "statement", "title", "headline", "text",
-	"support", "detail", "description", "evidence", "body",
-}
+var execSummaryPointKeys = keyGroups(
+	[]string{"lead", "point", "statement", "title", "headline", "text"},
+	[]string{"support", "detail", "description", "evidence", "body"},
+)
 
 // kpiItemKeys are the keys kpiCells reads from a KPI entry.
-var kpiItemKeys = []string{"value", "big", "label", "small", "caption", "delta", "sub", "trend", "change", "comparator", "vs"}
+var kpiItemKeys = keyGroups(
+	[]string{"value", "big"}, []string{"label", "small", "caption"},
+	// trend is not an alias: beside a delta it is appended to it.
+	[]string{"delta", "sub", "change"}, []string{"trend"},
+	[]string{"comparator", "vs"},
+)
 
 // nextStepsActionKeys are the keys nextStepsPayload reads from an action.
-var nextStepsActionKeys = []string{"action", "title", "label", "step", "text", "owner", "who", "date", "due", "when"}
+var nextStepsActionKeys = keyGroups(
+	[]string{"action", "title", "label", "step", "text"}, []string{"owner", "who"}, []string{"date", "due", "when"},
+)
 
 // optionMatrixCriterionKeys are the keys optionMatrixCriteria reads from a
 // criterion object; optionMatrixOptionKeys the keys an option row is read by
 // (go-slide-creator-6o1r).
-var optionMatrixCriterionKeys = []string{"label", "name", "title", "criterion", "scale"}
+var optionMatrixCriterionKeys = keyGroups([]string{"label", "name", "title", "criterion"}, []string{"scale"})
 
-var optionMatrixOptionKeys = []string{"name", "option", "label", "title", "detail", "description", "summary", "scores", "values"}
+var optionMatrixOptionKeys = keyGroups(
+	[]string{"name", "option", "label", "title"}, []string{"detail", "description", "summary"}, []string{"scores", "values"},
+)
 
 func optionMatrixDetailKeySchemas() map[string]any {
 	field := func() map[string]any {
@@ -84,27 +94,29 @@ func optionMatrixDetailKeySchemas() map[string]any {
 }
 
 // comparisonColumnKeys are the keys a comparison column object is read by.
-var comparisonColumnKeys = []string{"header", "title", "label", "name", "items", "pros", "cons"}
+var comparisonColumnKeys = keyGroups([]string{"header", "title", "label", "name"}, []string{"items"}, []string{"pros"}, []string{"cons"})
 
 // processStepKeys are the keys processSteps reads from a step object.
-var processStepKeys = []string{"label", "title", "name", "step", "text", "description", "detail", "summary", "type"}
+var processStepKeys = keyGroups(
+	[]string{"label", "title", "name", "step", "text"}, []string{"description", "detail", "summary"}, []string{"type"},
+)
 
 // timelineStopKeys are the keys a timeline milestone object may carry.
-var timelineStopKeys = []string{
-	"label", "title", "name", "milestone", "event",
-	"date", "date_label", "when", "start", "start_date",
-	"end_date", "end", "until",
-	"body", "description", "detail", "summary",
-}
+var timelineStopKeys = keyGroups(
+	[]string{"label", "title", "name", "milestone", "event"},
+	[]string{"date", "date_label", "when", "start", "start_date"},
+	[]string{"end_date", "end", "until"},
+	[]string{"body", "description", "detail", "summary"},
+)
 
 // matrixQuadrantKeys are the keys a 2x2 quadrant object may carry.
-var matrixQuadrantKeys = []string{
-	"header", "title", "label", "name",
-	"body", "description", "detail", "summary",
-}
+var matrixQuadrantKeys = keyGroups(
+	[]string{"header", "title", "label", "name"},
+	[]string{"body", "description", "detail", "summary"},
+)
 
 // imageCaseMetricKeys are the keys a result-metric object may carry.
-var imageCaseMetricKeys = []string{"value", "number", "stat", "label", "caption", "name"}
+var imageCaseMetricKeys = keyGroups([]string{"value", "number", "stat"}, []string{"label", "caption", "name"})
 
 // imageCaseCalloutKeys are the keys a callout on the picture may carry.
 var imageCaseCalloutKeys = []string{"label", "x", "y", "units"}
@@ -113,46 +125,75 @@ var imageCaseCalloutKeys = []string{"label", "x", "y", "units"}
 var imageCaseImageKeys = []string{"path", "url", "alt", "fit"}
 
 // decisionOptionKeys are the keys a decision option object may carry.
-var decisionOptionKeys = []string{
-	"label", "title", "name", "option",
-	"detail", "description", "body", "summary",
-	"recommended",
-}
+var decisionOptionKeys = keyGroups(
+	[]string{"label", "title", "name", "option"},
+	[]string{"detail", "description", "body", "summary"},
+	[]string{"recommended"},
+)
 
 // archTierKeys are the keys ArchitectureTiers reads from a tier object.
 // teamMemberKeys are the keys a team member object may carry.
-var teamMemberKeys = []string{
-	"name", "title", "person",
-	"role", "position", "job_title",
-	"bio", "description", "summary",
-	"photo_label", "initials", "photo",
-}
+var teamMemberKeys = keyGroups(
+	[]string{"name", "title", "person"},
+	[]string{"role", "position", "job_title"},
+	[]string{"bio", "description", "summary"},
+	[]string{"photo_label", "initials"}, []string{"photo"},
+)
 
 // agendaSectionKeys are the keys an agenda section object may carry.
-var agendaSectionKeys = []string{
-	"title", "label", "name", "section",
-	"subtitle", "description", "detail",
-}
+var agendaSectionKeys = keyGroups(
+	[]string{"title", "label", "name", "section"},
+	[]string{"subtitle", "description", "detail"},
+)
 
-var quoteItemKeys = []string{"text", "quote", "name", "attribution", "speaker", "author", "role", "title"}
+var quoteItemKeys = keyGroups([]string{"text", "quote"}, []string{"name", "attribution", "speaker", "author"}, []string{"role", "title"})
 var bridgeColumnKeys = []string{"label", "value", "type"}
 var pillarItemKeys = []string{"title", "body"}
 var orgNodeKeys = []string{"id", "name", "title", "parent"}
 
-var archTierKeys = []string{
-	"label", "name", "title", "tier", "layer",
-	"description", "detail", "summary", "text",
-	"items", "components", "services", "elements",
-}
+var archTierKeys = keyGroups(
+	[]string{"label", "name", "title", "tier", "layer"},
+	[]string{"description", "detail", "summary", "text"},
+	[]string{"items", "components", "services", "elements"},
+)
 
 // roadmapPhaseKeys are the keys roadmapPhases reads from a phase object.
-var roadmapPhaseKeys = []string{
-	"name", "title", "label", "phase", "date_label", "dates", "date", "period",
-	"description", "detail", "summary", "items", "bullets", "active", "milestone",
-}
+var roadmapPhaseKeys = keyGroups(
+	[]string{"name", "title", "label", "phase"}, []string{"date_label", "dates", "date", "period"},
+	[]string{"description", "detail", "summary"}, []string{"items", "bullets"}, []string{"active"}, []string{"milestone"},
+)
 
 // chartObjectKeys are the keys chartSpec reads from the chart object.
 var chartObjectKeys = []string{"type", "title", "data"}
+
+// entryKeyAliases records, per closed entry object, which of its keys are
+// aliases: the key set (sorted, comma-joined) maps to alias → canonical. The
+// compact item schema lists a canonical key once and names its aliases
+// (go-slide-creator-l6mcj).
+var entryKeyAliases = map[string]map[string]string{}
+
+// keyGroups declares an entry object's keys as groups — the canonical key
+// first, then the aliases the compiler reads for the same value — and returns
+// the flat key list the contract and the validator use.
+func keyGroups(groups ...[]string) []string {
+	var keys []string
+	aliases := map[string]string{}
+	for _, g := range groups {
+		keys = append(keys, g...)
+		for _, alias := range g[1:] {
+			aliases[alias] = g[0]
+		}
+	}
+	entryKeyAliases[keySetID(keys)] = aliases
+	return keys
+}
+
+// keySetID identifies a key set regardless of order.
+func keySetID(keys []string) string {
+	sorted := append([]string(nil), keys...)
+	sort.Strings(sorted)
+	return strings.Join(sorted, ",")
+}
 
 func strField(desc string) payloadField { return payloadField{typ: "string", desc: desc} }
 
@@ -164,8 +205,8 @@ func textList(desc string) payloadField {
 // planner reads for kinds that offer alternatives (see compositionCandidates).
 func compositionFields() map[string]payloadField {
 	return map[string]payloadField{
-		"pattern": strField("Optional composition override: one of this kind's alternative patterns (list_slide_kinds → compositions[], or explain_deck_spec slides[].alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE."),
-		"layout":  strField("Optional composition override: one of this kind's alternative layouts (list_slide_kinds → compositions[], or explain_deck_spec slides[].alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE."),
+		"pattern": strField("Optional composition override: one of this kind's alternative patterns (list_slide_kinds fields:[compositions]). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE."),
+		"layout":  strField("Optional composition override: one of this kind's alternative layouts (list_slide_kinds fields:[compositions]). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE."),
 	}
 }
 

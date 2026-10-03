@@ -21,14 +21,25 @@ import (
 const mcpCompletionRule = "A deck is done only after every slide of the CURRENT revision has been rendered (render_deck_thumbnails) and looked at by you. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After a repair, re-render and re-inspect the slides that changed (render_deck_thumbnails with slide_indices), then make one full-deck pass over the final revision: the revision you ship is the one that has to have been seen."
 
 // mcpQualityWorkflow is the server `instructions` text and get_started's
-// quality_workflow field.
-const mcpQualityWorkflow = `json2pptx quality workflow:
-1. Call get_started first (task: brief | revise | validate-only) for the recommended path.
-2. New deck from a brief: author a DeckSpec (list_slide_kinds gives compact kind summaries and examples; request item_schema only for chosen kinds), check it with validate_deck_spec, then render it with render_deck_spec. make_deck is a skeleton/wireframe only: it fills slides with exemplar placeholder copy and its gate always fails.
+// quality_workflow field, written for the active tool profile: it names
+// make_deck and repair_slide only where tools/list carries them
+// (go-slide-creator-7bdn6).
+func mcpQualityWorkflow() string {
+	skeleton, rawRepair := "", ""
+	if toolIsAdvertised("make_deck") {
+		skeleton = " make_deck is a skeleton/wireframe only: it fills slides with exemplar placeholder copy and its gate always fails."
+	}
+	if toolIsAdvertised("repair_slide") {
+		rawRepair = " (raw decks: repair_slide)"
+	}
+	return `json2pptx quality workflow:
+1. Call get_started first (task: brief | revise | validate-only | onboard-template) for the recommended path.
+2. New deck from a brief: author a DeckSpec (list_slide_kinds lists the kinds; kinds:[chosen] returns copy-ready examples, fields:[brief] field signatures and budgets), check it with validate_deck_spec, then render it with render_deck_spec.` + skeleton + `
 3. ` + mcpCompletionRule + `
-4. Fix what you see or what diagnostics report at their path in the DeckSpec (raw decks: repair_slide), then re-render and re-inspect.
+4. Fix what you see or what diagnostics report at their path in the DeckSpec` + rawRepair + `, then re-render and re-inspect.
 5. Never ship exemplar or placeholder content (uses_exemplar_content=true, an "exemplar_content" blocking reason, __FILL__ tokens, SEMANTIC_WEAK_CONTENT).
 Unknown tool arguments are rejected with UNKNOWN_PARAMETER and a did_you_mean hint; unknown DeckSpec fields are reported as SEMANTIC_UNKNOWN_FIELD.`
+}
 
 // renderToolingWarning is the line appended to the server instructions when the
 // render toolchain is absent. Without it the whole surface looked identical on a
@@ -37,8 +48,12 @@ Unknown tool arguments are rejected with UNKNOWN_PARAMETER and a did_you_mean hi
 // the MANDATORY completion step failed — with no documented alternative
 // (go-slide-creator-a7fh).
 func renderToolingWarning(missing []string) string {
+	tools := "render_deck_thumbnails"
+	if toolIsAdvertised("inspect_slide_images") {
+		tools += " / inspect_slide_images"
+	}
 	return fmt.Sprintf(
-		"RENDER TOOLING MISSING (%s): render_deck_thumbnails / inspect_slide_images will fail on this server, so a deck CANNOT be visually approved here. Build and validate the deck as usual, hand back pptx_path (or the json2pptx://deck/<name> resource), and say plainly that the deck is UNREVIEWED — do not claim the completion rule was met. Install LibreOffice and ImageMagick to restore the visual step.",
+		"RENDER TOOLING MISSING (%s): "+tools+" will fail on this server, so a deck CANNOT be visually approved here. Build and validate the deck as usual, hand back pptx_path (or the json2pptx://deck/<name> resource), and say plainly that the deck is UNREVIEWED — do not claim the completion rule was met. Install LibreOffice and ImageMagick to restore the visual step.",
 		strings.Join(missing, ", "))
 }
 
@@ -46,7 +61,7 @@ func renderToolingWarning(missing []string) string {
 // toolchain is missing.
 func mcpInstructionsFor(renderAvailable bool, missing []string) string {
 	if renderAvailable || len(missing) == 0 {
-		return mcpQualityWorkflow
+		return mcpQualityWorkflow()
 	}
-	return mcpQualityWorkflow + "\n" + renderToolingWarning(missing)
+	return mcpQualityWorkflow() + "\n" + renderToolingWarning(missing)
 }

@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
@@ -434,11 +436,47 @@ func mcpGetCapabilitiesTool() mcp.Tool {
 			mcp.Description("Which capability sections to return: runtime, features, deprecations, vocabularies, registry, tools, error_codes, cli, all. Default: [runtime, features, deprecations]. A comma-separated string is also accepted."),
 			mcp.Items(map[string]any{"type": "string", "enum": capSectionsKnown}),
 		),
+		mcp.WithString("output_schema",
+			mcp.Description("A tool name: return only {tool, output_schema}, that tool's result schema. tools/list omits output schemas unless the server runs with --output-schemas."),
+		),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaGetCapabilities)),
 	)
 }
 
+// toolOutputSchemaResult answers get_capabilities output_schema:"<tool>".
+func toolOutputSchemaResult(ctx context.Context, name string) (*mcp.CallToolResult, error) {
+	ctor, ok := toolConstructors()[name]
+	if !ok {
+		return argInvalidValue("get_capabilities", "INVALID_PARAMETER", "output_schema",
+			fmt.Sprintf("unknown tool %q", name), "string", "render_deck_spec", nil), nil
+	}
+	tool := ctor()
+	var schema any
+	if len(tool.RawOutputSchema) > 0 {
+		if err := json.Unmarshal(tool.RawOutputSchema, &schema); err != nil {
+			return api.MCPSimpleError("INTERNAL", fmt.Sprintf("output schema of %s does not parse: %v", name, err)), nil
+		}
+	}
+	result, err := api.MCPSuccessResult(ctx, map[string]any{
+		"schema_version": SchemaVersion, "skill_schema_version": SchemaVersion, "tool_version": Version,
+		"changelog_url": "docs/SCHEMA_CHANGELOG.md", "sections_included": []string{},
+		"tool": name, "output_schema": schema,
+	})
+	if err != nil {
+		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal the output schema: %v", err)), nil
+	}
+	return result, nil
+}
+
 func (mc *mcpConfig) handleGetCapabilities(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	if raw, present := request.GetArguments()["output_schema"]; present {
+		name, ok := raw.(string)
+		if !ok || strings.TrimSpace(name) == "" {
+			return argInvalidValue("get_capabilities", "INVALID_PARAMETER", "output_schema",
+				"output_schema must be a tool name", "string", "render_deck_spec", nil), nil
+		}
+		return toolOutputSchemaResult(ctx, strings.TrimSpace(name))
+	}
 	sections, err := parseCapabilitySections(request)
 	if err != nil {
 		return argInvalidValue("get_capabilities", "INVALID_PARAMETER", "sections", err.Error(),

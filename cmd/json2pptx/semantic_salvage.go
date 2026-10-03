@@ -449,14 +449,14 @@ func (res *salvageResult) markCausedBy(d *diagnostics.Diagnostic) {
 func (res *salvageResult) notes() []string {
 	var out []string
 	if len(res.Renamed) > 0 {
-		out = append(out, "measured with each misspelled key read as its did_you_mean ("+strings.Join(res.Renamed, "; ")+")")
+		out = append(out, "misspelled keys read as their did_you_mean ("+strings.Join(res.Renamed, "; ")+")")
 	}
 	if len(res.Removed) > 0 {
 		paths := make([]string, len(res.Removed))
 		for i, p := range res.Removed {
 			paths[i] = specPointer(p)
 		}
-		out = append(out, "checks_not_run: "+strings.Join(paths, ", ")+" did not compile, so their fit and the deck-wide checks (rhythm, executive summary, quality gate) wait for their errors to be fixed")
+		out = append(out, "checks_not_run: "+strings.Join(paths, ", ")+" did not compile: their fit and the deck-wide checks (rhythm, executive summary, quality gate) wait for those errors")
 	}
 	return out
 }

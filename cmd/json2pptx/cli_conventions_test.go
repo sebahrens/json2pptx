@@ -568,7 +568,9 @@ func lastLine(s string) string {
 // sentence, same required fields, and the same example for every kind
 // (go-slide-creator-e7jxr).
 func TestSemanticKindsMatchesListSlideKinds(t *testing.T) {
-	result, err := handleListSlideKinds(context.Background(), mcpRequestWithArgs(map[string]any{}))
+	// The catalogue with each kind's example (the bare catalogue leaves them
+	// out; naming kinds, or fields:["example"], returns them).
+	result, err := handleListSlideKinds(context.Background(), mcpRequestWithArgs(map[string]any{"fields": []any{"example"}}))
 	if err != nil || result.IsError {
 		t.Fatalf("list_slide_kinds failed: %v", err)
 	}

@@ -287,7 +287,8 @@ var outputSchemaDescribeFinding = json.RawMessage(`{
       "type": "array",
       "items": {"type": "string"},
       "description": "Codes that often co-occur or that share a root cause."
-    }
+    },
+    "hidden_tools": {"type": "object", "description": "Tools this entry mentions that the active profile's tools/list does not carry: callable by name, not listed.", "properties": {"names": {"type": "array", "items": {"type": "string"}}, "note": {"type": "string"}}, "required": ["names", "note"]}
   },
   "required": ["code", "summary", "severity", "when_emitted", "remediation_steps"]
 }`)
@@ -1784,6 +1785,8 @@ var outputSchemaDeleteTemplateSetting = json.RawMessage(`{
 var outputSchemaGetCapabilities = json.RawMessage(`{
   "type": "object",
   "properties": {
+    "tool":               {"type": "string", "description": "Present with output_schema: the tool asked about."},
+    "output_schema":      {"description": "Present with output_schema: that tool's result schema (null when it declares none)."},
     "schema_version":     {"type": "string"},
     "skill_schema_version": {"type": "string"},
     "tool_version":       {"type": "string"},
@@ -2393,6 +2396,7 @@ var outputSchemaGetStarted = json.RawMessage(`{
       }
     },
     "notes": {"type": "array", "items": {"type": "string"}},
+    "hidden_tools": {"type": "object", "description": "Tools this response mentions that the active profile's tools/list does not carry: callable by name, not listed.", "properties": {"names": {"type": "array", "items": {"type": "string"}}, "note": {"type": "string"}}, "required": ["names", "note"]},
     "quality_workflow": {"type": "string", "description": "The server's MCP instructions text (5-step quality workflow), echoed when verbose=true."},
     "runtime": {"type": "object", "properties": {
       "render_available": {"type": "boolean"},
@@ -2850,15 +2854,19 @@ var outputSchemaListSlideKinds = json.RawMessage(`{
           "required_fields": {"type": "array", "items": {"type": "string"}},
           "required_aliases": {"type": "object", "description": "Maps a required field to accepted alias keys (required-one-of: the field or any alias satisfies the requirement).", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
           "typical_fields":  {"type": "array", "items": {"type": "string"}},
-          "item_schema":     {"type": "object", "description": "Closed JSON Schema for one slide of this kind; present only when fields includes item_schema."},
-          "example":         {"type": "object", "description": "Minimal copy-ready slide of this kind (includes kind); validates with no error or warning."},
+          "item_schema":     {"type": "object", "description": "Present when fields includes item_schema: the schema an author reads — every canonical field once, the alternative spellings the compiler accepts named in its aliases annotation (also on list-entry keys). A spec written with an alias is accepted but is not valid against this schema; item_schema_full is."},
+          "item_schema_full": {"type": "object", "description": "Present when fields includes item_schema_full: the closed JSON Schema for one slide of this kind, every accepted alias a property of its own. For validators."},
+          "brief":           {"type": "object", "description": "Present when fields includes brief: each canonical payload field mapped to a one-line signature (type, entry keys, required). Budgets come with it.", "additionalProperties": {"type": "string"}},
+          "example":         {"type": "object", "description": "Minimal copy-ready slide of this kind (includes kind); validates with no error or warning. Present when kinds are named without fields, or fields includes example."},
           "compositions":    {"type": "array", "description": "Supported pattern/layout overrides; present only when fields includes compositions.", "items": {"type": "object", "properties": {"pattern": {"type": "string"}, "layout": {"type": "string"}, "reason": {"type": "string"}}}},
           "budgets":         {"type": "array", "description": "Per-field text budgets; present only when template is given or fields includes budgets. title, subtitle and takeaway are measured (the template's own placeholders and takeaway band, or the tightest across the shipped templates); the rest are fixed on every template.", "items": {"type": "object", "properties": {"field": {"type": "string", "description": "Payload path under the slide; [] marks a list entry and + joins fields sharing one budget."}, "max_chars": {"type": "integer"}, "max_chars_per_line": {"type": "integer", "description": "A title's conservative single-line width."}, "max_lines": {"type": "integer"}, "min_items": {"type": "integer"}, "max_items": {"type": "integer"}, "basis": {"type": "string", "enum": ["measured", "fixed"]}, "note": {"type": "string"}}, "required": ["field", "basis"]}},
           "composed_example": {"type": "object", "description": "raw_json2pptx row only, present when kinds names raw_json2pptx: a copy-ready DeckSpec slide whose compose envelope places several supporting regions (dominant chart, KPI region, timeline footer) that prove one title on one slide."}
         },
-        "required": ["kind", "summary", "example"]
+        "required": ["kind", "summary"]
       }
-    }
+    },
+    "detail": {"type": "string", "description": "Catalogue only: how to fetch a chosen kind's example, fields and budgets."},
+    "brief_note": {"type": "string", "description": "Present with fields:[brief]: the fields every kind takes, named once."}
   },
   "required": ["slide_kinds", "takeaway_budget"]
 }`)

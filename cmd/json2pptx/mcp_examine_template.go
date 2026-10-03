@@ -40,25 +40,23 @@ import (
 
 func mcpExamineTemplateTool() mcp.Tool {
 	return mcp.NewTool("examine_template",
-		mcp.WithDescription(`Examine a PPTX template and return its capability report inline (the `+"`json2pptx examine-template`"+` report.json shape; writes no files).
+		mcp.WithDescription(`Examine a PPTX template and return its capability report inline (the `+"`json2pptx examine-template`"+` report.json shape; writes no files). Use it before authoring on a user-provided template.
 
-Report: template, sha256, aspect_ratio, slide size, theme (fonts, scheme→hex colors), masters[], canonical_coverage (the four content-bearing families title-slide / section-divider / one-content / qa-closing, each {family, present, layouts[]}), derivable_layouts[] ({name, ready, missing[], addressable_as, request_via}; use addressable_as as layout_id only when non-null), layouts[] (canonical type/family + confidence, content_zone, placeholders[] with role, font_pt, max_chars, exact bounds, z_index), grid (margin_pct, columns, gutter_pt, title_gap_pt from the template metadata grid block or engine defaults, declared[], content_frame lines grid_violation checks), and a findings envelope folding every diagnostic — including TPL.LAYOUT.MISSING_ROLE when a canonical family is absent. The merged conformance.json bundle stays CLI-only.
+Report: template, sha256, aspect_ratio, slide size, theme (fonts, scheme→hex colors), masters[], canonical_coverage (the four content-bearing families title-slide / section-divider / one-content / qa-closing, each {family, present, layouts[]}), derivable_layouts[] ({name, ready, missing[], addressable_as, request_via}; use addressable_as as layout_id only when non-null), layouts[] (canonical type/family, content_zone, placeholders[] with role, font_pt, max_chars, bounds), grid (margin_pct, columns, gutter_pt, title_gap_pt, content_frame) and a findings envelope — TPL.LAYOUT.MISSING_ROLE when a canonical family is absent.
 
-Supply EXACTLY ONE of template_name (a registered template; see list_templates) or template_path (a local .pptx not yet registered, resolved against base_dir or the server CWD and required to stay inside it after ~/$ENV expansion and symlink evaluation; an escape returns INVALID_PATH).
-
-Use it before authoring to learn what layouts, placeholder roles, character budgets and theme colors a user-provided template supports.`),
+Supply EXACTLY ONE of template_name (a registered template) or template_path (a local .pptx, resolved against base_dir or the server CWD and required to stay inside it; an escape returns INVALID_PATH).`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaExamineTemplate)),
 		mcp.WithString("template_name",
-			mcp.Description("Registered/embedded template name (e.g., midnight-blue). Use list_templates to discover available names. Provide this OR template_path, not both."),
+			mcp.Description("Registered template name (list_templates lists them). This OR template_path."),
 		),
 		mcp.WithString("template_path",
-			mcp.Description("Path to a local .pptx template file to inspect, resolved against base_dir (or the server CWD when base_dir is absent). Must stay within that allowed root. Provide this OR template_name, not both."),
+			mcp.Description("Local .pptx to inspect, resolved against base_dir (else the server CWD); must stay inside it. This OR template_name."),
 		),
 		mcp.WithString("base_dir",
-			mcp.Description("Absolute directory that bounds template_path resolution (the allowed root). Relative template_path values resolve against it; the resolved file must stay inside it. When absent, the server falls back to its process CWD."),
+			mcp.Description("Absolute directory template_path resolves against and must stay inside. Default: the server CWD."),
 		),
 		mcp.WithBoolean("strict",
-			mcp.Description("When true, metadata validation fails on warnings, not just errors (surfaced in the findings envelope). Default: false."),
+			mcp.Description("true: metadata warnings fail validation too."),
 			mcp.DefaultBool(false),
 		),
 	)
