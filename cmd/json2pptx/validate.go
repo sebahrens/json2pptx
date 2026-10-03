@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -27,7 +28,7 @@ func runValidate() error { //nolint:gocognit
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
 	jsonOut := fs.Bool("json", false, "Alias for --format=json: emit the MCP validate_input dryRunOutput shape to stdout")
 	jsonOutputPath := fs.String("json-output", "", "Write JSON results (dryRunOutput shape) to file (use - for stdout)")
-	fitReport := fs.Bool("fit-report", false, "Run per-cell text overflow measurement and print findings")
+	fitReport := fs.Bool("fit-report", false, "Also run the render-projection checks generate runs (text overflow, density, contrast, chart dry-render) and report their findings. Unrenderable chart/diagram types are reported without this flag")
 	verboseFit := fs.Bool("verbose-fit", false, "Return all fit findings without the per-slide budget limit")
 	format := fs.String("format", "", "Output format: json (MCP-identical dryRunOutput), ndjson, or human (default)")
 	strictUnknownKeys := fs.Bool("strict-unknown-keys", false, "Fail-fast on misspelled/unknown JSON keys: when true, unknown keys are validation errors; when false (default), they are warnings. Mirrors MCP validate_input strict_unknown_keys.")
@@ -41,7 +42,9 @@ func runValidate() error { //nolint:gocognit
 		fmt.Fprintf(os.Stderr, "Reports errors, warnings, and content statistics.\n\n")
 		fmt.Fprintf(os.Stderr, "Output shapes:\n")
 		fmt.Fprintf(os.Stderr, "  - human (default): human-readable summary on stdout, fit findings on stderr\n")
-		fmt.Fprintf(os.Stderr, "  - --json / --format=json / --json-output: MCP validate_input dryRunOutput shape\n")
+		fmt.Fprintf(os.Stderr, "  - --format=json (--json, --json-output): MCP validate_input dryRunOutput shape;\n")
+		fmt.Fprintf(os.Stderr, "    a refused deck answers {\"valid\": false, \"findings\": {ok, summary, findings: [...]}},\n")
+		fmt.Fprintf(os.Stderr, "    so findings.findings is the list in both cases\n")
 		fmt.Fprintf(os.Stderr, "  - --format=ndjson: MCP dryRunOutput, one object per line per file\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx validate slides.json\n")
@@ -59,7 +62,7 @@ func runValidate() error { //nolint:gocognit
 		printDoubleDashUsage(fs)
 	}
 
-	if err := fs.Parse(os.Args[1:]); err != nil {
+	if err := cliParse(fs, os.Args[1:]); err != nil {
 		return err
 	}
 
@@ -529,14 +532,27 @@ func runValidateMCPFormat(files []string, templatesDir, baseDirOverride string, 
 	}
 
 	for _, filePath := range files {
+		// An unreadable or malformed file is a validation result like any
+		// other: it is reported in the same JSON shape on the same stream, so
+		// a caller parsing stdout never meets a plain-text error instead
+		// (go-slide-creator-pikfw).
 		jsonInput, err := readJSONInput(filePath)
 		if err != nil {
-			return err
+			hasErrors = true
+			code := "FILE_READ_ERROR"
+			if errors.Is(err, os.ErrNotExist) {
+				code = "FILE_NOT_FOUND"
+			}
+			_ = writeValidateFailure(out, validateInputEnvelope(code, err.Error()), format)
+			continue
 		}
 
 		var presentation any
 		if err := json.Unmarshal([]byte(jsonInput), &presentation); err != nil {
-			return fmt.Errorf("invalid JSON in %s: %w", filePath, err)
+			hasErrors = true
+			msg := fmt.Sprintf("invalid JSON in %s: %v%s", filePath, err, jsonErrorPosition(jsonInput, err))
+			_ = writeValidateFailure(out, validateInputEnvelope("INVALID_JSON", msg), format)
+			continue
 		}
 
 		args := map[string]any{
@@ -563,6 +579,13 @@ func runValidateMCPFormat(files []string, templatesDir, baseDirOverride string, 
 
 		if result.IsError {
 			hasErrors = true
+			var env any
+			if json.Unmarshal([]byte(cliResultText(result)), &env) == nil {
+				if err := writeValidateFailure(out, env, format); err != nil {
+					return err
+				}
+				continue
+			}
 		}
 
 		if err := writeMCPResultJSON(out, result, format); err != nil {
@@ -574,6 +597,59 @@ func runValidateMCPFormat(files []string, templatesDir, baseDirOverride string, 
 		return fmt.Errorf("validation failed")
 	}
 	return nil
+}
+
+// writeValidateFailure writes a refused validation in the SAME top-level shape
+// a passing one has: {"valid": false, "findings": {ok, summary, findings: [...]}}.
+// validate_input answers a refusal with the bare finding envelope, so the CLI
+// used to print an object whose "findings" was an array on failure and an
+// object on success, and a one-liner written against a passing deck crashed on
+// a failing one (go-slide-creator-pikfw).
+func writeValidateFailure(w io.Writer, envelope any, format string) error {
+	shape := map[string]any{"valid": false, "findings": envelope}
+	var (
+		data []byte
+		err  error
+	)
+	if format == "ndjson" {
+		data, err = json.Marshal(shape)
+	} else {
+		data, err = json.MarshalIndent(shape, "", "  ")
+	}
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(append(data, '\n'))
+	return err
+}
+
+// validateInputEnvelope builds a one-finding error envelope for a file the
+// validator could not even parse.
+func validateInputEnvelope(code, message string) diagnostics.FindingEnvelope {
+	return diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{Subcommand: "validate"}, []diagnostics.Diagnostic{{
+		Code: code, Message: message, Severity: diagnostics.SeverityError,
+	}})
+}
+
+// jsonErrorPosition renders the line and column of a JSON syntax or type error
+// as " (line L, column C)", or "" when the error carries no offset.
+func jsonErrorPosition(input string, err error) string {
+	var offset int64 = -1
+	var syn *json.SyntaxError
+	var typ *json.UnmarshalTypeError
+	switch {
+	case errors.As(err, &syn):
+		offset = syn.Offset
+	case errors.As(err, &typ):
+		offset = typ.Offset
+	}
+	if offset < 0 || offset > int64(len(input)) {
+		return ""
+	}
+	prefix := input[:offset]
+	line := 1 + strings.Count(prefix, "\n")
+	col := len(prefix) - strings.LastIndexByte(prefix, '\n')
+	return fmt.Sprintf(" (line %d, column %d)", line, col)
 }
 
 // writeMCPResultJSON writes the text content of an MCP CallToolResult to w as
@@ -632,8 +708,12 @@ func printValidateResult(r validateResult) {
 	}
 
 	fmt.Printf("%s: %s\n", r.File, status)
-	fmt.Printf("  Slides: %d | Charts: %d | Diagrams: %d | Tables: %d | Shapes: %d\n",
-		r.SlideCount, r.ChartCount, r.DiagramCount, r.TableCount, r.ShapeCount)
+	// A refused deck comes back as findings only; printing "Slides: 0" for it
+	// would state a count nobody measured.
+	if r.Valid || r.SlideCount > 0 {
+		fmt.Printf("  Slides: %d | Charts: %d | Diagrams: %d | Tables: %d | Shapes: %d\n",
+			r.SlideCount, r.ChartCount, r.DiagramCount, r.TableCount, r.ShapeCount)
+	}
 
 	for _, e := range r.Errors {
 		fmt.Printf("  ERROR: %s\n", e)

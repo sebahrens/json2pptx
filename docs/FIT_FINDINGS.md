@@ -861,11 +861,13 @@ A diagram placeholder's width or height was below the engine's minimum threshold
 
 ### `diagram_render_failed`
 
-**Action:** `review` (render time); `refuse` (validate / preview time, shape_grid and pattern diagram cells)
+**Action:** `refuse`
 **Fix kind:** `review` (no auto-fix)
-**Emitted at:** render time; validate / preview time via chart dry-render
+**Emitted at:** validate (always — with or without `--fit-report` / `fit_report`), preview, and render time
 
-Diagram rendering failed entirely; a placeholder image was inserted instead.
+Diagram rendering failed entirely. The chart or diagram cannot be drawn: an unknown type (`stacked-bar` for `stacked_bar` — the message carries the renderer's "did you mean"), or data the renderer rejects.
+
+Plain validation reports it: `json2pptx validate deck.json` and `validate_input(fit_report: false)` dry-render every chart and diagram and answer invalid with this finding at the chart's path (`/slides/{i}/content/{j}/chart_value` or `…/diagram_value`), so the failure is not something only `--fit-report` reveals (go-slide-creator-gr64x). `json2pptx generate` exits non-zero and removes the deck when the generator reports it, at every `--strict-fit` level (`off`, `warn`, `strict`) and with `--partial`: a slide with a grey "Data unavailable" box in place of its chart is not written. The MCP `generate_presentation` response keeps reporting it as a `refuse` finding with a failing quality gate.
 
 At validate / preview time the chart dry-render emits this code with `action: refuse` for diagrams inside a `shape_grid` cell or a pattern-expanded grid (e.g. `chart-insights-split`), because generate aborts the whole deck on those instead of inserting a placeholder. The path is the cell's JSON Pointer (`/slides/{i}/shape_grid/rows/{r}/cells/{c}/diagram`, or `/slides/{i}/pattern/rows/{r}/cells/{c}/diagram` for pattern-embedded charts) and `fix.params.reason` carries the svggen error generate would report. This is review-only — no deterministic auto-fix is available. The agent must inspect the diagram data and decide whether to simplify the diagram, change its type, or regenerate the slide.
 

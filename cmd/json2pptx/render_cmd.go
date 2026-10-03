@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -21,19 +22,22 @@ func runRenderSlide() error {
 	slideIndex := fs.Int("slide-index", 0, "0-based slide index to render")
 	density := fs.Int("density", 100, "DPI for rendering (50-300)")
 	force := fs.Bool("force", false, "Bypass render cache")
+	outPath := fs.String("out", "", "Write the PNG to this file and print a manifest (path, sha256, bytes). Without it the manifest points at the render cache")
+	base64Out := fs.Bool("base64", false, "Print the legacy JSON envelope with the image as png_base64 instead of a file manifest")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx render-slide --pptx <file.pptx> [options]\n\n")
-		fmt.Fprintf(os.Stderr, "Render a single slide from a PPTX to a PNG image.\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx render-slide <file.pptx> [--slide-index N] [--out slide.png] [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Render a single slide from a PPTX to a PNG file and print a small manifest\n")
+		fmt.Fprintf(os.Stderr, "(path, sha256, bytes, width, height) on stdout.\n")
 		fmt.Fprintf(os.Stderr, "Requires LibreOffice and ImageMagick on PATH.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx render-slide --pptx output/deck.pptx\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx render-slide --pptx output/deck.pptx --slide-index 3 --density 200\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx render-slide output/deck.pptx --out slide-0.png\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx render-slide output/deck.pptx --slide-index 3 --density 200 --out slide-3.png\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
 
-	if err := fs.Parse(os.Args[1:]); err != nil {
+	if err := cliParse(fs, os.Args[1:]); err != nil {
 		return err
 	}
 
@@ -49,16 +53,28 @@ func runRenderSlide() error {
 		"slide_index": float64(*slideIndex),
 		"density":     float64(*density),
 		"force":       *force,
-		// The CLI prints JSON to stdout; keep the base64/path envelope.
-		argIncludeBase64JSON: true,
+	}
+	if *base64Out {
+		args[argIncludeBase64JSON] = true
 	}
 
 	result, err := mc.handleRenderSlideImage(context.Background(), mcpRequestWithArgs(args))
 	if err != nil {
 		return fmt.Errorf("render-slide: %w", err)
 	}
+	if *base64Out {
+		return printMCPResultJSON(result)
+	}
+	return cliPrintRenderManifest(result, "", singleSlideDest(*outPath), false)
+}
 
-	return printMCPResultJSON(result)
+// singleSlideDest returns the destination mapper for a one-slide render: the
+// file the caller named, or nil (leave it in the render cache) when none.
+func singleSlideDest(outPath string) func(int) string {
+	if outPath == "" {
+		return nil
+	}
+	return func(int) string { return outPath }
 }
 
 // runRenderSlideFromJSON implements the "render-slide-from-json" CLI subcommand.
@@ -72,19 +88,22 @@ func runRenderSlideFromJSON() error {
 	density := fs.Int("density", 100, "DPI for rendering (50-300)")
 	force := fs.Bool("force", false, "Bypass render cache")
 	overlay := fs.Bool("overlay", false, "Composite shape_grid cell bounds + fit-finding badges onto the rendered PNG")
+	outPath := fs.String("out", "", "Write the PNG to this file and print a manifest (path, sha256, bytes). Without it the manifest points at the render cache")
+	base64Out := fs.Bool("base64", false, "Print the legacy JSON envelope with the image as png_base64 instead of a file manifest")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx render-slide-from-json --template <name> --slide <file.json> [options]\n\n")
-		fmt.Fprintf(os.Stderr, "Render a single slide directly from JSON to a PNG, without generating the full deck.\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx render-slide-from-json <slide.json> --template <name> [--out slide.png] [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Render a single slide directly from JSON to a PNG file, without generating the full deck,\n")
+		fmt.Fprintf(os.Stderr, "and print a small manifest (path, sha256, bytes) on stdout.\n")
 		fmt.Fprintf(os.Stderr, "Requires LibreOffice and ImageMagick on PATH.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx render-slide-from-json --template midnight-blue --slide slide.json\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx render-slide-from-json slide.json --template midnight-blue --out slide.png\n")
 		fmt.Fprintf(os.Stderr, "  cat slide.json | json2pptx render-slide-from-json --template midnight-blue --slide -\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
 
-	if err := fs.Parse(os.Args[1:]); err != nil {
+	if err := cliParse(fs, os.Args[1:]); err != nil {
 		return err
 	}
 
@@ -121,20 +140,23 @@ func runRenderSlideFromJSON() error {
 		"density":  float64(*density),
 		"force":    *force,
 		"overlay":  *overlay,
-		// The CLI prints JSON to stdout; keep the base64/path envelope.
-		argIncludeBase64JSON: true,
+	}
+	if *base64Out {
+		args[argIncludeBase64JSON] = true
 	}
 
 	result, err := mc.handleRenderSlideImageFromJSON(context.Background(), mcpRequestWithArgs(args))
 	if err != nil {
 		return fmt.Errorf("render-slide-from-json: %w", err)
 	}
-
-	return printMCPResultJSON(result)
+	if *base64Out {
+		return printMCPResultJSON(result)
+	}
+	return cliPrintRenderManifest(result, "", singleSlideDest(*outPath), false)
 }
 
-// runRenderThumbnails implements the "render-thumbnails" CLI subcommand.
-// It outputs the same response as the render_deck_thumbnails MCP tool.
+// runRenderThumbnails implements the "render-thumbnails" CLI subcommand: the
+// render_deck_thumbnails MCP tool, delivered as PNG files plus a manifest.
 func runRenderThumbnails() error {
 	fs := flag.NewFlagSet("render-thumbnails", flag.ContinueOnError)
 
@@ -144,20 +166,24 @@ func runRenderThumbnails() error {
 	maxSlides := fs.Int("max-slides", 50, "Maximum number of slides to render, counting from the first")
 	slides := fs.String("slides", "", "Render only these 0-based slides, comma-separated (e.g. 1,3). Mutually exclusive with --max-slides")
 	force := fs.Bool("force", false, "Bypass render cache")
+	outDir := fs.String("out-dir", "", "Write slide-<index>.png files (0-based, the names 'inspect --images' reads) into this directory and print a manifest (paths, sha256, sizes). Without it the manifest points at the render cache")
+	base64Out := fs.Bool("base64", false, "Print the legacy JSON envelope with every image as png_base64 instead of a file manifest")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx render-thumbnails --pptx <file.pptx> [options]\n\n")
-		fmt.Fprintf(os.Stderr, "Render all slides in a PPTX as low-resolution PNG thumbnails.\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx render-thumbnails <file.pptx> --out-dir <dir> [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Render the slides of a PPTX as PNG files and print a small manifest\n")
+		fmt.Fprintf(os.Stderr, "(path, sha256, bytes, width, height per slide) on stdout.\n")
+		fmt.Fprintf(os.Stderr, "Files are named slide-0.png, slide-1.png, ... - what 'json2pptx inspect <dir>' reads.\n")
 		fmt.Fprintf(os.Stderr, "Requires LibreOffice and ImageMagick on PATH.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails --pptx output/deck.pptx\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails --pptx output/deck.pptx --density 100 --max-slides 10\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails --pptx output/deck.pptx --slides 1,3\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails output/deck.pptx --out-dir slides/\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails output/deck.pptx --out-dir slides/ --density 100 --max-slides 10\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails output/deck.pptx --out-dir slides/ --slides 1,3\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
 
-	if err := fs.Parse(os.Args[1:]); err != nil {
+	if err := cliParse(fs, os.Args[1:]); err != nil {
 		return err
 	}
 
@@ -172,8 +198,9 @@ func runRenderThumbnails() error {
 		"pptx_path": *pptxPath,
 		"density":   float64(*density),
 		"force":     *force,
-		// The CLI prints JSON to stdout; keep the base64/path envelope.
-		argIncludeBase64JSON: true,
+	}
+	if *base64Out {
+		args[argIncludeBase64JSON] = true
 	}
 	// --slides names slides; --max-slides caps a prefix. The MCP tool refuses
 	// both at once, so send whichever the caller asked for.
@@ -191,8 +218,18 @@ func runRenderThumbnails() error {
 	if err != nil {
 		return fmt.Errorf("render-thumbnails: %w", err)
 	}
-
-	return printMCPResultJSON(result)
+	if *base64Out {
+		return printMCPResultJSON(result)
+	}
+	if *outDir == "" {
+		return cliPrintRenderManifest(result, "", nil, false)
+	}
+	dir := *outDir
+	// A subset render (--slides) adds to the directory; a deck render owns it,
+	// so slide files a longer earlier deck left behind are removed.
+	return cliPrintRenderManifest(result, dir, func(index int) string {
+		return filepath.Join(dir, fmt.Sprintf("slide-%d.png", index))
+	}, *slides == "")
 }
 
 // parseSlideList parses a comma-separated list of 0-based slide numbers, the CLI

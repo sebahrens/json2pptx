@@ -1179,22 +1179,37 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	// Validate slides against template (layout IDs, placeholder IDs,
 	// character limits, content types, chart/diagram data)
 	validateSlidesAgainstTemplate(&output, input.Slides, templateAnalysis)
+	countPatternVisuals(&output, &input, templateAnalysis)
 
-	// Fit report: run all fit detectors (default true for validate).
+	applyValidateFitChecks(&output, &input, templateAnalysis, request)
+
+	return marshalValidateResult(ctx, output)
+}
+
+// applyValidateFitChecks runs validate's render-projection checks: the full
+// fit report (default on for validate_input), or — with fit_report off — the
+// one check whose result is never advisory.
+func applyValidateFitChecks(output *dryRunOutput, input *PresentationInput, analysis *types.TemplateAnalysis, request mcp.CallToolRequest) {
 	fitReport := true
 	if v, ok := request.GetArguments()["fit_report"].(bool); ok {
 		fitReport = v
 	}
 	if fitReport {
-		findings := collectFitFindings(&input, templateAnalysis.Layouts, templateAnalysis.SlideWidth, templateAnalysis.SlideHeight, &templateAnalysis.Theme)
+		findings := collectFitFindings(input, analysis.Layouts, analysis.SlideWidth, analysis.SlideHeight, &analysis.Theme)
 		if hasRefuseFinding(findings) {
 			output.Valid = false
 		}
 		verboseFit, _ := request.GetArguments()["verbose_fit"].(bool)
 		output.FitFindings = BudgetFitFindings(findings, DefaultFindingBudget, verboseFit)
+		return
 	}
-
-	return marshalValidateResult(ctx, output)
+	// A chart or diagram that cannot render is not a fit nuance: the deck is
+	// missing its visual. Plain validation (fit_report off — what the CLI's
+	// `validate` runs) used to call such a deck valid (go-slide-creator-gr64x).
+	if failed := unrenderableDiagramFindings(input, analysis); len(failed) > 0 {
+		output.Valid = false
+		output.FitFindings = failed
+	}
 }
 
 // marshalValidateResult serializes a dryRunOutput as a CallToolResult.

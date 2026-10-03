@@ -680,6 +680,23 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	}
 	allFitFindings = supersedeRealizedContrastPredictions(dedupFitFindings(allFitFindings))
 
+	// A chart or diagram that failed to render left a grey "Data unavailable"
+	// box where the visual should be. That deck is not a result at any
+	// strictness level: remove it and fail, instead of exiting 0 with the
+	// failure visible only in a WARN line (go-slide-creator-gr64x).
+	// Only what the generator reported counts here: a dry-render prediction of
+	// the same failure would list the chart twice.
+	if failed := diagramRenderFailures(result.FitFindings); len(failed) > 0 {
+		_ = os.Remove(outputPath)
+		lines := make([]string, 0, len(failed))
+		for _, f := range failed {
+			lines = append(lines, fmt.Sprintf("%s: %s", f.Path, f.Message))
+		}
+		return writeJSONErrorWithFindings(jsonOutputPath, fmt.Errorf(
+			"generation failed: %s: %d chart/diagram(s) could not be rendered, so no deck was written — fix the type or data and rerun:\n  %s",
+			patterns.ErrCodeDiagramRenderFailed, len(failed), strings.Join(lines, "\n  ")), failed)
+	}
+
 	// Build per-slide resolution summary
 	slideResolutions := buildSlideResolutions(input.Slides, slideSpecs, templateLayouts, syntheticFiles,
 		droppedPlaceholdersBySlide(allFitFindings))
@@ -738,7 +755,28 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		"duration_ms", output.DurationMs,
 	)
 
-	return nil
+	// The result — above all where the deck was written — belongs on stdout.
+	// It used to exist only as the INFO log line above, on stderr
+	// (go-slide-creator-pikfw). Same field names as the full report
+	// (--json-output-report), reduced to what a caller needs to carry on.
+	return printGenerateSummary(JSONOutput{
+		Success:     true,
+		OutputPath:  outputPath,
+		SlideCount:  result.SlideCount,
+		ContentHash: result.ContentHash,
+		DurationMs:  output.DurationMs,
+		Warnings:    allWarnings,
+	})
+}
+
+// printGenerateSummary prints generate's one-line JSON result on stdout.
+func printGenerateSummary(summary JSONOutput) error {
+	data, err := json.Marshal(summary)
+	if err != nil {
+		return fmt.Errorf("failed to marshal result: %w", err)
+	}
+	_, err = os.Stdout.Write(append(data, '\n'))
+	return err
 }
 
 // convertJSONSlides converts JSON slide definitions to generator specs.

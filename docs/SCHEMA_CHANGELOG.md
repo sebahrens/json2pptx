@@ -1,5 +1,79 @@
 # Schema Changelog
 
+- **2026-10-03 — CLI: one flag convention, kind catalogue, PNG files, quiet logs, failed charts fail (`go-slide-creator-e6gsz`, `-e7jxr`, `-l7tg3`, `-92gox`, `-pikfw`, `-12dkn`, `-gr64x`).** SchemaVersion unchanged in this commit (the wave commit carries the bump). MCP tool shapes are unchanged except where noted.
+  - **Flag convention on every subcommand.** The primary input is the first
+    positional argument (`validate deck.json`, `generate deck.json`,
+    `semantic render deck.yaml`, `render-thumbnails deck.pptx`,
+    `score deck.json`, `get-started revise`); `--out <path>` names the output;
+    `--format json|text` selects the output shape; `--verbose` enables INFO
+    logs. The old spellings stay as deprecated aliases: `--json` / `--spec` /
+    `--pptx` / `--slide` / `--images <file>` for the input, `--output` /
+    `--output-dir` / `--out-dir` for the output, the boolean `--json` for
+    `--format json`. Flags are accepted before or after positionals
+    (`validate deck.json --json` works), `-h` / `--help` print to stdout and
+    exit 0 on every command, and a stray extra argument is an error instead
+    of being ignored.
+  - **`json2pptx semantic kinds`** lists every DeckSpec slide kind with a
+    one-line summary (~3 KB); **`semantic kinds <kind>`** prints required and
+    typical fields, each field's type and budget, the `pattern` / `layout`
+    compositions and a copy-ready YAML example (`--format json`: the
+    `list_slide_kinds` entry with `item_schema` and `compositions`). It
+    renders the `list_slide_kinds` handler's output; that tool's
+    `cli_counterpart` is now `semantic kinds` (was `semantic schema`).
+  - **`json2pptx get-started`** adds `"cli"` beside every `"tool"`: the
+    command line for that step (`json2pptx semantic validate <deck.yaml>`),
+    or an MCP-only note. The task is accepted positionally and an unknown
+    task is refused (exit 1) instead of answered as `brief`. The MCP
+    `get_started` response is unchanged.
+  - **`json2pptx templates`** prints template names, one line each (name,
+    aspect ratio, layout count, title / body font; under 2 KB;
+    `--format json` → `{"templates": [{name, aspect_ratio, layout_count,
+    title_font, body_font}]}`). **`icons search <term> [--limit N]
+    [--set S]`** returns matching qualified names (name substring plus the
+    business-concept index; `--format json` → `{query, names, total_count,
+    matched_via?, concepts?}`). **`icons list --names`** prints only
+    qualified names, one per line. Top-level help and each discovery
+    command's `-h` state the output size class.
+  - **`render-thumbnails --out-dir <dir>`** (alias `--out`) writes
+    `slide-<index>.png` (0-based — the names `inspect` reads) and prints a
+    manifest `{out_dir, slide_count, slides: [{index, path, sha256, bytes,
+    width, height}], truncated?, source_hash}`; `sha256` is the hash of the
+    file written. Without `--out-dir` the manifest points at the render-cache
+    PNGs. `--base64` restores the old `png_base64` envelope. `render-slide`
+    and `render-slide-from-json` take `--out <file.png>` and print the same
+    manifest shape. A full-deck render removes `slide-N.png` files a previous
+    run left in the directory.
+  - **Output and logging.** INFO logs are off by default (`--verbose` or
+    `JSON2PPTX_LOG_LEVEL=info` enables them) and an identical log line is
+    written once per run. `generate` prints a one-line JSON result on stdout
+    — `{"success", "output_path", "slide_count", "content_hash",
+    "duration_ms", "warnings"}`, or `{"success": false, "error"}` — where the
+    output path used to appear only in a stderr INFO line. Error envelopes of
+    tool-backed commands (`render-*`, `describe-finding`, `score`, …) and
+    the `semantic compile|render|explain` failure results go to stdout, and
+    the envelope's `subcommand` is the command that ran (was `"mcp"`).
+    `validate --format json` has one shape: a refused deck answers
+    `{"valid": false, "findings": {ok, summary, findings: [...]}}` (was the
+    bare envelope, whose `findings` is an array), and unreadable or malformed
+    input is reported in that shape as `FILE_NOT_FOUND` / `FILE_READ_ERROR` /
+    `INVALID_JSON` (with line and column) instead of a plain stderr line.
+    `chart_count` / `diagram_count` (CLI and `validate_input`) now include
+    charts and diagrams drawn by a slide-level pattern.
+  - **Unrenderable charts.** Plain `validate` (and `validate_input` with
+    `fit_report: false`) reports `diagram_render_failed` (`refuse`) at the
+    chart's path with the renderer's suggestion; `generate` exits non-zero
+    and leaves no deck when a chart or diagram fails to render, at every
+    `--strict-fit` level and with `--partial`.
+  - **Files left behind.** `semantic render` documents its
+    `<deck>.pptx.authoring.json` sidecar in `-h`, takes `--no-manifest` to
+    skip it, and removes a stale sidecar when the render ends without a deck
+    at that path. LibreOffice profile directories (`json2pptx-lo-<pid>-*`)
+    left in the temp directory by processes that are gone are removed by the
+    next process that renders and by `purge-render-cache`. The layout-preview
+    cache (`~/.cache/json2pptx/layout-previews`) is bounded: sets unused for
+    30 days are removed and the rest is kept under 256 MiB, least recently
+    used first.
+
 - **2026-10-03 — Composition overrides compile to what explain reports (`go-slide-creator-vj549`).** SchemaVersion unchanged (no new tools, codes or fix kinds).
   - A `pattern` / `layout` override listed in `compositions[]` is honoured
     only when the slide actually compiles to it, and the compiler is held to

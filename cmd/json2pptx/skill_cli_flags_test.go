@@ -114,7 +114,7 @@ func TestCLIDispatchHelper(t *testing.T) {
 		}
 	}
 	os.Args = append([]string{"json2pptx"}, rest...)
-	if err := dispatch(); err != nil {
+	if err := run(); err != nil {
 		_, _ = os.Stderr.WriteString("Error: " + err.Error() + "\n")
 	}
 	os.Exit(0)

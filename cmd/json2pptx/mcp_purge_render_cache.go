@@ -68,12 +68,18 @@ func runPurgeRenderCache() error {
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx purge-render-cache [--all]\n\n")
 		fmt.Fprintf(os.Stderr, "Reclaims the on-disk render cache. Renders already sweep it;\n")
-		fmt.Fprintf(os.Stderr, "this is for reclaiming space deliberately.\n\n")
-		fs.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "this is for reclaiming space deliberately. Also removes LibreOffice\n")
+		fmt.Fprintf(os.Stderr, "profile directories (json2pptx-lo-*) left in the temp directory by\n")
+		fmt.Fprintf(os.Stderr, "processes that are no longer running.\n\n")
+		printDoubleDashUsage(fs)
 	}
-	if err := fs.Parse(os.Args[1:]); err != nil {
+	if err := cliParse(fs, os.Args[1:]); err != nil {
 		return err
 	}
+
+	// Reclaiming space deliberately also covers the LibreOffice profiles that
+	// killed or crashed processes left in the temp directory.
+	_, _ = render.SweepStaleLibreOfficeProfiles(os.TempDir())
 
 	args := map[string]any{}
 	if *all {

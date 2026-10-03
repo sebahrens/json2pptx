@@ -223,9 +223,12 @@ The patch envelope (`base` + `operations`) and the `~` / `$VAR` expansion rules 
 
 ## Validating before generating
 
-- CLI: `json2pptx validate <input.json>` — same validator the engine runs.
-- CLI: `json2pptx validate <input.json> -fit-report` — adds layout-fit diagnostics.
-- MCP: `validate_input` — wraps both.
+- CLI: `json2pptx validate <input.json>` — same validator the engine runs. It also dry-renders every chart and diagram: one that cannot render (an unknown type such as `stacked-bar` for `stacked_bar`, data the renderer rejects) is reported as `diagram_render_failed` at the chart's path with the renderer's suggestion, and the deck is invalid — no flag needed.
+- CLI: `json2pptx validate <input.json> --fit-report` — adds the layout-fit diagnostics (text overflow, density, contrast, chart label fit).
+- CLI: `json2pptx validate <input.json> --format json` — one JSON shape whether the deck passes or not: `{"valid": bool, …, "findings": {"ok": bool, "summary": "…", "findings": [ … ]}}`. A refused deck, a file that is not JSON (`INVALID_JSON`, with line and column) and a missing file (`FILE_NOT_FOUND`) answer `{"valid": false, "findings": {…}}` on stdout, so `findings.findings` is always the list.
+- MCP: `validate_input` — wraps both; with `fit_report: false` it still refuses an unrenderable chart or diagram.
+
+`json2pptx generate` exits non-zero and writes no deck when a chart or diagram fails to render, at every `--strict-fit` level and with `--partial`: a slide carrying a "Data unavailable" placeholder is never a result.
 
 Errors carry structured `code` fields catalogued in `docs/FIT_FINDINGS.md` (with severity and recommended action). The validator accepts both canonical and alias enum values for backward compatibility; the schema publishes only the canonical names.
 

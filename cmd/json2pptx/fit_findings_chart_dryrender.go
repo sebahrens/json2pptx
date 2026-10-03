@@ -13,6 +13,40 @@ import (
 	"github.com/sebahrens/json2pptx/svggen"
 )
 
+// unrenderableDiagramFindings returns the diagram_render_failed refusals for a
+// deck: every chart or diagram the renderer would reject outright (an unknown
+// type such as "stacked-bar" for "stacked_bar", data it cannot draw). It is the
+// one render-projection check plain validation always runs, because its result
+// is not advisory — generation fails on the same input. A missing raster
+// converter is an environment condition, not a defect in the deck, and is left
+// to the full fit report.
+func unrenderableDiagramFindings(input *PresentationInput, analysis *types.TemplateAnalysis) []patterns.FitFinding {
+	if input == nil || analysis == nil {
+		return nil
+	}
+	all := collectChartDryRenderFindingsResolved(input, analysis.Theme.Colors, analysis.Theme.BodyFont, "warn",
+		true, analysis.Layouts, analysis.SlideWidth, analysis.SlideHeight)
+	var failed []patterns.FitFinding
+	for _, f := range all {
+		if f.Code == patterns.ErrCodeDiagramRenderFailed && f.Action == "refuse" {
+			failed = append(failed, f)
+		}
+	}
+	return failed
+}
+
+// diagramRenderFailures filters a finding set down to the charts and diagrams
+// that failed to render.
+func diagramRenderFailures(findings []patterns.FitFinding) []patterns.FitFinding {
+	var failed []patterns.FitFinding
+	for _, f := range findings {
+		if f.Code == patterns.ErrCodeDiagramRenderFailed && f.Action == "refuse" {
+			failed = append(failed, f)
+		}
+	}
+	return failed
+}
+
 // collectChartDryRenderFindings iterates every slide's chart_value /
 // diagram_value content item AND every diagram surface embedded in a slide's
 // shape_grid (cell diagrams, composite sub_diagrams, and recursively nested
