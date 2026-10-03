@@ -51,7 +51,8 @@ func storedShapeFontScale(shape string) (int, bool) {
 
 // reportUnreadableAutofit emits TEXT_BELOW_READABLE_MIN for every shape on the
 // slide whose stored autofit scale takes its smallest text under the floor for
-// the deck's viewing mode.
+// the deck's viewing mode. Grid paragraphs whose source role is known were
+// already judged against their role's floor (reportGridReadability).
 func (ctx *singlePassContext) reportUnreadableAutofit(slideData []byte, slideNum int) {
 	slideIndex := slideNum - ctx.calculateStartingSlideNum()
 	if slideIndex < 0 {
@@ -64,7 +65,11 @@ func (ctx *singlePassContext) reportUnreadableAutofit(slideData []byte, slideNum
 		}
 		return p
 	}
-	for _, f := range unreadableAutofitFindings(string(slideData), ctx.viewingMode, shapePath) {
+	var roles map[uint32][]tokens.TextRole
+	if spec, ok := ctx.slideContentMap[slideNum]; ok {
+		roles = spec.GridTextRoles
+	}
+	for _, f := range unreadableAutofitFindings(string(slideData), ctx.viewingMode, shapePath, roles) {
 		ctx.emitFitFinding(f)
 	}
 }
@@ -72,14 +77,22 @@ func (ctx *singlePassContext) reportUnreadableAutofit(slideData []byte, slideNum
 // unreadableAutofitFindings is reportUnreadableAutofit's scan of written shape
 // XML, shared with the native-diagram validate preflight so the two measure
 // the same thing. shapePath names a shape by its cNvPr id ("" when it has none).
-func unreadableAutofitFindings(slideXML string, mode tokens.ViewingMode, shapePath func(id string) string) []patterns.FitFinding {
+//
+// The scan has no paragraph semantics, so it holds text to the body floor.
+// roles (shape cNvPr id -> per-paragraph source roles, as generation records
+// them for shape_grid cells) exempts the paragraphs whose role is known: the
+// role-aware grid check judges those against their own floor, and a 10.08pt
+// KPI caption under its 36pt figure is not 12pt body copy
+// (go-slide-creator-ntvhh). A shape whose recorded roles do not line up with
+// its paragraphs is scanned whole, as the grid check then skips it.
+func unreadableAutofitFindings(slideXML string, mode tokens.ViewingMode, shapePath func(id string) string, roles map[uint32][]tokens.TextRole) []patterns.FitFinding {
 	var out []patterns.FitFinding
 	for _, shape := range splitShapeElements(slideXML) {
 		scaleThousandths, hasStoredScale := storedShapeFontScale(shape)
 		if scaleThousandths <= 0 {
 			continue
 		}
-		smallest := smallestPopulatedRunSizeHPt(shape)
+		smallest := smallestUnroledRunSizeHPt(shape, roles)
 		if smallest <= 0 {
 			continue
 		}
@@ -135,13 +148,22 @@ func unreadableAutofitFindings(slideXML string, mode tokens.ViewingMode, shapePa
 
 // Only populated runs establish an actual written size. Unused list levels,
 // empty prompts and end-paragraph cursor styles must never trigger a refusal.
-func smallestPopulatedRunSizeHPt(shape string) int {
+// Paragraphs carrying a known source role in roles are left to the role-aware
+// grid check.
+func smallestUnroledRunSizeHPt(shape string, roles map[uint32][]tokens.TextRole) int {
 	var parsed shapeXML
 	if err := xml.Unmarshal([]byte(shape), &parsed); err != nil || parsed.TextBody == nil {
 		return 0
 	}
+	paragraphRoles := roles[parsed.NonVisualProperties.ConnectionNonVisual.ID]
+	if len(paragraphRoles) != len(parsed.TextBody.Paragraphs) {
+		paragraphRoles = nil
+	}
 	smallest := 0
-	for _, p := range parsed.TextBody.Paragraphs {
+	for i, p := range parsed.TextBody.Paragraphs {
+		if paragraphRoles != nil && paragraphRoles[i] != "" {
+			continue
+		}
 		if size := smallestPopulatedParagraphRunSizeHPt(p); size > 0 && (smallest == 0 || size < smallest) {
 			smallest = size
 		}

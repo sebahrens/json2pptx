@@ -2,6 +2,7 @@ package pptx
 
 import (
 	"encoding/xml"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -94,10 +95,7 @@ type wordFitShape struct {
 // stand-in, so the result never depends on the host. Placeholders, unwrapped
 // and rotated text, and single glyphs are not checked.
 func UnfitWords(shapesXML, fontName string) []UnfitWord {
-	face := autofitMeasureFace(&TextBody{
-		ThemeFonts: ThemeFonts{Minor: fontName},
-		Paragraphs: []Paragraph{{Runs: []Run{{Text: "x"}}}},
-	}).name
+	face := measureFaceFor(fontName).name
 	var out []UnfitWord
 	for _, raw := range wordFitShapeRE.FindAllString(shapesXML, -1) {
 		if strings.Contains(raw, "<p:ph") {
@@ -172,6 +170,38 @@ func (sp *wordFitShape) textWidthEMU() int64 {
 		rIns = *body.RIns
 	}
 	return rectW - lIns - rIns
+}
+
+// measureFaceFor is autofitMeasureFace for text set in the single face
+// fontName.
+func measureFaceFor(fontName string) autofitFace {
+	return autofitMeasureFace(&TextBody{
+		ThemeFonts: ThemeFonts{Minor: fontName},
+		Paragraphs: []Paragraph{{Runs: []Run{{Text: "x"}}}},
+	})
+}
+
+// WordLineNeedEMU is the line width word needs to stay whole when it renders
+// in fontName at sizePt with spcHPt of letter spacing (hundredths of a point
+// per glyph, not scaled with the font): its width measured as the writer
+// measures it — in fontName when that face is host-independent, otherwise in
+// the Liberation Sans stand-in — plus the tracking, with WordFitSlack
+// (StandInWordFitSlack for a stand-in measure) of room, exactly the room
+// EffectiveTextInsets leaves a clamped body's widest word. Callers that size
+// text by its longest word (divider titles) use it so they keep words whole
+// on the same terms. ok is false when no measurement font is available.
+func WordLineNeedEMU(word, fontName string, sizePt float64, bold bool, spcHPt int) (int64, bool) {
+	face := measureFaceFor(fontName)
+	w, err := textfit.MeasureStyledLineWidth(word, face.name, sizePt, bold)
+	if err != nil {
+		return 0, false
+	}
+	w += runTrackingEMU(Run{Spacing: spcHPt}, word)
+	slack := StandInWordFitSlack
+	if face.exact {
+		slack = WordFitSlack
+	}
+	return int64(math.Ceil(float64(w) * slack)), true
 }
 
 // wordOverflowEMU measures word at sizePt and reports its width when it is

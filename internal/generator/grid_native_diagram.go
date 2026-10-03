@@ -210,7 +210,7 @@ func nativeSubFloorShapes(spec *types.DiagramSpec, bounds types.BoundingBox, reg
 	}
 	group := renderNativeInsert(&layout.insert, nativeReadabilityShapeIDBase, env)
 	shapes, smallest := 0, 0.0
-	for _, f := range unreadableAutofitFindings(group, tokens.ViewingModePresentation, func(string) string { return "" }) {
+	for _, f := range unreadableAutofitFindings(group, tokens.ViewingModePresentation, func(string) string { return "" }, nil) {
 		if f.Action != "refuse" {
 			continue
 		}
