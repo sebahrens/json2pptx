@@ -5,12 +5,10 @@ import (
 	"fmt"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
-	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
-	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // Default 16:9 slide geometry used when validation-time pattern expansion has
@@ -89,35 +87,7 @@ func gridDiagramValidationDiagnostics(grid *ShapeGridInput, slideIdx int, label,
 	}
 	var out []diagnostics.Diagnostic
 	check := func(spec *types.DiagramSpec, path, where string) {
-		if spec == nil || spec.Type == "" {
-			return
-		}
-		// Heatmaps render natively (not via svggen): check the grid shape
-		// the native renderer needs (go-slide-creator-csclk.18).
-		if spec.Type == "heatmap" {
-			if err := generator.ValidateHeatmapData(spec.Data); err != nil {
-				out = append(out, diagnostics.Diagnostic{
-					Code:     diagnostics.CodeInvalidGrid,
-					Path:     path,
-					Message:  fmt.Sprintf("slide %d: %s: %s: %v", slideIdx+1, label, where, err),
-					Severity: diagnostics.SeverityError,
-				})
-			}
-			return
-		}
-		if svggen.DefaultRegistry().Get(spec.Type) == nil {
-			return // unknown types are reported by the structural grid validator
-		}
-		// DryRender runs the same request validation + layout pass as the
-		// generate path, so the error text matches what generate reports.
-		if _, err := svggen.DryRender(&svggen.RequestEnvelope{Type: spec.Type, Title: spec.Title, Data: spec.Data}); err != nil {
-			out = append(out, diagnostics.Diagnostic{
-				Code:     diagnostics.CodeInvalidGrid,
-				Path:     path,
-				Message:  fmt.Sprintf("slide %d: %s: %s: %v (generate would abort)", slideIdx+1, label, where, err),
-				Severity: diagnostics.SeverityError,
-			})
-		}
+		out = append(out, regionDiagramValidationDiagnostics(spec, slideIdx, label, path, where)...)
 	}
 	for ri, row := range grid.Rows {
 		for ci, cell := range row.Cells {

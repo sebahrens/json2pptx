@@ -12,6 +12,17 @@ The `svggen` package provides built-in diagram types for creating professional b
 > token overrides) call `json2pptx data-format-hints` / the
 > `get_data_format_hints` MCP tool, which documents every key both blocks
 > accept (go-slide-creator-z72f).
+>
+> For the native types (pyramid, house, SWOT, PESTEL, value chain, nine-box,
+> KPI dashboard, five forces, process flow, heatmap and the panel family) the
+> `data` keys on these pages are a closed contract: `validate`,
+> `validate_input` and `generate` refuse any other key at any level as
+> `unknown_key`, naming the keys the builder reads and a did-you-mean — a
+> pyramid level written `{"title": ...}` instead of `{"label": ...}` used to
+> render blank (go-slide-creator-hdx2l). Styling fields listed here that the
+> native builders do not draw (`gap`, `corner_radius`, `footnote`, ...) are
+> accepted and ignored. `business_model_canvas` reports unread keys as the
+> review finding `diagram.data_key_ignored` instead.
 
 ## Quick Reference
 

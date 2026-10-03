@@ -1,5 +1,23 @@
 # Schema Changelog
 
+- **2026-10-03 — Native diagram data keys are validated; region diagrams with unknown types are refused at validate (`go-slide-creator-hdx2l`).**
+  - Every native diagram type except `business_model_canvas` has a closed
+    data contract (`internal/generator/native_diagram_schema.go`): the keys
+    its builder reads at each level, plus documented styling keys it ignores.
+    Any other key — e.g. pyramid `levels[].title`, house
+    `sections[].title` / `bullets` — is refused by `validate`,
+    `validate_input` and `generate` in a body placeholder, a `shape_grid` cell
+    and a `compose` segment alike, instead of rendering blank labels. The
+    diagnostic is `unknown_key` at the key's JSON Pointer with fix
+    `rename_field {from, to, accepted}` when a did-you-mean exists, else
+    `use_one_of {available}`. A payload whose labels all parse empty is
+    `INVALID_SLIDE` (`provide_value`).
+  - `validate` / `validate_input` now check `compose` diagram segments (they
+    were skipped) and refuse a region diagram whose type no renderer owns
+    (`UNKNOWN_ENUM` at `.../diagram/type`, with `did_you_mean`); `generate`
+    already aborted on both.
+  - No schema version change: no field, enum or response shape changed.
+
 - **2026-10-02 — Schema 4.159.0 · plan_deck plans same-slide regions (`go-slide-creator-vae7f`).**
   - A bounded cue grammar reads region clauses: a segment that starts with a
     position (left, right, top, bottom, upper/lower left/right, centre),

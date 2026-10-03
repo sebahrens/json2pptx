@@ -73,6 +73,11 @@ func layoutNativeDiagram(spec *types.DiagramSpec, bounds types.BoundingBox, env 
 	if spec == nil {
 		return out, fmt.Errorf("no diagram spec")
 	}
+	// A key the builder does not read would leave its text off the slide
+	// (go-slide-creator-hdx2l): refuse it rather than draw empty labels.
+	if err := ValidateNativeDiagramData(spec); err != nil {
+		return out, err
+	}
 	ins := panelShapeInsert{bounds: bounds, diagramType: spec.Type}
 	fit := func(kind string, panels []nativePanelData, meta houseDiagramMeta) {
 		var f *patterns.FitFinding
@@ -456,6 +461,7 @@ func (ctx *singlePassContext) processNativeDiagramShapes(slideNum, contentIdx in
 	})
 	if err != nil {
 		slog.Warn("native diagram shapes: not rendered", "slide", slideNum, "error", err)
+		ctx.warnings = append(ctx.warnings, fmt.Sprintf("slide %d: diagram not rendered: %v", slideNum, err))
 		return
 	}
 	for _, f := range layout.findings {

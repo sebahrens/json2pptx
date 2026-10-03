@@ -737,6 +737,10 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					output.ChartCount++
 				case "diagram":
 					output.DiagramCount++
+					if dd := contentDiagramValidationDiagnostics(item, i, j); len(dd) > 0 {
+						output.Valid = false
+						output.Diagnostics = append(output.Diagnostics, dd...)
+					}
 				case "table":
 					output.TableCount++
 					// Density check for content-level table.
@@ -948,6 +952,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 		if pg := expandSlidePatternGrid(&slideInput, i, analysis.SlideWidth, analysis.SlideHeight, &analysis.Theme); pg != nil {
 			gridDiags = append(gridDiags, gridDiagramValidationDiagnostics(pg, i, "pattern "+slideInput.Pattern.Name, slidepath.SlideField(i, "pattern"))...)
 		}
+		gridDiags = append(gridDiags, composeDiagramValidationDiagnostics(slideInput.Compose, i, slidepath.SlideField(i, "compose"))...)
 		if len(gridDiags) > 0 {
 			output.Valid = false
 			output.Diagnostics = append(output.Diagnostics, gridDiags...)

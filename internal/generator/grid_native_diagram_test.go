@@ -72,11 +72,11 @@ func nativePlacementMatrix() map[string]nativePlacementCase {
 		}}, []string{"Talent", "Scale", "Growth", "Rivals"}},
 		"value_chain": {&types.DiagramSpec{Type: "value_chain", Data: map[string]any{
 			"primary": []any{
-				map[string]any{"name": "Inbound", "activities": []any{"Receive"}},
-				map[string]any{"name": "Operations", "activities": []any{"Build"}},
-				map[string]any{"name": "Outbound", "activities": []any{"Ship"}},
+				map[string]any{"name": "Inbound", "items": []any{"Receive"}},
+				map[string]any{"name": "Operations", "items": []any{"Build"}},
+				map[string]any{"name": "Outbound", "items": []any{"Ship"}},
 			},
-			"support": []any{map[string]any{"name": "People", "activities": []any{"Train"}}},
+			"support": []any{map[string]any{"name": "People", "items": []any{"Train"}}},
 		}}, []string{"Inbound", "Operations", "Outbound", "People"}},
 		"icon_columns": {&types.DiagramSpec{Type: "icon_columns", Data: map[string]any{"panels": panels}},
 			[]string{"Growth", "Scale", "Control", "Manage"}},
