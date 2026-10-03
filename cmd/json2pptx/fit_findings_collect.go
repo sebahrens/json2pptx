@@ -158,7 +158,7 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// 6. Contrast prediction (contrast_predicted) — runs only when theme
 	// colors are available to resolve scheme references.
 	if theme != nil {
-		findings = append(findings, collectContrastPreflightFindings(input, layouts, theme.Colors)...)
+		findings = append(findings, collectContrastPreflightFindingsAt(input, layouts, theme.Colors, slideWidth, slideHeight)...)
 	}
 
 	// 7. Chart / diagram dry-render findings (chart.tick_thinned,
@@ -1726,12 +1726,21 @@ func collectTextAutofitPreflightFindings(input *PresentationInput, layouts []typ
 // the renderer would auto-replace the text color. It also covers placeholder
 // text on authored or template backgrounds and footer/page-number chrome.
 func collectContrastPreflightFindings(input *PresentationInput, layouts []types.LayoutMetadata, themeColors []types.ThemeColor) []patterns.FitFinding {
+	return collectContrastPreflightFindingsAt(input, layouts, themeColors, 0, 0)
+}
+
+// collectContrastPreflightFindingsAt is collectContrastPreflightFindings on a
+// slide of the given size (0 = the 16:9 default). The size matters: each grid
+// is resolved in the geometry generation renders it in, because resolution
+// decides the text sizes the contrast pass reads.
+func collectContrastPreflightFindingsAt(input *PresentationInput, layouts []types.LayoutMetadata, themeColors []types.ThemeColor, slideWidth, slideHeight int64) []patterns.FitFinding {
 	if len(themeColors) == 0 {
 		return nil
 	}
 
 	pairs := placeholderContrastPairs(input, layouts, themeColors)
 	predictedLayouts := predictSlideLayouts(input, layouts)
+	rhythm := resolvedValidRhythmGrid(input, layouts, slideWidth, slideHeight)
 	findings := generator.DetectContrastPreflight(pairs, themeColors)
 	findings = append(findings, collectChromeContrastFindings(input, layouts, predictedLayouts, themeColors)...)
 	for si, slide := range input.Slides {
@@ -1748,7 +1757,8 @@ func collectContrastPreflightFindings(input *PresentationInput, layouts []types.
 		}
 		gridBackground := generator.EffectiveGridBackgroundHex(backgroundSpecFor(&slide), inheritedBackground, themeColors)
 		source := contrastGridSource(slide)
-		cells := compiledGridContrastCells(slide.ShapeGrid, slidepath.ShapeGrid(si), 0)
+		geom, _ := patternExpansionGeometry(slide, layouts, slideWidth, slideHeight, rhythm)
+		cells := compiledGridContrastCells(slide.ShapeGrid, slidepath.ShapeGrid(si), geom.OverrideBounds, geom.Zone, slideWidth, slideHeight, 0)
 		shapes := make([][]byte, len(cells))
 		for i := range cells {
 			shapes[i] = cells[i].xml
@@ -1821,49 +1831,76 @@ type compiledGridContrastCell struct {
 	text json.RawMessage
 }
 
-// Compile the text-bearing grid shapes with the same shape XML writer that
-// generation uses. Bounds affect placement, not text colors or run sizes. The
-// resulting shape order also preserves sibling-group decisions.
-func compiledGridContrastCells(grid *ShapeGridInput, base string, depth int) []compiledGridContrastCell {
-	if grid == nil || depth > maxGeomNestingDepth {
+// compiledGridContrastCells compiles the text-bearing shapes of a grid the way
+// generation does: the grid is resolved in the geometry it renders in
+// (overrideBounds / zone, as resolveShapeGrid receives them) and each shape is
+// written from its RESOLVED cell. Resolution is not only placement — the
+// composition policy steps a sparse block's type (shapegrid compose.go),
+// type_scale grows text into its cell and sizes snap to the scale — and the
+// contrast pass applies WCAG's 3:1 bar only to large text. Shapes compiled
+// from the authored spec in stand-in bounds therefore predicted repairs
+// generation never makes and missed ones it does. The shape order follows the
+// resolved cells, nested grids last, as on the rendered slide.
+func compiledGridContrastCells(grid *ShapeGridInput, base string, overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64, depth int) []compiledGridContrastCell {
+	if grid == nil || len(grid.Rows) == 0 || depth > maxGeomNestingDepth {
 		return nil
+	}
+	resolved := resolveGridForStructural(grid, overrideBounds, zone, slideWidth, slideHeight)
+	if resolved == nil {
+		return nil // generation refuses this grid; there is no repair to predict
 	}
 	var cells []compiledGridContrastCell
 	var nested []compiledGridContrastCell
-	for ri, row := range grid.Rows {
-		for ci, cell := range row.Cells {
-			if cell == nil {
-				continue
+	for _, rc := range resolved.Cells {
+		k, ok := gridCellIndexAtResolved(grid, rc.RowIdx, rc.ColIdx)
+		if !ok || grid.Rows[rc.RowIdx].Cells[k] == nil {
+			continue
+		}
+		cell := grid.Rows[rc.RowIdx].Cells[k]
+		cellPath := slidepath.Join(base, fmt.Sprintf("rows/%d/cells/%d", rc.RowIdx, k))
+		if rc.Kind == shapegrid.CellKindSubGrid && cell.Grid != nil {
+			// The sub-grid renders in its host cell, inset as
+			// renderNestedSubGrids insets it.
+			bounds := pptx.RectEmu{X: rc.Bounds.X + subGridInsetEMU, Y: rc.Bounds.Y + subGridInsetEMU, CX: rc.Bounds.CX - 2*subGridInsetEMU, CY: rc.Bounds.CY - 2*subGridInsetEMU}
+			if bounds.CX <= 0 || bounds.CY <= 0 {
+				bounds = rc.Bounds
 			}
-			cellPath := slidepath.Join(base, fmt.Sprintf("rows/%d/cells/%d", ri, ci))
-			shape, field := cell.Shape, "shape/text"
-			if cell.Composite != nil && cell.Composite.Text != nil {
-				shape, field = cell.Composite.Text, "composite/text/text"
-			}
-			if shape != nil {
-				spec := convertGridCell(&GridCellInput{Shape: shape}).Shape
-				xml, err := shapegrid.GenerateShapeXML(spec, 1, pptx.RectEmu{CX: 1000000, CY: 500000})
-				if err == nil {
-					cells = append(cells, compiledGridContrastCell{xml: xml, path: slidepath.Join(cellPath, field), text: shape.Text})
-				}
-			}
-			if cell.Image != nil && cell.Image.Text != nil {
-				label := cell.Image.Text
-				spec := &shapegrid.ImageText{
-					Content: label.Content, Size: label.Size, Bold: label.Bold,
-					Color: label.Color, Align: label.Align, VerticalAlign: label.VerticalAlign, Font: label.Font,
-				}
-				xml, err := shapegrid.GenerateImageTextXML(spec, 1, pptx.RectEmu{CX: 1000000, CY: 500000})
-				if err == nil {
-					cells = append(cells, compiledGridContrastCell{xml: xml, path: slidepath.Join(cellPath, "image/text")})
-				}
-			}
-			if cell.Grid != nil {
-				nested = append(nested, compiledGridContrastCells(cell.Grid, slidepath.Join(cellPath, "grid"), depth+1)...)
-			}
+			nested = append(nested, compiledGridContrastCells(cell.Grid, slidepath.Join(cellPath, "grid"), &bounds, nil, slideWidth, slideHeight, depth+1)...)
+			continue
+		}
+		if compiled, ok := compiledContrastCell(rc, cell, cellPath); ok {
+			cells = append(cells, compiled)
 		}
 	}
 	return append(cells, nested...)
+}
+
+// compiledContrastCell writes one resolved text-bearing cell (a shape, a
+// composite's text half, or an image label) with generation's XML writers.
+func compiledContrastCell(rc shapegrid.ResolvedCell, cell *GridCellInput, cellPath string) (compiledGridContrastCell, bool) {
+	switch {
+	case rc.Kind == shapegrid.CellKindShape && rc.ShapeSpec != nil:
+		authored, field := cell.Shape, "shape/text"
+		if cell.Composite != nil && cell.Composite.Text != nil {
+			authored, field = cell.Composite.Text, "composite/text/text"
+		}
+		xml, err := shapegrid.GenerateCellShapeXML(rc)
+		if err != nil {
+			return compiledGridContrastCell{}, false
+		}
+		out := compiledGridContrastCell{xml: xml, path: slidepath.Join(cellPath, field)}
+		if authored != nil {
+			out.text = authored.Text
+		}
+		return out, true
+	case rc.Kind == shapegrid.CellKindImage && rc.ImageSpec != nil && rc.ImageSpec.Text != nil:
+		xml, err := shapegrid.GenerateImageTextXML(rc.ImageSpec.Text, rc.ID, rc.Bounds)
+		if err != nil {
+			return compiledGridContrastCell{}, false
+		}
+		return compiledGridContrastCell{xml: xml, path: slidepath.Join(cellPath, "image/text")}, true
+	}
+	return compiledGridContrastCell{}, false
 }
 
 func contrastGridSource(slide SlideInput) string {
