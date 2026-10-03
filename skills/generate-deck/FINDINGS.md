@@ -33,7 +33,7 @@ then code. A deck-level finding precedes slide 0 at equal severity.
 family. A rendering problem calls for fit, geometry, or contrast repair.
 A content problem (e.g. `TITLE_NOT_ACTION`, `TITLE_TOO_LONG`) calls for a
 better title, evidence, labels, or copy. `DATA_WITHOUT_SOURCE` (review: a
-chart, figures table or chart / KPI / stat pattern with no source) is one:
+chart, figures table / matrix or KPI / stat pattern, unsourced) is one:
 set `slides[N].source` (`fix.params.field: "source"`), a chart `footnote` or
 a deck default (QUALITY.md §5); never invent one.
 

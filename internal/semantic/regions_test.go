@@ -175,8 +175,10 @@ func TestCompileRegions_Arrangements(t *testing.T) {
 					t.Errorf("compiled slide lost %q", want)
 				}
 			}
-			if slide.Source != "Finance ledger" {
-				t.Errorf("a data region without its own source should take meta.source, got %q", slide.Source)
+			// meta.source is applied by the raw deck-source default, which
+			// reads grid cells; cmd/json2pptx pins it for regions slides.
+			if slide.Source != "" {
+				t.Errorf("compile should leave meta.source to the deck-source default, got slide source %q", slide.Source)
 			}
 		})
 	}

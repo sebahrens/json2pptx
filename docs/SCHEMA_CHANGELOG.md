@@ -89,6 +89,19 @@
     never squeezed under its own minimum to feed it. A chart above a
     stat-and-timeline band (main_top) that cannot fit reports the finding.
 
+- **2026-10-03 — One data rule for the deck source and `DATA_WITHOUT_SOURCE` (`go-slide-creator-q2emv`, `go-slide-creator-1jtn7`).** SchemaVersion unchanged (no new fields, codes or fix kinds).
+  - The rule that decides whether a slide shows data now reads `shape_grid`
+    cells (tables with figures, chart diagrams, cell-hosted data patterns,
+    nested grids) and treats a `table-highlight` whose text-scale cells hold
+    a figure as data. DeckSpec `table`, `regions` and quantitative
+    `option_matrix` (`scale: "text"`) slides therefore take `meta.source`
+    once (an explicit slide `source` still wins) and draw
+    `DATA_WITHOUT_SOURCE` at `slides[N].source` when neither is set.
+    Harvey / RAG matrices and word-only tables stay exempt. New
+    `fix.params.data` value `"a matrix of figures"`. The regions-only
+    meta.source copy in the semantic compiler is gone; the shared rule
+    covers it.
+
 - **2026-10-03 — Narrow regions keep words whole; native diagrams report the ones they cannot (`go-slide-creator-v74wv`).**
   - The writer's margin clamp now leaves 5% of room over a word's measured
     width (20% for a host-dependent theme face measured in the Liberation
