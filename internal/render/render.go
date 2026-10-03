@@ -99,6 +99,9 @@ func LibreOfficeRetryCount() int64 { return loRetries.Load() }
 func libreOfficeProfile() (string, error) {
 	loProfileOnce.Do(func() {
 		loProfileDir, loProfileErr = os.MkdirTemp("", fmt.Sprintf("json2pptx-lo-%d-", os.Getpid()))
+		// Profiles left by processes that never reached their cleanup are
+		// removed by the next process that renders (go-slide-creator-12dkn).
+		sweepStaleProfilesOnce()
 	})
 	return loProfileDir, loProfileErr
 }
