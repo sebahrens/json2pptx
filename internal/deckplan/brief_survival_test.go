@@ -409,6 +409,40 @@ func TestDeckSpecPlanJourneyFindings(t *testing.T) {
 	}
 }
 
+// A cut never names a slot the plan still shows: of two evidence slides the
+// one left out is "a further evidence" (the cold-start journey of 2026-10-04
+// read "Cut: evidence (chart_insight)" beside a planned chart_insight).
+func TestDeckSpecPlanCutNamesTheFurtherSlot(t *testing.T) {
+	const brief = "Q3 FY26 board update for Northwind Logistics, 7 slides. Revenue was EUR 48.2M, up 12% year on year. " +
+		"EBITDA margin 14.1% against a plan of 13%. Quarterly revenue FY25 Q3 to FY26 Q3: 43.0, 44.1, 45.6, 46.9, 48.2. " +
+		"SMB churn rose from 2.2% to 3.1%. Three options to fix SMB churn: do nothing, a dedicated success team for EUR 1.2M, " +
+		"a self-serve portal for EUR 2.4M; we recommend the success team. Plan: hire in Q4 FY26, pilot in Q1 FY27, full rollout in Q2 FY27. " +
+		"Ask: approve EUR 1.2M and eight hires."
+	plan := BuildDeckSpecPlan(Params{Brief: brief, SlideBudget: 10})
+	planned := map[string]bool{}
+	for _, s := range plan.Slots {
+		planned[fmt.Sprintf("%s (%s)", s.Slot, s.Kind)] = true
+	}
+	further := 0
+	for _, c := range plan.Budget.Cut {
+		if planned[c.What] {
+			t.Errorf("the account cuts %q, which the plan still carries", c.What)
+		}
+		if rest, ok := strings.CutPrefix(c.What, "a further "); ok {
+			further++
+			if !planned[rest] {
+				t.Errorf("%q is cut as a further slot, and the plan has no %s", c.What, rest)
+			}
+		}
+	}
+	if further == 0 {
+		t.Errorf("the brief no longer cuts a second evidence slide; cut = %+v", plan.Budget.Cut)
+	}
+	if !strings.Contains(plan.BudgetNote, "a further evidence (chart_insight)") {
+		t.Errorf("budget_note = %q", plan.BudgetNote)
+	}
+}
+
 // 58qda: what the budget leaves out is named, and an agenda the brief asks
 // for is drafted even in a short deck — and can be refused in a long one.
 func TestDeckSpecPlanBudgetAccount(t *testing.T) {
