@@ -73,7 +73,7 @@ func (cis *chartInsightsSplit) SupportsInlineMarkdown() bool { return true }
 func (cis *chartInsightsSplit) ExemplarValues() any {
 	return &ChartInsightsSplitValues{
 		Chart: &types.DiagramSpec{
-			Type: "bar_chart",
+			Type: "bar",
 			Data: map[string]any{
 				"categories": []any{"Q1", "Q2", "Q3", "Q4"},
 				"series": []any{
@@ -188,9 +188,9 @@ func (cis *chartInsightsSplit) NewCellOverride() any { return nil }
 func (cis *chartInsightsSplit) Schema() *Schema {
 	chartSchema := ObjectSchema(
 		map[string]*Schema{
-			"type":  StringSchema(60).WithDescription("Diagram type (bar_chart, line_chart, pie_chart, etc.) — passed directly to svggen"),
+			"type":  StringSchema(60).WithDescription("Chart / diagram type (bar, line, pie, etc.; the _chart spellings are accepted aliases)"),
 			"title": StringSchema(120).WithDescription("Optional chart title"),
-			"data":  ObjectSchema(map[string]*Schema{}, nil).WithDescription("Diagram-specific data payload (categories + series, or type-specific shape). bar_chart also takes highlight: bars painted in accent1 (0-based category indices or names) while the rest are neutral dk1 at 38%; omit to accent the last bar of a time series, otherwise the largest; [] accents none"),
+			"data":  ObjectSchema(map[string]*Schema{}, nil).WithDescription("Diagram-specific data payload (categories + series, or type-specific shape). bar also takes highlight: bars painted in accent1 (0-based category indices or names) while the rest are neutral dk1 at 38%; omit to accent the last bar of a time series, otherwise the largest; [] accents none"),
 		},
 		[]string{"type", "data"},
 	).WithDescription("Optional chart/diagram rendered in the left panel; omit to render insights full-width")

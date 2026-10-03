@@ -442,8 +442,8 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
       "items": {
         "type": "object",
         "properties": {
-          "category":         {"type": "string", "enum": ["placeholder_layout", "named_pattern", "chart", "diagram", "raw_shape_grid", "compose"]},
-          "name":             {"type": "string"},
+          "category":         {"type": "string", "enum": ["placeholder_layout", "named_pattern", "chart", "diagram", "raw_shape_grid", "compose", "deckspec_kind"], "description": "deckspec_kind: a DeckSpec slide kind recommended in its own right (regions, for 2-3 different views on one slide)."},
+          "name":             {"type": "string", "description": "Chart types are written in their canonical short spelling (bar, line, stacked_bar); the _chart spellings are accepted in candidates."},
           "score":            {"type": "number"},
           "rationale":        {"type": "string"},
           "confidence_band":  {"type": "string", "enum": ["high", "medium", "low"]},
@@ -451,12 +451,53 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
           "placement":        {"$ref": "#/$defs/placement_guidance"},
           "template_support": {"$ref": "#/$defs/template_support"},
           "example":          {"$ref": "#/$defs/visual_example"},
+          "differs_by":       {"type": "string", "description": "One line saying what sets this candidate apart from the candidate it nearly ties with (scores within 0.02): which of the two can do what. Absent when no other candidate is that close."},
+          "deckspec": {
+            "type": "object",
+            "description": "The DeckSpec slide kind that compiles to this candidate, when one does; next_tool_call then renders one slide of this kind. Absent when no kind reaches the visual (data_contract.form is raw_json2pptx).",
+            "properties": {
+              "kind":             {"type": "string"},
+              "fields":           {"type": "object", "description": "The kind's payload keys under their canonical names.", "properties": {"required": {"type": "array", "items": {"type": "string"}}, "optional": {"type": "array", "items": {"type": "string"}}}, "required": ["required"]},
+              "aliases":          {"type": "object", "additionalProperties": {"type": "string"}, "description": "Accepted alternative key -> the canonical field it stands for; write the canonical name."},
+              "example_path":     {"type": "string", "description": "Where the copy-ready example slide of this kind sits in the candidate; it validates as it stands."},
+              "differs_from_raw": {"type": "string", "description": "Where the kind's field names differ from the raw pattern / chart / diagram form of the same visual."}
+            },
+            "required": ["kind", "fields", "example_path"]
+          },
+          "also_as": {
+            "type": "array",
+            "description": "The other forms of the same visual (the diagram behind a pattern, the pattern behind a diagram, the kind over either) and what each takes or does differently.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "form":    {"type": "string", "enum": ["kind", "pattern", "diagram", "chart"]},
+                "name":    {"type": "string"},
+                "differs": {"type": "string"}
+              },
+              "required": ["form", "name"]
+            }
+          },
           "data_contract": {
             "type": "object",
-            "description": "Chart / diagram candidates: the data keys the type takes (same entry as get_data_format_hints) and field_path, where that data sits in next_tool_call.args_template.spec. Compose candidates carry one per region in composition.",
+            "description": "The data shape of the candidate as next_tool_call authors it: the fields of its DeckSpec kind, the values of a raw pattern, or the data keys of a chart / diagram (same entry as get_data_format_hints), and field_path, where that data sits in next_tool_call.args_template.spec. Compose candidates carry one per region in composition.",
             "properties": {
+              "form":          {"type": "string", "enum": ["deckspec_kind", "raw_json2pptx"], "description": "What the keys belong to: the kind slide at field_path, or (no kind compiles to this visual) pattern values / chart or diagram data inside a raw slide."},
               "required_keys": {"type": "array", "items": {"type": "string"}},
               "optional_keys": {"type": "array", "items": {"type": "string"}},
+              "limits": {
+                "type": "array",
+                "description": "Item counts and character budgets of the keys that have one, by path below field_path ([] marks the items of a list).",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path":      {"type": "string"},
+                    "min_items": {"type": "integer"},
+                    "max_items": {"type": "integer"},
+                    "max_chars": {"type": "integer"}
+                  },
+                  "required": ["path"]
+                }
+              },
               "description":   {"type": "string"},
               "field_path":    {"type": "string"}
             },
@@ -464,7 +505,7 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
           },
           "next_tool_call": {
             "type": "object",
-            "description": "Chart, diagram and compose candidates: a runnable render_deck_spec call whose args_template.spec is a complete DeckSpec (one raw_json2pptx slide hosting this chart / diagram, or a blank-title slide with compose.segments for a compose candidate, with sample content). Replace the title and data, keep the shape.",
+            "description": "A runnable render_deck_spec call whose args_template.spec is a complete DeckSpec with sample content: one slide of the candidate's DeckSpec kind (see deckspec), else one raw_json2pptx slide hosting the pattern / chart / diagram / layout, or a blank-title slide with compose.segments for a compose candidate. Replace the title and data, keep the shape.",
             "properties": {
               "tool":          {"type": "string"},
               "args_template": {"type": "object"}
@@ -510,7 +551,7 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
     },
     "visual_composition": {
       "type": "object",
-      "description": "Compose candidates only: the region layout next_tool_call renders — compose.direction and one region per compose segment, in order.",
+      "description": "Compose and regions-kind candidates: the region layout next_tool_call renders — the direction and one region per compose segment (or regions[] entry), in order.",
       "properties": {
         "direction":    {"type": "string", "enum": ["horizontal", "vertical"]},
         "instructions": {"type": "string", "description": "How to adopt the recipe slide in a DeckSpec and where the sample content sits."},

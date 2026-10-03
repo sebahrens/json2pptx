@@ -1012,7 +1012,7 @@ The chart's data map is empty — the output would be a blank chart placeholder.
 ### `CHART_OVERLOADED`
 
 **Action:** `review`
-**Fix kind:** `reduce_items` (params: `current_categories`, `max_categories`; pies / donuts also `use_type: "bar_chart"`)
+**Fix kind:** `reduce_items` (params: `current_categories`, `max_categories`; pies / donuts also `use_type: "bar"`)
 
 A `chart_value` has more categories than a reader can follow: 12 for an axis chart, 8 when the labels average 24+ characters, and 7 slices for a pie or donut in any spelling (`pie`, `pie_chart`, `donut`, `donut_chart`, `doughnut` — the `_chart` form used to fall through to the 12-category ceiling, go-slide-creator-ihlsr). Directive keys of a flat data map (`highlight`, `sort`, `orientation`, `data_labels`, `group_small_below_pct`) are not counted as categories. For a pie the message and `use_type` point at a sorted, labelled `bar_chart`, or keeping the top slices and grouping the rest into "Other".
 
@@ -1021,7 +1021,7 @@ A `chart_value` has more categories than a reader can follow: 12 for an axis cha
   "code": "CHART_OVERLOADED",
   "path": "/slides/1/content/1",
   "message": "slide 2: pie_chart has 8 slices (slices below a few percent cannot be labelled) — a pie reads only up to 7; use bar_chart (sorted, labelled) for this many categories, or keep the top 6 slices and group the rest into \"Other\"",
-  "fix": { "kind": "reduce_items", "params": { "current_categories": 8, "max_categories": 7, "use_type": "bar_chart" } },
+  "fix": { "kind": "reduce_items", "params": { "current_categories": 8, "max_categories": 7, "use_type": "bar" } },
   "action": "review"
 }
 ```

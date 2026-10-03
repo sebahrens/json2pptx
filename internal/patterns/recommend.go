@@ -1584,19 +1584,9 @@ func scoreRuleContextBonus(pattern, intentLower string, hints *ContentHints) flo
 		if hints.ItemCount == 1 {
 			bonus += 0.06
 		}
-		// "one highlighted step" highlights a step, not a number: the word
-		// alone does not ask for a hero statistic (go-slide-creator-bdvhj).
-		if n, _ := matchIntentKeywords(statHeroNumberKeywords, intentLower); n == 0 {
-			bonus -= 0.40
-		}
+		bonus -= incidentalKeywordPenalty(pattern, intentLower)
 	case "bmc-canvas":
-		// One block name ("two customer segments") is ordinary business
-		// vocabulary; the canvas needs its own name or several of its blocks.
-		named, _ := matchIntentKeywords([]string{"bmc", "business model", "canvas", "osterwalder"}, intentLower)
-		blocks, _ := matchIntentKeywords(bmcBlockKeywords, intentLower)
-		if named == 0 && blocks < 2 {
-			bonus -= 0.45
-		}
+		bonus -= incidentalKeywordPenalty(pattern, intentLower)
 	case "table-highlight":
 		words := intentWords(intentLower)
 		if intentContainsPhrase(words, []string{"options"}) && intentContainsPhrase(words, []string{"criteria"}) {
@@ -1625,6 +1615,28 @@ func scoreRuleContextBonus(pattern, intentLower string, hints *ContentHints) flo
 		}
 	}
 	return bonus
+}
+
+// incidentalKeywordPenalty is what a pattern loses when the intent matched it
+// only through a word that does not ask for it (go-slide-creator-bdvhj).
+func incidentalKeywordPenalty(pattern, intentLower string) float64 {
+	switch pattern {
+	case "stat-hero":
+		// "one highlighted step" highlights a step, not a number: the word
+		// alone does not ask for a hero statistic.
+		if n, _ := matchIntentKeywords(statHeroNumberKeywords, intentLower); n == 0 {
+			return 0.40
+		}
+	case "bmc-canvas":
+		// One block name ("two customer segments") is ordinary business
+		// vocabulary; the canvas needs its own name or several of its blocks.
+		named, _ := matchIntentKeywords([]string{"bmc", "business model", "canvas", "osterwalder"}, intentLower)
+		blocks, _ := matchIntentKeywords(bmcBlockKeywords, intentLower)
+		if named == 0 && blocks < 2 {
+			return 0.45
+		}
+	}
+	return 0
 }
 
 // statHeroNumberKeywords are the stat-hero keywords that speak of a number;

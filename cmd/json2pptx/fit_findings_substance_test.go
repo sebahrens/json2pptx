@@ -273,11 +273,11 @@ func TestChartLegibility_PieChartSpellingHitsSliceCeiling(t *testing.T) {
 			continue
 		}
 		found = true
-		if !strings.Contains(f.Message, "8 slices") || !strings.Contains(f.Message, "bar_chart") {
-			t.Errorf("message should count 8 slices (not the sort directive) and point at bar_chart: %s", f.Message)
+		if !strings.Contains(f.Message, "8 slices") || !strings.Contains(f.Message, "type bar;") {
+			t.Errorf("message should count 8 slices (not the sort directive) and point at the bar chart: %s", f.Message)
 		}
-		if f.Fix == nil || f.Fix.Params["use_type"] != "bar_chart" {
-			t.Errorf("fix should carry use_type bar_chart: %+v", f.Fix)
+		if f.Fix == nil || f.Fix.Params["use_type"] != "bar" {
+			t.Errorf("fix should carry use_type bar: %+v", f.Fix)
 		}
 	}
 	if !found {

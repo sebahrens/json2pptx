@@ -458,7 +458,7 @@ func validateComposeRec(c *ComposeInput, depth int) error {
 		}
 		if hasDiagram && seg.Diagram.Type == "" {
 			return fmt.Errorf(
-				"compose: segment[%d].diagram.type is required (e.g. \"bar_chart\", \"process_flow\")",
+				"compose: segment[%d].diagram.type is required (e.g. \"bar\", \"process_flow\")",
 				i,
 			)
 		}

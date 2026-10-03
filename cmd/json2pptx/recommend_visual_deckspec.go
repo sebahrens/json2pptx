@@ -227,9 +227,11 @@ func rawSlideForLayout(slideType string) (slide map[string]any, contentPath stri
 			}}, "content", []string{"body", "body_2"},
 			"Two-column slide: content items for placeholder_id body (left) and body_2 (right), each bullets, text, table, chart, diagram or image. Keep the two columns balanced."
 	case "blank":
-		return map[string]any{"slide_type": "blank", "layout_id": "blank-title", "content": []any{title}},
-			"content", nil,
-			"Blank + Title slide: only the title placeholder. Add a shape_grid, pattern or compose block to the slide for the custom content."
+		// A title alone is a nearly empty slide (SLIDE_NEARLY_EMPTY), so the
+		// recipe carries the smallest custom content: a 2×2 shape_grid.
+		return map[string]any{"slide_type": "blank", "layout_id": "blank-title", "content": []any{title}, "shape_grid": recipeShapeGrid()},
+			"shape_grid", []string{"rows"},
+			"Blank + Title slide: only the title placeholder, with the custom content beside it on the slide — a shape_grid (rows[{cells[{shape {geometry, fill, text {content}}}]}], as here), a pattern {name, values} or a compose block."
 	}
 	return nil, "", nil, ""
 }
@@ -524,26 +526,34 @@ func attachRawChartOrDiagram(c *patterns.VisualCandidate, dataKey, templateName 
 	}
 }
 
-// attachShapeGridRecipe gives the raw_shape_grid fallback a minimal grid to
+// recipeShapeGrid is the minimal 2×2 grid the shape_grid and blank recipes
 // start from.
-func attachShapeGridRecipe(c *patterns.VisualCandidate, templateName string) {
+func recipeShapeGrid() map[string]any {
 	cell := func(text, fill string) map[string]any {
 		return map[string]any{"shape": map[string]any{"geometry": "roundRect", "fill": fill, "text": map[string]any{"content": text}}}
 	}
+	return map[string]any{
+		"columns": 2,
+		"gap":     8,
+		"rows": []any{
+			// Neutral fills: default text ink reads on lt2 on every template,
+			// which it does not on an accent fill.
+			map[string]any{"cells": []any{cell("Replace with the first block", "lt2"), cell("Replace with the second block", "lt2")}},
+			map[string]any{"cells": []any{cell("Replace with the third block", "lt2"), cell("Replace with the fourth block", "lt2")}},
+		},
+	}
+}
+
+// attachShapeGridRecipe gives the raw_shape_grid fallback a minimal grid to
+// start from.
+func attachShapeGridRecipe(c *patterns.VisualCandidate, templateName string) {
 	slide := map[string]any{
 		"slide_type": "content",
 		"layout_id":  composeRecipeLayoutID,
 		"content": []any{
 			map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Replace with the action title of this slide"},
 		},
-		"shape_grid": map[string]any{
-			"columns": 2,
-			"gap":     8,
-			"rows": []any{
-				map[string]any{"cells": []any{cell("Replace with the first block", "accent1"), cell("Replace with the second block", "lt2")}},
-				map[string]any{"cells": []any{cell("Replace with the third block", "lt2"), cell("Replace with the fourth block", "accent1")}},
-			},
-		},
+		"shape_grid": recipeShapeGrid(),
 	}
 	c.DataContract = &patterns.VisualDataContract{
 		Form:         patterns.ContractFormRaw,
@@ -750,46 +760,13 @@ func (w *limitWalker) walk(s map[string]any, path string, depth int) {
 	if s == nil || depth >= len(w.byDepth) {
 		return
 	}
-	if ref, ok := s["$ref"].(string); ok {
-		name, isDef := strings.CutPrefix(ref, "#/$defs/")
-		target, _ := w.defs[name].(map[string]any)
-		if !isDef || target == nil {
-			return
-		}
-		s = target
+	s, ok := w.resolve(s)
+	if !ok {
+		return
 	}
 	// A tolerated shorthand sits in a oneOf / anyOf beside the full form:
 	// describe the richest branch (an object, else an array, else the first).
-	for _, key := range []string{"oneOf", "anyOf"} {
-		branches, _ := s[key].([]any)
-		if len(branches) == 0 {
-			continue
-		}
-		var pick map[string]any
-		rank := -1
-		for _, b := range branches {
-			bm, _ := b.(map[string]any)
-			if bm == nil {
-				continue
-			}
-			if ref, ok := bm["$ref"].(string); ok {
-				if name, isDef := strings.CutPrefix(ref, "#/$defs/"); isDef {
-					if target, _ := w.defs[name].(map[string]any); target != nil {
-						bm = target
-					}
-				}
-			}
-			r := 0
-			switch bm["type"] {
-			case "object":
-				r = 2
-			case "array":
-				r = 1
-			}
-			if r > rank {
-				pick, rank = bm, r
-			}
-		}
+	if pick, ok := w.richestBranch(s); ok {
 		w.walk(pick, path, depth)
 		return
 	}
@@ -825,4 +802,50 @@ func (w *limitWalker) walk(s map[string]any, path string, depth int) {
 			w.byDepth[depth] = append(w.byDepth[depth], lim)
 		}
 	}
+}
+
+// resolve follows a "#/$defs/<name>" reference; ok is false when s is a
+// reference that does not resolve.
+func (w *limitWalker) resolve(s map[string]any) (map[string]any, bool) {
+	ref, isRef := s["$ref"].(string)
+	if !isRef {
+		return s, true
+	}
+	name, isDef := strings.CutPrefix(ref, "#/$defs/")
+	target, _ := w.defs[name].(map[string]any)
+	return target, isDef && target != nil
+}
+
+// richestBranch picks the branch of a oneOf / anyOf to describe: an object,
+// else an array, else the first. ok is false when s has no such branches.
+func (w *limitWalker) richestBranch(s map[string]any) (map[string]any, bool) {
+	for _, key := range []string{"oneOf", "anyOf"} {
+		branches, _ := s[key].([]any)
+		if len(branches) == 0 {
+			continue
+		}
+		var pick map[string]any
+		rank := -1
+		for _, b := range branches {
+			bm, _ := b.(map[string]any)
+			if bm == nil {
+				continue
+			}
+			if target, ok := w.resolve(bm); ok {
+				bm = target
+			}
+			r := 0
+			switch bm["type"] {
+			case "object":
+				r = 2
+			case "array":
+				r = 1
+			}
+			if r > rank {
+				pick, rank = bm, r
+			}
+		}
+		return pick, true
+	}
+	return nil, false
 }

@@ -1669,7 +1669,7 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 
 func mcpRecommendVisualTool() mcp.Tool {
 	return mcp.NewTool("recommend_visual",
-		mcp.WithDescription("Unified visual recommender: ranks candidates across placeholder layouts, named patterns, charts, diagrams, and raw shape_grid. Unsupported Sankey requests return empty candidates and unsupported_visual: sankey; there is no Sankey renderer. Ask this tool first, then use the winning category's tool to build the slide. Chart and diagram candidates carry data_contract and a runnable next_tool_call (render_deck_spec with a complete DeckSpec). Compose candidates (several views on one slide, e.g. compose:pull-quote+stylish-panels or compose:chart:line+diagram:timeline+stat-hero for an explicit same-slide chart + KPI + timeline brief) carry composition (direction, per-region size_pct, nesting, each region's data_contract) and the same runnable next_tool_call. When candidates is supplied, scores ONLY those names against intent/hints and returns all of them ranked (no threshold cutoff, no truncation), except unsupported visuals; category is auto-resolved from the catalog and unknown names appear with score 0."),
+		mcp.WithDescription("Unified visual recommender: ranks candidates across placeholder layouts, named patterns, charts, diagrams, raw shape_grid and the regions kind. A Sankey request returns empty candidates and unsupported_visual: sankey; there is no Sankey renderer. Every candidate carries data_contract (keys, limits, field_path) and a runnable next_tool_call (render_deck_spec with a complete DeckSpec): the DeckSpec kind that compiles to it (deckspec: kind, fields, aliases), else a raw_json2pptx slide. also_as names the other forms of the same visual; differs_by says what separates near ties. Compose candidates (several views on one slide, e.g. compose:pull-quote+stylish-panels) carry composition (direction, size_pct, nesting, per-region data_contract); a same-slide chart + KPI + timeline brief returns the regions kind first. When candidates is supplied, scores ONLY those names against intent/hints and returns all of them ranked (no cutoff or truncation), except unsupported visuals; unknown names appear with score 0."),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRecommendVisual)),
 		mcp.WithString("intent",
 			mcp.Required(),
@@ -1720,7 +1720,7 @@ func parseRecommendVisualArgs(request mcp.CallToolRequest) (patterns.VisualHints
 			opts.SlideIndex = int(f)
 		}
 	}
-	if bad := decodeOptionalArg(request, "recommend_visual", "candidates", &opts.Candidates, "array of candidate names", []string{"kpi-3up", "bar_chart"}); bad != nil {
+	if bad := decodeOptionalArg(request, "recommend_visual", "candidates", &opts.Candidates, "array of candidate names", []string{"kpi-3up", "bar"}); bad != nil {
 		return hints, opts, bad
 	}
 	return hints, opts, nil
