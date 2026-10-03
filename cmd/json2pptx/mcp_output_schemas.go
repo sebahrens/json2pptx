@@ -1956,9 +1956,10 @@ var outputSchemaAnalyzeDeckRhythm = json.RawMessage(`{
           "density_class":   {"type": "string", "enum": ["low", "med", "high"]},
           "accent_role":     {"type": "string"},
           "dominant_visual": {"type": "string"},
+          "motif":           {"type": "string", "description": "What the slide looks like at a glance, whatever pattern drew it: tiles, open-columns, open-list, table, chart, diagram, flow, hero-number, quote, split, text, image — or none (structural slide, hand-built shape_grid, compose)."},
           "within_slide_accent_variety": {"type": "integer"}
         },
-        "required": ["slide_index", "pattern", "density_class", "dominant_visual", "within_slide_accent_variety"]
+        "required": ["slide_index", "pattern", "density_class", "dominant_visual", "motif", "within_slide_accent_variety"]
       }
     },
     "aggregates": {
@@ -1971,11 +1972,28 @@ var outputSchemaAnalyzeDeckRhythm = json.RawMessage(`{
             "properties": {
               "name":  {"type": "string"},
               "start": {"type": "integer"},
-              "len":   {"type": "integer"}
+              "end":   {"type": "integer", "description": "Last slide index of the run (inclusive)."},
+              "len":   {"type": "integer", "description": "Exhibits in the run: the parts of a continued slide (titles ending (1/2), (2/2) or (cont.)) count once."}
             },
-            "required": ["name", "start", "len"]
+            "required": ["name", "start", "end", "len"]
           }
         },
+        "motif_runs": {
+          "type": "array",
+          "description": "Runs of 3+ consecutive content slides drawn in one motif, whatever patterns drew them. For chart and diagram the motif names the type (chart: bar): different charts are not a run.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "motif": {"type": "string"},
+              "start": {"type": "integer"},
+              "end":   {"type": "integer"},
+              "len":   {"type": "integer"}
+            },
+            "required": ["motif", "start", "end", "len"]
+          }
+        },
+        "motif_share":    {"type": "object", "additionalProperties": {"type": "number"}, "description": "Each motif's share of the content slides (structural slides and appendix excluded)."},
+        "dominant_motif": {"type": "string", "description": "Present when one motif covers more than half of a deck's content slides (4+ content slides)."},
         "longest_run":      {"type": "integer"},
         "repetition_index": {"type": "number"},
         "accent_balance":   {"type": "object", "additionalProperties": {"type": "number"}},
@@ -1990,14 +2008,14 @@ var outputSchemaAnalyzeDeckRhythm = json.RawMessage(`{
           "required": ["underfilled_cells", "optimal_cells", "overflow_cells"]
         }
       },
-      "required": ["pattern_runs", "longest_run", "repetition_index", "accent_balance", "density_cv", "density_distribution"]
+      "required": ["pattern_runs", "motif_runs", "motif_share", "longest_run", "repetition_index", "accent_balance", "density_cv", "density_distribution"]
     },
     "recommendations": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
-          "code":                      {"type": "string", "enum": ["break_run", "underfilled_cells", "missing_executive_summary", "missing_next_steps", "missing_sections", "evidence_missing_takeaway_or_source", "bullets_heavy", "accent_heavy_slide", "strong_accent_run"], "description": "What the recommendation is about. slide_index -1 means deck-level."},
+          "code":                      {"type": "string", "enum": ["break_run", "underfilled_cells", "missing_executive_summary", "missing_next_steps", "missing_sections", "evidence_missing_takeaway_or_source", "bullets_heavy", "accent_heavy_slide", "strong_accent_run", "break_motif_run", "motif_dominant", "continuation_interrupted"], "description": "What the recommendation is about. slide_index -1 means deck-level. break_motif_run / motif_dominant: look-alike slides drawn by different patterns; recommended_break_patterns are of a different motif. continuation_interrupted: a slide sits between the parts of a continued exhibit."},
           "slide_index":               {"type": "integer"},
           "message":                   {"type": "string"},
           "recommended_break_patterns": {"type": "array", "items": {"type": "string"}}

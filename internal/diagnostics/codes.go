@@ -186,10 +186,13 @@ const (
 	// Deck-rhythm advisories — emitted by internal/semantic rhythm analysis over
 	// the normalized DeckIR (not per-slide authoring rules). They flag monotony
 	// and missing narrative structure before a deck is rendered.
+	// CONTINUATION_SPLIT flags a continued exhibit ("(1/2)", "(2/2)") with
+	// another slide between its parts (go-slide-creator-xy51l).
 	CodeSemanticRhythmMonotony          Code = "SEMANTIC_RHYTHM_MONOTONY"
 	CodeSemanticRhythmDensity           Code = "SEMANTIC_RHYTHM_DENSITY"
 	CodeSemanticRhythmSectioning        Code = "SEMANTIC_RHYTHM_SECTIONING"
 	CodeSemanticRhythmSynthesis         Code = "SEMANTIC_RHYTHM_SYNTHESIS"
+	CodeSemanticRhythmContinuationSplit Code = "SEMANTIC_RHYTHM_CONTINUATION_SPLIT"
 	CodeSemanticEvidenceVisualMissing   Code = "SEMANTIC_EVIDENCE_VISUAL_MISSING"
 	CodeSemanticVisualFamilyNarrow      Code = "SEMANTIC_VISUAL_FAMILY_NARROW"
 	CodeSemanticRequiredLayoutUnknown   Code = "SEMANTIC_REQUIRED_LAYOUT_UNKNOWN"
@@ -301,6 +304,7 @@ func AllCodes() []Code {
 		CodeSemanticRhythmDensity,
 		CodeSemanticRhythmSectioning,
 		CodeSemanticRhythmSynthesis,
+		CodeSemanticRhythmContinuationSplit,
 		CodeSemanticEvidenceVisualMissing,
 		CodeSemanticVisualFamilyNarrow,
 		CodeSemanticRequiredLayoutUnknown,

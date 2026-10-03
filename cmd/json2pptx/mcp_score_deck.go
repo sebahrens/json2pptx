@@ -16,6 +16,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	rhythmpkg "github.com/sebahrens/json2pptx/internal/rhythm"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -526,9 +527,32 @@ func compositionAxis(slides []SlideInput) *deterministic.CompositionResult {
 			diags = append(diags, deterministic.CompositionDiagnostic{
 				Code:     "pattern_run",
 				Severity: "warning",
-				Message:  fmt.Sprintf("pattern %q repeats %d consecutive slides (index %d–%d); vary with a different layout", run.Name, run.Len, run.Start, run.Start+run.Len-1),
+				Message:  fmt.Sprintf("pattern %q repeats %d consecutive slides (index %d–%d); vary with a different layout", run.Name, run.Len, run.Start, run.End),
 			})
 		}
+	}
+
+	// Look-alike slides drawn by different patterns, a deck with one look, and
+	// a continued exhibit with a slide between its parts — reported by the
+	// rhythm engine, which also took them off the composition score
+	// (go-slide-creator-rd7oj, -xy51l).
+	for _, rec := range rhythm.Recommendations {
+		code := ""
+		switch rec.Code {
+		case rhythmpkg.CodeBreakMotifRun:
+			code = "motif_run"
+		case rhythmpkg.CodeMotifDominant:
+			code = "motif_dominance"
+		case rhythmpkg.CodeContinuationInterrupted:
+			code = "continuation_interrupted"
+		default:
+			continue
+		}
+		msg := rec.Message
+		if len(rec.RecommendedBreak) > 0 {
+			msg += " (try: " + strings.Join(rec.RecommendedBreak, ", ") + ")"
+		}
+		diags = append(diags, deterministic.CompositionDiagnostic{Code: code, Severity: "warning", Message: msg})
 	}
 
 	// Flag accent dominance (>80%).
