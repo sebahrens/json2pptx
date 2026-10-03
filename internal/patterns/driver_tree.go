@@ -34,7 +34,7 @@ type driverTree struct{}
 
 func (dt *driverTree) Name() string { return "driver-tree" }
 func (dt *driverTree) Description() string {
-	return "Hierarchical value driver tree: root metric → 2-4 branch metrics → 1-4 leaf items per branch, with optional per-branch annotations and connector lines between levels"
+	return "Hierarchical value driver tree: root metric → 2-4 branch metrics → 1-4 leaf items per branch, drawn as label-sized nodes joined by elbow connectors (the root the one solid accent node), with optional per-branch annotations"
 }
 func (dt *driverTree) UseWhen() string {
 	return "Value driver, cost driver, or KPI decomposition where a top-level metric (with unit) breaks down into 2-4 contributing branches, each with 1-4 leaf items; prefer process-flow for sequential steps, pyramid for narrowing hierarchies, swimlane for cross-actor flows, and svggen org_chart for people/role hierarchies"
@@ -308,6 +308,22 @@ func (dt *driverTree) Schema() *Schema {
 	}).WithDescription("Hierarchical value driver tree: root metric decomposed into 2-4 branches each with 1-4 leaves, plus optional per-branch annotations")
 }
 
+// validateDriverTreeOverrides checks the accent mode and the tree style.
+func validateDriverTreeOverrides(name string, overrides any) []error {
+	ovr, ok := overrides.(*DriverTreeOverrides)
+	if !ok || ovr == nil {
+		return nil
+	}
+	var errs []error
+	if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
+		errs = append(errs, err)
+	}
+	if ovr.Style != "" && !slices.Contains(driverTreeStyles, ovr.Style) {
+		errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, driverTreeStyles))
+	}
+	return errs
+}
+
 func (dt *driverTree) Validate(values, overrides any, cellOverrides map[int]any) error {
 	vals, ok := values.(*DriverTreeValues)
 	if !ok || vals == nil {
@@ -317,16 +333,7 @@ func (dt *driverTree) Validate(values, overrides any, cellOverrides map[int]any)
 	const name = "driver-tree"
 	var errs []error
 
-	if overrides != nil {
-		if ovr, ok := overrides.(*DriverTreeOverrides); ok {
-			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
-				errs = append(errs, err)
-			}
-			if ovr.Style != "" && !slices.Contains(driverTreeStyles, ovr.Style) {
-				errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, driverTreeStyles))
-			}
-		}
-	}
+	errs = append(errs, validateDriverTreeOverrides(name, overrides)...)
 
 	if strings.TrimSpace(vals.Root.Label) == "" {
 		errs = append(errs, errRequired(name, "root.label"))

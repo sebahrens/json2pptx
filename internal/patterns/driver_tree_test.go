@@ -1,8 +1,8 @@
 package patterns
 
 import (
-	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"encoding/json"
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"strings"
 	"testing"
 )

@@ -25,7 +25,7 @@ type roadmapPhased struct{}
 
 func (r *roadmapPhased) Name() string { return "roadmap-phased" }
 func (r *roadmapPhased) Description() string {
-	return "Phased roadmap with workstreams and time periods"
+	return "Phased roadmap: period headers as a time axis, workstream rows carrying bars that run from a start period to an end period (overlaps stack in lanes), milestone markers and an optional current-period mark"
 }
 func (r *roadmapPhased) UseWhen() string {
 	return "Multi-phase roadmap with workstreams across time columns (quarterly plan, release timeline); prefer timeline-horizontal for a single-track sequence of milestones, swimlane for cross-actor process"
@@ -34,7 +34,7 @@ func (r *roadmapPhased) NotWhen() string {
 	return "Single-track linear milestones without parallel workstreams (use timeline-horizontal), or steps are owned by actors not workstreams (use swimlane)"
 }
 func (r *roadmapPhased) Version() int      { return 1 }
-func (r *roadmapPhased) CellsHint() string { return "workstreams × phases" }
+func (r *roadmapPhased) CellsHint() string { return "2-6 workstreams × 2-8 periods (1-12 bars each)" }
 func (r *roadmapPhased) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
 		Category:      "structural",
@@ -226,7 +226,7 @@ func (r *roadmapPhased) Schema() *Schema {
 	workstreamSchema := ObjectSchema(
 		map[string]*Schema{
 			"name":  StringSchema(40).WithDescription("Workstream name; about 40 readable characters with 2-3 workstreams, 38 with 4 (32 at 6+ phases), 20 with 5-6 (17 at 6+ phases)"),
-			"bars": ArraySchema(roadmapBarSchema(), 1, roadmapMaxBars).WithDescription("The workstream's activities on the time axis (1-12): each a bar from its start period to its end period, or a milestone marker. Bars that share a period stack in lanes. Use bars or items, not both"),
+			"bars":  ArraySchema(roadmapBarSchema(), 1, roadmapMaxBars).WithDescription("The workstream's activities on the time axis (1-12): each a bar from its start period to its end period, or a milestone marker. Bars that share a period stack in lanes. Use bars or items, not both"),
 			"items": ArraySchema(StringSchema(80), 2, 8).WithDescription("One activity per phase (empty = none), each drawn as a one-period bar; use bars for an activity that runs over several periods. Approximate readable chars per pill by phase count x workstream count (workstreams 2/3/4/5/6): phases 2: 80/80/80/51/51; 3: 80/80/61/31/31; 4: 80/62/42/22/22; 5: 80/47/31/16/16; 6: 62/32/22/12/12; 7: 60/30/20/10/10; 8: 32/17/12/7/7"),
 		},
 		[]string{"name"},
@@ -276,6 +276,22 @@ func roadmapPhasedOverridesSchema() *Schema {
 	return s
 }
 
+// validateRoadmapOverrides checks the style and layout enums and reports
+// whether the legacy grid layout is asked for.
+func validateRoadmapOverrides(name string, overrides any) (gridLayout bool, errs []error) {
+	ovr, ok := overrides.(*RoadmapPhasedOverrides)
+	if !ok || ovr == nil {
+		return false, nil
+	}
+	if ovr.Style != "" && !slices.Contains(roadmapPhasedStyles, ovr.Style) {
+		errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, roadmapPhasedStyles))
+	}
+	if ovr.Layout != "" && !slices.Contains(roadmapPhasedLayouts, ovr.Layout) {
+		errs = append(errs, errInvalidEnum(name, "overrides.layout", ovr.Layout, roadmapPhasedLayouts))
+	}
+	return ovr.Layout == "grid", errs
+}
+
 func (r *roadmapPhased) Validate(values, overrides any, cellOverrides map[int]any) error {
 	vals, ok := values.(*RoadmapPhasedValues)
 	if !ok || vals == nil {
@@ -285,16 +301,8 @@ func (r *roadmapPhased) Validate(values, overrides any, cellOverrides map[int]an
 	const name = "roadmap-phased"
 	var errs []error
 
-	gridLayout := false
-	if ovr, ok := overrides.(*RoadmapPhasedOverrides); ok && ovr != nil {
-		if ovr.Style != "" && !slices.Contains(roadmapPhasedStyles, ovr.Style) {
-			errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, roadmapPhasedStyles))
-		}
-		if ovr.Layout != "" && !slices.Contains(roadmapPhasedLayouts, ovr.Layout) {
-			errs = append(errs, errInvalidEnum(name, "overrides.layout", ovr.Layout, roadmapPhasedLayouts))
-		}
-		gridLayout = ovr.Layout == "grid"
-	}
+	gridLayout, ovrErrs := validateRoadmapOverrides(name, overrides)
+	errs = append(errs, ovrErrs...)
 	if vals.CurrentPhase != "" && roadmapPhaseIndex(vals.Phases, vals.CurrentPhase) < 0 {
 		errs = append(errs, errInvalidEnum(name, "current_phase", vals.CurrentPhase, vals.Phases))
 	}
