@@ -686,7 +686,7 @@ Every command follows one convention (`json2pptx help` prints it):
 | `plan-deck` | Plan a deck outline from a brief |
 | `preview` | Preview generation plan without rendering |
 | `preview-wireframe` | Render a slide-plan wireframe (PNG) before generating |
-| `preview-patterns` | Pre-render PNG previews for every named pattern |
+| `preview-patterns` | Render every named pattern on each template into a local PNG gallery (the generated slide for its example values) |
 | `repair` | Apply targeted fixes to a single slide |
 | `score` | Score a JSON deck spec for visual quality (deterministic) |
 | `score-candidates` | Rank candidate slides for one slot without rendering |

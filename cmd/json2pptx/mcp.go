@@ -1588,7 +1588,6 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 		ConfidenceBand   string                     `json:"confidence_band"`
 		DiversityBonus   bool                       `json:"diversity_bonus,omitempty"`
 		ExpansionPreview *jsonschema.ShapeGridInput `json:"expansion_preview,omitempty"`
-		PreviewPNGPaths  []string                   `json:"preview_png_paths,omitempty"`
 	}
 
 	candidates := make([]candidateResult, len(rec.Candidates))
@@ -1616,8 +1615,6 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 			candidates[i].ExpansionPreview = grid
 		}
 
-		// Look up pre-generated preview PNGs from assets directory
-		candidates[i].PreviewPNGPaths = findPatternPreviewPNGs(mc.templatesDir, c.PatternName)
 	}
 
 	nearMisses := make([]nearMissResult, len(rec.NearMisses))
@@ -1689,10 +1686,13 @@ func mcpRecommendVisualTool() mcp.Tool {
 			mcp.Description("0-based index of the slide being built."),
 		),
 		mcp.WithArray("candidates",
-			mcp.Description("Explicit shortlist of candidate names to rank across all visual categories (placeholder layouts, named patterns, chart types, diagram types, or raw_shape_grid). When supplied, ALL listed names are scored and returned ranked (no threshold cutoff, no truncation). Category is auto-resolved from the catalog; compose:<a>+<b> names recommend_visual emitted resolve to the same compose candidate; unknown names appear with score 0 and a rationale noting the miss."),
+			mcp.Description("Shortlist of names to rank (layouts, patterns, chart types, diagram types, raw_shape_grid, or a compose:<a>+<b> name this tool emitted). All are scored and returned; the category is resolved from the catalog."),
 		),
 		mcp.WithString("template",
-			mcp.Description("Optional template name (e.g., midnight-blue) to make recommendations template-aware. When supplied, each candidate carries a template_support object {status: supported|risky|unsupported, reasons[], required_layout} grounded in the template's canonical layouts, derivable layouts, font-aware placeholder capacities, and palette; candidates needing absent layouts or violating capacity are demoted so they no longer rank first. Use list_templates to discover names."),
+			mcp.Description("Template name (list_templates lists them). Each candidate then carries template_support {status: supported|risky|unsupported, reasons[], required_layout}, and candidates the template cannot host are demoted. Recipes and previews render on it."),
+		),
+		mcp.WithBoolean("preview",
+			mcp.Description("true: also return an image of each leading candidate (max 4): its next_tool_call rendered. previews[] maps name to image."),
 		),
 	)
 }
@@ -1762,6 +1762,10 @@ func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.Call
 	if bad != nil {
 		return bad, nil
 	}
+	wantPreview, bad := previewArg("recommend_visual", request)
+	if bad != nil {
+		return bad, nil
+	}
 
 	// Optional template context — when supplied, recommendations become
 	// template-aware (per-candidate support + demotion of unsupported visuals).
@@ -1799,7 +1803,7 @@ func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.Call
 			rec.Candidates = rec.Candidates[:maxCands]
 		}
 		for i := range rec.Candidates {
-			rec.Candidates[i].Example = visualExampleForCandidate(rec.Candidates[i], analysis, mc.templatesDir, templateNameFromRequest(request), reg)
+			rec.Candidates[i].Example = visualExampleForCandidate(rec.Candidates[i], analysis, reg)
 		}
 	}
 
@@ -1812,11 +1816,21 @@ func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.Call
 	// render_deck_spec call (go-slide-creator-b7qqg.24, -x97m6).
 	attachVisualRecipes(&rec, templateNameFromRequest(request))
 
+	// A picture of each leading candidate is its recipe rendered, returned as
+	// an image; a response asked for none says how to get them
+	// (go-slide-creator-ueopl).
+	var previewImages []api.MCPImage
+	if wantPreview {
+		rec.Previews, previewImages = mc.renderPreviews(ctx, candidatePreviewRequests(&rec))
+	} else {
+		rec.PreviewCall = previewCallFor(intent, templateNameFromRequest(request), &rec)
+	}
+
 	if err := api.ComputeResponseFingerprint(&rec); err != nil {
 		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to compute response fingerprint: %v", err), nextCallRetry("recommend_visual", "intent")), nil
 	}
 
-	mcpResult, err := api.MCPSuccessResult(ctx, rec)
+	mcpResult, err := previewableResult(ctx, rec, previewImages)
 	if err != nil {
 		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err), nextCallRetry("recommend_visual", "intent")), nil
 	}
@@ -1830,7 +1844,7 @@ func templateNameFromRequest(request mcp.CallToolRequest) string {
 	return ""
 }
 
-func visualExampleForCandidate(candidate patterns.VisualCandidate, analysis *types.TemplateAnalysis, templatesDir, templateName string, reg *patterns.Registry) *patterns.VisualExample {
+func visualExampleForCandidate(candidate patterns.VisualCandidate, analysis *types.TemplateAnalysis, reg *patterns.Registry) *patterns.VisualExample {
 	if analysis == nil {
 		return nil
 	}
@@ -1839,19 +1853,6 @@ func visualExampleForCandidate(candidate patterns.VisualCandidate, analysis *typ
 	case patterns.VisualCategoryPattern:
 		if p, ok := reg.Get(candidate.Name); ok {
 			ex.Capacity = p.CellsHint()
-		}
-		root := filepath.Dir(templatesDir)
-		if templatesDir == "" {
-			root, _ = os.Getwd()
-		}
-		path := filepath.Join(root, "assets", "pattern-previews", templateName, candidate.Name+".png")
-		if info, err := os.Stat(path); err == nil && !info.IsDir() {
-			if abs, absErr := filepath.Abs(path); absErr == nil {
-				path = abs
-			}
-			ex.PreviewPNGPath = path
-			ex.Renderer = "pre-rendered"
-			ex.MetadataOnly = false
 		}
 	case patterns.VisualCategoryPlaceholder:
 		if l := placeholderCandidateLayout(candidate.Name, analysis.Layouts); l != nil {

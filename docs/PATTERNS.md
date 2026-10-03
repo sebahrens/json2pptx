@@ -860,6 +860,30 @@ Do not let cards / steps stretch to the full content height just because the gri
 - Gap values: 10-12 is typical.
 - Geometry values: `"roundRect"`, `"rect"`, `"ellipse"` etc.
 
+## Previews are the generated slide
+
+A pattern has one picture: the slide generation produces for its
+`ExemplarValues()` under a title. Nothing draws a pattern any other way
+(go-slide-creator-r1uy7, -ueopl).
+
+- `renderSpecPreview` (`cmd/json2pptx/mcp_preview_recipe.go`) compiles a
+  one-slide DeckSpec with `render_deck_spec`'s compiler and runner, then
+  renders slide 1 through the render cache, keyed by the slide's visible
+  identity (`render.VisibleSlideKeys`). It backs `list_slide_kinds(preview:
+  true)`, `recommend_visual(preview: true)` and `json2pptx preview-patterns`.
+- A pattern must therefore implement `Exemplar`, and its exemplar values must
+  render under strict output validation on every template.
+  `TestPatternPreviewIsTheGeneratedSlide` fails for a registered pattern
+  without a preview recipe, and for a preview deck whose slide differs from
+  `render_deck_spec`'s. `TestPatternPreviewPixelsMatchGeneratedSlide` compares
+  pixels against an independent conversion (needs LibreOffice; a sample by
+  default, every pattern with `PREVIEW_PIXEL_FULL=1`).
+- No gallery is committed. `make preview-patterns` (or `json2pptx
+  preview-patterns -template <name> -pattern <name>`) writes one locally to
+  the gitignored `assets/pattern-previews/`. Look at it after changing a
+  pattern's layout — and at `generate` output for real content, since the
+  exemplar is one content shape.
+
 ## Pre-PR checklist
 
 Before submitting:

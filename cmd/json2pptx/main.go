@@ -194,7 +194,7 @@ Commands:
   recommend-pattern   Recommend patterns matching an intent
   preview             Preview generation plan without rendering
   preview-wireframe   Render a slide-plan wireframe (PNG) before generating
-  preview-patterns    Pre-render PNG previews for every named pattern
+  preview-patterns    Render a local PNG gallery of every named pattern
   repair              Apply targeted fixes to a single slide
   score               Score a JSON deck spec for visual quality (deterministic)
   score-candidates    Rank candidate slides for one slot without rendering

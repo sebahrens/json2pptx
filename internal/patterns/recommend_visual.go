@@ -206,7 +206,9 @@ type VisualFormRef struct {
 // VisualExample connects a recommendation to compact template-specific visual
 // evidence. MetadataOnly is explicit when no renderer-produced preview exists.
 type VisualExample struct {
-	TemplateHash   string `json:"template_hash"`
+	TemplateHash string `json:"template_hash"`
+	// PreviewPNGPath is the layout thumbnail of a placeholder candidate. A
+	// rendered picture of any candidate comes from preview:true, as an image.
 	PreviewPNGPath string `json:"preview_png_path,omitempty"`
 	Capacity       string `json:"capacity,omitempty"`
 	Renderer       string `json:"renderer,omitempty"`
@@ -217,6 +219,22 @@ type VisualExample struct {
 	// LayoutPreviewPNGPath is the shipped thumbnail of LayoutID
 	// (templates/previews/<template>/<layoutID>.png), when one exists.
 	LayoutPreviewPNGPath string `json:"layout_preview_png_path,omitempty"`
+}
+
+// VisualPreview is one rendered preview image of a kind's example or of a
+// candidate's runnable recipe, or the reason there is none.
+type VisualPreview struct {
+	// Name is the kind or candidate the image shows.
+	Name string `json:"name"`
+	// Template is the template the image was rendered on.
+	Template string `json:"template,omitempty"`
+	// ImageContentIndex is the position of the image block in the tool
+	// result's content array (content[0] is the JSON text).
+	ImageContentIndex int    `json:"image_content_index,omitempty"`
+	ContentHash       string `json:"content_hash,omitempty"`
+	// Error says why no image was rendered (render toolchain missing, or the
+	// recipe was refused); the rest of the response is unaffected.
+	Error string `json:"error,omitempty"`
 }
 
 // VisualHints extends ContentHints with data-shape information for chart/diagram routing.
@@ -233,6 +251,13 @@ type RecommendVisualResult struct {
 	UnsupportedVisual       string            `json:"unsupported_visual,omitempty"`
 	QueryUnderstood         string            `json:"query_understood_as"`
 	DisambiguatingQuestions []string          `json:"disambiguating_questions,omitempty"`
+
+	// Previews lists the images a preview:true call returned, one per leading
+	// candidate: its next_tool_call rendered (go-slide-creator-ueopl).
+	Previews []VisualPreview `json:"previews,omitempty"`
+	// PreviewCall is the call that returns those images, on a response that
+	// was asked for none.
+	PreviewCall *ToolCallSuggestion `json:"preview_call,omitempty"`
 
 	// ResponseFingerprint is a sha256 hex digest of the canonical JSON of this
 	// response with the field zeroed. Agents may use it as a cache key. The

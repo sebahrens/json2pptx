@@ -88,7 +88,9 @@ Thumbs.db
 # pwc-template is intentionally ignored (proprietary; do not redistribute)
 /templates/pwc-template.pptx
 /templates/previews/pwc-template/
-/assets/pattern-previews/pwc-template/
+# preview-patterns writes a local gallery here; it is not committed (agents get
+# the same pictures on demand: recommend_visual / list_slide_kinds preview:true)
+/assets/pattern-previews/
 
 # Environment
 .env
