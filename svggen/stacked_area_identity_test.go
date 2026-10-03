@@ -84,7 +84,15 @@ func TestStackedArea_ValueLabelsShowAuthoredValues(t *testing.T) {
 	}
 }
 
-var svgColorRE = regexp.MustCompile(`(?:fill|stroke)(?::|=")(#[0-9a-fA-F]{6})`)
+var svgColorRE = regexp.MustCompile(`(?:fill|stroke)(?::|=")(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3})\b`)
+
+// normHex lower-cases a colour and expands the minified #rgb form.
+func normHex(s string) string {
+	if c, err := ParseColor(s); err == nil {
+		return strings.ToLower(c.Hex())
+	}
+	return strings.ToLower(s)
+}
 
 // textElement returns the SVG before the <text> element whose body is name,
 // and that element's own fill colour.
@@ -100,7 +108,7 @@ func textElement(t *testing.T, svg, name string) (before, fill string) {
 		t.Fatalf("text %q is not inside a <text> element", name)
 	}
 	if m := svgColorRE.FindAllStringSubmatch(before[start:], -1); len(m) > 0 {
-		fill = strings.ToLower(m[len(m)-1][1])
+		fill = normHex(m[len(m)-1][1])
 	}
 	return before[:start], fill
 }
@@ -119,7 +127,7 @@ func seriesIdentityColor(t *testing.T, svg, name, neutralLabel string) string {
 	if len(matches) == 0 {
 		t.Fatalf("no colour before legend text %q", name)
 	}
-	return strings.ToLower(matches[len(matches)-1][1])
+	return normHex(matches[len(matches)-1][1])
 }
 
 // go-slide-creator-b7qqg.19: stacked_area reversed its paint order BEFORE the
@@ -149,7 +157,14 @@ func TestStackedArea_SeriesColorsMatchOtherCartesianTypes(t *testing.T) {
 		for _, ct := range []string{"line_chart", "area_chart", "stacked_bar_chart", "stacked_area_chart"} {
 			got := render(ct)
 			for _, name := range []string{"Current year", "Prior year", "Forecast"} {
-				if want, have := seriesIdentityColor(t, ref, name, "Europe"), seriesIdentityColor(t, got, name, "Europe"); want != have {
+				want, have := seriesIdentityColor(t, ref, name, "Europe"), seriesIdentityColor(t, got, name, "Europe")
+				// A direct label may carry a readable shade of the series
+				// colour (go-slide-creator-vi6uq).
+				shade := want
+				if c, err := ParseColor(want); err == nil {
+					shade = strings.ToLower(directLabelInk(DefaultStyleGuide().Palette, c).Hex())
+				}
+				if have != want && have != shade {
 					t.Errorf("colors=%v %s: %q is %s, grouped_bar draws it %s", colors, ct, name, have, want)
 				}
 			}
