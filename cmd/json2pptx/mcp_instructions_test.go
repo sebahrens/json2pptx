@@ -48,7 +48,7 @@ func TestMCPInitializeCarriesInstructions(t *testing.T) {
 	if init.Instructions != mcpQualityWorkflow {
 		t.Fatalf("initialize instructions = %q, want mcpQualityWorkflow", init.Instructions)
 	}
-	for _, want := range []string{"get_started", "render_deck_spec", "render_deck_thumbnails", "semantic_path", "exemplar"} {
+	for _, want := range []string{"get_started", "render_deck_spec", "render_deck_thumbnails", "at their path in the DeckSpec", "exemplar"} {
 		if !strings.Contains(init.Instructions, want) {
 			t.Errorf("instructions must mention %q", want)
 		}

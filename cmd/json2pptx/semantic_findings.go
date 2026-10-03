@@ -55,7 +55,9 @@ type findingWaiver struct {
 type findingSymptom struct {
 	Code    string `json:"code"`
 	Path    string `json:"path,omitempty"`
-	Message string `json:"message"`
+	Message string `json:"message,omitempty"`
+	// pointer is Path as an authored JSON Pointer, once resolved.
+	pointer string
 }
 
 // findingPolicy decides, for one deck, which findings block and which are
@@ -236,10 +238,37 @@ func gateReasonContributors(reason string, diags []semanticDiagnostic) string {
 
 // diagnosticName is a finding's "CODE at path" name.
 func diagnosticName(d semanticDiagnostic) string {
-	if p := firstNonEmpty(d.SemanticPath, d.RawPath); p != "" {
+	if p := diagnosticPointer(d); p != "" {
 		return d.Code + " at " + p
 	}
 	return d.Code
+}
+
+// diagnosticPointer is where a diagnostic sits in the authored spec, as a JSON
+// Pointer: its DeckSpec path, or its slide when the finding could not be
+// traced to a field. Reasons and gate messages name findings by it, so prose
+// and the path field agree (go-slide-creator-pilpn).
+func diagnosticPointer(d semanticDiagnostic) string {
+	if d.address != nil {
+		return d.address.Path
+	}
+	if d.SemanticPath != "" && !strings.HasPrefix(d.SemanticPath, "/") {
+		return specPointer(d.SemanticPath)
+	}
+	if d.SlideIndex != nil {
+		return "/slides/" + strconv.Itoa(*d.SlideIndex)
+	}
+	return ""
+}
+
+// isPlaceholderFinding reports whether a diagnostic is a blocking finding for
+// placeholder copy the product itself emitted.
+func isPlaceholderFinding(d semanticDiagnostic) bool {
+	if d.Evidence == nil {
+		return false
+	}
+	_, ok := d.Evidence[semantic.PlaceholderDetail]
+	return ok && diagnosticBlocks(d)
 }
 
 func hasBlockingDiagnostic(diags []semanticDiagnostic) bool {
@@ -269,6 +298,11 @@ var rootCausePathRE = regexp.MustCompile(`^/slides/\d+/(pattern|compose|shape_gr
 // The capacity finding now carries the blocking severity and lists the shrunk
 // fields as its symptoms; fixing it clears them all.
 func groupRootCauses(diags []semanticDiagnostic) []semanticDiagnostic {
+	return collapseDiagnostics(groupCapacityCauses(diags))
+}
+
+// groupCapacityCauses is the capacity rule of groupRootCauses.
+func groupCapacityCauses(diags []semanticDiagnostic) []semanticDiagnostic {
 	roots := map[int]int{} // raw slide index -> index of its root in diags
 	for i, d := range diags {
 		if d.Code != patterns.ErrCodeBodyTooLong || !rootCausePathRE.MatchString(d.RawPath) {
@@ -333,7 +367,14 @@ const symptomsDetail = "symptoms"
 func symptomsEvidence(symptoms []findingSymptom) []any {
 	out := make([]any, 0, len(symptoms))
 	for _, s := range symptoms {
-		out = append(out, map[string]any{"code": s.Code, "path": s.Path, "message": s.Message})
+		entry := map[string]any{"code": s.Code}
+		if s.Path != "" {
+			entry["path"] = s.Path
+		}
+		if s.Message != "" {
+			entry["message"] = s.Message
+		}
+		out = append(out, entry)
 	}
 	return out
 }
@@ -404,6 +445,7 @@ func blockingFindingReasons(diags []semanticDiagnostic) []string {
 	paths := map[string][]string{}
 	messages := map[string][]string{}
 	var codes []string
+	exemplar := false
 	for _, d := range diags {
 		if !diagnosticBlocks(d) {
 			continue
@@ -412,8 +454,17 @@ func blockingFindingReasons(diags []semanticDiagnostic) []string {
 			codes = append(codes, d.Code)
 			paths[d.Code] = nil
 		}
-		if p := firstNonEmpty(d.SemanticPath, d.RawPath); p != "" && !stringListHas(paths[d.Code], p) {
+		if p := diagnosticPointer(d); p != "" && !stringListHas(paths[d.Code], p) {
 			paths[d.Code] = append(paths[d.Code], p)
+		}
+		for _, m := range d.members {
+			// A folded entry blocks at every path it stands for.
+			if p := specPointer(m.Path); p != "" && !stringListHas(paths[d.Code], p) {
+				paths[d.Code] = append(paths[d.Code], p)
+			}
+		}
+		if isPlaceholderFinding(d) {
+			exemplar = true
 		}
 		if d.Code == codeQualityGate {
 			messages[d.Code] = append(messages[d.Code], strings.TrimPrefix(d.Message, "quality gate: "))
@@ -421,7 +472,12 @@ func blockingFindingReasons(diags []semanticDiagnostic) []string {
 	}
 	sort.Strings(codes)
 	const limit = 4
-	reasons := make([]string, 0, len(codes))
+	reasons := make([]string, 0, len(codes)+1)
+	if exemplar {
+		// The same token make_deck leads with: the deck still carries copy the
+		// product wrote as scaffolding (go-slide-creator-327g6).
+		reasons = append(reasons, exemplarContentReason)
+	}
 	for _, code := range codes {
 		reason := code
 		if ps := paths[code]; len(ps) > 0 {
@@ -637,7 +693,7 @@ func compiledContractDiagnostics(input *PresentationInput, cr *semantic.CompileR
 			rawPath := d.Path
 			d.Path = contractSemanticPath(sm, ir, i, rawPath)
 			d.Message = strings.TrimSuffix(d.Message, " (generate would refuse this deck)")
-			d.Message = zeroBasedSlideMessage(d.Message, i, i)
+			d.Message = slideNumberMessage(d.Message, i, i)
 			sd := semanticDiagFromCompile(d)
 			sd.RawPath = rawPath
 			if idx := i; idx >= 0 {

@@ -189,7 +189,7 @@ func TestComposedExampleDeckSpecRoundTrip(t *testing.T) {
 			onComposed := validated.FindingEnvelope
 			onComposed.Findings = nil
 			for _, f := range validated.Findings {
-				if f.Where == nil || f.Where.Slide == nil || *f.Where.Slide == 1 {
+				if f.SlideNumber == nil || *f.SlideNumber == 2 {
 					onComposed.Findings = append(onComposed.Findings, f)
 				}
 			}

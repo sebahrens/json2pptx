@@ -190,7 +190,7 @@ func TestSlideIDValidation(t *testing.T) {
 	mc := handleTestConfig(t)
 	spec := strings.Replace(revisionTestSpec, `{"kind": "closing"`, `{"id": "costs", "kind": "closing"`, 1)
 	dup := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": spec}))
-	if dup.OK || !strings.Contains(resultText(mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": spec})), "already used by slides[2]") {
+	if dup.OK || !strings.Contains(resultText(mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": spec})), "already used by /slides/2") {
 		t.Errorf("duplicate slide ids should be an error finding, got ok=%v %+v", dup.OK, dup.Findings)
 	}
 	numeric := strings.Replace(revisionTestSpec, `"id": "costs"`, `"id": "3"`, 1)

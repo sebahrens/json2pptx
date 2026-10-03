@@ -47,6 +47,10 @@ type RhythmWarning struct {
 	// Path is the semantic source path the warning anchors to (e.g. "slides[3]"
 	// for the slide that starts a run), or "" for a deck-level warning.
 	Path string `json:"path,omitempty"`
+	// Run lists the source paths of the slides a run warning is about, in deck
+	// order, so the reader knows which slides to vary or break up without
+	// counting from Path (go-slide-creator-c2j5b).
+	Run []string `json:"run,omitempty"`
 }
 
 // RhythmWarnings analyzes the deck's rhythm and returns the advisory findings in
@@ -117,11 +121,16 @@ func (ir *DeckIR) monotonyWarnings() []RhythmWarning {
 		if run.family == FamilyRaw || run.family == FamilyStructural || run.units <= maxConsecutiveSameFamily {
 			continue
 		}
+		paths := make([]string, 0, run.length)
+		for i := run.start; i < run.start+run.length; i++ {
+			paths = append(paths, ir.slidePath(i))
+		}
 		out = append(out, RhythmWarning{
 			Code: string(diagnostics.CodeSemanticRhythmMonotony),
-			Message: fmt.Sprintf("%d consecutive %s slides (%s to %s) read as monotonous; vary the slide kinds or insert a section break",
-				run.units, run.family, ir.slidePath(run.start), ir.slidePath(run.start+run.length-1)),
+			Message: fmt.Sprintf("%d consecutive %s slides (%s to %s) read as monotonous; vary the slide kinds or insert a section break inside the run",
+				run.units, run.family, paths[0], paths[len(paths)-1]),
 			Path: ir.slidePath(run.start),
+			Run:  paths,
 		})
 	}
 	return out
@@ -301,12 +310,16 @@ func rhythmDiagnostics(ir *DeckIR, strict Strictness) []diagnostics.Diagnostic {
 		if w.Code == string(diagnostics.CodeSemanticRequiredLayoutMissing) {
 			findingSeverity = diagnostics.SeverityError
 		}
-		out = append(out, diagnostics.Diagnostic{
+		d := diagnostics.Diagnostic{
 			Code:     w.Code,
 			Message:  w.Message,
 			Path:     w.Path,
 			Severity: findingSeverity,
-		})
+		}
+		if len(w.Run) > 0 {
+			d.Details = map[string]any{"run": w.Run}
+		}
+		out = append(out, d)
 	}
 	return out
 }

@@ -190,6 +190,18 @@ func enrichSemanticKindDiagnostics(ds []diagnostics.Diagnostic) {
 	var available []string
 	for i := range ds {
 		d := &ds[i]
+		if d.Code == diagnostics.CodeSemanticUnknownArchetype {
+			// The registered archetypes, as a list an agent can choose from.
+			names := make([]string, 0, 8)
+			for _, a := range semantic.AllArchetypes() {
+				names = append(names, string(a))
+			}
+			if d.Details == nil {
+				d.Details = make(map[string]any)
+			}
+			d.Details["available"] = names
+			continue
+		}
 		if d.Code != diagnostics.CodeSemanticUnknownKind {
 			continue
 		}
@@ -204,14 +216,39 @@ func enrichSemanticKindDiagnostics(ds []diagnostics.Diagnostic) {
 		d.Details["available"] = available
 		d.Fix = &diagnostics.Fix{Kind: "choose_kind", Params: map[string]any{"available": available}}
 		d.NextToolCall = &patterns.ToolCallSuggestion{Tool: "list_slide_kinds", ArgsTemplate: map[string]any{}}
+		// The nearest kind, and for a chart or diagram type the kind that hosts
+		// it (go-slide-creator-t0c1m). The next call then asks for that kind
+		// alone rather than the whole catalogue.
+		m := unknownKindRE.FindStringSubmatch(d.Message)
+		if m == nil {
+			continue
+		}
+		s := semantic.SuggestKind(m[1])
+		if s.DidYouMean == "" {
+			continue
+		}
+		params := map[string]any{"did_you_mean": string(s.DidYouMean)}
+		// With a kind to use, the list of every kind is noise: the next call
+		// returns the one that matters.
+		delete(d.Details, "available")
+		if s.HostedType != "" {
+			params["hosted_type"], params["hosted_as"] = s.HostedType, s.HostedAs
+		}
+		d.Fix = &diagnostics.Fix{Kind: "choose_kind", Params: params}
+		d.NextToolCall = &patterns.ToolCallSuggestion{Tool: "list_slide_kinds", ArgsTemplate: map[string]any{"kinds": []any{string(s.DidYouMean)}}}
 	}
 }
+
+// unknownKindRE reads the rejected kind out of an unknown-kind message.
+var unknownKindRE = regexp.MustCompile(`^unknown slide kind "([^"]*)"`)
 
 func semanticizeFindings(envelope *diagnostics.FindingEnvelope, data []byte, deckID string) {
 	for i := range envelope.Findings {
 		f := &envelope.Findings[i]
 		if strings.HasSuffix(f.Code, diagnostics.CodeSemanticUnknownKind) {
-			f.NextToolCall = &patterns.ToolCallSuggestion{Tool: "list_slide_kinds", ArgsTemplate: map[string]any{}}
+			if f.NextToolCall == nil || f.NextToolCall.Tool != "list_slide_kinds" {
+				f.NextToolCall = &patterns.ToolCallSuggestion{Tool: "list_slide_kinds", ArgsTemplate: map[string]any{}}
+			}
 			continue
 		}
 		semanticizeFinding(f, data, deckID)
@@ -316,6 +353,7 @@ func templateDidYouMean(templateNotFound bool, r *diagnostics.Remediation) any {
 }
 
 func semanticizeRenderDiagnostics(ds []semanticDiagnostic, data []byte, deckID string) {
+	described := map[string]bool{}
 	for i := range ds {
 		ds[i].NextToolCall = nil
 		if deckID != "" {
@@ -323,14 +361,39 @@ func semanticizeRenderDiagnostics(ds []semanticDiagnostic, data []byte, deckID s
 			if ds[i].RecommendedEdit != nil {
 				params = ds[i].RecommendedEdit.Params
 			}
-			if ops := semanticPatchOps(data, ds[i].SemanticPath, ds[i].Code, params); len(ops) > 0 {
+			if ops := collapsedPatchOps(data, ds[i]); len(ops) > 1 {
+				ds[i].NextToolCall = semanticPatchSuggestion(deckID, ops)
+			} else if ops := semanticPatchOps(data, ds[i].SemanticPath, ds[i].Code, params); len(ops) > 0 {
 				ds[i].NextToolCall = semanticPatchSuggestion(deckID, ops)
 			} else if len(ds[i].fallbackPatch) > 0 {
 				ds[i].NextToolCall = semanticPatchSuggestion(deckID, ds[i].fallbackPatch)
 			}
 		}
-		if ds[i].NextToolCall == nil {
+		// describe_finding is offered once per code: the explanation is the
+		// same for every finding that carries it (go-slide-creator-c2j5b).
+		if ds[i].NextToolCall == nil && !described[ds[i].Code] {
+			described[ds[i].Code] = true
 			ds[i].NextToolCall = &patterns.ToolCallSuggestion{Tool: "describe_finding", ArgsTemplate: map[string]any{"code": ds[i].Code}}
 		}
+	}
+}
+
+// trimEnvelopeForMCP drops what an MCP DeckSpec response repeats: the CLI
+// describe command (the tool is describe_finding, offered as next_tool_call),
+// and that next_tool_call on every finding of a code after the first
+// (go-slide-creator-c2j5b).
+func trimEnvelopeForMCP(envelope *diagnostics.FindingEnvelope) {
+	described := map[string]bool{}
+	for i := range envelope.Findings {
+		f := &envelope.Findings[i]
+		f.DescribeCommand = ""
+		if f.NextToolCall == nil || f.NextToolCall.Tool != "describe_finding" {
+			continue
+		}
+		if described[f.Code] {
+			f.NextToolCall = nil
+			continue
+		}
+		described[f.Code] = true
 	}
 }

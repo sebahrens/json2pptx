@@ -432,8 +432,7 @@ func buildSlideSpec(path string, m map[string]any, ds *Diagnostics) SlideSpec {
 		default:
 			slide.Kind = SlideKind(kindStr)
 			if !slide.Kind.Valid() {
-				ds.add(path+".kind", CodeUnknownKind,
-					fmt.Sprintf("unknown slide kind %q; expected one of %s", kindStr, joinKinds()))
+				ds.add(path+".kind", CodeUnknownKind, unknownKindMessage(kindStr))
 			}
 		}
 	}

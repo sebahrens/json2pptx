@@ -134,11 +134,16 @@ func TestTemplatePrecedenceWarning(t *testing.T) {
 	}
 }
 
-func TestZeroBasedSlideMessage(t *testing.T) {
-	if got := zeroBasedSlideMessage("slide 3: body text is long", 2, 2); got != "slides[2]: body text is long" {
+// A message names a slide by its slide_number: the raw finding's own slide,
+// renumbered to the deck position the diagnostic reports.
+func TestSlideNumberMessage(t *testing.T) {
+	if got := slideNumberMessage("slide 3: body text is long", 2, 2); got != "slide 3: body text is long" {
 		t.Errorf("got %q", got)
 	}
-	if got := zeroBasedSlideMessage("slide 5: other slide", 2, 2); got != "slide 5: other slide" {
+	if got := slideNumberMessage("slide 3: body text is long", 2, 4); got != "slide 5: body text is long" {
+		t.Errorf("reported position not used: %q", got)
+	}
+	if got := slideNumberMessage("slide 5: other slide", 2, 2); got != "slide 5: other slide" {
 		t.Errorf("mismatched slide rewritten: %q", got)
 	}
 }

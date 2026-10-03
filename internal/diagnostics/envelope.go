@@ -162,6 +162,24 @@ type Finding struct {
 	Blocking *bool `json:"blocking,omitempty"`
 	// Category is the namespace prefix of Code (e.g. "FIT").
 	Category Namespace `json:"category"`
+	// Path is the finding's address in the document the author sent, as a JSON
+	// Pointer (RFC 6901, 0-based). The DeckSpec surfaces set it on every finding
+	// and it always resolves in that document: a finding about a field that is
+	// not there yet points at the nearest object that is, and MissingPath names
+	// the field. Other surfaces leave it absent and report evidence.path.
+	Path *string `json:"path,omitempty"`
+	// MissingPath is the pointer of the field the finding is about when the
+	// document does not have it (a required field, a takeaway to add).
+	MissingPath string `json:"missing_path,omitempty"`
+	// SlideNumber is the 1-based position of the slide in the rendered deck:
+	// the one index meant for a person. Set by the DeckSpec surfaces.
+	SlideNumber *int `json:"slide_number,omitempty"`
+	// Occurrences is how many findings with this code, slide and cause the
+	// finding stands for, when more than one; Paths lists the address of each.
+	// Evidence facts that differ between them (measured) are lists in the
+	// order of Paths.
+	Occurrences int      `json:"occurrences,omitempty"`
+	Paths       []string `json:"paths,omitempty"`
 	// Where locates the issue in the deck/template; omitted when unknown.
 	Where *Where `json:"where,omitempty"`
 	// Message is the human-readable description.
@@ -184,6 +202,10 @@ type Finding struct {
 	// carried as a dedicated field rather than folded into Evidence (which holds
 	// scalar facts only). Carried verbatim from the source Diagnostic.
 	ExampleValue any `json:"example_value,omitempty"`
+	// Debug carries locators into the compiled deck (raw_path, cell_path) for
+	// a maintainer. They name objects the author did not write; nothing outside
+	// Debug does on a DeckSpec surface.
+	Debug map[string]any `json:"debug,omitempty"`
 	// DocURL points at the human documentation for the code, when available.
 	DocURL string `json:"doc_url,omitempty"`
 	// DescribeCommand is an executable command that explains the code, e.g.

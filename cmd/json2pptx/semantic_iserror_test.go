@@ -179,7 +179,7 @@ func TestBlockingDiagnosticReasons(t *testing.T) {
 		{Code: "text_overflow", Severity: "error", Action: "refuse", SemanticPath: "slides[1].insights"},
 	}
 	got := blockingDiagnosticReasons(diags)
-	if len(got) != 1 || got[0] != "text_overflow at slides[1].insights" {
+	if len(got) != 1 || got[0] != "text_overflow at /slides/1/insights" {
 		t.Errorf("blocking reasons = %v, want the one refuse finding with its path", got)
 	}
 

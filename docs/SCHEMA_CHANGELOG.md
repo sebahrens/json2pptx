@@ -287,6 +287,77 @@
     thresholds are unchanged; the composed geometry is what they measure.
     No field, enum or finding code was added.
 
+- **2026-10-03 — DeckSpec findings: one address, one entry per cause, everything in the first response (`go-slide-creator-pilpn`, `go-slide-creator-c2j5b`, `go-slide-creator-ipahe`, `go-slide-creator-t0c1m`, `go-slide-creator-327g6`).**
+  Applies to `validate_deck_spec`, `render_deck_spec`, `semantic validate`
+  and `semantic render`; the raw-deck surfaces are unchanged.
+  - **Breaking: a finding's address.** Every finding carries `path`, a JSON
+    Pointer (0-based) into the spec that was sent, which always resolves
+    there; `missing_path` when the field it is about does not exist yet
+    (`path` is then its nearest parent); and `slide_number`, the 1-based deck
+    position (absent on a deck-level finding and on an entry that spans
+    slides). **Removed:** `evidence.path` and `where` on validate findings;
+    `semantic_path`, `raw_path` and `slide_index` on render diagnostics.
+    Pointers into the compiled deck (`raw_path`, `cell_path`, a raw fix's
+    `path` as `fix_path`) are under `debug` only. Messages,
+    `deterministic_blocking_reasons` and `error` use the same pointers
+    (`BODY_TOO_LONG at /slides/1`), and "slide N" in a message is the
+    finding's `slide_number` (it was `slides[N-1]`). `symptoms[].path` is a
+    pointer too, and `symptoms[].message` is optional.
+  - **New: `occurrences` and `paths`.** Findings with the same code and cause
+    are one entry: `path` and the message are the first finding's,
+    `occurrences` counts them, `paths` lists each, and `evidence.measured` /
+    `evidence.allowed` are lists in that order when they differ per item. The
+    suggested patch covers every item. A blocking finding folds only with the
+    same statement about another item; an advisory also folds across slides
+    and across the text it quotes.
+  - **Fallback symptoms.** `BODY_TOO_LONG`, `SLIDE_TEXT_DENSE`,
+    `TEXT_SIZE_OFF_TARGET`, `TEXT_BELOW_READABLE_MIN` and `density_exceeded`
+    on a slide that has a `SEMANTIC_PATTERN_DEGRADED` or `SEMANTIC_DENSITY`
+    finding are listed under that finding's `symptoms` instead of beside it;
+    it becomes an `error` (`blocking: true`) when one of them blocks.
+  - **A spec with spec-level errors is still evaluated.** Slides the errors do
+    not touch are compiled, rendered into the scratch directory and reported:
+    fit findings, titles, sources and the closing appear in the first
+    response. A misspelled key with a `did_you_mean` is read under the
+    intended name (what followed from its being dropped is no longer
+    reported); another unknown key is left out and a finding that follows from
+    it carries `evidence.caused_by`. `warnings[]` gains `measured with each
+    misspelled key read as its did_you_mean (…)` and `checks_not_run: <paths>
+    did not compile, …`; the deck-wide checks (rhythm, executive summary,
+    quality gate) are skipped only when a slide was left out. A refused
+    render reports the same findings.
+  - **Every over-budget item at once.** `SEMANTIC_PATTERN_DEGRADED` is
+    reported per item — decision option labels / details, process steps,
+    executive-summary leads / supports — at the item's path with
+    `evidence.measured`, `evidence.allowed` and `params.max_chars`, where one
+    finding at the list named the first offender. Process steps are budgeted
+    at the flow box's readable length for the step count (71 at eight steps),
+    executive-summary points at the readable budget for the point count, and
+    an over-count summary reports its count and its over-long points together.
+    Count findings on `executive_summary` and `kpi_snapshot` carry
+    `params.min_items` / `max_items`. `SEMANTIC_RHYTHM_MONOTONY` names its run
+    in the message and in `evidence.run`.
+  - **Unknown kinds and keys.** `SEMANTIC_UNKNOWN_KIND` carries
+    `params.did_you_mean` (nearest kind, or the kind that hosts the chart /
+    diagram type named: `funnel` → `chart_insight`, with `hosted_type` and
+    `hosted_as`), its message leads with it, `evidence.available` is listed
+    only when nothing is close, and `next_tool_call` is `list_slide_kinds
+    {kinds: [<that kind>]}`. `SEMANTIC_UNKNOWN_FIELD` suggests by word family
+    as well as spelling (`bulets` → `items`, `stages` → `steps`) and carries
+    `did_you_mean` for top-level, `meta` and `structure` keys too.
+    `SEMANTIC_UNKNOWN_ARCHETYPE` carries `evidence.available`.
+  - **Placeholder copy blocks.** Any text field (`meta` included) holding a
+    registered product placeholder — `__FILL__`, a recommend_visual recipe's
+    title / alt text / sample source, an `<instruction>` hint — is a
+    `SEMANTIC_WEAK_CONTENT` **error** (`blocking: true`,
+    `evidence.placeholder: <marker>`) whatever `strict` is. The deck is still
+    written; `deterministic_ready` is false and
+    `deterministic_blocking_reasons` leads with `exemplar_content`. A
+    recommend_visual recipe rendered verbatim and an unmodified `plan_deck`
+    draft therefore no longer pass. Authored filler (`TBD`) stays a warning.
+  - **MCP only:** `describe_command` is left out, and `next_tool_call:
+    describe_finding` is given on the first finding of each code.
+
 - **2026-10-03 — Native framework diagrams share the patterns' surface style (`go-slide-creator-amtkg`).**
   - **Default look changed** for `swot`, `business_model_canvas`, `pestel`,
     `nine_box_talent`, `porters_five_forces`, `value_chain`, `kpi_dashboard`

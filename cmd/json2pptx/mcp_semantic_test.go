@@ -178,7 +178,7 @@ slides:
 	}
 	found := false
 	for _, finding := range env.Findings {
-		if strings.HasSuffix(finding.Code, string(diagnostics.CodeTemplateNotFound)) && finding.Evidence["path"] == "meta.template" {
+		if strings.HasSuffix(finding.Code, string(diagnostics.CodeTemplateNotFound)) && findingPath(finding) == "meta.template" {
 			found = true
 		}
 	}
@@ -251,7 +251,7 @@ func TestSemanticMCP_ParseFailuresReturnFindingsWithoutHandles(t *testing.T) {
 							continue
 						}
 						found = true
-						if finding.Evidence["path"] != "slides[0].kind" || finding.NextToolCall == nil || finding.NextToolCall.Tool != "list_slide_kinds" {
+						if finding.Path == nil || *finding.Path != "/slides/0/kind" || finding.NextToolCall == nil || finding.NextToolCall.Tool != "list_slide_kinds" {
 							t.Fatalf("unknown kind finding lacks source path or recovery call: %+v", finding)
 						}
 						if available, ok := finding.Evidence["available"].([]any); !ok || len(available) == 0 {

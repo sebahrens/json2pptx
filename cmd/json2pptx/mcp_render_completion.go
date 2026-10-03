@@ -108,13 +108,13 @@ func firstBlockingSemanticCall(ds []semanticDiagnostic) *patterns.ToolCallSugges
 // use, where N is 1-based.
 var oneBasedSlidePrefix = regexp.MustCompile(`^[Ss]lide (\d+)([:,])`)
 
-// zeroBasedSlideMessage rewrites a raw finding's 1-based "slide N:" lead-in to
-// the 0-based "slides[N-1]:" the DeckSpec surfaces use in slide_index,
-// semantic_path and where.slide, so one finding never names two different
-// numbers for the same slide (go-slide-creator-6p9mm). rawIdx is the finding's
+// slideNumberMessage rewrites a raw finding's "slide N:" lead-in so N is the
+// slide_number the DeckSpec surfaces report for the finding: 1-based, the one
+// index meant for a person, and the same number in the message and the field
+// (go-slide-creator-6p9mm, go-slide-creator-pilpn). rawIdx is the finding's
 // own 0-based raw slide; a prefix naming any other slide is left alone.
-// reportIdx is the index the diagnostic reports as slide_index.
-func zeroBasedSlideMessage(msg string, rawIdx, reportIdx int) string {
+// reportIdx is the 0-based deck position the diagnostic reports.
+func slideNumberMessage(msg string, rawIdx, reportIdx int) string {
 	m := oneBasedSlidePrefix.FindStringSubmatch(msg)
 	if m == nil || rawIdx < 0 || reportIdx < 0 {
 		return msg
@@ -122,5 +122,5 @@ func zeroBasedSlideMessage(msg string, rawIdx, reportIdx int) string {
 	if n, err := strconv.Atoi(m[1]); err != nil || n != rawIdx+1 {
 		return msg
 	}
-	return fmt.Sprintf("slides[%d]%s", reportIdx, msg[len(m[0])-1:])
+	return fmt.Sprintf("slide %d%s", reportIdx+1, msg[len(m[0])-1:])
 }

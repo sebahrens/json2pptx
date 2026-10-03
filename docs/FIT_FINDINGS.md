@@ -198,7 +198,9 @@ The `ActionRank(action)` function returns these numeric ranks. Unknown actions r
   reported as one [`QUALITY_GATE`](#quality_gate) error at `slides`.
 - `deterministic_blocking_reasons` names each blocking finding as
   `CODE at path` (`CODE at a, b, c (+N more)` when one code blocks in several
-  places); `deterministic_ready` is true exactly when there is none.
+  places), `path` being the finding's JSON Pointer; `deterministic_ready` is
+  true exactly when there is none. A deck that still carries placeholder copy
+  the product itself emitted leads the list with `exemplar_content`.
   `semantic render` exits 0 exactly when the deck was written and none
   remains, and its printed `ok` agrees with the exit status;
   `semantic validate` / `validate_deck_spec` report `ok: false` for the same
@@ -210,6 +212,27 @@ The `ActionRank(action)` function returns these numeric ranks. Unknown actions r
 Both validate tools obtain their findings by running the render into a scratch
 directory, so for one spec revision and template they report the render's own
 diagnostics: same code, path and severity (go-slide-creator-3rn3s).
+
+**Address.** On these surfaces a finding's `path` is a JSON Pointer (0-based)
+into the spec that was sent and always resolves in it; `missing_path` names a
+field to add; `slide_number` is the slide's 1-based deck position; pointers
+into the compiled deck (`raw_path`, `cell_path`) appear only under `debug`.
+Messages and blocking reasons use the same pointer notation, and "slide N" in
+a message is the finding's `slide_number` (go-slide-creator-pilpn).
+
+**One entry per cause.** Findings with the same code and the same cause are
+one entry: `path` and the message are the first finding's, `occurrences`
+counts them and `paths` lists each; `evidence.measured` / `allowed` are lists
+in the order of `paths` when they differ per item, and the suggested patch
+covers every item. A blocking finding folds only with findings that say the
+same thing about another item (four entries with the same misspelled key); an
+advisory also folds across slides and across the text it quotes (six topic
+titles). The fit findings that measure a slide's text volume (`BODY_TOO_LONG`,
+`SLIDE_TEXT_DENSE`, `TEXT_SIZE_OFF_TARGET`, `TEXT_BELOW_READABLE_MIN`,
+`density_exceeded`) are listed under `symptoms` of the `SEMANTIC_PATTERN_DEGRADED`
+or `SEMANTIC_DENSITY` finding on the same slide, which becomes an `error` when
+one of them blocks: they describe the fallback the slide renders as, and go
+when its cause is fixed (go-slide-creator-c2j5b).
 
 **Waivers.** A storyline finding (`NO_EXECUTIVE_SUMMARY`,
 `CLOSING_WITHOUT_NEXT_STEPS`, `TITLE_NOT_ACTION`, `takeaway_missing`) named in
@@ -1689,8 +1712,8 @@ failure is carried by the finding that caused it (go-slide-creator-x9rhq).
   "code": "QUALITY_GATE",
   "severity": "error",
   "blocking": true,
-  "semantic_path": "slides",
-  "message": "quality gate: 2 of 5 slides lack an action title (40%, TITLE_NOT_ACTION) — exceeds max_topic_title_pct 25 — advisories counted: TITLE_NOT_ACTION at slides[1].title, TITLE_NOT_ACTION at slides[3].title"
+  "path": "/slides",
+  "message": "quality gate: 2 of 5 slides lack an action title (40%, TITLE_NOT_ACTION) — exceeds max_topic_title_pct 25 — advisories counted: TITLE_NOT_ACTION at /slides/1/title, TITLE_NOT_ACTION at /slides/3/title"
 }
 ```
 
@@ -2322,7 +2345,7 @@ Emitted from two fit sites, each tagging its text role:
 - **shape_grid written runs (generate):** the same source roles are carried, per paragraph, to the written grid shapes. A populated run whose written size times stored autofit falls below its role's floor, or a populated frame with no usable area after its insets, refuses publication in every `strict_fit` mode with `/slides/N/rendered_shapes/ID/paragraphs/P`, no `fix`, and the source and any existing destination preserved. Native template chrome carries no grid role and is not checked here.
 - **Embedded diagrams (svggen, validate dry-render AND generate):** a chart or diagram placed in a placeholder or grid cell is held to the same `viewing_mode` body floor as native text, measured at its placed size (SVG points × placement scale). The renderer scales the diagram's whole type model until its smallest role reaches the floor and sets the same placed floor as the fitters' shrink limit, so a dense diagram draws its labels at the floor (and may report `diagram.text_overlap` / `chart.label_clipped`) rather than at 7–11pt. Text a diagram still draws below the floor is measured, not predicted, so it refuses like written native runs; `fix.kind` is `simplify_or_enlarge_diagram` with `actual_pt` / `min_pt`. Standalone `render_diagram` output (no placement) is unaffected (go-slide-creator-h3x1i).
 - **Rendered OOXML shapes (generate / render_deck_spec):** the generator also reads stored `fontScale` values after writing the slide. A finding from this pass uses `/slides/N/rendered_shapes/ID` to identify the exact `p:cNvPr` shape in the PPTX rather than pointing only at the slide. This is a rendered-shape locator, not an editable input JSON pointer. The pass has no paragraph semantics and holds text to the body floor, except grid paragraphs that carry a source role: the written-run check above judges those, so a KPI caption under its figure is held to the caption floor, not body (go-slide-creator-ntvhh). On a DeckSpec `matrix_2x2` slide, a unique axis-end label additionally maps to the authored `x_low` / `x_high` / `y_low` / `y_high` semantic field.
-- **DeckSpec (`validate_deck_spec` / `render_deck_spec`):** a pattern slide's grid prediction is `error` in `validate_deck_spec` with `evidence.path` naming the authored field whose text the refused paragraph carries (`slides[0].tiers[0].items` — the source map stops at pattern values, so the paragraph text identifies the field) and `evidence.measured.font_pt` / `evidence.allowed.min_font_pt`. Its `apply_patch` edits `edit_text`'s field (`params.path`) with `max_chars` = that field's budget and `cell_max_chars` = the cell's; a composition repair carries no `max_chars`, and its patch is the native-layout switch when the kind has one, else a composition-level rewrite hint — a 12-character eyebrow is never asked to fit a 532-character cell budget. A render refusal no longer collapses into `error`: `render_deck_spec` keeps it as a diagnostic with `code`, `severity: "error"`, `action: "refuse"`, `semantic_path`, `raw_path` (the `rendered_shapes` locator), `evidence` (`measured`, `allowed`, `role`, `viewing_mode`, `measurement_source`, `text`) and `next_tool_call`, also set top level. The follow-up is a `validate_deck_spec` patch: a rewrite of the named field when it is a string, else — for a list — the kind's native-layout composition (`{"op":"add","path":"/slides/N/layout","value":"content"}`), offered only when compiling the slide with it actually leaves the pattern (go-slide-creator-b7qqg.4).
+- **DeckSpec (`validate_deck_spec` / `render_deck_spec`):** a pattern slide's grid prediction is `error` in `validate_deck_spec` with `path` naming the authored field whose text the refused paragraph carries (`/slides/0/tiers/0/items` — the source map stops at pattern values, so the paragraph text identifies the field) and `evidence.measured.font_pt` / `evidence.allowed.min_font_pt`. Its `apply_patch` edits `edit_text`'s field (`params.path`) with `max_chars` = that field's budget and `cell_max_chars` = the cell's; a composition repair carries no `max_chars`, and its patch is the native-layout switch when the kind has one, else a composition-level rewrite hint — a 12-character eyebrow is never asked to fit a 532-character cell budget. A render refusal no longer collapses into `error`: `render_deck_spec` keeps it as a diagnostic with `code`, `severity: "error"`, `action: "refuse"`, `semantic_path`, `raw_path` (the `rendered_shapes` locator), `evidence` (`measured`, `allowed`, `role`, `viewing_mode`, `measurement_source`, `text`) and `next_tool_call`, also set top level. The follow-up is a `validate_deck_spec` patch: a rewrite of the named field when it is a string, else — for a list — the kind's native-layout composition (`{"op":"add","path":"/slides/N/layout","value":"content"}`), offered only when compiling the slide with it actually leaves the pattern (go-slide-creator-b7qqg.4).
 - **Native diagrams (validate AND generate):** a stored shrink below the 7pt footnote floor on a native diagram shape (`business_model_canvas`, `swot`, `nine_box_talent`, `porters_five_forces`, `pyramid`, …) refuses generation. When that refusal is raised, its path is rewritten from the shape id to the authored `/slides/N/content/J/diagram_value` and `pattern` names the diagram type. `validate --fit-report` / `validate_input(fit_report)` with a template lays the five diagram types above out in that template's placeholder with the generator's own builders and runs the same written-scale scan (`generator.NativeDiagramReadabilityPreflight`), so a pair generate refuses carries this code at `refuse` / `error` first (go-slide-creator-y72c3; parity pinned by `TestNativeDiagramReadabilityValidateGenerateParity`). The builders size their cells to measured text before any shrink is stored (go-slide-creator-zbo58): BMC row and stack splits, SWOT header bands, Porter's box heights and the pyramid apex width follow the text, and card bodies under a same-fill header keep the 0.5 cm margin on their visible edges but only the 0.05in OOXML default at the header seam.
 
 Every generation refusal of this family (`TEXT_BELOW_READABLE_MIN`, `text_trimmed`, `readability_trimmed`, `table_rows_truncated`) names the authored slide (1-based), its layout name and pattern / diagram, and the authored path in the CLI error and the MCP diagnostic message, e.g. `slide 2 (layout "One Content", diagram "business_model_canvas") at /slides/1/content/1/diagram_value: …` (go-slide-creator-ygaln). CLI `generate --partial` drops the refused slide, regenerates the rest and reports a `CONTENT_DROPPED` (`review`) at `/slides/N` whose `fix.params` carry `cause` (the refusal code) and `refused_path`; it never drops the last remaining slide. `generate_presentation` has no partial mode and returns the refusal.

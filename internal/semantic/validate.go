@@ -19,6 +19,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/layout"
+	"github.com/sebahrens/json2pptx/internal/policy/placeholder"
 	"github.com/sebahrens/json2pptx/internal/semantic/slides"
 )
 
@@ -534,11 +535,7 @@ func validateSlideAt(path string, slide SlideSpec, s *semDiags) {
 	}
 	info, ok := LookupKind(slide.Kind)
 	if !ok {
-		msg := fmt.Sprintf("unknown slide kind %q; expected one of %s", slide.Kind, joinKinds())
-		if canonical, hinted := SpellingFor(slide.Kind); hinted {
-			msg = fmt.Sprintf("unknown slide kind %q; use %q — expected one of %s", slide.Kind, canonical, joinKinds())
-		}
-		s.hard(path+".kind", diagnostics.CodeSemanticUnknownKind, msg)
+		s.hard(path+".kind", diagnostics.CodeSemanticUnknownKind, unknownKindMessage(string(slide.Kind)))
 		scanWeakBody(path, slide.Body, s)
 		return
 	}
@@ -1073,6 +1070,17 @@ func validateDecision(path string, slide SlideSpec, s *semDiags) {
 		s.advisory(path+"."+ref, diagnostics.CodeSemanticReferenceUnresolved,
 			fmt.Sprintf("%s matches no option label and is not an in-range 0-based index, so that option is not marked recommended", ref))
 	}
+	validateDecisionVisual(path, slide, s)
+}
+
+// validateDecisionVisual reports why a decision's options cannot take a
+// numbered visual: every label or detail over budget at its own path, or the
+// one structural reason (a count, a missing detail).
+func validateDecisionVisual(path string, slide SlideSpec, s *semDiags) {
+	if items := slides.DecisionBudgetItems(slide.Body); len(items) > 0 {
+		s.degradeItems(path, items, "otherwise the slide degrades to a content slide", "", degradeToContent)
+		return
+	}
 	if over := slides.DecisionOverBudget(slide.Body); over != "" {
 		s.degrade(path+".options",
 			fmt.Sprintf("decision %s (otherwise it degrades to a content slide)", over),
@@ -1130,7 +1138,9 @@ func validateProcess(path string, slide SlideSpec, s *semDiags) {
 	if !s.requireUsableContent(path, "steps", slide.Body, n) {
 		return
 	}
-	if over := slides.ProcessOverBudget(slide.Body); over != "" {
+	if items := slides.ProcessBudgetItems(slide.Body); len(items) > 0 {
+		s.degradeItems(path, items, "otherwise the slide degrades to a bullet list", "process-flow", degradeToBullets)
+	} else if over := slides.ProcessOverBudget(slide.Body); over != "" {
 		s.degrade(path+".steps",
 			fmt.Sprintf("process %s (otherwise it degrades to a bullet list)", over),
 			"process-flow", degradeToBullets, degradeBudgetExceeded)
@@ -1444,6 +1454,10 @@ func scanWeakBody(path string, body map[string]any, s *semDiags) {
 func scanWeak(path string, v any, s *semDiags) {
 	switch t := v.(type) {
 	case string:
+		if m, ok := placeholder.Detect(t); ok {
+			s.productPlaceholder(path, m)
+			return
+		}
 		if marker := weakMarker(t); marker != "" {
 			s.advisory(path, diagnostics.CodeSemanticWeakContent,
 				fmt.Sprintf("content looks like a placeholder (%q); replace it with real text", marker))
@@ -1457,6 +1471,30 @@ func scanWeak(path string, v any, s *semDiags) {
 			scanWeak(fmt.Sprintf("%s[%d]", path, i), e, s)
 		}
 	}
+}
+
+// PlaceholderDetail is the Details key a SEMANTIC_WEAK_CONTENT finding carries
+// when the text is placeholder copy the product itself emitted (a plan draft's
+// __FILL__, a recommend_visual recipe's "Replace with the action title …"). Its
+// value is the registered marker's name. The DeckSpec surfaces report such a
+// finding as a blocking error: scaffolding is never a finished deck.
+const PlaceholderDetail = "placeholder"
+
+// productPlaceholder reports placeholder copy from the registry in
+// internal/policy/placeholder. It is not an authoring-style advisory, so
+// strictness "off" does not silence it.
+func (s *semDiags) productPlaceholder(path string, m placeholder.Marker) {
+	sev := diagnostics.SeverityWarning
+	if s.strict == StrictnessStrict {
+		sev = diagnostics.SeverityError
+	}
+	s.out = append(s.out, diagnostics.Diagnostic{
+		Code:     diagnostics.CodeSemanticWeakContent,
+		Path:     path,
+		Severity: sev,
+		Message:  fmt.Sprintf("this is placeholder copy from %s (%s), not content; replace it with real text", m.Source, m.Name),
+		Details:  map[string]any{PlaceholderDetail: m.Name},
+	})
 }
 
 // weakMarker returns the first placeholder marker found in v, or "" if none.
@@ -1580,8 +1618,35 @@ func (ds Diagnostics) ToDiagnostics() []diagnostics.Diagnostic {
 			Path:     d.Path,
 			Severity: diagnostics.Severity(string(d.Severity)),
 		}
+		if d.Code == CodeUnknownField {
+			attachParsedSuggestion(&out[i])
+		}
 	}
 	return out
+}
+
+// didYouMeanRE reads the suggestion out of a parser message.
+var didYouMeanRE = regexp.MustCompile(`did you mean "([^"]+)"\?$`)
+
+// attachParsedSuggestion lifts a parser finding's "did you mean" onto the
+// machine-readable fix every other unknown-field finding carries, so an agent
+// reads did_you_mean in one place whichever pass found the key
+// (go-slide-creator-t0c1m). A migration hint that is not a respelling (a
+// top-level "footer" belongs under meta.chrome) is a pointer, not a rename.
+func attachParsedSuggestion(d *diagnostics.Diagnostic) {
+	m := didYouMeanRE.FindStringSubmatch(d.Message)
+	if m == nil {
+		return
+	}
+	key := d.Path
+	if i := strings.LastIndexByte(key, '.'); i >= 0 {
+		key = key[i+1:]
+	}
+	kind := "move_field"
+	if editDistance(strings.ToLower(key), m[1]) <= 2 {
+		kind = "rename_field"
+	}
+	d.Fix = &diagnostics.Fix{Kind: kind, Params: map[string]any{"from": key, "to": m[1], "did_you_mean": m[1]}}
 }
 
 // mapParseCode maps a parser diagnostic code onto the shared diagnostics
@@ -1792,13 +1857,26 @@ func validateExecutiveSummary(path string, slide SlideSpec, s *semDiags) {
 		return
 	}
 	pointsPath := path + "." + execSummaryPointsPath(slide.Body)
-	if n < 3 || n > 5 {
-		s.degrade(pointsPath,
+	// Everything that keeps the summary from its visual is reported at once: the
+	// point count and every lead or support over budget, each at its own field
+	// with the length measured and the length that fits. The count used to be
+	// reported alone, and the text budget only once the count was fixed, as one
+	// sentence naming three limits and no field (go-slide-creator-ipahe).
+	countOff := n < 3 || n > 5
+	if countOff {
+		s.degradeCount(pointsPath,
 			fmt.Sprintf("executive summary has %d points; exec-summary renders 3–5 as numbered conclusions (otherwise it degrades to a bullet list)", n),
-			"exec-summary", degradeToBullets, degradeCountOutOfRange)
+			"exec-summary", degradeToBullets, 3, 5)
+	}
+	if !countOff && slides.ExecSummaryPatternFeasible(slide.Body) {
 		return
 	}
-	if !slides.ExecSummaryPatternFeasible(slide.Body) {
+	items, _ := slides.ExecSummaryBudgetItems(slide.Body)
+	if len(items) > 0 {
+		s.degradeItems(path, items, "otherwise the slide degrades to a bullet list", "exec-summary", degradeToBullets)
+		return
+	}
+	if !countOff {
 		s.degrade(pointsPath,
 			"executive summary exceeds an exec-summary text budget (lead ≤90, support ≤200, bottom line ≤160 characters); shorten it or the slide degrades to a bullet list",
 			"exec-summary", degradeToBullets, degradeBudgetExceeded)
@@ -1820,9 +1898,9 @@ func validateKPISnapshot(path string, slide SlideSpec, s *semDiags) {
 		return
 	}
 	if n < 2 || n > 6 {
-		s.degrade(path+".kpis",
+		s.degradeCount(path+".kpis",
 			fmt.Sprintf("kpi snapshot has %d usable KPIs; 2–6 render as KPI cards (otherwise it degrades to a bullet list)", n),
-			"kpi-Nup", degradeToBullets, degradeCountOutOfRange)
+			"kpi-Nup", degradeToBullets, 2, 6)
 		return
 	}
 	// A metric can be valid semantically and still too long for the compact

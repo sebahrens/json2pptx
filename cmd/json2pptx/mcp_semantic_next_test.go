@@ -42,7 +42,7 @@ func TestDeckSpecFindingPatchRoundTrip(t *testing.T) {
 	}
 	var args map[string]any
 	for _, finding := range first.Findings {
-		if finding.Evidence["path"] != "meta.template" {
+		if findingPath(finding) != "meta.template" {
 			continue
 		}
 		if finding.NextToolCall == nil || finding.NextToolCall.Tool != "validate_deck_spec" {
@@ -74,7 +74,7 @@ func TestRenderDeckSpecMissingTemplateReturnsFindingEnvelope(t *testing.T) {
 		t.Fatalf("expected render finding envelope: %+v", out)
 	}
 	for _, d := range out.Findings {
-		if d.Evidence["path"] == "meta.template" && (d.NextToolCall == nil || d.NextToolCall.Tool != "list_templates") {
+		if findingPath(d) == "meta.template" && (d.NextToolCall == nil || d.NextToolCall.Tool != "list_templates") {
 			t.Errorf("template diagnostic did not offer template discovery: %+v", d)
 		}
 	}

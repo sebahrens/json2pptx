@@ -70,8 +70,8 @@ func TestKPIRegionTooShortIsRefusedAtValidateAndRender(t *testing.T) {
 			if found == nil || found.Severity != diagnostics.SeverityError {
 				t.Fatalf("want an error-severity FIT.fit_overflow, got %+v", env.Findings)
 			}
-			if got := found.Evidence["path"]; got != "slides[0].regions[0]" {
-				t.Errorf("evidence.path = %v, want the region slides[0].regions[0]", got)
+			if found.Path == nil || *found.Path != "/slides/0/regions/0" {
+				t.Errorf("path = %v, want the region /slides/0/regions/0", found.Path)
 			}
 			if !strings.Contains(found.Message, "4 KPIs need") || !strings.Contains(found.Message, "size_pct") {
 				t.Errorf("finding does not say what is short or what to change: %s", found.Message)

@@ -598,7 +598,7 @@ func (s *semDiags) unknownField(path, key string, known []string, where string) 
 		Message: fmt.Sprintf("unknown field %q on %s is ignored by the compiler and its content is DROPPED; expected one of %s",
 			key, where, joinQuoted(known)),
 	}
-	if sug := closestKey(key, known); sug != "" {
+	if sug := suggestKey(key, known); sug != "" {
 		d.Message = fmt.Sprintf("unknown field %q on %s is ignored by the compiler and its content is DROPPED; did you mean %q?", key, where, sug)
 		d.Fix = &diagnostics.Fix{Kind: "rename_field", Params: map[string]any{"from": key, "to": sug, "did_you_mean": sug}}
 	}

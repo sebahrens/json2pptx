@@ -79,8 +79,8 @@ func TestValidateDeckSpecRefusesUnreadableGridTextLikeRender(t *testing.T) {
 	if found == nil || found.Severity != diagnostics.SeverityError {
 		t.Fatalf("want an error-severity INPUT.TEXT_BELOW_READABLE_MIN, got %+v", env.Findings)
 	}
-	if got := found.Evidence["path"]; got != "slides[0].tiers[0].items" {
-		t.Errorf("evidence.path = %v, want the authored field slides[0].tiers[0].items", got)
+	if found.Path == nil || *found.Path != "/slides/0/tiers/0/items" {
+		t.Errorf("path = %v, want the authored field /slides/0/tiers/0/items", found.Path)
 	}
 	if found.Evidence["measured"] == nil || found.Evidence["allowed"] == nil {
 		t.Errorf("finding lacks measured/allowed evidence: %+v", found.Evidence)
@@ -228,8 +228,8 @@ func TestDeckSpecNestedPatternReadabilityParity(t *testing.T) {
 	if env.OK || refusal == nil {
 		t.Fatalf("validate must refuse the unreadable nested timeline: %+v", env.Findings)
 	}
-	if got, _ := refusal.Evidence["path"].(string); got != "slides[0].regions[2]" {
-		t.Errorf("refusal path = %q, want the timeline region slides[0].regions[2]", got)
+	if refusal.Path == nil || *refusal.Path != "/slides/0/regions/2" {
+		t.Errorf("refusal path = %v, want the timeline region /slides/0/regions/2", refusal.Path)
 	}
 
 	rres, err := mc.handleRenderDeckSpec(ctx, makeRequest(map[string]any{"spec": spec}))

@@ -73,6 +73,9 @@ func TestRecommendVisualComposeRecipes(t *testing.T) {
 					t.Fatalf("recipe did not render: error=%q diags=%+v", verdict.Error, verdict.Diagnostics)
 				}
 				for _, d := range verdict.Diagnostics {
+					if isPlaceholderFinding(d) {
+						continue // the recipe's own scaffolding: see TestRecipesVerbatimAreBlockedAsExemplarContent
+					}
 					if d.Severity == "error" || d.Severity == "warning" {
 						t.Errorf("recipe raised %s %s: %s", d.Severity, d.Code, d.Message)
 					}
@@ -185,9 +188,7 @@ func assertRecipeValidates(t *testing.T, mc *mcpConfig, c patterns.VisualCandida
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.IsError || strings.Contains(resultText(res), `"severity":"error"`) {
-		t.Errorf("recipe does not validate: %s", resultText(res))
-	}
+	assertOnlyPlaceholdersBlock(t, "recipe", res)
 }
 
 // assertThreeRegionContentVisible checks the three-region render keeps every
