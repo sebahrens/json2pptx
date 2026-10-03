@@ -42,6 +42,49 @@
   - `recommend_visual` argument descriptions for `candidates` and `template`
     were shortened (same behaviour).
 
+- **2026-10-03 — CLI error envelope, slide ids on the image tools, diff of any two revisions, screenshot-with-callouts recipe (`go-slide-creator-pikfw`, `-1w3uo`, `-rq1z9`, `-n3j96`).**
+  - **Every JSON command fails with one JSON document on stdout.** A command
+    that answers in JSON (a JSON-only command, or `--format json` / `--json`)
+    and ends with a plain error — a missing file, an undefined flag, a value
+    out of range — now prints the finding envelope `{subcommand, ok: false,
+    summary, findings: [{code, message}]}` on stdout, named after the command
+    that ran; stdout used to be empty. The code is `FILE_NOT_FOUND`,
+    `INVALID_JSON`, `MISSING_PARAMETER`, `INVALID_PARAMETER` or `INTERNAL`.
+    A command that reports its own failure (`validate`, `generate`,
+    `preflight`, the tool-backed commands) still prints exactly one document,
+    and text-mode commands keep the stderr line only. The "Error: ..." line on
+    stderr and the exit status are unchanged.
+  - **`generate --strict-fit strict` reports its findings once**, as
+    `fit_findings` in the stdout result (with or without
+    `--json-output-report`). They are no longer repeated as NDJSON on stderr.
+  - **One slide base in messages.** "slide N" in a message is the 1-based
+    slide number; a 0-based value is written "index N" / "slide index N" or as
+    a `slides[N]` path. The messages that printed a 0-based index as "slide N"
+    (render manifests, duplicate / copy ops, `submit_visual_review`
+    mismatches, the stored-slide read) now say "slide index N".
+  - **Slide ids on the image tools.** `render_deck_thumbnails` `slide_indices`
+    accepts slide ids beside indices (`[4, "costs"]`; items are `integer |
+    string`); `render_slide_image` gains `slide_id` (exclusive with
+    `slide_index`, `AMBIGUOUS_INPUT` when both are sent). `slides[].id` is
+    returned beside `index` when the file's ids are known. CLI:
+    `render-thumbnails --slides costs,3`, `render-slide --slide-id costs`; the
+    manifest's `slides[]` gain `id`. Ids resolve against the exact file: what
+    `render_deck_spec` recorded when it wrote it, or the authoring sidecar
+    `semantic render` wrote. An unknown id is refused before rendering with
+    the deck's ids.
+  - **`validate_deck_spec` `read: "diff:A..B"`** returns `diff {from, to,
+    changes[]}` for any two kept revisions (`diff:A` = A against the current
+    revision). `changes[]` are `slide_changes` rows; an `edited` row carries
+    `fields`, the top-level slide fields that differ. `changed_slides` lists
+    the indices that look different. Nothing is validated or stored.
+  - **`recommend_visual` returns `image_case` with callouts** for "screenshot
+    with callouts" / "annotated screenshot" intents: `image-text-split` ranks
+    first, and every `image_case` recipe for such an intent carries `image`
+    (a sample screenshot written to `<tmp>/json2pptx-samples/`, `fit:
+    "contain"`) and `callouts: [{label, x, y}]`; the recipe validates and
+    renders as it stands. The `regions` image region's schema says it draws no
+    callouts, and `callouts` on one is refused (`SEMANTIC_UNKNOWN_FIELD`) with
+    a pointer to `image_case` instead of "did you mean caption?".
 - **2026-10-03 — recommend_visual: every candidate is authorable, DeckSpec kinds come first, one chart-type vocabulary (`go-slide-creator-x97m6`, `-bdvhj`, `-3ujfq`, `-7sqof`).**
   - **Every candidate carries `data_contract` and a runnable
     `next_tool_call`** (`render_deck_spec` with a complete one-slide DeckSpec

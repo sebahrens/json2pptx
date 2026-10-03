@@ -105,7 +105,7 @@ func verifyReviewImages(slides []visualqa.ReviewSlide, artifactHash string, tota
 			v.VerifiedSlides++
 			continue
 		}
-		return nil, fmt.Errorf("%w: slides[%d] image does not show slide %d of this deck: %s", errVisualReviewRejected, s.Index, s.Index, mismatchDetail(s, source, artifactHash))
+		return nil, fmt.Errorf("%w: slides[%d] image does not show slide index %d of this deck: %s", errVisualReviewRejected, s.Index, s.Index, mismatchDetail(s, source, artifactHash))
 	}
 
 	if len(unverified) > 0 {
@@ -122,7 +122,7 @@ func verifyReviewImages(slides []visualqa.ReviewSlide, artifactHash string, tota
 func mismatchDetail(s visualqa.ReviewSlide, source map[string][]int, artifactHash string) string {
 	if got, ok := source[s.ImageSHA256]; ok {
 		sort.Ints(got)
-		return fmt.Sprintf("pixel hash %s is slide %s of this deck (submitted as slide %d) — submit each slide's own image", shortHash(s.ImageSHA256), joinInts(got), s.Index)
+		return fmt.Sprintf("pixel hash %s is slide index %s of this deck (submitted as slide index %d) — submit each slide's own image", shortHash(s.ImageSHA256), joinInts(got), s.Index)
 	}
 	where := "image_sha256"
 	if s.ImagePath != "" {

@@ -55,7 +55,7 @@ var regionPayloadFields = map[string]map[string]payloadField{
 			desc: "3–7 milestones: strings or {label, date?, end_date?, body?}. Label ≤60 chars, date ≤30, body ≤200."},
 	}, regionCommonFields()),
 	slides.RegionImage: withFields(map[string]payloadField{
-		"image":   {typ: "object", objectKeys: imageCaseImageKeys, desc: "The picture: {path|url, alt?, fit?} (fit \"cover\" default, or \"contain\")."},
+		"image":   {typ: "object", objectKeys: imageCaseImageKeys, desc: "The picture: {path|url, alt?, fit?} (fit \"cover\" default, or \"contain\"). A region draws no callouts on it: for callouts pointing at parts of a picture use the image_case kind (callouts [{label, x, y}])."},
 		"caption": strField("Italic line under the picture. ≤120 chars."),
 	}, regionCommonFields()),
 	slides.RegionText: withFields(map[string]payloadField{
@@ -182,6 +182,13 @@ func validateRegion(rpath string, r map[string]any, s *semDiags) bool {
 	for _, key := range sortedKeys(r) {
 		f, ok := fields[key]
 		if !ok {
+			// "callouts" is one edit from "caption", so the generic refusal
+			// would suggest the wrong field (go-slide-creator-n3j96).
+			if key == "callouts" && kind == slides.RegionImage {
+				s.hard(rpath+"."+key, diagnostics.CodeSemanticUnknownField,
+					"an image region draws no callouts, so these are DROPPED; put the picture on an image_case slide, whose callouts [{label, x, y, units?}] point at parts of it")
+				continue
+			}
 			s.unknownField(rpath+"."+key, key, regionFieldNames(kind), where)
 			continue
 		}

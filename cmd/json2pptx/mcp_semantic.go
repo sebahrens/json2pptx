@@ -283,7 +283,7 @@ func mcpValidateDeckSpecTool() mcp.Tool {
 		deckSpecFullSchemaArg("The semantic DeckSpec to validate, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
 	}, deckHandleToolParams("validate_deck_spec"), []mcp.ToolOption{
 		mcp.WithString("read",
-			mcp.Description(`Return the stored deck instead of validating: "spec", "history" (revisions and each slide's last change), or a slide id / index.`),
+			mcp.Description(`Return the stored deck instead of validating: "spec", "history" (revisions and each slide's last change), "diff:2..5" (changes between two revisions), or a slide id / index.`),
 		),
 		mcp.WithString("find",
 			mcp.Description("Text or number to locate anywhere in the spec; alone it returns hits[{path, slide_id, index, excerpt}] instead of validating."),
@@ -557,6 +557,8 @@ type deckSpecEnvelopeResponse struct {
 	HitCount  *int                `json:"hit_count,omitempty"`
 	Revisions []deckRevisionEntry `json:"revisions,omitempty"`
 	Slides    []deckSlideHistory  `json:"slides,omitempty"`
+	// Diff answers read "diff:A..B": revision B against revision A.
+	Diff *deckRevisionDiff `json:"diff,omitempty"`
 }
 
 // replaceInSpecSource applies find + replace to the call's spec as one edit
@@ -1463,6 +1465,8 @@ func (mc *mcpConfig) finishRenderDeckSpec(ctx context.Context, res renderDeckSpe
 	res.ChangedSlides, res.SlideChanges = outcome.Changed, outcome.Changes
 	res.Slides = outcome.State.refs()
 	res.Diagnostics = collapseDiagnostics(res.Diagnostics)
+	// The image tools resolve a slide id against this exact file.
+	recordRenderedSlides(renderedPptx, res.Slides)
 	semanticizeRenderDiagnostics(res.Diagnostics, src.Data, res.DeckID)
 	for i := range res.Diagnostics {
 		d := &res.Diagnostics[i]

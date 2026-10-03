@@ -219,8 +219,8 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 	// Text-fit checking via strict_fit. Runs AFTER template analysis and
 	// canonical-layout resolution so shape_grid fit checks resolve against the
 	// SAME layout-aware bounds generation renders. Strict mode aborts on
-	// refuse-class findings; the caller is responsible for the stderr NDJSON
-	// dump on refuse (it is part of each caller's error shape).
+	// refuse-class findings; the caller reports them (they are part of
+	// each caller's error shape).
 	if strictFit != "off" {
 		rawFindings, refuseErr := evaluateStrictFit(input, strictFit, templateLayouts, slideWidth, slideHeight, &templateTheme)
 		if refuseErr != nil {
@@ -338,7 +338,7 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 
 // StrictFitRefusal is returned when strict_fit=strict encounters a refuse-class
 // finding. Callers unwrap it to preserve their distinct error-shaping (the CLI
-// dumps NDJSON to stderr + returns the error; MCP emits structured diagnostics).
+// puts the findings in its JSON result; MCP emits structured diagnostics).
 type StrictFitRefusal struct {
 	Findings []patterns.FitFinding
 	Err      error

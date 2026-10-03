@@ -426,6 +426,7 @@ func rankingIntent(query string) bool {
 func attachVisualRecipes(rec *patterns.RecommendVisualResult, templateName string) {
 	hints := buildDataFormatHints()
 	ranking := rankingIntent(rec.QueryUnderstood)
+	callouts := calloutIntent(rec.QueryUnderstood)
 	reg := patterns.Default()
 	for i := range rec.Candidates {
 		c := &rec.Candidates[i]
@@ -436,5 +437,10 @@ func attachVisualRecipes(rec *patterns.RecommendVisualResult, templateName strin
 		// Every other candidate: the DeckSpec kind that compiles to it, or a
 		// raw slide with the contract inline (go-slide-creator-x97m6, -3ujfq).
 		attachCandidateRecipe(c, templateName, reg, hints, ranking)
+		// "screenshot with callouts": the image_case recipe carries them
+		// (go-slide-creator-n3j96).
+		if callouts {
+			attachCalloutRecipe(c)
+		}
 	}
 }

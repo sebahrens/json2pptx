@@ -389,10 +389,10 @@ func applyDuplicateSlide(deck map[string]any, op deckPatchOp, opIdx int) (applie
 	clone, err := deepCopyValue(slides[idx])
 	if err != nil {
 		return failedOp(op), diagAt(opIdx, "index", diagnostics.CodeInvalidSlide,
-			fmt.Sprintf("failed to copy slide %d: %v", idx, err))
+			fmt.Sprintf("failed to copy slide index %d: %v", idx, err))
 	}
 	deck["slides"] = insertAt(slides, to, clone)
-	return appliedPatchOp{Op: op.Op, Applied: true, Message: fmt.Sprintf("duplicated slide %d to index %d", idx, to)}, nil
+	return appliedPatchOp{Op: op.Op, Applied: true, Message: fmt.Sprintf("duplicated slide index %d to index %d", idx, to)}, nil
 }
 
 func applyReplaceField(deck map[string]any, op deckPatchOp, opIdx int) (appliedPatchOp, *diagnostics.Diagnostic) {

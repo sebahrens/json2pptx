@@ -119,7 +119,7 @@ A roadmap phase's `items[]` render as native bullets under its description, not 
 
 **Combined recommendations** (go-slide-creator-3hcw6). `option_matrix.recommended` takes one option (name or 0-based index) or a list; the first resolved row is emitted as `table-highlight`'s `highlight_row` and the rest as `highlight_rows`, so a single value compiles byte-for-byte as before. `decision` marks options with `options[].recommended: true` or names them in a slide-level `recommended` (label, index, or list) — at least one is required, more than one is a combined recommendation. With two or more recommended options and no authored `recommendation` / `takeaway`, the band reads `Recommended: A and B` (`slides.CombinedRecommendation`), mapped back to `options` (decision) or `recommended` (option_matrix); authored wording is never replaced. `SEMANTIC_RECOMMENDATION_OUTSCORED` compares one recommended row only.
 
-**Callouts on a picture** (go-slide-creator-n3j96). `image_case.callouts` compile to slide `overlays[]` of kind `callout` whose `to` is an `anchor_image` point on the pattern's picture — grid row 0, column 0, or column 1 when `image_side` is `right` — with no `from`: the engine places each label beside its target inside the picture's frame and resolves the picture even when a `caption` nests it one grid down. Each overlay is source-mapped to `slides[i].callouts[j]`, in dotted and JSON Pointer form, so `OVERLAY_TARGET_CROPPED` lands on the authored callout. The content and two-column fallbacks cannot anchor to a picture and keep the labels as bullets.
+**Callouts on a picture** (go-slide-creator-n3j96). `image_case.callouts` compile to slide `overlays[]` of kind `callout` whose `to` is an `anchor_image` point on the pattern's picture — grid row 0, column 0, or column 1 when `image_side` is `right` — with no `from`: the engine places each label beside its target inside the picture's frame and resolves the picture even when a `caption` nests it one grid down. Each overlay is source-mapped to `slides[i].callouts[j]`, in dotted and JSON Pointer form, so `OVERLAY_TARGET_CROPPED` lands on the authored callout. The content and two-column fallbacks cannot anchor to a picture and keep the labels as bullets. `recommend_visual` answers a callout intent ("screenshot with callouts", "annotated screenshot") with `image_case` first, and its `next_tool_call` recipe carries `callouts` on a sample screenshot the server writes to `<tmp>/json2pptx-samples/` (callouts need a real picture; replace `image.path` with yours). A `regions` image region draws no callouts: `callouts` there is refused (`SEMANTIC_UNKNOWN_FIELD`) with a pointer to `image_case`.
 
 **Text budgets** (go-slide-creator-iubjb). `internal/semantic/slides/budgets.go` is the table of fixed per-field budgets, built from the constants the compilers enforce (`semantic.KindFieldBudgets`). `list_slide_kinds` returns it per kind as `budgets[]` (`basis: "fixed"`) when `template` or `fields: ["budgets"]` is requested, ahead of the `measured` budgets for `title`, `subtitle` and `takeaway`: the title placeholders of the layout a kind renders on (cover, section, closing, and the tighter of One Content and Blank + Title for everything else — the numbers `examine_template` reports) and the takeaway band the takeaway fit finding measures (`takeawayBandBudget`). With no template the tightest across the embedded templates is reported. Three tests hold the statements together: `TestKindBudgetsAgreeWithSchemaDescriptions` (every fixed budget is stated in its field's schema description), `TestKindBudgetsAgreeWithFindings` (a field one character over is reported quoting that number) and `TestSlideKindBudgetsAgreeWithRenderFindings` (on every template, copy inside the measured budgets draws no title or takeaway finding, and the takeaway and stat-stack findings quote the reported budgets). `TestKindSummariesStateOnlyBudgetedLengths` keeps a summary from quoting a length the budgets do not carry.
 
@@ -430,6 +430,17 @@ blocking diagnostic, and the scores, plan rows and findings of the slides in
 include `slides[{id, index, slide_number, kind}]`. Render diagnostics carry
 `slide_id`; validate findings carry `evidence.slide_id`.
 
+**Slide ids on the image tools.** `render_deck_thumbnails` `slide_indices`
+takes slide ids beside 0-based indices (`[4, "costs"]`), and
+`render_slide_image` takes `slide_id` in place of `slide_index`; each
+returned slide carries `id` beside `index`. The CLI spells it
+`render-thumbnails --slides costs,3` and `render-slide --slide-id costs`.
+The image tools see a `.pptx`, so ids resolve against that exact file (by
+sha256): the table of contents `render_deck_spec` recorded when it wrote it,
+or the `<deck>.pptx.authoring.json` sidecar `semantic render` wrote (authored
+ids only — the CLI assigns none). An unknown id is refused before rendering
+with the ids the deck has; a file nothing is known about has no ids.
+
 **Reading the store** (`validate_deck_spec`; these return without validating
 or storing):
 
@@ -438,6 +449,14 @@ or storing):
 - `read: "history"` → `revisions[{revision, time, tool, note, changes}]` and
   `slides[{id, index, slide_number, kind, title, last_changed, last_change}]`:
   the last revision that changed each slide, and how.
+- `read: "diff:A..B"` → `diff {from, to, changes[]}`: how kept revision B
+  differs from kept revision A, for any two revisions (`diff:A` compares A
+  with the current one; `diff:5..1` reads backwards). `changes[]` rows are
+  `slide_changes` rows with B's indices (a removed slide has only
+  `was_index`); an `edited` row also lists `fields`, the slide's top-level
+  fields that differ. `changed_slides` holds the indices that look different
+  and `summary` counts the classes. A revision the handle no longer keeps is
+  refused with the kept range.
 - `find: "9.4"` → `hits[{path, slide_id, index, excerpt}]` and `hit_count`
   over every string and number in the spec (meta, titles, bodies, chart data,
   notes). Text matches ignore ASCII case; a query that starts or ends with a

@@ -208,7 +208,7 @@ func TestSubmitVisualReview_RejectsRecycledImage(t *testing.T) {
 	}
 	// The message must name where the image really came from, or the agent
 	// cannot tell a recycled image from a stale render.
-	if !strings.Contains(err.Error(), "is slide 0 of this deck") {
+	if !strings.Contains(err.Error(), "is slide index 0 of this deck") {
 		t.Errorf("error should identify the real slide: %v", err)
 	}
 }

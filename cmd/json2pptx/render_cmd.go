@@ -20,13 +20,14 @@ func runRenderSlide() error {
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
 	pptxPath := fs.String("pptx", "", "Path to the PPTX file to render (required)")
 	slideIndex := fs.Int("slide-index", 0, "0-based slide index to render")
+	slideID := fs.String("slide-id", "", "Stable slide id to render instead of --slide-index (a DeckSpec slide's id; needs the <deck>.pptx.authoring.json sidecar 'semantic render' writes)")
 	density := fs.Int("density", 100, "DPI for rendering (50-300)")
 	force := fs.Bool("force", false, "Bypass render cache")
 	outPath := fs.String("out", "", "Write the PNG to this file and print a manifest (path, sha256, bytes). Without it the manifest points at the render cache")
 	base64Out := fs.Bool("base64", false, "Print the legacy JSON envelope with the image as png_base64 instead of a file manifest")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx render-slide <file.pptx> [--slide-index N] [--out slide.png] [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx render-slide <file.pptx> [--slide-index N | --slide-id ID] [--out slide.png] [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Render a single slide from a PPTX to a PNG file and print a small manifest\n")
 		fmt.Fprintf(os.Stderr, "(path, sha256, bytes, width, height) on stdout.\n")
 		fmt.Fprintf(os.Stderr, "Requires LibreOffice and ImageMagick on PATH.\n\n")
@@ -49,10 +50,20 @@ func runRenderSlide() error {
 	mc := cliMCPConfig(*templatesDir, "")
 
 	args := map[string]any{
-		"pptx_path":   *pptxPath,
-		"slide_index": float64(*slideIndex),
-		"density":     float64(*density),
-		"force":       *force,
+		"pptx_path": *pptxPath,
+		"density":   float64(*density),
+		"force":     *force,
+	}
+	if *slideID != "" {
+		args["slide_id"] = *slideID
+		// An explicit --slide-index beside it is the ambiguity the tool refuses.
+		fs.Visit(func(f *flag.Flag) {
+			if f.Name == "slide-index" {
+				args["slide_index"] = float64(*slideIndex)
+			}
+		})
+	} else {
+		args["slide_index"] = float64(*slideIndex)
 	}
 	if *base64Out {
 		args[argIncludeBase64JSON] = true
@@ -164,7 +175,7 @@ func runRenderThumbnails() error {
 	pptxPath := fs.String("pptx", "", "Path to the PPTX file to render (required)")
 	density := fs.Int("density", 50, "DPI for thumbnails (25-150)")
 	maxSlides := fs.Int("max-slides", 50, "Maximum number of slides to render, counting from the first")
-	slides := fs.String("slides", "", "Render only these 0-based slides, comma-separated (e.g. 1,3). Mutually exclusive with --max-slides")
+	slides := fs.String("slides", "", "Render only these slides, comma-separated: 0-based indices or slide ids (e.g. 1,3 or costs,s4). Mutually exclusive with --max-slides")
 	force := fs.Bool("force", false, "Bypass render cache")
 	outDir := fs.String("out-dir", "", "Write slide-<index>.png files (0-based, the names 'inspect --images' reads) into this directory and print a manifest (paths, sha256, sizes). Without it the manifest points at the render cache")
 	base64Out := fs.Bool("base64", false, "Print the legacy JSON envelope with every image as png_base64 instead of a file manifest")
@@ -232,8 +243,9 @@ func runRenderThumbnails() error {
 	}, *slides == "")
 }
 
-// parseSlideList parses a comma-separated list of 0-based slide numbers, the CLI
-// spelling of the render_deck_thumbnails slide_indices argument.
+// parseSlideList parses a comma-separated list of slides, the CLI spelling of
+// the render_deck_thumbnails slide_indices argument: a number is a 0-based
+// index, anything else a slide id (go-slide-creator-1w3uo).
 func parseSlideList(v string) ([]any, error) {
 	out := make([]any, 0, 4)
 	for _, field := range strings.Split(v, ",") {
@@ -241,14 +253,14 @@ func parseSlideList(v string) ([]any, error) {
 		if field == "" {
 			continue
 		}
-		n, err := strconv.Atoi(field)
-		if err != nil {
-			return nil, fmt.Errorf("%q is not a slide number", field)
+		if n, err := strconv.Atoi(field); err == nil {
+			out = append(out, float64(n))
+			continue
 		}
-		out = append(out, float64(n))
+		out = append(out, field)
 	}
 	if len(out) == 0 {
-		return nil, fmt.Errorf("no slide numbers given")
+		return nil, fmt.Errorf("no slides given")
 	}
 	return out, nil
 }

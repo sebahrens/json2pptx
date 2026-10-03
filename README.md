@@ -656,7 +656,13 @@ Every command follows one convention (`json2pptx help` prints it):
   after the arguments;
 - the result — including the path of anything written — is printed on stdout;
   logs go to stderr, warnings and errors only unless `--verbose` (or
-  `JSON2PPTX_LOG_LEVEL=info`) is set.
+  `JSON2PPTX_LOG_LEVEL=info`) is set;
+- a command that answers in JSON and fails always prints one JSON document on
+  stdout: its own failure result, or the finding envelope
+  `{subcommand, ok: false, findings: [{code, message}]}` for any other error
+  (a missing file, an undefined flag). Slide positions in messages are
+  1-based when written "slide N" and 0-based when written "index N" or
+  `slides[N]`.
 
 | Command | Description |
 |---------|-------------|
@@ -692,9 +698,9 @@ Every command follows one convention (`json2pptx help` prints it):
 | `score-candidates` | Rank candidate slides for one slot without rendering |
 | `inspect` | Run vision-based visual QA on rendered slide images |
 | `analyze-rhythm` | Analyze deck visual rhythm and pattern repetition |
-| `render-slide` | Render a single slide to a PNG file (`--out slide.png`; requires LibreOffice + ImageMagick) |
+| `render-slide` | Render a single slide to a PNG file (`--slide-index N` or `--slide-id ID`, `--out slide.png`; requires LibreOffice + ImageMagick) |
 | `render-slide-from-json` | Render one slide directly from JSON to a PNG file (no full deck render) |
-| `render-thumbnails` | Write every slide as `slide-<index>.png` into `--out-dir` and print a manifest (paths, sha256, sizes); `--base64` for the old JSON envelope |
+| `render-thumbnails` | Write every slide as `slide-<index>.png` into `--out-dir` and print a manifest (paths, sha256, sizes); `--slides 1,costs` narrows by index or slide id; `--base64` for the old JSON envelope |
 | `purge-render-cache` | Reclaim the on-disk render cache and stale LibreOffice profile directories |
 | `audit-palette` | Render PPTX to PNG and report ΔE between chart pics and adjacent solid-filled shapes |
 | `template-settings` | Manage named styles (list/register/delete) |

@@ -1079,7 +1079,7 @@ func applyProposedRepairs(input *PresentationInput, proposed proposeRepairsOutpu
 			params := adaptAutoRepairParams(input, slide.SlideIndex, dir.Kind, dir.Params)
 			result := applyRepairFix(input, slide.SlideIndex, repairFixInput{Kind: dir.Kind, Params: params})
 			if result.Applied {
-				applied = append(applied, fmt.Sprintf("%s on slide %d", dir.Kind, slide.SlideIndex))
+				applied = append(applied, fmt.Sprintf("%s on slide index %d", dir.Kind, slide.SlideIndex))
 				repaired[target] = true
 				if len(input.Slides) != slideCount {
 					// A structural repair added or removed a slide, so every

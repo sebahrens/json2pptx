@@ -556,6 +556,21 @@ func (mc *mcpConfig) deckSpecReadResult(ctx context.Context, tool string, a deck
 		}
 		resp.Revisions, resp.Slides = src.Handle.history()
 		resp.Summary = fmt.Sprintf("%d revision(s); current is %d", len(resp.Revisions), src.Handle.Revision)
+	case strings.HasPrefix(a.Read, revisionDiffPrefix):
+		// Any two kept revisions, not only neighbours (go-slide-creator-rq1z9).
+		if src.Handle == nil {
+			return argInvalidValue(tool, diagnostics.CodeInvalidParameter, "read",
+				"revisions are kept per deck_id; send the deck_id a previous call returned", "string", "diff:1..2", nextCallRetry(tool, "deck_id")), true
+		}
+		from, to, err := parseRevisionDiff(a.Read, src.Handle.Revision)
+		if err == nil {
+			resp.Diff, err = src.Handle.diffRevisions(from, to)
+		}
+		if err != nil {
+			return argInvalidValue(tool, diagnostics.CodeInvalidParameter, "read", err.Error(), "string", "diff:1..2", nil), true
+		}
+		resp.ChangedSlides = visualSlideIndices(resp.Diff.Changes)
+		resp.Summary = resp.Diff.summary()
 	default:
 		slide, ref, err := readStoredSlide(doc, state, a.Read)
 		if err != nil {
@@ -599,7 +614,7 @@ func readStoredSlide(doc any, state *deckState, which string) (json.RawMessage, 
 			return nil, nil, fmt.Errorf("read: slide index %d is outside the deck (%d slides)", i, n)
 		}
 		if target = state.Slides[i].ID; target == "" {
-			return nil, nil, fmt.Errorf("read: slide %d is generated from the structure (%s) and has no stored slide; read \"spec\" instead", i, strings.TrimPrefix(state.Slides[i].Key, "@"))
+			return nil, nil, fmt.Errorf("read: slide index %d is generated from the structure (%s) and has no stored slide; read \"spec\" instead", i, strings.TrimPrefix(state.Slides[i].Key, "@"))
 		}
 	} else {
 		target = which
@@ -627,5 +642,5 @@ func readStoredSlide(doc any, state *deckState, which string) (json.RawMessage, 
 		}
 		return raw, ref, nil
 	}
-	return nil, nil, fmt.Errorf("read must be \"spec\", \"history\", or a slide id or 0-based index; no slide has id %q (ids: %s)", which, strings.Join(ids, ", "))
+	return nil, nil, fmt.Errorf("read must be \"spec\", \"history\", \"diff:A..B\", or a slide id or 0-based index; no slide has id %q (ids: %s)", which, strings.Join(ids, ", "))
 }

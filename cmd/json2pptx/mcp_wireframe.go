@@ -198,7 +198,7 @@ func (mc *mcpConfig) handlePreviewSlideWireframe(ctx context.Context, request mc
 	findings := computePreviewFitFindings(&input, &plan, tctx, true /*verbose*/)
 
 	if slideIdx >= len(plan.ResolvedSlides) {
-		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("resolved plan missing slide %d", slideIdx)), nil
+		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("resolved plan missing slide index %d", slideIdx)), nil
 	}
 	rs := plan.ResolvedSlides[slideIdx]
 

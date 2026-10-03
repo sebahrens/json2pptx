@@ -2501,6 +2501,9 @@ Cost note: one image block per call; the JSON metadata stays under 1KB.`),
 		mcp.WithNumber("slide_index",
 			mcp.Description("0-based slide index to render. Default: 0."),
 		),
+		mcp.WithString("slide_id",
+			mcp.Description("Stable slide id to render instead of slide_index (render_deck_spec slides[].id). Known only for a file render_deck_spec wrote."),
+		),
 		mcp.WithNumber("density",
 			mcp.Description("DPI for rendering. Higher = sharper but larger. Default: 100. Range: 50-300."),
 		),
@@ -2516,7 +2519,7 @@ func mcpRenderDeckThumbnailsTool() mcp.Tool {
 
 Requires LibreOffice and ImageMagick (magick) on PATH. Cached by file content hash; force=true re-renders. With _meta.progressToken, emits notifications/progress per slide; cancelling returns CANCELLED.
 
-Cost: image payload grows with density and slide count — a 15-slide pass is ~600KB at the default density 50 and over 1MB at 100. Use density 50–75 for full-deck passes; go higher only for a few slides via slide_indices (slide_indices:[i] renders a single slide). After a repair, pass only the changed slides (render_deck_spec's changed_slides) as slide_indices; max_slides caps a first look at a large deck.`),
+Cost: image payload grows with density and slide count — a 15-slide pass is ~600KB at the default density 50 and over 1MB at 100. Use density 50–75 for full-deck passes; go higher only for a few slides via slide_indices ([i] renders one slide). After a repair, pass only the changed slides (render_deck_spec's changed_slides) as slide_indices; max_slides caps a first look at a large deck.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRenderDeckThumbnails)),
 		includeBase64JSONOption(),
 		mcp.WithString("pptx_path",
@@ -2530,8 +2533,8 @@ Cost: image payload grows with density and slide count — a 15-slide pass is ~6
 			mcp.Description("Maximum number of slides to render, counting from the first. Default: 50. Mutually exclusive with slide_indices."),
 		),
 		mcp.WithArray("slide_indices",
-			mcp.Description("Render ONLY these 0-based slides, e.g. [4, 9]: after a patch, pass render_deck_spec's changed_slides (the slides that look different) verbatim. Returns one image block per index, ascending; slide_count is the deck size and selected echoes what came back. An index the deck does not have is an error, not a silent omission. Mutually exclusive with max_slides."),
-			mcp.Items(map[string]any{"type": "integer", "minimum": 0}),
+			mcp.Description("Render ONLY these slides, by 0-based index or slide id, e.g. [4, \"costs\"]: after a patch, pass render_deck_spec's changed_slides verbatim. Returns one image block per slide, ascending; slide_count is the deck size, selected the indices. A slide the deck lacks is an error. Mutually exclusive with max_slides."),
+			mcp.Items(map[string]any{"type": []string{"integer", "string"}, "minimum": 0}),
 		),
 		mcp.WithBoolean("force",
 			mcp.Description("If true, bypass the render cache and re-convert even if a cached result exists. Default: false."),
@@ -2554,8 +2557,21 @@ func (mc *mcpConfig) handleRenderSlideImage(ctx context.Context, request mcp.Cal
 	}
 
 	slideIndex := 0
+	_, hasIndex := request.GetArguments()["slide_index"]
 	if v, ok := request.GetArguments()["slide_index"].(float64); ok {
 		slideIndex = int(v)
+	}
+	// slide_id names the slide by its stable DeckSpec id (go-slide-creator-1w3uo).
+	if id := request.GetString("slide_id", ""); id != "" {
+		if hasIndex {
+			return argInvalidValue("render_slide_image", diagnostics.CodeAmbiguousInput, "slide_id",
+				"set slide_id OR slide_index, not both", "string", "s3", nil), nil
+		}
+		idx, err := slideIDIndex(pptxPath, id)
+		if err != nil {
+			return argInvalidValue("render_slide_image", diagnostics.CodeInvalidParameter, "slide_id", err.Error(), "string", "s3", nil), nil
+		}
+		slideIndex = idx
 	}
 
 	density := clampedRenderDensity(request.GetArguments(), 100, 50, 300)
@@ -2616,6 +2632,11 @@ func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp
 		}
 	}
 
+	// Slide ids in slide_indices become indices first (go-slide-creator-1w3uo).
+	request, errRes := withResolvedSlideIDs("render_deck_thumbnails", request, pptxPath)
+	if errRes != nil {
+		return errRes, nil
+	}
 	indices, hasIndices, errRes := slideIndicesArg(request)
 	if errRes != nil {
 		return errRes, nil
