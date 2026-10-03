@@ -2,6 +2,7 @@ package generator
 
 import (
 	"encoding/xml"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -140,7 +141,7 @@ func TestGenerateValueChainGroupXML_Basic(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 10000000, Height: 5000000}
 
-	result := generateValueChainGroupXML(panels, bounds, 100, meta)
+	result := generateValueChainGroupXML(panels, bounds, 100, meta, nativeSurface{})
 
 	if result == "" {
 		t.Fatal("generateValueChainGroupXML returned empty string")
@@ -181,9 +182,18 @@ func TestGenerateValueChainGroupXML_Basic(t *testing.T) {
 		t.Error("should contain margin label 'Margin'")
 	}
 
-	// Should use scheme colors
+	// One accent (the support and margin titles) on the neutral ladder; the
+	// activities used to rotate through accent1–6 (go-slide-creator-amtkg).
 	if !strings.Contains(result, `schemeClr val="accent1"`) {
 		t.Error("should contain accent1 scheme color")
+	}
+	for i := 2; i <= 6; i++ {
+		if strings.Contains(result, fmt.Sprintf("accent%d", i)) {
+			t.Errorf("value chain should not reach for accent%d by default", i)
+		}
+	}
+	if !strings.Contains(result, `<a:lumMod val="16000"/><a:lumOff val="84000"/>`) {
+		t.Error("primary activities should sit on the neutral 16% structural step")
 	}
 
 	// Should use homePlate geometry for primary activities (not last)
@@ -191,9 +201,9 @@ func TestGenerateValueChainGroupXML_Basic(t *testing.T) {
 		t.Error("should use homePlate geometry for primary activities")
 	}
 
-	// Should use roundRect for support bars and last primary
-	if !strings.Contains(result, `prst="roundRect"`) {
-		t.Error("should use roundRect geometry for support bars")
+	// One surface style: square corners, as the patterns (go-slide-creator-amtkg).
+	if strings.Contains(result, "roundRect") || !strings.Contains(result, `prst="rect"`) {
+		t.Error("cards should be square-cornered rects, not roundRect")
 	}
 
 	// Should use dk1 for text color
@@ -230,7 +240,7 @@ func TestGenerateValueChainGroupXML_NoMargin(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 5000000}
 
-	result := generateValueChainGroupXML(panels, bounds, 100, meta)
+	result := generateValueChainGroupXML(panels, bounds, 100, meta, nativeSurface{})
 
 	if result == "" {
 		t.Fatal("should generate XML without margin")
@@ -260,7 +270,7 @@ func TestGenerateValueChainGroupXML_PrimaryOnly(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 5000000}
 
-	result := generateValueChainGroupXML(panels, bounds, 100, meta)
+	result := generateValueChainGroupXML(panels, bounds, 100, meta, nativeSurface{})
 
 	if result == "" {
 		t.Fatal("should generate XML with primary-only activities")
@@ -271,7 +281,7 @@ func TestGenerateValueChainGroupXML_PrimaryOnly(t *testing.T) {
 		t.Errorf("generated XML should be valid, got: %v", err)
 	}
 
-	// Last primary should use roundRect, not homePlate
+	// Last primary should be a plain rect, not homePlate
 	// Count occurrences of homePlate (should be 2, not 3)
 	homePlateCount := strings.Count(result, `prst="homePlate"`)
 	if homePlateCount != 2 {
@@ -284,7 +294,7 @@ func TestGenerateValueChainGroupXML_Empty(t *testing.T) {
 	meta := valueChainMeta{supportCount: 0, primaryCount: 0}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 5000000}
 
-	result := generateValueChainGroupXML(panels, bounds, 100, meta)
+	result := generateValueChainGroupXML(panels, bounds, 100, meta, nativeSurface{})
 	if result != "" {
 		t.Error("should return empty for zero activities")
 	}

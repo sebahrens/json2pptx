@@ -128,13 +128,12 @@ func TestPanelNativeShapes_E2E(t *testing.T) {
 	if !strings.Contains(slideStr, "schemeClr") {
 		t.Error("native panel shapes should use schemeClr for theme-aware colors")
 	}
-	// Panels should reference accent1 for header fill
-	if !strings.Contains(slideStr, `schemeClr val="accent1"`) {
-		t.Error("header fill should use schemeClr val=\"accent1\"")
-	}
-	// Body border should use tx1
-	if !strings.Contains(slideStr, `schemeClr val="tx1"`) {
-		t.Error("body border should use schemeClr val=\"tx1\"")
+	// Panels sit on the shared neutral surface: header band at 8%, body at
+	// 4%, no outline (go-slide-creator-amtkg).
+	for _, want := range []string{`<a:lumMod val="8000"/><a:lumOff val="92000"/>`, `<a:lumMod val="4000"/><a:lumOff val="96000"/>`} {
+		if !strings.Contains(slideStr, `schemeClr val="dk1">`+want) {
+			t.Errorf("panel surface missing neutral step %s", want)
+		}
 	}
 
 	// 7. The generated XML should be well-formed (parseable)
@@ -319,7 +318,7 @@ func TestPanelNativeShapes_Golden(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 329610, Y: 2129246, Width: 11850000, Height: 4197531}
 
-	result := generatePanelGroupXML(panels, bounds, 10000, "")
+	result := generatePanelGroupXML(panels, bounds, 10000, "", nativeSurface{})
 
 	goldenPath := "testdata/golden/panel_columns_4.xml"
 

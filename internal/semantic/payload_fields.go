@@ -460,7 +460,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"options": {
 			typ: "array",
 			desc: "2–6 options: strings (\"Label\", or \"Label | detail\") or {label, detail?}. " +
-				"3–6 become numbered boxes (label ≤60 chars, detail ≤180); exactly 2, each WITH a detail, become numbered cards side by side (label ≤80, detail ≤300). " +
+				"3–6 become numbered boxes (label ≤60 chars, detail ≤180); exactly 2, each WITH a detail, become numbered cards side by side (label ≤80, detail ≤300); 7–12, each WITH a detail, become a card grid (label ≤80, detail ≤160; 7 as 4 + 3). " +
 				"Mark exactly one object with recommended: true; that option gets an accent-filled Recommended badge. Anything else renders as the recommendation plus option bullets.",
 			itemStrings:    true,
 			itemKeys:       decisionOptionKeys,

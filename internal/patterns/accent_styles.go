@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // Restrained accent defaults (go-slide-creator-fl11f): structural cells
@@ -65,4 +67,13 @@ func accentInkOnTone(ctx ExpandContext, accent string, tone fillTone, minContras
 		return accent
 	}
 	return readableInkOn(ctx, tone, accent, minContrast)
+}
+
+// AccentInkOnNeutral is accentInkOnTone for a caller outside a pattern
+// expansion (the native diagram builders, go-slide-creator-amtkg): the ink an
+// accent title takes on the neutral surface at pct% coverage, given the
+// template's theme colours. With no colours it returns accent.
+func AccentInkOnNeutral(colors []types.ThemeColor, accent string, pct int, minContrast float64) string {
+	ctx := ExpandContext{Theme: types.ThemeInfo{Colors: colors}}
+	return accentInkOnTone(ctx, accent, neutralTone(pct), minContrast)
 }

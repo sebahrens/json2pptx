@@ -33,20 +33,17 @@ import (
 //   │      (2.5 cols wide)     │ │     (2.5 cols wide)       │
 //   └──────────────────────────┘ └──────────────────────────┘
 //
-// Each box is a rect with a scheme-colored tint fill, a bold header section
-// at the top, and bulleted body items below. All boxes are wrapped in a single
+// Each box is a square-cornered card on the shared neutral surface with a
+// bold accent header at the top and bulleted body items below. All boxes are wrapped in a single
 // p:grpSp with identity child transform.
 //
-// Color strategy: one hue — the deck's accent1 — with the Value Proposition a
-// step deeper. Text is dk1. See taxonomy_palette.go.
+// Color strategy: neutral cards and one accent (the section titles), as the
+// bmc-canvas pattern. See native_surface_style.go and taxonomy_palette.go.
 
 // BMC EMU constants.
 const (
 	// bmcGap is the gap between boxes in EMU.
 	bmcGap int64 = 73152 // ~0.08" — same as SWOT/PESTEL for consistency
-
-	// bmcCornerRadius is the roundRect adjustment value.
-	bmcCornerRadius int64 = 8000
 
 	// bmcHeaderFontSize is the box header font size (hundredths of a point).
 	// 1200 = 12pt (smaller than SWOT's 14pt because BMC has 9 dense cells)
@@ -101,17 +98,12 @@ var bmcSectionOrder = []bmcSectionKey{
 	bmcCustSegments, bmcCostStructure, bmcRevenueStreams,
 }
 
-// bmcDefaultTint is the fill for BMC section i in render order. One hue — the
-// deck's accent1 — with the Value Proposition carried a step deeper, because it
-// is the one cell the canvas actually privileges: every other block exists to
-// explain it. The nine cells used to take accent1–6 plus repeats, which on a
-// forest-green deck rendered as a nine-colour rainbow (go-slide-creator-w0kj).
-func bmcDefaultTint(i int) taxonomyTint {
-	if i < len(bmcSectionOrder) && bmcSectionOrder[i] == bmcValueProposition {
-		return taxonomyDeep
-	}
-	return taxonomyLight
-}
+// bmcDefaultTint is the template-independent default BMC section: the shared
+// neutral card with an accent title, the cell the bmc-canvas pattern draws, so
+// the native canvas and the pattern are one look (go-slide-creator-amtkg). The
+// nine cells once took accent1–6 plus repeats (go-slide-creator-w0kj), then
+// one accent tint with the Value Proposition a step deeper.
+func bmcDefaultTint(int) taxonomyTint { return nativeSurface{}.cardTint(bmcHeaderFontSize) }
 
 // bmcDefaultTitles maps section keys to display titles.
 var bmcDefaultTitles = map[bmcSectionKey]string{
@@ -345,14 +337,14 @@ func generateBMCGroupXML(panels []nativePanelData, bounds types.BoundingBox, sha
 		// Header shape
 		headerXML := generateBMCCellHeaderXML(
 			panel.title, cell.x, cell.y, cell.w, headerCY,
-			headerID, colors.scheme, colors.lumMod, colors.lumOff,
+			headerID, colors,
 		)
 		children = append(children, []byte(headerXML))
 
 		// Body shape
 		bodyXML := generateBMCCellBodyXML(
 			panel.body, cell.x, cell.y+headerCY, cell.w, bodyCY,
-			bodyID, colors.scheme, colors.lumMod, colors.lumOff,
+			bodyID, colors,
 		)
 		children = append(children, []byte(bodyXML))
 	}
@@ -371,25 +363,22 @@ func generateBMCGroupXML(panels []nativePanelData, bounds types.BoundingBox, sha
 	return string(b)
 }
 
-// generateBMCCellHeaderXML produces a roundRect header shape for a BMC cell.
-func generateBMCCellHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, schemeColor string, lumMod, lumOff int) string {
+// generateBMCCellHeaderXML produces the header shape of a BMC cell.
+func generateBMCCellHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, tint taxonomyTint) string {
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     "BMC " + title,
 		Bounds:   pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
-		Geometry: pptx.GeomRoundRect,
-		Adjustments: []pptx.AdjustValue{
-			{Name: "adj", Value: bmcCornerRadius},
-		},
-		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
-		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
+		Geometry: nativeSurfaceGeometry,
+		Fill:     tint.fill(),
+		Line:     pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:    "square",
 			Anchor:  "ctr",
 			Insets:  pptx.ShapeTextInsets(),
 			AutoFit: "noAutofit",
 			Paragraphs: []pptx.Paragraph{{
-				Align:    "ctr",
+				Align:    nativeHeaderAlign,
 				NoBullet: true,
 				Runs: []pptx.Run{{
 					Text:     title,
@@ -397,7 +386,7 @@ func generateBMCCellHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, 
 					FontSize: bmcHeaderFontSize,
 					Bold:     true,
 					Dirty:    true,
-					Color:    diagramPanelTextFill(schemeColor),
+					Color:    tint.titleFill(),
 				}},
 			}},
 		},
@@ -409,20 +398,17 @@ func generateBMCCellHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, 
 	return string(b)
 }
 
-// generateBMCCellBodyXML produces a roundRect body shape for a BMC cell.
-func generateBMCCellBodyXML(body string, x, y, cx, cy int64, shapeID uint32, schemeColor string, lumMod, lumOff int) string {
-	text := bmcBodyText(body, schemeColor)
+// generateBMCCellBodyXML produces the body shape of a BMC cell.
+func generateBMCCellBodyXML(body string, x, y, cx, cy int64, shapeID uint32, tint taxonomyTint) string {
+	text := bmcBodyText(body, tint.scheme)
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     "BMC Body",
 		Bounds:   pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
-		Geometry: pptx.GeomRoundRect,
-		Adjustments: []pptx.AdjustValue{
-			{Name: "adj", Value: bmcCornerRadius},
-		},
-		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
-		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
-		Text: &text,
+		Geometry: nativeSurfaceGeometry,
+		Fill:     tint.fill(),
+		Line:     pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
+		Text:     &text,
 	})
 	if err != nil {
 		slog.Warn("generateBMCCellBodyXML failed", "error", err)

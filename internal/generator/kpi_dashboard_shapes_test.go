@@ -43,15 +43,15 @@ func TestKPITrendFillMeetsNormalTextContrast(t *testing.T) {
 	}
 	for _, palette := range palettes {
 		t.Run(palette.name, func(t *testing.T) {
-			cardBase, err := svggen.ParseColor(resolveSchemeColorToHex("accent1", palette.colors))
+			cardBase, err := svggen.ParseColor(resolveSchemeColorToHex(patterns.NeutralSurfaceColor, palette.colors))
 			if err != nil {
 				t.Fatal(err)
 			}
 			white := svggen.Color{R: 255, G: 255, B: 255, A: 1}
-			card := patterns.EffectiveColorMods(cardBase, patterns.ColorMods{Tint: panelHeaderFillLumMod}, white)
+			card := patterns.EffectiveColorMods(cardBase, nativeNeutralTint(panelBodyTint).mods(), white)
 			for _, scheme := range []string{"accent6", "accent2", "dk1"} {
 				var xml bytes.Buffer
-				kpiTrendFill(scheme, palette.colors).WriteTo(&xml)
+				kpiTrendFill(scheme, nativeNeutralTint(panelBodyTint), palette.colors).WriteTo(&xml)
 				if !strings.Contains(xml.String(), `val="`+scheme+`"`) {
 					t.Errorf("%s lost its theme accent: %s", scheme, xml.String())
 				}
@@ -228,7 +228,7 @@ func TestGenerateKPIDashboardGroupXML_Basic(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 8000000, Height: 4000000}
 
-	result := generateKPIDashboardGroupXML(panels, bounds, 100, nil)
+	result := generateKPIDashboardGroupXML(panels, bounds, 100, nativeSurface{})
 
 	if result == "" {
 		t.Fatal("generateKPIDashboardGroupXML returned empty string")
@@ -264,16 +264,20 @@ func TestGenerateKPIDashboardGroupXML_Basic(t *testing.T) {
 		}
 	}
 
-	// Should use scheme colors (accent1 for values, accent6 for up, accent2 for down)
+	// Should use scheme colors (accent1 for values, accent6 for up, accent2 for
+	// down) on the neutral card.
+	if !strings.Contains(result, `schemeClr val="dk1"><a:lumMod val="4000"/><a:lumOff val="96000"/>`) {
+		t.Error("cards should sit on the neutral 4% surface (go-slide-creator-amtkg)")
+	}
 	for _, color := range []string{"accent1", "accent2", "accent6"} {
 		if !strings.Contains(result, color) {
 			t.Errorf("should contain scheme color %q", color)
 		}
 	}
 
-	// Should use roundRect geometry
-	if !strings.Contains(result, `prst="roundRect"`) {
-		t.Error("should use roundRect geometry")
+	// One surface style: square corners, as the patterns (go-slide-creator-amtkg).
+	if strings.Contains(result, "roundRect") || !strings.Contains(result, `prst="rect"`) {
+		t.Error("cards should be square-cornered rects, not roundRect")
 	}
 
 	// Should NOT contain srgbClr (no hardcoded hex)
@@ -288,7 +292,7 @@ func TestGenerateKPIDashboardGroupXML_Basic(t *testing.T) {
 }
 
 func TestGenerateKPIDashboardGroupXML_Empty(t *testing.T) {
-	result := generateKPIDashboardGroupXML(nil, types.BoundingBox{}, 100, nil)
+	result := generateKPIDashboardGroupXML(nil, types.BoundingBox{}, 100, nativeSurface{})
 	if result != "" {
 		t.Error("should return empty for nil panels")
 	}
@@ -300,7 +304,7 @@ func TestGenerateKPIDashboardGroupXML_SingleMetric(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 4000000}
 
-	result := generateKPIDashboardGroupXML(panels, bounds, 100, nil)
+	result := generateKPIDashboardGroupXML(panels, bounds, 100, nativeSurface{})
 	if result == "" {
 		t.Fatal("should generate XML for single metric")
 	}
@@ -318,7 +322,7 @@ func TestGenerateKPIDashboardGroupXML_NoDeltas(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 4000000}
 
-	result := generateKPIDashboardGroupXML(panels, bounds, 100, nil)
+	result := generateKPIDashboardGroupXML(panels, bounds, 100, nativeSurface{})
 	if result == "" {
 		t.Fatal("should generate XML without delta text")
 	}
@@ -403,8 +407,8 @@ func TestAllocatePanelIconRelIDs_KPIDashboardMode(t *testing.T) {
 		t.Error("groupXML should contain 'KPI Dashboard' name")
 	}
 
-	if !strings.Contains(inserts[0].groupXML, `prst="roundRect"`) {
-		t.Error("groupXML should use roundRect geometry")
+	if strings.Contains(inserts[0].groupXML, "roundRect") || !strings.Contains(inserts[0].groupXML, `prst="rect"`) {
+		t.Error("cards should be square-cornered rects, not roundRect")
 	}
 
 	var parsed interface{}

@@ -156,6 +156,10 @@ type Finding struct {
 	Code string `json:"code"`
 	// Severity is "error", "warning", or "info".
 	Severity Severity `json:"severity"`
+	// Blocking says whether this finding stops the deck from being ready. The
+	// DeckSpec surfaces set it on every finding, and it is true exactly when
+	// Severity is "error"; surfaces that do not gate leave it absent.
+	Blocking *bool `json:"blocking,omitempty"`
 	// Category is the namespace prefix of Code (e.g. "FIT").
 	Category Namespace `json:"category"`
 	// Where locates the issue in the deck/template; omitted when unknown.

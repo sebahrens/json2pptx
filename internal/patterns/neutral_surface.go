@@ -121,3 +121,26 @@ func surfacePairJSON(ctx ExpandContext) (a, b json.RawMessage) {
 	}
 	return a, b
 }
+
+// The surface style shared with the native diagrams (go-slide-creator-amtkg).
+//
+// internal/generator draws the native frameworks (swot, business_model_canvas,
+// pestel, the panel family, …) as OOXML shapes without going through a shape
+// grid, so it cannot take a fill as JSON. These exports are the same values
+// the patterns use, in the form that builder needs: a card is a square-cornered
+// rectangle on the dk1 neutral ladder, with no outline.
+const (
+	// SurfaceGeometry is the preset every pattern card is drawn with: square
+	// corners. A rounded pastel card is the look the review rejected.
+	SurfaceGeometry = "rect"
+	// NeutralSurfaceColor is the scheme colour the neutral ladder tints.
+	NeutralSurfaceColor = "dk1"
+)
+
+// NeutralSurfaceMods returns the OOXML lumMod / lumOff pair of the neutral
+// surface at pct% ink coverage (NeutralTint4, NeutralTint8, NeutralTint16),
+// applied to NeutralSurfaceColor.
+func NeutralSurfaceMods(pct int) (lumMod, lumOff int) {
+	t := neutralTone(pct)
+	return t.LumMod, t.LumOff
+}

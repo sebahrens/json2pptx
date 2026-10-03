@@ -40,6 +40,32 @@
     `semantic_path`: slide-level findings without a source link name the
     slide (`slides[2]`), `MISSING_TITLE` the field to write
     (`slides[2].title`).
+- **2026-10-03 — Native framework diagrams share the patterns' surface style (`go-slide-creator-amtkg`).**
+  - **Default look changed** for `swot`, `business_model_canvas`, `pestel`,
+    `nine_box_talent`, `porters_five_forces`, `value_chain`, `kpi_dashboard`
+    and the panel family (`panel_layout` columns / rows, `icon_columns`,
+    `icon_rows`, `stat_cards`): square corners (no `roundRect`), cards on the
+    neutral `dk1` tints (4%; 8% for a panel header band and the value-chain
+    margin; 16% for value-chain primary activities), no outline, bold
+    left-aligned titles in the template's primary accent where it reads on
+    the card (else a theme ink). No input field changed; labels, values and
+    geometry are as before.
+  - **One accent plus neutrals.** `swot` drops the second-accent tint of its
+    negative half; `business_model_canvas` drops the deeper Value Proposition
+    tint and now matches the `bmc-canvas` pattern; `value_chain` drops the
+    accent1–6 rotation; panel bodies are no longer white boxes outlined in
+    black; panel bullets take the text ink. Kept as data: nine-box score
+    bands, Porter intensity tints (an unscored force is the neutral card, no
+    `lt2` box with a `dk2` outline; connectors are `accent1`), heatmap
+    scales, KPI / stat-card trend ink. `house_diagram`, `process_flow`,
+    `pyramid`, `heatmap` and `stylish_panels` are not restyled (stylish
+    panel bullets follow the shared bullet ink).
+  - **`style.colors` is the opt-in to accent-tinted cards**, and now also
+    applies to the panel family (header bands, stat cards), `kpi_dashboard`
+    (cards) and `value_chain` (support bars and primary activities, each
+    counted from the first entry), as it already did to `swot`, `pestel` and
+    `business_model_canvas`. `["accent1","accent2"]` restores the two-tone
+    SWOT. Rounded corners are not restorable.
 
 - **2026-10-03 — `plan_deck` places or lists every clause of the brief, follows an enumerated outline, and accounts for the budget (`go-slide-creator-hf8tf`, `go-slide-creator-58qda`).**
   - **Every clause after the topic is a fact.** It is in a slide's
@@ -358,6 +384,169 @@
     row given twice, more than 12 cells in a level, cell counts with no
     common column grid — is refused by validate and generate at its field
     with the expected shape.
+- **2026-10-03 — One finding set and one severity model for a DeckSpec (`go-slide-creator-x9rhq`, `-oh3qr`, `-2dit4`, `-3rn3s`, `-uon4b`).**
+  - **With the deck store.** `validate_deck_spec`'s scratch render stores no
+    artifact, marks no revision as rendered and does not move the
+    `changed_slides` baseline; `dry_run`, `stored`, `revision`, `slide_changes`
+    and `slide_id` behave as before, and the envelope carries them beside
+    `template` / `template_source` / `warnings` / `waivers`. A one-off
+    `template` on a bound `deck_id` reports every slide `restyled`, and so does
+    the next render on the bound template. A compact patch render keeps
+    `waivers[]` and every `blocking: true` diagnostic. The `pillars` example in
+    `list_slide_kinds` / `semantic kinds pillars` has at most two bullets per
+    pillar (a third flattened the roof on the default templates, which
+    validate now reports).
+  - **Same findings from validate and render.** `validate_deck_spec` and
+    `json2pptx semantic validate` run the render into a scratch directory and
+    report its diagnostics, so for one spec revision and template they return
+    the findings `render_deck_spec` / `semantic render` return (code, path,
+    severity). Geometry advisories (`SLIDE_UNDERUSED`, `SPARSE_FILL`,
+    `sparse_layout`, …) and generation-only findings (`title_wraps`,
+    `contrast_predicted`, `chart.*`) therefore appear at validate too. A
+    refused render now also reports the fit findings on the other slides, a
+    spec that does not parse gets every spec-level finding from render (it
+    listed only the parse errors), and a spec that does not compile gets the
+    compile diagnostics, post-compile preflight included, from validate.
+    Validation takes about as long as a render.
+  - **Severity says whether a finding blocks.** New `blocking` boolean on
+    every DeckSpec finding (`diagnostics[].blocking`, envelope
+    `findings[].blocking`), true exactly when `severity` is `error`. A fit
+    finding the quality gate blocks on is an `error` (a blocking
+    `BODY_TOO_LONG`, `NO_EXECUTIVE_SUMMARY`, `CLOSING_WITHOUT_NEXT_STEPS`,
+    `takeaway_missing`, `accent_overload`, any `shrink_or_split`); all other
+    fit findings are `info`. `deterministic_blocking_reasons` are now
+    `CODE at path` per blocking finding and no longer the gate's sentences.
+    New code `QUALITY_GATE` (error, at `slides`) carries a gate criterion no
+    single finding accounts for. `validate_deck_spec` `ok` is false exactly
+    when the render would not be `deterministic_ready`.
+  - **CLI.** `semantic render` exits 0 exactly when the deck was written and
+    no blocking finding remains — also under `--output-validation warn|off` —
+    and prints `ok: false` plus `error` otherwise. `semantic validate` gains
+    `--template` and `--templates-dir`, and its envelope gains `template`,
+    `template_source`, `warnings[]` and `waivers[]`.
+  - **Template.** `validate_deck_spec` echoes `template` and `template_source`
+    and warns in `warnings[]` when the spec pins none; it accepts `base_dir`.
+    `get_started`'s `validate_deck_spec` example passes `template`. A
+    `deck_id` is bound by the first `template` argument (or `meta.template`);
+    a later different `template` argument renders that call only and warns,
+    and the deck changes template by a patch to `/meta/template`. It used to
+    adopt the last render's template.
+  - **Waivers.** New `meta.waivers: [{code, reason}]` for
+    `NO_EXECUTIVE_SUMMARY`, `CLOSING_WITHOUT_NEXT_STEPS`, `TITLE_NOT_ACTION`,
+    `takeaway_missing`; a non-executive `meta.archetype` (`sales_pitch`,
+    `project_roadmap`, `market_analysis`) waives `NO_EXECUTIVE_SUMMARY`. A
+    waived finding is an `info` with `waived`; results record `waivers[]`
+    `{code, reason, source, findings}`.
+  - **Root cause.** A slide whose pattern lacks height reports one blocking
+    `BODY_TOO_LONG` at the slide with the per-field
+    `TEXT_BELOW_READABLE_MIN` refusals under `symptoms[]`
+    (`evidence.symptoms`), in place of one info and one error per field.
+  - **Raw slides.** Pattern-value and chart / diagram data-contract errors on
+    a `raw_json2pptx` slide are reported by validate and render at a path
+    inside the slide (`slides[i].slide.pattern.values.<key>`,
+    `slides[i].slide.content[j].diagram_value.data…`) instead of surfacing
+    only as a render error string.
+  - **describe_finding** adds `blocks` (`always` / `sometimes` / `never`) and
+    `blocks_when`.
+  - Findings whose raw path maps to no DeckSpec field carry the slide's path
+    as `semantic_path` instead of none.
+
+- **2026-10-03 — framework-grid and dual-org-ladder no longer fill every cell (`go-slide-creator-rpz53`).**
+  - `framework-grid` renders unfilled labels and cards with hairline rules
+    between the dimension rows. New `overrides.style`: `open` (default) /
+    `tiles`; new `rows[].highlight` (boolean, at most one) tints one row.
+  - `dual-org-ladder` keeps tiles for the two org headers only; roles are
+    open entries joined by a pairing line. New `overrides.style`: `open`
+    (default) / `tiles`; new `rows[].highlight` (boolean, at most one) tints
+    one pair. `show_connectors: false` drops the pairing line.
+  - `dual-org-ladder` four-row budget re-measured: about 62 title characters
+    per role (was 65), 47 each when name and title are both long (was 49);
+    `BODY_TOO_LONG` reports past them.
+
+- **2026-10-03 — matrix-2x2 draws crossing axes (`go-slide-creator-jnkiq`).**
+  - `matrix-2x2` renders two axis lines crossing through the matrix with
+    open quadrants; the y-axis title with its high / low ends runs along the
+    left edge and the x-axis title with its low / high ends along the bottom.
+    New `overrides.style`: `open` (default) / `tiles` (the previous four
+    filled tiles with arrow axes).
+  - New quadrant field `highlight` (boolean, at most one across the four —
+    a second is `invalid_shape`): an accent tint, the only filled area.
+  - Quadrant copy budgets are unchanged; the open quadrants are larger.
+
+- **2026-10-03 — stylish-panels and before-after are open columns (`go-slide-creator-xvpu2`).**
+  - `stylish-panels` renders each column as a heading over an accent rule
+    and an open bullet list. New `overrides.style`: `open` (default) /
+    `ribbon` (the previous ribbon header over a body tile); setting
+    `overrides.ribbon` alone still selects ribbons. New
+    `values[].highlight` (boolean, at most one): that heading takes the
+    solid accent.
+  - `before-after` and `before-after-compact` render each state as a heading
+    over a rule (neutral for before, accent for after) and an open bullet
+    list; the chevron is kept. New `overrides.style`: `open` (default) /
+    `panels`; new `overrides.emphasis`: `before` / `after` fills that heading
+    with the solid accent.
+  - Bullet budgets are unchanged (the open blocks are exactly as tall as the
+    tiled ones).
+  - Fit findings: `SLIDE_UNDERUSED` / `sparse_layout` count the unfilled text
+    cells of the open-by-default patterns by their content-sized slot;
+    `pattern_overcrowded` counts text cells for `comparison-2col`,
+    `icon-row` and `card-grid`, whose recommended maximum is now 12.
+
+- **2026-10-03 — comparison-2col rows are open (`go-slide-creator-zawui`).**
+  - `comparison-2col` renders headers as bold headings over an accent rule
+    and body rows as unfilled text separated by hairline rules, aligned
+    across the two columns. New `overrides.style`: `open` (default) /
+    `tiles` (the previous filled tiles and zebra striping).
+  - New `rows[].highlight` (boolean, at most one) tints a row; new
+    `overrides.highlight_column` (`left` / `right`) gives a column a solid
+    accent header and an accent tint band. Setting both is `invalid_shape`.
+  - `overrides.connectors` keeps the centre gutter and badge in the open
+    style, without the left stripe, right tint and joining rule (those stay
+    in `tiles`). `row_fill` is unchanged. Per-cell copy budgets are unchanged
+    (the open block is as tall as the tile block). `pattern_overcrowded`
+    counts only text cells for this pattern.
+
+- **2026-10-03 — quote-cluster reads as quotes (`go-slide-creator-5cie9`).**
+  - `quote-cluster` renders open quotes by default: an accent opening quote
+    mark, the italic quote, and one attribution line (bold name, title), with
+    no tile. New `overrides.style`: `open` (default) / `bubble`
+    (speech-bubble shapes with the attribution under the tail; 7–8 quotes
+    take four columns) / `tile` (the previous tinted tiles with accent
+    names).
+  - New `quotes[].highlight` (boolean, at most one — a second is
+    `invalid_shape`): the highlighted quote is the only accent-coloured
+    element (tint band and accent mark in `open`, solid accent fill in
+    `bubble` / `tile`).
+  - Copy budgets are unchanged (re-measured): 4–6 quotes about 161 text
+    characters beside maximal attributions; 7–8 about 81 beside a name of
+    about 20 and a title of about 27 characters.
+
+- **2026-10-03 — icon-row is open by default (`go-slide-creator-hjqn2`).**
+  - `icon-row` renders accent icons and captions on the slide with no
+    container. New `overrides.style`: `open` (default) / `tile` (the previous
+    neutral tile under an accent rule). New optional `values[].description`
+    (≤80 characters, one line under the caption). `overrides.icon_size` is
+    the icon height in points in the open style (default: 26% of the content
+    area height, 40–88pt); captions default to 14pt bold there.
+  - Items carrying a `secondary` chart render as tiles in either style.
+    Open rows that do not fit the content area report `BODY_TOO_LONG`.
+
+- **2026-10-03 — card-grid takes any card count (`go-slide-creator-0w4va`).**
+  - `card-grid` `values.columns` and `values.rows` are optional. Omitted,
+    the cards are arranged from their count (5 as 3 + 2, 7 as 4 + 3, 11 as
+    4 + 4 + 3); with one given the other is derived; with both, the grid only
+    has to hold the cards and a last row that is not full is left short at
+    the same card width. New `overrides.last_row`: `center` (default) /
+    `left`. Inputs whose count equals `columns × rows` render as before.
+  - Fewer cards than `columns × rows` is no longer an error. More cards
+    than the grid holds is still `count_mismatch` (message "cells holds N
+    cards but the grid has room for M"), without the `wrong_pattern` swap
+    hint it used to carry. An explicit `"columns": 0` / `"rows": 0` now
+    means "not given".
+  - DeckSpec: `comparison` with 6–12 columns (each column's items joining to
+    at most 160 characters) and `decision` with 7–12 options (each with a
+    detail of at most 160 characters, label at most 80) compile to
+    `card-grid` instead of falling back to bullets.
 
 - **2026-10-03 — Composition overrides compile to what explain reports (`go-slide-creator-vj549`).** SchemaVersion unchanged (no new tools, codes or fix kinds).
   - A `pattern` / `layout` override listed in `compositions[]` is honoured

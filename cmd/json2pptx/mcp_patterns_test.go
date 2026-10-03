@@ -420,11 +420,11 @@ func TestMCPValidatePattern(t *testing.T) {
 	})
 
 	t.Run("multiple errors split", func(t *testing.T) {
-		// card-grid with columns=0 + rows=0 produces 2 joined errors;
+		// card-grid with columns=6 + rows=9 produces joined errors;
 		// D10 requires they appear as separate entries.
 		result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
 			"name":   "card-grid",
-			"values": mustParseJSON(`{"columns":0,"rows":0,"cells":[]}`),
+			"values": mustParseJSON(`{"columns":6,"rows":9,"cells":[]}`),
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -671,7 +671,7 @@ func TestValidatePatternNextToolCallInResponse(t *testing.T) {
 	// suggest repair_slide with the impossible slide_index:-1 sentinel.
 	result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
 		"name":   "card-grid",
-		"values": mustParseJSON(`{"columns":0,"rows":0,"cells":[]}`),
+		"values": mustParseJSON(`{"columns":6,"rows":9,"cells":[]}`),
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

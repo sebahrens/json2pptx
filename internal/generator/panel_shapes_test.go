@@ -35,9 +35,10 @@ func TestPanelBulletsToOOXML_BulletLines(t *testing.T) {
 		t.Error("should contain second bullet text")
 	}
 
-	// Should use scheme color for bullets
-	if !strings.Contains(result, `schemeClr val="accent1"`) {
-		t.Error("bullet color should use schemeClr accent1")
+	// Bullets take the text ink: a panel's one accent is its title
+	// (go-slide-creator-amtkg).
+	if !strings.Contains(result, `schemeClr val="dk1"`) {
+		t.Error("bullet color should use schemeClr dk1")
 	}
 
 	// Should NOT contain srgbClr (no hardcoded hex colors)
@@ -102,7 +103,7 @@ func TestGeneratePanelHeaderXML(t *testing.T) {
 		"Test Title",
 		100000, 200000, 3000000, 700000,
 		42,
-		"accent1", 15000, 85000,
+		nativeSurface{}.tint(0, panelHeaderTint, panelHeaderFontSize),
 	)
 
 	// Should be a p:sp element
@@ -113,16 +114,16 @@ func TestGeneratePanelHeaderXML(t *testing.T) {
 		t.Error("should end with </p:sp>")
 	}
 
-	// A light panel fill must blend the accent toward white without pushing a
-	// saturated theme color into fluorescent HSL territory.
+	// The header band is the neutral 8% step with the title in the accent
+	// (go-slide-creator-amtkg); it was an accent1 pastel.
+	if !strings.Contains(result, `schemeClr val="dk1"><a:lumMod val="8000"/><a:lumOff val="92000"/>`) {
+		t.Error("header fill should be the neutral 8% surface")
+	}
 	if !strings.Contains(result, `schemeClr val="accent1"`) {
-		t.Error("header fill should use schemeClr")
+		t.Error("header title should take the accent ink")
 	}
-	if !strings.Contains(result, `tint val="15000"`) {
-		t.Error("header fill should have RGB tint")
-	}
-	if strings.Contains(result, "lumMod") || strings.Contains(result, "lumOff") {
-		t.Error("header fill must not brighten accent with HSL modifiers")
+	if strings.Contains(result, "<a:tint") {
+		t.Error("header fill should not be an accent tint by default")
 	}
 
 	// Should NOT contain srgbClr
@@ -130,12 +131,12 @@ func TestGeneratePanelHeaderXML(t *testing.T) {
 		t.Error("header should not contain srgbClr (hardcoded hex)")
 	}
 
-	// Should have centered bold text
+	// Should have left-aligned bold text
 	if !strings.Contains(result, `b="1"`) {
 		t.Error("header text should be bold")
 	}
-	if !strings.Contains(result, `algn="ctr"`) {
-		t.Error("header text should be centered")
+	if !strings.Contains(result, `algn="l"`) {
+		t.Error("header text should be left-aligned")
 	}
 
 	// Should use scheme color for text
@@ -167,7 +168,7 @@ func TestGeneratePanelHeaderXML_XMLEscaping(t *testing.T) {
 		"Risk & Compliance",
 		0, 0, 1000000, 500000,
 		1,
-		"accent1", 15000, 85000,
+		nativeSurface{}.tint(0, panelHeaderTint, panelHeaderFontSize),
 	)
 
 	if !strings.Contains(result, "Risk &amp; Compliance") {
@@ -180,7 +181,6 @@ func TestGeneratePanelBodyXML(t *testing.T) {
 		"- Item 1\n- Item 2",
 		100000, 900000, 3000000, 3000000,
 		43,
-		"tx1",
 		panelBodyFontSize,
 	)
 
@@ -189,14 +189,13 @@ func TestGeneratePanelBodyXML(t *testing.T) {
 		t.Error("should start with <p:sp>")
 	}
 
-	// Should have noFill background
-	if !strings.Contains(result, "<a:noFill/>") {
-		t.Error("body should have noFill")
+	// The body is a neutral card with no outline — not an outlined white box
+	// (go-slide-creator-amtkg).
+	if !strings.Contains(result, `schemeClr val="dk1"><a:lumMod val="4000"/><a:lumOff val="96000"/>`) {
+		t.Error("body should sit on the neutral 4% surface")
 	}
-
-	// Should have scheme color border
-	if !strings.Contains(result, `schemeClr val="tx1"`) {
-		t.Error("body border should use schemeClr tx1")
+	if !strings.Contains(result, `<a:ln w="6350"><a:noFill/></a:ln>`) || strings.Contains(result, `schemeClr val="tx1"`) {
+		t.Error("body should carry no outline")
 	}
 
 	// Should NOT contain srgbClr
@@ -233,7 +232,6 @@ func TestGeneratePanelBodyXML_EmptyBody(t *testing.T) {
 		"",
 		0, 0, 1000000, 2000000,
 		5,
-		"tx1",
 		panelBodyFontSize,
 	)
 
@@ -255,7 +253,7 @@ func TestGeneratePanelGroupXML_TwoPanels(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 6000000, Height: 4000000}
 
-	result := generatePanelGroupXML(panels, bounds, 100, "")
+	result := generatePanelGroupXML(panels, bounds, 100, "", nativeSurface{})
 
 	// Should be a group shape
 	if !strings.HasPrefix(result, "<p:grpSp>") {
@@ -307,7 +305,7 @@ func TestGeneratePanelGroupXML_FourPanels(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 329610, Y: 2129246, Width: 11850000, Height: 4197531}
 
-	result := generatePanelGroupXML(panels, bounds, 200, "")
+	result := generatePanelGroupXML(panels, bounds, 200, "", nativeSurface{})
 
 	// Should contain all 4 panel titles
 	for _, p := range panels {
@@ -339,7 +337,7 @@ func TestGeneratePanelGroupXML_SixPanels(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 300000, Y: 2000000, Width: 12000000, Height: 4000000}
 
-	result := generatePanelGroupXML(panels, bounds, 300, "")
+	result := generatePanelGroupXML(panels, bounds, 300, "", nativeSurface{})
 
 	// 6 panels should still render (readability concern noted in task)
 	spCount := strings.Count(result, "<p:sp>")
@@ -358,7 +356,7 @@ func TestGeneratePanelGroupXML_SixPanels(t *testing.T) {
 }
 
 func TestGeneratePanelGroupXML_Empty(t *testing.T) {
-	result := generatePanelGroupXML(nil, types.BoundingBox{}, 100, "")
+	result := generatePanelGroupXML(nil, types.BoundingBox{}, 100, "", nativeSurface{})
 	if result != "" {
 		t.Errorf("empty panels should return empty string, got %q", result)
 	}
@@ -370,7 +368,7 @@ func TestGeneratePanelGroupXML_MissingIcon(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 5000000, Height: 4000000}
 
-	result := generatePanelGroupXML(panels, bounds, 50, "")
+	result := generatePanelGroupXML(panels, bounds, 50, "", nativeSurface{})
 
 	// Should NOT contain p:pic elements when icon is nil
 	if strings.Contains(result, "<p:pic>") {
@@ -425,7 +423,7 @@ func TestGeneratePanelGroupXML_ChildOffsetArithmetic(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 500000, Y: 1000000, Width: 4000000, Height: 3000000}
 
-	result := generatePanelGroupXML(panels, bounds, 10, "")
+	result := generatePanelGroupXML(panels, bounds, 10, "", nativeSurface{})
 	frame := assertGroupIdentityTransform(t, result)
 
 	if frame.x != bounds.X || frame.cx != bounds.Width {
@@ -466,7 +464,7 @@ func TestGeneratePanelGroupXML_ValidXML(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 5000000, Height: 4000000}
 
-	result := generatePanelGroupXML(panels, bounds, 1, "")
+	result := generatePanelGroupXML(panels, bounds, 1, "", nativeSurface{})
 
 	// Verify the generated XML is well-formed by parsing it
 	var parsed interface{}
@@ -482,7 +480,7 @@ func TestGeneratePanelGroupXML_SchemeColorAssertions(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 5000000, Height: 4000000}
 
-	result := generatePanelGroupXML(panels, bounds, 1, "")
+	result := generatePanelGroupXML(panels, bounds, 1, "", nativeSurface{})
 
 	// MUST contain schemeClr for fills and borders
 	if !strings.Contains(result, "schemeClr") {
@@ -494,14 +492,14 @@ func TestGeneratePanelGroupXML_SchemeColorAssertions(t *testing.T) {
 		t.Error("output must not contain srgbClr — all colors should use scheme references")
 	}
 
-	// Should reference accent1 for header fill
+	// Should reference accent1 for the header title
 	if !strings.Contains(result, `schemeClr val="accent1"`) {
-		t.Error("header fill should reference accent1 scheme color")
+		t.Error("header title should reference accent1 scheme color")
 	}
 
-	// Should reference tx1 for body border
-	if !strings.Contains(result, `schemeClr val="tx1"`) {
-		t.Error("body border should reference tx1 scheme color")
+	// No outlined body: tx1 was the border colour
+	if strings.Contains(result, `schemeClr val="tx1"`) {
+		t.Error("body should carry no tx1 outline")
 	}
 
 	// Should reference dk1 for header text
@@ -518,7 +516,7 @@ func TestGeneratePanelGroupXML_MultiPanelPositions(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 9000000, Height: 4000000}
 
-	result := generatePanelGroupXML(panels, bounds, 50, "")
+	result := generatePanelGroupXML(panels, bounds, 50, "", nativeSurface{})
 
 	// Calculate expected panel width: (9000000 - 2*202441) / 3
 	expectedWidth := (bounds.Width - 2*panelGap) / 3
@@ -849,7 +847,7 @@ func TestGeneratePanelRowsGroupXML_ThreeRows(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 8000000, Height: 4000000}
 
-	result := generatePanelRowsGroupXML(panels, bounds, 100)
+	result := generatePanelRowsGroupXML(panels, bounds, 100, nativeSurface{})
 
 	// Should be a group shape
 	if !strings.HasPrefix(result, "<p:grpSp>") {
@@ -893,7 +891,7 @@ func TestGeneratePanelRowsGroupXML_ThreeRows(t *testing.T) {
 }
 
 func TestGeneratePanelRowsGroupXML_Empty(t *testing.T) {
-	result := generatePanelRowsGroupXML(nil, types.BoundingBox{}, 100)
+	result := generatePanelRowsGroupXML(nil, types.BoundingBox{}, 100, nativeSurface{})
 	if result != "" {
 		t.Error("empty panels should produce empty string")
 	}
@@ -905,7 +903,7 @@ func TestGeneratePanelRowsGroupXML_SingleRow(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 4000000}
 
-	result := generatePanelRowsGroupXML(panels, bounds, 100)
+	result := generatePanelRowsGroupXML(panels, bounds, 100, nativeSurface{})
 
 	// Single panel should use full height (no gaps)
 	spCount := strings.Count(result, "<p:sp>")
@@ -926,7 +924,7 @@ func TestGenerateStatCardsGroupXML_ThreeCards(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 9000000, Height: 4000000}
 
-	result := generateStatCardsGroupXML(panels, bounds, 100, "")
+	result := generateStatCardsGroupXML(panels, bounds, 100, "", nativeSurface{})
 
 	// Should be a group shape
 	if !strings.HasPrefix(result, "<p:grpSp>") {
@@ -955,9 +953,9 @@ func TestGenerateStatCardsGroupXML_ThreeCards(t *testing.T) {
 		t.Error("group should be named 'Stat Cards'")
 	}
 
-	// Should use roundRect geometry
-	if !strings.Contains(result, `prst="roundRect"`) {
-		t.Error("stat cards should use roundRect geometry")
+	// One surface style: square corners, as the patterns (go-slide-creator-amtkg).
+	if strings.Contains(result, "roundRect") || !strings.Contains(result, `prst="rect"`) {
+		t.Error("cards should be square-cornered rects, not roundRect")
 	}
 
 	// Delta coloring: "+12%" should use accent6, "-0.5%" should use accent2
@@ -970,7 +968,7 @@ func TestGenerateStatCardsGroupXML_ThreeCards(t *testing.T) {
 }
 
 func TestGenerateStatCardsGroupXML_Empty(t *testing.T) {
-	result := generateStatCardsGroupXML(nil, types.BoundingBox{}, 100, "")
+	result := generateStatCardsGroupXML(nil, types.BoundingBox{}, 100, "", nativeSurface{})
 	if result != "" {
 		t.Error("empty panels should produce empty string")
 	}
@@ -982,7 +980,7 @@ func TestGenerateStatCardsGroupXML_ValueFallbackToTitle(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 3000000, Height: 2000000}
 
-	result := generateStatCardsGroupXML(panels, bounds, 100, "")
+	result := generateStatCardsGroupXML(panels, bounds, 100, "", nativeSurface{})
 
 	// When value is empty, title should be used as the display value
 	if !strings.Contains(result, "42%") {
@@ -1000,7 +998,7 @@ func TestGenerateStatCardsGroupXML_SixCardsGrid(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 9000000, Height: 4000000}
 
-	result := generateStatCardsGroupXML(panels, bounds, 100, "")
+	result := generateStatCardsGroupXML(panels, bounds, 100, "", nativeSurface{})
 
 	// 6 cards should produce 6 child shapes
 	spCount := strings.Count(result, "<p:sp>")

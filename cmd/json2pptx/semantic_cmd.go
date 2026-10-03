@@ -144,18 +144,40 @@ func parseOutputValidation(v string) (string, error) {
 	}
 }
 
+// semanticValidateEnvelope is the result of "semantic validate": the shared
+// finding envelope plus what the run was measured on and what it waived.
+type semanticValidateEnvelope struct {
+	diagnostics.FindingEnvelope
+	// TemplateSource says what chose the envelope's template: "meta.template",
+	// "template argument" or "archetype default".
+	TemplateSource string `json:"template_source,omitempty"`
+	// Warnings are command-level notes that are not findings on the deck.
+	Warnings []string `json:"warnings,omitempty"`
+	// Waivers records the storyline findings the deck waived.
+	Waivers []findingWaiver `json:"waivers,omitempty"`
+}
+
 // runSemanticValidate implements "semantic validate". It parses and validates a
-// semantic spec and prints the shared FindingEnvelope (the same shape every
-// other diagnostic-bearing surface emits) to stdout. The process exits non-zero
-// when any finding has error severity.
+// semantic spec, then renders it into a scratch directory exactly as "semantic
+// render" would and reports that run's findings as the shared FindingEnvelope
+// (go-slide-creator-3rn3s, go-slide-creator-2dit4). The envelope names the
+// template the findings were measured on. The process exits non-zero when any
+// finding has error severity, which is exactly when "semantic render" would.
 func runSemanticValidate() error {
 	fs := flag.NewFlagSet("semantic validate", flag.ContinueOnError)
 	specPath := fs.String("spec", "", "Path to the semantic deck spec (.yaml/.yml/.json); use - for stdin")
 	strict := fs.String("strict", "warn", "Advisory-rule strictness: off, warn, or strict")
+	templateName := fs.String("template", "", "Default template used when the spec pins none (pass the one you will render on)")
+	templatesDir := fs.String("templates-dir", "", "Template search directory")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx semantic validate --spec <file> [options]\n\n")
-		fmt.Fprintf(os.Stderr, "Validate a semantic deck spec and print the shared finding envelope.\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx semantic validate <spec> [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Validate a semantic deck spec and print the shared finding envelope. The spec is\n")
+		fmt.Fprintf(os.Stderr, "rendered into a scratch directory, so the findings are the ones 'semantic render'\n")
+		fmt.Fprintf(os.Stderr, "reports for the same spec and template; the envelope's template field says which\n")
+		fmt.Fprintf(os.Stderr, "template that was.\n\n")
+		fmt.Fprintf(os.Stderr, "Exit status: 0 when no finding has severity error; 1 otherwise. A finding blocks\n")
+		fmt.Fprintf(os.Stderr, "exactly when its severity is error (blocking: true).\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
@@ -178,34 +200,87 @@ func runSemanticValidate() error {
 	}
 
 	ds := semantic.Check(*specPath, data, strictness)
+	out := semanticValidateEnvelope{}
+	var evaluated []semanticDiagnostic
+	templateEcho := ""
+	if spec, parseDiags := semantic.Parse(*specPath, data); spec != nil && !parseDiags.HasErrors() {
+		eval, evalErr := evaluateSpecCLI(*specPath, spec, strictness, *templateName, *templatesDir)
+		if evalErr != nil {
+			return evalErr
+		}
+		templateEcho, out.TemplateSource, out.Warnings, out.Waivers = eval.Template, eval.TemplateSource, eval.Warnings, eval.Waivers
+		if eval.Evaluated {
+			evaluated = eval.Diagnostics
+			ds = envelopeDiagnostics(evaluated)
+		}
+	}
+	out.FindingEnvelope = diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
+		Subcommand:  "semantic validate",
+		InputSHA256: diagnostics.ComputeInputSHA256(data),
+		Template:    templateEcho,
+	}, ds)
+	stampEnvelopeFindings(&out.FindingEnvelope, evaluated)
+
+	if err := printJSONIndent(out); err != nil {
+		return err
+	}
+	if !out.OK {
+		return fmt.Errorf("semantic validation failed")
+	}
+	return nil
+}
+
+// evaluateSpecCLI compiles a parsed spec and runs it as "semantic render"
+// would, into a scratch directory.
+func evaluateSpecCLI(specPath string, spec *semantic.DeckSpec, strictness semantic.Strictness, argTemplate, templatesDir string) (specEvaluation, error) {
+	choice := resolveSpecTemplate(spec.Meta.Template, argTemplate, "", specSource{})
+	eval := specEvaluation{Choice: choice, TemplateSource: choice.Source, Warnings: choice.Warnings}
+	eval.Template = explainSpecWithTemplate(spec, argTemplate).Template
+
+	input, compileResult, err := semantic.Compile(spec, semantic.CompileOptions{Strict: strictness, DefaultTemplate: argTemplate})
+	if err != nil || input == nil {
+		// A spec that does not compile reports what render reports for it.
+		if err != nil && compileResult != nil {
+			eval.Evaluated = true
+			eval.Diagnostics = buildSemanticRenderFailure(compileResult, err).Diagnostics
+		}
+		return eval, nil
+	}
+	eval.Evaluated = true
+	eval.Template = input.Template
+
 	// Design-mode violations live in the COMPILED deck (the raw_json2pptx
 	// escape hatch carries an author's payload through), so validate compiles
 	// to see them — otherwise it passes a spec render then refuses
 	// (go-slide-creator-rs4h).
-	ds = append(ds, specDesignModeDiagnostics(*specPath, data, strictness)...)
-	if spec, parseDiags := semantic.Parse(*specPath, data); spec != nil && !parseDiags.HasErrors() {
-		explanation := semantic.ExplainSpec(spec)
-		if explanation.Template == "" {
-			// Template is optional at validate time; render may receive one via
-			// its --template flag.
-		} else if layouts, templateDiagnostic := semanticTemplateLayouts(explanation.Template, "", nil); templateDiagnostic == nil {
-			ds = append(ds, requiredLayoutTemplateDiagnostics(spec.Meta.RequiredLayouts, explanation.Template, layouts)...)
-		} else {
-			ds = append(ds, *templateDiagnostic)
-		}
+	if designViolations := compiledDesignModeDiagnostics(input); len(designViolations) > 0 {
+		appendCompiledDesignModeDiags(compileResult, input)
+		eval.Diagnostics = buildSemanticRenderFailure(compileResult, blockingDesignModeError(designViolations)).Diagnostics
+		return eval, nil
 	}
-	envelope := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
-		Subcommand:  "semantic validate",
-		InputSHA256: diagnostics.ComputeInputSHA256(data),
-	}, ds)
+	if input.Template == "" {
+		eval.TemplateSource = ""
+		eval.Warnings = append(eval.Warnings, unpinnedTemplateWarning("", ""))
+		eval.Diagnostics, eval.Waivers = templateFreeDiagnostics(input, compileResult)
+		return eval, nil
+	}
 
-	if err := printJSONIndent(envelope); err != nil {
-		return err
+	dir, removeDir, dirErr := trialRenderDir()
+	if dirErr != nil {
+		return eval, fmt.Errorf("semantic validate: create scratch directory: %w", dirErr)
 	}
-	if !envelope.OK {
-		return fmt.Errorf("semantic validation failed")
+	defer removeDir()
+	input.OutputFilename = "validate.pptx"
+	res, _, runErr := runCompiledSpecCLI(specPath, input, compileResult, templatesDir, dir, "strict", time.Now())
+	if runErr != nil {
+		return eval, runErr
 	}
-	return nil
+	eval.Diagnostics = res.Diagnostics
+	eval.Waivers = res.Waivers
+	if spec.Meta.Template == "" {
+		eval.Warnings = append(eval.Warnings, unpinnedTemplateWarning(eval.Template, choice.Source))
+	}
+	return eval, nil
 }
 
 // semanticCompileEnvelope is the structured result emitted by "semantic compile
@@ -374,7 +449,11 @@ type semanticRenderResult struct {
 	Quality                      *QualityScore        `json:"quality,omitempty"`
 	Warnings                     []string             `json:"warnings,omitempty"`
 	Diagnostics                  []semanticDiagnostic `json:"diagnostics,omitempty"`
-	Error                        string               `json:"error,omitempty"`
+	// Waivers records the storyline findings this deck waived, by meta.waivers
+	// or by its archetype, and how many findings each one turned into an
+	// advisory (go-slide-creator-oh3qr).
+	Waivers []findingWaiver `json:"waivers,omitempty"`
+	Error   string          `json:"error,omitempty"`
 }
 
 // semanticDiagnostic is one compact finding in a render result. SemanticPath
@@ -384,8 +463,13 @@ type semanticRenderResult struct {
 // SlideIndex is the semantic slide the finding belongs to, or -1. RecommendedEdit
 // names a semantic edit that should resolve the finding, when one is known.
 type semanticDiagnostic struct {
-	Code         string `json:"code"`
-	Severity     string `json:"severity,omitempty"`
+	Code     string `json:"code"`
+	Severity string `json:"severity,omitempty"`
+	// Blocking is the one flag that says whether this finding stops
+	// deterministic_ready. It is true exactly when Severity is "error": a
+	// blocking finding is never reported as a warning or an info, and an
+	// advisory never blocks (go-slide-creator-x9rhq).
+	Blocking     bool   `json:"blocking"`
 	Message      string `json:"message"`
 	SemanticPath string `json:"semantic_path,omitempty"`
 	RawPath      string `json:"raw_path,omitempty"`
@@ -400,7 +484,19 @@ type semanticDiagnostic struct {
 	// against allowed.min_font_pt, the text role, viewing mode and the refused
 	// paragraph's text (go-slide-creator-b7qqg.4).
 	Evidence map[string]any `json:"evidence,omitempty"`
+	// Waived is the reason a storyline finding was turned into an advisory
+	// (meta.waivers, or the deck's archetype).
+	Waived string `json:"waived,omitempty"`
+	// Symptoms are the per-field findings a root-cause finding accounts for:
+	// one slide whose pattern needs more height than it has shrinks every cell,
+	// and each shrunk field is listed here instead of as its own blocker
+	// (go-slide-creator-3rn3s).
+	Symptoms []findingSymptom `json:"symptoms,omitempty"`
 
+	// diag is the transport-neutral diagnostic this finding was built from,
+	// with its path already semantic. validate_deck_spec renders its envelope
+	// from it, so both tools report one finding set from one collection.
+	diag *diagnostics.Diagnostic
 	// fallbackPatch is the DeckSpec patch to suggest when the semantic path
 	// names no single rewritable field (a refused list switches composition).
 	fallbackPatch []any
@@ -432,6 +528,11 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 		fmt.Fprintf(os.Stderr, "manifest (spec, compiled input, source map, revision) that lets a later patch or\n")
 		fmt.Fprintf(os.Stderr, "visual review be tied to this exact deck. It is named in the result's manifest_path,\n")
 		fmt.Fprintf(os.Stderr, "is written only when the deck was written, and --no-manifest turns it off.\n\n")
+		fmt.Fprintf(os.Stderr, "Exit status: 0 when the deck was written and no blocking finding remains (\"ok\":\n")
+		fmt.Fprintf(os.Stderr, "true); 1 otherwise. A finding blocks exactly when its severity is error; warnings\n")
+		fmt.Fprintf(os.Stderr, "and infos never change the exit status. A deck with blocking findings is still\n")
+		fmt.Fprintf(os.Stderr, "written, and the result names each one in deterministic_blocking_reasons. A\n")
+		fmt.Fprintf(os.Stderr, "storyline finding the brief rules out can be waived in meta.waivers.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
@@ -473,7 +574,8 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 	spec, parseDiags := semantic.Parse(*specPath, data)
 	if parseDiags.HasErrors() {
 		res := semanticRenderResult{OK: false, Error: "semantic render: spec could not be parsed"}
-		for _, d := range parseDiags.ToDiagnostics() {
+		// The findings `semantic validate` reports for the same spec.
+		for _, d := range semantic.Check(*specPath, data, strictness) {
 			res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(d))
 		}
 		_ = fprintJSONIndent(os.Stdout, res)
@@ -512,13 +614,39 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 		return fmt.Errorf("semantic render: %w", err)
 	}
 
+	res, runRes, runErr := runCompiledSpecCLI(*specPath, input, compileResult, *templatesDir, outputDir, *outputValidation, startTime)
+	if runErr != nil {
+		return runErr
+	}
+	if !res.OK {
+		_ = fprintJSONIndent(os.Stdout, res)
+		return fmt.Errorf("semantic render: %s", res.Error)
+	}
+	if *noManifest {
+		_ = os.Remove(runRes.OutputPath + authoringManifestSuffix)
+		return emitSemanticRenderResult(res)
+	}
+	if err := writeAuthoringSidecar(&res, spec, data, *specPath, input, compileResult, runRes); err != nil {
+		return err
+	}
+	return emitSemanticRenderResult(res)
+}
+
+// runCompiledSpecCLI renders a compiled DeckSpec for the CLI: deck defaults and
+// named settings, the standard config, guarded asset resolution, the shared
+// runner and the result builders. `semantic render` writes its deck with it,
+// and `semantic validate` runs the same function into a scratch directory, so
+// the two commands report one finding set (go-slide-creator-3rn3s). A returned
+// error is a failure of the command itself (config, resolver); a deck the
+// runner refuses comes back as a result with OK=false.
+func runCompiledSpecCLI(specPath string, input *PresentationInput, compileResult *semantic.CompileResult, templatesDir, outputDir, outputValidation string, startTime time.Time) (semanticRenderResult, RenderResult, error) {
 	// Apply the shared pre-render prep that a compiled deck still needs: deck
 	// defaults (table/cell styles) and named style references. Structure
 	// expansion does not apply to a compiled deck — but the raw_json2pptx escape
 	// hatch passes author-authored slide payloads straight through, so the
 	// URL/asset resolution PreConvert hook below still does (see preConvert).
 	applyDefaults(input)
-	resolveInputNamedSettingsForDir(*templatesDir, input)
+	resolveInputNamedSettingsForDir(templatesDir, input)
 
 	// Load the standard config (defaults + environment overrides, as generate
 	// does) so charts/diagrams render with the same native-SVG strategy and
@@ -526,10 +654,21 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 	// (go-slide-creator-s1uvj.44).
 	cfg, err := config.Load("")
 	if err != nil {
-		return fmt.Errorf("semantic render: load config: %w", err)
+		return semanticRenderResult{}, RenderResult{}, fmt.Errorf("semantic render: load config: %w", err)
 	}
-	if *templatesDir != "" {
-		cfg.Templates.Dir = *templatesDir
+	if templatesDir != "" {
+		cfg.Templates.Dir = templatesDir
+	}
+
+	// A template that does not resolve is a finding at meta.template with the
+	// nearest name, not a bare error string.
+	if _, templateCleanup, tplErr := resolveTemplatePath(input.Template, cfg.Templates.Dir); tplErr != nil {
+		d := semanticTemplateDiagnostic(input.Template, cfg.Templates.Dir, templateResolutionCode(tplErr), tplErr)
+		res := buildSemanticRenderFailure(compileResult, errors.New(d.Message))
+		res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(*d))
+		return res, RenderResult{}, nil
+	} else {
+		templateCleanup()
 	}
 
 	// A raw_json2pptx slide can still contain image/icon URLs or relative asset
@@ -546,7 +685,7 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 	// rejected as files outside the allowed roots (mirrors generate).
 	urlResolver, urlCacheDir, closeResolver, err := newSlideURLResolver(input.Slides)
 	if err != nil {
-		return fmt.Errorf("semantic render: %w", err)
+		return semanticRenderResult{}, RenderResult{}, fmt.Errorf("semantic render: %w", err)
 	}
 	defer closeResolver()
 	var preConvertWarnings []string
@@ -562,8 +701,8 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 		// slide's relative image path resolves the same way `generate` resolves
 		// it against the deck JSON's directory. Skipped for stdin specs, which
 		// have no base directory (mirrors generate's jsonPath != "-" guard).
-		if *specPath != "-" {
-			baseDir := validateBaseDir(*specPath, "")
+		if specPath != "-" {
+			baseDir := validateBaseDir(specPath, "")
 			assetFindings := resolveLocalAssetPaths(input.Slides, baseDir, imageAllowList(cfg.Images.AllowedBasePaths, urlCacheDir)...)
 			if assetErr := iconFindingsToError(assetFindings); assetErr != nil {
 				return assetErr
@@ -581,7 +720,7 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 		OutputDir:         outputDir,
 		AllowedImagePaths: imageAllowList(cfg.Images.AllowedBasePaths, urlCacheDir),
 		TemplatesDir:      cfg.Templates.Dir,
-		OutputValidation:  *outputValidation,
+		OutputValidation:  outputValidation,
 		AccentStrategy:    patterns.AccentStrategy(input.AccentStrategy),
 		SVGStrategy:       string(cfg.SVG.Strategy),
 		SVGScale:          cfg.SVG.Scale,
@@ -591,21 +730,12 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 	})
 	defer cleanup()
 	if renderErr != nil {
-		res := buildSemanticRenderFailure(compileResult, renderErr)
-		_ = fprintJSONIndent(os.Stdout, res)
-		return fmt.Errorf("semantic render: %w", renderErr)
+		return buildSemanticRunFailure(input, compileResult, runRes, renderErr), runRes, nil
 	}
 
 	res := buildSemanticRenderSuccess(input, compileResult, runRes, startTime)
 	res.Warnings = append(res.Warnings, preConvertWarnings...)
-	if *noManifest {
-		_ = os.Remove(runRes.OutputPath + authoringManifestSuffix)
-		return emitSemanticRenderResult(res, *outputValidation)
-	}
-	if err := writeAuthoringSidecar(&res, spec, data, *specPath, input, compileResult, runRes); err != nil {
-		return err
-	}
-	return emitSemanticRenderResult(res, *outputValidation)
+	return res, runRes, nil
 }
 
 // writeAuthoringSidecar writes <deck>.pptx.authoring.json beside a rendered
@@ -668,18 +798,27 @@ func newSlideURLResolver(slides []SlideInput) (resolver *resource.Resolver, dir 
 // emitSemanticRenderResult prints a completed render result and decides the
 // process exit.
 //
-// Under the default --output-validation=strict, a deck that failed
-// deterministic checks must not exit 0. A clean render may exit 0 while
-// publishable remains false pending an all-slide visual verdict.
-func emitSemanticRenderResult(res semanticRenderResult, outputValidation string) error {
+// The exit code follows the one severity model (go-slide-creator-x9rhq): 0
+// exactly when the deck was written and no blocking (error-severity) finding
+// remains, whatever --output-validation is; "ok" in the printed result agrees
+// with it. A clean render exits 0 while publishable remains false pending an
+// all-slide visual verdict.
+func emitSemanticRenderResult(res semanticRenderResult) error {
+	ready := res.DeterministicReady == nil || *res.DeterministicReady
+	if !ready {
+		// "ok" and the exit code say the same thing: the deck is written AND no
+		// blocking finding remains. The file stays on disk either way.
+		res.OK = false
+		res.Error = fmt.Sprintf("deck written to %s but blocking findings remain: %s",
+			res.OutputPath, strings.Join(res.DeterministicBlockingReasons, "; "))
+	}
 	if err := printJSONIndent(res); err != nil {
 		return err
 	}
-	if outputValidation != "strict" || res.DeterministicReady == nil || *res.DeterministicReady {
+	if ready {
 		return nil
 	}
-	return fmt.Errorf("semantic render: deck written to %s but not deterministically ready: %s",
-		res.OutputPath, strings.Join(res.DeterministicBlockingReasons, "; "))
+	return fmt.Errorf("semantic render: %s", res.Error)
 }
 
 // buildSemanticRenderSuccess assembles the compact success result: compile-time
@@ -722,13 +861,14 @@ func buildSemanticRenderSuccess(input *PresentationInput, cr *semantic.CompileRe
 	fit = append(fit, collectFitFindings(input, rr.TemplateLayouts, rr.SlideWidth, rr.SlideHeight, &rr.TemplateTheme)...)
 	fit = collapseRotatedAccentFindings(dedupFitFindings(fit))
 	patterns.SortCanonical(fit, slidepath.SlideIndex)
-	for _, f := range fit {
-		d := semanticDiagFromFitWithIR(sm, ir, f)
-		if f.Path == rotatedAccentDeckPath && d.SemanticPath == "" {
-			d.SemanticPath = "meta.accent_strategy"
-		}
-		diags = append(diags, d)
-	}
+	diags = append(diags, finishFitDiagnostics(sm, ir, fit)...)
+
+	// The deck's waivers turn the storyline findings it names into advisories:
+	// they stay in the list, and neither the score nor the gate counts them
+	// (go-slide-creator-oh3qr).
+	policy := newFindingPolicy(ir)
+	policy.applyWaivers(diags)
+	gateFit := policy.gateFindings(fit)
 
 	var warnings []string
 	warnings = append(warnings, rr.GridDiagWarnings...)
@@ -737,15 +877,19 @@ func buildSemanticRenderSuccess(input *PresentationInput, cr *semantic.CompileRe
 	}
 
 	res := semanticRenderResult{
-		OK:          true,
-		OutputPath:  rr.OutputPath,
-		Overwrote:   rr.Overwrote,
-		Template:    input.Template,
-		DurationMs:  time.Since(start).Milliseconds(),
-		Warnings:    warnings,
-		Diagnostics: diags,
-		Quality:     semanticQualityScorePtr(input, fit, warnings, rr.TemplateLayouts),
+		OK:         true,
+		OutputPath: rr.OutputPath,
+		Overwrote:  rr.Overwrote,
+		Template:   input.Template,
+		DurationMs: time.Since(start).Milliseconds(),
+		Warnings:   warnings,
+		Quality:    semanticQualityScorePtr(input, gateFit, warnings, rr.TemplateLayouts),
+		Waivers:    policy.recorded(),
 	}
+	// A gate criterion no single finding accounts for is reported as one
+	// deck-level error, so the gate never fails without a finding to name.
+	diags = append(diags, qualityGateDiagnostics(res.Quality.QualityGate, diags)...)
+	res.Diagnostics = groupRootCauses(diags)
 	if rr.GenResult != nil {
 		res.SlideCount = rr.GenResult.SlideCount
 		res.ContentHash = rr.GenResult.ContentHash
@@ -754,7 +898,7 @@ func buildSemanticRenderSuccess(input *PresentationInput, cr *semantic.CompileRe
 	evidence.Finalize()
 	res.Quality.Evidence = evidence
 
-	status := semanticPublicationStatus(diags, res.Quality, res.ContentHash)
+	status := semanticPublicationStatus(res.Diagnostics, res.Quality, res.ContentHash)
 	res.DeterministicReady = &status.DeterministicReady
 	res.Publishable = &status.Publishable
 	res.ManualReviewRequired = &status.ManualReviewRequired
@@ -821,9 +965,12 @@ func semanticDiagFromCompile(d diagnostics.Diagnostic) semanticDiagnostic {
 	sd := semanticDiagnostic{
 		Code:         d.Code,
 		Severity:     string(d.Severity),
+		Blocking:     d.Severity == diagnostics.SeverityError,
 		Message:      d.Message,
 		SemanticPath: d.Path,
 	}
+	source := d
+	sd.diag = &source
 	if d.Details != nil {
 		if rp, ok := d.Details["raw_path"].(string); ok {
 			sd.RawPath = rp
@@ -858,17 +1005,24 @@ func semanticDiagFromFit(sm *semantic.SourceMap, f patterns.FitFinding) semantic
 		Action:          mapped.Action,
 		RecommendedEdit: mapped.Edit,
 	}
-	// A review finding the quality gate blocks on must not read as "info":
-	// agents skim severity to decide what to fix before deterministic_ready.
-	if deterministic.IsSubstantiveReview(f) && d.Severity == string(diagnostics.SeverityInfo) {
-		d.Severity = string(diagnostics.SeverityWarning)
-	}
+	// One severity model (go-slide-creator-x9rhq): a finding the quality gate
+	// blocks on is an error, and everything else from the fit pass is an
+	// advisory. A blocking BODY_TOO_LONG used to read "warning" here and "info"
+	// in validate_deck_spec.
+	d.Severity, d.Blocking = fitFindingSeverity(f)
 	if mapped.SlideIndex >= 0 {
 		idx := mapped.SlideIndex
 		d.SlideIndex = &idx
 		d.Message = zeroBasedSlideMessage(d.Message, slidepath.SlideIndex(f.Path), idx)
 	}
 	attachFixParams(&d, f.Fix)
+	source := diagnostics.FromFitFinding(f)
+	source.Severity = diagnostics.Severity(d.Severity)
+	source.Message = d.Message
+	if d.SemanticPath != "" {
+		source.Path = d.SemanticPath
+	}
+	d.diag = &source
 	return d
 }
 
@@ -958,9 +1112,40 @@ func semanticDiagFromFitWithIR(sm *semantic.SourceMap, ir *semantic.DeckIR, f pa
 // attribution of a rendered shape's text that the source map cannot make.
 func semanticDiagFromFitField(sm *semantic.SourceMap, ir *semantic.DeckIR, f patterns.FitFinding) semanticDiagnostic {
 	d := semanticDiagFromFit(sm, f)
-	if d.SemanticPath != "" || ir == nil || f.Code != patterns.ErrCodeTextBelowReadableMin || !strings.Contains(f.Path, "/rendered_shapes/") || f.Fix == nil {
-		return d
+	resolveLateBoundSemanticPath(&d, ir, f)
+	rawIdx := slidepath.SlideIndex(f.Path)
+	if d.SemanticPath == "" && rawIdx >= 0 && sm != nil {
+		// A finding on a generated object the author never wrote (the slide's
+		// pattern, a grid cell, a chrome placeholder) still names the slide to
+		// edit, never only a compiled pointer.
+		d.SemanticPath = sm.SlidePath(rawIdx)
 	}
+	if d.diag != nil {
+		if d.SemanticPath != "" {
+			d.diag.Path = d.SemanticPath
+		}
+		decorateReadabilityRefusal(d.diag, ir, sm, f)
+	}
+	return d
+}
+
+// resolveLateBoundSemanticPath names the DeckSpec field behind a finding the
+// source map cannot place: text in a pattern-generated grid cell, or in a
+// rendered shape whose id is allocated after compilation.
+func resolveLateBoundSemanticPath(d *semanticDiagnostic, ir *semantic.DeckIR, f patterns.FitFinding) {
+	if d.SemanticPath != "" || ir == nil || f.Code != patterns.ErrCodeTextBelowReadableMin || f.Fix == nil {
+		return
+	}
+	if !strings.Contains(f.Path, "/rendered_shapes/") {
+		if field := generatedCellSemanticPath(ir, f); field != "" {
+			d.SemanticPath = field
+		}
+		return
+	}
+	*d = renderedShapeSemanticPath(*d, ir, f)
+}
+
+func renderedShapeSemanticPath(d semanticDiagnostic, ir *semantic.DeckIR, f patterns.FitFinding) semanticDiagnostic {
 	text, _ := f.Fix.Params["rendered_shape_text"].(string)
 	idx := slidepath.SlideIndex(f.Path)
 	if text == "" || idx < 0 || idx >= len(ir.Slides) {

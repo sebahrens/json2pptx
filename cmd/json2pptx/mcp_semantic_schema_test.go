@@ -155,7 +155,9 @@ func TestSemanticMCP_UnknownKPIFieldDiagnostic(t *testing.T) {
 	}
 }
 
-// Every list_slide_kinds example must validate clean through validate_deck_spec.
+// Every list_slide_kinds example must validate through validate_deck_spec with
+// nothing to fix: no error and no warning. A one-slide deck may still carry
+// the sparse-layout advisories its render reports.
 func TestSemanticMCP_ListSlideKindsExamplesValidate(t *testing.T) {
 	ctx := context.Background()
 	res, err := handleListSlideKinds(ctx, makeRequest(map[string]any{"fields": []any{"item_schema"}}))
@@ -187,8 +189,13 @@ func TestSemanticMCP_ListSlideKindsExamplesValidate(t *testing.T) {
 		}
 		var env diagnostics.FindingEnvelope
 		structuredInto(t, vres.StructuredContent, &env)
-		if !env.OK || len(env.Findings) != 0 {
-			t.Errorf("%s: example does not validate clean: %+v", k.Kind, env.Findings)
+		if !env.OK {
+			t.Errorf("%s: example does not validate: %+v", k.Kind, env.Findings)
+		}
+		for _, f := range env.Findings {
+			if f.Severity != diagnostics.SeverityInfo || f.Blocking == nil || *f.Blocking {
+				t.Errorf("%s: example carries a finding to fix: %+v", k.Kind, f)
+			}
 		}
 	}
 }

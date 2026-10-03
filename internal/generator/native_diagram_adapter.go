@@ -79,6 +79,14 @@ func layoutNativeDiagram(spec *types.DiagramSpec, bounds types.BoundingBox, env 
 		return out, err
 	}
 	ins := panelShapeInsert{bounds: bounds, diagramType: spec.Type}
+	// The shared surface style, resolved against this template: the default
+	// card of a taxonomy framework is neutral with an accent title that reads.
+	ins.authoredTints = authoredTaxonomyColors(spec)
+	surface := nativeSurface{colors: env.themeColors}
+	card := func(titleSize int) func(int) taxonomyTint {
+		tint := surface.cardTint(titleSize)
+		return func(int) taxonomyTint { return tint }
+	}
 	fit := func(kind string, panels []nativePanelData, meta houseDiagramMeta) {
 		var f *patterns.FitFinding
 		ins.bounds, f = fitNativeFrameworkAt(kind, ins.bounds, panels, meta, env.fontName, site)
@@ -103,7 +111,7 @@ func layoutNativeDiagram(spec *types.DiagramSpec, bounds types.BoundingBox, env 
 	case isSWOTDiagram(spec):
 		ins.panels = swotPanels(spec)
 		ins.swotMode = true
-		ins.taxonomyTints = taxonomyPalette(spec, 4, swotDefaultTint)
+		ins.taxonomyTints = taxonomyPalette(spec, 4, card(swotHeaderFontSize))
 		fit("swot", ins.panels, houseDiagramMeta{})
 
 	case isPESTELDiagram(spec):
@@ -114,7 +122,7 @@ func layoutNativeDiagram(spec *types.DiagramSpec, bounds types.BoundingBox, env 
 			return out, fmt.Errorf("pestel: no segments parsed")
 		}
 		ins.pestelMode = true
-		ins.taxonomyTints = taxonomyPalette(spec, len(pestelSegmentColors), uniformTaxonomyTint)
+		ins.taxonomyTints = taxonomyPalette(spec, len(pestelSegmentColors), card(pestelHeaderFontSize))
 		fit("pestel", ins.panels, houseDiagramMeta{})
 
 	case isNineBoxDiagram(spec):
@@ -172,7 +180,7 @@ func layoutNativeDiagram(spec *types.DiagramSpec, bounds types.BoundingBox, env 
 				"path", site.path, "keys", ignored)
 		}
 		ins.bmcMode = true
-		ins.taxonomyTints = taxonomyPalette(spec, len(bmcSectionOrder), bmcDefaultTint)
+		ins.taxonomyTints = taxonomyPalette(spec, len(bmcSectionOrder), card(bmcHeaderFontSize))
 
 	case isProcessFlowDiagram(spec):
 		steps, connections, direction := parseProcessFlowDiagramData(spec.Data)
@@ -339,17 +347,18 @@ func fitNativeFrameworkAt(kind string, bounds types.BoundingBox, panels []native
 // and stay below base+nativeInsertShapeIDs(ins). The group carries no
 // description; callers apply the alt text.
 func renderNativeInsert(ins *panelShapeInsert, base uint32, env nativeDiagramEnv) string {
+	surface := nativeSurface{colors: env.themeColors, authored: ins.authoredTints}
 	switch {
 	case ins.swotMode:
 		return generateSWOTGroupXML(ins.panels, ins.bounds, base, ins.taxonomyTints)
 	case ins.pestelMode:
 		return generatePESTELGroupXML(ins.panels, ins.bounds, base, ins.taxonomyTints)
 	case ins.valueChainMode:
-		return generateValueChainGroupXML(ins.panels, ins.bounds, base, ins.valueChainMeta)
+		return generateValueChainGroupXML(ins.panels, ins.bounds, base, ins.valueChainMeta, surface)
 	case ins.nineBoxMode:
 		return generateNineBoxGroupXML(ins.panels, ins.bounds, base, ins.nineBoxTints)
 	case ins.kpiDashboardMode:
-		return generateKPIDashboardGroupXML(ins.panels, ins.bounds, base, env.themeColors)
+		return generateKPIDashboardGroupXML(ins.panels, ins.bounds, base, surface)
 	case ins.portersFiveMode:
 		return generatePortersFiveGroupXML(ins.panels, ins.bounds, base, env.themeColors)
 	case ins.bmcMode:
@@ -365,11 +374,11 @@ func renderNativeInsert(ins *panelShapeInsert, base uint32, env nativeDiagramEnv
 	case ins.stylishPanelsMode:
 		return generateStylishPanelsGroupXML(ins.panels, ins.bounds, base)
 	case ins.rowsMode:
-		return generatePanelRowsGroupXML(ins.panels, ins.bounds, base)
+		return generatePanelRowsGroupXML(ins.panels, ins.bounds, base, surface)
 	case ins.statCardsMode:
-		return generateStatCardsGroupXML(ins.panels, ins.bounds, base, env.fontName)
+		return generateStatCardsGroupXML(ins.panels, ins.bounds, base, env.fontName, surface)
 	default:
-		return generatePanelGroupXML(ins.panels, ins.bounds, base, env.fontName)
+		return generatePanelGroupXML(ins.panels, ins.bounds, base, env.fontName, surface)
 	}
 }
 
