@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"slices"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -23,7 +25,7 @@ type journeyMaturity struct{}
 
 func (jm *journeyMaturity) Name() string { return "journey-maturity-model" }
 func (jm *journeyMaturity) Description() string {
-	return "Horizontal maturity ladder: 3-6 stage columns with a numbered header, a 1-3 line description, and an optional 'where we are' marker that highlights the current stage"
+	return "Ascending maturity staircase: 3-6 stage columns, each stepping up from the last, with a numbered header, a 1-3 line description, and an optional 'where we are' marker that highlights the current stage"
 }
 func (jm *journeyMaturity) UseWhen() string {
 	return "Capability or digital maturity model with 3-6 named stages where progression matters and a single stage represents the current state; prefer value-chain when stages have no progression semantics, phase-roadmap when stages are time-anchored, and process-flow for short action steps without descriptions"
@@ -76,8 +78,30 @@ type JourneyMaturityValues struct {
 	Stages []JourneyMaturityStage `json:"stages"`
 }
 
-// JourneyMaturityOverrides reuses the standard text overrides.
-type JourneyMaturityOverrides = TextOverrides
+// JourneyMaturityOverrides is the standard text overrides plus the ladder
+// style.
+type JourneyMaturityOverrides struct {
+	TextOverrides
+	// Style is "staircase" (default: every stage's column starts higher than
+	// the one before it) or "flat" (equal boxes in one row joined by small
+	// arrows — the look before go-slide-creator-j8t7o).
+	Style string `json:"style,omitempty"`
+}
+
+// The accepted overrides.style values.
+const (
+	journeyMaturityStyleStaircase = "staircase"
+	journeyMaturityStyleFlat      = "flat"
+)
+
+var journeyMaturityStyles = []string{journeyMaturityStyleStaircase, journeyMaturityStyleFlat}
+
+// journeyMaturityOverridesSchema is the text overrides plus the ladder style.
+func journeyMaturityOverridesSchema() *Schema {
+	s := textOverridesSchema()
+	s.raw.Properties["style"] = EnumSchema(journeyMaturityStyles...).WithDescription("staircase (default): each stage's column starts higher than the one before it, its header on top and its description directly beneath, all columns ending on one baseline; the rise per stage shrinks when the first stage's description needs the room. flat: equal header and description boxes in one row joined by small arrows (the earlier look)").WithDefault(journeyMaturityStyleStaircase)
+	return s
+}
 
 // JourneyMaturityCellOverride is the shared per-cell override; indexed by stage.
 type JourneyMaturityCellOverride = CellOverride
@@ -111,13 +135,13 @@ func (jm *journeyMaturity) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"values":         valuesSchema,
-			"overrides":      textOverridesSchema(),
+			"overrides":      journeyMaturityOverridesSchema(),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Horizontal maturity ladder of 3-6 stage columns with a numbered header, description, and optional current-stage marker")
+	}).WithDescription("Ascending maturity staircase of 3-6 stage columns with a numbered header, description, and optional current-stage marker")
 }
 
 func (jm *journeyMaturity) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -133,6 +157,9 @@ func (jm *journeyMaturity) Validate(values, overrides any, cellOverrides map[int
 		if ovr, ok := overrides.(*JourneyMaturityOverrides); ok {
 			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
 				errs = append(errs, err)
+			}
+			if ovr.Style != "" && !slices.Contains(journeyMaturityStyles, ovr.Style) {
+				errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, journeyMaturityStyles))
 			}
 		}
 	}
@@ -342,6 +369,10 @@ func (jm *journeyMaturity) Expand(ctx ExpandContext, values, overrides any, cell
 
 	colsJSON, _ := json.Marshal(n)
 
+	if ovr.Style != journeyMaturityStyleFlat {
+		return journeyMaturityStaircase(ctx, colsJSON, headerCells, bodyCells, markerCells), nil
+	}
+
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
 		Gap:     ctx.Gap(8),
@@ -364,6 +395,130 @@ func (jm *journeyMaturity) Expand(ctx ExpandContext, values, overrides any, cell
 	}
 
 	return grid, nil
+}
+
+// Staircase geometry (go-slide-creator-j8t7o).
+const (
+	// journeyMaturityStairGapPt is the column gap; journeyMaturityStairRowGapPt
+	// the gap under a header and above the marker.
+	journeyMaturityStairGapPt    = 8.0
+	journeyMaturityStairRowGapPt = 4.0
+	// journeyMaturityMinRisePt is the smallest step up from one stage to the
+	// next that still reads as a staircase; journeyMaturityMaxRisePt and
+	// journeyMaturityMaxRiseFrac (the whole staircase's share of the content
+	// height) cap it.
+	journeyMaturityMinRisePt   = 10.0
+	journeyMaturityMaxRisePt   = 44.0
+	journeyMaturityMaxRiseFrac = 0.42
+	// journeyMaturityHeaderMinPt is a one-line header's height.
+	journeyMaturityHeaderMinPt = 40.0
+	// journeyMaturityBaseMinPt is the least the first stage's description
+	// column is tall, so a stage without copy still reads as a step.
+	journeyMaturityBaseMinPt = 48.0
+	// journeyMaturityMarkerPt is the "We are here" callout's height and
+	// journeyMaturityMarkerInsetPt its text margin.
+	journeyMaturityMarkerPt      = 46.0
+	journeyMaturityMarkerInsetPt = 2.0
+)
+
+// journeyMaturityRisePt is the step up from one stage to the next: as tall as
+// the content area allows up to the cap, and smaller when the descriptions
+// need the height — stage i's column is i rises taller than the first, so it
+// is the early stages' copy that limits the staircase. needs are the
+// description heights per stage and fixedPt the header, marker and gaps.
+func journeyMaturityRisePt(areaHPt, fixedPt float64, needs []float64) float64 {
+	n := len(needs)
+	if n < 2 {
+		return 0
+	}
+	rise := math.Floor(math.Min(journeyMaturityMaxRisePt, areaHPt*journeyMaturityMaxRiseFrac/float64(n-1)))
+	for ; rise > journeyMaturityMinRisePt; rise-- {
+		base := areaHPt - fixedPt - float64(n-1)*rise
+		fits := true
+		for i, need := range needs {
+			if need > base+float64(i)*rise {
+				fits = false
+				break
+			}
+		}
+		if fits {
+			return rise
+		}
+	}
+	return journeyMaturityMinRisePt
+}
+
+// journeyMaturityStaircase lays the stage cells out as an ascending
+// staircase. The grid keeps the flat style's three rows — headers,
+// descriptions, markers — so cell paths and overlay anchors address the same
+// (row, column) in both styles; the steps are made inside the rows. The
+// header row is as tall as the whole staircase and stage i's header is inset
+// to its own step; stage i's description reaches up from the description row
+// to the underside of its header, and every description ends on the row's
+// baseline.
+func journeyMaturityStaircase(ctx ExpandContext, colsJSON []byte, headers, bodies, markers []*jsonschema.GridCellInput) *jsonschema.ShapeGridInput {
+	n := len(headers)
+	contentW, contentH := contentAreaPt(ctx)
+	colW := equalColumnWidthPt(contentW, n, ctx.Gap(journeyMaturityStairGapPt))
+	fonts := ctx.themeFonts()
+
+	headerH := journeyMaturityHeaderMinPt
+	needs := make([]float64, n)
+	for i := range headers {
+		headerH = math.Max(headerH, writtenFitHeightPt(fonts, headers[i].Shape.Text, colW, 0))
+		// The description hangs from its header instead of floating in the
+		// middle of a column that is taller for every later stage.
+		if len(bodies[i].Shape.Text) > 0 {
+			bodies[i].Shape.Text = withVerticalAlign(bodies[i].Shape.Text, "t")
+			needs[i] = writtenFitHeightPt(fonts, bodies[i].Shape.Text, colW, 0)
+		}
+	}
+	hasMarker := false
+	for _, m := range markers {
+		if m.Shape != nil && m.Shape.Geometry == journeyMaturityMarkerGeometry {
+			hasMarker = true
+			// The callout's own text box is the lower part of the shape; the
+			// uniform margin on top of that leaves a 46pt marker no line.
+			m.Shape.Text = withTextInsets(m.Shape.Text, journeyMaturityMarkerInsetPt)
+		}
+	}
+	fixed := headerH + journeyMaturityStairRowGapPt
+	if hasMarker {
+		fixed += journeyMaturityMarkerPt + journeyMaturityStairRowGapPt
+	}
+	rise := journeyMaturityRisePt(contentH, fixed, needs)
+
+	// The description row is as tall as the copy needs — stage i's column is
+	// i rises taller than the first — so the columns end under the longest
+	// description instead of running to the bottom of the slide as tall,
+	// mostly empty blocks.
+	base := journeyMaturityBaseMinPt
+	for i, need := range needs {
+		base = math.Max(base, need-float64(i)*rise)
+	}
+	base = math.Ceil(base)
+
+	for i := 0; i < n; i++ {
+		headers[i].InsetTop = float64(n-1-i) * rise
+		headers[i].InsetBottom = float64(i) * rise
+		bodies[i].BleedTop = float64(i) * rise
+	}
+	stairH := float64(n-1)*rise + headerH
+	rows := []jsonschema.GridRowInput{
+		{MinHeight: stairH, MaxHeight: stairH, Cells: headers},
+		{MaxHeight: base, Cells: bodies},
+	}
+	if hasMarker {
+		rows = append(rows, jsonschema.GridRowInput{MinHeight: journeyMaturityMarkerPt, MaxHeight: journeyMaturityMarkerPt, Cells: markers})
+	}
+
+	return &jsonschema.ShapeGridInput{
+		Columns:       json.RawMessage(colsJSON),
+		Gap:           ctx.Gap(journeyMaturityStairGapPt),
+		RowGap:        journeyMaturityStairRowGapPt,
+		Rows:          rows,
+		VerticalAlign: GridVerticalAlignDefault,
+	}
 }
 
 // journeyMaturityMarkerLinePt is the accent outline of the "We are here"

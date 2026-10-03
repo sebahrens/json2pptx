@@ -147,7 +147,7 @@ func TestJourneyMaturity_Validate_CellOverrideOutOfRange(t *testing.T) {
 func TestJourneyMaturity_Expand_DefaultLayout(t *testing.T) {
 	p, _ := Default().Get("journey-maturity-model")
 	v := validJourneyMaturityValues(4)
-	grid, err := p.Expand(ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}, v, journeyFlat, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -180,7 +180,7 @@ func TestJourneyMaturity_Expand_BoundaryStageCounts(t *testing.T) {
 	for _, n := range []int{3, 6} {
 		t.Run(t.Name(), func(t *testing.T) {
 			v := validJourneyMaturityValues(n)
-			grid, err := p.Expand(ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}, v, nil, nil)
+			grid, err := p.Expand(ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}, v, journeyFlat, nil)
 			if err != nil {
 				t.Fatalf("n=%d: Expand failed: %v", n, err)
 			}
@@ -197,7 +197,7 @@ func TestJourneyMaturity_Expand_CurrentStageMarker(t *testing.T) {
 	p, _ := Default().Get("journey-maturity-model")
 	v := validJourneyMaturityValues(5)
 	v.Stages[2].Current = true
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, v, journeyFlat, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -254,7 +254,7 @@ func TestJourneyMaturity_Expand_CurrentStageMarker(t *testing.T) {
 func TestJourneyMaturity_Expand_NoCurrentMarker(t *testing.T) {
 	p, _ := Default().Get("journey-maturity-model")
 	v := validJourneyMaturityValues(4)
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, v, journeyFlat, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -271,7 +271,7 @@ func TestJourneyMaturity_Expand_NoCurrentMarker(t *testing.T) {
 func TestJourneyMaturity_Expand_AutoNumbersStages(t *testing.T) {
 	p, _ := Default().Get("journey-maturity-model")
 	v := validJourneyMaturityValues(4)
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, v, journeyFlat, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -289,7 +289,7 @@ func TestJourneyMaturity_Expand_RespectsExplicitNumber(t *testing.T) {
 	v.Stages[0].Number = 5
 	v.Stages[1].Number = 6
 	v.Stages[2].Number = 7
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	grid, err := p.Expand(ExpandContext{}, v, journeyFlat, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -302,7 +302,7 @@ func TestJourneyMaturity_Expand_AccentOverride(t *testing.T) {
 	p, _ := Default().Get("journey-maturity-model")
 	v := validJourneyMaturityValues(4)
 	v.Stages[1].Current = true
-	overrides := &JourneyMaturityOverrides{Accent: "accent4"}
+	overrides := &JourneyMaturityOverrides{TextOverrides: TextOverrides{Accent: "accent4"}, Style: "flat"}
 	grid, err := p.Expand(ExpandContext{}, v, overrides, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
@@ -358,7 +358,7 @@ func TestJourneyMaturity_Expand_CellOverrideAccentBar(t *testing.T) {
 	p, _ := Default().Get("journey-maturity-model")
 	v := validJourneyMaturityValues(4)
 	cellOverrides := map[int]any{1: &JourneyMaturityCellOverride{AccentBar: true}}
-	grid, err := p.Expand(ExpandContext{}, v, nil, cellOverrides)
+	grid, err := p.Expand(ExpandContext{}, v, journeyFlat, cellOverrides)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}

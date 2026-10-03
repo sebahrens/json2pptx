@@ -203,9 +203,13 @@ var enumMap = map[string]map[string][]string{
 	"BackgroundInput": {
 		"fit": canonicalBackgroundFits,
 	},
+	"GridRowInput": {
+		"rule": {"above", "below", "both"},
+	},
 	"ConnectorSpecInput": {
 		"style": {"arrow", "line"},
 		"dash":  {"solid", "dash", "dot", "lgDash", "dashDot"},
+		"head":  {"sm", "med", "lg"},
 	},
 	"ComposeInput": {
 		"direction": {"vertical", "horizontal"},

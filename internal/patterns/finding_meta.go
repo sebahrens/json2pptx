@@ -964,6 +964,18 @@ var findingMetaRegistry = map[string]FindingMeta{
 		ExampleBefore: `{"highlight_color": "accent2", "steps": [{"label": "Manufacturing", "highlight": true}]}`,
 		ExampleAfter:  `{"steps": [{"label": "Manufacturing", "highlight": true}]}`,
 	},
+	ErrCodeSwimlaneFlowAmbiguous: {
+		Code:        ErrCodeSwimlaneFlowAmbiguous,
+		Summary:     "A swimlane has two steps in one column and no stated order, so its arrows are a guess.",
+		Severity:    "review",
+		WhenEmitted: "The swimlane pattern's PostExpandWarnings hook fires when a step column holds a step in more than one lane and values.flow is not set. The arrows are then derived: down each column, top lane first, then on to the next column — the process only when every column holds one step.",
+		RemediationSteps: []string{
+			"Give every step its own column: one non-empty entry per column, empty strings in the other lanes. The arrows then connect the columns left to right.",
+			"Or keep the layout and state the order in values.flow as [lane, step] pairs (0-based), one per step in the order the process visits them.",
+		},
+		ExampleBefore: `{"lanes": [{"actor": "Customer", "steps": ["Submit", "Approve"]}, {"actor": "Support", "steps": ["Triage", "Resolve"]}]}`,
+		ExampleAfter:  `{"lanes": [{"actor": "Customer", "steps": ["Submit", "Approve"]}, {"actor": "Support", "steps": ["Triage", "Resolve"]}], "flow": [[0, 0], [1, 0], [1, 1], [0, 1]]}`,
+	},
 	ErrCodeRotatedAccentUnreadable: {
 		Code:        ErrCodeRotatedAccentUnreadable,
 		Summary:     "accent_strategy=rotate cycles through the template's safe accents only; some theme accents are excluded as unreadable under lt1 body text or reserved for negative meaning.",

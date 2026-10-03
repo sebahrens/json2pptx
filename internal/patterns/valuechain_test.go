@@ -164,8 +164,10 @@ func TestValueChain_Expand_DefaultLayout(t *testing.T) {
 	if string(grid.Columns) != "8" {
 		t.Errorf("expected columns=8, got %s", string(grid.Columns))
 	}
-	if grid.Rows[0].Connector == nil {
-		t.Error("expected connector on the label row (arrows between steps)")
+	// The default style draws the steps as arrows; nothing is drawn between
+	// them (go-slide-creator-gm4q9).
+	if grid.Rows[0].Connector != nil {
+		t.Error("the arrow style must not draw connectors between interlocking arrows")
 	}
 }
 
@@ -250,12 +252,12 @@ func TestValueChain_Expand_DescriptionFillIsBg1(t *testing.T) {
 func TestValueChain_Expand_AccentOverride(t *testing.T) {
 	p, _ := Default().Get("value-chain")
 	v := validValueChainValues(4)
-	overrides := &ValueChainOverrides{Accent: "accent4"}
+	overrides := &ValueChainOverrides{TextOverrides: TextOverrides{Accent: "accent4"}, Style: "boxes"}
 	grid, err := p.Expand(ExpandContext{}, v, overrides, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
-	// Connector color should follow the accent override.
+	// The boxes style joins its steps with connectors in the accent.
 	if grid.Rows[0].Connector == nil {
 		t.Fatal("expected connector on label row")
 	}

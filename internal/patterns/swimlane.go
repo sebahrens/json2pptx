@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -64,6 +65,11 @@ type SwimlaneLane struct {
 // SwimlaneValues holds the lanes for the swimlane pattern.
 type SwimlaneValues struct {
 	Lanes []SwimlaneLane `json:"lanes"`
+	// Flow is the order the arrows follow: [lane, step] pairs (both 0-based),
+	// one per step in the order the process visits them. Omitted, the arrows
+	// follow the columns left to right and, inside a column, the lanes top to
+	// bottom — which is only the process when every column holds one step.
+	Flow [][2]int `json:"flow,omitempty"`
 }
 
 // SwimlaneOverrides is the standard text overrides.
@@ -108,6 +114,27 @@ func swimlaneStepBudget(steps, lanes int) int {
 	return swimlaneStepBudgets[steps-2][lanes-2]
 }
 
+// swimlaneSharedColumn returns the first column (0-based) that holds a step
+// in more than one lane, and the number of lanes it holds one in.
+func swimlaneSharedColumn(lanes []SwimlaneLane) (col, count int, shared bool) {
+	steps := 0
+	if len(lanes) > 0 {
+		steps = len(lanes[0].Steps)
+	}
+	for j := 0; j < steps; j++ {
+		n := 0
+		for _, lane := range lanes {
+			if j < len(lane.Steps) && lane.Steps[j] != "" {
+				n++
+			}
+		}
+		if n > 1 {
+			return j, n, true
+		}
+	}
+	return 0, 0, false
+}
+
 func (s *swimlane) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 	v, ok := values.(*SwimlaneValues)
 	if !ok || v == nil {
@@ -119,6 +146,14 @@ func (s *swimlane) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 	}
 	budget := swimlaneStepBudget(steps, len(v.Lanes))
 	var warnings []string
+	// The arrows can only be derived when every column holds one step. With
+	// two steps in a column and no stated order they run down the column and
+	// on to the next one, which is rarely the process (go-slide-creator-v786r).
+	if len(v.Flow) == 0 {
+		if col, n, shared := swimlaneSharedColumn(v.Lanes); shared {
+			warnings = append(warnings, fmt.Sprintf("%s: swimlane step column %d holds a step in %d lanes and values.flow is not set, so the arrows run down each column, top lane first, then on to the next column — which is the process only by accident; give every step its own column (empty strings elsewhere), or state the order in values.flow as [lane, step] pairs, e.g. [[0,0],[1,0],[1,1]]", ErrCodeSwimlaneFlowAmbiguous, col, n))
+		}
+	}
 	for i, lane := range v.Lanes {
 		actorBudget := 0
 		switch {
@@ -143,14 +178,15 @@ func (s *swimlane) Schema() *Schema {
 	laneSchema := ObjectSchema(
 		map[string]*Schema{
 			"actor": StringSchema(40).WithDescription("Lane actor/function label; about 30 characters with five lanes, 15 with six"),
-			"steps": ArraySchema(StringSchema(80), 2, 8).WithDescription("Steps in this lane (empty = no shape). Approximate readable chars per step by step columns x lanes (lanes 2/3/4/5/6): steps 2: 80/80/80/80/52; 3: 80/80/80/62/32; 4: 80/80/75/50/25; 5: 80/77/47/32/17; 6: 80/75/45/30/15; 7: 80/51/31/21/11; 8: 78/50/30/20/10"),
+			"steps": ArraySchema(StringSchema(80), 2, 8).WithDescription("Steps in this lane, one entry per step column (empty = no shape). Give every step its own column — empty strings in the other lanes — so the arrows, which connect the columns left to right, follow the process; when two lanes hold a step in the same column, state the order in values.flow. Approximate readable chars per step by step columns x lanes (lanes 2/3/4/5/6): steps 2: 80/80/80/80/52; 3: 80/80/80/62/32; 4: 80/80/75/50/25; 5: 80/77/47/32/17; 6: 80/75/45/30/15; 7: 80/51/31/21/11; 8: 78/50/30/20/10"),
 		},
 		[]string{"actor", "steps"},
 	).WithAdditionalProperties(false)
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
-			"lanes": ArraySchema(laneSchema, 2, 6).WithDescription("Horizontal lanes (2-6 actors)"),
+			"lanes": ArraySchema(laneSchema, 2, 6).WithDescription("Horizontal lanes (2-6 actors), each bounded by full-width hairline rules with its actor label at the left"),
+			"flow":  ArraySchema(ArraySchema(IntegerSchema(0, 7), 2, 2), 2, 64).WithDescription("Order of the arrows as [lane, step] pairs (both 0-based): one arrow from each pair to the next. Omit it when every step column holds one step — the arrows then connect the columns left to right. Set it when lanes share a column (SWIMLANE_FLOW_AMBIGUOUS otherwise) or the process loops back. Each pair must name a non-empty step"),
 		},
 		[]string{"lanes"},
 	).WithAdditionalProperties(false)
@@ -214,6 +250,8 @@ func (s *swimlane) Validate(values, overrides any, cellOverrides map[int]any) er
 		}
 	}
 
+	errs = append(errs, validateSwimlaneFlow(name, vals)...)
+
 	// Total cells: lanes * (1 actor label + steps)
 	totalCells := 0
 	for _, lane := range vals.Lanes {
@@ -224,6 +262,42 @@ func (s *swimlane) Validate(values, overrides any, cellOverrides map[int]any) er
 	}
 
 	return errors.Join(errs...)
+}
+
+// validateSwimlaneFlow checks that values.flow names existing, non-empty
+// steps and never links a step to itself.
+func validateSwimlaneFlow(name string, vals *SwimlaneValues) []error {
+	if len(vals.Flow) == 0 {
+		return nil
+	}
+	var errs []error
+	if len(vals.Flow) < 2 {
+		errs = append(errs, errMinItems(name, "flow", 2, len(vals.Flow), "(an arrow needs two steps; omit flow to connect the columns left to right)"))
+	}
+	for k, ref := range vals.Flow {
+		path := fmt.Sprintf("flow[%d]", k)
+		lane, step := ref[0], ref[1]
+		if lane < 0 || lane >= len(vals.Lanes) {
+			errs = append(errs, errOutOfRange(name, path+"[0]", 0, len(vals.Lanes)-1, lane))
+			continue
+		}
+		if step < 0 || step >= len(vals.Lanes[lane].Steps) {
+			errs = append(errs, errOutOfRange(name, path+"[1]", 0, len(vals.Lanes[lane].Steps)-1, step))
+			continue
+		}
+		if vals.Lanes[lane].Steps[step] == "" {
+			errs = append(errs, newValidationError(name, path, ErrCodeEmptyValue,
+				fmt.Sprintf("swimlane: %s names lanes[%d].steps[%d], which is empty — flow pairs are [lane, step] (0-based) and must point at a step that has text", path, lane, step),
+				ReshapeValueFix(path, "[lane, step] of a non-empty step", "[0, 0]")))
+			continue
+		}
+		if k > 0 && vals.Flow[k-1] == ref {
+			errs = append(errs, newValidationError(name, path, ErrCodeOutOfRange,
+				fmt.Sprintf("swimlane: %s repeats flow[%d] — an arrow cannot run from a step to itself", path, k-1),
+				RemoveFieldFix(path)))
+		}
+	}
+	return errs
 }
 
 func (s *swimlane) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
@@ -261,28 +335,31 @@ func (s *swimlane) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	colsJSON, _ := json.Marshal(cols)
 
 	cellIdx := 0
+	// Every lane is bounded by full-width hairline rules — one above the
+	// first lane, one between lanes, one below the last — so a step's lane is
+	// read from the band it sits in, not inferred from its height on the
+	// slide (go-slide-creator-jz5r9). The rules are row rules: they sit in
+	// the lane gaps and take no row, so lane i is still grid row i for links
+	// and overlay anchors.
 	var rows []jsonschema.GridRowInput
 
-	for i, lane := range vals.Lanes {
-		// Alternate lane background
-		// Lanes alternate two neutral steps with no outline
-		// (go-slide-creator-pgdkp); the 4pt grid gutter separates the cells.
-		laneFill := string(neutralFillJSON(NeutralTint4))
-		if i%2 == 1 {
-			laneFill = string(neutralFillJSON(NeutralTint8))
-		}
-		laneLine := noLine
+	// Step tiles are the only filled shapes: one neutral tint, no outline
+	// (go-slide-creator-pgdkp).
+	laneFill := string(neutralFillJSON(NeutralTint8))
+	laneLine := noLine
 
+	for _, lane := range vals.Lanes {
 		cells := make([]*jsonschema.GridCellInput, numCols)
 
-		// Actor label cell
-		// Actor labels are structure, not emphasis: a neutral 16% block with
-		// dk1 text instead of a column of solid accent (go-slide-creator-8xsj3).
-		actorText := buildSwimlaneTextContent(lane.Actor, headerSize, true, "dk1", "ctr")
+		// The actor label is the lane's heading: bold dk1 text at the left
+		// of its band, with no fill of its own. It was a 16% tile, the
+		// heaviest shape on the slide (go-slide-creator-jz5r9).
+		actorText := buildSwimlaneTextContent(lane.Actor, headerSize, true, "dk1", "l")
 		cells[0] = &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     neutralFillJSON(NeutralTint16),
+				Fill:     json.RawMessage(`"none"`),
+				Line:     noLine,
 				Text:     actorText,
 			},
 		}
@@ -317,7 +394,25 @@ func (s *swimlane) Expand(ctx ExpandContext, values, overrides any, cellOverride
 			cellIdx++
 		}
 
-		rows = append(rows, jsonschema.GridRowInput{Cells: cells})
+		rule := "below"
+		if len(rows) == 0 {
+			rule = "both"
+		}
+		rows = append(rows, jsonschema.GridRowInput{Cells: cells, Rule: rule})
+	}
+
+	// A step tile is as tall as the longest step needs, centred in its lane:
+	// the lane is the band between its rules, and the air above and below
+	// the tiles is where a hand-off arrow to the next lane is drawn. Tiles
+	// that filled their lane left that arrow a few points to live in
+	// (go-slide-creator-jz5r9). A lane shorter than the tile caps it.
+	tileH := swimlaneTileHeightPt(ctx, rows, stepCount)
+	for _, row := range rows {
+		for j, c := range row.Cells {
+			if j > 0 && c != nil && c.Shape != nil && len(c.Shape.Text) > 0 {
+				c.MaxHeight = tileH
+			}
+		}
 	}
 
 	grid := &jsonschema.ShapeGridInput{
@@ -325,7 +420,7 @@ func (s *swimlane) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		ColGap:  swimlaneColGap(stepCount),
 		RowGap:  swimlaneRowGap(len(vals.Lanes)),
 		Rows:    rows,
-		Links:   swimlaneLinks(vals.Lanes, accent),
+		Links:   swimlaneLinks(vals, accent),
 	}
 
 	return grid, nil
@@ -358,21 +453,58 @@ func swimlaneRowGap(lanes int) float64 {
 	return 10
 }
 
-// swimlaneLinks joins consecutive steps in reading order — column by
-// column, top lane first within a column — with accent arrows, the same
-// connector style value-chain and journey-maturity use. A lane change in the
-// next column turns in the column gutter; a hand-off within one column runs
-// straight down. Empty positions are skipped (go-slide-creator-0b3f6).
-func swimlaneLinks(lanes []SwimlaneLane, accent string) []jsonschema.GridLinkInput {
+// swimlaneTileMinPt is the height of a step tile whose text needs less.
+const swimlaneTileMinPt = 44.0
+
+// swimlaneTileHeightPt is the one height every step tile takes: the written
+// fit of the longest step at the step column width, floored at
+// swimlaneTileMinPt.
+func swimlaneTileHeightPt(ctx ExpandContext, rows []jsonschema.GridRowInput, steps int) float64 {
+	if steps < 1 {
+		return swimlaneTileMinPt
+	}
+	contentW, _ := contentAreaPt(ctx)
+	colW := (contentW - float64(steps)*swimlaneColGap(steps)) * 0.85 / float64(steps)
+	fonts := ctx.themeFonts()
+	h := swimlaneTileMinPt
+	for _, row := range rows {
+		for j, c := range row.Cells {
+			if j == 0 || c == nil || c.Shape == nil || len(c.Shape.Text) == 0 {
+				continue
+			}
+			h = math.Max(h, writtenFitHeightPt(fonts, c.Shape.Text, colW, 0))
+		}
+	}
+	return h
+}
+
+// swimlaneLinks joins consecutive steps with accent arrows. The order is
+// values.flow when it is given (go-slide-creator-v786r); otherwise reading
+// order — column by column, top lane first within a column — which is the
+// process when every column holds one step. A lane change in another column
+// turns in the column gutter; a hand-off within one column runs straight
+// across the lane rule. Empty positions are skipped (go-slide-creator-0b3f6).
+func swimlaneLinks(vals *SwimlaneValues, accent string) []jsonschema.GridLinkInput {
+	lanes := vals.Lanes
 	steps := 0
 	if len(lanes) > 0 {
 		steps = len(lanes[0].Steps)
 	}
 	var order [][2]int // {grid row, grid column}
-	for j := 0; j < steps; j++ {
-		for i, lane := range lanes {
-			if j < len(lane.Steps) && lane.Steps[j] != "" {
-				order = append(order, [2]int{i, j + 1})
+	if len(vals.Flow) > 0 {
+		for _, ref := range vals.Flow {
+			lane, step := ref[0], ref[1]
+			if lane < 0 || lane >= len(lanes) || step < 0 || step >= len(lanes[lane].Steps) || lanes[lane].Steps[step] == "" {
+				continue
+			}
+			order = append(order, [2]int{lane, step + 1})
+		}
+	} else {
+		for j := 0; j < steps; j++ {
+			for i, lane := range lanes {
+				if j < len(lane.Steps) && lane.Steps[j] != "" {
+					order = append(order, [2]int{i, j + 1})
+				}
 			}
 		}
 	}

@@ -627,6 +627,13 @@ func GenerateAccentBarXML(bar *ResolvedAccentBar) ([]byte, error) {
 		Fill:     ResolveFillString(color),
 		Line:     pptx.NoLine(),
 	}
+	if len(bar.Spec.Fill) > 0 {
+		fill, err := ResolveFillInput(bar.Spec.Fill)
+		if err != nil {
+			return nil, err
+		}
+		opts.Fill = fill
+	}
 
 	return pptx.GenerateShape(opts)
 }

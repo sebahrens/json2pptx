@@ -182,7 +182,14 @@ type Row struct {
 	MaxHeight  float64        // Maximum row height in points (0 = no maximum)
 	Cells      []Cell         // Cells in this row
 	Connector  *ConnectorSpec // Optional connector between adjacent cells in this row
+	// Rule draws a full-width hairline (RowRulePt, dk1 at 30%) in the middle
+	// of the gap "above" or "below" the row, or "both". It takes no height:
+	// rows keep their place and their index.
+	Rule string
 }
+
+// RowRulePt is the thickness of a row rule.
+const RowRulePt = 0.75
 
 // ConnectorSpec defines connectors drawn between adjacent cells in a row.
 type ConnectorSpec struct {
@@ -190,6 +197,10 @@ type ConnectorSpec struct {
 	Color string  // Hex color (e.g., "FF0000") or scheme ref (e.g., "accent1"). Default: "000000"
 	Width float64 // Line width in points. Default: 1.0
 	Dash  string  // Dash style: "solid", "dash", "dot", "lgDash", "dashDot". Default: "solid"
+	// Head is the arrowhead size of the "arrow" style: "sm", "med" (default)
+	// or "lg". A renderer draws it about 2x / 3x / 5x the line width long and
+	// wide.
+	Head string
 }
 
 // Cell is a single cell in the grid.
@@ -203,9 +214,22 @@ type ConnectorSpec struct {
 // layer. The caller (cmd/json2pptx) uses the resolved bounds to recursively
 // render a nested grid in place.
 type Cell struct {
-	ColSpan     int                // Number of columns to span (default 1)
-	RowSpan     int                // Number of rows to span (default 1)
-	MaxHeight   float64            // Maximum rendered height in points, centered in the row (0 = row height)
+	ColSpan   int     // Number of columns to span (default 1)
+	RowSpan   int     // Number of rows to span (default 1)
+	MaxHeight float64 // Maximum rendered height in points, centered in the row (0 = row height)
+	// BleedLeft extends the cell's rendered shape this many points past its
+	// left edge, over the column gap and into the previous cell's rectangle,
+	// so a chevron's tail tucks under the point before it. The cell rectangle
+	// (CellBounds) and every other cell keep their place.
+	BleedLeft float64
+	// BleedTop extends the rendered shape this many points above the cell's
+	// top edge, over the row gap and into the row above. InsetTop and
+	// InsetBottom pull the shape's top / bottom edge in from the cell's. A
+	// row of cells can so step up a staircase while the grid keeps one row
+	// per kind of cell. The cell rectangle (CellBounds) keeps its place.
+	BleedTop    float64
+	InsetTop    float64
+	InsetBottom float64
 	Fit         FitMode            // How the shape scales within cell bounds
 	Group       bool               // Wrap cell content in a p:grpSp group shape
 	Shape       *ShapeSpec         // Shape specification (nil = empty cell unless other content set)
@@ -246,6 +270,9 @@ const (
 
 // AccentBarSpec defines a decorative accent bar rendered alongside a cell.
 type AccentBarSpec struct {
+	// Fill, when set, is the bar's fill value (a colour string or a
+	// {color, alpha, ...} object) and takes precedence over Color.
+	Fill     json.RawMessage
 	Position string  // "left", "right", "top", "bottom" (default: "left")
 	Color    string  // Hex color (e.g., "FF0000") or scheme ref (e.g., "accent1"). Default: "accent1"
 	Width    float64 // Bar thickness in points. Default: 4.0

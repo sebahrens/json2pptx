@@ -200,6 +200,19 @@ func ValidateTrackWeights(grid *Grid) []error {
 		if bad(row.MaxHeight) {
 			errs = append(errs, fmt.Errorf("shape_grid: rows[%d].max_height is %g; max_height must be finite and >= 0 points", r, row.MaxHeight))
 		}
+		if row.Rule != "" && row.Rule != "above" && row.Rule != "below" && row.Rule != "both" {
+			errs = append(errs, fmt.Errorf("shape_grid: rows[%d].rule is %q; valid values are \"above\", \"below\" or \"both\" (omit for no rule)", r, row.Rule))
+		}
+		for c, cell := range row.Cells {
+			for _, f := range []struct {
+				name string
+				v    float64
+			}{{"bleed_left", cell.BleedLeft}, {"bleed_top", cell.BleedTop}, {"inset_top", cell.InsetTop}, {"inset_bottom", cell.InsetBottom}} {
+				if bad(f.v) {
+					errs = append(errs, fmt.Errorf("shape_grid: rows[%d].cells[%d].%s is %g; %s must be finite and >= 0 points", r, c, f.name, f.v, f.name))
+				}
+			}
+		}
 	}
 	return errs
 }

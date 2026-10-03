@@ -1460,6 +1460,25 @@ Contrast between two scheme slots is template-dependent, which is what made this
 }
 ```
 
+### `SWIMLANE_FLOW_AMBIGUOUS`
+
+**Action:** `review`
+**Pattern:** `swimlane`
+**Fix kind:** *(none — an authoring choice)*
+
+Emitted when a `swimlane` step column holds a step in more than one lane and `values.flow` is not set. The arrows are then derived — down each column, top lane first, then on to the next column — which is the process only when every column holds one step. Three teams authored side by side (`Submit request` / `Triage` in column 0, `Receive update` / `Investigate` / `Fix bug` in column 1, …) drew `Fix bug → Approve fix`, and nothing said the order could be stated (go-slide-creator-v786r).
+
+Either give every step its own column (one non-empty entry per column, empty strings in the other lanes), or keep the layout and state the order in `values.flow` as `[lane, step]` pairs (both 0-based), one per step in the order the process visits them. `flow` is validated: each pair must name a non-empty step and may not repeat the pair before it.
+
+```json
+{
+  "path": "/slides/3/pattern",
+  "code": "SWIMLANE_FLOW_AMBIGUOUS",
+  "message": "slide 4: swimlane: swimlane step column 0 holds a step in 2 lanes and values.flow is not set, so the arrows run down each column, top lane first, then on to the next column — which is the process only by accident; give every step its own column (empty strings elsewhere), or state the order in values.flow as [lane, step] pairs, e.g. [[0,0],[1,0],[1,1]]",
+  "action": "review"
+}
+```
+
 ### `MISSING_ALT_TEXT`
 
 **Action:** `review`

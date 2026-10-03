@@ -999,7 +999,7 @@ func convertGridLinks(in []GridLinkInput) []shapegrid.Link {
 	for _, l := range in {
 		spec := &shapegrid.ConnectorSpec{}
 		if l.Connector != nil {
-			spec = &shapegrid.ConnectorSpec{Style: l.Connector.Style, Color: l.Connector.Color, Width: l.Connector.Width, Dash: l.Connector.Dash}
+			spec = &shapegrid.ConnectorSpec{Style: l.Connector.Style, Color: l.Connector.Color, Width: l.Connector.Width, Dash: l.Connector.Dash, Head: l.Connector.Head}
 		}
 		out = append(out, shapegrid.Link{FromRow: l.From[0], FromCol: l.From[1], ToRow: l.To[0], ToCol: l.To[1], Spec: spec})
 	}
@@ -1043,6 +1043,7 @@ func convertGridRows(inputRows []GridRowInput) []shapegrid.Row {
 				Color: r.Connector.Color,
 				Width: r.Connector.Width,
 				Dash:  r.Connector.Dash,
+				Head:  r.Connector.Head,
 			}
 		}
 		rows[i] = shapegrid.Row{
@@ -1053,6 +1054,7 @@ func convertGridRows(inputRows []GridRowInput) []shapegrid.Row {
 			MaxHeight:  r.MaxHeight,
 			Cells:      cells,
 			Connector:  connSpec,
+			Rule:       r.Rule,
 		}
 	}
 	return rows
@@ -1061,11 +1063,15 @@ func convertGridRows(inputRows []GridRowInput) []shapegrid.Row {
 // convertGridCell converts a single GridCellInput DTO into a shapegrid.Cell.
 func convertGridCell(c *GridCellInput) shapegrid.Cell {
 	cell := shapegrid.Cell{
-		ColSpan:   c.ColSpan,
-		RowSpan:   c.RowSpan,
-		MaxHeight: c.MaxHeight,
-		Fit:       shapegrid.FitMode(c.Fit),
-		Group:     c.Group,
+		ColSpan:     c.ColSpan,
+		RowSpan:     c.RowSpan,
+		MaxHeight:   c.MaxHeight,
+		BleedLeft:   c.BleedLeft,
+		BleedTop:    c.BleedTop,
+		InsetTop:    c.InsetTop,
+		InsetBottom: c.InsetBottom,
+		Fit:         shapegrid.FitMode(c.Fit),
+		Group:       c.Group,
 	}
 	if c.Shape != nil {
 		cell.Shape = &shapegrid.ShapeSpec{
@@ -2576,10 +2582,14 @@ func generateConnectorXML(conn shapegrid.ResolvedConnector) ([]byte, error) {
 
 	// Add arrowhead for "arrow" style
 	if spec.Style == "arrow" {
+		head := "med"
+		if spec.Head == "sm" || spec.Head == "lg" {
+			head = spec.Head
+		}
 		opts.TailEnd = &pptx.ArrowHead{
 			Type: "triangle",
-			W:    "med",
-			Len:  "med",
+			W:    head,
+			Len:  head,
 		}
 	}
 
