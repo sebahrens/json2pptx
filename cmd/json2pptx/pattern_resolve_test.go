@@ -516,13 +516,14 @@ func TestExpandPattern_CalloutComparison2col(t *testing.T) {
 		t.Fatalf("expandPattern with callout failed: %v", err)
 	}
 
-	// comparison-2col with headers: 1 header row + 1 body row + 1 callout row = 3
-	if len(grid.Rows) != 3 {
-		t.Fatalf("expected 3 rows, got %d", len(grid.Rows))
+	// comparison-2col with headers: 1 header row + its rule + 1 body row +
+	// 1 callout row = 4
+	if len(grid.Rows) != 4 {
+		t.Fatalf("expected 4 rows, got %d", len(grid.Rows))
 	}
 
 	// The accent colours the band's bar, not a filled strip.
-	bar, _ := calloutBandCells(t, grid.Rows[2])
+	bar, _ := calloutBandCells(t, grid.Rows[3])
 	var fill string
 	if err := json.Unmarshal(bar.Shape.Fill, &fill); err != nil {
 		t.Fatalf("fill unmarshal: %v", err)

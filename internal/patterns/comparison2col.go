@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -22,8 +23,10 @@ func init() {
 
 type comparison2col struct{}
 
-func (c *comparison2col) Name() string        { return "comparison-2col" }
-func (c *comparison2col) Description() string { return "Two-column comparison with optional headers" }
+func (c *comparison2col) Name() string { return "comparison-2col" }
+func (c *comparison2col) Description() string {
+	return "Two-column comparison: optional headers over open rows separated by hairline rules and aligned across the columns"
+}
 func (c *comparison2col) UseWhen() string {
 	return "Two options evaluated side-by-side (pros/cons, option A vs B); prefer before-after when showing temporal transformation, card-grid when comparing more than 2 items"
 }
@@ -63,6 +66,8 @@ func (c *comparison2col) ExemplarValues() any {
 type Comparison2colRow struct {
 	Left  string `json:"left"`
 	Right string `json:"right"`
+	// Highlight tints this row (at most one): the row the comparison turns on.
+	Highlight bool `json:"highlight,omitempty"`
 }
 
 // UnmarshalJSON supports string shorthand "Left | Right" or object {left, right}.
@@ -167,6 +172,25 @@ type Comparison2colOverrides struct {
 	// its right cell ("from → to" comparisons). Left cells gain a left accent
 	// stripe and right cells an accent tint. Default false: unchanged layout.
 	Connectors bool `json:"connectors,omitempty"`
+	// Style is "open" (default: unfilled rows separated by hairline rules,
+	// headers over an accent rule) or "tiles" (every cell a filled tile, the
+	// look before go-slide-creator-zawui).
+	Style string `json:"style,omitempty"`
+	// HighlightColumn emphasises one column in the open style: "left" or
+	// "right". Its header takes the solid accent and its rows an accent tint.
+	HighlightColumn string `json:"highlight_column,omitempty"`
+}
+
+var (
+	// comparisonStyles are the accepted overrides.style values.
+	comparisonStyles = []string{"open", "tiles"}
+	// comparisonHighlightColumns are the accepted overrides.highlight_column values.
+	comparisonHighlightColumns = []string{"left", "right"}
+)
+
+// comparisonOpen reports whether the comparison renders in the open style.
+func comparisonOpen(ovr *Comparison2colOverrides) bool {
+	return ovr == nil || ovr.Style != "tiles"
 }
 
 // Comparison2colCellOverride is an alias for the shared CellOverride struct.
@@ -253,12 +277,13 @@ func (c *comparison2col) Schema() *Schema {
 		StringSchema(0).WithDescription("Shorthand: \"Left | Right\""),
 		ObjectSchema(
 			map[string]*Schema{
-				"left":  StringSchema(200).WithDescription("Left cell; readable copy depends on row count and optional header row"),
-				"right": StringSchema(200).WithDescription("Right cell; readable copy depends on row count and optional header row"),
+				"left":      StringSchema(200).WithDescription("Left cell; readable copy depends on row count and optional header row"),
+				"right":     StringSchema(200).WithDescription("Right cell; readable copy depends on row count and optional header row"),
+				"highlight": BooleanSchema().WithDescription("Tint this row (at most one, and not together with overrides.highlight_column)"),
 			},
 			[]string{"left", "right"},
 		).WithAdditionalProperties(false),
-	).WithDescription("Row: string \"Left | Right\" or {left, right}. Approximate chars per cell by body rows plus one if headers: 1-3: 200, 4: 193, 5-11: 65")
+	).WithDescription("Row: string \"Left | Right\" or {left, right, highlight?}. Approximate chars per cell by body rows plus one if headers: 1-3: 200, 4: 193, 5-11: 65")
 
 	headersSchema := ArraySchema(StringSchema(60), 2, 2).
 		WithDescription("Column headers [left, right] (preferred over header_left/header_right)")
@@ -280,8 +305,10 @@ func (c *comparison2col) Schema() *Schema {
 			"header_size":      NumberSchema(6, 120).WithDescription("Font size for headers in points"),
 			"body_size":        NumberSchema(6, 120).WithDescription("Font size for body text in points"),
 			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation: uniform (default, all cells same accent), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
-			"row_fill":         StringSchema(0).WithDescription("Uniform background fill for body rows (scheme name like 'lt2' or hex like '#F5F0E8'). Omit to zebra-stripe body rows between two surface tints as a grouping cue; setting this paints every body row the same color."),
-			"connectors":       BooleanSchema().WithDescription("Reserve a narrow centre gutter and draw a per-row accent connector (circle + chevron joined to both cells) so each left cell reads as leading to its right cell. Left cells gain a left accent stripe, right cells an accent tint. Text columns narrow to 45% each, so per-cell budgets drop to about 88% of the plain values.").WithDefault(false),
+			"row_fill":         StringSchema(0).WithDescription("Uniform background fill for body rows (scheme name like 'lt2' or hex like '#F5F0E8'). Omitted, open rows are unfilled and tiles are zebra-striped between two surface tints."),
+			"connectors":       BooleanSchema().WithDescription("Reserve a narrow centre gutter and draw a per-row accent connector (circle + chevron joined to both cells) so each left cell reads as leading to its right cell. In the tiles style left cells also gain a left accent stripe and right cells an accent tint. Text columns narrow to 45% each, so per-cell budgets drop to about 88% of the plain values.").WithDefault(false),
+			"style":            EnumSchema(comparisonStyles...).WithDescription("open (default: unfilled rows separated by hairline rules, headers over an accent rule) or tiles (every cell a filled tile)").WithDefault("open"),
+			"highlight_column": EnumSchema(comparisonHighlightColumns...).WithDescription("Open style: emphasise one column — its header takes the solid accent and its rows an accent tint, the only filled area"),
 		},
 		nil,
 	).WithAdditionalProperties(false)
@@ -295,7 +322,7 @@ func (c *comparison2col) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Two-column comparison with optional headers")
+	}).WithDescription("Two-column comparison: optional headers over open, rule-separated rows")
 }
 
 func (c *comparison2col) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -313,6 +340,29 @@ func (c *comparison2col) Validate(values, overrides any, cellOverrides map[int]a
 			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
 				errs = append(errs, err)
 			}
+			if ovr.Style != "" && !slices.Contains(comparisonStyles, ovr.Style) {
+				errs = append(errs, errInvalidEnum(name, "overrides.style", ovr.Style, comparisonStyles))
+			}
+			if ovr.HighlightColumn != "" && !slices.Contains(comparisonHighlightColumns, ovr.HighlightColumn) {
+				errs = append(errs, errInvalidEnum(name, "overrides.highlight_column", ovr.HighlightColumn, comparisonHighlightColumns))
+			}
+		}
+	}
+	// One emphasis: a single highlighted row, or one highlighted column.
+	highlighted := 0
+	for i, row := range vals.Rows {
+		if !row.Highlight {
+			continue
+		}
+		highlighted++
+		ovr, _ := overrides.(*Comparison2colOverrides)
+		switch {
+		case highlighted == 2:
+			errs = append(errs, newValidationError(name, fmt.Sprintf("rows[%d].highlight", i), ErrCodeInvalidShape,
+				"comparison-2col: at most one row may set highlight; an emphasis shared by several rows is no emphasis", nil))
+		case highlighted == 1 && ovr != nil && ovr.HighlightColumn != "":
+			errs = append(errs, newValidationError(name, fmt.Sprintf("rows[%d].highlight", i), ErrCodeInvalidShape,
+				"comparison-2col: highlight a row or a column (overrides.highlight_column), not both", nil))
 		}
 	}
 
@@ -393,6 +443,10 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 	if plan.rowGap != ctx.Gap(comparisonGapPt) {
 		grid.RowGap = plan.rowGap
 	}
+	if comparisonOpen(ovr) {
+		grid.Rows = comparisonRuledRows(ctx, plan, ovr)
+		grid.RowGap = comparisonRuleRowGapPt
+	}
 	if ovr.Connectors {
 		grid.Columns = json.RawMessage(fmt.Sprintf(`[%d, %d, %d]`, comparisonConnectorColPct, 100-2*comparisonConnectorColPct, comparisonConnectorColPct))
 		grid.ColGap = comparisonConnectorColGap
@@ -403,6 +457,72 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 
 // comparisonGapPt is the default row and column gap.
 const comparisonGapPt = 8.0
+
+// Open-style rules (go-slide-creator-zawui).
+const (
+	// comparisonRulePt is the hairline between two body rows;
+	// comparisonHeaderRulePt the accent rule under the headers.
+	comparisonRulePt       = 0.75
+	comparisonHeaderRulePt = 1.5
+	// comparisonRuleRowGapPt is the grid row gap of the open style: the rows
+	// and their rules touch, so a highlighted column is one unbroken band.
+	// The whitespace the tiles' row gap gave is added to the rows instead.
+	comparisonRuleRowGapPt = 0.01
+)
+
+// comparisonRulesPt is the height the open style's rules take between n rows.
+func comparisonRulesPt(n int, header bool) float64 {
+	if n < 2 {
+		return 0
+	}
+	total := float64(n-1) * comparisonRulePt
+	if header {
+		total += comparisonHeaderRulePt - comparisonRulePt
+	}
+	return total
+}
+
+// comparisonRuledRows is the open style's row list: the plan's text rows,
+// each grown by its share of the row gaps the tiles would have had (the grid
+// row gap is zero), with a rule row between every two — the accent rule under
+// the headers, a hairline elsewhere. Rules are drawn per column, so the
+// gutter stays open and the two columns read as two aligned lists.
+func comparisonRuledRows(ctx ExpandContext, plan comparisonPlan, ovr *Comparison2colOverrides) []jsonschema.GridRowInput {
+	n := len(plan.rows)
+	if n == 0 {
+		return plan.rows
+	}
+	pad := plan.rowGap * float64(n-1) / float64(n)
+	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
+	hairline := fillTone{Color: "dk1", Alpha: 30}.fillJSON()
+	rule := func(fill json.RawMessage) *jsonschema.GridCellInput {
+		return &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: fill, Line: noLine}}
+	}
+	out := make([]jsonschema.GridRowInput, 0, 2*n-1)
+	for i, row := range plan.rows {
+		if row.MaxHeight > 0 {
+			row.MinHeight += pad
+			row.MaxHeight += pad
+		}
+		out = append(out, row)
+		if i == n-1 {
+			break
+		}
+		h := comparisonRulePt
+		left, right := rule(hairline), rule(hairline)
+		if i == 0 && plan.header {
+			h = comparisonHeaderRulePt
+			left = rule(accentFillJSON(ctx.ResolveCellAccent(baseAccent, 0, ovr.CellAccentMode)))
+			right = rule(accentFillJSON(ctx.ResolveCellAccent(baseAccent, 1, ovr.CellAccentMode)))
+		}
+		cells := []*jsonschema.GridCellInput{left, right}
+		if ovr.Connectors {
+			cells = []*jsonschema.GridCellInput{left, {}, right}
+		}
+		out = append(out, jsonschema.GridRowInput{MinHeight: h, MaxHeight: h, Cells: cells})
+	}
+	return out
+}
 
 // comparisonPlan is one candidate layout: the rows built at a type size and
 // row gap, each row's written-fit height and the height the rows share.
@@ -551,6 +671,9 @@ func comparisonMeasure(ctx ExpandContext, vals *Comparison2colValues, ovr *Compa
 	rows := buildComparison2colRows(ctx, vals, ovr, cellOverrides, headerSize, bodySize)
 	plan := comparisonPlan{rows: rows, rowGap: rowGap, textW: textW, header: vals.HeaderLeft != "" || vals.HeaderRight != ""}
 	plan.avail = areaH - float64(len(rows)-1)*rowGap
+	if comparisonOpen(ovr) {
+		plan.avail -= comparisonRulesPt(len(rows), plan.header)
+	}
 	total := 0.0
 	for _, r := range rows {
 		need := 0.0
@@ -614,10 +737,15 @@ func buildComparison2colRows(ctx ExpandContext, vals *Comparison2colValues, ovr 
 	// The two bands are the template's declared subtle / paper surfaces, or
 	// the dk1 neutral steps (4% / 8%) where a role is undeclared or is the
 	// page colour; no row is outlined (go-slide-creator-pgdkp).
-	striped := ovr.RowFill == ""
+	open := comparisonOpen(ovr)
+	striped := ovr.RowFill == "" && !open
 	stripeFillA, stripeFillB := surfacePairJSON(ctx) // even / odd body rows
 	uniformFill := json.RawMessage(fmt.Sprintf(`"%s"`, ovr.RowFill))
-	if striped && ovr.Connectors {
+	if open && ovr.RowFill == "" {
+		// Open rows carry no fill: rules and whitespace group them.
+		uniformFill = json.RawMessage(`"none"`)
+	}
+	if striped && ovr.Connectors && !open {
 		// Connector rows are already grouped by the connector rule, so the
 		// left column takes one neutral (non-white) surface instead of zebra
 		// bands; the right column carries the accent tint.
@@ -645,9 +773,6 @@ func buildComparison2colRows(ctx ExpandContext, vals *Comparison2colValues, ovr 
 				Text:     leftHeader,
 			},
 		}
-		applyComparison2colCellOverride(leftCell, cellOverrides, cellIdx, leftAccent)
-		cellIdx++
-
 		rightCell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
@@ -655,6 +780,27 @@ func buildComparison2colRows(ctx ExpandContext, vals *Comparison2colValues, ovr 
 				Text:     rightHeader,
 			},
 		}
+		if open {
+			// A header is a bold heading over its accent rule, not a filled
+			// band; only the highlighted column's header takes the accent.
+			for _, h := range []struct {
+				cell   *jsonschema.GridCellInput
+				text   string
+				accent string
+				side   string
+			}{{leftCell, vals.HeaderLeft, leftAccent, "left"}, {rightCell, vals.HeaderRight, rightAccent, "right"}} {
+				h.cell.Shape.Fill, h.cell.Shape.Line = json.RawMessage(`"none"`), noLine
+				h.cell.Shape.Text = buildComparison2colTextContent(h.text, headerSize, true, "dk1", "l")
+				if ovr.HighlightColumn == h.side {
+					tone, ink := accentFillAndInk(ctx, fillTone{Color: h.accent}, 4.5)
+					h.cell.Shape.Fill = tone.fillJSON()
+					h.cell.Shape.Text = buildComparison2colTextContent(h.text, headerSize, true, ink, "l")
+				}
+			}
+		}
+		applyComparison2colCellOverride(leftCell, cellOverrides, cellIdx, leftAccent)
+		cellIdx++
+
 		applyComparison2colCellOverride(rightCell, cellOverrides, cellIdx, rightAccent)
 		cellIdx++
 
@@ -687,7 +833,7 @@ func buildComparison2colRows(ctx ExpandContext, vals *Comparison2colValues, ovr 
 
 		leftText := buildComparison2colTextContent(pptx.ConvertMarkdownEmphasis(row.Left), bodySize, false, "dk1", "l")
 		rightColor := "dk1"
-		if ovr.Connectors {
+		if ovr.Connectors && !open {
 			rightColor = rightTextColor
 		}
 		rightText := buildComparison2colTextContent(pptx.ConvertMarkdownEmphasis(row.Right), bodySize, false, rightColor, "l")
@@ -711,10 +857,24 @@ func buildComparison2colRows(ctx ExpandContext, vals *Comparison2colValues, ovr 
 				Text:     rightText,
 			},
 		}
-		if ovr.Connectors {
+		if ovr.Connectors && !open {
 			leftCell.AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: baseAccent, Width: 4}
 			rightCell.Shape.Fill = rightTintJSON
 			rightCell.Shape.Line = nil
+		}
+		if open {
+			// The one emphasis: a highlighted row, or a highlighted column.
+			for _, side := range []struct {
+				cell *jsonschema.GridCellInput
+				text string
+				name string
+			}{{leftCell, row.Left, "left"}, {rightCell, row.Right, "right"}} {
+				if !row.Highlight && ovr.HighlightColumn != side.name {
+					continue
+				}
+				side.cell.Shape.Fill = rightTintJSON
+				side.cell.Shape.Text = buildComparison2colTextContent(pptx.ConvertMarkdownEmphasis(side.text), bodySize, false, rightTextColor, "l")
+			}
 		}
 		applyComparison2colCellOverride(rightCell, cellOverrides, cellIdx, baseAccent)
 		cellIdx++
@@ -725,10 +885,16 @@ func buildComparison2colRows(ctx ExpandContext, vals *Comparison2colValues, ovr 
 			})
 			continue
 		}
-		rows = append(rows, jsonschema.GridRowInput{
+		connectorRow := jsonschema.GridRowInput{
 			Cells:     []*jsonschema.GridCellInput{leftCell, comparison2colConnectorCell(ctx, baseAccent), rightCell},
 			Connector: &jsonschema.ConnectorSpecInput{Style: "line", Color: baseAccent, Width: 1.5},
-		})
+		}
+		if open {
+			// Open rows have no tile edge for a rule to join: the badge in
+			// the gutter carries the "leads to" on its own.
+			connectorRow.Connector = nil
+		}
+		rows = append(rows, connectorRow)
 	}
 
 	return rows

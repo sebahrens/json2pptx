@@ -294,8 +294,9 @@ func TestComparison2col_ContentSizedRows(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"headers":["Pros","Cons"],"rows":[{"left":"Fast","right":"Expensive"},{"left":"Reliable","right":"Complex"}]}`), vals); err != nil {
 		t.Fatal(err)
 	}
-	grid := expandFor(t, "comparison-2col", ctx, vals, nil)
-	plan := comparisonLayout(ctx, vals, &Comparison2colOverrides{}, nil)
+	tiles := &Comparison2colOverrides{Style: "tiles"}
+	grid := expandFor(t, "comparison-2col", ctx, vals, tiles)
+	plan := comparisonLayout(ctx, vals, tiles, nil)
 	if !plan.fits || !plan.header {
 		t.Fatalf("exemplar plan fits=%v header=%v", plan.fits, plan.header)
 	}

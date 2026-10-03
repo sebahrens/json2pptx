@@ -1429,6 +1429,11 @@ func collectGridOccupancyFindings(input *PresentationInput) []patterns.FitFindin
 			if patternName == "comparison-2col" && numCols == 3 {
 				crowdSlots -= len(grid.Rows)
 			}
+			// Its open style separates rows with rule rows. A rule is not a
+			// content cell either: count the cells that carry text.
+			if patternName == "comparison-2col" {
+				crowdSlots = min(crowdSlots, textGridCells(grid))
+			}
 			if f := generator.DetectPatternOvercrowded(generator.GridOccupancyInput{
 				SlideIndex:     si,
 				Path:           path,
@@ -1451,6 +1456,19 @@ func collectGridOccupancyFindings(input *PresentationInput) []patterns.FitFindin
 	}
 
 	return findings
+}
+
+// textGridCells counts the cells of grid whose shape carries text.
+func textGridCells(grid *ShapeGridInput) int {
+	n := 0
+	for _, row := range grid.Rows {
+		for _, cell := range row.Cells {
+			if cell != nil && cell.Shape != nil && len(cell.Shape.Text) > 0 {
+				n++
+			}
+		}
+	}
+	return n
 }
 
 // occupiedGridSlots counts column slots, including those covered by a cell's

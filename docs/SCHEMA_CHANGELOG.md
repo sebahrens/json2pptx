@@ -1,5 +1,19 @@
 # Schema Changelog
 
+- **2026-10-03 — comparison-2col rows are open (`go-slide-creator-zawui`).**
+  - `comparison-2col` renders headers as bold headings over an accent rule
+    and body rows as unfilled text separated by hairline rules, aligned
+    across the two columns. New `overrides.style`: `open` (default) /
+    `tiles` (the previous filled tiles and zebra striping).
+  - New `rows[].highlight` (boolean, at most one) tints a row; new
+    `overrides.highlight_column` (`left` / `right`) gives a column a solid
+    accent header and an accent tint band. Setting both is `invalid_shape`.
+  - `overrides.connectors` keeps the centre gutter and badge in the open
+    style, without the left stripe, right tint and joining rule (those stay
+    in `tiles`). `row_fill` is unchanged. Per-cell copy budgets are unchanged
+    (the open block is as tall as the tile block). `pattern_overcrowded`
+    counts only text cells for this pattern.
+
 - **2026-10-03 — quote-cluster reads as quotes (`go-slide-creator-5cie9`).**
   - `quote-cluster` renders open quotes by default: an accent opening quote
     mark, the italic quote, and one attribution line (bold name, title), with

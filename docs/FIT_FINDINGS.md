@@ -650,7 +650,7 @@ An authored raw grid has less than 50% of its declared slots populated. Pattern 
 
 A pattern grid exceeds the pattern's recommended maximum cell count. The fix suggests splitting across two slides using `split_pattern`, with params indicating the recommended split point.
 
-The limit counts **grid cells**, not the pattern's items: a pattern that draws each item as a stack of cells (`timeline-horizontal`'s dots layout emits a date, a dot and a label per stop) carries a limit scaled accordingly. Cells that carry no content are not counted: `comparison-2col`'s `connectors` gutter (one badge or spacer per row) is excluded, so a 3-row comparison with headers and connectors is not reported (go-slide-creator-csclk.111).
+The limit counts **grid cells**, not the pattern's items: a pattern that draws each item as a stack of cells (`timeline-horizontal`'s dots layout emits a date, a dot and a label per stop) carries a limit scaled accordingly. Cells that carry no content are not counted: `comparison-2col` counts only its text cells (the open style's rule rows are not content), and its `connectors` gutter (one badge or spacer per row) is excluded, so a 3-row comparison with headers and connectors is not reported (go-slide-creator-csclk.111).
 
 On a raw `shape_grid` slide the params carry `first` / `second` (the cell split point). On a named-pattern slide they are omitted: those counts are in grid cells, while `repair_slide` splits a pattern slide by its `pattern.values` array, so it halves that list instead.
 

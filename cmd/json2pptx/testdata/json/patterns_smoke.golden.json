@@ -65,8 +65,12 @@
   },
   {
     "pattern_name": "comparison-2col",
-    "row_count": 5,
+    "row_count": 9,
     "cell_counts": [
+      2,
+      2,
+      2,
+      2,
       2,
       2,
       2,
