@@ -167,7 +167,7 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 	KindImageCase: {
 		"title": shapeString, "image": shapeStringOrObject, "eyebrow": shapeString, "heading": shapeString,
 		"body": shapeString, "text": shapeString, "story": shapeString, "description": shapeString,
-		"bullets": shapeArray, "metrics": shapeArray, "caption": shapeString,
+		"bullets": shapeArray, "metrics": shapeArray, "callouts": shapeArray, "caption": shapeString,
 		"image_side": shapeString, "image_label": shapeString, "takeaway": shapeString,
 	},
 	KindProcess: {"title": shapeString, "steps": shapeArray, "takeaway": shapeString},
@@ -708,10 +708,14 @@ func validateAgenda(path string, slide SlideSpec, s *semDiags) {
 	if !s.requireUsableContent(path, "sections", slide.Body, n) {
 		return
 	}
-	if slides.AgendaPattern(slide.Body) == "" {
+	if over := slides.AgendaOverBudget(slide.Body); over != "" {
+		why := degradeBudgetExceeded
+		if !slides.AgendaCountInRange(slide.Body) {
+			why = degradeCountOutOfRange
+		}
 		s.degrade(path+".sections",
-			fmt.Sprintf("agenda has %d usable sections; 2–10 render as the numbered agenda visual, each subtitle under its title (otherwise it degrades to a bullet list)", n),
-			"agenda", degradeToBullets, degradeCountOutOfRange)
+			fmt.Sprintf("agenda %s (otherwise it degrades to a bullet list)", over),
+			"agenda", degradeToBullets, why)
 	}
 	if field := slides.AgendaUnresolvedCurrent(slide.Body); field != "" {
 		s.advisory(path+"."+field, diagnostics.CodeSemanticReferenceUnresolved,
@@ -956,6 +960,7 @@ func validateImageCase(path string, slide SlideSpec, s *semDiags) {
 		s.hard(path+".image.fit", diagnostics.CodeSemanticFieldType,
 			fmt.Sprintf("image.fit %q is not a fit; use \"cover\" (default, crops to fill the frame) or \"contain\" (keeps a whole screenshot or exhibit)", fit))
 	}
+	validateImageCaseCallouts(path, slide, s)
 	if over := slides.ImageCaseOverBudget(slide.Body); over != "" {
 		s.degrade(path+".body",
 			fmt.Sprintf("image case %s (otherwise it degrades to a content slide)", over),
@@ -972,10 +977,58 @@ func validateImageCase(path string, slide SlideSpec, s *semDiags) {
 	}
 }
 
+// validateImageCaseCallouts reports callouts the picture cannot carry. A
+// callout that cannot be drawn would vanish, so each problem is an error at
+// the entry that has it (go-slide-creator-n3j96).
+func validateImageCaseCallouts(path string, slide SlideSpec, s *semDiags) {
+	raw, _ := slide.Body["callouts"].([]any)
+	if len(raw) == 0 {
+		return
+	}
+	if !slides.ImageCaseHasImage(slide.Body) {
+		s.hard(path+".callouts", diagnostics.CodeSemanticRequired,
+			"callouts point at the picture, and this image case has none; set image (a path or URL) or remove callouts")
+		return
+	}
+	if len(raw) > slides.ImageCaseMaxCallouts {
+		s.hard(path+".callouts", diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("image case has %d callouts; a picture holds %d before the labels crowd it — keep the points the story needs", len(raw), slides.ImageCaseMaxCallouts))
+	}
+	read := map[int]slides.ImageCaseCallout{}
+	for _, c := range slides.ImageCaseCallouts(slide.Body) {
+		read[c.Index] = c
+	}
+	for i := range raw {
+		cpath := fmt.Sprintf("%s.callouts[%d]", path, i)
+		c, isObject := read[i]
+		switch {
+		case !isObject:
+			s.hard(cpath, diagnostics.CodeSemanticFieldType, "a callout must be an object {label, x, y, units?}")
+		case c.Label == "":
+			s.hard(cpath+".label", diagnostics.CodeSemanticRequired, "a callout needs a label")
+		case len([]rune(c.Label)) > slides.ImageCaseCalloutLabelMax:
+			s.hard(cpath+".label", diagnostics.CodeSemanticDensity,
+				fmt.Sprintf("callout label is %d characters; a callout holds %d — keep it to a tag and put the explanation in bullets", len([]rune(c.Label)), slides.ImageCaseCalloutLabelMax))
+		case !c.HasPoint:
+			s.hard(cpath, diagnostics.CodeSemanticRequired, "a callout needs numeric x and y: the point on the image it points at")
+		case c.Units != "" && c.Units != "fraction" && c.Units != "px":
+			s.hard(cpath+".units", diagnostics.CodeSemanticFieldType,
+				fmt.Sprintf("callout units %q is not a unit; use \"fraction\" (default, 0–1 from the image's top-left corner) or \"px\" (the file's own pixels)", c.Units))
+		case !c.Usable():
+			s.hard(cpath, diagnostics.CodeSemanticFieldType,
+				fmt.Sprintf("callout point (%g, %g) is outside the image; fractions run 0–1 from its top-left corner (set units \"px\" for pixel coordinates)", c.X, c.Y))
+		}
+	}
+}
+
 // closingTitleBudget is the closing title length that stays on one or two
 // lines of a template's closing layout: those layouts set the title as display
 // type (letter-spaced capitals on abstract), and a 60-character action title
 // wrapped to four lines there and collided on p-style (go-slide-creator-maq6l).
+//
+// Validation has no template, so this is the length that is safe on the
+// tightest closing layouts, not a statement about the one in use: the message
+// says so and names where the measured budget is (go-slide-creator-iubjb).
 const closingTitleBudget = 40
 
 // validateClosing flags a closing title too long for the closing layout's
@@ -987,7 +1040,7 @@ func validateClosing(path string, slide SlideSpec, s *semDiags) {
 	}
 	if n := len([]rune(strings.TrimSpace(slide.String("title")))); n > closingTitleBudget {
 		s.advisory(path+".title", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("closing title is %d characters; the template's closing layout sets it as a display title that wraps past about %d — keep the title to the ask and move owner, date and rationale to subtitle, or close on next_steps", n, closingTitleBudget))
+			fmt.Sprintf("closing title is %d characters; closing layouts set it as a display title that wraps past about %d on the tightest templates (list_slide_kinds with template gives the measured budget of the one in use) — keep the title to the ask and move owner, date and rationale to subtitle, or close on next_steps", n, closingTitleBudget))
 	}
 }
 
@@ -1002,49 +1055,52 @@ func validateDecision(path string, slide SlideSpec, s *semDiags) {
 		if !ok {
 			continue
 		}
-		selected := 0
 		for i, entry := range raw {
-			option, ok := entry.(map[string]any)
-			if !ok {
-				continue
-			}
-			value, present := option["recommended"]
-			if !present {
-				continue
-			}
-			flag, valid := value.(bool)
-			if !valid {
-				s.hard(fmt.Sprintf("%s.%s[%d].recommended", path, field, i), diagnostics.CodeSemanticFieldType,
-					"recommended must be a boolean")
-				continue
-			}
-			if flag {
-				label := ""
-				for _, key := range []string{"label", "title", "name", "option"} {
-					if value, ok := option[key].(string); ok && strings.TrimSpace(value) != "" {
-						label = value
-						break
-					}
-				}
-				if label == "" {
-					s.hard(fmt.Sprintf("%s.%s[%d]", path, field, i), diagnostics.CodeSemanticRequired,
-						"recommended option needs a non-empty label")
-					continue
-				}
-				selected++
+			if option, ok := entry.(map[string]any); ok {
+				validateDecisionOptionFlag(fmt.Sprintf("%s.%s[%d]", path, field, i), option, s)
 			}
 		}
-		if len(slides.DecisionOptions(slide.Body)) > 0 && selected != 1 {
+		// One recommended option is the rule; two or more are a combined
+		// recommendation, marked on each or listed in the slide's recommended
+		// field (go-slide-creator-3hcw6).
+		if len(slides.DecisionOptions(slide.Body)) > 0 && slides.DecisionRecommendedCount(slide.Body) == 0 {
 			s.hard(path+"."+field, diagnostics.CodeSemanticRequired,
-				fmt.Sprintf("decision requires exactly one option with recommended: true; found %d", selected))
+				"decision requires a recommended option: mark it recommended: true, or name it in the slide's recommended field (a list recommends several together); found 0")
 		}
 		break // Match DecisionOptions' first-list alias precedence.
+	}
+	for _, ref := range slides.DecisionUnresolvedRecommended(slide.Body) {
+		s.advisory(path+"."+ref, diagnostics.CodeSemanticReferenceUnresolved,
+			fmt.Sprintf("%s matches no option label and is not an in-range 0-based index, so that option is not marked recommended", ref))
 	}
 	if over := slides.DecisionOverBudget(slide.Body); over != "" {
 		s.degrade(path+".options",
 			fmt.Sprintf("decision %s (otherwise it degrades to a content slide)", over),
 			"", degradeToContent, degradeBudgetExceeded)
 	}
+}
+
+// validateDecisionOptionFlag checks one option's recommended flag: it must be
+// a boolean, and a recommended option needs a label to be recommended by.
+func validateDecisionOptionFlag(path string, option map[string]any, s *semDiags) {
+	value, present := option["recommended"]
+	if !present {
+		return
+	}
+	flag, valid := value.(bool)
+	if !valid {
+		s.hard(path+".recommended", diagnostics.CodeSemanticFieldType, "recommended must be a boolean")
+		return
+	}
+	if !flag {
+		return
+	}
+	for _, key := range []string{"label", "title", "name", "option"} {
+		if label, ok := option[key].(string); ok && strings.TrimSpace(label) != "" {
+			return
+		}
+	}
+	s.hard(path, diagnostics.CodeSemanticRequired, "recommended option needs a non-empty label")
 }
 
 // validateDuplicateConclusion reports a takeaway authored beside the kind's own
@@ -1616,7 +1672,7 @@ func validateOptionMatrix(path string, slide SlideSpec, s *semDiags) {
 	}
 
 	if rec, leader, found := slides.OptionMatrixOutscored(slide.Body); found {
-		s.advisory(path+"."+optionMatrixRecommendedField(slide.Body), diagnostics.CodeSemanticRecommendationOutscored,
+		s.advisory(path+"."+slides.OptionMatrixRecommendedField(slide.Body), diagnostics.CodeSemanticRecommendationOutscored,
 			fmt.Sprintf("recommended option %q scores below %q on this matrix's own scale; check the scores, set decisive_criterion to the column it wins on, or recommend the higher-scoring option",
 				rec, leader))
 	}
@@ -1658,28 +1714,6 @@ func optionMatrixFieldNames(body map[string]any) (criteria, options string) {
 		options = "rows"
 	}
 	return criteria, options
-}
-
-// optionMatrixRecommendedField names the field the recommendation was authored
-// in, so a finding about it anchors where the author wrote it.
-func optionMatrixRecommendedField(body map[string]any) string {
-	for _, field := range []string{"recommended", "recommended_option", "highlight_row"} {
-		if referencePresentAny(body[field]) {
-			return field
-		}
-	}
-	return "recommended"
-}
-
-// referencePresentAny reports whether a reference field carries a value.
-func referencePresentAny(v any) bool {
-	switch t := v.(type) {
-	case string:
-		return strings.TrimSpace(t) != ""
-	case nil:
-		return false
-	}
-	return true
 }
 
 // optionScoreCount returns the number of scores on an option row.

@@ -421,6 +421,8 @@ A slide overlay endpoint uses `anchor_image` to target a point on a `shape_grid`
 
 Fix: set the image cell's `image.fit` to `"contain"` (the whole picture stays visible), give the cell a frame closer to the picture's aspect, or move the target inside the visible interval.
 
+On the DeckSpec path the finding is addressed to the callout that was authored: an `image_case` callout the crop hides reports at `slides[i].callouts[j]` (fix: `image.fit: "contain"`, or move the callout's `x` / `y`).
+
 ```json
 {
   "path": "/slides/2/overlays/0/to/anchor_image",

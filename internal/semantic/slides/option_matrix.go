@@ -36,6 +36,7 @@ type optionMatrixValues struct {
 	Options        []optionMatrixOption    `json:"options"`
 	Scale          string                  `json:"scale,omitempty"`
 	HighlightRow   *int                    `json:"highlight_row,omitempty"`
+	HighlightRows  []int                   `json:"highlight_rows,omitempty"`
 	HighlightCol   *int                    `json:"highlight_col,omitempty"`
 	HighlightLabel string                  `json:"highlight_label,omitempty"`
 	CornerLabel    string                  `json:"corner_label,omitempty"`
@@ -82,8 +83,25 @@ func CompileOptionMatrix(in Input) (*deckinput.SlideInput, []SourceLink, error) 
 		SourceLink{RawPath: in.rawSlide() + ".pattern.values.criteria", SemanticPath: in.semSlide() + ".criteria"},
 		SourceLink{RawPath: in.rawSlide() + ".pattern.values.options", SemanticPath: in.semSlide() + ".options"},
 	)
+	if band := CombinedRecommendation(OptionMatrixRecommendedNames(in.Body)); band != "" && in.Takeaway == "" {
+		// A combined recommendation with no authored takeaway still says, in
+		// the band, that the highlighted rows go together.
+		slide.Takeaway = band
+		links = append(links, SourceLink{RawPath: in.rawSlide() + ".takeaway", SemanticPath: in.semSlide() + "." + OptionMatrixRecommendedField(in.Body)})
+	}
 	links = append(links, applyTakeaway(slide, in)...)
 	return slide, links, nil
+}
+
+// OptionMatrixRecommendedField names the field the recommendation was authored
+// in, so a finding about it anchors where the author wrote it.
+func OptionMatrixRecommendedField(body map[string]any) string {
+	for _, field := range optionMatrixRecommendedFields {
+		if referencePresent(body[field]) {
+			return field
+		}
+	}
+	return "recommended"
 }
 
 // OptionMatrixPatternFeasible reports whether an option-matrix payload will
@@ -165,8 +183,12 @@ func optionMatrixValuesFrom(body map[string]any) (*optionMatrixValues, bool) {
 		HighlightLabel: optionMatrixLabel(firstNonEmpty(strField(body, "highlight_label"), strField(body, "recommended_label"))),
 		CornerLabel:    optionMatrixLabel(strField(body, "corner_label")),
 	}
-	if idx, ok := optionMatrixRowIndex(body, options); ok {
-		values.HighlightRow = &idx
+	// The first recommended row keeps the pattern's single highlight_row, so a
+	// one-option recommendation emits what it always has; a combined
+	// recommendation adds the rest (go-slide-creator-3hcw6).
+	if rows := optionMatrixRowIndices(body, options); len(rows) > 0 {
+		values.HighlightRow = &rows[0]
+		values.HighlightRows = rows[1:]
 	}
 	if idx, ok := optionMatrixColIndex(body, criteria); ok {
 		values.HighlightCol = &idx
@@ -280,30 +302,72 @@ func optionMatrixScores(option map[string]any, criteriaCount int) []json.RawMess
 	return out
 }
 
-// optionMatrixRowIndex resolves the recommended option to its row index. An
-// author names the option ("recommended: Hub consolidation") far more naturally
-// than they count rows, so a name is matched case-insensitively first; an
-// explicit index is honoured too.
-func optionMatrixRowIndex(body map[string]any, options []optionMatrixOption) (int, bool) {
-	for _, field := range []string{"recommended", "recommended_option", "highlight_row"} {
-		v, ok := body[field]
-		if !ok {
-			continue
-		}
-		if idx, ok := optionMatrixIndexValue(v, len(options)); ok {
-			return idx, true
-		}
-		name, ok := v.(string)
-		if !ok {
-			continue
-		}
-		for i, o := range options {
-			if strings.EqualFold(strings.TrimSpace(name), o.Name) {
-				return i, true
+// optionMatrixRecommendedFields are the keys the recommendation is read from,
+// first populated wins.
+var optionMatrixRecommendedFields = []string{"recommended", "recommended_option", "highlight_row"}
+
+// optionMatrixRowIndices resolves the recommended option(s) to row indices, in
+// authored order without repeats. An author names the option ("recommended:
+// Hub consolidation") far more naturally than they count rows, so a name is
+// matched case-insensitively; an explicit index is honoured too. A list
+// recommends several options together (go-slide-creator-3hcw6).
+func optionMatrixRowIndices(body map[string]any, options []optionMatrixOption) []int {
+	for _, field := range optionMatrixRecommendedFields {
+		var out []int
+		seen := map[int]bool{}
+		for _, ref := range optionMatrixReferences(body[field]) {
+			if idx, ok := optionMatrixRowRef(ref, options); ok && !seen[idx] {
+				seen[idx] = true
+				out = append(out, idx)
 			}
+		}
+		if len(out) > 0 {
+			return out
+		}
+	}
+	return nil
+}
+
+// optionMatrixReferences returns a recommendation field's references: the
+// entries of a list, or the single value.
+func optionMatrixReferences(v any) []any {
+	switch t := v.(type) {
+	case nil:
+		return nil
+	case []any:
+		return t
+	}
+	return []any{v}
+}
+
+// optionMatrixRowRef resolves one reference: an in-range index or an option
+// name.
+func optionMatrixRowRef(ref any, options []optionMatrixOption) (int, bool) {
+	if idx, ok := optionMatrixIndexValue(ref, len(options)); ok {
+		return idx, true
+	}
+	name, ok := ref.(string)
+	if !ok {
+		return 0, false
+	}
+	for i, o := range options {
+		if strings.EqualFold(strings.TrimSpace(name), o.Name) {
+			return i, true
 		}
 	}
 	return 0, false
+}
+
+// OptionMatrixRecommendedNames returns the names of the recommended options in
+// authored order.
+func OptionMatrixRecommendedNames(body map[string]any) []string {
+	criteria := optionMatrixCriteria(body)
+	options := optionMatrixOptions(body, len(criteria))
+	var out []string
+	for _, idx := range optionMatrixRowIndices(body, options) {
+		out = append(out, options[idx].Name)
+	}
+	return out
 }
 
 // optionMatrixColIndex resolves the decisive criterion to its column index, by
@@ -360,10 +424,19 @@ func OptionMatrixUnresolvedReferences(body map[string]any) []string {
 	criteria := optionMatrixCriteria(body)
 	options := optionMatrixOptions(body, len(criteria))
 	var out []string
-	for _, field := range []string{"recommended", "recommended_option", "highlight_row"} {
-		if referencePresent(body[field]) {
-			if _, ok := optionMatrixRowIndex(map[string]any{field: body[field]}, options); !ok {
-				out = append(out, field)
+	for _, field := range optionMatrixRecommendedFields {
+		refs, isList := body[field].([]any)
+		if !isList {
+			if referencePresent(body[field]) {
+				if _, ok := optionMatrixRowRef(body[field], options); !ok {
+					out = append(out, field)
+				}
+			}
+			continue
+		}
+		for i, ref := range refs {
+			if _, ok := optionMatrixRowRef(ref, options); !ok {
+				out = append(out, fmt.Sprintf("%s[%d]", field, i))
 			}
 		}
 	}
@@ -386,10 +459,12 @@ func OptionMatrixUnresolvedReferences(body map[string]any) []string {
 func OptionMatrixOutscored(body map[string]any) (recommended, leader string, found bool) {
 	criteria := optionMatrixCriteria(body)
 	options := optionMatrixOptions(body, len(criteria))
-	rec, ok := optionMatrixRowIndex(body, options)
-	if !ok || len(criteria) == 0 {
+	// A combined recommendation is not one row to outscore.
+	rows := optionMatrixRowIndices(body, options)
+	if len(rows) != 1 || len(criteria) == 0 {
 		return "", "", false
 	}
+	rec := rows[0]
 	scale := strings.ToLower(strField(body, "scale"))
 	ranks := make([][]float64, len(options))
 	for i, o := range options {
@@ -459,6 +534,8 @@ func referencePresent(v any) bool {
 		return strings.TrimSpace(t) != ""
 	case float64, int, json.Number:
 		return true
+	case []any:
+		return len(t) > 0
 	}
 	return false
 }

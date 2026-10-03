@@ -2757,7 +2757,8 @@ var outputSchemaListDeckArchetypes = json.RawMessage(`{
 var outputSchemaListSlideKinds = json.RawMessage(`{
   "type": "object",
   "properties": {
-    "takeaway_budget": {"type": "object", "description": "Measured fit contract for the universal takeaway chrome band; width depends on the template.", "properties": {"font_pt": {"type": "number"}, "max_lines": {"type": "integer"}, "note": {"type": "string"}}, "required": ["font_pt", "max_lines", "note"]},
+    "takeaway_budget": {"type": "object", "description": "Measured fit contract for the universal takeaway chrome band; width depends on the template.", "properties": {"font_pt": {"type": "number"}, "max_lines": {"type": "integer"}, "max_chars": {"type": "integer", "description": "Characters the band holds on one line; present with budgets (template or fields:[\"budgets\"])."}, "note": {"type": "string"}}, "required": ["font_pt", "max_lines", "note"]},
+    "budget_basis": {"type": "object", "description": "What the measured budgets were measured on; present with budgets.", "properties": {"template": {"type": "string", "description": "The template named in the call."}, "templates": {"type": "array", "items": {"type": "string"}, "description": "The shipped templates whose tightest budget is reported when no template was named."}, "note": {"type": "string"}}, "required": ["note"]},
     "slide_kinds": {
       "type": "array",
       "items": {
@@ -2771,6 +2772,7 @@ var outputSchemaListSlideKinds = json.RawMessage(`{
           "item_schema":     {"type": "object", "description": "Closed JSON Schema for one slide of this kind; present only when fields includes item_schema."},
           "example":         {"type": "object", "description": "Minimal copy-ready slide of this kind (includes kind); validates with no error or warning."},
           "compositions":    {"type": "array", "description": "Supported pattern/layout overrides; present only when fields includes compositions.", "items": {"type": "object", "properties": {"pattern": {"type": "string"}, "layout": {"type": "string"}, "reason": {"type": "string"}}}},
+          "budgets":         {"type": "array", "description": "Per-field text budgets; present only when template is given or fields includes budgets. title, subtitle and takeaway are measured (the template's own placeholders and takeaway band, or the tightest across the shipped templates); the rest are fixed on every template.", "items": {"type": "object", "properties": {"field": {"type": "string", "description": "Payload path under the slide; [] marks a list entry and + joins fields sharing one budget."}, "max_chars": {"type": "integer"}, "max_chars_per_line": {"type": "integer", "description": "A title's conservative single-line width."}, "max_lines": {"type": "integer"}, "min_items": {"type": "integer"}, "max_items": {"type": "integer"}, "basis": {"type": "string", "enum": ["measured", "fixed"]}, "note": {"type": "string"}}, "required": ["field", "basis"]}},
           "composed_example": {"type": "object", "description": "raw_json2pptx row only, present when kinds names raw_json2pptx: a copy-ready DeckSpec slide whose compose envelope places several supporting regions (dominant chart, KPI region, timeline footer) that prove one title on one slide."}
         },
         "required": ["kind", "summary", "example"]

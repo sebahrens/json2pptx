@@ -61,6 +61,60 @@ func TestCompileImageCaseUsesTheSplitWhenItFits(t *testing.T) {
 	}
 }
 
+// go-slide-creator-n3j96: callouts compile to callout overlays anchored on the
+// pattern's picture — column 0, or 1 when the picture sits on the right — each
+// mapped back to the callout that was authored. The fallbacks, which cannot
+// anchor to a picture, keep the labels as text.
+func TestImageCaseCalloutsCompileToAnchoredOverlays(t *testing.T) {
+	callouts := []any{
+		map[string]any{"label": "Delayed queue", "x": float64(560), "y": float64(484), "units": "px"},
+		map[string]any{"label": "", "x": 0.2, "y": 0.2}, // unusable: no label
+		map[string]any{"label": "Oldest message", "x": 0.62, "y": 0.54},
+	}
+	for side, col := range map[string]int{"": 0, "left": 0, "right": 1} {
+		body := imageCaseBody(map[string]any{"image": "shots/console.png", "callouts": callouts, "image_side": side})
+		slide, links, err := CompileImageCase(Input{Body: body})
+		if err != nil {
+			t.Fatalf("compile: %v", err)
+		}
+		if slide.Pattern == nil || len(slide.Overlays) != 2 {
+			t.Fatalf("side %q: pattern %v, %d overlays, want the split and 2 overlays", side, slide.Pattern != nil, len(slide.Overlays))
+		}
+		first, second := slide.Overlays[0], slide.Overlays[1]
+		if first.Kind != "callout" || first.Text != "Delayed queue" || first.From != nil {
+			t.Errorf("overlay = %+v, want a callout that places its own label", first)
+		}
+		if a := first.To.AnchorImage; a == nil || a.Row != 0 || a.Col != col || a.X != 560 || a.Y != 484 || a.Units != "px" {
+			t.Errorf("side %q: anchor = %+v, want row 0 col %d at 560,484 px", side, a, col)
+		}
+		if a := second.To.AnchorImage; a.X != 0.62 || a.Y != 0.54 || a.Units != "" {
+			t.Errorf("anchor = %+v", a)
+		}
+		if got := semanticFor(links, "slides[0].overlays[1]"); got != "slides[0].callouts[2]" {
+			t.Errorf("overlay 1 maps to %q, want the authored slides[0].callouts[2]", got)
+		}
+	}
+
+	t.Run("no picture, no overlays", func(t *testing.T) {
+		slide, _, err := CompileImageCase(Input{Body: imageCaseBody(map[string]any{"callouts": callouts})})
+		if err != nil || len(slide.Overlays) != 0 {
+			t.Errorf("overlays = %d, err = %v", len(slide.Overlays), err)
+		}
+	})
+
+	t.Run("fallback keeps the labels", func(t *testing.T) {
+		body := imageCaseBody(map[string]any{"image": "shots/console.png", "callouts": callouts, "body": strings.Repeat("long ", 80)})
+		slide, _, err := CompileImageCase(Input{Body: body})
+		if err != nil {
+			t.Fatal(err)
+		}
+		encoded, _ := json.Marshal(slide.Content)
+		if slide.Pattern != nil || len(slide.Overlays) != 0 || !strings.Contains(string(encoded), "Delayed queue") || !strings.Contains(string(encoded), "Oldest message") {
+			t.Errorf("fallback should carry the callout labels as text: %s", encoded)
+		}
+	})
+}
+
 // A picture is a path, a url or an object, and the side it sits on is an
 // override rather than a second pattern.
 func TestImageCasePictureForms(t *testing.T) {

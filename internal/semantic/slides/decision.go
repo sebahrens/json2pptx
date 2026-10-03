@@ -146,12 +146,17 @@ func decisionPatternSlide(in Input, pattern string, values, overrides json.RawMe
 		SemanticPath: in.semSlide() + ".options",
 	})
 	rec, dropped := SplitConclusion(strField(in.Body, "recommendation"), firstNonEmpty(in.Takeaway, strField(in.Body, "takeaway")))
+	field := "recommendation"
+	if strField(in.Body, field) == "" {
+		field = "takeaway"
+	}
+	if rec == "" {
+		// A combined recommendation with no authored ask still says, in one
+		// line, that the marked options go together (go-slide-creator-3hcw6).
+		rec, field = CombinedRecommendation(decisionRecommendedLabels(DecisionOptions(in.Body))), "options"
+	}
 	if rec != "" {
 		slide.Pattern.Callout = &patterns.PatternCallout{Text: rec, Emphasis: "bold"}
-		field := "recommendation"
-		if strField(in.Body, field) == "" {
-			field = "takeaway"
-		}
 		links = append(links, SourceLink{
 			RawPath:      in.rawSlide() + ".pattern.callout.text",
 			SemanticPath: in.semSlide() + "." + field,
@@ -238,6 +243,17 @@ func DecisionOptions(body map[string]any) []decisionOption {
 	if !ok {
 		return nil
 	}
+	out := decisionOptionEntries(raw)
+	for _, idx := range decisionRecommendedRefs(body["recommended"], out) {
+		if idx >= 0 {
+			out[idx].Recommended = true
+		}
+	}
+	return out
+}
+
+// decisionOptionEntries reads the option list's usable entries.
+func decisionOptionEntries(raw []any) []decisionOption {
 	var out []decisionOption
 	for _, e := range raw {
 		switch t := e.(type) {
@@ -259,6 +275,75 @@ func DecisionOptions(body map[string]any) []decisionOption {
 		}
 	}
 	return out
+}
+
+// decisionRecommendedRefs resolves the slide-level recommended field — an
+// option label, a 0-based index, or a list of either — to option indices, one
+// per reference, -1 for a reference that matches no option. It is the list
+// form of marking options recommended: true, for a recommendation that
+// combines several of them (go-slide-creator-3hcw6).
+func decisionRecommendedRefs(v any, options []decisionOption) []int {
+	var out []int
+	for _, ref := range optionMatrixReferences(v) {
+		idx := -1
+		if i, ok := optionMatrixIndexValue(ref, len(options)); ok {
+			idx = i
+		} else if name, isString := ref.(string); isString {
+			for i, o := range options {
+				if strings.EqualFold(strings.TrimSpace(name), o.Label) {
+					idx = i
+					break
+				}
+			}
+		}
+		out = append(out, idx)
+	}
+	return out
+}
+
+// DecisionUnresolvedRecommended returns the paths under the slide of each
+// recommended reference that matches no option ("recommended",
+// "recommended[1]").
+func DecisionUnresolvedRecommended(body map[string]any) []string {
+	_, isList := body["recommended"].([]any)
+	var out []string
+	for i, idx := range decisionRecommendedRefs(body["recommended"], DecisionOptions(body)) {
+		switch {
+		case idx >= 0:
+		case isList:
+			out = append(out, fmt.Sprintf("recommended[%d]", i))
+		default:
+			out = append(out, "recommended")
+		}
+	}
+	return out
+}
+
+// DecisionRecommendedCount returns how many options are recommended, by their
+// own recommended flag or the slide-level recommended field.
+func DecisionRecommendedCount(body map[string]any) int {
+	return len(decisionRecommendedLabels(DecisionOptions(body)))
+}
+
+func decisionRecommendedLabels(options []decisionOption) []string {
+	var out []string
+	for _, o := range options {
+		if o.Recommended {
+			out = append(out, o.Label)
+		}
+	}
+	return out
+}
+
+// CombinedRecommendation is the band a recommendation of two or more options
+// takes when the author wrote none: it names every recommended option. One
+// option (or none) yields "", which keeps the single-recommendation slide as
+// it has always rendered.
+func CombinedRecommendation(names []string) string {
+	if len(names) < 2 {
+		return ""
+	}
+	return "Recommended: " + strings.Join(names[:len(names)-1], ", ") + " and " + names[len(names)-1]
 }
 
 // decisionOptionFromString splits an option written as one line.

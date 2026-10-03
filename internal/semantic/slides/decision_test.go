@@ -296,3 +296,75 @@ func TestDecisionRecommendedOptionSurvivesEveryLayout(t *testing.T) {
 		})
 	}
 }
+
+// go-slide-creator-3hcw6: a recommendation that combines two options marks
+// both, by flag or by the slide-level list, and the band names both when the
+// author wrote no recommendation; one recommended option renders as before.
+func TestDecisionCombinedRecommendation(t *testing.T) {
+	options := func(flagged bool) []any {
+		return []any{
+			map[string]any{"label": "Renegotiate now", "detail": "Locks the price.", "recommended": flagged},
+			map[string]any{"label": "Start re-platforming", "detail": "Removes the dependency.", "recommended": flagged},
+			option("Wait a year", "Keeps the options open."),
+		}
+	}
+	for name, body := range map[string]map[string]any{
+		"flags":      {"title": "The ask", "options": options(true)},
+		"list":       {"title": "The ask", "options": options(false), "recommended": []any{"renegotiate now", float64(1)}},
+		"choices":    {"title": "The ask", "choices": options(true)},
+		"name alone": {"title": "The ask", "options": options(false), "recommended": []any{"Renegotiate now", "Start re-platforming"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if n := DecisionRecommendedCount(body); n != 2 {
+				t.Fatalf("recommended count = %d, want 2", n)
+			}
+			slide, links, err := CompileDecision(Input{Body: body})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := strings.Count(string(slide.Pattern.Values), `"recommended":true`); got != 2 {
+				t.Errorf("%d steps marked recommended, want 2: %s", got, slide.Pattern.Values)
+			}
+			if slide.Pattern.Callout == nil || slide.Pattern.Callout.Text != "Recommended: Renegotiate now and Start re-platforming" {
+				t.Errorf("band = %+v, want it to name both options", slide.Pattern.Callout)
+			}
+			if got := semanticFor(links, "slides[0].pattern.callout.text"); got != "slides[0].options" {
+				t.Errorf("band maps to %q, want slides[0].options", got)
+			}
+		})
+	}
+
+	t.Run("an authored recommendation is kept", func(t *testing.T) {
+		body := map[string]any{"title": "The ask", "options": options(true), "recommendation": "Do both, in that order."}
+		slide, _, err := CompileDecision(Input{Body: body})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if slide.Pattern.Callout == nil || slide.Pattern.Callout.Text != "Do both, in that order." {
+			t.Errorf("band = %+v", slide.Pattern.Callout)
+		}
+	})
+
+	t.Run("one recommended option has no invented band", func(t *testing.T) {
+		body := map[string]any{"title": "The ask", "options": options(false), "recommended": "Wait a year"}
+		slide, _, err := CompileDecision(Input{Body: body})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if slide.Pattern.Callout != nil {
+			t.Errorf("band = %+v, want none", slide.Pattern.Callout)
+		}
+		if got := strings.Count(string(slide.Pattern.Values), `"recommended":true`); got != 1 {
+			t.Errorf("%d steps marked recommended, want 1: %s", got, slide.Pattern.Values)
+		}
+	})
+}
+
+func semanticFor(links []SourceLink, rawPath string) string {
+	for _, l := range links {
+		if l.RawPath == rawPath {
+			return l.SemanticPath
+		}
+	}
+	return ""
+}

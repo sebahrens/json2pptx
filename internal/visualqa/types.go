@@ -16,44 +16,67 @@ const (
 	SeverityP3 Severity = "P3" // Nitpick: suggestion for improvement
 )
 
-// validSeverities is the set of allowed severity values.
-var validSeverities = map[Severity]bool{
-	SeverityP0: true,
-	SeverityP1: true,
-	SeverityP2: true,
-	SeverityP3: true,
+// VocabularyEntry is one allowed finding value with its one-line meaning.
+type VocabularyEntry struct {
+	Name    string
+	Meaning string
+}
+
+// severityVocabulary lists the allowed severities, most severe first.
+var severityVocabulary = []VocabularyEntry{
+	{string(SeverityP0), "unreadable or broken"},
+	{string(SeverityP1), "major defect"},
+	{string(SeverityP2), "minor, cosmetic"},
+	{string(SeverityP3), "nitpick"},
+}
+
+// categoryVocabulary lists the allowed finding categories. It is the single
+// source for the vision prompt's parser, submit_visual_review's input schema
+// and its rejection message (go-slide-creator-lk37o).
+var categoryVocabulary = []VocabularyEntry{
+	{"text_overflow", "text spills its box"},
+	{"text_truncation", "text cut off"},
+	{"contrast", "low text contrast"},
+	{"alignment", "edges or baselines off"},
+	{"spacing", "uneven gaps or margins"},
+	{"overlap", "elements collide"},
+	{"missing_content", "content absent"},
+	{"font_size", "type too small"},
+	{"visual_hierarchy", "emphasis unclear"},
+	{"chart_readability", "chart hard to read"},
+	{"table_readability", "table hard to read"},
+	{"image_quality", "picture blurred or badly cropped"},
+	{"layout_balance", "lopsided or empty areas"},
+	{"color_consistency", "off-palette colour"},
+	{"border_style", "stray or uneven outlines"},
+	{"footer_clearance", "content crowds the footer"},
+	{"aspect_ratio", "distorted proportions"},
+}
+
+// SeverityVocabulary returns the allowed severities with their meanings.
+func SeverityVocabulary() []VocabularyEntry {
+	return append([]VocabularyEntry(nil), severityVocabulary...)
+}
+
+// CategoryVocabulary returns the allowed categories with their meanings.
+func CategoryVocabulary() []VocabularyEntry {
+	return append([]VocabularyEntry(nil), categoryVocabulary...)
+}
+
+func inVocabulary(list []VocabularyEntry, name string) bool {
+	for _, e := range list {
+		if e.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 // ValidSeverity reports whether s is an allowed severity value.
-func ValidSeverity(s Severity) bool {
-	return validSeverities[s]
-}
-
-// allowedCategories is the set of allowed finding category strings.
-var allowedCategories = map[string]bool{
-	"text_overflow":     true,
-	"text_truncation":   true,
-	"contrast":          true,
-	"alignment":         true,
-	"spacing":           true,
-	"overlap":           true,
-	"missing_content":   true,
-	"font_size":         true,
-	"visual_hierarchy":  true,
-	"chart_readability": true,
-	"table_readability": true,
-	"image_quality":     true,
-	"layout_balance":    true,
-	"color_consistency": true,
-	"border_style":      true,
-	"footer_clearance":  true,
-	"aspect_ratio":      true,
-}
+func ValidSeverity(s Severity) bool { return inVocabulary(severityVocabulary, string(s)) }
 
 // ValidCategory reports whether cat is an allowed finding category.
-func ValidCategory(cat string) bool {
-	return allowedCategories[cat]
-}
+func ValidCategory(cat string) bool { return inVocabulary(categoryVocabulary, cat) }
 
 // SchemaError indicates the model returned structurally valid JSON but with
 // values outside the allowed schema (unknown severity or category). Callers

@@ -402,6 +402,14 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 		"image": {inject: func(s string) map[string]any {
 			return covImageCase(map[string]any{"image": map[string]any{"path": "/tmp/" + s + ".png", "alt": s}})
 		}, rendered: true},
+		// go-slide-creator-n3j96: a callout's label reaches the slide as an
+		// overlay anchored on the picture.
+		"callouts": {inject: func(s string) map[string]any {
+			return covImageCase(map[string]any{
+				"image":    map[string]any{"path": "/tmp/shot.png", "alt": "Screenshot"},
+				"callouts": []any{map[string]any{"label": s, "x": 0.4, "y": 0.5}},
+			})
+		}, rendered: true},
 		"image_side": {inject: func(string) map[string]any { return covImageCase(map[string]any{"image_side": "right"}) }, rendered: false, why: "image_side picks a layout rather than contributing text"},
 		"title":      {inject: func(s string) map[string]any { return covImageCase(map[string]any{"title": s}) }, rendered: true},
 		"takeaway":   {inject: func(s string) map[string]any { return covImageCase(map[string]any{"takeaway": s}) }, rendered: true},

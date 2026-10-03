@@ -461,6 +461,12 @@ func registerSourceLink(sm *SourceMap, compiled *deckinput.SlideInput, l slides.
 	if strings.HasSuffix(l.RawPath, ".takeaway") {
 		sm.Add(slidepath.SlideField(outputIndex, "takeaway"), l.SemanticPath, sourceIndex)
 	}
+	// So do overlay findings (OVERLAY_TARGET_CROPPED at
+	// /slides/N/overlays/M/to/anchor_image), which must land on the callout
+	// that was authored (go-slide-creator-n3j96).
+	if strings.Contains(l.RawPath, ".overlays[") {
+		sm.Add(dottedToPointer(l.RawPath), l.SemanticPath, sourceIndex)
+	}
 	// A whole-slide link (the raw_json2pptx escape hatch) is spelled in
 	// dotted form; register its JSON Pointer spelling too, so a render
 	// finding anywhere inside the passed-through slide (e.g. a readability

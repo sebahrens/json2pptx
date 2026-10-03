@@ -204,15 +204,18 @@ type TableHighlightOption struct {
 
 // TableHighlightValues holds the evaluation matrix.
 type TableHighlightValues struct {
-	Criteria       []TableHighlightCriterion `json:"criteria"`
-	Options        []TableHighlightOption    `json:"options"`
-	Scale          string                    `json:"scale,omitempty"` // harvey (default) | rag | text
-	HighlightRow   *int                      `json:"highlight_row,omitempty"`
-	HighlightCol   *int                      `json:"highlight_col,omitempty"`
-	HighlightLabel string                    `json:"highlight_label,omitempty"`
-	CornerLabel    string                    `json:"corner_label,omitempty"`
-	ShowLegend     *bool                     `json:"show_legend,omitempty"`
-	LegendLabels   []string                  `json:"legend_labels,omitempty"` // [high, mid, low]
+	Criteria     []TableHighlightCriterion `json:"criteria"`
+	Options      []TableHighlightOption    `json:"options"`
+	Scale        string                    `json:"scale,omitempty"` // harvey (default) | rag | text
+	HighlightRow *int                      `json:"highlight_row,omitempty"`
+	// HighlightRows highlights further rows the same way: a recommendation
+	// that combines two options marks both (go-slide-creator-3hcw6).
+	HighlightRows  []int    `json:"highlight_rows,omitempty"`
+	HighlightCol   *int     `json:"highlight_col,omitempty"`
+	HighlightLabel string   `json:"highlight_label,omitempty"`
+	CornerLabel    string   `json:"corner_label,omitempty"`
+	ShowLegend     *bool    `json:"show_legend,omitempty"`
+	LegendLabels   []string `json:"legend_labels,omitempty"` // [high, mid, low]
 	// LegendLabelsRAG is the wording for the RAG swatches, also [high, mid, low]
 	// — i.e. [green, amber, red]. A deck mixing harvey and RAG columns used to
 	// reuse LegendLabels for BOTH sets, so a green dot carried the harvey
@@ -356,6 +359,7 @@ func (p *tableHighlight) Schema() *Schema {
 		"options":           ArraySchema(option, thMinOptions, thMaxOptions).WithDescription("2-6 options (rows)"),
 		"scale":             scaleEnum().WithDescription("Default cell scale (default harvey)").WithDefault(thScaleHarvey),
 		"highlight_row":     IntegerSchema(0, thMaxOptions-1).WithDescription("0-based option row to highlight (recommended option)"),
+		"highlight_rows":    ArraySchema(IntegerSchema(0, thMaxOptions-1), 0, thMaxOptions).WithDescription("0-based option rows to highlight when the recommendation combines several options; each gets the tint, the accent bar and highlight_label (added to highlight_row)"),
 		"highlight_col":     IntegerSchema(0, thMaxCriteria-1).WithDescription("0-based criterion column to highlight (decisive criterion)"),
 		"highlight_label":   StringSchema(thLabelMax).WithDescription("Tag shown under the highlighted option name, e.g. \"Recommended\""),
 		"corner_label":      StringSchema(thLabelMax).WithDescription("Header of the option column (default \"Option\")"),
@@ -584,6 +588,11 @@ func thValidateExtras(v *TableHighlightValues) []error {
 	if v.HighlightRow != nil && (*v.HighlightRow < 0 || *v.HighlightRow >= len(v.Options)) {
 		errs = append(errs, errOutOfRange(thName, "highlight_row", 0, len(v.Options)-1, *v.HighlightRow))
 	}
+	for i, row := range v.HighlightRows {
+		if row < 0 || row >= len(v.Options) {
+			errs = append(errs, errOutOfRange(thName, fmt.Sprintf("highlight_rows[%d]", i), 0, len(v.Options)-1, row))
+		}
+	}
 	if v.HighlightCol != nil && (*v.HighlightCol < 0 || *v.HighlightCol >= len(v.Criteria)) {
 		errs = append(errs, errOutOfRange(thName, "highlight_col", 0, len(v.Criteria)-1, *v.HighlightCol))
 	}
@@ -629,7 +638,7 @@ type thLayout struct {
 	v          *TableHighlightValues
 	ovr        *TableHighlightOverrides
 	accent     string
-	hlRow      int
+	hlRows     map[int]bool
 	hlCol      int
 	cols       []float64
 	areaW      float64
@@ -667,9 +676,12 @@ func (l *thLayout) total() float64 { return l.fixedPt + l.bodyTotal() }
 
 // newTHLayout resolves column geometry, highlight indices and the legend.
 func newTHLayout(ctx ExpandContext, v *TableHighlightValues, ovr *TableHighlightOverrides) *thLayout {
-	l := &thLayout{ctx: ctx, v: v, ovr: ovr, accent: ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent), hlRow: -1, hlCol: -1, legendPt: thLegendPt}
+	l := &thLayout{ctx: ctx, v: v, ovr: ovr, accent: ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent), hlRows: map[int]bool{}, hlCol: -1, legendPt: thLegendPt}
 	if v.HighlightRow != nil {
-		l.hlRow = *v.HighlightRow
+		l.hlRows[*v.HighlightRow] = true
+	}
+	for _, row := range v.HighlightRows {
+		l.hlRows[row] = true
 	}
 	if v.HighlightCol != nil {
 		l.hlCol = *v.HighlightCol
@@ -739,16 +751,16 @@ func (l *thLayout) measure(headerSize, bodySize, detailSize float64) {
 	for i, o := range v.Options {
 		if l.tight {
 			h := l.writtenOptionHeight(i)
-			if i == l.hlRow && v.HighlightLabel != "" {
-				hlPt = h
+			if l.hlRows[i] && v.HighlightLabel != "" {
+				hlPt = math.Max(hlPt, h)
 			} else {
 				rowPt = math.Max(rowPt, h)
 			}
 			continue
 		}
 		h := l.optionHeight(o, bodySize, detailSize)
-		if i == l.hlRow && v.HighlightLabel != "" {
-			hlPt = h + detailSize*sizingLineSpacing
+		if l.hlRows[i] && v.HighlightLabel != "" {
+			hlPt = math.Max(hlPt, h+detailSize*sizingLineSpacing)
 			continue
 		}
 		rowPt = math.Max(rowPt, h)
@@ -757,7 +769,7 @@ func (l *thLayout) measure(headerSize, bodySize, detailSize float64) {
 	l.rowPt = make([]float64, len(v.Options))
 	for i := range l.rowPt {
 		l.rowPt[i] = rowPt
-		if i == l.hlRow {
+		if l.hlRows[i] {
 			l.rowPt[i] = hlPt
 		}
 	}
@@ -921,7 +933,7 @@ func (l *thLayout) optionCells(i int, cellOverrides map[int]any) []*jsonschema.G
 	tones := l.tones()
 	o := l.v.Options[i]
 	rowTone := fillTone{Color: "none"}
-	if i == l.hlRow {
+	if l.hlRows[i] {
 		rowTone = tones.hlRow
 	}
 	nameInk := readableTextOn(l.ctx, rowTone, "dk1")
@@ -929,13 +941,13 @@ func (l *thLayout) optionCells(i int, cellOverrides map[int]any) []*jsonschema.G
 	co, hasCO := cellOverrides[i].(*TableHighlightCellOverride)
 	// Index i is option row i; its name cell is the primary text (D15 text keys).
 	applyCellTextOverride(nameCell, co)
-	if i == l.hlRow || (hasCO && co.AccentBar) {
+	if l.hlRows[i] || (hasCO && co.AccentBar) {
 		nameCell.AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: l.accent, Width: thHighlightBarPt}
 	}
 	cells := []*jsonschema.GridCellInput{nameCell}
 	for j := range l.v.Criteria {
 		tone := rowTone
-		if j == l.hlCol && i != l.hlRow {
+		if j == l.hlCol && !l.hlRows[i] {
 			tone = tones.hlCol
 		}
 		sc, _ := parseTableHighlightScore(safeScore(o.Scores, j), l.v.scaleFor(j))
@@ -952,7 +964,7 @@ func (l *thLayout) nameParas(i int, nameInk string, rowTone fillTone) []chartIns
 	if o.Detail != "" {
 		paras = append(paras, chartInsightsParagraph{Content: pptx.ConvertMarkdownEmphasis(o.Detail), Size: l.detailSize, Color: nameInk})
 	}
-	if i == l.hlRow && l.v.HighlightLabel != "" {
+	if l.hlRows[i] && l.v.HighlightLabel != "" {
 		paras = append(paras, chartInsightsParagraph{Content: l.v.HighlightLabel, Size: l.detailSize, Bold: true, Color: thTagInk(l.ctx, l.accent, rowTone)})
 	}
 	return paras

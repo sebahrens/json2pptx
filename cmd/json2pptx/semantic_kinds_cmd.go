@@ -20,8 +20,9 @@ import (
 // list_slide_kinds handler and renders what it returns, so the two cannot
 // drift (TestSemanticKindsMatchesListSlideKinds pins it).
 type semanticKindsResult struct {
-	SlideKinds     []slideKindListEntry `json:"slide_kinds"`
-	TakeawayBudget map[string]any       `json:"takeaway_budget,omitempty"`
+	SlideKinds     []slideKindListEntry  `json:"slide_kinds"`
+	TakeawayBudget map[string]any        `json:"takeaway_budget,omitempty"`
+	BudgetBasis    *slideKindBudgetBasis `json:"budget_basis,omitempty"`
 }
 
 // semanticKindSummary is one row of `semantic kinds --format json`: the
@@ -43,12 +44,15 @@ type semanticKindSummary struct {
 func runSemanticKinds() error {
 	fs := flag.NewFlagSet("semantic kinds", flag.ContinueOnError)
 	jsonOutput := fs.Bool("json", false, "Output as JSON")
+	templateName := fs.String("template", "", "Measure the title, subtitle and takeaway budgets on this template (default: the tightest across the shipped templates)")
+	templatesDir := fs.String("templates-dir", "", "Directory holding the template (default: the standard search path)")
 	fs.Usage = func() {
 		out := fs.Output()
-		fmt.Fprintf(out, "Usage: json2pptx semantic kinds [<kind>] [--format json]\n\n")
+		fmt.Fprintf(out, "Usage: json2pptx semantic kinds [<kind>] [--template <name>] [--format json]\n\n")
 		fmt.Fprintf(out, "List the DeckSpec slide kinds, or describe one.\n\n")
 		fmt.Fprintf(out, "  json2pptx semantic kinds                 every kind with a one-line summary (small: ~3 KB)\n")
 		fmt.Fprintf(out, "  json2pptx semantic kinds kpi_snapshot    fields, budgets and a copy-ready example (small: 2-5 KB)\n")
+		fmt.Fprintf(out, "  json2pptx semantic kinds closing --template midnight-blue   budgets measured on that template\n")
 		fmt.Fprintf(out, "  json2pptx semantic kinds kpi_snapshot --format json\n\n")
 		fmt.Fprintf(out, "Same catalogue as the list_slide_kinds MCP tool. The full JSON Schema is\n")
 		fmt.Fprintf(out, "'json2pptx semantic schema' (large: ~170 KB).\n\n")
@@ -66,9 +70,12 @@ func runSemanticKinds() error {
 	args := map[string]any{}
 	if fs.NArg() == 1 {
 		args["kinds"] = []any{fs.Arg(0)}
-		args["fields"] = []any{"item_schema", "compositions"}
+		args["fields"] = []any{"item_schema", "compositions", "budgets"}
+		if *templateName != "" {
+			args["template"] = *templateName
+		}
 	}
-	result, err := handleListSlideKinds(context.Background(), mcpRequestWithArgs(args))
+	result, err := (&mcpConfig{templatesDir: *templatesDir, cache: newBudgetTemplateCache()}).handleListSlideKinds(context.Background(), mcpRequestWithArgs(args))
 	if err != nil {
 		return fmt.Errorf("semantic kinds: %w", err)
 	}
@@ -88,9 +95,10 @@ func runSemanticKinds() error {
 			return printJSONIndent(map[string]any{
 				"slide_kind":      catalogue.SlideKinds[0],
 				"takeaway_budget": catalogue.TakeawayBudget,
+				"budget_basis":    catalogue.BudgetBasis,
 			})
 		}
-		return writeSemanticKindDetail(os.Stdout, catalogue.SlideKinds[0], catalogue.TakeawayBudget)
+		return writeSemanticKindDetail(os.Stdout, catalogue.SlideKinds[0], catalogue.TakeawayBudget, catalogue.BudgetBasis)
 	}
 
 	if *jsonOutput {
@@ -138,7 +146,7 @@ func oneLineSummary(summary string) string {
 // text: what it is for, each field with its type and budget, the compositions
 // its pattern/layout override accepts, and an example slide to paste under
 // `slides:`.
-func writeSemanticKindDetail(w io.Writer, k slideKindListEntry, takeawayBudget map[string]any) error {
+func writeSemanticKindDetail(w io.Writer, k slideKindListEntry, takeawayBudget map[string]any, basis *slideKindBudgetBasis) error {
 	fmt.Fprintf(w, "%s — %s\n\n", k.Kind, k.Summary)
 	if len(k.RequiredFields) > 0 {
 		fmt.Fprintf(w, "Required: %s\n", strings.Join(k.RequiredFields, ", "))
@@ -196,6 +204,10 @@ func writeSemanticKindDetail(w io.Writer, k slideKindListEntry, takeawayBudget m
 		fmt.Fprintf(w, "\nTakeaway budget: %s\n", strings.ReplaceAll(note, "validate_deck_spec", "'json2pptx semantic validate'"))
 	}
 
+	if err := writeSemanticKindBudgets(w, k.Budgets, basis); err != nil {
+		return err
+	}
+
 	if len(k.Compositions) > 0 {
 		fmt.Fprintf(w, "\nCompositions (optional pattern / layout override):\n")
 		for _, c := range k.Compositions {
@@ -215,6 +227,40 @@ func writeSemanticKindDetail(w io.Writer, k slideKindListEntry, takeawayBudget m
 	}
 	fmt.Fprintf(w, "\nExample (paste under `slides:` in a DeckSpec; validates with zero findings):\n\n%s", example)
 	return nil
+}
+
+// writeSemanticKindBudgets prints a kind's per-field budgets and what the
+// measured ones were measured on.
+func writeSemanticKindBudgets(w io.Writer, budgets []slideKindBudget, basis *slideKindBudgetBasis) error {
+	if len(budgets) == 0 {
+		return nil
+	}
+	on := "the tightest across the shipped templates"
+	if basis != nil && basis.Template != "" {
+		on = "template " + basis.Template
+	}
+	fmt.Fprintf(w, "\nBudgets (measured on %s; fixed ones hold on every template):\n", on)
+	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	for _, b := range budgets {
+		var parts []string
+		if b.MaxChars > 0 {
+			parts = append(parts, fmt.Sprintf("≤%d chars", b.MaxChars))
+		}
+		if b.MaxCharsPerLine > 0 {
+			parts = append(parts, fmt.Sprintf("≤%d per line", b.MaxCharsPerLine))
+		}
+		if b.MaxLines > 0 {
+			parts = append(parts, fmt.Sprintf("%d line(s)", b.MaxLines))
+		}
+		switch {
+		case b.MinItems > 0 && b.MaxItems > 0:
+			parts = append(parts, fmt.Sprintf("%d–%d items", b.MinItems, b.MaxItems))
+		case b.MaxItems > 0:
+			parts = append(parts, fmt.Sprintf("≤%d items", b.MaxItems))
+		}
+		fmt.Fprintf(tw, "  %s\t%s\t%s\t%s\n", b.Field, strings.Join(parts, ", "), b.Basis, b.Note)
+	}
+	return tw.Flush()
 }
 
 // schemaTypeLabel names a property's type the way an author thinks of it.

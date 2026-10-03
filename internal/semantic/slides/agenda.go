@@ -345,6 +345,37 @@ func AgendaPattern(body map[string]any) string {
 	}
 }
 
+// AgendaOverBudget explains why the sections cannot take an agenda visual, or
+// "" when they can (or when there are none). It names the budget that was
+// exceeded: a 101-character title used to be reported as a section count
+// (go-slide-creator-iubjb).
+func AgendaOverBudget(body map[string]any) string {
+	sections := AgendaSections(body)
+	if len(sections) == 0 || AgendaPattern(body) != "" {
+		return ""
+	}
+	if n := len(sections); n < agendaMinItems || n > agendaMaxItems {
+		return fmt.Sprintf("has %d usable sections; %d–%d render as the numbered agenda visual, each subtitle under its title", n, agendaMinItems, agendaMaxItems)
+	}
+	for i, s := range sections {
+		switch {
+		case runeLen(s.Title) > agendaItemMax:
+			return fmt.Sprintf("section %d's title is %d characters; an agenda row holds %d", i+1, runeLen(s.Title), agendaItemMax)
+		case runeLen(s.Subtitle) > agendaSubtitleMax:
+			return fmt.Sprintf("section %d's subtitle is %d characters; the numbered list holds %d and the agenda-with-images rows %d", i+1, runeLen(s.Subtitle), agendaListSubtitleMax, agendaSubtitleMax)
+		}
+	}
+	return fmt.Sprintf("has a subtitle over %d characters, which needs the agenda-with-images rows: %d–%d sections with titles of at most %d characters",
+		agendaListSubtitleMax, agendaImagesMinItems, agendaImagesMaxItems, agendaTitleMax)
+}
+
+// AgendaCountInRange reports whether the usable section count is one the
+// numbered agenda takes.
+func AgendaCountInRange(body map[string]any) bool {
+	n := len(AgendaSections(body))
+	return n >= agendaMinItems && n <= agendaMaxItems
+}
+
 // UsableAgendaSectionCount returns how many sections survive extraction, so
 // validation counts what compile will render.
 func UsableAgendaSectionCount(body map[string]any) int { return len(AgendaSections(body)) }
