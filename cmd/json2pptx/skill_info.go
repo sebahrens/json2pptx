@@ -1054,7 +1054,7 @@ var composeExampleSlides = []skillComposeExample{
 	},
 	{
 		Title:       "Horizontal: svggen chart beside a native pattern",
-		Description: "An svggen bar_chart diagram segment (55% width) beside native labeled-rows (45%). The diagram segment is the third XOR alternative to pattern/compose, so the native pattern is not flattened through a single-cell grid; give it alt text.",
+		Description: "An svggen bar chart diagram segment (55% width) beside native labeled-rows (45%). The diagram segment is the third XOR alternative to pattern/compose, so the native pattern is not flattened through a single-cell grid; give it alt text.",
 		JSON: json.RawMessage(`{
   "slide_type": "content",
   "layout_id": "blank-title",
@@ -1064,7 +1064,7 @@ var composeExampleSlides = []skillComposeExample{
     "direction": "horizontal",
     "gap": 12,
     "segments": [
-      {"size_pct": 55, "diagram": {"type": "bar_chart", "title": "Leads lost at each stage (%)", "alt": "Qualification loses 60% of leads; later stages lose 25% or less",
+      {"size_pct": 55, "diagram": {"type": "bar", "title": "Leads lost at each stage (%)", "alt": "Qualification loses 60% of leads; later stages lose 25% or less",
         "data": {"categories": ["Qualify", "Propose", "Negotiate", "Close"], "series": [{"name": "Leads lost", "values": [60, 25, 15, 10]}]}}},
       {"size_pct": 45, "pattern": {"name": "labeled-rows", "values": {"rows": [
         {"label": "Cause", "body": "Inbound leads reach a rep before anyone checks budget or fit."},
@@ -1088,7 +1088,7 @@ var composeExampleSlides = []skillComposeExample{
     "gap": 6,
     "segments": [
       {"size_pct": 65, "compose": {"direction": "horizontal", "gap": 6, "segments": [
-        {"size_pct": 62, "diagram": {"type": "line_chart", "title": "Quarterly revenue (€m)", "alt": "Quarterly revenue rises from €12m in Q1 to €21m in Q4",
+        {"size_pct": 62, "diagram": {"type": "line", "title": "Quarterly revenue (€m)", "alt": "Quarterly revenue rises from €12m in Q1 to €21m in Q4",
           "data": {"categories": ["Q1", "Q2", "Q3", "Q4"], "series": [{"name": "Revenue", "values": [12, 14, 17, 21]}]}}},
         {"size_pct": 38, "pattern": {"name": "metric-list", "values": {"items": [
           {"value": "+75%", "label": "Revenue growth"},

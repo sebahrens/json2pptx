@@ -1,5 +1,60 @@
 # Schema Changelog
 
+- **2026-10-03 — recommend_visual: every candidate is authorable, DeckSpec kinds come first, one chart-type vocabulary (`go-slide-creator-x97m6`, `-bdvhj`, `-3ujfq`, `-7sqof`).**
+  - **Every candidate carries `data_contract` and a runnable
+    `next_tool_call`** (`render_deck_spec` with a complete one-slide DeckSpec
+    whose example values validate) — named patterns, placeholder layouts and
+    `raw_shape_grid` now too, not only charts, diagrams and compose.
+    `data_contract` gains `form` (`deckspec_kind` | `raw_json2pptx`) and
+    `limits[]` (`{path, min_items, max_items, max_chars}`, at most 14, paths
+    below `field_path`). The patterns no DeckSpec kind compiles to are
+    authored as a `raw_json2pptx` slide; their contract description starts
+    "Raw-only" and carries keys, item counts and character budgets inline
+    (`field_path: slides[0].slide.pattern.values`).
+  - **New candidate field `deckspec`** `{kind, fields {required, optional},
+    aliases, example_path, differs_from_raw}` whenever a DeckSpec kind
+    compiles to the candidate (`table-highlight` → `option_matrix`,
+    `org_chart` → `org`, `swot` / `porters_five_forces` → `framework`, a
+    chart → `chart_insight`, `title` / `section` / `table` / `image` layouts →
+    their kinds). `next_tool_call` then renders that kind, not a raw slide.
+    `aliases` maps each accepted alternative key to its canonical field
+    (`metrics` → `kpis`, `people` → `members`, `x_axis_label` → `x_axis`).
+    `waterfall`, `gauge` and `treemap` keep the raw chart slide
+    (`chart_insight` reads `{categories, series}` only).
+  - **New candidate category `deckspec_kind`**, name `regions`: an explicit
+    same-slide brief of 2–3 views the regions kind can hold (chart, stat,
+    kpis, timeline) returns it first, the raw `compose:` candidate 0.01
+    below it. `regions` is also accepted in `candidates`.
+  - **New candidate fields `also_as[]`** `{form: kind|pattern|diagram|chart,
+    name, differs}` — the other forms of the same visual and their field
+    differences — **and `differs_by`**, one line on every candidate whose
+    score is within 0.02 of another's.
+  - **Ranking.** A visual the intent names outright outranks incidental
+    keyword matches (a swimlane across three teams → `swimlane`, not
+    `team-bios`; a Gantt plan → `gantt`); options against criteria →
+    `table-highlight`; two things contrasted → `comparison-2col`, not a line
+    chart or `bmc-canvas`; a named chart type is the one returned (line stays
+    line, also inside a compose / regions candidate); an ability only one
+    form has breaks a pattern / diagram tie ("highlighted step" →
+    `value-chain` pattern, "plotted items" → `matrix_2x2` diagram, whose
+    recipe now plots `points`). `funnel` no longer matches the bare word
+    "stages". Tracked by
+    `internal/patterns/testdata/recommend_visual_eval.json` (50 intents,
+    top-1 floor 1.0).
+  - **Chart type names.** The canonical spelling is the short one (`bar`,
+    `line`, `stacked_bar`); every type is also accepted as `<type>_chart`
+    (new alias `waterfall_chart`) in `chart_value.type`, compose
+    `diagram.type`, DeckSpec `chart.type`, `recommend_visual` `candidates`
+    (inside `compose:chart:…` names too) and card-grid / icon-row
+    `secondary.type` (now `sparkline` | `bar` | `line`, the `_chart`
+    spellings remain valid). Responses write the short name: kind examples
+    (`chart_insight`, `regions`), compose examples, the `chart-insights-split`
+    exemplar, and `CHART_OVERLOADED` `fix.params.use_type` (`"bar"`, was
+    `"bar_chart"`).
+  - The `blank` layout recipe carries a 2×2 `shape_grid` (a title alone is
+    `SLIDE_NEARLY_EMPTY`). No input field was removed; no preview fields
+    changed.
+
 - **2026-10-03 — Text, units and highlights render as written (`go-slide-creator-zdzk2`, `go-slide-creator-3rg5f`, `go-slide-creator-290o9`, `go-slide-creator-fr538`, `go-slide-creator-y81vn`).**
   - **A typed number is the number that renders.** `shape_grid` text
     `"2. Enabler bar: funded first"` was written as an auto-numbered

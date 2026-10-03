@@ -19,12 +19,15 @@ import (
 //
 // Conceptual types:
 //   - sparkline:  a small line chart with no legend or chrome; renders as a
-//     line_chart sub-diagram with hidden legend.
-//   - bar_chart:  a small bar chart with bars per category.
-//   - line_chart: a regular line chart with one series per cell.
+//     line chart sub-diagram with hidden legend.
+//   - bar:  a small bar chart with bars per category.
+//   - line: a regular line chart with one series per cell.
+//
+// "bar_chart" and "line_chart" are accepted aliases of bar and line
+// (go-slide-creator-7sqof).
 type SecondaryChart struct {
-	// Type is the chart kind. Must be one of "sparkline", "bar_chart",
-	// "line_chart".
+	// Type is the chart kind: "sparkline", "bar" or "line" ("bar_chart" and
+	// "line_chart" are accepted aliases).
 	Type string `json:"type"`
 	// Values are the data points for the single embedded series. 2–12 points.
 	Values []float64 `json:"values"`
@@ -37,20 +40,23 @@ type SecondaryChart struct {
 }
 
 // validSecondaryChartTypes enumerates the allowed Type values.
-var validSecondaryChartTypes = map[string]bool{
-	"sparkline":  true,
-	"bar_chart":  true,
-	"line_chart": true,
+// The value is the svggen diagram type the chart is drawn with.
+var validSecondaryChartTypes = map[string]string{
+	"sparkline":  "line_chart",
+	"bar":        "bar_chart",
+	"line":       "line_chart",
+	"bar_chart":  "bar_chart",
+	"line_chart": "line_chart",
 }
 
 // SecondaryChartSchema returns the JSON schema for a single SecondaryChart.
-// Caps: type restricted to {sparkline, bar_chart, line_chart}; values 2–12
+// Caps: type restricted to {sparkline, bar, line} and the _chart aliases; values 2–12
 // numbers; categories length capped at 12 and must match values length when
 // non-empty (enforced at Validate time).
 func SecondaryChartSchema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
-			"type":       EnumSchema("sparkline", "bar_chart", "line_chart").WithDescription("Chart kind: sparkline (mini line, no legend), bar_chart (bars), line_chart (line with axes)"),
+			"type":       EnumSchema("sparkline", "bar", "line", "bar_chart", "line_chart").WithDescription("Chart kind: sparkline (mini line, no legend), bar (bars), line (line with axes); bar_chart / line_chart are accepted aliases of bar / line"),
 			"values":     ArraySchema(NumberSchema(0, 0), 2, 12).WithDescription("2–12 numeric data points for the single embedded series"),
 			"categories": ArraySchema(StringSchema(40), 0, 12).WithDescription("Optional x-axis labels; length must equal values length when set"),
 			"color":      StringSchema(0).WithDescription("Optional hex or scheme color (defaults to the cell accent)"),
@@ -70,12 +76,12 @@ func validateSecondaryChart(pattern, pathPrefix string, sec *SecondaryChart) []e
 	typePath := pathPrefix + ".type"
 	if sec.Type == "" {
 		errs = append(errs, errRequired(pattern, typePath))
-	} else if !validSecondaryChartTypes[sec.Type] {
+	} else if validSecondaryChartTypes[sec.Type] == "" {
 		errs = append(errs, &ValidationError{
 			Pattern: pattern,
 			Path:    typePath,
 			Code:    "invalid_enum",
-			Message: fmt.Sprintf("%s: %s must be one of sparkline, bar_chart, line_chart; got %q", pattern, typePath, sec.Type),
+			Message: fmt.Sprintf("%s: %s must be one of sparkline, bar, line; got %q", pattern, typePath, sec.Type),
 		})
 	}
 	valuesPath := pathPrefix + ".values"
@@ -98,15 +104,16 @@ func validateSecondaryChart(pattern, pathPrefix string, sec *SecondaryChart) []e
 
 // buildSecondaryDiagram converts a SecondaryChart into a DiagramSpec suitable
 // for embedding as the sub-diagram of a composite cell. "sparkline" is mapped
-// to a line_chart with hidden legend; bar_chart and line_chart pass through.
+// to a line chart with hidden legend; bar and line (in either spelling) draw
+// as svggen's bar_chart and line_chart.
 // fallbackAccent is used when sec.Color is empty.
 func buildSecondaryDiagram(sec *SecondaryChart, fallbackAccent string) *types.DiagramSpec {
 	if sec == nil {
 		return nil
 	}
-	diagramType := sec.Type
-	if diagramType == "sparkline" {
-		diagramType = "line_chart"
+	diagramType := validSecondaryChartTypes[sec.Type]
+	if diagramType == "" {
+		diagramType = sec.Type
 	}
 
 	// Synthesize numeric categories when omitted; the bar_chart and line_chart

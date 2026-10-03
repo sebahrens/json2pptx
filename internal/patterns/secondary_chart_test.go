@@ -34,9 +34,20 @@ func TestValidateSecondaryChart(t *testing.T) {
 			wantErr: "",
 		},
 		{
+			// The canonical short spellings (go-slide-creator-7sqof).
+			name:    "valid_bar",
+			sec:     &SecondaryChart{Type: "bar", Values: []float64{10, 20}},
+			wantErr: "",
+		},
+		{
+			name:    "valid_line",
+			sec:     &SecondaryChart{Type: "line", Values: []float64{1, 2}},
+			wantErr: "",
+		},
+		{
 			name:    "invalid_type",
 			sec:     &SecondaryChart{Type: "pie", Values: []float64{1, 2, 3}},
-			wantErr: "must be one of sparkline, bar_chart, line_chart",
+			wantErr: "must be one of sparkline, bar, line",
 		},
 		{
 			name:    "missing_type",
@@ -251,5 +262,17 @@ func TestIconRowValidateRejectsTooManyValues(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "values[0].secondary.values") {
 		t.Errorf("error should reference values[0].secondary.values; got %v", err)
+	}
+}
+
+// TestSecondaryChartSpellingsDrawTheSameDiagram: "bar" and "bar_chart" (and
+// "line" / "line_chart") are one chart type (go-slide-creator-7sqof).
+func TestSecondaryChartSpellingsDrawTheSameDiagram(t *testing.T) {
+	for short, long := range map[string]string{"bar": "bar_chart", "line": "line_chart"} {
+		a := buildSecondaryDiagram(&SecondaryChart{Type: short, Values: []float64{1, 2}}, "accent1")
+		b := buildSecondaryDiagram(&SecondaryChart{Type: long, Values: []float64{1, 2}}, "accent1")
+		if a == nil || b == nil || a.Type != b.Type || a.Type != long {
+			t.Errorf("%s / %s draw as %+v / %+v, want both %s", short, long, a, b, long)
+		}
 	}
 }

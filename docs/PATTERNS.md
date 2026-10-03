@@ -736,7 +736,7 @@ Two rules for an author writing a new warner:
 
 ```go
 type SecondaryChart struct {
-    Type       string    // "sparkline" | "bar_chart" | "line_chart"
+    Type       string    // "sparkline" | "bar" | "line" ("bar_chart" / "line_chart" are aliases)
     Values     []float64 // 2–12 numeric data points
     Categories []string  // optional x-axis labels; length must match Values when set
     Color      string    // optional hex/scheme color override
@@ -746,7 +746,7 @@ type SecondaryChart struct {
 **Caps (enforced by `validateSecondaryChart`):**
 
 - At most one secondary per cell (a single pointer field, not an array).
-- `type` is restricted to `sparkline`, `bar_chart`, `line_chart`.
+- `type` is restricted to `sparkline`, `bar`, `line`; `bar_chart` and `line_chart` are accepted aliases of `bar` and `line`.
 - `values` must be 2–12 numbers.
 - `categories`, when set, must have the same length as `values`.
 

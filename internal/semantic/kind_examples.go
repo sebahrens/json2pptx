@@ -56,7 +56,7 @@ var kindExamples = map[SlideKind]map[string]any{
 		"regions": []any{
 			map[string]any{
 				"kind": "chart", "size_pct": 65, "heading": "Quarterly revenue", "unit": "€m",
-				"chart": map[string]any{"type": "line_chart", "data": map[string]any{
+				"chart": map[string]any{"type": "line", "data": map[string]any{
 					"categories": []any{"Q1", "Q2", "Q3", "Q4"},
 					"series":     []any{map[string]any{"name": "Revenue", "values": []any{12, 14, 17, 21}}},
 				}},
@@ -248,7 +248,7 @@ var kindExamples = map[SlideKind]map[string]any{
 		"kind":  "chart_insight",
 		"title": "Revenue accelerated through the year",
 		"chart": map[string]any{
-			"type":  "bar_chart",
+			"type":  "bar",
 			"title": "Quarterly revenue ($M)",
 			"data": map[string]any{
 				"categories": []any{"Q1", "Q2", "Q3", "Q4"},

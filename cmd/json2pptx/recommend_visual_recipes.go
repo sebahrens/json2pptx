@@ -204,14 +204,19 @@ var visualRecipeData = map[string]map[string]any{
 		},
 		"milestones": []any{map[string]any{"id": "m1", "label": "Go-live", "date": "2026-06-01"}},
 	},
+	// Plotted points are what only the diagram does (the matrix-2x2 pattern
+	// holds text per quadrant), so the recipe plots them: x / y on 0–100,
+	// the quadrant split at 50 (go-slide-creator-bdvhj).
 	"matrix_2x2": {
-		"x_axis_label": "Effort",
-		"y_axis_label": "Impact",
-		"quadrants": []any{
-			map[string]any{"position": "top-left", "title": "Quick wins", "items": []any{"Self-serve export"}},
-			map[string]any{"position": "top-right", "title": "Major projects", "items": []any{"AI assistant"}},
-			map[string]any{"position": "bottom-left", "title": "Fill-ins", "items": []any{"Emoji support"}},
-			map[string]any{"position": "bottom-right", "title": "Time sinks", "items": []any{"Legacy import"}},
+		"x_axis_label":    "Effort",
+		"y_axis_label":    "Impact",
+		"quadrant_labels": []any{"Quick wins", "Major projects", "Fill-ins", "Time sinks"},
+		"points": []any{
+			map[string]any{"label": "Self-serve export", "x": 20, "y": 80},
+			map[string]any{"label": "Usage alerts", "x": 35, "y": 65},
+			map[string]any{"label": "AI assistant", "x": 80, "y": 85},
+			map[string]any{"label": "Emoji support", "x": 15, "y": 20},
+			map[string]any{"label": "Legacy import", "x": 75, "y": 25},
 		},
 	},
 	"porters_five_forces": {
@@ -414,40 +419,22 @@ func rankingIntent(query string) bool {
 	return false
 }
 
-// attachVisualRecipes gives every chart / diagram candidate its data contract
-// and a runnable render_deck_spec next call, and every compose candidate its
-// region contracts and runnable compose recipe (go-slide-creator-okg00).
+// attachVisualRecipes gives every candidate its data contract and a runnable
+// render_deck_spec next call — in its DeckSpec kind when one compiles to it,
+// else as a raw slide — and every compose candidate its region contracts and
+// runnable compose recipe (go-slide-creator-okg00).
 func attachVisualRecipes(rec *patterns.RecommendVisualResult, templateName string) {
 	hints := buildDataFormatHints()
 	ranking := rankingIntent(rec.QueryUnderstood)
+	reg := patterns.Default()
 	for i := range rec.Candidates {
 		c := &rec.Candidates[i]
 		if c.Category == patterns.VisualCategoryCompose {
-			attachComposeRecipe(c, templateName, patterns.Default(), hints)
+			attachComposeRecipe(c, templateName, reg, hints)
 			continue
 		}
-		dataKey := c.Name
-		// A ranking ("largest", "top 5") is the textbook horizontal bar chart:
-		// names in a column, bars sorted largest first (go-slide-creator-oocqj).
-		if c.Name == "bar" && ranking {
-			dataKey = "bar_ranked"
-			c.Rationale += "; a ranking reads best as horizontal bars sorted largest first (data.orientation \"horizontal\")"
-		}
-		spec, valueKey := visualRecipeDeckSpecFrom(c.Category, c.Name, dataKey, templateName)
-		if spec == nil {
-			continue
-		}
-		if h, ok := hints[c.Name]; ok {
-			c.DataContract = &patterns.VisualDataContract{
-				RequiredKeys: h.RequiredKeys,
-				OptionalKeys: h.OptionalKeys,
-				Description:  h.Description,
-				FieldPath:    "slides[0].slide.content[1]." + valueKey + ".data",
-			}
-		}
-		c.NextToolCall = &patterns.ToolCallSuggestion{
-			Tool:         "render_deck_spec",
-			ArgsTemplate: map[string]any{"spec": spec},
-		}
+		// Every other candidate: the DeckSpec kind that compiles to it, or a
+		// raw slide with the contract inline (go-slide-creator-x97m6, -3ujfq).
+		attachCandidateRecipe(c, templateName, reg, hints, ranking)
 	}
 }

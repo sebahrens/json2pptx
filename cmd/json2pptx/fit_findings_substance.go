@@ -700,9 +700,9 @@ func collectChartLegibilityFindings(input *PresentationInput) []patterns.FitFind
 				"max_categories":     ceiling,
 			}
 			if isPieChartType(string(item.ChartValue.Type)) {
-				msg = fmt.Sprintf("slide %d: %s has %d slices (%s) — a pie reads only up to %d; use bar_chart (sorted, labelled) for this many categories, or keep the top %d slices and group the rest into \"Other\"",
+				msg = fmt.Sprintf("slide %d: %s has %d slices (%s) — a pie reads only up to %d; use a bar chart (type bar; sorted, labelled) for this many categories, or keep the top %d slices and group the rest into \"Other\"",
 					si+1, item.ChartValue.Type, len(labels), why, ceiling, ceiling-1)
-				params["use_type"] = "bar_chart"
+				params["use_type"] = "bar"
 			}
 			out = append(out, patterns.FitFinding{
 				ValidationError: patterns.ValidationError{
