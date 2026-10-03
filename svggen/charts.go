@@ -1772,12 +1772,26 @@ func drawLineDirectSeriesLabels(b *SVGBuilder, style *StyleGuide, data ChartData
 			b.DrawLine(l.x, l.y, labelX-style.Spacing.XS/2, l.labelY)
 		}
 
-		b.SetTextColor(l.color)
+		b.SetTextColor(directLabelInk(style.Palette, l.color))
 		b.DrawText(l.name, labelX, l.labelY, TextAlignLeft, TextBaselineMiddle)
 	}
 
 	b.Pop()
 	return true
+}
+
+// directLabelInk is the text colour of a direct series label: the series
+// colour when it reads as small text on the chart background (WCAG AA 4.5:1),
+// otherwise the least-darkened (or lightened) shade of it that does. A
+// template's series colour is chosen for a stroke, not for text: p-style's
+// #D89060 label read at 2.6:1 on white (go-slide-creator-vi6uq). The shade
+// keeps the series hue, and the line and any leader keep the original colour.
+func directLabelInk(p *Palette, c Color) Color {
+	bg := p.Background
+	if bg.A < 1 {
+		bg = bg.BlendOver(Color{R: 255, G: 255, B: 255, A: 1})
+	}
+	return EnsureContrast(c, bg, WCAGAANormal)
 }
 
 const (

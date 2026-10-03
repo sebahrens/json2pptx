@@ -21,6 +21,10 @@ const (
 	hbarLabelColumnMaxShare = 0.38
 	// hbarLabelGapPt separates a category name from its bar.
 	hbarLabelGapPt = 8.0
+	// hbarNegValueSepPt widens the gap between a category name and a
+	// negative bar's value label beside it, so the two never read as one
+	// string when the renderer's font runs wider than the measured one.
+	hbarNegValueSepPt = 4.0
 	// hbarSlotShare is a bar's thickness as a share of its category slot.
 	hbarSlotShare = 0.62
 	// HorizontalBarLabelMinChars is the longest category name, in
@@ -52,15 +56,18 @@ func resolveOrientation(data map[string]any) (bool, error) {
 
 // hbarLayout is the geometry of one horizontal bar render.
 type hbarLayout struct {
-	plot         Rect
-	header       float64
-	footer       float64
-	legend       float64
-	axisH        float64
-	labelFont    float64
-	valueFont    float64
-	labelColumn  float64
-	displayNames [][]string
+	plot        Rect
+	header      float64
+	footer      float64
+	legend      float64
+	axisH       float64
+	labelFont   float64
+	valueFont   float64
+	labelColumn float64
+	// negValueColumn is the band between the category names and the plot
+	// that holds the value labels of bars ending at the plot's left edge.
+	negValueColumn float64
+	displayNames   [][]string
 }
 
 // drawHorizontal renders the chart with categories down the left and bars
@@ -80,7 +87,7 @@ func (bc *BarChart) drawHorizontal(data ChartData) error {
 	labelled := bc.config.ShowValues
 
 	lo, hi := bc.calculateDomain(data)
-	lay := bc.horizontalLayout(data, lo, hi, labelled)
+	lay := bc.horizontalLayout(data, labelled)
 	plot := lay.plot
 
 	vScale := NewLinearScale(lo, hi)
@@ -133,7 +140,7 @@ func (bc *BarChart) drawHorizontal(data ChartData) error {
 
 // horizontalLayout measures the category-name column, the value-label
 // reserve and the header / legend / footer bands, and returns the plot rect.
-func (bc *BarChart) horizontalLayout(data ChartData, lo, hi float64, labelled bool) hbarLayout {
+func (bc *BarChart) horizontalLayout(data ChartData, labelled bool) hbarLayout {
 	b := bc.builder
 	style := b.StyleGuide()
 	lay := hbarLayout{labelFont: style.Typography.SizeSmall, valueFont: style.Typography.SizeSmall}
@@ -173,16 +180,23 @@ func (bc *BarChart) horizontalLayout(data ChartData, lo, hi float64, labelled bo
 			}
 		}
 	}
-	// Value labels sit past the bar end: reserve the widest one.
-	valueReserve := 0.0
+	// Value labels sit past the bar end: reserve the widest label on each
+	// side. Only a non-stacked negative bar labels leftward; a stack's total
+	// always sits past its positive end.
+	rightReserve, leftReserve := 0.0, 0.0
 	if labelled {
 		b.SetFontSize(lay.valueFont).SetFontWeight(style.Typography.WeightBold)
 		for _, v := range hbarLabelValues(data, bc.config.Stacked) {
-			if w, _ := b.MeasureText(TrueMinus(bc.config.ValueFmt.FormatOr(v, bc.config.ValueFormat))); w > valueReserve {
-				valueReserve = w
+			w, _ := b.MeasureText(TrueMinus(bc.config.ValueFmt.FormatOr(v, bc.config.ValueFormat)))
+			if v < 0 && !bc.config.Stacked {
+				leftReserve = math.Max(leftReserve, w+labelledValueGapPt)
+			} else {
+				rightReserve = math.Max(rightReserve, w+labelledValueGapPt)
 			}
 		}
-		valueReserve += labelledValueGapPt
+		if leftReserve > 0 {
+			leftReserve += hbarNegValueSepPt
+		}
 	}
 	b.Pop()
 	lay.labelColumn = math.Min(col, maxCol)
@@ -202,15 +216,13 @@ func (bc *BarChart) horizontalLayout(data ChartData, lo, hi float64, labelled bo
 		lay.legend = legend.Height(width)
 	}
 
-	left := bc.config.MarginLeft + lay.labelColumn + hbarLabelGapPt
-	// A negative bar's label sits left of its end, inside the plot.
-	if lo < 0 && labelled {
-		left += valueReserve
-	}
-	right := bc.config.MarginRight + valueReserve
-	if hi <= 0 {
-		right = bc.config.MarginRight
-	}
+	// The most negative bar ends at the plot's left edge and its label sits
+	// left of that, so the label gets its own column between the category
+	// names and the plot; anchoring the names to the plot edge put the two
+	// in the same slot ("North" over "−0.5", go-slide-creator-yiznx).
+	lay.negValueColumn = leftReserve
+	left := bc.config.MarginLeft + lay.labelColumn + hbarLabelGapPt + leftReserve
+	right := bc.config.MarginRight + rightReserve
 	top := bc.config.MarginTop + lay.header
 	bottom := bc.config.MarginBottom + lay.footer + lay.axisH
 	if lay.legend > 0 {
@@ -225,18 +237,27 @@ func (bc *BarChart) horizontalLayout(data ChartData, lo, hi float64, labelled bo
 	return lay
 }
 
-// hbarLabelValues are the numbers the value labels print: each bar, or each
-// stack's total for a stacked chart.
+// hbarLabelValues are the numbers the value labels print: each bar, or the
+// total of each stack with a positive part (drawHorizontalStacks labels no
+// other stack).
 func hbarLabelValues(data ChartData, stacked bool) []float64 {
 	if !stacked {
 		return chartDataValues(data)
 	}
-	out := make([]float64, len(data.Categories))
+	total := make([]float64, len(data.Categories))
+	positive := make([]bool, len(data.Categories))
 	for _, s := range data.Series {
 		for i, v := range s.Values {
-			if i < len(out) {
-				out[i] += v
+			if i < len(total) {
+				total[i] += v
+				positive[i] = positive[i] || v > 0
 			}
+		}
+	}
+	out := make([]float64, 0, len(total))
+	for i, t := range total {
+		if positive[i] {
+			out = append(out, t)
 		}
 	}
 	return out
@@ -265,7 +286,7 @@ func (bc *BarChart) drawHorizontalCategoryNames(data ChartData, cScale *Categori
 	b.Push()
 	b.SetFontSize(lay.labelFont).SetFontWeight(style.Typography.WeightNormal)
 	b.SetTextColor(style.Palette.TextPrimary)
-	x := math.Min(lay.plot.X, zeroX) - hbarLabelGapPt
+	x := math.Min(lay.plot.X, zeroX) - lay.negValueColumn - hbarLabelGapPt
 	lineH := lay.labelFont * 1.2
 	for i, c := range data.Categories {
 		lines := lay.displayNames[i]
@@ -336,7 +357,7 @@ func (bc *BarChart) drawHorizontalBars(data ChartData, plot Rect, cScale *Catego
 				continue
 			}
 			bold := len(pointBold) == len(s.Values) && pointBold[i]
-			bc.drawHorizontalValueLabel(v, x1, y+band*0.46, bold, valueFont, style)
+			bc.drawHorizontalValueLabel(v, x1, y+band*0.46, bold, v < 0, valueFont, style)
 		}
 	}
 }
@@ -377,14 +398,14 @@ func (bc *BarChart) drawHorizontalStacks(data ChartData, plot Rect, cScale *Cate
 			}
 		}
 		if labelled && pos > 0 {
-			bc.drawHorizontalValueLabel(pos+neg, plot.X+vScale.Scale(pos), y+band/2, true, valueFont, style)
+			bc.drawHorizontalValueLabel(pos+neg, plot.X+vScale.Scale(pos), y+band/2, true, false, valueFont, style)
 		}
 	}
 }
 
-// drawHorizontalValueLabel writes one value past a bar's end: right of a
-// positive bar, left of a negative one.
-func (bc *BarChart) drawHorizontalValueLabel(v, endX, cy float64, bold bool, size float64, style *StyleGuide) {
+// drawHorizontalValueLabel writes one value past a bar's end: right of it,
+// or left of it when leftward (a negative bar's end).
+func (bc *BarChart) drawHorizontalValueLabel(v, endX, cy float64, bold, leftward bool, size float64, style *StyleGuide) {
 	b := bc.builder
 	label := TrueMinus(bc.config.ValueFmt.FormatOr(v, bc.config.ValueFormat))
 	b.Push()
@@ -394,7 +415,7 @@ func (bc *BarChart) drawHorizontalValueLabel(v, endX, cy float64, bold bool, siz
 	} else {
 		b.SetFontWeight(style.Typography.WeightNormal)
 	}
-	if v < 0 {
+	if leftward {
 		b.DrawText(label, endX-labelledValueGapPt, cy, TextAlignRight, TextBaselineMiddle)
 	} else {
 		b.DrawText(label, endX+labelledValueGapPt, cy, TextAlignLeft, TextBaselineMiddle)
