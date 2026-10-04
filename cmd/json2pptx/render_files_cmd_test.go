@@ -111,3 +111,53 @@ func TestCLIRenderManifestWritesNamedFiles(t *testing.T) {
 		t.Errorf("single-slide render did not write %s: %v\n%s", one, err, stdout)
 	}
 }
+
+// TestCLIRenderManifestKeepsUnchangedSlides is the CLI half of
+// go-slide-creator-yosa8: a slide named by --known-hashes is listed as
+// unchanged, writes nothing, and the file an earlier run wrote for it survives
+// the sweep a deck render does.
+func TestCLIRenderManifestKeepsUnchangedSlides(t *testing.T) {
+	out := t.TempDir()
+	src := filepath.Join(t.TempDir(), "artifact.png")
+	kept := filepath.Join(out, "slide-0.png")
+	for _, p := range []string{src, kept, filepath.Join(out, "slide-5.png")} {
+		if err := os.WriteFile(p, []byte("\x89PNG "+filepath.Base(p)), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	meta, err := json.Marshal(renderedDeckThumbnailsResponse{SlideCount: 2, Slides: []renderedSlideMeta{
+		{Index: 0, ID: "intro", ContentHash: "aa", Unchanged: true},
+		{Index: 1, Path: src, ContentHash: "bb"},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var printErr error
+	stdout := captureStdout(t, func() {
+		printErr = cliPrintRenderManifest(mcpgo.NewToolResultText(string(meta)), out, func(i int) string {
+			return filepath.Join(out, fmt.Sprintf("slide-%d.png", i))
+		}, true)
+	})
+	if printErr != nil {
+		t.Fatal(printErr)
+	}
+	var manifest cliRenderManifest
+	if err := json.Unmarshal([]byte(stdout), &manifest); err != nil {
+		t.Fatalf("manifest is not JSON: %v\n%s", err, stdout)
+	}
+	if len(manifest.Slides) != 2 {
+		t.Fatalf("manifest = %+v", manifest)
+	}
+	if got := manifest.Slides[0]; !got.Unchanged || got.Path != "" || got.SHA256 != "" || got.ContentHash != "aa" || got.ID != "intro" {
+		t.Errorf("unchanged slide entry = %+v, want index, id and content_hash only", got)
+	}
+	if got := manifest.Slides[1]; got.Unchanged || got.ContentHash != "bb" || filepath.Base(got.Path) != "slide-1.png" {
+		t.Errorf("changed slide entry = %+v", got)
+	}
+	if data, err := os.ReadFile(kept); err != nil || string(data) != "\x89PNG slide-0.png" {
+		t.Errorf("the unchanged slide's earlier file must be left as it was (err=%v, %q)", err, data)
+	}
+	if _, err := os.Stat(filepath.Join(out, "slide-5.png")); err == nil {
+		t.Error("a slide file past the deck's end was left behind")
+	}
+}

@@ -117,12 +117,13 @@ This tools/list is abridged: tool:"<name>" returns that tool's full description 
 		},
 	},
 	"render_deck_thumbnails": {
-		Description: `Render a PPTX's slides and return them as MCP image blocks (one JPEG per slide, in slide order) you can look at directly, plus metadata: slides[].index, path (the full-resolution PNG submit_visual_review verifies) and content_hash. Needs LibreOffice and ImageMagick on PATH; cached by file content hash. Use density 50–75 for a full-deck pass (15 slides are ~600KB at 50); after a repair, pass only render_deck_spec's changed_slides as slide_indices.`,
+		Description: `Render a PPTX's slides as MCP image blocks (one JPEG per slide, in order) you can look at, plus slides[].index, path (the PNG submit_visual_review verifies) and content_hash. Needs LibreOffice and ImageMagick. 15 slides are ~600KB at density 50; after a repair, pass only render_deck_spec's changed_slides as slide_indices.`,
 		Args: map[string]string{
 			"density":             "DPI, 25-150 (default 50).",
-			"include_base64_json": "Legacy: true returns base64 inside the JSON instead of image blocks.",
-			"max_slides":          "Render the first N slides (default 50). Not with slide_indices.",
-			"slide_indices":       `Render ONLY these slides, by 0-based index or slide id, e.g. [4, "costs"]. Not with max_slides.`,
+			"include_base64_json": "Legacy: base64 in the JSON instead of image blocks.",
+			"known_hashes":        "content_hash values you already hold: those slides return unchanged:true and no image.",
+			"max_slides":          "First N slides (default 50). Not with slide_indices.",
+			"slide_indices":       `ONLY these slides, by 0-based index or slide id, e.g. [4, "costs"]. Not with max_slides.`,
 		},
 	},
 	"score_deck": {

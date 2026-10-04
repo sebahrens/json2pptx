@@ -101,7 +101,9 @@ func (mc *mcpConfig) resolvePresentationURLs(slides []SlideInput) ([]diagnostics
 // configuration returns nil, which keeps image paths unrestricted apart from
 // the traversal check. When a restriction IS configured, the extra
 // directories (e.g. a URL resolver's download cache) are appended so files
-// the engine itself fetched and validated are not rejected.
+// the engine itself fetched and validated are not rejected. So is the sample
+// picture a recommend_visual recipe points at, once the server has written it
+// (serverSampleImages): a recipe the server hands out must render as it stands.
 func imageAllowList(configured []string, extra ...string) []string {
 	if len(configured) == 0 {
 		return nil
@@ -112,7 +114,7 @@ func imageAllowList(configured []string, extra ...string) []string {
 			out = append(out, dir)
 		}
 	}
-	return out
+	return append(out, serverSampleImages()...)
 }
 
 // newServerMCPConfig builds the mcpConfig used by the production stdio server.

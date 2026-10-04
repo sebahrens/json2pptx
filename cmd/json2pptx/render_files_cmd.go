@@ -30,14 +30,21 @@ type cliSlideFile struct {
 	Index int `json:"index"`
 	// ID is the slide's stable DeckSpec id, when the deck's sidecar names one.
 	ID string `json:"id,omitempty"`
-	// Path is the PNG on disk.
-	Path string `json:"path"`
+	// Path is the PNG on disk. Absent on an unchanged entry.
+	Path string `json:"path,omitempty"`
 	// SHA256 is the hash of the bytes at Path.
-	SHA256 string `json:"sha256"`
+	SHA256 string `json:"sha256,omitempty"`
 	// Bytes is the size of the file at Path.
-	Bytes  int64 `json:"bytes"`
+	Bytes  int64 `json:"bytes,omitempty"`
 	Width  int   `json:"width,omitempty"`
 	Height int   `json:"height,omitempty"`
+	// ContentHash is the slide's pixel hash, the value --known-hashes takes: it
+	// survives a re-render of an unchanged slide, which SHA256 (the file's
+	// bytes, PNG metadata included) need not.
+	ContentHash string `json:"content_hash,omitempty"`
+	// Unchanged is set when ContentHash was named in --known-hashes: no file
+	// was written, and the one a previous run wrote is left in place.
+	Unchanged bool `json:"unchanged,omitempty"`
 }
 
 // cliRenderManifest is what the render commands print on stdout.
@@ -111,6 +118,15 @@ func cliPrintRenderManifest(result *mcpgo.CallToolResult, outDir string, dest fu
 	}
 	written := map[string]bool{}
 	for _, s := range deck.Slides {
+		if s.Unchanged {
+			// The caller holds this image; a file an earlier run wrote for
+			// the slide is its own and survives the sweep.
+			if dest != nil {
+				written[filepath.Base(dest(s.Index))] = true
+			}
+			manifest.Slides = append(manifest.Slides, cliSlideFile{Index: s.Index, ID: s.ID, ContentHash: s.ContentHash, Unchanged: true})
+			continue
+		}
 		path := s.Path
 		if dest != nil {
 			path = dest(s.Index)
@@ -125,6 +141,7 @@ func cliPrintRenderManifest(result *mcpgo.CallToolResult, outDir string, dest fu
 		written[filepath.Base(path)] = true
 		manifest.Slides = append(manifest.Slides, cliSlideFile{
 			Index: s.Index, ID: s.ID, Path: path, SHA256: sum, Bytes: size, Width: s.Width, Height: s.Height,
+			ContentHash: s.ContentHash,
 		})
 	}
 	if dest == nil {

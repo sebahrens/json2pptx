@@ -28,13 +28,22 @@ import (
 // fragments ready for injection and the resolved cell metadata (bounds, IDs,
 // specs) for downstream processing such as icon insertion or validation.
 type ShapeGridResult struct {
-	Shapes       [][]byte                 // Raw <p:sp>/<p:graphicFrame> XML fragments
+	Shapes [][]byte // Raw <p:sp>/<p:graphicFrame> XML fragments
+	// ShapeSources names, for each entry of Shapes, the authored element that
+	// produced it. The contrast pass reports a repair by flat shape index
+	// (/slides/N/shape_grid/shapes/i); this is the index's way back to what the
+	// author wrote (go-slide-creator-2ciwz).
+	ShapeSources []gridShapeSource
 	Cells        []shapegrid.ResolvedCell // Resolved cell metadata with absolute coordinates
 	IconInserts  []generator.IconInsert   // Icon cells requiring media registration in the generator
 	ImageInserts []generator.ImageInsert  // Image cells requiring media registration in the generator
 	RowOverflows []shapegrid.RowOverflow  // Rows whose content exceeded max_height
 	Warnings     []string                 // Quality warnings (e.g. complex diagram in narrow cell)
 	FitFindings  []patterns.FitFinding    // Structured findings for visual grid cells (diagram, icon, image)
+
+	// shapeOrigins parallels Shapes until resolveShapeGridAs has turned it
+	// into ShapeSources.
+	shapeOrigins []gridShapeOrigin
 }
 
 // GridDiagramContext provides template-level context for rendering diagram cells
@@ -47,6 +56,89 @@ type GridDiagramContext struct {
 	TitleFont   string             // Template title font for generated canvas headlines
 	ViewingMode tokens.ViewingMode // Deck-level readability policy for embedded SVG text
 	SlideNum    int                // 1-based slide number for warning messages
+	// ShapesOnly asks for the grid's shape list without its media: diagram
+	// cells are not rendered to images and icons are not resolved. Neither
+	// contributes a shape, so Shapes and ShapeSources are exactly what
+	// generation writes. The validate-time contrast prediction sets it.
+	ShapesOnly bool
+}
+
+// shapesOnly reports whether the caller wants the shape list without media.
+func (c *GridDiagramContext) shapesOnly() bool { return c != nil && c.ShapesOnly }
+
+// gridShapeSource is the authored element behind one entry of
+// ShapeGridResult.Shapes.
+type gridShapeSource struct {
+	// Path is the element's JSON pointer: a cell's shape/text, composite/text/text,
+	// table, diagram, image/text, image/overlay or accent_bar, a row's
+	// connector, a links entry, or the grid itself for a row rule.
+	Path string
+	// Text is the authored text spec of a shape cell, which names the colours
+	// the author wrote; empty for every other element.
+	Text json.RawMessage
+}
+
+// gridShapeOrigin is what generateGridOutput knows about a shape it wrote:
+// the resolved cell and field, or the connector / accent-bar spec. It becomes
+// a gridShapeSource once the authored grid is at hand (authoredShapeSources).
+type gridShapeOrigin struct {
+	row, col  int
+	field     string
+	connector *shapegrid.ConnectorSpec
+	accentBar *shapegrid.AccentBarSpec
+}
+
+// authoredShapeSources turns the origins of a grid's own shapes into authored
+// paths. rows and links are the converted grid the resolver ran on: a
+// connector or accent bar is recognised by the spec pointer it shares with
+// its row, link or cell.
+func authoredShapeSources(input *ShapeGridInput, rows []shapegrid.Row, links []shapegrid.Link, origins []gridShapeOrigin, slideIdx int) []gridShapeSource {
+	base := slidepath.ShapeGrid(slideIdx)
+	connectors := map[*shapegrid.ConnectorSpec]string{}
+	bars := map[*shapegrid.AccentBarSpec]string{}
+	for i := range rows {
+		if rows[i].Connector != nil {
+			connectors[rows[i].Connector] = fmt.Sprintf("%s/rows/%d/connector", base, i)
+		}
+		for j := range rows[i].Cells {
+			if bar := rows[i].Cells[j].AccentBar; bar != nil {
+				bars[bar] = fmt.Sprintf("%s/rows/%d/cells/%d/accent_bar", base, i, j)
+			}
+		}
+	}
+	for i := range links {
+		if links[i].Spec != nil {
+			connectors[links[i].Spec] = fmt.Sprintf("%s/links/%d", base, i)
+		}
+	}
+	out := make([]gridShapeSource, len(origins))
+	for i, o := range origins {
+		switch {
+		case o.connector != nil:
+			out[i].Path = connectors[o.connector]
+		case o.accentBar != nil:
+			out[i].Path = bars[o.accentBar]
+		case o.field != "":
+			cell := gridCellAtResolved(input, o.row, o.col)
+			field := o.field
+			var text json.RawMessage
+			if field == "shape/text" && cell != nil {
+				authored := cell.Shape
+				// A composite's text half resolves to a shape cell too.
+				if cell.Composite != nil && cell.Composite.Text != nil {
+					authored, field = cell.Composite.Text, "composite/text/text"
+				}
+				if authored != nil {
+					text = authored.Text
+				}
+			}
+			out[i] = gridShapeSource{Path: slidepath.Join(authoredGridCellPath(base, input, o.row, o.col), field), Text: text}
+		}
+		if out[i].Path == "" {
+			out[i].Path = base // a row rule: it belongs to the grid, not to a cell
+		}
+	}
+	return out
 }
 
 // virtualLayoutResult holds the result of virtual layout resolution.
@@ -887,6 +979,8 @@ func resolveShapeGridAs(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, ove
 		return nil, err
 	}
 	authored.findings(out.FitFindings)
+	out.ShapeSources = authoredShapeSources(input, rows, grid.Links, out.shapeOrigins, slideIdx)
+	out.shapeOrigins = nil
 
 	// Recursively render any nested sub-grids in this grid. Cells with
 	// Placeholder=true produce CellKindSubGrid ResolvedCells whose bounds
@@ -946,7 +1040,11 @@ func renderNestedSubGrids(input *ShapeGridInput, out *ShapeGridResult, alloc *pp
 			continue
 		}
 		nested.findings(sub.FitFindings)
+		for i := range sub.ShapeSources {
+			sub.ShapeSources[i].Path = nested(sub.ShapeSources[i].Path)
+		}
 		out.Shapes = append(out.Shapes, sub.Shapes...)
+		out.ShapeSources = append(out.ShapeSources, sub.ShapeSources...)
 		out.IconInserts = append(out.IconInserts, sub.IconInserts...)
 		out.ImageInserts = append(out.ImageInserts, sub.ImageInserts...)
 		out.RowOverflows = append(out.RowOverflows, sub.RowOverflows...)
@@ -1306,10 +1404,91 @@ func gridTableSourceLoss(findings []patterns.FitFinding) error {
 	return nil
 }
 
+// gridCellOutput is what one resolved cell contributes to the slide.
+type gridCellOutput struct {
+	shapes   [][]byte
+	fields   []string // the authored field behind each of shapes
+	icons    []generator.IconInsert
+	images   []generator.ImageInsert
+	warnings []string
+	findings []patterns.FitFinding
+}
+
+// generateGridCell writes one resolved cell. A sub-grid placeholder writes
+// nothing here (its caller resolves the nested grid in the cell's bounds), and
+// with diagCtx.ShapesOnly neither does an icon or a diagram that renders to an
+// image: both are pictures, inserted beside the shape list.
+func generateGridCell(cell shapegrid.ResolvedCell, alloc *pptx.ShapeIDAllocator, diagCtx *GridDiagramContext, slideIdx int) (gridCellOutput, error) {
+	var out gridCellOutput
+	switch cell.Kind {
+	case shapegrid.CellKindShape:
+		s, icons, err := generateShapeCellXML(cell, diagCtx.shapesOnly(), overlayThemeColors(diagCtx))
+		if err != nil {
+			return out, err
+		}
+		out.shapes, out.fields, out.icons = s, []string{"shape/text"}, icons
+	case shapegrid.CellKindTable:
+		xml, findings, err := generateTableCell(cell, slideIdx, overlayThemeColors(diagCtx))
+		if err != nil {
+			return out, err
+		}
+		out.shapes, out.fields, out.findings = [][]byte{xml}, []string{"table"}, findings
+	case shapegrid.CellKindIcon:
+		if diagCtx.shapesOnly() {
+			return out, nil
+		}
+		svgData, err := resolveIconSVGThemed(cell.IconSpec, overlayThemeColors(diagCtx))
+		if err != nil {
+			return out, fmt.Errorf("icon in grid: %w", err)
+		}
+		out.icons = []generator.IconInsert{{
+			SVGData:  svgData,
+			Alt:      iconAltText(cell.IconSpec),
+			OffsetX:  cell.Bounds.X,
+			OffsetY:  cell.Bounds.Y,
+			ExtentCX: cell.Bounds.CX,
+			ExtentCY: cell.Bounds.CY,
+		}}
+	case shapegrid.CellKindDiagram:
+		// Only a native-shape diagram adds to the shape list.
+		if diagCtx.shapesOnly() && !generator.IsGridNativeDiagram(cell.DiagramSpec) {
+			return out, nil
+		}
+		s, icons, warnings, findings, err := generateDiagramCell(cell, alloc, diagCtx, slideIdx)
+		if err != nil {
+			return out, err
+		}
+		out.shapes, out.icons, out.warnings, out.findings = s, icons, warnings, findings
+		for range s {
+			out.fields = append(out.fields, "diagram")
+		}
+	case shapegrid.CellKindImage:
+		s, imgs, err := generateImageCellXML(cell, alloc)
+		if err != nil {
+			return out, err
+		}
+		out.shapes, out.images = s, imgs
+		if cell.ImageSpec.Overlay != nil {
+			out.fields = append(out.fields, "image/overlay")
+		}
+		if cell.ImageSpec.Text != nil {
+			out.fields = append(out.fields, "image/text")
+		}
+	case shapegrid.CellKindSubGrid:
+		// Bounds-only placeholder; the parent resolver delegates nested
+		// rendering to its caller, which uses cell.Bounds to recursively
+		// resolve the sub-grid. Skip XML emission here.
+	default:
+		return out, fmt.Errorf("unsupported cell kind: %s", cell.Kind)
+	}
+	return out, nil
+}
+
 // generateGridOutput converts resolved grid cells into XML fragments and media inserts.
 // slideIdx is the 0-based slide index used for constructing JSON paths in findings.
 func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllocator, diagCtx *GridDiagramContext, slideIdx int) (*ShapeGridResult, error) {
 	var shapes [][]byte
+	var origins []gridShapeOrigin // one per entry of shapes
 	var iconInserts []generator.IconInsert
 	var imageInserts []generator.ImageInsert
 	var warnings []string
@@ -1325,83 +1504,39 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 			return nil, fmt.Errorf("connector id %d: %w", conn.ID, err)
 		}
 		shapes = append(shapes, xml)
+		origins = append(origins, gridShapeOrigin{connector: conn.Spec})
 	}
 
 	for _, cell := range result.Cells {
-		var cellShapes [][]byte
-		var cellIcons []generator.IconInsert
-		var cellImages []generator.ImageInsert
-
-		switch cell.Kind {
-		case shapegrid.CellKindShape:
-			s, icons, err := generateShapeCellXML(cell, alloc, overlayThemeColors(diagCtx))
-			if err != nil {
-				return nil, err
-			}
-			cellShapes = append(cellShapes, s...)
-			cellIcons = append(cellIcons, icons...)
-		case shapegrid.CellKindTable:
-			xml, findings, err := generateTableCell(cell, slideIdx, overlayThemeColors(diagCtx))
-			if err != nil {
-				return nil, err
-			}
-			cellShapes = append(cellShapes, xml)
-			fitFindings = append(fitFindings, findings...)
-		case shapegrid.CellKindIcon:
-			svgData, err := resolveIconSVGThemed(cell.IconSpec, overlayThemeColors(diagCtx))
-			if err != nil {
-				return nil, fmt.Errorf("icon in grid: %w", err)
-			}
-			cellIcons = append(cellIcons, generator.IconInsert{
-				SVGData:  svgData,
-				Alt:      iconAltText(cell.IconSpec),
-				OffsetX:  cell.Bounds.X,
-				OffsetY:  cell.Bounds.Y,
-				ExtentCX: cell.Bounds.CX,
-				ExtentCY: cell.Bounds.CY,
-			})
-		case shapegrid.CellKindDiagram:
-			s, icons, diagramWarnings, findings, err := generateDiagramCell(cell, alloc, diagCtx, slideIdx)
-			if err != nil {
-				return nil, err
-			}
-			cellShapes = append(cellShapes, s...)
-			cellIcons = append(cellIcons, icons...)
-			warnings = append(warnings, diagramWarnings...)
-			fitFindings = append(fitFindings, findings...)
-		case shapegrid.CellKindImage:
-			s, imgs, err := generateImageCellXML(cell, alloc)
-			if err != nil {
-				return nil, err
-			}
-			cellShapes = append(cellShapes, s...)
-			cellImages = append(cellImages, imgs...)
-		case shapegrid.CellKindSubGrid:
-			// Bounds-only placeholder; the parent resolver delegates nested
-			// rendering to its caller, which uses cell.Bounds to recursively
-			// resolve the sub-grid. Skip XML emission here.
-			continue
-		default:
-			return nil, fmt.Errorf("unsupported cell kind: %s", cell.Kind)
+		c, err := generateGridCell(cell, alloc, diagCtx, slideIdx)
+		if err != nil {
+			return nil, err
 		}
 
 		// Wrap in p:grpSp if group flag is set and there are XML fragments to wrap
-		if cell.Group && len(cellShapes) > 0 {
+		if cell.Group && len(c.shapes) > 0 {
 			groupID := alloc.Alloc()
 			grpXML, err := pptx.GenerateGroup(pptx.GroupOptions{
 				ID:       groupID,
 				Bounds:   cell.Bounds,
-				Children: cellShapes,
+				Children: c.shapes,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("group for cell id %d: %w", cell.ID, err)
 			}
+			// The group is one entry; it stands for the cell's first shape.
 			shapes = append(shapes, grpXML)
+			origins = append(origins, gridShapeOrigin{row: cell.RowIdx, col: cell.ColIdx, field: c.fields[0]})
 		} else {
-			shapes = append(shapes, cellShapes...)
+			shapes = append(shapes, c.shapes...)
+			for _, field := range c.fields {
+				origins = append(origins, gridShapeOrigin{row: cell.RowIdx, col: cell.ColIdx, field: field})
+			}
 		}
-		iconInserts = append(iconInserts, cellIcons...)
-		imageInserts = append(imageInserts, cellImages...)
+		iconInserts = append(iconInserts, c.icons...)
+		imageInserts = append(imageInserts, c.images...)
+		warnings = append(warnings, c.warnings...)
+		fitFindings = append(fitFindings, c.findings...)
 	}
 
 	// Generate XML for accent bars
@@ -1411,10 +1546,12 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 			return nil, fmt.Errorf("accent bar id %d: %w", bar.ID, err)
 		}
 		shapes = append(shapes, xml)
+		origins = append(origins, gridShapeOrigin{accentBar: bar.Spec})
 	}
 
 	return &ShapeGridResult{
 		Shapes:       shapes,
+		shapeOrigins: origins,
 		Cells:        result.Cells,
 		IconInserts:  iconInserts,
 		ImageInserts: imageInserts,
@@ -1425,14 +1562,16 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 }
 
 // generateShapeCellXML produces XML and icon inserts for a shape cell.
-func generateShapeCellXML(cell shapegrid.ResolvedCell, _ *pptx.ShapeIDAllocator, themeColors []types.ThemeColor) ([][]byte, []generator.IconInsert, error) {
+// shapeOnly leaves the cell's icon unresolved: it is a picture placed beside
+// the shape, and the shape's XML does not depend on it.
+func generateShapeCellXML(cell shapegrid.ResolvedCell, shapeOnly bool, themeColors []types.ThemeColor) ([][]byte, []generator.IconInsert, error) {
 	xml, err := shapegrid.GenerateCellShapeXML(cell)
 	if err != nil {
 		return nil, nil, fmt.Errorf("shape id %d: %w", cell.ID, err)
 	}
 	shapes := [][]byte{xml}
 	var icons []generator.IconInsert
-	if cell.IconSpec != nil {
+	if cell.IconSpec != nil && !shapeOnly {
 		svgData, err := resolveIconSVGThemed(cell.IconSpec, themeColors)
 		if err != nil {
 			return nil, nil, fmt.Errorf("icon overlay on shape id %d: %w", cell.ID, err)

@@ -717,7 +717,7 @@ Every command follows one convention (`json2pptx help` prints it):
 | `analyze-rhythm` | Analyze deck visual rhythm and pattern repetition |
 | `render-slide` | Render a single slide to a PNG file (`--slide-index N` or `--slide-id ID`, `--out slide.png`; requires LibreOffice + ImageMagick) |
 | `render-slide-from-json` | Render one slide directly from JSON to a PNG file (no full deck render) |
-| `render-thumbnails` | Write every slide as `slide-<index>.png` into `--out-dir` and print a manifest (paths, sha256, sizes); `--slides 1,costs` narrows by index or slide id; `--base64` for the old JSON envelope |
+| `render-thumbnails` | Write every slide as `slide-<index>.png` into `--out-dir` and print a manifest (paths, sha256, sizes); `--slides 1,costs` narrows by index or slide id; `--known-hashes` skips slides whose `content_hash` you already hold; `--base64` for the old JSON envelope |
 | `purge-render-cache` | Reclaim the on-disk render cache and stale LibreOffice profile directories |
 | `audit-palette` | Render PPTX to PNG and report ΔE between chart pics and adjacent solid-filled shapes |
 | `template-settings` | Manage named styles (list/register/delete) |
@@ -827,7 +827,7 @@ Set environment variables directly or via a `.env` file. See `.env.example` for 
 | `SVG_SCALE` | `2.0` | Scale factor for PNG conversion |
 | `SVG_NATIVE_COMPATIBILITY` | `warn` | `warn`, `fallback`, `strict`, `ignore` |
 | `SVG_PNG_CONVERTER` | `auto` | `auto`, `rsvg-convert`, or `resvg` |
-| `ALLOWED_IMAGE_PATHS` | | Comma-separated local image roots. When set, `serve`, `mcp`, `generate` and `semantic render` refuse image / background paths outside them (URL downloads stay allowed). Empty = any path (traversal still rejected). The MCP `base_dir` argument bounds only *relative* asset paths; set this to confine absolute ones |
+| `ALLOWED_IMAGE_PATHS` | | Comma-separated local image roots. When set, `serve`, `mcp`, `generate` and `semantic render` refuse image / background paths outside them (URL downloads stay allowed, and so does the sample screenshot a `recommend_visual` callout recipe points at — that one file, while it holds the bytes the binary draws). Empty = any path (traversal still rejected). The MCP `base_dir` argument bounds only *relative* asset paths; set this to confine absolute ones |
 | `JSON2PPTX_ALLOW_SETTINGS_WRITE` | `0` | Set to `1` to enable `register_template_setting` / `delete_template_setting` |
 | `PPROF_PORT` / `PPROF_BIND` | | pprof endpoint |
 
