@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"image"
 	"path/filepath"
 	"testing"
 
@@ -68,6 +69,16 @@ func TestGenerateTableUsesTemplateDefaultStyle(t *testing.T) {
 	}
 }
 
+// A template default with no style definition renders the engine-default
+// header: unfilled, over a 1pt text-colour rule (go-slide-creator-1iiej).
+//
+// The test used to compare the default against a header_background "none"
+// control and require the two to differ, which held while the fallback was a
+// solid header bar. Since 1iiej the default header is itself unfilled, so the
+// two slides are the same picture and the comparison could only fail — on any
+// host, in the non-short mode CI does not run (go-slide-creator-ip7ll). It
+// now reads the render for what the default promises: the header rule is
+// drawn, and the slide differs from the same table with a solid accent header.
 func TestTemplateDefaultWithoutDefinitionRendersStyledHeader(t *testing.T) {
 	if testing.Short() {
 		t.Skip("pixel comparison requires LibreOffice")
@@ -78,7 +89,12 @@ func TestTemplateDefaultWithoutDefinitionRendersStyledHeader(t *testing.T) {
 	for _, name := range []string{"forest-green", "midnight-blue", "modern-yellow", "warm-coral"} {
 		t.Run(name, func(t *testing.T) {
 			templatePath := filepath.Join(testutil.TemplatesDir(), name+".pptx")
-			layoutID, _, _ := tableTestLayoutAndDefaultStyle(t, templatePath)
+			layoutID, _, defined := tableTestLayoutAndDefaultStyle(t, templatePath)
+			if defined {
+				t.Skip("template defines its default table style")
+			}
+			solid := tableTestSpec("accent1")
+			solid.Style.UseTableStyle = false
 			output := filepath.Join(t.TempDir(), "header-pair.pptx")
 			_, err := Generate(context.Background(), GenerationRequest{
 				TemplatePath:          templatePath,
@@ -86,7 +102,7 @@ func TestTemplateDefaultWithoutDefinitionRendersStyledHeader(t *testing.T) {
 				ExcludeTemplateSlides: true,
 				Slides: []SlideSpec{
 					{LayoutID: layoutID, Content: []ContentItem{{PlaceholderID: "body", Type: ContentTable, Value: tableTestSpec("")}}},
-					{LayoutID: layoutID, Content: []ContentItem{{PlaceholderID: "body", Type: ContentTable, Value: tableTestSpec("none")}}},
+					{LayoutID: layoutID, Content: []ContentItem{{PlaceholderID: "body", Type: ContentTable, Value: solid}}},
 				},
 			})
 			if err != nil {
@@ -100,25 +116,62 @@ func TestTemplateDefaultWithoutDefinitionRendersStyledHeader(t *testing.T) {
 			if len(pngs) != 2 {
 				t.Fatalf("rendered %d slides, want 2", len(pngs))
 			}
-			filled := decodePNGFile(t, pngs[0])
+			styled := decodePNGFile(t, pngs[0])
 			control := decodePNGFile(t, pngs[1])
-			if filled.Bounds() != control.Bounds() {
-				t.Fatalf("rendered slide dimensions differ: %v vs %v", filled.Bounds(), control.Bounds())
+			if styled.Bounds() != control.Bounds() {
+				t.Fatalf("rendered slide dimensions differ: %v vs %v", styled.Bounds(), control.Bounds())
 			}
-			bounds := filled.Bounds()
+			bounds := styled.Bounds()
 			changed := 0
 			for y := bounds.Dy() / 5; y < bounds.Dy()*4/5; y++ {
 				for x := bounds.Dx() / 10; x < bounds.Dx()*9/10; x++ {
-					if filled.At(x, y) != control.At(x, y) {
+					if styled.At(x, y) != control.At(x, y) {
 						changed++
 					}
 				}
 			}
 			if changed < 2000 {
-				t.Errorf("only %d central pixels differ from the header_background none control; missing style still renders plain", changed)
+				t.Errorf("only %d central pixels differ from the solid accent header control; the default header renders as a filled bar", changed)
+			}
+			t.Logf("%d central pixels differ from the solid control; longest rule %dpx of %dpx", changed, longestRuleRun(styled), bounds.Dx())
+			if run, want := longestRuleRun(styled), bounds.Dx()/3; run < want {
+				t.Errorf("longest horizontal rule in the render is %dpx, want at least %dpx: the header rule is not drawn", run, want)
 			}
 		})
 	}
+}
+
+// longestRuleRun is the longest horizontal run of pixels, in the central
+// band of img, that stand clearly apart from the slide background (the colour
+// of the band's top-left pixel): a drawn rule. Text never runs a third of the
+// slide unbroken, and the 15% hairlines between rows stay under the contrast
+// bar.
+func longestRuleRun(img image.Image) int {
+	b := img.Bounds()
+	lum := func(x, y int) int {
+		r, g, bl, _ := img.At(x, y).RGBA()
+		return int((299*r + 587*g + 114*bl) / 1000 >> 8)
+	}
+	x0, x1 := b.Min.X+b.Dx()/20, b.Min.X+b.Dx()*19/20
+	y0, y1 := b.Min.Y+b.Dy()/5, b.Min.Y+b.Dy()*4/5
+	bg := lum(x0, y0)
+	best := 0
+	for y := y0; y < y1; y++ {
+		run := 0
+		for x := x0; x < x1; x++ {
+			d := lum(x, y) - bg
+			if d < 0 {
+				d = -d
+			}
+			if d > 60 {
+				run++
+				best = max(best, run)
+			} else {
+				run = 0
+			}
+		}
+	}
+	return best
 }
 
 func TestGenerateExplicitStylePreservesTemplateDefinition(t *testing.T) {
