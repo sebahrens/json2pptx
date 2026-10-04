@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -216,7 +217,7 @@ func (p *processFlow) Schema() *Schema {
 	).WithAdditionalProperties(false)
 
 	overridesSchema := processFlowOverridesSchema()
-	overridesSchema.raw.Properties["rows"] = IntegerSchema(1, 2).WithDescription("Rows the steps are laid on. Default: 2 from 7 steps (the first half left to right, a connector down, the second half back right to left; a flow of chevrons/arrows only wraps left to right instead), else 1. 1 keeps 7-8 steps on one row of narrow boxes; 2 needs at least 4 steps. A flow mixing chevrons/arrows with plain steps stays on one row unless rows is 2; it then turns the same way, so its chevrons/arrows must sit on the first row before the last step")
+	overridesSchema.raw.Properties["rows"] = IntegerSchema(1, 2).WithDescription("Rows the steps are laid on. Default: 2 from 7 steps (the first half left to right, a connector down, the second half back right to left with its chevrons/arrows mirrored to point left; a flow of chevrons/arrows only wraps left to right instead), else 1. 1 keeps 7-8 steps on one row of narrow boxes; 2 needs at least 4 steps")
 
 	return ObjectSchema(
 		map[string]*Schema{
@@ -249,15 +250,6 @@ func (p *processFlow) Validate(values, overrides any, cellOverrides map[int]any)
 			errs = append(errs, newValidationError(name, "overrides.rows", ErrCodeOutOfRange,
 				fmt.Sprintf("%s: overrides.rows 2 needs at least %d steps, got %d — a second row would hold one step; remove rows or add a step", name, processFlowTwoRowFloor, len(vals.Steps)),
 				RemoveFieldFix("overrides.rows")))
-		}
-		if len(vals.Steps) <= 8 {
-			lay := processFlowLayoutFor(vals.Steps, ovr)
-			if i := processFlowPointedAtTurn(vals.Steps, lay); i >= 0 {
-				path := fmt.Sprintf("steps[%d].type", i)
-				errs = append(errs, newValidationError(name, path, ErrCodeOutOfRange,
-					fmt.Sprintf("%s: %s: with overrides.rows 2 a flow that mixes chevrons/arrows and plain steps turns down after step %d and runs its second row back right to left; a %s points right, so it fits only before the turn (steps[0]–steps[%d]) — make this step a \"step\", make every step a chevron or arrow (the rows then wrap left to right), or remove overrides.rows", name, path, lay.perRow, vals.Steps[i].Type, lay.perRow-2),
-					UseOneOfFix(path, []string{"step", "decision"})))
-			}
 		}
 	}
 
@@ -328,16 +320,22 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	// autofit, and a face that runs a little wider than the measured one wraps
 	// one label a line further and shrinks that box alone — a row of steps at
 	// two sizes.
-	need := processFlowWrittenNeedPt(ctx.themeFonts(), cells, widths)
 	// A quarter over the line: a face whose own line height is above the
 	// measured 1.2 (Calibri's is 1.22) still has the four lines in the box.
 	spare := shapegrid.EffectiveTextSizePt(bodySize) * sizingLineSpacing * 1.25
-	room := processFlowRowRoomPt(ctx, lay, gap)
-	rowHeight := processFlowContentHeight(need, cellW, processFlowBoxAspect, rowCap)
-	rowHeight = math.Max(rowHeight, math.Min(need, room))
-	if need+spare <= room {
-		rowHeight = math.Max(rowHeight, math.Ceil(need+spare))
+	if slices.ContainsFunc(vals.Steps, func(s ProcessFlowStep) bool { return s.Type == "arrow" }) {
+		// An arrow's shaft takes only its share of the height the row gains.
+		spare = spare * 100000 / processFlowArrowShaftAdj
 	}
+	room := processFlowRowRoomPt(ctx, lay, gap)
+	rowHeight := processFlowSettleRowPt(ctx.themeFonts(), cells, widths, func(need float64) float64 {
+		h := processFlowContentHeight(need, cellW, processFlowBoxAspect, rowCap)
+		h = math.Max(h, math.Min(need, room))
+		if need+spare <= room {
+			h = math.Max(h, math.Ceil(need+spare))
+		}
+		return h
+	})
 	// Chevrons point at the next step; an arrow drawn between them is a second
 	// statement of the same thing, and it was being drawn straight through the
 	// notch (go-slide-creator-czk4).
@@ -373,20 +371,49 @@ func processFlowRowRoomPt(ctx ExpandContext, lay processFlowLayout, gapPt float6
 // needs twice the fit of its label at half the step width; measured at the
 // full width, a content-sized row left "Within policy?" to be shrunk by the
 // renderer (go-slide-creator-xb06p).
-func processFlowWrittenNeedPt(fonts pptx.ThemeFonts, cells []*jsonschema.GridCellInput, widths []float64) float64 {
+//
+// An arrow's text sits in its shaft (pptx.SideArrowTextRectSize): the shaft is
+// processFlowArrowShaftAdj of the step height, and as long as the step is wide
+// less the head, whose length follows the step height. rowPt is the height the
+// arrows are measured at (go-slide-creator-fx48s); see processFlowSettleRowPt.
+func processFlowWrittenNeedPt(fonts pptx.ThemeFonts, cells []*jsonschema.GridCellInput, widths []float64, rowPt float64) float64 {
 	need := 0.0
 	for i, c := range cells {
 		if c == nil || c.Shape == nil || i >= len(widths) {
 			continue
 		}
 		cellW := widths[i]
-		if c.Shape.Geometry == "diamond" {
+		switch c.Shape.Geometry {
+		case "diamond":
 			need = math.Max(need, 2*writtenFitHeightPt(fonts, c.Shape.Text, cellW/2, 0))
-			continue
+		case "rightArrow":
+			rectW, _ := pptx.PresetTextRect(c.Shape.Geometry, c.Shape.Adjustments, pptx.RectEmu{
+				CX: int64(cellW * sizingEMUPerPt), CY: int64(math.Max(rowPt, 1) * sizingEMUPerPt),
+			})
+			shaft := writtenFitHeightPt(fonts, c.Shape.Text, float64(rectW)/sizingEMUPerPt, 0)
+			need = math.Max(need, shaft*100000/processFlowArrowShaftAdj)
+		default:
+			need = math.Max(need, writtenFitHeightPt(fonts, c.Shape.Text, cellW, 0))
 		}
-		need = math.Max(need, writtenFitHeightPt(fonts, c.Shape.Text, cellW, 0))
 	}
 	return math.Ceil(need)
+}
+
+// processFlowSettleRowPt is the height of a row of steps: size(need) for the
+// written need of its tallest label. An arrow's head is as long as half the
+// step height, so a taller row leaves its shaft less width and its label may
+// need a further line; the row is re-measured at the height it comes to until
+// the two agree. A row without arrows settles at once.
+func processFlowSettleRowPt(fonts pptx.ThemeFonts, cells []*jsonschema.GridCellInput, widths []float64, size func(need float64) float64) float64 {
+	h := 0.0
+	for range 6 {
+		next := size(processFlowWrittenNeedPt(fonts, cells, widths, h))
+		if next <= h {
+			break
+		}
+		h = next
+	}
+	return h
 }
 
 // processFlowAreaWarning reports steps whose written fit needs more height
@@ -425,7 +452,8 @@ func processFlowAreaWarning(ctx ExpandContext, name string, steps []ProcessFlowS
 	// Each step's label cell as Expand writes it.
 	cells := buildProcessFlowCells(ctx, steps, &ProcessFlowOverrides{}, nil, bodySize)
 	rows := float64(lay.rows)
-	need := rows*processFlowWrittenNeedPt(ctx.themeFonts(), cells, widths) + (rows-1)*gap
+	rowNeed := processFlowSettleRowPt(ctx.themeFonts(), cells, widths, func(need float64) float64 { return need })
+	need := rows*rowNeed + (rows-1)*gap
 	_, areaH := contentAreaPt(ctx)
 	if need <= areaH+1 {
 		return nil
@@ -675,7 +703,8 @@ func allStepsPointed(steps []ProcessFlowStep) bool {
 // rightArrow presets already reserve their point/notch width in their text
 // rectangle, so the label keeps only the uniform shape text margin inside it;
 // adding the notch again as bodyPr insets leaves almost no room for text in
-// narrow steps.
+// narrow steps. An arrow's text rectangle is also only as tall as its shaft:
+// buildProcessFlowCells tightens its vertical margin.
 func buildProcessFlowPointedText(content string, size float64, ink string) json.RawMessage {
 	type paragraph struct {
 		Content string  `json:"content"`

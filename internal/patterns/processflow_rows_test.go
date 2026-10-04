@@ -90,12 +90,11 @@ func TestProcessFlowTwoRows(t *testing.T) {
 		if rows, _ := rowLabels(t, pfSteps(6), &ProcessFlowOverrides{Rows: 2}); len(rows) != 2 || rows[1] != "Deploy|Test|Build" {
 			t.Errorf("rows 2 on six steps: rows = %q", rows)
 		}
-		// A chevron cannot point back along a returning row: a mixed flow keeps
-		// one row unless rows says otherwise.
+		// A mixed flow bends like a plain one (go-slide-creator-yniru).
 		mixed := pfSteps(8)
 		mixed[0].Type = "chevron"
-		if rows, _ := rowLabels(t, mixed, nil); len(rows) != 1 {
-			t.Errorf("mixed flow: rows = %q, want one row", rows)
+		if rows, links := rowLabels(t, mixed, nil); len(rows) != 2 || len(links) != 4 {
+			t.Errorf("mixed flow: rows = %q links = %v, want two rows joined by four links", rows, links)
 		}
 	})
 
@@ -120,21 +119,47 @@ func TestProcessFlowTwoRows(t *testing.T) {
 		if err := p.Validate(&ProcessFlowValues{Steps: mixed}, &ProcessFlowOverrides{Rows: 2}, nil); err != nil {
 			t.Errorf("pointed steps before the turn were refused: %v", err)
 		}
-		// A chevron or arrow at the turn or on the returning row points
-		// against the flow: refused, naming the step.
+		// go-slide-creator-yniru: a chevron or arrow at the turn or on the
+		// returning row is accepted; on the returning row it is mirrored so
+		// it points the way the flow runs, and on the first row it is not.
 		for _, at := range []int{2, 4} {
 			for _, typ := range []string{"chevron", "arrow"} {
-				bad := pfSteps(6)
-				bad[0].Type, bad[at].Type = "chevron", typ
-				err := p.Validate(&ProcessFlowValues{Steps: bad}, &ProcessFlowOverrides{Rows: 2}, nil)
-				want := "steps[" + string(rune('0'+at)) + "].type"
-				if err == nil || !strings.Contains(err.Error(), want) || !strings.Contains(err.Error(), "overrides.rows") {
-					t.Errorf("%s at step %d: err = %v, want a refusal at %s", typ, at, err, want)
+				steps := pfSteps(6)
+				steps[0].Type, steps[at].Type = "chevron", typ
+				vals := &ProcessFlowValues{Steps: steps}
+				ovr := &ProcessFlowOverrides{Rows: 2}
+				if err := p.Validate(vals, ovr, nil); err != nil {
+					t.Errorf("%s at step %d: %v", typ, at, err)
 				}
-				// On one row the same flow is fine.
-				if err := p.Validate(&ProcessFlowValues{Steps: bad}, nil, nil); err != nil {
-					t.Errorf("%s at step %d on one row: %v", typ, at, err)
+				grid, err := p.Expand(processFlowChevronCtx(), vals, ovr, nil)
+				if err != nil {
+					t.Fatalf("%s at step %d: expand: %v", typ, at, err)
 				}
+				for r, row := range grid.Rows {
+					for c, cell := range row.Cells {
+						if cell == nil || cell.Shape == nil {
+							continue
+						}
+						pointed := cell.Shape.Geometry == "chevron" || cell.Shape.Geometry == "rightArrow"
+						if want := r == 1 && pointed; cell.Shape.FlipH != want {
+							t.Errorf("%s at step %d: row %d col %d (%s) flip_h = %v, want %v", typ, at, r, c, cell.Shape.Geometry, cell.Shape.FlipH, want)
+						}
+					}
+				}
+			}
+		}
+		// A flow of pointed steps only wraps left to right: nothing mirrored.
+		all := pfSteps(6)
+		for i := range all {
+			all[i].Type = "chevron"
+		}
+		grid, err := p.Expand(processFlowChevronCtx(), &ProcessFlowValues{Steps: all}, &ProcessFlowOverrides{Rows: 2}, nil)
+		if err != nil {
+			t.Fatalf("expand: %v", err)
+		}
+		for _, cell := range grid.Rows[1].Cells {
+			if cell != nil && cell.Shape != nil && cell.Shape.FlipH {
+				t.Errorf("a wrapped row of chevrons was mirrored")
 			}
 		}
 	})

@@ -223,8 +223,9 @@ type ShapeSpecInput struct {
 	Text        json.RawMessage  `json:"text,omitempty"`
 	Rotation    float64          `json:"rotation,omitempty"`
 	Adjustments map[string]int64 `json:"adjustments,omitempty"`
-	Icon        *IconInput       `json:"icon,omitempty"` // Optional icon overlay rendered on top of the shape
-	Link        *LinkInput       `json:"link,omitempty"` // Click target for the entire shape
+	FlipH       bool             `json:"flip_h,omitempty"` // Mirror the outline left to right (a chevron or arrow points left); the text stays upright
+	Icon        *IconInput       `json:"icon,omitempty"`   // Optional icon overlay rendered on top of the shape
+	Link        *LinkInput       `json:"link,omitempty"`   // Click target for the entire shape
 
 	// MeasureFonts are the theme typefaces a named pattern sized this
 	// shape's text in, stamped at expansion. Not part of the input schema:

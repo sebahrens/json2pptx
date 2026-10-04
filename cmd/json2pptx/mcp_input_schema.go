@@ -158,6 +158,7 @@ var fieldScopeMap = map[string]map[string]string{
 		"text":        "shape",
 		"rotation":    "shape",
 		"adjustments": "shape",
+		"flip_h":      "shape",
 	},
 }
 

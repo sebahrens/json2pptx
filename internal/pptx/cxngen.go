@@ -385,6 +385,136 @@ func Route(source, target ShapeOptions, horizontal bool) ConnectorRoute {
 	return r
 }
 
+// RouteOutline is Route for shapes whose drawn outline is known: it honours
+// each shape's FlipH and Adjustments and puts both endpoints on the outline
+// itself (go-slide-creator-yniru).
+//
+// Route treats a pointed preset as its bounding box plus a clearance, and
+// takes the preset's own connection site for every side. Neither holds for a
+// chevron or an arrow: their top and bottom sites sit at the start of the
+// point, not at the centre, so a connector dropping from one ran diagonally;
+// a chevron's back site is the bottom of its notch, inside the box; and a
+// mirrored shape's sites are mirrored with it. RouteOutline returns site -1
+// for an endpoint that has no site at the place the connector meets the
+// shape — the connector is then written unattached, at its coordinates.
+func RouteOutline(source, target ShapeOptions, horizontal bool) ConnectorRoute {
+	srcCX := source.Bounds.X + source.Bounds.CX/2
+	srcCY := source.Bounds.Y + source.Bounds.CY/2
+	tgtCX := target.Bounds.X + target.Bounds.CX/2
+	tgtCY := target.Bounds.Y + target.Bounds.CY/2
+	dx, dy := tgtCX-srcCX, tgtCY-srcCY
+
+	srcSide, tgtSide := SideBottom, SideTop
+	switch {
+	case horizontal || abs64(dx) >= abs64(dy):
+		srcSide, tgtSide = SideRight, SideLeft
+		if dx < 0 {
+			srcSide, tgtSide = SideLeft, SideRight
+		}
+	case dy < 0:
+		srcSide, tgtSide = SideTop, SideBottom
+	}
+
+	var r ConnectorRoute
+	r.StartX, r.StartY, r.StartSite = outlineAnchor(source, srcSide)
+	r.EndX, r.EndY, r.EndSite = outlineAnchor(target, tgtSide)
+	w := abs64(r.StartX - r.EndX)
+	h := abs64(r.StartY - r.EndY)
+	if w == 0 {
+		w = 1
+	}
+	if h == 0 {
+		h = 1
+	}
+	r.Bounds = RectEmu{X: min64(r.StartX, r.EndX), Y: min64(r.StartY, r.EndY), CX: w, CY: h}
+	r.FlipH = r.EndX < r.StartX
+	r.FlipV = r.EndY < r.StartY
+	return r
+}
+
+// outlineAnchor is the point where a connector meets the middle of one side
+// of a shape as drawn, and the preset connection site at that point (-1 when
+// the preset has none there).
+func outlineAnchor(o ShapeOptions, side ConnectionSide) (x, y int64, site int) {
+	b := o.Bounds
+	x, y = b.X+b.CX/2, b.Y+b.CY/2
+	switch side {
+	case SideTop:
+		y = b.Y
+	case SideBottom:
+		y = b.Y + b.CY
+	case SideLeft:
+		x = b.X
+	case SideRight:
+		x = b.X + b.CX
+	}
+	// own is the side in the shape's unmirrored frame: the one its preset
+	// sites and its point are defined on.
+	own := side
+	if o.FlipH {
+		switch side {
+		case SideLeft:
+			own = SideRight
+		case SideRight:
+			own = SideLeft
+		}
+	}
+	site = ConnectionSiteIndex(o.Geometry, own)
+	adj := func(name string) int64 {
+		for _, a := range o.Adjustments {
+			if a.Name == name {
+				return a.Value
+			}
+		}
+		return -1
+	}
+	vertical := side == SideTop || side == SideBottom
+	inward := func(d int64) {
+		switch side {
+		case SideTop:
+			y += d
+		case SideBottom:
+			y -= d
+		case SideLeft:
+			x += d
+		case SideRight:
+			x -= d
+		}
+	}
+	switch o.Geometry {
+	case GeomChevron:
+		if vertical {
+			return x, y, -1
+		}
+		if own == SideLeft {
+			// The back of a chevron is its notch; site 1 is the notch's apex.
+			a := adj("adj")
+			if a < 0 {
+				a, _ = DefaultChevronAdj(b.CX, b.CY)
+			}
+			inward(min(min(b.CX, b.CY)*a/100000, b.CX))
+		}
+	case GeomHomePlate:
+		if vertical {
+			return x, y, -1
+		}
+	case GeomRightArrow, GeomLeftArrow:
+		if vertical {
+			a2 := adj("adj2")
+			if a2 < 0 {
+				a2 = 50000
+			}
+			// The centre lies over the shaft unless the head is longer
+			// than half the shape.
+			if min(b.CX, b.CY)*a2/100000 <= b.CX/2 {
+				inward(SideArrowShaftInsetEMU(adj("adj1"), b))
+			}
+			return x, y, -1
+		}
+	}
+	return x, y, site
+}
+
 func abs64(v int64) int64 {
 	if v < 0 {
 		return -v

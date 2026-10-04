@@ -318,9 +318,52 @@ func UpArrowTextRectSize(adj1, adj2 int64, bounds RectEmu) (int64, int64) {
 	return int64(math.Max(shaft, 0)), int64(math.Max(h-top, 0))
 }
 
+// SideArrowTextRectSize returns the width and height of a rightArrow's or
+// leftArrow's text rectangle inside bounds: the shaft, plus the part of the
+// head the shaft's height reaches into. adj1 is the shaft height and adj2 the
+// head length (OOXML 1/100000 units; negative takes the preset default 50000).
+//
+// Measured as the whole shape, a label sized to fit the shape was written
+// unshrunk into a shaft half as tall, and the renderer shrank it to about 3pt
+// (go-slide-creator-fx48s).
+func SideArrowTextRectSize(adj1, adj2 int64, bounds RectEmu) (int64, int64) {
+	w, h := float64(bounds.CX), float64(bounds.CY)
+	ss := math.Min(w, h)
+	if ss <= 0 {
+		return bounds.CX, bounds.CY
+	}
+	a1, a2 := 50000.0, 50000.0
+	if adj1 >= 0 {
+		a1 = float64(adj1)
+	}
+	if adj2 >= 0 {
+		a2 = float64(adj2)
+	}
+	a1 = math.Min(a1, 100000)
+	a2 = math.Min(a2, 100000*w/ss)
+	head := ss * a2 / 100000
+	shaft := h * a1 / 100000
+	// The rectangle runs into the head until the shaft's edge meets the
+	// head's slope: dx2 = y1·head/(h/2), with y1 the shaft's top edge.
+	reach := (h - shaft) / 2 * head / (h / 2)
+	return int64(math.Max(w-head+reach, 0)), int64(math.Max(shaft, 0))
+}
+
+// SideArrowShaftInsetEMU is the distance from a rightArrow's or leftArrow's
+// bounding box to its shaft, top and bottom: where a connector that meets the
+// arrow from above or below at its centre touches the outline.
+func SideArrowShaftInsetEMU(adj1 int64, bounds RectEmu) int64 {
+	a1 := int64(50000)
+	if adj1 >= 0 {
+		a1 = min(adj1, 100000)
+	}
+	return bounds.CY * (100000 - a1) / 200000
+}
+
 // PresetTextRect returns the size of a preset geometry's text rectangle given
 // all of the shape's adjustments by name. It is PresetTextRectSize for the
-// presets with a single "adj" handle, plus the two-handle upArrow.
+// presets with a single "adj" handle, plus the two-handle upArrow, rightArrow
+// and leftArrow.
 func PresetTextRect(geometry string, adjustments map[string]int64, bounds RectEmu) (int64, int64) {
 	get := func(name string) int64 {
 		if v, ok := adjustments[name]; ok {
@@ -330,6 +373,9 @@ func PresetTextRect(geometry string, adjustments map[string]int64, bounds RectEm
 	}
 	if geometry == string(GeomUpArrow) {
 		return UpArrowTextRectSize(get("adj1"), get("adj2"), bounds)
+	}
+	if geometry == string(GeomRightArrow) || geometry == string(GeomLeftArrow) {
+		return SideArrowTextRectSize(get("adj1"), get("adj2"), bounds)
 	}
 	return PresetTextRectSize(geometry, get("adj"), bounds)
 }
@@ -346,9 +392,10 @@ func presetTextBounds(opts ShapeOptions) RectEmu {
 }
 
 // autofitBounds is the box a shape's stored autofit shrink is measured in: the
-// shape, except for an upArrow, whose text lives in its shaft.
+// shape, except for an arrow, whose text lives in its shaft.
 func autofitBounds(opts ShapeOptions) RectEmu {
-	if opts.Geometry == GeomUpArrow {
+	switch opts.Geometry {
+	case GeomUpArrow, GeomRightArrow, GeomLeftArrow:
 		return presetTextBounds(opts)
 	}
 	return opts.Bounds

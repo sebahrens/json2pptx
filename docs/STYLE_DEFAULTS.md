@@ -56,6 +56,7 @@ These mirror `ShapeSpecInput`, the shape definition on a grid cell:
 | `text` | object | Default text properties |
 | `rotation` | number | Rotation in degrees |
 | `adjustments` | object | Geometry adjustment handles |
+| `flip_h` | boolean | Mirror the outline left to right (a chevron / arrow points left); text stays upright |
 | `icon` | object | Icon overlay specification |
 
 ## Swap-Only Semantics

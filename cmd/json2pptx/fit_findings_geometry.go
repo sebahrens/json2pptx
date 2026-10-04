@@ -403,10 +403,12 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 		return
 	}
 	shapeArea := float64(cell.Bounds.CX) * float64(cell.Bounds.CY)
-	if cell.ShapeSpec.Geometry == string(pptx.GeomUpArrow) {
-		// An arrow's head — the gable of a strategy-house roof — is the
-		// shape's form, not a box waiting for text: the text belongs to the
-		// shaft, so that is the area it is measured against.
+	switch pptx.PresetGeometry(cell.ShapeSpec.Geometry) {
+	case pptx.GeomUpArrow, pptx.GeomRightArrow, pptx.GeomLeftArrow:
+		// An arrow's head — the gable of a strategy-house roof, the point of
+		// a process step — is the shape's form, not a box waiting for text:
+		// the text belongs to the shaft, so that is the area it is measured
+		// against.
 		shapeArea = float64(tw) * float64(th)
 	}
 	if a.slideArea <= 0 || shapeArea <= float64(a.slideArea)*sparseFillMinShapeSlideFrac {
@@ -802,6 +804,13 @@ func hasBodyPlaceholderContent(slide *SlideInput) bool {
 // geometryTextWidthEMU returns the width of the preset geometry's text
 // rectangle (per ECMA-376 presetShapeDefinitions) for the given bounds.
 func geometryTextWidthEMU(spec *shapegrid.ShapeSpec, b pptx.RectEmu) int64 {
+	switch pptx.PresetGeometry(spec.Geometry) {
+	case pptx.GeomRightArrow, pptx.GeomLeftArrow:
+		// Two handles: the shaft height decides how far the text rectangle
+		// reaches into the head.
+		w, _ := pptx.PresetTextRect(spec.Geometry, spec.Adjustments, b)
+		return w
+	}
 	w, _ := pptx.PresetTextRectSize(spec.Geometry, geometryAdj(spec), b)
 	return w
 }

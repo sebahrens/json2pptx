@@ -44,13 +44,38 @@ const (
 // two-word question.
 const processFlowDiamondInsetPt = 3.0
 
+// Arrow steps (go-slide-creator-fx48s). The rightArrow preset's text rectangle
+// is its shaft, and the preset's shaft is half the shape's height: with the
+// uniform 0.5 cm margin above and below, a 60pt step had 2pt left for its
+// label and every renderer shrank it to about 3pt. The step is drawn as a
+// block arrow instead — a shaft of processFlowArrowShaftAdj of the height
+// under a head half the height long — its label keeps processFlowArrowInsetPt
+// above and below, and the row is sized so the shaft holds the label at the
+// flow's type size (processFlowWrittenNeedPt).
+const (
+	// processFlowArrowShaftAdj is the shaft height (rightArrow adj1, 1/100000
+	// of the shape height).
+	processFlowArrowShaftAdj = 70000
+	// processFlowArrowHeadAdj is the head length (rightArrow adj2, 1/100000
+	// of the shape's shorter side).
+	processFlowArrowHeadAdj = 50000
+	// processFlowArrowInsetPt is the label's margin above and below, inside
+	// the shaft.
+	processFlowArrowInsetPt = 3.0
+)
+
 // withTextInsets sets all four text insets of a {paragraphs} payload.
 func withTextInsets(text json.RawMessage, pt float64) json.RawMessage {
+	return withTextInsetSides(text, pt, "inset_left", "inset_top", "inset_right", "inset_bottom")
+}
+
+// withTextInsetSides sets the named text insets of a {paragraphs} payload.
+func withTextInsetSides(text json.RawMessage, pt float64, sides ...string) json.RawMessage {
 	var obj map[string]any
 	if json.Unmarshal(text, &obj) != nil || obj == nil {
 		return text
 	}
-	for _, k := range []string{"inset_left", "inset_top", "inset_right", "inset_bottom"} {
+	for _, k := range sides {
 		obj[k] = pt
 	}
 	out, err := json.Marshal(obj)
@@ -162,8 +187,12 @@ func buildProcessFlowCells(ctx ExpandContext, steps []ProcessFlowStep, ovr *Proc
 				Text:     text,
 			},
 		}
-		if pointed {
+		switch geometry {
+		case "chevron":
 			cell.Shape.Adjustments = map[string]int64{"adj": chevronAdj}
+		case "rightArrow":
+			cell.Shape.Adjustments = map[string]int64{"adj1": processFlowArrowShaftAdj, "adj2": processFlowArrowHeadAdj}
+			cell.Shape.Text = withTextInsetSides(text, processFlowArrowInsetPt, "inset_top", "inset_bottom")
 		}
 
 		if co, coOk := cellOverrides[i]; coOk {

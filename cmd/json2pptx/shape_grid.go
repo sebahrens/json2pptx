@@ -1248,6 +1248,7 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 			Text:        c.Shape.Text,
 			Rotation:    c.Shape.Rotation,
 			Adjustments: c.Shape.Adjustments,
+			FlipH:       c.Shape.FlipH,
 			ThemeFonts:  pptx.ThemeFonts{Major: c.Shape.MeasureFonts.Major, Minor: c.Shape.MeasureFonts.Minor},
 		}
 		if c.Shape.Link != nil {
@@ -2786,14 +2787,16 @@ func generateConnectorXML(conn shapegrid.ResolvedConnector) ([]byte, error) {
 		Line:     line,
 		FlipH:    conn.FlipH,
 		FlipV:    conn.FlipV,
-		StartConn: &pptx.ConnectionRef{
-			ShapeID: conn.SourceID,
-			SiteIdx: conn.StartSite,
-		},
-		EndConn: &pptx.ConnectionRef{
-			ShapeID: conn.TargetID,
-			SiteIdx: conn.EndSite,
-		},
+	}
+	// An end with no connection site where it meets the shape (site -1: the
+	// top or bottom of a chevron or an arrow) is left unattached, so a
+	// renderer draws it at its coordinates instead of re-routing it to a site
+	// off the shape's centre.
+	if conn.StartSite >= 0 {
+		opts.StartConn = &pptx.ConnectionRef{ShapeID: conn.SourceID, SiteIdx: conn.StartSite}
+	}
+	if conn.EndSite >= 0 {
+		opts.EndConn = &pptx.ConnectionRef{ShapeID: conn.TargetID, SiteIdx: conn.EndSite}
 	}
 
 	// Add arrowhead for "arrow" style

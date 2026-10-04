@@ -348,7 +348,11 @@ type ShapeSpec struct {
 	Text        json.RawMessage
 	Rotation    float64
 	Adjustments map[string]int64
-	Link        *LinkSpec
+	// FlipH mirrors the shape's outline left to right (a:xfrm flipH): a
+	// chevron or an arrow then points left. The text is not mirrored — it
+	// stays upright in the mirrored text rectangle.
+	FlipH bool
+	Link  *LinkSpec
 	// ThemeFonts are the theme typefaces a named pattern sized this shape's
 	// text in. The writer measures the stored autofit shrink in the same
 	// face — Calibri as its metric clone Carlito — so text the pattern sized
@@ -391,8 +395,8 @@ type ResolvedConnector struct {
 	Spec      *ConnectorSpec // Connector styling
 	SourceID  uint32         // Shape ID of the source cell
 	TargetID  uint32         // Shape ID of the target cell
-	StartSite int            // Connection site index on source
-	EndSite   int            // Connection site index on target
+	StartSite int            // Connection site index on source; -1 = unattached (drawn at Bounds)
+	EndSite   int            // Connection site index on target; -1 = unattached
 	Elbow     bool           // Route as an elbow (bentConnector3) — endpoints at different heights
 	FlipH     bool           // End point lies left of the start point
 	FlipV     bool           // End point lies above the start point

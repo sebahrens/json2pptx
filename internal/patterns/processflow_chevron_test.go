@@ -143,24 +143,56 @@ func TestProcessFlowPlainStepsKeepTheirConnectors(t *testing.T) {
 	}
 }
 
-// A single arrow step is pointed too, and gets the same treatment: the uniform
-// shape margin, no pattern-authored inset.
-func TestProcessFlowArrowStepsAreInsetLikeChevrons(t *testing.T) {
-	pat, _ := Default().Get("process-flow")
-	vals := &ProcessFlowValues{Steps: []ProcessFlowStep{
-		{Label: "Collect", Type: "arrow"}, {Label: "Reconcile", Type: "arrow"}, {Label: "Settle", Type: "arrow"},
-	}}
-	grid, err := pat.Expand(processFlowChevronCtx(), vals, nil, nil)
-	if err != nil {
-		t.Fatalf("expand: %v", err)
-	}
-	for i, cell := range grid.Rows[0].Cells {
-		tb, err := shapegrid.ResolveTextInput(cell.Shape.Text)
-		if err != nil {
-			t.Fatalf("cell %d text: %v", i, err)
-		}
-		if tb.Insets != pptx.ShapeTextInsets() {
-			t.Errorf("arrow cell %d insets = %v, want the uniform shape margin", i, tb.Insets)
+// An arrow step's label lives in its shaft (go-slide-creator-fx48s): the step
+// is a block arrow whose shaft is processFlowArrowShaftAdj of its height, the
+// label keeps the uniform margin left and right and processFlowArrowInsetPt
+// above and below, and the row is tall enough for the shaft to hold the label
+// at the written size. The preset's half-height shaft under the uniform 0.5 cm
+// margin left a 60pt step 2pt of text height, and the label rendered at ~3pt.
+func TestProcessFlowArrowLabelsFitTheShaft(t *testing.T) {
+	ctx := processFlowChevronCtx()
+	for _, name := range []string{"process-flow", "process-flow-compact"} {
+		pat, _ := Default().Get(name)
+		for _, labels := range [][]string{
+			{"Collect", "Reconcile", "Settle"},
+			{"Understand the customer need in depth", "Design the offer and price it", "Build and test with pilot users", "Launch and learn from the market"},
+			{"Intake", "Triage", "Assess risk", "Decide", "Fulfil order", "Close out"},
+		} {
+			steps := make([]ProcessFlowStep, len(labels))
+			for i, l := range labels {
+				steps[i] = ProcessFlowStep{Label: l, Type: "arrow"}
+			}
+			// A plain step among them: the row is shared.
+			steps[0].Type = "step"
+			grid, err := pat.Expand(ctx, &ProcessFlowValues{Steps: steps}, nil, nil)
+			if err != nil {
+				t.Fatalf("%s: expand: %v", name, err)
+			}
+			rowPt := grid.Rows[0].MaxHeight
+			contentW, _ := contentAreaPt(ctx)
+			cellW := (contentW - grid.Gap*float64(len(steps)-1)) / float64(len(steps))
+			for i, cell := range grid.Rows[0].Cells {
+				if cell.Shape.Geometry != "rightArrow" {
+					continue
+				}
+				if cell.Shape.Adjustments["adj1"] != processFlowArrowShaftAdj || cell.Shape.Adjustments["adj2"] != processFlowArrowHeadAdj {
+					t.Fatalf("%s: arrow cell %d adjustments = %v", name, i, cell.Shape.Adjustments)
+				}
+				tb, err := shapegrid.ResolveTextInput(cell.Shape.Text)
+				if err != nil {
+					t.Fatalf("cell %d text: %v", i, err)
+				}
+				uniform := pptx.ShapeTextInsets()
+				tight := int64(processFlowArrowInsetPt * sizingEMUPerPt)
+				if want := [4]int64{uniform[0], tight, uniform[2], tight}; tb.Insets != want {
+					t.Errorf("%s: arrow cell %d insets = %v, want %v", name, i, tb.Insets, want)
+				}
+				bounds := pptx.RectEmu{CX: int64(cellW * sizingEMUPerPt), CY: int64(rowPt * sizingEMUPerPt)}
+				w, h := pptx.PresetTextRect(cell.Shape.Geometry, cell.Shape.Adjustments, bounds)
+				if !pptx.AutofitFitsFor(tb, pptx.RectEmu{CX: w, CY: h}) {
+					t.Errorf("%s: %q does not fit its %.0f×%.0fpt shaft unshrunk (row %.0fpt)", name, labels[i], float64(w)/sizingEMUPerPt, float64(h)/sizingEMUPerPt, rowPt)
+				}
+			}
 		}
 	}
 }

@@ -523,3 +523,53 @@ func TestRoute_FlipFlags(t *testing.T) {
 		t.Errorf("target down-left: FlipH=%v FlipV=%v, want true/false", r.FlipH, r.FlipV)
 	}
 }
+
+// RouteOutline puts both ends of a connector on the outline the shapes draw,
+// mirrored shapes included (go-slide-creator-yniru, go-slide-creator-1dfv6).
+func TestRouteOutline(t *testing.T) {
+	adj := []AdjustValue{{Name: "adj", Value: 30000}}
+	box := func(x, y int64, geom PresetGeometry, flip bool) ShapeOptions {
+		o := ShapeOptions{Geometry: geom, Bounds: RectEmu{X: x, Y: y, CX: 2000, CY: 1000}, FlipH: flip}
+		switch geom {
+		case GeomChevron:
+			o.Adjustments = adj
+		case GeomRightArrow:
+			o.Adjustments = []AdjustValue{{Name: "adj1", Value: 70000}, {Name: "adj2", Value: 50000}}
+		}
+		return o
+	}
+	for _, tc := range []struct {
+		name               string
+		src, tgt           ShapeOptions
+		horizontal         bool
+		sx, sy, ex, ey     int64
+		startSite, endSite int
+	}{
+		// Left to right: a chevron's tip is its right edge, its back the
+		// bottom of the notch (300 = 30% of the 1000 height), site 1.
+		{"rect to chevron", box(0, 0, GeomRect, false), box(2400, 0, GeomChevron, false), true, 2000, 500, 2700, 500, 3, 1},
+		{"chevron to rect", box(0, 0, GeomChevron, false), box(2400, 0, GeomRect, false), true, 2000, 500, 2400, 500, 3, 1},
+		{"arrow to rect", box(0, 0, GeomRightArrow, false), box(2400, 0, GeomRect, false), true, 2000, 500, 2400, 500, 3, 1},
+		// Right to left along a returning row: the mirrored chevron's tip
+		// is its left edge (its own site 3), its notch on the right (site 1).
+		{"mirrored chevron to rect", box(2400, 0, GeomChevron, true), box(0, 0, GeomRect, false), true, 2400, 500, 2000, 500, 3, 3},
+		{"rect to mirrored chevron", box(2400, 0, GeomRect, false), box(0, 0, GeomChevron, true), true, 2400, 500, 1700, 500, 1, 1},
+		{"mirrored arrow to mirrored arrow", box(2400, 0, GeomRightArrow, true), box(0, 0, GeomRightArrow, true), true, 2400, 500, 2000, 500, 3, 1},
+		// Down the turn: the middle of a chevron's edge and of an arrow's
+		// shaft (150 inside the box at a 70% shaft), neither a preset site.
+		{"chevron down to mirrored arrow", box(0, 0, GeomChevron, false), box(0, 1400, GeomRightArrow, true), false, 1000, 1000, 1000, 1550, -1, -1},
+		{"arrow down to rect", box(0, 0, GeomRightArrow, false), box(0, 1400, GeomRect, false), false, 1000, 850, 1000, 1400, -1, 0},
+		{"rect down to rect", box(0, 0, GeomRect, false), box(0, 1400, GeomRect, false), false, 1000, 1000, 1000, 1400, 2, 0},
+	} {
+		r := RouteOutline(tc.src, tc.tgt, tc.horizontal)
+		if r.StartX != tc.sx || r.StartY != tc.sy || r.EndX != tc.ex || r.EndY != tc.ey {
+			t.Errorf("%s: route (%d,%d)->(%d,%d), want (%d,%d)->(%d,%d)", tc.name, r.StartX, r.StartY, r.EndX, r.EndY, tc.sx, tc.sy, tc.ex, tc.ey)
+		}
+		if r.StartSite != tc.startSite || r.EndSite != tc.endSite {
+			t.Errorf("%s: sites %d->%d, want %d->%d", tc.name, r.StartSite, r.EndSite, tc.startSite, tc.endSite)
+		}
+		if r.FlipH != (tc.ex < tc.sx) || r.FlipV != (tc.ey < tc.sy) {
+			t.Errorf("%s: flips %v/%v", tc.name, r.FlipH, r.FlipV)
+		}
+	}
+}

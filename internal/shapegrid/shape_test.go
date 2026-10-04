@@ -1025,3 +1025,28 @@ func TestBuildTextBody_BulletDetection(t *testing.T) {
 		})
 	}
 }
+
+// flip_h mirrors the outline through a:xfrm flipH; the text body is untouched,
+// so renderers keep it upright (go-slide-creator-yniru).
+func TestGenerateShapeXML_FlipH(t *testing.T) {
+	bounds := pptx.RectEmu{X: 0, Y: 0, CX: 1000000, CY: 500000}
+	spec := &ShapeSpec{Geometry: "chevron", FlipH: true, Text: json.RawMessage(`"Test"`)}
+	flipped, err := GenerateShapeXML(spec, 1, bounds)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(flipped), `<a:xfrm flipH="1">`) {
+		t.Errorf("expected a:xfrm flipH=\"1\" in %s", flipped)
+	}
+	spec.FlipH = false
+	plain, err := GenerateShapeXML(spec, 1, bounds)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(plain), "flipH") {
+		t.Error("an unflipped shape wrote flipH")
+	}
+	if got := strings.Replace(string(flipped), ` flipH="1"`, "", 1); got != string(plain) {
+		t.Error("flip_h changed more than the transform")
+	}
+}

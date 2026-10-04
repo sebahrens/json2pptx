@@ -51,6 +51,11 @@ func TestProcessFlowCompactPointedStepsKeepReadableTextWidth(t *testing.T) {
 					t.Fatalf("cell %d text: %v", i, err)
 				}
 				for _, k := range []string{"inset_left", "inset_right", "inset_top", "inset_bottom"} {
+					// An arrow's label sits in its shaft and keeps a thin
+					// margin above and below (go-slide-creator-fx48s).
+					if tc.steps[i].Type == "arrow" && (k == "inset_top" || k == "inset_bottom") {
+						continue
+					}
 					if _, has := text[k]; has {
 						t.Errorf("cell %d emits %s; want the uniform margin", i, k)
 					}

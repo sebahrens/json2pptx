@@ -2,6 +2,8 @@ package shapegrid
 
 import (
 	"encoding/json"
+	"maps"
+	"slices"
 	"sort"
 	"strings"
 
@@ -90,15 +92,7 @@ func resolveRowConnectors(grid *Grid, cells []ResolvedCell, rowCellIDs [][]int,
 			seen[pair{a, b}] = true
 
 			srcCell, tgtCell := cells[a], cells[b]
-			srcOpts := pptx.ShapeOptions{Bounds: srcCell.Bounds}
-			tgtOpts := pptx.ShapeOptions{Bounds: tgtCell.Bounds}
-			if srcCell.ShapeSpec != nil {
-				srcOpts.Geometry = pptx.PresetGeometry(srcCell.ShapeSpec.Geometry)
-			}
-			if tgtCell.ShapeSpec != nil {
-				tgtOpts.Geometry = pptx.PresetGeometry(tgtCell.ShapeSpec.Geometry)
-			}
-			route := pptx.Route(srcOpts, tgtOpts, true)
+			route := pptx.RouteOutline(connectorEnd(srcCell), connectorEnd(tgtCell), true)
 
 			connectors = append(connectors, ResolvedConnector{
 				Bounds:    route.Bounds,
@@ -144,16 +138,8 @@ func resolveLinks(grid *Grid, cells []ResolvedCell, rowCellIDs [][]int, alloc *p
 			continue
 		}
 		src, tgt := cells[a], cells[b]
-		srcOpts := pptx.ShapeOptions{Bounds: src.Bounds}
-		tgtOpts := pptx.ShapeOptions{Bounds: tgt.Bounds}
-		if src.ShapeSpec != nil {
-			srcOpts.Geometry = pptx.PresetGeometry(src.ShapeSpec.Geometry)
-		}
-		if tgt.ShapeSpec != nil {
-			tgtOpts.Geometry = pptx.PresetGeometry(tgt.ShapeSpec.Geometry)
-		}
 		sameCol := l.FromCol == l.ToCol
-		route := pptx.Route(srcOpts, tgtOpts, !sameCol)
+		route := pptx.RouteOutline(connectorEnd(src), connectorEnd(tgt), !sameCol)
 		out = append(out, ResolvedConnector{
 			Bounds:    route.Bounds,
 			ID:        alloc.Alloc(),
@@ -168,6 +154,22 @@ func resolveLinks(grid *Grid, cells []ResolvedCell, rowCellIDs [][]int, alloc *p
 		})
 	}
 	return out
+}
+
+// connectorEnd describes a resolved cell to the connector router: its bounds
+// and, for a shape, the geometry, mirroring and adjustments that decide where
+// its outline is.
+func connectorEnd(c ResolvedCell) pptx.ShapeOptions {
+	opts := pptx.ShapeOptions{Bounds: c.Bounds}
+	if c.ShapeSpec == nil {
+		return opts
+	}
+	opts.Geometry = pptx.PresetGeometry(c.ShapeSpec.Geometry)
+	opts.FlipH = c.ShapeSpec.FlipH
+	for _, name := range slices.Sorted(maps.Keys(c.ShapeSpec.Adjustments)) {
+		opts.Adjustments = append(opts.Adjustments, pptx.AdjustValue{Name: name, Value: c.ShapeSpec.Adjustments[name]})
+	}
+	return opts
 }
 
 // elbowThresholdEMU is the vertical offset (1pt) above which a side-to-side
