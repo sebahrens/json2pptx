@@ -682,7 +682,7 @@ func generateRecommendations(inputs []Slide, slides []SlideInfo, runs []PatternR
 			recs = append(recs, Recommendation{
 				Code:             CodeBreakRun,
 				SlideIndex:       insertIdx,
-				Message:          fmt.Sprintf("break a %s run (length %d); consider inserting a different pattern at slide %d", run.Name, run.Len, insertIdx),
+				Message:          fmt.Sprintf("break a %s run (length %d); consider inserting a different pattern at slide %d", run.Name, run.Len, insertIdx+1),
 				RecommendedBreak: suggestBreakPatterns(run.Name, inputs[insertIdx]),
 			})
 		}

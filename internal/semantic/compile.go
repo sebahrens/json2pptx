@@ -130,7 +130,7 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 		}
 		compiled, links, err := compileSlide(si.Kind, in)
 		if err != nil {
-			return nil, result, fmt.Errorf("slide %d (%s): %w", si.SourceIndex, si.Kind, err)
+			return nil, result, fmt.Errorf("slide index %d (%s): %w", si.SourceIndex, si.Kind, err)
 		}
 		if requiredLayout := forcedLayouts[i]; requiredLayout != "" {
 			compiled.LayoutID = requiredLayout

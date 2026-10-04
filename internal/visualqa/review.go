@@ -47,17 +47,17 @@ func (r *ReviewRecord) ValidateCompletion(artifactHash, revision string, totalSl
 	indices := make([]int, 0, len(r.Slides))
 	for _, s := range r.Slides {
 		if s.ImageSHA256 == "" {
-			return fmt.Errorf("slide %d has no pixel hash: one of image_path or image_sha256 is required", s.Index)
+			return fmt.Errorf("slide index %d has no pixel hash: one of image_path or image_sha256 is required", s.Index)
 		}
 		if s.Role == "" {
-			return fmt.Errorf("slide %d has no role", s.Index)
+			return fmt.Errorf("slide index %d has no role", s.Index)
 		}
 		indices = append(indices, s.Index)
 	}
 	sort.Ints(indices)
 	for i, idx := range indices {
 		if idx != i {
-			return fmt.Errorf("all-slide coverage required: missing slide %d", i)
+			return fmt.Errorf("all-slide coverage required: missing slide index %d", i)
 		}
 	}
 	if r.Verdict != "approved" && r.Verdict != "changes_requested" && r.Verdict != "inconclusive" {

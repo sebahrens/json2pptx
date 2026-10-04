@@ -111,7 +111,7 @@ func verifyReviewImages(slides []visualqa.ReviewSlide, artifactHash string, tota
 	if len(unverified) > 0 {
 		sort.Ints(unverified)
 		v.Status = imageVerificationUnverifiable
-		v.Reasons = append(v.Reasons, fmt.Sprintf("no cached render of artifact %s covers slide(s) %s, so their images could not be compared against its pixels", shortHash(artifactHash), joinInts(unverified)))
+		v.Reasons = append(v.Reasons, fmt.Sprintf("no cached render of artifact %s covers slide index %s, so their images could not be compared against its pixels", shortHash(artifactHash), joinInts(unverified)))
 		v.HowToVerify = howToVerify
 	}
 	return v, nil

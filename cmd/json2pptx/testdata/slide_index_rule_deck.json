@@ -1,0 +1,29 @@
+{
+  "template": "midnight-blue",
+  "slides": [
+    {"slide_type": "content", "content": [
+      {"placeholder_id": "title", "type": "text", "text_value": "Revenue"},
+      {"placeholder_id": "body", "type": "chart", "chart_value": {"type": "bar", "data": {"Q1": 1, "Q2": 2, "Q3": 3}}}
+    ]},
+    {"slide_type": "content", "content": [
+      {"placeholder_id": "title", "type": "text", "text_value": "Pricing"},
+      {"placeholder_id": "body", "type": "bullets", "bullets_value": ["List price held", "Discounts fell"]}
+    ]},
+    {"slide_type": "content", "content": [
+      {"placeholder_id": "title", "type": "text", "text_value": "Pricing"},
+      {"placeholder_id": "body", "type": "bullets", "bullets_value": ["List price held", "Discounts fell"]}
+    ]},
+    {"slide_type": "content", "content": [
+      {"placeholder_id": "title", "type": "text", "text_value": "Costs"},
+      {"placeholder_id": "body", "type": "bullets", "bullets_value": ["Freight rose", "Energy fell"]}
+    ]},
+    {"slide_type": "content", "content": [
+      {"placeholder_id": "title", "type": "text", "text_value": "People"},
+      {"placeholder_id": "body", "type": "bullets", "bullets_value": ["Hiring paused", "Attrition flat"]}
+    ]},
+    {"slide_type": "content", "content": [
+      {"placeholder_id": "title", "type": "text", "text_value": "Thank you"},
+      {"placeholder_id": "body", "type": "bullets", "bullets_value": ["Questions"]}
+    ]}
+  ]
+}
