@@ -570,6 +570,17 @@ or the `<deck>.pptx.authoring.json` sidecar `semantic render` wrote (authored
 ids only — the CLI assigns none). An unknown id is refused before rendering
 with the ids the deck has; a file nothing is known about has no ids.
 
+**Images the client already holds.** `render_deck_thumbnails` takes
+`known_hashes`: the `slides[].content_hash` values of an earlier render (of
+this revision or a previous one). A slide whose pixels still hash to one of
+them comes back as `{index, id, content_hash, unchanged: true}` with no image
+block and no `path`; the others are returned as usual, and a hash that matches
+nothing is ignored. A full-deck pass after a one-slide patch of a seven-slide
+deck is 32 KB instead of 232 KB. `include_base64_json` honours it too. The CLI
+spells it `render-thumbnails --known-hashes <hash>,<hash>`: the manifest lists
+`content_hash` per slide, an unchanged slide has `unchanged: true` and no
+`path`, and its file from the earlier run is left in place.
+
 **Reading the store** (`validate_deck_spec`; these return without validating
 or storing):
 

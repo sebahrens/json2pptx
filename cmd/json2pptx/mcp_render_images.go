@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"image"
 	_ "image/png" // register PNG decoder for image.DecodeConfig
+	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
@@ -68,6 +69,10 @@ type renderedSlideMeta struct {
 	ImageMIMEType     string `json:"image_mime_type,omitempty"`
 	ImageWidth        int    `json:"image_width,omitempty"`
 	ImageHeight       int    `json:"image_height,omitempty"`
+	// Unchanged marks a slide whose content_hash the caller named in
+	// known_hashes: the entry is index, id and content_hash, with no image
+	// block and no path (go-slide-creator-yosa8).
+	Unchanged bool `json:"unchanged,omitempty"`
 }
 
 // renderedSlideImageResponse is the image_content-mode response for
@@ -197,6 +202,14 @@ func deckThumbnailsMCPResult(ctx context.Context, request mcp.CallToolRequest, d
 		if err := ctx.Err(); err != nil {
 			return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error())
 		}
+		if s.Unchanged {
+			// The caller holds this image: the hash says so, nothing is sent.
+			if resp.SourceHash == "" {
+				resp.SourceHash = s.SourceHash
+			}
+			resp.Slides = append(resp.Slides, renderedSlideMeta{Index: s.Index, ContentHash: s.ContentHash, Unchanged: true})
+			continue
+		}
 		meta, enc, err := slideImageToMCP(s, len(images)+1)
 		if err != nil {
 			return api.MCPSimpleError("RENDER_FAILED", err.Error())
@@ -260,6 +273,49 @@ func (mc *mcpConfig) renderProgressReporter(ctx context.Context, request mcp.Cal
 			"message":       fmt.Sprintf("Prepared thumbnail %d of %d", done, total),
 		})
 	}
+}
+
+// argKnownHashes names the content hashes the caller already holds.
+const argKnownHashes = "known_hashes"
+
+// knownHashesArg decodes render_deck_thumbnails' known_hashes: the
+// content_hash values of slides the caller has already looked at. A final
+// full-deck pass after a one-slide repair resent every image (232 KB with 6 of
+// 7 hashes unchanged, go-slide-creator-yosa8); with the hashes named, the
+// unchanged slides come back as hash-only entries. Hashes are compared without
+// case or a "sha256:" prefix, and one that matches nothing is ignored: it is
+// a slide that changed.
+func knownHashesArg(request mcp.CallToolRequest) (map[string]bool, *mcp.CallToolResult) {
+	raw, ok := request.GetArguments()[argKnownHashes]
+	if !ok || raw == nil {
+		return nil, nil
+	}
+	bad := func(msg string) (map[string]bool, *mcp.CallToolResult) {
+		return nil, argInvalidValue("render_deck_thumbnails", diagnostics.CodeInvalidParameter, argKnownHashes,
+			msg, "array", []string{"<slides[].content_hash of an earlier render>"}, nil)
+	}
+	var list []any
+	switch v := raw.(type) {
+	case []any:
+		list = v
+	case []string:
+		for _, h := range v {
+			list = append(list, h)
+		}
+	default:
+		return bad("known_hashes must be an array of content_hash strings")
+	}
+	known := make(map[string]bool, len(list))
+	for _, item := range list {
+		h, ok := item.(string)
+		if !ok {
+			return bad("known_hashes must contain only content_hash strings")
+		}
+		if h = strings.TrimPrefix(strings.ToLower(strings.TrimSpace(h)), "sha256:"); h != "" {
+			known[h] = true
+		}
+	}
+	return known, nil
 }
 
 // slideIndicesArg decodes render_deck_thumbnails' slide_indices, sharing

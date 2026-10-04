@@ -762,7 +762,8 @@ var outputSchemaRenderDeckThumbnails = json.RawMessage(`{
           "image_content_index": {"type": "integer", "description": "Position of this slide's image block in the result content array (content[0] is this JSON)."},
           "image_mime_type":     {"type": "string", "description": "Per-slide MIME type; omitted when it equals the top-level image_mime_type."},
           "image_width":         {"type": "integer"},
-          "image_height":        {"type": "integer"}
+          "image_height":        {"type": "integer"},
+          "unchanged":           {"type": "boolean", "description": "true when content_hash was named in known_hashes: the entry carries index, id and content_hash only, with no image block and no path. The image you already hold is still this slide."}
         },
         "required": ["index"]
       }

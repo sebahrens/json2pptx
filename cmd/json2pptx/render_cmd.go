@@ -177,6 +177,7 @@ func runRenderThumbnails() error {
 	maxSlides := fs.Int("max-slides", 50, "Maximum number of slides to render, counting from the first")
 	slides := fs.String("slides", "", "Render only these slides, comma-separated: 0-based indices or slide ids (e.g. 1,3 or costs,s4). Mutually exclusive with --max-slides")
 	force := fs.Bool("force", false, "Bypass render cache")
+	knownHashes := fs.String("known-hashes", "", "Comma-separated content_hash values from an earlier manifest: a slide whose pixels still hash to one is listed as unchanged and its file is not rewritten")
 	outDir := fs.String("out-dir", "", "Write slide-<index>.png files (0-based, the names 'inspect --images' reads) into this directory and print a manifest (paths, sha256, sizes). Without it the manifest points at the render cache")
 	base64Out := fs.Bool("base64", false, "Print the legacy JSON envelope with every image as png_base64 instead of a file manifest")
 
@@ -189,7 +190,8 @@ func runRenderThumbnails() error {
 		fmt.Fprintf(os.Stderr, "Examples:\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails output/deck.pptx --out-dir slides/\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails output/deck.pptx --out-dir slides/ --density 100 --max-slides 10\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails output/deck.pptx --out-dir slides/ --slides 1,3\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails output/deck.pptx --out-dir slides/ --slides 1,3\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails output/deck.pptx --out-dir slides/ --known-hashes <content_hash>,<content_hash>\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
@@ -212,6 +214,13 @@ func runRenderThumbnails() error {
 	}
 	if *base64Out {
 		args[argIncludeBase64JSON] = true
+	}
+	if *knownHashes != "" {
+		hashes := []any{}
+		for _, h := range strings.Split(*knownHashes, ",") {
+			hashes = append(hashes, h)
+		}
+		args[argKnownHashes] = hashes
 	}
 	// --slides names slides; --max-slides caps a prefix. The MCP tool refuses
 	// both at once, so send whichever the caller asked for.

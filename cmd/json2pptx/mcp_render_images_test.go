@@ -431,3 +431,88 @@ func contentPayloadBytes(res *mcp.CallToolResult) int {
 	}
 	return total
 }
+
+// TestDeckThumbnailsMCPResult_KnownHashes is the go-slide-creator-yosa8
+// acceptance test: a repeat pass that names the hashes it holds gets one image
+// block per slide whose pixels differ and a hash-only entry for the rest, in
+// both delivery modes, and the payload shrinks accordingly.
+func TestDeckThumbnailsMCPResult_KnownHashes(t *testing.T) {
+	newDeck := func() *render.DeckResult {
+		deck := &render.DeckResult{SlideCount: 4}
+		for i := 0; i < 4; i++ {
+			img, err := render.SlideImageFromBytes(i, syntheticSlidePNG(t, 667, 375, uint8(i)), "src")
+			if err != nil {
+				t.Fatal(err)
+			}
+			deck.Slides = append(deck.Slides, *img)
+		}
+		return deck
+	}
+	first := newDeck()
+	full := deckThumbnailsMCPResult(context.Background(), makeRequest(nil), first)
+
+	// The client holds slides 0, 1 and 3; one hash is upper-cased with the
+	// sha256: prefix some clients add, one names a slide that no longer exists.
+	req := makeRequest(map[string]any{argKnownHashes: []any{
+		first.Slides[0].ContentHash, "SHA256:" + strings.ToUpper(first.Slides[1].ContentHash),
+		first.Slides[3].ContentHash, "feedbeef",
+	}})
+	known, bad := knownHashesArg(req)
+	if bad != nil {
+		t.Fatalf("known_hashes refused: %s", textContent(bad))
+	}
+	deck := newDeck()
+	if n := deck.WithoutKnown(known); n != 3 {
+		t.Fatalf("WithoutKnown replaced %d slides, want 3", n)
+	}
+	res := deckThumbnailsMCPResult(context.Background(), req, deck)
+	if res.IsError || len(res.Content) != 2 {
+		t.Fatalf("want metadata + 1 image block, got %d blocks: %s", len(res.Content), textContent(res))
+	}
+	var resp renderedDeckThumbnailsResponse
+	if err := json.Unmarshal([]byte(textContent(res)), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Slides) != 4 || resp.SlideCount != 4 || resp.SourceHash == "" {
+		t.Fatalf("every slide keeps its entry: %+v", resp)
+	}
+	for i, s := range resp.Slides {
+		want := renderedSlideMeta{Index: i, ContentHash: first.Slides[i].ContentHash, Unchanged: true}
+		if i == 2 {
+			if s.Unchanged || s.ImageContentIndex != 1 || s.Path == "" {
+				t.Errorf("the changed slide must carry its image: %+v", s)
+			}
+			continue
+		}
+		if s != want {
+			t.Errorf("slides[%d] = %+v, want the hash-only entry %+v", i, s, want)
+		}
+	}
+	if fullBytes, got := contentPayloadBytes(full), contentPayloadBytes(res); got*2 > fullBytes {
+		t.Errorf("repeat pass is %d bytes vs %d for the full pass: 3 of 4 slides were already held", got, fullBytes)
+	}
+
+	// The legacy envelope drops the pixels of a held slide too.
+	legacy := newDeck()
+	legacy.WithoutKnown(known)
+	text := textContent(deckThumbnailsMCPResult(context.Background(), makeRequest(map[string]any{argIncludeBase64JSON: true}), legacy))
+	if strings.Count(text, "png_base64") != 1 || strings.Count(text, `"unchanged":true`) != 3 {
+		t.Errorf("legacy envelope should carry one png_base64 and three unchanged entries:\n%.400s", text)
+	}
+
+	// Naming every hash returns no image at all; a malformed list is refused.
+	all := newDeck()
+	everything := map[string]bool{}
+	for _, s := range first.Slides {
+		everything[s.ContentHash] = true
+	}
+	all.WithoutKnown(everything)
+	if res := deckThumbnailsMCPResult(context.Background(), makeRequest(nil), all); res.IsError || len(res.Content) != 1 {
+		t.Errorf("an all-unchanged pass is metadata only, got %d blocks (err=%v)", len(res.Content), res.IsError)
+	}
+	for _, v := range []any{"abc", []any{1}} {
+		if _, bad := knownHashesArg(makeRequest(map[string]any{argKnownHashes: v})); bad == nil || !bad.IsError {
+			t.Errorf("known_hashes %v must be refused", v)
+		}
+	}
+}

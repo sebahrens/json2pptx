@@ -2588,7 +2588,7 @@ func mcpRenderDeckThumbnailsTool() mcp.Tool {
 
 Requires LibreOffice and ImageMagick (magick) on PATH. Cached by file content hash; force=true re-renders. With _meta.progressToken, emits notifications/progress per slide; cancelling returns CANCELLED.
 
-Cost: a 15-slide pass is ~600KB at the default density 50 and over 1MB at 100. Use density 50–75 for full-deck passes; go higher only for a few slides via slide_indices. After a repair, pass only render_deck_spec's changed_slides; max_slides caps a first look at a large deck.`),
+Cost: a 15-slide pass is ~600KB at the default density 50 and over 1MB at 100. Use density 50–75 for full-deck passes; go higher only for a few slides via slide_indices. After a repair, pass only render_deck_spec's changed_slides; max_slides caps a first look at a large deck. On a repeat pass, send the content_hash values you already hold as known_hashes: a slide whose pixels did not change comes back as {index, content_hash, unchanged:true} with no image block.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRenderDeckThumbnails)),
 		includeBase64JSONOption(),
 		mcp.WithString("pptx_path",
@@ -2604,6 +2604,10 @@ Cost: a 15-slide pass is ~600KB at the default density 50 and over 1MB at 100. U
 		mcp.WithArray("slide_indices",
 			mcp.Description("Render ONLY these slides, by 0-based index or slide id, e.g. [4, \"costs\"]: after a patch, pass render_deck_spec's changed_slides verbatim. Returns one image block per slide, ascending; slide_count is the deck size, selected the indices. A slide the deck lacks is an error. Mutually exclusive with max_slides."),
 			mcp.Items(map[string]any{"type": []string{"integer", "string"}, "minimum": 0}),
+		),
+		mcp.WithArray(argKnownHashes,
+			mcp.Description("content_hash values of slides you already hold (from an earlier render of this or a previous revision). A slide that still hashes to one of them is returned as {index, id, content_hash, unchanged:true}: no image block, no path. A hash that matches nothing is ignored."),
+			mcp.Items(map[string]any{"type": "string"}),
 		),
 		mcp.WithBoolean("force",
 			mcp.Description("true: bypass the render cache and re-convert."),
@@ -2720,6 +2724,11 @@ func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp
 		}), nil
 	}
 
+	known, errRes := knownHashesArg(request)
+	if errRes != nil {
+		return errRes, nil
+	}
+
 	force := false
 	if v, ok := request.GetArguments()["force"].(bool); ok {
 		force = v
@@ -2759,6 +2768,7 @@ func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp
 	if err := ctx.Err(); err != nil {
 		return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error()), nil
 	}
+	deckResult.WithoutKnown(known)
 	return deckThumbnailsMCPResult(ctx, request, deckResult), nil
 }
 

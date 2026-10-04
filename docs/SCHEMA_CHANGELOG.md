@@ -1,5 +1,25 @@
 # Schema Changelog
 
+- **2026-10-04 — `render_deck_thumbnails` does not resend images the client holds (`go-slide-creator-yosa8`).**
+  - **New argument `known_hashes: [<content_hash>, …]`** — the
+    `slides[].content_hash` values of an earlier render. A slide whose pixels
+    still hash to one of them is returned as
+    `{index, id, content_hash, unchanged: true}`: no image block, no `path`.
+    Other slides are unchanged in shape; `image_content_index` counts only the
+    blocks sent. A hash that matches nothing is ignored; hashes compare without
+    case or a `sha256:` prefix. `include_base64_json` drops the pixels of a
+    held slide too. Measured over stdio on the seven-slide cold-start deck
+    after a one-slide patch: 231,786 → 32,038 bytes for the repeat full pass.
+  - **`slides[].unchanged`** is new in the output schema.
+  - **CLI**: `render-thumbnails --known-hashes <hash>,<hash>`. The manifest
+    gains `content_hash` per slide; an unchanged slide is listed with
+    `unchanged: true` and no `path` / `sha256` / `bytes`, nothing is written
+    for it, and its `slide-<index>.png` from an earlier run survives the
+    `--out-dir` sweep.
+  - The default `tools/list` did not grow (22,172 bytes; 22,175 before): the
+    tool's abridged description and argument lines were tightened to pay for
+    the new argument.
+
 - **2026-10-04 — Schema 4.160.0 · layout nativeness and the agent journey (labels `layout-nativeness-20261003`, `agent-journey-20261003`).**
   - One version for every dated bullet below this one down to the 4.159.0
     entry: those bullets were written by parallel branches without a version
