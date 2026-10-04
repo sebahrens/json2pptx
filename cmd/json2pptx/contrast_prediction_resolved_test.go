@@ -9,6 +9,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/semantic"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -257,5 +258,47 @@ func TestContrastPredictionExpandsNestedCellPatterns(t *testing.T) {
 	}
 	if inPattern == 0 {
 		t.Errorf("no shape is attributed to the nested pattern: %+v", sources)
+	}
+}
+
+// go-slide-creator-i1x53: on a DeckSpec slide the authored path of a contrast
+// repair maps to the slide's place in the spec, the same semantic path the
+// prediction gets, so validate and generation name one location there too.
+func TestContrastAutofixedOnDeckSpecSlideMapsToItsSemanticPath(t *testing.T) {
+	spec := &semantic.DeckSpec{
+		Meta: semantic.DeckMeta{Title: "Contrast", Template: "midnight-blue", DesignMode: "free"},
+		Slides: []semantic.SlideSpec{
+			{Kind: semantic.KindTitle, Body: map[string]any{"title": "Contrast"}},
+			{Kind: semantic.KindRawJSON2pptx, Body: map[string]any{"slide": map[string]any{
+				"layout_id": "blank-title",
+				"shape_grid": map[string]any{"columns": 1, "rows": []any{map[string]any{"cells": []any{map[string]any{
+					"shape": map[string]any{"geometry": "rect", "fill": "#FFE8D4", "text": map[string]any{"content": "Pale", "size": 14, "color": "lt1"}},
+				}}}}},
+			}}},
+		},
+	}
+	input, compiled, err := semantic.Compile(spec, semantic.CompileOptions{Strict: semantic.StrictnessWarn})
+	if err != nil {
+		t.Fatal(err)
+	}
+	applyDefaults(input)
+	theme := []types.ThemeColor{{Name: "dk1", RGB: "#000000"}, {Name: "lt1", RGB: "#FFFFFF"}, {Name: "dk2", RGB: "#1B2A4A"}}
+	predicted := contrastPredictions(collectContrastPreflightFindings(input, nil, theme))
+	if len(predicted) != 1 || predicted[0].Path != "/slides/1/shape_grid/rows/0/cells/0/shape/text" {
+		t.Fatalf("predictions = %+v; want one at the authored cell text", predicted)
+	}
+	grid := predictedGridShapes(input.Slides[1].ShapeGrid, 1, nil, nil, 0, 0, theme, "")
+	swaps := generator.PredictCompiledGridContrast(grid.Shapes, theme, 1, "#FFFFFF")
+	generator.AttributeGridSwaps(swaps, grid.ShapeSources, 1)
+	fixed := contrastSwapsToFindings(swaps, input, theme)
+	if len(fixed) != 1 || fixed[0].Path != predicted[0].Path {
+		t.Fatalf("contrast_autofixed = %+v; want it at %s", fixed, predicted[0].Path)
+	}
+	got, want := semanticDiagFromFit(compiled.SourceMap, fixed[0]), semanticDiagFromFit(compiled.SourceMap, predicted[0])
+	if got.SemanticPath == "" || got.SemanticPath != want.SemanticPath || !strings.HasPrefix(got.SemanticPath, "slides[1]") {
+		t.Errorf("contrast_autofixed semantic path %q, contrast_predicted %q; want one path inside slides[1]", got.SemanticPath, want.SemanticPath)
+	}
+	if got.RawPath != fixed[0].Path {
+		t.Errorf("raw_path = %q, want the authored raw path %q kept as evidence", got.RawPath, fixed[0].Path)
 	}
 }
