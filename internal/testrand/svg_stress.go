@@ -272,7 +272,8 @@ func (r *SVGStressRunner) dataForType(typ string, n int) map[string]any { //noli
 	// === CHART TYPES ===
 	case "bar_chart", "line_chart", "area_chart":
 		return r.categorySeries(n, 1)
-	case "stacked_bar_chart", "grouped_bar_chart", "stacked_area_chart":
+	case "stacked_bar_chart", "grouped_bar_chart", "stacked_area_chart", "small_multiples_chart":
+		// small_multiples_chart draws one panel per series (2–6).
 		return r.categorySeries(n, 2+r.rng.IntN(2))
 	case "pie_chart", "donut_chart":
 		return r.pieData(n)
@@ -438,7 +439,7 @@ func (r *SVGStressRunner) treemapData(n int) map[string]any {
 	nodes := make([]map[string]any, n)
 	for i := range nodes {
 		nodes[i] = map[string]any{
-			"name":  fmt.Sprintf("Node %d", i+1),
+			"label": fmt.Sprintf("Node %d", i+1),
 			"value": float64(10 + r.rng.IntN(90)),
 		}
 	}
@@ -747,8 +748,13 @@ func (r *SVGStressRunner) edgeData(typ string) map[string]any { //nolint:gocyclo
 			"series":     toAny([]map[string]any{{"name": "Edge Series", "values": vals}}),
 		}
 
-	case "stacked_bar_chart", "grouped_bar_chart", "stacked_area_chart":
+	case "stacked_bar_chart", "grouped_bar_chart", "stacked_area_chart", "small_multiples_chart":
 		vals1 := []any{-50.0, 0.0, 100.0, 999999.0}
+		if typ == "stacked_area_chart" {
+			// A stacked area refuses a negative band (CONSTRAINT):
+			// TestSVGStressNegativeValuesAreRefused.
+			vals1[0] = 0.001
+		}
 		vals2 := []any{0.0, 0.0, 0.0, 0.0}
 		return map[string]any{
 			"categories": el(edgeLabels[:4]),
@@ -765,9 +771,12 @@ func (r *SVGStressRunner) edgeData(typ string) map[string]any { //nolint:gocyclo
 		}
 
 	case "radar_chart":
+		// The radial axis starts at the centre: a negative score is refused
+		// (CONSTRAINT, TestSVGStressNegativeValuesAreRefused), so the edge
+		// values stay at or above zero.
 		return map[string]any{
 			"categories": el(edgeLabels[:5]),
-			"series":     toAny([]map[string]any{{"name": "Edge", "values": []any{-10.0, 0.0, 100.0, 50.0, 999.0}}}),
+			"series":     toAny([]map[string]any{{"name": "Edge", "values": []any{0.001, 0.0, 100.0, 50.0, 999.0}}}),
 		}
 
 	case "scatter_chart":
@@ -805,9 +814,9 @@ func (r *SVGStressRunner) edgeData(typ string) map[string]any { //nolint:gocyclo
 
 	case "treemap_chart":
 		return map[string]any{"nodes": toAny([]map[string]any{
-			{"name": edgeLabels[0], "value": 0.001},
-			{"name": edgeLabels[1], "value": 999999.0},
-			{"name": edgeLabels[2], "value": 0.0},
+			{"label": edgeLabels[0], "value": 0.001},
+			{"label": edgeLabels[1], "value": 999999.0},
+			{"label": edgeLabels[2], "value": 0.0},
 		})}
 
 	case "swot":
