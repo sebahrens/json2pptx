@@ -522,6 +522,7 @@ Embed a raster image (PNG, JPG) in a grid cell with optional overlay and text.
 | `text`        | `string \| object`  | ---       | Plain string or full text object (see below) |
 | `icon`        | `object`            | ---       | Optional icon overlay: `{"name": "shield", "fill": "#FFFFFF"}` (see Icon Cell) |
 | `rotation`    | `number`            | 0         | Rotation in degrees |
+| `flip_h`      | `boolean`           | false     | Mirror the outline left to right (a chevron / arrow points left); text stays upright |
 | `adjustments` | `map[string]int64`  | ---       | OOXML adjustment values for geometry tweaking |
 
 #### Fill: Theme Color Names
