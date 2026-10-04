@@ -14,7 +14,17 @@ coverage.out
 # Documentation
 *.md
 !README.md
-docs/
+docs/**
+# The eight docs the agent skills link to are embedded in the binary
+# (references.go) so `json2pptx skill install` works offline.
+!docs/INPUT_FORMAT.md
+!docs/INPUT_FORMAT_ADVANCED.md
+!docs/FIT_FINDINGS.md
+!docs/SEMANTIC_COMPILER.md
+!docs/TEMPLATE_SPEC.md
+!docs/PATH_GRAMMAR.md
+!docs/PATTERNS.md
+!docs/TEMPLATE_ANALYSIS.md
 specs/
 
 # IDE and editor files

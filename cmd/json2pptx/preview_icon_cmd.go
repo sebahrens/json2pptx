@@ -17,7 +17,7 @@ import (
 )
 
 func runPreviewIcon() error {
-	fs := flag.NewFlagSet("preview-icon", flag.ExitOnError)
+	fs := flag.NewFlagSet("preview-icon", flag.ContinueOnError)
 	iconFile := fs.String("icon", "", "Path to a JSON file containing an IconInput object (or '-' for stdin). Mutually exclusive with --name/--path/--url/--svg-data.")
 	name := fs.String("name", "", "Bundled icon name (e.g. 'filled:chart-pie').")
 	path := fs.String("path", "", "Filesystem path to a .svg icon (relative paths resolve against --base-dir).")

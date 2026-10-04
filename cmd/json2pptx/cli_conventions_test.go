@@ -754,7 +754,14 @@ func TestCLIGetStartedSpeaksCLI(t *testing.T) {
 
 	// The DeckSpec path names the commands a CLI agent needs.
 	stdout, _, _ := cliRun(t, nil, "get-started", "--templates-dir", "../../templates")
-	for _, want := range []string{"json2pptx semantic kinds", "json2pptx semantic validate", "json2pptx semantic render", "json2pptx render-thumbnails"} {
+	wants := []string{"json2pptx semantic kinds", "json2pptx semantic validate", "json2pptx semantic render"}
+	// A machine that cannot render is told so and loses the render steps
+	// (degradeForMissingRenderTooling), so the thumbnails command is only
+	// named where LibreOffice and ImageMagick are installed.
+	if _, missing := renderDependencyStatus(); len(missing) == 0 {
+		wants = append(wants, "json2pptx render-thumbnails")
+	}
+	for _, want := range wants {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("get-started does not name %q", want)
 		}
