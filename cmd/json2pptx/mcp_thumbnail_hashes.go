@@ -4,6 +4,10 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/mark3labs/mcp-go/mcp"
+
+	"github.com/sebahrens/json2pptx/internal/render"
 )
 
 // Thumbnail hashes the server has already handed out (go-slide-creator-wfhvv).
@@ -41,6 +45,17 @@ const maxCarriedKnownHashes = 50
 
 // defaultThumbnailDensity is render_deck_thumbnails' default DPI.
 const defaultThumbnailDensity = 50
+
+// recordDeckThumbnails notes every slide of a render_deck_thumbnails response
+// as one the caller now holds: the thumbnails step after the next render
+// names these hashes.
+func recordDeckThumbnails(request mcp.CallToolRequest, deck *render.DeckResult) {
+	delivered := make(map[int]string, len(deck.Slides))
+	for _, s := range deck.Slides {
+		delivered[s.Index] = s.ContentHash
+	}
+	recordDeliveredThumbnails(request.GetString("pptx_path", ""), clampedRenderDensity(request.GetArguments(), defaultThumbnailDensity, 25, 150), delivered)
+}
 
 // recordDeliveredThumbnails notes the slide hashes a thumbnails call returned
 // for pptxPath at density.

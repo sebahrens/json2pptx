@@ -227,13 +227,7 @@ func deckThumbnailsMCPResult(ctx context.Context, request mcp.CallToolRequest, d
 		return bad
 	}
 	held := func(s render.SlideImage) bool { return s.ContentHash != "" && known[s.ContentHash] }
-	// Every slide of this response is one the caller now holds; the thumbnails
-	// step after the next render names these hashes (go-slide-creator-wfhvv).
-	delivered := make(map[int]string, len(deck.Slides))
-	for _, s := range deck.Slides {
-		delivered[s.Index] = s.ContentHash
-	}
-	recordDeliveredThumbnails(request.GetString("pptx_path", ""), clampedRenderDensity(request.GetArguments(), defaultThumbnailDensity, 25, 150), delivered)
+	recordDeckThumbnails(request, deck)
 	if wantsBase64JSON(request) {
 		var payload any = deck
 		if len(known) > 0 {
