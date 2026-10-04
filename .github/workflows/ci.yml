@@ -60,9 +60,12 @@ jobs:
       # cmd/json2pptx is by far the heaviest package under -race; it runs as its
       # own step with its own budget so its growth cannot starve the rest of the
       # module, and the two profiles are merged for the threshold check
-      # (go-slide-creator-s2s53).
+      # (go-slide-creator-s2s53). Its tests run one after another, so the suite
+      # is split into parallel shards over the runner's cores and the shard
+      # profiles are merged into one (go-slide-creator-zpgmp).
       - name: Test with coverage (cmd/json2pptx)
-        run: go test ./cmd/json2pptx -short -v -race -coverprofile=coverage-cmd.out -covermode=atomic -timeout=60m
+        timeout-minutes: 50
+        run: scripts/ci_test_cmd_shards.sh 4 coverage-cmd.out
 
       - name: Test with coverage (other packages)
         run: go test $(go list ./... | grep -v '/cmd/json2pptx$') -short -v -race -coverprofile=coverage-rest.out -covermode=atomic -timeout=25m
