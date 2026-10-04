@@ -241,8 +241,8 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 	// Resolve deck-level rhythm grid when configured.
 	var rhythmGrid *resolvedGrid
 	if input.Grid != nil {
-		if gridErr := validateGridConfig(input.Grid); gridErr != nil {
-			return res, cleanup, fmt.Errorf("grid: %w", gridErr)
+		if gridErr := rhythmGridRefusal(input.Grid); gridErr != nil {
+			return res, cleanup, gridErr
 		}
 		rhythmGrid = resolveGrid(input.Grid, templateLayouts, slideWidth, slideHeight)
 	}
@@ -260,6 +260,16 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 		input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata,
 		rhythmGrid, opts.AccentStrategy, diagCtx, opts.Partial,
 	)
+	// The structural verdict validate reports: generation refuses what
+	// validation rejects, with the same findings (go-slide-creator-9k5fh).
+	// The conversion's own refusal, when it made one, stays in the chain for
+	// the callers that read its type. Partial mode renders what it can
+	// instead, and reports each slide it skips.
+	if !opts.Partial {
+		if refusal := deckStructuralRefusal(input, templateLayouts, templateTheme, templateMetadata, slideWidth, slideHeight, convErr); refusal != nil {
+			return res, cleanup, refusal
+		}
+	}
 	if convErr != nil {
 		return res, cleanup, fmt.Errorf("invalid slide specification: %w", convErr)
 	}

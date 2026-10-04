@@ -474,8 +474,8 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// Resolve deck-level rhythm grid when configured.
 	var rhythmGrid *resolvedGrid
 	if input.Grid != nil {
-		if err := validateGridConfig(input.Grid); err != nil {
-			return api.MCPSimpleError("INVALID_GRID", fmt.Sprintf("grid: %v", err)), nil
+		if refusal := rhythmGridRefusal(input.Grid); refusal != nil {
+			return api.MCPDiagnosticsError(refusalDiagnostics(refusal)), nil
 		}
 		rhythmGrid = resolveGrid(input.Grid, templateLayouts, slideWidth, slideHeight)
 	}
@@ -489,12 +489,19 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		ViewingMode: tokens.ParseViewingMode(input.ViewingMode),
 	}
 	slideSpecs, gridDiagWarnings, gridVisualFindings, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy), mcpDiagCtx, false)
+	// The structural verdict validate_input reports: generation refuses what
+	// validation rejects, with the same findings (go-slide-creator-9k5fh).
+	if refusal := deckStructuralRefusal(&input, templateLayouts, theme, templateMetadata, slideWidth, slideHeight, err); refusal != nil {
+		return api.MCPDiagnosticsError(refusalDiagnostics(refusal)), nil
+	}
 	if err != nil {
 		// A pattern failure knows which slide and which field it came from, so it
 		// is reported as one finding per problem at /slides/i/pattern/values/…
 		// rather than as one INVALID_SLIDE carrying every message in a string
 		// (go-slide-creator-20jm).
-		if ds := slidePatternInputDiagnostics(err); len(ds) > 0 {
+		// Any other refusal is reported as validate_input reports it: the
+		// one reading of a conversion error (go-slide-creator-9k5fh).
+		if ds := refusalDiagnostics(err); len(ds) > 0 {
 			return api.MCPDiagnosticsError(ds), nil
 		}
 		return api.MCPSimpleError("INVALID_SLIDE", fmt.Sprintf("invalid slide specification: %v", err)), nil
@@ -1238,7 +1245,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 
 	// Validate slides against template (layout IDs, placeholder IDs,
 	// character limits, content types, chart/diagram data)
-	validateSlidesAgainstTemplate(&output, input.Slides, templateAnalysis)
+	deckStructuralDiagnostics(&output, &input, templateAnalysis)
 	countPatternVisuals(&output, &input, templateAnalysis)
 
 	applyValidateFitChecks(&output, &input, templateAnalysis, request)
@@ -1247,8 +1254,10 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 }
 
 // applyValidateFitChecks runs validate's render-projection checks: the full
-// fit report (default on for validate_input), or — with fit_report off — the
-// one check whose result is never advisory.
+// fit report (default on for validate_input). With fit_report off there is
+// nothing to add: the one check whose result is never advisory — a chart or
+// diagram that cannot render — is part of the structural verdict
+// (deckStructuralChecks), which generation refuses on too.
 func applyValidateFitChecks(output *dryRunOutput, input *PresentationInput, analysis *types.TemplateAnalysis, request mcp.CallToolRequest) {
 	fitReport := true
 	if v, ok := request.GetArguments()["fit_report"].(bool); ok {
@@ -1261,14 +1270,6 @@ func applyValidateFitChecks(output *dryRunOutput, input *PresentationInput, anal
 		}
 		verboseFit, _ := request.GetArguments()["verbose_fit"].(bool)
 		output.FitFindings = BudgetFitFindings(findings, DefaultFindingBudget, verboseFit)
-		return
-	}
-	// A chart or diagram that cannot render is not a fit nuance: the deck is
-	// missing its visual. Plain validation (fit_report off — what the CLI's
-	// `validate` runs) used to call such a deck valid (go-slide-creator-gr64x).
-	if failed := unrenderableDiagramFindings(input, analysis); len(failed) > 0 {
-		output.Valid = false
-		output.FitFindings = failed
 	}
 }
 

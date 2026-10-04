@@ -85,7 +85,7 @@ func validateRawEscapeHatch(path string, body map[string]any, s *semDiags) {
 	// capability-heatmap tiers given as strings that render then refuses.
 	if slide.Pattern != nil {
 		if err := deckinput.ValidatePattern(slide.Pattern, patterns.Default()); err != nil {
-			for _, d := range diagnostics.FromJoinedError(err, diagnostics.CodeInvalidSlide) {
+			for _, d := range diagnostics.FromJoinedError(err, diagnostics.CodePatternError) {
 				p := slidePath + ".pattern"
 				if d.Path != "" {
 					p += "." + d.Path

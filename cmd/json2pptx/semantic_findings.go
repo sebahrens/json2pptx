@@ -12,6 +12,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/semantic"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
+	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/visualqa/deterministic"
 )
 
@@ -727,9 +728,32 @@ func compiledContractDiagnostics(input *PresentationInput, cr *semantic.CompileR
 	}
 	reg := patterns.Default()
 	var out []semanticDiagnostic
+	// With the template resolved, the checks are the structural verdict every
+	// raw-deck surface reports (deck_verdict.go), so a raw slide's fault has
+	// the code and the path validate_input gives it (go-slide-creator-9k5fh).
+	// A conversion refusal that is a fit verdict is left to the caller, which
+	// reports it from the refusal itself with its measurement.
+	var verdict map[int][]diagnostics.Diagnostic
+	if len(rr.TemplateLayouts) > 0 && rr.SlideWidth > 0 {
+		structural := dryRunOutput{Valid: true, verdictOnly: true}
+		deckStructuralDiagnosticsWhere(&structural, input, &types.TemplateAnalysis{
+			Layouts: rr.TemplateLayouts, Theme: rr.TemplateTheme, Metadata: rr.TemplateMetadata,
+			SlideWidth: rr.SlideWidth, SlideHeight: rr.SlideHeight,
+		}, func(err error) bool { return len(conversionFitRefusals(err)) == 0 })
+		verdict = map[int][]diagnostics.Diagnostic{}
+		for _, d := range structural.Diagnostics {
+			if idx := slidepath.SlideIndex(d.Path); idx >= 0 {
+				verdict[idx] = append(verdict[idx], d)
+			}
+		}
+	}
 	for i := range input.Slides {
 		slide := &input.Slides[i]
 		var raw []diagnostics.Diagnostic
+		if verdict != nil {
+			out = appendContractDiagnostics(out, verdict[i], sm, ir, i)
+			continue
+		}
 		ctx := patterns.ExpandContext{
 			Theme:       rr.TemplateTheme,
 			Metadata:    rr.TemplateMetadata,
@@ -757,21 +781,27 @@ func compiledContractDiagnostics(input *PresentationInput, cr *semantic.CompileR
 			}
 			raw = append(raw, composeDiagramValidationDiagnostics(slide.Compose, i, slidepath.SlideField(i, "compose"))...)
 		}
-		for _, d := range raw {
-			if d.Severity != diagnostics.SeverityError {
-				continue
-			}
-			rawPath := d.Path
-			d.Path = contractSemanticPath(sm, ir, i, rawPath)
-			d.Message = strings.TrimSuffix(d.Message, " (generate would refuse this deck)")
-			d.Message = slideNumberMessage(d.Message, i, i)
-			sd := semanticDiagFromCompile(d)
-			sd.RawPath = rawPath
-			if idx := i; idx >= 0 {
-				sd.SlideIndex = &idx
-			}
-			out = appendDistinctDiagnostic(out, sd)
+		out = appendContractDiagnostics(out, raw, sm, ir, i)
+	}
+	return out
+}
+
+// appendContractDiagnostics adds the error findings of raw, which are about
+// compiled slide i, to out at their DeckSpec paths.
+func appendContractDiagnostics(out []semanticDiagnostic, raw []diagnostics.Diagnostic, sm *semantic.SourceMap, ir *semantic.DeckIR, i int) []semanticDiagnostic {
+	for _, d := range raw {
+		if d.Severity != diagnostics.SeverityError {
+			continue
 		}
+		rawPath := d.Path
+		d.Path = contractSemanticPath(sm, ir, i, rawPath)
+		d.Message = strings.TrimSuffix(d.Message, " (generate would refuse this deck)")
+		d.Message = slideNumberMessage(d.Message, i, i)
+		sd := semanticDiagFromCompile(d)
+		sd.RawPath = rawPath
+		idx := i
+		sd.SlideIndex = &idx
+		out = appendDistinctDiagnostic(out, sd)
 	}
 	return out
 }
