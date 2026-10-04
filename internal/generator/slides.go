@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -104,6 +105,33 @@ type GenerationRequest struct {
 	DataPalette           []string             // Ordered hex colors for chart series (resolved from TemplateMetadata.DataPalette)
 	ValidateOutput        bool                 // When true, run OOXML content validation on generated file
 	ViewingMode           string               // Deck viewing_mode: "present" (default) or "read"; selects the readability policy
+	// NoWrite runs the whole generation without creating a file: every phase
+	// runs as it does for a render and the archive is written to a discarding
+	// writer. The result carries the findings, and the error is the refusal a
+	// render of the same request returns, so a caller can read generation's
+	// verdict before anything is written. OutputPath is not required.
+	NoWrite bool
+	// RefuseDroppedContent makes a hard content drop (a block whose
+	// placeholder is missing or already filled) a refusal: generation returns
+	// a *ContentDropRefusal and writes no file, instead of writing a deck that
+	// lacks the block and reporting the drop as a finding.
+	RefuseDroppedContent bool
+}
+
+// ContentDropRefusal is the error for a deck generation refuses because it
+// would drop author content. Findings are the CONTENT_DROPPED findings, one per
+// dropped block, in the order generation met them.
+type ContentDropRefusal struct {
+	Findings []patterns.FitFinding
+}
+
+func (e *ContentDropRefusal) Error() string {
+	lines := make([]string, 0, len(e.Findings))
+	for _, f := range e.Findings {
+		lines = append(lines, fmt.Sprintf("%s: %s", f.Path, f.Message))
+	}
+	return fmt.Sprintf("generation refused: %s: %d author content block(s) dropped, so no deck was written; split the slide, choose a layout with a slot for each block, or retarget the placeholder:\n  %s",
+		patterns.ErrCodeContentDropped, len(e.Findings), strings.Join(lines, "\n  "))
 }
 
 // BackgroundImage specifies a slide background image.
@@ -374,6 +402,9 @@ func Generate(ctx context.Context, req GenerationRequest) (*GenerationResult, er
 	// Set duration (single-pass returns without duration set)
 	result.Duration = time.Since(startTime)
 	result.Warnings = warnings
+	if req.NoWrite {
+		return result, nil
+	}
 
 	// Compute content hash (SHA-256) of the output file for idempotency checks.
 	if hash, hashErr := hashFile(req.OutputPath); hashErr == nil {
@@ -409,7 +440,7 @@ func validateRequest(req GenerationRequest) error {
 	if req.TemplatePath == "" {
 		return fmt.Errorf("template path is required")
 	}
-	if req.OutputPath == "" {
+	if req.OutputPath == "" && !req.NoWrite {
 		return fmt.Errorf("output path is required")
 	}
 	if len(req.Slides) == 0 {
@@ -422,6 +453,9 @@ func validateRequest(req GenerationRequest) error {
 			return fmt.Errorf("template file not found: %s", req.TemplatePath)
 		}
 		return fmt.Errorf("cannot access template: %w", err)
+	}
+	if req.NoWrite {
+		return nil
 	}
 
 	// Check output directory exists

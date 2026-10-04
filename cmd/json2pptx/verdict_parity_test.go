@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 )
 
 // One verdict (go-slide-creator-9k5fh): every surface that accepts a raw deck
@@ -254,6 +256,45 @@ func verdictMutations() []verdictMutation {
 	top := func(key, value string) func(deck, _ map[string]any) {
 		return func(deck, _ map[string]any) { deck[key] = verdictJSON(value) }
 	}
+	appendContent := func(values ...string) func(_, target map[string]any) {
+		return func(_, target map[string]any) {
+			for _, value := range values {
+				target["content"] = append(target["content"].([]any), verdictJSON(value))
+			}
+		}
+	}
+	// onLayout rebuilds the target slide on another layout: its title and the
+	// blocks given.
+	onLayout := func(layout string, blocks ...string) func(_, target map[string]any) {
+		return func(_, target map[string]any) {
+			target["layout_id"] = layout
+			target["content"] = target["content"].([]any)[:1]
+			appendContent(blocks...)(nil, target)
+		}
+	}
+	block := func(placeholder, kind, field, value string) string {
+		return `{"placeholder_id": "` + placeholder + `", "type": "` + kind + `", "` + field + `": ` + value + `}`
+	}
+	const longLine = "Regional revenue grew for the fourth year running, driven by the enterprise segment and by renewals in every market"
+	manyLines := func(n int) string {
+		lines := make([]string, n)
+		for i := range lines {
+			lines[i] = `"` + longLine + `"`
+		}
+		return "[" + strings.Join(lines, ", ") + "]"
+	}
+	manyRows := func(n int) string {
+		rows := make([]string, n)
+		for i := range rows {
+			rows[i] = `["` + longLine + `", "` + longLine + `"]`
+		}
+		return `{"headers": ["Option", "Cost"], "rows": [` + strings.Join(rows, ", ") + `]}`
+	}
+	bulletsOn := func(placeholder string) string {
+		return block(placeholder, "bullets", "bullets_value", `["East up 3%", "Centre flat"]`)
+	}
+	const smallTable = `{"headers": ["Option", "Cost"], "rows": [["Build", "High"]]}`
+	const smallChart = `{"type": "bar", "title": "Margin", "data": {"Q1": 4, "Q2": 5}}`
 	const kpis = `[{"big": "1", "small": "a"}, {"big": "2", "small": "b"}, {"big": "3", "small": "c"}]`
 	const cellB = `{"shape": {"geometry": "rect", "text": "b"}}`
 	return []verdictMutation{
@@ -427,6 +468,49 @@ func verdictMutations() []verdictMutation {
 			c["value"] = verdictJSON(`{"data": {"a": 1}}`)
 		}},
 		{"control: a headline on a canvas", "grid", false, set("headline", `"A headline"`)},
+
+		// What the generator itself refuses in a deck the checks accept and
+		// the conversion converts (go-slide-creator-ni65k): a block the
+		// placeholder resolver would drop, and source the written text or
+		// table would lose. Validation reads them from generation's own run.
+		{"two text blocks for one placeholder", "bullets", true, appendContent(bulletsOn("body"))},
+		{"a table for a placeholder a chart fills", "chart", true, appendContent(block("body", "table", "table_value", smallTable))},
+		{"two charts for one placeholder", "chart", true, appendContent(block("body", "chart", "chart_value", smallChart))},
+		{"two tables for one placeholder", "table", true, appendContent(block("body", "table", "table_value", smallTable))},
+		{"two pictures for one placeholder", "bullets", true, onLayout("content",
+			block("body", "image", "image_value", `{"path": "pixel.png", "alt": "A"}`),
+			block("body", "image", "image_value", `{"path": "pixel.png", "alt": "B"}`))},
+		{"a picture for a placeholder that holds text", "bullets", true, onLayout("content",
+			block("body", "text", "text_value", `"Revenue grew"`),
+			block("body", "image", "image_value", `{"path": "pixel.png", "alt": "A"}`))},
+		{"a third block on a two-column layout", "bullets", true, onLayout("two-column",
+			bulletsOn("body"), bulletsOn("body_2"), bulletsOn("body_2"))},
+		{"body_2 on a layout with one body", "bullets", true, appendContent(bulletsOn("body_2"))},
+		{"body_2 beside a chart on a layout with one body", "chart", true, appendContent(bulletsOn("body_2"))},
+		{"subtitle on a section divider", "bullets", true, onLayout("section",
+			block("subtitle", "text", "text_value", `"Where the growth came from"`))},
+		{"body on a section divider", "bullets", true, onLayout("section", bulletsOn("body"))},
+		{"body on a title slide", "bullets", true, onLayout("title", bulletsOn("body"))},
+		{"subtitle on a content layout", "bullets", true, appendContent(block("subtitle", "text", "text_value", `"A subtitle"`))},
+		{"bullets the placeholder cannot hold", "bullets", true, setContent("bullets_value", manyLines(40))},
+		{"table rows the placeholder cannot show", "table", true, setContent("table_value", manyRows(40))},
+		{"body text below the readable floor", "bullets", true, retype("bullets_value", "text", "text_value",
+			`"`+strings.Repeat(longLine+". ", 60)+`"`)},
+		{"grid text below the readable floor", "grid", true, func(_, target map[string]any) {
+			cells := `{"shape": {"geometry": "rect", "text": "` + strings.Repeat(longLine+". ", 6) + `"}}`
+			for _, label := range []string{"b", "c", "d", "e", "f"} {
+				cells += `, {"shape": {"geometry": "rect", "text": "` + label + `"}}`
+			}
+			target["shape_grid"] = verdictJSON(`{"rows": [{"cells": [` + cells + `]}]}`)
+			delete(target, "overlays")
+		}},
+		{"control: text above a chart in one placeholder", "chart", false, func(_, target map[string]any) {
+			c := target["content"].([]any)
+			target["content"] = []any{c[0], verdictJSON(block("body", "text", "text_value", `"Revenue by quarter"`)), c[1]}
+		}},
+		{"control: two text blocks merged in one placeholder", "bullets", false, onLayout("content",
+			block("body", "text", "text_value", `"Revenue grew."`), block("body", "text", "text_value", `"Margin held."`))},
+		{"control: a block in each column", "bullets", false, onLayout("two-column", bulletsOn("body"), bulletsOn("body_2"))},
 		{"control: bullet_groups without groups", "bullets", false, retype("bullets_value", "bullet_groups", "bullet_groups_value", `{"groups": []}`)},
 	}
 }
@@ -435,42 +519,164 @@ func verdictMutations() []verdictMutation {
 // go-slide-creator-9k5fh was filed on and one of each refusal family. CI's
 // race shards run -short; the integration corpus job runs every case.
 var verdictCoreMutations = map[string]bool{
-	"control: unchanged":                           true,
-	"template and template_path":                   true,
-	"template_path that is not there":              true,
-	"no slides":                                    true,
-	"structure and slides":                         true,
-	"structure that expands to no slides":          true,
-	"grid config out of range":                     true,
-	"emoji in text":                                true,
-	"hex colour in constrained mode":               true,
-	"unknown layout_id":                            true,
-	"pattern on a layout that cannot host it":      true,
-	"content without placeholder_id":               true,
-	"content without type":                         true,
-	"unknown content type":                         true,
-	"unknown placeholder_id":                       true,
-	"chart without type":                           true,
-	"chart of unknown type":                        true,
-	"table row wider than its headers":             true,
-	"image file that does not exist":               true,
-	"pattern and shape_grid":                       true,
-	"unknown pattern":                              true,
-	"pattern values of the wrong shape":            true,
-	"grid cell pattern next to a grid":             true,
-	"grid cell icon that is not bundled":           true,
-	"grid without rows":                            true,
-	"overlay of unknown kind":                      true,
-	"overlay anchored to a cell that is not there": true,
-	"content link to a slide that is not there":    true,
+	"control: unchanged":                             true,
+	"template and template_path":                     true,
+	"template_path that is not there":                true,
+	"no slides":                                      true,
+	"structure and slides":                           true,
+	"structure that expands to no slides":            true,
+	"grid config out of range":                       true,
+	"emoji in text":                                  true,
+	"hex colour in constrained mode":                 true,
+	"unknown layout_id":                              true,
+	"pattern on a layout that cannot host it":        true,
+	"content without placeholder_id":                 true,
+	"content without type":                           true,
+	"unknown content type":                           true,
+	"unknown placeholder_id":                         true,
+	"chart without type":                             true,
+	"chart of unknown type":                          true,
+	"table row wider than its headers":               true,
+	"image file that does not exist":                 true,
+	"pattern and shape_grid":                         true,
+	"unknown pattern":                                true,
+	"pattern values of the wrong shape":              true,
+	"grid cell pattern next to a grid":               true,
+	"grid cell icon that is not bundled":             true,
+	"grid without rows":                              true,
+	"overlay of unknown kind":                        true,
+	"overlay anchored to a cell that is not there":   true,
+	"content link to a slide that is not there":      true,
+	"two text blocks for one placeholder":            true,
+	"a table for a placeholder a chart fills":        true,
+	"a picture for a placeholder that holds text":    true,
+	"body_2 on a layout with one body":               true,
+	"subtitle on a section divider":                  true,
+	"bullets the placeholder cannot hold":            true,
+	"table rows the placeholder cannot show":         true,
+	"control: text above a chart in one placeholder": true,
+}
+
+// slideErrorTails returns the tail of each error of a verdict that is about
+// the mutated slide (slides[1]) — "CODE @ <path below the slide>" — and
+// whether every error is.
+func slideErrorTails(v surfaceVerdict) (tails []string, all bool) {
+	const at = " @ /slides/1"
+	all = len(v.Errors) > 0
+	for _, e := range v.Errors {
+		i := strings.Index(e, at)
+		rest := ""
+		if i >= 0 {
+			rest = e[i+len(at):]
+		}
+		if i < 0 || (rest != "" && rest[0] != '/') {
+			all = false
+			continue
+		}
+		tails = append(tails, e[:i]+" @ "+rest)
+	}
+	return tails, all
+}
+
+// assertSlideSurfaces holds the surfaces that take one slide to the deck's
+// verdict on that slide: render-slide-from-json (the slide alone, so the
+// findings sit at /slides/0) and the DeckSpec validate / render pair with the
+// slide as a raw_json2pptx slide (the findings sit inside it, at
+// /slides/1/slide). It runs for a deck refused on the mutated slide alone.
+func assertSlideSurfaces(t *testing.T, mc, specMC *mcpConfig, baseDir string, target map[string]any, verdict surfaceVerdict) {
+	t.Helper()
+	tails, all := slideErrorTails(verdict)
+	if verdict.Valid || !all {
+		return
+	}
+	want := func(prefix string) string {
+		out := make([]string, len(tails))
+		for i, tail := range tails {
+			code, rest, _ := strings.Cut(tail, " @ ")
+			out[i] = code + " @ " + prefix + rest
+		}
+		sort.Strings(out)
+		return strings.Join(out, "; ")
+	}
+
+	// render-slide-from-json: the refusal comes before any rendering.
+	res, err := mc.handleRenderSlideImageFromJSON(context.Background(), makeRequest(map[string]any{
+		"slide": target, "template": "midnight-blue", "base_dir": baseDir, "force": true,
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal([]byte(textContent(res)), &doc); err != nil {
+		t.Fatalf("render-slide-from-json: answer is not JSON: %v", err)
+	}
+	if got := verdictOf(!res.IsError, envelopeFindings(t, doc)); got.Valid || strings.Join(got.Errors, "; ") != want("/slides/0") {
+		t.Errorf("render-slide-from-json disagrees with the deck verdict:\n  deck   %s\n  slide  %s", verdict, got)
+	}
+
+	// The DeckSpec pair. A raw slide's fault is reported with the raw code at
+	// the field inside the raw slide, by validate and by render.
+	spec := map[string]any{
+		"meta": map[string]any{"title": "Quarterly review"},
+		"slides": []any{
+			map[string]any{"kind": "title", "title": "Quarterly review", "subtitle": "Results and outlook"},
+			map[string]any{"kind": "raw_json2pptx", "slide": target},
+		},
+	}
+	v := deckSpecVerdicts(t, specMC, map[string]any{"spec": spec, "template": "midnight-blue", "base_dir": baseDir})
+	assertFindingParity(t, "DeckSpec", v)
+	if v.Validate.OK {
+		t.Errorf("DeckSpec validate accepts a raw slide every raw-deck surface refuses (%s)", verdict)
+	}
+	// The table checks write a dotted tail after the pointer
+	// ("/content/1.rows[0][1]"); compare token for token.
+	tokens := strings.NewReplacer("[", "/", "]", "", ".", "/")
+	have := map[string]bool{}
+	var keys []string
+	for _, f := range v.Validate.Findings {
+		if f.Severity != diagnostics.SeverityError {
+			continue
+		}
+		// The DeckSpec layer decodes a raw slide strictly before anything
+		// else reads it; a payload it refuses there (an unknown key, no
+		// slide_type or layout_id) is its own finding, not the raw one.
+		if strings.Contains(f.Code, "SEMANTIC_") {
+			return
+		}
+		key := f.Code + " @ " + tokens.Replace(specPointer(findingPath(f)))
+		have[key] = true
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, tail := range tails {
+		code, rest, _ := strings.Cut(tail, " @ ")
+		want := "/slides/1/slide" + tokens.Replace(rest)
+		found := have[code+" @ "+want]
+		// A generation fit refusal is traced to the DeckSpec field through
+		// the source map, which addresses a raw slide as a whole.
+		if !found && generationFitCodes[code[strings.LastIndexByte(code, '.')+1:]] {
+			found = have[code+" @ /slides/1/slide"]
+		}
+		if !found {
+			t.Errorf("DeckSpec validate does not report %s @ %s; it reports [%s]", code, want, strings.Join(keys, "; "))
+		}
+	}
+}
+
+// generationFitCodes are the generator's source-loss refusals.
+var generationFitCodes = map[string]bool{
+	"text_trimmed": true, "readability_trimmed": true, "table_rows_truncated": true, "TEXT_BELOW_READABLE_MIN": true,
 }
 
 // TestVerdictParityMutationCorpus applies each single fault to a valid deck
 // and asserts that validate_input, generate --dry-run, generate and
 // generate_presentation give one verdict for it, with the same error codes at
-// the same paths.
+// the same paths — and that the surfaces that take the slide alone
+// (render-slide-from-json, the DeckSpec validate / render pair) report that
+// verdict for it.
 func TestVerdictParityMutationCorpus(t *testing.T) {
 	mc := testMCPConfig(t)
+	specMC := refusalTestConfig(t)
 	dir := t.TempDir()
 	// An image the decks can name, so an image fault is the only fault.
 	var pixel bytes.Buffer
@@ -517,6 +723,7 @@ func TestVerdictParityMutationCorpus(t *testing.T) {
 			if !verdict.Valid && len(verdict.Errors) == 0 {
 				t.Errorf("an invalid verdict names no error finding")
 			}
+			assertSlideSurfaces(t, mc, specMC, dir, target, verdict)
 		})
 	}
 }

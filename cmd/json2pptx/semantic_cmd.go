@@ -769,11 +769,15 @@ func runCompiledSpecCLI(specPath string, input *PresentationInput, compileResult
 	}
 	defer closeResolver()
 	var preConvertWarnings []string
+	// assetErrors are the asset findings the hook refused on; they are
+	// reported at the DeckSpec fields that name the assets.
+	var assetErrors []diagnostics.Diagnostic
 	preConvert := func() error {
 		// Resolve URL references (icon.url, image.url, background.url) by
 		// downloading them to a session-scoped cache with SSRF protection.
 		if urlResolver != nil {
 			if urlFindings := resolveURLs(input.Slides, urlResolver); len(urlFindings) > 0 {
+				assetErrors = append(assetErrors, urlFindings...)
 				return iconFindingsToError(urlFindings)
 			}
 		}
@@ -785,6 +789,7 @@ func runCompiledSpecCLI(specPath string, input *PresentationInput, compileResult
 			baseDir := validateBaseDir(specPath, "")
 			assetFindings := resolveLocalAssetPaths(input.Slides, baseDir, imageAllowList(cfg.Images.AllowedBasePaths, urlCacheDir)...)
 			if assetErr := iconFindingsToError(assetFindings); assetErr != nil {
+				assetErrors = append(assetErrors, assetFindings...)
 				return assetErr
 			}
 			for _, d := range assetFindings {
@@ -810,7 +815,7 @@ func runCompiledSpecCLI(specPath string, input *PresentationInput, compileResult
 	})
 	defer cleanup()
 	if renderErr != nil {
-		return buildSemanticRunFailure(input, compileResult, runRes, renderErr), runRes, nil
+		return buildSemanticRunFailure(input, compileResult, runRes, renderErr, semanticAssetDiagnostics(compileResult, assetErrors)...), runRes, nil
 	}
 
 	res := buildSemanticRenderSuccess(input, compileResult, runRes, startTime)

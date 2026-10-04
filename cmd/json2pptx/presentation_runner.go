@@ -29,7 +29,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -216,6 +218,17 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 	// Resolve canonical layout names to concrete layout IDs.
 	resolveCanonicalLayoutIDs(input.Slides, templateLayouts)
 
+	// An enum value outside its set is refused by every render, as validation
+	// reports it. generate and generate_presentation check it when they parse
+	// the deck; a compiled DeckSpec reaches the runner without that check, so a
+	// raw_json2pptx slide with transition "teleport" rendered with the value
+	// silently ignored. Partial mode renders what it can.
+	if !opts.Partial {
+		if refusal := deckEnumRefusal(input); refusal != nil {
+			return res, cleanup, refusal
+		}
+	}
+
 	// Text-fit checking via strict_fit. Runs AFTER template analysis and
 	// canonical-layout resolution so shape_grid fit checks resolve against the
 	// SAME layout-aware bounds generation renders. Strict mode aborts on
@@ -285,36 +298,24 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 	outputPath := filepath.Join(opts.OutputDir, outputFilename)
 	res.OutputPath = outputPath
 
-	// Build the generation request.
-	genReq := generator.GenerationRequest{
-		TemplatePath:          templatePath,
-		OutputPath:            outputPath,
-		Slides:                slideSpecs,
-		SVGStrategy:           opts.SVGStrategy,
-		SVGScale:              opts.SVGScale,
-		SVGNativeCompat:       opts.SVGNativeCompat,
-		MaxPNGWidth:           opts.MaxPNGWidth,
-		ExcludeTemplateSlides: true,
-		SyntheticFiles:        syntheticFiles,
-		StrictFit:             strictFit,
-		DataPalette:           dataPalette,
-		ViewingMode:           input.ViewingMode,
-		AllowedImagePaths:     opts.AllowedImagePaths,
-	}
-
-	// Wire the same merged footer/chrome configuration used by every render path.
-	genReq.Footer = footerConfigForInput(input, len(slideSpecs))
-	if input.Chrome != nil {
-		applyChromeSkip(slideSpecs, input.Chrome, input.Slides, templateLayouts)
-		applyChromeTracker(slideSpecs, input.Chrome, input.Slides, templateLayouts)
-		applyChromeSectionCrumb(genReq.Footer, slideSpecs, input.Chrome, input.Slides, templateLayouts)
-	}
-	applyAppendixPageLabels(genReq.Footer, input.Slides, templateLayouts)
-
-	// Wire theme override.
-	if input.ThemeOverride != nil {
-		genReq.ThemeOverride = input.ThemeOverride.ToThemeOverride()
-	}
+	// Build the generation request: the slides with the merged footer/chrome
+	// configuration and theme override every render path uses.
+	genReq := deckGenerationRequest(input, slideSpecs, templateLayouts, generator.GenerationRequest{
+		TemplatePath:      templatePath,
+		OutputPath:        outputPath,
+		SVGStrategy:       opts.SVGStrategy,
+		SVGScale:          opts.SVGScale,
+		SVGNativeCompat:   opts.SVGNativeCompat,
+		MaxPNGWidth:       opts.MaxPNGWidth,
+		SyntheticFiles:    syntheticFiles,
+		StrictFit:         strictFit,
+		DataPalette:       dataPalette,
+		AllowedImagePaths: opts.AllowedImagePaths,
+		// A block the slide would drop refuses the deck before a file is
+		// written, as validation reports it (go-slide-creator-ni65k). Partial
+		// mode renders what it can; output_validation off keeps its opt-out.
+		RefuseDroppedContent: outputValidation == "strict" && !opts.Partial,
+	})
 
 	// Hold the target path for the whole write, because the content hash is read
 	// back OFF THE FILE after generation. Without this, two renders aimed at one
@@ -344,6 +345,21 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 	}
 
 	return res, cleanup, nil
+}
+
+// deckEnumRefusal is the refusal for a deck with an enum value outside its
+// set: the findings validation reports for it. nil when every value is known.
+func deckEnumRefusal(input *PresentationInput) error {
+	enumErrs := checkInputEnumValues(input)
+	if len(enumErrs) == 0 {
+		return nil
+	}
+	ds := diagnostics.FromValidationErrors(enumErrs)
+	msgs := make([]string, 0, len(ds))
+	for _, d := range ds {
+		msgs = append(msgs, d.Message)
+	}
+	return newDeckRefusal("invalid slide specification: "+strings.Join(msgs, "; "), ds)
 }
 
 // StrictFitRefusal is returned when strict_fit=strict encounters a refuse-class

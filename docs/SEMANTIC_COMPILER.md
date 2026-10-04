@@ -234,6 +234,16 @@ template.
   is reported inside the raw slide, e.g.
   `/slides/2/slide/pattern/values/current` or
   `/slides/2/slide/content/1/diagram_value/data/primary/2/highlight`.
+  The pattern check is the renderer's own decoder (`deckinput.DecodePattern`),
+  for the slide's `pattern` and for a pattern in a grid cell, so the code and
+  the field are the ones `validate_input` gives the same slide in a raw deck:
+  `invalid_shape` at `…/slide/pattern/values`, `UNKNOWN_PATTERN` at
+  `…/slide/pattern/name` (or `…/slide/shape_grid/rows/R/cells/C/pattern/name`),
+  `PATTERN_ERROR` at `…/slide/pattern` only for a fault of the block as a
+  whole. Enum values are checked (`UNKNOWN_ENUM` at
+  `…/slide/transition`), a content block the layout would drop is
+  `CONTENT_DROPPED` at `…/slide/content/M`, and an asset that does not resolve
+  is reported at the field that names it.
 - **Refusals.** A refused render reports the fit findings on every slide, not
   only the first refused paragraph, and folds per-field refusals under the
   slide's capacity finding (`symptoms[]`).

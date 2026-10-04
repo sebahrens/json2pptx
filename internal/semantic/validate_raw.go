@@ -83,14 +83,55 @@ func validateRawEscapeHatch(path string, body map[string]any, s *semDiags) {
 	// The pattern's own values gate (the compile preflight and the renderer
 	// apply it) must run here too, or validate passes a payload such as
 	// capability-heatmap tiers given as strings that render then refuses.
+	//
+	// The block is read by the decoder the renderer uses
+	// (deckinput.DecodePattern), so a fault has the code and the field a raw
+	// deck's finding has: values of the wrong shape are invalid_shape at
+	// …slide.pattern.values, not one PATTERN_ERROR at the block
+	// (go-slide-creator-iqknz).
 	if slide.Pattern != nil {
-		if err := deckinput.ValidatePattern(slide.Pattern, patterns.Default()); err != nil {
-			for _, d := range diagnostics.FromJoinedError(err, diagnostics.CodePatternError) {
-				p := slidePath + ".pattern"
-				if d.Path != "" {
-					p += "." + d.Path
+		rawPatternFindings(slidePath+".pattern", slide.Pattern, s)
+	}
+	// A pattern nested in a grid cell passes the same gate at expansion; its
+	// finding sits at the cell that carries it.
+	if slide.ShapeGrid != nil {
+		rawGridPatternFindings(slidePath+".shape_grid", slide.ShapeGrid, s)
+	}
+}
+
+// rawPatternFindings reports what the pattern's input gate refuses in the
+// block at path, one finding per fault at the field it names.
+func rawPatternFindings(path string, p *deckinput.PatternInput, s *semDiags) {
+	err := deckinput.ValidatePattern(p, patterns.Default())
+	if err == nil {
+		return
+	}
+	for _, d := range diagnostics.FromJoinedError(err, diagnostics.CodePatternError) {
+		at := path
+		if d.Path != "" {
+			at += "." + d.Path
+		}
+		s.hard(at, d.Code, d.Message)
+	}
+}
+
+// rawGridPatternFindings walks a raw slide's grid (and the grids nested in
+// its cells) and reports each cell pattern its pattern refuses.
+func rawGridPatternFindings(path string, grid *deckinput.ShapeGridInput, s *semDiags) {
+	for ri, row := range grid.Rows {
+		for ci, cell := range row.Cells {
+			if cell == nil {
+				continue
+			}
+			cellPath := fmt.Sprintf("%s.rows[%d].cells[%d]", path, ri, ci)
+			if len(cell.Pattern) > 0 {
+				var p deckinput.PatternInput
+				if err := json.Unmarshal(cell.Pattern, &p); err == nil {
+					rawPatternFindings(cellPath+".pattern", &p, s)
 				}
-				s.hard(p, d.Code, d.Message)
+			}
+			if cell.Grid != nil {
+				rawGridPatternFindings(cellPath+".grid", cell.Grid, s)
 			}
 		}
 	}

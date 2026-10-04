@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -125,16 +126,21 @@ func (ctx *singlePassContext) initializeContext(templatePath string) (cleanup fu
 	ctx.templateIndex = utils.BuildZipIndex(&ctx.templateReader.Reader)
 	ctx.loadTemplateProfile(templatePath)
 
-	outputDir := filepath.Dir(ctx.outputPath)
-	tempPattern := "." + filepath.Base(ctx.outputPath) + ".*.tmp"
-	ctx.outputFile, err = os.CreateTemp(outputDir, tempPattern)
-	if err != nil {
-		_ = ctx.templateReader.Close()
-		return nil, fmt.Errorf("failed to create output file: %w", err)
-	}
-	ctx.tmpPath = ctx.outputFile.Name()
+	if ctx.noWrite {
+		// Nothing reaches the disk: the archive the phases write is discarded.
+		ctx.outputWriter = zip.NewWriter(io.Discard)
+	} else {
+		outputDir := filepath.Dir(ctx.outputPath)
+		tempPattern := "." + filepath.Base(ctx.outputPath) + ".*.tmp"
+		ctx.outputFile, err = os.CreateTemp(outputDir, tempPattern)
+		if err != nil {
+			_ = ctx.templateReader.Close()
+			return nil, fmt.Errorf("failed to create output file: %w", err)
+		}
+		ctx.tmpPath = ctx.outputFile.Name()
 
-	ctx.outputWriter = zip.NewWriter(ctx.outputFile)
+		ctx.outputWriter = zip.NewWriter(ctx.outputFile)
+	}
 
 	cleanup = func() {
 		if ctx.tableStyleReader != nil {
@@ -256,6 +262,16 @@ func (ctx *singlePassContext) finalizePPTX(slideCount int) (*GenerationResult, e
 	if err := ctx.outputWriter.Close(); err != nil {
 		return nil, fmt.Errorf("failed to close ZIP writer: %w", err)
 	}
+	if ctx.noWrite {
+		return &GenerationResult{
+			SlideCount:       slideCount,
+			Warnings:         ctx.warnings,
+			ValidationErrors: ctx.validationErrors,
+			MediaFailures:    ctx.mediaFailures,
+			ContrastSwaps:    ctx.contrastSwaps,
+			FitFindings:      ctx.fitFindings,
+		}, nil
+	}
 	if err := ctx.outputFile.Close(); err != nil {
 		return nil, fmt.Errorf("failed to close output file: %w", err)
 	}
@@ -311,6 +327,7 @@ func generateSinglePass(goCtx context.Context, req GenerationRequest) (*Generati
 	ctx.footerConfig = req.Footer
 	ctx.strictFit = req.StrictFit
 	ctx.dataPalette = req.DataPalette
+	ctx.noWrite = req.NoWrite
 
 	cleanup, err := ctx.initializeContext(req.TemplatePath)
 	if err != nil {
@@ -351,6 +368,21 @@ func generateSinglePass(goCtx context.Context, req GenerationRequest) (*Generati
 			ctx.authorNativeRefusal(&located)
 			readability := SourcePreservingParagraphRepair(located, req.Slides)
 			return nil, ctx.warnings, fmt.Errorf("generation refused: unreadable generated text: %w", &ReadabilityRefusal{Loss: &readability, Evidence: evidence})
+		}
+	}
+
+	// A block whose placeholder is missing or already filled is not in the
+	// deck. A caller that asked for that to be a refusal gets one before the
+	// archive is renamed into place (go-slide-creator-ni65k).
+	if req.RefuseDroppedContent {
+		var drops []patterns.FitFinding
+		for _, finding := range ctx.fitFindings {
+			if patterns.IsHardContentDrop(finding) {
+				drops = append(drops, finding)
+			}
+		}
+		if len(drops) > 0 {
+			return nil, ctx.warnings, &ContentDropRefusal{Findings: drops}
 		}
 	}
 
