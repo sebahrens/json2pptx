@@ -958,6 +958,13 @@ func buildSemanticRenderSuccess(input *PresentationInput, cr *semantic.CompileRe
 	// deck reported eight findings. Run the shared collectors here too
 	// (go-slide-creator-05wn).
 	fit = append(fit, collectFitFindings(input, rr.TemplateLayouts, rr.SlideWidth, rr.SlideHeight, &rr.TemplateTheme)...)
+	// A colour swap generation made that the forecast above did not name is
+	// reported as contrast_autofixed, at the path a forecast would have used.
+	// Forecast swaps stay contrast_predicted only, as validate reports them.
+	if rr.GenResult != nil {
+		fit = append(fit, unpredictedContrastSwapFindings(
+			contrastSwapsToFindings(rr.GenResult.ContrastSwaps, input, rr.TemplateTheme.Colors), fit)...)
+	}
 	fit = collapseRotatedAccentFindings(dedupFitFindings(fit))
 	patterns.SortCanonical(fit, slidepath.SlideIndex)
 	diags = append(diags, finishFitDiagnostics(sm, ir, fit)...)

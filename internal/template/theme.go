@@ -19,17 +19,33 @@ func ParseTheme(reader *Reader) types.ThemeInfo {
 	themeFiles, err := reader.ListFiles("ppt/theme/theme*.xml")
 	if err != nil || len(themeFiles) == 0 {
 		// Return default theme if no theme files found
-		return getDefaultTheme()
+		return withTemplateMetadata(getDefaultTheme(), reader)
 	}
 
 	// Parse the first theme file (typically theme1.xml)
 	themeFile := themeFiles[0]
 	data, err := reader.ReadFile(themeFile)
 	if err != nil {
-		return getDefaultTheme()
+		return withTemplateMetadata(getDefaultTheme(), reader)
 	}
 
-	return parseThemeData(data)
+	return withTemplateMetadata(parseThemeData(data), reader)
+}
+
+// withTemplateMetadata attaches the template's metadata to its theme. Pattern
+// expansion reads both, and a caller that parsed only the theme (validate,
+// repair, preview) used to expand without the metadata generation expands
+// with (go-slide-creator-sw78d). Unreadable metadata is left out, as
+// generation leaves it out.
+func withTemplateMetadata(theme types.ThemeInfo, reader *Reader) types.ThemeInfo {
+	metadata, err := ParseMetadata(reader)
+	if err != nil || metadata == nil {
+		return theme
+	}
+	theme.Metadata = metadata
+	theme.SemanticAccents = metadata.SemanticAccents
+	theme.SurfaceTints = metadata.SurfaceTints
+	return theme
 }
 
 func parseThemeData(data []byte) types.ThemeInfo {

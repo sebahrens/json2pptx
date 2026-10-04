@@ -79,3 +79,39 @@ func collapseFixlessContrastRecords(in []patterns.FitFinding) []patterns.FitFind
 	}
 	return out
 }
+
+// unpredictedContrastSwapFindings returns the contrast_autofixed records for
+// the swaps generation made that no contrast_predicted finding in predicted
+// forecast (same slide, same from/to/background colours).
+//
+// The DeckSpec render surfaces report the forecast, so that validate and
+// render say the same thing about the same deck; a swap the forecast missed
+// used to be reported by neither — generation recoloured the text and the
+// result said nothing (go-slide-creator-sw78d). A predicted swap is not
+// repeated: the forecast already names it, at the same path.
+func unpredictedContrastSwapFindings(swaps []patterns.FitFinding, predicted []patterns.FitFinding) []patterns.FitFinding {
+	if len(swaps) == 0 {
+		return nil
+	}
+	type key struct {
+		slide int
+		swap  string
+	}
+	forecast := map[key]bool{}
+	for _, f := range predicted {
+		if f.Code != patterns.ErrCodeContrastPredicted {
+			continue
+		}
+		if m := contrastSwapKeyRE.FindString(f.Message); m != "" {
+			forecast[key{slidepath.SlideIndex(f.Path), strings.ToUpper(m)}] = true
+		}
+	}
+	var out []patterns.FitFinding
+	for _, f := range swaps {
+		if m := contrastSwapKeyRE.FindString(f.Message); m != "" && forecast[key{slidepath.SlideIndex(f.Path), strings.ToUpper(m)}] {
+			continue
+		}
+		out = append(out, f)
+	}
+	return collapseFixlessContrastRecords(out)
+}

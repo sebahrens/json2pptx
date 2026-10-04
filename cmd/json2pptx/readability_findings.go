@@ -218,22 +218,10 @@ func expandNestedPatternsForReadability(grid *ShapeGridInput, base string, g nes
 	if !hasNestedCellPattern(grid) {
 		return grid, nil, nil
 	}
-	cloned, err := cloneShapeGrid(grid)
-	if err != nil {
-		return grid, nil, nil
-	}
-	ctx := patterns.ExpandContext{
-		ContentZone:    g.geom.Zone,
-		SlideWidth:     g.slideWidth,
-		SlideHeight:    g.slideHeight,
-		LayoutBounds:   patterns.LayoutBounds{X: g.contentBounds.X, Y: g.contentBounds.Y, Width: g.contentBounds.CX, Height: g.contentBounds.CY},
-		AccentStrategy: g.strategy,
-		SlideIndex:     g.slideIdx,
-		SectionIndex:   g.sectionIdx,
-	}
-	if g.theme != nil {
-		ctx.Theme = *g.theme
-	}
+	cloned := nestedPatternExpansionCopy(grid)
+	ctx := slideExpandContext(g.theme, nil, g.geom.Zone,
+		patterns.LayoutBounds{X: g.contentBounds.X, Y: g.contentBounds.Y, Width: g.contentBounds.CX, Height: g.contentBounds.CY},
+		g.slideWidth, g.slideHeight, g.strategy, g.slideIdx, g.sectionIdx)
 	if err := expandNestedCellPatternsInBounds(cloned, ctx, g.contentBounds, patterns.Default(), true); err != nil {
 		return grid, nil, err
 	}

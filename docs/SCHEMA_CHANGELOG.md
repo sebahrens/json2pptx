@@ -1,5 +1,31 @@
 # Schema Changelog
 
+- **2026-10-04 — Validate expands patterns with the template metadata generation uses; DeckSpec render reports an unpredicted contrast swap; generation no longer rewrites its input (`go-slide-creator-sw78d`, `go-slide-creator-8jp05`).**
+  - Validate-time pattern expansion (slide `pattern`, `compose`, nested cell
+    patterns) and generation build their expansion context in one place and
+    carry the same template metadata (`semantic_accents`, `surface_tints`,
+    `grid`) and both theme fonts. The metadata is attached to the parsed
+    theme, so `repair_slide`, `apply_patch`, `score_deck` and preview — which
+    parse only the theme — expand a `semantic_accent` pattern in the colour
+    generation paints it.
+  - Generation sizes a pattern's heading-font text (the `agenda` and
+    `next-steps` numerals) in the template's title font, as validate already
+    did. On a template whose title and body fonts differ (forest-green) those
+    two patterns lay out as validate predicted them; other output is
+    unchanged.
+  - `validate`, `validate_input` and the repair tools apply the deck's
+    `theme_override` before predicting: `contrast_predicted` is judged
+    against the colours the deck renders in.
+  - `render_deck_spec` / `semantic render` / the HTTP semantic render report
+    `contrast_autofixed` for a colour swap generation made that no
+    `contrast_predicted` finding forecast, at the same `semantic_path` form. A
+    forecast swap is still reported once, as `contrast_predicted`.
+  - Generation expands nested cell patterns on a copy: a parsed deck
+    generated twice yields the same slides and is left unchanged.
+  - `preview_presentation_plan` / `preview_slide_wireframe` report a pattern
+    or compose slide's fit findings at `/slides/N/pattern/…` (as validate
+    does), not at a `/slides/N/shape_grid/…` path the deck does not have.
+
 - **2026-10-04 — Schema 4.162.0 · second round of follow-ups (label `followup2-20261004`).**
   - One version for the dated bullets below this one down to the 4.161.0
     entry (21 beads): template-face text measuring and shared sibling

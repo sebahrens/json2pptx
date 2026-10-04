@@ -22,6 +22,22 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
+// themeWithDeckOverride is the theme the deck renders in: the template's with
+// the deck's theme_override applied, as generation applies it before it
+// expands a pattern or checks a colour. validate and validate_input passed
+// the template's own theme, so a deck that overrides a colour was predicted
+// against the colours it replaces — no contrast_predicted for a swap
+// generation then made, and patterns sized in the wrong font
+// (go-slide-creator-sw78d). Applying an override twice is the same as once,
+// so a caller that already applied it is unaffected.
+func themeWithDeckOverride(theme *types.ThemeInfo, input *PresentationInput) *types.ThemeInfo {
+	if theme == nil || input == nil || input.ThemeOverride == nil {
+		return theme
+	}
+	overridden, _ := theme.ApplyOverride(input.ThemeOverride.ToThemeOverride())
+	return &overridden
+}
+
 // DefaultFindingBudget is the maximum number of findings returned per slide
 // before overflow is summarised. Use verbose=true in BudgetFitFindings to
 // bypass the limit.
@@ -36,6 +52,7 @@ const DefaultFindingBudget = 5
 // currently this gates the contrast_predicted detector. Pass nil to skip
 // those (callers that don't have a parsed template theme).
 func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, theme *types.ThemeInfo) []patterns.FitFinding {
+	theme = themeWithDeckOverride(theme, input)
 	// Invisible control characters removed at decode time
 	// (INPUT_CONTROL_CHARS_REMOVED, go-slide-creator-7oz3c).
 	findings := collectControlCharFindings(input)
@@ -2186,21 +2203,14 @@ func expandComposeForPreflightWithTheme(input *PresentationInput, slideWidth, sl
 		if s.Compose == nil || s.ShapeGrid != nil {
 			continue
 		}
-		ctx := patterns.ExpandContext{
-			SlideWidth:     slideWidth,
-			SlideHeight:    slideHeight,
-			SlideIndex:     i,
-			SectionIndex:   sectionIndices[i],
-			AccentStrategy: patterns.AccentStrategy(input.AccentStrategy),
-		}
-		if theme != nil {
-			ctx.Theme = *theme
-		}
+		var bounds patterns.LayoutBounds
+		var zone *shapegrid.ContentZone
 		if len(layoutSets) > 0 {
 			geom, b := patternExpansionGeometry(*s, layoutSets, slideWidth, slideHeight, rhythm)
-			ctx.LayoutBounds = patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY}
-			ctx.ContentZone = geom.Zone
+			bounds = patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY}
+			zone = geom.Zone
 		}
+		ctx := slideExpandContext(theme, nil, zone, bounds, slideWidth, slideHeight, patterns.AccentStrategy(input.AccentStrategy), i, sectionIndices[i])
 		eg, warnings, err := expandCompose(s.Compose, ctx, patterns.Default())
 		if err != nil {
 			continue

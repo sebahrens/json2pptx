@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
@@ -52,18 +51,7 @@ func expandSlidePatternGridWithWarningsForDeck(slide *SlideInput, slideIdx int, 
 	if slideWidth <= 0 || slideHeight <= 0 {
 		slideWidth, slideHeight = validationDefaultSlideWidthEMU, validationDefaultSlideHeightEMU
 	}
-	ctx := patterns.ExpandContext{
-		SlideWidth:     slideWidth,
-		SlideHeight:    slideHeight,
-		LayoutBounds:   bounds,
-		ContentZone:    zone,
-		SlideIndex:     slideIdx,
-		SectionIndex:   sectionIndex,
-		AccentStrategy: strategy,
-	}
-	if theme != nil {
-		ctx.Theme = *theme
-	}
+	ctx := slideExpandContext(theme, nil, zone, bounds, slideWidth, slideHeight, strategy, slideIdx, sectionIndex)
 	grid, warnings, err := expandPattern(slide.Pattern, ctx, patterns.Default())
 	if err != nil || grid == nil {
 		return nil, nil
@@ -165,33 +153,12 @@ func slidePatternDiagnostics(slide *SlideInput, slideIdx int, ctx patterns.Expan
 		grid = expanded
 	}
 	if grid != nil {
-		// expandNestedCellPatterns mutates the grid it walks, so a grid that
-		// came straight off the input is cloned first — validate must never
-		// rewrite the caller's deck.
-		if grid == slide.ShapeGrid {
-			cloned, err := cloneShapeGrid(grid)
-			if err != nil {
-				return patternErr("shape_grid", err)
-			}
-			grid = cloned
-		}
+		// expandNestedCellPatterns rewrites the cells it expands, so it runs
+		// on a copy — validate must never rewrite the caller's deck.
+		grid = nestedPatternExpansionCopy(grid)
 		if err := expandNestedCellPatterns(grid, ctx, reg); err != nil {
 			return patternErr("shape_grid", err)
 		}
 	}
 	return nil
-}
-
-// cloneShapeGrid deep-copies a shape grid via its JSON representation so
-// validation-time expansion cannot mutate the caller's input.
-func cloneShapeGrid(grid *ShapeGridInput) (*ShapeGridInput, error) {
-	data, err := json.Marshal(grid)
-	if err != nil {
-		return nil, fmt.Errorf("shape_grid: %w", err)
-	}
-	var out ShapeGridInput
-	if err := json.Unmarshal(data, &out); err != nil {
-		return nil, fmt.Errorf("shape_grid: %w", err)
-	}
-	return &out, nil
 }

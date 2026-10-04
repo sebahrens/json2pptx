@@ -596,17 +596,9 @@ func resolveSlidePattern(i int, slide *SlideInput, tctx *previewTemplateContext,
 	probe := *slide
 	probe.LayoutID = rs.LayoutID
 	geom, b := patternExpansionGeometry(probe, tctx.layouts, tctx.slideWidth, tctx.slideHeight, rhythmGrid)
-	expCtx := patterns.ExpandContext{
-		Theme:          previewPatternTheme(tctx),
-		Metadata:       tctx.metadata,
-		ContentZone:    geom.Zone,
-		SlideWidth:     tctx.slideWidth,
-		SlideHeight:    tctx.slideHeight,
-		LayoutBounds:   patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY},
-		AccentStrategy: accentStrategy,
-		SlideIndex:     i,
-		SectionIndex:   sectionIndex,
-	}
+	expansionTheme := previewPatternTheme(tctx)
+	expCtx := slideExpandContext(&expansionTheme, tctx.metadata, geom.Zone, patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY},
+		tctx.slideWidth, tctx.slideHeight, accentStrategy, i, sectionIndex)
 	expanded, expandWarnings, err := expandPattern(slide.Pattern, expCtx, patterns.Default())
 	if err != nil {
 		output.Errors = append(output.Errors,
@@ -641,17 +633,9 @@ func resolveSlideCompose(i int, slide *SlideInput, tctx *previewTemplateContext,
 	probe := *slide
 	probe.LayoutID = rs.LayoutID
 	geom, b := patternExpansionGeometry(probe, tctx.layouts, tctx.slideWidth, tctx.slideHeight, rhythmGrid)
-	expCtx := patterns.ExpandContext{
-		Theme:          previewPatternTheme(tctx),
-		Metadata:       tctx.metadata,
-		ContentZone:    geom.Zone,
-		SlideWidth:     tctx.slideWidth,
-		SlideHeight:    tctx.slideHeight,
-		LayoutBounds:   patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY},
-		AccentStrategy: accentStrategy,
-		SlideIndex:     i,
-		SectionIndex:   sectionIndex,
-	}
+	expansionTheme := previewPatternTheme(tctx)
+	expCtx := slideExpandContext(&expansionTheme, tctx.metadata, geom.Zone, patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY},
+		tctx.slideWidth, tctx.slideHeight, accentStrategy, i, sectionIndex)
 	expanded, composeWarnings, err := expandCompose(slide.Compose, expCtx, patterns.Default())
 	if err != nil {
 		output.Errors = append(output.Errors,
@@ -683,7 +667,7 @@ func previewPatternTheme(tctx *previewTemplateContext) types.ThemeInfo {
 	if tctx == nil || tctx.theme == nil {
 		return types.ThemeInfo{}
 	}
-	return types.ThemeInfo{Colors: tctx.theme.Colors, BodyFont: tctx.theme.BodyFont}
+	return types.ThemeInfo{Colors: tctx.theme.Colors, BodyFont: tctx.theme.BodyFont, TitleFont: tctx.theme.TitleFont}
 }
 
 // resolveSlideShapeGrid resolves virtual layout and per-cell wireframe rects
@@ -796,6 +780,17 @@ func computePreviewFitFindings(input *PresentationInput, output *previewPlanOutp
 	for i, rs := range output.ResolvedSlides {
 		if i < len(resolvedSlides) && rs.LayoutID != "" {
 			resolvedSlides[i].LayoutID = rs.LayoutID
+		}
+	}
+	// resolvePreviewSlides leaves each pattern / compose slide's expansion in
+	// its ShapeGrid for the wireframe. The fit collector gets the slide as
+	// authored and expands it itself, the way validate does: handed the
+	// expansion, it took the slide for a raw shape_grid and reported its
+	// findings at /slides/N/shape_grid/…, a path the deck does not have,
+	// where validate reports /slides/N/pattern/… (go-slide-creator-8jp05).
+	for i := range resolvedSlides {
+		if resolvedSlides[i].Pattern != nil || resolvedSlides[i].Compose != nil {
+			resolvedSlides[i].ShapeGrid = nil
 		}
 	}
 	resolvedInput.Slides = resolvedSlides
