@@ -109,12 +109,12 @@ func NewSlideEnumerator(pkg *Package) (*SlideEnumerator, error) {
 	for i, sldID := range pres.SlideIDList.SlideIDs {
 		rel := rels.Get(sldID.RID)
 		if rel == nil {
-			return nil, fmt.Errorf("slide %d: relationship %s not found", i, sldID.RID)
+			return nil, fmt.Errorf("slide index %d: relationship %s not found", i, sldID.RID)
 		}
 
 		// Verify it's a slide relationship
 		if rel.Type != RelTypeSlide {
-			return nil, fmt.Errorf("slide %d: relationship %s has wrong type: %s", i, sldID.RID, rel.Type)
+			return nil, fmt.Errorf("slide index %d: relationship %s has wrong type: %s", i, sldID.RID, rel.Type)
 		}
 
 		// Resolve relative target to absolute path

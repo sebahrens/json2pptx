@@ -578,7 +578,7 @@ func (v *Validator) AssertSlideContains(slideIndex int, patterns ...string) erro
 	}
 
 	if len(missing) > 0 {
-		return fmt.Errorf("slide %d missing patterns: %v", slideIndex, missing)
+		return fmt.Errorf("slide index %d missing patterns: %v", slideIndex, missing)
 	}
 	return nil
 }
