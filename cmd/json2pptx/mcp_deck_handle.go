@@ -85,6 +85,9 @@ type deckHandle struct {
 	storeMoved            map[string]bool
 	pendingRenderPptx     string
 	pendingRenderIdentity string
+	// storeEvaluated is the template the storing call validated or rendered
+	// on, recorded on the revision (go-slide-creator-oqu4a).
+	storeEvaluated string
 }
 
 // deckHandleStore is a per-process, TTL'd map of handles. Same scope as the

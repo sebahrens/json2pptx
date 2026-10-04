@@ -42,6 +42,13 @@ type deckCommit struct {
 	// measured on it, so the next render on the bound template reports the
 	// slides as restyled rather than unchanged.
 	RenderIdentity string
+	// Evaluated is the template the call validated or rendered the spec on,
+	// in the form of a handle's template identity (a registered name, or a
+	// bring-your-own file's path). It is recorded on the revision, so a diff
+	// of two revisions shows a template change made by a call's template
+	// argument (go-slide-creator-oqu4a). Empty when the call evaluated on no
+	// template (explain_deck_spec): the revision then takes the deck's own.
+	Evaluated string
 }
 
 // deckOutcome is what the store did, and what the call changed.
@@ -109,7 +116,7 @@ func (mc *mcpConfig) storeCommit(c deckCommit) (string, bool) {
 		h.Template = ""
 	}
 	h.storeTool, h.pendingRenderPptx, h.storeMoved = c.Tool, c.RenderedPptx, c.Src.MovedIDs
-	h.pendingRenderIdentity = c.RenderIdentity
+	h.pendingRenderIdentity, h.storeEvaluated = c.RenderIdentity, c.Evaluated
 	if c.Src.Restore > 0 {
 		h.storeNote = fmt.Sprintf("restored revision %d", c.Src.Restore)
 	}

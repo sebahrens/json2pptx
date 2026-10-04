@@ -362,8 +362,9 @@ func (mc *mcpConfig) handleValidateDeckSpec(ctx context.Context, request mcp.Cal
 	// template a call named for it (go-slide-creator-2dit4).
 	outcome := mc.commitDeck(deckCommit{
 		Tool: "validate_deck_spec", Src: src, Spec: data, Filename: filename,
-		Template: deckTemplateSource{Template: eval.Choice.Bind},
-		Store:    parsedSpec != nil && !parseDiags.HasErrors() && !src.DryRun,
+		Template:  deckTemplateSource{Template: eval.Choice.Bind},
+		Store:     parsedSpec != nil && !parseDiags.HasErrors() && !src.DryRun,
+		Evaluated: eval.Identity,
 	})
 	if outcome.Stale {
 		return staleDeckSpecResult("validate_deck_spec", src.DeckID), nil
@@ -446,9 +447,12 @@ type specEvaluation struct {
 	// says what chose it.
 	Template       string
 	TemplateSource string
-	Warnings       []string
-	Waivers        []findingWaiver
-	Choice         specTemplateChoice
+	// Identity is Template in the form a handle's template identity takes:
+	// the path of a bring-your-own file rather than its base name.
+	Identity string
+	Warnings []string
+	Waivers  []findingWaiver
+	Choice   specTemplateChoice
 	// CompileFailed reports that the spec did not compile: Diagnostics are the
 	// compile diagnostics and nothing was rendered.
 	CompileFailed bool
@@ -482,7 +486,7 @@ func (mc *mcpConfig) evaluateDeckSpec(ctx context.Context, request mcp.CallToolR
 		return eval
 	}
 	eval.Evaluated = true
-	eval.Template = input.Template
+	eval.Template, eval.Identity = input.Template, input.Template
 
 	// validate must say what render will say (go-slide-creator-rs4h).
 	if designViolations := compiledDesignModeDiagnostics(input); len(designViolations) > 0 {
@@ -516,7 +520,7 @@ func (mc *mcpConfig) evaluateDeckSpec(ctx context.Context, request mcp.CallToolR
 		Start:            time.Now(),
 	})
 	if run.TemplatePath != "" {
-		eval.Template = filepath.Base(run.TemplatePath)
+		eval.Template, eval.Identity = filepath.Base(run.TemplatePath), run.TemplatePath
 	}
 	if run.Early != nil {
 		// The run could not start (an unresolvable template): render answers
@@ -1046,6 +1050,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 			renderIdentity = firstNonEmpty(byoTemplatePath, res.Template)
 		}
 		fin := renderDeckSpecFinish{Src: src, Template: stored, RenderIdentity: renderIdentity, TemplateWarnings: choice.Warnings, Verbose: verbose}
+		fin.Evaluated = firstNonEmpty(byoTemplatePath, res.Template)
 		if rawTemplatePath == "" {
 			fin.Trial = mc.specTrialRunner(ctx, request, src, strictness, argTemplate)
 		}
@@ -1670,6 +1675,9 @@ type renderDeckSpecFinish struct {
 	// RenderIdentity is the template this call rendered on when that is not
 	// the template the deck is bound to (a one-off template argument).
 	RenderIdentity string
+	// Evaluated is the template this call rendered on, as a template
+	// identity; the revision records it (go-slide-creator-oqu4a).
+	Evaluated string
 	// TemplateWarnings explain the template choice (go-slide-creator-2dit4).
 	TemplateWarnings []string
 	Verbose          bool
@@ -1696,6 +1704,7 @@ func (mc *mcpConfig) finishRenderDeckSpec(ctx context.Context, res renderDeckSpe
 		Store:        !src.DryRun && (res.OK || !src.mutated()),
 		RenderedPptx: renderedPptx, AgainstRender: true,
 		RenderIdentity: f.RenderIdentity,
+		Evaluated:      f.Evaluated,
 	})
 	if outcome.Stale {
 		return staleDeckSpecResult("render_deck_spec", src.DeckID), nil

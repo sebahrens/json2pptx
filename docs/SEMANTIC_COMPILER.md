@@ -600,7 +600,12 @@ or storing):
   `was_index`); an `edited` row also lists `fields`, the slide's top-level
   fields that differ. `changed_slides` holds the indices that look different
   and `summary` counts the classes. A revision the handle no longer keeps is
-  refused with the kept range.
+  refused with the kept range. Each revision records the template it was last
+  validated or rendered on (the deck's own, or the call's `template`
+  argument), and each side of a diff is read on its own: a template change
+  made by an argument shows as `restyled` slides, like one written to
+  `meta.template`, and `summary` ends `(template A → B)`. A history row is
+  classified the same way.
 - `find: "9.4"` → `hits[{path, slide_id, index, excerpt}]` and `hit_count`
   over every string and number in the spec (meta, titles, bodies, chart data,
   notes). Text matches ignore ASCII case; a query that starts or ends with a
