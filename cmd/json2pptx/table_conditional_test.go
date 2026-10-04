@@ -65,32 +65,32 @@ func TestConditionalRuleDiagnostics(t *testing.T) {
 		{
 			name:     "unknown rule names the vocabulary and the likely typo",
 			cell:     `{"content":"On track","conditional":{"rule":"eqals","threshold":"On track","fill":"accent3"}}`,
-			wantPath: "rows[0][1].conditional.rule",
+			wantPath: "/table_value/rows/0/1/conditional/rule",
 			wantIn:   []string{`"eqals"`, `did you mean "equals"`, "always, positive"},
 		},
 		{
 			name:     "a numeric rule with a text threshold",
 			cell:     `{"content":"5","conditional":{"rule":"gte","threshold":"soon","fill":"accent3"}}`,
-			wantPath: "rows[0][1].conditional.threshold",
+			wantPath: "/table_value/rows/0/1/conditional/threshold",
 			wantIn:   []string{"compares numbers", `"soon"`},
 		},
 		{
 			name:     "between without a pair",
 			cell:     `{"content":"5","conditional":{"rule":"between","threshold":3,"fill":"accent3"}}`,
-			wantPath: "rows[0][1].conditional.threshold",
+			wantPath: "/table_value/rows/0/1/conditional/threshold",
 			wantIn:   []string{"two-number range"},
 		},
 		{
 			name:     "contains with no threshold",
 			cell:     `{"content":"5","conditional":{"rule":"contains","fill":"accent3"}}`,
-			wantPath: "rows[0][1].conditional.threshold",
+			wantPath: "/table_value/rows/0/1/conditional/threshold",
 			wantIn:   []string{"compare the cell against"},
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			diags := conditionalRuleDiagnostics(conditionalTable(tc.cell), "/slides/0/content/1", 0)
+			diags := conditionalRuleDiagnostics(conditionalTable(tc.cell), "/slides/0/content/1/table_value", 0)
 			if len(diags) != 1 {
 				t.Fatalf("expected 1 diagnostic, got %d (%+v)", len(diags), diags)
 			}
@@ -122,7 +122,7 @@ func TestConditionalRuleDiagnosticsAcceptValidRules(t *testing.T) {
 		`{"content":"highlighted","conditional":{"fill":"accent3"}}`,
 	}
 	for _, cell := range valid {
-		if d := conditionalRuleDiagnostics(conditionalTable(cell), "/slides/0/content/1", 0); len(d) != 0 {
+		if d := conditionalRuleDiagnostics(conditionalTable(cell), "/slides/0/content/1/table_value", 0); len(d) != 0 {
 			t.Errorf("%s drew %+v", cell, d)
 		}
 	}

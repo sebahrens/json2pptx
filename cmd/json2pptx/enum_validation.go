@@ -50,7 +50,7 @@ func checkDeckEnumValues(input *PresentationInput) []*patterns.ValidationError {
 		if e.value == "" {
 			continue
 		}
-		if err := checkEnum(e.field, e.value, e.allowed, e.aliases); err != nil {
+		if err := checkEnum("/"+e.field, e.value, e.allowed, e.aliases); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -75,7 +75,7 @@ func checkThemeOverrideFonts(override *ThemeInput) []*patterns.ValidationError {
 		if !strings.ContainsFunc(f.value, generator.IsFontNameControlRune) {
 			continue
 		}
-		path := "theme_override/" + f.key
+		path := "/theme_override/" + f.key
 		errs = append(errs, &patterns.ValidationError{
 			Pattern: "input",
 			Path:    path,
@@ -106,7 +106,7 @@ func checkThemeOverrideColors(override *ThemeInput) []*patterns.ValidationError 
 		if types.IsThemeOverrideHex(v) {
 			continue
 		}
-		path := "theme_override/colors/" + k
+		path := "/theme_override/colors/" + escapePointerSegment(k)
 		errs = append(errs, &patterns.ValidationError{
 			Pattern: "input",
 			Path:    path,

@@ -39,6 +39,9 @@ var tagPattern = regexp.MustCompile(`</?([A-Za-z][A-Za-z0-9_-]*)(?:\s[^<>]*)?/?>
 type Violation struct {
 	// Path is a JSON-style accessor (e.g. "slides[2].content[0].text_value").
 	Path string
+	// Pointer is the same address as a JSON Pointer, the spelling a finding
+	// reports.
+	Pointer string
 	// Tags are the distinct unsupported tag names found, in sorted order.
 	Tags []string
 }
@@ -70,7 +73,7 @@ func authoredText(path string) bool {
 // skipped, so the scan costs nothing on ordinary prose.
 func Scan(input any) []Violation {
 	var violations []Violation
-	textwalk.Strings(input, func(value, path string) {
+	textwalk.StringsAt(input, func(value, path, pointer string) {
 		if !strings.Contains(value, "<") || !authoredText(path) {
 			return
 		}
@@ -88,7 +91,7 @@ func Scan(input any) []Violation {
 			return
 		}
 		sort.Strings(tags)
-		violations = append(violations, Violation{Path: path, Tags: tags})
+		violations = append(violations, Violation{Path: path, Pointer: pointer, Tags: tags})
 	})
 	sort.SliceStable(violations, func(i, j int) bool {
 		return violations[i].Path < violations[j].Path
@@ -110,7 +113,7 @@ func Validate(input any) []patterns.FitFinding {
 		findings = append(findings, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
 				Pattern: "inline_markup",
-				Path:    v.Path,
+				Path:    v.Pointer,
 				Code:    patterns.ErrCodeUnsupportedInlineMarkup,
 				Message: fmt.Sprintf(
 					"%s uses inline tag(s) <%s> which the renderer does not support — they print literally on the slide; supported tags are <%s>",
@@ -120,7 +123,7 @@ func Validate(input any) []patterns.FitFinding {
 				Fix: &patterns.FixSuggestion{
 					Kind: "remove_key",
 					Params: map[string]any{
-						"path":        v.Path,
+						"path":        v.Pointer,
 						"unsupported": v.Tags,
 						"supported":   SupportedTags,
 						"hint":        "remove the tag, or express the intent with a supported one (a footnote marker is <sup>1</sup>)",

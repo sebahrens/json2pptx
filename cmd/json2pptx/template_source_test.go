@@ -231,8 +231,8 @@ func TestTemplateNotFoundRedirectsAPathToTemplatePath(t *testing.T) {
 	if d.Code != diagnostics.CodeTemplateNotFound {
 		t.Errorf("code = %q, want %q", d.Code, diagnostics.CodeTemplateNotFound)
 	}
-	if d.Path != "template" {
-		t.Errorf("path = %q, want the deck field name", d.Path)
+	if d.Path != "/template" {
+		t.Errorf("path = %q, want the deck field's pointer", d.Path)
 	}
 	for _, want := range []string{"presentation.template_path", "not a path", "templates dir"} {
 		if !strings.Contains(d.Message, want) {

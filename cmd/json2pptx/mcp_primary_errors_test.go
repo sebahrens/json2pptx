@@ -72,8 +72,8 @@ func TestMCPPrimaryErrors_TemplateNotFound_ViaGenerate(t *testing.T) {
 	if d.NextToolCall == nil || d.NextToolCall.Tool != "list_templates" {
 		t.Errorf("next_tool_call = %v, want tool=list_templates", d.NextToolCall)
 	}
-	if d.Path != "template" {
-		t.Errorf("path = %q, want template", d.Path)
+	if d.Path != "/template" {
+		t.Errorf("path = %q, want /template (the deck field)", d.Path)
 	}
 }
 

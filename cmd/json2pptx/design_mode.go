@@ -38,8 +38,19 @@ func validateDesignMode(input *PresentationInput) []patterns.FitFinding {
 	}
 
 	var findings []patterns.FitFinding
+	// A value a table took from the deck defaults is one field in the deck,
+	// however many tables render it.
+	defaultsSeen := map[string]bool{}
 	for i := range input.Slides {
-		findings = append(findings, validateSlideDesignMode(&input.Slides[i], i+1)...)
+		for _, f := range validateSlideDesignMode(&input.Slides[i], i+1, input.Defaults) {
+			if strings.HasPrefix(f.Path, "/defaults/") {
+				if defaultsSeen[f.Path] {
+					continue
+				}
+				defaultsSeen[f.Path] = true
+			}
+			findings = append(findings, f)
+		}
 	}
 	return findings
 }
@@ -47,24 +58,31 @@ func validateDesignMode(input *PresentationInput) []patterns.FitFinding {
 // validateSlideDesignMode returns constrained-mode violations for a single slide.
 // The caller is responsible for checking that the deck is in constrained mode;
 // this function always inspects the slide regardless of deck mode.
-func validateSlideDesignMode(slide *SlideInput, slideNum int) []patterns.FitFinding {
+//
+// defaults is the deck's defaults block (nil when it has none): a value a cell
+// took from it is reported at the defaults field the author wrote.
+func validateSlideDesignMode(slide *SlideInput, slideNum int, defaults *DefaultsInput) []patterns.FitFinding {
+	var cellStyle *ShapeSpecInput
+	if defaults != nil {
+		cellStyle = defaults.CellStyle
+	}
 	var findings []patterns.FitFinding
 
 	// Check shape_grid cells
 	if slide.ShapeGrid != nil {
-		findings = append(findings, checkShapeGrid(slide.ShapeGrid, slideNum)...)
+		findings = append(findings, checkShapeGrid(slide.ShapeGrid, slideNum, cellStyle)...)
 	}
 
 	// Check pattern overrides (patterns expand to shape grids, but the
 	// override fields are user-specified and can contain raw colors).
 	if slide.Pattern != nil {
-		findings = append(findings, checkPatternInput(slide.Pattern, slideNum)...)
+		findings = append(findings, checkPatternInput(slide.Pattern, slideNum, slidepath.SlideField(slideNum-1, "pattern"))...)
 	}
 
 	// Check compose segments for pattern overrides.
 	if slide.Compose != nil {
-		for _, seg := range slide.Compose.Segments {
-			findings = append(findings, checkPatternInput(&seg.Pattern, slideNum)...)
+		for si, seg := range slide.Compose.Segments {
+			findings = append(findings, checkPatternInput(&seg.Pattern, slideNum, fmt.Sprintf("%s/compose/segments/%d/pattern", slidepath.Slide(slideNum-1), si))...)
 		}
 	}
 
@@ -77,7 +95,7 @@ func validateSlideDesignMode(slide *SlideInput, slideNum int) []patterns.FitFind
 }
 
 // checkShapeGrid scans a ShapeGridInput for raw hex colors and absolute font sizes.
-func checkShapeGrid(grid *ShapeGridInput, slideNum int) []patterns.FitFinding {
+func checkShapeGrid(grid *ShapeGridInput, slideNum int, cellStyle *ShapeSpecInput) []patterns.FitFinding {
 	var findings []patterns.FitFinding
 
 	// A grid the engine's own expander produced carries explicit sizes by
@@ -88,7 +106,7 @@ func checkShapeGrid(grid *ShapeGridInput, slideNum int) []patterns.FitFinding {
 	for ri, row := range grid.Rows {
 		if row.Connector != nil && row.Connector.Color != "" {
 			if f := checkColorField(row.Connector.Color, slideNum,
-				fmt.Sprintf("shape_grid.rows[%d].connector.color", ri)); f != nil {
+				slidepath.Join(slidepath.GridRow(slideNum-1, ri), "connector/color")); f != nil {
 				findings = append(findings, *f)
 			}
 		}
@@ -97,8 +115,8 @@ func checkShapeGrid(grid *ShapeGridInput, slideNum int) []patterns.FitFinding {
 			if cell == nil {
 				continue
 			}
-			cellPath := fmt.Sprintf("shape_grid.rows[%d].cells[%d]", ri, ci)
-			for _, f := range checkGridCell(cell, slideNum, cellPath) {
+			cellPath := slidepath.GridCell(slideNum-1, ri, ci)
+			for _, f := range checkGridCell(cell, slideNum, cellPath, cellStyle) {
 				if sizesAreEngineOwned && isAbsoluteSizeFinding(f) {
 					continue
 				}
@@ -133,23 +151,23 @@ func isAbsoluteSizeFinding(f patterns.FitFinding) bool {
 }
 
 // checkGridCell validates a single grid cell for design mode violations.
-func checkGridCell(cell *GridCellInput, slideNum int, cellPath string) []patterns.FitFinding {
+func checkGridCell(cell *GridCellInput, slideNum int, cellPath string, cellStyle *ShapeSpecInput) []patterns.FitFinding {
 	var findings []patterns.FitFinding
 
 	if cell.Shape != nil {
-		findings = append(findings, checkShapeSpec(cell.Shape, slideNum, cellPath)...)
+		findings = append(findings, checkShapeSpec(cell.Shape, slideNum, cellPath, cellStyle)...)
 	}
 
 	if cell.AccentBar != nil && cell.AccentBar.Color != "" {
 		if f := checkColorField(cell.AccentBar.Color, slideNum,
-			cellPath+".accent_bar.color"); f != nil {
+			cellPath+"/accent_bar/color"); f != nil {
 			findings = append(findings, *f)
 		}
 	}
 
 	if cell.Icon != nil && cell.Icon.Fill != "" {
 		if f := checkColorField(cell.Icon.Fill, slideNum,
-			cellPath+".icon.fill"); f != nil {
+			cellPath+"/icon/fill"); f != nil {
 			findings = append(findings, *f)
 		}
 	}
@@ -159,17 +177,17 @@ func checkGridCell(cell *GridCellInput, slideNum int, cellPath string) []pattern
 	}
 
 	if cell.Diagram != nil && cell.Diagram.Style != nil {
-		findings = append(findings, checkDiagramStyleColors(cell.Diagram.Style.Colors, slideNum, cellPath+".diagram.style.colors")...)
+		findings = append(findings, checkDiagramStyleColors(cell.Diagram.Style.Colors, slideNum, cellPath+"/diagram/style/colors")...)
 		if cell.Diagram.Style.Background != "" {
 			if f := checkColorField(cell.Diagram.Style.Background, slideNum,
-				cellPath+".diagram.style.background"); f != nil {
+				cellPath+"/diagram/style/background"); f != nil {
 				findings = append(findings, *f)
 			}
 		}
 	}
 
 	if cell.Table != nil {
-		findings = append(findings, checkTableInput(cell.Table, slideNum, cellPath+".table")...)
+		findings = append(findings, checkTableInput(cell.Table, slideNum, cellPath+"/table")...)
 	}
 
 	return findings
@@ -181,14 +199,14 @@ func checkGridImage(img *GridImageInput, slideNum int, cellPath string) []patter
 
 	if img.Overlay != nil && img.Overlay.Color != "" {
 		if f := checkColorField(img.Overlay.Color, slideNum,
-			cellPath+".image.overlay.color"); f != nil {
+			cellPath+"/image/overlay/color"); f != nil {
 			findings = append(findings, *f)
 		}
 	}
 
 	if img.Text != nil && img.Text.Color != "" {
 		if f := checkColorField(img.Text.Color, slideNum,
-			cellPath+".image.text.color"); f != nil {
+			cellPath+"/image/text/color"); f != nil {
 			findings = append(findings, *f)
 		}
 	}
@@ -197,29 +215,47 @@ func checkGridImage(img *GridImageInput, slideNum int, cellPath string) []patter
 }
 
 // checkShapeSpec validates fill, line, and text color fields in a ShapeSpecInput.
-func checkShapeSpec(spec *ShapeSpecInput, slideNum int, basePath string) []patterns.FitFinding {
+func checkShapeSpec(spec *ShapeSpecInput, slideNum int, basePath string, cellStyle *ShapeSpecInput) []patterns.FitFinding {
 	var findings []patterns.FitFinding
+	// A field the cell took from defaults.cell_style is addressed there.
+	fieldPath := func(field string, value, fromDefaults json.RawMessage) string {
+		if sameRawMessage(value, fromDefaults) {
+			return "/defaults/cell_style/" + field
+		}
+		return basePath + "/shape/" + field
+	}
+	var defFill, defLine, defText json.RawMessage
+	if cellStyle != nil {
+		defFill, defLine, defText = cellStyle.Fill, cellStyle.Line, cellStyle.Text
+	}
 
 	// Check fill
 	if len(spec.Fill) > 0 {
-		if f := checkRawMessageColor(spec.Fill, slideNum, basePath+".shape.fill"); f != nil {
+		if f := checkRawMessageColor(spec.Fill, slideNum, fieldPath("fill", spec.Fill, defFill)); f != nil {
 			findings = append(findings, *f)
 		}
 	}
 
 	// Check line
 	if len(spec.Line) > 0 {
-		if f := checkRawMessageColor(spec.Line, slideNum, basePath+".shape.line"); f != nil {
+		if f := checkRawMessageColor(spec.Line, slideNum, fieldPath("line", spec.Line, defLine)); f != nil {
 			findings = append(findings, *f)
 		}
 	}
 
 	// Check text color and font size
 	if len(spec.Text) > 0 {
-		findings = append(findings, checkTextRaw(spec.Text, slideNum, basePath+".shape.text")...)
+		findings = append(findings, checkTextRaw(spec.Text, slideNum, fieldPath("text", spec.Text, defText))...)
 	}
 
 	return findings
+}
+
+// sameRawMessage reports whether a is the very value b: applyCellStyleDefaults
+// hands a cell the default's own bytes, so identity tells a value the cell
+// adopted from one it wrote itself, even when the two spell the same colour.
+func sameRawMessage(a, b json.RawMessage) bool {
+	return len(a) > 0 && len(a) == len(b) && &a[0] == &b[0]
 }
 
 // textParagraphProbe is a minimal struct for probing paragraph color/size fields.
@@ -249,27 +285,27 @@ func checkTextRaw(raw json.RawMessage, slideNum int, path string) []patterns.Fit
 	}
 
 	if obj.Color != "" {
-		if f := checkColorField(obj.Color, slideNum, path+".color"); f != nil {
+		if f := checkColorField(obj.Color, slideNum, path+"/color"); f != nil {
 			findings = append(findings, *f)
 		}
 	}
 
 	if obj.Size > 0 {
-		if f := checkAbsoluteSize(obj.Size, slideNum, path+".size"); f != nil {
+		if f := checkAbsoluteSize(obj.Size, slideNum, path+"/size"); f != nil {
 			findings = append(findings, *f)
 		}
 	}
 
 	// Check paragraphs array
 	for i, p := range obj.Paragraphs {
-		pPath := fmt.Sprintf("%s.paragraphs[%d]", path, i)
+		pPath := fmt.Sprintf("%s/paragraphs/%d", path, i)
 		if p.Color != "" {
-			if f := checkColorField(p.Color, slideNum, pPath+".color"); f != nil {
+			if f := checkColorField(p.Color, slideNum, pPath+"/color"); f != nil {
 				findings = append(findings, *f)
 			}
 		}
 		if p.Size > 0 {
-			if f := checkAbsoluteSize(p.Size, slideNum, pPath+".size"); f != nil {
+			if f := checkAbsoluteSize(p.Size, slideNum, pPath+"/size"); f != nil {
 				findings = append(findings, *f)
 			}
 		}
@@ -291,7 +327,7 @@ func checkRawMessageColor(raw json.RawMessage, slideNum int, path string) *patte
 		Color string `json:"color"`
 	}
 	if err := json.Unmarshal(raw, &obj); err == nil && obj.Color != "" {
-		return checkColorField(obj.Color, slideNum, path+".color")
+		return checkColorField(obj.Color, slideNum, path+"/color")
 	}
 
 	return nil
@@ -352,7 +388,7 @@ func checkAbsoluteSize(size float64, slideNum int, path string) *patterns.FitFin
 }
 
 // checkPatternInput checks a pattern's override fields for raw hex colors.
-func checkPatternInput(pattern *PatternInput, slideNum int) []patterns.FitFinding {
+func checkPatternInput(pattern *PatternInput, slideNum int, patternPath string) []patterns.FitFinding {
 	if pattern == nil || len(pattern.Overrides) == 0 {
 		return nil
 	}
@@ -366,7 +402,7 @@ func checkPatternInput(pattern *PatternInput, slideNum int) []patterns.FitFindin
 	}
 
 	for key, val := range overrides {
-		path := fmt.Sprintf("pattern.overrides.%s", key)
+		path := patternPath + "/overrides/" + escapePointerSegment(key)
 		if isColorKey(key) {
 			if s, ok := val.(string); ok {
 				if f := checkColorField(s, slideNum, path); f != nil {
@@ -387,10 +423,10 @@ func checkContentInput(ci *ContentInput, slideNum, contentNum int) []patterns.Fi
 	// Check diagram_value style colors
 	if ci.DiagramValue != nil && ci.DiagramValue.Style != nil {
 		findings = append(findings, checkDiagramStyleColors(
-			ci.DiagramValue.Style.Colors, slideNum, basePath+".diagram_value.style.colors")...)
+			ci.DiagramValue.Style.Colors, slideNum, basePath+"/diagram_value/style/colors")...)
 		if ci.DiagramValue.Style.Background != "" {
 			if f := checkColorField(ci.DiagramValue.Style.Background, slideNum,
-				basePath+".diagram_value.style.background"); f != nil {
+				basePath+"/diagram_value/style/background"); f != nil {
 				findings = append(findings, *f)
 			}
 		}
@@ -399,10 +435,10 @@ func checkContentInput(ci *ContentInput, slideNum, contentNum int) []patterns.Fi
 	// Check chart_value (deprecated but still used)
 	if ci.ChartValue != nil && ci.ChartValue.Style != nil {
 		findings = append(findings, checkDiagramStyleColors(
-			ci.ChartValue.Style.Colors, slideNum, basePath+".chart_value.style.colors")...)
+			ci.ChartValue.Style.Colors, slideNum, basePath+"/chart_value/style/colors")...)
 		if ci.ChartValue.Style.Background != "" {
 			if f := checkColorField(ci.ChartValue.Style.Background, slideNum,
-				basePath+".chart_value.style.background"); f != nil {
+				basePath+"/chart_value/style/background"); f != nil {
 				findings = append(findings, *f)
 			}
 		}
@@ -438,7 +474,7 @@ func collectDroppedDiagramColorWarnings(input *PresentationInput) []patterns.Fit
 				continue
 			}
 			if rawColors := rawHexColorsInData(ci.DiagramValue.Data); len(rawColors) > 0 {
-				basePath := slidepath.ContentIndex(slideNum-1, j) + ".diagram_value.data"
+				basePath := slidepath.ContentIndex(slideNum-1, j) + "/diagram_value/data"
 				findings = append(findings, droppedDiagramColorFinding(slideNum, basePath, ci.DiagramValue.Type, rawColors))
 			}
 		}
@@ -504,7 +540,7 @@ func rawHexColorsInData(data map[string]any) []string {
 func checkDiagramStyleColors(colors []string, slideNum int, basePath string) []patterns.FitFinding {
 	var findings []patterns.FitFinding
 	for i, c := range colors {
-		path := fmt.Sprintf("%s[%d]", basePath, i)
+		path := fmt.Sprintf("%s/%d", basePath, i)
 		if f := checkColorField(c, slideNum, path); f != nil {
 			findings = append(findings, *f)
 		}
@@ -517,7 +553,11 @@ func checkTableInput(table *TableInput, slideNum int, basePath string) []pattern
 	var findings []patterns.FitFinding
 
 	if table.Style != nil && table.Style.HeaderBackground != nil && *table.Style.HeaderBackground != "" {
-		if f := checkColorField(*table.Style.HeaderBackground, slideNum, basePath+".style.header_background"); f != nil {
+		path := basePath + "/style/header_background"
+		if table.Style.HeaderBackgroundFromDefaults {
+			path = "/defaults/table_style/header_background"
+		}
+		if f := checkColorField(*table.Style.HeaderBackground, slideNum, path); f != nil {
 			findings = append(findings, *f)
 		}
 	}
@@ -525,7 +565,7 @@ func checkTableInput(table *TableInput, slideNum int, basePath string) []pattern
 	for ri, row := range table.Rows {
 		for ci, cell := range row {
 			if cell.Conditional != nil && cell.Conditional.Fill != "" {
-				path := fmt.Sprintf("%s.rows[%d][%d].conditional.fill", basePath, ri, ci)
+				path := fmt.Sprintf("%s/rows/%d/%d/conditional/fill", basePath, ri, ci)
 				if f := checkColorField(cell.Conditional.Fill, slideNum, path); f != nil {
 					findings = append(findings, *f)
 				}

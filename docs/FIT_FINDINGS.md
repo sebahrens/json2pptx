@@ -1240,7 +1240,7 @@ On a **shape_grid cell** it is emitted only when the wrapped text does not fit *
 ```json
 {
   "pattern": "table",
-  "path": "/slides/0/content/0/rows/3/1",
+  "path": "/slides/0/content/0/table_value/rows/3/1",
   "code": "fit_overflow",
   "message": "text needs 4 lines @ 12pt; cell allows 2",
   "fix": { "kind": "split_at_row", "params": { "row": 4 } },
@@ -2159,13 +2159,13 @@ The scan walks **every** authored string in the input — typed fields, raw over
 
 ```json
 {
-  "path": "slides[0].content[1].bullets_value[1]",
+  "path": "/slides/0/content/1/bullets_value/1",
   "code": "UNSUPPORTED_INLINE_MARKUP",
   "message": "slides[0].content[1].bullets_value[1] uses inline tag(s) <a>, <code>, <color> which the renderer does not support — they print literally on the slide; supported tags are <b>, <i>, <u>, <sup>, <sub>",
   "fix": {
     "kind": "remove_key",
     "params": {
-      "path": "slides[0].content[1].bullets_value[1]",
+      "path": "/slides/0/content/1/bullets_value/1",
       "unsupported": ["a", "code", "color"],
       "supported": ["b", "i", "u", "sup", "sub"],
       "hint": "remove the tag, or express the intent with a supported one (a footnote marker is <sup>1</sup>)"
@@ -2346,13 +2346,13 @@ Preflight (`generate -preflight`) always runs the scan at warning severity in it
 ```json
 {
   "code": "unresolved_placeholder",
-  "path": "slides[0].content[0].text_value",
+  "path": "/slides/0/content/0/text_value",
   "severity": "warning",
   "message": "slides[0].content[0].text_value still holds the unresolved skeleton placeholder \"__FILL__\" — replace it with real content before publishable generation (pass placeholder_policy=strict to block on it)",
   "fix": {
     "kind": "replace_placeholder",
     "params": {
-      "path": "slides[0].content[0].text_value",
+      "path": "/slides/0/content/0/text_value",
       "token": "__FILL__",
       "hint": "overwrite the __FILL__ token with the slide's real content — plan_deck skeletons are scaffolding, not finished text"
     }

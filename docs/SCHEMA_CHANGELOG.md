@@ -1,5 +1,54 @@
 # Schema Changelog
 
+- **2026-10-04 — Every raw-deck finding path is a JSON Pointer into the authored deck (`go-slide-creator-7fshg`; found on the way: `-yhi2e`, `-pcjob`, `-cwuey`, `-45t9x`, `-gk5q7`, `-wj70r`, `-dln5i`, `-3sm9n`, `-wpg2p`).**
+  - **Paths changed** on `validate` / `validate_input`, `generate`,
+    `generate -dry-run`, `generate_presentation` and `preflight` (codes,
+    severities and verdicts are unchanged unless listed below):
+    - tables: `/slides/N/content/M.rows`, `.style.style_id`,
+      `.rows[r][c].conditional.rule|threshold|fill` and `…/cells/C/table.rows`
+      are now `/slides/N/content/M/table_value/rows`,
+      `…/table_value/style/style_id`,
+      `…/table_value/rows/r/c/conditional/rule` and `…/cells/C/table/rows`;
+      table cell `fit_overflow` is at `…/table_value/headers/h` and
+      `…/table_value/rows/r/c` (was `…/content/M/headers/h`, `…/content/M/rows/r/c`);
+    - deck-level fields: `template`, `template_path`, `slides`, `structure`,
+      `grid`, `viewing_mode` / `design_mode` / `accent_strategy` / `type_scale`,
+      `theme_override/…` and an unknown top-level key are now `/template`,
+      `/slides`, … (`chrome.page_numbers/key` is `/chrome/page_numbers/key`).
+      A tool's own argument keeps its name (`base_dir`, `deck_id`, the
+      `template` override of `validate_input`);
+    - `design_mode_violation`: `shape_grid.rows[0].cells[0].shape.fill`,
+      `…/content/M.chart_value.style.background` and `pattern.overrides.key`
+      are now `/slides/N/shape_grid/rows/0/cells/0/shape/fill`,
+      `/slides/N/content/M/chart_value/style/background` and
+      `/slides/N/pattern/overrides/key`
+      (`/slides/N/compose/segments/K/pattern/overrides/key` in a segment);
+    - `no_emoji_violation`, `UNSUPPORTED_INLINE_MARKUP`,
+      `unresolved_placeholder`, `ICON_BUNDLED_NAME_UNKNOWN` and
+      `CUSTOM_COLOR_DROPPED`: `slides[N].content[M].text_value` is now
+      `/slides/N/content/M/text_value` (the same in `fix.params.path`);
+    - `max_length` is at the block's `text_value` (was `…/text`); a value
+      parse error is at the field the author wrote (`…/value` for the legacy
+      form) and, for an unknown content type, at the block;
+    - a fault in a value a table or cell took from `defaults` is reported
+      once at `/defaults/table_style/style_id`,
+      `/defaults/table_style/header_background` or `/defaults/cell_style/fill`
+      instead of at every table or cell that adopted it.
+  - **Now rejected**: a `shape_grid` cell table with an unknown conditional
+    `rule`, an unusable `threshold` or an invalid conditional `fill`
+    (`INVALID_PARAMETER`, as for a placeholder table; it rendered without the
+    fill); a DeckSpec whose compiled text carries emoji
+    (`no_emoji_violation`, as on every raw surface — a `raw_json2pptx` slide
+    reports it at `/slides/N/slide/content/M/text_value`).
+  - **Now reported**: an unknown key inside `defaults.table_style` /
+    `defaults.cell_style` (`unknown_key`); `design_mode_violation` on a
+    DeckSpec raw slide carries its path (`/slides/N/slide/shape_grid/…`, was
+    empty). `UNSUPPORTED_INLINE_MARKUP` on a pattern slide is reported once,
+    at the pattern value.
+  - `docs/PATH_GRAMMAR.md` states the rule and lists the three forms that
+    name something the deck does not contain (a field to add, a cell of an
+    expanded pattern / compose grid, a render-time object).
+
 - **2026-10-04 — Generation's own refusals are part of the one verdict; one pattern decoder (`go-slide-creator-ni65k`, `-iqknz`; found on the way: `-bg2fc`, `-mnbmz`, `-dkr5x`, `-gh929`, `-pebyi`, `-upmqu`, `-brojn`).**
   - **Now rejected by `validate` / `validate_input`, `generate -dry-run` and
     `preflight`** (with or without the fit report; generation always refused

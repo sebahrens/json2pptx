@@ -68,7 +68,7 @@ func collectSectionNumberSequenceFindings(input *PresentationInput, layouts []ty
 				Code:    patterns.ErrCodeSectionNumberSequenceMismatch,
 				Message: fmt.Sprintf("slide %d is section %d but its authored numeric label is %q; use %q or remove the label and let json2pptx number sections automatically", slideIndex+1, sectionIndex, actual, expected),
 				Fix: &patterns.FixSuggestion{Kind: "provide_value", Params: map[string]any{
-					"path":          fmt.Sprintf("slides[%d].content[%d].text_value", slideIndex, contentIndex),
+					"path":          fmt.Sprintf("/slides/%d/content/%d/text_value", slideIndex, contentIndex),
 					"value":         expected,
 					"expected":      expected,
 					"actual":        actual,

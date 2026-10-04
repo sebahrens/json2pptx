@@ -124,6 +124,12 @@ type TableStyleInput struct {
 	HighlightColumn  int      `json:"highlight_column,omitempty"`
 	TotalsRow        bool     `json:"totals_row,omitempty"`
 	ColumnTypes      []string `json:"column_types,omitempty"`
+
+	// StyleIDFromDefaults and HeaderBackgroundFromDefaults record that the table
+	// wrote no value of its own and took the deck-level defaults.table_style
+	// one, so a finding about the value names the field the author wrote.
+	StyleIDFromDefaults          bool `json:"-"`
+	HeaderBackgroundFromDefaults bool `json:"-"`
 }
 
 // ConditionalFormatInput represents a conditional formatting rule for a cell.

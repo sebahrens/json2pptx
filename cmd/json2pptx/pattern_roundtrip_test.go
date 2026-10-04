@@ -39,7 +39,7 @@ func TestExpandedPatternGridSurvivesResubmission(t *testing.T) {
 		t.Fatal("the expansion carries no absolute font size; this test would pass vacuously")
 	}
 
-	if findings := checkShapeGrid(grid, 1); len(findings) != 0 {
+	if findings := checkShapeGrid(grid, 1, nil); len(findings) != 0 {
 		t.Errorf("a stamped expansion still reports %d design-mode violations: %+v", len(findings), findings)
 	}
 
@@ -47,14 +47,14 @@ func TestExpandedPatternGridSurvivesResubmission(t *testing.T) {
 	// the engine's provenance, not a general relaxation.
 	unstamped := *grid
 	unstamped.Source = ""
-	if findings := checkShapeGrid(&unstamped, 1); len(findings) == 0 {
+	if findings := checkShapeGrid(&unstamped, 1, nil); len(findings) == 0 {
 		t.Error("an unstamped grid of the same sizes reports nothing; the rule has been lost")
 	}
 
 	// A source the engine would not have written waives nothing.
 	forged := *grid
 	forged.Source = "pattern:not-a-registered-pattern"
-	if findings := checkShapeGrid(&forged, 1); len(findings) == 0 {
+	if findings := checkShapeGrid(&forged, 1, nil); len(findings) == 0 {
 		t.Error("an unregistered pattern name waived the size rule")
 	}
 }
@@ -72,7 +72,7 @@ func TestPatternStampDoesNotWaiveRawHexColours(t *testing.T) {
 			},
 		}}}},
 	}
-	findings := checkShapeGrid(grid, 1)
+	findings := checkShapeGrid(grid, 1, nil)
 	if len(findings) != 1 {
 		t.Fatalf("got %d findings, want the hex one alone: %+v", len(findings), findings)
 	}

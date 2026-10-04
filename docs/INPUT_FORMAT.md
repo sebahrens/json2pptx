@@ -216,7 +216,7 @@ The deck's visual identity comes from the chosen `template`. Override deck-wide 
 }
 ```
 
-Each `colors` value must be six hex digits with an optional leading `#` (`#E31837` or `E31837`). Three-digit shorthand (`#abc`), color names (`navy`) and anything else are rejected by `validate` / `generate` with code `invalid_color` at path `theme_override/colors/<slot>`, because the value is written verbatim into the theme part. Font names are inserted literally (XML-escaped; `$` has no special meaning); a font name containing control characters is rejected with code `INVALID_PARAMETER` at `theme_override/title_font` or `theme_override/body_font`. In `design_mode: "constrained"` (the default), raw hex colors are restricted; switch to `design_mode: "free"` for exploratory/artistic decks.
+Each `colors` value must be six hex digits with an optional leading `#` (`#E31837` or `E31837`). Three-digit shorthand (`#abc`), color names (`navy`) and anything else are rejected by `validate` / `generate` with code `invalid_color` at path `/theme_override/colors/<slot>`, because the value is written verbatim into the theme part. Font names are inserted literally (XML-escaped; `$` has no special meaning); a font name containing control characters is rejected with code `INVALID_PARAMETER` at `/theme_override/title_font` or `/theme_override/body_font`. In `design_mode: "constrained"` (the default), raw hex colors are restricted; switch to `design_mode: "free"` for exploratory/artistic decks.
 
 ## Viewing mode and readability
 

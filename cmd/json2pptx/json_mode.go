@@ -439,7 +439,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 			kept := make([]SlideInput, 0, len(input.Slides))
 			for i := range input.Slides {
 				slideNum := i + 1
-				violations := validateSlideDesignMode(&input.Slides[i], slideNum)
+				violations := validateSlideDesignMode(&input.Slides[i], slideNum, input.Defaults)
 				if len(violations) == 0 {
 					kept = append(kept, input.Slides[i])
 					continue

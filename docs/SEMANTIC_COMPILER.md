@@ -243,7 +243,12 @@ template.
   whole. Enum values are checked (`UNKNOWN_ENUM` at
   `…/slide/transition`), a content block the layout would drop is
   `CONTENT_DROPPED` at `…/slide/content/M`, and an asset that does not resolve
-  is reported at the field that names it.
+  is reported at the field that names it. The two deck-content policies apply
+  to the compiled deck as they do to a raw one: a value the template owns in
+  constrained mode is `design_mode_violation` at
+  `…/slide/shape_grid/rows/R/cells/C/shape/fill`, and text that carries emoji
+  is `no_emoji_violation` at `…/slide/content/M/text_value` (for a slide of
+  another kind, at the DeckSpec field the source map traces the text to).
 - **Refusals.** A refused render reports the fit findings on every slide, not
   only the first refused paragraph, and folds per-field refusals under the
   slide's capacity finding (`symptoms[]`).

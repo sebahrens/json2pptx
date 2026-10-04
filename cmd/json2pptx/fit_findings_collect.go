@@ -99,6 +99,9 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// unexpanded input, before the grid replaces the pattern below.
 	findings = append(findings, collectPatternPostExpandFindings(input, slideWidth, slideHeight, theme, layouts...)...)
 
+	// The deck as authored: a text policy reads the pattern's values, not the
+	// grid they expand to, or it reports one string twice.
+	authored := input
 	input, patternSlides := expandPatternsForFit(input, slideWidth, slideHeight, theme, layouts...)
 
 	// 1. Text-fit findings from existing generateFitReport (tables + shape-grid
@@ -140,7 +143,7 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// passed through to the text run verbatim, so they print as literal
 	// XML-ish garbage on the slide; nothing used to report them
 	// (go-slide-creator-510u).
-	findings = append(findings, inlinemarkup.Validate(input)...)
+	findings = append(findings, inlinemarkup.Validate(authored)...)
 
 	// 4. Grid occupancy: raw-grid underfill / known-pattern overcrowding.
 	findings = append(findings, collectGridOccupancyFindings(input)...)

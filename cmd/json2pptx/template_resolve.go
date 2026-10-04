@@ -276,7 +276,7 @@ func templateNotFoundError(templateName, flagTemplatesDir string) string {
 // templateNotFound is templateNotFoundError as an error that states its code
 // (TEMPLATE_NOT_FOUND), for a command that fails on it.
 func templateNotFound(templateName, flagTemplatesDir string) error {
-	return &cliCodedError{code: diagnostics.CodeTemplateNotFound, path: "template",
+	return &cliCodedError{code: diagnostics.CodeTemplateNotFound, path: "/template",
 		err: fmt.Errorf("%s", templateNotFoundError(templateName, flagTemplatesDir))}
 }
 

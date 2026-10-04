@@ -106,6 +106,7 @@ func verdictSurfaces(t *testing.T, mc *mcpConfig, deckPath string, generate bool
 	}
 	doc := decode("validate_input", textContent(res))
 	out["validate"] = verdictOf(!res.IsError, envelopeFindings(t, doc))
+	assertFindingPointers(t, "validate", presentation, envelopeFindings(t, doc))
 
 	// generate --dry-run.
 	var dryErr error
@@ -118,6 +119,7 @@ func verdictSurfaces(t *testing.T, mc *mcpConfig, deckPath string, generate bool
 		t.Errorf("generate --dry-run: valid=%t but error=%v", valid, dryErr)
 	}
 	out["dry-run"] = verdictOf(valid, envelopeFindings(t, doc))
+	assertFindingPointers(t, "dry-run", presentation, envelopeFindings(t, doc))
 
 	if !generate {
 		return out
@@ -136,6 +138,7 @@ func verdictSurfaces(t *testing.T, mc *mcpConfig, deckPath string, generate bool
 		t.Errorf("generate: refused the deck but returned no error")
 	}
 	out["generate"] = verdictOf(success, envelopeFindings(t, doc))
+	assertFindingPointers(t, "generate", presentation, envelopeFindings(t, doc))
 
 	// generate_presentation (MCP).
 	res, err = mc.handleGenerate(context.Background(), makeRequest(map[string]any{
@@ -150,6 +153,7 @@ func verdictSurfaces(t *testing.T, mc *mcpConfig, deckPath string, generate bool
 		success = reported
 	}
 	out["generate_presentation"] = verdictOf(success, envelopeFindings(t, doc))
+	assertFindingPointers(t, "generate_presentation", presentation, envelopeFindings(t, doc))
 	return out
 }
 
@@ -628,9 +632,6 @@ func assertSlideSurfaces(t *testing.T, mc, specMC *mcpConfig, baseDir string, ta
 	if v.Validate.OK {
 		t.Errorf("DeckSpec validate accepts a raw slide every raw-deck surface refuses (%s)", verdict)
 	}
-	// The table checks write a dotted tail after the pointer
-	// ("/content/1.rows[0][1]"); compare token for token.
-	tokens := strings.NewReplacer("[", "/", "]", "", ".", "/")
 	have := map[string]bool{}
 	var keys []string
 	for _, f := range v.Validate.Findings {
@@ -643,14 +644,14 @@ func assertSlideSurfaces(t *testing.T, mc, specMC *mcpConfig, baseDir string, ta
 		if strings.Contains(f.Code, "SEMANTIC_") {
 			return
 		}
-		key := f.Code + " @ " + tokens.Replace(specPointer(findingPath(f)))
+		key := f.Code + " @ " + specPointer(findingPath(f))
 		have[key] = true
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
 	for _, tail := range tails {
 		code, rest, _ := strings.Cut(tail, " @ ")
-		want := "/slides/1/slide" + tokens.Replace(rest)
+		want := "/slides/1/slide" + rest
 		found := have[code+" @ "+want]
 		// A generation fit refusal is traced to the DeckSpec field through
 		// the source map, which addresses a raw slide as a whole.

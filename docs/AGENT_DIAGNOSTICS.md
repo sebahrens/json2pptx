@@ -169,7 +169,7 @@ All fields optional; an all-empty `where` is omitted entirely.
 | `placeholder_role` | string  | Canonical role of that placeholder.                |
 
 When a finding originates from input validation, the slide index is recovered
-best-effort from the JSON `path` (e.g. `slides[2].content.body` → `slide: 2`).
+best-effort from the JSON `path` (e.g. `/slides/2/content/1` → `slide: 2`).
 Richer location fields are populated by surfaces that know the resolved layout
 and placeholder roles.
 
@@ -327,11 +327,11 @@ fault with a path relative to the block. So `pattern: {name: kpi-3up, values:
 carrying the joined message: a deck with no template is `REQUIRED` at
 `template` (was `MISSING_PARAMETER`), with no slides `REQUIRED` at `slides`
 (was `VALIDATION_FAILED`), with both `structure` and `slides`
-`STRUCTURE_AND_SLIDES` at `structure` (was `AMBIGUOUS_INPUT`); enum, design-mode,
+`STRUCTURE_AND_SLIDES` at `/structure` (was `AMBIGUOUS_INPUT`); enum, design-mode,
 emoji and asset refusals are the per-field findings `validate` reports
 (`UNKNOWN_ENUM`, `design_mode_violation`, `no_emoji_violation`, `IMAGE_PATH`,
 `ICON_BUNDLED_NAME_UNKNOWN`, ...) instead of one `VALIDATION_FAILED` /
-`GENERATION_FAILED`; `TEMPLATE_NOT_FOUND` carries the path `template`. The
+`GENERATION_FAILED`; `TEMPLATE_NOT_FOUND` carries the path `/template`. The
 `error` string and the exit code are unchanged. `generate -dry-run` now makes
 the checks `generate` makes before it opens a template (design mode, emoji,
 `template` + `template_path`, structure expansion, relative asset paths) and

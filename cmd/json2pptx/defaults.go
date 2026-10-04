@@ -108,20 +108,23 @@ func applyTableStyleDefaults(t *jsonschema.TableInput, def *TableStyleInput) {
 	if t.Style == nil {
 		// No inline style at all — adopt the full default.
 		t.Style = &jsonschema.TableStyleInput{
-			HeaderBackground: def.HeaderBackground,
-			Borders:          def.Borders,
-			Striped:          def.Striped,
-			UseTableStyle:    def.UseTableStyle,
-			StyleID:          def.StyleID,
-			HighlightColumn:  def.HighlightColumn,
-			TotalsRow:        def.TotalsRow,
-			ColumnTypes:      def.ColumnTypes,
+			HeaderBackground:             def.HeaderBackground,
+			Borders:                      def.Borders,
+			Striped:                      def.Striped,
+			UseTableStyle:                def.UseTableStyle,
+			StyleID:                      def.StyleID,
+			StyleIDFromDefaults:          def.StyleID != "",
+			HeaderBackgroundFromDefaults: def.HeaderBackground != nil,
+			HighlightColumn:              def.HighlightColumn,
+			TotalsRow:                    def.TotalsRow,
+			ColumnTypes:                  def.ColumnTypes,
 		}
 		return
 	}
 	// Swap-only: each zero-value field is filled from the default.
 	if t.Style.HeaderBackground == nil && def.HeaderBackground != nil {
 		t.Style.HeaderBackground = def.HeaderBackground
+		t.Style.HeaderBackgroundFromDefaults = true
 	}
 	if t.Style.Borders == "" && def.Borders != "" {
 		t.Style.Borders = def.Borders
@@ -134,6 +137,7 @@ func applyTableStyleDefaults(t *jsonschema.TableInput, def *TableStyleInput) {
 	}
 	if t.Style.StyleID == "" && def.StyleID != "" {
 		t.Style.StyleID = def.StyleID
+		t.Style.StyleIDFromDefaults = true
 	}
 	if t.Style.HighlightColumn == 0 && def.HighlightColumn != 0 {
 		t.Style.HighlightColumn = def.HighlightColumn

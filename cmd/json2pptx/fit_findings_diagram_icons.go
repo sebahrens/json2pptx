@@ -38,7 +38,7 @@ func collectDiagramIconFindings(input *PresentationInput) []patterns.FitFinding 
 			if item.Type != "diagram" || item.DiagramValue == nil {
 				continue
 			}
-			path := fmt.Sprintf("slides[%d].content[%d].diagram_value", slideIdx, contentIdx)
+			path := slidepath.ContentField(slideIdx, contentIdx, "diagram_value")
 			findings = append(findings, diagramSpecIconFindings(item.DiagramValue, path)...)
 		}
 		grid := slide.ShapeGrid
@@ -105,7 +105,7 @@ func diagramSpecIconFindings(spec *types.DiagramSpec, path string) []patterns.Fi
 		if _, err := icons.Lookup(name); err == nil {
 			continue
 		}
-		findings = append(findings, unknownDiagramIconFinding(spec.Type, name, fmt.Sprintf("%s.data.panels[%d].icon", path, i)))
+		findings = append(findings, unknownDiagramIconFinding(spec.Type, name, fmt.Sprintf("%s/data/panels/%d/icon", path, i)))
 	}
 	return findings
 }

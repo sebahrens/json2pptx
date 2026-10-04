@@ -296,14 +296,14 @@ func validatePreviewBoundary(input *PresentationInput) *mcp.CallToolResult {
 	var diags []diagnostics.Diagnostic
 	if input.Template == "" && input.TemplatePath == "" {
 		diags = append(diags, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "template", Message: "template is required: a registered name, or template_path for a local .pptx inside base_dir",
+			Code: "REQUIRED", Path: "/template", Message: "template is required: a registered name, or template_path for a local .pptx inside base_dir",
 			Severity:     diagnostics.SeverityError,
 			NextToolCall: nextCallListTemplates(),
 		})
 	}
 	if len(input.Slides) == 0 {
 		diags = append(diags, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "slides", Message: "at least one slide is required",
+			Code: "REQUIRED", Path: "/slides", Message: "at least one slide is required",
 			Severity:     diagnostics.SeverityError,
 			NextToolCall: nextCallGetInputSchema(),
 		})

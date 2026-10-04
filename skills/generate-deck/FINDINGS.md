@@ -57,9 +57,11 @@ message is that number, "slide index N" is 0-based). Ignore `debug` (compiled-de
 ## Raw-deck findings
 
 Each finding has stable machine fields `{path, code, severity, action, fix}`;
-`fix` has `kind` and `params`. The prose `message` is explanatory,
-not a programmatic key. The shared finding envelope has `ok` plus an
-ordered `findings[]`. Work top-down: severity descending, then slide index,
+`fix` has `kind` and `params`. `path` is a JSON Pointer into the deck you
+sent (`/template`, `/slides/1/content/1/table_value/rows/0/2/conditional/rule`,
+`/defaults/table_style/style_id` for a default a table adopted); a field to
+add is named by the pointer it will have. The shared finding envelope has
+`ok` plus an ordered `findings[]`. Work top-down: severity descending, then slide index,
 then code. A deck-level finding precedes slide 0 at equal severity.
 A pattern text-budget warning (`BODY_TOO_LONG`, `HEADLINE_TOO_LONG`,
 `TEXT_EXCEEDS_SHAPE`) that names one value has that value's pointer as
@@ -75,8 +77,7 @@ max_chars, pattern}}`: rewrite that field yourself within `max_chars`.
 - `shrink_or_split`: the content needs more room or less text. Preserve facts;
   split the slide or rewrite copy rather than blindly truncating.
 - `review` / `info`: a judgment for the author; inspect the rendered slide
-  and decide. An advisory is not a failed call, and a clean score does not
-  replace final-revision visual inspection. `fit_overflow` at `info` (one
+  and decide. An advisory is not a failed call. `fit_overflow` at `info` (one
   per slide): a `shape_grid` cell fits only through a stored autofit scale,
   so its size differs between PowerPoint and LibreOffice. Apply `fix`
   (`reduce_cell_text`: `cell_path`, `max_chars`; `cells` lists every
@@ -106,16 +107,13 @@ executable and advisory vocabularies are
 `repair_fix_kind_params`) and `advisory_fix_kinds`. `repair_slide` applies
 one slide's executable directives. A finding's
 `fix.kind` is not necessarily executable: if it needs human judgment,
-`repair_slide` returns `advisory_fix_kind` with alternatives. Act on its
-guidance; do not retry the same advisory kind.
+`repair_slide` returns `advisory_fix_kind` with alternatives.
 
 Text-reduction fixes refuse with `semantic_review_required` if they would
-erase a number, unit, negation, or qualifier. Prefer authoring a shorter
-sentence or splitting the slide. A fix aimed at the wrong structure returns
+erase a number, unit, negation, or qualifier. A fix aimed at the wrong structure returns
 `wrong_kind_for_target` and a `next_tool_call` with a suitable kind/path.
-On a named-pattern slide, the expanded grid is generated output: when a
-finding names a pattern cell, edit the corresponding pattern `values`,
-then re-expand and validate. A split must leave **both** halves valid under
+A pattern cell (`…/pattern/rows/R/cells/C/…`) is generated output: edit
+the pattern `values` and validate again. A split must leave **both** halves valid under
 that pattern's minimum counts.
 
 `validate_input`, `generate -dry-run`, `generate_presentation` and CLI
@@ -130,10 +128,11 @@ path; `validate_input` with the target template reports the same refusal as
 an error first. CLI `generate --partial` skips the refused slide and reports
 `CONTENT_DROPPED` with `fix.params.cause` and `refused_path`.
 
-Strict output validation (RAW_PATH.md) is separate from fit. `CONTENT_DROPPED` with
+`CONTENT_DROPPED` with
 `cause:"placeholder_not_found"` or `"placeholder_occupied"` (two blocks on
-one placeholder) is `action:"refuse"`: the content is absent from the
-result; `fix.params.options` lists the remedies (`split_slide`,
+one placeholder) is `action:"refuse"`, an error at `/slides/N/content/M`
+that `validate_input` reports and generation refuses on;
+`fix.params.options` lists the remedies (`split_slide`,
 `choose_layout`, `retarget_placeholder`, `merge_blocks`). Charts and
 diagrams share the native 12pt (`present`) floor at their placed size: a
 crowded diagram shows `diagram.text_overlap` instead of shrinking, and text

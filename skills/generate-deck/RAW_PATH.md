@@ -48,9 +48,9 @@ on a grid shape or overlay badge (`N` is the 1-based slide number in the
 
 `generate_presentation` defaults to strict output validation: success means
 the PPTX passed the blocking OPC / OOXML checks, not that it looks right.
-Refuse-class `CONTENT_DROPPED` (FINDINGS.md) fails generation; read
-`placeholders_dropped`, not just `placeholders_used`, when a slide looks
-empty.
+Refuse-class `CONTENT_DROPPED` (FINDINGS.md) refuses the deck before a file
+is written. Under `output_validation:"warn"`/`"off"` it is written without
+the block; read `placeholders_dropped` then.
 
 Actual source loss refuses every fit mode, including `warn` and `off`, and so
 does grid text below its role floor (`TEXT_BELOW_READABLE_MIN`; a lone axis

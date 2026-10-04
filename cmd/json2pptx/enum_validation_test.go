@@ -185,7 +185,7 @@ func TestCheckDeckEnumValues_ThemeOverrideColors(t *testing.T) {
 	if len(errs) != 3 {
 		t.Fatalf("got %d errors, want 3: %v", len(errs), errs)
 	}
-	wantPaths := []string{"theme_override/colors/accent1", "theme_override/colors/accent2", "theme_override/colors/accent3"}
+	wantPaths := []string{"/theme_override/colors/accent1", "/theme_override/colors/accent2", "/theme_override/colors/accent3"}
 	for i, e := range errs {
 		if e.Path != wantPaths[i] {
 			t.Errorf("errs[%d].Path = %q, want %q", i, e.Path, wantPaths[i])

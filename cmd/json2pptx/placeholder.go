@@ -8,6 +8,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/policy/placeholder"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 )
 
 // placeholderPolicyDefault is the standing policy when the caller does not set
@@ -59,13 +60,13 @@ func placeholderDiagnostics(violations []placeholder.Violation, blocking bool) [
 	for _, v := range violations {
 		diags = append(diags, diagnostics.Diagnostic{
 			Code:     placeholder.FindingCode,
-			Path:     v.Path,
+			Path:     slidepath.Field("", v.Path),
 			Message:  placeholderMessage(v, blocking),
 			Severity: severity,
 			Fix: &diagnostics.Fix{
 				Kind: "replace_placeholder",
 				Params: map[string]any{
-					"path":  v.Path,
+					"path":  slidepath.Field("", v.Path),
 					"token": v.Token,
 					"hint":  "overwrite the " + placeholder.Token + " token with the slide's real content — plan_deck skeletons are scaffolding, not finished text",
 				},
