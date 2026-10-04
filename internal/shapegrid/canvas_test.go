@@ -64,31 +64,37 @@ func TestCanvasScaleKeepsALevelThatWouldBreak(t *testing.T) {
 		raw, _ := json.Marshal(map[string]any{"content": s, "size": size})
 		return raw
 	}
-	grid := func(label string) *Grid {
+	grid := func(label string, size float64) *Grid {
 		return &Grid{
 			Bounds:      pptx.RectEmu{CX: PtToEMU(400), CY: PtToEMU(300)},
 			Columns:     []float64{30, 70},
 			VAlign:      VAlignAuto,
 			CanvasScale: 1.1,
 			Rows: []Row{{MaxHeight: 60, Cells: []Cell{
-				{Shape: &ShapeSpec{Geometry: "rect", Text: text(label, 14)}},
+				{Shape: &ShapeSpec{Geometry: "rect", Text: text(label, size)}},
 				{Shape: &ShapeSpec{Geometry: "rect", Text: text("A sentence that wraps where it likes", 12)}},
 			}}},
 		}
 	}
-	// 30% of 400pt less the column gap and the text margins leaves about 89pt:
-	// "Scope" holds its line at 14pt and at 15pt, "Accountability" only
-	// at 14pt.
-	if res, _, _ := resolvedBlock(t, grid("Scope")); sizesOf(res) != "15,13" {
-		t.Errorf("sizes = %s, want both levels scaled (15,13)", sizesOf(res))
+	// The label's line is about 104pt as designed and 111pt scaled (7% more).
+	// A 14pt label becomes 15pt (7% more) and takes the share of its line it
+	// took before, so "Accountability" at 83% of the line scales although it
+	// is past the stand-in face's 80% token margin
+	// (go-slide-creator-5x4w4). An 18pt label becomes 20pt (11% more):
+	// "Accountable" takes more of its line than before and past the margin,
+	// so its level stays.
+	for _, label := range []string{"Scope", "Accountability"} {
+		if res, _, _ := resolvedBlock(t, grid(label, 14)); sizesOf(res) != "15,13" {
+			t.Errorf("%s: sizes = %s, want both levels scaled (15,13)", label, sizesOf(res))
+		}
 	}
-	res, _, _ := resolvedBlock(t, grid("Accountability"))
-	if got := sizesOf(res); got != "14,13" {
-		t.Errorf("sizes = %s, want the label level kept at 14 and the body at 13", got)
+	res, _, _ := resolvedBlock(t, grid("Accountable", 18))
+	if got := sizesOf(res); got != "18,13" {
+		t.Errorf("sizes = %s, want the label level kept at 18 and the body at 13", got)
 	}
 
 	// Text pinned at a size nothing can scale: the design stands, rows included.
-	pinned := grid("Accountability")
+	pinned := grid("Accountable", 18)
 	pinned.Rows[0].Cells = pinned.Rows[0].Cells[:1]
 	pinned.Columns = []float64{30, 70}
 	design := *pinned

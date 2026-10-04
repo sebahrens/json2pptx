@@ -7,6 +7,8 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/textfit"
+	"github.com/sebahrens/json2pptx/svggen/fontcache"
 )
 
 // Nodes style of driver-tree (go-slide-creator-xj2sl) — the default.
@@ -61,16 +63,30 @@ var driverTreeMinColFrac = [4]float64{0.14, 0.16, 0.18, 0.14}
 
 // labelFitWidthPt (shared with arch-stack's label column) returns the narrowest width in [minPt, maxPt] at which
 // text needs no more height than it does at maxPt, with driverTreeWidthSlack.
+//
+// A body face the measurer only has a stand-in for (Aptos, Segoe UI,
+// Tenorite) is measured on textfit.AtomicTokenWidthPct of each candidate's
+// text width, the margin every must-not-wrap label keeps for such a face:
+// at the 15% slack alone LibreOffice wrapped arch-stack's "Domain services"
+// on blue-corporate and modern-yellow and shrank that one label beside its
+// siblings (go-slide-creator-5x4w4).
 func labelFitWidthPt(fonts pptx.ThemeFonts, text json.RawMessage, minPt, maxPt float64) float64 {
 	if minPt >= maxPt {
 		return maxPt
 	}
-	base := writtenFitHeightPt(fonts, text, maxPt, 0)
+	measured := func(w float64) float64 {
+		if fontcache.HostIndependent(strings.TrimSpace(fonts.Minor)) {
+			return w
+		}
+		const insets = 2 * defaultShapeInsetLRPt
+		return insets + math.Max(w-insets, 0)*textfit.AtomicTokenWidthPct/100
+	}
+	base := writtenFitHeightPt(fonts, text, measured(maxPt), 0)
 	if base <= 0 {
 		return maxPt
 	}
 	fits := func(w float64) bool {
-		h := writtenFitHeightPt(fonts, text, w, 0)
+		h := writtenFitHeightPt(fonts, text, measured(w), 0)
 		return h > 0 && h <= base
 	}
 	lo, hi := minPt, maxPt

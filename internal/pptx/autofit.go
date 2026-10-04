@@ -159,6 +159,38 @@ func autofitMeasureFace(tb *TextBody) autofitFace {
 	return autofitFace{name: face, exact: true}
 }
 
+// ParagraphFitFace returns the face a fit decision for one paragraph is
+// measured in, and whether it is the face the paragraph renders in (or, for
+// Arial, its metric twin). It is autofitMeasureFace for a single paragraph:
+// the grid's type step and canvas scale decide a level at a time, and a card
+// whose heading and body use the theme's two faces still has one face per
+// paragraph (go-slide-creator-5x4w4). A paragraph with mixed faces, a face
+// that measures differently from host to host, or no theme fonts is measured
+// in Liberation Sans and reported as not exact.
+func ParagraphFitFace(p Paragraph, fonts ThemeFonts) (name string, exact bool) {
+	if fonts == (ThemeFonts{}) {
+		return autofitFontName, false
+	}
+	face := ""
+	for _, r := range p.Runs {
+		if strings.TrimSpace(r.Text) == "" {
+			continue
+		}
+		f := runTypeface(r.FontFamily, fonts)
+		if f == "" || (face != "" && !strings.EqualFold(f, face)) {
+			return autofitFontName, false
+		}
+		face = f
+	}
+	if face == "" || !fontcache.HostIndependent(face) {
+		return autofitFontName, false
+	}
+	if strings.EqualFold(face, "Arial") {
+		return autofitFontName, true
+	}
+	return face, true
+}
+
 // runTypeface resolves a run's latin typeface against the theme fonts: the
 // theme references to their typefaces, an unset typeface to the body font a
 // shape's text inherits, anything else as written.

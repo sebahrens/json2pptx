@@ -441,6 +441,7 @@ func CompileRegions(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	}
 
 	grid, cellPaths := regionGrid(arrangement, axis, stack, builds)
+	stampCompilerSource(grid, regionsGridSource, 0)
 	slide := &deckinput.SlideInput{SlideType: "content", LayoutID: "blank-title", ShapeGrid: grid}
 	links := titleLink(slide, in)
 	for i, b := range builds {
@@ -458,6 +459,32 @@ func CompileRegions(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	}
 	links = append(links, applyTakeaway(slide, in)...)
 	return slide, links, nil
+}
+
+// regionsGridSource is the source stamp of the grids a regions slide is
+// compiled to.
+const regionsGridSource = jsonschema.CompilerSourcePrefix + "regions"
+
+// stampCompilerSource marks grid and the grids nested in its cells as built
+// by the compiler. Their heading rows, gaps and unsized text are points
+// designed on the standard slide, so the engine scales them with a larger
+// slide as it scales a pattern's (go-slide-creator-o9n8u); an authored
+// raw_json2pptx grid carries no stamp and keeps its points. A nested grid
+// that already names a source keeps it.
+func stampCompilerSource(grid *deckinput.ShapeGridInput, source string, depth int) {
+	if grid == nil || depth > 8 {
+		return
+	}
+	if grid.Source == "" {
+		grid.Source = source
+	}
+	for _, row := range grid.Rows {
+		for _, cell := range row.Cells {
+			if cell != nil {
+				stampCompilerSource(cell.Grid, source, depth+1)
+			}
+		}
+	}
 }
 
 // regionsSourceLine joins the slide's own source and each region's, dropping

@@ -1,5 +1,41 @@
 # Schema Changelog
 
+- **2026-10-04 — Step and scale decisions measure the template face; a shared shrink is written as sizes (`go-slide-creator-5x4w4`).**
+  - The grid's type step, canvas scale and `type_scale` growth measure each
+    paragraph in the face it renders in where that face measures the same on
+    every host (Calibri, Arial, Lora, Poppins Light), and in the Liberation
+    Sans stand-in with its 80% token margin otherwise. On the Calibri and
+    Arial templates a five-KPI row and a seven-stop chevron timeline now take
+    the type step; on modern-template (Poppins Light) the quote-cluster and
+    timeline-horizontal exemplars keep their design sizes; on
+    business-template arch-stack, driver-tree, journey-maturity-model,
+    kpi-5up / kpi-6up, process-grid-2row, state-shift-hub and swimlane text
+    follows the canvas.
+  - A shrink that same-size siblings of a row share is written into their
+    text sizes instead of a stored `fontScale` (which LibreOffice ignores), so
+    the row renders at one size in every renderer. Rows with text the shrink
+    would take under 12pt keep the stored scale.
+  - `arch-stack` / `driver-tree` label columns keep the 80% margin on
+    templates whose body face is measured with a stand-in (abstract,
+    blue-corporate, modern-yellow), so one long label is not shrunk alone.
+  - No JSON shape change.
+
+- **2026-10-04 — Compiler-built grids follow the canvas (`go-slide-creator-o9n8u`).**
+  - A `regions` slide's shape_grid and the grids nested in it are stamped
+    `source: "compiler:regions"` and scale with a larger slide like a pattern
+    grid. Authored raw grids keep their points; standard-size templates
+    render byte-identically. `shape_grid.source` accepts the new value; it
+    waives no design-mode rule.
+
+- **2026-10-04 — Swimlane tiles follow the lane; `SLIDE_UNDERUSED` drops the swimlane threshold (`go-slide-creator-0e0en`).**
+  - A swimlane step tile takes 75% of its lane's height (at least its longest
+    step's need, at most 1.3 times it), and the lane is set in 14pt when every
+    step and actor fits at that size. `SLIDE_UNDERUSED` judges swimlane at the
+    shared 29% (was 24%); the exemplar covers 32–34% on every shipped
+    template.
+  - `SLIDE_UNDERUSED` counts `hero-detail`'s accent-ruled detail cards by
+    their slot; the exemplar covers 39% on business-template (was 29.1%).
+
 - **2026-10-04 — Schema 4.161.0 · follow-ups to the layout and agent-journey wave (label `followup-20261004`).**
   - One version for the dated bullets below this one down to the 4.160.0
     entry (15 beads): two-row `process-flow` and `overrides.rows`, one-line

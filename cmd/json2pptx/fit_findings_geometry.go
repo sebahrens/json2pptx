@@ -57,12 +57,6 @@ const (
 	// statement (heroStatementPatterns): a figure and its label cover 17-25%
 	// of the zone at their designed sizes.
 	slideUnderusedHeroPatternMaxFrac = 0.15
-	// slideUnderusedLanePatternMaxFrac is the threshold for a swimlane: its
-	// lanes span the zone and its step tiles are content-sized, so on a taller
-	// content area (business-template) a six-step, three-lane flow covers
-	// ~25% where it covers ~30% on the standard slide. Two lanes of three bare
-	// steps (~23%) still report.
-	slideUnderusedLanePatternMaxFrac = 0.24
 	// textExceedsTolerance absorbs rounding/kerning noise before flagging.
 	textExceedsTolerance = 1.02
 
@@ -263,6 +257,10 @@ type geomAccumulator struct {
 	// underused slide because it lost its card fills
 	// (go-slide-creator-8zles).
 	openCells bool
+	// ruledCell is set while measuring an unfilled text cell that its
+	// pattern stands beside an accent rule (ruledColumnPatterns): the cell
+	// counts as its slot.
+	ruledCell bool
 }
 
 // addInk records a rectangle that is content in both views: coverage (ink)
@@ -289,11 +287,18 @@ func (a *geomAccumulator) walk(input *ShapeGridInput, result *shapegrid.ResolveR
 		a.slotInk = openColumnPatterns[strings.TrimPrefix(input.Source, patternSourcePrefix)]
 		defer func() { a.slotInk = outer }()
 	}
+	ruled := input != nil && ruledColumnPatterns[strings.TrimPrefix(input.Source, patternSourcePrefix)]
 	for _, cell := range result.Cells {
 		cellPath := fmt.Sprintf("%s/rows/%d/cells/%d", basePath, cell.RowIdx, cell.ColIdx)
 		switch cell.Kind {
 		case shapegrid.CellKindShape:
+			a.ruledCell = false
+			if ruled && cell.RowIdx >= 0 && cell.RowIdx < len(input.Rows) {
+				src := gridCellAtResolved(input, cell.RowIdx, cell.ColIdx)
+				a.ruledCell = src != nil && src.AccentBar != nil
+			}
 			a.shapeCell(cell, cellPath)
+			a.ruledCell = false
 		case shapegrid.CellKindIcon:
 			a.addInk(a.slotOr(cell, cell.Bounds))
 		case shapegrid.CellKindTable, shapegrid.CellKindImage, shapegrid.CellKindDiagram, shapegrid.CellKindComposite:
@@ -390,6 +395,10 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 			a.addInk(cell.Bounds)
 			return
 		}
+		if a.ruledCell && cell.CellBounds.CX > 0 && cell.CellBounds.CY > 0 {
+			a.ink = append(a.ink, cell.CellBounds)
+			return
+		}
 		a.ink = append(a.ink, a.slotOr(cell, block))
 		return
 	}
@@ -440,6 +449,19 @@ var openColumnPatterns = map[string]bool{
 	// (go-slide-creator-le9d0, -ttpae).
 	"next-steps":          true,
 	"numbered-step-strip": true,
+}
+
+// ruledColumnPatterns are the patterns that set open text columns beside an
+// accent rule as tall as the column: hero-detail's default detail cards. The
+// rule draws the column's edge the way the card fill it replaced did
+// (go-slide-creator-19pp9), so a ruled cell counts as its slot — the same
+// reasoning as openColumnPatterns, applied to the ruled cells only: the hero
+// figure above them still counts by its glyphs. Counted by glyphs, the
+// exemplar sat at 29.1% of business-template's larger content area against
+// the 29% threshold (go-slide-creator-0e0en); a hero over two bare titles is
+// still a small block and still reports.
+var ruledColumnPatterns = map[string]bool{
+	"hero-detail": true,
 }
 
 // slotOr returns the cell's grid slot when the slide's pattern counts ink by
@@ -639,8 +661,6 @@ func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInpu
 			threshold = slideUnderusedStripPatternMaxFrac
 		case heroStatementPatterns[patternName]:
 			threshold = slideUnderusedHeroPatternMaxFrac
-		case patternName == "swimlane":
-			threshold = slideUnderusedLanePatternMaxFrac
 		}
 	}
 	// A content-sized, middle-anchored block (a KPI row, before-after panels)

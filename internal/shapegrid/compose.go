@@ -54,7 +54,8 @@ const (
 	// connector lines, which keep their thickness.
 	composeHairlinePt = 4.0
 	// composeFitMargin keeps stepped text a little inside its cell: the fit
-	// is measured in a stand-in face.
+	// is measured in a stand-in face, or in the template's own by a measurer
+	// whose line breaks a renderer need not share.
 	composeFitMargin = 0.96
 	// ComposeLabelMaxWords: a paragraph of at most this many words is a
 	// label, which the step must not wrap onto a second line.
@@ -407,7 +408,11 @@ func stepShapeText(spec *ShapeSpec, sizes map[float64]float64, keepSizes bool) *
 // stepFit measures stepped text against the cell it is written in and records
 // the result on plan: the needed share of the text rectangle's height (a cell
 // whose text did not fit before the step is held to no worse than before),
-// and whether a word that fit its line no longer does.
+// and whether a word that fit its line no longer does. Both are measured in
+// the face the paragraph renders in where the measurer has it
+// (pptx.ParagraphFitFace): a stand-in that runs wider than the template face
+// neither sees a value that sat on its line as designed nor leaves it there
+// (go-slide-creator-5x4w4).
 func stepFit(plan *composePlan, before, after *ShapeSpec, bounds pptx.RectEmu, overlay [4]int64) {
 	if before == after {
 		return
@@ -428,7 +433,7 @@ func stepFit(plan *composePlan, before, after *ShapeSpec, bounds pptx.RectEmu, o
 	if width <= 0 || height <= 0 {
 		return
 	}
-	parasAfter, parasBefore := scaleParagraphs(tbAfter), scaleParagraphs(tbBefore)
+	parasAfter, parasBefore := scaleParagraphs(tbAfter, after.ThemeFonts), scaleParagraphs(tbBefore, before.ThemeFonts)
 	if len(parasAfter) == 0 || len(parasAfter) != len(parasBefore) {
 		return
 	}
@@ -442,20 +447,20 @@ func stepFit(plan *composePlan, before, after *ShapeSpec, bounds pptx.RectEmu, o
 		// stays on one line: "Logo churn (SMB-" over "weighted)" at the
 		// stepped size reads worse than the label whole at its own size.
 		if text := strings.TrimSpace(p.text); len(strings.Fields(text)) <= ComposeLabelMaxWords && p.role != "kpi-value" {
-			w0, err0 := textfit.MeasureStyledLineWidth(text, "Liberation Sans", parasBefore[i].fontPt, p.bold)
-			w1, err1 := textfit.MeasureStyledLineWidth(text, "Liberation Sans", p.fontPt, p.bold)
-			if err0 == nil && err1 == nil && float64(w0) <= line && float64(w1) > line {
+			w0, ok0 := p.tokenWidth(text, parasBefore[i].fontPt)
+			w1, ok1 := p.tokenWidth(text, p.fontPt)
+			if ok0 && ok1 && w0 <= line && w1 > line {
 				plan.brokenToken = true
 				return
 			}
 		}
 		for _, tok := range toks {
-			w0, err0 := textfit.MeasureStyledLineWidth(tok, "Liberation Sans", parasBefore[i].fontPt, p.bold)
-			w1, err1 := textfit.MeasureStyledLineWidth(tok, "Liberation Sans", p.fontPt, p.bold)
-			if err0 != nil || err1 != nil {
+			w0, ok0 := p.tokenWidth(tok, parasBefore[i].fontPt)
+			w1, ok1 := p.tokenWidth(tok, p.fontPt)
+			if !ok0 || !ok1 {
 				continue
 			}
-			if float64(w0) <= line && float64(w1) > line*textfit.AtomicTokenWidthPct/100 {
+			if w0 <= line && w1 > line*p.tokenShare() {
 				plan.brokenToken = true
 				return
 			}
@@ -483,7 +488,7 @@ func blockHeightPt(paras []scaleParagraph, width int64) float64 {
 		if usable <= 0 {
 			return math.Inf(1)
 		}
-		m, err := textfit.MeasureRun(p.text, "Liberation Sans", p.fontPt, usable, 0)
+		m, err := textfit.MeasureRun(p.text, p.face, p.fontPt, usable, 0)
 		if err != nil {
 			return math.Inf(1)
 		}

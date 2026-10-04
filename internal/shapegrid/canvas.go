@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
-	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
 // Canvas scale (go-slide-creator-ttpae).
@@ -27,7 +26,8 @@ import (
 //     1.10).
 //  3. Text is scaled only where it fits no worse than as designed: no cell
 //     needs more of its height than before (or it stays inside
-//     composeFitMargin) and no word or short label that held its line breaks.
+//     composeFitMargin) and no word or short label that held its line breaks,
+//     measured in the template's own face where the measurer has it.
 //     A content-sized block whose text wraps onto an extra line is retried
 //     with taller rows (canvasRowGrowths); a size level that still does not
 //     hold keeps its design size (resolveCanvas). A grid none of whose text
@@ -366,6 +366,15 @@ func canvasAutofit(cell *ResolvedCell) float64 {
 // canvasBreaksLine reports whether a paragraph designed at level points, on a
 // line lineB wide, has a word, a short label or a KPI value that held that
 // line and does not hold the scaled line lineA at the paragraph's scaled size.
+//
+// The widths are measured in the face the paragraph renders in where the
+// measurer has it (pptx.ParagraphFitFace). A token that cannot wrap may take
+// its token share of the scaled line, or the share of its line it took as
+// designed: text and line grow by the same canvas, so in any face a token
+// that takes no more of its line than before holds it as before. The
+// Liberation Sans stand-in used to refuse every token past its 80% margin,
+// which held back swimlane step text, kpi-5up / kpi-6up values and
+// contact-directory initials on business-template (go-slide-creator-5x4w4).
 func canvasBreaksLine(p scaleParagraph, level, lineA, lineB float64) bool {
 	text := strings.TrimSpace(p.text)
 	toks := strings.Fields(text)
@@ -376,18 +385,16 @@ func canvasBreaksLine(p scaleParagraph, level, lineA, lineB float64) bool {
 		toks = []string{text} // a value stays with its unit
 	}
 	for _, tok := range toks {
-		w0, err0 := textfit.MeasureStyledLineWidth(tok, "Liberation Sans", level, p.bold)
-		w1, err1 := textfit.MeasureStyledLineWidth(tok, "Liberation Sans", p.fontPt, p.bold)
-		if err0 != nil || err1 != nil {
+		w0, ok0 := p.tokenWidth(tok, level)
+		w1, ok1 := p.tokenWidth(tok, p.fontPt)
+		if !ok0 || !ok1 || w0 > lineB || lineB <= 0 {
 			continue
 		}
 		limit := lineA
 		if !strings.Contains(tok, " ") || p.role == "kpi-value" {
-			// One token cannot wrap: it keeps the atomic-token margin the
-			// stand-in face needs, unless the design already sat inside it.
-			limit = math.Max(lineA*textfit.AtomicTokenWidthPct/100, float64(w0))
+			limit = lineA * math.Max(p.tokenShare(), w0/lineB)
 		}
-		if float64(w0) <= lineB && float64(w1) > limit {
+		if w1 > limit {
 			return true
 		}
 	}
@@ -406,5 +413,5 @@ func canvasTextBox(cell *ResolvedCell) (width, height int64, paras []scaleParagr
 	if tb.Vert != "" {
 		width, height = height, width
 	}
-	return width, height, scaleParagraphs(tb)
+	return width, height, scaleParagraphs(tb, cell.ShapeSpec.ThemeFonts)
 }

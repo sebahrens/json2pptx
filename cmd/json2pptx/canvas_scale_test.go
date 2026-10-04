@@ -94,6 +94,56 @@ func TestGridCanvasScale(t *testing.T) {
 	if got := gridCanvasScale(&ShapeGridInput{}, a.SlideWidth, a.SlideHeight); got != 1 {
 		t.Errorf("authored grid: canvas scale %v, want 1", got)
 	}
+
+	// A regions slide is a grid the semantic compiler builds by hand: it and
+	// the grids it nests (a region under its heading) carry the compiler's
+	// stamp and follow the canvas too (go-slide-creator-o9n8u).
+	spec := map[string]any{
+		"meta": map[string]any{"title": "Deck", "template": "business-template"},
+		"slides": []any{map[string]any{
+			"kind": "regions", "title": "Two regions", "arrangement": "columns",
+			"regions": []any{
+				map[string]any{"kind": "text", "heading": "Left", "body": "One paragraph."},
+				map[string]any{"kind": "text", "heading": "Right", "body": "Another paragraph."},
+			},
+		}},
+	}
+	raw, err := json.Marshal(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, diags := semantic.ParseJSON(raw)
+	if parsed == nil {
+		t.Fatalf("parse regions spec: %+v", diags)
+	}
+	compiled, _, err := semantic.Compile(parsed, semantic.CompileOptions{})
+	if err != nil || compiled == nil {
+		t.Fatalf("compile regions spec: %v", err)
+	}
+	var check func(g *ShapeGridInput, depth int) int
+	check = func(g *ShapeGridInput, depth int) int {
+		n := 1
+		if got := gridCanvasScale(g, a.SlideWidth, a.SlideHeight); got < 1.09 || got > 1.11 {
+			t.Errorf("regions grid at depth %d (source %q): canvas scale %v, want ~1.10", depth, g.Source, got)
+		}
+		for _, row := range g.Rows {
+			for _, cell := range row.Cells {
+				if cell != nil && cell.Grid != nil {
+					n += check(cell.Grid, depth+1)
+				}
+			}
+		}
+		return n
+	}
+	for _, slide := range compiled.Slides {
+		if slide.ShapeGrid != nil {
+			if n := check(slide.ShapeGrid, 0); n < 3 {
+				t.Errorf("regions slide compiled to %d grid(s), want the outer grid and one per headed region", n)
+			}
+			return
+		}
+	}
+	t.Fatal("the regions slide compiled to no shape_grid")
 }
 
 // validate_deck_spec gives a sparse-slide advisory the advice render gives as
