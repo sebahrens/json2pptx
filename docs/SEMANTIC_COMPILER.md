@@ -185,7 +185,11 @@ template.
 - **Template.** Findings are measured on a template. Precedence is the
   call's `template` (`--template`, the HTTP `?template=`) > `meta.template` >
   a `template_path` > the template a `deck_id` is bound to > the archetype
-  default. A `template` argument that differs from `meta.template` replaces
+  default. The rule is the same on every DeckSpec tool — `validate_deck_spec`,
+  `render_deck_spec`, `compile_deck_spec` and `explain_deck_spec`, their
+  `semantic validate|render|compile|explain --template` commands and the HTTP
+  compile and render endpoints (go-slide-creator-fjuhm; compile and explain
+  used to let `meta.template` win). A `template` argument that differs from `meta.template` replaces
   it for that call only (go-slide-creator-ifkxs): the response's `template`
   is the argument, `template_source` is `template argument`, and `warnings[]`
   says `template argument "X" overrides meta.template "Y" for this call only`
@@ -465,7 +469,7 @@ changes.
 
 Pass `--spec -` to read the spec from stdin (e.g. `… --spec - < deck.yaml`), portable across platforms. Each subcommand's `-h`/`--help` prints usage and exits **0**, so automated probes can introspect the surface without treating help as a failure.
 
-`semantic compile` writes the raw `PresentationInput` JSON by default. Add `--envelope` to emit a structured result instead — `{ok, slide_count, template, findings, compiled_json}` — so a compile-only flow surfaces non-blocking diagnostics (density, rhythm, raw-pattern preflight) without a separate `validate` run. This mirrors the HTTP `POST /api/v1/semantic/compile?include_compiled_json=true` response shape. A blocking parse/compile failure still emits the (`ok:false`) envelope and exits non-zero.
+`semantic compile` writes the raw `PresentationInput` JSON by default. Add `--envelope` to emit a structured result instead — `{ok, slide_count, template, warnings, findings, compiled_json}` — so a compile-only flow surfaces non-blocking diagnostics (density, rhythm, raw-pattern preflight) without a separate `validate` run. This mirrors the HTTP `POST /api/v1/semantic/compile?include_compiled_json=true` response shape. A blocking parse/compile failure still emits the (`ok:false`) envelope and exits non-zero.
 
 MCP:
 

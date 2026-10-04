@@ -1,5 +1,20 @@
 # Schema Changelog
 
+- **2026-10-04 — One template precedence on every DeckSpec tool: the call's `template` replaces `meta.template` on compile and explain too (`go-slide-creator-fjuhm`).**
+  - **`compile_deck_spec`** (`semantic compile --template`, HTTP
+    `POST /api/v1/semantic/compile?template=`): `template` used to apply only
+    when the spec pinned none. It now replaces `meta.template` for the call,
+    as on `validate_deck_spec` and `render_deck_spec`; the response's
+    `template` is the argument and a new `warnings[]` carries
+    `template argument "X" overrides meta.template "Y" for this call only`.
+    `semantic compile` prints the notice on stderr (and in `warnings` with
+    `--envelope`), so the raw deck on stdout stays the deck alone.
+  - **`explain_deck_spec`** gains the `template` argument (and
+    `semantic explain` a `--template` flag) with the same rule, and `warnings[]`.
+    Without the argument the order is unchanged: `meta.template`, then the
+    template the `deck_id` is bound to, then the archetype default. Explaining
+    does not change a deck's binding.
+
 - **2026-10-04 — A `chart_insight` that states its `takeaway` and lists no insights is no longer refused with `takeaway_missing` (`go-slide-creator-5ba5m`).**
   - The compiler filed a lone `takeaway` as a one-item `insights` list of
     `chart-insights-split` and cleared the slide's takeaway, so the slide had

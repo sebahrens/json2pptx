@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -57,6 +58,7 @@ type semanticCompileResponse struct {
 	OK           bool                        `json:"ok"`
 	SlideCount   int                         `json:"slide_count,omitempty"`
 	Template     string                      `json:"template,omitempty"`
+	Warnings     []string                    `json:"warnings,omitempty"`
 	Findings     diagnostics.FindingEnvelope `json:"findings"`
 	CompiledJSON json.RawMessage             `json:"compiled_json,omitempty"`
 	Error        string                      `json:"error,omitempty"`
@@ -115,10 +117,11 @@ func SemanticValidateHandler(finish ...SemanticFindingsFinisher) http.HandlerFun
 // SemanticCompileHandler returns POST /api/v1/semantic/compile — compile a
 // semantic deck spec into the raw json2pptx PresentationInput model. The
 // request body is the spec document (JSON or YAML by Content-Type). Query
-// parameters: strict (off|warn|strict, default warn), template (default
-// template when the spec pins none), and include_compiled_json (when true, the
-// full compiled PresentationInput is returned under compiled_json). A blocking
-// parse/compile failure responds 422 with ok=false and the blocking findings.
+// parameters: strict (off|warn|strict, default warn), template (the template
+// to compile for; it replaces meta.template for the request), and
+// include_compiled_json (when true, the full compiled PresentationInput is
+// returned under compiled_json). A blocking parse/compile failure responds 422
+// with ok=false and the blocking findings.
 func SemanticCompileHandler(finish ...SemanticFindingsFinisher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, filename, ok := readSemanticBody(w, r)
@@ -149,6 +152,17 @@ func SemanticCompileHandler(finish ...SemanticFindingsFinisher) http.HandlerFunc
 			return
 		}
 
+		// ?template= replaces meta.template for this request, as it does on
+		// the render endpoint and the MCP and CLI DeckSpec tools
+		// (go-slide-creator-fjuhm).
+		var warnings []string
+		if pinned := spec.Meta.Template; template != "" && pinned != "" && template != pinned {
+			overridden := *spec
+			overridden.Meta.Template = template
+			spec = &overridden
+			warnings = append(warnings, fmt.Sprintf("template %q overrides meta.template %q for this request only: the spec still pins %q", template, pinned, pinned))
+		}
+
 		input, result, err := semantic.Compile(spec, semantic.CompileOptions{
 			Strict:          strict,
 			DefaultTemplate: template,
@@ -163,6 +177,7 @@ func SemanticCompileHandler(finish ...SemanticFindingsFinisher) http.HandlerFunc
 		if err != nil {
 			writeJSON(w, http.StatusUnprocessableEntity, semanticCompileResponse{
 				OK:       false,
+				Warnings: warnings,
 				Findings: env,
 				Error:    err.Error(),
 			})
@@ -173,6 +188,7 @@ func SemanticCompileHandler(finish ...SemanticFindingsFinisher) http.HandlerFunc
 			OK:         true,
 			SlideCount: len(input.Slides),
 			Template:   input.Template,
+			Warnings:   warnings,
 			Findings:   env,
 		}
 		if includeJSON {

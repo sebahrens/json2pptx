@@ -45,7 +45,7 @@ var archetypeRegistry = map[Archetype]ArchetypeInfo{
 type ArchetypeDefaults struct {
 	// Template is the json2pptx template the archetype prefers. It fills the
 	// emitted deck's template only when neither the spec nor the caller pins one
-	// (spec template > CLI --template > archetype default).
+	// (the call's template > meta.template > archetype default).
 	Template string
 	// Executive marks archetypes whose decks are expected to land a message with
 	// a synthesis (executive_summary) or decision slide. It drives the rhythm

@@ -396,7 +396,7 @@ Query parameters:
 | Parameter | Endpoint | Default | Description |
 |-----------|----------|---------|-------------|
 | `strict` | validate, compile, render | `warn` | Advisory-rule severity: `off`, `warn`, or `strict` |
-| `template` | compile, render | — | Default (registered) template when the spec pins none |
+| `template` | compile, render | — | Registered template for this request; replaces the spec's `meta.template` (`warnings[]` says so) |
 | `include_compiled_json` | compile | `false` | When `true`, include the full compiled `PresentationInput` under `compiled_json` |
 | `output_validation` | render | `strict` | Post-generation output validation: `off`, `warn`, or `strict` |
 

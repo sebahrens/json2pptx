@@ -741,6 +741,7 @@ type compileDeckSpecResponse struct {
 	OK           bool                 `json:"ok"`
 	SlideCount   int                  `json:"slide_count,omitempty"`
 	Template     string               `json:"template,omitempty"`
+	Warnings     []string             `json:"warnings,omitempty"`
 	Diagnostics  []semanticDiagnostic `json:"diagnostics,omitempty"`
 	CompiledJSON json.RawMessage      `json:"compiled_json,omitempty"`
 	Error        string               `json:"error,omitempty"`
@@ -756,7 +757,7 @@ func mcpCompileDeckSpecTool() mcp.Tool {
 			mcp.Enum("off", "warn", "strict"),
 		),
 		mcp.WithString("template",
-			mcp.Description("Default template used when the spec pins none (spec template > this > archetype default). Use list_templates to discover names."),
+			mcp.Description("Template to compile for; overrides meta.template for this call. Use list_templates to discover names."),
 		),
 		mcp.WithBoolean("include_compiled_json",
 			mcp.Description("When true, include the full compiled raw PresentationInput under compiled_json. Defaults to false (compact output)."),
@@ -795,12 +796,17 @@ func handleCompileDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*m
 		return result, nil
 	}
 
+	// The template argument replaces meta.template for this call, as it does
+	// on validate_deck_spec and render_deck_spec (go-slide-creator-fjuhm).
+	choice := resolveSpecTemplate(spec.Meta.Template, templateName, "", specSource{})
+	spec = choice.evaluated(spec)
+
 	input, result, err := semantic.Compile(spec, semantic.CompileOptions{
 		Strict:          strictness,
 		DefaultTemplate: templateName,
 	})
 	if err != nil {
-		res := compileDeckSpecResponse{OK: false, Error: err.Error()}
+		res := compileDeckSpecResponse{OK: false, Error: err.Error(), Warnings: choice.Warnings}
 		if result != nil {
 			for _, d := range result.Diagnostics {
 				res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(d))
@@ -816,7 +822,7 @@ func handleCompileDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*m
 	// (go-slide-creator-rs4h).
 	designViolations := compiledDesignModeDiagnostics(input)
 
-	res := compileDeckSpecResponse{OK: len(designViolations) == 0, SlideCount: len(input.Slides), Template: input.Template}
+	res := compileDeckSpecResponse{OK: len(designViolations) == 0, SlideCount: len(input.Slides), Template: input.Template, Warnings: choice.Warnings}
 	if result != nil {
 		for _, d := range result.Diagnostics {
 			res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(d))
@@ -1159,6 +1165,9 @@ func mcpExplainDeckSpecTool() mcp.Tool {
 		mcp.WithDescription(`Explain the compiler's planned decisions for a semantic deck spec (DeckSpec) WITHOUT compiling or rendering. Returns {title, archetype, template, rhythm, rhythm_warnings[], slides[{index, kind, role, visual_family, density, title, takeaway, pattern, layout, alternatives[{pattern,layout,reason}]}]}: the resolved archetype/template, deck-rhythm advisories, selected composition, and supported alternatives for each slide. Use during planning to preview how the spec reads and which visuals it will pick. A spec that cannot be parsed returns a structured error envelope. Mirrors the ` + "`json2pptx semantic explain`" + ` CLI.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaExplainDeckSpec)),
 		deckSpecOrHandleArg("The semantic DeckSpec to explain, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
+		mcp.WithString("template",
+			mcp.Description("Template to plan for; overrides meta.template for this call."),
+		),
 	}, deckHandleToolParams("explain_deck_spec"))...))
 }
 
@@ -1168,13 +1177,21 @@ func (mc *mcpConfig) handleExplainDeckSpec(ctx context.Context, request mcp.Call
 		return errRes, nil
 	}
 	data, filename, deckID := src.Data, src.Filename, src.DeckID
+	argTemplate, _, errRes := semanticOptionalString("explain_deck_spec", "template", request)
+	if errRes != nil {
+		return errRes, nil
+	}
 
 	spec, parseDiags := semantic.Parse(filename, data)
 	if parseDiags.HasErrors() {
 		return api.MCPDiagnosticsError(parseDiags.ToDiagnostics()), nil
 	}
 
-	explanation := explainSpecWithTemplate(spec, src.Template)
+	// One template precedence for every DeckSpec tool: the call's template,
+	// then meta.template, then the deck_id's (go-slide-creator-fjuhm). The
+	// explanation is of that call; the deck's binding is left as it is.
+	choice := resolveSpecTemplate(spec.Meta.Template, argTemplate, "", src)
+	explanation := explainSpecWithTemplate(choice.evaluated(spec), choice.Default)
 	commit := deckCommit{Tool: "explain_deck_spec", Src: src, Spec: data, Filename: filename, Store: !src.DryRun}
 	if explanation.Template == "" {
 		outcome := mc.commitDeck(commit)
@@ -1185,6 +1202,7 @@ func (mc *mcpConfig) handleExplainDeckSpec(ctx context.Context, request mcp.Call
 			DeckExplanation: explanation,
 			DeckID:          outcome.DeckID,
 			ChangedSlides:   outcome.Changed,
+			Warnings:        choice.Warnings,
 		}
 		return api.MCPSuccessResult(ctx, resp)
 	}
@@ -1205,6 +1223,7 @@ func (mc *mcpConfig) handleExplainDeckSpec(ctx context.Context, request mcp.Call
 		DeckExplanation: explanation,
 		DeckID:          outcome.DeckID,
 		ChangedSlides:   outcome.Changed,
+		Warnings:        choice.Warnings,
 	}
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)
 	if err != nil {
@@ -1213,9 +1232,10 @@ func (mc *mcpConfig) handleExplainDeckSpec(ctx context.Context, request mcp.Call
 	return mcpResult, nil
 }
 
-// explainSpecWithTemplate applies the same template precedence as Compile:
-// a spec pin wins, then the caller's selected or remembered template, then
-// the archetype default already supplied by ExplainSpec.
+// explainSpecWithTemplate explains a spec as Compile reads it: its
+// meta.template (already replaced by the call's template argument, see
+// resolveSpecTemplate), then the caller's selected or remembered template,
+// then the archetype default already supplied by ExplainSpec.
 func explainSpecWithTemplate(spec *semantic.DeckSpec, defaultTemplate string) semantic.DeckExplanation {
 	explanation := semantic.ExplainSpec(spec)
 	if spec.Meta.Template == "" && defaultTemplate != "" {
@@ -1257,6 +1277,9 @@ type explainDeckSpecResponse struct {
 	semantic.DeckExplanation
 	DeckID        string `json:"deck_id,omitempty"`
 	ChangedSlides []int  `json:"changed_slides,omitempty"`
+	// Warnings say when the call's template replaced the spec's or the
+	// deck's own (go-slide-creator-fjuhm).
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // --- list_deck_archetypes ---------------------------------------------------

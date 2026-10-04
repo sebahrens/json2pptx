@@ -303,6 +303,7 @@ type semanticCompileEnvelope struct {
 	OK           bool                        `json:"ok"`
 	SlideCount   int                         `json:"slide_count,omitempty"`
 	Template     string                      `json:"template,omitempty"`
+	Warnings     []string                    `json:"warnings,omitempty"`
 	Findings     diagnostics.FindingEnvelope `json:"findings"`
 	CompiledJSON json.RawMessage             `json:"compiled_json,omitempty"`
 	Error        string                      `json:"error,omitempty"`
@@ -325,7 +326,7 @@ func runSemanticCompile() error {
 	specPath := fs.String("spec", "", "Path to the semantic deck spec (.yaml/.yml/.json); use - for stdin")
 	output := fs.String("output", "-", "Where to write the output; use - for stdout")
 	strict := fs.String("strict", "warn", "Advisory-rule strictness: off, warn, or strict")
-	templateName := fs.String("template", "", "Default template used when the spec pins none")
+	templateName := fs.String("template", "", "Template to compile for; replaces the spec's meta.template for this run")
 	envelopeMode := fs.Bool("envelope", false, "Emit a structured envelope (compiled_json + diagnostics) instead of raw JSON")
 
 	fs.Usage = func() {
@@ -371,6 +372,17 @@ func runSemanticCompile() error {
 		return fmt.Errorf("semantic compile: spec could not be parsed")
 	}
 
+	// --template replaces meta.template for this run, as it does on `semantic
+	// validate` and `semantic render` (go-slide-creator-fjuhm). The envelope
+	// carries the notice; the raw deck on stdout stays the deck alone.
+	choice := resolveSpecTemplate(spec.Meta.Template, *templateName, "", specSource{})
+	spec = choice.evaluated(spec)
+	if !*envelopeMode {
+		for _, w := range choice.Warnings {
+			fmt.Fprintf(os.Stderr, "warning: %s\n", w)
+		}
+	}
+
 	input, result, err := semantic.Compile(spec, semantic.CompileOptions{
 		Strict:          strictness,
 		DefaultTemplate: *templateName,
@@ -382,7 +394,7 @@ func runSemanticCompile() error {
 		}
 		envelope := diagnostics.BuildEnvelope(envOpts, ds)
 		if *envelopeMode {
-			res := semanticCompileEnvelope{OK: false, Findings: envelope, Error: fmt.Sprintf("semantic compile: %v", err)}
+			res := semanticCompileEnvelope{OK: false, Warnings: choice.Warnings, Findings: envelope, Error: fmt.Sprintf("semantic compile: %v", err)}
 			_ = writeCompileOutput(*output, res)
 			return fmt.Errorf("semantic compile: %w", err)
 		}
@@ -407,6 +419,7 @@ func runSemanticCompile() error {
 			OK:           true,
 			SlideCount:   len(input.Slides),
 			Template:     input.Template,
+			Warnings:     choice.Warnings,
 			Findings:     diagnostics.BuildEnvelope(envOpts, ds),
 			CompiledJSON: compiled,
 		}
@@ -1273,9 +1286,10 @@ func renderedShapeSemanticPath(d semanticDiagnostic, ir *semantic.DeckIR, f patt
 func runSemanticExplain() error {
 	fs := flag.NewFlagSet("semantic explain", flag.ContinueOnError)
 	specPath := fs.String("spec", "", "Path to the semantic deck spec (.yaml/.yml/.json); use - for stdin")
+	templateName := fs.String("template", "", "Template to plan for; replaces the spec's meta.template for this run")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx semantic explain --spec <file>\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx semantic explain --spec <file> [--template <name>]\n\n")
 		fmt.Fprintf(os.Stderr, "Print the compiler's planned decisions (archetype, template, per-slide\n")
 		fmt.Fprintf(os.Stderr, "kind/role/family/density/pattern) and deck-rhythm warnings as JSON.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
@@ -1305,7 +1319,13 @@ func runSemanticExplain() error {
 		return fmt.Errorf("semantic explain: spec could not be parsed")
 	}
 
-	explanation := semantic.ExplainSpec(spec)
+	// --template replaces meta.template for this run, as on the other
+	// `semantic` commands (go-slide-creator-fjuhm).
+	choice := resolveSpecTemplate(spec.Meta.Template, *templateName, "", specSource{})
+	for _, w := range choice.Warnings {
+		fmt.Fprintf(os.Stderr, "warning: %s\n", w)
+	}
+	explanation := explainSpecWithTemplate(choice.evaluated(spec), choice.Default)
 	if explanation.Template == "" {
 		return printJSONIndent(explanation)
 	} else if layouts, templateDiagnostic := semanticTemplateLayouts(explanation.Template, "", nil); templateDiagnostic == nil {
