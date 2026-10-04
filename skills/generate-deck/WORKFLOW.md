@@ -45,10 +45,9 @@ Deck: [title] · Template: [name]
 
 ### Layout coverage requests
 
-When the brief asks for a complete deck that also showcases layouts, plan the
-argument first, without counting layouts as slides; then add canonical IDs
-to `meta.required_layouts` and resolve each `layout_coverage.missing` entry
-with a compatible narrative slide (DECKSPEC.md). A `blank-canvas` content slide carries its title into the raw
+When the brief also asks to showcase layouts, plan the argument first,
+without counting layouts as slides; then set `meta.required_layouts` and
+resolve `layout_coverage.missing` (DECKSPEC.md). A `blank-canvas` content slide carries its title into the raw
 slide's `headline`.
 
 ### One slide or several: spatial planning
@@ -99,9 +98,7 @@ without rendering, and `analyze_deck_rhythm` accepts the `deck_id`.
   open columns, whatever the patterns), and no motif on more than half the
   content slides (`dominant_motif`); follow a dense slide (table, grid) with
   a light one (stat, quote, section).
-- Clear `analyze_deck_rhythm`'s narrative codes (`missing_executive_summary`,
-  `missing_next_steps`, `missing_sections`,
-  `evidence_missing_takeaway_or_source`, `bullets_heavy`), run codes
+- Clear `analyze_deck_rhythm`'s narrative codes, run codes
   (`break_run`, `break_motif_run`, `motif_dominant`,
   `continuation_interrupted`) and accent codes (`accent_heavy_slide`,
   `strong_accent_run`) — RAW_PATH.md lists them.
@@ -143,8 +140,7 @@ Do not switch strategy just to move `accent_balance`; judge the rendered slides.
 `validate_deck_spec` → `render_deck_spec`; fix blockers at their `path`.
 The first validation reports everything knowable, even when a slide does not
 compile: fix every finding in one pass, then re-validate (`warnings[]` says
-what was assumed and which checks wait). `templates: ["modern", …]` also
-reports the spec on other templates. `deterministic_ready` is not
+what was assumed and which checks wait). `deterministic_ready` is not
 approval. Retain `deck_id`; revise with `patch` and re-render
 `changed_slides`.
 
@@ -156,8 +152,10 @@ Validation is not verification. Contrast auto-fix, wrapping, clipped text and
 the wrong visual show only in pixels. **Images are truth.**
 
 1. **Render.** `render_deck_thumbnails` for every slide of the current
-   revision with `density: 100` (the 50 DPI default is too coarse for 10pt
-   text). If a response is truncated, request the rest with `slide_indices` —
+   revision at the default density. When text of 12pt or less cannot be
+   read, send the response's `larger_render` (that slide alone at
+   `density: 100`, about twice the size). If a
+   response is truncated, request the rest with `slide_indices` —
    every slide needs an image you looked at; `preview_slide_wireframe` never
    counts. No render tooling (`get_started.runtime.render_available: false`)
    → deliver as **UNREVIEWED** and say so.
@@ -186,14 +184,15 @@ the wrong visual show only in pixels. **Images are truth.**
    `changes_requested`; approve only when all ten pass. For check 10, name
    the needless UI element and a repair that preserves its content.
 4. **Repair.** Edit the spec at the finding's `path` (or the field the
-   rubric names), send `deck_id` + `patch`, re-render and re-check
-   `changed_slides` (pass them, or slide ids, as `slide_indices`), then
-   review the whole final revision once and submit. On a repeat pass send
-   the `content_hash` values you hold as `known_hashes` (combines with
-   `slide_indices`; an unmatched hash is ignored): a slide whose pixels did
-   not change returns `{index, id, content_hash, unchanged: true}` with no
-   image and no `path`. The image you hold is still that slide; submit its
-   `content_hash` as `image_sha256`. CLI: `json2pptx render-thumbnails
+   rubric names), send `deck_id` + `patch`, re-render and follow the
+   render's `next_tool_call`: once thumbnails were delivered it is
+   `render_deck_thumbnails {pptx_path, known_hashes}` over the whole deck,
+   prefilled with the hashes you were sent (before that,
+   `slide_indices: changed_slides`). A slide whose pixels did not change
+   returns `{index, id, content_hash, unchanged: true}` with no image and
+   no `path`: the image you hold is still that slide; submit its
+   `content_hash` as `image_sha256`. Re-check the changed slides, then
+   review the whole final revision once and submit. CLI: `json2pptx render-thumbnails
    deck.pptx --out-dir slides/ --known-hashes <hash>,<hash>`.
    Deterministic repairs: RAW_PATH.md; finding semantics:
    [FINDINGS.md](FINDINGS.md).

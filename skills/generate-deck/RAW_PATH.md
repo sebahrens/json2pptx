@@ -5,7 +5,7 @@ Ordinary DeckSpec authoring and final visual review follow [SKILL.md](SKILL.md).
 
 ## Discover, validate, generate
 
-Call `get_started` first; check `runtime`. Use `recommend_visual` if undecided,
+Use `recommend_visual` if undecided,
 then `list_patterns` and `show_pattern` for live schemas and `example_values`.
 Pattern `values` may be an object or array. `expand_pattern` returns editable
 `shape_grid`, density warnings and cell budgets. Keep its
@@ -151,16 +151,15 @@ or `fields="full"`.
 visual motif, whatever patterns drew them; target none), `motif_share`,
 `dominant_motif` (one motif on more than half of 4+ content slides) — plus
 `composition_score` and `recommendations` with `recommended_break_patterns`
-and a `code`. `per_slide[].motif` is what the slide looks like (`tiles`,
+and a `code` ("slide N" in a `message` is 1-based, one more than its
+`slide_index`). `per_slide[].motif` is what the slide looks like (`tiles`,
 `open-columns`, `open-list`, `table`, `chart`, `diagram`, `flow`,
 `hero-number`, `quote`, `split`, `text`, `image`, or `none`); an explicit
 style changes it (`stylish-panels` `ribbon` and `kpi-Nup` `tiles` are
 `tiles`). Swap the middle slide of a run of 3 (`break_run`;
 `break_motif_run` when the patterns differ but the look does not) to a
-suggested pattern (picked from content: numbers → KPI, options → comparison,
-dates → timeline; never one that repeats the motif being left); keep the
-parts of a `(1/2)` / `(2/2)` exhibit adjacent (`continuation_interrupted`;
-they count as one slide in every run); add detail or a smaller grid when
+suggested pattern; keep `(1/2)` / `(2/2)` parts adjacent
+(`continuation_interrupted`); add detail or a smaller grid when
 underfilled cells pass 30% (`underfilled_cells`). Narrative checks:
 `missing_executive_summary` (6+ slides), `missing_next_steps` (no
 next-steps close), `missing_sections` (10+ content slides, no divider or
@@ -203,6 +202,4 @@ tries the mapped kinds in order.
 
 ## Finish
 
-Render with `render_deck_thumbnails`, then follow [WORKFLOW.md](WORKFLOW.md)
-→ Phase 4: the review protocol is identical on both paths. If the server
-lacks render tooling, say the artifact is **UNREVIEWED**.
+Render, then review as in [WORKFLOW.md](WORKFLOW.md) → Phase 4.
