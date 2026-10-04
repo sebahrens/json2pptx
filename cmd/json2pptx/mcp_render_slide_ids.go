@@ -23,7 +23,7 @@ import (
 // The image tools see a .pptx, not a deck_id, so the ids come from what is
 // known about that exact file: the table of contents render_deck_spec
 // recorded when it wrote it, or the authoring sidecar `semantic render` wrote
-// beside it. Both are bound to the file's sha256: a deck overwritten by
+// beside it (slide_ids: the same ids, assigned the same way). Both are bound to the file's sha256: a deck overwritten by
 // something else has no ids, rather than another deck's.
 
 // renderedSlideTOCs remembers, per artifact sha256, the slides of the DeckSpec
@@ -100,7 +100,16 @@ func slideRefsForPptx(pptxPath string) []slideRef {
 	if manifest == nil || manifest.PPTXSHA256 != artifact.SHA256 {
 		return nil
 	}
-	return specDeckState("deck."+manifest.SourceFormat, []byte(manifest.Source), "").refs()
+	refs := specDeckState("deck."+manifest.SourceFormat, []byte(manifest.Source), "").refs()
+	// The ids `semantic render` assigned to slides the author gave none
+	// (go-slide-creator-cmwmg); a sidecar written before it recorded them has
+	// the authored ids only.
+	if len(manifest.SlideIDs) == len(refs) {
+		for i := range refs {
+			refs[i].ID = manifest.SlideIDs[i]
+		}
+	}
+	return refs
 }
 
 // slideIDIndex resolves one slide id to its 0-based index in the deck at

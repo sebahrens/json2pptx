@@ -1,5 +1,29 @@
 # Schema Changelog
 
+- **2026-10-04 — CLI `semantic render` assigns slide ids (`go-slide-creator-cmwmg`).**
+  - `json2pptx semantic render` gives every authored slide without an `id`
+    the `s<N>` MCP `render_deck_spec` gives it (authored ids kept; a generated
+    agenda or divider has none), lists them in its result as
+    `slides: [{id, index, slide_number, kind}]` and records them in the
+    sidecar as **`slide_ids`** (one per rendered slide, `""` for a generated
+    one). `render-slide --slide-id s3` and `render-thumbnails --slides s4,0`
+    now work for any deck the CLI rendered, not only for authored ids. The
+    spec file is not rewritten; `--no-manifest` writes neither. A sidecar
+    without `slide_ids` resolves authored ids as before.
+
+- **2026-10-04 — CLI `get-started --tool <name>`; `skill cli-map` lists two commands for `list_slide_kinds` (`go-slide-creator-kkixz`).**
+  - **`json2pptx get-started --tool <mcp_tool_name>`** prints what MCP
+    `get_started tool:"<name>"` returns — `tool_detail` (full description and
+    input schema) and `hidden_tools` — plus `cli` (the command that does the
+    tool's job, or the MCP-only note) and `cli_then` when it takes two.
+    An unknown tool is refused with the tool names; `--tool` with a task is
+    refused.
+  - `skill cli-map` rows and `get-started` steps carry **`cli_then`** for a
+    follow-up command. `list_slide_kinds` is `cli: "json2pptx semantic kinds"`,
+    `cli_then: "json2pptx semantic kinds <kind>"`; `--format md` prints
+    `` `json2pptx semantic kinds`, then `json2pptx semantic kinds <kind>` ``
+    (it was one code span with `# then: …` inside).
+
 - **2026-10-04 — The repeat thumbnail pass carries `known_hashes`; a default-size pass names the larger render (`go-slide-creator-wfhvv`, `go-slide-creator-jn6vj`).**
   - `render_deck_thumbnails` remembers, per `pptx_path`, the `content_hash`
     of every slide it returned. The `next_tool_call` of the next

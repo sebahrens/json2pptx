@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -773,6 +774,48 @@ func TestCLIGetStartedSpeaksCLI(t *testing.T) {
 	}
 	if _, stderr, code := cliRun(t, nil, "get-started", "revise", "extra"); code == 0 || !strings.Contains(stderr, "unexpected argument") {
 		t.Errorf("second positional: exit=%d stderr=%q; want it refused", code, stderr)
+	}
+
+	// --tool <name> is MCP get_started tool:"<name>": the tool's own
+	// tool_detail, byte for byte, plus the command that does its job
+	// (go-slide-creator-kkixz).
+	for _, tc := range []struct{ tool, cli, then string }{
+		{"render_deck_spec", "json2pptx semantic render <deck.yaml> --out <deck.pptx>", ""},
+		{"list_slide_kinds", "json2pptx semantic kinds", "json2pptx semantic kinds <kind>"},
+	} {
+		stdout, stderr, code := cliRun(t, nil, "get-started", "--tool", tc.tool)
+		if code != 0 {
+			t.Fatalf("get-started --tool %s exited %d: %s", tc.tool, code, stderr)
+		}
+		var got struct {
+			ToolDetail json.RawMessage `json:"tool_detail"`
+			CLI        string          `json:"cli"`
+			CLIThen    string          `json:"cli_then"`
+		}
+		decodeOneJSON(t, stdout, &got)
+		mcpResult, err := cliMCPConfig("", "").handleGetStarted(context.Background(), mcpRequestWithArgs(map[string]any{"tool": tc.tool}))
+		if err != nil || mcpResult.IsError {
+			t.Fatalf("MCP get_started tool:%q: %v", tc.tool, err)
+		}
+		var want struct {
+			ToolDetail json.RawMessage `json:"tool_detail"`
+		}
+		if err := json.Unmarshal([]byte(cliResultText(mcpResult)), &want); err != nil {
+			t.Fatal(err)
+		}
+		var gotDetail, wantDetail any
+		if json.Unmarshal(got.ToolDetail, &gotDetail) != nil || json.Unmarshal(want.ToolDetail, &wantDetail) != nil || !reflect.DeepEqual(gotDetail, wantDetail) {
+			t.Errorf("get-started --tool %s: tool_detail differs from MCP get_started tool:%q", tc.tool, tc.tool)
+		}
+		if got.CLI != tc.cli || got.CLIThen != tc.then {
+			t.Errorf("get-started --tool %s: cli %q then %q, want %q then %q", tc.tool, got.CLI, got.CLIThen, tc.cli, tc.then)
+		}
+	}
+	if _, stderr, code := cliRun(t, nil, "get-started", "--tool", "render_deck"); code == 0 || !strings.Contains(stderr, "unknown tool") || !strings.Contains(stderr, "render_deck_spec") {
+		t.Errorf("unknown tool: exit=%d stderr=%.200q; want a refusal listing the tools", code, stderr)
+	}
+	if _, stderr, code := cliRun(t, nil, "get-started", "revise", "--tool", "render_deck_spec"); code == 0 || !strings.Contains(stderr, "not both") {
+		t.Errorf("--tool with a task: exit=%d stderr=%q; want it refused", code, stderr)
 	}
 }
 

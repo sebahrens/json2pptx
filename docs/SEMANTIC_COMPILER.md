@@ -570,8 +570,12 @@ returned slide carries `id` beside `index`. The CLI spells it
 `render-thumbnails --slides costs,3` and `render-slide --slide-id costs`.
 The image tools see a `.pptx`, so ids resolve against that exact file (by
 sha256): the table of contents `render_deck_spec` recorded when it wrote it,
-or the `<deck>.pptx.authoring.json` sidecar `semantic render` wrote (authored
-ids only — the CLI assigns none). An unknown id is refused before rendering
+or the `<deck>.pptx.authoring.json` sidecar `semantic render` wrote. The CLI
+assigns the ids `render_deck_spec` assigns — the author's id, else the next
+free `s<N>` in authored order — records them in the sidecar's `slide_ids`
+(one per rendered slide, `""` for a generated agenda or divider) and lists
+them in its result's `slides[]` (`{id, index, slide_number, kind}`); the spec
+file is not rewritten, and `--no-manifest` writes neither. An unknown id is refused before rendering
 with the ids the deck has; a file nothing is known about has no ids.
 
 **Images the client already holds.** `render_deck_thumbnails` takes
