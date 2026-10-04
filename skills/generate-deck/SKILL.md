@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.161.0
+schema_version: 4.162.0
 description: >-
   Create or revise PowerPoint decks with json2pptx. Use for presentation and
   slide-deck requests that need template-aware authoring, validation, rendering,
@@ -61,8 +61,7 @@ Edit the spec at a finding's `path`, send a `patch_verified` `next_tool_call`
 as given, and repeat ([FINDINGS.md](FINDINGS.md)). For a visual no kind
 covers (gantt, venn, swimlane, ...), a `recommend_visual` candidate carries
 `data_contract` and a runnable `next_tool_call` (`render_deck_spec` with a
-`raw_json2pptx` slide); rewrite every `Replace with …` string and the sample
-data — rendered as handed out it is blocked as `exemplar_content`.
+`raw_json2pptx` slide); rewrite its sample content first (TOOLS.md).
 One measure across 2–6 groups over the same
 periods: the `small_multiples` chart (RULES.md 10i). Several views proving
 one title may share a slide; unrelated conclusions get separate slides.
@@ -123,15 +122,16 @@ For a standalone SVG diagram, use the `svggen-mcp` server and its
 
 ## Operational boundaries
 
-Start the deck server with `json2pptx mcp`; its default `deckspec`
-`tools/list` carries only the DeckSpec path. `--tools core` adds the raw
-path and `get_capabilities().mcp_tools_available` (tools callable by name);
-`--tools all` (or `JSON2PPTX_MCP_TOOLS=all`) lists the rest, without output
-schemas (`--output-schemas` lists them). `list_templates`
+Start the deck server with `json2pptx mcp` (profiles: TOOLS.md;
+`--tools all` or `JSON2PPTX_MCP_TOOLS=all` lists every tool,
+`get_capabilities().mcp_tools_available` the callable ones). `list_templates`
 `read_only: true` avoids preview-cache writes. Template precedence:
 DECKSPEC.md. A CLI command that answers in
 JSON prints exactly one JSON document on stdout, also when it fails
-(`{subcommand, ok:false, findings:[{code, message}]}`); stderr is logs.
+(`{subcommand, ok:false, findings:[{code, message}]}`; a failed `generate`
+adds those fields to `{success:false, error, fit_findings}`, with
+`findings[0].code` `STRICT_FIT`, an argument code or `GENERATION_FAILED`);
+stderr is logs.
 Args over 2 MiB of text are refused; a raced
 `deck_id` patch returns `STALE_REVISION` (reload, re-apply).
 `render_deck_spec` resolves relative asset paths (image, photos) against

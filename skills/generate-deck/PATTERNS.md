@@ -5,8 +5,7 @@
 Named patterns expand into validated `shape_grid` structures. Choose from
 the live `list_patterns` catalog (not enumerated here); `show_pattern` gives
 a candidate's `use_when`, `not_when`, value schema, example and text budget.
-`recommend_visual` ranks patterns, native layouts, charts and diagrams when
-the family is undecided (`recommend_pattern` is its pattern-only alias). Use
+`recommend_visual` ranks them against layouts, charts and diagrams. Use
 a diagram, not a text grid, for data-driven or topologically complex graphics.
 
 - **Browse:** `list_patterns` (MCP) or `json2pptx patterns list` (CLI).
@@ -25,7 +24,7 @@ Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid
 
 KPI `values` is a JSON **array**, one cell per metric: an object `{"big", "small"}` (aliases `value`/`number` → `big`, `label`/`caption` → `small`) or a pipe string `"$127M | Revenue"`; forms may be mixed. Give a KPI its reference: `comparator` (alias `vs`, ≤24 chars, e.g. `"vs plan +4 pts"`) renders under the caption on kpi-Nup cards (`kpi-inline` rejects it).
 
-**Closing.** End a consulting deck on `next-steps` (actions with `owner` and `date`, plus `decisions` requested), not a "Thank you" slide. A repeated `agenda` with `overrides.highlight` marks the current section.
+**Closing.** End on `next-steps` (actions with `owner` / `date`, `decisions` requested), not "Thank you". A repeated `agenda` with `overrides.highlight` marks the current section.
 
 Do NOT hand-roll shape grids when a named pattern exists; let the engine handle grid structure, bounds, and gap arithmetic.
 
@@ -50,18 +49,25 @@ air, headshot size or type down to the 12pt floor, then report
 `BODY_TOO_LONG` naming what to drop. `icon-row`, `labeled-rows`,
 `process-flow` and `process-flow-compact` grow their cards, rows or band to the
 text's written fit before reporting it. `process-flow` lays 7–8 steps on
-two rows of four (the second runs back right to left; chevron / arrow flows
-wrap left to right), so a box holds 80 characters at every step count.
+two rows of four (the second runs back right to left; all-chevron / arrow
+flows wrap left to right), so a box holds 80 characters at every step count.
 `overrides.rows` is `1` or `2` (default `2` from 7 steps; `2` needs at
-least 4 steps); `rows: 1` keeps one row of narrow boxes.
+least 4 steps); `rows: 1` keeps one row of narrow boxes. A flow mixing
+chevron / arrow with plain steps stays on one row unless `rows` is 2; it
+then bends too, and a chevron / arrow at the turn or on the
+returning row is refused (`out_of_range` at
+`steps[i].type`; `use_one_of` `step`, `decision`).
 `process-flow-compact` is one band and rejects `rows`. Validation predicts grid text
 (nested cells included) that generation would refuse as an `error`
 `TEXT_BELOW_READABLE_MIN` (DeckSpec render refusals: DECKSPEC.md).
 
 KPI values ("$4.2M", "127%") and label words are never wrapped mid-token: a
 value shrinks and a label column widens before its label does. What cannot
-fit at the floor is reported — `BODY_TOO_LONG` on `values[i].big`,
-`TEXT_EXCEEDS_SHAPE` naming the label word: shorten or abbreviate it.
+fit at the floor is reported — `BODY_TOO_LONG` at
+`/slides/N/pattern/values/i/big` with `fix.params.max_chars`,
+`TEXT_EXCEEDS_SHAPE` naming the label word: shorten or abbreviate it. A
+KPI value's 12 characters are the hard maximum: `kpi-5up` holds about 11
+digits and `kpi-6up` about 9 on the narrowest templates.
 
 **Placement.** Patterns follow the slide size: on a larger slide
 (business-template, 14.7 × 8.3in) pattern text and row heights render about
@@ -97,11 +103,9 @@ still reports.
 
 `density_pct` is a **height** ratio: each paragraph wrapped at its own font size, line heights summed, compared with the cell's text height (embedded font metrics, no OS dependency). `max_chars` is the derived character hint at the cell's dominant size. Target **35–110%**: under 35% is `underfilled` (info), over 110% `overflow` (warning: it will clip or shrink hard); a well-authored cell fills about half its box.
 
-**Pick a configuration.** `show_pattern` returns `text_budget_guide.target_density` (a *character* target) and `configurations[]` (`columns`, `rows`, `body_max_chars` at 12pt, `header_max_chars` at 16pt). Pick the one whose `body_max_chars` is closest to `planned_chars / 0.85`, write to it, then check every `expand_pattern` `cell_budgets[]` entry (`cell_index`, `row`, `col`, `max_chars`, `actual_chars`, `density_pct`, `status`, `font_size_pt`) lands in 35–110%. Non-grid patterns (`pull-quote`, `stat-hero`) have no guide: use per-placeholder `max_chars` from `list_templates` `mode="compact"` or `fields="full"`. Rewrite before rendering — cheaper than repairing after generation.
+**Pick a configuration.** `show_pattern` returns `text_budget_guide.target_density` (a *character* target) and `configurations[]` (`columns`, `rows`, `body_max_chars` at 12pt, `header_max_chars` at 16pt). Pick the one whose `body_max_chars` is closest to `planned_chars / 0.85`, write to it, then check every `expand_pattern` `cell_budgets[]` entry (`cell_index`, `row`, `col`, `max_chars`, `actual_chars`, `density_pct`, `status`, `font_size_pt`) lands in 35–110%. Non-grid patterns (`pull-quote`, `stat-hero`) have no guide: use per-placeholder `max_chars` from `list_templates` `mode="compact"` or `fields="full"`.
 
 - **Underfilled:** add supporting detail; for inherently short content use a sparse pattern (`kpi-3up`, not `card-grid`) or a smaller configuration (2×2, not 3×2).
 - **Overflow, or `fit_overflow` / `density_exceeded` after generation:** (1) rewrite — shorter sentences, fewer bullets; (2) a larger configuration or higher-capacity pattern (`repair_slide` `swap_layout`, or `layout_suggestions[]`, offered when all populated cells are underfilled or all overflow); (3) `repair_slide` `split_at_row` / `reduce_text`; (4) last resort for verbatim content: `reduce_cell_text` (truncates one cell to `max_chars` with an ellipsis), then re-validate with `fit_report: true`.
 
 **Bounds.** A sparse slide-level block is composed automatically (Placement above). To pin a region yourself pass `max_height_pct` (1–99% of the content area) or `bounds` (percent rectangle; wins) to `expand_pattern` or as slide-level `pattern.bounds` / `pattern.max_height_pct`; density math then uses the reduced area and `bounds_assumption` reports `"explicit_override"`. An underfilled `capacity_warnings[]` entry and `density_class_divergence` (average density far below the pattern's `density_class`) carry a `next_tool_call` with a recommended `max_height_pct` or a sparser pattern — follow it.
-
-**`recommend_visual` inputs.** `content_hints.density_hint` (`low` / `medium` / `high`) favours a matching `density_class`. `candidates` (1–8 names) ranks an explicit shortlist instead of the catalog: every name returns `score`, `rationale` and `confidence_band`; `category` is auto-resolved and unknown names score 0 with a rationale.

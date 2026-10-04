@@ -37,7 +37,7 @@ Default for content-bearing decks: author real content as a DeckSpec; call `list
 
 For a new deck, use [DECKSPEC.md](DECKSPEC.md); for raw-input-only
 preconditions, [RAW_PATH.md](RAW_PATH.md); the four phases are in
-[WORKFLOW.md](WORKFLOW.md). The map is a routing aid, not a schema registry.
+[WORKFLOW.md](WORKFLOW.md).
 
 ## Tool semantics that change decisions
 
@@ -87,11 +87,8 @@ preconditions, [RAW_PATH.md](RAW_PATH.md); the four phases are in
   `compose:<a>+<b>` names (charts / diagrams as `chart:<type>` /
   `diagram:<type>`) resolve in `candidates`; a malformed one returns score 0
   and the reason.
-  The visual an intent names is the one returned: a swimlane across teams
-  ranks `swimlane`, a Gantt plan `gantt`, options against criteria
-  `table-highlight`, a two-way contrast `comparison-2col`, a named chart
-  type that type, "screenshot with callouts" `image_case` with `callouts`,
-  financials and risk registers the native `table` (`totals_row`).
+  The visual an intent names (swimlane, Gantt, a chart type, a screenshot
+  with callouts) ranks first.
 - `validate_deck_spec` `templates: [...]` (or `["all"]`, at most 16) adds
   `template_results[{template, ok, summary, findings}]` — the spec's errors
   and warnings on each — without changing the deck's template. Its `read`
@@ -103,10 +100,14 @@ preconditions, [RAW_PATH.md](RAW_PATH.md); the four phases are in
   Prefer them to static enumerations.
 - `preview_slide_wireframe` is structural-only and cannot prove visual fit.
   `render_deck_thumbnails` returns JPEG blocks (`image_mime_type`, top
-  level) beside full-resolution PNG `slides[].path`; use density 50–75 for
-  full passes. `slide_indices` takes slide ids beside 0-based indices
-  (`[4, "costs"]`) for a file `render_deck_spec` wrote, and each slide
-  carries `id`. Rendering alone is not inspection.
+  level) beside full-resolution PNG `slides[].path`; review at the default
+  density and, when text of 12pt or less cannot be read, send its
+  `larger_render` `{when, tool, args_template}` (one slide at `density:
+  100`, 1280 px). A render step's `next_tool_call` carries `known_hashes`
+  on a repeat pass (WORKFLOW.md). `slide_indices` takes slide ids beside
+  0-based indices (`[4, "costs"]`) for a file `render_deck_spec` or CLI
+  `semantic render` wrote, and each slide carries `id`. Rendering alone is
+  not inspection.
   `submit_visual_review` requires current-revision evidence for every slide.
 - `score_deck` takes a DeckSpec `deck_id` or a raw deck, never a spec
   object. `composition.diagnostics[].code` includes `motif_run`,
@@ -118,7 +119,9 @@ preconditions, [RAW_PATH.md](RAW_PATH.md); the four phases are in
 - `register_template_setting` and `delete_template_setting` are write
   tools gated by `JSON2PPTX_ALLOW_SETTINGS_WRITE=1`, never part of ordinary
   deck authoring. `json2pptx skill cli-map` prints each tool's CLI command
-  (generated; an MCP-only tool says why).
+  (generated; an MCP-only tool says why; `cli_then` is a second command:
+  `semantic kinds`, then `semantic kinds <kind>`), and `json2pptx
+  get-started --tool <name>` one tool's description, schema and `cli`.
 - Results use compact `structuredContent`; `content[0].text` may be a
   bounded synopsis, so read the structured data. A tool's `next_tool_call`
   is a suggested recovery path (`{tool, args_template}`; `slide_index: -1`
@@ -134,12 +137,8 @@ template, candidates: [<pattern>], preview: true)`: it returns the pattern's
 recipe rendered through generation, as an image. The CLI-only
 `preview-patterns` builds the same pictures as a local batch gallery
 (`-template`, `-pattern` narrow it; nothing is committed). The raw-JSON
-equivalent:
-
-1. `list_patterns` to select a pattern.
-2. `show_pattern` to get its value schema and `example_values`.
-3. `expand_pattern` with those values and the chosen template.
-4. `render_slide_image_from_json` with the expanded grid.
+equivalent: `list_patterns` → `show_pattern` (`example_values`) →
+`expand_pattern` on the template → `render_slide_image_from_json`.
 
 For a comparison under one template, `expand_patterns` can replace repeated
 expansion calls. For template conformance, the CLI `template-check` remains

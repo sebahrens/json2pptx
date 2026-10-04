@@ -10,8 +10,8 @@ rationale: [docs/FIT_FINDINGS.md](../../docs/FIT_FINDINGS.md).
 Each finding has `code`, `severity`, `blocking` (true exactly when severity
 is `error`), `path` — a JSON Pointer (0-based) into the spec you sent, the
 string a patch takes — `missing_path` when the field does not exist yet
-(`path` is then its parent) and `slide_number` (1-based; "slide N" in a
-message is that number). Ignore `debug` (compiled-deck locators).
+(`path` is then its parent) and `slide_number` (1-based; "slide N" in any
+message is that number, "slide index N" is 0-based). Ignore `debug` (compiled-deck locators).
 
 - **One entry per cause.** `occurrences` + `paths` stand for several
   findings: fix every pointer; `evidence.measured` / `allowed` and a budget
@@ -45,8 +45,8 @@ message is that number). Ignore `debug` (compiled-deck locators).
   `evidence.counted[] {code, path}` name the advisories to clear.
 - Composition faults cost 25 points on their slide and count toward
   `max_problem_slides_pct`; none blocks alone, a deck of them fails the
-  gate. `VERTICAL_IMBALANCE` / `HORIZONTAL_IMBALANCE`: 40% or more of the
-  content area is empty below / beside the block (PATTERNS.md → Placement).
+  gate. `VERTICAL_IMBALANCE` / `HORIZONTAL_IMBALANCE`: PATTERNS.md →
+  Placement.
   `TEXT_WRAPS_NARROW`: a paragraph wraps to 5+ lines of ≤3 words — cut each
   box to `max_words`, or keep at most `max_boxes` boxes on the row; `paths`
   lists the box behind each hit (`/slides/8/steps/0`). `SIBLING_SIZE_MISMATCH`:
@@ -60,6 +60,11 @@ Each finding has stable machine fields `{path, code, severity, action, fix}`;
 not a programmatic key. The shared finding envelope has `ok` plus an
 ordered `findings[]`. Work top-down: severity descending, then slide index,
 then code. A deck-level finding precedes slide 0 at equal severity.
+A pattern text-budget warning (`BODY_TOO_LONG`, `HEADLINE_TOO_LONG`,
+`TEXT_EXCEEDS_SHAPE`) that names one value has that value's pointer as
+`path` (`/slides/N/pattern/values/2/big`, `…/values/steps/3/label`) and,
+when it states a budget, `fix: {kind: "rewrite_field", params: {path,
+max_chars, pattern}}`: rewrite that field yourself within `max_chars`.
 
 ### What to do with a finding
 
@@ -70,12 +75,7 @@ then code. A deck-level finding precedes slide 0 at equal severity.
   split the slide or rewrite copy rather than blindly truncating.
 - `review` / `info`: a judgment for the author; inspect the rendered slide
   and decide. An advisory is not a failed call, and a clean score does not
-  replace final-revision visual inspection. `INPUT_CONTROL_CHARS_REMOVED` (info):
-  invisible bidi controls / BOMs were stripped from that string; drop them
-  from your source text. `BODY_TOO_LONG` is a `refuse` when one placeholder
-  carries over 200 paragraphs (`fix.params.max_paragraphs`): split it.
-  `grid_violation` (info): content starts off the template's
-  `grid.content_frame` — drop explicit `bounds`, keep one layout family.
+  replace final-revision visual inspection.
 
 `score_deck` classifies a finding as `pattern_choice`, `rendering`, or
 `content`. A pattern-choice problem usually calls for a different visual
@@ -119,8 +119,7 @@ path; `validate_input` with the target template reports the same refusal as
 an error first. CLI `generate --partial` skips the refused slide and reports
 `CONTENT_DROPPED` with `fix.params.cause` and `refused_path`.
 
-Strict output validation is separate from fit: `generate_presentation`
-defaults to a blocking OPC/OOXML pass. `CONTENT_DROPPED` with
+Strict output validation (RAW_PATH.md) is separate from fit. `CONTENT_DROPPED` with
 `cause:"placeholder_not_found"` or `"placeholder_occupied"` (two blocks on
 one placeholder) is `action:"refuse"`: the content is absent from the
 result; `fix.params.options` lists the remedies (`split_slide`,
@@ -129,9 +128,5 @@ diagrams share the native 12pt (`present`) floor at their placed size: a
 crowded diagram shows `diagram.text_overlap` instead of shrinking, and text
 still below the floor is a `TEXT_BELOW_READABLE_MIN` refusal
 (`simplify_or_enlarge_diagram`): enlarge the cell or cut categories.
-`diagram.region_overflow` names a Venn intersection caption that crosses its
-region's outline (shorten `fix.params.label`); `diagram.data_key_ignored`
-(review) a `business_model_canvas` data key the canvas never reads (rename
-it to `fix.params.did_you_mean`). See [RAW_PATH.md](RAW_PATH.md) for the
-raw response protocol. `strict_fit` controls promotion of fit and chart
+`strict_fit` controls promotion of fit and chart
 findings; trust the returned severity/action, not an old promotion table.

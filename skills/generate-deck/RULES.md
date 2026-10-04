@@ -95,7 +95,7 @@ Section dividers are numbered `01`, `02`, … automatically; omit the `Section N
 
 | # | Rule | Rationale |
 |---|---|---|
-| 16 | The engine replaces low-contrast text (WCAG AA for its size: 3:1 only at ≥18pt / ≥14pt bold) with a template text color (`lt1`/`dk2`/`dk1`), one per fill per slide. A brand-coloured run (accent KPI value, stat, insight header) is judged at its OWN size: passing large accent text keeps the accent, failing text is darkened minimally in its hue. A pattern accent fill whose white label fails gets a minimal `shade` of that accent; only a pale accent or tint takes dark ink. Text matching a transparent cell's canvas (hidden on purpose) is never recolored. Check `fit_findings` `contrast_autofixed` (before/after ratios) before re-authoring colors | Fix: a darker accent fill, `dk1` text, or `"contrast_check": false` (last resort, after checking contrast yourself) |
+| 16 | The engine replaces low-contrast text (WCAG AA for its size: 3:1 only at ≥18pt / ≥14pt bold) with a template text color (`lt1`/`dk2`/`dk1`), one per fill per slide. A brand-coloured run (accent KPI value, stat, insight header) is judged at its OWN size: passing large accent text keeps the accent, failing text is darkened minimally in its hue. A pattern accent fill whose white label fails gets a minimal `shade` of that accent; only a pale accent or tint takes dark ink. Text matching a transparent cell's canvas (hidden on purpose) is never recolored. Check `fit_findings` `contrast_autofixed` (before/after ratios) before re-authoring colors: it is reported at the authored element (`/slides/N/shape_grid/rows/R/cells/C/shape/text`; under `/slides/N/pattern` on a pattern slide), the path `contrast_predicted` names at validate, with a `replace_color` fix on an authored raw grid cell | Fix: a darker accent fill, `dk1` text, or `"contrast_check": false` (last resort, after checking contrast yourself) |
 
 ## Icons (no emoji)
 
@@ -137,7 +137,7 @@ When TDR forces a split, say so ("N logical rows × M columns; per Rule 20 emitt
 
 **Two tables in one grid.** Sibling tables in one `shape_grid` with `row_gap < 4pt` read as one broken table. Use `row_gap` ≥ 6 and a divider row — or better, one table per slide.
 
-**Sparse single-row flow.** `process-flow` earns a slide only when the sequence **branches**; `timeline-horizontal` only for **true calendar milestones**. Give a plain sequence vertical mass: `numbered-step-strip` with per-step detail, `value-chain` for described steps, `phase-roadmap` for dated phases, `process-grid-2row` for two tracks. Pattern and accent monotony across slides: [WORKFLOW.md](WORKFLOW.md) → Phase 2.
+**Sparse single-row flow** (`SPARSE_SINGLE_ROW_FLOW`, review). A one-row `process-flow` or `dots` `timeline-horizontal` of 3–6 short cells as the slide's only content is sized to its text and leaves most of the slide empty; a height cap does not resize it. Give the sequence vertical mass: `numbered-step-strip` with per-step detail, `value-chain` for described steps, `phase-roadmap` for dated phases, `process-grid-2row` for two tracks, or a second zone (`compose`). `process-flow` draws one path and no yes/no branches (`FLOW_DIAMOND_NO_CONTENT`): explain a decision in a second zone; keep `timeline-horizontal` for true calendar milestones. Pattern and accent monotony across slides: [WORKFLOW.md](WORKFLOW.md) → Phase 2.
 
 ---
 
