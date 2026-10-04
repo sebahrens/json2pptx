@@ -51,6 +51,12 @@ func collectDataWithoutSourceFindings(input *PresentationInput) []patterns.FitFi
 		if !slideQualifiesForDuplicateTitleCheck(slide) || slideCitesSource(slide) {
 			continue
 		}
+		// A split_slide keeps its source on the first page only; the later
+		// pages are the same authored slide, which that page speaks for
+		// (go-slide-creator-owdgn).
+		if o := slide.Origin; o != nil && o.SplitPage && o.RowOffset > 0 {
+			continue
+		}
 		what := slideDataKind(slide)
 		if what == "" {
 			continue

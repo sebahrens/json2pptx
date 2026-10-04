@@ -37,7 +37,7 @@ func TestGridReadabilityRoleBoundaries(t *testing.T) {
 				t.Fatal(err)
 			}
 			raw := bytes.Clone(shapes[0])
-			ctx.reportGridReadability(shapes, roles, 2)
+			ctx.reportGridReadability(shapes, nil, roles, 2)
 			if tc.refuses {
 				if len(ctx.fitFindings) != 1 {
 					t.Fatalf("missing role refusal: %+v", ctx.fitFindings)
@@ -64,7 +64,7 @@ func TestGridReadabilityKeepsParagraphRolesAligned(t *testing.T) {
 	// The first and last runs are readable body/KPI, but the middle caption
 	// falls to 9.6pt. Empty paragraphs must not move its caption role.
 	raw = strings.Replace(raw, "</a:bodyPr>", "</a:bodyPr><a:p/>", 1)
-	ctx.reportGridReadability([][]byte{[]byte(raw)}, map[uint32][]tokens.TextRole{1: {"", tokens.TextRoleKPIValue, tokens.TextRoleCaption, tokens.TextRoleBody}}, 0)
+	ctx.reportGridReadability([][]byte{[]byte(raw)}, nil, map[uint32][]tokens.TextRole{1: {"", tokens.TextRoleKPIValue, tokens.TextRoleCaption, tokens.TextRoleBody}}, 0)
 	if len(ctx.fitFindings) != 1 || ctx.fitFindings[0].Path != "/slides/0/rendered_shapes/1/paragraphs/2" || !strings.Contains(ctx.fitFindings[0].Message, "caption text renders at 9.6pt") {
 		t.Fatalf("caption role slid onto another paragraph: %+v", ctx.fitFindings)
 	}
@@ -75,7 +75,7 @@ func TestGridReadabilityDoesNotGuessUnknownRoles(t *testing.T) {
 	for _, roles := range []map[uint32][]tokens.TextRole{nil, {2: {tokens.TextRoleBody}}, {1: {}}, {1: {""}}, {1: {tokens.TextRoleBody, tokens.TextRoleCaption}}} {
 		ctx := &singlePassContext{}
 		ctx.viewingMode = tokens.ViewingModePresentation
-		ctx.reportGridReadability([][]byte{raw}, roles, 0)
+		ctx.reportGridReadability([][]byte{raw}, nil, roles, 0)
 		if len(ctx.fitFindings) != 0 {
 			t.Fatalf("unknown/misaligned roles invented: %+v", ctx.fitFindings)
 		}
@@ -87,12 +87,12 @@ func TestGridReadabilityCountsOnlyPopulatedRunSizes(t *testing.T) {
 	ctx.viewingMode = tokens.ViewingModePresentation
 	raw := slideWithAutofit("100000", "1200")
 	raw = strings.Replace(raw, "</a:p>", `<a:r><a:rPr sz="100"/><a:t> </a:t></a:r><a:endParaRPr sz="100"/></a:p>`, 1)
-	ctx.reportGridReadability([][]byte{[]byte(raw)}, map[uint32][]tokens.TextRole{1: {tokens.TextRoleBody}}, 0)
+	ctx.reportGridReadability([][]byte{[]byte(raw)}, nil, map[uint32][]tokens.TextRole{1: {tokens.TextRoleBody}}, 0)
 	if len(ctx.fitFindings) != 0 {
 		t.Fatalf("empty styles refused readable body: %+v", ctx.fitFindings)
 	}
 	raw = strings.Replace(raw, "<a:t> </a:t>", "<a:t>Required child run</a:t>", 1)
-	ctx.reportGridReadability([][]byte{[]byte(raw)}, map[uint32][]tokens.TextRole{1: {tokens.TextRoleBody}}, 0)
+	ctx.reportGridReadability([][]byte{[]byte(raw)}, nil, map[uint32][]tokens.TextRole{1: {tokens.TextRoleBody}}, 0)
 	if len(ctx.fitFindings) != 1 {
 		t.Fatalf("small populated child run was ignored: %+v", ctx.fitFindings)
 	}
@@ -115,7 +115,7 @@ func TestGridReadabilityRefusesFramesWithoutUsableTextArea(t *testing.T) {
 			}
 			ctx := &singlePassContext{}
 			ctx.viewingMode = tokens.ViewingModePresentation
-			ctx.reportGridReadability([][]byte{[]byte(raw)}, map[uint32][]tokens.TextRole{1: {tokens.TextRoleBody}}, 0)
+			ctx.reportGridReadability([][]byte{[]byte(raw)}, nil, map[uint32][]tokens.TextRole{1: {tokens.TextRoleBody}}, 0)
 			if tc.refuses {
 				if len(ctx.fitFindings) != 1 || ctx.fitFindings[0].Action != "refuse" || ctx.fitFindings[0].Fix != nil || !strings.Contains(ctx.fitFindings[0].Message, "no usable area") {
 					t.Fatalf("unusable frame published: %+v", ctx.fitFindings)
@@ -177,7 +177,7 @@ func TestUnreadableAutofitHonoursGridRoles(t *testing.T) {
 			roles := map[uint32][]tokens.TextRole{206: {tokens.TextRoleKPIValue, tc.role}}
 			ctx := &singlePassContext{}
 			ctx.viewingMode = present
-			ctx.reportGridReadability([][]byte{[]byte(raw)}, roles, 7)
+			ctx.reportGridReadability([][]byte{[]byte(raw)}, nil, roles, 7)
 			if got := len(ctx.fitFindings) == 1 && ctx.fitFindings[0].Action == "refuse"; got != tc.refuse {
 				t.Fatalf("grid refusal = %v, want %v: %+v", got, tc.refuse, ctx.fitFindings)
 			}

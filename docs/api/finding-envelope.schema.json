@@ -148,7 +148,7 @@
         "slide_number": {
           "type": "integer",
           "minimum": 1,
-          "description": "DeckSpec surfaces: 1-based position of the slide in the rendered deck. Absent on a deck-level finding and on an entry that spans slides."
+          "description": "1-based position of the slide in the rendered deck (a split_slide page and a structure deck's agenda and dividers count). Absent on a deck-level finding and on an entry that spans slides. A tool's slide_index is this number minus one."
         },
         "occurrences": {
           "type": "integer",
@@ -164,7 +164,7 @@
         "message": { "type": "string" },
         "evidence": {
           "type": "object",
-          "description": "Machine-readable facts (measured vs. allowed extents, overflow ratios, offending JSON path, expected type, asset kind/value, suggestion lists). Scalars and lists of facts are carried; arbitrary nested objects are dropped."
+          "description": "Machine-readable facts (measured vs. allowed extents, overflow ratios, the finding's JSON Pointer into the deck that was sent as path, expected type, asset kind/value, suggestion lists). Scalars and lists of facts are carried; arbitrary nested objects are dropped."
         },
         "remediation": { "$ref": "#/$defs/remediation" },
         "next_tool_call": { "$ref": "#/$defs/tool_call_suggestion" },
@@ -177,7 +177,7 @@
         },
         "debug": {
           "type": "object",
-          "description": "DeckSpec surfaces: locators into the compiled deck (raw_path, cell_path). They name objects the author did not write."
+          "description": "Locators that name objects the author did not write. DeckSpec surfaces: into the compiled deck (raw_path, cell_path). Raw-deck surfaces: locator, the engine's own path when it differs from the authored evidence.path (an expanded slide index, a cell of a pattern or compose grid, slide chrome, a written shape)."
         },
         "doc_url": { "type": "string" },
         "describe_command": {

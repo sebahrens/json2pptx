@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -16,25 +15,18 @@ import (
 // Every finding a raw-deck surface reports addresses the deck the author sent
 // with a JSON Pointer (RFC 6901): it starts with "/", its segments are
 // separated by "/" alone, and it resolves in that deck
-// (go-slide-creator-7fshg). docs/PATH_GRAMMAR.md lists the three forms that
-// name something the deck does not contain; each still resolves up to a
-// stated parent, and nothing else may.
+// (go-slide-creator-7fshg). That holds for a deck whose slides the engine
+// expands (split_slide, structure: go-slide-creator-9564b, -2v8me) and for a
+// finding about something the engine built or wrote (a cell of an expanded
+// pattern or compose grid, slide chrome, a written shape:
+// go-slide-creator-o45pn) — the engine's own locator is debug.locator. The
+// one path that does not resolve names a field to add, and its parent does.
 
 // missingFieldCodes are the findings about a field the deck does not have:
 // the path names the field to add and its parent resolves.
 var missingFieldCodes = map[string]bool{
 	"required": true, "REQUIRED": true, "takeaway_missing": true, "DATA_WITHOUT_SOURCE": true,
 }
-
-var (
-	// An expanded pattern's cell: the pattern object resolves, the tail
-	// locates a cell of the grid it expands to.
-	patternCellRE = regexp.MustCompile(`^(.*/pattern)/rows/\d+(?:/.*)?$`)
-	// Slide chrome and a written shape: the slide resolves.
-	renderedOnSlideRE = regexp.MustCompile(`^(/slides/\d+)/(?:chrome|rendered_shapes/\d+(?:/paragraphs/\d+)?)$`)
-	// The grid a compose slide expands to.
-	composeGridRE = regexp.MustCompile(`^(/slides/\d+)/shape_grid(?:/.*)?$`)
-)
 
 // findingPathProblem returns what is wrong with one finding's path for deck,
 // or "".
@@ -54,44 +46,31 @@ func findingPathProblem(deck any, code, path string) string {
 			return ""
 		}
 	}
-	if m := patternCellRE.FindStringSubmatch(path); m != nil && pointerResolves(deck, m[1]) {
-		return ""
-	}
-	if m := renderedOnSlideRE.FindStringSubmatch(path); m != nil && pointerResolves(deck, m[1]) {
-		return ""
-	}
-	if m := composeGridRE.FindStringSubmatch(path); m != nil && pointerResolves(deck, m[1]+"/compose") {
-		return ""
-	}
 	return "does not resolve in the deck"
 }
 
-// expandsSlides reports a deck whose slides are not the ones it lists: a
-// split_slide entry becomes several, and structure builds them all. Findings
-// on such a deck carry the index of the expanded slide
-// (go-slide-creator-9564b), so only the notation is checked.
-func expandsSlides(deck any) bool {
+// renderedSlideCount is how many slides the deck renders, 0 when the test
+// cannot tell (a structure deck's dividers and agenda).
+func renderedSlideCount(deck any) int {
 	doc, _ := deck.(map[string]any)
-	if doc == nil {
-		return false
-	}
-	if _, ok := doc["structure"]; ok {
-		return true
+	if doc == nil || doc["structure"] != nil {
+		return 0
 	}
 	slides, _ := doc["slides"].([]any)
 	for _, s := range slides {
 		if m, _ := s.(map[string]any); m != nil && m["type"] == "split_slide" {
-			return true
+			return 0
 		}
 	}
-	return false
+	return len(slides)
 }
 
 // assertFindingPointers checks every finding of one answer against the deck
-// that produced it.
+// that produced it: the path resolves there, a finding on a slide says which
+// rendered slide (slide_number), and a locator the engine kept is under debug.
 func assertFindingPointers(t *testing.T, label string, deck any, findings []any) {
 	t.Helper()
-	syntaxOnly := expandsSlides(deck)
+	slides := renderedSlideCount(deck)
 	for _, raw := range findings {
 		f, _ := raw.(map[string]any)
 		if f == nil {
@@ -107,12 +86,36 @@ func assertFindingPointers(t *testing.T, label string, deck any, findings []any)
 			continue
 		}
 		code, _ := f["code"].(string)
-		problem := findingPathProblem(deck, code, path)
-		if problem == "" || (syntaxOnly && problem == "does not resolve in the deck") {
-			continue
+		if problem := findingPathProblem(deck, code, path); problem != "" {
+			t.Errorf("%s: %s path %q %s (debug %v)", label, code, path, problem, f["debug"])
 		}
-		t.Errorf("%s: %s path %q %s", label, code, path, problem)
+		onSlide := strings.HasPrefix(path, "/slides/") || strings.HasPrefix(path, "/structure/")
+		number, hasNumber := f["slide_number"].(float64)
+		switch {
+		case strings.HasPrefix(path, "/slides/") && !hasNumber:
+			t.Errorf("%s: %s at %q has no slide_number", label, code, path)
+		case hasNumber && !onSlide:
+			t.Errorf("%s: %s at %q has slide_number %v but names no slide", label, code, path, number)
+		case hasNumber && (number < 1 || (slides > 0 && int(number) > slides)):
+			t.Errorf("%s: %s at %q has slide_number %v, deck renders %d slides", label, code, path, number, slides)
+		case hasNumber && slides > 0 && !strings.HasPrefix(path, fmt.Sprintf("/slides/%d", int(number)-1)):
+			t.Errorf("%s: %s at %q has slide_number %v", label, code, path, number)
+		}
+		if debug, ok := f["debug"].(map[string]any); ok {
+			if locator, _ := debug["locator"].(string); locator == path {
+				t.Errorf("%s: %s debug.locator repeats the path %q", label, code, path)
+			}
+		}
 	}
+}
+
+// answerFindings is every finding an answer carries: the findings envelope
+// and the fit_findings list beside it.
+func answerFindings(t *testing.T, doc map[string]any) []any {
+	t.Helper()
+	out := append([]any(nil), envelopeFindings(t, doc)...)
+	fit, _ := doc["fit_findings"].([]any)
+	return append(out, fit...)
 }
 
 func TestFindingPathProblem(t *testing.T) {
@@ -136,12 +139,13 @@ func TestFindingPathProblem(t *testing.T) {
 		{"INPUT.max_length", "/slides/0/content/0/text", false},
 		{"INPUT.INVALID_PARAMETER", "/slides/0/content/0/text_value", true},
 		{"INPUT.takeaway_missing", "/slides/3/takeaway", false},
-		{"FIT.fit_overflow", "/slides/1/pattern/rows/0/cells/1/shape/text", true},
-		{"FIT.fit_overflow", "/slides/0/pattern/rows/0/cells/1/shape/text", false},
-		{"INPUT.contrast_predicted", "/slides/1/chrome", true},
-		{"INPUT.TEXT_BELOW_READABLE_MIN", "/slides/1/rendered_shapes/200/paragraphs/0", true},
-		{"GRID.grid_violation", "/slides/2/shape_grid", true},
-		{"GRID.grid_violation", "/slides/1/shape_grid", false},
+		// The engine's locators are not places in the deck.
+		{"FIT.fit_overflow", "/slides/1/pattern/rows/0/cells/1/shape/text", false},
+		{"FIT.fit_overflow", "/slides/1/pattern/values", true},
+		{"INPUT.contrast_predicted", "/slides/1/chrome", false},
+		{"INPUT.TEXT_BELOW_READABLE_MIN", "/slides/1/rendered_shapes/200/paragraphs/0", false},
+		{"GRID.grid_violation", "/slides/2/shape_grid", false},
+		{"GRID.grid_violation", "/slides/2/compose", true},
 	} {
 		if got := findingPathProblem(deck, tc.code, tc.path); (got == "") != tc.ok {
 			t.Errorf("%s @ %s: problem %q, want ok=%t", tc.code, tc.path, got, tc.ok)
@@ -392,6 +396,23 @@ func TestExampleCorpusFindingPathsAreAuthoredPointers(t *testing.T) {
 			findings := envelopeFindings(t, doc)
 			checked += len(findings)
 			assertFindingPointers(t, filepath.Base(file)+" on "+tmpl, deck, findings)
+
+			// The render reports the same deck's findings beside the file it
+			// writes; the five family decks are rendered too.
+			if shortExampleDecks[filepath.Base(file)] != tmpl {
+				continue
+			}
+			res, err = mc.handleGenerate(context.Background(), makeRequest(map[string]any{
+				"presentation": deck, "fit_report": true, "base_dir": absDir,
+			}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			doc = nil
+			if err := json.Unmarshal([]byte(textContent(res)), &doc); err != nil {
+				t.Fatalf("%s: generate answer is not JSON: %v", file, err)
+			}
+			assertFindingPointers(t, filepath.Base(file)+" on "+tmpl+" (generate_presentation)", deck, answerFindings(t, doc))
 		}
 	}
 	if testing.Short() && decks != len(shortExampleDecks) {

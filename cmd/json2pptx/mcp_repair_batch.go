@@ -18,6 +18,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/template"
@@ -112,6 +113,9 @@ func (mc *mcpConfig) handleRepairSlidesBatch(ctx context.Context, request mcp.Ca
 		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nil), nil
 	}
 	applyDefaults(&input)
+	if structDiags := expandStructureForRepair(&input); len(structDiags) > 0 {
+		return api.MCPDiagnosticsError(structDiags), nil
+	}
 
 	if errResult := validateRepairBoundary(&input); errResult != nil {
 		return errResult, nil
@@ -125,9 +129,10 @@ func (mc *mcpConfig) handleRepairSlidesBatch(ctx context.Context, request mcp.Ca
 		return argRequired(request, "repair_slides_batch", "fixes", "array", []any{map[string]any{"slide_index": 0, "kind": "reduce_text", "params": map[string]any{"max_items": 5}}}, nil), nil
 	}
 
+	authored := newAuthoredPaths(&input)
 	applied := make([]batchAppliedFix, 0, len(fixes))
 	for _, f := range fixes {
-		res := applyRepairFix(&input, *f.SlideIndex, repairFixInput{Kind: f.Kind, Params: f.Params})
+		res := applyRepairFix(&input, *f.SlideIndex, repairFixInput{Kind: f.Kind, Params: authored.enginePathParams(f.Params, *f.SlideIndex)})
 		applied = append(applied, batchAppliedFix{
 			SlideIndex:     *f.SlideIndex,
 			Kind:           res.Kind,
@@ -138,6 +143,9 @@ func (mc *mcpConfig) handleRepairSlidesBatch(ctx context.Context, request mcp.Ca
 			NextToolCall:   res.NextToolCall,
 		})
 	}
+
+	// The patched deck is the expanded slide list; its findings address it.
+	deckinput.ClearSlideOrigins(input.Slides)
 
 	// Recompute deck-wide fit findings against the patched input so the agent
 	// can decide whether another repair pass is needed.
@@ -152,7 +160,7 @@ func (mc *mcpConfig) handleRepairSlidesBatch(ctx context.Context, request mcp.Ca
 			if lerr == nil {
 				slideWidth, slideHeight := template.ParseSlideDimensions(reader)
 				theme := template.ParseTheme(reader)
-				newFindings = collectFitFindings(&input, layouts, slideWidth, slideHeight, &theme)
+				newFindings = authored.fitFindings(collectFitFindings(&input, layouts, slideWidth, slideHeight, &theme))
 			}
 		}
 	}

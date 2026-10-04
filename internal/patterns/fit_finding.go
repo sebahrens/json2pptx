@@ -50,6 +50,13 @@ type FitFinding struct {
 	// segment-scoped (i.e. the slide is not a compose slide or the finding is
 	// emitted against the merged grid rather than a specific segment).
 	SegmentIndex *int `json:"segment_index,omitempty"`
+
+	// SlideNumber is the 1-based number of the rendered slide the finding is
+	// on. Debug carries the engine's own locator (debug.locator) when Path
+	// was rewritten to the authored deck. Both are set where findings leave
+	// the engine on a raw-deck surface (authoredPaths in cmd/json2pptx).
+	SlideNumber int            `json:"slide_number,omitempty"`
+	Debug       map[string]any `json:"debug,omitempty"`
 }
 
 // SeverityForAction maps a finding's action to the severity every surface

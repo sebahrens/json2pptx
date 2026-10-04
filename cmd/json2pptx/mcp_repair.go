@@ -16,6 +16,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -105,7 +106,7 @@ Non-applied outcomes: an unknown kind returns kind_not_supported and supported_k
 		mcp.WithString("deck_id", mcp.Description("Stored raw presentation or DeckSpec handle, alternative to presentation. A raw handle is updated in place and normally returns only changed_slides; a DeckSpec handle is compiled read-only and returns a patched raw deck.")),
 		mcp.WithBoolean("return_deck", mcp.Description("With a raw deck_id, include the full patched_deck in the response. Default false to keep one-slide revisions small; stateless and DeckSpec-sourced calls always return the deck.")),
 		mcp.WithNumber("slide_index",
-			mcp.Description("0-based index of the slide to repair."),
+			mcp.Description("0-based index of the rendered slide to repair: a finding's slide_number - 1."),
 			mcp.Required(),
 		),
 		mcp.WithString("expected_revision", mcp.Description("Optional revision precondition: the `revision` string from the response that produced these fixes (a repair plan, or a prior repair_slide response). A stale revision rejects the mutation.")),
@@ -132,6 +133,9 @@ func (mc *mcpConfig) handleRepairSlide(ctx context.Context, request mcp.CallTool
 		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nil), nil
 	}
 	applyDefaults(&input)
+	if structDiags := expandStructureForRepair(&input); len(structDiags) > 0 {
+		return api.MCPDiagnosticsError(structDiags), nil
+	}
 	currentRevision := presentationRevision(&input)
 	if expected, err := request.RequireString("expected_revision"); err == nil && expected != "" && expected != currentRevision {
 		return argInvalidValue("repair_slide", "STALE_REVISION", "expected_revision", fmt.Sprintf("stale revision: got %s, current is %s", expected, currentRevision), "string", currentRevision, nil), nil
@@ -157,13 +161,20 @@ func (mc *mcpConfig) handleRepairSlide(ctx context.Context, request mcp.CallTool
 		return argRequired(request, "repair_slide", "fixes", "array", []any{map[string]any{"kind": "reduce_text", "params": map[string]any{"max_items": 5}}}, nil), nil
 	}
 
-	// Apply each fix to the target slide.
+	// Apply each fix to the target slide. A path a fix carries may be the
+	// authored pointer a finding reported or the engine's locator; the fix
+	// code works on the locator.
 	originalSlideCount := len(input.Slides)
+	authored := newAuthoredPaths(&input)
 	var applied []appliedFix
 	for _, fix := range fixes {
+		fix.Params = authored.enginePathParams(fix.Params, slideIdx)
 		result := applyRepairFix(&input, slideIdx, fix)
 		applied = append(applied, result)
 	}
+	// The patched deck is the expanded slide list (a split_slide entry has
+	// become its pages), so that list is what the findings below address.
+	deckinput.ClearSlideOrigins(input.Slides)
 
 	// Resolve template for post-patch fit findings.
 	var newFindings []patterns.FitFinding
@@ -180,7 +191,7 @@ func (mc *mcpConfig) handleRepairSlide(ctx context.Context, request mcp.CallTool
 				allFindings := collectFitFindings(&input, layouts, slideWidth, slideHeight, &theme)
 				// Splits emit contiguous sibling pages. Include every emitted
 				// page, not just the first, but exclude unaffected deck siblings.
-				newFindings = filterFindingsForRepairPages(allFindings, slideIdx, len(input.Slides)-originalSlideCount+1)
+				newFindings = authored.fitFindings(filterFindingsForRepairPages(allFindings, slideIdx, len(input.Slides)-originalSlideCount+1))
 			}
 		}
 	}
@@ -1366,6 +1377,24 @@ func fixKindNames(fixes []visualqa.SuggestedFix) []string {
 
 // --- Helpers ---
 
+// expandStructureForRepair turns a deck authored with structure into the
+// slides it renders, for a tool that edits one rendered slide and returns the
+// expanded deck (go-slide-creator-tfnk7): the cover, agenda, dividers and
+// section slides become the deck's slides — slide_index counts them — and the
+// block is dropped, since a deck carries structure or slides, not both. The
+// slides keep their origin, so a path a fix carries may still name
+// /structure/sections/0/slides/1/….
+func expandStructureForRepair(input *PresentationInput) []diagnostics.Diagnostic {
+	if input.Structure == nil {
+		return nil
+	}
+	if ds := applyStructureExpansion(input); len(ds) > 0 {
+		return ds
+	}
+	input.Structure = nil
+	return nil
+}
+
 // validateRepairBoundary checks required fields for repair_slide.
 func validateRepairBoundary(input *PresentationInput) *mcp.CallToolResult {
 	var diags []diagnostics.Diagnostic
@@ -2429,6 +2458,12 @@ func applyReduceCellText(input *PresentationInput, slideIdx int, params map[stri
 	}
 	if maxChars <= 1 {
 		return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: "max_chars must be > 1"}
+	}
+
+	// A cell_path that names the pattern value the cell shows — what a
+	// finding reports — is edited where it is written.
+	if result, ok := reducePatternValueText(input, slideIdx, cellPath, maxChars, params); ok {
+		return result
 	}
 
 	slide := &input.Slides[slideIdx]

@@ -206,6 +206,11 @@ func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallTool
 	if structDiags := applyStructureExpansion(&input); len(structDiags) > 0 {
 		return api.MCPDiagnosticsError(structDiags), nil
 	}
+	// The plan below leaves each pattern / compose slide's expansion in its
+	// shape_grid; findings are addressed to the slides as they were sent.
+	sent := input
+	sent.Slides = append([]SlideInput(nil), input.Slides...)
+	authored := newAuthoredPaths(&sent)
 
 	// Boundary validation.
 	if errResult := validatePreviewBoundary(&input); errResult != nil {
@@ -218,7 +223,7 @@ func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallTool
 	strictUnknownKeys, _ := request.GetArguments()["strict_unknown_keys"].(bool)
 	if strictUnknownKeys {
 		if diags := unknownKeyDiags([]byte(jsonStr), true); len(diags) > 0 {
-			return api.MCPDiagnosticsError(diags), nil
+			return authored.mcpError(diags), nil
 		}
 	}
 
@@ -233,7 +238,7 @@ func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallTool
 	}
 	assetFindings := resolveLocalAssetPaths(input.Slides, baseDir, imageAllowList(mc.cfg.Images.AllowedBasePaths)...)
 	if assetErrors := diagnostics.FilterBySeverity(assetFindings, diagnostics.SeverityError); len(assetErrors) > 0 {
-		return api.MCPDiagnosticsError(assetErrors), nil
+		return authored.mcpError(assetErrors), nil
 	}
 	previewAssetWarnings := diagnostics.FilterBySeverity(assetFindings, diagnostics.SeverityWarning)
 
@@ -265,7 +270,7 @@ func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallTool
 	}
 	if fitReport {
 		verboseFit, _ := request.GetArguments()["verbose_fit"].(bool)
-		output.FitFindings = computePreviewFitFindings(&input, &output, tctx, verboseFit)
+		output.FitFindings = authored.fitFindings(computePreviewFitFindings(&input, &output, tctx, verboseFit))
 	}
 
 	// Collect boundary warnings.
@@ -274,7 +279,7 @@ func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallTool
 	}
 	// Surface non-blocking asset findings (e.g. ICON_FILL_IGNORED_ON_INLINE)
 	// alongside other warnings so agents see them without blocking the preview.
-	for _, d := range previewAssetWarnings {
+	for _, d := range authored.diagnostics(previewAssetWarnings) {
 		output.Warnings = append(output.Warnings, fmt.Sprintf("%s at %s: %s", d.Code, d.Path, d.Message))
 	}
 

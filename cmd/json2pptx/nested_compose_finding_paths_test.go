@@ -62,34 +62,50 @@ func TestNestedComposeNativeDiagramFindingPathsMatchValidate(t *testing.T) {
 		name  string
 		slide map[string]any
 		want  string // validate's path on midnight-blue
+		// authored is where a report places it: the authored segment.
+		authored string
 	}{
 		{
 			name: "first segment",
 			slide: narrowRegionSlide("Nested first", nestedComposeSegment(50, "horizontal", narrowPyramid(45), narrowRegionHero(55)),
 				narrowRegionHero(50)),
-			want: "/slides/0/shape_grid/rows/0/cells/0/grid/rows/0/cells/0/grid/rows/0/cells/0/diagram",
+			want:     "/slides/0/shape_grid/rows/0/cells/0/grid/rows/0/cells/0/grid/rows/0/cells/0/diagram",
+			authored: "/slides/0/compose/segments/0/compose/segments/0/diagram",
 		},
 		{
 			name: "after a multi-column segment",
 			slide: narrowRegionSlide("Nested after KPIs", nestedComposeKPISegment(50),
 				nestedComposeSegment(50, "horizontal", narrowPyramid(45), narrowRegionHero(55))),
-			want: "/slides/0/shape_grid/rows/0/cells/1/grid/rows/0/cells/0/grid/rows/0/cells/0/diagram",
+			want:     "/slides/0/shape_grid/rows/0/cells/1/grid/rows/0/cells/0/grid/rows/0/cells/0/diagram",
+			authored: "/slides/0/compose/segments/1/compose/segments/0/diagram",
 		},
 		{
 			name: "vertical inner compose",
 			slide: narrowRegionSlide("Nested vertical", nestedComposeKPISegment(78),
 				nestedComposeSegment(22, "vertical", narrowRegionHero(50), narrowPyramid(50))),
-			want: "/slides/0/shape_grid/rows/0/cells/1/grid/rows/1/cells/0/grid/rows/0/cells/0/diagram",
+			want:     "/slides/0/shape_grid/rows/0/cells/1/grid/rows/1/cells/0/grid/rows/0/cells/0/diagram",
+			authored: "/slides/0/compose/segments/1/compose/segments/1/diagram",
 		},
 	}
 	for _, tpl := range narrowRegionTemplates() {
 		for _, tc := range cases {
 			t.Run(tpl+"/"+tc.name, func(t *testing.T) {
 				slides := []any{tc.slide}
-				_, _, validate := gateFor(t, nestedComposeInput(t, tpl, slides))
+				input := nestedComposeInput(t, tpl, slides)
+				_, _, validate := gateFor(t, input)
 				predicted := findingPathsWithCode(validate, patterns.ErrCodeTextExceedsShape)
 				if _, ok := predicted[tc.want]; tpl == "midnight-blue" && !ok {
 					t.Fatalf("validate did not predict the mid-word break at %s: %v", tc.want, predicted)
+				}
+				// The report addresses the authored envelope: the segment's
+				// diagram, not the cell of the grid it merges into.
+				authored := newAuthoredPaths(input)
+				if got := authored.address(tc.want, "").Path; got != tc.authored {
+					t.Errorf("%s is reported at %s, want %s", tc.want, got, tc.authored)
+				}
+				for path, msg := range predicted {
+					delete(predicted, path)
+					predicted[authored.address(path, "").Path] = msg
 				}
 				result, _ := generateNarrowRegionDeck(t, tpl, slides)
 				reported := findingPathsWithCode(result.FitFindings, patterns.ErrCodeTextExceedsShape)

@@ -125,7 +125,7 @@ func runGenerate() error {
 	if *dryRun {
 		return runJSONDryRun(*jsonInput, *templateName, effTemplatesDir, *configPath, *designMode, *strictUnknownKeys)
 	}
-	runErr := runJSONMode(*jsonInput, resolvedJSONOutput, effTemplatesDir, effOutputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit, *partial, *outputValidation, *designMode, *strictUnknownKeys)
+	deck, runErr := runJSONModeDeck(*jsonInput, resolvedJSONOutput, effTemplatesDir, effOutputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit, *partial, *outputValidation, *designMode, *strictUnknownKeys)
 	if runErr != nil && resolvedJSONOutput == "" {
 		// Without a report destination the failure used to be a stderr line
 		// only; the result shape is the same on stdout either way.
@@ -134,7 +134,7 @@ func runGenerate() error {
 		if errors.As(runErr, &refusal) {
 			findings = refusal.Findings
 		}
-		_ = printGenerateSummary(newGenerateFailure(runErr, findings))
+		_ = printGenerateSummary(newGenerateFailure(deck, runErr, findings))
 	}
 	return runErr
 }
@@ -152,7 +152,12 @@ type generateFailure struct {
 
 // newGenerateFailure builds generate's failure result. The envelope's first
 // finding is the failure itself; the fit findings of a refusal follow it.
-func newGenerateFailure(err error, fit []patterns.FitFinding) generateFailure {
+//
+// deck is the decoded deck, nil when the input did not decode; every finding
+// is addressed to it (authoredPaths).
+func newGenerateFailure(deck *PresentationInput, err error, fit []patterns.FitFinding) generateFailure {
+	authored := newAuthoredPaths(deck)
+	fit = authored.fitFindings(fit)
 	// A deck the structural verdict refuses is reported in the findings
 	// validate reports for it — the same codes at the same paths — rather
 	// than as one finding carrying the joined message.
@@ -162,9 +167,16 @@ func newGenerateFailure(err error, fit []patterns.FitFinding) generateFailure {
 			Code: generateFailureCode(err), Path: cliErrorPath(err), Message: err.Error(), Severity: diagnostics.SeverityError,
 		}}
 	}
-	ds = dedupeDiagnostics(append(ds, diagnostics.FromFitFindings(fit)...))
+	ds = dedupeDiagnostics(authored.diagnostics(append(ds, diagnostics.FromFitFindings(fit)...)))
+	// The error line names the place its finding does.
+	message := err.Error()
+	for _, d := range ds {
+		if locator, _ := d.Debug[locatorDebugKey].(string); locator != "" {
+			message = replacePathMentions(message, locator, d.Path)
+		}
+	}
 	return generateFailure{
-		JSONOutput:      JSONOutput{Success: false, Error: err.Error(), FitFindings: fit},
+		JSONOutput:      JSONOutput{Success: false, Error: message, FitFindings: fit},
 		FindingEnvelope: diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{Subcommand: "generate"}, ds),
 	}
 }

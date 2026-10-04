@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -68,7 +69,7 @@ func TestCLIExtremeSchemaPatternsCannotPublishTinyText(t *testing.T) {
 					t.Fatal(err)
 				}
 				finding := firstFindingCode(result.FitFindings, patterns.ErrCodeTextBelowReadableMin)
-				if result.Success || result.OutputPath != "" || finding == nil || finding.Action != "refuse" || finding.Fix != nil || !strings.Contains(finding.Path, "/rendered_shapes/") || strings.Contains(finding.Message, "shorten") {
+				if result.Success || result.OutputPath != "" || finding == nil || finding.Action != "refuse" || finding.Fix != nil || !strings.HasPrefix(finding.Path, "/slides/0/pattern") || strings.Contains(finding.Path, "/rows/") || !strings.Contains(fmt.Sprint(finding.Debug["locator"]), "/rendered_shapes/") || strings.Contains(finding.Message, "shorten") {
 					t.Fatalf("incorrect readability refusal: %+v", result)
 				}
 				if after, err := os.ReadFile(input); err != nil || string(after) != string(before) {

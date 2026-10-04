@@ -23,7 +23,18 @@ import (
 // checkInputUnknownKeys runs unknown-key detection on the full
 // PresentationInput JSON tree. Returns a ValidationError for every unknown
 // field found. Callers decide the severity (warning vs error).
+//
+// The paths are pointers into the JSON as written (a split_slide's base is
+// /slides/1/base), so each finding is marked Authored.
 func checkInputUnknownKeys(raw json.RawMessage) []*patterns.ValidationError {
+	out := inputUnknownKeys(raw)
+	for _, ve := range out {
+		ve.Authored = true
+	}
+	return out
+}
+
+func inputUnknownKeys(raw json.RawMessage) []*patterns.ValidationError {
 	// A patch envelope ({"base": {...}, "operations": [...]}, docs/INPUT_FORMAT_ADVANCED.md)
 	// is not a PresentationInput itself: scan its base deck, or "base" and
 	// "operations" are reported as unknown keys and --strict-unknown-keys
@@ -33,7 +44,7 @@ func checkInputUnknownKeys(raw json.RawMessage) []*patterns.ValidationError {
 		Operations []json.RawMessage `json:"operations"`
 	}
 	if json.Unmarshal(raw, &envelope) == nil && len(envelope.Operations) > 0 && len(envelope.Base) > 0 {
-		return checkInputUnknownKeys(envelope.Base)
+		return inputUnknownKeys(envelope.Base)
 	}
 
 	var warnings []*patterns.ValidationError
@@ -99,6 +110,45 @@ func checkInputUnknownKeys(raw json.RawMessage) []*patterns.ValidationError {
 		}
 	}
 
+	// structure: the block itself, its cover and closing, each section and
+	// each section's slides (go-slide-creator-3znh9).
+	if v, ok := top["structure"]; ok {
+		warnings = append(warnings, checkStructureUnknownKeys(v, "/structure")...)
+	}
+
+	return warnings
+}
+
+// checkStructureUnknownKeys checks a structure block. Its slides are plain
+// slides: a split_slide envelope is not read there.
+func checkStructureUnknownKeys(raw json.RawMessage, path string) []*patterns.ValidationError {
+	warnings := checkUnknownKeysForType(raw, reflect.TypeOf(StructureInput{}), path)
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(raw, &obj) != nil {
+		return warnings
+	}
+	for _, key := range []string{"cover", "closing"} {
+		if v, ok := obj[key]; ok && string(v) != "null" {
+			warnings = append(warnings, checkPlainSlideUnknownKeys(v, path+"/"+key)...)
+		}
+	}
+	var sections []json.RawMessage
+	if json.Unmarshal(obj["sections"], &sections) != nil {
+		return warnings
+	}
+	for i, sectionRaw := range sections {
+		sectionPath := fmt.Sprintf("%s/sections/%d", path, i)
+		warnings = append(warnings, checkUnknownKeysForType(sectionRaw, reflect.TypeOf(SectionInput{}), sectionPath)...)
+		var section struct {
+			Slides []json.RawMessage `json:"slides"`
+		}
+		if json.Unmarshal(sectionRaw, &section) != nil {
+			continue
+		}
+		for j, slideRaw := range section.Slides {
+			warnings = append(warnings, checkPlainSlideUnknownKeys(slideRaw, fmt.Sprintf("%s/slides/%d", sectionPath, j))...)
+		}
+	}
 	return warnings
 }
 
@@ -111,7 +161,11 @@ func checkSlideUnknownKeys(raw json.RawMessage, path string) []*patterns.Validat
 	if json.Unmarshal(raw, &probe) == nil && probe.Type == "split_slide" {
 		return checkSplitSlideUnknownKeys(raw, path)
 	}
+	return checkPlainSlideUnknownKeys(raw, path)
+}
 
+// checkPlainSlideUnknownKeys checks a slide object.
+func checkPlainSlideUnknownKeys(raw json.RawMessage, path string) []*patterns.ValidationError {
 	var warnings []*patterns.ValidationError
 	warnings = append(warnings, checkUnknownKeysForType(raw, reflect.TypeOf(SlideInput{}), path)...)
 

@@ -106,7 +106,7 @@ func verdictSurfaces(t *testing.T, mc *mcpConfig, deckPath string, generate bool
 	}
 	doc := decode("validate_input", textContent(res))
 	out["validate"] = verdictOf(!res.IsError, envelopeFindings(t, doc))
-	assertFindingPointers(t, "validate", presentation, envelopeFindings(t, doc))
+	assertFindingPointers(t, "validate", presentation, answerFindings(t, doc))
 
 	// generate --dry-run.
 	var dryErr error
@@ -119,7 +119,7 @@ func verdictSurfaces(t *testing.T, mc *mcpConfig, deckPath string, generate bool
 		t.Errorf("generate --dry-run: valid=%t but error=%v", valid, dryErr)
 	}
 	out["dry-run"] = verdictOf(valid, envelopeFindings(t, doc))
-	assertFindingPointers(t, "dry-run", presentation, envelopeFindings(t, doc))
+	assertFindingPointers(t, "dry-run", presentation, answerFindings(t, doc))
 
 	if !generate {
 		return out
@@ -138,7 +138,7 @@ func verdictSurfaces(t *testing.T, mc *mcpConfig, deckPath string, generate bool
 		t.Errorf("generate: refused the deck but returned no error")
 	}
 	out["generate"] = verdictOf(success, envelopeFindings(t, doc))
-	assertFindingPointers(t, "generate", presentation, envelopeFindings(t, doc))
+	assertFindingPointers(t, "generate", presentation, answerFindings(t, doc))
 
 	// generate_presentation (MCP).
 	res, err = mc.handleGenerate(context.Background(), makeRequest(map[string]any{
@@ -153,7 +153,7 @@ func verdictSurfaces(t *testing.T, mc *mcpConfig, deckPath string, generate bool
 		success = reported
 	}
 	out["generate_presentation"] = verdictOf(success, envelopeFindings(t, doc))
-	assertFindingPointers(t, "generate_presentation", presentation, envelopeFindings(t, doc))
+	assertFindingPointers(t, "generate_presentation", presentation, answerFindings(t, doc))
 	return out
 }
 

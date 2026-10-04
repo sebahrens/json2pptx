@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,7 +31,9 @@ func TestCLIGridBodyBelowRoleFloorCannotPublish(t *testing.T) {
 		t.Fatal(err)
 	}
 	finding := firstFindingCode(result.FitFindings, patterns.ErrCodeTextBelowReadableMin)
-	if result.Success || result.OutputPath != "" || finding == nil || finding.Action != "refuse" || finding.Fix != nil || !strings.Contains(finding.Path, "/rendered_shapes/") {
+	if result.Success || result.OutputPath != "" || finding == nil || finding.Action != "refuse" || finding.Fix != nil || finding.Path != "/slides/0/shape_grid/rows/0/cells/0/shape/text" || !strings.Contains(fmt.Sprint(finding.Debug["locator"]), "/rendered_shapes/") || strings.Contains(result.Error, "/rendered_shapes/") {
+		// The finding is at the cell the author wrote; the written shape it
+		// was measured on is debug.locator (go-slide-creator-o45pn).
 		t.Fatalf("missing generated role-floor refusal: %+v", result)
 	}
 	if after, err := os.ReadFile(input); err != nil || string(after) != string(source) {

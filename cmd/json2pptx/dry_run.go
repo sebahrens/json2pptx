@@ -72,6 +72,21 @@ type dryRunOutput struct {
 	subcommand  string
 	template    string
 	inputSHA256 string
+
+	// deck is the decoded deck the findings are about. Findings leave through
+	// authoredFindings, which addresses each to the deck the author wrote.
+	deck *PresentationInput
+}
+
+// authoredFindings is every accumulated finding of the answer — diagnostics,
+// then fit findings — addressed to the authored deck (authoredPaths) and
+// deduplicated. It is the one list both the success envelope and the error
+// envelope are built from.
+func (o *dryRunOutput) authoredFindings() []diagnostics.Diagnostic {
+	ds := make([]diagnostics.Diagnostic, 0, len(o.Diagnostics)+len(o.FitFindings))
+	ds = append(ds, o.Diagnostics...)
+	ds = append(ds, diagnostics.FromFitFindings(o.FitFindings)...)
+	return dedupeDiagnostics(newAuthoredPaths(o.deck).diagnostics(ds))
 }
 
 // buildFindingsEnvelope folds the accumulated Diagnostics and FitFindings into
@@ -84,10 +99,7 @@ type dryRunOutput struct {
 // order is preserved (validation diagnostics in document order, then fit
 // findings in their canonical order), keeping output deterministic.
 func (o *dryRunOutput) buildFindingsEnvelope() {
-	ds := make([]diagnostics.Diagnostic, 0, len(o.Diagnostics)+len(o.FitFindings))
-	ds = append(ds, o.Diagnostics...)
-	ds = append(ds, diagnostics.FromFitFindings(o.FitFindings)...)
-	ds = dedupeDiagnostics(ds)
+	ds := o.authoredFindings()
 	sort.SliceStable(ds, func(i, j int) bool {
 		return severityRank(ds[i].Severity) < severityRank(ds[j].Severity)
 	})
@@ -179,10 +191,12 @@ type dryRunPlaceholder struct {
 // is true, unknown JSON keys are reported as errors (matching MCP
 // strict_unknown_keys=true semantics) instead of warnings.
 func runJSONDryRun(jsonPath, templateOverride, templatesDir, configPath, designModeOverride string, strictUnknownKeys bool) error {
+	var input PresentationInput
 	output := dryRunOutput{
 		Valid:      true,
 		Slides:     []dryRunSlide{},
 		subcommand: "generate -dry-run",
+		deck:       &input,
 	}
 
 	// Read JSON input
@@ -204,7 +218,6 @@ func runJSONDryRun(jsonPath, templateOverride, templatesDir, configPath, designM
 	output.inputSHA256 = diagnostics.ComputeInputSHA256(inputData)
 
 	// Parse JSON as PresentationInput (superset of legacy JSONInput)
-	var input PresentationInput
 	var patchInput PresentationPatchInput
 	if err := json.Unmarshal(inputData, &patchInput); err == nil && len(patchInput.Operations) > 0 {
 		patched, patchErr := applyPresentationPatch(patchInput)

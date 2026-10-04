@@ -221,6 +221,9 @@ type SlideQuality struct {
 // parsing so the CLI flag wins over the JSON field. When strictUnknownKeys is
 // true, unknown JSON keys are returned as an error instead of warnings — this
 // mirrors the MCP strict_unknown_keys=true semantics.
+//
+// A deck that decoded and is then refused is returned beside the error, so the
+// refusal's findings can be addressed to it (authoredPaths).
 func parseJSONInput(jsonPath, templateOverride, designModeOverride string, strictUnknownKeys bool) (*PresentationInput, []string, error) {
 	var inputData []byte
 	var err error
@@ -260,7 +263,7 @@ func parseJSONInput(jsonPath, templateOverride, designModeOverride string, stric
 	// for the same deck (deck_verdict.go): one code and one path per refusal,
 	// whichever command is asked (go-slide-creator-9k5fh).
 	if tplDiags := deckTemplateFieldDiagnostics(&input, "template is required: use --template flag, or set \"template\" (a registered name) or \"template_path\" (a local .pptx) in JSON input"); len(tplDiags) > 0 {
-		return nil, nil, newDeckRefusal(tplDiags[0].Message, tplDiags)
+		return &input, nil, newDeckRefusal(tplDiags[0].Message, tplDiags)
 	}
 	// A structure block IS the slide list — it expands into one later in
 	// runJSONMode. Rejecting an empty slides[] here made the documented
@@ -268,7 +271,7 @@ func parseJSONInput(jsonPath, templateOverride, designModeOverride string, stric
 	// generate_presentation rendered it: the same deck, two verdicts
 	// (go-slide-creator-m1kg). The expansion checks its own result below.
 	if len(input.Slides) == 0 && input.Structure == nil {
-		return nil, nil, newDeckRefusal("at least one slide is required: provide \"slides\" or a top-level \"structure\" block",
+		return &input, nil, newDeckRefusal("at least one slide is required: provide \"slides\" or a top-level \"structure\" block",
 			[]diagnostics.Diagnostic{deckSlidesRequiredDiagnostic()})
 	}
 
@@ -283,7 +286,7 @@ func parseJSONInput(jsonPath, templateOverride, designModeOverride string, stric
 		for i, ve := range unknownKeyErrs {
 			msgs[i] = ve.Error()
 		}
-		return nil, nil, newDeckRefusal("unknown JSON keys (strict mode): "+strings.Join(msgs, "; "),
+		return &input, nil, newDeckRefusal("unknown JSON keys (strict mode): "+strings.Join(msgs, "; "),
 			diagnostics.FromValidationErrors(unknownKeyErrs))
 	}
 	for _, ve := range unknownKeyErrs {
@@ -296,7 +299,7 @@ func parseJSONInput(jsonPath, templateOverride, designModeOverride string, stric
 		for i, ve := range enumErrs {
 			msgs[i] = ve.Error()
 		}
-		return nil, nil, newDeckRefusal("enum validation failed: "+strings.Join(msgs, "; "),
+		return &input, nil, newDeckRefusal("enum validation failed: "+strings.Join(msgs, "; "),
 			diagnostics.FromValidationErrors(enumErrs))
 	}
 
@@ -379,7 +382,21 @@ func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[st
 }
 
 // runJSONMode processes JSON input and generates PPTX.
-func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string, partial bool, outputValidation string, designModeOverride string, strictUnknownKeys bool) error { //nolint:gocognit,gocyclo
+func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string, partial bool, outputValidation string, designModeOverride string, strictUnknownKeys bool) error {
+	_, err := runJSONModeDeck(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath, verbose, chartPNG, templateOverride, strictFit, partial, outputValidation, designModeOverride, strictUnknownKeys)
+	return err
+}
+
+// runJSONModeDeck is runJSONMode returning the decoded deck beside the error
+// (nil when the input did not decode): the caller that reports the failure
+// itself addresses its findings to that deck (authoredPaths).
+func runJSONModeDeck(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string, partial bool, outputValidation string, designModeOverride string, strictUnknownKeys bool) (*PresentationInput, error) {
+	var deck *PresentationInput
+	err := runJSONModeInto(&deck, jsonPath, jsonOutputPath, templatesDir, outputDir, configPath, verbose, chartPNG, templateOverride, strictFit, partial, outputValidation, designModeOverride, strictUnknownKeys)
+	return deck, err
+}
+
+func runJSONModeInto(deck **PresentationInput, jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string, partial bool, outputValidation string, designModeOverride string, strictUnknownKeys bool) error { //nolint:gocognit,gocyclo
 	startTime := time.Now()
 
 	// If --output looks like a .pptx file path (e.g. "/tmp/deck.pptx"), split
@@ -394,8 +411,9 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 
 	// Parse and validate JSON input
 	input, inputWarnings, err := parseJSONInput(jsonPath, templateOverride, designModeOverride, strictUnknownKeys)
+	*deck = input
 	if err != nil {
-		return writeJSONError(jsonOutputPath, err)
+		return writeJSONError(*deck, jsonOutputPath, err)
 	}
 	if outputFilenameOverride != "" {
 		input.OutputFilename = outputFilenameOverride
@@ -410,7 +428,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// resolution and the rest of the pipeline share one effective templates dir.
 	cfg, err := loadRunConfig(configPath, templatesDir, outputDir, chartPNG)
 	if err != nil {
-		return writeJSONError(jsonOutputPath, err)
+		return writeJSONError(*deck, jsonOutputPath, err)
 	}
 
 	// Resolve named style references from template settings (shared with MCP).
@@ -419,10 +437,10 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// Expand structure block into flat slides (mutually exclusive with top-level slides).
 	if input.Structure != nil {
 		if structDiags := applyStructureExpansion(input); len(structDiags) > 0 {
-			return writeJSONError(jsonOutputPath, newDeckRefusal(structDiags[0].Message, structDiags))
+			return writeJSONError(*deck, jsonOutputPath, newDeckRefusal(structDiags[0].Message, structDiags))
 		}
 		if len(input.Slides) == 0 {
-			return writeJSONError(jsonOutputPath, newDeckRefusal("structure expanded to no slides: add a section with slides, or a cover / closing",
+			return writeJSONError(*deck, jsonOutputPath, newDeckRefusal("structure expanded to no slides: add a section with slides, or a cover / closing",
 				[]diagnostics.Diagnostic{deckSlidesRequiredDiagnostic()}))
 		}
 	}
@@ -436,6 +454,9 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// instead of aborting the entire run.
 	if effectiveDesignMode(input) == designModeConstrained {
 		if partial {
+			// The slides that remain keep the address the author gave them
+			// (go-slide-creator-i8nwl).
+			deckinput.KeepSlideAddresses(input.Slides)
 			kept := make([]SlideInput, 0, len(input.Slides))
 			for i := range input.Slides {
 				slideNum := i + 1
@@ -464,7 +485,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 				}
 				msgs = append(msgs, msg)
 			}
-			return writeJSONError(jsonOutputPath, newDeckRefusal(fmt.Sprintf(
+			return writeJSONError(*deck, jsonOutputPath, newDeckRefusal(fmt.Sprintf(
 				"design_mode %q violation(s):\n  %s\n\n"+
 					"To allow raw hex colors and absolute font sizes, rerun with --design-mode=free "+
 					"or set \"design_mode\": \"free\" in the JSON input",
@@ -480,7 +501,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		for _, v := range emojiViolations {
 			msgs = append(msgs, v.Message)
 		}
-		return writeJSONError(jsonOutputPath, newDeckRefusal(
+		return writeJSONError(*deck, jsonOutputPath, newDeckRefusal(
 			"no_emoji policy violation(s):\n  "+strings.Join(msgs, "\n  "), noEmojiDiagnostics(emojiViolations)))
 	}
 
@@ -504,7 +525,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// directory, the same frame relative asset paths use (go-slide-creator-ydbk).
 	resolvedTemplatePath, tplPathErr := resolveDeckTemplatePath(input.TemplatePath, jsonPath)
 	if tplPathErr != nil {
-		return writeJSONError(jsonOutputPath, newDeckRefusal(tplPathErr.Error(), []diagnostics.Diagnostic{codedErrorDiagnostic(tplPathErr)}))
+		return writeJSONError(*deck, jsonOutputPath, newDeckRefusal(tplPathErr.Error(), []diagnostics.Diagnostic{codedErrorDiagnostic(tplPathErr)}))
 	}
 
 	// The URL resolver is created up front (it is only used inside PreConvert)
@@ -515,7 +536,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	if hasURLReferences(input.Slides) {
 		resolver, resolverErr := resource.NewResolver(resource.ResolverOptions{})
 		if resolverErr != nil {
-			return writeJSONError(jsonOutputPath, cliCoded(diagnostics.CodeURLResolverInit, "resource resolver: %w", resolverErr))
+			return writeJSONError(*deck, jsonOutputPath, cliCoded(diagnostics.CodeURLResolverInit, "resource resolver: %w", resolverErr))
 		}
 		urlResolver = resolver
 		urlResolverCleanup = func() { resolver.Close() }
@@ -571,7 +592,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 					preConvertErr = assetErr
 					return preConvertErr
 				}
-				for _, d := range assetFindings {
+				for _, d := range newAuthoredPaths(input).diagnostics(assetFindings) {
 					if d.Severity != diagnostics.SeverityError {
 						inputWarnings = append(inputWarnings, fmt.Sprintf("%s at %s: %s", d.Code, d.Path, d.Message))
 					}
@@ -587,7 +608,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		//   - strict_fit refusal carries its findings in the result.
 		//   - output-validation strict failure aggregates blocking findings.
 		if preConvertErr != nil {
-			return writeJSONError(jsonOutputPath, preConvertErr)
+			return writeJSONError(*deck, jsonOutputPath, preConvertErr)
 		}
 		switch e := renderErr.(type) {
 		case *StrictFitRefusal:
@@ -598,16 +619,16 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 			if jsonOutputPath == "" {
 				return e
 			}
-			return writeJSONErrorWithFindings(jsonOutputPath, e, e.Findings)
+			return writeJSONErrorWithFindings(*deck, jsonOutputPath, e, e.Findings)
 		case *OutputValidationFailure:
 			blocking := e.Report.Blocking()
 			msgs := make([]string, 0, len(blocking))
 			for _, f := range blocking {
 				msgs = append(msgs, f.Error())
 			}
-			return writeJSONError(jsonOutputPath, cliCoded(diagnostics.CodeOutputValidationError, "output validation failed (strict): %s", strings.Join(msgs, "; ")))
+			return writeJSONError(*deck, jsonOutputPath, cliCoded(diagnostics.CodeOutputValidationError, "output validation failed (strict): %s", strings.Join(msgs, "; ")))
 		default:
-			return writeJSONError(jsonOutputPath, renderErr)
+			return writeJSONError(*deck, jsonOutputPath, renderErr)
 		}
 	}
 
@@ -693,7 +714,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		for _, f := range failed {
 			lines = append(lines, fmt.Sprintf("%s: %s", f.Path, f.Message))
 		}
-		return writeJSONErrorWithFindings(jsonOutputPath, fmt.Errorf(
+		return writeJSONErrorWithFindings(*deck, jsonOutputPath, fmt.Errorf(
 			"generation failed: %s: %d chart/diagram(s) could not be rendered, so no deck was written — fix the type or data and rerun:\n  %s",
 			patterns.ErrCodeDiagramRenderFailed, len(failed), strings.Join(lines, "\n  ")), failed)
 	}
@@ -716,7 +737,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		SlideErrors:              slideErrors,
 		Quality:                  quality,
 		ValidationErrors:         result.ValidationErrors,
-		FitFindings:              allFitFindings,
+		FitFindings:              newAuthoredPaths(input).fitFindings(allFitFindings),
 		Slides:                   slideResolutions,
 		OutputValidationFindings: outputValidationFindings,
 	}
@@ -2128,23 +2149,23 @@ func convertBulletGroupsInput(input *BulletGroupsInput) generator.BulletGroupsCo
 }
 
 // writeJSONError writes an error response to JSON output or returns the error.
-func writeJSONError(jsonOutputPath string, err error) error {
+func writeJSONError(deck *PresentationInput, jsonOutputPath string, err error) error {
 	var findings []patterns.FitFinding
 	var loss *patterns.ValidationError
 	if errors.As(err, &loss) && loss != nil && (loss.Code == patterns.ErrCodeTextTrimmed || loss.Code == patterns.ErrCodeReadabilityTrimmed || loss.Code == patterns.ErrCodeTableRowsTruncated || loss.Code == patterns.ErrCodeTextBelowReadableMin) {
 		findings = []patterns.FitFinding{{ValidationError: *loss, Action: "refuse"}}
 	}
-	return writeJSONErrorWithFindings(jsonOutputPath, err, findings)
+	return writeJSONErrorWithFindings(deck, jsonOutputPath, err, findings)
 }
 
-func writeJSONErrorWithFindings(jsonOutputPath string, err error, findings []patterns.FitFinding) error {
+func writeJSONErrorWithFindings(deck *PresentationInput, jsonOutputPath string, err error, findings []patterns.FitFinding) error {
 	if jsonOutputPath == "" {
 		return err
 	}
 
 	// The report carries the shared finding envelope beside generate's own
 	// failure fields (go-slide-creator-fbft2).
-	if writeErr := writeJSONDocument(jsonOutputPath, newGenerateFailure(err, findings)); writeErr != nil {
+	if writeErr := writeJSONDocument(jsonOutputPath, newGenerateFailure(deck, err, findings)); writeErr != nil {
 		return fmt.Errorf("%v (also failed to write JSON output: %v)", err, writeErr)
 	}
 

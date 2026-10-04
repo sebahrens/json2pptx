@@ -525,6 +525,20 @@ type ValidationError struct {
 	Code    string         `json:"code"`          // machine-readable code, e.g. "required"
 	Message string         `json:"message"`       // human-readable, e.g. "card-grid: cells[2].header is required"
 	Fix     *FixSuggestion `json:"fix,omitempty"` // optional structured fix suggestion
+
+	// Source is the authored element behind a finding whose Path locates
+	// something written at render time (a shape id): the engine pointer of
+	// the grid cell or content block that produced the shape. It is where the
+	// finding is reported to the author; Path stays the locator. Never
+	// serialized.
+	Source string `json:"-"`
+
+	// Authored says Path is already a pointer into the deck the author sent:
+	// the check read the authored JSON (unknown keys, control characters), or
+	// the finding has been through the raw surfaces' translation
+	// (authoredPaths in cmd/json2pptx). A path that is not is the engine's
+	// locator in the expanded deck. Never serialized.
+	Authored bool `json:"-"`
 }
 
 func (e *ValidationError) Error() string {

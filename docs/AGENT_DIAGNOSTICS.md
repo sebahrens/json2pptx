@@ -127,12 +127,12 @@ escape hatch for advanced repairs.
 | `code`             | string        | yes      | Dotted, namespaced code, e.g. `"FIT.placeholder_overflow"`.        |
 | `severity`         | enum          | yes      | `error` \| `warning` \| `info`.                                    |
 | `category`         | enum          | yes      | The namespace prefix of `code` (see §2.4). `validate_deck_spec` leaves it out: the code starts with it. |
-| `path`             | string        | no       | DeckSpec surfaces: JSON Pointer (0-based) into the spec that was sent; always resolves there. |
+| `path`             | string        | no       | DeckSpec surfaces: JSON Pointer (0-based) into the spec that was sent; always resolves there. Raw-deck surfaces report the pointer as `evidence.path`: it resolves in the deck that was sent ([PATH_GRAMMAR.md](PATH_GRAMMAR.md)). |
 | `missing_path`     | string        | no       | DeckSpec surfaces: the field the finding is about when the spec does not have it; `path` is then its nearest existing parent. |
-| `slide_number`     | integer       | no       | DeckSpec surfaces: 1-based position of the slide in the rendered deck. |
+| `slide_number`     | integer       | no       | 1-based position of the slide in the rendered deck, on the DeckSpec and the raw-deck surfaces: a page of a `split_slide` and a `structure` deck's agenda and dividers count. A tool's `slide_index` is this number minus one. |
 | `occurrences`      | integer       | no       | DeckSpec surfaces: how many findings of one code and cause this entry stands for, when more than one. |
 | `paths`            | string[]      | no       | DeckSpec surfaces: the `path` of each of them; evidence facts that differ per item are lists in this order. |
-| `where`            | `Where`       | no       | Location in the deck/template (see §2.3). Not set on the DeckSpec surfaces. |
+| `where`            | `Where`       | no       | Location in the deck/template (see §2.3). Not set on the DeckSpec surfaces. `where.slide` is the rendered slide's 0-based index (`slide_number - 1`), whatever index the authored `evidence.path` carries. |
 | `message`          | string        | yes      | Human-readable description.                                         |
 | `evidence`         | object        | no       | Numeric/enum facts only — never prose.                             |
 | `remediation`      | `Remediation` | no       | Structured repair (see §2.5).                                      |
@@ -140,7 +140,7 @@ escape hatch for advanced repairs.
 | `patch_verified`   | boolean       | no       | DeckSpec tools: `next_tool_call`'s patch is complete as written and the server applied it to the spec and validated the result — this finding is gone and nothing new blocks. Only ever `true`. |
 | `example_value`    | any           | no       | Representative valid value for the offending argument/field.        |
 | `doc_url`          | string        | no       | Human documentation for the code.                                  |
-| `debug`            | object        | no       | DeckSpec surfaces: locators into the compiled deck (`raw_path`, `cell_path`). Not addresses in the spec. |
+| `debug`            | object        | no       | DeckSpec surfaces: locators into the compiled deck (`raw_path`, `cell_path`). Raw-deck surfaces: `locator`, the engine's own path when it differs from the authored one (an expanded slide index, a cell of a pattern or `compose` grid, slide chrome, a written shape). Not addresses in the document that was sent. |
 | `describe_command` | string        | no       | Executable lookup, `json2pptx describe-finding <code>`. The MCP DeckSpec tools leave it out and offer `describe_finding` as `next_tool_call` on a blocking finding that carries no remedy of its own, once per code. |
 
 `evidence` carries only machine-actionable facts: measured-vs-allowed extents,
@@ -295,8 +295,9 @@ the same paths:
   that reach one placeholder through a fallback (`CONTENT_DROPPED` at
   `/slides/N/content/M`) — and source the written text would lose or shrink
   below the readable floor (`text_trimmed`, `table_rows_truncated`,
-  `TEXT_BELOW_READABLE_MIN` at the block, or at
-  `/slides/N/rendered_shapes/…` for grid text). `generate` and
+  `TEXT_BELOW_READABLE_MIN` at the block, or — for grid text — at the cell
+  or pattern value that wrote the shape, with the written shape
+  `/slides/N/rendered_shapes/…` as `debug.locator`). `generate` and
   `generate_presentation` refuse the same deck before a file is written
   (`RefuseDroppedContent`, set under `output_validation: "strict"`); they used
   to write a deck without the dropped block and answer `success: false`. The

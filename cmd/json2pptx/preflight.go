@@ -147,6 +147,7 @@ func runPreflightCore(inputData []byte, opts preflightOptions) diagnostics.Findi
 		acc.add(preflightStageInput, *parseErr)
 		return acc.envelope(sha, "", opts)
 	}
+	acc.deck = input
 
 	applyDefaults(input)
 	resolveInputNamedSettingsForDir(opts.templatesDir, input)
@@ -355,6 +356,8 @@ func classifyFitStage(d diagnostics.Diagnostic) string {
 // stages and folds them into a single ordered FindingEnvelope.
 type preflightAccumulator struct {
 	diags []diagnostics.Diagnostic
+	// deck is the decoded deck; envelope addresses every finding to it.
+	deck *PresentationInput
 }
 
 // add appends diagnostics tagged with a fixed stage.
@@ -401,7 +404,7 @@ func (a *preflightAccumulator) envelope(sha, templateName string, _ preflightOpt
 		Subcommand:  "preflight",
 		Template:    templateName,
 		InputSHA256: sha,
-	}, a.diags)
+	}, newAuthoredPaths(a.deck).diagnostics(a.diags))
 }
 
 // tagPreflightStage records the producing stage on a diagnostic. The stage

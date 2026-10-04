@@ -213,6 +213,10 @@ func (p *PresentationInput) UnmarshalJSON(data []byte) error {
 	}
 
 	p.Slides = nil
+	// pointers is the authored address of each decoded slide. It differs from
+	// the slide's index once a split_slide entry has become several slides.
+	var pointers []string
+	split := false
 	for i, raw := range aux.Slides {
 		// Probe for the "type" field to detect split_slide entries.
 		var probe struct {
@@ -235,13 +239,21 @@ func (p *PresentationInput) UnmarshalJSON(data []byte) error {
 				return fmt.Errorf("slide %d: %w", i+1, err)
 			}
 			p.Slides = append(p.Slides, expanded...)
+			for range expanded {
+				pointers = append(pointers, slidesPointer(i)+"/base")
+			}
+			split = true
 		} else {
 			var slide SlideInput
 			if err := json.Unmarshal(raw, &slide); err != nil {
 				return fmt.Errorf("slide %d: %w", i+1, err)
 			}
 			p.Slides = append(p.Slides, slide)
+			pointers = append(pointers, slidesPointer(i))
 		}
+	}
+	if split {
+		markSlideOrigins(p.Slides, pointers)
 	}
 
 	return nil
@@ -268,6 +280,11 @@ func (t *ThemeInput) ToThemeOverride() *types.ThemeOverride {
 
 // SlideInput maps to generator.SlideSpec with full metadata.
 type SlideInput struct {
+	// Origin is where the slide was authored when the deck's slide list is
+	// not the one the author wrote (split_slide pages, a structure block);
+	// nil when the slide's index is its address. Never serialized.
+	Origin *SlideOrigin `json:"-"`
+
 	LayoutID string `json:"layout_id,omitempty"`
 	// ColumnLeftPercent preserves the requested asymmetric two-column variant
 	// after layout_id is resolved to a concrete template layout. It is internal

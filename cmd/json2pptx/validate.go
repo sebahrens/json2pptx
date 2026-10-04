@@ -127,6 +127,12 @@ func runValidate() error { //nolint:gocognit
 				continue
 			}
 			applyDefaults(&input)
+			// A structure deck is measured as the slides it builds, as the
+			// JSON format measures it (go-slide-creator-8nah2); a block that
+			// does not expand is reported by the validation above.
+			if len(applyStructureExpansion(&input)) > 0 {
+				continue
+			}
 
 			findings := fitFindingsForInput(&input, *templateName, *templatesDir, *verboseFit)
 			printFitFindingsBySlide(findings)
@@ -177,7 +183,15 @@ func fitFindingsForInput(input *PresentationInput, templateNameOverride, templat
 	for _, f := range collectFitFindings(input, layouts, slideWidth, slideHeight, theme) {
 		findings = append(findings, localFitFinding(f))
 	}
-	return budgetLocalFindings(findings, DefaultFindingBudget, verboseFit)
+	// Budgeted per rendered slide, then addressed to the deck as written.
+	findings = budgetLocalFindings(findings, DefaultFindingBudget, verboseFit)
+	authored := newAuthoredPaths(input)
+	for i := range findings {
+		addr := authored.address(findings[i].Path, "")
+		findings[i].Message = replacePathMentions(findings[i].Message, findings[i].Path, addr.Path)
+		findings[i].Path, findings[i].SlideNumber = addr.Path, addr.SlideNumber
+	}
+	return findings
 }
 
 // localFitFinding converts a collector finding into the CLI's flat report row.

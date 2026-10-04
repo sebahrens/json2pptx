@@ -11,7 +11,7 @@ A finding's `path` is a JSON Pointer into the deck the author sent: it starts wi
 /{deckField}/...
 ```
 
-`TestVerdictParityMutationCorpus`, `TestExampleCorpusFindingPathsAreAuthoredPointers` and `TestFaultyDeckFindingPaths` (`cmd/json2pptx`) hold every finding of the raw-deck surfaces to this rule; the only paths that do not resolve are the forms under [Paths that name something the deck does not contain](#paths-that-name-something-the-deck-does-not-contain).
+`TestVerdictParityMutationCorpus`, `TestExampleCorpusFindingPathsAreAuthoredPointers`, `TestFaultyDeckFindingPaths` and `TestExpandedDeckFindingsAreAuthored` (`cmd/json2pptx`) hold every finding of the raw-deck surfaces to this rule, for a deck with `slides`, with `split_slide` entries and with a `structure` block. The one path that does not resolve names [a field to add](#a-field-to-add), and its parent does.
 
 A path that is not a pointer is a tool argument, not a place in the deck: `presentation` (a deck the tool could not read), `base_dir`, `deck_id`, `patch[0].path`, and `template` when the caller passed the tool's own `template` argument.
 
@@ -82,17 +82,45 @@ A table's fields sit under the object that holds the table: `table_value` for a 
 
 A value a table or cell took from `defaults` (it wrote none of its own) is the deck's field, so the finding names `/defaults/...`. A value the table or cell wrote itself is reported at the table or cell.
 
-## Paths that name something the deck does not contain
+## A field to add
 
-Three forms do not resolve. Each is still a JSON Pointer, and each resolves up to the parent stated here.
+A finding about a field the deck does not have names the pointer the field will have; the object it belongs in resolves. This is the one form that does not resolve: `required`, `REQUIRED`, `takeaway_missing`, `DATA_WITHOUT_SOURCE`, and `INVALID_PARAMETER` for a content block with no value.
 
-| Form | Example | Resolves up to |
-|---|---|---|
-| A field to add: `required`, `REQUIRED`, `takeaway_missing`, `DATA_WITHOUT_SOURCE`, and `INVALID_PARAMETER` for a content block with no value | `/slides/1/layout_id`, `/slides/2/takeaway`, `/slides/2/source`, `/template`, `/slides/1/content/1/text_value` | the object the field belongs in |
-| A cell of the grid a pattern or `compose` expands to | `/slides/6/pattern/rows/0/cells/0/shape/text`, `/slides/3/shape_grid/rows/0/cells/1/grid/rows/1/cells/0/diagram` on a `compose` slide | the `pattern` object (edit its `values`; `repair_slide` maps a pattern cell back to the value that produced it), or the slide that authors `compose` |
-| Something written at render time | `/slides/5/chrome` (footer / page-number chrome on that slide), `/slides/1/rendered_shapes/200/paragraphs/0` (a written shape) | the slide |
+```
+/template                          -- REQUIRED
+/slides/1/layout_id                -- required
+/slides/2/takeaway                 -- takeaway_missing
+/slides/2/source                   -- DATA_WITHOUT_SOURCE
+/slides/1/content/1/text_value     -- INVALID_PARAMETER: the block has no value
+```
 
-Slide indices are those of the expanded deck: a `split_slide` entry counts once per page and a `structure` block is counted as the slides it builds, so on such a deck `/slides/N` is the N-th rendered slide, not the N-th entry the author wrote (go-slide-creator-9564b, go-slide-creator-2v8me).
+## The authored deck and the engine's deck
+
+The engine checks a deck it has expanded: a flat slide list, the shape grid a pattern or a `compose` envelope becomes, the chrome a template draws, the shapes a slide is written as. A finding is reported where the author wrote the thing, never where the engine holds it. Every raw-deck surface passes its findings through one translation (`authoredPaths`, `cmd/json2pptx/authored_paths.go`) on the way out; no check knows about it.
+
+| The engine addresses | The finding's `path` |
+|---|---|
+| A page of a `split_slide` (`/slides/3/content/0` for page 3 of the entry at `/slides/1`) | The envelope's base: `/slides/1/base/content/0`. A table row is its row in the authored table: page 3, row 0 of pages of three is `/slides/1/base/content/1/table_value/rows/6`. A finding every page repeats (the title, the layout) is reported once. |
+| A slide after a `split_slide` (`/slides/4`) | The entry the author wrote: `/slides/2`. |
+| A slide of a `structure` deck (`/slides/3/content/1`) | `/structure/cover/…`, `/structure/closing/…`, `/structure/sections/0/slides/0/content/1`. |
+| A section divider the engine built | Its title is `/structure/sections/0/title`; anything else about the slide is the section, `/structure/sections/0`. |
+| The agenda slide the engine built | An item is the section title it lists, `/structure/sections/1/title`; anything else is `/structure/auto_agenda`. |
+| A cell of the grid a pattern expands to (`/slides/6/pattern/rows/0/cells/2/shape/text`) | The pattern value the cell shows: `/slides/6/pattern/values/2/small` for one paragraph of its text, `/slides/6/pattern/values/2` for a cell that shows several fields of one value. A row, a connector or text the pattern composes is the pattern, `/slides/6/pattern`. The same holds for a pattern in a `shape_grid` cell or a `compose` segment. |
+| The grid a `compose` envelope expands to (`/slides/3/shape_grid/rows/1/cells/0/grid/…`) | The segment that owns the cell and, inside it, its pattern's value, its diagram or its nested envelope: `/slides/3/compose/segments/1/pattern/values/steps/0/label`, `/slides/3/compose/segments/1/compose/segments/0/diagram`. The banner and callout bands are `/slides/3/compose/banner` and `/slides/3/compose/callout`; the grid as a whole is `/slides/3/compose`. |
+| Footer or page-number chrome on a slide (`/slides/5/chrome`) | The slide, `/slides/5`: the template draws the chrome, the deck's `chrome` block configures it for every slide. |
+| A written shape (`/slides/1/rendered_shapes/200/paragraphs/0`) | The element that produced it when the generator knows — a grid cell's `/slides/1/shape_grid/rows/0/cells/0/shape/text`, a pattern value — otherwise the slide, `/slides/1`. |
+| A slide left after `generate --partial` dropped one before it | The slide the author wrote; the indices do not move up. |
+
+Beside `path` a finding on a slide carries:
+
+- **`slide_number`** — the 1-based number of the *rendered* slide: page 3 of a split is its own slide, a `structure` deck's agenda and dividers count. It matches a thumbnail. `where.slide` is the same slide, 0-based. A slide `--partial` dropped has none.
+- **`debug.locator`** — the engine's own path, when it differs from `path`. Nothing outside `debug` names an object the author did not write.
+
+**Slide indices in tool arguments are rendered indices.** `repair_slide.slide_index`, `render_slide_image.slide_index`, `slide_indices` and a finding's `next_tool_call.args_template.slide_index` count the slides of the expanded deck: `slide_number - 1`. On a deck without `split_slide`, `structure` or dropped slides that is the index in `path`; on one with them it is not, and `slide_number` is the value to use.
+
+**A tool that takes a path back accepts both forms.** `repair_slide` / `repair_slides_batch` `params.path` and `params.cell_path`, and the findings handed to `propose_repairs`, may carry the authored pointer a finding reports or the engine's locator (`debug.locator`, or the `/slides/{slide_index}/…` form older callers send). `reduce_cell_text` takes a pattern value's pointer (`/slides/2/pattern/values/2/small`, `/slides/3/compose/segments/1/pattern/values/steps/0/label`) and shortens that value. A `fix.params` or `next_tool_call` path is the authored pointer whenever that names the same element; where the authored address is only the enclosing object (a pattern for a cell whose text it composes) the argument stays the engine's locator, which the tool can act on.
+
+`repair_slide`, `repair_slides_batch` and `propose_repairs` work on the expanded deck and return it as `patched_deck` (or embed it in a planned call): a `split_slide` entry has become its pages, and a `structure` block the cover, agenda, dividers and slides it renders, with the block itself dropped. The findings in the answer address that deck.
 
 ## Use in Fit Findings
 
@@ -109,7 +137,7 @@ Examples from finding codes:
 | `title_wraps` | `/slides/1/content/0` |
 | `slide_bounds_overflow` | `/slides/2/shape_grid/rows/1/cells/0` |
 | `footer_collision` | `/slides/3/shape_grid/rows/2/cells/0` |
-| `sparse_layout` | `/slides/1/shape_grid` |
+| `sparse_layout` | `/slides/1/shape_grid` (`/slides/1/pattern`, `/slides/1/compose` on a pattern or compose slide) |
 | `fit_overflow` | `/slides/0/content/0/table_value/rows/3/1` |
 | `density_exceeded` | `/slides/0/content/0` |
 | `contrast_autofixed` | `/slides/3/shape_grid/rows/0/cells/2/shape/text` — the authored element, as `contrast_predicted` names it (layout/run text uses the slide-level `/slides/1`) |
@@ -128,7 +156,7 @@ All `repair_slide` fix kinds accept an optional `path` parameter (JSON Pointer) 
 }
 ```
 
-The `path` can be copied directly from a fit finding's `path` field for round-trip usage:
+The `path` can be copied directly from a fit finding's `path` field for round-trip usage, with `slide_index` set to the finding's `slide_number - 1` (see [The authored deck and the engine's deck](#the-authored-deck-and-the-engines-deck)):
 
 ```
 fit finding: { "path": "/slides/0/content/1", "code": "placeholder_overflow", "fix": {"kind": "reduce_text"} }
@@ -144,7 +172,7 @@ repair_slide fix: { "kind": "reduce_text", "params": { "path": "/slides/0/conten
 
 ## Extracting the Slide Index
 
-The slide index is always the second path segment:
+Inside the engine the slide index is the second path segment:
 
 ```
 /slides/0/content/body
@@ -153,6 +181,8 @@ The slide index is always the second path segment:
 ```
 
 Use `slidepath.SlideIndex(path)` in Go code to extract it. Returns -1 for invalid paths.
+
+A reader of a finding uses `slide_number` instead: the authored path of a `structure` slide has no `/slides` index, and the one in a `split_slide` deck's path is the authored entry, not the rendered slide.
 
 ## Implementation
 

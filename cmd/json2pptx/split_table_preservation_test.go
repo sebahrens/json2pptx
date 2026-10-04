@@ -68,6 +68,11 @@ func TestTableContinuationsPreserveWholeSlideMetadata(t *testing.T) {
 	for i, page := range pages {
 		want := base.Base
 		want.Content = page.Content
+		// Each page says which rows of the authored table it carries.
+		if o := page.Origin; o == nil || !o.SplitPage || o.TableContent != 1 || o.TableField != "table_value" || o.RowOffset != 2*i {
+			t.Fatalf("page%d origin = %+v", i, o)
+		}
+		want.Origin = page.Origin
 		if i > 0 {
 			want.SpeakerNotes = ""
 			want.Source = ""

@@ -31,9 +31,26 @@ func init() {
 }
 
 // expandSplitSlide validates and expands a SplitSlideInput into N regular SlideInputs.
+//
+// Each page records which rows of the authored table it carries
+// (deckinput.SlideOrigin), so a finding on row 2 of page 3 is reported at the
+// row the author wrote; the decoder adds the envelope's own address.
 func expandSplitSlide(s SplitSlideInput) ([]SlideInput, error) {
 	tableIdx, _ := findTableContent(s.Base.Content)
-	return expandSplitSlideAtTable(s, tableIdx)
+	pages, err := expandSplitSlideAtTable(s, tableIdx)
+	if err != nil || tableIdx < 0 {
+		return pages, err
+	}
+	field := "table_value"
+	if s.Base.Content[tableIdx].TableValue == nil {
+		field = "value"
+	}
+	for i := range pages {
+		pages[i].Origin = &deckinput.SlideOrigin{
+			SplitPage: true, TableContent: tableIdx, TableField: field, RowOffset: i * s.Split.GroupSize,
+		}
+	}
+	return pages, nil
 }
 
 // expandSplitSlideAtTable is shared by the declarative first-table envelope and
