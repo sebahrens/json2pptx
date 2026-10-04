@@ -33,6 +33,9 @@ type fitFinding struct {
 	AllocatedPt      float64                 `json:"allocated_pt,omitempty"`
 	WrapLines        int                     `json:"wrap_lines,omitempty"`
 	Action           string                  `json:"action,omitempty"`
+	// SlideNumber is the 1-based number of the rendered slide; Path is the
+	// authored pointer, whose index it need not match (authoredPaths).
+	SlideNumber int `json:"slide_number,omitempty"`
 }
 
 // evaluateStrictFit runs the shared fit collector and applies the given mode's policy
@@ -645,11 +648,15 @@ func printFitFindingsBySlide(findings []fitFinding) {
 		return
 	}
 
-	// Group by slide index extracted from path.
+	// Group by rendered slide: the finding's slide_number, else the index in
+	// its path.
 	groups := make(map[int][]fitFinding)
 	var slideOrder []int
 	for _, f := range findings {
 		si := slidepath.SlideIndex(f.Path)
+		if f.SlideNumber > 0 {
+			si = f.SlideNumber - 1
+		}
 		if _, seen := groups[si]; !seen {
 			slideOrder = append(slideOrder, si)
 		}

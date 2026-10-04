@@ -19,7 +19,7 @@ func collectControlCharFindings(input *PresentationInput) []patterns.FitFinding 
 	for _, site := range input.ControlCharSites {
 		out = append(out, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
-				Path: site.Path,
+				Path: site.Path, Authored: true, // read from the JSON as written
 				Code: patterns.ErrCodeInputControlCharsRemoved,
 				Message: fmt.Sprintf("removed %d invisible bidi control / byte-order-mark character(s) (U+202A-U+202E, U+2066-U+2069, U+FEFF); the rendered text differs from the source",
 					site.Removed),

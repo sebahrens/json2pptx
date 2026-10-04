@@ -1,5 +1,60 @@
 # Schema Changelog
 
+- **2026-10-04 — A raw-deck finding names the deck the author sent, also where the engine expands it (`go-slide-creator-9564b`, `-2v8me`, `-o45pn`; found on the way: `-oddtr`, `-owdgn`, `-i8nwl`, `-3znh9`, `-8nah2`, `-tfnk7`).**
+  - **Paths changed** on `validate` / `validate_input`, `generate`,
+    `generate -dry-run`, `generate_presentation`, `preflight`,
+    `preview_presentation_plan`, `apply_deck_patch`, `repair_slide` and
+    `repair_slides_batch` (the envelope's `evidence.path` and
+    `fit_findings[].path`; codes, severities and verdicts are unchanged):
+    - a deck with a `split_slide` entry: a finding on one of its pages is at
+      the envelope's base (`/slides/1/base/content/0`, was `/slides/2/content/0`),
+      a table row at its row in the authored table
+      (`/slides/1/base/content/1/table_value/rows/6/1` for row 0 of page 3 of
+      pages of three), and a slide after the envelope at the entry the author
+      wrote (`/slides/2`, was `/slides/4`). A finding every page repeats is
+      reported once;
+    - a deck authored with `structure`: `/structure/cover/…`,
+      `/structure/closing/…`, `/structure/sections/0/slides/0/content/1`
+      (was `/slides/3/content/1`, in a deck with no `slides`); a divider's
+      title is `/structure/sections/0/title`, the generated agenda
+      `/structure/auto_agenda`;
+    - a cell of the grid a pattern expands to
+      (`/slides/N/pattern/rows/R/cells/C/…`) is the pattern value the cell
+      shows (`/slides/N/pattern/values/2/small`, `/slides/N/pattern/values/2`),
+      or `/slides/N/pattern` when no one value is behind it;
+    - the grid a `compose` slide expands to (`/slides/N/shape_grid/…`) is the
+      envelope: `/slides/N/compose`, `/slides/N/compose/segments/1`,
+      `…/segments/1/pattern/values/steps/0/label`, `…/segments/1/diagram`,
+      `…/segments/1/compose/segments/0/…`, `/slides/N/compose/banner`,
+      `/slides/N/compose/callout`;
+    - `/slides/N/chrome` is `/slides/N`;
+    - `/slides/N/rendered_shapes/ID/paragraphs/P` is the grid cell or pattern
+      value that wrote the shape, else `/slides/N`;
+    - a pattern fault inside a `compose` segment was at
+      `/slides/N/compose/values/…`, which no deck has; it is at
+      `/slides/N/compose/segments/K/pattern/values/…` (`-oddtr`).
+  - **New on every raw finding**: `slide_number` (1-based number of the
+    rendered slide; `where.slide` is the same slide, 0-based) and, when the
+    engine's own path differs from `path`, `debug.locator`. Both are on the
+    envelope's findings and on `fit_findings[]`.
+  - **Tool arguments**: `repair_slide.slide_index`,
+    `render_slide_image.slide_index`, `slide_indices` and
+    `next_tool_call.args_template.slide_index` count rendered slides
+    (`slide_number - 1`), as before. `repair_slide` / `repair_slides_batch`
+    `params.path` / `params.cell_path` and the findings given to
+    `propose_repairs` accept the authored pointer and the engine's locator;
+    `reduce_cell_text` takes a pattern value's pointer as `cell_path`.
+  - **Fixed on the way**: `DATA_WITHOUT_SOURCE` no longer fires on pages 2+ of
+    a `split_slide` whose base cites a source (`-owdgn`); `generate --partial`
+    reported the slides after a dropped one at the wrong index (`-i8nwl`);
+    unknown keys inside `structure` (the block, cover / closing, a section, a
+    section's slides) were not reported (`-3znh9`); `validate --fit-report` in
+    its human format reported no issues for a `structure` deck and now lists
+    the findings the JSON format does, each under its rendered slide number
+    at its authored path (`-8nah2`); `repair_slide`, `repair_slides_batch` and
+    `propose_repairs` refused a `structure` deck (`REQUIRED` at `/slides`) and
+    now edit the slides it renders, returning the expanded deck without the
+    block (`-tfnk7`).
 - **2026-10-04 — Every raw-deck finding path is a JSON Pointer into the authored deck (`go-slide-creator-7fshg`; found on the way: `-yhi2e`, `-pcjob`, `-cwuey`, `-45t9x`, `-gk5q7`, `-wj70r`, `-dln5i`, `-3sm9n`, `-wpg2p`).**
   - **Paths changed** on `validate` / `validate_input`, `generate`,
     `generate -dry-run`, `generate_presentation` and `preflight` (codes,

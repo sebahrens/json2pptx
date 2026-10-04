@@ -162,6 +162,10 @@ type proposeRepairsFinding struct {
 	Evidence    map[string]any           `json:"evidence,omitempty"`
 	Where       *diagnostics.Where       `json:"where,omitempty"`
 	Remediation *diagnostics.Remediation `json:"remediation,omitempty"`
+	// SlideNumber (1-based, the rendered slide) and Debug (debug.locator, the
+	// engine's own path) are what a finding carries beside its authored path.
+	SlideNumber *int           `json:"slide_number,omitempty"`
+	Debug       map[string]any `json:"debug,omitempty"`
 	envelope    bool
 
 	// Visual QA finding shape.
@@ -222,6 +226,9 @@ func (mc *mcpConfig) handleProposeRepairs(ctx context.Context, request mcp.CallT
 		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nil), nil
 	}
 	applyDefaults(&input)
+	if structDiags := expandStructureForRepair(&input); len(structDiags) > 0 {
+		return api.MCPDiagnosticsError(structDiags), nil
+	}
 	if errResult := validateRepairBoundary(&input); errResult != nil {
 		return errResult, nil
 	}
@@ -267,6 +274,13 @@ func proposeRepairs(input *PresentationInput, findings []proposeRepairsFinding) 
 // geometry uses default slide dimensions and grid bounds.
 func proposeRepairsWithGeometry(input *PresentationInput, findings []proposeRepairsFinding, geom *deckGeometry) proposeRepairsOutput {
 	slideCount := len(input.Slides)
+	// A finding handed back carries an authored path; the plan works on the
+	// engine's locator and the rendered slide's index.
+	authored := newAuthoredPaths(input)
+	findings = append([]proposeRepairsFinding(nil), findings...)
+	for i := range findings {
+		authored.engineFinding(&findings[i])
+	}
 	elements := &elementBoxCache{input: input, geom: geom}
 	revision := presentationRevision(input)
 

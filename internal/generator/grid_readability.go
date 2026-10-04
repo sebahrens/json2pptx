@@ -14,11 +14,17 @@ import (
 // Check only grid shapes carrying source roles, after contrast correction and
 // immediately before their unchanged XML is inserted. This cannot mistake a
 // native template footer for body copy or assign roles by font size after shrink.
-func (ctx *singlePassContext) reportGridReadability(shapes [][]byte, roles map[uint32][]tokens.TextRole, slideIndex int) {
+//
+// A finding is located at the written shape (/slides/N/rendered_shapes/ID/…),
+// which is what the measurement is of; sources, index-aligned with shapes,
+// names the authored element that produced each one, and travels as the
+// finding's Source so a surface can report it where the author wrote it.
+func (ctx *singlePassContext) reportGridReadability(shapes [][]byte, sources []RawShapeSource, roles map[uint32][]tokens.TextRole, slideIndex int) {
 	if len(roles) == 0 || slideIndex < 0 {
 		return
 	}
-	for _, fragment := range shapes {
+	for fi, fragment := range shapes {
+		source := rawShapeSourcePath(sources, fi)
 		for _, raw := range splitShapeElements(string(fragment)) {
 			var shape shapeXML
 			if err := xml.Unmarshal([]byte(raw), &shape); err != nil || shape.TextBody == nil {
@@ -45,7 +51,7 @@ func (ctx *singlePassContext) reportGridReadability(shapes [][]byte, roles map[u
 				path := fmt.Sprintf("%s/rendered_shapes/%d/paragraphs/%d", slidepath.Slide(slideIndex), id, pi)
 				if gridTextFrameHasNoArea(shape) {
 					ctx.emitFitFinding(patterns.FitFinding{ValidationError: patterns.ValidationError{
-						Path: path, Code: patterns.ErrCodeFitOverflow,
+						Path: path, Code: patterns.ErrCodeFitOverflow, Source: source,
 						Message: "grid text frame has no usable area after written insets; preserve all source in a readable frame",
 					}, Action: "refuse"})
 					break
@@ -66,12 +72,22 @@ func (ctx *singlePassContext) reportGridReadability(shapes [][]byte, roles map[u
 					})
 					f.Action = "refuse"
 					f.Fix = nil
+					f.Source = source
 					f.Message = strings.TrimSuffix(strings.TrimSuffix(f.Message, "; shorten the text"), "; split the text") + "; preserve all source at a readable size"
 					ctx.emitFitFinding(*f)
 				}
 			}
 		}
 	}
+}
+
+// rawShapeSourcePath is the authored element behind raw shape i, "" when the
+// caller did not say.
+func rawShapeSourcePath(sources []RawShapeSource, i int) string {
+	if i < len(sources) {
+		return sources[i].Path
+	}
+	return ""
 }
 
 func gridTextFrameHasNoArea(shape shapeXML) bool {

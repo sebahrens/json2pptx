@@ -788,7 +788,7 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 			AttributeGridSwaps(gridSwaps, spec.RawShapeSources, slideIndex)
 			ctx.contrastSwaps = append(ctx.contrastSwaps, gridSwaps...)
 		}
-		ctx.reportGridReadability(shapes, spec.GridTextRoles, slideNum-ctx.calculateStartingSlideNum())
+		ctx.reportGridReadability(shapes, spec.RawShapeSources, spec.GridTextRoles, slideNum-ctx.calculateStartingSlideNum())
 		slideData, err = insertRawShapes(slideData, shapes)
 		if err != nil {
 			return fmt.Errorf("failed to insert raw shapes for slide %d: %w", slideNum, err)

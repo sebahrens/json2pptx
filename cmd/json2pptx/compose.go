@@ -172,7 +172,9 @@ func expandComposeSegments(c *ComposeInput, ctx patterns.ExpandContext, bounds [
 		case seg.Compose != nil:
 			grid, innerWarnings, err := expandCompose(seg.Compose, segCtx, reg)
 			if err != nil {
-				return nil, nil, fmt.Errorf("compose: segment[%d]: %w", i, err)
+				// A pattern's per-field findings are addressed from the
+				// envelope: segments[i].compose.… (go-slide-creator-oddtr).
+				return nil, nil, fmt.Errorf("compose: segment[%d]: %w", i, prefixPatternFindingPaths(err, fmt.Sprintf("segments[%d].compose.", i)))
 			}
 			warnings = append(warnings, innerWarnings...)
 			grid.Bounds = nil // The outer merge owns the inner envelope's slot.
@@ -188,7 +190,10 @@ func expandComposeSegments(c *ComposeInput, ctx patterns.ExpandContext, bounds [
 			}
 			grid, patternWarnings, err := expandPattern(&pattern, segCtx, reg)
 			if err != nil {
-				return nil, nil, fmt.Errorf("compose: segment[%d]: %w", i, err)
+				// The finding of values[0].small is at
+				// segments[i].pattern.values[0].small of the envelope, not at
+				// compose.values[0].small, which the deck does not have.
+				return nil, nil, fmt.Errorf("compose: segment[%d]: %w", i, prefixPatternFindingPaths(err, fmt.Sprintf("segments[%d].pattern.", i)))
 			}
 			if bounds != nil {
 				for _, warning := range patternWarnings {

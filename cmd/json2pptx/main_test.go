@@ -401,7 +401,7 @@ func TestWriteJSONError_WithOutputPath(t *testing.T) {
 	outputPath := filepath.Join(tmpDir, "error.json")
 
 	testErr := fmt.Errorf("test error message")
-	err := writeJSONError(outputPath, testErr)
+	err := writeJSONError(nil, outputPath, testErr)
 
 	// Should return the original error
 	if err == nil || err.Error() != testErr.Error() {
@@ -429,7 +429,7 @@ func TestWriteJSONError_WithOutputPath(t *testing.T) {
 
 func TestWriteJSONError_NoOutputPath(t *testing.T) {
 	testErr := fmt.Errorf("test error message")
-	err := writeJSONError("", testErr)
+	err := writeJSONError(nil, "", testErr)
 
 	// Should return the original error unchanged
 	if err == nil || err.Error() != testErr.Error() {

@@ -63,7 +63,9 @@ var outputSchemaGenerate = json.RawMessage(`{
       "properties": {
         "code":        {"type": "string"},
         "slide_index": {"type": "integer", "description": "Absent on deck-level findings (e.g. DECK_MONOTONY)."},
-        "path":        {"type": "string"},
+        "path":        {"type": "string", "description": "JSON Pointer into the deck that was sent; it resolves there, or names a field to add."},
+        "slide_number": {"type": "integer", "description": "1-based number of the rendered slide; a tool's slide_index is this minus one."},
+        "debug":       {"type": "object", "description": "debug.locator: the engine's own path when it differs from path."},
         "message":     {"type": "string"},
         "action":      {"type": "string"},
         "severity":    {"type": "string", "enum": ["error", "warning", "info"], "description": "Derived from action (refuse=error, shrink_or_split=warning, everything else=info). Always present, and the same value the findings envelope reports for this finding."},

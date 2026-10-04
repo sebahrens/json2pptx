@@ -165,7 +165,10 @@ func TestNarrowRegionWordBreaksAreReported(t *testing.T) {
 		}
 	}
 	result, _ := generateNarrowRegionDeck(t, tpl, slides)
+	authored := newAuthoredPaths(&in)
 	for path, want := range predicted {
+		// The report addresses the authored segment's diagram.
+		path = authored.address(path, "").Path
 		found := false
 		for _, f := range result.FitFindings {
 			if f.Code == want.Code && f.Path == path && f.Message == want.Message {

@@ -19,7 +19,7 @@ func TestWriteJSONErrorRetainsTypedSourceLoss(t *testing.T) {
 			loss := &patterns.ValidationError{Code: code, Path: "/slides/0/content/1", Message: "required source omitted", Fix: &patterns.FixSuggestion{Kind: "split_at_row", Params: map[string]any{"split_at_row": 7, "hidden_rows": 73}}}
 			err := fmt.Errorf("generation refused: %w", loss)
 			report := filepath.Join(t.TempDir(), "result.json")
-			if got := writeJSONError(report, err); !errors.Is(got, loss) {
+			if got := writeJSONError(nil, report, err); !errors.Is(got, loss) {
 				t.Fatalf("original failure not returned: %v", got)
 			}
 			data, readErr := os.ReadFile(report)
@@ -37,7 +37,7 @@ func TestWriteJSONErrorRetainsTypedSourceLoss(t *testing.T) {
 			if finding.Code != code || finding.Path != loss.Path || finding.Action != "refuse" || finding.Fix == nil || finding.Fix.Kind != loss.Fix.Kind || finding.Fix.Params["hidden_rows"] != float64(73) {
 				t.Fatalf("source-loss repair missing: %+v", finding)
 			}
-			if writeJSONError("", err) != err {
+			if writeJSONError(nil, "", err) != err {
 				t.Fatal("no-report path changed original error")
 			}
 		})
@@ -47,7 +47,7 @@ func TestWriteJSONErrorRetainsTypedSourceLoss(t *testing.T) {
 func TestWriteJSONErrorDoesNotInventSourceLoss(t *testing.T) {
 	for _, err := range []error{errors.New("ordinary failure"), &patterns.ValidationError{Code: patterns.ErrCodeFitOverflow, Message: "different finding"}, fmt.Errorf("wrapped: %w", (*patterns.ValidationError)(nil))} {
 		report := filepath.Join(t.TempDir(), "result.json")
-		if got := writeJSONError(report, err); got != err {
+		if got := writeJSONError(nil, report, err); got != err {
 			t.Fatalf("changed unrelated error: %v", got)
 		}
 		data, readErr := os.ReadFile(report)
@@ -63,7 +63,7 @@ func TestWriteJSONErrorDoesNotInventSourceLoss(t *testing.T) {
 		}
 	}
 	err := errors.New("original generation failure")
-	if got := writeJSONError(filepath.Join(t.TempDir(), "missing", "result.json"), err); got == nil || !strings.Contains(got.Error(), err.Error()) || !strings.Contains(got.Error(), "also failed to write JSON output") {
+	if got := writeJSONError(nil, filepath.Join(t.TempDir(), "missing", "result.json"), err); got == nil || !strings.Contains(got.Error(), err.Error()) || !strings.Contains(got.Error(), "also failed to write JSON output") {
 		t.Fatalf("report-write failure swallowed original error: %v", got)
 	}
 }

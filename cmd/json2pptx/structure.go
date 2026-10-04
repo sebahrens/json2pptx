@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -64,6 +65,7 @@ func expandStructure(s *StructureInput) ([]SlideInput, error) {
 		if cover.SlideType == "" {
 			cover.SlideType = "title"
 		}
+		cover.Origin = &deckinput.SlideOrigin{Pointer: "/structure/cover"}
 		slides = append(slides, cover)
 	}
 
@@ -73,6 +75,18 @@ func expandStructure(s *StructureInput) ([]SlideInput, error) {
 		if err != nil {
 			return nil, fmt.Errorf("structure: auto_agenda: %w", err)
 		}
+		// The agenda is built from auto_agenda and the section titles: a
+		// finding on one of its items is a finding on that section's title.
+		origin := &deckinput.SlideOrigin{Pointer: "/structure/auto_agenda", Generated: true, Fields: map[string]string{}}
+		listed := 0
+		for i, sec := range s.Sections {
+			if sec.Appendix {
+				continue
+			}
+			origin.Fields[fmt.Sprintf("/pattern/values/items/%d", listed)] = fmt.Sprintf("/structure/sections/%d/title", i)
+			listed++
+		}
+		agenda.Origin = origin
 		slides = append(slides, agenda)
 	}
 
@@ -82,8 +96,12 @@ func expandStructure(s *StructureInput) ([]SlideInput, error) {
 	// chrome.section_crumb surfaces in the footer (go-slide-creator-ynfv). The
 	// divider does not: it announces the section in 60pt type, so repeating it in
 	// 10.5pt chrome is noise.
-	for _, sec := range s.Sections {
+	for si, sec := range s.Sections {
+		section := fmt.Sprintf("/structure/sections/%d", si)
 		divider := buildSectionDivider(sec.Title)
+		divider.Origin = &deckinput.SlideOrigin{Pointer: section, Generated: true, Fields: map[string]string{
+			"/content/0": section + "/title",
+		}}
 		crumb := sec.Title
 		if sec.Appendix {
 			// Back matter: no chapter number, later sections keep theirs, and
@@ -93,7 +111,8 @@ func expandStructure(s *StructureInput) ([]SlideInput, error) {
 			crumb = types.AppendixSectionLabel(sec.Title)
 		}
 		slides = append(slides, divider)
-		for _, sl := range sec.Slides {
+		for i, sl := range sec.Slides {
+			sl.Origin = &deckinput.SlideOrigin{Pointer: fmt.Sprintf("%s/slides/%d", section, i)}
 			sl.SectionTitle = crumb
 			slides = append(slides, sl)
 		}
@@ -105,6 +124,7 @@ func expandStructure(s *StructureInput) ([]SlideInput, error) {
 		if closing.SlideType == "" {
 			closing.SlideType = "title"
 		}
+		closing.Origin = &deckinput.SlideOrigin{Pointer: "/structure/closing"}
 		slides = append(slides, closing)
 	}
 

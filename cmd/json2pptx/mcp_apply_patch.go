@@ -167,7 +167,8 @@ func (mc *mcpConfig) handleApplyDeckPatch(ctx context.Context, request mcp.CallT
 	}
 
 	// Collect validation + fit/preflight findings for the patched deck.
-	diags := mc.deckPatchFindings(&pi)
+	// The patched deck is the authored one; the findings address it.
+	diags := newAuthoredPaths(&pi).diagnostics(mc.deckPatchFindings(&pi))
 
 	output := applyDeckPatchOutput{
 		PatchedDeck: patchedJSON,

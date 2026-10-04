@@ -65,6 +65,23 @@ type Diagnostic struct {
 	// Details carries additional context that doesn't fit the other fields.
 	// Preserves raw cause text, overflow ratios, etc.
 	Details map[string]any `json:"details,omitempty"`
+
+	// SlideNumber is the 1-based number of the rendered slide the issue is
+	// on, 0 when it is not on a slide or the surface does not say.
+	SlideNumber int `json:"slide_number,omitempty"`
+
+	// Debug carries locators into the engine's expanded deck (debug.locator:
+	// the path the engine reported before it was rewritten to the authored
+	// deck). They name objects the author did not write.
+	Debug map[string]any `json:"debug,omitempty"`
+
+	// Source is the authored element behind an issue whose Path locates
+	// something written at render time (patterns.ValidationError.Source).
+	Source string `json:"-"`
+
+	// Authored says Path is already a pointer into the deck the author sent
+	// (patterns.ValidationError.Authored), so it is translated once.
+	Authored bool `json:"-"`
 }
 
 // Fix is a structured remediation suggestion.
@@ -80,6 +97,8 @@ func FromValidationError(ve *patterns.ValidationError) Diagnostic {
 		Message:  ve.Message,
 		Path:     ve.Path,
 		Severity: SeverityError,
+		Source:   ve.Source,
+		Authored: ve.Authored,
 	}
 	if ve.Fix != nil {
 		d.Fix = &Fix{
@@ -135,6 +154,7 @@ func FromFitFinding(f patterns.FitFinding) Diagnostic {
 	d := FromValidationError(&f.ValidationError)
 	d.Severity = SeverityForFinding(f.Code, f.Action)
 	d.NextToolCall = f.NextToolCall
+	d.SlideNumber, d.Debug = f.SlideNumber, f.Debug
 	if d.Details == nil {
 		d.Details = make(map[string]any)
 	}

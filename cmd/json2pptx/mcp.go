@@ -281,6 +281,9 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	if structDiags := applyStructureExpansion(&input); len(structDiags) > 0 {
 		return api.MCPDiagnosticsError(structDiags), nil
 	}
+	// Every finding this call returns is addressed to the deck the caller
+	// sent, not to the expanded slide list the engine works on.
+	authored := newAuthoredPaths(&input)
 
 	// Collect all boundary diagnostics before proceeding.
 	var boundaryDiags []diagnostics.Diagnostic
@@ -344,7 +347,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	// Fail fast if any boundary diagnostic is an error.
 	if diagnostics.HasErrors(boundaryDiags) {
-		return api.MCPDiagnosticsError(boundaryDiags), nil
+		return authored.mcpError(boundaryDiags), nil
 	}
 
 	// strict_fit parameter (default: warn) — parsed up front so it can be
@@ -364,7 +367,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	templatePath, templateCleanup, tplDiag := mc.resolveTemplateSource(request, "generate_presentation",
 		"presentation.template", "presentation.template_path", input.Template, input.TemplatePath)
 	if tplDiag != nil {
-		return api.MCPDiagnosticsError([]diagnostics.Diagnostic{*tplDiag}), nil
+		return authored.mcpError([]diagnostics.Diagnostic{*tplDiag}), nil
 	}
 	defer templateCleanup()
 
@@ -430,7 +433,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 			for _, f := range rawFindings {
 				_ = enc.Encode(f)
 			}
-			return api.MCPDiagnosticsError(diagnostics.FromFitFindings(rawFindings)), nil
+			return authored.mcpError(diagnostics.FromFitFindings(rawFindings)), nil
 		}
 		strictFitFindings = append(strictFitFindings, rawFindings...)
 	}
@@ -448,7 +451,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		return api.MCPSimpleError("URL_RESOLVER_INIT", fmt.Sprintf("resource resolver: %v", urlErr)), nil
 	}
 	if len(urls.Findings) > 0 {
-		return api.MCPDiagnosticsError(urls.Findings), nil
+		return authored.mcpError(urls.Findings), nil
 	}
 	urlCacheDir := urls.CacheDir
 
@@ -468,14 +471,14 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	}
 	assetFindings := resolveLocalAssetPaths(input.Slides, baseDir, imageAllowList(mc.cfg.Images.AllowedBasePaths, urlCacheDir)...)
 	if assetErrors := diagnostics.FilterBySeverity(assetFindings, diagnostics.SeverityError); len(assetErrors) > 0 {
-		return api.MCPDiagnosticsError(assetErrors), nil
+		return authored.mcpError(assetErrors), nil
 	}
 
 	// Resolve deck-level rhythm grid when configured.
 	var rhythmGrid *resolvedGrid
 	if input.Grid != nil {
 		if refusal := rhythmGridRefusal(input.Grid); refusal != nil {
-			return api.MCPDiagnosticsError(refusalDiagnostics(refusal)), nil
+			return authored.mcpError(refusalDiagnostics(refusal)), nil
 		}
 		rhythmGrid = resolveGrid(input.Grid, templateLayouts, slideWidth, slideHeight)
 	}
@@ -492,7 +495,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// The structural verdict validate_input reports: generation refuses what
 	// validation rejects, with the same findings (go-slide-creator-9k5fh).
 	if refusal := deckStructuralRefusal(&input, templateLayouts, theme, templateMetadata, slideWidth, slideHeight, err); refusal != nil {
-		return api.MCPDiagnosticsError(refusalDiagnostics(refusal)), nil
+		return authored.mcpError(refusalDiagnostics(refusal)), nil
 	}
 	if err != nil {
 		// A pattern failure knows which slide and which field it came from, so it
@@ -502,7 +505,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		// Any other refusal is reported as validate_input reports it: the
 		// one reading of a conversion error (go-slide-creator-9k5fh).
 		if ds := refusalDiagnostics(err); len(ds) > 0 {
-			return api.MCPDiagnosticsError(ds), nil
+			return authored.mcpError(ds), nil
 		}
 		return api.MCPSimpleError("INVALID_SLIDE", fmt.Sprintf("invalid slide specification: %v", err)), nil
 	}
@@ -512,7 +515,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	inputWarnings = append(inputWarnings, gridDiagWarnings...)
 	// Surface non-blocking asset findings (e.g. ICON_FILL_IGNORED_ON_INLINE)
 	// as warnings so generation proceeds while the agent still sees them.
-	for _, d := range assetFindings {
+	for _, d := range authored.diagnostics(assetFindings) {
 		if d.Severity != diagnostics.SeverityError {
 			inputWarnings = append(inputWarnings, fmt.Sprintf("%s at %s: %s", d.Code, d.Path, d.Message))
 		}
@@ -578,7 +581,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		// The findings validate_input reports for the same deck: the block
 		// generation would drop, the source its text fit would lose.
 		if ds := generationRefusalDiagnostics(err); len(ds) > 0 {
-			return api.MCPDiagnosticsError(ds), nil
+			return authored.mcpError(ds), nil
 		}
 		return api.MCPSimpleError("GENERATION_FAILED", fmt.Sprintf("generation failed: %v", err)), nil
 	}
@@ -662,7 +665,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		Warnings:                 allWarnings,
 		Quality:                  computeQualityScoreWithLayouts(input.Slides, allWarnings, templateLayouts, fitFindings...),
 		ValidationErrors:         result.ValidationErrors,
-		FitFindings:              fitFindings,
+		FitFindings:              authored.fitFindings(fitFindings),
 		Slides:                   slideResolutions,
 		OutputValidationFindings: outputValidationFindings,
 	}
@@ -689,10 +692,11 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	status := rawCompletionStatus(fitFindings, result.SlideCount, outputValidationFindings, outputValidation, result.ContentHash, strictFit != "off" || fitReportOn)
 	output.DeterministicReady = &status.DeterministicReady
 	output.Publishable = &status.Publishable
-	output.BlockingReasons = status.BlockingReasons
-	output.DeterministicBlockingReasons = status.DeterministicBlockingReasons
-	output.NextToolCall = renderNextToolCall(status.DeterministicReady, firstBlockingFitCall(fitFindings), outputPath, nil)
-	recordDeterministicGate(outputPath, status.DeterministicBlockingReasons)
+	// A reason quotes its finding's place: the authored one.
+	output.BlockingReasons = authored.sentences(status.BlockingReasons, output.FitFindings)
+	output.DeterministicBlockingReasons = authored.sentences(status.DeterministicBlockingReasons, output.FitFindings)
+	output.NextToolCall = renderNextToolCall(status.DeterministicReady, firstBlockingFitCall(output.FitFindings), outputPath, nil)
+	recordDeterministicGate(outputPath, output.DeterministicBlockingReasons)
 
 	mc.idempotency.Set("generate_presentation", idemKey, idemFingerprint, output)
 
@@ -1197,6 +1201,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 		Valid:       !diagnostics.HasErrors(boundaryDiags),
 		Diagnostics: boundaryDiags,
 		Slides:      []dryRunSlide{},
+		deck:        &input,
 		subcommand:  "validate_input",
 		template:    input.Template,
 		inputSHA256: diagnostics.ComputeInputSHA256([]byte(jsonStr)),
@@ -1289,9 +1294,7 @@ func applyValidateFitChecks(output *dryRunOutput, input *PresentationInput, anal
 func marshalValidateResult(ctx context.Context, output dryRunOutput) (*mcp.CallToolResult, error) {
 	if !output.Valid {
 		// Return the same error envelope shape as generate_presentation.
-		all := append([]diagnostics.Diagnostic(nil), output.Diagnostics...)
-		all = append(all, diagnostics.FromFitFindings(output.FitFindings)...)
-		return api.MCPDiagnosticsError(dedupeDiagnostics(all)), nil
+		return api.MCPDiagnosticsError(output.authoredFindings()), nil
 	}
 	// Success path: fold the accumulated diagnostics and fit findings into the
 	// single Findings envelope just before serialization.

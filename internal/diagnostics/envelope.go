@@ -310,6 +310,21 @@ func FindingFromDiagnostic(d Diagnostic) Finding {
 	if w := whereFromPath(d.Path); !w.IsZero() {
 		f.Where = &w
 	}
+	if d.SlideNumber > 0 {
+		// The surface said which rendered slide the finding is on. where.slide
+		// is that slide's 0-based index — the index every slide_index argument
+		// takes — whatever the authored path says (a page of a split_slide is
+		// /slides/1/base; a structure slide has no /slides index at all).
+		n, idx := d.SlideNumber, d.SlideNumber-1
+		f.SlideNumber = &n
+		if f.Where == nil {
+			f.Where = &Where{}
+		}
+		f.Where.Slide = &idx
+	}
+	if len(d.Debug) > 0 {
+		f.Debug = d.Debug
+	}
 	if d.Fix != nil {
 		f.Remediation = &Remediation{
 			Primary: remediationFromFix(d.Fix),

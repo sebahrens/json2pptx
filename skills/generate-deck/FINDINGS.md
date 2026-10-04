@@ -57,12 +57,14 @@ message is that number, "slide index N" is 0-based). Ignore `debug` (compiled-de
 ## Raw-deck findings
 
 Each finding has stable machine fields `{path, code, severity, action, fix}`;
-`fix` has `kind` and `params`. `path` is a JSON Pointer into the deck you
-sent (`/template`, `/slides/1/content/1/table_value/rows/0/2/conditional/rule`,
-`/defaults/table_style/style_id` for a default a table adopted); a field to
-add is named by the pointer it will have. The shared finding envelope has
-`ok` plus an ordered `findings[]`. Work top-down: severity descending, then slide index,
-then code. A deck-level finding precedes slide 0 at equal severity.
+`fix` has `kind` and `params`. `path` is a JSON Pointer that resolves in the
+deck you sent (`/template`, `/slides/1/content/1/table_value/rows/0/2/conditional/rule`,
+`/defaults/table_style/style_id` for a default a table adopted,
+`/slides/1/base/…` in a `split_slide`, `/structure/sections/0/slides/2/…`); a
+field to add is named by the pointer it will have. `slide_number` is the
+rendered slide (1-based); a tool's `slide_index` is `slide_number - 1`.
+Ignore `debug`. The envelope has `ok` plus an ordered `findings[]`. Work
+top-down: severity descending, then slide, then code; deck-level first.
 A pattern text-budget warning (`BODY_TOO_LONG`, `HEADLINE_TOO_LONG`,
 `TEXT_EXCEEDS_SHAPE`) that names one value has that value's pointer as
 `path` (`/slides/N/pattern/values/2/big`, `…/values/steps/3/label`) and,
@@ -72,8 +74,7 @@ max_chars, pattern}}`: rewrite that field yourself within `max_chars`.
 ### What to do with a finding
 
 - `refuse`: the engine cannot safely produce/accept the requested result.
-  Repair the source, validate again, and do not infer success from an artifact
-  that happened to be written.
+  Repair the source and validate again; a written artifact is not success.
 - `shrink_or_split`: the content needs more room or less text. Preserve facts;
   split the slide or rewrite copy rather than blindly truncating.
 - `review` / `info`: a judgment for the author; inspect the rendered slide
@@ -83,11 +84,10 @@ max_chars, pattern}}`: rewrite that field yourself within `max_chars`.
   (`reduce_cell_text`: `cell_path`, `max_chars`; `cells` lists every
   affected cell) or give the cells height.
 
-`score_deck` classifies a finding as `pattern_choice`, `rendering`, or
-`content`. A pattern-choice problem usually calls for a different visual
-family. A rendering problem calls for fit, geometry, or contrast repair.
-A content problem (e.g. `TITLE_NOT_ACTION`, `TITLE_TOO_LONG`) calls for a
-better title, evidence, labels, or copy. `DATA_WITHOUT_SOURCE` (review: a
+`score_deck` classifies a finding as `pattern_choice` (usually calls for a
+different visual family), `rendering` (fit, geometry or contrast repair) or
+`content` (e.g. `TITLE_NOT_ACTION`, `TITLE_TOO_LONG`: a better title,
+evidence, labels or copy). `DATA_WITHOUT_SOURCE` (review: a
 chart, figures table / matrix or KPI / stat pattern, unsourced) is one:
 set `slides[N].source` (`fix.params.field: "source"`), a chart `footnote` or
 a deck default (QUALITY.md §5); never invent one.
@@ -112,8 +112,8 @@ one slide's executable directives. A finding's
 Text-reduction fixes refuse with `semantic_review_required` if they would
 erase a number, unit, negation, or qualifier. A fix aimed at the wrong structure returns
 `wrong_kind_for_target` and a `next_tool_call` with a suitable kind/path.
-A pattern cell (`…/pattern/rows/R/cells/C/…`) is generated output: edit
-the pattern `values` and validate again. A split must leave **both** halves valid under
+A finding on a pattern or `compose` cell is at the value behind it
+(`…/pattern/values/2/small`); `repair_slide` takes it as `cell_path`. A split must leave **both** halves valid under
 that pattern's minimum counts.
 
 `validate_input`, `generate -dry-run`, `generate_presentation` and CLI
