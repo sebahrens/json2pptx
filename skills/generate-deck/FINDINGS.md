@@ -21,7 +21,9 @@ message is that number). Ignore `debug` (compiled-deck locators).
   `remediation.primary` is the action — `apply_patch`, `shorten_text`
   (`max_chars` / `max_words`), `reduce_items` (`max_items`, `min_items`),
   `split_slide` (`max_rows`, `row`), `replace_value` (`did_you_mean`,
-  `available`, `expected_shape`, `example`) — and `next_tool_call` the patch.
+  `available`, `expected_shape`, `example`), `add_detail_or_merge` (`hint`;
+  `SLIDE_UNDERUSED` / `SPARSE_FILL`, render's `recommended_edit`) — and
+  `next_tool_call` the patch.
   `patch_verified: true`: the server applied that patch and re-validated —
   the finding is gone and nothing new blocks; send it unchanged. A patch
   without the flag holds an `<instruction>` value: write your own words
@@ -46,7 +48,8 @@ message is that number). Ignore `debug` (compiled-deck locators).
   gate. `VERTICAL_IMBALANCE` / `HORIZONTAL_IMBALANCE`: 40% or more of the
   content area is empty below / beside the block (PATTERNS.md → Placement).
   `TEXT_WRAPS_NARROW`: a paragraph wraps to 5+ lines of ≤3 words — cut each
-  box to `max_words`, or use fewer, wider boxes. `SIBLING_SIZE_MISMATCH`:
+  box to `max_words`, or keep at most `max_boxes` boxes on the row; `paths`
+  lists the box behind each hit (`/slides/8/steps/0`). `SIBLING_SIZE_MISMATCH`:
   peer headers or card titles render at different sizes — shorten the
   longest or use fewer columns.
 

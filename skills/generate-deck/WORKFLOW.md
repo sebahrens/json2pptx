@@ -3,7 +3,7 @@
 The default path authors a semantic **DeckSpec**. Raw `PresentationInput`
 steps (skeletons, pre-emit checklist, `validate_input` / `strict_fit`,
 `repair_slide`) are in [RAW_PATH.md](RAW_PATH.md); the review protocol below
-applies to both paths. Storyline rules are in [QUALITY.md](QUALITY.md).
+applies to both paths.
 
 ---
 
@@ -13,11 +13,10 @@ applies to both paths. Storyline rules are in [QUALITY.md](QUALITY.md).
    the whole argument (QUALITY.md). Present them to the user unless they asked
    for the finished deck directly.
 2. **Draft the spec.** For more than four slides call `plan_deck` with
-   `format: "deckspec"`: it returns `deck_spec` (kinds drafted from the
-   brief — `structure` chapters for 8+ slides), `slots[]` with each slot's
-   `path`, guidance and routed brief facts, and `unplaced_facts[]` (place
-   them; do not drop them). Replace every `__FILL__` (titles, `meta.date`)
-   and fill the fields from `list_slide_kinds`. Region clauses ("left a line
+   `format: "deckspec"` (response fields: DECKSPEC.md → Plan the narrative;
+   `structure` chapters for 8+ slides). Place every `unplaced_facts[]`
+   entry, replace every `__FILL__` (titles, `meta.date`) and fill the
+   fields from `list_slide_kinds`. Region clauses ("left a line
    chart; upper right a KPI") draft a `regions` slide whose slot lists each
    region's `path`, `role`, `kind` and clause; `unsupported_regions[]` names
    what it could not draft.
@@ -47,12 +46,9 @@ Deck: [title] · Template: [name]
 ### Layout coverage requests
 
 When the brief asks for a complete deck that also showcases layouts, plan the
-argument first: write the story and section outline without counting layouts
-as slides, choose a slide budget that supports the subject, put chapter
-boundaries in `structure.sections`, then add canonical IDs to
-`meta.required_layouts`, run `explain_deck_spec` and resolve each
-`layout_coverage.missing` entry with a compatible narrative slide
-(DECKSPEC.md). A `blank-canvas` content slide carries its title into the raw
+argument first, without counting layouts as slides; then add canonical IDs
+to `meta.required_layouts` and resolve each `layout_coverage.missing` entry
+with a compatible narrative slide (DECKSPEC.md). A `blank-canvas` content slide carries its title into the raw
 slide's `headline`.
 
 ### One slide or several: spatial planning
@@ -103,7 +99,6 @@ without rendering, and `analyze_deck_rhythm` accepts the `deck_id`.
   open columns, whatever the patterns), and no motif on more than half the
   content slides (`dominant_motif`); follow a dense slide (table, grid) with
   a light one (stat, quote, section).
-- Every evidence slide has a `takeaway` and a `source`.
 - Clear `analyze_deck_rhythm`'s narrative codes (`missing_executive_summary`,
   `missing_next_steps`, `missing_sections`,
   `evidence_missing_takeaway_or_source`, `bullets_heavy`), run codes
@@ -115,8 +110,7 @@ without rendering, and `analyze_deck_rhythm` accepts the `deck_id`.
 
 ### Pattern monotony (deck-level)
 
-The most common agent mistake: the same pattern slide after slide makes a
-flat deck. Break runs with a family that fits the content (card-grid →
+Break runs with a family that fits the content (card-grid →
 comparison-2col → stat-hero → matrix-2x2 → icon-row); a stat or quote only
 for a single number or a stakeholder voice, never as filler. A split exhibit
 titled `… (1/2)` / `… (2/2)` (or `(cont.)`) is one slide for every run check;
@@ -150,8 +144,7 @@ Do not switch strategy just to move `accent_balance`; judge the rendered slides.
 The first validation reports everything knowable, even when a slide does not
 compile: fix every finding in one pass, then re-validate (`warnings[]` says
 what was assumed and which checks wait). `templates: ["modern", …]` also
-reports the spec on other templates. `SEMANTIC_PATTERN_DEGRADED` means the
-requested visual changed (DECKSPEC.md). `deterministic_ready` is not
+reports the spec on other templates. `deterministic_ready` is not
 approval. Retain `deck_id`; revise with `patch` and re-render
 `changed_slides`.
 
@@ -188,13 +181,20 @@ the wrong visual show only in pixels. **Images are truth.**
    `submit_visual_review` (`{severity, category, description, location}`:
    `severity` P0–P3 and `category` from the tool schema's enums — whitespace
    is `layout_balance`; any other value is rejected and nothing is
-   recorded). A P0/P1 finding makes the deck verdict
+   recorded). `slides[].verdict` is `approved`, `changes_requested` or
+   `inconclusive`. A P0/P1 finding makes the deck verdict
    `changes_requested`; approve only when all ten pass. For check 10, name
    the needless UI element and a repair that preserves its content.
 4. **Repair.** Edit the spec at the finding's `path` (or the field the
    rubric names), send `deck_id` + `patch`, re-render and re-check
    `changed_slides` (pass them, or slide ids, as `slide_indices`), then
-   review the whole final revision once and submit.
+   review the whole final revision once and submit. On a repeat pass send
+   the `content_hash` values you hold as `known_hashes` (combines with
+   `slide_indices`; an unmatched hash is ignored): a slide whose pixels did
+   not change returns `{index, id, content_hash, unchanged: true}` with no
+   image and no `path`. The image you hold is still that slide; submit its
+   `content_hash` as `image_sha256`. CLI: `json2pptx render-thumbnails
+   deck.pptx --out-dir slides/ --known-hashes <hash>,<hash>`.
    Deterministic repairs: RAW_PATH.md; finding semantics:
    [FINDINGS.md](FINDINGS.md).
 5. **Loop cap.** Stop after **three** repair rounds. If slides still fail,

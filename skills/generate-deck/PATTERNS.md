@@ -12,7 +12,7 @@ a diagram, not a text grid, for data-driven or topologically complex graphics.
 - **Browse:** `list_patterns` (MCP) or `json2pptx patterns list` (CLI).
 - **Schema:** `show_pattern` (MCP) or `json2pptx patterns show <name>` (CLI) returns the value schema, `example_values` (use them as the template for `values`) and, for grid-shaped patterns, a `text_budget_guide` with per-configuration `body_max_chars` / `header_max_chars`.
 - **Validate:** `validate_pattern` (MCP) or `json2pptx patterns validate <name> <values.json>` (CLI) checks values and fit. Pass `theme_template` (MCP) or `--template` + `--templates-dir` (CLI) for the intended template; CLI `--json` returns the findings envelope and exits non-zero on blocking findings.
-- **See it:** `recommend_visual(intent, template, candidates: [<pattern>], preview: true)` returns the pattern's recipe rendered through generation, as an image (no committed gallery paths).
+- **See it:** `recommend_visual` with `preview: true` (TOOLS.md → Composition recipes).
 - **Expand + density pre-flight:** `expand_pattern` (MCP) or `json2pptx patterns expand` (CLI) returns `cell_budgets[]` (for a sparse slide-level pattern they describe the composed block generation renders), `capacity_warnings[]`, `density_warnings` for embedded tables over the TDR ceilings (RULES.md Rule 20) and, when all populated cells are suboptimal, `layout_suggestions[]`. With `theme_template` the response's `bounds_source` is `"template"`, else `"default_fallback"`.
 - **Per-cell styling:** `cell_overrides` (`{"<index>": {...}}`, index meaning in each pattern's schema) accepts `accent_bar`, `font_size`, `emphasis`, `align`, `vertical_align` and `color`. Text keys restyle every paragraph of that cell's primary text (so `font_size` flattens a header/body hierarchy) — e.g. `strategy-house` index 0 (objective banner), an `agenda` row's title, a `metric-list` item's big value. Use pattern-level `overrides` for deck-consistent sizes.
 
@@ -49,7 +49,12 @@ template, or under a `takeaway`, content-sized patterns (`exec-summary`,
 air, headshot size or type down to the 12pt floor, then report
 `BODY_TOO_LONG` naming what to drop. `icon-row`, `labeled-rows`,
 `process-flow` and `process-flow-compact` grow their cards, rows or band to the
-text's written fit before reporting it. Validation predicts grid text
+text's written fit before reporting it. `process-flow` lays 7–8 steps on
+two rows of four (the second runs back right to left; chevron / arrow flows
+wrap left to right), so a box holds 80 characters at every step count.
+`overrides.rows` is `1` or `2` (default `2` from 7 steps; `2` needs at
+least 4 steps); `rows: 1` keeps one row of narrow boxes.
+`process-flow-compact` is one band and rejects `rows`. Validation predicts grid text
 (nested cells included) that generation would refuse as an `error`
 `TEXT_BELOW_READABLE_MIN` (DeckSpec render refusals: DECKSPEC.md).
 
@@ -58,7 +63,10 @@ value shrinks and a label column widens before its label does. What cannot
 fit at the floor is reported — `BODY_TOO_LONG` on `values[i].big`,
 `TEXT_EXCEEDS_SHAPE` naming the label word: shorten or abbreviate it.
 
-**Placement.** Box patterns are content-sized: `kpi-Nup` cards, `card-grid`
+**Placement.** Patterns follow the slide size: on a larger slide
+(business-template, 14.7 × 8.3in) pattern text and row heights render about
+10% larger (12 → 13pt, 14 → 15pt); authored `shape_grid` sizes are kept as
+written. Box patterns are content-sized: `kpi-Nup` cards, `card-grid`
 rows, `before-after` panels and `strategy-house` pillars hug their text (≤
 1.6× its height). A slide's own pattern block that needs under 75% of the
 content area is composed: its text steps up one type-scale step (12→14pt,
@@ -78,8 +86,10 @@ or more of the content area stays empty below / beside a block (or between
 it and its conclusion band): set `vertical_align` (`center` / `stretch`),
 add a supporting zone (`compose`) or pick a pattern that fills the area. A
 remaining `SLIDE_UNDERUSED` means the content is thin — add real detail,
-pair it with a second zone, or merge slides; on `stat-hero`, `pull-quote`
-and a lone `process-flow-compact` it is info by design.
+pair it with a second zone, or merge slides. It is not raised for a
+`stat-hero` or `pull-quote` at its designed size, nor for a normal
+`next-steps` / `numbered-step-strip` list; a lone `process-flow-compact`
+still reports.
 
 ---
 

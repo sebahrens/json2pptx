@@ -39,11 +39,12 @@ layout IDs in `meta.required_layouts` (not a
 capability). Inspect
 `explain_deck_spec.layout_coverage.{requested,assigned,missing}` and add a
 compatible *narrative* slide for each missing layout, never an empty or
-unrelated one. Template resolution order is the tool's
-`template` argument (that call only; `warnings[]` says it overrode the pin),
-then `meta.template`, then `template_path`, then the archetype default; a
-`deck_id` stays bound to its first template until a patch to
-`/meta/template`. `meta.waivers: [{code, reason}]` waives
+unrelated one. Template precedence is the same on every DeckSpec tool
+(validate, render, compile, explain; CLI `semantic … --template`): the
+call's `template` > `meta.template` > `template_path` > the `deck_id`'s
+bound template > the archetype default. A `template` that differs from
+`meta.template` replaces it for that call only (`warnings[]` says so);
+patch `/meta/template` to keep it. `meta.waivers: [{code, reason}]` waives
 `NO_EXECUTIVE_SUMMARY`, `CLOSING_WITHOUT_NEXT_STEPS`, `TITLE_NOT_ACTION` or
 `takeaway_missing` (a waived finding is an `info`). Discover archetypes with
 `list_deck_archetypes`.
@@ -95,8 +96,8 @@ render on before writing titles and takeaways. What the numbers do not say:
 | Kind | Authoring consequence |
 |---|---|
 | `executive_summary` | 3–5 points `{lead, support}`; a plain string spans the width. One conclusion band: `bottom_line`, else `takeaway` — both → the `takeaway` goes to the notes (`SEMANTIC_DUPLICATE_CALLOUT`). Past the budgets it degrades to bullets. |
-| `kpi_snapshot` | 2–6 KPIs; give each its reference in `comparator` (alias `vs`, "vs plan +4 pts"). A value past the budget degrades the slide; one that fits the budget but not the card is `BODY_TOO_LONG`. |
-| `chart_insight` | 1–6 insights sit beside the chart; more use a native chart with the full list. Every series needs one unquoted number per category (`CHART_SERIES_LENGTH_MISMATCH`, `CHART_VALUE_NOT_NUMERIC`). Chart types are short names (`bar`, `line`; `bar_chart` is accepted). |
+| `kpi_snapshot` | 2–6 KPIs; give each its reference in `comparator` (alias `vs`, "vs plan +4 pts"). A value past the budget degrades the slide; one that cannot fit one line on its card is `BODY_TOO_LONG` at `/slides/N/kpis/i/value` with `max_chars`. |
+| `chart_insight` | Needs one stated implication: `insights[]` (1–6 beside the chart; more use a native chart with the full list), a scalar `insight`, or just `takeaway` — with a chart and only a `takeaway`, it is drawn as the so-what callout beside the chart, not repeated in the band, and the slide is not `takeaway_missing`. Every series needs one unquoted number per category (`CHART_SERIES_LENGTH_MISMATCH`, `CHART_VALUE_NOT_NUMERIC`). Chart types are short names (`bar`, `line`; `bar_chart` is accepted). |
 | `comparison` | 2 balanced columns of ≤10 rows compare; 3–5 columns are panels; 6–12 columns are cards; beyond that, bullets. |
 | `table` | ≤6 headers × 6 body rows. Options scored against criteria belong in `option_matrix`, not a generic table. |
 | `option_matrix` | 2–6 criteria × 2–6 options on one Harvey, RAG or text scale. `recommended` takes one option (name or 0-based index) or a list; a higher-scoring rival is `SEMANTIC_RECOMMENDATION_OUTSCORED`. |
@@ -112,16 +113,10 @@ render on before writing titles and takeaways. What the numbers do not say:
 | `pillars` | 3–5 pillars. A house needs `objective` and `foundation` (a string, or 1–3 levels, each a band or a row of 2–5 cells) and takes a `beam`; without them it is panels. |
 | `org` | One root, ≤7 nodes, 3 levels, ≤4 direct reports per node; larger trees degrade to attributed bullets. |
 | `architecture` | 3–6 tiers; a tier's `items` (1–12, ≤40 characters each) are drawn one block each, a `description` as one line. |
-| `process` | 3–6 steps with descriptions are numbered rows (label ≤60, description ≤180); 7–8 steps, or bare labels, are flow boxes (label and description together ≤80). A straight sequence is not a branching flowchart. |
+| `process` | 3–6 steps with descriptions are numbered rows (label ≤60, description ≤180); 7–8 steps (on two rows), or bare labels, are flow boxes (label and description together ≤80). A straight sequence is not a branching flowchart. |
 | `next_steps` | The closer: 2–6 `actions` `{action, owner, date}` and 0–3 `decisions`. Keep `closing` for a Q&A page; its title budget depends on the template. |
 
-Counts that do not fit yet: `next_steps` with 6 actions and a decisions band,
-and `option_matrix` with 6 options, on every shipped template;
-`executive_summary` with 5 points and some `pillars` houses on `modern` /
-`modern-template`. The finding's verified patch says what fits.
-
-These are authoring budgets, not an alternate schema. Prefer
-`list_slide_kinds` canonical field names over the `aliases` it lists.
+Prefer `list_slide_kinds` canonical field names over the `aliases` it lists.
 
 ## Several visuals on one slide
 
@@ -143,8 +138,7 @@ all-slide visual verdict is approved. The CLI exits 0 for a clean,
 unreviewed render, not for a strict-mode blocker. Resolve `diagnostics[]`,
 `deterministic_blocking_reasons[]` and the gate before review, then take the
 final verdict from `submit_visual_review`'s current-revision status; a
-re-render is a new unreviewed response, and a verdict never clears blockers
-(`reviewed_deterministic_blockers`). Edit the spec at a diagnostic's `path`
+verdict never clears blockers (`reviewed_deterministic_blockers`). Edit the spec at a diagnostic's `path`
 (a JSON Pointer; the string a patch takes) and keep the DeckSpec as the
 source of truth. Validate and render report the same findings for one spec
 and template ([FINDINGS.md](FINDINGS.md)): text generation would shrink below
@@ -154,8 +148,6 @@ a verified removal, a rewrite of the named field within its budget, or the
 slide's text layout (`/slides/N/layout: "content"`). A finding inside a
 `raw_json2pptx` slide points into it (`/slides/N/slide/…`). HTTP:
 `POST /api/v1/semantic/render` (`docs/api/README.md`).
-After each revision, render and inspect the affected slides, then inspect all
-slides of the final revision as required by [SKILL.md](SKILL.md).
 
 Validation, explain, and render return a `deck_id` handle. Send `deck_id`
 instead of `spec` (never both), with an optional ordered
