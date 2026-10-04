@@ -585,6 +585,30 @@ spells it `render-thumbnails --known-hashes <hash>,<hash>`: the manifest lists
 `content_hash` per slide, an unchanged slide has `unchanged: true` and no
 `path`, and its file from the earlier run is left in place.
 
+The server sends the hashes itself on a repeat pass. Each
+`render_deck_thumbnails` response is remembered per `pptx_path` (the
+`content_hash` of every slide it returned, with the density they were rendered
+at; 24 h, per server process). The `next_tool_call` of the next
+`render_deck_spec` / `generate_presentation` for that file — or for a new
+artifact of the same deck — is then
+`render_deck_thumbnails {pptx_path, known_hashes: [...]}` over the whole deck
+in place of `{pptx_path, slide_indices: changed_slides}`: one call returns an
+image for each slide whose pixels changed and a hash-only entry for the rest,
+which is every `content_hash` `submit_visual_review` needs. `density` is added
+when the held hashes were not rendered at the default 50 (a `content_hash` is
+a pixel hash, so it only matches at the same density). With no thumbnails
+delivered yet, or more than 50 held hashes, the call names `slide_indices` as
+before.
+
+**Reading small text.** At the default density 50 an image block is 667 px
+wide and 12 pt body text cannot be judged. A response whose image blocks are
+narrower than the 1280 px delivery width carries
+`larger_render: {when, tool: "render_deck_thumbnails", args_template:
+{pptx_path, slide_indices, density: 100}}`: render the one slide again with
+the existing `slide_indices` and `density` arguments. Density 100 fills the
+1280 px block (about twice the linear size); a higher density adds pixels to
+`slides[].path` on disk, not to the block. There is no crop argument.
+
 **Reading the store** (`validate_deck_spec`; these return without validating
 or storing):
 

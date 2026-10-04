@@ -775,7 +775,8 @@ var outputSchemaRenderDeckThumbnails = json.RawMessage(`{
     "source_hash": {"type": "string", "description": "image_content mode: PPTX content hash shared by every slide (hoisted from slides[])."},
     "cleanup":     {"type": "string", "description": "image_content mode: lifetime/cleanup semantics shared by every slides[].path artifact."},
     "image_mime_type": {"type": "string", "description": "image_content mode: encoding of every image block (image/jpeg), hoisted from slides[]. slides[].path is the full-resolution PNG, not the block."},
-    "next_tool_call": {"type": "object", "properties": {"tool": {"type": "string"}, "args_template": {"type": "object"}}, "required": ["tool", "args_template"], "description": "submit_visual_review bound to this PPTX's current sha256 (pptx_revision)."}
+    "next_tool_call": {"type": "object", "properties": {"tool": {"type": "string"}, "args_template": {"type": "object"}}, "required": ["tool", "args_template"], "description": "submit_visual_review bound to this PPTX's current sha256 (pptx_revision)."},
+    "larger_render": {"type": "object", "properties": {"when": {"type": "string"}, "tool": {"type": "string"}, "args_template": {"type": "object"}}, "description": "Present when the image blocks are narrower than 1280px: the render_deck_thumbnails call (slide_indices + density 100) that returns one slide at about twice the size, for reading 12pt text."}
   },
   "required": ["slides", "truncated"]
 }`)

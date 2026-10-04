@@ -104,6 +104,48 @@ type renderedDeckThumbnailsResponse struct {
 	// NextToolCall points at submit_visual_review bound to this exact PPTX
 	// revision, the step that closes the render loop (go-slide-creator-z3pbp).
 	NextToolCall *patterns.ToolCallSuggestion `json:"next_tool_call,omitempty"`
+	// LargerRender is the call that renders one slide larger, offered when
+	// the image blocks are below the delivery width: at the default density a
+	// slide is 667px wide and 12pt body text cannot be judged
+	// (go-slide-creator-jn6vj).
+	LargerRender *largerRenderCall `json:"larger_render,omitempty"`
+}
+
+// largerRenderCall says when a slide should be rendered again larger and how:
+// render_deck_thumbnails' own slide_indices and density.
+type largerRenderCall struct {
+	When string `json:"when"`
+	patterns.ToolCallSuggestion
+}
+
+// largerRenderDensity is the DPI at which a 16:9 slide fills the delivered
+// image width (api.MCPImageMaxWidth, 1280px = 96 DPI): about twice the linear
+// size of the default pass. A higher density adds bytes on disk, not pixels in
+// the image block.
+const largerRenderDensity = 100
+
+// largerRenderFor is the larger_render block of a thumbnails response whose
+// image blocks came out narrower than the delivery width; nil when they are
+// already as large as an image block gets, or nothing was delivered.
+func largerRenderFor(pptxPath string, slides []renderedSlideMeta) *largerRenderCall {
+	narrow := false
+	for _, s := range slides {
+		if s.ImageWidth > 0 && s.ImageWidth < api.MCPImageMaxWidth {
+			narrow = true
+			break
+		}
+	}
+	if !narrow || pptxPath == "" {
+		return nil
+	}
+	return &largerRenderCall{
+		When: "text of 12pt or less cannot be read at this size: render that slide larger before judging it",
+		ToolCallSuggestion: patterns.ToolCallSuggestion{Tool: "render_deck_thumbnails", ArgsTemplate: map[string]any{
+			"pptx_path":     pptxPath,
+			"slide_indices": "<[index or id] of the slide to read>",
+			"density":       largerRenderDensity,
+		}},
+	}
 }
 
 // slideImageToMCP converts one rendered SlideImage into its metadata record and
@@ -185,6 +227,13 @@ func deckThumbnailsMCPResult(ctx context.Context, request mcp.CallToolRequest, d
 		return bad
 	}
 	held := func(s render.SlideImage) bool { return s.ContentHash != "" && known[s.ContentHash] }
+	// Every slide of this response is one the caller now holds; the thumbnails
+	// step after the next render names these hashes (go-slide-creator-wfhvv).
+	delivered := make(map[int]string, len(deck.Slides))
+	for _, s := range deck.Slides {
+		delivered[s.Index] = s.ContentHash
+	}
+	recordDeliveredThumbnails(request.GetString("pptx_path", ""), clampedRenderDensity(request.GetArguments(), defaultThumbnailDensity, 25, 150), delivered)
 	if wantsBase64JSON(request) {
 		var payload any = deck
 		if len(known) > 0 {
@@ -250,6 +299,7 @@ func deckThumbnailsMCPResult(ctx context.Context, request mcp.CallToolRequest, d
 		if artifact, aerr := describeArtifact(pptxPath, "pptx"); aerr == nil {
 			resp.NextToolCall = nextCallSubmitVisualReview(pptxPath, artifact.SHA256)
 		}
+		resp.LargerRender = largerRenderFor(pptxPath, resp.Slides)
 	}
 	res, err := api.MCPImageResult(ctx, resp, images)
 	if err != nil {

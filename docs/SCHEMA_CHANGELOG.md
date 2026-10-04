@@ -1,5 +1,25 @@
 # Schema Changelog
 
+- **2026-10-04 — The repeat thumbnail pass carries `known_hashes`; a default-size pass names the larger render (`go-slide-creator-wfhvv`, `go-slide-creator-jn6vj`).**
+  - `render_deck_thumbnails` remembers, per `pptx_path`, the `content_hash`
+    of every slide it returned. The `next_tool_call` of the next
+    `render_deck_spec` / `generate_presentation` for that file (or a new
+    artifact of the same deck) becomes
+    `render_deck_thumbnails {pptx_path, known_hashes: [...]}` in place of
+    `{pptx_path, slide_indices: changed_slides}`: the whole deck, with an
+    image only where the pixels changed. `density` is added when the held
+    hashes were not rendered at 50. Without delivered thumbnails, or with more
+    than 50 held hashes, the call is unchanged.
+  - **New response field `larger_render`** on `render_deck_thumbnails`
+    (`{when, tool, args_template: {pptx_path, slide_indices, density: 100}}`),
+    present when the image blocks are narrower than 1280 px: the call that
+    renders one slide at about twice the size, for reading 12 pt text. No new
+    argument: `slide_indices` and `density` already do it.
+  - `get_started` names them in its `render_deck_thumbnails` step (the larger
+    render under task `brief`, `known_hashes` under `revise`): +83 bytes on
+    the measured first contact (`onboarding_get_started_bytes`
+    4756 → 4839, `onboarding_first_contact_bytes` 34858 → 34941).
+
 - **2026-10-04 — `contrast_autofixed` names the authored element; contrast prediction expands nested cell patterns (`go-slide-creator-i1x53`, `go-slide-creator-x54jd`).**
   - A `contrast_autofixed` finding on one `shape_grid` shape was reported at
     the flat rendered index `/slides/N/shape_grid/shapes/{n}`. It is now
