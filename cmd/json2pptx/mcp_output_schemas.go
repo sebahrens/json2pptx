@@ -2697,6 +2697,7 @@ var outputSchemaCompileDeckSpec = json.RawMessage(`{
     "ok":          {"type": "boolean", "description": "True when the spec compiled without a blocking error."},
     "slide_count": {"type": "integer"},
     "template":    {"type": "string", "description": "The resolved template of the compiled deck."},
+    "warnings":    {"type": "array", "items": {"type": "string"}},
     "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/semantic_diagnostic"}},
     "compiled_json": {"type": "object", "description": "Full compiled raw PresentationInput; present only when include_compiled_json=true."},
     "error":       {"type": "string", "description": "Blocking failure reason when ok=false."}
@@ -2797,6 +2798,7 @@ var outputSchemaExplainDeckSpec = json.RawMessage(`{
     "title":     {"type": "string"},
     "archetype": {"type": "string"},
     "template":  {"type": "string"},
+    "warnings":  {"type": "array", "items": {"type": "string"}},
     "rhythm":    {"type": "object"},
     "rhythm_warnings": {"type": "array", "items": {"type": "object"}},
     "slides": {

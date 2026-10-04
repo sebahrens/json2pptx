@@ -149,6 +149,29 @@ func TestSemanticCompileHandler_Success(t *testing.T) {
 	}
 }
 
+// go-slide-creator-fjuhm: ?template= replaces the spec's meta.template for the
+// request, as on the render endpoint, and the response says so.
+func TestSemanticCompileHandler_TemplateOverridesMetaTemplate(t *testing.T) {
+	pinned := strings.Replace(validDeckSpecJSON, `"meta": {`, `"meta": {"template": "midnight-blue", `, 1)
+	for _, tc := range []struct {
+		query, want string
+		warnings    int
+	}{
+		{"", "midnight-blue", 0},
+		{"?template=midnight-blue", "midnight-blue", 0},
+		{"?template=forest-green", "forest-green", 1},
+	} {
+		w := postSemantic(t, SemanticCompileHandler(), "/api/v1/semantic/compile"+tc.query, "application/json", pinned)
+		var resp semanticCompileResponse
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil || w.Code != http.StatusOK {
+			t.Fatalf("%q: status %d, %v; body=%s", tc.query, w.Code, err, w.Body.String())
+		}
+		if resp.Template != tc.want || len(resp.Warnings) != tc.warnings {
+			t.Errorf("%q: template = %q with warnings %v, want %q and %d warning(s)", tc.query, resp.Template, resp.Warnings, tc.want, tc.warnings)
+		}
+	}
+}
+
 func TestSemanticCompileHandler_OmitsCompiledJSONByDefault(t *testing.T) {
 	w := postSemantic(t, SemanticCompileHandler(), "/api/v1/semantic/compile", "application/json", validDeckSpecJSON)
 	if w.Code != http.StatusOK {

@@ -517,8 +517,26 @@ func TestCompileChartInsight_TakeawayPreservesChart(t *testing.T) {
 	if vals.Chart == nil || vals.Chart.Type != "bar" {
 		t.Errorf("chart not embedded: %+v", vals.Chart)
 	}
-	if len(vals.Insights) != 1 || vals.Insights[0] != "Revenue is accelerating" {
-		t.Errorf("insights = %v, want [takeaway]", vals.Insights)
+	// The takeaway is the slide's stated implication: the so-what callout, not
+	// a one-item list, so the slide is not reported as missing its takeaway
+	// (go-slide-creator-5ba5m).
+	if len(vals.Insights) != 0 || vals.SoWhat != "Revenue is accelerating" {
+		t.Errorf("insights = %v, so_what = %q, want the takeaway as the so_what callout", vals.Insights, vals.SoWhat)
+	}
+	if slide.Takeaway != "" {
+		t.Errorf("takeaway %q is printed a second time in the band", slide.Takeaway)
+	}
+
+	// Asked for as two-column there is nothing for the second column: the chart
+	// takes the slide and the takeaway stays in its band.
+	in.Override.Layout = "two-column"
+	slide, _, err = CompileChartInsight(in)
+	if err != nil {
+		t.Fatalf("CompileChartInsight (two-column): %v", err)
+	}
+	if slide.SlideType != "content" || slide.Takeaway != "Revenue is accelerating" || len(slide.Content) != 2 {
+		t.Errorf("two-column override = %s with takeaway %q and %d content items, want a content slide (title + chart) that keeps its takeaway",
+			slide.SlideType, slide.Takeaway, len(slide.Content))
 	}
 }
 

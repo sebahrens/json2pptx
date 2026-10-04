@@ -67,7 +67,10 @@ type briefClause struct {
 //     of five facts on four slides;
 //   - a short label keeps the clause it labels ("recommendation: renegotiate
 //     now", "source: management accounts"): the label alone says nothing and
-//     the clause alone lost what it was.
+//     the clause alone lost what it was;
+//   - a label of any length keeps the numbers it labels ("Quarterly revenue
+//     from Q3 FY25 to Q3 FY26: 43.0, 44.1, 45.6, 46.9, 48.2"), so a series and
+//     what it measures are one fact in one slot (go-slide-creator-5iy8n).
 //
 // Every other boundary — sentence ends, semicolons, newlines, spaced dashes,
 // and a colon after the topic or a list header — still splits wherever it
@@ -143,6 +146,14 @@ func splitClauses(brief string) []briefClause {
 			case isFillerLabel(name):
 				group = ""
 				continue // "Facts:" introduces the brief's facts and is not one
+			case isBareNumber(strings.TrimSpace(parts[i+1].text)):
+				// A label of any length names the numbers after it ("Quarterly
+				// revenue from Q3 FY25 to Q3 FY26: 43.0, 44.1, 45.6"). Split
+				// here, the series went to the chart slot with nothing saying
+				// what it measures and its label, which reads as a dated
+				// milestone, to the closing slot (go-slide-creator-5iy8n).
+				label, group = name, ""
+				continue
 			case g != "":
 				out = append(out, briefClause{text: text, group: g, header: true})
 				group = g
@@ -162,8 +173,8 @@ func splitClauses(brief string) []briefClause {
 }
 
 // factBareNumber matches a list item that is only a number: "42.3", "€4m",
-// "12%", "and 48.2".
-var factBareNumber = regexp.MustCompile(`^(?i)(?:(?:and|or)\s+)?[+\-−±]?[$€£¥]?\d[\d.,]*\s*(?:%|[a-z]{1,3})?$`)
+// "12%", "and 48.2" — or the two numbers that end a list, "85 and 40".
+var factBareNumber = regexp.MustCompile(`^(?i)(?:(?:and|or)\s+)?[+\-−±]?[$€£¥]?\d[\d.,]*\s*(?:%|[a-z]{1,3})?(?:\s+(?:and|or)\s+[+\-−±]?[$€£¥]?\d[\d.,]*\s*(?:%|[a-z]{1,3})?)?$`)
 
 // isBareNumber reports whether a comma-separated piece is a bare number, which
 // continues the list of numbers before it rather than starting a fact.

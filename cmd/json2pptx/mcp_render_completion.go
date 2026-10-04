@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -63,12 +64,16 @@ func nextCallRenderThumbnails(pptxPath string, changed []int) *patterns.ToolCall
 }
 
 // nextCallSubmitVisualReview is the step after inspecting thumbnails: record
-// the all-slide verdict against the exact artifact revision.
+// the all-slide verdict against the exact artifact revision. The template
+// names the verdict values: the tool is outside the default tools/list, so its
+// schema is a separate call an agent otherwise has to make to learn three
+// words (go-slide-creator-p8i1g).
 func nextCallSubmitVisualReview(pptxPath, revision string) *patterns.ToolCallSuggestion {
 	return &patterns.ToolCallSuggestion{Tool: "submit_visual_review", ArgsTemplate: map[string]any{
 		"pptx_path":     pptxPath,
 		"pptx_revision": revision,
-		"slides":        "<one {index, verdict, image_sha256} per slide: image_sha256 = slides[].content_hash from render_deck_thumbnails>",
+		"slides": "<one {index, verdict, image_sha256} per slide: verdict = " + strings.Join(visualReviewVerdicts, " | ") +
+			"; image_sha256 = slides[].content_hash from render_deck_thumbnails>",
 	}}
 }
 

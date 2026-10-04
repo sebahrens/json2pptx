@@ -56,17 +56,7 @@ func ChartInsightPatternFeasible(body map[string]any) bool {
 // to a native two-column (chart + insights) or content slide so the deck still
 // compiles without losing either.
 func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) {
-	insights, insightsField := chartInsights(in.Body)
-
-	// A chart_insight may carry a usable chart and a takeaway but no explicit
-	// insight bullets. The content fallback below cannot render a chart, so
-	// without this the chart silently disappears even though validation passed.
-	// Treat the takeaway as the single insight so the chart-insights-split
-	// pattern still emits the chart. A scalar "insight" becomes a callout.
-	if len(insights) == 0 && in.Takeaway != "" && chartSpec(in.Body) != nil {
-		insights = []string{in.Takeaway}
-		insightsField = "takeaway"
-	}
+	insights, insightsField := chartInsightItems(in)
 
 	// A lone insight that IS the takeaway would print the same sentence twice:
 	// once in the pattern and once verbatim in the takeaway bar. The pattern
@@ -90,14 +80,14 @@ func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) 
 	}
 
 	vals := chartInsightsValues{Insights: insights}
-	if insightsField == "insight" {
+	if insightsField == "insight" || insightsField == "takeaway" {
 		// A single implication is a callout, not a one-item list headed
 		// "Key Insights". The pattern accepts callout-only content.
 		vals.Insights = []string{}
-		vals.SoWhat = strField(in.Body, "insight")
+		vals.SoWhat = insights[0]
 		links = append(links, SourceLink{
 			RawPath:      in.rawSlide() + ".pattern.values.so_what",
-			SemanticPath: in.semSlide() + ".insight",
+			SemanticPath: in.semSlide() + "." + insightsField,
 		})
 	}
 	if insight := strField(in.Body, "insight"); insight != "" && insightsField == "insights" {
@@ -163,6 +153,28 @@ func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) 
 	return slide, links, nil
 }
 
+// chartInsightItems returns the insight items a chart_insight compiles with
+// and the semantic field they came from.
+//
+// A chart_insight may carry a usable chart and a takeaway but no explicit
+// insight bullets. The content fallback cannot render a chart, so without this
+// the chart silently disappears even though validation passed. The takeaway
+// stands in as the single insight so the chart-insights-split pattern still
+// emits the chart. Like a scalar "insight" it becomes the pattern's so-what
+// callout: filed as a lone bullet under "Key Insights" it left the slide with
+// no stated implication, and the deck was refused with takeaway_missing for a
+// takeaway the author had written (go-slide-creator-5ba5m).
+//
+// Asked for as two-column there is nothing to put beside the chart: the items
+// stay empty, the chart takes the slide and the takeaway stays its takeaway.
+func chartInsightItems(in Input) ([]string, string) {
+	insights, field := chartInsights(in.Body)
+	if len(insights) == 0 && in.Takeaway != "" && chartSpec(in.Body) != nil && in.Override.Layout != "two-column" {
+		return []string{in.Takeaway}, "takeaway"
+	}
+	return insights, field
+}
+
 // dropDuplicateTakeaway returns "" when the takeaway is the slide's only
 // insight — the same sentence in two places on one slide is not emphasis, it
 // reads as a mistake. A takeaway that summarises SEVERAL insights is kept: it
@@ -183,10 +195,15 @@ func dropDuplicateTakeaway(takeaway string, insights []string) string {
 // plain content slide when there is no chart. The explain planner consults this
 // so its alternative stays in step with compile.
 func ChartInsightFallbackSlideType(body map[string]any) string {
-	if chartSpec(body) != nil {
-		return "two-column"
+	if chartSpec(body) == nil {
+		return "content"
 	}
-	return "content"
+	if insights, _ := chartInsights(body); len(insights) == 0 && strField(body, "takeaway") != "" {
+		// A chart and a takeaway, nothing for a second column: the chart takes
+		// the slide and the takeaway stays in its band.
+		return "content"
+	}
+	return "two-column"
 }
 
 // compileChartFallback renders the title, every insight bullet, the chart (when

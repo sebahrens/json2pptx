@@ -389,7 +389,9 @@ and ends every Markdown file in a version stamp
 checks each installed file: missing, unstamped, stamped by an older binary, or
 (examples, images) different from the shipped bytes. `get-started`,
 `capabilities`, `semantic` and `generate` print one line on stderr when the
-installed skill is older than the binary or lacks files it ships — once per
+installed skill is older than the binary (they read only the version in the
+install manifest, `generate-deck/.json2pptx-skill.json`; a file deleted or
+edited afterwards shows in `skill status`) — once per
 mismatch, remembered in `generate-deck/.json2pptx-skill-warned` (or the user
 cache directory when the skill directory is read-only);
 `JSON2PPTX_SKILL_CHECK=off` silences it. `json2pptx skill cli-map

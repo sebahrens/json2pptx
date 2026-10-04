@@ -36,8 +36,10 @@ import (
 //   - Every Markdown file it writes ends in a version stamp, and
 //     `json2pptx skill status` checks each installed file against the binary.
 //   - get-started, capabilities, semantic and generate print one line on stderr
-//     when the installed generate-deck skill is older than the binary or lacks
-//     files it ships: once per mismatch, remembered in a state file.
+//     when the installed generate-deck skill is older than the binary: once
+//     per mismatch, remembered in a state file. They read the install
+//     manifest's stamp and nothing else; the file-by-file comparison is
+//     `skill status` (go-slide-creator-v25ae).
 //   - `json2pptx skill cli-map` prints the MCP-tool → CLI-command table from
 //     the classifications get_capabilities serves, so no skill has to carry a
 //     hand-maintained copy.
@@ -250,6 +252,59 @@ func checkInstalledSkill(dir string) skillStatus {
 	return status
 }
 
+// checkSkillStamp is the check an entry command can afford: the schema
+// version the install manifest records against the binary's, one small file
+// read. checkInstalledSkill reads all ~60 installed files (about 1 MB, 1.3 ms
+// and 3.3 MB of allocations on a warm cache; BenchmarkInstalledSkillCheck),
+// which every get-started, capabilities, semantic and generate run paid, and
+// get-started twice (go-slide-creator-v25ae). A copy with no manifest — made
+// by hand, or by an installer that predates it — is read from its SKILL.md
+// frontmatter instead and told to reinstall.
+//
+// It does not see a file that was deleted or edited after a current install;
+// `json2pptx skill status` does.
+func checkSkillStamp(dir string) skillStatus {
+	status := skillStatus{Dir: dir, BinaryVersion: SchemaVersion}
+	if dir == "" {
+		return status
+	}
+	root := filepath.Join(dir, "generate-deck")
+	var manifest skillManifest
+	hasManifest := false
+	if body, err := os.ReadFile(filepath.Join(root, skillManifestName)); err == nil { //nolint:gosec // the skill directory the user configured
+		hasManifest = json.Unmarshal(body, &manifest) == nil && manifest.SchemaVersion != ""
+	}
+	if hasManifest {
+		status.InstalledVersion = manifest.SchemaVersion
+	} else {
+		body, err := os.ReadFile(filepath.Join(root, "SKILL.md")) //nolint:gosec // the skill directory the user configured
+		if err != nil {
+			return status
+		}
+		if m := skillFrontmatterVersion.FindSubmatch(body); m != nil {
+			status.InstalledVersion = string(m[1])
+		}
+	}
+	status.Installed = true
+	cmp, err := compareSkillSchemaVersions(status.InstalledVersion, SchemaVersion)
+	var problem string
+	switch {
+	case status.InstalledVersion == "":
+		problem = "carries no schema_version (it predates version stamps)"
+	case err == nil && cmp < 0:
+		problem = fmt.Sprintf("is at %s, older than this binary (%s)", status.InstalledVersion, SchemaVersion)
+	case err == nil && cmp == 0 && !hasManifest:
+		problem = "has no install manifest (it was copied by hand, so its files are unchecked)"
+	default:
+		// In step with the binary, or from a newer one.
+		status.Current = true
+		return status
+	}
+	status.Refresh = skillRefreshCommand
+	status.Message = fmt.Sprintf("the generate-deck skill installed at %s %s: run `%s`", root, problem, skillRefreshCommand)
+	return status
+}
+
 // checkSkillFiles compares every file this binary ships with the copy under
 // dir and records the ones that are missing, unstamped, stale or changed.
 func checkSkillFiles(dir string, status *skillStatus) {
@@ -349,7 +404,7 @@ func skillWarningStatePaths(dir string) []string {
 // version printed the line on every command, which an agent running forty of
 // them learned to ignore.
 func staleSkillWarning(dir string) string {
-	status := checkInstalledSkill(dir)
+	status := checkSkillStamp(dir)
 	if !status.Installed || status.Current {
 		return ""
 	}
@@ -365,7 +420,7 @@ func staleSkillWarning(dir string) string {
 			break
 		}
 	}
-	return "json2pptx: " + status.Message + " (said once; `json2pptx skill status` repeats it)"
+	return "json2pptx: " + status.Message + " (said once; `json2pptx skill status` repeats it and checks every file)"
 }
 
 // warnIfSkillStale prints one line on stderr when the installed skill does

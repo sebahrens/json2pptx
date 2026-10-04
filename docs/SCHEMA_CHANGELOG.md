@@ -1,5 +1,74 @@
 # Schema Changelog
 
+- **2026-10-04 — `plan_deck` keeps a series and its label in one slot (`go-slide-creator-5iy8n`).**
+  - A colon label longer than four words was split from the numbers after it:
+    `Quarterly revenue from Q3 FY25 to Q3 FY26: 43.0, 44.1, 45.6, 46.9, 48.2`
+    became the fact `43.0, 44.1, …` in the `evidence` slot and the fact
+    `Quarterly revenue from Q3 FY25 to Q3 FY26` — which reads as a dated
+    milestone — in the `closing` slot. A label of any length now stays with
+    the numbers it names, so `slots[].facts` carries the labelled series as
+    one fact on the chart slot. A label followed by words splits as before,
+    and a filler label (`Facts:`, `Key figures:`) is still dropped.
+  - A number list that ends `…, 85 and 40` stays one fact (the last item was
+    split off as `85 and 40`).
+
+- **2026-10-04 — The stale-skill check on entry commands reads the install manifest only (`go-slide-creator-v25ae`).**
+  - Measured (`BenchmarkInstalledSkillCheck`, Apple M3, warm file cache): the
+    file-by-file check that `get-started`, `capabilities`, `semantic` and
+    `generate` ran reads all 63 installed files (about 1 MB) in 1.31 ms with
+    3.3 MB of allocations, and `get-started` ran it twice. They now compare
+    the `schema_version` in `generate-deck/.json2pptx-skill.json` with the
+    binary's: one file, 0.03 ms, 12 KB.
+  - The stderr line is therefore about the version only (`is at X, older than
+    this binary (Y)`), or — for a copy with no manifest — its `SKILL.md`
+    frontmatter version, `carries no schema_version`, or `has no install
+    manifest (it was copied by hand, so its files are unchecked)`. A file
+    deleted or edited after a current install no longer draws the line;
+    `json2pptx skill status` still compares every file and its output is
+    unchanged. The line now ends ``(said once; `json2pptx skill status`
+    repeats it and checks every file)``.
+
+- **2026-10-04 — The `submit_visual_review` call that `render_deck_thumbnails` hands back names the verdict values (`go-slide-creator-p8i1g`).**
+  - `next_tool_call.args_template.slides` reads `<one {index, verdict,
+    image_sha256} per slide: verdict = approved | changes_requested |
+    inconclusive; image_sha256 = slides[].content_hash from
+    render_deck_thumbnails>` (+55 bytes). The tool is outside the default
+    `tools/list`, so the enum used to cost a separate schema lookup.
+
+- **2026-10-04 — One template precedence on every DeckSpec tool: the call's `template` replaces `meta.template` on compile and explain too (`go-slide-creator-fjuhm`).**
+  - **`compile_deck_spec`** (`semantic compile --template`, HTTP
+    `POST /api/v1/semantic/compile?template=`): `template` used to apply only
+    when the spec pinned none. It now replaces `meta.template` for the call,
+    as on `validate_deck_spec` and `render_deck_spec`; the response's
+    `template` is the argument and a new `warnings[]` carries
+    `template argument "X" overrides meta.template "Y" for this call only`.
+    `semantic compile` prints the notice on stderr (and in `warnings` with
+    `--envelope`), so the raw deck on stdout stays the deck alone.
+  - **`explain_deck_spec`** gains the `template` argument (and
+    `semantic explain` a `--template` flag) with the same rule, and `warnings[]`.
+    Without the argument the order is unchanged: `meta.template`, then the
+    template the `deck_id` is bound to, then the archetype default. Explaining
+    does not change a deck's binding.
+
+- **2026-10-04 — A `chart_insight` that states its `takeaway` and lists no insights is no longer refused with `takeaway_missing` (`go-slide-creator-5ba5m`).**
+  - The compiler filed a lone `takeaway` as a one-item `insights` list of
+    `chart-insights-split` and cleared the slide's takeaway, so the slide had
+    no stated implication and `validate_deck_spec` / `render_deck_spec`
+    reported a blocking `takeaway_missing`. The takeaway now compiles to the
+    pattern's `so_what` callout, as a scalar `insight` does; findings on it
+    map back to `/slides/N/takeaway`.
+  - `layout: "two-column"` on such a slide has nothing for the second column:
+    the override is reported `SEMANTIC_PATTERN_NOT_AVAILABLE` (warning) and
+    the slide keeps `chart-insights-split`.
+
+- **2026-10-04 — `list_slide_kinds` catalogue lines end on a whole word (`go-slide-creator-0ae6a`).**
+  - A kind summary longer than the 110-character catalogue line was cut
+    wherever the limit fell (`…and a sou…`). It is now cut after the last
+    whole word that fits, never inside a parenthesis it would leave open and
+    never on a dangling article or conjunction; `…` still marks the cut and
+    `kinds: [<kind>]` returns the full summary. `json2pptx semantic kinds`
+    prints the same lines.
+
 - **2026-10-04 — Schema 4.160.0 · layout nativeness and the agent journey (labels `layout-nativeness-20261003`, `agent-journey-20261003`).**
   - One version for every dated bullet below this one down to the 4.159.0
     entry: those bullets were written by parallel branches without a version

@@ -42,8 +42,9 @@ func runGetStarted() error {
 		"verbose": true,
 	}
 	// The installed skill's stamp, so the response carries skill_warning when
-	// it is behind this binary (go-slide-creator-4eu2o).
-	skill := checkInstalledSkill(skillInstallDir())
+	// it is behind this binary (go-slide-creator-4eu2o): the stamp alone, not
+	// a read of every installed file (go-slide-creator-v25ae).
+	skill := checkSkillStamp(skillInstallDir())
 	if skill.InstalledVersion != "" {
 		args["skill_version"] = skill.InstalledVersion
 	}

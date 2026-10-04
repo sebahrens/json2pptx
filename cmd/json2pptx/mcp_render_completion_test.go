@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -102,6 +104,23 @@ func TestRenderNextToolCallChain(t *testing.T) {
 	if review.Tool != "submit_visual_review" || review.ArgsTemplate["pptx_revision"] != "abc" {
 		t.Errorf("review call = %+v", review)
 	}
+	// go-slide-creator-p8i1g: the template names every verdict the tool's
+	// schema accepts, so filling it in needs no schema lookup.
+	slides, _ := review.ArgsTemplate["slides"].(string)
+	item, _ := mcpSubmitVisualReviewTool().InputSchema.Properties["slides"].(map[string]any)["items"].(map[string]any)
+	verdict, _ := item["properties"].(map[string]any)["verdict"].(map[string]any)
+	enum, _ := verdict["enum"].([]any)
+	if len(enum) != 3 {
+		t.Fatalf("submit_visual_review slides[].verdict enum = %v", enum)
+	}
+	for _, v := range enum {
+		if !strings.Contains(slides, v.(string)) {
+			t.Errorf("the slides template does not name the verdict %q: %s", v, slides)
+		}
+	}
+	if len(slides) > 200 {
+		t.Errorf("the slides template is %d bytes; it rides every thumbnail response", len(slides))
+	}
 }
 
 // go-slide-creator-z3pbp: a likely typo retries repair_slide with the
@@ -119,6 +138,63 @@ func TestUnknownRepairKindRetriesDidYouMean(t *testing.T) {
 	fix := call.ArgsTemplate["fixes"].([]any)[0].(map[string]any)
 	if fix["kind"] != applied[0].DidYouMean || fix["params"] == nil {
 		t.Errorf("retry fix = %+v", fix)
+	}
+}
+
+// go-slide-creator-fjuhm: the template argument replaces meta.template on
+// compile_deck_spec and explain_deck_spec (and `semantic compile` / `semantic
+// explain`) as it does on validate and render, and the response says so.
+func TestTemplateArgumentWinsOnCompileAndExplain(t *testing.T) {
+	spec := map[string]any{
+		"meta":   map[string]any{"title": "Precedence", "template": "midnight-blue"},
+		"slides": []any{map[string]any{"kind": "title", "title": "One template rule"}},
+	}
+	mc := semanticTestConfig(t)
+	type answer struct {
+		Template string   `json:"template"`
+		Warnings []string `json:"warnings"`
+	}
+	check := func(label string, got answer, want string, warns bool) {
+		t.Helper()
+		if got.Template != want {
+			t.Errorf("%s: template = %q, want %q", label, got.Template, want)
+		}
+		if warned := len(got.Warnings) == 1 && strings.Contains(got.Warnings[0], "overrides meta.template"); warned != warns {
+			t.Errorf("%s: warnings = %v, want an override notice: %v", label, got.Warnings, warns)
+		}
+	}
+	for _, tc := range []struct {
+		arg, want string
+		warns     bool
+	}{{"", "midnight-blue", false}, {"forest-green", "forest-green", true}} {
+		args := map[string]any{"spec": spec}
+		if tc.arg != "" {
+			args["template"] = tc.arg
+		}
+		var compiled, explained answer
+		structuredInto(t, mustCall(t, handleCompileDeckSpec, args).StructuredContent, &compiled)
+		check("compile_deck_spec "+tc.arg, compiled, tc.want, tc.warns)
+		structuredInto(t, mustCall(t, mc.handleExplainDeckSpec, args).StructuredContent, &explained)
+		check("explain_deck_spec "+tc.arg, explained, tc.want, tc.warns)
+	}
+
+	raw, err := json.Marshal(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "spec.json")
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, sub := range []string{"compile", "explain"} {
+		stdout, stderr, code := cliRun(t, nil, "semantic", sub, "--spec", path, "--template", "forest-green")
+		var got answer
+		if err := json.Unmarshal([]byte(stdout), &got); err != nil || code != 0 {
+			t.Fatalf("semantic %s exited %d (%v): %s", sub, code, err, stderr)
+		}
+		if got.Template != "forest-green" || !strings.Contains(stderr, "overrides meta.template") {
+			t.Errorf("semantic %s: template = %q, stderr %q", sub, got.Template, stderr)
+		}
 	}
 }
 

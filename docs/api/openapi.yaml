@@ -183,7 +183,7 @@ paths:
           required: false
           schema:
             type: string
-          description: Default template used when the spec pins none.
+          description: Registered template to compile for. It replaces the spec's meta.template for this request, and warnings[] says so.
         - name: include_compiled_json
           in: query
           required: false

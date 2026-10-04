@@ -90,7 +90,7 @@ Each content-bearing kind compiles to the named pattern its plan advertises (the
 | Kind | Pattern | Payload | Fits the visual when |
 |------|---------|---------|----------------------|
 | `kpi_snapshot` | `kpi-2up`…`kpi-6up` | `kpis: [{value,label,delta?,comparator?}]` | 2–6 KPIs; `comparator` (alias `vs`, ≤24 chars, "vs plan +4 pts") renders as its own line under the caption |
-| `chart_insight` | `chart-insights-split` | `chart: {type,data}`, `insights: [string]`, `insight?: string` | 1–6 bullets or one scalar `insight` rendered as a so-what callout; a usable chart with neither falls back to the `takeaway` as one bullet, so the chart is never silently dropped |
+| `chart_insight` | `chart-insights-split` | `chart: {type,data}`, `insights: [string]`, `insight?: string` | 1–6 bullets or one scalar `insight` rendered as a so-what callout; a usable chart with neither takes the `takeaway` as that so-what callout (the band does not repeat it), so the chart is never silently dropped and the slide is not reported `takeaway_missing` |
 | `comparison` | `comparison-2col` | `columns: [{title, items:[string]}, …]` | exactly 2 columns with equal, non-empty item counts (≤10 rows) |
 | `stat` | `stat-hero` | `value`, `label` (+ `unit?`, `context?`, `source?`) | the number ≤20 chars, label ≤80, unit ≤10, context ≤120, source ≤80 |
 | `timeline` | `timeline-horizontal` | `milestones: [{label, date?, end_date?, body?}]` | 3–7 milestones; label ≤60 chars, date ≤30, body ≤200; with any `end_date` the dates must be readable as dates (`2026-03`, `Mar 2026`, `Q1 2026`, …) to be drawn to scale |
@@ -185,7 +185,11 @@ template.
 - **Template.** Findings are measured on a template. Precedence is the
   call's `template` (`--template`, the HTTP `?template=`) > `meta.template` >
   a `template_path` > the template a `deck_id` is bound to > the archetype
-  default. A `template` argument that differs from `meta.template` replaces
+  default. The rule is the same on every DeckSpec tool — `validate_deck_spec`,
+  `render_deck_spec`, `compile_deck_spec` and `explain_deck_spec`, their
+  `semantic validate|render|compile|explain --template` commands and the HTTP
+  compile and render endpoints (go-slide-creator-fjuhm; compile and explain
+  used to let `meta.template` win). A `template` argument that differs from `meta.template` replaces
   it for that call only (go-slide-creator-ifkxs): the response's `template`
   is the argument, `template_source` is `template argument`, and `warnings[]`
   says `template argument "X" overrides meta.template "Y" for this call only`
@@ -465,7 +469,7 @@ changes.
 
 Pass `--spec -` to read the spec from stdin (e.g. `… --spec - < deck.yaml`), portable across platforms. Each subcommand's `-h`/`--help` prints usage and exits **0**, so automated probes can introspect the surface without treating help as a failure.
 
-`semantic compile` writes the raw `PresentationInput` JSON by default. Add `--envelope` to emit a structured result instead — `{ok, slide_count, template, findings, compiled_json}` — so a compile-only flow surfaces non-blocking diagnostics (density, rhythm, raw-pattern preflight) without a separate `validate` run. This mirrors the HTTP `POST /api/v1/semantic/compile?include_compiled_json=true` response shape. A blocking parse/compile failure still emits the (`ok:false`) envelope and exits non-zero.
+`semantic compile` writes the raw `PresentationInput` JSON by default. Add `--envelope` to emit a structured result instead — `{ok, slide_count, template, warnings, findings, compiled_json}` — so a compile-only flow surfaces non-blocking diagnostics (density, rhythm, raw-pattern preflight) without a separate `validate` run. This mirrors the HTTP `POST /api/v1/semantic/compile?include_compiled_json=true` response shape. A blocking parse/compile failure still emits the (`ok:false`) envelope and exits non-zero.
 
 MCP:
 
