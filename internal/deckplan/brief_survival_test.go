@@ -486,6 +486,34 @@ func TestSplitClausesKeepsALabelWithItsNumbers(t *testing.T) {
 	if len(labelled) != 1 || !labelled[0].list || !labelled[0].series {
 		t.Errorf("a labelled series must classify as a chartable list: %+v", labelled)
 	}
+
+	// go-slide-creator-rep2b: a list whose last value is joined by "and" is
+	// the same series, and it reaches the evidence slot; two values are not.
+	for text, want := range map[string]bool{
+		"Headcount by site at the end of June: 120, 85 and 40": true,
+		"Headcount by site: 120, 85, 60 and 40":                true,
+		"Margins of 12%, 14% And 17%":                          true,
+		"Headcount by site: 85 and 40":                         false,
+		"Sites 3 and 4 open in May, 2 and 5 in June":           false,
+	} {
+		if f := classifyFact(text, true); f.list != want || f.series != want {
+			t.Errorf("classifyFact(%q): list=%v series=%v, want %v", text, f.list, f.series, want)
+		}
+	}
+	plan := BuildDeckSpecPlan(Params{Brief: "Site update for the board. Headcount by site at the end of June: 120, 85 and 40. Attrition fell.", SlideBudget: 6})
+	if got := factsOf(plan, "evidence"); got != "Headcount by site at the end of June: 120, 85 and 40" {
+		t.Errorf("evidence facts = %q, want the three-site series", got)
+	}
+
+	// "and" / "or" are never a unit.
+	for s, want := range map[string]bool{
+		"85 and": false, "85 or": false, "40 And": false, "85 and 40 or": false,
+		"85 and 40": true, "and 48.2": true, "€4m": true, "12%": true, "3 bn": true, "85 pts or 40 pts": true,
+	} {
+		if got := isBareNumber(s); got != want {
+			t.Errorf("isBareNumber(%q) = %v, want %v", s, got, want)
+		}
+	}
 }
 
 // 58qda: what the budget leaves out is named, and an agenda the brief asks
