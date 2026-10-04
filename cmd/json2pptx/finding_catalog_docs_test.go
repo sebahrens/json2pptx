@@ -126,9 +126,60 @@ func splitDiagAppendix(doc string) (before, generated, after string, ok bool) {
 
 // docMentionsCode reports whether text names code as a whole token, so
 // CANCELLED is not satisfied by "…_CANCELLED" or "cancelled".
+//
+// The docs are 1.7 MB and the catalogue several hundred codes: one compiled
+// expression per code over all of it took minutes under -race, so the
+// boundaries are checked by hand around each occurrence
+// (go-slide-creator-q7cpq).
 func docMentionsCode(text, code string) bool {
-	re := regexp.MustCompile(`(^|[^A-Za-z0-9_.])` + regexp.QuoteMeta(code) + `($|[^A-Za-z0-9_])`)
-	return re.MatchString(text)
+	for from := 0; ; {
+		i := strings.Index(text[from:], code)
+		if i < 0 {
+			return false
+		}
+		start := from + i
+		end := start + len(code)
+		before := start == 0 || (!codeTokenByte(text[start-1]) && text[start-1] != '.')
+		after := end == len(text) || !codeTokenByte(text[end])
+		if before && after {
+			return true
+		}
+		from = start + 1
+	}
+}
+
+// codeTokenByte reports whether b can be part of a finding code's token.
+func codeTokenByte(b byte) bool {
+	return b == '_' || b >= '0' && b <= '9' || b >= 'A' && b <= 'Z' || b >= 'a' && b <= 'z'
+}
+
+// TestDocMentionsCodeBoundaries pins the whole-token rule docMentionsCode
+// applies by hand to the expression that states it.
+func TestDocMentionsCodeBoundaries(t *testing.T) {
+	for _, c := range []struct {
+		text, code string
+		want       bool
+	}{
+		{"CANCELLED", "CANCELLED", true},
+		{"a `CANCELLED` code", "CANCELLED", true},
+		{"(CANCELLED).", "CANCELLED", true},
+		{"RENDER_CANCELLED", "CANCELLED", false},
+		{"CANCELLED_LATE", "CANCELLED", false},
+		{"cancelled", "CANCELLED", false},
+		{"fit.CANCELLED", "CANCELLED", false},
+		{"XCANCELLED then CANCELLED", "CANCELLED", true},
+		{"CANCELLEDCANCELLED CANCELLED9", "CANCELLED", false},
+		{"see fit.text_trimmed, twice", "fit.text_trimmed", true},
+		{"", "CANCELLED", false},
+	} {
+		if got := docMentionsCode(c.text, c.code); got != c.want {
+			t.Errorf("docMentionsCode(%q, %q) = %v, want %v", c.text, c.code, got, c.want)
+		}
+		re := regexp.MustCompile(`(^|[^A-Za-z0-9_.])` + regexp.QuoteMeta(c.code) + `($|[^A-Za-z0-9_])`)
+		if got := re.MatchString(c.text); got != c.want {
+			t.Errorf("the rule as an expression: %q in %q = %v, want %v", c.code, c.text, got, c.want)
+		}
+	}
 }
 
 func renderDiagAppendix(t *testing.T, codes []string) string {

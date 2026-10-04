@@ -36,7 +36,7 @@ func TestCLIExtremeSchemaPatternsCannotPublishTinyText(t *testing.T) {
 				}
 			}
 		}
-		for _, name := range schemaMaximaTemplateNames(t) {
+		for _, name := range schemaMaximaRunTemplateNames(t) {
 			t.Run(patternName+"/"+name, func(t *testing.T) {
 				t.Parallel()
 				dir := t.TempDir()

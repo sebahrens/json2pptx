@@ -212,7 +212,7 @@ func measureJourney(t *testing.T) journeyMetrics {
 	_, m.Onboarding = measureOnboardingPayload(t)
 
 	const template = "midnight-blue"
-	m.TwelveFlawValidates = twelveFlawJourney(t, refusalTestConfig(t), template, true, 3)
+	m.TwelveFlawValidates = twelveFlawRoundTrips(t, template, true)
 	first, size := twelveFlawFirstResponse(t, refusalTestConfig(t))
 	m.TwelveFlawFirstBytes, m.TwelveFlawFirstFindings = size, len(first.Findings)
 

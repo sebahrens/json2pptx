@@ -115,12 +115,20 @@ func TestDeckSpecAdviceNamesOnlyFieldsOfTheKind(t *testing.T) {
 	templates := []string{""}
 	tools := map[string]mcpHandler{"validate": mc.handleValidateDeckSpec}
 	wantChecked := 40
-	if !testing.Short() {
+	// The short run scans the first validate of the short patch harness's
+	// decks, on the template the harness names: the harness has that response,
+	// from the same spec and arguments in the same test binary, so it is read
+	// from there instead of validating each deck again
+	// (go-slide-creator-q7cpq).
+	firstValidate := map[string]any{}
+	if testing.Short() {
+		firstValidate = shortPatchHarnessRun(t).FirstValidate
+	} else {
 		templates = []string{"", "midnight-blue", "modern-template"}
 		tools["render"] = mc.handleRenderDeckSpec
 		wantChecked = 150
 	}
-	checked := 0
+	checked, reused := 0, 0
 	for _, name := range names {
 		for _, override := range templates {
 			args := map[string]any{"spec": corpus[name]["spec"]}
@@ -135,12 +143,18 @@ func TestDeckSpecAdviceNamesOnlyFieldsOfTheKind(t *testing.T) {
 			_ = json.Unmarshal(raw, &doc)
 			slides, _ := doc["slides"].([]any)
 			for tool, handler := range tools {
-				res, err := handler(context.Background(), makeRequest(args))
-				if err != nil {
-					t.Fatal(err)
+				structured, have := firstValidate[name]
+				if have = have && tool == "validate" && override == ""; have {
+					reused++
+				} else {
+					res, err := handler(context.Background(), makeRequest(args))
+					if err != nil {
+						t.Fatal(err)
+					}
+					structured = res.StructuredContent
 				}
 				var out map[string]any
-				structuredInto(t, res.StructuredContent, &out)
+				structuredInto(t, structured, &out)
 				for _, key := range []string{"findings", "diagnostics"} {
 					list, _ := out[key].([]any)
 					for _, entry := range list {
@@ -190,6 +204,10 @@ func TestDeckSpecAdviceNamesOnlyFieldsOfTheKind(t *testing.T) {
 				}
 			}
 		}
+	}
+	t.Logf("%d advice texts checked; %d responses read from the short patch harness", checked, reused)
+	if testing.Short() && reused < len(firstValidate) {
+		t.Errorf("%d of the short patch harness's %d first responses were read; the two short corpora have drifted apart, and decks are being validated twice", reused, len(firstValidate))
 	}
 	if checked < wantChecked {
 		t.Fatalf("only %d advice texts checked; the corpus no longer exercises the findings", checked)

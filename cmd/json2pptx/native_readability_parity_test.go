@@ -53,9 +53,12 @@ func validateRefusesReadability(t *testing.T, path, template string) bool {
 func TestNativeDiagramReadabilityValidateGenerateParity(t *testing.T) {
 	templates := testutil.AllTestTemplateNames()
 	if testing.Short() {
-		// The two shortest diagram placeholders (where refusals happen) and
-		// two full-coverage templates (where they do not).
-		templates = []string{"abstract", "modern", "midnight-blue", "modern-template"}
+		// One of the two shortest diagram placeholders (where refusals
+		// happen) and one full-coverage template (where they do not): the
+		// two directions the test needs. Every template runs without -short
+		// and in the integration corpus job's TestShortReducedMatricesCorpus
+		// (go-slide-creator-q7cpq).
+		templates = []string{"modern", "midnight-blue"}
 	}
 	refusedAnywhere, publishedDense := false, false
 	for _, deck := range nativeReadabilityDecks {

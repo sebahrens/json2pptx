@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mark3labs/mcp-go/mcp"
+
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/policy/placeholder"
 )
@@ -185,7 +187,10 @@ func lookupSpecPath(root any, path string) any {
 // copy and nothing else; with that copy written over it validates. Every
 // "Replace with …" line it carries is registered, so none survives the
 // rewrite as content.
-func assertRecipeValidates(t *testing.T, mc *mcpConfig, c patterns.VisualCandidate) {
+//
+// It returns validate_deck_spec's answer to the recipe as offered, for a
+// caller that checks more of it.
+func assertRecipeValidates(t *testing.T, mc *mcpConfig, c patterns.VisualCandidate) (offered *mcp.CallToolResult) {
 	t.Helper()
 	args := recipeArgs(t, c)
 	walkJSONStrings(args, func(s string) {
@@ -193,14 +198,14 @@ func assertRecipeValidates(t *testing.T, mc *mcpConfig, c patterns.VisualCandida
 			t.Errorf("%s %q: recipe copy %q is not a registered placeholder; build it with a constructor of internal/policy/placeholder", c.Category, c.Name, s)
 		}
 	})
-	res, err := mc.handleValidateDeckSpec(context.Background(), makeRequest(args))
+	offered, err := mc.handleValidateDeckSpec(context.Background(), makeRequest(args))
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertOnlyPlaceholdersBlock(t, "recipe", res)
+	assertOnlyPlaceholdersBlock(t, "recipe", offered)
 
 	filled, _ := fillPlaceholders(recipeArgs(t, c))
-	res, err = mc.handleValidateDeckSpec(context.Background(), makeRequest(filled.(map[string]any)))
+	res, err := mc.handleValidateDeckSpec(context.Background(), makeRequest(filled.(map[string]any)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,6 +214,7 @@ func assertRecipeValidates(t *testing.T, mc *mcpConfig, c patterns.VisualCandida
 	if res.IsError || !env.OK {
 		t.Errorf("%s %q: the recipe with its placeholders written over does not validate: isError=%v ok=%v\n%s", c.Category, c.Name, res.IsError, env.OK, resultText(res))
 	}
+	return offered
 }
 
 // walkJSONStrings calls visit for every string in a decoded JSON value.

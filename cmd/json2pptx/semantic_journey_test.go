@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"unicode/utf8"
 
@@ -588,9 +589,40 @@ func TestTwelveFlawDraftCleanInThreeRoundTrips(t *testing.T) {
 	}
 	for _, tpl := range templates {
 		t.Run(tpl, func(t *testing.T) {
-			twelveFlawJourney(t, refusalTestConfig(t), tpl, tpl == "modern" || tpl == "midnight-blue", 3)
+			twelveFlawRoundTrips(t, tpl, tpl == "modern" || tpl == "midnight-blue")
 		})
 	}
+}
+
+// twelveFlawRoundTrips plays twelveFlawJourney on a fresh config, held to
+// three validates, and returns the validates it took. A journey that passed
+// is played once per test binary for its template and strictness: this test
+// and TestAgentJourneyMetrics both want the midnight-blue one, and it is a
+// dozen validations of an over-full deck (go-slide-creator-q7cpq). A journey
+// that failed is not remembered, so each test that asks reports it.
+func twelveFlawRoundTrips(t *testing.T, tpl string, strict bool) int {
+	t.Helper()
+	key := tpl + " strict=" + strconv.FormatBool(strict)
+	twelveFlawPassed.mu.Lock()
+	defer twelveFlawPassed.mu.Unlock()
+	if n, ok := twelveFlawPassed.validates[key]; ok {
+		t.Logf("the twelve-flaw journey on %s was clean after %d validates earlier in this run", tpl, n)
+		return n
+	}
+	failedBefore := t.Failed()
+	n := twelveFlawJourney(t, refusalTestConfig(t), tpl, strict, 3)
+	if !failedBefore && !t.Failed() {
+		if twelveFlawPassed.validates == nil {
+			twelveFlawPassed.validates = map[string]int{}
+		}
+		twelveFlawPassed.validates[key] = n
+	}
+	return n
+}
+
+var twelveFlawPassed struct {
+	mu        sync.Mutex
+	validates map[string]int
 }
 
 // twelveFlawJourney plays the draft to a clean validate and a ready render on

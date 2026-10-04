@@ -161,12 +161,25 @@ func TestWarnModeRenumbersSectionInGeneratedDeck(t *testing.T) {
 	t.Fatal("generated deck has no first slide XML")
 }
 
+// The short run takes the decks of shortExampleDecks (every pattern, a styled
+// table, split pages, slide chrome); the integration corpus job selects this
+// test by its name and runs every example (go-slide-creator-q7cpq).
 func TestStrictFitRefusesEveryCorpusValidationRefusal(t *testing.T) {
 	paths, err := filepath.Glob("../../examples/*.json")
 	if err != nil || len(paths) == 0 {
 		t.Fatalf("find example corpus: %v (%d files)", err, len(paths))
 	}
+	ran := 0
+	defer func() {
+		if testing.Short() && ran != len(shortExampleDecks) {
+			t.Errorf("ran %d of the %d decks -short names: one was renamed or removed", ran, len(shortExampleDecks))
+		}
+	}()
 	for _, path := range paths {
+		if _, short := shortExampleDecks[filepath.Base(path)]; testing.Short() && !short {
+			continue
+		}
+		ran++
 		t.Run(filepath.Base(path), func(t *testing.T) {
 			t.Parallel() // Corpus files and input instances are independent.
 			data, err := os.ReadFile(path)

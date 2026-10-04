@@ -76,11 +76,29 @@ func renderDeckSpecPath(t *testing.T, mc *mcpConfig, spec map[string]any) string
 // relationships, media) as the deck render_deck_spec writes for the pattern's
 // exemplar values. A preview that drew the pattern any other way would differ
 // here before it differed in pixels.
+//
+// Each pair is two generations, minutes for the whole matrix under -race. The
+// short run takes every pattern on one template, the templates in turn, so
+// every pattern and every template is still compared; the run without -short
+// and the integration corpus job's TestShortReducedMatricesCorpus compare
+// every pattern on every template (go-slide-creator-q7cpq).
 func TestPatternPreviewIsTheGeneratedSlide(t *testing.T) {
+	assertPatternPreviewIsTheGeneratedSlide(t, testing.Short())
+}
+
+// assertPatternPreviewIsTheGeneratedSlide compares the preview deck with the
+// generated deck for every pattern: on every preview template, or, when
+// oneTemplateEach, on one template per pattern with the templates in turn.
+func assertPatternPreviewIsTheGeneratedSlide(t *testing.T, oneTemplateEach bool) {
+	t.Helper()
 	reg := patterns.Default()
-	for _, tpl := range previewTestTemplates() {
+	templates := previewTestTemplates()
+	for ti, tpl := range templates {
 		mc := semanticTestConfig(t)
-		for _, pat := range reg.List() {
+		for pi, pat := range reg.List() {
+			if oneTemplateEach && pi%len(templates) != ti {
+				continue
+			}
 			name := pat.Name()
 			t.Run(tpl+"/"+name, func(t *testing.T) {
 				spec, err := patternPreviewSpec(reg, name, tpl)
