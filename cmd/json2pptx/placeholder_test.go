@@ -9,6 +9,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/policy/placeholder"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 )
 
@@ -56,8 +57,8 @@ func TestPlaceholderDiagnostics_WarnVsStrict(t *testing.T) {
 	if w.Code != placeholder.FindingCode {
 		t.Errorf("code = %q, want %q", w.Code, placeholder.FindingCode)
 	}
-	if w.Path != violations[0].Path {
-		t.Errorf("path = %q, want %q", w.Path, violations[0].Path)
+	if want := slidepath.Field("", violations[0].Path); w.Path != want || !strings.HasPrefix(w.Path, "/slides/") {
+		t.Errorf("path = %q, want the JSON Pointer %q", w.Path, want)
 	}
 	if w.Fix == nil || w.Fix.Kind != "replace_placeholder" {
 		t.Errorf("fix should be replace_placeholder, got %+v", w.Fix)

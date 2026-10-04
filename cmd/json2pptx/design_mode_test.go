@@ -228,7 +228,7 @@ func TestValidateDesignMode_ChartBackgroundColor(t *testing.T) {
 				}
 				return
 			}
-			if len(findings) != 1 || findings[0].Code != "design_mode_violation" || findings[0].Action != "refuse" || !strings.HasSuffix(findings[0].Path, ".chart_value.style.background") {
+			if len(findings) != 1 || findings[0].Code != "design_mode_violation" || findings[0].Action != "refuse" || findings[0].Path != "/slides/0/content/0/chart_value/style/background" {
 				t.Errorf("chart background finding = %+v", findings)
 			}
 		})
@@ -265,7 +265,7 @@ func TestValidateDesignMode_ConstrainedRejectsAbsoluteSize(t *testing.T) {
 
 	found := false
 	for _, f := range findings {
-		if f.Path == "shape_grid.rows[0].cells[0].shape.text.size" {
+		if f.Path == "/slides/0/shape_grid/rows/0/cells/0/shape/text/size" {
 			found = true
 		}
 	}
@@ -301,7 +301,7 @@ func TestValidateDesignMode_ConstrainedRejectsHexTextColor(t *testing.T) {
 	if len(findings) == 0 {
 		t.Fatal("expected design_mode_violation for hex text color, got none")
 	}
-	if findings[0].Path != "shape_grid.rows[0].cells[0].shape.text.color" {
+	if findings[0].Path != "/slides/0/shape_grid/rows/0/cells/0/shape/text/color" {
 		t.Errorf("unexpected path: %s", findings[0].Path)
 	}
 }
@@ -441,7 +441,7 @@ func TestValidateSlideDesignMode_SingleSlide(t *testing.T) {
 		},
 	}
 
-	findings := validateSlideDesignMode(&slide, 7)
+	findings := validateSlideDesignMode(&slide, 7, nil)
 	if len(findings) == 0 {
 		t.Fatal("expected violation for raw hex fill, got none")
 	}

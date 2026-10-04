@@ -288,7 +288,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// Required fields. template_path stands in for template (go-slide-creator-ydbk).
 	if input.Template == "" && input.TemplatePath == "" {
 		boundaryDiags = append(boundaryDiags, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "template", Message: "template is required in presentation: a registered name, or template_path for a local .pptx inside base_dir",
+			Code: "REQUIRED", Path: "/template", Message: "template is required in presentation: a registered name, or template_path for a local .pptx inside base_dir",
 			Severity:     diagnostics.SeverityError,
 			ExpectedType: "string",
 			ExampleValue: "midnight-blue",
@@ -298,7 +298,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	}
 	if len(input.Slides) == 0 {
 		boundaryDiags = append(boundaryDiags, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "slides", Message: "at least one slide is required",
+			Code: "REQUIRED", Path: "/slides", Message: "at least one slide is required",
 			Severity:     diagnostics.SeverityError,
 			ExpectedType: "array",
 			ExampleValue: []any{map[string]any{"layout_id": "title", "content": []any{}}},
@@ -1075,6 +1075,19 @@ func handleGetDiagramCapabilities(ctx context.Context, request mcp.CallToolReque
 	return mcpResult, nil
 }
 
+// addressDeckTemplateDiagnostic points a template finding of validate_input at
+// the deck field (/template, /template_path). The tool's own template
+// argument, when given, replaces the deck's and is then the field to correct,
+// so its name is kept.
+func addressDeckTemplateDiagnostic(d *diagnostics.Diagnostic, request mcp.CallToolRequest) {
+	if override, err := request.RequireString("template"); err == nil && override != "" {
+		return
+	}
+	if d.Path == "template" || d.Path == "template_path" {
+		d.Path = "/" + d.Path
+	}
+}
+
 func applyValidationTemplateOverride(input *PresentationInput, request mcp.CallToolRequest) {
 	if override, err := request.RequireString("template"); err == nil && override != "" {
 		input.Template = override
@@ -1193,7 +1206,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	if input.Template == "" && input.TemplatePath == "" {
 		output.Valid = false
 		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "template", Message: "template is required: a registered name, or template_path for a local .pptx inside base_dir",
+			Code: "REQUIRED", Path: "/template", Message: "template is required: a registered name, or template_path for a local .pptx inside base_dir",
 			Severity:     diagnostics.SeverityError,
 			Fix:          &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "template"}},
 			NextToolCall: nextCallListTemplates(),
@@ -1202,7 +1215,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	if len(input.Slides) == 0 {
 		output.Valid = false
 		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "slides", Message: "at least one slide is required",
+			Code: "REQUIRED", Path: "/slides", Message: "at least one slide is required",
 			Severity:     diagnostics.SeverityError,
 			Fix:          &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "slides"}},
 			NextToolCall: nextCallGetInputSchema(),
@@ -1216,6 +1229,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	templatePath, templateCleanup, tplDiag := mc.resolveTemplateSource(request, "validate_input",
 		"template", "template_path", input.Template, input.TemplatePath)
 	if tplDiag != nil {
+		addressDeckTemplateDiagnostic(tplDiag, request)
 		output.Valid = false
 		output.Diagnostics = append(output.Diagnostics, *tplDiag)
 		return marshalValidateResult(ctx, output)
@@ -1226,7 +1240,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	if err != nil {
 		output.Valid = false
 		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-			Code: "TEMPLATE_ERROR", Path: "template", Message: fmt.Sprintf("template analysis failed: %v", err),
+			Code: "TEMPLATE_ERROR", Path: "/template", Message: fmt.Sprintf("template analysis failed: %v", err),
 			Severity:     diagnostics.SeverityError,
 			NextToolCall: nextCallListTemplates(),
 		})

@@ -78,7 +78,7 @@ func TestCheckInputUnknownKeys_TopLevel(t *testing.T) {
 	errs := checkInputUnknownKeys(raw)
 	found := false
 	for _, ve := range errs {
-		if ve.Path == "slide_tpye" {
+		if ve.Path == "/slide_tpye" {
 			found = true
 			break
 		}

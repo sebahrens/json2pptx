@@ -181,7 +181,7 @@ func runPreflightCore(inputData []byte, opts preflightOptions) diagnostics.Findi
 	if err != nil {
 		acc.add(preflightStageTemplate, diagnostics.Diagnostic{
 			Code:     diagnostics.CodeTemplateNotFound,
-			Path:     "template",
+			Path:     "/template",
 			Message:  templateNotFoundError(input.Template, opts.templatesDir),
 			Severity: diagnostics.SeverityError,
 		})
@@ -194,7 +194,7 @@ func runPreflightCore(inputData []byte, opts preflightOptions) diagnostics.Findi
 	if err != nil {
 		acc.add(preflightStageTemplate, diagnostics.Diagnostic{
 			Code:     diagnostics.CodeTemplateError,
-			Path:     "template",
+			Path:     "/template",
 			Message:  fmt.Sprintf("template analysis failed: %v", err),
 			Severity: diagnostics.SeverityError,
 		})
@@ -260,7 +260,7 @@ func requiredTopLevelDiags(input *PresentationInput) []diagnostics.Diagnostic {
 	if input.Template == "" {
 		out = append(out, diagnostics.Diagnostic{
 			Code:     patterns.ErrCodeRequired,
-			Path:     "template",
+			Path:     "/template",
 			Message:  "template is required",
 			Severity: diagnostics.SeverityError,
 			Fix:      &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "template"}},
@@ -269,7 +269,7 @@ func requiredTopLevelDiags(input *PresentationInput) []diagnostics.Diagnostic {
 	if len(input.Slides) == 0 {
 		out = append(out, diagnostics.Diagnostic{
 			Code:     patterns.ErrCodeRequired,
-			Path:     "slides",
+			Path:     "/slides",
 			Message:  "at least one slide is required",
 			Severity: diagnostics.SeverityError,
 			Fix:      &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "slides"}},

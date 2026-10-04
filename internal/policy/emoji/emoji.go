@@ -171,8 +171,12 @@ func ExtractSample(s string, maxRunes int) string {
 // Violation is a single emoji hit located by Scan: the JSON-style path to the
 // offending string and a short sample of the emoji codepoints it contained.
 type Violation struct {
-	// Path is a JSON-style accessor (e.g. "slides[2].content[0].text_value").
+	// Path is a JSON-style accessor (e.g. "slides[2].content[0].text_value"),
+	// the spelling a message uses.
 	Path string
+	// Pointer is the same address as a JSON Pointer
+	// ("/slides/2/content/0/text_value"), the spelling a finding reports.
+	Pointer string
 	// Value is the full offending string.
 	Value string
 	// Sample is up to three distinct emoji codepoints from Value.
@@ -189,14 +193,15 @@ func Scan(input any) []Violation {
 		return nil
 	}
 	var violations []Violation
-	textwalk.Strings(input, func(value, path string) {
+	textwalk.StringsAt(input, func(value, path, pointer string) {
 		if !Contains(value) {
 			return
 		}
 		violations = append(violations, Violation{
-			Path:   path,
-			Value:  value,
-			Sample: ExtractSample(value, 3),
+			Path:    path,
+			Pointer: pointer,
+			Value:   value,
+			Sample:  ExtractSample(value, 3),
 		})
 	})
 
@@ -213,9 +218,9 @@ func Scan(input any) []Violation {
 // may be any producer's presentation type (cmd/json2pptx, internal/testrand,
 // …) because the scan is JSON-based.
 //
-// Returned findings carry no_emoji_violation diagnostics with path info
-// (e.g. slides[3].content[1].text_value) and a fix suggestion that points
-// authors at the bundled icon set.
+// Returned findings carry no_emoji_violation diagnostics addressed by JSON
+// Pointer (e.g. /slides/3/content/1/text_value) and a fix suggestion that
+// points authors at the bundled icon set.
 func ValidateNoEmojiInText(input any) []patterns.FitFinding {
 	violations := Scan(input)
 	if len(violations) == 0 {
@@ -226,14 +231,14 @@ func ValidateNoEmojiInText(input any) []patterns.FitFinding {
 		findings = append(findings, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
 				Pattern: "no_emoji",
-				Path:    v.Path,
+				Path:    v.Pointer,
 				Code:    "no_emoji_violation",
 				Message: fmt.Sprintf("%s contains emoji codepoint(s) %q — %s",
 					textwalk.DisplayPath(v.Path), v.Sample, PolicyMessage),
 				Fix: &patterns.FixSuggestion{
 					Kind: "remove_emoji",
 					Params: map[string]any{
-						"path": v.Path,
+						"path": v.Pointer,
 						"hint": "remove the emoji codepoint(s) or replace with a bundled SVG icon name (see list_patterns and svggen/icons/{outline,filled})",
 					},
 				},

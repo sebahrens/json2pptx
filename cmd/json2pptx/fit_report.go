@@ -139,7 +139,7 @@ func generateFitReport(input *PresentationInput, layouts []types.LayoutMetadata,
 				continue
 			}
 			findings = append(findings,
-				measureTable(table, slidepath.ContentIndex(si, ci), si, tablePlaceholderBounds(content.PlaceholderID, findLayoutForSlide(&slide, layouts)))...)
+				measureTable(table, slidepath.ContentIndex(si, ci), contentTablePath(&content, si, ci), si, tablePlaceholderBounds(content.PlaceholderID, findLayoutForSlide(&slide, layouts)))...)
 		}
 
 		// Walk shape_grid cells using the same layout-aware geometry as
@@ -190,7 +190,11 @@ func resolveTableFromContent(c *ContentInput) *jsonschema.TableInput {
 // go-slide-creator-fabz4). Whole-table overflow is predicted separately from
 // the renderer's own row plan (table_rows_truncated). Without bounds the
 // legacy slide-proportion estimate applies.
-func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int, bounds types.BoundingBox) []fitFinding {
+//
+// pathPrefix addresses the table as a whole (the content block, or a grid
+// cell's table); tablePath is the JSON Pointer of the table object itself,
+// under which its headers and rows resolve.
+func measureTable(table *jsonschema.TableInput, pathPrefix, tablePath string, slideIdx int, bounds types.BoundingBox) []fitFinding {
 	if len(table.Headers) == 0 {
 		return nil
 	}
@@ -251,7 +255,7 @@ func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int,
 		if !m.Fits {
 			findings = append(findings, fitFinding{
 				Code:             patterns.ErrCodeFitOverflow,
-				Path:             slidepath.TableHeader(pathPrefix, hi),
+				Path:             slidepath.TableHeader(tablePath, hi),
 				Message:          fmt.Sprintf("header %q needs %d lines @ %.0fpt; cell allows %d", header, m.Lines, fontPt, maxLines),
 				Fix:              &patterns.FixSuggestion{Kind: "reduce_text"},
 				BindingDimension: "height",
@@ -276,7 +280,7 @@ func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int,
 			if !m.Fits {
 				findings = append(findings, fitFinding{
 					Code:             patterns.ErrCodeFitOverflow,
-					Path:             slidepath.TableCell(pathPrefix, ri, ci),
+					Path:             slidepath.TableCell(tablePath, ri, ci),
 					Message:          fmt.Sprintf("text needs %d lines @ %.0fpt; cell allows %d", m.Lines, fontPt, maxLines),
 					Fix:              &patterns.FixSuggestion{Kind: "split_at_row", Params: map[string]any{"row": ri + numRows/2}},
 					BindingDimension: "height",
@@ -425,7 +429,7 @@ func (a *gridFitAccum) walk(grid *ShapeGridInput, result *shapegrid.ResolveResul
 		cell := gridCellAtResolved(grid, rc.RowIdx, rc.ColIdx)
 		pathPrefix := fmt.Sprintf("%s/rows/%d/cells/%d", base, rc.RowIdx, rc.ColIdx)
 		if cell != nil && cell.Table != nil {
-			a.findings = append(a.findings, measureTable(cell.Table, slidepath.Join(pathPrefix, "table"), a.slideIdx, types.BoundingBox{
+			a.findings = append(a.findings, measureTable(cell.Table, slidepath.Join(pathPrefix, "table"), slidepath.Join(pathPrefix, "table"), a.slideIdx, types.BoundingBox{
 				X: rc.CellBounds.X, Y: rc.CellBounds.Y, Width: rc.CellBounds.CX, Height: rc.CellBounds.CY,
 			})...)
 		}

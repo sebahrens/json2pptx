@@ -183,7 +183,7 @@ func applyStructureExpansion(input *PresentationInput) []diagnostics.Diagnostic 
 	if len(input.Slides) > 0 {
 		return []diagnostics.Diagnostic{{
 			Code:     "STRUCTURE_AND_SLIDES",
-			Path:     "structure",
+			Path:     "/structure",
 			Message:  "structure and slides are mutually exclusive — use one or the other",
 			Severity: diagnostics.SeverityError,
 			Fix: &diagnostics.Fix{
@@ -196,7 +196,7 @@ func applyStructureExpansion(input *PresentationInput) []diagnostics.Diagnostic 
 	if err != nil {
 		return []diagnostics.Diagnostic{{
 			Code:     "INVALID_STRUCTURE",
-			Path:     "structure",
+			Path:     "/structure",
 			Message:  fmt.Sprintf("invalid structure: %v", err),
 			Severity: diagnostics.SeverityError,
 			Fix: &diagnostics.Fix{

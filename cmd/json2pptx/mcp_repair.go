@@ -1371,13 +1371,13 @@ func validateRepairBoundary(input *PresentationInput) *mcp.CallToolResult {
 	var diags []diagnostics.Diagnostic
 	if input.Template == "" {
 		diags = append(diags, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "template", Message: "template is required",
+			Code: "REQUIRED", Path: "/template", Message: "template is required",
 			Severity: diagnostics.SeverityError,
 		})
 	}
 	if len(input.Slides) == 0 {
 		diags = append(diags, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "slides", Message: "at least one slide is required",
+			Code: "REQUIRED", Path: "/slides", Message: "at least one slide is required",
 			Severity: diagnostics.SeverityError,
 		})
 	}

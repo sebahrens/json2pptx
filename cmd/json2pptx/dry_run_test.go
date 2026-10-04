@@ -147,8 +147,8 @@ func TestValidateSlidesAgainstTemplate_ChartDiagramSvggen(t *testing.T) {
 		if output.Valid {
 			t.Fatal("malformed legacy diagram must make dry-run invalid")
 		}
-		if d := findDiagByCode(output.Diagnostics, diagnostics.CodeInvalidParameter); d == nil || d.Path != "/slides/0/content/0/diagram_value" {
-			t.Fatalf("expected diagram_value parse error, got %v", output.Diagnostics)
+		if d := findDiagByCode(output.Diagnostics, diagnostics.CodeInvalidParameter); d == nil || d.Path != "/slides/0/content/0/value" {
+			t.Fatalf("expected a parse error at the legacy value field, got %v", output.Diagnostics)
 		}
 	})
 

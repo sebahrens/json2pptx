@@ -49,34 +49,43 @@ func checkInputUnknownKeys(raw json.RawMessage) []*patterns.ValidationError {
 
 	// footer
 	if v, ok := top["footer"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(JSONFooter{}), "footer")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(JSONFooter{}), "/footer")...)
 	}
 
 	// chrome
 	if v, ok := top["chrome"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(ChromeInput{}), "chrome")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(ChromeInput{}), "/chrome")...)
 		// Check nested page_numbers
 		var chromeObj map[string]json.RawMessage
 		if json.Unmarshal(v, &chromeObj) == nil {
 			if pn, pnOK := chromeObj["page_numbers"]; pnOK {
-				warnings = append(warnings, checkUnknownKeysForType(pn, reflect.TypeOf(PageNumbersInput{}), "chrome.page_numbers")...)
+				warnings = append(warnings, checkUnknownKeysForType(pn, reflect.TypeOf(PageNumbersInput{}), "/chrome/page_numbers")...)
 			}
 		}
 	}
 
 	// theme_override
 	if v, ok := top["theme_override"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(ThemeInput{}), "theme_override")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(ThemeInput{}), "/theme_override")...)
 	}
 
 	// defaults
 	if v, ok := top["defaults"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(DefaultsInput{}), "defaults")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(DefaultsInput{}), "/defaults")...)
+		var defaultsObj map[string]json.RawMessage
+		if json.Unmarshal(v, &defaultsObj) == nil {
+			if ts, tsOK := defaultsObj["table_style"]; tsOK {
+				warnings = append(warnings, checkUnknownKeysForType(ts, reflect.TypeOf(jsonschema.TableStyleInput{}), "/defaults/table_style")...)
+			}
+			if cs, csOK := defaultsObj["cell_style"]; csOK {
+				warnings = append(warnings, checkUnknownKeysForType(cs, reflect.TypeOf(jsonschema.ShapeSpecInput{}), "/defaults/cell_style")...)
+			}
+		}
 	}
 
 	// grid
 	if v, ok := top["grid"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(GridConfig{}), "grid")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(GridConfig{}), "/grid")...)
 	}
 
 	// slides[]

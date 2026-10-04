@@ -832,7 +832,7 @@ func handleCompileDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*m
 			res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(d))
 		}
 	}
-	for _, d := range designViolations {
+	for _, d := range specDesignModeViolations(designViolations, result) {
 		res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(d))
 	}
 	shapeRenderDiagnostics(res.Diagnostics, doc)

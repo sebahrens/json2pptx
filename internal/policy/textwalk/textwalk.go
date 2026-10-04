@@ -12,12 +12,24 @@ package textwalk
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 )
 
 // Strings visits every string value reachable in input, passing the value and a
 // JSON-style accessor path (e.g. "slides[2].content[0].text_value"). A nil input
 // or one that cannot be marshalled visits nothing.
 func Strings(input any, visit func(value, path string)) {
+	if visit == nil {
+		return
+	}
+	StringsAt(input, func(value, path, _ string) { visit(value, path) })
+}
+
+// StringsAt is Strings with the address of each value as well: pointer is its
+// JSON Pointer (RFC 6901) in the marshalled input, the form a finding reports
+// and a patch takes ("/slides/2/content/0/text_value").
+func StringsAt(input any, visit func(value, path, pointer string)) {
 	if input == nil || visit == nil {
 		return
 	}
@@ -29,24 +41,25 @@ func Strings(input any, visit func(value, path string)) {
 	if err := json.Unmarshal(data, &root); err != nil {
 		return
 	}
-	walk(root, "", visit)
+	walk(root, "", "", visit)
 }
 
-func walk(v any, path string, visit func(value, path string)) {
+func walk(v any, path, pointer string, visit func(value, path, pointer string)) {
 	switch n := v.(type) {
 	case string:
-		visit(n, path)
+		visit(n, path, pointer)
 	case map[string]any:
 		for k, child := range n {
 			next := k
 			if path != "" {
 				next = path + "." + k
 			}
-			walk(child, next, visit)
+			token := strings.ReplaceAll(strings.ReplaceAll(k, "~", "~0"), "/", "~1")
+			walk(child, next, pointer+"/"+token, visit)
 		}
 	case []any:
 		for i, child := range n {
-			walk(child, fmt.Sprintf("%s[%d]", path, i), visit)
+			walk(child, fmt.Sprintf("%s[%d]", path, i), pointer+"/"+strconv.Itoa(i), visit)
 		}
 	}
 }

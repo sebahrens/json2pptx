@@ -388,7 +388,7 @@ func rhythmGridRefusal(cfg *GridConfig) error {
 		return nil
 	}
 	return &deckRefusal{Diagnostics: []diagnostics.Diagnostic{{
-		Code: diagnostics.CodeInvalidGrid, Path: "grid",
+		Code: diagnostics.CodeInvalidGrid, Path: "/grid",
 		Message: "grid: " + err.Error(), Severity: diagnostics.SeverityError,
 	}}, summary: "grid: " + err.Error()}
 }
@@ -505,13 +505,13 @@ func deckTemplateFieldDiagnostics(input *PresentationInput, requiredMessage stri
 	switch {
 	case input.Template == "" && input.TemplatePath == "":
 		return []diagnostics.Diagnostic{{
-			Code: "REQUIRED", Path: "template", Message: requiredMessage,
+			Code: "REQUIRED", Path: "/template", Message: requiredMessage,
 			Severity: diagnostics.SeverityError,
 			Fix:      &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "template"}},
 		}}
 	case input.Template != "" && input.TemplatePath != "":
 		return []diagnostics.Diagnostic{{
-			Code: diagnostics.CodeAmbiguousInput, Path: "template_path",
+			Code: diagnostics.CodeAmbiguousInput, Path: "/template_path",
 			Message:  "set only one of template (a registered name) or template_path (a local .pptx), not both",
 			Severity: diagnostics.SeverityError,
 		}}
@@ -522,7 +522,7 @@ func deckTemplateFieldDiagnostics(input *PresentationInput, requiredMessage stri
 // deckSlidesRequiredDiagnostic is the finding for a deck with no slides.
 func deckSlidesRequiredDiagnostic() diagnostics.Diagnostic {
 	return diagnostics.Diagnostic{
-		Code: "REQUIRED", Path: "slides", Message: "at least one slide is required",
+		Code: "REQUIRED", Path: "/slides", Message: "at least one slide is required",
 		Severity: diagnostics.SeverityError,
 		Fix:      &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "slides"}},
 	}

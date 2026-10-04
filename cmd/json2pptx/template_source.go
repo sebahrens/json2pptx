@@ -144,12 +144,13 @@ func (mc *mcpConfig) resolveTemplateSource(request mcp.CallToolRequest, tool, na
 	hasPath := strings.TrimSpace(rawPath) != ""
 
 	nameField, pathField := lastPathSegment(nameArg), lastPathSegment(pathArg)
+	namePath, pathPath := argFieldPath(nameArg), argFieldPath(pathArg)
 
 	switch {
 	case !hasName && !hasPath:
 		return "", noop, &diagnostics.Diagnostic{
 			Code:         diagnostics.CodeMissingParameter,
-			Path:         nameField,
+			Path:         namePath,
 			Severity:     diagnostics.SeverityError,
 			Message:      fmt.Sprintf("%s is required: a registered template name, or %s for a local .pptx inside base_dir", nameArg, pathArg),
 			ExpectedType: "string",
@@ -160,12 +161,12 @@ func (mc *mcpConfig) resolveTemplateSource(request mcp.CallToolRequest, tool, na
 	case hasName && hasPath:
 		return "", noop, &diagnostics.Diagnostic{
 			Code:         diagnostics.CodeAmbiguousInput,
-			Path:         pathField,
+			Path:         pathPath,
 			Severity:     diagnostics.SeverityError,
 			Message:      fmt.Sprintf("set only one of %s (a registered name) or %s (a local .pptx), not both", nameArg, pathArg),
 			ExpectedType: "string",
 			ExampleValue: exampleTemplatePath,
-			Fix:          &diagnostics.Fix{Kind: "remove_field", Params: map[string]any{"path": pathField}},
+			Fix:          &diagnostics.Fix{Kind: "remove_field", Params: map[string]any{"path": pathPath}},
 			NextToolCall: nextCallRetry(tool, nameField),
 		}
 	case hasName:
@@ -194,6 +195,7 @@ func (mc *mcpConfig) resolveTemplateSource(request mcp.CallToolRequest, tool, na
 		}
 		path, d := resolveGuardedTemplatePath(tool, pathField, rawPath, baseDir)
 		if d != nil {
+			d.Path = pathPath
 			return "", noop, d
 		}
 		return path, noop, nil
@@ -210,6 +212,7 @@ func templateNotFoundDiagnostic(nameArg, pathArg, name, templatesDir string) *di
 	// ("template"), while the message spells the fully-qualified argument the
 	// caller has to change ("presentation.template_path").
 	nameArgLabel, pathArgLabel := nameArg, pathArg
+	namePath := argFieldPath(nameArg)
 	nameArg, pathArg = lastPathSegment(nameArg), lastPathSegment(pathArg)
 	available := listAvailableTemplates(templatesDir)
 	details := map[string]any{"template_name": name}
@@ -231,7 +234,7 @@ func templateNotFoundDiagnostic(nameArg, pathArg, name, templatesDir string) *di
 	}
 	return &diagnostics.Diagnostic{
 		Code:         diagnostics.CodeTemplateNotFound,
-		Path:         nameArg,
+		Path:         namePath,
 		Severity:     diagnostics.SeverityError,
 		Message:      msg,
 		ExpectedType: "string",
@@ -240,6 +243,16 @@ func templateNotFoundDiagnostic(nameArg, pathArg, name, templatesDir string) *di
 		Fix:          fix,
 		NextToolCall: nextCallListTemplates(),
 	}
+}
+
+// argFieldPath is the finding path for a template argument: a field of the
+// deck ("presentation.template") is addressed by its JSON Pointer in the deck
+// ("/template"); a tool's own argument keeps its name.
+func argFieldPath(arg string) string {
+	if field, ok := strings.CutPrefix(arg, "presentation."); ok {
+		return "/" + strings.ReplaceAll(field, ".", "/")
+	}
+	return arg
 }
 
 // lastPathSegment returns the final dotted segment of an argument label, so
@@ -305,7 +318,7 @@ func resolveDeckTemplatePath(rawPath, jsonPath string) (string, error) {
 		return "", nil
 	}
 	refuse := func(code diagnostics.Code, format string, args ...any) (string, error) {
-		return "", &cliCodedError{code: code, path: "template_path", err: fmt.Errorf(format, args...)}
+		return "", &cliCodedError{code: code, path: "/template_path", err: fmt.Errorf(format, args...)}
 	}
 	if ext := strings.ToLower(filepath.Ext(rawPath)); ext != ".pptx" {
 		return refuse(diagnostics.CodeInvalidParameter, "template_path %q: unsupported extension %q (want .pptx)", rawPath, ext)

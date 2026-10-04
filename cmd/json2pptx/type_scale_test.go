@@ -90,7 +90,7 @@ func TestDeckTypeScaleMatchesRenderedAndPreflightGrid(t *testing.T) {
 func TestTypeScaleEnumValidation(t *testing.T) {
 	input := &PresentationInput{TypeScale: "giant", Slides: []SlideInput{{ShapeGrid: &ShapeGridInput{TypeScale: "tiny"}}}}
 	errs := checkInputEnumValues(input)
-	if len(errs) != 2 || errs[0].Path != "type_scale" || errs[1].Path != "/slides/0/shape_grid/type_scale" {
+	if len(errs) != 2 || errs[0].Path != "/type_scale" || errs[1].Path != "/slides/0/shape_grid/type_scale" {
 		t.Fatalf("invalid type scales not reported at their paths: %+v", errs)
 	}
 }

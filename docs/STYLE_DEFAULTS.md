@@ -144,7 +144,7 @@ The `@template-default` sentinel lives in a separate namespace from user-authore
 
 If the resolved GUID has no non-empty `<a:tblStyle>` definition in the template, the output keeps that GUID but renders the table explicitly in the engine default look above (unfilled bold header over a 1pt rule, hairline row rules, no zebra); a `header_background` adds the header fill on top. This prevents an empty style list or portability-only stub from leaving the table visually plain. Defined template styles remain in control.
 
-**Validation:** a `style_id` must be empty, the `@template-default` sentinel, or a well-formed OOXML table style GUID (`{8-4-4-4-12}` hex, e.g. `{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}`). Any other value — a typo or a string containing XML metacharacters such as `"&<` — is rejected with an `INVALID_PARAMETER` validation error and is never emitted into slide XML or `ppt/tableStyles.xml` (the renderer drops it defensively even when validation is skipped). A well-formed GUID that the template does not declare is allowed but produces the advisory `unknown_table_style_id` warning.
+**Validation:** a `style_id` must be empty, the `@template-default` sentinel, or a well-formed OOXML table style GUID (`{8-4-4-4-12}` hex, e.g. `{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}`). Any other value — a typo or a string containing XML metacharacters such as `"&<` — is rejected with an `INVALID_PARAMETER` validation error and is never emitted into slide XML or `ppt/tableStyles.xml` (the renderer drops it defensively even when validation is skipped). A well-formed GUID that the template does not declare is allowed but produces the advisory `unknown_table_style_id` warning. Both are reported at the field the author wrote: `/slides/N/content/M/table_value/style/style_id` (`…/cells/C/table/style/style_id` in a grid cell), or — once, however many tables adopt it — `/defaults/table_style/style_id` when the value is the deck default. The same holds for a constrained-mode `design_mode_violation` on a default: `/defaults/table_style/header_background`, `/defaults/cell_style/fill`.
 
 ## Template Surface Properties
 
@@ -203,7 +203,9 @@ threshold for `"50%"` is written `50`.
 **Diagnostics.** A rule outside the list above, or a threshold the rule cannot
 use (a word where a number is compared, a `between` without two bounds), is an
 `INVALID_PARAMETER` error at
-`…rows[r][c].conditional.rule` / `.threshold` with the allowed list and a
+`/slides/N/content/M/table_value/rows/r/c/conditional/rule` / `…/threshold`
+(`/slides/N/shape_grid/rows/R/cells/C/table/rows/r/c/conditional/…` for a
+grid-cell table, which gets the same checks) with the allowed list and a
 `did_you_mean` for a typo. Before go-slide-creator-6hlu a string threshold
 aborted the entire deck at parse time with a Go type error, and the rule itself
 was never evaluated — a cell tagged `negative` was tinted whatever it said.

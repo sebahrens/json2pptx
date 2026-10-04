@@ -331,7 +331,7 @@ func runJSONDryRun(jsonPath, templateOverride, templatesDir, configPath, designM
 	if err != nil {
 		output.Valid = false
 		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-			Code: "TEMPLATE_ERROR", Path: "template",
+			Code: "TEMPLATE_ERROR", Path: deckTemplateFieldPath(&input),
 			Message:  fmt.Sprintf("template analysis failed: %v", err),
 			Severity: diagnostics.SeverityError,
 		})
@@ -365,7 +365,7 @@ func resolveDryRunTemplate(input *PresentationInput, jsonPath, templatesDir stri
 	path, cleanup, err := resolveTemplatePath(input.Template, templatesDir)
 	if err != nil {
 		return "", noop, &diagnostics.Diagnostic{
-			Code: diagnostics.CodeTemplateNotFound, Path: "template",
+			Code: diagnostics.CodeTemplateNotFound, Path: "/template",
 			Message:  templateNotFoundError(input.Template, templatesDir),
 			Severity: diagnostics.SeverityError,
 		}
@@ -510,6 +510,9 @@ func resolveCanonicalLayoutIDs(slides []SlideInput, layouts []types.LayoutMetada
 // into the Findings envelope at serialization). This is the shared validation
 // core used by both the CLI dry-run and the MCP validate_input handler.
 func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, analysis *types.TemplateAnalysis) { //nolint:gocognit,gocyclo
+	// A deck default every table adopts is one field in the deck: report a
+	// fault in it once, not once per table.
+	defer func() { output.Diagnostics = onePerDefaultsField(output.Diagnostics) }()
 	// Build layout and placeholder lookup maps from template analysis
 	layoutByID := make(map[string]types.LayoutMetadata, len(analysis.Layouts))
 	for _, l := range analysis.Layouts {
@@ -700,7 +703,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 								i+1, j+1, len(text), item.PlaceholderID, phInfo.MaxChars)
 							output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
 								Code:     patterns.ErrCodeMaxLength,
-								Path:     slidepath.ContentField(i, j, "text"),
+								Path:     contentValuePath(&item, i, j),
 								Message:  msg,
 								Severity: diagnostics.SeverityWarning,
 								Fix: &diagnostics.Fix{
@@ -811,7 +814,8 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 						// Reject style_id values that the renderer would drop because
 						// they are not GUID-shaped (typos or XML-metacharacter
 						// injection attempts). Error, since they can never render.
-						if d := invalidTableStyleIDDiagnostic(table, tablePath, i); d != nil {
+						tableValuePath := contentTablePath(&item, i, j)
+						if d := invalidTableStyleIDDiagnostic(table, tableValuePath, i); d != nil {
 							output.Valid = false
 							output.Diagnostics = append(output.Diagnostics, *d)
 						}
@@ -823,7 +827,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 							output.Valid = false
 							output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
 								Code:     diagnostics.CodeInvalidParameter,
-								Path:     tablePath + ".rows",
+								Path:     tableValuePath + "/rows",
 								Message:  fmt.Sprintf("slide %d: %v", i+1, err),
 								Severity: diagnostics.SeverityError,
 							})
@@ -831,14 +835,14 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 						// Validate style_id against template's declared table styles.
 						// Advisory only — an unknown (but well-formed) style_id does
 						// not invalidate the deck (Valid is left unchanged).
-						if vw := validateTableStyleID(table, tablePath, i, tableStyleByID, availableStyleIDs); vw != nil {
+						if vw := validateTableStyleID(table, tableValuePath, i, tableStyleByID, availableStyleIDs); vw != nil {
 							output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(vw))
 						}
 						// Reject conditional-format fills that are neither a scheme
 						// color nor a 6-digit hex value. resolveConditionalFill drops
 						// such values to prevent malformed/injected OOXML, so surface
 						// a clear error instead of silently losing the fill.
-						for _, d := range invalidConditionalFillDiagnostics(table, tablePath, i) {
+						for _, d := range invalidConditionalFillDiagnostics(table, tableValuePath, i) {
 							output.Valid = false
 							output.Diagnostics = append(output.Diagnostics, d)
 						}
@@ -846,7 +850,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 						// cannot use, applies no fill at all. Say which, with the
 						// allowed list, instead of leaving the cell quietly plain
 						// (go-slide-creator-6hlu).
-						for _, d := range conditionalRuleDiagnostics(table, tablePath, i) {
+						for _, d := range conditionalRuleDiagnostics(table, tableValuePath, i) {
 							output.Valid = false
 							output.Diagnostics = append(output.Diagnostics, d)
 						}
@@ -879,7 +883,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					msg := fmt.Sprintf("slide %d, content %d: %v", i+1, j+1, valueErr)
 					output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
 						Code:     diagnostics.CodeInvalidParameter,
-						Path:     slidepath.ContentField(i, j, item.Type+"_value"),
+						Path:     contentValuePath(&item, i, j),
 						Message:  msg,
 						Severity: diagnostics.SeverityError,
 						Details:  map[string]any{"cause": valueErr.Error()},
@@ -947,21 +951,15 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 				}
 			}
 
-			// Validate style_id for tables inside shape_grid cells.
-			for rowIdx, row := range slideInput.ShapeGrid.Rows {
-				for cellIdx, cell := range row.Cells {
-					if cell != nil && cell.Table != nil {
-						tablePath := slidepath.GridCellField(i, rowIdx, cellIdx, "table")
-						if d := invalidTableStyleIDDiagnostic(cell.Table, tablePath, i); d != nil {
-							output.Valid = false
-							output.Diagnostics = append(output.Diagnostics, *d)
-						}
-						if vw := validateTableStyleID(cell.Table, tablePath, i, tableStyleByID, availableStyleIDs); vw != nil {
-							output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(vw))
-						}
-					}
-				}
+			// A table in a shape_grid cell gets the style and
+			// conditional-format checks a placeholder table gets, nested
+			// sub-grids included (go-slide-creator-dln5i).
+			tableErrs, tableWarns := gridTableValueDiagnostics(slideInput.ShapeGrid, slidepath.ShapeGrid(i), i, tableStyleByID, availableStyleIDs)
+			if len(tableErrs) > 0 {
+				output.Valid = false
+				output.Diagnostics = append(output.Diagnostics, tableErrs...)
 			}
+			output.Diagnostics = append(output.Diagnostics, tableWarns...)
 
 			// A grid-cell table row wider than its headers cannot render and
 			// generate refuses it, exactly as for placeholder tables; check
@@ -1404,6 +1402,37 @@ func validateShapeFillColor(raw json.RawMessage, slideNum, row, cell int, warnin
 	return valWarnings
 }
 
+// gridTableValueDiagnostics reports, for every table in grid (cell sub-grids
+// included), the style_id and conditional-format faults validation reports
+// for a placeholder table: errs refuse the deck, warns are advisory.
+func gridTableValueDiagnostics(grid *ShapeGridInput, gridPath string, slideIdx int, styleByID map[string]string, availableIDs []string) (errs, warns []diagnostics.Diagnostic) {
+	if grid == nil {
+		return nil, nil
+	}
+	for rowIdx, row := range grid.Rows {
+		for cellIdx, cell := range row.Cells {
+			if cell == nil {
+				continue
+			}
+			cellPath := fmt.Sprintf("%s/rows/%d/cells/%d", gridPath, rowIdx, cellIdx)
+			if cell.Table != nil {
+				tablePath := cellPath + "/table"
+				if d := invalidTableStyleIDDiagnostic(cell.Table, tablePath, slideIdx); d != nil {
+					errs = append(errs, *d)
+				}
+				if vw := validateTableStyleID(cell.Table, tablePath, slideIdx, styleByID, availableIDs); vw != nil {
+					warns = append(warns, diagnostics.FromValidationWarning(vw))
+				}
+				errs = append(errs, invalidConditionalFillDiagnostics(cell.Table, tablePath, slideIdx)...)
+				errs = append(errs, conditionalRuleDiagnostics(cell.Table, tablePath, slideIdx)...)
+			}
+			subErrs, subWarns := gridTableValueDiagnostics(cell.Grid, cellPath+"/grid", slideIdx, styleByID, availableIDs)
+			errs, warns = append(errs, subErrs...), append(warns, subWarns...)
+		}
+	}
+	return errs, warns
+}
+
 // gridTableRowWidthDiagnostics reports every table in grid (recursing into
 // cell sub-grids) whose rows span more columns than its headers define, the
 // same CheckRowWidths refusal generate raises (go-slide-creator-csclk.5).
@@ -1422,7 +1451,7 @@ func gridTableRowWidthDiagnostics(grid *ShapeGridInput, gridPath string, slideId
 				if err := cell.Table.ToTableSpec().CheckRowWidths(); err != nil {
 					out = append(out, diagnostics.Diagnostic{
 						Code:     diagnostics.CodeInvalidParameter,
-						Path:     cellPath + "/table.rows",
+						Path:     cellPath + "/table/rows",
 						Message:  fmt.Sprintf("slide %d: %v", slideIdx+1, err),
 						Severity: diagnostics.SeverityError,
 					})
@@ -1459,7 +1488,7 @@ func validateTableStyleID(table *TableInput, tablePath string, slideIdx int, sty
 		return nil
 	}
 
-	path := tablePath + ".style.style_id"
+	path := tableStyleIDPath(table, tablePath)
 	msg := fmt.Sprintf("slide %d: style_id %q not found in template table styles; use list_templates to see available table_styles",
 		slideIdx+1, styleID)
 
@@ -1477,6 +1506,67 @@ func validateTableStyleID(table *TableInput, tablePath string, slideIdx int, sty
 		Message: msg,
 		Fix:     fix,
 	}
+}
+
+// deckTemplateFieldPath is the JSON Pointer of the field a deck names its
+// template with.
+func deckTemplateFieldPath(input *PresentationInput) string {
+	if input.TemplatePath != "" {
+		return "/template_path"
+	}
+	return "/template"
+}
+
+// onePerDefaultsField drops the repeats of a finding addressed at a
+// deck-level defaults field.
+func onePerDefaultsField(ds []diagnostics.Diagnostic) []diagnostics.Diagnostic {
+	seen := map[string]bool{}
+	out := ds[:0]
+	for _, d := range ds {
+		if strings.HasPrefix(d.Path, "/defaults/") {
+			key := d.Code + "\x00" + d.Path
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+		}
+		out = append(out, d)
+	}
+	return out
+}
+
+// contentTablePath is the JSON Pointer of the table a content block authored:
+// its table_value, or the legacy value field when that carries the table.
+func contentTablePath(c *ContentInput, slideIdx, contentIdx int) string {
+	key := "table_value"
+	if c.TableValue == nil && len(c.Value) > 0 {
+		key = "value"
+	}
+	return slidepath.ContentField(slideIdx, contentIdx, key)
+}
+
+// contentValuePath is the JSON Pointer of the field a content block's value
+// is written in: the legacy value field, or <type>_value — the field to add
+// when the block carries no value. A block whose type has no value field (an
+// unknown type) is addressed itself.
+func contentValuePath(c *ContentInput, slideIdx, contentIdx int) string {
+	if c.UsesLegacyValue() {
+		return slidepath.ContentField(slideIdx, contentIdx, "value")
+	}
+	if _, known := typedFieldForType[c.Type]; !known {
+		return slidepath.ContentIndex(slideIdx, contentIdx)
+	}
+	return slidepath.ContentField(slideIdx, contentIdx, typedFieldForType[c.Type])
+}
+
+// tableStyleIDPath is the JSON Pointer of the style_id a table renders with.
+// tablePath points at the table object. A table that wrote no style_id of its
+// own takes the deck default, so that is the field to correct.
+func tableStyleIDPath(table *TableInput, tablePath string) string {
+	if table.Style != nil && table.Style.StyleIDFromDefaults {
+		return "/defaults/table_style/style_id"
+	}
+	return tablePath + "/style/style_id"
 }
 
 // invalidTableStyleIDDiagnostic returns an error diagnostic when an authored
@@ -1500,7 +1590,7 @@ func invalidTableStyleIDDiagnostic(table *TableInput, tablePath string, slideIdx
 	}
 	return &diagnostics.Diagnostic{
 		Code: diagnostics.CodeInvalidParameter,
-		Path: tablePath + ".style.style_id",
+		Path: tableStyleIDPath(table, tablePath),
 		Message: fmt.Sprintf("slide %d: table style_id %q is invalid; use %q or a table style GUID such as %q",
 			slideIdx+1, styleID, template.TemplateDefaultSentinel, types.DefaultTableStyleID),
 		Severity: diagnostics.SeverityError,
@@ -1548,7 +1638,7 @@ func invalidConditionalFillDiagnostics(table *TableInput, tablePath string, slid
 			}
 			out = append(out, diagnostics.Diagnostic{
 				Code: diagnostics.CodeInvalidParameter,
-				Path: fmt.Sprintf("%s.rows[%d][%d].conditional.fill", tablePath, ri, ci),
+				Path: slidepath.TableCell(tablePath, ri, ci) + "/conditional/fill",
 				Message: fmt.Sprintf("slide %d: table conditional fill %q is invalid; use a scheme color (e.g. accent2) or a 6-digit hex value (e.g. #CC0000)",
 					slideIdx+1, cell.Conditional.Fill),
 				Severity: diagnostics.SeverityError,
@@ -1574,10 +1664,10 @@ func conditionalRuleDiagnostics(table *TableInput, tablePath string, slideIdx in
 			if cond == nil {
 				continue
 			}
-			base := fmt.Sprintf("%s.rows[%d][%d].conditional", tablePath, ri, ci)
+			base := slidepath.TableCell(tablePath, ri, ci) + "/conditional"
 			if !types.ConditionalRuleKnown(cond.Rule) {
 				params := map[string]any{
-					"path":    base + ".rule",
+					"path":    base + "/rule",
 					"allowed": types.ConditionalRules,
 				}
 				message := fmt.Sprintf("slide %d: table conditional rule %q is not recognised, so the cell gets no fill; use one of %s",
@@ -1591,7 +1681,7 @@ func conditionalRuleDiagnostics(table *TableInput, tablePath string, slideIdx in
 				}
 				out = append(out, diagnostics.Diagnostic{
 					Code:     diagnostics.CodeInvalidParameter,
-					Path:     base + ".rule",
+					Path:     base + "/rule",
 					Message:  message,
 					Severity: diagnostics.SeverityError,
 					Fix:      &diagnostics.Fix{Kind: "use_one_of", Params: params},
@@ -1601,12 +1691,12 @@ func conditionalRuleDiagnostics(table *TableInput, tablePath string, slideIdx in
 			if msg := conditionalThresholdProblem(cond); msg != "" {
 				out = append(out, diagnostics.Diagnostic{
 					Code:     diagnostics.CodeInvalidParameter,
-					Path:     base + ".threshold",
+					Path:     base + "/threshold",
 					Message:  fmt.Sprintf("slide %d: table conditional rule %q %s, so the cell gets no fill", slideIdx+1, conditionalRuleName(cond.Rule), msg),
 					Severity: diagnostics.SeverityError,
 					Fix: &diagnostics.Fix{
 						Kind:   "provide_value",
-						Params: map[string]any{"path": base + ".threshold"},
+						Params: map[string]any{"path": base + "/threshold"},
 					},
 				})
 			}

@@ -203,7 +203,7 @@ func (mc *mcpConfig) deckPatchFindings(pi *PresentationInput) []diagnostics.Diag
 	var diags []diagnostics.Diagnostic
 	if pi.Template == "" {
 		diags = append(diags, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "template", Message: "template is required",
+			Code: "REQUIRED", Path: "/template", Message: "template is required",
 			Severity:     diagnostics.SeverityError,
 			Fix:          &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "template"}},
 			NextToolCall: nextCallListTemplates(),
@@ -211,7 +211,7 @@ func (mc *mcpConfig) deckPatchFindings(pi *PresentationInput) []diagnostics.Diag
 	}
 	if len(pi.Slides) == 0 {
 		diags = append(diags, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "slides", Message: "at least one slide is required after patching",
+			Code: "REQUIRED", Path: "/slides", Message: "at least one slide is required after patching",
 			Severity: diagnostics.SeverityError,
 			Fix:      &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "slides"}},
 		})

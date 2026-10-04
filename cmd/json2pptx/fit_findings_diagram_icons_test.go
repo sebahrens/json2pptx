@@ -59,7 +59,7 @@ func TestUnknownPanelIconIsReported(t *testing.T) {
 	if f.Code != string(diagnostics.CodeIconBundledNameUnknown) {
 		t.Errorf("code = %q", f.Code)
 	}
-	if f.Path != "slides[0].content[1].diagram_value.data.panels[0].icon" {
+	if f.Path != "/slides/0/content/1/diagram_value/data/panels/0/icon" {
 		t.Errorf("path = %q, want the offending panel's icon", f.Path)
 	}
 	if f.Action != "review" {

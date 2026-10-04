@@ -30,8 +30,8 @@ func TestGridTableRowWidthDiagnostics_Nested(t *testing.T) {
 	}
 	ds := gridTableRowWidthDiagnostics(&grid, "/slides/0/shape_grid", 0)
 	want := map[string]bool{
-		"/slides/0/shape_grid/rows/0/cells/0/table.rows":                     true,
-		"/slides/0/shape_grid/rows/0/cells/1/grid/rows/0/cells/0/table.rows": true,
+		"/slides/0/shape_grid/rows/0/cells/0/table/rows":                     true,
+		"/slides/0/shape_grid/rows/0/cells/1/grid/rows/0/cells/0/table/rows": true,
 	}
 	if len(ds) != len(want) {
 		t.Fatalf("got %d diagnostics, want %d: %+v", len(ds), len(want), ds)
