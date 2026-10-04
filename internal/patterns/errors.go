@@ -66,16 +66,11 @@ const (
 	// "poor pattern choice" rather than a rendering bug (see FindingClass).
 	// All advisory (action "review"); none block render.
 	//
-	//   - OvertallFlowLane: a single-row timeline-horizontal lane occupies more
-	//     than half the content height with short labels, in cases
-	//     SPARSE_SINGLE_ROW_FLOW does not cover (a height cap that is still too
-	//     tall, or a row of seven or more stops). Never process-flow.
 	//   - FlowDiamondNoContent: a standalone process-flow carries a decision
 	//     diamond but has no supporting content zone to explain the branch.
 	//   - TocFlowchartVocab: an agenda / table-of-contents slide is rendered with
 	//     sequential flowchart vocabulary (process-flow / swimlane / timeline)
 	//     instead of a list / agenda layout.
-	ErrCodeOvertallFlowLane     = "OVERTALL_FLOW_LANE"
 	ErrCodeFlowDiamondNoContent = "FLOW_DIAMOND_NO_CONTENT"
 	ErrCodeTocFlowchartVocab    = "TOC_FLOWCHART_VOCAB"
 
@@ -311,7 +306,6 @@ var (
 	ErrAccentOverload       = errors.New("slide uses more than two distinct accent hues")
 	ErrFilledShapeOutlined  = errors.New("filled shape also carries an outline")
 	ErrSparseSingleRowFlow  = errors.New("single-row flow pattern with sparse per-cell text is the slide's only content")
-	ErrOvertallFlowLane     = errors.New("single-row flow lane occupies more than half the content height with short labels")
 	ErrFlowDiamondNoContent = errors.New("process-flow decision diamond has no supporting content zone")
 	ErrTocFlowchartVocab    = errors.New("agenda / table-of-contents slide uses sequential flowchart vocabulary")
 	ErrMatrixAxisImbalance  = errors.New("rotated axis band spans rows/columns and intrudes after rotation")
@@ -401,7 +395,6 @@ var codeSentinel = map[string]error{
 	ErrCodeAccentOverload:          ErrAccentOverload,
 	ErrCodeFilledShapeOutlined:     ErrFilledShapeOutlined,
 	ErrCodeSparseSingleRowFlow:     ErrSparseSingleRowFlow,
-	ErrCodeOvertallFlowLane:        ErrOvertallFlowLane,
 	ErrCodeFlowDiamondNoContent:    ErrFlowDiamondNoContent,
 	ErrCodeTocFlowchartVocab:       ErrTocFlowchartVocab,
 	ErrCodeMatrixAxisImbalance:     ErrMatrixAxisImbalance,

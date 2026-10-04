@@ -4,7 +4,6 @@ import "testing"
 
 func TestFindingClass_PatternChoiceCodes(t *testing.T) {
 	for _, code := range []string{
-		ErrCodeOvertallFlowLane,
 		ErrCodeFlowDiamondNoContent,
 		ErrCodeTocFlowchartVocab,
 		ErrCodeSparseSingleRowFlow,

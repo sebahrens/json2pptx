@@ -59,6 +59,15 @@ var kindAdvice = []struct {
 	// numbered strip.
 	{regexp.MustCompile(`switch to numbered-step-strip / process-grid-\d+row, or cap max_height_pct to ~\d+`),
 		"give each step a description (the slide is then a numbered strip) or add steps"},
+	// A row of bare steps or milestones alone on a slide (go-slide-creator-d6wvb,
+	// -d0g2j). The pattern's remedies are other patterns and a compose
+	// envelope; a process reaches the numbered strip through its steps'
+	// descriptions once nothing pins it to the flow, and a timeline carries a
+	// body under each milestone or sits in a region of a regions slide.
+	{regexp.MustCompile(`process-flow is the slide's only content: one row of (\d+) short cells \(avg (\d+) chars\), sized to its text, so most of the slide stays empty — give each step a detail line .*$`),
+		"the steps are the slide's only content: one row of ${1} short boxes (avg ${2} chars), sized to their text, so most of the slide stays empty — remove the slide's pattern field and give each step a description (the slide is then a numbered strip with a line of detail under each step)"},
+	{regexp.MustCompile(`timeline-horizontal is the slide's only content: one row of (\d+) short cells \(avg (\d+) chars\), sized to its text, so most of the slide stays empty — give each step a detail line .*$`),
+		"the milestones are the slide's only content: one row of ${1} short entries (avg ${2} chars), sized to their text, so most of the slide stays empty — give each milestone a body (a line of detail under its label), or make the timeline one region of a regions slide beside what it dates"},
 	{regexp.MustCompile(`, or give the house a taller region`), ", or drop the slide's takeaway"},
 	{regexp.MustCompile(`this (\d+pt-high )?region`), "the ${1}content area"},
 	{regexp.MustCompile(`stacked-box rows`), "numbered rows"},
@@ -137,6 +146,9 @@ func deckSpecWording(diags []semanticDiagnostic, input *PresentationInput, ir *s
 		if msg == d.Message {
 			continue
 		}
+		if d.Code == patterns.ErrCodeSparseSingleRowFlow {
+			sparseFlowKindRemedy(d)
+		}
 		if d.baseMessage == d.Message {
 			// The entry already lists its items (a narrow-wrap finding's
 			// boxes): the sentence its count is added to is reworded with it.
@@ -148,6 +160,22 @@ func deckSpecWording(diags []semanticDiagnostic, input *PresentationInput, ir *s
 			source.Message = msg
 			d.diag = &source
 		}
+	}
+}
+
+// sparseFlowKindRemedy replaces the pattern swap a sparse single-row flow
+// suggests — its facts name the pattern the slide compiled to and the patterns
+// to swap it for, none of which a slide kind has — with the advice the
+// reworded sentence gives.
+func sparseFlowKindRemedy(d *semanticDiagnostic) {
+	d.RecommendedEdit = &semantic.SemanticEdit{
+		Kind: semantic.EditAddDetailOrMerge,
+		Hint: "Give each entry of the row a line of detail, choose a denser slide kind, or merge this slide with a related one.",
+	}
+	if d.diag != nil && d.diag.Fix != nil {
+		source := *d.diag
+		source.Fix = nil
+		d.diag = &source
 	}
 }
 

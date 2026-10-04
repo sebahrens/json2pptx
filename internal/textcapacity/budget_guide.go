@@ -230,6 +230,7 @@ func convertRows(inputRows []jsonschema.GridRowInput) []shapegrid.Row {
 					Text:        c.Shape.Text,
 					Rotation:    c.Shape.Rotation,
 					Adjustments: c.Shape.Adjustments,
+					FlipH:       c.Shape.FlipH,
 				},
 			}
 		}

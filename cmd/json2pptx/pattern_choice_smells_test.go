@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -18,100 +19,31 @@ func findCode(fs []patterns.FitFinding, code string) *patterns.FitFinding {
 	return nil
 }
 
-// --- OVERTALL_FLOW_LANE ----------------------------------------------------
+// --- OVERTALL_FLOW_LANE (retired) ------------------------------------------
 
-// A 7-stop timeline with short labels is over-tall but outside the
-// SPARSE_SINGLE_ROW_FLOW item range (3–6), so OVERTALL covers it.
-func TestOvertallFlowLane_SevenSteps_Fires(t *testing.T) {
-	in := patternSlide(&PatternInput{
-		Name:   "timeline-horizontal",
-		Values: json.RawMessage(`[{"label":"A"},{"label":"B"},{"label":"C"},{"label":"D"},{"label":"E"},{"label":"F"},{"label":"G"}]`),
-	})
-	fs := collectPatternChoiceFindings(&in)
-	f := findCode(fs, patterns.ErrCodeOvertallFlowLane)
-	if f == nil {
-		t.Fatal("expected OVERTALL_FLOW_LANE for a 7-stop short-label timeline")
-	}
-	if f.Action != "review" {
-		t.Errorf("action = %q, want review", f.Action)
-	}
-	if f.Fix == nil || f.Fix.Kind != "swap_pattern" || f.Fix.Params["reason"] != "overtall_flow_lane" {
-		t.Errorf("fix = %+v", f.Fix)
-	}
-	// Must NOT also emit SPARSE — the two are complementary.
-	if findSparseFlow(fs) != nil {
-		t.Error("SPARSE_SINGLE_ROW_FLOW should not fire alongside OVERTALL_FLOW_LANE")
-	}
-}
-
-// A max_height_pct cap that is still too tall (60%) trips OVERTALL even with
-// only 4 steps (where SPARSE is exempt because a cap is present).
-func TestOvertallFlowLane_CapStillTooTall_Fires(t *testing.T) {
-	in := patternSlide(&PatternInput{
-		Name:         "timeline-horizontal",
-		MaxHeightPct: 60,
-		Values:       json.RawMessage(`[{"label":"Plan"},{"label":"Build"},{"label":"Ship"},{"label":"Scale"}]`),
-	})
-	fs := collectPatternChoiceFindings(&in)
-	if findCode(fs, patterns.ErrCodeOvertallFlowLane) == nil {
-		t.Fatal("expected OVERTALL_FLOW_LANE for a capped-but-tall (60%) flow")
-	}
-}
-
-// process-flow sizes its own steps (content-sized rows under a third of the
-// content height, two rows from seven steps), so its lane is never the
-// stretched one: an eight-step process drew the finding whatever its labels
-// said (go-slide-creator-pfyeg).
-func TestOvertallFlowLane_ProcessFlowIsContentSized_NoFire(t *testing.T) {
-	steps := json.RawMessage(`{"steps":[{"label":"A"},{"label":"B"},{"label":"C"},{"label":"D"},{"label":"E"},{"label":"F"},{"label":"G"}]}`)
-	for _, capPct := range []float64{0, 60} {
-		in := patternSlide(&PatternInput{Name: "process-flow", MaxHeightPct: capPct, Values: steps})
-		if findCode(collectPatternChoiceFindings(&in), patterns.ErrCodeOvertallFlowLane) != nil {
-			t.Errorf("OVERTALL_FLOW_LANE fired for a process-flow (max_height_pct %v)", capPct)
+// go-slide-creator-0l7dr: the finding said a timeline's "boxes stretch
+// vertically". No timeline renders that way — uncapped it is sized to its
+// text, capped its rows spread while its marks keep their size — so no flow,
+// capped or not, draws a finding that says so.
+func TestNoFlowFindingSaysBoxesStretch(t *testing.T) {
+	seven := json.RawMessage(`[{"label":"A"},{"label":"B"},{"label":"C"},{"label":"D"},{"label":"E"},{"label":"F"},{"label":"G"}]`)
+	four := json.RawMessage(`[{"label":"Plan"},{"label":"Build"},{"label":"Ship"},{"label":"Scale"}]`)
+	for _, p := range []*PatternInput{
+		{Name: "timeline-horizontal", Values: seven},
+		{Name: "timeline-horizontal", MaxHeightPct: 60, Values: seven},
+		{Name: "timeline-horizontal", MaxHeightPct: 60, Values: four},
+		{Name: "timeline-horizontal", Values: four},
+		{Name: "process-flow", MaxHeightPct: 60, Values: json.RawMessage(`{"steps":[{"label":"A"},{"label":"B"},{"label":"C"},{"label":"D"},{"label":"E"},{"label":"F"},{"label":"G"}]}`)},
+	} {
+		in := patternSlide(p)
+		for _, f := range collectFitFindings(&in, nil, 9144000, 6858000, nil) {
+			if f.Code == "OVERTALL_FLOW_LANE" || strings.Contains(f.Message, "stretch") {
+				t.Errorf("%s (max_height_pct %v): %s: %s", p.Name, p.MaxHeightPct, f.Code, f.Message)
+			}
 		}
 	}
-}
-
-// A reasonable cap (~35%) is the recommended remedy and must not fire.
-func TestOvertallFlowLane_ReasonableCap_NoFire(t *testing.T) {
-	in := patternSlide(&PatternInput{
-		Name:         "timeline-horizontal",
-		MaxHeightPct: 35,
-		Values:       json.RawMessage(`[{"label":"Plan"},{"label":"Build"},{"label":"Ship"},{"label":"Scale"},{"label":"Review"},{"label":"Iterate"},{"label":"Done"}]`),
-	})
-	if findCode(collectPatternChoiceFindings(&in), patterns.ErrCodeOvertallFlowLane) != nil {
-		t.Error("OVERTALL_FLOW_LANE should not fire when max_height_pct caps the lane to 35%")
-	}
-}
-
-// An uncapped 3–6 step flow is SPARSE's territory; OVERTALL must defer.
-func TestOvertallFlowLane_DefersToSparse(t *testing.T) {
-	in := patternSlide(&PatternInput{
-		Name:   "process-flow",
-		Values: json.RawMessage(`{"steps":[{"label":"Plan"},{"label":"Build"},{"label":"Ship"}]}`),
-	})
-	fs := collectPatternChoiceFindings(&in)
-	if findCode(fs, patterns.ErrCodeOvertallFlowLane) != nil {
-		t.Error("OVERTALL_FLOW_LANE should defer to SPARSE_SINGLE_ROW_FLOW for an uncapped 3–6 step flow")
-	}
-}
-
-// Long labels carry enough text to justify the height — no over-tall finding.
-func TestOvertallFlowLane_LongLabels_NoFire(t *testing.T) {
-	in := patternSlide(&PatternInput{
-		Name: "process-flow",
-		Values: json.RawMessage(`{"steps":[
-			{"label":"Gather detailed requirements from every stakeholder team"},
-			{"label":"Design the system architecture and review with security"},
-			{"label":"Implement the core services and integration test suite"},
-			{"label":"Roll out progressively to production with monitoring"},
-			{"label":"Measure adoption and iterate on the rough edges found"},
-			{"label":"Hand off to the operations team with full runbooks"},
-			{"label":"Close out the project and capture the lessons learned"}
-		]}`),
-	})
-	if findCode(collectPatternChoiceFindings(&in), patterns.ErrCodeOvertallFlowLane) != nil {
-		t.Error("OVERTALL_FLOW_LANE should not fire for a long-label flow")
+	if _, ok := patterns.GetFindingMeta("OVERTALL_FLOW_LANE"); ok {
+		t.Error("the retired OVERTALL_FLOW_LANE is still described")
 	}
 }
 
@@ -262,10 +194,10 @@ func TestMatrixAxisImbalance_RotatedNonSpanning_NoFire(t *testing.T) {
 
 func TestPatternChoiceSmells_SurfaceViaCollectFitFindings(t *testing.T) {
 	in := patternSlide(&PatternInput{
-		Name:   "timeline-horizontal",
-		Values: json.RawMessage(`[{"label":"A"},{"label":"B"},{"label":"C"},{"label":"D"},{"label":"E"},{"label":"F"},{"label":"G"}]`),
+		Name:   "process-flow",
+		Values: json.RawMessage(`{"steps":[{"label":"Draft"},{"label":"Approved?","type":"decision"},{"label":"Ship"}]}`),
 	})
-	if findCode(collectFitFindings(&in, nil, 9144000, 6858000, nil), patterns.ErrCodeOvertallFlowLane) == nil {
-		t.Fatal("OVERTALL_FLOW_LANE should surface through collectFitFindings")
+	if findCode(collectFitFindings(&in, nil, 9144000, 6858000, nil), patterns.ErrCodeFlowDiamondNoContent) == nil {
+		t.Fatal("FLOW_DIAMOND_NO_CONTENT should surface through collectFitFindings")
 	}
 }

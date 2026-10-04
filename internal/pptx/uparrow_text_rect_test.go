@@ -65,3 +65,35 @@ func TestGableAutofitMeasuresTheBand(t *testing.T) {
 		t.Errorf("gable text was measured against the whole shape: %s", gable)
 	}
 }
+
+// TestSideArrowTextRectSize follows ECMA-376's rightArrow definition: the text
+// rectangle is the shaft, run into the head as far as the shaft's edges reach
+// under the slope (go-slide-creator-fx48s).
+func TestSideArrowTextRectSize(t *testing.T) {
+	bounds := RectEmu{CX: 10000, CY: 2000}
+	// The preset default: a half-height shaft and a head 1000 long; the
+	// shaft's edges meet the slope halfway along the head.
+	if w, h := SideArrowTextRectSize(-1, -1, bounds); w != 9500 || h != 1000 {
+		t.Errorf("default text rect = %dx%d, want 9500x1000", w, h)
+	}
+	// A 70% shaft: 300 above and below it, so the rectangle reaches 300/1000
+	// of the 1000-long head.
+	if w, h := SideArrowTextRectSize(70000, 50000, bounds); w != 9300 || h != 1400 {
+		t.Errorf("block arrow text rect = %dx%d, want 9300x1400", w, h)
+	}
+	for _, geom := range []string{"rightArrow", "leftArrow"} {
+		if w, h := PresetTextRect(geom, map[string]int64{"adj1": 70000, "adj2": 50000}, bounds); w != 9300 || h != 1400 {
+			t.Errorf("PresetTextRect(%s) = %dx%d, want 9300x1400", geom, w, h)
+		}
+	}
+	if got := SideArrowShaftInsetEMU(70000, bounds); got != 300 {
+		t.Errorf("shaft inset = %d, want 300", got)
+	}
+	// The stored autofit shrink is measured in the shaft, not the shape: a
+	// label that fills the shape's height does not fit the shaft unshrunk.
+	tb := &TextBody{Wrap: "square", AutoFit: "normAutofit", Paragraphs: []Paragraph{{Runs: []Run{{Text: "Review the case", FontSize: 1600}}}}}
+	shape := ShapeOptions{ID: 1, Geometry: GeomRightArrow, Bounds: RectEmu{CX: 200 * 12700, CY: 30 * 12700}, Text: tb}
+	if got := autofitBounds(shape); got.CY != 15*12700 {
+		t.Errorf("autofit bounds height = %d, want the %d shaft", got.CY, 15*12700)
+	}
+}

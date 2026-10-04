@@ -192,6 +192,9 @@ func applyCellStyleDefaults(shape *jsonschema.ShapeSpecInput, def *jsonschema.Sh
 	if shape.Adjustments == nil && def.Adjustments != nil {
 		shape.Adjustments = def.Adjustments
 	}
+	if !shape.FlipH && def.FlipH {
+		shape.FlipH = true
+	}
 	if shape.Icon == nil && def.Icon != nil {
 		shape.Icon = def.Icon
 	}

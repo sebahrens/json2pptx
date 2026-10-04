@@ -78,6 +78,7 @@ func generateShapeXML(spec *ShapeSpec, id uint32, bounds pptx.RectEmu, autofitSc
 		Bounds:   bounds,
 		Geometry: pptx.PresetGeometry(spec.Geometry),
 		Rotation: int64(spec.Rotation * 60000), // degrees to 60000ths
+		FlipH:    spec.FlipH,
 	}
 	if spec.Link != nil {
 		opts.HyperlinkRelID = fmt.Sprintf("json2pptx_shape_link_%d", id)

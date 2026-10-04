@@ -155,3 +155,61 @@ func TestResolveLinks_CrossRowRouting(t *testing.T) {
 		}
 	}
 }
+
+// Connectors meet a pointed shape on its outline, mirrored or not, and an end
+// with no connection site there is left unattached (go-slide-creator-yniru).
+func TestResolveConnectors_PointedAndMirroredShapes(t *testing.T) {
+	arrow := &ConnectorSpec{Style: "arrow"}
+	chevron := func(flip bool) *ShapeSpec {
+		s := filled("chevron")
+		s.Adjustments = map[string]int64{"adj": 30000}
+		s.FlipH = flip
+		return s
+	}
+	grid := &Grid{
+		Bounds:  pptx.RectEmu{X: 0, Y: 0, CX: 9144000, CY: 2000000},
+		Columns: []float64{50, 50},
+		ColGap:  32,
+		RowGap:  32,
+		Rows: []Row{
+			{Cells: []Cell{{Shape: filled("roundRect")}, {Shape: chevron(false)}}, Connector: arrow},
+			{Cells: []Cell{{Shape: filled("roundRect")}, {Shape: chevron(true)}}},
+		},
+		Links: []Link{
+			{FromRow: 0, FromCol: 1, ToRow: 1, ToCol: 1, Spec: arrow}, // the turn
+			{FromRow: 1, FromCol: 1, ToRow: 1, ToCol: 0, Spec: arrow}, // back along the row
+		},
+	}
+	res, err := Resolve(grid, newAlloc(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Connectors) != 3 {
+		t.Fatalf("want 3 connectors, got %d", len(res.Connectors))
+	}
+	cell := func(row, col int) ResolvedCell {
+		for _, c := range res.Cells {
+			if c.RowIdx == row && c.ColIdx == col {
+				return c
+			}
+		}
+		t.Fatalf("no cell %d,%d", row, col)
+		return ResolvedCell{}
+	}
+	into, down, back := res.Connectors[0], res.Connectors[1], res.Connectors[2]
+	top, bottom := cell(0, 1), cell(1, 1)
+	notch := top.Bounds.CY * 30000 / 100000
+	if end := into.Bounds.X + into.Bounds.CX; end != top.Bounds.X+notch || into.EndSite != 1 {
+		t.Errorf("row connector ends at %d site %d, want the notch apex %d (site 1)", end, into.EndSite, top.Bounds.X+notch)
+	}
+	if down.StartSite != -1 || down.EndSite != -1 || down.Bounds.CX > 1 || down.Elbow {
+		t.Errorf("turn = %+v, want an unattached straight vertical line", down)
+	}
+	if mid := top.Bounds.X + top.Bounds.CX/2; down.Bounds.X != mid {
+		t.Errorf("turn at x=%d, want the chevron's centre %d", down.Bounds.X, mid)
+	}
+	// The mirrored chevron's tip is its left edge — its own site 3.
+	if !back.FlipH || back.StartSite != 3 || back.Bounds.X+back.Bounds.CX != bottom.Bounds.X {
+		t.Errorf("returning connector = %+v, want it to leave the mirrored tip at %d (site 3) leftwards", back, bottom.Bounds.X)
+	}
+}

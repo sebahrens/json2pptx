@@ -397,6 +397,10 @@ func (th *timelineHorizontal) expandDots(ctx ExpandContext, stops *TimelineHoriz
 	for i := range dotCells {
 		dotCells[i] = &jsonschema.GridCellInput{
 			Fit: "contain",
+			// The dot keeps its size when a max_height_pct / bounds cap
+			// stretches the rows to fill the capped area: it grew with its
+			// row, 16pt dots drawn 55pt across (go-slide-creator-r684y).
+			MaxHeight: timelineDotSizePt,
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "ellipse",
 				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),

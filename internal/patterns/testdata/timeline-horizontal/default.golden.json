@@ -71,6 +71,7 @@
       "max_height": 18,
       "cells": [
         {
+          "max_height": 18,
           "fit": "contain",
           "shape": {
             "geometry": "ellipse",
@@ -79,6 +80,7 @@
           }
         },
         {
+          "max_height": 18,
           "fit": "contain",
           "shape": {
             "geometry": "ellipse",
@@ -87,6 +89,7 @@
           }
         },
         {
+          "max_height": 18,
           "fit": "contain",
           "shape": {
             "geometry": "ellipse",

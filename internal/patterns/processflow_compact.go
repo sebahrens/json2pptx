@@ -255,9 +255,10 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 	// steps (go-slide-creator-xb06p). The cap gives way to the written fit of
 	// the tallest label (never past the content area) before the writer would
 	// shrink it below the readable floor (go-slide-creator-n1muf).
-	need := processFlowWrittenNeedPt(ctx.themeFonts(), cells, widths)
-	bandHeight := processFlowContentHeight(need, cellW, processFlowCompactBoxAspect, bandCap)
-	bandHeight = math.Max(bandHeight, math.Min(need, contentHeight))
+	bandHeight := processFlowSettleRowPt(ctx.themeFonts(), cells, widths, func(need float64) float64 {
+		h := processFlowContentHeight(need, cellW, processFlowCompactBoxAspect, bandCap)
+		return math.Max(h, math.Min(need, contentHeight))
+	})
 	// The band is one content-sized row with no bounds box of its own, so on
 	// a slide of its own it is placed like every other sparse block
 	// (go-slide-creator-yhzxt) instead of hanging a shallow strip under the

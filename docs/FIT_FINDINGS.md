@@ -774,6 +774,8 @@ The check reads `slide.pattern` directly, so it fires only for a standalone slid
 - the multi-row `chevron` and `gantt` timeline styles;
 - a pattern the author placed with `bounds` / `max_height_pct` (a deliberate composition, though the cap itself does not resize the row).
 
+On a DeckSpec slide the finding is worded in the slide kind's own fields (go-slide-creator-d6wvb): a `process` slide pinned to the flow (`pattern: "process-flow"`) is told to remove `pattern` and give each step a `description` (the slide is then a numbered strip), a `timeline` to give each milestone a `body` or to sit in a region of a `regions` slide; neither names a pattern or `compose`, and the remediation is `add_detail_or_merge` with a hint instead of the pattern swap below.
+
 The fix is a `swap_pattern` suggestion ranked toward `numbered-step-strip` (a detail line per step uses the height the bare labels leave empty), with `process-grid-2row` (two parallel tracks) and `phase-roadmap` (dated milestones with descriptions) as alternatives; pairing the row with a second zone in a `compose` envelope also clears it. `fix.params` carry `from`, `item_count`, `avg_chars`, `reason: "single_row_sparse"`, and `suggested: [{to, rationale}, …]`.
 
 ```json
@@ -788,34 +790,16 @@ The fix is a `swap_pattern` suggestion ranked toward `numbered-step-strip` (a de
 }
 ```
 
-### `OVERTALL_FLOW_LANE`
+### `OVERTALL_FLOW_LANE` (retired)
 
-**Action:** `review`
-**Pattern:** `timeline-horizontal`
-**Fix kind:** `swap_pattern`
-**Class:** `pattern_choice`
+Retired on 2026-10-04 (go-slide-creator-0l7dr); the code is no longer emitted and `describe_finding` does not know it. It reported a slide-level `timeline-horizontal` lane over half the content height whose "boxes stretch vertically around a few words", in the cases [`SPARSE_SINGLE_ROW_FLOW`](#sparse_single_row_flow) does not cover: a `max_height_pct` cap of 50 or more, or a row of seven or more stops, whose lane it estimated at 100% of the content height.
 
-The complement to [`SPARSE_SINGLE_ROW_FLOW`](#sparse_single_row_flow): a slide-level single-row `timeline-horizontal` (the `dots` style) whose estimated lane height exceeds ~50% of the content area with short average per-cell text (< ~40 chars), in the cases the sparse guard does **not** cover:
+Rendered in every style, capped and uncapped, nothing is drawn that way:
 
-- a `max_height_pct` cap that is still too tall (≥ 50), or
-- a row of 7 or more stops whose narrow boxes still stretch vertically (the sparse guard caps at 6 items).
+- **Uncapped** — `dots`, `chevron` and `gantt` are each sized to their text and placed by the composition policy; a seven-stop `dots` timeline is a 16pt line of dots over one line of labels, not a full-height lane.
+- **Capped** (`max_height_pct` / `bounds`) — the rows spread to fill the capped area, top-anchored, while the dots, chevrons and labels keep their size. The dots used to grow with their row — 16pt dots drawn 55pt across under `max_height_pct: 60` — which was a rendering fault, fixed in the pattern (go-slide-creator-r684y), not something a finding should ask the author to route around.
 
-The detector defers to `SPARSE_SINGLE_ROW_FLOW` whenever that guard owns the case (uncapped, 3–6 items), so the two never fire on the same slide. The lane height is estimated from `max_height_pct` / `bounds.height` when set, else ~100%.
-
-**Never emitted for `process-flow`** (go-slide-creator-pfyeg). Its steps are content-sized — a row is as tall as its tallest label needs, capped under a third of the content height — and 7–8 steps are laid on two rows, so its lane is not the stretched one. The finding used to fire on every uncapped 7–8 step flow with short labels, whose boxes were under 30pt tall, and no edit of the steps cleared it.
-
-The fix is a `swap_pattern` suggestion toward `numbered-step-strip` (whose per-step detail zone fills the vertical space) or `process-grid-2row`; capping `max_height_pct` to ~35 also clears it. `fix.params` carry `from`, `item_count`, `avg_chars`, `lane_height_pct`, `reason: "overtall_flow_lane"`, and `suggested: [{to, rationale}, …]`.
-
-```json
-{
-  "pattern": "timeline-horizontal",
-  "path": "/slides/8/pattern",
-  "code": "OVERTALL_FLOW_LANE",
-  "message": "slide 9: timeline-horizontal lane of 7 sparse cells (avg 8 chars) occupies ~100% of the content height — the boxes stretch vertically around a few words; switch to numbered-step-strip / process-grid-2row, or cap max_height_pct to ~35",
-  "fix": { "kind": "swap_pattern", "params": { "from": "timeline-horizontal", "item_count": 7, "avg_chars": 8, "lane_height_pct": 100, "reason": "overtall_flow_lane", "suggested": [{ "to": "numbered-step-strip", "rationale": "per-step detail zone fills the vertical space instead of stretching the boxes" }] } },
-  "action": "review"
-}
-```
+What a sparse timeline does leave on the slide is reported as it is drawn: `SPARSE_SINGLE_ROW_FLOW` (3–6 uncapped cells), [`SLIDE_UNDERUSED`](#slide_underused) (the content covers too little of the safe area, with its own wording for a capped block) and `SLIDE_UNBALANCED` (the empty band under a capped block).
 
 ### `FLOW_DIAMOND_NO_CONTENT`
 
