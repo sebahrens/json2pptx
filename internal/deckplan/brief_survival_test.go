@@ -441,6 +441,51 @@ func TestDeckSpecPlanCutNamesTheFurtherSlot(t *testing.T) {
 	if !strings.Contains(plan.BudgetNote, "a further evidence (chart_insight)") {
 		t.Errorf("budget_note = %q", plan.BudgetNote)
 	}
+
+	// go-slide-creator-5iy8n: the same journey put the series' label in the
+	// closing slot and its numbers in the evidence slot. A label and the
+	// numbers it names are one fact, in one slot.
+	const series = "Quarterly revenue FY25 Q3 to FY26 Q3: 43.0, 44.1, 45.6, 46.9, 48.2"
+	if got := factsOf(plan, "evidence"); got != series {
+		t.Errorf("evidence facts = %q, want the labelled series %q", got, series)
+	}
+	for _, s := range plan.Slots {
+		if s.Slot == "evidence" {
+			continue
+		}
+		for _, f := range s.Facts {
+			if strings.Contains(f, "Quarterly revenue") || strings.Contains(f, "43.0") {
+				t.Errorf("slot %s carries part of the revenue series: %q", s.Slot, f)
+			}
+		}
+	}
+}
+
+// A colon label of any length stays with the numbers after it; a label
+// followed by words is split as before (go-slide-creator-5iy8n).
+func TestSplitClausesKeepsALabelWithItsNumbers(t *testing.T) {
+	for _, tt := range []struct {
+		brief string
+		want  []string
+	}{
+		{"Update. Quarterly revenue from Q3 FY25 to Q3 FY26: 43.0, 44.1, 45.6, 46.9, 48.2. Churn rose.",
+			[]string{"Quarterly revenue from Q3 FY25 to Q3 FY26: 43.0, 44.1, 45.6, 46.9, 48.2", "Churn rose"}},
+		{"Update. Net revenue retention in the enterprise segment: 112%; churn 2%",
+			[]string{"Net revenue retention in the enterprise segment: 112%", "churn 2%"}},
+		{"Update. Headcount by site at the end of June: 120, 85 and 40",
+			[]string{"Headcount by site at the end of June: 120, 85 and 40"}},
+		{"Update. Key figures: 41.0, 42.3, 44.1", []string{"41.0, 42.3, 44.1"}},
+		{"Update. What the board asked us to look at this quarter: pricing in the SMB segment",
+			[]string{"What the board asked us to look at this quarter", "pricing in the SMB segment"}},
+	} {
+		if got := factTexts(extractBriefFacts(tt.brief)); !reflect.DeepEqual(got, tt.want) {
+			t.Errorf("%q: facts = %q, want %q", tt.brief, got, tt.want)
+		}
+	}
+	labelled := extractBriefFacts("Update. Quarterly revenue from Q3 FY25 to Q3 FY26: 43.0, 44.1, 45.6, 46.9, 48.2")
+	if len(labelled) != 1 || !labelled[0].list || !labelled[0].series {
+		t.Errorf("a labelled series must classify as a chartable list: %+v", labelled)
+	}
 }
 
 // 58qda: what the budget leaves out is named, and an agenda the brief asks

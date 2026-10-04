@@ -1,5 +1,17 @@
 # Schema Changelog
 
+- **2026-10-04 — `plan_deck` keeps a series and its label in one slot (`go-slide-creator-5iy8n`).**
+  - A colon label longer than four words was split from the numbers after it:
+    `Quarterly revenue from Q3 FY25 to Q3 FY26: 43.0, 44.1, 45.6, 46.9, 48.2`
+    became the fact `43.0, 44.1, …` in the `evidence` slot and the fact
+    `Quarterly revenue from Q3 FY25 to Q3 FY26` — which reads as a dated
+    milestone — in the `closing` slot. A label of any length now stays with
+    the numbers it names, so `slots[].facts` carries the labelled series as
+    one fact on the chart slot. A label followed by words splits as before,
+    and a filler label (`Facts:`, `Key figures:`) is still dropped.
+  - A number list that ends `…, 85 and 40` stays one fact (the last item was
+    split off as `85 and 40`).
+
 - **2026-10-04 — The stale-skill check on entry commands reads the install manifest only (`go-slide-creator-v25ae`).**
   - Measured (`BenchmarkInstalledSkillCheck`, Apple M3, warm file cache): the
     file-by-file check that `get-started`, `capabilities`, `semantic` and
