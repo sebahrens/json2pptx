@@ -394,7 +394,7 @@ func ProcessCompositionProblem(body map[string]any, pattern string) string {
 			return "a step has a type (a decision or other branch shape) the numbered strip cannot draw"
 		}
 		if len(steps) < processStripMin || len(steps) > processStripMax {
-			return fmt.Sprintf("has %d usable steps; the numbered strip holds %d–%d", len(steps), processStripMin, processStripMax)
+			return fmt.Sprintf("it has %d usable steps; the numbered strip holds %d–%d", len(steps), processStripMin, processStripMax)
 		}
 		for i, st := range steps {
 			if n := runeLen(st.Label); n > processStripLabelMax {
@@ -406,7 +406,7 @@ func ProcessCompositionProblem(body map[string]any, pattern string) string {
 		}
 	case "process-flow", processFlowSparsePattern:
 		if len(steps) < processFlowMin || len(steps) > processFlowMax {
-			return fmt.Sprintf("has %d usable steps; the flow holds %d–%d", len(steps), processFlowMin, processFlowMax)
+			return fmt.Sprintf("it has %d usable steps; the flow holds %d–%d", len(steps), processFlowMin, processFlowMax)
 		}
 		for i, st := range steps {
 			// process-flow has no detail zone: the description rides in the

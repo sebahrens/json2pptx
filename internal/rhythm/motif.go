@@ -236,7 +236,7 @@ func motifRecommendations(inputs []Slide, slides []motifSlide, runs []PatternRun
 				Code:       CodeBreakMotifRun,
 				SlideIndex: at,
 				Message: fmt.Sprintf("slides %d–%d use different patterns but draw the same motif (%s) %d times in a row — they read as one repeated slide; give slide %d a different motif",
-					run.Start, run.End, motifLabel(run.Motif), run.Len, at),
+					run.Start+1, run.End+1, motifLabel(run.Motif), run.Len, at+1),
 				RecommendedBreak: suggestMotifBreak(inputs[at]),
 			})
 		}
@@ -244,10 +244,8 @@ func motifRecommendations(inputs []Slide, slides []motifSlide, runs []PatternRun
 
 	if dominant != "" {
 		penalty.dominant = distinctVisuals(slides, dominantSlides) > 1
-		idx := make([]string, len(dominantSlides))
 		var text strings.Builder
-		for i, v := range dominantSlides {
-			idx[i] = fmt.Sprint(v)
+		for _, v := range dominantSlides {
 			text.WriteString(inputs[v].Title + " " + inputs[v].Text + " ")
 		}
 		// Suggest for the deck as a whole from what those slides say; the
@@ -258,7 +256,7 @@ func motifRecommendations(inputs []Slide, slides []motifSlide, runs []PatternRun
 			Code:       CodeMotifDominant,
 			SlideIndex: -1,
 			Message: fmt.Sprintf("%d of %d content slides draw one motif (%s; slides %s) — the deck has one look; redraw some of them in a different motif",
-				len(dominantSlides), total, motifLabel(dominant), strings.Join(idx, ", ")),
+				len(dominantSlides), total, motifLabel(dominant), slideNumberList(dominantSlides)),
 			RecommendedBreak: suggestMotifBreak(probe),
 		})
 	}
@@ -281,8 +279,8 @@ func motifRecommendations(inputs []Slide, slides []motifSlide, runs []PatternRun
 			Code:       CodeContinuationInterrupted,
 			SlideIndex: gap.Between[0],
 			Message: fmt.Sprintf("%s %s%s sits between %q (slide %d) and its continuation %q (slide %d) — a continued exhibit is one unit; move slide %d before slide %d or after slide %d",
-				what, indexList(gap.Between), kind, strings.TrimSpace(inputs[gap.Before].Title), gap.Before,
-				strings.TrimSpace(inputs[gap.After].Title), gap.After, gap.Between[0], gap.Before, gap.After),
+				what, slideNumberList(gap.Between), kind, strings.TrimSpace(inputs[gap.Before].Title), gap.Before+1,
+				strings.TrimSpace(inputs[gap.After].Title), gap.After+1, gap.Between[0]+1, gap.Before+1, gap.After+1),
 			RecommendedBreak: []string{},
 		})
 	}
@@ -302,10 +300,13 @@ func structuralLabel(s Slide) string {
 	return "agenda slide"
 }
 
-func indexList(idx []int) string {
+// slideNumberList writes 0-based slide indices as the 1-based slide numbers a
+// message names: "slide N" in a message is always the slide's number, and the
+// 0-based value is the slide_index field beside it (go-slide-creator-njok5).
+func slideNumberList(idx []int) string {
 	parts := make([]string, len(idx))
 	for i, v := range idx {
-		parts[i] = fmt.Sprint(v)
+		parts[i] = fmt.Sprint(v + 1)
 	}
 	return strings.Join(parts, ", ")
 }

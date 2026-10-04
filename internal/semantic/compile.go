@@ -20,6 +20,15 @@ import (
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 )
 
+// TemplateOverrideWarning says that a call's template replaced the spec's
+// meta.template for that call. Every surface that lets a call name a template
+// (MCP, CLI, and the HTTP compile and render endpoints) reports the override
+// in these words (go-slide-creator-075py).
+func TemplateOverrideWarning(metaTemplate, argTemplate string) string {
+	return fmt.Sprintf("template argument %q overrides meta.template %q for this call only: the spec still pins %q; to keep %q, set meta.template to it (patch [{\"op\":\"replace\",\"path\":\"/meta/template\",\"value\":%q}])",
+		argTemplate, metaTemplate, metaTemplate, argTemplate, argTemplate)
+}
+
 // CompileOptions tunes the compile pass.
 type CompileOptions struct {
 	// Strict is the validation strictness applied before compiling. An empty
@@ -121,7 +130,7 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 		}
 		compiled, links, err := compileSlide(si.Kind, in)
 		if err != nil {
-			return nil, result, fmt.Errorf("slide %d (%s): %w", si.SourceIndex, si.Kind, err)
+			return nil, result, fmt.Errorf("slide index %d (%s): %w", si.SourceIndex, si.Kind, err)
 		}
 		if requiredLayout := forcedLayouts[i]; requiredLayout != "" {
 			compiled.LayoutID = requiredLayout

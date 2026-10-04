@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -98,6 +99,11 @@ type deckRevision struct {
 	Note    string
 	Spec    []byte
 	Changes []slideChange
+	// Template is the template identity the revision was last validated or
+	// rendered on: the deck's own, or the one a call's template argument
+	// named. A diff of two revisions compares each on its own
+	// (go-slide-creator-oqu4a).
+	Template string
 }
 
 // --- slide ids ---
@@ -516,19 +522,28 @@ func (h *deckHandle) inherit(old *deckHandle, tool, note string, now time.Time) 
 	h.Spec, h.NextSlideID = withSlideIDs(h.Spec, next)
 	h.SlideDigests = slideDigests(h.Spec)
 	h.State = specDeckState(h.Filename, h.Spec, h.templateIdentity())
+	evaluated := firstNonEmpty(h.storeEvaluated, h.templateIdentity())
+	h.storeEvaluated = ""
 	if old != nil && string(old.Spec) == string(h.Spec) {
+		h.reevaluatedOn(evaluated)
 		h.applyPendingRender()
 		return
 	}
+	// Each side is compared on the template it was evaluated on, so the row
+	// reads the same as a diff of the two revisions.
 	var before *deckState
 	if old != nil {
 		before = old.State
+		if n := len(old.Revisions); n > 0 {
+			before = before.renderedOn(old.Revisions[n-1].Template)
+		}
 	}
 	h.Revision++
 	rev := deckRevision{
 		Number: h.Revision, Time: now, Tool: tool, Note: note,
-		Spec:    h.Spec,
-		Changes: classifySlideChanges(before, h.State, h.storeMoved),
+		Spec:     h.Spec,
+		Changes:  classifySlideChanges(before, h.State.renderedOn(evaluated), h.storeMoved),
+		Template: evaluated,
 	}
 	revisions := make([]deckRevision, 0, len(h.Revisions)+1)
 	revisions = append(revisions, h.Revisions...)
@@ -538,6 +553,19 @@ func (h *deckHandle) inherit(old *deckHandle, tool, note string, now time.Time) 
 	}
 	h.Revisions = revisions
 	h.applyPendingRender()
+}
+
+// reevaluatedOn records that the current revision was validated or rendered
+// again, on template: the revision keeps the template it was last evaluated
+// on. The revision list is copied, because a stored handle is never mutated.
+func (h *deckHandle) reevaluatedOn(template string) {
+	n := len(h.Revisions)
+	if n == 0 || template == "" || h.Revisions[n-1].Template == template {
+		return
+	}
+	revisions := append([]deckRevision(nil), h.Revisions...)
+	revisions[n-1].Template = template
+	h.Revisions = revisions
 }
 
 // applyPendingRender records a successful render of this revision as the
@@ -657,6 +685,9 @@ type deckRevisionDiff struct {
 	From    int           `json:"from"`
 	To      int           `json:"to"`
 	Changes []slideChange `json:"changes"`
+	// fromTemplate / toTemplate are the templates the two revisions were
+	// evaluated on; the summary names them when they differ.
+	fromTemplate, toTemplate string
 }
 
 // revisionDiffPrefix starts the read value that asks for a diff.
@@ -693,9 +724,13 @@ func (h *deckHandle) diffRevisions(from, to int) (*deckRevisionDiff, error) {
 			return nil, fmt.Errorf("revision %d is not kept for this deck (kept: %s; current: %d)", miss.n, h.keptRevisions(), h.Revision)
 		}
 	}
-	template := h.templateIdentity()
-	before := specDeckState(h.Filename, a.Spec, template)
-	after := specDeckState(h.Filename, b.Spec, template)
+	// Each revision is read on the template it was validated or rendered on,
+	// so a template change made by a call's template argument shows as
+	// restyled slides, like one made in meta.template (go-slide-creator-oqu4a).
+	fromTemplate := firstNonEmpty(a.Template, h.templateIdentity())
+	toTemplate := firstNonEmpty(b.Template, h.templateIdentity())
+	before := specDeckState(h.Filename, a.Spec, fromTemplate)
+	after := specDeckState(h.Filename, b.Spec, toTemplate)
 	if before == nil || after == nil {
 		return nil, fmt.Errorf("revision %d or %d does not parse as a DeckSpec, so the two cannot be compared", from, to)
 	}
@@ -706,7 +741,7 @@ func (h *deckHandle) diffRevisions(from, to int) (*deckRevisionDiff, error) {
 			c.Fields = changedSlideFields(was[c.ID], now[c.ID])
 		}
 	}
-	return &deckRevisionDiff{From: from, To: to, Changes: changes}, nil
+	return &deckRevisionDiff{From: from, To: to, Changes: changes, fromTemplate: fromTemplate, toTemplate: toTemplate}, nil
 }
 
 // slidesByID indexes a spec's authored slides by id.
@@ -754,6 +789,10 @@ func (d *deckRevisionDiff) summary() string {
 	if len(d.Changes) == 0 {
 		return fmt.Sprintf("revision %d and revision %d are identical", d.From, d.To)
 	}
+	restyle := ""
+	if d.fromTemplate != d.toTemplate {
+		restyle = fmt.Sprintf(" (template %s → %s)", templateDisplayName(d.fromTemplate), templateDisplayName(d.toTemplate))
+	}
 	counts := map[string]int{}
 	for _, c := range d.Changes {
 		counts[c.Change]++
@@ -764,5 +803,14 @@ func (d *deckRevisionDiff) summary() string {
 			parts = append(parts, fmt.Sprintf("%d %s", n, class))
 		}
 	}
-	return fmt.Sprintf("revision %d → %d: %s", d.From, d.To, strings.Join(parts, ", "))
+	return fmt.Sprintf("revision %d → %d: %s%s", d.From, d.To, strings.Join(parts, ", "), restyle)
+}
+
+// templateDisplayName is a template identity as a response names it: the
+// registered name, a bring-your-own file's base name, or "none".
+func templateDisplayName(identity string) string {
+	if identity == "" {
+		return "none"
+	}
+	return filepath.Base(identity)
 }

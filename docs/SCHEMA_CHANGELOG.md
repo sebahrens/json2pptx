@@ -1,5 +1,55 @@
 # Schema Changelog
 
+- **2026-10-04 — DeckSpec messages, revisions and the HTTP semantic endpoints (`go-slide-creator-kc3h1`, `-rep2b`, `-075py`, `-jrrp4`, `-oqu4a`, `-njok5`).**
+  - **`SEMANTIC_PATTERN_NOT_AVAILABLE` for a listed composition the payload
+    cannot take is one sentence**: `pattern "process-flow" does not fit this
+    "process" payload: step 1 reads 87 characters with its description; a flow
+    box holds 80 (…), so the override is ignored and the slide compiles to
+    pattern numbered-step-strip; this payload takes: pattern
+    numbered-step-strip`. Without a measured reason it reads `…: its content
+    compiles to pattern pull-quote even with the override, so the override is
+    ignored; this payload takes: …`. Code, path, severity and the `use_one_of`
+    fix are unchanged; the message for an override the kind does not list is
+    unchanged.
+  - **`plan_deck` charts a list written `120, 85 and 40`.** A list whose last
+    value is joined by "and" without a comma is a series and reaches the
+    `evidence` slot (it was one fact, routed as a plain metric). Two values
+    (`85 and 40`) are still a pair. "and" / "or" are never read as a number's
+    unit, so `85 and` is not a bare number.
+  - **One wording for a template override.** `POST /api/v1/semantic/compile`
+    with `?template=` on a spec that pins another `meta.template` returns the
+    warning MCP, the CLI and `POST /api/v1/semantic/render` return (`template
+    argument "X" overrides meta.template "Y" for this call only: …`); it used
+    to word its own (`… for this request only …`).
+  - **`POST /api/v1/semantic/render` admits the `recommend_visual` sample
+    screenshot**, as MCP and the CLI do: that one file, and only while its
+    bytes are the ones the binary draws. A file beside it is still refused,
+    with or without `ALLOWED_IMAGE_PATHS`.
+  - **`explain_deck_spec` is read-only and says so.** Called with `template`
+    on a `deck_id` that has no template (and a spec that pins none), it plans
+    on that template, leaves the `deck_id` unbound and adds a `warnings[]`
+    entry naming the calls that bind it (`validate_deck_spec` /
+    `render_deck_spec` with `template`, or a `/meta/template` patch). The
+    `template` argument's description says the same.
+  - **A revision diff shows a template change made by a call's `template`
+    argument.** Each stored revision records the template it was last
+    validated or rendered on, and `read: "diff:A..B"` reads each side on its
+    own (both sides used to be read on the handle's current template). The
+    slides come back `restyled`, `changed_slides` lists them and `summary`
+    ends `(template A → B)`. A revision's `history` row is classified the same
+    way.
+  - **One slide base in messages, completed.** "slide N" is the 1-based slide
+    number; a 0-based value is "slide index N". `analyze_deck_rhythm`
+    recommendation messages (and the `score_deck` composition diagnostics
+    built from them) printed the 0-based `slide_index` as "slide N" (`slide 0
+    argues from data …`, `at slide 3`, `slides 1, 2, 3`); they now print slide
+    numbers, one more than the `slide_index` beside them. The 0-based values
+    in `submit_visual_review` refusals, the unverifiable-image reason, a
+    DeckSpec compile error and `json2pptx read` errors now say "slide index
+    N". `generate -dry-run` and `validate` already followed the rule;
+    `TestAgentVisibleMessagesFollowTheSlideIndexRule` scans their messages and
+    the rhythm recommendations on a fixture.
+
 - **2026-10-04 — Schema 4.161.0 · follow-ups to the layout and agent-journey wave (label `followup-20261004`).**
   - One version for the dated bullets below this one down to the 4.160.0
     entry (15 beads): two-row `process-flow` and `overrides.rows`, one-line

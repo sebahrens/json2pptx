@@ -121,7 +121,7 @@ func ReadPackage(pkg *pptx.Package) (*Presentation, error) {
 func readSlide(pkg *pptx.Package, info pptx.SlideInfo) (*Slide, error) {
 	slideData, err := pkg.ReadEntry(info.PartPath)
 	if err != nil {
-		return nil, fmt.Errorf("read slide %d: %w", info.Index, err)
+		return nil, fmt.Errorf("read slide index %d: %w", info.Index, err)
 	}
 
 	slide := &Slide{Index: info.Index}
@@ -132,7 +132,7 @@ func readSlide(pkg *pptx.Package, info pptx.SlideInfo) (*Slide, error) {
 	// Parse slide XML.
 	var sld slideDocument
 	if err := xml.Unmarshal(slideData, &sld); err != nil {
-		return nil, fmt.Errorf("parse slide %d XML: %w", info.Index, err)
+		return nil, fmt.Errorf("parse slide index %d XML: %w", info.Index, err)
 	}
 
 	collectShapeTreeCtx(slide, &sld.CSld.SpTree, identityTransform, newReadContext(pkg, info.PartPath))

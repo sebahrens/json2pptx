@@ -174,12 +174,24 @@ func splitClauses(brief string) []briefClause {
 
 // factBareNumber matches a list item that is only a number: "42.3", "€4m",
 // "12%", "and 48.2" — or the two numbers that end a list, "85 and 40".
-var factBareNumber = regexp.MustCompile(`^(?i)(?:(?:and|or)\s+)?[+\-−±]?[$€£¥]?\d[\d.,]*\s*(?:%|[a-z]{1,3})?(?:\s+(?:and|or)\s+[+\-−±]?[$€£¥]?\d[\d.,]*\s*(?:%|[a-z]{1,3})?)?$`)
+// The two capture groups are the numbers' units ("m", "bn", "pts").
+var factBareNumber = regexp.MustCompile(`^(?i)(?:(?:and|or)\s+)?[+\-−±]?[$€£¥]?\d[\d.,]*\s*(%|[a-z]{1,3})?(?:\s+(?:and|or)\s+[+\-−±]?[$€£¥]?\d[\d.,]*\s*(%|[a-z]{1,3})?)?$`)
 
 // isBareNumber reports whether a comma-separated piece is a bare number, which
-// continues the list of numbers before it rather than starting a fact.
+// continues the list of numbers before it rather than starting a fact. A
+// conjunction is never a unit: "85 and" is a number and the start of something
+// else, not 85 of a unit called "and" (go-slide-creator-rep2b).
 func isBareNumber(s string) bool {
-	return factBareNumber.MatchString(s)
+	m := factBareNumber.FindStringSubmatch(s)
+	if m == nil {
+		return false
+	}
+	for _, unit := range m[1:] {
+		if u := strings.ToLower(unit); u == "and" || u == "or" {
+			return false
+		}
+	}
+	return true
 }
 
 // factFillerLabel matches a label that only announces the brief's content.
@@ -666,8 +678,11 @@ var factRisk = regexp.MustCompile(`(?i)\b(?:risks?|threats?|blockers?|headwinds?
 // factSource matches the provenance of the brief's figures.
 var factSource = regexp.MustCompile(`(?i)^sources?\s*:`)
 
-// factNumberList matches three or more comma-separated values: a series.
-var factNumberList = regexp.MustCompile(`\d(?:\.\d+)?\s*%?(?:,\s+(?:and\s+)?[+\-−]?[$€£¥]?\d+(?:\.\d+)?\s*%?){2,}`)
+// factNumberList matches three or more listed values: a series. The last one
+// may be joined by "and" without a comma, so "120, 85 and 40" is the same
+// series as "120, 85, 40" (go-slide-creator-rep2b); "85 and 40" alone is a
+// pair, not a series.
+var factNumberList = regexp.MustCompile(`(?i)\d(?:\.\d+)?\s*%?(?:(?:,\s+(?:and\s+)?[+\-−]?[$€£¥]?\d+(?:\.\d+)?\s*%?){2,}|,\s+[+\-−]?[$€£¥]?\d+(?:\.\d+)?\s*%?\s+and\s+[+\-−]?[$€£¥]?\d+(?:\.\d+)?\s*%?)`)
 
 // classifyFact sets a fact's routing flags from its text. quantity reports
 // whether the clause carries a standalone number at all.

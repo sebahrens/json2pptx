@@ -208,16 +208,16 @@ func narrativeRecommendations(inputs []Slide) []Recommendation { //nolint:gocogn
 		recs = append(recs, Recommendation{
 			Code:             CodeMissingExecutiveSummary,
 			SlideIndex:       at,
-			Message:          fmt.Sprintf("a %d-slide deck has no executive summary — put the answer up front at slide %d: 3–5 bold conclusions, each with its evidence (exec-summary pattern / DeckSpec executive_summary)", n, at),
+			Message:          fmt.Sprintf("a %d-slide deck has no executive summary — put the answer up front at slide %d: 3–5 bold conclusions, each with its evidence (exec-summary pattern / DeckSpec executive_summary)", n, at+1),
 			RecommendedBreak: []string{"exec-summary", "scqa-summary"},
 		})
 	}
 
 	if n >= nextStepsMinSlides && !hasNext {
 		last := n - 1
-		msg := fmt.Sprintf("the deck does not close on next steps — end with the decision or actions requested, each with owner and date (next-steps pattern / DeckSpec next_steps), at slide %d", last)
+		msg := fmt.Sprintf("the deck does not close on next steps — end with the decision or actions requested, each with owner and date (next-steps pattern / DeckSpec next_steps), at slide %d", last+1)
 		if t := lowerTitle(inputs[last]); strings.Contains(t, "thank") || strings.Contains(t, "question") || t == "q&a" {
-			msg = fmt.Sprintf("slide %d closes on %q — replace or precede it with next steps: the decision or actions requested, each with owner and date (next-steps pattern / DeckSpec next_steps)", last, strings.TrimSpace(inputs[last].Title))
+			msg = fmt.Sprintf("slide %d closes on %q — replace or precede it with next steps: the decision or actions requested, each with owner and date (next-steps pattern / DeckSpec next_steps)", last+1, strings.TrimSpace(inputs[last].Title))
 		}
 		recs = append(recs, Recommendation{
 			Code:             CodeMissingNextSteps,
@@ -250,7 +250,7 @@ func narrativeRecommendations(inputs []Slide) []Recommendation { //nolint:gocogn
 		recs = append(recs, Recommendation{
 			Code:             CodeEvidenceMissingTakeawaySrc,
 			SlideIndex:       i,
-			Message:          fmt.Sprintf("slide %d argues from data but has no %s", i, strings.Join(missing, " and no ")),
+			Message:          fmt.Sprintf("slide %d argues from data but has no %s", i+1, strings.Join(missing, " and no ")),
 			RecommendedBreak: []string{},
 		})
 	}
@@ -264,15 +264,11 @@ func narrativeRecommendations(inputs []Slide) []Recommendation { //nolint:gocogn
 		}
 	}
 	if len(bulletSlides) >= bulletsHeavyMinSlides {
-		idx := make([]string, len(bulletSlides))
-		for i, v := range bulletSlides {
-			idx[i] = fmt.Sprint(v)
-		}
 		recs = append(recs, Recommendation{
 			Code:       CodeBulletsHeavy,
 			SlideIndex: -1,
 			Message: fmt.Sprintf("%d slides are bullets only (slides %s) — turn the ones whose content has a shape into a visual: numbers → KPI / chart, options → comparison, dates → timeline, a structure → framework",
-				len(bulletSlides), strings.Join(idx, ", ")),
+				len(bulletSlides), slideNumberList(bulletSlides)),
 			RecommendedBreak: firstN(contentBreakPreferences(textSignals(bulletText.String())), 3),
 		})
 	}
@@ -315,7 +311,7 @@ func accentHeavinessRecommendations(inputs []Slide) []Recommendation {
 				Code:       CodeAccentHeavySlide,
 				SlideIndex: i,
 				Message: fmt.Sprintf("slide %d fills %d cells with solid accent colour — keep accent for the one cell the title is about and give the rest a neutral fill (lt2 or a dk1 tint)",
-					i, s.SolidAccentCells),
+					i+1, s.SolidAccentCells),
 				RecommendedBreak: []string{"shape_grid.rows[].cells[].shape.fill"},
 			})
 		}
@@ -332,7 +328,7 @@ func accentHeavinessRecommendations(inputs []Slide) []Recommendation {
 				Code:       CodeStrongAccentRun,
 				SlideIndex: i,
 				Message: fmt.Sprintf("slides %d–%d are all accent-heavy (AccentWeight strong) — replace one with a normal or subtle pattern so the emphasis still means something",
-					i-strongAccentRunLen+1, i),
+					i-strongAccentRunLen+2, i+1),
 				RecommendedBreak: subtleAlternatives(s),
 			})
 		}

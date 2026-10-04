@@ -5,6 +5,72 @@ import (
 	"testing"
 )
 
+// go-slide-creator-oqu4a: a revision records the template it was validated or
+// rendered on, so a diff shows a template change made by a call's template
+// argument — not only one written to meta.template. Both sides used to be read
+// on the handle's current template, and the change did not show.
+func TestDeckRevisionDiffShowsATemplateArgumentChange(t *testing.T) {
+	mc := handleTestConfig(t)
+	unpinned := strings.Replace(revisionTestSpec, `, "template": "midnight-blue"`, "", 1)
+	validate := func(args map[string]any) deckSpecEnvelopeResponse {
+		t.Helper()
+		return deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, args))
+	}
+	retitle := func(title string) []any {
+		return []any{map[string]any{"op": "replace", "path": "/slides/costs/title", "value": title}}
+	}
+	id := validate(map[string]any{"spec": unpinned, "template": "midnight-blue"}).DeckID
+	// Revision 2 is validated on another template for that call; revision 3
+	// is back on the template the deck is bound to.
+	validate(map[string]any{"deck_id": id, "template": "forest-green", "patch": retitle("Costs fell 9%")})
+	validate(map[string]any{"deck_id": id, "patch": retitle("Costs fell 10%")})
+	h, _ := mc.deckHandles.Load(id)
+	if h.Template != "midnight-blue" || len(h.Revisions) != 3 {
+		t.Fatalf("handle: template=%q revisions=%d, want midnight-blue and 3", h.Template, len(h.Revisions))
+	}
+	for i, want := range []string{"midnight-blue", "forest-green", "midnight-blue"} {
+		if got := h.Revisions[i].Template; got != want {
+			t.Errorf("revision %d records template %q, want %q", i+1, got, want)
+		}
+	}
+
+	for _, tc := range []struct {
+		read, summary string
+		restyled      bool
+	}{
+		{"diff:1..2", "(template midnight-blue → forest-green)", true},
+		{"diff:2..3", "(template forest-green → midnight-blue)", true},
+		{"diff:1..3", "", false},
+	} {
+		got := validate(map[string]any{"deck_id": id, "read": tc.read})
+		if got.Diff == nil || changeOf(got.Diff.Changes, "costs") != slideChangeEdited {
+			t.Fatalf("%s: %+v; want costs edited", tc.read, got.Diff)
+		}
+		if restyled := changeOf(got.Diff.Changes, "s1") == slideChangeRestyled; restyled != tc.restyled {
+			t.Errorf("%s: s1 = %q, restyled want %v", tc.read, changeOf(got.Diff.Changes, "s1"), tc.restyled)
+		}
+		if tc.restyled != strings.Contains(got.Summary, "(template ") || !strings.Contains(got.Summary, tc.summary) {
+			t.Errorf("%s: summary = %q, want it to carry %q", tc.read, got.Summary, tc.summary)
+		}
+		if tc.restyled && len(got.ChangedSlides) != 4 {
+			t.Errorf("%s: changed_slides = %v, want every slide", tc.read, got.ChangedSlides)
+		}
+	}
+	// The history row of a revision reads as the diff with the one before it.
+	history := validate(map[string]any{"deck_id": id, "read": "history"})
+	if changeOf(history.Revisions[1].Changes, "s1") != slideChangeRestyled || changeOf(history.Revisions[2].Changes, "s1") != slideChangeRestyled {
+		t.Errorf("history rows do not show the restyle: %+v", history.Revisions)
+	}
+
+	// A later call on the same revision moves the record with it: revision 3
+	// is rendered on forest-green, so against revision 2 it is no longer
+	// restyled.
+	validate(map[string]any{"deck_id": id, "template": "forest-green"})
+	if got := validate(map[string]any{"deck_id": id, "read": "diff:2..3"}); changeOf(got.Diff.Changes, "s1") != "" || strings.Contains(got.Summary, "(template ") {
+		t.Errorf("diff:2..3 after re-validating revision 3 on forest-green: %+v %q", got.Diff.Changes, got.Summary)
+	}
+}
+
 // go-slide-creator-rq1z9: any two kept revisions can be compared, not only a
 // revision with the one before it. The diff spans every patch between the
 // two, names edited fields, and reads either way round.

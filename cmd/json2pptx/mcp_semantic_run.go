@@ -189,7 +189,7 @@ func resolveSpecTemplate(metaTemplate, argTemplate, argTemplatePath string, src 
 		c.Source = "template argument"
 		c.Override = argTemplate
 		c.Bind = metaTemplate
-		c.Warnings = append(c.Warnings, templateOverrideWarning(metaTemplate, argTemplate))
+		c.Warnings = append(c.Warnings, semantic.TemplateOverrideWarning(metaTemplate, argTemplate))
 		return c
 	case metaTemplate != "":
 		// The spec's own pin is the deck's template, and the handle follows
@@ -221,12 +221,6 @@ func resolveSpecTemplate(metaTemplate, argTemplate, argTemplatePath string, src 
 			firstNonEmpty(argTemplate, argTemplatePath), bound))
 	}
 	return c
-}
-
-// templateOverrideWarning says that the call's template replaced the spec's.
-func templateOverrideWarning(metaTemplate, argTemplate string) string {
-	return fmt.Sprintf("template argument %q overrides meta.template %q for this call only: the spec still pins %q; to keep %q, set meta.template to it (patch [{\"op\":\"replace\",\"path\":\"/meta/template\",\"value\":%q}])",
-		argTemplate, metaTemplate, metaTemplate, argTemplate, argTemplate)
 }
 
 // unpinnedTemplateWarning tells the caller that nothing in the spec fixes the

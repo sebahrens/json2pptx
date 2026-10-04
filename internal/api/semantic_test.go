@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/semantic"
 )
 
 // validDeckSpecJSON is a minimal spec that validates and compiles cleanly.
@@ -168,6 +169,11 @@ func TestSemanticCompileHandler_TemplateOverridesMetaTemplate(t *testing.T) {
 		}
 		if resp.Template != tc.want || len(resp.Warnings) != tc.warnings {
 			t.Errorf("%q: template = %q with warnings %v, want %q and %d warning(s)", tc.query, resp.Template, resp.Warnings, tc.want, tc.warnings)
+		}
+		// One source for the words, shared with MCP, the CLI and the render
+		// endpoint (go-slide-creator-075py).
+		if want := semantic.TemplateOverrideWarning("midnight-blue", "forest-green"); tc.warnings == 1 && len(resp.Warnings) == 1 && resp.Warnings[0] != want {
+			t.Errorf("%q: warning = %q, want %q", tc.query, resp.Warnings[0], want)
 		}
 	}
 }

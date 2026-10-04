@@ -188,7 +188,11 @@ func prependWarning(res *semanticRenderResult, w string) {
 // httpImageAllowList is the image-root allow-list for an HTTP render: the
 // configured roots plus the request's own asset and URL-cache directories.
 // Unlike imageAllowList it never returns nil — an HTTP caller gets no
-// unrestricted access to the server filesystem.
+// unrestricted access to the server filesystem. Like imageAllowList it admits
+// the sample picture a recommend_visual recipe points at, under the same
+// conditions (serverSampleImages: that one file, only while its bytes are the
+// ones this binary draws), so the recipe renders over HTTP as it does over MCP
+// and the CLI (go-slide-creator-075py).
 func httpImageAllowList(configured []string, extra ...string) []string {
 	out := append([]string(nil), configured...)
 	for _, dir := range extra {
@@ -196,7 +200,7 @@ func httpImageAllowList(configured []string, extra ...string) []string {
 			out = append(out, dir)
 		}
 	}
-	return out
+	return append(out, serverSampleImages()...)
 }
 
 // semanticAssetDiagnostics maps blocking asset-resolution diagnostics (raw

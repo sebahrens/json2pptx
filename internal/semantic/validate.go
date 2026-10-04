@@ -1979,13 +1979,21 @@ func validateDeclinedOverride(path string, slide SlideSpec, alternatives []Compo
 		field, requested = "layout", slide.String("layout")
 	}
 	want, _ := requestedComposition(slide, alternatives, planned.Visual.Pattern)
-	reason := "it does not compile"
-	if got, ok := trialComposition(planned, want); ok {
-		reason = "asked for it, this payload still compiles to " + compositionLabel(got)
+	got := compositionLabel(slides.Composition{Pattern: planned.Visual.Pattern, Layout: planned.Visual.Layout})
+	// One sentence: what was asked for, why it cannot apply, what renders
+	// instead (go-slide-creator-kc3h1). outcome is dropped when the reason
+	// already names the composition the slide takes.
+	reason := "it does not compile with the override"
+	outcome := " and the slide compiles to " + got
+	if forced, ok := trialComposition(planned, want); ok {
+		reason = "its content compiles to " + compositionLabel(forced) + " even with the override"
+		if compositionLabel(forced) == got {
+			outcome = ""
+		}
 	}
 	if slide.Kind == KindProcess && want.Pattern != "" {
 		if p := slides.ProcessCompositionProblem(slide.Body, want.Pattern); p != "" {
-			reason = p
+			reason, outcome = p, " and the slide compiles to "+got
 		}
 	}
 	// allowed holds the values of the overridden field that this payload does
@@ -2004,10 +2012,9 @@ func validateDeclinedOverride(path string, slide SlideSpec, alternatives []Compo
 			allowed = append(allowed, c.Layout)
 		}
 	}
-	got := compositionLabel(slides.Composition{Pattern: planned.Visual.Pattern, Layout: planned.Visual.Layout})
 	s.advisoryFix(path+"."+field, diagnostics.CodeSemanticPatternNotAvailable,
-		fmt.Sprintf("%s %q is one of the %q compositions, but this payload cannot take it — %s; the override is ignored and the slide compiles to %s; compositions this payload takes: %s",
-			field, requested, slide.Kind, reason, got, joinOrNone(fits)),
+		fmt.Sprintf("%s %q does not fit this %q payload: %s, so the override is ignored%s; this payload takes: %s",
+			field, requested, slide.Kind, reason, outcome, joinOrNone(fits)),
 		&diagnostics.Fix{
 			Kind:   "use_one_of",
 			Params: map[string]any{"path": path + "." + field, "allowed": allowed},
