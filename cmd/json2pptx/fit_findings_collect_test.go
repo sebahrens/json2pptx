@@ -181,9 +181,20 @@ func TestContrastSwapsToFindings_RepairsOnlyPreciselyMappedRawText(t *testing.T)
 		OriginalColor: "#FFFFFF", ReplacedColor: "#333333", BackgroundColor: "#FFE8D4",
 		SlideIndex: 0, Path: "/slides/0/shape_grid/shapes/1", Source: "shape_grid",
 	}
+	// Generation attributes the swap to the authored element behind shape 1
+	// (SlideSpec.RawShapeSources); the repair and the finding path come from it.
+	swaps := []generator.ContrastSwap{swap}
+	generator.AttributeGridSwaps(swaps, []generator.RawShapeSource{
+		{Path: "/slides/0/shape_grid/rows/0/cells/0/shape/text", Text: input.Slides[0].ShapeGrid.Rows[0].Cells[0].Shape.Text},
+		{Path: "/slides/0/shape_grid/rows/0/cells/1/shape/text", Text: input.Slides[0].ShapeGrid.Rows[0].Cells[1].Shape.Text},
+	}, 0)
+	swap = swaps[0]
 	findings := contrastSwapsToFindings([]generator.ContrastSwap{swap}, input, theme)
 	if len(findings) != 1 || findings[0].Fix == nil {
 		t.Fatalf("authored cell should have an executable repair: %+v", findings)
+	}
+	if findings[0].Path != "/slides/0/shape_grid/rows/0/cells/1/shape/text" {
+		t.Errorf("finding path %q, want the authored cell text", findings[0].Path)
 	}
 	params := findings[0].Fix.Params
 	if params["target"] != "text" || params["from"] != "lt1" || params["to"] != "#333333" ||
@@ -197,8 +208,9 @@ func TestContrastSwapsToFindings_RepairsOnlyPreciselyMappedRawText(t *testing.T)
 		{"grouped swap", func(_ *PresentationInput, s *generator.ContrastSwap) { s.Cells = 2 }},
 		{"inherited run", func(_ *PresentationInput, s *generator.ContrastSwap) { s.Source = "run" }},
 		{"pattern grid", func(in *PresentationInput, _ *generator.ContrastSwap) { in.Slides[0].Pattern = &PatternInput{} }},
-		{"later connector shifts shape indices", func(in *PresentationInput, _ *generator.ContrastSwap) {
-			in.Slides[0].ShapeGrid.Rows = append(in.Slides[0].ShapeGrid.Rows, GridRowInput{Connector: &ConnectorSpecInput{}})
+		{"shape with no authored source", func(_ *PresentationInput, s *generator.ContrastSwap) { s.Authored = nil }},
+		{"shape a pattern wrote", func(_ *PresentationInput, s *generator.ContrastSwap) {
+			s.Authored = &generator.RawShapeSource{Path: "/slides/0/shape_grid/rows/0/cells/1/pattern/rows/0/cells/0/shape/text"}
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

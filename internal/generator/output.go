@@ -785,6 +785,7 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 			slideIndex := slideNum - ctx.calculateStartingSlideNum()
 			var gridSwaps []ContrastSwap
 			shapes, gridSwaps = enforceShapeGridContrast(shapes, ctx.themeColors, ctx.whiteTextSafeHex, slideIndex, ctx.shapeGridBackgrounds[slideNum])
+			AttributeGridSwaps(gridSwaps, spec.RawShapeSources, slideIndex)
 			ctx.contrastSwaps = append(ctx.contrastSwaps, gridSwaps...)
 		}
 		ctx.reportGridReadability(shapes, spec.GridTextRoles, slideNum-ctx.calculateStartingSlideNum())

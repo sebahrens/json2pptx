@@ -147,6 +147,11 @@ type SlideSpec struct {
 	ContrastCheck   *bool            // When non-nil and false, skip WCAG contrast enforcement for this slide
 	SkipFooter      bool             // When true, footer/chrome is suppressed on this slide
 	RawShapeXML     [][]byte         // Pre-generated <p:sp> XML fragments to inject into spTree
+	// RawShapeSources names the authored element behind each RawShapeXML
+	// entry, index for index (nil when the caller does not know). Contrast
+	// repairs on a grid shape are reported at that element
+	// (go-slide-creator-i1x53).
+	RawShapeSources []RawShapeSource
 	// GridTextRoles preserves source paragraph roles for generated grid shapes.
 	// Keys are the shape IDs in RawShapeXML; values retain emitted paragraph
 	// order, including empty paragraphs. Native template chrome is not included.

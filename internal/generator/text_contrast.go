@@ -3,6 +3,7 @@ package generator
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"math"
@@ -38,6 +39,56 @@ type ContrastSwap struct {
 	// a single-shape swap; >1 when the colour was chosen once for a group of
 	// cells that share a text role (go-slide-creator-tnx3e).
 	Cells int
+	// Authored is the authored element behind the one grid shape this swap
+	// repaired (AttributeGridSwaps); nil for a group decision and for every
+	// surface that is not a shape_grid shape.
+	Authored *RawShapeSource
+}
+
+// RawShapeSource is the authored element behind one raw grid shape
+// (SlideSpec.RawShapeXML): the caller that compiled the grid knows it, the
+// contrast pass only knows the shape's index in the list.
+type RawShapeSource struct {
+	// Path is the element's JSON pointer: a cell's shape/text, composite/text/text,
+	// table, diagram, image/text, image/overlay or accent_bar, a row's
+	// connector, a links entry, or the grid itself for a row rule.
+	Path string
+	// Text is the authored text spec of a shape cell, which names the colours
+	// the author wrote; empty for every other element.
+	Text json.RawMessage
+}
+
+// AttributeGridSwaps links each single-shape grid swap to the authored
+// element that produced the shape. The pass names a shape by its index in the
+// list ("/slides/N/shape_grid/shapes/i"); sources is that list's authored
+// side, index for index. Generation and the validate-time prediction both
+// call it, so they name the same element for the same shape
+// (go-slide-creator-i1x53). A swap whose index has no source keeps its
+// flat-index path.
+func AttributeGridSwaps(swaps []ContrastSwap, sources []RawShapeSource, slideIndex int) {
+	if len(sources) == 0 {
+		return
+	}
+	prefix := slidepath.ShapeGrid(slideIndex) + "/shapes/"
+	for i := range swaps {
+		if swaps[i].Cells > 1 || !strings.HasPrefix(swaps[i].Path, prefix) {
+			continue
+		}
+		idx, err := strconv.Atoi(strings.TrimPrefix(swaps[i].Path, prefix))
+		if err != nil || idx < 0 || idx >= len(sources) || sources[idx].Path == "" {
+			continue
+		}
+		swaps[i].Authored = &sources[idx]
+	}
+}
+
+// AuthoredPath is where a contrast finding points: the authored element when
+// the swap is attributed to one, else the surface path the pass recorded.
+func (s ContrastSwap) AuthoredPath() string {
+	if s.Authored != nil {
+		return s.Authored.Path
+	}
+	return s.Path
 }
 
 // annotateContrastSwaps stamps slide/path/source provenance onto a batch of

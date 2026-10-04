@@ -1151,7 +1151,11 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	// after slide-level Pattern/Compose expansion so it covers every grid
 	// path. The same ExpandContext (accent strategy, slide/section indices)
 	// is reused, so nested patterns inherit accent rotation from the deck.
+	// Which cells authored a nested pattern, recorded before expansion replaces
+	// them: a contrast repair inside one is reported at the pattern.
+	nestedCells := nestedPatternCells{}
 	if slide.ShapeGrid != nil {
+		collectNestedPatternCells(slide.ShapeGrid, slidepath.ShapeGrid(i), nestedCells, 0)
 		nestedCtx := patterns.ExpandContext{
 			Metadata:       metadata,
 			ContentZone:    geom.Zone,
@@ -1211,6 +1215,11 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		}
 		if gridResult != nil {
 			spec.RawShapeXML = gridResult.Shapes
+			// ShapeSources carries slide-indexed paths only when the grid was
+			// resolved with its slide number.
+			if slideDiagCtx != nil {
+				spec.RawShapeSources = nestedCells.shapeSources(gridResult.ShapeSources)
+			}
 			spec.GridTextRoles = make(map[uint32][]tokens.TextRole)
 			for _, cell := range gridResult.Cells {
 				if roles := resolvedCellTextRoles(cell, patternCellReadabilityRole(slide, cell.RowIdx)); len(roles) > 0 {

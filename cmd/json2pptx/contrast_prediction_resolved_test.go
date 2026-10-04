@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -184,5 +185,77 @@ func TestContrastPredictionSharesGenerationShapeList(t *testing.T) {
 	}
 	if authoredText == 0 {
 		t.Errorf("no finding names an authored cell's text: %+v", findings)
+	}
+}
+
+// go-slide-creator-x54jd: a pattern nested in a grid cell is expanded for the
+// prediction exactly as generation expands it (expandNestedCellPatternsInBounds
+// in the slide's content rectangle), so both run the contrast pass over one
+// shape list. Resolving the unexpanded grid left the pattern's shapes out.
+// go-slide-creator-i1x53: a shape the nested pattern wrote is attributed to
+// the authored pattern, never to the grid it expanded to.
+func TestContrastPredictionExpandsNestedCellPatterns(t *testing.T) {
+	const slideW, slideH = int64(12192000), int64(6858000)
+	const gridJSON = `{
+		"columns": 2,
+		"rows": [{"cells": [
+			{"shape": {"geometry": "rect", "fill": "accent1", "text": {"content": "Plan", "size": 12, "color": "lt1"}}},
+			{"pattern": {"name": "kpi-2up", "values": [{"big": "42%", "small": "Margin"}, {"big": "3.1x", "small": "Return"}]}}
+		]}]
+	}`
+	parse := func() *ShapeGridInput {
+		var grid ShapeGridInput
+		if err := json.Unmarshal([]byte(gridJSON), &grid); err != nil {
+			t.Fatal(err)
+		}
+		return &grid
+	}
+	zone := contrastResolvedZone(slideW, slideH)
+	content := pptx.RectEmu{X: zone.LeftMargin, Y: zone.TitleBottom, CX: zone.RightEdge - zone.LeftMargin, CY: zone.FooterTop - zone.TitleBottom}
+	theme := &types.ThemeInfo{Colors: contrastResolvedTheme}
+
+	// Generation: expand in place, then resolve (convertSinglePresentationSlide).
+	generated := parse()
+	if err := expandNestedCellPatternsInBounds(generated, patterns.ExpandContext{
+		ContentZone: zone, SlideWidth: slideW, SlideHeight: slideH,
+		LayoutBounds: patterns.LayoutBounds{X: content.X, Y: content.Y, Width: content.CX, Height: content.CY},
+		Theme:        *theme,
+	}, content, patterns.Default(), true); err != nil {
+		t.Fatal(err)
+	}
+	rendered := generationGridShapes(t, generated, zone, slideW, slideH)
+
+	authored := parse()
+	predicted, sources := predictedSlideGridShapes(authored, 0, nestedExpansionGeometry{
+		geom: GridGeometry{Zone: zone}, contentBounds: content, slideWidth: slideW, slideHeight: slideH, theme: theme,
+	})
+	if predicted == nil {
+		t.Fatal("no predicted shapes for a grid generation renders")
+	}
+	if len(authored.Rows[0].Cells[1].Pattern) == 0 || authored.Rows[0].Cells[1].Grid != nil {
+		t.Error("the prediction expanded the authored grid in place")
+	}
+	if len(predicted.Shapes) != len(rendered.Shapes) || len(rendered.Shapes) < 3 || len(sources) != len(predicted.Shapes) {
+		t.Fatalf("predicted %d shapes / %d sources, generation %d (want the cell plus the pattern's shapes)",
+			len(predicted.Shapes), len(sources), len(rendered.Shapes))
+	}
+	inPattern := 0
+	for i := range rendered.Shapes {
+		if !bytes.Equal(predicted.Shapes[i], rendered.Shapes[i]) {
+			t.Errorf("shape %d (%s) differs from the one generation writes:\npredicted  %s\ngeneration %s",
+				i, sources[i].Path, predicted.Shapes[i], rendered.Shapes[i])
+		}
+		if strings.Contains(sources[i].Path, "/cells/1/grid") {
+			t.Errorf("shape %d is attributed to the expanded grid %s; the author wrote a pattern", i, sources[i].Path)
+		}
+		if strings.HasPrefix(sources[i].Path, "/slides/0/shape_grid/rows/0/cells/1/pattern") {
+			inPattern++
+			if len(sources[i].Text) != 0 {
+				t.Errorf("shape %d of the nested pattern carries an authored text spec; no cell-level repair applies", i)
+			}
+		}
+	}
+	if inPattern == 0 {
+		t.Errorf("no shape is attributed to the nested pattern: %+v", sources)
 	}
 }

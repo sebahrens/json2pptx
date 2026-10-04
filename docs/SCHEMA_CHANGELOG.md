@@ -1,5 +1,23 @@
 # Schema Changelog
 
+- **2026-10-04 — `contrast_autofixed` names the authored element; contrast prediction expands nested cell patterns (`go-slide-creator-i1x53`, `go-slide-creator-x54jd`).**
+  - A `contrast_autofixed` finding on one `shape_grid` shape was reported at
+    the flat rendered index `/slides/N/shape_grid/shapes/{n}`. It is now
+    reported at the authored element behind that shape
+    (`…/rows/R/cells/C/shape/text`, `composite/text/text`, `image/text`,
+    `table`, …) — the path `contrast_predicted` gives the same shape at
+    validate time. Pattern slides report under `/slides/N/pattern`, and a
+    DeckSpec finding's `semantic_path` follows from the source map. A shape
+    with no authored element (a row rule) keeps the flat index.
+  - The `replace_color` fix on `contrast_autofixed` follows the rule validate
+    uses: offered when the element is a raw grid cell whose authored text
+    names the replaced color. Grids with connectors, spans or groups, which
+    never got a fix at generate time, now get the one validate offered.
+  - The validate-time prediction expands a pattern nested in a grid cell
+    before resolving the grid, as generation does, so both run the contrast
+    pass over one shape list. A decision inside the nested pattern is
+    reported under `…/cells/C/pattern` on both sides, without a single-cell fix.
+
 - **2026-10-04 — Schema 4.161.0 · follow-ups to the layout and agent-journey wave (label `followup-20261004`).**
   - One version for the dated bullets below this one down to the 4.160.0
     entry (15 beads): two-row `process-flow` and `overrides.rows`, one-line

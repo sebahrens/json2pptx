@@ -91,6 +91,24 @@ func TestCompiledGridContrastPreflightMatchesGeneration(t *testing.T) {
 					t.Errorf("shared swap must not offer a single-cell repair: %+v", predicted[i].Fix)
 				}
 			}
+			// go-slide-creator-i1x53: generation reports each swap where
+			// validate predicted it — the authored cell text for a single
+			// shape, never the flat /shape_grid/shapes/{n} index — and offers
+			// the fix validate offers.
+			reported := contrastSwapsToFindings(actual, input, theme)
+			for i, f := range reported {
+				if f.Path != predicted[i].Path {
+					t.Errorf("generation reports swap %d at %s, validate predicts it at %s", i, f.Path, predicted[i].Path)
+				}
+				if actual[i].Cells < 2 && f.Path != "/slides/0/shape_grid/rows/0/cells/0/shape/text" {
+					t.Errorf("single-shape swap reported at %s, want the authored cell text", f.Path)
+				}
+				if (f.Fix == nil) != (predicted[i].Fix == nil) {
+					t.Errorf("swap %d: generation fix %+v, validate fix %+v", i, f.Fix, predicted[i].Fix)
+				} else if f.Fix != nil && (f.Fix.Params["path"] != predicted[i].Fix.Params["path"] || f.Fix.Params["from"] != predicted[i].Fix.Params["from"]) {
+					t.Errorf("swap %d: generation fix %+v, validate fix %+v", i, f.Fix.Params, predicted[i].Fix.Params)
+				}
+			}
 		})
 	}
 }
