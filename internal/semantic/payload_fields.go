@@ -259,7 +259,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 	KindKPISnapshot: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
 		"takeaway": strField("One-line takeaway footer."),
-		"kpis":     {typ: "array", desc: "2–6 KPI objects {value, label, delta?, comparator?}; value and delta ≤12 chars each. comparator (alias vs, ≤24 chars) is the reference the number is read against, e.g. \"vs plan +4 pts\".", itemKeys: kpiItemKeys},
+		"kpis":     {typ: "array", desc: "2–6 KPI objects {value, label, delta?, comparator?}; value and delta ≤12 chars each (with 5 or 6 KPIs a value holds about 11 or 9 digits on one line on the narrowest template). comparator (alias vs, ≤24 chars) is the reference the number is read against, e.g. \"vs plan +4 pts\".", itemKeys: kpiItemKeys},
 		"metrics":  {typ: "array", desc: "Alias for kpis.", itemKeys: kpiItemKeys},
 	}, compositionFields()), universalFields()),
 	KindChartInsight: withFields(withFields(map[string]payloadField{

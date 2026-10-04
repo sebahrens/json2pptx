@@ -287,7 +287,7 @@ func kpiOverridesSchema(style *Schema) *Schema {
 			"accent":           StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
 			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
 			"big_size":         NumberSchema(6, 120).WithDescription("Font size for big number in points (kpi-Nup default 40, stepping to 28 then 24 in an area too short for it)"),
-			"small_size":       NumberSchema(6, 120).WithDescription("Font size for small caption in points (kpi-Nup default 14, 12 on the smaller value steps)"),
+			"small_size":       NumberSchema(6, 120).WithDescription("Font size for small caption in points (kpi-Nup default 14, 12 on the smaller value steps and whenever a long value is fitted below 18pt, so the value stays the larger line)"),
 			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation: uniform (default, all cells same accent), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
 		},
 		nil,
@@ -529,6 +529,38 @@ func kpiValueFits(value, font string, sizePt, widthPt float64) bool {
 	return measuredLines(value, font, true, sizePt, textfit.AtomicTokenWidthPt(font, widthPt)) <= 1
 }
 
+// KPIValueLineBudget is how many characters of a figure one kpi-Nup card of an
+// n-KPI row holds on one line on ctx's template: digits at the smallest size
+// a value is fitted to, in the default open strip, capped at the hard
+// maximum. It is the measure the BODY_TOO_LONG finding applies to a value
+// (kpiValueFits over the card's text width), taken with digits, so a value of
+// this many digits is never reported and one more is. Capitals and "M" run
+// wider than digits, punctuation narrower: the finding quotes the count for
+// the value's own glyphs. The fixed 12-character maximum holds for two to
+// four KPIs on the shipped templates; five and six hold fewer on the
+// wide-faced ones (go-slide-creator-6xgxm).
+func KPIValueLineBudget(ctx ExpandContext, n int) int {
+	if n < 1 {
+		n = 1
+	}
+	width := kpiCardGeometryWithGap(ctx, n, ctx.Gap(kpiOpenGapPt)).valueWidthPt(nil, "")
+	for k := kpiNupBigMaxChars; k > 1; k-- {
+		if kpiValueFits(strings.Repeat("0", k), ctx.Theme.BodyFont, kpiMinBigSize, width) {
+			return k
+		}
+	}
+	return 1
+}
+
+// kpiNupTightFromCount is the KPI count from which a card of a shipped
+// template holds fewer digits than the hard maximum; kpiNupNarrowestBudget is
+// KPIValueLineBudget on the narrowest shipped template for those counts, the
+// numbers the pattern schema states (TestKPIValueBudgetStatedPerCount holds
+// them to the measure).
+const kpiNupTightFromCount = 5
+
+var kpiNupNarrowestBudget = map[int]int{5: KPIValueFiveMax, 6: KPIValueSixMax}
+
 // kpiNupSteps is the type ladder a KPI row walks when its area is too short
 // for the 40pt figure: value and caption, largest first. The last step is the
 // minimum — below a 24pt figure over a 12pt caption the row is refused rather
@@ -612,6 +644,15 @@ func measureKPIRow(ctx ExpandContext, cells []KPICell, gapPt, bigSize, smallSize
 		iconScales: make([]float64, len(cells)),
 	}
 	lay.bigSize = kpiFitBigSize(ctx, cells, bigSize, est, lay.iconPos)
+	// A value fitted down below the lead step is written at the subhead step
+	// (the grid settles sizes onto the type scale), which is where a 14–16pt
+	// caption is written too: six long values read at the size of their
+	// captions (go-slide-creator-6xgxm). The caption then takes the body
+	// step, so the bold value stays the larger line.
+	if lay.bigSize < scaleLeadPt && smallSize > scaleBodyPt {
+		smallSize = scaleBodyPt
+		lay.smallSize = smallSize
+	}
 
 	font := ctx.Theme.BodyFont
 	widthOf := func(i int) float64 { return est.valueWidthPt(cells[i].Icon, lay.iconPos) }

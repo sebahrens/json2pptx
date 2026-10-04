@@ -1,6 +1,10 @@
 package slides
 
-import "github.com/sebahrens/json2pptx/internal/patterns"
+import (
+	"fmt"
+
+	"github.com/sebahrens/json2pptx/internal/patterns"
+)
 
 // Budget is one authored field's fixed text budget: the limit the compiler and
 // validation hold the field to before the slide degrades or is refused. It is
@@ -34,7 +38,7 @@ var kindBudgets = map[string][]Budget{
 	},
 	"kpi_snapshot": {
 		{Field: "kpis", MinItems: 2, MaxItems: 6},
-		{Field: "kpis[].value", MaxChars: patterns.KPIValueMax},
+		{Field: "kpis[].value", MaxChars: patterns.KPIValueMax, Note: fmt.Sprintf("2–4 KPIs; on one line a value holds about %d digits with 5 KPIs and %d with 6 on the narrowest shipped template (measured per template)", patterns.KPIValueFiveMax, patterns.KPIValueSixMax)},
 		{Field: "kpis[].delta", MaxChars: patterns.KPIDeltaMax},
 		{Field: "kpis[].comparator", MaxChars: patterns.KPIComparatorMax},
 	},

@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/semantic"
 )
 
@@ -102,6 +105,12 @@ func TestListSlideKindsBudgetsAreOptIn(t *testing.T) {
 	tightest := listSlideKindBudgets(t, map[string]any{"fields": []any{"budgets"}})
 	if tightest.BudgetBasis == nil || tightest.BudgetBasis.Template != "" || len(tightest.BudgetBasis.Templates) != len(embeddedTemplateNames()) {
 		t.Fatalf("budget_basis = %+v, want the shipped templates", tightest.BudgetBasis)
+	}
+	// The numbers the pattern schema and the kpis field description state for
+	// five and six KPIs are the tightest shipped template's (go-slide-creator-6xgxm).
+	wantNote := fmt.Sprintf("%d with 5 KPIs, %d with 6 KPIs", patterns.KPIValueFiveMax, patterns.KPIValueSixMax)
+	if got := tightest.budget(t, "kpi_snapshot", "kpis[].value"); got.Basis != "measured" || got.MaxChars != patterns.KPIValueMax || !strings.Contains(got.Note, wantNote) {
+		t.Errorf("kpis[].value across the shipped templates = %+v, want %d and %q", got, patterns.KPIValueMax, wantNote)
 	}
 	for _, name := range embeddedTemplateNames() {
 		own := listSlideKindBudgets(t, map[string]any{"template": name})
@@ -231,6 +240,24 @@ func TestSlideKindBudgetsAgreeWithRenderFindings(t *testing.T) {
 			}
 			combined := budgets.budget(t, "stat", "label+context+source")
 			kpis := []any{map[string]any{"value": "118%", "label": "Net retention"}, map[string]any{"value": "$4.2M", "label": "New ARR"}}
+			// go-slide-creator-6xgxm: the value budget is measured per KPI
+			// count. Six values of exactly that many digits fit; one digit
+			// more is reported, quoting the budget.
+			value := budgets.budget(t, "kpi_snapshot", "kpis[].value")
+			sixBudget := value.MaxChars
+			if m := regexp.MustCompile(`(\d+) with 6 KPIs`).FindStringSubmatch(value.Note); m != nil {
+				sixBudget, _ = strconv.Atoi(m[1])
+			}
+			if value.Basis != "measured" || sixBudget < 6 || sixBudget > value.MaxChars {
+				t.Fatalf("kpis[].value budget = %+v (six KPIs: %d), want a measured budget", value, sixBudget)
+			}
+			sixKPIs := func(digits int) []any {
+				out := make([]any, 6)
+				for i := range out {
+					out[i] = map[string]any{"value": strings.Repeat("8", digits), "label": fmt.Sprintf("Metric %d", i+1)}
+				}
+				return out
+			}
 
 			within := renderSpecDiagnostics(t, map[string]any{
 				"meta": map[string]any{"title": "Budgets", "template": name},
@@ -238,11 +265,12 @@ func TestSlideKindBudgetsAgreeWithRenderFindings(t *testing.T) {
 					map[string]any{"kind": "title", "title": wordsWithin(budgets.budget(t, "title", "title").MaxCharsPerLine)},
 					map[string]any{"kind": "section", "title": wordsWithin(budgets.budget(t, "section", "title").MaxCharsPerLine)},
 					map[string]any{"kind": "kpi_snapshot", "title": wordsWithin(budgets.budget(t, "kpi_snapshot", "title").MaxCharsPerLine), "kpis": kpis, "takeaway": wordsWithin(takeaway.MaxChars * 3 / 4)},
+					map[string]any{"kind": "kpi_snapshot", "title": "Six numbers", "kpis": sixKPIs(sixBudget)},
 					map[string]any{"kind": "closing", "title": wordsWithin(budgets.budget(t, "closing", "title").MaxCharsPerLine), "subtitle": "Thank you"},
 				},
 			})
 			for _, d := range within {
-				if titleCodes[d.Code] || (d.Code == "BODY_TOO_LONG" && d.onTakeaway()) {
+				if titleCodes[d.Code] || (d.Code == "BODY_TOO_LONG" && (d.onTakeaway() || strings.Contains(d.Path, "/kpis/"))) {
 					t.Errorf("copy inside the reported budgets drew %s at %s: %s", d.Code, d.Path, d.Message)
 				}
 			}
@@ -256,8 +284,21 @@ func TestSlideKindBudgetsAgreeWithRenderFindings(t *testing.T) {
 					// Two points degrade to bullets on the One Content layout;
 					// the pattern slides above sit on Blank + Title.
 					map[string]any{"kind": "executive_summary", "title": "Two points", "points": []any{"Margin grew", "Churn fell"}, "takeaway": wordsWithin(takeaway.MaxChars * 2)},
+					map[string]any{"kind": "kpi_snapshot", "title": "Six numbers", "kpis": sixKPIs(min(sixBudget+1, 12))},
 				},
 			})
+			sawValue := false
+			for _, d := range past {
+				if d.Code == "BODY_TOO_LONG" && strings.HasPrefix(d.Path, "/slides/3/kpis/") {
+					sawValue = true
+					if d.quotedMaxChars() != sixBudget {
+						t.Errorf("KPI value finding at %s quotes max_chars %d, list_slide_kinds reports %d for six KPIs: %s", d.Path, d.quotedMaxChars(), sixBudget, d.Message)
+					}
+				}
+			}
+			if sawValue != (sixBudget < 12) {
+				t.Errorf("six KPI values one digit past the %d-digit budget: reported = %v", sixBudget, sawValue)
+			}
 			var sawCombined bool
 			tightestQuote, takeaways := 0, 0
 			for _, d := range past {
