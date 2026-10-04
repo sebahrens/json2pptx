@@ -64,8 +64,7 @@ preconditions, [RAW_PATH.md](RAW_PATH.md); the four phases are in
   `INVALID_PARAMETER` naming the argument instead of being ignored.
   Every candidate — pattern, layout, chart, diagram, compose,
   `raw_shape_grid` — carries `data_contract` (`form`: `deckspec_kind` |
-  `raw_json2pptx`, `required_keys`, `optional_keys`, `limits[] {path,
-  min_items, max_items, max_chars}`, `field_path`) and a runnable
+  `raw_json2pptx`, its keys and `limits[]`) and a runnable
   `next_tool_call` (`render_deck_spec`, a one-slide DeckSpec). When a kind
   compiles to the candidate it has `deckspec {kind, fields, aliases,
   example_path}` and the call renders that kind (`table-highlight` →
@@ -82,8 +81,7 @@ preconditions, [RAW_PATH.md](RAW_PATH.md); the four phases are in
   timeline lower-right") returns the `regions` kind first (category
   `deckspec_kind`) and the raw `compose:` form of the same slide just below
   it. A `compose` candidate carries a `composition` (`direction`,
-  `regions[]` with `category`, `name`, `size_pct`, `position`,
-  `segment_path`, nested `compose` and a per-region `data_contract`).
+  `regions[]`, each with its `data_contract`).
   `compose:<a>+<b>` names (charts / diagrams as `chart:<type>` /
   `diagram:<type>`) resolve in `candidates`; a malformed one returns score 0
   and the reason.
@@ -100,11 +98,8 @@ preconditions, [RAW_PATH.md](RAW_PATH.md); the four phases are in
   Prefer them to static enumerations.
 - `preview_slide_wireframe` is structural-only and cannot prove visual fit.
   `render_deck_thumbnails` returns JPEG blocks (`image_mime_type`, top
-  level) beside full-resolution PNG `slides[].path`; review at the default
-  density and, when text of 12pt or less cannot be read, send its
-  `larger_render` `{when, tool, args_template}` (one slide at `density:
-  100`, 1280 px). A render step's `next_tool_call` carries `known_hashes`
-  on a repeat pass (WORKFLOW.md). `slide_indices` takes slide ids beside
+  level) beside full-resolution PNG `slides[].path`; `larger_render` and a
+  repeat pass's `known_hashes`: WORKFLOW.md → Phase 4. `slide_indices` takes slide ids beside
   0-based indices (`[4, "costs"]`) for a file `render_deck_spec` or CLI
   `semantic render` wrote, and each slide carries `id`. Rendering alone is
   not inspection.
@@ -119,8 +114,7 @@ preconditions, [RAW_PATH.md](RAW_PATH.md); the four phases are in
 - `register_template_setting` and `delete_template_setting` are write
   tools gated by `JSON2PPTX_ALLOW_SETTINGS_WRITE=1`, never part of ordinary
   deck authoring. `json2pptx skill cli-map` prints each tool's CLI command
-  (generated; an MCP-only tool says why; `cli_then` is a second command:
-  `semantic kinds`, then `semantic kinds <kind>`), and `json2pptx
+  (an MCP-only tool says why; `cli_then` is a second command), and `json2pptx
   get-started --tool <name>` one tool's description, schema and `cli`.
 - Results use compact `structuredContent`; `content[0].text` may be a
   bounded synopsis, so read the structured data. A tool's `next_tool_call`
@@ -141,5 +135,4 @@ equivalent: `list_patterns` → `show_pattern` (`example_values`) →
 `expand_pattern` on the template → `render_slide_image_from_json`.
 
 For a comparison under one template, `expand_patterns` can replace repeated
-expansion calls. For template conformance, the CLI `template-check` remains
-the authoring/CI command; `examine_template` is read-only MCP inspection.
+expansion calls.

@@ -98,7 +98,8 @@ with exactly one of `name`, `path`, `url`, `svg_data`; inline SVG ignores a
 The separate `svggen-mcp` server builds diagrams: its `get_started` and
 `get_diagram_schema`, then `validate_diagram` and `render_diagram`. For the
 deck palette, pass `resolve_theme`'s `theme_colors` (same template and
-`theme_override`) to each diagram's `style.theme_colors`. Run
+`theme_override`) to each diagram's `style.theme_colors`; `validate_input`
+judges contrast against the deck's `theme_override` colours too. Run
 `validate_input` with the fit report after embedding a chart or diagram; a
 collision or unreadable native text means shorter labels or more space, then
 render the slide again.
@@ -126,7 +127,8 @@ The storyline rules (QUALITY.md) are the same on this path. `plan_deck`
 (default `format: "raw"`) returns ordered slides with a canonical `layout`
 (`title` first, `closing` last, `blank-title` + a pattern between), a
 `recommended_pattern`, narrative role and `content_seed`, with brief facts
-verbatim in `facts[]` and the rest in `unplaced_facts[]`; region clauses plan
+verbatim in `facts[]` and the rest in `unplaced_facts[]` (a metric written
+as three or more values routes to `chart-insights-split`); region clauses plan
 one `composition` slide (misses in `unsupported_regions[]`). Each slide's
 `skeleton` is a partial `SlideInput`: copy it, replace every `__FILL__`,
 review the typed choices in its `__CHOOSE__` speaker note and delete that
@@ -153,10 +155,8 @@ visual motif, whatever patterns drew them; target none), `motif_share`,
 `composition_score` and `recommendations` with `recommended_break_patterns`
 and a `code` ("slide N" in a `message` is 1-based, one more than its
 `slide_index`). `per_slide[].motif` is what the slide looks like (`tiles`,
-`open-columns`, `open-list`, `table`, `chart`, `diagram`, `flow`,
-`hero-number`, `quote`, `split`, `text`, `image`, or `none`); an explicit
-style changes it (`stylish-panels` `ribbon` and `kpi-Nup` `tiles` are
-`tiles`). Swap the middle slide of a run of 3 (`break_run`;
+`open-columns`, `open-list`, `flow`, `chart`, …); an explicit style changes
+it (`stylish-panels` `ribbon` is `tiles`). Swap the middle slide of a run of 3 (`break_run`;
 `break_motif_run` when the patterns differ but the look does not) to a
 suggested pattern; keep `(1/2)` / `(2/2)` parts adjacent
 (`continuation_interrupted`); add detail or a smaller grid when

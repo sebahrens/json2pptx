@@ -208,7 +208,7 @@ submitted and approved, or you have said exactly what could not be verified.
 ## Automated vision QA (`inspect_slide_images`)
 
 `inspect_slide_images` (CLI `json2pptx inspect`) runs the Claude-vision QA
-agent on rendered images (`{index, path | png_base64, slide_type?, title?}`):
+agent on rendered images:
 per-slide findings whose `suggested_fixes[]` map to `repair_slide` kinds,
 plus a `findings` FindingEnvelope (P0/P1 → `error`). Without
 `ANTHROPIC_API_KEY` it is `mode:"heuristic"` (blank / edge-overflow /

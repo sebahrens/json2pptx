@@ -19,7 +19,7 @@ in the rendered slides.
 | 5 | Row `height` is a percentage of `bounds.height` | Rows without height split remaining space equally |
 | 6 | One content type per cell: `shape`, `table`, `icon`, `image`, `diagram`, `composite`, `pattern`, or `grid` | Combining silently drops content |
 | 6a | `composite: {text: {...shape...}, sub_diagram: {...}, split: "top"\|"bottom", ratio: 0.0–1.0}` packs a native text shape and an embedded chart into one cell, split vertically (KPI + sparkline, headline + mini chart). `split` defaults to `"top"` (text above); `ratio` (text share) to 0.5. No other content key on the same cell | One cell instead of hand-tuned adjacent cells |
-| 6b | `card-grid` cells and `icon-row` items accept one optional `secondary: {type, values, categories?, color?}`: `type` is `sparkline`, `bar` or `line` (`bar_chart` / `line_chart` still accepted); `values` 2–12 numbers; `categories` (if set) the same length. E.g. `{"header": "Revenue", "body": "Q1–Q4 trend", "secondary": {"type": "sparkline", "values": [100, 120, 110, 145]}}` | Expands to a composite cell automatically, keeping pattern-level validation |
+| 6b | `card-grid` cells and `icon-row` items accept one optional `secondary: {type, values, categories?, color?}`: `type` is `sparkline`, `bar` or `line` (`bar_chart` / `line_chart` still accepted); `values` 2–12 numbers; `categories` (if set) the same length | Expands to a composite cell automatically, keeping pattern-level validation |
 | 6c | A cell may host a nested layout via `pattern: {name, values, overrides?, cell_overrides?}` (the slide-level payload) or `grid: {…ShapeGridInput…}`, rendered inside the cell with a 4pt inset; exclusive with each other and every other content key. Nested patterns inherit the deck's `accent_strategy` at the parent's slide/section index. E.g. a `kpi-3up` in a `matrix-2x2` quadrant | Avoids slide-level `compose` for one embedded block |
 | 6d | A raster `image` cell takes optional `geometry`: `"rect"` (default) or `"ellipse"` (clips to an ellipse; pair with `fit: "contain"` for a circular headshot), and `image.fit`: `"cover"` (default, crops to fill) or `"contain"` (whole picture, centred — screenshots) | Only frame / placement changes; other values fail validation |
 | 6e | Row `connector: {style, color, width}` chains the visible cells of ONE row. For a flow across rows (swimlane hand-off) add grid-level `links: [{"from": [row, col], "to": [row, col], "connector": {...}}]`, each cell given by row and starting grid column | Same-column links run straight down; others turn in the column gutter, so set `col_gap` ≥ 10. Links to a spacer (no fill, no outline) are dropped |
@@ -29,7 +29,9 @@ in the rendered slides.
 In raw `shape_grid` text, bullet a paragraph with `paragraphs[].bullet: true`
 (or `"–"`) — a real hanging-indent bullet — never a typed "• ". A typed
 leading number renders as typed: only two or more consecutive lines numbered
-1, 2, 3 … become an auto-numbered list.
+1, 2, 3 … become an auto-numbered list. `shape.flip_h: true` mirrors a
+chevron / arrow for a right-to-left row (text stays upright); do not rotate
+it 180°.
 
 ## Typography Hierarchy (shape_grid)
 
@@ -69,7 +71,7 @@ The table publishes the type-scale tokens in [`internal/tokens/typography.go`](.
 
 | # | Rule | Rationale |
 |---|---|---|
-| 10b | Chart and matrix slides MUST set `slide.takeaway` (one sentence — the headline answer). | Omission emits `takeaway_missing`. It renders as 14pt bold dk1 text beside a flush 3pt accent1 bar (no fill, no outline) above the source/footer, spanning the body column with 16pt of air above and 12pt below; content frames shrink above it. Budget two lines. Without room, the band is skipped and preflight emits `chrome_band_no_fit`. |
+| 10b | Chart and matrix slides MUST set `slide.takeaway` (one sentence — the headline answer). | Omission emits `takeaway_missing`. It renders as 14pt bold text beside a 3pt accent bar above the source/footer; content frames shrink above it. Budget two lines. Without room, the band is skipped and preflight emits `chrome_band_no_fit`. |
 
 ```json
 {"layout_id": "blank-title", "takeaway": "Margin contraction is driven by the EU region — not company-wide.",
@@ -87,7 +89,7 @@ The table publishes the type-scale tokens in [`internal/tokens/typography.go`](.
 | 14 | `vertical_align`: `"t"`, `"ctr"`, `"b"` | NOT `"top"`, `"middle"`, `"bottom"` |
 | 15 | Template names come from `list_templates` (MCP) or `json2pptx templates` (CLI); never assume a fixed list | Compact discovery returns `canonical_layout_ids`, `color_roles` (`white_text_safe_body` 4.5:1, `white_text_safe_large` 3:1, `ink_on_accent`) and `table_styles[]`; `fields="full"` adds `layout_names`. A template with an `error` field failed analysis — do not use it |
 
-**`placeholder_id` per layout:** `title`/`closing` → `title`, `subtitle`; `content` → `title`, `body`; `two-column` → `title`, `body`, `body_2`; `blank-title` (and `blank`) → `title` only (body in `shape_grid`); `blank-canvas` → none; `section` → `title` (a section `subtitle` is unsupported: use a layout with one or a `shape_grid` text box). Per-template lists: `json2pptx skill-info` or `list_templates`.
+**`placeholder_id` per layout** (each content item needs one the layout has; generate refuses otherwise, as validate does)**:** `title`/`closing` → `title`, `subtitle`; `content` → `title`, `body`; `two-column` → `title`, `body`, `body_2`; `blank-title` (and `blank`) → `title` only (body in `shape_grid`); `blank-canvas` → none; `section` → `title` (a section `subtitle` is unsupported: use a layout with one or a `shape_grid` text box). Per-template lists: `json2pptx skill-info` or `list_templates`.
 
 Section dividers are numbered `01`, `02`, … automatically; omit the `Section Number` placeholder (`auto_filled: true` in discovery marks it engine-owned). In a two-column comparison, open each column's bullets with a short label line to get a bold column header.
 
@@ -95,7 +97,7 @@ Section dividers are numbered `01`, `02`, … automatically; omit the `Section N
 
 | # | Rule | Rationale |
 |---|---|---|
-| 16 | The engine replaces low-contrast text (WCAG AA for its size: 3:1 only at ≥18pt / ≥14pt bold) with a template text color (`lt1`/`dk2`/`dk1`), one per fill per slide. A brand-coloured run (accent KPI value, stat, insight header) is judged at its OWN size: passing large accent text keeps the accent, failing text is darkened minimally in its hue. A pattern accent fill whose white label fails gets a minimal `shade` of that accent; only a pale accent or tint takes dark ink. Text matching a transparent cell's canvas (hidden on purpose) is never recolored. Check `fit_findings` `contrast_autofixed` (before/after ratios) before re-authoring colors: it is reported at the authored element (`/slides/N/shape_grid/rows/R/cells/C/shape/text`; under `/slides/N/pattern` on a pattern slide), the path `contrast_predicted` names at validate, with a `replace_color` fix on an authored raw grid cell | Fix: a darker accent fill, `dk1` text, or `"contrast_check": false` (last resort, after checking contrast yourself) |
+| 16 | The engine replaces low-contrast text (WCAG AA for its size: 3:1 only at ≥18pt / ≥14pt bold) with a template text color (`lt1`/`dk2`/`dk1`), one per fill per slide. A brand-coloured run (accent KPI value, stat, insight header) is judged at its OWN size: passing large accent text keeps the accent, failing text is darkened minimally in its hue. A pattern accent fill whose white label fails gets a minimal `shade` of that accent; only a pale accent or tint takes dark ink. Text matching a transparent cell's canvas (hidden on purpose) is never recolored. Check `fit_findings` `contrast_autofixed` (before/after ratios) before re-authoring colors: it is reported at the authored element (`/slides/N/shape_grid/rows/R/cells/C/shape/text`; under `/slides/N/pattern` on a pattern slide), the path `contrast_predicted` names at validate, with a `replace_color` fix on an authored raw grid cell. `render_deck_spec` reports a swap once: `contrast_predicted` when validate forecast it, `contrast_autofixed` (same `semantic_path`) only when it did not | Fix: a darker accent fill, `dk1` text, or `"contrast_check": false` (last resort, after checking contrast yourself) |
 
 ## Icons (no emoji)
 
@@ -127,7 +129,7 @@ Input JSON is validated with `additionalProperties: false` at every level: unkno
 
 When TDR forces a split, say so ("N logical rows × M columns; per Rule 20 emitting split_slide") and never shrink fonts below 9pt to avoid it.
 
-**Default look.** A table with no `style` renders as a consulting table: no header fill (never a black header bar), 11pt bold header over a 1pt rule, 12pt rows separated by 0.5pt 15% hairlines, no zebra, bold first column, numeric columns right-aligned, content-height rows top-anchored under the title. Prefer it. Opt-ins are additive: `header_background` only fills the header (text flips by contrast; type, rules and unbanded rows stay); `borders` / `striped` add grid lines / zebra; `style.highlight_column` (1-based) tints a column with the template's `color_roles.primary_fill`. `table-highlight` uses the same look with an accent 10% tint and 3pt accent bar on the highlighted row.
+**Default look.** A table with no `style` renders as a consulting table: no header fill, 11pt bold header over a rule, 12pt rows separated by hairlines, no zebra, bold first column, numeric columns right-aligned, content-height rows. Prefer it. Opt-ins are additive: `header_background` only fills the header (text flips by contrast; type, rules and unbanded rows stay); `borders` / `striped` add grid lines / zebra; `style.highlight_column` (1-based) tints a column with the template's `color_roles.primary_fill`.
 
 `table_density_guide` (MCP) or `json2pptx tables guide` (CLI, `--json` for the envelope) gives font-size and row-count guidance; scope with `{template}` / `--template <name>`, and `style_id` (requires `template`) narrows to one of its `table_styles[]`.
 
