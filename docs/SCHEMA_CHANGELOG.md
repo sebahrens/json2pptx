@@ -1,5 +1,31 @@
 # Schema Changelog
 
+- **2026-10-04 — Constrained design mode: one rule for a raw hex colour wherever it sits (`go-slide-creator-gpbjx`; found on the way: `-iygkm`, `-a30xd`, `-d6bhh`, `-gt7z1`, `-9e19z`).**
+  - **Now refused** with `design_mode_violation` (error, fix
+    `use_semantic_color`) in the default `design_mode: "constrained"`, on
+    `validate`, `validate_input`, `generate`, `generate -dry-run`,
+    `generate_presentation` and DeckSpec `raw_json2pptx` slides — each was
+    accepted before while the same value one position over was refused:
+    - a placeholder table's `style.header_background` and
+      `rows[r][c].conditional.fill`
+      (`/slides/N/content/M/table_value/style/header_background`,
+      `…/table_value/rows/r/c/conditional/fill`), as a grid-cell table's
+      already were; a hex `defaults.table_style.header_background` adopted by a
+      placeholder table (`/defaults/table_style/header_background`, once);
+    - the legacy `value` key of a table, chart or diagram
+      (`/slides/N/content/M/value/style/…`, `…/value/rows/r/c/conditional/fill`);
+    - cells of a nested sub-grid (`…/cells/C/grid/rows/R/cells/C/…`: shape
+      fill / line / text colour and size, table, diagram, icon, accent bar);
+    - a `composite` cell (`…/composite/text/fill`,
+      `…/composite/sub_diagram/style/colors/i`);
+    - a pattern nested in a grid cell (`…/cells/C/pattern/overrides/<key>`);
+    - a `compose` diagram segment and a nested `compose` envelope
+      (`/slides/N/compose/segments/S/diagram/style/colors/i`,
+      `…/segments/S/compose/segments/T/pattern/overrides/<key>`).
+  - Use a scheme colour, or set `design_mode: "free"` when the raw values are
+    deliberate. A nested grid inside a `source: "pattern:<name>"` expansion
+    keeps the expander's font sizes. The rule is stated in
+    `docs/STYLE_DEFAULTS.md` ("Colours in constrained design mode").
 - **2026-10-04 — Every raw-deck finding path is a JSON Pointer into the authored deck (`go-slide-creator-7fshg`; found on the way: `-yhi2e`, `-pcjob`, `-cwuey`, `-45t9x`, `-gk5q7`, `-wj70r`, `-dln5i`, `-3sm9n`, `-wpg2p`).**
   - **Paths changed** on `validate` / `validate_input`, `generate`,
     `generate -dry-run`, `generate_presentation` and `preflight` (codes,
