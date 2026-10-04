@@ -112,3 +112,36 @@ func contrastDecisionsFromFindings(findings []patterns.FitFinding) (map[contrast
 	}
 	return decisions, nil
 }
+
+// TestExpansionParityCorpus is go-slide-creator-sw78d over the example corpus:
+// on every template, the grid shapes validate predicts for a deck — slide
+// patterns, compose envelopes and nested cell patterns expanded with the
+// template's metadata — are byte for byte the shapes generation writes, and
+// generation leaves the parsed deck as it found it (go-slide-creator-8jp05).
+func TestExpansionParityCorpus(t *testing.T) {
+	examples, err := filepath.Glob(filepath.Join(testutil.RepoRoot(), "examples", "*.json"))
+	if err != nil || len(examples) == 0 {
+		t.Fatalf("find example corpus: %v (%d files)", err, len(examples))
+	}
+	for _, templateName := range testutil.AllTestTemplateNames() {
+		for _, examplePath := range examples {
+			t.Run(strings.TrimSuffix(filepath.Base(examplePath), ".json")+"/"+templateName, func(t *testing.T) {
+				data, err := os.ReadFile(examplePath)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var input PresentationInput
+				if err := json.Unmarshal(data, &input); err != nil {
+					t.Fatal(err)
+				}
+				input.Template = templateName
+				resolveLocalAssetPaths(input.Slides, filepath.Dir(examplePath))
+				generated, predicted, ok := gridShapesBothWays(t, &input, templateName)
+				if !ok {
+					t.Skip("generation refuses this example on this template")
+				}
+				assertGridShapeParity(t, generated, predicted)
+			})
+		}
+	}
+}

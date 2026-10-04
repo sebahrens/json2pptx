@@ -1093,20 +1093,13 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	// will use, including the rhythm grid and reserved takeaway/source band.
 	geom, contentBounds := patternExpansionGeometry(slide, layouts, slideWidth, slideHeight, rhythmGrid)
 	patternBounds := patterns.LayoutBounds{X: contentBounds.X, Y: contentBounds.Y, Width: contentBounds.CX, Height: contentBounds.CY}
+	// One context for the slide's pattern, its compose envelope and the
+	// patterns nested in its cells — the context validate predicts them in.
+	expansionTheme := patternThemeFromDiag(diagCtx)
+	ctx := slideExpandContext(&expansionTheme, metadata, geom.Zone, patternBounds, slideWidth, slideHeight, accentStrategy, i, sectionIndices[i])
 
 	// Expand compose envelope into shape_grid before downstream processing
 	if slide.Compose != nil {
-		ctx := patterns.ExpandContext{
-			Metadata:       metadata,
-			ContentZone:    geom.Zone,
-			SlideWidth:     slideWidth,
-			SlideHeight:    slideHeight,
-			LayoutBounds:   patternBounds,
-			AccentStrategy: accentStrategy,
-			SlideIndex:     i,
-			SectionIndex:   sectionIndices[i],
-			Theme:          patternThemeFromDiag(diagCtx),
-		}
 		expanded, composeWarnings, err := expandCompose(slide.Compose, ctx, patterns.Default())
 		if err != nil {
 			return generator.SlideSpec{}, nil, nil, newSlidePatternError(i, "compose", "compose", err)
@@ -1124,17 +1117,6 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 
 	// Expand pattern into shape_grid before downstream processing
 	if slide.Pattern != nil {
-		ctx := patterns.ExpandContext{
-			Metadata:       metadata,
-			ContentZone:    geom.Zone,
-			SlideWidth:     slideWidth,
-			SlideHeight:    slideHeight,
-			LayoutBounds:   patternBounds,
-			AccentStrategy: accentStrategy,
-			SlideIndex:     i,
-			SectionIndex:   sectionIndices[i],
-			Theme:          patternThemeFromDiag(diagCtx),
-		}
 		expanded, patternWarnings, err := expandPattern(slide.Pattern, ctx, patterns.Default())
 		if err != nil {
 			return generator.SlideSpec{}, nil, nil, newSlidePatternError(i, "pattern", "pattern", err)
@@ -1156,18 +1138,11 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	nestedCells := nestedPatternCells{}
 	if slide.ShapeGrid != nil {
 		collectNestedPatternCells(slide.ShapeGrid, slidepath.ShapeGrid(i), nestedCells, 0)
-		nestedCtx := patterns.ExpandContext{
-			Metadata:       metadata,
-			ContentZone:    geom.Zone,
-			SlideWidth:     slideWidth,
-			SlideHeight:    slideHeight,
-			LayoutBounds:   patternBounds,
-			AccentStrategy: accentStrategy,
-			SlideIndex:     i,
-			SectionIndex:   sectionIndices[i],
-			Theme:          patternThemeFromDiag(diagCtx),
-		}
-		if err := expandNestedCellPatternsInBounds(slide.ShapeGrid, nestedCtx, contentBounds, patterns.Default(), true); err != nil {
+		// Expansion rewrites the cells it expands, and an authored grid is
+		// the caller's: expand a copy, so the same parsed input generates the
+		// same deck a second time (go-slide-creator-8jp05).
+		slide.ShapeGrid = nestedPatternExpansionCopy(slide.ShapeGrid)
+		if err := expandNestedCellPatternsInBounds(slide.ShapeGrid, ctx, contentBounds, patterns.Default(), true); err != nil {
 			return generator.SlideSpec{}, nil, nil, newSlidePatternError(i, "shape_grid", "nested pattern", err)
 		}
 	}
@@ -3474,7 +3449,9 @@ func patternThemeFromDiag(diagCtx *GridDiagramContext) types.ThemeInfo {
 	if diagCtx == nil {
 		return types.ThemeInfo{}
 	}
-	return types.ThemeInfo{Colors: diagCtx.ThemeColors, BodyFont: diagCtx.FontFamily}
+	// Both theme fonts: a pattern sizes its heading-font text (the agenda and
+	// next-steps numerals) in the title font the slide writes it in.
+	return types.ThemeInfo{Colors: diagCtx.ThemeColors, BodyFont: diagCtx.FontFamily, TitleFont: diagCtx.TitleFont}
 }
 
 // droppedPlaceholdersBySlide indexes hard content drops — content targeting a

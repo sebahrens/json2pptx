@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -300,5 +301,40 @@ func TestContrastAutofixedOnDeckSpecSlideMapsToItsSemanticPath(t *testing.T) {
 	}
 	if got.RawPath != fixed[0].Path {
 		t.Errorf("raw_path = %q, want the authored raw path %q kept as evidence", got.RawPath, fixed[0].Path)
+	}
+
+	// go-slide-creator-sw78d: the DeckSpec render result reports the forecast
+	// for a swap validate predicted (and nothing more, so the two surfaces
+	// agree), and contrast_autofixed — at the same semantic path — for a swap
+	// generation made that the forecast did not name.
+	if extra := unpredictedContrastSwapFindings(fixed, predicted); len(extra) != 0 {
+		t.Errorf("a predicted swap is reported a second time: %+v", extra)
+	}
+	contrastDiags := func(swaps []generator.ContrastSwap) map[string][]string {
+		res := buildSemanticRenderSuccess(input, compiled, RenderResult{
+			GenResult:     &generator.GenerationResult{ContrastSwaps: swaps},
+			TemplateTheme: types.ThemeInfo{Colors: theme},
+		}, time.Now())
+		byCode := map[string][]string{}
+		for _, d := range res.Diagnostics {
+			if strings.Contains(d.Code, "contrast_") {
+				code := d.Code[strings.Index(d.Code, "contrast_"):]
+				byCode[code] = append(byCode[code], d.SemanticPath)
+			}
+		}
+		return byCode
+	}
+	forecast := contrastDiags(swaps)
+	if len(forecast[patterns.ErrCodeContrastPredicted]) != 1 || len(forecast["contrast_autofixed"]) != 0 {
+		t.Fatalf("render with the predicted swap reports %v; want the one forecast and no contrast_autofixed", forecast)
+	}
+	missed := swaps[0]
+	missed.OriginalColor, missed.ReplacedColor = "#FFF2CC", "#333333" // a swap no forecast names
+	withMissed := contrastDiags([]generator.ContrastSwap{swaps[0], missed})
+	if len(withMissed[patterns.ErrCodeContrastPredicted]) != 1 {
+		t.Errorf("forecast changed when generation made a second swap: %v", withMissed)
+	}
+	if paths := withMissed["contrast_autofixed"]; len(paths) != 1 || paths[0] != want.SemanticPath {
+		t.Errorf("unpredicted render-time swap reported as %v; want one contrast_autofixed at %q", withMissed, want.SemanticPath)
 	}
 }

@@ -424,6 +424,12 @@ type ThemeInfo struct {
 	// preflight (validate / fit-report) resolves the same neutral surface
 	// fills as generation; it is not an OOXML theme slot.
 	SurfaceTints map[string]string
+	// Metadata is the template's parsed metadata (nil when it ships none),
+	// carried with the theme so every read-only pass that expands a pattern
+	// (validate, the fit report, preview) hands the expander the metadata
+	// generation hands it: semantic accents, surface tints and the template
+	// grid. It is not an OOXML theme slot (go-slide-creator-sw78d).
+	Metadata *TemplateMetadata `json:"-" yaml:"-"`
 }
 
 // ThemeColor represents a single color in the theme.
@@ -457,6 +463,8 @@ func (t ThemeInfo) ApplyOverride(o *ThemeOverride) (ThemeInfo, []string) {
 		BodyFont:        t.BodyFont,
 		Colors:          make([]ThemeColor, len(t.Colors)),
 		SemanticAccents: t.SemanticAccents,
+		SurfaceTints:    t.SurfaceTints,
+		Metadata:        t.Metadata,
 	}
 	copy(result.Colors, t.Colors)
 
