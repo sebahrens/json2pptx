@@ -18,10 +18,15 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 	}
 	if grid.CanvasScale > 1 {
 		if res, ok := resolveCanvas(grid, alloc); ok {
+			writeSharedShrink(res.Cells)
 			return res, nil
 		}
 	}
-	return resolveDesign(grid, alloc)
+	res, err := resolveDesign(grid, alloc)
+	if err == nil && res != nil {
+		writeSharedShrink(res.Cells)
+	}
+	return res, err
 }
 
 // resolveDesign resolves a grid at the sizes it carries: through the

@@ -1,6 +1,10 @@
 package shapegrid
 
 import (
+	"encoding/json"
+	"math"
+	"strings"
+
 	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
@@ -64,6 +68,159 @@ func shareRowAutofitScale(cells []ResolvedCell) {
 	}
 }
 
+// A shared shrink is written as sizes, not as a stored scale
+// (go-slide-creator-5x4w4).
+//
+// PowerPoint applies the fontScale a shape stores; LibreOffice ignores it and
+// fits every shape again on its own. A row whose cells shared a stored scale
+// therefore rendered at one size in PowerPoint and, in LibreOffice, with only
+// the long label shrunk — the uneven row the shared scale was meant to
+// prevent. writeSharedShrink writes the group's shrink into the text sizes of
+// the resolved copy instead, so every renderer draws the row at one size and
+// no cell of it needs a stored scale to fit. Text the shrink would take under
+// the renderer's size floor (MinTextSizePt) cannot be written that way, and
+// neither can a row one of whose cells the writer would still shrink at the
+// written sizes: such a row keeps its stored scale, and the readability floor
+// reports it.
+
+// writeSharedShrink replaces the AutofitScale shareRowAutofitScale assigned
+// to a row's sibling group with shrunk text sizes, when every cell of the
+// group can take them. It runs once on the final result: the composition and
+// canvas trials compare cells at their designed sizes.
+func writeSharedShrink(cells []ResolvedCell) {
+	type key struct {
+		row   int
+		scale float64
+	}
+	groups := map[key][]int{}
+	for i := range cells {
+		c := &cells[i]
+		if c.AutofitScale > 0 && c.AutofitScale < 1 && c.Kind == CellKindShape && c.ShapeSpec != nil {
+			k := key{row: c.RowIdx, scale: c.AutofitScale}
+			groups[k] = append(groups[k], i)
+		}
+	}
+	for k, idxs := range groups {
+		specs := make([]*ShapeSpec, 0, len(idxs))
+		for _, i := range idxs {
+			c := &cells[i]
+			text, ok := shrunkText(c.ShapeSpec.Text, k.scale)
+			if !ok {
+				break
+			}
+			spec := *c.ShapeSpec
+			spec.Text = text
+			trial := *c
+			trial.ShapeSpec = &spec
+			if canvasAutofit(&trial) < 1 {
+				break
+			}
+			specs = append(specs, &spec)
+		}
+		if len(specs) != len(idxs) {
+			continue
+		}
+		for n, i := range idxs {
+			cells[i].ShapeSpec = specs[n]
+			cells[i].AutofitScale = 0
+		}
+	}
+}
+
+// shrunkText returns raw with every paragraph's size (and suffix size) times
+// scale, rounded down to a hundredth of a point. ok is false when a size
+// would fall under MinTextSizePt or the text does not resolve to exactly the
+// shrunk sizes (inline runs with sizes of their own).
+func shrunkText(raw json.RawMessage, scale float64) (json.RawMessage, bool) {
+	before, err := ResolveTextInput(raw)
+	if err != nil || before == nil {
+		return nil, false
+	}
+	shrink := func(obj map[string]json.RawMessage, content string) bool {
+		var size, suffix float64
+		_ = json.Unmarshal(obj["size"], &size)
+		if strings.TrimSpace(content) == "" && size <= 0 {
+			return true
+		}
+		if size <= 0 {
+			size = DefaultTextSizePt
+		}
+		next := scaledSize(EffectiveTextSizePt(size), scale)
+		if next < MinTextSizePt {
+			return false
+		}
+		obj["size"], _ = json.Marshal(next)
+		if json.Unmarshal(obj["suffix_size"], &suffix) == nil && suffix > 0 {
+			obj["suffix_size"], _ = json.Marshal(math.Max(scaledSize(suffix, scale), MinTextSizePt))
+		}
+		return true
+	}
+	var s string
+	var out json.RawMessage
+	if json.Unmarshal(raw, &s) == nil {
+		obj := map[string]json.RawMessage{}
+		obj["content"], _ = json.Marshal(s)
+		if !shrink(obj, s) {
+			return nil, false
+		}
+		out, _ = json.Marshal(obj)
+	} else {
+		var obj map[string]json.RawMessage
+		if json.Unmarshal(raw, &obj) != nil {
+			return nil, false
+		}
+		if rawParas, ok := obj["paragraphs"]; ok {
+			var defs []map[string]json.RawMessage
+			if json.Unmarshal(rawParas, &defs) != nil {
+				return nil, false
+			}
+			for i := range defs {
+				var content string
+				_ = json.Unmarshal(defs[i]["content"], &content)
+				if !shrink(defs[i], content) {
+					return nil, false
+				}
+			}
+			obj["paragraphs"], _ = json.Marshal(defs)
+		} else {
+			var content string
+			_ = json.Unmarshal(obj["content"], &content)
+			if !shrink(obj, content) {
+				return nil, false
+			}
+		}
+		out, _ = json.Marshal(obj)
+	}
+	after, err := ResolveTextInput(out)
+	if err != nil || after == nil || !shrunkBy(before, after, scale) {
+		return nil, false
+	}
+	return out, true
+}
+
+// shrunkBy reports whether after is before with every sized run at scale
+// times its size (to the hundredth of a point the writer keeps).
+func shrunkBy(before, after *pptx.TextBody, scale float64) bool {
+	if len(after.Paragraphs) != len(before.Paragraphs) {
+		return false
+	}
+	for i, p := range before.Paragraphs {
+		if len(after.Paragraphs[i].Runs) != len(p.Runs) {
+			return false
+		}
+		for j, r := range p.Runs {
+			if strings.TrimSpace(r.Text) == "" || r.FontSize <= 0 {
+				continue
+			}
+			got := after.Paragraphs[i].Runs[j].FontSize
+			if got >= r.FontSize || math.Abs(float64(got)-float64(r.FontSize)*scale) > 1.5 {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // firstRunSizeHP returns the font size (hundredths of a point) of the body's
 // first sized run, or 0 when none declares one.
 func firstRunSizeHP(tb *pptx.TextBody) int {
@@ -78,7 +235,7 @@ func firstRunSizeHP(tb *pptx.TextBody) int {
 }
 
 // GenerateCellShapeXML renders a resolved shape cell, applying the row-shared
-// autofit shrink when one was assigned.
+// autofit shrink where one is still stored (writeSharedShrink).
 func GenerateCellShapeXML(cell ResolvedCell) ([]byte, error) {
 	return generateShapeXML(cell.ShapeSpec, cell.ID, cell.Bounds, cell.AutofitScale, cell.TextInsets)
 }

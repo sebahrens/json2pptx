@@ -11,6 +11,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -821,12 +822,13 @@ func alignRelativeBounds(b, content pptx.RectEmu, input *ShapeGridInput, anchorY
 
 // gridCanvasScale is the canvas scale a grid resolves at
 // (shapegrid.Grid.CanvasScale): the slide's size relative to the standard
-// slide for a grid a named pattern expanded, whose points are designed on that
-// slide; 1 for an authored grid, whose points are the author's
-// (go-slide-creator-ttpae). Generation, preflight and the budget estimators
-// all resolve through it, so they agree on the scaled sizes.
+// slide for a grid a named pattern expanded or the semantic compiler built
+// (a regions slide), whose points are designed on that slide; 1 for an
+// authored grid, whose points are the author's (go-slide-creator-ttpae,
+// -o9n8u). Generation, preflight and the budget estimators all resolve
+// through it, so they agree on the scaled sizes.
 func gridCanvasScale(input *ShapeGridInput, slideWidth, slideHeight int64) float64 {
-	if input == nil || !strings.HasPrefix(input.Source, patternSourcePrefix) {
+	if input == nil || !(strings.HasPrefix(input.Source, patternSourcePrefix) || strings.HasPrefix(input.Source, jsonschema.CompilerSourcePrefix)) {
 		return 1
 	}
 	return shapegrid.CanvasScaleFor(slideWidth, slideHeight)

@@ -8,6 +8,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
 // ---------------------------------------------------------------------------
@@ -315,15 +316,22 @@ func (s *swimlane) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	}
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	headerSize := ResolveSize(ovr.HeaderSize, scaleBodyPt)
-	bodySize := ResolveSize(ovr.BodySize, scaleDenseBodyPt)
-
 	// Determine number of columns: 1 actor label + N steps
 	stepCount := 0
 	if len(vals.Lanes) > 0 {
 		stepCount = len(vals.Lanes[0].Steps)
 	}
 	numCols := 1 + stepCount
+
+	// Tiles and type follow the lane (go-slide-creator-0e0en): the lane's
+	// share is the tile, and where every step and actor holds at the subhead
+	// step inside it the lane is set in that step. Authored sizes are kept.
+	sizing := swimlaneLaneSizing(ctx, len(vals.Lanes), stepCount)
+	headerSize := ResolveSize(ovr.HeaderSize, scaleBodyPt)
+	bodySize := ResolveSize(ovr.BodySize, scaleDenseBodyPt)
+	if ovr.BodySize == 0 && ovr.HeaderSize == 0 && sizing.holdsAt(ctx, vals, scaleSubheadPt) {
+		headerSize, bodySize = scaleSubheadPt, scaleSubheadPt
+	}
 
 	// Column widths: actor label gets 15%, steps split the rest
 	cols := make([]float64, numCols)
@@ -401,12 +409,13 @@ func (s *swimlane) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		rows = append(rows, jsonschema.GridRowInput{Cells: cells, Rule: rule})
 	}
 
-	// A step tile is as tall as the longest step needs, centred in its lane:
-	// the lane is the band between its rules, and the air above and below
-	// the tiles is where a hand-off arrow to the next lane is drawn. Tiles
-	// that filled their lane left that arrow a few points to live in
-	// (go-slide-creator-jz5r9). A lane shorter than the tile caps it.
-	tileH := swimlaneTileHeightPt(ctx, rows, stepCount)
+	// A step tile takes its share of the lane, and never less than the longest
+	// step needs, centred in its lane: the lane is the band between its
+	// rules, and the air above and below the tiles is where a hand-off arrow
+	// to the next lane is drawn. Tiles that filled their lane left that arrow
+	// a few points to live in (go-slide-creator-jz5r9). A lane shorter than
+	// the tile caps it.
+	tileH := swimlaneTileHeightPt(ctx, rows, sizing)
 	for _, row := range rows {
 		for j, c := range row.Cells {
 			if j > 0 && c != nil && c.Shape != nil && len(c.Shape.Text) > 0 {
@@ -453,29 +462,99 @@ func swimlaneRowGap(lanes int) float64 {
 	return 10
 }
 
-// swimlaneTileMinPt is the height of a step tile whose text needs less.
+// swimlaneTileMinPt is the height of a step tile whose text and lane both
+// need less.
 const swimlaneTileMinPt = 44.0
 
-// swimlaneTileHeightPt is the one height every step tile takes: the written
-// fit of the longest step at the step column width, floored at
-// swimlaneTileMinPt.
-func swimlaneTileHeightPt(ctx ExpandContext, rows []jsonschema.GridRowInput, steps int) float64 {
-	if steps < 1 {
-		return swimlaneTileMinPt
+// A step tile takes swimlaneTileLaneShare of its lane's height, so the flow
+// fills a tall lane (two or three lanes, or the larger business-template
+// slide) the way it fills a short one, and no more than
+// swimlaneTileMaxAspect of its own width, so a tile stays a landscape box.
+// The fixed 44pt tile covered a quarter of a three-lane slide and needed a
+// SLIDE_UNDERUSED threshold of its own (go-slide-creator-0e0en).
+const (
+	swimlaneTileLaneShare = 0.75
+	swimlaneTileMaxAspect = 0.9
+)
+
+// swimlaneSizing is the room a lane gives its step tiles and actor label.
+type swimlaneSizing struct {
+	// colW and actorW are the step and actor column widths, laneH the lane
+	// height and tileH the tile height the lane's share gives, all in points.
+	colW, actorW, laneH, tileH float64
+}
+
+// swimlaneLaneSizing measures the lanes of a steps x lanes grid in the
+// content area. The share is stated in the pattern's design points: the
+// resolver grows point heights by the canvas scale on a larger slide
+// (shapegrid.CanvasScaleFor), and the lane it is a share of already has the
+// slide's size.
+func swimlaneLaneSizing(ctx ExpandContext, lanes, steps int) swimlaneSizing {
+	if lanes < 1 || steps < 1 {
+		return swimlaneSizing{tileH: swimlaneTileMinPt}
 	}
-	contentW, _ := contentAreaPt(ctx)
-	colW := (contentW - float64(steps)*swimlaneColGap(steps)) * 0.85 / float64(steps)
+	contentW, contentH := contentAreaPt(ctx)
+	s := swimlaneSizing{
+		colW:   (contentW - float64(steps)*swimlaneColGap(steps)) * 0.85 / float64(steps),
+		actorW: (contentW - float64(steps)*swimlaneColGap(steps)) * 0.15,
+		laneH:  (contentH - float64(lanes-1)*swimlaneRowGap(lanes)) / float64(lanes),
+	}
+	canvas := shapegrid.CanvasScaleFor(ctx.SlideWidth, ctx.SlideHeight)
+	s.tileH = math.Max(swimlaneTileMinPt, math.Min(s.laneH*swimlaneTileLaneShare/canvas, s.colW*swimlaneTileMaxAspect))
+	return s
+}
+
+// holdsAt reports whether every step fits the lane's tile and every actor its
+// lane at sizePt, as the writer measures them: no shrink stored, no word
+// broken.
+func (s swimlaneSizing) holdsAt(ctx ExpandContext, vals *SwimlaneValues, sizePt float64) bool {
+	if s.colW <= 0 || s.laneH <= 0 {
+		return false
+	}
 	fonts := ctx.themeFonts()
-	h := swimlaneTileMinPt
-	for _, row := range rows {
-		for j, c := range row.Cells {
-			if j == 0 || c == nil || c.Shape == nil || len(c.Shape.Text) == 0 {
+	canvas := shapegrid.CanvasScaleFor(ctx.SlideWidth, ctx.SlideHeight)
+	for _, lane := range vals.Lanes {
+		actor := buildSwimlaneTextContent(lane.Actor, sizePt, true, "dk1", "l")
+		if writtenFitHeightPt(fonts, actor, s.actorW, 0) > s.laneH/canvas {
+			return false
+		}
+		for _, step := range lane.Steps {
+			if step == "" {
 				continue
 			}
-			h = math.Max(h, writtenFitHeightPt(fonts, c.Shape.Text, colW, 0))
+			text := buildSwimlaneTextContent(pptx.ConvertMarkdownEmphasis(step), sizePt, false, "dk1", "ctr")
+			if writtenFitHeightPt(fonts, text, s.colW, 0) > s.tileH {
+				return false
+			}
 		}
 	}
-	return h
+	return true
+}
+
+// swimlaneTileMaxFill bounds a tile by its content: no taller than this many
+// times the written fit of the longest step, so a lane of one-word steps is
+// not drawn as large boxes around a word (and still reads as the thin slide
+// it is).
+const swimlaneTileMaxFill = 1.3
+
+// swimlaneTileHeightPt is the one height every step tile takes: the lane's
+// share (swimlaneSizing.tileH) up to swimlaneTileMaxFill of the longest
+// step's written fit at the step column width, and never less than that fit
+// or swimlaneTileMinPt.
+func swimlaneTileHeightPt(ctx ExpandContext, rows []jsonschema.GridRowInput, lane swimlaneSizing) float64 {
+	need := swimlaneTileMinPt
+	if lane.colW > 0 {
+		fonts := ctx.themeFonts()
+		for _, row := range rows {
+			for j, c := range row.Cells {
+				if j == 0 || c == nil || c.Shape == nil || len(c.Shape.Text) == 0 {
+					continue
+				}
+				need = math.Max(need, writtenFitHeightPt(fonts, c.Shape.Text, lane.colW, 0))
+			}
+		}
+	}
+	return math.Max(need, math.Min(lane.tileH, need*swimlaneTileMaxFill))
 }
 
 // swimlaneLinks joins consecutive steps with accent arrows. The order is

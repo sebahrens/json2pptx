@@ -21,7 +21,7 @@ func growShapeText(spec *ShapeSpec, bounds pptx.RectEmu, overlay [4]int64, mode 
 	if err != nil || len(tb.Paragraphs) == 0 {
 		return spec
 	}
-	paras := scaleParagraphs(tb)
+	paras := scaleParagraphs(tb, spec.ThemeFonts)
 	if len(paras) == 0 {
 		return spec
 	}
@@ -82,6 +82,31 @@ type scaleParagraph struct {
 	marginL    int64
 	role       string
 	bold       bool
+	// face is the face the paragraph's fit is measured in; exact reports
+	// that it is the face the paragraph renders in (pptx.ParagraphFitFace)
+	// rather than the Liberation Sans stand-in.
+	face  string
+	exact bool
+}
+
+// exactTokenShare is the share of its line a token that must not break may
+// take when it is measured in the face it renders in: the line less the
+// rounding a renderer's own layout may differ by. A stand-in face keeps
+// textfit.AtomicTokenWidthPct (go-slide-creator-5x4w4).
+const exactTokenShare = 0.98
+
+// tokenShare is the share of its line a must-not-break token may take.
+func (p scaleParagraph) tokenShare() float64 {
+	if p.exact {
+		return exactTokenShare
+	}
+	return float64(textfit.AtomicTokenWidthPct) / 100
+}
+
+// tokenWidth measures tok at pt in the paragraph's face and weight.
+func (p scaleParagraph) tokenWidth(tok string, pt float64) (float64, bool) {
+	w, err := textfit.MeasureStyledLineWidth(tok, p.face, pt, p.bold)
+	return float64(w), err == nil
 }
 
 // tokenGrowthCap is the largest scale at which every token that fits its line
@@ -89,15 +114,16 @@ type scaleParagraph struct {
 // Growth only ever fills spare height, so it must not be what breaks a label
 // mid-word ("PRODUCTI / ON") or a value from its unit ("$4.2" / "M") — the
 // pattern measured those whole and growth measures by line count alone. The
-// token keeps textfit.AtomicTokenWidthPct of the width because the grower
+// token keeps textfit.AtomicTokenWidthPct of the width where the grower
 // measures a stand-in face, not the template font (go-slide-creator-b7qqg.14 /
-// .15). A token between that share and the full line keeps its size; tokens
-// already wider than their line at scale 1 do not cap growth.
+// .15), and exactTokenShare where it measures the template's own. A token
+// between that share and the full line keeps its size; tokens already wider
+// than their line at scale 1 do not cap growth.
 func tokenGrowthCap(paras []scaleParagraph, width int64) float64 {
 	limit := math.Inf(1)
 	for _, p := range paras {
 		line := float64(width - p.marginL)
-		allowed := line * textfit.AtomicTokenWidthPct / 100
+		allowed := line * p.tokenShare()
 		if allowed <= 0 {
 			continue
 		}
@@ -106,17 +132,20 @@ func tokenGrowthCap(paras []scaleParagraph, width int64) float64 {
 			tokens = []string{strings.TrimSpace(p.text)}
 		}
 		for _, tok := range tokens {
-			w, err := textfit.MeasureStyledLineWidth(tok, "Liberation Sans", p.fontPt, p.bold)
-			if err != nil || w <= 0 || float64(w) > line {
+			w, ok := p.tokenWidth(tok, p.fontPt)
+			if !ok || w <= 0 || w > line {
 				continue
 			}
-			limit = math.Min(limit, math.Max(allowed, float64(w))/float64(w))
+			limit = math.Min(limit, math.Max(allowed, w)/w)
 		}
 	}
 	return limit
 }
 
-func scaleParagraphs(tb *pptx.TextBody) []scaleParagraph {
+// scaleParagraphs lists a body's paragraphs for a fit decision. fonts are the
+// theme typefaces the shape's text was sized in (ShapeSpec.ThemeFonts); zero
+// for an authored grid, whose paragraphs measure in the stand-in face.
+func scaleParagraphs(tb *pptx.TextBody, fonts pptx.ThemeFonts) []scaleParagraph {
 	paras := make([]scaleParagraph, 0, len(tb.Paragraphs))
 	hasKPI := false
 	for _, p := range tb.Paragraphs {
@@ -140,7 +169,9 @@ func scaleParagraphs(tb *pptx.TextBody) []scaleParagraph {
 		if strings.TrimSpace(text.String()) == "" || fontPt <= 0 {
 			return nil
 		}
+		face, exact := pptx.ParagraphFitFace(p, fonts)
 		paras = append(paras, scaleParagraph{
+			face: face, exact: exact,
 			text: text.String(), fontPt: fontPt,
 			spaceAfter: float64(p.SpaceAfter) / 100,
 			marginL:    p.MarginL,
@@ -195,7 +226,7 @@ func scaleBlockFits(paras []scaleParagraph, width int64, targetHeightPt, scale f
 			return false
 		}
 		pt := p.fontPt * scale
-		m, err := textfit.MeasureRun(p.text, "Liberation Sans", pt, usableWidth, 0)
+		m, err := textfit.MeasureRun(p.text, p.face, pt, usableWidth, 0)
 		if err != nil {
 			return false
 		}

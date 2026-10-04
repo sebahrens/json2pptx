@@ -43,6 +43,12 @@ type ShapeGridInput struct {
 	// blocked on twenty design_mode_violations the agent could not remove
 	// (go-slide-creator-c3po). It waives the absolute-size rule ONLY — raw hex
 	// colours are still refused, and the expanders do not emit any.
+	//
+	// The semantic compiler stamps the grids it builds by hand as
+	// "compiler:<kind>" (CompilerSourcePrefix). Like a pattern grid, such a
+	// grid's points are the engine's, designed on the standard slide, so it
+	// follows the canvas on a larger one (go-slide-creator-o9n8u); the stamp
+	// waives nothing.
 	Source string `json:"source,omitempty"`
 
 	// KeepTextSizes marks a design_mode "free" deck's own grid: its authored
@@ -50,6 +56,11 @@ type ShapeGridInput struct {
 	// scale. Never read from JSON; set by applyDefaults.
 	KeepTextSizes bool `json:"-"`
 }
+
+// CompilerSourcePrefix marks a shape_grid the semantic compiler built by hand
+// (ShapeGridInput.Source), as opposed to one a named pattern expanded
+// ("pattern:<name>") or an author wrote (no source).
+const CompilerSourcePrefix = "compiler:"
 
 // GridBoundsInput defines the bounding rectangle as percentages of slide dimensions.
 type GridBoundsInput struct {

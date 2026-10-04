@@ -311,8 +311,12 @@ func TestTimelineChevronGeneratedDeckText(t *testing.T) {
 		}
 		if run.Text == "Q1" {
 			dateRuns++
-			if run.Props.Size != 1200 {
-				t.Errorf("chevron date run has %d hundredths of a point, want 1200", run.Props.Size)
+			// The strip is a sparse block and takes the type step (12 -> 14pt):
+			// measured in the template's Calibri every label holds its line
+			// (go-slide-creator-5x4w4). The Liberation Sans stand-in used to
+			// refuse the step and left the dates at 12pt.
+			if run.Props.Size != 1400 {
+				t.Errorf("chevron date run has %d hundredths of a point, want 1400", run.Props.Size)
 			}
 		}
 		if run.Text == "Stop 5" || run.Text == "Stop 6" || run.Text == "Stop 7" {
