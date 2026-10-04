@@ -87,6 +87,14 @@ func TestEveryFallbackAdvisoryIsPatternDegraded(t *testing.T) {
 					t.Errorf("fix.params is missing %q: %v", key, d.Fix.Params)
 				}
 			}
+			// from is one pattern (or none, for a kind that had not committed to
+			// one): pillars used to name two, joined by a slash
+			// (go-slide-creator-vag44).
+			if from, _ := d.Fix.Params["from"].(string); from != "" {
+				if _, known := PatternReach(from); !known {
+					t.Errorf("fix.params.from = %q, not a registered pattern", from)
+				}
+			}
 			switch to := d.Fix.Params["to"]; to {
 			case degradeToBullets, degradeToContent, degradeToTwoColumn, degradeToInsightsOnly:
 			default:

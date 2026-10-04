@@ -777,7 +777,7 @@ func validatePillars(path string, slide SlideSpec, s *semDiags) {
 		s.hard(path+"."+field, string(diagnostics.CodeSemanticFieldType), "pillars "+problem)
 		return
 	}
-	s.degrade(path+"."+field, "pillars "+problem+"; all content is preserved as bullets", "strategy-house/stylish-panels", degradeToBullets, degradeBudgetExceeded)
+	s.degrade(path+"."+field, "pillars "+problem+"; all content is preserved as bullets", slides.PillarsWantedPattern(slide.Body), degradeToBullets, degradeBudgetExceeded)
 }
 
 func validateOrg(path string, slide SlideSpec, s *semDiags) {
@@ -816,7 +816,7 @@ func validateQuote(path string, slide SlideSpec, s *semDiags) {
 		}
 		s.degrade(path+"."+field,
 			fmt.Sprintf("quote %s (otherwise it degrades to quote bullets)", over),
-			"pull-quote/quote-cluster", degradeToBullets, reason)
+			quoteVisual(n), degradeToBullets, reason)
 	}
 }
 
@@ -1900,7 +1900,7 @@ func validateKPISnapshot(path string, slide SlideSpec, s *semDiags) {
 	if n < 2 || n > 6 {
 		s.degradeCount(path+".kpis",
 			fmt.Sprintf("kpi snapshot has %d usable KPIs; 2–6 render as KPI cards (otherwise it degrades to a bullet list)", n),
-			"kpi-Nup", degradeToBullets, 2, 6)
+			kpiVisual(n), degradeToBullets, 2, 6)
 		return
 	}
 	// A metric can be valid semantically and still too long for the compact
@@ -1909,7 +1909,7 @@ func validateKPISnapshot(path string, slide SlideSpec, s *semDiags) {
 	if reason := slides.KPIDegradeReason(slide.Body); reason != "" {
 		s.degrade(path+".kpis",
 			fmt.Sprintf("kpi snapshot degrades to a bullet list — %s; shorten the value or drop a metric to keep the KPI cards", reason),
-			"kpi-Nup", degradeToBullets, degradeBudgetExceeded)
+			kpiVisual(n), degradeToBullets, degradeBudgetExceeded)
 	}
 }
 

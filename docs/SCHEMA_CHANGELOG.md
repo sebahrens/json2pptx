@@ -1,5 +1,22 @@
 # Schema Changelog
 
+- **2026-10-04 — `SEMANTIC_PATTERN_DEGRADED`: `from` is always one pattern name (`go-slide-creator-vag44`, `-wfvyo`; test scope `-c9w86`).**
+  - `fix.params.from` (DeckSpec: `remediation.primary.params.from` /
+    `recommended_edit.params.from`) named a family or a pair on three kinds:
+    `strategy-house/stylish-panels` on `pillars`, `pull-quote/quote-cluster`
+    on `quote`, `kpi-Nup` on `kpi_snapshot`. It is now the one pattern whose
+    budget the slide missed: `strategy-house` when a pillars payload carries
+    any part of the house frame (`objective`, `foundation`, `beam`,
+    `roof_badges`) and `stylish-panels` otherwise; `pull-quote` for one quote
+    and `quote-cluster` for several; `kpi-<n>up` for the KPI count, clamped
+    to the 2–6 the family draws (seven KPIs name `kpi-6up`). Messages are
+    unchanged.
+  - No finding changed on `roadmap`: `phase-roadmap` is the kind's own
+    composition (a value of its `pattern` field), as `arch-stack` is the
+    architecture's. The advice scan now holds every registered pattern name
+    to that rule — a pattern may be named on a slide only when the slide's
+    kind takes it — instead of refusing two names on every kind.
+
 - **2026-10-04 — Schema 4.163.0 · one verdict, authored finding paths, flow and sizing fixes (labels `followup3-20261004`, `followup4-20261004`).**
   - One version for the dated bullets below this one down to the 4.162.0
     entry (74 beads). Headlines: `validate`, `generate --dry-run`, `generate`

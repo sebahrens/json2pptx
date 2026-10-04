@@ -93,3 +93,22 @@ func (s *semDiags) degradeCount(path, msg, from, to string, minItems, maxItems i
 		&diagnostics.Fix{Kind: "restore_visual", Params: map[string]any{"min_items": minItems, "max_items": maxItems}},
 		from, to, degradeCountOutOfRange)
 }
+
+// A degraded slide names one pattern as the visual it missed, also for a kind
+// that has a family of them (go-slide-creator-vag44): "kpi-Nup" and
+// "pull-quote/quote-cluster" are not values of a pattern field.
+
+// kpiVisual is the KPI card pattern for n cards, or the nearest one when n is
+// outside the 2–6 the family draws.
+func kpiVisual(n int) string {
+	return fmt.Sprintf("kpi-%dup", min(max(n, 2), 6))
+}
+
+// quoteVisual is the quote pattern for n quotes: one quote is a pull quote,
+// several are a cluster.
+func quoteVisual(n int) string {
+	if n == 1 {
+		return "pull-quote"
+	}
+	return "quote-cluster"
+}
