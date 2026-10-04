@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -64,6 +65,19 @@ func TestSparseFlow_MaxHeightCapped_NoFire(t *testing.T) {
 	})
 	if findSparseFlow(collectSparseSingleRowFlowFindings(&in)) != nil {
 		t.Error("max_height_pct cap should suppress SPARSE_SINGLE_ROW_FLOW")
+	}
+}
+
+// go-slide-creator-tm46l: a flow bent onto two rows is not a single row.
+func TestSparseFlow_TwoRows_NoFire(t *testing.T) {
+	steps := json.RawMessage(`{"steps":[{"label":"Plan"},{"label":"Build"},{"label":"Test"},{"label":"Ship"}]}`)
+	in := patternSlide(&PatternInput{Name: "process-flow", Values: steps, Overrides: json.RawMessage(`{"rows":2}`)})
+	if findSparseFlow(collectSparseSingleRowFlowFindings(&in)) != nil {
+		t.Error("a process-flow on two rows should not fire SPARSE_SINGLE_ROW_FLOW")
+	}
+	in = patternSlide(&PatternInput{Name: "process-flow", Values: steps, Overrides: json.RawMessage(`{"rows":1}`)})
+	if findSparseFlow(collectSparseSingleRowFlowFindings(&in)) == nil {
+		t.Error("rows 1 is a single row and should still fire")
 	}
 }
 
@@ -200,5 +214,22 @@ func TestSparseFlow_ConstructorFieldsWellFormed(t *testing.T) {
 	}
 	if _, ok := f.Fix.Params["suggested"].([]any); !ok {
 		t.Errorf("fix.params.suggested should be a list, got %T", f.Fix.Params["suggested"])
+	}
+	// go-slide-creator-tm46l: the row is content-sized. The message, the
+	// describe_finding text and the diamond finding must not describe the
+	// stretched single row process-flow no longer draws.
+	meta, _ := patterns.GetFindingMeta(patterns.ErrCodeSparseSingleRowFlow)
+	diamondMeta, _ := patterns.GetFindingMeta(patterns.ErrCodeFlowDiamondNoContent)
+	texts := []string{f.Message, meta.Summary, meta.WhenEmitted, strings.Join(meta.RemediationSteps, " "),
+		patterns.FlowDiamondNoContent("/slides/0/pattern", 0, 1).Message, diamondMeta.WhenEmitted}
+	for _, text := range texts {
+		for _, stale := range []string{"stretch", "lone single-row", "set max_height_pct"} {
+			if strings.Contains(text, stale) {
+				t.Errorf("finding text still says %q: %s", stale, text)
+			}
+		}
+	}
+	if !strings.Contains(f.Message, "most of the slide stays empty") {
+		t.Errorf("message does not state the rendered fault: %s", f.Message)
 	}
 }

@@ -57,8 +57,8 @@ const (
 
 	// Layout-guard code — emitted when a single-row sequence pattern
 	// (process-flow / timeline-horizontal "dots") with sparse per-cell text is
-	// left to fill the whole slide (no bounds / max_height_pct cap), so its
-	// boxes stretch vertically. Advisory; never blocks render.
+	// the slide's only content: the row is sized to its text, so most of the
+	// slide stays empty. Advisory; never blocks render.
 	ErrCodeSparseSingleRowFlow = "SPARSE_SINGLE_ROW_FLOW"
 
 	// Pattern-choice QA heuristics (J2P-VQA-009) — visual-quality smells that a
@@ -66,10 +66,10 @@ const (
 	// "poor pattern choice" rather than a rendering bug (see FindingClass).
 	// All advisory (action "review"); none block render.
 	//
-	//   - OvertallFlowLane: a single-row process-flow / timeline-horizontal lane
-	//     occupies more than half the content height with short labels, in cases
+	//   - OvertallFlowLane: a single-row timeline-horizontal lane occupies more
+	//     than half the content height with short labels, in cases
 	//     SPARSE_SINGLE_ROW_FLOW does not cover (a height cap that is still too
-	//     tall, or a 7–8 step row whose boxes still stretch vertically).
+	//     tall, or a row of seven or more stops). Never process-flow.
 	//   - FlowDiamondNoContent: a standalone process-flow carries a decision
 	//     diamond but has no supporting content zone to explain the branch.
 	//   - TocFlowchartVocab: an agenda / table-of-contents slide is rendered with
@@ -310,7 +310,7 @@ var (
 	ErrChromeCollision      = errors.New("authored content intersects opaque template artwork")
 	ErrAccentOverload       = errors.New("slide uses more than two distinct accent hues")
 	ErrFilledShapeOutlined  = errors.New("filled shape also carries an outline")
-	ErrSparseSingleRowFlow  = errors.New("single-row flow pattern stretched to fill slide with sparse per-cell text")
+	ErrSparseSingleRowFlow  = errors.New("single-row flow pattern with sparse per-cell text is the slide's only content")
 	ErrOvertallFlowLane     = errors.New("single-row flow lane occupies more than half the content height with short labels")
 	ErrFlowDiamondNoContent = errors.New("process-flow decision diamond has no supporting content zone")
 	ErrTocFlowchartVocab    = errors.New("agenda / table-of-contents slide uses sequential flowchart vocabulary")

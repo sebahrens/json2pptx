@@ -11,12 +11,14 @@ import (
 // Sparse single-row flow guard (J2P-FLOW-002).
 //
 // process-flow and the single-row "dots" style of timeline-horizontal expand
-// to one horizontal row that fills the slide's content area. When that row
-// carries only short labels (no descriptions / bodies) and no height cap, the
-// cells stretch vertically into oversized boxes around a few words. This guard
-// flags that case at preflight so an agent can swap to a denser layout family
-// (numbered-step-strip with a detail zone, process-grid-2row, phase-roadmap) or
-// cap the height with max_height_pct.
+// to one horizontal row sized to its text (go-slide-creator-xb06p made
+// process-flow steps content-sized; they used to stretch over the content
+// area, which is what this guard was written against). When that row carries
+// only short labels (no descriptions / bodies) and is the slide's only
+// content, the slide is a short band of a few words over an empty page. This
+// guard flags that case at preflight so an agent can swap to a denser layout
+// family (numbered-step-strip with a detail zone, process-grid-2row,
+// phase-roadmap) or pair the row with a second zone (go-slide-creator-tm46l).
 //
 // The check intentionally reads slide.Pattern directly rather than the expanded
 // grid: a single slide-level pattern is the only shape this applies to. Compose
@@ -25,9 +27,8 @@ import (
 // satisfying the "embedded-in-grid second-zone case does NOT fire" contract.
 const (
 	// sparseFlowMinItems / sparseFlowMaxItems bound the item count the guard
-	// fires for. Below 3 a pattern fails its own validation; above 6 the row
-	// has enough columns that each cell is narrow and short, so the vertical
-	// stretch is no longer the dominant problem.
+	// fires for. Below 3 a pattern fails its own validation; above 6 a
+	// process-flow is on two rows and a timeline's stops fill the width.
 	sparseFlowMinItems = 3
 	sparseFlowMaxItems = 6
 
@@ -61,8 +62,8 @@ func detectSparseSingleRowFlow(p *PatternInput, slideIdx int) *patterns.FitFindi
 	if p == nil {
 		return nil
 	}
-	// An explicit height cap (bounds or the max_height_pct alias) already keeps
-	// the row from stretching — nothing to flag.
+	// A pattern placed with bounds or max_height_pct is the author's own
+	// composition — not reported.
 	if p.Bounds != nil {
 		return nil
 	}
@@ -96,7 +97,8 @@ func detectSparseSingleRowFlow(p *PatternInput, slideIdx int) *patterns.FitFindi
 // sparseFlowTextStats returns the item count and total trimmed text length for
 // the single-row flow patterns this guard covers. The third return value is
 // false when the pattern is not a single-row flow (including the multi-row
-// chevron / gantt timeline styles), in which case the guard does not apply.
+// chevron / gantt timeline styles and a process-flow bent onto two rows), in
+// which case the guard does not apply.
 func sparseFlowTextStats(p *PatternInput) (itemCount, totalChars int, ok bool) {
 	switch p.Name {
 	case "process-flow":
@@ -108,6 +110,13 @@ func sparseFlowTextStats(p *PatternInput) (itemCount, totalChars int, ok bool) {
 		if err := json.Unmarshal(p.Values, &vals); err != nil {
 			return 0, 0, false
 		}
+		// overrides.rows 2 bends a flow of four or more steps onto two rows.
+		var ovr struct {
+			Rows int `json:"rows"`
+		}
+		if len(p.Overrides) > 0 && json.Unmarshal(p.Overrides, &ovr) == nil && ovr.Rows == 2 && len(vals.Steps) >= 4 {
+			return 0, 0, false
+		}
 		for _, s := range vals.Steps {
 			totalChars += len(strings.TrimSpace(s.Label))
 		}
@@ -115,8 +124,7 @@ func sparseFlowTextStats(p *PatternInput) (itemCount, totalChars int, ok bool) {
 
 	case "timeline-horizontal":
 		// Only the default "dots" style is a single row. chevron adds a date
-		// row and gantt renders one row per stop, so neither stretches a lone
-		// row to fill the slide.
+		// row and gantt renders one row per stop, so neither is a lone row.
 		if timelineHorizontalStyle(p.Overrides) != "dots" {
 			return 0, 0, false
 		}
