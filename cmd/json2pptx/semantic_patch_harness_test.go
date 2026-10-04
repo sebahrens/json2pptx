@@ -132,6 +132,11 @@ type patchHarnessRun struct {
 	Patches  int
 	Verified int
 	Problems []string
+	// FirstValidate holds, by corpus deck name, the structured content of the
+	// validate_deck_spec response the patches were read from: a test that
+	// checks another property of that response reads it here instead of
+	// validating the deck again (TestDeckSpecAdviceNamesOnlyFieldsOfTheKind).
+	FirstValidate map[string]any
 }
 
 // shortPatchHarnessRun is the short run's harness (the cases of the review,
@@ -176,6 +181,7 @@ func runPatchHarness(t *testing.T, keep func(name string) bool) (run patchHarnes
 	}
 	mc := refusalTestConfig(t)
 	corpus := patchHarnessCorpus(t)
+	run.FirstValidate = map[string]any{}
 	names := make([]string, 0, len(corpus))
 	for name := range corpus {
 		if keep(name) {
@@ -188,7 +194,9 @@ func runPatchHarness(t *testing.T, keep func(name string) bool) (run patchHarnes
 		if tpl, _ := corpus[name]["template"].(string); tpl != "" {
 			args["template"] = tpl
 		}
-		env := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, args))
+		first := mustCall(t, mc.handleValidateDeckSpec, args)
+		run.FirstValidate[name] = first.StructuredContent
+		env := deckSpecEnvelope(t, first)
 		blocked := map[string]bool{}
 		for _, f := range env.Findings {
 			if f.Severity == diagnostics.SeverityError {

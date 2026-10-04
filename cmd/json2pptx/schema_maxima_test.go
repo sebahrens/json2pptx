@@ -61,6 +61,50 @@ func schemaMaximaTemplateNamesAt(path string) ([]string, error) {
 	return names, nil
 }
 
+// schemaMaximaShortTemplates are the bundled templates the geometry-based
+// tests keep in a -short run: two of the full-coverage templates, the repo's
+// convention for a short matrix.
+var schemaMaximaShortTemplates = []string{"midnight-blue", "modern-template"}
+
+// schemaMaximaRunTemplateNames are the templates a geometry-based test whose
+// cost is its template matrix runs on: schemaMaximaTemplateNames, cut under
+// -short to schemaMaximaShortTemplates (a local p-style stays in either way).
+// Text shaping makes each template of such a test minutes under -race, and
+// CI's sharded race step is held to a time budget
+// (scripts/ci_test_cmd_shards.sh, go-slide-creator-q7cpq). The full set runs
+// without -short, and in CI in the integration corpus job, which runs the
+// tests named "AcrossTemplates" and TestShortReducedMatricesCorpus.
+func schemaMaximaRunTemplateNames(t *testing.T) []string {
+	t.Helper()
+	names := schemaMaximaTemplateNames(t)
+	if !testing.Short() {
+		return names
+	}
+	return slices.DeleteFunc(names, func(name string) bool {
+		return name != "p-style" && !slices.Contains(schemaMaximaShortTemplates, name)
+	})
+}
+
+func TestSchemaMaximaRunTemplateNames(t *testing.T) {
+	names := schemaMaximaRunTemplateNames(t)
+	all := schemaMaximaTemplateNames(t)
+	want := len(all)
+	if testing.Short() {
+		want = len(schemaMaximaShortTemplates) + len(all) - len(schemaMaximaTemplates)
+	}
+	if len(names) != want {
+		t.Fatalf("run templates = %v, want %d of %v", names, want, all)
+	}
+	for _, name := range schemaMaximaShortTemplates {
+		if !slices.Contains(schemaMaximaTemplates, name) || !slices.Contains(names, name) {
+			t.Errorf("short template %q is not one of %v, or is not run: %v", name, schemaMaximaTemplates, names)
+		}
+	}
+	if slices.Contains(all, "p-style") != slices.Contains(names, "p-style") {
+		t.Errorf("the local p-style is in %v but not in the run %v, or the reverse", all, names)
+	}
+}
+
 func TestSchemaMaximaTemplateNamesIncludesLocalPStyle(t *testing.T) {
 	missingPath := filepath.Join(t.TempDir(), "missing.pptx")
 	without, err := schemaMaximaTemplateNamesAt(missingPath)
@@ -100,11 +144,28 @@ func TestSchemaMaximaTemplateNamesIncludesLocalPStyle(t *testing.T) {
 // the fit report gives an agent — and pins it. A pattern whose schema permits
 // content that renders below the readable floor is one an agent cannot size its
 // copy against by reading the contract.
+//
+// The pin is the smallest size over all of schemaMaximaTemplates, and text
+// shaping makes one template's measurement minutes under -race. The short run
+// measures schemaMaximaShortTemplates (and a local p-style, which has pins of
+// its own): there a size below the pin still fails, since the smallest over
+// all templates is no larger; "better than the pin" can only be said of the
+// full set, which the run without -short and the integration corpus job's
+// TestShortReducedMatricesCorpus measure (go-slide-creator-q7cpq).
 func TestSchemaMaximaStayReadable(t *testing.T) {
 	// Measurements are local; the internal shaping pool remains bounded to four.
 	t.Parallel()
-	templateNames := schemaMaximaTemplateNames(t)
+	templateNames := schemaMaximaRunTemplateNames(t)
 	t.Logf("schema-maxima templates: %v", templateNames)
+	hasLocal := slices.Contains(templateNames, "p-style")
+	bundled := len(templateNames)
+	if hasLocal {
+		bundled--
+	}
+	if bundled == 0 {
+		t.Fatalf("no bundled template to measure in %v", templateNames)
+	}
+	allBundled := bundled == len(schemaMaximaTemplates)
 	geometries := make([]schemaMaximaGeometry, 0, len(templateNames))
 	for _, name := range templateNames {
 		geometries = append(geometries, loadSchemaMaximaGeometry(t, name))
@@ -165,7 +226,7 @@ func TestSchemaMaximaStayReadable(t *testing.T) {
 			t.Errorf("%s: schema maximum does not marshal: %v", pat.Name(), result.err)
 		}
 		measured[pat.Name()] = result.worst
-		if len(templateNames) > len(schemaMaximaTemplates) {
+		if hasLocal {
 			localMeasured[pat.Name()] = result.local
 		}
 	}
@@ -173,7 +234,7 @@ func TestSchemaMaximaStayReadable(t *testing.T) {
 		if len(localMeasured) != len(measured) {
 			t.Errorf("p-style measured %d of %d patterns", len(localMeasured), len(measured))
 		}
-		assertSchemaMaximaPins(t, "p-style", localMeasured, pStyleSchemaMaximaShrinkPt)
+		assertSchemaMaximaPins(t, "p-style", localMeasured, pStyleSchemaMaximaShrinkPt, true)
 	}
 
 	names := make([]string, 0, len(measured))
@@ -195,10 +256,17 @@ func TestSchemaMaximaStayReadable(t *testing.T) {
 	}
 	t.Logf("smallest size a schema-maximum payload renders at, worst first (0 = no cell drops below the floor):\n%s", report.String())
 
-	assertSchemaMaximaPins(t, "bundled templates", measured, schemaMaximaShrinkPt)
+	scope := "bundled templates"
+	if !allBundled {
+		scope = fmt.Sprintf("%d of the %d bundled templates", bundled, len(schemaMaximaTemplates))
+	}
+	assertSchemaMaximaPins(t, scope, measured, schemaMaximaShrinkPt, allBundled)
 }
 
-func assertSchemaMaximaPins(t *testing.T, scope string, measured, pins map[string]float64) {
+// assertSchemaMaximaPins holds measured to pins. complete says the
+// measurement covers every template the pins were taken on; a subset can show
+// a size below the pin but not one above it.
+func assertSchemaMaximaPins(t *testing.T, scope string, measured, pins map[string]float64, complete bool) {
 	t.Helper()
 	for name, shrink := range measured {
 		pinned, ok := pins[name]
@@ -211,7 +279,7 @@ func assertSchemaMaximaPins(t *testing.T, scope string, measured, pins map[strin
 			t.Errorf("%s on %s: schema maxima now render text at %.1fpt; the pin says nothing should drop below the floor", name, scope, shrink)
 		case pinned != 0 && shrink != 0 && shrink < pinned-0.05:
 			t.Errorf("%s on %s: schema maxima now render at %.1fpt, SMALLER than the pinned %.1fpt — a field's maxLength grew past what its cell holds", name, scope, shrink, pinned)
-		case pinned != 0 && (shrink == 0 || shrink > pinned+1):
+		case complete && pinned != 0 && (shrink == 0 || shrink > pinned+1):
 			t.Errorf("%s on %s: schema maxima now render at %.1fpt, better than the pinned %.1fpt — raise the pin to hold the ground", name, scope, shrink, pinned)
 		}
 	}
@@ -282,7 +350,7 @@ func TestSchemaMaximaMeasurementsMatchWrittenRuns(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, templateName := range schemaMaximaTemplateNames(t) {
+		for _, templateName := range schemaMaximaRunTemplateNames(t) {
 			t.Run(name+"/"+templateName, func(t *testing.T) {
 				t.Parallel()
 				geom := loadSchemaMaximaGeometry(t, templateName)

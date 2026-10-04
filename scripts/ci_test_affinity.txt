@@ -1,0 +1,11 @@
+# Affinity groups for scripts/ci_test_cmd_shards.sh: one group per line, the
+# names of top-level cmd/json2pptx tests separated by spaces. The tests of a
+# group share a fixture that is computed once per test binary, so the script
+# places the group in one shard as a unit; split over shards, each shard would
+# compute the fixture again. A name the package no longer has fails the script.
+#
+# The agent-journey fixtures: the short parity corpus (shortParityRun), the
+# short patch harness (shortPatchHarnessRun) and the twelve-flaw journey
+# (twelveFlawRoundTrips). TestAgentJourneyMetrics reads all three; the others
+# each make or read one of them.
+TestAgentJourneyMetrics TestDeckSpecFindingParityCorpus TestEveryDeckSpecFindingPathResolves TestEveryEmittedPatchClearsItsFinding TestDeckSpecAdviceNamesOnlyFieldsOfTheKind TestTwelveFlawDraftCleanInThreeRoundTrips

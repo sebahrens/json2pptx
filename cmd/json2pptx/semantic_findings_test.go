@@ -202,6 +202,9 @@ type deckSpecVerdict struct {
 	// RenderEnvelope is set instead of Render when render answered with a
 	// finding envelope (an unresolvable template).
 	RenderEnvelope *diagnostics.FindingEnvelope
+	// ValidateStructured and RenderStructured are the two tools' structured
+	// content as returned, for a test that reads the response as JSON.
+	ValidateStructured, RenderStructured any
 }
 
 func deckSpecVerdicts(t *testing.T, mc *mcpConfig, args map[string]any) deckSpecVerdict {
@@ -217,6 +220,7 @@ func deckSpecVerdicts(t *testing.T, mc *mcpConfig, args map[string]any) deckSpec
 	if err != nil {
 		t.Fatal(err)
 	}
+	out.ValidateStructured, out.RenderStructured = vres.StructuredContent, rres.StructuredContent
 	var probe map[string]any
 	structuredInto(t, rres.StructuredContent, &probe)
 	if _, isEnvelope := probe["findings"]; isEnvelope {
@@ -350,6 +354,17 @@ func parityCorpus(t *testing.T) map[string]map[string]any {
 type parityRun struct {
 	Pairs    int
 	Problems []string
+	// Structured holds, by "template/spec name", what validate_deck_spec and
+	// render_deck_spec returned for the pair: a test that checks another
+	// property of the same responses reads them here instead of running the
+	// two tools again (TestEveryDeckSpecFindingPathResolves).
+	Structured map[string]parityResponses
+}
+
+// parityResponses are the structured content of the two tools for one
+// (template, spec) pair.
+type parityResponses struct {
+	Validate, Render any
 }
 
 // runParityCorpus compares validate_deck_spec with render_deck_spec for every
@@ -361,10 +376,12 @@ func runParityCorpus(t *testing.T, mc *mcpConfig, templates []string, corpus map
 		names = append(names, name)
 	}
 	sort.Strings(names)
+	run.Structured = map[string]parityResponses{}
 	for _, tpl := range templates {
 		for _, name := range names {
 			label := tpl + "/" + name
 			v := deckSpecVerdicts(t, mc, map[string]any{"spec": corpus[name], "template": tpl})
+			run.Structured[label] = parityResponses{Validate: v.ValidateStructured, Render: v.RenderStructured}
 			run.Pairs++
 			run.Problems = append(run.Problems, findingParityProblems(t, label, v)...)
 			// A spec that does not parse was measured on nothing.
@@ -385,7 +402,7 @@ func shortParityRun(t *testing.T) parityRun {
 	shortParity.once.Do(func() {
 		corpus := parityCorpus(t)
 		delete(corpus, "all-kinds")
-		shortParity.run = runParityCorpus(t, refusalTestConfig(t), []string{"modern"}, corpus)
+		shortParity.run = runParityCorpus(t, refusalTestConfig(t), []string{shortParityTemplate}, corpus)
 	})
 	return shortParity.run
 }
@@ -394,6 +411,9 @@ var shortParity struct {
 	once sync.Once
 	run  parityRun
 }
+
+// shortParityTemplate is the template of the short run's parity corpus.
+const shortParityTemplate = "modern"
 
 // TestDeckSpecFindingParityCorpus is the go-slide-creator-3rn3s / -2dit4
 // acceptance test: over a corpus of specs and every shipped template,
@@ -659,13 +679,17 @@ func TestValidateDeckSpecEchoesAndWarnsAboutTemplate(t *testing.T) {
 	if len(def.Warnings) != 1 || !strings.Contains(def.Warnings[0], "pins no template") || !strings.Contains(def.Warnings[0], "forest-green") {
 		t.Errorf("unpinned validate did not warn: %v", def.Warnings)
 	}
-	modern := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": spec, "template": "modern"}))
+	// One validate of the over-full deck serves the echo and the parity with
+	// its render: each is a search for the cut that clears it
+	// (go-slide-creator-q7cpq).
+	onModern := deckSpecVerdicts(t, mc, map[string]any{"spec": spec, "template": "modern"})
+	modern := onModern.Validate
 	if modern.Template != "modern" || modern.TemplateSource != "template argument" || modern.OK {
 		t.Errorf("template=modern: template %q source %q ok=%v", modern.Template, modern.TemplateSource, modern.OK)
 	}
 
 	// The render on modern says what that validate said.
-	assertFindingParity(t, "modern", deckSpecVerdicts(t, mc, map[string]any{"spec": spec, "template": "modern"}))
+	assertFindingParity(t, "modern", onModern)
 
 	// A pinned spec needs no warning, and an argument it overrides is called out.
 	pinned := templateSensitiveSpec(t)
@@ -676,7 +700,8 @@ func TestValidateDeckSpecEchoesAndWarnsAboutTemplate(t *testing.T) {
 	}
 	// go-slide-creator-ifkxs: the call's template replaces the spec's pin for
 	// that call, and the response says so; the deck stays bound to the pin.
-	over := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": pinned, "template": "modern"}))
+	pinnedOnModern := deckSpecVerdicts(t, mc, map[string]any{"spec": pinned, "template": "modern"})
+	over := pinnedOnModern.Validate
 	if over.Template != "modern" || over.TemplateSource != "template argument" || over.OK {
 		t.Errorf("template argument beside a pin: template %q source %q ok=%v", over.Template, over.TemplateSource, over.OK)
 	}
@@ -686,7 +711,7 @@ func TestValidateDeckSpecEchoesAndWarnsAboutTemplate(t *testing.T) {
 	if h, ok := mc.deckHandles.Load(over.DeckID); !ok || h.Template != "midnight-blue" {
 		t.Errorf("the deck is no longer bound to its pinned template: %+v", h)
 	}
-	assertFindingParity(t, "pinned, rendered on modern", deckSpecVerdicts(t, mc, map[string]any{"spec": pinned, "template": "modern"}))
+	assertFindingParity(t, "pinned, rendered on modern", pinnedOnModern)
 	again := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"deck_id": over.DeckID}))
 	if again.Template != "midnight-blue" || !again.OK {
 		t.Errorf("the next call without the argument is not back on the pin: template %q ok=%v", again.Template, again.OK)

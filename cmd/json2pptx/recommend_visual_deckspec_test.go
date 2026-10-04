@@ -171,8 +171,10 @@ func TestRecommendVisualChartsAndKindDiagramsUseDeckSpecForm(t *testing.T) {
 		if c.DeckSpec == nil || c.DeckSpec.Kind != "chart_insight" {
 			t.Fatalf("chart %s: deckspec = %+v, want chart_insight", cc.Type, c.DeckSpec)
 		}
-		if res, err := mc.handleValidateDeckSpec(context.Background(), makeRequest(recipeArgs(t, c))); err != nil || strings.Contains(resultText(res), "DEGRADED") {
-			t.Errorf("chart %s: the chart_insight recipe degrades instead of drawing the chart: %v %s", cc.Type, err, resultText(res))
+		// The recipe as offered is validated once, for the recipe rule and
+		// for this (go-slide-creator-q7cpq).
+		if res := assertRecipeValidates(t, mc, c); strings.Contains(resultText(res), "DEGRADED") {
+			t.Errorf("chart %s: the chart_insight recipe degrades instead of drawing the chart: %s", cc.Type, resultText(res))
 		}
 		slide := recipeArgs(t, c)["spec"].(map[string]any)["slides"].([]any)[0].(map[string]any)
 		if got := slide["chart"].(map[string]any)["type"]; got != cc.Type {
@@ -181,7 +183,6 @@ func TestRecommendVisualChartsAndKindDiagramsUseDeckSpecForm(t *testing.T) {
 		if c.DataContract.FieldPath != "slides[0].chart.data" || len(c.DataContract.Description) == 0 {
 			t.Errorf("chart %s: contract = %+v", cc.Type, c.DataContract)
 		}
-		assertRecipeValidates(t, mc, c)
 	}
 	for diagram, kind := range map[string]string{"org_chart": "org", "swot": "framework", "porters_five_forces": "framework"} {
 		rec := patterns.RecommendVisualResult{Candidates: []patterns.VisualCandidate{{Category: patterns.VisualCategoryDiagram, Name: diagram}}}

@@ -108,7 +108,38 @@ must be requested with `-tags=integration`:
   against every bundled template and round-trips each through headless
   LibreOffice, asserting no repair/corruption warnings.
 
-**CI:** the `corpus-headless` job runs `go test -tags=integration ... -run Corpus`.
+- `cmd/json2pptx/full_matrix_corpus_test.go` — `TestShortReducedMatricesCorpus`
+  runs the whole matrix of every test whose `-short` run takes only a part of
+  it (see "The sharded race step" below).
+
+**CI:** the `corpus-headless` job runs
+`go test -tags=integration ... -run 'Corpus|AcrossTemplates'`, without `-short`
+and without `-race`.
+
+### The sharded race step and its time budget
+
+`cmd/json2pptx` is the heaviest package under `-race`: the `test` job runs it
+through `scripts/ci_test_cmd_shards.sh 4`, which builds the test binary once
+and runs it as four shards. The step is killed at 50 minutes, and the script
+fails it when a shard takes more than 30 (`SHARD_BUDGET_SECONDS`, enforced in
+CI by `SHARD_BUDGET_ENFORCE=1`; locally it only warns), printing each shard's
+time and the slowest tests.
+
+- **Balance.** Shards are filled longest test first from
+  `scripts/ci_test_durations.txt`. Refresh it from a CI job log:
+  `gh run view <run> --log --job <job> | scripts/ci_test_durations.sh > scripts/ci_test_durations.txt`.
+  A test the file does not list gets a default weight, so a new test needs no
+  edit.
+- **Affinity.** Tests that share a once-per-binary fixture are listed as one
+  group in `scripts/ci_test_affinity.txt` and land in one shard, so the
+  fixture is computed once (the agent-journey group: the short parity corpus,
+  the short patch harness, the twelve-flaw journey).
+- **Short matrices.** A test whose cost is a matrix takes two templates (or a
+  few decks) under `-short` and the whole matrix otherwise. The whole matrix
+  must still run in CI: name the test `...AcrossTemplates` or `...Corpus`, or
+  add it to `shortReducedMatrixTests` in
+  `cmd/json2pptx/full_matrix_corpus_test.go`; the `corpus-headless` job runs
+  those without `-short`.
 
 New genuinely-integration tests (require external tools or are slow/fixture
 heavy) should adopt this `//go:build integration` tag and be wired into a CI job

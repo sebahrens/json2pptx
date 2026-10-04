@@ -63,8 +63,16 @@ jobs:
       # (go-slide-creator-s2s53). Its tests run one after another, so the suite
       # is split into parallel shards over the runner's cores and the shard
       # profiles are merged into one (go-slide-creator-zpgmp).
+      #
+      # The shards are balanced by scripts/ci_test_durations.txt. The step is
+      # killed at 50 minutes; a shard that takes more than 30 fails it with
+      # the slowest tests named, so growth is seen while there is still room
+      # (go-slide-creator-q7cpq). The script's header says what to do then.
       - name: Test with coverage (cmd/json2pptx)
         timeout-minutes: 50
+        env:
+          SHARD_BUDGET_SECONDS: "1800"
+          SHARD_BUDGET_ENFORCE: "1"
         run: scripts/ci_test_cmd_shards.sh 4 coverage-cmd.out
 
       - name: Test with coverage (other packages)
@@ -77,8 +85,15 @@ jobs:
 
       - name: Check coverage threshold
         run: |
-          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
+          # The summary line only: a function with "total" in its name is a
+          # second match, the comparison below is then a syntax error and the
+          # step passed whatever the coverage was (go-slide-creator-4hkrb).
+          COVERAGE=$(go tool cover -func=coverage.out | awk '$1 == "total:" {print $3}' | tr -d '%')
           echo "Total coverage: ${COVERAGE}%"
+          if ! [[ "$COVERAGE" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "::error::could not read the total coverage from the profile: '${COVERAGE}'"
+            exit 1
+          fi
           THRESHOLD=70
           if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
             echo "::error::Coverage ${COVERAGE}% is below threshold ${THRESHOLD}%"
@@ -499,6 +514,12 @@ jobs:
     # round-trips each output through headless LibreOffice. Asserts that
     # soffice emits no repair/corruption/invalid/malformed warnings — the
     # "zero needs repair" guarantee tracked by go-slide-creator-0myv.
+    #
+    # The job also runs, without -short and without -race, the whole matrix
+    # of every test whose -short run takes a part of it to keep the sharded
+    # race step inside its time budget (go-slide-creator-q7cpq): the tests
+    # named "AcrossTemplates", and TestShortReducedMatricesCorpus
+    # (cmd/json2pptx/full_matrix_corpus_test.go) for the rest.
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
@@ -516,7 +537,7 @@ jobs:
             libreoffice-impress libreoffice-common librsvg2-bin
 
       - name: Run corpus headless round-trip
-        run: go test -tags=integration ./cmd/json2pptx/... -run Corpus -count=1 -timeout=30m -v
+        run: go test -tags=integration ./cmd/json2pptx/... -run 'Corpus|AcrossTemplates' -count=1 -timeout=30m -v
 
   render-integration:
     # Exercises the tool-gated render and SVG-conversion tests that skip by

@@ -26,7 +26,7 @@ func assertPatternFindingAcrossTemplates(t *testing.T, code, pattern string, val
 			t.Fatal(err)
 		}
 	}
-	for _, templateName := range schemaMaximaTemplateNames(t) {
+	for _, templateName := range schemaMaximaRunTemplateNames(t) {
 		t.Run(templateName, func(t *testing.T) {
 			t.Parallel() // Each template has independent read-only geometry and findings.
 			layouts, width, height := schemaMaximaLayouts(t, templateName)

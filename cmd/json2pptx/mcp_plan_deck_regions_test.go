@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -26,11 +26,33 @@ import (
 // its top label clipped and no finding (go-slide-creator-qpd9c). That slide
 // must now report chart.plot_area_collapsed and nothing else, and the
 // side-by-side alternative the finding names must validate clean.
+//
+// Eight drafts on every template is some eighty validations, minutes under
+// -race. The short run validates them on planDeckRegionsShortTemplates (and a
+// local p-style); the run without -short and the integration corpus job's
+// TestShortReducedMatricesCorpus take every template (go-slide-creator-q7cpq).
 func TestPlanDeckRegionsDraftsValidateOnEveryTemplate(t *testing.T) {
-	tpls, err := filepath.Glob("../../templates/*.pptx")
-	if err != nil || len(tpls) < 9 {
-		t.Fatalf("shipped templates: %v %v", tpls, err)
+	tpls := shippedTemplateNames(t)
+	if testing.Short() {
+		tpls = slices.DeleteFunc(tpls, func(name string) bool {
+			return name != "p-style" && !slices.Contains(planDeckRegionsShortTemplates, name)
+		})
+		if len(tpls) < len(planDeckRegionsShortTemplates) {
+			t.Fatalf("the short run's templates %v are not all shipped: %v", planDeckRegionsShortTemplates, tpls)
+		}
 	}
+	assertPlanDeckRegionsDraftsValidate(t, tpls)
+}
+
+// planDeckRegionsShortTemplates are the templates of the short run: modern,
+// on whose stack the drafted stat shrank below the floor, and midnight-blue,
+// one of the full-coverage templates.
+var planDeckRegionsShortTemplates = []string{"midnight-blue", "modern"}
+
+// assertPlanDeckRegionsDraftsValidate drafts each regions brief in both
+// formats and validates the filled draft on each of tpls.
+func assertPlanDeckRegionsDraftsValidate(t *testing.T, tpls []string) {
+	t.Helper()
 	briefs := map[string]string{
 		"chart-left":    "left two-thirds a line chart of quarterly revenue Q1=12, Q2=14, Q3=17, Q4=21 million; upper right a 32% gross margin KPI; lower right a three-step launch timeline (Design October, Pilot November, Rollout December)",
 		"chart-top":     "top a line chart of quarterly revenue; bottom left a 32% gross margin KPI; bottom right a three-step launch timeline (Design October, Pilot November, Rollout December)",
@@ -74,7 +96,6 @@ func TestPlanDeckRegionsDraftsValidateOnEveryTemplate(t *testing.T) {
 			}
 			slide := filledRegionsDraft(t, format, textContent(res))
 			for _, tpl := range tpls {
-				tpl = strings.TrimSuffix(filepath.Base(tpl), ".pptx")
 				t.Run(name+"/"+format+"/"+tpl, func(t *testing.T) {
 					bad := validate(t, tpl, slide)
 					if len(bad) == 0 {

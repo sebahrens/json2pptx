@@ -152,28 +152,46 @@ func assertAuthoredAddress(t *testing.T, label string, spec any, finding map[str
 // carries path as a JSON Pointer that resolves in the spec that produced it,
 // slide_number as the one human index, and compiled-deck pointers under debug
 // only.
+//
+// The short run's template is the short parity run's, and the address corpus
+// is the parity corpus and two more decks: for the pairs the parity run
+// already put through both tools, the short run reads those responses instead
+// of asking for them again (go-slide-creator-q7cpq). The same test binary
+// makes them, from the same spec and arguments.
 func TestEveryDeckSpecFindingPathResolves(t *testing.T) {
 	mc := refusalTestConfig(t)
-	templates := []string{"modern"}
-	if !testing.Short() {
+	templates := []string{shortParityTemplate}
+	shared := map[string]parityResponses{}
+	if testing.Short() {
+		shared = shortParityRun(t).Structured
+	} else {
 		templates = shippedTemplateNames(t)
 	}
-	checked := 0
+	checked, reused := 0, 0
 	for _, tpl := range templates {
 		for name, spec := range addressCorpus(t) {
 			raw, _ := json.Marshal(spec)
 			var doc any
 			_ = json.Unmarshal(raw, &doc)
-			for tool, handler := range map[string]mcpHandler{
-				"validate": mc.handleValidateDeckSpec,
-				"render":   mc.handleRenderDeckSpec,
-			} {
-				res, err := handler(context.Background(), makeRequest(map[string]any{"spec": spec, "template": tpl}))
-				if err != nil {
-					t.Fatal(err)
+			responses, have := shared[tpl+"/"+name]
+			if have {
+				reused++
+			}
+			for _, tool := range []string{"validate", "render"} {
+				structured := responses.Validate
+				handler := mc.handleValidateDeckSpec
+				if tool == "render" {
+					structured, handler = responses.Render, mc.handleRenderDeckSpec
+				}
+				if !have {
+					res, err := handler(context.Background(), makeRequest(map[string]any{"spec": spec, "template": tpl}))
+					if err != nil {
+						t.Fatal(err)
+					}
+					structured = res.StructuredContent
 				}
 				var out map[string]any
-				structuredInto(t, res.StructuredContent, &out)
+				structuredInto(t, structured, &out)
 				label := tpl + "/" + name + "/" + tool
 				for _, key := range []string{"findings", "diagnostics"} {
 					list, _ := out[key].([]any)
@@ -195,6 +213,10 @@ func TestEveryDeckSpecFindingPathResolves(t *testing.T) {
 				}
 			}
 		}
+	}
+	t.Logf("%d findings checked; %d (template, spec) pairs read from the short parity run", checked, reused)
+	if testing.Short() && reused < len(shared) {
+		t.Errorf("%d of the short parity run's %d pairs were read; the address corpus no longer contains the parity corpus, and every pair is being run twice", reused, len(shared))
 	}
 	if checked < 40 {
 		t.Fatalf("only %d findings checked; the corpus no longer exercises the finding shapes", checked)
