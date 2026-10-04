@@ -865,6 +865,12 @@ func factDrivenEvidencePattern(signals evidenceSignals, index int) string {
 		return "phase-roadmap"
 	}
 	if signals.numericFacts < 3 {
+		// A metric written out as a list of values is a chart however few
+		// other numbers the brief has: the KPI fallback set three values of
+		// one metric as five unrelated cards (go-slide-creator-lxs0v).
+		if signals.seriesList && (index == 0 || (signals.phaseSequence && index == 1)) {
+			return "chart-insights-split"
+		}
 		if signals.comparisonMatrix && index == 0 {
 			return "table-highlight"
 		}
@@ -1038,6 +1044,13 @@ func contentSeedForRole(role, brief string, idx, total int) string {
 	}
 }
 
+// genericFallbackBonus ranks the patterns that can set any statement ahead of
+// the ones whose shape says something (tiers, phases, a process): with nothing
+// in the brief matching a pattern, equal taxonomy scores used to hand a plain
+// statement such as "Attrition fell" to arch-stack, the first name in registry
+// order.
+var genericFallbackBonus = map[string]float64{"card-grid": 0.2, "labeled-rows": 0.1}
+
 // fallbackPattern picks a pattern from taxonomy when recommend_pattern returns nothing.
 func fallbackPattern(role string, patternList []patInfo, used []string) string {
 	taxRoles := narrativeRoleToTaxonomy[role]
@@ -1071,13 +1084,14 @@ func fallbackPattern(role string, patternList []patInfo, used []string) string {
 			}
 		}
 		if score > 0 {
+			score += genericFallbackBonus[pi.name]
 			// Penalize recently used.
 			score -= float64(usedCount[pi.name]) * 0.3
 			candidates = append(candidates, candidate{pi.name, score})
 		}
 	}
 
-	sort.Slice(candidates, func(i, j int) bool {
+	sort.SliceStable(candidates, func(i, j int) bool {
 		return candidates[i].score > candidates[j].score
 	})
 

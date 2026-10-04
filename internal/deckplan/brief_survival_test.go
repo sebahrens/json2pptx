@@ -505,6 +505,43 @@ func TestSplitClausesKeepsALabelWithItsNumbers(t *testing.T) {
 		t.Errorf("evidence facts = %q, want the three-site series", got)
 	}
 
+	// go-slide-creator-lxs0v: the raw plan charts the same series in both
+	// spellings, with few or many other numbers in the brief; it used to set
+	// three values of one metric on kpi-5up.
+	for _, brief := range []string{
+		"Site update for the board. Headcount by site at the end of June: 120, 85 and 40. Attrition fell.",
+		"Site update for the board. Headcount by site at the end of June: 120, 85, 40. Attrition fell.",
+		"Site update for the board. Headcount by site: 120, 85 and 40. Attrition fell to 9%. NPS is 61. Revenue is $4m.",
+	} {
+		series := splitBriefClauses(brief)[1]
+		raw := BuildDeckPlan(patterns.Default(), Params{Brief: brief, SlideBudget: 6}, nil)
+		home := ""
+		for _, s := range raw.Slides {
+			if containsStr(s.Facts, series) {
+				home = s.RecommendedPattern
+			}
+		}
+		if home != "chart-insights-split" {
+			t.Errorf("raw plan for %q puts the series on %q, want chart-insights-split", brief, home)
+		}
+		if got := factsOf(BuildDeckSpecPlan(Params{Brief: brief, SlideBudget: 6}), "evidence"); !strings.Contains(got, series) {
+			t.Errorf("deckspec plan for %q: evidence facts = %q, want the series", brief, got)
+		}
+	}
+
+	// A plain statement no pattern matches takes a pattern that can set any
+	// statement, not the first shape-bearing name in registry order.
+	plain := BuildDeckPlan(patterns.Default(), Params{Brief: "Site update for the board. Attrition fell. Morale improved.", SlideBudget: 6}, nil)
+	var plainPatterns []string
+	for _, s := range plain.Slides {
+		if len(s.Facts) > 0 {
+			plainPatterns = append(plainPatterns, s.RecommendedPattern)
+		}
+	}
+	if want := []string{"card-grid", "labeled-rows"}; !reflect.DeepEqual(plainPatterns, want) {
+		t.Errorf("plain statements land on %v, want %v", plainPatterns, want)
+	}
+
 	// "and" / "or" are never a unit.
 	for s, want := range map[string]bool{
 		"85 and": false, "85 or": false, "40 And": false, "85 and 40 or": false,
