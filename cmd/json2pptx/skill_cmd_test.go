@@ -336,3 +336,100 @@ func TestCLIEntryPointsWarnAboutAStaleSkill(t *testing.T) {
 		t.Errorf("skill status of a stale copy: %s", status)
 	}
 }
+
+// BenchmarkInstalledSkillCheck measures what an entry command pays for the
+// stale-skill check on a current install: every shipped file read and
+// compared ("files"), against the manifest alone ("stamp").
+// go-slide-creator-v25ae.
+func BenchmarkInstalledSkillCheck(b *testing.B) {
+	dest := b.TempDir()
+	if _, err := installSkills(dest); err != nil {
+		b.Fatal(err)
+	}
+	b.Run("files", func(b *testing.B) {
+		for range b.N {
+			if s := checkInstalledSkill(dest); !s.Current {
+				b.Fatalf("not current: %+v", s)
+			}
+		}
+	})
+	b.Run("stamp", func(b *testing.B) {
+		for range b.N {
+			if s := checkSkillStamp(dest); !s.Current {
+				b.Fatalf("not current: %+v", s)
+			}
+		}
+	})
+}
+
+// TestEntryCommandSkillCheckReadsOnlyTheStamp: the check get-started,
+// capabilities, semantic and generate run compares the install manifest's
+// version with the binary's and opens no other installed file; `skill status`
+// still compares every file (go-slide-creator-v25ae).
+func TestEntryCommandSkillCheckReadsOnlyTheStamp(t *testing.T) {
+	dest := t.TempDir()
+	manifest, err := installSkills(dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(dest, "generate-deck")
+	if s := checkSkillStamp(dest); !s.Installed || !s.Current || s.InstalledVersion != SchemaVersion || s.Message != "" || s.FilesChecked != 0 {
+		t.Errorf("a fresh install: %+v", s)
+	}
+
+	// Every installed file made unreadable: the stamp check does not notice,
+	// because it does not open them. The full check reports each one.
+	for _, name := range manifest.Files {
+		if err := os.Remove(filepath.Join(dest, filepath.FromSlash(name))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if s := checkSkillStamp(dest); !s.Installed || !s.Current {
+		t.Errorf("the stamp check read more than the manifest: %+v", s)
+	}
+	if staleSkillWarning(dest) != "" {
+		t.Error("an entry command warned about an install whose manifest is current")
+	}
+
+	// An older manifest is the mismatch an entry command reports.
+	writeManifest := func(version string) {
+		t.Helper()
+		body, err := json.Marshal(skillManifest{SchemaVersion: version, Files: manifest.Files})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, skillManifestName), body, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeManifest("1.2.3")
+	older := checkSkillStamp(dest)
+	if older.Current || older.InstalledVersion != "1.2.3" || !strings.Contains(older.Message, "older than this binary") || older.Refresh != skillRefreshCommand {
+		t.Errorf("an older manifest: %+v", older)
+	}
+	if line := staleSkillWarning(dest); !strings.Contains(line, "is at 1.2.3") || !strings.Contains(line, "skill status") {
+		t.Errorf("warning = %q", line)
+	}
+	if again := staleSkillWarning(dest); again != "" {
+		t.Errorf("the mismatch was reported twice: %q", again)
+	}
+	writeManifest("999.0.0")
+	if s := checkSkillStamp(dest); !s.Current {
+		t.Errorf("a newer skill is reported stale: %+v", s)
+	}
+
+	// No manifest: the SKILL.md frontmatter stands in, and a copy at the
+	// binary's version is still told it was not installed by the binary.
+	if s := checkSkillStamp(t.TempDir()); s.Installed || s.Message != "" {
+		t.Errorf("a directory with no skill is not a stale skill: %+v", s)
+	}
+	if s := checkSkillStamp(staleSkillDir(t, "schema_version: 1.2.3\n")); s.Current || s.InstalledVersion != "1.2.3" || !strings.Contains(s.Message, "older than this binary") {
+		t.Errorf("an older hand copy: %+v", s)
+	}
+	if s := checkSkillStamp(staleSkillDir(t, "")); s.Current || !strings.Contains(s.Message, "no schema_version") {
+		t.Errorf("an unstamped hand copy: %+v", s)
+	}
+	if s := checkSkillStamp(staleSkillDir(t, "schema_version: "+SchemaVersion+"\n")); s.Current || !strings.Contains(s.Message, "no install manifest") {
+		t.Errorf("a hand copy at the binary's version: %+v", s)
+	}
+}

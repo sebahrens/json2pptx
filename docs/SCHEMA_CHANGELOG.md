@@ -1,5 +1,28 @@
 # Schema Changelog
 
+- **2026-10-04 — The stale-skill check on entry commands reads the install manifest only (`go-slide-creator-v25ae`).**
+  - Measured (`BenchmarkInstalledSkillCheck`, Apple M3, warm file cache): the
+    file-by-file check that `get-started`, `capabilities`, `semantic` and
+    `generate` ran reads all 63 installed files (about 1 MB) in 1.31 ms with
+    3.3 MB of allocations, and `get-started` ran it twice. They now compare
+    the `schema_version` in `generate-deck/.json2pptx-skill.json` with the
+    binary's: one file, 0.03 ms, 12 KB.
+  - The stderr line is therefore about the version only (`is at X, older than
+    this binary (Y)`), or — for a copy with no manifest — its `SKILL.md`
+    frontmatter version, `carries no schema_version`, or `has no install
+    manifest (it was copied by hand, so its files are unchecked)`. A file
+    deleted or edited after a current install no longer draws the line;
+    `json2pptx skill status` still compares every file and its output is
+    unchanged. The line now ends ``(said once; `json2pptx skill status`
+    repeats it and checks every file)``.
+
+- **2026-10-04 — The `submit_visual_review` call that `render_deck_thumbnails` hands back names the verdict values (`go-slide-creator-p8i1g`).**
+  - `next_tool_call.args_template.slides` reads `<one {index, verdict,
+    image_sha256} per slide: verdict = approved | changes_requested |
+    inconclusive; image_sha256 = slides[].content_hash from
+    render_deck_thumbnails>` (+55 bytes). The tool is outside the default
+    `tools/list`, so the enum used to cost a separate schema lookup.
+
 - **2026-10-04 — One template precedence on every DeckSpec tool: the call's `template` replaces `meta.template` on compile and explain too (`go-slide-creator-fjuhm`).**
   - **`compile_deck_spec`** (`semantic compile --template`, HTTP
     `POST /api/v1/semantic/compile?template=`): `template` used to apply only

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -160,7 +161,7 @@ func visualReviewSlideItemSchema() map[string]any {
 			},
 			"verdict": map[string]any{
 				"type": "string",
-				"enum": []any{"approved", "changes_requested", "inconclusive"},
+				"enum": visualReviewVerdictEnum(),
 			},
 			"image_path": map[string]any{
 				"type":        "string",
@@ -237,6 +238,19 @@ func checkReviewFinding(slide, idx int, f visualqa.Finding) error {
 			"slides[%d].findings[%d].category %q is not a category; use one of %s", slide, idx, f.Category, strings.Join(allowed, ", "))
 	}
 	return nil
+}
+
+// visualReviewVerdicts are the values a slide's verdict takes. The input
+// schema, the handler and the next_tool_call template that leads here name
+// them from this one list (go-slide-creator-p8i1g).
+var visualReviewVerdicts = []string{"approved", "changes_requested", "inconclusive"}
+
+func visualReviewVerdictEnum() []any {
+	out := make([]any, len(visualReviewVerdicts))
+	for i, v := range visualReviewVerdicts {
+		out[i] = v
+	}
+	return out
 }
 
 // visualReviewSlideInput is one slide verdict submitted by the reviewer.
@@ -550,7 +564,7 @@ func appendReviewSlides(record *visualqa.ReviewRecord, slides []visualReviewSlid
 		if s.Index == nil {
 			return rejectReview(fmt.Sprintf("slides[%d].index", i), nil, "slides[%d].index is required (0-based)", i)
 		}
-		if s.Verdict != "approved" && s.Verdict != "changes_requested" && s.Verdict != "inconclusive" {
+		if !slices.Contains(visualReviewVerdicts, s.Verdict) {
 			return rejectReview(fmt.Sprintf("slides[%d].verdict", i), nil, "slides[%d].verdict must be approved, changes_requested, or inconclusive; got %q", i, s.Verdict)
 		}
 		if s.ImagePath == "" && s.ImageSHA256 == "" {

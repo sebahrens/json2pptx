@@ -104,6 +104,23 @@ func TestRenderNextToolCallChain(t *testing.T) {
 	if review.Tool != "submit_visual_review" || review.ArgsTemplate["pptx_revision"] != "abc" {
 		t.Errorf("review call = %+v", review)
 	}
+	// go-slide-creator-p8i1g: the template names every verdict the tool's
+	// schema accepts, so filling it in needs no schema lookup.
+	slides, _ := review.ArgsTemplate["slides"].(string)
+	item, _ := mcpSubmitVisualReviewTool().InputSchema.Properties["slides"].(map[string]any)["items"].(map[string]any)
+	verdict, _ := item["properties"].(map[string]any)["verdict"].(map[string]any)
+	enum, _ := verdict["enum"].([]any)
+	if len(enum) != 3 {
+		t.Fatalf("submit_visual_review slides[].verdict enum = %v", enum)
+	}
+	for _, v := range enum {
+		if !strings.Contains(slides, v.(string)) {
+			t.Errorf("the slides template does not name the verdict %q: %s", v, slides)
+		}
+	}
+	if len(slides) > 200 {
+		t.Errorf("the slides template is %d bytes; it rides every thumbnail response", len(slides))
+	}
 }
 
 // go-slide-creator-z3pbp: a likely typo retries repair_slide with the
