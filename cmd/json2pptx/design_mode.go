@@ -11,6 +11,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // designModeConstrained is the default mode that restricts raw hex colors and
@@ -81,32 +82,55 @@ func validateSlideDesignMode(slide *SlideInput, slideNum int, defaults *Defaults
 
 	// Check compose segments for pattern overrides.
 	if slide.Compose != nil {
-		for si, seg := range slide.Compose.Segments {
-			findings = append(findings, checkPatternInput(&seg.Pattern, slideNum, fmt.Sprintf("%s/compose/segments/%d/pattern", slidepath.Slide(slideNum-1), si))...)
-		}
+		findings = append(findings, checkCompose(slide.Compose, slideNum, slidepath.SlideField(slideNum-1, "compose"))...)
 	}
 
-	// Check content items (chart/diagram colors)
-	for j, ci := range slide.Content {
-		findings = append(findings, checkContentInput(&ci, slideNum, j+1)...)
+	// Check content items (table/chart/diagram colors)
+	for j := range slide.Content {
+		findings = append(findings, checkContentInput(&slide.Content[j], slideNum, j+1)...)
 	}
 
 	return findings
 }
 
-// checkShapeGrid scans a ShapeGridInput for raw hex colors and absolute font sizes.
+// checkCompose scans a compose envelope: each segment is a pattern, a diagram
+// or another envelope, and answers to the rule that thing answers to on a
+// slide of its own.
+func checkCompose(compose *ComposeInput, slideNum int, composePath string) []patterns.FitFinding {
+	var findings []patterns.FitFinding
+	for si := range compose.Segments {
+		seg := &compose.Segments[si]
+		segPath := fmt.Sprintf("%s/segments/%d", composePath, si)
+		findings = append(findings, checkPatternInput(&seg.Pattern, slideNum, segPath+"/pattern")...)
+		findings = append(findings, checkDiagramStyle(seg.Diagram, slideNum, segPath+"/diagram")...)
+		if seg.Compose != nil {
+			findings = append(findings, checkCompose(seg.Compose, slideNum, segPath+"/compose")...)
+		}
+	}
+	return findings
+}
+
+// checkShapeGrid scans a slide's ShapeGridInput for raw hex colors and absolute
+// font sizes.
 func checkShapeGrid(grid *ShapeGridInput, slideNum int, cellStyle *ShapeSpecInput) []patterns.FitFinding {
+	return checkShapeGridAt(grid, slideNum, slidepath.ShapeGrid(slideNum-1), cellStyle, false)
+}
+
+// checkShapeGridAt scans the grid at gridPath. A sub-grid nested in a cell is
+// the same grid one level down: its cells answer to the same rule, and it
+// inherits the size waiver of the expansion it sits in.
+func checkShapeGridAt(grid *ShapeGridInput, slideNum int, gridPath string, cellStyle *ShapeSpecInput, sizesAreEngineOwned bool) []patterns.FitFinding {
 	var findings []patterns.FitFinding
 
 	// A grid the engine's own expander produced carries explicit sizes by
 	// design; refusing them made expand_pattern output preview-only
 	// (go-slide-creator-c3po).
-	sizesAreEngineOwned := gridFromPatternExpander(grid.Source)
+	sizesAreEngineOwned = sizesAreEngineOwned || gridFromPatternExpander(grid.Source)
 
 	for ri, row := range grid.Rows {
+		rowPath := fmt.Sprintf("%s/rows/%d", gridPath, ri)
 		if row.Connector != nil && row.Connector.Color != "" {
-			if f := checkColorField(row.Connector.Color, slideNum,
-				slidepath.Join(slidepath.GridRow(slideNum-1, ri), "connector/color")); f != nil {
+			if f := checkColorField(row.Connector.Color, slideNum, rowPath+"/connector/color"); f != nil {
 				findings = append(findings, *f)
 			}
 		}
@@ -115,12 +139,15 @@ func checkShapeGrid(grid *ShapeGridInput, slideNum int, cellStyle *ShapeSpecInpu
 			if cell == nil {
 				continue
 			}
-			cellPath := slidepath.GridCell(slideNum-1, ri, ci)
+			cellPath := fmt.Sprintf("%s/cells/%d", rowPath, ci)
 			for _, f := range checkGridCell(cell, slideNum, cellPath, cellStyle) {
 				if sizesAreEngineOwned && isAbsoluteSizeFinding(f) {
 					continue
 				}
 				findings = append(findings, f)
+			}
+			if cell.Grid != nil {
+				findings = append(findings, checkShapeGridAt(cell.Grid, slideNum, cellPath+"/grid", cellStyle, sizesAreEngineOwned)...)
 			}
 		}
 	}
@@ -155,7 +182,7 @@ func checkGridCell(cell *GridCellInput, slideNum int, cellPath string, cellStyle
 	var findings []patterns.FitFinding
 
 	if cell.Shape != nil {
-		findings = append(findings, checkShapeSpec(cell.Shape, slideNum, cellPath, cellStyle)...)
+		findings = append(findings, checkShapeSpec(cell.Shape, slideNum, cellPath+"/shape", cellStyle)...)
 	}
 
 	if cell.AccentBar != nil && cell.AccentBar.Color != "" {
@@ -176,20 +203,51 @@ func checkGridCell(cell *GridCellInput, slideNum int, cellPath string, cellStyle
 		findings = append(findings, checkGridImage(cell.Image, slideNum, cellPath)...)
 	}
 
-	if cell.Diagram != nil && cell.Diagram.Style != nil {
-		findings = append(findings, checkDiagramStyleColors(cell.Diagram.Style.Colors, slideNum, cellPath+"/diagram/style/colors")...)
-		if cell.Diagram.Style.Background != "" {
-			if f := checkColorField(cell.Diagram.Style.Background, slideNum,
-				cellPath+"/diagram/style/background"); f != nil {
-				findings = append(findings, *f)
-			}
-		}
-	}
+	findings = append(findings, checkDiagramStyle(cell.Diagram, slideNum, cellPath+"/diagram")...)
 
 	if cell.Table != nil {
 		findings = append(findings, checkTableInput(cell.Table, slideNum, cellPath+"/table")...)
 	}
 
+	// A composite cell stacks a text shape on a sub-diagram: the two things a
+	// cell otherwise holds one at a time.
+	if cell.Composite != nil {
+		if cell.Composite.Text != nil {
+			findings = append(findings, checkShapeSpec(cell.Composite.Text, slideNum, cellPath+"/composite/text", nil)...)
+		}
+		findings = append(findings, checkDiagramStyle(cell.Composite.SubDiagram, slideNum, cellPath+"/composite/sub_diagram")...)
+	}
+
+	// A pattern nested in a cell takes the overrides a slide-level one does.
+	if len(cell.Pattern) > 0 {
+		var nested PatternInput
+		if err := json.Unmarshal(cell.Pattern, &nested); err == nil {
+			findings = append(findings, checkPatternInput(&nested, slideNum, cellPath+"/pattern")...)
+		}
+	}
+
+	return findings
+}
+
+// checkDiagramStyle checks a diagram's style colors and background, wherever
+// the diagram sits (a placeholder, a grid cell, a composite cell, a compose
+// segment).
+func checkDiagramStyle(diagram *types.DiagramSpec, slideNum int, diagramPath string) []patterns.FitFinding {
+	if diagram == nil || diagram.Style == nil {
+		return nil
+	}
+	return checkStyleColors(diagram.Style.Colors, diagram.Style.Background, slideNum, diagramPath+"/style")
+}
+
+// checkStyleColors checks the series colors and background of the chart or
+// diagram style object at stylePath.
+func checkStyleColors(colors []string, background string, slideNum int, stylePath string) []patterns.FitFinding {
+	findings := checkDiagramStyleColors(colors, slideNum, stylePath+"/colors")
+	if background != "" {
+		if f := checkColorField(background, slideNum, stylePath+"/background"); f != nil {
+			findings = append(findings, *f)
+		}
+	}
 	return findings
 }
 
@@ -214,15 +272,16 @@ func checkGridImage(img *GridImageInput, slideNum int, cellPath string) []patter
 	return findings
 }
 
-// checkShapeSpec validates fill, line, and text color fields in a ShapeSpecInput.
-func checkShapeSpec(spec *ShapeSpecInput, slideNum int, basePath string, cellStyle *ShapeSpecInput) []patterns.FitFinding {
+// checkShapeSpec validates fill, line, and text color fields in the
+// ShapeSpecInput at shapePath.
+func checkShapeSpec(spec *ShapeSpecInput, slideNum int, shapePath string, cellStyle *ShapeSpecInput) []patterns.FitFinding {
 	var findings []patterns.FitFinding
 	// A field the cell took from defaults.cell_style is addressed there.
 	fieldPath := func(field string, value, fromDefaults json.RawMessage) string {
 		if sameRawMessage(value, fromDefaults) {
 			return "/defaults/cell_style/" + field
 		}
-		return basePath + "/shape/" + field
+		return shapePath + "/" + field
 	}
 	var defFill, defLine, defText json.RawMessage
 	if cellStyle != nil {
@@ -415,36 +474,50 @@ func checkPatternInput(pattern *PatternInput, slideNum int, patternPath string) 
 	return findings
 }
 
-// checkContentInput checks a content item for raw hex colors (chart/diagram data).
+// checkContentInput checks a content item for raw hex colors: the styling of
+// a table, a chart or a diagram.
 func checkContentInput(ci *ContentInput, slideNum, contentNum int) []patterns.FitFinding {
 	var findings []patterns.FitFinding
 	basePath := slidepath.ContentIndex(slideNum-1, contentNum-1)
 
-	// Check diagram_value style colors
-	if ci.DiagramValue != nil && ci.DiagramValue.Style != nil {
-		findings = append(findings, checkDiagramStyleColors(
-			ci.DiagramValue.Style.Colors, slideNum, basePath+"/diagram_value/style/colors")...)
-		if ci.DiagramValue.Style.Background != "" {
-			if f := checkColorField(ci.DiagramValue.Style.Background, slideNum,
-				basePath+"/diagram_value/style/background"); f != nil {
-				findings = append(findings, *f)
-			}
-		}
+	// A table answers to one rule wherever it sits: this is the table a grid
+	// cell holds, in a placeholder (go-slide-creator-gpbjx).
+	if ci.TableValue != nil {
+		findings = append(findings, checkTableInput(ci.TableValue, slideNum, basePath+"/table_value")...)
 	}
-
-	// Check chart_value (deprecated but still used)
+	findings = append(findings, checkDiagramStyle(ci.DiagramValue, slideNum, basePath+"/diagram_value")...)
+	// chart_value is deprecated but still used.
 	if ci.ChartValue != nil && ci.ChartValue.Style != nil {
-		findings = append(findings, checkDiagramStyleColors(
-			ci.ChartValue.Style.Colors, slideNum, basePath+"/chart_value/style/colors")...)
-		if ci.ChartValue.Style.Background != "" {
-			if f := checkColorField(ci.ChartValue.Style.Background, slideNum,
-				basePath+"/chart_value/style/background"); f != nil {
-				findings = append(findings, *f)
-			}
+		findings = append(findings, checkStyleColors(ci.ChartValue.Style.Colors, ci.ChartValue.Style.Background, slideNum, basePath+"/chart_value/style")...)
+	}
+	return append(findings, checkLegacyContentValue(ci, slideNum, basePath+"/value")...)
+}
+
+// checkLegacyContentValue checks the legacy "value" spelling of a table, chart
+// or diagram: the same payload under another key, read only when the typed
+// field is absent.
+func checkLegacyContentValue(ci *ContentInput, slideNum int, valuePath string) []patterns.FitFinding {
+	if len(ci.Value) == 0 {
+		return nil
+	}
+	switch {
+	case ci.Type == "table" && ci.TableValue == nil:
+		var table TableInput
+		if err := json.Unmarshal(ci.Value, &table); err == nil {
+			return checkTableInput(&table, slideNum, valuePath)
+		}
+	case ci.Type == "chart" && ci.ChartValue == nil, ci.Type == "diagram" && ci.DiagramValue == nil:
+		var visual struct {
+			Style *struct {
+				Colors     []string `json:"colors"`
+				Background string   `json:"background"`
+			} `json:"style"`
+		}
+		if err := json.Unmarshal(ci.Value, &visual); err == nil && visual.Style != nil {
+			return checkStyleColors(visual.Style.Colors, visual.Style.Background, slideNum, valuePath+"/style")
 		}
 	}
-
-	return findings
+	return nil
 }
 
 // collectDroppedDiagramColorWarnings returns advisory (info) findings for

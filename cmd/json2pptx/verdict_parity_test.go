@@ -301,6 +301,8 @@ func verdictMutations() []verdictMutation {
 	const smallChart = `{"type": "bar", "title": "Margin", "data": {"Q1": 4, "Q2": 5}}`
 	const kpis = `[{"big": "1", "small": "a"}, {"big": "2", "small": "b"}, {"big": "3", "small": "c"}]`
 	const cellB = `{"shape": {"geometry": "rect", "text": "b"}}`
+	const hexColourTable = `{"headers": ["Option", "Cost"], "style": {"header_background": "#112233"},
+      "rows": [["Build", {"content": "High", "conditional": {"rule": "always", "fill": "#888888"}}]]}`
 	return []verdictMutation{
 		{"control: unchanged", "bullets", false, func(_, _ map[string]any) {}},
 		{"control: every slide kind", "bullets", false, func(deck, _ map[string]any) {
@@ -326,6 +328,12 @@ func verdictMutations() []verdictMutation {
 		}},
 		{"hex colour in constrained mode", "grid", true, set("shape_grid",
 			`{"rows": [{"cells": [{"shape": {"geometry": "rect", "text": "a", "fill": "#FF0000"}}]}]}`)},
+		// One rule for a table wherever it sits (go-slide-creator-gpbjx).
+		{"hex table colours in a placeholder table", "table", true, setContent("table_value", hexColourTable)},
+		{"hex table colours in a grid-cell table", "grid", true, set("shape_grid",
+			`{"rows": [{"cells": [{"table": `+hexColourTable+`}, `+cellB+`]}]}`)},
+		{"control: scheme table colours in a placeholder table", "table", false, setContent("table_value",
+			strings.NewReplacer("#112233", "accent1", "#888888", "accent3").Replace(hexColourTable))},
 		{"unknown transition", "bullets", true, set("transition", `"teleport"`)},
 		{"unknown background fit", "bullets", true, set("background", `{"color": "accent1", "fit": "squash"}`)},
 
@@ -532,6 +540,8 @@ var verdictCoreMutations = map[string]bool{
 	"grid config out of range":                       true,
 	"emoji in text":                                  true,
 	"hex colour in constrained mode":                 true,
+	"hex table colours in a placeholder table":       true,
+	"hex table colours in a grid-cell table":         true,
 	"unknown layout_id":                              true,
 	"pattern on a layout that cannot host it":        true,
 	"content without placeholder_id":                 true,

@@ -144,7 +144,19 @@ The `@template-default` sentinel lives in a separate namespace from user-authore
 
 If the resolved GUID has no non-empty `<a:tblStyle>` definition in the template, the output keeps that GUID but renders the table explicitly in the engine default look above (unfilled bold header over a 1pt rule, hairline row rules, no zebra); a `header_background` adds the header fill on top. This prevents an empty style list or portability-only stub from leaving the table visually plain. Defined template styles remain in control.
 
-**Validation:** a `style_id` must be empty, the `@template-default` sentinel, or a well-formed OOXML table style GUID (`{8-4-4-4-12}` hex, e.g. `{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}`). Any other value — a typo or a string containing XML metacharacters such as `"&<` — is rejected with an `INVALID_PARAMETER` validation error and is never emitted into slide XML or `ppt/tableStyles.xml` (the renderer drops it defensively even when validation is skipped). A well-formed GUID that the template does not declare is allowed but produces the advisory `unknown_table_style_id` warning. Both are reported at the field the author wrote: `/slides/N/content/M/table_value/style/style_id` (`…/cells/C/table/style/style_id` in a grid cell), or — once, however many tables adopt it — `/defaults/table_style/style_id` when the value is the deck default. The same holds for a constrained-mode `design_mode_violation` on a default: `/defaults/table_style/header_background`, `/defaults/cell_style/fill`.
+**Validation:** a `style_id` must be empty, the `@template-default` sentinel, or a well-formed OOXML table style GUID (`{8-4-4-4-12}` hex, e.g. `{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}`). Any other value — a typo or a string containing XML metacharacters such as `"&<` — is rejected with an `INVALID_PARAMETER` validation error and is never emitted into slide XML or `ppt/tableStyles.xml` (the renderer drops it defensively even when validation is skipped). A well-formed GUID that the template does not declare is allowed but produces the advisory `unknown_table_style_id` warning. Both are reported at the field the author wrote: `/slides/N/content/M/table_value/style/style_id` (`…/cells/C/table/style/style_id` in a grid cell), or — once, however many tables adopt it — `/defaults/table_style/style_id` when the value is the deck default. A constrained-mode `design_mode_violation` on a default is addressed the same way — see [Colours in constrained design mode](#colours-in-constrained-design-mode).
+
+## Colours in constrained design mode
+
+`design_mode: "constrained"` (the default) keeps a deck on the template's theme: a colour is a scheme name (`accent1`–`accent6`, `dk1`, `dk2`, `lt1`, `lt2`, `tx1`, …), and a raw hex value is refused with `design_mode_violation` (error, fix `use_semantic_color` naming the nearest scheme colour). `design_mode: "free"` accepts hex everywhere. The rule is about the value, not where it sits (go-slide-creator-gpbjx):
+
+- **A table is one thing wherever it is.** `style.header_background` and a cell's `conditional.fill` answer to the rule in a placeholder (`table_value`, or the legacy `value`), in a `shape_grid` cell (`table`) and in a nested sub-grid. The hex forms the fields accept are for free mode.
+- **So is everything else that takes a colour**: a cell `shape` (`fill`, `line`, `text.color`), `accent_bar`, `icon`, `image` overlay / text, a row `connector`, a chart or diagram `style.colors` / `style.background` (in a placeholder, a grid cell, a `composite` cell's `sub_diagram`, a `compose` segment, or under the legacy `value` key), a `composite` cell's `text`, and a pattern's colour `overrides` (on the slide, in a grid cell, in a `compose` segment at any depth). A nested `grid` is checked like the grid it sits in.
+- **A value adopted from `defaults` is the default's.** A hex `defaults.table_style.header_background` or `defaults.cell_style.fill` / `line` / `text.color` is reported at `/defaults/table_style/header_background`, `/defaults/cell_style/fill` (…) — once, however many tables or cells adopt it. A table or cell that writes its own value is reported at its own field.
+
+Paths are JSON Pointers at the offending field ([PATH_GRAMMAR.md](PATH_GRAMMAR.md)): `/slides/N/content/M/table_value/style/header_background`, `/slides/N/content/M/table_value/rows/r/c/conditional/fill`, `/slides/N/shape_grid/rows/R/cells/C/table/rows/r/c/conditional/fill`, `…/cells/C/grid/rows/R/cells/C/table/…`, `…/cells/C/composite/text/fill`, `…/cells/C/pattern/overrides/<key>`, `/slides/N/compose/segments/S/diagram/style/colors/i`. Every surface gives the same verdict: `validate`, `validate_input`, `generate` (with or without `--dry-run`), `generate_presentation`, and a DeckSpec `raw_json2pptx` slide.
+
+The same check refuses an absolute font size on grid text (`…/shape/text/size`, fix `remove_field`); a grid stamped `source: "pattern:<name>"` keeps the expander's sizes, at every depth of that grid.
 
 ## Template Surface Properties
 
@@ -192,7 +204,8 @@ content satisfies a rule:
 | `equals` | the cell's text matches, ignoring case and padding — or the numbers match, so `50` matches `"50%"` | string or number |
 | `contains` | the threshold appears in the cell's text, ignoring case | non-empty string |
 
-`fill` is a scheme color (`accent3`) or a 6-digit hex; it renders as a 20% tint,
+`fill` is a scheme color (`accent3`) or, in `design_mode: "free"`, a 6-digit hex
+([constrained mode refuses hex](#colours-in-constrained-design-mode)); it renders as a 20% tint,
 so the cell's own text stays legible. A rule the cell does NOT satisfy leaves it
 with the table's normal fill.
 
