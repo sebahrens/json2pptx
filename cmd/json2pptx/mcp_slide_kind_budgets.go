@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/semantic"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -95,7 +96,14 @@ type templateTextBudgets struct {
 	Title    map[string]measuredTextBudget // by layout role
 	Subtitle map[string]measuredTextBudget // cover and closing
 	Takeaway measuredTextBudget
+	// KPIValue is the digits one kpi_snapshot value holds on one line, by KPI
+	// count (2–6): the card narrows with the count and the theme face sets
+	// the digit width (go-slide-creator-6xgxm).
+	KPIValue map[int]int
 }
+
+// kpiBudgetCounts are the KPI counts a kpi_snapshot slide renders as cards.
+var kpiBudgetCounts = []int{2, 3, 4, 5, 6}
 
 func (t templateTextBudgets) tighter(o templateTextBudgets) templateTextBudgets {
 	out := templateTextBudgets{Title: map[string]measuredTextBudget{}, Subtitle: map[string]measuredTextBudget{}}
@@ -104,6 +112,18 @@ func (t templateTextBudgets) tighter(o templateTextBudgets) templateTextBudgets 
 		out.Subtitle[role] = t.Subtitle[role].tighter(o.Subtitle[role])
 	}
 	out.Takeaway = t.Takeaway.tighter(o.Takeaway)
+	out.KPIValue = map[int]int{}
+	for _, n := range kpiBudgetCounts {
+		a, b := t.KPIValue[n], o.KPIValue[n]
+		switch {
+		case a == 0:
+			out.KPIValue[n] = b
+		case b == 0:
+			out.KPIValue[n] = a
+		default:
+			out.KPIValue[n] = min(a, b)
+		}
+	}
 	return out
 }
 
@@ -148,7 +168,43 @@ func measureTemplateBudgets(analysis *types.TemplateAnalysis) templateTextBudget
 			out.Takeaway = out.Takeaway.tighter(measuredTextBudget{MaxChars: budget.MaxChars, Lines: budget.MaxLines})
 		}
 	}
+	// A KPI value is fitted to its card's width in the theme's body face: the
+	// measure the BODY_TOO_LONG finding applies to it.
+	ctx := patterns.ExpandContext{
+		Theme:        analysis.Theme,
+		SlideWidth:   analysis.SlideWidth,
+		SlideHeight:  analysis.SlideHeight,
+		LayoutBounds: layoutBoundsFromLayouts(analysis.Layouts, analysis.SlideWidth, analysis.SlideHeight),
+	}
+	out.KPIValue = map[int]int{}
+	for _, n := range kpiBudgetCounts {
+		out.KPIValue[n] = patterns.KPIValueLineBudget(ctx, n)
+	}
 	return out
+}
+
+// kpiValueBudget states the measured kpis[].value budget: the most a value
+// holds (with the fewest KPIs) and, in the note, the counts that hold fewer.
+func kpiValueBudget(perCount map[int]int) (slideKindBudget, bool) {
+	most := 0
+	for _, n := range kpiBudgetCounts {
+		most = max(most, perCount[n])
+	}
+	if most == 0 {
+		return slideKindBudget{}, false
+	}
+	var tighter []string
+	for _, n := range kpiBudgetCounts {
+		if c := perCount[n]; c > 0 && c < most {
+			tighter = append(tighter, fmt.Sprintf("%d with %d KPIs", c, n))
+		}
+	}
+	note := "digits on one line at any KPI count"
+	if len(tighter) > 0 {
+		note = "digits on one line; " + strings.Join(tighter, ", ")
+	}
+	note += " — capitals run wider. Past it the value is reported as BODY_TOO_LONG: shorten it or show fewer KPIs"
+	return slideKindBudget{Field: "kpis[].value", MaxChars: most, MaxLines: 1, Basis: "measured", Note: note}, true
 }
 
 // budgetRoleForKind is the layout role a kind's title is measured on, or ""
@@ -189,6 +245,14 @@ func slideKindBudgets(k semantic.SlideKind, measured templateTextBudgets) []slid
 		out = append(out, slideKindBudget{Field: "takeaway", MaxChars: m.MaxChars, MaxLines: m.Lines, Basis: "measured"})
 	}
 	for _, b := range semantic.KindFieldBudgets(k) {
+		// A KPI value's line depends on the template's face and the KPI count:
+		// the measured budget replaces the fixed hard maximum.
+		if k == semantic.KindKPISnapshot && b.Field == "kpis[].value" {
+			if m, ok := kpiValueBudget(measured.KPIValue); ok {
+				out = append(out, m)
+				continue
+			}
+		}
 		out = append(out, slideKindBudget{Field: b.Field, MaxChars: b.MaxChars, MinItems: b.MinItems, MaxItems: b.MaxItems, Basis: "fixed", Note: b.Note})
 	}
 	return out

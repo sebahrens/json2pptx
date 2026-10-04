@@ -291,6 +291,51 @@ var _ = jsonschema.ShapeGridInput{}
 
 // errString returns an error that wraps msg. Defined here (rather than using
 // errors.New inline) so the test file can keep the import list minimal.
+// go-slide-creator-qu29q: a pattern's text-budget warning on a raw deck sits
+// on the value it names and carries the budget as fix.params.max_chars; it
+// used to sit at /slides/N/pattern with the budget in the sentence only.
+func TestPatternWarningFindingPointsAtTheValue(t *testing.T) {
+	const kpi = "BODY_TOO_LONG: kpi-6up values[2].big cannot fit on one line at the 16pt effective size in a 106pt-wide card, which holds about 9 characters like these — shorten the metric"
+	for _, tc := range []struct {
+		name, pattern, values, warning string
+		wantPath                       string
+		wantMax                        int
+	}{
+		{"list values", "kpi-6up", `[{"big":"1","small":"a"},{"big":"2","small":"b"},{"big":"EUR 987.65bn","small":"c"}]`, kpi, "/slides/4/pattern/values/2/big", 9},
+		{"authored alias", "kpi-6up", `[{"value":"1","label":"a"},{"value":"2","label":"b"},{"value":"EUR 987.65bn","label":"c"}]`, kpi, "/slides/4/pattern/values/2/value", 9},
+		// A "Big | Small" string cell has no big key: the cell is the address,
+		// and the budget of a part of it is not the budget of the string.
+		{"string shorthand", "kpi-6up", `["1 | a","2 | b","EUR 987.65bn | c"]`, kpi, "/slides/4/pattern/values/2", 0},
+		{"object values", "process-flow", `{"steps":[{"label":"a"},{"label":"b"}]}`,
+			"BODY_TOO_LONG: process-flow steps[1].label has 90 characters (longest unbroken run 9); this 8-step step holds about 71 word-like or 59 wide unbroken characters — shorten the label", "/slides/4/pattern/values/steps/1/label", 71},
+		{"no value named", "process-flow", `{"steps":[{"label":"a"}]}`,
+			"BODY_TOO_LONG: process-flow step labels need 400pt at readable sizes but the content area holds about 311pt — shorten the labels or use fewer steps", "/slides/4/pattern", 0},
+		{"another code keeps the pattern", "chart-insights-split", `{"insights":["a"]}`,
+			"CHART_PLACEHOLDER_EMPTY: insights[0] is drawn without a chart", "/slides/4/pattern", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := patternWarningFinding(4, &PatternInput{Name: tc.pattern, Values: json.RawMessage(tc.values)}, tc.warning)
+			if f == nil || f.Path != tc.wantPath {
+				t.Fatalf("finding = %+v, want path %s", f, tc.wantPath)
+			}
+			// The message and action are those of the pattern-level finding.
+			base := patternWarningAsFinding(4, tc.pattern, tc.warning)
+			if f.Message != base.Message || f.Action != base.Action || f.Code != base.Code {
+				t.Errorf("finding %+v differs from the pattern-level one %+v beyond its address", f, base)
+			}
+			if tc.wantMax == 0 {
+				if f.Fix != nil {
+					t.Errorf("fix = %+v, want none", f.Fix)
+				}
+				return
+			}
+			if f.Fix == nil || f.Fix.Kind != "rewrite_field" || f.Fix.Params["max_chars"] != tc.wantMax || f.Fix.Params["path"] != tc.wantPath {
+				t.Errorf("fix = %+v, want rewrite_field with max_chars %d at %s", f.Fix, tc.wantMax, tc.wantPath)
+			}
+		})
+	}
+}
+
 func errString(msg string) error { return composeTestErr(msg) }
 
 type composeTestErr string

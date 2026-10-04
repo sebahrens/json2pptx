@@ -99,6 +99,46 @@ func TestProcessFlowTwoRows(t *testing.T) {
 		}
 	})
 
+	// go-slide-creator-r0csi: a mixed flow on rows 2 wrapped left to right
+	// with no connector between the rows; it now bends like a plain flow.
+	t.Run("a mixed flow on rows 2 bends and draws the turn", func(t *testing.T) {
+		mixed := pfSteps(6)
+		mixed[0].Type, mixed[1].Type = "chevron", "arrow"
+		rows, links := rowLabels(t, mixed, &ProcessFlowOverrides{Rows: 2})
+		if len(rows) != 2 || rows[1] != "Deploy|Test|Build" {
+			t.Errorf("rows = %q, want the second row running back under the first", rows)
+		}
+		wantLinks := [][4]int{{0, 2, 1, 2}, {1, 2, 1, 1}, {1, 1, 1, 0}}
+		if len(links) != len(wantLinks) {
+			t.Fatalf("links = %v, want %v", links, wantLinks)
+		}
+		for i := range links {
+			if links[i] != wantLinks[i] {
+				t.Errorf("link %d = %v, want %v", i, links[i], wantLinks[i])
+			}
+		}
+		if err := p.Validate(&ProcessFlowValues{Steps: mixed}, &ProcessFlowOverrides{Rows: 2}, nil); err != nil {
+			t.Errorf("pointed steps before the turn were refused: %v", err)
+		}
+		// A chevron or arrow at the turn or on the returning row points
+		// against the flow: refused, naming the step.
+		for _, at := range []int{2, 4} {
+			for _, typ := range []string{"chevron", "arrow"} {
+				bad := pfSteps(6)
+				bad[0].Type, bad[at].Type = "chevron", typ
+				err := p.Validate(&ProcessFlowValues{Steps: bad}, &ProcessFlowOverrides{Rows: 2}, nil)
+				want := "steps[" + string(rune('0'+at)) + "].type"
+				if err == nil || !strings.Contains(err.Error(), want) || !strings.Contains(err.Error(), "overrides.rows") {
+					t.Errorf("%s at step %d: err = %v, want a refusal at %s", typ, at, err, want)
+				}
+				// On one row the same flow is fine.
+				if err := p.Validate(&ProcessFlowValues{Steps: bad}, nil, nil); err != nil {
+					t.Errorf("%s at step %d on one row: %v", typ, at, err)
+				}
+			}
+		}
+	})
+
 	t.Run("a label at the full budget fits both rows", func(t *testing.T) {
 		steps := pfSteps(8)
 		for i := range steps {

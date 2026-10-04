@@ -216,7 +216,11 @@ func IsHardContentDrop(f FitFinding) bool {
 // SparseSingleRowFlow builds a SPARSE_SINGLE_ROW_FLOW fit finding for a
 // slide-level single-row sequence pattern (process-flow or the single-row
 // "dots" style of timeline-horizontal) that carries sparse per-cell text and
-// has no height cap, so its boxes stretch vertically to fill the slide.
+// is the slide's only content. Both patterns size the row to its text
+// (process-flow since go-slide-creator-xb06p/pfyeg; the finding used to say
+// the boxes stretch to fill the slide), so the fault is the other one: a
+// short band of a few words and an otherwise empty slide
+// (go-slide-creator-tm46l).
 //
 //   - patternName is the offending pattern ("process-flow" / "timeline-horizontal").
 //   - path is the JSON Pointer to the slide's pattern field (e.g. "/slides/3/pattern").
@@ -227,7 +231,8 @@ func IsHardContentDrop(f FitFinding) bool {
 // The finding is advisory (action "review"): it never blocks generation. The
 // fix is a swap_pattern suggestion ranked toward numbered-step-strip (which adds
 // a per-step detail zone), with process-grid-2row and phase-roadmap as
-// alternatives; setting max_height_pct on the existing pattern also clears it.
+// alternatives. A pattern the author placed with bounds / max_height_pct is
+// not reported, but the cap does not change the row and is not advice.
 func SparseSingleRowFlow(patternName, path string, slideIdx, itemCount int, avgChars float64) FitFinding {
 	return FitFinding{
 		ValidationError: ValidationError{
@@ -235,7 +240,7 @@ func SparseSingleRowFlow(patternName, path string, slideIdx, itemCount int, avgC
 			Path:    path,
 			Code:    ErrCodeSparseSingleRowFlow,
 			Message: fmt.Sprintf(
-				"slide %d: %s is a single horizontal row of %d sparse cells (avg %.0f chars) with no height cap — boxes stretch to fill the slide; switch to numbered-step-strip / process-grid-2row / phase-roadmap, or set max_height_pct",
+				"slide %d: %s is the slide's only content: one row of %d short cells (avg %.0f chars), sized to its text, so most of the slide stays empty — give each step a detail line (numbered-step-strip), use process-grid-2row / phase-roadmap, or pair the row with a second zone (compose)",
 				slideIdx+1, patternName, itemCount, avgChars),
 			Fix: &FixSuggestion{
 				Kind: "swap_pattern",
@@ -301,8 +306,9 @@ func OvertallFlowLane(patternName, path string, slideIdx, itemCount int, laneHei
 
 // FlowDiamondNoContent builds a FLOW_DIAMOND_NO_CONTENT fit finding for a
 // standalone process-flow that carries at least one decision diamond
-// (step.type == "decision") but has no supporting content zone — a single-row
-// flow has nowhere to explain what the branch outcomes are. Compose envelopes
+// (step.type == "decision") but has no supporting content zone — the flow
+// draws one path through its steps (one row, or two rows from seven steps)
+// and no branch, so nothing says what the outcomes are. Compose envelopes
 // and nested cell patterns are exempt (a second zone already carries the
 // explanation), enforced by the caller reading slide.Pattern directly.
 //
@@ -316,7 +322,7 @@ func FlowDiamondNoContent(path string, slideIdx, diamondCount int) FitFinding {
 			Path:    path,
 			Code:    ErrCodeFlowDiamondNoContent,
 			Message: fmt.Sprintf(
-				"slide %d: process-flow has %d decision diamond(s) but no supporting content zone to explain the branch outcomes — a lone single-row flow cannot show the yes/no paths; add an explanatory zone via compose, or switch to numbered-step-strip with per-step detail",
+				"slide %d: process-flow has %d decision diamond(s) but no supporting content zone to explain the branch outcomes — process-flow draws one path through its steps and no yes/no branches; add an explanatory zone via compose, or switch to numbered-step-strip with per-step detail",
 				slideIdx+1, diamondCount),
 			Fix: &FixSuggestion{
 				Kind: "swap_pattern",

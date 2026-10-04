@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -294,6 +295,96 @@ func patternWarningAsFinding(slideIdx int, patternName, warning string) *pattern
 		},
 		Action: patternWarningAction(code),
 	}
+}
+
+// patternValueWarningCodes are the text-budget codes a pattern raises about
+// one of its values: the finding belongs on that value, not on the pattern.
+var patternValueWarningCodes = map[string]bool{
+	patterns.ErrCodeBodyTooLong:      true,
+	patterns.ErrCodeHeadlineTooLong:  true,
+	patterns.ErrCodeTextExceedsShape: true,
+}
+
+// patternValueAliases are the authored keys a pattern accepts for a value it
+// names by its canonical key (a KPI cell's {value, label} for {big, small}).
+var patternValueAliases = map[string][]string{
+	"big":   {"value", "number"},
+	"small": {"label", "caption"},
+	"sub":   {"delta", "trend", "change"},
+}
+
+// patternWarningFinding is patternWarningAsFinding for a slide-level pattern
+// whose input is at hand. A text-budget warning that names one value
+// ("values[2].big cannot fit …, which holds about 9 characters") is moved to
+// that value's JSON Pointer (/slides/N/pattern/values/2/big) and carries the
+// budget its sentence states as fix.params.max_chars (the advisory
+// rewrite_field: repair_slide has no executable edit for a pattern value's
+// text), so a raw-deck author
+// gets the address and the length a DeckSpec author already gets
+// (go-slide-creator-qu29q). A warning that names no value, or a value the
+// authored JSON does not hold (a "Big | Small" string cell), keeps the
+// deepest address that exists.
+func patternWarningFinding(slideIdx int, p *PatternInput, warning string) *patterns.FitFinding {
+	if p == nil {
+		return nil
+	}
+	f := patternWarningAsFinding(slideIdx, p.Name, warning)
+	if f == nil || !patternValueWarningCodes[f.Code] || len(p.Values) == 0 {
+		return f
+	}
+	m := patternWarningRE.FindStringSubmatch(warning)
+	mention := valueMentionRE.FindString(m[2])
+	if mention == "" {
+		return f
+	}
+	var values any
+	if json.Unmarshal(p.Values, &values) != nil {
+		return f
+	}
+	tokens := dottedTokens(mention)
+	if _, isList := values.([]any); isList && len(tokens) > 0 && tokens[0] == "values" {
+		tokens = tokens[1:]
+	}
+	path := f.Path + "/values"
+	node, whole := values, true
+	for _, tok := range tokens {
+		next, key := patternValueChild(node, tok)
+		if next == nil {
+			whole = false
+			break
+		}
+		path += "/" + key
+		node = next
+	}
+	if path == f.Path+"/values" {
+		return f
+	}
+	f.Path = path
+	if b := proseBudgetRE.FindStringSubmatch(m[2]); b != nil && whole && f.Fix == nil {
+		if n, err := strconv.Atoi(b[1]); err == nil && n > 0 {
+			f.Fix = &patterns.FixSuggestion{Kind: "rewrite_field", Params: map[string]any{"path": path, "max_chars": n, "pattern": p.Name}}
+		}
+	}
+	return f
+}
+
+// patternValueChild is the child of an authored pattern value under a key or
+// index a warning names, and the key it is authored under (an alias of the
+// canonical key when that is what the author wrote); nil when there is none.
+func patternValueChild(node any, tok string) (any, string) {
+	switch current := node.(type) {
+	case map[string]any:
+		for _, key := range append([]string{tok}, patternValueAliases[tok]...) {
+			if child, ok := current[key]; ok && child != nil {
+				return child, key
+			}
+		}
+	case []any:
+		if i, err := strconv.Atoi(tok); err == nil && i >= 0 && i < len(current) && current[i] != nil {
+			return current[i], tok
+		}
+	}
+	return nil, ""
 }
 
 // patternWarningAction maps a structured pattern warning code to its

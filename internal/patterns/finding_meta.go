@@ -577,13 +577,13 @@ var findingMetaRegistry = map[string]FindingMeta{
 
 	ErrCodeSparseSingleRowFlow: {
 		Code:        ErrCodeSparseSingleRowFlow,
-		Summary:     "A single-row sequence pattern with sparse per-cell text fills the whole slide, so its boxes stretch vertically.",
+		Summary:     "A single row of short steps or stops is the slide's only content, so most of the slide stays empty.",
 		Severity:    "review",
-		WhenEmitted: "Pre-flight finds a slide-level process-flow (or single-row \"dots\" timeline-horizontal) of 3–6 cells whose average per-cell text is below the sparse threshold, with no bounds / max_height_pct cap. Compose segments and nested cell patterns are exempt (a second zone already absorbs the height).",
+		WhenEmitted: "Pre-flight finds a slide-level process-flow (or single-row \"dots\" timeline-horizontal) of 3–6 cells on one row whose average per-cell text is below the sparse threshold (~40 characters). Both patterns size the row to its text — process-flow steps are capped under a third of the content height — so the slide shows one short band of a few words and nothing else. Not emitted for a process-flow on two rows (overrides.rows 2), for a pattern the author placed with bounds / max_height_pct, or for compose segments and nested cell patterns (a second zone shares the slide).",
 		RemediationSteps: []string{
-			"Swap to numbered-step-strip via recommend_pattern — its per-step detail zone fills the vertical space.",
+			"Swap to numbered-step-strip via recommend_pattern and give each step a detail line — the strip uses the height the bare labels leave empty.",
 			"Or swap to process-grid-2row when the steps split into two parallel tracks, or phase-roadmap for dated milestones with descriptions.",
-			"Or keep the pattern and set max_height_pct (e.g. 35) so the row no longer stretches to fill the slide.",
+			"Or keep the row and pair it with a second zone (a compose envelope: the flow above, the evidence or detail below). A height cap does not change a content-sized row.",
 		},
 		ExampleBefore: `{"pattern":{"name":"process-flow","values":{"steps":[{"label":"Plan"},{"label":"Build"},{"label":"Ship"}]}}}`,
 		ExampleAfter:  `{"pattern":{"name":"numbered-step-strip","values":{"steps":[{"label":"Plan","body":"…"},{"label":"Build","body":"…"},{"label":"Ship","body":"…"}]}}}`,
@@ -610,7 +610,7 @@ var findingMetaRegistry = map[string]FindingMeta{
 		Code:        ErrCodeFlowDiamondNoContent,
 		Summary:     "A standalone process-flow carries a decision diamond but has no supporting zone to explain the branch outcomes.",
 		Severity:    "review",
-		WhenEmitted: "Pre-flight finds a slide-level process-flow with at least one step of type \"decision\" (a diamond) and no second content zone. A lone single-row flow cannot show the yes/no paths a decision implies. Compose envelopes and nested cell patterns are exempt (a second zone carries the explanation).",
+		WhenEmitted: "Pre-flight finds a slide-level process-flow with at least one step of type \"decision\" (a diamond) and no second content zone. process-flow draws one path through its steps — on one row, or bent onto two rows from seven steps — and no branch, so the yes/no paths a decision implies are not shown. Compose envelopes and nested cell patterns are exempt (a second zone carries the explanation).",
 		RemediationSteps: []string{
 			"Switch to numbered-step-strip with per-step detail so each decision outcome is explained.",
 			"Or pair the flow with an explanatory panel using a compose envelope so the branch outcomes are visible.",

@@ -423,7 +423,9 @@ func TestPostExpandWarningsSurviveAnExpandedGrid(t *testing.T) {
 }
 
 // TestPostExpandFindingsAreScopedAndActionable: each finding points at the
-// slide's pattern and carries the pattern name, so an agent can act on it.
+// slide's pattern — or, when it names one value, at that value
+// (go-slide-creator-qu29q) — and carries the pattern name, so an agent can act
+// on it.
 func TestPostExpandFindingsAreScopedAndActionable(t *testing.T) {
 	for _, f := range collectPatternPostExpandFindings(postExpandDeck(), 0, 0, nil) {
 		switch f.Code {
@@ -435,8 +437,8 @@ func TestPostExpandFindingsAreScopedAndActionable(t *testing.T) {
 				t.Errorf("chart finding pattern = %q", f.Pattern)
 			}
 		case patterns.ErrCodeBodyTooLong:
-			if f.Path != "/slides/1/pattern" {
-				t.Errorf("bio finding path = %q, want /slides/1/pattern", f.Path)
+			if f.Path != "/slides/1/pattern/values/members/0/bio" && f.Path != "/slides/1/pattern/values/members/1/bio" {
+				t.Errorf("bio finding path = %q, want the member's bio under /slides/1/pattern/values", f.Path)
 			}
 		default:
 			t.Errorf("unexpected code %q from the post-expand collector", f.Code)

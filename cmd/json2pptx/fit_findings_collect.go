@@ -135,8 +135,8 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	findings = append(findings, collectStructuralSmellFindings(input)...)
 
 	// 4b. Sparse single-row flow guard: a slide-level process-flow /
-	// timeline-horizontal ("dots") with sparse labels and no height cap stretches
-	// its lone row to fill the slide (SPARSE_SINGLE_ROW_FLOW). Reads slide.Pattern
+	// timeline-horizontal ("dots") whose one row of sparse labels is the slide's
+	// only content (SPARSE_SINGLE_ROW_FLOW). Reads slide.Pattern
 	// directly, so compose / nested-cell patterns (which have a second zone) are
 	// exempt by construction.
 	findings = append(findings, collectSparseSingleRowFlowFindings(input)...)

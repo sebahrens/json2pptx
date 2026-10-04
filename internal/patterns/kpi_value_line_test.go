@@ -82,3 +82,66 @@ func TestKPIValueTooLongNamesItsBudget(t *testing.T) {
 		t.Errorf("budget %d, want fewer than the 12 characters that do not fit", n)
 	}
 }
+
+// go-slide-creator-6xgxm: the 12-character maximum read as a budget, yet six
+// values of 12 characters were refused on a wide-faced template. The budget is
+// measured per KPI count: that many digits are never reported, one more is,
+// and the finding quotes the same count.
+func TestKPIValueLineBudgetAgreesWithTheFinding(t *testing.T) {
+	for _, area := range writtenFitAreas {
+		ctx := ExpandContext{LayoutBounds: LayoutBounds{Width: int64(area.w * 12700), Height: int64(area.h * 12700)}}
+		ctx.Theme.BodyFont = area.font
+		for n := 2; n <= 6; n++ {
+			budget := KPIValueLineBudget(ctx, n)
+			if budget < 6 || budget > kpiNupBigMaxChars {
+				t.Errorf("%s: %d KPIs hold %d digits, want 6–12", area.name, n, budget)
+			}
+			pat, _ := Default().Get("kpi-" + strconv.Itoa(n) + "up")
+			cells := make(KPINupValues, n)
+			for digits := budget; digits <= min(budget+1, kpiNupBigMaxChars); digits++ {
+				for i := range cells {
+					cells[i] = KPICell{Big: strings.Repeat("8", digits), Small: "Value"}
+				}
+				got := pat.(PostExpandWarner).PostExpandWarnings(ctx, &cells, nil)
+				switch {
+				case digits == budget && len(got) != 0:
+					t.Errorf("%s: %d values of %d digits (the budget) were reported: %v", area.name, n, digits, got[0])
+				case digits > budget && (len(got) != n || !strings.Contains(got[0], "holds about "+strconv.Itoa(budget)+" characters")):
+					t.Errorf("%s: %d values of %d digits: warnings = %v, want each reported with the %d-digit budget", area.name, n, digits, got, budget)
+				}
+			}
+		}
+	}
+}
+
+// A value fitted down under the lead step is written at the caption's size by
+// the grid's type scale; the caption then drops to the body step so the value
+// stays the larger line. A row of short values keeps the authored caption.
+func TestKPILongValuesKeepTheValueAboveItsCaption(t *testing.T) {
+	sizes := func(t *testing.T, cells KPINupValues) (value, caption float64) {
+		t.Helper()
+		pat, _ := Default().Get("kpi-6up")
+		ctx := ExpandContext{LayoutBounds: LayoutBounds{Width: 797 * 12700, Height: 349 * 12700}}
+		ctx.Theme.BodyFont = "Calibri"
+		grid, err := pat.Expand(ctx, &cells, &KPIOverrides{BigSize: 44, SmallSize: 16}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var text kpiTextObj
+		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Text, &text); err != nil {
+			t.Fatal(err)
+		}
+		return text.Paragraphs[0].Size, text.Paragraphs[1].Size
+	}
+	long, short := make(KPINupValues, 6), make(KPINupValues, 6)
+	for i := range long {
+		long[i] = KPICell{Big: "EUR 987.65bn", Small: "Transactions processed"}
+		short[i] = KPICell{Big: "42%", Small: "Transactions processed"}
+	}
+	if value, caption := sizes(t, long); value >= scaleLeadPt || caption != scaleBodyPt {
+		t.Errorf("six 12-character values: value %.0fpt over a %.0fpt caption, want a value under %.0fpt over the %.0fpt body step", value, caption, scaleLeadPt, scaleBodyPt)
+	}
+	if value, caption := sizes(t, short); value < scaleLeadPt || caption != 16 {
+		t.Errorf("six short values: value %.0fpt over a %.0fpt caption, want the authored 16pt caption", value, caption)
+	}
+}

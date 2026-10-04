@@ -205,7 +205,7 @@ func (cis *chartInsightsSplit) Schema() *Schema {
 				"value": StringSchema(cisHeadlineValueMax).WithDescription("Headline figure, e.g. \"+75%\""),
 				"label": StringSchema(cisHeadlineLabelMax).WithDescription("What the figure means; about 41 readable characters"),
 			}, []string{"value"}).WithAdditionalProperties(false).WithDescription("Big accent number at the top of the insights column"),
-			"so_what":     StringSchema(cisSoWhatMax).WithDescription("Implication / recommendation shown as the takeaway band under the insights (flush accent bar, bold dk1 text, no box)"),
+			"so_what":     StringSchema(cisSoWhatMax).WithDescription("Implication / recommendation shown as the takeaway band under the insights (flush accent bar, bold dk1 text, no box); alone beside a chart it is set larger and centred, and the chart takes 75% of the width"),
 			"chart_label": StringSchema(cisChartLabelMax).WithDescription("Caption above the chart (series + units); defaults to the single series name + unit"),
 			"unit":        StringSchema(cisUnitMax).WithDescription("Unit for the derived chart caption, e.g. \"$M\""),
 		},
@@ -656,6 +656,9 @@ const (
 	// that give the column a reason to be wide.
 	chartInsightsSparseBullets = 2
 	chartInsightsSparseRunes   = 140
+	// cisLoneCalloutMaxLines is the most lines a lone so-what beside a chart
+	// runs at the lead step before it takes the subhead step.
+	cisLoneCalloutMaxLines = 5
 )
 
 // sparseInsightsChartPct returns the default chart width for these values: the
@@ -663,7 +666,15 @@ const (
 // empty. An explicit chart_width_pct override still wins — this only chooses
 // the default.
 func sparseInsightsChartPct(v *ChartInsightsSplitValues) float64 {
-	if v == nil || v.Headline != nil || strings.TrimSpace(v.SoWhat) != "" {
+	if v == nil || v.Headline != nil {
+		return chartInsightsDefaultPct
+	}
+	if strings.TrimSpace(v.SoWhat) != "" {
+		// A lone callout needs a column, not a third of the slide: the chart
+		// takes the width the bullets would have used.
+		if len(v.Insights) == 0 {
+			return chartInsightsWidePct
+		}
 		return chartInsightsDefaultPct
 	}
 	if len(v.Insights) == 0 || len(v.Insights) > chartInsightsSparseBullets {
@@ -864,13 +875,25 @@ func buildInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *Ch
 	hasSoWhat := strings.TrimSpace(v.SoWhat) != ""
 	if insights == nil && hasSoWhat && !hasHeadline {
 		// Callout-only semantic slides give the implication the whole right
-		// panel instead of leaving an empty "Key Insights" row above it. It is
-		// still the takeaway band, top-anchored at its measured height. The
+		// panel instead of leaving an empty "Key Insights" row above it. The
 		// panel cell hosts the band grid directly (one sub-grid inset).
 		spec := cisTakeaway(v, accent, ovr.TakeawayEmphasis)
 		bandW := cisInsightsColumnPt(ctx, v, ovr) - 2*SubGridInsetPt
+		align := "top"
+		if v.Chart != nil {
+			// Beside a chart the lone callout is the slide's one statement:
+			// set at the lead step (the subhead step when it would run past
+			// cisLoneCalloutMaxLines) and centred on the chart's height. At
+			// the label size, top-anchored, it was one small line over an
+			// empty column (go-slide-creator-e0xvy).
+			spec.SizePt = scaleLeadPt
+			if TakeawayLines(ctx, spec, bandW) > cisLoneCalloutMaxLines {
+				spec.SizePt = TakeawaySizePt
+			}
+			align = "center"
+		}
 		grid := TakeawayGrid(ctx, spec, bandW, 0, TakeawayBandHeightPt(ctx, spec, bandW))
-		grid.VerticalAlign = "top"
+		grid.VerticalAlign = align
 		return &jsonschema.GridCellInput{Grid: grid}, chartPct, 0
 	}
 	if !hasHeadline && !hasSoWhat {

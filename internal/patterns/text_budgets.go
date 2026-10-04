@@ -13,7 +13,12 @@ const (
 	NextStepsDateMax     = nextStepsDateMax
 	NextStepsDecisionMax = nextStepsDecisionMax
 
-	KPIValueMax      = kpiNupBigMaxChars
+	KPIValueMax = kpiNupBigMaxChars
+	// KPIValueFiveMax / KPIValueSixMax are the digits a value holds on one
+	// line with five and six KPIs on the narrowest shipped template
+	// (KPIValueLineBudget measures a named template).
+	KPIValueFiveMax  = 11
+	KPIValueSixMax   = 9
 	KPIDeltaMax      = kpiSubMaxChars
 	KPIComparatorMax = kpiComparatorMaxChars
 

@@ -50,6 +50,54 @@
     `TestAgentVisibleMessagesFollowTheSlideIndexRule` scans their messages and
     the rhythm recommendations on a fixture.
 
+- **2026-10-04 — Flow findings say what is rendered; mixed two-row flows draw their turn (`go-slide-creator-tm46l`, `go-slide-creator-r0csi`).**
+  - `SPARSE_SINGLE_ROW_FLOW` no longer says the boxes "stretch to fill the
+    slide" or offers `max_height_pct`: `process-flow` and the `dots` timeline
+    size their row to its text, so the finding now reports what is drawn — one
+    row of short cells as the slide's only content, most of the slide empty —
+    and its remedies are a detail line per step (`numbered-step-strip`),
+    `process-grid-2row` / `phase-roadmap`, or a second zone (`compose`). It is
+    not raised for a `process-flow` on two rows (`overrides.rows: 2`). The
+    code, action, `fix.kind` and `fix.params` are unchanged.
+  - `FLOW_DIAMOND_NO_CONTENT` says "process-flow draws one path through its
+    steps and no yes/no branches" where it said "a lone single-row flow".
+  - `process-flow` with `overrides.rows: 2` and a mix of chevron / arrow and
+    plain steps now bends like a plain flow (connector down from the first
+    row's last step, second row right to left). A chevron or arrow at the
+    turn or on the returning row is refused: `out_of_range` at
+    `steps[i].type` with `use_one_of` `["step", "decision"]`. Such a flow used
+    to wrap left to right with no connector between the rows.
+
+- **2026-10-04 — KPI value budgets are stated per count and template (`go-slide-creator-6xgxm`).**
+  - `list_slide_kinds` budgets: `kpi_snapshot` `kpis[].value` is now a
+    `measured` budget (`max_lines: 1`): `max_chars` is the digits one card
+    holds with the fewest KPIs and `note` lists the counts that hold fewer on
+    that template ("11 with 5 KPIs, 9 with 6 KPIs"); without a template it is
+    the tightest of the shipped ones. The 12-character `max_length` is
+    unchanged and is a hard maximum.
+  - The `kpi-5up` / `kpi-6up` `values` description and the `kpi_snapshot`
+    `kpis` field description state those counts (11 and 9 on the narrowest
+    shipped template).
+  - Rendering: when a long value is fitted below 18pt, the caption and its
+    delta / comparator lines are written at 12pt so the value (written at
+    14pt bold) stays the larger line. They used to share 14pt.
+
+- **2026-10-04 — Raw-deck pattern text warnings point at the value (`go-slide-creator-qu29q`).**
+  - A pattern's `BODY_TOO_LONG` / `HEADLINE_TOO_LONG` / `TEXT_EXCEEDS_SHAPE`
+    warning that names one value has that value's JSON Pointer as `path`
+    (`/slides/N/pattern/values/2/big`, `/slides/N/pattern/values/steps/3/label`)
+    instead of `/slides/N/pattern`, and when its sentence states a character
+    budget it carries `fix: {kind: "rewrite_field", params: {path, max_chars,
+    pattern}}`. DeckSpec findings are unchanged; `validate`, `generate` and
+    the MCP preview agree.
+
+- **2026-10-04 — A lone `so_what` beside a chart is set as a statement (`go-slide-creator-e0xvy`).**
+  - `chart-insights-split` with a chart, a `so_what` and no insights or
+    headline (what a `chart_insight` with only a `takeaway` or a scalar
+    `insight` compiles to): the default split is 75/25 and the callout is
+    written at 18pt (14pt past five lines), centred on the chart's height. No
+    input changes; `overrides.chart_width_pct` still pins the ratio.
+
 - **2026-10-04 — Schema 4.161.0 · follow-ups to the layout and agent-journey wave (label `followup-20261004`).**
   - One version for the dated bullets below this one down to the 4.160.0
     entry (15 beads): two-row `process-flow` and `overrides.rows`, one-line

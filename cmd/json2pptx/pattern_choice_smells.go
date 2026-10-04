@@ -131,8 +131,9 @@ func overtallFlowLaneHeightPct(p *PatternInput) float64 {
 }
 
 // detectFlowDiamondNoContent flags a standalone process-flow that carries at
-// least one decision diamond (step.type == "decision") — a lone single-row
-// flow has no zone to explain the yes/no branch outcomes the diamond implies.
+// least one decision diamond (step.type == "decision") — the flow draws one
+// path through its steps, on one row or two, and has no zone to explain the
+// yes/no branch outcomes the diamond implies.
 func detectFlowDiamondNoContent(p *PatternInput, slideIdx int) *patterns.FitFinding {
 	if p == nil || p.Name != "process-flow" {
 		return nil

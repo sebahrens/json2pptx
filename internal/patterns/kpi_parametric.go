@@ -89,9 +89,15 @@ func (k *kpiNup) NewCellOverride() any { return &KPICellOverride{} }
 
 func (k *kpiNup) Schema() *Schema {
 	n := k.cfg.Count
+	valuesDesc := fmt.Sprintf("Exactly %d KPI cells; metric values have a 12-character hard maximum and a measured fit warning when they cannot stay on one line", n)
+	if n >= kpiNupTightFromCount {
+		// go-slide-creator-6xgxm: the maximum read as a budget, and six
+		// 12-character values were refused on a wide-faced template.
+		valuesDesc += fmt.Sprintf(" — %d cards hold fewer than 12 on a wide-faced template (about %d digits on the narrowest shipped one; list_slide_kinds budgets states the count for a template)", n, kpiNupNarrowestBudget[n])
+	}
 	return ObjectSchema(
 		map[string]*Schema{
-			"values":         ArraySchema(kpiCellSchema(kpiNupBigMaxChars, kpiComparatorMaxChars), n, n).WithDescription(fmt.Sprintf("Exactly %d KPI cells; metric values have a 12-character hard maximum and a measured fit warning when they cannot stay on one line", n)),
+			"values":         ArraySchema(kpiCellSchema(kpiNupBigMaxChars, kpiComparatorMaxChars), n, n).WithDescription(valuesDesc),
 			"overrides":      kpiOverridesSchema(EnumSchema(kpiNupStyles...).WithDescription("open: value and caption on the canvas between hairline dividers. tiles: each KPI in a tinted card under an accent rule. Default open for plain value + caption cells, tiles when a cell has an icon or the row sets semantic_accent or a non-uniform cell_accent_mode")),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},

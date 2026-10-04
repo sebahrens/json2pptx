@@ -763,18 +763,25 @@ On a raw `shape_grid` slide the params carry `first` / `second` (the cell split 
 **Pattern:** `process-flow` or `timeline-horizontal`
 **Fix kind:** `swap_pattern`
 
-A slide-level single-row sequence pattern — `process-flow`, or the default single-row `dots` style of `timeline-horizontal` — of 3–6 cells whose average per-cell text is below the sparse threshold (~40 chars) and which has no `bounds` / `max_height_pct` cap. Its lone row is left to fill the slide's content area, so the boxes stretch vertically into oversized shapes around a few words (the diamond/box aspect ratio drives the row height).
+A slide-level single-row sequence pattern — `process-flow`, or the default single-row `dots` style of `timeline-horizontal` — of 3–6 cells whose average per-cell text is below the sparse threshold (~40 chars) and which is the slide's only content. Both patterns size the row to its text (a `process-flow` step is as tall as its label needs, capped under a third of the content height), so the slide shows one short band of a few words and is otherwise empty.
 
-The check reads `slide.pattern` directly, so it fires only for a standalone slide-level pattern. Compose envelopes and nested cell patterns are exempt — a second zone already absorbs the slide height. The multi-row `chevron` and `gantt` timeline styles are also exempt (they are not single-row).
+The finding used to say the boxes "stretch to fill the slide" and offered `max_height_pct` as a remedy. Neither has been true since `process-flow` steps became content-sized (go-slide-creator-xb06p, go-slide-creator-pfyeg): a height cap does not change the row. The fault it reports now is the one that is rendered — bare labels alone on a slide (go-slide-creator-tm46l).
 
-The fix is a `swap_pattern` suggestion ranked toward `numbered-step-strip` (whose per-step detail zone fills the vertical space), with `process-grid-2row` (two parallel tracks) and `phase-roadmap` (dated milestones with descriptions) as alternatives. Setting `max_height_pct` on the existing pattern also clears the finding. `fix.params` carry `from`, `item_count`, `avg_chars`, `reason: "single_row_sparse"`, and `suggested: [{to, rationale}, …]`.
+The check reads `slide.pattern` directly, so it fires only for a standalone slide-level pattern. Not reported:
+
+- compose envelopes and nested cell patterns — a second zone shares the slide;
+- a `process-flow` on two rows (`overrides.rows: 2` with four or more steps; seven or eight steps are outside the 3–6 range anyway);
+- the multi-row `chevron` and `gantt` timeline styles;
+- a pattern the author placed with `bounds` / `max_height_pct` (a deliberate composition, though the cap itself does not resize the row).
+
+The fix is a `swap_pattern` suggestion ranked toward `numbered-step-strip` (a detail line per step uses the height the bare labels leave empty), with `process-grid-2row` (two parallel tracks) and `phase-roadmap` (dated milestones with descriptions) as alternatives; pairing the row with a second zone in a `compose` envelope also clears it. `fix.params` carry `from`, `item_count`, `avg_chars`, `reason: "single_row_sparse"`, and `suggested: [{to, rationale}, …]`.
 
 ```json
 {
   "pattern": "process-flow",
   "path": "/slides/3/pattern",
   "code": "SPARSE_SINGLE_ROW_FLOW",
-  "message": "slide 4: process-flow is a single horizontal row of 4 sparse cells (avg 6 chars) with no height cap — boxes stretch to fill the slide; switch to numbered-step-strip / process-grid-2row / phase-roadmap, or set max_height_pct",
+  "message": "slide 4: process-flow is the slide's only content: one row of 4 short cells (avg 6 chars), sized to its text, so most of the slide stays empty — give each step a detail line (numbered-step-strip), use process-grid-2row / phase-roadmap, or pair the row with a second zone (compose)",
   "fix": { "kind": "swap_pattern", "params": { "from": "process-flow", "item_count": 4, "avg_chars": 6, "reason": "single_row_sparse", "suggested": [{ "to": "numbered-step-strip", "rationale": "ordered steps with a per-step detail zone fill the vertical space" }] } },
   "action": "review",
   "next_tool_call": { "tool": "recommend_visual", "args_template": { "intent": "<one sentence: what this slide should show>", "content_hints": { "item_count": 4 } } }
@@ -817,7 +824,7 @@ The fix is a `swap_pattern` suggestion toward `numbered-step-strip` (whose per-s
 **Fix kind:** `swap_pattern`
 **Class:** `pattern_choice`
 
-A standalone `process-flow` carries at least one decision diamond (`steps[].type: "decision"`) but has no supporting content zone. A lone single-row flow has nowhere to explain the yes/no branch outcomes a decision implies. The detector reads `slide.pattern` directly, so compose envelopes and nested cell patterns are exempt (a second zone carries the explanation).
+A standalone `process-flow` carries at least one decision diamond (`steps[].type: "decision"`) but has no supporting content zone. `process-flow` draws one path through its steps — on one row, or bent onto two rows from seven steps — and no branch, so nothing on the slide says what the yes/no outcomes of the decision are. The detector reads `slide.pattern` directly, so compose envelopes and nested cell patterns are exempt (a second zone carries the explanation).
 
 The fix is a `swap_pattern` suggestion toward `numbered-step-strip` (per-step detail) or `compose` (pair the flow with an explanatory panel). `fix.params` carry `from`, `diamond_count`, `reason: "decision_without_branch_zone"`, and `suggested: [{to, rationale}, …]`.
 
@@ -826,7 +833,7 @@ The fix is a `swap_pattern` suggestion toward `numbered-step-strip` (per-step de
   "pattern": "process-flow",
   "path": "/slides/3/pattern",
   "code": "FLOW_DIAMOND_NO_CONTENT",
-  "message": "slide 4: process-flow has 1 decision diamond(s) but no supporting content zone to explain the branch outcomes — a lone single-row flow cannot show the yes/no paths; add an explanatory zone via compose, or switch to numbered-step-strip with per-step detail",
+  "message": "slide 4: process-flow has 1 decision diamond(s) but no supporting content zone to explain the branch outcomes — process-flow draws one path through its steps and no yes/no branches; add an explanatory zone via compose, or switch to numbered-step-strip with per-step detail",
   "fix": { "kind": "swap_pattern", "params": { "from": "process-flow", "diamond_count": 1, "reason": "decision_without_branch_zone", "suggested": [{ "to": "numbered-step-strip", "rationale": "per-step detail zone explains each decision outcome" }] } },
   "action": "review"
 }
@@ -1469,7 +1476,7 @@ Mechanics:
 
 **Action:** `review`
 **Pattern:** content lint or pattern post-expand warning
-**Fix kind:** `reduce_text` for content lint; pattern warnings may have no fix object
+**Fix kind:** `reduce_text` for content lint; `rewrite_field` (advisory, `params.max_chars`) for a pattern warning that names one value and its budget; other pattern warnings may have no fix object
 
 Content lint emits this code when a single `text`, `bullets`, `body_and_bullets`, or `bullet_groups` block exceeds 80 whitespace-separated words. Bullet items are aggregated per content block, so a 10-bullet list of 10-word bullets trips the budget. Pattern post-expand checks also emit this code for geometry-specific budgets, which may be measured in characters, lines, or rendered fit. For `card-grid`, the character limit is the same template- and font-aware body-only number shown in `expand_pattern.cell_budgets[].max_chars`. Follow the finding's path, message, and unit; do not apply the 80-word limit to a pattern warning.
 
@@ -1484,6 +1491,19 @@ Content lint emits this code when a single `text`, `bullets`, `body_and_bullets`
 ```
 
 For pattern warnings, shorten the named value to the limit in its message, reduce the pattern's item density, or split the content. These warnings do not necessarily provide `fix.params.max_words`.
+
+**A pattern warning that names one value sits on that value** (go-slide-creator-qu29q). On a raw deck a text-budget warning (`BODY_TOO_LONG`, `HEADLINE_TOO_LONG`, `TEXT_EXCEEDS_SHAPE`) whose sentence names a value — `values[2].big`, `steps[3].label` — has the value's JSON Pointer as its `path` (`/slides/N/pattern/values/2/big`, `/slides/N/pattern/values/steps/3/label`), and when the sentence states a character budget ("holds about 9 characters") the finding carries it as the advisory fix `{"kind": "rewrite_field", "params": {"path": …, "max_chars": 9, "pattern": "kpi-6up"}}`. It used to sit at `/slides/N/pattern` with the budget in the sentence only. The pointer uses the key the author wrote (`…/2/value` for a KPI cell written `{value, label}`); a value the authored JSON does not hold as its own node (a `"Big | Small"` string cell) is addressed at the deepest node that exists (`…/values/2`) and carries no `max_chars`, since the budget is that of a part of the string. A warning that names no value (a column that is too tall) stays at `/slides/N/pattern`. `validate -fit-report`, `generate` and the MCP preview build the finding with one function (`patternWarningFinding`), so they agree; DeckSpec findings are unchanged (the spec field's pointer and `max_chars`, as before).
+
+```json
+{
+  "pattern": "kpi-6up",
+  "path": "/slides/0/pattern/values/3/big",
+  "code": "BODY_TOO_LONG",
+  "message": "slide 1: kpi-6up: kpi-6up values[3].big cannot fit on one line at the 16pt effective size in a 106pt-wide card, which holds about 9 characters like these — shorten the metric, move/remove its icon, or use fewer KPI cards",
+  "fix": { "kind": "rewrite_field", "params": { "path": "/slides/0/pattern/values/3/big", "max_chars": 9, "pattern": "kpi-6up" } },
+  "action": "review"
+}
+```
 
 **Paragraph cap (action `refuse`).** A single content block that renders more than 200 paragraphs into one placeholder (authored text lines, bullets, and the body / header / lead-out paragraphs of the bullet-bearing types) is refused with `BODY_TOO_LONG` at action `refuse`, replacing the review-level word-budget finding for that block. `fix` is `{kind: "reduce_text", params: {current_paragraphs, max_paragraphs: 200, strategy: "split"}}`: split the content across slides (go-slide-creator-8hg02).
 

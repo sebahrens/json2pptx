@@ -216,7 +216,7 @@ func (p *processFlow) Schema() *Schema {
 	).WithAdditionalProperties(false)
 
 	overridesSchema := processFlowOverridesSchema()
-	overridesSchema.raw.Properties["rows"] = IntegerSchema(1, 2).WithDescription("Rows the steps are laid on. Default: 2 from 7 steps (the first half left to right, a connector down, the second half back right to left; chevrons/arrows wrap left to right instead), else 1. 1 keeps 7-8 steps on one row of narrow boxes; 2 needs at least 4 steps")
+	overridesSchema.raw.Properties["rows"] = IntegerSchema(1, 2).WithDescription("Rows the steps are laid on. Default: 2 from 7 steps (the first half left to right, a connector down, the second half back right to left; a flow of chevrons/arrows only wraps left to right instead), else 1. 1 keeps 7-8 steps on one row of narrow boxes; 2 needs at least 4 steps. A flow mixing chevrons/arrows with plain steps stays on one row unless rows is 2; it then turns the same way, so its chevrons/arrows must sit on the first row before the last step")
 
 	return ObjectSchema(
 		map[string]*Schema{
@@ -249,6 +249,15 @@ func (p *processFlow) Validate(values, overrides any, cellOverrides map[int]any)
 			errs = append(errs, newValidationError(name, "overrides.rows", ErrCodeOutOfRange,
 				fmt.Sprintf("%s: overrides.rows 2 needs at least %d steps, got %d — a second row would hold one step; remove rows or add a step", name, processFlowTwoRowFloor, len(vals.Steps)),
 				RemoveFieldFix("overrides.rows")))
+		}
+		if len(vals.Steps) <= 8 {
+			lay := processFlowLayoutFor(vals.Steps, ovr)
+			if i := processFlowPointedAtTurn(vals.Steps, lay); i >= 0 {
+				path := fmt.Sprintf("steps[%d].type", i)
+				errs = append(errs, newValidationError(name, path, ErrCodeOutOfRange,
+					fmt.Sprintf("%s: %s: with overrides.rows 2 a flow that mixes chevrons/arrows and plain steps turns down after step %d and runs its second row back right to left; a %s points right, so it fits only before the turn (steps[0]–steps[%d]) — make this step a \"step\", make every step a chevron or arrow (the rows then wrap left to right), or remove overrides.rows", name, path, lay.perRow, vals.Steps[i].Type, lay.perRow-2),
+					UseOneOfFix(path, []string{"step", "decision"})))
+			}
 		}
 	}
 

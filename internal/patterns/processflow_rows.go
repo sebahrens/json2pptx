@@ -16,6 +16,13 @@ import (
 // in a four-step flow, the arrows still saying which step follows which.
 // Chevrons and arrows point right by construction, so a row of them wraps
 // like a line of text instead (second row left to right, no connectors).
+//
+// A flow that mixes pointed and plain steps on overrides.rows 2 bends like a
+// plain one (go-slide-creator-r0csi): it used to wrap left to right with row
+// connectors only, so nothing joined the end of row one to the start of row
+// two and the reading order was not drawn. Its chevrons and arrows belong on
+// the first row before the turn; one at the turn or on the returning row is
+// refused by Validate (processFlowPointedAtTurn).
 
 // processFlowTwoRowMinSteps is the step count from which process-flow bends
 // onto two rows by default.
@@ -31,14 +38,16 @@ type processFlowLayout struct {
 	// perRow is the column count: every step on one row, or the larger half.
 	perRow int
 	// snake runs the second row right to left under the first, joined by a
-	// connector that drops from the first row's last step.
+	// connector that drops from the first row's last step: every two-row
+	// flow but one of chevrons/arrows only, which wraps left to right.
 	snake bool
 }
 
 // processFlowLayoutFor is the layout of a process-flow: overrides.rows when
 // set, else two rows from processFlowTwoRowMinSteps steps. A flow that mixes
 // pointed and plain steps keeps one row unless rows is set — its chevrons
-// cannot point back along a returning row.
+// cannot point back along a returning row, so rows 2 is the author's
+// statement that the second half holds none.
 func processFlowLayoutFor(steps []ProcessFlowStep, ovr *ProcessFlowOverrides) processFlowLayout {
 	n := len(steps)
 	one := processFlowLayout{rows: 1, perRow: n}
@@ -53,7 +62,24 @@ func processFlowLayoutFor(steps []ProcessFlowStep, ovr *ProcessFlowOverrides) pr
 	case rows == 0 && (n < processFlowTwoRowMinSteps || (pointed && !allStepsPointed(steps))):
 		return one
 	}
-	return processFlowLayout{rows: 2, perRow: (n + 1) / 2, snake: !pointed}
+	return processFlowLayout{rows: 2, perRow: (n + 1) / 2, snake: !allStepsPointed(steps)}
+}
+
+// processFlowPointedAtTurn is the index of the first chevron or arrow at the
+// turn of a bent flow or on its returning row, or -1. Both point right by
+// construction: at the turn (the first row's last step) one points off the
+// slide while the flow goes down, and on the returning row it points against
+// the flow.
+func processFlowPointedAtTurn(steps []ProcessFlowStep, lay processFlowLayout) int {
+	if !lay.snake {
+		return -1
+	}
+	for i := max(lay.perRow-1, 0); i < len(steps); i++ {
+		if steps[i].Type == "chevron" || steps[i].Type == "arrow" {
+			return i
+		}
+	}
+	return -1
 }
 
 // cell is the grid row and column of step i.

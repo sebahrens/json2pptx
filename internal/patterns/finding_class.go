@@ -6,7 +6,7 @@ package patterns
 // vs rendering:
 //
 //   - pattern_choice — the author picked a layout family ill-suited to the
-//     content (a single-row flow stretched to fill the slide, an agenda drawn
+//     content (a single row of bare labels alone on the slide, an agenda drawn
 //     as a flowchart). The engine rendered exactly what it was asked to; the
 //     fix is to swap to a better-suited pattern, not to patch the renderer.
 //   - rendering — the engine could not fit, had to adjust, or produced a
