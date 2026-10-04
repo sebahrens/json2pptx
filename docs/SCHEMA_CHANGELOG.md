@@ -1,5 +1,17 @@
 # Schema Changelog
 
+- **2026-10-04 — The screenshot-with-callouts recipe renders under `ALLOWED_IMAGE_PATHS` (`go-slide-creator-bcefj`).**
+  - `recommend_visual` answers a callout intent with an `image_case` recipe
+    whose `image.path` is a sample screenshot the server writes to
+    `<tmp>/json2pptx-samples/sample-screenshot.png`. With
+    `ALLOWED_IMAGE_PATHS` set, that path is outside every allowed root and the
+    recipe rendered with `IMAGE_ASSET_UNAVAILABLE` and an empty frame. The
+    MCP tools, `generate` and `semantic render` now admit that one file (not
+    its directory), and only while it is a regular file holding exactly the
+    bytes the binary draws; a different file, or a link, at that path stays
+    refused, and `recommend_visual` rewrites it. No response shape changes;
+    the HTTP endpoints' allow-list is unchanged.
+
 - **2026-10-04 — `render_deck_thumbnails` does not resend images the client holds (`go-slide-creator-yosa8`).**
   - **New argument `known_hashes: [<content_hash>, …]`** — the
     `slides[].content_hash` values of an earlier render. A slide whose pixels

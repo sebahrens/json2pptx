@@ -825,7 +825,7 @@ Set environment variables directly or via a `.env` file. See `.env.example` for 
 | `SVG_SCALE` | `2.0` | Scale factor for PNG conversion |
 | `SVG_NATIVE_COMPATIBILITY` | `warn` | `warn`, `fallback`, `strict`, `ignore` |
 | `SVG_PNG_CONVERTER` | `auto` | `auto`, `rsvg-convert`, or `resvg` |
-| `ALLOWED_IMAGE_PATHS` | | Comma-separated local image roots. When set, `serve`, `mcp`, `generate` and `semantic render` refuse image / background paths outside them (URL downloads stay allowed). Empty = any path (traversal still rejected). The MCP `base_dir` argument bounds only *relative* asset paths; set this to confine absolute ones |
+| `ALLOWED_IMAGE_PATHS` | | Comma-separated local image roots. When set, `serve`, `mcp`, `generate` and `semantic render` refuse image / background paths outside them (URL downloads stay allowed, and so does the sample screenshot a `recommend_visual` callout recipe points at — that one file, while it holds the bytes the binary draws). Empty = any path (traversal still rejected). The MCP `base_dir` argument bounds only *relative* asset paths; set this to confine absolute ones |
 | `JSON2PPTX_ALLOW_SETTINGS_WRITE` | `0` | Set to `1` to enable `register_template_setting` / `delete_template_setting` |
 | `PPROF_PORT` / `PPROF_BIND` | | pprof endpoint |
 

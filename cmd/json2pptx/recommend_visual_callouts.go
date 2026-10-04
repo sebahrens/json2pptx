@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"image"
 	"image/color"
 	"image/draw"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/policy/placeholder"
@@ -83,13 +85,69 @@ func attachCalloutRecipe(c *patterns.VisualCandidate) {
 	}
 }
 
+// sampleScreenshotPNG is the sample screenshot's bytes: the picture is drawn
+// by this binary, so the file on disk can be checked against it.
+var sampleScreenshotPNG = sync.OnceValues(func() ([]byte, error) {
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, drawSampleScreenshot()); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+})
+
+// sampleScreenshotPath is where the sample screenshot is written. It lives in
+// the temp directory, like the render cache.
+func sampleScreenshotPath() string {
+	return filepath.Join(os.TempDir(), "json2pptx-samples", "sample-screenshot.png")
+}
+
+// sampleScreenshotIntact reports whether path is a regular file holding
+// exactly the picture this binary draws: not a link, not another image
+// somebody put there.
+func sampleScreenshotIntact(path string) bool {
+	want, err := sampleScreenshotPNG()
+	if err != nil {
+		return false
+	}
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Size() != int64(len(want)) {
+		return false
+	}
+	got, err := os.ReadFile(path) //nolint:gosec // G304: the server's own sample path
+	return err == nil && bytes.Equal(got, want)
+}
+
+// serverSampleImages lists the pictures the server itself wrote for its
+// recipes, as allow-list entries. Under ALLOWED_IMAGE_PATHS the temp directory
+// is not an allowed root, so the screenshot-with-callouts recipe was refused
+// as it stood (go-slide-creator-bcefj). The entry is the file, not its
+// directory, and only while its bytes are the ones this binary draws, so the
+// restriction admits nothing an operator did not already ship.
+func serverSampleImages() []string {
+	path := sampleScreenshotPath()
+	if !sampleScreenshotIntact(path) {
+		return nil
+	}
+	out := []string{path}
+	// A loader that resolved the temp directory's links (macOS /var →
+	// /private/var) must find the same file allowed.
+	if resolved, err := filepath.EvalSymlinks(path); err == nil && resolved != path {
+		out = append(out, resolved)
+	}
+	return out
+}
+
 // sampleScreenshot returns the path of the sample screenshot, writing it on
-// first use. It lives in the temp directory, like the render cache.
+// first use and again when the file there is not the sample.
 func sampleScreenshot() (string, error) {
-	dir := filepath.Join(os.TempDir(), "json2pptx-samples")
-	path := filepath.Join(dir, "sample-screenshot.png")
-	if info, err := os.Stat(path); err == nil && info.Size() > 0 {
+	path := sampleScreenshotPath()
+	dir := filepath.Dir(path)
+	if sampleScreenshotIntact(path) {
 		return path, nil
+	}
+	data, err := sampleScreenshotPNG()
+	if err != nil {
+		return "", err
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil { //nolint:gosec // G301: a shared sample, same mode as the render cache
 		return "", err
@@ -98,7 +156,7 @@ func sampleScreenshot() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	err = png.Encode(tmp, drawSampleScreenshot())
+	_, err = tmp.Write(data)
 	if cerr := tmp.Close(); err == nil {
 		err = cerr
 	}

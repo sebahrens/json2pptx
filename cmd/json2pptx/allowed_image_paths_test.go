@@ -75,7 +75,8 @@ func TestImageAllowList(t *testing.T) {
 		t.Errorf("empty configuration must stay unrestricted, got %v", got)
 	}
 	got := imageAllowList([]string{"/imgs"}, "", "/cache")
-	if len(got) != 2 || got[0] != "/imgs" || got[1] != "/cache" {
-		t.Errorf("imageAllowList = %v, want [/imgs /cache]", got)
+	// The server's own sample picture may follow, once it has been written.
+	if len(got) < 2 || got[0] != "/imgs" || got[1] != "/cache" || len(got) != 2+len(serverSampleImages()) {
+		t.Errorf("imageAllowList = %v, want [/imgs /cache] and the server's samples", got)
 	}
 }
