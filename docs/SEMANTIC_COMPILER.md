@@ -89,7 +89,7 @@ Each content-bearing kind compiles to the named pattern its plan advertises (the
 
 | Kind | Pattern | Payload | Fits the visual when |
 |------|---------|---------|----------------------|
-| `kpi_snapshot` | `kpi-2up`…`kpi-6up` | `kpis: [{value,label,delta?,comparator?}]` | 2–6 KPIs; `comparator` (alias `vs`, ≤24 chars, "vs plan +4 pts") renders as its own line under the caption |
+| `kpi_snapshot` | `kpi-2up`…`kpi-6up` | `kpis: [{value,label,delta?,comparator?}]` | 2–6 KPIs; `value` ≤12 chars is a hard maximum — on one line five KPIs hold about 11 digits and six about 9 on the narrowest shipped template (`list_slide_kinds` budgets measures `kpis[].value` per template and count; a longer value is `BODY_TOO_LONG` with `max_chars`); `comparator` (alias `vs`, ≤24 chars, "vs plan +4 pts") renders as its own line under the caption |
 | `chart_insight` | `chart-insights-split` | `chart: {type,data}`, `insights: [string]`, `insight?: string` | 1–6 bullets or one scalar `insight` rendered as a so-what callout; a usable chart with neither takes the `takeaway` as that so-what callout (the band does not repeat it), so the chart is never silently dropped and the slide is not reported `takeaway_missing` |
 | `comparison` | `comparison-2col` | `columns: [{title, items:[string]}, …]` | exactly 2 columns with equal, non-empty item counts (≤10 rows) |
 | `stat` | `stat-hero` | `value`, `label` (+ `unit?`, `context?`, `source?`) | the number ≤20 chars, label ≤80, unit ≤10, context ≤120, source ≤80 |
