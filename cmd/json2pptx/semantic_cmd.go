@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -1218,7 +1219,66 @@ func semanticDiagFromFitField(sm *semantic.SourceMap, ir *semantic.DeckIR, f pat
 		}
 		decorateReadabilityRefusal(d.diag, ir, sm, f)
 	}
+	narrowWrapBoxPaths(&d, ir, f)
 	return d
+}
+
+// stringList reads a fix param that is a list of strings, as the collector
+// builds it or as JSON decodes it.
+func stringList(v any) []string {
+	switch t := v.(type) {
+	case []string:
+		return t
+	case []any:
+		out := make([]string, 0, len(t))
+		for _, e := range t {
+			if s, ok := e.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	return nil
+}
+
+// narrowWrapBoxPaths gives a TEXT_WRAPS_NARROW finding the authored items
+// behind its boxes (go-slide-creator-pfyeg). The finding sat on the slide and
+// said "8 boxes": an agent had to guess that the boxes of a process slide are
+// its steps. Each box's paragraph locates the field (or the item, when a box
+// joins a label and a description) that carries it; the finding moves to the
+// first and lists them all in paths.
+func narrowWrapBoxPaths(d *semanticDiagnostic, ir *semantic.DeckIR, f patterns.FitFinding) {
+	if f.Code != patterns.ErrCodeTextWrapsNarrow || f.Fix == nil || ir == nil || len(d.members) > 0 {
+		return
+	}
+	rawIdx := slidepath.SlideIndex(f.Path)
+	if rawIdx < 0 || rawIdx >= len(ir.Slides) || ir.Slides[rawIdx].Kind == semantic.KindRawJSON2pptx {
+		return
+	}
+	var fields []string
+	for _, text := range stringList(f.Fix.Params["texts"]) {
+		if field := semanticFieldForText(ir, rawIdx, text); field != "" && !slices.Contains(fields, field) {
+			fields = append(fields, field)
+		}
+	}
+	if len(fields) == 0 {
+		return
+	}
+	d.SemanticPath = fields[0]
+	if d.diag != nil {
+		d.diag.Path = fields[0]
+	}
+	if len(fields) < 2 {
+		return
+	}
+	var params map[string]any
+	if d.RecommendedEdit != nil {
+		params = d.RecommendedEdit.Params
+	}
+	for _, field := range fields {
+		d.members = append(d.members, diagMember{Path: field, SlideIndex: d.SlideIndex, fixParams: params})
+	}
+	d.baseMessage = d.Message
 }
 
 // resolveLateBoundSemanticPath names the DeckSpec field behind a finding the

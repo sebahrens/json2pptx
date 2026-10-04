@@ -20,17 +20,17 @@ func findCode(fs []patterns.FitFinding, code string) *patterns.FitFinding {
 
 // --- OVERTALL_FLOW_LANE ----------------------------------------------------
 
-// A 7-step process-flow with short labels is over-tall but outside the
+// A 7-stop timeline with short labels is over-tall but outside the
 // SPARSE_SINGLE_ROW_FLOW item range (3–6), so OVERTALL covers it.
 func TestOvertallFlowLane_SevenSteps_Fires(t *testing.T) {
 	in := patternSlide(&PatternInput{
-		Name:   "process-flow",
-		Values: json.RawMessage(`{"steps":[{"label":"A"},{"label":"B"},{"label":"C"},{"label":"D"},{"label":"E"},{"label":"F"},{"label":"G"}]}`),
+		Name:   "timeline-horizontal",
+		Values: json.RawMessage(`[{"label":"A"},{"label":"B"},{"label":"C"},{"label":"D"},{"label":"E"},{"label":"F"},{"label":"G"}]`),
 	})
 	fs := collectPatternChoiceFindings(&in)
 	f := findCode(fs, patterns.ErrCodeOvertallFlowLane)
 	if f == nil {
-		t.Fatal("expected OVERTALL_FLOW_LANE for a 7-step short-label process-flow")
+		t.Fatal("expected OVERTALL_FLOW_LANE for a 7-stop short-label timeline")
 	}
 	if f.Action != "review" {
 		t.Errorf("action = %q, want review", f.Action)
@@ -48,9 +48,9 @@ func TestOvertallFlowLane_SevenSteps_Fires(t *testing.T) {
 // only 4 steps (where SPARSE is exempt because a cap is present).
 func TestOvertallFlowLane_CapStillTooTall_Fires(t *testing.T) {
 	in := patternSlide(&PatternInput{
-		Name:         "process-flow",
+		Name:         "timeline-horizontal",
 		MaxHeightPct: 60,
-		Values:       json.RawMessage(`{"steps":[{"label":"Plan"},{"label":"Build"},{"label":"Ship"},{"label":"Scale"}]}`),
+		Values:       json.RawMessage(`[{"label":"Plan"},{"label":"Build"},{"label":"Ship"},{"label":"Scale"}]`),
 	})
 	fs := collectPatternChoiceFindings(&in)
 	if findCode(fs, patterns.ErrCodeOvertallFlowLane) == nil {
@@ -58,12 +58,26 @@ func TestOvertallFlowLane_CapStillTooTall_Fires(t *testing.T) {
 	}
 }
 
+// process-flow sizes its own steps (content-sized rows under a third of the
+// content height, two rows from seven steps), so its lane is never the
+// stretched one: an eight-step process drew the finding whatever its labels
+// said (go-slide-creator-pfyeg).
+func TestOvertallFlowLane_ProcessFlowIsContentSized_NoFire(t *testing.T) {
+	steps := json.RawMessage(`{"steps":[{"label":"A"},{"label":"B"},{"label":"C"},{"label":"D"},{"label":"E"},{"label":"F"},{"label":"G"}]}`)
+	for _, capPct := range []float64{0, 60} {
+		in := patternSlide(&PatternInput{Name: "process-flow", MaxHeightPct: capPct, Values: steps})
+		if findCode(collectPatternChoiceFindings(&in), patterns.ErrCodeOvertallFlowLane) != nil {
+			t.Errorf("OVERTALL_FLOW_LANE fired for a process-flow (max_height_pct %v)", capPct)
+		}
+	}
+}
+
 // A reasonable cap (~35%) is the recommended remedy and must not fire.
 func TestOvertallFlowLane_ReasonableCap_NoFire(t *testing.T) {
 	in := patternSlide(&PatternInput{
-		Name:         "process-flow",
+		Name:         "timeline-horizontal",
 		MaxHeightPct: 35,
-		Values:       json.RawMessage(`{"steps":[{"label":"Plan"},{"label":"Build"},{"label":"Ship"},{"label":"Scale"},{"label":"Review"},{"label":"Iterate"},{"label":"Done"}]}`),
+		Values:       json.RawMessage(`[{"label":"Plan"},{"label":"Build"},{"label":"Ship"},{"label":"Scale"},{"label":"Review"},{"label":"Iterate"},{"label":"Done"}]`),
 	})
 	if findCode(collectPatternChoiceFindings(&in), patterns.ErrCodeOvertallFlowLane) != nil {
 		t.Error("OVERTALL_FLOW_LANE should not fire when max_height_pct caps the lane to 35%")
@@ -248,8 +262,8 @@ func TestMatrixAxisImbalance_RotatedNonSpanning_NoFire(t *testing.T) {
 
 func TestPatternChoiceSmells_SurfaceViaCollectFitFindings(t *testing.T) {
 	in := patternSlide(&PatternInput{
-		Name:   "process-flow",
-		Values: json.RawMessage(`{"steps":[{"label":"A"},{"label":"B"},{"label":"C"},{"label":"D"},{"label":"E"},{"label":"F"},{"label":"G"}]}`),
+		Name:   "timeline-horizontal",
+		Values: json.RawMessage(`[{"label":"A"},{"label":"B"},{"label":"C"},{"label":"D"},{"label":"E"},{"label":"F"},{"label":"G"}]`),
 	})
 	if findCode(collectFitFindings(&in, nil, 9144000, 6858000, nil), patterns.ErrCodeOvertallFlowLane) == nil {
 		t.Fatal("OVERTALL_FLOW_LANE should surface through collectFitFindings")

@@ -117,7 +117,7 @@ var kindBudgets = map[string][]Budget{
 	},
 	"process": {
 		{Field: "steps", MinItems: processStripMin, MaxItems: processStripMax, Note: "numbered rows (steps with a description); the flow diagram takes 3–8 bare labels"},
-		{Field: "steps[].label", MaxChars: processStripLabelMax, Note: "numbered rows; a flow box holds 80 for label and description together (72 with 7 steps, 71 with 8)"},
+		{Field: "steps[].label", MaxChars: processStripLabelMax, Note: "numbered rows; a flow box holds 80 for label and description together (7–8 steps are on two rows)"},
 		{Field: "steps[].description", MaxChars: processStripBodyMax, Note: "numbered rows"},
 	},
 	"decision": {

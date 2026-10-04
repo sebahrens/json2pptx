@@ -1,9 +1,10 @@
 {
-  "about": "e-revise E15: option-matrix column headers render at two font sizes while the score stayed 100. Slide 1 carries the long criteria of the journey; slide 2 is the same matrix with labels that fit.",
+  "about": "e-revise E15: option-matrix column headers render at two font sizes while the score stayed 100. Slide 1 carries the long criteria of the journey and slide 2 the same matrix with labels that fit; both are good since the header row holds a wrapped label. Slide 3 is a hand-built grid whose header row does not.",
   "template": "modern-yellow",
   "labels": {
-    "1": {"label": "weak", "codes": ["SIBLING_SIZE_MISMATCH"], "evidence": "E15: 'Deployment speed' and 'Commercial traction' are shrunk beside 'Energy use'"},
-    "2": {"label": "good"}
+    "1": {"label": "good"},
+    "2": {"label": "good"},
+    "3": {"label": "weak", "codes": ["SIBLING_SIZE_MISMATCH"], "evidence": "E15: a header label shrunk beside its siblings. The option matrix now gives its header row the height a wrapped label needs (go-slide-creator-4fz04), so slide 1 is good; the fault is kept as a hand-built row of headers one line tall"}
   },
   "spec": {
     "meta": {"title": "Carbon capture market"},
@@ -30,7 +31,23 @@
        ],
        "recommended": "Tidewater Carbon",
        "scale": "harvey",
-       "takeaway": "Tidewater leads on cost and speed."}
+       "takeaway": "Tidewater leads on cost and speed."},
+      {"kind": "raw_json2pptx", "slide": {"layout_id": "blank-title", "slide_type": "content",
+       "content": [{"placeholder_id": "title", "type": "text", "text_value": "Tidewater leads on three of the four criteria"}],
+       "shape_grid": {"bounds": {"x": 5, "y": 26, "width": 90, "height": 60}, "columns": 4, "gap": 8, "rows": [
+         {"max_height": 44, "cells": [
+           {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Cost per tonne"}}},
+           {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Energy use"}}},
+           {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Deployment speed"}}},
+           {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Commercial traction to date"}}}
+         ]},
+         {"cells": [
+           {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Tidewater captures a tonne for 40% less than the fixed plants of Northgate."}}},
+           {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Helio uses the least energy; Tidewater is second and closing the gap."}}},
+           {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Modular units deploy in months; a fixed plant takes three years to build."}}},
+           {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Northgate has signed offtake; Tidewater starts its pilot in Q1 2027."}}}
+         ]}
+       ]}}}
     ]
   }
 }

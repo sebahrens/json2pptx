@@ -147,6 +147,16 @@ func (p *processFlowCompact) Validate(values, overrides any, cellOverrides map[i
 	var errs []error
 
 	errs = append(errs, validateProcessFlowStyle(name, vals.Steps, overrides)...)
+	// The compact flow is one band by definition; rows belongs to process-flow.
+	if ovr, ok := overrides.(*ProcessFlowOverrides); ok && ovr != nil && ovr.Rows != 0 {
+		errs = append(errs, &ValidationError{
+			Pattern: name,
+			Path:    "overrides",
+			Code:    ErrCodeUnknownKey,
+			Message: name + ": overrides.rows is not used by this pattern (the compact flow is a single band); use process-flow for a flow on two rows",
+			Fix:     RemoveKeyFix("rows", "overrides", []string{"accent", "semantic_accent", "body_size", "cell_accent_mode", "style"}),
+		})
+	}
 
 	if len(vals.Steps) < 3 {
 		errs = append(errs, errMinItems(name, "steps", 3, len(vals.Steps), ""))

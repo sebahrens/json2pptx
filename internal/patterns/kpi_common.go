@@ -10,6 +10,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/svggen"
 )
 
@@ -509,7 +510,24 @@ const (
 	// kpiFitTolerancePt absorbs the rounding between the row's measured
 	// height and the area the caller resolved for it.
 	kpiFitTolerancePt = 1.0
+	// kpiValueLineFrac is the share of a card's text width a value is fitted
+	// to. Fitted edge to edge, "EUR 48.2M" kept 3pt of a 168pt line: a
+	// renderer that rounds a glyph differently broke it at the space
+	// (go-slide-creator-kjrxx).
+	kpiValueLineFrac = 0.96
+	// kpiValueGrowthRoom is the growth a value must have room for before its
+	// row takes part in the grid's type step: the step grows a display figure
+	// by 1.2 (shapegrid's composeFigureScale) and a 16pt value to 18pt.
+	kpiValueGrowthRoom = 1.2
 )
+
+// kpiValueFits reports whether value is one line at sizePt in a card whose
+// text is widthPt wide (less for a substituted face, whose metrics are a
+// guess). The row's size is chosen against kpiValueLineFrac of that width;
+// the finding that a value does not fit at all measures the whole width.
+func kpiValueFits(value, font string, sizePt, widthPt float64) bool {
+	return measuredLines(value, font, true, sizePt, textfit.AtomicTokenWidthPt(font, widthPt)) <= 1
+}
 
 // kpiNupSteps is the type ladder a KPI row walks when its area is too short
 // for the 40pt figure: value and caption, largest first. The last step is the
@@ -544,8 +562,11 @@ type kpiRowLayout struct {
 	availPt            float64 // height of the area the row sits in
 	fits               bool    // needPt fits availPt
 	authored           bool    // the sizes are overrides, not a ladder step
-	texts              []kpiText
-	iconScales         []float64 // overlay scale per cell (0 = no icon)
+	// pinned says a value has no room to grow on its line: the row keeps the
+	// sizes it was measured at (see Expand).
+	pinned     bool
+	texts      []kpiText
+	iconScales []float64 // overlay scale per cell (0 = no icon)
 }
 
 // layoutKPIRow sizes a KPI row to its content: every value on one line at one
@@ -594,6 +615,12 @@ func measureKPIRow(ctx ExpandContext, cells []KPICell, gapPt, bigSize, smallSize
 
 	font := ctx.Theme.BodyFont
 	widthOf := func(i int) float64 { return est.valueWidthPt(cells[i].Icon, lay.iconPos) }
+	for i, c := range cells {
+		if c.Big != "" && !kpiValueFits(c.Big, font, math.Ceil(lay.bigSize*kpiValueGrowthRoom), widthOf(i)*kpiValueLineFrac) {
+			lay.pinned = true
+			break
+		}
+	}
 	pads := kpiCaptionPadLines(font, cells, smallSize, widthOf)
 	reserveDelta, reserveComparator := kpiReservedSlots(cells)
 	textPt := make([]float64, len(cells))
@@ -752,7 +779,7 @@ func kpiFitBigSize(ctx ExpandContext, cells []KPICell, bigSize float64, geo kpiC
 		if c.Big == "" {
 			continue
 		}
-		s := fitSingleLineSize(c.Big, font, true, bigSize, kpiMinBigSize, geo.valueWidthPt(c.Icon, iconPos))
+		s := fitSingleLineSize(c.Big, font, true, bigSize, kpiMinBigSize, geo.valueWidthPt(c.Icon, iconPos)*kpiValueLineFrac)
 		size = math.Min(size, s)
 	}
 	return size

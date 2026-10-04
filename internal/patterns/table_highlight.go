@@ -10,6 +10,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
 // ---------------------------------------------------------------------------
@@ -741,21 +742,50 @@ func newTHLayout(ctx ExpandContext, v *TableHighlightValues, ovr *TableHighlight
 	return l
 }
 
+// thHeaderRenderSlack is how much wider a renderer's face may set a header
+// label than the face it was measured in (the same margin the
+// SIBLING_SIZE_MISMATCH check uses); a substituted template face gets the
+// atomic-token margin instead, which is wider.
+const thHeaderRenderSlack = 1.12
+
+// thHeaderLineWidthPt is the column width a header label's line count is
+// taken at (go-slide-creator-4fz04). The header row used to be as tall as its
+// labels needed in the measured face: "Commercial traction" was one line in
+// the stand-in for a wide template face, the renderer wrapped it in a box one
+// line tall and shrank that label alone, and the header read at two sizes
+// (modern-yellow, abstract, blue-corporate). Measured at the width the
+// renderer may leave, such a label counts as two lines and the row holds
+// them: every header keeps the one header size.
+func thHeaderLineWidthPt(ctx ExpandContext, colW float64) float64 {
+	text := colW - 2*defaultShapeInsetLRPt
+	if text <= 0 {
+		return colW
+	}
+	narrowed := text / thHeaderRenderSlack
+	if textfit.FontSubstituted(ctx.Theme.BodyFont) {
+		narrowed = math.Min(narrowed, textfit.AtomicTokenWidthPt(ctx.Theme.BodyFont, text))
+	}
+	return narrowed + 2*defaultShapeInsetLRPt
+}
+
 // measure sets the header height and body row heights at a type scale:
 // uniform ordinary rows (the tallest sets them, so it reads as a table) and
 // the highlighted row at its own height (it may carry an extra tag line).
 func (l *thLayout) measure(headerSize, bodySize, detailSize float64) {
 	ctx, v := l.ctx, l.v
 	l.headerSize, l.bodySize, l.detailSize = headerSize, bodySize, detailSize
+	// The header labels are siblings at one size, left to the renderer's
+	// autofit: the row is as tall as its tallest label at thHeaderLineWidthPt,
+	// the width a renderer's own face may leave it.
 	if l.tight {
 		l.headerPt = thMinHeaderPt
 		for j, cell := range l.headerCells() {
-			l.headerPt = math.Max(l.headerPt, writtenFitHeightPt(l.ctx.themeFonts(), cell.Shape.Text, l.colW(j), 0))
+			l.headerPt = math.Max(l.headerPt, writtenFitHeightPt(l.ctx.themeFonts(), cell.Shape.Text, thHeaderLineWidthPt(ctx, l.colW(j)), 0))
 		}
 	} else {
-		l.headerPt = math.Max(thMinHeaderPt, sizedBlockHeightPt(ctx, []sizedPara{{text: l.corner, sizePt: headerSize, bold: true}}, l.colW(0)))
+		l.headerPt = math.Max(thMinHeaderPt, sizedBlockHeightPt(ctx, []sizedPara{{text: l.corner, sizePt: headerSize, bold: true}}, thHeaderLineWidthPt(ctx, l.colW(0))))
 		for j, c := range v.Criteria {
-			l.headerPt = math.Max(l.headerPt, sizedBlockHeightPt(ctx, []sizedPara{{text: c.Label, sizePt: headerSize, bold: true}}, l.colW(j+1)))
+			l.headerPt = math.Max(l.headerPt, sizedBlockHeightPt(ctx, []sizedPara{{text: c.Label, sizePt: headerSize, bold: true}}, thHeaderLineWidthPt(ctx, l.colW(j+1))))
 		}
 	}
 	rowPt, hlPt := l.minRowPt(), 0.0

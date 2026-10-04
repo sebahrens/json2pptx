@@ -151,7 +151,7 @@ func collectGeometryFindings(input *PresentationInput, layouts []types.LayoutMet
 		acc.walk(grid, result, basePath, 0)
 		explicitPatternBounds := slide.Pattern != nil && slide.Pattern.Bounds != nil
 		findings = append(findings, acc.findings(patternName, explicitPatternBounds)...)
-		if f := acc.narrowWrapFinding(patternName); f != nil {
+		if f := acc.narrowWrapFinding(patternName, &input.Slides[si], si); f != nil {
 			findings = append(findings, *f)
 		}
 		safe := contentRelativeBoundsBase(geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
@@ -249,6 +249,9 @@ type geomAccumulator struct {
 	// narrow lists the boxes whose text wraps into a tall column of very
 	// short lines (TEXT_WRAPS_NARROW).
 	narrow []narrowWrapHit
+	// gridCells are the resolved cells of the grid being walked: the siblings
+	// of a narrow box say how many boxes its row holds.
+	gridCells []shapegrid.ResolvedCell
 	// textInk is ink with every unfilled text cell at its measured text block
 	// (never its slot): where the eye finds content left to right. An open
 	// column counts as its slot for coverage, but a slot whose text ends
@@ -275,9 +278,9 @@ func isKPIStripGrid(grid *ShapeGridInput) bool {
 }
 
 func (a *geomAccumulator) walk(input *ShapeGridInput, result *shapegrid.ResolveResult, basePath string, depth int) {
-	outerOpen := a.openCells
-	a.openCells = isKPIStripGrid(input)
-	defer func() { a.openCells = outerOpen }()
+	outerOpen, outerCells := a.openCells, a.gridCells
+	a.openCells, a.gridCells = isKPIStripGrid(input), result.Cells
+	defer func() { a.openCells, a.gridCells = outerOpen, outerCells }()
 	// A grid a named pattern expanded says so (compose segments are stamped
 	// per segment): its own pattern decides how its cells count, and the
 	// enclosing grid's rule is restored once it has been walked.
@@ -372,7 +375,7 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 		a.exceeds = append(a.exceeds, textExceedsHit{path: cellPath + "/shape/text", word: word, geometry: geometry, wordPt: wordPt, availPt: availPt, minGlyphPt: minGlyphPt})
 	}
 	if !txt.rotated() {
-		a.noteNarrowWrap(cellPath+"/shape/text", txt, availPt)
+		a.noteNarrowWrap(cellPath+"/shape/text", txt, availPt, cell)
 	}
 	blockW, blockH := a.m.textBlockPt(txt, math.Max(availPt, 1))
 	if txt.rotated() {

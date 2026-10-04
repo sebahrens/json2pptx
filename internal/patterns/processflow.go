@@ -53,8 +53,8 @@ func (p *processFlow) BudgetConfigurations() []BudgetConfig {
 		{Columns: 4, Rows: 1},
 		{Columns: 5, Rows: 1},
 		{Columns: 6, Rows: 1},
-		{Columns: 7, Rows: 1},
-		{Columns: 8, Rows: 1},
+		// Seven or eight steps are on two rows of four (processflow_rows.go).
+		{Columns: 4, Rows: 2},
 	}
 }
 
@@ -113,6 +113,10 @@ type ProcessFlowOverrides struct {
 	// fills only a highlighted step or a lone decision, and draws the
 	// connectors) or "solid" (every step filled with the accent; legacy).
 	Style string `json:"style,omitempty"`
+	// Rows is 1 or 2 (process-flow only). Unset, a flow of
+	// processFlowTwoRowMinSteps or more steps bends onto two rows and a
+	// shorter one keeps a single row.
+	Rows int `json:"rows,omitempty"`
 }
 
 // processFlowStyles are the accepted overrides.style values.
@@ -132,10 +136,18 @@ func (p *processFlow) NewCellOverride() any { return &ProcessFlowCellOverride{} 
 // ProcessFlowLabelBudget returns the readable label length of a process-flow
 // step for a step count: the length PostExpandWarnings reports past. A finding
 // that asks for a shorter step names this budget, so one rewrite fits the box.
+//
+// steps is the flow's step count in its default layout: from
+// processFlowTwoRowMinSteps steps the flow is on two rows, and a box is as
+// wide as in a flow of half the steps.
 func ProcessFlowLabelBudget(steps int, pointed bool) (wordLike, unbroken int) {
+	if steps >= processFlowTwoRowMinSteps {
+		steps = (steps + 1) / 2
+	}
 	return processFlowLabelBudget(steps, pointed)
 }
 
+// processFlowLabelBudget is the budget of a box in a row of steps boxes.
 func processFlowLabelBudget(steps int, pointed bool) (wordLike, unbroken int) {
 	// Measured against the written size on every shipped template, every
 	// shape keeping the uniform 0.5 cm text margin (go-slide-creator-n1muf).
@@ -169,16 +181,22 @@ func (p *processFlow) PostExpandWarnings(ctx ExpandContext, values, overrides an
 	if !ok || v == nil {
 		return nil
 	}
+	ovr, _ := overrides.(*ProcessFlowOverrides)
+	lay := processFlowLayoutFor(v.Steps, ovr)
 	var warnings []string
 	for i, step := range v.Steps {
 		pointed := step.Type == "chevron" || step.Type == "arrow"
-		wordBudget, unbrokenBudget := processFlowLabelBudget(len(v.Steps), pointed)
+		wordBudget, unbrokenBudget := processFlowLabelBudget(lay.perRow, pointed)
 		longest := 0
 		for _, word := range strings.Fields(step.Label) {
 			longest = max(longest, runeLen(word))
 		}
 		if runeLen(step.Label) > wordBudget || longest > unbrokenBudget {
-			warnings = append(warnings, fmt.Sprintf("%s: process-flow steps[%d].label has %d characters (longest unbroken run %d); this %d-step %s holds about %d word-like or %d wide unbroken characters — shorten the label, add word breaks, or use fewer steps", ErrCodeBodyTooLong, i, runeLen(step.Label), longest, len(v.Steps), step.Type, wordBudget, unbrokenBudget))
+			remedy := "shorten the label, add word breaks, or use fewer steps"
+			if lay.rows == 1 && len(v.Steps) >= processFlowTwoRowMinSteps {
+				remedy = "shorten the label, add word breaks, use fewer steps, or put the steps on two rows (overrides.rows 2)"
+			}
+			warnings = append(warnings, fmt.Sprintf("%s: process-flow steps[%d].label has %d characters (longest unbroken run %d); this %d-step %s holds about %d word-like or %d wide unbroken characters — %s", ErrCodeBodyTooLong, i, runeLen(step.Label), longest, len(v.Steps), step.Type, wordBudget, unbrokenBudget, remedy))
 		}
 	}
 	if len(warnings) == 0 {
@@ -188,19 +206,22 @@ func (p *processFlow) PostExpandWarnings(ctx ExpandContext, values, overrides an
 }
 
 func (p *processFlow) Schema() *Schema {
-	stepSchema := processFlowStepSchema("Step label text; chevron/arrow labels tighten to about 61/31/12/10 word-like characters at 5/6/7/8 steps (rectangular steps about 72 at 7 and 71 at 8), less for wide unbroken text")
+	stepSchema := processFlowStepSchema("Step label text; chevron/arrow labels tighten to about 61/31 word-like characters at 5/6 steps on a row, less for wide unbroken text (7-8 steps are on two rows of 4; on one row, overrides.rows 1, a rectangular step holds about 72/71 and a chevron 12/10)")
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
-			"steps": ArraySchema(stepSchema, 3, 8).WithDescription("Process steps left-to-right (3-8)"),
+			"steps": ArraySchema(stepSchema, 3, 8).WithDescription("Process steps in order (3-8); 7-8 steps bend onto two rows"),
 		},
 		[]string{"steps"},
 	).WithAdditionalProperties(false)
 
+	overridesSchema := processFlowOverridesSchema()
+	overridesSchema.raw.Properties["rows"] = IntegerSchema(1, 2).WithDescription("Rows the steps are laid on. Default: 2 from 7 steps (the first half left to right, a connector down, the second half back right to left; chevrons/arrows wrap left to right instead), else 1. 1 keeps 7-8 steps on one row of narrow boxes; 2 needs at least 4 steps")
+
 	return ObjectSchema(
 		map[string]*Schema{
 			"values":         valuesSchema,
-			"overrides":      processFlowOverridesSchema(),
+			"overrides":      overridesSchema,
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
@@ -220,6 +241,16 @@ func (p *processFlow) Validate(values, overrides any, cellOverrides map[int]any)
 
 	// Validate cell_accent_mode
 	errs = append(errs, validateProcessFlowStyle(name, vals.Steps, overrides)...)
+	if ovr, ok := overrides.(*ProcessFlowOverrides); ok && ovr != nil {
+		switch {
+		case ovr.Rows < 0 || ovr.Rows > 2:
+			errs = append(errs, errOutOfRange(name, "overrides.rows", 1, 2, ovr.Rows))
+		case ovr.Rows == 2 && len(vals.Steps) >= 3 && len(vals.Steps) < processFlowTwoRowFloor:
+			errs = append(errs, newValidationError(name, "overrides.rows", ErrCodeOutOfRange,
+				fmt.Sprintf("%s: overrides.rows 2 needs at least %d steps, got %d — a second row would hold one step; remove rows or add a step", name, processFlowTwoRowFloor, len(vals.Steps)),
+				RemoveFieldFix("overrides.rows")))
+		}
+	}
 
 	if len(vals.Steps) < 3 {
 		errs = append(errs, errMinItems(name, "steps", 3, len(vals.Steps), ""))
@@ -263,46 +294,67 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		}
 	}
 
-	bodySize := ResolveSize(ovr.BodySize, processFlowFullFontPt(vals.Steps))
+	// Seven or eight steps bend onto two rows (processflow_rows.go); every
+	// size below is that of one row's boxes.
+	lay := processFlowLayoutFor(vals.Steps, ovr)
+	bodySize := ResolveSize(ovr.BodySize, processFlowFullFontPtFor(vals.Steps, lay.perRow))
 	cells := buildProcessFlowCells(ctx, vals.Steps, ovr, cellOverrides, bodySize)
 
 	// Steps are capped at processFlowMaxHeightFrac of the content height
 	// (go-slide-creator-7km8) instead of stretching into full-height pillars
 	// with needle-thin diamonds; the grid centres the row vertically.
 	pointedRow := allStepsPointed(vals.Steps)
-	gap := processFlowStepGapPt(ctx, vals.Steps)
-	cellW, rowCap := processFlowCellSize(ctx, len(vals.Steps), gap, pointedRow)
-	colsJSON, widths := processFlowColumns(ctx, vals.Steps, bodySize, cellW)
+	gap := processFlowGapForPt(ctx, vals.Steps, lay.perRow)
+	cellW, rowCap := processFlowCellSize(ctx, lay.perRow, gap, pointedRow)
+	colsJSON, widths := processFlowGridColumns(ctx, vals.Steps, lay, bodySize, cellW)
 	// Steps are content-sized: the written fit of the tallest label, floored
 	// at a box proportion so a one-word step still reads as a box, and capped
 	// at processFlowMaxHeightFrac (go-slide-creator-xb06p). The cap gives way
 	// to the written fit of the tallest label (never past the content area)
 	// before the writer would shrink it below the readable floor
 	// (go-slide-creator-n1muf).
-	_, contentH := contentAreaPt(ctx)
+	//
+	// Where the area has the room the row keeps one spare line
+	// (go-slide-creator-pfyeg): the labels are left to the renderer's
+	// autofit, and a face that runs a little wider than the measured one wraps
+	// one label a line further and shrinks that box alone — a row of steps at
+	// two sizes.
 	need := processFlowWrittenNeedPt(ctx.themeFonts(), cells, widths)
+	// A quarter over the line: a face whose own line height is above the
+	// measured 1.2 (Calibri's is 1.22) still has the four lines in the box.
+	spare := shapegrid.EffectiveTextSizePt(bodySize) * sizingLineSpacing * 1.25
+	room := processFlowRowRoomPt(ctx, lay, gap)
 	rowHeight := processFlowContentHeight(need, cellW, processFlowBoxAspect, rowCap)
-	rowHeight = math.Max(rowHeight, math.Min(need, math.Round(contentH)))
-	row := jsonschema.GridRowInput{
-		Cells:     cells,
-		Connector: processFlowConnector(ctx, ovr),
-		MaxHeight: rowHeight,
+	rowHeight = math.Max(rowHeight, math.Min(need, room))
+	if need+spare <= room {
+		rowHeight = math.Max(rowHeight, math.Ceil(need+spare))
 	}
 	// Chevrons point at the next step; an arrow drawn between them is a second
 	// statement of the same thing, and it was being drawn straight through the
 	// notch (go-slide-creator-czk4).
+	connector := processFlowConnector(ctx, ovr)
 	if pointedRow {
-		row.Connector = nil
+		connector = nil
 	}
+	rows, links := processFlowGridRows(cells, lay, connector, rowHeight)
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns:       colsJSON,
 		Gap:           gap,
-		Rows:          []jsonschema.GridRowInput{row},
+		Rows:          rows,
+		Links:         links,
 		VerticalAlign: GridVerticalAlignDefault,
 	}
 
 	return grid, nil
+}
+
+// processFlowRowRoomPt is the height one row of the layout may take: the
+// content area, shared between the rows less the gap between them.
+func processFlowRowRoomPt(ctx ExpandContext, lay processFlowLayout, gapPt float64) float64 {
+	_, contentH := contentAreaPt(ctx)
+	rows := float64(max(lay.rows, 1))
+	return math.Round((contentH - (rows-1)*gapPt) / rows)
 }
 
 // processFlowWrittenNeedPt is the height the tallest step needs for the
@@ -328,25 +380,9 @@ func processFlowWrittenNeedPt(fonts pptx.ThemeFonts, cells []*jsonschema.GridCel
 	return math.Ceil(need)
 }
 
-// processFlowStepsNeedPt builds each step's label cell as Expand writes it and
-// returns the written-fit height the tallest needs, with the step width and
-// the content-area height.
-func processFlowStepsNeedPt(ctx ExpandContext, steps []ProcessFlowStep, bodySize float64, compact bool) (need, areaH float64) {
-	cells := buildProcessFlowCells(ctx, steps, &ProcessFlowOverrides{}, nil, bodySize)
-	var cellW float64
-	gap := processFlowStepGapPt(ctx, steps)
-	if compact {
-		cellW, _ = processFlowCompactCellSize(ctx, len(steps), gap, false)
-	} else {
-		cellW, _ = processFlowCellSize(ctx, len(steps), gap, false)
-	}
-	_, areaH = contentAreaPt(ctx)
-	_, widths := processFlowColumns(ctx, steps, bodySize, cellW)
-	return processFlowWrittenNeedPt(ctx.themeFonts(), cells, widths), areaH
-}
-
 // processFlowAreaWarning reports steps whose written fit needs more height
-// than the template's content area holds (go-slide-creator-n1muf).
+// than the template's content area holds (go-slide-creator-n1muf). A flow on
+// two rows needs both rows and the gap between them.
 func processFlowAreaWarning(ctx ExpandContext, name string, steps []ProcessFlowStep, overrides any, compact bool) []string {
 	if len(steps) == 0 {
 		return nil
@@ -355,19 +391,21 @@ func processFlowAreaWarning(ctx ExpandContext, name string, steps []ProcessFlowS
 	if ovr == nil {
 		ovr = &ProcessFlowOverrides{}
 	}
-	size := processFlowFullFontPt(steps)
-	if compact {
-		size = processFlowDefaultFontPt(len(steps))
+	lay := processFlowLayout{rows: 1, perRow: len(steps)}
+	size := processFlowDefaultFontPt(len(steps))
+	if !compact {
+		lay = processFlowLayoutFor(steps, ovr)
+		size = processFlowFullFontPtFor(steps, lay.perRow)
 	}
 	bodySize := ResolveSize(ovr.BodySize, size)
-	gap := processFlowStepGapPt(ctx, steps)
+	gap := processFlowGapForPt(ctx, steps, lay.perRow)
 	var equalW float64
 	if compact {
-		equalW, _ = processFlowCompactCellSize(ctx, len(steps), gap, false)
+		equalW, _ = processFlowCompactCellSize(ctx, lay.perRow, gap, false)
 	} else {
-		equalW, _ = processFlowCellSize(ctx, len(steps), gap, false)
+		equalW, _ = processFlowCellSize(ctx, lay.perRow, gap, false)
 	}
-	_, widths := processFlowColumns(ctx, steps, bodySize, equalW)
+	_, widths := processFlowGridColumns(ctx, steps, lay, bodySize, equalW)
 	if broken := processFlowBrokenDecisionWords(ctx, name, steps, bodySize, widths); len(broken) > 0 {
 		return broken
 	}
@@ -375,7 +413,11 @@ func processFlowAreaWarning(ctx ExpandContext, name string, steps []ProcessFlowS
 	if ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 {
 		return nil
 	}
-	need, areaH := processFlowStepsNeedPt(ctx, steps, bodySize, compact)
+	// Each step's label cell as Expand writes it.
+	cells := buildProcessFlowCells(ctx, steps, &ProcessFlowOverrides{}, nil, bodySize)
+	rows := float64(lay.rows)
+	need := rows*processFlowWrittenNeedPt(ctx.themeFonts(), cells, widths) + (rows-1)*gap
+	_, areaH := contentAreaPt(ctx)
 	if need <= areaH+1 {
 		return nil
 	}
@@ -408,53 +450,74 @@ func processFlowDecisionNeedPt(label, font string, sizePt float64) (need float64
 }
 
 // processFlowColumns returns the grid columns and every step's width in
-// points. Columns are equal (the plain step count) unless a decision's
-// longest word needs a wider diamond; then the columns are percentages, the
-// decisions as wide as they need and the other steps sharing the rest, never
-// narrower than 1-processFlowDecisionMaxGiveFrac of the equal width.
+// points for a single row of steps. See processFlowGridColumns.
 func processFlowColumns(ctx ExpandContext, steps []ProcessFlowStep, sizePt, equalW float64) (json.RawMessage, []float64) {
-	n := len(steps)
+	return processFlowGridColumns(ctx, steps, processFlowLayout{rows: 1, perRow: len(steps)}, sizePt, equalW)
+}
+
+// processFlowGridColumns returns the grid columns and every step's width in
+// points. Columns are equal (the plain column count) unless a decision's
+// longest word needs a wider diamond; then the columns are percentages, a
+// column holding such a decision as wide as it needs and the columns without
+// a decision sharing the rest, never narrower than
+// 1-processFlowDecisionMaxGiveFrac of the equal width.
+func processFlowGridColumns(ctx ExpandContext, steps []ProcessFlowStep, lay processFlowLayout, sizePt, equalW float64) (json.RawMessage, []float64) {
+	n, cols := len(steps), lay.perRow
 	widths := make([]float64, n)
 	for i := range widths {
 		widths[i] = equalW
 	}
-	equal, _ := json.Marshal(n)
-	if n == 0 || equalW <= 0 {
+	equal, _ := json.Marshal(cols)
+	if n == 0 || cols == 0 || equalW <= 0 {
 		return equal, widths
 	}
 	font := ctx.Theme.BodyFont
-	extra := make([]float64, n)
-	totalExtra, others := 0.0, 0
+	extra := make([]float64, cols)
+	decision := make([]bool, cols)
 	for i, st := range steps {
 		if st.Type != "decision" {
-			others++
 			continue
 		}
+		_, c := lay.cell(i)
+		decision[c] = true
 		if need, ok := processFlowDecisionNeedPt(pptx.ConvertMarkdownEmphasis(st.Label), font, sizePt); ok && need > equalW {
-			extra[i] = need - equalW
-			totalExtra += extra[i]
+			extra[c] = math.Max(extra[c], need-equalW)
+		}
+	}
+	totalExtra, others := 0.0, 0
+	for c := range extra {
+		totalExtra += extra[c]
+		if !decision[c] {
+			others++
 		}
 	}
 	if totalExtra == 0 || others == 0 {
 		return equal, widths
 	}
 	give := math.Min(totalExtra, processFlowDecisionMaxGiveFrac*equalW*float64(others))
+	colW := make([]float64, cols)
 	sum := 0.0
-	for i, st := range steps {
+	for c := range colW {
 		switch {
-		case extra[i] > 0:
-			widths[i] = equalW + extra[i]*give/totalExtra
-		case st.Type != "decision":
-			widths[i] = equalW - give/float64(others)
+		case extra[c] > 0:
+			colW[c] = equalW + extra[c]*give/totalExtra
+		case !decision[c]:
+			colW[c] = equalW - give/float64(others)
+		default:
+			colW[c] = equalW
 		}
-		sum += widths[i]
+		sum += colW[c]
 	}
-	pcts := make([]float64, n)
-	for i, w := range widths {
-		pcts[i] = math.Round(w/sum*100000) / 1000
+	pcts := make([]float64, cols)
+	for c, w := range colW {
+		pcts[c] = math.Round(w/sum*100000) / 1000
 	}
-	cols, _ := json.Marshal(pcts)
-	return cols, widths
+	for i := range widths {
+		_, c := lay.cell(i)
+		widths[i] = colW[c]
+	}
+	out, _ := json.Marshal(pcts)
+	return out, widths
 }
 
 // processFlowBrokenDecisionWords reports the decisions whose longest word is
@@ -499,16 +562,22 @@ func processFlowContentHeight(need, cellW, aspect, limit float64) float64 {
 // Dense labels keep the conservative scale; compact flows retain their own
 // 9–12pt scale via processFlowDefaultFontPt.
 func processFlowFullFontPt(steps []ProcessFlowStep) float64 {
-	base := processFlowDefaultFontPt(len(steps))
+	return processFlowFullFontPtFor(steps, len(steps))
+}
+
+// processFlowFullFontPtFor is processFlowFullFontPt for steps laid out perRow
+// to a row: the box width, and so the size, follows the row's step count.
+func processFlowFullFontPtFor(steps []ProcessFlowStep, perRow int) float64 {
+	base := processFlowDefaultFontPt(perRow)
 	for _, step := range steps {
 		if runeLen(step.Label) > 22 {
 			return base
 		}
 	}
 	switch {
-	case len(steps) <= 4:
+	case perRow <= 4:
 		return 16
-	case len(steps) <= 6:
+	case perRow <= 6:
 		return 13
 	default:
 		return base
@@ -552,10 +621,16 @@ func processFlowConnectorLenPt(n int) float64 {
 // processFlowStepGapPt is the gap between steps: the connector length when
 // connectors are drawn, the plain grid gap for a row of pointed steps.
 func processFlowStepGapPt(ctx ExpandContext, steps []ProcessFlowStep) float64 {
+	return processFlowGapForPt(ctx, steps, len(steps))
+}
+
+// processFlowGapForPt is processFlowStepGapPt for steps laid out perRow to a
+// row; on two rows it is also the gap the dropping connector crosses.
+func processFlowGapForPt(ctx ExpandContext, steps []ProcessFlowStep, perRow int) float64 {
 	if allStepsPointed(steps) {
 		return ctx.Gap(processFlowGapPt)
 	}
-	return processFlowConnectorLenPt(len(steps))
+	return processFlowConnectorLenPt(perRow)
 }
 
 // processFlowCellSize is one step's width and the row's height in points.

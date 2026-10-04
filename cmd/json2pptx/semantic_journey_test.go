@@ -69,28 +69,26 @@ var journeyCopy = struct {
 	archetype string
 }{
 	titles: map[string]string{
-		"Executive summary":             "Cloud spend is 23% over budget and a FinOps team recovers €9.6M",
-		"Key metrics":                   "Spend is €7.8M over budget with a third of compute idle",
-		"Monthly spend trend":           "Monthly spend rose 26% in six months",
-		"Savings funnel":                "€9.6M of €14.2M identified savings is committed",
-		"Options comparison":            "Option B saves three times more than a clean-up",
-		"Savings by lever":              "Three levers deliver 80% of the savings",
-		"Savings by lever (2/2)":        "Five smaller levers add the last €2M",
-		"Decision":                      "We ask for a decision on option B today",
-		"Implementation approach":       "Eight steps deliver the savings in 12 months",
-		"Implementation approach (2/2)": "The last four steps lock the savings in by month 12",
-		"Thank you":                     "Approve option B and start on 1 November",
+		"Executive summary":       "Cloud spend is 23% over budget and a FinOps team recovers €9.6M",
+		"Key metrics":             "Spend is €7.8M over budget with a third of compute idle",
+		"Monthly spend trend":     "Monthly spend rose 26% in six months",
+		"Savings funnel":          "€9.6M of €14.2M identified savings is committed",
+		"Options comparison":      "Option B saves three times more than a clean-up",
+		"Savings by lever":        "Three levers deliver 80% of the savings",
+		"Savings by lever (2/2)":  "Five smaller levers add the last €2M",
+		"Decision":                "We ask for a decision on option B today",
+		"Implementation approach": "Eight steps deliver the savings in 12 months",
+		"Thank you":               "Approve option B and start on 1 November",
 	},
 	takeaways: map[string]string{
-		"Executive summary":             "Approve option B to recover €9.6M a year.",
-		"Key metrics":                   "Spend is out of control.",
-		"Monthly spend trend":           "Spend grows every month.",
-		"Savings funnel":                "Most identified savings are already committed.",
-		"Options comparison":            "Option B pays back fastest.",
-		"Savings by lever":              "Compute and commitments carry the case.",
-		"Savings by lever (2/2)":        "The long tail is worth €2M.",
-		"Implementation approach":       "Each step has an owner and a date.",
-		"Implementation approach (2/2)": "Tracking starts before the last commitment is signed.",
+		"Executive summary":       "Approve option B to recover €9.6M a year.",
+		"Key metrics":             "Spend is out of control.",
+		"Monthly spend trend":     "Spend grows every month.",
+		"Savings funnel":          "Most identified savings are already committed.",
+		"Options comparison":      "Option B pays back fastest.",
+		"Savings by lever":        "Compute and commitments carry the case.",
+		"Savings by lever (2/2)":  "The long tail is worth €2M.",
+		"Implementation approach": "Each step has an owner and a date.",
 	},
 	source:    "Cloud billing exports, Oct 2025 to Sep 2026",
 	archetype: "strategy_proposal",
@@ -490,41 +488,6 @@ func (a *journeyAgent) apply(f diagnostics.Finding) {
 			}
 		}
 
-	case "TEXT_WRAPS_NARROW":
-		// "use fewer boxes so each is wider": on a process slide the boxes are
-		// the steps. A box cut to params.max_words words would be a sparse
-		// lane (OVERTALL_FLOW_LANE), so the agent keeps every word and halves
-		// the boxes instead: the second half moves to a slide of its own,
-		// which the agent titles as it has learned to.
-		slide := a.slideOf(*f.Path)
-		steps, isProcess := slide["steps"].([]any)
-		if !isProcess || len(steps) < 6 || !strings.Contains(f.Message, "use fewer boxes") {
-			a.t.Fatalf("the agent does not know how to apply %s at %s: %s\n  params %+v", code, *f.Path, f.Message, params)
-		}
-		// Fewer boxes of the same visual: evidence.pattern names it, and the
-		// slide says so, or four described steps would compile to numbered
-		// rows instead.
-		pattern, _ := f.Evidence["pattern"].(string)
-		if pattern == "" {
-			a.t.Fatalf("%s does not name the pattern whose boxes wrap: %+v", code, f.Evidence)
-		}
-		slide["pattern"] = pattern
-		second := map[string]any{}
-		for k, v := range slide {
-			second[k] = v
-		}
-		keep := (len(steps) + 1) / 2
-		slide["steps"], second["steps"] = steps[:keep], steps[keep:]
-		second["draft_title"] = draftTitle(slide) + " (2/2)"
-		title, ok := journeyCopy.titles[second["draft_title"].(string)]
-		if !ok {
-			a.t.Fatalf("no action title written for %q", second["draft_title"])
-		}
-		second["title"] = title
-		second["takeaway"] = journeyCopy.takeaways[second["draft_title"].(string)]
-		delete(second, "id")
-		a.inserts = append(a.inserts, journeyInsert{after: slide, slide: second})
-
 	case "CLOSING_WITHOUT_NEXT_STEPS":
 		slide := a.slideOf(*f.Path)
 		slide["draft_title"] = draftTitle(slide)
@@ -648,6 +611,23 @@ func twelveFlawJourney(t *testing.T, mc *mcpConfig, tpl string, strict bool, max
 			render := renderDeckSpecCall(t, mc, map[string]any{"spec": send, "template": tpl})
 			if !render.Success || render.DeterministicReady == nil || !*render.DeterministicReady {
 				t.Errorf("the clean spec does not render ready: %q %v", render.Error, render.DeterministicBlockingReasons)
+			}
+			// The draft's eight-step process is still one slide of eight steps:
+			// the flow bends onto two rows, and no finding asks for a split
+			// (go-slide-creator-pfyeg — the agent used to halve it).
+			processes := 0
+			for _, s := range send["slides"].([]any) {
+				slide, _ := s.(map[string]any)
+				if slide["kind"] != "process" {
+					continue
+				}
+				processes++
+				if steps, _ := slide["steps"].([]any); len(steps) != 8 {
+					t.Errorf("the process slide ends with %d steps, want the draft's 8", len(steps))
+				}
+			}
+			if processes != 1 {
+				t.Errorf("the clean spec has %d process slides, want the draft's one", processes)
 			}
 			return round
 		}

@@ -148,6 +148,36 @@
     never under 12, when it is set). The schema fingerprint does not move:
     pattern schema descriptions are not part of it.
 
+- **2026-10-04 — An eight-step process fits one slide; a KPI value keeps its line; option-matrix headers keep one size (`go-slide-creator-pfyeg`, `-kjrxx`, `-4fz04`).**
+  - **`process-flow` bends 7–8 steps onto two rows.** The first half runs
+    left to right, a connector drops from its last step and the second half
+    runs back right to left under it (chevron / arrow flows wrap left to right
+    instead; a flow mixing pointed and plain steps keeps one row). New
+    `overrides.rows` (`1` | `2`; default `2` from 7 steps, else `1`; `2`
+    needs at least 4 steps; `process-flow-compact` refuses it). A box is as
+    wide as in a four-step flow, so the label budget is 80 characters at
+    every count: the 72 / 71 (chevron 12 / 10) budgets of 7 / 8 steps now
+    apply only with `rows: 1`. The `process` slide kind states one flow-box
+    budget of 80. Rows keep one spare line where the area has the room.
+  - **`OVERTALL_FLOW_LANE` is no longer emitted for `process-flow`**, whose
+    steps are content-sized; it remains for `timeline-horizontal` (dots).
+  - **`TEXT_WRAPS_NARROW` `fix.params`** gain `max_boxes` (how many boxes
+    the row holds once the text reads as a label), `paths` (the authored
+    location of each box, in the order of `cells`) and `texts`. On a
+    DeckSpec slide the finding's `path` / `paths` are the items behind the
+    boxes (`/slides/8/steps/0` …) and `remediation.primary.params` carries
+    `max_boxes` beside `max_words`.
+  - **`kpi-Nup`**: a value is fitted to 96% of its card's text width, and a
+    row whose value has no room for the grid's type step keeps the sizes it
+    was measured at (its cells are written with `type_scale: "compact"`).
+    The `BODY_TOO_LONG` for a value that cannot fit one line now reads
+    "… in a 106pt-wide card, which holds about 8 characters like these — …";
+    on a DeckSpec slide that is `max_chars` at the KPI's `value`.
+  - **`table-highlight`**: the header row is as tall as its labels need at
+    the width a renderer may leave them, so a wrapped label is not shrunk
+    beside its siblings (`SIBLING_SIZE_MISMATCH` no longer fires on the
+    option matrix of modern-yellow, abstract and blue-corporate).
+
 - **2026-10-04 — Schema 4.160.0 · layout nativeness and the agent journey (labels `layout-nativeness-20261003`, `agent-journey-20261003`).**
   - One version for every dated bullet below this one down to the 4.159.0
     entry: those bullets were written by parallel branches without a version

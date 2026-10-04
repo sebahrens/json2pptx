@@ -80,14 +80,20 @@ func collectPatternChoiceFindings(input *PresentationInput) []patterns.FitFindin
 	return findings
 }
 
-// detectOvertallFlowLane flags a slide-level process-flow / timeline-horizontal
-// whose lane occupies more than half the content height with short per-cell
-// labels. It is the complement to detectSparseSingleRowFlow: it covers the
-// over-tall cases that guard does not (a height cap that is still too tall, or
-// a 7–8 step row), and defers to SPARSE_SINGLE_ROW_FLOW whenever that guard
-// owns the case so the two never both fire on one slide.
+// detectOvertallFlowLane flags a slide-level timeline-horizontal whose lane
+// occupies more than half the content height with short per-cell labels. It
+// is the complement to detectSparseSingleRowFlow: it covers the over-tall
+// cases that guard does not (a height cap that is still too tall, or a row of
+// seven or more stops), and defers to SPARSE_SINGLE_ROW_FLOW whenever that
+// guard owns the case so the two never both fire on one slide.
 func detectOvertallFlowLane(p *PatternInput, slideIdx int) *patterns.FitFinding {
-	if p == nil {
+	// process-flow sizes its own steps: a row is as tall as its tallest label
+	// needs, floored at a box proportion and capped under a third of the
+	// content height, and seven or eight steps are on two rows. Its lane is
+	// never the stretched one this finding describes, whatever the slide caps
+	// (go-slide-creator-pfyeg: an eight-step process drew the finding for
+	// boxes 28pt tall, and no edit of the steps cleared it).
+	if p == nil || p.Name == "process-flow" {
 		return nil
 	}
 	itemCount, totalChars, ok := sparseFlowTextStats(p)
