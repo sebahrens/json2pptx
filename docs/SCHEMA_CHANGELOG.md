@@ -1,5 +1,14 @@
 # Schema Changelog
 
+- **2026-10-04 — Schema 4.162.0 · second round of follow-ups (label `followup2-20261004`).**
+  - One version for the dated bullets below this one down to the 4.161.0
+    entry (21 beads): template-face text measuring and shared sibling
+    sizes, canvas-scaled `regions`, swimlane sizing, per-count KPI value
+    budgets, raw pattern warnings at the value, `contrast_autofixed` at the
+    authored element, `known_hashes` prefilled in `next_tool_call`,
+    `larger_render`, typed CLI errors, CLI slide ids, 1-based "slide N"
+    everywhere. The schema fingerprint is unchanged (`e62605a0f9ee3236`).
+
 - **2026-10-04 — DeckSpec messages, revisions and the HTTP semantic endpoints (`go-slide-creator-kc3h1`, `-rep2b`, `-075py`, `-jrrp4`, `-oqu4a`, `-njok5`).**
   - **`SEMANTIC_PATTERN_NOT_AVAILABLE` for a listed composition the payload
     cannot take is one sentence**: `pattern "process-flow" does not fit this

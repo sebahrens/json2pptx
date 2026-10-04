@@ -119,6 +119,9 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// 4.161.0 is the follow-up wave (label followup-20261004): process-flow
 	// overrides.rows, render_deck_thumbnails known_hashes, template on
 	// compile/explain; none of it is in the hashed set, so the hash is unchanged.
+	// 4.162.0 is the second follow-up wave (label followup2-20261004): typed
+	// CLI errors, known_hashes prefilled in next_tool_call, larger_render,
+	// per-count KPI value budgets; the hash is unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "e62605a0f9ee3236"
 
