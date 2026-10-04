@@ -46,7 +46,9 @@ bound template > the archetype default. A `template` that differs from
 `meta.template` replaces it for that call only (`warnings[]` says so);
 patch `/meta/template` to keep it. `explain_deck_spec` is read-only: with
 `template` on an unbound `deck_id` it plans on that template without
-binding the deck (`warnings[]` says so); validate / render bind it.
+binding the deck (`warnings[]` says so); validate / render bind it. With
+no template and no `meta.archetype` it omits `template` and warns; a render
+then fails `TEMPLATE_NOT_FOUND`.
 `meta.waivers: [{code, reason}]` waives
 `NO_EXECUTIVE_SUMMARY`, `CLOSING_WITHOUT_NEXT_STEPS`, `TITLE_NOT_ACTION` or
 `takeaway_missing` (a waived finding is an `info`). Discover archetypes with
@@ -148,8 +150,8 @@ its floor is an `error` at validate too. A refused render (`success: false`)
 carries the first blocking finding's patch as its top-level `next_tool_call`:
 a verified removal, a rewrite of the named field within its budget, or the
 slide's text layout (`/slides/N/layout: "content"`). A finding inside a
-`raw_json2pptx` slide points into it (`/slides/N/slide/…`). HTTP:
-`POST /api/v1/semantic/render` (`docs/api/README.md`).
+`raw_json2pptx` slide carries the raw code at the field inside it
+(`INVALID_SLIDE` at `/slides/N/slide/overlays/0`).
 
 Validation, explain, and render return a `deck_id` handle. Send `deck_id`
 instead of `spec` (never both), with an optional ordered
@@ -171,9 +173,8 @@ it was validated or rendered on, so a call's `template` change shows as
 (`find`, `replace`), restores a revision (`restore: N`) and forks
 (`fork: true`). Handles are process-local and expire after one hour; retain
 the source spec yourself.
-Without an explicit `output_filename`, the rendered filename includes a
-digest so two distinct specs do not collide. Reusing an explicit name may
-overwrite the earlier artifact; check `overwrote`.
+The default filename carries a digest of the spec; an explicit
+`output_filename` may overwrite an earlier artifact (check `overwrote`).
 
 `raw_json2pptx` is a deliberate escape hatch inside a DeckSpec. Its
 `slide` must be a structurally valid raw slide with renderable content, its

@@ -22,7 +22,8 @@ message is that number, "slide index N" is 0-based). Ignore `debug` (compiled-de
   (`max_chars` / `max_words`), `reduce_items` (`max_items`, `min_items`),
   `split_slide` (`max_rows`, `row`), `replace_value` (`did_you_mean`,
   `available`, `expected_shape`, `example`), `add_detail_or_merge` (`hint`;
-  `SLIDE_UNDERUSED` / `SPARSE_FILL`, render's `recommended_edit`) — and
+  `SLIDE_UNDERUSED` / `SPARSE_FILL` / `SPARSE_SINGLE_ROW_FLOW`, render's
+  `recommended_edit`) — and
   `next_tool_call` the patch.
   `patch_verified: true`: the server applied that patch and re-validated —
   the finding is gone and nothing new blocks; send it unchanged. A patch
@@ -75,7 +76,11 @@ max_chars, pattern}}`: rewrite that field yourself within `max_chars`.
   split the slide or rewrite copy rather than blindly truncating.
 - `review` / `info`: a judgment for the author; inspect the rendered slide
   and decide. An advisory is not a failed call, and a clean score does not
-  replace final-revision visual inspection.
+  replace final-revision visual inspection. `fit_overflow` at `info` (one
+  per slide): a `shape_grid` cell fits only through a stored autofit scale,
+  so its size differs between PowerPoint and LibreOffice. Apply `fix`
+  (`reduce_cell_text`: `cell_path`, `max_chars`; `cells` lists every
+  affected cell) or give the cells height.
 
 `score_deck` classifies a finding as `pattern_choice`, `rendering`, or
 `content`. A pattern-choice problem usually calls for a different visual
@@ -86,7 +91,7 @@ chart, figures table / matrix or KPI / stat pattern, unsourced) is one:
 set `slides[N].source` (`fix.params.field: "source"`), a chart `footnote` or
 a deck default (QUALITY.md §5); never invent one.
 
-Storyline gate (`score_deck`; details in `docs/FIT_FINDINGS.md`):
+Storyline gate (`score_deck`):
 `takeaway_missing` → require_takeaway_on_charts; `TITLE_NOT_ACTION` (over 15
 words, stock label, no verb/number, or `topic_label`: a ≤4-word label over a
 `takeaway`; `fix.params.reason`) on >25% of slides →
@@ -113,6 +118,12 @@ finding names a pattern cell, edit the corresponding pattern `values`,
 then re-expand and validate. A split must leave **both** halves valid under
 that pattern's minimum counts.
 
+`validate_input`, `generate -dry-run`, `generate_presentation` and CLI
+`generate` give one verdict: what one refuses all refuse, with the same code
+at the same path, before a file is written. `INVALID_SLIDE` names the field (`/slides/N/overlays/K`,
+`…/content/M/link`, `…/source_link`); a chart or diagram that cannot render
+is `diagram_render_failed`, never a deck with a "Data unavailable" box.
+
 A generation refusal for unreadable or lost text (`TEXT_BELOW_READABLE_MIN`
 et al.) names the slide (1-based), its pattern or diagram and the authored
 path; `validate_input` with the target template reports the same refusal as
@@ -128,5 +139,5 @@ diagrams share the native 12pt (`present`) floor at their placed size: a
 crowded diagram shows `diagram.text_overlap` instead of shrinking, and text
 still below the floor is a `TEXT_BELOW_READABLE_MIN` refusal
 (`simplify_or_enlarge_diagram`): enlarge the cell or cut categories.
-`strict_fit` controls promotion of fit and chart
-findings; trust the returned severity/action, not an old promotion table.
+`strict_fit` promotes fit and chart findings; trust the returned
+severity/action.

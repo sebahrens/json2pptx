@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.162.0
+schema_version: 4.163.0
 description: >-
   Create or revise PowerPoint decks with json2pptx. Use for presentation and
   slide-deck requests that need template-aware authoring, validation, rendering,
@@ -13,8 +13,7 @@ description: >-
 
 Call `get_started` first, passing this frontmatter's `schema_version` as
 `skill_version`. If it returns `skill_warning`, run `json2pptx skill install`
-before relying on installed instructions (the CLI's stale-skill line reads
-only the install manifest's version; `json2pptx skill status` checks every
+before relying on installed instructions (`json2pptx skill status` checks every
 file). Check `get_started.runtime`: if render
 tooling is unavailable, deliver the PPTX as **UNREVIEWED**, not as a finished deck.
 Use the live MCP schemas for arguments (the default `tools/list` is abridged:
@@ -117,8 +116,7 @@ repairs from advice.
 Examples: [semantic specs](../../examples/semantic/),
 [raw skeletons](examples/skeletons/README.md), and the
 [layout-coverage example](examples/layout-coverage-deckspec.md).
-For a standalone SVG diagram, use the `svggen-mcp` server and its
-`get_started` / `get_diagram_schema`; this skill owns deck assembly.
+Standalone SVG diagrams: the `svggen-mcp` server (RAW_PATH.md).
 
 ## Operational boundaries
 
@@ -128,9 +126,11 @@ Start the deck server with `json2pptx mcp` (profiles: TOOLS.md;
 `read_only: true` avoids preview-cache writes. Template precedence:
 DECKSPEC.md. A CLI command that answers in
 JSON prints exactly one JSON document on stdout, also when it fails
-(`{subcommand, ok:false, findings:[{code, message}]}`; a failed `generate`
-adds those fields to `{success:false, error, fit_findings}`, with
-`findings[0].code` `STRICT_FIT`, an argument code or `GENERATION_FAILED`);
+(`{subcommand, ok:false, findings:[{code, message}]}`; `validate-output
+--format json` adds `files[]`; a failed `generate` adds those fields to
+`{success:false, error, fit_findings}` and lists the findings `validate`
+reports — `REQUIRED` at `template` / `slides`, `STRUCTURE_AND_SLIDES` for
+both `structure` and `slides` — else `STRICT_FIT` or `GENERATION_FAILED`);
 stderr is logs.
 Args over 2 MiB of text are refused; a raced
 `deck_id` patch returns `STALE_REVISION` (reload, re-apply).

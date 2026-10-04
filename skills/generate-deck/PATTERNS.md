@@ -26,7 +26,7 @@ KPI `values` is a JSON **array**, one cell per metric: an object `{"big", "small
 
 **Closing.** End on `next-steps` (actions with `owner` / `date`, `decisions` requested), not "Thank you". A repeated `agenda` with `overrides.highlight` marks the current section.
 
-Do NOT hand-roll shape grids when a named pattern exists; let the engine handle grid structure, bounds, and gap arithmetic.
+Do NOT hand-roll shape grids when a named pattern exists.
 
 **Callouts.** Patterns with `supports_callout=true` accept an envelope-level `callout: {text, emphasis?, accent?}` — the takeaway band below the pattern (3pt accent bar, 14pt bold dk1 text, no box; budget two lines). `emphasis`: `bold` (default), `italic`/`bold-italic`, `subtle` or `strong` (solid accent). KPI patterns refuse callouts (`callout_unsupported`). exec-summary `bottom_line`, metric-list `callout` and chart-insights-split `so_what` render the same band.
 
@@ -49,23 +49,22 @@ air, headshot size or type down to the 12pt floor, then report
 `BODY_TOO_LONG` naming what to drop. `icon-row`, `labeled-rows`,
 `process-flow` and `process-flow-compact` grow their cards, rows or band to the
 text's written fit before reporting it. `process-flow` lays 7–8 steps on
-two rows of four (the second runs back right to left; all-chevron / arrow
-flows wrap left to right), so a box holds 80 characters at every step count.
-`overrides.rows` is `1` or `2` (default `2` from 7 steps; `2` needs at
-least 4 steps); `rows: 1` keeps one row of narrow boxes. A flow mixing
-chevron / arrow with plain steps stays on one row unless `rows` is 2; it
-then bends too, and a chevron / arrow at the turn or on the
-returning row is refused (`out_of_range` at
-`steps[i].type`; `use_one_of` `step`, `decision`).
+two rows of four (the second runs back right to left, its chevrons / arrows
+mirrored to point left; all-chevron / arrow flows wrap left to right), so a
+box holds 80 characters at every step count. `overrides.rows` is `1` or `2`
+(default `2` from 7 steps; `2` needs at least 4 steps); `rows: 1` keeps one
+row of narrow boxes. `type: "arrow"` steps are block arrows with the label
+at the flow's type size.
 `process-flow-compact` is one band and rejects `rows`. Validation predicts grid text
 (nested cells included) that generation would refuse as an `error`
 `TEXT_BELOW_READABLE_MIN` (DeckSpec render refusals: DECKSPEC.md).
 
 KPI values ("$4.2M", "127%") and label words are never wrapped mid-token: a
-value shrinks and a label column widens before its label does. What cannot
-fit at the floor is reported — `BODY_TOO_LONG` at
-`/slides/N/pattern/values/i/big` with `fix.params.max_chars`,
-`TEXT_EXCEEDS_SHAPE` naming the label word: shorten or abbreviate it. A
+value shrinks and a label column widens before its label does. A kpi-Nup
+value is written at its fitted size, 16pt at the least; one too long for
+16pt puts its row at 14pt and reports `BODY_TOO_LONG` (the message quotes
+both sizes) at `/slides/N/pattern/values/i/big` with `fix.params.max_chars`.
+A label word that cannot fit is `TEXT_EXCEEDS_SHAPE`: shorten or abbreviate. A
 KPI value's 12 characters are the hard maximum: `kpi-5up` holds about 11
 digits and `kpi-6up` about 9 on the narrowest templates.
 
@@ -103,7 +102,7 @@ still reports.
 
 `density_pct` is a **height** ratio: each paragraph wrapped at its own font size, line heights summed, compared with the cell's text height (embedded font metrics, no OS dependency). `max_chars` is the derived character hint at the cell's dominant size. Target **35–110%**: under 35% is `underfilled` (info), over 110% `overflow` (warning: it will clip or shrink hard); a well-authored cell fills about half its box.
 
-**Pick a configuration.** `show_pattern` returns `text_budget_guide.target_density` (a *character* target) and `configurations[]` (`columns`, `rows`, `body_max_chars` at 12pt, `header_max_chars` at 16pt). Pick the one whose `body_max_chars` is closest to `planned_chars / 0.85`, write to it, then check every `expand_pattern` `cell_budgets[]` entry (`cell_index`, `row`, `col`, `max_chars`, `actual_chars`, `density_pct`, `status`, `font_size_pt`) lands in 35–110%. Non-grid patterns (`pull-quote`, `stat-hero`) have no guide: use per-placeholder `max_chars` from `list_templates` `mode="compact"` or `fields="full"`.
+**Pick a configuration.** `show_pattern` returns `text_budget_guide.target_density` (a *character* target) and `configurations[]` (`columns`, `rows`, `body_max_chars` at 12pt, `header_max_chars` at 16pt). Pick the one whose `body_max_chars` is closest to `planned_chars / 0.85`, write to it, then check every `expand_pattern` `cell_budgets[]` entry's `density_pct` lands in 35–110%. Non-grid patterns (`pull-quote`, `stat-hero`) have no guide: use per-placeholder `max_chars` from `list_templates` `mode="compact"` or `fields="full"`.
 
 - **Underfilled:** add supporting detail; for inherently short content use a sparse pattern (`kpi-3up`, not `card-grid`) or a smaller configuration (2×2, not 3×2).
 - **Overflow, or `fit_overflow` / `density_exceeded` after generation:** (1) rewrite — shorter sentences, fewer bullets; (2) a larger configuration or higher-capacity pattern (`repair_slide` `swap_layout`, or `layout_suggestions[]`, offered when all populated cells are underfilled or all overflow); (3) `repair_slide` `split_at_row` / `reduce_text`; (4) last resort for verbatim content: `reduce_cell_text` (truncates one cell to `max_chars` with an ellipsis), then re-validate with `fit_report: true`.
