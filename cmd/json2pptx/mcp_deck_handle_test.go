@@ -223,6 +223,55 @@ func TestPinnedTemplateOverridesRememberedOrRequestedTemplate(t *testing.T) {
 	}
 }
 
+// explain_deck_spec is a read-only planning view: called with a template on a
+// deck_id that has none it plans on that template, leaves the handle unbound
+// and says so, where validate_deck_spec and render_deck_spec bind it
+// (go-slide-creator-jrrp4).
+func TestExplainDeckSpecDoesNotBindTheHandle(t *testing.T) {
+	mc := handleTestConfig(t)
+	explain := func(args map[string]any) explainDeckSpecResponse {
+		t.Helper()
+		res := mustCall(t, mc.handleExplainDeckSpec, args)
+		if res.IsError {
+			t.Fatalf("explain failed: %+v", res.Content)
+		}
+		var out explainDeckSpecResponse
+		structuredInto(t, res.StructuredContent, &out)
+		return out
+	}
+	readOnly := func(e explainDeckSpecResponse) bool {
+		return strings.Contains(strings.Join(e.Warnings, "\n"), "explain_deck_spec is read-only and leaves the deck_id unbound")
+	}
+
+	first := explain(map[string]any{"spec": unpinnedHandleSpec(), "template": "forest-green"})
+	if first.DeckID == "" || first.Template != "forest-green" || !readOnly(first) {
+		t.Fatalf("explain on an unbound deck: deck_id=%q template=%q warnings=%v", first.DeckID, first.Template, first.Warnings)
+	}
+	if h, ok := mc.deckHandles.Load(first.DeckID); !ok || h.Template != "" || h.TemplatePath != "" {
+		t.Fatalf("explain bound the handle: %+v", h)
+	}
+	again := explain(map[string]any{"deck_id": first.DeckID, "template": "forest-green"})
+	if !readOnly(again) {
+		t.Errorf("explain on the still unbound deck_id does not say it is read-only: %v", again.Warnings)
+	}
+	if plain := explain(map[string]any{"deck_id": first.DeckID}); plain.Template == "forest-green" || readOnly(plain) {
+		t.Errorf("explain without a template: template=%q warnings=%v", plain.Template, plain.Warnings)
+	}
+
+	// validate binds; from then on the notice is the bound deck's own.
+	deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"deck_id": first.DeckID, "template": "forest-green"}))
+	if h, ok := mc.deckHandles.Load(first.DeckID); !ok || h.Template != "forest-green" {
+		t.Fatalf("validate_deck_spec did not bind the handle: %+v", h)
+	}
+	other := explain(map[string]any{"deck_id": first.DeckID, "template": "warm-coral"})
+	if other.Template != "warm-coral" || readOnly(other) || !strings.Contains(strings.Join(other.Warnings, "\n"), `stays bound to "forest-green"`) {
+		t.Errorf("explain on a bound deck: template=%q warnings=%v", other.Template, other.Warnings)
+	}
+	if h, _ := mc.deckHandles.Load(first.DeckID); h.Template != "forest-green" {
+		t.Errorf("explain rebound the handle to %q", h.Template)
+	}
+}
+
 // TestDeckHandleExpiry pins the TTL contract: a handle older than the TTL is
 // gone, and using it is a diagnosed error naming spec as the way back — not a
 // silent render of a stale deck.
