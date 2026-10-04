@@ -176,8 +176,12 @@ func TestValidateDeckSpecReportsMeasuredTitle(t *testing.T) {
 			says:  "only fits its title placeholder",
 		},
 		{
-			name:  "does not fit at all",
-			title: longTitle + " during the current fiscal year and the next",
+			name: "does not fit at all",
+			// Well past the placeholder at its smallest autofit size on any
+			// host's font metrics: at 156 characters the title sat on the
+			// threshold: with the fonts macOS resolves it just fits at the
+			// 60% floor, a title_wraps (go-slide-creator-ov8zk).
+			title: longTitle + " during the current fiscal year and the next, and in each of the three planning years that follow it",
 			code:  "TITLE_OVERFLOW",
 			says:  "does not fit its",
 		},

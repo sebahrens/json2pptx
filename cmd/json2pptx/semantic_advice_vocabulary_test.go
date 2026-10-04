@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/semantic"
 )
 
@@ -23,8 +24,67 @@ import (
 var fieldLikeRE = regexp.MustCompile(`\b[a-z]+(?:_[a-z0-9]+)+\b`)
 
 // rawSurfaceRE matches controls and locators of the raw deck and of the
-// renderer that a slide kind does not have.
-var rawSurfaceRE = regexp.MustCompile(`\bshape_grid\b|\bcompose\b|process-grid-2row|phase-roadmap|\bbounds\b|\boverrides?\b|chevron|\b[a-z_]+\[\d+\]\.[a-z_]+|explain_deck_spec|stacked-box|card-title|card-body|autofit|plain-bullet|rendered_shapes|continuation slides`)
+// renderer that a slide kind does not have. Pattern names are held to
+// foreignPattern instead: a kind has the patterns its pattern field takes.
+var rawSurfaceRE = regexp.MustCompile(`\bshape_grid\b|\bcompose\b|\bbounds\b|\boverrides?\b|chevron|\b[a-z_]+\[\d+\]\.[a-z_]+|explain_deck_spec|stacked-box|card-title|card-body|autofit|plain-bullet|rendered_shapes|continuation slides`)
+
+// patternNameRE matches the name of a registered pattern, the longest name
+// first ("process-flow-compact" before "process-flow").
+var patternNameRE = func() *regexp.Regexp {
+	var names []string
+	for _, p := range patterns.Default().List() {
+		names = append(names, regexp.QuoteMeta(p.Name()))
+	}
+	sort.Slice(names, func(i, j int) bool {
+		if len(names[i]) != len(names[j]) {
+			return len(names[i]) > len(names[j])
+		}
+		return names[i] < names[j]
+	})
+	return regexp.MustCompile(`\b(?:` + strings.Join(names, "|") + `)\b`)
+}()
+
+// kindPatterns collects, per slide kind, the patterns the kind has: the values
+// its pattern field takes (semantic.SlideAlternatives) for any payload of the
+// corpus. They are what list_slide_kinds publishes as the kind's compositions
+// and what a degraded slide's remediation names in params.from, so advice on
+// a slide of the kind may name them. Every other registered pattern is raw
+// surface there (go-slide-creator-c9w86): "phase-roadmap" is the roadmap's own
+// visual, and on a process slide it is a pattern the author cannot reach.
+func kindPatterns(corpus map[string]map[string]any) map[string]map[string]bool {
+	out := map[string]map[string]bool{}
+	for _, deck := range corpus {
+		raw, _ := json.Marshal(deck["spec"])
+		var doc struct {
+			Slides []map[string]any `json:"slides"`
+		}
+		_ = json.Unmarshal(raw, &doc)
+		for _, slide := range doc.Slides {
+			kind, _ := slide["kind"].(string)
+			if out[kind] == nil {
+				out[kind] = map[string]bool{}
+			}
+			for _, c := range semantic.SlideAlternatives(semantic.SlideKind(kind), slide) {
+				if c.Pattern != "" {
+					out[kind][c.Pattern] = true
+				}
+			}
+		}
+	}
+	return out
+}
+
+// foreignPattern returns the first registered pattern a text names that the
+// slide's kind does not have, or "". A kind's own name is not a pattern
+// ("agenda has 11 sections").
+func foreignPattern(text, kind string, own map[string]bool) string {
+	for _, name := range patternNameRE.FindAllString(text, -1) {
+		if !own[name] && name != kind {
+			return name
+		}
+	}
+	return ""
+}
 
 // adviceWords are snake_case words advice may use that are not fields of a
 // kind: tools and their arguments, deck-level fields, and the names of the
@@ -101,6 +161,7 @@ func TestDeckSpecAdviceNamesOnlyFieldsOfTheKind(t *testing.T) {
 		corpus[name] = map[string]any{"template": "modern", "spec": decodeSpecObject(t,
 			`{"meta":{"title":"Flow","source":"Illustrative"},"slides":[{"kind":"title","title":"A flow that states its claim","subtitle":"October 2026"},`+slide+`]}`)}
 	}
+	ownPatterns := kindPatterns(corpus)
 	names := make([]string, 0, len(corpus))
 	for name := range corpus {
 		// The short run scans the review's decks and one kind past its count;
@@ -192,6 +253,9 @@ func TestDeckSpecAdviceNamesOnlyFieldsOfTheKind(t *testing.T) {
 							plain := quotedRE.ReplaceAllString(text, `""`)
 							if m := rawSurfaceRE.FindString(plain); m != "" {
 								t.Errorf("%s/%s %s on a %s slide names %q, which the kind does not have: %s", name, tool, code, kind, m, text)
+							}
+							if m := foreignPattern(plain, kind, ownPatterns[kind]); m != "" {
+								t.Errorf("%s/%s %s on a %s slide names the pattern %q, which is not one the kind's pattern field takes: %s", name, tool, code, kind, m, text)
 							}
 							for _, word := range fieldLikeRE.FindAllString(plain, -1) {
 								if known[word] || adviceWords[word] || remedyParamNames[word] || strings.Contains(strings.ToLower(code), word) {
