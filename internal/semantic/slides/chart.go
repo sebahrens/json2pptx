@@ -56,26 +56,7 @@ func ChartInsightPatternFeasible(body map[string]any) bool {
 // to a native two-column (chart + insights) or content slide so the deck still
 // compiles without losing either.
 func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) {
-	insights, insightsField := chartInsights(in.Body)
-
-	// A chart_insight may carry a usable chart and a takeaway but no explicit
-	// insight bullets. The content fallback below cannot render a chart, so
-	// without this the chart silently disappears even though validation passed.
-	// Treat the takeaway as the single insight so the chart-insights-split
-	// pattern still emits the chart. Like a scalar "insight" it becomes the
-	// pattern's so-what callout: filed as a lone bullet under "Key Insights" it
-	// left the slide with no stated implication, and the deck was refused with
-	// takeaway_missing for a takeaway the author had written
-	// (go-slide-creator-5ba5m).
-	if len(insights) == 0 && in.Takeaway != "" && chartSpec(in.Body) != nil {
-		if in.Override.Layout == "two-column" {
-			// Nothing to put beside the chart: it takes the slide and the
-			// takeaway stays the slide's takeaway.
-			return compileChartFallback(in, nil, insightsField)
-		}
-		insights = []string{in.Takeaway}
-		insightsField = "takeaway"
-	}
+	insights, insightsField := chartInsightItems(in)
 
 	// A lone insight that IS the takeaway would print the same sentence twice:
 	// once in the pattern and once verbatim in the takeaway bar. The pattern
@@ -170,6 +151,28 @@ func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) 
 
 	links = append(links, applyTakeaway(slide, in)...)
 	return slide, links, nil
+}
+
+// chartInsightItems returns the insight items a chart_insight compiles with
+// and the semantic field they came from.
+//
+// A chart_insight may carry a usable chart and a takeaway but no explicit
+// insight bullets. The content fallback cannot render a chart, so without this
+// the chart silently disappears even though validation passed. The takeaway
+// stands in as the single insight so the chart-insights-split pattern still
+// emits the chart. Like a scalar "insight" it becomes the pattern's so-what
+// callout: filed as a lone bullet under "Key Insights" it left the slide with
+// no stated implication, and the deck was refused with takeaway_missing for a
+// takeaway the author had written (go-slide-creator-5ba5m).
+//
+// Asked for as two-column there is nothing to put beside the chart: the items
+// stay empty, the chart takes the slide and the takeaway stays its takeaway.
+func chartInsightItems(in Input) ([]string, string) {
+	insights, field := chartInsights(in.Body)
+	if len(insights) == 0 && in.Takeaway != "" && chartSpec(in.Body) != nil && in.Override.Layout != "two-column" {
+		return []string{in.Takeaway}, "takeaway"
+	}
+	return insights, field
 }
 
 // dropDuplicateTakeaway returns "" when the takeaway is the slide's only
