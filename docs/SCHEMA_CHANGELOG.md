@@ -1,5 +1,13 @@
 # Schema Changelog
 
+- **2026-10-04 — Schema 4.164.0 · degrade `from` names one pattern; CI runs every test in full somewhere (label `followup5-20261004`).**
+  - One version for the dated bullets below this one down to the 4.163.0
+    entry. Agent-visible: `fix.params.from` on a degraded `pillars`,
+    `kpi_snapshot` or `quote` slide is one registered pattern name. The rest
+    is test and CI work (duration-balanced race shards, the coverage
+    threshold step, full matrices in the corpus job). The schema fingerprint
+    is unchanged (`a0e913951243f827`).
+
 - **2026-10-04 — `SEMANTIC_PATTERN_DEGRADED`: `from` is always one pattern name (`go-slide-creator-vag44`, `-wfvyo`; test scope `-c9w86`).**
   - `fix.params.from` (DeckSpec: `remediation.primary.params.from` /
     `recommended_edit.params.from`) named a family or a pair on three kinds:

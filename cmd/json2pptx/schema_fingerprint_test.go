@@ -125,6 +125,9 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// 4.163.0 is the third follow-up wave (labels followup3-20261004,
 	// followup4-20261004): shape `flip_h`, paragraph `figure`, and
 	// `slide_number` / `debug` on fit findings, so the hash advances.
+	// 4.164.0 (label followup5-20261004): `fix.params.from` on degraded
+	// pillars / kpi_snapshot / quote slides names one registered pattern;
+	// the hash is unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "a0e913951243f827"
 

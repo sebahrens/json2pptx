@@ -3,7 +3,7 @@
   "recipe": "native-layout-thumbnail-v2",
   "template_sha256": "ba5dccabce04d2eb36d0d7ae5ff38eeab5ff49ec1c6b5f861ccda3a51cd189c7",
   "rendering_source_sha256": "23da343185afcbd695c54624114c0f2897b82d9bc8d5382b855650c67c1e6819",
-  "render_cache_identity": "c4326e9a3e1ceea71e5c4201510aa1057145b255b05db9ae36e0f700b7255dfe",
+  "render_cache_identity": "db6493e9b59cf5979d2caf5323b1cb640ab9aaf1e5ce0ee8d6705f90e328a067",
   "width": 320,
   "dpi": 60,
   "png_sha256": {
