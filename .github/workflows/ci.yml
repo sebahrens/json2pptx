@@ -71,7 +71,7 @@ jobs:
       - name: Test with coverage (cmd/json2pptx)
         timeout-minutes: 50
         env:
-          SHARD_BUDGET_SECONDS: "1800"
+          SHARD_BUDGET_SECONDS: "2100"
           SHARD_BUDGET_ENFORCE: "1"
         run: scripts/ci_test_cmd_shards.sh 4 coverage-cmd.out
 

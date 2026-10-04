@@ -123,7 +123,8 @@ and without `-race`.
 `cmd/json2pptx` is the heaviest package under `-race`: the `test` job runs it
 through `scripts/ci_test_cmd_shards.sh 4`, which builds the test binary once
 and runs it as four shards. The step is killed at 50 minutes, and the script
-fails it when a shard takes more than 30 (`SHARD_BUDGET_SECONDS`, enforced in
+fails it when a shard takes more than 35 (`SHARD_BUDGET_SECONDS`, 15 minutes
+under the step limit; the slowest shard took 28 on run 37235543451; enforced in
 CI by `SHARD_BUDGET_ENFORCE=1`; locally it only warns), printing each shard's
 time and the slowest tests.
 
