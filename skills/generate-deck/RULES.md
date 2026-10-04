@@ -145,6 +145,6 @@ When TDR forces a split, say so ("N logical rows × M columns; per Rule 20 emitt
 
 Grid-shaped patterns expose a `cell_accent_mode` override that walks from the slide's base accent (resolved by `accent_strategy`): `uniform` (default; every cell the base accent — the consulting default), `alternate` (base and base+1: paired comparisons, two-tier hierarchies) or `progressive` (base, base+1, base+2, …, wrapping accent6→accent1: 4+ ordered or graded cells only). Non-grid patterns do not expose it; `pyramid` supports it per tier — check the overrides schema in `show_pattern`. Do not use `progressive` on unordered peers (accent belongs on the one cell the title is about), and render-check `alternate` under `section-keyed` so it reads as one emphasis, not a rainbow.
 
-**Only set overrides the schema lists.** `pyramid`, `process-flow` and `process-flow-compact` have no header text and reject `header_size` with `unknown_key` (fix `remove_key`); size their labels with `body_size`.
+**Only set overrides the schema lists.** `pyramid`, `process-flow` and `process-flow-compact` have no header text and reject `header_size` with `unknown_key` (fix `remove_key`); size their labels with `body_size`. `process-flow-compact` rejects `rows` the same way.
 
 `analyze_deck_rhythm` flags accent *heaviness*, not too few accents: `accent_heavy_slide` (a raw grid with 4+ solid-accent cells — give the rest a neutral `lt2` / dk1-tint fill) and `strong_accent_run` (3+ consecutive `accent_weight: "strong"` patterns — swap one for a normal or subtle pattern).

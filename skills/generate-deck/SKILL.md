@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.160.0
+schema_version: 4.161.0
 description: >-
   Create or revise PowerPoint decks with json2pptx. Use for presentation and
   slide-deck requests that need template-aware authoring, validation, rendering,
@@ -13,7 +13,9 @@ description: >-
 
 Call `get_started` first, passing this frontmatter's `schema_version` as
 `skill_version`. If it returns `skill_warning`, run `json2pptx skill install`
-before relying on installed instructions. Check `get_started.runtime`: if render
+before relying on installed instructions (the CLI's stale-skill line reads
+only the install manifest's version; `json2pptx skill status` checks every
+file). Check `get_started.runtime`: if render
 tooling is unavailable, deliver the PPTX as **UNREVIEWED**, not as a finished deck.
 Use the live MCP schemas for arguments (the default `tools/list` is abridged:
 `get_started` `tool:"<name>"` returns a tool's full description and schema);
@@ -51,10 +53,9 @@ For a new content-bearing deck, write a semantic **DeckSpec** (`meta` plus
 returns this path as its `sequence`, written for the tools the server lists
 (`hidden_tools` names the callable rest). `plan_deck` with
 `format:"deckspec"` drafts the storyline. `list_slide_kinds` lists the kinds;
-`kinds:[chosen]` returns their copy-ready examples and `fields:["brief"]`
-(field signatures and text budgets, measured on `template`) or
-`["item_schema"]` (descriptions, aliases) their fields; `preview: true`
-returns each example as a rendered image. Then call `validate_deck_spec`,
+`kinds:[chosen]` returns their copy-ready examples, `fields` their
+signatures and text budgets (DECKSPEC.md) and `preview: true` each example
+as a rendered image. Then call `validate_deck_spec`,
 `render_deck_spec`, `render_deck_thumbnails`, and `submit_visual_review`.
 Edit the spec at a finding's `path`, send a `patch_verified` `next_tool_call`
 as given, and repeat ([FINDINGS.md](FINDINGS.md)). For a visual no kind
@@ -65,12 +66,9 @@ data — rendered as handed out it is blocked as `exemplar_content`.
 One measure across 2–6 groups over the same
 periods: the `small_multiples` chart (RULES.md 10i). Several views proving
 one title may share a slide; unrelated conclusions get separate slides.
-Prefer `kind: regions` (`plan_deck` drafts it from region clauses, listing
-misses in `unsupported_regions`); only when its region kinds cannot express
-the slide, make that one slide `raw_json2pptx` from a `recommend_visual`
-`compose` candidate ([TOOLS.md](TOOLS.md)) or `list_slide_kinds`
-`kinds:["raw_json2pptx"]` → `composed_example` ([WORKFLOW.md](WORKFLOW.md)
-→ spatial planning). Read [DECKSPEC.md](DECKSPEC.md) for budgets,
+Prefer `kind: regions`; only when its region kinds cannot express the
+slide, make that one slide `raw_json2pptx` ([WORKFLOW.md](WORKFLOW.md) →
+spatial planning). Read [DECKSPEC.md](DECKSPEC.md) for budgets,
 degradation, required-layout coverage, handles, and revision rules.
 
 Use raw `PresentationInput` only for a feature the semantic schema cannot
@@ -93,13 +91,11 @@ blockers. A changed slide invalidates its verdict; image identity
 unchanged revision keeps earlier images valid. For an unfamiliar finding call
 `describe_finding`; use
 `get_capabilities().vocabularies.repair_fix_kinds` to distinguish executable
-repairs from advice. Do not retry an advisory fix kind as though it were an
-executable one.
+repairs from advice.
 
 ## References, loaded only when relevant
 
-- [QUALITY.md](QUALITY.md): storyline, action titles, one message per slide,
-  takeaways, sources, and choosing the visual from the message (always read).
+- [QUALITY.md](QUALITY.md): storyline and visual choice (always read).
 - [DECKSPEC.md](DECKSPEC.md): semantic authoring, content budgets, degradation,
   chapter structure, required layouts, and spec-level iteration.
 - [WORKFLOW.md](WORKFLOW.md): Plan → Vary → Render → Repair, the per-slide
@@ -132,9 +128,8 @@ Start the deck server with `json2pptx mcp`; its default `deckspec`
 path and `get_capabilities().mcp_tools_available` (tools callable by name);
 `--tools all` (or `JSON2PPTX_MCP_TOOLS=all`) lists the rest, without output
 schemas (`--output-schemas` lists them). `list_templates`
-`read_only: true` avoids preview-cache writes. A `template` argument on the
-spec tools overrides `meta.template` for that call only (`warnings[]` says
-so); patch `/meta/template` to switch for good. A CLI command that answers in
+`read_only: true` avoids preview-cache writes. Template precedence:
+DECKSPEC.md. A CLI command that answers in
 JSON prints exactly one JSON document on stdout, also when it fails
 (`{subcommand, ok:false, findings:[{code, message}]}`); stderr is logs.
 Args over 2 MiB of text are refused; a raced
