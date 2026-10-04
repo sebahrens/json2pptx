@@ -1,5 +1,20 @@
 # Schema Changelog
 
+- **2026-10-04 — The validate-time contrast prediction reads generation's own shape list (`go-slide-creator-2ciwz`).**
+  - No response changes: `validate --fit-report --json` is byte-identical
+    before and after on every `examples/*.json` × five templates (220 runs).
+    Contributor-facing: the prediction compiled only a grid's text-bearing
+    cells, while generation runs the contrast pass over the whole list
+    (connectors, tables, grouped cells, native diagrams, accent bars, nested
+    grids), and the pass is not per shape — sibling cells are decided together
+    and a replaced colour is carried across a fill. `predictedGridShapes` now
+    calls `resolveShapeGrid`, as generation does, with
+    `GridDiagramContext.ShapesOnly`: diagram cells are not rendered to images
+    and icons are not resolved, which leaves the shape list unchanged.
+    `ShapeGridResult.ShapeSources` maps each flat shape index to the authored
+    path. `validate --fit-report` on `examples/patterns-smoke.json`: 0.855 s →
+    0.857 s (median of 15).
+
 - **2026-10-04 — The screenshot-with-callouts recipe renders under `ALLOWED_IMAGE_PATHS` (`go-slide-creator-bcefj`).**
   - `recommend_visual` answers a callout intent with an `image_case` recipe
     whose `image.path` is a sample screenshot the server writes to

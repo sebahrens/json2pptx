@@ -3,11 +3,39 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
+
+var contrastResolvedTheme = []types.ThemeColor{
+	{Name: "dk1", RGB: "#000000"}, {Name: "lt1", RGB: "#FFFFFF"},
+	{Name: "dk2", RGB: "#1F2937"}, {Name: "lt2", RGB: "#F3F4F6"},
+	{Name: "accent1", RGB: "#F28C28"}, {Name: "accent2", RGB: "#2563EB"},
+}
+
+func contrastResolvedZone(slideW, slideH int64) *shapegrid.ContentZone {
+	return &shapegrid.ContentZone{
+		TitleBottom: 1300000, FooterTop: 6300000, LeftMargin: 600000, RightEdge: 11600000,
+		SlideWidth: slideW, SlideHeight: slideH,
+	}
+}
+
+// generationGridShapes resolves grid the way convertPresentationSlides does.
+func generationGridShapes(t *testing.T, grid *ShapeGridInput, zone *shapegrid.ContentZone, slideW, slideH int64) *ShapeGridResult {
+	t.Helper()
+	alloc := &pptx.ShapeIDAllocator{}
+	alloc.SetMinID(200)
+	rendered, err := resolveShapeGrid(grid, alloc, nil, zone, slideW, slideH, &GridDiagramContext{ThemeColors: contrastResolvedTheme, SlideNum: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return rendered
+}
 
 // The contrast prediction reads the shapes generation writes, not the authored
 // ones. Resolution changes text sizes — here the composition policy steps a
@@ -28,33 +56,133 @@ func TestContrastPredictionCompilesResolvedGridShapes(t *testing.T) {
 	}`), &grid); err != nil {
 		t.Fatal(err)
 	}
-	zone := &shapegrid.ContentZone{
-		TitleBottom: 1300000, FooterTop: 6300000, LeftMargin: 600000, RightEdge: 11600000,
-		SlideWidth: slideW, SlideHeight: slideH,
+	zone := contrastResolvedZone(slideW, slideH)
+	rendered := generationGridShapes(t, &grid, zone, slideW, slideH)
+	predicted := predictedGridShapes(&grid, 0, nil, zone, slideW, slideH, contrastResolvedTheme, "")
+	if predicted == nil || len(predicted.Shapes) != 3 || len(rendered.Shapes) != 3 {
+		t.Fatalf("predicted %+v, want the 3 shapes generation writes (%d)", predicted, len(rendered.Shapes))
 	}
-
-	rendered, err := resolveShapeGrid(&grid, pptx.NewShapeIDAllocator(nil), nil, zone, slideW, slideH, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	predicted := compiledGridContrastCells(&grid, "/slides/0/shape_grid", nil, zone, slideW, slideH, 0)
-	if len(predicted) != 3 {
-		t.Fatalf("predicted %d text shapes, want 3", len(predicted))
-	}
-	for i, cell := range predicted {
-		found := false
-		for _, shape := range rendered.Shapes {
-			if bytes.Equal(shape, cell.xml) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("predicted shape %d (%s) is not a shape generation writes:\n%s", i, cell.path, cell.xml)
+	for i, shape := range predicted.Shapes {
+		if !bytes.Equal(shape, rendered.Shapes[i]) {
+			t.Errorf("predicted shape %d (%s) is not the shape generation writes:\n%s", i, predicted.ShapeSources[i].Path, shape)
 		}
 		// Guard the premise: the block is composed, so its type is stepped.
-		if !bytes.Contains(cell.xml, []byte(`sz="1800"`)) || bytes.Contains(cell.xml, []byte(`sz="1400"`)) {
-			t.Errorf("predicted shape %d keeps its authored 14pt; the composed block renders at 18pt:\n%s", i, cell.xml)
+		if !bytes.Contains(shape, []byte(`sz="1800"`)) || bytes.Contains(shape, []byte(`sz="1400"`)) {
+			t.Errorf("predicted shape %d keeps its authored 14pt; the composed block renders at 18pt:\n%s", i, shape)
 		}
+	}
+}
+
+// go-slide-creator-2ciwz: prediction and generation share one shape-producing
+// path. The predicted list is generation's list — connectors, accent bars, a
+// table, a grouped cell, an image label, a native diagram and a nested grid at
+// the same flat indices, byte for byte — every index maps back to the element
+// the author wrote, and a diagram cell that renders to an image is not
+// rendered to predict.
+func TestContrastPredictionSharesGenerationShapeList(t *testing.T) {
+	const slideW, slideH = int64(12192000), int64(6858000)
+	var grid ShapeGridInput
+	if err := json.Unmarshal([]byte(`{
+		"columns": 3,
+		"links": [{"from": [0, 0], "to": [2, 2], "connector": {"style": "arrow"}}],
+		"rows": [
+			{"connector": {"style": "arrow"}, "cells": [
+				{"shape": {"geometry": "rect", "fill": "accent1", "text": {"content": "Plan", "size": 12, "color": "lt1"}}, "accent_bar": {"position": "left", "color": "accent2"}},
+				{"col_span": 2, "group": true, "shape": {"geometry": "rect", "fill": "accent1", "text": {"content": "Build", "size": 12, "color": "lt1"}}}
+			]},
+			{"rule": "above", "cells": [
+				{"table": {"headers": ["A", "B"], "rows": [["1", "2"]]}},
+				{"diagram": {"type": "bar_chart", "data": {"categories": ["a", "b"], "series": [{"name": "s", "values": [1, 2]}]}}},
+				{"composite": {"split": "top", "ratio": 0.4,
+					"text": {"geometry": "rect", "fill": "dk2", "text": {"content": "Read", "size": 12, "color": "dk1"}},
+					"sub_diagram": {"type": "bar_chart", "data": {"categories": ["a"], "series": [{"name": "s", "values": [1]}]}}}}
+			]},
+			{"cells": [
+				{"image": {"path": "missing.png", "alt": "photo", "overlay": {"color": "dk1", "alpha": 40}, "text": {"content": "Caption", "size": 14, "color": "lt1"}}},
+				{"shape": {"geometry": "rect", "fill": "lt2", "icon": {"name": "shield"}, "text": {"content": "Ship", "size": 12, "color": "dk1"}}},
+				{"grid": {"columns": 2, "rows": [{"connector": {"style": "line"}, "cells": [
+					{"shape": {"geometry": "rect", "fill": "accent1", "text": {"content": "In", "size": 11, "color": "lt1"}}},
+					{"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Out", "size": 11, "color": "dk1"}}}
+				]}]}}
+			]}
+		]
+	}`), &grid); err != nil {
+		t.Fatal(err)
+	}
+	zone := contrastResolvedZone(slideW, slideH)
+	rendered := generationGridShapes(t, &grid, zone, slideW, slideH)
+	predicted := predictedGridShapes(&grid, 0, nil, zone, slideW, slideH, contrastResolvedTheme, "")
+	if predicted == nil {
+		t.Fatal("no predicted shapes for a grid generation renders")
+	}
+
+	// Generation rendered both bar charts to images; the prediction did not,
+	// and resolved no icon either.
+	if len(rendered.IconInserts) < 3 {
+		t.Fatalf("premise: generation should insert two diagrams and an icon, got %d", len(rendered.IconInserts))
+	}
+	if len(predicted.IconInserts) != 0 {
+		t.Errorf("prediction rendered %d diagram / icon pictures; it must render none", len(predicted.IconInserts))
+	}
+
+	if len(predicted.Shapes) != len(rendered.Shapes) || len(predicted.ShapeSources) != len(predicted.Shapes) || len(rendered.ShapeSources) != len(rendered.Shapes) {
+		t.Fatalf("shape lists differ: predicted %d shapes / %d sources, generation %d / %d",
+			len(predicted.Shapes), len(predicted.ShapeSources), len(rendered.Shapes), len(rendered.ShapeSources))
+	}
+	var paths []string
+	for i := range rendered.Shapes {
+		if !bytes.Equal(predicted.Shapes[i], rendered.Shapes[i]) {
+			t.Errorf("shape %d (%s) differs from the one generation writes:\npredicted  %s\ngeneration %s",
+				i, predicted.ShapeSources[i].Path, predicted.Shapes[i], rendered.Shapes[i])
+		}
+		if predicted.ShapeSources[i].Path != rendered.ShapeSources[i].Path {
+			t.Errorf("shape %d: predicted source %q, generation %q", i, predicted.ShapeSources[i].Path, rendered.ShapeSources[i].Path)
+		}
+		paths = append(paths, strings.TrimPrefix(predicted.ShapeSources[i].Path, "/slides/0/shape_grid"))
+	}
+	// Connectors first, then the cells in resolved order, accent bars and row
+	// rules, and the nested grid's own list last — re-rooted under its cell.
+	want := []string{
+		"/rows/0/connector",
+		"/links/0",
+		"/rows/0/cells/0/shape/text",
+		"/rows/0/cells/1/shape/text", // the group stands for its cell
+		"/rows/1/cells/0/table",
+		"/rows/1/cells/2/composite/text/text",
+		"/rows/2/cells/0/image/overlay",
+		"/rows/2/cells/0/image/text",
+		"/rows/2/cells/1/shape/text",
+		"/rows/0/cells/0/accent_bar",
+		"", // the rule above row 1 belongs to the grid
+		"/rows/2/cells/2/grid/rows/0/connector",
+		"/rows/2/cells/2/grid/rows/0/cells/0/shape/text",
+		"/rows/2/cells/2/grid/rows/0/cells/1/shape/text",
+	}
+	if strings.Join(paths, "\n") != strings.Join(want, "\n") {
+		t.Errorf("flat shape index → authored path:\n got %q\nwant %q", paths, want)
+	}
+	if !bytes.Contains(rendered.Shapes[3], []byte("<p:grpSp>")) || !bytes.Contains(rendered.Shapes[4], []byte("<a:tbl>")) {
+		t.Errorf("premise: shape 3 should be the grouped cell and shape 4 the table")
+	}
+
+	// A decision the pass makes on one shape of that list is reported at the
+	// authored text it is about, never at the flat index.
+	swaps := generator.PredictCompiledGridContrast(rendered.Shapes, contrastResolvedTheme, 0, "#FFFFFF")
+	if len(swaps) == 0 {
+		t.Fatal("premise: white on accent1 (#F28C28) and dk1 on dk2 need a repair")
+	}
+	input := &PresentationInput{Slides: []SlideInput{{ShapeGrid: &grid}}}
+	findings := contrastPredictions(collectContrastPreflightFindings(input, nil, contrastResolvedTheme))
+	authoredText := 0
+	for _, f := range findings {
+		if strings.Contains(f.Path, "/shapes/") {
+			t.Errorf("finding at %s still names a flat shape index: %s", f.Path, f.Message)
+		}
+		if strings.HasSuffix(f.Path, "/shape/text") || strings.HasSuffix(f.Path, "/composite/text/text") {
+			authoredText++
+		}
+	}
+	if authoredText == 0 {
+		t.Errorf("no finding names an authored cell's text: %+v", findings)
 	}
 }

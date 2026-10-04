@@ -158,7 +158,7 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// 6. Contrast prediction (contrast_predicted) — runs only when theme
 	// colors are available to resolve scheme references.
 	if theme != nil {
-		findings = append(findings, collectContrastPreflightFindingsAt(input, layouts, theme.Colors, slideWidth, slideHeight)...)
+		findings = append(findings, collectContrastPreflightFindingsAt(input, layouts, theme.Colors, theme.BodyFont, slideWidth, slideHeight)...)
 	}
 
 	// 7. Chart / diagram dry-render findings (chart.tick_thinned,
@@ -1726,14 +1726,15 @@ func collectTextAutofitPreflightFindings(input *PresentationInput, layouts []typ
 // the renderer would auto-replace the text color. It also covers placeholder
 // text on authored or template backgrounds and footer/page-number chrome.
 func collectContrastPreflightFindings(input *PresentationInput, layouts []types.LayoutMetadata, themeColors []types.ThemeColor) []patterns.FitFinding {
-	return collectContrastPreflightFindingsAt(input, layouts, themeColors, 0, 0)
+	return collectContrastPreflightFindingsAt(input, layouts, themeColors, "", 0, 0)
 }
 
 // collectContrastPreflightFindingsAt is collectContrastPreflightFindings on a
 // slide of the given size (0 = the 16:9 default). The size matters: each grid
 // is resolved in the geometry generation renders it in, because resolution
-// decides the text sizes the contrast pass reads.
-func collectContrastPreflightFindingsAt(input *PresentationInput, layouts []types.LayoutMetadata, themeColors []types.ThemeColor, slideWidth, slideHeight int64) []patterns.FitFinding {
+// decides the text sizes the contrast pass reads. bodyFont is the template's
+// body font, which a native diagram in a grid cell fits its text with.
+func collectContrastPreflightFindingsAt(input *PresentationInput, layouts []types.LayoutMetadata, themeColors []types.ThemeColor, bodyFont string, slideWidth, slideHeight int64) []patterns.FitFinding {
 	if len(themeColors) == 0 {
 		return nil
 	}
@@ -1758,19 +1759,20 @@ func collectContrastPreflightFindingsAt(input *PresentationInput, layouts []type
 		gridBackground := generator.EffectiveGridBackgroundHex(backgroundSpecFor(&slide), inheritedBackground, themeColors)
 		source := contrastGridSource(slide)
 		geom, _ := patternExpansionGeometry(slide, layouts, slideWidth, slideHeight, rhythm)
-		cells := compiledGridContrastCells(slide.ShapeGrid, slidepath.ShapeGrid(si), geom.OverrideBounds, geom.Zone, slideWidth, slideHeight, 0)
-		shapes := make([][]byte, len(cells))
-		for i := range cells {
-			shapes[i] = cells[i].xml
+		grid := predictedGridShapes(slide.ShapeGrid, si, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight, themeColors, bodyFont)
+		if grid == nil {
+			continue
 		}
-		for _, swap := range generator.PredictCompiledGridContrast(shapes, themeColors, si, gridBackground) {
+		for _, swap := range generator.PredictCompiledGridContrast(grid.Shapes, themeColors, si, gridBackground) {
 			path := swap.Path
 			authoredColor := ""
 			if swap.Cells < 2 {
+				// The pass names a shape by its index in the list; ShapeSources
+				// is that index's authored element.
 				indexText := strings.TrimPrefix(swap.Path, slidepath.ShapeGrid(si)+"/shapes/")
-				if idx, err := strconv.Atoi(indexText); err == nil && idx >= 0 && idx < len(cells) {
-					path = cells[idx].path
-					for _, tc := range extractShapeTextColors(cells[idx].text) {
+				if idx, err := strconv.Atoi(indexText); err == nil && idx >= 0 && idx < len(grid.ShapeSources) {
+					path = grid.ShapeSources[idx].Path
+					for _, tc := range extractShapeTextColors(grid.ShapeSources[idx].Text) {
 						resolved, ok := themeHex(tc.Color, themeColors)
 						if ok && strings.EqualFold(resolved.Hex(), swap.OriginalColor) {
 							authoredColor = tc.Color
@@ -1825,82 +1827,45 @@ func collectChromeContrastFindings(input *PresentationInput, layouts []types.Lay
 	return nil
 }
 
-type compiledGridContrastCell struct {
-	xml  []byte
-	path string
-	text json.RawMessage
-}
-
-// compiledGridContrastCells compiles the text-bearing shapes of a grid the way
-// generation does: the grid is resolved in the geometry it renders in
-// (overrideBounds / zone, as resolveShapeGrid receives them) and each shape is
-// written from its RESOLVED cell. Resolution is not only placement — the
-// composition policy steps a sparse block's type (shapegrid compose.go),
-// type_scale grows text into its cell and sizes snap to the scale — and the
-// contrast pass applies WCAG's 3:1 bar only to large text. Shapes compiled
-// from the authored spec in stand-in bounds therefore predicted repairs
-// generation never makes and missed ones it does. The shape order follows the
-// resolved cells, nested grids last, as on the rendered slide.
-func compiledGridContrastCells(grid *ShapeGridInput, base string, overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64, depth int) []compiledGridContrastCell {
-	if grid == nil || len(grid.Rows) == 0 || depth > maxGeomNestingDepth {
+// predictedGridShapes is the shape list generation writes for a slide's grid,
+// with the authored element behind each shape. It is not a second
+// implementation: it calls resolveShapeGrid, the function generation calls,
+// in the geometry the slide renders in (overrideBounds / zone), so connectors,
+// accent bars, tables, grouped cells, native diagrams and nested grids are in
+// the list at the index the contrast pass will see them at. Only the media is
+// left out (ShapesOnly): a diagram cell is not rendered to an image and icons
+// are not resolved, neither of which is a shape.
+//
+// The list has to be the whole one because the pass is not per shape: sibling
+// cells sharing a text colour are decided together, and a colour replaced on
+// one fill is carried to every other shape showing it on that fill. A list
+// of the text cells alone (which this used to compile) agreed with generation
+// only while nothing else on the slide took part (go-slide-creator-2ciwz).
+//
+// nil means generation refuses the grid; there is no repair to predict.
+func predictedGridShapes(grid *ShapeGridInput, slideIdx int, overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64, themeColors []types.ThemeColor, bodyFont string) *ShapeGridResult {
+	if grid == nil || len(grid.Rows) == 0 {
 		return nil
 	}
-	resolved := resolveGridForStructural(grid, overrideBounds, zone, slideWidth, slideHeight)
-	if resolved == nil {
-		return nil // generation refuses this grid; there is no repair to predict
+	if slideWidth <= 0 {
+		slideWidth = shapegrid.DefaultSlideWidthEMU
 	}
-	var cells []compiledGridContrastCell
-	var nested []compiledGridContrastCell
-	for _, rc := range resolved.Cells {
-		k, ok := gridCellIndexAtResolved(grid, rc.RowIdx, rc.ColIdx)
-		if !ok || grid.Rows[rc.RowIdx].Cells[k] == nil {
-			continue
-		}
-		cell := grid.Rows[rc.RowIdx].Cells[k]
-		cellPath := slidepath.Join(base, fmt.Sprintf("rows/%d/cells/%d", rc.RowIdx, k))
-		if rc.Kind == shapegrid.CellKindSubGrid && cell.Grid != nil {
-			// The sub-grid renders in its host cell, inset as
-			// renderNestedSubGrids insets it.
-			bounds := pptx.RectEmu{X: rc.Bounds.X + subGridInsetEMU, Y: rc.Bounds.Y + subGridInsetEMU, CX: rc.Bounds.CX - 2*subGridInsetEMU, CY: rc.Bounds.CY - 2*subGridInsetEMU}
-			if bounds.CX <= 0 || bounds.CY <= 0 {
-				bounds = rc.Bounds
-			}
-			nested = append(nested, compiledGridContrastCells(cell.Grid, slidepath.Join(cellPath, "grid"), &bounds, nil, slideWidth, slideHeight, depth+1)...)
-			continue
-		}
-		if compiled, ok := compiledContrastCell(rc, cell, cellPath); ok {
-			cells = append(cells, compiled)
-		}
+	if slideHeight <= 0 {
+		slideHeight = shapegrid.DefaultSlideHeightEMU
 	}
-	return append(cells, nested...)
-}
-
-// compiledContrastCell writes one resolved text-bearing cell (a shape, a
-// composite's text half, or an image label) with generation's XML writers.
-func compiledContrastCell(rc shapegrid.ResolvedCell, cell *GridCellInput, cellPath string) (compiledGridContrastCell, bool) {
-	switch {
-	case rc.Kind == shapegrid.CellKindShape && rc.ShapeSpec != nil:
-		authored, field := cell.Shape, "shape/text"
-		if cell.Composite != nil && cell.Composite.Text != nil {
-			authored, field = cell.Composite.Text, "composite/text/text"
-		}
-		xml, err := shapegrid.GenerateCellShapeXML(rc)
-		if err != nil {
-			return compiledGridContrastCell{}, false
-		}
-		out := compiledGridContrastCell{xml: xml, path: slidepath.Join(cellPath, field)}
-		if authored != nil {
-			out.text = authored.Text
-		}
-		return out, true
-	case rc.Kind == shapegrid.CellKindImage && rc.ImageSpec != nil && rc.ImageSpec.Text != nil:
-		xml, err := shapegrid.GenerateImageTextXML(rc.ImageSpec.Text, rc.ID, rc.Bounds)
-		if err != nil {
-			return compiledGridContrastCell{}, false
-		}
-		return compiledGridContrastCell{xml: xml, path: slidepath.Join(cellPath, "image/text")}, true
+	// The allocator generation uses, so the shapes are the same bytes.
+	alloc := &pptx.ShapeIDAllocator{}
+	alloc.SetMinID(200)
+	result, err := resolveShapeGrid(grid, alloc, overrideBounds, zone, slideWidth, slideHeight, &GridDiagramContext{
+		ThemeColors: themeColors,
+		FontFamily:  bodyFont,
+		SlideNum:    slideIdx + 1,
+		ShapesOnly:  true,
+	})
+	if err != nil {
+		return nil
 	}
-	return compiledGridContrastCell{}, false
+	return result
 }
 
 func contrastGridSource(slide SlideInput) string {
