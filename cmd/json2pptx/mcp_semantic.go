@@ -468,7 +468,7 @@ type specEvaluation struct {
 // evaluateDeckSpec compiles a parsed spec and runs it exactly as
 // render_deck_spec would, returning that run's diagnostics.
 func (mc *mcpConfig) evaluateDeckSpec(ctx context.Context, request mcp.CallToolRequest, src specSource, spec *semantic.DeckSpec, strictness semantic.Strictness, argTemplate string) specEvaluation {
-	choice := resolveSpecTemplate(spec.Meta.Template, argTemplate, "", src)
+	choice := resolveSpecTemplateMCP(spec.Meta.Template, argTemplate, "", src)
 	spec = choice.evaluated(spec)
 	eval := specEvaluation{Choice: choice, TemplateSource: choice.Source, Warnings: choice.Warnings}
 	eval.Template = explainSpecWithTemplate(spec, choice.Default).Template
@@ -802,7 +802,7 @@ func handleCompileDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*m
 
 	// The template argument replaces meta.template for this call, as it does
 	// on validate_deck_spec and render_deck_spec (go-slide-creator-fjuhm).
-	choice := resolveSpecTemplate(spec.Meta.Template, templateName, "", specSource{})
+	choice := resolveSpecTemplateMCP(spec.Meta.Template, templateName, "", specSource{})
 	spec = choice.evaluated(spec)
 
 	input, result, err := semantic.Compile(spec, semantic.CompileOptions{
@@ -1074,7 +1074,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	// meta.template outranks the template / template_path arguments. That was
 	// silent: an agent that passed template=X rendered Y and never knew why
 	// (go-slide-creator-6p9mm). Say which one won and how to switch.
-	choice = resolveSpecTemplate(spec.Meta.Template, argTemplate, rawTemplatePath, src)
+	choice = resolveSpecTemplateMCP(spec.Meta.Template, argTemplate, rawTemplatePath, src)
 	spec = choice.evaluated(spec)
 	templateName = choice.Default
 
@@ -1195,14 +1195,21 @@ func (mc *mcpConfig) handleExplainDeckSpec(ctx context.Context, request mcp.Call
 	// One template precedence for every DeckSpec tool: the call's template,
 	// then meta.template, then the deck_id's (go-slide-creator-fjuhm). The
 	// explanation is of that call; the deck's binding is left as it is.
-	choice := resolveSpecTemplate(spec.Meta.Template, argTemplate, "", src)
-	warningsFor := func(deckID string) []string {
-		if w := explainUnboundWarning(spec.Meta.Template, argTemplate, src); w != "" && deckID != "" {
-			return append(append([]string(nil), choice.Warnings...), w)
-		}
-		return choice.Warnings
-	}
+	choice := resolveSpecTemplateMCP(spec.Meta.Template, argTemplate, "", src)
 	explanation := explainSpecWithTemplate(choice.evaluated(spec), choice.Default)
+	warningsFor := func(deckID string) []string {
+		warnings := append([]string(nil), choice.Warnings...)
+		if w := explainUnboundWarning(spec.Meta.Template, argTemplate, src); w != "" && deckID != "" {
+			warnings = append(warnings, w)
+		}
+		if explanation.Template == "" {
+			warnings = append(warnings, explainNoTemplateWarning)
+		}
+		if len(warnings) == 0 {
+			return nil
+		}
+		return warnings
+	}
 	commit := deckCommit{Tool: "explain_deck_spec", Src: src, Spec: data, Filename: filename, Store: !src.DryRun}
 	if explanation.Template == "" {
 		outcome := mc.commitDeck(commit)
@@ -1257,6 +1264,13 @@ func explainUnboundWarning(metaTemplate, argTemplate string, src specSource) str
 	}
 	return fmt.Sprintf("this plan is for %q, but explain_deck_spec is read-only and leaves the deck_id unbound: validate_deck_spec or render_deck_spec with template binds it, as does patch [{\"op\":\"add\",\"path\":\"/meta/template\",\"value\":%q}]", argTemplate, argTemplate)
 }
+
+// explainNoTemplateWarning says why an explanation carries no template: the
+// spec pins none, the call named none, the deck_id is bound to none and the
+// spec has no archetype to take a default from. The field was simply absent,
+// which read as the tool withholding the name of a default that does not
+// exist (go-slide-creator-7kh6y).
+const explainNoTemplateWarning = "no template: the spec pins none, this call names none and meta.archetype is unset, so there is no default to name; this plan is template-independent, and a render needs meta.template, meta.archetype or the template argument"
 
 // explainSpecWithTemplate explains a spec as Compile reads it: its
 // meta.template (already replaced by the call's template argument, see

@@ -193,8 +193,16 @@ template.
   it for that call only (go-slide-creator-ifkxs): the response's `template`
   is the argument, `template_source` is `template argument`, and `warnings[]`
   says `template argument "X" overrides meta.template "Y" for this call only`
-  with the patch that keeps it. The spec and the deck's binding keep the pin,
-  so the next call without the argument is back on it. The validate envelope
+  and how to keep it (`set meta.template to it`); only the MCP tools add the
+  patch that does so — the CLI and HTTP caller edits the spec it sent
+  (go-slide-creator-7kh6y). The spec and the deck's binding keep the pin,
+  so the next call without the argument is back on it. `explain_deck_spec` /
+  `semantic explain` name the archetype's default as `template` when nothing
+  else sets one; with no archetype either there is none, and the answer says
+  so in `warnings[]` (stderr on the CLI) instead of leaving the field out
+  without a word. A render in that state fails with `TEMPLATE_NOT_FOUND`
+  reading `no template: the spec pins none …; set meta.template or pass
+  template`. The validate envelope
   echoes `template` and `template_source` (`template argument`,
   `meta.template`, `deck_id`, `archetype default`) and adds a `warnings[]`
   entry when the spec pins none. A `deck_id` is bound by the first call that

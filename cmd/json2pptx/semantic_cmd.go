@@ -1412,6 +1412,7 @@ func runSemanticExplain() error {
 	}
 	explanation := explainSpecWithTemplate(choice.evaluated(spec), choice.Default)
 	if explanation.Template == "" {
+		fmt.Fprintf(os.Stderr, "warning: %s\n", explainNoTemplateWarning)
 		return printJSONIndent(explanation)
 	} else if layouts, templateDiagnostic := semanticTemplateLayouts(explanation.Template, "", nil); templateDiagnostic == nil {
 		reconcileExplanationTemplateCoverage(&explanation, layouts)

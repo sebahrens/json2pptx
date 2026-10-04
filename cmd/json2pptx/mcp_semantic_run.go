@@ -223,6 +223,19 @@ func resolveSpecTemplate(metaTemplate, argTemplate, argTemplatePath string, src 
 	return c
 }
 
+// resolveSpecTemplateMCP is resolveSpecTemplate for the MCP tools: their
+// caller can patch the deck, so the override warning ends with the patch that
+// keeps the template. The CLI and the HTTP endpoints call resolveSpecTemplate
+// and get the sentence without it — their caller edits the spec it sent
+// (go-slide-creator-7kh6y).
+func resolveSpecTemplateMCP(metaTemplate, argTemplate, argTemplatePath string, src specSource) specTemplateChoice {
+	c := resolveSpecTemplate(metaTemplate, argTemplate, argTemplatePath, src)
+	if c.Override != "" {
+		c.Warnings = []string{semantic.TemplateOverridePatchWarning(metaTemplate, c.Override)}
+	}
+	return c
+}
+
 // unpinnedTemplateWarning tells the caller that nothing in the spec fixes the
 // template its findings were measured against.
 func unpinnedTemplateWarning(evaluated, source string) string {
