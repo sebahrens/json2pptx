@@ -24,7 +24,7 @@ var fieldLikeRE = regexp.MustCompile(`\b[a-z]+(?:_[a-z0-9]+)+\b`)
 
 // rawSurfaceRE matches controls and locators of the raw deck and of the
 // renderer that a slide kind does not have.
-var rawSurfaceRE = regexp.MustCompile(`\bshape_grid\b|\bcompose\b|\bbounds\b|\boverrides?\b|chevron|\b[a-z_]+\[\d+\]\.[a-z_]+|explain_deck_spec|stacked-box|card-title|card-body|autofit|plain-bullet|rendered_shapes|continuation slides`)
+var rawSurfaceRE = regexp.MustCompile(`\bshape_grid\b|\bcompose\b|process-grid-2row|phase-roadmap|\bbounds\b|\boverrides?\b|chevron|\b[a-z_]+\[\d+\]\.[a-z_]+|explain_deck_spec|stacked-box|card-title|card-body|autofit|plain-bullet|rendered_shapes|continuation slides`)
 
 // adviceWords are snake_case words advice may use that are not fields of a
 // kind: tools and their arguments, deck-level fields, and the names of the
@@ -94,12 +94,19 @@ func TestDeckSpecAdviceNamesOnlyFieldsOfTheKind(t *testing.T) {
 	}
 	// Every kind's own example, on each template of the long run.
 	corpus["every kind"] = map[string]any{"spec": parityCorpus(t)["all-kinds"], "template": "modern"}
+	// go-slide-creator-d6wvb, -d0g2j: a row of bare steps or milestones alone
+	// on its slide draws SPARSE_SINGLE_ROW_FLOW, whose pattern-level remedy
+	// named numbered-step-strip, process-grid-2row, phase-roadmap and compose.
+	for name, slide := range sparseFlowSlides {
+		corpus[name] = map[string]any{"template": "modern", "spec": decodeSpecObject(t,
+			`{"meta":{"title":"Flow","source":"Illustrative"},"slides":[{"kind":"title","title":"A flow that states its claim","subtitle":"October 2026"},`+slide+`]}`)}
+	}
 	names := make([]string, 0, len(corpus))
 	for name := range corpus {
 		// The short run scans the review's decks and one kind past its count;
 		// the long run every kind's counts and the address corpus, on three
 		// templates.
-		if testing.Short() && !shortHarnessDeck(name) {
+		if _, sparse := sparseFlowSlides[name]; testing.Short() && !shortHarnessDeck(name) && !sparse {
 			continue
 		}
 		names = append(names, name)
@@ -187,4 +194,43 @@ func TestDeckSpecAdviceNamesOnlyFieldsOfTheKind(t *testing.T) {
 	if checked < wantChecked {
 		t.Fatalf("only %d advice texts checked; the corpus no longer exercises the findings", checked)
 	}
+	// The sparse rows draw the finding the scan is there for, and the remedy
+	// its sentence states clears it.
+	sparse := func(slide string) bool {
+		spec := decodeSpecObject(t, `{"meta":{"title":"Flow","source":"Illustrative"},"slides":[{"kind":"title","title":"A flow that states its claim","subtitle":"October 2026"},`+slide+`]}`)
+		res, err := mc.handleValidateDeckSpec(context.Background(), makeRequest(map[string]any{"spec": spec, "template": "modern"}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out map[string]any
+		structuredInto(t, res.StructuredContent, &out)
+		list, _ := out["findings"].([]any)
+		for _, entry := range list {
+			if code, _ := entry.(map[string]any)["code"].(string); strings.HasSuffix(code, "SPARSE_SINGLE_ROW_FLOW") {
+				return true
+			}
+		}
+		return false
+	}
+	for name, slide := range sparseFlowSlides {
+		if !sparse(slide) {
+			t.Errorf("%s: no SPARSE_SINGLE_ROW_FLOW; the scan no longer covers its wording", name)
+		}
+		if sparse(sparseFlowRemedied[name]) {
+			t.Errorf("%s: the remedy the finding states does not clear it", name)
+		}
+	}
+}
+
+// sparseFlowSlides are the slide kinds that compile to a single row of short
+// boxes alone on the slide; sparseFlowRemedied is each after the remedy its
+// SPARSE_SINGLE_ROW_FLOW states.
+var sparseFlowSlides = map[string]string{
+	"sparse process with an explicit flow": `{"kind":"process","title":"Four steps take a request to production","takeaway":"Approval is the only step that waits on a person.","pattern":"process-flow","steps":[{"label":"Request"},{"label":"Review"},{"label":"Approve"},{"label":"Deploy"}]}`,
+	"sparse timeline":                      `{"kind":"timeline","title":"Four milestones take the plan to production","takeaway":"Every quarter of 2026 ends on a milestone.","milestones":[{"label":"Plan","date":"Q1 2026"},{"label":"Build","date":"Q2 2026"},{"label":"Ship","date":"Q3 2026"},{"label":"Scale","date":"Q4 2026"}]}`,
+}
+
+var sparseFlowRemedied = map[string]string{
+	"sparse process with an explicit flow": `{"kind":"process","title":"Four steps take a request to production","takeaway":"Approval is the only step that waits on a person.","steps":[{"label":"Request","description":"A team files the change with its risk class"},{"label":"Review","description":"Two engineers read the diff and the rollout plan"},{"label":"Approve","description":"The service owner signs off within a day"},{"label":"Deploy","description":"The pipeline rolls it out region by region"}]}`,
+	"sparse timeline":                      `{"kind":"timeline","title":"Four milestones take the plan to production","takeaway":"Every quarter of 2026 ends on a milestone.","milestones":[{"label":"Plan","date":"Q1 2026","body":"Scope and budget agreed with the board"},{"label":"Build","date":"Q2 2026","body":"Core services built and tested with pilots"},{"label":"Ship","date":"Q3 2026","body":"General availability in the first two regions"},{"label":"Scale","date":"Q4 2026","body":"Remaining regions and the partner channel"}]}`,
 }
