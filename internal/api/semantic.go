@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -160,7 +159,7 @@ func SemanticCompileHandler(finish ...SemanticFindingsFinisher) http.HandlerFunc
 			overridden := *spec
 			overridden.Meta.Template = template
 			spec = &overridden
-			warnings = append(warnings, fmt.Sprintf("template %q overrides meta.template %q for this request only: the spec still pins %q", template, pinned, pinned))
+			warnings = append(warnings, semantic.TemplateOverrideWarning(pinned, template))
 		}
 
 		input, result, err := semantic.Compile(spec, semantic.CompileOptions{

@@ -367,6 +367,36 @@ func TestHTTPSemanticRender_RuntimeConfig(t *testing.T) {
 		t.Error("allowed image was not embedded")
 	}
 
+	// The sample screenshot a recommend_visual recipe points at renders over
+	// HTTP as it does over MCP and the CLI: that one file is admitted, with
+	// or without a configured root, and nothing beside it is
+	// (go-slide-creator-075py).
+	sample, err := sampleScreenshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	neighbour := filepath.Join(filepath.Dir(sample), "http-neighbour.png")
+	if err := os.WriteFile(neighbour, []byte(testPNG(t)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Remove(neighbour) })
+	for _, roots := range [][]string{nil, {imgDir}} {
+		cfg = semanticRenderTestConfig(t)
+		cfg.Images.AllowedBasePaths = roots
+		ts = newSemanticRenderTestServer(t, cfg)
+		code, res = postRender(t, ts, "", "application/x-yaml", strings.NewReader(fmt.Sprintf(rawImageSemanticSpec, sample)))
+		if code != http.StatusOK || strings.Contains(strings.Join(res.Warnings, "\n"), "image path validation failed") {
+			t.Fatalf("roots %v: the server's sample screenshot was refused: %d %+v", roots, code, res)
+		}
+		if !hasMedia(downloadDeck(t, ts, res.FileURL)) {
+			t.Errorf("roots %v: the sample screenshot was not embedded", roots)
+		}
+		code, res = postRender(t, ts, "", "application/x-yaml", strings.NewReader(fmt.Sprintf(rawImageSemanticSpec, neighbour)))
+		if code == http.StatusOK && !strings.Contains(strings.Join(res.Warnings, "\n"), "image path validation failed") {
+			t.Fatalf("roots %v: a file beside the sample was embedded: %d %+v", roots, code, res)
+		}
+	}
+
 	// Templates resolve from the configured templates dir.
 	cfg = semanticRenderTestConfig(t)
 	cfg.Templates.Dir = t.TempDir()
