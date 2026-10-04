@@ -179,7 +179,7 @@ func (k *kpiNup) PostExpandWarnings(ctx ExpandContext, values, overrides any) []
 		// only fits edge-to-edge in a stand-in face renders as "$4.2" / "M"
 		// (go-slide-creator-b7qqg.14).
 		if !kpiValueFits(cell.Big, ctx.Theme.BodyFont, lay.bigSize, width) {
-			warnings = append(warnings, fmt.Sprintf("%s: %s values[%d].big cannot fit on one line at the %.0fpt effective size in a %.0fpt-wide card, which holds about %d characters like these — shorten the metric, move/remove its icon, or use fewer KPI cards", ErrCodeBodyTooLong, k.Name(), i, lay.bigSize, width, kpiValueMaxChars(cell.Big, ctx.Theme.BodyFont, lay.bigSize, width)))
+			warnings = append(warnings, fmt.Sprintf("%s: %s values[%d].big cannot fit on one line at the %.0fpt minimum in a %.0fpt-wide card, which holds about %d characters like these, so the row's values are written at %.0fpt — shorten the metric, move/remove its icon, or use fewer KPI cards", ErrCodeBodyTooLong, k.Name(), i, lay.bigSize, width, kpiValueMaxChars(cell.Big, ctx.Theme.BodyFont, lay.bigSize, width), lay.valueSize))
 		}
 	}
 	return warnings

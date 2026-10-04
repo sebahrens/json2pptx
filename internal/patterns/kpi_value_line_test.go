@@ -114,9 +114,11 @@ func TestKPIValueLineBudgetAgreesWithTheFinding(t *testing.T) {
 	}
 }
 
-// A value fitted down under the lead step is written at the caption's size by
-// the grid's type scale; the caption then drops to the body step so the value
-// stays the larger line. A row of short values keeps the authored caption.
+// A value fitted down under the lead step would sit two points or less over
+// a 14–16pt caption; the caption then drops to the body step so the value —
+// marked "figure", so the grid writes it at its fitted size, 16pt at the
+// least (go-slide-creator-a5ogo) — stays the larger line. A row of short
+// values keeps the authored caption.
 func TestKPILongValuesKeepTheValueAboveItsCaption(t *testing.T) {
 	sizes := func(t *testing.T, cells KPINupValues) (value, caption float64) {
 		t.Helper()
@@ -130,6 +132,9 @@ func TestKPILongValuesKeepTheValueAboveItsCaption(t *testing.T) {
 		var text kpiTextObj
 		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Text, &text); err != nil {
 			t.Fatal(err)
+		}
+		if !strings.Contains(string(grid.Rows[0].Cells[0].Shape.Text), `"figure":true`) {
+			t.Errorf("the value paragraph is not marked as a figure: %s", grid.Rows[0].Cells[0].Shape.Text)
 		}
 		return text.Paragraphs[0].Size, text.Paragraphs[1].Size
 	}

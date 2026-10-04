@@ -57,6 +57,43 @@ func TestBalanceHeadingRemovesOneWordLastLine(t *testing.T) {
 	}
 }
 
+// LibreOffice keeps a paragraph's side margins for the paragraphs after it
+// that state none, so the paragraphs after a balanced heading say theirs
+// (go-slide-creator-alcw7). A body with no balanced paragraph writes none.
+func TestParagraphsAfterABalancedHeadingStateTheirMargins(t *testing.T) {
+	const heading = "Production use is now the norm, not the exception"
+	text := `{"paragraphs":[{"content":"EYEBROW","size":12},{"content":"` + heading + `","size":14,"bold":true,"align":"l"},{"content":"A body paragraph that follows the heading.","size":12,"align":"l"},{"content":"A bullet","size":12,"bullet":true}]}`
+	spec := &ShapeSpec{Geometry: "rect", Text: json.RawMessage(text)}
+	paragraphs := regexp.MustCompile(`(?s)<a:p>.*?</a:p>`)
+	for pt := 200.0; pt <= 500; pt++ {
+		xml, err := GenerateShapeXML(spec, 1, pptx.RectEmu{CX: PtToEMU(pt), CY: PtToEMU(200)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ps := paragraphs.FindAllString(string(xml), -1)
+		if len(ps) != 4 {
+			t.Fatalf("paragraphs = %d, want 4", len(ps))
+		}
+		if !marRPattern.MatchString(ps[1]) {
+			if regexp.MustCompile(`marR=`).MatchString(string(xml)) {
+				t.Fatalf("no balanced heading at %.0fpt, yet a margin is written: %s", pt, xml)
+			}
+			continue
+		}
+		if regexp.MustCompile(`mar[LR]=`).MatchString(ps[0]) {
+			t.Errorf("the paragraph before the heading states a margin: %s", ps[0])
+		}
+		if !regexp.MustCompile(`marL="0" marR="0"`).MatchString(ps[2]) {
+			t.Errorf("the body after a balanced heading must state marL and marR 0: %s", ps[2])
+		}
+		if !regexp.MustCompile(`marL="[1-9]\d*" marR="0"`).MatchString(ps[3]) {
+			t.Errorf("a bullet after a balanced heading keeps its hanging margin and states marR 0: %s", ps[3])
+		}
+		return
+	}
+	t.Fatal("no width balanced the fixture heading")
+}
+
 func TestBalanceLeavesBodyAndSingleLinesAlone(t *testing.T) {
 	for _, text := range []string{
 		`{"content":"Production use is now the norm, not the exception","size":14,"align":"l"}`, // not bold

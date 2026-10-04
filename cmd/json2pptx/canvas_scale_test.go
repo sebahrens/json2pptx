@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -55,6 +57,80 @@ func TestExemplarDeckUsesTheContentArea(t *testing.T) {
 			}
 		}
 	}
+}
+
+// underusedSweepTemplates are the templates the exemplar sweep measures:
+// -short takes the two whose exemplars sat nearest their thresholds
+// (business-template's larger slide, modern-template's light Poppins).
+var underusedSweepTemplates = []string{"business-template", "modern-template", "midnight-blue", "warm-coral", "forest-green", "modern", "modern-yellow", "blue-corporate", "abstract", "p-style"}
+
+// exemplarUnderusedMargin is how far over its SLIDE_UNDERUSED threshold every
+// full-slide exemplar must sit, as a share of the content area.
+const exemplarUnderusedMargin = 0.015
+
+// Every full-slide exemplar clears its SLIDE_UNDERUSED threshold by
+// exemplarUnderusedMargin on every template. Coverage is measured from glyph
+// widths, so it moves by a point or so with the template's face and with any
+// change to a metric: exemplars that sat 0.3–1.4 points over their threshold
+// (timeline-horizontal, image-text-split, driver-tree, value-chain) were one
+// rounding from being reported, and value-chain was 0.1 under on a local
+// template (go-slide-creator-am8kr). A pattern that falls inside the margin
+// here needs sizing, or its ink counted as the eye sees it — not a lower
+// threshold.
+func TestExemplarsClearTheUnderusedThreshold(t *testing.T) {
+	templates := underusedSweepTemplates
+	if testing.Short() {
+		templates = templates[:2]
+	}
+	for _, tpl := range templates {
+		if _, err := os.Stat(filepath.Join("..", "..", "templates", tpl+".pptx")); err != nil {
+			t.Logf("template %s not present; skipped", tpl)
+			continue
+		}
+		a := loadTemplateAnalysis(t, tpl)
+		deck := exemplarDeck(t)
+		measured := 0
+		thinnest := slideUsage{frac: 1}
+		collectGeometry(&deck, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme, func(u slideUsage) {
+			if supportingBandPatterns[u.pattern] {
+				return
+			}
+			measured++
+			if u.frac-u.threshold < thinnest.frac-thinnest.threshold {
+				thinnest = u
+			}
+			if u.frac < u.threshold+exemplarUnderusedMargin {
+				t.Errorf("%s: %s exemplar covers %.1f%% of the content area against a %.0f%% threshold: under the %.1f-point margin",
+					tpl, u.pattern, 100*u.frac, 100*u.threshold, 100*exemplarUnderusedMargin)
+			}
+		})
+		if measured < 40 {
+			t.Errorf("%s: only %d exemplars were measured", tpl, measured)
+		}
+		t.Logf("%s: thinnest exemplar %s at %.1f%% against %.0f%%", tpl, thinnest.pattern, 100*thinnest.frac, 100*thinnest.threshold)
+	}
+}
+
+// Counting a pattern's open columns by slot must not hide a sparse slide: the
+// bare forms of the patterns counted that way since go-slide-creator-am8kr
+// still report.
+func TestBareOpenColumnPatternsStillReportUnderused(t *testing.T) {
+	a := loadTemplateAnalysis(t, "midnight-blue")
+	for name, values := range bareOpenColumnFixtures {
+		deck := PresentationInput{Slides: []SlideInput{titledPatternSlide(name, json.RawMessage(values))}}
+		reported := false
+		for _, f := range collectGeometryFindings(&deck, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme) {
+			reported = reported || f.Code == patterns.ErrCodeSlideUnderused
+		}
+		if !reported {
+			t.Errorf("a bare %s must still report SLIDE_UNDERUSED", name)
+		}
+	}
+}
+
+var bareOpenColumnFixtures = map[string]string{
+	"value-chain":         `{"steps":[{"label":"Extraction"},{"label":"Processing"},{"label":"Manufacturing"},{"label":"Distribution"},{"label":"Retail"}]}`,
+	"timeline-horizontal": `[{"label":"Discovery"},{"label":"Pilot"},{"label":"Scale-up"},{"label":"Run"}]`,
 }
 
 // A pattern grid, and the sub-grids the pattern nested in its cells, resolve

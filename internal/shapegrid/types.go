@@ -359,6 +359,10 @@ type ShapeSpec struct {
 	// to fit is not written shrunk (go-slide-creator-ohhb2). Zero (authored
 	// grids) keeps the Liberation Sans measure.
 	ThemeFonts pptx.ThemeFonts
+	// NoCapsTracking leaves the shape's caps labels untracked: a peer label
+	// of the same size in its grid has no room for tracking, and labels of
+	// one size are tracked together or not at all (shareCapsTracking).
+	NoCapsTracking bool
 }
 
 type LinkSpec struct {

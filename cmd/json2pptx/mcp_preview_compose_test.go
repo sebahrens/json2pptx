@@ -295,7 +295,7 @@ var _ = jsonschema.ShapeGridInput{}
 // on the value it names and carries the budget as fix.params.max_chars; it
 // used to sit at /slides/N/pattern with the budget in the sentence only.
 func TestPatternWarningFindingPointsAtTheValue(t *testing.T) {
-	const kpi = "BODY_TOO_LONG: kpi-6up values[2].big cannot fit on one line at the 16pt effective size in a 106pt-wide card, which holds about 9 characters like these — shorten the metric"
+	const kpi = "BODY_TOO_LONG: kpi-6up values[2].big cannot fit on one line at the 16pt minimum in a 106pt-wide card, which holds about 9 characters like these, so the row's values are written at 14pt — shorten the metric"
 	for _, tc := range []struct {
 		name, pattern, values, warning string
 		wantPath                       string

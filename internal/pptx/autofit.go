@@ -389,7 +389,10 @@ func SetAutofitScale(tb *TextBody, scale float64) {
 // (go-slide-creator-ohhb2).
 func textAreaEMU(tb *TextBody, bounds RectEmu) (width, height int64) {
 	width, height = bounds.CX, bounds.CY
-	if in := EffectiveTextInsets(tb, bounds); in != [4]int64{} {
+	// The insets the writer emits (writtenTextInsets), so a scale predicted
+	// for a cell — the row-shared shrink, a fit probe — is the scale the
+	// written shape measures for itself.
+	if in := writtenTextInsets(tb, bounds); in != [4]int64{} {
 		width -= in[0] + in[2]
 		height -= in[1] + in[3]
 	}

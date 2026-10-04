@@ -286,11 +286,11 @@ type paragraphSize struct {
 
 // renderedSizePt is the size authored text is written at: the default when
 // unset, settled onto the type scale, raised to the renderer's floor.
-func renderedSizePt(size float64, content string, keepSizes bool) paragraphSize {
+func renderedSizePt(size float64, content string, keepSizes, marked bool) paragraphSize {
 	if size <= 0 {
 		size = DefaultTextSizePt
 	}
-	figure := size >= tokens.TypeScaleLeadPt && isDisplayFigure(content)
+	figure := (size >= tokens.TypeScaleLeadPt && isDisplayFigure(content)) || keepsFigureSize(size, marked)
 	if !figure && !keepSizes {
 		size = float64(tokens.SnapTextHPt(int(math.Round(size*100)))) / 100
 	}
@@ -305,7 +305,7 @@ func textParagraphSizes(raw json.RawMessage, keepSizes bool) []paragraphSize {
 		if strings.TrimSpace(s) == "" {
 			return nil
 		}
-		return []paragraphSize{renderedSizePt(0, s, keepSizes)}
+		return []paragraphSize{renderedSizePt(0, s, keepSizes, false)}
 	}
 	var obj struct {
 		Content    string  `json:"content"`
@@ -313,6 +313,7 @@ func textParagraphSizes(raw json.RawMessage, keepSizes bool) []paragraphSize {
 		Paragraphs []struct {
 			Content string  `json:"content"`
 			Size    float64 `json:"size"`
+			Figure  bool    `json:"figure"`
 		} `json:"paragraphs"`
 	}
 	if json.Unmarshal(raw, &obj) != nil {
@@ -322,12 +323,12 @@ func textParagraphSizes(raw json.RawMessage, keepSizes bool) []paragraphSize {
 		if strings.TrimSpace(obj.Content) == "" {
 			return nil
 		}
-		return []paragraphSize{renderedSizePt(obj.Size, obj.Content, keepSizes)}
+		return []paragraphSize{renderedSizePt(obj.Size, obj.Content, keepSizes, false)}
 	}
 	out := make([]paragraphSize, 0, len(obj.Paragraphs))
 	for _, p := range obj.Paragraphs {
 		if strings.TrimSpace(p.Content) != "" {
-			out = append(out, renderedSizePt(p.Size, p.Content, keepSizes))
+			out = append(out, renderedSizePt(p.Size, p.Content, keepSizes, p.Figure))
 		}
 	}
 	return out
@@ -337,18 +338,18 @@ func textParagraphSizes(raw json.RawMessage, keepSizes bool) []paragraphSize {
 // stepped size; spec itself when nothing moves. Like growShapeText, the copy
 // is what both OOXML generation and preflight read.
 func stepShapeText(spec *ShapeSpec, sizes map[float64]float64, keepSizes bool) *ShapeSpec {
-	step := func(size float64, content string) (float64, bool) {
+	step := func(size float64, content string, marked bool) (float64, bool) {
 		if strings.TrimSpace(content) == "" {
 			return size, false
 		}
-		r := renderedSizePt(size, content, keepSizes)
+		r := renderedSizePt(size, content, keepSizes, marked)
 		next := steppedSize(r.pt, r.figure, sizes)
 		return next, next != r.pt
 	}
 	var s string
 	var out json.RawMessage
 	if json.Unmarshal(spec.Text, &s) == nil {
-		next, ok := step(0, s)
+		next, ok := step(0, s, false)
 		if !ok {
 			return spec
 		}
@@ -367,9 +368,11 @@ func stepShapeText(spec *ShapeSpec, sizes map[float64]float64, keepSizes bool) *
 			for i := range defs {
 				var size, suffixSize float64
 				var content string
+				var marked bool
 				_ = json.Unmarshal(defs[i]["size"], &size)
 				_ = json.Unmarshal(defs[i]["content"], &content)
-				next, ok := step(size, content)
+				_ = json.Unmarshal(defs[i]["figure"], &marked)
+				next, ok := step(size, content, marked)
 				if !ok {
 					continue
 				}
@@ -386,7 +389,7 @@ func stepShapeText(spec *ShapeSpec, sizes map[float64]float64, keepSizes bool) *
 			var content string
 			_ = json.Unmarshal(obj["size"], &size)
 			_ = json.Unmarshal(obj["content"], &content)
-			next, ok := step(size, content)
+			next, ok := step(size, content, false)
 			if ok {
 				changed = true
 				obj["size"], _ = json.Marshal(next)

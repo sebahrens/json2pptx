@@ -69,6 +69,13 @@ type Paragraph struct {
 	// the wrapping measure of a single paragraph, e.g. to balance a heading's
 	// lines; 0 wraps at the full text-box width.
 	MarginR int64
+	// ExplicitMargins writes marL and marR even when they are zero.
+	// LibreOffice keeps the side margins of the paragraph before for a
+	// paragraph that states none, so the paragraphs after one that narrows
+	// its measure (MarginR, or MarginL on a centred or right-aligned
+	// heading) say where theirs are; PowerPoint resets them either way
+	// (go-slide-creator-alcw7).
+	ExplicitMargins bool
 }
 
 // Run represents a DrawingML text run (a:r) or field (a:fld).
@@ -175,16 +182,16 @@ func (p Paragraph) WriteXML(buf *bytes.Buffer) {
 	buf.WriteString(`<a:p>`)
 
 	// Paragraph properties
-	hasPPr := p.Align != "" || p.MarginL != 0 || p.MarginR != 0 || p.Indent != 0 || p.Bullet != nil || p.NoBullet || p.SpaceAfter > 0
+	hasPPr := p.Align != "" || p.MarginL != 0 || p.MarginR != 0 || p.Indent != 0 || p.Bullet != nil || p.NoBullet || p.SpaceAfter > 0 || p.ExplicitMargins
 	if hasPPr {
 		buf.WriteString(`<a:pPr`)
 		if p.Align != "" {
 			fmt.Fprintf(buf, ` algn="%s"`, p.Align)
 		}
-		if p.MarginL != 0 {
+		if p.MarginL != 0 || p.ExplicitMargins {
 			fmt.Fprintf(buf, ` marL="%d"`, p.MarginL)
 		}
-		if p.MarginR != 0 {
+		if p.MarginR != 0 || p.ExplicitMargins {
 			fmt.Fprintf(buf, ` marR="%d"`, p.MarginR)
 		}
 		if p.Indent != 0 {

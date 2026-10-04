@@ -277,7 +277,8 @@ func scaledSize(fontPt, scale float64) float64 {
 // the type scale (go-slide-creator-30471): off-scale pattern sizes such as
 // 13/15/16/17/20/22pt become the step at or below them (12/14/14/14/18/18pt).
 // Display figures — a short run containing a digit at 18pt or more, such as a
-// KPI value or a step numeral — keep their measured size, as does text under
+// step numeral, or a paragraph its pattern marks "figure" at FigureMinSizePt
+// or more, such as a KPI value — keep their measured size, as does text under
 // the caption step (footnotes) or at the display step and above. Snapping only
 // shrinks, so fit and readability floors (which sit on scale steps) hold.
 // Like growShapeText it rewrites a private copy consumed by both OOXML
@@ -291,8 +292,8 @@ func snapShapeTextToScale(spec *ShapeSpec) *ShapeSpec {
 		return spec // string shorthand renders at the 14pt default, a scale step
 	}
 	changed := false
-	snap := func(size float64, texts ...string) (float64, bool) {
-		if size <= 0 {
+	snap := func(size float64, marked bool, texts ...string) (float64, bool) {
+		if size <= 0 || keepsFigureSize(size, marked) {
 			return size, false
 		}
 		for _, t := range texts {
@@ -315,9 +316,11 @@ func snapShapeTextToScale(spec *ShapeSpec) *ShapeSpec {
 		for i := range defs {
 			var size float64
 			var content string
+			var marked bool
 			_ = json.Unmarshal(defs[i]["size"], &size)
 			_ = json.Unmarshal(defs[i]["content"], &content)
-			if s, ok := snap(size, content); ok {
+			_ = json.Unmarshal(defs[i]["figure"], &marked)
+			if s, ok := snap(size, marked, content); ok {
 				defs[i]["size"], _ = json.Marshal(s)
 				changed = true
 			}
@@ -331,7 +334,7 @@ func snapShapeTextToScale(spec *ShapeSpec) *ShapeSpec {
 		var content string
 		_ = json.Unmarshal(obj["size"], &size)
 		_ = json.Unmarshal(obj["content"], &content)
-		s, ok := snap(size, strings.Split(content, "\n")...)
+		s, ok := snap(size, false, strings.Split(content, "\n")...)
 		if !ok {
 			return spec
 		}
@@ -344,6 +347,17 @@ func snapShapeTextToScale(spec *ShapeSpec) *ShapeSpec {
 	copySpec := *spec
 	copySpec.Text = out
 	return &copySpec
+}
+
+// FigureMinSizePt is the smallest size a paragraph marked "figure" keeps as
+// measured: the floor a KPI value is fitted down to. Below it the mark is
+// ignored and the text settles onto the scale like any other.
+const FigureMinSizePt = 16.0
+
+// keepsFigureSize reports whether a paragraph its pattern marked as a display
+// figure is written at its measured size.
+func keepsFigureSize(size float64, marked bool) bool {
+	return marked && size >= FigureMinSizePt
 }
 
 // isDisplayFigure reports a short run that states a figure or numeral.

@@ -123,6 +123,14 @@ func TestTypeScaleSnapsOffScaleSizesDown(t *testing.T) {
 		{"step numeral keeps size", `{"content":"1","size":25,"bold":true}`, []float64{25}},
 		{"small figure snaps", `{"content":"2x to 5x","size":15}`, []float64{14}},
 		{"paragraphs snap one by one", `{"paragraphs":[{"content":"01","size":20,"bold":true},{"content":"Growth is plateauing","size":17,"color":"accent1"}]}`, []float64{20, 14}},
+		// A value its pattern marks "figure" keeps the size it was fitted to
+		// from the 16pt KPI floor up, digit or not; unmarked text of the same
+		// size still settles onto the scale (go-slide-creator-a5ogo, -3hxu6).
+		{"marked figure keeps the 16pt floor", `{"paragraphs":[{"content":"EUR 123.4M","size":16,"bold":true,"figure":true},{"content":"Net revenue retention","size":12}]}`, []float64{16, 12}},
+		{"marked figure keeps 17pt", `{"paragraphs":[{"content":"EUR 123.4M","size":17,"bold":true,"figure":true}]}`, []float64{17}},
+		{"marked figure without a digit keeps its size", `{"paragraphs":[{"content":"Unlimited","size":23,"bold":true,"figure":true}]}`, []float64{23}},
+		{"unmarked 16pt figure snaps", `{"paragraphs":[{"content":"EUR 123.4M","size":16,"bold":true}]}`, []float64{14}},
+		{"a mark under the floor is ignored", `{"paragraphs":[{"content":"EUR 123.4M","size":15,"bold":true,"figure":true}]}`, []float64{14}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			spec := resolvedScaledShape(t, "", tc.text, 300, 200)

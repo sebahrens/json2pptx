@@ -107,6 +107,13 @@ func (t geomText) rotated() bool {
 // findings are aggregated to one per code per slide (params.cells lists every
 // offending cell path) so a row of identical cards does not flood the budget.
 func collectGeometryFindings(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, theme *types.ThemeInfo) []patterns.FitFinding {
+	return collectGeometry(input, layouts, slideWidth, slideHeight, theme, nil)
+}
+
+// collectGeometry is collectGeometryFindings; usage, when set, is told how
+// much of its content area every measured slide covers and the share
+// SLIDE_UNDERUSED holds it to (TestExemplarsClearTheUnderusedThreshold).
+func collectGeometry(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, theme *types.ThemeInfo, usage func(slideUsage)) []patterns.FitFinding {
 	if input == nil {
 		return nil
 	}
@@ -157,6 +164,12 @@ func collectGeometryFindings(input *PresentationInput, layouts []types.LayoutMet
 		// left-to-right.
 		if f := checkSlideUnderused(acc.ink, safe, &slide, si, patternName, acc.heightSensitiveOverflow()); f != nil {
 			findings = append(findings, *f)
+		}
+		if usage != nil {
+			if u, ok := measureSlideUsage(acc.ink, safe, &slide, patternName); ok {
+				u.slide = si
+				usage(u)
+			}
 		}
 		ctx := balanceContext{input: input, layouts: layouts, slideWidth: slideWidth, slideHeight: slideHeight, theme: theme, rhythmGrid: rhythmGrid, sectionIndices: sectionIndices}
 		if f := ctx.imbalanceFinding(acc, slide, si, grid, geom, basePath, patternName, safe); f != nil {
@@ -451,6 +464,20 @@ var openColumnPatterns = map[string]bool{
 	// (go-slide-creator-le9d0, -ttpae).
 	"next-steps":          true,
 	"numbered-step-strip": true,
+	// Open text in content-sized columns beside or under drawn shapes
+	// (go-slide-creator-am8kr): a value-chain description under its step, a
+	// timeline stop's date and description around its dot, a driver-tree
+	// annotation beside its rule, the image-text-split text column beside
+	// its image. Counted by glyphs these exemplars sat 0.3–2 points over
+	// their threshold — 0.1 under it for value-chain in p-style's Arial —
+	// so a narrower face or a changed metric reported the pattern's own
+	// example. The column is the unit, as above; the bare forms (steps
+	// without descriptions, stops without dates) are the shape row alone and
+	// still report (TestBareOpenColumnPatternsStillReportUnderused).
+	"value-chain":         true,
+	"timeline-horizontal": true,
+	"driver-tree":         true,
+	"image-text-split":    true,
 }
 
 // ruledColumnPatterns are the patterns that set open text columns beside an
@@ -636,34 +663,57 @@ var contentSizedStripPatterns = map[string]bool{
 	"timeline-horizontal": true,
 }
 
-func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInput, si int, patternName string, heightSensitiveOverflow bool) *patterns.FitFinding {
-	if safe.CX <= 0 || safe.CY <= 0 || hasBodyPlaceholderContent(slide) {
-		return nil
-	}
-	frac := inkCoverageFraction(ink, safe)
+// slideUsage is how much of its safe content area a slide's ink covers
+// (frac) against the share SLIDE_UNDERUSED holds it to (threshold), for the
+// band-cap source that chose the threshold.
+type slideUsage struct {
+	slide     int
+	pattern   string
+	frac      float64
+	threshold float64
+	source    string
+}
 
+// measureSlideUsage is the measurement behind SLIDE_UNDERUSED; ok is false
+// for a slide the finding does not judge.
+func measureSlideUsage(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInput, patternName string) (slideUsage, bool) {
+	if safe.CX <= 0 || safe.CY <= 0 || hasBodyPlaceholderContent(slide) {
+		return slideUsage{}, false
+	}
 	// A restrictive author cap uses the stricter threshold. An uncapped raw
 	// grid needs different advice from a content-sized pattern.
-	source := bandCapSource(slide)
-	threshold := slideUnderusedPatternMaxFrac
+	u := slideUsage{pattern: patternName, frac: inkCoverageFraction(ink, safe), source: bandCapSource(slide), threshold: slideUnderusedPatternMaxFrac}
+	switch u.source {
+	case "author":
+		u.threshold = slideUnderusedMaxFrac
+	case "pattern":
+		switch {
+		case contentSizedBoxPatterns[patternName] || strings.HasPrefix(patternName, "kpi-"):
+			u.threshold = slideUnderusedBoxPatternMaxFrac
+		case contentSizedStripPatterns[patternName]:
+			u.threshold = slideUnderusedStripPatternMaxFrac
+		case heroStatementPatterns[patternName]:
+			u.threshold = slideUnderusedHeroPatternMaxFrac
+		}
+	}
+	return u, true
+}
+
+func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInput, si int, patternName string, heightSensitiveOverflow bool) *patterns.FitFinding {
+	u, ok := measureSlideUsage(ink, safe, slide, patternName)
+	if !ok {
+		return nil
+	}
+	frac, threshold, source := u.frac, u.threshold, u.source
 	hint := "add detail to the grid, pair it with supporting content, or merge with another slide"
 	switch source {
 	case "author":
-		threshold = slideUnderusedMaxFrac
 		hint = "raise or remove the bounds / max_height_pct cap on this slide, add a supporting zone, or merge with another slide"
 		if heightSensitiveOverflow {
 			hint = "a taller band would narrow the pointed shape's text area further; widen or replace that shape, add a supporting zone, or merge with another slide"
 		}
 	case "pattern":
 		hint = "this block sizes itself to its content — add detail to it, pair it with a supporting zone using compose, or choose a denser pattern"
-		switch {
-		case contentSizedBoxPatterns[patternName] || strings.HasPrefix(patternName, "kpi-"):
-			threshold = slideUnderusedBoxPatternMaxFrac
-		case contentSizedStripPatterns[patternName]:
-			threshold = slideUnderusedStripPatternMaxFrac
-		case heroStatementPatterns[patternName]:
-			threshold = slideUnderusedHeroPatternMaxFrac
-		}
 	}
 	// A content-sized, middle-anchored block (a KPI row, before-after panels)
 	// leaves equal bands above and below it by design: boxes are not stretched

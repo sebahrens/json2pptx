@@ -57,6 +57,33 @@ truncation assertion only applies to the default `basic-deck` fixture.
 `examples/basic-deck.json` to the expected path, sets `RENDER_TEST_PPTX`, and
 runs `go test ./internal/render/... -run Integration`.
 
+### Render truth: reading back what LibreOffice re-fits
+
+`cmd/json2pptx` `TestRenderTruthExemplars` generates the exemplar deck of every
+named pattern, converts it pptx → pptx through LibreOffice and reads the
+`fontScale` / `lnSpcReduction` LibreOffice wrote onto each `normAutofit` shape.
+A shape that comes back with a `fontScale` is a box the engine sized too small
+for its text at the size it wrote: the test fails and names the slide, pattern
+and text. A shape with only `lnSpcReduction` (line spacing tightened, font
+kept) is logged. It is the one fit check that does not share the engine's own
+text metrics.
+
+It is skipped unless `RENDER_TRUTH_TEMPLATES` names the templates to sweep
+(space or comma separated), because it needs LibreOffice and the templates'
+faces — a face the host substitutes with a wider one reports shrinks that are
+the host's:
+
+```bash
+RENDER_TRUTH_TEMPLATES="midnight-blue forest-green" \
+  go test ./cmd/json2pptx -run TestRenderTruthExemplars -count=1 -v
+```
+
+`RENDER_TRUTH_KEEP=<dir>` keeps the generated and round-tripped decks.
+
+**CI:** the `render-integration` job installs `fonts-crosextra-carlito`
+(LibreOffice draws Calibri in it), checks that Calibri resolves to it, and runs
+the sweep on `midnight-blue` and `forest-green`.
+
 ## 3. Tool-gated SVG-conversion tier
 
 `internal/generator/svg_test.go` converts SVG → PNG/EMF via `rsvg-convert`

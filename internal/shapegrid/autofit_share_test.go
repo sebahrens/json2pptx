@@ -84,3 +84,49 @@ func TestWriteSharedShrink(t *testing.T) {
 		t.Error("a cell with no shared shrink must be untouched")
 	}
 }
+
+// A cell with no same-size sibling in its row shares no scale, so the writer
+// used to store its shrink on the shape: an authored axis label "4" at 24pt in
+// a 27pt-tall box was 92% in PowerPoint and re-fitted by LibreOffice. Its
+// shrink is written into its sizes too; text that would fall under the 12pt
+// floor keeps the stored scale (go-slide-creator-217cd).
+func TestWriteSharedShrinkWritesALoneCell(t *testing.T) {
+	lone := func(text string, hPt float64) ResolvedCell {
+		return ResolvedCell{
+			Kind:      CellKindShape,
+			ID:        2,
+			Bounds:    pptx.RectEmu{CX: 74 * 12700, CY: int64(hPt * 12700)},
+			ShapeSpec: &ShapeSpec{Geometry: "rect", Text: json.RawMessage(text)},
+		}
+	}
+	const figure = `{"content":"4","size":24,"bold":true,"align":"ctr"}`
+	const floor = `{"content":"A label that needs three lines here","size":12}`
+	cells := []ResolvedCell{lone(figure, 27), lone(floor, 30), lone(figure, 60)}
+	shrunk, kept, roomy := &cells[0], &cells[1], &cells[2]
+	before, err := GenerateCellShapeXML(*shrunk)
+	if err != nil || !strings.Contains(string(before), "fontScale") {
+		t.Fatalf("fixture: the 24pt figure must need a shrink in a 27pt box (err %v): %s", err, before)
+	}
+	writeSharedShrink(cells)
+
+	xml, err := GenerateCellShapeXML(*shrunk)
+	if err != nil || strings.Contains(string(xml), "fontScale") {
+		t.Errorf("lone cell XML (err %v) must carry no fontScale: %s", err, xml)
+	}
+	tb, err := ResolveTextInput(shrunk.ShapeSpec.Text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := tb.Paragraphs[0].Runs[0].FontSize; got >= 2400 || got < 1200 {
+		t.Errorf("lone figure written at %d hundredths of a point, want its shrink in the size (under 2400, at least 1200)", got)
+	}
+	if string(kept.ShapeSpec.Text) != floor {
+		t.Errorf("12pt text cannot shrink by size and must keep its text, got %s", kept.ShapeSpec.Text)
+	}
+	if xml, err := GenerateCellShapeXML(*kept); err != nil || !strings.Contains(string(xml), "fontScale") {
+		t.Errorf("12pt text that does not fit keeps the stored scale (err %v): %s", err, xml)
+	}
+	if string(roomy.ShapeSpec.Text) != figure {
+		t.Errorf("a cell that fits must be untouched, got %s", roomy.ShapeSpec.Text)
+	}
+}

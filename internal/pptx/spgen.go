@@ -83,7 +83,7 @@ func GenerateShape(opts ShapeOptions) ([]byte, error) {
 		if opts.Text.Insets != [4]int64{} {
 			opts.Text.ExplicitInsets = true
 		}
-		opts.Text.Insets = EffectiveTextInsets(opts.Text, presetTextBounds(opts))
+		opts.Text.Insets = writtenTextInsets(opts.Text, presetTextBounds(opts))
 	}
 	applyAutofitScale(opts.Text, autofitBounds(opts))
 
