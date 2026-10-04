@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 )
@@ -48,6 +49,9 @@ func cliStartStdoutTap(args []string) {
 	if err != nil {
 		return
 	}
+	// Group commands shift os.Args as they dispatch; the envelope needs the
+	// line as it was typed.
+	cliRawArgs = append([]string(nil), args...)
 	t := &cliStdoutTap{real: os.Stdout, w: w, done: make(chan struct{})}
 	go func() {
 		t.n, _ = io.Copy(t.real, r)
@@ -82,16 +86,30 @@ func cliExit(code int) {
 
 // cliWantsJSON reports whether the command that just ran answers in JSON: a
 // command that only emits JSON, or one switched to it with --format json /
-// --json. It reads the flag set cliParse saw, so it is false before any
-// command parsed its flags (an unknown command, a group without a subcommand).
+// --json. It reads the flag set cliParse saw; before any command parsed its
+// flags (an unknown command, a group without a subcommand) it reads the
+// argument list for --format json.
 func cliWantsJSON() bool {
 	set := cliCurrentFlagSet
-	if set == nil || cliConventions()[set.Name()].Server {
+	if set == nil {
+		// No command parsed its flags: an unknown command, or a group given
+		// a subcommand it does not have. A caller that wrote --format json
+		// still reads stdout for the answer.
+		return cliArgsAskForJSON(nil, cliRawArgs)
+	}
+	if cliConventions()[set.Name()].Server {
 		return false
 	}
 	f := set.Lookup("format")
 	if f == nil {
 		return false
+	}
+	// The flag parser stops at the argument it refuses, so a --format json
+	// after it was never read: `patterns list --bogus --format json` answered
+	// with usage text on stderr and nothing on stdout. The caller still asked
+	// for JSON, and the argument list says so.
+	if cliParseFailed && cliArgsAskForJSON(set, cliParsedArgs) {
+		return true
 	}
 	if fv, ok := f.Value.(*cliFormatValue); ok {
 		// No legacy --json boolean behind it: the command only emits JSON.
@@ -112,6 +130,51 @@ func cliWantsJSON() bool {
 		return false
 	}
 	return cliConventions()[set.Name()].JSONFlag == ""
+}
+
+// cliRawArgs is the process's argument list as it was typed, recorded when
+// stdout is tapped.
+var cliRawArgs []string
+
+// cliParsedArgs is the argument list the current command's flag set was
+// given (see cliParse).
+var cliParsedArgs []string
+
+// cliArgsAskForJSON reports whether args name JSON output — --format json, or
+// the command's boolean --json — before a literal "--". It is consulted only
+// when parsing failed, to honour a format flag the parser never reached.
+func cliArgsAskForJSON(set *flag.FlagSet, args []string) bool {
+	boolJSON := false
+	if set == nil {
+		// Without a flag set, --json may be a command's input file flag.
+	} else if j := set.Lookup("json"); j != nil {
+		if b, ok := j.Value.(interface{ IsBoolFlag() bool }); ok && b.IsBoolFlag() {
+			boolJSON = true
+		}
+	}
+	for i, a := range args {
+		if a == "--" {
+			break
+		}
+		name, value, hasValue := strings.Cut(strings.TrimLeft(a, "-"), "=")
+		if !strings.HasPrefix(a, "-") {
+			continue
+		}
+		switch name {
+		case "format":
+			if !hasValue && i+1 < len(args) {
+				value = args[i+1]
+			}
+			if value == "json" || value == "ndjson" {
+				return true
+			}
+		case "json":
+			if boolJSON && (!hasValue || value == "true") {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // cliCodedError is a command-line failure that states its own finding code.
@@ -157,20 +220,52 @@ func cliInvalidJSON(format string, args ...any) error {
 	return cliCoded(diagnostics.CodeInvalidJSON, format, args...)
 }
 
+// cliSlideError is the error for deck content the pipeline cannot place: a
+// content item without a type, an overlay with no target, a layout no slide
+// type can use (INVALID_SLIDE). A wrapped error that states its own code keeps
+// it — "slide 2: shape_grid: <pattern error>" stays a pattern error. The
+// shared pipeline files return these to every command that reads a deck, so
+// the code is stated here rather than by each caller; an untyped one reached
+// the CLI as INTERNAL, whose remediation is "retry" (go-slide-creator-u1c9c).
+func cliSlideError(format string, args ...any) error {
+	return cliCodedUnlessWrapped(diagnostics.CodeInvalidSlide, format, args...)
+}
+
+// cliPatternError is the error for a pattern block that cannot be expanded: a
+// values shape the pattern does not take, an override it does not have, a
+// nested pattern next to other cell content (PATTERN_ERROR).
+func cliPatternError(format string, args ...any) error {
+	return cliCodedUnlessWrapped(diagnostics.CodePatternError, format, args...)
+}
+
+// cliCodedUnlessWrapped builds a coded error that keeps the code of an error
+// it wraps: the innermost site knows best what is wrong.
+func cliCodedUnlessWrapped(code diagnostics.Code, format string, args ...any) error {
+	err := fmt.Errorf(format, args...)
+	var inner *cliCodedError
+	if errors.As(err, &inner) {
+		code = inner.code
+	}
+	return &cliCodedError{code: code, err: err}
+}
+
 // cliErrorCode is the envelope code of a plain error. Nothing is read from the
 // message: a missing file and malformed JSON are recognised by their error
-// types wherever they were wrapped, a command's own argument error carries its
-// code (cliCodedError), and an argument list the flag parser refused is an
-// invalid parameter. Anything else is a failure of the command itself.
+// types wherever they were wrapped, as are a pattern's input findings, a
+// command's own argument error carries its code (cliCodedError), and an
+// argument list the flag parser refused is an invalid parameter. Anything else is a failure of the command itself.
 func cliErrorCode(err error) diagnostics.Code {
 	var syn *json.SyntaxError
 	var typ *json.UnmarshalTypeError
 	var coded *cliCodedError
+	var patternInput *patternInputError
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		return diagnostics.CodeFileNotFound
 	case errors.As(err, &syn), errors.As(err, &typ):
 		return diagnostics.CodeInvalidJSON
+	case errors.As(err, &patternInput):
+		return diagnostics.CodePatternError
 	case errors.As(err, &coded):
 		return coded.code
 	case cliParseFailed:
@@ -185,6 +280,11 @@ func cliErrorEnvelope(err error) diagnostics.FindingEnvelope {
 	name := ""
 	if cliCurrentFlagSet != nil {
 		name = cliCurrentFlagSet.Name()
+	}
+	// A pattern's own input findings are located and coded one per field;
+	// they are reported as they are rather than joined into one message.
+	if ds := patternInputDiagnostics(err, "", ""); len(ds) > 0 {
+		return diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{Subcommand: name}, ds)
 	}
 	return diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{Subcommand: name}, []diagnostics.Diagnostic{{
 		Code: cliErrorCode(err), Message: err.Error(), Severity: diagnostics.SeverityError,

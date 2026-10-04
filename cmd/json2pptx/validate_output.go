@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
@@ -14,7 +15,7 @@ import (
 // (structural OPC checks + OOXML content checks).
 func runValidateOutput() error {
 	fs := flag.NewFlagSet("validate-output", flag.ContinueOnError)
-	jsonOut := fs.Bool("json", false, "Output results as one JSON array (one entry per file, with an error field for unreadable files)")
+	jsonOut := fs.Bool("json", false, "Output the per-file results alone, as one JSON array (one entry per file, with an error field for unreadable files); --format json wraps the same array as files[] in the shared finding envelope")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx validate-output [options] <file.pptx ...>\n\n")
@@ -22,7 +23,7 @@ func runValidateOutput() error {
 		fmt.Fprintf(os.Stderr, "Checks package integrity, color values, shape ID uniqueness, table structure, etc.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx validate-output presentation.pptx\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx validate-output --json presentation.pptx\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx validate-output --format json presentation.pptx\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
@@ -40,12 +41,14 @@ func runValidateOutput() error {
 	// could not be opened), so the output parses as a single document
 	// (go-slide-creator-csclk.30).
 	hasErrors := false
-	var results []validateOutputResult
+	results := []validateOutputResult{}
+	openErrs := map[string]error{}
 	for _, path := range fs.Args() {
 		report, err := pptx.ValidateOutputFile(path)
 		if err != nil {
 			hasErrors = true
 			if *jsonOut {
+				openErrs[path] = err
 				results = append(results, validateOutputResult{FilePath: path, Error: err.Error()})
 			} else {
 				fmt.Fprintf(os.Stderr, "Error: %s: %v\n", path, err)
@@ -71,7 +74,12 @@ func runValidateOutput() error {
 	if *jsonOut {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		_ = enc.Encode(results)
+		enc.SetEscapeHTML(false)
+		if validateOutputLegacyArray(fs) {
+			_ = enc.Encode(results)
+		} else {
+			_ = enc.Encode(newValidateOutputEnvelope(results, openErrs))
+		}
 	}
 
 	if hasErrors {
@@ -85,6 +93,65 @@ type validateOutputResult struct {
 	IsValid  bool           `json:"is_valid"`
 	Findings []pptx.Finding `json:"findings,omitempty"`
 	Error    string         `json:"error,omitempty"`
+}
+
+// validateOutputLegacyArray reports whether the caller asked for JSON with the
+// deprecated --json flag alone. That form keeps the bare array it always
+// printed, so a script reading `.[0].is_valid` still works; --format json is
+// the shared finding envelope with the same array under files[]
+// (go-slide-creator-u1c9c).
+func validateOutputLegacyArray(fs *flag.FlagSet) bool {
+	given := map[string]bool{}
+	fs.Visit(func(f *flag.Flag) { given[f.Name] = true })
+	return given["json"] && !given["format"]
+}
+
+// validateOutputEnvelope is validate-output's JSON answer: the shared finding
+// envelope every other command answers with, and the per-file results beside
+// it.
+type validateOutputEnvelope struct {
+	diagnostics.FindingEnvelope
+	Files []validateOutputResult `json:"files"`
+}
+
+// newValidateOutputEnvelope builds the envelope from the per-file results: one
+// finding per output-validation finding (a blocking one is an error), and one
+// for each file that could not be read, each naming its file.
+func newValidateOutputEnvelope(results []validateOutputResult, openErrs map[string]error) validateOutputEnvelope {
+	ds := []diagnostics.Diagnostic{}
+	for _, r := range results {
+		if err := openErrs[r.FilePath]; err != nil {
+			code := cliErrorCode(err)
+			if code == diagnostics.CodeInternal {
+				code = diagnostics.CodeValidationFailed
+			}
+			ds = append(ds, diagnostics.Diagnostic{
+				Code: string(code), Message: fmt.Sprintf("%s: %v", r.FilePath, err), Severity: diagnostics.SeverityError,
+				Details: map[string]any{"file_path": r.FilePath},
+			})
+			continue
+		}
+		for _, f := range r.Findings {
+			severity := diagnostics.SeverityWarning
+			if f.Severity == pptx.SeverityBlocking {
+				severity = diagnostics.SeverityError
+			}
+			details := map[string]any{"file_path": r.FilePath, "phase": f.Phase, "validator": f.Validator, "scope": f.Scope}
+			if f.Path != "" {
+				details["part"] = f.Path
+			}
+			if f.SlideIndex >= 0 {
+				details["slide_index"] = f.SlideIndex
+			}
+			ds = append(ds, diagnostics.Diagnostic{
+				Code: f.Code, Message: f.Message, Path: f.SourcePath, Severity: severity, Details: details,
+			})
+		}
+	}
+	return validateOutputEnvelope{
+		FindingEnvelope: diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{Subcommand: "validate-output"}, ds),
+		Files:           results,
+	}
 }
 
 func printValidateOutputHuman(path string, report *pptx.Report) {

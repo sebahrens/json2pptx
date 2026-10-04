@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 )
 
 // runShapeCatalog implements the "shape-catalog" CLI subcommand.
@@ -27,6 +28,17 @@ func runShapeCatalog() error {
 
 	args := map[string]any{}
 	if *category != "" {
+		// The MCP tool's schema refuses an unknown category; called directly
+		// the handler returned an empty catalogue and the command exited 0.
+		names := make([]string, len(shapeCategories))
+		known := false
+		for i, cat := range shapeCategories {
+			names[i] = cat.name
+			known = known || cat.name == *category
+		}
+		if !known {
+			return cliInvalidArg("unknown --category %q: must be one of %s", *category, strings.Join(names, ", "))
+		}
 		args["category"] = *category
 	}
 

@@ -75,9 +75,11 @@ func runSemanticKinds() error {
 			// A script validating a slide needs every accepted key.
 			args["fields"] = []any{"item_schema", "item_schema_full", "compositions", "budgets", "example"}
 		}
-		if *templateName != "" {
-			args["template"] = *templateName
-		}
+	}
+	// The template is checked whether or not a kind is named: an unknown
+	// --template beside the bare catalogue used to be ignored.
+	if *templateName != "" {
+		args["template"] = *templateName
 	}
 	result, err := (&mcpConfig{templatesDir: *templatesDir, cache: newBudgetTemplateCache()}).handleListSlideKinds(context.Background(), mcpRequestWithArgs(args))
 	if err != nil {

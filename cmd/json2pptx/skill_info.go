@@ -510,6 +510,11 @@ func runSkillInfo() error {
 	for _, name := range templateNames {
 		path, cleanup, err := resolveTemplatePath(name, *templatesDir)
 		if err != nil {
+			if *templateName != "" {
+				// The one template the caller asked about: an answer with
+				// templates:null and exit 0 is not an answer.
+				return err
+			}
 			fmt.Fprintf(os.Stderr, "warning: could not resolve template %q: %v\n", name, err)
 			continue
 		}

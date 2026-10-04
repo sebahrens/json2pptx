@@ -239,12 +239,12 @@ func parseJSONInput(jsonPath, templateOverride, designModeOverride string, stric
 	if err := json.Unmarshal(inputData, &patchInput); err == nil && len(patchInput.Operations) > 0 {
 		patched, patchErr := applyPresentationPatch(patchInput)
 		if patchErr != nil {
-			return nil, nil, fmt.Errorf("failed to apply patch: %w", patchErr)
+			return nil, nil, cliInvalidArg("failed to apply patch: %w", patchErr)
 		}
 		input = *patched
 	} else {
 		if err := json.Unmarshal(inputData, &input); err != nil {
-			return nil, nil, fmt.Errorf("failed to parse JSON: %w", err)
+			return nil, nil, cliInvalidJSON("failed to parse JSON: %w", err)
 		}
 	}
 
@@ -260,7 +260,7 @@ func parseJSONInput(jsonPath, templateOverride, designModeOverride string, stric
 		return nil, nil, cliMissingArg("template is required: use --template flag, or set \"template\" (a registered name) or \"template_path\" (a local .pptx) in JSON input")
 	}
 	if input.Template != "" && input.TemplatePath != "" {
-		return nil, nil, fmt.Errorf("set only one of \"template\" (a registered name) or \"template_path\" (a local .pptx), not both")
+		return nil, nil, cliCoded(diagnostics.CodeAmbiguousInput, "set only one of \"template\" (a registered name) or \"template_path\" (a local .pptx), not both")
 	}
 	// A structure block IS the slide list — it expands into one later in
 	// runJSONMode. Rejecting an empty slides[] here made the documented
@@ -268,7 +268,7 @@ func parseJSONInput(jsonPath, templateOverride, designModeOverride string, stric
 	// generate_presentation rendered it: the same deck, two verdicts
 	// (go-slide-creator-m1kg). The expansion checks its own result below.
 	if len(input.Slides) == 0 && input.Structure == nil {
-		return nil, nil, fmt.Errorf("at least one slide is required: provide \"slides\" or a top-level \"structure\" block")
+		return nil, nil, cliCoded(diagnostics.CodeValidationFailed, "at least one slide is required: provide \"slides\" or a top-level \"structure\" block")
 	}
 
 	// Check for unknown keys (additionalProperties:false). Warn by default; when
@@ -282,7 +282,7 @@ func parseJSONInput(jsonPath, templateOverride, designModeOverride string, stric
 		for i, ve := range unknownKeyErrs {
 			msgs[i] = ve.Error()
 		}
-		return nil, nil, fmt.Errorf("unknown JSON keys (strict mode): %s", strings.Join(msgs, "; "))
+		return nil, nil, cliCoded(diagnostics.CodeInvalidKey, "unknown JSON keys (strict mode): %s", strings.Join(msgs, "; "))
 	}
 	for _, ve := range unknownKeyErrs {
 		warnings = append(warnings, ve.Error())
@@ -294,7 +294,7 @@ func parseJSONInput(jsonPath, templateOverride, designModeOverride string, stric
 		for i, ve := range enumErrs {
 			msgs[i] = ve.Error()
 		}
-		return nil, nil, fmt.Errorf("enum validation failed: %s", strings.Join(msgs, "; "))
+		return nil, nil, cliCoded(diagnostics.CodeUnknownEnum, "enum validation failed: %s", strings.Join(msgs, "; "))
 	}
 
 	return &input, warnings, nil
@@ -416,14 +416,14 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// Expand structure block into flat slides (mutually exclusive with top-level slides).
 	if input.Structure != nil {
 		if len(input.Slides) > 0 {
-			return writeJSONError(jsonOutputPath, fmt.Errorf("structure and slides are mutually exclusive — use one or the other"))
+			return writeJSONError(jsonOutputPath, cliCoded(diagnostics.CodeAmbiguousInput, "structure and slides are mutually exclusive — use one or the other"))
 		}
 		expanded, err := expandStructure(input.Structure)
 		if err != nil {
-			return writeJSONError(jsonOutputPath, fmt.Errorf("invalid structure: %w", err))
+			return writeJSONError(jsonOutputPath, cliSlideError("invalid structure: %w", err))
 		}
 		if len(expanded) == 0 {
-			return writeJSONError(jsonOutputPath, fmt.Errorf("structure expanded to no slides: add a section with slides, or a cover / closing"))
+			return writeJSONError(jsonOutputPath, cliCoded(diagnostics.CodeValidationFailed, "structure expanded to no slides: add a section with slides, or a cover / closing"))
 		}
 		input.Slides = expanded
 	}
@@ -465,7 +465,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 				}
 				msgs = append(msgs, msg)
 			}
-			return writeJSONError(jsonOutputPath, fmt.Errorf(
+			return writeJSONError(jsonOutputPath, cliCoded(diagnostics.CodeValidationFailed,
 				"design_mode %q violation(s):\n  %s\n\n"+
 					"To allow raw hex colors and absolute font sizes, rerun with --design-mode=free "+
 					"or set \"design_mode\": \"free\" in the JSON input",
@@ -481,7 +481,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		for _, v := range emojiViolations {
 			msgs = append(msgs, v.Message)
 		}
-		return writeJSONError(jsonOutputPath, fmt.Errorf(
+		return writeJSONError(jsonOutputPath, cliCoded(diagnostics.CodeValidationFailed,
 			"no_emoji policy violation(s):\n  %s",
 			strings.Join(msgs, "\n  ")))
 	}
@@ -517,7 +517,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	if hasURLReferences(input.Slides) {
 		resolver, resolverErr := resource.NewResolver(resource.ResolverOptions{})
 		if resolverErr != nil {
-			return writeJSONError(jsonOutputPath, fmt.Errorf("resource resolver: %w", resolverErr))
+			return writeJSONError(jsonOutputPath, cliCoded(diagnostics.CodeURLResolverInit, "resource resolver: %w", resolverErr))
 		}
 		urlResolver = resolver
 		urlResolverCleanup = func() { resolver.Close() }
@@ -607,7 +607,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 			for _, f := range blocking {
 				msgs = append(msgs, f.Error())
 			}
-			return writeJSONError(jsonOutputPath, fmt.Errorf("output validation failed (strict): %s", strings.Join(msgs, "; ")))
+			return writeJSONError(jsonOutputPath, cliCoded(diagnostics.CodeOutputValidationError, "output validation failed (strict): %s", strings.Join(msgs, "; ")))
 		default:
 			return writeJSONError(jsonOutputPath, renderErr)
 		}
@@ -789,7 +789,7 @@ func convertJSONSlides(jsonSlides []JSONSlide) ([]generator.SlideSpec, error) {
 
 	for i, jsonSlide := range jsonSlides {
 		if jsonSlide.LayoutID == "" {
-			return nil, fmt.Errorf("slide %d: layout_id is required", i+1)
+			return nil, cliSlideError("slide %d: layout_id is required", i+1)
 		}
 
 		slideType := inferJSONSlideType(jsonSlide)
@@ -934,13 +934,13 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	if hasComposition && explicitLayout && len(layouts) > 0 {
 		if selected := findLayoutMetadataByID(layouts, slide.LayoutID); selected != nil &&
 			!isCompositionLayoutCompatible(*selected) {
-			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: layout %q is incompatible with pattern/compose/shape_grid content", i+1, slide.LayoutID)
+			return generator.SlideSpec{}, nil, nil, cliSlideError("slide %d: layout %q is incompatible with pattern/compose/shape_grid content", i+1, slide.LayoutID)
 		}
 	}
 
 	if slide.LayoutID == "" {
 		if len(layouts) == 0 {
-			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: layout_id is required (no template layouts available for auto-selection)", i+1)
+			return generator.SlideSpec{}, nil, nil, cliSlideError("slide %d: layout_id is required (no template layouts available for auto-selection)", i+1)
 		}
 
 		// Auto-select layout using heuristic engine
@@ -1046,7 +1046,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	if strings.TrimSpace(slide.Headline) != "" && isBlankCanvasLayout(slide.LayoutID, layouts) {
 		headlineXML, headlineErr := generateCanvasHeadline(slide.Headline, canvasHeadlineBounds(slideWidth, slideHeight), diagCtx)
 		if headlineErr != nil {
-			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: headline: %w", i+1, headlineErr)
+			return generator.SlideSpec{}, nil, nil, cliSlideError("slide %d: headline: %w", i+1, headlineErr)
 		}
 		spec.OverlayShapeXML = append(spec.OverlayShapeXML, headlineXML)
 	}
@@ -1084,7 +1084,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			setCount++
 		}
 		if setCount > 1 {
-			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: only one of pattern, compose, or shape_grid may be set", i+1)
+			return generator.SlideSpec{}, nil, nil, cliSlideError("slide %d: only one of pattern, compose, or shape_grid may be set", i+1)
 		}
 	}
 
@@ -1211,7 +1211,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		}
 		gridResult, err := resolveShapeGrid(slide.ShapeGrid, alloc, overrideBounds, contentZone, slideWidth, slideHeight, slideDiagCtx)
 		if err != nil {
-			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: shape_grid: %w", i+1, err)
+			return generator.SlideSpec{}, nil, nil, cliSlideError("slide %d: shape_grid: %w", i+1, err)
 		}
 		if gridResult != nil {
 			spec.RawShapeXML = gridResult.Shapes
@@ -1253,7 +1253,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			}
 			overlayShapes, overlayFindings, err := resolveOverlays(slide.Overlays, cells, overlayAlloc, slideWidth, slideHeight, overlayEnvFor(i, slideDiagCtx))
 			if err != nil {
-				return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: overlays: %w", i+1, err)
+				return generator.SlideSpec{}, nil, nil, cliSlideError("slide %d: overlays: %w", i+1, err)
 			}
 			spec.OverlayShapeXML = append(spec.OverlayShapeXML, overlayShapes...)
 			slideFitFindings = append(slideFitFindings, overlayFindings...)
@@ -1264,7 +1264,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		overlayAlloc.SetMinID(400)
 		overlayShapes, _, err := resolveOverlays(slide.Overlays, nil, overlayAlloc, slideWidth, slideHeight, overlayEnvFor(i, diagCtx))
 		if err != nil {
-			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: overlays: %w", i+1, err)
+			return generator.SlideSpec{}, nil, nil, cliSlideError("slide %d: overlays: %w", i+1, err)
 		}
 		spec.OverlayShapeXML = append(spec.OverlayShapeXML, overlayShapes...)
 	}
@@ -1363,10 +1363,10 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 
 	for j, ci := range content {
 		if ci.PlaceholderID == "" {
-			return nil, fmt.Errorf("slide %d, content %d: placeholder_id is required", slideNum, j+1)
+			return nil, cliSlideError("slide %d, content %d: placeholder_id is required", slideNum, j+1)
 		}
 		if ci.Type == "" {
-			return nil, fmt.Errorf("slide %d, content %d: type is required", slideNum, j+1)
+			return nil, cliSlideError("slide %d, content %d: type is required", slideNum, j+1)
 		}
 
 		item := generator.ContentItem{
@@ -1381,7 +1381,7 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 
 		resolved, err := ci.ResolveValue()
 		if err != nil {
-			return nil, fmt.Errorf("slide %d, content %d: %w", slideNum, j+1, err)
+			return nil, cliSlideError("slide %d, content %d: %w", slideNum, j+1, err)
 		}
 
 		switch ci.Type {
@@ -1411,7 +1411,7 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 			}
 			text, ok := resolved.(string)
 			if !ok {
-				return nil, fmt.Errorf("slide %d, content %d: text resolved to %T, want string", slideNum, j+1, resolved)
+				return nil, cliSlideError("slide %d, content %d: text resolved to %T, want string", slideNum, j+1, resolved)
 			}
 			item.Value = text
 
@@ -1419,7 +1419,7 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 			item.Type = generator.ContentBullets
 			bullets, ok := resolved.([]string)
 			if !ok {
-				return nil, fmt.Errorf("slide %d, content %d: bullets resolved to %T, want []string", slideNum, j+1, resolved)
+				return nil, cliSlideError("slide %d, content %d: bullets resolved to %T, want []string", slideNum, j+1, resolved)
 			}
 			item.Value = bullets
 			// A comparison slide's columns open with the option names: render
@@ -1430,7 +1430,7 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 			item.Type = generator.ContentBodyAndBullets
 			input, ok := resolved.(*BodyAndBulletsInput)
 			if !ok {
-				return nil, fmt.Errorf("slide %d, content %d: body_and_bullets resolved to %T, want *BodyAndBulletsInput", slideNum, j+1, resolved)
+				return nil, cliSlideError("slide %d, content %d: body_and_bullets resolved to %T, want *BodyAndBulletsInput", slideNum, j+1, resolved)
 			}
 			item.Value = generator.BodyAndBulletsContent{
 				Body:         input.Body,
@@ -1442,7 +1442,7 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 			item.Type = generator.ContentBodyAndLead
 			input, ok := resolved.(*BodyAndLeadInput)
 			if !ok {
-				return nil, fmt.Errorf("slide %d, content %d: body_and_lead resolved to %T, want *BodyAndLeadInput", slideNum, j+1, resolved)
+				return nil, cliSlideError("slide %d, content %d: body_and_lead resolved to %T, want *BodyAndLeadInput", slideNum, j+1, resolved)
 			}
 			item.Value = generator.BodyAndLeadContent{
 				Lead:    input.Lead,
@@ -1453,7 +1453,7 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 			item.Type = generator.ContentBulletGroups
 			input, ok := resolved.(*BulletGroupsInput)
 			if !ok {
-				return nil, fmt.Errorf("slide %d, content %d: bullet_groups resolved to %T, want *BulletGroupsInput", slideNum, j+1, resolved)
+				return nil, cliSlideError("slide %d, content %d: bullet_groups resolved to %T, want *BulletGroupsInput", slideNum, j+1, resolved)
 			}
 			item.Value = convertBulletGroupsInput(input)
 
@@ -1461,11 +1461,11 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 			item.Type = generator.ContentTable
 			input, ok := resolved.(*TableInput)
 			if !ok {
-				return nil, fmt.Errorf("slide %d, content %d: table resolved to %T, want *TableInput", slideNum, j+1, resolved)
+				return nil, cliSlideError("slide %d, content %d: table resolved to %T, want *TableInput", slideNum, j+1, resolved)
 			}
 			spec := input.ToTableSpec()
 			if err := spec.CheckRowWidths(); err != nil {
-				return nil, fmt.Errorf("slide %d, content %d: %w", slideNum, j+1, err)
+				return nil, cliSlideError("slide %d, content %d: %w", slideNum, j+1, err)
 			}
 			item.Value = spec
 
@@ -1475,17 +1475,17 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 				// Typed field path: ChartValue was set
 				chart, ok := resolved.(*types.ChartSpec) //nolint:staticcheck // backward compatibility
 				if !ok {
-					return nil, fmt.Errorf("slide %d, content %d: chart resolved to %T, want *types.ChartSpec", slideNum, j+1, resolved)
+					return nil, cliSlideError("slide %d, content %d: chart resolved to %T, want *types.ChartSpec", slideNum, j+1, resolved)
 				}
 				item.Value = chart.ToDiagramSpec()
 			} else {
 				// Legacy path: parse from Value json.RawMessage
 				var chart types.ChartSpec                                //nolint:staticcheck // backward compatibility
 				if err := json.Unmarshal(ci.Value, &chart); err != nil { //nolint:staticcheck // backward compatibility
-					return nil, fmt.Errorf("slide %d, content %d: invalid chart value: %w", slideNum, j+1, err)
+					return nil, cliSlideError("slide %d, content %d: invalid chart value: %w", slideNum, j+1, err)
 				}
 				if chart.Type == "" {
-					return nil, fmt.Errorf("slide %d, content %d: chart type is required", slideNum, j+1)
+					return nil, cliSlideError("slide %d, content %d: chart type is required", slideNum, j+1)
 				}
 				item.Value = chart.ToDiagramSpec()
 			}
@@ -1499,17 +1499,17 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 				// Typed field path: DiagramValue was set
 				diagram, ok := resolved.(*types.DiagramSpec)
 				if !ok {
-					return nil, fmt.Errorf("slide %d, content %d: diagram resolved to %T, want *types.DiagramSpec", slideNum, j+1, resolved)
+					return nil, cliSlideError("slide %d, content %d: diagram resolved to %T, want *types.DiagramSpec", slideNum, j+1, resolved)
 				}
 				item.Value = diagram
 			} else {
 				// Legacy path: parse from Value json.RawMessage
 				var diagram types.DiagramSpec
 				if err := json.Unmarshal(ci.Value, &diagram); err != nil {
-					return nil, fmt.Errorf("slide %d, content %d: invalid diagram value: %w", slideNum, j+1, err)
+					return nil, cliSlideError("slide %d, content %d: invalid diagram value: %w", slideNum, j+1, err)
 				}
 				if diagram.Type == "" {
-					return nil, fmt.Errorf("slide %d, content %d: diagram type is required", slideNum, j+1)
+					return nil, cliSlideError("slide %d, content %d: diagram type is required", slideNum, j+1)
 				}
 				item.Value = &diagram
 			}
@@ -1523,10 +1523,10 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 				// Typed field path: ImageValue was set
 				img, ok := resolved.(*ImageInput)
 				if !ok {
-					return nil, fmt.Errorf("slide %d, content %d: image resolved to %T, want *ImageInput", slideNum, j+1, resolved)
+					return nil, cliSlideError("slide %d, content %d: image resolved to %T, want *ImageInput", slideNum, j+1, resolved)
 				}
 				if img.Path == "" {
-					return nil, fmt.Errorf("slide %d, content %d: image path is required", slideNum, j+1)
+					return nil, cliSlideError("slide %d, content %d: image path is required", slideNum, j+1)
 				}
 				item.Value = generator.ImageContent{
 					Path: img.Path,
@@ -1541,10 +1541,10 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 					Fit  string `json:"fit,omitempty"`
 				}
 				if err := json.Unmarshal(ci.Value, &img); err != nil {
-					return nil, fmt.Errorf("slide %d, content %d: invalid image value: %w", slideNum, j+1, err)
+					return nil, cliSlideError("slide %d, content %d: invalid image value: %w", slideNum, j+1, err)
 				}
 				if img.Path == "" {
-					return nil, fmt.Errorf("slide %d, content %d: image path is required", slideNum, j+1)
+					return nil, cliSlideError("slide %d, content %d: image path is required", slideNum, j+1)
 				}
 				item.Value = generator.ImageContent{
 					Path: img.Path,
@@ -1554,12 +1554,12 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 			}
 
 		default:
-			return nil, fmt.Errorf("slide %d, content %d: unknown type %q (must be text, bullets, body_and_bullets, body_and_lead, bullet_groups, table, image, chart, or diagram)", slideNum, j+1, ci.Type)
+			return nil, cliSlideError("slide %d, content %d: unknown type %q (must be text, bullets, body_and_bullets, body_and_lead, bullet_groups, table, image, chart, or diagram)", slideNum, j+1, ci.Type)
 		}
 
 		if image, ok := item.Value.(generator.ImageContent); ok {
 			if err := generator.ValidateImageFit(image.Fit); err != nil {
-				return nil, fmt.Errorf("slide %d, content %d: %w", slideNum, j+1, err)
+				return nil, cliSlideError("slide %d, content %d: %w", slideNum, j+1, err)
 			}
 		}
 		items = append(items, item)
@@ -1854,12 +1854,12 @@ func checkDiagramData(value any, slideNum, contentNum int) error {
 	}
 	if generator.IsNativeDiagramType(spec) {
 		if err := generator.ValidateNativeDiagramData(spec); err != nil {
-			return fmt.Errorf("slide %d, content %d: diagram data: %w", slideNum, contentNum, err)
+			return cliSlideError("slide %d, content %d: diagram data: %w", slideNum, contentNum, err)
 		}
 		return nil
 	}
 	if err := svggen.CheckDataContract(spec.Type, spec.Data); err != nil {
-		return fmt.Errorf("slide %d, content %d: %s data: %w", slideNum, contentNum, spec.Type, err)
+		return cliSlideError("slide %d, content %d: %s data: %w", slideNum, contentNum, spec.Type, err)
 	}
 	return nil
 }
@@ -1922,10 +1922,10 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 
 	for j, jsonItem := range jsonContent {
 		if jsonItem.PlaceholderID == "" {
-			return nil, fmt.Errorf("slide %d, content %d: placeholder_id is required", slideNum, j+1)
+			return nil, cliSlideError("slide %d, content %d: placeholder_id is required", slideNum, j+1)
 		}
 		if jsonItem.Type == "" {
-			return nil, fmt.Errorf("slide %d, content %d: type is required", slideNum, j+1)
+			return nil, cliSlideError("slide %d, content %d: type is required", slideNum, j+1)
 		}
 
 		item := generator.ContentItem{
@@ -1953,7 +1953,7 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 			}
 			var text string
 			if err := json.Unmarshal(jsonItem.Value, &text); err != nil {
-				return nil, fmt.Errorf("slide %d, content %d: invalid text value: %w", slideNum, j+1, err)
+				return nil, cliSlideError("slide %d, content %d: invalid text value: %w", slideNum, j+1, err)
 			}
 			item.Value = text
 
@@ -1961,7 +1961,7 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 			item.Type = generator.ContentBullets
 			var bullets []string
 			if err := json.Unmarshal(jsonItem.Value, &bullets); err != nil {
-				return nil, fmt.Errorf("slide %d, content %d: invalid bullets value (expected array of strings): %w", slideNum, j+1, err)
+				return nil, cliSlideError("slide %d, content %d: invalid bullets value (expected array of strings): %w", slideNum, j+1, err)
 			}
 			item.Value = bullets
 
@@ -1973,13 +1973,13 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 				Fit  string `json:"fit,omitempty"`
 			}
 			if err := json.Unmarshal(jsonItem.Value, &img); err != nil {
-				return nil, fmt.Errorf("slide %d, content %d: invalid image value: %w", slideNum, j+1, err)
+				return nil, cliSlideError("slide %d, content %d: invalid image value: %w", slideNum, j+1, err)
 			}
 			if img.Path == "" {
-				return nil, fmt.Errorf("slide %d, content %d: image path is required", slideNum, j+1)
+				return nil, cliSlideError("slide %d, content %d: image path is required", slideNum, j+1)
 			}
 			if err := generator.ValidateImageFit(img.Fit); err != nil {
-				return nil, fmt.Errorf("slide %d, content %d: %w", slideNum, j+1, err)
+				return nil, cliSlideError("slide %d, content %d: %w", slideNum, j+1, err)
 			}
 			item.Value = generator.ImageContent{
 				Path: img.Path,
@@ -1991,10 +1991,10 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 			item.Type = generator.ContentDiagram
 			var chart types.ChartSpec //nolint:staticcheck // backward compat
 			if err := json.Unmarshal(jsonItem.Value, &chart); err != nil {
-				return nil, fmt.Errorf("slide %d, content %d: invalid chart value: %w", slideNum, j+1, err)
+				return nil, cliSlideError("slide %d, content %d: invalid chart value: %w", slideNum, j+1, err)
 			}
 			if chart.Type == "" {
-				return nil, fmt.Errorf("slide %d, content %d: chart type is required", slideNum, j+1)
+				return nil, cliSlideError("slide %d, content %d: chart type is required", slideNum, j+1)
 			}
 			// Convert ChartSpec to DiagramSpec at the API boundary
 			item.Value = chart.ToDiagramSpec()
@@ -2009,10 +2009,10 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 			item.Type = generator.ContentDiagram
 			var diagram types.DiagramSpec
 			if err := json.Unmarshal(jsonItem.Value, &diagram); err != nil {
-				return nil, fmt.Errorf("slide %d, content %d: invalid diagram value: %w", slideNum, j+1, err)
+				return nil, cliSlideError("slide %d, content %d: invalid diagram value: %w", slideNum, j+1, err)
 			}
 			if diagram.Type == "" {
-				return nil, fmt.Errorf("slide %d, content %d: diagram type is required", slideNum, j+1)
+				return nil, cliSlideError("slide %d, content %d: diagram type is required", slideNum, j+1)
 			}
 			if err := checkDiagramData(&diagram, slideNum, j+1); err != nil {
 				return nil, err
@@ -2023,11 +2023,11 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 			item.Type = generator.ContentTable
 			var tableInput TableInput
 			if err := json.Unmarshal(jsonItem.Value, &tableInput); err != nil {
-				return nil, fmt.Errorf("slide %d, content %d: invalid table value: %w", slideNum, j+1, err)
+				return nil, cliSlideError("slide %d, content %d: invalid table value: %w", slideNum, j+1, err)
 			}
 			spec := tableInput.ToTableSpec()
 			if err := spec.CheckRowWidths(); err != nil {
-				return nil, fmt.Errorf("slide %d, content %d: %w", slideNum, j+1, err)
+				return nil, cliSlideError("slide %d, content %d: %w", slideNum, j+1, err)
 			}
 			item.Value = spec
 
@@ -2035,7 +2035,7 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 			item.Type = generator.ContentBodyAndBullets
 			var input BodyAndBulletsInput
 			if err := json.Unmarshal(jsonItem.Value, &input); err != nil {
-				return nil, fmt.Errorf("slide %d, content %d: invalid body_and_bullets value: %w", slideNum, j+1, err)
+				return nil, cliSlideError("slide %d, content %d: invalid body_and_bullets value: %w", slideNum, j+1, err)
 			}
 			item.Value = generator.BodyAndBulletsContent{
 				Body:         input.Body,
@@ -2047,7 +2047,7 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 			item.Type = generator.ContentBodyAndLead
 			var input BodyAndLeadInput
 			if err := json.Unmarshal(jsonItem.Value, &input); err != nil {
-				return nil, fmt.Errorf("slide %d, content %d: invalid body_and_lead value: %w", slideNum, j+1, err)
+				return nil, cliSlideError("slide %d, content %d: invalid body_and_lead value: %w", slideNum, j+1, err)
 			}
 			item.Value = generator.BodyAndLeadContent{
 				Lead:    input.Lead,
@@ -2058,12 +2058,12 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 			item.Type = generator.ContentBulletGroups
 			var input BulletGroupsInput
 			if err := json.Unmarshal(jsonItem.Value, &input); err != nil {
-				return nil, fmt.Errorf("slide %d, content %d: invalid bullet_groups value: %w", slideNum, j+1, err)
+				return nil, cliSlideError("slide %d, content %d: invalid bullet_groups value: %w", slideNum, j+1, err)
 			}
 			item.Value = convertBulletGroupsInput(&input)
 
 		default:
-			return nil, fmt.Errorf("slide %d, content %d: unknown type %q (must be text, bullets, body_and_bullets, body_and_lead, bullet_groups, table, image, chart, or diagram)", slideNum, j+1, jsonItem.Type)
+			return nil, cliSlideError("slide %d, content %d: unknown type %q (must be text, bullets, body_and_bullets, body_and_lead, bullet_groups, table, image, chart, or diagram)", slideNum, j+1, jsonItem.Type)
 		}
 
 		items = append(items, item)
@@ -3578,7 +3578,7 @@ func resolveAutoLayout(req layout.SelectionRequest, slide SlideInput, hasComposi
 		}
 	}
 
-	return "", 0, "", fmt.Errorf(
+	return "", 0, "", cliSlideError(
 		"slide %d: no layout in this template can host slide_type %q: %w",
 		slideIdx+1, authoredSlideType(slide), err)
 }
