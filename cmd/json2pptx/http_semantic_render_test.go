@@ -248,7 +248,7 @@ func TestHTTPSemanticRender_RegisteredTemplate(t *testing.T) {
 	if code != http.StatusOK || res.Template != "warm-coral" {
 		t.Fatalf("pinned render: %d %+v", code, res)
 	}
-	if len(res.Warnings) == 0 || !strings.Contains(res.Warnings[0], `overrides meta.template "midnight-blue"`) {
+	if len(res.Warnings) == 0 || !strings.Contains(res.Warnings[0], `overrides meta.template "midnight-blue"`) || strings.Contains(res.Warnings[0], "patch [") {
 		t.Errorf("the response does not say the template argument replaced the pin: %v", res.Warnings)
 	}
 	if got := themeName(t, downloadDeck(t, ts, res.FileURL)); got != want {

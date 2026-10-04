@@ -176,6 +176,27 @@ func TestTemplateArgumentWinsOnCompileAndExplain(t *testing.T) {
 		check("compile_deck_spec "+tc.arg, compiled, tc.want, tc.warns)
 		structuredInto(t, mustCall(t, mc.handleExplainDeckSpec, args).StructuredContent, &explained)
 		check("explain_deck_spec "+tc.arg, explained, tc.want, tc.warns)
+		// go-slide-creator-7kh6y: the MCP caller can patch, so its warning
+		// ends with the patch; the CLI's (below) and the HTTP surface's do not.
+		if tc.warns && !strings.Contains(explained.Warnings[0], `(patch [{"op":"replace","path":"/meta/template","value":"forest-green"}])`) {
+			t.Errorf("the MCP override warning lost its patch: %q", explained.Warnings[0])
+		}
+	}
+
+	// go-slide-creator-7kh6y: explain names the template it plans on — the
+	// archetype's default when nothing else sets one — and says so when
+	// there is none to name.
+	for archetype, want := range map[string]string{"qbr": "midnight-blue", "": ""} {
+		meta := map[string]any{"title": "Unbound"}
+		if archetype != "" {
+			meta["archetype"] = archetype
+		}
+		var explained answer
+		args := map[string]any{"spec": map[string]any{"meta": meta, "slides": spec["slides"]}}
+		structuredInto(t, mustCall(t, mc.handleExplainDeckSpec, args).StructuredContent, &explained)
+		if noDefault := len(explained.Warnings) == 1 && explained.Warnings[0] == explainNoTemplateWarning; explained.Template != want || noDefault != (want == "") {
+			t.Errorf("explain_deck_spec archetype %q: template = %q, warnings = %v", archetype, explained.Template, explained.Warnings)
+		}
 	}
 
 	raw, err := json.Marshal(spec)
@@ -192,7 +213,7 @@ func TestTemplateArgumentWinsOnCompileAndExplain(t *testing.T) {
 		if err := json.Unmarshal([]byte(stdout), &got); err != nil || code != 0 {
 			t.Fatalf("semantic %s exited %d (%v): %s", sub, code, err, stderr)
 		}
-		if got.Template != "forest-green" || !strings.Contains(stderr, "overrides meta.template") {
+		if got.Template != "forest-green" || !strings.Contains(stderr, "overrides meta.template") || strings.Contains(stderr, "patch [") {
 			t.Errorf("semantic %s: template = %q, stderr %q", sub, got.Template, stderr)
 		}
 	}
@@ -202,8 +223,16 @@ func TestTemplatePrecedenceWarning(t *testing.T) {
 	// A template argument replaces the pin for the call and says how to keep it.
 	over := resolveSpecTemplate("midnight-blue", "forest-green", "", specSource{})
 	if over.Override != "forest-green" || over.Bind != "midnight-blue" || len(over.Warnings) != 1 ||
-		!strings.Contains(over.Warnings[0], "forest-green") || !strings.Contains(over.Warnings[0], "/meta/template") {
+		!strings.Contains(over.Warnings[0], "forest-green") || !strings.Contains(over.Warnings[0], "set meta.template to it") || strings.Contains(over.Warnings[0], "patch [") {
 		t.Errorf("override = %+v", over)
+	}
+	if mcpOver := resolveSpecTemplateMCP("midnight-blue", "forest-green", "", specSource{}); len(mcpOver.Warnings) != 1 ||
+		!strings.HasPrefix(mcpOver.Warnings[0], over.Warnings[0]+" (patch [") || mcpOver.Override != over.Override || mcpOver.Bind != over.Bind {
+		t.Errorf("MCP override = %+v", mcpOver)
+	}
+	// Nothing naming a template is said once, with what to set.
+	if d := semanticTemplateDiagnostic("", testTemplatesDir, diagnostics.CodeTemplateNotFound, errTemplateNameNotFound); !strings.HasPrefix(d.Message, "no template: ") || strings.Contains(d.Message, "unavailable") {
+		t.Errorf("empty template name: %q", d.Message)
 	}
 	if same := resolveSpecTemplate("midnight-blue", "midnight-blue", "", specSource{}); same.Override != "" || len(same.Warnings) != 0 {
 		t.Errorf("same template: %+v", same)

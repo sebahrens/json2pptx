@@ -23,10 +23,19 @@ import (
 // TemplateOverrideWarning says that a call's template replaced the spec's
 // meta.template for that call. Every surface that lets a call name a template
 // (MCP, CLI, and the HTTP compile and render endpoints) reports the override
-// in these words (go-slide-creator-075py).
+// in these words (go-slide-creator-075py). It names no tool: an HTTP or CLI
+// caller edits the spec it sent and has no patch call to make
+// (go-slide-creator-7kh6y).
 func TemplateOverrideWarning(metaTemplate, argTemplate string) string {
-	return fmt.Sprintf("template argument %q overrides meta.template %q for this call only: the spec still pins %q; to keep %q, set meta.template to it (patch [{\"op\":\"replace\",\"path\":\"/meta/template\",\"value\":%q}])",
-		argTemplate, metaTemplate, metaTemplate, argTemplate, argTemplate)
+	return fmt.Sprintf("template argument %q overrides meta.template %q for this call only: the spec still pins %q; to keep %q, set meta.template to it",
+		argTemplate, metaTemplate, metaTemplate, argTemplate)
+}
+
+// TemplateOverridePatchWarning is TemplateOverrideWarning for a surface with a
+// patch call (MCP): the same sentence, then the patch that keeps the template.
+func TemplateOverridePatchWarning(metaTemplate, argTemplate string) string {
+	return TemplateOverrideWarning(metaTemplate, argTemplate) +
+		fmt.Sprintf(" (patch [{\"op\":\"replace\",\"path\":\"/meta/template\",\"value\":%q}])", argTemplate)
 }
 
 // CompileOptions tunes the compile pass.

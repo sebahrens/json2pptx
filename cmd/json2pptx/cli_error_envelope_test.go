@@ -12,6 +12,9 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // cliEnvelope is the finding envelope as the CLI prints it.
@@ -55,6 +58,17 @@ func TestCLICatchAllErrorEnvelope(t *testing.T) {
 		{[]string{"repair", missing}, "repair", "INPUT.MISSING_PARAMETER"},
 		{[]string{"patterns", "show", "no-such-pattern", "--format", "json"}, "patterns show", "INPUT.INVALID_PARAMETER"},
 		{[]string{"generate", "--strict-fit", "sometimes", missing}, "generate", "INPUT.INVALID_PARAMETER"},
+		// go-slide-creator-u1c9c's closing sweep: a --format json the flag
+		// parser never reached, a group's unknown subcommand, a command with
+		// its own argument parser, and values the MCP schema refuses but the
+		// CLI passed through.
+		{[]string{"patterns", "list", "--no-such-flag", "--format", "json"}, "patterns list", "INPUT.INVALID_PARAMETER"},
+		{[]string{"validate-output", "--no-such-flag", "--json"}, "validate-output", "INPUT.INVALID_PARAMETER"},
+		{[]string{"tables", "density", "--format", "json"}, "", "INPUT.INVALID_PARAMETER"},
+		{[]string{"audit-palette", filepath.Join(t.TempDir(), "nope.pptx")}, "audit-palette", "INPUT.FILE_NOT_FOUND"},
+		{[]string{"audit-palette", "--mode", "sideways", filepath.Join(t.TempDir(), "nope.pptx")}, "audit-palette", "INPUT.INVALID_PARAMETER"},
+		{[]string{"shape-catalog", "--category", "no-such-category"}, "shape-catalog", "INPUT.INVALID_PARAMETER"},
+		{[]string{"skill-info", "--template", "no-such-template", "--templates-dir", "../../templates", "--format", "json"}, "skill-info", "TPL.TEMPLATE_NOT_FOUND"},
 	} {
 		stdout, stderr, code := cliRun(t, nil, tc.args...)
 		if code != 1 {
@@ -111,7 +125,13 @@ func TestCLICatchAllErrorEnvelope(t *testing.T) {
 	for body, want := range map[string]string{
 		`{"slides":[{"layout_id":"content"}]}`:                               "INPUT.MISSING_PARAMETER",
 		`{"template":"no-such-template","slides":[{"layout_id":"content"}]}`: "TEMPLATE_NOT_FOUND",
-		`{"template":"midnight-blue","slides":[]}`:                           "GENERATION_FAILED",
+		`{"template":"midnight-blue","slides":[]}`:                           "VALIDATION_FAILED",
+		// Deck content the shared pipeline refuses states what is wrong
+		// (go-slide-creator-u1c9c); what only generation knows stays its own.
+		`{"template":"midnight-blue","template_path":"x.pptx","slides":[{"layout_id":"content"}]}`:                                                                                          "AMBIGUOUS_INPUT",
+		`{"template":"midnight-blue","slides":[{"layout_id":"content","content":[{"placeholder_id":"body","type":"poem","text_value":"x"}]}]}`:                                              "INVALID_SLIDE",
+		`{"template":"midnight-blue","slides":[{"layout_id":"blank-title","pattern":{"name":"kpi-3up","values":[{"big":"1","small":"a"}],"vertical_align":"sideways"}}]}`:                   "PATTERN_ERROR",
+		`{"template":"midnight-blue","slides":[{"layout_id":"blank-title","shape_grid":{"rows":[{"cells":[{"shape":{"geometry":"rect","text":"a"}}]}]},"overlays":[{"kind":"squiggle"}]}]}`: "INVALID_SLIDE",
 	} {
 		if err := os.WriteFile(deck, []byte(body), 0o600); err != nil {
 			t.Fatal(err)
@@ -167,6 +187,100 @@ func TestCLIStrictFitFindingsReportedOnce(t *testing.T) {
 				t.Errorf("%v: stderr repeats a finding as JSON: %.160s", extra, line)
 			}
 		}
+	}
+}
+
+// TestCLIDeckContentErrorsAreTyped: the errors the shared pipeline files
+// return for deck content carry their code from where they are built, so no
+// command that reads a deck reports them as INTERNAL ("retry"); a wrapping
+// site keeps the code of the error it wraps (go-slide-creator-u1c9c).
+func TestCLIDeckContentErrorsAreTyped(t *testing.T) {
+	pattern := cliPatternError("pattern %q: does not support cell_overrides", "kpi-3up")
+	for label, tc := range map[string]struct {
+		err  error
+		want diagnostics.Code
+	}{
+		"slide":                      {cliSlideError("slide %d, content %d: type is required", 2, 1), diagnostics.CodeInvalidSlide},
+		"pattern":                    {pattern, diagnostics.CodePatternError},
+		"pattern under a slide":      {cliSlideError("slide %d: shape_grid: %w", 2, pattern), diagnostics.CodePatternError},
+		"plain under a slide":        {cliSlideError("slide %d: headline: %w", 2, errors.New("too long")), diagnostics.CodeInvalidSlide},
+		"pattern input findings":     {cliSlideError("slide %d: %w", 2, newPatternInputError("kpi-3up", []*patterns.ValidationError{{Code: "required", Message: "values[0].small is required"}})), diagnostics.CodePatternError},
+		"missing file under a slide": {cliSlideError("slide %d: %w", 2, os.ErrNotExist), diagnostics.CodeFileNotFound},
+	} {
+		if got := cliErrorCode(tc.err); got != tc.want {
+			t.Errorf("%s: code = %s, want %s", label, got, tc.want)
+		}
+	}
+	// The three files build no untyped error for deck content.
+	_, _, err := expandPattern(&PatternInput{Name: "kpi-3up", Values: json.RawMessage(`[{"big":"1","small":"a"},{"big":"2","small":"b"},{"big":"3","small":"c"}]`), VerticalAlign: "sideways"}, patterns.ExpandContext{}, patterns.Default())
+	if err == nil || cliErrorCode(err) != diagnostics.CodePatternError {
+		t.Errorf("expandPattern vertical_align error: %v has code %s", err, cliErrorCode(err))
+	}
+	_, _, err = resolveOverlays([]*OverlayShapeInput{{Kind: "squiggle"}}, nil, &pptx.ShapeIDAllocator{}, 12192000, 6858000, overlayEnv{})
+	if err == nil || cliErrorCode(err) != diagnostics.CodeInvalidSlide {
+		t.Errorf("resolveOverlays unknown kind: %v has code %s", err, cliErrorCode(err))
+	}
+	_, err = convertPresentationContent([]ContentInput{{PlaceholderID: "body"}}, 1, types.SlideTypeContent)
+	if err == nil || cliErrorCode(err) != diagnostics.CodeInvalidSlide {
+		t.Errorf("convertPresentationContent missing type: %v has code %s", err, cliErrorCode(err))
+	}
+
+	// A pattern's located input findings reach the CLI one per field, coded,
+	// instead of joined into one INTERNAL message.
+	values := filepath.Join(t.TempDir(), "values.json")
+	if err := os.WriteFile(values, []byte(`[{"big":"1"}]`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	stdout, _, code := cliRun(t, nil, "patterns", "expand", "kpi-3up", values, "--format", "json")
+	var env cliEnvelope
+	decodeOneJSON(t, stdout, &env)
+	if code != 1 || env.Subcommand != "patterns expand" || len(env.Findings) < 2 {
+		t.Fatalf("patterns expand: exit=%d envelope=%s", code, strings.TrimSpace(stdout))
+	}
+	for _, f := range env.Findings {
+		if strings.HasSuffix(f.Code, "INTERNAL") {
+			t.Errorf("patterns expand reports %s: %s", f.Code, f.Message)
+		}
+	}
+}
+
+// TestCLIValidateOutputEnvelope: --format json answers with the shared finding
+// envelope and the per-file results under files[]; the deprecated --json alone
+// keeps the bare array (go-slide-creator-u1c9c).
+func TestCLIValidateOutputEnvelope(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "nope.pptx")
+	good := "../../templates/midnight-blue.pptx"
+	type fileResult struct {
+		FilePath string `json:"file_path"`
+		IsValid  bool   `json:"is_valid"`
+		Error    string `json:"error"`
+	}
+	var env struct {
+		cliEnvelope
+		Files []fileResult `json:"files"`
+	}
+	stdout, _, code := cliRun(t, nil, "validate-output", "--format", "json", good, missing)
+	decodeOneJSON(t, stdout, &env)
+	if code != 1 || env.OK == nil || *env.OK || env.Subcommand != "validate-output" || len(env.Files) != 2 ||
+		!env.Files[0].IsValid || env.Files[1].Error == "" {
+		t.Fatalf("validate-output --format json: exit=%d %s", code, strings.TrimSpace(stdout))
+	}
+	if n := len(env.Findings); n == 0 || env.Findings[n-1].Code != "INPUT.FILE_NOT_FOUND" || !strings.Contains(env.Findings[n-1].Message, missing) {
+		t.Errorf("the unreadable file is not a FILE_NOT_FOUND finding naming it: %+v", env.Findings)
+	}
+
+	env.OK, env.Files = nil, nil
+	stdout, _, code = cliRun(t, nil, "validate-output", "--format", "json", good)
+	decodeOneJSON(t, stdout, &env)
+	if code != 0 || env.OK == nil || !*env.OK || len(env.Files) != 1 || !env.Files[0].IsValid {
+		t.Errorf("validate-output on a valid file: exit=%d %s", code, strings.TrimSpace(stdout))
+	}
+
+	var legacy []fileResult
+	stdout, _, code = cliRun(t, nil, "validate-output", "--json", good, missing)
+	decodeOneJSON(t, stdout, &legacy)
+	if code != 1 || len(legacy) != 2 || !legacy[0].IsValid || legacy[1].Error == "" {
+		t.Errorf("validate-output --json no longer prints the array: exit=%d %s", code, strings.TrimSpace(stdout))
 	}
 }
 

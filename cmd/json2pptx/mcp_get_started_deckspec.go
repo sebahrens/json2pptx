@@ -112,7 +112,7 @@ func deckSpecProfileGetStarted(task string) (fast *getStartedFastPath, seq []get
 				ArgsTemplate: map[string]any{"spec": "<DeckSpec>", "template": template, "strict": "warn"}},
 			{Tool: "render_deck_spec", WhenToCall: "Render the stored spec to a .pptx; it reports the findings validate did. deterministic_ready is a precondition for review, not approval.",
 				ArgsTemplate: map[string]any{"deck_id": deckID}},
-			{Tool: "render_deck_thumbnails", WhenToCall: "Render ALL slides of this revision and look at every image: " + deckSpecThumbnailRubric + ". Small text unreadable? Render that slide alone with slide_indices and density:100. Repair with deck_id + patch, re-render changed_slides; at most three repair rounds.",
+			{Tool: "render_deck_thumbnails", WhenToCall: "Render ALL slides of this revision and look at every image: " + deckSpecThumbnailRubric + ". " + getStartedLargerRenderHint + " Repair with deck_id + patch and re-render, at most three rounds: " + getStartedKnownHashesHint,
 				ArgsTemplate: pptx},
 			deckSpecReviewStep(),
 		}
@@ -134,8 +134,8 @@ func deckSpecProfileGetStarted(task string) (fast *getStartedFastPath, seq []get
 				ArgsTemplate: map[string]any{"deck_id": deckID, "patch": patch}},
 			{Tool: "render_deck_spec", WhenToCall: "Render the revision (add patch here to edit and render in one call). Omit template: the deck keeps the one it is bound to; patch /meta/template to change it.",
 				ArgsTemplate: map[string]any{"deck_id": deckID}},
-			{Tool: "render_deck_thumbnails", WhenToCall: "Look at the slides changed_slides names (an empty list means nothing looks different): " + deckSpecThumbnailRubric + ". Re-patch until they read right, then make one full-deck pass over the revision you ship, sending the content_hash values you hold as known_hashes so unchanged slides return no image (render_deck_spec's next_tool_call carries them).",
-				ArgsTemplate: map[string]any{"pptx_path": "<pptx_path from render_deck_spec>", "slide_indices": "<changed_slides from render_deck_spec>"}},
+			{Tool: "render_deck_thumbnails", WhenToCall: getStartedReviseThumbnails + " Check each image: " + deckSpecThumbnailRubric + ".",
+				ArgsTemplate: getStartedReviseThumbnailArgs()},
 			deckSpecReviewStep(),
 		}
 		notes = []string{

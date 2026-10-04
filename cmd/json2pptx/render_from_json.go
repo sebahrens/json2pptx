@@ -151,11 +151,12 @@ func (mc *mcpConfig) handleRenderSlideImageFromJSON(ctx context.Context, request
 					return api.MCPSimpleError("OVERLAY_FAILED", applyErr.Error()), nil
 				}
 			}
-			mcpResult, marshalErr := api.MCPSuccessResult(ctx, cached)
-			if marshalErr != nil {
-				return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", marshalErr)), nil
-			}
-			return mcpResult, nil
+			// The same result a fresh render returns: an image block and the
+			// PNG's path. The cached answer used to be the bare image with
+			// its base64 inline, so a repeat MCP call answered in a different
+			// shape and `render-slide-from-json` failed with INTERNAL
+			// ("render result names no image file") until --force.
+			return slideImageMCPResult(ctx, request, cached), nil
 		}
 	}
 

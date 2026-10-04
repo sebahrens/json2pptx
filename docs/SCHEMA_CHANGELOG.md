@@ -1,5 +1,68 @@
 # Schema Changelog
 
+- **2026-10-04 — Plan, explain, get_started and CLI error surfaces (`go-slide-creator-lxs0v`, `-7kh6y`, `-u1c9c`, `-px402`; found on the way: `-fc0y0`, `-fadci`, `-aua78`, `-n9aij`, `-xx9mz`, `-yosf5`).**
+  - **Raw `plan_deck` charts a labelled series.** A metric written out as
+    three or more values (`Headcount by site: 120, 85 and 40`, or
+    `120, 85, 40`) routes to `chart-insights-split` in the raw plan however
+    few other numbers the brief has, as `format: "deckspec"` already routed
+    it to `chart_insight`; it used to land on `kpi-5up`. With no pattern
+    matching a statement, the evidence fallback is `card-grid`, then
+    `labeled-rows`, not the first shape-bearing name in registry order
+    (`arch-stack`).
+  - **`explain_deck_spec` / `semantic explain` with no template to name**
+    add `warnings[]` (stderr on the CLI): `no template: the spec pins none,
+    this call names none and meta.archetype is unset, so there is no default
+    to name; …`. With an archetype, `template` is its default, as before. A
+    render in that state fails with `TEMPLATE_NOT_FOUND` reading `no
+    template: the spec pins none (meta.template), the call names none and
+    meta.archetype is unset, so there is no default; set meta.template or
+    pass template` (it read `template "" is unavailable: invalid template
+    name: template name is required: template name not found`).
+  - **Template-override warning.** One sentence, one source
+    (`semantic.TemplateOverrideWarning`): `template argument "X" overrides
+    meta.template "Y" for this call only: the spec still pins "Y"; to keep
+    "X", set meta.template to it`. Only the MCP tools append ` (patch
+    [{"op":"replace","path":"/meta/template","value":"X"}])`; the HTTP
+    compile and render endpoints and the CLI no longer carry the patch hint.
+  - **`get_started` thumbnails steps, both profiles.** The brief step names
+    `larger_render` and the re-render's `known_hashes`; the `revise` step
+    says to send `render_deck_spec`'s `next_tool_call` as given and its
+    `args_template` is `{pptx_path, known_hashes}` (it showed
+    `slide_indices`). The raw profile drops two notes that repeated a step.
+  - **`validate-output --format json`** answers with the shared finding
+    envelope `{schema_version, tool, subcommand: "validate-output", ok,
+    summary, findings[]}` and the per-file results beside it as `files[]`
+    (`{file_path, is_valid, findings, error}`). Each output finding is an
+    envelope finding (blocking = error) with `evidence.file_path`, `part`,
+    `phase`, `validator`, `scope`; an unreadable file is a `FILE_NOT_FOUND`
+    (or `VALIDATION_FAILED`) finding naming it. The deprecated `--json`
+    alone still prints the bare array.
+  - **Deck-content errors carry their code from where they are built**
+    (`json_mode.go`, `overlays.go`, `pattern_resolve.go`), so no CLI command
+    reports them as `INTERNAL`: `INVALID_SLIDE` (slide content, overlays,
+    layout), `PATTERN_ERROR` (a pattern block that cannot be expanded),
+    `INVALID_GRID`, `AMBIGUOUS_INPUT` (`template` with `template_path`,
+    `structure` with `slides`), `INVALID_KEY` (`--strict-unknown-keys`),
+    `UNKNOWN_ENUM`, `VALIDATION_FAILED` (no slides, design-mode and no-emoji
+    violations), `URL_RESOLVER_INIT`, `OUTPUT_VALIDATION_ERROR`. `generate`'s
+    `findings[0]` is that code; `GENERATION_FAILED` remains for what only
+    generation knows. A pattern's located input findings reach the CLI
+    envelope one per field (`patterns expand` reported them joined as one
+    `INTERNAL`).
+  - **CLI JSON mode survives an early failure.** A `--format json` (or a
+    command's boolean `--json`) the flag parser never reached — `patterns
+    list --bogus --format json` — and a group's unknown subcommand —
+    `tables density --format json` — now put the `INVALID_PARAMETER`
+    envelope on stdout. `audit-palette` failures print the envelope too.
+  - **CLI refuses what the MCP schema refuses:** `shape-catalog --category
+    <unknown>` is `INVALID_PARAMETER` (it printed an empty catalogue, exit
+    0); `semantic kinds --template <unknown>` without a kind and `skill-info
+    --template <unknown>` are `TEMPLATE_NOT_FOUND` (exit 0 before).
+  - **`render_slide_image_from_json` / `render-slide-from-json` served from
+    the cache** answer in the shape of a fresh render (image block, `path`);
+    the cached answer was the bare image with `png_base64` inline, and the
+    CLI failed on it with `INTERNAL` until `--force`.
+
 - **2026-10-04 — Schema 4.162.0 · second round of follow-ups (label `followup2-20261004`).**
   - One version for the dated bullets below this one down to the 4.161.0
     entry (21 beads): template-face text measuring and shared sibling

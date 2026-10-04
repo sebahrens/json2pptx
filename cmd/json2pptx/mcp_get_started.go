@@ -132,6 +132,28 @@ type completionProtocol struct {
 	Rule           string `json:"rule"`
 }
 
+// The thumbnails wording both profiles share, written to match what the
+// server sends: render_deck_spec's next_tool_call after a re-render is
+// render_deck_thumbnails {pptx_path, known_hashes} over the whole deck (see
+// nextCallRenderThumbnails), and a thumbnails response below the delivery
+// width carries larger_render. The raw-profile texts named neither, and the
+// revise step's args_template showed slide_indices while the live call
+// carried known_hashes (go-slide-creator-px402).
+const (
+	getStartedLargerRenderHint = "Text too small to judge? Send the response's larger_render (that slide, density:100)."
+	getStartedKnownHashesHint  = "the re-render's next_tool_call carries known_hashes, so only changed slides return an image."
+	getStartedReviseThumbnails = "Send render_deck_spec's next_tool_call as given: one pass over the whole revision whose known_hashes (the content_hash values you already hold) return an image only for slides whose pixels changed — the slides changed_slides names; an empty list means nothing looks different. With no earlier thumbnails it names them as slide_indices instead; then make one full-deck pass over the revision you ship. " + getStartedLargerRenderHint
+)
+
+// getStartedReviseThumbnailArgs is the revise thumbnails step's args_template:
+// the keys of the live next_tool_call.
+func getStartedReviseThumbnailArgs() map[string]any {
+	return map[string]any{
+		"pptx_path":    "<pptx_path from render_deck_spec>",
+		argKnownHashes: "<known_hashes from render_deck_spec's next_tool_call>",
+	}
+}
+
 // fastPathFor returns the recommended fast path for a task, or nil when the
 // task has no fast path. FallsBackTo is the tool names in seq, so the
 // recommended and manual paths stay in lockstep automatically.
@@ -166,7 +188,7 @@ func fastPathFor(task string, seq []getStartedStep) *getStartedFastPath {
 			Steps: []getStartedStep{
 				{Tool: "validate_deck_spec", WhenToCall: "Send deck_id + patch to check an edit before rendering it; the patch is applied to the stored deck, so the next call sees it."},
 				{Tool: "render_deck_spec", WhenToCall: "Render the revision (deck_id + patch, or the edited spec). Omit template: the deck_id keeps the template it is bound to, and changes it only by a patch to /meta/template."},
-				{Tool: "render_deck_thumbnails", WhenToCall: "Pull only the slides named by changed_slides (pass them as slide_indices) and look at each one; an empty changed_slides means nothing looks different. Re-patch and re-render until they read right, then make one full-deck pass over the revision you ship."},
+				{Tool: "render_deck_thumbnails", WhenToCall: getStartedReviseThumbnails, ArgsTemplate: getStartedReviseThumbnailArgs()},
 			},
 			FallsBackTo: tools,
 		}
@@ -225,7 +247,7 @@ func buildGetStartedResponseOpts(task string, rt getStartedRuntime, verbose bool
 			{Tool: "list_slide_kinds", WhenToCall: "Fill each drafted slide: the catalog gives every kind's summary and fields; kinds:[chosen] returns each kind's copy-ready example, fields:[brief] its field signatures and budgets, fields:[item_schema] descriptions and aliases."},
 			{Tool: "validate_deck_spec", WhenToCall: "Check the DeckSpec on the template you will render on; fix every blocking finding (severity error) at its path. Keep the returned deck_id and revise with deck_id + patch."},
 			{Tool: "render_deck_spec", WhenToCall: "Compile and render the DeckSpec; diagnostics name their path in the spec. deterministic_ready is a precondition for review, not approval."},
-			{Tool: "render_deck_thumbnails", WhenToCall: "Render ALL slides of this revision and look at every image against the per-slide rubric: action title of at most two lines, body proves the title, readable text, aligned edges, no orphans, balanced whitespace, meaningful accents, chart units and source. Repair at the finding's path, re-render changed_slides, at most three repair rounds."},
+			{Tool: "render_deck_thumbnails", WhenToCall: "Render ALL slides of this revision and look at every image: action title of at most two lines, body proves the title, readable text, aligned edges, no orphans, balanced whitespace, meaningful accents, chart units and source. " + getStartedLargerRenderHint + " Repair at the finding's path and re-render, at most three rounds: " + getStartedKnownHashesHint},
 			{Tool: "submit_visual_review", WhenToCall: "Record the verdict for every slide of the current revision with the image_path/image_sha256 you inspected and each open rubric failure as a finding (P0/P1 blocks approval). Only an all-slide, current-revision approval completes the deck."},
 		}
 		rawSeq = []getStartedStep{
@@ -241,12 +263,10 @@ func buildGetStartedResponseOpts(task string, rt getStartedRuntime, verbose bool
 			{Tool: "inspect_slide_images", WhenToCall: "Inspect every rendered slide with a configured provider or host/manual reviewer (a host/manual reviewer records its all-slide verdict with submit_visual_review against the current pptx_revision); repair findings, then render and inspect the new revision again."},
 		}
 		notes = []string{
-			"`sequence` is the DeckSpec path (plan_deck format:\"deckspec\" → list_slide_kinds → validate_deck_spec → render_deck_spec → render_deck_thumbnails → submit_visual_review): author the user's real content as a compact DeckSpec and render it. `raw_sequence` is the raw-primitive path you drop to only for features outside the DeckSpec schema.",
+			"`sequence` is the DeckSpec path (plan_deck format:\"deckspec\" → list_slide_kinds → validate_deck_spec → render_deck_spec → render_deck_thumbnails → submit_visual_review): author the user's real content as a compact DeckSpec and render it. `raw_sequence` is the raw-primitive path you drop to only for features outside the DeckSpec schema; its steps add no requirement to the DeckSpec path.",
 			"make_deck is a skeleton/wireframe tool, not a deck builder: it fills every slide with pattern exemplar placeholder copy, so it always reports gate_passed=false, uses_exemplar_content=true, and \"exemplar_content\" in blocking_reasons. Never ship its output.",
 			"COMPLETION: " + mcpCompletionRule,
 			"NO VISION PROVIDER? Render every slide with render_deck_thumbnails (image content blocks), inspect each image yourself, then record the verdict with submit_visual_review {pptx_path, pptx_revision, slides:[{index, verdict, image_path|image_sha256, findings?}], reviewer: host|manual}. Submit the paths/content_hashes render_deck_thumbnails returned for THIS pptx: each image is checked against the server's own render of that slide, and a recycled or foreign image is rejected. Only a complete, current-revision review with verified images and no P0/P1 findings marks the deck visually_reviewed_current_revision; an unverifiable review is recorded as reviewed_unverified_images.",
-			"raw_sequence is the controllable raw-deck fallback; its steps do not add requirements to the DeckSpec path.",
-			"For decks of 1-4 slides you may skip plan_deck and write the DeckSpec directly.",
 			"ONE SLIDE OR TWO? Views that all prove the SAME title (a trend chart, the KPIs behind it, the dated plan) may share one slide as regions; an unrelated conclusion gets its own slide. A kind renders one visual, so for that slide only copy list_slide_kinds kinds:[\"raw_json2pptx\"] composed_example (a compose envelope) and keep the rest of the spec semantic.",
 			"On the raw PresentationInput path, validate_input is mandatory before generate_presentation; the DeckSpec path uses validate_deck_spec instead.",
 			"DECK CHROME AND SECTIONS. On the fast_path (DeckSpec): `meta.chrome` {confidentiality, client_name, project_code, footer_date, section_crumb, tracker, page_numbers:{enabled, format, skip}} (tracker sets the current section name above each content slide's title) — footer_date defaults to meta.date; with no `meta.chrome` the deck still gets page numbers (title and closing skipped), the meta.date footer and, with sections, the tracker, and `page_numbers.enabled: false` turns numbering off — plus `meta.viewing_mode`, `meta.type_scale` (compact|comfortable|presentation; comfortable default), and `meta.accent_strategy`; every slide kind also takes `notes` (speaker notes) and `source` (footnote line). Use `structure` ({cover, closing, auto_agenda, sections:[{title, slides[]}]}) instead of flat `slides` when chapters should generate an agenda, sequential dividers, and section crumbs. On the raw path (generate_presentation), the same block is top-level `chrome` and the same mutually exclusive `structure` form expands before rendering. See get_capabilities.features.{deck_chrome, page_numbers, section_structure, section_crumb}.",

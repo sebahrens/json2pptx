@@ -175,6 +175,10 @@ func TestSemanticCompileHandler_TemplateOverridesMetaTemplate(t *testing.T) {
 		if want := semantic.TemplateOverrideWarning("midnight-blue", "forest-green"); tc.warnings == 1 && len(resp.Warnings) == 1 && resp.Warnings[0] != want {
 			t.Errorf("%q: warning = %q, want %q", tc.query, resp.Warnings[0], want)
 		}
+		// An HTTP caller has no patch call (go-slide-creator-7kh6y).
+		if strings.Contains(w.Body.String(), "patch [") {
+			t.Errorf("%q: the HTTP warning carries an MCP patch hint: %v", tc.query, resp.Warnings)
+		}
 	}
 }
 

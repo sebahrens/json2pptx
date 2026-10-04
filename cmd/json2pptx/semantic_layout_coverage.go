@@ -45,6 +45,12 @@ func semanticTemplateDiagnostic(templateName, templatesDir string, code diagnost
 		Message:  fmt.Sprintf("template %q is unavailable: %v", templateName, err),
 		Fix:      &diagnostics.Fix{Kind: "choose_template", Params: params},
 	}
+	if templateName == "" {
+		// Nothing named a template; `template "" is unavailable: invalid
+		// template name: template name is required` said that three ways
+		// without saying what to set.
+		d.Message = "no template: the spec pins none (meta.template), the call names none and meta.archetype is unset, so there is no default; set meta.template or pass template"
+	}
 	if code == diagnostics.CodeTemplateNotFound {
 		available := listAvailableTemplates(templatesDir)
 		params["available"] = available

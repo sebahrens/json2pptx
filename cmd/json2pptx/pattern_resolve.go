@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -43,7 +44,7 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	// Unmarshal values
 	values := pat.NewValues()
 	if err := json.Unmarshal(p.Values, values); err != nil {
-		return nil, nil, fmt.Errorf("pattern %q: invalid values: %w", p.Name, err)
+		return nil, nil, cliPatternError("pattern %q: invalid values: %w", p.Name, err)
 	}
 
 	// Unmarshal overrides
@@ -52,7 +53,7 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 		overrides = pat.NewOverrides()
 		if overrides != nil {
 			if err := json.Unmarshal(cleanOverrides, overrides); err != nil {
-				return nil, nil, fmt.Errorf("pattern %q: invalid overrides: %w", p.Name, err)
+				return nil, nil, cliPatternError("pattern %q: invalid overrides: %w", p.Name, err)
 			}
 		}
 	}
@@ -64,14 +65,14 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 		for key, raw := range p.CellOverrides {
 			idx, err := strconv.Atoi(key)
 			if err != nil {
-				return nil, nil, fmt.Errorf("pattern %q: cell_overrides key %q is not an integer", p.Name, key)
+				return nil, nil, cliPatternError("pattern %q: cell_overrides key %q is not an integer", p.Name, key)
 			}
 			co := pat.NewCellOverride()
 			if co == nil {
-				return nil, nil, fmt.Errorf("pattern %q: does not support cell_overrides", p.Name)
+				return nil, nil, cliPatternError("pattern %q: does not support cell_overrides", p.Name)
 			}
 			if err := json.Unmarshal(raw, co); err != nil {
-				return nil, nil, fmt.Errorf("pattern %q: invalid cell_overrides[%d]: %w", p.Name, idx, err)
+				return nil, nil, cliPatternError("pattern %q: invalid cell_overrides[%d]: %w", p.Name, idx, err)
 			}
 			cellOverrides[idx] = co
 		}
@@ -85,7 +86,7 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 		if ves := patternValidationFindings(err); len(ves) > 0 {
 			return nil, nil, newPatternInputError(p.Name, rootPatternFindingPaths(ves))
 		}
-		return nil, nil, fmt.Errorf("pattern %q: validation failed: %w", p.Name, err)
+		return nil, nil, cliPatternError("pattern %q: validation failed: %w", p.Name, err)
 	}
 
 	// Pre-expand callout support check (D18): fail before Expand if pattern
@@ -179,7 +180,7 @@ func patternExpandError(name string, err error) error {
 	if ves := patternValidationFindings(err); len(ves) > 0 {
 		return newPatternInputError(name, rootPatternFindingPaths(ves))
 	}
-	return fmt.Errorf("pattern %q: expand failed: %w", name, err)
+	return cliPatternError("pattern %q: expand failed: %w", name, err)
 }
 
 // Stamp a pattern's resolved policy on each shape as well as the grid. Compose
@@ -434,21 +435,21 @@ func expandNestedCellPatternsInBounds(grid *jsonschema.ShapeGridInput, ctx patte
 
 func expandPatternInCell(cell *jsonschema.GridCellInput, ctx patterns.ExpandContext, bounds pptx.RectEmu, ri, ci int, defaultTypeScale string, reg *patterns.Registry) error {
 	if cell.Grid != nil {
-		return fmt.Errorf("grid cell row %d col %d: 'pattern' and 'grid' are mutually exclusive", ri, ci)
+		return cliPatternError("grid cell row %d col %d: 'pattern' and 'grid' are mutually exclusive", ri, ci)
 	}
 	if cell.Shape != nil || cell.Table != nil || cell.Icon != nil ||
 		cell.Image != nil || cell.Diagram != nil || cell.Composite != nil {
-		return fmt.Errorf("grid cell row %d col %d: nested 'pattern' is incompatible with sibling cell content (shape/table/icon/image/diagram/composite)", ri, ci)
+		return cliPatternError("grid cell row %d col %d: nested 'pattern' is incompatible with sibling cell content (shape/table/icon/image/diagram/composite)", ri, ci)
 	}
 	var pi PatternInput
 	if err := json.Unmarshal(cell.Pattern, &pi); err != nil {
-		return fmt.Errorf("grid cell row %d col %d: invalid pattern: %w", ri, ci, err)
+		return cliPatternError("grid cell row %d col %d: invalid pattern: %w", ri, ci, err)
 	}
 	pi.DefaultTypeScale = defaultTypeScale
 	ctx.LayoutBounds = patterns.LayoutBounds{X: bounds.X, Y: bounds.Y, Width: bounds.CX, Height: bounds.CY}
 	expanded, _, err := expandPattern(&pi, ctx, reg)
 	if err != nil {
-		return fmt.Errorf("grid cell row %d col %d: %w", ri, ci,
+		return cliPatternError("grid cell row %d col %d: %w", ri, ci,
 			prefixPatternFindingPaths(err, fmt.Sprintf("rows[%d].cells[%d].pattern.", ri, ci)))
 	}
 	cell.Pattern = nil
@@ -479,7 +480,7 @@ func nestedPatternCellBounds(grid *jsonschema.ShapeGridInput, ctx patterns.Expan
 	}
 	align, ok := shapegrid.ParseVerticalAlign(grid.VerticalAlign)
 	if !ok {
-		return nil, fmt.Errorf("shape_grid: invalid vertical_align %q", grid.VerticalAlign)
+		return nil, cliCoded(diagnostics.CodeInvalidGrid, "shape_grid: invalid vertical_align %q", grid.VerticalAlign)
 	}
 	resolved, err := shapegrid.Resolve(&shapegrid.Grid{
 		Bounds: bounds, TypeScale: grid.TypeScale, Columns: cols, Rows: rows, ColGap: colGap, RowGap: rowGap, VAlign: align,
@@ -546,7 +547,7 @@ func lookupPattern(p *PatternInput, reg *patterns.Registry) (patterns.Pattern, e
 		return nil, unknownPatternInputError(reg, p.Name)
 	}
 	if _, ok := shapegrid.ParseVerticalAlign(p.VerticalAlign); !ok {
-		return nil, fmt.Errorf("pattern %q: vertical_align must be one of \"auto\", \"top\", \"center\", \"bottom\", \"stretch\", got %q", p.Name, p.VerticalAlign)
+		return nil, cliPatternError("pattern %q: vertical_align must be one of \"auto\", \"top\", \"center\", \"bottom\", \"stretch\", got %q", p.Name, p.VerticalAlign)
 	}
 	return pat, nil
 }

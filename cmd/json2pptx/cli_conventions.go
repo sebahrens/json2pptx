@@ -217,7 +217,7 @@ func cliApplyConvention(fs *flag.FlagSet) cliConvention {
 // input when the legacy input flag was not given. After it returns, fs.Args()
 // holds the positional arguments the command itself should read.
 func cliParse(fs *flag.FlagSet, args []string) error {
-	cliCurrentFlagSet, cliParseFailed = fs, true
+	cliCurrentFlagSet, cliParseFailed, cliParsedArgs = fs, true, args
 	if err := cliParseArgs(fs, args); err != nil {
 		return err
 	}

@@ -100,6 +100,9 @@ func runAuditPalette() error {
 // option scanning and protects paths that begin with a dash.
 func parseAuditPaletteArgs(fs *flag.FlagSet, args []string) error {
 	cliApplyConvention(fs)
+	// The catch-all envelope reads the current flag set; without this a
+	// failing audit-palette printed nothing on stdout.
+	cliCurrentFlagSet, cliParseFailed, cliParsedArgs = fs, true, args
 	flags, positional := make([]string, 0, len(args)), make([]string, 0, 1)
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -125,7 +128,11 @@ func parseAuditPaletteArgs(fs *flag.FlagSet, args []string) error {
 			flags = append(flags, args[i])
 		}
 	}
-	return fs.Parse(append(append(flags, "--"), positional...))
+	if err := fs.Parse(append(append(flags, "--"), positional...)); err != nil {
+		return err
+	}
+	cliParseFailed = false
+	return nil
 }
 
 func uint8Overflows(v int) bool { return v < 0 || v > 255 }

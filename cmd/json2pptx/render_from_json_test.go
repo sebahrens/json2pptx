@@ -174,3 +174,42 @@ func TestBuildOverlayWireframeRequest_NoCellsNoFindings(t *testing.T) {
 // _ keeps mcpgo referenced even when no other test in this file uses it
 // directly.
 var _ mcpgo.Tool
+
+// A repeat render of the same slide is served from the cache in the shape of a
+// fresh render — an image block and the PNG's path. It used to answer with the
+// bare image and its base64 inline, which `render-slide-from-json` reported as
+// INTERNAL ("render result names no image file") until --force.
+func TestHandleRenderSlideImageFromJSON_CachedAnswerHasTheFreshShape(t *testing.T) {
+	if testing.Short() {
+		t.Skip("render integration skipped in -short mode")
+	}
+	if ok, _ := render.DependencyStatus(); !ok {
+		t.Skip("LibreOffice/ImageMagick not installed")
+	}
+	mc := cliMCPConfig("../../templates", "")
+	args := map[string]any{
+		"template": "midnight-blue",
+		"slide": map[string]any{"layout_id": "title", "content": []any{
+			map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Cached render " + t.Name()},
+		}},
+	}
+	for _, pass := range []string{"fresh", "cached"} {
+		res, err := mc.handleRenderSlideImageFromJSON(context.Background(), makeRequest(args))
+		if err != nil || res == nil || res.IsError {
+			t.Fatalf("%s render: err=%v result=%+v", pass, err, res)
+		}
+		deck, err := cliRenderedSlides(res)
+		if err != nil || len(deck.Slides) != 1 || deck.Slides[0].Path == "" {
+			t.Errorf("%s render names no image file: %v %+v", pass, err, deck.Slides)
+		}
+		blocks := 0
+		for _, c := range res.Content {
+			if _, ok := c.(mcpgo.ImageContent); ok {
+				blocks++
+			}
+		}
+		if blocks != 1 {
+			t.Errorf("%s render carries %d image blocks, want 1", pass, blocks)
+		}
+	}
+}

@@ -108,7 +108,7 @@ func resolveOverlays(
 		}
 		frags, err := ctx.renderOverlay(i, ov, alloc)
 		if err != nil {
-			return nil, nil, fmt.Errorf("overlay %d: %w", i, err)
+			return nil, nil, cliSlideError("overlay %d: %w", i, err)
 		}
 		out = append(out, frags...)
 	}
