@@ -62,6 +62,12 @@ func TestEveryListedCompositionCompilesAsReported(t *testing.T) {
 					t.Errorf("override %+v compiled as asked but was reported: %s", want, refused[0].Message)
 				case len(refused) > 0 && !strings.Contains(refused[0].Message, "compiles to "+compositionLabel(got)):
 					t.Errorf("refusal does not name what the slide compiles to (%s): %s", compositionLabel(got), refused[0].Message)
+				case len(refused) > 0 && !strings.HasPrefix(refused[0].Message, compositionLabel(want)[:strings.Index(compositionLabel(want), " ")]+" \""):
+					// One sentence that opens with the override it is about
+					// (go-slide-creator-kc3h1).
+					t.Errorf("refusal does not open with the requested override: %s", refused[0].Message)
+				case len(refused) > 0 && (strings.Contains(refused[0].Message, "asked for it") || strings.Count(refused[0].Message, "compiles to "+compositionLabel(got)) != 1):
+					t.Errorf("refusal repeats itself: %s", refused[0].Message)
 				}
 			})
 		}
@@ -147,7 +153,7 @@ func TestProcessPatternOverrideSelectsItsCompiler(t *testing.T) {
 		t.Fatalf("want one SEMANTIC_PATTERN_NOT_AVAILABLE for a flow the steps overflow, got %+v", found)
 	}
 	msg := found[0].Message
-	for _, want := range []string{"step 1 reads 87 characters", "a flow box holds 80", "compiles to pattern numbered-step-strip"} {
+	for _, want := range []string{`pattern "process-flow" does not fit this "process" payload: step 1 reads 87 characters`, "a flow box holds 80", "so the override is ignored and the slide compiles to pattern numbered-step-strip; this payload takes: pattern numbered-step-strip"} {
 		if !strings.Contains(msg, want) {
 			t.Errorf("message lacks %q: %s", want, msg)
 		}
