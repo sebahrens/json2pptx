@@ -29,6 +29,9 @@ type ZipContext struct {
 	outputFile       *os.File
 	tmpPath          string
 	outputPath       string
+	// noWrite discards the archive instead of creating a file
+	// (GenerationRequest.NoWrite).
+	noWrite bool
 }
 
 // LogoZone describes a rectangular area occupied by a template logo.

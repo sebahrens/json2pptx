@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
@@ -70,29 +71,7 @@ func patternValidationFindings(err error) []*patterns.ValidationError {
 	if errors.As(err, &pie) {
 		return pie.errs
 	}
-	// A pattern's own Validate returns errors.Join of *ValidationError; harvest
-	// those too so a required-field failure is path-addressed even on the paths
-	// that do not route through patternInputError.
-	var joined interface{ Unwrap() []error }
-	if errors.As(err, &joined) {
-		var out []*patterns.ValidationError
-		for _, e := range joined.Unwrap() {
-			var ve *patterns.ValidationError
-			if errors.As(e, &ve) {
-				out = append(out, ve)
-				continue
-			}
-			// One non-structured member means the set is not fully addressable;
-			// fall back rather than report a partial picture.
-			return nil
-		}
-		return out
-	}
-	var ve *patterns.ValidationError
-	if errors.As(err, &ve) {
-		return []*patterns.ValidationError{ve}
-	}
-	return nil
+	return deckinput.PatternValidationFindings(err)
 }
 
 // patternInputDiagnostics converts a pattern-input failure into one diagnostic
@@ -160,40 +139,10 @@ func patternFieldPointer(basePath, dotted string) string {
 	return slidepath.Join(basePath, dottedPathToPointer(dotted))
 }
 
-// patternInputSections are PatternInput's own JSON keys. A finding path that
-// starts with one of them is already rooted at the pattern object.
-var patternInputSections = map[string]bool{
-	"name": true, "values": true, "overrides": true, "cell_overrides": true,
-	"callout": true, "bounds": true, "max_height_pct": true,
-}
-
-// firstPathSegment returns the leading field name of a dotted path, without any
-// index suffix ("values[0].big" → "values").
-func firstPathSegment(dotted string) string {
-	seg := dotted
-	if i := strings.IndexAny(seg, ".["); i >= 0 {
-		seg = seg[:i]
-	}
-	return seg
-}
-
 // rootPatternFindingPaths returns copies of ves whose paths are rooted at the
-// pattern object. Pattern.Validate reports values-relative paths
-// ("members[0].role", "values[0].small"), and only the code that harvests them
-// knows that; rooting happens once, here, so every consumer downstream can treat
-// a finding path as pattern-relative without special cases.
+// pattern object (deckinput.RootPatternFindingPaths, shared with the decoder).
 func rootPatternFindingPaths(ves []*patterns.ValidationError) []*patterns.ValidationError {
-	out := make([]*patterns.ValidationError, len(ves))
-	for i, ve := range ves {
-		copied := *ve
-		if copied.Path == "" {
-			copied.Path = "values"
-		} else if !patternInputSections[firstPathSegment(copied.Path)] {
-			copied.Path = "values." + copied.Path
-		}
-		out[i] = &copied
-	}
-	return out
+	return deckinput.RootPatternFindingPaths(ves)
 }
 
 // prefixPatternFindingPaths re-roots a pattern-input failure under prefix, used
@@ -247,20 +196,7 @@ func dottedPathToPointer(dotted string) string {
 // (The CLI's unknownPatternError stays as it is: a terminal reader wants the
 // whole catalogue printed, an agent wants one suggestion and a tool call.)
 func unknownPatternInputError(reg *patterns.Registry, name string) error {
-	ve := &patterns.ValidationError{
-		Path: "name",
-		Code: diagnostics.CodeUnknownPattern,
-	}
-	if suggestion, ok := reg.Suggest(name); ok {
-		ve.Message = fmt.Sprintf("unknown pattern %q; did you mean %q?", name, suggestion)
-		ve.Fix = &patterns.FixSuggestion{Kind: "swap_pattern", Params: map[string]any{
-			"from": name, "to": suggestion, "did_you_mean": suggestion,
-		}}
-	} else {
-		ve.Message = fmt.Sprintf("unknown pattern %q; call list_patterns for the registered names", name)
-		ve.Fix = &patterns.FixSuggestion{Kind: "swap_pattern", Params: map[string]any{"from": name}}
-	}
-	return &patternInputError{pattern: name, errs: []*patterns.ValidationError{ve}}
+	return newPatternInputError(name, []*patterns.ValidationError{deckinput.UnknownPatternFinding(reg, name)})
 }
 
 // ---------------------------------------------------------------------------

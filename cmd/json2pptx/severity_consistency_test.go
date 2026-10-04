@@ -178,28 +178,31 @@ func TestOneFactIsReportedOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var payload struct {
-		Findings struct {
-			Findings []struct {
-				Code     string         `json:"code"`
-				Message  string         `json:"message"`
-				Evidence map[string]any `json:"evidence"`
-			} `json:"findings"`
-		} `json:"findings"`
-	}
-	if err := json.Unmarshal(raw, &payload); err != nil {
+	// The deck is one generation refuses (its table would lose rows), so the
+	// answer is the refusal envelope, whose findings are the list itself; a
+	// deck validation accepts nests them one level down. Read either.
+	var doc map[string]any
+	if err := json.Unmarshal(raw, &doc); err != nil {
 		t.Fatalf("decode envelope: %v", err)
 	}
-	if len(payload.Findings.Findings) == 0 {
+	findings := envelopeFindings(t, doc)
+	if len(findings) == 0 {
 		t.Fatal("no findings in the envelope")
 	}
 	seen := map[[3]string]int{}
-	for _, f := range payload.Findings.Findings {
-		path, _ := f.Evidence["path"].(string)
-		key := [3]string{f.Code, path, f.Message}
+	for _, rawFinding := range findings {
+		f, _ := rawFinding.(map[string]any)
+		code, _ := f["code"].(string)
+		message, _ := f["message"].(string)
+		evidence, _ := f["evidence"].(map[string]any)
+		path, _ := evidence["path"].(string)
+		if path == "" {
+			path, _ = f["path"].(string)
+		}
+		key := [3]string{code, path, message}
 		seen[key]++
 		if seen[key] > 1 {
-			t.Errorf("the same fact is reported %d times: %s at %s — %q", seen[key], f.Code, path, f.Message)
+			t.Errorf("the same fact is reported %d times: %s at %s — %q", seen[key], code, path, message)
 		}
 	}
 }

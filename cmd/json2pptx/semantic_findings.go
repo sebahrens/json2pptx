@@ -612,11 +612,28 @@ func buildSemanticRunFailure(input *PresentationInput, cr *semantic.CompileResul
 			contract = append(contract, semanticDiagFromCompile(d))
 		}
 	}
+	// A slide the caller already refused (an asset it names does not resolve)
+	// keeps that finding: the contract checks below would only restate it as
+	// the conversion's failure to load the same asset.
+	refused := blockedSlides(known)
 	for _, d := range contract {
+		if d.SlideIndex != nil && refused[*d.SlideIndex] {
+			continue
+		}
 		if diagnosticBlocks(d) {
 			explained = true
 		}
 		res.Diagnostics = appendDistinctDiagnostic(res.Diagnostics, d)
+	}
+	// A refusal that carries located findings is reported in them, each at its
+	// DeckSpec path — the finding a raw deck gets, inside the raw slide: an
+	// enum value outside its set, a block the generator refused to drop
+	// (go-slide-creator-ni65k).
+	for _, d := range locatedRefusalDiagnostics(err) {
+		if idx := slidepath.SlideIndex(d.Path); idx >= 0 && !refused[idx] {
+			res.Diagnostics = appendContractDiagnostics(res.Diagnostics, []diagnostics.Diagnostic{d}, sm, ir, idx)
+			explained = true
+		}
 	}
 
 	if rr.SlideWidth > 0 && len(contract) == 0 {
@@ -650,6 +667,29 @@ func buildSemanticRunFailure(input *PresentationInput, cr *semantic.CompileResul
 		res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(d))
 	}
 	return res
+}
+
+// blockedSlides are the compiled slides ds carry a blocking finding for.
+func blockedSlides(ds []semanticDiagnostic) map[int]bool {
+	out := map[int]bool{}
+	for _, d := range ds {
+		if d.SlideIndex != nil && diagnosticBlocks(d) {
+			out[*d.SlideIndex] = true
+		}
+	}
+	return out
+}
+
+// locatedRefusalDiagnostics are the findings a failed run's error carries with
+// a place in the compiled deck: a generator refusal about dropped content, and
+// the findings of a deck the verdict refused.
+func locatedRefusalDiagnostics(err error) []diagnostics.Diagnostic {
+	located := contentDropRefusalDiagnostics(err)
+	var refusal *deckRefusal
+	if errors.As(err, &refusal) {
+		located = append(located, refusal.Diagnostics...)
+	}
+	return located
 }
 
 // mergeStaticDiagnostics adds the static fit pass to a failed render's

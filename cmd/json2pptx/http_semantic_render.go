@@ -13,6 +13,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/semantic"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 )
 
 // newHTTPSemanticRenderer builds the api.SemanticRenderer the HTTP server's
@@ -204,15 +205,23 @@ func httpImageAllowList(configured []string, extra ...string) []string {
 }
 
 // semanticAssetDiagnostics maps blocking asset-resolution diagnostics (raw
-// PresentationInput paths) back to the semantic source the author wrote.
+// PresentationInput paths) back to the semantic source the author wrote. Every
+// DeckSpec render surface reports a refused asset through it: a raw_json2pptx
+// slide's asset at the field inside the raw slide, as a raw deck reports it;
+// any other kind at its source-mapped field, else at the slide.
 func semanticAssetDiagnostics(cr *semantic.CompileResult, ds []diagnostics.Diagnostic) []semanticDiagnostic {
 	var sm *semantic.SourceMap
+	var ir *semantic.DeckIR
 	if cr != nil {
-		sm = cr.SourceMap
+		sm, ir = cr.SourceMap, cr.IR
 	}
 	var out []semanticDiagnostic
 	for _, d := range ds {
 		if d.Severity != diagnostics.SeverityError {
+			continue
+		}
+		if idx := slidepath.SlideIndex(d.Path); ir != nil && idx >= 0 && idx < len(ir.Slides) && ir.Slides[idx].Kind == semantic.KindRawJSON2pptx {
+			out = appendContractDiagnostics(out, []diagnostics.Diagnostic{d}, sm, ir, idx)
 			continue
 		}
 		mapped := semantic.MapFinding(sm, semantic.RawFinding{
@@ -221,6 +230,7 @@ func semanticAssetDiagnostics(cr *semantic.CompileResult, ds []diagnostics.Diagn
 		sd := semanticDiagnostic{
 			Code:         mapped.Code,
 			Severity:     string(mapped.Severity),
+			Blocking:     true,
 			Message:      mapped.Message,
 			SemanticPath: mapped.SemanticPath,
 			RawPath:      mapped.RawPath,
@@ -228,6 +238,11 @@ func semanticAssetDiagnostics(cr *semantic.CompileResult, ds []diagnostics.Diagn
 		if mapped.SlideIndex >= 0 {
 			idx := mapped.SlideIndex
 			sd.SlideIndex = &idx
+			if sd.SemanticPath == "" {
+				// Pattern-expanded asset fields have no field-level source
+				// link; point at the authored slide rather than nowhere.
+				sd.SemanticPath = fmt.Sprintf("slides[%d]", idx)
+			}
 		}
 		out = append(out, sd)
 	}

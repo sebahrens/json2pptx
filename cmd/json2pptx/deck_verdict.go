@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -24,7 +26,7 @@ import (
 // to a cell that is not there, all of which generation refused; generation
 // rendered a content item without a placeholder_id that validation rejected.
 //
-// Both sides now read the same two functions:
+// Both sides now read the same three steps:
 //
 //   - deckStructuralChecks — validation's slide checks and the chart dry
 //     render. Validation reports them; generation runs them before it converts
@@ -34,10 +36,18 @@ import (
 //     Generation stops at its first refusal; validation runs the same function
 //     (without its media) and reports every refusal, so a slide generation
 //     refuses is one validation predicted.
+//   - generator.Generate — the generator itself (go-slide-creator-ni65k).
+//     What it decides while it prepares and writes the slides was generation's
+//     alone: a second block for a placeholder was dropped after validation had
+//     called the deck valid, forty bullets were refused for the paragraphs the
+//     fit would trim. Validation now runs it for a deck the first two steps
+//     accept, with nothing written (generationRefusals), and reports what it
+//     refuses; a render refuses the same deck before it writes a file.
 //
 // One function turns a conversion refusal into findings
-// (conversionRefusalDiagnostics), so the two name the same code at the same
-// path.
+// (conversionRefusalDiagnostics) and one a generator refusal
+// (generationRefusalDiagnostics), so every surface names the same code at the
+// same path.
 
 // deckRefusal is the error generation returns for a deck the structural
 // verdict rejects. It carries the findings validation reports for the same
@@ -111,7 +121,136 @@ func refusalDiagnostics(err error) (ds []diagnostics.Diagnostic) {
 	if errors.As(err, &refused) {
 		return conversionRefusalDiagnostics(refused.slideIdx, refused.err)
 	}
+	if ds := generationRefusalDiagnostics(err); len(ds) > 0 {
+		return ds
+	}
 	return slidePatternInputDiagnostics(err)
+}
+
+// generationRefusalDiagnostics turns the error the generator refused a
+// converted deck with into findings — the one reading of it every surface
+// reports (go-slide-creator-ni65k):
+//
+//   - author content the slide would drop (a second block for a placeholder
+//     that renders one, a block whose placeholder the layout does not have) is
+//     one CONTENT_DROPPED finding per dropped block, at the block;
+//   - two blocks that reach one placeholder through a fallback are
+//     CONTENT_DROPPED at the second;
+//   - source the written text would lose or shrink below the readable floor
+//     is the fit finding the refusal wraps.
+//
+// nil means the error is not a refusal of the deck's content.
+func generationRefusalDiagnostics(err error) []diagnostics.Diagnostic {
+	var drop *generator.ContentDropRefusal
+	if errors.As(err, &drop) && drop != nil {
+		ds := refuseFindingDiagnostics(drop.Findings)
+		// The finding names the block; a reader of the message alone (the
+		// CLI's human output) needs the slide too.
+		for i := range ds {
+			if idx := slidepath.SlideIndex(ds[i].Path); idx >= 0 {
+				ds[i].Message = fmt.Sprintf("slide %d: %s", idx+1, ds[i].Message)
+			}
+		}
+		return ds
+	}
+	var collision *generator.PlaceholderCollisionError
+	if errors.As(err, &collision) && collision != nil {
+		return []diagnostics.Diagnostic{{
+			Code:     patterns.ErrCodeContentDropped,
+			Path:     slidepath.ContentIndex(collision.SlideIndex, collision.SecondIndex),
+			Message:  collision.Error(),
+			Severity: diagnostics.SeverityError,
+		}}
+	}
+	if loss := generationRefusal(err); loss != nil {
+		return refuseFindingDiagnostics([]patterns.FitFinding{{ValidationError: *loss, Action: "refuse"}})
+	}
+	return nil
+}
+
+// contentDropRefusalDiagnostics are the findings of a generation refusal that
+// is about dropped content (a block the slide has no free placeholder for),
+// nil for any other error.
+func contentDropRefusalDiagnostics(err error) []diagnostics.Diagnostic {
+	var drop *generator.ContentDropRefusal
+	var collision *generator.PlaceholderCollisionError
+	if errors.As(err, &drop) || errors.As(err, &collision) {
+		return generationRefusalDiagnostics(err)
+	}
+	return nil
+}
+
+// deckGenerationRequest completes the request a converted deck is generated
+// with: the slides and the footer, chrome, appendix labels and theme override
+// the deck asks for. base carries what the caller renders with — the template,
+// the output path, the SVG and fit settings. Every render builds its request
+// here, and so does validation's no-write run, so the two generate the same
+// deck.
+func deckGenerationRequest(input *PresentationInput, specs []generator.SlideSpec, layouts []types.LayoutMetadata, base generator.GenerationRequest) generator.GenerationRequest {
+	req := base
+	req.Slides = specs
+	req.ExcludeTemplateSlides = true
+	req.ViewingMode = input.ViewingMode
+	req.Footer = footerConfigForInput(input, len(specs))
+	if input.Chrome != nil {
+		applyChromeSkip(specs, input.Chrome, input.Slides, layouts)
+		applyChromeTracker(specs, input.Chrome, input.Slides, layouts)
+		applyChromeSectionCrumb(req.Footer, specs, input.Chrome, input.Slides, layouts)
+	}
+	applyAppendixPageLabels(req.Footer, input.Slides, layouts)
+	if input.ThemeOverride != nil {
+		req.ThemeOverride = input.ThemeOverride.ToThemeOverride()
+	}
+	return req
+}
+
+// generationRefusals is the last part of the verdict: what the generator
+// itself refuses in a deck the checks accept and the conversion converted. It
+// runs generation — slide preparation, the placeholder resolver, text and
+// table fitting, the write phases — with nothing written (NoWrite), so a deck
+// it refuses is one a render refuses, with the same findings: a content block
+// the resolver would drop, text or table rows the fit would lose.
+//
+// nil when generation accepts the deck, or when the analysis names no
+// template file to generate from.
+func generationRefusals(input *PresentationInput, analysis *types.TemplateAnalysis, specs []generator.SlideSpec) []diagnostics.Diagnostic {
+	if analysis.TemplatePath == "" || len(specs) == 0 {
+		return nil
+	}
+	theme := analysis.Theme
+	if input.ThemeOverride != nil {
+		theme, _ = theme.ApplyOverride(input.ThemeOverride.ToThemeOverride())
+	}
+	var synthetic map[string][]byte
+	if analysis.Synthesis != nil {
+		synthetic = analysis.Synthesis.SyntheticFiles
+	}
+	req := deckGenerationRequest(input, specs, analysis.Layouts, generator.GenerationRequest{
+		TemplatePath:         analysis.TemplatePath,
+		SyntheticFiles:       synthetic,
+		StrictFit:            "warn",
+		DataPalette:          resolveDataPalette(analysis.Metadata, theme.Colors),
+		NoWrite:              true,
+		RefuseDroppedContent: true,
+	})
+	_, err := generator.Generate(context.Background(), req)
+	if err == nil {
+		return nil
+	}
+	if loss := generationRefusal(err); loss != nil {
+		if _, location := locateRefusal(input, specs, analysis.Layouts, nil, loss); location != "" {
+			loss.Message = location + ": " + loss.Message
+		}
+	}
+	if ds := generationRefusalDiagnostics(err); len(ds) > 0 {
+		return ds
+	}
+	// Any other failure is generation's own; a render reports it the same way.
+	return []diagnostics.Diagnostic{{
+		Code:     string(diagnostics.CodeGenerationFailed),
+		Message:  "generation failed: " + err.Error(),
+		Severity: diagnostics.SeverityError,
+	}}
 }
 
 // conversionRefusalDiagnostics turns the error slide conversion refused slide
@@ -196,16 +335,20 @@ func refuseFindingDiagnostics(fs []patterns.FitFinding) []diagnostics.Diagnostic
 // files validation may not have resolved.
 //
 // keep, when set, restricts the result to the refusals it accepts.
-func slideConversionRefusals(input *PresentationInput, analysis *types.TemplateAnalysis, keep func(err error) bool) map[int][]diagnostics.Diagnostic {
+//
+// specs are the converted slides when the conversion refused none of them
+// (whatever keep reports), nil otherwise: the deck generation would go on to
+// generate.
+func slideConversionRefusals(input *PresentationInput, analysis *types.TemplateAnalysis, keep func(err error) bool) (out map[int][]diagnostics.Diagnostic, specs []generator.SlideSpec) {
 	if input == nil || analysis == nil || len(input.Slides) == 0 {
-		return nil
+		return nil, nil
 	}
-	out := map[int][]diagnostics.Diagnostic{}
+	out = map[int][]diagnostics.Diagnostic{}
 	var rhythmGrid *resolvedGrid
 	if input.Grid != nil {
 		if refusal := rhythmGridRefusal(input.Grid); refusal != nil {
 			out[-1] = refusalDiagnostics(refusal)
-			return out
+			return out, nil
 		}
 		rhythmGrid = resolveGrid(input.Grid, analysis.Layouts, analysis.SlideWidth, analysis.SlideHeight)
 	}
@@ -221,15 +364,20 @@ func slideConversionRefusals(input *PresentationInput, analysis *types.TemplateA
 		ViewingMode: tokens.ParseViewingMode(input.ViewingMode),
 		ShapesOnly:  true,
 	}
-	_, _, _, _ = convertPresentationSlidesEach(input.Slides, analysis.Layouts, analysis.SlideWidth, analysis.SlideHeight,
+	refused := 0
+	specs, _, _, _ = convertPresentationSlidesEach(input.Slides, analysis.Layouts, analysis.SlideWidth, analysis.SlideHeight,
 		analysis.Metadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy), diagCtx, false,
 		func(slideIdx int, err error) bool {
+			refused++
 			if keep == nil || keep(err) {
 				out[slideIdx] = conversionRefusalDiagnostics(slideIdx, err)
 			}
 			return true
 		})
-	return out
+	if refused > 0 {
+		specs = nil
+	}
+	return out, specs
 }
 
 // rhythmGridRefusal is the refusal for a deck-level grid block whose values
@@ -264,19 +412,29 @@ func deckStructuralChecks(output *dryRunOutput, input *PresentationInput, analys
 
 // deckStructuralDiagnostics is the structural verdict on a deck against its
 // template, as validation reports it: deckStructuralChecks, then every slide
-// generation's conversion refuses that those checks did not already reject.
+// generation's conversion refuses that those checks did not already reject,
+// then — for a deck both accept — what the generator itself refuses
+// (generationRefusals).
 func deckStructuralDiagnostics(output *dryRunOutput, input *PresentationInput, analysis *types.TemplateAnalysis) {
-	deckStructuralDiagnosticsWhere(output, input, analysis, nil)
+	specs := deckStructuralDiagnosticsWhere(output, input, analysis, nil)
+	if specs == nil || diagnostics.HasErrors(output.Diagnostics) {
+		return
+	}
+	if refused := generationRefusals(input, analysis, specs); len(refused) > 0 {
+		output.Valid = false
+		output.Diagnostics = append(output.Diagnostics, refused...)
+	}
 }
 
-// deckStructuralDiagnosticsWhere is deckStructuralDiagnostics over the
-// conversion refusals keep accepts (nil keeps all).
-func deckStructuralDiagnosticsWhere(output *dryRunOutput, input *PresentationInput, analysis *types.TemplateAnalysis, keep func(err error) bool) {
+// deckStructuralDiagnosticsWhere is the checks and the conversion refusals
+// keep accepts (nil keeps all). It returns the converted slides when the
+// conversion refused none.
+func deckStructuralDiagnosticsWhere(output *dryRunOutput, input *PresentationInput, analysis *types.TemplateAnalysis, keep func(err error) bool) []generator.SlideSpec {
 	deckStructuralChecks(output, input, analysis)
 
-	refusals := slideConversionRefusals(input, analysis, keep)
+	refusals, specs := slideConversionRefusals(input, analysis, keep)
 	if len(refusals) == 0 {
-		return
+		return specs
 	}
 	// A slide the checks already reject keeps their findings: they name the
 	// field and carry a fix, and generation refuses on them first.
@@ -298,6 +456,7 @@ func deckStructuralDiagnosticsWhere(output *dryRunOutput, input *PresentationInp
 		output.Valid = false
 		output.Diagnostics = append(output.Diagnostics, refusals[i]...)
 	}
+	return specs
 }
 
 // deckStructuralRefusal is generation's side of the verdict: the error for a

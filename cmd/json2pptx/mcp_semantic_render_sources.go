@@ -91,32 +91,7 @@ func (p *semanticAssetPrep) preConvert(input *PresentationInput) func() error {
 // semanticDiagnostics maps the refused asset findings back to the DeckSpec
 // paths the author wrote, keeping the raw path as evidence.
 func (p *semanticAssetPrep) semanticDiagnostics(cr *semantic.CompileResult) []semanticDiagnostic {
-	var sm *semantic.SourceMap
-	if cr != nil {
-		sm = cr.SourceMap
-	}
-	out := make([]semanticDiagnostic, 0, len(p.errors))
-	for _, d := range p.errors {
-		m := semantic.MapFinding(sm, semantic.RawFinding{Code: d.Code, Message: d.Message, Severity: d.Severity, RawPath: d.Path})
-		sd := semanticDiagnostic{
-			Code:         m.Code,
-			Severity:     string(m.Severity),
-			Message:      m.Message,
-			SemanticPath: m.SemanticPath,
-			RawPath:      m.RawPath,
-		}
-		if m.SlideIndex >= 0 {
-			idx := m.SlideIndex
-			sd.SlideIndex = &idx
-			if sd.SemanticPath == "" {
-				// Pattern-expanded asset fields have no field-level source
-				// link; point at the authored slide rather than nowhere.
-				sd.SemanticPath = fmt.Sprintf("slides[%d]", idx)
-			}
-		}
-		out = append(out, sd)
-	}
-	return out
+	return semanticAssetDiagnostics(cr, p.errors)
 }
 
 // semanticRenderRoots resolves a render_deck_spec call's asset root and its

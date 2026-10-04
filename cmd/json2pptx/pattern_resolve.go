@@ -2,9 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
-	"strconv"
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
@@ -22,81 +22,16 @@ type PatternInput = deckinput.PatternInput
 // typed Values/Overrides/CellOverrides, validates, and expands to a
 // ShapeGridInput. Returns the expanded grid, any warnings, and an error.
 func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Registry) (*jsonschema.ShapeGridInput, []string, error) {
-	pat, err := lookupPattern(p, reg)
+	// The block is read by the one decoder every surface uses — the pattern
+	// lookup, the inspection of the raw payload against the pattern's own
+	// decoder, the typed unmarshal, the pattern's Validate and the callout
+	// check (deckinput.DecodePattern, go-slide-creator-iqknz).
+	decoded, err := deckinput.DecodePattern(p, reg)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, patternBlockError(err)
 	}
-	mode, cleanOverrides, _ := patterns.SplitTypeScaleOverride(p.Name, p.Overrides)
-	if mode == "" {
-		mode = p.DefaultTypeScale
-	}
-
-	// Inspect the raw payload against the pattern's own decoder BEFORE anything
-	// else reads it (go-slide-creator-20jm). Two failures are invisible further
-	// down: a shape encoding/json rejects (whose error names Go types), and a key
-	// the decoder silently discards — {"columns": …} on comparison-2col reported
-	// "rows must contain at least 1 row" and never mentioned columns. Both become
-	// per-field findings here, so refusing names the field and the edit.
-	if inputErrs := patterns.InspectPatternInput(pat, p.Values, p.Overrides, p.CellOverrides); len(inputErrs) > 0 {
-		return nil, nil, newPatternInputError(p.Name, rootPatternFindingPaths(inputErrs))
-	}
-
-	// Unmarshal values
-	values := pat.NewValues()
-	if err := json.Unmarshal(p.Values, values); err != nil {
-		return nil, nil, cliPatternError("pattern %q: invalid values: %w", p.Name, err)
-	}
-
-	// Unmarshal overrides
-	var overrides any
-	if len(cleanOverrides) > 0 {
-		overrides = pat.NewOverrides()
-		if overrides != nil {
-			if err := json.Unmarshal(cleanOverrides, overrides); err != nil {
-				return nil, nil, cliPatternError("pattern %q: invalid overrides: %w", p.Name, err)
-			}
-		}
-	}
-
-	// Unmarshal cell_overrides: string keys → int keys
-	var cellOverrides map[int]any
-	if len(p.CellOverrides) > 0 {
-		cellOverrides = make(map[int]any, len(p.CellOverrides))
-		for key, raw := range p.CellOverrides {
-			idx, err := strconv.Atoi(key)
-			if err != nil {
-				return nil, nil, cliPatternError("pattern %q: cell_overrides key %q is not an integer", p.Name, key)
-			}
-			co := pat.NewCellOverride()
-			if co == nil {
-				return nil, nil, cliPatternError("pattern %q: does not support cell_overrides", p.Name)
-			}
-			if err := json.Unmarshal(raw, co); err != nil {
-				return nil, nil, cliPatternError("pattern %q: invalid cell_overrides[%d]: %w", p.Name, idx, err)
-			}
-			cellOverrides[idx] = co
-		}
-	}
-
-	// Validate. The pattern's own findings are already *patterns.ValidationError
-	// with a path; they are rewrapped rather than %w-formatted so the per-field
-	// structure survives into the response instead of being newline-joined into
-	// one message (go-slide-creator-20jm).
-	if err := pat.Validate(values, overrides, cellOverrides); err != nil {
-		if ves := patternValidationFindings(err); len(ves) > 0 {
-			return nil, nil, newPatternInputError(p.Name, rootPatternFindingPaths(ves))
-		}
-		return nil, nil, cliPatternError("pattern %q: validation failed: %w", p.Name, err)
-	}
-
-	// Pre-expand callout support check (D18): fail before Expand if pattern
-	// does not support callout — this keeps validate and expand parity (0kyd).
-	if p.Callout != nil {
-		cs, ok := pat.(patterns.CalloutSupport)
-		if !ok || !cs.SupportsCallout() {
-			return nil, nil, patterns.ErrCalloutUnsupportedFor(p.Name, reg.CalloutSupportedPatterns())
-		}
-	}
+	pat, mode := decoded.Pattern, decoded.TypeScale
+	values, overrides, cellOverrides := decoded.Values, decoded.Overrides, decoded.CellOverrides
 
 	// Size content against the rectangle it will actually render into. Author
 	// bounds used to replace only grid.Bounds after expansion, so card heights
@@ -539,17 +474,20 @@ func resolvePatternBounds(p *PatternInput) (*jsonschema.GridBoundsInput, bool) {
 	return nil, false
 }
 
-// lookupPattern resolves the pattern a PatternInput names and checks its
-// envelope-level vertical_align (go-slide-creator-e17xy).
-func lookupPattern(p *PatternInput, reg *patterns.Registry) (patterns.Pattern, error) {
-	pat, ok := reg.Get(p.Name)
-	if !ok {
-		return nil, unknownPatternInputError(reg, p.Name)
+// patternBlockError is the decoder's refusal of a pattern block
+// (*deckinput.PatternError) as this package reports it: a fault of the block
+// as a whole is a PATTERN_ERROR located at the block by whoever knows where
+// the block is; per-field findings travel as a patternInputError, one finding
+// per field.
+func patternBlockError(err error) error {
+	var pe *deckinput.PatternError
+	if !errors.As(err, &pe) {
+		return err
 	}
-	if _, ok := shapegrid.ParseVerticalAlign(p.VerticalAlign); !ok {
-		return nil, cliPatternError("pattern %q: vertical_align must be one of \"auto\", \"top\", \"center\", \"bottom\", \"stretch\", got %q", p.Name, p.VerticalAlign)
+	if msg, ok := pe.IsBlockFault(); ok {
+		return cliPatternError("%s", msg)
 	}
-	return pat, nil
+	return newPatternInputError(pe.Pattern, pe.Findings)
 }
 
 // applyPatternVerticalAlign applies a slide pattern's (already validated)

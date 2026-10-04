@@ -1,5 +1,42 @@
 # Schema Changelog
 
+- **2026-10-04 — Generation's own refusals are part of the one verdict; one pattern decoder (`go-slide-creator-ni65k`, `-iqknz`; found on the way: `-bg2fc`, `-mnbmz`, `-dkr5x`, `-gh929`, `-pebyi`, `-upmqu`, `-brojn`).**
+  - **Now rejected by `validate` / `validate_input`, `generate -dry-run` and
+    `preflight`** (with or without the fit report; generation always refused
+    or dropped them): a content block the slide would drop — a second text
+    block, or a second chart / table / image, for one placeholder; a block
+    that reaches an occupied placeholder through a fallback
+    (`CONTENT_DROPPED` at `/slides/N/content/M`); bullets, text or table rows
+    the placeholder cannot hold (`text_trimmed`, `table_rows_truncated`,
+    `TEXT_BELOW_READABLE_MIN` at the block); grid text below its readable
+    floor. Validation runs generation with nothing written and reports what
+    it refuses, so a deck that validates is one `generate` writes.
+  - **`generate` / `generate_presentation` refuse a hard `CONTENT_DROPPED`
+    before writing a file** under `output_validation: "strict"` (the
+    default): exit 1 / an error result whose findings are the dropped blocks,
+    and no `.pptx`. They used to write the deck without the block and answer
+    `success: false`. `warn` / `off` and `--partial` still write it.
+  - **`generate` failure findings.** A generation refusal for lost or
+    unreadable text is the located finding alone (`text_trimmed` at
+    `/slides/N/content/M`); the CLI report used to add a second
+    `GENERATION_FAILED` finding with the same message.
+  - **`wrong_pattern` path.** Reported at `/slides/N/pattern/name` (was
+    `/slides/N/pattern/values/pattern`, which the deck does not have).
+  - **DeckSpec `raw_json2pptx` slides.** The static check reads a pattern
+    block with the renderer's decoder, so its findings have the raw surfaces'
+    codes and fields: `pattern: {name: "kpi-3up", values: "nope"}` is
+    `invalid_shape` at `/slides/N/slide/pattern/values` (was `PATTERN_ERROR`
+    at `/slides/N/slide/pattern`), an unknown name `UNKNOWN_PATTERN` at
+    `…/pattern/name`, and a pattern in a grid cell is reported at the cell
+    (was at the slide). An enum value outside its set (`transition`,
+    `build`, `transition_speed`, `slide_type`, `background.fit`,
+    `image_value.fit`) is `UNKNOWN_ENUM` at the field from validate and
+    render (the deck used to render with the value ignored). An asset that
+    does not resolve is reported at the field naming it and blocks
+    (`IMAGE_PATH` at `/slides/N/slide/content/M/image_value/path`; `semantic
+    validate` / `semantic render` answered `GENERATION_FAILED` with no path,
+    the MCP tools an error finding at the slide marked non-blocking).
+
 - **2026-10-04 — One structural verdict for a raw deck (`go-slide-creator-9k5fh`; found on the way: `-1ygwt`, `-xjff4`, `-duypl`, `-6ihc1`, `-084hb`, `-yie0c`, `-c8335`, `-p97m1`).**
   `validate` / `validate_input`, `generate -dry-run`, `preflight`, `generate`
   / `generate_presentation`, `render-slide-from-json` and the DeckSpec

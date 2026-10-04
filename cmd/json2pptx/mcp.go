@@ -536,33 +536,31 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	// Generate
 	startTime := time.Now()
-	genReq := generator.GenerationRequest{
-		TemplatePath:          templatePath,
-		OutputPath:            outputPath,
-		Slides:                slideSpecs,
-		SVGStrategy:           string(mc.cfg.SVG.Strategy),
-		SVGScale:              mc.cfg.SVG.Scale,
-		SVGNativeCompat:       string(mc.cfg.SVG.NativeCompatibility),
-		MaxPNGWidth:           mc.cfg.SVG.MaxPNGWidth,
-		ExcludeTemplateSlides: true,
-		SyntheticFiles:        syntheticFiles,
-		StrictFit:             strictFit,
-		DataPalette:           resolveDataPalette(templateMetadata, theme.Colors),
-		ViewingMode:           input.ViewingMode,
-		AllowedImagePaths:     imageAllowList(mc.cfg.Images.AllowedBasePaths, urlCacheDir),
+	// Post-generation output validation via output_validation parameter (default: strict).
+	// Strict mode is the standing guarantee for the 'zero needs repair' contract
+	// (see go-slide-creator-0myv): every successful generate_presentation response
+	// implies a clean output-validation pass.
+	outputValidation := "strict"
+	if ov, ovErr := request.RequireString("output_validation"); ovErr == nil && ov != "" {
+		outputValidation = ov
 	}
-
-	// Wire footer/chrome configuration.
-	genReq.Footer = footerConfigForInput(&input, len(slideSpecs))
-	if input.Chrome != nil {
-		applyChromeSkip(slideSpecs, input.Chrome, input.Slides, templateLayouts)
-		applyChromeTracker(slideSpecs, input.Chrome, input.Slides, templateLayouts)
-		applyChromeSectionCrumb(genReq.Footer, slideSpecs, input.Chrome, input.Slides, templateLayouts)
-	}
-	applyAppendixPageLabels(genReq.Footer, input.Slides, templateLayouts)
-	if input.ThemeOverride != nil {
-		genReq.ThemeOverride = input.ThemeOverride.ToThemeOverride()
-	}
+	// The slides with the footer/chrome configuration and theme override every
+	// render path uses.
+	genReq := deckGenerationRequest(&input, slideSpecs, templateLayouts, generator.GenerationRequest{
+		TemplatePath:      templatePath,
+		OutputPath:        outputPath,
+		SVGStrategy:       string(mc.cfg.SVG.Strategy),
+		SVGScale:          mc.cfg.SVG.Scale,
+		SVGNativeCompat:   string(mc.cfg.SVG.NativeCompatibility),
+		MaxPNGWidth:       mc.cfg.SVG.MaxPNGWidth,
+		SyntheticFiles:    syntheticFiles,
+		StrictFit:         strictFit,
+		DataPalette:       resolveDataPalette(templateMetadata, theme.Colors),
+		AllowedImagePaths: imageAllowList(mc.cfg.Images.AllowedBasePaths, urlCacheDir),
+		// A block the slide would drop refuses the deck before a file is
+		// written, as validate_input reports it (go-slide-creator-ni65k).
+		RefuseDroppedContent: outputValidation == "strict",
+	})
 
 	// Hold the target path across the write and the hash read-back, so two
 	// calls aimed at one file cannot report a content_hash that is not on disk.
@@ -576,21 +574,17 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 			if _, location := locateRefusal(&input, slideSpecs, templateLayouts, nil, loss); location != "" {
 				loss.Message = location + ": " + loss.Message
 			}
-			return api.MCPDiagnosticsError([]diagnostics.Diagnostic{diagnostics.FromValidationError(loss)}), nil
+		}
+		// The findings validate_input reports for the same deck: the block
+		// generation would drop, the source its text fit would lose.
+		if ds := generationRefusalDiagnostics(err); len(ds) > 0 {
+			return api.MCPDiagnosticsError(ds), nil
 		}
 		return api.MCPSimpleError("GENERATION_FAILED", fmt.Sprintf("generation failed: %v", err)), nil
 	}
 
 	duration := time.Since(startTime)
 
-	// Post-generation output validation via output_validation parameter (default: strict).
-	// Strict mode is the standing guarantee for the 'zero needs repair' contract
-	// (see go-slide-creator-0myv): every successful generate_presentation response
-	// implies a clean output-validation pass.
-	outputValidation := "strict"
-	if ov, ovErr := request.RequireString("output_validation"); ovErr == nil && ov != "" {
-		outputValidation = ov
-	}
 	var outputValidationFindings []pptx.Finding
 	if outputValidation != "off" {
 		report, valErr := pptx.ValidateOutputFile(outputPath)
