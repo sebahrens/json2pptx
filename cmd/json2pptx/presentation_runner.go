@@ -155,7 +155,7 @@ func runnerTemplatePath(name string, opts RenderOptions) (string, func(), error)
 	}
 	resolved, cleanup, err := resolveTemplatePath(name, opts.TemplatesDir)
 	if err != nil {
-		return "", noop, fmt.Errorf("%s", templateNotFoundError(name, opts.TemplatesDir))
+		return "", noop, templateNotFound(name, opts.TemplatesDir)
 	}
 	return resolved, cleanup, nil
 }

@@ -31,7 +31,7 @@ func runTemplateSettings() error {
 		return nil
 	default:
 		printTemplateSettingsUsage()
-		return fmt.Errorf("unknown template-settings subcommand %q", subcmd)
+		return cliInvalidArg("unknown template-settings subcommand %q", subcmd)
 	}
 }
 
@@ -65,7 +65,7 @@ func runTemplateSettingsList() error {
 
 	if *templateName == "" {
 		fs.Usage()
-		return fmt.Errorf("--template is required")
+		return cliMissingArg("--template is required")
 	}
 
 	mc := cliMCPConfig(*templatesDir, "")
@@ -101,13 +101,13 @@ func runTemplateSettingsRegister() error {
 
 	if *templateName == "" || *kind == "" || *name == "" || *definitionStr == "" {
 		fs.Usage()
-		return fmt.Errorf("-template, -kind, -name, and -definition are all required")
+		return cliMissingArg("-template, -kind, -name, and -definition are all required")
 	}
 
 	// Parse definition JSON.
 	var definition any
 	if err := json.Unmarshal([]byte(*definitionStr), &definition); err != nil {
-		return fmt.Errorf("invalid -definition JSON: %w", err)
+		return cliInvalidArg("invalid -definition JSON: %w", err)
 	}
 
 	mc := cliMCPConfig(*templatesDir, "")
@@ -145,7 +145,7 @@ func runTemplateSettingsDelete() error {
 
 	if *templateName == "" || *kind == "" || *name == "" {
 		fs.Usage()
-		return fmt.Errorf("-template, -kind, and -name are all required")
+		return cliMissingArg("-template, -kind, and -name are all required")
 	}
 
 	mc := cliMCPConfig(*templatesDir, "")

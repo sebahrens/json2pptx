@@ -167,7 +167,7 @@ func (v *cliFormatValue) Set(s string) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("must be json or text")
+		return cliInvalidArg("must be json or text")
 	}
 	v.value = s
 	return nil
@@ -255,12 +255,12 @@ func cliParseArgs(fs *flag.FlagSet, args []string) error {
 
 	if conv.Input != "" && !set[conv.Input] && len(positional) > 0 && fs.Lookup(conv.Input) != nil {
 		if err := fs.Set(conv.Input, positional[0]); err != nil {
-			return fmt.Errorf("invalid argument %q: %w", positional[0], err)
+			return cliInvalidArg("invalid argument %q: %w", positional[0], err)
 		}
 		positional = positional[1:]
 	}
 	if !conv.Positional && len(positional) > 0 {
-		return fmt.Errorf("%s: unexpected argument %q — run 'json2pptx %s -h' for usage",
+		return cliInvalidArg("%s: unexpected argument %q — run 'json2pptx %s -h' for usage",
 			fs.Name(), positional[0], fs.Name())
 	}
 	// --verbose registered by the convention (or generate's own) turns INFO

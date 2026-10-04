@@ -34,11 +34,11 @@ func runRepair() error {
 
 	if *jsonPath == "" {
 		fs.Usage()
-		return fmt.Errorf("--json is required")
+		return cliMissingArg("--json is required")
 	}
 	if *fixesStr == "" {
 		fs.Usage()
-		return fmt.Errorf("--fixes is required")
+		return cliMissingArg("--fixes is required")
 	}
 
 	jsonInput, err := readJSONInput(*jsonPath)
@@ -49,14 +49,14 @@ func runRepair() error {
 	// Parse fixes to validate JSON before sending.
 	var fixes []any
 	if err := json.Unmarshal([]byte(*fixesStr), &fixes); err != nil {
-		return fmt.Errorf("invalid -fixes JSON: %w", err)
+		return cliInvalidArg("invalid -fixes JSON: %w", err)
 	}
 
 	mc := cliMCPConfig(*templatesDir, "")
 
 	var presentation any
 	if err := json.Unmarshal([]byte(jsonInput), &presentation); err != nil {
-		return fmt.Errorf("invalid JSON: %w", err)
+		return cliInvalidJSON("invalid JSON: %w", err)
 	}
 
 	args := map[string]any{

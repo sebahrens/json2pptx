@@ -32,7 +32,7 @@ func runRecommendVisual() error {
 
 	if *intent == "" {
 		fs.Usage()
-		return fmt.Errorf("--intent is required")
+		return cliMissingArg("--intent is required")
 	}
 
 	mc := cliMCPConfig(*templatesDir, "")

@@ -47,11 +47,11 @@ func runResolveTheme() error {
 
 	if *templateName == "" {
 		fs.Usage()
-		return fmt.Errorf("--template is required")
+		return cliMissingArg("--template is required")
 	}
 
 	if *override != "" && *variation != "" {
-		return fmt.Errorf("--override and --variation are mutually exclusive; pass only one")
+		return cliInvalidArg("--override and --variation are mutually exclusive; pass only one")
 	}
 
 	themeOverride, err := buildThemeOverrideArg(*override, *variation)
@@ -90,7 +90,7 @@ func buildThemeOverrideArg(overrideArg, variationArg string) (map[string]any, er
 	case variationArg != "":
 		preset, ok := builtinThemeVariations[variationArg]
 		if !ok {
-			return nil, fmt.Errorf("--variation: unknown variation %q (known: %s); use --override for custom JSON",
+			return nil, cliInvalidArg("--variation: unknown variation %q (known: %s); use --override for custom JSON",
 				variationArg, formatKnownVariations())
 		}
 		// Return a shallow copy so callers cannot mutate the registry entry.
@@ -112,7 +112,7 @@ func parseOverrideJSONArg(arg string) (map[string]any, error) {
 	if strings.HasPrefix(arg, "@") {
 		path := strings.TrimPrefix(arg, "@")
 		if path == "" {
-			return nil, fmt.Errorf("-override: empty path after '@'")
+			return nil, cliInvalidArg("-override: empty path after '@'")
 		}
 		data, err := os.ReadFile(path)
 		if err != nil {
@@ -125,7 +125,7 @@ func parseOverrideJSONArg(arg string) (map[string]any, error) {
 
 	var obj map[string]any
 	if err := json.Unmarshal([]byte(raw), &obj); err != nil {
-		return nil, fmt.Errorf("-override: invalid JSON: %w", err)
+		return nil, cliInvalidJSON("-override: invalid JSON: %w", err)
 	}
 	return obj, nil
 }

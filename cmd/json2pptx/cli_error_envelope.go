@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
-	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 )
@@ -114,36 +114,66 @@ func cliWantsJSON() bool {
 	return cliConventions()[set.Name()].JSONFlag == ""
 }
 
-// cliErrorCode classifies a plain error for the envelope. A typed error is
-// read first; otherwise the wording the commands use for the three argument
-// failures (missing, not found, not accepted) picks the code, and the rest is
-// INTERNAL. The message always carries the detail.
+// cliCodedError is a command-line failure that states its own finding code.
+// The command that refuses an argument knows why — a flag is missing, a value
+// is not one it accepts, a file is not there — so it says so where it returns
+// the error, instead of the catch-all reading the code back out of the
+// message wording (go-slide-creator-fbft2). The message is the wrapped
+// error's, unchanged.
+type cliCodedError struct {
+	code diagnostics.Code
+	err  error
+}
+
+func (e *cliCodedError) Error() string { return e.err.Error() }
+func (e *cliCodedError) Unwrap() error { return e.err }
+
+func cliCoded(code diagnostics.Code, format string, args ...any) error {
+	return &cliCodedError{code: code, err: fmt.Errorf(format, args...)}
+}
+
+// cliMissingArg is the error for a required flag, argument or subcommand that
+// was not given (MISSING_PARAMETER). The format takes %w.
+func cliMissingArg(format string, args ...any) error {
+	return cliCoded(diagnostics.CodeMissingParameter, format, args...)
+}
+
+// cliInvalidArg is the error for a value the command does not accept: an
+// unknown name, a value outside its set, flags that exclude each other, an
+// argument too many (INVALID_PARAMETER).
+func cliInvalidArg(format string, args ...any) error {
+	return cliCoded(diagnostics.CodeInvalidParameter, format, args...)
+}
+
+// cliNotFound is the error for a named file or resource that does not exist
+// (FILE_NOT_FOUND).
+func cliNotFound(format string, args ...any) error {
+	return cliCoded(diagnostics.CodeFileNotFound, format, args...)
+}
+
+// cliInvalidJSON is the error for a flag or file whose JSON does not parse or
+// has the wrong shape (INVALID_JSON).
+func cliInvalidJSON(format string, args ...any) error {
+	return cliCoded(diagnostics.CodeInvalidJSON, format, args...)
+}
+
+// cliErrorCode is the envelope code of a plain error. Nothing is read from the
+// message: a missing file and malformed JSON are recognised by their error
+// types wherever they were wrapped, a command's own argument error carries its
+// code (cliCodedError), and an argument list the flag parser refused is an
+// invalid parameter. Anything else is a failure of the command itself.
 func cliErrorCode(err error) diagnostics.Code {
 	var syn *json.SyntaxError
 	var typ *json.UnmarshalTypeError
+	var coded *cliCodedError
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		return diagnostics.CodeFileNotFound
 	case errors.As(err, &syn), errors.As(err, &typ):
 		return diagnostics.CodeInvalidJSON
+	case errors.As(err, &coded):
+		return coded.code
 	case cliParseFailed:
-		return diagnostics.CodeInvalidParameter
-	}
-	msg := strings.ToLower(err.Error())
-	has := func(words ...string) bool {
-		for _, w := range words {
-			if strings.Contains(msg, w) {
-				return true
-			}
-		}
-		return false
-	}
-	switch {
-	case has("is required", "are required", "missing required", " requires "):
-		return diagnostics.CodeMissingParameter
-	case has("not found", "no such file"):
-		return diagnostics.CodeFileNotFound
-	case has("unknown ", "invalid ", "must be ", "mutually exclusive", "unexpected argument"):
 		return diagnostics.CodeInvalidParameter
 	}
 	return diagnostics.CodeInternal

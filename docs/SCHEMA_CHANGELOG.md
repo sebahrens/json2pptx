@@ -1,5 +1,31 @@
 # Schema Changelog
 
+- **2026-10-04 — CLI error codes come from the error, not its wording; `generate` failures carry the shared envelope (`go-slide-creator-fbft2`).**
+  - The catch-all envelope a JSON command prints when it fails with a plain
+    error picked `MISSING_PARAMETER` / `INVALID_PARAMETER` / `FILE_NOT_FOUND`
+    from words in the message ("is required", "unknown ", "not found") and
+    called everything else `INTERNAL`. The commands now state the code where
+    they return the error (`cliMissingArg` / `cliInvalidArg` / `cliNotFound`
+    / `cliInvalidJSON`, about 100 sites), a missing file and malformed JSON
+    are recognised by error type, and nothing is read from the message.
+    Codes for the argument errors that already had one are unchanged.
+  - Argument errors the wording missed were `INTERNAL` (remediation "retry")
+    and are now typed: two flags set to conflicting values, `--tool` with a
+    task, an extra positional argument, a slide index out of range, "all
+    required" flag groups, an empty `@` path, an images directory with no
+    slide images.
+  - A template name that resolves to nothing reports `TEMPLATE_NOT_FOUND`
+    (it was `FILE_NOT_FOUND` by wording).
+  - **`generate` failure result** keeps `{success: false, error,
+    fit_findings}` and adds the shared envelope fields beside them in the
+    same document: `{schema_version, tool, subcommand: "generate", ok: false,
+    summary, findings: [...]}`, on stdout and in `--json-output-report`.
+    `findings[0]` is the failure itself — `STRICT_FIT`, `FILE_NOT_FOUND`,
+    `INVALID_JSON`, `MISSING_PARAMETER`, `TEMPLATE_NOT_FOUND`, or
+    `GENERATION_FAILED` for anything else (not `INTERNAL`) — and a refusal's
+    fit findings follow it. A successful result is unchanged.
+  - `validate-output` keeps its array shape (not changed here).
+
 - **2026-10-04 — CLI `semantic render` assigns slide ids (`go-slide-creator-cmwmg`).**
   - `json2pptx semantic render` gives every authored slide without an `id`
     the `s<N>` MCP `render_deck_spec` gives it (authored ids kept; a generated

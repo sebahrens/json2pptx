@@ -45,7 +45,7 @@ func runDescribeFinding() error {
 
 	if resolvedCode == "" {
 		fs.Usage()
-		return fmt.Errorf("describe-finding: a finding code is required (positional or -code)")
+		return cliMissingArg("describe-finding: a finding code is required (positional or -code)")
 	}
 
 	result, err := handleDescribeFinding(context.Background(), mcpRequestWithArgs(map[string]any{

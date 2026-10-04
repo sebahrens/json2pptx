@@ -493,7 +493,7 @@ func runSkillInfo() error {
 	case "list", "compact", "full":
 		// valid
 	default:
-		return fmt.Errorf("invalid mode %q: must be list, compact, or full", *mode)
+		return cliInvalidArg("invalid mode %q: must be list, compact, or full", *mode)
 	}
 
 	// Discover templates using the same search path as generate

@@ -443,7 +443,7 @@ func runSkill() error {
 		if len(os.Args) >= 2 && (os.Args[1] == "-h" || os.Args[1] == "--help") {
 			return nil
 		}
-		return fmt.Errorf("skill requires a subcommand: install, status or cli-map")
+		return cliMissingArg("skill requires a subcommand: install, status or cli-map")
 	}
 	sub := os.Args[1]
 	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
@@ -456,7 +456,7 @@ func runSkill() error {
 		return runSkillCLIMap()
 	default:
 		printSkillUsage()
-		return fmt.Errorf("unknown skill subcommand %q: want install, status or cli-map", sub)
+		return cliInvalidArg("unknown skill subcommand %q: want install, status or cli-map", sub)
 	}
 }
 
@@ -594,6 +594,6 @@ func runSkillCLIMap() error {
 		_, err := os.Stdout.WriteString(b.String())
 		return err
 	default:
-		return fmt.Errorf("skill cli-map: invalid --format %q: want json or md", *format)
+		return cliInvalidArg("skill cli-map: invalid --format %q: want json or md", *format)
 	}
 }

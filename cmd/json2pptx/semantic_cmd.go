@@ -35,7 +35,7 @@ import (
 func runSemantic() error {
 	if len(os.Args) < 2 {
 		printSemanticUsage()
-		return fmt.Errorf("semantic requires a subcommand: kinds, validate, compile, render, explain, or schema")
+		return cliMissingArg("semantic requires a subcommand: kinds, validate, compile, render, explain, or schema")
 	}
 
 	sub := os.Args[1]
@@ -75,7 +75,7 @@ func dispatchSemanticSub(sub string) error {
 		printSemanticUsage()
 		return nil
 	default:
-		return fmt.Errorf("unknown semantic subcommand %q — run 'json2pptx semantic help' for usage", sub)
+		return cliInvalidArg("unknown semantic subcommand %q — run 'json2pptx semantic help' for usage", sub)
 	}
 }
 
@@ -124,7 +124,7 @@ func parseStrictness(v string) (semantic.Strictness, error) {
 	case semantic.StrictnessOff, semantic.StrictnessWarn, semantic.StrictnessStrict:
 		return semantic.Strictness(v), nil
 	default:
-		return "", fmt.Errorf("invalid --strict value %q: must be off, warn, or strict", v)
+		return "", cliInvalidArg("invalid --strict value %q: must be off, warn, or strict", v)
 	}
 }
 
@@ -141,7 +141,7 @@ func parseOutputValidation(v string) (string, error) {
 	case "off", "warn", "strict":
 		return v, nil
 	default:
-		return "", fmt.Errorf("invalid --output-validation value %q: must be off, warn, or strict", v)
+		return "", cliInvalidArg("invalid --output-validation value %q: must be off, warn, or strict", v)
 	}
 }
 
@@ -188,7 +188,7 @@ func runSemanticValidate() error {
 	}
 	if *specPath == "" {
 		fs.Usage()
-		return fmt.Errorf("--spec is required")
+		return cliMissingArg("--spec is required")
 	}
 	strictness, err := parseStrictness(*strict)
 	if err != nil {
@@ -344,7 +344,7 @@ func runSemanticCompile() error {
 	}
 	if *specPath == "" {
 		fs.Usage()
-		return fmt.Errorf("--spec is required")
+		return cliMissingArg("--spec is required")
 	}
 	strictness, err := parseStrictness(*strict)
 	if err != nil {
@@ -587,11 +587,11 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 	}
 	if *specPath == "" {
 		fs.Usage()
-		return fmt.Errorf("--spec is required")
+		return cliMissingArg("--spec is required")
 	}
 	if *output == "" {
 		fs.Usage()
-		return fmt.Errorf("--out is required")
+		return cliMissingArg("--out is required")
 	}
 	// A render that fails must not leave a sidecar describing a deck that is
 	// not there: an earlier render's manifest for the same path is removed
@@ -1386,7 +1386,7 @@ func runSemanticExplain() error {
 	}
 	if *specPath == "" {
 		fs.Usage()
-		return fmt.Errorf("--spec is required")
+		return cliMissingArg("--spec is required")
 	}
 
 	data, err := readSpec(*specPath)

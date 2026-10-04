@@ -31,7 +31,7 @@ func runRead() error {
 
 	if fs.NArg() < 1 {
 		fs.Usage()
-		return fmt.Errorf("pptx file path is required")
+		return cliMissingArg("pptx file path is required")
 	}
 
 	pptxPath := fs.Arg(0)
@@ -44,7 +44,7 @@ func runRead() error {
 	// Filter to a single slide if requested.
 	if *slideIndex >= 0 {
 		if *slideIndex >= len(pres.Slides) {
-			return fmt.Errorf("slide index %d out of range (presentation has %d slides)", *slideIndex, len(pres.Slides))
+			return cliInvalidArg("slide index %d out of range (presentation has %d slides)", *slideIndex, len(pres.Slides))
 		}
 		pres.Slides = []pptxread.Slide{pres.Slides[*slideIndex]}
 	}

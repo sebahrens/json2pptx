@@ -257,7 +257,7 @@ func parseJSONInput(jsonPath, templateOverride, designModeOverride string, stric
 	}
 
 	if input.Template == "" && input.TemplatePath == "" {
-		return nil, nil, fmt.Errorf("template is required: use --template flag, or set \"template\" (a registered name) or \"template_path\" (a local .pptx) in JSON input")
+		return nil, nil, cliMissingArg("template is required: use --template flag, or set \"template\" (a registered name) or \"template_path\" (a local .pptx) in JSON input")
 	}
 	if input.Template != "" && input.TemplatePath != "" {
 		return nil, nil, fmt.Errorf("set only one of \"template\" (a registered name) or \"template_path\" (a local .pptx), not both")
@@ -600,7 +600,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 			if jsonOutputPath == "" {
 				return e
 			}
-			return writeJSONErrorWithFindings(jsonOutputPath, e.Err, e.Findings)
+			return writeJSONErrorWithFindings(jsonOutputPath, e, e.Findings)
 		case *OutputValidationFailure:
 			blocking := e.Report.Blocking()
 			msgs := make([]string, 0, len(blocking))
@@ -773,7 +773,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 }
 
 // printGenerateSummary prints generate's one-line JSON result on stdout.
-func printGenerateSummary(summary JSONOutput) error {
+func printGenerateSummary(summary any) error {
 	data, err := json.Marshal(summary)
 	if err != nil {
 		return fmt.Errorf("failed to marshal result: %w", err)
@@ -2105,13 +2105,9 @@ func writeJSONErrorWithFindings(jsonOutputPath string, err error, findings []pat
 		return err
 	}
 
-	output := JSONOutput{
-		Success:     false,
-		Error:       err.Error(),
-		FitFindings: findings,
-	}
-
-	if writeErr := writeJSONOutput(jsonOutputPath, output); writeErr != nil {
+	// The report carries the shared finding envelope beside generate's own
+	// failure fields (go-slide-creator-fbft2).
+	if writeErr := writeJSONDocument(jsonOutputPath, newGenerateFailure(err, findings)); writeErr != nil {
 		return fmt.Errorf("%v (also failed to write JSON output: %v)", err, writeErr)
 	}
 
@@ -2506,6 +2502,11 @@ func convertMediaFailures(failures []generator.MediaFailure) []SlideError {
 
 // writeJSONOutput writes a JSON output to file or stdout.
 func writeJSONOutput(path string, output JSONOutput) error {
+	return writeJSONDocument(path, output)
+}
+
+// writeJSONDocument writes any result document to path ("-" is stdout).
+func writeJSONDocument(path string, output any) error {
 	data, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON output: %w", err)

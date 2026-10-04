@@ -44,7 +44,7 @@ func runRenderSlide() error {
 
 	if *pptxPath == "" {
 		fs.Usage()
-		return fmt.Errorf("--pptx is required")
+		return cliMissingArg("--pptx is required")
 	}
 
 	mc := cliMCPConfig(*templatesDir, "")
@@ -120,11 +120,11 @@ func runRenderSlideFromJSON() error {
 
 	if *templateName == "" {
 		fs.Usage()
-		return fmt.Errorf("--template is required")
+		return cliMissingArg("--template is required")
 	}
 	if *slidePath == "" {
 		fs.Usage()
-		return fmt.Errorf("--slide is required")
+		return cliMissingArg("--slide is required")
 	}
 
 	var slideBytes []byte
@@ -202,7 +202,7 @@ func runRenderThumbnails() error {
 
 	if *pptxPath == "" {
 		fs.Usage()
-		return fmt.Errorf("--pptx is required")
+		return cliMissingArg("--pptx is required")
 	}
 
 	mc := cliMCPConfig(*templatesDir, "")
@@ -269,7 +269,7 @@ func parseSlideList(v string) ([]any, error) {
 		out = append(out, field)
 	}
 	if len(out) == 0 {
-		return nil, fmt.Errorf("no slides given")
+		return nil, cliMissingArg("no slides given")
 	}
 	return out, nil
 }

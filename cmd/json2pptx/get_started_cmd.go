@@ -42,7 +42,7 @@ func runGetStarted() error {
 
 	if *tool != "" {
 		if *task != "" {
-			return fmt.Errorf("get-started: --tool and a task are separate questions: name a tool OR a task, not both")
+			return cliInvalidArg("get-started: --tool and a task are separate questions: name a tool OR a task, not both")
 		}
 		return runGetStartedTool(strings.TrimSpace(*tool), *templatesDir, *outputDir)
 	}
@@ -68,7 +68,7 @@ func runGetStarted() error {
 			known = known || t == *task
 		}
 		if !known {
-			return fmt.Errorf("get-started: unknown task %q — valid tasks: %s", *task, strings.Join(getStartedAvailableTasks(), ", "))
+			return cliInvalidArg("get-started: unknown task %q — valid tasks: %s", *task, strings.Join(getStartedAvailableTasks(), ", "))
 		}
 		args["task"] = *task
 	}
@@ -117,7 +117,7 @@ func runGetStartedTool(name, templatesDir, outputDir string) error {
 	if _, known := toolConstructors()[name]; !known {
 		names := mcpToolNames()
 		sort.Strings(names)
-		return fmt.Errorf("get-started: unknown tool %q — tools: %s", name, strings.Join(names, ", "))
+		return cliInvalidArg("get-started: unknown tool %q — tools: %s", name, strings.Join(names, ", "))
 	}
 	mc := cliMCPConfig(templatesDir, outputDir)
 	result, err := mc.handleGetStarted(context.Background(), mcpRequestWithArgs(map[string]any{"tool": name}))
