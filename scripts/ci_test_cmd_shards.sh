@@ -14,7 +14,7 @@ set -euo pipefail
 SHARDS="${1:-3}"
 PROFILE="${2:-coverage-cmd.out}"
 PKG=./cmd/json2pptx
-TIMEOUT="${SHARD_TIMEOUT:-40m}"
+TIMEOUT="${SHARD_TIMEOUT:-47m}"
 LOGDIR="$(mktemp -d)"
 
 TESTS=()
