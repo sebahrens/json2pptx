@@ -12,8 +12,7 @@ import (
 // Pattern-choice & rendering-geometry QA heuristics (J2P-VQA-009).
 //
 // A rendered-deck review surfaced layout-quality issues that static validation
-// passed: single-row flow lanes stretched over-tall, decision diamonds with no
-// zone to explain the branch, agenda slides drawn as flowcharts, and rotated
+// passed: decision diamonds with no zone to explain the branch, agenda slides drawn as flowcharts, and rotated
 // axis bands that intrude into the quadrants after rotation. These detectors
 // flag those cases at preflight so an agent can swap to a better-suited
 // pattern (or, for the rotated band, fix the geometry).
@@ -25,11 +24,6 @@ import (
 // report separate a poor pattern choice from a rendering bug.
 
 const (
-	// overtallFlowMinHeightPct is the lane-height fraction (% of the content
-	// area) above which a sparse single-row flow reads as over-tall boxes. A
-	// cap at or below this (e.g. the recommended max_height_pct ~35) is fine.
-	overtallFlowMinHeightPct = 50.0
-
 	// matrixRotationTolDeg is how close (in degrees) a shape's rotation must be
 	// to 90° or 270° to count as a rotated axis band.
 	matrixRotationTolDeg = 15.0
@@ -66,9 +60,6 @@ func collectPatternChoiceFindings(input *PresentationInput) []patterns.FitFindin
 	var findings []patterns.FitFinding
 	for si := range input.Slides {
 		slide := &input.Slides[si]
-		if f := detectOvertallFlowLane(slide.Pattern, si); f != nil {
-			findings = append(findings, *f)
-		}
 		if f := detectFlowDiamondNoContent(slide.Pattern, si); f != nil {
 			findings = append(findings, *f)
 		}
@@ -80,55 +71,15 @@ func collectPatternChoiceFindings(input *PresentationInput) []patterns.FitFindin
 	return findings
 }
 
-// detectOvertallFlowLane flags a slide-level timeline-horizontal whose lane
-// occupies more than half the content height with short per-cell labels. It
-// is the complement to detectSparseSingleRowFlow: it covers the over-tall
-// cases that guard does not (a height cap that is still too tall, or a row of
-// seven or more stops), and defers to SPARSE_SINGLE_ROW_FLOW whenever that
-// guard owns the case so the two never both fire on one slide.
-func detectOvertallFlowLane(p *PatternInput, slideIdx int) *patterns.FitFinding {
-	// process-flow sizes its own steps: a row is as tall as its tallest label
-	// needs, floored at a box proportion and capped under a third of the
-	// content height, and seven or eight steps are on two rows. Its lane is
-	// never the stretched one this finding describes, whatever the slide caps
-	// (go-slide-creator-pfyeg: an eight-step process drew the finding for
-	// boxes 28pt tall, and no edit of the steps cleared it).
-	if p == nil || p.Name == "process-flow" {
-		return nil
-	}
-	itemCount, totalChars, ok := sparseFlowTextStats(p)
-	if !ok || itemCount < sparseFlowMinItems {
-		return nil
-	}
-	avg := float64(totalChars) / float64(itemCount)
-	if avg >= sparseFlowMaxAvgChars {
-		return nil
-	}
-	// Defer to SPARSE_SINGLE_ROW_FLOW (uncapped, 3–6 items) — OVERTALL only
-	// covers what that guard misses.
-	if detectSparseSingleRowFlow(p, slideIdx) != nil {
-		return nil
-	}
-	laneHeightPct := overtallFlowLaneHeightPct(p)
-	if laneHeightPct <= overtallFlowMinHeightPct {
-		return nil
-	}
-	f := patterns.OvertallFlowLane(p.Name, slidepath.SlideField(slideIdx, "pattern"), slideIdx, itemCount, laneHeightPct, avg)
-	return &f
-}
-
-// overtallFlowLaneHeightPct estimates the lane height as a percentage of the
-// content area: an explicit max_height_pct / bounds.height when present, else
-// ~100% (an uncapped single-row flow fills the whole content zone).
-func overtallFlowLaneHeightPct(p *PatternInput) float64 {
-	if p.MaxHeightPct > 0 && p.MaxHeightPct < 100 {
-		return p.MaxHeightPct
-	}
-	if p.Bounds != nil && p.Bounds.Height > 0 {
-		return p.Bounds.Height
-	}
-	return 100.0
-}
+// OVERTALL_FLOW_LANE is retired (go-slide-creator-0l7dr). It reported a
+// timeline-horizontal lane whose "boxes stretch vertically around a few
+// words", estimating the lane at 100% of the content height when uncapped.
+// Nothing renders that way: an uncapped timeline is sized to its text in
+// every style, and under a max_height_pct / bounds cap the rows spread to
+// fill the capped area while the dots, chevrons and labels keep their size
+// (the dots since go-slide-creator-r684y). What a sparse timeline leaves on
+// the slide is reported as it is drawn by SPARSE_SINGLE_ROW_FLOW,
+// SLIDE_UNDERUSED and SLIDE_UNBALANCED.
 
 // detectFlowDiamondNoContent flags a standalone process-flow that carries at
 // least one decision diamond (step.type == "decision") — the flow draws one

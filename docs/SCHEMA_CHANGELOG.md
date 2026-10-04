@@ -1,5 +1,34 @@
 # Schema Changelog
 
+- **2026-10-04 — process-flow arrows, mirrored steps and the flow findings (`go-slide-creator-fx48s`, `-yniru`, `-0l7dr`, `-d6wvb`, `-1dfv6`, `-r684y`, `-d0g2j`).**
+  - **New shape field `flip_h`** (boolean, `shape_grid` cell `shape` and
+    `defaults.cell_style`): mirrors the outline left to right through
+    `a:xfrm flipH`; the text stays upright. The schema fingerprint changes.
+  - **`process-flow` / `process-flow-compact` `type: "arrow"` steps render
+    their label at the flow's type size.** The step is a block arrow (shaft
+    70% of the height) whose row is sized so the shaft holds the label; it
+    used to be shrunk to about 3pt on every template. A `rightArrow` /
+    `leftArrow` with text in any grid is now measured in its shaft.
+  - **A `process-flow` that mixes chevrons / arrows with plain steps bends
+    onto two rows like a plain one** — by default from 7 steps (it stayed on
+    one row), and with `overrides.rows: 2` wherever the pointed steps sit.
+    The returning row's chevrons / arrows are mirrored to point left. The
+    `out_of_range` refusal at `steps[i].type` for a pointed step at the turn
+    or on the returning row is gone. `overrides.rows: 1` keeps one row.
+  - **Grid connectors meet chevrons and arrows on their outline**: the tip,
+    the bottom of a chevron's notch, the middle of the top / bottom edge. A
+    connector leaving a chevron or arrow was written 15% of the shape's
+    width past the tip (a stub, or a backwards arrow at three steps, in
+    PowerPoint), and a drop from one bent to the preset's off-centre site.
+  - **`OVERTALL_FLOW_LANE` is retired.** No timeline renders the stretched
+    lane it described; see docs/FIT_FINDINGS.md. `timeline-horizontal` dots
+    keep their size under `max_height_pct` / `bounds` (they grew with the
+    stretched row).
+  - **`SPARSE_SINGLE_ROW_FLOW` on a DeckSpec `process` or `timeline` slide
+    names the kind's fields** (`pattern`, `description`, `body`, `regions`)
+    instead of `numbered-step-strip` / `process-grid-2row` / `compose`, and
+    its remediation is `add_detail_or_merge`.
+
 - **2026-10-04 — Schema 4.162.0 · second round of follow-ups (label `followup2-20261004`).**
   - One version for the dated bullets below this one down to the 4.161.0
     entry (21 beads): template-face text measuring and shared sibling

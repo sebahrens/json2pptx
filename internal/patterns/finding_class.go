@@ -30,7 +30,6 @@ const (
 // mismatch — "you chose the wrong pattern for this content", not a render bug.
 var patternChoiceCodes = map[string]bool{
 	ErrCodeSparseSingleRowFlow:  true,
-	ErrCodeOvertallFlowLane:     true,
 	ErrCodeFlowDiamondNoContent: true,
 	ErrCodeTocFlowchartVocab:    true,
 	ErrCodeWrongPattern:         true,

@@ -592,20 +592,6 @@ var findingMetaRegistry = map[string]FindingMeta{
 
 	// ---- Pattern-choice / rendering QA heuristics (J2P-VQA-009) ----
 
-	ErrCodeOvertallFlowLane: {
-		Code:        ErrCodeOvertallFlowLane,
-		Summary:     "A single-row flow lane occupies more than half the content height with short labels, so its boxes stretch vertically.",
-		Severity:    "review",
-		WhenEmitted: "Pre-flight finds a slide-level timeline-horizontal (dots style) whose estimated lane height exceeds ~50% of the content area with short average per-cell text, in cases SPARSE_SINGLE_ROW_FLOW does not cover (a max_height_pct cap that is still too tall, or a row of 7 or more stops). The two never fire on the same slide. Never emitted for process-flow: its steps are content-sized, and 7–8 steps are laid on two rows.",
-		RemediationSteps: []string{
-			"Swap to numbered-step-strip — its per-step detail zone fills the vertical space instead of stretching the boxes.",
-			"Or swap to process-grid-2row when the steps split into two parallel tracks.",
-			"Or set max_height_pct to ~35 so the lane no longer occupies half the slide.",
-		},
-		ExampleBefore: `{"pattern":{"name":"timeline-horizontal","max_height_pct":60,"values":[{"label":"Plan"},{"label":"Build"},{"label":"Ship"},{"label":"Scale"},{"label":"Review"},{"label":"Iterate"},{"label":"Close"}]}}`,
-		ExampleAfter:  `{"pattern":{"name":"numbered-step-strip","values":{"steps":[{"label":"Plan","body":"…"},{"label":"Build","body":"…"},{"label":"Ship","body":"…"}]}}}`,
-		RelatedCodes:  []string{ErrCodeSparseSingleRowFlow, ErrCodeSparseLayout, ErrCodeWrongPattern},
-	},
 	ErrCodeFlowDiamondNoContent: {
 		Code:        ErrCodeFlowDiamondNoContent,
 		Summary:     "A standalone process-flow carries a decision diamond but has no supporting zone to explain the branch outcomes.",

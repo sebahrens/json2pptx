@@ -261,49 +261,6 @@ func SparseSingleRowFlow(patternName, path string, slideIdx, itemCount int, avgC
 	}
 }
 
-// OvertallFlowLane builds an OVERTALL_FLOW_LANE fit finding for a single-row
-// flow pattern (timeline-horizontal) whose lane occupies more than half the
-// content height with short per-cell labels. It is the complement to
-// SparseSingleRowFlow: it covers the cases that guard does not — a height cap
-// that is still too tall, or a row of seven or more stops whose narrow boxes
-// still stretch vertically. The two never fire on the same slide (the detector
-// defers to SPARSE_SINGLE_ROW_FLOW when that guard owns the case). process-flow
-// is content-sized and never draws it.
-//
-//   - patternName is the offending pattern ("timeline-horizontal").
-//   - path is the JSON Pointer to the slide's pattern field (e.g. "/slides/3/pattern").
-//   - slideIdx is the 0-based slide index (used only to humanise the message).
-//   - itemCount is the number of steps / stops in the single row.
-//   - laneHeightPct is the estimated lane height as a percentage of the content area.
-//   - avgChars is the average per-cell text length.
-func OvertallFlowLane(patternName, path string, slideIdx, itemCount int, laneHeightPct, avgChars float64) FitFinding {
-	return FitFinding{
-		ValidationError: ValidationError{
-			Pattern: patternName,
-			Path:    path,
-			Code:    ErrCodeOvertallFlowLane,
-			Message: fmt.Sprintf(
-				"slide %d: %s lane of %d sparse cells (avg %.0f chars) occupies ~%.0f%% of the content height — the boxes stretch vertically around a few words; switch to numbered-step-strip / process-grid-2row, or cap max_height_pct to ~35",
-				slideIdx+1, patternName, itemCount, avgChars, laneHeightPct),
-			Fix: &FixSuggestion{
-				Kind: "swap_pattern",
-				Params: map[string]any{
-					"from":            patternName,
-					"item_count":      itemCount,
-					"avg_chars":       avgChars,
-					"lane_height_pct": laneHeightPct,
-					"reason":          "overtall_flow_lane",
-					"suggested": []any{
-						map[string]any{"to": "numbered-step-strip", "rationale": "per-step detail zone fills the vertical space instead of stretching the boxes"},
-						map[string]any{"to": "process-grid-2row", "rationale": "two parallel tracks use the height when the steps split into lanes"},
-					},
-				},
-			},
-		},
-		Action: "review",
-	}
-}
-
 // FlowDiamondNoContent builds a FLOW_DIAMOND_NO_CONTENT fit finding for a
 // standalone process-flow that carries at least one decision diamond
 // (step.type == "decision") but has no supporting content zone — the flow
