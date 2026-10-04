@@ -539,7 +539,10 @@ jobs:
       - name: Install fonts and render toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install -y fonts-liberation fonts-dejavu-core \
+          # fonts-crosextra-carlito: the metric-compatible face LibreOffice
+          # draws Calibri in — the render-truth check below reads back what
+          # LibreOffice does to text set in it.
+          sudo apt-get install -y fonts-liberation fonts-dejavu-core fonts-crosextra-carlito \
             libreoffice-impress libreoffice-common librsvg2-bin imagemagick
 
       - name: Build json2pptx
@@ -567,3 +570,21 @@ jobs:
         run: |
           go test ./internal/render/... -run Integration -count=1 -v -timeout=10m
           go test ./internal/generator/... -run 'SVGConverter|SVG_' -count=1 -v -timeout=10m
+
+      # Render truth (go-slide-creator-bhbtk): generate every pattern exemplar,
+      # convert the deck pptx -> pptx through LibreOffice and read back the
+      # fontScale it wrote onto each shape. A shape LibreOffice had to shrink
+      # is a box the engine sized too small for its text, whatever the engine's
+      # own measure says. Calibri templates only: Carlito has Calibri's
+      # metrics, so a shrink is the engine's and not a font substitution's.
+      - name: Render-truth check (LibreOffice re-fit read-back)
+        env:
+          RENDER_TRUTH_TEMPLATES: midnight-blue forest-green
+        run: |
+          matched=$(fc-match Calibri)
+          echo "Calibri resolves to: $matched"
+          case "$matched" in
+            *Carlito*|*Calibri*) ;;
+            *) echo "::error::Calibri does not resolve to Carlito; the render-truth check would read a font substitution as a shrink"; exit 1 ;;
+          esac
+          go test ./cmd/json2pptx -run 'TestRenderTruthExemplars' -count=1 -timeout=10m

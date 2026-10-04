@@ -79,52 +79,99 @@ func shareRowAutofitScale(cells []ResolvedCell) {
 // the resolved copy instead, so every renderer draws the row at one size and
 // no cell of it needs a stored scale to fit. Text the shrink would take under
 // the renderer's size floor (MinTextSizePt) cannot be written that way, and
-// neither can a row one of whose cells the writer would still shrink at the
-// written sizes: such a row keeps its stored scale, and the readability floor
-// reports it.
+// neither can text whose runs carry sizes of their own: such a cell keeps its
+// stored scale, and validation says so (fit_overflow at action "info": the
+// renderer re-fits the text; TEXT_BELOW_READABLE_MIN when the result is too
+// small to read).
+//
+// A cell with no same-size sibling in its row never shared a scale, so the
+// writer measured it alone and stored the shrink on the shape: the lone "4"
+// of an authored axis label was 24pt at 92% in PowerPoint and whatever
+// LibreOffice made of the box. It takes the same route (go-slide-creator-217cd):
+// its shrink is written into its sizes.
 
 // writeSharedShrink replaces the AutofitScale shareRowAutofitScale assigned
 // to a row's sibling group with shrunk text sizes, when every cell of the
-// group can take them. It runs once on the final result: the composition and
-// canvas trials compare cells at their designed sizes.
+// group can take them, and writes the shrink of a cell that shares none into
+// its own sizes. It runs once on the final result: the composition and canvas
+// trials compare cells at their designed sizes.
 func writeSharedShrink(cells []ResolvedCell) {
 	type key struct {
 		row   int
 		scale float64
 	}
 	groups := map[key][]int{}
+	var order []key
 	for i := range cells {
 		c := &cells[i]
-		if c.AutofitScale > 0 && c.AutofitScale < 1 && c.Kind == CellKindShape && c.ShapeSpec != nil {
-			k := key{row: c.RowIdx, scale: c.AutofitScale}
-			groups[k] = append(groups[k], i)
-		}
-	}
-	for k, idxs := range groups {
-		specs := make([]*ShapeSpec, 0, len(idxs))
-		for _, i := range idxs {
-			c := &cells[i]
-			text, ok := shrunkText(c.ShapeSpec.Text, k.scale)
-			if !ok {
-				break
-			}
-			spec := *c.ShapeSpec
-			spec.Text = text
-			trial := *c
-			trial.ShapeSpec = &spec
-			if canvasAutofit(&trial) < 1 {
-				break
-			}
-			specs = append(specs, &spec)
-		}
-		if len(specs) != len(idxs) {
+		if c.Kind != CellKindShape || c.ShapeSpec == nil || len(c.ShapeSpec.Text) == 0 {
 			continue
 		}
-		for n, i := range idxs {
-			cells[i].ShapeSpec = specs[n]
-			cells[i].AutofitScale = 0
+		k := key{row: -1 - i} // a cell on its own
+		switch {
+		case c.AutofitScale > 0 && c.AutofitScale < 1:
+			k = key{row: c.RowIdx, scale: c.AutofitScale}
+		case c.AutofitScale == 0:
+			if k.scale = canvasAutofit(c); k.scale >= 1 {
+				continue
+			}
+		default:
+			continue
+		}
+		if _, seen := groups[k]; !seen {
+			order = append(order, k)
+		}
+		groups[k] = append(groups[k], i)
+	}
+	for _, k := range order {
+		idxs := groups[k]
+		// Sizes are rounded down to a hundredth of a point and a shrunk
+		// paragraph may break its lines elsewhere, so the measured scale can
+		// leave a cell a hair over; a slightly smaller one is tried before the
+		// group is left with its stored scale.
+		for _, scale := range []float64{k.scale, k.scale - writtenShrinkStep, k.scale - 2*writtenShrinkStep} {
+			specs := shrunkSpecs(cells, idxs, scale)
+			if specs == nil {
+				continue
+			}
+			for n, i := range idxs {
+				cells[i].ShapeSpec = specs[n]
+				cells[i].AutofitScale = 0
+			}
+			break
 		}
 	}
+}
+
+// writtenShrinkStep is the step by which writeSharedShrink lowers a scale
+// whose written sizes the writer would still shrink: the step of the
+// writer's own scale search.
+const writtenShrinkStep = 0.02
+
+// shrunkSpecs returns, for each cell of idxs, a copy of its shape with the
+// text sizes at scale; nil when a cell cannot take them (shrunkText) or the
+// writer would still shrink one at the written sizes.
+func shrunkSpecs(cells []ResolvedCell, idxs []int, scale float64) []*ShapeSpec {
+	if scale <= 0 {
+		return nil
+	}
+	specs := make([]*ShapeSpec, 0, len(idxs))
+	for _, i := range idxs {
+		c := &cells[i]
+		text, ok := shrunkText(c.ShapeSpec.Text, scale)
+		if !ok {
+			return nil
+		}
+		spec := *c.ShapeSpec
+		spec.Text = text
+		trial := *c
+		trial.ShapeSpec = &spec
+		if canvasAutofit(&trial) < 1 {
+			return nil
+		}
+		specs = append(specs, &spec)
+	}
+	return specs
 }
 
 // shrunkText returns raw with every paragraph's size (and suffix size) times

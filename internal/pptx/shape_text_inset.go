@@ -43,6 +43,19 @@ func ShapeTextInsets() [4]int64 {
 // largest run size — the same 1.2 the autofit measure uses.
 const oneLineFactor = autofitLineSpacing
 
+// writtenOneLineFactor is the line height the clamp leaves in the shape it
+// writes (go-slide-creator-bhbtk). Sizing, growth and the fit findings reserve
+// oneLineFactor: 1.2 em, the measure every estimate shares. A renderer sets a
+// line at its face's own ascent plus descent — 1.22 em in Carlito (Calibri),
+// more in a serif — so a one-line box clamped to exactly 1.2 em held its
+// line in the estimate and not on the slide: LibreOffice re-fitted the
+// waterfall's "$120m", metric-list values, the capability-heatmap legend,
+// matrix-2x2's "High" / "Low" and a chart caption by tightening their line
+// spacing, read back as lnSpcReduction from its round trip. The written
+// margin gives up the difference; layout is decided on the 1.2 em measure as
+// before, so nothing moves but the margin of a clamped box.
+const writtenOneLineFactor = 1.3
+
 // WordFitSlack is the room a clamped axis leaves around its widest word, as a
 // multiple of the word's measured width, when the word is measured in the face
 // it renders in. Renderers measure with their own hinting and rounding: a word
@@ -77,6 +90,18 @@ func wordFitSlackFor(tb *TextBody) float64 {
 // host-dependent face) of room, since wrapping can break
 // anywhere else. Vertical text (vert / vert270 / …) swaps the two axes.
 func EffectiveTextInsets(tb *TextBody, bounds RectEmu) [4]int64 {
+	return clampedTextInsets(tb, bounds, oneLineFactor)
+}
+
+// writtenTextInsets is EffectiveTextInsets with the one line the clamp keeps
+// at writtenOneLineFactor: the insets the shape writer emits. They are never
+// larger than EffectiveTextInsets, so the written text area is at least the
+// one every estimate assumed.
+func writtenTextInsets(tb *TextBody, bounds RectEmu) [4]int64 {
+	return clampedTextInsets(tb, bounds, writtenOneLineFactor)
+}
+
+func clampedTextInsets(tb *TextBody, bounds RectEmu, lineFactor float64) [4]int64 {
 	if tb == nil {
 		return [4]int64{}
 	}
@@ -84,7 +109,8 @@ func EffectiveTextInsets(tb *TextBody, bounds RectEmu) [4]int64 {
 	if in == [4]int64{} {
 		return in
 	}
-	lineH, wordBound := oneLineBoundsEMU(tb)
+	maxHPt, wordBound := oneLineBoundsEMU(tb)
+	lineH := int64(float64(maxHPt) * lineFactor * 127)
 	if lineH <= 0 {
 		return in
 	}
@@ -130,11 +156,10 @@ func clampInsetPair(a, b, extent, need int64) (int64, int64) {
 	return na, room - na
 }
 
-// oneLineBoundsEMU returns the height of one line at the body's largest run
-// size and a cheap upper bound (1em per rune) on its widest word, both in EMU.
-// Zero height means the body carries no text.
-func oneLineBoundsEMU(tb *TextBody) (lineH, wordBound int64) {
-	maxHPt := 0
+// oneLineBoundsEMU returns the body's largest run size in hundredths of a
+// point and a cheap upper bound (1em per rune) on its widest word in EMU.
+// Zero size means the body carries no text.
+func oneLineBoundsEMU(tb *TextBody) (maxHPt int, wordBound int64) {
 	for _, p := range tb.Paragraphs {
 		margins := paragraphSideMarginsEMU(p)
 		for _, r := range p.Runs {
@@ -156,7 +181,7 @@ func oneLineBoundsEMU(tb *TextBody) (lineH, wordBound int64) {
 	if maxHPt == 0 {
 		return 0, 0
 	}
-	return int64(float64(maxHPt) * oneLineFactor * 127), wordBound
+	return maxHPt, wordBound
 }
 
 // runTrackingEMU is the width a run's letter-spacing adds to word w.

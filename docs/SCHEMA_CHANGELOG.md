@@ -1,5 +1,45 @@
 # Schema Changelog
 
+- **2026-10-04 — Sizing truth: fitted sizes are written, the renderer's re-fits are read back (`go-slide-creator-a5ogo`, `-217cd`, `-am8kr`, `-bhbtk`, `-ip7ll`, `-3hxu6`, `-alcw7`, `-69ums`, `-5uqfo`).**
+  - **A kpi-Nup value is written at the size it was fitted to, 16pt at the
+    least.** The value paragraph of the expanded grid carries `"figure": true`
+    (new, optional, on a `shape_grid` text paragraph): from 16pt up it is
+    written as measured instead of settling onto the type scale, which set a
+    16–17pt value in 14pt over its 12pt caption. A row with a value that does
+    not fit one line even at 16pt is written at 14pt, and its `BODY_TOO_LONG`
+    message now reads "cannot fit on one line at the 16pt minimum in a
+    106pt-wide card, which holds about 9 characters like these, so the row's
+    values are written at 14pt — …" (was "at the 16pt effective size").
+    The mark also holds for a value with no digit:
+    `Unlimited` beside `EUR 48.2M` was written at 18pt against 26pt. An
+    authored grid may set `figure` on a paragraph of its own; unmarked text is
+    unchanged.
+  - **A cell with no same-size sibling no longer stores an autofit scale.**
+    Its shrink is written into its text sizes, as a row's shared shrink is
+    (a lone 24pt label in a 27pt box is written at 22.08pt, not at 24pt with
+    `fontScale="92000"`). Text the shrink would take under 12pt keeps the
+    stored scale, and **`fit_overflow` now also comes at action `info`** on a
+    `shape_grid` cell to say so: one per slide, `fix.kind` `reduce_cell_text`
+    with `cell_path`, `max_chars`, `cells`, `font_scale`, `written_pt`,
+    `fitted_pt`. It blocks nothing.
+  - **`SLIDE_UNDERUSED` counts four more patterns' open text by column
+    slot**, like the other open-column patterns: `value-chain` descriptions,
+    `timeline-horizontal` dates and descriptions, `driver-tree` annotations
+    and the `image-text-split` text column. Their exemplars sat 0.3–2 points
+    over the threshold (value-chain 0.1 under on a local Arial template);
+    thresholds are unchanged, and the bare forms still report.
+  - Rendering only: a clamped one-line box is written with a margin that
+    leaves 1.3 em for its line (was 1.2 em), so LibreOffice no longer tightens
+    the line spacing of waterfall value labels, metric-list values, legend
+    and axis-end labels and chart captions; caps tracking and heading
+    balancing measure the shape's text rectangle in the template face, peer
+    caps labels of one size are tracked together, and the paragraphs after a
+    balanced heading state `marL` / `marR` so LibreOffice does not carry the
+    heading's margin into them.
+  - CI: the `render-integration` job round-trips the exemplar decks through
+    LibreOffice and fails when a shape comes back font-shrunk
+    (`TestRenderTruthExemplars`, see docs/TESTING.md).
+
 - **2026-10-04 — Schema 4.162.0 · second round of follow-ups (label `followup2-20261004`).**
   - One version for the dated bullets below this one down to the 4.161.0
     entry (21 beads): template-face text measuring and shared sibling

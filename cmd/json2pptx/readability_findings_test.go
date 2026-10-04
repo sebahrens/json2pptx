@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -311,5 +313,60 @@ func TestViewingModeEnumValidated(t *testing.T) {
 	}
 	if errs := checkInputEnumValues(&PresentationInput{ViewingMode: "read"}); len(errs) != 0 {
 		t.Errorf("read should be valid: %v", errs[0])
+	}
+}
+
+// A cell whose text cannot be written smaller — it sits at the grid's 12pt
+// floor — keeps a stored autofit scale, which LibreOffice ignores. While the
+// result stays readable nothing else reports it, so one advisory per slide
+// names the cells and what the renderers do (go-slide-creator-217cd):
+// examples/business-model-canvas.json's first canvas, authored at 9pt.
+func TestStoredAutofitScaleIsReported(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "examples", "business-model-canvas.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var input PresentationInput
+	if err := json.Unmarshal(raw, &input); err != nil {
+		t.Fatal(err)
+	}
+	a := loadTemplateAnalysis(t, "midnight-blue")
+	var refit []patterns.FitFinding
+	for _, f := range collectReadabilityFindingsWithTheme(&input, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme) {
+		if f.Code == patterns.ErrCodeTextBelowReadableMin {
+			t.Errorf("the canvas text stays readable and must not be refused: %s", f.Message)
+		}
+		if f.Code == patterns.ErrCodeFitOverflow {
+			refit = append(refit, f)
+		}
+	}
+	if len(refit) != 1 {
+		t.Fatalf("stored-scale advisories = %d, want one for the first canvas: %+v", len(refit), refit)
+	}
+	f := refit[0]
+	if f.Action != "info" || !strings.HasPrefix(f.Path, "/slides/1/shape_grid/rows/") || !strings.Contains(f.Message, "LibreOffice") {
+		t.Errorf("advisory = action %q path %q message %q, want info on a slide-2 cell naming the renderers", f.Action, f.Path, f.Message)
+	}
+	if f.Fix == nil || f.Fix.Kind != "reduce_cell_text" {
+		t.Fatalf("advisory fix = %+v, want reduce_cell_text", f.Fix)
+	}
+	cells, _ := f.Fix.Params["cells"].([]any)
+	scale, _ := f.Fix.Params["font_scale"].(float64)
+	if len(cells) < 2 || scale <= 0 || scale >= 1 || f.Fix.Params["cell_path"] == nil {
+		t.Errorf("advisory params = %+v, want the cells, the smallest font_scale and the cell_path to cut", f.Fix.Params)
+	}
+
+	// Text that fits, or whose shrink is written into its sizes, says nothing.
+	var roomy ShapeGridInput
+	if err := json.Unmarshal([]byte(`{"columns":2,"rows":[{"cells":[
+		{"shape":{"geometry":"rect","fill":"lt2","text":{"content":"Plenty of room","size":14}}},
+		{"shape":{"geometry":"rect","fill":"lt2","text":{"content":"Here as well","size":14}}}]}]}`), &roomy); err != nil {
+		t.Fatal(err)
+	}
+	fits := PresentationInput{Slides: []SlideInput{{LayoutID: "content", ShapeGrid: &roomy}}}
+	for _, f := range collectReadabilityFindingsWithTheme(&fits, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme) {
+		if f.Code == patterns.ErrCodeFitOverflow {
+			t.Errorf("a grid that stores no scale must not be reported: %s", f.Message)
+		}
 	}
 }

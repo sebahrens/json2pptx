@@ -17,6 +17,12 @@ import (
 // same way. The line count never changes: the narrowed measure is only
 // accepted when it wraps to the same number of lines with at least two words
 // on the last one.
+//
+// The paragraphs after a balanced one state their own side margins (zero
+// unless they carry one): LibreOffice otherwise keeps the heading's margin for
+// them, and an image-text-split body under a balanced heading wrapped 106pt
+// short of its column, onto a line more than its row was sized for
+// (go-slide-creator-alcw7).
 
 // balanceMaxWords bounds balancing to heading-length text.
 const balanceMaxWords = 16
@@ -28,16 +34,20 @@ func balanceHeadingLines(tb *pptx.TextBody, bounds pptx.RectEmu) {
 	}
 	insets := pptx.EffectiveTextInsets(tb, bounds)
 	width := bounds.CX - insets[0] - insets[2]
+	balanced := false
 	for i := range tb.Paragraphs {
 		p := &tb.Paragraphs[i]
+		p.ExplicitMargins = balanced
 		params, text, ok := balanceCandidate(p, width-p.MarginL)
 		if !ok {
 			continue
 		}
+		params.FontName, _ = pptx.ParagraphFitFace(*p, tb.ThemeFonts)
 		margin := balancedMargin(params, text)
 		if margin <= 0 {
 			continue
 		}
+		balanced = true
 		switch p.Align {
 		case "ctr":
 			p.MarginL += margin / 2
@@ -82,7 +92,8 @@ func paragraphHasText(p pptx.Paragraph) bool {
 }
 
 // balanceCandidate returns measurement params for a bold, unbulleted,
-// heading-length paragraph.
+// heading-length paragraph, in the Liberation Sans stand-in; the caller sets
+// the face the paragraph renders in where the measurer has it.
 func balanceCandidate(p *pptx.Paragraph, widthEMU int64) (textfit.StyledMeasureParams, string, bool) {
 	if widthEMU <= 0 || p.Bullet != nil || p.MarginR != 0 || len(p.Runs) == 0 {
 		return textfit.StyledMeasureParams{}, "", false

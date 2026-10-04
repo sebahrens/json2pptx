@@ -1,6 +1,7 @@
 package pptx
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -84,6 +85,37 @@ func TestGenerateShapeWritesTheClampedInsets(t *testing.T) {
 	}
 	if strings.Contains(s, "fontScale") {
 		t.Fatalf("one-line pill was shrunk: %s", s)
+	}
+}
+
+// The shape is written with a margin that leaves 1.3 em for its one line,
+// where every estimate reserves 1.2 em: a renderer sets a line at its face's
+// ascent plus descent (1.22 em in Carlito), and LibreOffice tightened the line
+// spacing of boxes clamped to exactly 1.2 em (go-slide-creator-bhbtk). The
+// written margin is never larger than the estimated one.
+func TestGenerateShapeLeavesTheRenderersLineInAClampedBox(t *testing.T) {
+	for _, hPt := range []int64{16, 23, 30, 38, 44, 60} {
+		tb := insetBody("$120m", 1200, ShapeTextInsets())
+		bounds := RectEmu{CX: 3 * 914400, CY: hPt * 12700}
+		est := EffectiveTextInsets(tb, bounds)
+		got := writtenTextInsets(tb, bounds)
+		for side := range got {
+			if got[side] > est[side] || got[side] < 0 {
+				t.Errorf("%dpt box: written inset %d on side %d, want within [0, %d] (the estimate)", hPt, got[side], side, est[side])
+			}
+		}
+		room := bounds.CY - got[1] - got[3]
+		want := min(bounds.CY, int64(1200*127*13/10))
+		if room < want {
+			t.Errorf("%dpt box: written margins leave %d EMU for a 12pt line, want %d (1.3 em, or the whole box)", hPt, room, want)
+		}
+		xml, err := GenerateShape(ShapeOptions{ID: 2, Geometry: GeomRect, Bounds: bounds, Text: tb})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(xml), fmt.Sprintf(`tIns="%d"`, got[1])) {
+			t.Errorf("%dpt box: shape is not written with the 1.3 em margin %d: %s", hPt, got[1], xml)
+		}
 	}
 }
 

@@ -17,7 +17,8 @@
                   "size": 40,
                   "bold": true,
                   "color": "accent1",
-                  "align": "ctr"
+                  "align": "ctr",
+                  "figure": true
                 },
                 {
                   "content": "ARR",
@@ -43,7 +44,8 @@
                   "size": 40,
                   "bold": true,
                   "color": "accent1",
-                  "align": "ctr"
+                  "align": "ctr",
+                  "figure": true
                 },
                 {
                   "content": "NRR",
@@ -74,7 +76,8 @@
                   "size": 40,
                   "bold": true,
                   "color": "accent1",
-                  "align": "ctr"
+                  "align": "ctr",
+                  "figure": true
                 },
                 {
                   "content": "Sales cycle",

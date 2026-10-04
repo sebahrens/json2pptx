@@ -334,13 +334,16 @@ func (t kpiText) json() json.RawMessage {
 		Bold    bool    `json:"bold,omitempty"`
 		Color   string  `json:"color,omitempty"`
 		Align   string  `json:"align,omitempty"`
+		// Figure keeps the value at the size it was fitted to (shapegrid's
+		// paragraph "figure").
+		Figure bool `json:"figure,omitempty"`
 	}
 	line := func(content string, size float64) paragraph {
 		return paragraph{Content: content, Size: size, Color: t.ink, Align: "ctr"}
 	}
 
 	paragraphs := []paragraph{
-		{Content: t.big, Size: t.bigSize, Bold: true, Color: t.valueInk, Align: "ctr"},
+		{Content: t.big, Size: t.bigSize, Bold: true, Color: t.valueInk, Align: "ctr", Figure: true},
 		line(t.small, t.smallSize),
 	}
 	for i := 0; i < t.padLines; i++ {
@@ -596,7 +599,13 @@ type kpiRowLayout struct {
 	authored           bool    // the sizes are overrides, not a ladder step
 	// pinned says a value has no room to grow on its line: the row keeps the
 	// sizes it was measured at (see Expand).
-	pinned     bool
+	pinned bool
+	// valueSize is the size the values are written at: bigSize, the size
+	// every value fits one line at — or, when a value does not fit one line
+	// even at the kpiMinBigSize floor, the subhead step below it, where the
+	// long value has the better chance of staying whole
+	// (go-slide-creator-a5ogo). The BODY_TOO_LONG finding quotes it.
+	valueSize  float64
 	texts      []kpiText
 	iconScales []float64 // overlay scale per cell (0 = no icon)
 }
@@ -644,11 +653,11 @@ func measureKPIRow(ctx ExpandContext, cells []KPICell, gapPt, bigSize, smallSize
 		iconScales: make([]float64, len(cells)),
 	}
 	lay.bigSize = kpiFitBigSize(ctx, cells, bigSize, est, lay.iconPos)
-	// A value fitted down below the lead step is written at the subhead step
-	// (the grid settles sizes onto the type scale), which is where a 14–16pt
-	// caption is written too: six long values read at the size of their
-	// captions (go-slide-creator-6xgxm). The caption then takes the body
-	// step, so the bold value stays the larger line.
+	// A value fitted down below the lead step sits two points or less over a
+	// 14pt caption: six long values read at the size of their captions
+	// (go-slide-creator-6xgxm). The caption then takes the body step, so the
+	// value — written at the size it was fitted to, 16pt at the least
+	// (paragraph "figure", go-slide-creator-a5ogo) — stays the larger line.
 	if lay.bigSize < scaleLeadPt && smallSize > scaleBodyPt {
 		smallSize = scaleBodyPt
 		lay.smallSize = smallSize
@@ -656,6 +665,18 @@ func measureKPIRow(ctx ExpandContext, cells []KPICell, gapPt, bigSize, smallSize
 
 	font := ctx.Theme.BodyFont
 	widthOf := func(i int) float64 { return est.valueWidthPt(cells[i].Icon, lay.iconPos) }
+	// A value that does not fit one line at the floor is reported
+	// (BODY_TOO_LONG) and would wrap at 16pt; the row is written at the
+	// subhead step instead, which the finding states.
+	lay.valueSize = lay.bigSize
+	if lay.bigSize <= kpiMinBigSize {
+		for i, c := range cells {
+			if c.Big != "" && !kpiValueFits(c.Big, font, lay.bigSize, widthOf(i)) {
+				lay.valueSize = math.Min(lay.bigSize, scaleSubheadPt)
+				break
+			}
+		}
+	}
 	for i, c := range cells {
 		if c.Big != "" && !kpiValueFits(c.Big, font, math.Ceil(lay.bigSize*kpiValueGrowthRoom), widthOf(i)*kpiValueLineFrac) {
 			lay.pinned = true
@@ -667,7 +688,7 @@ func measureKPIRow(ctx ExpandContext, cells []KPICell, gapPt, bigSize, smallSize
 	textPt := make([]float64, len(cells))
 	for i, c := range cells {
 		t := kpiText{
-			big: c.Big, bigSize: lay.bigSize, small: c.Small, smallSize: smallSize, padLines: pads[i],
+			big: c.Big, bigSize: lay.valueSize, small: c.Small, smallSize: smallSize, padLines: pads[i],
 			sub: c.Sub, comparator: c.Comparator, reserveDelta: reserveDelta, reserveComparator: reserveComparator,
 			valueInk: "lt1", ink: "lt1", tight: tight,
 		}
@@ -677,7 +698,7 @@ func measureKPIRow(ctx ExpandContext, cells []KPICell, gapPt, bigSize, smallSize
 		textPt[i] = writtenFitHeightPt(ctx.themeFonts(), t.json(), widthOf(i)+2*defaultShapeInsetLRPt, 0)
 		if textPt[i] <= 0 {
 			textPt[i] = 2*insetPt + textBlockHeightPt(font, widthOf(i),
-				textParagraph{text: c.Big, size: lay.bigSize, bold: true},
+				textParagraph{text: c.Big, size: lay.valueSize, bold: true},
 				textParagraph{text: c.Small, size: smallSize})
 		}
 	}

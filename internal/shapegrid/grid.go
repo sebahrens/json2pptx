@@ -19,12 +19,14 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 	if grid.CanvasScale > 1 {
 		if res, ok := resolveCanvas(grid, alloc); ok {
 			writeSharedShrink(res.Cells)
+			shareCapsTracking(res.Cells)
 			return res, nil
 		}
 	}
 	res, err := resolveDesign(grid, alloc)
 	if err == nil && res != nil {
 		writeSharedShrink(res.Cells)
+		shareCapsTracking(res.Cells)
 	}
 	return res, err
 }

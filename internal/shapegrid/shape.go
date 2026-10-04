@@ -135,14 +135,32 @@ func generateShapeXML(spec *ShapeSpec, id uint32, bounds pptx.RectEmu, autofitSc
 		}
 		// Typographic finishing (go-slide-creator-58dhw): one alignment per
 		// card, tracked caps labels, no one-word last line on bold headings.
+		// Both measure the lines the text is set in: the preset's own text
+		// rectangle, which an ellipse, a chevron or a diamond pulls well
+		// inside the shape (go-slide-creator-69ums).
 		unifyCardAlignment(tb)
-		trackCapsLabels(tb, bounds)
-		balanceHeadingLines(tb, bounds)
+		textRect := finishingTextRect(spec.Geometry, opts.Adjustments, bounds)
+		if !spec.NoCapsTracking {
+			trackCapsLabels(tb, textRect)
+		}
+		balanceHeadingLines(tb, textRect)
 		pptx.SetAutofitScale(tb, autofitScale)
 		opts.Text = tb
 	}
 
 	return pptx.GenerateShape(opts)
+}
+
+// finishingTextRect is the rectangle a shape's text is set in, before its
+// insets: the preset geometry's text rectangle for the adjustments the shape
+// is written with.
+func finishingTextRect(geometry string, adjustments []pptx.AdjustValue, bounds pptx.RectEmu) pptx.RectEmu {
+	adj := make(map[string]int64, len(adjustments))
+	for _, av := range adjustments {
+		adj[av.Name] = av.Value
+	}
+	w, h := pptx.PresetTextRect(geometry, adj, bounds)
+	return pptx.RectEmu{X: bounds.X, Y: bounds.Y, CX: w, CY: h}
 }
 
 // ResolveFillInput parses fill from string shorthand or object form.
@@ -338,6 +356,14 @@ type paragraphDef struct {
 	// the same display size (go-slide-creator-yn2pw).
 	Suffix     string  `json:"suffix,omitempty"`
 	SuffixSize float64 `json:"suffix_size,omitempty"`
+	// Figure marks a display figure its pattern measured to fit one line (a
+	// KPI value): from FigureMinSizePt up it is written at that size instead
+	// of settling onto the type scale, whose steps under the 18pt lead would
+	// set a value fitted at 16pt in 14pt — the size of a subhead, two points
+	// over its 12pt caption (go-slide-creator-a5ogo). Unlike the digit rule
+	// for unmarked text (isDisplayFigure) it holds for a value with no digit
+	// ("Unlimited"), so one row of values is one size.
+	Figure bool `json:"figure,omitempty"`
 	// Bullet makes the paragraph a real bulleted list item: true for the
 	// default "•", or a string marker such as "–". It emits <a:buChar> with a
 	// hanging indent so wrapped lines align with the text, not the marker

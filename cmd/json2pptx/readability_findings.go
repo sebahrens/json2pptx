@@ -81,6 +81,7 @@ func collectReadability(input *PresentationInput, layouts []types.LayoutMetadata
 		if result == nil {
 			continue
 		}
+		var refit refitCells
 		for _, rc := range readabilityGridCells(grid, result, slidepath.ShapeGrid(si), slideWidth, slideHeight, 0) {
 			cell := rc.cell
 			if cell.Kind != shapegrid.CellKindShape || cell.ShapeSpec == nil || cell.Bounds.CX <= 0 || cell.Bounds.CY <= 0 {
@@ -99,7 +100,9 @@ func collectReadability(input *PresentationInput, layouts []types.LayoutMetadata
 			cellPath := rc.path
 			path := slidepath.Join(cellPath, "shape/text")
 			roleOverride := patternCellReadabilityRole(slide, cell.RowIdx)
-			if f := worstReadability(paras, scale, mode, path, roleOverride); f != nil {
+			f := worstReadability(paras, scale, mode, path, roleOverride)
+			refit.note(f, cell, cellPath, paras, scale)
+			if f != nil {
 				// Character-budget shaping is needed only for an actual finding,
 				// not every readable cell inspected by previews/recommendations.
 				maxChars, usable := populatedCellBudget(cell)
@@ -130,8 +133,118 @@ func collectReadability(input *PresentationInput, layouts []types.LayoutMetadata
 				findings = append(findings, *f)
 			}
 		}
+		if f := refit.finding(); f != nil {
+			rerootReadabilityFinding(f, slide, fromPattern[si], fromPattern, nested)
+			findings = append(findings, *f)
+		}
 	}
 	return findings
+}
+
+// Text left to a stored autofit scale (go-slide-creator-217cd).
+//
+// Generation writes a shrink into the text sizes wherever it can
+// (shapegrid.writeSharedShrink), so a shape renders at one size everywhere.
+// It cannot where the shrunk size would fall under the grid's 12pt floor or a
+// run carries a size of its own: such a shape keeps <a:normAutofit
+// fontScale>, which PowerPoint applies and LibreOffice ignores — it fits the
+// shape again by itself. While the result stays readable no other finding
+// says so, and the deck renders differently from renderer to renderer with
+// nothing in the report to explain it. One advisory per slide names the
+// cells.
+
+// refitCells collects, for one slide, the cells whose text fits only through
+// a stored scale.
+type refitCells struct {
+	cells []refitCell
+	// refused says a cell of the slide is under its readable floor: the
+	// slide is refused for it, and the cells that share that row's scale
+	// need no second finding.
+	refused bool
+}
+
+// note records a measured cell: readability is its TEXT_BELOW_READABLE_MIN
+// finding, nil when it stays readable.
+func (r *refitCells) note(readability *patterns.FitFinding, cell shapegrid.ResolvedCell, path string, paras []cellParagraph, scale float64) {
+	switch {
+	case readability != nil:
+		r.refused = true
+	case scale < 1:
+		r.cells = append(r.cells, newRefitCell(cell, path, paras, scale))
+	}
+}
+
+// finding is the slide's advisory, nil when it has none.
+func (r *refitCells) finding() *patterns.FitFinding {
+	if r.refused {
+		return nil
+	}
+	return rendererRefitFinding(r.cells)
+}
+
+// refitCell is a grid cell whose text fits only through a stored scale.
+type refitCell struct {
+	path     string
+	scale    float64
+	sizePt   float64 // smallest written paragraph size
+	maxChars int     // characters the cell holds unshrunk; 0 when unknown
+}
+
+func newRefitCell(cell shapegrid.ResolvedCell, path string, paras []cellParagraph, scale float64) refitCell {
+	rc := refitCell{path: path, scale: scale}
+	for _, p := range paras {
+		if p.sizePt > 0 && (rc.sizePt == 0 || p.sizePt < rc.sizePt) {
+			rc.sizePt = p.sizePt
+		}
+	}
+	if maxChars, usable := populatedCellBudget(cell); usable {
+		rc.maxChars = maxChars
+	}
+	return rc
+}
+
+// rendererRefitFinding is the per-slide advisory for cells left to a stored
+// autofit scale; nil when there are none. It is fit_overflow at action
+// "info": the text overflows its cell at the size written and every word is
+// still drawn, so nothing is refused. The fix targets the cell that shrinks
+// most.
+func rendererRefitFinding(cells []refitCell) *patterns.FitFinding {
+	if len(cells) == 0 {
+		return nil
+	}
+	worst := cells[0]
+	paths := make([]any, 0, len(cells))
+	for _, c := range cells {
+		paths = append(paths, c.path)
+		if c.scale < worst.scale {
+			worst = c
+		}
+	}
+	noun, verb := "cells hold", "them"
+	if len(cells) == 1 {
+		noun, verb = "cell holds", "it"
+	}
+	params := map[string]any{
+		"cell_path":  worst.path,
+		"cells":      paths,
+		"font_scale": math.Round(worst.scale*1000) / 1000,
+		"written_pt": round1(worst.sizePt),
+		"fitted_pt":  round1(worst.sizePt * worst.scale),
+	}
+	if worst.maxChars > 1 {
+		params["max_chars"] = worst.maxChars
+	}
+	return &patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Pattern: "shape_grid",
+			Path:    slidepath.Join(worst.path, "shape/text"),
+			Code:    patterns.ErrCodeFitOverflow,
+			Message: fmt.Sprintf("%d %s more text than fits at the %.0fpt written: a stored shrink (down to %.0f%%, about %.1fpt) fits %s in PowerPoint, and LibreOffice and other renderers ignore it and re-fit each shape themselves, so the sizes differ between renderers — shorten the text or give it more room",
+				len(cells), noun, worst.sizePt, worst.scale*100, worst.sizePt*worst.scale, verb),
+			Fix: &patterns.FixSuggestion{Kind: "reduce_cell_text", Params: params},
+		},
+		Action: "info",
+	}
 }
 
 // rerootReadabilityFinding points a finding measured on an expanded pattern
