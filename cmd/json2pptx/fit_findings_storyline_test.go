@@ -205,6 +205,40 @@ func TestTakeawayMissingReachesScoreGate(t *testing.T) {
 	}
 }
 
+// TestChartInsightTakeawayIsRecognised: a chart_insight that states its
+// takeaway and lists no insights is not reported as missing one, on either
+// composition (go-slide-creator-5ba5m).
+func TestChartInsightTakeawayIsRecognised(t *testing.T) {
+	for _, layout := range []string{"", "two-column"} {
+		body := map[string]any{
+			"title":    "Quarterly revenue",
+			"takeaway": "Revenue grew 18% in three quarters",
+			"source":   "Finance",
+			"chart": map[string]any{"type": "bar", "data": map[string]any{
+				"categories": []any{"Q1", "Q2", "Q3"},
+				"series":     []any{map[string]any{"name": "Revenue", "values": []any{10, 11, 12}}},
+			}},
+		}
+		if layout != "" {
+			body["layout"] = layout
+		}
+		spec := &semantic.DeckSpec{
+			Meta:   semantic.DeckMeta{Title: "Results", Template: "midnight-blue"},
+			Slides: []semantic.SlideSpec{{Kind: semantic.KindChartInsight, Body: body}},
+		}
+		input, _, err := semantic.Compile(spec, semantic.CompileOptions{Strict: semantic.StrictnessWarn})
+		if err != nil {
+			t.Fatalf("layout %q: %v", layout, err)
+		}
+		if !slideRequiresTakeaway(input.Slides[0]) {
+			t.Fatalf("layout %q: the compiled slide no longer argues from data: %+v", layout, input.Slides[0])
+		}
+		if got := collectTakeawayMissingFindings(input); len(got) != 0 {
+			t.Errorf("layout %q: takeaway_missing on a slide that states its takeaway: %+v", layout, got)
+		}
+	}
+}
+
 func TestDeckSourceDefault(t *testing.T) {
 	input := storylineDeck(t, `{"source":"Company filings, FY25","slides":[
 	 {"layout_id":"title","slide_type":"title","content":[{"placeholder_id":"title","type":"text","text_value":"Cover"}]},

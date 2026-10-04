@@ -145,11 +145,51 @@ func oneLineSummary(summary string) string {
 			break
 		}
 	}
-	const limit = 110
-	if r := []rune(s); len(r) > limit {
-		s = strings.TrimRight(string(r[:limit-1]), " ,;") + "…"
+	return cutSummaryAtWord(s, 110)
+}
+
+// cutSummaryAtWord shortens s to at most limit characters, ellipsis included, ending
+// on a whole word: never inside one, never inside a parenthesis it would leave
+// open, and never on a dangling article or conjunction. The cut used to fall
+// wherever the limit did ("…and a sou…", go-slide-creator-0ae6a).
+func cutSummaryAtWord(s string, limit int) string {
+	r := []rune(s)
+	if len(r) <= limit {
+		return s
 	}
-	return s
+	// The last word that ends within limit-1 characters: back up from the
+	// limit to the space before the word the limit falls in.
+	end := limit - 1
+	if r[end] != ' ' {
+		for end > 0 && r[end-1] != ' ' {
+			end--
+		}
+	}
+	cut := strings.TrimRight(string(r[:end]), " ")
+	if open := strings.LastIndex(cut, "("); open > strings.LastIndex(cut, ")") {
+		cut = strings.TrimRight(cut[:open], " ")
+	}
+	for {
+		trimmed := strings.TrimRight(cut, " ,;:—–-")
+		i := strings.LastIndex(trimmed, " ")
+		if i < 0 || !danglingWords[strings.ToLower(trimmed[i+1:])] {
+			cut = trimmed
+			break
+		}
+		cut = trimmed[:i]
+	}
+	if cut == "" {
+		// One unbroken run longer than the limit: nothing to end on.
+		return string(r[:limit-1]) + "…"
+	}
+	return cut + "…"
+}
+
+// danglingWords are the words a shortened line does not end on.
+var danglingWords = map[string]bool{
+	"a": true, "an": true, "the": true, "and": true, "or": true, "of": true, "to": true,
+	"with": true, "at": true, "on": true, "in": true, "as": true, "by": true, "for": true,
+	"its": true, "each": true, "optionally": true,
 }
 
 // writeSemanticKindDetail prints one kind for a human or an agent reading

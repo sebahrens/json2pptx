@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
@@ -319,6 +321,9 @@ func TestOnboardingPayloadBudgets(t *testing.T) {
 		if k.Summary == "" || len(k.Summary) > 200 || strings.Contains(k.Summary, ". ") {
 			t.Errorf("catalogue line for %s is not one short sentence: %q", k.Kind, k.Summary)
 		}
+		if !endsOnWholeWord(k.Summary, info.Summary) {
+			t.Errorf("catalogue line for %s is cut inside a word: %q", k.Kind, k.Summary)
+		}
 		if len(k.RequiredFields) != len(info.RequiredFields) {
 			t.Errorf("catalogue dropped required_fields of %s", k.Kind)
 		}
@@ -475,6 +480,50 @@ func TestSlideKindLookupIsCompact(t *testing.T) {
 	for _, f := range env.Findings {
 		if strings.Contains(f.Code, string(diagnostics.CodeSemanticUnknownField)) || strings.Contains(f.Code, "SEMANTIC_REQUIRED") {
 			t.Errorf("a spec written with aliases is refused: %s %s", f.Code, f.Message)
+		}
+	}
+}
+
+// endsOnWholeWord reports whether a catalogue line is its full summary's
+// sentence, or a cut of it that stops at the end of a word.
+func endsOnWholeWord(line, full string) bool {
+	kept, cut := strings.CutSuffix(line, "…")
+	if !cut {
+		return true
+	}
+	full = strings.Join(strings.Fields(full), " ")
+	rest, ok := strings.CutPrefix(full, kept)
+	if !ok || kept == "" {
+		return false
+	}
+	last, _ := utf8.DecodeLastRuneInString(kept)
+	next, _ := utf8.DecodeRuneInString(rest)
+	wordRune := func(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }
+	return (wordRune(last) || last == ')') && !wordRune(next) &&
+		!danglingWords[strings.ToLower(kept[strings.LastIndex(kept, " ")+1:])]
+}
+
+// TestCatalogueLineEndsOnAWholeWord: a summary longer than the listing's line
+// is cut after a whole word, not wherever the limit falls
+// (go-slide-creator-0ae6a).
+func TestCatalogueLineEndsOnAWholeWord(t *testing.T) {
+	for _, tc := range []struct{ in, want string }{
+		{"Short enough.", "Short enough."},
+		{"One number, made the whole slide: the value, the words beneath it, and optionally a line of context and a source line under it",
+			"One number, made the whole slide: the value, the words beneath it, and optionally a line of context…"},
+		{"A named framework with fixed parts: swot (4 quadrants), porters_five_forces (5 forces) or bmc (the 9-cell Business Model Canvas)",
+			"A named framework with fixed parts: swot (4 quadrants), porters_five_forces (5 forces) or bmc…"},
+		{strings.Repeat("x", 150), strings.Repeat("x", 109) + "…"},
+	} {
+		got := cutSummaryAtWord(tc.in, 110)
+		if got != tc.want {
+			t.Errorf("cutSummaryAtWord(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+		if n := len([]rune(got)); n > 110 {
+			t.Errorf("cutSummaryAtWord(%q) is %d characters, over 110", tc.in, n)
+		}
+		if again := cutSummaryAtWord(got, 110); again != got {
+			t.Errorf("cutSummaryAtWord is not stable on its own result: %q -> %q", got, again)
 		}
 	}
 }

@@ -1,5 +1,24 @@
 # Schema Changelog
 
+- **2026-10-04 — A `chart_insight` that states its `takeaway` and lists no insights is no longer refused with `takeaway_missing` (`go-slide-creator-5ba5m`).**
+  - The compiler filed a lone `takeaway` as a one-item `insights` list of
+    `chart-insights-split` and cleared the slide's takeaway, so the slide had
+    no stated implication and `validate_deck_spec` / `render_deck_spec`
+    reported a blocking `takeaway_missing`. The takeaway now compiles to the
+    pattern's `so_what` callout, as a scalar `insight` does; findings on it
+    map back to `/slides/N/takeaway`.
+  - `layout: "two-column"` on such a slide has nothing for the second column:
+    the override is reported `SEMANTIC_PATTERN_NOT_AVAILABLE` (warning) and
+    the slide keeps `chart-insights-split`.
+
+- **2026-10-04 — `list_slide_kinds` catalogue lines end on a whole word (`go-slide-creator-0ae6a`).**
+  - A kind summary longer than the 110-character catalogue line was cut
+    wherever the limit fell (`…and a sou…`). It is now cut after the last
+    whole word that fits, never inside a parenthesis it would leave open and
+    never on a dangling article or conjunction; `…` still marks the cut and
+    `kinds: [<kind>]` returns the full summary. `json2pptx semantic kinds`
+    prints the same lines.
+
 - **2026-10-04 — Schema 4.160.0 · layout nativeness and the agent journey (labels `layout-nativeness-20261003`, `agent-journey-20261003`).**
   - One version for every dated bullet below this one down to the 4.159.0
     entry: those bullets were written by parallel branches without a version

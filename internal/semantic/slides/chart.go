@@ -62,8 +62,17 @@ func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) 
 	// insight bullets. The content fallback below cannot render a chart, so
 	// without this the chart silently disappears even though validation passed.
 	// Treat the takeaway as the single insight so the chart-insights-split
-	// pattern still emits the chart. A scalar "insight" becomes a callout.
+	// pattern still emits the chart. Like a scalar "insight" it becomes the
+	// pattern's so-what callout: filed as a lone bullet under "Key Insights" it
+	// left the slide with no stated implication, and the deck was refused with
+	// takeaway_missing for a takeaway the author had written
+	// (go-slide-creator-5ba5m).
 	if len(insights) == 0 && in.Takeaway != "" && chartSpec(in.Body) != nil {
+		if in.Override.Layout == "two-column" {
+			// Nothing to put beside the chart: it takes the slide and the
+			// takeaway stays the slide's takeaway.
+			return compileChartFallback(in, nil, insightsField)
+		}
 		insights = []string{in.Takeaway}
 		insightsField = "takeaway"
 	}
@@ -90,14 +99,14 @@ func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) 
 	}
 
 	vals := chartInsightsValues{Insights: insights}
-	if insightsField == "insight" {
+	if insightsField == "insight" || insightsField == "takeaway" {
 		// A single implication is a callout, not a one-item list headed
 		// "Key Insights". The pattern accepts callout-only content.
 		vals.Insights = []string{}
-		vals.SoWhat = strField(in.Body, "insight")
+		vals.SoWhat = insights[0]
 		links = append(links, SourceLink{
 			RawPath:      in.rawSlide() + ".pattern.values.so_what",
-			SemanticPath: in.semSlide() + ".insight",
+			SemanticPath: in.semSlide() + "." + insightsField,
 		})
 	}
 	if insight := strField(in.Body, "insight"); insight != "" && insightsField == "insights" {
@@ -183,10 +192,15 @@ func dropDuplicateTakeaway(takeaway string, insights []string) string {
 // plain content slide when there is no chart. The explain planner consults this
 // so its alternative stays in step with compile.
 func ChartInsightFallbackSlideType(body map[string]any) string {
-	if chartSpec(body) != nil {
-		return "two-column"
+	if chartSpec(body) == nil {
+		return "content"
 	}
-	return "content"
+	if insights, _ := chartInsights(body); len(insights) == 0 && strField(body, "takeaway") != "" {
+		// A chart and a takeaway, nothing for a second column: the chart takes
+		// the slide and the takeaway stays in its band.
+		return "content"
+	}
+	return "two-column"
 }
 
 // compileChartFallback renders the title, every insight bullet, the chart (when
