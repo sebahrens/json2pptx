@@ -515,11 +515,15 @@ jobs:
     # soffice emits no repair/corruption/invalid/malformed warnings — the
     # "zero needs repair" guarantee tracked by go-slide-creator-0myv.
     #
-    # The job also runs, without -short and without -race, the whole matrix
-    # of every test whose -short run takes a part of it to keep the sharded
-    # race step inside its time budget (go-slide-creator-q7cpq): the tests
-    # named "AcrossTemplates", and TestShortReducedMatricesCorpus
-    # (cmd/json2pptx/full_matrix_corpus_test.go) for the rest.
+    # The job also runs, without -short and without -race, every test of
+    # cmd/json2pptx that does less under -short — a part of its matrix to keep
+    # the sharded race step inside its time budget (go-slide-creator-q7cpq),
+    # or nothing at all: the tests named "AcrossTemplates", and
+    # TestShortReducedMatricesCorpus (cmd/json2pptx/full_matrix_corpus_test.go)
+    # for the rest. TestShortSensitiveTestsRunInCorpus, in the same file, fails
+    # when a test reads testing.Short() and is in neither group
+    # (go-slide-creator-c9w86). The other packages' tests of that kind run in
+    # render-integration.
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
@@ -591,6 +595,17 @@ jobs:
         run: |
           go test ./internal/render/... -run Integration -count=1 -v -timeout=10m
           go test ./internal/generator/... -run 'SVGConverter|SVG_' -count=1 -v -timeout=10m
+
+      # The test job runs every package under -short, so a test that skips or
+      # does less under -short ran nowhere: the SVG stress generators of
+      # internal/testrand drifted from the svggen validators unseen
+      # (go-slide-creator-4qd39). This is the same suite without -short and
+      # without -race, on the host that has the render toolchain. cmd/json2pptx
+      # is left out: corpus-headless runs its short-sensitive tests.
+      - name: Run the internal and svggen tests without -short
+        run: |
+          go test ./internal/... -count=1 -timeout=10m
+          (cd svggen && go test ./... -count=1 -timeout=5m)
 
       # Render truth (go-slide-creator-bhbtk): generate every pattern exemplar,
       # convert the deck pptx -> pptx through LibreOffice and read back the

@@ -109,8 +109,10 @@ must be requested with `-tags=integration`:
   LibreOffice, asserting no repair/corruption warnings.
 
 - `cmd/json2pptx/full_matrix_corpus_test.go` — `TestShortReducedMatricesCorpus`
-  runs the whole matrix of every test whose `-short` run takes only a part of
-  it (see "The sharded race step" below).
+  runs, in full, every test of the package that does less under `-short` (a
+  part of its matrix, or a skip; see "The sharded race step" below), and
+  `TestShortSensitiveTestsRunInCorpus` reads the test sources and fails when a
+  test that reads `testing.Short()` is run without `-short` by no CI job.
 
 **CI:** the `corpus-headless` job runs
 `go test -tags=integration ... -run 'Corpus|AcrossTemplates'`, without `-short`
@@ -137,9 +139,13 @@ time and the slowest tests.
 - **Short matrices.** A test whose cost is a matrix takes two templates (or a
   few decks) under `-short` and the whole matrix otherwise. The whole matrix
   must still run in CI: name the test `...AcrossTemplates` or `...Corpus`, or
-  add it to `shortReducedMatrixTests` in
+  add it to `shortSensitiveTests` in
   `cmd/json2pptx/full_matrix_corpus_test.go`; the `corpus-headless` job runs
-  those without `-short`.
+  those without `-short`. The same holds for a test that skips under
+  `-short`: the `test` job is `-short` only, so its long form runs nowhere
+  else (a guard test in that file enforces the list). In the other packages
+  the `render-integration` job runs `go test ./internal/...` and the svggen
+  module without `-short`.
 
 New genuinely-integration tests (require external tools or are slow/fixture
 heavy) should adopt this `//go:build integration` tag and be wired into a CI job

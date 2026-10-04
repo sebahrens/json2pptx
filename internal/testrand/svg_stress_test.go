@@ -1,7 +1,10 @@
 package testrand
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 func TestSVGStressAllTypes(t *testing.T) {
@@ -81,6 +84,28 @@ func TestSVGStressPerType(t *testing.T) {
 				t.Errorf("%s/%s: %s", r.DiagramType, r.Variant, r.Error)
 			}
 		})
+	}
+}
+
+// TestSVGStressNegativeValuesAreRefused: the two charts whose geometry has no
+// place for a negative value refuse it with a sentence instead of drawing it,
+// which is why their edge payloads carry none (go-slide-creator-4qd39).
+func TestSVGStressNegativeValuesAreRefused(t *testing.T) {
+	for _, typ := range []string{"radar_chart", "stacked_area_chart"} {
+		_, err := svggen.Render(&svggen.RequestEnvelope{
+			Type: typ,
+			Data: map[string]any{
+				"categories": []any{"A", "B", "C"},
+				"series": []any{
+					map[string]any{"name": "One", "values": []any{-10.0, 20.0, 30.0}},
+					map[string]any{"name": "Two", "values": []any{5.0, 6.0, 7.0}},
+				},
+			},
+			Output: svggen.OutputSpec{Width: 800, Height: 600},
+		})
+		if err == nil || !strings.Contains(err.Error(), "must be >= 0") {
+			t.Errorf("%s drew a negative value, or refused it without saying so: %v", typ, err)
+		}
 	}
 }
 

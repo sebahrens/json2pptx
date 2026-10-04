@@ -87,6 +87,7 @@ func TestPillarsFallbackPreservesFramingAndBullets(t *testing.T) {
 	if !hasCode(result.Diagnostics, diagnostics.CodeSemanticPatternDegraded) {
 		t.Fatalf("missing degrade finding: %+v", result.Diagnostics)
 	}
+	assertPillarsDegradedFrom(t, result.Diagnostics, "strategy-house")
 }
 
 func TestPillarsMalformedItemHasSemanticPath(t *testing.T) {
@@ -132,6 +133,7 @@ func TestPillarsOverBudgetKeepsFoundationAndBadges(t *testing.T) {
 	if !hasCode(result.Diagnostics, diagnostics.CodeSemanticPatternDegraded) {
 		t.Fatalf("missing degrade finding: %+v", result.Diagnostics)
 	}
+	assertPillarsDegradedFrom(t, result.Diagnostics, "strategy-house")
 }
 
 func TestPillarsDiscoverySchema(t *testing.T) {
@@ -307,4 +309,31 @@ func TestPillarsExampleIsNotTheDefaultSilhouette(t *testing.T) {
 			t.Errorf("%s description does not say how to choose the shape: %q", field, fields[field].desc)
 		}
 	}
+}
+
+// assertPillarsDegradedFrom checks the pattern a degraded pillars slide names
+// as the one whose budget it missed.
+func assertPillarsDegradedFrom(t *testing.T, diags []diagnostics.Diagnostic, want string) {
+	t.Helper()
+	for _, d := range diags {
+		if d.Code == diagnostics.CodeSemanticPatternDegraded && d.Fix != nil {
+			if got := d.Fix.Params["from"]; got != want {
+				t.Errorf("degraded from = %v, want %s", got, want)
+			}
+			return
+		}
+	}
+	t.Errorf("no degrade finding with a fix: %+v", diags)
+}
+
+// TestPillarsDegradedPanelsNameThePanels: pillars with no house frame that
+// miss the panels' range name stylish-panels, not both visuals
+// (go-slide-creator-vag44).
+func TestPillarsDegradedPanelsNameThePanels(t *testing.T) {
+	items := append(pillarItems(), map[string]any{"title": "Fourth", "body": []any{"Detail"}}, map[string]any{"title": "Fifth", "body": []any{"Detail"}}, map[string]any{"title": "Sixth", "body": []any{"Detail"}})
+	_, result, err := Compile(pillarsSpec(map[string]any{"pillars": items, "takeaway": "Six themes guide delivery."}), CompileOptions{})
+	if err != nil {
+		t.Fatalf("compile: %v", err)
+	}
+	assertPillarsDegradedFrom(t, result.Diagnostics, "stylish-panels")
 }

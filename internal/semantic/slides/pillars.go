@@ -288,6 +288,33 @@ func pillarBudget(item pillarItem, i, titleMax, bodyMax, bulletMax int, bodyRequ
 }
 
 func PillarsPattern(body map[string]any) string { return resolvePillars(body).pattern }
+
+// PillarsWantedPattern is the visual a pillars payload asks for whether or not
+// it fits one: the strategy house when it carries any part of the house's
+// frame (objective, foundation, beam, roof badges), the panels otherwise. A
+// degraded slide names it as the pattern whose budget it missed
+// (go-slide-creator-vag44).
+func PillarsWantedPattern(body map[string]any) string {
+	if p := resolvePillars(body).pattern; p != "" {
+		return p
+	}
+	for _, key := range []string{"objective", "foundation", "beam", "roof_badges"} {
+		switch v := body[key].(type) {
+		case nil:
+		case string:
+			if strings.TrimSpace(v) != "" {
+				return "strategy-house"
+			}
+		case []any:
+			if len(v) > 0 {
+				return "strategy-house"
+			}
+		default:
+			return "strategy-house"
+		}
+	}
+	return "stylish-panels"
+}
 func PillarsIssue(body map[string]any) (string, string, bool) {
 	r := resolvePillars(body)
 	return r.path, r.problem, r.hard
