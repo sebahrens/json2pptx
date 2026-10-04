@@ -18,9 +18,10 @@ JSON so misspelled fields fail early. Replace every `__FILL__` skeleton token
 with authored content; use `placeholder_policy:"strict"` for a publishable
 run. `design_mode` is a **deck field**, `contrast_check` is a **slide field**,
 and typed content uses the matching `*_value` property declared by
-`get_input_schema`. In constrained mode use template scheme colors and
-template-managed type sizes. Use `design_mode:"free"` only when explicit
-hex colors or absolute sizing are intentional.
+`get_input_schema`. In constrained mode use scheme colors and template
+type sizes; hex is refused everywhere, tables and nested grids included.
+Use `design_mode:"free"` only when explicit hex colors or absolute sizing
+are intentional.
 
 Two raw-only patterns cover pages DeckSpec kinds do not: `contact-directory`
 (key contacts / "who to call": grouped rows of circular headshots, names and

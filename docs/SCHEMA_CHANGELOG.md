@@ -1,5 +1,17 @@
 # Schema Changelog
 
+- **2026-10-04 — Schema 4.163.0 · one verdict, authored finding paths, flow and sizing fixes (labels `followup3-20261004`, `followup4-20261004`).**
+  - One version for the dated bullets below this one down to the 4.162.0
+    entry (74 beads). Headlines: `validate`, `generate --dry-run`, `generate`
+    and `generate_presentation` give one verdict with the same code and path,
+    and generation refuses before a file is written; every raw finding
+    `path` is a JSON Pointer into the authored deck (tables, defaults,
+    `split_slide`, `structure`, compose, pattern values) with `slide_number`
+    and `debug.locator`; constrained design mode refuses raw hex wherever a
+    colour is written; shape `flip_h` and two-row mixed flows; KPI values at
+    their fitted size; `OVERTALL_FLOW_LANE` retired. The schema fingerprint
+    advances (`e62605a0f9ee3236` → `a0e913951243f827`).
+
 - **2026-10-04 — Constrained design mode: one rule for a raw hex colour wherever it sits (`go-slide-creator-gpbjx`; found on the way: `-iygkm`, `-a30xd`, `-d6bhh`, `-gt7z1`, `-9e19z`).**
   - **Now refused** with `design_mode_violation` (error, fix
     `use_semantic_color`) in the default `design_mode: "constrained"`, on

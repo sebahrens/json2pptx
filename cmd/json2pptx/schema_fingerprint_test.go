@@ -122,8 +122,11 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// 4.162.0 is the second follow-up wave (label followup2-20261004): typed
 	// CLI errors, known_hashes prefilled in next_tool_call, larger_render,
 	// per-count KPI value budgets; the hash is unchanged.
+	// 4.163.0 is the third follow-up wave (labels followup3-20261004,
+	// followup4-20261004): shape `flip_h`, paragraph `figure`, and
+	// `slide_number` / `debug` on fit findings, so the hash advances.
 	// If this fails, see file header comment.
-	const wantFingerprint = "e62605a0f9ee3236"
+	const wantFingerprint = "a0e913951243f827"
 
 	got := schemaFingerprint()
 
