@@ -180,8 +180,17 @@ func deckThumbnailsMCPResult(ctx context.Context, request mcp.CallToolRequest, d
 	if err := ctx.Err(); err != nil {
 		return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error())
 	}
+	known, bad := knownHashesArg(request)
+	if bad != nil {
+		return bad
+	}
+	held := func(s render.SlideImage) bool { return s.ContentHash != "" && known[s.ContentHash] }
 	if wantsBase64JSON(request) {
-		res, err := api.MCPSuccessResult(ctx, deck)
+		var payload any = deck
+		if len(known) > 0 {
+			payload = legacyDeckWithoutKnown(deck, held)
+		}
+		res, err := api.MCPSuccessResult(ctx, payload)
 		if err != nil {
 			return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err))
 		}
@@ -202,7 +211,7 @@ func deckThumbnailsMCPResult(ctx context.Context, request mcp.CallToolRequest, d
 		if err := ctx.Err(); err != nil {
 			return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error())
 		}
-		if s.Unchanged {
+		if held(s) {
 			// The caller holds this image: the hash says so, nothing is sent.
 			if resp.SourceHash == "" {
 				resp.SourceHash = s.SourceHash
@@ -273,6 +282,35 @@ func (mc *mcpConfig) renderProgressReporter(ctx context.Context, request mcp.Cal
 			"message":       fmt.Sprintf("Prepared thumbnail %d of %d", done, total),
 		})
 	}
+}
+
+// legacyDeckThumbnails is the include_base64_json envelope of a render that
+// named known_hashes: render.DeckResult with a held slide reduced to its
+// index and hashes.
+type legacyDeckThumbnails struct {
+	Slides     []legacySlideThumbnail `json:"slides"`
+	Truncated  bool                   `json:"truncated"`
+	SlideCount int                    `json:"slide_count,omitempty"`
+	Selected   []int                  `json:"selected,omitempty"`
+}
+
+type legacySlideThumbnail struct {
+	render.SlideImage
+	Unchanged bool `json:"unchanged,omitempty"`
+}
+
+func legacyDeckWithoutKnown(deck *render.DeckResult, held func(render.SlideImage) bool) legacyDeckThumbnails {
+	out := legacyDeckThumbnails{Truncated: deck.Truncated, SlideCount: deck.SlideCount, Selected: deck.Selected,
+		Slides: make([]legacySlideThumbnail, 0, len(deck.Slides))}
+	for _, s := range deck.Slides {
+		if held(s) {
+			s = render.SlideImage{Index: s.Index, ContentHash: s.ContentHash, SourceHash: s.SourceHash}
+			out.Slides = append(out.Slides, legacySlideThumbnail{SlideImage: s, Unchanged: true})
+			continue
+		}
+		out.Slides = append(out.Slides, legacySlideThumbnail{SlideImage: s})
+	}
+	return out
 }
 
 // argKnownHashes names the content hashes the caller already holds.

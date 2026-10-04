@@ -248,28 +248,6 @@ type SlideImage struct {
 	// Cleanup describes the lifetime/cleanup semantics of an on-disk Path
 	// artifact. Empty when the image is delivered inline as PNG64.
 	Cleanup string `json:"cleanup,omitempty"`
-	// Unchanged marks a slide whose ContentHash the caller said it already
-	// holds: the entry carries the index and the hashes and no pixels.
-	Unchanged bool `json:"unchanged,omitempty"`
-}
-
-// WithoutKnown replaces every slide whose ContentHash is in known with a
-// hash-only entry (Index, ContentHash, SourceHash, Unchanged) and reports how
-// many it replaced. A caller that re-renders a deck after a small edit names
-// the hashes it holds and is sent only the slides whose pixels differ.
-func (d *DeckResult) WithoutKnown(known map[string]bool) int {
-	if d == nil || len(known) == 0 {
-		return 0
-	}
-	n := 0
-	for i, s := range d.Slides {
-		if s.ContentHash == "" || !known[s.ContentHash] {
-			continue
-		}
-		d.Slides[i] = SlideImage{Index: s.Index, ContentHash: s.ContentHash, SourceHash: s.SourceHash, Unchanged: true}
-		n++
-	}
-	return n
 }
 
 // DeckResult holds the result of rendering an entire deck.

@@ -457,15 +457,10 @@ func TestDeckThumbnailsMCPResult_KnownHashes(t *testing.T) {
 		first.Slides[0].ContentHash, "SHA256:" + strings.ToUpper(first.Slides[1].ContentHash),
 		first.Slides[3].ContentHash, "feedbeef",
 	}})
-	known, bad := knownHashesArg(req)
-	if bad != nil {
-		t.Fatalf("known_hashes refused: %s", textContent(bad))
+	if known, bad := knownHashesArg(req); bad != nil || len(known) != 4 {
+		t.Fatalf("known_hashes: %v, refused=%v", known, bad != nil)
 	}
-	deck := newDeck()
-	if n := deck.WithoutKnown(known); n != 3 {
-		t.Fatalf("WithoutKnown replaced %d slides, want 3", n)
-	}
-	res := deckThumbnailsMCPResult(context.Background(), req, deck)
+	res := deckThumbnailsMCPResult(context.Background(), req, newDeck())
 	if res.IsError || len(res.Content) != 2 {
 		t.Fatalf("want metadata + 1 image block, got %d blocks: %s", len(res.Content), textContent(res))
 	}
@@ -493,21 +488,18 @@ func TestDeckThumbnailsMCPResult_KnownHashes(t *testing.T) {
 	}
 
 	// The legacy envelope drops the pixels of a held slide too.
-	legacy := newDeck()
-	legacy.WithoutKnown(known)
-	text := textContent(deckThumbnailsMCPResult(context.Background(), makeRequest(map[string]any{argIncludeBase64JSON: true}), legacy))
+	legacyReq := makeRequest(map[string]any{argIncludeBase64JSON: true, argKnownHashes: req.GetArguments()[argKnownHashes]})
+	text := textContent(deckThumbnailsMCPResult(context.Background(), legacyReq, newDeck()))
 	if strings.Count(text, "png_base64") != 1 || strings.Count(text, `"unchanged":true`) != 3 {
 		t.Errorf("legacy envelope should carry one png_base64 and three unchanged entries:\n%.400s", text)
 	}
 
 	// Naming every hash returns no image at all; a malformed list is refused.
-	all := newDeck()
-	everything := map[string]bool{}
+	everything := []any{}
 	for _, s := range first.Slides {
-		everything[s.ContentHash] = true
+		everything = append(everything, s.ContentHash)
 	}
-	all.WithoutKnown(everything)
-	if res := deckThumbnailsMCPResult(context.Background(), makeRequest(nil), all); res.IsError || len(res.Content) != 1 {
+	if res := deckThumbnailsMCPResult(context.Background(), makeRequest(map[string]any{argKnownHashes: everything}), newDeck()); res.IsError || len(res.Content) != 1 {
 		t.Errorf("an all-unchanged pass is metadata only, got %d blocks (err=%v)", len(res.Content), res.IsError)
 	}
 	for _, v := range []any{"abc", []any{1}} {

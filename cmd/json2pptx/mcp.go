@@ -2724,8 +2724,8 @@ func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp
 		}), nil
 	}
 
-	known, errRes := knownHashesArg(request)
-	if errRes != nil {
+	// Refused before the render; deckThumbnailsMCPResult applies the hashes.
+	if _, errRes := knownHashesArg(request); errRes != nil {
 		return errRes, nil
 	}
 
@@ -2768,7 +2768,6 @@ func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp
 	if err := ctx.Err(); err != nil {
 		return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error()), nil
 	}
-	deckResult.WithoutKnown(known)
 	return deckThumbnailsMCPResult(ctx, request, deckResult), nil
 }
 
