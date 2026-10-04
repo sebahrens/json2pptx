@@ -159,7 +159,7 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	// the documented expand -> inspect -> tweak -> generate loop dead-ended on
 	// violations the agent had no way to remove (go-slide-creator-c3po).
 	if grid != nil {
-		grid.Source = patternSourcePrefix + pat.Name()
+		stampPatternSource(grid, patternSourcePrefix+pat.Name(), 0)
 	}
 
 	slog.Info("pattern expanded",
@@ -484,6 +484,7 @@ func nestedPatternCellBounds(grid *jsonschema.ShapeGridInput, ctx patterns.Expan
 	resolved, err := shapegrid.Resolve(&shapegrid.Grid{
 		Bounds: bounds, TypeScale: grid.TypeScale, Columns: cols, Rows: rows, ColGap: colGap, RowGap: rowGap, VAlign: align,
 		Compose: slideBlock && composesSlideBlock(grid), KeepTextSizes: grid.KeepTextSizes,
+		CanvasScale: gridCanvasScale(grid, ctx.SlideWidth, ctx.SlideHeight),
 	}, pptx.NewShapeIDAllocator(nil))
 	if err != nil {
 		return nil, err
@@ -559,5 +560,26 @@ func applyPatternVerticalAlign(p *PatternInput, grid *jsonschema.ShapeGridInput)
 		grid.VerticalAlign = string(shapegrid.VAlignStretch)
 	default:
 		grid.VerticalAlign = p.VerticalAlign
+	}
+}
+
+// stampPatternSource marks grid, and every sub-grid the pattern nested in its
+// cells, as the engine's own expansion of the named pattern. The nested grids
+// are the pattern's too: they carry its explicit sizes, and they follow the
+// canvas with it (gridCanvasScale). A nested grid that already names a source
+// (a pattern expanded into a cell) keeps it.
+func stampPatternSource(grid *jsonschema.ShapeGridInput, source string, depth int) {
+	if grid == nil || depth > maxGeomNestingDepth {
+		return
+	}
+	if grid.Source == "" || depth == 0 {
+		grid.Source = source
+	}
+	for _, row := range grid.Rows {
+		for _, cell := range row.Cells {
+			if cell != nil && cell.Grid != nil {
+				stampPatternSource(cell.Grid, source, depth+1)
+			}
+		}
 	}
 }

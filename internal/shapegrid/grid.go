@@ -16,6 +16,17 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 	if grid == nil || len(grid.Rows) == 0 {
 		return nil, nil
 	}
+	if grid.CanvasScale > 1 {
+		if res, ok := resolveCanvas(grid, alloc); ok {
+			return res, nil
+		}
+	}
+	return resolveDesign(grid, alloc)
+}
+
+// resolveDesign resolves a grid at the sizes it carries: through the
+// composition policy when that governs it, else as given.
+func resolveDesign(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 	if composable(grid) {
 		return resolveComposed(grid, alloc)
 	}
@@ -344,6 +355,9 @@ func resolveGrid(grid *Grid, alloc *pptx.ShapeIDAllocator, plan *composePlan) (*
 			}
 			if !grid.KeepTextSizes {
 				cell.ShapeSpec = snapShapeTextToScale(cell.ShapeSpec)
+			}
+			if grid.canvasText > 1 {
+				cell.ShapeSpec = canvasShapeText(cell.ShapeSpec, grid.canvasText, grid.canvasKeep)
 			}
 		}
 	}

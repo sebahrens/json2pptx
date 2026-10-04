@@ -182,6 +182,7 @@ func resolveCapacityGrid(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandCon
 		// sizes and row heights (go-slide-creator-yhzxt).
 		Compose:       composesSlideBlock(grid),
 		KeepTextSizes: grid.KeepTextSizes,
+		CanvasScale:   gridCanvasScale(grid, ctx.SlideWidth, ctx.SlideHeight),
 	}
 
 	// Validate before resolving

@@ -244,7 +244,8 @@
                 ]
               }
             ],
-            "vertical_align": "bottom"
+            "vertical_align": "bottom",
+            "source": "pattern:comparison-2col"
           }
         }
       ]

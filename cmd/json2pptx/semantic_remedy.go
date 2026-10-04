@@ -11,6 +11,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/semantic"
 )
 
 // One remedy per finding, and patches that were tried
@@ -947,6 +948,9 @@ func (rc *remedyContext) remedyEnvelope(envelope *diagnostics.FindingEnvelope, d
 		if action != nil {
 			f.Remediation = &diagnostics.Remediation{Primary: action}
 		}
+		if f.Remediation == nil && i < len(diags) {
+			f.Remediation = sparseSlideAdvice(diags[i])
+		}
 		f.NextToolCall = call
 		if call == nil {
 			f.NextToolCall = kept[i]
@@ -958,6 +962,20 @@ func (rc *remedyContext) remedyEnvelope(envelope *diagnostics.FindingEnvelope, d
 			f.NextToolCall = &patterns.ToolCallSuggestion{Tool: "describe_finding", ArgsTemplate: map[string]any{"code": f.Code}}
 		}
 	}
+}
+
+// sparseSlideAdvice is the remediation of a sparse-slide advisory
+// (SLIDE_UNDERUSED, SPARSE_FILL), which has no budget to meet, only advice:
+// the kind and hint render gives as its recommended_edit
+// (go-slide-creator-le9d0). nil for any other diagnostic.
+func sparseSlideAdvice(d semanticDiagnostic) *diagnostics.Remediation {
+	edit := d.RecommendedEdit
+	if edit == nil || edit.Kind != semantic.EditAddDetailOrMerge || edit.Hint == "" {
+		return nil
+	}
+	return &diagnostics.Remediation{Primary: &diagnostics.RemediationAction{
+		Action: edit.Kind, Params: map[string]any{"hint": edit.Hint},
+	}}
 }
 
 // --- render diagnostics --------------------------------------------------------

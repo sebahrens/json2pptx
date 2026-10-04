@@ -847,6 +847,7 @@ func resolveGridForStructural(grid *ShapeGridInput, overrideBounds *pptx.RectEmu
 		sgGrid.Compose = composesSlideBlock(grid)
 	}
 	sgGrid.KeepTextSizes = grid.KeepTextSizes
+	sgGrid.CanvasScale = gridCanvasScale(grid, slideWidth, slideHeight)
 
 	if vErr := shapegrid.Validate(sgGrid); vErr != nil {
 		return nil

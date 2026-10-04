@@ -31,7 +31,10 @@ import (
 // A partner replaces "Thank you" with this. The rows share the agenda's rule
 // language (serif accent numerals, 0.5pt rules, no tiles). The decisions band
 // is the takeaway treatment: a left accent rule, bold text, no outline and no
-// tinted fill. Owner and date columns are dropped when no action carries one.
+// tinted fill. The rule stands flush on the table's left edge — the edge the
+// row rules start on — and the band text starts TakeawayTextInsetPt to its
+// right (go-slide-creator-le9d0). Owner and date columns are dropped when no
+// action carries one.
 
 func init() {
 	Default().Register(&nextSteps{})
@@ -65,10 +68,11 @@ const (
 )
 
 // nextStepsScales steps numeral / action / meta sizes down only when the
-// default rows do not fit the content area. The last step sets the actions
-// and decisions at the 12pt floor: the pattern picks a readable size itself
-// rather than handing the writer rows it can only fit by autofit shrink
-// (go-slide-creator-k3eb3).
+// rows do not fit the content area: 18 / 14 / 14pt, then 18 / 14 / 12pt, then
+// 14 / 12 / 12pt. The last step sets the actions and decisions at the 12pt
+// floor: the pattern picks a readable size itself rather than handing the
+// writer rows it can only fit by autofit shrink (go-slide-creator-k3eb3).
+// The padding inside the rows gives way before the type does (layoutNextSteps).
 //
 // Every size is a scale step (go-slide-creator-vmdfm).
 var nextStepsScales = [][3]float64{{scaleLeadPt, scaleSubheadPt, scaleSubheadPt}, {scaleLeadPt, scaleSubheadPt, scaleBodyPt}, {scaleSubheadPt, scaleBodyPt, scaleBodyPt}}
@@ -163,7 +167,7 @@ func (n *nextSteps) Schema() *Schema {
 		map[string]*Schema{
 			"accent":          StringSchema(0).WithDescription("Accent scheme color for the numerals and the band rule (default accent1)").WithDefault("accent1"),
 			"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-			"action_size":     NumberSchema(12, 24).WithDescription("Action text size in points (default 16, stepping to 14 when six long actions do not fit); owner and date are 2pt smaller"),
+			"action_size":     NumberSchema(12, 24).WithDescription("Action and decision text size in points, held instead of the default ladder (default 14, stepping to 12 only when the list does not fit even with tightened rows); with action_size set, owner and date are 2pt smaller, never under 12"),
 		},
 		nil,
 	).WithAdditionalProperties(false)
@@ -254,6 +258,9 @@ type nextStepsLayout struct {
 	padPt                                   float64 // top / bottom text margin of every cell; 0 = the uniform margin
 	decisionSize                            float64
 	numberCol, actionCol, ownerCol, dateCol int
+	// barPct is the width of the leading rule column the decisions band's
+	// accent rule fills; 0 without a band. The numeral cells span it.
+	barPct float64
 }
 
 func (l nextStepsLayout) natural() float64 {
@@ -288,28 +295,35 @@ func layoutNextSteps(ctx ExpandContext, vals *NextStepsValues, ovr *NextStepsOve
 		}
 		return lay, lay.natural() <= areaH
 	}
+	// The padding inside the rows gives way before the type steps down, as a
+	// consultant sets a longer table: each type step is tried at the uniform
+	// text margin and then at the first tightened margins, and the tightest
+	// margin is kept for a list that fits no other way
+	// (go-slide-creator-vg73u, -yqlxf). A list that fits at the uniform margin
+	// never takes a padding step.
 	var over nextStepsLayout
+	tight := rowPadStepsPt[len(rowPadStepsPt)-1]
 	for i, sc := range scales {
 		lay, ok := fit(sc, 0)
 		if ok {
 			return lay
 		}
-		// The floor step is taken only when it makes the list fit: content
-		// that overflows even there keeps the larger step, since the writer
+		// A list that overflows everywhere keeps the larger step: the writer
 		// shrinks it either way and a smaller start only ends smaller.
 		if i < len(scales)-1 || len(scales) < 3 {
 			over = lay
 		}
-	}
-	// No step fits at the uniform text margin: the padding inside the rows
-	// gives way, as it does in a six-row table, and each padding step takes
-	// the largest type that fits (go-slide-creator-vg73u).
-	for _, padPt := range rowPadStepsPt {
-		for _, sc := range scales {
+		for _, padPt := range rowPadStepsPt[:len(rowPadStepsPt)-1] {
 			if lay, ok := fit(sc, padPt); ok {
 				spreadRowSlack(lay.rowPt, lay.natural(), areaH)
 				return lay
 			}
+		}
+	}
+	for _, sc := range scales {
+		if lay, ok := fit(sc, tight); ok {
+			spreadRowSlack(lay.rowPt, lay.natural(), areaH)
+			return lay
 		}
 	}
 	return over
@@ -386,6 +400,10 @@ func measureNextSteps(ctx ExpandContext, vals *NextStepsValues, numberSize, acti
 		band := nextStepsBandCell(vals, lay.decisionSize, "dk1", padPt)
 		lay.bandPt = math.Ceil(math.Max(sizedBlockHeightPt(ctx, paras, areaW-nextStepsBandBarPt)-trim,
 			writtenFitHeightPt(ctx.themeFonts(), band.Shape.Text, areaW-nextStepsBandBarPt, 0)))
+		// The band's rule takes a column of its own at the table's left edge.
+		lay.barPct = math.Round(nextStepsBandBarPt/areaW*10000) / 100
+		lay.cols[0] = math.Round((lay.cols[0]-lay.barPct)*100) / 100
+		lay.cols = append([]float64{lay.barPct}, lay.cols...)
 	}
 	return lay
 }
@@ -419,7 +437,23 @@ func nextStepsBandCell(vals *NextStepsValues, size float64, labelInk string, pad
 	for _, d := range nonEmptyStrings(vals.Decisions) {
 		paras = append(paras, nextStepsParagraph{Content: pptx.ConvertMarkdownEmphasis(d), Size: size, Bold: true, Color: "dk1", SpaceAfter: 2, Bullet: true})
 	}
-	return nextStepsTextCell("ctr", padPt, paras...)
+	cell := nextStepsTextCell("ctr", padPt, paras...)
+	cell.Shape.Text = withInsetLeft(cell.Shape.Text, TakeawayTextInsetPt)
+	return cell
+}
+
+// withInsetLeft sets a text payload's left inset (points).
+func withInsetLeft(text json.RawMessage, pt float64) json.RawMessage {
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(text, &obj) != nil {
+		return text
+	}
+	obj["inset_left"], _ = json.Marshal(pt)
+	out, err := json.Marshal(obj)
+	if err != nil {
+		return text
+	}
+	return out
 }
 
 func nextStepsLabel(vals *NextStepsValues) string {
@@ -508,7 +542,13 @@ func (n *nextSteps) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	header := func(label string) *jsonschema.GridCellInput {
 		return nextStepsHeaderCell(label, headerAlpha, lay.padPt)
 	}
-	headerCells := []*jsonschema.GridCellInput{{}, header("Action")}
+	// With a decisions band the grid opens on the band rule's column; the
+	// first cell of every other row spans it.
+	lead := 1
+	if lay.barPct > 0 {
+		lead = 2
+	}
+	headerCells := []*jsonschema.GridCellInput{{ColSpan: lead}, header("Action")}
 	if lay.hasOwner {
 		headerCells = append(headerCells, header("Owner"))
 	}
@@ -525,6 +565,7 @@ func (n *nextSteps) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 			nextStepsNumberCell(i, lay.numberSize, numberInk, lay.padPt),
 			nextStepsActionCell(a.Action, lay.actionSize, lay.padPt),
 		}
+		cells[0].ColSpan = lead
 		if co, ok := cellOverrides[i].(*NextStepsCellOverride); ok && co != nil {
 			applyCellTextOverride(cells[1], co)
 			if co.AccentBar {
@@ -548,9 +589,10 @@ func (n *nextSteps) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		})
 		itemRow = append(itemRow, false)
 		band := nextStepsBandCell(vals, lay.decisionSize, accentInkOnLight(ctx, accent, 4.5), lay.padPt)
-		band.ColSpan = nCols
-		band.AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: nextStepsBandBarPt}
-		rows = append(rows, jsonschema.GridRowInput{MinHeight: lay.bandPt, MaxHeight: lay.bandPt, Cells: []*jsonschema.GridCellInput{band}})
+		band.ColSpan = nCols - 1
+		accentFill, _ := json.Marshal(accent)
+		bar := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: accentFill, Line: json.RawMessage(`"none"`)}}
+		rows = append(rows, jsonschema.GridRowInput{MinHeight: lay.bandPt, MaxHeight: lay.bandPt, Cells: []*jsonschema.GridCellInput{bar, band}})
 		itemRow = append(itemRow, false)
 	}
 

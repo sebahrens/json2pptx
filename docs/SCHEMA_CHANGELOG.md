@@ -1,5 +1,37 @@
 # Schema Changelog
 
+- **2026-10-04 — Patterns follow the canvas; next-steps tightens rows before type and aligns its decisions band; sparse-slide advice is the same in validate and render (`go-slide-creator-ttpae`, `-yqlxf`, `-le9d0`).**
+  - **Larger slides (business-template, 14.7 x 8.3in).** A named pattern's
+    point sizes are designed on the 13.33 x 7.5in slide; on a larger slide the
+    resolver now scales the pattern's row heights, gaps and text by the slide's
+    size relative to that one (1.10 on business-template: 12 → 13pt, 14 → 15pt,
+    18 → 20pt), level by level and only where the text still holds its lines
+    and cells. Standard-size templates render exactly as before (scale 1);
+    authored `shape_grid`s keep their points. Nested grids of an expansion now
+    carry the pattern's `source` stamp (`expand_pattern` output). On
+    business-template the exemplar of every full-slide pattern is free of
+    `SLIDE_UNDERUSED` / `HORIZONTAL_IMBALANCE` / `VERTICAL_IMBALANCE` (eleven
+    and one before).
+  - **`SLIDE_UNDERUSED` thresholds.** `next-steps` and `numbered-step-strip`
+    count their rows by slot, like `agenda` (a three-action next-steps slide
+    reported at 27% on p-style). `stat-hero` and `pull-quote` report under 15%
+    (was 29%: every use reported), `swimlane` under 24%.
+  - **`validate_deck_spec` / `semantic validate`**: a `SLIDE_UNDERUSED` or
+    `SPARSE_FILL` finding carries `remediation.primary`
+    `{action: "add_detail_or_merge", params: {hint}}` — the advice
+    `render_deck` gives as `recommended_edit`. It carried none.
+  - **`next-steps`**: the padding inside the rows gives way before the type
+    steps down (each type step is tried at the uniform margin, then at 10pt
+    and 7pt, the 5pt margin last), so four- and five-action lists that fell to
+    12pt keep 14pt actions in tighter rows; lists that fit at the uniform
+    margin are unchanged. The "Decisions requested" rule stands flush on the
+    table's left edge with the band text 12pt to its right (it sat 5pt left of
+    the table with the text against it); the grid gains a leading rule column
+    when decisions are given. `overrides.action_size` description now states
+    the real sizes (default 14, stepping to 12; owner and date 2pt smaller,
+    never under 12, when it is set). The schema fingerprint does not move:
+    pattern schema descriptions are not part of it.
+
 - **2026-10-04 — Schema 4.160.0 · layout nativeness and the agent journey (labels `layout-nativeness-20261003`, `agent-journey-20261003`).**
   - One version for every dated bullet below this one down to the 4.159.0
     entry: those bullets were written by parallel branches without a version
