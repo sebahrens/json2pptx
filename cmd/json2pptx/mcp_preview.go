@@ -624,7 +624,7 @@ func resolveSlidePattern(i int, slide *SlideInput, tctx *previewTemplateContext,
 	for _, w := range expandWarnings {
 		output.Warnings = append(output.Warnings,
 			fmt.Sprintf("slide %d: %s", i+1, w))
-		if f := patternWarningAsFinding(i, slide.Pattern.Name, w); f != nil {
+		if f := patternWarningFinding(i, slide.Pattern, w); f != nil {
 			output.composeFindings = append(output.composeFindings, *f)
 		}
 	}

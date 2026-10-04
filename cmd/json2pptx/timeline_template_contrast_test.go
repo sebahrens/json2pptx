@@ -142,7 +142,7 @@ func TestTimelineChevronWarnsBeforeDenseBodyClips(t *testing.T) {
 	input := &PresentationInput{Slides: []SlideInput{{SlideType: "content", Pattern: pattern}}}
 	found := false
 	for _, finding := range collectFitFindings(input, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme) {
-		if finding.Code == patterns.ErrCodeBodyTooLong && finding.Path == "/slides/0/pattern" &&
+		if finding.Code == patterns.ErrCodeBodyTooLong && finding.Path == "/slides/0/pattern/values/4/body" &&
 			strings.Contains(finding.Message, "values[4].body") {
 			found = true
 		}

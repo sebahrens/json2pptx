@@ -1140,7 +1140,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			return generator.SlideSpec{}, nil, nil, newSlidePatternError(i, "pattern", "pattern", err)
 		}
 		for _, warning := range patternWarnings {
-			if f := patternWarningAsFinding(i, slide.Pattern.Name, warning); f != nil {
+			if f := patternWarningFinding(i, slide.Pattern, warning); f != nil {
 				slideFitFindings = append(slideFitFindings, *f)
 			}
 		}

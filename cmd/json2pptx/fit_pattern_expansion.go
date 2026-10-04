@@ -111,7 +111,7 @@ func collectPatternPostExpandFindings(input *PresentationInput, slideWidth, slid
 		}
 		_, warnings := expandSlidePatternGridWithWarningsForDeck(&probe, i, slideWidth, slideHeight, theme, bounds, zone, patterns.AccentStrategy(input.AccentStrategy), sectionIndices[i])
 		for _, w := range warnings {
-			if f := patternWarningAsFinding(i, p.Name, w); f != nil {
+			if f := patternWarningFinding(i, p, w); f != nil {
 				out = append(out, *f)
 			}
 		}
