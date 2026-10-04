@@ -153,6 +153,19 @@ type Grid struct {
 	// set this only for a design_mode "free" deck's own grids.
 	KeepTextSizes bool
 
+	// CanvasScale is the slide's size relative to the standard 13.33 x 7.5in
+	// slide a pattern's point sizes are designed on (CanvasScaleFor). Above 1,
+	// Resolve grows the grid's point-valued heights, gaps and text sizes by
+	// it when the text still fits (canvas.go); 0 and 1 leave the grid as
+	// designed. Callers set it on grids a named pattern expanded: an authored
+	// grid's points are the author's.
+	CanvasScale float64
+	// canvasText is the text scale resolveGrid writes and canvasKeep the
+	// design sizes it leaves alone: set by resolveCanvas on the scaled copy
+	// it resolves.
+	canvasText float64
+	canvasKeep map[float64]bool
+
 	// Links are explicit connectors between two cells addressed by their
 	// (row, grid column) origin, for flows that cross rows (a swimlane
 	// hand-off from one lane to the next). Row connectors only chain cells

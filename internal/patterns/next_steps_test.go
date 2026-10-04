@@ -2,6 +2,7 @@ package patterns
 
 import (
 	"encoding/json"
+	"math"
 	"strings"
 	"testing"
 )
@@ -41,8 +42,8 @@ func TestNextStepsLayout(t *testing.T) {
 		t.Fatal(err)
 	}
 	var cols []float64
-	if err := json.Unmarshal(grid.Columns, &cols); err != nil || len(cols) != 4 {
-		t.Fatalf("columns = %s, want number/action/owner/date", grid.Columns)
+	if err := json.Unmarshal(grid.Columns, &cols); err != nil || len(cols) != 5 {
+		t.Fatalf("columns = %s, want band rule/number/action/owner/date", grid.Columns)
 	}
 	// header, then (rule, row) x3, then spacer + band.
 	if len(grid.Rows) != 1+2*3+2 {
@@ -58,9 +59,30 @@ func TestNextStepsLayout(t *testing.T) {
 			t.Errorf("action cell fill = %s, want none", c.Shape.Fill)
 		}
 	}
-	band := grid.Rows[len(grid.Rows)-1].Cells[0]
-	if band.ColSpan != 4 || band.AccentBar == nil || band.AccentBar.Position != "left" {
-		t.Fatalf("band = %+v, want a full-width cell with a left accent rule", band)
+	// The band's rule fills the first column, flush on the edge the row rules
+	// start on, and the band text starts 12pt to its right
+	// (go-slide-creator-le9d0).
+	last := grid.Rows[len(grid.Rows)-1].Cells
+	if len(last) != 2 || last[0].Shape == nil || string(last[0].Shape.Fill) != `"accent1"` || len(last[0].Shape.Text) != 0 {
+		t.Fatalf("band row = %+v, want an accent rule cell and the band text", last)
+	}
+	if got := cols[0] / 100 * 864 * sizingDefaultWidthFrac; math.Abs(got-nextStepsBandBarPt) > 0.2 {
+		t.Errorf("band rule column = %.2fpt, want %vpt", got, nextStepsBandBarPt)
+	}
+	band := last[1]
+	if band.ColSpan != 4 || band.AccentBar != nil {
+		t.Fatalf("band = %+v, want the text spanning the table beside its rule", band)
+	}
+	var bandText struct {
+		InsetLeft float64 `json:"inset_left"`
+	}
+	if err := json.Unmarshal(band.Shape.Text, &bandText); err != nil || bandText.InsetLeft != TakeawayTextInsetPt {
+		t.Errorf("band text inset_left = %v, want %v", bandText.InsetLeft, TakeawayTextInsetPt)
+	}
+	for _, r := range []int{0, 2} {
+		if grid.Rows[r].Cells[0].ColSpan != 2 {
+			t.Errorf("row %d: first cell spans %d columns, want 2 (rule column + numeral column)", r, grid.Rows[r].Cells[0].ColSpan)
+		}
 	}
 	if string(band.Shape.Fill) != `"none"` || string(band.Shape.Line) != `"none"` {
 		t.Errorf("band fill/line = %s/%s, want none/none", band.Shape.Fill, band.Shape.Line)

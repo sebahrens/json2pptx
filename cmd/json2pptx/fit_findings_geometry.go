@@ -53,6 +53,16 @@ const (
 	// slideUnderusedStripPatternMaxFrac is the threshold for content-sized
 	// time-line strips hung from the body line (contentSizedStripPatterns).
 	slideUnderusedStripPatternMaxFrac = 0.22
+	// slideUnderusedHeroPatternMaxFrac is the threshold for a single hero
+	// statement (heroStatementPatterns): a figure and its label cover 17-25%
+	// of the zone at their designed sizes.
+	slideUnderusedHeroPatternMaxFrac = 0.15
+	// slideUnderusedLanePatternMaxFrac is the threshold for a swimlane: its
+	// lanes span the zone and its step tiles are content-sized, so on a taller
+	// content area (business-template) a six-step, three-lane flow covers
+	// ~25% where it covers ~30% on the standard slide. Two lanes of three bare
+	// steps (~23%) still report.
+	slideUnderusedLanePatternMaxFrac = 0.24
 	// textExceedsTolerance absorbs rounding/kerning noise before flagging.
 	textExceedsTolerance = 1.02
 
@@ -420,6 +430,13 @@ var openColumnPatterns = map[string]bool{
 	// stands in its band where a filled lane tile used to be
 	// (go-slide-creator-jz5r9).
 	"swimlane": true,
+	// Numbered rows of a list — action / owner / date between hairline rules,
+	// a numbered step beside its label and description: the row is the unit,
+	// as in the agenda. A three-action next-steps slide set in 14pt covered
+	// 27% of a wide content area by glyphs alone and reported as underused
+	// (go-slide-creator-le9d0, -ttpae).
+	"next-steps":          true,
+	"numbered-step-strip": true,
 }
 
 // slotOr returns the cell's grid slot when the slide's pattern counts ink by
@@ -569,6 +586,15 @@ var contentSizedBoxPatterns = map[string]bool{
 	"comparison-2col": true,
 }
 
+// heroStatementPatterns are the patterns that set one statement — a figure, a
+// quote — alone at the optical centre of the slide. The white space around it
+// is the composition, so the slide reports only when even the statement is
+// small (go-slide-creator-ttpae).
+var heroStatementPatterns = map[string]bool{
+	"stat-hero":  true,
+	"pull-quote": true,
+}
+
 // contentSizedStripPatterns are the time-line patterns whose rows are
 // content-sized (go-slide-creator-7km8, -n1muf) and hang from the template's
 // body line (go-slide-creator-e17xy): a three-phase roadmap or a four-stop
@@ -608,6 +634,10 @@ func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInpu
 			threshold = slideUnderusedBoxPatternMaxFrac
 		case contentSizedStripPatterns[patternName]:
 			threshold = slideUnderusedStripPatternMaxFrac
+		case heroStatementPatterns[patternName]:
+			threshold = slideUnderusedHeroPatternMaxFrac
+		case patternName == "swimlane":
+			threshold = slideUnderusedLanePatternMaxFrac
 		}
 	}
 	// A content-sized, middle-anchored block (a KPI row, before-after panels)

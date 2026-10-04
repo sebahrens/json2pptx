@@ -819,6 +819,19 @@ func alignRelativeBounds(b, content pptx.RectEmu, input *ShapeGridInput, anchorY
 	return b
 }
 
+// gridCanvasScale is the canvas scale a grid resolves at
+// (shapegrid.Grid.CanvasScale): the slide's size relative to the standard
+// slide for a grid a named pattern expanded, whose points are designed on that
+// slide; 1 for an authored grid, whose points are the author's
+// (go-slide-creator-ttpae). Generation, preflight and the budget estimators
+// all resolve through it, so they agree on the scaled sizes.
+func gridCanvasScale(input *ShapeGridInput, slideWidth, slideHeight int64) float64 {
+	if input == nil || !strings.HasPrefix(input.Source, patternSourcePrefix) {
+		return 1
+	}
+	return shapegrid.CanvasScaleFor(slideWidth, slideHeight)
+}
+
 // composesSlideBlock reports whether a slide's own grid is placed by the
 // composition policy (shapegrid.Grid.Compose): a grid that fills its area's
 // bounds. A grid with its own bounds box is placed as a box by
@@ -946,6 +959,7 @@ func resolveShapeGridAs(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, ove
 	}
 	grid.Compose = slideBlock && composesSlideBlock(input)
 	grid.KeepTextSizes = input.KeepTextSizes
+	grid.CanvasScale = gridCanvasScale(input, slideWidth, slideHeight)
 	grid.Links = convertGridLinks(input.Links)
 
 	// Validate grid structure before rendering (catches overlaps, span errors, etc.)
