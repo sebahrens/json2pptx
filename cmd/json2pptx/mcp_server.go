@@ -24,8 +24,12 @@ import (
 type mcpConfig struct {
 	templatesDir string
 	outputDir    string
-	cfg          config.Config
-	cache        *template.MemoryCache
+	// cliCaller marks a config built for a CLI command that reuses a tool
+	// handler in-process: the caller is the user, not a model, so a deck's
+	// template_path is resolved as the CLI resolves it.
+	cliCaller bool
+	cfg       config.Config
+	cache     *template.MemoryCache
 
 	// idempotency caches success responses for generate_presentation,
 	// auto_repair, and make_deck so transport-layer retries with the same

@@ -123,13 +123,14 @@ func TestCLICatchAllErrorEnvelope(t *testing.T) {
 	// codes; any other failure is generation's own, not INTERNAL.
 	deck := filepath.Join(t.TempDir(), "deck.json")
 	for body, want := range map[string]string{
-		`{"slides":[{"layout_id":"content"}]}`:                               "INPUT.MISSING_PARAMETER",
+		`{"slides":[{"layout_id":"content"}]}`:                               "INPUT.REQUIRED",
 		`{"template":"no-such-template","slides":[{"layout_id":"content"}]}`: "TEMPLATE_NOT_FOUND",
-		`{"template":"midnight-blue","slides":[]}`:                           "VALIDATION_FAILED",
-		// Deck content the shared pipeline refuses states what is wrong
-		// (go-slide-creator-u1c9c); what only generation knows stays its own.
+		`{"template":"midnight-blue","slides":[]}`:                           "INPUT.REQUIRED",
+		// Deck content the shared pipeline refuses states what is wrong, in the
+		// finding validate reports for it (go-slide-creator-u1c9c, -9k5fh);
+		// what only generation knows stays its own.
 		`{"template":"midnight-blue","template_path":"x.pptx","slides":[{"layout_id":"content"}]}`:                                                                                          "AMBIGUOUS_INPUT",
-		`{"template":"midnight-blue","slides":[{"layout_id":"content","content":[{"placeholder_id":"body","type":"poem","text_value":"x"}]}]}`:                                              "INVALID_SLIDE",
+		`{"template":"midnight-blue","slides":[{"layout_id":"content","content":[{"placeholder_id":"body","type":"poem","text_value":"x"}]}]}`:                                              "UNKNOWN_ENUM",
 		`{"template":"midnight-blue","slides":[{"layout_id":"blank-title","pattern":{"name":"kpi-3up","values":[{"big":"1","small":"a"}],"vertical_align":"sideways"}}]}`:                   "PATTERN_ERROR",
 		`{"template":"midnight-blue","slides":[{"layout_id":"blank-title","shape_grid":{"rows":[{"cells":[{"shape":{"geometry":"rect","text":"a"}}]}]},"overlays":[{"kind":"squiggle"}]}]}`: "INVALID_SLIDE",
 	} {

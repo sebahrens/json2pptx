@@ -61,6 +61,12 @@ type dryRunOutput struct {
 	Diagnostics []diagnostics.Diagnostic `json:"-"`
 	FitFindings []patterns.FitFinding    `json:"-"`
 
+	// verdictOnly asks validateSlidesAgainstTemplate for its verdict alone:
+	// the per-placeholder capacity report and the title-fit advisories, which
+	// measure text and decide nothing, are skipped. Generation sets it when
+	// it reads the verdict before converting a deck.
+	verdictOnly bool
+
 	// Envelope metadata captured during validation and stamped onto Findings by
 	// buildFindingsEnvelope.
 	subcommand  string
@@ -259,6 +265,15 @@ func runJSONDryRun(jsonPath, templateOverride, templatesDir, configPath, designM
 	// Resolve named style references from template settings (shared with MCP).
 	resolveInputNamedSettingsForDir(cfg.Templates.Dir, &input)
 
+	// Expand a structure block into the flat slide list, exactly as the render
+	// does: a dry run used to read a structure deck's empty slides[] as "no
+	// slides", and a deck carrying both as valid (go-slide-creator-9k5fh).
+	if structDiags := applyStructureExpansion(&input); len(structDiags) > 0 {
+		output.Valid = false
+		output.Diagnostics = append(output.Diagnostics, structDiags...)
+		return writeDryRunOutput(output)
+	}
+
 	// Check for unknown keys (additionalProperties:false). Warnings by default;
 	// when --strict-unknown-keys is set, unknown keys become errors (mirroring
 	// MCP validate_input strict_unknown_keys=true semantics).
@@ -271,42 +286,42 @@ func runJSONDryRun(jsonPath, templateOverride, templatesDir, configPath, designM
 		}
 	}
 
-	// Enum validation — unknown values for transition, transition_speed, build, background.fit.
-	for _, ve := range checkInputEnumValues(&input) {
+	// Enum values, design-mode constraints and the no-emoji policy: the
+	// refusals the render makes before it opens a template.
+	if policy := deckPolicyDiagnostics(&input); len(policy) > 0 {
 		output.Valid = false
-		output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationError(ve))
+		output.Diagnostics = append(output.Diagnostics, policy...)
 	}
 
-	// Validate required fields
-	if input.Template == "" {
+	// Relative asset paths resolve against the deck's own directory, as in
+	// the render, which refuses a deck whose icon or image cannot be found.
+	if jsonPath != "-" {
+		assetFindings := resolveLocalAssetPaths(input.Slides, validateBaseDir(jsonPath, ""), imageAllowList(cfg.Images.AllowedBasePaths, "")...)
+		if diagnostics.HasErrors(assetFindings) {
+			output.Valid = false
+		}
+		output.Diagnostics = append(output.Diagnostics, assetFindings...)
+	}
+
+	// Validate required fields. template_path stands in for template; naming
+	// both is refused, as the render refuses it.
+	if tplDiags := deckTemplateFieldDiagnostics(&input, "template is required in JSON input"); len(tplDiags) > 0 {
 		output.Valid = false
-		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "template", Message: "template is required in JSON input",
-			Severity: diagnostics.SeverityError,
-			Fix:      &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "template"}},
-		})
+		output.Diagnostics = append(output.Diagnostics, tplDiags...)
 	}
 	if len(input.Slides) == 0 {
 		output.Valid = false
-		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "slides", Message: "at least one slide is required",
-			Severity: diagnostics.SeverityError,
-			Fix:      &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "slides"}},
-		})
+		output.Diagnostics = append(output.Diagnostics, deckSlidesRequiredDiagnostic())
 	}
 	if !output.Valid {
 		return writeDryRunOutput(output)
 	}
 
-	// Resolve template for validation
-	templatePath, templateCleanup, err := resolveTemplatePath(input.Template, cfg.Templates.Dir)
-	if err != nil {
+	// Resolve template for validation: the deck's own .pptx, or a registered name.
+	templatePath, templateCleanup, tplDiag := resolveDryRunTemplate(&input, jsonPath, cfg.Templates.Dir)
+	if tplDiag != nil {
 		output.Valid = false
-		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-			Code: "TEMPLATE_NOT_FOUND", Path: "template",
-			Message:  templateNotFoundError(input.Template, cfg.Templates.Dir),
-			Severity: diagnostics.SeverityError,
-		})
+		output.Diagnostics = append(output.Diagnostics, *tplDiag)
 		return writeDryRunOutput(output)
 	}
 	defer templateCleanup()
@@ -327,11 +342,35 @@ func runJSONDryRun(jsonPath, templateOverride, templatesDir, configPath, designM
 	// stable aliases like "title", "content", "blank" in dry-run mode.
 	resolveCanonicalLayoutIDs(input.Slides, templateAnalysis.Layouts)
 
-	// Validate slides against template
-	validateSlidesAgainstTemplate(&output, input.Slides, templateAnalysis)
+	// The structural verdict the render refuses on.
+	deckStructuralDiagnostics(&output, &input, templateAnalysis)
 	appendGridConverterPreflight(&output, &input, generator.NewSVGConverter().IsPNGAvailable())
 
 	return writeDryRunOutput(output)
+}
+
+// resolveDryRunTemplate returns the .pptx a dry run validates against: the
+// deck's own template_path, resolved against the deck file's directory as the
+// render resolves it, or the registered template name.
+func resolveDryRunTemplate(input *PresentationInput, jsonPath, templatesDir string) (string, func(), *diagnostics.Diagnostic) {
+	noop := func() {}
+	if input.TemplatePath != "" {
+		path, err := resolveDeckTemplatePath(input.TemplatePath, jsonPath)
+		if err != nil {
+			d := codedErrorDiagnostic(err)
+			return "", noop, &d
+		}
+		return path, noop, nil
+	}
+	path, cleanup, err := resolveTemplatePath(input.Template, templatesDir)
+	if err != nil {
+		return "", noop, &diagnostics.Diagnostic{
+			Code: diagnostics.CodeTemplateNotFound, Path: "template",
+			Message:  templateNotFoundError(input.Template, templatesDir),
+			Severity: diagnostics.SeverityError,
+		}
+	}
+	return path, cleanup, nil
 }
 
 // CLI generate --dry-run does not run the broader fit-report collector. Keep
@@ -502,7 +541,10 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 	// stays on the author's own layout_id, because the generator auto-maps
 	// placeholder IDs and a predicted layout would produce false
 	// placeholder_not_found errors.
-	predictedLayouts := predictSlideLayouts(&PresentationInput{Slides: slides}, analysis.Layouts)
+	var predictedLayouts []*types.LayoutMetadata
+	if !output.verdictOnly {
+		predictedLayouts = predictSlideLayouts(&PresentationInput{Slides: slides}, analysis.Layouts)
+	}
 
 	// Validate each slide
 	for i, slideInput := range slides {
@@ -623,7 +665,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 						Fix:     fix,
 					}
 					output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationError(ve))
-				} else {
+				} else if !output.verdictOnly {
 					effectivePhInfo := authoredTitlePlaceholder(&phInfo, &item)
 					ph.MaxChars = generator.ReportedMaxChars(effectivePhInfo)
 
@@ -677,7 +719,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			// No layout_id: measure the title against the layout the generator
 			// will pick. Nothing else about the item is validated here — see the
 			// note on predictedLayouts (go-slide-creator-t64e).
-			if !layoutFound && slideInput.LayoutID == "" && item.Type == "text" && item.PlaceholderID != "" {
+			if !output.verdictOnly && !layoutFound && slideInput.LayoutID == "" && item.Type == "text" && item.PlaceholderID != "" {
 				if phInfo := titlePlaceholderIn(predictedLayouts[i], item.PlaceholderID); phInfo != nil {
 					resolved, _ := item.ResolveValue()
 					if text, ok := resolved.(string); ok {

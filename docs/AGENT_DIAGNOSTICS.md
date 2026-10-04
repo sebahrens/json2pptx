@@ -257,6 +257,57 @@ finding severity (it is `false` when any error-severity finding, including a
 `refuse`-action fit finding, is present), which can legitimately differ from the
 structural `valid` flag.
 
+**One structural verdict** (go-slide-creator-9k5fh). `validate` /
+`validate_input`, `generate -dry-run`, `preflight`, `generate` /
+`generate_presentation`, `render-slide-from-json` and the DeckSpec validate and
+render paths decide whether a raw deck is structurally acceptable from the same
+two functions (`cmd/json2pptx/deck_verdict.go`), so a deck is valid for all of
+them or for none, and a refused one is refused with the same finding codes at
+the same paths:
+
+- `deckStructuralChecks` — the slide checks against the template
+  (`validateSlidesAgainstTemplate`) and the chart dry render. Validation
+  reports them; generation runs them too and refuses the deck on the same
+  findings, so nothing validation rejects is rendered. A content item without
+  a `placeholder_id` (`required` at `/slides/N/content/M/placeholder_id`) and a
+  chart or diagram that cannot render (`diagram_render_failed`) are refused by
+  every surface, before a file is written.
+- Generation's own slide conversion (`convertPresentationSlidesEach`).
+  Validation runs it as well, without its media, and reports each refusal:
+  a slide with more than one of `pattern` / `compose` / `shape_grid`
+  (`INVALID_SLIDE` at `/slides/N`), an overlay of an unknown kind or anchored
+  to a cell that is not there (`INVALID_SLIDE` at `/slides/N/overlays/K`), a
+  chart or diagram with no `type` (`INVALID_SLIDE` at `/slides/N/content/M`),
+  a link naming no target or two, a URL that is not http(s), or a slide number
+  outside the deck (`INVALID_SLIDE` at `/slides/N/content/M/link`,
+  `/slides/N/source_link`, `/slides/N/shape_grid` or `/slides/N/overlays`), a
+  deck-level `grid` out of range (`INVALID_GRID` at `grid`). A conversion
+  refusal that is a fit verdict (table rows a grid would drop, a native
+  diagram or pattern too large for its region) is reported as that fit
+  finding with error severity, by plain `validate` too.
+
+`generate`'s failure envelope lists those findings rather than one finding
+carrying the joined message: a deck with no template is `REQUIRED` at
+`template` (was `MISSING_PARAMETER`), with no slides `REQUIRED` at `slides`
+(was `VALIDATION_FAILED`), with both `structure` and `slides`
+`STRUCTURE_AND_SLIDES` at `structure` (was `AMBIGUOUS_INPUT`); enum, design-mode,
+emoji and asset refusals are the per-field findings `validate` reports
+(`UNKNOWN_ENUM`, `design_mode_violation`, `no_emoji_violation`, `IMAGE_PATH`,
+`ICON_BUNDLED_NAME_UNKNOWN`, ...) instead of one `VALIDATION_FAILED` /
+`GENERATION_FAILED`; `TEMPLATE_NOT_FOUND` carries the path `template`. The
+`error` string and the exit code are unchanged. `generate -dry-run` now makes
+the checks `generate` makes before it opens a template (design mode, emoji,
+`template` + `template_path`, structure expansion, relative asset paths) and
+accepts a deck that names `template_path` or a `structure` block. On the CLI,
+`validate` resolves `template_path` as `generate` does — against the deck
+file's directory, with no `base_dir` containment. In a DeckSpec, a
+`raw_json2pptx` slide's structural fault is reported with the raw code at the
+field inside the raw slide (`/slides/N/slide/overlays/0`), not as
+`GENERATION_FAILED` at the slide. `TestVerdictParityMutationCorpus` (ninety
+single-fault decks; the core cases under `-short`, all of them in the
+integration corpus job) and the integration `TestVerdictParityCorpus` (every
+`examples/*.json`) hold the surfaces to it.
+
 **When `IsError` is set.** A tool asked to PRODUCE something (`render_deck_spec`,
 `compile_deck_spec`) sets `IsError` whenever its payload reports `ok: false` /
 `success: false`, including domain failures like a template that does not

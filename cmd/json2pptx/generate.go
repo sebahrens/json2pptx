@@ -153,9 +153,16 @@ type generateFailure struct {
 // newGenerateFailure builds generate's failure result. The envelope's first
 // finding is the failure itself; the fit findings of a refusal follow it.
 func newGenerateFailure(err error, fit []patterns.FitFinding) generateFailure {
-	ds := append([]diagnostics.Diagnostic{{
-		Code: generateFailureCode(err), Message: err.Error(), Severity: diagnostics.SeverityError,
-	}}, diagnostics.FromFitFindings(fit)...)
+	// A deck the structural verdict refuses is reported in the findings
+	// validate reports for it — the same codes at the same paths — rather
+	// than as one finding carrying the joined message.
+	ds := append([]diagnostics.Diagnostic(nil), refusalDiagnostics(err)...)
+	if len(ds) == 0 {
+		ds = []diagnostics.Diagnostic{{
+			Code: generateFailureCode(err), Path: cliErrorPath(err), Message: err.Error(), Severity: diagnostics.SeverityError,
+		}}
+	}
+	ds = dedupeDiagnostics(append(ds, diagnostics.FromFitFindings(fit)...))
 	return generateFailure{
 		JSONOutput:      JSONOutput{Success: false, Error: err.Error(), FitFindings: fit},
 		FindingEnvelope: diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{Subcommand: "generate"}, ds),

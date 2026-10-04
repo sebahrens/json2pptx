@@ -185,6 +185,11 @@ func cliArgsAskForJSON(set *flag.FlagSet, args []string) bool {
 // error's, unchanged.
 type cliCodedError struct {
 	code diagnostics.Code
+	// path is the JSON Pointer of the deck field the error is about, when the
+	// site that refuses it knows one ("/slides/1/overlays/0"). Validation and
+	// generation report a refusal from this one error, so they name the same
+	// field (go-slide-creator-9k5fh).
+	path string
 	err  error
 }
 
@@ -231,6 +236,34 @@ func cliSlideError(format string, args ...any) error {
 	return cliCodedUnlessWrapped(diagnostics.CodeInvalidSlide, format, args...)
 }
 
+// cliSlideErrorAt is cliSlideError for a site that knows which deck field it
+// refuses: path is that field's JSON Pointer. A wrapped error that names a
+// field of its own keeps it, as it keeps its code.
+func cliSlideErrorAt(path, format string, args ...any) error {
+	err := cliCodedUnlessWrapped(diagnostics.CodeInvalidSlide, format, args...)
+	var coded *cliCodedError
+	if errors.As(err, &coded) && coded.path == "" {
+		coded.path = path
+	}
+	return err
+}
+
+// cliErrorPath is the deck field a coded error names, "" when it names none.
+func cliErrorPath(err error) (path string) {
+	// A typed-nil error in the chain panics in its own Unwrap when the chain
+	// is walked; it names no field.
+	defer func() {
+		if recover() != nil {
+			path = ""
+		}
+	}()
+	var coded *cliCodedError
+	if errors.As(err, &coded) {
+		return coded.path
+	}
+	return ""
+}
+
 // cliPatternError is the error for a pattern block that cannot be expanded: a
 // values shape the pattern does not take, an override it does not have, a
 // nested pattern next to other cell content (PATTERN_ERROR).
@@ -243,10 +276,11 @@ func cliPatternError(format string, args ...any) error {
 func cliCodedUnlessWrapped(code diagnostics.Code, format string, args ...any) error {
 	err := fmt.Errorf(format, args...)
 	var inner *cliCodedError
+	path := ""
 	if errors.As(err, &inner) {
-		code = inner.code
+		code, path = inner.code, inner.path
 	}
-	return &cliCodedError{code: code, err: err}
+	return &cliCodedError{code: code, path: path, err: err}
 }
 
 // cliErrorCode is the envelope code of a plain error. Nothing is read from the
@@ -259,6 +293,7 @@ func cliErrorCode(err error) diagnostics.Code {
 	var typ *json.UnmarshalTypeError
 	var coded *cliCodedError
 	var patternInput *patternInputError
+	var refusal *deckRefusal
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		return diagnostics.CodeFileNotFound
@@ -268,6 +303,8 @@ func cliErrorCode(err error) diagnostics.Code {
 		return diagnostics.CodePatternError
 	case errors.As(err, &coded):
 		return coded.code
+	case errors.As(err, &refusal) && len(refusal.Diagnostics) > 0:
+		return refusal.Diagnostics[0].Code
 	case cliParseFailed:
 		return diagnostics.CodeInvalidParameter
 	}
@@ -285,6 +322,12 @@ func cliErrorEnvelope(err error) diagnostics.FindingEnvelope {
 	// they are reported as they are rather than joined into one message.
 	if ds := patternInputDiagnostics(err, "", ""); len(ds) > 0 {
 		return diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{Subcommand: name}, ds)
+	}
+	// So is a deck the structural verdict refuses: the findings validate
+	// reports for it.
+	var refusal *deckRefusal
+	if errors.As(err, &refusal) {
+		return diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{Subcommand: name}, refusal.Diagnostics)
 	}
 	return diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{Subcommand: name}, []diagnostics.Diagnostic{{
 		Code: cliErrorCode(err), Message: err.Error(), Severity: diagnostics.SeverityError,

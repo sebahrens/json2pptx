@@ -1,5 +1,57 @@
 # Schema Changelog
 
+- **2026-10-04 — One structural verdict for a raw deck (`go-slide-creator-9k5fh`; found on the way: `-1ygwt`, `-xjff4`, `-duypl`, `-6ihc1`, `-084hb`, `-yie0c`, `-c8335`, `-p97m1`).**
+  `validate` / `validate_input`, `generate -dry-run`, `preflight`, `generate`
+  / `generate_presentation`, `render-slide-from-json` and the DeckSpec
+  validate and render paths now give one verdict for a deck, with the same
+  finding codes at the same paths (see docs/AGENT_DIAGNOSTICS.md §3).
+  - **Now rejected by `validate` and `generate -dry-run`** (generation always
+    refused them): a slide with more than one of `pattern` / `compose` /
+    `shape_grid` (`INVALID_SLIDE` at `/slides/N`); an overlay with an unknown
+    or missing `kind`, a missing end, or an `anchor_cell` that is not in the
+    grid (`INVALID_SLIDE` at `/slides/N/overlays/K`); a chart or diagram with
+    no `type` (`INVALID_SLIDE` at `/slides/N/content/M`); a link with no
+    target or two, a URL that is not http(s), a slide number outside the
+    deck, or a link on a chart / table / image (`INVALID_SLIDE` at
+    `/slides/N/content/M/link`, `/slides/N/source_link`,
+    `/slides/N/shape_grid`, `/slides/N/overlays`); a deck-level `grid` out of
+    range (`INVALID_GRID` at `grid`); a layout that cannot host the slide's
+    pattern (`INVALID_SLIDE` at `/slides/N/layout_id`); a conversion refusal
+    that is a fit verdict (dropped table rows, a region too small for its
+    native diagram or pattern), as that fit finding with error severity.
+  - **Now refused by `generate` / `generate_presentation`** (validation
+    always rejected them): a content item with no `placeholder_id`
+    (`required`); a `placeholder_id` its explicit layout does not have
+    (`placeholder_not_found`); a chart or diagram that cannot render
+    (`diagram_render_failed`, refused before a file is written —
+    `generate_presentation` used to return a deck with a "Data unavailable"
+    box). `--partial` still renders what it can.
+  - **`generate` failure findings.** The envelope lists the findings
+    `validate` reports, each with `evidence.path`: no template `REQUIRED` at
+    `template` (was `MISSING_PARAMETER`), no slides `REQUIRED` at `slides`
+    (was `VALIDATION_FAILED`), `structure` with `slides`
+    `STRUCTURE_AND_SLIDES` at `structure` (was `AMBIGUOUS_INPUT`), per-field
+    `UNKNOWN_ENUM` / `design_mode_violation` / `no_emoji_violation` /
+    `IMAGE_PATH` / `ICON_BUNDLED_NAME_UNKNOWN` findings (were one
+    `UNKNOWN_ENUM` / `VALIDATION_FAILED` / `GENERATION_FAILED` with the joined
+    message), `TEMPLATE_NOT_FOUND` with path `template`, a bad
+    `template_path` as `FILE_NOT_FOUND` / `INVALID_PARAMETER` / `INVALID_PATH`
+    at `template_path`. `error` and the exit code are unchanged.
+    `generate_presentation` reports a bad deck-level `grid` with path `grid`.
+  - **`generate -dry-run`** checks design mode, the no-emoji policy,
+    `template` + `template_path`, and relative icon / image paths; expands a
+    `structure` block; and accepts `template_path` (it answered `REQUIRED:
+    template is required`).
+  - **CLI `validate`** resolves a deck's `template_path` against the deck
+    file's directory with no `base_dir` containment, as `generate` does (it
+    answered `INVALID_PATH` for a path outside the deck directory).
+  - **DeckSpec.** A `raw_json2pptx` slide's structural fault is reported with
+    the raw code at the field inside the raw slide
+    (`INVALID_SLIDE` at `/slides/N/slide/overlays/0`, `required` at
+    `/slides/N/slide/content/M`) instead of `GENERATION_FAILED` at the slide;
+    a raw slide's pattern fault with no field detail is `PATTERN_ERROR`
+    (was `INVALID_SLIDE`).
+
 - **2026-10-04 — Plan, explain, get_started and CLI error surfaces (`go-slide-creator-lxs0v`, `-7kh6y`, `-u1c9c`, `-px402`; found on the way: `-fc0y0`, `-fadci`, `-aua78`, `-n9aij`, `-xx9mz`, `-yosf5`).**
   - **Raw `plan_deck` charts a labelled series.** A metric written out as
     three or more values (`Headcount by site: 120, 85 and 40`, or

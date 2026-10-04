@@ -41,7 +41,7 @@ func (ctx *singlePassContext) hyperlinkRelationships(slideNum int) ([]pptx.Relat
 		}
 	}
 	for i, item := range spec.Content {
-		if item.Link != nil && (item.Type == ContentImage || item.Type == ContentDiagram || item.Type == ContentTable) {
+		if item.Link != nil && !LinkableContent(item.Type) {
 			return nil, nil, fmt.Errorf("slide %d hyperlink content %d: links require text content", slideNum, i+1)
 		}
 		if err := add(contentLinkMarker(i), item.Link); err != nil {
@@ -82,22 +82,46 @@ func (ctx *singlePassContext) nextHyperlinkRelID(slideNum int) int {
 }
 
 func (ctx *singlePassContext) buildLinkRelationship(slideNum int, key, id string, link *LinkSpec) (pptx.RelationshipXML, error) {
-	if (link.URL == "") == (link.Slide == 0) {
-		return pptx.RelationshipXML{}, fmt.Errorf("slide %d hyperlink %s: set exactly one URL or slide number", slideNum, key)
-	}
-	if link.URL != "" {
-		parsed, err := url.Parse(link.URL)
-		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" || strings.ContainsAny(link.URL, "\r\n") {
-			return pptx.RelationshipXML{}, fmt.Errorf("slide %d hyperlink %s: invalid HTTP/HTTPS URL %q", slideNum, key, link.URL)
-		}
-		return pptx.RelationshipXML{ID: id, Type: pptx.RelTypeHyperlink, Target: link.URL, TargetMode: "External"}, nil
-	}
 	totalSlides := ctx.existingSlides + len(ctx.slideSpecs)
 	if ctx.excludeTemplateSlides {
 		totalSlides = len(ctx.slideSpecs)
 	}
-	if link.Slide < 1 || link.Slide > totalSlides {
-		return pptx.RelationshipXML{}, fmt.Errorf("slide %d hyperlink %s: target slide %d outside 1..%d", slideNum, key, link.Slide, totalSlides)
+	if err := CheckLink(link, totalSlides); err != nil {
+		return pptx.RelationshipXML{}, fmt.Errorf("slide %d hyperlink %s: %w", slideNum, key, err)
+	}
+	if link.URL != "" {
+		return pptx.RelationshipXML{ID: id, Type: pptx.RelTypeHyperlink, Target: link.URL, TargetMode: "External"}, nil
 	}
 	return pptx.RelationshipXML{ID: id, Type: pptx.RelTypeSlide, Target: fmt.Sprintf("slide%d.xml", link.Slide)}, nil
+}
+
+// CheckLink reports why link cannot become a hyperlink in a deck of
+// totalSlides slides, nil when it can: it must name exactly one target, a URL
+// must be an absolute http(s) one, and a slide number must be in the deck.
+// The generator refuses a deck on it, and the callers that accept a deck run
+// it first so the refusal is one they predicted.
+func CheckLink(link *LinkSpec, totalSlides int) error {
+	if link == nil {
+		return nil
+	}
+	if (link.URL == "") == (link.Slide == 0) {
+		return fmt.Errorf("set exactly one URL or slide number")
+	}
+	if link.URL != "" {
+		parsed, err := url.Parse(link.URL)
+		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" || strings.ContainsAny(link.URL, "\r\n") {
+			return fmt.Errorf("invalid HTTP/HTTPS URL %q", link.URL)
+		}
+		return nil
+	}
+	if link.Slide < 1 || link.Slide > totalSlides {
+		return fmt.Errorf("target slide %d outside 1..%d", link.Slide, totalSlides)
+	}
+	return nil
+}
+
+// LinkableContent reports whether a content item of this type can carry a
+// link: text can, a chart, table or image cannot.
+func LinkableContent(t ContentType) bool {
+	return t != ContentImage && t != ContentDiagram && t != ContentTable
 }

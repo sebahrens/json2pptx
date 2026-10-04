@@ -206,7 +206,7 @@ func runPreflightCore(inputData []byte, opts preflightOptions) diagnostics.Findi
 	// finding to its stage by code/path.
 	resolveCanonicalLayoutIDs(input.Slides, analysis.Layouts)
 	var slideOut dryRunOutput
-	validateSlidesAgainstTemplate(&slideOut, input.Slides, analysis)
+	deckStructuralDiagnostics(&slideOut, input, analysis)
 	acc.addClassified(slideOut.Diagnostics, classifySlideValidationStage)
 
 	// STAGE 7: PATTERN — expand each pattern/compose slide; capture resolution

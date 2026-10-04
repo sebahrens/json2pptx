@@ -179,6 +179,19 @@ func (mc *mcpConfig) resolveTemplateSource(request mcp.CallToolRequest, tool, na
 		if d != nil {
 			return "", noop, d
 		}
+		// The CLI's validate reaches this handler with the deck file's
+		// directory as base_dir. Its caller is the user running the binary,
+		// so the path resolves as `generate` resolves it — against that
+		// directory, with no containment — or validate rejected a deck
+		// generate renders (go-slide-creator-9k5fh).
+		if mc.cliCaller {
+			path, err := resolveDeckTemplatePath(rawPath, filepath.Join(baseDir, "deck.json"))
+			if err != nil {
+				d := codedErrorDiagnostic(err)
+				return "", noop, &d
+			}
+			return path, noop, nil
+		}
 		path, d := resolveGuardedTemplatePath(tool, pathField, rawPath, baseDir)
 		if d != nil {
 			return "", noop, d
@@ -283,16 +296,23 @@ func resolveRequestTemplatePath(request mcp.CallToolRequest, tool, rawPath strin
 // The CLI has no base_dir containment: the caller is the user running the
 // binary, who can already read any file the process can. The MCP surface, where
 // the caller is a model, keeps the base_dir guard.
+//
+// A path it cannot use is refused with the code the MCP guard gives the same
+// fault and the field it is about, so validate, generate --dry-run and
+// generate report one finding for it (go-slide-creator-9k5fh).
 func resolveDeckTemplatePath(rawPath, jsonPath string) (string, error) {
 	if rawPath == "" {
 		return "", nil
 	}
+	refuse := func(code diagnostics.Code, format string, args ...any) (string, error) {
+		return "", &cliCodedError{code: code, path: "template_path", err: fmt.Errorf(format, args...)}
+	}
 	if ext := strings.ToLower(filepath.Ext(rawPath)); ext != ".pptx" {
-		return "", fmt.Errorf("template_path %q: unsupported extension %q (want .pptx)", rawPath, ext)
+		return refuse(diagnostics.CodeInvalidParameter, "template_path %q: unsupported extension %q (want .pptx)", rawPath, ext)
 	}
 	expanded, unsetVar := expandAssetPath(rawPath)
 	if unsetVar != "" {
-		return "", fmt.Errorf("template_path %q references environment variable %q that is unset or not permitted (allowed: HOME, BRAND_ASSETS, JSON2PPTX_*)", rawPath, unsetVar)
+		return refuse(diagnostics.CodeInvalidPath, "template_path %q references environment variable %q that is unset or not permitted (allowed: HOME, BRAND_ASSETS, JSON2PPTX_*)", rawPath, unsetVar)
 	}
 	p := filepath.FromSlash(expanded)
 	if !filepath.IsAbs(p) && jsonPath != "" && jsonPath != "-" {
@@ -300,16 +320,24 @@ func resolveDeckTemplatePath(rawPath, jsonPath string) (string, error) {
 	}
 	abs, err := filepath.Abs(p)
 	if err != nil {
-		return "", fmt.Errorf("template_path %q: %s", rawPath, pathErrReason(err))
+		return refuse(diagnostics.CodeFileNotFound, "template_path %q: %s", rawPath, pathErrReason(err))
 	}
 	info, err := os.Stat(abs)
 	if err != nil {
-		return "", fmt.Errorf("template_path %q: %s", rawPath, pathErrReason(err))
+		return refuse(diagnostics.CodeFileNotFound, "template_path %q: %s", rawPath, pathErrReason(err))
 	}
 	if info.IsDir() {
-		return "", fmt.Errorf("template_path %q is a directory, not a .pptx file", rawPath)
+		return refuse(diagnostics.CodeInvalidParameter, "template_path %q is a directory, not a .pptx file", rawPath)
 	}
 	return abs, nil
+}
+
+// codedErrorDiagnostic is the finding for an error that states its own code
+// and the deck field it is about.
+func codedErrorDiagnostic(err error) diagnostics.Diagnostic {
+	return diagnostics.Diagnostic{
+		Code: cliErrorCode(err), Path: cliErrorPath(err), Message: err.Error(), Severity: diagnostics.SeverityError,
+	}
 }
 
 // listTemplatesSources decides what list_templates should analyze: the named
