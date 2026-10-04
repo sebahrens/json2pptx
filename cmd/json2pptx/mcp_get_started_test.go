@@ -775,6 +775,59 @@ func TestGetStartedNotesDoNotMisreportTheProfile(t *testing.T) {
 	}
 }
 
+// go-slide-creator-px402: every profile's get_started names known_hashes and
+// larger_render where it tells the agent to look at slides, and the revise
+// thumbnails step shows the arguments the live next_tool_call carries after a
+// re-render — known_hashes, not slide_indices.
+func TestGetStartedThumbnailStepsMatchTheLiveNextCall(t *testing.T) {
+	const pptx = "/tmp/px402-live.pptx"
+	recordDeliveredThumbnails(pptx, defaultThumbnailDensity, map[int]string{0: "h0", 1: "h1"})
+	live := nextCallRenderThumbnails(pptx, []int{1})
+	if _, ok := live.ArgsTemplate[argKnownHashes]; !ok || len(live.ArgsTemplate) != 2 {
+		t.Fatalf("live next_tool_call args = %v, want pptx_path and known_hashes", live.ArgsTemplate)
+	}
+	for _, profile := range []string{toolProfileDeckSpec, toolProfileCore, toolProfileAll} {
+		withToolProfile(t, profile)
+		for _, task := range []string{"brief", "revise"} {
+			resp := buildGetStartedResponseOpts(task, testRenderReady(), false)
+			raw, err := json.Marshal(resp)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, want := range []string{"known_hashes", "larger_render"} {
+				if !strings.Contains(string(raw), want) {
+					t.Errorf("%s get_started(%s) does not mention %s", profile, task, want)
+				}
+			}
+			if task != "revise" {
+				continue
+			}
+			steps := resp.Sequence
+			if resp.FastPath != nil && len(resp.FastPath.Steps) > 0 {
+				steps = resp.FastPath.Steps
+			}
+			found := false
+			for _, s := range steps {
+				if s.Tool != "render_deck_thumbnails" {
+					continue
+				}
+				found = true
+				for key := range live.ArgsTemplate {
+					if _, ok := s.ArgsTemplate[key]; !ok {
+						t.Errorf("%s revise thumbnails args_template %v lacks %q, which the live next_tool_call carries", profile, s.ArgsTemplate, key)
+					}
+				}
+				if _, stale := s.ArgsTemplate["slide_indices"]; stale || len(s.ArgsTemplate) != len(live.ArgsTemplate) {
+					t.Errorf("%s revise thumbnails args_template = %v, want the live call's keys %v", profile, s.ArgsTemplate, live.ArgsTemplate)
+				}
+			}
+			if !found {
+				t.Errorf("%s revise path has no render_deck_thumbnails step", profile)
+			}
+		}
+	}
+}
+
 // go-slide-creator-c66z: get_started(brief)'s notes advertised top-level
 // `chrome` and `structure` while its fast_path is the DeckSpec path. Both now
 // have explicit semantic forms, so the note must name those forms accurately.
