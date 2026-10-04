@@ -90,11 +90,38 @@ func TestCLICatchAllErrorEnvelope(t *testing.T) {
 	if code != 1 || validate.Valid == nil || *validate.Valid {
 		t.Errorf("validate: exit=%d valid=%v", code, validate.Valid)
 	}
-	var generated JSONOutput
+	// generate keeps its own failure fields and carries the shared envelope
+	// beside them, in the one document (go-slide-creator-fbft2).
+	var generated struct {
+		JSONOutput
+		cliEnvelope
+	}
 	stdout, _, code = cliRun(t, nil, "generate", missing)
 	decodeOneJSON(t, stdout, &generated)
 	if code != 1 || generated.Success || generated.Error == "" {
 		t.Errorf("generate: exit=%d result=%+v", code, generated)
+	}
+	if generated.OK == nil || *generated.OK || generated.Subcommand != "generate" || len(generated.Findings) != 1 ||
+		generated.Findings[0].Code != "INPUT.FILE_NOT_FOUND" || generated.Findings[0].Message != generated.Error {
+		t.Errorf("generate failure carries no shared envelope: %s", strings.TrimSpace(stdout))
+	}
+	// A typed argument error and a template that does not exist keep their
+	// codes; any other failure is generation's own, not INTERNAL.
+	deck := filepath.Join(t.TempDir(), "deck.json")
+	for body, want := range map[string]string{
+		`{"slides":[{"layout_id":"content"}]}`:                               "INPUT.MISSING_PARAMETER",
+		`{"template":"no-such-template","slides":[{"layout_id":"content"}]}`: "TEMPLATE_NOT_FOUND",
+		`{"template":"midnight-blue","slides":[]}`:                           "GENERATION_FAILED",
+	} {
+		if err := os.WriteFile(deck, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		stdout, _, code = cliRun(t, nil, "generate", deck, "--templates-dir", "../../templates", "--out", t.TempDir())
+		generated.Findings = nil
+		decodeOneJSON(t, stdout, &generated)
+		if code != 1 || len(generated.Findings) == 0 || !strings.HasSuffix(generated.Findings[0].Code, want) {
+			t.Errorf("generate %s: exit=%d, want a first finding ending %s: %s", body, code, want, strings.TrimSpace(stdout))
+		}
 	}
 
 	// preflight exits on its own; its envelope must still reach stdout.
@@ -123,10 +150,17 @@ func TestCLIStrictFitFindingsReportedOnce(t *testing.T) {
 		if code != 1 {
 			t.Fatalf("%v exited %d\n%s", extra, code, stderr)
 		}
-		var res JSONOutput
+		var res struct {
+			JSONOutput
+			cliEnvelope
+		}
 		decodeOneJSON(t, stdout, &res)
 		if res.Success || !strings.Contains(res.Error, "strict-fit") || len(res.FitFindings) == 0 {
 			t.Errorf("%v: result success=%v error=%q fit_findings=%d; want the refusal with its findings", extra, res.Success, res.Error, len(res.FitFindings))
+		}
+		// The shared envelope names the refusal first, then its findings.
+		if res.OK == nil || *res.OK || res.Subcommand != "generate" || len(res.Findings) != 1+len(res.FitFindings) || !strings.HasSuffix(res.Findings[0].Code, "STRICT_FIT") {
+			t.Errorf("%v: envelope ok=%v subcommand=%q findings=%d (fit_findings %d); want STRICT_FIT then each fit finding", extra, res.OK, res.Subcommand, len(res.Findings), len(res.FitFindings))
 		}
 		for _, line := range strings.Split(stderr, "\n") {
 			if strings.HasPrefix(strings.TrimSpace(line), "{") {
@@ -193,9 +227,18 @@ func TestCLIErrorCode(t *testing.T) {
 	}{
 		{fmt.Errorf("read deck: %w", notExist), diagnostics.CodeFileNotFound},
 		{fmt.Errorf("parse: %w", syntax), diagnostics.CodeInvalidJSON},
-		{errors.New("--fixes is required"), diagnostics.CodeMissingParameter},
-		{errors.New("template file not found: x.pptx"), diagnostics.CodeFileNotFound},
-		{errors.New(`unknown pattern "x"`), diagnostics.CodeInvalidParameter},
+		// An argument error states its code where it is returned, and keeps
+		// it through any wrapping (go-slide-creator-fbft2).
+		{cliMissingArg("--fixes is required"), diagnostics.CodeMissingParameter},
+		{fmt.Errorf("repair: %w", cliMissingArg("--fixes is required")), diagnostics.CodeMissingParameter},
+		{cliNotFound("template file not found: %s", "x.pptx"), diagnostics.CodeFileNotFound},
+		{cliInvalidArg("unknown pattern %q", "x"), diagnostics.CodeInvalidParameter},
+		{cliInvalidJSON("--fixes: invalid JSON: %w", errors.New("unexpected end")), diagnostics.CodeInvalidJSON},
+		{fmt.Errorf("resolve: %w", errTemplateNameNotFound), diagnostics.CodeTemplateNotFound},
+		// Nothing is read from the wording: an untyped error is the
+		// command's own failure, however it is phrased.
+		{errors.New("--fixes is required"), diagnostics.CodeInternal},
+		{errors.New(`unknown pattern "x"`), diagnostics.CodeInternal},
 		{errors.New("LibreOffice exited with status 1"), diagnostics.CodeInternal},
 	} {
 		if got := cliErrorCode(tc.err); got != tc.want {

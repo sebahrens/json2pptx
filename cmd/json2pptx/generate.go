@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/svggen/fontcache"
 )
 
@@ -89,7 +91,7 @@ func runGenerate() error {
 	case "off", "warn", "strict":
 		// valid
 	default:
-		return fmt.Errorf("invalid --strict-fit value %q: must be off, warn, or strict", *strictFit)
+		return cliInvalidArg("invalid --strict-fit value %q: must be off, warn, or strict", *strictFit)
 	}
 
 	// Validate --output-validation value
@@ -97,7 +99,7 @@ func runGenerate() error {
 	case "off", "warn", "strict":
 		// valid
 	default:
-		return fmt.Errorf("invalid --output-validation value %q: must be off, warn, or strict", *outputValidation)
+		return cliInvalidArg("invalid --output-validation value %q: must be off, warn, or strict", *outputValidation)
 	}
 
 	// Validate --design-mode value (empty string preserves the JSON field).
@@ -105,13 +107,13 @@ func runGenerate() error {
 	case "", "constrained", "free":
 		// valid
 	default:
-		return fmt.Errorf("invalid --design-mode value %q: must be constrained or free", *designMode)
+		return cliInvalidArg("invalid --design-mode value %q: must be constrained or free", *designMode)
 	}
 
 	// JSON input is required
 	if *jsonInput == "" {
 		fs.Usage()
-		return fmt.Errorf("JSON input is required: use --json <file.json> or --json - for stdin")
+		return cliMissingArg("JSON input is required: use --json <file.json> or --json - for stdin")
 	}
 
 	// Fail fast if the font subsystem is broken — this prevents silent
@@ -127,14 +129,59 @@ func runGenerate() error {
 	if runErr != nil && resolvedJSONOutput == "" {
 		// Without a report destination the failure used to be a stderr line
 		// only; the result shape is the same on stdout either way.
-		summary := JSONOutput{Success: false, Error: runErr.Error()}
+		var findings []patterns.FitFinding
 		var refusal *StrictFitRefusal
 		if errors.As(runErr, &refusal) {
-			summary.FitFindings = refusal.Findings
+			findings = refusal.Findings
 		}
-		_ = printGenerateSummary(summary)
+		_ = printGenerateSummary(newGenerateFailure(runErr, findings))
 	}
 	return runErr
+}
+
+// generateFailure is the result `generate` prints when it fails: the fields it
+// has always carried ({success: false, error, fit_findings}) and, beside
+// them, the finding envelope every other command reports a failure in
+// ({schema_version, tool, subcommand, ok, summary, findings}). A caller that
+// reads success / error keeps working; one that reads the shared envelope no
+// longer needs a special case for generate (go-slide-creator-fbft2).
+type generateFailure struct {
+	JSONOutput
+	diagnostics.FindingEnvelope
+}
+
+// newGenerateFailure builds generate's failure result. The envelope's first
+// finding is the failure itself; the fit findings of a refusal follow it.
+func newGenerateFailure(err error, fit []patterns.FitFinding) generateFailure {
+	ds := append([]diagnostics.Diagnostic{{
+		Code: generateFailureCode(err), Message: err.Error(), Severity: diagnostics.SeverityError,
+	}}, diagnostics.FromFitFindings(fit)...)
+	return generateFailure{
+		JSONOutput:      JSONOutput{Success: false, Error: err.Error(), FitFindings: fit},
+		FindingEnvelope: diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{Subcommand: "generate"}, ds),
+	}
+}
+
+// generateFailureCode names why generate failed, from the error's type: a
+// strict-fit refusal, a missing file, malformed JSON, an argument error — and
+// for everything else that generation failed, which is what the command
+// knows, rather than INTERNAL ("retry").
+func generateFailureCode(err error) (code diagnostics.Code) {
+	// A typed-nil error in the chain panics in its own Unwrap when the chain
+	// is walked; the failure is still reported, as a generation failure.
+	defer func() {
+		if recover() != nil {
+			code = diagnostics.CodeGenerationFailed
+		}
+	}()
+	var refusal *StrictFitRefusal
+	if errors.As(err, &refusal) {
+		return diagnostics.CodeStrictFit
+	}
+	if code := cliErrorCode(err); code != diagnostics.CodeInternal {
+		return code
+	}
+	return diagnostics.CodeGenerationFailed
 }
 
 // resolveJSONOutputReport reconciles the deprecated --json-output flag with its
@@ -146,7 +193,7 @@ func resolveJSONOutputReport(oldVal, newVal string, oldSet, newSet bool) (string
 	switch {
 	case oldSet && newSet:
 		if oldVal != newVal {
-			return "", fmt.Errorf("--json-output and --json-output-report were set to conflicting values (%q vs %q); set only one (prefer --json-output-report)", oldVal, newVal)
+			return "", cliInvalidArg("--json-output and --json-output-report were set to conflicting values (%q vs %q); set only one (prefer --json-output-report)", oldVal, newVal)
 		}
 		return newVal, nil
 	case newSet:

@@ -48,19 +48,19 @@ func runPreviewWireframe() error {
 	}
 	if *jsonPath == "" {
 		fs.Usage()
-		return fmt.Errorf("--json is required")
+		return cliMissingArg("--json is required")
 	}
 	switch *format {
 	case "svg", "png", "both":
 	default:
-		return fmt.Errorf("--format must be one of svg, png, both (got %q)", *format)
+		return cliInvalidArg("--format must be one of svg, png, both (got %q)", *format)
 	}
 	if *manifest {
 		if *outPath == "" {
-			return fmt.Errorf("--manifest requires --out (the manifest describes a written file)")
+			return cliMissingArg("--manifest requires --out (the manifest describes a written file)")
 		}
 		if *format == "both" {
-			return fmt.Errorf("--manifest requires --format=svg or png (got %q)", *format)
+			return cliMissingArg("--manifest requires --format=svg or png (got %q)", *format)
 		}
 	}
 

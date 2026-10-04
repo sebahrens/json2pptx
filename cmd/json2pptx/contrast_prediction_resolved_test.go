@@ -7,7 +7,9 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/semantic"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -184,5 +186,119 @@ func TestContrastPredictionSharesGenerationShapeList(t *testing.T) {
 	}
 	if authoredText == 0 {
 		t.Errorf("no finding names an authored cell's text: %+v", findings)
+	}
+}
+
+// go-slide-creator-x54jd: a pattern nested in a grid cell is expanded for the
+// prediction exactly as generation expands it (expandNestedCellPatternsInBounds
+// in the slide's content rectangle), so both run the contrast pass over one
+// shape list. Resolving the unexpanded grid left the pattern's shapes out.
+// go-slide-creator-i1x53: a shape the nested pattern wrote is attributed to
+// the authored pattern, never to the grid it expanded to.
+func TestContrastPredictionExpandsNestedCellPatterns(t *testing.T) {
+	const slideW, slideH = int64(12192000), int64(6858000)
+	const gridJSON = `{
+		"columns": 2,
+		"rows": [{"cells": [
+			{"shape": {"geometry": "rect", "fill": "accent1", "text": {"content": "Plan", "size": 12, "color": "lt1"}}},
+			{"pattern": {"name": "kpi-2up", "values": [{"big": "42%", "small": "Margin"}, {"big": "3.1x", "small": "Return"}]}}
+		]}]
+	}`
+	parse := func() *ShapeGridInput {
+		var grid ShapeGridInput
+		if err := json.Unmarshal([]byte(gridJSON), &grid); err != nil {
+			t.Fatal(err)
+		}
+		return &grid
+	}
+	zone := contrastResolvedZone(slideW, slideH)
+	content := pptx.RectEmu{X: zone.LeftMargin, Y: zone.TitleBottom, CX: zone.RightEdge - zone.LeftMargin, CY: zone.FooterTop - zone.TitleBottom}
+	theme := &types.ThemeInfo{Colors: contrastResolvedTheme}
+
+	// Generation: expand in place, then resolve (convertSinglePresentationSlide).
+	generated := parse()
+	if err := expandNestedCellPatternsInBounds(generated, patterns.ExpandContext{
+		ContentZone: zone, SlideWidth: slideW, SlideHeight: slideH,
+		LayoutBounds: patterns.LayoutBounds{X: content.X, Y: content.Y, Width: content.CX, Height: content.CY},
+		Theme:        *theme,
+	}, content, patterns.Default(), true); err != nil {
+		t.Fatal(err)
+	}
+	rendered := generationGridShapes(t, generated, zone, slideW, slideH)
+
+	authored := parse()
+	predicted, sources := predictedSlideGridShapes(authored, 0, nestedExpansionGeometry{
+		geom: GridGeometry{Zone: zone}, contentBounds: content, slideWidth: slideW, slideHeight: slideH, theme: theme,
+	})
+	if predicted == nil {
+		t.Fatal("no predicted shapes for a grid generation renders")
+	}
+	if len(authored.Rows[0].Cells[1].Pattern) == 0 || authored.Rows[0].Cells[1].Grid != nil {
+		t.Error("the prediction expanded the authored grid in place")
+	}
+	if len(predicted.Shapes) != len(rendered.Shapes) || len(rendered.Shapes) < 3 || len(sources) != len(predicted.Shapes) {
+		t.Fatalf("predicted %d shapes / %d sources, generation %d (want the cell plus the pattern's shapes)",
+			len(predicted.Shapes), len(sources), len(rendered.Shapes))
+	}
+	inPattern := 0
+	for i := range rendered.Shapes {
+		if !bytes.Equal(predicted.Shapes[i], rendered.Shapes[i]) {
+			t.Errorf("shape %d (%s) differs from the one generation writes:\npredicted  %s\ngeneration %s",
+				i, sources[i].Path, predicted.Shapes[i], rendered.Shapes[i])
+		}
+		if strings.Contains(sources[i].Path, "/cells/1/grid") {
+			t.Errorf("shape %d is attributed to the expanded grid %s; the author wrote a pattern", i, sources[i].Path)
+		}
+		if strings.HasPrefix(sources[i].Path, "/slides/0/shape_grid/rows/0/cells/1/pattern") {
+			inPattern++
+			if len(sources[i].Text) != 0 {
+				t.Errorf("shape %d of the nested pattern carries an authored text spec; no cell-level repair applies", i)
+			}
+		}
+	}
+	if inPattern == 0 {
+		t.Errorf("no shape is attributed to the nested pattern: %+v", sources)
+	}
+}
+
+// go-slide-creator-i1x53: on a DeckSpec slide the authored path of a contrast
+// repair maps to the slide's place in the spec, the same semantic path the
+// prediction gets, so validate and generation name one location there too.
+func TestContrastAutofixedOnDeckSpecSlideMapsToItsSemanticPath(t *testing.T) {
+	spec := &semantic.DeckSpec{
+		Meta: semantic.DeckMeta{Title: "Contrast", Template: "midnight-blue", DesignMode: "free"},
+		Slides: []semantic.SlideSpec{
+			{Kind: semantic.KindTitle, Body: map[string]any{"title": "Contrast"}},
+			{Kind: semantic.KindRawJSON2pptx, Body: map[string]any{"slide": map[string]any{
+				"layout_id": "blank-title",
+				"shape_grid": map[string]any{"columns": 1, "rows": []any{map[string]any{"cells": []any{map[string]any{
+					"shape": map[string]any{"geometry": "rect", "fill": "#FFE8D4", "text": map[string]any{"content": "Pale", "size": 14, "color": "lt1"}},
+				}}}}},
+			}}},
+		},
+	}
+	input, compiled, err := semantic.Compile(spec, semantic.CompileOptions{Strict: semantic.StrictnessWarn})
+	if err != nil {
+		t.Fatal(err)
+	}
+	applyDefaults(input)
+	theme := []types.ThemeColor{{Name: "dk1", RGB: "#000000"}, {Name: "lt1", RGB: "#FFFFFF"}, {Name: "dk2", RGB: "#1B2A4A"}}
+	predicted := contrastPredictions(collectContrastPreflightFindings(input, nil, theme))
+	if len(predicted) != 1 || predicted[0].Path != "/slides/1/shape_grid/rows/0/cells/0/shape/text" {
+		t.Fatalf("predictions = %+v; want one at the authored cell text", predicted)
+	}
+	grid := predictedGridShapes(input.Slides[1].ShapeGrid, 1, nil, nil, 0, 0, theme, "")
+	swaps := generator.PredictCompiledGridContrast(grid.Shapes, theme, 1, "#FFFFFF")
+	generator.AttributeGridSwaps(swaps, grid.ShapeSources, 1)
+	fixed := contrastSwapsToFindings(swaps, input, theme)
+	if len(fixed) != 1 || fixed[0].Path != predicted[0].Path {
+		t.Fatalf("contrast_autofixed = %+v; want it at %s", fixed, predicted[0].Path)
+	}
+	got, want := semanticDiagFromFit(compiled.SourceMap, fixed[0]), semanticDiagFromFit(compiled.SourceMap, predicted[0])
+	if got.SemanticPath == "" || got.SemanticPath != want.SemanticPath || !strings.HasPrefix(got.SemanticPath, "slides[1]") {
+		t.Errorf("contrast_autofixed semantic path %q, contrast_predicted %q; want one path inside slides[1]", got.SemanticPath, want.SemanticPath)
+	}
+	if got.RawPath != fixed[0].Path {
+		t.Errorf("raw_path = %q, want the authored raw path %q kept as evidence", got.RawPath, fixed[0].Path)
 	}
 }

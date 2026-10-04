@@ -570,8 +570,12 @@ returned slide carries `id` beside `index`. The CLI spells it
 `render-thumbnails --slides costs,3` and `render-slide --slide-id costs`.
 The image tools see a `.pptx`, so ids resolve against that exact file (by
 sha256): the table of contents `render_deck_spec` recorded when it wrote it,
-or the `<deck>.pptx.authoring.json` sidecar `semantic render` wrote (authored
-ids only — the CLI assigns none). An unknown id is refused before rendering
+or the `<deck>.pptx.authoring.json` sidecar `semantic render` wrote. The CLI
+assigns the ids `render_deck_spec` assigns — the author's id, else the next
+free `s<N>` in authored order — records them in the sidecar's `slide_ids`
+(one per rendered slide, `""` for a generated agenda or divider) and lists
+them in its result's `slides[]` (`{id, index, slide_number, kind}`); the spec
+file is not rewritten, and `--no-manifest` writes neither. An unknown id is refused before rendering
 with the ids the deck has; a file nothing is known about has no ids.
 
 **Images the client already holds.** `render_deck_thumbnails` takes
@@ -584,6 +588,30 @@ deck is 32 KB instead of 232 KB. `include_base64_json` honours it too. The CLI
 spells it `render-thumbnails --known-hashes <hash>,<hash>`: the manifest lists
 `content_hash` per slide, an unchanged slide has `unchanged: true` and no
 `path`, and its file from the earlier run is left in place.
+
+The server sends the hashes itself on a repeat pass. Each
+`render_deck_thumbnails` response is remembered per `pptx_path` (the
+`content_hash` of every slide it returned, with the density they were rendered
+at; 24 h, per server process). The `next_tool_call` of the next
+`render_deck_spec` / `generate_presentation` for that file — or for a new
+artifact of the same deck — is then
+`render_deck_thumbnails {pptx_path, known_hashes: [...]}` over the whole deck
+in place of `{pptx_path, slide_indices: changed_slides}`: one call returns an
+image for each slide whose pixels changed and a hash-only entry for the rest,
+which is every `content_hash` `submit_visual_review` needs. `density` is added
+when the held hashes were not rendered at the default 50 (a `content_hash` is
+a pixel hash, so it only matches at the same density). With no thumbnails
+delivered yet, or more than 50 held hashes, the call names `slide_indices` as
+before.
+
+**Reading small text.** At the default density 50 an image block is 667 px
+wide and 12 pt body text cannot be judged. A response whose image blocks are
+narrower than the 1280 px delivery width carries
+`larger_render: {when, tool: "render_deck_thumbnails", args_template:
+{pptx_path, slide_indices, density: 100}}`: render the one slide again with
+the existing `slide_indices` and `density` arguments. Density 100 fills the
+1280 px block (about twice the linear size); a higher density adds pixels to
+`slides[].path` on disk, not to the block. There is no crop argument.
 
 **Reading the store** (`validate_deck_spec`; these return without validating
 or storing):

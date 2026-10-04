@@ -60,6 +60,14 @@ func TestSkillCLIMapNamesRealCommands(t *testing.T) {
 			}
 			commandExists(row, row.CLI)
 			commandExists(row, "json2pptx "+row.CLICounterpart)
+			if row.CLIThen != "" {
+				commandExists(row, row.CLIThen)
+			}
+			// One command per field: a second one behind a shell comment was
+			// printed inside the first one's code span (go-slide-creator-kkixz).
+			if strings.Contains(row.CLI+row.CLIThen, "#") {
+				t.Errorf("%s: a command carries a shell comment: %q / %q", row.Tool, row.CLI, row.CLIThen)
+			}
 		}
 	}
 
@@ -73,6 +81,9 @@ func TestSkillCLIMapNamesRealCommands(t *testing.T) {
 		if !strings.Contains(table, "| `"+name+"` |") {
 			t.Errorf("skill cli-map --format md has no row for %s", name)
 		}
+	}
+	if !strings.Contains(table, "| `list_slide_kinds` | `json2pptx semantic kinds`, then `json2pptx semantic kinds <kind>` |") {
+		t.Errorf("list_slide_kinds must list its two commands, each in its own code span:\n%s", table)
 	}
 	if !strings.Contains(table, "`json2pptx semantic render <deck.yaml> --out <deck.pptx>`") || !strings.Contains(table, "| `submit_visual_review` | MCP-only.") {
 		t.Errorf("skill cli-map table:\n%s", table)

@@ -41,7 +41,7 @@ func runPatterns() error {
 		return nil
 	default:
 		printPatternsUsage()
-		return fmt.Errorf("unknown patterns subcommand %q", subcmd)
+		return cliInvalidArg("unknown patterns subcommand %q", subcmd)
 	}
 }
 
@@ -148,7 +148,7 @@ func runPatternsShow() error {
 	args := fs.Args()
 	if len(args) == 0 {
 		fs.Usage()
-		return fmt.Errorf("pattern name is required")
+		return cliMissingArg("pattern name is required")
 	}
 	name := args[0]
 
@@ -244,7 +244,7 @@ func runPatternsValidate() error {
 	args := fs.Args()
 	if len(args) < 2 {
 		fs.Usage()
-		return fmt.Errorf("pattern name and values file are required")
+		return cliMissingArg("pattern name and values file are required")
 	}
 	name := args[0]
 	valuesFile := args[1]
@@ -361,7 +361,7 @@ func runPatternsExpand() error {
 	args := fs.Args()
 	if len(args) < 2 {
 		fs.Usage()
-		return fmt.Errorf("pattern name and values file are required")
+		return cliMissingArg("pattern name and values file are required")
 	}
 	name := args[0]
 	valuesFile := args[1]
@@ -452,7 +452,7 @@ func resolveExpandContext(templateName, templatesDir string) (patterns.ExpandCon
 
 	templatePath, cleanup, err := resolveTemplatePath(templateName, templatesDir)
 	if err != nil {
-		return patterns.ExpandContext{}, "", fmt.Errorf("template %q not found: %w", templateName, err)
+		return patterns.ExpandContext{}, "", cliNotFound("template %q not found: %w", templateName, err)
 	}
 	defer cleanup()
 
@@ -573,5 +573,5 @@ func unknownPatternError(name string, reg *patterns.Registry) error {
 	if suggestion, ok := reg.Suggest(name); ok {
 		msg += fmt.Sprintf("; did you mean %q?", suggestion)
 	}
-	return fmt.Errorf("%s; available: %s\nHint: use `json2pptx patterns list` to see all patterns", msg, strings.Join(names, ", "))
+	return cliInvalidArg("%s; available: %s\nHint: use `json2pptx patterns list` to see all patterns", msg, strings.Join(names, ", "))
 }

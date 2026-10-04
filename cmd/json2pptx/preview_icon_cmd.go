@@ -47,7 +47,7 @@ func runPreviewIcon() error {
 	}
 
 	if *manifest && *outSVG == "" && *outPNG == "" {
-		return fmt.Errorf("--manifest requires at least one of --out-svg or --out-png (the manifest describes written files)")
+		return cliMissingArg("--manifest requires at least one of --out-svg or --out-png (the manifest describes written files)")
 	}
 
 	iconArg, err := buildPreviewIconArg(*iconFile, *name, *path, *url, *svgData, *fill, *alt)
@@ -134,7 +134,7 @@ func buildPreviewIconArg(iconFile, name, path, url, svgData, fill, alt string) (
 		}
 	}
 	if usingFile && flagsCount > 0 {
-		return nil, fmt.Errorf("--icon is mutually exclusive with --name/--path/--url/--svg-data")
+		return nil, cliInvalidArg("--icon is mutually exclusive with --name/--path/--url/--svg-data")
 	}
 	if usingFile {
 		data, err := readPreviewIconBlob(iconFile)
@@ -143,12 +143,12 @@ func buildPreviewIconArg(iconFile, name, path, url, svgData, fill, alt string) (
 		}
 		var obj map[string]any
 		if err := json.Unmarshal(data, &obj); err != nil {
-			return nil, fmt.Errorf("--icon: invalid JSON: %w", err)
+			return nil, cliInvalidJSON("--icon: invalid JSON: %w", err)
 		}
 		return obj, nil
 	}
 	if flagsCount == 0 {
-		return nil, fmt.Errorf("supply --icon, or one of --name/--path/--url/--svg-data")
+		return nil, cliMissingArg("supply --icon, or one of --name/--path/--url/--svg-data")
 	}
 	out := map[string]any{}
 	if name != "" {

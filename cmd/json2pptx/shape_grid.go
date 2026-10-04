@@ -68,16 +68,10 @@ type GridDiagramContext struct {
 func (c *GridDiagramContext) shapesOnly() bool { return c != nil && c.ShapesOnly }
 
 // gridShapeSource is the authored element behind one entry of
-// ShapeGridResult.Shapes.
-type gridShapeSource struct {
-	// Path is the element's JSON pointer: a cell's shape/text, composite/text/text,
-	// table, diagram, image/text, image/overlay or accent_bar, a row's
-	// connector, a links entry, or the grid itself for a row rule.
-	Path string
-	// Text is the authored text spec of a shape cell, which names the colours
-	// the author wrote; empty for every other element.
-	Text json.RawMessage
-}
+// ShapeGridResult.Shapes: its JSON pointer and, for a shape cell, the authored
+// text spec. It is the generator's type because generation hands the list to
+// the contrast pass alongside the shapes (SlideSpec.RawShapeSources).
+type gridShapeSource = generator.RawShapeSource
 
 // gridShapeOrigin is what generateGridOutput knows about a shape it wrote:
 // the resolved cell and field, or the connector / accent-bar spec. It becomes

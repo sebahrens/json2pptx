@@ -2694,7 +2694,7 @@ func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp
 		return api.MCPSimpleError("FILE_NOT_FOUND", fmt.Sprintf("pptx file not found: %s", pptxPath)), nil
 	}
 
-	density := clampedRenderDensity(request.GetArguments(), 50, 25, 150)
+	density := clampedRenderDensity(request.GetArguments(), defaultThumbnailDensity, 25, 150)
 
 	maxSlides := 50
 	_, hasMaxSlides := request.GetArguments()["max_slides"]

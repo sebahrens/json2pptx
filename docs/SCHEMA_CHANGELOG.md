@@ -134,6 +134,94 @@
   - `SLIDE_UNDERUSED` counts `hero-detail`'s accent-ruled detail cards by
     their slot; the exemplar covers 39% on business-template (was 29.1%).
 
+- **2026-10-04 — CLI error codes come from the error, not its wording; `generate` failures carry the shared envelope (`go-slide-creator-fbft2`).**
+  - The catch-all envelope a JSON command prints when it fails with a plain
+    error picked `MISSING_PARAMETER` / `INVALID_PARAMETER` / `FILE_NOT_FOUND`
+    from words in the message ("is required", "unknown ", "not found") and
+    called everything else `INTERNAL`. The commands now state the code where
+    they return the error (`cliMissingArg` / `cliInvalidArg` / `cliNotFound`
+    / `cliInvalidJSON`, about 100 sites), a missing file and malformed JSON
+    are recognised by error type, and nothing is read from the message.
+    Codes for the argument errors that already had one are unchanged.
+  - Argument errors the wording missed were `INTERNAL` (remediation "retry")
+    and are now typed: two flags set to conflicting values, `--tool` with a
+    task, an extra positional argument, a slide index out of range, "all
+    required" flag groups, an empty `@` path, an images directory with no
+    slide images.
+  - A template name that resolves to nothing reports `TEMPLATE_NOT_FOUND`
+    (it was `FILE_NOT_FOUND` by wording).
+  - **`generate` failure result** keeps `{success: false, error,
+    fit_findings}` and adds the shared envelope fields beside them in the
+    same document: `{schema_version, tool, subcommand: "generate", ok: false,
+    summary, findings: [...]}`, on stdout and in `--json-output-report`.
+    `findings[0]` is the failure itself — `STRICT_FIT`, `FILE_NOT_FOUND`,
+    `INVALID_JSON`, `MISSING_PARAMETER`, `TEMPLATE_NOT_FOUND`, or
+    `GENERATION_FAILED` for anything else (not `INTERNAL`) — and a refusal's
+    fit findings follow it. A successful result is unchanged.
+  - `validate-output` keeps its array shape (not changed here).
+
+- **2026-10-04 — CLI `semantic render` assigns slide ids (`go-slide-creator-cmwmg`).**
+  - `json2pptx semantic render` gives every authored slide without an `id`
+    the `s<N>` MCP `render_deck_spec` gives it (authored ids kept; a generated
+    agenda or divider has none), lists them in its result as
+    `slides: [{id, index, slide_number, kind}]` and records them in the
+    sidecar as **`slide_ids`** (one per rendered slide, `""` for a generated
+    one). `render-slide --slide-id s3` and `render-thumbnails --slides s4,0`
+    now work for any deck the CLI rendered, not only for authored ids. The
+    spec file is not rewritten; `--no-manifest` writes neither. A sidecar
+    without `slide_ids` resolves authored ids as before.
+
+- **2026-10-04 — CLI `get-started --tool <name>`; `skill cli-map` lists two commands for `list_slide_kinds` (`go-slide-creator-kkixz`).**
+  - **`json2pptx get-started --tool <mcp_tool_name>`** prints what MCP
+    `get_started tool:"<name>"` returns — `tool_detail` (full description and
+    input schema) and `hidden_tools` — plus `cli` (the command that does the
+    tool's job, or the MCP-only note) and `cli_then` when it takes two.
+    An unknown tool is refused with the tool names; `--tool` with a task is
+    refused.
+  - `skill cli-map` rows and `get-started` steps carry **`cli_then`** for a
+    follow-up command. `list_slide_kinds` is `cli: "json2pptx semantic kinds"`,
+    `cli_then: "json2pptx semantic kinds <kind>"`; `--format md` prints
+    `` `json2pptx semantic kinds`, then `json2pptx semantic kinds <kind>` ``
+    (it was one code span with `# then: …` inside).
+
+- **2026-10-04 — The repeat thumbnail pass carries `known_hashes`; a default-size pass names the larger render (`go-slide-creator-wfhvv`, `go-slide-creator-jn6vj`).**
+  - `render_deck_thumbnails` remembers, per `pptx_path`, the `content_hash`
+    of every slide it returned. The `next_tool_call` of the next
+    `render_deck_spec` / `generate_presentation` for that file (or a new
+    artifact of the same deck) becomes
+    `render_deck_thumbnails {pptx_path, known_hashes: [...]}` in place of
+    `{pptx_path, slide_indices: changed_slides}`: the whole deck, with an
+    image only where the pixels changed. `density` is added when the held
+    hashes were not rendered at 50. Without delivered thumbnails, or with more
+    than 50 held hashes, the call is unchanged.
+  - **New response field `larger_render`** on `render_deck_thumbnails`
+    (`{when, tool, args_template: {pptx_path, slide_indices, density: 100}}`),
+    present when the image blocks are narrower than 1280 px: the call that
+    renders one slide at about twice the size, for reading 12 pt text. No new
+    argument: `slide_indices` and `density` already do it.
+  - `get_started` names them in its `render_deck_thumbnails` step (the larger
+    render under task `brief`, `known_hashes` under `revise`): +83 bytes on
+    the measured first contact (`onboarding_get_started_bytes`
+    4756 → 4839, `onboarding_first_contact_bytes` 34858 → 34941).
+
+- **2026-10-04 — `contrast_autofixed` names the authored element; contrast prediction expands nested cell patterns (`go-slide-creator-i1x53`, `go-slide-creator-x54jd`).**
+  - A `contrast_autofixed` finding on one `shape_grid` shape was reported at
+    the flat rendered index `/slides/N/shape_grid/shapes/{n}`. It is now
+    reported at the authored element behind that shape
+    (`…/rows/R/cells/C/shape/text`, `composite/text/text`, `image/text`,
+    `table`, …) — the path `contrast_predicted` gives the same shape at
+    validate time. Pattern slides report under `/slides/N/pattern`, and a
+    DeckSpec finding's `semantic_path` follows from the source map. A shape
+    with no authored element (a row rule) keeps the flat index.
+  - The `replace_color` fix on `contrast_autofixed` follows the rule validate
+    uses: offered when the element is a raw grid cell whose authored text
+    names the replaced color. Grids with connectors, spans or groups, which
+    never got a fix at generate time, now get the one validate offered.
+  - The validate-time prediction expands a pattern nested in a grid cell
+    before resolving the grid, as generation does, so both run the contrast
+    pass over one shape list. A decision inside the nested pattern is
+    reported under `…/cells/C/pattern` on both sides, without a single-cell fix.
+
 - **2026-10-04 — Schema 4.161.0 · follow-ups to the layout and agent-journey wave (label `followup-20261004`).**
   - One version for the dated bullets below this one down to the 4.160.0
     entry (15 beads): two-row `process-flow` and `overrides.rows`, one-line

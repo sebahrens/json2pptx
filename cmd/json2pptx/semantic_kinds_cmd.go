@@ -64,7 +64,7 @@ func runSemanticKinds() error {
 	}
 	if fs.NArg() > 1 {
 		fs.Usage()
-		return fmt.Errorf("semantic kinds: at most one <kind> is accepted, got %d", fs.NArg())
+		return cliInvalidArg("semantic kinds: at most one <kind> is accepted, got %d", fs.NArg())
 	}
 
 	args := map[string]any{}
@@ -93,7 +93,7 @@ func runSemanticKinds() error {
 
 	if fs.NArg() == 1 {
 		if len(catalogue.SlideKinds) != 1 {
-			return fmt.Errorf("semantic kinds: unknown kind %q — run 'json2pptx semantic kinds' for the list", fs.Arg(0))
+			return cliInvalidArg("semantic kinds: unknown kind %q — run 'json2pptx semantic kinds' for the list", fs.Arg(0))
 		}
 		if *jsonOutput {
 			return printJSONIndent(map[string]any{

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -30,6 +31,15 @@ func BorrowOpenZIP(path string, z *zip.ReadCloser) *Reader {
 	return &Reader{path: path, zip: z, borrowed: true}
 }
 
+// notFoundError is OpenTemplate's error for a path with no file. It matches
+// fs.ErrNotExist (errors.Is), so a caller can tell a missing template from a
+// broken one by the error's type instead of its wording; the message is the
+// one OpenTemplate has always returned.
+type notFoundError struct{ path string }
+
+func (e *notFoundError) Error() string        { return "template file not found: " + e.path }
+func (e *notFoundError) Is(target error) bool { return target == fs.ErrNotExist }
+
 // OpenTemplate opens a PPTX template file and validates its structure.
 // Returns an error if the file doesn't exist, is not a valid ZIP, or lacks required PPTX structure.
 func OpenTemplate(path string) (*Reader, error) {
@@ -37,7 +47,7 @@ func OpenTemplate(path string) (*Reader, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("template file not found: %s", path)
+			return nil, &notFoundError{path: path}
 		}
 		return nil, fmt.Errorf("cannot access template file: %w", err)
 	}

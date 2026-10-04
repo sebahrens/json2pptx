@@ -175,6 +175,25 @@ func (n nestedPatternCells) reroot(path string) (string, string, bool) {
 	return best + "/pattern" + strings.TrimPrefix(path, best+"/grid"), n[best], true
 }
 
+// shapeSources returns sources with every shape that a nested pattern wrote
+// pointed at the authored pattern (<cell>/pattern/...) instead of the grid it
+// expanded to, and without a text spec: the author wrote the pattern's
+// values, not that text, so no cell-level colour repair applies. sources is
+// not modified.
+func (n nestedPatternCells) shapeSources(sources []gridShapeSource) []gridShapeSource {
+	if len(n) == 0 {
+		return sources
+	}
+	out := make([]gridShapeSource, len(sources))
+	for i, src := range sources {
+		if path, _, ok := n.reroot(src.Path); ok {
+			src = gridShapeSource{Path: path}
+		}
+		out[i] = src
+	}
+	return out
+}
+
 // nestedExpansionGeometry is the expansion context generation hands patterns
 // nested in a slide grid's cells.
 type nestedExpansionGeometry struct {

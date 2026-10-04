@@ -158,7 +158,7 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// 6. Contrast prediction (contrast_predicted) — runs only when theme
 	// colors are available to resolve scheme references.
 	if theme != nil {
-		findings = append(findings, collectContrastPreflightFindingsAt(input, layouts, theme.Colors, theme.BodyFont, slideWidth, slideHeight)...)
+		findings = append(findings, collectContrastPreflightFindingsAt(input, layouts, theme, slideWidth, slideHeight)...)
 	}
 
 	// 7. Chart / diagram dry-render findings (chart.tick_thinned,
@@ -1224,8 +1224,10 @@ func formatCodeCounts(counts map[string]int) []string {
 
 // contrastSwapsToFindings converts generator ContrastSwap records into
 // patterns.FitFinding values with action "info" and code "contrast_autofixed".
-// An executable fix is offered only when the rendered shape index maps
-// unambiguously to an authored raw grid cell with the original text color.
+// A swap on a grid shape is reported at the authored element that produced
+// the shape (generator.AttributeGridSwaps) — the path validate predicts it at
+// (go-slide-creator-i1x53). An executable fix is offered only when that
+// element is a raw grid cell whose authored text names the original color.
 func contrastSwapsToFindings(swaps []generator.ContrastSwap, input *PresentationInput, themeColors []types.ThemeColor) []patterns.FitFinding {
 	if len(swaps) == 0 {
 		return nil
@@ -1254,6 +1256,14 @@ func contrastSwapsToFindings(swaps []generator.ContrastSwap, input *Presentation
 			params["cells"] = s.Cells
 			scope = fmt.Sprintf(" across %d sibling cells", s.Cells)
 		}
+		findingPath := s.AuthoredPath()
+		if input != nil && s.SlideIndex >= 0 && s.SlideIndex < len(input.Slides) &&
+			input.Slides[s.SlideIndex].Pattern != nil && input.Slides[s.SlideIndex].ShapeGrid == nil {
+			// The deck has no shape_grid at a pattern slide; point at the
+			// pattern, as the fit report does for every other finding there
+			// (a sibling-group decision, reported at the grid, included).
+			findingPath = rerootPatternPath(findingPath, map[int]bool{s.SlideIndex: true})
+		}
 		var fix *patterns.FixSuggestion
 		if path, from, ok := authoredContrastSwapCell(s, input, themeColors); ok {
 			params["from"] = from
@@ -1264,7 +1274,7 @@ func contrastSwapsToFindings(swaps []generator.ContrastSwap, input *Presentation
 		}
 		findings = append(findings, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
-				Path: s.Path,
+				Path: findingPath,
 				Code: "contrast_autofixed",
 				Message: fmt.Sprintf(
 					"auto-fixed low-contrast text%s on %s: %s → %s (on %s, ratio %.1f → %.1f)",
@@ -1279,56 +1289,26 @@ func contrastSwapsToFindings(swaps []generator.ContrastSwap, input *Presentation
 	return findings
 }
 
-// authoredContrastSwapCell accepts the generator's /shape_grid/shapes/I path
-// only for a simple raw grid where each authored cell emits exactly one XML
-// shape in row-major order. Connectors, spans, groups, nested grids, and other
-// cell kinds break that index mapping and therefore cannot receive a safe fix.
+// authoredContrastSwapCell returns the authored text path and colour a
+// replace_color fix can act on: the swap is attributed to one shape of a raw
+// shape_grid (not a pattern or compose expansion, where there is no authored
+// cell to edit) and that shape's authored text names the colour that was
+// replaced. validate offers its fix under the same rule.
 func authoredContrastSwapCell(s generator.ContrastSwap, input *PresentationInput, themeColors []types.ThemeColor) (string, string, bool) {
-	if input == nil || s.Source != "shape_grid" || s.Cells > 1 || s.SlideIndex < 0 || s.SlideIndex >= len(input.Slides) {
+	if input == nil || s.Authored == nil || s.Source != "shape_grid" || s.Cells > 1 || s.SlideIndex < 0 || s.SlideIndex >= len(input.Slides) {
 		return "", "", false
 	}
 	slide := &input.Slides[s.SlideIndex]
 	if slide.ShapeGrid == nil || slide.Pattern != nil || slide.Compose != nil {
 		return "", "", false
 	}
-	prefix := slidepath.ShapeGrid(s.SlideIndex) + "/shapes/"
-	if !strings.HasPrefix(s.Path, prefix) {
-		return "", "", false
-	}
-	shapeIndex, err := strconv.Atoi(strings.TrimPrefix(s.Path, prefix))
-	if err != nil || shapeIndex < 0 {
-		return "", "", false
-	}
-	index := 0
-	var targetPath, authoredColor string
-	for ri, row := range slide.ShapeGrid.Rows {
-		if row.Connector != nil {
-			return "", "", false
-		}
-		for ci, cell := range row.Cells {
-			if !simpleContrastGridCell(cell) {
-				return "", "", false
-			}
-			if index == shapeIndex {
-				for _, color := range extractShapeTextColors(cell.Shape.Text) {
-					resolved, ok := themeHex(color.Color, themeColors)
-					if ok && normalizeColor(resolved.Hex()) == normalizeColor(s.OriginalColor) {
-						targetPath = slidepath.GridCellField(s.SlideIndex, ri, ci, "shape/text")
-						authoredColor = color.Color
-						break
-					}
-				}
-			}
-			index++
+	for _, color := range extractShapeTextColors(s.Authored.Text) {
+		resolved, ok := themeHex(color.Color, themeColors)
+		if ok && normalizeColor(resolved.Hex()) == normalizeColor(s.OriginalColor) {
+			return s.Authored.Path, color.Color, true
 		}
 	}
-	return targetPath, authoredColor, targetPath != ""
-}
-
-func simpleContrastGridCell(cell *GridCellInput) bool {
-	return cell != nil && cell.Shape != nil && !cell.Group && cell.ColSpan <= 1 && cell.RowSpan <= 1 &&
-		cell.Table == nil && cell.Icon == nil && cell.Image == nil && cell.Diagram == nil &&
-		cell.Composite == nil && len(cell.Pattern) == 0 && cell.Grid == nil && cell.AccentBar == nil
+	return "", "", false
 }
 
 // patternRecommendedMax maps known patterns to their recommended maximum cell
@@ -1727,15 +1707,19 @@ func collectTextAutofitPreflightFindings(input *PresentationInput, layouts []typ
 // the renderer would auto-replace the text color. It also covers placeholder
 // text on authored or template backgrounds and footer/page-number chrome.
 func collectContrastPreflightFindings(input *PresentationInput, layouts []types.LayoutMetadata, themeColors []types.ThemeColor) []patterns.FitFinding {
-	return collectContrastPreflightFindingsAt(input, layouts, themeColors, "", 0, 0)
+	return collectContrastPreflightFindingsAt(input, layouts, &types.ThemeInfo{Colors: themeColors}, 0, 0)
 }
 
 // collectContrastPreflightFindingsAt is collectContrastPreflightFindings on a
 // slide of the given size (0 = the 16:9 default). The size matters: each grid
 // is resolved in the geometry generation renders it in, because resolution
-// decides the text sizes the contrast pass reads. bodyFont is the template's
+// decides the text sizes the contrast pass reads. theme.BodyFont is the template's
 // body font, which a native diagram in a grid cell fits its text with.
-func collectContrastPreflightFindingsAt(input *PresentationInput, layouts []types.LayoutMetadata, themeColors []types.ThemeColor, bodyFont string, slideWidth, slideHeight int64) []patterns.FitFinding {
+func collectContrastPreflightFindingsAt(input *PresentationInput, layouts []types.LayoutMetadata, theme *types.ThemeInfo, slideWidth, slideHeight int64) []patterns.FitFinding {
+	if theme == nil {
+		return nil
+	}
+	themeColors := theme.Colors
 	if len(themeColors) == 0 {
 		return nil
 	}
@@ -1745,6 +1729,7 @@ func collectContrastPreflightFindingsAt(input *PresentationInput, layouts []type
 	rhythm := resolvedValidRhythmGrid(input, layouts, slideWidth, slideHeight)
 	findings := generator.DetectContrastPreflight(pairs, themeColors)
 	findings = append(findings, collectChromeContrastFindings(input, layouts, predictedLayouts, themeColors)...)
+	sectionIndices := slideSectionIndices(input.Slides, layouts)
 	for si, slide := range input.Slides {
 		if slide.ShapeGrid == nil || (slide.ContrastCheck != nil && !*slide.ContrastCheck) {
 			continue
@@ -1759,30 +1744,31 @@ func collectContrastPreflightFindingsAt(input *PresentationInput, layouts []type
 		}
 		gridBackground := generator.EffectiveGridBackgroundHex(backgroundSpecFor(&slide), inheritedBackground, themeColors)
 		source := contrastGridSource(slide)
-		geom, _ := patternExpansionGeometry(slide, layouts, slideWidth, slideHeight, rhythm)
-		grid := predictedGridShapes(slide.ShapeGrid, si, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight, themeColors, bodyFont)
+		geom, contentBounds := patternExpansionGeometry(slide, layouts, slideWidth, slideHeight, rhythm)
+		grid, sources := predictedSlideGridShapes(slide.ShapeGrid, si, nestedExpansionGeometry{
+			geom: geom, contentBounds: contentBounds, slideWidth: slideWidth, slideHeight: slideHeight,
+			theme: theme, strategy: patterns.AccentStrategy(input.AccentStrategy), slideIdx: si, sectionIdx: sectionIndices[si],
+		})
 		if grid == nil {
 			continue
 		}
-		for _, swap := range generator.PredictCompiledGridContrast(grid.Shapes, themeColors, si, gridBackground) {
-			path := swap.Path
+		swaps := generator.PredictCompiledGridContrast(grid.Shapes, themeColors, si, gridBackground)
+		// The pass names a shape by its index in the list; sources is that
+		// index's authored element. Generation attributes its swaps with the
+		// same call, so both name the same element.
+		generator.AttributeGridSwaps(swaps, sources, si)
+		for _, swap := range swaps {
 			authoredColor := ""
-			if swap.Cells < 2 {
-				// The pass names a shape by its index in the list; ShapeSources
-				// is that index's authored element.
-				indexText := strings.TrimPrefix(swap.Path, slidepath.ShapeGrid(si)+"/shapes/")
-				if idx, err := strconv.Atoi(indexText); err == nil && idx >= 0 && idx < len(grid.ShapeSources) {
-					path = grid.ShapeSources[idx].Path
-					for _, tc := range extractShapeTextColors(grid.ShapeSources[idx].Text) {
-						resolved, ok := themeHex(tc.Color, themeColors)
-						if ok && strings.EqualFold(resolved.Hex(), swap.OriginalColor) {
-							authoredColor = tc.Color
-							break
-						}
+			if swap.Authored != nil {
+				for _, tc := range extractShapeTextColors(swap.Authored.Text) {
+					resolved, ok := themeHex(tc.Color, themeColors)
+					if ok && strings.EqualFold(resolved.Hex(), swap.OriginalColor) {
+						authoredColor = tc.Color
+						break
 					}
 				}
 			}
-			findings = append(findings, generator.CompiledGridSwapFinding(swap, path, authoredColor, source, themeColors))
+			findings = append(findings, generator.CompiledGridSwapFinding(swap, swap.AuthoredPath(), authoredColor, source, themeColors))
 		}
 	}
 
@@ -1826,6 +1812,34 @@ func collectChromeContrastFindings(input *PresentationInput, layouts []types.Lay
 		return findings
 	}
 	return nil
+}
+
+// predictedSlideGridShapes is predictedGridShapes for a slide's own grid as
+// generation prepares it: patterns nested in its cells are expanded first, on
+// a copy, in the content rectangle and expansion context generation uses
+// (convertSinglePresentationSlide → expandNestedCellPatternsInBounds), and
+// only then resolved. Resolving the unexpanded grid predicted a nested
+// pattern cell from a different shape list than the one the contrast pass
+// runs on (go-slide-creator-x54jd). The second result is the authored element
+// behind each shape, with a nested pattern's shapes pointed at the pattern.
+//
+// nil means generation refuses the grid (or its nested pattern); there is no
+// repair to predict.
+func predictedSlideGridShapes(grid *ShapeGridInput, slideIdx int, g nestedExpansionGeometry) (*ShapeGridResult, []gridShapeSource) {
+	expanded, nested, err := expandNestedPatternsForReadability(grid, slidepath.ShapeGrid(slideIdx), g)
+	if err != nil {
+		return nil, nil
+	}
+	var themeColors []types.ThemeColor
+	bodyFont := ""
+	if g.theme != nil {
+		themeColors, bodyFont = g.theme.Colors, g.theme.BodyFont
+	}
+	result := predictedGridShapes(expanded, slideIdx, g.geom.OverrideBounds, g.geom.Zone, g.slideWidth, g.slideHeight, themeColors, bodyFont)
+	if result == nil {
+		return nil, nil
+	}
+	return result, nested.shapeSources(result.ShapeSources)
 }
 
 // predictedGridShapes is the shape list generation writes for a slide's grid,

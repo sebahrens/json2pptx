@@ -35,15 +35,15 @@ func runScoreCandidates() error {
 
 	if *jsonPath == "" {
 		fs.Usage()
-		return fmt.Errorf("--json is required")
+		return cliMissingArg("--json is required")
 	}
 	if *candidatesPath == "" {
 		fs.Usage()
-		return fmt.Errorf("--candidates is required")
+		return cliMissingArg("--candidates is required")
 	}
 	if *slideIndex < 0 {
 		fs.Usage()
-		return fmt.Errorf("--slide-index is required (must be >= 0)")
+		return cliMissingArg("--slide-index is required (must be >= 0)")
 	}
 
 	presentation, err := readJSONObject(*jsonPath)
@@ -57,7 +57,7 @@ func runScoreCandidates() error {
 	}
 	var candidates []any
 	if err := json.Unmarshal([]byte(candidatesRaw), &candidates); err != nil {
-		return fmt.Errorf("candidates must be a JSON array: %w", err)
+		return cliInvalidJSON("candidates must be a JSON array: %w", err)
 	}
 
 	mc := cliMCPConfig(*templatesDir, "")

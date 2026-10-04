@@ -1652,7 +1652,9 @@ func templatePrecedenceWarning(metaTemplate, argTemplate, argTemplatePath string
 
 // completeRenderDeckSpecResponse adds the template-precedence warning and the
 // next step of the render loop (go-slide-creator-6p9mm, go-slide-creator-z3pbp).
-func completeRenderDeckSpecResponse(res *renderDeckSpecResponse, templateWarnings []string) {
+// earlierPptx is the deck's previous artifact, whose delivered thumbnails a
+// repeat pass need not resend.
+func completeRenderDeckSpecResponse(res *renderDeckSpecResponse, templateWarnings []string, earlierPptx ...string) {
 	if len(templateWarnings) > 0 {
 		res.Warnings = append(append([]string(nil), templateWarnings...), res.Warnings...)
 	}
@@ -1665,7 +1667,7 @@ func completeRenderDeckSpecResponse(res *renderDeckSpecResponse, templateWarning
 		return
 	}
 	ready := res.DeterministicReady != nil && *res.DeterministicReady
-	res.NextToolCall = renderNextToolCall(ready, firstBlockingSemanticCall(res.Diagnostics), res.PptxPath, res.ChangedSlides)
+	res.NextToolCall = renderNextToolCall(ready, firstBlockingSemanticCall(res.Diagnostics), res.PptxPath, res.ChangedSlides, earlierPptx...)
 }
 
 // renderDeckSpecFinish is what finishRenderDeckSpec needs besides the result.
@@ -1726,7 +1728,11 @@ func (mc *mcpConfig) finishRenderDeckSpec(ctx context.Context, res renderDeckSpe
 		d.SlideID = outcome.State.slideIDForPath(d.SemanticPath)
 	}
 	shapeRenderDiagnostics(res.Diagnostics, newSpecDoc(src.Filename, src.Data))
-	completeRenderDeckSpecResponse(&res, f.TemplateWarnings)
+	earlierPptx := ""
+	if src.Handle != nil {
+		earlierPptx = src.Handle.RenderedPptx
+	}
+	completeRenderDeckSpecResponse(&res, f.TemplateWarnings, earlierPptx)
 	// A patch on a deck the agent has already seen rendered gets the compact
 	// response; a first render keeps the full one.
 	renderedBefore := src.Handle != nil && src.Handle.Rendered != nil

@@ -93,11 +93,11 @@ func runExamineTemplate() error {
 	}
 	if fs.NArg() > 1 {
 		fs.Usage()
-		return fmt.Errorf("examine-template: unexpected extra arguments: %v", fs.Args()[1:])
+		return cliInvalidArg("examine-template: unexpected extra arguments: %v", fs.Args()[1:])
 	}
 	if templatePath == "" {
 		fs.Usage()
-		return fmt.Errorf("examine-template: exactly one <template.pptx> argument is required")
+		return cliMissingArg("examine-template: exactly one <template.pptx> argument is required")
 	}
 
 	reader, err := template.OpenTemplate(templatePath)

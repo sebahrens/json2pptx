@@ -45,7 +45,7 @@ func runRecommendPattern() error {
 
 	if *intent == "" {
 		fs.Usage()
-		return fmt.Errorf("--intent is required")
+		return cliMissingArg("--intent is required")
 	}
 
 	mc := cliMCPConfig(*templatesDir, "")
@@ -94,7 +94,7 @@ func parseContentHintsArg(arg string) (map[string]any, error) {
 	if strings.HasPrefix(arg, "@") {
 		path := strings.TrimPrefix(arg, "@")
 		if path == "" {
-			return nil, fmt.Errorf("--content-hints: empty path after '@'")
+			return nil, cliInvalidArg("--content-hints: empty path after '@'")
 		}
 		data, err := os.ReadFile(path)
 		if err != nil {
@@ -107,7 +107,7 @@ func parseContentHintsArg(arg string) (map[string]any, error) {
 
 	var obj map[string]any
 	if err := json.Unmarshal([]byte(raw), &obj); err != nil {
-		return nil, fmt.Errorf("--content-hints: invalid JSON: %w", err)
+		return nil, cliInvalidJSON("--content-hints: invalid JSON: %w", err)
 	}
 	return obj, nil
 }

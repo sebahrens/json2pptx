@@ -25,7 +25,7 @@ func runTables() error {
 		return nil
 	default:
 		printTablesUsage()
-		return fmt.Errorf("unknown tables subcommand %q", subcmd)
+		return cliInvalidArg("unknown tables subcommand %q", subcmd)
 	}
 }
 

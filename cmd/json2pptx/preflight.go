@@ -101,7 +101,7 @@ func runPreflight() error {
 	}
 	if path == "" {
 		fs.Usage()
-		return fmt.Errorf("preflight: deck JSON is required: use --json <file.json> or --json - for stdin")
+		return cliMissingArg("preflight: deck JSON is required: use --json <file.json> or --json - for stdin")
 	}
 
 	var data []byte

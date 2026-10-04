@@ -21,7 +21,7 @@ func runExportDeck() error {
 	}
 	if *pptxPath == "" {
 		fs.Usage()
-		return fmt.Errorf("--pptx is required")
+		return cliMissingArg("--pptx is required")
 	}
 	mc := cliMCPConfig("./templates", *outputDir)
 	result, err := mc.handleExportDeck(context.Background(), mcpRequestWithArgs(map[string]any{

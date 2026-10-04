@@ -31,19 +31,24 @@ type VisualEvidence struct {
 }
 
 type AuthoringManifest struct {
-	Version        string                          `json:"version"`
-	Revision       string                          `json:"revision"`
-	CreatedAt      time.Time                       `json:"created_at"`
-	SourceFormat   string                          `json:"source_format"`
-	Source         string                          `json:"source"`
-	SourceSHA256   string                          `json:"source_sha256"`
-	TemplatePath   string                          `json:"template_path"`
-	TemplateSHA256 string                          `json:"template_sha256"`
-	CompiledJSON   json.RawMessage                 `json:"compiled_json"`
-	CompiledSHA256 string                          `json:"compiled_sha256"`
-	PPTXPath       string                          `json:"pptx_path"`
-	PPTXSHA256     string                          `json:"pptx_sha256"`
-	Slides         []LogicalSlide                  `json:"slides"`
+	Version        string          `json:"version"`
+	Revision       string          `json:"revision"`
+	CreatedAt      time.Time       `json:"created_at"`
+	SourceFormat   string          `json:"source_format"`
+	Source         string          `json:"source"`
+	SourceSHA256   string          `json:"source_sha256"`
+	TemplatePath   string          `json:"template_path"`
+	TemplateSHA256 string          `json:"template_sha256"`
+	CompiledJSON   json.RawMessage `json:"compiled_json"`
+	CompiledSHA256 string          `json:"compiled_sha256"`
+	PPTXPath       string          `json:"pptx_path"`
+	PPTXSHA256     string          `json:"pptx_sha256"`
+	Slides         []LogicalSlide  `json:"slides"`
+	// SlideIDs is the stable DeckSpec id of each rendered slide, index for
+	// index: the author's id, or the "s<N>" the renderer assigned to a slide
+	// without one; "" for a generated slide (agenda, section divider). The
+	// image commands resolve --slide-id / --slides against it.
+	SlideIDs       []string                        `json:"slide_ids,omitempty"`
 	SourceMap      map[string]semantic.SourceEntry `json:"source_map"`
 	Diagnostics    json.RawMessage                 `json:"diagnostics,omitempty"`
 	VisualEvidence *VisualEvidence                 `json:"visual_evidence,omitempty"`

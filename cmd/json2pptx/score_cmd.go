@@ -34,7 +34,7 @@ func runScore() error {
 
 	if *jsonPath == "" {
 		fs.Usage()
-		return fmt.Errorf("--json is required")
+		return cliMissingArg("--json is required")
 	}
 
 	presentation, err := readJSONObject(*jsonPath)

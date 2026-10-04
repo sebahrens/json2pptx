@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -10,11 +9,15 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/templatesettings"
 	"github.com/sebahrens/json2pptx/templates"
 )
 
-var errTemplateNameNotFound = errors.New("template name not found")
+// errTemplateNameNotFound marks a template name that resolves to no file. It
+// states its own finding code, so a command that fails on it reports
+// TEMPLATE_NOT_FOUND wherever the error was wrapped.
+var errTemplateNameNotFound = cliCoded(diagnostics.CodeTemplateNotFound, "template name not found")
 
 const (
 	// envTemplatesDir is the environment variable for setting the templates directory.
@@ -268,6 +271,12 @@ func templateNotFoundError(templateName, flagTemplatesDir string) string {
 		msg += fmt.Sprintf("; available templates: [%s]", strings.Join(available, ", "))
 	}
 	return msg
+}
+
+// templateNotFound is templateNotFoundError as an error that states its code
+// (TEMPLATE_NOT_FOUND), for a command that fails on it.
+func templateNotFound(templateName, flagTemplatesDir string) error {
+	return cliCoded(diagnostics.CodeTemplateNotFound, "%s", templateNotFoundError(templateName, flagTemplatesDir))
 }
 
 // dirExists checks if a directory exists and is actually a directory.

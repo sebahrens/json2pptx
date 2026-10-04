@@ -36,7 +36,7 @@ func runPlanDeck() error {
 
 	if *brief == "" {
 		fs.Usage()
-		return fmt.Errorf("--brief is required")
+		return cliMissingArg("--brief is required")
 	}
 
 	mc := cliMCPConfig(*templatesDir, "")

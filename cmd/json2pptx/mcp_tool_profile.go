@@ -22,7 +22,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"sort"
 	"strings"
@@ -218,7 +217,7 @@ func parseToolProfile(v string) (string, error) {
 	case toolProfileAll:
 		return toolProfileAll, nil
 	default:
-		return "", fmt.Errorf("invalid tool profile %q: want %q, %q (alias %q) or %q", v, toolProfileDeckSpec, toolProfileCore, toolProfileRaw, toolProfileAll)
+		return "", cliInvalidArg("invalid tool profile %q: want %q, %q (alias %q) or %q", v, toolProfileDeckSpec, toolProfileCore, toolProfileRaw, toolProfileAll)
 	}
 }
 

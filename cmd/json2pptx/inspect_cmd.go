@@ -48,7 +48,7 @@ func runInspect() error {
 
 	if *imagesDir == "" {
 		fs.Usage()
-		return fmt.Errorf("--images is required")
+		return cliMissingArg("--images is required")
 	}
 
 	images, err := collectInspectImages(*imagesDir)
@@ -56,7 +56,7 @@ func runInspect() error {
 		return err
 	}
 	if len(images) == 0 {
-		return fmt.Errorf("no slide images found in %s (looked for .png/.jpg/.jpeg)", *imagesDir)
+		return cliNotFound("no slide images found in %s (looked for .png/.jpg/.jpeg)", *imagesDir)
 	}
 
 	args := map[string]any{
@@ -95,7 +95,7 @@ func loadInspectSlideInfo(path string) ([]any, error) {
 	}
 	for i, item := range list {
 		if _, ok := item.(map[string]any); !ok {
-			return nil, fmt.Errorf("parse slide info %s: item %d must be an object", path, i)
+			return nil, cliInvalidArg("parse slide info %s: item %d must be an object", path, i)
 		}
 	}
 	return list, nil
@@ -194,7 +194,7 @@ func selectNumberedSlideImages(dir string, groups map[string][]numberedSlideImag
 			prefixes = append(prefixes, prefix)
 		}
 		sort.Strings(prefixes)
-		return nil, fmt.Errorf("ambiguous slide image groups in %s: %s; keep one numbered slide sequence or name it slide-N / %sN",
+		return nil, cliInvalidArg("ambiguous slide image groups in %s: %s; keep one numbered slide sequence or name it slide-N / %sN",
 			dir, strings.Join(prefixes, ", "), dirPrefix)
 	}
 
@@ -207,7 +207,7 @@ func selectNumberedSlideImages(dir string, groups map[string][]numberedSlideImag
 	})
 	for i, image := range images {
 		if i > 0 && image.number == images[i-1].number {
-			return nil, fmt.Errorf("duplicate slide number %d in image group %q", image.number, selectedPrefix)
+			return nil, cliInvalidArg("duplicate slide number %d in image group %q", image.number, selectedPrefix)
 		}
 	}
 	return images, nil

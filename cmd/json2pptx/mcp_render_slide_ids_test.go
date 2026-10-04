@@ -147,6 +147,33 @@ func TestCLIRenderBySlideID(t *testing.T) {
 		t.Fatalf("semantic render wrote no sidecar: %v\n%.400s\n%s", err, stdout, stderr)
 	}
 
+	// go-slide-creator-cmwmg: the CLI assigns the ids MCP render_deck_spec
+	// assigns to the same spec, lists them in its result and records them in
+	// the sidecar, so an assigned id resolves like an authored one.
+	var rendered semanticRenderResult
+	decodeOneJSON(t, stdout, &rendered)
+	viaMCP := renderDeckSpec(t, handleTestConfig(t), map[string]any{"spec": revisionTestSpec})
+	var ids, mcpIDs, recorded []string
+	for _, s := range rendered.Slides {
+		ids = append(ids, s.ID)
+	}
+	for _, s := range viaMCP.Slides {
+		mcpIDs = append(mcpIDs, s.ID)
+	}
+	for _, s := range slideRefsForPptx(deck) {
+		recorded = append(recorded, s.ID)
+	}
+	if len(ids) == 0 || !slices.Equal(ids, mcpIDs) || !slices.Equal(recorded, mcpIDs) {
+		t.Fatalf("slide ids: CLI result %v, sidecar %v, MCP render_deck_spec %v; want all three equal", ids, recorded, mcpIDs)
+	}
+	if !slices.Contains(ids, "costs") || !slices.Contains(ids, "s1") {
+		t.Fatalf("ids %v: want the authored id kept and the others assigned", ids)
+	}
+	if idx, err := slideIDIndex(deck, "s1"); err != nil || idx != 0 {
+		t.Errorf("slideIDIndex(s1) = %d, %v; want the assigned id of the first slide", idx, err)
+	}
+	known := "(ids: " + strings.Join(ids, ", ") + ")"
+
 	// Refused before rendering, so this half needs no LibreOffice.
 	for _, args := range [][]string{
 		{"render-slide", deck, "--slide-id", "risks"},
@@ -155,7 +182,7 @@ func TestCLIRenderBySlideID(t *testing.T) {
 		stdout, _, code := cliRun(t, nil, args...)
 		var env cliEnvelope
 		decodeOneJSON(t, stdout, &env)
-		if code == 0 || len(env.Findings) != 1 || !strings.Contains(env.Findings[0].Message, `no slide has id "risks" (ids: costs)`) {
+		if code == 0 || len(env.Findings) != 1 || !strings.Contains(env.Findings[0].Message, `no slide has id "risks" `+known) {
 			t.Errorf("%v: exit=%d envelope=%s; want the unknown id refused with the deck's ids", args, code, strings.TrimSpace(stdout))
 		}
 	}

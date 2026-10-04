@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -17,23 +18,33 @@ func runGetStarted() error {
 	fs := flag.NewFlagSet("get-started", flag.ContinueOnError)
 
 	task := fs.String("task", "", "Task scope: brief (new deck, default), revise (modify existing deck), validate-only (validate JSON without generating)")
+	tool := fs.String("tool", "", "An MCP tool name: print its full description, input schema and CLI command instead of a workflow (MCP get_started tool:\"<name>\")")
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates (reported in the runtime block)")
 	outputDir := fs.String("output", "", "Directory decks are written to (reported in the runtime block)")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx get-started [<task>] [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx get-started [<task>] [options]\n")
+		fmt.Fprintf(os.Stderr, "       json2pptx get-started --tool <mcp_tool_name>\n\n")
 		fmt.Fprintf(os.Stderr, "Print the recommended ordered call sequence for a task: %s.\n", strings.Join(getStartedAvailableTasks(), ", "))
 		fmt.Fprintf(os.Stderr, "Each step names the MCP tool and, in \"cli\", the json2pptx command that does the\n")
 		fmt.Fprintf(os.Stderr, "same thing from a shell. Output size: medium (4-16 KB).\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx get-started\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx get-started revise\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx get-started revise\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx get-started --tool render_deck_spec   # one tool's description, schema and CLI command\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
 
 	if err := cliParse(fs, os.Args[1:]); err != nil {
 		return err
+	}
+
+	if *tool != "" {
+		if *task != "" {
+			return cliInvalidArg("get-started: --tool and a task are separate questions: name a tool OR a task, not both")
+		}
+		return runGetStartedTool(strings.TrimSpace(*tool), *templatesDir, *outputDir)
 	}
 
 	args := map[string]any{
@@ -57,7 +68,7 @@ func runGetStarted() error {
 			known = known || t == *task
 		}
 		if !known {
-			return fmt.Errorf("get-started: unknown task %q — valid tasks: %s", *task, strings.Join(getStartedAvailableTasks(), ", "))
+			return cliInvalidArg("get-started: unknown task %q — valid tasks: %s", *task, strings.Join(getStartedAvailableTasks(), ", "))
 		}
 		args["task"] = *task
 	}
@@ -87,6 +98,56 @@ func runGetStarted() error {
 	return err
 }
 
+// cliToolDetail is `get-started --tool <name>`: the MCP tool's tool_detail
+// (description and input schema, as get_started tool:"<name>" returns it)
+// with the command line that does the same job from a shell.
+type cliToolDetail struct {
+	ToolDetail json.RawMessage `json:"tool_detail"`
+	// CLI is the command, or a note that the tool is MCP-only; CLIThen the
+	// follow-up command when the tool's job takes two.
+	CLI         string          `json:"cli"`
+	CLIThen     string          `json:"cli_then,omitempty"`
+	HiddenTools json.RawMessage `json:"hidden_tools,omitempty"`
+}
+
+// runGetStartedTool prints one tool's detail (go-slide-creator-kkixz). The
+// default MCP profile abridges tools/list and serves the full text through
+// get_started tool:"<name>"; the CLI had no way to ask.
+func runGetStartedTool(name, templatesDir, outputDir string) error {
+	if _, known := toolConstructors()[name]; !known {
+		names := mcpToolNames()
+		sort.Strings(names)
+		return cliInvalidArg("get-started: unknown tool %q — tools: %s", name, strings.Join(names, ", "))
+	}
+	mc := cliMCPConfig(templatesDir, outputDir)
+	result, err := mc.handleGetStarted(context.Background(), mcpRequestWithArgs(map[string]any{"tool": name}))
+	if err != nil {
+		return fmt.Errorf("get-started: %w", err)
+	}
+	if result.IsError {
+		return printMCPResultJSON(result)
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(cliResultText(result)), &raw); err != nil {
+		return printMCPResultJSON(result)
+	}
+	out := cliToolDetail{
+		ToolDetail:  raw["tool_detail"],
+		CLI:         cliCommandForTool(name),
+		CLIThen:     cliStepFollowUps[name],
+		HiddenTools: raw["hidden_tools"],
+	}
+	var b strings.Builder
+	enc := json.NewEncoder(&b)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(out); err != nil {
+		return printMCPResultJSON(result)
+	}
+	_, err = os.Stdout.WriteString(b.String())
+	return err
+}
+
 // toolStepLine matches the `"tool": "<name>"` member of a step in indented
 // JSON, with or without a trailing comma.
 var toolStepLine = regexp.MustCompile(`(?m)^(\s*)"tool": "([a-z_]+)"(,?)$`)
@@ -102,7 +163,11 @@ func annotateStepsWithCLI(pretty string) string {
 	return toolStepLine.ReplaceAllStringFunc(pretty, func(line string) string {
 		m := toolStepLine.FindStringSubmatch(line)
 		indent, tool, comma := m[1], m[2], m[3]
-		return fmt.Sprintf("%s\"tool\": %q,\n%s\"cli\": %s%s", indent, tool, indent, jsonStringNoHTMLEscape(cliCommandForTool(tool)), comma)
+		cli := jsonStringNoHTMLEscape(cliCommandForTool(tool))
+		if then := cliStepFollowUps[tool]; then != "" {
+			cli += fmt.Sprintf(",\n%s\"cli_then\": %s", indent, jsonStringNoHTMLEscape(then))
+		}
+		return fmt.Sprintf("%s\"tool\": %q,\n%s\"cli\": %s%s", indent, tool, indent, cli, comma)
 	})
 }
 
@@ -123,7 +188,7 @@ var cliStepCommands = map[string]string{
 	"get_capabilities":          "json2pptx capabilities",
 	"list_templates":            "json2pptx templates",
 	"plan_deck":                 `json2pptx plan-deck "<brief>" --format deckspec`,
-	"list_slide_kinds":          "json2pptx semantic kinds            # then: json2pptx semantic kinds <kind>",
+	"list_slide_kinds":          "json2pptx semantic kinds",
 	"list_deck_archetypes":      "json2pptx semantic schema",
 	"validate_deck_spec":        "json2pptx semantic validate <deck.yaml>",
 	"explain_deck_spec":         "json2pptx semantic explain <deck.yaml>",
@@ -148,6 +213,14 @@ var cliStepCommands = map[string]string{
 	"read_presentation":         "json2pptx read <deck.pptx>",
 	"examine_template":          "json2pptx examine-template <template.pptx>",
 	"describe_finding":          "json2pptx describe-finding <code>",
+}
+
+// cliStepFollowUps is the second command of a tool whose job takes two on the
+// CLI. It used to ride in the first command's string behind a shell comment
+// ("… # then: …"), which the cli-map table printed inside one code span
+// (go-slide-creator-kkixz).
+var cliStepFollowUps = map[string]string{
+	"list_slide_kinds": "json2pptx semantic kinds <kind>",
 }
 
 // cliCommandForTool returns the command line that performs an MCP tool's step

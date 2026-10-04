@@ -35,7 +35,7 @@ import (
 func runSemantic() error {
 	if len(os.Args) < 2 {
 		printSemanticUsage()
-		return fmt.Errorf("semantic requires a subcommand: kinds, validate, compile, render, explain, or schema")
+		return cliMissingArg("semantic requires a subcommand: kinds, validate, compile, render, explain, or schema")
 	}
 
 	sub := os.Args[1]
@@ -75,7 +75,7 @@ func dispatchSemanticSub(sub string) error {
 		printSemanticUsage()
 		return nil
 	default:
-		return fmt.Errorf("unknown semantic subcommand %q — run 'json2pptx semantic help' for usage", sub)
+		return cliInvalidArg("unknown semantic subcommand %q — run 'json2pptx semantic help' for usage", sub)
 	}
 }
 
@@ -124,7 +124,7 @@ func parseStrictness(v string) (semantic.Strictness, error) {
 	case semantic.StrictnessOff, semantic.StrictnessWarn, semantic.StrictnessStrict:
 		return semantic.Strictness(v), nil
 	default:
-		return "", fmt.Errorf("invalid --strict value %q: must be off, warn, or strict", v)
+		return "", cliInvalidArg("invalid --strict value %q: must be off, warn, or strict", v)
 	}
 }
 
@@ -141,7 +141,7 @@ func parseOutputValidation(v string) (string, error) {
 	case "off", "warn", "strict":
 		return v, nil
 	default:
-		return "", fmt.Errorf("invalid --output-validation value %q: must be off, warn, or strict", v)
+		return "", cliInvalidArg("invalid --output-validation value %q: must be off, warn, or strict", v)
 	}
 }
 
@@ -188,7 +188,7 @@ func runSemanticValidate() error {
 	}
 	if *specPath == "" {
 		fs.Usage()
-		return fmt.Errorf("--spec is required")
+		return cliMissingArg("--spec is required")
 	}
 	strictness, err := parseStrictness(*strict)
 	if err != nil {
@@ -344,7 +344,7 @@ func runSemanticCompile() error {
 	}
 	if *specPath == "" {
 		fs.Usage()
-		return fmt.Errorf("--spec is required")
+		return cliMissingArg("--spec is required")
 	}
 	strictness, err := parseStrictness(*strict)
 	if err != nil {
@@ -456,20 +456,26 @@ type semanticRenderResult struct {
 	Overwrote  bool   `json:"overwrote,omitempty"`
 	// A written deck can clear deterministic checks while still needing a
 	// current all-slide visual review before it is publishable.
-	DeterministicReady           *bool                `json:"deterministic_ready,omitempty"`
-	Publishable                  *bool                `json:"publishable,omitempty"`
-	ManualReviewRequired         *bool                `json:"manual_review_required,omitempty"`
-	BlockingReasons              []string             `json:"blocking_reasons,omitempty"`
-	DeterministicBlockingReasons []string             `json:"deterministic_blocking_reasons,omitempty"`
-	Template                     string               `json:"template,omitempty"`
-	SlideCount                   int                  `json:"slide_count,omitempty"`
-	ContentHash                  string               `json:"content_hash,omitempty"`
-	Revision                     string               `json:"revision,omitempty"`
-	ManifestPath                 string               `json:"manifest_path,omitempty"`
-	DurationMs                   int64                `json:"duration_ms,omitempty"`
-	Quality                      *QualityScore        `json:"quality,omitempty"`
-	Warnings                     []string             `json:"warnings,omitempty"`
-	Diagnostics                  []semanticDiagnostic `json:"diagnostics,omitempty"`
+	DeterministicReady           *bool    `json:"deterministic_ready,omitempty"`
+	Publishable                  *bool    `json:"publishable,omitempty"`
+	ManualReviewRequired         *bool    `json:"manual_review_required,omitempty"`
+	BlockingReasons              []string `json:"blocking_reasons,omitempty"`
+	DeterministicBlockingReasons []string `json:"deterministic_blocking_reasons,omitempty"`
+	Template                     string   `json:"template,omitempty"`
+	SlideCount                   int      `json:"slide_count,omitempty"`
+	ContentHash                  string   `json:"content_hash,omitempty"`
+	Revision                     string   `json:"revision,omitempty"`
+	ManifestPath                 string   `json:"manifest_path,omitempty"`
+	// Slides is the deck's table of contents, written with the sidecar that
+	// records it: each slide's stable id (the author's, or the s<N> assigned
+	// to a slide without one — the ids MCP render_deck_spec assigns), index
+	// and slide_number. render-slide --slide-id and render-thumbnails --slides
+	// take the id (go-slide-creator-cmwmg).
+	Slides      []slideRef           `json:"slides,omitempty"`
+	DurationMs  int64                `json:"duration_ms,omitempty"`
+	Quality     *QualityScore        `json:"quality,omitempty"`
+	Warnings    []string             `json:"warnings,omitempty"`
+	Diagnostics []semanticDiagnostic `json:"diagnostics,omitempty"`
 	// Waivers records the storyline findings this deck waived, by meta.waivers
 	// or by its archetype, and how many findings each one turned into an
 	// advisory (go-slide-creator-oh3qr).
@@ -581,11 +587,11 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 	}
 	if *specPath == "" {
 		fs.Usage()
-		return fmt.Errorf("--spec is required")
+		return cliMissingArg("--spec is required")
 	}
 	if *output == "" {
 		fs.Usage()
-		return fmt.Errorf("--out is required")
+		return cliMissingArg("--out is required")
 	}
 	// A render that fails must not leave a sidecar describing a deck that is
 	// not there: an earlier render's manifest for the same path is removed
@@ -828,13 +834,32 @@ func writeAuthoringSidecar(res *semanticRenderResult, spec *semantic.DeckSpec, s
 	diagnosticJSON, _ := json.Marshal(res.Diagnostics)
 	format := strings.TrimPrefix(strings.ToLower(filepath.Ext(specPath)), ".")
 	manifest := pipeline.NewAuthoringManifest(source, format, rr.TemplatePath, rr.TemplateHash, compiledJSON, rr.OutputPath, res.ContentHash, cr.SourceMap, slidePayloads, diagnosticJSON)
+	refs := assignedSlideRefs(specPath, source)
+	manifest.SlideIDs = make([]string, len(refs))
+	for i, r := range refs {
+		manifest.SlideIDs[i] = r.ID
+	}
 	manifestPath := rr.OutputPath + authoringManifestSuffix
 	if err := pipeline.WriteAuthoringManifest(manifestPath, manifest); err != nil {
 		return fmt.Errorf("semantic render: write authoring manifest: %w", err)
 	}
 	res.Revision = manifest.Revision
 	res.ManifestPath = manifestPath
+	res.Slides = refs
 	return nil
+}
+
+// assignedSlideRefs is the table of contents of a spec rendered from the
+// command line, with the ids MCP render_deck_spec gives the same spec on its
+// first store: an authored id is kept and every other authored slide takes
+// the next free s<N> (withSlideIDs from a fresh counter). The CLI used to
+// assign none, so render-slide --slide-id and render-thumbnails --slides only
+// worked for a deck whose author had written ids (go-slide-creator-cmwmg).
+// The spec file itself is not rewritten; the ids are recorded in the sidecar.
+func assignedSlideRefs(specPath string, source []byte) []slideRef {
+	canonical, name := canonicalSpec(specPath, source)
+	withIDs, _ := withSlideIDs(canonical, 0)
+	return specDeckState(name, withIDs, "").refs()
 }
 
 // authoringManifestSuffix is appended to a deck's path to name its authoring
@@ -1361,7 +1386,7 @@ func runSemanticExplain() error {
 	}
 	if *specPath == "" {
 		fs.Usage()
-		return fmt.Errorf("--spec is required")
+		return cliMissingArg("--spec is required")
 	}
 
 	data, err := readSpec(*specPath)

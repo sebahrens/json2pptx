@@ -31,7 +31,7 @@ func runIcons() error {
 		return nil
 	default:
 		printIconsUsage()
-		return fmt.Errorf("unknown icons subcommand %q", subcmd)
+		return cliInvalidArg("unknown icons subcommand %q", subcmd)
 	}
 }
 
@@ -120,7 +120,7 @@ func runIconsSearch() error {
 	}
 	if fs.NArg() != 1 {
 		fs.Usage()
-		return fmt.Errorf("icons search: exactly one <term> is required")
+		return cliMissingArg("icons search: exactly one <term> is required")
 	}
 	term := fs.Arg(0)
 	if *limit < 1 {

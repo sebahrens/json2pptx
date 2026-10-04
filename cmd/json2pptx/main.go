@@ -177,7 +177,7 @@ func dispatch() error { //nolint:gocyclo
 			os.Args = append([]string{os.Args[0], subcmd}, os.Args[1:]...)
 			return runGenerate()
 		}
-		return fmt.Errorf("unknown command %q — run 'json2pptx help' for usage", subcmd)
+		return cliInvalidArg("unknown command %q — run 'json2pptx help' for usage", subcmd)
 	}
 }
 

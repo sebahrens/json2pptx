@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"encoding/xml"
-	"errors"
 	"flag"
 	"fmt"
 	"image"
@@ -56,20 +55,20 @@ func runAuditPalette() error {
 	if fs.NArg() != 1 {
 		fs.Usage()
 		if fs.NArg() == 0 {
-			return errors.New("missing required positional argument: <pptx>")
+			return cliMissingArg("missing required positional argument: <pptx>")
 		}
-		return fmt.Errorf("expected one <pptx> path, got %d positional arguments", fs.NArg())
+		return cliInvalidArg("expected one <pptx> path, got %d positional arguments", fs.NArg())
 	}
 	pptxPath := fs.Arg(0)
 
 	if uint8Overflows(*chromaMin) {
-		return fmt.Errorf("chroma-min must be in 0..255 (got %d)", *chromaMin)
+		return cliInvalidArg("chroma-min must be in 0..255 (got %d)", *chromaMin)
 	}
 	if !validAuditMode(*mode) {
-		return fmt.Errorf("mode must be theme, pair, or both (got %q)", *mode)
+		return cliInvalidArg("mode must be theme, pair, or both (got %q)", *mode)
 	}
 	if *maxThemeDelta < 0 || math.IsNaN(*maxThemeDelta) || math.IsInf(*maxThemeDelta, 0) {
-		return fmt.Errorf("max-theme-delta-e must be finite and non-negative")
+		return cliInvalidArg("max-theme-delta-e must be finite and non-negative")
 	}
 
 	report, err := auditPalettePPTX(pptxPath, auditOptions{
@@ -201,18 +200,18 @@ func auditPalettePPTX(pptxPath string, opts auditOptions) (*auditReport, error) 
 		mode = "theme"
 	}
 	if !validAuditMode(mode) {
-		return nil, fmt.Errorf("invalid palette audit mode %q", mode)
+		return nil, cliInvalidArg("invalid palette audit mode %q", mode)
 	}
 	opts.Mode = mode
 	if opts.MaxThemeDeltaE < 0 || math.IsNaN(opts.MaxThemeDeltaE) || math.IsInf(opts.MaxThemeDeltaE, 0) {
-		return nil, fmt.Errorf("max-theme-delta-e must be finite and non-negative")
+		return nil, cliInvalidArg("max-theme-delta-e must be finite and non-negative")
 	}
 	abs, err := filepath.Abs(pptxPath)
 	if err != nil {
 		return nil, fmt.Errorf("resolve pptx path: %w", err)
 	}
 	if _, err := os.Stat(abs); err != nil {
-		return nil, fmt.Errorf("pptx not found: %w", err)
+		return nil, cliNotFound("pptx not found: %w", err)
 	}
 
 	// Required external tools — fail early with a clear message. The check is
@@ -405,7 +404,7 @@ func emitAuditReport(report *auditReport, format, outputPath string) error {
 	case "text":
 		payload = []byte(formatAuditText(report))
 	default:
-		return fmt.Errorf("unknown format %q (want json|text)", format)
+		return cliInvalidArg("unknown format %q (want json|text)", format)
 	}
 	if _, err := os.Stdout.Write(payload); err != nil {
 		return err

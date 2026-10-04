@@ -18,6 +18,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/template"
 )
@@ -505,6 +506,99 @@ func TestDeckThumbnailsMCPResult_KnownHashes(t *testing.T) {
 	for _, v := range []any{"abc", []any{1}} {
 		if _, bad := knownHashesArg(makeRequest(map[string]any{argKnownHashes: v})); bad == nil || !bad.IsError {
 			t.Errorf("known_hashes %v must be refused", v)
+		}
+	}
+}
+
+// go-slide-creator-wfhvv: the thumbnails step after a re-render carries the
+// content hashes this server already delivered for the file, so the repeat
+// pass returns an image only for the slide that changed.
+// go-slide-creator-jn6vj: a default-size pass names the call that renders one
+// slide larger (slide_indices + density), and a pass already at the delivery
+// width does not.
+func TestThumbnailRepeatPassCarriesKnownHashes(t *testing.T) {
+	dir := t.TempDir()
+	pptx := filepath.Join(dir, "deck.pptx")
+	if err := os.WriteFile(pptx, []byte("not a real deck; only its path and hash are used"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	deckAt := func(width, height int, changed int) *render.DeckResult {
+		deck := &render.DeckResult{SlideCount: 4}
+		for i := 0; i < 4; i++ {
+			seed := uint8(i)
+			if i == changed {
+				seed = 200
+			}
+			img, err := render.SlideImageFromBytes(i, syntheticSlidePNG(t, width, height, seed), "src")
+			if err != nil {
+				t.Fatal(err)
+			}
+			deck.Slides = append(deck.Slides, *img)
+		}
+		return deck
+	}
+	decode := func(res *mcp.CallToolResult) renderedDeckThumbnailsResponse {
+		t.Helper()
+		var resp renderedDeckThumbnailsResponse
+		if res.IsError {
+			t.Fatalf("thumbnails refused: %s", textContent(res))
+		}
+		if err := json.Unmarshal([]byte(textContent(res)), &resp); err != nil {
+			t.Fatal(err)
+		}
+		return resp
+	}
+
+	// Nothing delivered yet: a re-render names the slides that changed.
+	if args := nextCallRenderThumbnails(pptx, []int{2}).ArgsTemplate; args[argKnownHashes] != nil || !slices.Equal(args["slide_indices"].([]int), []int{2}) {
+		t.Fatalf("before any thumbnails the call names the changed slides: %+v", args)
+	}
+
+	first := deckAt(667, 375, -1)
+	resp := decode(deckThumbnailsMCPResult(context.Background(), makeRequest(map[string]any{"pptx_path": pptx}), first))
+	if resp.NextToolCall == nil || resp.NextToolCall.Tool != "submit_visual_review" {
+		t.Errorf("the step after the thumbnails is the review: %+v", resp.NextToolCall)
+	}
+	larger := resp.LargerRender
+	if larger == nil || larger.Tool != "render_deck_thumbnails" || larger.ArgsTemplate["density"] != float64(largerRenderDensity) ||
+		larger.ArgsTemplate["slide_indices"] == nil || larger.ArgsTemplate["pptx_path"] != pptx || !strings.Contains(larger.When, "12pt") {
+		t.Errorf("a 667px pass must name the larger render of one slide: %+v", larger)
+	}
+
+	// A one-slide zoom at density 100 does not displace the full pass.
+	zoom := &render.DeckResult{SlideCount: 4, Selected: []int{1}}
+	img, err := render.SlideImageFromBytes(1, syntheticSlidePNG(t, 1334, 750, 1), "src")
+	if err != nil {
+		t.Fatal(err)
+	}
+	zoom.Slides = append(zoom.Slides, *img)
+	if z := decode(deckThumbnailsMCPResult(context.Background(), makeRequest(map[string]any{"pptx_path": pptx, "slide_indices": []any{float64(1)}, "density": float64(100)}), zoom)); z.LargerRender != nil {
+		t.Errorf("an image already at the delivery width offers no larger render: %+v", z.LargerRender)
+	}
+
+	// The repeat pass: the same file, or a new artifact of the same deck.
+	for _, call := range []*patterns.ToolCallSuggestion{
+		nextCallRenderThumbnails(pptx, []int{2}),
+		nextCallRenderThumbnails(filepath.Join(dir, "deck-r2.pptx"), []int{2}, pptx),
+	} {
+		args := call.ArgsTemplate
+		held, _ := args[argKnownHashes].([]string)
+		if len(held) != 4 || args["slide_indices"] != nil || args["density"] != nil {
+			t.Fatalf("repeat pass must carry the 4 delivered hashes and nothing else: %+v", args)
+		}
+		for i, h := range held {
+			if h != first.Slides[i].ContentHash {
+				t.Errorf("known_hashes[%d] = %s, want slide %d's content_hash", i, h, i)
+			}
+		}
+		// Sent as given, the call returns one image: the slide that changed.
+		list := make([]any, len(held))
+		for i, h := range held {
+			list[i] = h
+		}
+		res := deckThumbnailsMCPResult(context.Background(), makeRequest(map[string]any{argKnownHashes: list}), deckAt(667, 375, 2))
+		if got := decode(res); len(res.Content) != 2 || len(got.Slides) != 4 || got.Slides[2].Unchanged || !got.Slides[0].Unchanged {
+			t.Errorf("repeat pass: %d content blocks, slides %+v", len(res.Content), got.Slides)
 		}
 	}
 }

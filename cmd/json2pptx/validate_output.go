@@ -33,7 +33,7 @@ func runValidateOutput() error {
 
 	if fs.NArg() < 1 {
 		fs.Usage()
-		return fmt.Errorf("at least one PPTX file is required")
+		return cliMissingArg("at least one PPTX file is required")
 	}
 
 	// --json emits one JSON array covering every file (including files that

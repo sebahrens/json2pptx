@@ -24,7 +24,7 @@ func runInputSchema() error {
 	}
 	if fs.NArg() > 0 {
 		fs.Usage()
-		return fmt.Errorf("input-schema: unexpected argument(s): %v", fs.Args())
+		return cliInvalidArg("input-schema: unexpected argument(s): %v", fs.Args())
 	}
 
 	result, err := handleGetInputSchema(context.Background(), mcpNoopRequest())

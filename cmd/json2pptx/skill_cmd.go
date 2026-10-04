@@ -443,7 +443,7 @@ func runSkill() error {
 		if len(os.Args) >= 2 && (os.Args[1] == "-h" || os.Args[1] == "--help") {
 			return nil
 		}
-		return fmt.Errorf("skill requires a subcommand: install, status or cli-map")
+		return cliMissingArg("skill requires a subcommand: install, status or cli-map")
 	}
 	sub := os.Args[1]
 	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
@@ -456,7 +456,7 @@ func runSkill() error {
 		return runSkillCLIMap()
 	default:
 		printSkillUsage()
-		return fmt.Errorf("unknown skill subcommand %q: want install, status or cli-map", sub)
+		return cliInvalidArg("unknown skill subcommand %q: want install, status or cli-map", sub)
 	}
 }
 
@@ -517,6 +517,8 @@ type cliMapRow struct {
 	Tool string `json:"tool"`
 	// CLI is the command line, with the arguments a caller passes.
 	CLI string `json:"cli"`
+	// CLIThen is the follow-up command when the tool's job takes two.
+	CLIThen string `json:"cli_then,omitempty"`
 	// CLICounterpart is the subcommand, as get_capabilities reports it.
 	CLICounterpart string `json:"cli_counterpart,omitempty"`
 	// MCPOnly is true when no CLI subcommand does the tool's job; CLI is then
@@ -550,6 +552,7 @@ func cliMapRows(profile string) []cliMapRow {
 		rows = append(rows, cliMapRow{
 			Tool:           name,
 			CLI:            cliCommandForTool(name),
+			CLIThen:        cliStepFollowUps[name],
 			CLICounterpart: class.CLICounterpart,
 			MCPOnly:        class.MCPOnlyReason != "" || class.CLICounterpart == "",
 			MCPOnlyReason:  class.MCPOnlyReason,
@@ -580,6 +583,9 @@ func runSkillCLIMap() error {
 		b.WriteString("| MCP tool | CLI |\n|---|---|\n")
 		for _, r := range rows {
 			cli := "`" + strings.Join(strings.Fields(r.CLI), " ") + "`"
+			if r.CLIThen != "" {
+				cli += ", then `" + strings.Join(strings.Fields(r.CLIThen), " ") + "`"
+			}
 			if r.MCPOnly {
 				cli = "MCP-only. " + strings.TrimSuffix(r.MCPOnlyReason, ".") + "."
 			}
@@ -588,6 +594,6 @@ func runSkillCLIMap() error {
 		_, err := os.Stdout.WriteString(b.String())
 		return err
 	default:
-		return fmt.Errorf("skill cli-map: invalid --format %q: want json or md", *format)
+		return cliInvalidArg("skill cli-map: invalid --format %q: want json or md", *format)
 	}
 }

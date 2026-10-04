@@ -55,9 +55,25 @@ func rawCompletionStatus(fit []patterns.FitFinding, slideCount int, outputFindin
 
 // nextCallRenderThumbnails is the step after a render: look at the slides.
 // changed narrows a re-render to the slides a patch touched.
-func nextCallRenderThumbnails(pptxPath string, changed []int) *patterns.ToolCallSuggestion {
+//
+// A repeat pass carries known_hashes instead (go-slide-creator-wfhvv): when
+// this server already delivered thumbnails for the file — pptxPath itself, or
+// an earlier artifact of the same deck — the call names those hashes, so the
+// whole deck comes back with an image only for the slides whose pixels
+// changed and a hash-only entry for the rest. That is the full-deck pass
+// submit_visual_review needs, at the cost of the changed slides alone. The
+// density is carried when the hashes were not rendered at the default: a
+// content_hash is a pixel hash.
+func nextCallRenderThumbnails(pptxPath string, changed []int, earlier ...string) *patterns.ToolCallSuggestion {
 	args := map[string]any{"pptx_path": pptxPath}
-	if len(changed) > 0 {
+	held, density := heldThumbnailHashes(append([]string{pptxPath}, earlier...)...)
+	switch {
+	case len(held) > 0 && len(held) <= maxCarriedKnownHashes:
+		args[argKnownHashes] = held
+		if density != defaultThumbnailDensity {
+			args["density"] = density
+		}
+	case len(changed) > 0:
 		args["slide_indices"] = changed
 	}
 	return &patterns.ToolCallSuggestion{Tool: "render_deck_thumbnails", ArgsTemplate: args}
@@ -80,11 +96,11 @@ func nextCallSubmitVisualReview(pptxPath, revision string) *patterns.ToolCallSug
 // renderNextToolCall picks the step after a successful render: the first
 // blocking finding's own fix when the deck is not deterministically ready,
 // else the thumbnails that feed the visual review.
-func renderNextToolCall(deterministicReady bool, blockingFix *patterns.ToolCallSuggestion, pptxPath string, changed []int) *patterns.ToolCallSuggestion {
+func renderNextToolCall(deterministicReady bool, blockingFix *patterns.ToolCallSuggestion, pptxPath string, changed []int, earlier ...string) *patterns.ToolCallSuggestion {
 	if !deterministicReady && blockingFix != nil {
 		return blockingFix
 	}
-	return nextCallRenderThumbnails(pptxPath, changed)
+	return nextCallRenderThumbnails(pptxPath, changed, earlier...)
 }
 
 // firstBlockingFitCall returns the next_tool_call of the first refuse-class

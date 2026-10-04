@@ -69,13 +69,13 @@ func runValidate() error { //nolint:gocognit
 	switch *placeholderPolicy {
 	case "off", "warn", "strict":
 	default:
-		return fmt.Errorf("invalid --placeholder-policy value %q: must be off, warn, or strict", *placeholderPolicy)
+		return cliInvalidArg("invalid --placeholder-policy value %q: must be off, warn, or strict", *placeholderPolicy)
 	}
 
 	args := fs.Args()
 	if len(args) == 0 {
 		fs.Usage()
-		return fmt.Errorf("at least one input file is required")
+		return cliMissingArg("at least one input file is required")
 	}
 
 	// Determine effective output format. There is exactly one structured JSON
