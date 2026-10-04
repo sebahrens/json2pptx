@@ -116,6 +116,9 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// and overrides (arch-stack components, roadmap-phased bars, driver-tree
 	// nodes, open-style defaults, table-highlight highlight_rows), so the
 	// PresentationInput hash advances.
+	// 4.161.0 is the follow-up wave (label followup-20261004): process-flow
+	// overrides.rows, render_deck_thumbnails known_hashes, template on
+	// compile/explain; none of it is in the hashed set, so the hash is unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "e62605a0f9ee3236"
 

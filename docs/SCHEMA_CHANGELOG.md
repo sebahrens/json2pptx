@@ -1,5 +1,13 @@
 # Schema Changelog
 
+- **2026-10-04 — Schema 4.161.0 · follow-ups to the layout and agent-journey wave (label `followup-20261004`).**
+  - One version for the dated bullets below this one down to the 4.160.0
+    entry (15 beads): two-row `process-flow` and `overrides.rows`, one-line
+    KPI values, canvas-scaled patterns, `known_hashes` on
+    `render_deck_thumbnails`, `template` on `compile_deck_spec` /
+    `explain_deck_spec`, takeaway-only `chart_insight`. The schema
+    fingerprint is unchanged (`e62605a0f9ee3236`).
+
 - **2026-10-04 — `plan_deck` keeps a series and its label in one slot (`go-slide-creator-5iy8n`).**
   - A colon label longer than four words was split from the numbers after it:
     `Quarterly revenue from Q3 FY25 to Q3 FY26: 43.0, 44.1, 45.6, 46.9, 48.2`
