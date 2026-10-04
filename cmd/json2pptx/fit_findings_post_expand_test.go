@@ -513,7 +513,9 @@ func TestProcessFlowStepBudgetReachesFitReportAcrossTemplates(t *testing.T) {
 		values.Steps[i] = patterns.ProcessFlowStep{Label: "Stage", Type: "chevron"}
 	}
 	values.Steps[2].Label = strings.Repeat("word ", 4)
-	assertBudgetFindingAcrossTemplates(t, "process-flow", values, "steps[2].label", "about 10 word-like or 8 wide unbroken characters")
+	// One row of eight chevrons (overrides.rows 1) is the tight box; by
+	// default eight steps are on two rows of four.
+	assertBudgetFindingAcrossTemplates(t, "process-flow", values, "steps[2].label", "about 10 word-like or 8 wide unbroken characters", map[string]any{"rows": 1})
 }
 
 func TestCapabilityHeatmapOverfullWarningReachesFitReportAcrossTemplates(t *testing.T) {

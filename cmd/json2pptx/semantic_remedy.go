@@ -45,6 +45,7 @@ var remedyFactKeys = map[string]string{
 	"max_chars":      "max_chars",
 	"max_length":     "max_chars",
 	"max_words":      "max_words",
+	"max_boxes":      "max_boxes",
 	"max_items":      "max_items",
 	"min_items":      "min_items",
 	"max_rows":       "max_rows",

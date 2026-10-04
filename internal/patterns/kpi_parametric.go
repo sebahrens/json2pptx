@@ -7,9 +7,9 @@ import (
 	"math"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
-	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
 // ---------------------------------------------------------------------------
@@ -172,11 +172,24 @@ func (k *kpiNup) PostExpandWarnings(ctx ExpandContext, values, overrides any) []
 		// The same atomic-token width kpiFitBigSize fits against: a value that
 		// only fits edge-to-edge in a stand-in face renders as "$4.2" / "M"
 		// (go-slide-creator-b7qqg.14).
-		if measuredLines(cell.Big, ctx.Theme.BodyFont, true, lay.bigSize, textfit.AtomicTokenWidthPt(ctx.Theme.BodyFont, width)) > 1 {
-			warnings = append(warnings, fmt.Sprintf("%s: %s values[%d].big cannot fit on one line at the %.0fpt effective size in a %.0fpt-wide card — shorten the metric, move/remove its icon, or use fewer KPI cards", ErrCodeBodyTooLong, k.Name(), i, lay.bigSize, width))
+		if !kpiValueFits(cell.Big, ctx.Theme.BodyFont, lay.bigSize, width) {
+			warnings = append(warnings, fmt.Sprintf("%s: %s values[%d].big cannot fit on one line at the %.0fpt effective size in a %.0fpt-wide card, which holds about %d characters like these — shorten the metric, move/remove its icon, or use fewer KPI cards", ErrCodeBodyTooLong, k.Name(), i, lay.bigSize, width, kpiValueMaxChars(cell.Big, ctx.Theme.BodyFont, lay.bigSize, width)))
 		}
 	}
 	return warnings
+}
+
+// kpiValueMaxChars is how many characters of value fit one line at sizePt:
+// the longest prefix that does, so the budget is in the value's own glyphs
+// (digits and capitals run wider than body text).
+func kpiValueMaxChars(value, font string, sizePt, widthPt float64) int {
+	runes := []rune(strings.TrimSpace(value))
+	for n := len(runes) - 1; n > 0; n-- {
+		if kpiValueFits(strings.TrimSpace(string(runes[:n])), font, sizePt, widthPt) {
+			return n
+		}
+	}
+	return 1
 }
 
 func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
@@ -220,6 +233,13 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 			}}
 		}
 		shape := gc.Shape
+		if lay.pinned {
+			// A value with no room to grow on its line keeps its size, and its
+			// siblings with it: the grid's type step wrote "EUR 48.2M" a step
+			// larger than the size it was fitted at, where it broke at the
+			// space (go-slide-creator-kjrxx).
+			shape.TypeScale = peerTextTypeScale
+		}
 		if cell.Icon != nil {
 			if icon := cell.Icon.Resolve(iconFillOn(ctx, shape.Fill, accent), lay.iconPos); icon != nil {
 				icon.Scale = lay.iconScales[i]

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"sort"
@@ -9,6 +10,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 )
 
 // Composition faults measured on the resolved grid (go-slide-creator-wwmod):
@@ -41,6 +43,76 @@ type narrowWrapHit struct {
 	words    int
 	availPt  float64
 	maxWords int
+	// text is the wrapped paragraph: what locates the authored field behind a
+	// cell a pattern generated.
+	text string
+	// maxBoxes is how many boxes the hit's row holds at a width where this
+	// paragraph wraps to narrowWrapFitLines lines; 0 when the row is not known.
+	maxBoxes int
+}
+
+// rowBoxes describes the boxes of the grid row a cell sits in: how many there
+// are, the width they span and the gap between two of them.
+type rowBoxes struct {
+	n             int
+	spanPt, gapPt float64
+}
+
+// rowBoxesOf measures the row of cell among the grid's resolved shape cells.
+func rowBoxesOf(cells []shapegrid.ResolvedCell, cell shapegrid.ResolvedCell) rowBoxes {
+	var left, right, widths int64
+	n := 0
+	for _, c := range cells {
+		if c.RowIdx != cell.RowIdx || c.Kind != shapegrid.CellKindShape || c.ShapeSpec == nil || len(c.ShapeSpec.Text) == 0 || c.Bounds.CX <= 0 {
+			continue
+		}
+		if n == 0 || c.Bounds.X < left {
+			left = c.Bounds.X
+		}
+		if n == 0 || c.Bounds.X+c.Bounds.CX > right {
+			right = c.Bounds.X + c.Bounds.CX
+		}
+		widths += c.Bounds.CX
+		n++
+	}
+	rb := rowBoxes{n: n, spanPt: float64(right-left) / emuPerPt}
+	if n > 1 {
+		rb.gapPt = math.Max(float64(right-left-widths)/emuPerPt/float64(n-1), 0)
+	}
+	return rb
+}
+
+// widthForLines is the narrowest text width (whole points) at which p wraps to
+// at most maxLines lines.
+func (m *geomMeasurer) widthForLines(p geomParagraph, fromPt float64, maxLines int) float64 {
+	lo, hi := math.Floor(fromPt), math.Floor(fromPt)
+	for range 12 {
+		hi *= 2
+		if lines, _ := m.paragraphLines(p, hi); lines <= maxLines {
+			break
+		}
+	}
+	for hi-lo > 1 {
+		mid := math.Floor((lo + hi) / 2)
+		if lines, _ := m.paragraphLines(p, mid); lines <= maxLines {
+			hi = mid
+		} else {
+			lo = mid
+		}
+	}
+	return hi
+}
+
+// maxBoxesFor is how many boxes the row holds once each is wide enough for p
+// to wrap to narrowWrapFitLines lines: the row's span, shared between boxes
+// that keep their text margin (boxPt - availPt) and the gap between them.
+func (m *geomMeasurer) maxBoxesFor(p geomParagraph, availPt, boxPt float64, row rowBoxes) int {
+	if row.n < 2 || row.spanPt <= 0 || boxPt <= 0 {
+		return 0
+	}
+	need := m.widthForLines(p, availPt, narrowWrapFitLines) + math.Max(boxPt-availPt, 0)
+	boxes := int(math.Floor((row.spanPt + row.gapPt) / (need + row.gapPt)))
+	return min(max(boxes, 1), row.n-1)
 }
 
 // paragraphLines greedily wraps one paragraph at availPt and returns its line
@@ -82,7 +154,7 @@ func (m *geomMeasurer) wordsFittingLines(p geomParagraph, availPt float64, maxLi
 // narrowWrapMinLines or more lines of at most narrowWrapMaxWordsPerLine
 // words. A list of short bullets is many paragraphs of one line each and is
 // not a hit; neither is a long paragraph in a wide column.
-func (a *geomAccumulator) noteNarrowWrap(path string, txt geomText, availPt float64) {
+func (a *geomAccumulator) noteNarrowWrap(path string, txt geomText, availPt float64, cell shapegrid.ResolvedCell) {
 	if a.m == nil || a.m.family == nil || availPt <= 0 {
 		return
 	}
@@ -92,28 +164,35 @@ func (a *geomAccumulator) noteNarrowWrap(path string, txt geomText, availPt floa
 			continue
 		}
 		a.narrow = append(a.narrow, narrowWrapHit{
-			path: path, lines: lines, words: words, availPt: availPt,
+			path: path, lines: lines, words: words, availPt: availPt, text: p.text,
 			maxWords: a.m.wordsFittingLines(p, availPt, narrowWrapFitLines),
+			maxBoxes: a.m.maxBoxesFor(p, availPt, float64(cell.Bounds.CX)/emuPerPt, rowBoxesOf(a.gridCells, cell)),
 		})
 		return
 	}
 }
 
 // narrowWrapFinding aggregates the slide's narrow boxes into one finding.
-func (a *geomAccumulator) narrowWrapFinding(patternName string) *patterns.FitFinding {
+// slide is the authored slide: its pattern values locate the field behind
+// each box (params.paths), where a cell path names only the expanded grid.
+func (a *geomAccumulator) narrowWrapFinding(patternName string, slide *SlideInput, slideIdx int) *patterns.FitFinding {
 	if len(a.narrow) == 0 {
 		return nil
 	}
 	worst := a.narrow[0]
-	maxWords := worst.maxWords
+	maxWords, maxBoxes := worst.maxWords, 0
 	cells := make([]string, len(a.narrow))
+	texts := make([]string, len(a.narrow))
 	for i, h := range a.narrow {
-		cells[i] = h.path
+		cells[i], texts[i] = h.path, h.text
 		if h.lines > worst.lines {
 			worst = h
 		}
 		if h.maxWords > 0 && (maxWords == 0 || h.maxWords < maxWords) {
 			maxWords = h.maxWords
+		}
+		if h.maxBoxes > 0 && (maxBoxes == 0 || h.maxBoxes < maxBoxes) {
+			maxBoxes = h.maxBoxes
 		}
 	}
 	msg := fmt.Sprintf("a %d-word paragraph wraps to %d lines in a %.0fpt-wide text area (about %.1f words per line) — a column of fragments, not a label",
@@ -126,9 +205,17 @@ func (a *geomAccumulator) narrowWrapFinding(patternName string) *patterns.FitFin
 		"max_lines": worst.lines,
 		"fit_lines": narrowWrapFitLines,
 		"hint":      "cut each box to a label, use fewer boxes so each is wider, or give each item a full-width row (numbered-step-strip, labeled-rows)",
+		// paths names the authored field behind each box, in the order of
+		// cells; texts is the paragraph each holds.
+		"paths": narrowWrapAuthoredPaths(slide, slideIdx, cells, texts),
+		"texts": texts,
 	}
 	if maxWords > 0 {
 		params["max_words"] = maxWords
+	}
+	if maxBoxes > 0 {
+		// The box count of a row at which the text reads as a label again.
+		params["max_boxes"] = maxBoxes
 	}
 	return &patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
@@ -140,6 +227,28 @@ func (a *geomAccumulator) narrowWrapFinding(patternName string) *patterns.FitFin
 		},
 		Action: "review",
 	}
+}
+
+// narrowWrapAuthoredPaths is where the author edits each wrapped box: on a
+// pattern slide the pattern value that carries the box's text
+// (/slides/N/pattern/values/steps/3/label), and the cell itself on a slide
+// whose grid the author wrote, or when no single value carries the text.
+func narrowWrapAuthoredPaths(slide *SlideInput, slideIdx int, cells, texts []string) []string {
+	out := append([]string(nil), cells...)
+	if slide == nil || slide.Pattern == nil || len(slide.Pattern.Values) == 0 {
+		return out
+	}
+	var values any
+	if json.Unmarshal(slide.Pattern.Values, &values) != nil {
+		return out
+	}
+	base := slidepath.SlideField(slideIdx, "pattern") + "/values"
+	for i, text := range texts {
+		if matches := findValueStrings(values, "", strings.TrimSpace(text)); len(matches) == 1 {
+			out[i] = base + specPointer(matches[0].path)
+		}
+	}
+	return out
 }
 
 // siblingCell is one text cell of a grid row with the size it renders at.

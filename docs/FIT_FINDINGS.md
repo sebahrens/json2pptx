@@ -784,26 +784,28 @@ The fix is a `swap_pattern` suggestion ranked toward `numbered-step-strip` (whos
 ### `OVERTALL_FLOW_LANE`
 
 **Action:** `review`
-**Pattern:** `process-flow` or `timeline-horizontal`
+**Pattern:** `timeline-horizontal`
 **Fix kind:** `swap_pattern`
 **Class:** `pattern_choice`
 
-The complement to [`SPARSE_SINGLE_ROW_FLOW`](#sparse_single_row_flow): a slide-level `process-flow` / single-row `timeline-horizontal` whose estimated lane height exceeds ~50% of the content area with short average per-cell text (< ~40 chars), in the cases the sparse guard does **not** cover:
+The complement to [`SPARSE_SINGLE_ROW_FLOW`](#sparse_single_row_flow): a slide-level single-row `timeline-horizontal` (the `dots` style) whose estimated lane height exceeds ~50% of the content area with short average per-cell text (< ~40 chars), in the cases the sparse guard does **not** cover:
 
 - a `max_height_pct` cap that is still too tall (≥ 50), or
-- a 7–8 step row whose narrow boxes still stretch vertically (the sparse guard caps at 6 items).
+- a row of 7 or more stops whose narrow boxes still stretch vertically (the sparse guard caps at 6 items).
 
-The detector defers to `SPARSE_SINGLE_ROW_FLOW` whenever that guard owns the case (uncapped, 3–6 items), so the two never fire on the same slide. The lane height is estimated from `max_height_pct` / `bounds.height` when set, else ~100% (an uncapped single-row flow fills the content zone).
+The detector defers to `SPARSE_SINGLE_ROW_FLOW` whenever that guard owns the case (uncapped, 3–6 items), so the two never fire on the same slide. The lane height is estimated from `max_height_pct` / `bounds.height` when set, else ~100%.
+
+**Never emitted for `process-flow`** (go-slide-creator-pfyeg). Its steps are content-sized — a row is as tall as its tallest label needs, capped under a third of the content height — and 7–8 steps are laid on two rows, so its lane is not the stretched one. The finding used to fire on every uncapped 7–8 step flow with short labels, whose boxes were under 30pt tall, and no edit of the steps cleared it.
 
 The fix is a `swap_pattern` suggestion toward `numbered-step-strip` (whose per-step detail zone fills the vertical space) or `process-grid-2row`; capping `max_height_pct` to ~35 also clears it. `fix.params` carry `from`, `item_count`, `avg_chars`, `lane_height_pct`, `reason: "overtall_flow_lane"`, and `suggested: [{to, rationale}, …]`.
 
 ```json
 {
-  "pattern": "process-flow",
+  "pattern": "timeline-horizontal",
   "path": "/slides/8/pattern",
   "code": "OVERTALL_FLOW_LANE",
-  "message": "slide 9: process-flow lane of 7 sparse cells (avg 8 chars) occupies ~100% of the content height — the boxes stretch vertically around a few words; switch to numbered-step-strip / process-grid-2row, or cap max_height_pct to ~35",
-  "fix": { "kind": "swap_pattern", "params": { "from": "process-flow", "item_count": 7, "avg_chars": 8, "lane_height_pct": 100, "reason": "overtall_flow_lane", "suggested": [{ "to": "numbered-step-strip", "rationale": "per-step detail zone fills the vertical space instead of stretching the boxes" }] } },
+  "message": "slide 9: timeline-horizontal lane of 7 sparse cells (avg 8 chars) occupies ~100% of the content height — the boxes stretch vertically around a few words; switch to numbered-step-strip / process-grid-2row, or cap max_height_pct to ~35",
+  "fix": { "kind": "swap_pattern", "params": { "from": "timeline-horizontal", "item_count": 7, "avg_chars": 8, "lane_height_pct": 100, "reason": "overtall_flow_lane", "suggested": [{ "to": "numbered-step-strip", "rationale": "per-step detail zone fills the vertical space instead of stretching the boxes" }] } },
   "action": "review"
 }
 ```
@@ -2017,7 +2019,9 @@ The slide's grid content fills one side of the content area: the empty band left
 
 A paragraph in a narrow box wraps into a column of fragments: **5 or more lines** averaging **at most 3 words a line**, wrapped at the width the shape's geometry and insets leave, with the same font metrics as `TEXT_EXCEEDS_SHAPE` (go-slide-creator-wwmod; eight flow boxes that each validated under the 80-character budget and rendered as five or six lines of two words). A list of short bullets is many one-line paragraphs and is not a hit; a long paragraph in a wide column runs eight to twelve words a line and is not a hit. One finding per slide: `fix.params.cells` lists every box, `max_lines` the tallest, `fit_lines` (4) the line count a label still scans at, and `max_words` the paragraph length that fits in `fit_lines` at the narrowest box. Composition fault: 25 points.
 
-**On a DeckSpec slide** (`validate_deck_spec` / `render_deck_spec`) the advice is in the message, which ends "a column of fragments, not a label: cut each box to a label, or use fewer boxes so each is wider" and names no raw pattern. `remediation.primary` is `shorten_text` with `params.max_words`; there is no `params.hint`. `evidence.pattern` is the pattern the kind compiled to (absent on an entry that spans slides): to use fewer boxes of the same visual, split the slide and set each part's `pattern` to it.
+Three more params say where and how far to act (go-slide-creator-pfyeg): `paths` is the authored location of each box, in the order of `cells` — on a pattern slide the pattern value that carries the box's text (`/slides/3/pattern/values/steps/5/label`), on a slide whose grid the author wrote (or when no single value carries the text) the cell itself; `texts` is the paragraph each box holds; and `max_boxes` is how many boxes the row holds once each is wide enough for the text to wrap to `fit_lines` lines (the row's span, shared between boxes that keep their text margin and the gap between them; always below the current count, and absent when the box is alone in its row). A `process-flow` of 7–8 steps no longer draws this finding by default: it is laid on two rows of four (`overrides.rows: 1` restores the single row).
+
+**On a DeckSpec slide** (`validate_deck_spec` / `render_deck_spec`) the advice is in the message, which ends "a column of fragments, not a label: cut each box to a label, or use fewer boxes so each is wider" and names no raw pattern. `remediation.primary` is `shorten_text` with `params.max_words` and `params.max_boxes`; there is no `params.hint`. The finding sits on the items behind the boxes: `path` is the first and `paths` lists them all (`/slides/8/steps/0` … for a process slide; an item rather than one of its fields when a box joins a label and a description), with `occurrences` their count. `evidence.pattern` is the pattern the kind compiled to (absent on an entry that spans slides): to use fewer boxes of the same visual, split the slide and set each part's `pattern` to it.
 
 ### `SIBLING_SIZE_MISMATCH`
 
@@ -2026,7 +2030,7 @@ A paragraph in a narrow box wraps into a column of fragments: **5 or more lines*
 **Fix kind:** `shorten_or_restructure`
 **Emitted at:** preflight, deterministic geometry
 
-Cells that are peers in one grid row — authored with the same paragraph sizes and weights, as column headers and card titles are — render at visibly different font sizes: the smallest more than 8% below the largest (go-slide-creator-wwmod; the option-matrix headers "Deployment speed" and "Commercial traction" beside "Energy use"). The rendered size is the authored size times the autofit scale generation stores on the shape; for a one-line label in a box that holds one line and carries no stored scale, the check also allows for a renderer whose font runs up to 12% wider than the measured face, because such a label wraps there and is shrunk by the renderer while its shorter neighbours are not. One finding per slide, on the row with the widest spread. `fix.params`: `cells` (each `path`, `text`, `rendered_pt`, `shrunk`), `longest`, `authored_pt`, `min_pt`, `max_pt` and a `hint`. Composition fault: 25 points.
+Cells that are peers in one grid row — authored with the same paragraph sizes and weights, as column headers and card titles are — render at visibly different font sizes: the smallest more than 8% below the largest (go-slide-creator-wwmod; the option-matrix headers "Deployment speed" and "Commercial traction" beside "Energy use"). The rendered size is the authored size times the autofit scale generation stores on the shape; for a one-line label in a box that holds one line and carries no stored scale, the check also allows for a renderer whose font runs up to 12% wider than the measured face, because such a label wraps there and is shrunk by the renderer while its shorter neighbours are not. One finding per slide, on the row with the widest spread. `fix.params`: `cells` (each `path`, `text`, `rendered_pt`, `shrunk`), `longest`, `authored_pt`, `min_pt`, `max_pt` and a `hint`. Composition fault: 25 points. `table-highlight` (the `option_matrix` kind) no longer draws it for its header row: the row is as tall as its labels need at the width a renderer may leave them, so a label that wraps there has its second line and every header keeps the one header size (go-slide-creator-4fz04).
 
 ### Composition faults
 

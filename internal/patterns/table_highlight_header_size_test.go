@@ -80,3 +80,58 @@ func TestTableHighlight_HeadersShareOneSize(t *testing.T) {
 		}
 	}
 }
+
+// On a wide template face "Commercial traction" was one line in the measured
+// stand-in and two in the renderer, in a header row one line tall: the
+// renderer shrank that label alone and the header read at two sizes
+// (go-slide-creator-4fz04). The row holds every label at the width a renderer
+// may leave it.
+func TestTableHighlight_HeaderRowHoldsARendererWrap(t *testing.T) {
+	labels := []string{"Cost per tonne", "Energy use", "Deployment speed", "Commercial traction", "Regulatory readiness", "Customer impact"}
+	pat := &tableHighlight{}
+	areas := append(writtenFitAreas[:len(writtenFitAreas):len(writtenFitAreas)], struct {
+		name, font string
+		w, h       float64
+	}{"modern-yellow", "Segoe UI", 851, 311})
+	for _, area := range areas {
+		for nCrit := 2; nCrit <= 6; nCrit++ {
+			v := &TableHighlightValues{Scale: "harvey"}
+			for _, label := range labels[:nCrit] {
+				v.Criteria = append(v.Criteria, TableHighlightCriterion{Label: label})
+			}
+			for _, name := range []string{"Parcel automation", "Hub consolidation", "Partner network"} {
+				o := TableHighlightOption{Name: name, Detail: "Close two hubs, expand one"}
+				for j := 0; j < nCrit; j++ {
+					o.Scores = append(o.Scores, "3")
+				}
+				v.Options = append(v.Options, o)
+			}
+			ctx := ExpandContext{LayoutBounds: LayoutBounds{Width: int64(area.w * 12700), Height: int64(area.h * 12700)}}
+			ctx.Theme.BodyFont = area.font
+			grid, err := pat.Expand(ctx, v, nil, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			ApplyGridDefaults(grid)
+			res := resolveGridAt(t, grid, pptx.RectEmu{CX: ctx.LayoutBounds.Width, CY: ctx.LayoutBounds.Height})
+			for _, c := range res.Cells {
+				if c.RowIdx != 0 || c.Kind != shapegrid.CellKindShape || c.ShapeSpec == nil || len(c.ShapeSpec.Text) == 0 {
+					continue
+				}
+				tb, err := shapegrid.ResolveTextInput(c.ShapeSpec.Text)
+				if err != nil || tb == nil || len(tb.Paragraphs) == 0 || len(tb.Paragraphs[0].Runs) == 0 {
+					t.Fatalf("header cell text: %v", err)
+				}
+				run := tb.Paragraphs[0].Runs[0]
+				sizePt := float64(run.FontSize) / 100
+				insets := pptx.EffectiveTextInsets(tb, c.Bounds)
+				textW := float64(c.Bounds.CX-insets[0]-insets[2]) / 12700
+				textH := float64(c.Bounds.CY-insets[1]-insets[3]) / 12700
+				lines := measuredLines(run.Text, area.font, true, sizePt, textW/thHeaderRenderSlack)
+				if need := float64(lines) * sizePt * sizingLineSpacing; need > textH+0.5 {
+					t.Errorf("%s, %d criteria: %q needs %d line(s) (%.0fpt) at the width a renderer may leave it, the header row holds %.0fpt", area.name, nCrit, run.Text, lines, need, textH)
+				}
+			}
+		}
+	}
+}

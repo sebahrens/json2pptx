@@ -137,6 +137,11 @@ func deckSpecWording(diags []semanticDiagnostic, input *PresentationInput, ir *s
 		if msg == d.Message {
 			continue
 		}
+		if d.baseMessage == d.Message {
+			// The entry already lists its items (a narrow-wrap finding's
+			// boxes): the sentence its count is added to is reworded with it.
+			d.baseMessage = msg
+		}
 		d.Message = msg
 		if d.diag != nil {
 			source := *d.diag

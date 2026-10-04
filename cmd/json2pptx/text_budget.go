@@ -100,8 +100,8 @@ func syntheticValues(pat patterns.Pattern, cols, rows int) any {
 			Details: details,
 		}
 	case "process-flow":
-		// cols = number of steps (3-8), rows is always 1
-		steps := make([]patterns.ProcessFlowStep, cols)
+		// cols × rows steps: 3-6 on one row, 8 on two rows of four.
+		steps := make([]patterns.ProcessFlowStep, cols*max(rows, 1))
 		for i := range steps {
 			steps[i] = patterns.ProcessFlowStep{
 				Label: "Step",

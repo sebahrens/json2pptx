@@ -50,10 +50,10 @@ func init() {
 		Code:        ErrCodeTextWrapsNarrow,
 		Summary:     "A paragraph in a narrow box wraps into five or more lines of two or three words.",
 		Severity:    "review",
-		WhenEmitted: "Preflight wraps every shape's text at the width its geometry and insets leave, with the same font metrics as TEXT_EXCEEDS_SHAPE. The finding fires when one paragraph needs 5 or more lines and averages at most 3 words per line — eight flow boxes across a slide, each a column of fragments. It is reported once per slide; fix.params.cells lists every box, max_lines the tallest and max_words the paragraph length that fits in 4 lines at that width. Costs 25 points on its slide and counts toward the gate's problem-slide share.",
+		WhenEmitted: "Preflight wraps every shape's text at the width its geometry and insets leave, with the same font metrics as TEXT_EXCEEDS_SHAPE. The finding fires when one paragraph needs 5 or more lines and averages at most 3 words per line — eight flow boxes across a slide, each a column of fragments. It is reported once per slide; fix.params.cells lists every box, paths the authored value behind each (the pattern value on a pattern slide), max_lines the tallest, max_words the paragraph length that fits in 4 lines at that width and max_boxes how many boxes the row holds once each is wide enough for its text to fit in 4 lines. Costs 25 points on its slide and counts toward the gate's problem-slide share.",
 		RemediationSteps: []string{
 			"Cut each box to fix.params.max_words words or fewer (a label, not a sentence).",
-			"Or use fewer boxes so each is wider.",
+			"Or use fewer boxes so each is wider: at most fix.params.max_boxes on the row (process-flow puts 7-8 steps on two rows unless overrides.rows is 1).",
 			"Or switch to a layout that gives each step a full-width row (numbered-step-strip, labeled-rows) and keep the sentences.",
 		},
 		RelatedCodes: []string{ErrCodeTextExceedsShape, ErrCodeBodyTooLong},

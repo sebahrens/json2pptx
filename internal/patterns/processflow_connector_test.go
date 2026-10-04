@@ -34,8 +34,14 @@ func TestProcessFlowConnectorHasItsOwnLength(t *testing.T) {
 			if grid.Gap < processFlowConnectorMinPt {
 				t.Errorf("%s n=%d: step gap %.0fpt is shorter than the %.0fpt connector minimum", name, n, grid.Gap, processFlowConnectorMinPt)
 			}
-			if grid.Gap != processFlowConnectorLenPt(n) {
-				t.Errorf("%s n=%d: step gap %.0fpt, want the %.0fpt connector length", name, n, grid.Gap, processFlowConnectorLenPt(n))
+			// The connector's length follows the boxes on a row: process-flow
+			// puts seven or eight steps on two rows.
+			perRow := n
+			if name == "process-flow" && n >= processFlowTwoRowMinSteps {
+				perRow = (n + 1) / 2
+			}
+			if grid.Gap != processFlowConnectorLenPt(perRow) {
+				t.Errorf("%s n=%d: step gap %.0fpt, want the %.0fpt connector length", name, n, grid.Gap, processFlowConnectorLenPt(perRow))
 			}
 			conn := grid.Rows[0].Connector
 			if conn == nil || conn.Style != "arrow" || conn.Head != "lg" || conn.Width != processFlowConnectorLinePt {
@@ -46,7 +52,7 @@ func TestProcessFlowConnectorHasItsOwnLength(t *testing.T) {
 			if err != nil {
 				t.Fatalf("%s n=%d: %v", name, n, err)
 			}
-			if scaled.Gap != processFlowConnectorLenPt(n) {
+			if scaled.Gap != processFlowConnectorLenPt(perRow) {
 				t.Errorf("%s n=%d: a 16pt template gutter changed the connector length to %.0fpt", name, n, scaled.Gap)
 			}
 		}
@@ -73,9 +79,15 @@ func TestProcessFlowDecisionKeepsItsWordWhole(t *testing.T) {
 	ctx := testThemeCtx()
 	for _, name := range []string{"process-flow", "process-flow-compact"} {
 		p, _ := Default().Get(name)
+		// One row of eight: process-flow bends eight steps onto two rows unless
+		// told otherwise (TestProcessFlowTwoRows covers the bent layout).
+		var ovr any
+		if name == "process-flow" {
+			ovr = &ProcessFlowOverrides{Rows: 1}
+		}
 		steps := pfSteps(8)
 		steps[3] = ProcessFlowStep{Label: "Approved?", Type: "decision"}
-		grid, err := p.Expand(ctx, &ProcessFlowValues{Steps: steps}, nil, nil)
+		grid, err := p.Expand(ctx, &ProcessFlowValues{Steps: steps}, ovr, nil)
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
@@ -89,12 +101,12 @@ func TestProcessFlowDecisionKeepsItsWordWhole(t *testing.T) {
 		if cols[0] < 100.0/8*(1-processFlowDecisionMaxGiveFrac)-3 {
 			t.Errorf("%s: steps gave up more than a quarter of their width: %.2f%%", name, cols[0])
 		}
-		if w := p.(PostExpandWarner).PostExpandWarnings(ctx, &ProcessFlowValues{Steps: steps}, nil); len(w) != 0 {
+		if w := p.(PostExpandWarner).PostExpandWarnings(ctx, &ProcessFlowValues{Steps: steps}, ovr); len(w) != 0 {
 			t.Errorf("%s: a decision that fits after widening was reported: %v", name, w)
 		}
 
 		// No decision needs widening: the columns stay the plain count.
-		plain, err := p.Expand(ctx, &ProcessFlowValues{Steps: pfSteps(8)}, nil, nil)
+		plain, err := p.Expand(ctx, &ProcessFlowValues{Steps: pfSteps(8)}, ovr, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -103,7 +115,7 @@ func TestProcessFlowDecisionKeepsItsWordWhole(t *testing.T) {
 		}
 
 		steps[3].Label = "Counterintuitively?"
-		warnings := p.(PostExpandWarner).PostExpandWarnings(ctx, &ProcessFlowValues{Steps: steps}, nil)
+		warnings := p.(PostExpandWarner).PostExpandWarnings(ctx, &ProcessFlowValues{Steps: steps}, ovr)
 		if len(warnings) != 1 || !strings.HasPrefix(warnings[0], ErrCodeTextExceedsShape+": ") || !strings.Contains(warnings[0], "steps[3].label") {
 			t.Errorf("%s: a word no diamond can hold: warnings = %v", name, warnings)
 		}

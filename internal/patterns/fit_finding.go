@@ -257,14 +257,15 @@ func SparseSingleRowFlow(patternName, path string, slideIdx, itemCount int, avgC
 }
 
 // OvertallFlowLane builds an OVERTALL_FLOW_LANE fit finding for a single-row
-// flow pattern (process-flow / timeline-horizontal) whose lane occupies more
-// than half the content height with short per-cell labels. It is the
-// complement to SparseSingleRowFlow: it covers the cases that guard does not —
-// a height cap that is still too tall, or a 7–8 step row whose narrow boxes
+// flow pattern (timeline-horizontal) whose lane occupies more than half the
+// content height with short per-cell labels. It is the complement to
+// SparseSingleRowFlow: it covers the cases that guard does not — a height cap
+// that is still too tall, or a row of seven or more stops whose narrow boxes
 // still stretch vertically. The two never fire on the same slide (the detector
-// defers to SPARSE_SINGLE_ROW_FLOW when that guard owns the case).
+// defers to SPARSE_SINGLE_ROW_FLOW when that guard owns the case). process-flow
+// is content-sized and never draws it.
 //
-//   - patternName is the offending pattern ("process-flow" / "timeline-horizontal").
+//   - patternName is the offending pattern ("timeline-horizontal").
 //   - path is the JSON Pointer to the slide's pattern field (e.g. "/slides/3/pattern").
 //   - slideIdx is the 0-based slide index (used only to humanise the message).
 //   - itemCount is the number of steps / stops in the single row.

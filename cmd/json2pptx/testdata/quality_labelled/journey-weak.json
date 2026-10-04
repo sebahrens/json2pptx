@@ -4,7 +4,7 @@
   "labels": {
     "1": {"label": "weak", "codes": ["VERTICAL_IMBALANCE"], "evidence": "A13 / B15 / A15: a row of cards in the top third over an empty lower half"},
     "2": {"label": "label_title", "codes": ["TITLE_NOT_ACTION"], "evidence": "C15: 'Savings funnel' is a label over a takeaway. Its four short steps filled the left half only until numbered-step-strip gave one-line bodies a detail column (go-slide-creator-yhzxt); the left-half fault is kept as the hand-built slide 6"},
-    "3": {"label": "weak", "codes": ["TEXT_WRAPS_NARROW"], "evidence": "C17: eight flow boxes, each wrapped to 5-6 lines of 2-3 words"},
+    "3": {"label": "weak", "codes": ["TEXT_WRAPS_NARROW"], "evidence": "C17: eight flow boxes, each wrapped to 5-6 lines of 2-3 words. A process slide of eight steps now bends onto two rows of four (go-slide-creator-pfyeg); the one-row fault is kept as a hand-built process-flow with overrides.rows 1"},
     "4": {"label": "label_title", "codes": ["TITLE_NOT_ACTION"], "evidence": "C15: 'Monthly spend trend' is a label over a takeaway"},
     "5": {"label": "label_title", "codes": ["TITLE_NOT_ACTION"], "evidence": "C15: 'Savings by lever (1/2)' — the part marker is not a number in the claim"},
     "6": {"label": "weak", "codes": ["HORIZONTAL_IMBALANCE"], "evidence": "C15: four short rows that end before mid-slide; the right half of the slide is empty"}
@@ -40,18 +40,18 @@
          {"label": "Delivered", "description": "€0.9M delivered to date"}
        ],
        "takeaway": "Only 0.9 of the 9.6 million euros committed has been delivered so far."},
-      {"kind": "process", "title": "Eight steps take the programme from baseline to sustained savings",
-       "steps": [
-         {"label": "Baseline", "description": "Tagged inventory of all resources, reconciled to invoices."},
-         {"label": "Tag", "description": "Mandatory owner, product and environment tags on all spend."},
-         {"label": "Rightsize", "description": "Resize or terminate idle and oversized instances."},
-         {"label": "Schedule", "description": "Shut down dev and test outside working hours."},
-         {"label": "Commit", "description": "Buy committed-use discounts for the steady baseline."},
-         {"label": "Tier", "description": "Lifecycle policies move cold data to archive classes."},
-         {"label": "Showback", "description": "Monthly showback per team, reviewed with directors."},
-         {"label": "Sustain", "description": "Cost checks in the pipeline and architecture reviews."}
-       ],
-       "takeaway": "The programme reaches sustained savings in twelve months."},
+      {"kind": "raw_json2pptx", "slide": {"layout_id": "blank-title", "slide_type": "content",
+       "content": [{"placeholder_id": "title", "type": "text", "text_value": "Eight steps take the programme from baseline to sustained savings"}],
+       "pattern": {"name": "process-flow", "overrides": {"rows": 1}, "values": {"steps": [
+         {"label": "Baseline — Tagged inventory of all resources, reconciled to invoices."},
+         {"label": "Tag — Mandatory owner, product and environment tags on all spend."},
+         {"label": "Rightsize — Resize or terminate idle and oversized instances."},
+         {"label": "Schedule — Shut down dev and test outside working hours."},
+         {"label": "Commit — Buy committed-use discounts for the steady baseline."},
+         {"label": "Tier — Lifecycle policies move cold data to archive classes."},
+         {"label": "Showback — Monthly showback per team, reviewed with directors."},
+         {"label": "Sustain — Cost checks in the pipeline and architecture reviews."}
+       ]}}}},
       {"kind": "chart_insight", "title": "Monthly spend trend",
        "chart": {"type": "bar_chart", "title": "Monthly cloud spend (€M)",
          "data": {"categories": ["Apr", "May", "Jun", "Jul", "Aug", "Sep"], "series": [{"name": "Spend", "values": [3.1, 3.3, 3.4, 3.6, 3.9, 4.2]}]}},

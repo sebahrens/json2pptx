@@ -47,9 +47,14 @@ func TestProcessFlow_DefaultFontScalesDownWithCount(t *testing.T) {
 		}
 	}
 	// Larger counts shrink so short labels fit narrower boxes without wrapping.
-	if processFlowStepFont(t, 8, nil) >= processFlowStepFont(t, 4, nil) {
-		t.Errorf("8-step font (%g) should be smaller than 4-step font (%g)",
-			processFlowStepFont(t, 8, nil), processFlowStepFont(t, 4, nil))
+	oneRow := &ProcessFlowOverrides{Rows: 1}
+	if processFlowStepFont(t, 8, oneRow) >= processFlowStepFont(t, 4, nil) {
+		t.Errorf("8-step one-row font (%g) should be smaller than 4-step font (%g)",
+			processFlowStepFont(t, 8, oneRow), processFlowStepFont(t, 4, nil))
+	}
+	// Eight steps on two rows of four are sized like a four-step flow.
+	if got := processFlowStepFont(t, 8, nil); got != 16 {
+		t.Errorf("n=8 default font = %g, want 16 (two rows of four)", got)
 	}
 	if got := processFlowStepFont(t, 5, nil); got != 13 {
 		t.Errorf("n=5 default font = %g, want 13", got)
