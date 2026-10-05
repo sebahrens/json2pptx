@@ -893,6 +893,26 @@ var rules = []rule{
 		itemMin:   2,
 		itemMax:   6,
 	},
+	// A status board — risk appetite, RAG results by domain, controls tested
+	// with exceptions — is rows rated on a status scale with the breached /
+	// red rows highlighted: the option_matrix kind with scale rag
+	// (go-slide-creator-ux1fl).
+	{
+		pattern:   "table-highlight",
+		keywords:  statusBoardKeywords,
+		baseScore: 0.94,
+		rationale: statusBoardRationale,
+		itemMin:   2,
+		itemMax:   6,
+	},
+	{
+		pattern:   "table-highlight",
+		keywords:  []string{"status", "rag", "amber", "limit", "limits", "threshold", "thresholds", "exceptions", "rating", "ratings", "breach", "breaches"},
+		baseScore: 0.78,
+		rationale: "table-highlight when each row carries a status, rating or limit beside its figures (rag scale: red / amber / green)",
+		itemMin:   2,
+		itemMax:   6,
+	},
 
 	// image-text-split — one photo beside a narrative column (case study)
 	{
@@ -960,6 +980,25 @@ var rules = []rule{
 		keywords:  []string{"themes", "benefits", "dimensions"},
 		baseScore: 0.70,
 		rationale: "labeled-rows when each theme is a short keyword followed by a sentence or two of explanation",
+		itemMin:   2,
+		itemMax:   6,
+	},
+	// One finding / issue / observation on its own structured slide: each
+	// part (what we found, why it matters, the action, owner, due date) is a
+	// labelled row (go-slide-creator-ux1fl).
+	{
+		pattern:   "labeled-rows",
+		keywords:  singleFindingKeywords,
+		baseScore: 0.94,
+		rationale: singleFindingRationale,
+		itemMin:   2,
+		itemMax:   6,
+	},
+	{
+		pattern:   "labeled-rows",
+		keywords:  []string{"finding", "observation", "observations", "implication", "implications", "root cause", "due date", "agreed action", "agreed actions", "recommendation"},
+		baseScore: 0.74,
+		rationale: "labeled-rows when a finding or observation is laid out as labelled parts (finding / implication / action / owner) rather than bullets",
 		itemMin:   2,
 		itemMax:   6,
 	},

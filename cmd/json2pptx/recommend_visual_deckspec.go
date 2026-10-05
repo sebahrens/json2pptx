@@ -319,6 +319,9 @@ func kindDataContract(kind semantic.SlideKind) *patterns.VisualDataContract {
 	if kind == semantic.KindRegions {
 		desc = regionsContractDescription
 	}
+	if kind == semantic.KindOptionMatrix {
+		desc += " " + optionMatrixStatusBoardNote
+	}
 	return &patterns.VisualDataContract{
 		Form:         patterns.ContractFormKind,
 		RequiredKeys: append([]string{}, info.RequiredFields...),
@@ -328,6 +331,19 @@ func kindDataContract(kind semantic.SlideKind) *patterns.VisualDataContract {
 		FieldPath:    recipeSlidePath,
 	}
 }
+
+// optionMatrixStatusBoardNote maps a status board onto the option_matrix
+// kind, which the journeys could not work out from the options × criteria
+// vocabulary alone (go-slide-creator-ux1fl).
+const optionMatrixStatusBoardNote = "A status board (risk appetite dashboard, RAG results by domain, controls tested with exceptions) is this kind: " +
+	"options are the rows (one per risk type / domain), criteria the columns (e.g. Metric, Limit, Status), scale \"rag\" scores a column red / amber / green " +
+	"(set scale on the Status criterion alone as {label: \"Status\", scale: \"rag\"} and keep figures as text in the others), " +
+	"and the breached / red rows go in recommended with highlight_label \"Breached\" so they are highlighted."
+
+// cardGridContractDescription replaces the comparison kind's two-column
+// description when the kind compiles to card-grid (go-slide-creator-ux1fl).
+const cardGridContractDescription = "columns: 2–12 titled cards {header, items[]} (each card's items join as its body; 7 cards arrange as 4 + 3) " +
+	"under the comparison kind with pattern: \"card-grid\" — the kind's two-balanced-columns rule applies to comparison-2col, not here."
 
 // regionsContractDescription is the regions kind's shape in one paragraph;
 // the kind's own summary runs to several.
@@ -426,6 +442,7 @@ var kindVersusRaw = map[string]string{
 	"quote-cluster":       "the kind takes quotes[{text, name, role}]; the raw pattern takes quotes[{text, name, title}]",
 	"pull-quote":          "the kind takes quote / attribution / role as slide fields (or one quotes[] entry); the raw pattern takes values {quote, attribution, role}",
 	"comparison-2col":     "the kind takes columns[{header, items[]}]; the raw pattern takes headers[2] and rows[{left, right}]",
+	"card-grid":           "the kind takes columns[{header, items[]}] (2–12) with pattern: \"card-grid\"; the raw pattern takes cells[{header, body}] (or \"Header | Body\" strings) with optional columns / rows counts",
 	"kpi":                 "the kind takes kpis[{value, label, delta, comparator}]; the raw pattern takes a list of {big, small, sub, comparator}",
 	"strategy-house":      "the kind takes pillars[{title, body[]}] with objective and foundation; the raw pattern takes the same keys under pattern.values",
 	"org_chart":           "the kind takes a flat nodes[{id, name, title, parent}] list; the raw diagram takes a nested root {name, title, children[]}",
@@ -450,7 +467,7 @@ func attachCandidateRecipe(c *patterns.VisualCandidate, templateName string, reg
 	c.AlsoAs = patterns.VisualAlsoAs(c.Category, c.Name)
 	switch c.Category {
 	case patterns.VisualCategoryPattern:
-		if slide := kindSlideForPattern(c.Name); slide != nil && setKindRecipe(c, slide, templateName, kindVersusRawFor(c)) {
+		if setPatternKindRecipe(c, templateName) {
 			return
 		}
 		slide, contract, err := rawPatternSlide(reg, c.Name)
@@ -527,6 +544,22 @@ func attachCandidateRecipe(c *patterns.VisualCandidate, templateName string, reg
 	case patterns.VisualCategoryShapeGrid:
 		attachShapeGridRecipe(c, templateName)
 	}
+}
+
+// setPatternKindRecipe gives a pattern candidate the DeckSpec kind that
+// compiles to it, reporting false when no kind does. card-grid reaches the
+// comparison kind with pattern: card-grid, whose contract would otherwise
+// describe comparison-2col's two balanced columns (go-slide-creator-ux1fl).
+func setPatternKindRecipe(c *patterns.VisualCandidate, templateName string) bool {
+	slide := kindSlideForPattern(c.Name)
+	if slide == nil || !setKindRecipe(c, slide, templateName, kindVersusRawFor(c)) {
+		return false
+	}
+	if c.Name == "card-grid" {
+		c.DataContract.Description = cardGridContractDescription
+		c.DataContract.OptionalKeys = append(c.DataContract.OptionalKeys, "pattern")
+	}
+	return true
 }
 
 // attachRawChartOrDiagram is the raw recipe: one raw_json2pptx slide hosting
@@ -637,8 +670,44 @@ func regionSlideFor(r *patterns.VisualRegion) map[string]any {
 			map[string]any{"label": "Pilot"},
 			map[string]any{"label": "Rollout"},
 		}}
+	case "text":
+		return map[string]any{
+			"kind": "text", "heading": "What this means",
+			"body": placeholder.RecipeCopy(placeholder.SlotWhyItMatters),
+			"bullets": []any{
+				placeholder.RecipeCopy(placeholder.SlotFirstPoint),
+				placeholder.RecipeCopy(placeholder.SlotSecondPoint),
+			},
+		}
 	}
 	return nil
+}
+
+// regionContractNote says what one region of a recommended regions slide
+// takes, so the contract names the region kinds this intent asked for
+// (go-slide-creator-ux1fl).
+func regionContractNote(r *patterns.VisualRegion, i int) string {
+	at := fmt.Sprintf("regions[%d] ", i)
+	switch patterns.RegionKindFor(r) {
+	case "chart":
+		if r.Name == "waterfall" {
+			return at + "is a chart region {kind: chart, chart {type: waterfall, data {points: [{label, value, type: increase | decrease | total | subtotal}]}}, unit?} — a bridge beside another view is this chart region, not the bridge kind"
+		}
+		shape := "{categories, series: [{name, values}]}"
+		if r.Name == "pie" || r.Name == "donut" {
+			shape = "{categories, values}"
+		}
+		return at + "is a chart region {kind: chart, chart {type: " + r.Name + ", data " + shape + "}, unit?}"
+	case "stat":
+		return at + "is a stat region {kind: stat, value, label, context?}"
+	case "kpis":
+		return at + "is a kpis region {kind: kpis, kpis: [{value, label, delta?}] (2–4)}"
+	case "timeline":
+		return at + "is a timeline region {kind: timeline, milestones: [{label, date?}] (3–7)}"
+	case "text":
+		return at + "is a text region {kind: text, heading?, body (≤400 chars) and / or bullets (≤6)} — the narrative column"
+	}
+	return ""
 }
 
 // clampSharePct keeps a share inside the bounds the regions kind accepts.
@@ -695,6 +764,18 @@ func attachRegionsRecipe(c *patterns.VisualCandidate, templateName string) {
 		}
 		c.Composition.Instructions = "Copy " + recipeExamplePath + " into your DeckSpec slides: one regions slide, arrangement " + arrangement +
 			". Each composition region's segment_path is its entry in regions[]; replace the sample content there and keep kind, arrangement and size_pct."
+		if setKindRecipe(c, slide, templateName, "") {
+			var notes []string
+			for i, r := range ordered {
+				if n := regionContractNote(r, i); n != "" {
+					notes = append(notes, n)
+				}
+			}
+			if len(notes) > 0 {
+				c.DataContract.Description += " This slide: " + strings.Join(notes, "; ") + "."
+			}
+		}
+		return
 	}
 	setKindRecipe(c, slide, templateName, "")
 }
