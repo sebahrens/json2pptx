@@ -16,9 +16,13 @@ make build-race
 # Run all tests
 go test ./... -v
 
-# CI-equivalent race suite (cmd/json2pptx can exceed Go's default 10m timeout;
-# .github/workflows/ci.yml uses 25m). Run it in svggen/ too: cd svggen && go test ./... -short -race
-go test ./... -short -race -timeout=25m
+# CI-equivalent race suite: the three steps .github/workflows/ci.yml runs.
+# Do NOT run `go test ./... -short -race` as one command: cmd/json2pptx runs
+# serially for about an hour under -race and times out. CI shards it instead
+# (see "The sharded race step" in docs/TESTING.md).
+scripts/ci_test_cmd_shards.sh 4                                                    # cmd/json2pptx, four parallel shards
+go test $(go list ./... | grep -v '/cmd/json2pptx$') -short -race -timeout=25m     # rest of the root module
+(cd svggen && go test ./... -short -race -timeout=10m)                             # svggen module
 
 # Run tests with coverage
 go test ./... -cover -coverprofile=coverage.out -covermode=atomic
