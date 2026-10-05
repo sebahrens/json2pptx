@@ -23,6 +23,7 @@ const solidAccentBlockMinEMU int64 = 457200
 // structure.
 var accentIsTheMessage = map[string]string{
 	"capability-heatmap": "tier fills encode the rating",
+	"risk-heatmap":       "band fills encode likelihood × impact",
 	"waterfall-bridge":   "total and subtotal bars are the data",
 }
 

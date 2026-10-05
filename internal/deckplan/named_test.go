@@ -26,7 +26,8 @@ func TestNamedSlidesFollowTheKindVocabulary(t *testing.T) {
 	}{
 		{"Board deck. Margin bridge 2023→2025: 2023 EBITDA 24.0, price +6.5, volume +3.2, raw material −4.1, opex +1.4 = 31.0.", "bridge"},
 		{"Board deck. EBITDA walk FY25 to FY26: FY25 EBITDA 40, volume +5, price +3, costs −6 = 42.", "bridge"},
-		{"Board deck. Top risks on a likelihood/impact view: cyber (high/high), fraud (medium/low), climate (low/medium).", "matrix_2x2"},
+		{"Board deck. Top risks on a likelihood/impact view: cyber (high/high), fraud (medium/low), climate (low/medium).", "risk_heatmap"},
+		{"Board deck. Initiatives on an impact/effort 2x2: automation (high/low), replatforming (high/high), reporting (low/low).", "matrix_2x2"},
 		{"Board deck. A comparable: last year's DD on \"Project Keel\" found a 9-point price-gap risk that moved the bid by EUR 40M.", "image_case"},
 		{"Board deck. The ops console screenshot at `$J/assets/ops.png` shows the nightly load dashboard; call out the SLA breach banner (top-left) and the job queue (centre).", "image_case"},
 		{"Board deck. Target architecture, top to bottom: consumption (Power BI, ML feature store), serving (semantic layer), storage (Delta lake), with security and FinOps as cross-cutting.", "architecture"},
@@ -149,8 +150,26 @@ func TestNamedSlideFields(t *testing.T) {
 		t.Errorf("consultant placeholder = %v", m)
 	}
 
-	matrix := fieldsOf("Deck. Top risks on a likelihood/impact view: cyber (high/high), third-party outage (medium/high), conduct (medium/medium), model risk (low/high), climate (low/medium), fraud (medium/low).", "matrix_2x2")
-	if matrix["x_axis"] != "Likelihood" || matrix["y_axis"] != "Impact" {
+	// go-slide-creator-ec74l: rated risks draft the risk heat map, every risk
+	// with its own likelihood and impact — a "medium" is not folded into high.
+	heat := fieldsOf("Deck. Top risks on a likelihood/impact view: cyber (high/high), third-party outage (medium/high), conduct (medium/medium), model risk (low/high), climate (low/medium), fraud (medium/low).", "risk_heatmap")
+	risks := list(heat, "items")
+	if len(risks) != 6 {
+		t.Fatalf("heat map places %d of 6 risks: %v", len(risks), risks)
+	}
+	if r := risks[1].(map[string]any); r["name"] != "third-party outage" || r["likelihood"] != "medium" || r["impact"] != "high" {
+		t.Errorf("risk = %v, want third-party outage at medium likelihood / high impact", r)
+	}
+	if r := risks[5].(map[string]any); r["likelihood"] != "medium" || r["impact"] != "low" {
+		t.Errorf("risk = %v, want fraud at medium / low", r)
+	}
+	swapped := fieldsOf("Deck. Top risks on an impact/likelihood view: cyber (high/medium), fraud (low/high).", "risk_heatmap")
+	if r := list(swapped, "items")[0].(map[string]any); r["impact"] != "high" || r["likelihood"] != "medium" {
+		t.Errorf("impact-first ratings = %v, want impact high / likelihood medium", r)
+	}
+
+	matrix := fieldsOf("Deck. Initiatives on an impact/effort 2x2: automation (high/low), replatforming (high/high), reporting (low/low).", "matrix_2x2")
+	if matrix["x_axis"] != "Impact" || matrix["y_axis"] != "Effort" {
 		t.Errorf("axes = %v / %v", matrix["x_axis"], matrix["y_axis"])
 	}
 	quads := list(matrix, "quadrants")
@@ -161,8 +180,8 @@ func TestNamedSlideFields(t *testing.T) {
 	for _, q := range quads {
 		placed += strings.Count(fmt.Sprint(q.(map[string]any)["body"]), "(")
 	}
-	if placed != 6 {
-		t.Errorf("heat map places %d of 6 risks: %v", placed, quads)
+	if placed != 3 {
+		t.Errorf("matrix places %d of 3 initiatives: %v", placed, quads)
 	}
 
 	arch := fieldsOf("Deck. Target architecture, top to bottom: consumption (Power BI, 3 data products, ML feature store), serving (semantic layer, governed marts), processing (Spark batch, streaming), storage (Delta lake, bronze/silver/gold), ingestion (CDC from 14 sources, event streaming), with security/governance and FinOps as cross-cutting.", "architecture")

@@ -290,6 +290,8 @@ var (
 	cueNamedPricing   = regexp.MustCompile(`(?i)\b(?:pricing|price|fees?|rate card|line items?)\b`)
 	cueNamedBridge    = regexp.MustCompile(`(?i)\b(?:bridge|waterfall|walk)\b`)
 	cueNamedMatrix    = regexp.MustCompile(`(?i)\b(?:likelihood|probability)\s*(?:[/×x]|and|vs\.?|by|against|versus)\s*impact\b|\bimpact\s*(?:[/×x]|and|vs\.?|by|against|versus)\s*(?:likelihood|probability|effort)\b|\bheat\s?maps?\b|\b2\s?[x×]\s?2\b`)
+	cueNamedRiskMap   = regexp.MustCompile(`(?i)\b(?:risks?|likelihood|probability)\b`)
+	cueNamedOtherAxis = regexp.MustCompile(`(?i)\b(?:effort|cost|value|urgency|importance|reach|feasibility)\b|\b2\s?[x×]\s?2\b`)
 	cueNamedImage     = regexp.MustCompile(`(?i)\b(?:photos?|photographs?|screenshots?|site photos?|case stud(?:y|ies)|customer stor(?:y|ies)|comparables?|reference cases?)\b`)
 	cueNamedArch      = regexp.MustCompile(`(?i)\b(?:architecture|tech(?:nology)? stack|platform stack|tiered|tiers)\b`)
 	cueNamedTeam      = regexp.MustCompile(`(?i)\b(?:team|our people|who we are|consultants?|engagement team|bios?|headshots?)\b`)
@@ -322,6 +324,7 @@ var (
 var namedGuidance = map[string]string{
 	"bridge":            "The walk the brief gives, as waterfall columns: the opening total, each delta with its sign, the closing total; the title states what moved the number.",
 	"matrix_2x2":        "The heat map: the brief's axes and every named item placed in its quadrant (a medium rating sits with high — move it if the brief means otherwise); the title names the quadrant that needs action.",
+	"risk_heatmap":      "The heat map: every named risk with its own likelihood and impact (low / medium / high), placed on the grid; the title names the risk that needs action.",
 	"image_case":        "The picture beside its story: set image.path (or keep image_label until the file exists), the body, up to 3 result metrics and the callouts the brief asks for; the title states the result.",
 	"architecture":      "The stack top to bottom: one tier per layer with its components, the cross-cutting concerns as rails, never as another tier.",
 	"team":              "Who delivers: one card per person with name, role and the one line that makes them credible; a headshot via members[].photo.",
@@ -341,7 +344,7 @@ var namedGuidance = map[string]string{
 
 // namedSlot is the slot name a named kind takes in the storyline.
 var namedSlot = map[string]string{
-	"bridge": "bridge", "matrix_2x2": "risks", "image_case": "case", "architecture": "architecture",
+	"bridge": "bridge", "matrix_2x2": "risks", "risk_heatmap": "risks", "image_case": "case", "architecture": "architecture",
 	"team": "team", "decision": "options", "option_matrix": "options", "roadmap": "roadmap",
 	"process": "plan", "table": "table", "comparison": "comparison", "kpi_snapshot": "context",
 	"chart_insight": "evidence", "pillars": "framework", "regions": "regions",
@@ -350,7 +353,7 @@ var namedSlot = map[string]string{
 
 // namedChapter is the chapter a named kind sits in on a chaptered draft.
 var namedChapter = map[string]string{
-	"bridge": chapterSituation, "matrix_2x2": chapterSituation, "image_case": chapterSituation,
+	"bridge": chapterSituation, "matrix_2x2": chapterSituation, "risk_heatmap": chapterSituation, "image_case": chapterSituation,
 	"architecture": chapterSituation, "table": chapterSituation, "comparison": chapterSituation,
 	"kpi_snapshot": chapterSituation, "chart_insight": chapterSituation, "pillars": chapterSituation,
 	"regions": chapterSituation, "team": chapterPlan, "decision": chapterPlan,
@@ -399,7 +402,14 @@ var namedRules = []namedRule{
 		return cueNamedCloser.MatchString(head) || (head == "" && cueNamedAskStart.MatchString(all))
 	}, after: func(n *namedSlide, _ string) { n.closer = true }},
 	{kind: "bridge", match: func(_ *namedSlide, _, all string) bool { return cueNamedBridge.MatchString(all) }},
-	{kind: "matrix_2x2", match: func(_ *namedSlide, _, all string) bool { return cueNamedMatrix.MatchString(all) }},
+	{kind: "matrix_2x2", match: func(_ *namedSlide, _, all string) bool { return cueNamedMatrix.MatchString(all) },
+		after: func(n *namedSlide, all string) {
+			// Rated risks on likelihood × impact are the risk heat map: a
+			// 2x2 has no place for "medium" (go-slide-creator-ec74l).
+			if (riskHeatmapFields(n) != nil || cueNamedRiskMap.MatchString(all)) && !cueNamedOtherAxis.MatchString(all) {
+				n.kind = "risk_heatmap"
+			}
+		}},
 	{kind: "image_case", match: func(_ *namedSlide, _, all string) bool { return cueNamedImage.MatchString(all) }},
 	{kind: "architecture", match: func(_ *namedSlide, _, all string) bool { return cueNamedArch.MatchString(all) }},
 	{kind: "team", match: func(n *namedSlide, head, all string) bool {
@@ -814,6 +824,8 @@ func namedFields(n *namedSlide) map[string]any {
 		return teamFields(n)
 	case "matrix_2x2":
 		return matrixFields(n)
+	case "risk_heatmap":
+		return riskHeatmapFields(n)
 	case "architecture":
 		return architectureFields(n)
 	case "process":
@@ -1185,6 +1197,38 @@ var (
 	namedAxes   = regexp.MustCompile(`(?i)\b(likelihood|probability|impact|effort|cost|value|urgency|importance|reach|feasibility)\s*(?:[/×x]|and|vs\.?|by|against|versus)\s*(likelihood|probability|impact|effort|cost|value|urgency|importance|reach|feasibility)\b`)
 	namedRating = regexp.MustCompile(`(?i)^(.+?)\s*\((low|medium|med|high)\s*/\s*(low|medium|med|high)\)$`)
 )
+
+// riskHeatmapFields drafts a risk_heatmap's items from "name (rating/rating)"
+// entries. The ratings are read in the order the sentence names its axes —
+// likelihood first unless it says "impact / likelihood".
+func riskHeatmapFields(n *namedSlide) map[string]any {
+	impactFirst := false
+	if m := namedAxes.FindStringSubmatch(n.sentence); m != nil {
+		impactFirst = strings.EqualFold(m[1], "impact")
+	}
+	level := func(s string) string {
+		if s = strings.ToLower(s); s == "med" {
+			return "medium"
+		}
+		return s
+	}
+	var items []any
+	for _, it := range n.items {
+		m := namedRating.FindStringSubmatch(it)
+		if m == nil {
+			continue
+		}
+		likelihood, impact := level(m[2]), level(m[3])
+		if impactFirst {
+			likelihood, impact = impact, likelihood
+		}
+		items = append(items, map[string]any{"name": strings.TrimSpace(m[1]), "likelihood": likelihood, "impact": impact})
+	}
+	if len(items) == 0 {
+		return nil
+	}
+	return map[string]any{"items": items}
+}
 
 func matrixFields(n *namedSlide) map[string]any {
 	x, y := "Likelihood", "Impact"

@@ -287,6 +287,11 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RoleAnalysis, family: FamilyComparison, density: DensityMedium, layout: "blank-title",
 		pattern: matrixPattern,
 	},
+	KindRiskHeatmap: {
+		// Risks sorted against two axes: the comparison family, like the 2x2.
+		role: RoleAnalysis, family: FamilyComparison, density: DensityMedium, layout: "blank-title",
+		pattern: slides.RiskHeatmapPattern,
+	},
 	KindFramework: {
 		// A framework lays its parts out side by side to be read against each
 		// other, which is the comparison family, and it is always dense.

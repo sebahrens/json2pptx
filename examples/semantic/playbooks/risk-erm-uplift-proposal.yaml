@@ -122,46 +122,28 @@ slides:
     takeaway: Losses exceed both the EUR 8M appetite and the peer median.
     title: Operational losses rose 84% in two years to EUR 11.2M
   - id: heatmap
-    kind: raw_json2pptx
-    slide:
-      content:
-        - placeholder_id: title
-          text_value: Cyber is the only high-likelihood, high-impact risk; three more are high impact
-          type: text
-      layout_id: blank-title
-      pattern:
-        name: capability-heatmap
-        values:
-          columns:
-            - cells:
-                - text: Model risk
-                  tier: 0
-                - text: Climate
-                  tier: 1
-              header: Low likelihood
-              sublabel: 2 risks
-            - cells:
-                - text: Third-party outage
-                  tier: 0
-                - text: Conduct
-                  tier: 1
-                - text: Fraud
-                  tier: 2
-              header: Medium likelihood
-              sublabel: 3 risks
-            - cells:
-                - text: Cyber
-                  tier: 0
-              header: High likelihood
-              sublabel: 1 risk
-          tiers:
-            - description: material loss
-              label: High impact
-            - description: contained loss
-              label: Medium impact
-            - description: minor loss
-              label: Low impact
-      slide_type: content
+    items:
+      - impact: high
+        likelihood: high
+        name: Cyber
+      - impact: high
+        likelihood: medium
+        name: Third-party outage
+      - impact: high
+        likelihood: low
+        name: Model risk
+      - impact: medium
+        likelihood: medium
+        name: Conduct
+      - impact: medium
+        likelihood: low
+        name: Climate
+      - impact: low
+        likelihood: medium
+        name: Fraud
+    kind: risk_heatmap
+    takeaway: Cyber is the one risk rated high on both axes; third-party outage and model risk are high impact.
+    title: Cyber is the only high-likelihood, high-impact risk; two more are high impact
   - columns:
       - header: Today
         items:

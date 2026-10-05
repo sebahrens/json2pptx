@@ -79,7 +79,7 @@ Pick the DeckSpec kind that matches what the title claims, then confirm with
 | a plan over time | `roadmap` (phases) or `timeline` (dated milestones) |
 | a positioning on two dimensions | `matrix_2x2` |
 | exact figures: financials, P&L, pricing, a segment split | `table` (`totals_row` for the total line, units in the header) |
-| where risks sit by likelihood × impact | `matrix_2x2` (axes Likelihood / Impact, each quadrant listing its risks) |
+| where risks sit by likelihood × impact | `risk_heatmap` (a "medium" has its own cell) |
 | the risks and how they are mitigated | `table` (Risk · Likelihood · Impact · Mitigation · Owner), not a card per risk |
 | a reporting or governance structure | `org` |
 | who is on the team | `team` |

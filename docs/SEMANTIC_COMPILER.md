@@ -73,6 +73,7 @@ Initial slide kinds:
 - `stat`
 - `timeline`
 - `matrix_2x2`
+- `risk_heatmap`
 - `framework`
 - `image_case`
 - `process`
@@ -96,6 +97,7 @@ Each content-bearing kind compiles to the named pattern its plan advertises (the
 | `timeline` | `timeline-horizontal` | `milestones: [{label, date?, end_date?, body?}]` | 3–7 milestones; label ≤60 chars, date ≤30, body ≤200; with any `end_date` the dates must be readable as dates (`2026-03`, `Mar 2026`, `Q1 2026`, …) to be drawn to scale |
 | `matrix_2x2` | `matrix-2x2` | `x_axis`, `y_axis`, `quadrants: [{header, body?}] x4` | exactly 4 headed quadrants and both axes named; header ≤80 chars, body ≤200, x axis ≤16, y axis ≤60, axis end ≤11 |
 | `framework` (`bmc`) | `bmc-canvas` | `sections: {key_partners…revenue_streams}` | all 9 cells present; ≤10 items each, ≤200 chars per item |
+| `risk_heatmap` | `risk-heatmap` | `items: [{name, likelihood, impact}]`, `size?` (3 or 5), `likelihood_label?`, `impact_label?`, `likelihood_levels?`, `impact_levels?` (the legend wording, `tier_labels`, is a raw-pattern field) | 1–20 risks, name ≤40 chars, every level on the grid (`low` / `medium` / `high`, 1–size, or a level label); otherwise bullets that keep each risk's two ratings |
 | `framework` (`swot`, `porters_five_forces`) | *native diagram, no pattern* | `sections: {strengths…threats}` / `{rivalry…buyers}` | all 4 / all 5 parts present |
 | `image_case` | `image-text-split` | `body` or `bullets` (+ `image?` (`fit: contain` keeps a whole screenshot), `callouts?: [{label, x, y, units?}]`, `eyebrow?`, `heading?`, `metrics?`, `caption?`, `image_side?`, `image_width_pct?`) | body ≤300 chars, eyebrow ≤30, heading ≤80, ≤5 bullets ≤140 each, ≤3 metrics, ≤6 callouts with a label ≤40; `image_width_pct` 30–60 (default 45) reaches the pattern's `overrides.image_width_pct` — a wide `contain` screenshot wants 55–60 — and a value outside the range is `SEMANTIC_FIELD_TYPE` |
 | `decision` | `numbered-step-strip` / `card-grid` | `options: [{label, detail?, recommended?}]`, `recommendation`, `recommended?` | 3–6 options (label ≤60 chars, detail ≤180), exactly 2 each with a detail, or 7–12 each with a detail (label ≤80, detail ≤160) |

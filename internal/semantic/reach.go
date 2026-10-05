@@ -40,6 +40,7 @@ var patternReach = map[string]SlideKind{
 	"process-flow":         KindProcess,
 	"process-flow-compact": KindProcess,
 	"quote-cluster":        KindQuote,
+	"risk-heatmap":         KindRiskHeatmap,
 	"stat-hero":            KindStat,
 	"stylish-panels":       KindComparison,
 	"table-highlight":      KindOptionMatrix,

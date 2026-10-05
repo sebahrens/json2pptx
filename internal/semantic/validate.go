@@ -168,6 +168,12 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 		"title": shapeString, "milestones": shapeArray, "stops": shapeArray,
 		"events": shapeArray, "timeline": shapeArray, "takeaway": shapeString,
 	},
+	KindRiskHeatmap: {
+		"title": shapeString, "items": shapeArray, "size": shapeNumber,
+		"likelihood_label": shapeString, "impact_label": shapeString,
+		"likelihood_levels": shapeArray, "impact_levels": shapeArray,
+		"takeaway": shapeString,
+	},
 	KindMatrix2x2: {
 		"title": shapeString, "quadrants": shapeArray, "cells": shapeArray, "boxes": shapeArray,
 		"top_left": shapeObject, "top_right": shapeObject, "bottom_left": shapeObject, "bottom_right": shapeObject,
@@ -676,7 +682,7 @@ func validateFieldShapes(path string, slide SlideSpec, s *semDiags) {
 
 // validateKindRules applies the density and richness rules that are specific to
 // individual slide kinds.
-func validateKindRules(path string, slide SlideSpec, s *semDiags) {
+func validateKindRules(path string, slide SlideSpec, s *semDiags) { //nolint:gocyclo // one flat case per slide kind
 	switch slide.Kind {
 	case KindExecutiveSummary:
 		validateExecutiveSummary(path, slide, s)
@@ -710,6 +716,8 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 		validateTimeline(path, slide, s)
 	case KindMatrix2x2:
 		validateMatrix(path, slide, s)
+	case KindRiskHeatmap:
+		validateRiskHeatmap(path, slide, s)
 	case KindDecision:
 		validateDecision(path, slide, s)
 	case KindNextSteps:
@@ -978,6 +986,28 @@ func validateMatrix(path string, slide SlideSpec, s *semDiags) {
 			fmt.Sprintf("matrix %s (otherwise it degrades to a bullet list)", over),
 			"matrix-2x2", degradeToBullets, degradeBudgetExceeded)
 	}
+}
+
+// validateRiskHeatmap reports a risk heat map the grid cannot place
+// (go-slide-creator-ec74l). It still renders — as bullets that keep each
+// risk's two ratings — so the rule says what broke rather than blocking.
+func validateRiskHeatmap(path string, slide SlideSpec, s *semDiags) {
+	const field = "items"
+	n := slides.UsableRiskHeatmapItemCount(slide.Body)
+	if !s.requireUsableContent(path, field, slide.Body, n) {
+		return
+	}
+	reason := slides.RiskHeatmapDegradeReason(slide.Body)
+	if reason == "" {
+		return
+	}
+	why := degradeBudgetExceeded
+	if n > 20 {
+		why = degradeCountOutOfRange
+	}
+	s.degrade(path+"."+field,
+		fmt.Sprintf("risk_heatmap places 1–20 risks (name ≤40 chars) whose likelihood and impact are levels of the grid; %s, so it degrades to a bullet list", reason),
+		"risk-heatmap", degradeToBullets, why)
 }
 
 // validateFramework reports a framework the visual cannot draw. A framework is

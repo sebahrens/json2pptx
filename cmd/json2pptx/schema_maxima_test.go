@@ -558,6 +558,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"pull-quote":          0.0,
 	"pyramid":             7.3,
 	"quote-cluster":       6.2,
+	"risk-heatmap":        3.4, // twenty 40-character names in one cell of a 5 × 5 (go-slide-creator-ec74l)
 	"roadmap-phased":      6.0, // twelve one-period bars per workstream, lanes share the height (go-slide-creator-4a0sm)
 	"scqa-summary":        5.5, // content-weighted rows (k3eb3)
 	"stat-hero":           0.0, // unit is a 40% suffix run, no longer display size (yn2pw)
@@ -617,6 +618,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"pull-quote":                   0,
 	"pyramid":                      8.4,
 	"quote-cluster":                7.0,
+	"risk-heatmap":                 3.8,
 	"roadmap-phased":               6.0, // bars in lanes (go-slide-creator-4a0sm)
 	"scqa-summary":                 6.0,
 	"stat-hero":                    0.0, // unit as a 40% suffix run (yn2pw)
@@ -667,6 +669,11 @@ func coherentMaximum(pattern string, v any) any {
 					option["detail"] = string([]rune(detail)[:limit])
 				}
 			}
+		}
+	case "risk-heatmap":
+		// Five level labels per axis belong to the 5 × 5 grid.
+		if m, ok := v.(map[string]any); ok {
+			m["size"] = 5
 		}
 	case "arch-stack":
 		// A tier draws its components as blocks or its description as text,

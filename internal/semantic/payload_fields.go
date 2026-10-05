@@ -71,6 +71,9 @@ var kpiItemKeys = keyGroups(
 	[]string{"comparator", "vs"},
 )
 
+// riskHeatmapItemKeys are the keys riskHeatmapPayload reads from a risk.
+var riskHeatmapItemKeys = []string{"name", "likelihood", "impact"}
+
 // nextStepsActionKeys are the keys nextStepsPayload reads from an action.
 var nextStepsActionKeys = keyGroups(
 	[]string{"action", "title", "label", "step", "text"}, []string{"owner", "who"}, []string{"date", "due", "when"},
@@ -433,6 +436,22 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"events":   {typ: "array", desc: "Alias for milestones.", itemStrings: true, itemKeys: timelineStopKeys},
 		"timeline": {typ: "array", desc: "Alias for milestones.", itemStrings: true, itemKeys: timelineStopKeys},
 	}, compositionFields()), universalFields()),
+	// risk_heatmap reads no aliases and takes no composition override: its
+	// schema rides in every tools/list, which is within bytes of its budget.
+	KindRiskHeatmap: withFields(map[string]payloadField{
+		"title":    strField("Slide title."),
+		"takeaway": strField("One-line takeaway footer."),
+		"items": {
+			typ:      "array",
+			desc:     "1–20 risks {name (≤40 chars), likelihood, impact}; a level is low / medium / high, 1–size, or one of the level labels.",
+			itemKeys: riskHeatmapItemKeys,
+		},
+		"size":              {typ: "number", desc: "Grid size: 3 (default) or 5."},
+		"likelihood_label":  strField("Horizontal axis title (default Likelihood)."),
+		"impact_label":      strField("Vertical axis title (default Impact)."),
+		"likelihood_levels": textList("Level labels, lowest first; one per level, ≤14 chars."),
+		"impact_levels":     textList("Level labels, lowest first."),
+	}, universalFields()),
 	KindMatrix2x2: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
 		"takeaway": strField("One-line takeaway footer."),
