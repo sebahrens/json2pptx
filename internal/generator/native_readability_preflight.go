@@ -70,6 +70,9 @@ type nativeShapeSource struct {
 	lo, hi      uint32
 	path        string
 	diagramType string
+	// budget is the diagram's measured capacity, set when its layout had to
+	// shrink text; it rides on the readability findings of its shapes.
+	budget *nativeFitBudget
 }
 
 // tagNativeInserts stamps the native groups registered for one diagram

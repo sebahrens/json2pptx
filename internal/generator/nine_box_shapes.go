@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -47,34 +48,49 @@ const (
 	nineBoxGap int64 = 73152
 
 	// nineBoxLabelFontSize is the cell label font size (hundredths of a point).
-	// 1100 = 11pt
-	nineBoxLabelFontSize int = 1100
+	// 1200 = 12pt
+	nineBoxLabelFontSize int = 1200
 
-	// nineBoxItemFontSize is the item name font size (hundredths of a point).
-	// 1000 = 10pt (small to fit multiple names in cells)
-	nineBoxItemFontSize int = 1000
+	// nineBoxItemFontSize is the name font size: the 12pt body step, the
+	// smallest size a projected slide carries. It was 10pt, in one column
+	// (go-slide-creator-35rsq).
+	nineBoxItemFontSize int = tokens.TypeScaleBodyHPt
 
 	// nineBoxItemSpaceAfter is the space after each listed name (hundredths
 	// of a point).
 	nineBoxItemSpaceAfter int = 200
 
-	// nineBoxAxisFontSize is the axis label font size (hundredths of a point).
-	// 1000 = 10pt
-	nineBoxAxisFontSize int = 1000
+	// nineBoxMaxColumns is the most columns a cell sets its names in.
+	nineBoxMaxColumns = 3
 
-	// nineBoxAxisTitleFontSize is the axis title font size (hundredths of a point).
-	// 1100 = 11pt
-	nineBoxAxisTitleFontSize int = 1100
+	// nineBoxAxisFontSize is the axis tick label font size (hundredths of a
+	// point). 1200 = 12pt
+	nineBoxAxisFontSize int = tokens.TypeScaleBodyHPt
 
-	// nineBoxLabelHeightRatio is the fraction of cell height used for the label area.
-	nineBoxLabelHeightRatio = 0.22
+	// nineBoxAxisTitleFontSize is the axis title font size (hundredths of a
+	// point), set bold. 1200 = 12pt
+	nineBoxAxisTitleFontSize int = tokens.TypeScaleBodyHPt
 
-	// nineBoxAxisSpace is the space reserved for axis labels (EMU).
-	// Y-axis labels on the left, X-axis labels on the bottom.
-	nineBoxAxisLabelSpace int64 = 457200 // ~0.5"
+	// nineBoxAxisLineOffset is the distance of an axis line from the grid and
+	// nineBoxAxisLineClear the room between the line and its labels (EMU).
+	nineBoxAxisLineOffset int64 = 5 * 12700
+	nineBoxAxisLineClear  int64 = 2 * 12700
 
-	// nineBoxAxisTitleSpace is additional space for axis titles (EMU).
-	nineBoxAxisTitleSpace int64 = 228600 // ~0.25"
+	// nineBoxAxisStrip is the thickness of one line of axis text — a title or
+	// a row of tick labels (20pt).
+	nineBoxAxisStrip int64 = 20 * 12700
+
+	// nineBoxAxisLineWidth is the axis line width (0.75pt).
+	nineBoxAxisLineWidth int64 = 9525
+
+	// nineBoxMaxBudgetNames bounds the search for how many names a cell holds.
+	nineBoxMaxBudgetNames = 12
+
+	// nineBoxDefaultXTitle / nineBoxDefaultYTitle are the axes a talent grid
+	// is drawn on when the author names none: the two scales its employees
+	// are placed by (docs/diagrams/nine_box_talent.md).
+	nineBoxDefaultXTitle = "Performance"
+	nineBoxDefaultYTitle = "Potential"
 )
 
 func nineBoxSemanticTints(semanticAccents map[string]string) []taxonomyTint {
@@ -135,8 +151,11 @@ type nineBoxCellData struct {
 func nineBoxPanels(diagramSpec *types.DiagramSpec) ([]nativePanelData, int) {
 	// Parse cells and axis info from DiagramSpec.Data.
 	cells := parseNineBoxCells(diagramSpec.Data)
-	xAxisLabel, _ := diagramSpec.Data["x_axis_label"].(string)
-	yAxisLabel, _ := diagramSpec.Data["y_axis_label"].(string)
+	// x_label / y_label are the spellings the svggen renderer took and the
+	// shipped example uses. They were accepted and not read, so the grid was
+	// drawn with no axes at all (go-slide-creator-35rsq).
+	xAxisLabel := nineBoxAxisTitle(diagramSpec.Data, nineBoxDefaultXTitle, "x_axis_label", "x_label")
+	yAxisLabel := nineBoxAxisTitle(diagramSpec.Data, nineBoxDefaultYTitle, "y_axis_label", "y_label")
 	xAxisLabels := parseNineBoxAxisLabels(diagramSpec.Data, "x_axis_labels")
 	yAxisLabels := parseNineBoxAxisLabels(diagramSpec.Data, "y_axis_labels")
 
@@ -187,6 +206,17 @@ func nineBoxPanels(diagramSpec *types.DiagramSpec) ([]nativePanelData, int) {
 	return panels, len(cells)
 }
 
+// nineBoxAxisTitle returns the axis title stated under the first of keys that
+// carries one, or def when none does.
+func nineBoxAxisTitle(data map[string]any, def string, keys ...string) string {
+	for _, k := range keys {
+		if s, ok := data[k].(string); ok && strings.TrimSpace(s) != "" {
+			return s
+		}
+	}
+	return def
+}
+
 // encodeNineBoxAxes encodes axis labels into a single string for transport in nativePanelData.
 // Format: "xTitle\nxL0\nxL1\nxL2\nyTitle\nyL0\nyL1\nyL2"
 func encodeNineBoxAxes(xTitle, yTitle string, xLabels, yLabels [3]string) string {
@@ -206,9 +236,309 @@ func decodeNineBoxAxes(encoded string) (xTitle string, yTitle string, xLabels, y
 	return
 }
 
+// Laying the grid out from its text (go-slide-creator-35rsq).
+//
+// A nine-box is a regular 3×3 grid on two axes, so its rows stay equal; what
+// varies is how many names a cell lists. A landscape content area gives a
+// cell about three times the width of a name and, on the shortest shipped
+// templates, the height of two 12pt lines under its label. Names were written
+// at 10pt in one column and shrunk to 8.8pt when a cell held four. They are
+// now set at 12pt and the cell gives, in this order:
+//
+//  1. Width before height. A cell whose names do not fit in one column sets
+//     them in two or three, filled column by column.
+//  2. Padding before type. A grid that still does not fit steps the top and
+//     bottom text margins down nativeVerticalPadSteps.
+//  3. Only then does the writer store an autofit scale, which generation
+//     reports with the budget nineBoxFitBudget measured.
+//
+// The axes are drawn as axes — a line with an arrowhead along the bottom and
+// up the left, each over its title — so the grid reads as performance against
+// potential rather than as nine cards. They took 0.75in of height for a row of
+// Low / Medium / High and a title; the arrow says which way a scale rises, and
+// the tick labels are drawn only when the author names them.
+
+// nineBoxCell is one cell laid out: its label, and its names split into the
+// columns they are set in.
+type nineBoxCell struct {
+	title   string
+	columns [][]string
+}
+
+// nineBoxLayout is the grid's geometry and the name columns of each cell.
+type nineBoxLayout struct {
+	gridX, gridY, gridW, gridH int64
+	cellW, cellH, labelCY      int64
+	pad                        int64
+	cells                      [9]nineBoxCell
+	axes                       nineBoxAxes
+	fits                       bool
+}
+
+// nineBoxAxes are the axis titles and the tick labels the author named, the
+// y ticks in row order (top row first).
+type nineBoxAxes struct {
+	xTitle, yTitle string
+	xTicks, yTicks [3]string
+}
+
+func (a nineBoxAxes) hasX() bool { return a.xTitle != "" || a.xTicks != [3]string{} }
+func (a nineBoxAxes) hasY() bool { return a.yTitle != "" || a.yTicks != [3]string{} }
+
+// band is the thickness of an axis: the line's offset from the grid, then a
+// strip for the ticks and one for the title, when present.
+func nineBoxAxisBand(title string, ticks [3]string) int64 {
+	if title == "" && ticks == [3]string{} {
+		return 0
+	}
+	band := nineBoxAxisLineOffset + nineBoxAxisLineClear
+	if ticks != [3]string{} {
+		band += nineBoxAxisStrip
+	}
+	if title != "" {
+		band += nineBoxAxisStrip
+	}
+	return band
+}
+
+// nineBoxNames parses a cell body back into its names.
+func nineBoxNames(body string) []string {
+	var names []string
+	for _, line := range strings.Split(body, "\n") {
+		line = strings.TrimSpace(line)
+		if name := strings.TrimPrefix(line, "- "); name != "" {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+// nineBoxColumnText is the text body of name column j of n. The first column
+// is the body shape's own text, held to its column by the right inset.
+func nineBoxColumnText(names []string, j, n int, bodyW, pad int64, tint taxonomyTint, env nativeDiagramEnv) pptx.TextBody {
+	// A cell lists names, one per line: the 6pt panel bullet spacing left a
+	// four-name cell on a short content area at a third of its size
+	// (go-slide-creator-zbo58).
+	lines := make([]string, len(names))
+	for i, name := range names {
+		lines[i] = "- " + name
+	}
+	var paras []pptx.Paragraph
+	if len(lines) > 0 {
+		paras = pptx.ParseBulletText(strings.Join(lines, "\n"), pptx.BulletTextOptions{
+			FontSize:    nineBoxItemFontSize,
+			Lang:        "en-US",
+			Dirty:       true,
+			BulletColor: pptx.SchemeFill(panelBulletSchemeColor),
+			SpaceAfter:  nineBoxItemSpaceAfter,
+		})
+		// The last name needs no space under it.
+		paras[len(paras)-1].SpaceAfter = 0
+	}
+	// Use the same accent color for bullets but with full strength.
+	bulletColor := pptx.ResolveColorString(tint.scheme)
+	for i := range paras {
+		if paras[i].Bullet != nil {
+			paras[i].Bullet.Color = bulletColor
+		}
+	}
+	diagramPanelBodyColors(paras, tint.scheme)
+
+	insets := nativeCardBodyInsets()
+	insets[3] = pad
+	insets = nativeColumnInsets(insets, j, n, bodyW)
+	return pptx.TextBody{
+		Wrap:       "square",
+		Anchor:     "t",
+		Insets:     insets,
+		AutoFit:    "normAutofit",
+		Paragraphs: paras,
+		ThemeFonts: pptx.ThemeFonts{Major: env.fontName, Minor: env.fontName},
+	}
+}
+
+// nineBoxLabelText is the text body of a cell's label.
+func nineBoxLabelText(label string, pad int64, tint taxonomyTint, env nativeDiagramEnv) pptx.TextBody {
+	insets := nativeCardHeaderInsets()
+	insets[1] = pad
+	return pptx.TextBody{
+		Wrap:    "square",
+		Anchor:  "ctr",
+		Insets:  insets,
+		AutoFit: "normAutofit",
+		Paragraphs: []pptx.Paragraph{{
+			Align:    nativeHeaderAlign,
+			NoBullet: true,
+			Runs: []pptx.Run{{
+				Text:     label,
+				Lang:     "en-US",
+				FontSize: nineBoxLabelFontSize,
+				Bold:     true,
+				Dirty:    true,
+				Color:    tint.titleFill(),
+			}},
+		}},
+		ThemeFonts: pptx.ThemeFonts{Major: env.fontName, Minor: env.fontName},
+	}
+}
+
+// nineBoxColumnsFit reports whether names, set in c columns, are written
+// without a shrink in a cell body of the given size.
+func nineBoxColumnsFit(names []string, c int, body pptx.RectEmu, pad int64, tint taxonomyTint, env nativeDiagramEnv) bool {
+	cols := nativeSplitColumns(names, c)
+	for j, col := range cols {
+		text := nineBoxColumnText(col, j, len(cols), body.CX, pad, tint, env)
+		rect := nativeColumnRect(body, j, len(cols))
+		if nativeTextNeedAtMarginEMU(text, rect.CX, rect.CY+1) > rect.CY {
+			return false
+		}
+		// Columns are for short names: one that wraps in its column reads
+		// worse there than in a single column at a tighter margin.
+		if len(cols) > 1 {
+			blank := make([]string, len(col))
+			for i := range blank {
+				blank[i] = "x"
+			}
+			oneLine := nativeTextNeedAtMarginEMU(nineBoxColumnText(blank, j, len(cols), body.CX, pad, tint, env), rect.CX, rect.CY+1)
+			if nativeTextNeedAtMarginEMU(text, rect.CX, rect.CY+1) > oneLine+int64(types.EMUPerPoint) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// layoutNineBox lays the nine cells and the axes out in bounds. panels is the
+// encoded list: the axis metadata, then the nine cells row by row.
+func layoutNineBox(panels []nativePanelData, bounds types.BoundingBox, tints []taxonomyTint, env nativeDiagramEnv) nineBoxLayout {
+	var l nineBoxLayout
+	xTitle, yTitle, xTicks, yTicks := decodeNineBoxAxes(panels[0].body)
+	// Y-axis labels are in ascending order [low, medium, high] by convention,
+	// but rows are top-to-bottom [high, medium, low], so reverse them.
+	l.axes = nineBoxAxes{xTitle: xTitle, yTitle: yTitle, xTicks: xTicks, yTicks: [3]string{yTicks[2], yTicks[1], yTicks[0]}}
+
+	yBand := nineBoxAxisBand(l.axes.yTitle, l.axes.yTicks)
+	xBand := nineBoxAxisBand(l.axes.xTitle, l.axes.xTicks)
+	l.gridX, l.gridY = bounds.X+yBand, bounds.Y
+	l.gridW, l.gridH = bounds.Width-yBand, bounds.Height-xBand
+	l.cellW = (l.gridW - 2*nineBoxGap) / 3
+	l.cellH = (l.gridH - 2*nineBoxGap) / 3
+
+	names := [9][]string{}
+	for i := range names {
+		l.cells[i].title = panels[1+i].title
+		names[i] = nineBoxNames(panels[1+i].body)
+	}
+
+	for _, pad := range nativeVerticalPadSteps {
+		l.pad = pad
+		l.labelCY = 0
+		for i := range l.cells {
+			l.labelCY = max(l.labelCY, nativeHeaderNeedEMU(nineBoxLabelText(l.cells[i].title, pad, tints[i], env), l.cellW, l.cellH))
+		}
+		body := pptx.RectEmu{CX: l.cellW, CY: l.cellH - l.labelCY}
+		l.fits = l.labelCY < l.cellH/2
+		for i := range l.cells {
+			l.cells[i].columns = nil
+			if len(names[i]) == 0 {
+				continue
+			}
+			for c := 1; c <= nineBoxMaxColumns && l.cells[i].columns == nil; c++ {
+				if nineBoxColumnsFit(names[i], c, body, pad, tints[i], env) {
+					l.cells[i].columns = nativeSplitColumns(names[i], c)
+				}
+			}
+			if l.cells[i].columns == nil {
+				l.fits = false
+			}
+		}
+		if l.fits {
+			return l
+		}
+	}
+	// Nothing left to give but the type: the writer stores the shrink each
+	// over-full cell then needs.
+	for i := range l.cells {
+		if len(names[i]) > 0 && l.cells[i].columns == nil {
+			l.cells[i].columns = nativeSplitColumns(names[i], nineBoxOverfullColumns(names[i], l, tints[i], env))
+		}
+	}
+	return l
+}
+
+// nineBoxOverfullColumns is how many columns a cell too full for 12pt sets its
+// names in: the most that still keep every name on one line, which is the
+// shortest list and so the smallest shrink.
+func nineBoxOverfullColumns(names []string, l nineBoxLayout, tint taxonomyTint, env nativeDiagramEnv) int {
+	tall := pptx.RectEmu{CX: l.cellW, CY: 100 * int64(types.EMUPerInch)}
+	need := func(name string, c int) int64 {
+		return nativeTextNeedAtMarginEMU(nineBoxColumnText([]string{name}, 1, c, l.cellW, l.pad, tint, env), nativeColumnRect(tall, 1, c).CX, tall.CY)
+	}
+	for c := nineBoxMaxColumns; c > 1; c-- {
+		oneLine := true
+		for _, name := range names {
+			if need(name, c) > need("x", c)+int64(types.EMUPerPoint) {
+				oneLine = false
+				break
+			}
+		}
+		if oneLine {
+			return c
+		}
+	}
+	return 1
+}
+
+// nineBoxFitBudget measures what a cell holds at the authored size in bounds:
+// how many names of the diagram's own longest length every cell can list, and
+// how many characters a one-line name takes in the columns that count needs.
+func nineBoxFitBudget(panels []nativePanelData, bounds types.BoundingBox, tints []taxonomyTint, env nativeDiagramEnv) nativeFitBudget {
+	longest := "Name"
+	for _, p := range panels[1:] {
+		for _, name := range nineBoxNames(p.body) {
+			if len([]rune(name)) > len([]rune(longest)) {
+				longest = name
+			}
+		}
+	}
+	probe := func(n int, name string) nineBoxLayout {
+		filled := append([]nativePanelData{}, panels...)
+		lines := make([]string, n)
+		for i := range lines {
+			lines[i] = "- " + name
+		}
+		for i := 1; i < len(filled); i++ {
+			filled[i].body = strings.Join(lines, "\n")
+		}
+		return layoutNineBox(filled, bounds, tints, env)
+	}
+	// A name too long for any column is its own problem; count with one that
+	// fits a single column so the count says what the height holds.
+	if !probe(1, longest).fits {
+		longest = "Name"
+	}
+	items, columns := 0, 1
+	for n := 1; n <= nineBoxMaxBudgetNames; n++ {
+		l := probe(n, longest)
+		if !l.fits {
+			break
+		}
+		items, columns = n, len(l.cells[0].columns)
+	}
+	l := probe(1, longest)
+	bodyW := l.cellW
+	chars := nativeOneLineChars(func(s string) pptx.TextBody {
+		return nineBoxColumnText([]string{s}, min(1, columns-1), columns, bodyW, l.pad, tints[0], env)
+	}, nativeColumnRect(pptx.RectEmu{CX: bodyW}, min(1, columns-1), columns).CX)
+	return nativeFitBudget{
+		item: "name", container: "cell", maxItems: items, maxChars: chars,
+		sizePt: float64(nineBoxItemFontSize) / 100,
+	}
+}
+
 // generateNineBoxGroupXML produces the complete <p:grpSp> XML for a 3x3 nine box grid
-// with axis labels.
-func generateNineBoxGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, tints []taxonomyTint) string { //nolint:gocognit
+// with its axes.
+func generateNineBoxGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, tints []taxonomyTint, env nativeDiagramEnv) string {
 	// panels[0] = axis metadata, panels[1..9] = cells [row*3+col]
 	if len(panels) != 10 {
 		slog.Warn("generateNineBoxGroupXML: expected 10 panels (1 axis + 9 cells)", "got", len(panels))
@@ -217,162 +547,43 @@ func generateNineBoxGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 	if len(tints) != 9 {
 		tints = nineBoxSemanticTints(nil)
 	}
-
-	// Decode axis info from first panel.
-	xAxisTitle, yAxisTitle, xAxisLabels, yAxisLabels := decodeNineBoxAxes(panels[0].body)
-
-	// Determine space needed for axes.
-	hasYAxis := yAxisTitle != "" || yAxisLabels[0] != ""
-	hasXAxis := xAxisTitle != "" || xAxisLabels[0] != ""
-
-	yAxisWidth := int64(0)
-	if hasYAxis {
-		yAxisWidth = nineBoxAxisLabelSpace
-		if yAxisTitle != "" {
-			yAxisWidth += nineBoxAxisTitleSpace
-		}
-	}
-
-	xAxisHeight := int64(0)
-	if hasXAxis {
-		xAxisHeight = nineBoxAxisLabelSpace
-		if xAxisTitle != "" {
-			xAxisHeight += nineBoxAxisTitleSpace
-		}
-	}
-
-	// Grid bounds (after reserving space for axes).
-	gridX := bounds.X + yAxisWidth
-	gridY := bounds.Y
-	gridW := bounds.Width - yAxisWidth
-	gridH := bounds.Height - xAxisHeight
-
-	// 3x3 grid cell dimensions.
-	cellW := (gridW - 2*nineBoxGap) / 3
-	cellH := (gridH - 2*nineBoxGap) / 3
-
-	// Label height within each cell.
-	labelCY := int64(float64(cellH) * nineBoxLabelHeightRatio)
-	bodyCY := cellH - labelCY
+	l := layoutNineBox(panels, bounds, tints, env)
 
 	var children [][]byte
-	shapeIdx := uint32(0)
+	nextID := shapeIDBase
+	id := func() uint32 { nextID++; return nextID }
 
 	// Generate 9 cells.
 	for row := 0; row < 3; row++ {
 		for col := 0; col < 3; col++ {
-			panelIdx := 1 + row*3 + col // skip axis panel at index 0
-			if panelIdx >= len(panels) {
-				continue
-			}
-			panel := panels[panelIdx]
-			colorIdx := row*3 + col
-			colors := tints[colorIdx]
-
-			cellX := gridX + int64(col)*(cellW+nineBoxGap)
-			cellY := gridY + int64(row)*(cellH+nineBoxGap)
-
-			shapeIdx++
-			labelID := shapeIDBase + shapeIdx
-			shapeIdx++
-			bodyID := shapeIDBase + shapeIdx
+			i := row*3 + col
+			cell, tint := l.cells[i], tints[i]
+			cellX := l.gridX + int64(col)*(l.cellW+nineBoxGap)
+			cellY := l.gridY + int64(row)*(l.cellH+nineBoxGap)
 
 			// Label shape: the score band's fill under a bold left-aligned title
-			labelXML := generateNineBoxCellLabelXML(
-				panel.title, cellX, cellY, cellW, labelCY,
-				labelID, colors,
-			)
-			children = append(children, []byte(labelXML))
+			label := nineBoxLabelText(cell.title, l.pad, tint, env)
+			children = append(children, []byte(generateNineBoxShapeXML(
+				"NineBox "+cell.title, pptx.RectEmu{X: cellX, Y: cellY, CX: l.cellW, CY: l.labelCY}, id(), &tint, label)))
 
-			// Body shape: the same fill, top-aligned names
-			bodyXML := generateNineBoxCellBodyXML(
-				panel.body, cellX, cellY+labelCY, cellW, bodyCY,
-				bodyID, colors,
-			)
-			children = append(children, []byte(bodyXML))
-		}
-	}
-
-	// Generate axis labels as text box shapes.
-	if hasXAxis {
-		// X-axis value labels (bottom of grid, centered under each column).
-		xLabelY := gridY + gridH + nineBoxGap/2
-		xLabelH := nineBoxAxisLabelSpace - nineBoxGap/2
-
-		// Default x-axis labels.
-		if xAxisLabels[0] == "" {
-			xAxisLabels = [3]string{"Low", "Medium", "High"}
-		}
-
-		for col := 0; col < 3; col++ {
-			if xAxisLabels[col] == "" {
-				continue
+			// Body shape: the same fill, top-aligned names in its first column
+			body := pptx.RectEmu{X: cellX, Y: cellY + l.labelCY, CX: l.cellW, CY: l.cellH - l.labelCY}
+			n := len(cell.columns)
+			var first []string
+			if n > 0 {
+				first = cell.columns[0]
 			}
-			shapeIdx++
-			labelX := gridX + int64(col)*(cellW+nineBoxGap)
-			xlbl := generateNineBoxAxisLabelXML(
-				xAxisLabels[col], labelX, xLabelY, cellW, xLabelH,
-				shapeIDBase+shapeIdx, nineBoxAxisFontSize, "ctr", false,
-			)
-			children = append(children, []byte(xlbl))
-		}
-
-		// X-axis title (centered below value labels).
-		if xAxisTitle != "" {
-			shapeIdx++
-			titleY := xLabelY + xLabelH
-			xlbl := generateNineBoxAxisLabelXML(
-				xAxisTitle, gridX, titleY, gridW, nineBoxAxisTitleSpace,
-				shapeIDBase+shapeIdx, nineBoxAxisTitleFontSize, "ctr", true,
-			)
-			children = append(children, []byte(xlbl))
-		}
-	}
-
-	if hasYAxis {
-		// Y-axis value labels (left of grid, centered beside each row).
-		// Y-axis labels are in ascending order [low, medium, high] by convention,
-		// but rows are top-to-bottom [high, medium, low], so reverse them.
-		if yAxisLabels[0] == "" {
-			yAxisLabels = [3]string{"High", "Medium", "Low"}
-		} else {
-			yAxisLabels = [3]string{yAxisLabels[2], yAxisLabels[1], yAxisLabels[0]}
-		}
-
-		yLabelX := bounds.X
-		if yAxisTitle != "" {
-			yLabelX += nineBoxAxisTitleSpace
-		}
-		yLabelW := nineBoxAxisLabelSpace
-		if yAxisTitle != "" {
-			yLabelW -= nineBoxAxisTitleSpace
-		}
-
-		for row := 0; row < 3; row++ {
-			if yAxisLabels[row] == "" {
-				continue
+			children = append(children, []byte(generateNineBoxShapeXML(
+				"NineBox Body", body, id(), &tint, nineBoxColumnText(first, 0, n, body.CX, l.pad, tint, env))))
+			for j := 1; j < n; j++ {
+				children = append(children, []byte(generateNineBoxShapeXML(
+					"NineBox Names", nativeColumnRect(body, j, n), id(), nil,
+					nineBoxColumnText(cell.columns[j], j, n, body.CX, l.pad, tint, env))))
 			}
-			shapeIdx++
-			labelY := gridY + int64(row)*(cellH+nineBoxGap)
-			ylbl := generateNineBoxAxisLabelXML(
-				yAxisLabels[row], yLabelX, labelY, yLabelW, cellH,
-				shapeIDBase+shapeIdx, nineBoxAxisFontSize, "ctr", false,
-			)
-			children = append(children, []byte(ylbl))
-		}
-
-		// Y-axis title (rotated 90° CCW, centered to the left of value labels).
-		if yAxisTitle != "" {
-			shapeIdx++
-			// For rotated text, we create a text box rotated -90° (270°).
-			// Position: left edge of bounds, vertically centered.
-			ylbl := generateNineBoxAxisTitleVerticalXML(
-				yAxisTitle, bounds.X, gridY, nineBoxAxisTitleSpace, gridH,
-				shapeIDBase+shapeIdx,
-			)
-			children = append(children, []byte(ylbl))
 		}
 	}
+
+	children = append(children, nineBoxAxisShapes(l, bounds, id)...)
 
 	groupBounds := pptx.RectEmu{X: bounds.X, Y: bounds.Y, CX: bounds.Width, CY: bounds.Height}
 	b, err := pptx.GenerateGroup(pptx.GroupOptions{
@@ -388,154 +599,141 @@ func generateNineBoxGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 	return string(b)
 }
 
-// generateNineBoxCellLabelXML produces the label shape of a nine box cell.
-func generateNineBoxCellLabelXML(label string, x, y, cx, cy int64, shapeID uint32, tint taxonomyTint) string {
-	b, err := pptx.GenerateShape(pptx.ShapeOptions{
-		ID:       shapeID,
-		Name:     "NineBox " + label,
-		Bounds:   pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
-		Geometry: nativeSurfaceGeometry,
-		Fill:     tint.fill(),
-		Line:     pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
-		Text: &pptx.TextBody{
-			Wrap:    "square",
-			Anchor:  "ctr",
-			Insets:  nativeCardHeaderInsets(),
-			AutoFit: "noAutofit",
-			Paragraphs: []pptx.Paragraph{{
-				Align:    nativeHeaderAlign,
-				NoBullet: true,
-				Runs: []pptx.Run{{
-					Text:     label,
-					Lang:     "en-US",
-					FontSize: nineBoxLabelFontSize,
-					Bold:     true,
-					Dirty:    true,
-					Color:    tint.titleFill(),
-				}},
-			}},
-		},
-	})
-	if err != nil {
-		slog.Warn("generateNineBoxCellLabelXML failed", "error", err)
-		return ""
-	}
-	return string(b)
-}
-
-// generateNineBoxCellBodyXML produces the body shape of a nine box cell.
-func generateNineBoxCellBodyXML(body string, x, y, cx, cy int64, shapeID uint32, tint taxonomyTint) string {
-	// A cell lists names, one per line: the 6pt panel bullet spacing left a
-	// four-name cell on a short content area at a third of its size
-	// (go-slide-creator-zbo58).
-	var paras []pptx.Paragraph
-	if body != "" {
-		paras = pptx.ParseBulletText(body, pptx.BulletTextOptions{
-			FontSize:    nineBoxItemFontSize,
-			Lang:        "en-US",
-			Dirty:       true,
-			BulletColor: pptx.SchemeFill(panelBulletSchemeColor),
-			SpaceAfter:  nineBoxItemSpaceAfter,
-		})
-	}
-
-	// Use the same accent color for bullets but with full strength.
-	bulletColor := pptx.ResolveColorString(tint.scheme)
-	for i := range paras {
-		if paras[i].Bullet != nil {
-			paras[i].Bullet.Color = bulletColor
+// nineBoxAxisShapes draws the axes: below the grid a line with an arrowhead
+// pointing right, the tick labels the author named and the title; left of it
+// the same, turned to read bottom to top with the arrowhead pointing up.
+func nineBoxAxisShapes(l nineBoxLayout, bounds types.BoundingBox, id func() uint32) [][]byte {
+	var out [][]byte
+	if l.axes.hasX() {
+		y := l.gridY + l.gridH + nineBoxAxisLineOffset
+		out = append(out, []byte(generateNineBoxAxisLineXML(
+			pptx.RectEmu{X: l.gridX, Y: y, CX: l.gridW, CY: 0}, id(), "X-Axis", false)))
+		y += nineBoxAxisLineClear
+		if l.axes.xTicks != [3]string{} {
+			for col, tick := range l.axes.xTicks {
+				if tick == "" {
+					continue
+				}
+				x := l.gridX + int64(col)*(l.cellW+nineBoxGap)
+				out = append(out, []byte(generateNineBoxAxisLabelXML(
+					tick, pptx.RectEmu{X: x, Y: y, CX: l.cellW, CY: nineBoxAxisStrip}, id(), nineBoxAxisFontSize, false, false)))
+			}
+			y += nineBoxAxisStrip
+		}
+		if l.axes.xTitle != "" {
+			out = append(out, []byte(generateNineBoxAxisLabelXML(
+				l.axes.xTitle, pptx.RectEmu{X: l.gridX, Y: y, CX: l.gridW, CY: nineBoxAxisStrip}, id(), nineBoxAxisTitleFontSize, true, false)))
 		}
 	}
-	diagramPanelBodyColors(paras, tint.scheme)
-
-	b, err := pptx.GenerateShape(pptx.ShapeOptions{
-		ID:       shapeID,
-		Name:     "NineBox Body",
-		Bounds:   pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
-		Geometry: nativeSurfaceGeometry,
-		Fill:     tint.fill(),
-		Line:     pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
-		Text: &pptx.TextBody{
-			Wrap:       "square",
-			Anchor:     "t",
-			Insets:     nativeCardBodyInsets(),
-			AutoFit:    "normAutofit",
-			Paragraphs: paras,
-		},
-	})
-	if err != nil {
-		slog.Warn("generateNineBoxCellBodyXML failed", "error", err)
-		return ""
+	if l.axes.hasY() {
+		x := l.gridX - nineBoxAxisLineOffset
+		out = append(out, []byte(generateNineBoxAxisLineXML(
+			pptx.RectEmu{X: x, Y: l.gridY, CX: 0, CY: l.gridH}, id(), "Y-Axis", true)))
+		x -= nineBoxAxisLineClear
+		if l.axes.yTicks != [3]string{} {
+			x -= nineBoxAxisStrip
+			for row, tick := range l.axes.yTicks {
+				if tick == "" {
+					continue
+				}
+				y := l.gridY + int64(row)*(l.cellH+nineBoxGap)
+				out = append(out, []byte(generateNineBoxAxisLabelXML(
+					tick, pptx.RectEmu{X: x, Y: y, CX: nineBoxAxisStrip, CY: l.cellH}, id(), nineBoxAxisFontSize, false, true)))
+			}
+		}
+		if l.axes.yTitle != "" {
+			out = append(out, []byte(generateNineBoxAxisLabelXML(
+				l.axes.yTitle, pptx.RectEmu{X: bounds.X, Y: l.gridY, CX: nineBoxAxisStrip, CY: l.gridH}, id(), nineBoxAxisTitleFontSize, true, true)))
+		}
 	}
-	return string(b)
+	return out
 }
 
-// generateNineBoxAxisLabelXML produces a text box shape for an axis label.
-func generateNineBoxAxisLabelXML(text string, x, y, cx, cy int64, shapeID uint32, fontSize int, align string, bold bool) string {
-	b, err := pptx.GenerateShape(pptx.ShapeOptions{
+// generateNineBoxShapeXML produces one text-bearing shape of a cell: a card in
+// the cell's tint, or — with no tint — an unfilled text box over one.
+func generateNineBoxShapeXML(name string, rect pptx.RectEmu, shapeID uint32, tint *taxonomyTint, text pptx.TextBody) string {
+	opts := pptx.ShapeOptions{
 		ID:       shapeID,
-		Name:     "Axis Label",
-		Bounds:   pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
+		Name:     name,
+		Bounds:   rect,
 		Geometry: pptx.GeomRect,
 		Fill:     pptx.NoFill(),
 		TxBox:    true,
-		Text: &pptx.TextBody{
-			Wrap:    "square",
-			Anchor:  "ctr",
-			Insets:  pptx.ShapeTextInsets(),
-			AutoFit: "noAutofit",
-			Paragraphs: []pptx.Paragraph{{
-				Align:    align,
-				NoBullet: true,
-				Runs: []pptx.Run{{
-					Text:     text,
-					Lang:     "en-US",
-					FontSize: fontSize,
-					Bold:     bold,
-					Dirty:    true,
-					Color:    pptx.SchemeFill("dk1"),
-				}},
+		Text:     &text,
+	}
+	if tint != nil {
+		opts.Geometry = nativeSurfaceGeometry
+		opts.Fill = tint.fill()
+		opts.Line = pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()}
+		opts.TxBox = false
+	}
+	b, err := pptx.GenerateShape(opts)
+	if err != nil {
+		slog.Warn("generateNineBoxShapeXML failed", "name", name, "error", err)
+		return ""
+	}
+	return string(b)
+}
+
+// generateNineBoxAxisLineXML produces an axis: a straight line with an
+// arrowhead at the end its scale rises toward — the right end of the x-axis,
+// the top of the y-axis.
+func generateNineBoxAxisLineXML(rect pptx.RectEmu, shapeID uint32, name string, upward bool) string {
+	b, err := pptx.GenerateConnector(pptx.ConnectorOptions{
+		ID:       shapeID,
+		Name:     name,
+		Geometry: pptx.GeomStraightConnector1,
+		Bounds:   rect,
+		Line:     pptx.Line{Width: nineBoxAxisLineWidth, Fill: pptx.SchemeFill("dk1")},
+		// A vertical line is drawn top to bottom; flipped, it runs bottom to
+		// top and its tail — the arrowhead — is at the top.
+		FlipV:   upward,
+		TailEnd: &pptx.ArrowHead{Type: "triangle", W: "med", Len: "med"},
+	})
+	if err != nil {
+		slog.Warn("generateNineBoxAxisLineXML failed", "error", err)
+		return ""
+	}
+	return string(b)
+}
+
+// generateNineBoxAxisLabelXML produces a centred text box for an axis title or
+// tick label; vertical ones read bottom to top.
+func generateNineBoxAxisLabelXML(text string, rect pptx.RectEmu, shapeID uint32, fontSize int, bold, vertical bool) string {
+	body := pptx.TextBody{
+		Wrap:    "square",
+		Anchor:  "ctr",
+		Insets:  pptx.ShapeTextInsets(),
+		AutoFit: "noAutofit",
+		Paragraphs: []pptx.Paragraph{{
+			Align:    "ctr",
+			NoBullet: true,
+			Runs: []pptx.Run{{
+				Text:     text,
+				Lang:     "en-US",
+				FontSize: fontSize,
+				Bold:     bold,
+				Dirty:    true,
+				Color:    pptx.SchemeFill("dk1"),
 			}},
-		},
+		}},
+	}
+	name := "Axis Label"
+	if vertical {
+		body.Vert = "vert270"
+		name = "Y-Axis Label"
+	}
+	b, err := pptx.GenerateShape(pptx.ShapeOptions{
+		ID:       shapeID,
+		Name:     name,
+		Bounds:   rect,
+		Geometry: pptx.GeomRect,
+		Fill:     pptx.NoFill(),
+		TxBox:    true,
+		Text:     &body,
 	})
 	if err != nil {
 		slog.Warn("generateNineBoxAxisLabelXML failed", "error", err)
-		return ""
-	}
-	return string(b)
-}
-
-// generateNineBoxAxisTitleVerticalXML produces a rotated (-90°) text box for the Y-axis title.
-func generateNineBoxAxisTitleVerticalXML(text string, x, y, cx, cy int64, shapeID uint32) string {
-	b, err := pptx.GenerateShape(pptx.ShapeOptions{
-		ID:       shapeID,
-		Name:     "Y-Axis Title",
-		Bounds:   pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
-		Geometry: pptx.GeomRect,
-		Rotation: 16200000, // 270° in 60,000ths of a degree (= -90° = reads bottom-to-top)
-		Fill:     pptx.NoFill(),
-		TxBox:    true,
-		Text: &pptx.TextBody{
-			Wrap:    "square",
-			Anchor:  "ctr",
-			Insets:  pptx.ShapeTextInsets(),
-			AutoFit: "noAutofit",
-			Paragraphs: []pptx.Paragraph{{
-				Align:    nativeHeaderAlign,
-				NoBullet: true,
-				Runs: []pptx.Run{{
-					Text:     text,
-					Lang:     "en-US",
-					FontSize: nineBoxAxisTitleFontSize,
-					Bold:     true,
-					Dirty:    true,
-					Color:    pptx.SchemeFill("dk1"),
-				}},
-			}},
-		},
-	})
-	if err != nil {
-		slog.Warn("generateNineBoxAxisTitleVerticalXML failed", "error", err)
 		return ""
 	}
 	return string(b)

@@ -99,20 +99,21 @@ The separate `svggen-mcp` server builds diagrams: its `get_started` and
 deck palette, pass `resolve_theme`'s `theme_colors` (same template and
 `theme_override`) to each diagram's `style.theme_colors`; `validate_input`
 judges contrast against the deck's `theme_override` colours too. Run
-`validate_input` with the fit report after embedding a chart or diagram; a
-collision or unreadable native text means shorter labels or more space, then
-render the slide again.
+`validate_input` with the fit report after embedding one; a collision means
+shorter labels or more space.
 
 Native types (`swot`, `porters_five_forces`, `pestel`,
 `business_model_canvas`, `value_chain`, `nine_box_talent`, `kpi_dashboard`,
 `process_flow`, `heatmap`, `pyramid`, `house_diagram`, `panel_layout`; aliases
 `icon_columns` / `icon_rows` / `stat_cards`) also render as editable shapes in
-a `shape_grid` cell or `compose` segment, sized to it. Text under the 7pt
-floor is refused with `DIAGRAM_REGION_TOO_SMALL` (`fix.params.min_width_emu`
-/ `min_height_emu`): enlarge the region, use a body placeholder
-(`diagram_value`) or cut items. A word too wide for its shape reports
-`TEXT_EXCEEDS_SHAPE` (`fix.params.words`). Diagram/chart data keys are
-strict at every level: an undrawn key is `unknown_key`.
+a `shape_grid` cell or `compose` segment, sized to it. Text under 7pt is
+refused as `DIAGRAM_REGION_TOO_SMALL` (`fix.params.min_width_emu` /
+`min_height_emu`): enlarge the region, use a body placeholder
+(`diagram_value`) or cut items. A word wider than its shape is
+`TEXT_EXCEEDS_SHAPE` (`fix.params.words`); text shrunk to fit,
+`TEXT_BELOW_READABLE_MIN` (`max_items_per_*`, `max_chars_per_item`).
+Diagram/chart data keys are strict at every level: an undrawn key is
+`unknown_key`.
 
 Diagrams use one hue by default (accent1 and its tints, neutral surfaces;
 framework diagrams take accent-tinted cards only with `style.colors`). To make

@@ -101,6 +101,12 @@ func GenerateGridNativeDiagram(spec *types.DiagramSpec, region NativeDiagramRegi
 	if f := nativeWordFitFinding(spec.Type, region.Path, xml, env.fontName); f != nil {
 		out.Findings = append(out.Findings, *f)
 	}
+	// A region the diagram had to shrink its text in: the readability finding
+	// the slide scan raises names a rendered shape, so the measured budget is
+	// stated here, against the cell.
+	if b := layout.insert.fitBudget; b != nil {
+		out.Warnings = append(out.Warnings, fmt.Sprintf("%s: text was shrunk to fit this region; %s", region.Path, b.sentence(spec.Type)))
+	}
 	if layout.panelLayout != "" && panelsHaveIcons(layout.insert.panels) {
 		rects := panelIconRects(layout.panelLayout, layout.insert.bounds, layout.insert.panels, env.fontName)
 		for i, p := range layout.insert.panels {

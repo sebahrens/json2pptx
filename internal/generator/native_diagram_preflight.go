@@ -209,7 +209,7 @@ func measureNativeText(text, font string, size float64, width int64) int64 {
 
 func nativeBMCPreflight(spec *types.DiagramSpec, font, path string, width, height int64) []patterns.FitFinding {
 	sections := parseBMCSections(spec.Data)
-	cells := bmcCellRects(bmcPanels(spec), types.BoundingBox{Width: width, Height: height})
+	cells := bmcCellRects(bmcPanels(spec), types.BoundingBox{Width: width, Height: height}, font)
 	out := bmcIgnoredKeyFindings(spec, path)
 	for _, key := range bmcSectionOrder {
 		sec := sections[key]
@@ -310,7 +310,7 @@ func nativeValueChainPreflight(spec *types.DiagramSpec, font, path string, width
 	cellH := height / 2
 	var out []patterns.FitFinding
 	for i, panel := range panels {
-		required := measureNativeText(panel.title, font, 12, cellW) + measureNativeText(panel.body, font, 10, cellW)
+		required := measureNativeText(panel.title, font, 12, cellW) + measureNativeText(panel.body, font, float64(vcBodyFontSize)/100, cellW)
 		if required > cellH {
 			out = append(out, nativeTextCollisionFinding(spec.Type, slidepath.Field(path, fmt.Sprintf("data.activities[%d]", i)), panel.title, panel.body, required, cellH))
 		}

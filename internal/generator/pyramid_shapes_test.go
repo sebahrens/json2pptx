@@ -358,7 +358,7 @@ func TestPyramidLongApexDoesNotCollapseBase(t *testing.T) {
 		{title: "Base"},
 	}
 	heights, gap := pyramidLevelHeights(panels, bounds, pyramidLabelFontSize, pyramidDescFontSize, "Arial")
-	minimum := 2*pyramidTextInset + int64(11*1.2*float64(types.EMUPerPoint))
+	minimum := 2*nativeVerticalPadSteps[len(nativeVerticalPadSteps)-1] + int64(12*1.2*float64(types.EMUPerPoint))
 	if heights[1] < minimum || heights[2] < minimum {
 		t.Errorf("long apex starved other tiers below one readable line: %v", heights)
 	}

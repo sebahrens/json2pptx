@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -48,15 +49,15 @@ func TestTaxonomyAuthoredHexEmitsValidRGBColors(t *testing.T) {
 			return generateSWOTGroupXML(panels[:4], bounds, 100, taxonomyPalette(spec, 4, swotDefaultTint))
 		}},
 		{"PESTEL", func() string {
-			return generatePESTELGroupXML(panels[:6], bounds, 100, taxonomyPalette(spec, 6, uniformTaxonomyTint))
+			return generatePESTELGroupXML(panels[:6], bounds, 100, taxonomyPalette(spec, 6, uniformTaxonomyTint), "")
 		}},
 		{"business canvas", func() string {
-			return generateBMCGroupXML(panels[:9], bounds, 100, taxonomyPalette(spec, 9, bmcDefaultTint))
+			return generateBMCGroupXML(panels[:9], bounds, 100, taxonomyPalette(spec, 9, bmcDefaultTint), "")
 		}},
 		{"nine box semantic accent", func() string {
 			return generateNineBoxGroupXML(panels, bounds, 100, nineBoxSemanticTints(map[string]string{
 				"negative": "#0097A7", "neutral": "#0097A7", "positive": "#0097A7",
-			}))
+			}), nativeDiagramEnv{})
 		}},
 	}
 	for _, tt := range tests {
@@ -80,7 +81,7 @@ func TestNativeDiagramBuildersEmitAccentTints(t *testing.T) {
 		build func() string
 	}{
 		{"value chain", func() string {
-			return generateVCSupportBarXML(panels[0], 0, 0, 2000000, 500000, 1, taxonomyTint{scheme: "accent4", lumMod: 40000, lumOff: 60000})
+			return generateVCSupportBarXML(panels[0], 0, 0, 2000000, 500000, 1, taxonomyTint{scheme: "accent4", lumMod: 40000, lumOff: 60000}, pptx.ShapeTextInsetEMU, "")
 		}},
 		{"SWOT", func() string {
 			return generateSWOTHeaderXML("Strengths", 0, 0, 2000000, 500000, 1, taxonomyTint{scheme: "accent4", lumMod: 20000, lumOff: 80000})
@@ -89,7 +90,7 @@ func TestNativeDiagramBuildersEmitAccentTints(t *testing.T) {
 			return generatePESTELHeaderXML("Political", 0, 0, 2000000, 500000, 1, taxonomyTint{scheme: "accent4", lumMod: 20000, lumOff: 80000})
 		}},
 		{"nine box", func() string {
-			return generateNineBoxCellLabelXML("Star", 0, 0, 2000000, 500000, 1, taxonomyTint{scheme: "accent4", lumMod: 20000, lumOff: 80000})
+			return nineBoxTestLabelXML("Star", 500000, 1, taxonomyTint{scheme: "accent4", lumMod: 20000, lumOff: 80000})
 		}},
 		{"KPI dashboard", func() string {
 			return generateKPICardXML(panels[0], 0, 0, 2000000, 1500000, 1, taxonomyTint{scheme: "accent4", lumMod: 20000, lumOff: 80000}, nil)
@@ -126,12 +127,13 @@ func TestAuthoredTaxonomyPanelsUseReadableTextAndBullets(t *testing.T) {
 		{"business canvas", func(c string) string {
 			return generateBMCCellHeaderXML("Title", 0, 0, 2000000, 400000, 1, taxonomyTint{scheme: c})
 		}, func(c string) string {
-			return generateBMCCellBodyXML("- Detail", 0, 0, 2000000, 1000000, 2, taxonomyTint{scheme: c})
+			return generateBMCCellBodyXML("- Detail", 0, 0, 2000000, 1000000, 2, taxonomyTint{scheme: c}, pptx.ShapeTextInsetEMU, "")
 		}},
 		{"nine box", func(c string) string {
-			return generateNineBoxCellLabelXML("Title", 0, 0, 2000000, 400000, 1, taxonomyTint{scheme: c})
+			return nineBoxTestLabelXML("Title", 400000, 1, taxonomyTint{scheme: c})
 		}, func(c string) string {
-			return generateNineBoxCellBodyXML("- Detail", 0, 0, 2000000, 1000000, 2, taxonomyTint{scheme: c})
+			return generateNineBoxShapeXML("NineBox Body", pptx.RectEmu{CX: 2000000, CY: 1000000}, 2, &taxonomyTint{scheme: c},
+				nineBoxColumnText([]string{"Detail"}, 0, 1, 2000000, pptx.ShapeTextInsetEMU, taxonomyTint{scheme: c}, nativeDiagramEnv{}))
 		}},
 	}
 	for _, color := range []struct{ hex, text string }{{"#102030", "FFFFFF"}, {"#F5F5F5", "000000"}} {
@@ -157,4 +159,10 @@ func TestDiagramPanelTextFillFallsBackForUnknownColor(t *testing.T) {
 			t.Errorf("color %q fallback = %s, want theme dark text", color, xml.String())
 		}
 	}
+}
+
+// nineBoxTestLabelXML draws one cell label, 2000000 EMU wide at the origin.
+func nineBoxTestLabelXML(label string, cy int64, shapeID uint32, tint taxonomyTint) string {
+	return generateNineBoxShapeXML("NineBox "+label, pptx.RectEmu{CX: 2000000, CY: cy}, shapeID, &tint,
+		nineBoxLabelText(label, pptx.ShapeTextInsetEMU, tint, nativeDiagramEnv{}))
 }

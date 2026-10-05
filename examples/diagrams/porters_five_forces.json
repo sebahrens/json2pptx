@@ -17,6 +17,7 @@
           "placeholder_id": "body",
           "type": "diagram",
           "diagram_value": {
+            "alt": "Porter's five forces for enterprise cloud services: rivalry is high at 90%, buyer power 70%, supplier power 60%, substitutes 50% and new entrants low at 30%.",
             "type": "porters_five_forces",
             "title": "Enterprise Cloud Services",
             "data": {

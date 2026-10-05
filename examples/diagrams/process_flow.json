@@ -17,6 +17,7 @@
           "placeholder_id": "body",
           "type": "diagram",
           "diagram_value": {
+            "alt": "Process flow of order fulfillment in seven steps, from order received through payment, inventory and shipping to notifying the customer.",
             "type": "process_flow",
             "title": "Order Fulfillment Process",
             "data": {

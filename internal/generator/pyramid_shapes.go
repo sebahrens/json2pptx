@@ -8,6 +8,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/textfit"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -40,21 +41,15 @@ const (
 	// ~0.03" = 27432 EMU — tight gap for compact stacking.
 	pyramidGapEMU int64 = 27432
 
-	// pyramidLabelFontSize is the level label font size (hundredths of a point).
-	// 1100 = 11pt
-	pyramidLabelFontSize int = 1100
+	// pyramidLabelFontSize is the level label font size (hundredths of a
+	// point), set bold. 1200 = 12pt (it was 11pt, and 9pt from eight levels).
+	pyramidLabelFontSize int = tokens.TypeScaleBodyHPt
 
-	// pyramidLabelFontSizeSmall is for pyramids with many levels (8+).
-	// 900 = 9pt
-	pyramidLabelFontSizeSmall int = 900
-
-	// pyramidDescFontSize is the description font size (hundredths of a point).
-	// 900 = 9pt
-	pyramidDescFontSize int = 900
-
-	// pyramidDescFontSizeSmall is for pyramids with many levels (8+).
-	// 700 = 7pt
-	pyramidDescFontSizeSmall int = 700
+	// pyramidDescFontSize is the description font size: the 12pt body step,
+	// the smallest size a projected slide carries. It was 9pt — 7pt from
+	// eight levels — written with no shrink for any check to see
+	// (go-slide-creator-6ne1m).
+	pyramidDescFontSize int = tokens.TypeScaleBodyHPt
 
 	// pyramidTextInset is the text inset for level shapes (EMU): the uniform
 	// 0.5 cm shape text margin.
@@ -64,8 +59,11 @@ const (
 	// 0.15 = 15% of full width, matching the SVG default.
 	pyramidTopWidthRatio float64 = 0.15
 
-	// pyramidMaxApexRatio caps how far pyramidApexRatio widens the apex.
-	pyramidMaxApexRatio float64 = 0.30
+	// pyramidMaxApexRatio caps how far pyramidApexRatio widens the apex. At
+	// 12pt a description needs more of a narrow column than it did at 9pt:
+	// the cap went from 0.30 to 0.40 so "description" stays whole in a third
+	// of a slide.
+	pyramidMaxApexRatio float64 = 0.40
 
 	// pyramidBoldWidthFactor allows for a bold label measured in the regular
 	// face.
@@ -155,17 +153,17 @@ func generatePyramidGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 
 	centerX := bounds.X + bounds.Width/2
 
-	// Choose font sizes based on level count.
+	// One size at every level count. A pyramid of eight levels used to drop
+	// to 9pt labels over 7pt descriptions; a pyramid too dense for its region
+	// now gives up padding, then stores a shrink the readability check
+	// reports with the level count that fits.
 	labelFontSize := pyramidLabelFontSize
 	descFontSize := pyramidDescFontSize
-	if numLevels >= 8 {
-		labelFontSize = pyramidLabelFontSizeSmall
-		descFontSize = pyramidDescFontSizeSmall
-	}
+	themeFonts := pptx.ThemeFonts{Major: fontName, Minor: fontName}
 	if fontName == "" {
 		fontName = "Arial"
 	}
-	levelHeights, levelGap := pyramidLevelHeights(panels, bounds, labelFontSize, descFontSize, fontName)
+	levelHeights, levelGap, pad, _ := pyramidLevelLayout(panels, bounds, labelFontSize, descFontSize, fontName)
 	apex := pyramidApexRatio(panels, bounds, labelFontSize, descFontSize, fontName)
 
 	var children [][]byte
@@ -235,9 +233,10 @@ func generatePyramidGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 			Text: &pptx.TextBody{
 				Wrap:       "square",
 				Anchor:     "ctr",
-				Insets:     pptx.ShapeTextInsets(),
+				Insets:     [4]int64{pyramidTextInset, pad, pyramidTextInset, pad},
 				AutoFit:    "normAutofit",
 				Paragraphs: paras,
+				ThemeFonts: themeFonts,
 			},
 		})
 		if err != nil {
@@ -320,13 +319,72 @@ func pyramidApexRatio(panels []nativePanelData, bounds types.BoundingBox, labelS
 // placeholder height. Text is measured at its authored font size against the
 // trapezoid's midpoint width, not the much wider bounding rectangle.
 func pyramidLevelHeights(panels []nativePanelData, bounds types.BoundingBox, labelSize, descSize int, fontName string) ([]int64, int64) {
+	heights, gap, _, _ := pyramidLevelLayout(panels, bounds, labelSize, descSize, fontName)
+	return heights, gap
+}
+
+// pyramidLevelLayout sizes the tiers at the first top / bottom text margin of
+// nativeVerticalPadSteps at which every tier holds its text at the authored
+// size: a pyramid gives up the air in its tiers before its type. One that fits
+// at no step keeps the last, and its tiers share the shortfall
+// (go-slide-creator-6ne1m).
+func pyramidLevelLayout(panels []nativePanelData, bounds types.BoundingBox, labelSize, descSize int, fontName string) (heights []int64, gap, pad int64, fits bool) {
+	for _, pad = range nativeVerticalPadSteps {
+		heights, gap, fits = pyramidLevelHeightsAt(panels, bounds, labelSize, descSize, fontName, pad)
+		if fits {
+			break
+		}
+	}
+	return heights, gap, pad, fits
+}
+
+// pyramidFitBudget measures what the pyramid holds at the authored size in
+// bounds: how many levels of a one-line label and a one-line description, and
+// how many characters a line takes in the apex, the narrowest tier.
+func pyramidFitBudget(panels []nativePanelData, bounds types.BoundingBox, fontName string) nativeFitBudget {
+	if fontName == "" {
+		fontName = "Arial"
+	}
+	levels := 0
+	for n := 1; n <= pyramidMaxLevels; n++ {
+		probe := make([]nativePanelData, n)
+		for i := range probe {
+			probe[i] = nativePanelData{title: "Level", body: "Detail"}
+		}
+		if _, _, _, fits := pyramidLevelLayout(probe, bounds, pyramidLabelFontSize, pyramidDescFontSize, fontName); !fits {
+			break
+		}
+		levels = n
+	}
+	// The apex of a pyramid of that many levels, at its widest.
+	n := max(levels, 2)
+	adj := pyramidTrapezoidAdjApex(0, n, pyramidMaxApexRatio, pyramidMaxApexRatio)
+	mid := int64(float64(bounds.Width) * pyramidMaxApexRatio * (1 - float64(adj)/100000))
+	chars := 0
+	sample := []rune(nativeBudgetSample)
+	for k := 1; k <= len(sample); k++ {
+		w, err := textfit.MeasureLineWidth(strings.TrimSpace(string(sample[:k])), fontName, float64(pyramidDescFontSize)/100)
+		if err != nil || w > mid-2*pyramidTextInset-2*91440 {
+			break
+		}
+		chars = k
+	}
+	return nativeFitBudget{
+		item: "level", container: "pyramid", maxItems: levels, maxChars: chars,
+		sizePt: float64(pyramidDescFontSize) / 100,
+	}
+}
+
+// pyramidLevelHeightsAt is the tier heights at a top / bottom text margin of
+// pad, and whether every tier then holds its text unshrunk.
+func pyramidLevelHeightsAt(panels []nativePanelData, bounds types.BoundingBox, labelSize, descSize int, fontName string, pad int64) ([]int64, int64, bool) {
 	n := len(panels)
 	if n == 0 {
-		return nil, 0
+		return nil, 0, true
 	}
 	gap := pyramidGapEMU
 	apex := pyramidApexRatio(panels, bounds, labelSize, descSize, fontName)
-	minimumTierHeight := 2*pyramidTextInset + int64(math.Ceil(float64(labelSize)/100*1.2*float64(types.EMUPerPoint)))
+	minimumTierHeight := 2*pad + int64(math.Ceil(float64(labelSize)/100*1.2*float64(types.EMUPerPoint)))
 	if bounds.Height <= int64(n-1)*gap+int64(n)*minimumTierHeight {
 		gap = 0
 	}
@@ -346,7 +404,7 @@ func pyramidLevelHeights(panels []nativePanelData, bounds types.BoundingBox, lab
 		if textWidth < 1 {
 			textWidth = 1
 		}
-		need := 2 * pyramidTextInset
+		need := 2 * pad
 		if strings.TrimSpace(panel.title) != "" {
 			need += measureNativeText(panel.title, fontName, float64(labelSize)/100, textWidth)
 		}
@@ -393,7 +451,7 @@ func pyramidLevelHeights(panels []nativePanelData, bounds types.BoundingBox, lab
 		assigned += height
 	}
 	heights[n-1] += available - assigned
-	return heights, gap
+	return heights, gap, totalWeight <= available
 }
 
 // pyramidTrapezoidAdj computes the OOXML trapezoid adj value for a given level.
@@ -489,4 +547,13 @@ func pyramidLevelTextColor(levelIndex, numLevels int) pptx.Fill {
 // 1 (group) + N (level shapes)
 func pyramidEstimateShapeCount(panels []nativePanelData) uint32 {
 	return uint32(1 + len(panels))
+}
+
+// pyramidMeasureFont is the face a pyramid's tiers are measured in: the
+// template's body face, or Arial when the template names none.
+func pyramidMeasureFont(fontName string) string {
+	if fontName == "" {
+		return "Arial"
+	}
+	return fontName
 }

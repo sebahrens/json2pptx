@@ -17,6 +17,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "Pie chart of market share: Enterprise 42%, Mid-Market 28%, SMB 18% and Consumer 12%.",
             "type": "pie",
             "title": "Market Share (%)",
             "data": {

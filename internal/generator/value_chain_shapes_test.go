@@ -141,7 +141,7 @@ func TestGenerateValueChainGroupXML_Basic(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 10000000, Height: 5000000}
 
-	result := generateValueChainGroupXML(panels, bounds, 100, meta, nativeSurface{})
+	result := generateValueChainGroupXML(panels, bounds, 100, meta, nativeSurface{}, "")
 
 	if result == "" {
 		t.Fatal("generateValueChainGroupXML returned empty string")
@@ -240,7 +240,7 @@ func TestGenerateValueChainGroupXML_NoMargin(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 5000000}
 
-	result := generateValueChainGroupXML(panels, bounds, 100, meta, nativeSurface{})
+	result := generateValueChainGroupXML(panels, bounds, 100, meta, nativeSurface{}, "")
 
 	if result == "" {
 		t.Fatal("should generate XML without margin")
@@ -270,7 +270,7 @@ func TestGenerateValueChainGroupXML_PrimaryOnly(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 5000000}
 
-	result := generateValueChainGroupXML(panels, bounds, 100, meta, nativeSurface{})
+	result := generateValueChainGroupXML(panels, bounds, 100, meta, nativeSurface{}, "")
 
 	if result == "" {
 		t.Fatal("should generate XML with primary-only activities")
@@ -294,7 +294,7 @@ func TestGenerateValueChainGroupXML_Empty(t *testing.T) {
 	meta := valueChainMeta{supportCount: 0, primaryCount: 0}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 5000000}
 
-	result := generateValueChainGroupXML(panels, bounds, 100, meta, nativeSurface{})
+	result := generateValueChainGroupXML(panels, bounds, 100, meta, nativeSurface{}, "")
 	if result != "" {
 		t.Error("should return empty for zero activities")
 	}

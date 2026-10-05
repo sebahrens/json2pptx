@@ -17,6 +17,7 @@
           "placeholder_id": "body",
           "type": "diagram",
           "diagram_value": {
+            "alt": "Nine-box talent grid placing fourteen engineers by current performance and growth potential: two stars, four core employees and no one in the lowest cell.",
             "type": "nine_box_talent",
             "title": "Engineering Team Assessment",
             "data": {

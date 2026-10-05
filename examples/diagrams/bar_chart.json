@@ -17,6 +17,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "Grouped bar chart of quarterly sales in four regions: East leads every quarter and all four regions grow from Q1 to Q4.",
             "type": "grouped_bar",
             "title": "Sales by Region ($K)",
             "data": {

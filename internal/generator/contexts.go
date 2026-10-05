@@ -100,7 +100,10 @@ type panelShapeInsert struct {
 	valueChainMeta    valueChainMeta    // Metadata for value chain layout (primary/support counts, margin)
 	kpiDashboardMode  bool              // True for KPI Dashboard grid layout
 	portersFiveMode   bool              // True for Porter's Five Forces cross layout
-	bmcMode           bool              // True for Business Model Canvas 9-box layout
+	// fitBudget is what the diagram's region holds at the authored size,
+	// measured only for a layout that had to shrink its text; nil otherwise.
+	fitBudget *nativeFitBudget
+	bmcMode   bool // True for Business Model Canvas 9-box layout
 	// taxonomyTints are the per-cell fills for a taxonomy framework (SWOT /
 	// PESTEL / BMC), resolved at registration where the diagram spec — and so
 	// any authored style.colors — is still in hand (go-slide-creator-w0kj).

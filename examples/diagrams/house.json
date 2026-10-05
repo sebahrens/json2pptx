@@ -17,6 +17,7 @@
           "placeholder_id": "body",
           "type": "diagram",
           "diagram_value": {
+            "alt": "Strategy house: a vision of leading digital payments on four pillars — technology, product, people and operations — over a foundation of core values.",
             "type": "house_diagram",
             "title": "Strategy House",
             "data": {
@@ -41,6 +42,7 @@
           "placeholder_id": "body",
           "type": "diagram",
           "diagram_value": {
+            "alt": "Strategy house with enabling levels between its pillars and its foundation.",
             "type": "house_diagram",
             "data": {
               "roof": "Leader in digital payments",

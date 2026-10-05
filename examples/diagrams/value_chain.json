@@ -17,6 +17,7 @@
           "placeholder_id": "body",
           "type": "diagram",
           "diagram_value": {
+            "alt": "Value chain with four support activities above five primary activities, from inbound logistics to service, leading to margin.",
             "type": "value_chain",
             "title": "Manufacturing Value Chain",
             "data": {

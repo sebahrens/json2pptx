@@ -17,6 +17,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "Donut chart of budget allocation: Engineering 35%, Sales and Marketing 25%, Operations 20%, G&A 12% and R&D 8%.",
             "type": "donut",
             "title": "Budget Allocation (%)",
             "data": {

@@ -211,7 +211,7 @@ func TestGeneratePortersFiveGroupXML_Basic(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 9000000, Height: 6000000}
 
-	result := generatePortersFiveGroupXML(panels, bounds, 100, nil)
+	result := generatePortersFiveGroupXML(panels, bounds, 100, nativeDiagramEnv{})
 
 	if result == "" {
 		t.Fatal("generatePortersFiveGroupXML returned empty string")
@@ -293,7 +293,7 @@ func TestGeneratePortersFiveGroupXML_Basic(t *testing.T) {
 }
 
 func TestGeneratePortersFiveGroupXML_EmptyPanels(t *testing.T) {
-	result := generatePortersFiveGroupXML(nil, types.BoundingBox{Width: 8000000, Height: 5000000}, 100, nil)
+	result := generatePortersFiveGroupXML(nil, types.BoundingBox{Width: 8000000, Height: 5000000}, 100, nativeDiagramEnv{})
 	if result != "" {
 		t.Error("should return empty for nil panels")
 	}
@@ -308,7 +308,7 @@ func TestGeneratePortersFiveGroupXML_PartialForces(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 9000000, Height: 6000000}
 
-	result := generatePortersFiveGroupXML(panels, bounds, 100, nil)
+	result := generatePortersFiveGroupXML(panels, bounds, 100, nativeDiagramEnv{})
 
 	if result == "" {
 		t.Fatal("should generate XML for partial forces")
@@ -330,7 +330,7 @@ func TestGeneratePortersFiveGroupXML_NoFactors(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 9000000, Height: 6000000}
 
-	result := generatePortersFiveGroupXML(panels, bounds, 100, nil)
+	result := generatePortersFiveGroupXML(panels, bounds, 100, nativeDiagramEnv{})
 
 	if result == "" {
 		t.Fatal("should generate XML even without factors")
@@ -409,7 +409,7 @@ func TestPorterTintAndIntensityTextOnSaturatedAccent(t *testing.T) {
 	white := svggen.MustParseColor("#FFFFFF")
 	for _, intensity := range []float64{0.1, 0.5, 0.9} {
 		force := porterForceData{label: "Rivalry", intensity: &intensity}
-		xml := generatePorterForceBoxXML(force, 0, 0, 2000000, 1000000, 1, false, theme)
+		xml := porterTestBoxXML(force, 1, theme)
 		_, retained, off := porterIntensityColor(&intensity)
 		if !strings.Contains(xml, fmt.Sprintf(`<a:tint val="%d"/>`, retained)) || strings.Contains(xml, "lumOff") {
 			t.Errorf("intensity %.1f: expected RGB tint, got %s", intensity, xml)
@@ -672,9 +672,18 @@ func generatePorterFiveForcesXMLForTest(t *testing.T) string {
 		{title: "Threat of Substitutes", value: string(porterSubstitute) + ":0.5", body: "- In-house build"},
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 9144000, Height: 5143500}
-	xml := generatePortersFiveGroupXML(panels, bounds, 100, nil)
+	xml := generatePortersFiveGroupXML(panels, bounds, 100, nativeDiagramEnv{})
 	if xml == "" {
 		t.Fatal("generatePortersFiveGroupXML returned empty XML")
 	}
 	return xml
+}
+
+// porterTestBoxXML draws one stacked peripheral force box, 2000000 x 1000000
+// EMU at the origin, the way the layout writes it.
+func porterTestBoxXML(f porterForceData, shapeID uint32, theme []types.ThemeColor) string {
+	text, _, _ := porterBoxText(f, false, false, 2000000, pptx.ShapeTextInsetEMU, nativeDiagramEnv{themeColors: theme})
+	return generatePorterForceBoxXML(porterBox{
+		force: f, rect: pptx.RectEmu{CX: 2000000, CY: 1000000}, text: text,
+	}, shapeID)
 }
