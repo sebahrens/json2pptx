@@ -3236,12 +3236,17 @@ func placeholderIDStr(ph types.PlaceholderInfo) string {
 func chromeToFooterConfig(chrome *ChromeInput, totalSlides int, slides []SlideInput) *generator.FooterConfig {
 	base := composeChromeLine(chrome)
 	cfg := &generator.FooterConfig{
-		Enabled:     true,
-		LeftText:    base,
-		TotalSlides: totalSlides,
+		Enabled:       true,
+		LeftText:      base,
+		TotalSlides:   totalSlides,
+		LeftFallbacks: chromeLineFallbacks(chrome, ""),
+		LeftTextPath:  "/chrome",
 	}
 	if chrome.SectionCrumb {
 		cfg.LeftTextBySlide = sectionCrumbFooterLines(base, slides)
+		for i := range cfg.LeftFallbacks {
+			cfg.LeftFallbacks[i].LeftTextBySlide = sectionCrumbFooterLines(cfg.LeftFallbacks[i].LeftText, slides)
+		}
 	}
 	if chrome.PageNumbers != nil {
 		if chrome.PageNumbers.Enabled != nil && !*chrome.PageNumbers.Enabled {
@@ -3282,11 +3287,60 @@ func footerConfigForInput(input *PresentationInput, totalSlides int) *generator.
 		} else {
 			cfg.LeftText += " | " + legacyText
 		}
+		cfg.LeftFallbacks = chromeLineFallbacks(input.Chrome, legacyText)
 		if input.Chrome.SectionCrumb {
 			cfg.LeftTextBySlide = sectionCrumbFooterLines(cfg.LeftText, input.Slides)
+			for i := range cfg.LeftFallbacks {
+				cfg.LeftFallbacks[i].LeftTextBySlide = sectionCrumbFooterLines(cfg.LeftFallbacks[i].LeftText, input.Slides)
+			}
 		}
 	}
 	return cfg
+}
+
+// chromeDropOrder is the order the footer line gives up chrome fields when it
+// does not fit the template's footer slot: the project code first (the title
+// slide carries it), then the date. The confidentiality marking and the client
+// name are never dropped (go-slide-creator-m2tlt).
+var chromeDropOrder = []string{"project_code", "footer_date"}
+
+// chromeLineFallbacks builds the footer line's fallbacks for
+// generator.FooterConfig.LeftFallbacks: the line without project_code, then
+// without project_code and footer_date. legacyText is the footer.left_text the
+// full line carries appended, if any. A field the chrome does not set yields no
+// fallback, and the line is never dropped to nothing.
+func chromeLineFallbacks(chrome *ChromeInput, legacyText string) []generator.FooterFallback {
+	var out []generator.FooterFallback
+	reduced := *chrome
+	var dropped []string
+	for _, field := range chromeDropOrder {
+		switch field {
+		case "project_code":
+			if reduced.ProjectCode == "" {
+				continue
+			}
+			reduced.ProjectCode = ""
+		case "footer_date":
+			if reduced.FooterDate == "" {
+				continue
+			}
+			reduced.FooterDate = ""
+		}
+		line := composeChromeLine(&reduced)
+		if legacyText != "" {
+			if line == "" {
+				line = legacyText
+			} else {
+				line += " | " + legacyText
+			}
+		}
+		if line == "" {
+			break
+		}
+		dropped = append(dropped, field)
+		out = append(out, generator.FooterFallback{Dropped: append([]string(nil), dropped...), LeftText: line})
+	}
+	return out
 }
 
 func chromeContainsFooterText(chrome *ChromeInput, text string) bool {
@@ -3453,24 +3507,30 @@ func applyChromeSectionCrumb(footer *generator.FooterConfig, specs []generator.S
 		return
 	}
 	sections := runningSectionTitles(specs, slides, layouts)
-	lines := make([]string, len(sections))
-	any := false
-	for i, sec := range sections {
-		if sec == "" {
-			continue
+	crumbLines := func(base string) []string {
+		lines := make([]string, len(sections))
+		any := false
+		for i, sec := range sections {
+			if sec == "" {
+				continue
+			}
+			any = true
+			if base == "" {
+				lines[i] = sec
+			} else {
+				lines[i] = base + " | " + sec
+			}
 		}
-		any = true
-		if footer.LeftText == "" {
-			lines[i] = sec
-		} else {
-			lines[i] = footer.LeftText + " | " + sec
+		if !any {
+			return nil
 		}
+		return lines
 	}
-	if !any {
-		footer.LeftTextBySlide = nil
-		return
+	footer.LeftTextBySlide = crumbLines(footer.LeftText)
+	// The fallbacks the fitter may switch the deck to carry the same crumb.
+	for i := range footer.LeftFallbacks {
+		footer.LeftFallbacks[i].LeftTextBySlide = crumbLines(footer.LeftFallbacks[i].LeftText)
 	}
-	footer.LeftTextBySlide = lines
 }
 
 // runningSectionTitles is the per-slide running section shared by

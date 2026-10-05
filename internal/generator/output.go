@@ -711,6 +711,9 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 	// When footers are disabled (or skipped for this slide), remove only EMPTY
 	// footer placeholders to prevent blank shapes from reserving space.
 	skipFooterThisSlide := false
+	// Fit the left footer line once for the whole deck, so every slide drops
+	// the same segments (go-slide-creator-m2tlt).
+	ctx.resolveFooterLineForDeck()
 	if spec, ok := ctx.slideContentMap[slideNum]; ok {
 		skipFooterThisSlide = spec.SkipFooter
 	}

@@ -26,7 +26,7 @@ Send `spec` (a JSON object or a YAML/JSON string) with `meta` and either flat `s
 never both. Chapters add numbered section dividers;
 `meta.chrome.section_crumb: true` puts the section in the footer,
 `meta.chrome.tracker: true` above each content title. Divider numbers are
-generated: do not hand-author them. A section (or `section` slide) with
+generated. A section (or `section` slide) with
 `appendix: true` is back matter: an unnumbered divider (later chapters keep
 their numbers), outside `auto_agenda`, crumb "Appendix: <title>". Dividers
 titled Appendix, Backup, Annex, Q&A or Thank you need no flag. Appendix
@@ -57,8 +57,10 @@ then fails `TEMPLATE_NOT_FOUND`.
 `list_deck_archetypes`.
 
 `meta.chrome` controls confidentiality, client/project labels, date, page
-numbers and section crumbs. By default a deck gets page numbers (title and
-closing skipped), `meta.date` in the footer, and the tracker with sections.
+numbers and section crumbs; page numbers, `meta.date` and, with sections,
+the tracker are on by default. A footer line wider than its slot drops
+`project_code`, then the date, before any ellipsis: `CHROME_TRUNCATED`
+(`dropped`, `max_chars`).
 `meta.viewing_mode` and `meta.accent_strategy` choose reading scale and
 accent rhythm (schema enums; others are `SEMANTIC_REQUIRED`). Every kind can
 carry `notes` and `source` (rendered once in the 9pt source zone, even when

@@ -38,8 +38,7 @@ is not finished. Back matter: `sections[].appendix: true` or raw
 **One conclusion band per slide:** `takeaway` is the fallback for kinds with
 their own conclusion field — on `executive_summary` write `bottom_line`, on
 `decision` write `recommendation`, and leave `takeaway` out (a duplicate goes
-to the speaker notes, `SEMANTIC_DUPLICATE_CALLOUT`). Kind budgets and
-specifics are in [DECKSPEC.md](DECKSPEC.md).
+to the speaker notes, `SEMANTIC_DUPLICATE_CALLOUT`).
 
 ## Choose the authoring path
 
@@ -95,7 +94,8 @@ repairs from advice.
 
 - [QUALITY.md](QUALITY.md): storyline and visual choice (always read).
 - [DECKSPEC.md](DECKSPEC.md): semantic authoring, content budgets, degradation,
-  chapter structure, required layouts, and spec-level iteration.
+  chapter structure, footer chrome (`CHROME_TRUNCATED`), required layouts,
+  and spec-level iteration.
 - [WORKFLOW.md](WORKFLOW.md): Plan → Vary → Render → Repair, the per-slide
   review rubric (recorded in `submit_visual_review`), and the three-round
   repair cap. Read before the first render.
@@ -109,7 +109,7 @@ repairs from advice.
   accent defaults; the live catalog and schemas come from `list_patterns` /
   `show_pattern`.
 - [FINDINGS.md](FINDINGS.md): how to read and repair a finding (DeckSpec and
-  raw); `describe_finding` explains a code.
+  raw).
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):
   template/layout fields and raw slide structure.
 

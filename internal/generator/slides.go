@@ -52,6 +52,24 @@ type FooterConfig struct {
 	// HidePageNumberBySlide suppresses the slide number on individual slides
 	// (an appendix divider), keeping the left footer text.
 	HidePageNumberBySlide []bool
+
+	// LeftFallbacks are the left footer line with lower-priority segments
+	// removed, in drop order (project_code first, then footer_date). When the
+	// full line does not fit a slide's footer slot the generator moves the
+	// whole deck to the first fallback that fits and reports
+	// CHROME_TRUNCATED, instead of ellipsizing a client name
+	// (go-slide-creator-m2tlt). Empty for a line with nothing to drop.
+	LeftFallbacks []FooterFallback
+	// LeftTextPath is the JSON Pointer of the authored block the line comes
+	// from, for the CHROME_TRUNCATED finding. Empty means "/footer/left_text".
+	LeftTextPath string
+}
+
+// FooterFallback is the left footer line without the Dropped input fields.
+type FooterFallback struct {
+	Dropped         []string // chrome field names removed, cumulative
+	LeftText        string
+	LeftTextBySlide []string // per-slide override, as FooterConfig.LeftTextBySlide
 }
 
 // PageLabelFor returns the literal page label for a 0-based slide index, or ""

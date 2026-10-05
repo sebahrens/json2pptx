@@ -66,6 +66,7 @@ type SlideContext struct {
 	nativeShapeSources      []nativeShapeSource                 // shape-id ranges of native diagram groups, for refusal paths
 	logoZones               map[string]*LogoZone                // per-layout logo zones (key = layout basename, e.g. "slideLayout1"); nil if no logos detected
 	footerConfig            *FooterConfig                       // Footer configuration (nil = disabled)
+	footerLineResolved      bool                                // resolveFooterLineForDeck has run
 	footerPositionsByLayout map[string]map[string]*transformXML // layoutID -> ("dt"/"ftr"/"sldNum" -> position)
 	footerObstaclesByLayout map[string][]footerObstacle         // layoutID -> inherited visible artwork
 	slideBgMedia            map[int]mediaRel                    // slideNum -> background image media relationship

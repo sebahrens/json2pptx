@@ -253,6 +253,13 @@ const (
 	// (go-slide-creator-3bph8). Advisory.
 	ErrCodeChromeOverImage = "CHROME_OVER_IMAGE"
 
+	// ErrCodeChromeTruncated marks a deck whose left footer line (the chrome
+	// fields, footer.left_text and any section crumb) is wider than the
+	// template's footer slot. The engine drops the lowest-priority segment
+	// first (project_code, then footer_date) and only then ellipsizes; either
+	// way the loss is reported (go-slide-creator-m2tlt). Review.
+	ErrCodeChromeTruncated = "CHROME_TRUNCATED"
+
 	// ErrCodeSubtitleWraps marks a title / closing subtitle that still wraps
 	// after the engine widened its placeholder to the title width
 	// (go-slide-creator-9bmaz). Advisory.
@@ -350,6 +357,7 @@ var (
 
 	ErrOverlayTargetCropped = errors.New("overlay image target is cropped out of the visible picture")
 	ErrChromeOverImage      = errors.New("footer chrome omitted because a picture covers the footer band")
+	ErrChromeTruncated      = errors.New("footer line does not fit the template's footer slot")
 	ErrSubtitleWraps        = errors.New("title-slide subtitle wraps onto a second line")
 
 	ErrComparisonPreferPattern = errors.New("slide_type comparison renders plain columns; a comparison pattern is designed for it")
@@ -431,6 +439,7 @@ var codeSentinel = map[string]error{
 	ErrCodeImageHeavyCrop:          ErrImageHeavyCrop,
 	ErrCodeOverlayTargetCropped:    ErrOverlayTargetCropped,
 	ErrCodeChromeOverImage:         ErrChromeOverImage,
+	ErrCodeChromeTruncated:         ErrChromeTruncated,
 	ErrCodeSubtitleWraps:           ErrSubtitleWraps,
 	ErrCodeComparisonPreferPattern: ErrComparisonPreferPattern,
 	ErrCodeDiagramAspectMismatch:   ErrDiagramAspectMismatch,

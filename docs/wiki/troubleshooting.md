@@ -29,7 +29,7 @@ Back to the [hub](README.md).
 | You see in the image | Why | Do |
 |---|---|---|
 | Waterfall opening bar is a stub; line chart starts at the data minimum | An authored `data.y_min` zooms the axis (non-negative data starts at zero by default since `go-slide-creator-929jm`) | Remove `y_min`, or keep it and say "axis from N" in the heading; `chart.axis_not_zero` flags a `y_min` that hides more than half of the smallest bar. |
-| Footer reads "Meridian Capital…" | Chrome line overflow, no finding | Shorten `meta.chrome.client`, drop `project_code` (`go-slide-creator-m2tlt`). |
+| Footer lost its project code or date, or ends in "…" | The footer line is wider than the template's slot: `CHROME_TRUNCATED` names the dropped fields and `max_chars` | Shorten `meta.chrome.client` / `confidentiality` to the budget, or remove the field you can spare (`go-slide-creator-m2tlt`). |
 | Right column of a `regions` slide floats high; lower half empty | Stacked regions are content-sized, top-anchored | Add a third region (a small table, a timeline) or move to a chart-only slide (`go-slide-creator-18dqh`). |
 | Four KPI cards with the bottom half of the slide empty | kpi-4up row is content-sized | Use `regions` with a chart beside the number, or six KPIs, or a `stat`. |
 | Screenshot at a third of the width | `image_case` default picture column (45%) | `image_width_pct: 55` or `60` — and shorten the body, or the narrower text column drops the eyebrow below 12pt (`TEXT_BELOW_READABLE_MIN`). |

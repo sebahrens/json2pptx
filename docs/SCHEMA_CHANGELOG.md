@@ -1,5 +1,10 @@
 # Schema Changelog
 
+- **2026-10-05 — `CHROME_TRUNCATED`: the footer line drops by priority instead of ellipsizing (`go-slide-creator-m2tlt`).**
+  - A left footer line (chrome fields, `footer.left_text`, section crumb) wider than the template's footer slot used to be ellipsized from the right with no finding: "Confidential — Project Falcon | Meridian Capital…" on every slide of a proposal. It now drops `chrome.project_code`, then `chrome.footer_date`, for every slide sharing that footer slot, and is ellipsized only when nothing is left to drop.
+  - New review finding `CHROME_TRUNCATED` at `/chrome` (DeckSpec `/meta/chrome`; `/footer/left_text` for a legacy-only footer), fix kind `rewrite_field` with `params` `dropped`, `truncated`, `max_chars`, `line_chars`, `slides`. Emitted by preflight (validate, validate_input, validate_deck_spec, score_deck) and by render with the same message, so the two are one finding. `describe_finding CHROME_TRUNCATED` documents it.
+  - No JSON field was added or renamed; the schema fingerprint is unchanged.
+
 - **2026-10-05 — Schema 4.166.0 · agent journey wave 3: split and complex layouts (epic `go-slide-creator-ls0i5`).**
   - Tables: rows that overflow the frame at the 0.4in floor are set at the compact pitch (line height + insets, ~0.3in at 12pt) before any row is hidden; `table_rows_truncated` keeps the rows the compact pitch affords. `TDRMaxRows` is 10 logical rows (header included) on the raw path (`density_exceeded`), the DeckSpec `table` (`SEMANTIC_DENSITY`) and `table_density_guide.limits.max_rows`; a comma list of 3+ items counts as extra rows only in a cell of 48+ characters (`go-slide-creator-plg7r`).
   - Charts: non-negative bar, line, area and waterfall charts start their axis at zero; `data.y_min` / `data.y_max` zoom deliberately (validated: `y_min < y_max`, never above the lowest bar / running total); a `y_min` that hides more than half of the smallest bar is `chart.axis_not_zero` (info). A zoomed chart keeps its axis instead of the labelled no-axis layout (`go-slide-creator-929jm`).
