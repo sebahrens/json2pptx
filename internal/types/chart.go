@@ -709,6 +709,13 @@ func isChartDirective(key string, v any) bool {
 		}
 	case "group_small_below_pct":
 		return true
+	case "y_min", "y_max":
+		// Authored value-axis bounds (go-slide-creator-929jm): a number, so a
+		// category literally named y_min would be read as the bound.
+		switch v.(type) {
+		case float64, float32, int, int64, int32, json.Number:
+			return true
+		}
 	}
 	return false
 }

@@ -155,6 +155,14 @@ const (
 	// widening stage is a data error or the wrong chart type
 	// (go-slide-creator-7w2ed).
 	FindingFunnelStageIncrease = "chart.funnel_stage_increase"
+
+	// FindingAxisNotZero is emitted when an authored data.y_min starts the
+	// value axis above zero and hides more than half of the smallest bar
+	// drawn from the baseline (a bar, a stack, a filled band or a waterfall
+	// total). The chart is drawn as authored and keeps its value axis so the
+	// truncation is visible; the finding is informational
+	// (go-slide-creator-929jm).
+	FindingAxisNotZero = "chart.axis_not_zero"
 )
 
 // FixKind constants for the Kind field of FixSuggestion.

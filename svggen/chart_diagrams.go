@@ -61,7 +61,10 @@ func (d *BarChartDiagram) Validate(req *RequestEnvelope) error {
 	if err := validateCategoriesAndSeries(req.Data, "bar_chart", true, 1); err != nil {
 		return err
 	}
-	return validateHighlight(req.Data)
+	if err := validateHighlight(req.Data); err != nil {
+		return err
+	}
+	return validateAxisBounds(req.Data, false)
 }
 
 // validateHighlight rejects a data.highlight entry that names no category.
@@ -171,6 +174,9 @@ func (d *LineChartDiagram) Validate(req *RequestEnvelope) error {
 	seriesSlice, ok := toSeriesSlice(series)
 	if !ok || len(seriesSlice) == 0 {
 		return &ValidationError{Field: "data.series", Code: ErrCodeInvalidType, Message: "line_chart 'series' must be a non-empty array of objects, e.g. [{\"name\": \"Sales\", \"values\": [10, 20]}]", Value: series}
+	}
+	if err := validateAxisBounds(data, false); err != nil {
+		return err
 	}
 
 	// Check if this is a time-series chart (has time_strings or time_values in series)
@@ -403,7 +409,10 @@ type AreaChartDiagram struct{ BaseDiagram }
 
 // Validate checks that the request data is valid for an area chart.
 func (d *AreaChartDiagram) Validate(req *RequestEnvelope) error {
-	return validateCategoriesAndSeries(req.Data, "area_chart", true, 1)
+	if err := validateCategoriesAndSeries(req.Data, "area_chart", true, 1); err != nil {
+		return err
+	}
+	return validateAxisBounds(req.Data, false)
 }
 
 // Render generates an SVG document for the area chart.
@@ -773,7 +782,10 @@ func (d *StackedBarChartDiagram) Validate(req *RequestEnvelope) error {
 	if err := validateBarScale(req, true); err != nil {
 		return err
 	}
-	return validateCategoriesAndSeries(req.Data, "stacked_bar_chart", true, 1)
+	if err := validateCategoriesAndSeries(req.Data, "stacked_bar_chart", true, 1); err != nil {
+		return err
+	}
+	return validateAxisBounds(req.Data, true)
 }
 
 // Render generates an SVG document for the stacked bar chart.
@@ -786,6 +798,9 @@ func (d *StackedBarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBu
 	return RenderWithHelper(req, func(builder *SVGBuilder, req *RequestEnvelope) error {
 		chartData, err := extractChartData(req)
 		if err != nil {
+			return err
+		}
+		if err := checkChartAxisBounds(chartData, true); err != nil {
 			return err
 		}
 		if err := sortBarCategories(req, &chartData, false); err != nil {
@@ -1058,8 +1073,18 @@ func extractChartData(req *RequestEnvelope) (ChartData, error) {
 	// Extract data label config
 	chartData.DataLabels = extractDataLabels(data)
 
-	err := resolveChartHighlight(data, &chartData)
-	return chartData, err
+	if err := resolveChartHighlight(data, &chartData); err != nil {
+		return chartData, err
+	}
+
+	// Authored value-axis bounds (go-slide-creator-929jm). Stacked charts
+	// re-check against their stack totals in their own Render.
+	axis, err := parseAxisBounds(data)
+	if err != nil {
+		return chartData, err
+	}
+	chartData.Axis = axis
+	return chartData, checkChartAxisBounds(chartData, false)
 }
 
 // resolveChartHighlight reads data.highlight onto the chart. On a
@@ -1966,7 +1991,7 @@ func (d *StackedAreaChartDiagram) Validate(req *RequestEnvelope) error {
 			}
 		}
 	}
-	return nil
+	return validateAxisBounds(req.Data, true)
 }
 
 // Render generates an SVG document for the stacked area chart.
@@ -1979,6 +2004,9 @@ func (d *StackedAreaChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGB
 	return RenderWithHelper(req, func(builder *SVGBuilder, req *RequestEnvelope) error {
 		chartData, err := extractChartData(req)
 		if err != nil {
+			return err
+		}
+		if err := checkChartAxisBounds(chartData, true); err != nil {
 			return err
 		}
 
@@ -2026,7 +2054,10 @@ func (d *GroupedBarChartDiagram) Validate(req *RequestEnvelope) error {
 	if err := validateBarScale(req, false); err != nil {
 		return err
 	}
-	return validateCategoriesAndSeries(req.Data, "grouped_bar_chart", true, 2)
+	if err := validateCategoriesAndSeries(req.Data, "grouped_bar_chart", true, 2); err != nil {
+		return err
+	}
+	return validateAxisBounds(req.Data, false)
 }
 
 // Render generates an SVG document for the grouped bar chart.

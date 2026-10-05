@@ -1245,6 +1245,16 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"Set style.value_format.prefix to the intended symbol or code, such as $, €, £, or USD.",
 		},
 	},
+	"chart.axis_not_zero": {
+		Code:        "chart.axis_not_zero",
+		Summary:     "An authored y_min starts the value axis above zero and hides more than half of the smallest bar.",
+		Severity:    "info",
+		WhenEmitted: "svggen draws a bar, stacked, area or waterfall chart whose data.y_min is above zero and hides more than half of the shortest bar drawn from the baseline (a bar, a stack, a filled band or a waterfall total). The chart is drawn as authored and keeps its value axis so the truncation is visible. fix.params carries the authored y_min, the smallest bar and the hidden share.",
+		RemediationSteps: []string{
+			"Remove data.y_min so the axis starts at zero (the default whenever no value is negative).",
+			"Or keep the zoom when the steps, not the totals, are the point — and say so in the takeaway.",
+		},
+	},
 	"chart.waterfall_total_mismatch": {
 		Code:        "chart.waterfall_total_mismatch",
 		Summary:     "A waterfall total or subtotal does not equal the running sum before it.",

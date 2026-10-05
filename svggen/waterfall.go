@@ -130,6 +130,11 @@ type WaterfallData struct {
 
 	// Footnote is an optional footnote text.
 	Footnote string
+
+	// Axis carries the authored value-axis bounds (data.y_min / data.y_max).
+	// Unset, the axis starts at zero whenever no running total is negative
+	// (go-slide-creator-929jm).
+	Axis AxisBounds
 }
 
 // Draw renders the waterfall chart.
@@ -191,11 +196,12 @@ func (wc *WaterfallChart) Draw(data WaterfallData) error {
 	// MarginLeft before layout if labels would clip into the title/legend area.
 	wc.config.ResolveValueFormatter(waterfallValues(data.Points), true)
 
-	yMin, yMax := wc.calculateDomain(data.Points)
+	yMin, yMax := wc.calculateDomain(data.Points, data.Axis)
+	wc.reportAxisNotZero(data)
 	// Every bar carries its value, so the value axis and gridlines only repeat
-	// the labels. A broken axis (one that does not start at zero) keeps its
+	// the labels. A zoomed axis (an authored y_min above zero) keeps its
 	// axis: without it the truncated totals would read as true lengths
-	// (go-slide-creator-sdxii).
+	// (go-slide-creator-sdxii, go-slide-creator-929jm).
 	labelled := wc.config.ShowValues && yMin <= 0
 	if labelled {
 		// bar / slot = (1 - p) / (1 + p) = labelledBarSlotShare.
@@ -262,96 +268,35 @@ func (wc *WaterfallChart) Draw(data WaterfallData) error {
 
 // calculateDomain calculates the y-axis domain for the waterfall chart.
 //
-// When the running totals are all far from zero (e.g., a bridge from 485M to 528M),
-// forcing the y-axis to start at 0 would compress the incremental bars into tiny
-// slivers. Instead, this function uses a "broken" y-axis that zooms in on the
-// data range, with ~10% padding on each side. Zero is still included when:
-//   - Any running total actually reaches or crosses zero
-//   - The data is close enough to zero that including it wouldn't more than
-//     double the visible axis range
-func (wc *WaterfallChart) calculateDomain(points []WaterfallDataPoint) (min, max float64) {
-	// Calculate running total to find min/max of actual data values.
-	// Initialize min/max to extreme opposites so the first value always wins.
-	var running float64
-	min = math.MaxFloat64
-	max = -math.MaxFloat64
-
-	for i, p := range points {
-		switch p.Type {
-		case WaterfallTypeTotal, WaterfallTypeSubtotal:
-			// Total bars show absolute value
-			running = p.Value
-		default:
-			// First bar or increment/decrement
-			if i == 0 && (p.Type == "" || p.Type == WaterfallTypeIncrease || p.Type == WaterfallTypeDecrease) {
-				// First bar might be a starting value
-				running = p.Value
-			} else {
-				running += p.Value
-			}
-		}
-
-		if running > max {
-			max = running
-		}
-		if running < min {
-			min = running
-		}
+// The axis starts at zero whenever no running total is negative: a bridge's
+// totals are read as lengths from the baseline, and an EBITDA walk 24.0 →
+// 31.0 drawn on an axis starting at 22 showed the opening total as a stub
+// (go-slide-creator-929jm). The earlier default zoomed onto the data range
+// when the totals were far from zero (a 485 → 528 bridge); that is now an
+// authored choice — data.y_min / data.y_max — which the chart honours and
+// keeps its value axis for.
+func (wc *WaterfallChart) calculateDomain(points []WaterfallDataPoint, axis AxisBounds) (min, max float64) {
+	min, max, ok := waterfallRunningRange(points)
+	if !ok {
+		return axis.apply(0, 1)
 	}
 
-	// Guard: if no points were processed, fall back to 0-1.
-	if min == math.MaxFloat64 {
-		return 0, 1
+	// Zero is the baseline unless a running total crosses it.
+	if min > 0 {
+		min = 0
+	}
+	if max < 0 {
+		max = 0
 	}
 
-	// Decide whether to include zero in the domain.
-	// We include zero if:
-	//   1. The data already crosses zero (min <= 0 <= max), OR
-	//   2. Including zero wouldn't more than double the data span
-	//      (i.e., the data is "close to" zero relative to its own extent).
 	dataSpan := max - min
 	if dataSpan == 0 {
-		// All points at same value — add a small range around it
-		if max == 0 {
-			return 0, 1
-		}
-		padding := math.Abs(max) * 0.1
-		return max - padding, max + padding
+		return axis.apply(0, 1)
 	}
 
-	if min > 0 {
-		// All data is positive. Include zero only if the gap from 0 to min
-		// is not larger than the data span (otherwise it compresses the bars).
-		if min <= dataSpan {
-			min = 0
-		} else {
-			// "Broken" axis: add 10% padding below the minimum.
-			min -= dataSpan * 0.1
-			// Clamp: never go below 0 if we're close (avoids a weird tiny
-			// negative axis start).
-			if min < 0 {
-				min = 0
-			}
-		}
-	}
-
-	if max < 0 {
-		// All data is negative. Include zero only if the gap from max to 0
-		// is not larger than the data span.
-		if -max <= dataSpan {
-			max = 0
-		} else {
-			max += dataSpan * 0.1
-			if max > 0 {
-				max = 0
-			}
-		}
-	}
-
-	// Add a small amount of headroom above max (and below min if not 0)
-	// so bars don't touch the chart edge. applyNice() will further round
-	// these, but we add padding first to make sure the nice rounding
-	// doesn't collapse the range.
+	// A little headroom past the extreme bars so they do not touch the plot
+	// edge; Nice() rounds the result. An authored bound replaces the padded
+	// side outright.
 	headroom := dataSpan * 0.05
 	if min != 0 {
 		min -= headroom
@@ -360,7 +305,45 @@ func (wc *WaterfallChart) calculateDomain(points []WaterfallDataPoint) (min, max
 		max += headroom
 	}
 
-	return min, max
+	return axis.apply(min, max)
+}
+
+// waterfallRunningRange returns the lowest and highest running total the bars
+// reach (the edges every bar is drawn between). ok is false without points.
+func waterfallRunningRange(points []WaterfallDataPoint) (min, max float64, ok bool) {
+	if len(points) == 0 {
+		return 0, 0, false
+	}
+	min, max = math.Inf(1), math.Inf(-1)
+	for _, running := range calculateRunningTotals(points) {
+		min = math.Min(min, running)
+		max = math.Max(max, running)
+	}
+	return min, max, true
+}
+
+// smallestBaselineTotal returns the smallest positive bar drawn from the
+// baseline — the opening bar and every total / subtotal — with its label.
+func smallestBaselineTotal(points []WaterfallDataPoint) (value float64, label string, ok bool) {
+	value = math.Inf(1)
+	for i, p := range points {
+		fromBaseline := i == 0 || p.Type == WaterfallTypeTotal || p.Type == WaterfallTypeSubtotal
+		if fromBaseline && p.Value > 0 && p.Value < value {
+			value, label, ok = p.Value, p.Label, true
+		}
+	}
+	return value, label, ok
+}
+
+// reportAxisNotZero files chart.axis_not_zero when the authored y_min hides
+// more than half of the smallest total drawn from the baseline.
+func (wc *WaterfallChart) reportAxisNotZero(data WaterfallData) {
+	if !data.Axis.zoomed() {
+		return
+	}
+	if smallest, label, ok := smallestBaselineTotal(data.Points); ok {
+		reportAxisNotZero(wc.builder, data.Axis, smallest, label, "waterfall")
+	}
 }
 
 // drawAxes draws the chart axes.
@@ -956,6 +939,8 @@ func (d *WaterfallDiagram) DataSchema() *DataSchema {
 			"total":    StringDataSchema("Total color"),
 		}, nil),
 		"footnote": StringDataSchema("Footnote text"),
+		"y_min":    NumberDataSchema("Value-axis minimum. Omitted, the axis starts at zero whenever no running total is negative — a bridge's totals are read as lengths from the baseline. Set it to zoom a bridge whose steps are small against its totals (a 485 → 528 walk); the chart then keeps its value axis so the truncated totals are visibly truncated, and a y_min that hides more than half of the smallest total reports chart.axis_not_zero. Rejected above the lowest running total (a bar would be cut) and must be below y_max; rounded down to the nearest tick."),
+		"y_max":    NumberDataSchema("Value-axis maximum. Omitted, computed from the running totals with headroom. Rejected below the highest running total; rounded up to the nearest tick."),
 	}, nil)
 }
 
@@ -1037,6 +1022,22 @@ func parseWaterfallData(req *RequestEnvelope) (WaterfallData, error) {
 	// Parse footnote
 	if footnote, ok := req.Data["footnote"].(string); ok {
 		data.Footnote = footnote
+	}
+
+	// Authored value-axis bounds: they may zoom the axis but never cut a bar,
+	// so y_min must sit at or below the lowest running total and y_max at or
+	// above the highest (go-slide-creator-929jm).
+	axis, err := parseAxisBounds(req.Data)
+	if err != nil {
+		return data, err
+	}
+	data.Axis = axis
+	if axis.Min != nil || axis.Max != nil {
+		if lo, hi, ok := waterfallRunningRange(data.Points); ok {
+			if err := checkAxisBoundsCoverData(axis, lo, hi, "running total"); err != nil {
+				return data, err
+			}
+		}
 	}
 
 	return data, nil

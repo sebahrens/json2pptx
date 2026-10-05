@@ -197,6 +197,7 @@ const (
 	FindingOrgChartNodesInvalid      = core.FindingOrgChartNodesInvalid
 	FindingGlyphMissing              = core.FindingGlyphMissing
 	FindingFunnelStageIncrease       = core.FindingFunnelStageIncrease
+	FindingAxisNotZero               = core.FindingAxisNotZero
 
 	// Capacity limits (re-exported from core/limits.go).
 	MaxSeries     = core.MaxSeries

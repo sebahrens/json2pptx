@@ -1195,13 +1195,13 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		// --- Charts ---
 		"bar": {
 			RequiredKeys: []string{"categories", "series"},
-			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels", "highlight", "sort", "orientation"},
-			Description:  "categories: string array; series: [{name, values: number[]}]. Up to 16 bars are labelled by default (value on each bar, no value axis or gridlines; data_labels: false or style.show_values: false opts out). sort: desc|asc|none (default desc for a single series of non-time, non-ordinal categories). orientation: \"horizontal\" for rankings or category names over ~14 characters. highlight: category indices or names painted accent1 (single series).",
+			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels", "highlight", "sort", "orientation", "y_min", "y_max"},
+			Description:  "categories: string array; series: [{name, values: number[]}]. The value axis starts at zero unless a value is negative; y_min / y_max zoom it (the axis is then kept visible; y_min above the smallest bar is rejected, hiding over half of it reports chart.axis_not_zero). Up to 16 bars are labelled by default (value on each bar, no value axis or gridlines; data_labels: false or style.show_values: false opts out). sort: desc|asc|none (default desc for a single series of non-time, non-ordinal categories). orientation: \"horizontal\" for rankings or category names over ~14 characters. highlight: category indices or names painted accent1 (single series).",
 		},
 		"line": {
 			RequiredKeys: []string{"series"},
-			OptionalKeys: []string{"categories", "colors", "x_label", "y_label", "annotations", "data_labels", "highlight"},
-			Description:  "series: [{name, values: number[]}]; categories required unless series contain time_strings or time_values. highlight: the series (names or indices) the slide is about — kept in accent1 and labelled at the line end, the rest grey context (defaults to the one series the slide title names). A single series up to 12 points is labelled by default; markers drop past 12 points.",
+			OptionalKeys: []string{"categories", "colors", "x_label", "y_label", "annotations", "data_labels", "highlight", "y_min", "y_max"},
+			Description:  "series: [{name, values: number[]}]; categories required unless series contain time_strings or time_values. The value axis starts at zero unless a value is negative; y_min / y_max zoom it for an index or a narrow band (the axis is then kept visible; y_min above the lowest point is rejected). highlight: the series (names or indices) the slide is about — kept in accent1 and labelled at the line end, the rest grey context (defaults to the one series the slide title names). A single series up to 12 points is labelled by default; markers drop past 12 points.",
 		},
 		"pie": {
 			RequiredKeys: []string{"values"},
@@ -1215,8 +1215,8 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		},
 		"area": {
 			RequiredKeys: []string{"categories", "series"},
-			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels", "highlight"},
-			Description:  "categories: string array; series: [{name, values: number[]}]",
+			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels", "highlight", "y_min", "y_max"},
+			Description:  "categories: string array; series: [{name, values: number[]}]. The filled band is measured from zero; y_min / y_max zoom the axis (kept visible; y_min above the lowest value is rejected, hiding over half of it reports chart.axis_not_zero).",
 		},
 		"radar": {
 			RequiredKeys: []string{"categories", "series"},
@@ -1230,8 +1230,8 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		},
 		"stacked_bar": {
 			RequiredKeys: []string{"categories", "series"},
-			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels", "sort", "orientation"},
-			Description:  "categories: string[]; series: [{name, values: number[]}]. Up to 16 segments carry segment labels (>= 10pt, one number format) and a bold total above each stack; data_labels: false drops both.",
+			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels", "sort", "orientation", "y_min", "y_max"},
+			Description:  "categories: string[]; series: [{name, values: number[]}]. Stacks are measured from zero; y_min / y_max zoom the axis (y_min above the smallest stack is rejected). Up to 16 segments carry segment labels (>= 10pt, one number format) and a bold total above each stack; data_labels: false drops both.",
 		},
 		"bubble": {
 			RequiredKeys: []string{"series"},
@@ -1240,13 +1240,13 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		},
 		"stacked_area": {
 			RequiredKeys: []string{"categories", "series"},
-			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels"},
-			Description:  "categories: string[]; series: [{name, values: number[]}]",
+			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels", "y_min", "y_max"},
+			Description:  "categories: string[]; series: [{name, values: number[]}] (values >= 0). Bands are measured from zero; y_min / y_max zoom the axis (y_min above the smallest stack is rejected).",
 		},
 		"grouped_bar": {
 			RequiredKeys: []string{"categories", "series"},
-			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels", "highlight", "sort", "orientation"},
-			Description:  "categories: string[]; series: [{name, values: number[]}] (min 2 series). highlight: the series the slide is about (others grey); orientation: \"horizontal\"; sort: desc|asc|none by category total.",
+			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels", "highlight", "sort", "orientation", "y_min", "y_max"},
+			Description:  "categories: string[]; series: [{name, values: number[]}] (min 2 series). The value axis starts at zero unless a value is negative; y_min / y_max zoom it (y_min above the smallest bar is rejected). highlight: the series the slide is about (others grey); orientation: \"horizontal\"; sort: desc|asc|none by category total.",
 		},
 		"small_multiples": {
 			RequiredKeys: []string{"categories", "series"},
@@ -1255,8 +1255,8 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		},
 		"waterfall": {
 			RequiredKeys: []string{"points"},
-			OptionalKeys: []string{"colors", "footnote"},
-			Description:  "points: [{label, value, type: \"increase\"|\"decrease\"|\"total\"}]",
+			OptionalKeys: []string{"colors", "footnote", "y_min", "y_max"},
+			Description:  "points: [{label, value, type: \"increase\"|\"decrease\"|\"total\"}]. The axis starts at zero whenever no running total is negative, so totals read as lengths; y_min / y_max zoom a bridge whose steps are small against its totals (the axis is then kept visible; y_min above the lowest running total is rejected, hiding over half of the smallest total reports chart.axis_not_zero).",
 		},
 		"funnel": {
 			RequiredKeys: []string{"values"},

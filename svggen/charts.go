@@ -56,6 +56,10 @@ type ChartData struct {
 	Highlight    []int
 	HighlightSet bool
 
+	// Axis carries the authored value-axis bounds (data.y_min / data.y_max).
+	// Unset bounds are computed from the data (go-slide-creator-929jm).
+	Axis AxisBounds
+
 	// SeriesHighlight lists the 0-based series a multi-series chart keeps in
 	// colour; every other series turns neutral (go-slide-creator-kbzu2).
 	// SeriesHighlightSet is true when data.highlight named series.
@@ -351,9 +355,11 @@ type BarChart struct {
 // shows its value on a linear axis: the value axis and gridlines would only
 // repeat the labels, so they go, the left gutter they needed shrinks, and the
 // bars narrow to labelledBarSlotShare of their category slot
-// (go-slide-creator-sdxii). Draw restores the config afterwards.
-func (bc *BarChart) applyLabelledMode() {
-	bc.labelledMode = bc.config.ShowValues && !bc.config.Stacked && bc.config.Scale != "log"
+// (go-slide-creator-sdxii). Draw restores the config afterwards. A chart whose
+// authored y_min lifts the axis off zero keeps its value axis: without it the
+// truncated bars would read as true lengths (go-slide-creator-929jm).
+func (bc *BarChart) applyLabelledMode(data ChartData) {
+	bc.labelledMode = bc.config.ShowValues && !bc.config.Stacked && bc.config.Scale != "log" && !data.Axis.zoomed()
 	if !bc.labelledMode {
 		return
 	}
@@ -459,7 +465,7 @@ func (bc *BarChart) Draw(data ChartData) error {
 	if bc.config.Horizontal {
 		return bc.drawHorizontal(data)
 	}
-	bc.applyLabelledMode()
+	bc.applyLabelledMode(data)
 
 	b := bc.builder
 	style := b.StyleGuide()
@@ -493,6 +499,7 @@ func (bc *BarChart) Draw(data ChartData) error {
 	bc.config.ResolveValueFormatter(chartDataValues(data), true)
 
 	yMin, yMax := bc.calculateDomain(data)
+	bc.reportAxisNotZero(data)
 	if !bc.labelledMode {
 		EnsureYAxisFits(b, &bc.config.ChartConfig, yMin, yMax)
 	}
@@ -760,6 +767,7 @@ func barDirectLabelGeometry(b *SVGBuilder, style *StyleGuide, data ChartData, pl
 	if yMin > 0 {
 		yMin = 0
 	}
+	yMin, yMax = data.Axis.apply(yMin, yMax)
 	yScale := barLinearYScale(yMin, yMax, plotArea.H, barNegativeLabelClearance(b, style, cfg, yMin))
 	baseY := plotArea.Y + yScale.Scale(0)
 	fontSize := style.Typography.SizeSmall
@@ -910,7 +918,28 @@ func (bc *BarChart) calculateDomain(data ChartData) (min, max float64) {
 		min = 0
 	}
 
-	return min, max
+	// Authored data.y_min / data.y_max win; extractChartData has already
+	// rejected bounds that would cut a bar (go-slide-creator-929jm).
+	return data.Axis.apply(min, max)
+}
+
+// reportAxisNotZero files chart.axis_not_zero when the authored y_min hides
+// more than half of the shortest bar (or stack) drawn from the baseline.
+func (bc *BarChart) reportAxisNotZero(data ChartData) {
+	if !data.Axis.zoomed() {
+		return
+	}
+	var smallest float64
+	var label string
+	var ok bool
+	if bc.config.Stacked {
+		smallest, label, ok = smallestBaselineStack(data)
+	} else {
+		smallest, label, ok = smallestBaselineBar(data)
+	}
+	if ok {
+		reportAxisNotZero(bc.builder, data.Axis, smallest, label, "bar_chart")
+	}
 }
 
 // barTopHeadroomFactor expands a bar chart's positive y-domain max so the
@@ -1504,6 +1533,11 @@ func (lc *LineChart) Draw(data ChartData) error {
 
 	yMin, yMax := lc.calculateYDomain(data)
 	lc.prepareValueAxis(yMin, yMax, len(data.Series))
+	if lc.config.FillArea && data.Axis.zoomed() {
+		if smallest, label, ok := smallestBaselineBar(data); ok {
+			reportAxisNotZero(b, data.Axis, smallest, label, "area_chart")
+		}
+	}
 
 	// Calculate layout (shared across Cartesian chart types)
 	layout := ComputeCartesianLayout(lc.config.ChartConfig, style, data.Title, data.Subtitle, data.Footnote, len(data.Series))
@@ -1640,7 +1674,9 @@ func (lc *LineChart) highlightDirectLabels(data ChartData, directLabels bool) bo
 // drops its value axis, so its left gutter shrinks; otherwise the gutter grows
 // to fit the y tick labels.
 func (lc *LineChart) prepareValueAxis(yMin, yMax float64, seriesCount int) {
-	lc.labelled = lc.config.ShowValues && seriesCount == 1
+	// A zoomed axis (yMin above zero, which only an authored y_min produces)
+	// keeps its ticks so the truncation is visible (go-slide-creator-929jm).
+	lc.labelled = lc.config.ShowValues && seriesCount == 1 && yMin <= 0
 	if !lc.labelled {
 		EnsureYAxisFits(lc.builder, &lc.config.ChartConfig, yMin, yMax)
 		return
@@ -1948,30 +1984,33 @@ func (lc *LineChart) calculateYDomain(data ChartData) (min, max float64) {
 		}
 	}
 
-	// A filled mark is read against the axis: the band's area IS the claim
-	// ("this much of the total"), and on a stacked area the bands are a
-	// part-to-whole. Truncating the axis makes a 40-unit base look like zero
-	// and overstates the trend, so area and stacked_area always baseline at
-	// zero — matching stacked_bar, which already did (go-slide-creator-6wfe).
-	// A plain line chart keeps the zoomed axis: it encodes value by position,
-	// not by area. This runs before the constant-data case below so a flat
-	// area (e.g. [40,40,40]) still baselines at zero (go-slide-creator-s1uvj.34).
+	// The axis starts at zero whenever no value is negative. A filled mark is
+	// read against the axis: the band's area IS the claim, and on a stacked
+	// area the bands are a part-to-whole (go-slide-creator-6wfe). A line
+	// zoomed onto its own range exaggerates the trend the same way — counts
+	// of 11 / 9 / 7 on an axis starting at 2 read as a collapse — so lines
+	// baseline at zero too; an author who wants a zoomed axis (an index
+	// around 100) sets data.y_min (go-slide-creator-929jm). This runs before
+	// the constant-data case below so a flat series (e.g. [40,40,40]) still
+	// baselines at zero (go-slide-creator-s1uvj.34).
+	if min >= 0 {
+		min = 0
+	}
 	if lc.config.FillArea {
-		min = math.Min(0, min)
 		max = math.Max(0, max)
 	}
 
 	// Handle degenerate case where all values are identical.
 	if min == max {
 		if min == 0 {
-			return 0, 1
+			return data.Axis.apply(0, 1)
 		}
 		// Provide a small range around the single value.
 		offset := math.Abs(min) * 0.1
 		if offset == 0 {
 			offset = 1
 		}
-		return min - offset, max + offset
+		return data.Axis.apply(min-offset, max+offset)
 	}
 
 	// Add small top padding (~5%) so the highest data point doesn't touch
@@ -1979,15 +2018,9 @@ func (lc *LineChart) calculateYDomain(data ChartData) (min, max float64) {
 	span := max - min
 	max += span * 0.05
 
-	// For line charts, allow the min to remain above zero when the data range
-	// is far from zero (e.g., 100-200 should not show 0-220). Nice() will
-	// round to a nearby clean number. If data is close to zero (min < 20% of
-	// range), snap to zero for clarity.
-	if min > 0 && min < span*0.2 {
-		min = 0
-	}
-
-	return min, max
+	// Authored data.y_min / data.y_max win; extractChartData has already
+	// rejected bounds that would clip the series.
+	return data.Axis.apply(min, max)
 }
 
 // hasTimeSeriesData checks if any series contains time-series data.
@@ -2303,6 +2336,7 @@ func (sac *StackedAreaChart) Draw(data ChartData) error {
 		Categories: data.Categories,
 		Footnote:   data.Footnote,
 		Series:     make([]ChartSeries, len(data.Series)),
+		Axis:       data.Axis,
 	}
 
 	// Cumulative sums per category
