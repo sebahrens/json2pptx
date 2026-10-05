@@ -391,6 +391,38 @@ func rowTextNeedPt(fonts pptx.ThemeFonts, text json.RawMessage, widthPt float64)
 	return rowTextBeyondAreaPt
 }
 
+// labelRowNeedPt is the row height text in a shape widthPt wide needs once a
+// renderer's face runs shapegrid.RenderFaceSlack wider than the measured one.
+// need is its rowTextNeedPt at widthPt. Text that wraps here already has the
+// lines the engine measured for it and keeps need; text on one line that the
+// wider face would wrap takes the height of the wrapped lines, so the wrap
+// costs a line and the renderer has no reason to shrink the cell alone.
+func labelRowNeedPt(fonts pptx.ThemeFonts, text json.RawMessage, widthPt, need float64) float64 {
+	inner := widthPt - 2*defaultShapeInsetLRPt
+	if inner <= 0 || need >= rowTextBeyondAreaPt {
+		return need
+	}
+	// One line per paragraph is what the text needs in a shape of any width.
+	if rowTextNeedPt(fonts, text, labelUnwrappedWidthPt) < need {
+		return need
+	}
+	return math.Max(need, rowTextNeedPt(fonts, text, inner/shapegrid.RenderFaceSlack+2*defaultShapeInsetLRPt))
+}
+
+// labelHoldsLine reports whether text sits on one line per paragraph in a
+// shape widthPt wide, and still does once a renderer's face runs
+// shapegrid.RenderFaceSlack wider.
+func labelHoldsLine(fonts pptx.ThemeFonts, text json.RawMessage, widthPt float64) bool {
+	inner := widthPt - 2*defaultShapeInsetLRPt
+	if inner <= 0 {
+		return false
+	}
+	return rowTextNeedPt(fonts, text, inner/shapegrid.RenderFaceSlack+2*defaultShapeInsetLRPt) <= rowTextNeedPt(fonts, text, labelUnwrappedWidthPt)
+}
+
+// labelUnwrappedWidthPt is a shape width no label wraps in.
+const labelUnwrappedWidthPt = 20000.0
+
 // writtenFitsAt reports whether the writer stores text in a widthPt × heightPt
 // shape without a shrink.
 func writtenFitsAt(fonts pptx.ThemeFonts, text json.RawMessage, widthPt, heightPt float64) bool {

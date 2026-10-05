@@ -644,17 +644,27 @@ func comparisonLayout(ctx ExpandContext, vals *Comparison2colValues, ovr *Compar
 		}
 		steps = append(steps, st)
 	}
-	var first comparisonPlan
-	for i, st := range steps {
+	plans := make([]comparisonPlan, 0, len(steps))
+	for _, st := range steps {
 		plan := comparisonMeasure(ctx, vals, ovr, cellOverrides, st.header, st.body, st.gap)
 		if plan.fits {
 			return plan
 		}
-		if i == 0 {
-			first = plan
+		plans = append(plans, plan)
+	}
+	// No step holds every row at its full margins. Rows that share the area
+	// are still written whole where the writer's one-line margin clamp lets
+	// them be, and the first step at which every cell is — the default sizes
+	// before the floor — keeps the comparison at one size. The default sizes
+	// used to be kept regardless: the writer then shrank the crowded rows
+	// alone (14pt rows beside a 13.4pt one) where the 12pt step set every row
+	// whole (go-slide-creator-bhoo3).
+	for _, plan := range plans {
+		if ctx.LayoutBounds.Width > 0 && ctx.LayoutBounds.Height > 0 && !comparisonShrinks(ctx, plan) {
+			return plan
 		}
 	}
-	return first
+	return plans[0]
 }
 
 // Floors the comparison steps down to before it reports BODY_TOO_LONG.
@@ -678,16 +688,30 @@ func comparisonMeasure(ctx ExpandContext, vals *Comparison2colValues, ovr *Compa
 	if comparisonOpen(ovr) {
 		plan.avail -= comparisonRulesPt(len(rows), plan.header)
 	}
-	total := 0.0
+	// A row is as tall as its tallest cell needs. A cell that sits on one line
+	// within shapegrid.RenderFaceSlack of its box takes the two lines a
+	// renderer's wider face wraps it to (labelRowNeedPt), while the rows
+	// still fit with them: a row one line tall left that renderer to shrink
+	// the one cell, and the comparison read at two sizes
+	// (go-slide-creator-bhoo3).
+	total, wrapTotal := 0.0, 0.0
+	var wrapNeeds []float64
 	for _, r := range rows {
-		need := 0.0
+		need, wrapNeed := 0.0, 0.0
 		for _, cell := range r.Cells {
 			if cell != nil && cell.Shape != nil && len(cell.Shape.Text) > 0 {
-				need = max(need, rowTextNeedPt(ctx.themeFonts(), cell.Shape.Text, textW))
+				n := rowTextNeedPt(ctx.themeFonts(), cell.Shape.Text, textW)
+				need = max(need, n)
+				wrapNeed = max(wrapNeed, labelRowNeedPt(ctx.themeFonts(), cell.Shape.Text, textW, n))
 			}
 		}
 		plan.needs = append(plan.needs, need)
+		wrapNeeds = append(wrapNeeds, wrapNeed)
 		total += need
+		wrapTotal += wrapNeed
+	}
+	if wrapTotal <= plan.avail {
+		plan.needs, total = wrapNeeds, wrapTotal
 	}
 	plan.fits = total <= plan.avail
 	plan.total = total

@@ -105,3 +105,48 @@ func TestNextStepsDropsEmptyColumns(t *testing.T) {
 		t.Errorf("no decisions: the last row should be an action row, got %d cells", len(last.Cells))
 	}
 }
+
+// The owner column holds its longest label on one line with room for a
+// renderer's wider face (go-slide-creator-bhoo3). "Executive committee"
+// filled the fixed 22% column of a narrow content area: one line here, two in
+// a face 12% wider, in a row one line tall — the cell a renderer shrinks
+// alone. The column widens for it, short owners keep 22%, and a label too
+// long for the 30% cap leaves the column alone and gets a row for its wrap.
+func TestNextStepsOwnerColumnHoldsItsLongestLabel(t *testing.T) {
+	ctx := panelAuditCtx(824, 325) // modern-template's content area
+	ownerPct := func(owners ...string) (float64, []float64) {
+		t.Helper()
+		vals := &NextStepsValues{}
+		for _, o := range owners {
+			vals.Actions = append(vals.Actions, NextStepsAction{Action: "Approve the budget", Owner: o, Date: "15 Oct"})
+		}
+		lay := layoutNextSteps(ctx, vals, &NextStepsOverrides{})
+		return lay.cols[lay.ownerCol], lay.rowPt
+	}
+	short, shortRows := ownerPct("CRO", "CEO")
+	if short != nextStepsOwnerPct {
+		t.Errorf("short owners: column = %.0f%%, want the %.0f%% base", short, nextStepsOwnerPct)
+	}
+	if shortRows[0] != shortRows[1] {
+		t.Errorf("short owners: rows of %.0fpt and %.0fpt, want one height", shortRows[0], shortRows[1])
+	}
+	const long = "Executive committee chair"
+	ownerText := nextStepsOwnerCell(long, 14, 0).Shape.Text
+	if labelHoldsLine(ctx.themeFonts(), ownerText, 824*nextStepsOwnerPct/100) {
+		t.Fatalf("%q holds its line in the %.0f%% column: the probe no longer exercises the widening", long, nextStepsOwnerPct)
+	}
+	wide, _ := ownerPct(long, "CEO")
+	if wide <= nextStepsOwnerPct || wide > nextStepsOwnerMaxPct {
+		t.Errorf("a long owner: column = %.0f%%, want it widened within %.0f–%.0f%%", wide, nextStepsOwnerPct, nextStepsOwnerMaxPct)
+	}
+	if !labelHoldsLine(ctx.themeFonts(), ownerText, 824*wide/100) {
+		t.Errorf("the widened %.0f%% column does not hold %q on one line with the render slack", wide, long)
+	}
+	capped, cappedRows := ownerPct("Group executive committee chairs", "CEO")
+	if capped != nextStepsOwnerPct {
+		t.Errorf("a label past the cap: column = %.0f%%, want the %.0f%% base", capped, nextStepsOwnerPct)
+	}
+	if cappedRows[0] <= cappedRows[1] {
+		t.Errorf("a label past the cap wraps: its row (%.0fpt) should be taller than a one-line row (%.0fpt)", cappedRows[0], cappedRows[1])
+	}
+}

@@ -51,6 +51,14 @@ func runScore() error {
 	if *templateName != "" {
 		args["template"] = *templateName
 	}
+	// Relative asset paths resolve against the deck's own directory, as they
+	// do for generate and validate: score_deck's default base is the working
+	// directory, which refused examples/exhibit-callouts.json (its picture is
+	// images/ops-console.png beside it) with INPUT.IMAGE_PATH from anywhere
+	// but examples/ (go-slide-creator-bhoo3's sweep of the examples).
+	if dir := validateBaseDir(*jsonPath, ""); dir != "" {
+		args["base_dir"] = dir
+	}
 
 	result, err := mc.handleScoreDeck(context.Background(), mcpRequestWithArgs(args))
 	if err != nil {

@@ -623,17 +623,59 @@ func stepFit(plan *composePlan, before, after *ShapeSpec, bounds pptx.RectEmu, o
 			}
 		}
 	}
-	availPt := float64(height) / 12700
+	plan.worst = math.Max(plan.worst, steppedHeightNeed(parasBefore, parasAfter, width, float64(height)/12700, plan.rowScale))
+}
+
+// steppedHeightNeed is the share of a text rectangle availPt tall that
+// stepped text needs at width. A label that fits on one line within
+// RenderFaceSlack of the width is counted at the lines a renderer's wider
+// face wraps it to (slackLabelHeightPt). Text that did not fit its cell at
+// the pattern's own size is the pattern's business: its need is taken
+// relative to what it needed before the step, in the rows as they were
+// before rowScale grew them, so the step must only not make it worse.
+func steppedHeightNeed(parasBefore, parasAfter []scaleParagraph, width int64, availPt, rowScale float64) float64 {
 	need := blockHeightPt(parasAfter, width) / availPt
+	if slack := slackLabelHeightPt(parasAfter, width) / availPt; slack > need && need <= 1 {
+		need = slack
+	}
 	if need > 1 {
-		// Text that did not fit its cell at the pattern's own size is the
-		// pattern's business; the step must not make it worse.
-		k := math.Max(plan.rowScale, 1)
+		k := math.Max(rowScale, 1)
 		if was := blockHeightPt(parasBefore, width) / (availPt / k); was > 1 {
 			need /= was
 		}
 	}
-	plan.worst = math.Max(plan.worst, need)
+	return need
+}
+
+// RenderFaceSlack is how much wider a renderer's face may set a line than the
+// face it was measured in. A label written on one line of a box one line
+// tall, within this margin of the box's width, wraps in such a renderer and
+// is shrunk by its autofit while its shorter siblings are not: the row reads
+// at two sizes (SIBLING_SIZE_MISMATCH measures with the same margin). What
+// sizes a row for a label that close to its box gives it room for the second
+// line instead.
+const RenderFaceSlack = 1.12
+
+// slackLabelHeightPt is the height a one-paragraph label that sits on one
+// line of width needs once a renderer's face runs RenderFaceSlack wider: the
+// height of the lines it wraps to at the narrowed width. Zero for text of
+// several paragraphs or one that already wraps — a wrapped paragraph has the
+// lines the engine measured for it (go-slide-creator-bhoo3: the type step set
+// "Always-on client portal with live exposures" at 18pt across 95% of a box
+// one line tall).
+func slackLabelHeightPt(paras []scaleParagraph, width int64) float64 {
+	if len(paras) != 1 {
+		return 0
+	}
+	p := paras[0]
+	usable := width - p.marginL
+	if usable <= 0 {
+		return 0
+	}
+	if m, err := textfit.MeasureRun(p.text, p.face, p.fontPt, usable, 0); err != nil || m.Lines != 1 {
+		return 0
+	}
+	return blockHeightPt(paras, p.marginL+int64(float64(usable)/RenderFaceSlack))
 }
 
 // blockHeightPt is the height paras wrap to in width, measured as
