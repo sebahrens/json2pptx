@@ -634,7 +634,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 			row := `[{"content":"` + longText + `"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}]`
 			shortRow := `[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}]`
 			rows := []string{row}
-			for i := 0; i < 14; i++ {
+			for i := 0; i < 40; i++ {
 				rows = append(rows, shortRow)
 			}
 			return strings.Join(rows, ",")
@@ -800,7 +800,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 
 		var rows []string
 		rows = append(rows, string(rowJSON))
-		for i := 0; i < 14; i++ {
+		for i := 0; i < 40; i++ {
 			rows = append(rows, string(shortRowJSON))
 		}
 
@@ -854,7 +854,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 
 		var rows []string
 		rows = append(rows, string(rowJSON))
-		for i := 0; i < 14; i++ {
+		for i := 0; i < 40; i++ {
 			rows = append(rows, string(shortRowJSON))
 		}
 

@@ -1,0 +1,309 @@
+# Risk-assurance playbook: an IT general controls readout for the audit committee (docs/wiki/playbook-risk-assurance.md)
+# Validate:  json2pptx semantic validate examples/semantic/playbooks/assurance-itgc-readout.yaml --templates-dir templates
+
+meta:
+  title: FY26 IT General Controls Review
+  template: forest-green
+  date: October 2026
+  source: Cobalt Insurance Internal Audit, FY26 ITGC review
+  chrome:
+    confidentiality: Confidential - Audit Committee
+    client_name: Cobalt Insurance
+slides:
+  - id: cover
+    kind: title
+    title: FY26 IT General Controls Review
+    subtitle: Audit Committee readout, October 2026
+    eyebrow: Cobalt Insurance Internal Audit
+  - id: exec
+    kind: executive_summary
+    title: ITGCs are partially effective; two high findings need fixing by December
+    points:
+      - lead: 48 key controls across 5 domains were tested on 1,160 samples.
+        support: The review covered 9 applications; computer operations was fully effective and change and development were amber.
+      - lead: Access management and third-party / cloud are rated red.
+        support: Five of the seven exceptions sit in these two domains, including both high-rated findings.
+      - lead: "The trend is improving: exceptions fell from 11 to 7 since 2024."
+        support: High-rated findings fell from 4 to 2 over the same three years.
+      - lead: Management has accepted all seven actions.
+        support: Quick wins land in Q4 2026, access tooling in H1 2027 and re-testing in Q3 2027.
+    bottom_line: The committee is asked to note the partially effective opinion and endorse the remediation plan.
+  - id: approach
+    kind: process
+    title: The review followed five steps from scoping to reporting
+    steps:
+      - label: Plan
+        description: Scoping of 5 domains and 9 applications; risk assessment selected 48 key controls
+      - label: Walkthroughs
+        description: Confirmed how each control operates with control owners across the 9 applications
+      - label: Design evaluation
+        description: Assessed whether each control, as designed, addresses the financial-reporting risk
+      - label: Testing
+        description: Operating-effectiveness testing of 1,160 samples across the year; exceptions assessed for root cause and severity
+      - label: Reporting
+        description: Findings agreed with management; ratings by domain and overall opinion issued
+    takeaway: Five steps, 48 key controls, 1,160 samples, 9 applications.
+  - id: board
+    kind: option_matrix
+    title: "Two of five domains are rated red: access management and third-party / cloud"
+    corner_label: Domain
+    criteria:
+      - label: Controls tested
+        scale: text
+      - label: Exceptions
+        scale: text
+      - label: Rating
+        scale: rag
+    options:
+      - name: Access management
+        scores:
+          - "14"
+          - "3"
+          - red
+      - name: Change management
+        scores:
+          - "11"
+          - "1"
+          - amber
+      - name: Computer operations
+        scores:
+          - "9"
+          - "0"
+          - green
+      - name: Program development
+        scores:
+          - "6"
+          - "1"
+          - amber
+      - name: Third-party / cloud
+        scores:
+          - "8"
+          - "2"
+          - red
+    decisive_criterion: Rating
+    takeaway: 48 controls tested, 7 exceptions; overall opinion partially effective.
+  - id: trend
+    kind: regions
+    title: Exceptions fell for a third year, but the opinion stays partially effective
+    arrangement: main_left
+    regions:
+      - kind: chart
+        size_pct: 60
+        heading: Exceptions and high-rated findings, 2024-2026
+        chart:
+          type: line
+          data:
+            categories:
+              - "2024"
+              - "2025"
+              - "2026"
+            series:
+              - name: Exceptions
+                values:
+                  - 11
+                  - 9
+                  - 7
+              - name: High-rated findings
+                values:
+                  - 4
+                  - 3
+                  - 2
+        unit: count
+      - kind: stat
+        size_pct: 45
+        value: Partially effective
+        label: Overall opinion, FY26
+      - kind: text
+        size_pct: 55
+        heading: What drove it
+        bullets:
+          - Privileged access not recertified for 3 of 9 applications
+          - SOC 2 reports not reviewed for 2 of 4 cloud providers
+    takeaway: Fewer exceptions each year, but the two high findings keep the opinion at partially effective.
+  - id: register_a
+    kind: table
+    title: "All seven findings have an owner and a date; the two high ones close by December"
+    headers:
+      - Finding
+      - Severity
+      - Owner
+      - Due date
+    column_alignments:
+      - left
+      - left
+      - left
+      - left
+    highlight_column: Severity
+    rows:
+      - [Privileged access not recertified for 3 of 9 applications, High, Head of IAM, 31 Dec 2026]
+      - [Cloud provider SOC 2 reports not reviewed for 2 of 4 providers, High, Head of Third-Party Risk, 31 Dec 2026]
+      - [Emergency changes closed without retrospective approval, Medium, Change Manager, 31 Mar 2027]
+      - [Leaver access removed late in 4 of 60 samples, Medium, HR Operations Lead, 28 Feb 2027]
+      - [UAT sign-off missing for one policy-admin release, Medium, Head of Application Delivery, 30 Apr 2027]
+      - [Generic and service account inventory incomplete, Low, IAM Operations Manager, 31 May 2027]
+      - [Cloud contract exit clauses not tested, Low, Procurement Lead, 30 Jun 2027]
+    takeaway: Seven findings, seven accepted actions; the last due date is 30 Jun 2027.
+  - id: finding1
+    kind: raw_json2pptx
+    slide:
+      slide_type: content
+      layout_id: blank-title
+      content:
+        - placeholder_id: title
+          type: text
+          text_value: "High: privileged access was not recertified for 3 of 9 applications"
+      pattern:
+        name: labeled-rows
+        values:
+          rows:
+            - label: WHAT WE FOUND
+              sublabel: access management
+              body: The annual privileged-access recertification was not performed for 3 of the 9 in-scope applications (claims, policy admin, general ledger). 41 privileged accounts went unreviewed in FY26.
+            - label: WHY IT MATTERS
+              sublabel: financial reporting risk
+              body: "Unreviewed privileged accounts can change financial data and configurations without detection. **This is a SOX key control and the main driver of the red rating for access management.**"
+            - label: ACTION
+              sublabel: agreed by management
+              body: Run a full recertification of all privileged accounts across the 9 applications in Q4 2026, then move recertification into the access tooling delivered in H1 2027 with quarterly cadence.
+            - label: OWNER AND DATE
+              sublabel: "severity: high"
+              body: "Head of IAM. Recertification complete by **31 Dec 2026**; tooling live by 30 Jun 2027; Internal Audit re-tests in Q3 2027."
+  - id: finding2
+    kind: raw_json2pptx
+    slide:
+      slide_type: content
+      layout_id: blank-title
+      content:
+        - placeholder_id: title
+          type: text
+          text_value: "High: SOC 2 reports were not reviewed for 2 of 4 cloud providers"
+      pattern:
+        name: labeled-rows
+        values:
+          rows:
+            - label: WHAT WE FOUND
+              sublabel: third-party / cloud
+              body: SOC 2 Type II reports for 2 of the 4 cloud providers hosting in-scope applications were obtained but not reviewed; complementary user-entity controls were not mapped for either provider.
+            - label: WHY IT MATTERS
+              sublabel: reliance on provider controls
+              body: "Cobalt relies on provider controls for hosting, backup and logical access. **Without review, exceptions at the provider would go unnoticed and the reliance is unsupported.**"
+            - label: ACTION
+              sublabel: agreed by management
+              body: Review both outstanding SOC 2 reports, map user-entity controls and log exceptions in Q4 2026; embed an annual review step in the third-party risk procedure.
+            - label: OWNER AND DATE
+              sublabel: "severity: high"
+              body: "Head of Third-Party Risk. Reviews complete by **31 Dec 2026**; procedure updated by 31 Mar 2027; Internal Audit re-tests in Q3 2027."
+  - id: maturity
+    kind: chart_insight
+    title: Access and third-party controls must climb two maturity levels by FY28
+    chart:
+      type: grouped_bar
+      title: Control maturity by domain (1-5 scale)
+      data:
+        categories:
+          - Access management
+          - Change management
+          - Computer operations
+          - Program development
+          - Third-party / cloud
+        series:
+          - name: Today (FY26)
+            values:
+              - 2
+              - 3
+              - 4
+              - 3
+              - 2
+          - name: FY28 target
+            values:
+              - 4
+              - 4
+              - 4
+              - 4
+              - 4
+        orientation: horizontal
+        highlight:
+          - Today (FY26)
+        data_labels: true
+    insights:
+      - Computer operations already meets the level-4 target.
+      - Access and third-party / cloud sit at level 2 and need the biggest step-up.
+      - Change and development need one level each, mostly through evidence discipline.
+    takeaway: "Target: level 4 in every domain by FY28."
+  - id: roadmap
+    kind: roadmap
+    title: Remediation runs in three phases and is re-tested in Q3 2027
+    phases:
+      - name: Quick wins
+        date_label: Q4 2026
+        description: Close both high findings
+        milestone: Both high findings closed by 31 Dec 2026
+        items:
+          - Recertify privileged access, 9 apps
+          - Review 2 outstanding SOC 2 reports
+      - name: Access tooling
+        date_label: Q1-Q2 2027
+        description: Fix access at the root
+        milestone: Tooling live by 30 Jun 2027
+        items:
+          - Identity governance tooling live
+          - Quarterly recertification cadence
+          - Close findings 3 to 6
+      - name: Re-test
+        date_label: Q3 2027
+        description: Confirm the fixes hold
+        milestone: Re-test report to the committee
+        items:
+          - Re-test all seven actions
+          - Re-rate the two red domains
+    takeaway: All seven actions accepted by management; last due date 30 Jun 2027.
+  - id: next
+    kind: next_steps
+    title: Four actions start in October; two decisions are requested today
+    actions:
+      - action: Launch the privileged-access recertification run across all 9 applications
+        owner: Head of IAM
+        date: 15 Oct 2026
+      - action: Review the two outstanding SOC 2 reports and map user-entity controls
+        owner: Head of Third-Party Risk
+        date: 30 Nov 2026
+      - action: Approve the access-tooling business case
+        owner: CIO
+        date: Dec 2026
+      - action: Report remediation status at each committee meeting until re-test
+        owner: Head of Internal Audit
+        date: Quarterly
+    decisions:
+      - "Note the FY26 ITGC opinion: partially effective"
+      - Endorse the remediation plan and its Q3 2027 re-test
+  - id: appendix
+    kind: section
+    title: Appendix
+    appendix: true
+  - id: stats
+    kind: table
+    title: "Appendix: testing statistics by domain"
+    headers:
+      - Domain
+      - Key controls
+      - Samples tested
+      - Applications
+      - Exceptions
+      - Exception rate
+    column_alignments:
+      - left
+      - right
+      - right
+      - right
+      - right
+      - right
+    rows:
+      - [Access management, "14", "420", "9", "3", 0.7%]
+      - [Change management, "11", "310", "9", "1", 0.3%]
+      - [Computer operations, "9", "180", "9", "0", 0.0%]
+      - [Program development, "6", "110", "6", "1", 0.9%]
+      - [Third-party / cloud, "8", "140", "4", "2", 1.4%]
+      - [Total, "48", "1,160", "9", "7", 0.6%]
+    totals_row: true
+    source: Cobalt Insurance Internal Audit, FY26 ITGC working papers
+    takeaway: Exception rates stay below 1.5% in every domain; 7 exceptions in 1,160 samples overall.

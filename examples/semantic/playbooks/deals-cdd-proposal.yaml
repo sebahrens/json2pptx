@@ -1,0 +1,259 @@
+# Deals playbook: a commercial due diligence proposal to a PE fund (docs/wiki/playbook-consulting-pitch-and-deals.md)
+# Validate:  json2pptx semantic validate examples/semantic/playbooks/deals-cdd-proposal.yaml --templates-dir templates
+# Render:    json2pptx semantic render examples/semantic/playbooks/deals-cdd-proposal.yaml --templates-dir templates --out /tmp/falcon.pptx
+
+meta:
+  audience: Meridian Capital Partners deal team
+  chrome:
+    client_name: Meridian Capital Partners
+    confidentiality: Confidential
+  date: October 2026
+  source: Nordbolt information memorandum; market model desk research, 2026
+  template: p-style
+  title: "Project Falcon: commercial due diligence proposal"
+slides:
+  - id: cover
+    kind: title
+    subtitle: Commercial due diligence proposal, October 2026
+    title: Project Falcon
+  - bottom_line: "Confirm scope B by Friday: the IC pack lands in week four."
+    id: exec
+    kind: executive_summary
+    points:
+      - lead: Nordbolt is a sub-scale number six in a growing market.
+        support: EUR 212M revenue and 2.3% share of a EUR 9.4bn European fastener market heading to EUR 10.6bn by 2028.
+      - lead: The margin story rests on price, which is the risk.
+        support: EBITDA rose from EUR 24.0M to 31.0M in two years; EUR 6.5M of that is price, taken while raw materials cost EUR 4.1M.
+      - lead: Scope B tests price and volume with 25 customer voices.
+        support: A market model plus two interview waves in four weeks for EUR 320k; option C adds a channel survey for EUR 90k and a week.
+      - lead: "The ask: confirm scope B and sign the engagement letter by Friday."
+        support: That keeps the red-flag report and IC pack inside the exclusivity window.
+    title: A four-week CDD can price the two risks that decide the Nordbolt bid
+  - arrangement: main_left
+    id: market
+    kind: regions
+    regions:
+      - chart:
+          data:
+            categories:
+              - "2021"
+              - "2025"
+              - 2028F
+            series:
+              - name: Market size
+                values:
+                  - 8.1
+                  - 9.4
+                  - 10.6
+          type: bar
+        heading: European industrial fastener market
+        kind: chart
+        size_pct: 60
+        unit: EUR bn
+      - context: Number six in Europe
+        kind: stat
+        label: Nordbolt share of the European market
+        size_pct: 40
+        value: 2.3%
+      - bullets:
+          - "Top three: Bossard 9.1%, Wuerth 7.4%, Fabory 3.8%"
+          - Automotive 41%, construction 27%, machinery 22% of revenue
+          - "Market grows about 4% a year; did Nordbolt keep pace?"
+        heading: Nordbolt's position
+        kind: text
+        size_pct: 60
+    source: Market model desk research 2026; Nordbolt information memorandum
+    takeaway: Growth is in the market, not yet in Nordbolt's share.
+    title: The market adds EUR 1.2bn by 2028, but Nordbolt holds only 2.3% of it
+  - arrangement: columns
+    id: bridge
+    kind: regions
+    regions:
+      - chart:
+          data:
+            points:
+              - label: EBITDA 2023
+                type: total
+                value: 24
+              - label: Price
+                type: increase
+                value: 6.5
+              - label: Volume
+                type: increase
+                value: 3.2
+              - label: Raw material
+                type: decrease
+                value: -4.1
+              - label: Opex
+                type: increase
+                value: 1.4
+              - label: EBITDA 2025
+                type: total
+                value: 31
+          type: waterfall
+        heading: EBITDA bridge 2023 to 2025
+        kind: chart
+        size_pct: 66
+        unit: EUR M
+      - body: Nearly all of the margin expansion came from price taken during a raw-material spike. If customers claw back even half of it when steel normalises, run-rate EBITDA falls by about EUR 3M and the multiple is paid on a number that does not hold.
+        bullets:
+          - Price durability is the first interview question
+          - "Volume added EUR 3.2M: real, if share held"
+        heading: What this means for the bid
+        kind: text
+        size_pct: 34
+    source: Nordbolt management accounts 2023-2025
+    takeaway: The bid rests on whether EUR 6.5M of price sticks.
+    title: EUR 6.5M of the EUR 7.0M EBITDA gain since 2023 is price
+  - body: Last year's commercial due diligence on Project Keel interviewed 22 customers of a European fastener distributor. The interviews showed the target's prices sat nine points above the market on its core SKUs and that two of its top five accounts were already re-tendering.
+    bullets:
+      - Price gap confirmed in both interview waves
+      - Run-rate EBITDA restated before the IC
+      - Bid lowered by EUR 40M and the deal still closed
+    caption: Keel's central distribution site, 2025
+    eyebrow: "Comparable: Project Keel"
+    heading: A fastener distributor priced on a margin that did not hold
+    id: keel
+    image:
+      alt: Keel distribution site
+      path: "../../images/site-photo-sample.png"
+    image_side: left
+    kind: image_case
+    metrics:
+      - label: price gap found
+        value: 9 pts
+      - label: bid adjustment
+        value: EUR 40M
+    source: Project Keel CDD, 2025 (anonymised)
+    title: On Project Keel the same test moved the bid by EUR 40M
+  - criteria:
+      - Cost
+      - Duration
+      - Confidence on price risk
+      - Confidence on volume risk
+    decisive_criterion: Confidence on price risk
+    highlight_label: Recommended
+    id: options
+    kind: option_matrix
+    options:
+      - detail: EUR 180k, 3 weeks
+        name: A. Desktop market model
+        scores:
+          - 4
+          - 4
+          - 1
+          - 2
+      - detail: EUR 320k, 4 weeks
+        name: B. Model + 25 customer interviews
+        scores:
+          - 3
+          - 3
+          - 4
+          - 3
+      - detail: EUR 410k, 5 weeks
+        name: C. B + channel-partner survey
+        scores:
+          - 2
+          - 2
+          - 4
+          - 4
+    recommended: B. Model + 25 customer interviews
+    scale: harvey
+    takeaway: A cannot see price risk; C buys a little volume confidence for EUR 90k and a week.
+    title: Scope B is the only option that prices both risks inside the window
+  - columns:
+      - header: B. Model + 25 interviews (recommended)
+        items:
+          - EUR 320k, four weeks
+          - Two interview waves test price durability and share directly
+          - Red-flag report and IC pack in week 4, inside the window
+      - header: C. B plus channel-partner survey
+        items:
+          - EUR 410k, five weeks
+          - Survey of 40-60 distributors and OEM buyers adds volume confidence
+          - IC pack slips one week past the exclusivity window
+    id: bvc
+    kind: comparison
+    takeaway: Take B now; the channel survey can run as a post-signing add-on.
+    title: C adds channel coverage, but costs a week the exclusivity window does not have
+  - column_alignments:
+      - left
+      - left
+      - right
+      - right
+    headers:
+      - Phase
+      - Deliverable
+      - Days
+      - Fee (EUR k)
+    id: pricing1
+    kind: table
+    rows:
+      - [Week 1, Data room review and hypothesis tree, "8", "40"]
+      - [Week 1, "Market model v1: size, growth, segments", "12", "80"]
+      - [Week 2, Interview guide and target list, "4", "20"]
+      - [Week 2, Customer interviews wave 1 (12), "14", "60"]
+      - [Week 3, Customer interviews wave 2 (13), "14", "60"]
+      - [Week 3, Synthesis workshop with deal team, "4", "20"]
+      - [Week 4, Red-flag report, "6", "20"]
+      - [Week 4, IC pack and Q&A support, "6", "20"]
+      - [Total, "Eight work packages, 68 consultant days", "68", "320"]
+    takeaway: Interviews 140k in total, synthesis and IC pack 60k; expenses billed at cost.
+    title: Eight deliverables over four weeks make up the EUR 320k fee
+  - id: plan
+    kind: timeline
+    milestones:
+      - body: Hypothesis tree, data room review, market model v1 by segment
+        date: Week 1
+        label: Data room and market model
+      - body: 12 customers across automotive and construction; interim read-out
+        date: Week 2
+        label: Interviews wave 1
+      - body: 13 further customers and competitors; synthesis workshop with the deal team
+        date: Week 3
+        label: Interviews wave 2 and synthesis
+      - body: Red-flag report, price and volume cases, IC pack and Q&A support
+        date: Week 4
+        label: Red-flag report and IC pack
+    takeaway: An interim read-out in week 2 flags any price issue before the second wave.
+    title: Four weeks from data room to IC pack
+  - id: team
+    kind: team
+    members:
+      - bio: 18 years in industrials; led Project Keel and twelve other industrial CDDs for PE clients.
+        name: Anna Lindqvist
+        photo: "../../images/headshot-sample.png"
+        role: Partner
+      - bio: Three prior fastener due diligences; runs the interview programme and the synthesis.
+        name: Marco Rossi
+        role: Engagement manager
+      - bio: Builds the segment model and the competitor benchmarks.
+        name: Consultant 1
+        role: Consultant, market model
+      - bio: Runs interview scheduling, notes and the price-gap analysis.
+        name: Consultant 2
+        role: Consultant, interviews
+    takeaway: Anna and Marco are on the engagement full time for the four weeks.
+    title: A team that has done three fastener diligences before
+  - actions:
+      - action: Confirm scope B and sign the engagement letter
+        date: Friday
+        owner: Meridian deal team
+      - action: Grant data room access and share the IM appendices
+        date: Monday
+        owner: Meridian / Nordbolt
+      - action: Agree interview target list and introductions
+        date: Week 1
+        owner: Anna Lindqvist
+      - action: Interim read-out on price durability
+        date: End of week 2
+        owner: Marco Rossi
+      - action: Red-flag report and IC pack
+        date: End of week 4
+        owner: Engagement team
+    decisions:
+      - Confirm scope B (EUR 320k, four weeks) and sign the engagement letter by Friday
+      - Decide whether to add the channel-partner survey as a post-signing option
+    id: next
+    kind: next_steps
+    title: Confirm scope B by Friday and we start in the data room on Monday

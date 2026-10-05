@@ -49,13 +49,14 @@ func TestGenerateTableCell_ReportsTruncation(t *testing.T) {
 }
 
 // twoStackedFiveRowTables is tests/quality/fixtures/two-tables-stacked.json as
-// it stood before go-slide-creator-fn2ka: two 5-row tables in 48% rows of the
-// midnight-blue content area, where each keeps only 3 rows.
+// it stood before go-slide-creator-fn2ka, with three rows added to each table:
+// two 8-row tables in 48% rows of the midnight-blue content area, where even
+// the compact row pitch (go-slide-creator-plg7r) cannot hold nine rows.
 const twoStackedFiveRowTables = `{"template":"midnight-blue","output_filename":"two-tables.pptx","slides":[{"layout_id":"slideLayout7",
 "content":[{"placeholder_id":"title","type":"text","text_value":"Revenue vs. Expenses"}],
 "shape_grid":{"columns":1,"gap":1,"rows":[
-{"height":48,"cells":[{"table":{"headers":["Revenue Stream","Q1","Q2","Q3","Q4"],"rows":[["Product Sales","$3.2M","$3.5M","$3.8M","$4.1M"],["Services","$1.1M","$1.2M","$1.3M","$1.4M"],["Licensing","$0.8M","$0.9M","$0.9M","$1.0M"],["Support","$0.5M","$0.5M","$0.6M","$0.6M"],["Total","$5.6M","$6.1M","$6.6M","$7.1M"]]}}]},
-{"height":48,"cells":[{"table":{"headers":["Expense Category","Q1","Q2","Q3","Q4"],"rows":[["COGS","$1.8M","$1.9M","$2.0M","$2.1M"],["R&D","$1.2M","$1.3M","$1.4M","$1.5M"],["Sales & Marketing","$0.9M","$1.0M","$1.1M","$1.2M"],["G&A","$0.4M","$0.4M","$0.5M","$0.5M"],["Total","$4.3M","$4.6M","$5.0M","$5.3M"]]}}]}]}}]}`
+{"height":48,"cells":[{"table":{"headers":["Revenue Stream","Q1","Q2","Q3","Q4"],"rows":[["Product Sales","$3.2M","$3.5M","$3.8M","$4.1M"],["Services","$1.1M","$1.2M","$1.3M","$1.4M"],["Licensing","$0.8M","$0.9M","$0.9M","$1.0M"],["Support","$0.5M","$0.5M","$0.6M","$0.6M"],["Training","$0.3M","$0.3M","$0.4M","$0.4M"],["Hardware","$0.2M","$0.2M","$0.3M","$0.3M"],["Other","$0.1M","$0.1M","$0.1M","$0.2M"],["Total","$6.2M","$6.7M","$7.4M","$8.0M"]]}}]},
+{"height":48,"cells":[{"table":{"headers":["Expense Category","Q1","Q2","Q3","Q4"],"rows":[["COGS","$1.8M","$1.9M","$2.0M","$2.1M"],["R&D","$1.2M","$1.3M","$1.4M","$1.5M"],["Sales & Marketing","$0.9M","$1.0M","$1.1M","$1.2M"],["G&A","$0.4M","$0.4M","$0.5M","$0.5M"],["Facilities","$0.3M","$0.3M","$0.3M","$0.3M"],["IT","$0.2M","$0.2M","$0.3M","$0.3M"],["Other","$0.1M","$0.1M","$0.1M","$0.1M"],["Total","$4.9M","$5.2M","$5.7M","$6.0M"]]}}]}]}}]}`
 
 // A grid table that drops rows refuses generation (it used to publish
 // "...and 2 more rows" with success: true), and validate predicts it in the

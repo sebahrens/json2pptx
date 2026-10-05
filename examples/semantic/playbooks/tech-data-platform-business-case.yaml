@@ -1,0 +1,309 @@
+# Technology & data playbook: a data-platform modernisation business case (docs/wiki/playbook-technology-and-data.md)
+# Validate:  json2pptx semantic validate examples/semantic/playbooks/tech-data-platform-business-case.yaml --templates-dir templates
+
+meta:
+  title: Atlas Retail data platform modernisation
+  template: modern-template
+  date: October 2026
+  chrome:
+    client_name: Atlas Retail
+    confidentiality: Confidential
+    page_numbers:
+      enabled: true
+slides:
+  - id: cover
+    kind: title
+    title: From a 2009 warehouse to a cloud lakehouse
+    subtitle: Atlas Retail steering committee business case, October 2026
+  - id: exec
+    kind: executive_summary
+    title: "Approve EUR 4.8M now: the lakehouse saves EUR 5.5M in five years"
+    points:
+      - lead: The warehouse no longer keeps up.
+        support: 1,900 hand-written ETL jobs load for 9.5 hours a night and missed the 6 am SLA on 61 of the last 90 days.
+      - lead: Bad data costs people.
+        support: 23% of product records carry a missing or inconsistent attribute; 4 FTE spend 60% of their time reconciling.
+      - lead: A Databricks lakehouse is the best of three options.
+        support: It scores highest on migration risk and skills availability at comparable cost and acceptable lock-in.
+      - lead: Five-year TCO falls from EUR 18.4M to EUR 12.9M.
+        support: Run cost drops from EUR 3.6M to EUR 1.5M a year once the warehouse is decommissioned in 2028.
+    bottom_line: Approve EUR 4.8M for year 1 and the Databricks contract so Foundation starts in Q1 2027.
+  - id: problem
+    kind: kpi_snapshot
+    title: The 2009 warehouse missed its 6 am SLA on 61 of the last 90 days
+    kpis:
+      - value: "14"
+        label: source systems feeding a 2009 warehouse
+      - value: 1,900
+        label: hand-written ETL jobs
+      - value: 9.5 h
+        label: nightly load window (SLA is 6 am)
+      - value: 61 / 90
+        label: nights the SLA was missed
+      - value: 23%
+        label: product records with a bad attribute
+      - value: 60%
+        label: of 4 FTE's time spent on reconciliations
+    source: Atlas Retail data operations logs, Jul-Sep 2026; product master data audit
+    takeaway: Every second night the business opens without yesterday's numbers.
+  - id: console
+    kind: image_case
+    title: "The ops console shows the breach: 61 of 90 nights, 1.5 h is the target"
+    eyebrow: Nightly load dashboard
+    heading: What the operations team sees most mornings
+    image:
+      path: "../../images/ops-console.png"
+      alt: Ops console queue health view with a delayed payments.settle queue
+      fit: contain
+    image_side: left
+    callouts:
+      - label: SLA breach
+        x: 0.27
+        y: 0.135
+      - label: Job queue (14,860)
+        x: 0.5
+        y: 0.54
+    body: The nightly load dashboard flags the SLA breach at the top and a job queue in the centre that has not drained by 09:42. Each late night means stores trade without yesterday's sales and stock positions.
+    bullets:
+      - 61 of the last 90 nights missed the 6 am SLA
+      - Queue depth peaks at 14,860 jobs with a 47-minute oldest message
+      - "Target state: a 1.5 h load window and fewer than 3 misses per 90 days"
+    metrics:
+      - value: 61 / 90
+        label: SLA misses today
+      - value: "< 3"
+        label: SLA misses target per 90 days
+      - value: 1.5 h
+        label: target load window
+    caption: Ops console, queue health, 09:42 UTC
+    source: Atlas Retail ops console screenshot, September 2026
+  - id: arch
+    kind: architecture
+    title: Five tiers and two rails make up the target lakehouse
+    tiers:
+      - label: Consumption
+        items:
+          - Power BI
+          - 3 data products
+          - ML feature store
+      - label: Serving
+        items:
+          - Semantic layer
+          - Governed marts
+      - label: Processing
+        items:
+          - Spark batch
+          - Streaming
+      - label: Storage
+        items:
+          - Delta lake
+          - Bronze / silver / gold
+      - label: Ingestion
+        items:
+          - CDC from 14 sources
+          - Event streaming
+    rails:
+      - Security & governance
+      - FinOps
+    takeaway: Security, governance and FinOps run through every tier; they are built in Foundation, not bolted on.
+  - id: options
+    kind: option_matrix
+    title: Databricks scores best on migration risk and skills availability
+    criteria:
+      - Cost
+      - Migration risk
+      - Skills availability
+      - Lock-in
+    options:
+      - name: Databricks
+        detail: Lakehouse; Spark skills in-house
+        scores:
+          - 3
+          - 4
+          - 4
+          - 3
+      - name: Snowflake
+        detail: Warehouse-first; add-ons for ML
+        scores:
+          - 2
+          - 3
+          - 3
+          - 2
+      - name: Hyperscaler native
+        detail: Cheapest licences; most build
+        scores:
+          - 3
+          - 2
+          - 2
+          - 4
+    scale: harvey
+    recommended: Databricks
+    decisive_criterion: Migration risk
+    highlight_label: Recommended
+    source: Vendor RFI responses and reference calls, August-September 2026; scores 0-4, 4 is best
+    takeaway: Databricks carries the least migration risk with skills the team already has.
+  - id: tco
+    kind: regions
+    title: "Run cost falls from EUR 3.6M to 1.5M a year: EUR 5.5M saved by 2031"
+    arrangement: main_left
+    regions:
+      - kind: chart
+        size_pct: 62
+        heading: Annual run cost, current vs target
+        unit: EUR M
+        chart:
+          type: bar
+          data:
+            categories:
+              - Year 1
+              - Year 2
+              - Year 3
+              - Year 4
+              - Year 5
+            series:
+              - name: Current
+                values:
+                  - 3.6
+                  - 3.7
+                  - 3.7
+                  - 3.7
+                  - 3.7
+              - name: Target
+                values:
+                  - 4.8
+                  - 3.1
+                  - 1.9
+                  - 1.6
+                  - 1.5
+      - kind: stat
+        size_pct: 35
+        value: EUR 5.5M
+        label: saved over five years
+        context: Year 1 includes EUR 4.8M migration
+      - kind: table
+        size_pct: 65
+        headers:
+          - Five-year TCO
+          - EUR M
+        rows:
+          - [Current, "18.4"]
+          - [Target, "12.9"]
+          - [Saving, "5.5"]
+        column_alignments:
+          - left
+          - right
+    source: Atlas Retail five-year TCO model, September 2026
+    takeaway: The year-1 spend of EUR 4.8M pays back by year 3; the saving is EUR 5.5M by 2031.
+  - id: drivers
+    kind: chart_insight
+    title: Compute is 48% of run cost, so FinOps guardrails protect the saving
+    chart:
+      type: donut
+      title: Target run cost by driver
+      data:
+        categories:
+          - Compute
+          - Licences
+          - People
+          - Storage
+        values:
+          - 48
+          - 22
+          - 18
+          - 12
+    insights:
+      - "Compute (48%) is the only driver that scales with usage: cluster policies and auto-stop cap it."
+      - Licences (22%) are fixed by the Databricks contract on the table today.
+      - People (18%) falls as 1,900 jobs become 400 pipelines; storage (12%) is cheap at Delta tiers.
+    source: Atlas Retail five-year TCO model, steady-state year, September 2026
+    takeaway: Half the run cost is compute, so the FinOps rail is where the EUR 5.5M is kept.
+  - id: roadmap
+    kind: raw_json2pptx
+    slide:
+      slide_type: content
+      layout_id: blank-title
+      content:
+        - placeholder_id: title
+          type: text
+          text_value: Three phases decommission the warehouse by the end of 2028
+      pattern:
+        name: phase-roadmap
+        values:
+          phases:
+            - name: Foundation
+              date_label: Q1-Q2 2027
+              description: Landing zone, governance, FinOps guardrails; 3 pilot sources live.
+              active: true
+              milestone: 3 pilots live
+            - name: Migrate
+              date_label: Q3 2027-Q2 2028
+              description: 14 sources on CDC; 1,900 ETL jobs become 400 pipelines.
+              milestone: 400 pipelines
+            - name: Optimise
+              date_label: Q3-Q4 2028
+              description: Warehouse decommissioned; compute tuned; hand-over to run.
+              milestone: Warehouse off
+          parallel_label: In parallel
+          parallel_tracks:
+            - Data literacy for 300 analysts
+            - "FinOps guardrails: budgets, policies, showback"
+      source: Atlas Retail migration plan, September 2026
+  - id: kpis
+    kind: raw_json2pptx
+    slide:
+      slide_type: content
+      layout_id: blank-title
+      content:
+        - placeholder_id: title
+          type: text
+          text_value: "Four KPIs move: the load window drops from 9.5 h to 1.5 h"
+      pattern:
+        name: comparison-2col
+        values:
+          headers:
+            - Today
+            - Target after migration
+          rows:
+            - left: "Nightly load window: 9.5 h"
+              right: "Load window: 1.5 h"
+            - left: "SLA misses: 61 per 90 days"
+              right: "SLA misses: under 3 per 90 days"
+            - left: "Product-record defects: 23%"
+              right: "Product-record defects: under 5%"
+            - left: "Reconciliation effort: 60% of 4 FTE"
+              right: "Reconciliation effort: -70%"
+        overrides:
+          connectors: true
+          highlight_column: right
+      source: Atlas Retail data operations logs; target KPIs from the business case model
+  - id: ask
+    kind: decision
+    title: Approve EUR 4.8M for year 1 and the Databricks contract
+    options:
+      - label: Do nothing
+        detail: Run cost stays at EUR 3.7M a year and SLA misses keep growing with volume.
+      - label: Databricks lakehouse
+        detail: EUR 4.8M in year 1, EUR 5.5M saved over five years, warehouse off by end-2028.
+        recommended: true
+      - label: Snowflake or native hyperscaler stack
+        detail: Higher migration risk or integration effort for a similar five-year cost.
+    recommendation: Approve EUR 4.8M for year 1 and sign the Databricks contract so Foundation starts in Q1 2027.
+  - id: next
+    kind: next_steps
+    title: Four actions start Foundation in January 2027
+    actions:
+      - action: Sign the Databricks enterprise agreement
+        owner: CIO / Procurement
+        date: 15 Nov 2026
+      - action: Stand up the landing zone and governance board
+        owner: Head of Data Platform
+        date: 31 Jan 2027
+      - action: Select the 3 pilot sources and their business owners
+        owner: CDO
+        date: 15 Dec 2026
+      - action: Launch the data literacy programme for 300 analysts
+        owner: Head of Analytics
+        date: Q1 2027
+    decisions:
+      - Approve EUR 4.8M for year 1 of the programme
+      - Approve the Databricks contract

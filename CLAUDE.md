@@ -40,7 +40,7 @@ Always run this checklist before declaring work complete:
 
 ## Skill, Docs, and Code Sync (mandatory)
 
-The agent-facing skill (`skills/generate-deck/SKILL.md`) and contributor-facing docs (`docs/FIT_FINDINGS.md`, `docs/PATTERNS.md`, `docs/STYLE_DEFAULTS.md`, `docs/INPUT_FORMAT.md`) are part of this repo. They are not external. Any change that alters an agent-visible or contributor-visible surface MUST update them in the same commit.
+The agent-facing skill (`skills/generate-deck/SKILL.md`), the contributor-facing docs (`docs/FIT_FINDINGS.md`, `docs/PATTERNS.md`, `docs/STYLE_DEFAULTS.md`, `docs/INPUT_FORMAT.md`) and the agent wiki (`docs/wiki/`, whose YAML blocks and `examples/semantic/playbooks/` decks are validated by `internal/semantic` tests) are part of this repo. They are not external. Any change that alters an agent-visible or contributor-visible surface MUST update them in the same commit.
 
 **Surfaces that count as agent-facing (require SKILL.md update):**
 
@@ -56,6 +56,7 @@ The agent-facing skill (`skills/generate-deck/SKILL.md`) and contributor-facing 
 - New pattern overrides, new pattern authoring contract rules -> `docs/PATTERNS.md`
 - Deck-level defaults, swap semantics, scope rules -> `docs/STYLE_DEFAULTS.md`
 - Top-level JSON shape changes -> `docs/INPUT_FORMAT.md`
+- DeckSpec kind fields, split-layout recipes, MCP call sequence, bead references a page cites as "pending" -> `docs/wiki/` (the page that describes the surface; `docs/wiki/README.md` lists them)
 
 **The rule (symmetric):**
 

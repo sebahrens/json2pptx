@@ -15,10 +15,11 @@ func TestCellExtraLogicalRows(t *testing.T) {
 		{"two lines", "hello\nworld", 1},
 		{"three lines", "a\nb\nc", 2},
 		{"two comma items (not a list)", "a, b", 0},
-		{"three comma items", "a, b, c", 2},
-		{"five comma items", "a, b, c, d, e", 4},
+		{"three short comma items fit one line", "a, b, c", 0},
+		{"three comma items that wrap", "market sizing, customer interviews, channel-partner survey", 2},
+		{"five comma items that wrap", "data room, market model, interviews, synthesis, IC pack", 4},
 		{"newlines beat commas", "a\nb\nc\nd", 3},
-		{"commas beat newlines", "a, b, c, d, e", 4},
+		{"commas beat newlines", "data room, market model, interviews, synthesis, IC pack\nx", 4},
 		{"mixed newlines and commas", "a, b\nc", 1}, // 2 lines, 2 non-empty comma parts (< 3) → lines win: extra = 1
 	}
 	for _, tt := range tests {
@@ -87,10 +88,10 @@ func TestLogicalRowCount(t *testing.T) {
 			"comma list counting",
 			func() *TableInput {
 				t := &TableInput{Headers: makeHeaders(3), Rows: makeRows(3, 3)}
-				t.Rows[0][0] = TableCellInput{Content: "a, b, c, d", ColSpan: 1, RowSpan: 1}
+				t.Rows[0][0] = TableCellInput{Content: "data room review, market model build, customer interviews, synthesis", ColSpan: 1, RowSpan: 1}
 				return t
 			}(),
-			7, // 4 base + 3 extra from comma list
+			7, // 4 base + 3 extra from a comma list long enough to wrap
 		},
 	}
 

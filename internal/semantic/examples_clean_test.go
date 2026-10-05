@@ -25,6 +25,16 @@ func TestBundledSemanticExamplesValidateClean(t *testing.T) {
 	if len(matches) == 0 {
 		t.Fatalf("no semantic examples found under %s", dir)
 	}
+	// The wiki playbooks (docs/wiki/) are complete decks agents copy; they are
+	// held to the same bar.
+	playbooks, err := filepath.Glob(filepath.Join(dir, "playbooks", "*.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(playbooks) == 0 {
+		t.Fatalf("no playbook examples found under %s", filepath.Join(dir, "playbooks"))
+	}
+	matches = append(matches, playbooks...)
 
 	for _, path := range matches {
 		name := filepath.Base(path)
@@ -54,7 +64,16 @@ func TestBundledSemanticExamplesValidateClean(t *testing.T) {
 // csclk.57): agents copy these verbatim, so every ```yaml block that declares
 // top-level `meta:` + `slides:` must validate without error findings.
 func TestDocSemanticSnippetsValidateClean(t *testing.T) {
-	for _, doc := range []string{"README.md", filepath.Join("docs", "SEMANTIC_COMPILER.md")} {
+	docs := []string{"README.md", filepath.Join("docs", "SEMANTIC_COMPILER.md")}
+	// Every wiki page: agents copy their YAML blocks too.
+	wiki, err := filepath.Glob(filepath.Join("..", "..", "docs", "wiki", "*.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, page := range wiki {
+		docs = append(docs, filepath.Join("docs", "wiki", filepath.Base(page)))
+	}
+	for _, doc := range docs {
 		data, err := os.ReadFile(filepath.Join("..", "..", doc))
 		if err != nil {
 			t.Fatal(err)
@@ -74,7 +93,9 @@ func TestDocSemanticSnippetsValidateClean(t *testing.T) {
 				t.Errorf("%s yaml block %d produced error findings: %v", doc, i, ds)
 			}
 		}
-		if found == 0 {
+		// A wiki page may be prose only (the hub, the journey); the two
+		// canonical docs must keep their quick-start snippet.
+		if found == 0 && !strings.HasPrefix(doc, filepath.Join("docs", "wiki")) {
 			t.Errorf("%s: no semantic yaml snippet found", doc)
 		}
 	}

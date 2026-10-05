@@ -125,7 +125,7 @@ func TestCLIActualSourceLossRetainsRepairWithoutPublishing(t *testing.T) {
 				if finding == nil || finding.Path != "/slides/0/content/0" || finding.Action != "refuse" || finding.Fix == nil {
 					t.Fatalf("CLI source-loss repair lost: %+v", result)
 				}
-				if kind == "table" && (finding.Fix.Params["split_at_row"] != float64(9) || finding.Fix.Params["hidden_rows"] != float64(71)) {
+				if kind == "table" && (finding.Fix.Params["split_at_row"] != float64(15) || finding.Fix.Params["hidden_rows"] != float64(65)) {
 					t.Fatalf("table split parameters lost: %+v", finding)
 				}
 				if kind == "bullets" && (finding.Fix.Kind != "split_bullets" || finding.Fix.Params["max_items"] != float64(1)) {

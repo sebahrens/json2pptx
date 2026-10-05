@@ -116,13 +116,10 @@ repairs from advice.
 Examples: [semantic specs](../../examples/semantic/),
 [raw skeletons](examples/skeletons/README.md), and the
 [layout-coverage example](examples/layout-coverage-deckspec.md).
-Standalone SVG diagrams: the `svggen-mcp` server (RAW_PATH.md).
 
 ## Operational boundaries
 
-Start the deck server with `json2pptx mcp` (profiles: TOOLS.md;
-`--tools all` or `JSON2PPTX_MCP_TOOLS=all` lists every tool,
-`get_capabilities().mcp_tools_available` the callable ones). `list_templates`
+Start the deck server with `json2pptx mcp` (profiles: TOOLS.md). `list_templates`
 `read_only: true` avoids preview-cache writes. Template precedence:
 DECKSPEC.md. A CLI command that answers in JSON prints exactly one JSON
 document on stdout, also when it fails (`{subcommand, ok:false,
@@ -131,8 +128,7 @@ findings:[{code, message}]}`; a failed `generate` reports the findings
 Args over 2 MiB of text are refused; a raced
 `deck_id` patch returns `STALE_REVISION` (reload, re-apply).
 `render_deck_spec` resolves relative asset paths (image, photos) against
-`base_dir` and fetches `url` assets like `generate_presentation`; a missing
-asset fails the render. A `template_path` + `base_dir` render is kept on the
-`deck_id`, so deck_id-only render / validate / score calls reuse that file.
+`base_dir` and fetches `url` assets; a missing asset fails the render. A
+`template_path` + `base_dir` render is kept on the `deck_id` for later calls.
 
-Responses are compact JSON; `MCP_COMPACT_RESPONSES` is deprecated and changes nothing.
+Responses are always compact JSON; the server still advertises `experimental.compact_responses: {}` and still honours the client capability and the deprecated `MCP_COMPACT_RESPONSES=1` environment variable, but neither changes anything.

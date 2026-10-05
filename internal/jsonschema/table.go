@@ -191,10 +191,16 @@ func (t *TableInput) LogicalRowCount() int {
 	return logicalRows
 }
 
+// commaListWrapChars is the cell length from which a comma-separated list
+// is counted as one logical row per item: a shorter list ("size, growth,
+// segments") sits on one line of a 12pt column and used to be refused as
+// three rows (go-slide-creator-plg7r). Longer lists wrap item by item.
+const commaListWrapChars = 48
+
 // CellExtraLogicalRows returns the number of extra logical rows a cell's
 // content contributes beyond 1. A cell with N newlines contributes N extra rows.
-// A cell with a comma-separated list of ≥3 items contributes (items-1) extra rows.
-// The higher of the two counts is used.
+// A cell of commaListWrapChars or more with a comma-separated list of ≥3 items
+// contributes (items-1) extra rows. The higher of the two counts is used.
 //
 // This matches the multiline cell counting rule in the generate-deck skill:
 // effective logical rows = max(line_count, comma_items).
@@ -206,10 +212,11 @@ func CellExtraLogicalRows(content string) int {
 	// Count newline-separated lines.
 	lineCount := strings.Count(content, "\n") + 1
 
-	// Count comma-separated items (only if ≥3).
+	// Count comma-separated items (only if ≥3 and the cell is long enough
+	// to wrap).
 	commaItems := 0
 	parts := strings.Split(content, ",")
-	if len(parts) >= 3 {
+	if len(parts) >= 3 && len([]rune(content)) >= commaListWrapChars {
 		// Verify these look like list items (non-empty after trim).
 		count := 0
 		for _, p := range parts {

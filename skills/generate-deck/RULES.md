@@ -125,7 +125,7 @@ Input JSON is validated with `additionalProperties: false` at every level: unkno
 
 **Row width.** `headers` defines the columns. A shorter row (counting `col_span`) is padded; a wider one is rejected with `INVALID_PARAMETER` at `...table_value.rows` (grid cells: `.../cells/N/table.rows`).
 
-**Multiline cells.** A cell with `\n` or a comma-list of ≥3 items counts as N logical rows (N = max(line_count, comma_items)); apply this BEFORE the rows > 7 check. 5 rows where 3 cells hold 2 lines = 8 logical rows → split.
+**Multiline cells.** A cell with `\n`, or a comma-list of ≥3 items in a cell of 48+ characters, counts as N logical rows (N = max(line_count, comma_items)); apply this BEFORE the rows > 10 check (header included; past 7 the rows render at a compact pitch). 8 rows where 3 cells hold 2 lines = 12 logical rows → split.
 
 When TDR forces a split, say so ("N logical rows × M columns; per Rule 20 emitting split_slide") and never shrink fonts below 9pt to avoid it.
 

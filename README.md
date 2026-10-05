@@ -1009,6 +1009,7 @@ make release         # All platforms (requires clean tree)
 - `get_input_schema` (MCP) / `json2pptx input-schema` (CLI) -- canonical JSON Schema for `PresentationInput`
 - `list_deck_archetypes` / `list_slide_kinds` / `json2pptx semantic schema` -- canonical semantic deck-spec discovery
 - [docs/SEMANTIC_COMPILER.md](docs/SEMANTIC_COMPILER.md) -- semantic deck-spec model, compiler stages, source maps, and target architecture
+- [docs/wiki/README.md](docs/wiki/README.md) -- wiki for agents building consulting-grade decks: the MCP journey, storyline, split and complex layouts, visual vocabulary, and playbooks for pitches and deals, risk consulting, technology and data, and risk assurance (each with a rendered example deck under `examples/semantic/playbooks/`)
 - [docs/INPUT_FORMAT.md](docs/INPUT_FORMAT.md) -- tutorial with worked examples
 - [docs/PATTERNS.md](docs/PATTERNS.md) -- named-pattern authoring guide
 - [docs/FIT_FINDINGS.md](docs/FIT_FINDINGS.md) -- fit findings catalog and action semantics
