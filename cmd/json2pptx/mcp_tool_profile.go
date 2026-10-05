@@ -53,7 +53,7 @@ const (
 	// go-slide-creator-355t7 target for tools/list alone; it is now the budget
 	// for the whole of first contact (go-slide-creator-mvdt5), so the listing
 	// is abridged (mcp_tool_listing_abridged.go) and capped well under it.
-	deckSpecToolLimit          = 12
+	deckSpecToolLimit          = 13 // 12 + show_pattern (go-slide-creator-cb339)
 	deckSpecToolListByteBudget = 24 * 1024
 
 	// allToolListByteBudget caps the "all" profile's default listing, which
@@ -100,6 +100,10 @@ var deckSpecToolNames = []string{
 	"score_deck",
 	"recommend_visual",
 	"plan_deck",
+	// show_pattern is the one raw-path tool a DeckSpec author needs: a
+	// raw_json2pptx slide carries a pattern block, and its fields come from
+	// here, not from list_slide_kinds (go-slide-creator-cb339).
+	"show_pattern",
 }
 
 // foldedTools maps a tool whose job another tool now covers to that

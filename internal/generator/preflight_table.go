@@ -86,8 +86,8 @@ func DetectTablePreflight(input TablePreflightInput) []patterns.FitFinding {
 
 	// Row-count scaling: maxVisibleRows derived from bounds height.
 	if input.Bounds.Height > 0 {
-		fontRatio := float64(fontSize) / float64(defaultFontSize)
-		scaledRowHeight := int64(float64(defaultRowHeight) * fontRatio)
+		// The compact pitch, as GenerateTableXML counts capacity.
+		scaledRowHeight := compactRowHeight(fontSize)
 		if scaledRowHeight < 1 {
 			scaledRowHeight = 1
 		}

@@ -2,9 +2,10 @@
 
 Use the live `tools/list` descriptions and input schemas for signatures;
 `get_capabilities().mcp_tools_available` is the current searchable catalog.
-The default `deckspec` profile advertises only the DeckSpec path;
+The default `deckspec` profile advertises the DeckSpec path plus
+`show_pattern` (the fields a `raw_json2pptx` pattern block takes);
 `--tools core` (alias `raw`) adds the raw-JSON path and `--tools all` the
-rest. Hidden tools stay callable by name, and a response that mentions one
+rest. `validate_deck_spec {deck_id, read:"spec"}` returns the stored spec. Hidden tools stay callable by name, and a response that mentions one
 lists it in `hidden_tools`. Folded aliases are never listed:
 `recommend_pattern` → `recommend_visual`, `render_slide_image` →
 `render_deck_thumbnails` `slide_indices`, `repair_slides_batch` →
@@ -132,7 +133,5 @@ recipe rendered through generation, as an image. The CLI-only
 `preview-patterns` builds the same pictures as a local batch gallery
 (`-template`, `-pattern` narrow it; nothing is committed). The raw-JSON
 equivalent: `list_patterns` → `show_pattern` (`example_values`) →
-`expand_pattern` on the template → `render_slide_image_from_json`.
-
-For a comparison under one template, `expand_patterns` can replace repeated
-expansion calls.
+`expand_pattern` on the template → `render_slide_image_from_json`
+(`expand_patterns` batches several).

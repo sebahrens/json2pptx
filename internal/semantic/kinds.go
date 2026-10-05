@@ -139,7 +139,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindTable: {
 		Kind:            KindTable,
-		Summary:         "A native data table — the financials / P&L, the segment split, the price list, a risk register (risk, likelihood, impact, mitigation, owner). Renders with the template's own table style; up to 6 columns × 7 logical rows before the density rules ask for a split.",
+		Summary:         "A native data table — the financials / P&L, the segment split, the price list, a risk register (risk, likelihood, impact, mitigation, owner). Renders with the template's own table style; up to 6 columns × 10 logical rows before the density rules ask for a split.",
 		RequiredFields:  []string{"headers", "rows"},
 		RequiredAliases: map[string][]string{"headers": {"columns"}},
 		TypicalFields:   []string{"title", "column_alignments", "highlight_column", "totals_row", "takeaway"},

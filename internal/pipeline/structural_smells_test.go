@@ -366,20 +366,20 @@ func makeDensityTable(dataRows, cols int) *jsonschema.TableInput {
 }
 
 func TestDetectTableDensity_NoWarning(t *testing.T) {
-	// 6 data rows + 1 header = 7 logical rows, 6 cols → no warning
-	table := makeDensityTable(6, 6)
+	// 9 data rows + 1 header = 10 logical rows (TDRMaxRows), 6 cols → no warning
+	table := makeDensityTable(9, 6)
 	warnings := DetectTableDensity(table, "slides[0].content[0]")
 	if len(warnings) != 0 {
-		t.Errorf("expected no warnings for 7×6 table, got %d: %v", len(warnings), warnings)
+		t.Errorf("expected no warnings for 10×6 table, got %d: %v", len(warnings), warnings)
 	}
 }
 
 func TestDetectTableDensity_TooManyRowsAndCols(t *testing.T) {
-	// 7 data rows + 1 header = 8 logical rows > 7, 7 cols > 6
-	table := makeDensityTable(7, 7)
+	// 10 data rows + 1 header = 11 logical rows > 10, 7 cols > 6
+	table := makeDensityTable(10, 7)
 	warnings := DetectTableDensity(table, "slides[0].content[0]")
 	if len(warnings) != 2 {
-		t.Fatalf("expected 2 warnings for 8×7 table, got %d: %v", len(warnings), warnings)
+		t.Fatalf("expected 2 warnings for 11×7 table, got %d: %v", len(warnings), warnings)
 	}
 	for _, w := range warnings {
 		if w.Code != patterns.ErrCodeDensityExceeded {
@@ -389,8 +389,8 @@ func TestDetectTableDensity_TooManyRowsAndCols(t *testing.T) {
 }
 
 func TestDetectTableDensity_MultilineCells(t *testing.T) {
-	// 6 data rows + 1 header = 7, but 3 multiline cells add 3 → 10 > 7
-	table := makeDensityTable(6, 6)
+	// 9 data rows + 1 header = 10, but 3 multiline cells add 3 → 13 > 10
+	table := makeDensityTable(9, 6)
 	table.Rows[0][0] = jsonschema.TableCellInput{Content: "a\nb", ColSpan: 1, RowSpan: 1}
 	table.Rows[1][0] = jsonschema.TableCellInput{Content: "a\nb", ColSpan: 1, RowSpan: 1}
 	table.Rows[2][0] = jsonschema.TableCellInput{Content: "a\nb", ColSpan: 1, RowSpan: 1}

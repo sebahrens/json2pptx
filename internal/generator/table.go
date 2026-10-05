@@ -142,10 +142,12 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 
 	// Row-count-based font scaling: when the table has more rows than can
 	// fit at the current font size, scale the font down proportionally.
-	// Row height scales linearly with font size relative to the default.
+	// Capacity is counted at the compact pitch — the tightest rows
+	// planTableRows will set before truncating — so this estimate and the
+	// row plan agree (they used to differ, so a 12pt table was never scaled
+	// and then lost rows at the 0.4in floor).
 	if config.Bounds.Height > 0 {
-		fontRatio := float64(config.DefaultSize) / float64(defaultFontSize)
-		scaledRowHeight := int64(float64(defaultRowHeight) * fontRatio)
+		scaledRowHeight := compactRowHeight(config.DefaultSize)
 		if scaledRowHeight < 1 {
 			scaledRowHeight = 1
 		}
@@ -351,9 +353,29 @@ type tableRowPlan struct {
 	KeptRows     int
 	HiddenRows   int
 	TotalHeight  int64
+	// Compacted is set when the rows only fit at the compact pitch
+	// (compactRowHeight) rather than the 0.4in floor. A truncated plan is
+	// never Compacted: it already says the rows did not fit.
+	Compacted bool
+	// RowPitchEMU is the row floor the plan was measured at.
+	RowPitchEMU int64
 }
 
+// planTableRows measures the rows at the 0.4in floor first, so every table
+// that fits today keeps its look; a table that overflows is re-measured at the
+// compact pitch before any row is truncated (go-slide-creator-plg7r). Both
+// generation and preflight call it, so the two cannot disagree.
 func planTableRows(table *types.TableSpec, colWidths []int64, config TableRenderConfig) tableRowPlan {
+	plan := planTableRowsAt(table, colWidths, config, false)
+	if plan.HiddenRows == 0 || config.Bounds.Height <= 0 {
+		return plan
+	}
+	compact := planTableRowsAt(table, colWidths, config, true)
+	compact.Compacted = compact.HiddenRows == 0
+	return compact
+}
+
+func planTableRowsAt(table *types.TableSpec, colWidths []int64, config TableRenderConfig, compact bool) tableRowPlan {
 	headerCells := table.HeaderCells
 	if len(headerCells) == 0 {
 		headerCells = make([]types.TableCell, len(table.Headers))
@@ -361,12 +383,16 @@ func planTableRows(table *types.TableSpec, colWidths []int64, config TableRender
 			headerCells[i] = types.TableCell{Content: header, ColSpan: 1, RowSpan: 1}
 		}
 	}
+	pitch := contentRowHeight(config.DefaultSize)
+	if compact {
+		pitch = compactRowHeight(config.DefaultSize)
+	}
 
-	headerHeight := measureTableRowHeight(headerCells, colWidths, config, true)
+	headerHeight := measureTableRowHeight(headerCells, colWidths, config, true, compact)
 	allHeights := make([]int64, len(table.Rows))
 	totalHeight := headerHeight
 	for i, row := range table.Rows {
-		allHeights[i] = measureTableRowHeight(row, colWidths, config, false)
+		allHeights[i] = measureTableRowHeight(row, colWidths, config, false, compact)
 		totalHeight += allHeights[i]
 	}
 
@@ -376,6 +402,7 @@ func planTableRows(table *types.TableSpec, colWidths []int64, config TableRender
 			RowHeights:   allHeights,
 			KeptRows:     len(table.Rows),
 			TotalHeight:  totalHeight,
+			RowPitchEMU:  pitch,
 		}
 	}
 
@@ -388,7 +415,7 @@ func planTableRows(table *types.TableSpec, colWidths []int64, config TableRender
 		if hidden == 0 {
 			break
 		}
-		summaryHeight := measureTableRowHeight(summaryTableRow(len(table.Headers), hidden), colWidths, config, false)
+		summaryHeight := measureTableRowHeight(summaryTableRow(len(table.Headers), hidden), colWidths, config, false, compact)
 		if used+allHeights[candidate]+summaryHeight > config.Bounds.Height {
 			break
 		}
@@ -397,7 +424,7 @@ func planTableRows(table *types.TableSpec, colWidths []int64, config TableRender
 	}
 
 	hidden := len(table.Rows) - kept
-	summaryHeight := measureTableRowHeight(summaryTableRow(len(table.Headers), hidden), colWidths, config, false)
+	summaryHeight := measureTableRowHeight(summaryTableRow(len(table.Headers), hidden), colWidths, config, false, compact)
 	rowHeights := append([]int64(nil), allHeights[:kept]...)
 	rowHeights = append(rowHeights, summaryHeight)
 	return tableRowPlan{
@@ -406,6 +433,7 @@ func planTableRows(table *types.TableSpec, colWidths []int64, config TableRender
 		KeptRows:     kept,
 		HiddenRows:   hidden,
 		TotalHeight:  headerHeight + sumTableRowHeights(rowHeights),
+		RowPitchEMU:  pitch,
 	}
 }
 
@@ -420,12 +448,15 @@ func summaryTableRow(numCols, hidden int) []types.TableCell {
 	return row
 }
 
-func measureTableRowHeight(cells []types.TableCell, colWidths []int64, config TableRenderConfig, header bool) int64 {
+func measureTableRowHeight(cells []types.TableCell, colWidths []int64, config TableRenderConfig, header, compact bool) int64 {
 	fontSize := config.DefaultSize
 	if header {
 		fontSize = headerFontSize(config, fontSize)
 	}
 	rowHeight := contentRowHeight(fontSize)
+	if compact {
+		rowHeight = compactRowHeight(fontSize)
+	}
 	fontPt := float64(fontSize) / 100.0
 	for colIdx, cell := range cells {
 		if cell.Content == "" || cell.IsMerged || colIdx >= len(colWidths) {

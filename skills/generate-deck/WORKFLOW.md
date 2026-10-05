@@ -207,11 +207,8 @@ submitted and approved, or you have said exactly what could not be verified.
 
 ## Automated vision QA (`inspect_slide_images`)
 
-`inspect_slide_images` (CLI `json2pptx inspect`) runs the Claude-vision QA
-agent on rendered images:
-per-slide findings whose `suggested_fixes[]` map to `repair_slide` kinds,
-plus a `findings` FindingEnvelope (P0/P1 → `error`). Without
-`ANTHROPIC_API_KEY` it is `mode:"heuristic"` (blank / edge-overflow /
-aspect-ratio, all P3). About 60% of layout flags on correct decks are false
-positives, so P2/P3 are advisory. It supplements your own look at every
-slide, never replaces it.
+`inspect_slide_images` (CLI `json2pptx inspect`) runs a vision QA pass on
+rendered images: per-slide findings with `suggested_fixes[]` mapped to
+`repair_slide` kinds (P0/P1 → `error`); without `ANTHROPIC_API_KEY` it is
+`mode:"heuristic"` (all P3). About 60% of its layout flags on correct decks
+are false positives: P2/P3 are advisory, and it never replaces your own look.

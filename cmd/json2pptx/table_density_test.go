@@ -32,8 +32,8 @@ func TestTableDensityGuide_NoArgs(t *testing.T) {
 	if len(resp.Tiers) == 0 {
 		t.Error("expected density tiers, got none")
 	}
-	if resp.Limits.MaxRows != 7 {
-		t.Errorf("expected max_rows=7, got %d", resp.Limits.MaxRows)
+	if resp.Limits.MaxRows != 10 {
+		t.Errorf("expected max_rows=10, got %d", resp.Limits.MaxRows)
 	}
 	if resp.Limits.MaxColumns != 6 {
 		t.Errorf("expected max_columns=6, got %d", resp.Limits.MaxColumns)

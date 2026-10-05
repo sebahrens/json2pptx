@@ -124,14 +124,10 @@ Start the deck server with `json2pptx mcp` (profiles: TOOLS.md;
 `--tools all` or `JSON2PPTX_MCP_TOOLS=all` lists every tool,
 `get_capabilities().mcp_tools_available` the callable ones). `list_templates`
 `read_only: true` avoids preview-cache writes. Template precedence:
-DECKSPEC.md. A CLI command that answers in
-JSON prints exactly one JSON document on stdout, also when it fails
-(`{subcommand, ok:false, findings:[{code, message}]}`; `validate-output
---format json` adds `files[]`; a failed `generate` adds those fields to
-`{success:false, error, fit_findings}` and lists the findings `validate`
-reports — `REQUIRED` at `template` / `slides`, `STRUCTURE_AND_SLIDES` for
-both `structure` and `slides` — else `STRICT_FIT` or `GENERATION_FAILED`);
-stderr is logs.
+DECKSPEC.md. A CLI command that answers in JSON prints exactly one JSON
+document on stdout, also when it fails (`{subcommand, ok:false,
+findings:[{code, message}]}`; a failed `generate` reports the findings
+`validate` reports, else `STRICT_FIT` / `GENERATION_FAILED`); stderr is logs.
 Args over 2 MiB of text are refused; a raced
 `deck_id` patch returns `STALE_REVISION` (reload, re-apply).
 `render_deck_spec` resolves relative asset paths (image, photos) against
@@ -139,4 +135,4 @@ Args over 2 MiB of text are refused; a raced
 asset fails the render. A `template_path` + `base_dir` render is kept on the
 `deck_id`, so deck_id-only render / validate / score calls reuse that file.
 
-Responses always use compact JSON; compact-response capabilities and the deprecated `MCP_COMPACT_RESPONSES` setting do not change output.
+Responses are compact JSON; `MCP_COMPACT_RESPONSES` is deprecated and changes nothing.

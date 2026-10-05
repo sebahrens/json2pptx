@@ -335,9 +335,18 @@ func headerFillColor(bg string, theme *types.ThemeInfo) (svggen.Color, bool) {
 // defaultRowHeight floor used by the truncation math. Renderers grow rows
 // that need more lines.
 func contentRowHeight(fontSizeHPt int) int64 {
-	h := int64(float64(fontSizeHPt)/100.0*1.2*12700) + cellMargin*2
+	h := compactRowHeight(fontSizeHPt)
 	if h < defaultRowHeight {
 		h = defaultRowHeight
 	}
 	return h
+}
+
+// compactRowHeight is the row pitch a table falls back to when its rows do not
+// fit the frame at contentRowHeight's 0.4in floor: the text's own line height
+// plus the cell insets — about 0.3in at 12pt, the pitch of a consulting price
+// list or risk register. planTableRows tries it before truncating a row
+// (go-slide-creator-plg7r); rows whose text wraps still grow past it.
+func compactRowHeight(fontSizeHPt int) int64 {
+	return int64(float64(fontSizeHPt)/100.0*1.2*12700) + cellMargin*2
 }

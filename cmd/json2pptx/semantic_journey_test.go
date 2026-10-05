@@ -108,6 +108,10 @@ type journeyAgent struct {
 	// response is the findings of the validate being applied: a finding that
 	// counts others (QUALITY_GATE) is checked against them.
 	response []diagnostics.Finding
+	// strict is the journey's standard: a strict agent acts on an info note
+	// that names an optional edit (a table whose rows only fit at a smaller
+	// font is split) so that the final validate carries nothing at all.
+	strict bool
 }
 
 type journeyInsert struct {
@@ -390,20 +394,27 @@ func (a *journeyAgent) apply(f diagnostics.Finding) {
 		if !ok || !isList {
 			a.t.Fatalf("%s at %s does not say how many rows fit: %s %+v", code, *f.Path, f.Message, params)
 		}
-		slide := a.slideOf(*f.Path)
 		keep := (len(rows) + 1) / 2
 		if keep > int(maxRows)-1 {
 			keep = int(maxRows) - 1
 		}
-		second := map[string]any{}
-		for k, v := range slide {
-			second[k] = v
+		a.splitTable(a.slideOf(*f.Path), rows, keep)
+
+	case "table_font_scaled":
+		// Every row renders, at a smaller font (the compact row pitch came
+		// first, go-slide-creator-plg7r). The note is advisory; a strict
+		// journey keeps the 12pt table and splits it instead.
+		forRows := params["reason"] == "rows" || strings.Contains(f.Message, " rows (capacity")
+		if !a.strict || !forRows {
+			a.t.Logf("  left as is: %s at %v", f.Code, pathsOf(f))
+			return
 		}
-		slide["rows"], second["rows"] = rows[:keep], rows[keep:]
-		second["draft_title"] = draftTitle(slide) + " (2/2)"
-		second["title"] = second["draft_title"]
-		delete(second, "id")
-		a.inserts = append(a.inserts, journeyInsert{after: slide, slide: second})
+		slide := a.slideOf(*f.Path)
+		rows, _ := slide["rows"].([]any)
+		if len(rows) < 2 {
+			a.t.Fatalf("%s at %s names a table with no rows to split", code, *f.Path)
+		}
+		a.splitTable(slide, rows, (len(rows)+1)/2)
 
 	case "TITLE_NOT_ACTION":
 		for _, p := range pathsOf(f) {
@@ -504,6 +515,32 @@ func (a *journeyAgent) apply(f diagnostics.Finding) {
 		}
 		a.t.Fatalf("the agent does not know how to apply %s at %v: %s\n  evidence %+v\n  params %+v", f.Code, pathsOf(f), f.Message, f.Evidence, params)
 	}
+}
+
+// splitTable keeps the first keep rows on slide and moves the rest to a copy
+// inserted after it — the continued-exhibit convention. The copy is written
+// the way an agent writes a new slide: with the action title and takeaway
+// the agent has for it, when it has them, so the split costs no extra round.
+func (a *journeyAgent) splitTable(slide map[string]any, rows []any, keep int) {
+	second := map[string]any{}
+	for k, v := range slide {
+		second[k] = v
+	}
+	slide["rows"], second["rows"] = rows[:keep], rows[keep:]
+	second["draft_title"] = draftTitle(slide) + " (2/2)"
+	second["title"] = second["draft_title"]
+	if current, _ := slide["title"].(string); current != draftTitle(slide) {
+		// Part 1 already carries its action title: the continuation keeps
+		// the same title with the marker, so the two count as one exhibit.
+		second["title"] = current + " (2/2)"
+	} else if title, ok := journeyCopy.titles[second["draft_title"].(string)]; ok {
+		second["title"] = title
+	}
+	if takeaway, ok := journeyCopy.takeaways[second["draft_title"].(string)]; ok {
+		second["takeaway"] = takeaway
+	}
+	delete(second, "id")
+	a.inserts = append(a.inserts, journeyInsert{after: slide, slide: second})
 }
 
 // inResponse reports whether the response being applied carries a finding
@@ -631,6 +668,7 @@ var twelveFlawPassed struct {
 // maxRoundTrips is not clean. strict rules out info-level notes too.
 func twelveFlawJourney(t *testing.T, mc *mcpConfig, tpl string, strict bool, maxRoundTrips int) (validates int) {
 	agent := newJourneyAgent(t, twelveFlawDraft(t))
+	agent.strict = strict
 	send := agent.finishRound()
 	for round := 1; ; round++ {
 		env := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": send, "template": tpl}))

@@ -309,7 +309,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"columns": textList("Alias for headers."),
 		"rows": {
 			typ:  "array",
-			desc: "Data rows (up to 6, so the table stays within the 7-row budget including the header). A row is a list of cell values, or an object keyed by header label. Short rows render blank cells.",
+			desc: "Data rows (up to 9; 10 logical rows with the header). A row is a list of cell values, or an object keyed by header label. Short rows render blank cells.",
 		},
 		"column_alignments": textList("Per-column alignment: left / center / right (the engine's l / ctr / r are accepted too). Right-align numeric columns."),
 		"column_types":      textList("Per-column type hint for the renderer's number formatting, e.g. text / number / currency / percent."),

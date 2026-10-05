@@ -10,9 +10,13 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
-// Table density rule (TDR) thresholds.
+// Table density rule (TDR) thresholds. TDRMaxRows counts the header: ten
+// logical rows is what the compact row pitch (generator.compactRowHeight,
+// about 0.3in at 12pt) holds on the shortest shipped body with a takeaway
+// band; the renderer's measured row plan (table_rows_truncated) is the real
+// guard above and below it (go-slide-creator-plg7r).
 const (
-	TDRMaxRows   = 7
+	TDRMaxRows   = 10
 	TDRMaxCols   = 6
 	TDRMinFontPt = 9
 )

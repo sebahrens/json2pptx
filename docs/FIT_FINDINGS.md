@@ -71,6 +71,21 @@ Actual row loss blocks publication in every fit mode; refusal preserves an exist
 destination and removes the temporary output. Predicted findings are useful repair
 guidance, but do not replace the renderer's actual-content check.
 
+**Compact pitch before truncation.** Before any row is hidden, the renderer
+re-measures the table at the compact row pitch — the text's own line height plus
+the cell insets, about 0.3in at the 12pt engine default — instead of the 0.4in
+default floor. A table whose rows fit at that pitch renders every row there, with
+no finding (it is a row-height decision like row growth, not content loss); one
+that fits at the default pitch keeps it, so existing decks do not change; one
+that overflows even the compact pitch reports `table_rows_truncated` as above,
+keeping the rows the compact pitch affords. Validate predicts from the same row
+plan. The static density caps follow the compact pitch: `TDRMaxRows` is 10
+logical rows (header included; `density_exceeded` on the raw path,
+`SEMANTIC_DENSITY` on a DeckSpec `table`, `table_density_guide.limits.max_rows`),
+which the shortest shipped body holds with a takeaway band. Rows whose text wraps
+still grow past the pitch, so the measured plan — not the cap — decides
+(go-slide-creator-plg7r).
+
 ## Output-Validation Findings — Separate Category
 
 This document catalogs **fit findings** (`patterns.FitFinding`) emitted by the layout/textfit/chart preflight and runtime. They are distinct from **output-validation findings** (`pptx.Finding`) emitted by `internal/pptx.OutputValidator` after the `.pptx` is serialized, and from **visual-QA findings** emitted by the `slide-visual-qa` Haiku skill from rendered screenshots:

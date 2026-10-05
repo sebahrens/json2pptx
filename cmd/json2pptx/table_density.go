@@ -8,6 +8,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/template"
 )
 
@@ -87,8 +88,8 @@ func (mc *mcpConfig) handleTableDensityGuide(ctx context.Context, request mcp.Ca
 	resp := densityGuideResponse{
 		Tiers: buildDensityTiers(),
 		Limits: densityLimits{
-			MaxRows:     7,
-			MaxColumns:  6,
+			MaxRows:     jsonschema.TDRMaxRows,
+			MaxColumns:  jsonschema.TDRMaxCols,
 			MinFontPt:   9,
 			SplitAdvice: "Use split_slide with by:table.rows for tables exceeding 17 data rows",
 		},
