@@ -183,12 +183,13 @@ func TestPredictedReadabilityPenalizesButDoesNotBlockGate(t *testing.T) {
 }
 
 func TestScoreFromFindings_RefuseClamps(t *testing.T) {
-	// 5 refuse findings = 5*25 = 125 deducted, clamped to 0.
+	// 5 refuse findings = 5*25 = 125 deducted, clamped to 0. Each sits on its
+	// own content item: the same finding at one path is one finding.
 	var findings []patterns.FitFinding
 	for i := 0; i < 5; i++ {
 		findings = append(findings, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
-				Path:    "/slides/0/content/body",
+				Path:    fmt.Sprintf("/slides/0/content/%d", i),
 				Code:    "text_overflow",
 				Message: "overflow",
 			},

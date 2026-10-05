@@ -135,147 +135,21 @@ func scoreDeckTemplateSource(request mcp.CallToolRequest, input *PresentationInp
 	return name, file
 }
 
+// scoreDeckEvidence is what score_deck scores: the deck as it was read and the
+// findings of its preflight and of its render, each listed once.
+type scoreDeckEvidence struct {
+	input        PresentationInput
+	slideIndices []int
+	findings     []patterns.FitFinding
+	render       deterministic.RenderEvidence
+}
+
 func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	jsonStr, _, paramErr := mc.presentationForTool("score_deck", request)
-	if paramErr != nil {
-		return paramErr, nil
+	ev, errResult := mc.collectScoreDeckEvidence(ctx, request)
+	if errResult != nil {
+		return errResult, nil
 	}
-
-	mode := "deterministic"
-	if m, err := request.RequireString("mode"); err == nil && m != "" {
-		mode = m
-	}
-
-	// Reject unimplemented modes up front rather than silently downgrading.
-	// 'with_heuristics' is reserved for a future render+inspect pass; until
-	// that ships, agents that want vision-based QA should call
-	// inspect_slide_images directly on rendered thumbnails.
-	if modeErr := scoreDeckModeError(mode); modeErr != nil {
-		return modeErr, nil
-	}
-
-	// A semantic DeckSpec unmarshals into a PresentationInput whose slides are
-	// all empty, and the tool would go on to grade that emptiness — answering
-	// "99, PASS" for a deck it never read (go-slide-creator-xx9i).
-	if looksLikeDeckSpec([]byte(jsonStr)) {
-		return deckSpecInputError("score_deck"), nil
-	}
-
-	// Parse JSON input.
-	var input PresentationInput
-	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nextCallGetInputSchema()), nil
-	}
-
-	// Apply deck-level defaults before checks.
-	applyDefaults(&input)
-
-	// Resolve named style references from template settings.
-	mc.resolveInputNamedSettings(&input)
-
-	// Expand structure block into flat slides (mutually exclusive with
-	// top-level slides). Mirrors the CLI path so MCP and CLI agree on the
-	// effective slide list before slide-count checks.
-	if structDiags := applyStructureExpansion(&input); len(structDiags) > 0 {
-		return api.MCPDiagnosticsError(structDiags), nil
-	}
-
-	templateName, templateFile := scoreDeckTemplateSource(request, &input)
-	if templateName == "" && templateFile == "" {
-		return argRequired(request, "score_deck", "template", "string", "midnight-blue", nextCallListTemplates()), nil
-	}
-	if len(input.Slides) == 0 {
-		return scoreDeckMissingSlides(request, jsonStr), nil
-	}
-
-	// Resolve relative local-asset paths (icons, content images, grid images,
-	// background images) against base_dir before rendering. The score reflects
-	// the actual generated deck, so its asset resolution must use the same
-	// helper and contract as generate_presentation / validate_input — otherwise
-	// a deck that scores here would render differently (or fail) under generate.
-	// base_dir resolution failures short-circuit before per-asset findings;
-	// error-severity asset findings short-circuit too, mirroring handleGenerate.
-	baseDir, baseDirErr := resolveBaseDir(request)
-	if baseDirErr != nil {
-		return baseDirErr, nil
-	}
-	// URL references are materialized through the same SSRF-safe resolver
-	// generate_presentation uses, so a required picture that cannot be
-	// fetched is a structured blocker addressed to its authored url field,
-	// never a silently empty frame scored 100 (go-slide-creator-b7qqg.10).
-	// Scoring never stores the deck, so the cache only has to outlive the
-	// render pass below.
-	urls, urlErr := mc.materializeURLs(input.Slides)
-	defer urls.Cleanup()
-	if urlErr != nil {
-		return mcpErrorWithNext("URL_RESOLVER_INIT", fmt.Sprintf("resource resolver: %v", urlErr), nextCallRetry("score_deck", "presentation")), nil
-	}
-	if len(urls.Findings) > 0 {
-		return api.MCPDiagnosticsError(urls.Findings), nil
-	}
-	mediaAllowList := imageAllowList(mc.cfg.Images.AllowedBasePaths, urls.CacheDir)
-	if assetFindings := resolveLocalAssetPaths(input.Slides, baseDir, mediaAllowList...); len(assetFindings) > 0 {
-		if assetErrors := diagnostics.FilterBySeverity(assetFindings, diagnostics.SeverityError); len(assetErrors) > 0 {
-			return api.MCPDiagnosticsError(assetErrors), nil
-		}
-	}
-
-	// Optional slide_indices: when provided, only those slides are rendered +
-	// scored, which is significantly faster than rerunning the whole deck.
-	slideIndices, idxErr := extractSlideIndices(request, len(input.Slides))
-	if idxErr != nil {
-		return argInvalidValue("score_deck", "INVALID_PARAMETER", "slide_indices", idxErr.Error(), "array", []any{0, 1}, nil), nil
-	}
-
-	// Resolve and analyze template.
-	templatePath, templateCleanup, tplErr := mc.scoreDeckTemplatePath(request, templateName, templateFile)
-	if tplErr != nil {
-		return tplErr, nil
-	}
-	defer templateCleanup()
-
-	reader, err := template.OpenTemplate(templatePath)
-	if err != nil {
-		return mcpErrorWithNext("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err), nextCallListTemplates()), nil
-	}
-	defer func() { _ = reader.Close() }()
-
-	layouts, err := template.ParseLayouts(reader)
-	if err != nil {
-		return mcpErrorWithNext("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err), nextCallListTemplates()), nil
-	}
-	slideWidth, slideHeight := template.ParseSlideDimensions(reader)
-
-	// Analyze template for synthesis and metadata.
-	analysis := &types.TemplateAnalysis{
-		TemplatePath: templatePath,
-		SlideWidth:   slideWidth,
-		SlideHeight:  slideHeight,
-		Layouts:      layouts,
-		Theme:        template.ParseTheme(reader),
-	}
-	synthesisFindings := template.SynthesizeIfNeeded(reader, analysis)
-	var syntheticFiles map[string][]byte
-	if analysis.Synthesis != nil {
-		syntheticFiles = analysis.Synthesis.SyntheticFiles
-	}
-	templateMetadata, _ := template.ParseMetadata(reader)
-
-	// 1. Collect static fit findings from input JSON.
-	findings := collectFitFindings(&input, layouts, slideWidth, slideHeight, &analysis.Theme)
-
-	// 2. Run actual generation to a temp directory to capture render-time findings
-	//    (contrast swaps, autofit shrink, pagination, clamping). When
-	//    slide_indices is set, render only that subset (significantly faster
-	//    for iterative per-slide refinement) and remap finding paths from the
-	//    subset index space back to the original deck index space.
-	dataPalette := resolveDataPalette(templateMetadata, analysis.Theme.Colors)
-	allowDegraded := extractAllowDegradedScoring(request)
-	renderFindings, renderEvidence := mc.collectScoreDeckRenderFindings(ctx, &input, slideIndices, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, allowDegraded, urls.CacheDir)
-	findings = supersedeRealizedContrastPredictions(append(findings, renderFindings...))
-
-	// 3. Append synthesis findings (template-level).
-	findings = append(findings, synthesisFindings...)
+	input, slideIndices, findings, renderEvidence := ev.input, ev.slideIndices, ev.findings, ev.render
 
 	// Score the combined findings (correctness axis). When slide_indices is
 	// set, PerSlide only contains entries for those indices; composition is
@@ -310,6 +184,163 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err), nextCallRetry("score_deck", "presentation")), nil
 	}
 	return mcpResult, nil
+}
+
+// collectScoreDeckEvidence reads the presentation argument of a score_deck
+// call and collects the findings the score is computed from. The second
+// result is the tool's error answer when the call cannot be scored.
+func (mc *mcpConfig) collectScoreDeckEvidence(ctx context.Context, request mcp.CallToolRequest) (*scoreDeckEvidence, *mcp.CallToolResult) {
+	jsonStr, _, paramErr := mc.presentationForTool("score_deck", request)
+	if paramErr != nil {
+		return nil, paramErr
+	}
+
+	mode := "deterministic"
+	if m, err := request.RequireString("mode"); err == nil && m != "" {
+		mode = m
+	}
+
+	// Reject unimplemented modes up front rather than silently downgrading.
+	// 'with_heuristics' is reserved for a future render+inspect pass; until
+	// that ships, agents that want vision-based QA should call
+	// inspect_slide_images directly on rendered thumbnails.
+	if modeErr := scoreDeckModeError(mode); modeErr != nil {
+		return nil, modeErr
+	}
+
+	// A semantic DeckSpec unmarshals into a PresentationInput whose slides are
+	// all empty, and the tool would go on to grade that emptiness — answering
+	// "99, PASS" for a deck it never read (go-slide-creator-xx9i).
+	if looksLikeDeckSpec([]byte(jsonStr)) {
+		return nil, deckSpecInputError("score_deck")
+	}
+
+	// Parse JSON input.
+	var input PresentationInput
+	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
+		return nil, argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nextCallGetInputSchema())
+	}
+
+	// Apply deck-level defaults before checks.
+	applyDefaults(&input)
+
+	// Resolve named style references from template settings.
+	mc.resolveInputNamedSettings(&input)
+
+	// Expand structure block into flat slides (mutually exclusive with
+	// top-level slides). Mirrors the CLI path so MCP and CLI agree on the
+	// effective slide list before slide-count checks.
+	if structDiags := applyStructureExpansion(&input); len(structDiags) > 0 {
+		return nil, api.MCPDiagnosticsError(structDiags)
+	}
+
+	templateName, templateFile := scoreDeckTemplateSource(request, &input)
+	if templateName == "" && templateFile == "" {
+		return nil, argRequired(request, "score_deck", "template", "string", "midnight-blue", nextCallListTemplates())
+	}
+	if len(input.Slides) == 0 {
+		return nil, scoreDeckMissingSlides(request, jsonStr)
+	}
+
+	// Resolve relative local-asset paths (icons, content images, grid images,
+	// background images) against base_dir before rendering. The score reflects
+	// the actual generated deck, so its asset resolution must use the same
+	// helper and contract as generate_presentation / validate_input — otherwise
+	// a deck that scores here would render differently (or fail) under generate.
+	// base_dir resolution failures short-circuit before per-asset findings;
+	// error-severity asset findings short-circuit too, mirroring handleGenerate.
+	baseDir, baseDirErr := resolveBaseDir(request)
+	if baseDirErr != nil {
+		return nil, baseDirErr
+	}
+	// URL references are materialized through the same SSRF-safe resolver
+	// generate_presentation uses, so a required picture that cannot be
+	// fetched is a structured blocker addressed to its authored url field,
+	// never a silently empty frame scored 100 (go-slide-creator-b7qqg.10).
+	// Scoring never stores the deck, so the cache only has to outlive the
+	// render pass below.
+	urls, urlErr := mc.materializeURLs(input.Slides)
+	defer urls.Cleanup()
+	if urlErr != nil {
+		return nil, mcpErrorWithNext("URL_RESOLVER_INIT", fmt.Sprintf("resource resolver: %v", urlErr), nextCallRetry("score_deck", "presentation"))
+	}
+	if len(urls.Findings) > 0 {
+		return nil, api.MCPDiagnosticsError(urls.Findings)
+	}
+	mediaAllowList := imageAllowList(mc.cfg.Images.AllowedBasePaths, urls.CacheDir)
+	if assetFindings := resolveLocalAssetPaths(input.Slides, baseDir, mediaAllowList...); len(assetFindings) > 0 {
+		if assetErrors := diagnostics.FilterBySeverity(assetFindings, diagnostics.SeverityError); len(assetErrors) > 0 {
+			return nil, api.MCPDiagnosticsError(assetErrors)
+		}
+	}
+
+	// Optional slide_indices: when provided, only those slides are rendered +
+	// scored, which is significantly faster than rerunning the whole deck.
+	slideIndices, idxErr := extractSlideIndices(request, len(input.Slides))
+	if idxErr != nil {
+		return nil, argInvalidValue("score_deck", "INVALID_PARAMETER", "slide_indices", idxErr.Error(), "array", []any{0, 1}, nil)
+	}
+
+	// Resolve and analyze template.
+	templatePath, templateCleanup, tplErr := mc.scoreDeckTemplatePath(request, templateName, templateFile)
+	if tplErr != nil {
+		return nil, tplErr
+	}
+	defer templateCleanup()
+
+	reader, err := template.OpenTemplate(templatePath)
+	if err != nil {
+		return nil, mcpErrorWithNext("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err), nextCallListTemplates())
+	}
+	defer func() { _ = reader.Close() }()
+
+	layouts, err := template.ParseLayouts(reader)
+	if err != nil {
+		return nil, mcpErrorWithNext("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err), nextCallListTemplates())
+	}
+	slideWidth, slideHeight := template.ParseSlideDimensions(reader)
+
+	// Analyze template for synthesis and metadata.
+	analysis := &types.TemplateAnalysis{
+		TemplatePath: templatePath,
+		SlideWidth:   slideWidth,
+		SlideHeight:  slideHeight,
+		Layouts:      layouts,
+		Theme:        template.ParseTheme(reader),
+	}
+	synthesisFindings := template.SynthesizeIfNeeded(reader, analysis)
+	var syntheticFiles map[string][]byte
+	if analysis.Synthesis != nil {
+		syntheticFiles = analysis.Synthesis.SyntheticFiles
+	}
+	templateMetadata, _ := template.ParseMetadata(reader)
+
+	// 1. Collect static fit findings from input JSON.
+	findings := collectFitFindings(&input, layouts, slideWidth, slideHeight, &analysis.Theme)
+
+	// 2. Run actual generation to a temp directory to capture render-time findings
+	//    (contrast swaps, autofit shrink, pagination, clamping). When
+	//    slide_indices is set, render only that subset (significantly faster
+	//    for iterative per-slide refinement) and remap finding paths from the
+	//    subset index space back to the original deck index space.
+	dataPalette := resolveDataPalette(templateMetadata, analysis.Theme.Colors)
+	allowDegraded := extractAllowDegradedScoring(request)
+	renderFindings, renderEvidence := mc.collectScoreDeckRenderFindings(ctx, &input, slideIndices, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, allowDegraded, urls.CacheDir)
+	findings = append(findings, renderFindings...)
+
+	// 3. Append synthesis findings (template-level).
+	findings = append(findings, synthesisFindings...)
+
+	// The render reports again what the preflight predicted: the same
+	// template-size note at the same placeholder, the same diagram note at
+	// the content item the preflight named a field of. One list, each finding
+	// once, for the score and for the gate alike (go-slide-creator-t3k06).
+	// Contrast records are folded first: score_deck does not map a swap back
+	// to its shape, so two shapes swapped alike on one slide are two records
+	// with one path and one message, and the fold counts them as two surfaces.
+	findings = dedupFitFindings(supersedeRealizedContrastPredictions(findings))
+
+	return &scoreDeckEvidence{input: input, slideIndices: slideIndices, findings: findings, render: renderEvidence}, nil
 }
 
 // collectRenderFindings runs the generation pipeline to a temp directory and

@@ -525,3 +525,46 @@ func TestFitFindingSeverityFallsBackToTheCode(t *testing.T) {
 		t.Errorf("WEAK_CONTENT with no action = %q; the code declares refuse, so it is an error", got)
 	}
 }
+
+// go-slide-creator-t3k06: the preflight reports a diagram note at the field it
+// concerns and the render reports it again at the content item, so a key of
+// (code, path, action, message) let both through and the score charged the
+// note twice.
+func TestDedupeFindingsListsAFactOnce(t *testing.T) {
+	mk := func(code, path, msg string) FitFinding {
+		return FitFinding{ValidationError: ValidationError{Code: code, Path: path, Message: msg}, Action: "review"}
+	}
+	field0 := mk("diagram.note", "/slides/1/content/1/diagram_value/data/quadrants/0", "quadrant 1")
+	field1 := mk("diagram.note", "/slides/1/content/1/diagram_value/data/quadrants/1", "quadrant 2")
+	item0 := mk("diagram.note", "/slides/1/content/1", "quadrant 1")
+	item1 := mk("diagram.note", "/slides/1/content/1", "quadrant 2")
+	otherItem := mk("diagram.note", "/slides/1/content/10", "quadrant 1")
+	otherSlide := mk("diagram.note", "/slides/2/content/1", "quadrant 1")
+	pathless := mk("diagram.note", "", "quadrant 1")
+
+	for name, tc := range map[string]struct{ in, want []FitFinding }{
+		"preflight then render":        {[]FitFinding{field0, field1, item0, item1}, []FitFinding{field0, field1}},
+		"render then preflight":        {[]FitFinding{item0, item1, field0, field1}, []FitFinding{field0, field1}},
+		"exact repeat":                 {[]FitFinding{item0, item0}, []FitFinding{item0}},
+		"sibling index is no ancestor": {[]FitFinding{item0, otherItem}, []FitFinding{item0, otherItem}},
+		"other slide":                  {[]FitFinding{field0, otherSlide}, []FitFinding{field0, otherSlide}},
+		"pathless is not a root":       {[]FitFinding{pathless, field0, pathless}, []FitFinding{pathless, field0}},
+	} {
+		got := DedupeFindings(tc.in)
+		if len(got) != len(tc.want) {
+			t.Errorf("%s: %d findings, want %d: %+v", name, len(got), len(tc.want), got)
+			continue
+		}
+		for i := range got {
+			if got[i].Path != tc.want[i].Path || got[i].Message != tc.want[i].Message {
+				t.Errorf("%s: [%d] = %s %q, want %s %q", name, i, got[i].Path, got[i].Message, tc.want[i].Path, tc.want[i].Message)
+			}
+		}
+	}
+
+	info := item0
+	info.Action = "info"
+	if got := DedupeFindings([]FitFinding{item0, info}); len(got) != 2 {
+		t.Errorf("findings of different action folded: %+v", got)
+	}
+}

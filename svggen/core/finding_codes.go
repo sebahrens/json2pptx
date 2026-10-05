@@ -96,9 +96,11 @@ const (
 	// (go-slide-creator-pwcg).
 	FindingOrgChartDepthPruned = "diagram.org_chart_depth_pruned"
 
-	// FindingQuadrantPositionDefaulted is emitted when a matrix quadrant omits
-	// its position or supplies an invalid one. The renderer places it by list
-	// index so authored items and captions are not silently lost.
+	// FindingQuadrantPositionDefaulted is emitted when a matrix quadrant
+	// supplies a position that is none, or omits it in a list where another
+	// quadrant names one. The renderer places it by list index so authored
+	// items and captions are not silently lost. A list in which no quadrant
+	// names a position is in list order by design and reports nothing.
 	FindingQuadrantPositionDefaulted = "diagram.quadrant_position_defaulted"
 
 	// FindingPlotAreaCollapsed is emitted when x-axis labels claim so much

@@ -947,6 +947,56 @@ func TestMatrix2x2Diagram_DefaultedQuadrantPositionsKeepItemsAndCaptions(t *test
 	}
 }
 
+// go-slide-creator-t3k06: four quadrants in list order, none naming a
+// position, is the documented [TL, TR, BL, BR] order of quadrant_labels. It
+// drew a correct matrix and reported four warnings that cost the slide twenty
+// points (forty: the score listed each twice).
+func TestParseQuadrantItemLists_ListOrderIsNotAFinding(t *testing.T) {
+	quadrants := []any{
+		map[string]any{"label": "Quick Wins", "items": []any{"Dark Mode"}},
+		map[string]any{"label": "Major Projects", "items": []any{"Mobile App"}, "position": ""},
+		map[string]any{"label": "Fill-Ins", "items": []any{"Emoji Support"}, "position": nil},
+		map[string]any{"label": "Time Sinks", "items": []any{"Legacy Import"}},
+	}
+	got, findings := parseQuadrantItemLists(quadrants)
+	if len(findings) != 0 {
+		t.Errorf("list order reported %d findings, want none: %+v", len(findings), findings)
+	}
+	for i, want := range []string{"Dark Mode", "Mobile App", "Emoji Support", "Legacy Import"} {
+		if len(got[i]) != 1 || got[i][0] != want {
+			t.Errorf("quadrant %d = %v, want [%s]", i, got[i], want)
+		}
+	}
+}
+
+// A position that is given and wrong, and a missing one beside given ones,
+// are each still reported with the quadrant they landed in.
+func TestParseQuadrantItemLists_GivenPositionsAreChecked(t *testing.T) {
+	_, findings := parseQuadrantItemLists([]any{
+		map[string]any{"items": []any{"A"}},
+		map[string]any{"position": "top-left", "items": []any{"B"}},
+		map[string]any{"position": 3, "items": []any{"C"}},
+	})
+	if len(findings) != 2 {
+		t.Fatalf("findings = %+v, want quadrant 1 (missing beside given) and quadrant 3 (not a position)", findings)
+	}
+	for i, want := range []struct{ field, value, says string }{
+		{"data.quadrants[0].position", "top-left", "has no position while other quadrants name one"},
+		{"data.quadrants[2].position", "bottom-left", `position "3" is not top-left`},
+	} {
+		f := findings[i]
+		if f.Code != FindingQuadrantPositionDefaulted || f.Field != want.field || f.Severity != "warning" {
+			t.Errorf("finding[%d] = %+v, want a warning at %s", i, f, want.field)
+		}
+		if f.Fix == nil || f.Fix.Params["value"] != want.value {
+			t.Errorf("finding[%d] fix = %+v, want %s", i, f.Fix, want.value)
+		}
+		if !strings.Contains(f.Message, want.says) {
+			t.Errorf("finding[%d] message %q does not say %q", i, f.Message, want.says)
+		}
+	}
+}
+
 func TestParseQuadrantItemLists_EmptyItems(t *testing.T) {
 	quadrants := []any{
 		map[string]any{"position": "top-left", "items": []any{}},

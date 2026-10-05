@@ -2233,26 +2233,14 @@ func expandComposeForPreflightWithTheme(input *PresentationInput, slideWidth, sl
 	return &expanded, findings
 }
 
-// dedupFitFindings removes findings that share the same
-// (Code, Path, Action, Message) tuple. The first occurrence is kept, preserving
-// caller insertion order. Same-code findings on different paths are kept,
-// since they describe different cells. This guards against double-emission
-// when pre-compose detectors and the post-compose structural pass both
-// surface a finding for the same diagram cell.
+// dedupFitFindings lists each finding once: findings that share code, action
+// and message at the same path, or at a path and one of its ancestors, are one
+// finding (patterns.DedupeFindings). The first occurrence keeps its place.
+// Same-code findings on unrelated paths are kept, since they describe
+// different cells. This guards against double-emission when pre-compose
+// detectors and the post-compose structural pass both surface a finding for
+// the same diagram cell, and when the preflight reports a diagram note at its
+// field and the render reports it again at the content item.
 func dedupFitFindings(in []patterns.FitFinding) []patterns.FitFinding {
-	if len(in) <= 1 {
-		return in
-	}
-	type key struct{ code, path, action, msg string }
-	seen := make(map[key]struct{}, len(in))
-	out := make([]patterns.FitFinding, 0, len(in))
-	for _, f := range in {
-		k := key{f.Code, f.Path, f.Action, f.Message}
-		if _, ok := seen[k]; ok {
-			continue
-		}
-		seen[k] = struct{}{}
-		out = append(out, f)
-	}
-	return out
+	return patterns.DedupeFindings(in)
 }

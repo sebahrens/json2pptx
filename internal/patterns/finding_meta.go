@@ -1487,11 +1487,12 @@ var findingMetaRegistry = map[string]FindingMeta{
 	},
 	"diagram.quadrant_position_defaulted": {
 		Code:        "diagram.quadrant_position_defaulted",
-		Summary:     "A matrix quadrant had no valid position and was placed by its list index.",
+		Summary:     "A matrix quadrant named a position that is none, or none beside quadrants that name one, and was placed by its list index.",
 		Severity:    "review",
-		WhenEmitted: "A matrix_2x2 quadrant omits position or provides a value other than top-left, top-right, bottom-left, or bottom-right (underscore aliases are accepted).",
+		WhenEmitted: "A matrix_2x2 quadrant provides a position other than top-left, top-right, bottom-left, or bottom-right (underscore aliases are accepted), or omits position in a list where another quadrant names one. A list in which no quadrant names a position is read in list order (top-left, top-right, bottom-left, bottom-right) and is not reported.",
 		RemediationSteps: []string{
-			"Set data.quadrants[i].position explicitly to the intended quadrant name.",
+			"Set data.quadrants[i].position to fix.params.value, or to the quadrant you meant.",
+			"Or remove position from every quadrant and list them in the order top-left, top-right, bottom-left, bottom-right.",
 		},
 	},
 

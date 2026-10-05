@@ -84,9 +84,11 @@ This form used to invent an (x, y) per item so the scatter renderer could draw i
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `quadrants[].position` | `string` | `"top-left"` \| `"top-right"` \| `"bottom-left"` \| `"bottom-right"` (underscores also accepted) |
+| `quadrants[].position` | `string` | `"top-left"` \| `"top-right"` \| `"bottom-left"` \| `"bottom-right"` (underscores also accepted). Optional as a set: see below |
 | `quadrants[].title` | `string` | Quadrant label (also sets `quadrant_labels`; `label` accepted as a synonym) |
 | `quadrants[].items` | `string[]` or `object[]` | Items to list; objects use a `label` field |
+
+**Position.** Name the `position` of every quadrant — the list then reads without counting — or of none. With no `position` anywhere, the quadrants are placed in list order: top-left, top-right, bottom-left, bottom-right, the order of `quadrant_labels`; nothing is reported. A `position` that is not one of the four values, or a missing one in a list where another quadrant names one, is placed by its list index and reported as `diagram.quadrant_position_defaulted` (warning, fix kind `replace_value` with the quadrant it was drawn in), once per such quadrant.
 
 ### Points outside the axis range
 
