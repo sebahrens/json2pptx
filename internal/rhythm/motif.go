@@ -254,7 +254,7 @@ func motifRecommendations(inputs []Slide, slides []motifSlide, runs []PatternRun
 		probe.Title, probe.Text = text.String(), ""
 		recs = append(recs, Recommendation{
 			Code:       CodeMotifDominant,
-			SlideIndex: -1,
+			SlideIndex: dominantSlides[0],
 			Message: fmt.Sprintf("%d of %d content slides draw one motif (%s; slides %s) — the deck has one look; redraw some of them in a different motif",
 				len(dominantSlides), total, motifLabel(dominant), slideNumberList(dominantSlides)),
 			RecommendedBreak: suggestMotifBreak(probe),

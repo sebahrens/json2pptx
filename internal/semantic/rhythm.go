@@ -28,11 +28,13 @@ const (
 	maxConsecutiveDense = 2
 	// sectioningSlideThreshold is the count of body slides (cover, closing and
 	// other structural chrome excluded) above which a deck with no section
-	// divider is flagged for missing chapter structure. It matches plan_deck's
-	// default slide_budget of 10: a deck the planner builds at its default size
-	// plus a cover and a closing — the planner emits no dividers — is one
-	// chapter, and flagging it contradicted the plan (go-slide-creator-n83ml).
-	sectioningSlideThreshold      = 10
+	// divider is flagged for missing chapter structure. It was 10, plan_deck's
+	// default slide_budget (go-slide-creator-n83ml), which still nagged every
+	// 12-slide proposal and steering-committee case on each validate and
+	// render: a brief that dictates 11-13 slides has no room for dividers, and
+	// a deck that short is one chapter (go-slide-creator-th6o9). The advice
+	// now starts at 13 body slides.
+	sectioningSlideThreshold      = 12
 	visualBreadthSlideThreshold   = 7
 	minimumDistinctVisualFamilies = 3
 )
@@ -51,6 +53,10 @@ type RhythmWarning struct {
 	// order, so the reader knows which slides to vary or break up without
 	// counting from Path (go-slide-creator-c2j5b).
 	Run []string `json:"run,omitempty"`
+	// InsertBefore is the source path of the slide a density run should be
+	// broken in front of: where a divider or a lighter slide goes
+	// (go-slide-creator-th6o9).
+	InsertBefore string `json:"insert_before,omitempty"`
 }
 
 // RhythmWarnings analyzes the deck's rhythm and returns the advisory findings in
@@ -171,11 +177,23 @@ func (ir *DeckIR) densityWarnings() []RhythmWarning {
 	runLen := 0
 	flush := func() {
 		if runLen > maxConsecutiveDense {
+			paths := make([]string, 0, runLen)
+			for i := runStart; i < runStart+runLen; i++ {
+				paths = append(paths, ir.slidePath(i))
+			}
+			// The break goes where the run first exceeds what an audience
+			// takes in one stretch: after its second slide. The advice used
+			// to name neither the run nor a place, and an author whose dense
+			// slides were all required content had nothing to act on
+			// (go-slide-creator-th6o9).
+			at := paths[maxConsecutiveDense]
 			out = append(out, RhythmWarning{
 				Code: string(diagnostics.CodeSemanticRhythmDensity),
-				Message: fmt.Sprintf("%d consecutive dense slides fatigue the audience; break the run with a lighter slide",
-					runLen),
-				Path: ir.slidePath(runStart),
+				Message: fmt.Sprintf("%d consecutive dense slides (%s to %s) fatigue the audience; insert a section divider or a lighter slide before %s, or move a lighter slide there",
+					runLen, paths[0], paths[len(paths)-1], at),
+				Path:         ir.slidePath(runStart),
+				Run:          paths,
+				InsertBefore: at,
 			})
 		}
 	}
@@ -194,8 +212,12 @@ func (ir *DeckIR) densityWarnings() []RhythmWarning {
 	return out
 }
 
-// sectioningWarning flags a long deck that carries no section divider.
+// sectioningWarning flags a long deck that carries no section divider. An
+// explicit meta.chrome.tracker: false declines chapters at any length.
 func (ir *DeckIR) sectioningWarning() (RhythmWarning, bool) {
+	if ir.Chrome != nil && ir.Chrome.TrackerDeclined {
+		return RhythmWarning{}, false
+	}
 	body := 0
 	for i := range ir.Slides {
 		if ir.Slides[i].Kind == KindSection || ir.Slides[i].Role == RoleTransition {
@@ -318,6 +340,9 @@ func rhythmDiagnostics(ir *DeckIR, strict Strictness) []diagnostics.Diagnostic {
 		}
 		if len(w.Run) > 0 {
 			d.Details = map[string]any{"run": w.Run}
+		}
+		if w.InsertBefore != "" {
+			d.Details["insert_before"] = w.InsertBefore
 		}
 		out = append(out, d)
 	}

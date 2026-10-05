@@ -10,6 +10,14 @@
   - Docs: `docs/wiki/` (hub, MCP journey, storyline, split and complex layouts, visual vocabulary, quality and review, troubleshooting, four domain playbooks) with validated YAML blocks, and four playbook decks under `examples/semantic/playbooks/` covered by `TestBundledSemanticExamplesValidateClean`. Journey personas `f`–`i` and the wave's evidence under `tests/quality/results/agent-journey-20261005/`.
   - The schema fingerprint is unchanged (`a0e913951243f827`).
 
+- **2026-10-05 — Rhythm advice: families, sectioning threshold, located recommendations (`go-slide-creator-th6o9`).**
+  - `visual_family` gains `table` (the `table` kind; a `regions` slide led by a table), `cards` (`team`) and `list` (`next_steps`); all three were `text`. `SEMANTIC_RHYTHM_MONOTONY` no longer reads two tables, a team grid and the closer as four text slides; three tables in a row are a `table` run.
+  - `SEMANTIC_RHYTHM_SECTIONING` fires above 12 body slides (was 10) and never when `meta.chrome.tracker` is explicitly `false`.
+  - `SEMANTIC_RHYTHM_DENSITY`: the message names the run and the place to break it; `evidence.run` lists the run and `evidence.insert_before` is the JSON Pointer of the slide to insert a divider or a lighter slide in front of.
+  - `analyze_deck_rhythm`: every recommendation names a slide (`slide_index` is never -1). `missing_sections` starts at 13 content slides, points at the first slide of the argument ("the first divider before slide N") and is not given for a deck that declines the tracker (`chrome.tracker: false` on a raw presentation, `meta.chrome.tracker: false` on a DeckSpec `deck_id`); `bullets_heavy` and `motif_dominant` point at the first slide they list; `underfilled_cells` points at the slide with the most underfilled cells, lists the others, and does not recommend the pattern that slide already uses.
+  - `aggregates.density_distribution` counts text cells only: a cell holding a table, chart, image or diagram is no longer an underfilled cell (a chart beside a table was "100% of cells (2/2) are underfilled").
+  - No schema version bump in this entry.
+
 - **2026-10-05 — Revisions follow the rendered slides; a spec sent again keeps its `deck_id` (`go-slide-creator-o477e`, `go-slide-creator-235j3`).**
   - `render_deck_spec` `changed_slides` / `slide_changes`: a slide whose rendered parts (slide, layout, master, theme, media) are identical to the last rendered revision is no longer listed as `edited` or `restyled`. A `meta.chrome` footer edit lists the slides that print the footer, not the cover. Validate-only calls and decks with continued pages classify from the spec as before.
   - `render_deck_thumbnails` with `known_hashes`: an `unchanged: true` entry carries `path` beside `index`, `id` and `content_hash` (image-content mode; the legacy envelope keeps `path` when the image had one).

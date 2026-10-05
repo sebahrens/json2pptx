@@ -29,8 +29,11 @@ const (
 	execSummaryMinSlides = 6
 	// nextStepsMinSlides: shorter decks may legitimately end on their point.
 	nextStepsMinSlides = 4
-	// sectionsMinContentSlides: this many content slides need chapters.
-	sectionsMinContentSlides = 10
+	// sectionsMinContentSlides: this many content slides need chapters. It
+	// was 10, which asked every 12-slide proposal for dividers its slide
+	// budget has no room for; it matches the DeckSpec rule
+	// (SEMANTIC_RHYTHM_SECTIONING, 13 body slides; go-slide-creator-th6o9).
+	sectionsMinContentSlides = 13
 	// bulletsHeavyMinSlides: this many bullets-only slides anywhere in the
 	// deck read as a document, even without a consecutive run.
 	bulletsHeavyMinSlides = 3
@@ -176,7 +179,7 @@ func narrativeAware(inputs []Slide) bool {
 // executive summary up front, a next-steps close, chapters on long decks, a
 // so-what and a source on every evidence slide, and not too many
 // bullets-only slides (go-slide-creator-hl17m).
-func narrativeRecommendations(inputs []Slide) []Recommendation { //nolint:gocognit,gocyclo
+func narrativeRecommendations(inputs []Slide, opts Options) []Recommendation { //nolint:gocognit,gocyclo
 	if !narrativeAware(inputs) {
 		return nil
 	}
@@ -227,11 +230,17 @@ func narrativeRecommendations(inputs []Slide) []Recommendation { //nolint:gocogn
 		})
 	}
 
-	if content >= sectionsMinContentSlides && !hasSections {
+	if content >= sectionsMinContentSlides && !hasSections && !opts.SectionsDeclined {
+		// The first chapter starts at the first slide of the argument: after
+		// the cover and the executive summary.
+		at := 0
+		for at < n-1 && (isStructural(inputs[at]) || isExecSummarySlide(inputs[at])) {
+			at++
+		}
 		recs = append(recs, Recommendation{
 			Code:             CodeMissingSections,
-			SlideIndex:       -1,
-			Message:          fmt.Sprintf("%d content slides with no section dividers or agenda — group them into 2–5 chapters (structure.sections with auto_agenda, or section slides plus an agenda)", content),
+			SlideIndex:       at,
+			Message:          fmt.Sprintf("%d content slides with no section dividers or agenda — group them into 2–5 chapters, the first divider before slide %d (structure.sections with auto_agenda, or section slides plus an agenda)", content, at+1),
 			RecommendedBreak: []string{"agenda"},
 		})
 	}
@@ -266,7 +275,7 @@ func narrativeRecommendations(inputs []Slide) []Recommendation { //nolint:gocogn
 	if len(bulletSlides) >= bulletsHeavyMinSlides {
 		recs = append(recs, Recommendation{
 			Code:       CodeBulletsHeavy,
-			SlideIndex: -1,
+			SlideIndex: bulletSlides[0],
 			Message: fmt.Sprintf("%d slides are bullets only (slides %s) — turn the ones whose content has a shape into a visual: numbers → KPI / chart, options → comparison, dates → timeline, a structure → framework",
 				len(bulletSlides), slideNumberList(bulletSlides)),
 			RecommendedBreak: firstN(contentBreakPreferences(textSignals(bulletText.String())), 3),

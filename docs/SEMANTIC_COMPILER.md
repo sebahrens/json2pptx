@@ -113,7 +113,9 @@ Layouts (go-slide-creator-ngbnf, go-slide-creator-maq6l): `table`, `org` and the
 
 An `agenda`'s `title` is optional: without one the slide renders the default title "Agenda" (the title a structure-mode deck's generated agenda carries) and raises no `MISSING_TITLE` (go-slide-creator-y81vn). Render diagnostics always carry a `semantic_path`: a slide-level finding with no source link names the slide (`slides[2]`, or its structure-mode locator), and `MISSING_TITLE` names the field to write (`slides[2].title`); only a deck-level finding has none.
 
-A roadmap phase's `items[]` render as native bullets under its description, not one ` · `-joined paragraph (the bullet fallback still joins them onto the phase's line). An `option_matrix` whose `recommended` option sums below another option on its Harvey or RAG scale emits the advisory `SEMANTIC_RECOMMENDATION_OUTSCORED`, unless the recommendation wins or ties the `decisive_criterion`. `SEMANTIC_RHYTHM_SECTIONING` counts body slides only (cover, agenda, closing excluded) and fires above 10 — `plan_deck`'s default `slide_budget` — so a default-size plan plus cover and closing is one chapter.
+A roadmap phase's `items[]` render as native bullets under its description, not one ` · `-joined paragraph (the bullet fallback still joins them onto the phase's line). An `option_matrix` whose `recommended` option sums below another option on its Harvey or RAG scale emits the advisory `SEMANTIC_RECOMMENDATION_OUTSCORED`, unless the recommendation wins or ties the `decisive_criterion`. `SEMANTIC_RHYTHM_SECTIONING` counts body slides only (cover, agenda, closing excluded) and fires above 12, so a 12- or 13-slide proposal whose brief dictated its slides is one chapter (it was 10, `plan_deck`'s default `slide_budget`; `go-slide-creator-th6o9`). An explicit `meta.chrome.tracker: false` declines chapters at any length: the parser records it (`ChromeSpec.TrackerDeclined`), because a plain `false` is otherwise indistinguishable from an absent key. `SEMANTIC_RHYTHM_DENSITY` names its run in the message and `evidence.run`, and the slide to break it in front of in `evidence.insert_before` (the run's third slide): insert a section divider or a lighter slide there.
+
+**Visual families.** Monotony runs are counted over `visual_family`: `structural`, `text`, `kpi`, `chart`, `comparison`, `process`, `timeline`, `table`, `cards`, `list`, `raw`. `table` (the `table` kind and a `regions` slide led by a table), `cards` (`team`) and `list` (`next_steps`) used to be `text`, so two tables, the team grid and the closer read as four text slides.
 
 **Continued exhibits are one unit.** Slides whose titles mark them as parts of one exhibit — `Savings by lever (1/2)` and `(2/2)`, `[2 of 3]`, or a trailing `(cont.)` — count once in `SEMANTIC_RHYTHM_MONOTONY`, so splitting a table as `SEMANTIC_DENSITY` advises does not create a run; the monotony message now names the run (`slides[4] to slides[6]`). A slide sitting between two parts (up to three slides apart; typically a `section` divider added to break a run) is reported at that slide as the warning `SEMANTIC_RHYTHM_CONTINUATION_SPLIT`: move it before the first part or after the last.
 
@@ -320,8 +322,9 @@ the field ever holds, with the tighter lengths in its `note`
 (`executive_summary` lead, support and bottom line; the `process` flow box);
 a finding quotes the length for the slide's own count, which
 `TestKindBudgetsAgreeWithFindings` checks against the note. A count finding
-names its range in `min_items` / `max_items`. `SEMANTIC_RHYTHM_MONOTONY`
-lists the slides of its run in `evidence.run`. `QUALITY_GATE` names the
+names its range in `min_items` / `max_items`. `SEMANTIC_RHYTHM_MONOTONY` and `SEMANTIC_RHYTHM_DENSITY`
+list the slides of their run in `evidence.run`; the density finding adds
+`evidence.insert_before`. `QUALITY_GATE` names the
 criterion that failed in `evidence.criterion` and every advisory counted
 against it in `evidence.counted[] {code, path}`.
 

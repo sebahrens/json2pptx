@@ -188,8 +188,21 @@ type Result struct {
 	motif motifPenalty
 }
 
+// Options are what the caller knows about the deck beyond its slides.
+type Options struct {
+	// SectionsDeclined reports a deck whose chrome turns the section tracker
+	// off explicitly: it is meant to run without chapters, so the
+	// missing_sections advice is not given (go-slide-creator-th6o9).
+	SectionsDeclined bool
+}
+
 // Analyze performs the core rhythm analysis on the slide projections.
 func Analyze(slides []Slide) *Result {
+	return AnalyzeWith(slides, Options{})
+}
+
+// AnalyzeWith is Analyze with deck-level options.
+func AnalyzeWith(slides []Slide, opts Options) *Result {
 	perSlide := make([]SlideInfo, len(slides))
 
 	for i, s := range slides {
@@ -223,7 +236,7 @@ func Analyze(slides []Slide) *Result {
 		}
 	}
 
-	dd := computeDensityDistribution(slides)
+	dd, underfilled := computeDensityDistribution(slides)
 
 	result := &Result{
 		PerSlide: perSlide,
@@ -240,12 +253,19 @@ func Analyze(slides []Slide) *Result {
 		},
 	}
 
-	result.Recommendations = generateRecommendations(slides, perSlide, runs, dd)
+	recs := generateRecommendations(slides, perSlide, runs, dd, underfilled, opts)
 	motifRecs, penalty := motifRecommendations(slides, mSlides, runs, motifRuns, dominant, dominantSlides, contentSlides)
-	result.Recommendations = append(result.Recommendations, motifRecs...)
+	recs = append(recs, motifRecs...)
 	result.motif = penalty
-	if result.Recommendations == nil {
-		result.Recommendations = []Recommendation{}
+	// Advice an agent cannot locate is advice it cannot act on: "100% of
+	// cells are underfilled" at slide_index -1 named no slide to fix. Every
+	// recommendation names the slide to start with, and one that could not
+	// would be dropped here (go-slide-creator-th6o9).
+	result.Recommendations = make([]Recommendation, 0, len(recs))
+	for _, rec := range recs {
+		if rec.SlideIndex >= 0 && rec.SlideIndex < len(slides) {
+			result.Recommendations = append(result.Recommendations, rec)
+		}
 	}
 	result.CompositionScore = computeCompositionScore(result)
 
@@ -632,12 +652,14 @@ func computeDensityCV(slides []SlideInfo) float64 {
 
 // computeDensityDistribution resolves each slide's grid (if any) and tallies
 // cells by textcapacity status. Slides without a grid are skipped, as are
-// grids that fail validation or resolution.
-func computeDensityDistribution(slides []Slide) DensityDistribution {
+// grids that fail validation or resolution. The second result is the number
+// of underfilled cells per slide index.
+func computeDensityDistribution(slides []Slide) (DensityDistribution, map[int]int) {
 	var dd DensityDistribution
+	underfilled := map[int]int{}
 	alloc := pptx.NewShapeIDAllocator(nil)
 
-	for _, s := range slides {
+	for i, s := range slides {
 		if s.Grid == nil {
 			continue
 		}
@@ -652,10 +674,19 @@ func computeDensityDistribution(slides []Slide) DensityDistribution {
 		}
 
 		densities := textcapacity.ForResolvedGrid(result)
-		for _, d := range densities {
+		for c, d := range densities {
+			// A cell that holds a table, a chart, an image or a diagram has no
+			// text to be short of. textcapacity reports it as underfilled
+			// (zero text), and counting it here told a deck whose only grid
+			// was a chart beside a table that "100% of cells (2/2) are
+			// underfilled" (go-slide-creator-th6o9).
+			if cell := result.Cells[c]; cell.Kind != shapegrid.CellKindShape || cell.ShapeSpec == nil {
+				continue
+			}
 			switch d.Status {
 			case textcapacity.StatusUnderfilled:
 				dd.UnderfilledCells++
+				underfilled[i]++
 			case textcapacity.StatusOptimal:
 				dd.OptimalCells++
 			case textcapacity.StatusOverflow:
@@ -663,12 +694,12 @@ func computeDensityDistribution(slides []Slide) DensityDistribution {
 			}
 		}
 	}
-	return dd
+	return dd, underfilled
 }
 
 // generateRecommendations produces actionable suggestions for runs of 3+,
 // low accent variety, and density distribution imbalance.
-func generateRecommendations(inputs []Slide, slides []SlideInfo, runs []PatternRun, dd DensityDistribution) []Recommendation {
+func generateRecommendations(inputs []Slide, slides []SlideInfo, runs []PatternRun, dd DensityDistribution, underfilled map[int]int, opts Options) []Recommendation {
 	var recs []Recommendation
 
 	for _, run := range runs {
@@ -700,16 +731,38 @@ func generateRecommendations(inputs []Slide, slides []SlideInfo, runs []PatternR
 	if totalCells > 0 {
 		underfilledPct := float64(dd.UnderfilledCells) / float64(totalCells) * 100
 		if underfilledPct > 30 {
-			recs = append(recs, Recommendation{
-				Code:             CodeUnderfilledCells,
-				SlideIndex:       -1, // deck-level
-				Message:          fmt.Sprintf("%.0f%% of cells (%d/%d) are underfilled — add detail text or use smaller grid patterns", underfilledPct, dd.UnderfilledCells, totalCells),
-				RecommendedBreak: []string{"kpi-3up", "kpi-2up", "comparison-2col"},
-			})
+			// The slide with the most underfilled cells is where to start;
+			// the message lists every slide that has one.
+			var on []int
+			worst := -1
+			for i := range inputs {
+				if underfilled[i] == 0 {
+					continue
+				}
+				on = append(on, i)
+				if worst < 0 || underfilled[i] > underfilled[worst] {
+					worst = i
+				}
+			}
+			if worst >= 0 {
+				var smaller []string
+				for _, name := range []string{"kpi-3up", "kpi-2up", "comparison-2col"} {
+					if name != inputs[worst].PatternName {
+						smaller = append(smaller, name)
+					}
+				}
+				recs = append(recs, Recommendation{
+					Code:       CodeUnderfilledCells,
+					SlideIndex: worst,
+					Message: fmt.Sprintf("%.0f%% of cells (%d/%d) are underfilled, %d of them on slide %d (slides %s) — add detail text or use smaller grid patterns",
+						underfilledPct, dd.UnderfilledCells, totalCells, underfilled[worst], worst+1, slideNumberList(on)),
+					RecommendedBreak: smaller,
+				})
+			}
 		}
 	}
 
-	recs = append(recs, narrativeRecommendations(inputs)...)
+	recs = append(recs, narrativeRecommendations(inputs, opts)...)
 	return recs
 }
 

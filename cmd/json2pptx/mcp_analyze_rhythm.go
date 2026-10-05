@@ -12,6 +12,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/rhythm"
+	"github.com/sebahrens/json2pptx/internal/semantic"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
@@ -39,6 +40,13 @@ Returns per-slide fingerprints, pattern run detection, a density coefficient of 
 // --- Handler ---
 
 func handleAnalyzeDeckRhythm(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return analyzeDeckRhythmCall(ctx, request, false)
+}
+
+// analyzeDeckRhythmCall runs the analysis. sectionsDeclined reports a deck
+// whose DeckSpec set meta.chrome.tracker: false; a raw presentation says the
+// same with chrome.tracker: false (go-slide-creator-th6o9).
+func analyzeDeckRhythmCall(ctx context.Context, request mcp.CallToolRequest, sectionsDeclined bool) (*mcp.CallToolResult, error) {
 	jsonStr, paramErr := objectParamAsJSON(request, "presentation")
 	if paramErr != nil {
 		return paramErr, nil
@@ -59,7 +67,15 @@ func handleAnalyzeDeckRhythm(ctx context.Context, request mcp.CallToolRequest) (
 		return argRequired(request, "analyze_deck_rhythm", "presentation.slides", "array", []any{map[string]any{"layout_id": "title"}}, nextCallGetInputSchema()), nil
 	}
 
-	result := analyzeDeckRhythmWithStrategy(input.Slides, input.AccentStrategy)
+	var declared struct {
+		Chrome struct {
+			Tracker *bool `json:"tracker"`
+		} `json:"chrome"`
+	}
+	if json.Unmarshal([]byte(jsonStr), &declared) == nil && declared.Chrome.Tracker != nil && !*declared.Chrome.Tracker {
+		sectionsDeclined = true
+	}
+	result := analyzeDeckRhythmWith(input.Slides, input.AccentStrategy, rhythm.Options{SectionsDeclined: sectionsDeclined})
 
 	mcpResult, err := api.MCPSuccessResult(ctx, result)
 	if err != nil {
@@ -77,7 +93,20 @@ func (mc *mcpConfig) handleAnalyzeDeckRhythm(ctx context.Context, request mcp.Ca
 	if err := json.Unmarshal([]byte(jsonStr), &presentation); err != nil {
 		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nil), nil
 	}
-	return handleAnalyzeDeckRhythm(ctx, mcpRequestWithArgs(map[string]any{"presentation": presentation}))
+	return analyzeDeckRhythmCall(ctx, mcpRequestWithArgs(map[string]any{"presentation": presentation}), mc.deckDeclinesSections(request))
+}
+
+// deckDeclinesSections reports whether the call's deck_id names a DeckSpec
+// whose meta.chrome sets tracker: false. The compiled presentation cannot
+// say so: a false tracker is simply absent from it.
+func (mc *mcpConfig) deckDeclinesSections(request mcp.CallToolRequest) bool {
+	id, _ := request.GetArguments()["deck_id"].(string)
+	handle, ok := mc.deckHandles.Load(strings.TrimSpace(id))
+	if !ok || handle.RawPresentation != nil {
+		return false
+	}
+	spec, _ := semantic.Parse(handle.Filename, handle.Spec)
+	return spec != nil && spec.Meta.Chrome != nil && spec.Meta.Chrome.TrackerDeclined
 }
 
 // --- Adapter: SlideInput DTOs -> internal/rhythm engine ---
@@ -95,6 +124,12 @@ func analyzeDeckRhythm(slides []SlideInput) *rhythm.Result {
 // the deck's accent_strategy, so accent_balance is measured on decks built
 // from patterns / DeckSpec (go-slide-creator-hl17m).
 func analyzeDeckRhythmWithStrategy(slides []SlideInput, accentStrategy string) *rhythm.Result {
+	return analyzeDeckRhythmWith(slides, accentStrategy, rhythm.Options{})
+}
+
+// analyzeDeckRhythmWith is analyzeDeckRhythmWithStrategy with the deck-level
+// options the caller knows.
+func analyzeDeckRhythmWith(slides []SlideInput, accentStrategy string, opts rhythm.Options) *rhythm.Result {
 	strategy := patterns.AccentStrategy(accentStrategy)
 	sectionIndices := slideSectionIndices(slides, nil)
 	backMatter := deckBackMatter(slides, nil)
@@ -106,7 +141,7 @@ func analyzeDeckRhythmWithStrategy(slides []SlideInput, accentStrategy string) *
 			rhythmSlides[i].PatternAccent = rhythmPatternAccent(s.Pattern, strategy, i, sectionIndices[i])
 		}
 	}
-	return rhythm.Analyze(rhythmSlides)
+	return rhythm.AnalyzeWith(rhythmSlides, opts)
 }
 
 // rhythmPatternAccent is the accent a pattern slide renders in: its explicit

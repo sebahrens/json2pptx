@@ -20,8 +20,9 @@ Back to the [hub](README.md).
 | `INVALID_PARAMETER … table row 6 spans 7 columns but headers define 6` | A YAML flow list with an unquoted comma inside a cell | Quote cells that contain commas: `"Market model v1: size, growth, segments"`. |
 | `CHART_SERIES_LENGTH_MISMATCH` | One value missing in a series | One number per category per series. |
 | `SEMANTIC_TAKEAWAY_REQUIRED` | An evidence slide without a one-line conclusion | Add `takeaway`; on `executive_summary` / `decision` / `chart_insight` write the kind's own band instead. |
-| `SEMANTIC_RHYTHM_MONOTONY` / `SEMANTIC_RHYTHM_DENSITY` | Three of a kind in a row, or three dense slides | Change the middle slide's kind; a split table titled `(2/2)` counts once. |
-| `SEMANTIC_RHYTHM_SECTIONING` | 11+ body slides and no dividers | Use `structure.sections` with `auto_agenda`, or accept it under 12 slides (being relaxed, `go-slide-creator-th6o9`). |
+| `SEMANTIC_RHYTHM_MONOTONY` | Three slides of one visual family in a row (a table, a team grid and next steps are three families, not text) | Change the middle slide's kind; a split table titled `(2/2)` counts once. |
+| `SEMANTIC_RHYTHM_DENSITY` | Three dense slides in a row | Put a section divider or a lighter slide before the slide `evidence.insert_before` names, or move a lighter slide there. |
+| `SEMANTIC_RHYTHM_SECTIONING` | 13+ body slides and no dividers | Use `structure.sections` with `auto_agenda`; `meta.chrome.tracker: false` says the deck runs without chapters. |
 | `SEMANTIC_REFERENCE_UNRESOLVED` | `recommended` / `decisive_criterion` names nothing | Match an option `name` or a criterion `label` exactly. |
 
 ## Rendering surprises (the tools said fine)

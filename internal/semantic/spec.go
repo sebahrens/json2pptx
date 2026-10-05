@@ -151,6 +151,11 @@ type ChromeSpec struct {
 	SectionCrumb bool `json:"section_crumb,omitempty" yaml:"section_crumb,omitempty"`
 	// Tracker sets the current section name above each content slide's title.
 	Tracker bool `json:"tracker,omitempty" yaml:"tracker,omitempty"`
+	// TrackerDeclined records an explicit `tracker: false`: the author was
+	// asked about chapters and said no, so the sectioning advice stays quiet
+	// (go-slide-creator-th6o9). Set by the parser; a plain bool cannot tell
+	// false from absent.
+	TrackerDeclined bool `json:"-" yaml:"-"`
 }
 
 // PageNumbersSpec mirrors deckinput.PageNumbersInput.

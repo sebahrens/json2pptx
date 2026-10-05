@@ -1329,7 +1329,7 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		Code:        CodeSemanticRhythmMonotony,
 		Summary:     "Three or more consecutive slides share the same visual family.",
 		Severity:    describeSeverityReview,
-		WhenEmitted: "deck-rhythm analysis finds a run of 3+ adjacent slides that compile to the same visual family (e.g. three KPI slides back-to-back), which reads as monotonous. The parts of a continued exhibit (titles ending (1/2), (2/2) or (cont.)) count once, so a table split across two slides is not a run of two. Promoted to an error under strict validation.",
+		WhenEmitted: "deck-rhythm analysis finds a run of 3+ adjacent slides that compile to the same visual family (e.g. three KPI slides back-to-back), which reads as monotonous. A table, a card grid (team) and numbered action rows (next_steps) are families of their own, not text. The parts of a continued exhibit (titles ending (1/2), (2/2) or (cont.)) count once, so a table split across two slides is not a run of two. Promoted to an error under strict validation.",
 		RemediationSteps: []string{
 			"Vary the slide kinds across the run, or move a section divider into the middle of it.",
 			"Reorder slides so similar treatments are not adjacent.",
@@ -1340,9 +1340,9 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		Code:        CodeSemanticRhythmDensity,
 		Summary:     "Three or more consecutive slides are content-dense.",
 		Severity:    describeSeverityReview,
-		WhenEmitted: "deck-rhythm analysis finds a run of 3+ adjacent heavy-density slides, which fatigues the audience. Promoted to an error under strict validation.",
+		WhenEmitted: "deck-rhythm analysis finds a run of 3+ adjacent heavy-density slides, which fatigues the audience. The message and evidence.run name the slides of the run; evidence.insert_before is the slide to break it in front of (the run's third). Promoted to an error under strict validation.",
 		RemediationSteps: []string{
-			"Break the run with a lighter slide (a section divider, a single statistic, or a pull quote).",
+			"Insert a lighter slide (a section divider, a single statistic, or a pull quote) before the slide evidence.insert_before names, or move a lighter slide there.",
 			"Split a dense slide's content across two slides so each carries less.",
 		},
 		RelatedCodes: []string{CodeSemanticRhythmMonotony, CodeSemanticDensity},
@@ -1351,9 +1351,10 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		Code:        CodeSemanticRhythmSectioning,
 		Summary:     "A long deck has no section dividers to break it into chapters.",
 		Severity:    describeSeverityReview,
-		WhenEmitted: "deck-rhythm analysis finds a deck of more than 10 body slides (cover, agenda, closing and other structural slides not counted) with no section/transition slide. Promoted to an error under strict validation.",
+		WhenEmitted: "deck-rhythm analysis finds a deck of more than 12 body slides (cover, agenda, closing and other structural slides not counted) with no section/transition slide. Not emitted when meta.chrome sets tracker: false. Promoted to an error under strict validation.",
 		RemediationSteps: []string{
 			"Add one or more `section` slides to group the deck into chapters.",
+			"Or set meta.chrome.tracker: false when the deck is meant to run without chapters.",
 		},
 		RelatedCodes: []string{CodeSemanticRhythmMonotony},
 	},

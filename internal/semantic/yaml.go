@@ -311,6 +311,15 @@ func buildDeckSpec(raw rawDeck, top map[string]any) (*DeckSpec, Diagnostics) {
 
 	_, slidesPresent := top["slides"]
 	spec := &DeckSpec{Meta: raw.Meta, slidesPresent: slidesPresent}
+	if spec.Meta.Chrome != nil {
+		meta, _ := top["meta"].(map[string]any)
+		chrome, _ := meta["chrome"].(map[string]any)
+		if tracker, set := chrome["tracker"].(bool); set && !tracker {
+			declined := *spec.Meta.Chrome
+			declined.TrackerDeclined = true
+			spec.Meta.Chrome = &declined
+		}
+	}
 
 	if raw.Meta.Archetype != "" && !raw.Meta.Archetype.Valid() {
 		ds.add("meta.archetype", CodeUnknownArchetype,

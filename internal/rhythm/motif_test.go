@@ -49,6 +49,10 @@ func TestMotif_AlternatingLookAlikePatternsAreFlagged(t *testing.T) {
 	if len(recs[0].RecommendedBreak) == 0 {
 		t.Fatalf("motif_dominant carries no alternatives")
 	}
+	// It names the first slide that draws the motif (go-slide-creator-th6o9).
+	if recs[0].SlideIndex != 0 {
+		t.Errorf("motif_dominant slide_index = %d, want the first slide of the motif (0)", recs[0].SlideIndex)
+	}
 	for _, name := range recs[0].RecommendedBreak {
 		if patterns.PatternMotif(name) == patterns.MotifOpenColumns {
 			t.Errorf("alternative %q draws the motif the deck should leave", name)

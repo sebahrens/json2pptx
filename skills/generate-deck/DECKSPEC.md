@@ -25,7 +25,9 @@ Send `spec` (a JSON object or a YAML/JSON string) with `meta` and either flat `s
 `structure: {cover, auto_agenda, sections:[{title, slides:[]}], closing}`,
 never both. Chapters add numbered section dividers;
 `meta.chrome.section_crumb: true` puts the section in the footer,
-`meta.chrome.tracker: true` above each content title. Divider numbers are
+`meta.chrome.tracker: true` above each content title (`false` declines
+chapters and `SEMANTIC_RHYTHM_SECTIONING`, given from 13 body
+slides). Divider numbers are
 generated: do not hand-author them. A section (or `section` slide) with
 `appendix: true` is back matter: an unnumbered divider (later chapters keep
 their numbers), outside `auto_agenda`, crumb "Appendix: <title>". Dividers
@@ -173,7 +175,7 @@ it was validated or rendered on, so a call's `template` change shows as
 (`find`, `replace`), restores a revision (`restore: N`) and forks
 (`fork: true`). A whole spec sent again is the next revision of its
 `deck_id` when its title, template and slide `id`s match a stored deck
-(`fork: true`: a new one). Handles are process-local and expire after one hour; retain
+(`fork: true`: new deck). Handles are process-local and expire after one hour; retain
 the source spec yourself.
 The default filename carries a digest of the spec; an explicit
 `output_filename` may overwrite an earlier artifact (check `overwrote`).

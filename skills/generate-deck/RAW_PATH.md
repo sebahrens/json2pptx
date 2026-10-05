@@ -163,7 +163,7 @@ suggested pattern; keep `(1/2)` / `(2/2)` parts adjacent
 (`continuation_interrupted`); add detail or a smaller grid when
 underfilled cells pass 30% (`underfilled_cells`). Narrative checks:
 `missing_executive_summary` (6+ slides), `missing_next_steps` (no
-next-steps close), `missing_sections` (10+ content slides, no divider or
+next-steps close), `missing_sections` (13+ content slides, no divider or
 agenda), `evidence_missing_takeaway_or_source`, `bullets_heavy` (3+
 bullets-only slides). A `compose` slide's `pattern` names its structure
 (`compose:h[chart+compose:v[kpi+pull-quote]]`); reordered, re-split or
