@@ -33,8 +33,11 @@ func exemplarDeck(t *testing.T) PresentationInput {
 }
 
 // supportingBandPatterns are not full-slide exhibits: alone on a slide they
-// report SLIDE_UNDERUSED by design (docs/PATTERNS.md).
-var supportingBandPatterns = map[string]bool{"process-flow-compact": true}
+// report SLIDE_UNDERUSED by design (docs/PATTERNS.md). kpi-inline joined them
+// with go-slide-creator-i7yju: its bar covers its coverage threshold but
+// leaves the lower 41% of the content area empty, which the lower-third rule
+// for KPI rows now reports.
+var supportingBandPatterns = map[string]bool{"process-flow-compact": true, "kpi-inline": true}
 
 // The patterns' points are designed on the 13.33 x 7.5in slide. On
 // business-template's 14.7 x 8.3in slide the same points left eleven
@@ -106,6 +109,24 @@ func TestExemplarsClearTheUnderusedThreshold(t *testing.T) {
 		})
 		if measured < 40 {
 			t.Errorf("%s: only %d exemplars were measured", tpl, measured)
+		}
+		// Coverage is not the whole rule for a KPI row: a row that clears
+		// its 20% threshold may still be a strip over an empty lower third
+		// (slideLowerBandMaxFrac). The kpi-Nup exemplars clear that too —
+		// they are grown into the free height (go-slide-creator-i7yju).
+		rows := 0
+		for _, f := range collectGeometryFindings(&deck, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme) {
+			if f.Code == patterns.ErrCodeSlideUnderused && isKPINupPattern(f.Pattern) {
+				t.Errorf("%s: %s exemplar: %s", tpl, f.Pattern, f.Message)
+			}
+		}
+		for _, s := range deck.Slides {
+			if s.Pattern != nil && isKPINupPattern(s.Pattern.Name) {
+				rows++
+			}
+		}
+		if rows != 5 {
+			t.Errorf("%s: %d kpi-Nup exemplars were checked against the lower-third rule, want 5", tpl, rows)
 		}
 		t.Logf("%s: thinnest exemplar %s at %.1f%% against %.0f%%", tpl, thinnest.pattern, 100*thinnest.frac, 100*thinnest.threshold)
 	}

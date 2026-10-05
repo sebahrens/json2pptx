@@ -1,7 +1,10 @@
 # Schema Changelog
 
-- **2026-10-05 — A lone KPI row uses the slide (`go-slide-creator-i7yju`).**
+- **2026-10-05 — A lone KPI row uses the slide, and a strip or a short table over an empty lower third is reported (`go-slide-creator-i7yju`).**
   - kpi-Nup (`kpi_snapshot`): an open row that is the slide's own block grows into the free height after its type step — the row to half the content area, at most 1.8× the height its content needs — with the figures centred between taller hairline dividers. Type sizes are unchanged (the 48pt figure and 18pt word caps hold). Tiles, `kpi-inline`, compose segments, regions cells and rows with `bounds`, `max_height_pct` or an explicit `vertical_align` are as before. No schema field changes.
+  - `SLIDE_UNDERUSED` scope: a pattern-sized KPI slide (`kpi-2up` … `kpi-6up`, `kpi-inline`) whose row clears its 20% coverage threshold is also reported when a third or more of the content area is empty beneath the row — kpi-Nup tiles and `kpi-inline` alone on a slide. The grown open row leaves about 28% and does not report. New `fix.params` on that form: `empty_band_in`, `empty_band_pct`, `empty_band_side` (`below`), with `threshold_pct` 33 and `band_capped_by` `pattern`; the fix kind stays `add_detail_or_resize`. Review severity, 5 points. The `kpi-inline` description says it reports alone on a slide.
+  - `VERTICAL_IMBALANCE` scope: a table cell counts as its planned rows instead of its whole cell, and a slide holding a table is reported when a third or more of the content area is empty beneath its last ink (40% for other blocks hung from the body line). A DeckSpec `table` of four rows alone on a slide, which scored 100, now scores 75 (25-point composition fault) with a `hint` naming the table's remedies. Same code, fix kind and params.
+  - `recommend_visual` / `list_slide_kinds`: the `table` kind example has seven rows (six segments and a total) so the recipe is a slide that passes the gate.
 
 - **2026-10-05 — Schema 4.167.0 · agent journey wave 3, second pass: risk heat map, honest fit and findings an agent can act on (epic `go-slide-creator-ls0i5`).**
   - One version for the three dated entries below this one (footer chrome, rhythm advice, revisions) and for the bullets here.

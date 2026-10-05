@@ -233,8 +233,11 @@ var kindExamples = map[SlideKind]map[string]any{
 		"rows": []any{
 			[]any{"Enterprise", "$28.4M", "$41.2M", "+45%"},
 			[]any{"Mid-market", "$12.1M", "$14.8M", "+22%"},
+			[]any{"Public sector", "$6.3M", "$8.1M", "+29%"},
+			[]any{"Channel partners", "$4.9M", "$5.6M", "+14%"},
+			[]any{"Self-serve", "$2.2M", "$2.4M", "+9%"},
 			[]any{"SMB", "$9.6M", "$8.9M", "-7%"},
-			[]any{"Total", "$50.1M", "$64.9M", "+30%"},
+			[]any{"Total", "$63.5M", "$81.0M", "+28%"},
 		},
 		"column_alignments": []any{"left", "right", "right", "right"},
 		"highlight_column":  "FY26 revenue",

@@ -91,21 +91,23 @@ a slide they are composed like any sparse block.
 or more of the content area stays empty below / beside a block (or between
 it and its conclusion band): set `vertical_align` (`center` / `stretch`),
 add a supporting zone (`compose`) or pick a pattern that fills the area. A
+table counts as its rows and reports from a third empty beneath it: add
+rows or pair it with a region. A
 remaining `SLIDE_UNDERUSED` means the content is thin — add real detail,
 pair it with a second zone, or merge slides. It is not raised for a
 `stat-hero` or `pull-quote` at its designed size, nor for a normal
-`next-steps` / `numbered-step-strip` list; a lone `process-flow-compact`
-still reports.
+`next-steps` / `numbered-step-strip` list; a lone `process-flow-compact` or
+`kpi-inline` reports, as does a KPI row (tiles) over an empty lower third.
 
 ---
 
 ## Text Capacity Awareness
 
-`density_pct` is a **height** ratio: each paragraph wrapped at its own font size, line heights summed, compared with the cell's text height (embedded font metrics, no OS dependency). `max_chars` is the derived character hint at the cell's dominant size. Target **35–110%**: under 35% is `underfilled` (info), over 110% `overflow` (warning: it will clip or shrink hard); a well-authored cell fills about half its box.
+`density_pct` is a **height** ratio: each paragraph wrapped at its own font size, line heights summed, compared with the cell's text height. `max_chars` is the derived character hint at the cell's dominant size. Target **35–110%**: under 35% is `underfilled` (info), over 110% `overflow` (warning: it clips or shrinks hard).
 
 **Pick a configuration.** `show_pattern` returns `text_budget_guide.target_density` (a *character* target) and `configurations[]` (`columns`, `rows`, `body_max_chars` at 12pt, `header_max_chars` at 16pt). Pick the one whose `body_max_chars` is closest to `planned_chars / 0.85`, write to it, then check every `expand_pattern` `cell_budgets[]` entry's `density_pct` lands in 35–110%. Non-grid patterns (`pull-quote`, `stat-hero`) have no guide: use per-placeholder `max_chars` from `list_templates` `mode="compact"` or `fields="full"`.
 
-- **Underfilled:** add supporting detail; for inherently short content use a sparse pattern (`kpi-3up`, not `card-grid`) or a smaller configuration (2×2, not 3×2).
-- **Overflow, or `fit_overflow` / `density_exceeded` after generation:** (1) rewrite — shorter sentences, fewer bullets; (2) a larger configuration or higher-capacity pattern (`repair_slide` `swap_layout`, or `layout_suggestions[]`, offered when all populated cells are underfilled or all overflow); (3) `repair_slide` `split_at_row` / `reduce_text`; (4) last resort for verbatim content: `reduce_cell_text` (truncates one cell to `max_chars` with an ellipsis), then re-validate with `fit_report: true`.
+- **Underfilled:** add supporting detail; for short content use a sparse pattern (`kpi-3up`, not `card-grid`) or a smaller configuration (2×2, not 3×2).
+- **Overflow, or `fit_overflow` / `density_exceeded` after generation:** (1) rewrite shorter; (2) a larger configuration or pattern (`repair_slide` `swap_layout`, or `layout_suggestions[]`, offered when all populated cells are underfilled or all overflow); (3) `repair_slide` `split_at_row` / `reduce_text`; (4) last resort for verbatim content: `reduce_cell_text` (truncates one cell to `max_chars` with an ellipsis), then re-validate with `fit_report: true`.
 
-**Bounds.** A sparse slide-level block is composed automatically (Placement above). To pin a region yourself pass `max_height_pct` (1–99% of the content area) or `bounds` (percent rectangle; wins) to `expand_pattern` or as slide-level `pattern.bounds` / `pattern.max_height_pct`; density math then uses the reduced area and `bounds_assumption` reports `"explicit_override"`. An underfilled `capacity_warnings[]` entry and `density_class_divergence` (average density far below the pattern's `density_class`) carry a `next_tool_call` with a recommended `max_height_pct` or a sparser pattern — follow it.
+**Bounds.** A sparse slide-level block is composed automatically (Placement above). To pin a region pass `max_height_pct` (1–99% of the content area) or `bounds` (percent rectangle; wins) to `expand_pattern` or as slide-level `pattern.bounds` / `pattern.max_height_pct`; density math then uses the reduced area and `bounds_assumption` reports `"explicit_override"`. An underfilled `capacity_warnings[]` entry and `density_class_divergence` (average density far below the pattern's `density_class`) carry a `next_tool_call` with a recommended `max_height_pct` or a sparser pattern.
