@@ -347,10 +347,10 @@ const cardGridContractDescription = "columns: 2–12 titled cards {header, items
 
 // regionsContractDescription is the regions kind's shape in one paragraph;
 // the kind's own summary runs to several.
-const regionsContractDescription = "2–3 regions under one title. arrangement: columns or rows (size_pct is each region's width / height share), " +
-	"or main_left / main_right / main_top / main_bottom (exactly 3: regions[0] is the main region, size_pct its share; regions[1..2] stack beside it). " +
-	"Each region is {kind, size_pct, heading, source} plus its kind's fields: chart {chart {type, data}, unit}, stat {value, label, unit, context}, " +
-	"kpis {kpis: 2–4}, table {headers, rows: ≤4 columns × 5 rows}, timeline {milestones: 3–7}, image {image, caption}, text {body, bullets}."
+const regionsContractDescription = "2–3 regions under one title. arrangement: columns | rows (size_pct = each region's share) " +
+	"or main_left | main_right | main_top | main_bottom (3 regions: regions[0] main, [1..2] stacked beside it). " +
+	"Region = {kind, size_pct, heading, source} + its kind's fields: chart {chart {type, data}, unit}, stat {value, label, unit, context}, " +
+	"kpis {kpis 2–4}, table {headers, rows ≤4×5}, timeline {milestones 3–7}, image {image, caption}, text {body, bullets}."
 
 // rawPatternSlide hosts a pattern's exemplar values on a Blank + Title slide.
 func rawPatternSlide(reg *patterns.Registry, name string) (map[string]any, *patterns.VisualDataContract, error) {

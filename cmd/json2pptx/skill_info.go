@@ -1201,7 +1201,7 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		"line": {
 			RequiredKeys: []string{"series"},
 			OptionalKeys: []string{"categories", "colors", "x_label", "y_label", "annotations", "data_labels", "highlight", "y_min", "y_max"},
-			Description:  "series: [{name, values: number[]}]; categories required unless series contain time_strings or time_values. The value axis starts at zero unless a value is negative; y_min / y_max zoom it for an index or a narrow band (the axis is then kept visible; y_min above the lowest point is rejected). highlight: the series (names or indices) the slide is about — kept in accent1 and labelled at the line end, the rest grey context (defaults to the one series the slide title names). A single series up to 12 points is labelled by default; markers drop past 12 points.",
+			Description:  "series: [{name, values: number[]}]; categories required unless series contain time_strings or time_values. The axis starts at zero for non-negative data; y_min / y_max zoom it (axis kept visible; y_min above the lowest point is rejected). highlight: the series (names or indices) the slide is about — kept in accent1 and labelled at the line end, the rest grey context (defaults to the one series the slide title names). A single series up to 12 points is labelled by default; markers drop past 12 points.",
 		},
 		"pie": {
 			RequiredKeys: []string{"values"},
