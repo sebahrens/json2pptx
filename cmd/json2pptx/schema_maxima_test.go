@@ -610,7 +610,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"metric-list":                  8.6,
 	"next-steps":                   6.7,
 	"numbered-step-strip":          5.8,
-	"phase-roadmap":                5.0,
+	"phase-roadmap":                7.4,
 	"process-flow":                 0,
 	"process-flow-compact":         0,    // band grows to the written fit (n1muf)
 	"process-grid-2row":            10.8, // rows floored at their written fit (n1muf)
