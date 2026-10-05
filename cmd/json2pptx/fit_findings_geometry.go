@@ -178,12 +178,14 @@ func collectGeometry(input *PresentationInput, layouts []types.LayoutMetadata, s
 		if imbalance != nil {
 			findings = append(findings, *imbalance)
 		}
-		// A KPI row over an empty lower third that neither check above names:
+		// A block over an empty lower third that neither check above names:
 		// its cells clear the coverage threshold and it sits centred.
 		// Without a content zone the block is not placed by the composition
-		// policy, so where it sits says nothing about the rendered slide.
-		if geom.Zone != nil && underused == nil && (imbalance == nil || imbalance.Code != patterns.ErrCodeVerticalImbalance) {
-			if f := kpiRowLowerBandFinding(acc.ink, safe, &slide, si, patternName); f != nil {
+		// policy, so where it sits says nothing about the rendered slide. A
+		// flow SPARSE_SINGLE_ROW_FLOW already names is not reported twice.
+		if geom.Zone != nil && underused == nil && (imbalance == nil || imbalance.Code != patterns.ErrCodeVerticalImbalance) &&
+			detectSparseSingleRowFlow(input.Slides[si].Pattern, si) == nil {
+			if f := lowerBandFinding(acc.ink, safe, &slide, si, patternName); f != nil {
 				findings = append(findings, *f)
 			}
 		}
@@ -774,6 +776,9 @@ type slideUsage struct {
 	frac      float64
 	threshold float64
 	source    string
+	// lowerBand is the share of the content area left empty beneath the
+	// slide's last ink (the lower-third rule, slideLowerBandMaxFrac).
+	lowerBand float64
 }
 
 // measureSlideUsage is the measurement behind SLIDE_UNDERUSED; ok is false
@@ -785,6 +790,8 @@ func measureSlideUsage(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInput,
 	// A restrictive author cap uses the stricter threshold. An uncapped raw
 	// grid needs different advice from a content-sized pattern.
 	u := slideUsage{pattern: patternName, frac: inkCoverageFraction(ink, safe), source: bandCapSource(slide), threshold: slideUnderusedPatternMaxFrac}
+	_, band := lowerBand(ink, safe)
+	u.lowerBand = float64(band) / float64(safe.CY)
 	switch u.source {
 	case "author":
 		u.threshold = slideUnderusedMaxFrac
@@ -856,39 +863,78 @@ func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInpu
 	}
 }
 
-// slideLowerBandMaxFrac is the share of the content area a KPI row (kpi-Nup,
-// kpi-inline) or a table may leave empty beneath it: the lower third. An open
-// kpi-Nup row alone on a slide is grown into the free height and set at the
-// optical centre (shapegrid ComposeGrow), which leaves about 28% of the area
-// under it; a row that still leaves a third or more — tiles, which keep their
-// content height, a kpi-inline bar, which is a supporting band — is a strip
-// over an empty band and says so (go-slide-creator-i7yju). Its cells clear
-// the 20% coverage threshold and it sits centred, so neither SLIDE_UNDERUSED's
-// coverage test nor VERTICAL_IMBALANCE named it and the slide scored 100.
+// slideLowerBandMaxFrac is the share of the content area a slide's block may
+// leave empty beneath it: the lower third. The owner's rule is general — a
+// slide whose lower third or more is an empty band must not score 100
+// silently — and so is the check: every pattern, compose block and raw grid
+// on a slide with a known content zone (go-slide-creator-i7yju applied it to
+// KPI rows and tables, go-slide-creator-kgfs1 to everything else). A block
+// that clears its coverage threshold and sits centred is named by neither
+// SLIDE_UNDERUSED's coverage test nor VERTICAL_IMBALANCE; this is the check
+// that names it.
+//
+// What keeps a full-slide pattern clear of it: an open kpi-Nup row alone on a
+// slide is grown into the free height (shapegrid ComposeGrow, about 28% left
+// under it); a value-chain and a process-flow of sentence labels have their
+// rows grown to the same 28% when 1.6x their height reaches it (ComposeBand).
+// Tiles, which keep their content height, and the supporting bands
+// (supportingBandPatterns) do not grow and report.
 const slideLowerBandMaxFrac = 1.0 / 3
 
-// kpiRowLowerBandFinding reports a pattern-sized KPI slide whose row leaves
-// slideLowerBandMaxFrac or more of the content area empty beneath it. An
-// author's bounds / max_height_pct cap is judged by the coverage test.
-func kpiRowLowerBandFinding(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInput, si int, patternName string) *patterns.FitFinding {
-	if safe.CY <= 0 || !strings.HasPrefix(patternName, "kpi-") || hasBodyPlaceholderContent(slide) || bandCapSource(slide) != "pattern" {
+// supportingBandPatterns are not full-slide exhibits: each is one
+// content-sized band meant for a compose segment or a regions cell, and alone
+// on a slide it reports SLIDE_UNDERUSED — process-flow-compact by coverage,
+// kpi-inline and before-after-compact by the lower-third rule. Their
+// descriptions and docs/PATTERNS.md say so; the value names the full-slide
+// pattern the remedy points to.
+var supportingBandPatterns = map[string]string{
+	"process-flow-compact": "process-flow",
+	"kpi-inline":           "kpi-Nup",
+	"before-after-compact": "before-after",
+}
+
+// lowerBandHint is the remedy of a lower-third finding for a pattern and the
+// source of the block's height cap (bandCapSource).
+func lowerBandHint(patternName, source string) string {
+	switch {
+	case isKPINupPattern(patternName):
+		return "use the band: give each KPI a delta or comparator line, add a takeaway, or set the row over a chart, table or text zone (compose / the regions kind); an open kpi-Nup row alone on a slide is grown into the free height, so leave overrides.style and vertical_align unset"
+	case patternName == "kpi-inline":
+		return "kpi-inline is a supporting band: use it as a compose segment or regions cell beside the content it supports, or use kpi-Nup, whose open row is grown into the free height of a slide of its own"
+	case supportingBandPatterns[patternName] != "":
+		return fmt.Sprintf("%s is a supporting band: use it as a compose segment or regions cell beside the content it supports, or use %s on a slide of its own", patternName, supportingBandPatterns[patternName])
+	case source == "author":
+		return "the bounds / max_height_pct cap ends the block above the lower third: raise or remove the cap, or put a second zone in the band (compose / the regions kind)"
+	case source == "pattern":
+		return "use the band: add what completes the exhibit (the remaining items, a description or body line per item), add a takeaway, or set the block over a second zone (compose / the regions kind); the pattern sizes itself to its content and is not stretched"
+	}
+	return "use the band: add rows or detail to the grid, or pair it with supporting content in the lower third"
+}
+
+// lowerBandFinding reports a slide whose block leaves slideLowerBandMaxFrac
+// or more of the content area empty beneath it. The hero statements
+// (stat-hero, pull-quote) are not held to it: the white space around one
+// figure or quote is the composition.
+func lowerBandFinding(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInput, si int, patternName string) *patterns.FitFinding {
+	if safe.CY <= 0 || hasBodyPlaceholderContent(slide) || heroStatementPatterns[patternName] {
 		return nil
 	}
 	_, band := lowerBand(ink, safe)
 	bandFrac := float64(band) / float64(safe.CY)
-	if bandFrac < slideLowerBandMaxFrac {
+	if band < verticalImbalanceMinGapEMU || bandFrac < slideLowerBandMaxFrac {
 		return nil
 	}
-	hint := "use the band: give each KPI a delta or comparator line, add a takeaway, or set the row over a chart, table or text zone (compose / the regions kind); an open kpi-Nup row alone on a slide is grown into the free height, so leave overrides.style and vertical_align unset"
-	if !isKPINupPattern(patternName) {
-		hint = "kpi-inline is a supporting band: use it as a compose segment or regions cell beside the content it supports, or use kpi-Nup, whose open row is grown into the free height of a slide of its own"
+	source := bandCapSource(slide)
+	subject := "the content"
+	if strings.HasPrefix(patternName, "kpi-") {
+		subject = "the KPI row"
 	}
 	return &patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
 			Pattern: patternName,
 			Path:    slidepath.Slide(si),
 			Code:    patterns.ErrCodeSlideUnderused,
-			Message: fmt.Sprintf("the KPI row leaves the lower %.0f%% of the content area empty (%.1fin; limit %.0f%%) — the slide reads as a strip over a blank band", 100*bandFrac, float64(band)/914400, 100*slideLowerBandMaxFrac),
+			Message: fmt.Sprintf("%s leaves the lower %.0f%% of the content area empty (%.1fin; limit %.0f%%) — the slide reads as a strip over a blank band", subject, 100*bandFrac, float64(band)/914400, 100*slideLowerBandMaxFrac),
 			Fix: &patterns.FixSuggestion{
 				Kind: "add_detail_or_resize",
 				Params: map[string]any{
@@ -896,8 +942,8 @@ func kpiRowLowerBandFinding(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideI
 					"empty_band_pct":  math.Round(100 * bandFrac),
 					"empty_band_side": "below",
 					"threshold_pct":   math.Round(100 * slideLowerBandMaxFrac),
-					"band_capped_by":  "pattern",
-					"hint":            hint,
+					"band_capped_by":  source,
+					"hint":            lowerBandHint(patternName, source),
 				},
 			},
 		},

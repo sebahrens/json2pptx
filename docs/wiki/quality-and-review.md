@@ -50,14 +50,15 @@ pass on every slide.
 - **A zoomed axis you did not ask for.** Bars, lines, areas and waterfalls with
   non-negative data now start at zero; if a chart looks zoomed, a `data.y_min`
   was authored — check that the heading says so.
-- **Other strips over an empty band.** A `kpi_snapshot` alone on a slide is
-  grown into a band of half the content area, and a KPI row or a table that
-  still leaves the lower third empty is reported (`SLIDE_UNDERUSED` for the
-  row, `VERTICAL_IMBALANCE` for a short table: `go-slide-creator-i7yju`).
-  The same rule is not applied to the other single-row patterns: a
-  `process-flow` of three short steps, a `value-chain` or a compact variant
-  sits centred with a third or more of the area under it and scores 100.
-  Look at them, and give a thin flow its second zone.
+- **A strip whose band is inside the block.** Any pattern, compose block or
+  grid that leaves the lower third of the content area empty is reported
+  (`SLIDE_UNDERUSED` with `empty_band_pct`; `VERTICAL_IMBALANCE` for a short
+  table; `SPARSE_SINGLE_ROW_FLOW` for a flow of short labels:
+  `go-slide-creator-i7yju`, `-kgfs1`), and a `kpi_snapshot`, a `value-chain`
+  and a `process-flow` of sentence steps are grown to clear it. The check
+  measures where the last row ends, not how full the rows are: two bullets
+  in a tall column, or a body-placeholder slide of two short lines, still
+  pass. Look at them, and give a thin slide its second zone.
 - **A footer that lost a field.** A footer line wider than the template's slot
   drops `project_code`, then the date, and `CHROME_TRUNCATED` says so
   (`go-slide-creator-m2tlt`) — a review finding that never blocks. Decide

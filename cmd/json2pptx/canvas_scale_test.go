@@ -32,13 +32,6 @@ func exemplarDeck(t *testing.T) PresentationInput {
 	return deck
 }
 
-// supportingBandPatterns are not full-slide exhibits: alone on a slide they
-// report SLIDE_UNDERUSED by design (docs/PATTERNS.md). kpi-inline joined them
-// with go-slide-creator-i7yju: its bar covers its coverage threshold but
-// leaves the lower 41% of the content area empty, which the lower-third rule
-// for KPI rows now reports.
-var supportingBandPatterns = map[string]bool{"process-flow-compact": true, "kpi-inline": true}
-
 // The patterns' points are designed on the 13.33 x 7.5in slide. On
 // business-template's 14.7 x 8.3in slide the same points left eleven
 // exemplars underused and scqa-summary lopsided; the grids now follow the
@@ -55,7 +48,7 @@ func TestExemplarDeckUsesTheContentArea(t *testing.T) {
 		a := loadTemplateAnalysis(t, tpl)
 		deck := exemplarDeck(t)
 		for _, f := range collectFitFindings(&deck, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme) {
-			if balance[f.Code] && !supportingBandPatterns[f.Pattern] {
+			if balance[f.Code] && supportingBandPatterns[f.Pattern] == "" {
 				t.Errorf("%s: %s exemplar: %s: %s", tpl, f.Pattern, f.Code, f.Message)
 			}
 		}
@@ -70,6 +63,12 @@ var underusedSweepTemplates = []string{"business-template", "modern-template", "
 // exemplarUnderusedMargin is how far over its SLIDE_UNDERUSED threshold every
 // full-slide exemplar must sit, as a share of the content area.
 const exemplarUnderusedMargin = 0.015
+
+// exemplarLowerBandMargin is how far under the lower third
+// (slideLowerBandMaxFrac) the empty band beneath every full-slide exemplar
+// must stay, as a share of the content area: the band moves by a point or so
+// with the template's face, like the coverage does.
+const exemplarLowerBandMargin = 0.01
 
 // Every full-slide exemplar clears its SLIDE_UNDERUSED threshold by
 // exemplarUnderusedMargin on every template. Coverage is measured from glyph
@@ -95,7 +94,7 @@ func TestExemplarsClearTheUnderusedThreshold(t *testing.T) {
 		measured := 0
 		thinnest := slideUsage{frac: 1}
 		collectGeometry(&deck, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme, func(u slideUsage) {
-			if supportingBandPatterns[u.pattern] {
+			if supportingBandPatterns[u.pattern] != "" {
 				return
 			}
 			measured++
@@ -110,24 +109,43 @@ func TestExemplarsClearTheUnderusedThreshold(t *testing.T) {
 		if measured < 40 {
 			t.Errorf("%s: only %d exemplars were measured", tpl, measured)
 		}
-		// Coverage is not the whole rule for a KPI row: a row that clears
-		// its 20% threshold may still be a strip over an empty lower third
-		// (slideLowerBandMaxFrac). The kpi-Nup exemplars clear that too —
-		// they are grown into the free height (go-slide-creator-i7yju).
-		rows := 0
-		for _, f := range collectGeometryFindings(&deck, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme) {
-			if f.Code == patterns.ErrCodeSlideUnderused && isKPINupPattern(f.Pattern) {
-				t.Errorf("%s: %s exemplar: %s", tpl, f.Pattern, f.Message)
+		// Coverage is not the whole rule: a block that clears its threshold
+		// may still be a strip over an empty lower third
+		// (slideLowerBandMaxFrac). Every full-slide exemplar clears that too,
+		// by exemplarLowerBandMargin — the kpi-Nup rows, a value-chain and a
+		// process-flow are grown into the free height
+		// (go-slide-creator-i7yju, -kgfs1) — and none reports its own
+		// pattern as sparse.
+		sparse := map[string]bool{
+			patterns.ErrCodeSlideUnderused:       true,
+			patterns.ErrCodeVerticalImbalance:    true,
+			patterns.ErrCodeSparseSingleRowFlow:  true,
+			patterns.ErrCodeFlowDiamondNoContent: true,
+		}
+		for _, f := range collectFitFindings(&deck, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme) {
+			if sparse[f.Code] && supportingBandPatterns[f.Pattern] == "" {
+				t.Errorf("%s: %s exemplar: %s: %s", tpl, f.Pattern, f.Code, f.Message)
 			}
 		}
-		for _, s := range deck.Slides {
-			if s.Pattern != nil && isKPINupPattern(s.Pattern.Name) {
-				rows++
+		deck = exemplarDeck(t)
+		held, widest := 0, slideUsage{}
+		collectGeometry(&deck, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme, func(u slideUsage) {
+			if supportingBandPatterns[u.pattern] != "" || heroStatementPatterns[u.pattern] {
+				return
 			}
+			held++
+			if u.lowerBand > widest.lowerBand {
+				widest = u
+			}
+			if u.lowerBand > slideLowerBandMaxFrac-exemplarLowerBandMargin {
+				t.Errorf("%s: %s exemplar leaves the lower %.1f%% of the content area empty: within %.0f points of the third that is reported",
+					tpl, u.pattern, 100*u.lowerBand, 100*exemplarLowerBandMargin)
+			}
+		})
+		if held < 40 {
+			t.Errorf("%s: only %d exemplars were held to the lower-third rule", tpl, held)
 		}
-		if rows != 5 {
-			t.Errorf("%s: %d kpi-Nup exemplars were checked against the lower-third rule, want 5", tpl, rows)
-		}
+		t.Logf("%s: widest lower band %s at %.1f%%", tpl, widest.pattern, 100*widest.lowerBand)
 		t.Logf("%s: thinnest exemplar %s at %.1f%% against %.0f%%", tpl, thinnest.pattern, 100*thinnest.frac, 100*thinnest.threshold)
 	}
 }

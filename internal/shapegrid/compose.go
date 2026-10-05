@@ -69,6 +69,19 @@ const (
 	// a tall content area beneath it on every shipped template.
 	composeGrowFill = 0.5
 	composeGrowMax  = 1.8
+	// composeBandTarget is the share of the area a band-scaled block
+	// (Grid.ComposeBand) is grown to leave under it: clear of the lower
+	// third a slide may not leave empty. composeBandMaxScale is how far its
+	// rows may grow for that — the 1.6x a filled box takes before it reads
+	// as an empty panel (go-slide-creator-wntyw). A block that would need
+	// more keeps its height: it is a strip, and is reported as one.
+	composeBandTarget   = 0.28
+	composeBandMaxScale = 1.6
+	// composeBandCardAspect is how tall a text box that may grow into a card
+	// (Grid.ComposeBandSquare) gets relative to its width: a 4:5 portrait
+	// card. A box holding a sentence reads as a card up to there and as a
+	// slab past it.
+	composeBandCardAspect = 1.25
 )
 
 // composeRowScales are the row-height and row-gap growths tried with a type
@@ -175,7 +188,60 @@ func resolveComposed(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, 
 			}
 		}
 	}
+	chosen, plan = bandScaled(grid, chosen, plan, fill)
 	return resolveGrid(grownLoneRow(chosen, plan), alloc, plan)
+}
+
+// bandScaled returns the grid and plan of a sparse block whose rows are grown
+// until the block, set at the optical centre, leaves composeBandTarget of the
+// area under it (Grid.ComposeBand). chosen and plan are what the type step
+// settled on and fill the share of the area the unscaled block takes. The
+// block keeps them when it is already that tall, when it would need more
+// than its limit (bandMaxScale), or when the taller rows do not resolve. The
+// taller rows are tried with the type step first: a step the block had no
+// room for at composeRowScales often fits them.
+func bandScaled(grid, chosen *Grid, plan *composePlan, fill float64) (*Grid, *composePlan) {
+	if !grid.ComposeBand || fill <= 0 {
+		return chosen, plan
+	}
+	k := (1 - composeBandTarget/(1-ComposeOpticalTop)) / fill
+	if k <= math.Max(plan.rowScale, 1) || fill*k > composeMaxFill || k > bandMaxScale(grid) {
+		return chosen, plan
+	}
+	scaled := scaledGrid(grid, k)
+	for _, sizes := range []map[float64]float64{typeStep(grid), plan.sizes} {
+		trial := &composePlan{place: true, sizes: sizes, rowScale: k}
+		if _, err := resolveGrid(scaled, pptx.NewShapeIDAllocator(nil), trial); err == nil && !trial.brokenToken && trial.worst <= composeFitMargin {
+			return scaled, &composePlan{place: true, sizes: sizes, rowScale: k}
+		}
+	}
+	return chosen, plan
+}
+
+// bandMaxScale is how far the rows of a band-scaled grid may grow:
+// composeBandMaxScale, or for a grid of text boxes that may become cards
+// (Grid.ComposeBandSquare) the growth at which its narrowest box is
+// composeBandCardAspect times as tall as it is wide, when that is more.
+func bandMaxScale(grid *Grid) float64 {
+	limit := composeBandMaxScale
+	if !grid.ComposeBandSquare {
+		return limit
+	}
+	res, err := resolveGrid(grid, pptx.NewShapeIDAllocator(nil), &composePlan{place: true})
+	if err != nil || res == nil {
+		return limit
+	}
+	square := math.Inf(1)
+	for _, cell := range res.Cells {
+		if cell.Kind != CellKindShape || cell.ShapeSpec == nil || !hasNonEmptyText(cell.ShapeSpec.Text) || cell.Bounds.CY <= 0 {
+			continue
+		}
+		square = math.Min(square, composeBandCardAspect*float64(cell.Bounds.CX)/float64(cell.Bounds.CY))
+	}
+	if math.IsInf(square, 1) {
+		return limit
+	}
+	return math.Max(limit, square)
 }
 
 // grownLoneRow returns grid with its one content-sized row grown into the

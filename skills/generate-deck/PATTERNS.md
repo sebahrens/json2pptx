@@ -85,7 +85,7 @@ sizes and only centres. Dense blocks, compose segments, nested cell
 patterns and `regions` cells hang from the native body-text line. The
 compact variants (`kpi-inline`, `before-after-compact`,
 `process-flow-compact`) are for a compose segment or region cell; alone on
-a slide they are composed like any sparse block.
+a slide they report `SLIDE_UNDERUSED`.
 `VERTICAL_IMBALANCE` / `HORIZONTAL_IMBALANCE` (25 points each) fire when 40%
 or more of the content area stays empty below / beside a block (or between
 it and its conclusion band): set `vertical_align` (`center` / `stretch`),
@@ -95,8 +95,8 @@ rows or pair it with a region. A
 remaining `SLIDE_UNDERUSED` means the content is thin — add real detail,
 pair it with a second zone, or merge slides. It is not raised for a
 `stat-hero` or `pull-quote` at its designed size, nor for a normal
-`next-steps` / `numbered-step-strip` list; a lone `process-flow-compact` or
-`kpi-inline` reports, as does a KPI row (tiles) over an empty lower third.
+`next-steps` / `numbered-step-strip` list. Any block over an empty lower
+third reports it too (`empty_band_pct`): add detail or a second zone.
 
 ---
 

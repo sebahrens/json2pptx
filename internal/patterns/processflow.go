@@ -62,10 +62,10 @@ func (p *processFlow) BudgetConfigurations() []BudgetConfig {
 func (p *processFlow) ExemplarValues() any {
 	return &ProcessFlowValues{
 		Steps: []ProcessFlowStep{
-			{Label: "Request", Type: "step"},
-			{Label: "Review", Type: "decision"},
-			{Label: "Approve", Type: "step"},
-			{Label: "Deploy", Type: "step"},
+			{Label: "Team files the change request with an impact assessment", Type: "step"},
+			{Label: "Security and architecture review the design", Type: "step", Highlight: true},
+			{Label: "Change board approves a release window", Type: "step"},
+			{Label: "Release is deployed and monitored for a week", Type: "step"},
 		},
 	}
 }

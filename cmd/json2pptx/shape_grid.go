@@ -866,6 +866,55 @@ func growsLoneRow(input *ShapeGridInput) bool {
 	return true
 }
 
+// bandScaledPatterns are the single-band flows whose rows the composition
+// policy grows when the block alone on a slide would leave a third or more of
+// the content area under it (shapegrid.Grid.ComposeBand): the step shapes and
+// the text rows under them take up to 1.6x their height, the limit a
+// content-sized box has. A block too thin for that keeps its height and is
+// reported (go-slide-creator-kgfs1).
+var bandScaledPatterns = map[string]bool{
+	"value-chain":  true,
+	"process-flow": true,
+}
+
+// scalesToBand reports whether a slide's own grid is one of
+// bandScaledPatterns, placed by the composition policy. A process-flow of
+// short labels is not: a taller box around one word is a slab, and the flow
+// is reported as SPARSE_SINGLE_ROW_FLOW instead.
+func scalesToBand(input *ShapeGridInput) bool {
+	if !composesSlideBlock(input) || !strings.HasPrefix(input.Source, patternSourcePrefix) {
+		return false
+	}
+	name := strings.TrimPrefix(input.Source, patternSourcePrefix)
+	if !bandScaledPatterns[name] {
+		return false
+	}
+	if name != "process-flow" {
+		return true
+	}
+	cells, chars := 0, 0
+	for _, row := range input.Rows {
+		for _, cell := range row.Cells {
+			if cell == nil || cell.Shape == nil {
+				continue
+			}
+			if parts := cellTextParts(cell.Shape.Text); len(parts) > 0 {
+				cells++
+				chars += len(parts[0])
+			}
+		}
+	}
+	return cells > 0 && float64(chars)/float64(cells) >= sparseFlowMaxAvgChars
+}
+
+// bandScalesToSquare reports whether the band-scaled grid's step boxes may
+// grow into cards (at most 4:5 portrait): a process-flow, whose steps are
+// boxes holding a sentence.
+// A value-chain's arrows and description rows stop at 1.6x.
+func bandScalesToSquare(input *ShapeGridInput) bool {
+	return input != nil && input.Source == patternSourcePrefix+"process-flow"
+}
+
 // boxBlockComposed reports whether the grid's own bounds box is one
 // alignRelativeBounds places by the composition policy: a top-anchored,
 // content-relative box with vertical_align "auto" that needs clearly less
@@ -985,6 +1034,8 @@ func resolveShapeGridAs(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, ove
 	}
 	grid.Compose = slideBlock && composesSlideBlock(input)
 	grid.ComposeGrow = grid.Compose && growsLoneRow(input)
+	grid.ComposeBand = grid.Compose && scalesToBand(input)
+	grid.ComposeBandSquare = grid.ComposeBand && bandScalesToSquare(input)
 	grid.KeepTextSizes = input.KeepTextSizes
 	grid.CanvasScale = gridCanvasScale(input, slideWidth, slideHeight)
 	grid.Links = convertGridLinks(input.Links)

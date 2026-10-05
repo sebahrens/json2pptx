@@ -223,6 +223,8 @@ func TestStretchPatternStartsAtBodyLine(t *testing.T) {
 }
 
 // go-slide-creator-e17xy (b): the roadmap, timeline and team kind examples
+// (and a card grid: two rows, since one row of three short cards leaves the
+// lower 40% of the area empty and reports — go-slide-creator-kgfs1)
 // raise no SLIDE_UNDERUSED / VERTICAL_IMBALANCE at their default placement (a
 // dense block on the body line, a sparse one composed —
 // go-slide-creator-yhzxt), and placed with vertical_align "top" they hang
@@ -236,7 +238,7 @@ func TestKindDefaultsHangFromBodyLine(t *testing.T) {
 {"layout_id":"blank-title","takeaway":"Global availability by Q3.","pattern":{"name":"phase-roadmap","values":{"phases":[{"name":"Pilot","date_label":"Q1","description":"Two lighthouse customers"},{"name":"Expand","date_label":"Q2","description":"All EMEA accounts"},{"name":"Scale","date_label":"Q3","description":"Global availability"}]}}},
 {"layout_id":"blank-title","takeaway":"Three years of runway, two of them already spent.","pattern":{"name":"timeline-horizontal","values":[{"label":"Mandate published","date":"Mar 2024","body":"The regulator sets the T+1 date."},{"label":"Programme approved","date":"Sep 2024","body":"Board funds the first two waves."},{"label":"Wave 1 live","date":"Jun 2025","body":"Two of the three clearers migrated."},{"label":"Deadline","date":"May 2027","body":"All settlement on the new platform."}]}},
 {"layout_id":"blank-title","pattern":{"name":"team-bios","values":{"members":[{"name":"Amara Okafor","role":"Engagement partner","bio":"Led the 2024 settlement migration for two of the three largest clearers."},{"name":"Jonas Weber","role":"Delivery lead","bio":"Ten years in payments platform delivery; runs the cutover rehearsals."},{"name":"Priya Raman","role":"Data lead","bio":"Owns the reconciliation model and the migration waves."}]}}},
-{"layout_id":"blank-title","pattern":{"name":"card-grid","values":{"columns":3,"rows":1,"cells":[{"header":"People","body":"Retrain 40 agents"},{"header":"Process","body":"Single intake form"},{"header":"Technology","body":"One ITSM platform"}]}}}
+{"layout_id":"blank-title","pattern":{"name":"card-grid","values":{"columns":3,"rows":2,"cells":[{"header":"People","body":"Retrain 40 agents"},{"header":"Process","body":"Single intake form"},{"header":"Technology","body":"One ITSM platform"},{"header":"Data","body":"One customer record"},{"header":"Sourcing","body":"Two vendors, not seven"},{"header":"Governance","body":"Monthly service review"}]}}}
 ]`
 	for _, name := range templates {
 		t.Run(name, func(t *testing.T) {
