@@ -63,8 +63,11 @@ const (
 	// the journeys asked for (roadmap parallel_tracks, comparison connectors /
 	// highlight_*, image_case image_width_pct, chart y_min / y_max —
 	// go-slide-creator-ptazs, -929jm): descriptions are stripped there, so
-	// only the property names cost bytes.
-	allToolListByteBudget = 145 * 1024
+	// only the property names cost bytes. Raised from 145 KiB for the
+	// risk_heatmap kind (go-slide-creator-ec74l): a new kind's compact schema
+	// is about 700 bytes of property names, and the listing measures about
+	// 500 bytes more inside the package run than alone.
+	allToolListByteBudget = 146 * 1024
 
 	// coreToolLimit caps the core profile. TestCoreToolProfileBudget enforces it
 	// together with coreToolListByteBudget.
