@@ -60,9 +60,11 @@ slides:
     takeaway: Losses exceed both the EUR 8M appetite and the peer median.
 ```
 
-Review points: the right column is top-anchored, so keep it to one number and
-two or three bullets or it floats above empty space (vertical balancing is
-tracked, `go-slide-creator-18dqh`); a single-series bar chart accents its last
+Review points: the right column spans the chart's height — the text region
+takes the height its bullets need and the stat grows into the rest, centred
+— so keep it to one number and two or three bullets; a text region too long
+for what the stat can give up is refused on its bullets. A single-series bar
+chart accents its last
 bar by default — the 2025 bar here — which is what the title argues.
 
 ## 2. Bridge beside the implication — `regions`, `columns`, waterfall chart
@@ -442,10 +444,14 @@ in a full deck. The raw `risk-heatmap` pattern takes the same `values` plus
 Phase boxes on a time axis plus 0–4 full-width "In parallel" bars for the
 workstreams that run alongside every phase. `phases` are 3–6
 `{name ≤40, date_label ≤30, description ≤160, milestone?}`; `parallel_tracks`
-0–4 strings ≤90; `parallel_label` renames the bar label. On the shortest
-template (`modern-template`) tracks plus milestones, or tracks plus a
-`takeaway` band, squeeze the phase names below 12pt and the render is refused
-(`go-slide-creator-x1124`): keep one of them off there.
+0–4 strings ≤90; `parallel_label` renames the bar label. Each track is a bar
+one line tall. When the phases, milestones, tracks and a `takeaway` band do
+not fit at full padding (the shortest area is `modern-template`'s), the rows
+give up padding first and the phase names step down no further than 12pt;
+three phases with milestones, two tracks and a takeaway fit on every shipped
+template. What still cannot fit is reported as `BODY_TOO_LONG` on each
+over-long `description` with the character count the area holds, or on the
+last track with the number of tracks there is room for.
 
 ```yaml
 meta:

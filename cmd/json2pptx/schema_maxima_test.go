@@ -539,7 +539,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"metric-list":                  7.8,
 	"next-steps":                   6.0,
 	"numbered-step-strip":          4.8,
-	"phase-roadmap":                4.3, // midnight-blue edge-art clearance narrows the column (oa0ru)
+	"phase-roadmap":                6.5, // midnight-blue edge-art clearance narrows the column (oa0ru)
 	// Layout-aware standalone readability measurement exposed a schema-legal
 	// payload below the floor (go-slide-creator-tp23k); the step row / band now
 	// grows to the written fit of its tallest label (n1muf).
@@ -611,7 +611,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"metric-list":                  8.6,
 	"next-steps":                   6.7,
 	"numbered-step-strip":          5.8,
-	"phase-roadmap":                5.0,
+	"phase-roadmap":                7.4,
 	"process-flow":                 0,
 	"process-flow-compact":         0,    // band grows to the written fit (n1muf)
 	"process-grid-2row":            10.8, // rows floored at their written fit (n1muf)

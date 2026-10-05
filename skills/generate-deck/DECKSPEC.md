@@ -102,7 +102,7 @@ numbers do not say:
 
 | Kind | Authoring consequence |
 |---|---|
-| `executive_summary` | 3–5 points `{lead, support}`; a plain string spans the width. Conclusion band: `bottom_line` (SKILL.md). Past the budgets it degrades to bullets. |
+| `executive_summary` | 3–5 points `{lead, support}`; a plain string spans the width. Conclusion band: `bottom_line`. Past the budgets it degrades to bullets. |
 | `kpi_snapshot` | 2–6 KPIs; give each its reference in `comparator` (alias `vs`, "vs plan +4 pts"). A value's 12 characters are the hard maximum, not the fit: five KPIs hold about 11 digits and six about 9 on the narrowest templates (the `kpis[].value` budget `note`). Past 12 the slide degrades; a value that will not fit one line is `BODY_TOO_LONG` at `/slides/N/kpis/i/value` with `max_chars`: shorten it or show fewer KPIs. |
 | `chart_insight` | Needs one stated implication: `insights[]` (1–6 beside the chart; more use a native chart), a scalar `insight`, or just `takeaway`, which is then the 18pt so-what callout beside a 75%-wide chart (not repeated in the band; not `takeaway_missing`). Every series needs one unquoted number per category (`CHART_SERIES_LENGTH_MISMATCH`, `CHART_VALUE_NOT_NUMERIC`). Chart types are short names (`bar`, `line`; `bar_chart` is accepted). |
 | `comparison` | 2 balanced columns of ≤10 rows compare; 3–5 columns are panels; 6–12 cards; beyond that, bullets. Two columns take `connectors: true` (a per-row today → target badge), `highlight_column` (`left` / `right` / a header) or `highlight_row` (0-based index or cell text) — one highlight, not both; 3+ columns ignore them. |
@@ -113,7 +113,7 @@ numbers do not say:
 | `image_case` | Picture + body, ≤5 bullets, ≤3 metrics. ≤6 `callouts: [{label, x, y, units?}]`: fractions 0–1 or `units: "px"`; `OVERLAY_TARGET_CROPPED` → `image.fit: "contain"`. `image_width_pct` 30–60 (default 45): a wide `contain` screenshot wants 55–60, else it is letterboxed. No image: a draft renders, but `SEMANTIC_IMAGE_MISSING` blocks readiness (`image_label` only labels the frame). `regions` images have no callouts. |
 | `framework`, `matrix_2x2` | Every canonical part (SWOT, Five Forces, BMC; four headed quadrants and both axes) or the slide degrades to grouped bullets. |
 | `risk_heatmap` | 1–20 `items` `{name, likelihood, impact}` on a 3 × 3 (`size: 5`: 5 × 5); a level is `low` / `medium` / `high`, 1–`size` or a `likelihood_levels` / `impact_levels` label. Risks sharing a cell stack. |
-| `timeline`, `roadmap` | 3–7 milestones; one with an `end_date` turns the line into bars drawn to scale. 3–6 phases for a roadmap (`milestone` ≤60 marks a phase); parallel workstreams go in `parallel_tracks` (0–4, ≤90 each; `parallel_label` ≤24): bars under the phases, not a raw slide. |
+| `timeline`, `roadmap` | 3–7 milestones; one with an `end_date` turns the line into bars drawn to scale. A roadmap: 3–6 phases (`milestone` ≤60 marks a phase); workstreams go in `parallel_tracks` (0–4, ≤90 each; `parallel_label` ≤24): bars under the phases. |
 | `stat` | One value; `unit` renders at 40% of its size on the baseline. |
 | `agenda` | 2–10 sections; `current` bolds one section and dims the rest. |
 | `quote` | One named speaker is a pull quote, 3–8 a cluster; two quotes, or missing names, degrade to bullets. |
@@ -129,11 +129,12 @@ Prefer `list_slide_kinds` canonical field names over the `aliases` it lists.
 ## Several visuals on one slide
 
 For visuals read together, use `kind: regions`, not a raw compose: 2–3
-typed chart / stat / kpis / table / timeline / image / text regions in a
+chart / stat / kpis / table / timeline / image / text regions in a
 bounded arrangement with `size_pct` shares (budgets: `list_slide_kinds`;
 `examples/semantic/regions.yaml`), each rule an error at
 `slides[N].regions[k]`. A stacked region holds one visual's worth; leave its
-share unset (raised to what its kind reads in). On a readability refusal
+share unset (raised to what its kind reads in; text stacked with a stat /
+kpis / timeline takes what it needs). On a readability refusal
 raise `size_pct` or cut; on `chart.plot_area_collapsed` put the chart
 beside, not above.
 

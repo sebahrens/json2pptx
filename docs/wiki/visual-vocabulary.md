@@ -68,7 +68,7 @@ recipes are in [split-and-complex-layouts.md](split-and-complex-layouts.md).
 | Vendor selection | `option_matrix` (harvey, `decisive_criterion`) | "Databricks scores best on migration risk and skills availability" |
 | TCO / run cost | `regions` `main_left`: 2-series bar + `stat` + 3-row `table` | "Run cost falls from EUR 3.6M to 1.5M a year" |
 | Where the cost goes | `chart_insight` donut + `insights[]` | "Compute is 48% of run cost, so FinOps guardrails protect the saving" |
-| Migration plan | `roadmap` with `parallel_tracks` (raw `phase-roadmap` on the shortest template, `go-slide-creator-x1124`) | "Three phases decommission the warehouse by the end of 2028" |
+| Migration plan | `roadmap` with `milestone`s and `parallel_tracks` | "Three phases decommission the warehouse by the end of 2028" |
 | KPI before / after | `comparison` with `connectors: true`, `highlight_column: right` | "Four KPIs move: the load window drops from 9.5 h to 1.5 h" |
 | Data flow / process | `process` (≤ 8 steps) or svggen `swimlane` (raw) | — |
 | Delivery governance | `org` (≤ 7 nodes) | — |

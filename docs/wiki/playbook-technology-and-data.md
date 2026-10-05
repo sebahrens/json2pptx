@@ -28,7 +28,7 @@ rates), architecture as a picture, every cost line sourced to the model.
 6. Databricks scores best on migration risk and skills availability           option_matrix
 7. Run cost falls from EUR 3.6M to 1.5M a year: EUR 5.5M saved by 2031        regions (chart + stat + table)
 8. Compute is 48% of run cost, so FinOps guardrails protect the saving        chart_insight (donut)
-9. Three phases decommission the warehouse by the end of 2028                raw phase-roadmap (milestones + parallel tracks)
+9. Three phases decommission the warehouse by the end of 2028                roadmap (milestones + parallel_tracks)
 10. Four KPIs move: the load window drops from 9.5 h to 1.5 h                 comparison (connectors, highlight_column)
 11. Approve EUR 4.8M for year 1 and the Databricks contract                   decision
 12. Four actions start Foundation in January 2027                             next_steps
@@ -47,7 +47,7 @@ Pain (3–4) → target (5) → choice (6) → money (7–8) → plan (9) → ou
 | 6 | `option_matrix` | 3 vendors × 4 criteria (harvey), `recommended`, `decisive_criterion: Migration risk`, a `detail` per vendor | Scores 0–4; the recommended row is badged. |
 | 7 | `regions` `main_left` | 2-series bar (current vs target, 5 years) + `stat` (saving) + 3-row `table` (TCO) | Table region ≤ 4 columns, ≤ 5 rows. |
 | 8 | `chart_insight` | Donut of cost drivers + 3 `insights` | Four slices, named; percentages in the labels. |
-| 9 | raw `phase-roadmap` | Foundation / Migrate / Optimise as `phases` with `milestone`s, `parallel_tracks` for literacy and FinOps | The `roadmap` kind draws the same (see the risk playbook), but on `modern-template` — the shortest content area — tracks plus a takeaway band squeeze the phase names below 12pt and the kind refuses (`go-slide-creator-x1124`); the raw slide gets the full zone. |
+| 9 | `roadmap` | Foundation / Migrate / Optimise as `phases` with `milestone`s, `parallel_tracks` for literacy and FinOps, a `takeaway` | Tracks are one-line bars; on `modern-template` — the shortest content area — the rows give up padding, never type size, so three phases, milestones, two tracks and the takeaway all fit. Keep descriptions to two lines (about 70 characters at three phases). |
 | 10 | `comparison` | Two columns, four aligned rows, `connectors: true`, `highlight_column: right` | The improvement is visible as a chevron per row and a filled target column. |
 | 11 | `decision` | Do nothing / lakehouse / alternatives, one `recommended: true`, `recommendation` with the amount | Always include "do nothing" with its cost. |
 | 12 | `next_steps` | Contract, landing zone, pilot sources, literacy programme — owner and date each | Dates before the Foundation phase starts. |
