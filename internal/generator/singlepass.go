@@ -703,7 +703,7 @@ func (ctx *singlePassContext) getFooterPositionsForLayout(layoutID string) map[s
 		}
 	}
 
-	positions := resolveFooterPositions(allPositions, ctx.slideHeight)
+	positions := resolveFooterPositionsOnSlide(allPositions, ctx.slideWidth, ctx.slideHeight)
 	ctx.footerPositionsByLayout[layoutID] = positions
 
 	slog.Debug("footer positions extracted for layout",

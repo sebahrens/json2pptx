@@ -82,6 +82,14 @@ Placeholders are identified by the `cNvPr` name attribute in the slide layout XM
 | `ftr` | `type="ftr"` | Footer field (utility, not content) |
 | `sldNum` | `type="sldNum"` | Slide number field (utility, not content) |
 
+The footer line (`footer.left_text` and the `chrome` fields) is drawn in one
+box that starts at the `dt` placeholder's left edge and runs across `ftr`,
+stopping short of `sldNum`; the page number takes the `sldNum` slot. A `dt`
+parked wholly outside the slide (the usual way to hide the date) is not an
+anchor: the line then starts at the visible `ftr` placeholder and takes its
+width, as it does when the master has no `dt`. Size `ftr` for the line you
+expect: `CHROME_TRUNCATED` reports how many characters the slot holds.
+
 ### Section Number Placeholder
 
 An explicitly named `legal_disclosure` (or `Legal Disclosure`, matched

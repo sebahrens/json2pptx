@@ -398,7 +398,7 @@ func PredictFooterTruncation(in FooterLineInput) []patterns.FitFinding {
 					Extent: extentXML{CX: r.Width, CY: r.Height},
 				}
 			}
-			positions = resolveFooterPositions(raw, in.SlideHeight)
+			positions = resolveFooterPositionsOnSlide(raw, in.SlideWidth, in.SlideHeight)
 		}
 		positions = alignFooterWithInsetContent(positions, s.Frame)
 		lay := layoutFooterSlide(positions, cfg, in.FontName, s.SlideIndex, obstacles, in.SlideWidth)
