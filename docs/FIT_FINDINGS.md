@@ -556,6 +556,8 @@ The confidentiality marking, the client name and `footer.left_text` are never dr
 
 Preflight reads the slot from the template file the way generation does, so validation predicts the finding the render reports and the two collapse into one.
 
+**Score (go-slide-creator-qhgm8).** The finding belongs to no slide, and `score_deck` / `json2pptx score` used to drop every finding whose path is not under `/slides/N`: the deck was scored as if the footer were whole. It is now listed in `deck_findings[]` — `{code, severity, message, fix, class, path, slides, points}`, with `slides` the 0-based `per_slide` indices it names — costs its review weight (5 points) **once** on `overall_score`, and is counted in `summary.top_codes`. It is not copied onto each slide: one footer line cut on twelve slides is one fact about the deck, and twelve slide findings would make every slide a problem slide and fail `max_problem_slides_pct` on a single advisory. The same holds for any other finding with a deck-level path (a template synthesis note, `RENDER_EVIDENCE_INCOMPLETE`, which costs its 25 points there); a finding with a deck-level path that names exactly one slide in `fix.params.slides` is charged to that slide's `per_slide` entry instead. The `quality` block of `render_deck_spec` / `semantic render` takes the same deduction, so a deck with a cut footer no longer reads 100. With `slide_indices`, `score_deck` renders only the chosen slides, renumbered from 1; the render-side footer finding of that subset would cite those numbers and not fold into the preflight one, so it is dropped and the preflight finding — measured on the whole deck, in the deck's own numbering — is kept when it names a scored slide.
+
 ```json
 {
   "path": "/chrome",

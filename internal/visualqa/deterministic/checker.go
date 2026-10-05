@@ -105,6 +105,21 @@ type ScoreFinding struct {
 	Class string `json:"class"`
 }
 
+// DeckFinding is a finding that belongs to no single slide: its path is not
+// under /slides/N (CHROME_TRUNCATED at /chrome, a template synthesis note,
+// RENDER_EVIDENCE_INCOMPLETE). It is listed once and costs its weight once,
+// on the deck's overall score.
+type DeckFinding struct {
+	ScoreFinding
+	// Path is the finding's JSON Pointer ("/chrome"); empty when it has none.
+	Path string `json:"path,omitempty"`
+	// Slides are the 0-based slides the finding names (fix.params.slides),
+	// the indices per_slide uses; omitted when it names none.
+	Slides []int `json:"slides,omitempty"`
+	// Points is what the finding costs the overall score.
+	Points int `json:"points"`
+}
+
 // SlideScore holds the score and findings for a single slide.
 type SlideScore struct {
 	Index    int            `json:"index"`
@@ -135,12 +150,17 @@ type DeckScore struct {
 	// OverallScore is on the shared 0-100 scale.
 	OverallScore int `json:"overall_score"`
 	// Basis states what the score measured: always ScoreBasisStructural here.
-	Basis       string             `json:"basis"`
-	PerSlide    []SlideScore       `json:"per_slide"`
-	Composition *CompositionResult `json:"composition,omitempty"`
-	Summary     DeckSummary        `json:"summary"`
-	QualityGate *QualityGate       `json:"quality_gate,omitempty"`
-	ModeUsed    string             `json:"mode_used"`
+	Basis    string       `json:"basis"`
+	PerSlide []SlideScore `json:"per_slide"`
+	// DeckFindings lists the findings no slide owns (see DeckFinding). They
+	// used to be dropped: a footer line cut on every slide appeared in
+	// validate and generate but not here, and cost nothing
+	// (go-slide-creator-qhgm8). Omitted when there are none.
+	DeckFindings []DeckFinding      `json:"deck_findings,omitempty"`
+	Composition  *CompositionResult `json:"composition,omitempty"`
+	Summary      DeckSummary        `json:"summary"`
+	QualityGate  *QualityGate       `json:"quality_gate,omitempty"`
+	ModeUsed     string             `json:"mode_used"`
 	// RenderEvidence is present only when the render-time finding pass that
 	// backs the score did NOT complete (slide conversion, temp-dir creation, or
 	// generation failed). Its presence is the unambiguous signal that the score
@@ -653,6 +673,141 @@ func breadthAdjustedScore(mean, problemSlides, slides int) int {
 	return int(math.Round(adjusted))
 }
 
+// namedSlides returns the 0-based slides a finding names in
+// fix.params.slides, which carries 1-based slide numbers ([]int from the
+// engine, []any of float64 after a JSON round trip).
+func namedSlides(f patterns.FitFinding) []int {
+	if f.Fix == nil {
+		return nil
+	}
+	var out []int
+	add := func(n float64) {
+		if n >= 1 && n == math.Trunc(n) {
+			out = append(out, int(n)-1)
+		}
+	}
+	switch v := f.Fix.Params["slides"].(type) {
+	case []int:
+		for _, n := range v {
+			add(float64(n))
+		}
+	case []float64:
+		for _, n := range v {
+			add(n)
+		}
+	case []any:
+		for _, e := range v {
+			switch n := e.(type) {
+			case float64:
+				add(n)
+			case int:
+				add(float64(n))
+			}
+		}
+	}
+	return out
+}
+
+// groupFindings sorts findings into the slides that own them and the
+// deck-level rest. A finding whose path is under /slides/N belongs to slide N.
+// One whose path is not, and which names exactly one slide in
+// fix.params.slides, belongs to that slide. Any other is deck-level: a footer
+// line cut on twelve slides is one fact about the deck, and attributed to each
+// slide it would make every slide a problem slide and fail the gate's share
+// criterion on a single advisory. included, when set, limits the result to
+// those slides: a finding of an excluded slide is dropped, and a deck-level
+// finding that names slides is kept only when it names an included one.
+// Deck-level findings that repeat (preflight and render report the same
+// footer line) are listed once.
+func groupFindings(findings []patterns.FitFinding, slideCount int, included map[int]bool) (bySlide map[int][]patterns.FitFinding, deck []patterns.FitFinding) {
+	bySlide = map[int][]patterns.FitFinding{}
+	in := func(i int) bool {
+		return i >= 0 && i < slideCount && (included == nil || included[i])
+	}
+	seen := map[string]bool{}
+	for _, f := range findings {
+		if si := slidepath.SlideIndex(f.Path); si >= 0 {
+			if in(si) {
+				bySlide[si] = append(bySlide[si], f)
+			}
+			continue
+		}
+		named := namedSlides(f)
+		if len(named) == 1 {
+			if in(named[0]) {
+				bySlide[named[0]] = append(bySlide[named[0]], f)
+			}
+			continue
+		}
+		if len(named) > 0 && included != nil {
+			any := false
+			for _, n := range named {
+				any = any || in(n)
+			}
+			if !any {
+				continue
+			}
+		}
+		key := f.Code + "\x00" + f.Path + "\x00" + f.Message
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		deck = append(deck, f)
+	}
+	return bySlide, deck
+}
+
+// applyDeckFindings lists the deck-level findings on ds, takes each one's
+// weight off the overall score and counts its code.
+func applyDeckFindings(ds *DeckScore, deck []patterns.FitFinding, slideCount int, codeCounts map[string]int) {
+	for _, f := range deck {
+		w := findingWeight(f)
+		ds.OverallScore -= w
+		codeCounts[f.Code]++
+		var slides []int
+		for _, n := range namedSlides(f) {
+			if n < slideCount {
+				slides = append(slides, n)
+			}
+		}
+		ds.DeckFindings = append(ds.DeckFindings, DeckFinding{
+			ScoreFinding: ScoreFinding{
+				Code:     f.Code,
+				Severity: actionToSeverity(f.Action),
+				Message:  f.Message,
+				Fix:      f.Fix,
+				Class:    patterns.FindingClass(f.Code),
+			},
+			Path:   f.Path,
+			Slides: slides,
+			Points: w,
+		})
+	}
+	if ds.OverallScore < 0 {
+		ds.OverallScore = 0
+	}
+}
+
+// topCodesOf returns the ten most frequent codes, most frequent first (ties
+// by code, so the order is stable).
+func topCodesOf(codeCounts map[string]int) []CodeCount {
+	topCodes := make([]CodeCount, 0, len(codeCounts))
+	for code, count := range codeCounts {
+		topCodes = append(topCodes, CodeCount{Code: code, Count: count})
+	}
+	sort.Slice(topCodes, func(i, j int) bool {
+		if topCodes[i].Count != topCodes[j].Count {
+			return topCodes[i].Count > topCodes[j].Count
+		}
+		return topCodes[i].Code < topCodes[j].Code
+	})
+	if len(topCodes) > 10 {
+		topCodes = topCodes[:10]
+	}
+	return topCodes
+}
+
 // ScoreFromFindingsForIndices computes a DeckScore where PerSlide only contains
 // entries for the slides listed in includedIndices. Findings on slides not in
 // that set are ignored. The summary.slide_count reflects the full-deck size
@@ -674,15 +829,9 @@ func ScoreFromFindingsForIndices(findings []patterns.FitFinding, slideCount int,
 		order = append(order, i)
 	}
 
-	// Group findings by slide index, but only those whose slide is included.
-	bySlide := map[int][]patterns.FitFinding{}
-	for _, f := range findings {
-		si := slidepath.SlideIndex(f.Path)
-		if !seen[si] {
-			continue
-		}
-		bySlide[si] = append(bySlide[si], f)
-	}
+	// Group findings by slide, keeping only the included slides' and the
+	// deck-level ones that concern them.
+	bySlide, deck := groupFindings(findings, slideCount, seen)
 
 	perSlide := make([]SlideScore, 0, len(order))
 	codeCounts := map[string]int{}
@@ -729,39 +878,26 @@ func ScoreFromFindingsForIndices(findings []patterns.FitFinding, slideCount int,
 		overall = breadthAdjustedScore(total/len(perSlide), problemSlides, len(perSlide))
 	}
 
-	topCodes := make([]CodeCount, 0, len(codeCounts))
-	for code, count := range codeCounts {
-		topCodes = append(topCodes, CodeCount{Code: code, Count: count})
-	}
-	sort.Slice(topCodes, func(i, j int) bool {
-		return topCodes[i].Count > topCodes[j].Count
-	})
-	if len(topCodes) > 10 {
-		topCodes = topCodes[:10]
-	}
-
-	return &DeckScore{
+	ds := &DeckScore{
 		OverallScore: overall,
 		Basis:        ScoreBasisStructural,
 		PerSlide:     perSlide,
-		Summary: DeckSummary{
-			TopCodes:           topCodes,
-			SlideCount:         slideCount,
-			ProblemSlidesCount: problemSlides,
-		},
-		ModeUsed: "deterministic",
+		ModeUsed:     "deterministic",
 	}
+	applyDeckFindings(ds, deck, slideCount, codeCounts)
+	ds.Summary = DeckSummary{
+		TopCodes:           topCodesOf(codeCounts),
+		SlideCount:         slideCount,
+		ProblemSlidesCount: problemSlides,
+	}
+	return ds
 }
 
 // ScoreFromFindings computes a DeckScore from a slice of FitFindings.
 // slideCount is the total number of slides in the deck.
 func ScoreFromFindings(findings []patterns.FitFinding, slideCount int) *DeckScore {
-	// Group findings by slide index.
-	bySlide := map[int][]patterns.FitFinding{}
-	for _, f := range findings {
-		si := slidepath.SlideIndex(f.Path)
-		bySlide[si] = append(bySlide[si], f)
-	}
+	// Group findings by slide; the rest are deck-level.
+	bySlide, deck := groupFindings(findings, slideCount, nil)
 
 	perSlide := make([]SlideScore, slideCount)
 	codeCounts := map[string]int{}
@@ -812,30 +948,19 @@ func ScoreFromFindings(findings []patterns.FitFinding, slideCount int) *DeckScor
 		overall = breadthAdjustedScore(total/slideCount, problemSlides, slideCount)
 	}
 
-	// Build top_codes sorted by count descending.
-	topCodes := make([]CodeCount, 0, len(codeCounts))
-	for code, count := range codeCounts {
-		topCodes = append(topCodes, CodeCount{Code: code, Count: count})
-	}
-	sort.Slice(topCodes, func(i, j int) bool {
-		return topCodes[i].Count > topCodes[j].Count
-	})
-	// Cap to top 10.
-	if len(topCodes) > 10 {
-		topCodes = topCodes[:10]
-	}
-
-	return &DeckScore{
+	ds := &DeckScore{
 		OverallScore: overall,
 		Basis:        ScoreBasisStructural,
 		PerSlide:     perSlide,
-		Summary: DeckSummary{
-			TopCodes:           topCodes,
-			SlideCount:         slideCount,
-			ProblemSlidesCount: problemSlides,
-		},
-		ModeUsed: "deterministic",
+		ModeUsed:     "deterministic",
 	}
+	applyDeckFindings(ds, deck, slideCount, codeCounts)
+	ds.Summary = DeckSummary{
+		TopCodes:           topCodesOf(codeCounts),
+		SlideCount:         slideCount,
+		ProblemSlidesCount: problemSlides,
+	}
+	return ds
 }
 
 // FormatTopCodes returns a concise human-readable summary of the top finding codes.
