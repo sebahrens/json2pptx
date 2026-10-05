@@ -489,6 +489,52 @@ func SortCanonical(findings []FitFinding, slideIndexFn func(string) int) {
 	})
 }
 
+// DedupeFindings lists each finding once. Two findings state the same fact
+// when they share code, action and message and sit at the same path, or one
+// path is an ancestor of the other: the preflight reports a diagram note at
+// the field it concerns (/slides/1/content/1/diagram_value/data/quadrants/0)
+// and the render reports the same note at the content item it drew
+// (/slides/1/content/1). The first occurrence keeps its place in the list and
+// the more specific path wins. Findings with the same code and message at
+// unrelated paths are kept: they describe different cells.
+//
+// Every surface that joins preflight and render findings goes through this
+// one function — the fit report of validate and generate, the DeckSpec tools,
+// score_deck and auto_repair, and the scorer itself — so a note cannot be
+// listed, or charged, twice on one of them and once on another
+// (go-slide-creator-t3k06).
+func DedupeFindings(in []FitFinding) []FitFinding {
+	if len(in) <= 1 {
+		return in
+	}
+	type key struct{ code, action, msg string }
+	kept := make(map[key][]int, len(in))
+	out := make([]FitFinding, 0, len(in))
+next:
+	for _, f := range in {
+		k := key{f.Code, f.Action, f.Message}
+		for _, i := range kept[k] {
+			switch {
+			case out[i].Path == f.Path, isPathAncestor(f.Path, out[i].Path):
+				continue next
+			case isPathAncestor(out[i].Path, f.Path):
+				out[i] = f
+				continue next
+			}
+		}
+		kept[k] = append(kept[k], len(out))
+		out = append(out, f)
+	}
+	return out
+}
+
+// isPathAncestor reports whether JSON Pointer a is a proper ancestor of b.
+// The empty path is the path of a finding that names no place, not the root
+// of every other.
+func isPathAncestor(a, b string) bool {
+	return a != "" && len(b) > len(a) && b[len(a)] == '/' && b[:len(a)] == a
+}
+
 // AttachNextToolCalls populates NextToolCall on each finding whose action is
 // not "info", using the fix kind and path to determine the appropriate tool.
 // slideIndexFn extracts the 0-based slide index from a finding's path.

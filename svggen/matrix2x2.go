@@ -1292,7 +1292,7 @@ func (d *Matrix2x2Diagram) DataSchema() *DataSchema {
 		"category":    StringDataSchema("Alias for series"),
 	}, nil)
 	quadrant := ObjectDataSchema("A quadrant with its item list", map[string]*DataSchema{
-		"position":  StringDataSchema("Quadrant: top-left, top-right, bottom-left or bottom-right (underscores accepted)"),
+		"position":  StringDataSchema("Quadrant: top-left, top-right, bottom-left or bottom-right (underscores accepted); omit on every quadrant to place them in that order"),
 		"title":     StringDataSchema("Quadrant caption (alias: label)"),
 		"label":     StringDataSchema("Alias for title"),
 		"items":     ArrayDataSchema("Items listed in the quadrant: strings or {label}", ObjectDataSchema("An item, or a plain string", map[string]*DataSchema{"label": StringDataSchema("Item text")}, nil), 0),
@@ -1453,21 +1453,39 @@ func quadrantPositionIndex(position string) int {
 // quadrant centre plus a small spread — and with two items per quadrant their
 // labels already collided with each other and with the quadrant caption
 // (go-slide-creator-s27x).
+//
+// A list in which no quadrant names a position is read in list order —
+// top-left, top-right, bottom-left, bottom-right, the order of
+// quadrant_labels — and that is a way to author the matrix, not something
+// to report: four notes on a well-formed 2x2 cost the slide twenty points
+// (go-slide-creator-t3k06). A position that is given and not one of the four
+// is reported, and so is a missing one in a list where others are given,
+// because list order can then land on a quadrant another entry named.
 func parseQuadrantItemLists(quadrants []any) ([4][]string, []Finding) {
 	var out [4][]string
 	var findings []Finding
+	positioned := false
+	for _, q := range quadrants {
+		if qMap, ok := q.(map[string]any); ok && quadrantStatesPosition(qMap) {
+			positioned = true
+		}
+	}
 	for qi, q := range quadrants {
 		qMap, ok := q.(map[string]any)
 		if !ok {
 			continue
 		}
 		idx, defaulted := resolvedQuadrantIndex(qMap, qi)
-		if defaulted {
+		if defaulted && positioned {
 			field := fmt.Sprintf("data.quadrants[%d].position", qi)
+			cause := "has no position while other quadrants name one"
+			if quadrantStatesPosition(qMap) {
+				cause = fmt.Sprintf("position %q is not top-left, top-right, bottom-left or bottom-right", fmt.Sprint(qMap["position"]))
+			}
 			findings = append(findings, Finding{
 				Field:    field,
 				Code:     FindingQuadrantPositionDefaulted,
-				Message:  fmt.Sprintf("matrix_2x2: quadrant %d has no valid position; placed at %s by list order", qi+1, matrixQuadrantPositions[idx]),
+				Message:  fmt.Sprintf("matrix_2x2: quadrant %d %s; placed at %s by list order", qi+1, cause, matrixQuadrantPositions[idx]),
 				Severity: "warning",
 				Fix: &FixSuggestion{Kind: FixKindReplaceValue, Params: map[string]any{
 					"field": field, "value": matrixQuadrantPositions[idx],
@@ -1495,6 +1513,18 @@ func parseQuadrantItemLists(quadrants []any) ([4][]string, []Finding) {
 }
 
 var matrixQuadrantPositions = [4]string{"top-left", "top-right", "bottom-left", "bottom-right"}
+
+// quadrantStatesPosition reports whether a quadrant gives a position at all:
+// a value that is not null and not a blank string.
+func quadrantStatesPosition(quadrant map[string]any) bool {
+	switch v := quadrant["position"].(type) {
+	case nil:
+		return false
+	case string:
+		return strings.TrimSpace(v) != ""
+	}
+	return true
+}
 
 func resolvedQuadrantIndex(quadrant map[string]any, listIndex int) (index int, defaulted bool) {
 	position, _ := quadrant["position"].(string)

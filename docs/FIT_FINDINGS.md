@@ -23,7 +23,9 @@ Direct generation rejects actual paragraph or table-row loss detected during ren
 
 Fit findings are structured diagnostics emitted when generated slide content may not render correctly — text overflowing placeholders, shapes falling outside slide bounds, or tables exceeding density limits. They are surfaced via the MCP `generate_presentation` tool (text-fit findings detected by `strict_fit` are merged into `fit_findings` unconditionally when `strict_fit != "off"`; the full preflight detector set runs when `fit_report=true`) and the CLI `json2pptx generate -json` and `validate -fit-report` commands (the JSON output's `fit_findings` always includes the active `strict_fit` findings).
 
-**Render-time chart findings reach the report too.** A chart or diagram in a content placeholder raises the same `chart.*` findings while it is actually being drawn; those used to be collected for tables and dropped for diagrams, so what the renderer gave up was reported nowhere (go-slide-creator-p142). Both sides now go through one conversion (`generator.SvggenFindingsToFit`), so a dry-run finding and the same finding raised at render agree on code, path and action.
+**Render-time chart findings reach the report too.** A chart or diagram in a content placeholder raises the same `chart.*` findings while it is actually being drawn; those used to be collected for tables and dropped for diagrams, so what the renderer gave up was reported nowhere (go-slide-creator-p142). Both sides now go through one conversion (`generator.SvggenFindingsToFit`), so a dry-run finding and the same finding raised at render agree on code, message and action. They differ in path: the preflight names the field (`/slides/1/content/1/diagram_value/data/quadrants/0`), the render the content item it drew (`/slides/1/content/1`).
+
+**Each finding is listed once (go-slide-creator-t3k06).** Findings with the same code, action and message at one path, or at a path and one of its ancestors, are one finding; the one at the more specific path is kept. Every surface that joins preflight and render findings applies this rule through one function (`patterns.DedupeFindings`): the fit report of `validate` / `validate_input` and `generate` / `generate_presentation`, `validate_deck_spec` / `render_deck_spec`, `auto_repair`, and `score_deck` / `json2pptx score`, whose scorer applies it again to whatever list it is given. Before this, the exact-path rule let a diagram note through twice wherever both passes ran, and `score_deck` applied no rule at all to slide findings: every note both passes report (a diagram note, the `TEXT_SIZE_OFF_TARGET` template-size note) was listed twice in `per_slide[].findings`, counted twice in `summary.top_codes` and, when it carries a weight, charged twice. Findings with the same code and message at unrelated paths stay separate: they are different shapes.
 
 Nominal x-axis categories are never tick-thinned: the renderer tries two-line wrapping, then rotation up to 90°. If even vertical labels collide it emits actionable `chart.capacity_exceeded`; if a bounded label band ellipsizes at least half the category names or creates identical stubs, `chart.label_ellipsized` has action `shrink_or_split`. Both suggest `horizontal-bar-with-callouts` or splitting the categories. `chart.tick_thinned` remains possible for time/numeric ticks.
 
@@ -46,6 +48,19 @@ that still cannot fit is drawn best-effort and reported as
 `diagram.region_overflow` (review, `fix.kind` `shorten_labels`, field
 `intersections.<key>`, `params.label`, and `params.overlap_ratio` when a wider
 authored overlap would fit it).
+
+`diagram.quadrant_position_defaulted` (review, 5 points, `fix.kind`
+`replace_value` with `params.field` `data.quadrants[i].position` and
+`params.value` the quadrant it was drawn in) is one finding per `matrix_2x2`
+quadrant whose `position` is given and is not `top-left`, `top-right`,
+`bottom-left` or `bottom-right` (underscores accepted), or is missing while
+another quadrant of the list names one: list order can then land on a quadrant
+another entry claimed. A list in which **no** quadrant names a position is not
+reported: it is read in list order — top-left, top-right, bottom-left,
+bottom-right, the order of `quadrant_labels` — which is a documented way to
+author the matrix (go-slide-creator-t3k06; it used to report all four quadrants,
+twenty points off a correct slide). Each finding has its own executable fix, so
+they are not folded into one.
 
 Native OOXML diagrams use a companion preflight. It measures BMC, value-chain,
 panel, and heatmap copy against the same fixed-font cell proportions as their

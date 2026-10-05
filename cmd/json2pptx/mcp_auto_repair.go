@@ -631,6 +631,8 @@ func (mc *mcpConfig) runAutoRepairLoop(
 			findings = append(findings, renderEvidenceFinding(renderEvidence))
 		}
 		lastRenderEvidence = renderEvidence
+		// What the render reports again is one finding, as in score_deck.
+		findings = dedupFitFindings(findings)
 
 		ds := deterministic.ScoreFromFindings(findings, len(input.Slides))
 		// The loop and score_deck must judge the same deck-level rhythm.

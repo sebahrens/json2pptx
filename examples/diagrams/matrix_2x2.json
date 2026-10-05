@@ -12,21 +12,22 @@
     {
       "slide_type": "diagram",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Feature Prioritization Matrix"},
+        {"placeholder_id": "title", "type": "text", "text_value": "Three quick wins ship before the two major projects start"},
         {
           "placeholder_id": "body",
           "type": "diagram",
           "diagram_value": {
             "type": "matrix_2x2",
             "title": "Effort vs Value",
+            "alt": "Two-by-two matrix of seven features by implementation effort and customer value: three quick wins, two major projects, one fill-in and one time sink",
             "data": {
               "x_label": "Implementation Effort",
               "y_label": "Customer Value",
               "quadrants": [
-                {"label": "Quick Wins", "items": ["Dark Mode", "Export PDF", "Keyboard Shortcuts"]},
-                {"label": "Major Projects", "items": ["AI Assistant", "Mobile App"]},
-                {"label": "Fill-Ins", "items": ["Emoji Support"]},
-                {"label": "Time Sinks", "items": ["Legacy Import"]}
+                {"position": "top-left", "title": "Quick Wins", "items": ["Dark Mode", "Export PDF", "Keyboard Shortcuts"]},
+                {"position": "top-right", "title": "Major Projects", "items": ["AI Assistant", "Mobile App"]},
+                {"position": "bottom-left", "title": "Fill-Ins", "items": ["Emoji Support"]},
+                {"position": "bottom-right", "title": "Time Sinks", "items": ["Legacy Import"]}
               ]
             }
           }

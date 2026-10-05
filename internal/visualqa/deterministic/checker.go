@@ -717,15 +717,16 @@ func namedSlides(f patterns.FitFinding) []int {
 // criterion on a single advisory. included, when set, limits the result to
 // those slides: a finding of an excluded slide is dropped, and a deck-level
 // finding that names slides is kept only when it names an included one.
-// Deck-level findings that repeat (preflight and render report the same
-// footer line) are listed once.
+// Findings that repeat are listed, and charged, once, on a slide as in the
+// deck: preflight and render report the same footer line, and the same
+// diagram note at the field and at the content item that holds it
+// (patterns.DedupeFindings).
 func groupFindings(findings []patterns.FitFinding, slideCount int, included map[int]bool) (bySlide map[int][]patterns.FitFinding, deck []patterns.FitFinding) {
 	bySlide = map[int][]patterns.FitFinding{}
 	in := func(i int) bool {
 		return i >= 0 && i < slideCount && (included == nil || included[i])
 	}
-	seen := map[string]bool{}
-	for _, f := range findings {
+	for _, f := range patterns.DedupeFindings(findings) {
 		if si := slidepath.SlideIndex(f.Path); si >= 0 {
 			if in(si) {
 				bySlide[si] = append(bySlide[si], f)
@@ -748,11 +749,6 @@ func groupFindings(findings []patterns.FitFinding, slideCount int, included map[
 				continue
 			}
 		}
-		key := f.Code + "\x00" + f.Path + "\x00" + f.Message
-		if seen[key] {
-			continue
-		}
-		seen[key] = true
 		deck = append(deck, f)
 	}
 	return bySlide, deck

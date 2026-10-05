@@ -44,13 +44,7 @@ func runScore() error {
 
 	mc := cliMCPConfig(*templatesDir, "")
 
-	args := map[string]any{
-		"presentation": presentation,
-		"mode":         *mode,
-	}
-	if *templateName != "" {
-		args["template"] = *templateName
-	}
+	args := scoreCLIArgs(*jsonPath, presentation, *mode, *templateName)
 
 	result, err := mc.handleScoreDeck(context.Background(), mcpRequestWithArgs(args))
 	if err != nil {
@@ -58,4 +52,24 @@ func runScore() error {
 	}
 
 	return printMCPResultJSON(result)
+}
+
+// scoreCLIArgs builds the score_deck arguments of a "score" run. Relative
+// image and icon paths resolve against the directory of the JSON file, as in
+// generate and validate: without base_dir the tool read them against the
+// working directory, and `score --json examples/exhibit-callouts.json` from
+// the repo root answered INPUT.IMAGE_PATH for a deck validate accepts
+// (go-slide-creator-t3k06). Stdin has no directory and keeps the working one.
+func scoreCLIArgs(jsonPath string, presentation any, mode, templateName string) map[string]any {
+	args := map[string]any{
+		"presentation": presentation,
+		"mode":         mode,
+	}
+	if templateName != "" {
+		args["template"] = templateName
+	}
+	if baseDir := validateBaseDir(jsonPath, ""); baseDir != "" {
+		args["base_dir"] = baseDir
+	}
+	return args
 }
