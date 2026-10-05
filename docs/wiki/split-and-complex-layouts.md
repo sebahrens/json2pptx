@@ -60,9 +60,11 @@ slides:
     takeaway: Losses exceed both the EUR 8M appetite and the peer median.
 ```
 
-Review points: the right column is top-anchored, so keep it to one number and
-two or three bullets or it floats above empty space (vertical balancing is
-tracked, `go-slide-creator-18dqh`); a single-series bar chart accents its last
+Review points: the right column spans the chart's height — the text region
+takes the height its bullets need and the stat grows into the rest, centred
+— so keep it to one number and two or three bullets; a text region too long
+for what the stat can give up is refused on its bullets. A single-series bar
+chart accents its last
 bar by default — the 2025 bar here — which is what the title argues.
 
 ## 2. Bridge beside the implication — `regions`, `columns`, waterfall chart

@@ -50,9 +50,13 @@ pass on every slide.
 - **A zoomed axis you did not ask for.** Bars, lines, areas and waterfalls with
   non-negative data now start at zero; if a chart looks zoomed, a `data.y_min`
   was authored — check that the heading says so.
-- **Top-heavy columns**: a `regions` stack or a four-card `kpi_snapshot` with
-  the lower half of the slide empty. Add a third region, choose a chart, or
-  accept it consciously (`go-slide-creator-18dqh`).
+- **A thin KPI row**: a `kpi_snapshot` is a content-sized strip; with a
+  takeaway band under it, a third or more of the slide stays empty and no
+  finding says so (the strip covers more than its 20% `SLIDE_UNDERUSED`
+  threshold). Put the KPIs in a `regions` slide beside a chart, or accept it
+  consciously. A short table alone on a slide is the same: its whole cell
+  counts as content, so four rows over an empty lower half are not reported
+  (`go-slide-creator-18dqh`).
 - **Footer chrome truncated** on narrow templates (`go-slide-creator-m2tlt`).
 - **Titles that wrap to three lines** on the serif template, or to two lines of
   capitals on `modern-template` / `blue-corporate`.

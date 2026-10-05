@@ -38,7 +38,7 @@ language, no scare words.
 | # | Kind | What goes in | Watch |
 |---|---|---|---|
 | 2 | `executive_summary` | The rating; losses vs appetite; metrics breached; the option | `bottom_line`: the option and the steering committee chair. |
-| 3 | `kpi_snapshot` | Findings, high findings, losses, deadline — 4 KPIs with `comparator` | Four cards leave the lower half empty on some templates (`go-slide-creator-18dqh`); consider `regions` with a chart if you have a series. |
+| 3 | `kpi_snapshot` | Findings, high findings, losses, deadline — 4 KPIs with `comparator` | A KPI row is a content-sized strip: with the takeaway under it a third of the slide stays empty, and no finding reports that; consider `regions` with a chart if you have a series. |
 | 4 | `option_matrix` | Risk type rows; `Status` (`rag`), `Current` and `Limit` (`text`); breached rows in `recommended` with `highlight_label: Breached` | No `detail` lines at five rows. |
 | 5 | `regions` `main_left` | Loss bar chart; `stat` EUR 11.2M with the peer median in `context`; two bullets on causes | Peer comparison in the `context` line, not a second chart. |
 | 6 | raw `capability-heatmap` | Columns = likelihood (low / medium / high) with `sublabel` counts; `tiers` = impact; each cell a named risk | The legend explains tiers; six risks placed, none on a line. |

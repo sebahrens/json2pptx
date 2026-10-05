@@ -62,6 +62,12 @@ type ShapeGridInput struct {
 // ("pattern:<name>") or an author wrote (no source).
 const CompilerSourcePrefix = "compiler:"
 
+// CompilerRegionsStackSource stamps the stack of a regions slide's main_left /
+// main_right arrangement: the two regions beside the main one. The engine
+// measures the stack's text region in its column when it expands the stack
+// and gives the region stacked with it the rest of the height.
+const CompilerRegionsStackSource = CompilerSourcePrefix + "regions-stack"
+
 // GridBoundsInput defines the bounding rectangle as percentages of slide dimensions.
 type GridBoundsInput struct {
 	X      float64 `json:"x"`

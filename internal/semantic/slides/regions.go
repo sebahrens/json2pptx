@@ -529,7 +529,9 @@ func regionGrid(arrangement string, axis, stack []float64, builds []regionBuild)
 		}
 		return g, paths
 	case ArrangeMainLeft, ArrangeMainRight:
-		side := &deckinput.ShapeGridInput{Columns: json.RawMessage("1"), Rows: []deckinput.GridRowInput{
+		// The stack's stamp lets the engine re-split it by the measured need
+		// of a text region when it expands the stack (go-slide-creator-18dqh).
+		side := &deckinput.ShapeGridInput{Source: jsonschema.CompilerRegionsStackSource, Columns: json.RawMessage("1"), Rows: []deckinput.GridRowInput{
 			{Height: stack[0], Cells: []*deckinput.GridCellInput{builds[1].cell}},
 			{Height: stack[1], Cells: []*deckinput.GridCellInput{builds[2].cell}},
 		}}

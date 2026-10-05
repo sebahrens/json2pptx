@@ -340,6 +340,7 @@ func expandNestedCellPatternsInBounds(grid *jsonschema.ShapeGridInput, ctx patte
 	if !hasNestedCellPattern(grid) {
 		return nil
 	}
+	rebalanceRegionsStack(grid, ctx, parentBounds)
 	cellBounds, err := nestedPatternCellBounds(grid, ctx, parentBounds, slideBlock)
 	if err != nil {
 		return err
