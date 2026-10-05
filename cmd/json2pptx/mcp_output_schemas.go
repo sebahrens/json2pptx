@@ -855,9 +855,9 @@ var outputSchemaScoreDeck = json.RawMessage(`{
       "items": {
         "type": "object",
         "properties": {
-          "slide_index": {"type": "integer"},
-          "score":       {"type": "integer"},
-          "findings":    {"type": "array", "items": {"type": "object"}}
+          "index":    {"type": "integer", "description": "0-based slide index."},
+          "score":    {"type": "integer"},
+          "findings": {"type": "array", "items": {"type": "object"}}
         }
       }
     },

@@ -1,5 +1,8 @@
 # Schema Changelog
 
+- **2026-10-05 — `score_deck` output schema names `per_slide[].index` (`go-slide-creator-ano9i`).**
+  - The schema declared `per_slide[].slide_index`; the response has always carried `index` (0-based). The schema now says `index`; the response is unchanged.
+
 - **2026-10-05 — `table-highlight` / `option_matrix`: a five-row board with details fits every shipped template (`go-slide-creator-dwha2`).**
   - A table still taller than its content area at the 5pt row padding step gives up, in order and only as far as it needs: the padding above the header labels, option-column width (up to 12 points of the table wider when that keeps names and details on fewer lines), legend height (25pt a row, was 34pt), the `highlight_label`'s own line (it joins the option name: "Operational · Breached"), a point of row padding (4pt), and a RAG legend row left at its default "Green / Amber / Red" wording with `show_legend` unset. Text stays at 12pt; `legend_labels_rag`, `show_legend: true` and Harvey legends keep their row.
   - A status board of five options × three criteria with a one-line `detail` each, a takeaway and a source line was refused (`BODY_TOO_LONG`, 11.8pt / 9.8pt) on every shipped template but `business-template`; it now validates and renders at 12pt on all nine. Six options with details need about 271pt of content area (246pt with the default RAG legend).
