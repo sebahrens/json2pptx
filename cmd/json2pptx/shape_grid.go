@@ -728,7 +728,7 @@ func slideChromeFrame(slide SlideInput, layoutID string, layouts []types.LayoutM
 	if layout == nil {
 		layout = findLayoutByID(layouts, layoutID)
 	}
-	return template.ResolveChromeFrame(layout, template.ChromeReferenceLayout(layouts), slideWidth, slideHeight, slide.Takeaway != "", slide.Source != "")
+	return template.ResolveChromeFrameForTakeaway(layout, template.ChromeReferenceLayout(layouts), slideWidth, slideHeight, slide.Takeaway, slide.Source != "")
 }
 
 // resolveGridBounds computes the absolute grid bounds for a ShapeGridInput

@@ -875,7 +875,7 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		var footerPositions map[string]*transformXML
 		layoutID := ""
 		if spec, ok := ctx.slideContentMap[slideNum]; ok {
-			footerPositions = alignFooterWithInsetContent(ctx.getFooterPositionsForLayout(spec.LayoutID), ctx.chromeFrameForLayout(spec.LayoutID, false, false))
+			footerPositions = alignFooterWithInsetContent(ctx.getFooterPositionsForLayout(spec.LayoutID), ctx.chromeFrameForLayout(spec.LayoutID, "", false))
 			layoutID = spec.LayoutID
 		}
 		// Chrome is injected as schemeClr tx1, which a layout that inverts its

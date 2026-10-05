@@ -6,19 +6,23 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
+	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/textcapacity"
 	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
-// takeawayBandBudget returns the takeaway band of a slide on these layouts and
-// the 14pt text budget it holds: the text width generation writes into, and
-// the lines and characters that fit. It is the one measurement both the
-// takeaway fit finding and list_slide_kinds' takeaway budget report
+// takeawayBandBudget returns the tallest takeaway band a slide on these
+// layouts can carry — the two-line band; the frame reserves one line for a
+// takeaway that does not wrap (go-slide-creator-me53q) — and the 14pt text
+// budget it holds: the text width generation writes into, and the lines and
+// characters that fit. It is the one measurement both the takeaway fit
+// finding and list_slide_kinds' takeaway budget report
 // (go-slide-creator-iubjb).
 func takeawayBandBudget(slide SlideInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) (bandHeight, textWidth int64, budget textcapacity.Density) {
-	band := slideChromeFrame(slide, "", layouts, slideWidth, slideHeight).Takeaway
+	layout := findLayoutByID(layouts, slide.LayoutID)
+	band := template.ResolveChromeFrameLines(layout, template.ChromeReferenceLayout(layouts), slideWidth, slideHeight, patterns.TakeawayMaxLines, slide.Source != "").Takeaway
 	// The band carries the uniform shape text margin, clamped on a band
 	// too short for it (pptx.EffectiveTextInsets). textcapacity and
 	// textfit assume the OOXML 7.2pt / 3.6pt default sides, so hand them

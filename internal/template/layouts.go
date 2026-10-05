@@ -66,6 +66,7 @@ func ParseLayouts(reader *Reader) ([]types.LayoutMetadata, error) {
 	}
 	for i := range layouts {
 		layouts[i].TemplatePath = reader.Path()
+		layouts[i].BodyFont = theme.BodyFont
 	}
 
 	return layouts, nil

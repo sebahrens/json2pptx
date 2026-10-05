@@ -179,6 +179,12 @@ type LayoutMetadata struct {
 	// so every geometry path that has the layouts also has the grid.
 	TemplateGrid *TemplateGrid
 
+	// BodyFont is the template theme's body font (shared by every parsed
+	// layout; empty for a synthesized one). ParseLayouts sets it so the chrome
+	// frame measures a takeaway's line count in the same font on the preflight
+	// and generation paths.
+	BodyFont string `json:"-"`
+
 	// TemplatePath is the template file the layout was parsed from (shared by
 	// every parsed layout; empty for a synthesized one). ParseLayouts sets it
 	// so preflight can read the footer geometry generation resolves from the

@@ -1510,7 +1510,7 @@ The band **does not fit** when the stack would climb into the title, or — on l
 }
 ```
 
-The resolved frame per layout (content area, takeaway band, source band, footer top, `fits`) is visible up front in `examine_template`'s `layouts[].profile_geometry`.
+The resolved frame per layout (content area, takeaway band, source band, footer top, `fits`) is visible up front in `examine_template`'s `layouts[].profile_geometry`. It is the frame of a slide with a one-line takeaway and a source line: the takeaway band is reserved by the takeaway's measured line count (23.5pt for one line on a 7.5in slide, 40.5pt for one that wraps; go-slide-creator-me53q), so a slide whose takeaway wraps has 17pt less content height than `profile_geometry` shows, and `chrome_band_no_fit` is judged on the band the slide's own takeaway needs.
 
 ### `takeaway_missing`
 

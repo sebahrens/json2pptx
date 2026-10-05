@@ -20,7 +20,9 @@ import (
 // of row padding, and a legend that reads "Green / Amber / Red".
 
 // The content areas the boards were sent to, in points: the shipped templates
-// under a takeaway band and a source line.
+// under a two-line takeaway band and a source line, the tightest area a slide
+// with both can have. A one-line takeaway leaves 17pt more
+// (go-slide-creator-me53q), so a board that fits here fits there.
 var thShippedAreasPt = map[string][2]float64{
 	"midnight-blue":   {796.8, 253.1},
 	"forest-green":    {828.0, 253.1},
