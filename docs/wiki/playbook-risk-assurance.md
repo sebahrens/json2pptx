@@ -81,9 +81,10 @@ slides:
 ```
 
 **Trend beside the opinion** — `regions` `main_left` with a line chart and a
-`stat` whose value is the opinion text ([split-and-complex-layouts.md](split-and-complex-layouts.md) §1). A line that starts at the data minimum
-exaggerates a 4 → 2 fall; the zero baseline is being made the default
-(`go-slide-creator-929jm`) — until then read the axis in the image.
+`stat` whose value is the opinion text ([split-and-complex-layouts.md](split-and-complex-layouts.md) §1). Non-negative line and bar charts start their
+axis at zero, so a 4 → 2 fall reads as what it is; set `data.y_min` /
+`data.y_max` only when the audience expects a zoomed axis and say so in the
+heading.
 
 **One finding per slide** — the raw `labeled-rows` slide in
 [split-and-complex-layouts.md](split-and-complex-layouts.md) §9. The four

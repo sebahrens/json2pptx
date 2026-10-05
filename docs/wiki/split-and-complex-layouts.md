@@ -108,10 +108,10 @@ slides:
 ```
 
 A `total` that differs from the running sum by more than 0.5% is reported
-(`chart.waterfall_total_mismatch`). Look at the opening bar in the render: the
-y-axis is being changed to start at zero (`go-slide-creator-929jm`); until it
-lands, a bridge whose smallest total is far above zero draws a short opening
-bar.
+(`chart.waterfall_total_mismatch`). The axis starts at zero whenever no running
+total is negative, so the opening total is drawn in full; `data.y_min` /
+`data.y_max` override the axis deliberately (a `y_min` that hides more than
+half of the smallest bar is reported as `chart.axis_not_zero`).
 
 ## 3. Chart, headline number and a small table — three regions
 

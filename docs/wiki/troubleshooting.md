@@ -28,7 +28,7 @@ Back to the [hub](README.md).
 
 | You see in the image | Why | Do |
 |---|---|---|
-| Waterfall opening bar is a stub; line chart starts at the data minimum | Axis autoscaled to the data | Fix pending (`go-slide-creator-929jm`); today, mention the baseline in the takeaway or use a bar chart for the totals. |
+| Waterfall opening bar is a stub; line chart starts at the data minimum | An authored `data.y_min` zooms the axis (non-negative data starts at zero by default since `go-slide-creator-929jm`) | Remove `y_min`, or keep it and say "axis from N" in the heading; `chart.axis_not_zero` flags a `y_min` that hides more than half of the smallest bar. |
 | Footer reads "Meridian Capital…" | Chrome line overflow, no finding | Shorten `meta.chrome.client`, drop `project_code` (`go-slide-creator-m2tlt`). |
 | Right column of a `regions` slide floats high; lower half empty | Stacked regions are content-sized, top-anchored | Add a third region (a small table, a timeline) or move to a chart-only slide (`go-slide-creator-18dqh`). |
 | Four KPI cards with the bottom half of the slide empty | kpi-4up row is content-sized | Use `regions` with a chart beside the number, or six KPIs, or a `stat`. |

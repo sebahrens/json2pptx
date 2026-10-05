@@ -65,11 +65,15 @@ the table in [visual-vocabulary.md](visual-vocabulary.md).
 `recommend_visual(intent, template, preview: true)` renders up to four
 candidates as images before you author anything — the arch-stack preview
 settled an architecture slide on the first attempt, and the comparison preview
-showed row alignment. Two caveats from the runs: a vague intent ranks noisily
-(a gauge came second for a "tiered stack"), and until `go-slide-creator-ux1fl`
-lands, status boards, "one finding per slide" and "chart beside narrative"
-need their candidate named in `candidates: [...]` (`table-highlight`,
-`labeled-rows`, `regions`). Every candidate carries a `data_contract` and a
+showed row alignment. The runs exposed ranking gaps that are now closed
+(`go-slide-creator-ux1fl`): "beside / next to / the remaining third" returns
+the `regions` kind first with a `compose` form below it, a status board with
+limits and breaches ranks `table-highlight` (DeckSpec `option_matrix`, `rag`
+scale), "one finding, what we found / why it matters / action / owner" ranks
+`labeled-rows`, a share split that sums to 100% gates to pie / donut / stacked
+bar, and a `candidates: [...]` shortlist is scored like the open ranking. A
+vague intent still ranks noisily: say what the slide shows, with its numbers.
+Every candidate carries a `data_contract` and a
 runnable `next_tool_call`; copy that slide and replace every `Replace with …`
 string — a recipe rendered verbatim is blocked as `SEMANTIC_WEAK_CONTENT`.
 
@@ -130,11 +134,11 @@ spec so it holds on both.
 | Friction | What happened | Do this |
 |---|---|---|
 | Table refused at 8 rows | The old 7-row cap refused tables that render cleanly and forced two half-empty slides | Fixed: up to 10 logical rows (header included) render, one-line rows past 7 at a compact pitch. Split only at `table_rows_truncated` or when the slide reads dense. |
-| `regions` kind list | The unknown-region-kind error listed slide kinds, so `bridge` looked available | Region kinds are `chart / stat / kpis / table / timeline / image / text`. A bridge beside text is a `chart` region with `type: waterfall` ([split-and-complex-layouts.md](split-and-complex-layouts.md)). |
+| `regions` kind list | The unknown-region-kind error listed slide kinds, so `bridge` looked available | Region kinds are `chart / stat / kpis / table / timeline / image / text`. A bridge beside text is a `chart` region with `type: waterfall` ([split-and-complex-layouts.md](split-and-complex-layouts.md)); `recommend_visual` now says so for "beside" intents. |
 | Parallel tracks on a roadmap | `roadmap` had no `parallel_tracks`; agents dropped to a raw `roadmap-phased` slide | Being added (`go-slide-creator-ptazs`); the raw slide in [playbook-risk-consulting.md](playbook-risk-consulting.md) works today. |
 | Before / after with connectors | `comparison` could not pass `connectors` / `highlight_column` | Same bead; the raw `comparison-2col` slide in [playbook-technology-and-data.md](playbook-technology-and-data.md) works today. |
 | Footer client name truncated | `meta.chrome.client` plus `project_code` plus date overflowed the footer silently on 11 slides | Keep the client label short, drop `project_code` on narrow templates, and look at the footer on the second template (`go-slide-creator-m2tlt`). |
-| Waterfall axis started at 22 | The opening total drew as a stub | Being fixed to start at zero (`go-slide-creator-929jm`); meanwhile check the bridge image. |
+| Waterfall axis started at 22 | The opening total drew as a stub | Fixed: non-negative bars, lines and waterfalls start at zero; `data.y_min` / `y_max` zoom deliberately (`go-slide-creator-929jm`). |
 | `--tools all` first contact | 224 KB, 48 tools, 11 used | Stay on the default profile; `get_started(tool:"<hidden tool>")` reaches any hidden tool by name. |
 | Thumbnail bytes | ~2 MB of images across a run | Render all once, then `known_hashes`; `density: 100` only for the slide you cannot read. |
 | Info notes in strict reviews | `table_font_scaled`, `contrast_predicted` are notes | Act on them only when the image shows a problem; a strict standard splits the table instead of accepting 11pt. |

@@ -47,9 +47,9 @@ pass on every slide.
 
 ## What the tools cannot see (look for these yourself)
 
-- **A bridge or line whose axis does not start at zero** (opening total drawn
-  short; a 4 → 2 fall looking like a collapse). Fix in progress
-  (`go-slide-creator-929jm`); meanwhile read the axis.
+- **A zoomed axis you did not ask for.** Bars, lines, areas and waterfalls with
+  non-negative data now start at zero; if a chart looks zoomed, a `data.y_min`
+  was authored — check that the heading says so.
 - **Top-heavy columns**: a `regions` stack or a four-card `kpi_snapshot` with
   the lower half of the slide empty. Add a third region, choose a chart, or
   accept it consciously (`go-slide-creator-18dqh`).
