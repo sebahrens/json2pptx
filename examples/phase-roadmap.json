@@ -82,12 +82,12 @@
         "name": "phase-roadmap",
         "values": {
           "phases": [
-            {"name": "Assess", "date_label": "Jan"},
-            {"name": "Plan", "date_label": "Feb"},
-            {"name": "Build", "date_label": "Mar"},
-            {"name": "Pilot", "date_label": "Apr", "active": true},
-            {"name": "Scale", "date_label": "May–Jun"},
-            {"name": "Sustain", "date_label": "Jul+"}
+            {"name": "Assess", "date_label": "Jan", "description": "Inventory 240 workloads and their dependencies."},
+            {"name": "Plan", "date_label": "Feb", "description": "Sequence the waves and agree the landing zone."},
+            {"name": "Build", "date_label": "Mar", "description": "Stand up accounts, network and guardrails."},
+            {"name": "Pilot", "date_label": "Apr", "description": "Move 12 low-risk workloads and rehearse cutover.", "active": true},
+            {"name": "Scale", "date_label": "May–Jun", "description": "Migrate the remaining waves, two a month."},
+            {"name": "Sustain", "date_label": "Jul+", "description": "Hand over to operations and tune cost."}
           ]
         },
         "overrides": {

@@ -44,10 +44,28 @@ func TestPatternSmoke_AllPatterns(t *testing.T) {
 	reg := patterns.Default()
 	var snapshots []patternSmokeSnapshot
 
+	// A slide's own pattern, or the patterns of its compose segments: the
+	// supporting bands (kpi-inline) are shown where they belong, in a
+	// segment, since alone on a slide they report SLIDE_UNDERUSED.
+	type smokePattern struct {
+		slide   int
+		pattern *PatternInput
+	}
+	var smoke []smokePattern
 	for i, slide := range input.Slides {
-		if slide.Pattern == nil {
-			continue
+		if slide.Pattern != nil {
+			smoke = append(smoke, smokePattern{i, slide.Pattern})
 		}
+		if slide.Compose != nil {
+			for j := range slide.Compose.Segments {
+				if seg := &slide.Compose.Segments[j]; seg.HasPattern() {
+					smoke = append(smoke, smokePattern{i, &seg.Pattern})
+				}
+			}
+		}
+	}
+	for _, sp := range smoke {
+		i, slide := sp.slide, struct{ Pattern *PatternInput }{sp.pattern}
 
 		t.Run(slide.Pattern.Name, func(t *testing.T) {
 			// 1. Expand the pattern

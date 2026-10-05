@@ -398,7 +398,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "US Hyperscalers Control 70% of Cloud Infrastructure — Our Data Is Subject to Foreign Law"
+          "text_value": "US Hyperscalers Hold 70% of Cloud Capacity; Our Data Is Under Foreign Law"
         },
         {
           "placeholder_id": "body",
@@ -465,7 +465,8 @@
             }
           }
         }
-      ]
+      ],
+      "source": "Illustrative market estimates, USD billions"
     },
     {
       "layout_id": "blank",
@@ -2344,125 +2345,45 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Implementation Roadmap: Three Phases Over Five Years"
+          "text_value": "Three phases over five years take the stack from governance to autonomy"
         }
       ],
-      "shape_grid": {
-        "bounds": {
-          "x": 5,
-          "y": 18,
-          "width": 90,
-          "height": 72
-        },
-        "columns": 3,
-        "gap": 10,
-        "row_gap": 10,
-        "rows": [
+      "pattern": {
+        "name": "stylish-panels",
+        "values": [
           {
-            "height": 12,
-            "cells": [
-              {
-                "shape": {
-                  "geometry": "rect",
-                  "fill": "accent1",
-                  "text": {
-                    "content": "Phase 1: Foundation (2026-2027)",
-                    "size": 16,
-                    "bold": true,
-                    "color": "#FFFFFF",
-                    "align": "ctr",
-                    "vertical_align": "ctr"
-                  }
-                }
-              },
-              {
-                "shape": {
-                  "geometry": "rect",
-                  "fill": "accent2",
-                  "text": {
-                    "content": "Phase 2: Scale (2027-2029)",
-                    "size": 16,
-                    "bold": true,
-                    "color": "#FFFFFF",
-                    "align": "ctr",
-                    "vertical_align": "ctr"
-                  }
-                }
-              },
-              {
-                "shape": {
-                  "geometry": "rect",
-                  "fill": "accent3",
-                  "text": {
-                    "content": "Phase 3: Autonomy (2029-2031)",
-                    "size": 16,
-                    "bold": true,
-                    "color": "#FFFFFF",
-                    "align": "ctr",
-                    "vertical_align": "ctr"
-                  }
-                }
-              }
+            "title": "Phase 1: Foundation (2026-2027)",
+            "body": [
+              "Establish the governance entity",
+              "Procure the first 2 data centers",
+              "Deploy 10K GPUs",
+              "Onboard 3 anchor tenants",
+              "Achieve EUCS basic certification"
             ]
           },
           {
-            "height": 72,
-            "cells": [
-              {
-                "shape": {
-                  "geometry": "rect",
-                  "fill": "lt2",
-                  "text": {
-                    "content": "• Establish governance entity\n• Procure first 2 data centers\n• Deploy 10K GPUs\n• Onboard 3 anchor tenants\n• Achieve EUCS basic certification",
-                    "size": 14,
-                    "color": "dk1",
-                    "align": "l",
-                    "vertical_align": "t",
-                    "inset_left": 8,
-                    "inset_right": 8,
-                    "inset_top": 8,
-                    "inset_bottom": 8
-                  }
-                }
-              },
-              {
-                "shape": {
-                  "geometry": "rect",
-                  "fill": "lt2",
-                  "text": {
-                    "content": "• Expand to 6 data centers\n• Reach 50K GPUs\n• Launch sovereign AI platform\n• Migrate 40% gov workloads\n• Train first domestic frontier model",
-                    "size": 14,
-                    "color": "dk1",
-                    "align": "l",
-                    "vertical_align": "t",
-                    "inset_left": 8,
-                    "inset_right": 8,
-                    "inset_top": 8,
-                    "inset_bottom": 8
-                  }
-                }
-              },
-              {
-                "shape": {
-                  "geometry": "rect",
-                  "fill": "lt2",
-                  "text": {
-                    "content": "• Full sovereign stack operational\n• 75% gov workload migration\n• Commercial expansion\n• Positive operating margin\n• Foreign dependency <25%",
-                    "size": 14,
-                    "color": "dk1",
-                    "align": "l",
-                    "vertical_align": "t",
-                    "inset_left": 8,
-                    "inset_right": 8,
-                    "inset_top": 8,
-                    "inset_bottom": 8
-                  }
-                }
-              }
+            "title": "Phase 2: Scale (2027-2029)",
+            "body": [
+              "Expand to 6 data centers",
+              "Reach 50K GPUs",
+              "Launch the sovereign AI platform",
+              "Migrate 40% of government workloads",
+              "Train the first domestic frontier model"
+            ]
+          },
+          {
+            "title": "Phase 3: Autonomy (2029-2031)",
+            "body": [
+              "Full sovereign stack operational",
+              "75% government workload migration",
+              "Commercial expansion",
+              "Positive operating margin",
+              "Foreign dependency below 25%"
             ]
           }
         ]
-      }
+      },
+      "takeaway": "Each phase is funded only when the previous one meets its KPIs."
     },
     {
       "layout_id": "blank",
@@ -2470,16 +2391,10 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Critical Risks to Delivery — and Why We Can Manage Them"
+          "text_value": "Six risks could delay delivery — each has an owner and a funded mitigation"
         }
       ],
       "shape_grid": {
-        "bounds": {
-          "x": 5,
-          "y": 18,
-          "width": 90,
-          "height": 72
-        },
         "gap": 20,
         "columns": 1,
         "rows": [
@@ -2530,14 +2445,24 @@
                       "Medium",
                       "Focus on classified/regulated segments where hyperscalers cannot compete",
                       "CEO/Strategy"
+                    ],
+                    [
+                      "Grid connection and energy supply for 200 MW+ sites",
+                      "Medium",
+                      "High",
+                      "Reserve capacity with the grid operator in Phase 1; site data centers at existing substations",
+                      "COO"
                     ]
-                  ]
+                  ],
+                  "alt": "Risk register of six delivery risks with likelihood, impact, mitigation and owner"
                 }
               }
             ]
           }
         ]
-      }
+      },
+      "takeaway": "GPU supply and talent are the two high-likelihood, high-impact risks; both are mitigated in Phase 1.",
+      "source": "Program risk register, illustrative assessment"
     },
     {
       "layout_id": "blank",
@@ -2766,16 +2691,10 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Success Metrics & Accountability: Quarterly KPIs"
+          "text_value": "Six KPIs with named owners gate each phase of funding"
         }
       ],
       "shape_grid": {
-        "bounds": {
-          "x": 5,
-          "y": 18,
-          "width": 90,
-          "height": 72
-        },
         "gap": 20,
         "columns": 1,
         "rows": [
@@ -2785,6 +2704,7 @@
               {
                 "table": {
                   "headers": [
+                    "Phase",
                     "KPI",
                     "Target",
                     "Deadline",
@@ -2792,42 +2712,57 @@
                   ],
                   "rows": [
                     [
+                      "1 Foundation",
                       "Governance entity established",
                       "Legal incorporation",
                       "Q3 2026",
                       "Program Director"
                     ],
                     [
+                      "1 Foundation",
                       "First data center operational",
                       "10K GPUs",
                       "Q4 2027",
                       "CTO"
                     ],
                     [
-                      "Anchor tenants signed",
-                      "3 contracts",
-                      "Q2 2027",
-                      "Commercial Lead"
-                    ],
-                    [
+                      "2 Scale",
                       "EUCS basic certification",
                       "Achieved",
                       "Q1 2028",
                       "CISO"
                     ],
                     [
+                      "2 Scale",
                       "Government workload migration",
-                      "15%",
-                      "Q4 2027",
+                      "40%",
+                      "Q4 2029",
                       "CTO"
+                    ],
+                    [
+                      "3 Autonomy",
+                      "Government workload migration",
+                      "75%",
+                      "Q4 2030",
+                      "CTO"
+                    ],
+                    [
+                      "3 Autonomy",
+                      "Foreign dependency",
+                      "Below 25%",
+                      "Q4 2031",
+                      "Program Director"
                     ]
-                  ]
+                  ],
+                  "alt": "Six program KPIs by phase with target, deadline and owner"
                 }
               }
             ]
           }
         ]
-      }
+      },
+      "takeaway": "The oversight board reviews every KPI quarterly; a missed gate pauses the next tranche.",
+      "source": "Program plan targets, illustrative"
     },
     {
       "layout_id": "content",
@@ -2919,7 +2854,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Financial Summary: Five-Year P&L Projection"
+          "text_value": "Revenue reaches EUR 8.1B in year 5; contribution turns positive in year 4"
         },
         {
           "placeholder_id": "body",
@@ -2971,7 +2906,9 @@
             }
           }
         }
-      ]
+      ],
+      "takeaway": "Cumulative capex of EUR 12.2B is recovered from year 6 at the year-5 run rate.",
+      "source": "Illustrative five-year projection, EUR billions"
     },
     {
       "layout_id": "blank",
