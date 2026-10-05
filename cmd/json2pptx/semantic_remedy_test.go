@@ -29,12 +29,13 @@ func TestFitFindingNamesTheCutThatClearsIt(t *testing.T) {
 	env := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": decodeSpecObject(t, optionMatrixTightSpec)}))
 	f := findingAt(t, env, "BODY_TOO_LONG", "/slides/1")
 	// On modern-template the cheapest line whose removal clears it is the
-	// second option's detail, which wraps in that template's wider face.
+	// second option's detail, which wraps in that template's wider face even
+	// in the widest option column (go-slide-creator-dwha2).
 	want := []any{map[string]any{"op": "remove", "path": "/slides/1/options/1/detail"}}
 	if got := patchOf(t, f.NextToolCall); !f.PatchVerified || fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Errorf("patch %v verified=%v, want the verified removal of one option's detail", got, f.PatchVerified)
 	}
-	if !strings.Contains(f.Message, "verified fix: removing /slides/1/options/1/detail (36 characters) clears this") {
+	if !strings.Contains(f.Message, "verified fix: removing /slides/1/options/1/detail (55 characters) clears this") {
 		t.Errorf("the message does not name the cut: %s", f.Message)
 	}
 	if text, quoted := f.Evidence["text"]; quoted {
@@ -45,11 +46,13 @@ func TestFitFindingNamesTheCutThatClearsIt(t *testing.T) {
 			t.Errorf("the advice names %s, which does not shorten an option_matrix: %s", raw, f.Message)
 		}
 	}
-	// The render refusal says the same.
+	// The render refusal says the same of the table's height. (From four
+	// options each detail of a table that does not fit is a finding of its
+	// own, whose patch removes them all.)
 	render := renderDeckSpecCall(t, mc, map[string]any{"spec": decodeSpecObject(t, optionMatrixTightSpec)})
 	seen := false
 	for _, d := range render.Diagnostics {
-		if d.Code == "BODY_TOO_LONG" {
+		if d.Code == "BODY_TOO_LONG" && strings.Contains(d.Message, "needs about") {
 			seen = true
 			if got := patchOf(t, d.NextToolCall); !d.patchVerified || fmt.Sprint(got) != fmt.Sprint(want) {
 				t.Errorf("render: patch %v verified=%v", got, d.patchVerified)

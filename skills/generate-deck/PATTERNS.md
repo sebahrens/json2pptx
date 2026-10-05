@@ -44,16 +44,15 @@ for every supported count. Limits: `state-shift-hub` takes 3–4 pairs,
 
 Budgets assume the template's full content area. On a short or narrow
 template, or under a `takeaway`, content-sized patterns (`exec-summary`,
-`table-highlight`, `metric-list`, `team-bios`, `pull-quote`, …) first give up
+`table-highlight`, `team-bios`, …) first give up
 air, headshot size or type down to the 12pt floor, then report
 `BODY_TOO_LONG` naming what to drop. `icon-row`, `labeled-rows`,
 `process-flow` and `process-flow-compact` grow their cards, rows or band to the
 text's written fit before reporting it. `process-flow` lays 7–8 steps on
 two rows of four (the second runs back right to left, its chevrons / arrows
 mirrored to point left; all-chevron / arrow flows wrap left to right), so a
-box holds 80 characters at every step count. `overrides.rows` is `1` or `2`
-(default `2` from 7 steps; `2` needs at least 4 steps); `rows: 1` keeps one
-row of narrow boxes. `type: "arrow"` steps are block arrows with the label
+box holds 80 characters at every step count. `overrides.rows` is `2` (default from 7 steps; needs 4+) or `1`: one row of
+narrow boxes. `type: "arrow"` steps are block arrows with the label
 at the flow's type size.
 `process-flow-compact` is one band and rejects `rows`. Validation predicts grid text
 (nested cells included) that generation would refuse as an `error`

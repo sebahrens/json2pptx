@@ -39,6 +39,11 @@ import (
 // measured option / criterion text and pinned in points (min_height =
 // max_height), never padded to fill, and the block is top-anchored under the
 // title like a native table.
+//
+// A table taller than its content area gives up air, never type: row padding
+// (rowPadStepsPt), then the header's top padding, option-column width where a
+// wider column saves lines, legend height, the highlight tag's own line, a
+// last point of row padding and an unworded RAG legend (thLayout.fit).
 
 func init() {
 	Default().Register(&tableHighlight{})
@@ -92,6 +97,35 @@ const (
 	// cell, which otherwise collapses and shrinks its labels to illegibility.
 	thLegendRowPt = 24.0
 	thSymbolPt    = 22.0 // rendered Harvey ball / RAG dot diameter
+)
+
+// What a table gives up, after its row padding, before any text shrinks
+// (thLayout.fit, go-slide-creator-dwha2). None of it is text height.
+const (
+	// thLegendSlimRowPt is the nested legend row of a table that does not fit
+	// with the compact one: a line of 12pt labels and swatches of the same
+	// height, as a table note is set. thLegendSlimPt is its legend row (the
+	// nested row plus the 4pt sub-grid inset above and below).
+	thLegendSlimRowPt = 17.0
+	thLegendSlimPt    = thLegendSlimRowPt + 2*4
+	thLegendSlimPadPt = 1.0
+	// thHeaderTrimTopPt is the margin above the header labels once the header
+	// row gives up its top padding. The row is unfilled, bottom-anchored on
+	// its rule and the first thing in the content area, so the padding above
+	// its labels is not seen.
+	thHeaderTrimTopPt = 1.0
+	// thNameColStepsPct are the widths the option column grows by when a
+	// wider column keeps the names and details on fewer lines.
+	thNameColStepPct = 6.0
+	thNameColSteps   = 2
+	// thRowPadFloorPt is the top / bottom text margin of the rows once a slim
+	// legend is still not enough: a point under the last shared step
+	// (rowPadStepsPt) and still over PowerPoint's own table cell margin
+	// (0.05 in, 3.6pt).
+	thRowPadFloorPt = 4.0
+	// thTagSep joins the highlight tag to the option name when the tag gives
+	// up its own line.
+	thTagSep = " · "
 )
 
 // Score scales.
@@ -281,14 +315,13 @@ func thAreaWarning(ctx ExpandContext, v *TableHighlightValues, overrides any) st
 	}
 	l := newTHLayout(ctx, v, ovr)
 	l.fit()
-	if l.total() <= l.areaH+0.5 {
+	// needPt is the least height the table can take: writer-measured rows at
+	// their tightest padding, the widest option column that helps, a slim
+	// legend and the highlight tag beside its name (thLayout.fit).
+	if l.needPt <= l.areaH+0.5 {
 		return ""
 	}
-	// Report the least height the table can take: writer-measured rows at
-	// their tightest padding and the compact legend.
-	l.tight, l.legendPt, l.padPt = true, thLegendCompactPt, rowPadStepsPt[len(rowPadStepsPt)-1]
-	l.measure(l.headerSize, l.bodySize, l.detailSize)
-	return fmt.Sprintf("%s: table-highlight needs about %.0fpt of height at readable sizes but this layout's content area holds %.0fpt — drop the option details or highlight_label, hide the legend (show_legend: false), drop the slide takeaway, or split the table", ErrCodeBodyTooLong, math.Ceil(l.total()), math.Floor(l.areaH))
+	return fmt.Sprintf("%s: table-highlight needs about %.0fpt of height at readable sizes but this layout's content area holds %.0fpt — drop the option details or highlight_label, hide the legend (show_legend: false), drop the slide takeaway, or split the table", ErrCodeBodyTooLong, math.Ceil(l.needPt), math.Floor(l.areaH))
 }
 
 // tableHighlightNameOnlyBudget is the readable option name from four rows.
@@ -370,9 +403,9 @@ func (p *tableHighlight) Schema() *Schema {
 		"highlight_row":     IntegerSchema(0, thMaxOptions-1).WithDescription("0-based option row to highlight (recommended option)"),
 		"highlight_rows":    ArraySchema(IntegerSchema(0, thMaxOptions-1), 0, thMaxOptions).WithDescription("0-based option rows to highlight when the recommendation combines several options; each gets the tint, the accent bar and highlight_label (added to highlight_row)"),
 		"highlight_col":     IntegerSchema(0, thMaxCriteria-1).WithDescription("0-based criterion column to highlight (decisive criterion)"),
-		"highlight_label":   StringSchema(thLabelMax).WithDescription("Tag shown under the highlighted option name, e.g. \"Recommended\""),
+		"highlight_label":   StringSchema(thLabelMax).WithDescription("Tag under the highlighted option name (beside it on a tight table), e.g. \"Recommended\""),
 		"corner_label":      StringSchema(thLabelMax).WithDescription("Header of the option column (default \"Option\")"),
-		"show_legend":       BooleanSchema().WithDescription("Legend row under the table for harvey / rag columns (default true)"),
+		"show_legend":       BooleanSchema().WithDescription("Legend row under the table for harvey / rag columns (default true; unset, a tight table drops a default-worded rag legend)"),
 		"legend_labels":     ArraySchema(StringSchema(thLegendMax), 3, 3).WithDescription("Legend wording for the Harvey-ball scale, in the order [HIGH, MID, LOW] — the full ball first, the empty ball last. Default: [\"Fully meets\", \"Partially meets\", \"Does not meet\"]."),
 		"legend_labels_rag": ArraySchema(StringSchema(thLegendMax), 3, 3).WithDescription("Legend wording for the RAG scale, in the same [HIGH, MID, LOW] order — i.e. [green, amber, red]. Default: [\"Green\", \"Amber\", \"Red\"]. Set this when the deck mixes harvey and rag columns: the two scales get their own legend row and their own words."),
 	}, []string{"criteria", "options"}).WithAdditionalProperties(false)
@@ -671,6 +704,42 @@ type thLayout struct {
 	// when a tight table still does not fit (rowPadStepsPt); 0 keeps the
 	// uniform margin.
 	padPt float64
+	// headTrim, slimLegend and tagInline are what a table at the tightest
+	// padding gives up next, in that order (fit): the padding above the header
+	// labels, the legend's height, and the highlight tag's own line.
+	headTrim, slimLegend, tagInline bool
+	// needPt is the least height the table takes when it does not fit its
+	// content area even so; 0 for a table that fits.
+	needPt float64
+}
+
+// legendFloorPt is the least a legend row may be left by the grid's
+// scale-down: its nested row and the sub-grid inset around it.
+func (l *thLayout) legendFloorPt() float64 {
+	if l.slimLegend {
+		return thLegendSlimPt
+	}
+	return thLegendCompactPt
+}
+
+// setNameCol sets the option column's width (percent) and shares the rest
+// equally among the criteria.
+func (l *thLayout) setNameCol(pct float64) {
+	n := len(l.v.Criteria)
+	l.cols = l.cols[:0]
+	l.cols = append(l.cols, pct)
+	for i := 0; i < n; i++ {
+		l.cols = append(l.cols, (100-pct)/float64(n))
+	}
+}
+
+// setLegend sets the legend rows and, with them, the rule and gap heights:
+// one row per legend scale (go-slide-creator-z0up), plus the header rule and
+// the hairlines between option rows.
+func (l *thLayout) setLegend(kinds []string) {
+	l.legend = kinds
+	rowCount := 1 + len(l.v.Options) + len(l.legend) + len(l.v.Options)
+	l.gapsPt = thRowGapPt*float64(rowCount-1) + thHeaderRulePt + thRowRulePt*float64(len(l.v.Options)-1)
 }
 
 // minRowPt is the least height of an option row: thMinRowPt at the uniform
@@ -730,23 +799,18 @@ func newTHLayout(ctx ExpandContext, v *TableHighlightValues, ovr *TableHighlight
 			break
 		}
 	}
-	l.cols = append(l.cols, nameColPct)
-	for i := 0; i < nCrit; i++ {
-		l.cols = append(l.cols, (100-nameColPct)/float64(nCrit))
-	}
+	l.setNameCol(nameColPct)
 	l.areaW, l.areaH = sizingAreaPt(ctx)
 	l.symbolInk = inkOnLight(ctx, "dk2", 4.5)
 	l.corner = v.CornerLabel
 	if strings.TrimSpace(l.corner) == "" {
 		l.corner = "Option"
 	}
-	if kinds := thLegendKinds(v); len(kinds) > 0 && (v.ShowLegend == nil || *v.ShowLegend) {
-		l.legend = kinds
+	var kinds []string
+	if v.ShowLegend == nil || *v.ShowLegend {
+		kinds = thLegendKinds(v)
 	}
-	// One row per legend scale (go-slide-creator-z0up), plus the header rule
-	// and the hairlines between option rows.
-	rowCount := 1 + len(v.Options) + len(l.legend) + len(v.Options)
-	l.gapsPt = thRowGapPt*float64(rowCount-1) + thHeaderRulePt + thRowRulePt*float64(len(v.Options)-1)
+	l.setLegend(kinds)
 	return l
 }
 
@@ -787,6 +851,9 @@ func (l *thLayout) measure(headerSize, bodySize, detailSize float64) {
 	// the width a renderer's own face may leave it.
 	if l.tight {
 		l.headerPt = thMinHeaderPt
+		if l.headTrim {
+			l.headerPt = 0
+		}
 		for j, cell := range l.headerCells() {
 			l.headerPt = math.Max(l.headerPt, writtenFitHeightPt(l.ctx.themeFonts(), cell.Shape.Text, thHeaderLineWidthPt(ctx, l.colW(j)), 0))
 		}
@@ -800,7 +867,7 @@ func (l *thLayout) measure(headerSize, bodySize, detailSize float64) {
 	for i, o := range v.Options {
 		if l.tight {
 			h := l.writtenOptionHeight(i)
-			if l.hlRows[i] && v.HighlightLabel != "" {
+			if l.hlRows[i] && v.HighlightLabel != "" && !l.tagInline {
 				hlPt = math.Max(hlPt, h)
 			} else {
 				rowPt = math.Max(rowPt, h)
@@ -880,10 +947,23 @@ func (l *thLayout) fit() {
 			l.padPt = padPt
 			l.measure(headerSize, bodySize, 12)
 		}
+		// Still too tall at the tightest padding. What gives way next is still
+		// not text (go-slide-creator-dwha2): a five-row status board with a
+		// line of detail under each name and a takeaway band was 5 to 35pt
+		// taller than the shipped templates' content areas and was refused.
+		for _, step := range []func() bool{l.trimHeader, l.widenNameColumn, l.slimTheLegend, l.inlineTag, l.floorRowPad, l.dropDefaultRAGLegend} {
+			if l.total() <= l.areaH {
+				break
+			}
+			if step() {
+				l.measure(headerSize, bodySize, 12)
+			}
+		}
 		if l.padPt > 0 && l.total() <= l.areaH {
 			spreadRowSlack(l.rowPt, l.total(), l.areaH)
 		}
 		if l.total() > l.areaH {
+			l.needPt = l.total()
 			// Not even the tightest rows fit (thAreaWarning says so). The grid
 			// scales every row down by the same factor, so the rows keep their
 			// written height and tightest padding: the text then shrinks by
@@ -896,8 +976,96 @@ func (l *thLayout) fit() {
 	}
 }
 
+// trimHeader drops the padding above the header labels (thHeaderTrimTopPt).
+func (l *thLayout) trimHeader() bool {
+	l.headTrim = true
+	return true
+}
+
+// widenNameColumn gives the option column the width that keeps its names and
+// details on the fewest lines. In a template face that sets wide, a detail
+// that is one line elsewhere wraps in the standard column and every row takes
+// the extra line (rows are uniform); the criteria columns of a table that
+// short of room mostly hold a number or a status dot. Everything is measured,
+// so a width that wraps a criterion label or a text score instead is not
+// taken: the narrowest width that fits wins, else the one with the least
+// height.
+func (l *thLayout) widenNameColumn() bool {
+	base, best, bestPt := l.cols[0], l.cols[0], l.total()
+	for i := 1; i <= thNameColSteps; i++ {
+		l.setNameCol(base + float64(i)*thNameColStepPct)
+		l.measure(l.headerSize, l.bodySize, l.detailSize)
+		if l.total() < bestPt-0.5 {
+			best, bestPt = l.cols[0], l.total()
+			if bestPt <= l.areaH {
+				break
+			}
+		}
+	}
+	l.setNameCol(best)
+	return true
+}
+
+// slimTheLegend sets each legend row as a table note: one line of labels with
+// swatches of the same height.
+func (l *thLayout) slimTheLegend() bool {
+	if len(l.legend) == 0 {
+		return false
+	}
+	l.slimLegend, l.legendPt = true, thLegendSlimPt
+	return true
+}
+
+// floorRowPad takes the rows to the table's own padding floor.
+func (l *thLayout) floorRowPad() bool {
+	l.padPt = thRowPadFloorPt
+	return true
+}
+
+// inlineTag sets the highlight tag beside the option name instead of on a
+// line of its own, when every tagged name holds it on one line: the tagged
+// rows are then as tall as the others.
+func (l *thLayout) inlineTag() bool {
+	if strings.TrimSpace(l.v.HighlightLabel) == "" || len(l.hlRows) == 0 {
+		return false
+	}
+	for i, o := range l.v.Options {
+		if !l.hlRows[i] {
+			continue
+		}
+		joined := sizedPara{text: o.Name + thTagSep + l.v.HighlightLabel, sizePt: l.bodySize, bold: true}
+		if paragraphLines(l.ctx, joined, l.colW(0)-6) > 1 {
+			return false
+		}
+	}
+	l.tagInline = true
+	return true
+}
+
+// dropDefaultRAGLegend removes the RAG legend row from a table whose author
+// neither asked for a legend nor worded it: "Green / Amber / Red" beside
+// three dots of those colours says nothing the cells do not, and it is the
+// one thing on the table that can go without a word being lost. A worded
+// legend (legend_labels_rag) or show_legend: true keeps its row.
+func (l *thLayout) dropDefaultRAGLegend() bool {
+	if l.v.ShowLegend != nil || len(l.v.LegendLabelsRAG) == 3 {
+		return false
+	}
+	var kept []string
+	for _, kind := range l.legend {
+		if kind != thScaleRAG {
+			kept = append(kept, kind)
+		}
+	}
+	if len(kept) == len(l.legend) {
+		return false
+	}
+	l.setLegend(kept)
+	return true
+}
+
 // reserveLegend sizes the legend rows of an over-full table so the grid's
-// proportional scale-down leaves each its nested row (thLegendCompactPt); a
+// proportional scale-down leaves each its nested row (legendFloorPt); a
 // legend scaled below it shrinks its labels to a few points
 // (go-slide-creator-z0up). A table so over-full that the reserve would pass
 // the generous thLegendPt keeps the estimated rows and that reserve instead.
@@ -907,14 +1075,16 @@ func (l *thLayout) reserveLegend(headerSize, bodySize float64) {
 		return
 	}
 	rest := l.total() - n*l.legendPt
-	if room := l.areaH - n*thLegendCompactPt; room > 0 {
-		if reserve := thLegendCompactPt * rest / room; reserve <= thLegendPt {
-			l.legendPt = math.Max(reserve, thLegendCompactPt)
+	floor := l.legendFloorPt()
+	if room := l.areaH - n*floor; room > 0 {
+		if reserve := floor * rest / room; reserve <= thLegendPt {
+			l.legendPt = math.Max(reserve, floor)
 			l.measure(headerSize, bodySize, 12)
 			return
 		}
 	}
 	l.tight, l.legendPt, l.padPt = false, thLegendPt, 0
+	l.headTrim, l.slimLegend, l.tagInline = false, false, false
 	l.measure(headerSize, bodySize, 12)
 }
 
@@ -948,7 +1118,7 @@ func (p *tableHighlight) Expand(ctx ExpandContext, values, overrides any, cellOv
 	for _, kind := range l.legend {
 		rows = append(rows, jsonschema.GridRowInput{
 			MinHeight: l.legendPt, MaxHeight: l.legendPt,
-			Cells: []*jsonschema.GridCellInput{thLegendCell(ctx, v, kind, l.symbolInk, ovr.RAGColors, len(l.cols))},
+			Cells: []*jsonschema.GridCellInput{thLegendCell(ctx, v, kind, l.symbolInk, ovr.RAGColors, len(l.cols), l.slimLegend)},
 		})
 	}
 
@@ -1001,14 +1171,18 @@ func (l *thLayout) headerCells() []*jsonschema.GridCellInput {
 	tones := l.tones()
 	ink := readableTextOn(l.ctx, tones.header, "dk1")
 	cells := make([]*jsonschema.GridCellInput, 0, len(l.cols))
-	cells = append(cells, thTextCellAnchored(tones.header, ink, "l", "b", l.padPt,
+	topPt := l.padPt
+	if l.headTrim {
+		topPt = thHeaderTrimTopPt
+	}
+	cells = append(cells, thTextCellInsets(tones.header, ink, "l", "b", topPt, l.padPt,
 		[]chartInsightsParagraph{{Content: l.corner, Size: l.headerSize, Bold: true}}))
 	for j, c := range l.v.Criteria {
 		colInk := ink
 		if j == l.hlCol {
 			colInk = thTagInk(l.ctx, l.accent, tones.header)
 		}
-		cells = append(cells, thTextCellAnchored(tones.header, colInk, "ctr", "b", l.padPt,
+		cells = append(cells, thTextCellInsets(tones.header, colInk, "ctr", "b", topPt, l.padPt,
 			[]chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(c.Label), Size: l.headerSize, Bold: true}}))
 	}
 	// The header row is one line of sibling labels and keeps the header size.
@@ -1054,11 +1228,18 @@ func (l *thLayout) optionCells(i int, cellOverrides map[int]any) []*jsonschema.G
 // and, on the highlighted row, the highlight tag.
 func (l *thLayout) nameParas(i int, nameInk string, rowTone fillTone) []chartInsightsParagraph {
 	o := l.v.Options[i]
+	tagged := l.hlRows[i] && l.v.HighlightLabel != ""
 	paras := []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(o.Name), Size: l.bodySize, Bold: true, Color: nameInk}}
+	if tagged && l.tagInline {
+		// One line, one ink: the name stays bold and the tag follows it in
+		// the regular weight (a paragraph carries one colour; the row's tint
+		// and accent bar already mark it).
+		paras[0].Content, paras[0].Bold = "<b>"+paras[0].Content+"</b>"+thTagSep+l.v.HighlightLabel, false
+	}
 	if o.Detail != "" {
 		paras = append(paras, chartInsightsParagraph{Content: pptx.ConvertMarkdownEmphasis(o.Detail), Size: l.detailSize, Color: nameInk})
 	}
-	if l.hlRows[i] && l.v.HighlightLabel != "" {
+	if tagged && !l.tagInline {
 		paras = append(paras, chartInsightsParagraph{Content: l.v.HighlightLabel, Size: l.detailSize, Bold: true, Color: thTagInk(l.ctx, l.accent, rowTone)})
 	}
 	return paras
@@ -1091,6 +1272,12 @@ func thTextCell(tone fillTone, ink, align string, padPt float64, paras []chartIn
 // labels sit on the rule under them ("b"). padPt, when set, is the cell's top
 // and bottom text margin (thLayout.padPt).
 func thTextCellAnchored(tone fillTone, ink, align, anchor string, padPt float64, paras []chartInsightsParagraph) *jsonschema.GridCellInput {
+	return thTextCellInsets(tone, ink, align, anchor, padPt, padPt, paras)
+}
+
+// thTextCellInsets is thTextCellAnchored with separate top and bottom text
+// margins; bottomPt 0 keeps the uniform margin on both.
+func thTextCellInsets(tone fillTone, ink, align, anchor string, topPt, bottomPt float64, paras []chartInsightsParagraph) *jsonschema.GridCellInput {
 	for i := range paras {
 		if paras[i].Color == "" {
 			paras[i].Color = ink
@@ -1098,7 +1285,7 @@ func thTextCellAnchored(tone fillTone, ink, align, anchor string, padPt float64,
 		paras[i].Align = align
 	}
 	text := chartInsightsText{Paragraphs: paras, Align: align, VerticalAlign: anchor}
-	if top, bottom := rowPadInsets(padPt, 0); top != nil {
+	if top, bottom := rowPadInsets(bottomPt, topPt-bottomPt); top != nil {
 		text.InsetTop, text.InsetBottom = *top, *bottom
 	}
 	textJSON, _ := json.Marshal(text)
@@ -1193,7 +1380,11 @@ func thLegendKinds(v *TableHighlightValues) []string {
 
 // thLegendCell builds the legend row: a nested grid of [symbol, label] pairs
 // for high / mid / low, spanning the whole table width.
-func thLegendCell(ctx ExpandContext, v *TableHighlightValues, kind string, symbolInk string, ragColors map[string]string, span int) *jsonschema.GridCellInput {
+func thLegendCell(ctx ExpandContext, v *TableHighlightValues, kind string, symbolInk string, ragColors map[string]string, span int, slim bool) *jsonschema.GridCellInput {
+	rowPt, padPt := thLegendRowPt, 0.0
+	if slim {
+		rowPt, padPt = thLegendSlimRowPt, thLegendSlimPadPt
+	}
 	labels := thLegendLabelsFor(v, kind)
 	samples := []thNormalizedScore{{kind: thScaleHarvey, level: 4}, {kind: thScaleHarvey, level: 2}, {kind: thScaleHarvey, level: 0}}
 	if kind == thScaleRAG {
@@ -1224,6 +1415,8 @@ func thLegendCell(ctx ExpandContext, v *TableHighlightValues, kind string, symbo
 			Paragraphs:    []chartInsightsParagraph{{Content: labels[i], Size: scaleBodyPt, Color: "dk1", Align: "l"}},
 			Align:         "l",
 			VerticalAlign: "ctr",
+			InsetTop:      padPt,
+			InsetBottom:   padPt,
 		})
 		cells = append(cells, &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`), Text: textJSON}})
 		cols = append(cols, thLegendSwatchPct, labelPct)
@@ -1245,7 +1438,7 @@ func thLegendCell(ctx ExpandContext, v *TableHighlightValues, kind string, symbo
 			// Without an explicit height the nested row collapsed to ~10pt
 			// inside its 32pt cell and the labels autofit down to ~2pt
 			// (go-slide-creator-z0up).
-			Rows: []jsonschema.GridRowInput{{MinHeight: thLegendRowPt, MaxHeight: thLegendRowPt, Cells: cells}},
+			Rows: []jsonschema.GridRowInput{{MinHeight: rowPt, MaxHeight: rowPt, Cells: cells}},
 		},
 	}
 }
