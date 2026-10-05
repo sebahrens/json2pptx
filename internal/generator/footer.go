@@ -607,9 +607,19 @@ func removeDuplicateFooterBrandMark(slide *slideXML, leftText string, slideHeigh
 // Returns positions for keys "type:dt", "type:ftr", "type:sldNum".
 // If the master does not define a date anchor, synthesize one from its footer
 // slot (or the default band). A partial set must not silently drop LeftText.
+// A date anchor parked wholly outside the slide is replaced by the visible
+// footer slot in the same way.
 // Positions are clamped to ensure they remain within the visible slide area.
 // slideHeight is the actual slide height in EMU (0 = use 16:9 default).
 func resolveFooterPositions(masterPositions map[string]*transformXML, slideHeight int64) map[string]*transformXML {
+	return resolveFooterPositionsOnSlide(masterPositions, 0, slideHeight)
+}
+
+// resolveFooterPositionsOnSlide is resolveFooterPositions for a slide whose
+// width is known, so a placeholder parked beyond the right edge is recognised
+// as hidden too. slideWidth 0 means unknown: only the other three edges are
+// tested.
+func resolveFooterPositionsOnSlide(masterPositions map[string]*transformXML, slideWidth, slideHeight int64) map[string]*transformXML {
 	if slideHeight <= 0 {
 		slideHeight = defaultSlideHeightEMU
 	}
@@ -637,6 +647,17 @@ func resolveFooterPositions(masterPositions map[string]*transformXML, slideHeigh
 		} else {
 			positions["type:dt"] = computeDefaultFooterPositions(slideHeight)["type:dt"]
 		}
+	} else if ftr := positions["type:ftr"]; ftr != nil &&
+		footerSlotOffSlide(positions["type:dt"], slideWidth, slideHeight) &&
+		!footerSlotOffSlide(ftr, slideWidth, slideHeight) {
+		// A dt parked outside the slide is a hidden date (go-slide-creator-tvy9q):
+		// its x says nothing about where footer text belongs, and anchoring on
+		// it drew the line in a 3in box wherever the designer happened to park
+		// it. The visible footer slot is the anchor, as for a template with no
+		// dt at all. With no visible ftr the dt is kept and clamped into view
+		// below, so the left text is never dropped.
+		copy := *ftr
+		positions["type:dt"] = &copy
 	}
 
 	// Normalize vertical alignment: all footer elements must share the same Y and CY
@@ -660,6 +681,21 @@ func resolveFooterPositions(masterPositions map[string]*transformXML, slideHeigh
 	}
 
 	return positions
+}
+
+// footerSlotOffSlide reports whether a footer placeholder lies wholly outside
+// the slide on either axis, which is how a template hides one. A placeholder
+// that only overhangs an edge is visible and is clamped instead. slideWidth 0
+// leaves the right edge untested.
+func footerSlotOffSlide(pos *transformXML, slideWidth, slideHeight int64) bool {
+	if pos == nil {
+		return false
+	}
+	if slideHeight <= 0 {
+		slideHeight = defaultSlideHeightEMU
+	}
+	return pos.Offset.Y >= slideHeight || pos.Offset.Y+pos.Extent.CY <= 0 ||
+		pos.Offset.X+pos.Extent.CX <= 0 || (slideWidth > 0 && pos.Offset.X >= slideWidth)
 }
 
 // normalizeFooterVerticalPositions ensures all footer elements share the same Y and CY
