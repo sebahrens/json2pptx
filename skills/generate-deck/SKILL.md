@@ -119,8 +119,9 @@ Examples: [semantic specs](../../examples/semantic/),
 
 ## Operational boundaries
 
-Start the deck server with `json2pptx mcp` (profiles: TOOLS.md). `list_templates`
-`read_only: true` avoids preview-cache writes. Template precedence:
+Start the deck server with `json2pptx mcp` (profiles: TOOLS.md; `--tools all`
+lists every tool, `get_capabilities().mcp_tools_available` the callable ones).
+`list_templates` `read_only: true` skips cache writes. Template precedence:
 DECKSPEC.md. A CLI command that answers in JSON prints exactly one JSON
 document on stdout, also when it fails (`{subcommand, ok:false,
 findings:[{code, message}]}`; a failed `generate` reports the findings

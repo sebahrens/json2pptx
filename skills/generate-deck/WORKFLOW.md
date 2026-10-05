@@ -23,8 +23,8 @@ applies to both paths.
 3. **Template.** `list_templates` gives names (`fields:"names"` alone is
    enough to pick one), `canonical_layout_ids` and `color_roles`. Set
    `meta.template`; leave `meta.accent_strategy` at `primary` unless Phase 2
-   → Accent monotony says otherwise. Fill with `color_roles.primary_fill`
-   (not always `accent1`); text on an accent fill uses
+   → Accent monotony says otherwise. Fill with `color_roles.primary_fill`;
+   text on an accent fill uses
    `color_roles.ink_on_accent[accentN].ink`. With `fields="full"`,
    `accent_usage_guide` gives each accent's role (with
    `accent_usage_guide_derived: true` keep to `primary_fill` and the
