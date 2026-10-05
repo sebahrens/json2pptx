@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/semantic"
 )
 
@@ -436,6 +437,7 @@ func shapeRenderDiagnostics(diags []semanticDiagnostic, doc *specDoc) {
 		// Compiled-deck locators in the evidence and the edit's params move to
 		// debug; the maps are shared with the source diagnostic, so copy first.
 		d.debug = nil
+		readabilityEvidence(d)
 		if len(d.Evidence) > 0 {
 			d.Evidence = copyFacts(d.Evidence)
 			d.debug = doc.moveInternalPaths(d.Evidence, d.debug)
@@ -458,6 +460,28 @@ func shapeRenderDiagnostics(diags []semanticDiagnostic, doc *specDoc) {
 				s.pointer = doc.address(s.Path, nil).Path
 			}
 		}
+	}
+}
+
+// readabilityEvidence gives a render's static readability refusal the facts
+// validate_deck_spec reports for it: the size measured, the floor and the text
+// (go-slide-creator-llxzd). Only the generator's own refusal carried them, so
+// a render answered with one finding that said what was too small and others
+// that did not.
+func readabilityEvidence(d *semanticDiagnostic) {
+	if d.Code != patterns.ErrCodeTextBelowReadableMin || d.diag == nil {
+		return
+	}
+	copied := false
+	for _, k := range memberFactKeys {
+		v, ok := d.diag.Details[k]
+		if _, has := d.Evidence[k]; has || !ok || v == nil {
+			continue
+		}
+		if !copied {
+			d.Evidence, copied = copyFacts(d.Evidence), true
+		}
+		d.Evidence[k] = v
 	}
 }
 

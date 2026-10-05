@@ -922,7 +922,7 @@ func mergeRefusalEvidence(details map[string]any, d semanticDiagnostic) map[stri
 	if d.Action != "" {
 		out["action"] = d.Action
 	}
-	for _, k := range []string{"measured", "allowed"} {
+	for _, k := range memberFactKeys {
 		if v, ok := d.Evidence[k]; ok {
 			if _, has := out[k]; !has {
 				out[k] = v

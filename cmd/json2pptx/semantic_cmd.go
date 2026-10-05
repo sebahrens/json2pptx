@@ -1324,7 +1324,10 @@ func narrowWrapBoxPaths(d *semanticDiagnostic, ir *semantic.DeckIR, f patterns.F
 // source map cannot place: text in a pattern-generated grid cell, or in a
 // rendered shape whose id is allocated after compilation.
 func resolveLateBoundSemanticPath(d *semanticDiagnostic, ir *semantic.DeckIR, f patterns.FitFinding) {
-	if d.SemanticPath != "" || ir == nil || f.Code != patterns.ErrCodeTextBelowReadableMin || f.Fix == nil {
+	if ir == nil || f.Code != patterns.ErrCodeTextBelowReadableMin || f.Fix == nil {
+		return
+	}
+	if d.SemanticPath != "" && !rawPayloadRoot(ir, f.Path, d.SemanticPath) {
 		return
 	}
 	if !strings.Contains(f.Path, "/rendered_shapes/") {
@@ -1334,6 +1337,20 @@ func resolveLateBoundSemanticPath(d *semanticDiagnostic, ir *semantic.DeckIR, f 
 		return
 	}
 	*d = renderedShapeSemanticPath(*d, ir, f)
+}
+
+// rawPayloadRoot reports whether path is no more than the payload of the
+// raw_json2pptx slide rawPath is on. The source map links every pointer of
+// such a slide to "slides[N].slide", so a cell of the grid its pattern expands
+// to came back as the whole payload: nothing said which value to shorten
+// (go-slide-creator-llxzd).
+func rawPayloadRoot(ir *semantic.DeckIR, rawPath, path string) bool {
+	idx := slidepath.SlideIndex(rawPath)
+	if idx < 0 || idx >= len(ir.Slides) || ir.Slides[idx].Kind != semantic.KindRawJSON2pptx {
+		return false
+	}
+	source := ir.Slides[idx].SourcePath
+	return source != "" && (path == source || path == source+".slide" || path == source+".slide.pattern")
 }
 
 func renderedShapeSemanticPath(d semanticDiagnostic, ir *semantic.DeckIR, f patterns.FitFinding) semanticDiagnostic {

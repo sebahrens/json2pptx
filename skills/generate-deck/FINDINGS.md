@@ -1,8 +1,7 @@
 # Findings and repair decisions
 
 Use this guide when a deck tool returns findings. Do **not** load a static
-finding-code catalog: call `describe_finding` for an unfamiliar code (summary,
-severity, when it blocks, remediation steps, examples, related codes). Deeper
+finding-code catalog: call `describe_finding` for an unfamiliar code. Deeper
 rationale: [docs/FIT_FINDINGS.md](../../docs/FIT_FINDINGS.md).
 
 ## DeckSpec findings (`validate_deck_spec`, `render_deck_spec`)
@@ -11,11 +10,14 @@ Each finding has `code`, `severity`, `blocking` (true exactly when severity
 is `error`), `path` — a JSON Pointer (0-based) into the spec you sent, the
 string a patch takes — `missing_path` when the field does not exist yet
 (`path` is then its parent) and `slide_number` (1-based; "slide N" in any
-message is that number, "slide index N" is 0-based). Ignore `debug` (compiled-deck locators).
+message is that number, "slide index N" is 0-based). Ignore `debug`.
 
 - **One entry per cause.** `occurrences` + `paths` stand for several
-  findings: fix every pointer; `evidence.measured` / `allowed` and a budget
-  in `params` are lists in that order when they differ. `symptoms[]` (codes
+  findings: fix every pointer; `evidence.measured` / `allowed` / `text` and a
+  budget in `params` are lists in that order when they differ.
+  `TEXT_BELOW_READABLE_MIN` is per slide, `evidence.text` the text measured;
+  on a `raw_json2pptx` slide `path` is the pattern value
+  (`…/slide/pattern/values/…`). `symptoms[]` (codes
   only) are consequences of the entry — fix the entry, not the symptoms.
 - **One remedy.** `message` says what to do in the fields of your spec,
   `remediation.primary` is the action — `apply_patch`, `shorten_text`
@@ -56,7 +58,7 @@ message is that number, "slide index N" is 0-based). Ignore `debug` (compiled-de
 
 ## Raw-deck findings
 
-Each finding has stable machine fields `{path, code, severity, action, fix}`;
+Each finding has `{path, code, severity, action, fix}`;
 `fix` has `kind` and `params`. `path` is a JSON Pointer that resolves in the
 deck you sent (`/template`, `/slides/1/content/1/table_value/rows/0/2/conditional/rule`,
 `/defaults/table_style/style_id` for a default a table adopted,
@@ -101,7 +103,7 @@ max_topic_title_pct; `NO_EXECUTIVE_SUMMARY` (6+ slides) and
 `SLIDE_TEXT_DENSE` (>6 bullets, >80 words, bullet over 2 lines) costs score.
 
 On raw decks, `propose_repairs` translates findings to candidate directives
-and separates executable `directives` from `advisory[]`. The authoritative
+and separates executable `directives` from `advisory[]`. The
 executable and advisory vocabularies are
 `get_capabilities().vocabularies.repair_fix_kinds` (params in
 `repair_fix_kind_params`) and `advisory_fix_kinds`. `repair_slide` applies
@@ -120,7 +122,7 @@ that pattern's minimum counts.
 `generate` give one verdict: what one refuses all refuse, with the same code
 at the same path, before a file is written. `INVALID_SLIDE` names the field (`/slides/N/overlays/K`,
 `…/content/M/link`, `…/source_link`); a chart or diagram that cannot render
-is `diagram_render_failed`, never a deck with a "Data unavailable" box.
+is `diagram_render_failed`.
 
 A generation refusal for unreadable or lost text (`TEXT_BELOW_READABLE_MIN`
 et al.) names the slide (1-based), its pattern or diagram and the authored
