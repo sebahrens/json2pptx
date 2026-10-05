@@ -156,8 +156,10 @@ func TestResolveChromeFrameAcrossAspectRatios(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := ResolveChromeFrame(nil, nil, tc.w, tc.h, true, true)
-			if ratio := float64(f.Takeaway.CY) / float64(tc.h); ratio < 0.07 || ratio > 0.08 {
-				t.Errorf("takeaway band uses %.1f%% of slide height, want 7–8%%", ratio*100)
+			// A bare hasTakeaway reserves the one-line band: the two-line
+			// band (7.5% of the slide height) less one 17pt line.
+			if want := max(tc.h*750/10000, 300000) - 17*12700; f.Takeaway.CY != want {
+				t.Errorf("one-line takeaway band = %.1fpt, want %.1fpt", float64(f.Takeaway.CY)/12700, float64(want)/12700)
 			}
 			for name, r := range map[string]ChromeRect{"content": f.Content, "takeaway": f.Takeaway, "source": f.Source} {
 				if r.X < 0 || r.Y < 0 || r.CX < 0 || r.CY < 0 || r.X+r.CX > tc.w || r.Y+r.CY > tc.h {
@@ -317,4 +319,99 @@ func findBody(l *types.LayoutMetadata) *types.PlaceholderInfo {
 
 func rectsOverlap(a, b ChromeRect) bool {
 	return a.X < b.X+b.CX && b.X < a.X+a.CX && a.Y < b.Y+b.CY && b.Y < a.Y+a.CY
+}
+
+// TestChromeFrameReservesTheTakeawayItsTextNeeds pins go-slide-creator-me53q:
+// the frame used to reserve a 40.5pt (two-line) band under every takeaway, so
+// a one-line takeaway left 17pt of empty band and every pattern under it lost
+// 17pt of content height. The band is now reserved by the takeaway's measured
+// line count at the layout's real band width, on every bundled template.
+func TestChromeFrameReservesTheTakeawayItsTextNeeds(t *testing.T) {
+	const (
+		oneLine = "Margin recovers in the second half"
+		twoLine = "Margin recovers in the second half as the pricing reset lands in the three largest regions, the freight contract reprices and the two loss-making plants close on schedule in the autumn"
+	)
+	matches, err := filepath.Glob(filepath.Join("..", "..", "templates", "*.pptx"))
+	if err != nil || len(matches) == 0 {
+		t.Fatalf("no templates: %v", err)
+	}
+	for _, path := range matches {
+		name := strings.TrimSuffix(filepath.Base(path), ".pptx")
+		t.Run(name, func(t *testing.T) {
+			r, err := OpenTemplate(path)
+			if err != nil {
+				t.Fatalf("OpenTemplate: %v", err)
+			}
+			defer func() { _ = r.Close() }()
+			p, err := BuildProfile(r)
+			if err != nil {
+				t.Fatalf("BuildProfile: %v", err)
+			}
+			ref := p.ReferenceLayout()
+			if ref == nil {
+				t.Skip("no One Content layout")
+			}
+			if ref.BodyFont == "" {
+				t.Errorf("parsed layout carries no body font; the takeaway would be measured in the Arial fallback")
+			}
+			none := p.ChromeFrameForTakeaway(ref.ID, "", true)
+			one := p.ChromeFrameForTakeaway(ref.ID, oneLine, true)
+			two := p.ChromeFrameForTakeaway(ref.ID, twoLine, true)
+			if !none.Takeaway.IsZero() {
+				t.Errorf("no takeaway reserved a band: %+v", none.Takeaway)
+			}
+			// Two lines keep the band every takeaway used to get.
+			if want := max(p.SlideHeight*750/10000, 300000); two.Takeaway.CY != want {
+				t.Errorf("two-line takeaway band = %.1fpt, want %.1fpt", float64(two.Takeaway.CY)/12700, float64(want)/12700)
+			}
+			if one.Takeaway.CY < TakeawayTextHeightEMU(1) {
+				t.Errorf("one-line takeaway band = %.1fpt, under the 23pt its text needs", float64(one.Takeaway.CY)/12700)
+			}
+			if gain := float64(one.Content.CY-two.Content.CY) / 12700; gain != 17 {
+				t.Errorf("a one-line takeaway leaves the content %.1fpt more than a two-line one, want 17pt", gain)
+			}
+			for label, f := range map[string]ChromeFrame{"one-line": one, "two-line": two} {
+				if gap := f.Source.Y - f.Takeaway.Bottom(); gap < 12*12700 {
+					t.Errorf("%s: takeaway sits %.1fpt above the source line, want at least 12pt", label, float64(gap)/12700)
+				}
+				if gap := f.Takeaway.Y - f.Content.Bottom(); gap < 16*12700 {
+					t.Errorf("%s: content ends %.1fpt above the takeaway, want at least 16pt", label, float64(gap)/12700)
+				}
+			}
+			// The bare frame and the text frame agree for a one-line takeaway.
+			if bare := p.ChromeFrame(ref.ID, true, true); bare != one {
+				t.Errorf("ChromeFrame(true) = %+v, ChromeFrameForTakeaway(one line) = %+v", bare, one)
+			}
+			// A third line never grows the band past two lines: the takeaway
+			// fit finding refuses it instead.
+			if three := p.ChromeFrameForTakeaway(ref.ID, twoLine+" "+twoLine, true); three.Takeaway != two.Takeaway {
+				t.Errorf("three-line takeaway band %+v, want the two-line band %+v", three.Takeaway, two.Takeaway)
+			}
+		})
+	}
+}
+
+// TestTakeawayLinesReservesTheSecondLineNearTheEdge: a takeaway within 4% of
+// the line end reserves two lines, so a slightly wider renderer font cannot
+// wrap it into a band that was reserved for one.
+func TestTakeawayLinesReservesTheSecondLineNearTheEdge(t *testing.T) {
+	const band = int64(600 * 12700)
+	text := "Margin"
+	for TakeawayLines(text+" recovers", "Arial", band, 1) == 1 {
+		text += " recovers"
+	}
+	// text is the longest run of words that still fits one line as drawn.
+	if got := TakeawayLines(text, "Arial", band, 1); got != 1 {
+		t.Fatalf("setup: %q measures %d lines", text, got)
+	}
+	if got := TakeawayLines(text, "Arial", int64(float64(band)*0.5), takeawayWrapSlack); got < 2 {
+		t.Errorf("half-width band: %d lines, want a wrap", got)
+	}
+	const h = int64(6858000)
+	if one, two, five := TakeawayBandHeightEMU(1, h), TakeawayBandHeightEMU(2, h), TakeawayBandHeightEMU(5, h); one != 298450 || two != 514350 || five != two {
+		t.Errorf("band heights on a 7.5in slide = %d / %d / %d EMU, want 23.5pt / 40.5pt / 40.5pt", one, two, five)
+	}
+	if TakeawayTextHeightEMU(1) != 23*12700 || TakeawayTextHeightEMU(2) != 40*12700 {
+		t.Errorf("text heights = %d / %d EMU, want 23pt / 40pt", TakeawayTextHeightEMU(1), TakeawayTextHeightEMU(2))
+	}
 }

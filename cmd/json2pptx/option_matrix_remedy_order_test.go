@@ -50,9 +50,11 @@ func statusBoardSpec() map[string]any {
 
 // overfullStatusBoardSpec is the status board with a sixth row and a Harvey
 // rating, whose legend names what the balls mean and stays: a few points
-// taller than midnight-blue's content area under a takeaway and a source line
-// with everything but its text given up (go-slide-creator-dwha2 made the
-// five-row board itself fit).
+// taller than blue-corporate's content area under a takeaway and a source
+// line with everything but its text given up (go-slide-creator-dwha2 made the
+// five-row board itself fit; the one-line takeaway band of
+// go-slide-creator-me53q left 17pt more, and on the five templates with
+// midnight-blue's 271pt area the six-row board now fits too).
 func overfullStatusBoardSpec() map[string]any {
 	spec := statusBoardSpec()
 	board := spec["slides"].([]any)[1].(map[string]any)
@@ -69,7 +71,7 @@ func overfullStatusBoardSpec() map[string]any {
 
 func TestOptionMatrixRemediesKeepTheVisualAndTheTakeaway(t *testing.T) {
 	mc := handleTestConfig(t)
-	res, err := mc.handleValidateDeckSpec(context.Background(), makeRequest(map[string]any{"spec": overfullStatusBoardSpec(), "template": "midnight-blue"}))
+	res, err := mc.handleValidateDeckSpec(context.Background(), makeRequest(map[string]any{"spec": overfullStatusBoardSpec(), "template": "blue-corporate"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +120,7 @@ func TestOptionMatrixRemediesKeepTheVisualAndTheTakeaway(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Fatal("a six-row board with details, a Harvey legend, a takeaway and a source line fits midnight-blue: nothing was remedied")
+		t.Fatal("a six-row board with details, a Harvey legend, a takeaway and a source line fits blue-corporate: nothing was remedied")
 	}
 }
 

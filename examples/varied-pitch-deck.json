@@ -24,11 +24,11 @@
       "pattern": {
         "name": "icon-row",
         "values": [
-          {"icon": "target", "caption": "Opportunity"},
-          {"icon": "trending-up", "caption": "Traction"},
-          {"icon": "tool", "caption": "Product"},
-          {"icon": "world", "caption": "Go-to-Market"},
-          {"icon": "currency-dollar", "caption": "The Ask"}
+          {"icon": "target", "caption": "Opportunity", "description": "An $18B market by 2028"},
+          {"icon": "trending-up", "caption": "Traction", "description": "3.2x revenue growth"},
+          {"icon": "tool", "caption": "Product", "description": "Three products, one platform"},
+          {"icon": "world", "caption": "Go-to-Market", "description": "Land with teams, expand"},
+          {"icon": "currency-dollar", "caption": "The Ask", "description": "$25M Series B"}
         ]
       }
     },
@@ -88,11 +88,11 @@
         "name": "process-flow",
         "values": {
           "steps": [
-            {"label": "Ingest", "type": "step"},
-            {"label": "Transform", "type": "step"},
-            {"label": "Validate", "type": "decision"},
-            {"label": "Analyze", "type": "step"},
-            {"label": "Alert", "type": "step"}
+            {"label": "Ingest events from 40 connectors in real time", "type": "step"},
+            {"label": "Transform and join streams with SQL, no cluster to run", "type": "step"},
+            {"label": "Validate every record against its schema contract", "type": "step", "highlight": true},
+            {"label": "Analyze in dashboards that refresh in under a second", "type": "step"},
+            {"label": "Alert the owning team when a metric leaves its band", "type": "step"}
           ]
         }
       }
@@ -106,11 +106,14 @@
         "name": "card-grid",
         "values": {
           "columns": 3,
-          "rows": 1,
+          "rows": 2,
           "cells": [
             {"header": "Acme Stream", "body": "Real-time event processing with sub-second latency"},
             {"header": "Acme Insight", "body": "AI-powered dashboards that build themselves"},
-            {"header": "Acme Guard", "body": "Anomaly detection and automated alerting"}
+            {"header": "Acme Guard", "body": "Anomaly detection and automated alerting"},
+            {"header": "For data engineers", "body": "Replaces three batch pipelines per team on average"},
+            {"header": "For analysts", "body": "A first dashboard in minutes instead of a two-week request"},
+            {"header": "For operations", "body": "Pages the owner before a customer notices the incident"}
           ]
         }
       }

@@ -86,7 +86,7 @@ func TestGeneratorChromeFrameUsesTemplateProfile(t *testing.T) {
 	if ctx.profile == nil {
 		t.Fatal("expected template profile to load")
 	}
-	frame := ctx.chromeFrameForLayout("slideLayout2", true, true)
+	frame := ctx.chromeFrameForLayout("slideLayout2", "Takeaway", true)
 	if frame.Basis != template.ChromeBasisLayout {
 		t.Fatalf("basis = %q, want layout", frame.Basis)
 	}
@@ -106,7 +106,7 @@ func TestGeneratorChromeFrameUsesTemplateProfile(t *testing.T) {
 
 	// Without a profile the frame falls back to slide-relative margins.
 	bare := &singlePassContext{}
-	if got := bare.chromeFrameForLayout("slideLayout2", true, false); got.Basis != template.ChromeBasisSlideFallback {
+	if got := bare.chromeFrameForLayout("slideLayout2", "Takeaway", false); got.Basis != template.ChromeBasisSlideFallback {
 		t.Errorf("no-profile basis = %q, want slide_fallback", got.Basis)
 	}
 }

@@ -145,6 +145,16 @@ type Grid struct {
 	// centred in it. Callers set it for a slide's own KPI strip, whose
 	// dividers then span the taller band (go-slide-creator-i7yju).
 	ComposeGrow bool
+	// ComposeBand lets the composition policy grow the rows of a sparse block
+	// until less than a third of the area is left under it (compose.go
+	// bandScaled), at most composeBandMaxScale times their height. Callers
+	// set it for a slide's own single-band flow (go-slide-creator-kgfs1).
+	ComposeBand bool
+	// ComposeBandSquare lets a band-scaled grid's text boxes grow until the
+	// narrowest is a 4:5 portrait card (composeBandCardAspect) instead of
+	// stopping at composeBandMaxScale: a step box that holds a sentence
+	// reads as a card up to there, and as a slab past it.
+	ComposeBandSquare bool
 	// DefaultGapPt is the column / row gap (points) used when ColGap / RowGap
 	// are unset: the template grid's gutter_pt (ContentZone.GutterPt), else
 	// the built-in 8pt (go-slide-creator-5ms8c).

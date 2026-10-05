@@ -12,8 +12,9 @@ import (
 // footer and any takeaway / source band (go-slide-creator-ni71s). A strip
 // either writes every cell at or above the 12pt floor, or reports a measured
 // BODY_TOO_LONG — never a silent shrink that generation then refuses. The
-// areas are the shipped content zones with no band, a takeaway band, and a
-// takeaway + source stack.
+// areas are the shipped content zones with no band, a two-line takeaway
+// band, and that band over a source line (a one-line takeaway leaves 17pt
+// more, go-slide-creator-me53q).
 func TestNumberedStepRowsReadableOrReportedUnderChromeBands(t *testing.T) {
 	areas := []struct {
 		name string

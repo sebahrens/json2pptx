@@ -48,9 +48,9 @@ func (ir *iconRow) Taxonomy() PatternTaxonomy {
 
 func (ir *iconRow) ExemplarValues() any {
 	v := IconRowValues{
-		{Icon: &IconRef{Name: "rocket"}, Caption: "Launch"},
-		{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
-		{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
+		{Icon: &IconRef{Name: "rocket"}, Caption: "Launch", Description: "Live in two pilot markets by June"},
+		{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth", Description: "Twelve markets by year end"},
+		{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue", Description: "Break-even in the fourth quarter"},
 	}
 	return &v
 }

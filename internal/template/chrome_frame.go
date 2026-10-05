@@ -1,9 +1,13 @@
 package template
 
 import (
+	"math"
 	"sort"
+	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -81,18 +85,125 @@ const sourceBandClearance int64 = 12 * 12700
 const minChromeContentRatio = 20
 
 // Takeaway band air, in EMU: 12pt to the source line / footer below and 16pt
-// to the content above (patterns.TakeawayGapBelowPt / TakeawayGapAbovePt;
-// the template package cannot import patterns).
+// to the content above.
 const (
-	takeawayGapBelowEMU int64 = 12 * 12700
-	takeawayGapAboveEMU int64 = 16 * 12700
+	takeawayGapBelowEMU = int64(patterns.TakeawayGapBelowPt * 12700)
+	takeawayGapAboveEMU = int64(patterns.TakeawayGapAbovePt * 12700)
 )
+
+// takeawayWrapSlack is the share of the band's text width the reservation
+// measures a takeaway against. A takeaway within 4% of the line end reserves
+// the second line: the renderer's font (a substituted face, a theme_override
+// body font) may set it a little wider than the template font measures, and a
+// second line with no band under it would run into the source line.
+const takeawayWrapSlack = 0.96
+
+// TakeawayTextHeightEMU is the height lines lines of 14pt bold takeaway text
+// take with the band's text insets: 23pt for one line, 40pt for two. It is
+// what the generator draws inside the reserved band.
+func TakeawayTextHeightEMU(lines int) int64 {
+	const safetyPt = 2.0
+	return int64(math.Ceil(float64(max(lines, 1))*patterns.TakeawaySizePt*1.2+2*patterns.TakeawayPadPt+safetyPt)) * 12700
+}
+
+// takeawayLineEMU is the height one more line of takeaway text takes: 14pt
+// at 1.2 line spacing, to the whole point.
+var takeawayLineEMU = int64(math.Ceil(patterns.TakeawaySizePt*1.2)) * 12700
+
+// TakeawayBandHeightEMU is the height the frame reserves for a takeaway of
+// lines lines on a slide slideHeight tall. Two lines (the band's maximum,
+// patterns.TakeawayMaxLines) take 7.5% of the slide height — 40.5pt on a
+// 7.5in slide, the band every takeaway had before go-slide-creator-me53q; one
+// line takes one line less, 23.5pt.
+func TakeawayBandHeightEMU(lines int, slideHeight int64) int64 {
+	if slideHeight <= 0 {
+		slideHeight = chromeDefaultSlideHeight
+	}
+	two := max(slideHeight*750/10000, 300000)
+	if lines >= patterns.TakeawayMaxLines {
+		return two
+	}
+	return two - takeawayLineEMU
+}
+
+// TakeawayTextWidthEMU is the width the takeaway text wraps at in a band
+// bandWidth wide: the band minus the accent bar and the bar-to-text inset.
+func TakeawayTextWidthEMU(bandWidth int64) int64 {
+	return bandWidth - int64((patterns.TakeawayBarPt+patterns.TakeawayTextInsetPt)*12700)
+}
+
+// TakeawayLines returns how many lines text needs as a 14pt bold takeaway in
+// a band bandWidth wide, measured in font (the template's body font; Arial
+// when empty). slack scales the text width: 1 measures the band as drawn.
+func TakeawayLines(text, font string, bandWidth int64, slack float64) int {
+	font = strings.TrimSpace(font)
+	if font == "" {
+		font = "Arial"
+	}
+	m, err := textfit.MeasureStyledRuns(textfit.StyledMeasureParams{
+		Runs:     []textfit.StyledRun{{Text: text, Bold: true}},
+		FontName: font,
+		FontPt:   patterns.TakeawaySizePt,
+		WidthEMU: int64(float64(TakeawayTextWidthEMU(bandWidth)) * slack),
+	})
+	if err != nil || m.Lines < 1 {
+		return 1
+	}
+	return m.Lines
+}
 
 // ResolveChromeFrame derives the chrome frame for a slide on layout. reference
 // supplies horizontal geometry when layout has no body/content placeholders
 // (title-only, blank, or unknown layouts) — normally the template's One Content
 // binding (see ChromeReferenceLayout). Either may be nil.
+//
+// hasTakeaway reserves a one-line takeaway band. A caller that has the
+// takeaway text uses ResolveChromeFrameForTakeaway, which reserves the band
+// the text needs.
 func ResolveChromeFrame(layout, reference *types.LayoutMetadata, slideWidth, slideHeight int64, hasTakeaway, hasSource bool) ChromeFrame {
+	lines := 0
+	if hasTakeaway {
+		lines = 1
+	}
+	return ResolveChromeFrameLines(layout, reference, slideWidth, slideHeight, lines, hasSource)
+}
+
+// ResolveChromeFrameForTakeaway is ResolveChromeFrame for a slide whose
+// takeaway text is known: the band is reserved at the height the text needs
+// at the layout's real band width — one line of 14pt bold, or two when it
+// wraps (go-slide-creator-me53q; the frame used to reserve the two-line band
+// under every takeaway, leaving 17pt of empty band under a one-line one). An
+// empty takeaway reserves no band. Preflight and generation both resolve the
+// frame here, so they reserve the same band.
+func ResolveChromeFrameForTakeaway(layout, reference *types.LayoutMetadata, slideWidth, slideHeight int64, takeaway string, hasSource bool) ChromeFrame {
+	if takeaway == "" {
+		return ResolveChromeFrameLines(layout, reference, slideWidth, slideHeight, 0, hasSource)
+	}
+	frame := ResolveChromeFrameLines(layout, reference, slideWidth, slideHeight, 1, hasSource)
+	if TakeawayLines(takeaway, FrameBodyFont(layout, reference), frame.Takeaway.CX, takeawayWrapSlack) > 1 {
+		return ResolveChromeFrameLines(layout, reference, slideWidth, slideHeight, patterns.TakeawayMaxLines, hasSource)
+	}
+	return frame
+}
+
+// FrameBodyFont is the template body font a slide's takeaway is measured in:
+// the layout's, else the reference layout's ("" when neither was parsed from
+// a template).
+func FrameBodyFont(layout, reference *types.LayoutMetadata) string {
+	if layout != nil && layout.BodyFont != "" {
+		return layout.BodyFont
+	}
+	if reference != nil {
+		return reference.BodyFont
+	}
+	return ""
+}
+
+// ResolveChromeFrameLines is ResolveChromeFrame with the takeaway band given
+// as a line count: 0 reserves none, 1 the one-line band, 2 or more the
+// two-line band.
+func ResolveChromeFrameLines(layout, reference *types.LayoutMetadata, slideWidth, slideHeight int64, takeawayLines int, hasSource bool) ChromeFrame {
+	hasTakeaway := takeawayLines > 0
 	w, h := slideWidth, slideHeight
 	if w <= 0 {
 		w = chromeDefaultSlideWidth
@@ -104,7 +215,7 @@ func ResolveChromeFrame(layout, reference *types.LayoutMetadata, slideWidth, sli
 	edgeMargin := h * 290 / 10000
 	gap := h * 70 / 10000
 	sourceH := max(h*292/10000, 160000)
-	takeawayH := max(h*750/10000, 300000)
+	takeawayH := TakeawayBandHeightEMU(takeawayLines, h)
 
 	frame := ChromeFrame{Canvas: ChromeRect{CX: w, CY: h}, Basis: ChromeBasisSlideFallback}
 

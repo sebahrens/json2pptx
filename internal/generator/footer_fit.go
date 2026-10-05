@@ -327,7 +327,7 @@ func (ctx *singlePassContext) resolveFooterLineForDeck() {
 		if spec.SkipFooter || cfg.LeftTextFor(i) == "" {
 			continue
 		}
-		positions := alignFooterWithInsetContent(ctx.getFooterPositionsForLayout(spec.LayoutID), ctx.chromeFrameForLayout(spec.LayoutID, false, false))
+		positions := alignFooterWithInsetContent(ctx.getFooterPositionsForLayout(spec.LayoutID), ctx.chromeFrameForLayout(spec.LayoutID, "", false))
 		if len(positions) == 0 {
 			continue
 		}

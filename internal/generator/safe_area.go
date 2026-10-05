@@ -47,19 +47,21 @@ func (ctx *singlePassContext) clampToTemplateGridMargin(slideNum int, bounds typ
 // chromeFrameForLayout resolves the chrome frame for a slide on layoutID from
 // the template profile. Layouts the profile does not know (synthesized
 // layouts) resolve against the profile's One Content reference layout.
-func (ctx *singlePassContext) chromeFrameForLayout(layoutID string, hasTakeaway, hasSource bool) template.ChromeFrame {
+//
+// takeaway is the slide's takeaway text ("" for none): the frame reserves the
+// band its line count needs, the same measurement preflight makes.
+func (ctx *singlePassContext) chromeFrameForLayout(layoutID, takeaway string, hasSource bool) template.ChromeFrame {
 	if ctx.profile == nil {
-		return template.ResolveChromeFrame(nil, nil, ctx.slideWidth, ctx.slideHeight, hasTakeaway, hasSource)
+		return template.ResolveChromeFrameForTakeaway(nil, nil, ctx.slideWidth, ctx.slideHeight, takeaway, hasSource)
 	}
-	return ctx.profile.ChromeFrame(layoutID, hasTakeaway, hasSource)
+	return ctx.profile.ChromeFrameForTakeaway(layoutID, takeaway, hasSource)
 }
 
 // chromeFrameForSlide resolves the chrome frame for an output slide number,
 // reserving the bands the slide actually carries.
 func (ctx *singlePassContext) chromeFrameForSlide(slideNum int) template.ChromeFrame {
-	_, hasTakeaway := ctx.slideTakeaways[slideNum]
 	_, hasSource := ctx.slideSources[slideNum]
-	return ctx.chromeFrameForLayout(ctx.slideContentMap[slideNum].LayoutID, hasTakeaway, hasSource)
+	return ctx.chromeFrameForLayout(ctx.slideContentMap[slideNum].LayoutID, ctx.slideTakeaways[slideNum], hasSource)
 }
 
 // clampBoundsToChrome applies the same reservation as

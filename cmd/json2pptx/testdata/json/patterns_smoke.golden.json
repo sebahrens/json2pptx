@@ -51,8 +51,9 @@
   },
   {
     "pattern_name": "card-grid",
-    "row_count": 1,
+    "row_count": 2,
     "cell_counts": [
+      3,
       3
     ]
   },
@@ -321,6 +322,14 @@
     "pattern_name": "kpi-inline",
     "row_count": 1,
     "cell_counts": [
+      3
+    ]
+  },
+  {
+    "pattern_name": "card-grid",
+    "row_count": 2,
+    "cell_counts": [
+      3,
       3
     ]
   },

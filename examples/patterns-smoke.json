@@ -122,11 +122,14 @@
         "name": "card-grid",
         "values": {
           "columns": 3,
-          "rows": 1,
+          "rows": 2,
           "cells": [
-            {"header": "Starter", "body": "For individuals"},
-            {"header": "Professional", "body": "For growing teams"},
-            {"header": "Enterprise", "body": "For large organizations"}
+            {"header": "Starter", "body": "For individuals: one workspace and three projects"},
+            {"header": "Professional", "body": "For growing teams: unlimited projects and shared templates"},
+            {"header": "Enterprise", "body": "For large organizations: every workspace under one contract"},
+            {"header": "Free", "body": "Community support, no single sign-on"},
+            {"header": "$24 per seat", "body": "Single sign-on and a 24-hour support response"},
+            {"header": "Custom pricing", "body": "Audit logs, data residency and a 99.9% SLA"}
           ]
         },
         "cell_overrides": {
@@ -631,12 +634,38 @@
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Retention above 120% funds growth without new spend"}
       ],
-      "pattern": {
-        "name": "kpi-inline",
-        "values": [
-          {"big": "$4.2M", "small": "ARR"},
-          {"big": "127%", "small": "Net revenue retention"},
-          {"big": "12d", "small": "Sales cycle"}
+      "compose": {
+        "direction": "vertical",
+        "segments": [
+          {
+            "size_pct": 30,
+            "pattern": {
+              "name": "kpi-inline",
+              "values": [
+                {"big": "$4.2M", "small": "ARR"},
+                {"big": "127%", "small": "Net revenue retention"},
+                {"big": "12d", "small": "Sales cycle"}
+              ]
+            }
+          },
+          {
+            "size_pct": 70,
+            "pattern": {
+              "name": "card-grid",
+              "values": {
+                "columns": 3,
+                "rows": 2,
+                "cells": [
+                  {"header": "Expansion", "body": "Customers add 27% to their base a year"},
+                  {"header": "Churn", "body": "Logo churn stays under 4% a year"},
+                  {"header": "Efficiency", "body": "Acquisition cost pays back in six months"},
+                  {"header": "Pricing", "body": "List prices rose 6% with no added churn"},
+                  {"header": "Mix", "body": "Enterprise is 41% of ARR, up from 29%"},
+                  {"header": "Pipeline", "body": "Pipeline covers two quarters 3.4 times"}
+                ]
+              }
+            }
+          }
         ]
       }
     },

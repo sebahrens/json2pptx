@@ -12,13 +12,15 @@ import (
 )
 
 // archOnModernSpec is list_slide_kinds' architecture example pinned to the
-// modern template, the review's reproduction: its first tier's items render at
-// 11.04pt against a 12pt card-body floor (go-slide-creator-b7qqg.3/.4).
+// modern template, the review's reproduction: its first tier's items render
+// under the 12pt card-body floor (go-slide-creator-b7qqg.3/.4). It carries a
+// source line since go-slide-creator-me53q: a one-line takeaway reserves 17pt
+// less than it did, and without the source line the four tiers fit modern.
 // Since go-slide-creator-6h1fy a tier's items are drawn as component blocks,
 // which the example fits; the reproduction keeps the joined detail line by
 // giving the first tier an item past the 40-character component budget and
 // the second a description, so no tier has components.
-const archOnModernSpec = `{"meta":{"template":"modern","title":"Architecture validation mismatch"},"slides":[{"kind":"architecture","rails":["Security & compliance","Cost governance"],"takeaway":"Every tier ships independently; the rails are owned centrally.","tiers":[{"items":["Web console","Mobile approvals","Partner portal for resellers and distributors"],"label":"Experience"},{"description":"Orders, pricing, fulfilment, identity","label":"Services"},{"description":"Event stream, warehouse, feature store","label":"Data"},{"description":"Kubernetes, observability, secrets","label":"Platform"}],"title":"Four tiers, two concerns that cut across them"}]}`
+const archOnModernSpec = `{"meta":{"template":"modern","title":"Architecture validation mismatch"},"slides":[{"kind":"architecture","rails":["Security & compliance","Cost governance"],"source":"Platform architecture review","takeaway":"Every tier ships independently; the rails are owned centrally.","tiers":[{"items":["Web console","Mobile approvals","Partner portal for resellers and distributors"],"label":"Experience"},{"description":"Orders, pricing, fulfilment, identity","label":"Services"},{"description":"Event stream, warehouse, feature store","label":"Data"},{"description":"Kubernetes, observability, secrets","label":"Platform"}],"title":"Four tiers, two concerns that cut across them"}]}`
 
 // wantArchPatch is the fix both surfaces must hand back, tried on the spec
 // before it is offered: the smallest cut that clears the refused tier — its
@@ -133,13 +135,13 @@ func TestRenderDeckSpecRefusalIsSourceAddressedAndRepairable(t *testing.T) {
 	if d.SemanticPath != "slides[0].tiers[0].items" {
 		t.Errorf("semantic_path = %q, want slides[0].tiers[0].items", d.SemanticPath)
 	}
-	if !strings.Contains(d.RawPath, "/rendered_shapes/") {
+	if !strings.Contains(d.RawPath, "/rendered_shapes/") && !strings.Contains(d.RawPath, "/pattern/rows/") {
 		t.Errorf("raw_path = %q, want the generated locator kept as evidence", d.RawPath)
 	}
 	measured, _ := d.Evidence["measured"].(map[string]any)
 	allowed, _ := d.Evidence["allowed"].(map[string]any)
-	if measured["font_pt"] != 11.04 || allowed["min_font_pt"] != 12.0 {
-		t.Errorf("evidence = %+v, want measured 11.04pt against allowed 12pt", d.Evidence)
+	if measured["font_pt"] != 10.08 || allowed["min_font_pt"] != 12.0 {
+		t.Errorf("evidence = %+v, want measured 10.08pt against allowed 12pt", d.Evidence)
 	}
 	if d.Evidence["text"] != "Web console, Mobile approvals, Partner portal for resellers and distributors" {
 		t.Errorf("evidence.text = %v", d.Evidence["text"])

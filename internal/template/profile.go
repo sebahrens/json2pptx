@@ -73,8 +73,19 @@ func (p *TemplateProfile) ReferenceLayout() *types.LayoutMetadata {
 	return nil
 }
 
+// ChromeFrameForTakeaway resolves the chrome frame of a slide on layoutID
+// carrying this takeaway text ("" for none): the band is reserved at the
+// height the text needs (ResolveChromeFrameForTakeaway).
+func (p *TemplateProfile) ChromeFrameForTakeaway(layoutID, takeaway string, hasSource bool) ChromeFrame {
+	if p == nil {
+		return ResolveChromeFrameForTakeaway(nil, nil, 0, 0, takeaway, hasSource)
+	}
+	return ResolveChromeFrameForTakeaway(p.Layout(layoutID), p.ReferenceLayout(), p.SlideWidth, p.SlideHeight, takeaway, hasSource)
+}
+
 // ChromeFrame resolves the chrome frame of a slide on layoutID. Unknown IDs
-// (e.g. synthesized layouts) resolve against the reference layout.
+// (e.g. synthesized layouts) resolve against the reference layout. A takeaway
+// reserves the one-line band; see ChromeFrameForTakeaway.
 func (p *TemplateProfile) ChromeFrame(layoutID string, hasTakeaway, hasSource bool) ChromeFrame {
 	if p == nil {
 		return ResolveChromeFrame(nil, nil, 0, 0, hasTakeaway, hasSource)

@@ -180,10 +180,12 @@ func resolveCapacityGrid(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandCon
 		// The budgets describe the pattern as a slide's own block, so a sparse
 		// block is measured as it renders: at the composition policy's stepped
 		// sizes and row heights (go-slide-creator-yhzxt).
-		Compose:       composesSlideBlock(grid),
-		ComposeGrow:   growsLoneRow(grid),
-		KeepTextSizes: grid.KeepTextSizes,
-		CanvasScale:   gridCanvasScale(grid, ctx.SlideWidth, ctx.SlideHeight),
+		Compose:           composesSlideBlock(grid),
+		ComposeGrow:       growsLoneRow(grid),
+		ComposeBand:       scalesToBand(grid),
+		ComposeBandSquare: scalesToBand(grid) && bandScalesToSquare(grid),
+		KeepTextSizes:     grid.KeepTextSizes,
+		CanvasScale:       gridCanvasScale(grid, ctx.SlideWidth, ctx.SlideHeight),
 	}
 
 	// Validate before resolving

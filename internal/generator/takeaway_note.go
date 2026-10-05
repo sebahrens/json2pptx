@@ -1,12 +1,11 @@
 package generator
 
 import (
-	"math"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
-	"github.com/sebahrens/json2pptx/internal/textfit"
+	"github.com/sebahrens/json2pptx/internal/template"
 )
 
 // The slide takeaway is the shared takeaway component (patterns.Takeaway*,
@@ -17,10 +16,11 @@ import (
 // peach box on warm templates, and one of four different boxes the engine
 // drew for the same job.
 //
-// Its band rectangle comes from the chrome frame (template.ResolveChromeFrame),
-// which reserves 16pt of air above the band and 12pt below it to the source
-// line or the footer. Inside that rectangle the band takes the height its
-// text needs — one or two lines — so the bar never runs past the words.
+// Its band rectangle comes from the chrome frame
+// (template.ResolveChromeFrameForTakeaway), which reserves the band the text
+// needs — one line or two — with 16pt of air above it and 12pt below it to
+// the source line or the footer. Inside that rectangle the band takes the
+// height its text needs, so the bar never runs past the words.
 
 // takeawayFontSize is the takeaway font size in hundredths of a point.
 var takeawayFontSize = int(patterns.TakeawaySizePt * 100)
@@ -40,23 +40,8 @@ type takeawayStyle struct {
 // takeawayBandHeight returns the band height (EMU) the text needs in a band
 // bounds.CX wide, capped at bounds.CY.
 func takeawayBandHeight(text string, bounds pptx.RectEmu, style takeawayStyle) int64 {
-	textW := bounds.CX - int64((patterns.TakeawayBarPt+patterns.TakeawayTextInsetPt)*emuPerPt)
-	font := strings.TrimSpace(style.FontName)
-	if font == "" {
-		font = "Arial"
-	}
-	lines := 1
-	if m, err := textfit.MeasureStyledRuns(textfit.StyledMeasureParams{
-		Runs:     []textfit.StyledRun{{Text: text, Bold: true}},
-		FontName: font,
-		FontPt:   patterns.TakeawaySizePt,
-		WidthEMU: textW,
-	}); err == nil && m.Lines > 1 {
-		lines = m.Lines
-	}
-	const safetyPt = 2.0
-	h := int64(math.Ceil((float64(lines)*patterns.TakeawaySizePt*1.2 + 2*patterns.TakeawayPadPt + safetyPt) * emuPerPt))
-	return min(h, bounds.CY)
+	lines := template.TakeawayLines(text, style.FontName, bounds.CX, 1)
+	return min(template.TakeawayTextHeightEMU(lines), bounds.CY)
 }
 
 // generateTakeawayShapesInBounds returns the band's two shapes — the accent

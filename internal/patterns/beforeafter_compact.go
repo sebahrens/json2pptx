@@ -134,7 +134,7 @@ func (b *beforeAfterCompact) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Compact two-column before/after with transition chevron: content-sized rows for brief lists. Alone on a slide it is composed like any sparse block; vertical_align \"top\" keeps it under the title")
+	}).WithDescription("Compact two-column before/after with transition chevron: content-sized rows for brief lists. Alone on a slide it is composed like any sparse block (vertical_align \"top\" keeps it under the title) and reports SLIDE_UNDERUSED when the lower third stays empty; pair it with a second zone or use before-after")
 }
 
 func (b *beforeAfterCompact) Validate(values, overrides any, cellOverrides map[int]any) error {
