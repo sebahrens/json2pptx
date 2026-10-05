@@ -259,7 +259,7 @@ func AgendaCurrentIndex(body map[string]any, sections []agendaSection) int {
 		switch t := v.(type) {
 		case float64:
 			n := int(t)
-			if n >= 1 && n <= len(sections) {
+			if t == float64(n) && n >= 1 && n <= len(sections) {
 				return n
 			}
 		case string:

@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.164.0
+schema_version: 4.165.0
 description: >-
   Create or revise PowerPoint decks with json2pptx. Use for presentation and
   slide-deck requests that need template-aware authoring, validation, rendering,
@@ -139,4 +139,4 @@ Args over 2 MiB of text are refused; a raced
 asset fails the render. A `template_path` + `base_dir` render is kept on the
 `deck_id`, so deck_id-only render / validate / score calls reuse that file.
 
-Responses are always compact JSON; the server still advertises `experimental.compact_responses: {}` and still honours the client capability and the deprecated `MCP_COMPACT_RESPONSES=1` environment variable, but neither changes anything.
+Responses always use compact JSON; compact-response capabilities and the deprecated `MCP_COMPACT_RESPONSES` setting do not change output.

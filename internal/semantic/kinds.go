@@ -224,7 +224,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindImageCase: {
 		Kind:            KindImageCase,
-		Summary:         "A photo or screenshot beside the words about it — the case study or customer story slide; callouts point at parts of it. Needs a body or a bullet; no picture draws a placeholder. Up to 5 bullets, 3 result metrics and 6 callouts; past its text budgets it degrades to a content slide. For testimony use quote.",
+		Summary:         "A photo or screenshot beside the words about it — the case study or customer story slide; callouts point at parts of it. Needs a body or a bullet; the bundled example omits its image and is a draft: SEMANTIC_IMAGE_MISSING blocks readiness until a picture is supplied. Up to 5 bullets, 3 result metrics and 6 callouts; past its text budgets it degrades to a content slide. For testimony use quote.",
 		RequiredFields:  []string{"body"},
 		RequiredAliases: map[string][]string{"body": {"text", "story", "description", "bullets"}},
 		TypicalFields:   []string{"title", "image", "callouts", "eyebrow", "heading", "bullets", "metrics", "caption", "image_side", "image_label", "takeaway"},

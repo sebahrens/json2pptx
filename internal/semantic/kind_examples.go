@@ -139,10 +139,8 @@ var kindExamples = map[SlideKind]map[string]any{
 		},
 		"caption":  "The cutover room, March 2026",
 		"takeaway": "The rehearsal is what made the weekend boring.",
-		// No picture ships with the example, so image_label marks a deliberate
-		// placeholder: a labelled dashed box renders until image (a path or
-		// URL) is set; without either, validation warns SEMANTIC_IMAGE_MISSING
-		// (go-slide-creator-zj4yq).
+		// No picture ships with this draft example. A label describes the
+		// dashed box; SEMANTIC_IMAGE_MISSING blocks readiness until image is set.
 		"image_label": "Photo of the cutover room",
 	},
 	KindAgenda: {

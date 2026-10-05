@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -14,6 +16,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/policy/placeholder"
 	"github.com/sebahrens/json2pptx/internal/semantic"
+	"github.com/sebahrens/json2pptx/internal/semantic/slides"
 	"github.com/sebahrens/json2pptx/svggen"
 )
 
@@ -26,11 +29,11 @@ func placeholderOf(f diagnostics.Finding) string {
 	return name
 }
 
-// assertOnlyPlaceholdersBlock checks a validate_deck_spec result of a spec the
+// assertOnlyDraftContentBlocks checks a validate_deck_spec result of a spec the
 // product handed out as scaffolding: it is refused, every blocking finding is
-// a registered placeholder, and each placeholder is a blocking error at an
+// a registered placeholder or a missing image, each a blocking error at an
 // authored path.
-func assertOnlyPlaceholdersBlock(t *testing.T, label string, res *mcp.CallToolResult) {
+func assertOnlyDraftContentBlocks(t *testing.T, label string, res *mcp.CallToolResult) {
 	t.Helper()
 	var env deckSpecEnvelopeResponse
 	structuredInto(t, res.StructuredContent, &env)
@@ -40,6 +43,12 @@ func assertOnlyPlaceholdersBlock(t *testing.T, label string, res *mcp.CallToolRe
 	placeholders := 0
 	for _, f := range env.Findings {
 		name := placeholderOf(f)
+		if strings.HasSuffix(f.Code, diagnostics.CodeSemanticImageMissing) {
+			if f.Severity != diagnostics.SeverityError || f.Blocking == nil || !*f.Blocking || !strings.HasSuffix(f.MissingPath, "/image") {
+				t.Errorf("%s: missing image is not an addressed blocker: %+v", label, f)
+			}
+			continue
+		}
 		if f.Severity == diagnostics.SeverityError && name == "" {
 			t.Errorf("%s: blocked by something other than its placeholders: %s at %v: %s", label, f.Code, f.Path, f.Message)
 		}
@@ -135,6 +144,7 @@ func assertRecipeIsBlockedAsExemplar(t *testing.T, mc *mcpConfig, c patterns.Vis
 	}
 
 	filled, n := fillPlaceholders(recipeArgs(t, c))
+	fillRecipeAssets(t, filled)
 	if n == 0 {
 		t.Fatal("the recipe carries no registered placeholder")
 	}
@@ -296,6 +306,29 @@ func TestProductPlaceholdersAreDetectedInAnyField(t *testing.T) {
 			if !found || env.OK {
 				t.Errorf("%s in %s is not a blocking finding (ok=%v): %+v", m.Name, field, env.OK, env.Findings)
 			}
+		}
+	}
+}
+
+// fillRecipeAssets supplies an actual temporary image after the author replaces
+// a recipe's copy. Labelling a frame alone cannot make the recipe ready.
+func fillRecipeAssets(t *testing.T, value any) {
+	t.Helper()
+	switch node := value.(type) {
+	case map[string]any:
+		if node["kind"] == "image_case" && !slides.ImageCaseHasImage(node) {
+			path := filepath.Join(t.TempDir(), "recipe.png")
+			if err := os.WriteFile(path, distinctPNG(t), 0600); err != nil {
+				t.Fatal(err)
+			}
+			node["image"] = path
+		}
+		for _, child := range node {
+			fillRecipeAssets(t, child)
+		}
+	case []any:
+		for _, child := range node {
+			fillRecipeAssets(t, child)
 		}
 	}
 }

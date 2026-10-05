@@ -184,7 +184,7 @@ func lookupSpecPath(root any, path string) any {
 // assertRecipeValidates holds a recipe to the one rule every recommend_visual
 // recipe follows (go-slide-creator-x97m6, go-slide-creator-327g6): exactly as
 // handed out it validates to ok:false, blocked by its registered placeholder
-// copy and nothing else; with that copy written over it validates. Every
+// copy or missing image; with copy replaced and images supplied it validates. Every
 // "Replace with …" line it carries is registered, so none survives the
 // rewrite as content.
 //
@@ -202,9 +202,10 @@ func assertRecipeValidates(t *testing.T, mc *mcpConfig, c patterns.VisualCandida
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertOnlyPlaceholdersBlock(t, "recipe", offered)
+	assertOnlyDraftContentBlocks(t, "recipe", offered)
 
 	filled, _ := fillPlaceholders(recipeArgs(t, c))
+	fillRecipeAssets(t, filled)
 	res, err := mc.handleValidateDeckSpec(context.Background(), makeRequest(filled.(map[string]any)))
 	if err != nil {
 		t.Fatal(err)

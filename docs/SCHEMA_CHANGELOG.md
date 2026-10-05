@@ -1,5 +1,11 @@
 # Schema Changelog
 
+- **2026-10-05 — Schema 4.165.0 · example schemas and missing image readiness (`go-slide-creator-k2ol9`, `go-slide-creator-5qwd5`).**
+  - Table `totals_row` is boolean; agenda selection fields accept integer or title. Real JSON Schema validation covers every bundled example in full and compact forms. Invalid totals strings receive field diagnostics; fractional agenda positions no longer truncate.
+  - Labelled image placeholders remain drafts: `SEMANTIC_IMAGE_MISSING` blocks readiness and publication even with strictness off. The image_case catalogue explains its missing asset; the contract accepts the compiler’s `placeholder`, `photo`, and `screenshot` aliases and string/object image forms. Warn/off rendering still produces a draft artifact; supply the picture or choose a text-only kind for delivery.
+  - Embedded MCP schemas share identical alias constraints to stay within the existing tools/list size budget. Preview manifests refresh source provenance for diagnostic help text changes in the renderer import set; image bytes, image hashes and recipes are unchanged.
+  - The schema fingerprint is unchanged (`a0e913951243f827`); these DeckSpec contracts lie outside its hashed field set.
+
 - **2026-10-04 — Schema 4.164.0 · degrade `from` names one pattern; CI runs every test in full somewhere (label `followup5-20261004`).**
   - One version for the dated bullets below this one down to the 4.163.0
     entry. Agent-visible: `fix.params.from` on a degraded `pillars`,

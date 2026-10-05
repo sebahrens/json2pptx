@@ -123,8 +123,7 @@ func TestSectionSubtitleIsDiagnosedInsteadOfDropped(t *testing.T) {
 	}
 }
 
-// Every kind's example must validate with zero findings — list_slide_kinds
-// publishes these as copy-ready payloads.
+// Examples are clean except image_case, whose picture must be supplied.
 func TestKindExamplesValidateClean(t *testing.T) {
 	for _, k := range AllSlideKinds() {
 		ex := KindExample(k)
@@ -142,7 +141,14 @@ func TestKindExamplesValidateClean(t *testing.T) {
 			}
 		}
 		spec := &DeckSpec{Meta: DeckMeta{Title: "Deck"}, Slides: []SlideSpec{{Kind: k, Body: body}}}
-		if ds := Validate(spec, StrictnessStrict); len(ds) != 0 {
+		ds := Validate(spec, StrictnessStrict)
+		if k == KindImageCase {
+			if len(ds) != 1 || ds[0].Code != diagnostics.CodeSemanticImageMissing || ds[0].Path != "slides[0].image" {
+				t.Errorf("image draft diagnostics: %+v", ds)
+			}
+			continue
+		}
+		if len(ds) != 0 {
 			t.Errorf("example for %s is not clean under strict: %v", k, ds)
 		}
 	}

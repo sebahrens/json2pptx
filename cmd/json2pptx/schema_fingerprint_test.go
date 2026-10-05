@@ -128,6 +128,8 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// 4.164.0 (label followup5-20261004): `fix.params.from` on degraded
 	// pillars / kpi_snapshot / quote slides names one registered pattern;
 	// the hash is unchanged.
+	// 4.165.0 corrects DeckSpec field types and missing-image readiness;
+	// neither changes the hashed set.
 	// If this fails, see file header comment.
 	const wantFingerprint = "a0e913951243f827"
 

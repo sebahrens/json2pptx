@@ -52,8 +52,8 @@ func TestImageCaseWithoutImageWarns(t *testing.T) {
 	}
 	delete(body, "image")
 	body["image_label"] = "Cutover room photo"
-	if _, ok := findAt(Validate(spec, StrictnessWarn), diagnostics.CodeSemanticImageMissing, "slides[0].image"); ok {
-		t.Fatal("a labelled placeholder is deliberate")
+	if _, ok := findAt(Validate(spec, StrictnessWarn), diagnostics.CodeSemanticImageMissing, "slides[0].image"); !ok {
+		t.Fatal("a labelled placeholder still needs its image")
 	}
 }
 
@@ -92,5 +92,27 @@ func TestDroppedTakeawayJoinsAuthoredNotes(t *testing.T) {
 	}
 	if !strings.HasPrefix(slide.SpeakerNotes, "Pause here.") || !strings.Contains(slide.SpeakerNotes, "Begin hiring next month.") {
 		t.Errorf("speaker notes = %q", slide.SpeakerNotes)
+	}
+}
+
+func TestImageCaseMissingAssetSurvivesEmptyImageAndFallback(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		fields map[string]any
+	}{
+		{"empty image", map[string]any{"image": map[string]any{"alt": "Cutover room"}}},
+		{"fallback", map[string]any{"body": strings.Repeat("Detailed evidence. ", 30)}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := map[string]any{"title": "Cutover", "body": "The rehearsed plan kept reconciliation on track."}
+			for key, value := range tc.fields {
+				body[key] = value
+			}
+			spec := &DeckSpec{Meta: DeckMeta{Title: "Cutover"}, Slides: []SlideSpec{{Kind: KindImageCase, Body: body}}}
+			d, found := findAt(Validate(spec, StrictnessOff), diagnostics.CodeSemanticImageMissing, "slides[0].image")
+			if !found || d.Severity != diagnostics.SeverityWarning {
+				t.Fatalf("missing asset must remain visible with strictness off: %+v", d)
+			}
+		})
 	}
 }

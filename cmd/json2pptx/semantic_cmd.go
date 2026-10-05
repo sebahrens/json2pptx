@@ -1083,12 +1083,14 @@ func semanticDiagFromCompile(d diagnostics.Diagnostic) semanticDiagnostic {
 	}
 	source := d
 	sd.diag = &source
-	if isProductPlaceholder(d) {
-		// Scaffolding the product itself emitted is never a finished deck: the
-		// DeckSpec surfaces block on it (go-slide-creator-327g6).
+	if isIncompleteContent(d) {
+		// Placeholder copy and missing pictures are never delivery-ready,
+		// even when draft rendering succeeds.
 		source.Severity = diagnostics.SeverityError
 		sd.Severity, sd.Blocking = string(diagnostics.SeverityError), true
-		sd.Evidence = map[string]any{semantic.PlaceholderDetail: d.Details[semantic.PlaceholderDetail]}
+		if isProductPlaceholder(d) {
+			sd.Evidence = map[string]any{semantic.PlaceholderDetail: d.Details[semantic.PlaceholderDetail]}
+		}
 	}
 	if d.Details != nil {
 		if rp, ok := d.Details["raw_path"].(string); ok {

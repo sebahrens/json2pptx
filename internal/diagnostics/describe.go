@@ -1224,10 +1224,10 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		Code:        CodeSemanticImageMissing,
 		Summary:     "An image_case slide has no image, so a dashed placeholder box renders where the picture belongs.",
 		Severity:    describeSeverityReview,
-		WhenEmitted: "semantic validation finds an image_case with none of image / photo / screenshot (a path, URL, or {path|url, alt} object) and no image_label marking a deliberate placeholder. The slide still renders, with an 'Image placeholder' box. Promoted to an error under strict validation.",
+		WhenEmitted: "semantic validation finds an image_case with none of image / photo / screenshot (a path, URL, or {path|url, alt} object) regardless of image_label or placeholder labels. Draft rendering is allowed under warn/off, but DeckSpec delivery surfaces report a blocking error; strict validation refuses it.",
 		RemediationSteps: []string{
 			"Set image (or photo / screenshot) to the picture's path or URL.",
-			"For a deliberate draft placeholder, set image_label to what the picture will show.",
+			"Or change to a text-only slide kind. image_label only describes a draft placeholder and does not clear the blocker.",
 		},
 		ExampleBefore: `{"kind": "image_case", "heading": "Two clearers migrated in one weekend", "body": "..."}`,
 		ExampleAfter:  `{"kind": "image_case", "heading": "Two clearers migrated in one weekend", "body": "...", "image": "images/cutover-room.jpg"}`,

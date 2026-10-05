@@ -108,7 +108,7 @@ render on before writing titles and takeaways. What the numbers do not say:
 | `option_matrix` | 2–6 criteria × 2–6 options on one Harvey, RAG or text scale. `recommended` takes one option (name or 0-based index) or a list; a higher-scoring rival is `SEMANTIC_RECOMMENDATION_OUTSCORED`. |
 | `decision` | 3–6 options are numbered boxes; exactly 2, or 7–12, each with a detail, are cards. Mark the recommended option `recommended: true` (or name it in slide-level `recommended`); two or more are a combined recommendation ("Recommended: A and B" when no `recommendation` is written). The ask goes in `recommendation`. |
 | `team` | 1–8 people, each with a role; a `photo` (path / url, or `{path|url, alt}`) or an initials `photo_label`. |
-| `image_case` | A picture with a stated case (body, ≤5 bullets, ≤3 metrics). `callouts: [{label, x, y, units?}]` (≤6) point into the picture — fractions 0–1 from its top-left, or `units: "px"`; a target the crop hides is `OVERLAY_TARGET_CROPPED`, so set `image.fit: "contain"` for screenshots. Without an image a dashed placeholder renders and validation warns `SEMANTIC_IMAGE_MISSING` (`image_label` marks a deliberate one). A `regions` image region draws no callouts. |
+| `image_case` | Picture + body, ≤5 bullets, ≤3 metrics. ≤6 `callouts: [{label, x, y, units?}]`: fractions 0–1 or `units: "px"`. `OVERLAY_TARGET_CROPPED` → `image.fit: "contain"`. Missing image: warn/off renders a draft, but `SEMANTIC_IMAGE_MISSING` blocks readiness/publication. `image_label` / `placeholder` only label the frame; supply `image` / `photo` / `screenshot` or use a text-only kind. `regions` images have no callouts. |
 | `framework`, `matrix_2x2` | Every canonical part (SWOT, Five Forces, BMC; four headed quadrants and both axes) or the slide degrades to grouped bullets. |
 | `timeline`, `roadmap` | 3–7 milestones; one with an `end_date` turns the line into bars drawn to scale. 3–6 phases for a roadmap; parallel workstreams belong in `roadmap`. |
 | `stat` | One value; `unit` renders at 40% of its size on the baseline. Several equal-weight figures → `kpi_snapshot`. |
@@ -188,3 +188,5 @@ lowered deck.
 
 Compiler architecture and schema:
 [docs/SEMANTIC_COMPILER.md](../../docs/SEMANTIC_COMPILER.md).
+
+`table.totals_row` is boolean. Agenda `current` (aliases `current_section`, `highlight`, `active`) accepts a 1-based integer or section title.

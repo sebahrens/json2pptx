@@ -25,7 +25,7 @@ import (
 
 // payloadField describes one payload key a kind's compiler reads.
 type payloadField struct {
-	// typ is the JSON type the compiler reads ("string", "array", "object").
+	// typ is the JSON type the compiler reads ("string", "array", "object", "boolean").
 	typ string
 	// desc is a short authoring hint for the schema.
 	desc string
@@ -314,7 +314,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"column_alignments": textList("Per-column alignment: left / center / right (the engine's l / ctr / r are accepted too). Right-align numeric columns."),
 		"column_types":      textList("Per-column type hint for the renderer's number formatting, e.g. text / number / currency / percent."),
 		"highlight_column":  strField("The column to emphasise, named (matched against a header) or as a 0-based index."),
-		"totals_row":        strField("Set true when the last data row is a totals row, so the renderer emphasises it."),
+		"totals_row":        {typ: "boolean", desc: "Set true when the last data row is a totals row, so the renderer emphasises it."},
 		"takeaway":          strField("One-line takeaway footer."),
 	}, compositionFields()), universalFields()),
 	KindArchitecture: withFields(withFields(map[string]payloadField{
@@ -341,10 +341,10 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		},
 		"items":           {typ: "array", desc: "Alias for sections.", itemStrings: true, itemKeys: agendaSectionKeys},
 		"agenda":          {typ: "array", desc: "Alias for sections.", itemStrings: true, itemKeys: agendaSectionKeys},
-		"current":         {typ: "string", desc: "The section the deck is at: its 1-based position or its title. Highlights that row."},
-		"current_section": {typ: "string", desc: "Alias for current."},
-		"highlight":       {typ: "string", desc: "Alias for current."},
-		"active":          {typ: "string", desc: "Alias for current."},
+		"current":         {typ: "string", schema: agendaCurrentSchema, desc: "The section the deck is at: its 1-based position or its title. Highlights that row."},
+		"current_section": {typ: "string", schema: agendaCurrentSchema, desc: "Alias for current."},
+		"highlight":       {typ: "string", schema: agendaCurrentSchema, desc: "Alias for current."},
+		"active":          {typ: "string", schema: agendaCurrentSchema, desc: "Alias for current."},
 	}, compositionFields()), universalFields()),
 	KindQuote: withFields(withFields(map[string]payloadField{
 		"title":        strField("Slide title."),
@@ -471,7 +471,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 	KindImageCase: withFields(withFields(map[string]payloadField{
 		"title":       strField("Slide title."),
 		"takeaway":    strField("One-line takeaway footer."),
-		"image":       {typ: "object", desc: "The picture: a path or url string, or {path|url, alt, fit}. fit \"cover\" (default) crops to fill the frame; \"contain\" keeps a whole screenshot or exhibit. Omit it to draw a labelled placeholder.", itemKeys: imageCaseImageKeys},
+		"image":       {typ: "object", desc: "The picture: a path or url string, or {path|url, alt, fit}. fit \"cover\" (default) crops to fill the frame; \"contain\" keeps a whole screenshot or exhibit. Omit it for a draft placeholder; SEMANTIC_IMAGE_MISSING blocks readiness until a picture is supplied.", schema: imageCasePictureSchema, objectKeys: imageCaseImageKeys},
 		"eyebrow":     strField("Small kicker above the heading (e.g. \"Case study\"). ≤30 chars."),
 		"heading":     strField("The story's headline. ≤80 chars."),
 		"body":        strField("The story itself. ≤300 chars; give this or at least one bullet."),
@@ -489,7 +489,10 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 			},
 			desc: "Up to 6 callouts on the picture: {label (≤40 chars), x, y, units?}. x / y are the point the label points at, as fractions of the image (0–1 from its top-left corner) or, with units \"px\", its own pixels; the label is placed beside the point and stays on it under any crop or template. A point the crop hides reports OVERLAY_TARGET_CROPPED at callouts[i] — use image.fit \"contain\"."},
 		"image_side":  strField("Which side the picture sits on: \"left\" (default) or \"right\"."),
-		"image_label": strField("Label for the placeholder when no picture is given. ≤40 chars."),
+		"image_label": strField("Label for a draft placeholder when no picture is given; does not clear SEMANTIC_IMAGE_MISSING. ≤40 chars."),
+		"placeholder": strField("Alias for image_label."),
+		"photo":       {typ: "object", schema: imageCasePictureSchema, objectKeys: imageCaseImageKeys, desc: "Alias for image."},
+		"screenshot":  {typ: "object", schema: imageCasePictureSchema, objectKeys: imageCaseImageKeys, desc: "Alias for image."},
 	}, compositionFields()), universalFields()),
 	KindProcess: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
@@ -740,5 +743,19 @@ func pillarsFoundationSchema() map[string]any {
 	return map[string]any{"oneOf": []any{
 		band,
 		map[string]any{"type": "array", "minItems": 1, "maxItems": 3, "items": map[string]any{"oneOf": []any{band, cells}}},
+	}}
+}
+
+// agendaCurrentSchema accepts a section title or a 1-based integer position.
+func agendaCurrentSchema() map[string]any {
+	return map[string]any{"type": []any{"string", "integer"}, "minimum": 1}
+}
+
+func imageCasePictureSchema() map[string]any {
+	props := objectKeySchemas(imageCaseImageKeys)
+	props["fit"] = map[string]any{"type": "string", "enum": []any{"cover", "contain"}}
+	return map[string]any{"anyOf": []any{
+		map[string]any{"type": "string"},
+		map[string]any{"type": "object", "properties": props, "additionalProperties": false},
 	}}
 }

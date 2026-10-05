@@ -64,6 +64,7 @@ func renderRecipeArgs(t *testing.T, mc *mcpConfig, c patterns.VisualCandidate, f
 		t.Fatal(err)
 	}
 	if fill {
+		fillRecipeAssets(t, args)
 		if _, n := fillPlaceholders(args); n == 0 {
 			t.Errorf("%s %q: the recipe carries no registered placeholder", c.Category, c.Name)
 		}
@@ -247,7 +248,7 @@ func TestRecommendVisualDiagramIntentsReachRunnableSpec(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			assertOnlyPlaceholdersBlock(t, "recipe spec for "+want, res)
+			assertOnlyDraftContentBlocks(t, "recipe spec for "+want, res)
 		})
 	}
 }

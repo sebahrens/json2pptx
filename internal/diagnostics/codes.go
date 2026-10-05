@@ -179,7 +179,7 @@ const (
 	// numeric scale (Harvey or RAG), so the slide argues against its own ask
 	// (go-slide-creator-n83ml).
 	CodeSemanticRecommendationOutscored Code = "SEMANTIC_RECOMMENDATION_OUTSCORED"
-	// CodeSemanticImageMissing flags an image_case with no image and no
+	// CodeSemanticImageMissing flags an image_case with no image, even with a
 	// deliberate placeholder label: the slide would ship a dashed placeholder
 	// box where the picture belongs (go-slide-creator-zj4yq).
 	CodeSemanticImageMissing Code = "SEMANTIC_IMAGE_MISSING"

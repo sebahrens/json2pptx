@@ -2642,3 +2642,9 @@ A slide carries an eyebrow / category line above the title that renders in regul
 ```json
 { "slide_index": 8, "code": "EYEBROW_NO_CAPS", "severity": "info", "detail": "eyebrow 'market context' renders in title case, no caps or letter-spacing distinction" }
 ```
+
+### Missing image assets in DeckSpec
+
+`SEMANTIC_IMAGE_MISSING` identifies `path: /slides/N` and `missing_path: /slides/N/image` whenever an `image_case` lacks an image, including labelled draft placeholders and the bundled example. `warn` and `off` allow a draft artifact, but DeckSpec delivery findings are blocking errors: deterministic readiness and publication remain false even after visual approval. Strict validation refuses the draft. Supply `image` / `photo` / `screenshot`, or use a text-only slide kind. Placeholder labels never satisfy this requirement.
+
+`table.totals_row` accepts a boolean; strings such as `"true"` receive `SEMANTIC_FIELD_TYPE` at the field. Agenda `current` and its aliases accept a section title or a 1-based integer; fractional positions are invalid. Both full and compact per-kind schemas express these types.

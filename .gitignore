@@ -165,3 +165,6 @@ tests/quality/slide_images/
 .dolt/
 *.db
 .beads-credential-key
+
+# Local MCP audits contain generated images and tool transcripts; never publish.
+/tests/quality/results/mcp-quality-audit-*/

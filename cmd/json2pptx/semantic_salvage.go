@@ -610,15 +610,14 @@ func evaluateSpecFindings(filename string, data []byte, strict semantic.Strictne
 	}
 	ds := semantic.Check(filename, data, strict)
 	enrichSemanticKindDiagnostics(ds)
-	promoteProductPlaceholders(ds)
+	promoteIncompleteContent(ds)
 	return eval, ds
 }
 
-// promoteProductPlaceholders reports placeholder copy the product itself
-// emitted as a blocking error (go-slide-creator-327g6).
-func promoteProductPlaceholders(ds []diagnostics.Diagnostic) {
+// promoteIncompleteContent blocks delivery of placeholder copy or missing assets.
+func promoteIncompleteContent(ds []diagnostics.Diagnostic) {
 	for i := range ds {
-		if isProductPlaceholder(ds[i]) {
+		if isIncompleteContent(ds[i]) {
 			ds[i].Severity = diagnostics.SeverityError
 		}
 	}
@@ -662,4 +661,8 @@ func flatSlideIndex(path string) *int {
 		}
 	}
 	return nil
+}
+
+func isIncompleteContent(d diagnostics.Diagnostic) bool {
+	return d.Code == diagnostics.CodeSemanticImageMissing || isProductPlaceholder(d)
 }

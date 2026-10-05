@@ -156,7 +156,7 @@ func TestSemanticMCP_UnknownKPIFieldDiagnostic(t *testing.T) {
 }
 
 // Every list_slide_kinds example must validate through validate_deck_spec with
-// nothing to fix: no error and no warning. A one-slide deck may still carry
+// nothing to fix except the image_case draft awaiting its image. A one-slide deck may carry
 // the sparse-layout advisories its render reports.
 func TestSemanticMCP_ListSlideKindsExamplesValidate(t *testing.T) {
 	ctx := context.Background()
@@ -179,6 +179,16 @@ func TestSemanticMCP_ListSlideKindsExamplesValidate(t *testing.T) {
 		if k.ItemSchema["additionalProperties"] != false || k.ItemSchemaFull["additionalProperties"] != false {
 			t.Errorf("%s: item_schema and item_schema_full must be closed", k.Kind)
 		}
+		for name, schema := range map[string]map[string]any{"compact": k.ItemSchema, "full": k.ItemSchemaFull} {
+			raw, err := json.Marshal(schema)
+			if err != nil {
+				t.Fatal(err)
+			}
+			validator := compileToolInputSchema(t, k.Kind+"/"+name, raw)
+			if err := validator.Validate(roundTripJSON(t, k.Example)); err != nil {
+				t.Errorf("%s/%s example violates JSON Schema: %v", k.Kind, name, err)
+			}
+		}
 		// The example is written in canonical fields: every key of it is a
 		// field of the compact schema, not an alias folded away.
 		compactProps, _ := k.ItemSchema["properties"].(map[string]any)
@@ -197,13 +207,21 @@ func TestSemanticMCP_ListSlideKindsExamplesValidate(t *testing.T) {
 		}
 		var env diagnostics.FindingEnvelope
 		structuredInto(t, vres.StructuredContent, &env)
-		if !env.OK {
-			t.Errorf("%s: example does not validate: %+v", k.Kind, env.Findings)
+		if env.OK != (k.Kind != "image_case") {
+			t.Errorf("%s: unexpected example validation: %+v", k.Kind, env.Findings)
 		}
+		missingImage := false
 		for _, f := range env.Findings {
+			if k.Kind == "image_case" && strings.HasSuffix(f.Code, diagnostics.CodeSemanticImageMissing) {
+				missingImage = f.Path != nil && *f.Path == "/slides/0" && f.MissingPath == "/slides/0/image" && f.Severity == diagnostics.SeverityError && f.Blocking != nil && *f.Blocking
+				continue
+			}
 			if f.Severity != diagnostics.SeverityInfo || f.Blocking == nil || *f.Blocking {
 				t.Errorf("%s: example carries a finding to fix: %+v", k.Kind, f)
 			}
+		}
+		if k.Kind == "image_case" && (!missingImage || !strings.Contains(k.Summary, "SEMANTIC_IMAGE_MISSING")) {
+			t.Errorf("image draft lacks blocker or disclosure: summary=%q findings=%+v", k.Summary, env.Findings)
 		}
 	}
 }

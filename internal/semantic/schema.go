@@ -402,7 +402,7 @@ func KindItemSchema(k SlideKind) map[string]any {
 	if !ok {
 		return nil
 	}
-	return refKindAliases(info, kindVariantSchema(info))
+	return refKindAliases(info, kindVariantSchema(info), "#")
 }
 
 // refKindAliases replaces each alias property whose schema only repeats its
@@ -412,7 +412,7 @@ func KindItemSchema(k SlideKind) map[string]any {
 // (go-slide-creator-ppned). The accepted payload is unchanged: the $ref
 // resolves to the identical schema. An alias whose schema differs keeps its
 // own copy.
-func refKindAliases(info KindInfo, variant map[string]any) map[string]any {
+func refKindAliases(info KindInfo, variant map[string]any, base string) map[string]any {
 	props, _ := variant["properties"].(map[string]any)
 	if props == nil {
 		return variant
@@ -436,10 +436,11 @@ func refKindAliases(info KindInfo, variant map[string]any) map[string]any {
 		if aliasSchema == nil || canonicalSchema == nil || !sameSchemaIgnoringDescription(aliasSchema, canonicalSchema) {
 			continue
 		}
-		props[alias] = map[string]any{
-			"$ref":        "#/properties/" + canonical,
-			"description": "Alias for " + canonical + ".",
+		reference := map[string]any{"$ref": base + "/properties/" + canonical}
+		if _, annotated := aliasSchema["description"]; annotated {
+			reference["description"] = "Alias for " + canonical + "."
 		}
+		props[alias] = reference
 	}
 	return variant
 }
@@ -564,9 +565,13 @@ func rewriteDefinitionNames(value any, names map[string]string) {
 	switch typed := value.(type) {
 	case map[string]any:
 		if ref, ok := typed["$ref"].(string); ok && strings.HasPrefix(ref, "#/$defs/") {
-			old := strings.TrimPrefix(ref, "#/$defs/")
+			old, suffix, nested := strings.Cut(strings.TrimPrefix(ref, "#/$defs/"), "/")
 			if name := names[old]; name != "" {
-				typed["$ref"] = "#/$defs/" + name
+				reference := "#/$defs/" + name
+				if nested {
+					reference += "/" + suffix
+				}
+				typed["$ref"] = reference
 			}
 		}
 		for _, child := range typed {
@@ -605,6 +610,10 @@ func compactSchemaDefinitions(root map[string]any) {
 		if variant == nil {
 			continue
 		}
+		// Alias fields share their canonical constraint in the embedded schema.
+		// Keep references rooted at the variant as its definition name is minified.
+		info, _ := LookupKind(kind)
+		refKindAliases(info, variant, "#/$defs/"+kindDefName(kind))
 		delete(variant, "type")
 		delete(variant, "additionalProperties")
 		if properties, ok := variant["properties"].(map[string]any); ok {

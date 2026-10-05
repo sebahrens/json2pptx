@@ -12,6 +12,7 @@ package semantic
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"regexp"
 	"sort"
 	"strconv"
@@ -76,6 +77,8 @@ type shapeKind int
 
 const (
 	shapeString shapeKind = iota
+	shapeBoolean
+	shapeStringOrInteger
 	shapeArray
 	shapeObject
 	// shapeStringOrObject is for a field whose compiler reads either — an
@@ -86,6 +89,10 @@ const (
 // label returns the human-readable expected-type phrase for a finding message.
 func (k shapeKind) label() string {
 	switch k {
+	case shapeBoolean:
+		return "a boolean"
+	case shapeStringOrInteger:
+		return "a string or an integer"
 	case shapeArray:
 		return "an array"
 	case shapeObject:
@@ -119,7 +126,7 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 	},
 	KindTable: {
 		"title": shapeString, "headers": shapeArray, "columns": shapeArray, "rows": shapeArray,
-		"column_alignments": shapeArray, "column_types": shapeArray, "takeaway": shapeString,
+		"column_alignments": shapeArray, "column_types": shapeArray, "takeaway": shapeString, "totals_row": shapeBoolean,
 	},
 	KindArchitecture: {
 		"title": shapeString, "tiers": shapeArray, "layers": shapeArray,
@@ -128,6 +135,7 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 	KindAgenda: {
 		"title": shapeString, "sections": shapeArray, "items": shapeArray,
 		"agenda": shapeArray, "takeaway": shapeString,
+		"current": shapeStringOrInteger, "current_section": shapeStringOrInteger, "highlight": shapeStringOrInteger, "active": shapeStringOrInteger,
 	},
 	KindQuote: {
 		"title": shapeString, "quotes": shapeArray, "testimonials": shapeArray,
@@ -170,6 +178,7 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 		"body": shapeString, "text": shapeString, "story": shapeString, "description": shapeString,
 		"bullets": shapeArray, "metrics": shapeArray, "callouts": shapeArray, "caption": shapeString,
 		"image_side": shapeString, "image_label": shapeString, "takeaway": shapeString,
+		"placeholder": shapeString, "photo": shapeStringOrObject, "screenshot": shapeStringOrObject,
 	},
 	KindProcess: {"title": shapeString, "steps": shapeArray, "takeaway": shapeString},
 	KindRoadmap: {"title": shapeString, "phases": shapeArray, "takeaway": shapeString},
@@ -189,6 +198,17 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 // shapeMatches reports whether v has the JSON type the shape expects.
 func shapeMatches(v any, k shapeKind) bool {
 	switch k {
+	case shapeBoolean:
+		_, ok := v.(bool)
+		return ok
+	case shapeStringOrInteger:
+		switch n := v.(type) {
+		case string, int:
+			return true
+		case float64:
+			return !math.IsInf(n, 0) && !math.IsNaN(n) && n == math.Trunc(n)
+		}
+		return false
 	case shapeString:
 		_, ok := v.(string)
 		return ok
@@ -958,19 +978,22 @@ func validateImageCase(path string, slide SlideSpec, s *semDiags) {
 			fmt.Sprintf("image.fit %q is not a fit; use \"cover\" (default, crops to fill the frame) or \"contain\" (keeps a whole screenshot or exhibit)", fit))
 	}
 	validateImageCaseCallouts(path, slide, s)
+	// Missing assets remain visible under strictness off. Drafts may render,
+	// but delivery surfaces promote this finding to a readiness blocker.
+	if !slides.ImageCaseHasImage(slide.Body) {
+		sev := diagnostics.SeverityWarning
+		if s.strict == StrictnessStrict {
+			sev = diagnostics.SeverityError
+		}
+		s.out = append(s.out, diagnostics.Diagnostic{
+			Code: diagnostics.CodeSemanticImageMissing, Path: path + ".image", Severity: sev,
+			Message: "image case is missing its picture; labels only describe a draft placeholder. Set image (or photo / screenshot) to a path or URL, or use a text-only slide kind before delivery",
+		})
+	}
 	if over := slides.ImageCaseOverBudget(slide.Body); over != "" {
 		s.degrade(path+".body",
 			fmt.Sprintf("image case %s (otherwise it degrades to a content slide)", over),
 			"image-text-split", degradeToContent, degradeBudgetExceeded)
-		return
-	}
-	// Without a picture the split renders a dashed "Image placeholder" box.
-	// Say so here, naming the DeckSpec field, rather than printing an
-	// instruction on the slide (go-slide-creator-zj4yq). An image_label marks
-	// a deliberate placeholder.
-	if !slides.ImageCaseHasImage(slide.Body) && slide.String("image_label") == "" && slide.String("placeholder") == "" {
-		s.advisory(path+".image", diagnostics.CodeSemanticImageMissing,
-			"image case has no image, so a dashed placeholder box renders where the picture belongs; set image (or photo / screenshot) to a path or URL, or set image_label to mark a deliberate placeholder")
 	}
 }
 

@@ -1378,7 +1378,7 @@ type slideKindListEntry struct {
 	// the compiler reads, aliases included; additionalProperties:false.
 	ItemSchemaFull map[string]any `json:"item_schema_full,omitempty"`
 	// Example is a minimal copy-ready slide of this kind (including "kind")
-	// that validates with no error or warning. The whole catalogue leaves it
+	// (image_case is a draft awaiting an image, as its summary explains). The catalogue leaves it
 	// out (it was half of a 22 KB response); naming kinds returns it
 	// (go-slide-creator-mvdt5).
 	Example map[string]any `json:"example,omitempty"`
