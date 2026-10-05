@@ -128,6 +128,77 @@ type deckSpecSlotDef struct {
 	capacity int // brief facts the slot can carry
 	// chapter groups the slot into a section of a chaptered draft.
 	chapter string
+	// rank is the admission priority of a slide the brief names by kind
+	// (go-slide-creator-xbwlt); 0 takes the storyline's priority for the slot.
+	rank int
+	// fields are the kind's own fields drafted from the brief; facts the brief
+	// facts already routed to the slot.
+	fields map[string]any
+	facts  []string
+}
+
+// sameDef reports whether two slot definitions are the same slot.
+func sameDef(a, b deckSpecSlotDef) bool {
+	return a.slot == b.slot && a.kind == b.kind && a.guidance == b.guidance && a.chapter == b.chapter && a.rank == b.rank
+}
+
+// slotRank is the admission rank of a slot: its own when the brief named it,
+// else the storyline's priority for the slot.
+func slotRank(d deckSpecSlotDef, priority map[string]int) int {
+	if d.rank > 0 {
+		return d.rank
+	}
+	return priority[d.slot]
+}
+
+// namedRank is the admission priority of a slide the brief names by kind: it
+// ranks with the close, above every narrative default.
+const namedRank = 2
+
+// namedCoverage says which roles the brief's named slides already fill, so the
+// storyline defaults do not draft them a second time.
+type namedCoverage struct {
+	has map[string]bool
+}
+
+func coverageOf(named []namedSlide) namedCoverage {
+	c := namedCoverage{has: map[string]bool{}}
+	for _, n := range named {
+		c.has[n.kind] = true
+	}
+	return c
+}
+
+func (c namedCoverage) any(kinds ...string) bool {
+	for _, k := range kinds {
+		if c.has[k] {
+			return true
+		}
+	}
+	return false
+}
+
+// inferredRank is the admission priority of a slide inferred from the shape
+// of the brief's items alone (a series, three numbers): below an option
+// matrix the brief asks for, above the storyline's evidence defaults.
+const inferredRank = 5
+
+// namedSlotDef is the storyline slot for a named slide.
+func namedSlotDef(n namedSlide) deckSpecSlotDef {
+	rank := namedRank
+	if n.weak {
+		rank = inferredRank
+	}
+	// Two spare places for stray facts of the same kind — except on a chart,
+	// which shows one series: a second series gets its own evidence slide.
+	capacity := len(n.facts) + 2
+	if n.kind == "chart_insight" {
+		capacity = len(n.facts)
+	}
+	return deckSpecSlotDef{
+		slot: n.slot, kind: n.kind, guidance: n.guidance, capacity: capacity,
+		chapter: namedChapter[n.kind], rank: rank, fields: n.fields, facts: n.facts,
+	}
 }
 
 // Chapters of a chaptered draft, in deck order.
@@ -251,7 +322,7 @@ func readBriefSignals(brief, audience string, facts []briefFact) briefSignals {
 // storylineSlots drafts the narrative for the brief: every admitted slot in
 // narrative order, and each slot's admission priority (lower is kept first
 // when the budget is short).
-func storylineSlots(sig briefSignals, regions bool) (ordered []deckSpecSlotDef, priority map[string]int) {
+func storylineSlots(sig briefSignals, regions bool, named []namedSlide) (ordered []deckSpecSlotDef, priority map[string]int) {
 	priority = map[string]int{}
 	add := func(rank int, def deckSpecSlotDef) {
 		ordered = append(ordered, def)
@@ -260,34 +331,43 @@ func storylineSlots(sig briefSignals, regions bool) (ordered []deckSpecSlotDef, 
 		}
 	}
 	pillarsUsed := false
+	cover := coverageOf(named)
 
-	add(0, deckSpecSlotDef{"cover", "title", "Deck title and a subtitle naming audience and date.", 0, ""})
-	add(3, deckSpecSlotDef{"answer", "executive_summary", "The whole answer up front: 3-5 points, each a conclusion a later slide proves; the title is the single-sentence answer.", 3, chapterSituation})
+	add(0, deckSpecSlotDef{slot: "cover", kind: "title", guidance: "Deck title and a subtitle naming audience and date.", capacity: 0})
+	add(3, deckSpecSlotDef{slot: "answer", kind: "executive_summary", guidance: guideAnswer, capacity: 3, chapter: chapterSituation})
 
-	// The situation, in the brief's own numbers.
+	// The situation, in the brief's own numbers — the numbers no named slide
+	// claimed.
 	contextSlot, contextGuide := "context", "Where things stand, in the brief's own numbers; the title states the headline as a sentence carrying its number."
 	if sig.problem {
 		contextSlot, contextGuide = "problem", "What is wrong or at stake, shown with the brief's own numbers; the title states the problem as a sentence carrying its number."
 	}
 	switch {
 	case sig.metrics >= 2:
-		add(4, deckSpecSlotDef{contextSlot, "kpi_snapshot", contextGuide, 6, chapterSituation})
+		add(4, deckSpecSlotDef{slot: contextSlot, kind: "kpi_snapshot", guidance: contextGuide, capacity: 6, chapter: chapterSituation})
 	case sig.metrics == 1:
-		add(4, deckSpecSlotDef{contextSlot, "stat", contextGuide, 1, chapterSituation})
-	case sig.problem:
-		add(4, deckSpecSlotDef{"problem", "comparison", "What is wrong or at stake: where we are against where we need to be; the title states the gap as a sentence.", 2, chapterSituation})
+		add(4, deckSpecSlotDef{slot: contextSlot, kind: "stat", guidance: contextGuide, capacity: 1, chapter: chapterSituation})
+	case sig.problem && len(named) == 0:
+		add(4, deckSpecSlotDef{slot: "problem", kind: "comparison", guidance: "What is wrong or at stake: where we are against where we need to be; the title states the gap as a sentence.", capacity: 2, chapter: chapterSituation})
 	}
 
 	if sig.shipped {
 		pillarsUsed = true
-		add(6, deckSpecSlotDef{"highlights", "pillars", "What was delivered: 3-5 items, each with what it changes for the audience; the title says what the release adds up to.", 3, chapterSituation})
+		add(6, deckSpecSlotDef{slot: "highlights", kind: "pillars", guidance: "What was delivered: 3-5 items, each with what it changes for the audience; the title says what the release adds up to.", capacity: 3, chapter: chapterSituation})
 	}
 
 	// Charts only for facts that describe change over time — a chart drawn
-	// from anything else needs invented data.
-	evidence := min(sig.series, maxEvidenceSlots)
+	// from anything else needs invented data. The charts the brief names
+	// count against the cap.
+	namedCharts := 0
+	for _, n := range named {
+		if n.kind == "chart_insight" {
+			namedCharts++
+		}
+	}
+	evidence := min(sig.series, maxEvidenceSlots-namedCharts)
 	for i := 0; i < evidence; i++ {
-		add(7, deckSpecSlotDef{"evidence", "chart_insight", "One chart that proves one claim: the title states the claim with its number; set takeaway and source; never invent data.", 1, chapterSituation})
+		add(7, deckSpecSlotDef{slot: "evidence", kind: "chart_insight", guidance: guideEvidence, capacity: 1, chapter: chapterSituation})
 	}
 
 	// A slide the brief laid out in regions is the slide it asked for by
@@ -295,8 +375,13 @@ func storylineSlots(sig briefSignals, regions bool) (ordered []deckSpecSlotDef, 
 	// (go-slide-creator-vae7f). Its facts come from the region clauses, not
 	// from routing.
 	if regions {
-		add(1, deckSpecSlotDef{"regions", "regions", regionsGuidance, 0, chapterSituation})
+		add(1, deckSpecSlotDef{slot: "regions", kind: "regions", guidance: regionsGuidance, capacity: 0, chapter: chapterSituation})
 	}
+
+	// The slides the brief names in the kind catalogue's own words, in brief
+	// order, each with its facts and fields (go-slide-creator-xbwlt). The
+	// closer merges into the closing slot below.
+	closer := addNamedSlots(add, named, &pillarsUsed)
 
 	if sig.problem && !sig.customers {
 		kind := "pillars"
@@ -304,10 +389,10 @@ func storylineSlots(sig briefSignals, regions bool) (ordered []deckSpecSlotDef, 
 			kind = "table"
 		}
 		pillarsUsed = pillarsUsed || kind == "pillars"
-		add(8, deckSpecSlotDef{"cause", kind, "Why it is happening: 3-5 drivers, each with its evidence.", 2, chapterDiagnosis})
+		add(8, deckSpecSlotDef{slot: "cause", kind: kind, guidance: "Why it is happening: 3-5 drivers, each with its evidence.", capacity: 2, chapter: chapterDiagnosis})
 	}
 
-	if sig.options {
+	if sig.options && !cover.any("option_matrix", "decision", "comparison") {
 		// A brief that asks outright to compare two alternatives is about
 		// that comparison: the matrix outranks the situation slide when the
 		// budget is short (go-slide-creator-fu6uy).
@@ -315,10 +400,61 @@ func storylineSlots(sig briefSignals, regions bool) (ordered []deckSpecSlotDef, 
 		if sig.compare {
 			rank = 3
 		}
-		add(rank, deckSpecSlotDef{"options", "option_matrix", "The options scored against the same criteria, with the recommended option highlighted; the title names the winner and why.", 3, chapterOptions})
+		add(rank, deckSpecSlotDef{slot: "options", kind: "option_matrix", guidance: guideOptions, capacity: 3, chapter: chapterOptions})
 	}
 
-	if sig.plan && (sig.actions > 0 || sig.process) {
+	addPlanSlots(add, sig, cover, closer != nil, pillarsUsed)
+
+	closing := deckSpecSlotDef{slot: "closing", kind: "next_steps", guidance: guideClosing, capacity: 4}
+	if closer != nil {
+		closing.facts, closing.fields = closer.facts, closer.fields
+		closing.capacity = len(closer.facts) + 4
+	}
+	add(1, closing)
+	return ordered, priority
+}
+
+// addNamedSlots adds the brief's named slides in brief order and returns the
+// closer sentence, if any. Chapters advance with the brief: everything before
+// the first options or plan slide is the situation, so a chaptered draft keeps
+// one section per chapter even when the brief returns to a figure after its
+// roadmap.
+func addNamedSlots(add func(int, deckSpecSlotDef), named []namedSlide, pillarsUsed *bool) *namedSlide {
+	var closer *namedSlide
+	phase := chapterSituation
+	for i := range named {
+		if named[i].closer {
+			if closer == nil {
+				closer = &named[i]
+			}
+			continue
+		}
+		switch namedChapter[named[i].kind] {
+		case chapterOptions:
+			if phase == chapterSituation {
+				phase = chapterOptions
+			}
+		case chapterPlan:
+			phase = chapterPlan
+		}
+		def := namedSlotDef(named[i])
+		def.chapter = phase
+		add(namedRank, def)
+		if named[i].kind == "pillars" {
+			*pillarsUsed = true
+		}
+	}
+	return closer
+}
+
+// addPlanSlots adds the storyline's plan, roadmap, risk and ask slots — each
+// unless a named slide already fills the role.
+func addPlanSlots(add func(int, deckSpecSlotDef), sig briefSignals, cover namedCoverage, hasCloser, pillarsUsed bool) {
+	planWanted := sig.plan && (sig.actions > 0 || sig.process)
+	if cover.any("process") || (cover.any("roadmap") && sig.actions < 2) {
+		planWanted = false
+	}
+	if planWanted {
 		kind, guide := "pillars", "What we will do: 3-5 priorities, each an action with its owner and outcome."
 		switch {
 		case sig.process:
@@ -326,30 +462,32 @@ func storylineSlots(sig briefSignals, regions bool) (ordered []deckSpecSlotDef, 
 		case pillarsUsed:
 			kind, guide = "table", "What we will do: one row per priority with its owner, outcome and date."
 		}
-		add(9, deckSpecSlotDef{"plan", kind, guide, 3, chapterPlan})
+		add(9, deckSpecSlotDef{slot: "plan", kind: kind, guidance: guide, capacity: 3, chapter: chapterPlan})
 	}
 
 	// Dated milestones without phases are a timeline; phases (or a roadmap
 	// with nothing dated) are a roadmap.
 	switch {
+	case cover.any("roadmap", "timeline"):
 	case sig.dated >= 2 && !sig.phased:
-		add(10, deckSpecSlotDef{"roadmap", "timeline", "When it happens: the dated milestones from the brief, in order; the title says what the sequence delivers.", 4, chapterPlan})
+		add(10, deckSpecSlotDef{slot: "roadmap", kind: "timeline", guidance: "When it happens: the dated milestones from the brief, in order; the title says what the sequence delivers.", capacity: 4, chapter: chapterPlan})
 	case sig.phases:
-		add(10, deckSpecSlotDef{"roadmap", "roadmap", "When it happens: 3-6 phases with dates and the milestone that ends each.", 4, chapterPlan})
+		add(10, deckSpecSlotDef{slot: "roadmap", kind: "roadmap", guidance: "When it happens: 3-6 phases with dates and the milestone that ends each.", capacity: 4, chapter: chapterPlan})
 	}
 
 	// A risk the brief names gets a slide of its own: it was dropped with
-	// unplaced_facts empty (go-slide-creator-hf8tf).
-	if sig.risks > 0 {
-		add(6, deckSpecSlotDef{"risks", "table", guideRisks, 3, chapterPlan})
+	// unplaced_facts empty (go-slide-creator-hf8tf). A named heat map is that
+	// slide.
+	if sig.risks > 0 && (!cover.any("matrix_2x2") || sig.risks >= 2) {
+		add(6, deckSpecSlotDef{slot: "risks", kind: "table", guidance: guideRisks, capacity: 3, chapter: chapterPlan})
 	}
 
-	if sig.decision {
-		add(2, deckSpecSlotDef{"ask", "decision", "The decision needed now: the options, the recommended one, and the ask with owner and date.", 2, chapterPlan})
+	// With a named options slide AND the brief's own "Ask:" sentence (the
+	// closer), the ask is on the closer and the recommendation on the options:
+	// no third slide. Otherwise the ask keeps its decision slide.
+	if sig.decision && !(cover.any("decision", "option_matrix") && hasCloser) {
+		add(2, deckSpecSlotDef{slot: "ask", kind: "decision", guidance: guideDecision, capacity: 2, chapter: chapterPlan})
 	}
-
-	add(1, deckSpecSlotDef{"closing", "next_steps", "Close on next steps, not \"Thank you\": 2-6 actions, each with an owner and a date, and the decisions requested. A plain closing kind stays available for a Q&A page.", 4, ""})
-	return ordered, priority
 }
 
 // fitToBudget drops the lowest-priority slots until the storyline fits n
@@ -363,6 +501,12 @@ func fitToBudget(ordered []deckSpecSlotDef, priority map[string]int, n int) []de
 	items := make([]ranked, len(ordered))
 	seen := map[string]int{}
 	for i, d := range ordered {
+		if d.rank > 0 {
+			// A slide the brief named by kind keeps its own rank however many
+			// share its slot name; later ones go first when the budget is short.
+			items[i] = ranked{d, d.rank*10 + i}
+			continue
+		}
 		items[i] = ranked{d, priority[d.slot]*10 + seen[d.slot]*25}
 		seen[d.slot]++
 	}
@@ -473,14 +617,14 @@ const appendixTitle = "Appendix"
 func appendixSlots(sig briefSignals, unplaced, room int) []deckSpecSlotDef {
 	var defs []deckSpecSlotDef
 	if sig.backup || unplaced > 0 || sig.metrics >= 3 {
-		defs = append(defs, deckSpecSlotDef{"backup", "table",
-			"Backup, not argument: the detailed figures behind the body's claims (or the facts the body had no room for) in one table with its source; the title says what the table shows. Drop it if the body already carries every number.",
-			6, ""})
+		defs = append(defs, deckSpecSlotDef{slot: "backup", kind: "table",
+			guidance: "Backup, not argument: the detailed figures behind the body's claims (or the facts the body had no room for) in one table with its source; the title says what the table shows. Drop it if the body already carries every number.",
+			capacity: 6})
 	}
 	if sig.method {
-		defs = append(defs, deckSpecSlotDef{"methodology", "table",
-			"How the numbers were built: one row per assumption or data source, with its value and where it comes from.",
-			4, ""})
+		defs = append(defs, deckSpecSlotDef{slot: "methodology", kind: "table",
+			guidance: "How the numbers were built: one row per assumption or data source, with its value and where it comes from.",
+			capacity: 4})
 	}
 	if n := room - 1; len(defs) > n {
 		defs = defs[:max(n, 0)]
@@ -520,7 +664,7 @@ func chapterDraft(ordered []deckSpecSlotDef, priority map[string]int, budget int
 				continue
 			}
 			for _, i := range sec.slots {
-				if drop < 0 || priority[cand[i].slot] >= priority[cand[drop].slot] {
+				if drop < 0 || slotRank(cand[i], priority) >= slotRank(cand[drop], priority) {
 					drop = i
 				}
 			}
@@ -545,7 +689,7 @@ func recordCuts(account *Budget, before, after []deckSpecSlotDef, reason string)
 	}
 	j := 0
 	for _, d := range before {
-		if j < len(after) && after[j] == d {
+		if j < len(after) && sameDef(after[j], d) {
 			j++
 			continue
 		}
@@ -573,36 +717,95 @@ func outlineStatedCount(p Params, cs []Constraint, budget int) int {
 // listed item in the brief's order, and a next-steps close when the outline
 // does not end on one and the budget has room. The outline is kept whole even
 // when it is longer than the budget; the budget account says so.
-func outlineDeckSpecSlots(o *briefOutline, budget int, account *Budget) ([]deckSpecSlotDef, []DeckSpecSlot, []string, []string) {
-	var sources, rest []briefFact
-	for _, f := range extractBriefFacts(o.rest) {
-		if f.source {
-			sources = append(sources, f)
+func outlineDeckSpecSlots(o *briefOutline, budget int, account *Budget) (ordered []deckSpecSlotDef, slots []DeckSpecSlot, unplaced, sources []string, backMatter []deckSpecSlotDef) {
+	facts := extractBriefFacts(o.rest)
+	// The sentences of the rest of the brief that name a kind merge into the
+	// outline items built for them; the ones no item lists are added from
+	// spare budget (go-slide-creator-xbwlt).
+	named := detectNamedSlides(o.rest, facts)
+	claimed := make([]bool, len(facts))
+	extras, closer := o.mergeNamed(named)
+	for _, n := range named {
+		for _, fi := range n.factIdx {
+			claimed[fi] = true
+		}
+	}
+	var sourceFacts, rest []briefFact
+	for i, f := range facts {
+		switch {
+		case f.source:
+			sourceFacts = append(sourceFacts, f)
+		case !claimed[i]:
+			rest = append(rest, f)
+		}
+	}
+	body, appendix := o.splitAppendix()
+	unplaced = o.routeRest(rest)
+
+	ordered = []deckSpecSlotDef{{slot: "cover", kind: "title", guidance: outlineCover.guidance}}
+	for _, it := range body {
+		ordered = append(ordered, outlineSlotDef(it))
+	}
+	// Named slides the outline did not list, from the room left after the
+	// items and the close.
+	closeNeeded := 0
+	if !o.endsOnClose() {
+		closeNeeded = 1
+	}
+	room := budget - len(ordered) - closeNeeded - appendixCost(appendix)
+	for _, n := range extras {
+		if room <= 0 {
+			account.cut(fmt.Sprintf("%s (%s) the brief names but the outline does not list", n.slot, n.kind), "no room after the outline's items")
+			unplaced = append(unplaced, n.facts...)
 			continue
 		}
-		rest = append(rest, f)
-	}
-	unplaced := o.routeRest(rest)
-
-	ordered := []deckSpecSlotDef{{"cover", "title", outlineCover.guidance, 0, ""}}
-	for _, it := range o.items {
-		ordered = append(ordered, deckSpecSlotDef{it.def.slot, it.def.kind, it.def.guidance, it.def.capacity, ""})
+		def := namedSlotDef(n)
+		def.guidance = "Not in the brief's outline, but the brief names it: " + def.guidance
+		ordered = append(ordered, def)
+		room--
 	}
 	switch {
 	case o.endsOnClose():
 	case len(ordered)+1 <= budget:
-		ordered = append(ordered, deckSpecSlotDef{"closing", "next_steps", guideClosing, 4, ""})
+		closing := deckSpecSlotDef{slot: "closing", kind: "next_steps", guidance: guideClosing, capacity: 4}
+		if closer != nil {
+			closing.facts, closing.fields = closer.facts, closer.fields
+		}
+		ordered = append(ordered, closing)
 	default:
 		account.cut("closing (next_steps)", fmt.Sprintf("the outline's %d items fill the budget", len(o.items)))
-	}
-	slots := make([]DeckSpecSlot, len(ordered))
-	for i, d := range ordered {
-		slots[i] = DeckSpecSlot{SlideIndex: i, Slot: d.slot, Kind: d.kind, Guidance: d.guidance}
-		if i >= 1 && i <= len(o.items) {
-			slots[i].Facts = o.items[i-1].facts
+		if closer != nil {
+			unplaced = append(unplaced, closer.facts...)
 		}
 	}
-	return ordered, slots, unplaced, factTexts(sources)
+	for _, it := range appendix {
+		def := outlineSlotDef(it)
+		def.slot = "backup"
+		backMatter = append(backMatter, def)
+	}
+	slots = make([]DeckSpecSlot, len(ordered))
+	for i, d := range ordered {
+		slots[i] = DeckSpecSlot{SlideIndex: i, Slot: d.slot, Kind: d.kind, Guidance: d.guidance, Facts: d.facts}
+	}
+	return ordered, slots, unplaced, factTexts(sourceFacts), backMatter
+}
+
+// outlineSlotDef is the storyline slot for an outline item, with the facts
+// and fields merged into it.
+func outlineSlotDef(it outlineItem) deckSpecSlotDef {
+	return deckSpecSlotDef{
+		slot: it.def.slot, kind: it.def.kind, guidance: it.def.guidance,
+		capacity: it.def.capacity + len(it.facts), fields: it.fields, facts: it.facts,
+	}
+}
+
+// appendixCost is the slides an outline's appendix items take: the divider
+// plus one per item.
+func appendixCost(items []outlineItem) int {
+	if len(items) == 0 {
+		return 0
+	}
+	return 1 + len(items)
 }
 
 // factTexts returns the facts' texts.
@@ -647,9 +850,10 @@ func BuildDeckSpecPlan(p Params) *DeckSpecPlan {
 		outline = parseOutline(brief, outlineStatedCount(p, constraints, budget))
 	}
 	var d specDraft
+	var outlineBackMatter []deckSpecSlotDef
 	topicBrief := cleaned
 	if outline != nil {
-		d.ordered, d.slots, d.unplaced, d.sources = outlineDeckSpecSlots(outline, budget, &account)
+		d.ordered, d.slots, d.unplaced, d.sources, outlineBackMatter = outlineDeckSpecSlots(outline, budget, &account)
 		topicBrief = outline.rest
 	} else {
 		d = storylineDraft(brief, audience, budget, req, chapters, chaptersAsked, &account)
@@ -666,6 +870,9 @@ func BuildDeckSpecPlan(p Params) *DeckSpecPlan {
 	}
 
 	topic := sentenceCase(deckTopic(topicBrief))
+	// The title is the deck name the brief gives, else the topic when it fits,
+	// else __FILL__ — never a truncated fragment (go-slide-creator-xbwlt).
+	title := deckTitle(topicBrief)
 	// The cover carries the topic — and the source the brief names — so every
 	// date and name in them is in a slot's facts.
 	for i := range d.slots {
@@ -673,33 +880,18 @@ func BuildDeckSpecPlan(p Params) *DeckSpecPlan {
 			d.slots[i].Facts = append([]string{topic}, d.sources...)
 		}
 	}
-	meta := map[string]any{"title": topic, "date": patterns.FillPlaceholder}
-	if p.TemplateName != "" {
-		meta["template"] = p.TemplateName
-	}
-	if audience != "" {
-		meta["audience"] = audience
-	}
-	if len(d.sources) > 0 {
-		meta["source"] = sourceValue(d.sources[0])
-	}
-	// Consulting chrome (go-slide-creator-1iy0x): page numbers on every slide
-	// but the title and closing, meta.date in the footer, and the section
-	// tracker on a chaptered deck. Written out so the agent sees — and can
-	// edit — the furniture the deck renders with.
-	chrome := map[string]any{"page_numbers": map[string]any{"enabled": true}}
-	if len(d.secs) > 0 {
-		chrome["tracker"] = true
-	}
-	meta["chrome"] = chrome
+	meta := draftMeta(title, p.TemplateName, audience, d.sources, len(d.secs) > 0)
 
 	slideFor := func(s deckSpecSlotDef) map[string]any {
-		if s.slot == "regions" {
+		if s.slot == "regions" && req.draftable() && len(s.fields) == 0 {
 			return req.draftBody()
 		}
 		slide := map[string]any{"kind": s.kind, "title": patterns.FillPlaceholder}
+		for k, v := range s.fields {
+			slide[k] = v
+		}
 		if s.slot == "cover" {
-			slide["title"] = topic
+			slide["title"] = title
 			slide["subtitle"] = patterns.FillPlaceholder
 		}
 		return slide
@@ -711,7 +903,7 @@ func BuildDeckSpecPlan(p Params) *DeckSpecPlan {
 	}
 	// Back matter needs an appendix divider: it is drafted where chapters are
 	// allowed, or when the brief asks for backup material outright.
-	var backMatter []deckSpecSlotDef
+	backMatter := outlineBackMatter
 	if outline == nil && (chapters || d.sig.backup) {
 		backMatter = appendixSlots(d.sig, len(d.unplaced), budget-rendered)
 	}
@@ -727,12 +919,7 @@ func BuildDeckSpecPlan(p Params) *DeckSpecPlan {
 		draft.Structure = draftStructure(d.ordered, d.secs, backMatter, d.slots, slideFor)
 	}
 
-	for i := range d.slots {
-		if d.slots[i].Slot == "regions" {
-			path := d.slots[i].Path
-			d.slots[i].Regions = req.regionSlots(func(k int) string { return fmt.Sprintf("%s.regions[%d]", path, k) })
-		}
-	}
+	annotateRegionSlots(&d, req, outline == nil)
 
 	account.Planned = rendered
 	accountDeckSpec(&account, d.ordered, draft, len(backMatter) > 0)
@@ -754,6 +941,55 @@ func BuildDeckSpecPlan(p Params) *DeckSpecPlan {
 	return plan
 }
 
+// draftMeta is the draft's meta block: title, date placeholder, template,
+// audience, the source the brief names, and the consulting chrome
+// (go-slide-creator-1iy0x): page numbers on every slide but the title and
+// closing, meta.date in the footer, and the section tracker on a chaptered
+// deck — written out so the agent sees, and can edit, the furniture the deck
+// renders with.
+func draftMeta(title, template, audience string, sources []string, chaptered bool) map[string]any {
+	meta := map[string]any{"title": title, "date": patterns.FillPlaceholder}
+	if template != "" {
+		meta["template"] = template
+	}
+	if audience != "" {
+		meta["audience"] = audience
+	}
+	if len(sources) > 0 {
+		meta["source"] = sourceValue(sources[0])
+	}
+	chrome := map[string]any{"page_numbers": map[string]any{"enabled": true}}
+	if chaptered {
+		chrome["tracker"] = true
+	}
+	meta["chrome"] = chrome
+	return meta
+}
+
+// annotateRegionSlots fills slots[].regions for the regions slide: from the
+// parsed region request on the storyline path, or — for an outline item that
+// puts two visuals on one slide — from the drafted fields
+// (go-slide-creator-xbwlt).
+func annotateRegionSlots(d *specDraft, req *regionRequest, storyline bool) {
+	for i := range d.slots {
+		if d.slots[i].Slot != "regions" {
+			continue
+		}
+		path := d.slots[i].Path
+		pathOf := func(k int) string { return fmt.Sprintf("%s.regions[%d]", path, k) }
+		if req.draftable() && d.slots[i].Kind == "regions" && storyline {
+			d.slots[i].Regions = req.regionSlots(pathOf)
+			continue
+		}
+		for _, def := range d.ordered {
+			if def.slot == "regions" && len(def.fields) > 0 {
+				d.slots[i].Regions = regionSlotsFromFields(def.fields, d.slots[i].Facts, pathOf)
+				break
+			}
+		}
+	}
+}
+
 // specDraft is a drafted storyline before it is laid out: its slots in order,
 // its chapters (none for a flat draft), the facts routed to each slot, and
 // what was left over.
@@ -772,8 +1008,23 @@ type specDraft struct {
 // leaves out is recorded in the account.
 func storylineDraft(brief, audience string, budget int, req *regionRequest, chapters, chaptersAsked bool, account *Budget) specDraft {
 	facts := extractBriefFacts(brief)
-	d := specDraft{sig: readBriefSignals(brief, audience, facts)}
-	full, priority := storylineSlots(d.sig, req.draftable())
+	// The slides the brief names by kind claim their sentences' facts; the
+	// storyline defaults are read from what is left (go-slide-creator-xbwlt).
+	named := detectNamedSlides(brief, facts)
+	claimed := make([]bool, len(facts))
+	for _, n := range named {
+		for _, fi := range n.factIdx {
+			claimed[fi] = true
+		}
+	}
+	var rest []briefFact
+	for i, f := range facts {
+		if !claimed[i] {
+			rest = append(rest, f)
+		}
+	}
+	d := specDraft{sig: readBriefSignals(brief, audience, rest)}
+	full, priority := storylineSlots(d.sig, req.draftable(), named)
 
 	d.ordered = fitToBudget(full, priority, budget)
 	recordCuts(account, full, d.ordered, fmt.Sprintf("lowest priority in a budget of %d", budget))
@@ -785,9 +1036,24 @@ func storylineDraft(brief, audience string, budget int, req *regionRequest, chap
 
 	d.slots = make([]DeckSpecSlot, len(d.ordered))
 	for i, s := range d.ordered {
-		d.slots[i] = DeckSpecSlot{SlideIndex: i, Slot: s.slot, Kind: s.kind, Guidance: s.guidance}
+		d.slots[i] = DeckSpecSlot{SlideIndex: i, Slot: s.slot, Kind: s.kind, Guidance: s.guidance, Facts: append([]string{}, s.facts...)}
 	}
-	d.unplaced = routeDeckSpecFacts(d.ordered, d.slots, facts)
+	d.unplaced = routeDeckSpecFacts(d.ordered, d.slots, rest)
+	// The facts of a named slide the budget cut are not placed.
+	kept := map[string]bool{}
+	for _, s := range d.ordered {
+		for _, f := range s.facts {
+			kept[f] = true
+		}
+	}
+	for _, n := range named {
+		for _, f := range n.facts {
+			if !kept[f] {
+				d.unplaced = append(d.unplaced, f)
+				kept[f] = true
+			}
+		}
+	}
 	for i := range d.slots {
 		switch d.slots[i].Slot {
 		case "regions":
@@ -852,7 +1118,7 @@ func deckSpecBudgetNotes(account Budget, outline *briefOutline, chapters bool, u
 func routeAppendixFacts(defs []deckSpecSlotDef, slots *[]DeckSpecSlot, unplaced []string) []string {
 	rest := unplaced
 	for _, d := range defs {
-		slot := DeckSpecSlot{SlideIndex: len(*slots), Slot: d.slot, Kind: d.kind, Guidance: d.guidance, Section: appendixTitle, Appendix: true}
+		slot := DeckSpecSlot{SlideIndex: len(*slots), Slot: d.slot, Kind: d.kind, Guidance: d.guidance, Section: appendixTitle, Appendix: true, Facts: d.facts}
 		for len(rest) > 0 && len(slot.Facts) < d.capacity {
 			slot.Facts = append(slot.Facts, rest[0])
 			rest = rest[1:]
@@ -911,8 +1177,13 @@ func draftStructure(ordered []deckSpecSlotDef, secs []draftSection, backMatter [
 			slots[i].Path = "structure.closing"
 		}
 	}
+	used := map[string]bool{}
 	for si, sec := range secs {
 		title := sectionTitle(sec, ordered)
+		if used[title] {
+			title += " (continued)"
+		}
+		used[title] = true
 		section := DeckSpecSectionDraft{Title: title}
 		for j, idx := range sec.slots {
 			section.Slides = append(section.Slides, slideFor(ordered[idx]))

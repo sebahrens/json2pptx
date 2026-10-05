@@ -14,23 +14,25 @@ Write the storyline first ([QUALITY.md](QUALITY.md)). `plan_deck` with
 `format:"deckspec"` drafts it from the brief: `deck_spec` holds the kinds
 with `__FILL__` titles (and `meta.date`), `slots[]` each slot's `path`,
 guidance and routed facts, `unplaced_facts` every clause no slot holds, and
-`constraints[]` the instructions about the deck itself ("8 slides", "with an
-agenda"). A brief that lists its slides gets one slide per item, in order;
-`budget` / `budget_note` say how the slide budget was spent (no agenda or
-dividers under 12 slides unless asked). Facts are never truncated.
-Send `spec` as a JSON object or a YAML/JSON string, with `meta` and either flat `slides[]` or chapter-based
-`structure: {cover, auto_agenda, sections:[{title, slides:[]}], closing}`.
-The forms are mutually exclusive. Chapters add numbered section dividers;
-`meta.chrome.section_crumb: true` labels their content slides in the footer;
-`meta.chrome.tracker: true` sets the section name above each content title. The compiler
-generates divider numbers: do not hand-author them. A section with
-`appendix: true` (or a `section` slide with `appendix: true`) is back
-matter: an unnumbered divider (later chapters keep their numbers), left out
-of `auto_agenda`, tracker / crumb "Appendix: <title>". Dividers titled
-Appendix, Backup, Annex, Q&A or Thank you are unnumbered without the flag.
-Appendix slides skip the rhythm run checks; their page numbers read A1, A2, …
-while the main deck stays contiguous and `{total}` counts only it. Keep a narrative,
-not one slide per layout or interchangeable cards. `explain_deck_spec` previews the resolved story and visual rhythm
+`constraints[]` the deck instructions ("8 slides", "with an agenda"). A
+sentence naming a kind (bridge, heat map, team, options, roadmap, a series)
+becomes that kind, in brief order, facts in its fields: edit, do not
+retype. "Ask:" is the one closer; the cover title is the brief's deck name.
+A brief listing its slides gets one slide per item, in order; `budget_note`
+says how the budget was spent (no agenda or dividers under 12 slides unless
+asked). Facts are never truncated.
+Send `spec` (a JSON object or a YAML/JSON string) with `meta` and either flat `slides[]` or chapter-based
+`structure: {cover, auto_agenda, sections:[{title, slides:[]}], closing}`,
+never both. Chapters add numbered section dividers;
+`meta.chrome.section_crumb: true` puts the section in the footer,
+`meta.chrome.tracker: true` above each content title. Divider numbers are
+generated: do not hand-author them. A section (or `section` slide) with
+`appendix: true` is back matter: an unnumbered divider (later chapters keep
+their numbers), outside `auto_agenda`, crumb "Appendix: <title>". Dividers
+titled Appendix, Backup, Annex, Q&A or Thank you need no flag. Appendix
+slides skip the rhythm run checks and number A1, A2, …; `{total}` counts the
+main deck only. Keep a narrative, not one slide per layout or
+interchangeable cards. `explain_deck_spec` previews story and rhythm
 without rendering.
 
 When the request explicitly asks to exercise native layouts, put canonical

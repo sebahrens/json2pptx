@@ -6,6 +6,9 @@ import (
 	"strings"
 )
 
+// (go-slide-creator-xbwlt) outline items are resolved through the kind
+// vocabulary in named.go before the rules below.
+
 // Enumerated outlines (go-slide-creator-hf8tf).
 //
 // "7-slide investor pitch: problem, solution, market size chart, traction
@@ -22,6 +25,13 @@ type outlineItem struct {
 	def  outlineKind
 	// facts are the brief facts routed to the item: the item itself first.
 	facts []string
+	// fields are the kind's own fields, drafted from the item ("(cost,
+	// duration)" criteria) and from the brief sentence merged into it.
+	fields map[string]any
+	// merged marks an item a named brief sentence has been folded into.
+	merged bool
+	// appendix marks an item the brief puts in the appendix.
+	appendix bool
 }
 
 // briefOutline is the enumerated outline read from a brief.
@@ -79,13 +89,27 @@ var (
 	outlineArch     = outlineKind{"topic", "architecture", "arch-stack", "framework", "How it is built: the layers and what each does.", 2}
 	outlineTable    = outlineKind{"topic", "table", "labeled-rows", "framework", "One row per item; the title says what the table shows.", 4}
 	outlineTopic    = outlineKind{"topic", "pillars", "card-grid", "framework", "3-5 points, each a conclusion with its evidence; the title is the slide's message as a sentence.", 3}
+	outlineBridge   = outlineKind{"bridge", "bridge", "waterfall-bridge", "evidence", namedGuidance["bridge"], 2}
+	outlineCase     = outlineKind{"case", "image_case", "image-text-split", "evidence", namedGuidance["image_case"], 3}
+	outlineMatrix   = outlineKind{"risks", "matrix_2x2", "matrix-2x2", "framework", namedGuidance["matrix_2x2"], 3}
+	outlineRegions  = outlineKind{"regions", "regions", "", "evidence", regionsGuidance, 4}
+	outlinePillars  = outlineKind{"framework", "pillars", "stylish-panels", "framework", namedGuidance["pillars"], 3}
 )
+
+// outlineKindByName maps a kind the vocabulary names to its outline slide.
+var outlineKindByName = map[string]outlineKind{
+	"bridge": outlineBridge, "image_case": outlineCase, "matrix_2x2": outlineMatrix, "regions": outlineRegions,
+	"architecture": outlineArch, "team": outlineTeam, "table": outlineTable, "comparison": outlineCompare,
+	"option_matrix": outlineOptions, "decision": outlineAsk, "roadmap": outlineRoadmap, "process": outlineProcess,
+	"kpi_snapshot": outlineKPIs, "chart_insight": outlineChart, "pillars": outlinePillars,
+	"next_steps": outlineClosing, "executive_summary": outlineAnswer,
+}
 
 var outlineRules = []outlineRule{
 	{regexp.MustCompile(`(?i)^(?:a\s+|the\s+)?(?:title|cover)(?:\s+(?:slide|page))?$`), outlineCover},
 	{regexp.MustCompile(`(?i)\b(?:agenda|table of contents|contents page)\b`), outlineAgenda},
 	{regexp.MustCompile(`(?i)\b(?:executive summary|exec summary|summary|overview|headlines?|key messages?|tl;?dr)\b`), outlineAnswer},
-	{regexp.MustCompile(`(?i)\b(?:next steps?|action plan|actions|call to action|way forward|wrap[- ]up|q&a)\b`), outlineClosing},
+	{regexp.MustCompile(`(?i)\b(?:next[- ]steps?|action plan|actions|call to action|way forward|wrap[- ]up|q&a|closer)\b`), outlineClosing},
 	{regexp.MustCompile(`(?i)\b(?:asks?|funding|fundraising|use of funds|decision|approval|recommendation)\b`), outlineAsk},
 	{regexp.MustCompile(`(?i)\b(?:options?|alternatives|scenarios|trade-?offs?)\b`), outlineOptions},
 	{regexp.MustCompile(`(?i)\b(?:risks?|mitigations?|threats?)\b`), outlineRisks},
@@ -110,6 +134,22 @@ func outlineKindFor(text string) outlineKind {
 	if f.list {
 		return outlineChart
 	}
+	// The kind catalogue's own vocabulary first (go-slide-creator-xbwlt): a
+	// "margin bridge" item is a bridge, a "heat map" a matrix, a "next-steps
+	// closer" the close, a "chart beside a number" a regions slide.
+	if regionsOutlineItem(text) != nil {
+		return outlineRegions
+	}
+	if cueNamedAppendix.MatchString(text) {
+		return outlineTable
+	}
+	n := readSentence(text)
+	n.header = ""
+	if namedKindFor(n) {
+		if def, ok := outlineKindByName[n.kind]; ok {
+			return def
+		}
+	}
 	for _, r := range outlineRules {
 		if r.cue.MatchString(text) {
 			return r.def
@@ -126,7 +166,7 @@ func outlineKindFor(text string) outlineKind {
 
 var (
 	// outlineHeader marks a label that introduces the deck's slides.
-	outlineHeader = regexp.MustCompile(`(?i)\b(?:slides?|outline|agenda|sections?|structure|storyline|story ?line|flow|chapters|topics|covering|covers?|order)\b`)
+	outlineHeader = regexp.MustCompile(`(?i)\b(?:slides?|outline|agenda|sections?|structure|storyline|story ?line|flow|chapters|topics|covering|covers?|order|required|must (?:include|have|cover)|deliverables?)\b`)
 
 	// outlineLineItem matches a list line: a bullet, a number, or "Slide 3:".
 	outlineLineItem = regexp.MustCompile(`(?i)^\s*(?:[-*•▪·–—]|\(?\d{1,2}[.)]|slide\s+\d{1,2}\s*[:.)–—-])\s*`)
@@ -353,7 +393,9 @@ func newOutline(texts []string, rest string) *briefOutline {
 			def = outlineClosing
 		}
 		def.guidance = fmt.Sprintf("Outline item %d of %d, in the brief's words: %q. %s", i+1, len(texts), t, def.guidance)
-		o.items = append(o.items, outlineItem{text: t, def: def, facts: []string{t}})
+		item := outlineItem{text: t, def: def, facts: []string{t}, appendix: cueNamedAppendix.MatchString(t)}
+		item.fields = outlineItemFields(t, def.kind)
+		o.items = append(o.items, item)
 	}
 	if len(o.items) < minOutlineItems {
 		return nil
@@ -361,11 +403,348 @@ func newOutline(texts []string, rest string) *briefOutline {
 	return o
 }
 
-// endsOnClose reports whether the outline's last item is the deck's close.
+// outlineItemFields drafts the fields an outline item carries on its own:
+// the criteria in an option matrix's brackets, the headers of a table, the
+// regions of a "chart beside a number" slide, the headers of an "A vs B"
+// comparison.
+func outlineItemFields(text, kind string) map[string]any {
+	switch kind {
+	case "regions":
+		if req := regionsOutlineItem(text); req != nil {
+			body := req.draftBody()
+			delete(body, "kind")
+			delete(body, "title")
+			return body
+		}
+	case "option_matrix":
+		if m := namedHeaderParen.FindStringSubmatch(text); m != nil {
+			return map[string]any{"criteria": splitCriteria(m[1])}
+		}
+	case "table":
+		n := readSentence(text)
+		n.kind = "table"
+		return tableFields(n)
+	case "comparison":
+		if m := cueNamedVsHead.FindStringSubmatch(text); m != nil {
+			return map[string]any{"columns": []any{map[string]any{"header": m[1], "items": []any{}}, map[string]any{"header": m[2], "items": []any{}}}}
+		}
+	}
+	return nil
+}
+
+// endsOnClose reports whether the outline's last body item is the deck's
+// close.
 func (o *briefOutline) endsOnClose() bool {
-	last := o.items[len(o.items)-1].def
+	body, _ := o.splitAppendix()
+	if len(body) == 0 {
+		return false
+	}
+	last := body[len(body)-1].def
 	return last.kind == "next_steps" || last.kind == "decision"
 }
+
+// splitAppendix separates the outline's body items from the ones the brief
+// puts in the appendix.
+func (o *briefOutline) splitAppendix() (body, appendix []outlineItem) {
+	for _, it := range o.items {
+		if it.appendix {
+			appendix = append(appendix, it)
+		} else {
+			body = append(body, it)
+		}
+	}
+	return body, appendix
+}
+
+// outlineMergeKinds says which named kinds an outline item of each kind
+// takes: the item's own kind, and the kinds whose facts it is built to show.
+var outlineMergeKinds = map[string][]string{
+	"regions":           {"chart_insight", "kpi_snapshot", "table", "comparison"},
+	"option_matrix":     {"decision", "option_matrix"},
+	"decision":          {"decision", "option_matrix"},
+	"comparison":        {"comparison", "decision", "kpi_snapshot"},
+	"kpi_snapshot":      {"kpi_snapshot", "comparison"},
+	"chart_insight":     {"chart_insight"},
+	"executive_summary": {},
+	"next_steps":        {"next_steps"},
+}
+
+// mergeNamed folds the brief sentences that name a kind into the outline
+// items built for them — by shared words first, then by kind — and returns
+// the named slides no item takes, plus the closer sentence.
+func (o *briefOutline) mergeNamed(named []namedSlide) (extras []namedSlide, closer *namedSlide) {
+	for i := range named {
+		n := named[i]
+		if n.closer {
+			if closer == nil {
+				closer = &named[i]
+			}
+			o.mergeCloser(n)
+			continue
+		}
+		best := o.bestItemFor(n)
+		if best < 0 {
+			extras = append(extras, n)
+			continue
+		}
+		mergeIntoItem(&o.items[best], n)
+	}
+	o.fillComparisons(named)
+	return extras, closer
+}
+
+// mergeCloser gives the outline's next-steps item the "Ask:" sentence.
+func (o *briefOutline) mergeCloser(n namedSlide) {
+	for j := range o.items {
+		if o.items[j].def.kind != "next_steps" {
+			continue
+		}
+		o.items[j].facts = append(o.items[j].facts, n.facts...)
+		if o.items[j].fields == nil {
+			o.items[j].fields = map[string]any{}
+		}
+		for k, v := range n.fields {
+			o.items[j].fields[k] = v
+		}
+		return
+	}
+}
+
+// itemAccepts reports whether an outline item can take a named sentence:
+// not merged yet, and of a kind built to show the sentence's kind.
+func itemAccepts(item outlineItem, n namedSlide) bool {
+	if item.merged {
+		return false
+	}
+	kinds, ok := outlineMergeKinds[item.def.kind]
+	if !ok {
+		return item.def.kind == n.kind
+	}
+	for _, k := range kinds {
+		if k == n.kind {
+			return true
+		}
+	}
+	return false
+}
+
+// bestItemFor picks the outline item a named sentence belongs to: the
+// accepting item sharing the most significant words, else the first that
+// accepts it; -1 when none does.
+func (o *briefOutline) bestItemFor(n namedSlide) int {
+	best, bestShared := -1, -1
+	for j := range o.items {
+		if !itemAccepts(o.items[j], n) {
+			continue
+		}
+		if s := sharedWords(o.items[j].text, n.header+" "+n.sentence); s > bestShared {
+			best, bestShared = j, s
+		}
+	}
+	return best
+}
+
+// fillComparisons gives a "B vs C" comparison with no sentence of its own its
+// columns from the options the brief enumerates.
+func (o *briefOutline) fillComparisons(named []namedSlide) {
+	for j := range o.items {
+		if o.items[j].def.kind != "comparison" || o.items[j].merged {
+			continue
+		}
+		for _, n := range named {
+			if n.kind == "decision" || n.kind == "option_matrix" {
+				fillComparisonFromOptions(&o.items[j], n)
+			}
+		}
+	}
+}
+
+// mergeIntoItem gives the item the named sentence's facts and fields; a
+// regions item takes the chart or stat into its regions, an option matrix
+// takes enumerated options as its rows.
+func mergeIntoItem(item *outlineItem, n namedSlide) {
+	item.merged = true
+	item.facts = append(item.facts, n.facts...)
+	if item.fields == nil {
+		item.fields = map[string]any{}
+	}
+	switch {
+	case item.def.kind == "regions":
+		mergeIntoRegions(item.fields, n)
+	case item.def.kind == n.kind || len(item.fields) == 0:
+		for k, v := range n.fields {
+			if _, keep := item.fields[k]; !keep {
+				item.fields[k] = v
+			}
+		}
+	case item.def.kind == "option_matrix" && n.kind == "decision":
+		mergeDecisionIntoMatrix(item.fields, n)
+	}
+}
+
+// mergeIntoRegions fills the regions of an outline item from the named
+// sentence: the chart data into the chart region, the first KPI into the
+// stat region, the table into the table region.
+func mergeIntoRegions(fields map[string]any, n namedSlide) {
+	regions, _ := fields["regions"].([]any)
+	for _, r := range regions {
+		region, _ := r.(map[string]any)
+		switch {
+		case region["kind"] == "chart" && n.kind == "chart_insight":
+			if chart, ok := n.fields["chart"].(map[string]any); ok {
+				region["chart"] = chart
+				if title, ok := chart["title"].(string); ok {
+					region["heading"] = title
+				}
+			}
+		case region["kind"] == "stat" && n.kind == "kpi_snapshot":
+			if kpis, ok := n.fields["kpis"].([]any); ok && len(kpis) > 0 {
+				if first, ok := kpis[0].(map[string]any); ok {
+					region["value"], region["label"] = first["value"], first["label"]
+				}
+			}
+		case region["kind"] == "table" && n.kind == "table":
+			region["headers"], region["rows"] = n.fields["headers"], n.fields["rows"]
+		}
+	}
+}
+
+// mergeDecisionIntoMatrix turns a decision's enumerated options into the
+// option matrix's rows, carrying the recommended one.
+func mergeDecisionIntoMatrix(fields map[string]any, n namedSlide) {
+	if opts, ok := n.fields["options"].([]any); ok {
+		rows := make([]any, 0, len(opts))
+		for _, o := range opts {
+			om, _ := o.(map[string]any)
+			row := map[string]any{"name": om["label"]}
+			if d, ok := om["detail"]; ok {
+				row["detail"] = d
+			}
+			if om["recommended"] == true {
+				fields["recommended"] = om["label"]
+			}
+			rows = append(rows, row)
+		}
+		fields["options"] = rows
+	}
+	if rec, ok := n.fields["recommendation"]; ok {
+		fields["takeaway"] = rec
+	}
+}
+
+// fillComparisonFromOptions fills an "B vs C" comparison's columns from the
+// enumerated options whose markers match the headers.
+func fillComparisonFromOptions(item *outlineItem, n namedSlide) {
+	cols, _ := item.fields["columns"].([]any)
+	opts, _ := n.fields["options"].([]any)
+	if len(cols) != 2 || len(opts) == 0 {
+		return
+	}
+	for _, c := range cols {
+		col, _ := c.(map[string]any)
+		header := strings.ToLower(fmt.Sprint(col["header"]))
+		for _, o := range opts {
+			om, _ := o.(map[string]any)
+			label := strings.ToLower(fmt.Sprint(firstNonNil(om["label"], om["name"])))
+			if strings.HasPrefix(label, header+":") || strings.HasPrefix(label, header+" ") || label == header {
+				items := []any{fmt.Sprint(firstNonNil(om["label"], om["name"]))}
+				if d, ok := om["detail"]; ok {
+					for _, piece := range splitListItems(fmt.Sprint(d)) {
+						items = append(items, piece)
+					}
+				}
+				col["items"] = items
+				item.merged = true
+			}
+		}
+	}
+}
+
+func firstNonNil(vals ...any) any {
+	for _, v := range vals {
+		if v != nil {
+			return v
+		}
+	}
+	return ""
+}
+
+// regionsOutlineItem reads an outline item that puts two or three visuals on
+// one slide ("market chart beside the 2.3% share number and position
+// bullets", "losses chart on the left with the headline number and two
+// bullets on the right") as a regions request: columns for two visuals, the
+// first as the main region beside a stack for three.
+func regionsOutlineItem(text string) *regionRequest {
+	if !regionsJoiner.MatchString(text) {
+		return nil
+	}
+	type hit struct {
+		at   int
+		kind string
+		word string
+	}
+	var hits []hit
+	for _, cue := range outlineRegionCues {
+		for _, loc := range cue.re.FindAllStringIndex(text, -1) {
+			hits = append(hits, hit{loc[0], cue.kind, strings.ToLower(text[loc[0]:loc[1]])})
+		}
+	}
+	if len(hits) < 2 {
+		return nil
+	}
+	for i := 1; i < len(hits); i++ {
+		for j := i; j > 0 && hits[j].at < hits[j-1].at; j-- {
+			hits[j], hits[j-1] = hits[j-1], hits[j]
+		}
+	}
+	seen := map[string]bool{}
+	var regions []regionReq
+	for _, h := range hits {
+		if seen[h.kind] || h.kind == "" {
+			continue
+		}
+		seen[h.kind] = true
+		r := regionReq{kind: h.kind, visual: h.word, text: text}
+		if h.kind == "chart" {
+			r.chartType = "bar_chart"
+			if strings.Contains(strings.ToLower(text), "trend") || strings.Contains(strings.ToLower(text), "line chart") {
+				r.chartType = "line_chart"
+			}
+		}
+		regions = append(regions, r)
+	}
+	if len(regions) < 2 || len(regions) > 3 || (len(regions) > 0 && regions[0].kind != "chart" && !seen["chart"]) {
+		if len(regions) < 2 || len(regions) > 3 {
+			return nil
+		}
+	}
+	req := &regionRequest{regions: regions, remainder: ""}
+	req.arrangement = "columns"
+	if len(regions) == 3 {
+		req.arrangement = "main_left"
+	}
+	positions := []string{"left", "right", "lower right"}
+	if len(regions) == 3 {
+		positions = []string{"left", "upper right", "lower right"}
+	}
+	for i := range req.regions {
+		req.regions[i].position = positions[i]
+	}
+	return req
+}
+
+var (
+	regionsJoiner      = regexp.MustCompile(`(?i)\b(?:beside|alongside|next to|on the left|on the right|side by side|split with)\b`)
+	outlineRegionCues  = []regionCue{
+		{regexp.MustCompile(`(?i)\b(?:(?:line|bar|column|area|pie|donut|trend)\s+)?(?:charts?|graphs?)\b`), "chart"},
+		{regexp.MustCompile(`(?i)\b(?:kpis|metrics|scorecard|kpi tiles)\b`), "kpis"},
+		{regexp.MustCompile(`(?i)\b(?:(?:share|headline|big|hero|key)\s+number|headline|big number|stat|kpi)\b`), "stat"},
+		{regexp.MustCompile(`(?i)\b(?:timeline|milestones|roadmap)\b`), "timeline"},
+		{regexp.MustCompile(`(?i)\btables?\b`), "table"},
+		{regexp.MustCompile(`(?i)\b(?:image|photo|picture|screenshot)\b`), "image"},
+		{regexp.MustCompile(`(?i)\b(?:bullets|narrative|commentary|text|comparison|insights?)\b`), "text"},
+	}
+)
 
 // routeRest gives the facts of the rest of the brief to the outline items
 // built to show them and returns what no item had room for.
@@ -391,14 +770,15 @@ func (o *briefOutline) routeRest(facts []briefFact) []string {
 			}
 		}
 	}
-	place(func(f briefFact) bool { return f.series }, "chart_insight")
-	place(func(f briefFact) bool { return f.option }, "option_matrix", "comparison")
-	place(func(f briefFact) bool { return f.numeric }, "kpi_snapshot", "chart_insight", "executive_summary")
-	place(func(f briefFact) bool { return f.risk }, "table")
+	place(func(f briefFact) bool { return f.series }, "chart_insight", "regions")
+	place(func(f briefFact) bool { return f.option }, "option_matrix", "comparison", "decision")
+	place(func(f briefFact) bool { return f.numeric }, "kpi_snapshot", "chart_insight", "regions", "executive_summary", "image_case")
+	place(func(f briefFact) bool { return f.risk }, "table", "matrix_2x2")
 	place(func(f briefFact) bool { return f.ask || f.recommend }, "decision", "next_steps")
 	place(func(f briefFact) bool { return f.dated && !f.action }, "timeline", "roadmap")
 	place(func(f briefFact) bool { return f.action }, "next_steps", "process")
 	place(func(f briefFact) bool { return f.quote }, "quote")
+	place(func(f briefFact) bool { return true }, "executive_summary", "pillars")
 	unplaced := []string{}
 	for fi, f := range facts {
 		if !placed[fi] {

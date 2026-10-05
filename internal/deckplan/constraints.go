@@ -60,6 +60,13 @@ var (
 		`|\b(?:please\s+)?(?:use|using|apply|applying)\s+(?:the\s+|our\s+)?([a-z0-9]+)\s+template\b` +
 		`|\b(?:(?:please\s+)?(?:use|using|with)\s+)?(?:the\s+)?template\s*[:=]\s*["']?([a-z0-9]+(?:-[a-z0-9]+)*)["']?`)
 
+	// cueTemplateOn matches "10–12 slides on `midnight-blue`" and "on
+	// `p-style` when `…/p-style.pptx` exists, otherwise `blue-corporate`": a
+	// backticked / quoted hyphenated name, or one right after "slides on"
+	// (go-slide-creator-xbwlt).
+	cueTemplateOn       = regexp.MustCompile("(?i)\\bon\\s+(?:[`\"']([a-z0-9]+(?:-[a-z0-9]+)+)[`\"']|([a-z0-9]+(?:-[a-z0-9]+)+)\\b)(?:\\s+when\\s+[^;]*?\\bexists,?\\s+otherwise\\s+[`\"']?([a-z0-9]+(?:-[a-z0-9]+)*)[`\"']?)?")
+	cueTemplateOnBefore = regexp.MustCompile(`(?i)\bslides?\s+$`)
+
 	// cueAudienceStated matches an audience the brief states as an
 	// instruction: up to six words, none a number. "for the board" inside the
 	// topic is left alone: it is part of what the deck is.
@@ -121,6 +128,9 @@ func parseConstraints(brief string) (string, []Constraint) {
 		name := submatch(brief, m, 1) + submatch(brief, m, 2) + submatch(brief, m, 3)
 		add(m[:2], ConstraintTemplate, strings.ToLower(name))
 	}
+	for _, s := range templateOnSpans(brief) {
+		add(s[:2], ConstraintTemplate, strings.ToLower(brief[s[2]:s[3]]))
+	}
 	for _, m := range cueAudienceStated.FindAllStringSubmatchIndex(brief, -1) {
 		g := 1
 		if m[2] < 0 {
@@ -177,6 +187,24 @@ func parseConstraints(brief string) (string, []Constraint) {
 	}
 	b.WriteString(brief[last:])
 	return tidyAfterConstraints(b.String()), out
+}
+
+// templateOnSpans finds "on `midnight-blue`" template instructions: each
+// result is the span to lift and the span of the template name. A bare name
+// counts only right after "slides" ("based on best-in-class" is no template).
+func templateOnSpans(brief string) [][4]int {
+	var out [][4]int
+	for _, m := range cueTemplateOn.FindAllStringSubmatchIndex(brief, -1) {
+		g := 1
+		if m[2] < 0 {
+			g = 2
+			if !cueTemplateOnBefore.MatchString(brief[:m[0]]) {
+				continue
+			}
+		}
+		out = append(out, [4]int{m[0], m[1], m[2*g], m[2*g+1]})
+	}
+	return out
 }
 
 // submatch returns capture group g of a FindSubmatchIndex result, or "".
