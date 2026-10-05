@@ -181,6 +181,7 @@ func resolveCapacityGrid(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandCon
 		// block is measured as it renders: at the composition policy's stepped
 		// sizes and row heights (go-slide-creator-yhzxt).
 		Compose:       composesSlideBlock(grid),
+		ComposeGrow:   growsLoneRow(grid),
 		KeepTextSizes: grid.KeepTextSizes,
 		CanvasScale:   gridCanvasScale(grid, ctx.SlideWidth, ctx.SlideHeight),
 	}

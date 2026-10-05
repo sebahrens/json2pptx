@@ -405,6 +405,12 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 		block := placeTextBlock(cell.Bounds, txt, blockW, blockH)
 		a.textInk = append(a.textInk, block)
 		if a.openCells {
+			// The dividers delimit the cell, which is taller than the shape
+			// when the row was grown into the free height (ComposeGrow).
+			if cell.CellBounds.CX > 0 && cell.CellBounds.CY > 0 {
+				a.addInk(cell.CellBounds)
+				return
+			}
 			a.addInk(cell.Bounds)
 			return
 		}

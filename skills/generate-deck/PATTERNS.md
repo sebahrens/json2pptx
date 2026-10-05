@@ -70,22 +70,23 @@ digits and `kpi-6up` about 9 on the narrowest templates.
 
 **Placement.** Patterns follow the slide size: on a larger slide
 (business-template, 14.7 × 8.3in) pattern text and row heights render about
-10% larger (12 → 13pt, 14 → 15pt); authored `shape_grid` sizes are kept as
-written. Box patterns are content-sized: `kpi-Nup` cards, `card-grid`
+10% larger (12 → 13pt, 14 → 15pt); authored `shape_grid` sizes are kept.
+Box patterns are content-sized: `kpi-Nup` cards, `card-grid`
 rows, `before-after` panels and `strategy-house` pillars hug their text (≤
 1.6× its height). A slide's own pattern block that needs under 75% of the
 content area is composed: its text steps up one type-scale step (12→14pt,
-14→18pt, KPI figures up to 48pt; skipped when that would wrap a short label)
-and the block sits at the optical centre. Do not add filler, spacer rows or
+14→18pt, KPI figures up to 48pt; skipped if a short label would wrap)
+and the block sits at the optical centre; a lone open `kpi-Nup` row also
+grows its divider band to half the area. Do not add filler, spacer rows or
 `bounds` to "fill" a sparse slide. `pattern.vertical_align` (default `auto`)
-takes `top` (the block under the title at the pattern's own sizes),
+takes `top` (under the title, at the pattern's own sizes),
 `center`, `bottom` or `stretch`; an explicit value, `bounds` and
 `max_height_pct` are honoured as authored; `type_scale: "compact"` keeps the
-sizes and only centres. Dense blocks (75% or more), compose segments, nested
-cell patterns and `regions` cells hang from the native body-text line as
-before. The compact variants (`kpi-inline`, `before-after-compact`,
-`process-flow-compact`) emit no `bounds`: use them as a compose segment or
-region cell; alone on a slide they are composed like any sparse block.
+sizes and only centres. Dense blocks, compose segments, nested cell
+patterns and `regions` cells hang from the native body-text line. The
+compact variants (`kpi-inline`, `before-after-compact`,
+`process-flow-compact`) are for a compose segment or region cell; alone on
+a slide they are composed like any sparse block.
 `VERTICAL_IMBALANCE` / `HORIZONTAL_IMBALANCE` (25 points each) fire when 40%
 or more of the content area stays empty below / beside a block (or between
 it and its conclusion band): set `vertical_align` (`center` / `stretch`),

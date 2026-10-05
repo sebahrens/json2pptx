@@ -60,6 +60,15 @@ const (
 	// ComposeLabelMaxWords: a paragraph of at most this many words is a
 	// label, which the step must not wrap onto a second line.
 	ComposeLabelMaxWords = 3
+	// composeGrowFill is the share of the area a lone row grows towards
+	// (Grid.ComposeGrow) and composeGrowMax how far past the height its
+	// content needs. A filled box may take 1.6x before it reads as an empty
+	// panel (go-slide-creator-wntyw, patterns.contentStretchMax); the grown
+	// row's cells are unpainted, so its surplus is air between hairlines, and
+	// 1.8x is what a row of six one-line KPIs needs to leave under a third of
+	// a tall content area beneath it on every shipped template.
+	composeGrowFill = 0.5
+	composeGrowMax  = 1.8
 )
 
 // composeRowScales are the row-height and row-gap growths tried with a type
@@ -146,7 +155,7 @@ func resolveComposed(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, 
 	if !ok || fill >= ComposeSparseFill {
 		return resolveGrid(grid, alloc, nil)
 	}
-	plan := &composePlan{place: true}
+	chosen, plan := grid, &composePlan{place: true}
 	if sizes := typeStep(grid); len(sizes) > 0 {
 		// The first row growth at which the stepped text fits is taken; a
 		// trial resolve (throwaway shape IDs) measures each.
@@ -161,11 +170,90 @@ func resolveComposed(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, 
 				break
 			}
 			if trial.worst <= composeFitMargin {
-				return resolveGrid(scaled, alloc, &composePlan{place: true, sizes: sizes, rowScale: k})
+				chosen, plan = scaled, &composePlan{place: true, sizes: sizes, rowScale: k}
+				break
 			}
 		}
 	}
-	return resolveGrid(grid, alloc, plan)
+	return resolveGrid(grownLoneRow(chosen, plan), alloc, plan)
+}
+
+// grownLoneRow returns grid with its one content-sized row grown into the
+// free height (Grid.ComposeGrow): to composeGrowFill of the area, and at most
+// composeGrowMax times the height its content needs. The cells keep their
+// shapes at the content's height, so the values still share a baseline; the
+// shapes sit where the row's tallest text block is centred in the taller row.
+// What grows with the row is what the cell draws around its shape — the
+// hairline dividers of an open KPI strip. Any other grid is returned as
+// given. plan is the plan the grid resolves under.
+func grownLoneRow(grid *Grid, plan *composePlan) *Grid {
+	if !grid.ComposeGrow || len(grid.Rows) != 1 {
+		return grid
+	}
+	row := grid.Rows[0]
+	if row.MaxHeight < composeHairlinePt || row.Height > 0 || row.AutoHeight {
+		return grid
+	}
+	target := math.Min(row.MaxHeight*composeGrowMax, composeGrowFill*float64(grid.Bounds.CY)/12700.0)
+	extra := math.Floor(target - row.MaxHeight)
+	if extra < 2 {
+		return grid
+	}
+	top := math.Min(extra, (extra+loneRowTextSlackPt(grid, plan))/2)
+	out := *grid
+	row.MaxHeight += extra
+	if row.MinHeight > 0 {
+		row.MinHeight += extra
+	}
+	cells := make([]Cell, len(row.Cells))
+	for i, c := range row.Cells {
+		c.InsetTop += top
+		c.InsetBottom += extra - top
+		cells[i] = c
+	}
+	row.Cells = cells
+	out.Rows = []Row{row}
+	return &out
+}
+
+// loneRowTextSlackPt is how much further the tallest text block of the row
+// sits from the bottom of its shape than from the top (points): the text is
+// top-anchored, so the air a row keeps for its longest caption falls under
+// the shorter ones. Zero when no cell's text can be measured.
+func loneRowTextSlackPt(grid *Grid, plan *composePlan) float64 {
+	trial := *plan
+	res, err := resolveGrid(grid, pptx.NewShapeIDAllocator(nil), &trial)
+	if err != nil || res == nil {
+		return 0
+	}
+	slack, found := 0.0, false
+	for _, cell := range res.Cells {
+		if cell.Kind != CellKindShape || cell.ShapeSpec == nil {
+			continue
+		}
+		tb, err := ResolveTextInput(cell.ShapeSpec.Text)
+		if err != nil || tb == nil {
+			continue
+		}
+		body := *tb
+		for i := range body.Insets {
+			body.Insets[i] += cell.TextInsets[i]
+		}
+		insets := pptx.EffectiveTextInsets(&body, cell.Bounds)
+		paras := scaleParagraphs(tb, cell.ShapeSpec.ThemeFonts)
+		if len(paras) == 0 {
+			continue
+		}
+		block := blockHeightPt(paras, cell.Bounds.CX-insets[0]-insets[2])
+		if math.IsInf(block, 1) {
+			continue
+		}
+		s := float64(cell.Bounds.CY-insets[1]-insets[3])/12700.0 - block + float64(insets[3]-insets[1])/12700.0
+		if !found || s < slack {
+			slack, found = s, true
+		}
+	}
+	return math.Max(slack, 0)
 }
 
 // scaledGrid returns a copy of grid whose content-sized rows, capped cells and

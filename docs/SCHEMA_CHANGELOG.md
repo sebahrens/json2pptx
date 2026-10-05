@@ -1,5 +1,8 @@
 # Schema Changelog
 
+- **2026-10-05 — A lone KPI row uses the slide (`go-slide-creator-i7yju`).**
+  - kpi-Nup (`kpi_snapshot`): an open row that is the slide's own block grows into the free height after its type step — the row to half the content area, at most 1.8× the height its content needs — with the figures centred between taller hairline dividers. Type sizes are unchanged (the 48pt figure and 18pt word caps hold). Tiles, `kpi-inline`, compose segments, regions cells and rows with `bounds`, `max_height_pct` or an explicit `vertical_align` are as before. No schema field changes.
+
 - **2026-10-05 — Schema 4.167.0 · agent journey wave 3, second pass: risk heat map, honest fit and findings an agent can act on (epic `go-slide-creator-ls0i5`).**
   - One version for the three dated entries below this one (footer chrome, rhythm advice, revisions) and for the bullets here.
   - New named pattern `risk-heatmap` and DeckSpec kind `risk_heatmap` (`go-slide-creator-ec74l`): `items[{name ≤40, likelihood, impact}]` (1–20) on a 3 × 3 grid, or 5 × 5 with `size: 5`; a level is a 1-based number, `low` / `medium` / `high` (`very low` … `very high` at size 5) or one of the grid's own `likelihood_levels` / `impact_levels` labels. Every cell is filled by its likelihood × impact band (one hue of the template's negative accent, ink measured per fill), risks sharing a cell stack, and a cell that cannot hold its risks at 12pt reports `BODY_TOO_LONG`. `recommend_visual` ranks it first for risk heat map / likelihood × impact intents and `plan_deck` drafts it with each risk's own ratings. The raw pattern also takes `tier_labels` and `overrides.show_legend`.

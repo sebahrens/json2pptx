@@ -167,7 +167,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `icon-row` | Horizontal row of 3–5 open icons, each over a caption and an optional one-line `description`; `overrides.style` `tile` puts each item in a tile |
 | `image-text-split` | One photo / screenshot beside a text column (eyebrow, heading, body, up to 5 bullets) with 0–3 result metrics; real images are cover-cropped, otherwise a dashed placeholder (case study / customer story slides) |
 | `journey-maturity-model` | Horizontal maturity ladder of 3–6 stage columns with numbered headers, descriptions, and an optional 'where we are' marker on the current stage |
-| `kpi-2up` | Two big-number KPI cards with short captions (kpi-Nup cells take an optional `comparator` line, e.g. "vs plan +4 pts") |
+| `kpi-2up` | Two big-number KPI cards with short captions (kpi-Nup cells take an optional `comparator` line, e.g. "vs plan +4 pts"; an open kpi-Nup row alone on a slide grows its band of dividers to half the content area) |
 | `kpi-3up` | Three big-number KPI cards with short captions |
 | `kpi-4up` | Four big-number KPI cards with short captions |
 | `kpi-5up` | Five big-number KPI cards with short captions (a value holds about 11 digits on the narrowest templates; 12 characters is the hard maximum) |
