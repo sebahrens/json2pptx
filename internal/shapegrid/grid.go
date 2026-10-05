@@ -374,9 +374,88 @@ func resolveGrid(grid *Grid, alloc *pptx.ShapeIDAllocator, plan *composePlan) (*
 		Cells:        cells,
 		Connectors:   connectors,
 		AccentBars:   accentBars,
-		RowOverflows: rowOverflows,
+		RowOverflows: writtenRowOverflows(rowOverflows, grid, cells),
 		Composed:     plan != nil && plan.place,
 	}, nil
+}
+
+// writtenRowOverflows drops the row overflows the writer contradicts. A row's
+// overflow is first estimated from its paragraphs at one line-height factor,
+// before the row is placed; the writer measures the same text in its face, at
+// the cell's resolved bounds, to decide whether it stores a shrink. When every
+// text cell of the row is an autofit body the writer stores unshrunk there,
+// the text fits and the estimate is wrong: a kpi-4up row its pattern had
+// sized to the writer's own fit (107pt) was reported as needing 119pt, with a
+// split / taller-row fix for a slide that was half empty
+// (go-slide-creator-18dqh, journey g-A10). A row with a cell the writer cannot
+// vouch for (no autofit, unreadable text, a spanning cell) keeps the estimate.
+func writtenRowOverflows(overflows []RowOverflow, grid *Grid, cells []ResolvedCell) []RowOverflow {
+	if len(overflows) == 0 {
+		return overflows
+	}
+	kept := overflows[:0:0]
+	for _, ro := range overflows {
+		if !rowTextWrittenUnshrunk(grid, cells, ro.RowIndex) {
+			kept = append(kept, ro)
+		}
+	}
+	return kept
+}
+
+// rowTextWrittenUnshrunk reports whether row r holds text and the writer
+// stores every text cell of it with no autofit shrink at its resolved bounds.
+func rowTextWrittenUnshrunk(grid *Grid, cells []ResolvedCell, r int) bool {
+	if r < 0 || r >= len(grid.Rows) {
+		return false
+	}
+	for _, c := range grid.Rows[r].Cells {
+		// The estimate skips spanning cells; so does this check, but a text
+		// cell the resolver did not emit as a shape (a composite, a nested
+		// grid) is not one the writer can vouch for.
+		if c.RowSpan > 1 || c.BleedTop > 0 {
+			continue
+		}
+		if c.Shape != nil && len(c.Shape.Text) > 0 && (c.Composite != nil || c.Placeholder) {
+			return false
+		}
+	}
+	measured := 0
+	for i := range cells {
+		c := &cells[i]
+		if c.RowIdx != r || c.Kind != CellKindShape || c.ShapeSpec == nil || len(c.ShapeSpec.Text) == 0 {
+			continue
+		}
+		// The claim is about the row at its cap. A stretched grid resolves a
+		// capped row taller than the cap; that the text fits there says
+		// nothing about the max_height the author wrote.
+		if c.Bounds.CY > PtToEMU(grid.Rows[r].MaxHeight+1) {
+			return false
+		}
+		tb, err := ResolveTextInput(c.ShapeSpec.Text)
+		if err != nil || tb == nil || tb.AutoFit != "normAutofit" {
+			return false
+		}
+		// A box too short for one line inside its margins has no text area
+		// for the writer to measure: it reports no shrink for that too.
+		largest := 0
+		for _, p := range tb.Paragraphs {
+			for _, run := range p.Runs {
+				largest = max(largest, run.FontSize)
+			}
+		}
+		margins := tb.Insets[1] + tb.Insets[3] + c.TextInsets[1] + c.TextInsets[3]
+		if margins == 0 {
+			margins = 2 * PtToEMU(pptx.ShapeTextInsetPt)
+		}
+		if largest <= 0 || c.Bounds.CY < margins+PtToEMU(float64(largest)/100) {
+			return false
+		}
+		if canvasAutofit(c) < 1-canvasAutofitSlack {
+			return false
+		}
+		measured++
+	}
+	return measured > 0
 }
 
 // MaxColumns is the largest explicit shape_grid column count (numeric
