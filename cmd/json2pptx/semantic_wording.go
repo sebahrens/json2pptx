@@ -47,9 +47,11 @@ var kindAdvice = []struct {
 	with string
 }{
 	// option_matrix has no legend switch, and dropping highlight_label made the
-	// table taller (the label then moved into the option's cell).
+	// table taller (the label then moved into the option's cell). The remedies
+	// run from the one that keeps most: the kind requires its takeaway, so
+	// dropping it is not one (go-slide-creator-u8orh).
 	{regexp.MustCompile(`drop the option details or highlight_label, hide the legend \(show_legend: false\), drop the slide takeaway, or split the table`),
-		"drop the option details, drop the slide takeaway, or use fewer options or criteria"},
+		"shorten the option details, drop them, or use fewer options or criteria"},
 	// A timeline draws bars when a milestone has an end_date; the kind has no
 	// style field, and a bar's label holds less than a dot's.
 	{regexp.MustCompile(`is not rendered in gantt style — move the detail into the label, choose dots or chevron style, or remove the body`),
@@ -81,6 +83,12 @@ var kindAdvice = []struct {
 	{regexp.MustCompile(`a column of fragments, not a label$`),
 		"a column of fragments, not a label: cut each box to a label, or use fewer boxes so each is wider"},
 }
+
+// dropTakeawayAdviceRE matches the last of a sentence's remedies when it is to
+// drop the slide's takeaway, with the remedy before it. On a slide whose kind
+// requires a takeaway that advice is answered by SEMANTIC_TAKEAWAY_REQUIRED on
+// the next validation (go-slide-creator-u8orh).
+var dropTakeawayAdviceRE = regexp.MustCompile(`, ([^,—]+), or drop the slide(?:'s)? takeaway`)
 
 // proseBudgetRE reads the character budget a pattern states in its sentence:
 // "a bar holds about 36 readable label characters". A height ("holds about
@@ -142,6 +150,9 @@ func deckSpecWording(diags []semanticDiagnostic, input *PresentationInput, ir *s
 		msg = w.patternSentence(d, msg, rawIdx)
 		for _, a := range kindAdvice {
 			msg = a.re.ReplaceAllString(msg, a.with)
+		}
+		if spec := ir.Slides[rawIdx]; semantic.TakeawayRequired(semantic.SlideSpec{Kind: spec.Kind, Body: spec.Body}) {
+			msg = dropTakeawayAdviceRE.ReplaceAllString(msg, ", or ${1}")
 		}
 		if msg == d.Message {
 			continue

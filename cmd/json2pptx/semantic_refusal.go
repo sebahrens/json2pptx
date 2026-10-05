@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -107,6 +108,28 @@ const compositionPatchDetail = "composition_patch"
 // its floor (go-slide-creator-ifcng).
 const editPathDetail = "edit_path"
 
+// refusedTextDetail is the Details / evidence key of the text a readability
+// refusal measured.
+const refusedTextDetail = "text"
+
+// evidenceTextRunes bounds the text a finding quotes: enough to recognise a
+// paragraph, and no more than a response can carry once per unreadable cell.
+const evidenceTextRunes = 120
+
+// inlineTagRE matches the inline tags a pattern writes around part of a cell's
+// text (<b>label</b> detail).
+var inlineTagRE = regexp.MustCompile(`</?(?:b|i|u|s|sub|sup)>`)
+
+// evidenceText is text as a finding quotes it: the words, without the tags
+// the layout set them in.
+func evidenceText(text string) string {
+	text = strings.Join(strings.Fields(inlineTagRE.ReplaceAllString(text, "")), " ")
+	if utf8.RuneCountInString(text) <= evidenceTextRunes {
+		return text
+	}
+	return string([]rune(text)[:evidenceTextRunes-1]) + "…"
+}
+
 // decorateReadabilityRefusal gives a validate_deck_spec readability refusal
 // the same evidence and fallback a render refusal carries: measured against
 // allowed size, and the composition switch to suggest when the authored field
@@ -124,6 +147,11 @@ func decorateReadabilityRefusal(d *diagnostics.Diagnostic, ir *semantic.DeckIR, 
 		}
 		if minPt, ok := f.Fix.Params["min_pt"].(float64); ok {
 			d.Details["allowed"] = map[string]any{"min_font_pt": minPt}
+		}
+		// The paragraph that was measured: a path can only name the value a
+		// cell shows, and a cell that joins two values names their parent.
+		if text, _ := f.Fix.Params["paragraph_text"].(string); text != "" {
+			d.Details[refusedTextDetail] = evidenceText(text)
 		}
 	}
 	rawIdx := slidepath.SlideIndex(f.Path)

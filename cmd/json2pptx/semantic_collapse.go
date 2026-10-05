@@ -110,6 +110,12 @@ func collapseSameCause(diags []semanticDiagnostic) []semanticDiagnostic {
 			continue
 		}
 		key := causeKey(d)
+		if d.Code == patterns.ErrCodeTextBelowReadableMin && diagnosticBlocks(d) {
+			// Text under its floor is repaired slide by slide, against that
+			// slide's measurement: an entry for two slides had no slide_number
+			// and no one size (go-slide-creator-llxzd).
+			key += "\x00" + slideContainer(d.SemanticPath)
+		}
 		at, seen := first[key]
 		if !seen {
 			first[key] = len(out)
@@ -162,7 +168,7 @@ func memberOf(d semanticDiagnostic) diagMember {
 		if d.diag.Fix != nil && m.fixParams == nil {
 			m.fixParams = semanticFixParams(d.diag.Fix.Kind, d.diag.Fix.Params)
 		}
-		for _, k := range []string{"measured", "allowed"} {
+		for _, k := range memberFactKeys {
 			if v, ok := d.diag.Details[k]; ok {
 				if m.facts == nil {
 					m.facts = map[string]any{}
@@ -215,13 +221,16 @@ func finishCollapsed(d *semanticDiagnostic) {
 		}
 		source.Details[k] = v
 	}
-	for _, k := range []string{"measured", "allowed"} {
+	var listed []string
+	for _, k := range memberFactKeys {
 		values := make([]any, 0, n)
 		differ := false
 		for _, m := range d.members {
 			v, ok := m.facts[k]
 			if !ok {
-				values = nil
+				// A member that was not measured leaves the entry the first
+				// member's fact; a list with a hole in it was written as null.
+				differ = false
 				break
 			}
 			if len(values) > 0 && !reflect.DeepEqual(values[0], v) {
@@ -231,10 +240,11 @@ func finishCollapsed(d *semanticDiagnostic) {
 		}
 		if differ {
 			source.Details[k] = values
+			listed = append(listed, k)
 		}
 	}
 	if d.Evidence == nil {
-		for _, k := range []string{"measured", "allowed"} {
+		for _, k := range memberFactKeys {
 			if v, ok := source.Details[k]; ok {
 				if d.Evidence == nil {
 					d.Evidence = map[string]any{}
@@ -242,9 +252,20 @@ func finishCollapsed(d *semanticDiagnostic) {
 				d.Evidence[k] = v
 			}
 		}
+	} else if len(listed) > 0 {
+		// A refusal's own evidence is the first member's; the facts that differ
+		// are listed per path here too.
+		d.Evidence = copyFacts(d.Evidence)
+		for _, k := range listed {
+			d.Evidence[k] = source.Details[k]
+		}
 	}
 	d.diag = &source
 }
+
+// memberFactKeys are the facts a collapsed entry keeps per member: listed in
+// the order of paths when they differ.
+var memberFactKeys = []string{"measured", "allowed", refusedTextDetail}
 
 // fallbackSymptomCodes are the fit findings that measure how much text a slide
 // carries. On a slide that fell back from its visual they measure the

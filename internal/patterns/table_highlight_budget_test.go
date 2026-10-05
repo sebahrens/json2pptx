@@ -64,7 +64,7 @@ func TestTableHighlightDensePairedCopyWarning(t *testing.T) {
 	option := pat.Schema().raw.Properties["values"].raw.Properties["options"].raw.Items
 	if option.raw.Properties["detail"].raw.MaxLength == nil ||
 		*option.raw.Properties["detail"].raw.MaxLength != 80 ||
-		!strings.Contains(option.raw.Properties["detail"].raw.Description, "from 4 options a row holds no readable detail") {
+		!strings.Contains(option.raw.Properties["detail"].raw.Description, "from 4 options it is kept only where the table fits the content area") {
 		t.Fatalf("schema loses sparse maximum or dense guidance: %+v", option.raw)
 	}
 }

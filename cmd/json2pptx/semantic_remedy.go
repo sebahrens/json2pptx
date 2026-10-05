@@ -521,8 +521,6 @@ func (rc *remedyContext) choose(targets []*remedyTarget) {
 
 // cutCandidate is one removal that might clear an over-full slide.
 type cutCandidate struct {
-	// path is the pointer the candidate removes.
-	path string
 	ops  []any
 	cost int
 	note string
@@ -556,7 +554,7 @@ func textLength(v any) int {
 
 // removal is the candidate that removes the value at path.
 func removal(path string, cost int, entry bool, note string) cutCandidate {
-	return cutCandidate{path: path, ops: []any{map[string]any{"op": "remove", "path": path}}, cost: cost, entry: entry, note: note}
+	return cutCandidate{ops: []any{map[string]any{"op": "remove", "path": path}}, cost: cost, entry: entry, note: note}
 }
 
 // lineRemoval is the candidate that removes one line of text.
@@ -586,40 +584,88 @@ func focusCuts(focusPointer string, focus any) []cutCandidate {
 	return out
 }
 
-// listCuts are the removals inside one list of a slide: an optional second
-// line of each entry, and the last entry.
-func listCuts(base, key string, list []any, lastEntry bool) []cutCandidate {
-	var out []cutCandidate
-	for i, item := range list {
-		entry, isObject := item.(map[string]any)
-		if !isObject {
-			continue
-		}
-		for _, dk := range cutDetailKeys {
-			if text, isText := entry[dk].(string); isText && text != "" {
-				out = append(out, lineRemoval(fmt.Sprintf("%s/%d/%s", base, i, dk), text))
+// slideCuts are the single removals worth trying on a slide, by what each
+// keeps: one line of text, the optional second line of every entry of a list,
+// a whole entry.
+type slideCuts struct {
+	lines, lists, entries []cutCandidate
+}
+
+// addList adds the removals inside one list of a slide: an optional second
+// line of each entry, that line of all of them, and the last entry.
+func (c *slideCuts) addList(base, key string, list []any, lastEntry bool) {
+	for _, dk := range cutDetailKeys {
+		var ops []any
+		chars := 0
+		for i, item := range list {
+			entry, _ := item.(map[string]any)
+			text, isText := entry[dk].(string)
+			if !isText || text == "" {
+				continue
 			}
+			path := fmt.Sprintf("%s/%d/%s", base, i, dk)
+			c.lines = append(c.lines, lineRemoval(path, text))
+			ops = append(ops, map[string]any{"op": "remove", "path": path})
+			chars += utf8.RuneCountInString(text)
+		}
+		if len(ops) > 1 {
+			// One line too many is rarely the whole of it: a matrix whose rows
+			// are each a line too tall fits without its detail lines, and
+			// keeps every option (go-slide-creator-u8orh).
+			c.lists = append(c.lists, cutCandidate{ops: ops, cost: chars,
+				note: fmt.Sprintf("removing the %d %s lines under %s (%d characters) clears this and keeps every entry", len(ops), dk, base, chars)})
 		}
 	}
 	if lastEntry {
 		last := len(list) - 1
 		path := fmt.Sprintf("%s/%d", base, last)
-		out = append(out, removal(path, textLength(list[last])+1, true,
+		c.entries = append(c.entries, removal(path, textLength(list[last])+1, true,
 			fmt.Sprintf("the limit here is the number of %s: %d fit, so removing %s clears this", key, last, path)))
 	}
-	return out
 }
 
-// cutCandidates lists the single removals worth trying on a slide: one
-// optional line of one list entry, the takeaway, the last entry of a list.
-// When the finding names a list inside the slide (focus, with its pointer),
-// the entries of that list come first; the rest follow, cheapest first.
+// ordered lists the cuts cheapest first within what they keep — lines, then
+// a list's second lines, then entries — in at most limit tries. The search
+// has only so many, and when the limit is the number of rows no line's removal
+// clears it: the cheapest cut of each further group always has a try.
+func (c *slideCuts) ordered(limit int) []cutCandidate {
+	byCost(c.lines)
+	byCost(c.lists)
+	byCost(c.entries)
+	reserved := min(len(c.lists), 1) + min(len(c.entries), 1)
+	lines := c.lines
+	if room := max(limit-reserved, 0); len(lines) > room {
+		lines = lines[:room]
+	}
+	out := append(append(append([]cutCandidate{}, lines...), c.lists...), c.entries...)
+	if len(out) <= limit {
+		return out
+	}
+	// Over the limit by lists or entries alone: the cheapest of each first.
+	kept := append([]cutCandidate{}, lines...)
+	for i := 0; len(kept) < limit && (i < len(c.lists) || i < len(c.entries)); i++ {
+		if i < len(c.lists) {
+			kept = append(kept, c.lists[i])
+		}
+		if i < len(c.entries) && len(kept) < limit {
+			kept = append(kept, c.entries[i])
+		}
+	}
+	return kept
+}
+
+// cutCandidates lists the removals worth trying on a slide, the one that
+// keeps most first: one optional line of one list entry or the takeaway, then
+// the optional lines of a whole list, then the last entry of a list. A
+// takeaway the slide's kind requires is never one of them: validation asks for
+// it back (SEMANTIC_TAKEAWAY_REQUIRED). When the finding names a list inside
+// the slide (focus, with its pointer), the entries of that list come first.
 func cutCandidates(pointer string, slide map[string]any, focusPointer string, focus any) []cutCandidate {
 	var out []cutCandidate
 	if focusPointer != pointer {
 		out = focusCuts(focusPointer, focus)
 	}
-	first := len(out)
+	var cuts slideCuts
 	entries := hasObjectList(slide)
 	for _, key := range sortedMapKeys(slide) {
 		list, ok := slide[key].([]any)
@@ -629,31 +675,21 @@ func cutCandidates(pointer string, slide map[string]any, focusPointer string, fo
 		// A list of plain strings beside the slide's items is its axis or its
 		// criteria; the items are what there are too many of.
 		_, isObject := list[len(list)-1].(map[string]any)
-		out = append(out, listCuts(pointer+"/"+escapePointerSegment(key), key, list, isObject || !entries)...)
+		cuts.addList(pointer+"/"+escapePointerSegment(key), key, list, isObject || !entries)
 	}
-	if text, ok := slide["takeaway"].(string); ok && text != "" {
+	if text, ok := slide["takeaway"].(string); ok && text != "" && !takeawayRequired(slide) {
 		c := lineRemoval(pointer+"/takeaway", text)
 		c.note = fmt.Sprintf("removing %s/takeaway clears this; the rest fits as written", pointer)
-		out = append(out, c)
+		cuts.lines = append(cuts.lines, c)
 	}
-	// Cheapest first. The search has only so many tries, and when the limit is
-	// the number of rows no single line's removal clears it: the cheapest
-	// whole entry always has a try.
-	byCost(out[first:])
-	if len(out) <= maxCutCandidates {
-		return out
-	}
-	kept := false
-	for _, c := range out[:maxCutCandidates] {
-		kept = kept || c.entry
-	}
-	for _, c := range out[maxCutCandidates:] {
-		if c.entry && !kept {
-			out[maxCutCandidates-1] = c
-			break
-		}
-	}
-	return out[:maxCutCandidates]
+	return append(out, cuts.ordered(max(maxCutCandidates-len(out), 0))...)
+}
+
+// takeawayRequired reports whether an authored slide's kind requires the
+// takeaway it carries.
+func takeawayRequired(slide map[string]any) bool {
+	kind, _ := slide["kind"].(string)
+	return semantic.TakeawayRequired(semantic.SlideSpec{Kind: semantic.SlideKind(kind), Body: slide})
 }
 
 // hasObjectList reports whether a slide carries a list of entries.
@@ -701,10 +737,15 @@ func (rc *remedyContext) slideAlone(slide map[string]any) ([]trialFinding, bool)
 	return rc.run(raw)
 }
 
-// withoutPath returns a copy of the slide at pointer with the value at path
-// (a pointer under it) removed.
-func withoutPath(pointer string, slide map[string]any, path string) (map[string]any, bool) {
-	local := []any{map[string]any{"op": "remove", "path": "/slides/0" + strings.TrimPrefix(path, pointer)}}
+// withoutPaths returns a copy of the slide at pointer with the values a cut's
+// ops remove (pointers under it) removed.
+func withoutPaths(pointer string, slide map[string]any, ops []any) (map[string]any, bool) {
+	local := make([]any, 0, len(ops))
+	for _, op := range ops {
+		m, _ := op.(map[string]any)
+		path, _ := m["path"].(string)
+		local = append(local, map[string]any{"op": "remove", "path": "/slides/0" + strings.TrimPrefix(path, pointer)})
+	}
 	patched, applied := applyPatchOps(map[string]any{"slides": []any{deepCopyJSON(slide)}}, local)
 	if !applied {
 		return nil, false
@@ -744,7 +785,7 @@ func (rc *remedyContext) searchCut(t *remedyTarget) {
 	}
 	subject := []trialFinding{t.subject()}
 	for _, c := range candidates {
-		cut, applied := withoutPath(pointer, slide, c.path)
+		cut, applied := withoutPaths(pointer, slide, c.ops)
 		if !applied {
 			continue
 		}

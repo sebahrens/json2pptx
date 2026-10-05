@@ -1,8 +1,7 @@
 # Findings and repair decisions
 
 Use this guide when a deck tool returns findings. Do **not** load a static
-finding-code catalog: call `describe_finding` for an unfamiliar code (summary,
-severity, when it blocks, remediation steps, examples, related codes). Deeper
+finding-code catalog: call `describe_finding` for an unfamiliar code. Deeper
 rationale: [docs/FIT_FINDINGS.md](../../docs/FIT_FINDINGS.md).
 
 ## DeckSpec findings (`validate_deck_spec`, `render_deck_spec`)
@@ -11,11 +10,14 @@ Each finding has `code`, `severity`, `blocking` (true exactly when severity
 is `error`), `path` — a JSON Pointer (0-based) into the spec you sent, the
 string a patch takes — `missing_path` when the field does not exist yet
 (`path` is then its parent) and `slide_number` (1-based; "slide N" in any
-message is that number, "slide index N" is 0-based). Ignore `debug` (compiled-deck locators).
+message is that number, "slide index N" is 0-based). Ignore `debug`.
 
 - **One entry per cause.** `occurrences` + `paths` stand for several
-  findings: fix every pointer; `evidence.measured` / `allowed` and a budget
-  in `params` are lists in that order when they differ. `symptoms[]` (codes
+  findings: fix every pointer; `evidence.measured` / `allowed` / `text` and a
+  budget in `params` are lists in that order when they differ.
+  `TEXT_BELOW_READABLE_MIN` is per slide, `evidence.text` the text measured;
+  on a `raw_json2pptx` slide `path` is the pattern value
+  (`…/slide/pattern/values/…`). `symptoms[]` (codes
   only) are consequences of the entry — fix the entry, not the symptoms.
 - **One remedy.** `message` says what to do in the fields of your spec,
   `remediation.primary` is the action — `apply_patch`, `shorten_text`
@@ -29,7 +31,9 @@ message is that number, "slide index N" is 0-based). Ignore `debug` (compiled-de
   the finding is gone and nothing new blocks; send it unchanged. A patch
   without the flag holds an `<instruction>` value: write your own words
   within the budget. An over-full slide's message ends `— verified fix:
-  removing /slides/7/options/0/detail … clears this`; a label the layout
+  removing /slides/7/options/0/detail … clears this` (least loss first: a
+  line, a list's detail lines, an entry, the layout switch; never a required
+  takeaway); a label the layout
   writes ("RECOMMENDED") is never yours to shorten — cut what the slide
   holds. `describe_finding` is offered only on a blocker with no remedy.
 - `SEMANTIC_PATTERN_DEGRADED` is reported per over-budget item
@@ -56,7 +60,7 @@ message is that number, "slide index N" is 0-based). Ignore `debug` (compiled-de
 
 ## Raw-deck findings
 
-Each finding has stable machine fields `{path, code, severity, action, fix}`;
+Each finding has `{path, code, severity, action, fix}`;
 `fix` has `kind` and `params`. `path` is a JSON Pointer that resolves in the
 deck you sent (`/template`, `/slides/1/content/1/table_value/rows/0/2/conditional/rule`,
 `/defaults/table_style/style_id` for a default a table adopted,
@@ -73,18 +77,18 @@ max_chars, pattern}}`: rewrite that field yourself within `max_chars`.
 
 ### What to do with a finding
 
-- `refuse`: the engine cannot safely produce/accept the requested result.
+- `refuse`: the engine cannot safely produce the result.
   Repair the source and validate again; a written artifact is not success.
 - `shrink_or_split`: the content needs more room or less text. Preserve facts;
-  split the slide or rewrite copy rather than blindly truncating.
+  split the slide or rewrite copy, never truncate blindly.
 - `review` / `info`: a judgment for the author; inspect the rendered slide
-  and decide. An advisory is not a failed call. `fit_overflow` at `info` (one
+  and decide. `fit_overflow` at `info` (one
   per slide): a `shape_grid` cell fits only through a stored autofit scale,
   so its size differs between PowerPoint and LibreOffice. Apply `fix`
   (`reduce_cell_text`: `cell_path`, `max_chars`; `cells` lists every
   affected cell) or give the cells height.
 
-`score_deck` classifies a finding as `pattern_choice` (usually calls for a
+`score_deck` classifies a finding as `pattern_choice` (a
 different visual family), `rendering` (fit, geometry or contrast repair) or
 `content` (e.g. `TITLE_NOT_ACTION`, `TITLE_TOO_LONG`: a better title,
 evidence, labels or copy). `DATA_WITHOUT_SOURCE` (review: a
@@ -100,8 +104,8 @@ max_topic_title_pct; `NO_EXECUTIVE_SUMMARY` (6+ slides) and
 `CLOSING_WITHOUT_NEXT_STEPS` ("Thank you" closer, no ask) → require_storyline.
 `SLIDE_TEXT_DENSE` (>6 bullets, >80 words, bullet over 2 lines) costs score.
 
-On raw decks, `propose_repairs` translates findings to candidate directives
-and separates executable `directives` from `advisory[]`. The authoritative
+On raw decks, `propose_repairs` turns findings into executable `directives`
+and `advisory[]`. The
 executable and advisory vocabularies are
 `get_capabilities().vocabularies.repair_fix_kinds` (params in
 `repair_fix_kind_params`) and `advisory_fix_kinds`. `repair_slide` applies
@@ -120,7 +124,7 @@ that pattern's minimum counts.
 `generate` give one verdict: what one refuses all refuse, with the same code
 at the same path, before a file is written. `INVALID_SLIDE` names the field (`/slides/N/overlays/K`,
 `…/content/M/link`, `…/source_link`); a chart or diagram that cannot render
-is `diagram_render_failed`, never a deck with a "Data unavailable" box.
+is `diagram_render_failed`.
 
 A generation refusal for unreadable or lost text (`TEXT_BELOW_READABLE_MIN`
 et al.) names the slide (1-based), its pattern or diagram and the authored
