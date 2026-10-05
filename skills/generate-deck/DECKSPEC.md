@@ -67,50 +67,48 @@ slide's `pattern` is a string, never an object.
 
 ## Validation and content budgets
 
-The live kind schema is closed. Unknown fields are dropped by compilation
-and surfaced as `SEMANTIC_UNKNOWN_FIELD`; treat even a warning as lost
-content. A wrong JSON type is `SEMANTIC_FIELD_TYPE`, not a request to guess
-the intended coercion. Numbers in text positions render as plain decimals;
-quote literals such as `"1.10"`. `SEMANTIC_REFERENCE_UNRESOLVED` means a
-`recommended` / `decisive_criterion` / agenda `current` matched nothing.
-Placeholder copy the product wrote (`__FILL__`, a recipe's "Replace with …",
-an `<instruction>` value) is a blocking `SEMANTIC_WEAK_CONTENT` in any text
-field, `meta` included. Run `validate_deck_spec` before rendering and correct
-these at their `path`.
+The kind schema is closed: unknown fields are dropped and surfaced as
+`SEMANTIC_UNKNOWN_FIELD` (even a warning is lost content); a wrong JSON type
+is `SEMANTIC_FIELD_TYPE`, not a request to guess a coercion. Numbers in text
+positions render as plain decimals; quote literals such as `"1.10"`.
+`SEMANTIC_REFERENCE_UNRESOLVED`: a `recommended` / `decisive_criterion` /
+`highlight_column` / agenda `current` matched nothing. Placeholder copy the
+product wrote (`__FILL__`, "Replace with …", an `<instruction>` value) is a
+blocking `SEMANTIC_WEAK_CONTENT` anywhere, `meta` included. Run
+`validate_deck_spec` before rendering and fix findings at their `path`.
 
-Visuals have content limits. The compiler degrades an out-of-range visual to
-readable bullets or another content layout and reports
-`SEMANTIC_PATTERN_DEGRADED` at each over-budget item, with the budget in
-`remediation.primary.params` (`max_chars`, or `min_items` / `max_items` for a
-count). This is not the same as `SEMANTIC_DENSITY`, which advises about
-density without losing the visual. Shorten, split or change the count; do not
-silently truncate facts. Check `explanation_summary.pattern` after render to confirm
-the visual you expected actually landed (a degraded slide reports its compiled
-`layout` / `visual_family`).
+Visuals have content limits: an out-of-range visual degrades to readable
+bullets or another content layout, reported as `SEMANTIC_PATTERN_DEGRADED` at
+each over-budget item with the budget in `remediation.primary.params`
+(`max_chars`, or `min_items` / `max_items` for a count). `SEMANTIC_DENSITY`
+only advises; the visual stays. Shorten, split or change the count; never
+truncate facts. After render, `explanation_summary.pattern` confirms the
+visual landed (a degraded slide reports its compiled `layout` /
+`visual_family`).
 
 Text budgets are live data: `list_slide_kinds` `fields:["budgets"]` (or
 `["brief"]`) returns `budgets[] {field, max_chars, max_chars_per_line,
 max_lines, min_items, max_items, basis, note}`. `basis: "measured"` budgets
 (`title`, `subtitle`, `takeaway`) are measured on `template`, else the
-tightest across the shipped templates (`budget_basis.templates`), so copy
-inside them fits every one; `basis: "fixed"` budgets hold everywhere; `note`
-states the tighter lengths at higher item counts, and a finding's `max_chars`
-is the length for the slide's own count. Call it with the template you will
-render on before writing titles and takeaways. What the numbers do not say:
+tightest shipped template (`budget_basis.templates`); `basis: "fixed"`
+budgets hold everywhere; `note` states the tighter lengths at higher item
+counts, and a finding's `max_chars` is the length for the slide's own count.
+Call it with your template before writing titles and takeaways. What the
+numbers do not say:
 
 | Kind | Authoring consequence |
 |---|---|
 | `executive_summary` | 3–5 points `{lead, support}`; a plain string spans the width. Conclusion band: `bottom_line` (SKILL.md). Past the budgets it degrades to bullets. |
-| `kpi_snapshot` | 2–6 KPIs; give each its reference in `comparator` (alias `vs`, "vs plan +4 pts"). A value's 12 characters are the hard maximum, not the fit: five KPIs hold about 11 digits and six about 9 on the narrowest templates (the measured `kpis[].value` budget's `note`). Past 12 the slide degrades; a value that cannot fit one line on its card is `BODY_TOO_LONG` at `/slides/N/kpis/i/value` with `max_chars`: shorten it or show fewer KPIs. |
-| `chart_insight` | Needs one stated implication: `insights[]` (1–6 beside the chart; more use a native chart with the full list), a scalar `insight`, or just `takeaway` — with a chart and only a `takeaway`, it is drawn as the so-what callout (18pt) beside a 75%-wide chart, not repeated in the band, and the slide is not `takeaway_missing`. Every series needs one unquoted number per category (`CHART_SERIES_LENGTH_MISMATCH`, `CHART_VALUE_NOT_NUMERIC`). Chart types are short names (`bar`, `line`; `bar_chart` is accepted). |
-| `comparison` | 2 balanced columns of ≤10 rows compare; 3–5 columns are panels; 6–12 columns are cards; beyond that, bullets. |
+| `kpi_snapshot` | 2–6 KPIs; give each its reference in `comparator` (alias `vs`, "vs plan +4 pts"). A value's 12 characters are the hard maximum, not the fit: five KPIs hold about 11 digits and six about 9 on the narrowest templates (the `kpis[].value` budget `note`). Past 12 the slide degrades; a value that will not fit one line is `BODY_TOO_LONG` at `/slides/N/kpis/i/value` with `max_chars`: shorten it or show fewer KPIs. |
+| `chart_insight` | Needs one stated implication: `insights[]` (1–6 beside the chart; more use a native chart), a scalar `insight`, or just `takeaway`, which is then the 18pt so-what callout beside a 75%-wide chart (not repeated in the band; not `takeaway_missing`). Every series needs one unquoted number per category (`CHART_SERIES_LENGTH_MISMATCH`, `CHART_VALUE_NOT_NUMERIC`). Chart types are short names (`bar`, `line`; `bar_chart` is accepted). |
+| `comparison` | 2 balanced columns of ≤10 rows compare; 3–5 columns are panels; 6–12 cards; beyond that, bullets. Two columns take `connectors: true` (a per-row today → target badge), `highlight_column` (`left` / `right` / a header) or `highlight_row` (0-based index or cell text) — one highlight, not both; 3+ columns ignore them. |
 | `table` | ≤6 headers × 6 body rows. Options scored against criteria belong in `option_matrix`, not a generic table. |
 | `option_matrix` | 2–6 criteria × 2–6 options on one Harvey, RAG or text scale. `recommended` takes one option (name or 0-based index) or a list; a higher-scoring rival is `SEMANTIC_RECOMMENDATION_OUTSCORED`. |
-| `decision` | 3–6 options are numbered boxes; exactly 2, or 7–12, each with a detail, are cards. Mark the recommended option `recommended: true` (or name it in slide-level `recommended`); two or more are a combined recommendation ("Recommended: A and B" when no `recommendation` is written). The ask goes in `recommendation`. |
+| `decision` | 3–6 options are numbered boxes; exactly 2, or 7–12, each with a detail, are cards. Mark the recommended option `recommended: true` (or name it in slide-level `recommended`); two or more read "Recommended: A and B" when no `recommendation` is written. The ask goes in `recommendation`. |
 | `team` | 1–8 people, each with a role; a `photo` (path / url, or `{path|url, alt}`) or an initials `photo_label`. |
-| `image_case` | Picture + body, ≤5 bullets, ≤3 metrics. ≤6 `callouts: [{label, x, y, units?}]`: fractions 0–1 or `units: "px"`. `OVERLAY_TARGET_CROPPED` → `image.fit: "contain"`. Missing image: warn/off renders a draft, but `SEMANTIC_IMAGE_MISSING` blocks readiness/publication. `image_label` / `placeholder` only label the frame; supply `image` / `photo` / `screenshot` or use a text-only kind. `regions` images have no callouts. |
+| `image_case` | Picture + body, ≤5 bullets, ≤3 metrics. ≤6 `callouts: [{label, x, y, units?}]`: fractions 0–1 or `units: "px"`; `OVERLAY_TARGET_CROPPED` → `image.fit: "contain"`. `image_width_pct` 30–60 (default 45): a wide `contain` screenshot wants 55–60, else it is letterboxed. No image: a draft renders, but `SEMANTIC_IMAGE_MISSING` blocks readiness (`image_label` only labels the frame). `regions` images have no callouts. |
 | `framework`, `matrix_2x2` | Every canonical part (SWOT, Five Forces, BMC; four headed quadrants and both axes) or the slide degrades to grouped bullets. |
-| `timeline`, `roadmap` | 3–7 milestones; one with an `end_date` turns the line into bars drawn to scale. 3–6 phases for a roadmap; parallel workstreams belong in `roadmap`. |
+| `timeline`, `roadmap` | 3–7 milestones; one with an `end_date` turns the line into bars drawn to scale. 3–6 phases for a roadmap (`milestone` ≤60 marks a phase); parallel workstreams go in `parallel_tracks` (0–4, ≤90 each; `parallel_label` ≤24): bars under the phases, not a raw slide. |
 | `stat` | One value; `unit` renders at 40% of its size on the baseline. Several equal-weight figures → `kpi_snapshot`. |
 | `agenda` | 2–10 sections; `title` defaults to "Agenda"; `current` bolds one section and dims the rest. |
 | `quote` | One named speaker is a pull quote, 3–8 a cluster; two quotes, or missing names, degrade to bullets. |

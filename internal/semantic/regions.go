@@ -162,6 +162,26 @@ func validateRegions(path string, slide SlideSpec, s *semDiags) {
 	}
 }
 
+// regionKindHint says which region draws a slide kind an author wrote as a
+// region kind, parenthesised for the unknown-kind message: a bridge beside
+// text is a chart region with a waterfall chart, a kpi_snapshot a kpis
+// region. The hint sits before the "; expected one of" tail so the MCP
+// remedy, which replaces that tail with a pointer to evidence.available,
+// keeps it (go-slide-creator-ptazs).
+func regionKindHint(kind string) string {
+	switch SlideKind(strings.ToLower(strings.TrimSpace(kind))) {
+	case KindBridge:
+		return " (a bridge beside text is a chart region with type: waterfall)"
+	case KindKPISnapshot:
+		return " (KPIs beside text are a region kind \"kpis\")"
+	case KindChartInsight:
+		return " (a chart beside text is a region kind \"chart\")"
+	case KindImageCase:
+		return " (a picture beside text is a region kind \"image\")"
+	}
+	return ""
+}
+
 // validateRegion checks one region and reports whether its size_pct is usable.
 func validateRegion(rpath string, r map[string]any, s *semDiags) bool {
 	kind, _ := r["kind"].(string)
@@ -172,7 +192,7 @@ func validateRegion(rpath string, r map[string]any, s *semDiags) bool {
 				fmt.Sprintf("region is missing its \"kind\"; expected one of %s", joinQuoted(slides.RegionKinds)))
 		} else {
 			s.hard(rpath+".kind", diagnostics.CodeSemanticUnknownKind,
-				fmt.Sprintf("unknown region kind %q; expected one of %s", kind, joinQuoted(slides.RegionKinds)))
+				fmt.Sprintf("unknown region kind %q%s; expected one of %s", kind, regionKindHint(kind), joinQuoted(slides.RegionKinds)))
 		}
 		return false
 	}

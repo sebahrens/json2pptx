@@ -8,6 +8,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/semantic/slides"
 )
 
 // Regions slides (go-slide-creator-fn2ka): one title over 2–3 typed regions,
@@ -324,5 +325,47 @@ func TestNormalizeRegionsFamily(t *testing.T) {
 	ir = Normalize(regionsSpec(body))
 	if got := ir.Slides[0].Visual.Family; got != FamilyTimeline {
 		t.Errorf("timeline-led regions family = %q", got)
+	}
+}
+
+// A region kind that is a slide kind ("bridge") is told which region draws
+// it; the choices listed are the region kinds, not the slide kinds
+// (go-slide-creator-ptazs).
+func TestRegionUnknownKindNamesTheRegionKinds(t *testing.T) {
+	body := chartStatTimeline()
+	region(body, 1)["kind"] = "bridge"
+	ds := Validate(regionsSpec(body), StrictnessWarn)
+	d := findingAt(ds, diagnostics.CodeSemanticUnknownKind, "slides[0].regions[1].kind")
+	if d == nil {
+		t.Fatalf("no SEMANTIC_UNKNOWN_KIND at the region: %v", ds)
+	}
+	hint, choices, ok := strings.Cut(d.Message, "; expected one of ")
+	if !ok {
+		t.Fatalf("message lists no choices: %q", d.Message)
+	}
+	if !strings.Contains(hint, "chart region with type: waterfall") {
+		t.Errorf("a bridge region is not pointed at the waterfall chart region: %q", d.Message)
+	}
+	for _, kind := range slides.RegionKinds {
+		if !strings.Contains(choices, `"`+kind+`"`) {
+			t.Errorf("choices omit %q: %q", kind, choices)
+		}
+	}
+	if strings.Contains(choices, "bridge") || strings.Contains(choices, "kpi_snapshot") {
+		t.Errorf("choices list slide kinds: %q", choices)
+	}
+	for kind, want := range map[string]string{"kpi_snapshot": `"kpis"`, "chart_insight": `"chart"`, "image_case": `"image"`, "stat": ""} {
+		region(body, 1)["kind"] = kind
+		ds := Validate(regionsSpec(body), StrictnessWarn)
+		d := findingAt(ds, diagnostics.CodeSemanticUnknownKind, "slides[0].regions[1].kind")
+		if want == "" {
+			if d != nil {
+				t.Errorf("%s is a region kind, yet refused: %+v", kind, d)
+			}
+			continue
+		}
+		if d == nil || !strings.Contains(d.Message, "region kind "+want) {
+			t.Errorf("%s: no pointer at the %s region: %+v", kind, want, d)
+		}
 	}
 }

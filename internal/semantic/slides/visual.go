@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
 // This file holds the per-kind compilers for the first-class visual kinds —
@@ -25,12 +26,100 @@ import (
 type comparison2colRow struct {
 	Left  string `json:"left"`
 	Right string `json:"right"`
+	// Highlight tints this row: the one the comparison turns on
+	// (go-slide-creator-ptazs).
+	Highlight bool `json:"highlight,omitempty"`
 }
 
 // comparison2colValues mirrors patterns.Comparison2colValues for emission.
 type comparison2colValues struct {
 	Headers []string            `json:"headers,omitempty"`
 	Rows    []comparison2colRow `json:"rows"`
+}
+
+// comparison2colOverrides mirrors the patterns.Comparison2colOverrides the
+// comparison kind exposes: per-row connector badges for a "from → to" shift,
+// and one emphasised column (go-slide-creator-ptazs). The transformation deck's
+// "today vs target, aligned row by row" slide needed both and could reach
+// neither without raw_json2pptx.
+type comparison2colOverrides struct {
+	Connectors      bool   `json:"connectors,omitempty"`
+	HighlightColumn string `json:"highlight_column,omitempty"`
+}
+
+// ComparisonConnectors reports whether the author asked for the per-row
+// connector badges between the columns.
+func ComparisonConnectors(body map[string]any) bool {
+	b, _ := body["connectors"].(bool)
+	return b
+}
+
+// ComparisonHighlightColumn resolves highlight_column to the pattern's "left"
+// or "right": the side by name, or a column header matched case-insensitively.
+// ok is false when the field is set and names neither; side is "" when it is
+// unset.
+func ComparisonHighlightColumn(body map[string]any) (side string, ok bool) {
+	ref := strings.TrimSpace(strField(body, "highlight_column"))
+	if ref == "" {
+		return "", true
+	}
+	switch strings.ToLower(ref) {
+	case "left":
+		return "left", true
+	case "right":
+		return "right", true
+	}
+	cols := mapList(body, "columns")
+	if len(cols) == 2 {
+		for i, col := range cols {
+			if strings.EqualFold(strings.TrimSpace(columnHeader(col)), ref) {
+				return []string{"left", "right"}[i], true
+			}
+		}
+	}
+	return "", false
+}
+
+// ComparisonHighlightRow resolves highlight_row to a 0-based row index: the
+// index itself, or the text of a cell in either column matched
+// case-insensitively. ok is false when the field is set and matches no row;
+// idx is -1 when it is unset.
+func ComparisonHighlightRow(body map[string]any) (idx int, ok bool) {
+	raw, present := body["highlight_row"]
+	if !present || raw == nil {
+		return -1, true
+	}
+	_, rows, feasible := comparisonRows(body)
+	if n, isNumber := numberField(body, "highlight_row"); isNumber {
+		i := int(n)
+		if !feasible || float64(i) != n || i < 0 || i >= len(rows) {
+			return -1, false
+		}
+		return i, true
+	}
+	ref := strings.TrimSpace(strField(body, "highlight_row"))
+	if ref == "" || !feasible {
+		return -1, false
+	}
+	for i, row := range rows {
+		if strings.EqualFold(strings.TrimSpace(row.Left), ref) || strings.EqualFold(strings.TrimSpace(row.Right), ref) {
+			return i, true
+		}
+	}
+	return -1, false
+}
+
+// comparisonOverrides builds the comparison-2col overrides the payload asks
+// for, or nil when it asks for none that resolve.
+func comparisonOverrides(body map[string]any) *comparison2colOverrides {
+	ovr := comparison2colOverrides{Connectors: ComparisonConnectors(body)}
+	if side, ok := ComparisonHighlightColumn(body); ok {
+		ovr.HighlightColumn = side
+	}
+	if !ovr.Connectors && ovr.HighlightColumn == "" {
+		return nil
+	}
+	return &ovr
 }
 
 // stylishPanelsItem mirrors patterns.StylishPanelsItem for emission: a panel
@@ -83,11 +172,28 @@ func CompileComparison(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 		return compileComparisonCards(in)
 	}
 	if headers, rows, ok := comparisonRows(in.Body); ok {
+		ovr := comparisonOverrides(in.Body)
+		// The pattern draws a row highlight or a column highlight, never
+		// both; validation refuses the pair, and the column wins here.
+		if idx, ok := ComparisonHighlightRow(in.Body); ok && idx >= 0 && (ovr == nil || ovr.HighlightColumn == "") {
+			rows[idx].Highlight = true
+		}
 		encoded, err := json.Marshal(comparison2colValues{Headers: headers, Rows: rows})
 		if err != nil {
 			return nil, nil, fmt.Errorf("marshal comparison-2col values: %w", err)
 		}
-		return comparisonPatternSlide(in, "comparison-2col", encoded, ".pattern.values.rows")
+		slide, links, err := comparisonPatternSlide(in, "comparison-2col", encoded, ".pattern.values.rows")
+		if err != nil {
+			return nil, nil, err
+		}
+		if ovr != nil {
+			overrides, oErr := json.Marshal(ovr)
+			if oErr != nil {
+				return nil, nil, fmt.Errorf("marshal comparison-2col overrides: %w", oErr)
+			}
+			slide.Pattern.Overrides = overrides
+		}
+		return slide, links, nil
 	}
 	if comparisonPanelsFeasible(in.Body) {
 		return compileComparisonPanels(in)
@@ -717,14 +823,35 @@ type phaseRoadmapPhase struct {
 // phaseRoadmapValues mirrors patterns.PhaseRoadmapValues for emission.
 type phaseRoadmapValues struct {
 	Phases []phaseRoadmapPhase `json:"phases"`
+	// ParallelTracks are the workstreams that run alongside every phase, drawn
+	// as full-width bars under the phases and labelled ParallelLabel
+	// ("In parallel" by default) (go-slide-creator-ptazs).
+	ParallelTracks []string `json:"parallel_tracks,omitempty"`
+	ParallelLabel  string   `json:"parallel_label,omitempty"`
 }
 
-// CompileRoadmap compiles a roadmap slide. With 3–6 named phases it emits the
-// phase-roadmap pattern the planner advertises; otherwise it degrades to a
-// content slide listing the phases, so the deck still compiles.
+// RoadmapMaxTracks is the most parallel tracks phase-roadmap draws.
+const RoadmapMaxTracks = patterns.PhaseRoadmapMaxTracks
+
+const (
+	// roadmapMinPhases / roadmapMaxPhases are phase-roadmap's phase range.
+	roadmapMinPhases = 3
+	roadmapMaxPhases = 6
+	// roadmapTrackKeys are the keys the parallel tracks are read by: the
+	// pattern's own name first, then the word an author reaches for.
+	roadmapTracksField      = "parallel_tracks"
+	roadmapTracksAliasField = "workstreams"
+	roadmapParallelLabel    = "In parallel"
+)
+
+// CompileRoadmap compiles a roadmap slide. With 3–6 named phases within the
+// pattern's text budgets it emits the phase-roadmap pattern the planner
+// advertises — with the parallel tracks when there are any; otherwise it
+// degrades to a content slide listing the phases (and the tracks), so the deck
+// still compiles.
 func CompileRoadmap(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	phases := roadmapPhases(in.Body)
-	if in.wantsContent() || len(phases) < 3 || len(phases) > 6 {
+	if in.wantsContent() || len(phases) < roadmapMinPhases || len(phases) > roadmapMaxPhases || RoadmapOverBudget(in.Body) != "" {
 		return compilePhaseBulletsFallback(in)
 	}
 
@@ -732,7 +859,8 @@ func CompileRoadmap(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	var links []SourceLink
 	links = append(links, titleLink(slide, in)...)
 
-	encoded, err := json.Marshal(phaseRoadmapValues{Phases: phases})
+	values := phaseRoadmapValues{Phases: phases, ParallelTracks: RoadmapParallelTracks(in.Body), ParallelLabel: strField(in.Body, "parallel_label")}
+	encoded, err := json.Marshal(values)
 	if err != nil {
 		return nil, nil, fmt.Errorf("marshal phase-roadmap values: %w", err)
 	}
@@ -741,9 +869,136 @@ func CompileRoadmap(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 		RawPath:      in.rawSlide() + ".pattern.values.phases",
 		SemanticPath: in.semSlide() + ".phases",
 	})
+	if len(values.ParallelTracks) > 0 {
+		links = append(links, SourceLink{
+			RawPath:      in.rawSlide() + ".pattern.values.parallel_tracks",
+			SemanticPath: in.semSlide() + "." + roadmapTracksKey(in.Body),
+		})
+	}
 
 	links = append(links, applyTakeaway(slide, in)...)
 	return slide, links, nil
+}
+
+// roadmapTracksKey is the key the tracks were authored under.
+func roadmapTracksKey(body map[string]any) string {
+	if _, ok := body[roadmapTracksField].([]any); ok {
+		return roadmapTracksField
+	}
+	if _, ok := body[roadmapTracksAliasField].([]any); ok {
+		return roadmapTracksAliasField
+	}
+	return roadmapTracksField
+}
+
+// RoadmapParallelTracks reads the workstreams that run alongside every phase:
+// strings, or {label|name|title} objects; blank entries are dropped.
+func RoadmapParallelTracks(body map[string]any) []string {
+	raw, ok := body[roadmapTracksKey(body)].([]any)
+	if !ok {
+		return nil
+	}
+	var out []string
+	for _, e := range raw {
+		switch t := e.(type) {
+		case string:
+			if s := strings.TrimSpace(t); s != "" {
+				out = append(out, s)
+			}
+		case map[string]any:
+			if s := firstNonEmpty(strField(t, "label"), strField(t, "name"), strField(t, "title")); s != "" {
+				out = append(out, s)
+			}
+		}
+	}
+	return out
+}
+
+// RoadmapBudgetItems lists every roadmap field too long for phase-roadmap:
+// a phase's name, date label, description (with its items, which render
+// inside it), milestone, a parallel track, or the tracks' label. Each is
+// reported at its own path with the pattern's limit, so validation points
+// at the field to shorten rather than at the slide.
+func RoadmapBudgetItems(body map[string]any) []BudgetItem {
+	var out []BudgetItem
+	raw, _ := body["phases"].([]any)
+	n := 0
+	for i, e := range raw {
+		if s, isString := e.(string); isString {
+			// A string entry is the phase's name alone.
+			if s = strings.TrimSpace(s); s == "" {
+				continue
+			}
+			n++
+			if l := runeLen(s); l > patterns.PhaseRoadmapNameMax {
+				out = append(out, BudgetItem{Field: fmt.Sprintf("phases[%d]", i), What: fmt.Sprintf("phase %d's name", n),
+					Measured: l, Allowed: patterns.PhaseRoadmapNameMax, Holds: fmt.Sprintf("a phase name holds %d", patterns.PhaseRoadmapNameMax)})
+			}
+			continue
+		}
+		t, ok := e.(map[string]any)
+		if !ok {
+			continue
+		}
+		nameKey := authoredKey(t, "name", "title", "label", "phase")
+		if nameKey == "" {
+			continue
+		}
+		n++
+		check := func(key, what string, measured, allowed int, holds string) {
+			if measured > allowed {
+				out = append(out, BudgetItem{Field: fmt.Sprintf("phases[%d].%s", i, key), What: fmt.Sprintf("phase %d's %s", n, what),
+					Measured: measured, Allowed: allowed, Holds: holds})
+			}
+		}
+		check(nameKey, "name", runeLen(strField(t, nameKey)), patterns.PhaseRoadmapNameMax, fmt.Sprintf("a phase name holds %d", patterns.PhaseRoadmapNameMax))
+		if dk := authoredKey(t, "date_label", "dates", "date", "period"); dk != "" {
+			check(dk, "date label", runeLen(strField(t, dk)), patterns.PhaseRoadmapDateLabelMax, fmt.Sprintf("a date label holds %d", patterns.PhaseRoadmapDateLabelMax))
+		}
+		descKey := authoredKey(t, "description", "detail", "summary")
+		composed := phaseItemBullets(strField(t, descKey), phaseItems(t))
+		if descKey == "" {
+			descKey = "items"
+			if _, ok := t["items"]; !ok {
+				descKey = "bullets"
+			}
+		}
+		check(descKey, "description with its items", runeLen(composed), patterns.PhaseRoadmapDescriptionMax, fmt.Sprintf("a phase holds %d", patterns.PhaseRoadmapDescriptionMax))
+		check("milestone", "milestone", runeLen(strField(t, "milestone")), patterns.PhaseRoadmapMilestoneMax, fmt.Sprintf("a milestone holds %d", patterns.PhaseRoadmapMilestoneMax))
+	}
+	tracksKey := roadmapTracksKey(body)
+	for i, track := range RoadmapParallelTracks(body) {
+		if l := runeLen(track); l > patterns.PhaseRoadmapTrackMax {
+			out = append(out, BudgetItem{Field: fmt.Sprintf("%s[%d]", tracksKey, i), What: fmt.Sprintf("parallel track %d", i+1),
+				Measured: l, Allowed: patterns.PhaseRoadmapTrackMax, Holds: fmt.Sprintf("a track bar holds %d", patterns.PhaseRoadmapTrackMax)})
+		}
+	}
+	if l := runeLen(strField(body, "parallel_label")); l > patterns.PhaseRoadmapLabelMax {
+		out = append(out, BudgetItem{Field: "parallel_label", What: "the parallel tracks' label",
+			Measured: l, Allowed: patterns.PhaseRoadmapLabelMax, Holds: fmt.Sprintf("the label holds %d", patterns.PhaseRoadmapLabelMax)})
+	}
+	return out
+}
+
+// RoadmapTrackCountProblem says why the parallel tracks cannot be drawn by
+// their count, or "" when they fit (0–4).
+func RoadmapTrackCountProblem(body map[string]any) string {
+	if n := len(RoadmapParallelTracks(body)); n > patterns.PhaseRoadmapMaxTracks {
+		return fmt.Sprintf("has %d parallel tracks; the roadmap draws %d (merge related workstreams)", n, patterns.PhaseRoadmapMaxTracks)
+	}
+	return ""
+}
+
+// RoadmapOverBudget explains why the phases cannot take phase-roadmap for a
+// reason other than their count, or "" when they can.
+func RoadmapOverBudget(body map[string]any) string {
+	if p := RoadmapTrackCountProblem(body); p != "" {
+		return p
+	}
+	if items := RoadmapBudgetItems(body); len(items) > 0 {
+		return items[0].Message()
+	}
+	return ""
 }
 
 // roadmapPhases extracts phase-roadmap phases from a roadmap payload's "phases"
@@ -861,11 +1116,20 @@ func compilePhaseBulletsFallback(in Input) (*deckinput.SlideInput, []SourceLink,
 						line = desc
 					}
 				}
+				if milestone := strField(t, "milestone"); milestone != "" {
+					line = strings.TrimSpace(line + " (milestone: " + milestone + ")")
+				}
 				if strings.TrimSpace(line) != "" {
 					bullets = append(bullets, line)
 				}
 			}
 		}
+	}
+	// The parallel workstreams ride along as one closing bullet: the fallback
+	// keeps every word the visual would have drawn.
+	if tracks := RoadmapParallelTracks(in.Body); len(tracks) > 0 {
+		label := firstNonEmpty(strField(in.Body, "parallel_label"), roadmapParallelLabel)
+		bullets = append(bullets, label+": "+strings.Join(tracks, " · "))
 	}
 	return contentFallback(in, "phases", bullets)
 }

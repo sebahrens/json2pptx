@@ -267,7 +267,10 @@ var kindExamples = map[SlideKind]map[string]any{
 			map[string]any{"header": "Build", "items": []any{"Full control of roadmap", "12-month time to market"}},
 			map[string]any{"header": "Buy", "items": []any{"Vendor roadmap dependency", "3-month time to market"}},
 		},
-		"takeaway": "Buying wins on speed; building wins on control.",
+		// The column the comparison argues for carries the accent; a today →
+		// target shift would set connectors: true instead.
+		"highlight_column": "Buy",
+		"takeaway":         "Buying wins on speed; building wins on control.",
 	},
 	KindProcess: {
 		"kind":     "process",
@@ -283,7 +286,12 @@ var kindExamples = map[SlideKind]map[string]any{
 			map[string]any{"name": "Expand", "date_label": "Q2", "description": "All EMEA accounts"},
 			map[string]any{"name": "Scale", "date_label": "Q3", "description": "Global availability"},
 		},
-		"takeaway": "Global availability by Q3.",
+		// The work that runs alongside every phase: bars under the phases,
+		// not a phase of their own. (A phases[].milestone marker on top of the
+		// tracks squeezes the phase row below readable on the shortest
+		// content area, modern-template; the example carries the tracks.)
+		"parallel_tracks": []any{"Data and reporting platform", "Training for 1,200 control owners"},
+		"takeaway":        "Global availability by Q3.",
 	},
 	KindDecision: {
 		"kind":  "decision",

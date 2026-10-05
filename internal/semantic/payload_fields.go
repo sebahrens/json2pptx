@@ -272,9 +272,13 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 			objectKeys: chartObjectKeys},
 	}, compositionFields()), universalFields()),
 	KindComparison: withFields(withFields(map[string]payloadField{
-		"title":    strField("Slide title."),
-		"takeaway": strField("One-line takeaway footer."),
-		"columns":  {typ: "array", desc: "Exactly 2 balanced columns {header, items[]} (or {header, pros[], cons[]}).", itemKeys: comparisonColumnKeys},
+		"title":            strField("Slide title."),
+		"takeaway":         strField("One-line takeaway footer."),
+		"columns":          {typ: "array", desc: "Exactly 2 balanced columns {header, items[]} (or {header, pros[], cons[]}) for the row-aligned comparison-2col; 3–5 columns are panels, 6–12 cards.", itemKeys: comparisonColumnKeys},
+		"connectors":       {typ: "boolean", desc: "true draws a per-row accent connector badge in a centre gutter so each left cell reads as leading to its right cell — the today → target / from → to shift. Two-column comparisons only."},
+		"highlight_column": strField("The column the comparison argues for: \"left\", \"right\", or a column header. Its header takes the solid accent and its rows an accent tint. Two-column comparisons only; not together with highlight_row."),
+		"highlight_row": {typ: "string", schema: rowRefSchema,
+			desc: "The row the comparison turns on, as a 0-based index or the text of a cell in it; that row is tinted (at most one). Two-column comparisons only; not together with highlight_column."},
 	}, compositionFields()), universalFields()),
 	KindOptionMatrix: withFields(withFields(map[string]payloadField{
 		"title": strField("Slide title."),
@@ -488,11 +492,12 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 				"units": map[string]any{"type": "string", "enum": []any{"fraction", "px"}},
 			},
 			desc: "Up to 6 callouts on the picture: {label (≤40 chars), x, y, units?}. x / y are the point the label points at, as fractions of the image (0–1 from its top-left corner) or, with units \"px\", its own pixels; the label is placed beside the point and stays on it under any crop or template. A point the crop hides reports OVERLAY_TARGET_CROPPED at callouts[i] — use image.fit \"contain\"."},
-		"image_side":  strField("Which side the picture sits on: \"left\" (default) or \"right\"."),
-		"image_label": strField("Label for a draft placeholder when no picture is given; does not clear SEMANTIC_IMAGE_MISSING. ≤40 chars."),
-		"placeholder": strField("Alias for image_label."),
-		"photo":       {typ: "object", schema: imageCasePictureSchema, objectKeys: imageCaseImageKeys, desc: "Alias for image."},
-		"screenshot":  {typ: "object", schema: imageCasePictureSchema, objectKeys: imageCaseImageKeys, desc: "Alias for image."},
+		"image_side":      strField("Which side the picture sits on: \"left\" (default) or \"right\"."),
+		"image_width_pct": {typ: "number", desc: "Width of the picture column as a percentage of the content width, 30–60 (default 45). A wide screenshot kept whole (fit \"contain\") wants 55–60, or it is letterboxed to a third of the slide with the text column half empty; a portrait photo reads at 30–40."},
+		"image_label":     strField("Label for a draft placeholder when no picture is given; does not clear SEMANTIC_IMAGE_MISSING. ≤40 chars."),
+		"placeholder":     strField("Alias for image_label."),
+		"photo":           {typ: "object", schema: imageCasePictureSchema, objectKeys: imageCaseImageKeys, desc: "Alias for image."},
+		"screenshot":      {typ: "object", schema: imageCasePictureSchema, objectKeys: imageCaseImageKeys, desc: "Alias for image."},
 	}, compositionFields()), universalFields()),
 	KindProcess: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
@@ -508,7 +513,12 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 	KindRoadmap: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
 		"takeaway": strField("One-line takeaway footer."),
-		"phases":   {typ: "array", desc: "3–6 phases: strings or {name, date_label?, description?, items?, active?, milestone?}.", itemStrings: true, itemKeys: roadmapPhaseKeys},
+		"phases": {typ: "array", itemStrings: true, itemKeys: roadmapPhaseKeys,
+			desc: "3–6 phases on one timeline bar: strings or {name (≤40 chars), date_label? (≤30), description? (≤160 together with its items, which render as bullets under it), items?, active?, milestone? (≤60; drawn as a diamond marker under the phase's dates)}."},
+		"parallel_tracks": {typ: "array", itemStrings: true,
+			desc: "0–4 workstreams that run alongside every phase (governance, change management, training), each ≤90 chars, drawn as full-width bars under the phases. Use them for the \"in parallel\" work a phased plan carries rather than a raw roadmap-phased slide."},
+		"workstreams":    {typ: "array", itemStrings: true, desc: "Alias for parallel_tracks."},
+		"parallel_label": strField("Label at the left of the parallel-track bars (default \"In parallel\"). ≤24 chars."),
 	}, compositionFields()), universalFields()),
 	KindDecision: withFields(withFields(map[string]payloadField{
 		"title":          strField("Slide title."),
@@ -733,6 +743,12 @@ func recommendedSchema() map[string]any {
 		ref,
 		map[string]any{"type": "array", "minItems": 1, "items": ref},
 	}}
+}
+
+// rowRefSchema is a reference to one row of a comparison: its 0-based index
+// or the text of a cell in it (go-slide-creator-ptazs).
+func rowRefSchema() map[string]any {
+	return map[string]any{"type": []any{"string", "integer"}, "minimum": 0}
 }
 
 // pillarsFoundationSchema is the pillars foundation: one band, or a list of

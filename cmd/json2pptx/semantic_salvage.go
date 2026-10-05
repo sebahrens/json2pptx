@@ -606,7 +606,12 @@ func evaluateSpecFindings(filename string, data []byte, strict semantic.Strictne
 	}
 	if eval.Evaluated {
 		eval.Diagnostics = collapseDiagnostics(eval.Diagnostics)
-		return eval, envelopeDiagnostics(eval.Diagnostics)
+		ds := envelopeDiagnostics(eval.Diagnostics)
+		// A deck whose only slide names an unknown kind cannot be salvaged
+		// (nothing is left to evaluate), so its unknown-kind finding used to
+		// reach the agent with no choices at all (go-slide-creator-ptazs).
+		enrichSemanticKindDiagnostics(ds)
+		return eval, ds
 	}
 	ds := semantic.Check(filename, data, strict)
 	enrichSemanticKindDiagnostics(ds)

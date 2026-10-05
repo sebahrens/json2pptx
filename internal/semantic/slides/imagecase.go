@@ -162,9 +162,50 @@ type imageCaseValues struct {
 	Metrics    []imageCaseMetric `json:"metrics,omitempty"`
 }
 
-// imageCaseOverrides carries which side the picture sits on.
+// imageCaseOverrides carries which side the picture sits on and how wide its
+// column is.
 type imageCaseOverrides struct {
 	ImageSide string `json:"image_side,omitempty"`
+	// ImageWidthPct is the picture column's share of the content width,
+	// ImageCaseMinWidthPct–ImageCaseMaxWidthPct (the pattern's own range;
+	// default 45). A 16:9 screenshot kept whole (fit contain) in the default
+	// column was letterboxed to a third of the slide with the text column
+	// beside it half empty (go-slide-creator-ptazs).
+	ImageWidthPct float64 `json:"image_width_pct,omitempty"`
+}
+
+// ImageCaseMinWidthPct / ImageCaseMaxWidthPct bound image_width_pct, mirroring
+// image-text-split's overrides.image_width_pct range.
+const (
+	ImageCaseMinWidthPct = 30
+	ImageCaseMaxWidthPct = 60
+)
+
+// ImageCaseImageWidthPct reads image_width_pct. ok is false when it is set
+// but not a number in the pattern's range; pct is 0 when it is unset.
+func ImageCaseImageWidthPct(body map[string]any) (pct float64, ok bool) {
+	raw, present := body["image_width_pct"]
+	if !present || raw == nil {
+		return 0, true
+	}
+	n, isNumber := numberField(body, "image_width_pct")
+	if !isNumber || n < ImageCaseMinWidthPct || n > ImageCaseMaxWidthPct {
+		return n, false
+	}
+	return n, true
+}
+
+// imageCaseOverridesFor builds the pattern overrides the payload asks for, or
+// nil when it asks for none that resolve.
+func imageCaseOverridesFor(body map[string]any) *imageCaseOverrides {
+	ovr := imageCaseOverrides{ImageSide: imageCaseSide(body)}
+	if pct, ok := ImageCaseImageWidthPct(body); ok {
+		ovr.ImageWidthPct = pct
+	}
+	if ovr.ImageSide == "" && ovr.ImageWidthPct == 0 {
+		return nil
+	}
+	return &ovr
 }
 
 // CompileImageCase compiles a case-study payload onto the image-text-split
@@ -183,8 +224,8 @@ func CompileImageCase(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	slide := &deckinput.SlideInput{SlideType: "content", LayoutID: "blank-title"}
 	links := titleLink(slide, in)
 	slide.Pattern = &deckinput.PatternInput{Name: "image-text-split", Values: encoded}
-	if side := imageCaseSide(in.Body); side != "" {
-		overrides, oErr := json.Marshal(imageCaseOverrides{ImageSide: side})
+	if ovr := imageCaseOverridesFor(in.Body); ovr != nil {
+		overrides, oErr := json.Marshal(ovr)
 		if oErr != nil {
 			return nil, nil, fmt.Errorf("marshal image-text-split overrides: %w", oErr)
 		}
