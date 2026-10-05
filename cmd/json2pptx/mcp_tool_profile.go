@@ -58,8 +58,13 @@ const (
 
 	// allToolListByteBudget caps the "all" profile's default listing, which
 	// carries no outputSchema (go-slide-creator-mvdt5): it was 335 KB, 200 KB
-	// of it output schemas no model needs to choose or call a tool.
-	allToolListByteBudget = 144 * 1024
+	// of it output schemas no model needs to choose or call a tool. Raised
+	// from 144 KiB when validate_deck_spec's compact schema gained the fields
+	// the journeys asked for (roadmap parallel_tracks, comparison connectors /
+	// highlight_*, image_case image_width_pct, chart y_min / y_max —
+	// go-slide-creator-ptazs, -929jm): descriptions are stripped there, so
+	// only the property names cost bytes.
+	allToolListByteBudget = 145 * 1024
 
 	// coreToolLimit caps the core profile. TestCoreToolProfileBudget enforces it
 	// together with coreToolListByteBudget.

@@ -126,7 +126,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindComparison: {
 		Kind:           KindComparison,
-		Summary:        "Side-by-side comparison of two or more options. Two balanced columns render row-aligned (comparison-2col): connectors: true draws a per-row today → target connector badge between them, highlight_column emphasises the column argued for and highlight_row the row the comparison turns on. 3–5 columns are titled panels, 6–12 cards.",
+		Summary:        "Side-by-side comparison of two or more options. Two balanced columns render row-aligned (comparison-2col) and take connectors: true (per-row today → target badge), highlight_column or highlight_row. 3–5 columns are panels, 6–12 cards.",
 		RequiredFields: []string{"columns"},
 		TypicalFields:  []string{"title", "connectors", "highlight_column", "highlight_row", "takeaway"},
 	},
@@ -237,7 +237,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindRoadmap: {
 		Kind:           KindRoadmap,
-		Summary:        "Phased roadmap: 3–6 named phases on one timeline bar, each with a date range, a description or items and an optional milestone marker, plus 0–4 parallel_tracks — the workstreams (governance, training, a platform build) that run alongside every phase, drawn as bars under them. Outside those counts, or past the text budgets, it degrades to a bullet list. For dated stops without descriptions use timeline.",
+		Summary:        "Phased roadmap: 3–6 named phases on one timeline bar (date range, description or items, optional milestone) plus 0–4 parallel_tracks drawn as bars under them. Outside those counts or budgets it degrades to bullets. Dated stops without descriptions: timeline.",
 		RequiredFields: []string{"phases"},
 		TypicalFields:  []string{"title", "parallel_tracks", "parallel_label", "takeaway"},
 	},
