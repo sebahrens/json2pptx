@@ -297,7 +297,10 @@ when a cut was found. A takeaway the slide's kind requires is neither a
 candidate nor a remedy the message lists: `SEMANTIC_TAKEAWAY_REQUIRED` would
 ask for it back. A `table-highlight` (`option_matrix`) capacity finding now
 reads `… — shorten the option details, drop them, or use fewer options or
-criteria`, its `evidence.measured.font_pt` is the size the over-full table
+criteria` (the `needs about Npt` it opens with is the table's least height:
+rows at 4pt of padding, a slim legend, the tag beside its name and no
+unworded RAG legend, go-slide-creator-dwha2; a five-row board with one-line
+details no longer reaches it on any shipped template), its `evidence.measured.font_pt` is the size the over-full table
 shrinks to by its actual shortfall (11.8pt for a board 5pt too tall, where it
 read 6.5pt), and option `detail` lines from four options are a finding only
 where the table does not fit the measured content area.

@@ -17,16 +17,19 @@ import (
 // blocks — or the patch is not offered and the finding says what to do in its
 // message and remediation instead.
 
-// optionMatrixTightSpec is the e-revise journey's option matrix: three options
-// by four criteria whose recommended row carries a detail line. It was refused
-// with the option's name quoted as the text to shorten. The journey ran it on
-// modern-yellow, where it fits since the rows give up padding before text
-// (go-slide-creator-vg73u); under modern-template's two-line title it is
-// still one line too tall.
+// optionMatrixTightSpec is an option matrix one line too tall for
+// modern-template under a takeaway and a source line: five options by three
+// criteria, a detail under each name, and one detail that wraps in that
+// template's wider face even in the widest option column, which makes every
+// row a line taller (rows are uniform). The e-revise journey's matrix, three
+// options by four criteria refused with the option's name quoted as the text
+// to shorten, fits since the rows give up padding before text
+// (go-slide-creator-vg73u) and the table everything but its text
+// (go-slide-creator-dwha2).
 const optionMatrixTightSpec = `{"meta":{"title":"Tidewater Carbon investor update","template":"modern-template","source":"Management assessment"},"slides":[
  {"kind":"title","title":"Tidewater Carbon investor update","subtitle":"October 2026"},
- {"kind":"option_matrix","title":"We lead two competitors on cost and deployment speed","criteria":["Cost per tonne","Energy use","Deployment speed","Commercial traction"],
-  "options":[{"name":"Tidewater Carbon","detail":"Modular units, pilot plant in Q1 2027","scores":[4,3,4,2]},{"name":"Northgate Capture","detail":"Large fixed plants, long build times","scores":[2,2,1,3]},{"name":"Helio Sorbents","detail":"Low energy use, pre-revenue","scores":[2,4,2,1]}],
+ {"kind":"option_matrix","title":"We lead four competitors on cost and deployment speed","criteria":["Cost per tonne","Energy use","Deployment speed"],
+  "options":[{"name":"Tidewater Carbon","detail":"Modular units, pilot plant in Q1 2027","scores":[4,3,4]},{"name":"Northgate Capture","detail":"Large fixed plants with long build times and high capex","scores":[2,2,1]},{"name":"Helio Sorbents","detail":"Low energy use, pre-revenue","scores":[2,4,2]},{"name":"Carbonline","detail":"Pipeline access, no capture unit","scores":[1,2,2]},{"name":"Arden Minerals","detail":"Mineralisation, early trials","scores":[2,1,1]}],
   "recommended":"Tidewater Carbon","highlight_label":"Us","decisive_criterion":"Cost per tonne","scale":"harvey","corner_label":"Company","source":"Illustrative management assessment, October 2026","takeaway":"We win on cost and speed; traction is the gap the partners close."}]}`
 
 // timelineStyleSpec is the cold-start journey's probe: a key the kind does not

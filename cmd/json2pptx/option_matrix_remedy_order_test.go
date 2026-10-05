@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
 // The remedies of an over-full option_matrix run from the one that keeps most
@@ -46,9 +48,28 @@ func statusBoardSpec() map[string]any {
 	}
 }
 
+// overfullStatusBoardSpec is the status board with a sixth row and a Harvey
+// rating, whose legend names what the balls mean and stays: a few points
+// taller than midnight-blue's content area under a takeaway and a source line
+// with everything but its text given up (go-slide-creator-dwha2 made the
+// five-row board itself fit).
+func overfullStatusBoardSpec() map[string]any {
+	spec := statusBoardSpec()
+	board := spec["slides"].([]any)[1].(map[string]any)
+	board["criteria"].([]any)[2] = map[string]any{"label": "Rating", "scale": "harvey"}
+	options := append(board["options"].([]any), map[string]any{
+		"name": "End-user computing", "detail": "Spreadsheets and desktop databases", "scores": []any{"5", "1", "amber"},
+	})
+	for i, o := range options {
+		o.(map[string]any)["scores"].([]any)[2] = []any{0, 2, 4, 2, 0, 2}[i]
+	}
+	board["options"] = options
+	return spec
+}
+
 func TestOptionMatrixRemediesKeepTheVisualAndTheTakeaway(t *testing.T) {
 	mc := handleTestConfig(t)
-	res, err := mc.handleValidateDeckSpec(context.Background(), makeRequest(map[string]any{"spec": statusBoardSpec(), "template": "midnight-blue"}))
+	res, err := mc.handleValidateDeckSpec(context.Background(), makeRequest(map[string]any{"spec": overfullStatusBoardSpec(), "template": "midnight-blue"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +118,81 @@ func TestOptionMatrixRemediesKeepTheVisualAndTheTakeaway(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Skip("the board fits this template's content area: nothing to remedy")
+		t.Fatal("a six-row board with details, a Harvey legend, a takeaway and a source line fits midnight-blue: nothing was remedied")
+	}
+}
+
+// appetiteBoardSpec is the risk appetite board of the second run: two rows
+// tagged "Breached", which gave each a third line.
+func appetiteBoardSpec() map[string]any {
+	option := func(name, detail string, scores ...any) map[string]any {
+		return map[string]any{"name": name, "detail": detail, "scores": scores}
+	}
+	return map[string]any{
+		"meta": map[string]any{"title": "ERM uplift"},
+		"slides": []any{
+			map[string]any{"kind": "title", "title": "ERM uplift", "subtitle": "Board risk committee"},
+			map[string]any{
+				"kind": "option_matrix", "title": "Two of five risk appetite metrics are breached, one is amber",
+				"corner_label": "Risk type",
+				"criteria": []any{
+					map[string]any{"label": "Status", "scale": "rag"},
+					map[string]any{"label": "Current", "scale": "text"},
+					map[string]any{"label": "Limit", "scale": "text"},
+				},
+				"options": []any{
+					option("Credit", "Non-performing loans", "green", "NPL 2.1%", "3%"),
+					option("Liquidity", "Liquidity coverage ratio", "green", "LCR 148%", "110%"),
+					option("Operational", "Annual losses", "red", "EUR 11.2M", "EUR 8M"),
+					option("Conduct", "Complaints per 10k customers", "amber", "37", "30"),
+					option("Cyber", "Critical vulnerabilities unpatched >30 days", "red", "2", "0"),
+				},
+				"recommended":        []any{"Operational", "Cyber"},
+				"highlight_label":    "Breached",
+				"decisive_criterion": "Status",
+				"takeaway":           "Operational and cyber are breached; conduct is drifting towards its limit.",
+				"source":             "Regulator's 2025 review; management information 2023-2025",
+			},
+		},
+	}
+}
+
+// A status board of five rows and three columns with a line of detail under
+// each name, a takeaway and a source line is readable on every template
+// (go-slide-creator-dwha2). Both boards were refused on the four templates the
+// runs used, 5pt and 35pt taller than the 253pt content area (94pt on
+// modern-template, whose face wrapped the details).
+func TestStatusBoardWithDetailsIsReadableOnEveryTemplate(t *testing.T) {
+	mc := handleTestConfig(t)
+	for _, tmpl := range testutil.AllTestTemplateNames() {
+		for name, spec := range map[string]map[string]any{"audit": statusBoardSpec(), "appetite": appetiteBoardSpec()} {
+			res, err := mc.handleValidateDeckSpec(context.Background(), makeRequest(map[string]any{"spec": spec, "template": tmpl}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var env struct {
+				Findings []struct {
+					Code, Severity, Path, Message string
+					Evidence                      struct {
+						Symptoms []struct{ Code, Message string } `json:"symptoms"`
+					} `json:"evidence"`
+				} `json:"findings"`
+			}
+			structuredInto(t, res.StructuredContent, &env)
+			for _, f := range env.Findings {
+				if f.Path != "/slides/1" && !strings.HasPrefix(f.Path, "/slides/1/") {
+					continue
+				}
+				if f.Severity == "error" || strings.HasSuffix(f.Code, "BODY_TOO_LONG") || strings.HasSuffix(f.Code, "TEXT_BELOW_READABLE_MIN") {
+					t.Errorf("%s board on %s: %s %s at %s: %s", name, tmpl, f.Severity, f.Code, f.Path, f.Message)
+				}
+				for _, s := range f.Evidence.Symptoms {
+					if s.Code == "TEXT_BELOW_READABLE_MIN" {
+						t.Errorf("%s board on %s: %s", name, tmpl, s.Message)
+					}
+				}
+			}
+		}
 	}
 }
 

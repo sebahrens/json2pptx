@@ -82,12 +82,13 @@ func TestTableHighlightOneLineDetailsReadableWhereTheTableFits(t *testing.T) {
 		t.Fatalf("found %d name / detail cells for the first option", checked)
 	}
 
-	// An area the table is taller than: the capacity finding, and a detail
+	// An area the table is taller than even with everything but its text
+	// given up (go-slide-creator-dwha2): the capacity finding, and a detail
 	// finding per option (what to drop).
-	short := statusBoardCtx(230)
+	short := statusBoardCtx(200)
 	got := pat.PostExpandWarnings(short, v, nil)
 	if len(got) != 1+len(v.Options) || !strings.Contains(got[0], "needs about") || !strings.Contains(got[1], "no readable detail") {
-		t.Fatalf("five one-line details in a 230pt area: %v", got)
+		t.Fatalf("five one-line details in a 200pt area: %v", got)
 	}
 
 	// No measured area: the budget is the only answer there is.
@@ -102,10 +103,13 @@ func TestTableHighlightOneLineDetailsReadableWhereTheTableFits(t *testing.T) {
 func TestTableHighlightOverfullTableShrinksByItsShortfall(t *testing.T) {
 	pat := &tableHighlight{}
 	v := statusBoardValues()
-	l := newTHLayout(statusBoardCtx(1000), v, &TableHighlightOverrides{})
-	l.tight, l.legendPt, l.padPt = true, thLegendCompactPt, rowPadStepsPt[len(rowPadStepsPt)-1]
-	l.measure(11, 12, 12)
-	need := l.total()
+	// The least height the table takes, every step of fit() taken.
+	l := newTHLayout(statusBoardCtx(150), v, &TableHighlightOverrides{})
+	l.fit()
+	need := l.needPt
+	if need <= 150 {
+		t.Fatalf("the board's least height is %.0fpt", need)
+	}
 
 	for _, shortPt := range []float64{4, 12, 30} {
 		ctx := statusBoardCtx(need - shortPt)

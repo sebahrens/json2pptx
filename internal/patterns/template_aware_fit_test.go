@@ -46,9 +46,10 @@ func TestTableHighlight_FitsShortContentArea(t *testing.T) {
 		t.Errorf("unexpected warning: %s", w)
 	}
 
-	// An area that cannot hold them even at the tightest rows is reported
-	// before generation.
-	short := ExpandContext{LayoutBounds: LayoutBounds{Width: 10831550, Height: 2413000}}
+	// An area that cannot hold them even at the tightest rows, with a slim
+	// legend and the tag beside its name (go-slide-creator-dwha2: 190pt now
+	// holds this table), is reported before generation.
+	short := ExpandContext{LayoutBounds: LayoutBounds{Width: 10831550, Height: 1905000}}
 	warnings := (&tableHighlight{}).PostExpandWarnings(short, v, nil)
 	if len(warnings) != 1 || !strings.HasPrefix(warnings[0], ErrCodeBodyTooLong) || !strings.Contains(warnings[0], "content area") {
 		t.Fatalf("want one template-aware BODY_TOO_LONG, got %v", warnings)

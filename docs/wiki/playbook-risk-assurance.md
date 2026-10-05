@@ -44,7 +44,7 @@ evidence in the back (A1).
 |---|---|---|---|
 | 2 | `executive_summary` | Scope in numbers; the red domains; the trend; management acceptance | `bottom_line`: note the opinion, endorse the plan. |
 | 3 | `process` | Plan / walkthroughs / design evaluation / testing / reporting, one line each | Five steps with descriptions render as chevrons with a detail zone; labels ≤ 17 characters at five steps. |
-| 4 | `option_matrix` | Domain rows; `Controls tested` and `Exceptions` as `text`, `Rating` as `rag`; `decisive_criterion: Rating` | No `detail` lines; red rows may also be `recommended` with `highlight_label: Red`. |
+| 4 | `option_matrix` | Domain rows; `Controls tested` and `Exceptions` as `text`, `Rating` as `rag`; `decisive_criterion: Rating` | One-line `detail` lines fit at five rows; red rows may also be `recommended` with `highlight_label: Red`. |
 | 5 | `regions` `main_left` | Two-series line (exceptions, high findings, 3 years) + `stat` "Partially effective" + two bullets on what drove it | Opinion as the stat `value`, "Overall opinion, FY26" as its `label`. |
 | 6 | `table` | Finding / severity / owner / due date, 7 rows | Up to nine rows on one slide; `highlight_column: Severity`. |
 | 7–8 | raw `labeled-rows` | WHAT WE FOUND / WHY IT MATTERS / ACTION / OWNER AND DATE, `sublabel` for domain, risk, status, severity | One finding per slide; bold the control reference and the date. |
