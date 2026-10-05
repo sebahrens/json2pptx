@@ -32,7 +32,7 @@ Back to the [hub](README.md).
 | Footer reads "Meridian Capital…" | Chrome line overflow, no finding | Shorten `meta.chrome.client`, drop `project_code` (`go-slide-creator-m2tlt`). |
 | Right column of a `regions` slide floats high; lower half empty | Stacked regions are content-sized, top-anchored | Add a third region (a small table, a timeline) or move to a chart-only slide (`go-slide-creator-18dqh`). |
 | Four KPI cards with the bottom half of the slide empty | kpi-4up row is content-sized | Use `regions` with a chart beside the number, or six KPIs, or a `stat`. |
-| Screenshot at a third of the width | `image_case` image column | `image_width_pct` is being exposed (`go-slide-creator-ptazs`); meanwhile crop the screenshot to what the callouts need. |
+| Screenshot at a third of the width | `image_case` default picture column (45%) | `image_width_pct: 55` or `60` — and shorten the body, or the narrower text column drops the eyebrow below 12pt (`TEXT_BELOW_READABLE_MIN`). |
 | Status board text at 5–6pt in validation, or the verified fix is `layout: content` | Per-option `detail` lines on a five-row matrix | Drop the `detail` lines; the board renders at 12pt (`go-slide-creator-u8orh`). |
 | `TEXT_BELOW_READABLE_MIN` at `/slides/N/pattern/rows/3/cells/0/shape/text` with no text shown | A raw pattern cell the engine generated, reported one per render | Shorten the longest value in that row of your `pattern.values`; re-render; expect another until all fit (`go-slide-creator-llxzd`). |
 | Removing a milestone made roadmap text smaller | Lane height depends on the milestone row | Keep a milestone row, or use the kind's `phases` with fewer deliverables. |

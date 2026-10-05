@@ -47,9 +47,9 @@ slides:
     source: Atlas Retail data operations logs, Jul-Sep 2026; product master data audit
     takeaway: Every second night the business opens without yesterday's numbers.
   - id: console
+    image_width_pct: 55
     kind: image_case
     title: "The ops console shows the breach: 61 of 90 nights, 1.5 h is the target"
-    eyebrow: Nightly load dashboard
     heading: What the operations team sees most mornings
     image:
       path: "../../images/ops-console.png"
@@ -63,10 +63,9 @@ slides:
       - label: Job queue (14,860)
         x: 0.5
         y: 0.54
-    body: The nightly load dashboard flags the SLA breach at the top and a job queue in the centre that has not drained by 09:42. Each late night means stores trade without yesterday's sales and stock positions.
+    body: The dashboard flags the SLA breach at the top and a queue in the centre that has not drained by 09:42; stores open without yesterday's numbers.
     bullets:
       - 61 of the last 90 nights missed the 6 am SLA
-      - Queue depth peaks at 14,860 jobs with a 47-minute oldest message
       - "Target state: a 1.5 h load window and fewer than 3 misses per 90 days"
     metrics:
       - value: 61 / 90
@@ -248,34 +247,26 @@ slides:
             - Data literacy for 300 analysts
             - "FinOps guardrails: budgets, policies, showback"
       source: Atlas Retail migration plan, September 2026
-  - id: kpis
-    kind: raw_json2pptx
-    slide:
-      slide_type: content
-      layout_id: blank-title
-      content:
-        - placeholder_id: title
-          type: text
-          text_value: "Four KPIs move: the load window drops from 9.5 h to 1.5 h"
-      pattern:
-        name: comparison-2col
-        values:
-          headers:
-            - Today
-            - Target after migration
-          rows:
-            - left: "Nightly load window: 9.5 h"
-              right: "Load window: 1.5 h"
-            - left: "SLA misses: 61 per 90 days"
-              right: "SLA misses: under 3 per 90 days"
-            - left: "Product-record defects: 23%"
-              right: "Product-record defects: under 5%"
-            - left: "Reconciliation effort: 60% of 4 FTE"
-              right: "Reconciliation effort: -70%"
-        overrides:
-          connectors: true
-          highlight_column: right
-      source: Atlas Retail data operations logs; target KPIs from the business case model
+  - id: kpi_shift
+    kind: comparison
+    title: "Four KPIs move: the load window drops from 9.5 h to 1.5 h"
+    columns:
+      - header: Today
+        items:
+          - "Nightly load window: 9.5 h"
+          - "SLA misses: 61 per 90 days"
+          - "Product-record defects: 23%"
+          - "Reconciliation effort: 60% of 4 FTE"
+      - header: Target after migration
+        items:
+          - "Load window: 1.5 h"
+          - "SLA misses: under 3 per 90 days"
+          - "Product-record defects: under 5%"
+          - "Reconciliation effort: -70%"
+    connectors: true
+    highlight_column: right
+    source: Atlas Retail data operations logs; target KPIs from the business case model
+    takeaway: The migration is held to these four numbers at the Q3 2028 re-test.
   - id: ask
     kind: decision
     title: Approve EUR 4.8M for year 1 and the Databricks contract

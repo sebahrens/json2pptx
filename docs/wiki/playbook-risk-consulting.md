@@ -29,7 +29,7 @@ language, no scare words.
 7. The target model adds 16 FTE to the 2nd line and one integrated report       comparison (answer: the model)
 8. Four pillars take risk governance from 'needs improvement' to effective      pillars (house)
 9. Co-delivery at EUR 2.1M balances speed, cost and capability transfer         decision
-10. Four phases and two parallel tracks finish before the 30 June 2027 deadline  raw roadmap-phased
+10. Four phases and two parallel tracks finish before the 30 June 2027 deadline  roadmap (parallel_tracks)
 11. Four actions start the programme this quarter                               next_steps
 ```
 
@@ -45,7 +45,7 @@ language, no scare words.
 | 7 | `comparison` | Three lines today vs target, then the weaknesses they close | Rows aligned: line 1 ↔ line 1. |
 | 8 | `pillars` | `objective` in the roof, four pillars with two bullets each, `foundation` of a band + a 3-cell row | A house needs objective + foundation; otherwise it renders as panels. |
 | 9 | `decision` | Advisory / co-delivery / outsource with price and one consequence each | `recommended: true` on one; the ask in `recommendation`. |
-| 10 | raw `roadmap-phased` | Four phases on the axis; `workstreams[].bars` and two `parallel_tracks` | The kind gains `parallel_tracks` with `go-slide-creator-ptazs`. |
+| 10 | `roadmap` | Four phases with `date_label` and one-line descriptions; two `parallel_tracks` | Tracks carry their own date span in the label; no milestones alongside tracks on short templates. |
 | 11 | `next_steps` | Approve; constitute the committee; hiring plan; submit plan to regulator | Dates inside the quarter. |
 
 ## The risk-specific visuals

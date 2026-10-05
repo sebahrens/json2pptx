@@ -20,7 +20,7 @@ recipes are in [split-and-complex-layouts.md](split-and-complex-layouts.md).
 | "We recommend option 2" | `decision` (3–6 options) | One `recommended: true`, the ask in `recommendation`. |
 | "Today vs target" | `comparison` (2 aligned columns) | Rows correspond; keep it to ~6. |
 | "This is the sequence" | `process` (3–6 steps with descriptions → numbered rows; 7–8 or bare labels → flow boxes) | A straight sequence, not a branching flowchart. |
-| "When things happen" | `timeline` (3–7 dated stops) · `roadmap` (3–6 phases) | An `end_date` turns a timeline into bars; parallel tracks: raw `roadmap-phased` today. |
+| "When things happen" | `timeline` (3–7 dated stops) · `roadmap` (3–6 phases, 0–4 `parallel_tracks`) | An `end_date` turns a timeline into bars. |
 | "Who does what by when" | `next_steps` | 2–6 actions `{action, owner, date}`, 0–3 `decisions`. Always the closer. |
 | "Who we are" | `team` (1–8, `photo` or initials `photo_label`) | Role on every card. |
 | "What a stakeholder said" | `quote` (1 → pull quote, 3–8 → cluster) | Two quotes degrade to bullets. |
@@ -55,7 +55,7 @@ recipes are in [split-and-complex-layouts.md](split-and-complex-layouts.md).
 | Three lines of defence today vs target | `comparison` | "The target model adds 16 FTE to the 2nd line and one integrated report" |
 | Target operating model | `pillars` with `objective` and `foundation` (the house) | "Four pillars take risk governance from 'needs improvement' to effective" |
 | Delivery options | `decision` (advisory / co-delivery / outsource) | "Co-delivery at EUR 2.1M balances speed, cost and capability transfer" |
-| Programme plan with parallel tracks | raw `roadmap-phased` (`parallel_tracks`) | "Four phases and two parallel tracks finish before the deadline" |
+| Programme plan with parallel tracks | `roadmap` with `parallel_tracks` | "Four phases and two parallel tracks finish before the deadline" |
 | Control maturity by domain | `chart_insight` grouped horizontal bar (today vs target) or raw `journey-maturity-model` for one ladder | "Access and third-party controls must climb two maturity levels by FY28" |
 
 ## Technology and data
@@ -68,8 +68,8 @@ recipes are in [split-and-complex-layouts.md](split-and-complex-layouts.md).
 | Vendor selection | `option_matrix` (harvey, `decisive_criterion`) | "Databricks scores best on migration risk and skills availability" |
 | TCO / run cost | `regions` `main_left`: 2-series bar + `stat` + 3-row `table` | "Run cost falls from EUR 3.6M to 1.5M a year" |
 | Where the cost goes | `chart_insight` donut + `insights[]` | "Compute is 48% of run cost, so FinOps guardrails protect the saving" |
-| Migration plan | `roadmap` (phases) + parallel tracks (raw `roadmap-phased`) | "Three phases decommission the warehouse by the end of 2028" |
-| KPI before / after | `comparison`; connectors via raw `comparison-2col` (`overrides.connectors`) | "Four KPIs move: the load window drops from 9.5 h to 1.5 h" |
+| Migration plan | `roadmap` with `parallel_tracks` (raw `phase-roadmap` on the shortest template, `go-slide-creator-x1124`) | "Three phases decommission the warehouse by the end of 2028" |
+| KPI before / after | `comparison` with `connectors: true`, `highlight_column: right` | "Four KPIs move: the load window drops from 9.5 h to 1.5 h" |
 | Data flow / process | `process` (≤ 8 steps) or svggen `swimlane` (raw) | — |
 | Delivery governance | `org` (≤ 7 nodes) | — |
 
@@ -99,8 +99,8 @@ heading, source on the slide, no legend when one series is labelled.
 
 ## Patterns that still need the raw path
 
-`labeled-rows`, `capability-heatmap`, `roadmap-phased` (parallel tracks),
-`comparison-2col` with connectors, `swimlane`, `value-chain`, `scqa-summary`,
+`labeled-rows`, `capability-heatmap`, `roadmap-phased` (dated bars per
+workstream), `swimlane`, `value-chain`, `scqa-summary`,
 `driver-tree`, `journey-maturity-model`, `exec-summary` variants, and the
 svggen diagrams (gantt, venn, org chart). Carry them as a `raw_json2pptx`
 slide inside the DeckSpec — the whole pattern block verbatim from

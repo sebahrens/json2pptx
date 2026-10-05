@@ -235,12 +235,12 @@ slides:
     takeaway: Same three lines; the 2nd line grows and the reporting becomes one view.
 ```
 
-For a per-row **connector** (the "from → to" chevron in a centre gutter) and a
-filled target column, the `comparison-2col` pattern's `overrides.connectors`
-and `highlight_column` are reachable today through a `raw_json2pptx` slide
-(the KPI before/after in
-[playbook-technology-and-data.md](playbook-technology-and-data.md)); exposing
-them on the kind is `go-slide-creator-ptazs`.
+For a per-row **connector** (the "from → to" chevron in a centre gutter) add
+`connectors: true`; `highlight_column: right` (or `left`, or a header) gives
+the argued column a solid header and tinted rows; `highlight_row` tints one
+row instead (never both). All three apply to two-column comparisons only — the
+KPI before/after in [playbook-technology-and-data.md](playbook-technology-and-data.md)
+uses the first two.
 
 ## 6. Photo or screenshot with callouts — `image_case`
 
@@ -279,10 +279,11 @@ slides:
 ```
 
 Callouts landed exactly on their fractional points on both templates in the
-runs. The picture takes about a third of the slide width with `fit: contain`;
-a wider share (`image_width_pct`) is being exposed on the kind
-(`go-slide-creator-ptazs`). A missing file is `SEMANTIC_IMAGE_MISSING` and
-blocks readiness; never ship a labelled placeholder frame.
+runs. `image_width_pct` (30–60, default 45) sets the picture column: a wide
+`contain` screenshot wants 55–60, and the text column then holds less — cut
+the body to one sentence or the eyebrow is squeezed below 12pt and the render
+is refused. A missing file is `SEMANTIC_IMAGE_MISSING` and blocks readiness;
+never ship a labelled placeholder frame.
 
 ## 7. Architecture with cross-cutting rails — `architecture`
 
@@ -403,13 +404,38 @@ honestly — columns are likelihood, `tiers` are impact (darkest = highest), eac
 cell a named risk with its `tier`. See
 [playbook-risk-consulting.md](playbook-risk-consulting.md) for the full slide.
 
-## 11. Roadmap with parallel tracks — raw `roadmap-phased`
+## 11. Roadmap with parallel tracks — `roadmap`
 
-Phase boxes on a time axis plus 0–4 full-width "In parallel" bars. The
-`roadmap` kind draws phases only (parallel tracks are being added,
-`go-slide-creator-ptazs`); the `roadmap-phased` pattern takes
-`phases`, `workstreams[].bars[{label, start, end}]` and `parallel_tracks` — the
-risk-consulting playbook carries one.
+Phase boxes on a time axis plus 0–4 full-width "In parallel" bars for the
+workstreams that run alongside every phase. `phases` are 3–6
+`{name ≤40, date_label ≤30, description ≤160, milestone?}`; `parallel_tracks`
+0–4 strings ≤90; `parallel_label` renames the bar label. On the shortest
+template (`modern-template`) tracks plus milestones, or tracks plus a
+`takeaway` band, squeeze the phase names below 12pt and the render is refused
+(`go-slide-creator-x1124`): keep one of them off there.
+
+```yaml
+meta:
+  title: Harbour Bank ERM uplift
+  template: midnight-blue
+  date: October 2026
+  source: Harbour Bank programme plan, October 2026
+slides:
+  - kind: roadmap
+    title: Four phases and two parallel tracks finish before the 30 June 2027 deadline
+    phases:
+      - {name: Mobilise, date_label: Jul-Aug 2026, description: "Steering committee chartered; joint team on site"}
+      - {name: Design, date_label: Sep-Nov 2026, description: "Appetite cascade, taxonomy and control framework designed"}
+      - {name: Build, date_label: Dec 2026-Mar 2027, description: "Controls tested independently; 2nd line hired to 44 FTE"}
+      - {name: Embed, date_label: Apr-Jun 2027, description: "First integrated board report; findings evidenced to the regulator"}
+    parallel_tracks:
+      - Data and reporting platform (Sep 2026 - Jun 2027)
+      - 1,200 control owners trained (Dec 2026 - Jun 2027)
+    takeaway: Every phase ends before the regulator's deadline; the two tracks start in Design and Build.
+```
+
+For bars drawn to scale on a labelled time axis (several workstreams, each
+with dated bars), the raw `roadmap-phased` pattern remains the tool.
 
 ## 12. Several patterns on one slide — raw `compose`
 
@@ -486,11 +512,11 @@ by field, degrades nowhere, and patches by `path`.
 | Bridge / walk + its implication | `regions` `columns`, waterfall chart (§2) |
 | Series + saving + the table behind it | `regions` `main_left`, chart + stat + table (§3) |
 | Rows with a coloured status and figures | `option_matrix`, `rag` + `text` criteria (§4) |
-| Today vs target, row by row | `comparison` (§5); connectors via raw `comparison-2col` |
+| Today vs target, row by row | `comparison` with `connectors` / `highlight_column` (§5) |
 | Picture and the words about it, pointers on the picture | `image_case` with `callouts` (§6) |
 | Layers with concerns running through all of them | `architecture` with `rails` (§7) |
 | Up to nine data rows | one `table`; beyond, split `(2/2)` or appendix (§8) |
 | One finding, structured | raw `labeled-rows` (§9) |
 | 3 × 3 heat map with names | raw `capability-heatmap` (§10) |
-| Phases plus parallel workstreams | raw `roadmap-phased` (§11) |
+| Phases plus parallel workstreams | `roadmap` with `parallel_tracks` (§11) |
 | Whole patterns side by side or stacked | raw `compose` (§12) |

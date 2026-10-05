@@ -28,8 +28,8 @@ rates), architecture as a picture, every cost line sourced to the model.
 6. Databricks scores best on migration risk and skills availability           option_matrix
 7. Run cost falls from EUR 3.6M to 1.5M a year: EUR 5.5M saved by 2031        regions (chart + stat + table)
 8. Compute is 48% of run cost, so FinOps guardrails protect the saving        chart_insight (donut)
-9. Three phases decommission the warehouse by the end of 2028                raw roadmap-phased
-10. Four KPIs move: the load window drops from 9.5 h to 1.5 h                 raw comparison-2col with connectors
+9. Three phases decommission the warehouse by the end of 2028                raw phase-roadmap (milestones + parallel tracks)
+10. Four KPIs move: the load window drops from 9.5 h to 1.5 h                 comparison (connectors, highlight_column)
 11. Approve EUR 4.8M for year 1 and the Databricks contract                   decision
 12. Four actions start Foundation in January 2027                             next_steps
 ```
@@ -42,13 +42,13 @@ Pain (3–4) → target (5) → choice (6) → money (7–8) → plan (9) → ou
 | # | Kind | What goes in | Watch |
 |---|---|---|---|
 | 3 | `kpi_snapshot` | Sources, jobs, load window, SLA misses, defect rate, reconciliation effort | Six KPIs hold about 9 characters per value; captions one line. |
-| 4 | `image_case` | Console screenshot, `fit: contain`, two `callouts`, eyebrow / heading / body, 2 bullets, 3 `metrics` | Callout `x`,`y` are fractions of the picture; check they land in the render. |
+| 4 | `image_case` | Console screenshot, `fit: contain`, `image_width_pct: 55`, two `callouts`, eyebrow / heading / one-sentence body, 2 bullets, 3 `metrics` | Callout `x`,`y` are fractions of the picture; a wider picture leaves less room for text. |
 | 5 | `architecture` | 5 tiers, 2–3 items each; `rails: [Security & governance, FinOps]` | Items ≤ 40 characters; rails read as vertical bands. |
 | 6 | `option_matrix` | 3 vendors × 4 criteria (harvey), `recommended`, `decisive_criterion: Migration risk`, a `detail` per vendor | Scores 0–4; the recommended row is badged. |
 | 7 | `regions` `main_left` | 2-series bar (current vs target, 5 years) + `stat` (saving) + 3-row `table` (TCO) | Table region ≤ 4 columns, ≤ 5 rows. |
 | 8 | `chart_insight` | Donut of cost drivers + 3 `insights` | Four slices, named; percentages in the labels. |
-| 9 | raw `roadmap-phased` | Foundation / Migrate / Optimise as `phases`, deliverables as workstream bars, `parallel_tracks` for literacy and FinOps | Dates in the phase labels. |
-| 10 | raw `comparison-2col` | `rows[{left, right}]`, `overrides: {connectors: true, highlight_column: right}` | The improvement is visible as a chevron per row. |
+| 9 | raw `phase-roadmap` | Foundation / Migrate / Optimise as `phases` with `milestone`s, `parallel_tracks` for literacy and FinOps | The `roadmap` kind draws the same (see the risk playbook), but on `modern-template` — the shortest content area — tracks plus a takeaway band squeeze the phase names below 12pt and the kind refuses (`go-slide-creator-x1124`); the raw slide gets the full zone. |
+| 10 | `comparison` | Two columns, four aligned rows, `connectors: true`, `highlight_column: right` | The improvement is visible as a chevron per row and a filled target column. |
 | 11 | `decision` | Do nothing / lakehouse / alternatives, one `recommended: true`, `recommendation` with the amount | Always include "do nothing" with its cost. |
 | 12 | `next_steps` | Contract, landing zone, pilot sources, literacy programme — owner and date each | Dates before the Foundation phase starts. |
 
@@ -57,10 +57,9 @@ Pain (3–4) → target (5) → choice (6) → money (7–8) → plan (9) → ou
 **Architecture with rails** — the kind draws it; keep tier names short and
 put the concern that spans every layer in `rails`, never as a bottom tier.
 
-**Before / after with connectors.** The `comparison` kind aligns rows; the
-per-row chevron and the filled target column come from the `comparison-2col`
-pattern's overrides, reachable today as a raw slide (the kind gains
-`connectors` / `highlight_column` with `go-slide-creator-ptazs`):
+**Before / after with connectors.** The `comparison` kind aligns the rows;
+`connectors: true` draws the per-row today → target chevron and
+`highlight_column: right` fills the target column:
 
 ```yaml
 meta:
@@ -69,26 +68,24 @@ meta:
   date: October 2026
   source: Atlas Retail data operations logs; target KPIs from the business case model
 slides:
-  - kind: raw_json2pptx
-    slide:
-      slide_type: content
-      layout_id: blank-title
-      content:
-        - placeholder_id: title
-          type: text
-          text_value: "Four KPIs move: the load window drops from 9.5 h to 1.5 h"
-      pattern:
-        name: comparison-2col
-        values:
-          headers: [Today, Target after migration]
-          rows:
-            - {left: "Nightly load window: 9.5 h", right: "Load window: 1.5 h"}
-            - {left: "SLA misses: 61 per 90 days", right: "SLA misses: under 3 per 90 days"}
-            - {left: "Product-record defects: 23%", right: "Product-record defects: under 5%"}
-            - {left: "Reconciliation effort: 60% of 4 FTE", right: "Reconciliation effort: -70%"}
-        overrides:
-          connectors: true
-          highlight_column: right
+  - kind: comparison
+    title: "Four KPIs move: the load window drops from 9.5 h to 1.5 h"
+    columns:
+      - header: Today
+        items:
+          - "Nightly load window: 9.5 h"
+          - "SLA misses: 61 per 90 days"
+          - "Product-record defects: 23%"
+          - "Reconciliation effort: 60% of 4 FTE"
+      - header: Target after migration
+        items:
+          - "Load window: 1.5 h"
+          - "SLA misses: under 3 per 90 days"
+          - "Product-record defects: under 5%"
+          - "Reconciliation effort: -70%"
+    connectors: true
+    highlight_column: right
+    takeaway: The migration is held to these four numbers at the Q3 2028 re-test.
 ```
 
 **TCO on one slide** — the three-region slide in

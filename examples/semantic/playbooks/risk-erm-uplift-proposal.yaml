@@ -221,47 +221,25 @@ slides:
     recommendation: Approve option 2 and a steering committee chaired by the CRO.
     title: Co-delivery at EUR 2.1M balances speed, cost and capability transfer
   - id: roadmap
-    kind: raw_json2pptx
-    slide:
-      content:
-        - placeholder_id: title
-          text_value: Four phases and two parallel tracks finish before the 30 June 2027 deadline
-          type: text
-      layout_id: blank-title
-      pattern:
-        name: roadmap-phased
-        values:
-          phases:
-            - Jul-Aug 2026
-            - Sep-Nov 2026
-            - Dec 26-Mar 27
-            - Apr-Jun 2027
-          workstreams:
-            - bars:
-                - end: Jul-Aug 2026
-                  label: Mobilise
-                  start: Jul-Aug 2026
-                - end: Sep-Nov 2026
-                  label: Design
-                  start: Sep-Nov 2026
-                - end: Dec 26-Mar 27
-                  label: Build
-                  start: Dec 26-Mar 27
-                - end: Apr-Jun 2027
-                  label: Embed
-                  start: Apr-Jun 2027
-              name: Programme
-            - bars:
-                - end: Apr-Jun 2027
-                  label: Platform and integrated report
-                  start: Sep-Nov 2026
-              name: Data platform
-            - bars:
-                - end: Apr-Jun 2027
-                  label: 1,200 control owners trained
-                  start: Dec 26-Mar 27
-              name: Owner training
-      slide_type: content
+    kind: roadmap
+    title: Four phases and two parallel tracks finish before the 30 June 2027 deadline
+    phases:
+      - name: Mobilise
+        date_label: Jul-Aug 2026
+        description: Steering committee chartered; joint team on site; baseline of the 14 findings agreed
+      - name: Design
+        date_label: Sep-Nov 2026
+        description: Appetite cascade, taxonomy and control framework designed with the 2nd line
+      - name: Build
+        date_label: Dec 2026-Mar 2027
+        description: Controls tested independently; 2nd line hired to 44 FTE; reporting built
+      - name: Embed
+        date_label: Apr-Jun 2027
+        description: First integrated board report; findings closed and evidenced to the regulator
+    parallel_tracks:
+      - Data and reporting platform (Sep 2026 - Jun 2027)
+      - 1,200 control owners trained (Dec 2026 - Jun 2027)
+    takeaway: Every phase ends before the regulator's 30 June 2027 deadline; the two tracks start in Design and Build.
   - actions:
       - action: Approve option 2 and the EUR 2.1M budget
         date: 15 Oct 2026
