@@ -308,6 +308,16 @@ func (a *geomAccumulator) addInk(r pptx.RectEmu) {
 	a.textInk = append(a.textInk, r)
 }
 
+// openCellInk is the ink of an unpainted cell of an open KPI strip: the cell
+// its dividers delimit, which is taller than the shape when the row was
+// grown into the free height (shapegrid ComposeGrow).
+func openCellInk(cell shapegrid.ResolvedCell) pptx.RectEmu {
+	if cell.CellBounds.CX > 0 && cell.CellBounds.CY > 0 {
+		return cell.CellBounds
+	}
+	return cell.Bounds
+}
+
 // isKPIStripGrid reports whether grid is the expansion of a KPI row pattern.
 func isKPIStripGrid(grid *ShapeGridInput) bool {
 	return grid != nil && strings.HasPrefix(grid.Source, patternSourcePrefix+"kpi-")
@@ -497,13 +507,7 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 		block := placeTextBlock(cell.Bounds, txt, blockW, blockH)
 		a.textInk = append(a.textInk, block)
 		if a.openCells {
-			// The dividers delimit the cell, which is taller than the shape
-			// when the row was grown into the free height (ComposeGrow).
-			if cell.CellBounds.CX > 0 && cell.CellBounds.CY > 0 {
-				a.addInk(cell.CellBounds)
-				return
-			}
-			a.addInk(cell.Bounds)
+			a.addInk(openCellInk(cell))
 			return
 		}
 		if a.ruledCell && cell.CellBounds.CX > 0 && cell.CellBounds.CY > 0 {
