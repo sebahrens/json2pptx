@@ -95,6 +95,11 @@ func assertAuthoredAddress(t *testing.T, label string, spec any, finding map[str
 			}
 		}
 	}
+	// A field the sentence quotes is in the spec, and on the line of the
+	// finding's own address (go-slide-creator-nuq30).
+	if message, ok := finding["message"].(string); ok {
+		assertMessagePointers(t, where, spec, message, findingOwnPointers(finding))
+	}
 	// slide_number is the 1-based deck position; for a flat deck that is the
 	// pointer's index plus one.
 	toks := pointerTokens(path)

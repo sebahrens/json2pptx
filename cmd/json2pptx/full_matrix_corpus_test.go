@@ -36,6 +36,7 @@ var shortSensitiveTests = map[string]func(*testing.T){
 	"TestNativeDiagramReadabilityValidateGenerateParity":       TestNativeDiagramReadabilityValidateGenerateParity,
 	"TestDeckSpecAdviceNamesOnlyFieldsOfTheKind":               TestDeckSpecAdviceNamesOnlyFieldsOfTheKind,
 	"TestEveryDeckSpecFindingPathResolves":                     TestEveryDeckSpecFindingPathResolves,
+	"TestLongListFindingsNameTheirField":                       TestLongListFindingsNameTheirField,
 	"TestEveryEmittedPatchClearsItsFinding":                    TestEveryEmittedPatchClearsItsFinding,
 	"TestDeckSpecReadabilityVerdictParityAllKindsAllTemplates": TestDeckSpecReadabilityVerdictParityAllKindsAllTemplates,
 	"TestEveryKindRendersAtItsDocumentedCounts":                TestEveryKindRendersAtItsDocumentedCounts,
