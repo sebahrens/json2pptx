@@ -85,6 +85,9 @@ type deckHandle struct {
 	storeMoved            map[string]bool
 	pendingRenderPptx     string
 	pendingRenderIdentity string
+	// pendingRenderKeys is the rendered identity of each slide in the PPTX the
+	// storing call wrote (go-slide-creator-o477e); nil when it rendered none.
+	pendingRenderKeys []string
 	// storeEvaluated is the template the storing call validated or rendered
 	// on, recorded on the revision (go-slide-creator-oqu4a).
 	storeEvaluated string
@@ -239,6 +242,9 @@ type specSource struct {
 	Fork     bool
 	Restore  int
 	RawPatch []any
+	// NewDeck is fork on a spec sent in the call: store it under a new
+	// deck_id even when it revises a stored deck (go-slide-creator-o477e).
+	NewDeck bool
 	// MovedIDs names the slides this call's move ops picked up.
 	MovedIDs map[string]bool
 	// Template is the template the handle is bound to (go-slide-creator-2dit4). A
@@ -378,9 +384,10 @@ func (mc *mcpConfig) specSourceFromSpec(tool string, request mcp.CallToolRequest
 		return specSource{}, errRes
 	}
 	src := specSource{Data: data, Filename: name}
-	// A spec sent in the call always starts a new handle, so fork has nothing
-	// to protect; dry_run still means "do not store".
-	if src.DryRun, _, errRes = deckStoreFlags(tool, request); errRes != nil {
+	// A spec sent in the call starts a new handle unless it revises a deck
+	// the server holds (deckHandleStore.Continued); fork asks for a new one
+	// regardless. dry_run still means "do not store".
+	if src.DryRun, src.NewDeck, errRes = deckStoreFlags(tool, request); errRes != nil {
 		return specSource{}, errRes
 	}
 	return src, nil

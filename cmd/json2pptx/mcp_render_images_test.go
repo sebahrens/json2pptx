@@ -473,7 +473,15 @@ func TestDeckThumbnailsMCPResult_KnownHashes(t *testing.T) {
 		t.Fatalf("every slide keeps its entry: %+v", resp)
 	}
 	for i, s := range resp.Slides {
-		want := renderedSlideMeta{Index: i, ContentHash: first.Slides[i].ContentHash, Unchanged: true}
+		// A held slide keeps its path: submit_visual_review takes image_path
+		// or image_sha256, and the PNG is content-addressed and still on disk
+		// (go-slide-creator-o477e).
+		if i != 2 {
+			if _, err := os.Stat(s.Path); s.Path == "" || err != nil {
+				t.Errorf("slides[%d]: an unchanged entry must carry the path of its PNG, got %q (%v)", i, s.Path, err)
+			}
+		}
+		want := renderedSlideMeta{Index: i, Path: s.Path, ContentHash: first.Slides[i].ContentHash, Unchanged: true}
 		if i == 2 {
 			if s.Unchanged || s.ImageContentIndex != 1 || s.Path == "" {
 				t.Errorf("the changed slide must carry its image: %+v", s)

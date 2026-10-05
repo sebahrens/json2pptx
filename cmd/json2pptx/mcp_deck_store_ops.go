@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
@@ -49,6 +50,12 @@ type deckCommit struct {
 	// argument (go-slide-creator-oqu4a). Empty when the call evaluated on no
 	// template (explain_deck_spec): the revision then takes the deck's own.
 	Evaluated string
+
+	// renderKeys is the rendered identity of each slide of RenderedPptx, and
+	// resent marks a spec sent in the call that continues a stored deck; both
+	// are set by commitDeck (go-slide-creator-o477e).
+	renderKeys []string
+	resent     bool
 }
 
 // deckOutcome is what the store did, and what the call changed.
@@ -56,6 +63,9 @@ type deckOutcome struct {
 	DeckID   string
 	Stored   bool
 	Revision int
+	// Continued is the stored deck a spec sent in the call was recognised as
+	// a revision of: the handle as it was before this call, nil otherwise.
+	Continued *deckHandle
 	// Stale reports a lost race: another call replaced the stored spec while
 	// this one ran, so its edit was not stored.
 	Stale bool
@@ -69,6 +79,103 @@ type deckOutcome struct {
 // commitDeck stores (or declines to store) a call's spec and reports the
 // handle, revision and per-slide change classes for the response.
 func (mc *mcpConfig) commitDeck(c deckCommit) deckOutcome {
+	c.renderKeys = renderedSlideKeys(c.RenderedPptx)
+	if c.Store && c.Src.DeckID == "" && !c.Src.NewDeck {
+		// A spec sent again continues the deck it revises.
+		if id, held := mc.deckHandles.Continued(c); held != nil {
+			c.Src.DeckID, c.Src.Handle, c.Src.BaseSpec = id, held, held.Spec
+			c.resent = true
+		}
+	}
+	out := mc.commitResolvedDeck(c)
+	if out.Stale && c.resent {
+		// Another call revised that deck meanwhile. The caller named no
+		// deck_id, so there is nothing stale to report: store a new deck.
+		c.Src.DeckID, c.Src.Handle, c.Src.BaseSpec, c.resent = "", nil, nil, false
+		out = mc.commitResolvedDeck(c)
+	}
+	if c.resent {
+		out.Continued = c.Src.Handle
+	}
+	return out
+}
+
+// Continued returns the stored deck that the spec of a call revises, with its
+// id: one bound to the same template whose title is the spec's and whose
+// slides carry the spec's ids (go-slide-creator-o477e).
+//
+// An agent that keeps its deck in a file sends the whole revised spec rather
+// than a patch. Each send used to start a new deck_id, so the response called
+// every slide new, the thumbnails step carried no known_hashes and twelve
+// images came back for an edit to two slides. The match is deliberately
+// narrow: every slide of the spec has an id of its own, and at least half of
+// the larger id set is common to both, so an unrelated deck that happens to
+// share a title is not continued. Among several candidates the one sharing
+// the most ids wins, then the one used last.
+func (s *deckHandleStore) Continued(c deckCommit) (string, *deckHandle) {
+	if s == nil {
+		return "", nil
+	}
+	canonical, _ := canonicalSpec(c.Filename, c.Spec)
+	var doc map[string]any
+	if err := json.Unmarshal(canonical, &doc); err != nil {
+		return "", nil
+	}
+	meta, _ := doc["meta"].(map[string]any)
+	title, _ := meta["title"].(string)
+	pinned, _ := meta["template"].(string)
+	slides := authoredSlides(doc)
+	ids := make(map[string]bool, len(slides))
+	for _, slide := range slides {
+		id, _ := slide["id"].(string)
+		if id == "" || ids[id] {
+			return "", nil
+		}
+		ids[id] = true
+	}
+	if title == "" || len(ids) == 0 {
+		return "", nil
+	}
+	template := firstNonEmpty(c.Template.TemplatePath, c.Template.Template, pinned)
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := s.now()
+	var (
+		bestID     string
+		best       *deckHandle
+		bestShared int
+		bestUsed   time.Time
+	)
+	for id, entry := range s.entries {
+		h := entry.handle
+		if now.After(entry.expiresAt) || h.RawPresentation != nil || h.State == nil ||
+			h.State.Title != title || h.templateIdentity() != template {
+			continue
+		}
+		shared, held := 0, 0
+		for _, slide := range h.State.Slides {
+			if slide.ID == "" {
+				continue
+			}
+			held++
+			if ids[slide.ID] {
+				shared++
+			}
+		}
+		if shared == 0 || 2*shared < max(held, len(ids)) {
+			continue
+		}
+		better := shared > bestShared ||
+			(shared == bestShared && (entry.expiresAt.After(bestUsed) || (entry.expiresAt.Equal(bestUsed) && id < bestID)))
+		if best == nil || better {
+			bestID, best, bestShared, bestUsed = id, h, shared, entry.expiresAt
+		}
+	}
+	return bestID, best
+}
+
+func (mc *mcpConfig) commitResolvedDeck(c deckCommit) deckOutcome {
 	out := deckOutcome{DeckID: c.Src.DeckID, Changed: []int{}}
 	source := c.Src.Handle
 	var baseline *deckState
@@ -94,6 +201,7 @@ func (mc *mcpConfig) commitDeck(c deckCommit) deckOutcome {
 		// Not stored: describe the spec the call acted on all the same. The
 		// deck_id still holds exactly that spec when the call edited nothing.
 		out.State = c.unstoredState()
+		out.State.setRenderKeys(c.renderKeys)
 		out.Stored = source != nil && !c.Src.mutated()
 	}
 	if source == nil && !c.AgainstRender {
@@ -117,8 +225,12 @@ func (mc *mcpConfig) storeCommit(c deckCommit) (string, bool) {
 	}
 	h.storeTool, h.pendingRenderPptx, h.storeMoved = c.Tool, c.RenderedPptx, c.Src.MovedIDs
 	h.pendingRenderIdentity, h.storeEvaluated = c.RenderIdentity, c.Evaluated
+	h.pendingRenderKeys = c.renderKeys
 	if c.Src.Restore > 0 {
 		h.storeNote = fmt.Sprintf("restored revision %d", c.Src.Restore)
+	}
+	if c.resent {
+		h.storeNote = "spec sent again"
 	}
 	switch {
 	case source != nil && c.Src.Fork:

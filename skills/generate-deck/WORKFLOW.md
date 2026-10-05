@@ -97,7 +97,8 @@ without rendering, and `analyze_deck_rhythm` accepts the `deck_id`.
   `motif_runs`: `kpi-4up` → `stylish-panels` → `icon-row` are three rows of
   open columns, whatever the patterns), and no motif on more than half the
   content slides (`dominant_motif`); follow a dense slide (table, grid) with
-  a light one (stat, quote, section).
+  a light one (stat, quote, section; `SEMANTIC_RHYTHM_DENSITY` names the
+  spot: `evidence.insert_before`).
 - Clear `analyze_deck_rhythm`'s narrative codes, run codes
   (`break_run`, `break_motif_run`, `motif_dominant`,
   `continuation_interrupted`) and accent codes (`accent_heavy_slide`,
@@ -117,8 +118,6 @@ back matter is exempt from `break_run`, `DECK_MONOTONY` and
 `SEMANTIC_RHYTHM_MONOTONY` (whose message and `evidence.run` name the run).
 
 ### Accent monotony
-
-This is the one place the skill sets accent strategy; other guides defer here.
 
 - `primary` (default) is the safe choice for any length: one brand accent;
   keep grid cells `uniform` unless they show ordered or graded data.
@@ -153,14 +152,13 @@ the wrong visual show only in pixels. **Images are truth.**
 
 1. **Render.** `render_deck_thumbnails` for every slide of the current
    revision at the default density. When text of 12pt or less cannot be
-   read, send the response's `larger_render` (that slide alone at
-   `density: 100`, about twice the size). If a
+   read, send the response's `larger_render` (that slide at
+   `density: 100`). If a
    response is truncated, request the rest with `slide_indices` —
    every slide needs an image you looked at; `preview_slide_wireframe` never
    counts. No render tooling (`get_started.runtime.render_available: false`)
    → deliver as **UNREVIEWED** and say so.
-2. **Score each slide against the rubric.** No deck size is exempt — a
-   one-slide deck is reviewed like a forty-slide one.
+2. **Score each slide against the rubric.** No deck size is exempt.
 
    | # | Check | Fails when | Severity |
    |---|---|---|---|
@@ -186,12 +184,10 @@ the wrong visual show only in pixels. **Images are truth.**
 4. **Repair.** Edit the spec at the finding's `path` (or the field the
    rubric names), send `deck_id` + `patch`, re-render and follow the
    render's `next_tool_call`: once thumbnails were delivered it is
-   `render_deck_thumbnails {pptx_path, known_hashes}` over the whole deck,
-   prefilled with the hashes you were sent (before that,
-   `slide_indices: changed_slides`). A slide whose pixels did not change
-   returns `{index, id, content_hash, unchanged: true}` with no image and
-   no `path`: the image you hold is still that slide; submit its
-   `content_hash` as `image_sha256`. Re-check the changed slides, then
+   `render_deck_thumbnails {pptx_path, known_hashes}` over the whole deck
+   (before that, `slide_indices: changed_slides`). A slide whose pixels
+   did not change returns `{index, id, path, content_hash, unchanged:
+   true}` and no image. Re-check the changed slides, then
    review the whole final revision once and submit. CLI: `json2pptx render-thumbnails
    deck.pptx --out-dir slides/ --known-hashes <hash>,<hash>`.
    Deterministic repairs: RAW_PATH.md; finding semantics:

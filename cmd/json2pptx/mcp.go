@@ -2618,7 +2618,7 @@ Cost: a 15-slide pass is ~600KB at the default density 50 and over 1MB at 100. U
 			mcp.Items(map[string]any{"type": []string{"integer", "string"}, "minimum": 0}),
 		),
 		mcp.WithArray(argKnownHashes,
-			mcp.Description("content_hash values of slides you already hold (from an earlier render of this or a previous revision). A slide that still hashes to one of them is returned as {index, id, content_hash, unchanged:true}: no image block, no path. A hash that matches nothing is ignored."),
+			mcp.Description("content_hash values of slides you already hold (from an earlier render of this or a previous revision). A slide that still hashes to one of them is returned as {index, id, path, content_hash, unchanged:true} with no image block. A hash that matches nothing is ignored."),
 			mcp.Items(map[string]any{"type": "string"}),
 		),
 		mcp.WithBoolean("force",

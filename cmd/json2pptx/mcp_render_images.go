@@ -70,8 +70,8 @@ type renderedSlideMeta struct {
 	ImageWidth        int    `json:"image_width,omitempty"`
 	ImageHeight       int    `json:"image_height,omitempty"`
 	// Unchanged marks a slide whose content_hash the caller named in
-	// known_hashes: the entry is index, id and content_hash, with no image
-	// block and no path (go-slide-creator-yosa8).
+	// known_hashes: the entry is index, id, path and content_hash, with no
+	// image block (go-slide-creator-yosa8, go-slide-creator-o477e).
 	Unchanged bool `json:"unchanged,omitempty"`
 }
 
@@ -259,7 +259,7 @@ func deckThumbnailsMCPResult(ctx context.Context, request mcp.CallToolRequest, d
 			if resp.SourceHash == "" {
 				resp.SourceHash = s.SourceHash
 			}
-			resp.Slides = append(resp.Slides, renderedSlideMeta{Index: s.Index, ContentHash: s.ContentHash, Unchanged: true})
+			resp.Slides = append(resp.Slides, heldSlideMeta(s))
 			continue
 		}
 		meta, enc, err := slideImageToMCP(s, len(images)+1)
@@ -305,6 +305,18 @@ func deckThumbnailsMCPResult(ctx context.Context, request mcp.CallToolRequest, d
 	return res
 }
 
+// heldSlideMeta is the entry of a slide the caller already holds: no image,
+// but the path of its PNG, which is content-addressed and still on disk, so
+// submit_visual_review can take it like any other slide's
+// (go-slide-creator-o477e).
+func heldSlideMeta(s render.SlideImage) renderedSlideMeta {
+	path := s.Path
+	if path == "" {
+		_, path = materializeThumbnail(s)
+	}
+	return renderedSlideMeta{Index: s.Index, Path: path, ContentHash: s.ContentHash, Unchanged: true}
+}
+
 // renderProgressReporter sends only when the client supplied an MCP progress
 // token. The initial update covers conversion, then the render loop reports
 // each assembled thumbnail against the actual number selected for delivery.
@@ -348,7 +360,7 @@ func legacyDeckWithoutKnown(deck *render.DeckResult, held func(render.SlideImage
 		Slides: make([]legacySlideThumbnail, 0, len(deck.Slides))}
 	for _, s := range deck.Slides {
 		if held(s) {
-			s = render.SlideImage{Index: s.Index, ContentHash: s.ContentHash, SourceHash: s.SourceHash}
+			s = render.SlideImage{Index: s.Index, Path: s.Path, ContentHash: s.ContentHash, SourceHash: s.SourceHash}
 			out.Slides = append(out.Slides, legacySlideThumbnail{SlideImage: s, Unchanged: true})
 			continue
 		}

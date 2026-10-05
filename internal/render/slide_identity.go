@@ -149,42 +149,57 @@ func (p *pptxParts) relationships(part string) ([]partRelationship, error) {
 	return doc.Relationships, nil
 }
 
-// invisibleRelationship reports relationship types whose target never shows on
-// the slide that references them.
-func invisibleRelationship(relType string) bool {
+// invisibleRelationship reports relationships whose target never shows on a
+// slide that renders with the part that holds them.
+//
+// A master's list of its layouts is one: a slide renders with its own layout
+// and that layout's master, not with the master's other layouts. Following
+// the list also closed a cycle (layout to master and back), and a layout
+// first reached through its master was digested without the master or the
+// theme, so a slide on it had one key on every template
+// (go-slide-creator-o477e).
+func invisibleRelationship(part, relType string) bool {
 	for _, suffix := range []string{"/notesSlide", "/comments", "/commentAuthors", "/slide", "/tags"} {
 		if strings.HasSuffix(relType, suffix) {
 			return true
 		}
 	}
-	return false
+	return strings.HasSuffix(relType, "/slideLayout") && strings.HasPrefix(part, "ppt/slideMasters/")
 }
 
 // digest returns the digest of a part and of everything it renders with.
 func (p *pptxParts) digest(part string) (string, error) {
+	d, _, err := p.digestPart(part)
+	return d, err
+}
+
+// digestPart is digest, and reports whether the digest stands for the part
+// wherever it is reached from. A digest computed inside a relationship cycle
+// names the part it closed on instead of that part's content, so it is not
+// kept for a later reference from outside the cycle.
+func (p *pptxParts) digestPart(part string) (digest string, whole bool, err error) {
 	if d, ok := p.digests[part]; ok {
-		return d, nil
+		return d, true, nil
 	}
 	if p.visiting[part] {
-		// A master lists its layouts and each layout names its master: the
-		// cycle closes on the part's name.
-		return "cycle:" + part, nil
+		return "cycle:" + part, false, nil
 	}
 	p.visiting[part] = true
 	defer delete(p.visiting, part)
+	whole = true
 
 	content, err := p.read(part)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	rels, err := p.relationships(part)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	h := sha256.New()
 	h.Write(content)
 	for _, r := range rels {
-		if invisibleRelationship(r.Type) {
+		if invisibleRelationship(part, r.Type) {
 			continue
 		}
 		fmt.Fprintf(h, "\x00%s\x00%s\x00", r.ID, r.Type)
@@ -197,15 +212,18 @@ func (p *pptxParts) digest(part string) (string, error) {
 			h.Write([]byte("missing:" + target))
 			continue
 		}
-		d, err := p.digest(target)
+		d, targetWhole, err := p.digestPart(target)
 		if err != nil {
-			return "", err
+			return "", false, err
 		}
+		whole = whole && targetWhole
 		h.Write([]byte(d))
 	}
-	d := hex.EncodeToString(h.Sum(nil))
-	p.digests[part] = d
-	return d, nil
+	digest = hex.EncodeToString(h.Sum(nil))
+	if whole {
+		p.digests[part] = digest
+	}
+	return digest, whole, nil
 }
 
 // resolvePartTarget resolves a relationship target against its source part.

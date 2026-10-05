@@ -2,10 +2,12 @@ package rhythm_test
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/rhythm"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 func TestAnalyze_BasicRun(t *testing.T) {
@@ -458,13 +460,33 @@ func TestAnalyze_NarrativeStructure(t *testing.T) {
 	}
 }
 
+// go-slide-creator-th6o9: a 12-slide deck is one chapter; the advice starts
+// at 13 content slides, names where the first chapter starts, and is off for
+// a deck whose chrome declines the section tracker.
 func TestAnalyze_MissingSectionsOnLongDecks(t *testing.T) {
-	slides := []rhythm.Slide{{Role: "title", Title: "Deck"}}
-	for i := 0; i < 10; i++ {
-		slides = append(slides, rhythm.Slide{HasPattern: true, PatternName: "card-grid", Title: "Point"})
+	deck := func(content int) []rhythm.Slide {
+		slides := []rhythm.Slide{{Role: "title", Title: "Deck"}, {HasPattern: true, PatternName: "exec-summary", Title: "Executive summary"}}
+		for i := 1; i < content; i++ {
+			slides = append(slides, rhythm.Slide{HasPattern: true, PatternName: "card-grid", Title: "Point"})
+		}
+		return slides
 	}
-	if r := recCodes(rhythm.Analyze(slides))[rhythm.CodeMissingSections]; len(r) != 1 {
-		t.Errorf("missing sections recs = %+v", r)
+	for content := 10; content <= 12; content++ {
+		if r := recCodes(rhythm.Analyze(deck(content)))[rhythm.CodeMissingSections]; len(r) != 0 {
+			t.Errorf("%d content slides are one chapter, got %+v", content, r)
+		}
+	}
+	slides := deck(13)
+	r := recCodes(rhythm.Analyze(slides))[rhythm.CodeMissingSections]
+	if len(r) != 1 {
+		t.Fatalf("missing sections recs = %+v", r)
+	}
+	// The first chapter starts after the cover and the executive summary.
+	if r[0].SlideIndex != 2 || !strings.Contains(r[0].Message, "before slide 3") {
+		t.Errorf("missing_sections should name where the first divider goes (slide 3), got %+v", r[0])
+	}
+	if r := recCodes(rhythm.AnalyzeWith(slides, rhythm.Options{SectionsDeclined: true}))[rhythm.CodeMissingSections]; len(r) != 0 {
+		t.Errorf("a deck that declines the section tracker still got %+v", r)
 	}
 	slides = append(slides[:3], append([]rhythm.Slide{{Role: "section", Title: "Part two"}}, slides[3:]...)...)
 	if r := recCodes(rhythm.Analyze(slides))[rhythm.CodeMissingSections]; len(r) != 0 {
@@ -519,6 +541,57 @@ func TestAnalyze_PatternAccentBalance(t *testing.T) {
 	}
 }
 
+// go-slide-creator-th6o9 (h-A12): "100% of cells (2/2) are underfilled" came
+// back at slide_index -1 with kpi-3up and comparison-2col as the fix for a
+// deck that already used both. Every recommendation names a slide.
+func TestAnalyze_EveryRecommendationNamesASlide(t *testing.T) {
+	emptyText, _ := json.Marshal("")
+	sparse := func(cells int) *shapegrid.Grid {
+		row := shapegrid.Row{}
+		cols := make([]float64, cells)
+		for i := range cols {
+			cols[i] = 100 / float64(cells)
+			row.Cells = append(row.Cells, shapegrid.Cell{Shape: &shapegrid.ShapeSpec{Geometry: "rect", Text: emptyText}})
+		}
+		return &shapegrid.Grid{
+			Bounds:  shapegrid.DefaultBounds(shapegrid.DefaultSlideWidthEMU, shapegrid.DefaultSlideHeightEMU),
+			Columns: cols, Rows: []shapegrid.Row{row},
+		}
+	}
+	slides := []rhythm.Slide{
+		{Role: "title", Title: "FY26 plan"},
+		bulletsSlide("Margin analysis", "Gross margin fell from 41% to 38%"),
+		{HasShapeGrid: true, CellCount: 2, Grid: sparse(2), Title: "Two cells"},
+		bulletsSlide("Market overview", "The market is consolidating"),
+		{HasPattern: true, PatternName: "kpi-3up", HasShapeGrid: true, CellCount: 3, Grid: sparse(3), Title: "Three cells"},
+		bulletsSlide("Risks", "Execution risk is moderate"),
+	}
+	result := rhythm.Analyze(slides)
+	codes := recCodes(result)
+	for _, rec := range result.Recommendations {
+		if rec.SlideIndex < 0 || rec.SlideIndex >= len(slides) {
+			t.Errorf("%s names no slide (slide_index %d): %s", rec.Code, rec.SlideIndex, rec.Message)
+		}
+	}
+	under := codes[rhythm.CodeUnderfilledCells]
+	if len(under) != 1 {
+		t.Fatalf("underfilled recs = %+v", under)
+	}
+	// The slide with the most underfilled cells is the one to fix first, and
+	// its own pattern is not offered as the way out.
+	if under[0].SlideIndex != 4 || !strings.Contains(under[0].Message, "slide 5") || !strings.Contains(under[0].Message, "slides 3, 5") {
+		t.Errorf("underfilled_cells should point at slide 5 and list slides 3, 5: %+v", under[0])
+	}
+	for _, name := range under[0].RecommendedBreak {
+		if name == "kpi-3up" {
+			t.Errorf("underfilled_cells recommends the pattern the slide already uses: %v", under[0].RecommendedBreak)
+		}
+	}
+	if bh := codes[rhythm.CodeBulletsHeavy]; len(bh) != 1 || bh[0].SlideIndex != 1 {
+		t.Errorf("bullets_heavy should point at the first bullets-only slide: %+v", bh)
+	}
+}
+
 func TestAnalyze_DensityDistributionZero(t *testing.T) {
 	// Slides with no grid — density distribution should be all zeros.
 	slides := []rhythm.Slide{
@@ -561,5 +634,26 @@ func TestAnalyze_DensityDistributionWithGrid(t *testing.T) {
 	}
 	if dd.UnderfilledCells != 2 {
 		t.Errorf("expected 2 underfilled cells for empty text, got %d", dd.UnderfilledCells)
+	}
+
+	// A cell that holds a table or an image is not a text box short of text
+	// (go-slide-creator-th6o9): a chart beside a table was "100% of cells
+	// (2/2) are underfilled".
+	visuals := &shapegrid.Grid{
+		Bounds:  shapegrid.DefaultBounds(shapegrid.DefaultSlideWidthEMU, shapegrid.DefaultSlideHeightEMU),
+		Columns: []float64{50, 50},
+		Rows: []shapegrid.Row{
+			{Cells: []shapegrid.Cell{
+				{TableSpec: &types.TableSpec{Headers: []string{"A", "B"}, Rows: [][]types.TableCell{{{Content: "1"}, {Content: "2"}}}}},
+				{Image: &shapegrid.ImageSpec{Path: "chart.png"}},
+			}},
+		},
+	}
+	result = rhythm.Analyze([]rhythm.Slide{{HasShapeGrid: true, CellCount: 2, Grid: visuals, Title: "Chart beside table"}})
+	if dd := result.Aggregates.DensityDistribution; dd.UnderfilledCells != 0 {
+		t.Errorf("table and image cells counted as underfilled text: %+v", dd)
+	}
+	if recs := recCodes(result)[rhythm.CodeUnderfilledCells]; len(recs) != 0 {
+		t.Errorf("a slide of visuals got underfilled_cells advice: %+v", recs)
 	}
 }

@@ -426,7 +426,9 @@ func regionsFamily(body map[string]any) VisualFamily {
 		return FamilyKPI
 	case slides.RegionTimeline:
 		return FamilyTimeline
-	case slides.RegionTable, slides.RegionText, slides.RegionImage:
+	case slides.RegionTable:
+		return FamilyTable
+	case slides.RegionText, slides.RegionImage:
 		return FamilyText
 	default:
 		return FamilyChart

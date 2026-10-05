@@ -117,7 +117,13 @@ ten-point rubric in [quality-and-review.md](quality-and-review.md).
 Repair at the finding's path (or the field the rubric names), re-render with
 `deck_id` + `patch`, and call `render_deck_thumbnails` again with the
 `known_hashes` the render's `next_tool_call` pre-fills: unchanged slides come
-back as `{unchanged: true}` without an image, so you re-inspect only what moved.
+back as `{unchanged: true}` with their `path` and `content_hash` but no image,
+so you re-inspect only what moved. `changed_slides` names the slides that
+render differently: a footer edit in `meta.chrome` leaves out a cover that
+prints no footer. If you keep the deck in a file and send the whole revised
+spec instead of a patch, give every slide an `id`: a spec with the title,
+template and slide ids of a stored deck is that `deck_id`'s next revision, so
+the diff and `known_hashes` work the same (`fork: true` starts a new deck).
 Stop after three repair rounds and hand back open findings per slide rather
 than loop.
 

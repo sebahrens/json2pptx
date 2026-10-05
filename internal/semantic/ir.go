@@ -64,6 +64,14 @@ const (
 	FamilyProcess VisualFamily = "process"
 	// FamilyTimeline is a phased roadmap/timeline treatment.
 	FamilyTimeline VisualFamily = "timeline"
+	// FamilyTable is a native table. FamilyCards is a grid of cards (the team
+	// grid) and FamilyList a stack of numbered rows (the next-steps closer).
+	// All three used to count as text, so two tables, a team grid and the
+	// closer read as "4 consecutive text slides" although no two of them look
+	// alike (go-slide-creator-th6o9).
+	FamilyTable VisualFamily = "table"
+	FamilyCards VisualFamily = "cards"
+	FamilyList  VisualFamily = "list"
 	// FamilyRaw is an unmodeled raw/passthrough slide.
 	FamilyRaw VisualFamily = "raw"
 )
@@ -237,14 +245,14 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		// template's own table style, so the plan advertises the layout only
 		// (explain/compile parity). It rides in a one-cell grid on blank-title
 		// so its title matches every other content kind (go-slide-creator-ngbnf).
-		role: RoleEvidence, family: FamilyText, density: DensityHeavy, layout: "blank-title",
+		role: RoleEvidence, family: FamilyTable, density: DensityHeavy, layout: "blank-title",
 	},
 	KindArchitecture: {
 		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title",
 		pattern: architecturePattern,
 	},
 	KindTeam: {
-		role: RoleEvidence, family: FamilyText, density: DensityMedium, layout: "blank-title",
+		role: RoleEvidence, family: FamilyCards, density: DensityMedium, layout: "blank-title",
 		pattern: teamPattern,
 	},
 	KindAgenda: {
@@ -322,8 +330,9 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 	},
 	KindNextSteps: {
 		// The consulting closer: it ends the deck (closing role) but carries
-		// actions and asks, so it is text content rather than structure.
-		role: RoleClosing, family: FamilyText, density: DensityMedium, layout: "blank-title",
+		// actions and asks, so it is content rather than structure: numbered
+		// action rows, which look like no prose slide.
+		role: RoleClosing, family: FamilyList, density: DensityMedium, layout: "blank-title",
 		pattern: slides.NextStepsPattern,
 	},
 	KindClosing: {role: RoleClosing, family: FamilyStructural, density: DensityLight, layout: "closing"},
