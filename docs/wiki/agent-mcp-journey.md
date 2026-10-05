@@ -52,13 +52,17 @@ takeaway budgets (titles ≤ ~67 characters on the tightest templates, two lines
 Write the **ghost deck** — the action titles alone, in order — before any slide
 body ([storyline-and-structure.md](storyline-and-structure.md)).
 
-`plan_deck(format: "deckspec")` drafts slots from a brief. In all four journey
-runs its routing was wrong for slides the brief named explicitly (a margin
-bridge became `pillars`, a photo case `kpi_snapshot`, a price schedule
-`timeline`) and it left 13–28 facts unplaced; this is tracked
-(`go-slide-creator-xbwlt`). Until it lands, use `plan_deck` for its
-`constraints[]` and `unplaced_facts[]` lists, and route the slides yourself with
-the table in [visual-vocabulary.md](visual-vocabulary.md).
+`plan_deck(format: "deckspec")` drafts slots from a brief. It routes the
+slides a brief names on the kind vocabulary (bridge / walk → `bridge`, photo /
+screenshot / comparable → `image_case`, schedule / register → `table`, options
+with a recommendation → `decision` or `option_matrix`, phases → `roadmap`,
+likelihood × impact → `matrix_2x2`, "chart on the left, number on the right"
+→ `regions`, one closer), fills the kinds' structured fields from the brief's
+sentences, and never ellipsises a title — the four journey briefs went from
+13–28 unplaced facts to 0–4 (`go-slide-creator-xbwlt`). Still read
+`unplaced_facts[]` and `constraints[]`, replace every `__FILL__`, and check each
+slot's kind against [visual-vocabulary.md](visual-vocabulary.md) before
+authoring; the draft is a scaffold, not the deck.
 
 ### 3. Choose visuals you have not seen
 

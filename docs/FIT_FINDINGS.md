@@ -78,7 +78,9 @@ default floor. A table whose rows fit at that pitch renders every row there, wit
 no finding (it is a row-height decision like row growth, not content loss); one
 that fits at the default pitch keeps it, so existing decks do not change; one
 that overflows even the compact pitch reports `table_rows_truncated` as above,
-keeping the rows the compact pitch affords. Validate predicts from the same row
+keeping the rows the compact pitch affords. Row-count font scaling never takes
+the 12pt engine default below 12pt (the legacy 18pt style keeps its 10pt floor):
+a table that needs smaller text is split, not made unreadable. Validate predicts from the same row
 plan. The static density caps follow the compact pitch: `TDRMaxRows` is 10
 logical rows (header included; `density_exceeded` on the raw path,
 `SEMANTIC_DENSITY` on a DeckSpec `table`, `table_density_guide.limits.max_rows`),

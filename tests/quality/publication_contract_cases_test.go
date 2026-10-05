@@ -69,7 +69,7 @@ func TestPublicationContractRejectsFalseApprovals(t *testing.T) {
 		t.Run(scenario, func(t *testing.T) {
 			output := t.TempDir()
 			ok := false
-			report := generationReport{Success: &ok, Error: "source loss", FitFindings: []patterns.FitFinding{{ValidationError: patterns.ValidationError{Code: patterns.ErrCodeTableRowsTruncated, Path: "/slides/0/content/1", Fix: &patterns.FixSuggestion{Kind: "split_at_row", Params: map[string]any{"visible_rows": float64(9), "split_at_row": float64(9), "hidden_rows": float64(7)}}}, Action: "refuse"}}}
+			report := generationReport{Success: &ok, Error: "source loss", FitFindings: []patterns.FitFinding{{ValidationError: patterns.ValidationError{Code: patterns.ErrCodeTableRowsTruncated, Path: "/slides/0/content/1", Fix: &patterns.FixSuggestion{Kind: "split_at_row", Params: map[string]any{"visible_rows": float64(13), "split_at_row": float64(13), "hidden_rows": float64(3)}}}, Action: "refuse"}}}
 			path, data, runErr := input, source, exitErr
 			artifact := filepath.Join(output, "deck.pptx")
 			writeArtifact := func(path string) {

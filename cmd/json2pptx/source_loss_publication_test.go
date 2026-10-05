@@ -65,7 +65,7 @@ func TestHandleGenerateRuntimeSourceLossRetainsStructuredRepair(t *testing.T) {
 					if envelope.Diagnostics[0].Fix.Kind != string(diagnostics.ActionSplitSlide) {
 						t.Fatalf("table refusal missing split action: %+v", envelope.Diagnostics[0].Fix)
 					}
-					if params := envelope.Diagnostics[0].Fix.Params; params["split_at_row"] != float64(15) || params["visible_rows"] != float64(15) || params["hidden_rows"] != float64(65) {
+					if params := envelope.Diagnostics[0].Fix.Params; params["split_at_row"] != float64(13) || params["visible_rows"] != float64(13) || params["hidden_rows"] != float64(67) {
 						t.Fatalf("source-loss repair parameters missing: %+v", params)
 					}
 				}

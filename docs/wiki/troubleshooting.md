@@ -42,7 +42,7 @@ Back to the [hub](README.md).
 
 | Problem | Do |
 |---|---|
-| `plan_deck` routed a named slide to the wrong kind and left facts unplaced | Route with [visual-vocabulary.md](visual-vocabulary.md); use its `unplaced_facts` as a checklist (`go-slide-creator-xbwlt`). |
+| `plan_deck` left facts unplaced or chose a kind you disagree with | Fixed routing in `go-slide-creator-xbwlt`; what remains in `unplaced_facts` is your checklist, and the kind table in [visual-vocabulary.md](visual-vocabulary.md) is the tie-breaker. |
 | `recommend_visual` returned no split candidate / ranked KPI cards for a status board / only `content` for a finding slide | Name the candidate: `candidates: ["regions"]`, `["table-highlight"]`, `["labeled-rows"]` (fixed in `go-slide-creator-ux1fl`). |
 | A raw pattern's fields are unknown | `show_pattern(name)` — in the default profile — returns the schema and `example_values`. |
 | Your local spec drifted from the stored deck | `validate_deck_spec {deck_id, read: "spec"}`. |

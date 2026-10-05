@@ -96,8 +96,12 @@ func DetectTablePreflight(input TablePreflightInput) []patterns.FitFinding {
 			preFontSize := fontSize
 			rowScale := float64(maxVisibleRows) / float64(numRows)
 			scaled := int(float64(fontSize) * rowScale)
-			if scaled < minFontSizeForTable {
-				scaled = minFontSizeForTable
+			floor := minFontSizeForTable
+			if IsEngineDefaultTableStyle(input.Style) {
+				floor = engineDefaultRowFontSize
+			}
+			if scaled < floor {
+				scaled = floor
 			}
 			fontSize = scaled
 			findings = append(findings, patterns.FitFinding{

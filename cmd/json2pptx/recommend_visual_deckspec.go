@@ -691,7 +691,7 @@ func regionContractNote(r *patterns.VisualRegion, i int) string {
 	switch patterns.RegionKindFor(r) {
 	case "chart":
 		if r.Name == "waterfall" {
-			return at + "is a chart region {kind: chart, chart {type: waterfall, data {points: [{label, value, type: increase | decrease | total | subtotal}]}}, unit?} — a bridge beside another view is this chart region, not the bridge kind"
+			return at + "is a chart region {kind: chart, chart {type: waterfall, data {points: [{label, value, type: increase | decrease | total | subtotal}]}}, unit?}"
 		}
 		shape := "{categories, series: [{name, values}]}"
 		if r.Name == "pie" || r.Name == "donut" {
@@ -705,7 +705,7 @@ func regionContractNote(r *patterns.VisualRegion, i int) string {
 	case "timeline":
 		return at + "is a timeline region {kind: timeline, milestones: [{label, date?}] (3–7)}"
 	case "text":
-		return at + "is a text region {kind: text, heading?, body (≤400 chars) and / or bullets (≤6)} — the narrative column"
+		return at + "is a text region {kind: text, heading?, body (≤400) and / or bullets (≤6)}"
 	}
 	return ""
 }

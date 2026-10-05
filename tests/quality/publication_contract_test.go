@@ -31,7 +31,7 @@ var expectedSourceRefusals = map[string]struct {
 	SHA             string
 	Visible, Hidden int
 }{
-	"tests/quality/fixtures/dense-table-16x6.json": {"c9379a66122bb5ca3e525d93293800f088e714d158f0e40f2af22cebb329dae6", 9, 7},
+	"tests/quality/fixtures/dense-table-16x6.json": {"c9379a66122bb5ca3e525d93293800f088e714d158f0e40f2af22cebb329dae6", 13, 3},
 }
 
 func classifyPublication(input string, source []byte, report generationReport, runErr error, outputDir string) (string, error) {

@@ -156,8 +156,15 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 			preFontSize := config.DefaultSize
 			rowScale := float64(maxVisibleRows) / float64(numRows)
 			scaled := int(float64(config.DefaultSize) * rowScale)
-			if scaled < minFontSizeForTable {
-				scaled = minFontSizeForTable
+			// The engine default never shrinks below its 12pt: a table that
+			// needs less is split, not made unreadable (the legacy 18pt
+			// style keeps its 10pt floor).
+			floor := minFontSizeForTable
+			if config.engineDefault {
+				floor = engineDefaultRowFontSize
+			}
+			if scaled < floor {
+				scaled = floor
 			}
 			config.DefaultSize = scaled
 			// Site 6: emit hint when font is scaled down due to row count.
