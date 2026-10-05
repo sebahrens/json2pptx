@@ -15,6 +15,10 @@ type identityDeck struct {
 	notes      map[int]string
 	media      string // bytes of the one image slide 0 embeds
 	layoutBody string
+	// theme is the theme part's body. twoLayouts gives the master a second
+	// layout, used by the last slide, as in a real template.
+	theme      string
+	twoLayouts bool
 }
 
 func (d identityDeck) write(t *testing.T, path string) {
@@ -53,15 +57,25 @@ func (d identityDeck) write(t *testing.T, path string) {
 
 	// Master and layout reference each other, as in a real package.
 	add("ppt/slideMasters/slideMaster1.xml", `<p:sldMaster/>`)
-	add("ppt/slideMasters/_rels/slideMaster1.xml.rels", `<Relationships `+relNS+`><Relationship Id="rId1" Type="`+officeRel+`/slideLayout" Target="../slideLayouts/slideLayout1.xml"/><Relationship Id="rId2" Type="`+officeRel+`/theme" Target="../theme/theme1.xml"/></Relationships>`)
-	add("ppt/theme/theme1.xml", `<a:theme/>`)
+	second := ""
+	if d.twoLayouts {
+		second = `<Relationship Id="rId3" Type="` + officeRel + `/slideLayout" Target="../slideLayouts/slideLayout2.xml"/>`
+		add("ppt/slideLayouts/slideLayout2.xml", `<p:sldLayout type="closing"/>`)
+		add("ppt/slideLayouts/_rels/slideLayout2.xml.rels", `<Relationships `+relNS+`><Relationship Id="rId1" Type="`+officeRel+`/slideMaster" Target="../slideMasters/slideMaster1.xml"/></Relationships>`)
+	}
+	add("ppt/slideMasters/_rels/slideMaster1.xml.rels", `<Relationships `+relNS+`><Relationship Id="rId1" Type="`+officeRel+`/slideLayout" Target="../slideLayouts/slideLayout1.xml"/><Relationship Id="rId2" Type="`+officeRel+`/theme" Target="../theme/theme1.xml"/>`+second+`</Relationships>`)
+	add("ppt/theme/theme1.xml", `<a:theme>`+d.theme+`</a:theme>`)
 	add("ppt/slideLayouts/slideLayout1.xml", `<p:sldLayout>`+d.layoutBody+`</p:sldLayout>`)
 	add("ppt/slideLayouts/_rels/slideLayout1.xml.rels", `<Relationships `+relNS+`><Relationship Id="rId1" Type="`+officeRel+`/slideMaster" Target="../slideMasters/slideMaster1.xml"/></Relationships>`)
 	add("ppt/media/image1.png", d.media)
 
 	for i, body := range d.slides {
 		add(fmt.Sprintf("ppt/slides/slide%d.xml", i+1), `<p:sld>`+body+`</p:sld>`)
-		rels := `<Relationship Id="rId1" Type="` + officeRel + `/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>`
+		layout := 1
+		if d.twoLayouts && i == len(d.slides)-1 {
+			layout = 2
+		}
+		rels := fmt.Sprintf(`<Relationship Id="rId1" Type="%s/slideLayout" Target="../slideLayouts/slideLayout%d.xml"/>`, officeRel, layout)
 		if i == 0 {
 			rels += `<Relationship Id="rId2" Type="` + officeRel + `/image" Target="../media/image1.png"/>`
 		}
@@ -140,6 +154,28 @@ func TestVisibleSlideKeys(t *testing.T) {
 	layout := base
 	layout.layoutBody = "<logo/>"
 	differs("layout changed", layout, 2)
+
+	// A slide on the master's second layout renders with the master and the
+	// theme like any other. Its key used to leave both out: the layout was
+	// first digested from inside the master that lists it, where the way back
+	// to the master is a cycle, and that partial digest was kept. The closing
+	// slide of one deck rendered on two templates then had one key, so a
+	// thumbnail of the first template was returned for the second
+	// (go-slide-creator-o477e).
+	twoLayouts := base
+	twoLayouts.twoLayouts = true
+	rethemed := twoLayouts
+	rethemed.theme = "<dark/>"
+	before, after := identityKeys(t, twoLayouts), identityKeys(t, rethemed)
+	for i := range before {
+		if before[i] == after[i] {
+			t.Errorf("theme changed: slide %d kept its key although every slide renders with the theme", i)
+		}
+	}
+	// A layout the slide does not use is not part of how it renders.
+	if got := identityKeys(t, twoLayouts); got[0] != want[0] || got[1] != want[1] {
+		t.Error("adding a layout to the master changed the key of slides that do not use it")
+	}
 
 	// A printed slide number makes position part of what the slide shows.
 	numbered := identityDeck{slides: []string{`<a/>`, `<a:fld type="slidenum"/>`, `<a:fld type="slidenum"/>`}, media: "PNG-A"}

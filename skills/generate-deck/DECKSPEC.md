@@ -171,7 +171,9 @@ compares A with the current revision; each side is read on the template
 it was validated or rendered on, so a call's `template` change shows as
 `restyled` slides and `summary` ends `(template A → B)`), finds or replaces text everywhere
 (`find`, `replace`), restores a revision (`restore: N`) and forks
-(`fork: true`). Handles are process-local and expire after one hour; retain
+(`fork: true`). A whole spec sent again is the next revision of its
+`deck_id` when its title, template and slide `id`s match a stored deck
+(`fork: true`: a new one). Handles are process-local and expire after one hour; retain
 the source spec yourself.
 The default filename carries a digest of the spec; an explicit
 `output_filename` may overwrite an earlier artifact (check `overwrote`).

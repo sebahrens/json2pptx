@@ -111,7 +111,7 @@ This tools/list is abridged: tool:"<name>" returns that tool's full description 
 			"output_filename": "Name of the .pptx inside the server's output directory. Default: derived from meta.title and a digest of the spec.",
 			"patch":           `Edits to deck_id's spec, applied first: [{op, path, value | from}]. path is a JSON Pointer; a slide is named by index or id (/slides/3/title, /slides/s4/title); add at /slides/6 inserts, "-" appends. All ops apply or none; the response lists changed_slides.`,
 			"restore":         "Revision of deck_id to start from; patch applies on top.",
-			"spec":            "The DeckSpec to render: a JSON object ({meta:{title, template}, slides:[{kind, …}]}) or a YAML/JSON string. Send this OR deck_id.",
+			"spec":            "The DeckSpec to render: a JSON object ({meta:{title, template}, slides:[{kind, …}]}) or a YAML/JSON string. Send this OR deck_id; sent again with the same title, template and slide ids it is the next revision of its deck_id.",
 			"template":        "Template for this call; overrides meta.template. list_templates lists names.",
 			"template_path":   "Local .pptx to render with; must stay inside base_dir. Not with template. Check it with examine_template first.",
 		},

@@ -765,7 +765,7 @@ var outputSchemaRenderDeckThumbnails = json.RawMessage(`{
           "image_mime_type":     {"type": "string", "description": "Per-slide MIME type; omitted when it equals the top-level image_mime_type."},
           "image_width":         {"type": "integer"},
           "image_height":        {"type": "integer"},
-          "unchanged":           {"type": "boolean", "description": "true when content_hash was named in known_hashes: the entry carries index, id and content_hash only, with no image block and no path. The image you already hold is still this slide."}
+          "unchanged":           {"type": "boolean", "description": "true when content_hash was named in known_hashes: the entry carries index, id, path and content_hash, with no image block. The image you already hold is still this slide."}
         },
         "required": ["index"]
       }
@@ -2743,7 +2743,7 @@ var outputSchemaRenderDeckSpec = json.RawMessage(`{
     "deck_id":         {"type": "string", "description": "Stored DeckSpec handle for subsequent semantic patch or analysis calls."},
     "stored":         {"type": "boolean", "description": "True when deck_id now holds the spec this call acted on. False for dry_run and a patched render that was refused: the stored deck is then unchanged."},
     "revision":       {"type": "integer", "description": "Number of the stored spec revision, starting at 1."},
-    "changed_slides": {"type": "array", "items": {"type": "integer"}, "description": "Always present. Zero-based slides that look different from the last rendered revision, so every slide on a first render."},
+    "changed_slides": {"type": "array", "items": {"type": "integer"}, "description": "Always present. Zero-based slides that render differently from the last rendered revision, so every slide on a first render."},
     "slide_changes":  {"type": "array", "description": "Every affected slide with its change class; unchanged slides are not listed.", "items": {"type": "object", "properties": {"id": {"type": "string"}, "index": {"type": "integer"}, "slide_number": {"type": "integer"}, "was_index": {"type": "integer"}, "change": {"type": "string", "enum": ["edited", "inserted", "restyled", "moved", "renumbered", "notes_only", "removed"]}}, "required": ["change"]}},
     "slides":          {"type": "array", "description": "Table of contents: every slide's id, index and slide_number. Left out of a compact patch render, where slide_changes names every slide whose index moved.", "items": {"type": "object", "properties": {"id": {"type": "string"}, "index": {"type": "integer"}, "slide_number": {"type": "integer"}, "kind": {"type": "string"}}, "required": ["index", "slide_number"]}},
     "diagnostics_omitted": {"type": "integer", "description": "Compact patch render: non-blocking diagnostics on unchanged slides that were left out; verbose:true returns them."},

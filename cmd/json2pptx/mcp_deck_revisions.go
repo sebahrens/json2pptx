@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/semantic"
 )
 
@@ -80,6 +81,11 @@ type slideState struct {
 	Title  string
 	Visual string // digest of everything that renders
 	Notes  string // digest of the speaker notes
+	// Rendered is the slide's render.VisibleSlideKeys digest in the PPTX the
+	// revision was last rendered to: the slide part and everything it renders
+	// with, which is also the identity of its thumbnail. Empty when the
+	// revision was not rendered (go-slide-creator-o477e).
+	Rendered string
 }
 
 // deckState is the digest snapshot of one spec revision, in rendered order.
@@ -89,6 +95,8 @@ type deckState struct {
 	// options); Template is the template the revision resolved to.
 	DeckLevel string
 	Template  string
+	// Title is meta.title, by which a spec sent again finds its deck.
+	Title string
 }
 
 // deckRevision is one stored revision of a handle's spec.
@@ -256,6 +264,7 @@ func specDeckState(filename string, spec []byte, template string) *deckState {
 		Slides:    make([]slideState, 0, len(expanded)),
 		DeckLevel: deckSettingsDigest(spec),
 		Template:  template,
+		Title:     parsed.Meta.Title,
 	}
 	section, chapter := "", 0
 	for _, e := range expanded {
@@ -398,11 +407,19 @@ func classifySlideChanges(before, after *deckState, movedHint map[string]bool) [
 // survivingSlideChange classifies a slide present in both revisions; "" means
 // it did not change. The classes are ordered by what the agent must do: a
 // visible change outranks a positional one.
+//
+// A deck-level edit restyles every slide as far as the spec can tell, but a
+// footer setting does not reach a cover that prints no footer: removing
+// meta.chrome.project_code listed all twelve slides and the thumbnails then
+// called the cover unchanged (go-slide-creator-o477e). When both revisions
+// were rendered, a slide whose rendered parts are identical looks the same,
+// whatever the spec says changed.
 func survivingSlideChange(before, after slideState, restyled, inOrder, shifted bool) string {
+	sameRender := before.Rendered != "" && before.Rendered == after.Rendered
 	switch {
-	case before.Visual != after.Visual:
+	case before.Visual != after.Visual && !sameRender:
 		return slideChangeEdited
-	case restyled:
+	case restyled && !sameRender:
 		return slideChangeRestyled
 	case !inOrder:
 		return slideChangeMoved
@@ -522,6 +539,15 @@ func (h *deckHandle) inherit(old *deckHandle, tool, note string, now time.Time) 
 	h.Spec, h.NextSlideID = withSlideIDs(h.Spec, next)
 	h.SlideDigests = slideDigests(h.Spec)
 	h.State = specDeckState(h.Filename, h.Spec, h.templateIdentity())
+	switch {
+	case h.pendingRenderKeys != nil:
+		h.State.setRenderKeys(h.pendingRenderKeys)
+	case old != nil && string(old.Spec) == string(h.Spec):
+		// A call that rendered nothing (a validate, a read) leaves the
+		// revision looking as it was last rendered.
+		h.State.setRenderKeys(old.State.renderKeys())
+	}
+	h.pendingRenderKeys = nil
 	evaluated := firstNonEmpty(h.storeEvaluated, h.templateIdentity())
 	h.storeEvaluated = ""
 	if old != nil && string(old.Spec) == string(h.Spec) {
@@ -576,6 +602,45 @@ func (h *deckHandle) applyPendingRender() {
 	}
 	h.Rendered, h.RenderedPptx = h.State.renderedOn(h.pendingRenderIdentity), h.pendingRenderPptx
 	h.pendingRenderPptx, h.pendingRenderIdentity = "", ""
+}
+
+// renderedSlideKeys returns the rendered identity of each slide of a PPTX, or
+// nil when there is no file or it cannot be read: the change list then falls
+// back to what the spec says.
+func renderedSlideKeys(pptxPath string) []string {
+	if pptxPath == "" {
+		return nil
+	}
+	keys, err := render.VisibleSlideKeys(pptxPath)
+	if err != nil {
+		return nil
+	}
+	return keys
+}
+
+// setRenderKeys records the rendered identity of each slide. Keys that do not
+// line up with the slides one to one (a slide the engine continued onto a
+// second page) are dropped rather than guessed at.
+func (s *deckState) setRenderKeys(keys []string) {
+	if s == nil || len(keys) != len(s.Slides) {
+		return
+	}
+	for i := range s.Slides {
+		s.Slides[i].Rendered = keys[i]
+	}
+}
+
+// renderKeys returns the rendered identities setRenderKeys recorded, nil when
+// the state has none.
+func (s *deckState) renderKeys() []string {
+	if s == nil || len(s.Slides) == 0 || s.Slides[0].Rendered == "" {
+		return nil
+	}
+	keys := make([]string, len(s.Slides))
+	for i := range s.Slides {
+		keys[i] = s.Slides[i].Rendered
+	}
+	return keys
 }
 
 // renderedOn returns the state as it looks when rendered on template: the

@@ -954,7 +954,7 @@ func mcpRenderDeckSpecTool() mcp.Tool {
 	return withSpecOrDeckIDChoice(mcp.NewTool("render_deck_spec", withToolOptions([]mcp.ToolOption{
 		mcp.WithDescription(`Compile a DeckSpec and render it to a .pptx — the recommended one-call path for a NEW deck. Returns {success, pptx_path, deterministic_ready, publishable, blocking_reasons[], quality_summary, diagnostics[], waivers[], explanation_summary}. success/ok mean the artifact was WRITTEN; deterministic_ready means no blocking diagnostic (severity error, blocking:true) remains, and deterministic_blocking_reasons names each by code and path. publishable also needs an approved all-slide visual verdict and is false on a fresh render: render every slide with render_deck_thumbnails, inspect the images, then record the verdict with submit_visual_review. diagnostics are validate_deck_spec's findings for the same spec and template, at JSON Pointer paths; quality_summary is an input heuristic (0-100, basis="input"; not a visual verdict). Parse/template errors use a finding envelope; other failures use success=false.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRenderDeckSpec)),
-		deckSpecOrHandleArg("The semantic DeckSpec to render, as a JSON object ({meta:{…}, slides:[{kind, …}]}) or a YAML/JSON string."),
+		deckSpecOrHandleArg("The semantic DeckSpec to render, as a JSON object ({meta:{…}, slides:[{kind, …}]}) or a YAML/JSON string. Sent again with the same title, template and slide ids, it is the next revision of its deck_id."),
 	}, deckHandleToolParams("render_deck_spec"), []mcp.ToolOption{
 		mcp.WithBoolean("verbose",
 			mcp.Description("true: full summaries on a patch render (default: changed slides only)."),
@@ -1742,14 +1742,20 @@ func (mc *mcpConfig) finishRenderDeckSpec(ctx context.Context, res renderDeckSpe
 		d.SlideID = outcome.State.slideIDForPath(d.SemanticPath)
 	}
 	shapeRenderDiagnostics(res.Diagnostics, newSpecDoc(src.Filename, src.Data))
+	// The deck as it was before this call: the one deck_id named, or the one
+	// a spec sent again was recognised as a revision of.
+	earlier := src.Handle
+	if earlier == nil {
+		earlier = outcome.Continued
+	}
 	earlierPptx := ""
-	if src.Handle != nil {
-		earlierPptx = src.Handle.RenderedPptx
+	if earlier != nil {
+		earlierPptx = earlier.RenderedPptx
 	}
 	completeRenderDeckSpecResponse(&res, f.TemplateWarnings, earlierPptx)
 	// A patch on a deck the agent has already seen rendered gets the compact
 	// response; a first render keeps the full one.
-	renderedBefore := src.Handle != nil && src.Handle.Rendered != nil
+	renderedBefore := earlier != nil && earlier.Rendered != nil
 	narrowThumbnailCall(&res, renderedBefore)
 	if renderedBefore && (len(src.RawPatch) > 0 || src.Restore > 0) && !f.Verbose {
 		compactRenderResponse(&res)

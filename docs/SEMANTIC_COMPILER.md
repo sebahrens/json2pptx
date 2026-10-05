@@ -560,15 +560,37 @@ slide as `{id, index, slide_number, change, was_index?}`:
 |--------|---------|---------------------|
 | `edited` | Visible content differs (includes a section divider whose chapter number changed). | yes |
 | `inserted` | New since the baseline. | yes |
-| `restyled` | Same content; `meta`, structure options or the template changed. | yes |
+| `restyled` | Same content; `meta`, structure options or the template changed, and the slide renders differently. | yes |
 | `moved` | Same content, reordered relative to its neighbours. | no |
 | `renumbered` | Same content and order; index shifted by an insert or removal. | no |
 | `notes_only` | Only speaker notes differ. | no |
 | `removed` | Gone since the baseline (no `index`). | no |
 
+On a render the list follows the rendered slides (`go-slide-creator-o477e`).
+Each slide of the written PPTX has a digest of the slide part and everything it
+renders with (layout, master, theme, media; not notes), the same digest that
+identifies its thumbnail. A slide whose digest equals the one it had in the
+last rendered revision looks the same and is not listed as `edited` or
+`restyled`, whatever the spec says changed: removing
+`meta.chrome.project_code` lists the slides that print the footer, not the
+cover that has none. Without both digests (a `validate_deck_spec` call, a deck
+whose slides the engine continued onto extra pages) the classes follow the
+spec alone, so a deck-level edit restyles every slide.
+
 After a successful render `next_tool_call` asks `render_deck_thumbnails` for
 `changed_slides` only (the whole deck when every slide changed) and is absent
 when a re-render changed nothing visible.
+
+**A spec sent again.** A `spec` sent in the call continues a stored deck
+instead of starting a new `deck_id` when that deck is bound to the same
+template, has the same `meta.title`, and the spec's slides carry its ids:
+every slide of the spec has its own `id`, and at least half of the larger id
+set is common to both. The call is then the deck's next revision (history note
+`spec sent again`), `changed_slides` is measured as for a patch, and the
+thumbnails step carries `known_hashes`; the response stays the full one. The
+same spec sent twice is one revision. `fork: true` with a spec always starts a
+new `deck_id`; `dry_run: true` stores nothing. A spec without slide ids is not
+matched: read the stored spec back (`read: "spec"`) to get the assigned ones.
 
 The validating render `validate_deck_spec` runs is not a render of the deck: it
 writes into a scratch directory, marks no revision as rendered and leaves the
@@ -604,8 +626,9 @@ with the ids the deck has; a file nothing is known about has no ids.
 **Images the client already holds.** `render_deck_thumbnails` takes
 `known_hashes`: the `slides[].content_hash` values of an earlier render (of
 this revision or a previous one). A slide whose pixels still hash to one of
-them comes back as `{index, id, content_hash, unchanged: true}` with no image
-block and no `path`; the others are returned as usual, and a hash that matches
+them comes back as `{index, id, path, content_hash, unchanged: true}` with no
+image block (`path` is the content-addressed PNG, which `submit_visual_review`
+takes as `image_path`); the others are returned as usual, and a hash that matches
 nothing is ignored. A full-deck pass after a one-slide patch of a seven-slide
 deck is 32 KB instead of 232 KB. `include_base64_json` honours it too. The CLI
 spells it `render-thumbnails --known-hashes <hash>,<hash>`: the manifest lists
