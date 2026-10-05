@@ -2,6 +2,7 @@ package patterns
 
 import (
 	"math"
+	"regexp"
 	"strconv"
 )
 
@@ -104,11 +105,107 @@ func intentIsTabular(words []string) bool {
 		"risk register")
 }
 
+// Status boards, single findings, negated bullets, share splits and tiered
+// structures (go-slide-creator-ux1fl): the consulting intents the 2026-10
+// agent journeys found misrouted.
+
+// statusBoardKeywords name a board of rows rated on a status scale: a risk
+// appetite dashboard (metric, limit, within / amber / breached), RAG results
+// by domain, controls tested with exceptions.
+var statusBoardKeywords = []string{
+	"status board", "status dashboard", "status table", "status by workstream", "status by domain", "status per",
+	"risk appetite", "appetite dashboard", "appetite statement", "within appetite", "outside appetite",
+	"rag status", "rag rating", "rag ratings", "rag dashboard", "traffic light", "traffic lights", "red amber green",
+	"breached", "breached rows", "against limits", "against thresholds", "metric and limit", "metric and the limit",
+	"results by domain", "exceptions by domain", "rating by domain", "controls tested", "control results",
+	"compliance status", "exception report",
+}
+
+const statusBoardRationale = "Status board: one row per risk type / domain, columns for the metric, the limit and a status scored red / amber / green — the option_matrix kind with scale \"rag\" (table-highlight), the breached rows named in recommended so they are highlighted"
+
+// intentIsStatusBoard reports a board of rows with a status: a status-board
+// phrase, or a status word beside the thing it is measured against.
+func intentIsStatusBoard(words []string) bool {
+	if intentHasAny(words, statusBoardKeywords...) {
+		return true
+	}
+	return intentHasAny(words, "status", "rag", "amber", "rating", "ratings", "breach", "breaches") &&
+		intentHasAny(words, "limit", "limits", "threshold", "thresholds", "exceptions", "metric", "metrics",
+			"domain", "domains", "workstream", "workstreams", "control", "controls", "appetite")
+}
+
+// singleFindingKeywords name one audit / review finding laid out as its parts.
+var singleFindingKeywords = []string{
+	"audit finding", "one finding", "single finding", "finding per slide", "one finding per slide", "finding slide",
+	"each finding", "per finding", "what we found", "why it matters", "observation and recommendation",
+	"finding and recommendation", "recommendation per finding", "finding and action", "root cause and action",
+	"issue per slide", "one issue per slide", "one issue", "single issue", "structured finding",
+}
+
+const singleFindingRationale = "One finding / issue / observation on its own slide as labelled rows — WHAT WE FOUND / WHY IT MATTERS / ACTION / OWNER / DUE DATE — each a keyword label beside one to four lines of body (not bullets)"
+
+func intentIsSingleFinding(words []string) bool {
+	return intentHasAny(words, singleFindingKeywords...)
+}
+
+// intentNegatesBullets reports "not bullets" / "instead of bullets": the
+// bullets layout matched the word, not the request.
+func intentNegatesBullets(words []string) bool {
+	return intentHasAny(words, "not bullets", "no bullets", "not a bullet list", "not bullet points", "no bullet points",
+		"instead of bullets", "rather than bullets", "without bullets", "not as bullets", "beyond bullets")
+}
+
+// intentIsTieredStructure reports a stack, tier or layer structure — a
+// "target architecture" is a structure, not a measure against a target, so
+// a gauge is never its chart.
+func intentIsTieredStructure(words []string) bool {
+	return intentHasAny(words, "stack", "stacks", "tier", "tiers", "tiered", "layer", "layers", "layered",
+		"architecture", "target state", "target operating model", "target architecture", "target model", "pyramid")
+}
+
+var percentRE = regexp.MustCompile(`(\d{1,3}(?:\.\d+)?)\s*(?:%|percent\b|pct\b)`)
+
+// intentShareSplit reports whether the intent lists three or more
+// percentages that sum to a whole (95–105): a part-to-whole split, which is
+// a pie / donut / stacked bar, not a driver tree or a bridge. n is the
+// number of parts.
+func intentShareSplit(intentLower string) (n int, ok bool) {
+	sum := 0.0
+	for _, m := range percentRE.FindAllStringSubmatch(intentLower, -1) {
+		f, err := strconv.ParseFloat(m[1], 64)
+		if err != nil {
+			continue
+		}
+		sum += f
+		n++
+	}
+	return n, n >= 3 && sum >= 95 && sum <= 105
+}
+
+// shareSplitLead is the chart that leads a share split of n parts: a pie up
+// to pieMaxRecommendedSlices, a stacked bar past it.
+func shareSplitLead(n int, hints *VisualHints) string {
+	if n <= pieMaxRecommendedSlices && (hints == nil || !chartOverloaded("pie", hints, "")) {
+		return "pie"
+	}
+	return "stacked_bar"
+}
+
 // applyConsultingIntentRouting adds the candidates a consulting intent needs
-// but keyword scoring cannot produce, then re-weights the ranking. Shortlist
-// mode only re-weights (adjustConsultingIntentScores): it must not invent
-// names the caller did not ask about.
+// but keyword scoring cannot produce, then re-weights the ranking.
 func applyConsultingIntentRouting(all []VisualCandidate, intentLower string, hints *VisualHints) []VisualCandidate {
+	return consultingIntentRouting(all, intentLower, hints, true)
+}
+
+// applyConsultingShortlistRouting is the shortlist form of the same model:
+// the scores the routing gives a name in the open ranking apply to that name
+// in the shortlist, but no name the caller did not ask about is added
+// (go-slide-creator-ux1fl).
+func applyConsultingShortlistRouting(all []VisualCandidate, intentLower string, hints *VisualHints) []VisualCandidate {
+	return consultingIntentRouting(all, intentLower, hints, false)
+}
+
+func consultingIntentRouting(all []VisualCandidate, intentLower string, hints *VisualHints, addMissing bool) []VisualCandidate { //nolint:gocognit,gocyclo
 	words := intentWords(intentLower)
 	ensure := func(cat VisualCategory, name string, score float64, rationale string) {
 		for i := range all {
@@ -120,6 +217,9 @@ func applyConsultingIntentRouting(all []VisualCandidate, intentLower string, hin
 				}
 				return
 			}
+		}
+		if !addMissing {
+			return
 		}
 		all = append(all, VisualCandidate{Category: cat, Name: name, Score: score, Rationale: rationale, ConfidenceBand: confidenceBand(score)})
 	}
@@ -167,7 +267,28 @@ func applyConsultingIntentRouting(all []VisualCandidate, intentLower string, hin
 		ensure(VisualCategoryPattern, "exec-summary", 0.90,
 			"Executive summary of 3-5 bold lead-in statements, each with one supporting sentence")
 	}
-	all = ensureNamedOutright(all, words)
+	if intentIsStatusBoard(words) && !intentIsRiskMatrix(words) {
+		ensure(VisualCategoryPattern, "table-highlight", 0.94, statusBoardRationale)
+		ensure(VisualCategoryPlaceholder, "table", 0.86,
+			"Native table for a status board whose status is a word rather than a colour: Risk type | Metric | Limit | Status, one row per risk type")
+	}
+	if intentIsSingleFinding(words) {
+		ensure(VisualCategoryPattern, "labeled-rows", 0.94, singleFindingRationale)
+	}
+	if n, ok := intentShareSplit(intentLower); ok {
+		parts := strconv.Itoa(n) + " parts summing to 100%"
+		if n <= pieMaxRecommendedSlices {
+			ensure(VisualCategoryChart, "pie", 0.92, "Pie chart: "+parts+" are a part-to-whole split, each slice labelled with its share")
+			ensure(VisualCategoryChart, "donut", 0.88, "Donut chart: "+parts+" around a centre annotation (the total)")
+			ensure(VisualCategoryChart, "stacked_bar", 0.86, "One stacked bar: "+parts+" as segments of a single 100% bar")
+		} else {
+			ensure(VisualCategoryChart, "stacked_bar", 0.92, "One stacked bar: "+parts+" as segments of a single 100% bar — past five slices a pie's labels collide")
+			ensure(VisualCategoryChart, "bar", 0.88, "Sorted bar chart: "+parts+" as bars largest first when the segments are too many for one stacked bar")
+		}
+	}
+	if addMissing {
+		all = ensureNamedOutright(all, words)
+	}
 	return adjustConsultingIntentScores(all, intentLower, hints)
 }
 
@@ -242,22 +363,58 @@ func adjustConsultingIntentScores(all []VisualCandidate, intentLower string, hin
 	if intentIsTabular(words) {
 		cs.keepTableOnTop()
 	}
-	if intentIsOptionMatrix(words) && !intentIsRiskMatrix(words) && !intentIsTabular(words) {
+	cs.adjustWaveIntents(words, intentLower, hints)
+	switch {
+	case intentIsStatusBoard(words) && !intentIsRiskMatrix(words):
+		cs.makeTop(cs.find(VisualCategoryPattern, "table-highlight"), "a status beside a metric and a limit per row is a rated table, not a row of KPI tiles")
+	case intentIsOptionMatrix(words) && !intentIsRiskMatrix(words) && !intentIsTabular(words):
 		cs.makeTop(cs.find(VisualCategoryPattern, "table-highlight"), "options against criteria is an evaluation matrix, not a chart of one measure")
-	} else if intentIsTwoWayComparison(words, hints) {
-		// Two values are a comparison, not a time series: "monthly churn" names
-		// the measure. A trend chart needs the trend asked for.
-		if !intentHasAny(words, "trend", "over time", "time series", "trajectory") {
-			cmp := cs.find(VisualCategoryPattern, "comparison-2col")
-			for _, name := range []string{"line", "area", "stacked_area", "small_multiples"} {
-				if c := cs.find(VisualCategoryChart, name); c != nil && cmp != nil && c.Score >= cmp.Score-0.10 {
-					setCandidateScore(c, cmp.Score-0.15, "two values compared are not a time series")
-				}
-			}
-		}
-		cs.makeTop(cs.find(VisualCategoryPattern, "comparison-2col"), "")
+	case intentIsTwoWayComparison(words, hints):
+		cs.preferTwoWayComparison(words)
 	}
 	return all
+}
+
+// adjustWaveIntents re-weights for the go-slide-creator-ux1fl intents: a
+// negated bullets request, one finding as labelled rows, and a share split
+// that is a part-to-whole chart.
+func (cs candidateSet) adjustWaveIntents(words []string, intentLower string, hints *VisualHints) {
+	if intentNegatesBullets(words) {
+		if c := cs.find(VisualCategoryPlaceholder, "content"); c != nil {
+			setCandidateScore(c, c.Score-0.30, "the intent asks for a structured layout, not bullets")
+		}
+	}
+	if intentIsSingleFinding(words) {
+		cs.makeTop(cs.find(VisualCategoryPattern, "labeled-rows"), "one finding reads as labelled parts, not as a list or a summary of several")
+	}
+	n, ok := intentShareSplit(intentLower)
+	if !ok {
+		return
+	}
+	lead := shareSplitLead(n, hints)
+	if lead != "pie" {
+		for _, name := range []string{"pie", "donut"} {
+			if c := cs.find(VisualCategoryChart, name); c != nil && c.Score >= 0.5 {
+				setCandidateScore(c, 0.49, "more than five slices: a pie's labels collide")
+			}
+		}
+	}
+	cs.makeTop(cs.find(VisualCategoryChart, lead), "shares that sum to 100% are a part-to-whole split, not a driver tree or a bridge")
+}
+
+// preferTwoWayComparison: two values are a comparison, not a time series
+// ("monthly churn" names the measure; a trend chart needs the trend asked
+// for), and comparison-2col leads.
+func (cs candidateSet) preferTwoWayComparison(words []string) {
+	if !intentHasAny(words, "trend", "over time", "time series", "trajectory") {
+		cmp := cs.find(VisualCategoryPattern, "comparison-2col")
+		for _, name := range []string{"line", "area", "stacked_area", "small_multiples"} {
+			if c := cs.find(VisualCategoryChart, name); c != nil && cmp != nil && c.Score >= cmp.Score-0.10 {
+				setCandidateScore(c, cmp.Score-0.15, "two values compared are not a time series")
+			}
+		}
+	}
+	cs.makeTop(cs.find(VisualCategoryPattern, "comparison-2col"), "")
 }
 
 // demoteStatHero: several values compared or trended cannot be shown by one

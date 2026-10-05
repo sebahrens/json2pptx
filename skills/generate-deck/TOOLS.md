@@ -41,83 +41,84 @@ preconditions, [RAW_PATH.md](RAW_PATH.md); the four phases are in
 
 ## Tool semantics that change decisions
 
-- `get_started.runtime.render_available` tells you whether this server can
-  render slides. Missing render tooling means the artifact is unreviewed.
+- `get_started.runtime.render_available` says whether this server can
+  render slides; without render tooling the artifact is unreviewed.
   `get_capabilities` exposes schema version, feature flags, tool
   classification, core-profile membership, each repair fix kind's params
   (`vocabularies.repair_fix_kind_params`) and, with `output_schema:"<tool>"`,
-  one tool's result schema (`tools/list` carries none unless the server runs
-  `--tools all --output-schemas`).
+  one tool's result schema (`tools/list` carries none without `--tools all
+  --output-schemas`).
 - `list_templates` defaults to compact data and may write layout-preview
-  cache files; use `read_only:true` for side-effect-free discovery.
-  `list_templates`, `list_patterns`, and `list_icons` support filtering,
-  pagination, and compact/full projection. Fetch full data only when needed.
+  cache files; `read_only:true` is side-effect-free. `list_templates`,
+  `list_patterns` and `list_icons` filter, paginate and project
+  compact/full; fetch full data only when needed.
 - `list_slide_kinds` and `recommend_visual` take `preview: true`: one image
   per named kind (1–4 `kinds`; its `example` on `template`) or per leading
-  candidate (max 4; name them in `candidates`), rendered as
-  `render_deck_spec` renders it. `previews[] {name, template,
-  image_content_index, content_hash, error}` maps names to images; an entry
-  with `error` has none. Without it `recommend_visual` returns
-  `preview_call`. No pattern preview is a file path.
+  candidate (max 4; name them in `candidates`). `previews[] {name,
+  template, image_content_index, content_hash, error}` maps names to
+  images; an entry with `error` has none. Without it `recommend_visual`
+  returns `preview_call`. No pattern preview is a file path.
 - `recommend_visual` `content_hints` / `recent_patterns` / `candidates` and
-  `plan_deck` `must_include` are type-checked: a malformed value returns
-  `INVALID_PARAMETER` naming the argument instead of being ignored.
-  Every candidate — pattern, layout, chart, diagram, compose,
-  `raw_shape_grid` — carries `data_contract` (`form`: `deckspec_kind` |
-  `raw_json2pptx`, its keys and `limits[]`) and a runnable
-  `next_tool_call` (`render_deck_spec`, a one-slide DeckSpec). When a kind
-  compiles to the candidate it has `deckspec {kind, fields, aliases,
-  example_path}` and the call renders that kind (`table-highlight` →
-  `option_matrix`, `org_chart` → `org`, charts → `chart_insight`): write the
-  canonical field, not a key listed in `aliases`. No `deckspec` means
-  raw-only: the slide is `raw_json2pptx`. Copy the slide, keep its shape and
-  rewrite every `Replace with …` string, the alt text and the sample source:
-  a recipe rendered verbatim is blocked (`SEMANTIC_WEAK_CONTENT`,
+  `plan_deck` `must_include` are type-checked (`INVALID_PARAMETER` names a
+  malformed argument). Every candidate — pattern, layout, chart, diagram,
+  compose, `raw_shape_grid` — carries `data_contract` (`form`:
+  `deckspec_kind` | `raw_json2pptx`, its keys and `limits[]`) and a
+  runnable `next_tool_call` (`render_deck_spec`, a one-slide DeckSpec).
+  When a kind compiles to the candidate it has `deckspec {kind, fields,
+  aliases, example_path}` and the call renders that kind (`table-highlight`
+  → `option_matrix`, `org_chart` → `org`, charts → `chart_insight`): write
+  the canonical field, not an alias. No `deckspec` means raw-only
+  (`raw_json2pptx`). Copy the slide, keep its shape and rewrite every
+  `Replace with …` string, the alt text and the sample source: a recipe
+  rendered verbatim is blocked (`SEMANTIC_WEAK_CONTENT`,
   `exemplar_content`). `also_as[] {form, name, differs}` names the other
-  forms of the same visual (pattern `matrix-2x2` ↔ diagram `matrix_2x2`);
-  `differs_by` is one line on candidates within 0.02 of another — read it
-  before picking between near ties.
-  An explicit same-slide brief ("line chart left 65%, KPI upper-right,
-  timeline lower-right") returns the `regions` kind first (category
-  `deckspec_kind`) and the raw `compose:` form of the same slide just below
-  it. A `compose` candidate carries a `composition` (`direction`,
-  `regions[]`, each with its `data_contract`).
-  `compose:<a>+<b>` names (charts / diagrams as `chart:<type>` /
-  `diagram:<type>`) resolve in `candidates`; a malformed one returns score 0
-  and the reason.
-  The visual an intent names (swimlane, Gantt, a chart type, a screenshot
-  with callouts) ranks first.
+  forms of the same visual; `differs_by` is one line on candidates within
+  0.02 of another — read it before picking between near ties.
+  A same-slide brief ("line chart left 65%, KPI upper-right, timeline
+  lower-right"; "a waterfall taking two thirds, a short narrative on the
+  remaining third"; X beside / next to / alongside Y) returns the `regions`
+  kind first (category `deckspec_kind`) and the raw `compose:` form just
+  below it; a bridge beside text is a `chart` region (`type: waterfall`,
+  `data {points}`) plus a `text` region. A `compose` candidate carries
+  `composition {direction, regions[]}`, each region with a `data_contract`.
+  `compose:<a>+<b>` names (`chart:<type>` / `diagram:<type>`) resolve in
+  `candidates` (scored like the open ranking; a malformed name scores 0
+  with the reason). A status board (risk appetite, RAG
+  by domain: metric / limit / status rows) ranks `table-highlight`
+  (`option_matrix`, `scale: rag`) first; one finding as what we found / why
+  it matters / action / owner / due date ranks `labeled-rows`; parts
+  summing to 100% rank pie / stacked bar; the visual an intent names (a
+  swimlane, a chart type, an annotated screenshot) ranks first.
 - `validate_deck_spec` `templates: [...]` (or `["all"]`, at most 16) adds
   `template_results[{template, ok, summary, findings}]` — the spec's errors
   and warnings on each — without changing the deck's template. Its `read`
   argument reads a stored deck instead of validating (DECKSPEC.md).
   `compile_deck_spec` answers `ok: false` when a diagnostic blocks.
 - `get_input_schema` and `get_data_format_hints` support digest reuse.
-  `list_slide_kinds` (DECKSPEC.md lists its `fields`), `show_pattern`, and
-  `describe_finding` are the live kind, pattern, and finding catalogs.
-  Prefer them to static enumerations.
+  `list_slide_kinds` (DECKSPEC.md lists its `fields`), `show_pattern` and
+  `describe_finding` are the live kind, pattern and finding catalogs;
+  prefer them to static lists.
 - `preview_slide_wireframe` is structural-only and cannot prove visual fit.
   `render_deck_thumbnails` returns JPEG blocks (`image_mime_type`, top
   level) beside full-resolution PNG `slides[].path`; `larger_render` and a
-  repeat pass's `known_hashes`: WORKFLOW.md → Phase 4. `slide_indices` takes slide ids beside
-  0-based indices (`[4, "costs"]`) for a file `render_deck_spec` or CLI
-  `semantic render` wrote, and each slide carries `id`. Rendering alone is
-  not inspection.
-  `submit_visual_review` requires current-revision evidence for every slide.
+  repeat pass's `known_hashes`: WORKFLOW.md → Phase 4. `slide_indices`
+  takes slide ids beside 0-based indices (`[4, "costs"]`) for a file
+  `render_deck_spec` or `semantic render` wrote (each slide carries `id`).
+  Rendering alone is not inspection; `submit_visual_review` requires
+  current-revision evidence for every slide.
 - `score_deck` takes a DeckSpec `deck_id` or a raw deck, never a spec
   object. `composition.diagnostics[].code` includes `motif_run`,
   `motif_dominance` and `continuation_interrupted`. A passing
   `quality_gate` stops score-driven repair, not visual review. When a render
   fails, `evidence_complete:false` or `render_evidence` prevents a clean
-  verdict. `auto_repair` is a raw-deck convergence facade; `make_deck`
-  produces a nonpublishable exemplar skeleton.
+  verdict. `auto_repair` is a raw-deck convergence facade.
 - `register_template_setting` and `delete_template_setting` are write
-  tools gated by `JSON2PPTX_ALLOW_SETTINGS_WRITE=1`, never part of ordinary
-  deck authoring. `json2pptx skill cli-map` prints each tool's CLI command
+  tools gated by `JSON2PPTX_ALLOW_SETTINGS_WRITE=1`, not part of deck
+  authoring. `json2pptx skill cli-map` prints each tool's CLI command
   (an MCP-only tool says why; `cli_then` is a second command), and `json2pptx
   get-started --tool <name>` one tool's description, schema and `cli`.
-- Results use compact `structuredContent`; `content[0].text` may be a
-  bounded synopsis, so read the structured data. A tool's `next_tool_call`
+- Read `structuredContent`; `content[0].text` may be a bounded synopsis.
+  A tool's `next_tool_call`
   is a suggested recovery path (`{tool, args_template}`; `slide_index: -1`
   means you supply it), not permission to mutate external state.
   `generate_presentation`, `auto_repair` and `make_deck` accept an
@@ -126,13 +127,9 @@ preconditions, [RAW_PATH.md](RAW_PATH.md); the four phases are in
 
 ## Composition recipes
 
-For one pattern's picture in an MCP client, call `recommend_visual(intent,
-template, candidates: [<pattern>], preview: true)`: it returns the pattern's
-recipe rendered through generation, as an image. The CLI-only
-`preview-patterns` builds the same pictures as a local batch gallery
-(`-template`, `-pattern` narrow it; nothing is committed). The raw-JSON
+One pattern's picture: `recommend_visual(intent, template, candidates:
+[<pattern>], preview: true)` renders the pattern's recipe as an image. The CLI-only `preview-patterns` builds the same pictures as a local
+gallery (`-template` / `-pattern` narrow it). Raw-JSON
 equivalent: `list_patterns` → `show_pattern` (`example_values`) →
-`expand_pattern` on the template → `render_slide_image_from_json`.
-
-For a comparison under one template, `expand_patterns` can replace repeated
-expansion calls.
+`expand_pattern` on the template → `render_slide_image_from_json`;
+`expand_patterns` replaces repeated expansion calls under one template.

@@ -333,10 +333,48 @@ var (
 
 // sameSlideIntentWords mark that the views belong together on one slide.
 var sameSlideIntentWords = []string{
-	"one slide", "single slide", "same slide", "a slide", "this slide",
+	"one slide", "single slide", "same slide", "a slide", "this slide", "the slide",
 	"region", "regions", "divided", "split", "panel", "quadrant", "dashboard",
 	"together", "side by side", "side-by-side", "combine", "combined", "compose",
+	// A view beside, next to or paired with another, or a share of the width,
+	// is on the same slide (go-slide-creator-ux1fl).
+	"beside", "next to", "alongside", "paired with", "on the left", "on the right",
+	"either side", "remaining third", "two thirds", "two-thirds", "a third", "one third", "the other half", "half the slide",
 }
+
+// fractionWordRE reads a share given in words: "two thirds", "the remaining
+// third", "the other half", "a quarter". A bare "half" ("the second half of
+// the year") is not a share.
+var fractionWordRE = regexp.MustCompile(`\b(two[ -]thirds?|three[ -]quarters?|one[ -]third|a third|(?:the )?(?:remaining|other|last) third|one[ -]quarter|a quarter|(?:the )?(?:remaining|other) quarter|(?:a|one|the other|the remaining|the left|the right) half|half (?:of )?the (?:slide|width|page))\b`)
+
+// fractionShare returns the share a clause states in words, 0 when none.
+func fractionShare(clause string) float64 {
+	m := fractionWordRE.FindString(clause)
+	switch {
+	case m == "":
+		return 0
+	case strings.HasPrefix(m, "two"):
+		return 67
+	case strings.HasPrefix(m, "three"):
+		return 75
+	case strings.HasSuffix(m, "quarter"), strings.HasSuffix(m, "quarters"):
+		return 25
+	case strings.HasSuffix(m, "half"):
+		return 50
+	default:
+		return 33
+	}
+}
+
+// textRegionPattern is the compose form of a text region: a compose segment
+// hosts no free text, so a narrative column beside a chart is an exec-summary
+// pattern (bold lead-ins with a supporting sentence) in the raw compose
+// envelope; the DeckSpec regions kind gives it a text region {body, bullets}.
+const textRegionPattern = "exec-summary"
+
+// textRegionWords mark a clause asking for a narrative / commentary column.
+var textRegionWords = []string{"text", "narrative", "commentary", "prose", "so what", "so-what", "so-whats", "implication", "implications",
+	"takeaways", "key messages", "what this means", "what it means", "explanation", "notes", "bullets", "bullet points", "insights"}
 
 var kpiCountWords = map[string]int{"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6}
 
@@ -368,10 +406,9 @@ func parseCompoundIntent(reg *Registry, intentLower string, hints *VisualHints) 
 		if r.h != "" || r.v != "" {
 			positioned = true
 		}
-		if m := pctRE.FindStringSubmatch(clause); m != nil {
-			if f, err := strconv.ParseFloat(m[1], 64); err == nil && f > 0 && f < 100 {
-				r.pct = f
-			}
+		if r.pct = clauseShare(clause); r.pct > 0 {
+			// A share of the width only makes sense on a shared slide.
+			positioned = true
 		}
 		ci.regions = append(ci.regions, r)
 		usedKinds[kind] = true
@@ -410,6 +447,18 @@ func parseCompoundIntent(reg *Registry, intentLower string, hints *VisualHints) 
 		return nil
 	}
 	return &ci
+}
+
+// clauseShare reads the share a clause gives its view: "65%" or "two
+// thirds"; 0 when none.
+func clauseShare(clause string) float64 {
+	if m := pctRE.FindStringSubmatch(clause); m != nil {
+		if f, err := strconv.ParseFloat(m[1], 64); err == nil && f > 0 && f < 100 {
+			return f
+		}
+		return 0
+	}
+	return fractionShare(clause)
 }
 
 // relationPositions turns a relation word into "<first position>, <second
@@ -464,7 +513,7 @@ func regionViewFor(reg *Registry, clause string, words []string, hints *VisualHi
 			}
 		}
 		return "kpi", composeLeaf{VisualCategoryPattern, name}, true
-	case has("line", "bar", "pie", "donut", "waterfall", "scatter", "funnel", "area"):
+	case has("line", "bar", "pie", "donut", "waterfall", "bridge", "scatter", "funnel", "area", "treemap", "radar", "bubble"):
 		return "chart", composeLeaf{VisualCategoryChart, bestChartFor(clause, hints)}, true
 	case has("quote", "testimonial"):
 		if reg != nil {
@@ -476,6 +525,16 @@ func regionViewFor(reg *Registry, clause string, words []string, hints *VisualHi
 	}
 	if name := bestDiagramFor(clause); name != "" {
 		return "diagram", composeLeaf{VisualCategoryDiagram, name}, true
+	}
+	// A narrative / commentary column is a text region of the regions kind;
+	// its compose form is textRegionPattern (go-slide-creator-ux1fl).
+	if has(textRegionWords...) {
+		if reg != nil {
+			if _, found := reg.Get(textRegionPattern); !found {
+				return "", composeLeaf{}, false
+			}
+		}
+		return "text", composeLeaf{VisualCategoryPattern, textRegionPattern}, true
 	}
 	return "", composeLeaf{}, false
 }
@@ -550,7 +609,7 @@ func bestDiagramFor(clause string) string {
 // as much, or its labels shrink below the readable minimum.
 func regionWeight(r regionIntent) float64 {
 	switch {
-	case r.kind == "quote", r.kind == "kpi" && r.leaf.name == "stat-hero":
+	case r.kind == "quote", r.kind == "text", r.kind == "kpi" && r.leaf.name == "stat-hero":
 		return 2
 	default:
 		return 3
@@ -570,7 +629,7 @@ func shareOut(pcts, weights []float64) []float64 {
 			wRest += weights[i]
 		}
 	}
-	if explicit >= 100 || (explicit > 0 && wRest == 0 && explicit != 100) {
+	if explicit > 100 || (explicit > 0 && wRest == 0 && explicit != 100) {
 		// Inconsistent explicit shares: fall back to weights for all.
 		for i := range pcts {
 			pcts[i] = 0
@@ -794,6 +853,13 @@ func compoundRationale(ci *compoundIntent, comp *VisualComposition) string {
 	}
 	msg := "Composition with one region per requested view — " + strings.Join(parts, ", ") +
 		". The intent asks for these views together on one slide, so this ranks above any single view."
+	for _, r := range ci.regions {
+		if r.kind == "text" {
+			msg += " A compose segment hosts no free text, so the narrative column is the " + textRegionPattern +
+				" pattern here (bold lead-ins, each with one supporting sentence); the regions kind gives it a text region {body, bullets}."
+			break
+		}
+	}
 	if len(ci.unsupported) > 0 {
 		msg += " No compose region hosts a " + strings.Join(ci.unsupported, "/") + "; put it on its own slide or in a pattern."
 	}
@@ -867,6 +933,8 @@ func RegionKindFor(r *VisualRegion) string {
 	case r.Category == VisualCategoryDiagram && r.Name == "timeline",
 		r.Category == VisualCategoryPattern && r.Name == "timeline-horizontal":
 		return "timeline"
+	case r.Category == VisualCategoryPattern && r.Name == textRegionPattern:
+		return "text"
 	}
 	return ""
 }
@@ -937,8 +1005,15 @@ func regionsRationale(arrangement string, comp *VisualComposition) string {
 			parts[i] = r.Name + " chart"
 		}
 	}
-	return "DeckSpec kind regions (arrangement " + arrangement + "): one slide, one title, a typed region each for " +
+	msg := "DeckSpec kind regions (arrangement " + arrangement + "): one slide, one title, a typed region each for " +
 		strings.Join(parts, ", ") + ". The intent asks for these views together on one slide and a slide kind holds them, so it ranks first; the compose candidate is the raw form of the same slide."
+	for _, r := range ordered {
+		if r.Category == VisualCategoryChart && r.Name == "waterfall" {
+			msg += " A bridge beside text is a chart region with type waterfall (data.points, each increase / decrease / total), not the bridge kind."
+			break
+		}
+	}
+	return msg
 }
 
 // cloneComposition deep-copies a composition so two candidates never share
@@ -1051,6 +1126,8 @@ func scoreComposeShortlistCandidate(reg *Registry, intentLower string, hints *Vi
 			kind = "chart"
 		case l.name == "pull-quote":
 			kind = "quote"
+		case l.category == VisualCategoryPattern && l.name == textRegionPattern:
+			kind = "text"
 		case strings.HasPrefix(l.name, "kpi-") || l.name == "stat-hero":
 			kind = "kpi"
 		}

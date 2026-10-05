@@ -269,6 +269,122 @@ func TestRecommendVisualSameSlideIntentReturnsRegions(t *testing.T) {
 	}
 }
 
+// TestRecommendVisualBridgeBesideTextRecipe covers go-slide-creator-ux1fl:
+// "a waterfall taking two thirds, a short narrative on the remaining third"
+// returns the regions kind first, whose recipe is a chart region of type
+// waterfall (points) beside a text region, and whose data_contract says so.
+func TestRecommendVisualBridgeBesideTextRecipe(t *testing.T) {
+	mc := semanticTestConfig(t)
+	rec := recommendVisualFor(t, mc, map[string]any{
+		"intent":        "EBITDA margin bridge 2023 to 2025 as a waterfall taking two thirds of the slide, with a short what-this-means-for-the-bid narrative text column on the remaining third",
+		"template":      "midnight-blue",
+		"content_hints": map[string]any{"has_chart": true, "data_points": 6, "density_hint": "medium"},
+	})
+	top := rec.Candidates[0]
+	if top.Category != patterns.VisualCategoryKind || top.Name != "regions" || top.DeckSpec == nil || top.DeckSpec.Kind != "regions" {
+		t.Fatalf("top = %s %q deckspec %+v, want the regions kind", top.Category, top.Name, top.DeckSpec)
+	}
+	if second := rec.Candidates[1]; second.Category != patterns.VisualCategoryCompose || !strings.Contains(second.Name, "chart:waterfall") || second.NextToolCall == nil {
+		t.Errorf("second = %s %q, want the runnable compose form with chart:waterfall", second.Category, second.Name)
+	}
+	slide := recipeArgs(t, top)["spec"].(map[string]any)["slides"].([]any)[0].(map[string]any)
+	if slide["arrangement"] != "columns" {
+		t.Errorf("arrangement = %v, want columns", slide["arrangement"])
+	}
+	regions := slide["regions"].([]any)
+	if len(regions) != 2 {
+		t.Fatalf("regions = %+v, want chart + text", regions)
+	}
+	chartRegion, textRegion := regions[0].(map[string]any), regions[1].(map[string]any)
+	chart, _ := chartRegion["chart"].(map[string]any)
+	if chartRegion["kind"] != "chart" || chart["type"] != "waterfall" || chartRegion["size_pct"] != 67.0 {
+		t.Errorf("chart region = %+v, want a waterfall chart at 67%%", chartRegion)
+	}
+	if data, _ := chart["data"].(map[string]any); data["points"] == nil {
+		t.Errorf("waterfall chart region data = %+v, want points [{label, value, type}]", chart["data"])
+	}
+	if textRegion["kind"] != "text" || textRegion["size_pct"] != 33.0 || (textRegion["body"] == nil && textRegion["bullets"] == nil) {
+		t.Errorf("text region = %+v, want kind text at 33%% with body / bullets", textRegion)
+	}
+	desc := top.DataContract.Description
+	for _, want := range []string{"waterfall", "points", "increase", "decrease", "total", "text", "body"} {
+		if !strings.Contains(desc, want) {
+			t.Errorf("regions data_contract does not mention %q: %s", want, desc)
+		}
+	}
+	assertRecipeValidates(t, mc, top)
+	if !testing.Short() {
+		assertRecipeRenders(t, mc, top)
+	}
+}
+
+// TestRecommendVisualCardGridContractIsCardGrid: card-grid compiles through
+// the comparison kind with pattern: card-grid, so its contract describes
+// 2–12 cards, not the kind's two balanced columns (go-slide-creator-ux1fl).
+func TestRecommendVisualCardGridContractIsCardGrid(t *testing.T) {
+	mc := semanticTestConfig(t)
+	rec := recommendVisualFor(t, mc, map[string]any{
+		"intent":     "one audit finding on its own slide: what we found, why it matters, action, owner, due date",
+		"candidates": []any{"labeled-rows", "card-grid"},
+	})
+	c := candidateNamed(t, rec, "card-grid")
+	if c.DeckSpec == nil || c.DeckSpec.Kind != "comparison" || c.DataContract == nil {
+		t.Fatalf("card-grid = deckspec %+v contract %+v", c.DeckSpec, c.DataContract)
+	}
+	desc := c.DataContract.Description
+	if strings.Contains(desc, "Exactly 2") {
+		t.Errorf("card-grid contract describes the two-column comparison: %s", desc)
+	}
+	for _, want := range []string{"card-grid", "2–12", "pattern"} {
+		if !strings.Contains(desc, want) {
+			t.Errorf("card-grid contract does not say %q: %s", want, desc)
+		}
+	}
+	if !containsString(c.DataContract.OptionalKeys, "pattern") {
+		t.Errorf("card-grid contract optional keys %v omit pattern", c.DataContract.OptionalKeys)
+	}
+	if c.DeckSpec.DiffersFromRaw == "" {
+		t.Error("card-grid deckspec carries no differs_from_raw")
+	}
+	slide := recipeArgs(t, c)["spec"].(map[string]any)["slides"].([]any)[0].(map[string]any)
+	if slide["pattern"] != "card-grid" {
+		t.Errorf("card-grid recipe slide pattern = %v", slide["pattern"])
+	}
+	assertRecipeValidates(t, mc, c)
+}
+
+// TestRecommendVisualStatusBoardContractNamesRAGScale: a status board ranks
+// table-highlight first and its option_matrix contract says how the status,
+// metric and limit columns map onto it (go-slide-creator-ux1fl).
+func TestRecommendVisualStatusBoardContractNamesRAGScale(t *testing.T) {
+	mc := semanticTestConfig(t)
+	rec := recommendVisualFor(t, mc, map[string]any{
+		"intent":        "risk appetite status board: five risk types each with a status (within / amber / breached), the current metric and the limit; breached rows visibly distinguished",
+		"content_hints": map[string]any{"item_count": 5, "columns": 4, "has_metrics": true},
+	})
+	top := rec.Candidates[0]
+	if top.Name != "table-highlight" || top.DeckSpec == nil || top.DeckSpec.Kind != "option_matrix" {
+		t.Fatalf("top = %s %q deckspec %+v, want table-highlight as option_matrix", top.Category, top.Name, top.DeckSpec)
+	}
+	desc := top.DataContract.Description
+	for _, want := range []string{"status board", `scale`, "rag", "limit", "recommended"} {
+		if !strings.Contains(strings.ToLower(desc), want) {
+			t.Errorf("option_matrix contract does not say %q for a status board: %s", want, desc)
+		}
+	}
+}
+
+func candidateNamed(t *testing.T, rec patterns.RecommendVisualResult, name string) patterns.VisualCandidate {
+	t.Helper()
+	for _, c := range rec.Candidates {
+		if c.Name == name {
+			return c
+		}
+	}
+	t.Fatalf("%q missing from %d candidates", name, len(rec.Candidates))
+	return patterns.VisualCandidate{}
+}
+
 // TestRecommendVisualHonoursRequestedChartType: the chart type named in the
 // intent is the one returned (line stays line).
 func TestRecommendVisualHonoursRequestedChartType(t *testing.T) {

@@ -569,7 +569,17 @@ func recommendVisualOnlyCandidates(reg *Registry, intentLower string, hints *Vis
 	}
 	preferNativeLabelledMatrix(out, intentLower)
 	applyChartHint(out, hints, intentLower)
-	out = adjustConsultingIntentScores(out, intentLower, hints)
+	out = applyConsultingShortlistRouting(out, intentLower, hints)
+	if processFlowDemotion(intentLower, &hints.ContentHints) {
+		// The same ordered-steps demotion the open ranking applies to the
+		// flowchart diagram (the pattern family is demoted in scoreAndDedup).
+		for i := range out {
+			if out[i].Category == VisualCategoryDiagram && out[i].Name == "process_flow" {
+				out[i].Score = roundScore(math.Max(0, out[i].Score-processFlowDemotionPenalty))
+				out[i].ConfidenceBand = confidenceBand(out[i].Score)
+			}
+		}
+	}
 	applyLiteralNameRouting(out, intentLower)
 	applyTwinCueRouting(out, intentLower)
 	out = rankShortlistCompound(out)
@@ -798,7 +808,10 @@ const pieMaxRecommendedSlices = 5
 
 func chartOverloaded(name string, hints *VisualHints, intentLower string) bool {
 	return ((name == "pie" || name == "donut") && (hints.DataPoints > pieMaxRecommendedSlices || hints.SeriesCount > 1)) ||
-		(name == "gauge" && (hints.DataPoints > 1 || hints.SeriesCount > 1 || hasTimeSeriesIntent(intentLower)))
+		// A gauge shows one value against a target; a series, a timeline or a
+		// tiered structure ("target architecture") is not that
+		// (go-slide-creator-ux1fl).
+		(name == "gauge" && (hints.DataPoints > 1 || hints.SeriesCount > 1 || hasTimeSeriesIntent(intentLower) || intentIsTieredStructure(intentWords(intentLower))))
 }
 
 // scorePlaceholders evaluates placeholder layout rules.
