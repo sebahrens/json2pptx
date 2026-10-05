@@ -97,6 +97,10 @@ var shortSensitiveTests = map[string]func(*testing.T){
 	"TestSemanticToolsIsErrorParity":                                  TestSemanticToolsIsErrorParity,
 	"TestShapeGridCrossTemplate":                                      TestShapeGridCrossTemplate,
 	"TestValidateDeckSpecReportsMeasuredTitle":                        TestValidateDeckSpecReportsMeasuredTitle,
+	// Wave 3 (go-slide-creator-ux1fl, -ptazs): a recipe render and a draft
+	// thumbnail review under -short.
+	"TestRecommendVisualBridgeBesideTextRecipe": TestRecommendVisualBridgeBesideTextRecipe,
+	"TestImageCaseDraftThumbnailReview":         TestImageCaseDraftThumbnailReview,
 }
 
 // shortSensitiveElsewhere are the short-sensitive tests another CI job runs
