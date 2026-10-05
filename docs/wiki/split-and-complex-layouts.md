@@ -409,10 +409,14 @@ cell a named risk with its `tier`. See
 Phase boxes on a time axis plus 0–4 full-width "In parallel" bars for the
 workstreams that run alongside every phase. `phases` are 3–6
 `{name ≤40, date_label ≤30, description ≤160, milestone?}`; `parallel_tracks`
-0–4 strings ≤90; `parallel_label` renames the bar label. On the shortest
-template (`modern-template`) tracks plus milestones, or tracks plus a
-`takeaway` band, squeeze the phase names below 12pt and the render is refused
-(`go-slide-creator-x1124`): keep one of them off there.
+0–4 strings ≤90; `parallel_label` renames the bar label. Each track is a bar
+one line tall. When the phases, milestones, tracks and a `takeaway` band do
+not fit at full padding (the shortest area is `modern-template`'s), the rows
+give up padding first and the phase names step down no further than 12pt;
+three phases with milestones, two tracks and a takeaway fit on every shipped
+template. What still cannot fit is reported as `BODY_TOO_LONG` on each
+over-long `description` with the character count the area holds, or on the
+last track with the number of tracks there is room for.
 
 ```yaml
 meta:

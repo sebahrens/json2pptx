@@ -538,8 +538,11 @@ func TestPhaseRoadmap_ParallelTracks_Expand(t *testing.T) {
 		if err != nil {
 			t.Fatalf("k=%d Expand: %v", k, err)
 		}
-		if got := grid.Rows[0].Height; got >= plain.Rows[0].Height || got < phaseRoadmapMinHeaderPct {
-			t.Errorf("k=%d phase row height = %v%%, want below %v%% and at least %v%%", k, got, plain.Rows[0].Height, phaseRoadmapMinHeaderPct)
+		// The phase row is pinned in points beside tracks: below its 20%
+		// share, never below the fit of a one-line phase name.
+		_, areaH := sizingAreaPt(ExpandContext{})
+		if got := grid.Rows[0].MinHeight; got != grid.Rows[0].MaxHeight || got >= plain.Rows[0].Height*areaH/100 || got < scaleSubheadPt*contentLineHeight+2*rowPadStepsPt[1] {
+			t.Errorf("k=%d phase row = %vpt (max %v), want pinned below %.0fpt and above a one-line name", k, got, grid.Rows[0].MaxHeight, plain.Rows[0].Height*areaH/100)
 		}
 		last := grid.Rows[len(grid.Rows)-1]
 		if len(last.Cells) != 1 || last.Cells[0].Grid == nil || last.Cells[0].ColSpan != 4 {

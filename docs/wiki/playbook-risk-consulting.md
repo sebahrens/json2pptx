@@ -45,7 +45,7 @@ language, no scare words.
 | 7 | `comparison` | Three lines today vs target, then the weaknesses they close | Rows aligned: line 1 ↔ line 1. |
 | 8 | `pillars` | `objective` in the roof, four pillars with two bullets each, `foundation` of a band + a 3-cell row | A house needs objective + foundation; otherwise it renders as panels. |
 | 9 | `decision` | Advisory / co-delivery / outsource with price and one consequence each | `recommended: true` on one; the ask in `recommendation`. |
-| 10 | `roadmap` | Four phases with `date_label` and one-line descriptions; two `parallel_tracks` | Tracks carry their own date span in the label; no milestones alongside tracks on short templates. |
+| 10 | `roadmap` | Four phases with `date_label` and one-line descriptions; two `parallel_tracks` | Tracks carry their own date span in the label; milestones fit alongside two tracks on every template. |
 | 11 | `next_steps` | Approve; constitute the committee; hiring plan; submit plan to regulator | Dates inside the quarter. |
 
 ## The risk-specific visuals

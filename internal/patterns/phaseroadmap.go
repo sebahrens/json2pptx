@@ -128,8 +128,11 @@ const (
 	phaseRoadmapTrackLabelColPct = 14.0 // label column share of the grid width
 	phaseRoadmapTrackGapPt       = 4.0  // gap between stacked track bars
 	phaseRoadmapTrackTopPadPt    = 8.0  // extra air between descriptions and tracks
+	phaseRoadmapTrackBarPadPt    = 7.0  // top / bottom text margin of a track bar
+	phaseRoadmapRowGapPt         = 4.0  // gap between the roadmap's rows
 	phaseRoadmapHeaderPct        = 20.0 // phase-box row height without tracks
-	phaseRoadmapMinHeaderPct     = 11.0 // floor the phase-box row gives up space to
+	phaseRoadmapTimelinePct      = 6.0  // timeline spine row
+	phaseRoadmapTimelineMinPct   = 3.0  // spine row beside parallel tracks on a short area
 )
 
 // parallelLabel returns the label shown beside the parallel tracks.
@@ -204,10 +207,19 @@ func phaseRoadmapNameBudget(phases int) int {
 	return 0
 }
 
-func (pr *phaseRoadmap) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+func (pr *phaseRoadmap) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*PhaseRoadmapValues)
 	if !ok || v == nil {
 		return nil
+	}
+	if len(v.ParallelTracks) > 0 && len(v.Phases) > 0 {
+		ovr, _ := overrides.(*PhaseRoadmapOverrides)
+		if w := phaseRoadmapTrackedWarnings(newPhaseRoadmapBuild(ctx, v, ovr, nil)); len(w) > 0 {
+			// The height budget is the binding one: it already tells each
+			// field what the area holds, so the per-count budgets below
+			// would only repeat it with a larger number.
+			return w
+		}
 	}
 	dateBudget := phaseRoadmapDateBudget(len(v.Phases))
 	milestoneBudget := phaseRoadmapMilestoneBudget(len(v.Phases))
@@ -245,7 +257,7 @@ func (pr *phaseRoadmap) Schema() *Schema {
 		map[string]*Schema{
 			"phases": ArraySchema(phaseSchema, 3, 6).WithDescription("3-6 phases in left-to-right order"),
 			"parallel_tracks": ArraySchema(StringSchema(phaseRoadmapTrackMaxChars), 0, phaseRoadmapMaxTracks).
-				WithDescription("Optional 0-4 cross-cutting workstreams that run alongside every phase (e.g. governance, change management). Each renders as a full-width tinted bar below the phases, one line of up to ~90 characters; the phase-box row gives up the height they need."),
+				WithDescription("Optional 0-4 cross-cutting workstreams that run alongside every phase (e.g. governance, change management). Each renders as a full-width tinted bar below the phases, as tall as its one line of up to ~90 characters; on a short content area the rows give up padding before type size."),
 			"parallel_label": StringSchema(phaseRoadmapLabelMaxChars).WithDescription("Label shown at the left of the parallel-track bars, spanning them (default \"In parallel\"). Ignored without parallel_tracks.").WithDefault(phaseRoadmapDefaultLabel),
 		},
 		[]string{"phases"},
@@ -345,12 +357,27 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 		}
 	}
 
-	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	headerSize := ResolveSize(ovr.HeaderSize, scaleSubheadPt)
-	bodySize := ResolveSize(ovr.BodySize, scaleCaptionPt)
-	dateSize := bodySize
-	milestoneSize := bodySize
+	b := newPhaseRoadmapBuild(ctx, vals, ovr, cellOverrides)
+	rows := b.rows(phaseRoadmapFit{})
+	if len(vals.ParallelTracks) > 0 {
+		rows = b.trackedRows().rows
+	}
 
+	grid := &jsonschema.ShapeGridInput{
+		Columns:       json.RawMessage(fmt.Sprintf(`%d`, len(vals.Phases))),
+		Gap:           ctx.Gap(6),
+		RowGap:        ctx.Gap(phaseRoadmapRowGapPt),
+		Rows:          rows,
+		VerticalAlign: GridVerticalAlignDefault,
+	}
+
+	return grid, nil
+}
+
+func newPhaseRoadmapBuild(ctx ExpandContext, vals *PhaseRoadmapValues, ovr *PhaseRoadmapOverrides, cellOverrides map[int]any) phaseRoadmapBuild {
+	if ovr == nil {
+		ovr = &PhaseRoadmapOverrides{}
+	}
 	n := len(vals.Phases)
 	hasMilestones := false
 	for _, p := range vals.Phases {
@@ -372,25 +399,53 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 	//   then       : description callouts
 	//   then       : parallel-track label, then one bar per track (only when
 	//                parallel_tracks is non-empty)
-	phaseIdx0 := 0
-	timelineIdx := n
-	dateIdx0 := n + 1
-	milestoneIdx0 := 2*n + 1
 	descIdx0 := 2*n + 1
 	if hasMilestones {
 		descIdx0 = 3*n + 1
 	}
+	return phaseRoadmapBuild{
+		ctx: ctx, vals: vals, cellOverrides: cellOverrides,
+		accent:         ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent),
+		headerSize:     ResolveSize(ovr.HeaderSize, scaleSubheadPt),
+		headerAuthored: ovr.HeaderSize > 0,
+		bodySize:       ResolveSize(ovr.BodySize, scaleCaptionPt),
+		hasMilestones:  hasMilestones,
+		phaseIdx0:      0, timelineIdx: n, dateIdx0: n + 1, milestoneIdx0: 2*n + 1, descIdx0: descIdx0,
+	}
+}
 
-	// Parallel tracks take their height from the phase-box row, which is
-	// the roomiest band (20% for a one-line phase name), so adding them does
-	// not push the descriptions or the callout off the slide. The phase row
-	// never drops below what its longest (measured) name needs; any remaining
-	// deficit comes out of the timeline spine and then the date row.
+// phaseRoadmapBuild carries what every row of one roadmap is built from.
+type phaseRoadmapBuild struct {
+	ctx           ExpandContext
+	vals          *PhaseRoadmapValues
+	cellOverrides map[int]any
+	accent        string
+	headerSize    float64
+	bodySize      float64
+	hasMilestones bool
+	// headerAuthored: overrides.header_size was given, so the fit steps keep it.
+	headerAuthored bool
+
+	phaseIdx0, timelineIdx, dateIdx0, milestoneIdx0, descIdx0 int
+}
+
+// rows builds the roadmap's rows at one fit step. The zero step is the layout
+// without parallel tracks: percentage phase, timeline and date rows over a
+// measured description row.
+func (b phaseRoadmapBuild) rows(fit phaseRoadmapFit) []jsonschema.GridRowInput {
+	ctx, vals, cellOverrides, accent := b.ctx, b.vals, b.cellOverrides, b.accent
+	n := len(vals.Phases)
+	headerSize, bodySize := b.headerSize, b.bodySize
+	if fit.headerSize > 0 {
+		headerSize = fit.headerSize
+	}
+	dateSize, milestoneSize := bodySize, bodySize
+	hasMilestones := b.hasMilestones
+	phaseIdx0, timelineIdx, dateIdx0, milestoneIdx0, descIdx0 := b.phaseIdx0, b.timelineIdx, b.dateIdx0, b.milestoneIdx0, b.descIdx0
 	headerPct, timelinePct, datePct := phaseRoadmapHeaderPct, 6.0, 8.0
 	var tracks *phaseRoadmapTracks
-	if len(vals.ParallelTracks) > 0 {
-		tracks = buildPhaseRoadmapTracks(ctx, vals, accent, bodySize, headerSize)
-		headerPct, timelinePct, datePct = phaseRoadmapTrackedRowPcts(ctx, vals, tracks.rowPt, headerSize, dateSize)
+	if fit.tracked {
+		tracks = buildPhaseRoadmapTracks(ctx, vals, accent, bodySize, b.headerSize, fit)
 	}
 
 	var rows []jsonschema.GridRowInput
@@ -411,7 +466,7 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
 				Fill:     tone.fillJSON(),
-				Text:     buildPhaseRoadmapHeaderText(pptx.ConvertMarkdownEmphasis(p.Name), headerSize, textColor),
+				Text:     withRowPad(buildPhaseRoadmapHeaderText(pptx.ConvertMarkdownEmphasis(p.Name), headerSize, textColor), fit.headerPad),
 			},
 		}
 		applyPhaseRoadmapOverride(phaseCells[i], cellOverrides, phaseIdx0+i, accent)
@@ -456,6 +511,24 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 		if wraps {
 			msH = math.Round(shapegrid.EffectiveTextSizePt(milestoneSize)*contentLineHeight*2 + 2*defaultShapeInsetTBPt)
 		}
+		// The label is centred in its row with no margin of its own (marker
+		// form) or carries the row padding (wrapping form), so a tightened
+		// row gives up only air.
+		if trim := rowPadTrimPt(fit.rowPad); trim > 0 {
+			floor := 0.0
+			for _, p := range vals.Phases {
+				if p.Milestone == "" {
+					continue
+				}
+				label := pptx.ConvertMarkdownEmphasis(p.Milestone)
+				if wraps {
+					floor = math.Max(floor, writtenFitHeightPt(ctx.themeFonts(), withRowPad(phaseRoadmapMilestoneText(label, milestoneSize), fit.rowPad), colW, 0))
+					continue
+				}
+				floor = math.Max(floor, phaseRoadmapMarkerRowPt(ctx, phaseRoadmapMilestoneCell(ctx, n, label, milestoneSize, accent), colW, msH))
+			}
+			msH = math.Max(msH-trim, math.Ceil(floor))
+		}
 		milestoneCells := make([]*jsonschema.GridCellInput, n)
 		for i, p := range vals.Phases {
 			label := pptx.ConvertMarkdownEmphasis(p.Milestone)
@@ -472,7 +545,7 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 					Shape: &jsonschema.ShapeSpecInput{
 						Geometry: "rect",
 						Fill:     json.RawMessage(`"none"`),
-						Text:     phaseRoadmapMilestoneText(label, milestoneSize),
+						Text:     withRowPad(phaseRoadmapMilestoneText(label, milestoneSize), fit.rowPad),
 					},
 					AccentBar: &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: 2},
 				}
@@ -492,19 +565,18 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
 				Fill:     json.RawMessage(`"none"`),
-				Text:     withVerticalAlign(buildPhaseRoadmapPlainText(p.DateLabel, dateSize, true, "dk1", "l"), "ctr"),
+				Text:     withRowPad(withVerticalAlign(buildPhaseRoadmapPlainText(p.DateLabel, dateSize, true, "dk1", "l"), "ctr"), fit.rowPad),
 			},
 		}
 		applyPhaseRoadmapOverride(dateCells[i], cellOverrides, dateIdx0+i, accent)
 	}
 	dateRow := jsonschema.GridRowInput{Height: datePct, Cells: dateCells}
 	if tracks != nil {
-		// Parallel tracks squeeze the date row towards its measured need, and
-		// a percentage of the estimated area can still land below what the
-		// writer needs once gaps come off the real grid height. Pin it in
-		// points at no less than the writer-fit height (go-slide-creator-n1muf).
-		_, areaH := sizingAreaPt(ctx)
-		pt := math.Max(math.Round(datePct*areaH)/100, phaseRoadmapDateMinPt(ctx, vals, dateSize))
+		// Beside parallel tracks every row is pinned in points: the date row
+		// at the writer's fit of its labels, never a percentage that can land
+		// below it once gaps come off the real grid height
+		// (go-slide-creator-n1muf).
+		pt := phaseRoadmapDateMinPt(ctx, vals, dateSize, fit.rowPad)
 		dateRow = jsonschema.GridRowInput{MinHeight: pt, MaxHeight: pt, Cells: dateCells}
 	}
 	rows = append(rows, dateRow)
@@ -523,7 +595,7 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 				Geometry:  "rect",
 				TypeScale: peerTextTypeScale,
 				Fill:      json.RawMessage(`"none"`),
-				Text:      buildPhaseRoadmapDescText(pptx.ConvertMarkdownEmphasis(p.Description), bodySize),
+				Text:      withRowPad(buildPhaseRoadmapDescText(pptx.ConvertMarkdownEmphasis(p.Description), bodySize), fit.rowPad),
 			},
 		}
 		applyPhaseRoadmapOverride(descCells[i], cellOverrides, descIdx0+i, accent)
@@ -536,7 +608,7 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 	}
 	// The row keeps its content height as a minimum so a short content area
 	// squeezes the flexible rows, not the descriptions below their margin.
-	descRowH := math.Max(math.Round(math.Max(descH, bodySize*contentLineHeight)+2*defaultShapeInsetTBPt+6), math.Ceil(descWrittenH))
+	descRowH := math.Max(math.Round(math.Max(descH, bodySize*contentLineHeight)+2*defaultShapeInsetTBPt-rowPadTrimPt(fit.rowPad)+fit.descSparePt()), math.Ceil(descWrittenH))
 	rows = append(rows, jsonschema.GridRowInput{Cells: descCells, MinHeight: descRowH, MaxHeight: descRowH})
 
 	// Optional parallel-track block — label + full-width tinted bars.
@@ -553,15 +625,7 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 		})
 	}
 
-	grid := &jsonschema.ShapeGridInput{
-		Columns:       json.RawMessage(fmt.Sprintf(`%d`, n)),
-		Gap:           ctx.Gap(6),
-		RowGap:        ctx.Gap(4),
-		Rows:          rows,
-		VerticalAlign: GridVerticalAlignDefault,
-	}
-
-	return grid, nil
+	return rows
 }
 
 // phaseRoadmapCellCount returns the total addressable cell count for
@@ -590,22 +654,28 @@ type phaseRoadmapTracks struct {
 	grid  *jsonschema.ShapeGridInput
 	label *jsonschema.GridCellInput
 	bars  []*jsonschema.GridCellInput
+	barPt float64 // one bar
 	rowPt float64 // total block height, including the top padding
 }
 
-func buildPhaseRoadmapTracks(ctx ExpandContext, vals *PhaseRoadmapValues, accent string, bodySize, headerSize float64) *phaseRoadmapTracks {
+// buildPhaseRoadmapTracks builds the parallel-track block. A track is a bar,
+// not a box: each is as tall as its own text (one line for most tracks) plus
+// the fit step's bar padding, so two tracks stay lighter than the phase boxes
+// they run under instead of taking a third of the content area
+// (go-slide-creator-x1124).
+func buildPhaseRoadmapTracks(ctx ExpandContext, vals *PhaseRoadmapValues, accent string, bodySize, headerSize float64, fit phaseRoadmapFit) *phaseRoadmapTracks {
 	k := len(vals.ParallelTracks)
 	contentW, _ := contentAreaPt(ctx)
 	barTextW := contentW*(100-phaseRoadmapTrackLabelColPct)/100 - ctx.Gap(phaseRoadmapTrackGapPt) - 2*defaultShapeInsetLRPt
-	barTextH, barWrittenH := bodySize*contentLineHeight, 0.0
+	barTextH, barWrittenH := shapegrid.EffectiveTextSizePt(bodySize)*contentLineHeight, 0.0
 	for _, t := range vals.ParallelTracks {
 		barTextH = math.Max(barTextH, textBlockHeightPt(ctx.Theme.BodyFont, barTextW, textParagraph{text: t, size: bodySize}))
 		// As for the description row: the writer's fit, not only the
 		// theme-font model, sets the bar height.
-		text := buildPhaseRoadmapPlainText(pptx.ConvertMarkdownEmphasis(t), bodySize, false, "dk1", "l")
+		text := withRowPad(buildPhaseRoadmapPlainText(pptx.ConvertMarkdownEmphasis(t), bodySize, false, "dk1", "l"), fit.barPad)
 		barWrittenH = math.Max(barWrittenH, writtenNeedOrOverflowPt(ctx.Theme.BodyFont, text, barTextW+2*defaultShapeInsetLRPt))
 	}
-	barPt := math.Max(math.Round(barTextH+2*defaultShapeInsetTBPt+4), math.Ceil(barWrittenH))
+	barPt := math.Max(math.Round(barTextH+2*defaultShapeInsetTBPt-rowPadTrimPt(fit.barPad)), math.Ceil(barWrittenH))
 
 	labelSize := math.Max(bodySize+1, math.Min(headerSize-2, 12))
 	label := &jsonschema.GridCellInput{
@@ -617,24 +687,16 @@ func buildPhaseRoadmapTracks(ctx ExpandContext, vals *PhaseRoadmapValues, accent
 		},
 		AccentBar: &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: 3},
 	}
-	// Centre the label on the stacked bars rather than pinning it to the top.
-	var lt phaseRoadmapTextObj
-	if err := json.Unmarshal(label.Shape.Text, &lt); err == nil {
-		lt.VerticalAlign = "ctr"
-		label.Shape.Text, _ = json.Marshal(lt)
-	}
+	// Centre the label on the stacked bars rather than pinning it to the top;
+	// beside a single slim bar it takes the bar's padding.
+	label.Shape.Text = withRowPad(withVerticalAlign(label.Shape.Text, "ctr"), fit.barPad)
 
 	tone := inactiveTintTone(accent)
 	textColor := readableTextOn(ctx, tone, "dk1")
 	bars := make([]*jsonschema.GridCellInput, k)
 	rows := make([]jsonschema.GridRowInput, k)
 	for i, t := range vals.ParallelTracks {
-		text := buildPhaseRoadmapPlainText(pptx.ConvertMarkdownEmphasis(t), bodySize, false, textColor, "l")
-		var obj phaseRoadmapTextObj
-		if err := json.Unmarshal(text, &obj); err == nil {
-			obj.VerticalAlign = "ctr"
-			text, _ = json.Marshal(obj)
-		}
+		text := withRowPad(withVerticalAlign(buildPhaseRoadmapPlainText(pptx.ConvertMarkdownEmphasis(t), bodySize, false, textColor, "l"), "ctr"), fit.barPad)
 		bars[i] = &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
@@ -661,7 +723,8 @@ func buildPhaseRoadmapTracks(ctx ExpandContext, vals *PhaseRoadmapValues, accent
 		},
 		label: label,
 		bars:  bars,
-		rowPt: math.Round(blockPt + phaseRoadmapTrackTopPadPt),
+		barPt: barPt,
+		rowPt: math.Round(blockPt + fit.topPad),
 	}
 }
 
@@ -687,6 +750,35 @@ func phaseRoadmapMarkerPct(subW float64) float64 {
 		return 20
 	}
 	return math.Min(20, (defaultShapeInsetLRPt-SubGridInsetPt)/subW*100)
+}
+
+// phaseRoadmapMarkerRowPt is the shortest row (at most maxPt) in which the
+// writer stores a one-line milestone marker's label with no autofit shrink.
+// The label has no margin of its own, so the row is its line plus the inset
+// the renderer gives a nested grid.
+func phaseRoadmapMarkerRowPt(ctx ExpandContext, cell *jsonschema.GridCellInput, colW, maxPt float64) float64 {
+	label := cell.Grid.Rows[0].Cells[1].Shape.Text
+	var cols []float64
+	if json.Unmarshal(cell.Grid.Columns, &cols) != nil || len(cols) != 2 {
+		return maxPt
+	}
+	labelW := (colW - 2*SubGridInsetPt) * cols[1] / 100
+	for h := math.Ceil(largestTextRunPt(label) * contentLineHeight); h+2*SubGridInsetPt < maxPt; h++ {
+		if writtenFitsAt(ctx.themeFonts(), label, labelW, h) {
+			return h + 2*SubGridInsetPt
+		}
+	}
+	return maxPt
+}
+
+// largestTextRunPt is the largest run size of a text input, or the body size
+// when it cannot be read.
+func largestTextRunPt(text json.RawMessage) float64 {
+	tb, err := shapegrid.ResolveTextInput(text)
+	if err != nil || tb == nil {
+		return scaleBodyPt
+	}
+	return math.Max(largestRunPt(tb), scaleBodyPt)
 }
 
 // phaseRoadmapMilestoneCell is one milestone marker: an accent diamond in
@@ -836,45 +928,250 @@ func phaseRoadmapDescHeightPt(font string, widthPt float64, desc string, size fl
 	return h
 }
 
-// phaseRoadmapTrackedRowPcts returns the phase-box, timeline and date row
-// heights (percent of the content height) once a parallel-track block of
-// blockPt has to fit below the roadmap. The block's height comes out of the
-// phase-box row down to the larger of its floor and the measured height of
-// the longest phase name; what is still missing then comes out of the
-// timeline spine (to 3%) and the date row (to its measured need).
-func phaseRoadmapTrackedRowPcts(ctx ExpandContext, vals *PhaseRoadmapValues, blockPt, headerSize, dateSize float64) (header, timeline, date float64) {
-	n := len(vals.Phases)
-	contentW, _ := contentAreaPt(ctx)
-	_, areaH := sizingAreaPt(ctx)
-	textW := equalColumnWidthPt(contentW, n, ctx.Gap(6)) - 2*defaultShapeInsetLRPt
-	var nameH, dateH float64
-	for _, p := range vals.Phases {
-		nameH = math.Max(nameH, textBlockHeightPt(ctx.Theme.BodyFont, textW, textParagraph{text: p.Name, size: headerSize, bold: true}))
-		dateH = math.Max(dateH, textBlockHeightPt(ctx.Theme.BodyFont, textW, textParagraph{text: p.DateLabel, size: dateSize, bold: true}))
-	}
-	headerNeed := math.Max(phaseRoadmapMinHeaderPct, pctOf(nameH+2*defaultShapeInsetTBPt+2, areaH))
-	dateNeed := pctOf(math.Max(dateH+2*defaultShapeInsetTBPt, phaseRoadmapDateMinPt(ctx, vals, dateSize)), areaH)
+// phaseRoadmapFit is one step of the vertical tightening a roadmap with
+// parallel tracks takes when its rows do not fit the content area at the
+// uniform 0.5 cm text margin. The zero value is the roadmap without tracks.
+type phaseRoadmapFit struct {
+	tracked    bool
+	barPad     float64 // top / bottom margin of a track bar
+	topPad     float64 // air between the descriptions and the track block
+	rowPad     float64 // top / bottom margin of the unfilled milestone, date and description rows; 0 = uniform
+	headerPad  float64 // top / bottom margin of the phase boxes; 0 = uniform
+	headerSize float64 // phase-name size; 0 = the resolved header size
+	tight      bool    // the description row keeps no spare height over its text
+}
 
-	timeline, date = 6.0, 8.0
-	want := phaseRoadmapHeaderPct - pctOf(blockPt+ctx.Gap(4), areaH)
-	header = math.Max(headerNeed, want)
-	deficit := header - want
-	if deficit > 0 {
-		take := math.Min(deficit, timeline-3)
-		timeline -= take
-		deficit -= take
+// phaseRoadmapDescSparePt is the air the description row keeps over its
+// measured text.
+const phaseRoadmapDescSparePt = 6.0
+
+func (f phaseRoadmapFit) descSparePt() float64 {
+	if f.tight {
+		return 0
 	}
-	if deficit > 0 && date > dateNeed {
-		date -= math.Min(deficit, date-dateNeed)
+	return phaseRoadmapDescSparePt
+}
+
+// phaseRoadmapFitSteps are the steps a tracked roadmap tries, roomiest first.
+// Air gives way before type: the padding of the unfilled rows (rowPadStepsPt,
+// the steps a ruled list takes), then the track bars and the gap above them,
+// then the phase boxes become slimmer and the description row gives up its
+// spare height, and only then does the phase name step down to the 12pt body floor — never below it, and an authored header size
+// is kept. Descriptions, dates and milestones keep their size throughout
+// (go-slide-creator-x1124).
+func phaseRoadmapFitSteps(headerSize float64, headerAuthored bool) []phaseRoadmapFit {
+	f := phaseRoadmapFit{tracked: true, barPad: phaseRoadmapTrackBarPadPt, topPad: phaseRoadmapTrackTopPadPt}
+	steps := []phaseRoadmapFit{f}
+	f.rowPad = rowPadStepsPt[0]
+	steps = append(steps, f)
+	f.rowPad, f.barPad = rowPadStepsPt[1], rowPadStepsPt[2]
+	steps = append(steps, f)
+	f.rowPad, f.topPad = rowPadStepsPt[2], phaseRoadmapTrackGapPt
+	steps = append(steps, f)
+	f.headerPad = rowPadStepsPt[0]
+	steps = append(steps, f)
+	f.headerPad, f.tight = rowPadStepsPt[1], true
+	steps = append(steps, f)
+	if !headerAuthored && headerSize > scaleBodyPt {
+		f.headerSize = scaleBodyPt
+		steps = append(steps, f)
 	}
-	return math.Round(header*10) / 10, math.Round(timeline*10) / 10, math.Round(date*10) / 10
+	return steps
+}
+
+// phaseRoadmapTracked is a tracked roadmap laid out at one fit step.
+type phaseRoadmapTracked struct {
+	rows   []jsonschema.GridRowInput
+	fit    phaseRoadmapFit
+	needPt float64 // smallest height the rows hold their text in at this step
+	areaPt float64 // height the grid may use
+	descPt float64 // description row
+	barPt  float64 // one track bar
+}
+
+// fits reports whether the rows hold their text inside the content area.
+func (t phaseRoadmapTracked) fits() bool { return t.needPt <= t.areaPt }
+
+// trackedRows lays a roadmap with parallel tracks out at the first fit step
+// that holds every row inside the content area, or at the tightest step when
+// none does (PostExpandWarnings then reports what to cut).
+func (b phaseRoadmapBuild) trackedRows() phaseRoadmapTracked {
+	var t phaseRoadmapTracked
+	for _, fit := range phaseRoadmapFitSteps(b.headerSize, b.headerAuthored) {
+		if t = b.trackedAt(fit); t.fits() {
+			break
+		}
+	}
+	return t
+}
+
+// trackedAt pins every row of a tracked roadmap in points. The milestone,
+// date, description and track rows take their measured heights; the phase-box
+// row takes what the tracks leave of its 20% share, never less than the
+// writer's fit of its longest name; the timeline spine takes 3% to 6%. A
+// percentage phase row was scaled down with the rest of an over-committed
+// grid, so on the shortest content area the names were written at 8pt
+// (go-slide-creator-x1124).
+func (b phaseRoadmapBuild) trackedAt(fit phaseRoadmapFit) phaseRoadmapTracked {
+	ctx := b.ctx
+	rows := b.rows(fit)
+	_, areaH := sizingAreaPt(ctx)
+	// A point in hand so rounding never over-commits the grid.
+	t := phaseRoadmapTracked{rows: rows, fit: fit, areaPt: areaH - 1}
+	gap := ctx.Gap(phaseRoadmapRowGapPt)
+	fixed := float64(len(rows)-1) * gap
+	for _, r := range rows[2:] {
+		fixed += r.MinHeight
+	}
+	t.descPt = rows[len(rows)-2].MinHeight
+	block := rows[len(rows)-1]
+	t.barPt = block.Cells[0].Grid.Rows[0].MinHeight
+
+	header := b.headerFloorPt(fit)
+	timeline := math.Ceil(math.Max(timelineRulePt+4, areaH*phaseRoadmapTimelineMinPct/100))
+	t.needPt = fixed + header + timeline
+	if slack := t.areaPt - t.needPt; slack > 0 {
+		want := areaH*phaseRoadmapHeaderPct/100 - block.MinHeight - gap
+		grow := math.Floor(clampPt(want-header, 0, slack))
+		header += grow
+		slack -= grow
+		timeline += math.Floor(clampPt(areaH*phaseRoadmapTimelinePct/100-timeline, 0, slack))
+	}
+	rows[0].Height, rows[0].MinHeight, rows[0].MaxHeight = 0, header, header
+	rows[1].Height, rows[1].MinHeight, rows[1].MaxHeight = 0, timeline, timeline
+	return t
+}
+
+// phaseRoadmapTrackedWarnings reports a roadmap with parallel tracks that does
+// not fit its content area at the tightest fit step, with a budget per field:
+// each description that is too long is told how many characters the area
+// holds beside the tracks; when the descriptions are not what overflows, the
+// last track is told how many tracks the area has room for
+// (go-slide-creator-x1124).
+func phaseRoadmapTrackedWarnings(b phaseRoadmapBuild) []string {
+	t := b.trackedRows()
+	if t.fits() {
+		return nil
+	}
+	vals := b.vals
+	n, k := len(vals.Phases), len(vals.ParallelTracks)
+	beside := fmt.Sprintf("%d parallel tracks", k)
+	if k == 1 {
+		beside = "1 parallel track"
+	}
+	drop := "drop a parallel track"
+	if b.hasMilestones {
+		beside += " and the milestone row"
+		drop += " or the milestones"
+	}
+
+	// Height the description row may take with every other row as it is.
+	lineH := shapegrid.EffectiveTextSizePt(b.bodySize) * contentLineHeight
+	margin := 2*defaultShapeInsetTBPt - rowPadTrimPt(t.fit.rowPad) + t.fit.descSparePt()
+	lines := int(math.Floor((t.areaPt - (t.needPt - t.descPt) - margin) / lineH))
+	var warnings []string
+	if lines >= 1 {
+		contentW, _ := contentAreaPt(b.ctx)
+		descW := equalColumnWidthPt(contentW, n, b.ctx.Gap(6)) - 2*defaultShapeInsetLRPt
+		for i, p := range vals.Phases {
+			budget := phaseRoadmapLineBudget(b.ctx.Theme.BodyFont, p.Description, b.bodySize, descW, lines)
+			if budget <= 0 || runeLen(p.Description) <= budget {
+				continue
+			}
+			warnings = append(warnings, fmt.Sprintf("%s: phase-roadmap phases[%d].description is %d characters; beside %s this content area (%.0fpt high) holds about %d description characters per phase (%s) — shorten the description, or %s",
+				ErrCodeBodyTooLong, i, runeLen(p.Description), beside, t.areaPt, budget, countNoun(lines, "line"), drop))
+		}
+	}
+	if len(warnings) > 0 {
+		return warnings
+	}
+	room := k - int(math.Ceil((t.needPt-t.areaPt)/(t.barPt+b.ctx.Gap(phaseRoadmapTrackGapPt))))
+	advice := fmt.Sprintf("has room for %s", countNoun(max(room, 0), "track"))
+	if room < 1 {
+		advice = "has no room for a track block"
+	}
+	return []string{fmt.Sprintf("%s: phase-roadmap parallel_tracks[%d]: %d phases with %s need about %.0fpt but the content area is %.0fpt high and %s — %s, shorten the descriptions, or free height on the slide",
+		ErrCodeBodyTooLong, k-1, n, beside, t.needPt, t.areaPt, advice, drop)}
+}
+
+// countNoun is "1 line" / "3 lines".
+func countNoun(n int, noun string) string {
+	if n == 1 {
+		return "1 " + noun
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
+}
+
+// phaseRoadmapLineBudget is how many characters of desc (cut at a word) wrap
+// to at most lines lines in a widthPt-wide text area, rounded down to 5; the
+// whole length when it already fits.
+func phaseRoadmapLineBudget(font, desc string, size, widthPt float64, lines int) int {
+	if phaseRoadmapDescLines(font, widthPt, desc, size) <= lines {
+		return runeLen(desc)
+	}
+	words := strings.Fields(strings.ReplaceAll(desc, "\n", " "))
+	fit := 0
+	for i := 1; i <= len(words); i++ {
+		head := strings.Join(words[:i], " ")
+		if measuredLines(head, font, false, shapegrid.EffectiveTextSizePt(size), widthPt) > lines {
+			break
+		}
+		fit = runeLen(head)
+	}
+	return fit / 5 * 5
+}
+
+// phaseRoadmapDescLines counts a description's wrapped lines, a bullet line in
+// the width its hanging indent leaves.
+func phaseRoadmapDescLines(font string, widthPt float64, desc string, size float64) int {
+	eff := shapegrid.EffectiveTextSizePt(size)
+	return int(math.Round(phaseRoadmapDescHeightPt(font, widthPt, desc, size) / (eff * contentLineHeight)))
+}
+
+// headerFloorPt is the smallest phase-box row that holds the longest phase
+// name at the step's size and padding with no autofit shrink.
+func (b phaseRoadmapBuild) headerFloorPt(fit phaseRoadmapFit) float64 {
+	size := b.headerSize
+	if fit.headerSize > 0 {
+		size = fit.headerSize
+	}
+	n := len(b.vals.Phases)
+	contentW, _ := contentAreaPt(b.ctx)
+	colW := equalColumnWidthPt(contentW, n, b.ctx.Gap(6))
+	margin := 2*defaultShapeInsetTBPt - rowPadTrimPt(fit.headerPad)
+	need := 0.0
+	for _, p := range b.vals.Phases {
+		name := pptx.ConvertMarkdownEmphasis(p.Name)
+		need = math.Max(need, textBlockHeightPt(b.ctx.Theme.BodyFont, colW-2*defaultShapeInsetLRPt, textParagraph{text: p.Name, size: size, bold: true})+margin+2)
+		need = math.Max(need, writtenFitHeightPt(b.ctx.themeFonts(), withRowPad(buildPhaseRoadmapHeaderText(name, size, "dk1"), fit.headerPad), colW, 0))
+	}
+	return math.Ceil(need)
+}
+
+// withRowPad returns text with its top and bottom margins set to padPt; 0
+// (or the uniform margin) leaves the text unchanged.
+func withRowPad(text json.RawMessage, padPt float64) json.RawMessage {
+	top, bottom := rowPadInsets(padPt, 0)
+	if top == nil {
+		return text
+	}
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(text, &obj) != nil {
+		return text
+	}
+	obj["inset_top"], obj["inset_bottom"] = marshalRaw(*top), marshalRaw(*bottom)
+	out, err := json.Marshal(obj)
+	if err != nil {
+		return text
+	}
+	return out
 }
 
 // phaseRoadmapDateMinPt is the smallest date-row height at which the writer
 // stores no autofit shrink for any date label at its column width. A 12pt bold
 // date in the row's 8%/squeezed share was written at 90% (10.8pt, below the
 // 12pt floor) on examples/phase-roadmap.json (go-slide-creator-n1muf).
-func phaseRoadmapDateMinPt(ctx ExpandContext, vals *PhaseRoadmapValues, dateSize float64) float64 {
+func phaseRoadmapDateMinPt(ctx ExpandContext, vals *PhaseRoadmapValues, dateSize, padPt float64) float64 {
 	n := len(vals.Phases)
 	if n == 0 {
 		return 0
@@ -886,7 +1183,7 @@ func phaseRoadmapDateMinPt(ctx ExpandContext, vals *PhaseRoadmapValues, dateSize
 		if p.DateLabel == "" {
 			continue
 		}
-		need = math.Max(need, writtenFitHeightPt(ctx.themeFonts(), buildPhaseRoadmapPlainText(p.DateLabel, dateSize, true, "dk1", "ctr"), colW, 0))
+		need = math.Max(need, writtenFitHeightPt(ctx.themeFonts(), withRowPad(buildPhaseRoadmapPlainText(p.DateLabel, dateSize, true, "dk1", "ctr"), padPt), colW, 0))
 	}
 	return need
 }

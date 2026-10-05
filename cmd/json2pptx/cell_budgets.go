@@ -364,6 +364,11 @@ func postExpandWarningContext(ctx patterns.ExpandContext, pi *PatternInput) patt
 	if pi != nil && pi.Name == "card-grid" {
 		return cardGridBudgetContext(ctx, pi.Callout)
 	}
+	// phase-roadmap measures its parallel tracks against the height it was
+	// expanded in, which a pattern callout shortens.
+	if pi != nil && pi.Name == "phase-roadmap" {
+		return reserveCalloutBand(ctx, pi.Callout)
+	}
 	return ctx
 }
 

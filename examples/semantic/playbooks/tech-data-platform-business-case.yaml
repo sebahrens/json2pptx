@@ -217,36 +217,27 @@ slides:
     source: Atlas Retail five-year TCO model, steady-state year, September 2026
     takeaway: Half the run cost is compute, so the FinOps rail is where the EUR 5.5M is kept.
   - id: roadmap
-    kind: raw_json2pptx
-    slide:
-      slide_type: content
-      layout_id: blank-title
-      content:
-        - placeholder_id: title
-          type: text
-          text_value: Three phases decommission the warehouse by the end of 2028
-      pattern:
-        name: phase-roadmap
-        values:
-          phases:
-            - name: Foundation
-              date_label: Q1-Q2 2027
-              description: Landing zone, governance, FinOps guardrails; 3 pilot sources live.
-              active: true
-              milestone: 3 pilots live
-            - name: Migrate
-              date_label: Q3 2027-Q2 2028
-              description: 14 sources on CDC; 1,900 ETL jobs become 400 pipelines.
-              milestone: 400 pipelines
-            - name: Optimise
-              date_label: Q3-Q4 2028
-              description: Warehouse decommissioned; compute tuned; hand-over to run.
-              milestone: Warehouse off
-          parallel_label: In parallel
-          parallel_tracks:
-            - Data literacy for 300 analysts
-            - "FinOps guardrails: budgets, policies, showback"
-      source: Atlas Retail migration plan, September 2026
+    kind: roadmap
+    title: Three phases decommission the warehouse by the end of 2028
+    phases:
+      - name: Foundation
+        date_label: Q1-Q2 2027
+        description: Landing zone, governance, FinOps guardrails; 3 pilot sources live.
+        milestone: 3 pilots live
+      - name: Migrate
+        date_label: Q3 2027-Q2 2028
+        description: 14 sources on CDC; 1,900 ETL jobs become 400 pipelines.
+        milestone: 400 pipelines
+      - name: Optimise
+        date_label: Q3-Q4 2028
+        description: Warehouse decommissioned; compute tuned; hand-over to run.
+        milestone: Warehouse off
+    parallel_label: In parallel
+    parallel_tracks:
+      - Data literacy for 300 analysts
+      - "FinOps guardrails: budgets, policies, showback"
+    source: Atlas Retail migration plan, September 2026
+    takeaway: The warehouse is switched off in Q4 2028; literacy and FinOps run through all three phases.
   - id: kpi_shift
     kind: comparison
     title: "Four KPIs move: the load window drops from 9.5 h to 1.5 h"

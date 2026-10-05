@@ -4,7 +4,8 @@
   "columns": 4,
   "rows": [
     {
-      "height": 14.2,
+      "min_height": 48,
+      "max_height": 48,
       "cells": [
         {
           "shape": {
@@ -97,7 +98,8 @@
       ]
     },
     {
-      "height": 3,
+      "min_height": 19,
+      "max_height": 19,
       "cells": [
         {
           "col_span": 4,
@@ -274,8 +276,8 @@
       ]
     },
     {
-      "min_height": 157,
-      "max_height": 157,
+      "min_height": 103,
+      "max_height": 103,
       "cells": [
         {
           "col_span": 4,
@@ -288,8 +290,8 @@
             ],
             "rows": [
               {
-                "min_height": 47,
-                "max_height": 47,
+                "min_height": 29,
+                "max_height": 29,
                 "cells": [
                   {
                     "row_span": 3,
@@ -297,6 +299,9 @@
                       "geometry": "rect",
                       "fill": "none",
                       "text": {
+                        "align": "l",
+                        "inset_bottom": 7,
+                        "inset_top": 7,
                         "paragraphs": [
                           {
                             "content": "Enablers",
@@ -306,7 +311,6 @@
                             "align": "l"
                           }
                         ],
-                        "align": "l",
                         "vertical_align": "ctr"
                       }
                     },
@@ -325,6 +329,9 @@
                         "lumOff": 80000
                       },
                       "text": {
+                        "align": "l",
+                        "inset_bottom": 7,
+                        "inset_top": 7,
                         "paragraphs": [
                           {
                             "content": "Governance, change management, and upskilling track A",
@@ -333,7 +340,6 @@
                             "align": "l"
                           }
                         ],
-                        "align": "l",
                         "vertical_align": "ctr"
                       }
                     }
@@ -341,8 +347,8 @@
                 ]
               },
               {
-                "min_height": 47,
-                "max_height": 47,
+                "min_height": 29,
+                "max_height": 29,
                 "cells": [
                   {
                     "shape": {
@@ -353,6 +359,9 @@
                         "lumOff": 80000
                       },
                       "text": {
+                        "align": "l",
+                        "inset_bottom": 7,
+                        "inset_top": 7,
                         "paragraphs": [
                           {
                             "content": "Governance, change management, and upskilling track B",
@@ -361,7 +370,6 @@
                             "align": "l"
                           }
                         ],
-                        "align": "l",
                         "vertical_align": "ctr"
                       }
                     }
@@ -369,8 +377,8 @@
                 ]
               },
               {
-                "min_height": 47,
-                "max_height": 47,
+                "min_height": 29,
+                "max_height": 29,
                 "cells": [
                   {
                     "shape": {
@@ -381,6 +389,9 @@
                         "lumOff": 80000
                       },
                       "text": {
+                        "align": "l",
+                        "inset_bottom": 7,
+                        "inset_top": 7,
                         "paragraphs": [
                           {
                             "content": "Governance, change management, and upskilling track C",
@@ -389,7 +400,6 @@
                             "align": "l"
                           }
                         ],
-                        "align": "l",
                         "vertical_align": "ctr"
                       }
                     }
