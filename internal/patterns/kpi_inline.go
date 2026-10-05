@@ -137,7 +137,7 @@ func (k *kpiInline) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Horizontal inline KPI bar: one content-sized row. Alone on a slide it is composed like any sparse block; vertical_align \"top\" keeps it under the title")
+	}).WithDescription("Horizontal inline KPI bar: one content-sized row for a compose segment or cell. Alone on a slide it reports SLIDE_UNDERUSED: use kpi-Nup there")
 }
 
 func (k *kpiInline) Validate(values, overrides any, cellOverrides map[int]any) error {

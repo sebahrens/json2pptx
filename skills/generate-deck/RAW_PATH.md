@@ -62,8 +62,6 @@ Apply precise `repair_slide` fixes to one raw slide per call (small with a
 raw `deck_id`); `propose_repairs` plans several. Advisory kinds and
 `semantic_review_required` refusals are authoring decisions, not retries
 ([FINDINGS.md](FINDINGS.md), when `describe_finding` does not cover a code).
-`score_deck.quality_gate.passed` stops structural repair, not slide-image
-inspection.
 
 The raw `deck_id` from generation is a short-lived handle that can replace
 the `presentation` payload on preview, repair, score, rhythm and regenerate

@@ -861,6 +861,24 @@ var outputSchemaScoreDeck = json.RawMessage(`{
         }
       }
     },
+    "deck_findings": {
+      "type": "array",
+      "description": "Findings no slide owns: the path is not under /slides/N (CHROME_TRUNCATED at /chrome, template synthesis, RENDER_EVIDENCE_INCOMPLETE). Each is listed once, costs points once on overall_score and is counted in summary.top_codes. A finding that names exactly one slide in fix.params.slides is in that slide's per_slide entry instead. Omitted when there are none. With slide_indices, a finding that names slides is kept only when it names a scored one.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code":     {"type": "string"},
+          "severity": {"type": "string"},
+          "message":  {"type": "string"},
+          "fix":      {"type": "object"},
+          "class":    {"type": "string"},
+          "path":     {"type": "string", "description": "JSON Pointer of the finding (\"/chrome\"); omitted when it has none."},
+          "slides":   {"type": "array", "items": {"type": "integer"}, "description": "0-based slides the finding names (the per_slide indices); omitted when it names none."},
+          "points":   {"type": "integer", "description": "What the finding costs overall_score."}
+        },
+        "required": ["code", "severity", "message", "points"]
+      }
+    },
     "composition": {
       "type": "object",
       "description": "Deck-level composition score (rhythm, variety, accent balance). Separate axis from per-slide correctness.",

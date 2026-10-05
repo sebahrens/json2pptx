@@ -38,7 +38,7 @@ language, no scare words.
 | # | Kind | What goes in | Watch |
 |---|---|---|---|
 | 2 | `executive_summary` | The rating; losses vs appetite; metrics breached; the option | `bottom_line`: the option and the steering committee chair. |
-| 3 | `kpi_snapshot` | Findings, high findings, losses, deadline — 4 KPIs with `comparator` | A KPI row is a content-sized strip: with the takeaway under it a third of the slide stays empty, and no finding reports that; consider `regions` with a chart if you have a series. |
+| 3 | `kpi_snapshot` | Findings, high findings, losses, deadline — 4 KPIs with `comparator` | Alone on its slide the KPI row is grown into a band of half the content area, figures centred between the dividers; `comparator` lines fill it further. Consider `regions` with a chart if you have a series. |
 | 4 | `option_matrix` | Risk type rows; `Status` (`rag`), `Current` and `Limit` (`text`); breached rows in `recommended` with `highlight_label: Breached` | One-line `detail` lines fit at five rows; on a tight template the `highlight_label` joins the name's line. |
 | 5 | `regions` `main_left` | Loss bar chart; `stat` EUR 11.2M with the peer median in `context`; two bullets on causes | Peer comparison in the `context` line, not a second chart. |
 | 6 | `risk_heatmap` | `items`: each risk with its `likelihood` and `impact` (low / medium / high) | Six risks placed, none on a line; the cell colour is the likelihood × impact band, not a choice. Three or more risks in one cell of a 5 × 5 need a tall template or a split. |

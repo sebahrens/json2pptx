@@ -836,6 +836,36 @@ func composesSlideBlock(input *ShapeGridInput) bool {
 	return input != nil && input.Bounds == nil
 }
 
+// isKPINupPattern reports whether name is a kpi-Nup row (kpi-2up … kpi-6up),
+// as opposed to the kpi-inline supporting band.
+func isKPINupPattern(name string) bool {
+	return strings.HasPrefix(name, "kpi-") && strings.HasSuffix(name, "up")
+}
+
+// isKPINupGrid reports whether grid is the expansion of a kpi-Nup pattern.
+func isKPINupGrid(grid *ShapeGridInput) bool {
+	return grid != nil && strings.HasPrefix(grid.Source, patternSourcePrefix) &&
+		isKPINupPattern(strings.TrimPrefix(grid.Source, patternSourcePrefix))
+}
+
+// growsLoneRow reports whether a slide's own grid is one the composition
+// policy may grow into the free height (shapegrid.Grid.ComposeGrow): the open
+// strip a kpi-Nup pattern expands to, alone on its slide. Its cells are
+// unpainted, so the taller row shows as taller dividers around figures that
+// keep their size — a filled tile grown the same way is an empty box
+// (go-slide-creator-wntyw), and tiles keep their content height.
+func growsLoneRow(input *ShapeGridInput) bool {
+	if !composesSlideBlock(input) || !isKPINupGrid(input) || len(input.Rows) != 1 {
+		return false
+	}
+	for _, cell := range input.Rows[0].Cells {
+		if cell == nil || cell.Shape == nil || strings.Trim(string(cell.Shape.Fill), `" `) != "none" {
+			return false
+		}
+	}
+	return true
+}
+
 // boxBlockComposed reports whether the grid's own bounds box is one
 // alignRelativeBounds places by the composition policy: a top-anchored,
 // content-relative box with vertical_align "auto" that needs clearly less
@@ -954,6 +984,7 @@ func resolveShapeGridAs(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, ove
 		grid.DefaultGapPt = zone.GutterPt
 	}
 	grid.Compose = slideBlock && composesSlideBlock(input)
+	grid.ComposeGrow = grid.Compose && growsLoneRow(input)
 	grid.KeepTextSizes = input.KeepTextSizes
 	grid.CanvasScale = gridCanvasScale(input, slideWidth, slideHeight)
 	grid.Links = convertGridLinks(input.Links)

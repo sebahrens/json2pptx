@@ -50,13 +50,14 @@ pass on every slide.
 - **A zoomed axis you did not ask for.** Bars, lines, areas and waterfalls with
   non-negative data now start at zero; if a chart looks zoomed, a `data.y_min`
   was authored — check that the heading says so.
-- **A thin KPI row**: a `kpi_snapshot` is a content-sized strip; with a
-  takeaway band under it, a third or more of the slide stays empty and no
-  finding says so (the strip covers more than its 20% `SLIDE_UNDERUSED`
-  threshold). Put the KPIs in a `regions` slide beside a chart, or accept it
-  consciously. A short table alone on a slide is the same: its whole cell
-  counts as content, so four rows over an empty lower half are not reported
-  (`go-slide-creator-18dqh`).
+- **Other strips over an empty band.** A `kpi_snapshot` alone on a slide is
+  grown into a band of half the content area, and a KPI row or a table that
+  still leaves the lower third empty is reported (`SLIDE_UNDERUSED` for the
+  row, `VERTICAL_IMBALANCE` for a short table: `go-slide-creator-i7yju`).
+  The same rule is not applied to the other single-row patterns: a
+  `process-flow` of three short steps, a `value-chain` or a compact variant
+  sits centred with a third or more of the area under it and scores 100.
+  Look at them, and give a thin flow its second zone.
 - **A footer that lost a field.** A footer line wider than the template's slot
   drops `project_code`, then the date, and `CHROME_TRUNCATED` says so
   (`go-slide-creator-m2tlt`) — a review finding that never blocks. Decide

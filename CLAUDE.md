@@ -167,12 +167,12 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `icon-row` | Horizontal row of 3–5 open icons, each over a caption and an optional one-line `description`; `overrides.style` `tile` puts each item in a tile |
 | `image-text-split` | One photo / screenshot beside a text column (eyebrow, heading, body, up to 5 bullets) with 0–3 result metrics; real images are cover-cropped, otherwise a dashed placeholder (case study / customer story slides) |
 | `journey-maturity-model` | Horizontal maturity ladder of 3–6 stage columns with numbered headers, descriptions, and an optional 'where we are' marker on the current stage |
-| `kpi-2up` | Two big-number KPI cards with short captions (kpi-Nup cells take an optional `comparator` line, e.g. "vs plan +4 pts") |
+| `kpi-2up` | Two big-number KPI cards with short captions (kpi-Nup cells take an optional `comparator` line, e.g. "vs plan +4 pts"; an open kpi-Nup row alone on a slide grows its band of dividers to half the content area) |
 | `kpi-3up` | Three big-number KPI cards with short captions |
 | `kpi-4up` | Four big-number KPI cards with short captions |
 | `kpi-5up` | Five big-number KPI cards with short captions (a value holds about 11 digits on the narrowest templates; 12 characters is the hard maximum) |
 | `kpi-6up` | Six big-number KPI cards with short captions (a value holds about 9 digits on the narrowest templates) |
-| `kpi-inline` | Horizontal inline KPI bar: one content-sized row for supporting context in a compose segment or cell (alone on a slide it is composed like any sparse block) |
+| `kpi-inline` | Horizontal inline KPI bar: one content-sized row for supporting context in a compose segment or cell; alone on a slide it reports `SLIDE_UNDERUSED` — use a kpi-Nup row there |
 | `labeled-rows` | 2–6 rows of a keyword label block (WHY / WHAT / HOW; `label_style` `tinted` (default) neutral block under an accent rule, `filled` accent block or accent `text`) with optional sublabel beside 1–4 lines of body text, rules between content-sized rows |
 | `matrix-2x2` | 2×2 matrix: two crossing axis lines with open quadrants, axis titles and low/high ends along the left and bottom edges, one optional `highlight` quadrant; `overrides.style` `tiles` for filled quadrant tiles with arrow axes |
 | `metric-list` | Vertical "by the numbers" stack of 3–7 metrics: big right-aligned accent value + bold label + optional detail line, hairline rules, optional highlighted row (`highlight: true`, at most one) and a bottom takeaway-band callout |

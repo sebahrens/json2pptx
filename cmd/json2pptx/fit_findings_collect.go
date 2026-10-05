@@ -867,6 +867,7 @@ func resolveGridForStructural(grid *ShapeGridInput, overrideBounds *pptx.RectEmu
 		sgGrid.TextLeft = zone.TextLeft
 		sgGrid.DefaultGapPt = zone.GutterPt
 		sgGrid.Compose = composesSlideBlock(grid)
+		sgGrid.ComposeGrow = growsLoneRow(grid)
 	}
 	sgGrid.KeepTextSizes = grid.KeepTextSizes
 	sgGrid.CanvasScale = gridCanvasScale(grid, slideWidth, slideHeight)

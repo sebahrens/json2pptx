@@ -139,6 +139,12 @@ type Grid struct {
 	// the optical centre (compose.go). Nested sub-grids and grids resolved
 	// for capacity estimates leave it unset.
 	Compose bool
+	// ComposeGrow lets the composition policy grow a sparse block that is one
+	// content-sized row into the free height: the row gets taller (compose.go
+	// grownLoneRow) while its shapes keep the height their content needs,
+	// centred in it. Callers set it for a slide's own KPI strip, whose
+	// dividers then span the taller band (go-slide-creator-i7yju).
+	ComposeGrow bool
 	// DefaultGapPt is the column / row gap (points) used when ColGap / RowGap
 	// are unset: the template grid's gutter_pt (ContentZone.GutterPt), else
 	// the built-in 8pt (go-slide-creator-5ms8c).

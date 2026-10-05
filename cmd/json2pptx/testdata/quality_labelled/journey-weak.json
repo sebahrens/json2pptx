@@ -6,7 +6,7 @@
     "2": {"label": "label_title", "codes": ["TITLE_NOT_ACTION"], "evidence": "C15: 'Savings funnel' is a label over a takeaway. Its four short steps filled the left half only until numbered-step-strip gave one-line bodies a detail column (go-slide-creator-yhzxt); the left-half fault is kept as the hand-built slide 6"},
     "3": {"label": "weak", "codes": ["TEXT_WRAPS_NARROW"], "evidence": "C17: eight flow boxes, each wrapped to 5-6 lines of 2-3 words. A process slide of eight steps now bends onto two rows of four (go-slide-creator-pfyeg); the one-row fault is kept as a hand-built process-flow with overrides.rows 1"},
     "4": {"label": "label_title", "codes": ["TITLE_NOT_ACTION"], "evidence": "C15: 'Monthly spend trend' is a label over a takeaway"},
-    "5": {"label": "label_title", "codes": ["TITLE_NOT_ACTION"], "evidence": "C15: 'Savings by lever (1/2)' — the part marker is not a number in the claim"},
+    "5": {"label": "weak", "codes": ["TITLE_NOT_ACTION", "VERTICAL_IMBALANCE"], "evidence": "C15: 'Savings by lever (1/2)' — the part marker is not a number in the claim; and h-A15: its four rows leave more than a third of the content area empty between the table and the takeaway — counted as its whole cell the table read as a full slide (go-slide-creator-i7yju)"},
     "6": {"label": "weak", "codes": ["HORIZONTAL_IMBALANCE"], "evidence": "C15: four short rows that end before mid-slide; the right half of the slide is empty"}
   },
   "spec": {

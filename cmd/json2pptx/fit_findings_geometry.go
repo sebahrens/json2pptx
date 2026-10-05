@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
@@ -162,8 +163,9 @@ func collectGeometry(input *PresentationInput, layouts []types.LayoutMetadata, s
 		// a row of cards over an empty bottom half is lopsided whether or not
 		// it is sparse. One imbalance finding per slide: top-to-bottom, else
 		// left-to-right.
-		if f := checkSlideUnderused(acc.ink, safe, &slide, si, patternName, acc.heightSensitiveOverflow()); f != nil {
-			findings = append(findings, *f)
+		underused := checkSlideUnderused(acc.ink, safe, &slide, si, patternName, acc.heightSensitiveOverflow())
+		if underused != nil {
+			findings = append(findings, *underused)
 		}
 		if usage != nil {
 			if u, ok := measureSlideUsage(acc.ink, safe, &slide, patternName); ok {
@@ -172,8 +174,18 @@ func collectGeometry(input *PresentationInput, layouts []types.LayoutMetadata, s
 			}
 		}
 		ctx := balanceContext{input: input, layouts: layouts, slideWidth: slideWidth, slideHeight: slideHeight, theme: theme, rhythmGrid: rhythmGrid, sectionIndices: sectionIndices}
-		if f := ctx.imbalanceFinding(acc, slide, si, grid, geom, basePath, patternName, safe); f != nil {
-			findings = append(findings, *f)
+		imbalance := ctx.imbalanceFinding(acc, slide, si, grid, geom, basePath, patternName, safe)
+		if imbalance != nil {
+			findings = append(findings, *imbalance)
+		}
+		// A KPI row over an empty lower third that neither check above names:
+		// its cells clear the coverage threshold and it sits centred.
+		// Without a content zone the block is not placed by the composition
+		// policy, so where it sits says nothing about the rendered slide.
+		if geom.Zone != nil && underused == nil && (imbalance == nil || imbalance.Code != patterns.ErrCodeVerticalImbalance) {
+			if f := kpiRowLowerBandFinding(acc.ink, safe, &slide, si, patternName); f != nil {
+				findings = append(findings, *f)
+			}
 		}
 	}
 	return findings
@@ -220,7 +232,17 @@ func (c balanceContext) imbalanceFinding(acc *geomAccumulator, slide SlideInput,
 		return nil
 	}
 	if f := checkVerticalImbalance(balance.ink, safe, &slide, si, patternName, zoneBodyTop(geom.Zone), true); f != nil {
+		if balance.tables > 0 && f.Fix != nil {
+			// A table is written at its row heights: vertical_align does not
+			// stretch it, so the generic hint names nothing an author can do.
+			f.Fix.Params["hint"] = shortTableHint
+		}
 		return f
+	}
+	if geom.Zone != nil {
+		if f := shortTableBandFinding(balance, safe, &slide, si, patternName); f != nil {
+			return f
+		}
 	}
 	return checkHorizontalImbalance(balance.textInk, safe, &slide, si, patternName)
 }
@@ -274,6 +296,9 @@ type geomAccumulator struct {
 	// pattern stands beside an accent rule (ruledColumnPatterns): the cell
 	// counts as its slot.
 	ruledCell bool
+	// tables counts the table cells walked: an imbalance finding on a slide
+	// that holds one names the table's own remedies.
+	tables int
 }
 
 // addInk records a rectangle that is content in both views: coverage (ink)
@@ -281,6 +306,16 @@ type geomAccumulator struct {
 func (a *geomAccumulator) addInk(r pptx.RectEmu) {
 	a.ink = append(a.ink, r)
 	a.textInk = append(a.textInk, r)
+}
+
+// openCellInk is the ink of an unpainted cell of an open KPI strip: the cell
+// its dividers delimit, which is taller than the shape when the row was
+// grown into the free height (shapegrid ComposeGrow).
+func openCellInk(cell shapegrid.ResolvedCell) pptx.RectEmu {
+	if cell.CellBounds.CX > 0 && cell.CellBounds.CY > 0 {
+		return cell.CellBounds
+	}
+	return cell.Bounds
 }
 
 // isKPIStripGrid reports whether grid is the expansion of a KPI row pattern.
@@ -314,7 +349,10 @@ func (a *geomAccumulator) walk(input *ShapeGridInput, result *shapegrid.ResolveR
 			a.ruledCell = false
 		case shapegrid.CellKindIcon:
 			a.addInk(a.slotOr(cell, cell.Bounds))
-		case shapegrid.CellKindTable, shapegrid.CellKindImage, shapegrid.CellKindDiagram, shapegrid.CellKindComposite:
+		case shapegrid.CellKindTable:
+			a.addInk(tableInk(cell))
+			a.tables++
+		case shapegrid.CellKindImage, shapegrid.CellKindDiagram, shapegrid.CellKindComposite:
 			a.addInk(cell.Bounds)
 		case shapegrid.CellKindSubGrid:
 			a.subGrid(input, cell, cellPath, depth)
@@ -323,6 +361,70 @@ func (a *geomAccumulator) walk(input *ShapeGridInput, result *shapegrid.ResolveR
 	for _, ab := range result.AccentBars {
 		a.addInk(ab.Bounds)
 	}
+}
+
+// shortTableHint is the remedy of an imbalance finding on a slide whose
+// content is a table that ends well above the bottom of the content area.
+const shortTableHint = "the table's rows end here and are not stretched: add the rows that complete the picture (a totals row, the next items), set the table beside a text or chart region that uses the band (the regions kind / compose), or move a table this short onto a slide with other content"
+
+// shortTableBandFinding reports a table slide whose content ends with the
+// lower third or more of the content area (slideLowerBandMaxFrac) empty
+// beneath it. A block hung from the body line is allowed 40% before
+// VERTICAL_IMBALANCE reports it; a table has no other placement — its rows
+// are not stretched and it is not composed at the optical centre — so the
+// band under it is the whole of the slide's spare height, and a third of the
+// area is where it reads as half a slide.
+func shortTableBandFinding(acc *geomAccumulator, safe pptx.RectEmu, slide *SlideInput, si int, patternName string) *patterns.FitFinding {
+	if acc.tables == 0 || safe.CY <= 0 || hasBodyPlaceholderContent(slide) {
+		return nil
+	}
+	first, band := lowerBand(acc.ink, safe)
+	if band < verticalImbalanceMinGapEMU || float64(band) < slideLowerBandMaxFrac*float64(safe.CY) {
+		return nil
+	}
+	f := verticalImbalanceFinding(si, patternName, band, "below it", first-safe.Y, safe)
+	f.Fix.Params["hint"] = shortTableHint
+	return f
+}
+
+// lowerBand returns the top of the first ink inside safe and the height of
+// the empty band under the last; band is 0 when no ink lies inside safe.
+func lowerBand(ink []pptx.RectEmu, safe pptx.RectEmu) (first, band int64) {
+	first, last := safe.Y+safe.CY, safe.Y
+	for _, r := range ink {
+		if r = intersectRect(r, safe); r.CY > 0 {
+			first = minI64(first, r.Y)
+			last = maxI64(last, r.Y+r.CY)
+		}
+	}
+	if last <= first {
+		return safe.Y, 0
+	}
+	return first, safe.Y + safe.CY - last
+}
+
+// tableInk is the part of a table cell its rows cover. A table is written at
+// its planned row heights from the top of its cell, not stretched to it, so a
+// four-row table in a full-height cell leaves the rest of the cell blank:
+// counted as the whole cell it read as a full slide and a short table over an
+// empty band scored 100 (go-slide-creator-i7yju). The plan is the one
+// generation writes (generator.GenerateTableXML); a table that cannot be
+// planned counts as its cell.
+func tableInk(cell shapegrid.ResolvedCell) pptx.RectEmu {
+	if cell.TableSpec == nil {
+		return cell.Bounds
+	}
+	res, err := generator.GenerateTableXML(cell.TableSpec, generator.TableRenderConfig{
+		Bounds:           types.BoundingBox{X: cell.Bounds.X, Y: cell.Bounds.Y, Width: cell.Bounds.CX, Height: cell.Bounds.CY},
+		Style:            cell.TableSpec.Style,
+		ColumnAlignments: cell.TableSpec.ColumnAlignments,
+	})
+	if err != nil || res == nil || res.Height <= 0 || res.Height >= cell.Bounds.CY {
+		return cell.Bounds
+	}
+	ink := cell.Bounds
+	ink.CY = res.Height
+	return ink
 }
 
 // subGrid resolves a nested grid inside its placeholder bounds (same inset as
@@ -405,7 +507,7 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 		block := placeTextBlock(cell.Bounds, txt, blockW, blockH)
 		a.textInk = append(a.textInk, block)
 		if a.openCells {
-			a.addInk(cell.Bounds)
+			a.addInk(openCellInk(cell))
 			return
 		}
 		if a.ruledCell && cell.CellBounds.CX > 0 && cell.CellBounds.CY > 0 {
@@ -748,6 +850,55 @@ func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInpu
 			Fix: &patterns.FixSuggestion{
 				Kind:   "add_detail_or_resize",
 				Params: params,
+			},
+		},
+		Action: "review",
+	}
+}
+
+// slideLowerBandMaxFrac is the share of the content area a KPI row (kpi-Nup,
+// kpi-inline) or a table may leave empty beneath it: the lower third. An open
+// kpi-Nup row alone on a slide is grown into the free height and set at the
+// optical centre (shapegrid ComposeGrow), which leaves about 28% of the area
+// under it; a row that still leaves a third or more — tiles, which keep their
+// content height, a kpi-inline bar, which is a supporting band — is a strip
+// over an empty band and says so (go-slide-creator-i7yju). Its cells clear
+// the 20% coverage threshold and it sits centred, so neither SLIDE_UNDERUSED's
+// coverage test nor VERTICAL_IMBALANCE named it and the slide scored 100.
+const slideLowerBandMaxFrac = 1.0 / 3
+
+// kpiRowLowerBandFinding reports a pattern-sized KPI slide whose row leaves
+// slideLowerBandMaxFrac or more of the content area empty beneath it. An
+// author's bounds / max_height_pct cap is judged by the coverage test.
+func kpiRowLowerBandFinding(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInput, si int, patternName string) *patterns.FitFinding {
+	if safe.CY <= 0 || !strings.HasPrefix(patternName, "kpi-") || hasBodyPlaceholderContent(slide) || bandCapSource(slide) != "pattern" {
+		return nil
+	}
+	_, band := lowerBand(ink, safe)
+	bandFrac := float64(band) / float64(safe.CY)
+	if bandFrac < slideLowerBandMaxFrac {
+		return nil
+	}
+	hint := "use the band: give each KPI a delta or comparator line, add a takeaway, or set the row over a chart, table or text zone (compose / the regions kind); an open kpi-Nup row alone on a slide is grown into the free height, so leave overrides.style and vertical_align unset"
+	if !isKPINupPattern(patternName) {
+		hint = "kpi-inline is a supporting band: use it as a compose segment or regions cell beside the content it supports, or use kpi-Nup, whose open row is grown into the free height of a slide of its own"
+	}
+	return &patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Pattern: patternName,
+			Path:    slidepath.Slide(si),
+			Code:    patterns.ErrCodeSlideUnderused,
+			Message: fmt.Sprintf("the KPI row leaves the lower %.0f%% of the content area empty (%.1fin; limit %.0f%%) — the slide reads as a strip over a blank band", 100*bandFrac, float64(band)/914400, 100*slideLowerBandMaxFrac),
+			Fix: &patterns.FixSuggestion{
+				Kind: "add_detail_or_resize",
+				Params: map[string]any{
+					"empty_band_in":   round1(float64(band) / 914400),
+					"empty_band_pct":  math.Round(100 * bandFrac),
+					"empty_band_side": "below",
+					"threshold_pct":   math.Round(100 * slideLowerBandMaxFrac),
+					"band_capped_by":  "pattern",
+					"hint":            hint,
+				},
 			},
 		},
 		Action: "review",

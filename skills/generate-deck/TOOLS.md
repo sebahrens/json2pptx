@@ -97,8 +97,7 @@ preconditions, [RAW_PATH.md](RAW_PATH.md); the four phases are in
   `compile_deck_spec` answers `ok: false` when a diagnostic blocks.
 - `get_input_schema` and `get_data_format_hints` support digest reuse.
   `list_slide_kinds` (DECKSPEC.md lists its `fields`), `show_pattern` and
-  `describe_finding` are the live kind, pattern and finding catalogs;
-  prefer them to static lists.
+  `describe_finding` are the live kind, pattern and finding catalogs.
 - `preview_slide_wireframe` is structural-only and cannot prove visual fit.
   `render_deck_thumbnails` returns JPEG blocks (`image_mime_type`, top
   level) beside full-resolution PNG `slides[].path`; `larger_render` and a
@@ -108,7 +107,9 @@ preconditions, [RAW_PATH.md](RAW_PATH.md); the four phases are in
   Rendering alone is not inspection; `submit_visual_review` requires
   current-revision evidence for every slide.
 - `score_deck` takes a DeckSpec `deck_id` or a raw deck, never a spec
-  object. `composition.diagnostics[].code` includes `motif_run`,
+  object. `deck_findings[]` holds what no slide owns (`CHROME_TRUNCATED`),
+  each `points` off `overall_score` once.
+  `composition.diagnostics[].code` includes `motif_run`,
   `motif_dominance` and `continuation_interrupted`. A passing
   `quality_gate` stops score-driven repair, not visual review. When a render
   fails, `evidence_complete:false` or `render_evidence` prevents a clean

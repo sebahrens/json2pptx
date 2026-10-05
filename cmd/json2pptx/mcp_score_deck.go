@@ -29,7 +29,7 @@ func mcpScoreDeckTool() mcp.Tool {
 
 It generates the deck into a temporary directory, so the score reflects the GENERATED structure (pagination, autofit shrink, contrast swaps, layout synthesis), not only the input.
 
-Score: per-slide 100 minus finding weights and a deck-wide breadth penalty. Weights: refuse=25, shrink_or_split=15, review=5, info=0. Severe reviews cost 15–20; only confirmed defects block.
+Score: per-slide 100 minus finding weights and a deck-wide breadth penalty; a finding no slide owns (deck_findings, e.g. CHROME_TRUNCATED) costs its weight once on overall_score. Weights: refuse=25, shrink_or_split=15, review=5, info=0. Severe reviews cost 15–20; only confirmed defects block.
 
 Use it with a DeckSpec deck_id, or a raw deck / deck_id, for structured feedback without vision tokens.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaScoreDeck)),
@@ -420,7 +420,7 @@ func (mc *mcpConfig) collectScoreDeckRenderFindings(
 	if len(slideIndices) > 0 {
 		subset, subsetToOrig := buildSlideSubset(input, slideIndices)
 		renderFindings, evidence = mc.collectRenderFindings(ctx, subset, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, extraImageDirs...)
-		renderFindings = remapFindingsSlideIndex(renderFindings, subsetToOrig)
+		renderFindings = dropSubsetNumberedDeckFindings(remapFindingsSlideIndex(renderFindings, subsetToOrig))
 	} else {
 		renderFindings, evidence = mc.collectRenderFindings(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, extraImageDirs...)
 	}
@@ -429,6 +429,27 @@ func (mc *mcpConfig) collectScoreDeckRenderFindings(
 		renderFindings = append(renderFindings, renderEvidenceFinding(evidence))
 	}
 	return renderFindings, evidence
+}
+
+// dropSubsetNumberedDeckFindings removes, from the findings of a subset
+// render, the deck-level ones that name slides (CHROME_TRUNCATED's
+// fix.params.slides and message). The subset was renumbered from 1, so such
+// a finding cites slides that are not the deck's, and its message no longer
+// matches the preflight finding for the same footer line: the two would be
+// listed as two findings and cost twice. Preflight runs on the whole deck and
+// states the same fact with the deck's own slide numbers
+// (go-slide-creator-qhgm8).
+func dropSubsetNumberedDeckFindings(findings []patterns.FitFinding) []patterns.FitFinding {
+	out := findings[:0:0]
+	for _, f := range findings {
+		if slidepath.SlideIndex(f.Path) < 0 && f.Fix != nil {
+			if _, names := f.Fix.Params["slides"]; names {
+				continue
+			}
+		}
+		out = append(out, f)
+	}
+	return out
 }
 
 // renderEvidenceIncompleteCode is the stable, machine-readable code for the
