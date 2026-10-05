@@ -764,9 +764,10 @@ func isPieChartType(chartType string) bool {
 
 // chartDirectiveKeys are flat-map data keys that steer the chart rather than
 // name a category (data.highlight / sort / orientation / data_labels /
-// group_small_below_pct).
+// group_small_below_pct / y_min / y_max).
 var chartDirectiveKeys = map[string]bool{
 	"highlight": true, "sort": true, "orientation": true, "data_labels": true, "group_small_below_pct": true,
+	"y_min": true, "y_max": true,
 }
 
 // chartCategoryLabels returns the category labels of a chart in whichever shape

@@ -268,7 +268,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"source":   strField("Data source note."),
 		"insight":  strField("Single implication rendered as a so-what callout; when insights bullets are present, keep it distinct from them."),
 		"insights": textList("1–6 insight bullets rendered beside the chart; the fit check measures their length against the column."),
-		"chart": {typ: "object", desc: "Chart: {type, title?, data}. For bar/line/area charts data is {categories:[…], series:[{name, values:[…]}]}; for pie/donut {categories:[…], values:[…]}.",
+		"chart": {typ: "object", desc: "Chart: {type, title?, data}. For bar/line/area charts data is {categories:[…], series:[{name, values:[…]}]}; for pie/donut {categories:[…], values:[…]}; for waterfall {points:[{label, value, type}]}. The value axis starts at zero unless a value is negative; data.y_min / data.y_max zoom it (the axis is then kept visible; a y_min that would cut a bar is rejected).",
 			objectKeys: chartObjectKeys},
 	}, compositionFields()), universalFields()),
 	KindComparison: withFields(withFields(map[string]payloadField{

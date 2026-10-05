@@ -1078,6 +1078,24 @@ A `chart_value` has more categories than a reader can follow: 12 for an axis cha
 }
 ```
 
+### `chart.axis_not_zero`
+
+**Action:** `info`
+**Pattern:** `bar_chart` / `area_chart` / `waterfall` (the chart type that drew it)
+**Fix kind:** `replace_value` (params: `field` = `data.y_min`, `authored`, `smallest_bar`, `hidden_share`, `diagram_type`)
+
+Bar-family, line, area and waterfall charts start their value axis at zero whenever no plotted value (for a waterfall, no running total) is negative. An authored `data.y_min` above zero zooms the axis on purpose; the chart is drawn as authored and keeps its value axis so the truncation is visible. This finding reports a `y_min` that hides more than half of the smallest bar drawn from the baseline — a bar, a stack, a filled band or a waterfall total — because the reader then sees less than half of that bar's length. Remove `y_min` for a zero baseline, or keep the zoom when the steps rather than the totals are the point. (A `y_min` that would cut a bar entirely is rejected at validation instead, naming `data.y_min`.)
+
+```json
+{
+  "code": "chart.axis_not_zero",
+  "field": "data.y_min",
+  "message": "y_min 20 starts the value axis above zero and hides 83% of the smallest bar (\"2023 EBITDA\" = 24); the axis is kept so the truncation is visible — remove y_min for a zero baseline",
+  "fix": { "kind": "replace_value", "params": { "field": "data.y_min", "authored": 20, "smallest_bar": 24, "hidden_share": 0.83, "diagram_type": "waterfall" } },
+  "severity": "info"
+}
+```
+
 ### `chart.waterfall_total_mismatch`
 
 **Action:** `review`

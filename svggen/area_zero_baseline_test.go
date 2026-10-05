@@ -30,16 +30,17 @@ func TestFilledChartsBaselineAtZero(t *testing.T) {
 		}
 	})
 
-	t.Run("plain line keeps a zoomed axis", func(t *testing.T) {
+	t.Run("plain line baselines at zero too", func(t *testing.T) {
+		// go-slide-creator-929jm: a line zoomed onto its own range
+		// exaggerates the trend; a zoomed axis is an authored data.y_min.
 		cfg := DefaultLineChartConfig(900, 500)
 		if cfg.FillArea {
 			t.Fatal("DefaultLineChartConfig should not fill the area")
 		}
 		lc := NewLineChart(NewSVGBuilder(900, 500), cfg)
 		min, _ := lc.calculateYDomain(data)
-		if min <= 0 {
-			t.Errorf("plain line chart y-domain starts at %v; a line encodes value by position, "+
-				"so the zoomed axis is intended here", min)
+		if min != 0 {
+			t.Errorf("plain line chart y-domain starts at %v; all values are positive, so it starts at zero", min)
 		}
 	})
 

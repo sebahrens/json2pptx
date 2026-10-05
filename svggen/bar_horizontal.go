@@ -84,9 +84,12 @@ func (bc *BarChart) drawHorizontal(data ChartData) error {
 	colors := seriesHighlightColors(style.Palette, bc.getColors(style, len(data.Series)), data)
 	b.CheckChartCapacity(len(data.Series), len(data.Categories))
 	bc.config.ResolveValueFormatter(chartDataValues(data), true)
-	labelled := bc.config.ShowValues
+	// A zoomed axis (authored y_min above zero) keeps its value axis so the
+	// truncated bars do not read as true lengths (go-slide-creator-929jm).
+	labelled := bc.config.ShowValues && !data.Axis.zoomed()
 
 	lo, hi := bc.calculateDomain(data)
+	bc.reportAxisNotZero(data)
 	lay := bc.horizontalLayout(data, labelled)
 	plot := lay.plot
 

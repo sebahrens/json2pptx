@@ -208,7 +208,7 @@ func ChartCapabilities() []ChartCapability {
 			SupportsNegatives: boolPtr(true),
 			SupportsLogScale:  boolPtr(false),
 			LabelStrategy:     strPtr("value on every bar; decreases accent1 (bold labels), increases a legible accent1 tint or shade (>=3:1 on the background), totals dk1 60%; category labels adapt: shrink→two-line wrap→rotate up to 90°→bounded ellipsis; never thin nominal categories"),
-			DensityBehavior:   strPtr("adaptive font 6+ points; broken-axis zoom; crowded categories recommend horizontal-bar-with-callouts or split"),
+			DensityBehavior:   strPtr("adaptive font 6+ points; axis starts at zero unless data.y_min zooms it (chart.axis_not_zero when that hides over half of a total); crowded categories recommend horizontal-bar-with-callouts or split"),
 			Status:            "ready",
 		},
 		{

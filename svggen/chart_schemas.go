@@ -101,7 +101,7 @@ func dataLabelsFieldSchema() *DataSchema {
 
 // DataSchema returns the JSON Schema for bar_chart data.
 func (d *BarChartDiagram) DataSchema() *DataSchema {
-	fields := commonChartFields()
+	fields := axisBoundsFieldSchemas(commonChartFields())
 	fields["highlight"] = highlightFieldSchema()
 	fields["sort"] = sortFieldSchema(true)
 	fields["orientation"] = orientationFieldSchema()
@@ -114,7 +114,7 @@ func (d *BarChartDiagram) DataSchema() *DataSchema {
 
 // barFamilyFields are the shared fields of grouped / stacked bar charts.
 func barFamilyFields() map[string]*DataSchema {
-	fields := commonChartFields()
+	fields := axisBoundsFieldSchemas(commonChartFields())
 	fields["sort"] = sortFieldSchema(false)
 	fields["orientation"] = orientationFieldSchema()
 	fields["highlight"] = seriesHighlightFieldSchema()
@@ -188,7 +188,7 @@ func highlightFieldSchema() *DataSchema {
 func (d *LineChartDiagram) DataSchema() *DataSchema {
 	return ObjectDataSchema(
 		"Line chart data with categories and series. Supports time-series via time_strings/time_values in series objects.",
-		withSeriesHighlight(commonChartFields()),
+		withSeriesHighlight(axisBoundsFieldSchemas(commonChartFields())),
 		nil, // categories not always required (time-series mode)
 	)
 }
@@ -235,7 +235,7 @@ func (d *DonutChartDiagram) DataSchema() *DataSchema {
 func (d *AreaChartDiagram) DataSchema() *DataSchema {
 	return ObjectDataSchema(
 		"Area chart data with categories and series.",
-		withSeriesHighlight(commonChartFields()),
+		withSeriesHighlight(axisBoundsFieldSchemas(commonChartFields())),
 		[]string{"categories", "series"},
 	)
 }
@@ -262,7 +262,7 @@ func (d *GroupedBarChartDiagram) DataSchema() *DataSchema {
 func (d *StackedAreaChartDiagram) DataSchema() *DataSchema {
 	return ObjectDataSchema(
 		"Stacked area chart data with categories and series.",
-		commonChartFields(),
+		axisBoundsFieldSchemas(commonChartFields()),
 		[]string{"categories", "series"},
 	)
 }

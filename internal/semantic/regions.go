@@ -32,7 +32,7 @@ func regionCommonFields() map[string]payloadField {
 var regionPayloadFields = map[string]map[string]payloadField{
 	slides.RegionChart: withFields(map[string]payloadField{
 		"chart": {typ: "object", objectKeys: chartObjectKeys,
-			desc: "Chart: {type, title?, data}. Bar/line/area data is {categories:[…], series:[{name, values:[…]}]}; pie/donut {categories:[…], values:[…]}."},
+			desc: "Chart: {type, title?, data}. Bar/line/area data is {categories:[…], series:[{name, values:[…]}]}; pie/donut {categories:[…], values:[…]}; waterfall {points:[{label, value, type}]}. The value axis starts at zero unless a value is negative; data.y_min / data.y_max zoom it (the axis is then kept visible; a y_min that would cut a bar is rejected)."},
 		"unit": strField("Unit of the chart's values (e.g. \"€m\"), shown after the heading. ≤12 chars."),
 		"alt":  strField("Alt text for the chart; defaults to the heading or chart title."),
 	}, regionCommonFields()),
