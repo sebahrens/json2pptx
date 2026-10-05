@@ -218,6 +218,13 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 		"columns":  {inject: func(s string) map[string]any { return map[string]any{"columns": covColumns(s)} }, rendered: true},
 		"title":    {inject: func(s string) map[string]any { return map[string]any{"columns": covColumns("Left"), "title": s} }, rendered: true},
 		"takeaway": {inject: func(s string) map[string]any { return map[string]any{"columns": covColumns("Left"), "takeaway": s} }, rendered: true},
+		// go-slide-creator-ptazs: the comparison-2col switches reach the
+		// pattern as overrides / a row flag rather than as text.
+		"connectors": {inject: func(string) map[string]any { return map[string]any{"columns": covColumns("Left"), "connectors": true} }, rendered: false, why: "connectors is a layout switch (pattern overrides), not text (TestCompileComparison_ConnectorsAndHighlightsReachThePattern)"},
+		"highlight_column": {inject: func(string) map[string]any {
+			return map[string]any{"columns": covColumns("Left"), "highlight_column": "right"}
+		}, rendered: false, why: "highlight_column picks a column to emphasise (pattern overrides), not text (TestCompileComparison_ConnectorsAndHighlightsReachThePattern)"},
+		"highlight_row": {inject: func(string) map[string]any { return map[string]any{"columns": covColumns("Left"), "highlight_row": 0} }, rendered: false, why: "highlight_row flags a row the compiler already renders (TestCompileComparison_ConnectorsAndHighlightsReachThePattern)"},
 	},
 	// go-slide-creator-162os: a tier's label, its items (joined into the detail
 	// line) and the cross-cutting rails all have to reach the rendered stack.
@@ -410,9 +417,10 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 				"callouts": []any{map[string]any{"label": s, "x": 0.4, "y": 0.5}},
 			})
 		}, rendered: true},
-		"image_side": {inject: func(string) map[string]any { return covImageCase(map[string]any{"image_side": "right"}) }, rendered: false, why: "image_side picks a layout rather than contributing text"},
-		"title":      {inject: func(s string) map[string]any { return covImageCase(map[string]any{"title": s}) }, rendered: true},
-		"takeaway":   {inject: func(s string) map[string]any { return covImageCase(map[string]any{"takeaway": s}) }, rendered: true},
+		"image_side":      {inject: func(string) map[string]any { return covImageCase(map[string]any{"image_side": "right"}) }, rendered: false, why: "image_side picks a layout rather than contributing text"},
+		"image_width_pct": {inject: func(string) map[string]any { return covImageCase(map[string]any{"image_width_pct": 60}) }, rendered: false, why: "image_width_pct sizes the picture column (pattern overrides) rather than contributing text (TestImageCaseWidthReachesThePattern)"},
+		"title":           {inject: func(s string) map[string]any { return covImageCase(map[string]any{"title": s}) }, rendered: true},
+		"takeaway":        {inject: func(s string) map[string]any { return covImageCase(map[string]any{"takeaway": s}) }, rendered: true},
 	},
 	KindProcess: {
 		"steps":    {inject: func(s string) map[string]any { return map[string]any{"steps": covSteps(s)} }, rendered: true},
@@ -423,6 +431,14 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 		"phases":   {inject: func(s string) map[string]any { return map[string]any{"phases": covPhases(s)} }, rendered: true},
 		"title":    {inject: func(s string) map[string]any { return map[string]any{"phases": covPhases("Pilot"), "title": s} }, rendered: true},
 		"takeaway": {inject: func(s string) map[string]any { return map[string]any{"phases": covPhases("Pilot"), "takeaway": s} }, rendered: true},
+		// go-slide-creator-ptazs: the parallel workstreams and their label
+		// reach the pattern's values.
+		"parallel_tracks": {inject: func(s string) map[string]any {
+			return map[string]any{"phases": covPhases("Pilot"), "parallel_tracks": []any{s}}
+		}, rendered: true},
+		"parallel_label": {inject: func(s string) map[string]any {
+			return map[string]any{"phases": covPhases("Pilot"), "parallel_tracks": []any{"Governance"}, "parallel_label": s}
+		}, rendered: true},
 	},
 	KindDecision: {
 		"title": {inject: func(s string) map[string]any { return map[string]any{"title": s} }, rendered: true},

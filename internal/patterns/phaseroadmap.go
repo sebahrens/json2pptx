@@ -105,6 +105,20 @@ type PhaseRoadmapValues struct {
 	ParallelLabel  string   `json:"parallel_label,omitempty"`
 }
 
+// Phase text limits, exported so the semantic roadmap kind's budgets and
+// findings quote the numbers this pattern enforces (go-slide-creator-ptazs).
+const (
+	PhaseRoadmapNameMax        = 40
+	PhaseRoadmapDateLabelMax   = 30
+	PhaseRoadmapDescriptionMax = 160
+	PhaseRoadmapMilestoneMax   = 60
+	// PhaseRoadmapMaxTracks / PhaseRoadmapTrackMax / PhaseRoadmapLabelMax bound
+	// the parallel tracks and their label.
+	PhaseRoadmapMaxTracks = phaseRoadmapMaxTracks
+	PhaseRoadmapTrackMax  = phaseRoadmapTrackMaxChars
+	PhaseRoadmapLabelMax  = phaseRoadmapLabelMaxChars
+)
+
 // Parallel-track limits and geometry.
 const (
 	phaseRoadmapMaxTracks        = 4
@@ -272,17 +286,17 @@ func (pr *phaseRoadmap) Validate(values, overrides any, cellOverrides map[int]an
 		namePath := fmt.Sprintf("phases[%d].name", i)
 		if p.Name == "" {
 			errs = append(errs, errRequired(name, namePath))
-		} else if runeLen(p.Name) > 40 {
-			errs = append(errs, errMaxLength(name, namePath, 40, runeLen(p.Name)))
+		} else if runeLen(p.Name) > PhaseRoadmapNameMax {
+			errs = append(errs, errMaxLength(name, namePath, PhaseRoadmapNameMax, runeLen(p.Name)))
 		}
-		if runeLen(p.DateLabel) > 30 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("phases[%d].date_label", i), 30, runeLen(p.DateLabel)))
+		if runeLen(p.DateLabel) > PhaseRoadmapDateLabelMax {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("phases[%d].date_label", i), PhaseRoadmapDateLabelMax, runeLen(p.DateLabel)))
 		}
-		if runeLen(p.Description) > 160 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("phases[%d].description", i), 160, runeLen(p.Description)))
+		if runeLen(p.Description) > PhaseRoadmapDescriptionMax {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("phases[%d].description", i), PhaseRoadmapDescriptionMax, runeLen(p.Description)))
 		}
-		if runeLen(p.Milestone) > 60 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("phases[%d].milestone", i), 60, runeLen(p.Milestone)))
+		if runeLen(p.Milestone) > PhaseRoadmapMilestoneMax {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("phases[%d].milestone", i), PhaseRoadmapMilestoneMax, runeLen(p.Milestone)))
 		}
 		if p.Active {
 			activeCount++

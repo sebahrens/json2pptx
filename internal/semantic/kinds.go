@@ -126,9 +126,9 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindComparison: {
 		Kind:           KindComparison,
-		Summary:        "Side-by-side comparison of two or more options.",
+		Summary:        "Side-by-side comparison of two or more options. Two balanced columns render row-aligned (comparison-2col): connectors: true draws a per-row today → target connector badge between them, highlight_column emphasises the column argued for and highlight_row the row the comparison turns on. 3–5 columns are titled panels, 6–12 cards.",
 		RequiredFields: []string{"columns"},
-		TypicalFields:  []string{"title", "takeaway"},
+		TypicalFields:  []string{"title", "connectors", "highlight_column", "highlight_row", "takeaway"},
 	},
 	KindOptionMatrix: {
 		Kind:            KindOptionMatrix,
@@ -227,7 +227,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		Summary:         "A photo or screenshot beside the words about it — the case study or customer story slide; callouts point at parts of it. Needs a body or a bullet; the bundled example omits its image and is a draft: SEMANTIC_IMAGE_MISSING blocks readiness until a picture is supplied. Up to 5 bullets, 3 result metrics and 6 callouts; past its text budgets it degrades to a content slide. For testimony use quote.",
 		RequiredFields:  []string{"body"},
 		RequiredAliases: map[string][]string{"body": {"text", "story", "description", "bullets"}},
-		TypicalFields:   []string{"title", "image", "callouts", "eyebrow", "heading", "bullets", "metrics", "caption", "image_side", "image_label", "takeaway"},
+		TypicalFields:   []string{"title", "image", "callouts", "eyebrow", "heading", "bullets", "metrics", "caption", "image_side", "image_width_pct", "image_label", "takeaway"},
 	},
 	KindProcess: {
 		Kind:           KindProcess,
@@ -237,9 +237,9 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindRoadmap: {
 		Kind:           KindRoadmap,
-		Summary:        "Phased roadmap or timeline.",
+		Summary:        "Phased roadmap: 3–6 named phases on one timeline bar, each with a date range, a description or items and an optional milestone marker, plus 0–4 parallel_tracks — the workstreams (governance, training, a platform build) that run alongside every phase, drawn as bars under them. Outside those counts, or past the text budgets, it degrades to a bullet list. For dated stops without descriptions use timeline.",
 		RequiredFields: []string{"phases"},
-		TypicalFields:  []string{"title", "takeaway"},
+		TypicalFields:  []string{"title", "parallel_tracks", "parallel_label", "takeaway"},
 	},
 	KindDecision: {
 		Kind:            KindDecision,

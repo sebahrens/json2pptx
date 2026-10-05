@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/semantic/slides"
 	"github.com/sebahrens/json2pptx/internal/template"
 )
 
@@ -661,4 +663,48 @@ func testValidateDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*mc
 func testExplainDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	mc := &mcpConfig{templatesDir: "../../templates"}
 	return mc.handleExplainDeckSpec(ctx, request)
+}
+
+// An unknown REGION kind lists the region kinds as its choices, not the slide
+// kinds: f-deals-pitch was told `bridge` was available because
+// evidence.available held the slide-kind list (go-slide-creator-ptazs).
+func TestSemanticMCP_UnknownRegionKindListsRegionKinds(t *testing.T) {
+	ds := []diagnostics.Diagnostic{{
+		Code: diagnostics.CodeSemanticUnknownKind, Path: "slides[3].regions[0].kind", Severity: diagnostics.SeverityError,
+		Message: `unknown region kind "bridge" (a bridge beside text is a chart region with type: waterfall); expected one of "chart", "stat"`,
+	}}
+	enrichSemanticKindDiagnostics(ds)
+	available, _ := ds[0].Details["available"].([]string)
+	if strings.Join(available, ",") != strings.Join(slides.RegionKinds, ",") {
+		t.Fatalf("available = %v, want the region kinds %v", available, slides.RegionKinds)
+	}
+	if ds[0].Fix == nil || ds[0].Fix.Kind != "choose_kind" {
+		t.Errorf("fix = %+v, want choose_kind", ds[0].Fix)
+	}
+	if ds[0].NextToolCall == nil || ds[0].NextToolCall.Tool != "list_slide_kinds" || fmt.Sprint(ds[0].NextToolCall.ArgsTemplate["kinds"]) != "[regions]" {
+		t.Errorf("next_tool_call = %+v, want list_slide_kinds for regions", ds[0].NextToolCall)
+	}
+
+	mc := handleTestConfig(t)
+	spec := "meta:\n  title: Deal\nslides:\n  - kind: regions\n    title: The walk beside the story\n    regions:\n      - kind: bridge\n        columns: [{label: Start, type: total, value: 10}]\n      - kind: text\n        body: Narrative\n"
+	validated := mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": spec})
+	var response deckSpecEnvelopeResponse
+	structuredInto(t, validated.StructuredContent, &response)
+	found := false
+	for _, f := range response.Findings {
+		if !strings.HasSuffix(f.Code, diagnostics.CodeSemanticUnknownKind) {
+			continue
+		}
+		found = true
+		got, _ := f.Evidence["available"].([]any)
+		if len(got) != len(slides.RegionKinds) || fmt.Sprint(got[0]) != "chart" {
+			t.Errorf("evidence.available = %v, want the region kinds: %+v", got, f)
+		}
+		if !strings.Contains(f.Message, "type: waterfall") {
+			t.Errorf("message lost the waterfall pointer: %q", f.Message)
+		}
+	}
+	if !found {
+		t.Fatalf("no SEMANTIC_UNKNOWN_KIND finding: %+v", response.Findings)
+	}
 }

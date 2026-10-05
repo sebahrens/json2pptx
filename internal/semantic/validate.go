@@ -84,6 +84,8 @@ const (
 	// shapeStringOrObject is for a field whose compiler reads either — an
 	// image_case picture is a path string or a {path, alt} object.
 	shapeStringOrObject
+	// shapeNumber is a JSON number (an image_case picture width).
+	shapeNumber
 )
 
 // label returns the human-readable expected-type phrase for a finding message.
@@ -91,6 +93,8 @@ func (k shapeKind) label() string {
 	switch k {
 	case shapeBoolean:
 		return "a boolean"
+	case shapeNumber:
+		return "a number"
 	case shapeStringOrInteger:
 		return "a string or an integer"
 	case shapeArray:
@@ -117,7 +121,10 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 	KindExecutiveSummary: {"title": shapeString, "points": shapeArray, "takeaways": shapeArray, "takeaway": shapeString, "bottom_line": shapeString},
 	KindKPISnapshot:      {"title": shapeString, "kpis": shapeArray, "metrics": shapeArray, "takeaway": shapeString},
 	KindChartInsight:     {"title": shapeString, "chart": shapeObject, "insights": shapeArray, "insight": shapeString, "source": shapeString, "takeaway": shapeString},
-	KindComparison:       {"title": shapeString, "columns": shapeArray, "takeaway": shapeString},
+	KindComparison: {
+		"title": shapeString, "columns": shapeArray, "takeaway": shapeString,
+		"connectors": shapeBoolean, "highlight_column": shapeString, "highlight_row": shapeStringOrInteger,
+	},
 	KindOptionMatrix: {
 		"title": shapeString, "criteria": shapeArray, "columns": shapeArray,
 		"options": shapeArray, "rows": shapeArray, "scale": shapeString,
@@ -179,9 +186,13 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 		"bullets": shapeArray, "metrics": shapeArray, "callouts": shapeArray, "caption": shapeString,
 		"image_side": shapeString, "image_label": shapeString, "takeaway": shapeString,
 		"placeholder": shapeString, "photo": shapeStringOrObject, "screenshot": shapeStringOrObject,
+		"image_width_pct": shapeNumber,
 	},
 	KindProcess: {"title": shapeString, "steps": shapeArray, "takeaway": shapeString},
-	KindRoadmap: {"title": shapeString, "phases": shapeArray, "takeaway": shapeString},
+	KindRoadmap: {
+		"title": shapeString, "phases": shapeArray, "takeaway": shapeString,
+		"parallel_tracks": shapeArray, "workstreams": shapeArray, "parallel_label": shapeString,
+	},
 	KindDecision: {
 		"title": shapeString, "options": shapeArray, "choices": shapeArray, "alternatives": shapeArray,
 		"recommendation": shapeString, "takeaway": shapeString,
@@ -222,6 +233,14 @@ func shapeMatches(v any, k shapeKind) bool {
 		switch v.(type) {
 		case string, map[string]any:
 			return true
+		}
+		return false
+	case shapeNumber:
+		switch n := v.(type) {
+		case int, int64, json.Number:
+			return true
+		case float64:
+			return !math.IsInf(n, 0) && !math.IsNaN(n)
 		}
 		return false
 	}
@@ -977,6 +996,13 @@ func validateImageCase(path string, slide SlideSpec, s *semDiags) {
 		s.hard(path+".image.fit", diagnostics.CodeSemanticFieldType,
 			fmt.Sprintf("image.fit %q is not a fit; use \"cover\" (default, crops to fill the frame) or \"contain\" (keeps a whole screenshot or exhibit)", fit))
 	}
+	if raw, set := slide.Body["image_width_pct"]; set && raw != nil && shapeMatches(raw, shapeNumber) {
+		if pct, ok := slides.ImageCaseImageWidthPct(slide.Body); !ok {
+			s.hard(path+".image_width_pct", diagnostics.CodeSemanticFieldType,
+				fmt.Sprintf("image_width_pct %v is outside %d–%d, the share of the content width the picture column can take (default 45; a wide screenshot wants 55–60)",
+					pct, slides.ImageCaseMinWidthPct, slides.ImageCaseMaxWidthPct))
+		}
+	}
 	validateImageCaseCallouts(path, slide, s)
 	// Missing assets remain visible under strictness off. Drafts may render,
 	// but delivery surfaces promote this finding to a readiness blocker.
@@ -1170,13 +1196,40 @@ func validateProcess(path string, slide SlideSpec, s *semDiags) {
 	}
 }
 
-// validateRoadmap applies the same usable-count rule to a roadmap's phases.
+// validateRoadmap applies the same usable-count rule to a roadmap's phases,
+// then the pattern's text budgets and the parallel-track cap: past any of
+// them the slide degrades to bullets, and each over-long field is reported
+// at its own path (go-slide-creator-ptazs).
 func validateRoadmap(path string, slide SlideSpec, s *semDiags) {
-	if n := slides.UsablePhaseCount(slide.Body); s.requireUsableContent(path, "phases", slide.Body, n) && (n < 3 || n > 6) {
-		s.degrade(path+".phases",
-			fmt.Sprintf("roadmap has %d usable phases; 3–6 render as a phase-roadmap visual (otherwise it degrades to a bullet list)", n),
-			"phase-roadmap", degradeToBullets, degradeCountOutOfRange)
+	n := slides.UsablePhaseCount(slide.Body)
+	if !s.requireUsableContent(path, "phases", slide.Body, n) {
+		return
 	}
+	if n < 3 || n > 6 {
+		s.degradeCount(path+".phases",
+			fmt.Sprintf("roadmap has %d usable phases; 3–6 render as a phase-roadmap visual (otherwise it degrades to a bullet list)", n),
+			"phase-roadmap", degradeToBullets, 3, 6)
+		return
+	}
+	if problem := slides.RoadmapTrackCountProblem(slide.Body); problem != "" {
+		s.degradeCount(path+"."+roadmapTracksField(slide.Body),
+			fmt.Sprintf("roadmap %s (otherwise it degrades to a bullet list)", problem),
+			"phase-roadmap", degradeToBullets, 0, slides.RoadmapMaxTracks)
+	}
+	if items := slides.RoadmapBudgetItems(slide.Body); len(items) > 0 {
+		s.degradeItems(path, items, "otherwise the slide degrades to a bullet list", "phase-roadmap", degradeToBullets)
+	}
+}
+
+// roadmapTracksField is the key the roadmap's parallel tracks were authored
+// under, for a finding's path.
+func roadmapTracksField(body map[string]any) string {
+	if _, ok := body["parallel_tracks"].([]any); !ok {
+		if _, alias := body["workstreams"].([]any); alias {
+			return "workstreams"
+		}
+	}
+	return "parallel_tracks"
 }
 
 // valuesChartTypes are chart types whose data is a flat {categories, values}
@@ -1392,6 +1445,7 @@ func validateComparison(path string, slide SlideSpec, s *semDiags) {
 	if !ok {
 		return
 	}
+	validateComparisonOverrides(path, slide, s)
 	// Columns present but every column blank (no header, no items) compiles to a
 	// title-only slide; fail fast on the dropped comparison instead of passing it.
 	if slides.UsableComparisonColumnCount(slide.Body) == 0 {
@@ -1462,6 +1516,83 @@ func validateComparison(path string, slide SlideSpec, s *semDiags) {
 		}
 		s.degrade(path+".columns", msg, "comparison-2col", degradeToBullets, degradeCountOutOfRange)
 	}
+}
+
+// validateComparisonOverrides checks the comparison-2col switches the kind
+// exposes (go-slide-creator-ptazs): connectors, highlight_column and
+// highlight_row. A reference that names no column or row is an error (the
+// highlight would silently vanish); the row and column highlights together
+// are refused by the pattern, so they are an error here; and on a comparison
+// that is not the two-column visual the switches have nothing to act on, which
+// is said rather than ignored.
+func validateComparisonOverrides(path string, slide SlideSpec, s *semDiags) {
+	body := slide.Body
+	_, hasConnectors := body["connectors"].(bool)
+	_, hasColumn := body["highlight_column"]
+	_, hasRow := body["highlight_row"]
+	if !hasConnectors && !hasColumn && !hasRow {
+		return
+	}
+	pattern := slides.ComparisonPattern(body)
+	if pattern != "comparison-2col" {
+		outcome := "the slide degrades to a bullet list"
+		if pattern != "" {
+			outcome = "the slide renders as " + pattern
+		}
+		for _, field := range []string{"connectors", "highlight_column", "highlight_row"} {
+			if _, set := body[field]; !set {
+				continue
+			}
+			s.advisory(path+"."+field, diagnostics.CodeSemanticPatternNotAvailable,
+				fmt.Sprintf("%s applies to the two-column comparison-2col visual (2 balanced columns of up to %d rows); this payload has %d columns, so %s and %s is ignored",
+					field, slides.ComparisonMaxRows, slides.UsableComparisonColumnCount(body), outcome, field))
+		}
+		return
+	}
+	cols, _ := body["columns"].([]any)
+	choices := []string{"left", "right"}
+	rows := 0
+	for i, c := range cols {
+		col, _ := c.(map[string]any)
+		if h := strings.TrimSpace(firstNonEmptyString(col, "header", "title", "label", "name")); h != "" {
+			choices = append(choices, h)
+		}
+		if i == 0 {
+			rows, _ = comparisonColumnItemCount(col)
+		}
+	}
+	columnOK := true
+	if side, ok := slides.ComparisonHighlightColumn(body); hasColumn && !ok {
+		columnOK = false
+		s.hard(path+".highlight_column", diagnostics.CodeSemanticReferenceUnresolved,
+			fmt.Sprintf("highlight_column %v names no column; use \"left\", \"right\" or a column header (%s)", body["highlight_column"], joinQuoted(choices)))
+	} else if hasColumn && side == "" {
+		// Present but not a string (the shape finding says so).
+		columnOK = false
+	}
+	if !hasRow {
+		return
+	}
+	if _, ok := slides.ComparisonHighlightRow(body); !ok {
+		s.hard(path+".highlight_row", diagnostics.CodeSemanticReferenceUnresolved,
+			fmt.Sprintf("highlight_row %v names no row; use a 0-based index below %d or the text of a cell in the row", body["highlight_row"], rows))
+		return
+	}
+	if hasColumn && columnOK {
+		s.hard(path+".highlight_row", diagnostics.CodeSemanticFieldType,
+			"highlight_row and highlight_column together: comparison-2col tints a row or a column, not both — keep the one the comparison turns on")
+	}
+}
+
+// firstNonEmptyString returns the first of keys that carries a non-empty
+// string in m.
+func firstNonEmptyString(m map[string]any, keys ...string) string {
+	for _, k := range keys {
+		if s, ok := m[k].(string); ok && strings.TrimSpace(s) != "" {
+			return s
+		}
+	}
+	return ""
 }
 
 // scanWeakBody scans a slide payload for placeholder/filler content.

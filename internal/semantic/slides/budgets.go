@@ -119,6 +119,16 @@ var kindBudgets = map[string][]Budget{
 		{Field: "callouts", MaxItems: ImageCaseMaxCallouts},
 		{Field: "callouts[].label", MaxChars: ImageCaseCalloutLabelMax},
 	},
+	"roadmap": {
+		{Field: "phases", MinItems: roadmapMinPhases, MaxItems: roadmapMaxPhases},
+		{Field: "phases[].name", MaxChars: patterns.PhaseRoadmapNameMax},
+		{Field: "phases[].date_label", MaxChars: patterns.PhaseRoadmapDateLabelMax},
+		{Field: "phases[].description", MaxChars: patterns.PhaseRoadmapDescriptionMax, Note: "together with the phase's items, which render as bullets under it"},
+		{Field: "phases[].milestone", MaxChars: patterns.PhaseRoadmapMilestoneMax},
+		{Field: "parallel_tracks", MaxItems: patterns.PhaseRoadmapMaxTracks},
+		{Field: "parallel_tracks[]", MaxChars: patterns.PhaseRoadmapTrackMax},
+		{Field: "parallel_label", MaxChars: patterns.PhaseRoadmapLabelMax},
+	},
 	"process": {
 		{Field: "steps", MinItems: processStripMin, MaxItems: processStripMax, Note: "numbered rows (steps with a description); the flow diagram takes 3–8 bare labels"},
 		{Field: "steps[].label", MaxChars: processStripLabelMax, Note: "numbered rows; a flow box holds 80 for label and description together (7–8 steps are on two rows)"},

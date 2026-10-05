@@ -9,6 +9,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/semantic"
+	"github.com/sebahrens/json2pptx/internal/semantic/slides"
 )
 
 var semanticPathPart = regexp.MustCompile(`^([A-Za-z_][A-Za-z_0-9]*|\[[0-9]+\])`)
@@ -224,6 +225,19 @@ func enrichSemanticKindDiagnostics(ds []diagnostics.Diagnostic) {
 		if d.Code != diagnostics.CodeSemanticUnknownKind {
 			continue
 		}
+		if unknownRegionKindRE.MatchString(d.Message) {
+			// A REGION kind: the choices are the region kinds, not the slide
+			// kinds — f-deals-pitch was told `bridge` was available because
+			// this list held the slide kinds (go-slide-creator-ptazs).
+			regionKinds := append([]string(nil), slides.RegionKinds...)
+			if d.Details == nil {
+				d.Details = make(map[string]any)
+			}
+			d.Details["available"] = regionKinds
+			d.Fix = &diagnostics.Fix{Kind: "choose_kind", Params: map[string]any{"available": regionKinds}}
+			d.NextToolCall = &patterns.ToolCallSuggestion{Tool: "list_slide_kinds", ArgsTemplate: map[string]any{"kinds": []any{string(semantic.KindRegions)}}}
+			continue
+		}
 		if available == nil {
 			for _, kind := range semantic.AllSlideKinds() {
 				available = append(available, string(kind))
@@ -260,6 +274,10 @@ func enrichSemanticKindDiagnostics(ds []diagnostics.Diagnostic) {
 
 // unknownKindRE reads the rejected kind out of an unknown-kind message.
 var unknownKindRE = regexp.MustCompile(`^unknown slide kind "([^"]*)"`)
+
+// unknownRegionKindRE recognises a regions slide's unknown REGION kind, whose
+// choices are the region kinds (internal/semantic.validateRegion).
+var unknownRegionKindRE = regexp.MustCompile(`^unknown region kind "`)
 
 // semanticizeFindings gives the findings of a DeckSpec envelope their remedy
 // without trying any patch; see remedyEnvelope.
