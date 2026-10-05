@@ -246,9 +246,10 @@ func (p *tableHighlight) NewCellOverride() any { return &TableHighlightCellOverr
 // stored below its role floor) on every shipped template
 // (go-slide-creator-n1muf), every shape keeping the uniform 0.5 cm text
 // margin. It is guidance for a dense matrix, not a per-field validation limit:
-// a sparse row can use its full schema maxima. From four option rows a row
-// holds its name and no readable detail (0); the name then keeps about
-// tableHighlightNameOnlyBudget characters.
+// a sparse row can use its full schema maxima. From four option rows the
+// target is the name alone (0), about tableHighlightNameOnlyBudget characters:
+// a detail line is then reported only where the table does not fit the
+// measured content area (PostExpandWarnings).
 func tableHighlightPairedCopyBudget(options, criteria int) int {
 	switch {
 	case options <= 2:
@@ -308,16 +309,23 @@ func (p *tableHighlight) PostExpandWarnings(ctx ExpandContext, values, overrides
 		return nil
 	}
 	var warnings []string
-	if w := thAreaWarning(ctx, v, overrides); w != "" {
-		warnings = append(warnings, w)
+	area := thAreaWarning(ctx, v, overrides)
+	if area != "" {
+		warnings = append(warnings, area)
 	}
+	// With the content area measured, the table's own rows say whether a
+	// detail line is readable: each is as tall as its written text needs, and
+	// a table that fits is written at its sizes. The budget below is the
+	// answer for a layout that was not measured; on one that was, it refused
+	// five one-line details the area held (go-slide-creator-u8orh).
+	fits := area == "" && ctx.LayoutBounds.Width > 0 && ctx.LayoutBounds.Height > 0
 	budget := tableHighlightPairedCopyBudget(len(v.Options), len(v.Criteria))
 	if budget >= thNameMax {
 		return warnings
 	}
 	if budget == 0 {
 		for i, option := range v.Options {
-			if strings.TrimSpace(option.Detail) != "" {
+			if !fits && strings.TrimSpace(option.Detail) != "" {
 				warnings = append(warnings, fmt.Sprintf("%s: table-highlight options[%d].detail has %d characters; a %d-option matrix holds the option name and no readable detail — drop the details, use 3 or fewer options, or split the table", ErrCodeBodyTooLong, i, runeLen(option.Detail), len(v.Options)))
 			}
 			if n := runeLen(option.Name); n > tableHighlightNameOnlyBudget {
@@ -350,10 +358,10 @@ func (p *tableHighlight) Schema() *Schema {
 
 	option := ObjectSchema(map[string]*Schema{
 		"name":   StringSchema(thNameMax).WithDescription("Option name (≤40 chars); dense paired name/detail targets depend on matrix shape (about 36 each at 3 options; 30 for a name alone from 4 options)"),
-		"detail": StringSchema(thDetailMax).WithDescription("Optional descriptor under the name (≤80 chars for up to 4 options × 4 criteria; ≤60 in denser matrices); from 4 options a row holds no readable detail — omit it"),
+		"detail": StringSchema(thDetailMax).WithDescription("Optional descriptor under the name (≤80 chars for up to 4 options × 4 criteria; ≤60 in denser matrices); from 4 options it is kept only where the table fits the content area"),
 		"scores": ArraySchema(score, thMinCriteria, thMaxCriteria).WithDescription("One score per criterion, in criteria order"),
 	}, []string{"name", "scores"}).WithAdditionalProperties(false).
-		WithDescription("Paired name/detail readable characters by option rows x criteria: 2 rows about 40 each; 3 rows with 2-3/4/5-6 criteria about 36/32/30; from 4 rows no readable detail (name only, about 30 characters). Sparse rows can use field maxima; fit reports flag copy beyond dense paired targets")
+		WithDescription("Paired name/detail readable characters by option rows x criteria: 2 rows about 40 each; 3 rows with 2-3/4/5-6 criteria about 36/32/30; from 4 rows a detail only where the table fits (name about 30 characters). Sparse rows can use field maxima; fit reports flag copy beyond dense paired targets")
 
 	valuesSchema := ObjectSchema(map[string]*Schema{
 		"criteria":          ArraySchema(criterion, thMinCriteria, thMaxCriteria).WithDescription("2-6 criteria (columns)"),
@@ -876,20 +884,38 @@ func (l *thLayout) fit() {
 			spreadRowSlack(l.rowPt, l.total(), l.areaH)
 		}
 		if l.total() > l.areaH {
-			// Not even the tightest rows fit: they would only be scaled down
-			// further, so the over-full table keeps the uniform margin.
-			l.padPt = 0
-			l.measure(headerSize, bodySize, 12)
-		}
-		if l.total() > l.areaH && thLegendCompactPt*l.areaH/l.total() < thLegendRowPt+2*SubGridInsetPt {
-			// Over-filled enough that the grid's proportional scale-down would
-			// squeeze the compact legend below its nested row: this content
-			// cannot fit (thAreaWarning says so), so keep the estimated rows
-			// and the generous legend reserve (see thLegendPt).
-			l.tight, l.legendPt = false, thLegendPt
-			l.measure(headerSize, bodySize, 12)
+			// Not even the tightest rows fit (thAreaWarning says so). The grid
+			// scales every row down by the same factor, so the rows keep their
+			// written height and tightest padding: the text then shrinks by
+			// what the table is short of, and the size a refusal reports is
+			// that shortfall. Rows at the uniform margin lost the same points
+			// from far less text height, and a table 5pt too tall was reported
+			// at 6.5pt (go-slide-creator-u8orh).
+			l.reserveLegend(headerSize, bodySize)
 		}
 	}
+}
+
+// reserveLegend sizes the legend rows of an over-full table so the grid's
+// proportional scale-down leaves each its nested row (thLegendCompactPt); a
+// legend scaled below it shrinks its labels to a few points
+// (go-slide-creator-z0up). A table so over-full that the reserve would pass
+// the generous thLegendPt keeps the estimated rows and that reserve instead.
+func (l *thLayout) reserveLegend(headerSize, bodySize float64) {
+	n := float64(len(l.legend))
+	if n == 0 {
+		return
+	}
+	rest := l.total() - n*l.legendPt
+	if room := l.areaH - n*thLegendCompactPt; room > 0 {
+		if reserve := thLegendCompactPt * rest / room; reserve <= thLegendPt {
+			l.legendPt = math.Max(reserve, thLegendCompactPt)
+			l.measure(headerSize, bodySize, 12)
+			return
+		}
+	}
+	l.tight, l.legendPt, l.padPt = false, thLegendPt, 0
+	l.measure(headerSize, bodySize, 12)
 }
 
 func (p *tableHighlight) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {

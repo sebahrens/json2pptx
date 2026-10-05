@@ -565,7 +565,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"strategy-house":      5.3,
 	"stylish-panels":      2.8,
 	"swimlane":            4.3,
-	"table-highlight":     4.6,
+	"table-highlight":     6.7, // over-full rows keep their tightest padding (go-slide-creator-u8orh)
 	"team-bios":           5.0,
 	"text-sidebar":        5.0, // Written spacing exposes existing shrink; CLI must refuse it.
 	"timeline-horizontal": 5.5,
@@ -624,7 +624,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"strategy-house":               6.0,
 	"stylish-panels":               2.8,
 	"swimlane":                     4.8,
-	"table-highlight":              5.3,
+	"table-highlight":              8.2, // as above (go-slide-creator-u8orh)
 	"team-bios":                    5.5,
 	"text-sidebar":                 5.5,
 	"timeline-horizontal":          8.6, // stop rows grow to their written fit (n1muf)

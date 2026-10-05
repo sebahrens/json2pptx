@@ -31,7 +31,9 @@ message is that number, "slide index N" is 0-based). Ignore `debug`.
   the finding is gone and nothing new blocks; send it unchanged. A patch
   without the flag holds an `<instruction>` value: write your own words
   within the budget. An over-full slide's message ends `— verified fix:
-  removing /slides/7/options/0/detail … clears this`; a label the layout
+  removing /slides/7/options/0/detail … clears this` (least loss first: a
+  line, a list's detail lines, an entry, the layout switch; never a required
+  takeaway); a label the layout
   writes ("RECOMMENDED") is never yours to shorten — cut what the slide
   holds. `describe_finding` is offered only on a blocker with no remedy.
 - `SEMANTIC_PATTERN_DEGRADED` is reported per over-budget item
@@ -75,18 +77,18 @@ max_chars, pattern}}`: rewrite that field yourself within `max_chars`.
 
 ### What to do with a finding
 
-- `refuse`: the engine cannot safely produce/accept the requested result.
+- `refuse`: the engine cannot safely produce the result.
   Repair the source and validate again; a written artifact is not success.
 - `shrink_or_split`: the content needs more room or less text. Preserve facts;
-  split the slide or rewrite copy rather than blindly truncating.
+  split the slide or rewrite copy, never truncate blindly.
 - `review` / `info`: a judgment for the author; inspect the rendered slide
-  and decide. An advisory is not a failed call. `fit_overflow` at `info` (one
+  and decide. `fit_overflow` at `info` (one
   per slide): a `shape_grid` cell fits only through a stored autofit scale,
   so its size differs between PowerPoint and LibreOffice. Apply `fix`
   (`reduce_cell_text`: `cell_path`, `max_chars`; `cells` lists every
   affected cell) or give the cells height.
 
-`score_deck` classifies a finding as `pattern_choice` (usually calls for a
+`score_deck` classifies a finding as `pattern_choice` (a
 different visual family), `rendering` (fit, geometry or contrast repair) or
 `content` (e.g. `TITLE_NOT_ACTION`, `TITLE_TOO_LONG`: a better title,
 evidence, labels or copy). `DATA_WITHOUT_SOURCE` (review: a
@@ -102,8 +104,8 @@ max_topic_title_pct; `NO_EXECUTIVE_SUMMARY` (6+ slides) and
 `CLOSING_WITHOUT_NEXT_STEPS` ("Thank you" closer, no ask) → require_storyline.
 `SLIDE_TEXT_DENSE` (>6 bullets, >80 words, bullet over 2 lines) costs score.
 
-On raw decks, `propose_repairs` translates findings to candidate directives
-and separates executable `directives` from `advisory[]`. The
+On raw decks, `propose_repairs` turns findings into executable `directives`
+and `advisory[]`. The
 executable and advisory vocabularies are
 `get_capabilities().vocabularies.repair_fix_kinds` (params in
 `repair_fix_kind_params`) and `advisory_fix_kinds`. `repair_slide` applies

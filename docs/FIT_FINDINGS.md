@@ -287,6 +287,21 @@ for that slide: it is reported at the slide's DeckSpec path with severity
 `error`, and the per-field refusals are listed under it as `symptoms[]`
 (`evidence.symptoms` in the envelope) instead of as separate errors.
 
+**Remedies in order of what they keep (go-slide-creator-u8orh).** The verified
+patch of an over-full slide is the first of these that clears it: one optional
+line of one entry, the optional line of every entry of a list (an
+`option_matrix` keeps its board and every option without its `detail` lines),
+the last entry of a list, and only then the switch to the kind's text layout,
+which gives up the visual; the message names that switch as the alternative
+when a cut was found. A takeaway the slide's kind requires is neither a
+candidate nor a remedy the message lists: `SEMANTIC_TAKEAWAY_REQUIRED` would
+ask for it back. A `table-highlight` (`option_matrix`) capacity finding now
+reads `… — shorten the option details, drop them, or use fewer options or
+criteria`, its `evidence.measured.font_pt` is the size the over-full table
+shrinks to by its actual shortfall (11.8pt for a board 5pt too tall, where it
+read 6.5pt), and option `detail` lines from four options are a finding only
+where the table does not fit the measured content area.
+
 ### Sort invariant
 
 Every `fit_report` / `findings` array crosses serialization boundaries in the canonical order

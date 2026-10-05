@@ -613,14 +613,21 @@ func validateSlideAt(path string, slide SlideSpec, s *semDiags) {
 
 	// Content-bearing slides should carry a one-line takeaway (insight counts
 	// for chart_insight).
-	if kindNeedsTakeaway[slide.Kind] && !kindConclusionPresent(slide) {
-		if slide.String("takeaway") == "" && slide.String("insight") == "" {
-			s.advisory(path+".takeaway", diagnostics.CodeSemanticTakeawayRequired,
-				fmt.Sprintf("%s slide should carry a one-line takeaway", slide.Kind))
-		}
+	if TakeawayRequired(slide) && slide.String("takeaway") == "" {
+		s.advisory(path+".takeaway", diagnostics.CodeSemanticTakeawayRequired,
+			fmt.Sprintf("%s slide should carry a one-line takeaway", slide.Kind))
 	}
 
 	scanWeakBody(path, slide.Body, s)
+}
+
+// TakeawayRequired reports whether validation asks this slide for a takeaway
+// (SEMANTIC_TAKEAWAY_REQUIRED when it has none): its kind carries one and
+// nothing else on the slide is its conclusion. Advice about a slide that is
+// over-full asks the same question before it proposes dropping the takeaway
+// (go-slide-creator-u8orh).
+func TakeawayRequired(slide SlideSpec) bool {
+	return kindNeedsTakeaway[slide.Kind] && !kindConclusionPresent(slide) && slide.String("insight") == ""
 }
 
 // kindConclusionPresent reports whether the slide already carries its kind's

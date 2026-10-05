@@ -371,13 +371,22 @@ facts. The patches:
 - text the slide does not draw (`CONTENT_DROPPED`), or an optional second line
   a layout has no room for: its removal;
 - an over-full slide (`BODY_TOO_LONG`, `TEXT_BELOW_READABLE_MIN`,
-  `fit_overflow`, `density_exceeded` that blocks): the smallest single removal
-  that clears it. The candidates are one optional line of one list entry
-  (`detail`, `description`, `body`, `support`, `bio`, `subtitle`,
-  `comparator`), the takeaway, the last entry of a list, and — when the
-  finding sits on a list inside the slide — that list's entries; they are
-  validated cheapest first on the slide alone (at most 8, on at most two
-  slides per response) and the one that clears it is validated in the deck.
+  `fit_overflow`, `density_exceeded` that blocks): the removal that clears it
+  and keeps most. The candidates are, in that order, one optional line of one
+  list entry (`detail`, `description`, `body`, `support`, `bio`, `subtitle`,
+  `comparator`) or the takeaway; that optional line of every entry of a list
+  (`removing the 5 detail lines under /slides/3/options (128 characters)
+  clears this and keeps every entry`); the last entry of a list; and — first
+  of all, when the finding sits on a list inside the slide — that list's
+  entries. A takeaway the kind requires (`semantic.TakeawayRequired`: the
+  kinds `SEMANTIC_TAKEAWAY_REQUIRED` applies to, unless an `insight`, a
+  `bottom_line` or a decision's `recommendation` is the conclusion) is never a
+  candidate, and a sentence that ends `…, or drop the slide takeaway` loses
+  that remedy on such a slide: validation would ask for the takeaway back
+  (go-slide-creator-u8orh). Within a group they are validated cheapest first
+  on the slide alone (at most 8, the cheapest list-wide cut and entry always
+  among them, on at most two slides per response) and the one that clears it
+  is validated in the deck.
   The message then ends `— verified fix: removing /slides/7/options/0/detail
   (37 characters) clears this; the rest fits as written`, or, when the limit
   is the number of rows, `the limit here is the number of points: 4 fit, so
