@@ -310,6 +310,10 @@ type kpiText struct {
 	// reserveDelta / reserveComparator keep the line on every cell when any
 	// cell of the row carries one.
 	reserveDelta, reserveComparator bool
+	// oneSlot: no cell of the row carries both a delta and a comparator, so
+	// the two share the one line under the caption instead of a comparator
+	// sitting a blank delta line below its label.
+	oneSlot bool
 	// valueInk / ink colour the value and the lines under it. Cards write
 	// "lt1" for both: the peer-fill and readable-ink passes recolour them for
 	// the surface the card ends up on.
@@ -350,14 +354,23 @@ func (t kpiText) json() json.RawMessage {
 		paragraphs = append(paragraphs, line(kpiBlankLine, t.smallSize))
 	}
 	sub := t.sub
+	comparator := t.comparator
+	if t.oneSlot {
+		if sub == "" {
+			sub = comparator
+		}
+		comparator = ""
+		if sub == "" && (t.reserveDelta || t.reserveComparator) {
+			sub = kpiBlankLine
+		}
+	}
 	if sub == "" && t.reserveDelta {
 		sub = kpiBlankLine
 	}
 	if sub != "" {
 		paragraphs = append(paragraphs, line(sub, kpiSubSize(t.smallSize)))
 	}
-	comparator := t.comparator
-	if comparator == "" && t.reserveComparator {
+	if comparator == "" && t.reserveComparator && !t.oneSlot {
 		comparator = kpiBlankLine
 	}
 	if comparator != "" {
@@ -379,10 +392,22 @@ func (t kpiText) json() json.RawMessage {
 	return data
 }
 
+// kpiCaptionPadMaxLines is the most blank caption lines a card takes so its
+// delta / comparator line shares a baseline with its neighbours'. A line of
+// air still reads as the card's own annotation; beyond that the line floats
+// under its card ("SLA is 6 am" two lines below a two-line caption because
+// another card's caption ran to four), so each card then keeps its
+// annotation directly under its own caption (go-slide-creator-18dqh).
+const kpiCaptionPadMaxLines = 1
+
 // kpiCaptionPadLines returns, per cell, the blank caption lines that bring its
-// caption up to the row's longest (measured at the caption size in each cell's
-// own text width). It is all zeros when no cell carries a delta or a
-// comparator: nothing sits under the caption to align.
+// caption up to the longest caption among the cells that carry a delta or a
+// comparator (measured at the caption size in each cell's own text width), so
+// those lines share one baseline. A cell without such a line has nothing to
+// align and never sets the baseline: a long caption on a bare card must not
+// push a neighbour's comparator away from its label. It is all zeros when no
+// cell carries a delta or a comparator, and when the carrying cells' captions
+// differ by more than kpiCaptionPadMaxLines.
 func kpiCaptionPadLines(font string, cells []KPICell, smallSize float64, widthOf func(i int) float64) []int {
 	pads := make([]int, len(cells))
 	if delta, comparator := kpiReservedSlots(cells); !delta && !comparator {
@@ -390,13 +415,22 @@ func kpiCaptionPadLines(font string, cells []KPICell, smallSize float64, widthOf
 	}
 	size := shapegrid.EffectiveTextSizePt(smallSize)
 	lines := make([]int, len(cells))
-	most := 0
+	most, least := 0, 0
 	for i, c := range cells {
 		lines[i] = max(1, measuredLines(c.Small, font, false, size, widthOf(i)))
+		if c.Sub == "" && c.Comparator == "" {
+			continue
+		}
+		if most == 0 || lines[i] < least {
+			least = lines[i]
+		}
 		most = max(most, lines[i])
 	}
+	if most-least > kpiCaptionPadMaxLines {
+		return pads
+	}
 	for i := range pads {
-		pads[i] = most - lines[i]
+		pads[i] = max(0, most-lines[i])
 	}
 	return pads
 }
@@ -410,6 +444,17 @@ func kpiReservedSlots(cells []KPICell) (delta, comparator bool) {
 		comparator = comparator || c.Comparator != ""
 	}
 	return delta, comparator
+}
+
+// kpiOneAnnotationSlot reports whether the row needs only one line under its
+// captions: no card carries both a delta and a comparator.
+func kpiOneAnnotationSlot(cells []KPICell) bool {
+	for _, c := range cells {
+		if c.Sub != "" && c.Comparator != "" {
+			return false
+		}
+	}
+	return true
 }
 
 // kpiSubSize returns the font size for the sub/delta annotation: ~85% of the
@@ -685,12 +730,13 @@ func measureKPIRow(ctx ExpandContext, cells []KPICell, gapPt, bigSize, smallSize
 	}
 	pads := kpiCaptionPadLines(font, cells, smallSize, widthOf)
 	reserveDelta, reserveComparator := kpiReservedSlots(cells)
+	oneSlot := kpiOneAnnotationSlot(cells)
 	textPt := make([]float64, len(cells))
 	for i, c := range cells {
 		t := kpiText{
 			big: c.Big, bigSize: lay.valueSize, small: c.Small, smallSize: smallSize, padLines: pads[i],
 			sub: c.Sub, comparator: c.Comparator, reserveDelta: reserveDelta, reserveComparator: reserveComparator,
-			valueInk: "lt1", ink: "lt1", tight: tight,
+			oneSlot: oneSlot, valueInk: "lt1", ink: "lt1", tight: tight,
 		}
 		lay.texts[i] = t
 		// The height the writer needs to store this text unshrunk in the
