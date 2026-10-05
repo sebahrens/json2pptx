@@ -25,7 +25,7 @@ language, no scare words.
 3. 14 regulatory findings must be closed in nine months                         kpi_snapshot (situation)
 4. Two of five risk appetite metrics are breached, one is amber                 option_matrix, rag (complication)
 5. Operational losses rose 84% in two years to EUR 11.2M                        regions (complication, quantified)
-6. Cyber is the only high-likelihood, high-impact risk; three more are high impact   raw capability-heatmap
+6. Cyber is the only high-likelihood, high-impact risk; two more are high impact   risk_heatmap
 7. The target model adds 16 FTE to the 2nd line and one integrated report       comparison (answer: the model)
 8. Four pillars take risk governance from 'needs improvement' to effective      pillars (house)
 9. Co-delivery at EUR 2.1M balances speed, cost and capability transfer         decision
@@ -41,7 +41,7 @@ language, no scare words.
 | 3 | `kpi_snapshot` | Findings, high findings, losses, deadline — 4 KPIs with `comparator` | Four cards leave the lower half empty on some templates (`go-slide-creator-18dqh`); consider `regions` with a chart if you have a series. |
 | 4 | `option_matrix` | Risk type rows; `Status` (`rag`), `Current` and `Limit` (`text`); breached rows in `recommended` with `highlight_label: Breached` | No `detail` lines at five rows. |
 | 5 | `regions` `main_left` | Loss bar chart; `stat` EUR 11.2M with the peer median in `context`; two bullets on causes | Peer comparison in the `context` line, not a second chart. |
-| 6 | raw `capability-heatmap` | Columns = likelihood (low / medium / high) with `sublabel` counts; `tiers` = impact; each cell a named risk | The legend explains tiers; six risks placed, none on a line. |
+| 6 | `risk_heatmap` | `items`: each risk with its `likelihood` and `impact` (low / medium / high) | Six risks placed, none on a line; the cell colour is the likelihood × impact band, not a choice. Three or more risks in one cell of a 5 × 5 need a tall template or a split. |
 | 7 | `comparison` | Three lines today vs target, then the weaknesses they close | Rows aligned: line 1 ↔ line 1. |
 | 8 | `pillars` | `objective` in the roof, four pillars with two bullets each, `foundation` of a band + a 3-cell row | A house needs objective + foundation; otherwise it renders as panels. |
 | 9 | `decision` | Advisory / co-delivery / outsource with price and one consequence each | `recommended: true` on one; the ask in `recommendation`. |
@@ -82,9 +82,12 @@ slides:
 
 **Heat map with named risks.** A 2 × 2 `matrix_2x2` cannot place "medium"
 honestly (the journey run saw four risks land on the axis lines). The
-`capability-heatmap` pattern as a 3 × 3 — likelihood columns, impact tiers,
-one risk per cell — is the honest rendering until a heat-map kind exists
-(`go-slide-creator-ec74l`):
+`risk_heatmap` kind takes the risks as they are rated — `items`, each with a
+`likelihood` and an `impact` — and places them on a 3 × 3 whose cells are
+coloured by their likelihood × impact band. `size: 5` with
+`likelihood_levels` / `impact_levels` gives the five-level grid a risk
+function's own scale uses (Rare … Almost certain, Negligible … Severe); a
+level may then be written as its label or as 1–5:
 
 ```yaml
 meta:
@@ -93,37 +96,16 @@ meta:
   date: October 2026
   source: Harbour Bank top-risk register, Q3 2026
 slides:
-  - kind: raw_json2pptx
-    slide:
-      slide_type: content
-      layout_id: blank-title
-      content:
-        - placeholder_id: title
-          type: text
-          text_value: Cyber is the only high-likelihood, high-impact risk; three more are high impact
-      pattern:
-        name: capability-heatmap
-        values:
-          columns:
-            - header: Low likelihood
-              sublabel: 2 risks
-              cells:
-                - {text: Model risk, tier: 0}
-                - {text: Climate, tier: 1}
-            - header: Medium likelihood
-              sublabel: 3 risks
-              cells:
-                - {text: Third-party outage, tier: 0}
-                - {text: Conduct, tier: 1}
-                - {text: Fraud, tier: 2}
-            - header: High likelihood
-              sublabel: 1 risk
-              cells:
-                - {text: Cyber, tier: 0}
-          tiers:
-            - {label: High impact, description: material loss}
-            - {label: Medium impact, description: contained loss}
-            - {label: Low impact, description: minor loss}
+  - kind: risk_heatmap
+    title: Cyber is the only high-likelihood, high-impact risk; two more are high impact
+    items:
+      - {name: Cyber, likelihood: high, impact: high}
+      - {name: Third-party outage, likelihood: medium, impact: high}
+      - {name: Model risk, likelihood: low, impact: high}
+      - {name: Conduct, likelihood: medium, impact: medium}
+      - {name: Climate, likelihood: low, impact: medium}
+      - {name: Fraud, likelihood: medium, impact: low}
+    takeaway: Cyber is the one risk rated high on both axes; third-party outage and model risk are high impact.
 ```
 
 **Three lines of defence** is a `comparison` (today / target) when the point
@@ -136,7 +118,7 @@ accountabilities", [People, Data, Technology]]`) when the point is the model.
 |---|---|
 | Regulatory remediation plan (post-inspection) | Findings `table` (ref, finding, severity, owner, date — ≤ 9 per slide, rest in appendix) → root causes `pillars` → remediation `roadmap` → governance `org` → `next_steps` with regulator submission date. |
 | Risk appetite framework design | Appetite dashboard `option_matrix` → metric definitions `table` → cascade `architecture` (board → BU → desk as tiers, "reporting" as a rail) → `decision`. |
-| Operational resilience / third-party risk | Important business services `table` → impact tolerances `kpi_snapshot` → scenario heat map (raw `capability-heatmap`) → gaps `comparison` → `roadmap`. |
+| Operational resilience / third-party risk | Important business services `table` → impact tolerances `kpi_snapshot` → scenario heat map (`risk_heatmap`) → gaps `comparison` → `roadmap`. |
 | Model risk / climate risk | Inventory `kpi_snapshot` → tiering `matrix_2x2` → validation plan `timeline` → `next_steps`. |
 
 ## Review points for this audience

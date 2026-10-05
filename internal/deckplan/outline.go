@@ -92,13 +92,14 @@ var (
 	outlineBridge   = outlineKind{"bridge", "bridge", "waterfall-bridge", "evidence", namedGuidance["bridge"], 2}
 	outlineCase     = outlineKind{"case", "image_case", "image-text-split", "evidence", namedGuidance["image_case"], 3}
 	outlineMatrix   = outlineKind{"risks", "matrix_2x2", "matrix-2x2", "framework", namedGuidance["matrix_2x2"], 3}
+	outlineHeatmap  = outlineKind{"risks", "risk_heatmap", "risk-heatmap", "framework", namedGuidance["risk_heatmap"], 3}
 	outlineRegions  = outlineKind{"regions", "regions", "", "evidence", regionsGuidance, 4}
 	outlinePillars  = outlineKind{"framework", "pillars", "stylish-panels", "framework", namedGuidance["pillars"], 3}
 )
 
 // outlineKindByName maps a kind the vocabulary names to its outline slide.
 var outlineKindByName = map[string]outlineKind{
-	"bridge": outlineBridge, "image_case": outlineCase, "matrix_2x2": outlineMatrix, "regions": outlineRegions,
+	"bridge": outlineBridge, "image_case": outlineCase, "matrix_2x2": outlineMatrix, "risk_heatmap": outlineHeatmap, "regions": outlineRegions,
 	"architecture": outlineArch, "team": outlineTeam, "table": outlineTable, "comparison": outlineCompare,
 	"option_matrix": outlineOptions, "decision": outlineAsk, "roadmap": outlineRoadmap, "process": outlineProcess,
 	"kpi_snapshot": outlineKPIs, "chart_insight": outlineChart, "pillars": outlinePillars,
@@ -773,7 +774,7 @@ func (o *briefOutline) routeRest(facts []briefFact) []string {
 	place(func(f briefFact) bool { return f.series }, "chart_insight", "regions")
 	place(func(f briefFact) bool { return f.option }, "option_matrix", "comparison", "decision")
 	place(func(f briefFact) bool { return f.numeric }, "kpi_snapshot", "chart_insight", "regions", "executive_summary", "image_case")
-	place(func(f briefFact) bool { return f.risk }, "table", "matrix_2x2")
+	place(func(f briefFact) bool { return f.risk }, "table", "risk_heatmap", "matrix_2x2")
 	place(func(f briefFact) bool { return f.ask || f.recommend }, "decision", "next_steps")
 	place(func(f briefFact) bool { return f.dated && !f.action }, "timeline", "roadmap")
 	place(func(f briefFact) bool { return f.action }, "next_steps", "process")

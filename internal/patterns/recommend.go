@@ -451,6 +451,15 @@ var rules = []rule{
 		rationale: "Value-chain pattern for left-to-right operational sequences with per-step descriptions",
 	},
 
+	// Risk heat map — named risks on a likelihood × impact grid
+	// (go-slide-creator-ec74l).
+	{
+		pattern:   "risk-heatmap",
+		keywords:  []string{"risk heat map", "risk heatmap", "risk matrix", "heat map of risks", "likelihood x impact", "likelihood and impact", "likelihood vs impact", "likelihood by impact", "probability and impact", "probability x impact", "impact and likelihood", "top risks by likelihood"},
+		baseScore: 0.94,
+		rationale: riskHeatmapRationale,
+	},
+
 	// Capability heatmap — activities under 3-8 functions, coloured by tier
 	{
 		pattern:   "capability-heatmap",

@@ -104,21 +104,22 @@ numbers do not say:
 | `kpi_snapshot` | 2–6 KPIs; give each its reference in `comparator` (alias `vs`, "vs plan +4 pts"). A value's 12 characters are the hard maximum, not the fit: five KPIs hold about 11 digits and six about 9 on the narrowest templates (the `kpis[].value` budget `note`). Past 12 the slide degrades; a value that will not fit one line is `BODY_TOO_LONG` at `/slides/N/kpis/i/value` with `max_chars`: shorten it or show fewer KPIs. |
 | `chart_insight` | Needs one stated implication: `insights[]` (1–6 beside the chart; more use a native chart), a scalar `insight`, or just `takeaway`, which is then the 18pt so-what callout beside a 75%-wide chart (not repeated in the band; not `takeaway_missing`). Every series needs one unquoted number per category (`CHART_SERIES_LENGTH_MISMATCH`, `CHART_VALUE_NOT_NUMERIC`). Chart types are short names (`bar`, `line`; `bar_chart` is accepted). |
 | `comparison` | 2 balanced columns of ≤10 rows compare; 3–5 columns are panels; 6–12 cards; beyond that, bullets. Two columns take `connectors: true` (a per-row today → target badge), `highlight_column` (`left` / `right` / a header) or `highlight_row` (0-based index or cell text) — one highlight, not both; 3+ columns ignore them. |
-| `table` | ≤6 headers × 9 body rows (10 logical rows with the header); one-line rows past 7 render at a compact pitch, nothing hidden. A row that cannot fit is `table_rows_truncated` (error): split at its `split_at_row`, titles `… (1/2)` / `… (2/2)`. Options scored against criteria belong in `option_matrix`, not a generic table. |
+| `table` | ≤6 headers × 9 body rows (10 logical rows with the header); one-line rows past 7 render at a compact pitch, nothing hidden. A row that cannot fit is `table_rows_truncated` (error): split at its `split_at_row`, titles `… (1/2)` / `… (2/2)`. |
 | `option_matrix` | 2–6 criteria × 2–6 options; `scale` per criterion (`{label, scale}`: `harvey` 0–4, `rag`, `text`) — a status board is `rag` + `text` columns. `recommended` takes one option (name or 0-based index) or a list; a higher-scoring rival is `SEMANTIC_RECOMMENDATION_OUTSCORED`. |
 | `decision` | 3–6 options are numbered boxes; exactly 2, or 7–12, each with a detail, are cards. Mark the recommended option `recommended: true` (or name it in slide-level `recommended`); two or more read "Recommended: A and B" when no `recommendation` is written. The ask goes in `recommendation`. |
 | `team` | 1–8 people, each with a role; a `photo` (path / url, or `{path|url, alt}`) or an initials `photo_label`. |
 | `image_case` | Picture + body, ≤5 bullets, ≤3 metrics. ≤6 `callouts: [{label, x, y, units?}]`: fractions 0–1 or `units: "px"`; `OVERLAY_TARGET_CROPPED` → `image.fit: "contain"`. `image_width_pct` 30–60 (default 45): a wide `contain` screenshot wants 55–60, else it is letterboxed. No image: a draft renders, but `SEMANTIC_IMAGE_MISSING` blocks readiness (`image_label` only labels the frame). `regions` images have no callouts. |
 | `framework`, `matrix_2x2` | Every canonical part (SWOT, Five Forces, BMC; four headed quadrants and both axes) or the slide degrades to grouped bullets. |
+| `risk_heatmap` | 1–20 `items` `{name, likelihood, impact}` on a 3 × 3 (`size: 5`: 5 × 5); a level is `low` / `medium` / `high`, 1–`size` or a `likelihood_levels` / `impact_levels` label. Risks sharing a cell stack. |
 | `timeline`, `roadmap` | 3–7 milestones; one with an `end_date` turns the line into bars drawn to scale. 3–6 phases for a roadmap (`milestone` ≤60 marks a phase); parallel workstreams go in `parallel_tracks` (0–4, ≤90 each; `parallel_label` ≤24): bars under the phases, not a raw slide. |
-| `stat` | One value; `unit` renders at 40% of its size on the baseline. Several equal-weight figures → `kpi_snapshot`. |
-| `agenda` | 2–10 sections; `title` defaults to "Agenda"; `current` bolds one section and dims the rest. |
+| `stat` | One value; `unit` renders at 40% of its size on the baseline. |
+| `agenda` | 2–10 sections; `current` bolds one section and dims the rest. |
 | `quote` | One named speaker is a pull quote, 3–8 a cluster; two quotes, or missing names, degrade to bullets. |
 | `bridge` | 3–10 columns; a total off the running sum by >0.5% is `SEMANTIC_BRIDGE_TOTAL_MISMATCH`. |
 | `pillars` | 3–5 pillars. A house needs `objective` and `foundation` (a string, or 1–3 levels, each a band or a row of 2–5 cells) and takes a `beam`; without them it is panels. |
 | `org` | One root, ≤7 nodes, 3 levels, ≤4 direct reports per node; larger trees degrade to attributed bullets. |
 | `architecture` | 3–6 tiers; a tier's `items` (1–12, ≤40 characters each) are drawn one block each, a `description` as one line. |
-| `process` | 3–6 steps with descriptions are numbered rows (label ≤60, description ≤180); 7–8 steps (on two rows), or bare labels, are flow boxes (label and description together ≤80). A straight sequence is not a branching flowchart. |
+| `process` | 3–6 steps with descriptions are numbered rows (label ≤60, description ≤180); 7–8 steps (on two rows), or bare labels, are flow boxes (label and description together ≤80). |
 | `next_steps` | The closer: 2–6 `actions` `{action, owner, date}` and 0–3 `decisions`. Keep `closing` for a Q&A page; its title budget depends on the template. |
 
 Prefer `list_slide_kinds` canonical field names over the `aliases` it lists.

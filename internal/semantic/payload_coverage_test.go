@@ -386,6 +386,15 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 		"title":     {inject: func(s string) map[string]any { return covMatrix(map[string]any{"title": s}) }, rendered: true},
 		"takeaway":  {inject: func(s string) map[string]any { return covMatrix(map[string]any{"takeaway": s}) }, rendered: true},
 	},
+	// go-slide-creator-ec74l: every named risk has to reach its cell.
+	KindRiskHeatmap: {
+		"items": {inject: func(s string) map[string]any {
+			return covRiskHeatmap(map[string]any{"items": []any{map[string]any{"name": s, "likelihood": "medium", "impact": "high"}}})
+		}, rendered: true},
+		"size":     {inject: func(string) map[string]any { return covRiskHeatmap(map[string]any{"size": 5.0}) }, rendered: false, why: "size selects the grid rather than contributing text of its own"},
+		"title":    {inject: func(s string) map[string]any { return covRiskHeatmap(map[string]any{"title": s}) }, rendered: true},
+		"takeaway": {inject: func(s string) map[string]any { return covRiskHeatmap(map[string]any{"takeaway": s}) }, rendered: true},
+	},
 	// go-slide-creator-anzx: every part of the framework has to reach the
 	// rendered visual.
 	KindFramework: {
@@ -580,6 +589,22 @@ func TestSemanticPayloadFieldCoverage(t *testing.T) {
 			})
 		}
 	}
+}
+
+// covRiskHeatmap returns a minimal valid risk_heatmap payload with the given
+// fields overlaid.
+func covRiskHeatmap(overlay map[string]any) map[string]any {
+	body := map[string]any{
+		"title": "Top risks",
+		"items": []any{
+			map[string]any{"name": "Cyber", "likelihood": "high", "impact": "high"},
+			map[string]any{"name": "Fraud", "likelihood": 2, "impact": 1},
+		},
+	}
+	for k, v := range overlay {
+		body[k] = v
+	}
+	return body
 }
 
 // covOptionMatrix returns a minimal valid option_matrix payload with the given

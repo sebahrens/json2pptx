@@ -60,6 +60,7 @@ var kindWordHints = map[string]SlideKind{
 	"chart": KindChartInsight, "graph": KindChartInsight,
 	"cover": KindTitle, "divider": KindSection,
 	"options": KindOptionMatrix, "matrix": KindMatrix2x2,
+	"heatmap": KindRiskHeatmap, "heat_map": KindRiskHeatmap, "risk_matrix": KindRiskHeatmap, "risks": KindRiskHeatmap,
 	"image": KindImageCase, "case_study": KindImageCase,
 	"people": KindTeam, "house": KindPillars, "milestones": KindTimeline,
 	"thank_you": KindClosing, "end": KindClosing,

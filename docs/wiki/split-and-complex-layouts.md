@@ -394,15 +394,48 @@ slides:
               body: "Head of IAM. Recertification complete by **31 Dec 2026**; tooling live by 30 Jun 2027; Internal Audit re-tests in Q3 2027."
 ```
 
-## 10. Heat map with named risks — `matrix_2x2` or raw `capability-heatmap`
+## 10. Heat map with named risks — `risk_heatmap`
 
-Four quadrants with the items placed in them is `matrix_2x2` (`x_axis`,
-`y_axis`, `quadrants`, one optional `highlight`). A likelihood × impact map
-with "medium" values needs a 3 × 3: there is no kind for it yet
-(`go-slide-creator-ec74l`); the `capability-heatmap` pattern renders it
-honestly — columns are likelihood, `tiers` are impact (darkest = highest), each
-cell a named risk with its `tier`. See
-[playbook-risk-consulting.md](playbook-risk-consulting.md) for the full slide.
+Four quadrants with a headline and a description each is `matrix_2x2`
+(`x_axis`, `y_axis`, `quadrants`, one optional `highlight`). Named risks rated
+low / medium / high on likelihood and impact are `risk_heatmap`: `items` are
+1–20 `{name ≤40, likelihood, impact}`, placed on a 3 × 3 (`size: 5` for a
+5 × 5). A level is `low` / `medium` / `high` (`very low` … `very high` at
+size 5), a number 1–`size` (1 = lowest), or one of the grid's own
+`likelihood_levels` / `impact_levels` labels (lowest first, ≤14 chars each).
+Every cell is drawn and filled by its likelihood × impact band — neutral,
+tint, solid of the template's negative accent — so the colour is never an
+authoring choice; risks that share a cell stack one per line. A grid too
+crowded for 12pt names reports `BODY_TOO_LONG` at the fullest cell's first
+risk: shorten the names, keep the top risks on the map and the rest in a
+`table`, or drop the takeaway.
+
+```yaml
+meta:
+  title: Harbour Bank ERM uplift
+  template: midnight-blue
+  date: October 2026
+  source: Harbour Bank top-risk register, Q3 2026
+slides:
+  - kind: risk_heatmap
+    title: Cyber is the one severe risk rated almost certain
+    size: 5
+    likelihood_levels: [Rare, Unlikely, Possible, Likely, Almost certain]
+    impact_levels: [Negligible, Minor, Moderate, Major, Severe]
+    items:
+      - {name: Cyber attack, likelihood: Almost certain, impact: Severe}
+      - {name: Third-party outage, likelihood: Likely, impact: Major}
+      - {name: Data breach, likelihood: 4, impact: 4}
+      - {name: Model risk, likelihood: 2, impact: 5}
+      - {name: Conduct, likelihood: 3, impact: 3}
+      - {name: Climate transition, likelihood: 2, impact: 3}
+      - {name: Payment fraud, likelihood: 4, impact: 1}
+    takeaway: One risk sits in the top corner; two more are major and likely.
+```
+
+See [playbook-risk-consulting.md](playbook-risk-consulting.md) for the 3 × 3
+in a full deck. The raw `risk-heatmap` pattern takes the same `values` plus
+`tier_labels` (the legend wording) and `overrides.show_legend`.
 
 ## 11. Roadmap with parallel tracks — `roadmap`
 
@@ -517,6 +550,6 @@ by field, degrades nowhere, and patches by `path`.
 | Layers with concerns running through all of them | `architecture` with `rails` (§7) |
 | Up to nine data rows | one `table`; beyond, split `(2/2)` or appendix (§8) |
 | One finding, structured | raw `labeled-rows` (§9) |
-| 3 × 3 heat map with names | raw `capability-heatmap` (§10) |
+| 3 × 3 / 5 × 5 risk heat map with names | `risk_heatmap` (§10) |
 | Phases plus parallel workstreams | `roadmap` with `parallel_tracks` (§11) |
 | Whole patterns side by side or stacked | raw `compose` (§12) |

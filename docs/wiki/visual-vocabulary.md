@@ -51,7 +51,7 @@ recipes are in [split-and-complex-layouts.md](split-and-complex-layouts.md).
 | Regulatory findings in numbers | `kpi_snapshot` (findings by severity, deadline) | "14 regulatory findings must be closed in nine months" |
 | Risk appetite dashboard | `option_matrix` with `rag` + `text` criteria | "Two of five risk appetite metrics are breached, one is amber" |
 | Loss trend and its cause | `regions` `main_left`: bar + `stat` + `text` | "Operational losses rose 84% in two years to EUR 11.2M" |
-| Likelihood × impact with named risks | raw `capability-heatmap` (3 × 3) or `matrix_2x2` (2 × 2) | "Cyber is the only high-likelihood, high-impact risk" |
+| Likelihood × impact with named risks | `risk_heatmap` (3 × 3, or `size: 5`) | "Cyber is the only high-likelihood, high-impact risk" |
 | Three lines of defence today vs target | `comparison` | "The target model adds 16 FTE to the 2nd line and one integrated report" |
 | Target operating model | `pillars` with `objective` and `foundation` (the house) | "Four pillars take risk governance from 'needs improvement' to effective" |
 | Delivery options | `decision` (advisory / co-delivery / outsource) | "Co-delivery at EUR 2.1M balances speed, cost and capability transfer" |

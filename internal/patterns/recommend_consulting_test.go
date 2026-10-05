@@ -94,6 +94,29 @@ func TestRecommendVisualConsultingIntents(t *testing.T) {
 		}
 		above(t, "key risks and mitigations", "table", "card-grid")
 	})
+	// go-slide-creator-ec74l: named risks on likelihood × impact are a risk
+	// heat map; the 2x2 that puts every "medium" on an axis line and the
+	// numbers-only heatmap diagram rank under it.
+	t.Run("risk heat map", func(t *testing.T) {
+		for _, intent := range []string{
+			"likelihood x impact risk heat map with six named risks",
+			"risk matrix of likelihood vs impact for 6 risks",
+			"risk heatmap: top risks by likelihood and impact (low / medium / high)",
+		} {
+			if r := rank(intent); r["risk-heatmap"] != 0 {
+				t.Errorf("%q: risk-heatmap is not first: %v", intent, r)
+			}
+			above(t, intent, "risk-heatmap", "matrix-2x2")
+			above(t, intent, "risk-heatmap", "heatmap")
+			above(t, intent, "risk-heatmap", "capability-heatmap")
+		}
+		// Other heat maps and other matrices keep their own answer.
+		if r := rank("automation potential by function"); r["capability-heatmap"] != 0 {
+			t.Errorf("capability-heatmap lost its intent: %v", r)
+		}
+		above(t, "impact vs effort quadrant", "matrix-2x2", "risk-heatmap")
+		above(t, "key risks and mitigations with an owner per risk", "table", "risk-heatmap")
+	})
 }
 
 // TestRecommendVisualShortlistTableResolves: the new table candidate is a

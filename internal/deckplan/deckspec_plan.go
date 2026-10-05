@@ -478,7 +478,7 @@ func addPlanSlots(add func(int, deckSpecSlotDef), sig briefSignals, cover namedC
 	// A risk the brief names gets a slide of its own: it was dropped with
 	// unplaced_facts empty (go-slide-creator-hf8tf). A named heat map is that
 	// slide.
-	if sig.risks > 0 && (!cover.any("matrix_2x2") || sig.risks >= 2) {
+	if sig.risks > 0 && (!cover.any("matrix_2x2", "risk_heatmap") || sig.risks >= 2) {
 		add(6, deckSpecSlotDef{slot: "risks", kind: "table", guidance: guideRisks, capacity: 3, chapter: chapterPlan})
 	}
 

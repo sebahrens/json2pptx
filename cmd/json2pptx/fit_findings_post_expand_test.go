@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -539,6 +540,16 @@ func TestCapabilityHeatmapUnbreakableHeaderReachesFitReportAcrossTemplates(t *te
 	}
 	values.Columns[3].Header = "Supercalifragilistic"
 	assertPatternFindingAcrossTemplates(t, patterns.ErrCodeTextExceedsShape, "capability-heatmap", values, "Supercalifragilistic", "mid-word")
+}
+
+// go-slide-creator-ec74l: a heat-map cell too crowded for 12pt names is a
+// finding at the cell's first risk on every template, never a silent shrink.
+func TestRiskHeatmapCrowdedCellReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.RiskHeatmapValues{}
+	for i := 0; i < 20; i++ {
+		values.Items = append(values.Items, patterns.RiskHeatmapItem{Name: fmt.Sprintf("Operational resilience risk %d", i+1), Likelihood: "high", Impact: "high"})
+	}
+	assertBudgetFindingAcrossTemplates(t, "risk-heatmap", values, "items[0].name", "grid holds")
 }
 
 func TestFrameworkGridOverfullWarningReachesFitReportAcrossTemplates(t *testing.T) {

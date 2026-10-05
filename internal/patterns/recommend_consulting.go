@@ -72,6 +72,9 @@ func intentIsRisk(words []string) bool {
 	return intentHasAny(words, "risk", "risks", "risk register", "risk matrix", "risk heat map", "risk heatmap")
 }
 
+// riskHeatmapRationale is the risk-heatmap candidate's rationale.
+const riskHeatmapRationale = "Risk heat map: named risks placed by likelihood and impact on a 3 × 3 (or 5 × 5) grid whose cells are coloured by their likelihood × impact band — the risk_heatmap kind, items[{name, likelihood, impact}]; a \"medium\" has a cell of its own"
+
 func intentIsRiskMatrix(words []string) bool {
 	return intentIsRisk(words) && intentHasAny(words, "matrix", "heat map", "heatmap", "likelihood", "probability", "impact", "severity")
 }
@@ -242,8 +245,9 @@ func consultingIntentRouting(all []VisualCandidate, intentLower string, hints *V
 		}
 	}
 	if intentIsRiskMatrix(words) {
-		ensure(VisualCategoryPattern, "matrix-2x2", 0.92,
-			"Risk heat map: matrix-2x2 (DeckSpec kind matrix_2x2) with Likelihood × Impact axes, each quadrant listing the risks that sit in it")
+		ensure(VisualCategoryPattern, "risk-heatmap", 0.96, riskHeatmapRationale)
+		ensure(VisualCategoryPattern, "matrix-2x2", 0.86,
+			"matrix-2x2 (DeckSpec kind matrix_2x2) when the risks sort into four described quadrants and no rating is \"medium\"; named risks on a low / medium / high scale are risk-heatmap")
 		ensure(VisualCategoryPattern, "table-highlight", 0.88,
 			"Risk register scored with RAG dots per likelihood / impact, highest-exposure risk highlighted")
 	} else if intentIsRisk(words) && intentHasAny(words, "mitigation", "mitigations", "mitigate", "register", "owner", "owners") {
@@ -365,6 +369,8 @@ func adjustConsultingIntentScores(all []VisualCandidate, intentLower string, hin
 	}
 	cs.adjustWaveIntents(words, intentLower, hints)
 	switch {
+	case intentIsRiskMatrix(words):
+		cs.makeTop(cs.find(VisualCategoryPattern, "risk-heatmap"), "risks rated on likelihood and impact need a cell per level, not four quadrants or a numeric matrix")
 	case intentIsStatusBoard(words) && !intentIsRiskMatrix(words):
 		cs.makeTop(cs.find(VisualCategoryPattern, "table-highlight"), "a status beside a metric and a limit per row is a rated table, not a row of KPI tiles")
 	case intentIsOptionMatrix(words) && !intentIsRiskMatrix(words) && !intentIsTabular(words):

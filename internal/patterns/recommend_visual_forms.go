@@ -363,6 +363,7 @@ var visualNameAliases = map[string][]string{
 	"diagram:house_diagram":                {"house diagram", "temple diagram"},
 	"named_pattern:timeline-horizontal":    {"timeline"},
 	"named_pattern:capability-heatmap":     {"heatmap", "heat map"},
+	"named_pattern:risk-heatmap":           {"risk heat map", "risk heatmap", "risk matrix"},
 	"diagram:heatmap":                      {"heat map"},
 	"named_pattern:bmc-canvas":             {"business model canvas", "bmc"},
 	"named_pattern:waterfall-bridge":       {"waterfall", "bridge chart"},

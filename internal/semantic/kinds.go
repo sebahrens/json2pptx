@@ -45,6 +45,9 @@ const (
 	KindTimeline SlideKind = "timeline"
 	// KindMatrix2x2 is two axes and four quadrants.
 	KindMatrix2x2 SlideKind = "matrix_2x2"
+	// KindRiskHeatmap places named risks on a likelihood × impact grid
+	// (go-slide-creator-ec74l).
+	KindRiskHeatmap SlideKind = "risk_heatmap"
 	// KindFramework is a named framework with fixed parts (SWOT, Porter's five
 	// forces, the Business Model Canvas).
 	KindFramework SlideKind = "framework"
@@ -206,7 +209,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindMatrix2x2: {
 		Kind:           KindMatrix2x2,
-		Summary:        "Two axes and four quadrants — impact against effort, reach against cost. Also the risk heat map: Likelihood × Impact axes, each quadrant body listing the risks in it. Needs both axis labels and all four quadrants, each with a header; short of that, or past a quadrant's text budgets, it degrades to a bullet list naming each quadrant's position.",
+		Summary:        "Two axes and four quadrants — impact against effort, reach against cost. For named risks by likelihood and impact use risk_heatmap. Needs both axis labels and all four quadrants, each with a header; short of that, or past a quadrant's text budgets, it degrades to a bullet list naming each quadrant's position.",
 		RequiredFields: []string{"quadrants", "x_axis", "y_axis"},
 		RequiredAliases: map[string][]string{
 			"quadrants": {"cells", "boxes", "top_left"},
@@ -214,6 +217,12 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 			"y_axis":    {"y_axis_label"},
 		},
 		TypicalFields: []string{"title", "x_low", "x_high", "y_low", "y_high", "takeaway"},
+	},
+	KindRiskHeatmap: {
+		Kind:           KindRiskHeatmap,
+		Summary:        "The risk heat map: 1–20 named risks placed by likelihood and impact on a 3 × 3 grid (size: 5 for 5 × 5), every cell coloured by its likelihood × impact band; a \"medium\" has a cell of its own and risks sharing a cell stack. A level off the grid degrades to bullets. For mitigations and owners use table.",
+		RequiredFields: []string{"items"},
+		TypicalFields:  []string{"title", "size", "takeaway"},
 	},
 	KindFramework: {
 		Kind:            KindFramework,

@@ -105,7 +105,7 @@ from the rhythm checks.
 |---|---|
 | SOX / ICFR year-end | Scope `kpi_snapshot` (key controls, locations, deficiencies) → results board by process → deficiencies `table` (severity: deficiency / significant / material weakness) → aggregation `matrix_2x2` (likelihood × magnitude) → remediation `roadmap` → opinion `next_steps`. |
 | Third-party assurance (SOC 1/2 review) | Provider inventory `table` → coverage board `option_matrix` (`rag` per provider: report obtained / reviewed / CUECs mapped) → exceptions `labeled-rows` → `next_steps`. |
-| Annual audit plan | Risk universe heat map (raw `capability-heatmap`) → plan `table` (audit, quarter, days) → resourcing `kpi_snapshot` → `decision` (approve plan). |
+| Annual audit plan | Risk universe heat map (`risk_heatmap`) → plan `table` (audit, quarter, days) → resourcing `kpi_snapshot` → `decision` (approve plan). |
 | Control design review (pre-implementation) | Process `process` or svggen `swimlane` → control points `table` → gaps `option_matrix` (`rag`) → design actions `next_steps`. |
 
 ## Review points for this audience

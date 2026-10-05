@@ -72,7 +72,7 @@ func personaPlanCases() []personaPlanCase {
 		},
 		{
 			name: "g-risk-consulting/blockquote", brief: personaBriefG, deck: "Harbour Bank", minMax: [2]int{10, 12},
-			kinds: []string{"executive_summary", "kpi_snapshot|table", "chart_insight|regions", "matrix_2x2", "pillars", "decision|option_matrix", "roadmap", "next_steps"},
+			kinds: []string{"executive_summary", "kpi_snapshot|table", "chart_insight|regions", "risk_heatmap", "pillars", "decision|option_matrix", "roadmap", "next_steps"},
 		},
 		{
 			name: "h-tech-data/blockquote", brief: personaBriefH, deck: "Atlas Retail", minMax: [2]int{11, 13},
@@ -90,7 +90,7 @@ func personaPlanCases() []personaPlanCase {
 		{
 			name: "g-risk-consulting/journey", brief: journeyBriefG, deck: "Harbour Bank", minMax: [2]int{10, 11},
 			args:  map[string]any{"slide_budget": float64(11), "audience": "bank executive committee and CRO"},
-			kinds: []string{"executive_summary", "kpi_snapshot|table", "regions", "matrix_2x2", "comparison", "pillars", "decision", "roadmap", "next_steps"},
+			kinds: []string{"executive_summary", "kpi_snapshot|table", "regions", "risk_heatmap", "comparison", "pillars", "decision", "roadmap", "next_steps"},
 		},
 		{
 			name: "h-tech-data/journey", brief: journeyBriefH, deck: "Atlas Retail", minMax: [2]int{11, 13},
@@ -296,10 +296,10 @@ func TestPlanDeckPersonaDraftsCarryStructuredFields(t *testing.T) {
 	if k := slideByKind(g, "kpi_snapshot"); k == nil || listLen(k, "kpis") < 3 {
 		t.Errorf("g: kpi_snapshot kpis = %v, want the metric: value clauses", k)
 	}
-	if m := slideByKind(g, "matrix_2x2"); m == nil || listLen(m, "quadrants") != 4 || m["x_axis"] == nil {
-		t.Errorf("g: matrix_2x2 = %v, want four quadrants with the six risks placed", m)
+	if m := slideByKind(g, "risk_heatmap"); m == nil || listLen(m, "items") != 6 {
+		t.Errorf("g: risk_heatmap = %v, want the six risks, each with its likelihood and impact", m)
 	} else {
-		raw, _ := json.Marshal(m["quadrants"])
+		raw, _ := json.Marshal(m["items"])
 		for _, risk := range []string{"cyber", "third-party outage", "conduct", "model risk", "climate", "fraud"} {
 			if !strings.Contains(string(raw), risk) {
 				t.Errorf("g: heat map does not place %q: %s", risk, raw)

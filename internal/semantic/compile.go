@@ -244,7 +244,7 @@ func withoutTitleContent(content []deckinput.ContentInput) []deckinput.ContentIn
 // compileSlide dispatches a planned slide to its per-kind compiler, falling back
 // to the generic content compiler for kinds the MVP does not yet model with a
 // bespoke layout.
-func compileSlide(kind SlideKind, in slides.Input) (*deckinput.SlideInput, []slides.SourceLink, error) {
+func compileSlide(kind SlideKind, in slides.Input) (*deckinput.SlideInput, []slides.SourceLink, error) { //nolint:gocyclo // one flat case per slide kind
 	switch kind {
 	case KindTitle:
 		return slides.CompileTitle(in)
@@ -278,6 +278,8 @@ func compileSlide(kind SlideKind, in slides.Input) (*deckinput.SlideInput, []sli
 		return slides.CompileTimeline(in)
 	case KindMatrix2x2:
 		return slides.CompileMatrix(in)
+	case KindRiskHeatmap:
+		return slides.CompileRiskHeatmap(in)
 	case KindFramework:
 		return slides.CompileFramework(in)
 	case KindImageCase:

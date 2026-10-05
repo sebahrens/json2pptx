@@ -97,6 +97,17 @@ var kindExamples = map[SlideKind]map[string]any{
 		},
 		"takeaway": "Three years of runway, two of them already spent.",
 	},
+	KindRiskHeatmap: {
+		"kind":  "risk_heatmap",
+		"title": "Cyber is the only high-likelihood, high-impact risk",
+		"items": []any{
+			map[string]any{"name": "Cyber attack", "likelihood": "high", "impact": "high"},
+			map[string]any{"name": "Third-party outage", "likelihood": "medium", "impact": "high"},
+			map[string]any{"name": "Conduct", "likelihood": "medium", "impact": "medium"},
+			map[string]any{"name": "Payment fraud", "likelihood": "medium", "impact": "low"},
+		},
+		"takeaway": "Three of the four top risks are medium likelihood; only cyber is high on both.",
+	},
 	KindMatrix2x2: {
 		"kind":   "matrix_2x2",
 		"title":  "Where to spend the next two quarters",
