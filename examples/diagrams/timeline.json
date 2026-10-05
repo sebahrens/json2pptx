@@ -17,6 +17,7 @@
           "placeholder_id": "body",
           "type": "diagram",
           "diagram_value": {
+            "alt": "Timeline of the 2024 release schedule in six milestones, from UX research in January to the GA launch in August.",
             "type": "timeline",
             "title": "2024 Release Schedule",
             "data": {

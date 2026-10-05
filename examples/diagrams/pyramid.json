@@ -17,6 +17,7 @@
           "placeholder_id": "body",
           "type": "diagram",
           "diagram_value": {
+            "alt": "Pyramid of Maslow's five needs, from physiological at the base through safety, love and esteem to self-actualization at the apex.",
             "type": "pyramid",
             "title": "Hierarchy of Needs",
             "data": {

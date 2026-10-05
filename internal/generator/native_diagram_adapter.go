@@ -124,11 +124,21 @@ func layoutNativeDiagram(spec *types.DiagramSpec, bounds types.BoundingBox, env 
 		ins.pestelMode = true
 		ins.taxonomyTints = taxonomyPalette(spec, len(pestelSegmentColors), card(pestelHeaderFontSize))
 		fit("pestel", ins.panels, houseDiagramMeta{})
+		// A grid that cannot hold its bullets at 12pt says what a segment holds.
+		if !layoutPESTEL(ins.panels, ins.bounds, env.fontName).fits {
+			budget := pestelFitBudget(ins.panels, ins.bounds, env.fontName)
+			ins.fitBudget = &budget
+		}
 
 	case isNineBoxDiagram(spec):
 		ins.panels, _ = nineBoxPanels(spec)
 		ins.nineBoxMode = true
 		ins.nineBoxTints = nineBoxSemanticTints(env.semanticAccents)
+		// A grid that cannot hold its names at 12pt says what a cell holds.
+		if !layoutNineBox(ins.panels, bounds, ins.nineBoxTints, env).fits {
+			budget := nineBoxFitBudget(ins.panels, bounds, ins.nineBoxTints, env)
+			ins.fitBudget = &budget
+		}
 
 	case isValueChainDiagram(spec):
 		panels, meta := parseValueChainData(spec.Data)
@@ -138,6 +148,11 @@ func layoutNativeDiagram(spec *types.DiagramSpec, bounds types.BoundingBox, env 
 		ins.panels = panels
 		ins.valueChainMode = true
 		ins.valueChainMeta = meta
+		// A chain that cannot hold its items at 12pt says what a chevron holds.
+		if !layoutValueChain(panels, bounds, meta, env.fontName).fits {
+			budget := valueChainFitBudget(panels, bounds, meta, env.fontName)
+			ins.fitBudget = &budget
+		}
 
 	case isKPIDashboardDiagram(spec):
 		// Accepts a "metrics" or "kpis" key.
@@ -172,6 +187,11 @@ func layoutNativeDiagram(spec *types.DiagramSpec, bounds types.BoundingBox, env 
 			return out, fmt.Errorf("porters_five_forces: no forces parsed")
 		}
 		ins.portersFiveMode = true
+		// A cross that cannot hold its text at 12pt says what it can hold.
+		if forces := porterForcesFromPanels(ins.panels); !layoutPorter(forces, bounds, env).fits {
+			budget := porterFitBudget(forces, bounds, env)
+			ins.fitBudget = &budget
+		}
 
 	case isBMCDiagram(spec):
 		ins.panels = bmcPanels(spec)
@@ -180,6 +200,11 @@ func layoutNativeDiagram(spec *types.DiagramSpec, bounds types.BoundingBox, env 
 				"path", site.path, "keys", ignored)
 		}
 		ins.bmcMode = true
+		// A canvas that cannot hold its bullets at 12pt says what it holds.
+		if !bmcLayoutCells(ins.panels, bounds, env.fontName).fits {
+			budget := bmcFitBudget(ins.panels, bounds, env.fontName)
+			ins.fitBudget = &budget
+		}
 		ins.taxonomyTints = taxonomyPalette(spec, len(bmcSectionOrder), card(bmcHeaderFontSize))
 
 	case isProcessFlowDiagram(spec):
@@ -253,6 +278,11 @@ func layoutNativeDiagram(spec *types.DiagramSpec, bounds types.BoundingBox, env 
 		}
 		ins.panels = panels
 		ins.pyramidMode = true
+		// A pyramid that cannot hold its tiers at 12pt says how many it holds.
+		if _, _, _, fits := pyramidLevelLayout(panels, bounds, pyramidLabelFontSize, pyramidDescFontSize, pyramidMeasureFont(env.fontName)); !fits {
+			budget := pyramidFitBudget(panels, bounds, env.fontName)
+			ins.fitBudget = &budget
+		}
 
 	case isHouseDiagram(spec):
 		panels, meta, err := parseHouseDiagramNativeData(spec.Data)
@@ -352,17 +382,17 @@ func renderNativeInsert(ins *panelShapeInsert, base uint32, env nativeDiagramEnv
 	case ins.swotMode:
 		return generateSWOTGroupXML(ins.panels, ins.bounds, base, ins.taxonomyTints)
 	case ins.pestelMode:
-		return generatePESTELGroupXML(ins.panels, ins.bounds, base, ins.taxonomyTints)
+		return generatePESTELGroupXML(ins.panels, ins.bounds, base, ins.taxonomyTints, env.fontName)
 	case ins.valueChainMode:
-		return generateValueChainGroupXML(ins.panels, ins.bounds, base, ins.valueChainMeta, surface)
+		return generateValueChainGroupXML(ins.panels, ins.bounds, base, ins.valueChainMeta, surface, env.fontName)
 	case ins.nineBoxMode:
-		return generateNineBoxGroupXML(ins.panels, ins.bounds, base, ins.nineBoxTints)
+		return generateNineBoxGroupXML(ins.panels, ins.bounds, base, ins.nineBoxTints, env)
 	case ins.kpiDashboardMode:
 		return generateKPIDashboardGroupXML(ins.panels, ins.bounds, base, surface)
 	case ins.portersFiveMode:
-		return generatePortersFiveGroupXML(ins.panels, ins.bounds, base, env.themeColors)
+		return generatePortersFiveGroupXML(ins.panels, ins.bounds, base, env)
 	case ins.bmcMode:
-		return generateBMCGroupXML(ins.panels, ins.bounds, base, ins.taxonomyTints)
+		return generateBMCGroupXML(ins.panels, ins.bounds, base, ins.taxonomyTints, env.fontName)
 	case ins.processFlowMode:
 		return generateProcessFlowGroupXML(ins.panels, ins.bounds, base, ins.processFlowMeta)
 	case ins.heatmapMode:
@@ -394,14 +424,16 @@ func nativeInsertShapeIDs(ins *panelShapeInsert) uint32 {
 		}
 		return n
 	case ins.nineBoxMode:
-		// 1 (group) + 9×2 (label+body) + 8 (axis shapes max)
-		return 27
+		// 1 (group) + 9×(label + body + 2 further name columns) + 10 axis
+		// shapes (2 lines, 2 titles, 6 tick labels)
+		return 47
 	case ins.portersFiveMode:
-		// 1 (group) + 5 force boxes + 4 connectors
-		return 10
+		// 1 (group) + 5 force boxes + 2 band factor columns + 4 connectors
+		return 12
 	case ins.bmcMode:
-		// 1 (group) + 9×2 (header+body per cell) = 19
-		return 19
+		// 1 (group) + 9×2 (header+body per cell) + 2 further bullet columns
+		// (one per bottom cell)
+		return 21
 	case ins.processFlowMode:
 		// 1 (group) + N steps + M connectors + L labels
 		return pfEstimateShapeCount(ins.panels)
@@ -421,8 +453,11 @@ func nativeInsertShapeIDs(ins *panelShapeInsert) uint32 {
 	case ins.statCardsMode, ins.kpiDashboardMode:
 		// 1 (group) + N×1 (single rect per card)
 		return uint32(len(ins.panels) + 1)
+	case ins.pestelMode:
+		// 1 (group) + N×(header + body + one further bullet column)
+		return uint32(len(ins.panels)*3 + 1)
 	default:
-		// 1 (group) + N×2 (header + body), which covers SWOT and PESTEL too.
+		// 1 (group) + N×2 (header + body), which covers SWOT too.
 		return uint32(len(ins.panels)*2 + 1)
 	}
 }

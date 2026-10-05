@@ -17,6 +17,7 @@
           "placeholder_id": "body",
           "type": "diagram",
           "diagram_value": {
+            "alt": "Business model canvas of a data-sync SaaS in nine sections, from key partners and activities through the value proposition to customer segments, costs and revenue streams.",
             "type": "business_model_canvas",
             "title": "DataSync SaaS",
             "data": {

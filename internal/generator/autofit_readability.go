@@ -70,7 +70,30 @@ func (ctx *singlePassContext) reportUnreadableAutofit(slideData []byte, slideNum
 		roles = spec.GridTextRoles
 	}
 	for _, f := range unreadableAutofitFindings(string(slideData), ctx.viewingMode, shapePath, roles) {
+		ctx.applyNativeFitBudget(&f, slideIndex)
 		ctx.emitFitFinding(f)
+	}
+}
+
+// applyNativeFitBudget adds, to a readability finding raised on a shape of a
+// native diagram whose layout measured a budget, what the diagram holds at the
+// authored size. A shrink is then reported with the count and length to cut
+// to, never as a bare size (go-slide-creator-6ne1m).
+func (ctx *singlePassContext) applyNativeFitBudget(f *patterns.FitFinding, slideIndex int) {
+	const marker = "/rendered_shapes/"
+	at := strings.Index(f.Path, marker)
+	if at < 0 {
+		return
+	}
+	id, err := strconv.ParseUint(f.Path[at+len(marker):], 10, 32)
+	if err != nil {
+		return
+	}
+	for _, s := range ctx.nativeShapeSources {
+		if s.slideIndex == slideIndex && uint32(id) >= s.lo && uint32(id) < s.hi {
+			s.budget.apply(f, s.diagramType)
+			return
+		}
 	}
 }
 

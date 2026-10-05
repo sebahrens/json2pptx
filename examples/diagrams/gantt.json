@@ -17,6 +17,7 @@
           "placeholder_id": "body",
           "type": "diagram",
           "diagram_value": {
+            "alt": "Gantt chart of six overlapping development tasks from requirements in January 2024 to documentation ending in mid-June.",
             "type": "gantt",
             "title": "Development Timeline",
             "data": {

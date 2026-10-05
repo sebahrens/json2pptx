@@ -17,6 +17,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "Line chart of monthly revenue in 2023 and 2024: both years rise through the year and 2024 stays above 2023 every month, ending at 190 against 145.",
             "type": "line",
             "title": "Revenue ($K) — 2023 vs 2024",
             "data": {

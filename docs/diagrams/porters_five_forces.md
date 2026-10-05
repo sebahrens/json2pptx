@@ -200,3 +200,22 @@ Each force object takes `{label?, intensity (0.0-1.0), factors?: string[], descr
 - [2x2 Matrix](./matrix_2x2.md) - For prioritization
 - [Business Model Canvas](./business_model_canvas.md) - For business strategy
 - [Value Chain](./value_chain.md) - For operations analysis
+
+## Native Layout
+
+Rivalry sits in the centre with a force on each side and an arrow from each
+pointing in. Headers, the intensity line and factors are 12pt (rivalry's
+header 14pt); factors are a bulleted list with a hanging indent, and every
+factor given is drawn.
+
+Boxes are sized from their text. On a region at least 690pt wide the boxes
+above and below rivalry are bands — header and intensity on the left, the
+factors beside them — so the column of three boxes fits a short content area.
+A narrower region (a `shape_grid` cell) stacks the factors under the header.
+On the shortest shipped content area (273pt, `modern`, Calibri) every force
+holds three one-line factors at the uniform margin and four at tighter
+padding, a line taking about 39 characters in the narrowest box. A cross that
+does not fit tightens the top and bottom padding of its boxes (10 / 7 / 5pt)
+before any text is shrunk; one that needs a shrink reports
+`TEXT_BELOW_READABLE_MIN` with `fix.params.max_items_per_force` and
+`max_chars_per_item` measured for the region.

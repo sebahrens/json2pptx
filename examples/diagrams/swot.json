@@ -17,6 +17,7 @@
           "placeholder_id": "body",
           "type": "diagram",
           "diagram_value": {
+            "alt": "SWOT analysis in four quadrants: strengths, weaknesses, opportunities and threats, each with four points.",
             "type": "swot",
             "title": "Company SWOT",
             "data": {

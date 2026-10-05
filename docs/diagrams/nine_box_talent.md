@@ -98,10 +98,10 @@ Rating words are case-insensitive; the strings `"1"`, `"2"`, and `"3"` are also 
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `x_axis_label` | `string` | `Performance` | X-axis label |
-| `y_axis_label` | `string` | `Potential` | Y-axis label |
-| `x_axis_labels` | `string[3]` | `[Low, Medium, High]` | Column labels |
-| `y_axis_labels` | `string[3]` | `[Low, Medium, High]` | Row labels |
+| `x_axis_label` | `string` | `Performance` | X-axis title (alias `x_label`) |
+| `y_axis_label` | `string` | `Potential` | Y-axis title (alias `y_label`) |
+| `x_axis_labels` | `string[3]` | none | Column tick labels, low to high; drawn only when given |
+| `y_axis_labels` | `string[3]` | none | Row tick labels, low to high; drawn only when given |
 | `title` | `string` | - | Diagram title |
 | `subtitle` | `string` | - | Subtitle |
 | `footnote` | `string` | - | Footnote text |
@@ -247,3 +247,21 @@ Rating words are case-insensitive; the strings `"1"`, `"2"`, and `"3"` are also 
 
 - [2x2 Matrix](./matrix_2x2.md) - Simpler grid
 - [Business Model Canvas](./business_model_canvas.md) - 9-section canvas
+
+## Native Layout
+
+The native grid is drawn on its axes: a line with an arrowhead along the bottom
+(rising to the right) and up the left (rising to the top), each beside its bold
+title. The arrow says which way a scale rises, so `Low / Medium / High` tick
+labels are drawn only when `x_axis_labels` / `y_axis_labels` name them. An axis
+title costs 27pt of the region, a row of tick labels 20pt more.
+
+Cell labels and names are 12pt. A cell lists its names in one column when they
+fit; a cell that holds more sets them in two or three columns, filled column
+by column, and only when every name stays on one line in its column. On the
+shortest shipped content area (273pt, `modern`) a cell holds two lines of
+names: four names of about 15 characters in two columns. A grid that still does not fit tightens the top and bottom
+padding of its cells (10 / 7 / 5pt) before any text is shrunk; one that needs
+a shrink reports `TEXT_BELOW_READABLE_MIN` with
+`fix.params.max_items_per_cell` and `max_chars_per_item` measured for the
+region.

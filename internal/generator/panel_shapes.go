@@ -938,6 +938,7 @@ func (ctx *singlePassContext) finalizePanelGroupXML() {
 					slideIndex: slideNum - ctx.calculateStartingSlideNum(),
 					lo:         base, hi: nextShapeID,
 					path: inserts[i].contentPath, diagramType: inserts[i].diagramType,
+					budget: inserts[i].fitBudget,
 				})
 			}
 		}

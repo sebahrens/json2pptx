@@ -17,6 +17,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "Waterfall chart bridging revenue of 1,000 to net income of 188 through cost of goods, operating expenses, other income, interest and taxes.",
             "type": "waterfall",
             "title": "Profit Bridge ($M)",
             "data": {

@@ -37,63 +37,72 @@
                 "Data warehouse partners",
                 "System integrators",
                 "Technology consultants",
-                "Additional key partners item 1"
+                "Additional key partners item 1",
+                "Additional key partners item 2"
               ],
               "key_activities": [
                 "Platform development",
                 "Connector maintenance",
                 "Customer onboarding",
                 "Security compliance",
-                "Additional key activities item 1"
+                "Additional key activities item 1",
+                "Additional key activities item 2"
               ],
               "key_resources": [
                 "Engineering team",
                 "Proprietary ETL engine",
                 "SOC 2 certification",
                 "Partner network",
-                "Additional key resources item 1"
+                "Additional key resources item 1",
+                "Additional key resources item 2"
               ],
               "value_proposition": [
                 "No-code data pipelines",
                 "Real-time sync",
                 "200+ pre-built connectors",
                 "Enterprise security",
-                "Additional value proposition item 1"
+                "Additional value proposition item 1",
+                "Additional value proposition item 2"
               ],
               "customer_relationships": [
                 "Self-service free tier",
                 "Premium support",
                 "Dedicated CSM for enterprise",
                 "Community forums",
-                "Additional customer relationships item 1"
+                "Additional customer relationships item 1",
+                "Additional customer relationships item 2"
               ],
               "channels": [
                 "Website & product-led growth",
                 "Content marketing",
                 "Partner referrals",
                 "Enterprise sales team",
-                "Additional channels item 1"
+                "Additional channels item 1",
+                "Additional channels item 2"
               ],
               "customer_segments": [
                 "Data teams at mid-market",
                 "Enterprise IT departments",
                 "Startups scaling data ops",
                 "Analytics teams",
-                "Additional customer segments item 1"
+                "Additional customer segments item 1",
+                "Additional customer segments item 2"
               ],
               "cost_structure": [
                 "Cloud infrastructure (40%)",
                 "Engineering salaries (35%)",
                 "Sales & marketing (15%)",
                 "G&A (10%)",
-                "Additional cost structure item 1"
+                "Additional cost structure item 1",
+                "Additional cost structure item 2"
               ],
               "revenue_streams": [
                 "Monthly/annual subscriptions",
                 "Usage-based pricing (data volume)",
                 "Enterprise contracts",
                 "Professional services",
-                "Additional revenue streams item 1"
+                "Additional revenue streams item 1",
+                "Additional revenue streams item 2"
               ]
             }
           }

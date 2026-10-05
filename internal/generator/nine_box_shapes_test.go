@@ -296,7 +296,7 @@ func TestGenerateNineBoxGroupXML_Basic(t *testing.T) {
 	}
 
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 10000000, Height: 6000000}
-	result := generateNineBoxGroupXML(panels, bounds, 100, nineBoxSemanticTints(nil))
+	result := generateNineBoxGroupXML(panels, bounds, 100, nineBoxSemanticTints(nil), nativeDiagramEnv{})
 
 	if result == "" {
 		t.Fatal("generateNineBoxGroupXML returned empty string")
@@ -366,7 +366,7 @@ func TestGenerateNineBoxGroupXML_WrongPanelCount(t *testing.T) {
 	panels := []nativePanelData{{title: "only one"}}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 5000000}
 
-	result := generateNineBoxGroupXML(panels, bounds, 100, nil)
+	result := generateNineBoxGroupXML(panels, bounds, 100, nil, nativeDiagramEnv{})
 	if result != "" {
 		t.Error("expected empty string for wrong panel count")
 	}
@@ -401,7 +401,7 @@ func TestGenerateNineBoxGroupXML_NoAxes(t *testing.T) {
 	}
 
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 5000000}
-	result := generateNineBoxGroupXML(panels, bounds, 100, nineBoxSemanticTints(nil))
+	result := generateNineBoxGroupXML(panels, bounds, 100, nineBoxSemanticTints(nil), nativeDiagramEnv{})
 
 	if result == "" {
 		t.Fatal("should produce valid XML even without axis labels")

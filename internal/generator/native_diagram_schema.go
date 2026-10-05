@@ -127,9 +127,9 @@ func buildNativeDataSchemas() map[string]*nativeDataShape {
 		"pestel": topShape(with(leaves("political", "economic", "social", "technological", "environmental", "legal"),
 			shapeOf(leaves("name", "category", "items"), "color"), "segments", "factors")),
 		"nine_box_talent": topShape(
-			with(with(leaves("x_axis_label", "y_axis_label", "x_axis_labels", "y_axis_labels"),
+			with(with(leaves("x_axis_label", "y_axis_label", "x_label", "y_label", "x_axis_labels", "y_axis_labels"),
 				nineBoxCell, "cells"), nineBoxEmployee, "employees"),
-			"x_label", "y_label", "color_scheme"),
+			"color_scheme"),
 		"value_chain": topShape(
 			with(leaves("margin_label", "margin", "show_margin"), vcActivity,
 				"primary", "primary_activities", "support", "support_activities"),

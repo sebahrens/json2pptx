@@ -31,7 +31,7 @@ func TestPorterUnscoredForceAssertsNothing(t *testing.T) {
 
 	// The box for an unscored force carries no intensity line and no
 	// colour-coded fill.
-	xml := generatePorterForceBoxXML(unscored, 0, 0, 2000000, 1000000, 10, false, portersTestTheme())
+	xml := porterTestBoxXML(unscored, 10, portersTestTheme())
 	for _, unwanted := range []string{"Medium", "50%", "(0%)"} {
 		if strings.Contains(xml, unwanted) {
 			t.Errorf("an unscored force still prints %q:\n%s", unwanted, xml)
@@ -46,7 +46,7 @@ func TestPorterUnscoredForceAssertsNothing(t *testing.T) {
 		t.Errorf("the neutral fill emitted a zero lumMod, which renders black:\n%s", xml)
 	}
 
-	scoredXML := generatePorterForceBoxXML(scored, 0, 0, 2000000, 1000000, 10, false, portersTestTheme())
+	scoredXML := porterTestBoxXML(scored, 10, portersTestTheme())
 	if !strings.Contains(scoredXML, "High (85%)") {
 		t.Errorf("a scored force lost its intensity line:\n%s", scoredXML)
 	}

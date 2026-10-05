@@ -139,7 +139,7 @@ func TestGeneratePESTELGroupXML_Basic(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 9000000, Height: 5000000}
 
-	result := generatePESTELGroupXML(panels, bounds, 100, taxonomyPalette(nil, len(pestelSegmentColors), uniformTaxonomyTint))
+	result := generatePESTELGroupXML(panels, bounds, 100, taxonomyPalette(nil, len(pestelSegmentColors), uniformTaxonomyTint), "")
 
 	if result == "" {
 		t.Fatal("generatePESTELGroupXML returned empty string")
@@ -211,7 +211,7 @@ func TestGeneratePESTELGroupXML_3x2_Layout(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 9000000, Height: 6000000}
 
-	result := generatePESTELGroupXML(panels, bounds, 100, taxonomyPalette(nil, len(pestelSegmentColors), uniformTaxonomyTint))
+	result := generatePESTELGroupXML(panels, bounds, 100, taxonomyPalette(nil, len(pestelSegmentColors), uniformTaxonomyTint), "")
 
 	// Verify 3x2 layout positions
 	numCols := 3
@@ -242,7 +242,7 @@ func TestGeneratePESTELGroupXML_3x2_Layout(t *testing.T) {
 }
 
 func TestGeneratePESTELGroupXML_EmptyPanels(t *testing.T) {
-	result := generatePESTELGroupXML(nil, types.BoundingBox{Width: 8000000, Height: 5000000}, 100, taxonomyPalette(nil, len(pestelSegmentColors), uniformTaxonomyTint))
+	result := generatePESTELGroupXML(nil, types.BoundingBox{Width: 8000000, Height: 5000000}, 100, taxonomyPalette(nil, len(pestelSegmentColors), uniformTaxonomyTint), "")
 	if result != "" {
 		t.Error("should return empty for nil panels")
 	}
@@ -256,7 +256,7 @@ func TestGeneratePESTELGroupXML_FewerThan6(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 9000000, Height: 5000000}
 
-	result := generatePESTELGroupXML(panels, bounds, 100, taxonomyPalette(nil, len(pestelSegmentColors), uniformTaxonomyTint))
+	result := generatePESTELGroupXML(panels, bounds, 100, taxonomyPalette(nil, len(pestelSegmentColors), uniformTaxonomyTint), "")
 
 	if result == "" {
 		t.Fatal("should generate XML for fewer than 6 segments")
@@ -275,7 +275,7 @@ func TestGeneratePESTELGroupXML_EmptyBullets(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 5000000}
 
-	result := generatePESTELGroupXML(panels, bounds, 100, taxonomyPalette(nil, len(pestelSegmentColors), uniformTaxonomyTint))
+	result := generatePESTELGroupXML(panels, bounds, 100, taxonomyPalette(nil, len(pestelSegmentColors), uniformTaxonomyTint), "")
 
 	if result == "" {
 		t.Fatal("should generate XML even with empty bullets")
