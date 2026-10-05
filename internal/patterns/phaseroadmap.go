@@ -441,7 +441,7 @@ func (b phaseRoadmapBuild) rows(fit phaseRoadmapFit) []jsonschema.GridRowInput {
 	}
 	dateSize, milestoneSize := bodySize, bodySize
 	hasMilestones := b.hasMilestones
-	phaseIdx0, timelineIdx, dateIdx0, milestoneIdx0, descIdx0 := b.phaseIdx0, b.timelineIdx, b.dateIdx0, b.milestoneIdx0, b.descIdx0
+	phaseIdx0, timelineIdx, dateIdx0, descIdx0 := b.phaseIdx0, b.timelineIdx, b.dateIdx0, b.descIdx0
 	headerPct, timelinePct, datePct := phaseRoadmapHeaderPct, 6.0, 8.0
 	var tracks *phaseRoadmapTracks
 	if fit.tracked {
@@ -494,67 +494,7 @@ func (b phaseRoadmapBuild) rows(fit phaseRoadmapFit) []jsonschema.GridRowInput {
 	// (go-slide-creator-knue6). Cell indices keep their documented order
 	// (dates n+1..2n, milestones 2n+1..3n) whatever the row order.
 	if hasMilestones {
-		// A label that wraps at the column width keeps the two-line row the
-		// milestone budgets were measured with, as a plain cell (a marker
-		// sub-grid would lose its inset to an already squeezed row); short
-		// labels get the one-line diamond marker. One wrapping label switches
-		// the whole row, so the markers stay consistent.
-		areaW, _ := sizingAreaPt(ctx)
-		colW := equalColumnWidthPt(areaW, n, ctx.Gap(6))
-		msH := phaseRoadmapMilestoneRowPt(milestoneSize)
-		wraps := false
-		for _, p := range vals.Phases {
-			if p.Milestone != "" && !writtenFitsAt(ctx.themeFonts(), phaseRoadmapMilestoneText(pptx.ConvertMarkdownEmphasis(p.Milestone), milestoneSize), colW, msH) {
-				wraps = true
-			}
-		}
-		if wraps {
-			msH = math.Round(shapegrid.EffectiveTextSizePt(milestoneSize)*contentLineHeight*2 + 2*defaultShapeInsetTBPt)
-		}
-		// The label is centred in its row with no margin of its own (marker
-		// form) or carries the row padding (wrapping form), so a tightened
-		// row gives up only air.
-		if trim := rowPadTrimPt(fit.rowPad); trim > 0 {
-			floor := 0.0
-			for _, p := range vals.Phases {
-				if p.Milestone == "" {
-					continue
-				}
-				label := pptx.ConvertMarkdownEmphasis(p.Milestone)
-				if wraps {
-					floor = math.Max(floor, writtenFitHeightPt(ctx.themeFonts(), withRowPad(phaseRoadmapMilestoneText(label, milestoneSize), fit.rowPad), colW, 0))
-					continue
-				}
-				floor = math.Max(floor, phaseRoadmapMarkerRowPt(ctx, phaseRoadmapMilestoneCell(ctx, n, label, milestoneSize, accent), colW, msH))
-			}
-			msH = math.Max(msH-trim, math.Ceil(floor))
-		}
-		milestoneCells := make([]*jsonschema.GridCellInput, n)
-		for i, p := range vals.Phases {
-			label := pptx.ConvertMarkdownEmphasis(p.Milestone)
-			switch {
-			case p.Milestone == "":
-				milestoneCells[i] = &jsonschema.GridCellInput{
-					Shape: &jsonschema.ShapeSpecInput{
-						Geometry: "rect",
-						Fill:     json.RawMessage(`"none"`),
-					},
-				}
-			case wraps:
-				milestoneCells[i] = &jsonschema.GridCellInput{
-					Shape: &jsonschema.ShapeSpecInput{
-						Geometry: "rect",
-						Fill:     json.RawMessage(`"none"`),
-						Text:     withRowPad(phaseRoadmapMilestoneText(label, milestoneSize), fit.rowPad),
-					},
-					AccentBar: &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: 2},
-				}
-			default:
-				milestoneCells[i] = phaseRoadmapMilestoneCell(ctx, n, label, milestoneSize, accent)
-			}
-			applyPhaseRoadmapOverride(milestoneCells[i], cellOverrides, milestoneIdx0+i, accent)
-		}
-		rows = append(rows, jsonschema.GridRowInput{MinHeight: msH, MaxHeight: msH, Cells: milestoneCells})
+		rows = append(rows, b.milestoneRow(fit, milestoneSize))
 	}
 
 	// Row 3 — date range labels, left-aligned like the descriptions below
@@ -626,6 +566,74 @@ func (b phaseRoadmapBuild) rows(fit phaseRoadmapFit) []jsonschema.GridRowInput {
 	}
 
 	return rows
+}
+
+// milestoneRow builds the optional milestone row at one fit step.
+func (b phaseRoadmapBuild) milestoneRow(fit phaseRoadmapFit, milestoneSize float64) jsonschema.GridRowInput {
+	ctx, vals, cellOverrides, accent := b.ctx, b.vals, b.cellOverrides, b.accent
+	n := len(vals.Phases)
+	milestoneIdx0 := b.milestoneIdx0
+	// A label that wraps at the column width keeps the two-line row the
+	// milestone budgets were measured with, as a plain cell (a marker
+	// sub-grid would lose its inset to an already squeezed row); short
+	// labels get the one-line diamond marker. One wrapping label switches
+	// the whole row, so the markers stay consistent.
+	areaW, _ := sizingAreaPt(ctx)
+	colW := equalColumnWidthPt(areaW, n, ctx.Gap(6))
+	msH := phaseRoadmapMilestoneRowPt(milestoneSize)
+	wraps := false
+	for _, p := range vals.Phases {
+		if p.Milestone != "" && !writtenFitsAt(ctx.themeFonts(), phaseRoadmapMilestoneText(pptx.ConvertMarkdownEmphasis(p.Milestone), milestoneSize), colW, msH) {
+			wraps = true
+		}
+	}
+	if wraps {
+		msH = math.Round(shapegrid.EffectiveTextSizePt(milestoneSize)*contentLineHeight*2 + 2*defaultShapeInsetTBPt)
+	}
+	// The label is centred in its row with no margin of its own (marker
+	// form) or carries the row padding (wrapping form), so a tightened
+	// row gives up only air.
+	if trim := rowPadTrimPt(fit.rowPad); trim > 0 {
+		floor := 0.0
+		for _, p := range vals.Phases {
+			if p.Milestone == "" {
+				continue
+			}
+			label := pptx.ConvertMarkdownEmphasis(p.Milestone)
+			if wraps {
+				floor = math.Max(floor, writtenFitHeightPt(ctx.themeFonts(), withRowPad(phaseRoadmapMilestoneText(label, milestoneSize), fit.rowPad), colW, 0))
+				continue
+			}
+			floor = math.Max(floor, phaseRoadmapMarkerRowPt(ctx, phaseRoadmapMilestoneCell(ctx, n, label, milestoneSize, accent), colW, msH))
+		}
+		msH = math.Max(msH-trim, math.Ceil(floor))
+	}
+	milestoneCells := make([]*jsonschema.GridCellInput, n)
+	for i, p := range vals.Phases {
+		label := pptx.ConvertMarkdownEmphasis(p.Milestone)
+		switch {
+		case p.Milestone == "":
+			milestoneCells[i] = &jsonschema.GridCellInput{
+				Shape: &jsonschema.ShapeSpecInput{
+					Geometry: "rect",
+					Fill:     json.RawMessage(`"none"`),
+				},
+			}
+		case wraps:
+			milestoneCells[i] = &jsonschema.GridCellInput{
+				Shape: &jsonschema.ShapeSpecInput{
+					Geometry: "rect",
+					Fill:     json.RawMessage(`"none"`),
+					Text:     withRowPad(phaseRoadmapMilestoneText(label, milestoneSize), fit.rowPad),
+				},
+				AccentBar: &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: 2},
+			}
+		default:
+			milestoneCells[i] = phaseRoadmapMilestoneCell(ctx, n, label, milestoneSize, accent)
+		}
+		applyPhaseRoadmapOverride(milestoneCells[i], cellOverrides, milestoneIdx0+i, accent)
+	}
+	return jsonschema.GridRowInput{MinHeight: msH, MaxHeight: msH, Cells: milestoneCells}
 }
 
 // phaseRoadmapCellCount returns the total addressable cell count for
