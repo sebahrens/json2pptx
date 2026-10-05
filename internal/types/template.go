@@ -178,6 +178,13 @@ type LayoutMetadata struct {
 	// layout of the template; nil when it declares none). ParseLayouts sets it
 	// so every geometry path that has the layouts also has the grid.
 	TemplateGrid *TemplateGrid
+
+	// TemplatePath is the template file the layout was parsed from (shared by
+	// every parsed layout; empty for a synthesized one). ParseLayouts sets it
+	// so preflight can read the footer geometry generation resolves from the
+	// file itself — master placeholders and footer artwork that the layout
+	// metadata does not carry (go-slide-creator-m2tlt).
+	TemplatePath string `json:"-"`
 }
 
 // DecorRegion is the bounding box of visible template artwork.

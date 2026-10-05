@@ -510,6 +510,46 @@ An inserted content picture reaches into the footer band (typically a full-bleed
 }
 ```
 
+### `CHROME_TRUNCATED`
+
+**Action:** `review`
+**Fix kind:** `rewrite_field` (advisory)
+**Emitted at:** preflight (validate / validate_input / validate_deck_spec / score_deck) and render (generate / render_deck_spec), as one finding
+
+The left footer line — `chrome.confidentiality`, `project_code`, `client_name`, `footer_date`, an enabled `footer.left_text` and any `section_crumb` — is one line of text in the template's footer slot (from the date placeholder across the footer placeholder, short of the page number and of any template artwork in the band). The line is measured with the theme body font at the 8pt footer floor against the slot of every slide that carries it. It used to be ellipsized from the right, so a proposal rendered "Confidential — Project Falcon | Meridian Capital…" on every slide, the date gone and the client's name cut, with no finding (go-slide-creator-m2tlt).
+
+A line that does not fit now gives up fields by priority before anything is cut:
+
+1. `project_code` (the title slide carries the project name);
+2. `footer_date`;
+3. only then an ellipsis, on the slides where the remaining line is still too wide.
+
+The confidentiality marking, the client name and `footer.left_text` are never dropped. The decision is made **per footer slot**: every slide whose slot has the same width drops the same fields, so the content slides of a deck read alike even when a section crumb makes some lines longer; a layout with a narrower slot (a section divider beside its artwork) decides for itself and does not cost the other slides their project code. Each distinct outcome is one deck-level finding — usually exactly one.
+
+`path` is `/chrome` (`/meta/chrome` on a DeckSpec), or `/footer/left_text` for a legacy footer with no `chrome` block, which has nothing to drop and is reported when it is cut. `fix.params`:
+
+| Param | Meaning |
+|---|---|
+| `dropped` | Fields removed, in drop order (`["project_code"]`, `["project_code","footer_date"]`); absent when nothing could be dropped |
+| `truncated` | `true` when the line is still cut with an ellipsis on these slides |
+| `max_chars` | How many characters of the full line fit the slot at 8pt (the tightest of these slides) |
+| `line_chars` | Length of that full line |
+| `slides` | 1-based slides sharing the slot |
+
+Preflight reads the slot from the template file the way generation does, so validation predicts the finding the render reports and the two collapse into one.
+
+```json
+{
+  "path": "/chrome",
+  "code": "CHROME_TRUNCATED",
+  "message": "footer line \"Confidential — Project Falcon | Meridian Capital Partners | October 2026\" is 72 characters but the template's footer slot holds 56 at 8pt on slides 2-12: project_code was dropped there so the rest renders in full; shorten the footer fields to 56 characters, or remove the field you can spare",
+  "fix": { "kind": "rewrite_field", "params": { "path": "/chrome", "dropped": ["project_code"], "truncated": false, "max_chars": 56, "line_chars": 72, "slides": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] } },
+  "action": "review"
+}
+```
+
+Remedy: shorten the fields until the line is at most `max_chars` characters and everything renders again; or choose what goes yourself by removing the field you can spare; or accept the drop.
+
 ### `SUBTITLE_WRAPS`
 
 **Action:** `info`

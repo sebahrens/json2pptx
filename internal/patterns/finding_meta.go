@@ -301,6 +301,20 @@ var findingMetaRegistry = map[string]FindingMeta{
 		},
 		RelatedCodes: []string{ErrCodeTextOverImageUnverified},
 	},
+	ErrCodeChromeTruncated: {
+		Code:        ErrCodeChromeTruncated,
+		Summary:     "The left footer line is wider than the template's footer slot, so a segment was dropped or the line was cut.",
+		Severity:    "review",
+		WhenEmitted: "Pre-flight and generation measure the composed left footer line (chrome confidentiality / project_code / client_name / footer_date, footer.left_text and any section crumb) at the 8pt footer floor against the footer slot of every slide that carries it. When a slide's line does not fit, the engine drops project_code, then footer_date, on every slide that shares that footer slot, and re-measures; only a line that still does not fit is cut with an ellipsis. One deck-level finding per outcome (usually one) reports which happened: fix.params.dropped lists the dropped fields, truncated is true when an ellipsis remains, max_chars is how many characters of the full line fit, line_chars its length and slides the 1-based slides that share the slot.",
+		RemediationSteps: []string{
+			"Shorten the footer fields until the line is at most fix.params.max_chars characters, and every field renders again.",
+			"Or choose what goes yourself: remove the field you can spare (chrome.project_code, chrome.footer_date, chrome.section_crumb) instead of the engine's default order.",
+			"Accept the drop when the dropped field also appears elsewhere (the project name on the title slide).",
+		},
+		ExampleBefore: `"chrome":{"confidentiality":"Confidential","project_code":"Falcon","client_name":"Meridian Capital Partners","footer_date":"October 2026"}  // 72 characters, the slot holds 55`,
+		ExampleAfter:  `"chrome":{"confidentiality":"Confidential","client_name":"Meridian Capital Partners","footer_date":"October 2026"}`,
+		RelatedCodes:  []string{ErrCodeChromeOverImage, ErrCodeChromeBandNoFit},
+	},
 	ErrCodeSubtitleWraps: {
 		Code:        ErrCodeSubtitleWraps,
 		Summary:     "A title-slide or closing subtitle wraps onto a second line even at the title's width.",

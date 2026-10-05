@@ -88,10 +88,14 @@ and the rhythm checks say so.
 
 `meta.chrome` sets the footer: `confidentiality`, `client`, `project_code`,
 `date`, page numbers (on by default; title and closing skipped). The footer is
-one line: a long client label plus a project code plus the date overflows and
-is truncated with an ellipsis on narrow templates without a finding today
-(`go-slide-creator-m2tlt`) — keep labels short and check the footer on the
-second template.
+one line. When a long client label plus a project code plus the date is wider
+than the template's footer slot, the engine drops `project_code` first, then
+the date, on the slides that share that slot, and cuts the rest with an
+ellipsis only when it still does not fit. `CHROME_TRUNCATED` (review, at
+`/meta/chrome`) reports which fields went, the characters that fit
+(`max_chars`) and the slides (`go-slide-creator-m2tlt`) — keep labels short,
+or remove the field you can spare yourself, and check the footer on the second
+template.
 
 ```yaml
 meta:

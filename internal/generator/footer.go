@@ -207,40 +207,13 @@ func generateFooterShapes(positions map[string]*transformXML, config *FooterConf
 func generateFooterShapesAvoiding(positions map[string]*transformXML, config *FooterConfig, nextID uint32, fontName, colorHex string, slideIndex int, obstacles []footerObstacle, slideWidth int64) string {
 	var shapes []string
 
-	// Size the page-number box first: it grows leftward from a fixed right edge,
-	// so the left footer has to be laid out against the widened box or the two
-	// overlap (go-slide-creator-pss1z).
-	label := ""
-	if l := config.PageLabelFor(slideIndex); l != "" {
-		label = literalPageNumberText(config.PageNumberFormat, l)
-	}
-	var pageNum *pageNumberSizing
-	switch {
-	case config.pageNumberHiddenFor(slideIndex):
-	case label != "":
-		pageNum = resolvePageNumberSizingForText(positions, label, fontName)
-	default:
-		pageNum = resolvePageNumberSizing(positions, config.PageNumberFormat, config.TotalSlides, fontName)
-	}
-	if pageNum != nil && len(obstacles) > 0 {
-		pageNum.box = clearPageNumberBox(pageNum.box, obstacles, pageNumberLeftLimit(positions), slideWidth)
-		if pageNum.box == nil {
-			pageNum = nil
-		}
-	}
-	layout := positions
-	if pageNum != nil {
-		layout = withSldNum(positions, pageNum.box)
-	} else if len(obstacles) > 0 {
-		layout = withSldNum(positions, nil)
-	}
+	lay := layoutFooterSlide(positions, config, fontName, slideIndex, obstacles, slideWidth)
+	box, pageNum, label := lay.box, lay.pageNum, lay.label
 
 	// Left footer (dt position, widened across ftr): configurable text, which may
-	// vary per slide when a section crumb is enabled.
-	box := leftFooterBox(layout)
-	if len(obstacles) > 0 {
-		box = clearLeftFooterBox(box, obstacles)
-	}
+	// vary per slide when a section crumb is enabled. The deck-wide fitter
+	// (resolveFooterLineForDeck) has already dropped the segments that do not
+	// fit; the ellipsis below is the reported last resort.
 	if box != nil && config.LeftTextFor(slideIndex) != "" {
 		text, size := fitFooterText(config.LeftTextFor(slideIndex), box.Extent.CX, fontName)
 		shapes = append(shapes, generateFooterShapeSized(nextID, "Footer Left", box, text, "l", size, colorHex))

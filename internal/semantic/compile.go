@@ -119,6 +119,9 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 		input.DesignMode = ir.DesignMode
 	}
 	input.Chrome = compileChrome(ir)
+	// The footer line is a deck-level field: CHROME_TRUNCATED lands on the
+	// raw chrome block and maps back to the spec's (go-slide-creator-m2tlt).
+	ir.SourceMap.Add("/chrome", "meta.chrome", -1)
 	forcedLayouts := make(map[int]string, len(ir.LayoutCoverage.Assigned))
 	for _, assignment := range ir.LayoutCoverage.Assigned {
 		forcedLayouts[assignment.SlideIndex] = assignment.Layout

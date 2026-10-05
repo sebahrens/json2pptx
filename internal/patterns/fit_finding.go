@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 )
 
 // Extent represents a measured or allowed dimension in EMU.
@@ -577,6 +578,90 @@ func ChromeOverImage(path string, slideNum int) FitFinding {
 		},
 		Action: "info",
 	}
+}
+
+// ChromeTruncation is what the footer fitter did to a left footer line that is
+// wider than the template's footer slot.
+type ChromeTruncation struct {
+	// Line is the full authored line of the tightest slide, LineChars its
+	// length and MaxChars how many of its characters fit at the footer floor.
+	Line      string
+	LineChars int
+	MaxChars  int
+	// Dropped are the input fields removed from the line, in drop order.
+	Dropped []string
+	// Truncated reports that the line is still cut with an ellipsis after
+	// every droppable field went.
+	Truncated bool
+	// Slides are the 1-based slides this happened on: every slide that shares
+	// the footer slot, so they all carry the same fields.
+	Slides []int
+}
+
+// ChromeTruncated builds a deck-level CHROME_TRUNCATED review finding
+// (go-slide-creator-m2tlt). path is the authored block the line comes from
+// ("/chrome", or "/footer/left_text" for a legacy footer).
+func ChromeTruncated(path string, t ChromeTruncation) FitFinding {
+	outcome := "it is cut with an ellipsis"
+	switch {
+	case len(t.Dropped) > 0 && t.Truncated:
+		outcome = chromeFieldList(t.Dropped) + " dropped there and the rest is still cut with an ellipsis"
+	case len(t.Dropped) > 0:
+		outcome = chromeFieldList(t.Dropped) + " dropped there so the rest renders in full"
+	}
+	params := map[string]any{
+		"path":       path,
+		"max_chars":  t.MaxChars,
+		"line_chars": t.LineChars,
+		"truncated":  t.Truncated,
+		"slides":     t.Slides,
+	}
+	if len(t.Dropped) > 0 {
+		params["dropped"] = t.Dropped
+	}
+	return FitFinding{
+		ValidationError: ValidationError{
+			Path: path,
+			Code: ErrCodeChromeTruncated,
+			Message: fmt.Sprintf("footer line %q is %d characters but the template's footer slot holds %d at 8pt on %s: %s; shorten the footer fields to %d characters, or remove the field you can spare",
+				t.Line, t.LineChars, t.MaxChars, slideList(t.Slides), outcome, t.MaxChars),
+			Fix: &FixSuggestion{Kind: "rewrite_field", Params: params},
+		},
+		Action: "review",
+	}
+}
+
+// chromeFieldList renders dropped footer fields with their verb:
+// "project_code was", "project_code and footer_date were".
+func chromeFieldList(fields []string) string {
+	if len(fields) == 1 {
+		return fields[0] + " was"
+	}
+	return strings.Join(fields[:len(fields)-1], ", ") + " and " + fields[len(fields)-1] + " were"
+}
+
+// slideList renders 1-based slide numbers as "slide 2" / "slides 2-4, 7".
+func slideList(slides []int) string {
+	if len(slides) == 0 {
+		return "every slide"
+	}
+	var parts []string
+	for i := 0; i < len(slides); {
+		j := i
+		for j+1 < len(slides) && slides[j+1] == slides[j]+1 {
+			j++
+		}
+		if j == i {
+			parts = append(parts, fmt.Sprintf("%d", slides[i]))
+		} else {
+			parts = append(parts, fmt.Sprintf("%d-%d", slides[i], slides[j]))
+		}
+		i = j + 1
+	}
+	if len(slides) == 1 {
+		return "slide " + parts[0]
+	}
+	return "slides " + strings.Join(parts, ", ")
 }
 
 // SubtitleWraps builds the SUBTITLE_WRAPS info finding (go-slide-creator-9bmaz).

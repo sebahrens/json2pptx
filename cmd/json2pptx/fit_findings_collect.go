@@ -116,6 +116,8 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	findings = append(findings,
 		collectStructuralFindings(input, layouts, slideWidth, slideHeight)...)
 	findings = append(findings, collectChromeCollisionFindings(input, layouts, slideWidth)...)
+	// The left footer line against its slot (CHROME_TRUNCATED).
+	findings = append(findings, collectChromeLineFindings(input, layouts, slideWidth, slideHeight, theme)...)
 
 	// 2b. Measured title fit (TITLE_OVERFLOW / title_wraps) against the
 	// resolved title placeholder and inherited title style.

@@ -24,7 +24,7 @@ practice.
 
 A deck that clears 1 and 2 with topic titles, a bridge whose opening bar is a
 stub, or a footer cut off with an ellipsis is not finished. All three were
-scored 100 in the journey runs.
+scored 100 in the journey runs (the footer is now reported: `CHROME_TRUNCATED`).
 
 ## The ten-point rubric (per slide)
 
@@ -53,7 +53,10 @@ pass on every slide.
 - **Top-heavy columns**: a `regions` stack or a four-card `kpi_snapshot` with
   the lower half of the slide empty. Add a third region, choose a chart, or
   accept it consciously (`go-slide-creator-18dqh`).
-- **Footer chrome truncated** on narrow templates (`go-slide-creator-m2tlt`).
+- **A footer that lost a field.** A footer line wider than the template's slot
+  drops `project_code`, then the date, and `CHROME_TRUNCATED` says so
+  (`go-slide-creator-m2tlt`) — a review finding that never blocks. Decide
+  whether the dropped field matters, and check the second template.
 - **Titles that wrap to three lines** on the serif template, or to two lines of
   capitals on `modern-template` / `blue-corporate`.
 - **A pale second series** on a line chart on some templates; check the data

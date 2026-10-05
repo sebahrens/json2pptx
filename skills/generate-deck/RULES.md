@@ -111,7 +111,7 @@ Section dividers are numbered `01`, `02`, … automatically; omit the `Section N
 
 | # | Wrong | Right | What happens |
 |---|---|---|---|
-| 17 | `"footer": "text"` (string) | `"footer": {"enabled": true, "left_text": "text"}` (one line across the footer width; over-long text shrinks to 8pt then ellipsizes) | Crash: cannot unmarshal string |
+| 17 | `"footer": "text"` (string) | `"footer": {"enabled": true, "left_text": "text"}` (one line; too long shrinks to 8pt, then ellipsizes: `CHROME_TRUNCATED`) | Crash: cannot unmarshal string |
 | 18 | `"source": "Source: X"` | `"source": "X"` | Renders "Source: Source: X" — engine prepends prefix |
 | 19 | `"chart": {...}` / `"table": {...}` | `"chart_value": {...}` / `"table_value": {...}` | Empty slide — content fields need `_value` suffix |
 

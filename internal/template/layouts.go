@@ -64,6 +64,9 @@ func ParseLayouts(reader *Reader) ([]types.LayoutMetadata, error) {
 			}
 		}
 	}
+	for i := range layouts {
+		layouts[i].TemplatePath = reader.Path()
+	}
 
 	return layouts, nil
 }
