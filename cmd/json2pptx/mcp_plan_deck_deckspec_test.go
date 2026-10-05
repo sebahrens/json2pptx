@@ -172,7 +172,10 @@ func TestPlanDeckJourneyBriefs(t *testing.T) {
 				"raise SMB prices 5% (adds \u20ac0.9m/yr, churn risk)",
 				"recommendation: renegotiate now and start re-platforming",
 			},
-			constraint: "9-10 slides", planned: 10,
+			// Nine slides: the options and the series are drafted as the kinds
+			// the brief names (go-slide-creator-xbwlt), so the storyline is
+			// not padded to the upper end of "9-10 slides".
+			constraint: "9-10 slides", planned: 9,
 		},
 		{
 			name: "E1/E2 investor update",

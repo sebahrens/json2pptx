@@ -435,6 +435,31 @@ func (q *regionRequest) regionSlots(pathOf func(int) string) []RegionSlot {
 	return out
 }
 
+// regionSlotsFromFields annotates the regions of a drafted regions body (an
+// outline item's) when no parsed request is behind it: kind and role per
+// region, the main region first, every region carrying the slot's facts.
+func regionSlotsFromFields(fields map[string]any, facts []string, pathOf func(int) string) []RegionSlot {
+	regions, _ := fields["regions"].([]any)
+	arrangement, _ := fields["arrangement"].(string)
+	out := make([]RegionSlot, 0, len(regions))
+	for i, r := range regions {
+		region, _ := r.(map[string]any)
+		kind, _ := region["kind"].(string)
+		role, position := "supporting", "right"
+		switch {
+		case i == 0:
+			role, position = "main", "left"
+		case arrangement == slides.ArrangeMainLeft && i == 1:
+			position = "upper right"
+		case arrangement == slides.ArrangeMainLeft && i == 2:
+			position = "lower right"
+		}
+		size, _ := region["size_pct"].(float64)
+		out = append(out, RegionSlot{Path: pathOf(i), Position: position, Role: role, Kind: kind, Visual: kind, SizePct: size, Facts: append([]string{}, facts...)})
+	}
+	return out
+}
+
 // facts are every region clause, verbatim.
 func (q *regionRequest) facts() []string {
 	out := make([]string, len(q.regions))
