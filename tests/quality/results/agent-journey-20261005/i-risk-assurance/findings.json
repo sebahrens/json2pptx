@@ -1,0 +1,166 @@
+{
+  "persona": "i-risk-assurance",
+  "metrics": {
+    "tool_calls": 44,
+    "total_response_bytes": 3685131,
+    "response_bytes_excluding_images": 339151,
+    "validates_before_first_ready_render": 4,
+    "renders_to_first_ready": 1,
+    "wall_minutes": 10.6,
+    "enjoyment_1_to_10": 7,
+    "enjoyment_reasons": [
+      "The DeckSpec path is fast: four validates and one render reached deterministic_ready, every blocking finding carried a JSON Pointer and a plain-language fix, and patches by deck_id re-validated in half a second.",
+      "The RAG board (option_matrix with scale:rag), the labeled-rows finding slides, the next-steps closer and the A1-numbered appendix all came out looking like consulting slides on the first render.",
+      "Friction was concentrated in three places: the 7-row table cap forced a split that produced two half-empty slides, recommend_visual offered nothing structured for a 'one finding per slide' intent, and the regions kind took two blind attempts before a table + KPI pairing fit.",
+      "Preview images from recommend_visual and list_slide_kinds examples made choosing shapes easy; the only things I had to guess were the option_matrix scale vocabulary (found in item_schema) and the roadmap items/description interaction."
+    ]
+  },
+  "findings": [
+    {
+      "id": "A1",
+      "title": "Table density cap (7 rows) is far below what the slide visibly holds, so the forced split produced two half-empty slides",
+      "severity": "major",
+      "journey_stage": "validation",
+      "what_happened": "The seven-finding register (7 rows + header) was rejected as INPUT.SEMANTIC_DENSITY ('the renderer lays out at most 7') and I had to split it 4 + 3. The rendered 4-row table occupies only the top third of the content area at a small font; eight rows of that height would have fit with room to spare. The 3-row second slide was so sparse I spent two repair rounds turning it into a regions slide.",
+      "evidence": ["call n=18: INPUT.SEMANTIC_DENSITY blocking=true, /slides/5/rows, 'table has 8 rows including the header; the renderer lays out at most 7 — split it across two slides'", "/tmp/jj/wave/i-risk-assurance/log/images/n025-03.jpeg (4-row table, lower 60% empty)", "/tmp/jj/wave/i-risk-assurance/log/images/n024-07.jpeg (3-row remainder)"],
+      "expected": "Either a cap that reflects the measured row height on the template (a 4-column register with short cells fits 10+ rows), or an auto-split that keeps the header on both halves and tells me the split point in terms I can use.",
+      "suggestion": "Measure the table against the content area like other kinds (FIT.table_rows_truncated already predicts truncation in regions); raise the logical-row cap when rows are single-line; offer a `split: auto` for table kinds so a register is never dropped or hand-split."
+    },
+    {
+      "id": "A2",
+      "title": "recommend_visual offers only a bullet layout for 'one finding on its own structured slide'",
+      "severity": "major",
+      "journey_stage": "discovery",
+      "what_happened": "Asked for 'one audit finding on its own slide in a structured layout, not bullets: what we found, why it matters, the agreed action, owner and due date' (template forest-green, preview:true), the recommender returned a single candidate: the content layout with bullets. Only after calling the hidden list_patterns tool and re-ranking an explicit shortlist did I find labeled-rows, which was exactly right.",
+      "evidence": ["call n=11: candidates=[content 0.85] only; preview n011-01.jpeg is a three-bullet slide", "call n=13: with candidates:[labeled-rows,...] all shortlist scores were 0 but previews showed labeled-rows fits (n013-04.jpeg)"],
+      "expected": "A finding / issue / risk-card intent should surface labeled-rows (and scqa-summary, framework-grid) as structured candidates, ideally as a DeckSpec kind.",
+      "suggestion": "Add intent keywords (finding, issue, observation, 'what we found', 'why it matters', owner, action) to the labeled-rows ranking, and expose a DeckSpec kind (e.g. `finding` or `labeled_rows`) so this common audit slide needs no raw_json2pptx."
+    },
+    {
+      "id": "A3",
+      "title": "recommend_visual with a `candidates` shortlist returns score 0 for most names and a wrong data_contract for card-grid",
+      "severity": "minor",
+      "journey_stage": "discovery",
+      "what_happened": "With candidates supplied, every candidate except the one the generic ranker already liked scored 0 (labeled-rows 0, journey-maturity-model 0, capability-heatmap 0), so the ranking carried no information. card-grid's data_contract description read 'columns: Exactly 2 balanced columns {header, items[]}', which is the comparison contract, and its rationale was 'Pricing plans or subscription tiers'.",
+      "evidence": ["call n=13: before-after 0, card-grid 0, framework-grid 0, labeled-rows 0, scqa-summary 0, text-sidebar 0", "call n=14: comparison-2col 0.85, all others 0", "call n=15: card-grid data_contract.description 'columns: Exactly 2 balanced columns'"],
+      "expected": "A shortlist ranking that discriminates between the names, and a data_contract that belongs to the named pattern.",
+      "suggestion": "Score shortlisted names against the intent with the same model as the open ranking; fix the card-grid contract lookup."
+    },
+    {
+      "id": "A4",
+      "title": "regions kind: a 3-row table in a 55% 'rows' region is predicted to truncate 2 of 3 rows, and 4 KPIs do not fit in 45%",
+      "severity": "major",
+      "journey_stage": "repair",
+      "what_happened": "Turning the sparse 3-row remainder into a regions slide (arrangement rows: table 55% over kpis 45%) failed with three blocking findings: FIT.table_rows_truncated ('2 of 3 rows hidden'), kpi-4up fit_overflow (70pt available vs 72pt needed) and RENDER.GENERATION_FAILED. Switching to columns (table 64 / kpis 36) validated but rendered the four KPIs at thumbnail size (n030-01.jpeg); only a single stat region looked right (n033-01.jpeg). Three attempts for one slide, with no guidance on what a region of a given size can hold.",
+      "evidence": ["call n=27: FIT.table_rows_truncated /slides/6/regions/0 '2 of 3 rows hidden'; FIT.fit_overflow /slides/6/regions/1 '72pt of height ... area is 70pt tall'", "/tmp/jj/wave/i-risk-assurance/log/images/n030-01.jpeg (kpis region tiny)", "/tmp/jj/wave/i-risk-assurance/log/images/n033-01.jpeg (stat region works)"],
+      "expected": "The regions summary says table regions hold '<=4 columns x 5 rows'; a 3-row table should not truncate at 55% of the content height. The kind should say how many KPIs a 36% column can host, or fall back to a 2x2 / kpi-inline automatically.",
+      "suggestion": "Publish per-arrangement capacity (rows per table region, KPIs per column width) in list_slide_kinds for regions; make the kpis region degrade to kpi-inline or a 2x2 instead of shrinking; fix the table row-height estimate for rows arrangements."
+    },
+    {
+      "id": "A5",
+      "title": "Line chart y-axis starts at the data minimum (2), not 0, and no axis option is exposed",
+      "severity": "minor",
+      "journey_stage": "render",
+      "what_happened": "The year-on-year trend (exceptions 11-9-7, high findings 4-3-2) rendered with a y-axis from 2 to 12, so the high-findings line appears to hit the floor in 2026 and the series label 'High-rated findings' sits on the x-axis line. The chart schema only documents type/title/data; there is no y_min / baseline option, so I could not fix it in a repair round.",
+      "evidence": ["/tmp/jj/wave/i-risk-assurance/log/images/n025-02.jpeg", "call n=26: chart item_schema lists only data, title, type"],
+      "expected": "Count data on a line chart should default to a zero baseline; an axis option (y_min, or baseline: zero) should be documented.",
+      "suggestion": "Default line/bar axes to 0 for non-negative data, and add y_min / y_max to the chart data contract."
+    },
+    {
+      "id": "A6",
+      "title": "process kind: 'steps with a description render as numbered rows' but they rendered as chevrons with a label-width limit the docs do not state",
+      "severity": "minor",
+      "journey_stage": "validation",
+      "what_happened": "list_slide_kinds says steps carrying a description render as numbered rows (3-6). My five described steps compiled to numbered-step-strip chevrons and validation blocked twice on INPUT.TEXT_EXCEEDS_SHAPE for the label 'Operating-effectiveness testing' and then 'Effectiveness testing' (21 chars), without saying how many characters a 5-step chevron holds. The brief budget says steps[].label max 60.",
+      "evidence": ["call n=19: TEXT_EXCEEDS_SHAPE 'chevron label \"Operating-effectiveness testing\" does not fit on one line at 5 steps even at 12pt'", "call n=20: same for 'Effectiveness testing'", "call n=16: budgets steps[].label max_chars 60"],
+      "expected": "Either the documented numbered rows, or a stated per-step label budget for the chevron strip (it is roughly 17 characters at 5 steps).",
+      "suggestion": "Report the character budget in the finding ('holds about 17 characters at 5 steps') and in list_slide_kinds budgets; align the summary text with the actual composition rule."
+    },
+    {
+      "id": "A7",
+      "title": "roadmap phases[].items are folded into the description and then fail its 160-char maxLength",
+      "severity": "minor",
+      "journey_stage": "repair",
+      "what_happened": "Adding three short items to each roadmap phase (the brief lists items? as a phase field) produced INPUT.max_length 'phases[0].description exceeds maxLength 160 (205 chars)' although the description itself was 90 characters. The items had been concatenated into it. After shortening both, the items rendered as bullets under the description (n037-01.jpeg) but the slide still leaves the lower third empty.",
+      "evidence": ["call n=34: INPUT.max_length /slides/10/phases 'phases[0].description exceeds maxLength 160 (205 chars)'", "/tmp/jj/wave/i-risk-assurance/log/images/n037-01.jpeg"],
+      "expected": "A limit that is stated per field (items count and length) and a roadmap that uses the vertical space it has.",
+      "suggestion": "Validate items separately from description and report the combined budget; let phase-roadmap grow the per-phase block when space is free."
+    },
+    {
+      "id": "A8",
+      "title": "The 'verified fix' for an over-dense option_matrix is to drop the visual entirely",
+      "severity": "minor",
+      "journey_stage": "validation",
+      "what_happened": "FIT.BODY_TOO_LONG on the RAG board offered a patch_verified next_tool_call that sets layout to 'content' ('gives up the visual for the template's own text layout'). Following it would have lost the RAG dots the slide exists for. The useful remedy (drop options[].detail) was only in the message text, and the 15 TEXT_BELOW_READABLE_MIN symptoms repeated the same sentence.",
+      "evidence": ["call n=18: fit-6 'verified fix: set /slides/3/layout to \"content\"'; 15 identical symptom entries"],
+      "expected": "The first verified patch should be the least destructive one (remove details), with the layout fallback last.",
+      "suggestion": "Rank candidate patches by content loss; collapse repeated symptoms into one entry with a count."
+    },
+    {
+      "id": "A9",
+      "title": "No way to read back the stored deck after patches, so my saved spec drifted from the rendered one",
+      "severity": "minor",
+      "journey_stage": "delivery",
+      "what_happened": "Edits go in as deck_id + patch, but nothing in the default profile returns the stored spec. When I re-rendered the final deck on p-style from my own file, slide 7 came back with the KPI region I had already replaced (n041-07.jpeg) and I had to re-sync and render again. Dropping a patch is easy to do over three repair rounds.",
+      "evidence": ["call n=41 image n041-07.jpeg shows the kpis region; the stored forest-green deck (n033-01.jpeg) had the stat region", "calls n=42-44: re-validate and re-render on p-style"],
+      "expected": "A way to fetch the current stored spec (or have render_deck_spec return it / write it next to the pptx).",
+      "suggestion": "Add `include_spec: true` to render_deck_spec / validate_deck_spec, or write <deck>.deckspec.json beside the pptx."
+    },
+    {
+      "id": "A10",
+      "title": "p-style: footer chrome truncated with an ellipsis and the second line series is near-invisible",
+      "severity": "minor",
+      "journey_stage": "render",
+      "what_happened": "On p-style the footer reads 'Confidential - Audit Committee — Cobalt Insurance...' (date dropped, ellipsis) on every content slide, and the second series of the trend line chart renders in a very pale orange with low contrast against white. validate_deck_spec on p-style reported neither.",
+      "evidence": ["/tmp/jj/wave/i-risk-assurance/log/images/n041-02.jpeg (footer)", "/tmp/jj/wave/i-risk-assurance/log/images/n041-05.jpeg (pale line)", "call n=42: p-style validate ok, 1 warning 1 info"],
+      "expected": "Chrome that fits or wraps by priority, and chart series colours that meet contrast on the template's background.",
+      "suggestion": "Emit a chrome-overflow finding and shorten by dropping the least important element (client name) before truncating; check data-palette series contrast per template."
+    },
+    {
+      "id": "A11",
+      "title": "plan_deck left most of the brief's facts unplaced and sized the deck at 12 with five structural slides",
+      "severity": "minor",
+      "journey_stage": "onboarding",
+      "what_happened": "plan_deck returned 7 content slides plus cover, agenda, two dividers and an appendix divider, with 24 unplaced facts including all four required complex layouts (RAG board, register, trend + opinion, maturity ladder), the two high findings and the maturity scores. The slot 'facts' were fragments ('3, 2026', '9, 2026'). I used the plan only for the structure idea and authored from the brief directly.",
+      "evidence": ["call n=4: unplaced_facts has 24 entries; slots[3].facts = ['high-rated findings 2024: 4, 2025', '3, 2026', ...]; budget planned 12 (7 content, 5 structural)"],
+      "expected": "A plan that maps explicit layout requests in the brief ('as a table', 'chart on the left', 'as a ladder') to kinds, and keeps numeric facts whole.",
+      "suggestion": "Parse 'Required:' / 'as a <shape>' clauses into slots; split facts on sentences, not commas inside number lists."
+    },
+    {
+      "id": "A12",
+      "title": "SEMANTIC_RHYTHM_DENSITY warns about four dense slides in a row but every candidate 'lighter' slide I own is required content",
+      "severity": "polish",
+      "journey_stage": "validation",
+      "what_happened": "The warning persisted through every revision on slide 4 (board, trend, register x2). An audit readout's evidence block is dense by nature; the warning gave no slide-level suggestion (which one to lighten or where to insert a divider).",
+      "evidence": ["calls n=19, 20, 21, 28, 31, 35: INPUT.SEMANTIC_RHYTHM_DENSITY /slides/3 unchanged"],
+      "expected": "A concrete suggestion (insert a section divider before slide 4, or move the process slide between) or a way to acknowledge it.",
+      "suggestion": "Attach a remediation with an insert position; let meta declare an evidence section so the rule relaxes inside it."
+    }
+  ],
+  "delights": [
+    {
+      "title": "First render reached deterministic_ready after four validates, and every blocking finding was fixable from its message",
+      "evidence": ["call n=23: deterministic_ready true, score 100 on the first render_deck_spec", "calls n=18-21: each blocking finding named a JSON Pointer and a remedy; patches by deck_id validated in ~0.5s"]
+    },
+    {
+      "title": "option_matrix with scale:rag rendered a real RAG board on the first try, and the colours survived both templates",
+      "evidence": ["call n=24 image n024-04.jpeg and n025-01.jpeg: red / amber / green dots per domain with a legend", "call n=41 image n041-04.jpeg: same dots on p-style"]
+    },
+    {
+      "title": "The appendix was understood: the divider is unnumbered and the appendix table is paged 'A1'",
+      "evidence": ["call n=24 images n024-13.jpeg (no page number) and n024-14.jpeg (page 'A1')", "list_slide_kinds section summary: 'appendix: true ... leaves it unnumbered and uncounted'"]
+    },
+    {
+      "title": "known_hashes re-rendering returned only the changed slide after each repair",
+      "evidence": ["call n=30: 1 image for 14 slides, 13 marked unchanged", "calls n=33, n=37, n=44: same"]
+    },
+    {
+      "title": "labeled-rows made a genuinely structured finding slide (WHAT WE FOUND / WHY IT MATTERS / ACTION / OWNER AND DATE) with inline bold",
+      "evidence": ["call n=24 images n024-08.jpeg and n024-09.jpeg", "recipe from call n=13 copied with only values changed"]
+    },
+    {
+      "title": "regions main_left gave the trend-left / opinion-right split in one attempt, with 'Partially effective' as a real headline",
+      "evidence": ["call n=24 image n024-05.jpeg; larger render n025-02.jpeg: right column readable at 36%"]
+    }
+  ]
+}

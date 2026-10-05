@@ -1,0 +1,177 @@
+{
+ "review": "Agent journey wave 3: split and complex layouts across consulting, deals, risk, tech & data and assurance",
+ "date": "2026-10-05",
+ "source_commit": "ce09f0570",
+ "audit_bead": "go-slide-creator-ls0i5",
+ "harness": "tests/quality/journey (personas f-i; product-only agents over the stdio MCP bridge; p-style second template)",
+ "personas": {
+  "f-deals-pitch": {
+   "tool_calls": 23,
+   "total_response_bytes": 2252456,
+   "response_bytes_excluding_images": 242424,
+   "validates_before_first_ready_render": 3,
+   "renders_to_first_ready": 1,
+   "wall_minutes": 7.8,
+   "enjoyment_1_to_10": 7,
+   "raw_findings": 12,
+   "delights": 9
+  },
+  "g-risk-consulting": {
+   "tool_calls": 28,
+   "total_response_bytes": 1729834,
+   "response_bytes_excluding_images": 252322,
+   "validates_before_first_ready_render": 2,
+   "renders_to_first_ready": 1,
+   "wall_minutes": 7.9,
+   "enjoyment_1_to_10": 7,
+   "raw_findings": 13,
+   "delights": 7
+  },
+  "h-tech-data": {
+   "tool_calls": 27,
+   "total_response_bytes": 2927534,
+   "response_bytes_excluding_images": 522246,
+   "validates_before_first_ready_render": 3,
+   "renders_to_first_ready": 2,
+   "wall_minutes": 8.1,
+   "enjoyment_1_to_10": 7,
+   "raw_findings": 15,
+   "delights": 7
+  },
+  "i-risk-assurance": {
+   "tool_calls": 44,
+   "total_response_bytes": 3685131,
+   "response_bytes_excluding_images": 339151,
+   "validates_before_first_ready_render": 4,
+   "renders_to_first_ready": 1,
+   "wall_minutes": 10.6,
+   "enjoyment_1_to_10": 7,
+   "raw_findings": 12,
+   "delights": 6
+  }
+ },
+ "root_causes": [
+  {
+   "bead": "go-slide-creator-plg7r",
+   "title": "Tables: compact row pitch before truncation; static 7-row cap replaced",
+   "findings": [
+    "f-A6",
+    "h-A5",
+    "i-A1",
+    "i-A4"
+   ],
+   "status": "fixed in this wave"
+  },
+  {
+   "bead": "go-slide-creator-xbwlt",
+   "title": "plan_deck mis-routes named slides, strands facts",
+   "findings": [
+    "f-A5",
+    "g-A1",
+    "h-A2",
+    "i-A11"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-ux1fl",
+   "title": "recommend_visual misses split/beside, status-board and finding intents; shortlist scores 0",
+   "findings": [
+    "f-A2",
+    "g-A2",
+    "h-A9",
+    "i-A2",
+    "i-A3"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-929jm",
+   "title": "Charts: zero baseline for non-negative bar/line/waterfall; y_min/y_max",
+   "findings": [
+    "f-A3",
+    "i-A5"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-ptazs",
+   "title": "Kinds expose pattern fields: roadmap parallel_tracks, comparison connectors, image_case width; regions unknown-kind evidence",
+   "findings": [
+    "f-A1",
+    "g-A3",
+    "h-A3",
+    "h-A4",
+    "h-A10"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-cb339",
+   "title": "show_pattern in the default profile; stored-spec read-back discoverable",
+   "findings": [
+    "h-A1",
+    "i-A9"
+   ],
+   "status": "fixed in this wave"
+  },
+  {
+   "bead": "go-slide-creator-m2tlt",
+   "title": "Footer chrome truncates silently",
+   "findings": [
+    "f-A4",
+    "i-A10"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-18dqh",
+   "title": "Stacked regions / kpi rows: vertical balance, honest fit, SLIDE_UNDERUSED",
+   "findings": [
+    "f-A12",
+    "g-A10",
+    "h-A11",
+    "h-A15",
+    "g-A13"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-u8orh",
+   "title": "option_matrix height model with short details; remediation drops the visual; takeaway advice contradiction",
+   "findings": [
+    "g-A4",
+    "g-A7",
+    "i-A8"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-llxzd",
+   "title": "Raw-pattern refusals point at generated cells without authored path/text",
+   "findings": [
+    "g-A5",
+    "h-A6",
+    "f-A7"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-ec74l",
+   "title": "Named-item heat map (3x3)",
+   "findings": [
+    "g-A8"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-o477e",
+   "title": "changed_slides from rendered hashes; path for unchanged slides; deck_id reuse",
+   "findings": [
+    "f-A10",
+    "f-A11",
+    "h-A13"
+   ]
+  },
+  {
+   "bead": "go-slide-creator-th6o9",
+   "title": "Rhythm advice classification and sectioning nag",
+   "findings": [
+    "f-A8",
+    "h-A12",
+    "i-A12"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,245 @@
+{
+ "persona": "g-risk-consulting",
+ "metrics": {
+  "tool_calls": 28,
+  "total_response_bytes": 1729834,
+  "response_bytes_excluding_images": 252322,
+  "validates_before_first_ready_render": 2,
+  "renders_to_first_ready": 1,
+  "wall_minutes": 7.9,
+  "enjoyment_1_to_10": 7,
+  "enjoyment_reasons": [
+   "First render was deterministic_ready after one validate + one patched validate; every complex slide (status board, chart+headline split, heat map, aligned two-column) rendered as a real visual, nothing degraded to bullets.",
+   "Previews from recommend_visual and list_slide_kinds let me see candidates before authoring; deck_id + patch editing and known_hashes re-rendering made repair cheap.",
+   "Friction came from plan_deck's weak slot mapping, recommend_visual missing the status-board fit, the DeckSpec roadmap kind having no parallel tracks, and raw-pattern error paths pointing at generated grid cells instead of my fields (three render attempts for one repair round)."
+  ]
+ },
+ "findings": [
+  {
+   "id": "A1",
+   "title": "plan_deck maps required slides to the wrong kinds and leaves 27 facts unplaced",
+   "severity": "major",
+   "journey_stage": "discovery",
+   "what_happened": "With format deckspec the plan put the losses chart slide into executive_summary, the heat map into table, and the next-steps closer into process (then appended a second next_steps). 27 of the brief's facts, all explicitly tied to slides in the brief (options, pillars, parallel tracks, heat-map placements), landed in unplaced_facts. Title was the brief's first clause verbatim.",
+   "evidence": [
+    "call n=4: slides[3] kind executive_summary for 'op-risk losses chart ... on the left'",
+    "call n=4: slides[4] kind table for 'likelihood x impact heat map'",
+    "call n=4: unplaced_facts has 27 entries incl. 'co-delivery', 'EUR 2.1M, joint team', 'cyber (high/high)'",
+    "/tmp/jj/wave/g-risk-consulting/plan.json"
+   ],
+   "expected": "A chart slot to become chart_insight or regions, a heat-map slot to become matrix_2x2, 'next-steps closer' to be the closing next_steps, and facts naming options/pillars/phases to be routed to the decision/pillars/roadmap slots.",
+   "suggestion": "Route by slot keywords (chart, heat map, next steps, options, pillars, roadmap) and attach the brief's enumerations to the slot whose kind takes them; dedupe the auto closing slide when the brief already names a closer."
+  },
+  {
+   "id": "A2",
+   "title": "recommend_visual ranks KPI cards for a RAG status board; table-highlight only surfaced when I named it",
+   "severity": "major",
+   "journey_stage": "discovery",
+   "what_happened": "Intent 'five risk types each with a status (within / amber / breached), the current metric and the limit; breached rows visibly distinguished' returned kpi-5up, kpi-inline, metric-list, kpi-3up, kpi-4up. The right answer (option_matrix / table-highlight with scale rag) only appeared when I passed candidates explicitly, and then with score 0 and no ranking.",
+   "evidence": [
+    "call n=10: candidates kpi-5up 0.95, kpi-inline 0.9, metric-list 0.82",
+    "call n=12: table-highlight score 0 (shortlist mode)",
+    "/tmp/jj/wave/g-risk-consulting/rv-status.json"
+   ],
+   "expected": "'status', 'RAG', 'within/amber/breached', 'metric and limit' should rank option_matrix (scale rag) or table first.",
+   "suggestion": "Add status/RAG/traffic-light/limit vocabulary to the option_matrix and table scorers; in candidates mode still return relative scores."
+  },
+  {
+   "id": "A3",
+   "title": "DeckSpec roadmap kind has no parallel tracks; the only route is a raw pattern",
+   "severity": "major",
+   "journey_stage": "authoring",
+   "what_happened": "The roadmap kind's item_schema is phases[] only (additionalProperties false). recommend_visual for 'four phases with two parallel workstream tracks' ranked phase-roadmap (kind roadmap) first but its contract had no track field; roadmap-phased was raw-only. I had to author a raw_json2pptx slide, losing takeaway/source and getting grid-cell error paths (A5).",
+   "evidence": [
+    "call n=14: roadmap item_schema properties = phases only",
+    "call n=15: phase-roadmap data_contract optional_keys [title, takeaway]; roadmap-phased 'Raw-only: no DeckSpec kind compiles to roadmap-phased'"
+   ],
+   "expected": "roadmap to accept parallel_tracks[] (or tracks/workstreams) since the pattern catalogue advertises them.",
+   "suggestion": "Expose parallel_tracks on the roadmap kind, or compile roadmap{workstreams} to roadmap-phased."
+  },
+  {
+   "id": "A4",
+   "title": "option_matrix with 5 rows x 3 short columns reported 5-6pt text and offered 'layout: content' as the verified fix",
+   "severity": "major",
+   "journey_stage": "validation",
+   "what_happened": "The first validate said the status board needed 288pt vs 253pt and measured 5.3-6.5pt text, with a patch_verified fix to set layout 'content' (i.e. degrade the status board to bullets). Removing the 5 short details (<= 42 chars) cleared it entirely and the render is comfortably readable at 12pt+. The measurement looked far off for such a sparse table.",
+   "evidence": [
+    "call n=16: fit-3 'needs about 288pt ... holds 253pt', symptoms font_pt 5.3/6.5, next_tool_call add /slides/3/layout content",
+    "call n=17: ok true after removing details",
+    "/tmp/jj/wave/g-risk-consulting/log/images/n029-01.jpeg"
+   ],
+   "expected": "A fix that keeps the visual (drop details) offered first; the 'give up the visual' patch last.",
+   "suggestion": "Order remediations by how much of the visual they keep; re-check the table-highlight height model for 5 rows with 1-line details."
+  },
+  {
+   "id": "A5",
+   "title": "Raw-pattern render errors point at generated grid cells, not my spec fields, and sometimes carry no text",
+   "severity": "major",
+   "journey_stage": "repair",
+   "what_happened": "After shortening the roadmap, render refused with TEXT_BELOW_READABLE_MIN at /slides/9/slide with debug raw_path /slides/9/pattern/rows/3/cells/0/shape/text and no evidence.text; I had to guess which workstream name or bar label it was. It took three render attempts (n=21, 22, 23) to clear one repair round because each refusal reported only the first failing shape per role.",
+   "evidence": [
+    "call n=21: 'card-title text renders at 9.6pt' path /slides/9/slide, debug rows/3/cells/0, evidence null",
+    "call n=22: new error text 'Data and reporting platform' surfaced only after the previous one was fixed",
+    "call n=23: ok"
+   ],
+   "expected": "Every failing field in one response with its spec path (/slides/9/slide/pattern/values/workstreams/1/name) and the offending text.",
+   "suggestion": "Map generated-shape paths back to pattern.values paths; report all TEXT_BELOW_READABLE_MIN hits per slide in one pass."
+  },
+  {
+   "id": "A6",
+   "title": "Removing a milestone made the roadmap text SMALLER (previously passing slide started failing)",
+   "severity": "minor",
+   "journey_stage": "repair",
+   "what_happened": "Rev 3 rendered roadmap-phased fine with a milestone in lane 3. Removing only that milestone made lane names 'Data and reporting platform' and 'Training 1,200 control owners' shrink to 9.6pt and block the render.",
+   "evidence": [
+    "call n=18: ok with milestone",
+    "call n=21/22: TEXT_BELOW_READABLE_MIN on lane names after removing /workstreams/2/bars/1"
+   ],
+   "expected": "Less content should not reduce readability.",
+   "suggestion": "Lane height should not depend on whether a milestone row exists; give lane-name cells a fixed minimum height."
+  },
+  {
+   "id": "A7",
+   "title": "Contradictory guidance: validate said 'drop the slide takeaway', then warned SEMANTIC_TAKEAWAY_REQUIRED when I did",
+   "severity": "minor",
+   "journey_stage": "validation",
+   "what_happened": "fit-3's message listed 'drop the slide takeaway' among the fixes. After removing it the next validate raised INPUT.SEMANTIC_TAKEAWAY_REQUIRED (warning). Re-adding the takeaway rendered fine.",
+   "evidence": [
+    "call n=16: 'drop the option details, drop the slide takeaway, or use fewer options'",
+    "call n=17: INPUT.SEMANTIC_TAKEAWAY_REQUIRED /slides/3"
+   ],
+   "expected": "Remediation text that does not recommend something another rule rejects.",
+   "suggestion": "Drop 'remove the takeaway' from fit remediation for kinds where the takeaway is required."
+  },
+  {
+   "id": "A8",
+   "title": "Heat map: 2x2 matrix cannot place 'medium' risks; the honest 3x3 needed a creative misuse of capability-heatmap",
+   "severity": "minor",
+   "journey_stage": "authoring",
+   "what_happened": "recommend_visual's top hits were a numeric heatmap (cells hold numbers, not risk names) and matrix_2x2. With points, the four medium-likelihood/impact risks landed exactly on the axis lines (n019-06). A readable six-risk likelihood x impact grid was only achieved by using capability-heatmap with likelihood columns and impact tiers.",
+   "evidence": [
+    "call n=9: heatmap 0.95 (values number[][]), matrix-2x2 0.92",
+    "call n=16: RENDER.diagram.text_overlap 'Model risk would cover a quadrant heading'",
+    "/tmp/jj/wave/g-risk-consulting/log/images/n019-06.jpeg",
+    "/tmp/jj/wave/g-risk-consulting/log/images/n024-02.jpeg"
+   ],
+   "expected": "A risk-register heat map form: 3x3 likelihood x impact grid that takes named items per cell.",
+   "suggestion": "Let the heatmap diagram accept labels[][] (names per cell) or add a risk_heatmap kind with items[{name, likelihood, impact}]."
+  },
+  {
+   "id": "A9",
+   "title": "recommend_visual with preview returns ~240 KB per call; default thumbnails ~417 KB for 11 slides",
+   "severity": "minor",
+   "journey_stage": "discovery",
+   "what_happened": "Two preview calls cost 446 KB together and 8.8 s; a full-deck thumbnail call is 417 KB. Fine once, heavy for exploration across several intents.",
+   "evidence": [
+    "call n=9: 242496 bytes, 5.55s",
+    "call n=10: 203740 bytes, 3.23s",
+    "call n=19: 416792 bytes"
+   ],
+   "expected": "Previews at a lower density by default, or a preview_density argument.",
+   "suggestion": "Default preview density ~35 and expose density on recommend_visual/list_slide_kinds."
+  },
+  {
+   "id": "A10",
+   "title": "kpi_snapshot with 4 KPIs reports fit_overflow (119pt > 107pt) yet renders with the lower half of the slide empty",
+   "severity": "minor",
+   "journey_stage": "render",
+   "what_happened": "Every validate/render/score flagged fit_overflow on the kpi-4up row, but the rendered slide shows a single short row and 45% empty space beneath it. The finding's split_slide / increase_row_height fixes make no sense for what is visible.",
+   "evidence": [
+    "call n=16: FIT.fit_overflow /slides/2 'needs about 119pt ... has 107pt'",
+    "call n=30: fix increase_row_height",
+    "/tmp/jj/wave/g-risk-consulting/log/images/n024-01.jpeg"
+   ],
+   "expected": "No overflow finding when the row is short, or a layout that uses the free height.",
+   "suggestion": "Re-measure the kpi row budget against the actual placement; let the row grow into free slide height."
+  },
+  {
+   "id": "A11",
+   "title": "The whole render refuses on one unreadable shape; no partial artifact or per-slide failure mode",
+   "severity": "minor",
+   "journey_stage": "render",
+   "what_happened": "render_deck_spec returned success:false and stored:false for the whole 11-slide deck twice because one raw-pattern slide had a 9.6pt label; nothing to look at until the text was guessed shorter.",
+   "evidence": [
+    "call n=21, n=22: isError=true, stored false, revision unchanged"
+   ],
+   "expected": "Either store the patch so the next call can be incremental, or render the other 10 slides and mark the failing one.",
+   "suggestion": "Store the spec revision even on a refused render (flag it not_rendered), or offer output_validation warn in the next_tool_call."
+  },
+  {
+   "id": "A12",
+   "title": "Template chrome leaves a large gap under one-line titles on p-style",
+   "severity": "polish",
+   "journey_stage": "render",
+   "what_happened": "On p-style every title fits one line, but content keeps the two-line title offset, so slides 3, 4, 9 and 10 have a wide empty band under the title (n028-03, n028-04, n028-09, n028-10). No tool flagged it.",
+   "evidence": [
+    "/tmp/jj/wave/g-risk-consulting/log/images/n028-03.jpeg",
+    "/tmp/jj/wave/g-risk-consulting/log/images/n028-10.jpeg"
+   ],
+   "expected": "Content to move up when the measured title is one line.",
+   "suggestion": "Use the measured title height to position the body grid."
+  },
+  {
+   "id": "A13",
+   "title": "On p-style the decisive-column tint and breached-row tint are the same hue, muting the status distinction",
+   "severity": "polish",
+   "journey_stage": "render",
+   "what_happened": "On midnight-blue the Status column is blue-tinted and breached rows pale blue with a badge; on p-style both are peach so the status cells of breached rows blend in (n028-04). Still readable because the 'Breached' badge and left bar remain.",
+   "evidence": [
+    "/tmp/jj/wave/g-risk-consulting/log/images/n028-04.jpeg",
+    "/tmp/jj/wave/g-risk-consulting/log/images/n029-01.jpeg"
+   ],
+   "expected": "Row and column highlights to stay distinguishable on any template.",
+   "suggestion": "Use a neutral (dk2/lt2) tint for the decisive column when the row highlight already uses the accent."
+  }
+ ],
+ "delights": [
+  {
+   "title": "deterministic_ready on the first render after one validate + one patch",
+   "evidence": [
+    "call n=16 validate (2 errors), n=17 patched validate ok, n=18 render deterministic_ready true"
+   ]
+  },
+  {
+   "title": "Status board kept its RAG dots, 'Breached' badges and row highlight on both templates; nothing degraded to bullets",
+   "evidence": [
+    "/tmp/jj/wave/g-risk-consulting/log/images/n029-01.jpeg",
+    "/tmp/jj/wave/g-risk-consulting/log/images/n028-04.jpeg",
+    "no SEMANTIC_PATTERN_DEGRADED in any response"
+   ]
+  },
+  {
+   "title": "regions main_left gave chart-left / stat-plus-bullets-right in one attempt with the narrow column readable",
+   "evidence": [
+    "call n=18",
+    "/tmp/jj/wave/g-risk-consulting/log/images/n019-05.jpeg"
+   ]
+  },
+  {
+   "title": "patch_verified next_tool_call on the blocking finding cleared it exactly as promised",
+   "evidence": [
+    "call n=16 fit-2 next_tool_call remove details -> call n=17 ok true"
+   ]
+  },
+  {
+   "title": "known_hashes re-render returned only the 4 changed slides, and submit_visual_review accepted the mixed old/new hashes",
+   "evidence": [
+    "call n=24: 7 slides unchanged:true, 4 images",
+    "call n=26: status visually_reviewed_current_revision"
+   ]
+  },
+  {
+   "title": "recommend_visual previews showed me the matrix, heatmap and table-highlight before I committed to one",
+   "evidence": [
+    "call n=9 images n009-01..04"
+   ]
+  },
+  {
+   "title": "Forking to p-style was one call and every slide ported cleanly",
+   "evidence": [
+    "call n=27 fork + patch meta.template, deterministic_ready true",
+    "images n028-01..11"
+   ]
+  }
+ ]
+}

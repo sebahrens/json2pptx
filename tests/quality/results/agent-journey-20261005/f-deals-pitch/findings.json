@@ -1,0 +1,154 @@
+{
+  "persona": "f-deals-pitch",
+  "metrics": {
+    "tool_calls": 23,
+    "total_response_bytes": 2252456,
+    "response_bytes_excluding_images": 242424,
+    "validates_before_first_ready_render": 3,
+    "renders_to_first_ready": 1,
+    "wall_minutes": 7.8,
+    "bytes_read_before_first_slide_authored": 100631,
+    "first_ready_render_call": 16,
+    "repair_rounds_after_first_render": 1,
+    "enjoyment_1_to_10": 7,
+    "enjoyment_reasons": [
+      "The validate -> patch loop is precise: findings carry a JSON Pointer, and twice the next_tool_call patch was marked patch_verified and cleared the finding on the next call (n=12, n=15).",
+      "Composite slides are where it hurts: the regions kind cannot host a bridge, the error listed the wrong kind list (n=12), and recommend_visual offered no compose candidate for 'waterfall beside text' (n=13); I found the working shape (chart region, type waterfall) by inference.",
+      "Two slides that the tools scored 100 looked wrong: the footer silently truncated the client name on 11 slides and the waterfall axis started at 22 so the opening bar is a stub; no finding mentioned either.",
+      "The 8-row table guidance was explicit and nothing was lost, but the mandated split leaves two slides two-thirds empty, which the scorer calls perfect."
+    ]
+  },
+  "findings": [
+    {
+      "id": "A1",
+      "title": "regions cannot host a bridge, and the error lists the wrong kind list",
+      "severity": "major",
+      "journey_stage": "authoring",
+      "what_happened": "S2 needs a waterfall beside a narrative. I put {kind:'bridge', columns:[...]} as a region. Attempt 1 (main_left) failed on region count; attempt 2 (columns) returned INPUT.SEMANTIC_UNKNOWN_KIND 'unknown region kind \"bridge\"; evidence.available lists the choices' while evidence.available contained 'bridge' (it is the 27-entry slide-kind list, not the 7 region kinds chart/stat/kpis/table/timeline/image/text from the kind summary).",
+      "evidence": ["call n=12: unknown region kind \"bridge\" ... available: [... \"bridge\" ...]", "call n=11: arrangement main_left takes exactly 3 regions; found 2", "/tmp/jj/wave/f-deals-pitch/log/resp-012.json"],
+      "expected": "evidence.available lists the real region kinds, and ideally a bridge (waterfall-bridge) is a region kind since it is the one view most often placed beside a 'so what' column.",
+      "suggestion": "Return the region-kind enum in that error, and add bridge as a regions kind (or document that chart type 'waterfall' is the way to place a walk beside text)."
+    },
+    {
+      "id": "A2",
+      "title": "recommend_visual returned no compose candidate for 'waterfall beside narrative'",
+      "severity": "major",
+      "journey_stage": "discovery",
+      "what_happened": "Asked for 'EBITDA bridge as a waterfall taking two thirds, narrative on the remaining third' with has_chart=true. It returned waterfall (raw chart), waterfall-bridge, text-sidebar and content as four separate single-view slides, plus two generic disambiguating questions; no compose:<a>+<b> and no regions candidate although the tool description promises both. The response was 201 KB with four previews.",
+      "evidence": ["call n=13: candidates waterfall 1.0, waterfall-bridge 0.9, text-sidebar 0.76, content 0.75; disambiguating_questions 'Should this slide show data or structured text?'", "/tmp/jj/wave/f-deals-pitch/log/images/n013-01.jpeg"],
+      "expected": "A regions candidate (chart:waterfall 66 + text 34) with a runnable next_tool_call, since the intent names two views and a split.",
+      "suggestion": "Detect 'beside / next to / remaining third / split' intents and emit a regions or compose candidate ranked first; the waterfall data_contract it did return (points increase/decrease/total) is what made attempt 3 work."
+    },
+    {
+      "id": "A3",
+      "title": "Waterfall chart region auto-truncates the y-axis; no axis control; scored 100",
+      "severity": "major",
+      "journey_stage": "render",
+      "what_happened": "The regions chart (type waterfall) rendered with a y-axis from 22 to 36, so the 'EBITDA 2023 = 24.0' opening bar is a 2-unit stub and the walk's proportions are misleading for a bridge. The standalone waterfall preview (n=13) rises from a baseline. The chart region accepts only data/title/type (per the SEMANTIC_UNKNOWN_FIELD list at n=15), so there is no way to pin the baseline at zero. quality_summary gave the slide 100 and no diagnostic mentioned it.",
+      "evidence": ["call n=16: quality_summary slide 4 score 100, diagnostics none for /slides/3", "/tmp/jj/wave/f-deals-pitch/log/images/n019-02.jpeg", "/tmp/jj/wave/f-deals-pitch/log/images/n021-03.jpeg"],
+      "expected": "A bridge/waterfall starts at zero by default (as the waterfall-bridge pattern does), or the region exposes a y_min / baseline option.",
+      "suggestion": "Default waterfall charts to a zero baseline when all points are totals/deltas; emit a chart.* finding when autoscaling hides more than half of an opening total."
+    },
+    {
+      "id": "A4",
+      "title": "Footer chrome silently truncates the client name on every slide",
+      "severity": "major",
+      "journey_stage": "review",
+      "what_happened": "meta.chrome {confidentiality, client_name:'Meridian Capital Partners', project_code:'Project Falcon'} rendered as 'Confidential — Project Falcon | Meridian Capital…' on slides 2-12. No finding, score 100. Removing project_code (repair round 1, n=20) made it fit: 'Confidential — Meridian Capital Partners | October 2026'.",
+      "evidence": ["/tmp/jj/wave/f-deals-pitch/log/images/n017-02.jpeg (truncated)", "/tmp/jj/wave/f-deals-pitch/log/images/n021-01.jpeg (fixed)", "call n=20: patch remove /meta/chrome/project_code"],
+      "expected": "A blocking or warning finding at /meta/chrome with the measured budget, the way BODY_TOO_LONG works for takeaway; a client's name must never be ellipsised in a proposal.",
+      "suggestion": "Measure the footer line like the takeaway and report CHROME_TOO_LONG with the characters that fit; or drop the lowest-priority segment (date) before truncating a name."
+    },
+    {
+      "id": "A5",
+      "title": "plan_deck mis-routed three of the brief's named slides and placed no content",
+      "severity": "minor",
+      "journey_stage": "discovery",
+      "what_happened": "With the brief listing its required slides, the deckspec draft mapped 'margin bridge waterfall beside a narrative' to pillars, 'Project Keel case with site photo and result metrics' to kpi_snapshot and 'eight-row pricing schedule' to timeline; every title was __FILL__, 28 facts (the whole bridge, options B/C, team, fees) were unplaced, and it planned 9 of 11 slides. I discarded the draft and chose kinds from list_slide_kinds.",
+      "evidence": ["call n=6: slots[2].kind pillars for 'margin bridge waterfall', slots[3].kind kpi_snapshot for 'site photo', slots[6].kind timeline for 'eight-row pricing schedule'; unplaced_facts 28"],
+      "expected": "Keywords 'waterfall/bridge' -> bridge or regions, 'photo' -> image_case, 'schedule ... rows' -> table; facts routed into the slots they name.",
+      "suggestion": "Route on the kind catalogue's own vocabulary (bridge, image_case, table, team) before falling back to narrative-role defaults; put the matched facts into the slot's fields, not only into slots[].facts."
+    },
+    {
+      "id": "A6",
+      "title": "Mandated 8-row table split yields two slides two-thirds empty, scored 100",
+      "severity": "minor",
+      "journey_stage": "validation",
+      "what_happened": "validate said 'table has 9 rows including the header; the renderer lays out at most 7 — split it across two slides' with remediation split_slide {max_rows:7,row:4}. I split into weeks 1-2 (4 rows) and weeks 3-4 (4 rows + total). No row was lost. Both slides render the table in the top third with the lower half blank; both score 100 and no density finding fires in the other direction.",
+      "evidence": ["call n=11: INPUT.SEMANTIC_DENSITY /slides/8/rows ... split_slide row 4", "/tmp/jj/wave/f-deals-pitch/log/images/n021-08.jpeg", "/tmp/jj/wave/f-deals-pitch/log/images/n021-09.jpeg"],
+      "expected": "Either an 8-row table fits at a slightly smaller font (eight short rows are a routine pricing schedule), or the split tables stretch to the content area.",
+      "suggestion": "Allow 8-10 rows when every cell is one line, or size the table rows to fill the content area after a split; report SLIDE_UNDERUSED for a 4-row table alone on a slide."
+    },
+    {
+      "id": "A7",
+      "title": "TEXT_BELOW_READABLE_MIN first report mixed two slides, measured null; the verified fix for an eyebrow removed the takeaway",
+      "severity": "minor",
+      "journey_stage": "validation",
+      "what_happened": "At n=11 one finding carried paths from slide 3 (bullets) and slide 5 (eyebrow) with measured:null and no slide_number; the message said 'renders at 10.6pt'. At n=12 the eyebrow was reported alone at 9.36pt with a verified patch 'remove /slides/4/takeaway'. It worked, but why removing a takeaway grows an eyebrow is not explained.",
+      "evidence": ["call n=11: paths [/slides/2/regions/2/bullets, /slides/4/eyebrow, ...] measured null", "call n=12: measured font_pt 9.36, patch_verified true, remove /slides/4/takeaway"],
+      "expected": "One finding per slide with its slide_number and measured size; a one-line reason for a non-local fix ('the takeaway band takes 0.6in from the pattern; without it the eyebrow renders at 12pt').",
+      "suggestion": "Do not merge occurrences across slides; add 'why' to patch_verified fixes whose path differs from the finding's path."
+    },
+    {
+      "id": "A8",
+      "title": "Rhythm warnings count tables, team cards and next-steps as 'text' and ask for dividers the slide budget cannot take",
+      "severity": "minor",
+      "journey_stage": "validation",
+      "what_happened": "SEMANTIC_RHYTHM_MONOTONY: '4 consecutive text slides (/slides/8 to /slides/11)' for two tables, the team grid and the next-steps closer; SEMANTIC_RHYTHM_SECTIONING asks for section slides in a 12-slide proposal whose slides the brief dictated. Both persist on blue-corporate.",
+      "evidence": ["call n=15/16/24: SEMANTIC_RHYTHM_MONOTONY /slides/8; SEMANTIC_RHYTHM_SECTIONING"],
+      "expected": "A table, a card grid and a numbered-row pattern are visually distinct families; the warning should not fire on them, and the sectioning advice should respect a stated slide budget.",
+      "suggestion": "Classify by rendered family (table, cards, pattern) rather than by 'not chart'; suppress sectioning advice when adding dividers would exceed the brief's count."
+    },
+    {
+      "id": "A9",
+      "title": "blue-corporate: two-line all-caps titles crowd the content; next-steps date column at two sizes; no finding",
+      "severity": "minor",
+      "journey_stage": "render",
+      "what_happened": "Re-rendering the final spec on blue-corporate kept every slide intact. Its spaced all-caps title style wraps every action title to two lines, leaving almost no gap above the content on slides 3, 4, 6, 9 and 10; the option_matrix recommended row wraps its name to two lines; on slide 12 'Friday/Monday/Week 1' are larger than 'End of week 2/4' (shrink-to-fit on two cells) and the decisions band sits on the footer line. The p-style run had reported exactly this kind of sibling mismatch (SIBLING_SIZE_MISMATCH at n=12); blue-corporate reported nothing.",
+      "evidence": ["/tmp/jj/wave/f-deals-pitch/log/images/n025-03.jpeg", "/tmp/jj/wave/f-deals-pitch/log/images/n025-06.jpeg", "/tmp/jj/wave/f-deals-pitch/log/images/n025-12.jpeg", "call n=24: deterministic_ready true, only rhythm warnings"],
+      "expected": "A title budget warning on a template whose caps style halves the characters per line, and the same SIBLING_SIZE_MISMATCH info the next-steps date column earned.",
+      "suggestion": "Measure title lines per template (list_slide_kinds budgets already know max_chars_per_line) and surface when a title that fit on the authoring template wraps to two lines on the new one."
+    },
+    {
+      "id": "A10",
+      "title": "Chrome-only patch marks all 12 slides changed; thumbnails then say the cover is unchanged",
+      "severity": "polish",
+      "journey_stage": "repair",
+      "what_happened": "Removing /meta/chrome/project_code returned changed_slides [0..11] with every slide 'restyled'; the thumbnails call with the suggested known_hashes returned unchanged:true for slide 0 (the cover carries no footer).",
+      "evidence": ["call n=20: slide_changes cover restyled", "call n=21: slides[0].unchanged true"],
+      "expected": "changed_slides to reflect what the thumbnails will show.",
+      "suggestion": "Compute changed_slides from the rendered slide hash, as thumbnails already do."
+    },
+    {
+      "id": "A11",
+      "title": "Unchanged slide returns no image path, so submit_visual_review needs the hash from an earlier call",
+      "severity": "polish",
+      "journey_stage": "delivery",
+      "what_happened": "After known_hashes, slide 0 came back with content_hash but no path. submit_visual_review wants image_path or image_sha256 per slide; I had to carry the hash forward myself. It worked (n=23) and the review completed, but the thumbnails' next_tool_call template does not say to do this.",
+      "evidence": ["call n=21: slides[0] {unchanged:true, content_hash}", "call n=23: status visually_reviewed_current_revision"],
+      "expected": "The unchanged entry keeps its path, or the next_tool_call template says 'use content_hash as image_sha256 for unchanged slides'.",
+      "suggestion": "Return path for unchanged slides too (it is content-addressed and still exists)."
+    },
+    {
+      "id": "A12",
+      "title": "regions main_left stacks the stat high and leaves a blank band under the bullets",
+      "severity": "polish",
+      "journey_stage": "render",
+      "what_happened": "S1 (chart 60 | stat 40 over text 60) reads as one slide, but the right column is top-heavy: the 2.3% stat and bullets end at 70% height while the chart ends lower; the content area's bottom fifth is empty on both templates.",
+      "evidence": ["/tmp/jj/wave/f-deals-pitch/log/images/n019-01.jpeg", "/tmp/jj/wave/f-deals-pitch/log/images/n025-03.jpeg"],
+      "expected": "The stacked side distributes its two regions over the main region's height.",
+      "suggestion": "Vertically justify stacked regions to the main region's extent when their content is shorter."
+    }
+  ],
+  "delights": [
+    {"title": "patch_verified fixes were exact and cleared the finding on the next call", "evidence": ["call n=12: TEXT_BELOW_READABLE_MIN -> remove /slides/4/takeaway, patch_verified true; gone at n=15", "call n=15: SEMANTIC_UNKNOWN_FIELD -> remove /slides/3/regions/0/chart/alt; render n=16 deterministic_ready true"]},
+    {"title": "The 8-row table limit was stated with the exact split point, and no row was lost", "evidence": ["call n=11: 'table has 9 rows including the header; the renderer lays out at most 7 — split it across two slides', remediation split_slide {max_rows:7,row:4}", "slides 9-10 carry all eight work packages plus a total row (images n021-08, n021-09)"]},
+    {"title": "deck_id + JSON-Pointer patch handled replace, insert and remove in one call and reported every slide's change", "evidence": ["call n=12: patch of 8 ops incl. add /slides/9; slide_changes listed inserted pricing1/pricing2, renumbered team/next, removed pricing"]},
+    {"title": "known_hashes round-trip: the render's next_tool_call carried the hashes and the cover came back without an image", "evidence": ["call n=20 next_tool_call.known_hashes (12 hashes) -> call n=21 slides[0].unchanged true, 11 images"]},
+    {"title": "SEMANTIC_UNKNOWN_FIELD says the field is DROPPED and names the accepted keys", "evidence": ["call n=15: unknown field \"alt\" on chart region chart object is ignored by the compiler and its content is DROPPED; expected one of \"data\", \"title\", \"type\""]},
+    {"title": "S1 (chart left, big number over bullets right) compiled on the first attempt with the regions kind", "evidence": ["call n=11: no finding on /slides/2 except bullet length; image n019-01 shows one slide, one title, one source"]},
+    {"title": "image_case placed the photo, story, bullets and two result metrics as one slide first time", "evidence": ["image n019-03: photo left, eyebrow/heading/body/bullets right, 9 pts and EUR 40M metrics under an accent rule"]},
+    {"title": "recommend_visual previews are real renders on the chosen template", "evidence": ["call n=13: four previews on p-style, images n013-01..04; the waterfall data_contract (points increase/decrease/total) was what made the regions chart work"]},
+    {"title": "submit_visual_review accepted a mix of image_path and image_sha256 and completed the protocol in one call", "evidence": ["call n=23: status visually_reviewed_current_revision, approved true, 12 slides"]}
+  ]
+}

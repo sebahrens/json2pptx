@@ -21,6 +21,10 @@ A first-time agent's path through json2pptx (first contact, plan, author, valida
 | `personas/c-repair.md` | Repairing a twelve-flaw draft from diagnostics alone |
 | `personas/d-cli.md` | CLI only, with the installed skill |
 | `personas/e-revise.md` | Eight revision turns on one deck |
+| `personas/f-deals-pitch.md` | A commercial due diligence proposal with three mandated split layouts and an eight-row fee table |
+| `personas/g-risk-consulting.md` | An ERM uplift proposal: risk-appetite status board, loss chart beside the number, named-risk heat map, three-lines today/target |
+| `personas/h-tech-data.md` | A data-platform business case on `--tools all`: TCO regions slide, architecture rails, screenshot callouts, KPI before/after |
+| `personas/i-risk-assurance.md` | An ITGC audit-committee readout: results board, seven-finding register, trend beside the opinion, maturity ladder, appendix |
 | `fixtures/coldstart-board-update.json` | The deck the cold-start run of 2026-10-04 finished with; the tests send it as a first draft |
 | `results.jsonl` | The trend: one JSON row per recorded run |
 

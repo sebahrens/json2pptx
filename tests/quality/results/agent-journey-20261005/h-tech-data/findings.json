@@ -1,0 +1,201 @@
+{
+  "persona": "h-tech-data",
+  "metrics": {
+    "tool_calls": 27,
+    "total_response_bytes": 2927534,
+    "response_bytes_excluding_images": 522246,
+    "validates_before_first_ready_render": 3,
+    "renders_to_first_ready": 2,
+    "wall_minutes": 8.1,
+    "enjoyment_1_to_10": 7,
+    "enjoyment_reasons": [
+      "The DeckSpec path carried a 12-slide business case with four split/complex layouts to deterministic_ready in 3 validates and 2 renders; every finding had a JSON-pointer path and a character budget, so each fix was one edit.",
+      "Previews (recommend_visual preview:true, list_slide_kinds preview:true) showed arch-stack rails and comparison rows before I authored them; S2 and S4 landed on the first attempt.",
+      "Two of the required shapes (roadmap with parallel tracks, before/after with connectors) were not expressible through their DeckSpec kinds and needed the raw_json2pptx escape hatch plus show_pattern reads.",
+      "plan_deck's deckspec draft was unusable for this brief (truncated title, 13 unplaced facts, 5 structural slides) and I threw it away.",
+      "--tools all cost 224 KB on first contact and 37 of 48 tools were never relevant; the one extra analysis tool I tried (analyze_deck_rhythm) returned an unlocatable recommendation."
+    ]
+  },
+  "findings": [
+    {
+      "id": "A1",
+      "title": "--tools all: 224 KB tools/list, 48 tools, 11 used",
+      "severity": "major",
+      "journey_stage": "onboarding",
+      "what_happened": "tools/list under --tools all returned 224,455 bytes for 48 tools. Across the whole journey I used 11 (get_started, plan_deck, list_slide_kinds, list_templates, recommend_visual, show_pattern, validate_deck_spec, render_deck_spec, render_deck_thumbnails, submit_visual_review, analyze_deck_rhythm). Settings-registry, cache, palette, export and raw-path repair tools were never relevant to a brief. show_pattern was the one extra I genuinely needed (to learn phase-roadmap parallel_tracks and comparison-2col connectors), and analyze_deck_rhythm (A12) did not help.",
+      "evidence": ["tools/list: 224455 bytes (tools-list.json)", "mcpd summary by_tool: 12 distinct tools incl. tools/list", "call n=29: analyze_deck_rhythm"],
+      "expected": "First contact under 50 KB; extra tools grouped or deferred behind get_started so a brief-driven agent is not reading 37 irrelevant schemas.",
+      "suggestion": "Keep the default profile abridged and make show_pattern (or an equivalent 'pattern fields' view in list_slide_kinds compositions) available there, since it is the one extra the DeckSpec path actually needs for raw_json2pptx slides."
+    },
+    {
+      "id": "A2",
+      "title": "plan_deck deckspec draft truncates the title and strands 13 facts",
+      "severity": "major",
+      "journey_stage": "discovery",
+      "what_happened": "plan_deck(format: deckspec) took the brief's first sentence as the deck and cover title and truncated it to 'Steering-committee business case for Atlas Retail (EUR 3.1bn revenue, 640 sto...'. It routed architecture tiers to the executive_summary and option_matrix slots, planned no architecture, chart_insight, image_case or regions slide, spent 5 of 13 slides on cover/agenda/dividers, and listed 13 unplaced facts (all four after-KPIs, the cost split, the screenshot callouts, both parallel tracks). I discarded the plan and authored a flat 12-slide spec by hand.",
+      "evidence": ["call n=4: meta.title '…640 sto...'; unplaced_facts (13); budget.structural 5", "plan.out"],
+      "expected": "A plan that recognises the brief's explicit slide requests (architecture, option matrix, TCO chart, roadmap, before/after KPIs, screenshot) and never ships a truncated title as a value.",
+      "suggestion": "Treat an ellipsised title as __FILL__; map facts to kinds by content type (tiers -> architecture, year series -> chart/regions, image -> image_case, phases + 'parallel' -> roadmap); count structural slides against the budget only when the brief asks for sections."
+    },
+    {
+      "id": "A3",
+      "title": "roadmap kind cannot carry parallel tracks; phase-roadmap can",
+      "severity": "major",
+      "journey_stage": "authoring",
+      "what_happened": "The brief requires a roadmap with two parallel tracks. list_slide_kinds item_schema for roadmap is additionalProperties:false with phases only; the composition it renders to (phase-roadmap) takes parallel_tracks[] and parallel_label, which I only learned from show_pattern. I had to author the slide as raw_json2pptx with the pattern block.",
+      "evidence": ["call n=11: roadmap item_schema (phases only)", "call n=15: show_pattern phase-roadmap values.parallel_tracks", "spec-v3.json slides[8]"],
+      "expected": "roadmap kind accepts parallel_tracks (or tracks) and passes them through.",
+      "suggestion": "Add parallel_tracks / parallel_label to the roadmap kind and mention it in the kind summary."
+    },
+    {
+      "id": "A4",
+      "title": "No DeckSpec route to a row-aligned before/after with connectors",
+      "severity": "major",
+      "journey_stage": "authoring",
+      "what_happened": "S4 needs four metrics today vs target aligned row by row with the improvement visible. The comparison kind allows only a pattern name as override, not overrides.connectors or highlight_column, and the before-after pattern is raw-only. I authored raw_json2pptx with comparison-2col {connectors:true, highlight_column:right}, which worked first time, but only after reading two show_pattern schemas.",
+      "evidence": ["call n=11: comparison item_schema has pattern:string only", "call n=13: comparison-2col overrides.connectors", "image n021-10.jpeg"],
+      "expected": "A before_after kind (or comparison kind options like connectors:true / emphasise:'right') reachable without the raw escape hatch.",
+      "suggestion": "Expose the pattern's connectors and highlight_column through the comparison kind, or add a before_after kind with rows[{before, after}]."
+    },
+    {
+      "id": "A5",
+      "title": "regions table truncates 2 of 3 rows; fix text says 'split at row 1'",
+      "severity": "major",
+      "journey_stage": "validation",
+      "what_happened": "S1's right column held a stat (size_pct 45) over a 3-row, 2-column table (size_pct 55, with a heading). validate/render refused with FIT.table_rows_truncated '2 of 3 rows hidden … split the table at row 1' although the regions schema advertises up to 4 columns x 5 rows. There was no hint about which knob to turn; I guessed (stat 35 / table 65, drop the heading) and it passed.",
+      "evidence": ["call n=17/n=18: FIT.table_rows_truncated /slides/6/regions/2", "spec-v2.json vs spec-v3.json regions[1..2].size_pct"],
+      "expected": "A 3-row table in a 38%-wide, 55%-tall region fits, or the finding says the region is N% too short and suggests size_pct values.",
+      "suggestion": "Size the table region to its rows before splitting the side column, and make the fix name the size_pct or heading that would recover the rows."
+    },
+    {
+      "id": "A6",
+      "title": "TEXT_BELOW_READABLE_MIN points at the slide, not the cell",
+      "severity": "minor",
+      "journey_stage": "validation",
+      "what_happened": "On the raw phase-roadmap slide the error said 'card-title text renders at 9.5pt … shorten the text' at path /slides/8/slide, with no cell or value named. I shortened all three descriptions, all three milestones and both parallel tracks blind; it passed, so I still do not know which text was the culprit.",
+      "evidence": ["call n=17: INPUT.TEXT_BELOW_READABLE_MIN /slides/8/slide"],
+      "expected": "The path (or the first 30 chars of the offending text) of the cell that shrank.",
+      "suggestion": "Carry the pattern value path (e.g. values.phases[1].milestone) and the measured text in the finding."
+    },
+    {
+      "id": "A7",
+      "title": "Blank table header silently dropped, then reported as a column mismatch",
+      "severity": "minor",
+      "journey_stage": "validation",
+      "what_happened": "I gave the TCO table headers ['', 'EUR M'] (a label column without a title). The empty header was dropped and the error read 'row 1 spans 2 columns but headers define 1', which does not say why only one header survived.",
+      "evidence": ["call n=16: INPUT.INVALID_PARAMETER /slides/6/regions/2/rows"],
+      "expected": "Either keep an empty header cell or say 'header 0 is empty and was dropped'.",
+      "suggestion": "Allow empty header strings (common for a row-label column) or name the dropped header in the message."
+    },
+    {
+      "id": "A8",
+      "title": "get_started says 'add compositions' but it is a fields value",
+      "severity": "minor",
+      "journey_stage": "discovery",
+      "what_happened": "get_started's list_slide_kinds step says 'add compositions when choosing a pattern/layout override'. Passing compositions:true was rejected with UNKNOWN_PARAMETER (accepted: fields, kinds, preview, template); it belongs in fields:[...]. The error was actionable, so it cost one call.",
+      "evidence": ["call n=10: INPUT.UNKNOWN_PARAMETER 'compositions'"],
+      "expected": "Guidance that matches the schema: fields:[\"compositions\"].",
+      "suggestion": "Reword the step, and let the UNKNOWN_PARAMETER did_you_mean point at fields when the token is one of its enum values."
+    },
+    {
+      "id": "A9",
+      "title": "recommend_visual ranking noise and 230 KB responses",
+      "severity": "minor",
+      "journey_stage": "discovery",
+      "what_happened": "For the architecture stack, gauge ranked #2 (0.9) beside arch-stack #1; for a four-way cost split, driver-tree ranked #1 although it needs 1-4 leaves per branch that the data does not have, with pie #3 and donut #4. Each call with preview:true was 224-242 KB with four preview images. I used the #1 for S2 (arch-stack) and the #4 (donut via chart_insight) for the cost driver.",
+      "evidence": ["call n=8: candidates arch-stack 1.0, gauge 0.9, pyramid 0.9 (224050 bytes)", "call n=9: driver-tree 1.0, waterfall 0.92, pie 0.9, donut 0.82 (241813 bytes)"],
+      "expected": "Candidates filtered by data shape (a share-of-whole list should not rank a decomposition tree first; a stack intent should not surface a gauge).",
+      "suggestion": "Parse numbers/percentages in the intent to gate chart families, and let preview take a count (preview_top: 2) to cut the bytes."
+    },
+    {
+      "id": "A10",
+      "title": "image_case shows a 16:9 screenshot at a third of the slide with no width control",
+      "severity": "minor",
+      "journey_stage": "render",
+      "what_happened": "S3 rendered the ops console at roughly 33% of slide width with the lower half of the image column empty (fit contain in a tall column); the callout pills then covered a large share of the picture. The kind has no image width field; the underlying image-text-split pattern has image_width_pct 30-60 but no callouts, so widening the image means losing the callouts. The callout points themselves landed exactly where given.",
+      "evidence": ["image n022-01.jpeg (100 dpi)", "call n=23: image-text-split overrides.image_width_pct", "call n=11: image_case item_schema (no width field)"],
+      "expected": "A wide screenshot gets a wider column (or the text column yields when text is short), or the kind exposes image_width_pct.",
+      "suggestion": "Pass image_width_pct through image_case, or size the image column from the picture's aspect ratio when fit is contain."
+    },
+    {
+      "id": "A11",
+      "title": "kpi_snapshot comparator floats detached below its card",
+      "severity": "polish",
+      "journey_stage": "render",
+      "what_happened": "With six KPIs, the comparator 'SLA is 6 am' on the third card rendered as a lone line far below the label row, visually orphaned from its card. I folded it into the label instead.",
+      "evidence": ["image n021-03.jpeg", "spec-v3.json slides[2].kpis[2].comparator"],
+      "expected": "The comparator sits directly under the label.",
+      "suggestion": "Anchor the comparator to the label's bottom instead of the card's bottom in kpi-5up/6up."
+    },
+    {
+      "id": "A12",
+      "title": "Sectioning nag on every call; analyze_deck_rhythm recommendation unlocatable",
+      "severity": "polish",
+      "journey_stage": "validation",
+      "what_happened": "SEMANTIC_RHYTHM_SECTIONING warned on all three validates and all four renders that a 12-slide deck has no dividers; a 12-slide steering-committee case does not want dividers. analyze_deck_rhythm on the final deck gave composition_score 100 while recommending '100% of cells (2/2) are underfilled' at slide_index -1 and breaking patterns (kpi-3up, comparison-2col) the deck already uses.",
+      "evidence": ["call n=19/20/24/27: SEMANTIC_RHYTHM_SECTIONING", "call n=29: recommendations[0].slide_index -1"],
+      "expected": "Section advice only when the deck is long or the brief asked for chapters; rhythm recommendations that name a slide.",
+      "suggestion": "Raise the sectioning threshold (or respect meta.chrome without tracker), and drop deck-level recommendations that cannot cite a slide."
+    },
+    {
+      "id": "A13",
+      "title": "Re-rendering a revised spec gives a new deck_id and 'all slides changed'",
+      "severity": "minor",
+      "journey_stage": "repair",
+      "what_happened": "get_started promised that a re-render's next_tool_call carries known_hashes so only changed slides return an image. Sending the revised spec (v4) to render_deck_spec created a new deck_id, revision 1, changed_slides [0..11], and a next_tool_call without known_hashes; the full 12-image response (573 KB) came back although only two slides differed. The per-slide content_hash did let me verify which two.",
+      "evidence": ["call n=24: changed_slides [0,…,11], revision 1", "call n=25: 573041 bytes; hashes differ only for index 2 and 3"],
+      "expected": "Spec revisions are matched by slide id so the diff and the known_hashes shortcut work without the agent re-plumbing deck_id + patch.",
+      "suggestion": "When slide ids match a stored deck of the same title/template, reuse the deck_id and emit known_hashes for unchanged slides."
+    },
+    {
+      "id": "A14",
+      "title": "pattern_overcrowded info for a 4-row comparison that renders fine",
+      "severity": "polish",
+      "journey_stage": "validation",
+      "what_happened": "comparison-2col with headers and four rows (10 cells) reported GRID.pattern_overcrowded 'exceeds recommended max of 8 — consider splitting' on every run; the slide is airy with room for two more rows.",
+      "evidence": ["call n=19: GRID.pattern_overcrowded /slides/9/slide", "image n021-10.jpeg"],
+      "expected": "No advisory below the pattern's own 10-row maximum.",
+      "suggestion": "Use the pattern's row budget rather than a generic cell count."
+    },
+    {
+      "id": "A15",
+      "title": "Slides scored 100 with a large empty band (KPI 6-up, image_case)",
+      "severity": "polish",
+      "journey_stage": "review",
+      "what_happened": "quality_summary scored slides 3 and 4 at 100 while slide 3's six cards occupy the top third with an empty band before the takeaway, and slide 4's image column is half empty (A10). Not wrong, but a reviewer notices and the score did not.",
+      "evidence": ["call n=20: quality_summary slide_scores 3,4 = 100", "images n025-03.jpeg, n025-04.jpeg"],
+      "expected": "A layout-balance signal when a pattern uses well under half of the content area.",
+      "suggestion": "Report SLIDE_UNDERUSED (or a vertical fill percentage) for kpi-Nup and image-text-split when fill is low."
+    }
+  ],
+  "delights": [
+    {
+      "title": "Previews before authoring settled S2 and S4 on the first attempt",
+      "evidence": ["call n=8: recommend_visual preview image n008-01.jpeg showed arch-stack with two vertical rails", "call n=12: list_slide_kinds preview n012-01.jpeg showed comparison rows aligned across columns", "final images n021-05.jpeg, n021-10.jpeg: one authoring attempt each"]
+    },
+    {
+      "title": "regions main_left delivered the chart + stat + table split, readable in the narrow column",
+      "evidence": ["call n=20/n=22: image n022-01/02 — two-series bar with data labels and legend left; EUR 5.5M stat over the 3-row TCO table right, legible at density 100"]
+    },
+    {
+      "title": "image_case callouts land exactly on the fractional points, on both templates",
+      "evidence": ["callouts x 0.27/y 0.135 and x 0.50/y 0.54 hit the Queue health header and the delayed payments.settle row in n022-01.jpeg (modern-template) and n028-04.jpeg (p-style)"]
+    },
+    {
+      "title": "Per-slide content_hash proved that only the two edited slides changed",
+      "evidence": ["call n=21 vs n=25: slides[].content_hash identical for 10 of 12 slides after the v3 -> v4 repair"]
+    },
+    {
+      "title": "Findings with paths and budgets made every fix a one-line edit",
+      "evidence": ["call n=17: BODY_TOO_LONG '/slides/5/options/2/name/detail use 24/42 characters; holds about 32'", "call n=16: SEMANTIC_PATTERN_DEGRADED 'values[0].small exceeds maxLength 40 (41 chars)'", "3 validates + 2 renders to deterministic_ready, 8.1 wall minutes for 27 calls"]
+    },
+    {
+      "title": "Completion protocol closed cleanly and the spec ported to p-style unchanged",
+      "evidence": ["call n=26: submit_visual_review -> visually_reviewed_current_revision with image_sha256 verification", "call n=27/n=28: same spec on p-style, deterministic_ready true, all 12 slides inspected (n028-01..12) with nothing to repair"]
+    },
+    {
+      "title": "UNKNOWN_PARAMETER lists the accepted arguments",
+      "evidence": ["call n=10: 'Accepted arguments: fields, kinds, preview, template'"]
+    }
+  ]
+}
