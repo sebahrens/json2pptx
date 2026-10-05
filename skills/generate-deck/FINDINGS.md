@@ -54,9 +54,9 @@ message is that number, "slide index N" is 0-based). Ignore `debug`.
   Placement.
   `TEXT_WRAPS_NARROW`: a paragraph wraps to 5+ lines of ≤3 words — cut each
   box to `max_words`, or keep at most `max_boxes` boxes on the row; `paths`
-  lists the box behind each hit (`/slides/8/steps/0`). `SIBLING_SIZE_MISMATCH`:
-  peer headers or card titles render at different sizes — shorten the
-  longest or use fewer columns.
+  lists the box behind each hit. `SIBLING_SIZE_MISMATCH`:
+  peer labels at two sizes (`cells[].written_pt` is the file's,
+  `rendered_pt` a renderer's) — shorten the longest or use fewer columns.
 
 ## Raw-deck findings
 

@@ -108,7 +108,7 @@ preconditions, [RAW_PATH.md](RAW_PATH.md); the four phases are in
   current-revision evidence for every slide.
 - `score_deck` takes a DeckSpec `deck_id` or a raw deck, never a spec
   object. `deck_findings[]` holds what no slide owns (`CHROME_TRUNCATED`),
-  each `points` off `overall_score` once. A finding is listed once.
+  each `points` off `overall_score`. A finding is listed once.
   `composition.diagnostics[].code` includes `motif_run`,
   `motif_dominance` and `continuation_interrupted`. A passing
   `quality_gate` stops score-driven repair, not visual review. When a render

@@ -10,6 +10,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
@@ -818,7 +819,7 @@ func newTHLayout(ctx ExpandContext, v *TableHighlightValues, ovr *TableHighlight
 // label than the face it was measured in (the same margin the
 // SIBLING_SIZE_MISMATCH check uses); a substituted template face gets the
 // atomic-token margin instead, which is wider.
-const thHeaderRenderSlack = 1.12
+const thHeaderRenderSlack = shapegrid.RenderFaceSlack
 
 // thHeaderLineWidthPt is the column width a header label's line count is
 // taken at (go-slide-creator-4fz04). The header row used to be as tall as its

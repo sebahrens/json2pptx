@@ -256,11 +256,20 @@ type siblingCell struct {
 	path     string
 	label    string
 	authored float64
+	// written is the size the slide XML carries for the cell's first
+	// paragraph: its run size times the autofit scale stored on the shape.
+	written float64
+	// rendered is the size a renderer is expected to draw it at: written,
+	// or less when the renderer re-fits the shape (refit).
 	rendered float64
 	// shrunk says the renderer scales this cell's text down: the writer
 	// stored an autofit scale, or the text needs more lines than the box
 	// holds once a renderer's font runs a little wider than the measured one.
 	shrunk bool
+	// refit says the shrink is not in the file: the cell is written at its
+	// full size and the check expects a renderer with a wider face to wrap
+	// and shrink it (siblingRenderSlack).
+	refit bool
 }
 
 // siblingRenderSlack is how much wider a renderer's font may run than the
@@ -269,7 +278,7 @@ type siblingCell struct {
 // re-fitted by the renderer with the installed font, and a label within this
 // margin of its box wraps there and is shrunk (go-slide-creator-wwmod E15:
 // "Deployment speed" and "Commercial traction" beside "Energy use").
-const siblingRenderSlack = 1.12
+const siblingRenderSlack = shapegrid.RenderFaceSlack
 
 // siblingSizeFindings compares the cells of each grid row that were authored
 // alike — the same paragraph sizes and weights, as column headers and card
@@ -344,15 +353,24 @@ func siblingSizeFindings(m *geomMeasurer, grid *ShapeGridInput, result *shapegri
 	smallest, largest := worst[0], worst[len(worst)-1]
 	cells := make([]any, len(worst))
 	for i, c := range worst {
-		cells[i] = map[string]any{"path": c.path + "/shape/text", "text": c.label, "rendered_pt": round1(c.rendered), "shrunk": c.shrunk}
+		cells[i] = map[string]any{"path": c.path + "/shape/text", "text": c.label, "written_pt": round1(c.written), "rendered_pt": round1(c.rendered), "shrunk": c.shrunk}
+	}
+	// A shrink the writer stored is a fact of the file; one the check expects
+	// of a renderer is a risk, and the message says which
+	// (go-slide-creator-bhoo3: "is shrunk to about 16.2pt" on a cell written
+	// at 18pt that LibreOffice drew at 18pt).
+	message := fmt.Sprintf("%d cells of one row are authored alike (%.0fpt) but %q is shrunk to about %.1fpt to fit its box while %q stays at %.1fpt — the row reads as two sizes",
+		len(worst), smallest.authored, smallest.label, smallest.rendered, largest.label, largest.rendered)
+	if smallest.refit {
+		message = fmt.Sprintf("%d cells of one row are authored alike (%.0fpt): %q is written at %.1fpt on one line of a box that holds one line, within %.0f%% of its width — a renderer whose font runs wider wraps it and shrinks it to about %.1fpt while %q stays at %.1fpt, and the row reads as two sizes",
+			len(worst), smallest.authored, smallest.label, smallest.written, (siblingRenderSlack-1)*100, smallest.rendered, largest.label, largest.rendered)
 	}
 	return []patterns.FitFinding{{
 		ValidationError: patterns.ValidationError{
 			Pattern: patternName,
 			Path:    smallest.path + "/shape/text",
 			Code:    patterns.ErrCodeSiblingSizeMismatch,
-			Message: fmt.Sprintf("%d cells of one row are authored alike (%.0fpt) but %q is shrunk to about %.1fpt to fit its box while %q stays at %.1fpt — the row reads as two sizes",
-				len(worst), smallest.authored, smallest.label, smallest.rendered, largest.label, largest.rendered),
+			Message: message,
 			Fix: &patterns.FixSuggestion{
 				Kind: "shorten_or_restructure",
 				Params: map[string]any{
@@ -361,7 +379,7 @@ func siblingSizeFindings(m *geomMeasurer, grid *ShapeGridInput, result *shapegri
 					"authored_pt": round1(smallest.authored),
 					"min_pt":      round1(smallest.rendered),
 					"max_pt":      round1(largest.rendered),
-					"hint":        "shorten the shrunk labels to the length of the others, use fewer columns, or set one explicit size on every cell of the row",
+					"hint":        siblingSizeHint(smallest.refit),
 				},
 			},
 		},
@@ -380,7 +398,7 @@ func siblingRenderedSize(m *geomMeasurer, cell shapegrid.ResolvedCell, path stri
 	if err != nil || scale <= 0 || len(paras) == 0 {
 		return siblingCell{}, false
 	}
-	sc := siblingCell{path: path, label: truncateForMessage(paras[0].text, 32), authored: paras[0].sizePt, rendered: paras[0].sizePt * scale, shrunk: scale < 1}
+	sc := siblingCell{path: path, label: truncateForMessage(paras[0].text, 32), authored: paras[0].sizePt, written: paras[0].sizePt * scale, rendered: paras[0].sizePt * scale, shrunk: scale < 1}
 	if sc.shrunk || m == nil || m.family == nil {
 		return sc, true
 	}
@@ -415,10 +433,20 @@ func siblingRenderedSize(m *geomMeasurer, cell shapegrid.ResolvedCell, path stri
 		q := p
 		q.sizePt = p.sizePt * fit
 		if lines, _ := m.paragraphLines(q, availW/siblingRenderSlack); lines == 1 {
-			sc.rendered, sc.shrunk = sc.authored*fit, true
+			sc.rendered, sc.shrunk, sc.refit = sc.authored*fit, true, true
 			return sc, true
 		}
 	}
-	sc.rendered, sc.shrunk = sc.authored*0.5, true
+	sc.rendered, sc.shrunk, sc.refit = sc.authored*0.5, true, true
 	return sc, true
+}
+
+// siblingSizeHint is the advice of a SIBLING_SIZE_MISMATCH finding. A label
+// the renderer may re-fit is also cured by a row tall enough for its second
+// line: a wrap then costs a line, not the size.
+func siblingSizeHint(refit bool) string {
+	if refit {
+		return "shorten the label that fills its box to the length of the others, use fewer columns, or make the row tall enough for two lines so a wrap costs a line and not the size"
+	}
+	return "shorten the shrunk labels to the length of the others, use fewer columns, or set one explicit size on every cell of the row"
 }

@@ -60,6 +60,8 @@ const (
 	nextStepsBandBarPt     = 3.0
 	nextStepsOwnerPct      = 22.0
 	nextStepsDatePct       = 15.0
+	nextStepsOwnerMaxPct   = 30.0
+	nextStepsDateMaxPct    = 20.0
 	nextStepsMinFillFrac   = 0.55
 	nextStepsHeaderAlpha   = 60.0
 	nextStepsNumberFont    = "+mj-lt"
@@ -348,28 +350,41 @@ func measureNextSteps(ctx ExpandContext, vals *NextStepsValues, numberSize, acti
 	trim := rowPadTrimPt(padPt)
 	lay := nextStepsLayout{padPt: padPt, numberSize: numberSize, actionSize: actionSize, metaSize: metaSize, decisionSize: actionSize, bandGapPt: ctx.Gap(nextStepsBandGapPt), rowGapPt: ctx.Gap(nextStepsRowGapPt),
 		ownerCol: -1, dateCol: -1}
+	var owners, dates []string
 	for _, a := range vals.Actions {
 		lay.hasOwner = lay.hasOwner || strings.TrimSpace(a.Owner) != ""
 		lay.hasDate = lay.hasDate || strings.TrimSpace(a.Date) != ""
+		owners, dates = append(owners, a.Owner), append(dates, a.Date)
 	}
 	numberPct := math.Min(15, math.Max(5, math.Ceil((numberSize*1.3+2*defaultShapeInsetLRPt)/areaW*100)))
 	actionPct := 100 - numberPct
 	lay.cols = []float64{numberPct}
 	lay.numberCol, lay.actionCol = 0, 1
+	// The owner and date columns hold their longest label on one line with
+	// room for a renderer's wider face (nextStepsMetaColPct).
+	ownerPct, datePct := nextStepsOwnerPct, nextStepsDatePct
 	if lay.hasOwner {
-		actionPct -= nextStepsOwnerPct
+		ownerPct = nextStepsMetaColPct(ctx, areaW, nextStepsOwnerPct, nextStepsOwnerMaxPct, owners, func(s string) *jsonschema.GridCellInput { return nextStepsOwnerCell(s, metaSize, padPt) })
+		actionPct -= ownerPct
 	}
 	if lay.hasDate {
-		actionPct -= nextStepsDatePct
+		datePct = nextStepsMetaColPct(ctx, areaW, nextStepsDatePct, nextStepsDateMaxPct, dates, func(s string) *jsonschema.GridCellInput { return nextStepsDateCell(s, metaSize, padPt) })
+		actionPct -= datePct
 	}
 	lay.cols = append(lay.cols, actionPct)
 	if lay.hasOwner {
 		lay.ownerCol = len(lay.cols)
-		lay.cols = append(lay.cols, nextStepsOwnerPct)
+		lay.cols = append(lay.cols, ownerPct)
 	}
 	if lay.hasDate {
 		lay.dateCol = len(lay.cols)
-		lay.cols = append(lay.cols, nextStepsDatePct)
+		lay.cols = append(lay.cols, datePct)
+	}
+	// rowNeed is the written fit of one row cell at its column width, with
+	// the second line a renderer's wider face may wrap a one-line label to
+	// (labelRowNeedPt).
+	rowNeed := func(cell *jsonschema.GridCellInput, widthPt float64) float64 {
+		return labelRowNeedPt(ctx.themeFonts(), cell.Shape.Text, widthPt, writtenFitHeightPt(ctx.themeFonts(), cell.Shape.Text, widthPt, 0))
 	}
 
 	// Every row is sized to the written fit of the cells it will hold, at
@@ -381,14 +396,14 @@ func measureNextSteps(ctx ExpandContext, vals *NextStepsValues, numberSize, acti
 	for i, a := range vals.Actions {
 		h := math.Max(numberRow, writtenFitHeightPt(ctx.themeFonts(), nextStepsNumberCell(i, numberSize, "dk1", padPt).Shape.Text, areaW*numberPct/100, 0))
 		h = math.Max(h, sizedBlockHeightPt(ctx, []sizedPara{{text: a.Action, sizePt: actionSize}}, areaW*actionPct/100)-trim)
-		h = math.Max(h, writtenFitHeightPt(ctx.themeFonts(), nextStepsActionCell(a.Action, actionSize, padPt).Shape.Text, areaW*actionPct/100, 0))
+		h = math.Max(h, rowNeed(nextStepsActionCell(a.Action, actionSize, padPt), areaW*actionPct/100))
 		if lay.hasOwner {
-			h = math.Max(h, sizedBlockHeightPt(ctx, []sizedPara{{text: a.Owner, sizePt: metaSize}}, areaW*nextStepsOwnerPct/100)-trim)
-			h = math.Max(h, writtenFitHeightPt(ctx.themeFonts(), nextStepsOwnerCell(a.Owner, metaSize, padPt).Shape.Text, areaW*nextStepsOwnerPct/100, 0))
+			h = math.Max(h, sizedBlockHeightPt(ctx, []sizedPara{{text: a.Owner, sizePt: metaSize}}, areaW*ownerPct/100)-trim)
+			h = math.Max(h, rowNeed(nextStepsOwnerCell(a.Owner, metaSize, padPt), areaW*ownerPct/100))
 		}
 		if lay.hasDate {
-			h = math.Max(h, sizedBlockHeightPt(ctx, []sizedPara{{text: a.Date, sizePt: metaSize}}, areaW*nextStepsDatePct/100)-trim)
-			h = math.Max(h, writtenFitHeightPt(ctx.themeFonts(), nextStepsDateCell(a.Date, metaSize, padPt).Shape.Text, areaW*nextStepsDatePct/100, 0))
+			h = math.Max(h, sizedBlockHeightPt(ctx, []sizedPara{{text: a.Date, sizePt: metaSize}}, areaW*datePct/100)-trim)
+			h = math.Max(h, rowNeed(nextStepsDateCell(a.Date, metaSize, padPt), areaW*datePct/100))
 		}
 		lay.rowPt = append(lay.rowPt, math.Ceil(h))
 	}
@@ -406,6 +421,31 @@ func measureNextSteps(ctx ExpandContext, vals *NextStepsValues, numberSize, acti
 		lay.cols = append([]float64{lay.barPct}, lay.cols...)
 	}
 	return lay
+}
+
+// nextStepsMetaColPct is the share of the table an owner or date column
+// takes: basePct, widened in whole points up to maxPct until its longest
+// label sits on one line with shapegrid.RenderFaceSlack to spare. "Executive
+// committee" filled the 22% owner column of a narrow content area to within a
+// few points: a renderer whose face runs wider wraps it in a row one line
+// tall and shrinks that cell alone (go-slide-creator-bhoo3). cell builds the
+// column's cell for a label, so the line is measured as the row is. A label
+// too long for maxPct leaves the column at basePct; its row is sized for the
+// wrap.
+func nextStepsMetaColPct(ctx ExpandContext, areaW, basePct, maxPct float64, labels []string, cell func(string) *jsonschema.GridCellInput) float64 {
+	pct := basePct
+	for _, label := range labels {
+		if strings.TrimSpace(label) == "" || areaW <= 0 {
+			continue
+		}
+		text := cell(label).Shape.Text
+		for !labelHoldsLine(ctx.themeFonts(), text, areaW*pct/100) {
+			if pct++; pct > maxPct {
+				return basePct
+			}
+		}
+	}
+	return pct
 }
 
 // The row cells below are shared by measureNextSteps and Expand, so a row is

@@ -62,11 +62,12 @@ func init() {
 		Code:        ErrCodeSiblingSizeMismatch,
 		Summary:     "Cells that are peers in one row render at visibly different font sizes.",
 		Severity:    "review",
-		WhenEmitted: "Preflight reads the autofit scale generation stores on each shape and compares the cells of one grid row that were authored alike (same paragraph sizes and weights — column headers, card titles). The finding fires when the smallest renders more than 8% below the largest: the longer labels were shrunk to fit and the short ones were not. fix.params.cells lists the row's cells with their rendered sizes. Costs 25 points on its slide and counts toward the gate's problem-slide share.",
+		WhenEmitted: "Preflight reads the autofit scale generation stores on each shape and compares the cells of one grid row that were authored alike (same paragraph sizes and weights — column headers, card titles). The finding fires when the smallest renders more than 8% below the largest: the longer labels were shrunk to fit and the short ones were not. A one-line label in a box that holds one line and carries no stored scale is also measured for a renderer whose font runs 12% wider: within that margin of its box it wraps there and is shrunk by the renderer, and the message then says the size it \"is written at\". fix.params.cells lists the row's cells with written_pt (the size in the slide XML) and rendered_pt (the size expected of a renderer). Costs 25 points on its slide and counts toward the gate's problem-slide share.",
 		RemediationSteps: []string{
 			"Shorten the longest labels in the row to the length of the shortest (fix.params.longest names it).",
 			"Or use fewer columns so every label fits at the authored size.",
 			"Or set one explicit text size on all of the row's cells.",
+			"For a label written at full size (written_pt above rendered_pt) on a raw grid: make the row tall enough for two lines, so a wrap costs a line and not the size.",
 		},
 		RelatedCodes: []string{ErrCodeTextBelowReadableMin, ErrCodeTextExceedsShape},
 	}
