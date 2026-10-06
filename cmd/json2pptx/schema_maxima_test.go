@@ -641,7 +641,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"table-highlight":              8.2, // as above (go-slide-creator-u8orh)
 	"team-bios":                    5.5,
 	"text-sidebar":                 5.5,
-	"timeline-horizontal":          8.6, // stop rows grow to their written fit (n1muf)
+	"timeline-horizontal":          10.1, // stop rows grow to their written fit (n1muf); the column gap gives way to a word (k2tid)
 	"value-chain":                  9.1,
 	"waterfall-bridge":             6.7,
 }
