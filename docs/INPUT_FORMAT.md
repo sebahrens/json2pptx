@@ -2,7 +2,7 @@
 
 `json2pptx` accepts a JSON object describing a presentation and renders it into a `.pptx` file. This page documents the **raw compiled `PresentationInput` format** with worked examples; for the **canonical list of fields, types, enums, and required-vs-optional flags**, query the schema directly.
 
-For new agent-authored decks, prefer the semantic deck spec instead of hand-authoring this raw format. The semantic compiler accepts compact YAML/JSON slide kinds such as `kpi_snapshot`, `chart_insight`, `comparison`, `roadmap`, and `decision`, then compiles them to the raw `PresentationInput` described here:
+For new agent-authored decks, prefer the semantic deck spec instead of hand-authoring this raw format. The semantic compiler accepts compact YAML/JSON slide kinds such as `kpi_snapshot`, `chart_insight`, `comparison`, `roadmap`, `cycle`, and `decision`, then compiles them to the raw `PresentationInput` described here:
 
 ```bash
 json2pptx semantic schema
