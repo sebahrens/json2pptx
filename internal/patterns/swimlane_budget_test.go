@@ -34,7 +34,7 @@ func TestSwimlaneStepBudgetsMatchProbe(t *testing.T) {
 	}
 	pat := &swimlane{}
 	steps := pat.Schema().raw.Properties["values"].raw.Properties["lanes"].raw.Items.raw.Properties["steps"]
-	if !strings.Contains(steps.raw.Description, "8: 78/50/30/20/10") || steps.raw.Items.raw.MaxLength == nil || *steps.raw.Items.raw.MaxLength != 80 {
+	if !strings.Contains(steps.raw.Description, "8: 80/50/30/20/10") || steps.raw.Items.raw.MaxLength == nil || *steps.raw.Items.raw.MaxLength != 80 {
 		t.Errorf("schema loses dense guidance or sparse maximum: %+v", steps.raw)
 	}
 }

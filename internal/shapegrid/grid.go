@@ -356,6 +356,7 @@ func resolveGrid(grid *Grid, alloc *pptx.ShapeIDAllocator, plan *composePlan) (*
 		}
 	}
 
+	bands := resolveRowBands(grid, rowYOffsets, rowHeightsEMU, alloc)
 	accentBars = append(accentBars, resolveRowRules(grid, rowYOffsets, rowHeightsEMU, rowGapEMU, alloc)...)
 	connectors := resolveRowConnectors(grid, cells, rowCellIDs, rowYOffsets, rowHeightsEMU, alloc)
 	connectors = append(connectors, resolveLinks(grid, cells, rowCellIDs, alloc)...)
@@ -389,6 +390,7 @@ func resolveGrid(grid *Grid, alloc *pptx.ShapeIDAllocator, plan *composePlan) (*
 		Cells:        cells,
 		Connectors:   connectors,
 		AccentBars:   accentBars,
+		Bands:        bands,
 		RowOverflows: writtenRowOverflows(rowOverflows, grid, cells),
 		Composed:     plan != nil && plan.place,
 	}, nil
@@ -796,6 +798,24 @@ func resolveRowRules(grid *Grid, rowY, rowH []int64, rowGapEMU int64, alloc *ppt
 		if row.Rule == "below" || row.Rule == "both" {
 			add(rowY[r] + rowH[r] + rowGapEMU/2)
 		}
+	}
+	return out
+}
+
+// resolveRowBands returns the band of every row that asks for one (Row.Band):
+// a filled rectangle with no outline, as wide as the grid and as tall as the
+// row. A band with no visible fill is not drawn.
+func resolveRowBands(grid *Grid, rowY, rowH []int64, alloc *pptx.ShapeIDAllocator) []ResolvedAccentBar {
+	var out []ResolvedAccentBar
+	for r, row := range grid.Rows {
+		if !isVisibleFill(row.Band) || rowH[r] <= 0 {
+			continue
+		}
+		out = append(out, ResolvedAccentBar{
+			Bounds: pptx.RectEmu{X: grid.Bounds.X, Y: rowY[r], CX: grid.Bounds.CX, CY: rowH[r]},
+			ID:     alloc.Alloc(),
+			Spec:   &AccentBarSpec{Fill: row.Band},
+		})
 	}
 	return out
 }

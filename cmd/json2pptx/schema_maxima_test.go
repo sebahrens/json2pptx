@@ -573,7 +573,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"state-shift-hub":     5.8, // rows sized to written fit, hub gives way (k3eb3)
 	"strategy-house":      5.3,
 	"stylish-panels":      2.8,
-	"swimlane":            4.3,
+	"swimlane":            4.1, // lane bands: a zero-width edge column keeps the last step off the band end, 0.75pt per step column at 8 steps (go-slide-creator-vx7wk), was 4.3
 	"table-highlight":     7.9, // over-full rows keep their tightest padding (go-slide-creator-u8orh); the steps a table gives up before it is refused left more for the text (go-slide-creator-dwha2), was 6.7
 	"team-bios":           5.0,
 	"text-sidebar":        5.0, // Written spacing exposes existing shrink; CLI must refuse it.

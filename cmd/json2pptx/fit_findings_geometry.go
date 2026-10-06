@@ -396,6 +396,8 @@ func (a *geomAccumulator) walk(input *ShapeGridInput, result *shapegrid.ResolveR
 			a.subGrid(input, cell, cellPath, depth)
 		}
 	}
+	// A row band (result.Bands) is a backdrop, not content: a lane band with
+	// two short steps in it is still a thin slide.
 	for _, ab := range result.AccentBars {
 		a.addInk(ab.Bounds)
 	}
@@ -593,8 +595,9 @@ var openColumnPatterns = map[string]bool{
 	// Numbered rows between hairline rules: the row is the unit, as in the
 	// tile list it replaced (go-slide-creator-r3gsw).
 	"agenda": true,
-	// Lanes are bands between full-width hairline rules; the actor label
-	// stands in its band where a filled lane tile used to be
+	// overrides.style "tiles": lanes are bands between full-width hairline
+	// rules; the actor label stands in its band where a filled lane tile
+	// used to be (the default look paints the band itself, a row band)
 	// (go-slide-creator-jz5r9).
 	"swimlane": true,
 	// Numbered rows of a list — action / owner / date between hairline rules,
