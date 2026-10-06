@@ -243,9 +243,14 @@ func TestCycleFigureEight_ExpandLayout(t *testing.T) {
 				t.Errorf("n=%d: default left count %d, want %d", n, left, (n+1)/2)
 			}
 			number := 0
+			lay, err := cfeMeasure(ctx, v, &CycleFigureEightOverrides{})
+			if err != nil {
+				t.Fatal(err)
+			}
 			for li, lobe := range cfeLobes(t, grid) {
 				prefix := []string{"left-", "right-"}[li]
 				want := []int{left, n - left}[li]
+				spec := lay.lobes[li].spec
 				if lobe.Fit != "contain" || lobe.Shape != nil {
 					t.Errorf("n=%d k=%d: lobe %d is a fit-contain canvas of layers only, got fit %q shape %v", n, k, li, lobe.Fit, lobe.Shape)
 				}
@@ -261,17 +266,17 @@ func TestCycleFigureEight_ExpandLayout(t *testing.T) {
 					if seg.Name != fmt.Sprintf("%ssegment-%d", prefix, number) || badges[i].Name != fmt.Sprintf("%sbadge-%d", prefix, number) {
 						t.Errorf("n=%d k=%d: layers %s / %s, want number %d", n, k, seg.Name, badges[i].Name, number)
 					}
-					if seg.Shape.Geometry != "blockArc" || seg.Frame != (jsonschema.LayerFrameInput{X: 0, Y: 0, W: 1, H: 1}) {
-						t.Errorf("n=%d k=%d %s: %s in frame %+v, want a blockArc in the whole square", n, k, seg.Name, seg.Shape.Geometry, seg.Frame)
+					if seg.Shape.Geometry != "blockArc" || seg.Frame != spec.bandFrame().layer() {
+						t.Errorf("n=%d k=%d %s: %s in frame %+v, want a blockArc in the lobe's band frame %+v", n, k, seg.Name, seg.Shape.Geometry, seg.Frame, spec.bandFrame())
 					}
 					if seg.Shape.Adjustments["adj3"] != 20000 || string(seg.Shape.Line) != `"none"` {
 						t.Errorf("n=%d k=%d %s: adj3 %d line %s", n, k, seg.Name, seg.Shape.Adjustments["adj3"], seg.Shape.Line)
 					}
 					// blockArc runs clockwise adj1 → adj2; the badge is at its middle
-					// on the centreline (radius 0.4).
+					// on the centreline.
 					a1, a2 := seg.Shape.Adjustments["adj1"], seg.Shape.Adjustments["adj2"]
 					mid := float64(a1)/60000 + float64((a2-a1+21600000)%21600000)/120000
-					wx, wy := pointOnCircle(0.5, 0.5, 0.4, mid)
+					wx, wy := pointOnCircle(0.5, 0.5, spec.Radius, mid)
 					b := badges[i]
 					if cx, cy := cfeLayerCentre(b); math.Abs(cx-wx) > 1e-4 || math.Abs(cy-wy) > 1e-4 {
 						t.Errorf("n=%d k=%d %s: centre (%.4f, %.4f), want (%.4f, %.4f)", n, k, b.Name, cx, cy, wx, wy)
@@ -282,10 +287,6 @@ func TestCycleFigureEight_ExpandLayout(t *testing.T) {
 				}
 			}
 
-			lay, err := cfeMeasure(ctx, v, &CycleFigureEightOverrides{})
-			if err != nil {
-				t.Fatal(err)
-			}
 			for i, row := range lay.rows {
 				want := ringSideLeft
 				if i >= left {
@@ -310,7 +311,7 @@ func TestCycleFigureEight_ExpandLayout(t *testing.T) {
 // The path is one continuous line: up from the crossing and counter-clockwise
 // round the left lobe, through the crossing, clockwise round the right lobe.
 // Each lobe's first segment starts on the upper side of the crossing and its
-// last ends on the lower side, both the same angle from the touching point.
+// last ends on the lower side, both the same angle from the crossing point.
 func TestFigureEightPathOrderIsContinuous(t *testing.T) {
 	for n := cfeMinPhases; n <= cfeMaxPhases; n++ {
 		for _, k := range cfeSplits(n) {
@@ -365,10 +366,13 @@ func TestFigureEightPathOrderIsContinuous(t *testing.T) {
 	}
 }
 
-// The two lobes are equal squares that share an edge, so the rings (whose
-// bands fill their squares) touch at the crossing; they sit centred in the
-// area with equal label columns either side.
-func TestFigureEightLobesAreTangent(t *testing.T) {
+// The two lobes are equal squares that share an edge, whose middle is the
+// crossing point; they sit centred in the area with equal label columns
+// either side. Each ring is centred in its square and a little smaller than
+// it — as large as a full-width arm to the crossing point allows — so the two
+// rings stop a few percent of a side short of each other, and the line from a
+// lobe's end to the crossing point is tangent to its centreline.
+func TestFigureEightLobesMeetAtTheCrossing(t *testing.T) {
 	for _, body := range cycleRingBodies {
 		for n := cfeMinPhases; n <= cfeMaxPhases; n++ {
 			ctx := cycleRingCtx(body.w, body.h)
@@ -380,8 +384,21 @@ func TestFigureEightLobesAreTangent(t *testing.T) {
 				t.Errorf("%s n=%d: the lobes meet at x=%.1f, want the middle %.1f", body.name, n, lay.x0+lay.side, body.w/2)
 			}
 			for _, lobe := range lay.lobes {
-				if f := lobe.spec.bandFrame(); f != (ringFrame{X: 0, Y: 0, W: 1, H: 1}) {
-					t.Errorf("%s n=%d %s: band frame %+v does not fill the lobe's square", body.name, n, lobe.prefix, f)
+				f, spec := lobe.spec.bandFrame(), lobe.spec
+				if math.Abs(f.X-f.Y) > 1e-9 || math.Abs(f.W-f.H) > 1e-9 || math.Abs(f.X+f.W/2-0.5) > 1e-9 {
+					t.Errorf("%s n=%d %s: band frame %+v is not a square centred in the lobe's cell", body.name, n, lobe.prefix, f)
+				}
+				if f.W > 1 || f.W < 0.94 {
+					t.Errorf("%s n=%d %s: the ring is %.1f%% of its square, want 94-100%%", body.name, n, lobe.prefix, f.W*100)
+				}
+				if want := cfeBandRadius(spec.Thickness); math.Abs(spec.Radius-want) > 1e-9 {
+					t.Errorf("%s n=%d %s: centreline radius %.4f, want %.4f (the largest whose arm fits the cell)", body.name, n, lobe.prefix, spec.Radius, want)
+				}
+				// Tangency: the triangle centre – lobe's end – crossing point has
+				// its right angle at the lobe's end.
+				open := degToRad(cfeOpenDeg(spec))
+				if got := spec.Radius / math.Cos(open); math.Abs(got-cfeCrossDist) > 1e-9 {
+					t.Errorf("%s n=%d %s: the tangent at the lobe's end meets the axis %.4f from the centre, want the crossing point at %.1f", body.name, n, lobe.prefix, got, cfeCrossDist)
 				}
 			}
 
@@ -409,7 +426,7 @@ func TestFigureEightLobesAreTangent(t *testing.T) {
 				t.Errorf("%s n=%d: lobes resolve to %dx%d and %dx%d EMU, want equal squares on one line", body.name, n, l.CX, l.CY, r.CX, r.CY)
 			}
 			if gap := r.X - (l.X + l.CX); gap < 0 || gap > ptEMU {
-				t.Errorf("%s n=%d: %.2fpt between the lobes, want them touching (under 1pt)", body.name, n, float64(gap)/ptEMU)
+				t.Errorf("%s n=%d: %.2fpt between the lobes' squares, want them sharing an edge (under 1pt)", body.name, n, float64(gap)/ptEMU)
 			}
 			if float64(l.CX)/ptEMU < cfeMinSidePt-1 {
 				t.Errorf("%s n=%d: lobe side %.0fpt is under the %.0fpt minimum", body.name, n, float64(l.CX)/ptEMU, cfeMinSidePt)
@@ -418,11 +435,20 @@ func TestFigureEightLobesAreTangent(t *testing.T) {
 	}
 }
 
-// The crossing: per lobe two rect arms and one arrowhead. Each arm lies on the
-// line from the lobe's end to the touching point, which is tangent to the
-// lobe's centreline there, ends on the touching point, stays inside its cell
-// and is at least 70% of the band wide (as wide as its frame can be inside the cell); the arrowhead sits on the leaving arm
-// and points at the touching point.
+// cfeAxisPoint is the point d along a rotated layer's long axis from its
+// centre (positive towards the frame's top, the way a triangle points).
+func cfeAxisPoint(l jsonschema.LayerInput, d float64) (x, y float64) {
+	cx, cy := cfeLayerCentre(l)
+	sin, cos := math.Sincos(degToRad(l.Shape.Rotation))
+	return cx + sin*d, cy - cos*d
+}
+
+// The crossing: per lobe two rect arms and one arrowhead. Each arm is exactly
+// as wide as the band, in the band's neutral fill without an outline, lies on
+// the line from the lobe's end to the crossing point (tangent to the lobe's
+// centreline there), starts inside the lobe's end segment and ends just past
+// the crossing point, where the other cell's arm overlaps it — so the ribbon
+// has no gap at the crossing — and its frame stays inside its cell.
 func TestFigureEightCrossingArms(t *testing.T) {
 	for _, thickness := range []string{"thin", "", "thick"} {
 		grid := cfeExpand(t, cycleRingCtx(828, 349), cfeValues(6, 0), &CycleFigureEightOverrides{Thickness: thickness})
@@ -441,65 +467,209 @@ func TestFigureEightCrossingArms(t *testing.T) {
 					t.Fatalf("%q %s%s: %d layers", thickness, prefix, name, len(arms))
 				}
 				arm := arms[0]
-				if arm.Shape.Geometry != "rect" || string(arm.Shape.Line) != `"none"` || !strings.Contains(string(arm.Shape.Fill), `"lumMod":16000`) {
-					t.Errorf("%q %s: %s line %s fill %s, want a neutral rect without outline", thickness, arm.Name, arm.Shape.Geometry, arm.Shape.Line, arm.Shape.Fill)
+				if arm.Shape.Geometry != "rect" || string(arm.Shape.Line) != `"none"` || string(arm.Shape.Fill) != string(neutralFillJSON(ringSegmentTint)) {
+					t.Errorf("%q %s: %s line %s fill %s, want a rect in the band's neutral without outline", thickness, arm.Name, arm.Shape.Geometry, arm.Shape.Line, arm.Shape.Fill)
 				}
 				if arm.Frame.X < 0 || arm.Frame.Y < 0 || arm.Frame.X+arm.Frame.W > 1+1e-9 || arm.Frame.Y+arm.Frame.H > 1+1e-9 {
 					t.Errorf("%q %s: frame %+v leaves the cell", thickness, arm.Name, arm.Frame)
 				}
-				if arm.Frame.W > spec.Thickness+1e-9 || arm.Frame.W < 0.7*spec.Thickness {
-					t.Errorf("%q %s: %.4f wide on a %.4f band, want 70-100%% of it", thickness, arm.Name, arm.Frame.W, spec.Thickness)
+				if math.Abs(arm.Frame.W-spec.Thickness) > 1e-6 {
+					t.Errorf("%q %s: %.4f wide on a %.4f band, want the band's full width", thickness, arm.Name, arm.Frame.W, spec.Thickness)
 				}
-				// The arm's axis: from its centre along its rotation, half its
-				// length reaches the touching point.
-				cx, cy := cfeLayerCentre(arm)
-				sin, cos := math.Sincos(degToRad(arm.Shape.Rotation))
-				tx, ty := cx+sin*arm.Frame.H/2, cy-cos*arm.Frame.H/2
+				// The far end is cfeArmPastFrac past the crossing point, on the axis.
+				tx, ty := cfeAxisPoint(arm, arm.Frame.H/2-cfeArmPastFrac)
 				if math.Abs(tx-touchX) > 1e-4 || math.Abs(ty-0.5) > 1e-4 {
-					t.Errorf("%q %s: ends at (%.4f, %.4f), want the touching point (%.0f, 0.5)", thickness, arm.Name, tx, ty, touchX)
+					t.Errorf("%q %s: its axis is at (%.4f, %.4f) %.3f before its end, want the crossing point (%.0f, 0.5)", thickness, arm.Name, tx, ty, cfeArmPastFrac, touchX)
+				}
+				// The near end is cfeArmLapFrac behind the lobe's end, inside the
+				// segment (which is drawn over it in the same fill).
+				nx, ny := cfeAxisPoint(arm, -(arm.Frame.H/2 - cfeArmLapFrac))
+				ex, ey := pointOnCircle(0.5, 0.5, spec.Radius, ends[ai])
+				if math.Abs(nx-ex) > 1e-4 || math.Abs(ny-ey) > 1e-4 {
+					t.Errorf("%q %s: its axis is at (%.4f, %.4f) %.3f past its start, want the lobe's end (%.4f, %.4f)", thickness, arm.Name, nx, ny, cfeArmLapFrac, ex, ey)
 				}
 				// Tangent: the axis is perpendicular to the radius at the lobe's end.
-				ex, ey := pointOnCircle(0, 0, 1, ends[ai])
-				if dot := ex*sin - ey*cos; math.Abs(dot) > 1e-6 {
+				sin, cos := math.Sincos(degToRad(arm.Shape.Rotation))
+				rx, ry := pointOnCircle(0, 0, 1, ends[ai])
+				if dot := rx*sin - ry*cos; math.Abs(dot) > 1e-6 {
 					t.Errorf("%q %s: axis is %.2f° off the tangent at the lobe's end", thickness, arm.Name, radToDeg(math.Asin(dot)))
 				}
 			}
-			heads := cycleRingLayers(lobe, prefix+"arrowhead")
-			out := cycleRingLayers(lobe, prefix+"arm-out")[0]
-			if len(heads) != 1 || heads[0].Shape.Geometry != "triangle" || string(heads[0].Shape.Fill) != `"lt1"` || heads[0].Shape.Rotation != out.Shape.Rotation {
-				t.Fatalf("%q %sarrowhead: %+v, want one lt1 triangle rotated like the leaving arm", thickness, prefix, heads)
-			}
-			hx, hy := cfeLayerCentre(heads[0])
-			ox, oy := cfeLayerCentre(out)
-			if math.Abs(hx-ox) > 1e-5 || math.Abs(hy-oy) > 1e-5 || heads[0].Frame.H < 1.4*heads[0].Frame.W || heads[0].Frame.W > out.Frame.W*0.6 {
-				t.Errorf("%q %sarrowhead: frame %+v on arm %+v, want it centred on the arm, longer than wide and inside it", thickness, prefix, heads[0].Frame, out.Frame)
-			}
-			// The arms are drawn first: segments and badges sit on top of them.
-			if !strings.HasSuffix(lobe.Layers[0].Name, "arm-in") || !strings.HasSuffix(lobe.Layers[1].Name, "arm-out") || !strings.HasSuffix(lobe.Layers[2].Name, "arrowhead") {
+			// The arms are drawn first: segments, arrowhead and badges sit on top.
+			if !strings.HasSuffix(lobe.Layers[0].Name, "arm-in") || !strings.HasSuffix(lobe.Layers[1].Name, "arm-out") || !strings.Contains(lobe.Layers[2].Name, "segment-") {
 				t.Errorf("%q lobe %d: layers start %s, %s, %s", thickness, li, lobe.Layers[0].Name, lobe.Layers[1].Name, lobe.Layers[2].Name)
 			}
 		}
-		// The leaving arms climb towards the crossing: the left one up and to
-		// the right, the right one up and to the left.
-		for li, lobe := range cfeLobes(t, grid) {
-			want := []struct {
-				name, dir string
-				lo, hi    float64
-			}{{"left-arm-out", "up and right", 0, 90}, {"right-arm-out", "up and left", 270, 360}}[li]
-			if rot := cycleRingLayers(lobe, want.name)[0].Shape.Rotation; rot <= want.lo || rot >= want.hi {
-				t.Errorf("%q: %s points %.1f° clockwise from up, want %s", thickness, want.name, rot, want.dir)
+		// The two arms of one band are collinear across the cells' shared edge:
+		// the left lobe's leaving arm and the right lobe's entering arm (and the
+		// other pair) have the same slope.
+		lobes := cfeLobes(t, grid)
+		for _, pair := range [][2]string{{"left-arm-out", "right-arm-in"}, {"left-arm-in", "right-arm-out"}} {
+			a, b := cycleRingLayers(lobes[0], pair[0])[0], cycleRingLayers(lobes[1], pair[1])[0]
+			if d := math.Mod(math.Abs(a.Shape.Rotation-b.Shape.Rotation), 360); math.Abs(d-180) > 1e-6 {
+				t.Errorf("%q: %s (%.2f°) and %s (%.2f°) are not one straight band", thickness, pair[0], a.Shape.Rotation, pair[1], b.Shape.Rotation)
 			}
 		}
 	}
 }
 
-// N = 6 (3 + 3), default thickness: the opening is acos(0.8) = 36.87° either
-// side of the touching point. The golden carries the same values.
+// A segment with a colour of its own (the highlight, or any segment in a
+// tinted accent mode) keeps it to its end: the neutral arm beside it starts a
+// regular segment gap away instead of running under it.
+func TestFigureEightArmLeavesAGapAtAColouredSegment(t *testing.T) {
+	gapOf := func(v *CycleFigureEightValues, ovr *CycleFigureEightOverrides, li, ai int) float64 {
+		t.Helper()
+		ctx := cycleRingCtx(828, 349)
+		lay, err := cfeMeasure(ctx, v, ovr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lobe := lay.lobes[li]
+		deg := lobe.items[0].StartDeg
+		if ai == 1 {
+			deg = lobe.items[len(lobe.items)-1].EndDeg
+		}
+		arm := cycleRingLayers(cfeLobes(t, cfeExpand(t, ctx, v, ovr))[li], lobe.prefix+[]string{"arm-in", "arm-out"}[ai])[0]
+		nx, ny := cfeAxisPoint(arm, -arm.Frame.H/2)
+		ex, ey := pointOnCircle(0.5, 0.5, lobe.spec.Radius, deg)
+		tx := []float64{1, 0}[li]
+		// Signed distance from the lobe's end to the arm's start, towards the
+		// crossing point.
+		d := math.Hypot(nx-ex, ny-ey)
+		if math.Hypot(nx-tx, ny-0.5) > math.Hypot(ex-tx, ey-0.5) {
+			d = -d
+		}
+		return d
+	}
+	want := func(v *CycleFigureEightValues, ovr *CycleFigureEightOverrides) float64 {
+		lay, err := cfeMeasure(cycleRingCtx(828, 349), v, ovr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return lay.lobes[0].spec.Radius * degToRad(cfeArmGapDeg)
+	}
+
+	plain := &CycleFigureEightOverrides{}
+	hi := cfeValues(6, 0)
+	hi.Phases[3].Highlight = true // the right lobe's first segment
+	for _, tc := range []struct {
+		name   string
+		li, ai int
+		gap    bool
+	}{{"left-arm-in", 0, 0, false}, {"left-arm-out", 0, 1, false}, {"right-arm-in", 1, 0, true}, {"right-arm-out", 1, 1, false}} {
+		got := gapOf(hi, plain, tc.li, tc.ai)
+		switch {
+		case tc.gap && math.Abs(got-want(hi, plain)) > 1e-4:
+			t.Errorf("highlight on phase 4: %s starts %.4f past the lobe's end, want the segment gap %.4f", tc.name, got, want(hi, plain))
+		case !tc.gap && math.Abs(got+cfeArmLapFrac) > 1e-4:
+			t.Errorf("highlight on phase 4: %s starts %.4f from the lobe's end, want %.3f inside the segment", tc.name, got, cfeArmLapFrac)
+		}
+	}
+	for _, mode := range []string{"alternate", "progressive"} {
+		tinted := &CycleFigureEightOverrides{TextOverrides: TextOverrides{CellAccentMode: mode}}
+		for li := 0; li < 2; li++ {
+			for ai := 0; ai < 2; ai++ {
+				if got := gapOf(cfeValues(6, 0), tinted, li, ai); math.Abs(got-want(cfeValues(6, 0), tinted)) > 1e-4 {
+					t.Errorf("%s: arm %d of lobe %d starts %.4f past the lobe's end, want the segment gap", mode, ai, li, got)
+				}
+			}
+		}
+	}
+}
+
+// The direction cue: one arrowhead per lobe on the arm that ENTERS it (the
+// two upper arms), a triangle longer than wide in the muted text colour — not
+// a page-coloured cut-out and not an accent — centred on the arm's axis,
+// pointing away from the crossing point, on the stretch of the arm the other
+// band does not cross. The two are mirror images.
+func TestFigureEightArrowheads(t *testing.T) {
+	for _, thickness := range []string{"thin", "", "thick"} {
+		ctx := cycleRingCtx(828, 349)
+		ovr := &CycleFigureEightOverrides{Thickness: thickness}
+		lobes := cfeLobes(t, cfeExpand(t, ctx, cfeValues(6, 0), ovr))
+		lay, err := cfeMeasure(ctx, cfeValues(6, 0), ovr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var heads [2]jsonschema.LayerInput
+		for li, lobe := range lobes {
+			prefix := []string{"left-", "right-"}[li]
+			touchX := []float64{1, 0}[li]
+			spec := lay.lobes[li].spec
+			found := cycleRingLayers(lobe, prefix+"arrowhead")
+			in := cycleRingLayers(lobe, prefix+"arm-in")[0]
+			if len(found) != 1 {
+				t.Fatalf("%q %sarrowhead: %d layers, want one", thickness, prefix, len(found))
+			}
+			head := found[0]
+			heads[li] = head
+			if head.Shape.Geometry != "triangle" || string(head.Shape.Line) != `"none"` || string(head.Shape.Fill) != string(fillTone{Color: "dk1", Alpha: cfeHeadAlpha}.fillJSON()) {
+				t.Errorf("%q %s: %s line %s fill %s, want a muted dk1 triangle without outline", thickness, head.Name, head.Shape.Geometry, head.Shape.Line, head.Shape.Fill)
+			}
+			if d := math.Mod(math.Abs(head.Shape.Rotation-in.Shape.Rotation), 360); math.Abs(d-180) > 1e-6 {
+				t.Errorf("%q %s: rotation %.2f° on an arm at %.2f°, want it pointing away from the crossing point", thickness, head.Name, head.Shape.Rotation, in.Shape.Rotation)
+			}
+			if head.Frame.H < 1.3*head.Frame.W || head.Frame.W > 0.5*spec.Thickness || head.Frame.W < 0.3*spec.Thickness {
+				t.Errorf("%q %s: %.4f x %.4f on a %.4f band, want it longer than wide and 30-50%% of the band across", thickness, head.Name, head.Frame.W, head.Frame.H, spec.Thickness)
+			}
+			// On the arm's axis: its centre is collinear with the crossing point
+			// along the arm's direction.
+			hx, hy := cfeLayerCentre(head)
+			sin, cos := math.Sincos(degToRad(in.Shape.Rotation))
+			if off := (hx-touchX)*cos + (hy-0.5)*sin; math.Abs(off) > 1e-6 {
+				t.Errorf("%q %s: centre is %.5f off the arm's axis", thickness, head.Name, off)
+			}
+			// Clear of the other band (tip to tail beyond where it crosses) and
+			// short of the lobe's end.
+			ex, ey := pointOnCircle(0.5, 0.5, spec.Radius, lay.lobes[li].items[0].StartDeg)
+			dist, at := math.Hypot(ex-touchX, ey-0.5), math.Hypot(hx-touchX, hy-0.5)
+			ux, uy := (touchX-ex)/dist, (0.5-ey)/dist
+			free := spec.Thickness / 2 * (1 + math.Abs(ux*ux-uy*uy)) / math.Abs(2*ux*uy)
+			if at-head.Frame.H/2 < free || at+head.Frame.H/2 > dist {
+				t.Errorf("%q %s: spans %.4f-%.4f from the crossing point, want it between the other band's edge (%.4f) and the lobe's end (%.4f)", thickness, head.Name, at-head.Frame.H/2, at+head.Frame.H/2, free, dist)
+			}
+			// Drawn over the segments, under the badges.
+			order := map[string]int{}
+			for i, l := range lobe.Layers {
+				switch {
+				case strings.Contains(l.Name, "segment-"):
+					order["segment"] = i
+				case strings.Contains(l.Name, "arrowhead"):
+					order["head"] = i
+				case strings.Contains(l.Name, "badge-") && order["badge"] == 0:
+					order["badge"] = i
+				}
+			}
+			if order["head"] < order["segment"] || order["head"] > order["badge"] {
+				t.Errorf("%q %s: layer %d, want it after the segments (%d) and before the badges (%d)", thickness, head.Name, order["head"], order["segment"], order["badge"])
+			}
+		}
+		// Mirror images about the cells' shared edge; the left one points up
+		// and to the left, the right one up and to the right.
+		lx, ly := cfeLayerCentre(heads[0])
+		rx, ry := cfeLayerCentre(heads[1])
+		if math.Abs(lx-(1-rx)) > 1e-5 || math.Abs(ly-ry) > 1e-5 || heads[0].Frame.W != heads[1].Frame.W || heads[0].Frame.H != heads[1].Frame.H ||
+			math.Abs(heads[0].Shape.Rotation+heads[1].Shape.Rotation-360) > 1e-6 {
+			t.Errorf("%q: arrowheads %+v @%.2f° and %+v @%.2f° are not mirror images", thickness, heads[0].Frame, heads[0].Shape.Rotation, heads[1].Frame, heads[1].Shape.Rotation)
+		}
+		if l, r := heads[0].Shape.Rotation, heads[1].Shape.Rotation; l <= 270 || l >= 360 || r <= 0 || r >= 90 {
+			t.Errorf("%q: arrowheads point %.1f° and %.1f° clockwise from up, want up-left and up-right", thickness, l, r)
+		}
+		if ly >= 0.5 {
+			t.Errorf("%q: arrowheads at y=%.3f, want them on the upper arms", thickness, ly)
+		}
+	}
+}
+
+// N = 6 (3 + 3), default thickness: the band is 20% of a lobe 97.6% of its
+// square, its centreline radius 0.3904, so the opening is acos(0.3904 / 0.5)
+// = 38.67° either side of the crossing point. The golden carries the same
+// values.
 func TestFigureEightBlockArcAdjValuesPinned(t *testing.T) {
 	lobes := cfeLobes(t, cfeExpand(t, ExpandContext{}, cfeValues(6, 0), nil))
-	// Left lobe, counter-clockwise from 323.13°: the preset draws clockwise,
+	// Left lobe, counter-clockwise from 321.33°: the preset draws clockwise,
 	// so each segment's adj1 is its END in path order.
-	wantLeft := [][2]int64{{13902602, 19387806}, {8057398, 13542602}}
+	wantLeft := [][2]int64{{13866634, 19279903}, {8093366, 13506634}}
 	for i, seg := range cycleRingLayers(lobes[0], "left-segment-") {
 		if i >= len(wantLeft) {
 			break
@@ -510,8 +680,8 @@ func TestFigureEightBlockArcAdjValuesPinned(t *testing.T) {
 		}
 	}
 	first := cycleRingLayers(lobes[1], "right-segment-")[0]
-	if a1 := first.Shape.Adjustments["adj1"]; a1 != 13012194 { // 180° + 36.87°
-		t.Errorf("right-segment-4 starts at %d, want 13012194", a1)
+	if a1 := first.Shape.Adjustments["adj1"]; a1 != 13120097 { // 180° + 38.67°
+		t.Errorf("right-segment-4 starts at %d, want 13120097", a1)
 	}
 }
 
@@ -638,6 +808,7 @@ func TestFigureEightHighlightIsTheOnlySolidAccent(t *testing.T) {
 				prefix := []string{"left-", "right-"}[li]
 				solid = append(solid, cycleRingSolidAccents(lobe, prefix+"segment-")...)
 				solid = append(solid, cycleRingSolidAccents(lobe, prefix+"arm-")...)
+				solid = append(solid, cycleRingSolidAccents(lobe, prefix+"arrowhead")...)
 				accentBadges += len(cycleRingSolidAccents(lobe, prefix+"badge-"))
 				for _, b := range cycleRingLayers(lobe, fmt.Sprintf("%sbadge-%d", prefix, hi+1)) {
 					if string(b.Shape.Fill) != `"lt1"` {
