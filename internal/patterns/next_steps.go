@@ -25,8 +25,8 @@ import (
 //   ─────────────────────────────────────────────────────────────────
 //   02   Stand up the data workstream             A. Lee       Nov
 //
-//   ▌ Decisions requested
-//   ▌ • Approve the €2.4M phase-1 budget
+//   █ Decisions requested
+//   █ • Approve the €2.4M phase-1 budget
 //
 // A partner replaces "Thank you" with this. The rows share the agenda's rule
 // language (serif accent numerals, 0.5pt rules, no tiles). The decisions band
@@ -57,7 +57,7 @@ const (
 	nextStepsRowGapPt      = 2.0
 	nextStepsBandGapPt     = 14.0
 	nextStepsMinBandGapPt  = 6.0
-	nextStepsBandBarPt     = 3.0
+	nextStepsBandPadPt     = 4.0 // extra top / bottom air inside the filled band
 	nextStepsOwnerPct      = 22.0
 	nextStepsDatePct       = 15.0
 	nextStepsOwnerMaxPct   = 30.0
@@ -81,7 +81,7 @@ var nextStepsScales = [][3]float64{{scaleLeadPt, scaleSubheadPt, scaleSubheadPt}
 
 func (n *nextSteps) Name() string { return "next-steps" }
 func (n *nextSteps) Description() string {
-	return "Closing next-steps slide: 2-6 numbered action rows (action / owner / date) separated by rules, plus an optional 'Decisions requested' band with a left accent rule"
+	return "Closing next-steps slide: 2-6 numbered action rows (action / owner / date) separated by rules, plus an optional 'Decisions requested' band in a dark neutral fill"
 }
 func (n *nextSteps) UseWhen() string {
 	return "The deck's closing slide: what happens next, who owns each action and by when, and the decisions the audience is asked to take; use it instead of a 'Thank you' closer"
@@ -159,7 +159,7 @@ func (n *nextSteps) Schema() *Schema {
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
 			"actions":         ArraySchema(actionSchema, nextStepsMinActions, nextStepsMaxActions).WithDescription("2-6 actions, in the order they happen"),
-			"decisions":       ArraySchema(StringSchema(nextStepsDecisionMax).WithDescription("One decision the audience is asked to take (≤120 chars)"), 0, nextStepsMaxDecisions).WithDescription("0-3 decisions requested, rendered in a band under the actions with a left accent rule (no outline, no fill)"),
+			"decisions":       ArraySchema(StringSchema(nextStepsDecisionMax).WithDescription("One decision the audience is asked to take (≤120 chars)"), 0, nextStepsMaxDecisions).WithDescription("0-3 decisions requested, rendered in a dark neutral band under the actions (bold text, no outline)"),
 			"decisions_label": StringSchema(nextStepsLabelMax).WithDescription("Band label (default \"Decisions requested\")"),
 		},
 		[]string{"actions"},
@@ -260,8 +260,9 @@ type nextStepsLayout struct {
 	padPt                                   float64 // top / bottom text margin of every cell; 0 = the uniform margin
 	decisionSize                            float64
 	numberCol, actionCol, ownerCol, dateCol int
-	// barPct is the width of the leading rule column the decisions band's
-	// accent rule fills; 0 without a band. The numeral cells span it.
+	// barPct is the width of a leading rule column the numeral cells span.
+	// The decisions band is one filled shape now (go-slide-creator-3a1rm) and
+	// takes none, so it is 0; the column logic stays for a bar variant.
 	barPct float64
 }
 
@@ -412,13 +413,11 @@ func measureNextSteps(ctx ExpandContext, vals *NextStepsValues, numberSize, acti
 		for _, d := range decisions {
 			paras = append(paras, sizedPara{text: d, sizePt: lay.decisionSize, bold: true, spaceAfterPt: 2, bullet: true})
 		}
-		band := nextStepsBandCell(vals, lay.decisionSize, "dk1", padPt)
-		lay.bandPt = math.Ceil(math.Max(sizedBlockHeightPt(ctx, paras, areaW-nextStepsBandBarPt)-trim,
-			writtenFitHeightPt(ctx.themeFonts(), band.Shape.Text, areaW-nextStepsBandBarPt, 0)))
-		// The band's rule takes a column of its own at the table's left edge.
-		lay.barPct = math.Round(nextStepsBandBarPt/areaW*10000) / 100
-		lay.cols[0] = math.Round((lay.cols[0]-lay.barPct)*100) / 100
-		lay.cols = append([]float64{lay.barPct}, lay.cols...)
+		band := nextStepsBandCell(vals, lay.decisionSize, "lt1", "lt1", padPt)
+		// The band is the takeaway band (go-slide-creator-3a1rm): one filled
+		// shape the width of the table, so it takes no column of its own.
+		lay.bandPt = math.Ceil(math.Max(sizedBlockHeightPt(ctx, paras, areaW)-trim,
+			writtenFitHeightPt(ctx.themeFonts(), band.Shape.Text, areaW, 0)) + 2*nextStepsBandPadPt)
 	}
 	return lay
 }
@@ -472,10 +471,10 @@ func nextStepsDateCell(date string, size, padPt float64) *jsonschema.GridCellInp
 }
 
 // nextStepsBandCell is the "Decisions requested" band text: label + bullets.
-func nextStepsBandCell(vals *NextStepsValues, size float64, labelInk string, padPt float64) *jsonschema.GridCellInput {
+func nextStepsBandCell(vals *NextStepsValues, size float64, labelInk, ink string, padPt float64) *jsonschema.GridCellInput {
 	paras := []nextStepsParagraph{{Content: nextStepsLabel(vals), Size: nextStepsBandLabelSize, Bold: true, Color: labelInk, SpaceAfter: 4}}
 	for _, d := range nonEmptyStrings(vals.Decisions) {
-		paras = append(paras, nextStepsParagraph{Content: pptx.ConvertMarkdownEmphasis(d), Size: size, Bold: true, Color: "dk1", SpaceAfter: 2, Bullet: true})
+		paras = append(paras, nextStepsParagraph{Content: pptx.ConvertMarkdownEmphasis(d), Size: size, Bold: true, Color: ink, SpaceAfter: 2, Bullet: true})
 	}
 	cell := nextStepsTextCell("ctr", padPt, paras...)
 	cell.Shape.Text = withInsetLeft(cell.Shape.Text, TakeawayTextInsetPt)
@@ -628,11 +627,16 @@ func (n *nextSteps) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 			Cells: []*jsonschema.GridCellInput{{ColSpan: nCols}},
 		})
 		itemRow = append(itemRow, false)
-		band := nextStepsBandCell(vals, lay.decisionSize, accentInkOnLight(ctx, accent, 4.5), lay.padPt)
-		band.ColSpan = nCols - 1
-		accentFill, _ := json.Marshal(accent)
-		bar := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: accentFill, Line: json.RawMessage(`"none"`)}}
-		rows = append(rows, jsonschema.GridRowInput{MinHeight: lay.bandPt, MaxHeight: lay.bandPt, Cells: []*jsonschema.GridCellInput{bar, band}})
+		// The decisions close the slide in the takeaway band's language: the
+		// dark structural neutral, the label and the asks in the ink measured
+		// against it.
+		fill, ink := TakeawayBandTone(ctx)
+		band := nextStepsBandCell(vals, lay.decisionSize, ink, ink, lay.padPt)
+		band.ColSpan = nCols
+		band.Shape.Fill = fill
+		band.Shape.Line = noLine
+		band.Shape.TypeScale = peerTextTypeScale
+		rows = append(rows, jsonschema.GridRowInput{MinHeight: lay.bandPt, MaxHeight: lay.bandPt, Cells: []*jsonschema.GridCellInput{band}})
 		itemRow = append(itemRow, false)
 	}
 

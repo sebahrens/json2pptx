@@ -25,7 +25,7 @@ import (
 //          ~30%  │ Generated real AI value
 //   ───────────────────────────────────────────────────────
 //        16→33%  │ Agentic value share expected to double by 2028
-//   ▌optional takeaway-band callout (accent bar + bold text)
+//   █ optional takeaway-band callout (dark neutral fill, bold text)
 //
 // The value column is fixed-width and right-aligned so the numbers line up on
 // their right edge — the typographic convention for a stat stack. One item may
@@ -152,7 +152,7 @@ type MetricListOverrides struct {
 	LabelSize      float64 `json:"label_size,omitempty"`
 	ValueWidthPct  float64 `json:"value_width_pct,omitempty"`
 	CellAccentMode string  `json:"cell_accent_mode,omitempty"`
-	// TakeawayEmphasis styles the callout band: "" (accent bar only),
+	// TakeawayEmphasis styles the callout band: "" (the dark band), "bar",
 	// "subtle" (5% neutral tint) or "strong" (solid accent).
 	TakeawayEmphasis string `json:"takeaway_emphasis,omitempty"`
 }
@@ -178,7 +178,7 @@ func (m *metricList) Schema() *Schema {
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
 			"items":   ArraySchema(itemSchema, metricListMinItems, metricListMaxItems).WithDescription("3-7 metrics, top to bottom"),
-			"callout": StringSchema(metricListCalloutMax).WithDescription("Optional so-what rendered as the takeaway band under the list (≤140 chars): flush accent bar, bold dk1 text, no box; overrides.takeaway_emphasis tints or fills it"),
+			"callout": StringSchema(metricListCalloutMax).WithDescription("Optional so-what rendered as the takeaway band under the list (≤140 chars): dark neutral fill, bold text; overrides.takeaway_emphasis restyles it"),
 		},
 		[]string{"items"},
 	).WithAdditionalProperties(false)
@@ -295,6 +295,7 @@ type metricListLayout struct {
 	valueSize, labelSize, detailSize float64
 	rowPt                            float64 // uniform item row height
 	calloutPt                        float64 // 0 = no callout
+	calloutSqueezePt                 float64 // the part of calloutPt the grid gives up before text shrinks
 	unfitValues                      []int   // items whose value wraps even at the floor
 	rowGapPt                         float64 // metricListRowGapPt on the template grid
 	tight                            bool    // rows use metricListTightInsetPt
@@ -327,7 +328,7 @@ func (l metricListLayout) natural(n int) float64 {
 func (l metricListLayout) minimal(n int) float64 {
 	h := l.natural(n)
 	if l.calloutPt > 0 {
-		h -= TakeawaySpacerPt(l.rowGapPt) + 2*SubGridInsetPt + takeawaySafetyPt
+		h -= l.calloutSqueezePt
 	}
 	return h
 }
@@ -483,6 +484,7 @@ func measureMetricList(ctx ExpandContext, vals *MetricListValues, ovr *MetricLis
 	lay.rowPt = math.Ceil(row)
 	if strings.TrimSpace(vals.Callout) != "" {
 		lay.calloutPt = TakeawayRowHeightPt(ctx, metricListTakeaway(vals.Callout, "", ovr.TakeawayEmphasis), areaW, ctx.Gap(metricListRowGapPt))
+		lay.calloutSqueezePt = TakeawaySqueezePt(metricListTakeaway(vals.Callout, "", ovr.TakeawayEmphasis), ctx.Gap(metricListRowGapPt))
 	}
 	return lay
 }
@@ -621,8 +623,10 @@ func (m *metricList) Expand(ctx ExpandContext, values, overrides any, cellOverri
 		// The so-what is the shared takeaway band, not a solid accent banner
 		// (go-slide-creator-7b5o6).
 		areaW, _ := sizingAreaPt(ctx)
-		rows = append(rows, TakeawayRow(ctx, metricListTakeaway(vals.Callout, baseAccent, ovr.TakeawayEmphasis), 2, areaW, ctx.Gap(metricListRowGapPt)))
-		itemRow = append(itemRow, false)
+		for _, row := range TakeawayRows(ctx, metricListTakeaway(vals.Callout, baseAccent, ovr.TakeawayEmphasis), 2, areaW, ctx.Gap(metricListRowGapPt)) {
+			rows = append(rows, row)
+			itemRow = append(itemRow, false)
+		}
 	}
 
 	colsJSON, _ := json.Marshal(lay.cols)

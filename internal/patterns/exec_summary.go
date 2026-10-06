@@ -22,7 +22,7 @@ import (
 //   [ 1 ]  Bold lead-in statement            Supporting evidence sentence …
 //   ─────────────────────────────────────────────────────────────────────────
 //   [ 2 ]  …                                  …
-//   ▌Bottom line: optional takeaway band (flush accent bar, bold text)
+//   █ Bottom line: optional takeaway band (dark neutral fill, bold text)
 //
 // Rows start at their measured text height and short summaries distribute
 // surplus content-zone height into the point rows. Dividers and the bottom
@@ -111,7 +111,7 @@ type ExecSummaryValues struct {
 type ExecSummaryOverrides struct {
 	TextOverrides
 	Numbered *bool `json:"numbered,omitempty"` // default true
-	// TakeawayEmphasis styles the bottom-line band: "" (accent bar only),
+	// TakeawayEmphasis styles the bottom-line band: "" (the dark band), "bar",
 	// "subtle" (5% neutral tint) or "strong" (solid accent).
 	TakeawayEmphasis string `json:"takeaway_emphasis,omitempty"`
 }
@@ -235,14 +235,14 @@ func (e *execSummary) Schema() *Schema {
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
 			"points":      ArraySchema(pointSchema, execSummaryMinPoints, execSummaryMaxPoints).WithDescription("3-5 key messages, most important first"),
-			"bottom_line": StringSchema(execSummaryBottomLineMax).WithDescription("Optional recommendation / ask rendered as the takeaway band under the points (flush accent bar, bold dk1 text, no box); about 102 readable characters with 4-5 points"),
+			"bottom_line": StringSchema(execSummaryBottomLineMax).WithDescription("Optional recommendation / ask rendered as the takeaway band under the points (dark neutral fill, bold text); about 102 readable characters with 4-5 points"),
 		},
 		[]string{"points"},
 	).WithAdditionalProperties(false)
 
 	overridesSchema := ObjectSchema(
 		map[string]*Schema{
-			"accent":            StringSchema(0).WithDescription("Accent scheme color for numbers and the bottom-line accent bar (default accent1)").WithDefault("accent1"),
+			"accent":            StringSchema(0).WithDescription("Accent scheme color for the numbers (default accent1)").WithDefault("accent1"),
 			"semantic_accent":   EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
 			"header_size":       NumberSchema(12, 40).WithDescription("Lead-in font size in points (default 17; 16 with 5 points)"),
 			"body_size":         NumberSchema(12, 40).WithDescription("Support text font size in points (default 14; 13 with 5 points)"),
@@ -380,10 +380,9 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 
 	if bottomPt > 0 {
-		// The ask is the shared takeaway component: a flush accent bar and
-		// bold dk1 text, no box, no outline (go-slide-creator-7b5o6). It
-		// replaced a closing rule + chevron "BOTTOM LINE" flag + tinted box.
-		rows = append(rows, TakeawayRow(ctx, execSummaryTakeaway(vals.BottomLine, baseAccent, ovr.TakeawayEmphasis), len(cols), areaW, lay.rowGapPt))
+		// The ask is the shared takeaway component: the full-width band
+		// (go-slide-creator-3a1rm).
+		rows = append(rows, TakeawayRows(ctx, execSummaryTakeaway(vals.BottomLine, baseAccent, ovr.TakeawayEmphasis), len(cols), areaW, lay.rowGapPt)...)
 	}
 
 	colsJSON, _ := json.Marshal(cols)

@@ -3,6 +3,7 @@ package shapegrid
 import (
 	"encoding/json"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -15,20 +16,18 @@ import (
 // cells the one long label shrank alone and the row rendered at uneven sizes.
 // Cells in the same row that declare the same font size are siblings: they take
 // the smallest shrink any of them needs.
+//
+// Peers beyond the row share it too (go-slide-creator-riyh7): the cells of a
+// heatmap, the cards of a 3 x 2 grid and the labels of one column are one set
+// (peerGroups), and a shrink taken row by row set the row with the one long
+// activity at 10.8pt between rows at 12pt.
 
-// shareRowAutofitScale sets AutofitScale on same-size sibling shape cells of
-// each row to the smallest shrink the group needs. Groups where every cell fits
-// are left alone (AutofitScale 0), so a row that needs no shrink is unchanged.
+// shareRowAutofitScale sets AutofitScale on same-size sibling shape cells —
+// those of one row, and those of one peer group — to the smallest shrink the
+// group needs. Groups where every cell fits are left alone (AutofitScale 0),
+// so a group that needs no shrink is unchanged.
 func shareRowAutofitScale(cells []ResolvedCell) {
-	type key struct {
-		row    int
-		sizeHP int
-	}
-	type member struct {
-		idx   int
-		scale float64
-	}
-	groups := map[key][]member{}
+	var members []autofitMember
 	for i := range cells {
 		c := &cells[i]
 		// A layer is not a row sibling: it shares its cell, not a row slot.
@@ -47,26 +46,61 @@ func shareRowAutofitScale(cells []ResolvedCell) {
 			tb.Insets[j] += c.TextInsets[j]
 		}
 		tb.ThemeFonts = c.ShapeSpec.ThemeFonts
-		k := key{row: c.RowIdx, sizeHP: size}
-		groups[k] = append(groups[k], member{idx: i, scale: pptx.AutofitScaleFor(tb, c.Bounds)})
+		members = append(members, autofitMember{idx: i, sizeHP: size, scale: pptx.AutofitScaleFor(tb, c.Bounds)})
 	}
-	for _, ms := range groups {
-		if len(ms) < 2 {
+	if len(members) < 2 {
+		return
+	}
+	if !slices.ContainsFunc(members, func(m autofitMember) bool { return m.scale < 1 }) {
+		return
+	}
+	set := autofitSiblingSets(cells, members)
+	least := map[int]float64{}
+	count := map[int]int{}
+	for i, m := range members {
+		g := set.find(i)
+		count[g]++
+		if cur, ok := least[g]; !ok || m.scale < cur {
+			least[g] = m.scale
+		}
+	}
+	for i, m := range members {
+		g := set.find(i)
+		if count[g] < 2 || least[g] >= 1 {
 			continue
 		}
-		minScale := 1.0
-		for _, m := range ms {
-			if m.scale < minScale {
-				minScale = m.scale
+		cells[m.idx].AutofitScale = least[g]
+		cells[m.idx].autofitGroup = g + 1
+	}
+}
+
+// autofitMember is one normAutofit text cell: its index in the resolved
+// cells, its first run's size and the shrink it needs on its own.
+type autofitMember struct {
+	idx    int
+	sizeHP int
+	scale  float64
+}
+
+// autofitSiblingSets joins the members that share a shrink: same-size cells
+// of one row, and same-size cells of one peer group.
+func autofitSiblingSets(cells []ResolvedCell, members []autofitMember) disjointSet {
+	peers := peerGroups(cells)
+	set := newDisjointSet(len(members))
+	for i := range members {
+		for j := i + 1; j < len(members); j++ {
+			a, b := members[i], members[j]
+			if a.sizeHP != b.sizeHP {
+				continue
+			}
+			sameRow := cells[a.idx].RowIdx == cells[b.idx].RowIdx
+			samePeers := peers[a.idx] >= 0 && peers[a.idx] == peers[b.idx]
+			if sameRow || samePeers {
+				set.union(i, j)
 			}
 		}
-		if minScale >= 1 {
-			continue
-		}
-		for _, m := range ms {
-			cells[m.idx].AutofitScale = minScale
-		}
 	}
+	return set
 }
 
 // A shared shrink is written as sizes, not as a stored scale
@@ -98,7 +132,8 @@ func shareRowAutofitScale(cells []ResolvedCell) {
 // trials compare cells at their designed sizes.
 func writeSharedShrink(cells []ResolvedCell) {
 	type key struct {
-		row   int
+		row   int // a cell on its own (negative), or the row of a group set by hand
+		group int // the peer group shareRowAutofitScale shared the scale across
 		scale float64
 	}
 	groups := map[key][]int{}
@@ -112,6 +147,9 @@ func writeSharedShrink(cells []ResolvedCell) {
 		switch {
 		case c.AutofitScale > 0 && c.AutofitScale < 1:
 			k = key{row: c.RowIdx, scale: c.AutofitScale}
+			if c.autofitGroup > 0 {
+				k = key{group: c.autofitGroup, scale: c.AutofitScale}
+			}
 		case c.AutofitScale == 0:
 			if k.scale = canvasAutofit(c); k.scale >= 1 {
 				continue

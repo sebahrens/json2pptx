@@ -361,8 +361,13 @@ func resolveGrid(grid *Grid, alloc *pptx.ShapeIDAllocator, plan *composePlan) (*
 	connectors := resolveRowConnectors(grid, cells, rowCellIDs, rowYOffsets, rowHeightsEMU, alloc)
 	connectors = append(connectors, resolveLinks(grid, cells, rowCellIDs, alloc)...)
 	alignFirstColumnText(cells, gridX, grid.TextLeft)
+	// Text grows per peer group, not per cell (go-slide-creator-riyh7): each
+	// shape measures how far its own text may grow, peers take the smallest
+	// of those answers, and only then are the sizes written.
+	growth := make([]peerGrowth, len(cells))
 	for i := range cells {
 		cell := &cells[i]
+		growth[i].scale = 1
 		if cell.Kind == CellKindShape && cell.ShapeSpec != nil {
 			mode := cell.ShapeSpec.TypeScale
 			if mode == "" {
@@ -374,8 +379,15 @@ func resolveGrid(grid *Grid, alloc *pptx.ShapeIDAllocator, plan *composePlan) (*
 				cell.ShapeSpec = stepped
 			}
 			if mode != "" && mode != "compact" {
-				cell.ShapeSpec = growShapeText(cell.ShapeSpec, cell.Bounds, cell.TextInsets, mode)
+				growth[i].scale, growth[i].paras = shapeGrowScale(cell.ShapeSpec, cell.Bounds, cell.TextInsets, mode)
 			}
+		}
+	}
+	sharePeerGrowth(cells, growth)
+	for i := range cells {
+		cell := &cells[i]
+		if cell.Kind == CellKindShape && cell.ShapeSpec != nil {
+			cell.ShapeSpec = writeGrownText(cell.ShapeSpec, growth[i].paras, growth[i].scale)
 			if !grid.KeepTextSizes {
 				cell.ShapeSpec = snapShapeTextToScale(cell.ShapeSpec, plan.zoomHeadingPt())
 			}

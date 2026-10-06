@@ -461,6 +461,10 @@ type ResolvedCell struct {
 	// AutofitScale, when in (0,1), is the normAutofit shrink shared by this
 	// cell's same-size siblings in its row; 0 lets the shape measure its own.
 	AutofitScale float64
+	// autofitGroup is the peer group AutofitScale was shared across (1-based; 0
+	// for a cell that shares none). writeSharedShrink writes the shrink of one
+	// group as one set of sizes.
+	autofitGroup int
 	ID           uint32
 	RowIdx       int                // Zero-based row index in the source grid
 	ColIdx       int                // Zero-based column index in the source grid

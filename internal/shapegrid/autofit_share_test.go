@@ -2,6 +2,7 @@ package shapegrid
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -21,7 +22,10 @@ func TestShareRowAutofitScale(t *testing.T) {
 		}
 	}
 	long := "A much longer label that wraps onto several lines in this narrow box"
-	cells := []ResolvedCell{cell(0, "Short"), cell(0, long), cell(1, "Other row")}
+	// The cell of the other row stands apart: another size, no shared edge.
+	other := cell(1, "Other row")
+	other.Bounds = pptx.RectEmu{X: 400 * 12700, Y: 300 * 12700, CX: 240 * 12700, CY: 70 * 12700}
+	cells := []ResolvedCell{cell(0, "Short"), cell(0, long), other}
 	shareRowAutofitScale(cells)
 	if s := cells[1].AutofitScale; s <= 0 || s >= 1 {
 		t.Fatalf("long label scale = %v, want a shrink", s)
@@ -31,6 +35,49 @@ func TestShareRowAutofitScale(t *testing.T) {
 	}
 	if cells[2].AutofitScale != 0 {
 		t.Errorf("a lone cell in another row must keep its own measurement, got %v", cells[2].AutofitScale)
+	}
+}
+
+// Peers beyond the row share the shrink too (go-slide-creator-riyh7): the
+// cells of one column of a heatmap are one set, and a shrink taken row by row
+// set the row with the long activity smaller than the rows around it.
+func TestSharePeerAutofitScaleAcrossRows(t *testing.T) {
+	cell := func(row int, text string) ResolvedCell {
+		raw, _ := json.Marshal(map[string]any{"content": text, "size": 14})
+		return ResolvedCell{
+			Kind:      CellKindShape,
+			RowIdx:    row,
+			Bounds:    pptx.RectEmu{X: 0, Y: int64(row) * 50 * 12700, CX: 90 * 12700, CY: 40 * 12700},
+			ShapeSpec: &ShapeSpec{Geometry: "rect", Text: raw},
+		}
+	}
+	long := "A much longer label that wraps onto several lines in this narrow box"
+	cells := []ResolvedCell{cell(0, "Short"), cell(1, long), cell(2, "Brief")}
+	// A cell of another geometry in the long cell's column is no peer of it.
+	pill := cell(3, "Pill")
+	pill.ShapeSpec.Geometry = "roundRect"
+	cells = append(cells, pill)
+	shareRowAutofitScale(cells)
+	if s := cells[1].AutofitScale; s <= 0 || s >= 1 {
+		t.Fatalf("long label scale = %v, want a shrink", s)
+	}
+	if cells[0].AutofitScale != cells[1].AutofitScale || cells[2].AutofitScale != cells[1].AutofitScale {
+		t.Errorf("column peers differ: %v, %v, %v", cells[0].AutofitScale, cells[1].AutofitScale, cells[2].AutofitScale)
+	}
+	if cells[3].AutofitScale != 0 {
+		t.Errorf("a shape of another geometry is not a peer, got scale %v", cells[3].AutofitScale)
+	}
+	writeSharedShrink(cells)
+	sizes := map[string]bool{}
+	for _, c := range cells[:3] {
+		tb, err := ResolveTextInput(c.ShapeSpec.Text)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sizes[fmt.Sprint(firstRunSizeHP(tb), c.AutofitScale)] = true
+	}
+	if len(sizes) != 1 {
+		t.Errorf("column peers are written at several sizes: %v", sizes)
 	}
 }
 
