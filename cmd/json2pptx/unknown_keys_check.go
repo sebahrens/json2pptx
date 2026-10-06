@@ -7,6 +7,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -200,6 +201,21 @@ func checkPlainSlideUnknownKeys(raw json.RawMessage, path string) []*patterns.Va
 		warnings = append(warnings, checkShapeGridUnknownKeys(v, path+"/shape_grid")...)
 	}
 
+	// overlays[]
+	if v, ok := obj["overlays"]; ok {
+		var overlays []json.RawMessage
+		if json.Unmarshal(v, &overlays) == nil {
+			for i, overlayRaw := range overlays {
+				warnings = append(warnings, checkOverlayUnknownKeys(overlayRaw, fmt.Sprintf("%s/overlays/%d", path, i))...)
+			}
+		}
+	}
+
+	// source_link
+	if v, ok := obj["source_link"]; ok {
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.LinkInput{}), path+"/source_link")...)
+	}
+
 	// content[]
 	if contentRaw, ok := obj["content"]; ok {
 		var items []json.RawMessage
@@ -383,6 +399,12 @@ func checkTableUnknownKeys(raw json.RawMessage, path string) []*patterns.Validat
 					for j, cellRaw := range cells {
 						p := fmt.Sprintf("%s/rows/%d/%d", path, i, j)
 						warnings = append(warnings, checkUnknownKeysForType(cellRaw, reflect.TypeOf(jsonschema.TableCellInput{}), p)...)
+						var cell map[string]json.RawMessage
+						if json.Unmarshal(cellRaw, &cell) == nil {
+							if v, ok := cell["conditional"]; ok {
+								warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.ConditionalFormatInput{}), p+"/conditional")...)
+							}
+						}
 					}
 				}
 			}
@@ -522,9 +544,11 @@ func checkGridLayerUnknownKeys(raw json.RawMessage, path string) []*patterns.Val
 	return warnings
 }
 
-// checkShapeUnknownKeys checks a shape spec with its icon overlay and link: a
-// cell's shape, a layer's shape or a composite's text. The fill, line and text
-// values are strings or free-form objects and are not walked.
+// checkShapeUnknownKeys checks a shape spec with its icon overlay, link and the
+// object forms of its fill, line and text: a cell's shape, a layer's shape or
+// a composite's text. The object keys are read from the types the writer
+// decodes them into (shapegrid.ResolveFillInput and its siblings); a string
+// shorthand has no keys and reports nothing.
 func checkShapeUnknownKeys(raw json.RawMessage, path string) []*patterns.ValidationError {
 	warnings := checkUnknownKeysForType(raw, reflect.TypeOf(jsonschema.ShapeSpecInput{}), path)
 	var obj map[string]json.RawMessage
@@ -533,6 +557,55 @@ func checkShapeUnknownKeys(raw json.RawMessage, path string) []*patterns.Validat
 	}
 	if v, ok := obj["icon"]; ok {
 		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.IconInput{}), path+"/icon")...)
+	}
+	if v, ok := obj["link"]; ok {
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.LinkInput{}), path+"/link")...)
+	}
+	if v, ok := obj["fill"]; ok {
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(shapegrid.FillObjectInput{}), path+"/fill")...)
+	}
+	if v, ok := obj["line"]; ok {
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(shapegrid.LineObjectInput{}), path+"/line")...)
+	}
+	if v, ok := obj["text"]; ok {
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(shapegrid.TextObjectInput{}), path+"/text")...)
+		var text struct {
+			Paragraphs []json.RawMessage `json:"paragraphs"`
+		}
+		if json.Unmarshal(v, &text) == nil {
+			for i, para := range text.Paragraphs {
+				warnings = append(warnings, checkUnknownKeysForType(para, reflect.TypeOf(shapegrid.ParagraphInput{}), fmt.Sprintf("%s/text/paragraphs/%d", path, i))...)
+			}
+		}
+	}
+	return warnings
+}
+
+// checkOverlayUnknownKeys checks one slide overlay: the shape, its from / to
+// points with their cell and image anchors, and its link.
+func checkOverlayUnknownKeys(raw json.RawMessage, path string) []*patterns.ValidationError {
+	warnings := checkUnknownKeysForType(raw, reflect.TypeOf(jsonschema.OverlayShapeInput{}), path)
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(raw, &obj) != nil {
+		return warnings
+	}
+	for _, end := range []string{"from", "to"} {
+		v, ok := obj[end]
+		if !ok {
+			continue
+		}
+		p := path + "/" + end
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.OverlayPointInput{}), p)...)
+		var point map[string]json.RawMessage
+		if json.Unmarshal(v, &point) != nil {
+			continue
+		}
+		if a, ok := point["anchor_cell"]; ok {
+			warnings = append(warnings, checkUnknownKeysForType(a, reflect.TypeOf(jsonschema.OverlayAnchorCellInput{}), p+"/anchor_cell")...)
+		}
+		if a, ok := point["anchor_image"]; ok {
+			warnings = append(warnings, checkUnknownKeysForType(a, reflect.TypeOf(jsonschema.OverlayAnchorImageInput{}), p+"/anchor_image")...)
+		}
 	}
 	if v, ok := obj["link"]; ok {
 		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.LinkInput{}), path+"/link")...)
