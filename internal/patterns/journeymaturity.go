@@ -25,7 +25,7 @@ type journeyMaturity struct{}
 
 func (jm *journeyMaturity) Name() string { return "journey-maturity-model" }
 func (jm *journeyMaturity) Description() string {
-	return "Ascending maturity staircase: 3-6 stage columns, each stepping up from the last, with a numbered header, a 1-3 line description, and an optional 'where we are' marker that highlights the current stage"
+	return "Ascending maturity staircase: 3-6 solid steps rising left to right in a tonal ladder of the accent, each with a big stage numeral and bold name, a 1-3 line description under it, and an optional 'where we are' marker on the current stage (the one solid-accent step)"
 }
 func (jm *journeyMaturity) UseWhen() string {
 	return "Capability or digital maturity model with 3-6 named stages where progression matters and a single stage represents the current state; prefer value-chain when stages have no progression semantics, phase-roadmap when stages are time-anchored, and process-flow for short action steps without descriptions"
@@ -82,24 +82,27 @@ type JourneyMaturityValues struct {
 // style.
 type JourneyMaturityOverrides struct {
 	TextOverrides
-	// Style is "staircase" (default: every stage's column starts higher than
-	// the one before it) or "flat" (equal boxes in one row joined by small
-	// arrows — the look before go-slide-creator-j8t7o).
+	// Style is "staircase" (default: one solid step per stage, rising in a
+	// tonal ladder of the accent), "columns" (a header box over a description
+	// box per stage, each column starting higher than the last — the default
+	// before go-slide-creator-an4ao) or "flat" (equal boxes in one row joined
+	// by small arrows — the look before go-slide-creator-j8t7o).
 	Style string `json:"style,omitempty"`
 }
 
 // The accepted overrides.style values.
 const (
 	journeyMaturityStyleStaircase = "staircase"
+	journeyMaturityStyleColumns   = "columns"
 	journeyMaturityStyleFlat      = "flat"
 )
 
-var journeyMaturityStyles = []string{journeyMaturityStyleStaircase, journeyMaturityStyleFlat}
+var journeyMaturityStyles = []string{journeyMaturityStyleStaircase, journeyMaturityStyleColumns, journeyMaturityStyleFlat}
 
 // journeyMaturityOverridesSchema is the text overrides plus the ladder style.
 func journeyMaturityOverridesSchema() *Schema {
 	s := textOverridesSchema()
-	s.raw.Properties["style"] = EnumSchema(journeyMaturityStyles...).WithDescription("staircase (default): each stage's column starts higher than the one before it, its header on top and its description directly beneath, all columns ending on one baseline; the rise per stage shrinks when the first stage's description needs the room. flat: equal header and description boxes in one row joined by small arrows (the earlier look)").WithDefault(journeyMaturityStyleStaircase)
+	s.raw.Properties["style"] = EnumSchema(journeyMaturityStyles...).WithDescription("staircase (default): one solid step per stage on a shared floor, each a rise taller than the last, filled as a tonal ladder of the accent's lighter swatches up to the solid accent on the current stage (the last stage when none is current; stages ahead of it stay palest); stage numeral and bold name on the step, descriptions unboxed beneath at one size, 'We are here' label over a solid pointer on the current step. columns: a header box over a description box per stage, each column starting higher, outlined marker beneath (the earlier default). flat: equal header and description boxes in one row joined by small arrows").WithDefault(journeyMaturityStyleStaircase)
 	return s
 }
 
@@ -120,7 +123,7 @@ func (jm *journeyMaturity) Schema() *Schema {
 			"number":      IntegerSchema(1, 9).WithDescription("Optional stage number (defaults to 1..N by position)"),
 			"label":       StringSchema(40).WithDescription("Short stage label (1-3 words); at 6 stages keep unbroken runs near 34 characters"),
 			"description": StringSchema(180).WithDescription("1-3 line description rendered below the label; about 162 readable characters at 5 stages and 122 at 6; at 4/5/6 stages keep wide unbroken runs near 146/115/95 characters or add word breaks"),
-			"current":     BooleanSchema().WithDescription("When true, marks this stage as the present state and renders a 'where we are' marker beneath it"),
+			"current":     BooleanSchema().WithDescription("When true, marks this stage as the present state: it takes the solid accent and a 'We are here' marker (set it on one stage)"),
 		},
 		[]string{"label"},
 	).WithAdditionalProperties(false)
@@ -141,7 +144,7 @@ func (jm *journeyMaturity) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Ascending maturity staircase of 3-6 stage columns with a numbered header, description, and optional current-stage marker")
+	}).WithDescription("Ascending maturity staircase of 3-6 solid steps in an accent tonal ladder, each with a stage numeral, name, description, and optional current-stage marker")
 }
 
 func (jm *journeyMaturity) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -254,6 +257,10 @@ func (jm *journeyMaturity) Expand(ctx ExpandContext, values, overrides any, cell
 		if !ovrOk {
 			return nil, fmt.Errorf("journey-maturity-model: overrides must be *JourneyMaturityOverrides, got %T", overrides)
 		}
+	}
+
+	if ovr.Style == "" || ovr.Style == journeyMaturityStyleStaircase {
+		return journeyMaturitySteps(ctx, vals, ovr, cellOverrides), nil
 	}
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
@@ -369,7 +376,7 @@ func (jm *journeyMaturity) Expand(ctx ExpandContext, values, overrides any, cell
 
 	colsJSON, _ := json.Marshal(n)
 
-	if ovr.Style != journeyMaturityStyleFlat {
+	if ovr.Style == journeyMaturityStyleColumns {
 		return journeyMaturityStaircase(ctx, colsJSON, headerCells, bodyCells, markerCells), nil
 	}
 
@@ -397,7 +404,7 @@ func (jm *journeyMaturity) Expand(ctx ExpandContext, values, overrides any, cell
 	return grid, nil
 }
 
-// Staircase geometry (go-slide-creator-j8t7o).
+// "columns" style geometry (go-slide-creator-j8t7o).
 const (
 	// journeyMaturityStairGapPt is the column gap; journeyMaturityStairRowGapPt
 	// the gap under a header and above the marker.
@@ -448,8 +455,8 @@ func journeyMaturityRisePt(areaHPt, fixedPt float64, needs []float64) float64 {
 	return journeyMaturityMinRisePt
 }
 
-// journeyMaturityStaircase lays the stage cells out as an ascending
-// staircase. The grid keeps the flat style's three rows — headers,
+// journeyMaturityStaircase lays the "columns" style's stage cells out as an
+// ascending staircase. The grid keeps the flat style's three rows — headers,
 // descriptions, markers — so cell paths and overlay anchors address the same
 // (row, column) in both styles; the steps are made inside the rows. The
 // header row is as tall as the whole staircase and stage i's header is inset

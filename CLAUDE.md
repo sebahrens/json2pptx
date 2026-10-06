@@ -171,7 +171,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `horizontal-bar-with-callouts` | Ranked horizontal bars (3–8) on the left with a per-bar accent-anchored insight callout on the right; callouts are optional and the column is dropped when none are given |
 | `icon-row` | Horizontal row of 3–5 open icons, each over a caption and an optional one-line `description`; `overrides.style` `tile` puts each item in a tile |
 | `image-text-split` | One photo / screenshot beside a text column (eyebrow, heading, body, up to 5 bullets) with 0–3 result metrics; real images are cover-cropped, otherwise a dashed placeholder (case study / customer story slides) |
-| `journey-maturity-model` | Horizontal maturity ladder of 3–6 stage columns with numbered headers, descriptions, and an optional 'where we are' marker on the current stage |
+| `journey-maturity-model` | Ascending maturity staircase of 3–6 solid steps in a tonal ladder of the accent (lightest tint at stage 1, solid accent on the `current` stage or the last when none is marked, palest tint for stages ahead), each with a big stage numeral and bold name, one-size descriptions beneath and a 'We are here' pointer on the current step; `overrides.style` `columns` (earlier header-over-body boxes) or `flat` |
 | `kpi-2up` | Two big-number KPI cards with short captions (kpi-Nup cells take an optional `comparator` line, e.g. "vs plan +4 pts"; an open kpi-Nup row alone on a slide grows its band of dividers to half the content area) |
 | `kpi-3up` | Three big-number KPI cards with short captions |
 | `kpi-4up` | Four big-number KPI cards with short captions |
