@@ -330,12 +330,13 @@ func TestRadialHub_ExpandLayout(t *testing.T) {
 				t.Errorf("hub %+v is not a centred circle", hub)
 			}
 			step := 360.0 / float64(n)
+			// No spoke carries an icon: the satellites are node dots.
 			for i, s := range sats {
 				f := s.Frame
-				if math.Abs(f.W-rhSatDia) > 1e-6 || math.Abs(f.H-rhSatDia) > 1e-6 {
-					t.Errorf("satellite %d: %+v, want a circle of %.2f", i+1, f, rhSatDia)
+				if math.Abs(f.W-rhNodeSatDia) > 1e-6 || math.Abs(f.H-rhNodeSatDia) > 1e-6 {
+					t.Errorf("satellite %d: %+v, want a circle of %.2f", i+1, f, rhNodeSatDia)
 				}
-				wantX, wantY := pointOnCircle(0.5, 0.5, 0.5-rhSatDia/2, -90+step*(float64(i)+0.5))
+				wantX, wantY := pointOnCircle(0.5, 0.5, 0.5-rhNodeSatDia/2, -90+step*(float64(i)+0.5))
 				if math.Abs(f.X+f.W/2-wantX) > 1e-5 || math.Abs(f.Y+f.H/2-wantY) > 1e-5 {
 					t.Errorf("satellite %d centre (%.4f, %.4f), want (%.4f, %.4f)", i+1, f.X+f.W/2, f.Y+f.H/2, wantX, wantY)
 				}
@@ -638,8 +639,11 @@ func TestRadialHub_LabelModes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			// Node-dot satellites leave the hub room for its label in a half
+			// slide; only an area too narrow for two label columns takes the
+			// legend.
 			want := rhLabelsOutside
-			if area.w < 420 {
+			if area.w < 400 {
 				want = rhLabelsLegend
 			}
 			if lay.mode != want {
@@ -651,6 +655,27 @@ func TestRadialHub_LabelModes(t *testing.T) {
 			}
 		}
 	})
+}
+
+// A satellite is a disc only when it has something to hold: with an icon on
+// any spoke every satellite is the full disc, without one they are node dots
+// (go-slide-creator-8hwcw).
+func TestRadialHub_SatelliteIsADiscOnlyWithAnIcon(t *testing.T) {
+	for _, tc := range []struct {
+		icon bool
+		want float64
+	}{{false, rhNodeSatDia}, {true, rhSatDia}} {
+		v := rhValues(6, true)
+		if tc.icon {
+			v.Spokes[2].Icon = &IconRef{Name: "bulb"}
+		}
+		ring := rhRingCell(t, rhExpand(t, rhCtx(899, 360), v, nil))
+		for i, s := range rhLayersNamed(ring, "satellite-") {
+			if math.Abs(s.Frame.W-tc.want) > 1e-6 {
+				t.Errorf("icon %v: satellite %d is %.3f across, want %.3f", tc.icon, i+1, s.Frame.W, tc.want)
+			}
+		}
+	}
 }
 
 // The hub grows towards the satellites before its label is left to shrink.

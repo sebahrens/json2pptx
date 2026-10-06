@@ -43,7 +43,7 @@ type cycleRing struct{}
 
 func (p *cycleRing) Name() string { return "cycle-ring" }
 func (p *cycleRing) Description() string {
-	return "Closed ring of 4-8 equal phase segments with numbered badges and the phase labels outside in a column either side (lifecycle, PDCA, operating rhythm, flywheel); one optional highlighted phase, optional centre label, `arrows` style for chasing arrows"
+	return "Closed ring of 4-8 equal phase segments with numbered badges and the phase labels outside beside their segments (lifecycle, PDCA, operating rhythm, flywheel); one optional highlighted phase, optional centre label, `arrows` style for chasing arrows"
 }
 func (p *cycleRing) UseWhen() string {
 	return "A recurring cycle of 4-8 equally weighted phases that closes on itself — continuous improvement / PDCA, a customer or product lifecycle, an operating rhythm, a flywheel — each phase a short label and an optional one-to-two line description; prefer cycle-nodes for 3 phases or discrete stations joined by arrows, cycle-intake when linear steps feed the loop, cycle-figure-eight for two coupled loops, radial-hub when the items relate to a centre rather than to each other, and process-flow when the sequence does not loop back"
@@ -137,6 +137,10 @@ const (
 	cycleRingReservePt     = 150.0
 	cycleRingReserveFrac   = 0.22
 	cycleRingOutsideSidePt = 150.0
+	// Without descriptions the column is as wide as the longest label needs,
+	// from cycleRingShortLabelPt up in steps of cycleRingReserveStepPt.
+	cycleRingShortLabelPt  = 48.0
+	cycleRingReserveStepPt = 6.0
 
 	cycleRingRowGapPt    = 4.0
 	cycleRingMinRowGapPt = 2.0
@@ -224,7 +228,7 @@ func (p *cycleRing) Schema() *Schema {
 	overrides.raw.Properties["style"] = EnumSchema(cycleRingStyles...).WithDescription("segments (default): ring segments. arrows: each phase is a curved arrow chasing the next").WithDefault(cycleRingStyleSegments)
 	overrides.raw.Properties["direction"] = EnumSchema(cycleRingDirections...).WithDescription("Direction of travel from phase 1 at 12 o'clock").WithDefault("clockwise")
 	overrides.raw.Properties["thickness"] = EnumSchema(cycleRingThicknesses...).WithDescription("Band width: thin, regular or thick (14% / 20% / 28% of the ring's diameter)").WithDefault("regular")
-	overrides.raw.Properties["labels"] = EnumSchema(cycleRingLabelModes...).WithDescription("outside: a label column either side of the ring. legend: the ring on the left and one numbered list beside it. Default: outside, or legend when the content area is under about 450pt wide (a 50% or 60% compose segment)")
+	overrides.raw.Properties["labels"] = EnumSchema(cycleRingLabelModes...).WithDescription("outside: each label beside its segment. legend: the ring on the left and one numbered list beside it. Default: outside, or legend when the content area is under about 450pt wide (a 50% or 60% compose segment)")
 
 	return ObjectSchema(map[string]*Schema{
 		"values":    values,
@@ -398,6 +402,11 @@ func cycleRingMeasure(ctx ExpandContext, v *CycleRingValues, ovr *CycleRingOverr
 	if w-2*reserve < cycleRingOutsideSidePt {
 		reserve = cycleRingReservePt
 	}
+	// Labels on their own seldom need the whole column: the ring takes what
+	// they leave (go-slide-creator-cxidm).
+	if !v.hasDescriptions() {
+		reserve = math.Min(reserve, cycleRingLabelReservePt(ctx, v, sizes[0], base.descPt, reserve))
+	}
 	full := math.Min(ringSquareSide(w, h, reserve, reserve), math.Max(w-2*(ringNumberColPt+cycleRingLegendMinPt), ringMinSidePt/2))
 	// The ring takes the height it is given. When the label rows do not fit
 	// beside it even at the 12pt floor, it gives up to cycleRingMaxShrink of
@@ -424,6 +433,25 @@ func cycleRingMeasure(ctx ExpandContext, v *CycleRingValues, ovr *CycleRingOverr
 	// Nothing fits: keep the full ring; PostExpandWarnings names the phases
 	// whose rows were cut.
 	return first, nil
+}
+
+// cycleRingLabelReservePt is the label column a ring whose phases carry no
+// description needs each side: the numeral, the gap to the ring and the width
+// that sets the longest label on one line (with the slack a renderer's own
+// face may take), at most maxPt.
+func cycleRingLabelReservePt(ctx ExpandContext, v *CycleRingValues, labelPt, descPt, maxPt float64) float64 {
+	fixed := ringNumberColPt + ctx.Gap(ringLabelGapPt)
+	widest := cycleRingShortLabelPt
+	for _, ph := range v.Phases {
+		label := strings.TrimSpace(ph.Label)
+		oneLine := ringLabelNeedPt(ctx, label, "", labelPt, descPt, maxPt*4)
+		width := widest
+		for width < maxPt && ringLabelNeedPt(ctx, label, "", labelPt, descPt, width) > oneLine {
+			width += cycleRingReserveStepPt
+		}
+		widest = math.Max(widest, width)
+	}
+	return math.Min(math.Ceil(widest/ringSettleWidthShare)+fixed, maxPt)
 }
 
 // cycleRingPlace sets the ring square of the given side (centred vertically)

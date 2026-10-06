@@ -761,3 +761,47 @@ func TestCycleRingLabelsKeepOneGapFromTheRing(t *testing.T) {
 		}
 	}
 }
+
+// Labels without descriptions leave the ring the width they do not need: in
+// a half slide the ring is clearly larger than with described phases, and
+// every label still holds its row (go-slide-creator-cxidm).
+func TestCycleRingShortLabelsLeaveTheRingTheWidth(t *testing.T) {
+	short := &CycleRingValues{Phases: []CycleRingPhase{{Label: "Plan"}, {Label: "Do"}, {Label: "Check"}, {Label: "Act"}}}
+	for _, area := range []struct{ w, h float64 }{{495, 360}, {520, 330}, {899, 360}} {
+		ctx := cycleRingCtx(area.w, area.h)
+		bare, err := cycleRingMeasure(ctx, short, &CycleRingOverrides{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		full, err := cycleRingMeasure(ctx, cycleRingValues(4), &CycleRingOverrides{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if bare.legend || full.legend {
+			t.Fatalf("%.0fx%.0f: legend layout, want outside", area.w, area.h)
+		}
+		if bare.side < full.side-0.5 {
+			t.Errorf("%.0fx%.0f: ring %.0fpt with short labels, %.0fpt with descriptions", area.w, area.h, bare.side, full.side)
+		}
+		if area.w < 600 && bare.side < 1.25*full.side {
+			t.Errorf("%.0fx%.0f: ring %.0fpt with short labels is not clearly larger than %.0fpt", area.w, area.h, bare.side, full.side)
+		}
+		if bare.side > area.h+0.5 {
+			t.Errorf("%.0fx%.0f: ring %.0fpt is taller than the area", area.w, area.h, bare.side)
+		}
+		for i, r := range bare.rows {
+			if r.capped || r.y1-r.y0 < r.need-0.5 {
+				t.Errorf("%.0fx%.0f: label %d is cut (row %.1fpt, needs %.1fpt)", area.w, area.h, i+1, r.y1-r.y0, r.need)
+			}
+		}
+	}
+	// A long label keeps the column it needs.
+	long := &CycleRingValues{Phases: []CycleRingPhase{{Label: "Performance review cycle"}, {Label: "Do"}, {Label: "Check"}, {Label: "Act"}}}
+	ctx := cycleRingCtx(495, 360)
+	if got := cycleRingLabelReservePt(ctx, long, cycleRingLabelPt, cycleRingDescPt, 150); got < 140 {
+		t.Errorf("reserve for a 24-character label = %.0fpt, want the full column", got)
+	}
+	if got := cycleRingLabelReservePt(ctx, short, cycleRingLabelPt, cycleRingDescPt, 150); got > 110 {
+		t.Errorf("reserve for Plan / Do / Check / Act = %.0fpt, want well under the 150pt column", got)
+	}
+}

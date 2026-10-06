@@ -323,3 +323,35 @@ func TestCycleStyleCountsMatchThePatterns(t *testing.T) {
 		}
 	}
 }
+
+// Beside a cycle region a text region is one block centred on the ring's
+// axis (heading first, bold); everywhere else it hangs from the top under its
+// own heading row.
+func TestTextRegionBesideACycleIsCentred(t *testing.T) {
+	text := map[string]any{"kind": "text", "heading": "What changed", "bullets": []any{"Rework is down", "One owner per phase"}}
+	b, err := regionTextBesideCycle(text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.cell == nil || b.cell.Shape == nil || b.cell.Grid != nil {
+		t.Fatalf("cell = %+v, want one text shape", b.cell)
+	}
+	got := string(b.cell.Shape.Text)
+	if !strings.Contains(got, `"vertical_align":"ctr"`) || !strings.HasPrefix(got, `{"paragraphs":[{"content":"What changed","bold":true},{"content":"Rework is down","bullet":true}`) {
+		t.Errorf("text = %s", got)
+	}
+	if len(b.links) != 2 || b.links[0].SemanticPath != ".heading" || b.links[1].SemanticPath != ".bullets" {
+		t.Errorf("links = %+v", b.links)
+	}
+	plain, err := regionText(text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(plain.cell.Shape.Text), `"vertical_align":"t"`) {
+		t.Errorf("a text region on its own is no longer top-anchored: %s", plain.cell.Shape.Text)
+	}
+	loop := map[string]any{"kind": "cycle", "phases": []any{"Plan", "Do", "Check", "Act"}}
+	if !hasRegionKind([]map[string]any{loop, text}, RegionCycle) || hasRegionKind([]map[string]any{text}, RegionCycle) {
+		t.Error("hasRegionKind misreads the regions")
+	}
+}

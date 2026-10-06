@@ -436,8 +436,12 @@ func CompileRegions(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	}
 
 	builds := make([]regionBuild, len(regions))
+	besideCycle := arrangement == ArrangeColumns && hasRegionKind(regions, RegionCycle)
 	for i, r := range regions {
 		b, berr := compileRegion(in, i, r)
+		if berr == nil && besideCycle && strField(r, "kind") == RegionText {
+			b, berr = regionTextBesideCycle(r)
+		}
 		if berr != nil {
 			return nil, nil, fmt.Errorf("regions[%d]: %w", i, berr)
 		}
@@ -827,7 +831,44 @@ func regionImage(r map[string]any) (regionBuild, error) {
 	}, nil
 }
 
+// hasRegionKind reports whether any region is of the given kind.
+func hasRegionKind(regions []map[string]any, kind string) bool {
+	for _, r := range regions {
+		if strField(r, "kind") == kind {
+			return true
+		}
+	}
+	return false
+}
+
+// regionTextBesideCycle is a text region in a column next to a cycle region:
+// heading and text are one block centred on the ring's axis. A ring is centred
+// in its column and has no top edge to hang the text from, so the top-anchored
+// heading row a chart's neighbour takes left the text above the ring and an
+// empty band under it (go-slide-creator-7q1yc).
+func regionTextBesideCycle(r map[string]any) (regionBuild, error) {
+	paras, links, err := regionTextParagraphs(r)
+	if err != nil {
+		return regionBuild{}, err
+	}
+	if heading := RegionHeading(r); heading != "" {
+		paras = append([]regionParagraph{{Content: heading, Bold: true}}, paras...)
+		links = append([]SourceLink{{RawPath: ".shape.text", SemanticPath: RegionHeadingField(r)}}, links...)
+	}
+	return regionBuild{cell: textCell(paras, "ctr"), links: links}, nil
+}
+
 func regionText(r map[string]any) (regionBuild, error) {
+	paras, links, err := regionTextParagraphs(r)
+	if err != nil {
+		return regionBuild{}, err
+	}
+	return regionBuild{cell: textCell(paras, "t"), links: links}, nil
+}
+
+// regionTextParagraphs is a text region's body and bullets as paragraphs, with
+// the links from the text cell back to their fields.
+func regionTextParagraphs(r map[string]any) ([]regionParagraph, []SourceLink, error) {
 	var paras []regionParagraph
 	var links []SourceLink
 	if body := strField(r, "body"); body != "" {
@@ -846,9 +887,9 @@ func regionText(r map[string]any) (regionBuild, error) {
 		links = append(links, SourceLink{RawPath: ".shape.text", SemanticPath: ".bullets"})
 	}
 	if len(paras) == 0 {
-		return regionBuild{}, fmt.Errorf("text region needs a body or bullets")
+		return nil, nil, fmt.Errorf("text region needs a body or bullets")
 	}
-	return regionBuild{cell: textCell(paras, "t"), links: links}, nil
+	return paras, links, nil
 }
 
 // patternCell hosts a named pattern in a grid cell; the engine expands it

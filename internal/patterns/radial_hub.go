@@ -154,7 +154,11 @@ const (
 	rhInsideHubDia = 0.32
 	rhInsideSatDia = 0.27
 	rhLegendSatDia = 0.18
-	rhMinSpoke     = 0.07 // shortest spoke a grown hub leaves
+	// rhNodeSatDia is a satellite of the outside layout when no spoke carries
+	// an icon: a node dot at the spoke's end. A full disc with nothing in it
+	// reads as a missing icon (go-slide-creator-8hwcw).
+	rhNodeSatDia = 0.07
+	rhMinSpoke   = 0.07 // shortest spoke a grown hub leaves
 	// rhCircleFitFrac is the share of a circle's text square its text is
 	// fitted to.
 	rhCircleFitFrac = 0.97
@@ -212,7 +216,7 @@ func (p *radialHub) Schema() *Schema {
 		"header_size":      NumberSchema(12, 24).WithDescription("Satellite label font size in points (default 14)"),
 		"body_size":        NumberSchema(12, 20).WithDescription("Description font size in points (default 12)"),
 		"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Satellite fills: uniform (default, neutral tint), alternate (accent / next accent), progressive (walks accent1-6)").WithDefault("uniform"),
-		"labels":           EnumSchema(rhLabelsOutside, rhLabelsInside, rhLabelsLegend).WithDescription("Where the labels go: outside (default; a column either side of the ring, falling back to legend in a narrow area), inside (label in a larger satellite: 4-6 spokes, labels of at most 14 characters in words of about 8, no descriptions), legend (ring on the left, keyed list A, B, C ... on the right)").WithDefault(rhLabelsOutside),
+		"labels":           EnumSchema(rhLabelsOutside, rhLabelsInside, rhLabelsLegend).WithDescription("Where the labels go: outside (default; each label beside its satellite, legend in a narrow area), inside (label in a larger satellite: 4-6 spokes, labels of at most 14 characters in words of about 8, no descriptions), legend (ring on the left, keyed list A, B, C ... on the right)").WithDefault(rhLabelsOutside),
 		"spokes":           EnumSchema(rhSpokesLines, rhSpokesNone).WithDescription("lines (default) draws a thin spoke from the hub to each satellite; none leaves them unconnected").WithDefault(rhSpokesLines),
 	}, nil).WithAdditionalProperties(false)
 
@@ -415,7 +419,11 @@ func rhMeasure(ctx ExpandContext, v *RadialHubValues, ovr *RadialHubOverrides) (
 	// label columns, or leaves a ring whose hub cannot hold its label: the
 	// legend's ring takes half the width.
 	if lay.mode == rhLabelsOutside {
-		if out := lay; rhPlaceOutside(ctx, v, &out) && out.fitHub(ctx, v) {
+		out := lay
+		if !v.hasIcons() {
+			out.satDia = rhNodeSatDia
+		}
+		if rhPlaceOutside(ctx, v, &out) && out.fitHub(ctx, v) {
 			return out, nil
 		}
 		lay.mode = rhLabelsLegend
@@ -433,6 +441,16 @@ func rhMeasure(ctx ExpandContext, v *RadialHubValues, ovr *RadialHubOverrides) (
 	}
 	lay.fitHub(ctx, v)
 	return lay, nil
+}
+
+// hasIcons reports whether any spoke carries an icon.
+func (v *RadialHubValues) hasIcons() bool {
+	for _, s := range v.Spokes {
+		if s.Icon != nil && !s.Icon.IsEmpty() {
+			return true
+		}
+	}
+	return false
 }
 
 // fitHub sizes the hub label and, when the label does not fit the default

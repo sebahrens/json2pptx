@@ -556,7 +556,8 @@ keeps its shape and moves its labels into a numbered legend. `ring`, `nodes`,
 all fit a column; `figure_eight` needs the full width, so it is refused in a
 side-by-side region with the fix in the message — use `ring` there, or
 `arrangement: rows`. In a stacked group a cycle region takes at least 60% of
-the height.
+the height. A `text` region in a column beside the cycle is set as one block
+(heading, then body) centred on the ring's axis rather than hung from the top.
 
 ```yaml
 meta:
