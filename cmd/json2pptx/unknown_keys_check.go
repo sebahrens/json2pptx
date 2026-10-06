@@ -89,7 +89,7 @@ func inputUnknownKeys(raw json.RawMessage) []*patterns.ValidationError {
 				warnings = append(warnings, checkUnknownKeysForType(ts, reflect.TypeOf(jsonschema.TableStyleInput{}), "/defaults/table_style")...)
 			}
 			if cs, csOK := defaultsObj["cell_style"]; csOK {
-				warnings = append(warnings, checkUnknownKeysForType(cs, reflect.TypeOf(jsonschema.ShapeSpecInput{}), "/defaults/cell_style")...)
+				warnings = append(warnings, checkShapeUnknownKeys(cs, "/defaults/cell_style")...)
 			}
 		}
 	}
@@ -187,7 +187,7 @@ func checkPlainSlideUnknownKeys(raw json.RawMessage, path string) []*patterns.Va
 
 	// pattern
 	if v, ok := obj["pattern"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(PatternInput{}), path+"/pattern")...)
+		warnings = append(warnings, checkPatternBlockUnknownKeys(v, path+"/pattern")...)
 	}
 
 	// compose
@@ -223,6 +223,12 @@ func checkComposeUnknownKeys(raw json.RawMessage, path string) []*patterns.Valid
 	if json.Unmarshal(raw, &composeObj) != nil {
 		return warnings
 	}
+	if v, ok := composeObj["banner"]; ok {
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(patterns.BannerSpec{}), path+"/banner")...)
+	}
+	if v, ok := composeObj["callout"]; ok {
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(patterns.PatternCallout{}), path+"/callout")...)
+	}
 	segRaw, ok := composeObj["segments"]
 	if !ok {
 		return warnings
@@ -237,7 +243,10 @@ func checkComposeUnknownKeys(raw json.RawMessage, path string) []*patterns.Valid
 		var segObj map[string]json.RawMessage
 		if json.Unmarshal(segBytes, &segObj) == nil {
 			if patRaw, ok := segObj["pattern"]; ok {
-				warnings = append(warnings, checkUnknownKeysForType(patRaw, reflect.TypeOf(PatternInput{}), p+"/pattern")...)
+				warnings = append(warnings, checkPatternBlockUnknownKeys(patRaw, p+"/pattern")...)
+			}
+			if v, ok := segObj["diagram"]; ok {
+				warnings = append(warnings, checkDiagramUnknownKeys(v, p+"/diagram")...)
 			}
 			// Recurse into a nested compose envelope so unknown keys deep in
 			// the tree still surface with the correct JSON path.
@@ -247,6 +256,32 @@ func checkComposeUnknownKeys(raw json.RawMessage, path string) []*patterns.Valid
 		}
 	}
 	return warnings
+}
+
+// checkPatternBlockUnknownKeys checks a pattern block wherever one is written:
+// on a slide, in a compose segment or in a shape_grid cell. The keys inside
+// values, overrides and cell_overrides belong to the named pattern, whose own
+// decoder reports them when the block is expanded.
+func checkPatternBlockUnknownKeys(raw json.RawMessage, path string) []*patterns.ValidationError {
+	warnings := checkUnknownKeysForType(raw, reflect.TypeOf(PatternInput{}), path)
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(raw, &obj) != nil {
+		return warnings
+	}
+	if v, ok := obj["callout"]; ok {
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(patterns.PatternCallout{}), path+"/callout")...)
+	}
+	if v, ok := obj["bounds"]; ok {
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.GridBoundsInput{}), path+"/bounds")...)
+	}
+	return warnings
+}
+
+// checkDiagramUnknownKeys checks a diagram spec and its style blocks: a cell's
+// diagram, a composite's sub_diagram or a compose segment's diagram.
+func checkDiagramUnknownKeys(raw json.RawMessage, path string) []*patterns.ValidationError {
+	warnings := checkUnknownKeysForType(raw, reflect.TypeOf(types.DiagramSpec{}), path)
+	return append(warnings, checkChartStyleUnknownKeys(raw, path)...)
 }
 
 // checkSplitSlideUnknownKeys checks a split_slide entry.
@@ -356,7 +391,10 @@ func checkTableUnknownKeys(raw json.RawMessage, path string) []*patterns.Validat
 	return warnings
 }
 
-// checkShapeGridUnknownKeys checks shape_grid and its nested structures.
+// checkShapeGridUnknownKeys checks a shape grid and its nested structures: the
+// slide's shape_grid, and through checkGridCellUnknownKeys the grid of any cell
+// at any depth, so a finding inside one is named by the full pointer to it
+// (.../cells/0/grid/rows/0/cells/1/shape/fil).
 func checkShapeGridUnknownKeys(raw json.RawMessage, path string) []*patterns.ValidationError {
 	var warnings []*patterns.ValidationError
 	warnings = append(warnings, checkUnknownKeysForType(raw, reflect.TypeOf(jsonschema.ShapeGridInput{}), path)...)
@@ -374,6 +412,21 @@ func checkShapeGridUnknownKeys(raw json.RawMessage, path string) []*patterns.Val
 			for i, rowRaw := range rows {
 				p := fmt.Sprintf("%s/rows/%d", path, i)
 				warnings = append(warnings, checkGridRowUnknownKeys(rowRaw, p)...)
+			}
+		}
+	}
+	if linksRaw, ok := obj["links"]; ok {
+		var links []json.RawMessage
+		if json.Unmarshal(linksRaw, &links) == nil {
+			for i, linkRaw := range links {
+				p := fmt.Sprintf("%s/links/%d", path, i)
+				warnings = append(warnings, checkUnknownKeysForType(linkRaw, reflect.TypeOf(jsonschema.GridLinkInput{}), p)...)
+				var link map[string]json.RawMessage
+				if json.Unmarshal(linkRaw, &link) == nil {
+					if v, ok := link["connector"]; ok {
+						warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.ConnectorSpecInput{}), p+"/connector")...)
+					}
+				}
 			}
 		}
 	}
@@ -404,7 +457,9 @@ func checkGridRowUnknownKeys(raw json.RawMessage, path string) []*patterns.Valid
 	return warnings
 }
 
-// checkGridCellUnknownKeys checks a shape_grid cell.
+// checkGridCellUnknownKeys checks a shape_grid cell and every container it can
+// hold: shape, table, icon, image, accent_bar, diagram, composite, a nested
+// pattern block, a nested grid (recursively) and layers.
 func checkGridCellUnknownKeys(raw json.RawMessage, path string) []*patterns.ValidationError {
 	var warnings []*patterns.ValidationError
 	warnings = append(warnings, checkUnknownKeysForType(raw, reflect.TypeOf(jsonschema.GridCellInput{}), path)...)
@@ -414,7 +469,7 @@ func checkGridCellUnknownKeys(raw json.RawMessage, path string) []*patterns.Vali
 		return warnings
 	}
 	if v, ok := obj["shape"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.ShapeSpecInput{}), path+"/shape")...)
+		warnings = append(warnings, checkShapeUnknownKeys(v, path+"/shape")...)
 	}
 	if v, ok := obj["table"]; ok {
 		warnings = append(warnings, checkTableUnknownKeys(v, path+"/table")...)
@@ -429,7 +484,16 @@ func checkGridCellUnknownKeys(raw json.RawMessage, path string) []*patterns.Vali
 		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.AccentBarInput{}), path+"/accent_bar")...)
 	}
 	if v, ok := obj["diagram"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(types.DiagramSpec{}), path+"/diagram")...)
+		warnings = append(warnings, checkDiagramUnknownKeys(v, path+"/diagram")...)
+	}
+	if v, ok := obj["composite"]; ok {
+		warnings = append(warnings, checkCompositeUnknownKeys(v, path+"/composite")...)
+	}
+	if v, ok := obj["pattern"]; ok {
+		warnings = append(warnings, checkPatternBlockUnknownKeys(v, path+"/pattern")...)
+	}
+	if v, ok := obj["grid"]; ok {
+		warnings = append(warnings, checkShapeGridUnknownKeys(v, path+"/grid")...)
 	}
 	if v, ok := obj["layers"]; ok {
 		var layers []json.RawMessage
@@ -453,13 +517,42 @@ func checkGridLayerUnknownKeys(raw json.RawMessage, path string) []*patterns.Val
 		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.LayerFrameInput{}), path+"/frame")...)
 	}
 	if v, ok := obj["shape"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.ShapeSpecInput{}), path+"/shape")...)
-		var shape map[string]json.RawMessage
-		if json.Unmarshal(v, &shape) == nil {
-			if icon, ok := shape["icon"]; ok {
-				warnings = append(warnings, checkUnknownKeysForType(icon, reflect.TypeOf(jsonschema.IconInput{}), path+"/shape/icon")...)
-			}
-		}
+		warnings = append(warnings, checkShapeUnknownKeys(v, path+"/shape")...)
+	}
+	return warnings
+}
+
+// checkShapeUnknownKeys checks a shape spec with its icon overlay and link: a
+// cell's shape, a layer's shape or a composite's text. The fill, line and text
+// values are strings or free-form objects and are not walked.
+func checkShapeUnknownKeys(raw json.RawMessage, path string) []*patterns.ValidationError {
+	warnings := checkUnknownKeysForType(raw, reflect.TypeOf(jsonschema.ShapeSpecInput{}), path)
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(raw, &obj) != nil {
+		return warnings
+	}
+	if v, ok := obj["icon"]; ok {
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.IconInput{}), path+"/icon")...)
+	}
+	if v, ok := obj["link"]; ok {
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.LinkInput{}), path+"/link")...)
+	}
+	return warnings
+}
+
+// checkCompositeUnknownKeys checks a cell's composite: the envelope, its text
+// shape and its sub_diagram.
+func checkCompositeUnknownKeys(raw json.RawMessage, path string) []*patterns.ValidationError {
+	warnings := checkUnknownKeysForType(raw, reflect.TypeOf(jsonschema.CompositeInput{}), path)
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(raw, &obj) != nil {
+		return warnings
+	}
+	if v, ok := obj["text"]; ok {
+		warnings = append(warnings, checkShapeUnknownKeys(v, path+"/text")...)
+	}
+	if v, ok := obj["sub_diagram"]; ok {
+		warnings = append(warnings, checkDiagramUnknownKeys(v, path+"/sub_diagram")...)
 	}
 	return warnings
 }
