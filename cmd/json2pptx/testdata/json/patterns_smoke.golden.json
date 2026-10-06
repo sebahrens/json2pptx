@@ -217,6 +217,29 @@
     ]
   },
   {
+    "pattern_name": "cycle-intake",
+    "row_count": 17,
+    "cell_counts": [
+      1,
+      6,
+      8,
+      1,
+      8,
+      3,
+      3,
+      1,
+      5,
+      1,
+      1,
+      3,
+      1,
+      6,
+      1,
+      1,
+      1
+    ]
+  },
+  {
     "pattern_name": "exec-summary",
     "row_count": 6,
     "cell_counts": [

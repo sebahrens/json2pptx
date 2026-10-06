@@ -56,6 +56,7 @@ var patternReach = map[string]SlideKind{
 	"concentric-rings":             "",
 	"contact-directory":            "",
 	"cycle-figure-eight":           "",
+	"cycle-intake":                 "",
 	"cycle-nodes":                  "",
 	"cycle-ring":                   "",
 	"driver-tree":                  "",
