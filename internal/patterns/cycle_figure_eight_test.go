@@ -246,8 +246,8 @@ func TestCycleFigureEight_ExpandLayout(t *testing.T) {
 			for li, lobe := range cfeLobes(t, grid) {
 				prefix := []string{"left-", "right-"}[li]
 				want := []int{left, n - left}[li]
-				if lobe.Fit != "contain" || lobe.Shape != nil {
-					t.Errorf("n=%d k=%d: lobe %d is a fit-contain canvas of layers only, got fit %q shape %v", n, k, li, lobe.Fit, lobe.Shape)
+				if lobe.Fit != ringSpineFit || lobe.Shape != nil {
+					t.Errorf("n=%d k=%d: lobe %d is the spine canvas (%s) of layers only, got fit %q shape %v", n, k, li, ringSpineFit, lobe.Fit, lobe.Shape)
 				}
 				segments, badges := cycleRingLayers(lobe, prefix+"segment-"), cycleRingLayers(lobe, prefix+"badge-")
 				if len(segments) != want || len(badges) != want {
@@ -408,7 +408,9 @@ func TestFigureEightLobesAreTangent(t *testing.T) {
 			if d := l.CX - l.CY; d < -1 || d > 1 || l.CX != r.CX || l.CY != r.CY || l.Y != r.Y {
 				t.Errorf("%s n=%d: lobes resolve to %dx%d and %dx%d EMU, want equal squares on one line", body.name, n, l.CX, l.CY, r.CX, r.CY)
 			}
-			if gap := r.X - (l.X + l.CX); gap < 0 || gap > ptEMU {
+			// Each lobe is the square of its spine cell's height about the
+			// spine, so the two meet within the lattice's edge rounding.
+			if gap := r.X - (l.X + l.CX); gap < -ptEMU || gap > ptEMU {
 				t.Errorf("%s n=%d: %.2fpt between the lobes, want them touching (under 1pt)", body.name, n, float64(gap)/ptEMU)
 			}
 			if float64(l.CX)/ptEMU < cfeMinSidePt-1 {
@@ -839,6 +841,40 @@ func TestCycleFigureEight_RecommendIntents(t *testing.T) {
 		res := Recommend(Default(), tc.intent, tc.hints, 5)
 		if len(res.Candidates) == 0 || res.Candidates[0].PatternName != tc.want {
 			t.Errorf("intent %q: top = %v, want %s", tc.intent, res.Candidates, tc.want)
+		}
+	}
+}
+
+// TestCycleFigureEightLabelsKeepOneGapFromTheirLobe: every label block
+// (numeral + label) stands the same horizontal gap from the outer edge of its
+// own lobe within its row's height, for every count and split in every body
+// size, read from the resolved grid.
+func TestCycleFigureEightLabelsKeepOneGapFromTheirLobe(t *testing.T) {
+	for _, body := range ringGapBodies {
+		for n := cfeMinPhases; n <= cfeMaxPhases; n++ {
+			lo, hi := cfeLeftRange(n)
+			for _, k := range []int{0, lo, hi} {
+				name := fmt.Sprintf("%s/%d/left=%d", body.name, n, k)
+				ctx, v := cycleRingCtx(body.w, body.h), cfeValues(n, k)
+				res := cycleNodesResolveAt(t, cfeExpand(t, ctx, v, nil), body.w, body.h)
+				left := cfeLeftCount(n, k)
+				gaps := map[int]float64{}
+				for num, block := range ringGapNumberedBlocks(t, res, n) {
+					lobe := ringGapLayerCircle(t, res, fmt.Sprintf("segment-%d", num), true)
+					gaps[num] = lobe.hGap(block)
+					if clear := lobe.clear(block); clear < ringGapClearPt {
+						t.Errorf("%s: label %d %+v stands %.1fpt from its lobe", name, num, block, clear)
+					}
+					// Left lobe's labels to the left of it, right lobe's to the right.
+					if onLeft := (block.x0+block.x1)/2 < lobe.cx; onLeft != (num <= left) {
+						t.Errorf("%s: label %d %+v is on the wrong side of its lobe (centre %.1f)", name, num, block, lobe.cx)
+					}
+					if block.x0 < -0.5 || block.x1 > body.w+0.5 || block.y0 < -0.5 || block.y1 > body.h+0.5 {
+						t.Errorf("%s: label %d %+v leaves the %.0f x %.0fpt area", name, num, block, body.w, body.h)
+					}
+				}
+				ringGapCheck(t, name, gaps, ringLabelGapPt)
+			}
 		}
 	}
 }

@@ -20,13 +20,16 @@ import (
 // a flywheel. Phase 1's segment begins at 12 o'clock and the ring runs
 // clockwise (overrides.direction turns it round).
 //
-// The ring is ONE lattice cell (fit "contain") whose layers are the segments
-// (blockArc, or circularArrow for overrides.style "arrows"), a numbered badge
-// on each segment and an optional label in the hole (ring_draw.go). The
-// phase labels are their own lattice cells OUTSIDE the ring, in one clean
-// column either side of it: a numeral in the accent — the same number as the
-// badge — then the bold label over a muted description. Each label row sits
-// as near its badge's height as its neighbours allow (ringLabelRows).
+// The ring is ONE lattice cell whose layers are the segments (blockArc, or
+// circularArrow for overrides.style "arrows"), a numbered badge on each
+// segment and an optional label in the hole (ring_draw.go). The phase labels
+// are their own lattice cells OUTSIDE the ring, left and right of it: a
+// numeral in the accent — the same number as the badge — then the bold label
+// over a muted description. Each label row sits as near its badge's height as
+// its neighbours allow (ringLabelRows) and at one constant gap from the ring's
+// outer edge at that height (outsideRow), so the rows follow the ring's curve;
+// the ring cell is then the spine column through the ring's centre
+// (ringSpinePlacement), and the fit "contain" square in the legend layout.
 //
 // A content area too narrow for a label column each side of the ring (a 50%
 // compose segment) takes the legend layout instead: the ring on the left and
@@ -321,6 +324,9 @@ type cycleRingRow struct {
 	y0, y1 float64 // the row's box
 	need   float64 // height its text needs
 	capped bool    // the row is shorter than its text needs
+	// The numeral cell is numX0 .. numX0 + ringNumberColPt and the label cell
+	// labelX0 .. labelX1; together they are the row's label block.
+	numX0, labelX0, labelX1 float64
 }
 
 // cycleRingLayout carries every measurement Expand and PostExpandWarnings
@@ -334,7 +340,7 @@ type cycleRingLayout struct {
 	badgeDia     float64
 	labelPt      float64
 	descPt       float64
-	labelW       float64 // width of a label cell (without its numeral)
+	labelW       float64 // room for a label cell (without its numeral) between the content edge and the figure's bounding box
 	showDesc     bool    // false: the legend had no room for descriptions
 	rows         []cycleRingRow
 	centrePt     float64
@@ -445,17 +451,50 @@ func cycleRingPlace(ctx ExpandContext, v *CycleRingValues, ovr *CycleRingOverrid
 	return lay, nil
 }
 
-// needs measures every phase's label row at the layout's sizes.
-func (l *cycleRingLayout) needs(ctx ExpandContext, v *CycleRingValues) []float64 {
+// needs measures every phase's label row at the layout's sizes in a label
+// cell widthPt wide.
+func (l *cycleRingLayout) needs(ctx ExpandContext, v *CycleRingValues, widthPt float64) []float64 {
 	out := make([]float64, len(v.Phases))
-	for i, ph := range v.Phases {
-		desc := ""
-		if l.showDesc {
-			desc = strings.TrimSpace(ph.Description)
-		}
-		out[i] = ringLabelNeedPt(ctx, strings.TrimSpace(ph.Label), desc, l.labelPt, l.descPt, l.labelW)
+	for i := range v.Phases {
+		out[i] = l.needAt(ctx, v, i, widthPt)
 	}
 	return out
+}
+
+// needAt measures phase i's label row at the layout's sizes in a label cell
+// widthPt wide.
+func (l *cycleRingLayout) needAt(ctx ExpandContext, v *CycleRingValues, i int, widthPt float64) float64 {
+	ph := v.Phases[i]
+	desc := ""
+	if l.showDesc {
+		desc = strings.TrimSpace(ph.Description)
+	}
+	return ringLabelNeedPt(ctx, strings.TrimSpace(ph.Label), desc, l.labelPt, l.descPt, widthPt)
+}
+
+// outsideRow is the label row of the outside layout for a placed ring row.
+// Its block (numeral, then label) starts gapPt from the outer edge of the
+// ring it belongs to, on the side it stands on, and its label cell runs to
+// the content edge: rows near the top and the bottom of the ring start nearer
+// the centre line than those at 3 and 9 o'clock. The figure is centred in the
+// area, so the ring of a right-hand row mirrors the ring of a left-hand one
+// (one ring for cycle-ring, the outer lobes of a figure eight).
+func (l *cycleRingLayout) outsideRow(r ringRow, gapPt float64) cycleRingRow {
+	y0 := math.Max(r.Y-r.H/2, 0)
+	row := cycleRingRow{side: r.Side, y0: y0, y1: math.Min(y0+r.H, l.h)}
+	cx := l.x0 + l.side/2
+	if r.Side != ringSideLeft {
+		cx = l.w - cx
+	}
+	edge := ringLabelEdgeX(cx, l.y0+l.side/2, l.spec.outerRadius()*l.side, row.y0, row.y1, gapPt, r.Side)
+	if r.Side == ringSideLeft {
+		row.numX0 = edge - ringNumberColPt
+		row.labelX0, row.labelX1 = 0, row.numX0
+	} else {
+		row.numX0 = edge
+		row.labelX0, row.labelX1 = edge+ringNumberColPt, l.w
+	}
+	return row
 }
 
 // cycleRingOutsideRows places a label row beside every badge: each side's
@@ -471,15 +510,25 @@ func cycleRingOutsideRows(ctx ExpandContext, v *CycleRingValues, lay *cycleRingL
 		Top:      0,
 		Bottom:   lay.h,
 	}
+	labelGap := ctx.Gap(ringLabelGapPt)
+	// The narrowest label cell stands beside 3 or 9 o'clock: every row holds
+	// its text at that width, and a row nearer a pole is measured again at the
+	// wider cell its place gives it.
+	narrow := math.Max(lay.labelW-labelGap, 1)
+	widthOf := func(r ringRow) float64 {
+		row := lay.outsideRow(r, labelGap)
+		return math.Max(row.labelX1-row.labelX0, 1)
+	}
+	needAt := func(i int, widthPt float64) float64 { return lay.needAt(ctx, v, i, widthPt) }
 	var need []float64
 	var rows []ringRow
 	fits := false
 	for _, size := range sizes {
 		lay.labelPt = size
-		need = lay.needs(ctx, v)
+		base := lay.needs(ctx, v, narrow)
 		for _, gap := range []float64{ctx.Gap(cycleRingRowGapPt), ctx.Gap(cycleRingMinRowGapPt)} {
-			rowsSpec.GapPt, rowsSpec.Heights = gap, need
-			if rows, fits = ringLabelRows(lay.items, rowsSpec); fits {
+			rowsSpec.GapPt, rowsSpec.Heights = gap, base
+			if rows, need, fits = ringSettleRows(lay.items, rowsSpec, widthOf, needAt); fits {
 				break
 			}
 		}
@@ -507,8 +556,9 @@ func cycleRingOutsideRows(ctx ExpandContext, v *CycleRingValues, lay *cycleRingL
 	}
 	lay.rows = make([]cycleRingRow, len(need))
 	for _, r := range rows {
-		y0 := math.Max(r.Y-r.H/2, 0)
-		lay.rows[r.Index] = cycleRingRow{side: r.Side, y0: y0, y1: math.Min(y0+r.H, lay.h), need: need[r.Index], capped: capped[r.Index]}
+		row := lay.outsideRow(r, labelGap)
+		row.need, row.capped = need[r.Index], capped[r.Index]
+		lay.rows[r.Index] = row
 	}
 	return fits
 }
@@ -563,7 +613,7 @@ func cycleRingLegendRows(ctx ExpandContext, v *CycleRingValues, lay *cycleRingLa
 	fit := func() bool {
 		for _, size := range sizes {
 			lay.labelPt = size
-			need = lay.needs(ctx, v)
+			need = lay.needs(ctx, v, lay.labelW)
 			sum := 0.0
 			for _, x := range need {
 				sum += x
@@ -597,7 +647,8 @@ func cycleRingLegendRows(ctx ExpandContext, v *CycleRingValues, lay *cycleRingLa
 	y := math.Max((lay.h-total)/2, 0)
 	lay.rows = make([]cycleRingRow, n)
 	for i := range lay.rows {
-		lay.rows[i] = cycleRingRow{side: ringSideRight, y0: y, y1: math.Min(y+heights[i], lay.h), need: need[i], capped: heights[i] < need[i]}
+		lay.rows[i] = cycleRingRow{side: ringSideRight, y0: y, y1: math.Min(y+heights[i], lay.h), need: need[i], capped: heights[i] < need[i],
+			numX0: lay.w - lay.labelW - ringNumberColPt, labelX0: lay.w - lay.labelW, labelX1: lay.w}
 		y += heights[i] + gap
 	}
 }
@@ -700,7 +751,12 @@ func (p *cycleRing) Expand(ctx ExpandContext, values, overrides any, _ map[int]a
 			layers = append(layers, []jsonschema.LayerInput{centre})
 		}
 	}
+	// Outside labels follow the ring into its bounding square, so the ring
+	// cell is the spine column there; the legend keeps the square.
 	places := []ringPlacement{{X0: lay.x0, X1: lay.x0 + lay.side, Y0: lay.y0, Y1: lay.y0 + lay.side, Cell: ringCell(layers...)}}
+	if !lay.legend {
+		places[0] = ringSpinePlacement(lay.x0+lay.side/2, lay.y0, lay.side, places[0].Cell)
+	}
 
 	places = append(places, lay.labelPlaces(ctx, v.Phases, paint.Accents)...)
 
@@ -713,11 +769,13 @@ func (p *cycleRing) Expand(ctx ExpandContext, values, overrides any, _ map[int]a
 }
 
 // labelPlaces is the numeral and label cell of every phase on its row: right
-// of the figure the numeral, then the label; left of it, mirrored. The label
-// columns are the outer labelW of the block on either side.
+// of the figure the numeral, then the label; left of it, mirrored. The rows
+// carry their own x (outsideRow: a constant gap from the ring's outer edge at
+// the row's height; the legend: one column).
 // cycle-figure-eight places the labels of its two lobes with it too.
 func (l *cycleRingLayout) labelPlaces(ctx ExpandContext, phases []CycleRingPhase, accents []string) []ringPlacement {
 	places := make([]ringPlacement, 0, 2*len(phases))
+	gapEdges := make([]float64, 0, len(phases))
 	for i, ph := range phases {
 		row := l.rows[i]
 		desc := ""
@@ -725,19 +783,20 @@ func (l *cycleRingLayout) labelPlaces(ctx ExpandContext, phases []CycleRingPhase
 			desc = strings.TrimSpace(ph.Description)
 		}
 		align := "l"
-		numX0 := l.w - l.labelW - ringNumberColPt
-		labelX0, labelX1 := l.w-l.labelW, l.w
+		gapEdges = append(gapEdges, row.numX0)
 		if row.side == ringSideLeft {
 			align = "r"
-			numX0 = l.labelW
-			labelX0, labelX1 = 0, l.labelW
+			gapEdges[i] = row.numX0 + ringNumberColPt
 		}
 		places = append(places,
-			ringPlacement{X0: numX0, X1: numX0 + ringNumberColPt, Y0: row.y0, Y1: row.y1,
+			ringPlacement{X0: row.numX0, X1: row.numX0 + ringNumberColPt, Y0: row.y0, Y1: row.y1,
 				Cell: ringNumberCell(ctx, i+1, accents[i], l.labelPt, align)},
-			ringPlacement{X0: labelX0, X1: labelX1, Y0: row.y0, Y1: row.y1,
+			ringPlacement{X0: row.labelX0, X1: row.labelX1, Y0: row.y0, Y1: row.y1,
 				Cell: ringLabelTextCell(ringLabelText(strings.TrimSpace(ph.Label), desc, l.labelPt, l.descPt, align))},
 		)
+	}
+	if !l.legend {
+		ringProtectEdges(places, gapEdges)
 	}
 	return places
 }

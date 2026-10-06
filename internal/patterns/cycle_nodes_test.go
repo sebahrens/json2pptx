@@ -77,8 +77,10 @@ func cycleNodesRing(t *testing.T, grid *jsonschema.ShapeGridInput) *jsonschema.G
 	if ring == nil {
 		t.Fatal("no ring cell")
 	}
-	if ring.Fit != "contain" {
-		t.Errorf("ring cell fit = %q, want contain (the ring must stay round)", ring.Fit)
+	// The square cell of the legend and inside layouts is fit contain; the
+	// spine cell of the outside layout takes the square of its own height.
+	if ring.Fit != "contain" && ring.Fit != ringSpineFit {
+		t.Errorf("ring cell fit = %q, want contain or %s (the ring must stay round)", ring.Fit, ringSpineFit)
 	}
 	return ring
 }
@@ -475,7 +477,7 @@ func TestCycleNodesArrowsClearNodes(t *testing.T) {
 
 // TestCycleNodesNoOverlapForEveryCount resolves every count in every label
 // mode in the areas the pattern must hold in: the ring stays a square, no two
-// lattice cells overlap, no label touches the ring square, node circles keep
+// lattice cells overlap, no label touches a node circle, node circles keep
 // clear of each other and nothing leaves the area.
 func TestCycleNodesNoOverlapForEveryCount(t *testing.T) {
 	for _, area := range cycleNodesAreas {
@@ -494,7 +496,6 @@ func TestCycleNodesNoOverlapForEveryCount(t *testing.T) {
 					grid := cycleNodesExpand(t, cycleNodesAreaCtx(area.w, area.h), v, &CycleNodesOverrides{Labels: labels})
 					res := cycleNodesResolveAt(t, grid, area.w, area.h)
 					var cells, nodes []shapegrid.ResolvedCell
-					var ringRect pptx.RectEmu
 					for _, c := range res.Cells {
 						if c.ShapeSpec == nil {
 							continue
@@ -507,7 +508,6 @@ func TestCycleNodesNoOverlapForEveryCount(t *testing.T) {
 							cells = append(cells, c)
 						case strings.HasPrefix(c.LayerName, "node-"):
 							nodes = append(nodes, c)
-							ringRect = c.CellBounds
 						}
 					}
 					if len(nodes) != n {
@@ -533,8 +533,10 @@ func TestCycleNodesNoOverlapForEveryCount(t *testing.T) {
 						t.Fatalf("%d lattice text cells, want %d", len(cells), wantCells)
 					}
 					for i, a := range cells {
-						if cycleNodesRectsOverlap(a.Bounds, ringRect) {
-							t.Errorf("text cell %+v overlaps the ring cell %+v", a.Bounds, ringRect)
+						for k, node := range nodes {
+							if clear := ringTestCircleOf(node.Bounds).clear(ringTestRectOf(a.Bounds)); clear < 2 {
+								t.Errorf("text cell %+v stands %.1fpt from node %d, want it clear of every node", ringTestRectOf(a.Bounds), clear, k+1)
+							}
 						}
 						for _, b := range cells[i+1:] {
 							if cycleNodesRectsOverlap(a.Bounds, b.Bounds) {
@@ -888,6 +890,71 @@ func TestCycleNodes_RecommendIntents(t *testing.T) {
 		res := Recommend(Default(), intent, &ContentHints{ItemCount: 4}, 5)
 		if len(res.Candidates) == 0 || res.Candidates[0].PatternName != want {
 			t.Errorf("intent %q: top = %v, want %s", intent, res.Candidates, want)
+		}
+	}
+}
+
+// TestCycleNodesLabelsKeepOneGapFromTheirNode: in the outside layout every
+// label block (number cue + label) stands the same horizontal gap from its own
+// node's circle, for every count and direction in every body size, read from
+// the resolved grid; no block stands on another node or on a link arrow, and
+// the ring cell is the spine column whose square is the ring.
+func TestCycleNodesLabelsKeepOneGapFromTheirNode(t *testing.T) {
+	for _, body := range ringGapBodies {
+		for n := ringMinItems; n <= ringMaxItems; n++ {
+			for _, direction := range []string{"clockwise", "counter_clockwise"} {
+				name := fmt.Sprintf("%s/%d/%s", body.name, n, direction)
+				ctx, v, ovr := cycleNodesAreaCtx(body.w, body.h), cycleNodesTestValues(n), &CycleNodesOverrides{Direction: direction}
+				lay, err := cycleNodesMeasure(ctx, v, ovr)
+				if err != nil || lay.mode != cycleNodesLabelsOutside {
+					t.Fatalf("%s: mode %q, err %v; want the outside layout", name, lay.mode, err)
+				}
+				grid := cycleNodesExpand(t, ctx, v, ovr)
+				if ring := cycleNodesRing(t, grid); ring.Fit != ringSpineFit {
+					t.Errorf("%s: ring cell fit = %q, want the spine's %q", name, ring.Fit, ringSpineFit)
+				}
+				res := cycleNodesResolveAt(t, grid, body.w, body.h)
+				blocks := ringGapNumberedBlocks(t, res, n)
+				gaps := map[int]float64{}
+				for k, block := range blocks {
+					gaps[k] = ringGapLayerCircle(t, res, fmt.Sprintf("node-%d", k), false).hGap(block)
+					for j := 1; j <= n; j++ {
+						if clear := ringGapLayerCircle(t, res, fmt.Sprintf("node-%d", j), false).clear(block); clear < 4 {
+							t.Errorf("%s: label %d stands %.1fpt from node %d", name, k, clear, j)
+						}
+					}
+					if block.x0 < -0.5 || block.x1 > body.w+0.5 || block.y0 < -0.5 || block.y1 > body.h+0.5 {
+						t.Errorf("%s: label %d %+v leaves the %.0f x %.0fpt area", name, k, block, body.w, body.h)
+					}
+				}
+				ringGapCheck(t, name, gaps, cycleNodesRingGapPt)
+
+				// The link arrows run on the node centreline: half the shaft
+				// either side of it, and half the head over the stretch the
+				// head may take. No label block stands on one.
+				cx, cy := lay.ringX+lay.side/2, lay.ringY+lay.side/2
+				radius := lay.spec.Radius * lay.side
+				for _, node := range lay.nodes {
+					if !node.HasLink {
+						continue
+					}
+					travel := ringTravelDeg(node.LinkFromDeg, node.LinkToDeg, lay.spec.Clockwise)
+					for a := 0.0; a <= travel; a++ {
+						half := ringLinkShaft * lay.side / 2
+						if a >= travel*(1-ringLinkHeadShare) {
+							half = ringLinkHeadHalf * lay.side
+						}
+						for _, dr := range []float64{-half, 0, half} {
+							x, y := pointOnCircle(cx, cy, radius+dr, node.LinkFromDeg+lay.spec.dir()*a)
+							for k, block := range blocks {
+								if block.contains(x, y) {
+									t.Errorf("%s: label %d %+v stands on the arrow leaving node %d at (%.1f, %.1f)", name, k, block, node.Index+1, x, y)
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 }

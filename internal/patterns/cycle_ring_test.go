@@ -233,8 +233,8 @@ func TestCycleRing_ExpandLayout(t *testing.T) {
 	for n := cycleRingMinPhases; n <= cycleRingMaxPhases; n++ {
 		grid := cycleRingExpand(t, cycleRingCtx(828, 349), cycleRingValues(n), nil)
 		ring := cycleRingCell(t, grid)
-		if ring.Fit != "contain" || ring.Shape != nil {
-			t.Errorf("n=%d: the ring cell is a fit-contain canvas of layers only, got fit %q shape %v", n, ring.Fit, ring.Shape)
+		if ring.Fit != ringSpineFit || ring.Shape != nil {
+			t.Errorf("n=%d: the ring cell is the spine canvas (%s) of layers only, got fit %q shape %v", n, ringSpineFit, ring.Fit, ring.Shape)
 		}
 		segments, badges := cycleRingLayers(ring, "segment-"), cycleRingLayers(ring, "badge-")
 		if len(segments) != n || len(badges) != n || len(ring.Layers) != 2*n {
@@ -716,6 +716,48 @@ func TestCycleRing_RecommendIntents(t *testing.T) {
 		res := Recommend(Default(), tc.intent, tc.hints, 5)
 		if len(res.Candidates) == 0 || res.Candidates[0].PatternName != tc.want {
 			t.Errorf("intent %q: top = %v, want %s", tc.intent, res.Candidates, tc.want)
+		}
+	}
+}
+
+// TestCycleRingLabelsKeepOneGapFromTheRing: in the outside layout every label
+// block (numeral + label) stands the same horizontal gap from the ring's
+// outer edge within its own row's height, for every count, direction and
+// style in every body size, read from the resolved grid: the labels follow the
+// ring's curve instead of sharing a column, and none stands on the ring.
+func TestCycleRingLabelsKeepOneGapFromTheRing(t *testing.T) {
+	for _, body := range ringGapBodies {
+		for n := cycleRingMinPhases; n <= cycleRingMaxPhases; n++ {
+			for _, ovr := range []*CycleRingOverrides{{}, {Direction: cycleRingCCW}, {Thickness: "thick"}} {
+				name := fmt.Sprintf("%s/%d/%s%s", body.name, n, ovr.Direction, ovr.Thickness)
+				ctx, v := cycleRingCtx(body.w, body.h), cycleRingValues(n)
+				lay, err := cycleRingMeasure(ctx, v, ovr)
+				if err != nil || lay.legend {
+					t.Fatalf("%s: legend %v, err %v; want the outside layout", name, lay.legend, err)
+				}
+				res := cycleNodesResolveAt(t, cycleRingExpand(t, ctx, v, ovr), body.w, body.h)
+				ring := ringGapLayerCircle(t, res, "segment-1", false)
+				gaps := map[int]float64{}
+				starts := map[int]bool{}
+				for k, block := range ringGapNumberedBlocks(t, res, n) {
+					gaps[k] = ring.hGap(block)
+					if clear := ring.clear(block); clear < ringGapClearPt {
+						t.Errorf("%s: label %d %+v stands %.1fpt from the ring", name, k, block, clear)
+					}
+					if block.x0 < -0.5 || block.x1 > body.w+0.5 || block.y0 < -0.5 || block.y1 > body.h+0.5 {
+						t.Errorf("%s: label %d %+v leaves the %.0f x %.0fpt area", name, k, block, body.w, body.h)
+					}
+					if block.x0 > ring.cx {
+						starts[int(math.Round(block.x0))] = true
+					}
+				}
+				ringGapCheck(t, name, gaps, ringLabelGapPt)
+				// From six phases on a side holds rows at different heights
+				// of the curve: they do not share one x.
+				if n >= 6 && len(starts) < 2 {
+					t.Errorf("%s: the right-hand labels share one x (%v); they must follow the ring's curve", name, starts)
+				}
+			}
 		}
 	}
 }

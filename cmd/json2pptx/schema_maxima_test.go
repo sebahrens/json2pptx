@@ -520,9 +520,9 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"comparison-2col":              4.5, // rows floored at written fit (n1muf)
 	"concentric-rings":             10.6,
 	"contact-directory":            3.8,  // Still refused by the generated-font floor; not a readable schema budget.
-	"cycle-figure-eight":           10.3, // 8 phases at the 3-per-lobe maxima (26 / 60) in W: four rows a side share the height
+	"cycle-figure-eight":           10.1, // 8 phases at the 3-per-lobe maxima (26 / 60) in W: four rows a side share the height
 	"cycle-intake":                 0,    // 3 intake + 8 phases at the maxima: the list leaves the descriptions off and every row holds 12pt
-	"cycle-ring":                   9.4,  // 8 phases at the 4-phase maxima (28 / 90): rows share the height
+	"cycle-ring":                   9.1,  // 8 phases at the 4-phase maxima (28 / 90): rows share the height
 	"cycle-nodes":                  10.6,
 	"driver-tree":                  4.1,
 	"dual-org-ladder":              7.0,
@@ -599,9 +599,9 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"comparison-2col":              4.5,
 	"concentric-rings":             0,
 	"cycle-figure-eight":           0.0,
-	"cycle-ring":                   11.3,
+	"cycle-ring":                   11.0,
 	"cycle-intake":                 0,
-	"cycle-nodes":                  11.5,
+	"cycle-nodes":                  0.0,
 	"driver-tree":                  4.8,
 	"dual-org-ladder":              7.6,
 	"exec-summary":                 6.5,

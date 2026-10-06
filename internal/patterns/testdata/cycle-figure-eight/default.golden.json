@@ -2,12 +2,17 @@
   "col_gap": 0.01,
   "row_gap": 0.01,
   "columns": [
-    19.576,
+    18.122,
     2.424,
-    28,
-    28,
+    2.356,
+    12.856,
+    0.485,
+    27.515,
+    0.485,
+    12.856,
+    2.356,
     2.424,
-    19.576
+    18.122
   ],
   "rows": [
     {
@@ -22,6 +27,7 @@
       "max_height": 3.623,
       "cells": [
         {
+          "col_span": 2,
           "row_span": 2,
           "shape": {
             "geometry": "rect",
@@ -81,6 +87,9 @@
         },
         {},
         {},
+        {},
+        {},
+        {},
         {
           "row_span": 2,
           "shape": {
@@ -107,6 +116,7 @@
           }
         },
         {
+          "col_span": 2,
           "row_span": 2,
           "shape": {
             "geometry": "rect",
@@ -145,9 +155,10 @@
       "min_height": 51.377,
       "max_height": 51.377,
       "cells": [
+        {},
         {
           "row_span": 5,
-          "fit": "contain",
+          "fit": "fit-height",
           "layers": [
             {
               "frame": {
@@ -386,9 +397,10 @@
             }
           ]
         },
+        {},
         {
           "row_span": 5,
-          "fit": "contain",
+          "fit": "fit-height",
           "layers": [
             {
               "frame": {
@@ -696,6 +708,11 @@
             }
           }
         },
+        {},
+        {},
+        {},
+        {},
+        {},
         {
           "shape": {
             "geometry": "rect",
@@ -766,6 +783,7 @@
       "max_height": 51.377,
       "cells": [
         {
+          "col_span": 2,
           "row_span": 2,
           "shape": {
             "geometry": "rect",
@@ -823,6 +841,9 @@
             }
           }
         },
+        {},
+        {},
+        {},
         {
           "row_span": 2,
           "shape": {
@@ -849,6 +870,7 @@
           }
         },
         {
+          "col_span": 2,
           "row_span": 2,
           "shape": {
             "geometry": "rect",

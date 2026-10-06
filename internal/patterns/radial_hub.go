@@ -25,13 +25,15 @@ import (
 // drawn in its disc (a layer icon), in the ink measured on the disc's fill; in
 // the legend it is also the item's key, in place of the letter.
 //
-// The hub, the spokes and the satellites are layers of ONE square shape-grid
-// cell (ring_common.go), so they stay round in a compose segment or a nested
-// cell. The labels are lattice cells beside that square:
+// The hub, the spokes and the satellites are layers of ONE shape-grid cell
+// whose fitted bounds are a square (ring_common.go), so they stay round in a
+// compose segment or a nested cell. The labels are lattice cells:
 //
-//	outside (default)  a label column either side of the ring, each label on
-//	                   the row of its satellite; an item at 12 or 6 o'clock
-//	                   (odd counts) is labelled above / below the ring
+//	outside (default)  labels left and right of the ring, each on the row of
+//	                   its satellite and at one constant gap from that
+//	                   satellite's disc (the ring cell is then the spine
+//	                   column, ringSpinePlacement); an item at 12 or 6
+//	                   o'clock (odd counts) is labelled above / below the ring
 //	inside             no label cells: larger satellites hold a short label
 //	legend             the ring on the left and a keyed list (A, B, C ...)
 //	                   on the right; the default falls back to it when the
@@ -164,7 +166,7 @@ const (
 	rhHubPt      = 16.0           // hub label ceiling; steps down to the floor to fit the circle
 	rhSpokePt    = 1.5            // spoke stroke
 	rhSpokeHiPt  = 3.0            // the highlighted item's spoke
-	rhLabelGapPt = 12.0           // ring square to a label column
+	rhLabelGapPt = ringLabelGapPt // satellite disc (legend: ring square) to its label
 	rhRowGapPt   = 4.0            // least gap between two label rows
 	rhPoleGapPt  = 4.0            // ring square to the label above / below it
 	rhMinLabelPt = 110.0          // narrowest label column that still reads
@@ -365,6 +367,35 @@ type rhLayout struct {
 
 func (l rhLayout) side() float64 { return l.ring.w() }
 
+// ringPlacement places the ring cell. Outside labels follow the ring into its
+// bounding square, so the cell is the spine column there; the other layouts
+// keep the fit-contain square.
+func (l rhLayout) ringPlacement(layers []jsonschema.LayerInput) ringPlacement {
+	cell := &jsonschema.GridCellInput{Fit: "contain", Layers: layers}
+	if l.mode == rhLabelsOutside {
+		return ringSpinePlacement((l.ring.x0+l.ring.x1)/2, l.ring.y0, l.side(), cell)
+	}
+	return ringPlacement{X0: l.ring.x0, X1: l.ring.x1, Y0: l.ring.y0, Y1: l.ring.y1, Cell: cell}
+}
+
+// gapEdges are the x edges of the outside layout's side labels that face
+// their satellites (ringProtectEdges); none in the other layouts.
+func (l rhLayout) gapEdges() []float64 {
+	if l.mode != rhLabelsOutside {
+		return nil
+	}
+	var edges []float64
+	for _, it := range l.items {
+		switch it.side {
+		case ringSideLeft:
+			edges = append(edges, it.text.x1)
+		case ringSideRight:
+			edges = append(edges, it.text.x0)
+		}
+	}
+	return edges
+}
+
 // rhMeasure resolves the layout for the content area of ctx.
 func rhMeasure(ctx ExpandContext, v *RadialHubValues, ovr *RadialHubOverrides) (rhLayout, error) {
 	w, h := sizingAreaPt(ctx)
@@ -475,38 +506,64 @@ func rhPlaceOutside(ctx ExpandContext, v *RadialHubValues, lay *rhLayout) bool {
 	heights := make([]float64, len(items))
 	for i, it := range items {
 		lay.items[i] = rhItem{ring: it, side: it.Side, inside: true}
+		// A row beside 3 or 9 o'clock is the narrowest: every row holds its
+		// text at that width.
 		width := labelW
 		if it.Side == ringSideTop || it.Side == ringSideBottom {
 			width = side
 		}
-		lay.items[i].need = rhLabelNeedPt(ctx, *lay, v.Spokes[i], rhAlign(it.Side), false, width)
-		heights[i] = lay.items[i].need
+		heights[i] = rhLabelNeedPt(ctx, *lay, v.Spokes[i], rhAlign(it.Side), false, width)
 	}
+	// Side rows follow the ring into its bounding square, so they keep out of
+	// the height a pole label takes above / below it.
 	rowSpec := ringRowsSpec{CentreY: y0 + side/2, RadiusPt: spec.Radius * side, RowPt: lay.labelSize * sizingLineSpacing, Heights: heights, GapPt: ctx.Gap(rhRowGapPt), Top: 0, Bottom: h}
-	rows, fits := ringLabelRows(items, rowSpec)
+	if top > 0 {
+		rowSpec.Top = y0 - ctx.Gap(rhPoleGapPt)
+	}
+	if bottom > 0 {
+		rowSpec.Bottom = y0 + side + ctx.Gap(rhPoleGapPt)
+	}
+	// textAt is a side row's label cell: it starts (right) or ends (left) the
+	// column gap from its own satellite's disc and runs to the content edge.
+	textAt := func(row ringRow) rhRect {
+		r := rhRect{y0: math.Max(row.Y-row.H/2, 0), y1: math.Min(row.Y+row.H/2, h)}
+		f := spec.badgeFrame(items[row.Index], lay.satDia)
+		edge := ringLabelEdgeX(x0+(f.X+f.W/2)*side, y0+(f.Y+f.H/2)*side, f.W*side/2, r.y0, r.y1, colGap, row.Side)
+		if row.Side == ringSideLeft {
+			r.x0, r.x1 = 0, edge
+		} else {
+			r.x0, r.x1 = edge, w
+		}
+		return r
+	}
+	rows, need, fits := ringSettleRows(items, rowSpec, func(row ringRow) float64 { return textAt(row).w() },
+		func(i int, widthPt float64) float64 {
+			return rhLabelNeedPt(ctx, *lay, v.Spokes[i], rhAlign(items[i].Side), false, widthPt)
+		})
 	if !fits {
-		// A side's rows are taller than the block together: every row of a
+		// A side's rows are taller than the room together: every row of a
 		// side takes an equal share, and PostExpandWarnings names the items
 		// that outgrow theirs.
 		count := map[string]int{}
 		for _, it := range items {
 			count[it.Side]++
 		}
+		capped := append([]float64(nil), need...)
+		room := rowSpec.Bottom - rowSpec.Top
 		for i, it := range items {
 			if k := float64(count[it.Side]); it.Side == ringSideLeft || it.Side == ringSideRight {
-				heights[i] = math.Min(heights[i], math.Floor((h-(k-1)*rowSpec.GapPt)/k))
+				capped[i] = math.Min(capped[i], math.Floor((room-(k-1)*rowSpec.GapPt)/k))
 			}
 		}
-		rowSpec.Heights = heights
+		rowSpec.Heights = capped
 		rows, _ = ringLabelRows(items, rowSpec)
 	}
 	for i, row := range rows {
 		it := &lay.items[i]
+		it.need = need[i]
 		switch it.side {
-		case ringSideLeft:
-			it.text = rhRect{0, labelW, row.Y - row.H/2, row.Y + row.H/2}
-		case ringSideRight:
-			it.text = rhRect{w - labelW, w, row.Y - row.H/2, row.Y + row.H/2}
+		case ringSideLeft, ringSideRight:
+			it.text = textAt(row)
 		case ringSideTop:
 			it.text = rhRect{x0, x0 + side, 0, y0 - ctx.Gap(rhPoleGapPt)}
 		case ringSideBottom:
@@ -795,8 +852,7 @@ func (p *radialHub) Expand(ctx ExpandContext, values, overrides any, _ map[int]a
 		})
 	}
 
-	places := []ringPlacement{{X0: lay.ring.x0, X1: lay.ring.x1, Y0: lay.ring.y0, Y1: lay.ring.y1,
-		Cell: &jsonschema.GridCellInput{Fit: "contain", Layers: layers}}}
+	places := []ringPlacement{lay.ringPlacement(layers)}
 	for i, it := range lay.items {
 		if lay.mode == rhLabelsInside {
 			break
@@ -825,6 +881,7 @@ func (p *radialHub) Expand(ctx ExpandContext, values, overrides any, _ map[int]a
 		places = append(places, ringPlacement{X0: it.text.x0, X1: it.text.x1, Y0: it.text.y0, Y1: it.text.y1,
 			Cell: rhTextCell(rhLabelText(v.Spokes[i], align, anchor, lay, labelInk))})
 	}
+	ringProtectEdges(places, lay.gapEdges())
 	grid, err := ringLattice(places, lay.width, lay.height)
 	if err != nil {
 		return nil, fmt.Errorf("radial-hub: %w", err)
