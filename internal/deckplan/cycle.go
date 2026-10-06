@@ -49,6 +49,9 @@ const cycleGuidance = "The loop as a picture: 3-8 phases in order (labels up to 
 // namesCycle reports whether a sentence names a cycle slide: a loop word that
 // is unambiguous, or an ambiguous one beside a list the picture can hold.
 func namesCycle(n *namedSlide, all string) bool {
+	if intakeSentence(n) {
+		return true
+	}
 	all = cueCycleNot.ReplaceAllString(all, "")
 	if cueNamedCycle.MatchString(all) {
 		return true
@@ -104,6 +107,13 @@ func fillList(n int) []any {
 // (the listed items, else one placeholder per counted phase) and, for an
 // intake, a placeholder per counted intake step.
 func cycleFields(n *namedSlide) map[string]any {
+	if intakeSentence(n) {
+		steps := make([]any, len(n.items))
+		for i, it := range n.items {
+			steps[i] = sentenceCase(it)
+		}
+		return map[string]any{"style": "intake", "intake": steps}
+	}
 	all := n.sentence
 	fields := map[string]any{}
 	style := cycleStyleFor(all)
@@ -115,10 +125,10 @@ func cycleFields(n *namedSlide) map[string]any {
 		phases := make([]any, 0, len(n.items))
 		for _, it := range n.items {
 			if m := namedParen.FindStringSubmatch(it); m != nil && strings.TrimSpace(m[1]) != "" {
-				phases = append(phases, map[string]any{"label": strings.TrimSpace(m[1]), "description": strings.TrimSpace(m[2])})
+				phases = append(phases, map[string]any{"label": sentenceCase(strings.TrimSpace(m[1])), "description": strings.TrimSpace(m[2])})
 				continue
 			}
-			phases = append(phases, it)
+			phases = append(phases, sentenceCase(it))
 		}
 		fields["phases"] = phases
 	default:
@@ -149,14 +159,9 @@ func cycleFields(n *namedSlide) map[string]any {
 // topicCycle drafts a cycle slide from the brief's topic sentence. The named
 // vocabulary reads the sentences after the topic; a brief that is one
 // sentence ("our operating rhythm is a six-phase loop …") would otherwise
-// carry its picture nowhere. It returns nil when the topic names no loop or a
-// later sentence already does.
-func topicCycle(brief string, named []namedSlide) *namedSlide {
-	for _, n := range named {
-		if n.kind == "cycle" {
-			return nil
-		}
-	}
+// carry its picture nowhere. It returns nil when the topic names no loop; the
+// caller merges it with the cycle a later sentence names (mergeCycleUnits).
+func topicCycle(brief string) *namedSlide {
 	spans := sentenceSpans(brief)
 	if len(spans) == 0 {
 		return nil
@@ -169,4 +174,125 @@ func topicCycle(brief string, named []namedSlide) *namedSlide {
 	n.fields = cycleFields(n)
 	n.facts = []string{n.sentence}
 	return n
+}
+
+// cueCycleIntakeHead is the label of a sentence that lists the steps feeding a
+// loop ("Intake: sign the contract, onboard the site").
+var cueCycleIntakeHead = regexp.MustCompile(`(?i)^(?:the\s+)?(?:intake|onboarding)(?:\s+steps?)?$`)
+
+// cueCyclePhaseNamed reads "the review phase" / "the Measure step".
+var cueCyclePhaseNamed = regexp.MustCompile(`(?i)\b([\p{L}-]+)\s+(?:phase|step|stage)\b`)
+
+// intakeSentence reports whether a sentence lists the 1–3 one-off steps that
+// feed a loop.
+func intakeSentence(n *namedSlide) bool {
+	return cueCycleIntakeHead.MatchString(n.header) && len(n.items) >= 1 && len(n.items) <= 3
+}
+
+// realList reports whether a drafted list carries the brief's own words rather
+// than placeholders.
+func realList(v any) bool {
+	list, _ := v.([]any)
+	if len(list) == 0 {
+		return false
+	}
+	s, isString := list[0].(string)
+	return !isString || s != patterns.FillPlaceholder
+}
+
+// phaseNamedIn returns the label of the drafted phase a sentence singles out
+// ("the review phase is the weak one"), or "".
+func phaseNamedIn(sentence string, phases any) string {
+	list, _ := phases.([]any)
+	for _, m := range cueCyclePhaseNamed.FindAllStringSubmatch(sentence, -1) {
+		word := strings.ToLower(m[1])
+		for _, p := range list {
+			label, _ := p.(string)
+			if obj, ok := p.(map[string]any); ok {
+				label, _ = obj["label"].(string)
+			}
+			for _, w := range strings.Fields(strings.ToLower(label)) {
+				if w == word {
+					return label
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// aboutOnePhase reports whether a unit the roadmap cue claimed ("the review
+// phase slipped …") is a sentence about one phase of the loop instead.
+func aboutOnePhase(n *namedSlide, phases any) bool {
+	return n.kind == "roadmap" && len(n.items) < 2 && phaseNamedIn(n.sentence, phases) != ""
+}
+
+// mergeCycleUnits folds everything a brief says about its loop into one cycle
+// slide: the sentence that names the picture ("a six-phase loop fed by a
+// two-step intake"), the one that lists its phases, the one that lists its
+// intake steps, and a sentence about one of its phases ("the review phase
+// slipped …"), which names the highlight. The brief's own words replace a
+// placeholder list. An intake list with no loop beside it is not a cycle
+// slide and is handed back to the storyline.
+func mergeCycleUnits(named []namedSlide) []namedSlide {
+	keep := -1
+	for i := range named {
+		if named[i].kind == "cycle" && !intakeSentence(&named[i]) {
+			keep = i
+			break
+		}
+	}
+	out := make([]namedSlide, 0, len(named))
+	if keep < 0 {
+		for _, n := range named {
+			if n.kind != "cycle" {
+				out = append(out, n)
+			}
+		}
+		return out
+	}
+	loop := named[keep]
+	fields := map[string]any{}
+	for key, v := range loop.fields {
+		fields[key] = v
+	}
+	absorb := func(n *namedSlide) {
+		loop.facts = append(loop.facts, n.facts...)
+		loop.factIdx = append(loop.factIdx, n.factIdx...)
+		loop.spans = append(loop.spans, n.spans...)
+	}
+	// The other cycle sentences first, so the phases are the brief's own
+	// before a sentence about one of them is matched against them.
+	for i := range named {
+		n := &named[i]
+		if i == keep || n.kind != "cycle" {
+			continue
+		}
+		for key, v := range n.fields {
+			if _, has := fields[key]; !has || (realList(v) && !realList(fields[key])) {
+				fields[key] = v
+			}
+		}
+		absorb(n)
+	}
+	at := -1
+	for i := range named {
+		n := &named[i]
+		switch {
+		case i == keep:
+			at = len(out)
+			out = append(out, loop)
+		case n.kind == "cycle":
+		case aboutOnePhase(n, fields["phases"]):
+			if _, has := fields["highlight"]; !has {
+				fields["highlight"] = phaseNamedIn(n.sentence, fields["phases"])
+			}
+			absorb(n)
+		default:
+			out = append(out, *n)
+		}
+	}
+	loop.fields = fields
+	out[at] = loop
+	return out
 }

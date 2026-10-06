@@ -89,6 +89,52 @@ func TestPlanDeckCycleFromTopicSentence(t *testing.T) {
 	}
 }
 
+// opsRhythmBrief is the j-ops-operating-rhythm persona's brief
+// (tests/quality/journey/personas): the loop is named in one sentence, its
+// intake steps listed in a second, its phases in a third, and a fourth is
+// about one of the phases.
+const opsRhythmBrief = "Build the operations review for \"Harbourline Logistics\" for the COO. 6–7 slides on `midnight-blue`. Our operating rhythm is a six-phase continuous improvement loop fed by a two-step onboarding intake. Intake: sign the service contract, onboard the site. The monthly loop: plan the month, run the service, measure against the SLA, review with the client, fix root causes, reset the targets. KPIs: on-time delivery 96.5%, rework −34%, sites onboarded 14, reviews held on time 4 of 9. The review phase is the weak one: it slipped past month end in 5 of the last 9 months. Ask: approve a dedicated review lead from November."
+
+// Everything a brief says about its loop lands on one cycle slide: the brief's
+// own phases and intake steps instead of placeholders, the phase it singles
+// out as the highlight, and none of it left unplaced or drafted as a roadmap.
+func TestPlanDeckMergesTheLoopIntoOneCycleSlide(t *testing.T) {
+	plan := BuildDeckSpecPlan(Params{Brief: opsRhythmBrief})
+	cycles, kinds := 0, map[any]int{}
+	for _, s := range plan.DeckSpec.Slides {
+		kinds[s["kind"]]++
+		if s["kind"] == "cycle" {
+			cycles++
+		}
+	}
+	if cycles != 1 || kinds["roadmap"] != 0 {
+		t.Fatalf("kinds = %v, want one cycle slide and no roadmap", kinds)
+	}
+	s := cycleSlide(t, opsRhythmBrief)
+	phases, _ := s["phases"].([]any)
+	intake, _ := s["intake"].([]any)
+	if s["style"] != "intake" || len(phases) != 6 || len(intake) != 2 {
+		t.Fatalf("cycle slide = %v", s)
+	}
+	if phases[0] != "Plan the month" || intake[1] != "Onboard the site" || s["highlight"] != "Review with the client" {
+		t.Errorf("cycle slide = %v, want the brief's own phases, intake steps and the review phase highlighted", s)
+	}
+	if len(plan.UnplacedFacts) != 0 {
+		t.Errorf("unplaced facts: %v", plan.UnplacedFacts)
+	}
+	if kinds["kpi_snapshot"] != 1 || kinds["next_steps"] != 1 {
+		t.Errorf("kinds = %v, want the KPIs and the closer beside the loop", kinds)
+	}
+}
+
+// An intake list with no loop beside it is not a cycle slide.
+func TestPlanDeckIntakeListAloneIsNotACycle(t *testing.T) {
+	brief := "Client onboarding review for the COO. Onboarding: sign the contract, migrate the data, train the users. Time to first value fell from 9 weeks to 4."
+	if s := cycleSlide(t, brief); s != nil {
+		t.Errorf("drafted a cycle slide from an intake list alone: %v", s)
+	}
+}
+
 // Loop words in ordinary prose do not draft a cycle slide.
 func TestPlanDeckCycleCuesIgnoreProse(t *testing.T) {
 	for _, brief := range []string{

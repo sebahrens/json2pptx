@@ -552,7 +552,7 @@ func detectNamedSlides(brief string, facts []briefFact) []namedSlide {
 			out = appendNamed(out, *n)
 		}
 	}
-	return out
+	return mergeCycleUnits(out)
 }
 
 // appendNamed adds a unit to the list, merging it into an earlier unit of the
