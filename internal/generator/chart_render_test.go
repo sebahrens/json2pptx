@@ -687,13 +687,20 @@ func TestDiagramSpecToSVGGen_RawPalette(t *testing.T) {
 		}
 		rawGuide := svggen.StyleGuideFromSpec(result.Style)
 		got := accentHexes(rawGuide.Palette)
-		// The pale #FFAA72 is darkened into visibility; dk1 black is never
-		// borrowed as a series colour (go-slide-creator-orqni).
-		want := []string{"#FD5108", "#FE7C39", "#D89060", "#A1A8B3"}
+		// A theme without a declared data_palette gets the tonal ladder of
+		// accent1 (go-slide-creator-7bsbd): the solid accent, two neutral
+		// greys, then the accent's own tint and shade. The raw slots gave an
+		// orange, a second orange, a tan (#FFAA72 darkened into visibility)
+		// and a blue-grey. dk1 black is never borrowed as a series colour
+		// (go-slide-creator-orqni).
+		want := []string{"#FD5108", "#B3B3B3", "#6F6F6F", "#FE996F", "#CB3D02", "#909090"}
 		for i, want := range want {
 			if got[i] != want {
-				t.Errorf("chart Accent%d = %s, want visible %s", i+1, got[i], want)
+				t.Errorf("chart Accent%d = %s, want ladder step %s", i+1, got[i], want)
 			}
+		}
+		if !result.Style.DataPaletteFixed || !rawGuide.Palette.SeriesFixed {
+			t.Error("the ladder's order must be kept: DataPaletteFixed / SeriesFixed not set")
 		}
 		background := svggen.MustParseColor("#FFFFFF")
 		for i, hex := range got {

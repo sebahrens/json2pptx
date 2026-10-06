@@ -473,6 +473,13 @@ func (tc *TreemapChart) drawNodes(nodes []*TreemapNode, colors []Color, depth in
 
 // treemapHeaderHeight is the band reserved at the top of a parent cell for its
 // own label, so the children it contains do not paint over it. Returns 0 for a
+// treemapValueFont is the size of a cell's value line under its label: a step
+// below the label, but never under the viewing floor a presented slide sets
+// (nor above the label itself, which a small cell has already shrunk).
+func treemapValueFont(style *StyleGuide, labelFont float64) float64 {
+	return math.Max(labelFont*0.8, math.Min(labelFont, style.Typography.ReadableFloor))
+}
+
 // leaf, and for a parent too short to give the band without squeezing its
 // children — there the old behaviour (children over the label) is still better
 // than a band with no room left under it.
@@ -525,13 +532,13 @@ func (tc *TreemapChart) drawNodeLabel(node *TreemapNode, bounds Rect, style *Sty
 		labelY = bounds.Y + bounds.H/2
 		valueText := ""
 		if tc.config.ShowValueLabels && bounds.H >= 2.4*fontSize {
-			valueText = tc.valueLabel(node, bounds.W-2*tc.config.Padding, fontSize*0.8)
+			valueText = tc.valueLabel(node, bounds.W-2*tc.config.Padding, treemapValueFont(style, fontSize))
 		}
 		if valueText != "" {
 			// Label above center
 			b.DrawText(node.Label, labelX, labelY-fontSize/2, TextAlignCenter, TextBaselineBottom)
 			// Value below center
-			b.SetFontSize(fontSize * 0.8)
+			b.SetFontSize(treemapValueFont(style, fontSize))
 			b.SetFontWeight(style.Typography.WeightNormal)
 			b.DrawText(valueText, labelX, labelY+fontSize/2, TextAlignCenter, TextBaselineTop)
 		} else {

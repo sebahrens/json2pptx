@@ -244,7 +244,7 @@ func TestGeneratePortersFiveGroupXML_Basic(t *testing.T) {
 	if !strings.Contains(result, `val="accent1"`) {
 		t.Error("should contain accent1 fill")
 	}
-	for _, tint := range []string{`tint val="60000"`, `tint val="40000"`, `tint val="20000"`} {
+	for _, tint := range []string{`lumMod val="60000"`, `lumMod val="40000"`, `lumMod val="20000"`} {
 		if !strings.Contains(result, tint) {
 			t.Errorf("should contain intensity tint %q", tint)
 		}
@@ -385,7 +385,7 @@ func TestPorterIntensityColor_ThemeLightnessOrdering(t *testing.T) {
 			lightness := make([]svggen.Color, 3)
 			for i, intensity := range []float64{0.9, 0.5, 0.1} {
 				_, mod, _ := porterIntensityColor(&intensity)
-				lightness[i] = patterns.EffectiveColorMods(base, patterns.ColorMods{Tint: mod}, white)
+				lightness[i] = patterns.EffectiveColorMods(base, diagramTintMods(mod, 100000-mod), white)
 			}
 			if !(lightness[0].Luminance() < lightness[1].Luminance() && lightness[1].Luminance() < lightness[2].Luminance()) {
 				t.Errorf("intensity lightness not ordered high→medium→low: %s, %s, %s", lightness[0].Hex(), lightness[1].Hex(), lightness[2].Hex())
@@ -411,10 +411,10 @@ func TestPorterTintAndIntensityTextOnSaturatedAccent(t *testing.T) {
 		force := porterForceData{label: "Rivalry", intensity: &intensity}
 		xml := porterTestBoxXML(force, 1, theme)
 		_, retained, off := porterIntensityColor(&intensity)
-		if !strings.Contains(xml, fmt.Sprintf(`<a:tint val="%d"/>`, retained)) || strings.Contains(xml, "lumOff") {
-			t.Errorf("intensity %.1f: expected RGB tint, got %s", intensity, xml)
+		if !strings.Contains(xml, fmt.Sprintf(`<a:lumMod val="%d"/><a:lumOff val="%d"/>`, retained, off)) || strings.Contains(xml, "<a:tint") {
+			t.Errorf("intensity %.1f: expected a lumMod / lumOff tint, got %s", intensity, xml)
 		}
-		fill := patterns.EffectiveColorMods(base, patterns.ColorMods{Tint: retained}, white)
+		fill := patterns.EffectiveColorMods(base, diagramTintMods(retained, off), white)
 		textScheme := porterIntensityTextColor("accent1", retained, off, theme)
 		text := svggen.MustParseColor(resolveSchemeColorToHex(textScheme, theme))
 		if ratio := text.ContrastWith(fill); ratio < svggen.WCAGAANormal {

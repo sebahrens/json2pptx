@@ -991,7 +991,7 @@ func (oc *OrgChartRenderer) getColors(style *StyleGuide) []Color {
 	// red on midnight-blue and a foreign blue on abstract, a colour nothing
 	// else in a primary-accent deck uses (go-slide-creator-libnz).
 	primary := style.Palette.Accent1
-	return []Color{primary, primary.Lighten(0.2), primary.Lighten(0.35), primary.Lighten(0.45)}
+	return []Color{primary, primary.Tint(0.8), primary.Tint(0.65), primary.Tint(0.55)}
 }
 
 // orgChartLevelAccents reports whether data asks for one accent per level:

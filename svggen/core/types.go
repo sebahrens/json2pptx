@@ -213,6 +213,11 @@ type StyleSpec struct {
 	// (e.g. maximizing perceptual distinctness between adjacent series).
 	DataPalette []string `json:"data_palette,omitempty" yaml:"data_palette,omitempty"`
 
+	// DataPaletteFixed marks DataPalette as a designed sequence (the tonal
+	// series ladder) whose order must be kept: the renderer does not reorder
+	// it for hue distance. Internal — set by the PPTX generator.
+	DataPaletteFixed bool `json:"-" yaml:"-"`
+
 	// ShowLegend enables the legend display.
 	ShowLegend bool `json:"show_legend,omitempty" yaml:"show_legend,omitempty"`
 

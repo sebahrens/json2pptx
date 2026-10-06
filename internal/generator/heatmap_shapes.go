@@ -358,7 +358,7 @@ func (t heatmapTone) fill() pptx.Fill {
 		base, err := svggen.ParseColor(t.scheme)
 		if err == nil {
 			white := svggen.Color{R: 255, G: 255, B: 255, A: 1}
-			return pptx.SolidFill(patterns.EffectiveColorMods(base, patterns.ColorMods{Tint: t.lumMod}, white).Hex()[1:])
+			return pptx.SolidFill(patterns.EffectiveColorMods(base, diagramTintMods(t.lumMod, t.lumOff), white).Hex()[1:])
 		}
 	}
 	return diagramTintFill(t.scheme, t.lumMod, t.lumOff)
@@ -384,7 +384,7 @@ func heatmapValueColor(tone heatmapTone, themeColors []types.ThemeColor) string 
 	if err != nil {
 		return "dk1"
 	}
-	// DrawingML tint always blends toward literal white, even when lt1 is an
+	// lumMod / lumOff lighten toward literal white, even when lt1 is an
 	// off-white theme color; only the text candidates use theme roles.
 	white := svggen.Color{R: 255, G: 255, B: 255, A: 1}
 	lightText, wErr := svggen.ParseColor(resolveSchemeColorToHex("lt1", themeColors))
@@ -396,7 +396,7 @@ func heatmapValueColor(tone heatmapTone, themeColors []types.ThemeColor) string 
 		dark = svggen.Color{A: 1}
 	}
 
-	cell := patterns.EffectiveColorMods(base, patterns.ColorMods{Tint: tone.lumMod}, white)
+	cell := patterns.EffectiveColorMods(base, diagramTintMods(tone.lumMod, tone.lumOff), white)
 	if lightText.ContrastWith(cell) > dark.ContrastWith(cell) {
 		return "lt1"
 	}

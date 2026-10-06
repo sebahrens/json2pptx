@@ -36,6 +36,16 @@ const (
 	labelledValueGapPt = 4.0
 )
 
+// labelledValueFont is the data-label size in labelled mode: the 10pt caption
+// step, raised to the viewing floor when the chart is read in the room
+// (Typography.ReadableFloor, 12pt in live-presentation mode).
+func labelledValueFont(style *StyleGuide) float64 {
+	if style == nil || style.Typography == nil {
+		return labelledValueFontPt
+	}
+	return math.Max(labelledValueFontPt, style.Typography.ReadableFloor)
+}
+
 // NeutralInk returns dk1 (the palette's primary text colour) at share of full
 // strength, flattened onto the palette background so it is an opaque fill.
 func NeutralInk(p *Palette, share float64) Color {

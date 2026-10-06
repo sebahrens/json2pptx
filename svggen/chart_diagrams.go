@@ -1607,6 +1607,16 @@ func scaleTypographyForBuilder(builder *SVGBuilder, width, height float64, prese
 	applySmallTextFloor(style.Typography, viewingMode)
 }
 
+// LabelFloor is the size below which a renderer that fits a label itself does
+// not shrink it: the viewing floor on a presented slide, else the builder's
+// own fitter floor.
+func LabelFloor(b *SVGBuilder, fallback float64) float64 {
+	if style := b.StyleGuide(); style != nil && style.Typography != nil && style.Typography.ReadableFloor > fallback {
+		return style.Typography.ReadableFloor
+	}
+	return fallback
+}
+
 // placementScale converts SVG user points to the points that appear on the
 // actual slide. An authored 800px canvas inside a 2-inch cell is not 800pt
 // wide on screen, even though svggen's internal layout uses that canvas.
@@ -1680,10 +1690,22 @@ func reportPlacementReadability(builder *SVGBuilder, style StyleSpec, width, hei
 	})
 }
 
+// applySmallTextFloor raises the text roles to the viewing mode's floor. A
+// deck presented in a room reads every chart label at the slide body step
+// (12pt): ticks as before, and now also data labels, legends, axis titles,
+// subtitles and captions, which the role floors alone left at 10-11pt beside
+// 12pt pattern text (go-slide-creator-9nk6a). A dense report keeps the role
+// floors and only lifts small labels to 10pt.
 func applySmallTextFloor(typography *Typography, viewingMode string) {
 	floor := 10.0
 	if viewingMode == "live-presentation" {
-		floor = 12.0
+		floor = ChartStepBodyPt
+		typography.ReadableFloor = floor
+		for _, size := range []*float64{&typography.SizeSubtitle, &typography.SizeHeading, &typography.SizeBody, &typography.SizeCaption} {
+			if *size < floor {
+				*size = floor
+			}
+		}
 	}
 	if typography.SizeSmall < floor {
 		typography.SizeSmall = floor

@@ -15,8 +15,8 @@ func TestDiagramTintFillPreservesThemeAndAuthoredColors(t *testing.T) {
 		retained, offset int
 		want             string
 	}{
-		{"pale saturated accent", "accent4", 20000, 80000, `<a:schemeClr val="accent4"><a:tint val="20000"/></a:schemeClr>`},
-		{"moderate accent", "accent1", 60000, 40000, `<a:schemeClr val="accent1"><a:tint val="60000"/></a:schemeClr>`},
+		{"pale saturated accent", "accent4", 20000, 80000, `<a:schemeClr val="accent4"><a:lumMod val="20000"/><a:lumOff val="80000"/></a:schemeClr>`},
+		{"moderate accent", "accent1", 60000, 40000, `<a:schemeClr val="accent1"><a:lumMod val="60000"/><a:lumOff val="40000"/></a:schemeClr>`},
 		{"full accent", "accent1", 100000, 0, `<a:schemeClr val="accent1"/>`},
 		{"authored hex", "#0097A7", 20000, 80000, `<a:srgbClr val="0097A7"/>`},
 	}
@@ -27,8 +27,10 @@ func TestDiagramTintFillPreservesThemeAndAuthoredColors(t *testing.T) {
 			if !strings.Contains(xml.String(), tt.want) {
 				t.Fatalf("fill = %s, want %s", xml.String(), tt.want)
 			}
-			if strings.Contains(xml.String(), "lumMod") || strings.Contains(xml.String(), "lumOff") {
-				t.Fatalf("fill still uses luminance modifiers: %s", xml.String())
+			// One tint family across both engines (go-slide-creator-7if28):
+			// the linear-light a:tint pulled saturated oranges to pink.
+			if strings.Contains(xml.String(), "<a:tint") {
+				t.Fatalf("fill uses a linear-light tint, not the patterns' lumMod / lumOff: %s", xml.String())
 			}
 		})
 	}
@@ -101,8 +103,8 @@ func TestNativeDiagramBuildersEmitAccentTints(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			xml := tt.build()
-			if !strings.Contains(xml, `<a:tint val="`) {
-				t.Fatalf("native diagram has no RGB-tinted accent: %s", xml)
+			if !strings.Contains(xml, `<a:lumOff val="`) || strings.Contains(xml, `<a:tint val="`) {
+				t.Fatalf("native diagram accent is not tinted with lumMod / lumOff: %s", xml)
 			}
 		})
 	}

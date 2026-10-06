@@ -858,7 +858,7 @@ func ReserveTopLabelHeadroom(plotArea *Rect, reach float64) {
 // left too short to read.
 func (bc *BarChart) fitPlotUnderLabels(style *StyleGuide, plotArea *Rect) {
 	if bc.config.ShowValues {
-		font := labelledValueFontPt
+		font := labelledValueFont(style)
 		if bc.config.Stacked {
 			font = stackLabelFont(style)
 		}

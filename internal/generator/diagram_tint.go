@@ -3,20 +3,33 @@ package generator
 import (
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/svggen"
 )
 
-// diagramTintFill blends a theme accent toward white in linear-light RGB. A
-// luminance offset brightens fully saturated accents without desaturating
-// them, producing fluorescent panels; DrawingML tint keeps the brand hue soft.
+// diagramTintFill lightens a theme accent the way the pattern engine does:
+// lumMod / lumOff on HSL lightness (PowerPoint's "Lighter N%" swatches), so a
+// native diagram and a pattern in one deck tint the same accent to the same
+// colour (go-slide-creator-7if28). The former a:tint mixed toward white in
+// linear light, which pulls a saturated orange to salmon pink (#FD5108 at 20%
+// rendered #FFE9E7 where the patterns' tint is the peach #FFDCCE).
 // Explicit colors are already the author's final choice and remain exact.
 func diagramTintFill(color string, retained, offset int) pptx.Fill {
 	base := pptx.ResolveColorString(color)
 	if !pptx.IsSchemeColor(color) || offset == 0 {
 		return base
 	}
-	return pptx.SchemeFill(color, pptx.Tint(retained))
+	return pptx.SchemeFill(color, pptx.LumMod(retained), pptx.LumOff(offset))
+}
+
+// diagramTintMods is diagramTintFill as colour modifiers, for the contrast
+// helpers that need the colour a viewer sees.
+func diagramTintMods(retained, offset int) patterns.ColorMods {
+	if offset == 0 {
+		return patterns.ColorMods{}
+	}
+	return patterns.ColorMods{LumMod: retained, LumOff: offset}
 }
 
 // diagramPanelTextFill keeps theme-linked light cells on the template's text

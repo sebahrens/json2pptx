@@ -580,7 +580,7 @@ func (wc *WaterfallChart) drawBarsAndConnectors(points []WaterfallDataPoint, plo
 					valueFontSize = style.Typography.SizeCaption
 				}
 				if labelled {
-					valueFontSize = labelledValueFontPt
+					valueFontSize = labelledValueFont(style)
 				}
 				b.SetFontSize(valueFontSize)
 				b.SetFontWeight(style.Typography.WeightNormal)
