@@ -264,6 +264,66 @@ func TestNestedComposeInheritsOuterSegmentBounds(t *testing.T) {
 	}
 }
 
+// go-slide-creator-uhe09: a horizontal segment is its size_pct share of the
+// envelope, however many lattice columns its pattern draws in. A gap used to
+// be counted per column, so a ring lattice at 60% took two thirds of the
+// width and its neighbour a quarter less than its 40%; and a pattern whose
+// lattice changes between the probe and the sized expansion was told a width
+// the merged grid did not give it.
+func TestComposeHorizontalSegmentIsItsShareOfTheEnvelope(t *testing.T) {
+	const widthPt, gapPt = 800.0, 12.0
+	ctx := patterns.ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000,
+		LayoutBounds: patterns.LayoutBounds{Width: int64(widthPt * 12700), Height: 300 * 12700}}
+	rows := PatternInput{Name: "labeled-rows", Values: json.RawMessage(`{"rows":[{"label":"WHY","body":"Renewals carry most of the revenue"},{"label":"HOW","body":"One loop owned by the account team"}]}`)}
+	for name, circle := range map[string]PatternInput{
+		"cycle-intake":     {Name: "cycle-intake", Values: json.RawMessage(`{"intake":[{"label":"Attract"},{"label":"Convert"},{"label":"Onboard"}],"loop":[{"label":"Activate"},{"label":"Engage"},{"label":"Renew"},{"label":"Expand"},{"label":"Refer"},{"label":"Assess"},{"label":"Reprice"},{"label":"Recommit"}]}`)},
+		"cycle-ring":       {Name: "cycle-ring", Values: json.RawMessage(`{"phases":[{"label":"Forecast"},{"label":"Review"},{"label":"Decide"},{"label":"Execute"}]}`)},
+		"concentric-rings": {Name: "concentric-rings", Values: json.RawMessage(`{"layers":[{"label":"Sponsor"},{"label":"Leadership team"},{"label":"Function heads"},{"label":"Front-line teams"},{"label":"Customers"}]}`)},
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := &ComposeInput{Direction: "horizontal", Gap: gapPt, Segments: []SegmentInput{{SizePct: 60, Pattern: circle}, {SizePct: 40, Pattern: rows}}}
+			merged, _, err := expandCompose(c, ctx, patterns.Default())
+			if err != nil {
+				t.Fatal(err)
+			}
+			var cols []float64
+			if err := json.Unmarshal(merged.Columns, &cols); err != nil {
+				t.Fatal(err)
+			}
+			total := gapPt * float64(len(cols)-1)
+			for _, w := range cols {
+				total += w
+			}
+			at := 0
+			for i, share := range []float64{0.6, 0.4} {
+				span := max(merged.Rows[0].Cells[i].ColSpan, 1)
+				got := gapPt * float64(span-1)
+				for _, w := range cols[at : at+span] {
+					got += w
+				}
+				at += span
+				// The weights are proportional; scale them to the envelope.
+				got *= widthPt / total
+				if want := (widthPt - gapPt) * share; got < want-0.5 || got > want+0.5 {
+					t.Errorf("segment %d spans %d columns and is %.1fpt wide, want its %.0f%% share: %.1fpt", i, span, got, share*100, want)
+				}
+			}
+			if span := merged.Rows[0].Cells[0].ColSpan; span < 2 {
+				t.Fatalf("the %s segment spans %d column: the case needs a lattice", name, span)
+			}
+			// The rectangle the pattern was expanded in is the one it is drawn in.
+			probe, _, err := expandComposeSegments(c, ctx, nil, patterns.Default())
+			if err != nil {
+				t.Fatal(err)
+			}
+			bounds := composeSegmentBounds(c, ctx, probe, []float64{60, 40})
+			if got, want := float64(bounds[0].Width+2*subGridInsetEMU)/12700, (widthPt-gapPt)*0.6; got < want-0.5 || got > want+0.5 {
+				t.Errorf("the pattern is expanded in %.1fpt, its segment is %.1fpt", got, want)
+			}
+		})
+	}
+}
+
 func firstCellParagraphSize(t *testing.T, grid *ShapeGridInput) float64 {
 	t.Helper()
 	for grid.Rows[0].Cells[0].Grid != nil {

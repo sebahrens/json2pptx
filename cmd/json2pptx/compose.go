@@ -132,7 +132,7 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 		}
 		merged = g
 	case "horizontal":
-		g, mergeWarnings, err := mergeHorizontal(expandedGrids, sizes, composeGapPt(c, ctx))
+		g, mergeWarnings, err := mergeHorizontalIn(expandedGrids, sizes, composeGapPt(c, ctx), composeBaseBounds(ctx).Width)
 		if err != nil {
 			return nil, warnings, err
 		}
@@ -226,11 +226,7 @@ func composeGapPt(c *ComposeInput, ctx patterns.ExpandContext) float64 {
 // distributing rows or columns. Smart-compose shares are fixed by the probe's
 // content density; the final pass can then size text without circularity.
 func composeSegmentBounds(c *ComposeInput, ctx patterns.ExpandContext, grids []*jsonschema.ShapeGridInput, sizes []float64) []patterns.LayoutBounds {
-	base := ctx.LayoutBounds
-	if base.Width <= 0 || base.Height <= 0 {
-		db := shapegrid.DefaultBounds(ctx.SlideWidth, ctx.SlideHeight)
-		base = patterns.LayoutBounds{X: db.X, Y: db.Y, Width: db.CX, Height: db.CY}
-	}
+	base := composeBaseBounds(ctx)
 	gap := int64(math.Round(composeGapPt(c, ctx) * 12700))
 	units := make([]int, len(grids))
 	totalUnits := 0
@@ -248,9 +244,19 @@ func composeSegmentBounds(c *ComposeInput, ctx patterns.ExpandContext, grids []*
 		axisLength, axisStart = base.Width, base.X
 	}
 	available := max(int64(0), axisLength-gap*int64(max(0, totalUnits-1)))
+	// A horizontal segment is as wide as its share of the envelope
+	// (mergeHorizontalIn weights its columns for that), whatever lattice its
+	// pattern draws in.
+	var shareWidths []int64
+	if c.Direction == "horizontal" {
+		shareWidths, _ = horizontalSegmentWidths(base.Width, gap, units, sizes)
+	}
 	result := make([]patterns.LayoutBounds, len(grids))
 	for i, unitsInSegment := range units {
 		length := int64(math.Round(float64(available)*sizes[i]/100)) + gap*int64(max(0, unitsInSegment-1))
+		if shareWidths != nil {
+			length = shareWidths[i]
+		}
 		b := base
 		if c.Direction == "horizontal" {
 			b.X, b.Width = axisStart, length
@@ -270,6 +276,49 @@ func composeSegmentBounds(c *ComposeInput, ctx patterns.ExpandContext, grids []*
 		axisStart += length + gap
 	}
 	return result
+}
+
+// composeBaseBounds is the rectangle an envelope divides: the context's
+// layout bounds, else the default grid bounds of the slide.
+func composeBaseBounds(ctx patterns.ExpandContext) patterns.LayoutBounds {
+	base := ctx.LayoutBounds
+	if base.Width <= 0 || base.Height <= 0 {
+		db := shapegrid.DefaultBounds(ctx.SlideWidth, ctx.SlideHeight)
+		base = patterns.LayoutBounds{X: db.X, Y: db.Y, Width: db.CX, Height: db.CY}
+	}
+	return base
+}
+
+// horizontalSegmentWidths divides a horizontal envelope of the given width
+// (EMU) among its segments by their size shares: one gap between neighbouring
+// segments, the rest split by share. That is what size_pct says — a 60%
+// segment is 60% of the room — and it does not depend on how many lattice
+// columns the segment's pattern happens to draw in. Counting a gap per column
+// instead gave a 20-column ring lattice at 60% two thirds of the slide and
+// its neighbour a quarter less than it asked for, and told a pattern whose
+// lattice changes with its width (a ring's labels moving into a legend) a
+// width it did not get (go-slide-creator-uhe09).
+//
+// ok is false when the width is unknown or a segment's share is narrower
+// than the gaps between its own columns; the caller then falls back to the
+// per-column division.
+func horizontalSegmentWidths(width, gap int64, cols []int, sizes []float64) ([]int64, bool) {
+	total := 0.0
+	for _, s := range sizes {
+		total += s
+	}
+	if width <= 0 || total <= 0 || len(cols) != len(sizes) {
+		return nil, false
+	}
+	available := width - gap*int64(max(0, len(sizes)-1))
+	widths := make([]int64, len(sizes))
+	for i, s := range sizes {
+		widths[i] = int64(math.Round(float64(available) * s / total))
+		if widths[i]-gap*int64(max(0, cols[i]-1)) <= 0 {
+			return nil, false
+		}
+	}
+	return widths, true
 }
 
 // prependBannerRow inserts a full-width banner row at the top of the merged
@@ -595,18 +644,39 @@ func mergeVertical(grids []*jsonschema.ShapeGridInput, sizes []float64, gap floa
 // warnings slice so callers can surface it instead of dropping content
 // silently.
 func mergeHorizontal(grids []*jsonschema.ShapeGridInput, sizes []float64, gap float64) (*jsonschema.ShapeGridInput, []string, error) {
+	return mergeHorizontalIn(grids, sizes, gap, 0)
+}
+
+// mergeHorizontalIn is mergeHorizontal for an envelope whose width (EMU) is
+// known: each segment's columns are then weighted so that the segment, the
+// gaps between its own columns included, is exactly its share of the width
+// (horizontalSegmentWidths). Without a width a segment's share is divided
+// among its columns and every column gap comes off the whole.
+func mergeHorizontalIn(grids []*jsonschema.ShapeGridInput, sizes []float64, gap float64, widthEMU int64) (*jsonschema.ShapeGridInput, []string, error) {
 	var warnings []string
+
+	resolvedGap := gap
+	if resolvedGap == 0 {
+		resolvedGap = 8
+	}
 
 	// Determine each segment's column count and distribute its size share
 	// across those columns.
 	segCols := make([]int, len(grids))
-	totalCols := 0
+	for i, g := range grids {
+		segCols[i] = inferColumnCount(g)
+	}
+	gapEMU := int64(math.Round(resolvedGap * 12700))
+	segWidths, exact := horizontalSegmentWidths(widthEMU, gapEMU, segCols, sizes)
 	colWidths := make([]float64, 0, len(grids))
 	for i, g := range grids {
-		cols := inferColumnCount(g)
-		segCols[i] = cols
-		totalCols += cols
-		colWidths = append(colWidths, allocateSegmentColumns(g, cols, sizes[i])...)
+		share := sizes[i]
+		if exact {
+			// The columns' own width: the segment less its inner gaps, in
+			// points (the weights only have to be proportional).
+			share = float64(segWidths[i]-gapEMU*int64(segCols[i]-1)) / 12700
+		}
+		colWidths = append(colWidths, allocateSegmentColumns(g, segCols[i], share)...)
 	}
 	colJSON, _ := json.Marshal(colWidths)
 
@@ -624,11 +694,6 @@ func mergeHorizontal(grids []*jsonschema.ShapeGridInput, sizes []float64, gap fl
 		}
 		child.Bounds = nil // The parent cell owns this segment's rectangle.
 		rowCells[segIdx] = &jsonschema.GridCellInput{ColSpan: segCols[segIdx], Grid: &child}
-	}
-
-	resolvedGap := gap
-	if resolvedGap == 0 {
-		resolvedGap = 8
 	}
 
 	merged := &jsonschema.ShapeGridInput{

@@ -572,6 +572,41 @@ labels one column x. The rules that follow from it:
   give the ring the headroom those rows need (`headroomSide`) instead of
   moving a label away from its circle.
 
+### Circular layouts in split placements
+
+Every circular pattern draws alone on a slide and beside a second zone: a
+horizontal compose segment (50%, 60%, on either side), a vertical segment
+above a strip, and a `pattern` nested in a shape-grid cell. Each pattern
+chooses its own narrow layout from the rectangle it is given — there is no
+family-wide switch and no finding for it — and the ring is fitted to a square
+in every one of them (a fit-`contain` cell, or the `fit-height` spine of the
+outside-label layouts), so the circle stays a circle whatever the cell's shape.
+
+| Pattern | In a narrow area | Smallest area |
+|---------|------------------|---------------|
+| `cycle-ring` | Under about 450pt wide (a 50% segment, a nested cell) the labels leave their two outside columns for one numbered legend right of a smaller ring (`labels: "legend"` by itself); descriptions are left off with `BODY_TOO_LONG` when the list cannot hold them. A 60% segment on a 13.33in template keeps the outside columns | 330 × 180pt verified at 8 phases |
+| `cycle-nodes` | When two outside label columns would be under 120pt each (a 50% segment) the labels become one numbered legend right of the ring; so does a 60% segment on a 13.33in template, while a full-width vertical segment keeps the labels beside their nodes | 330 × 180pt verified at 8 steps |
+| `cycle-intake` | When lane, ring and a 96pt list do not fit side by side (most 50% and 60% segments, a nested cell) the layout stacks: the lane across the top, a down arrow into 12 o'clock, the list left of the ring; intake descriptions are left off with `BODY_TOO_LONG`. A full-width vertical segment keeps the side-by-side layout, and eight phases in one shorter than about 200pt report `BODY_TOO_LONG` for the list rows | 330 × 200pt verified at 3 + 8 |
+| `cycle-figure-eight` | Refuses: an area under 580pt wide or 140pt tall is a `fit_overflow` validation error at the pattern's `values` whose fix is `swap_pattern` → `cycle-ring`, the same finding from validate and generate. That is every 50% and 60% horizontal segment and every half-width cell on the shipped templates. A full-width vertical segment is fine | 580 × 140pt |
+| `radial-hub` | Without room for two 110pt label columns, or when the hub of the ring that fits could not hold its label, the labels become a keyed legend (A, B, C … in the satellites, the list on the right). Wider templates keep the outside columns in a 50% segment | 330 × 180pt verified at 8 spokes |
+| `concentric-rings` | Keeps its layout: the ring square shrinks so the ladder keeps at least 130pt, the label steps 14 → 12pt, the step between rings gives way. Use labels only; a description that outgrows its row is `BODY_TOO_LONG` | 330 × 180pt verified at 5 layers |
+
+"Verified" is the smallest rectangle the family gate exercises (half of
+`abstract`'s content area, and the upper 70% of `modern`'s): the ring there is
+still about 120pt or more across and every label is written at 12pt. Short labels
+without descriptions are the copy a ring holds beside a second zone.
+
+The gate is `TestCircularSplitMatrixAcrossTemplates`
+(`cmd/json2pptx/circular_split_matrix_test.go`): each pattern × six placements
+× every template × its smallest and largest count, asserting from the resolved
+grid that every round layer's fitted bounds are a square, that no text cell
+reaches into a round layer's circle or overlaps another text cell (a label
+that follows the curve may stand inside the ring's bounding square, so the
+circle is what is tested), that nothing is written under 12pt, and that
+validate and generate return the same verdict. A new circular pattern joins
+`circularFamily` there (`TestCircularSplitMatrixCoversTheFamily` fails until
+it does); the shared helpers are in `circular_helpers_test.go`.
+
 ### Test guidance
 
 Every grid-shaped pattern must include a table-driven test exercising all three modes (`uniform`, `alternate`, `progressive`) against at least two different base accents (e.g., `accent1` and `accent3`). Verify that the emitted cells carry the expected accent strings. See `overrides_test.go::TestResolveCellAccent` for the shared function tests; pattern-level tests should exercise the full `Expand()` path.
@@ -856,6 +891,8 @@ Caps are advertised via `get_capabilities().features.compose`:
 - Flags: `supports_smart_compose`, `supports_nested_compose`, `supports_diagram_segments`.
 
 `cell_overrides` indices remain per-pattern; the merge step does not re-number them.
+
+**A horizontal segment is its share of the envelope** (go-slide-creator-uhe09). The width is divided once: one `gap` between neighbouring segments, the rest by `size_pct` (`horizontalSegmentWidths`). A segment's own lattice columns are weighted inside that width (`mergeHorizontalIn`), so a 60% segment is 60% of the room whether its pattern draws in one column or in twenty, and the rectangle a pattern is expanded in (`composeSegmentBounds`) is the rectangle it is drawn in. Counting a gap per lattice column instead gave a ring lattice at 60% two thirds of the slide, and told a pattern whose lattice changes with its width (a ring's labels moving into a legend) a width it did not get.
 
 ## Icon slot (card-grid, kpi-Nup, kpi-inline, matrix-2x2, icon-row, hero-detail)
 
