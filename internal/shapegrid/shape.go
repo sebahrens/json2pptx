@@ -164,6 +164,52 @@ func finishingTextRect(geometry string, adjustments []pptx.AdjustValue, bounds p
 	return pptx.RectEmu{X: bounds.X, Y: bounds.Y, CX: w, CY: h}
 }
 
+// FillObjectInput is the object form of a shape's fill, as ResolveFillInput
+// decodes it. The input unknown-key check reads its keys from this type, so a
+// key added here is accepted there without a second list.
+type FillObjectInput struct {
+	Color  string   `json:"color"`
+	Alpha  *float64 `json:"alpha,omitempty"`
+	LumMod int      `json:"lumMod,omitempty"`
+	LumOff int      `json:"lumOff,omitempty"`
+	Tint   int      `json:"tint,omitempty"`
+	Shade  int      `json:"shade,omitempty"`
+}
+
+// LineObjectInput is the object form of a shape's line, as ResolveLineInput
+// decodes it (see FillObjectInput).
+type LineObjectInput struct {
+	Color  string  `json:"color"`
+	Width  float64 `json:"width,omitempty"`
+	Dash   string  `json:"dash,omitempty"`
+	LumMod int     `json:"lumMod,omitempty"`
+	LumOff int     `json:"lumOff,omitempty"`
+	Tint   int     `json:"tint,omitempty"`
+	Shade  int     `json:"shade,omitempty"`
+}
+
+// TextObjectInput is the object form of a shape's text, as ResolveTextInput
+// decodes it (see FillObjectInput): one run of content, or paragraphs.
+type TextObjectInput struct {
+	Content       string           `json:"content"`
+	Paragraphs    []ParagraphInput `json:"paragraphs,omitempty"`
+	Size          float64          `json:"size,omitempty"`
+	Bold          bool             `json:"bold,omitempty"`
+	Italic        bool             `json:"italic,omitempty"`
+	Align         string           `json:"align,omitempty"`
+	VerticalAlign string           `json:"vertical_align,omitempty"`
+	Vert          string           `json:"vert,omitempty"`
+	Color         string           `json:"color,omitempty"`
+	Font          string           `json:"font,omitempty"`
+	InsetLeft     *float64         `json:"inset_left,omitempty"`
+	InsetRight    *float64         `json:"inset_right,omitempty"`
+	InsetTop      *float64         `json:"inset_top,omitempty"`
+	InsetBottom   *float64         `json:"inset_bottom,omitempty"`
+}
+
+// ParagraphInput is one entry of a text object's paragraphs array.
+type ParagraphInput = paragraphDef
+
 // ResolveFillInput parses fill from string shorthand or object form.
 func ResolveFillInput(raw json.RawMessage) (pptx.Fill, error) {
 	// Try string first
@@ -173,14 +219,7 @@ func ResolveFillInput(raw json.RawMessage) (pptx.Fill, error) {
 	}
 
 	// Object form
-	var obj struct {
-		Color  string   `json:"color"`
-		Alpha  *float64 `json:"alpha,omitempty"`
-		LumMod int      `json:"lumMod,omitempty"`
-		LumOff int      `json:"lumOff,omitempty"`
-		Tint   int      `json:"tint,omitempty"`
-		Shade  int      `json:"shade,omitempty"`
-	}
+	var obj FillObjectInput
 	if err := json.Unmarshal(raw, &obj); err != nil {
 		return pptx.Fill{}, fmt.Errorf("fill must be a color string (e.g. \"#FF0000\", \"accent1\", \"none\") or object {\"color\": \"...\", \"alpha\": 50}: %w", err)
 	}
@@ -276,15 +315,7 @@ func ResolveLineInput(raw json.RawMessage) (pptx.Line, error) {
 	}
 
 	// Object form
-	var obj struct {
-		Color  string  `json:"color"`
-		Width  float64 `json:"width,omitempty"`
-		Dash   string  `json:"dash,omitempty"`
-		LumMod int     `json:"lumMod,omitempty"`
-		LumOff int     `json:"lumOff,omitempty"`
-		Tint   int     `json:"tint,omitempty"`
-		Shade  int     `json:"shade,omitempty"`
-	}
+	var obj LineObjectInput
 	if err := json.Unmarshal(raw, &obj); err != nil {
 		return pptx.Line{}, fmt.Errorf("line must be a color string (e.g. \"#000000\") or object {\"color\": \"...\", \"width\": 2, \"dash\": \"dot\"}: %w", err)
 	}
@@ -433,22 +464,7 @@ func ResolveTextInput(raw json.RawMessage) (*pptx.TextBody, error) {
 	}
 
 	// Object form — try to detect paragraphs array variant
-	var obj struct {
-		Content       string         `json:"content"`
-		Paragraphs    []paragraphDef `json:"paragraphs,omitempty"`
-		Size          float64        `json:"size,omitempty"`
-		Bold          bool           `json:"bold,omitempty"`
-		Italic        bool           `json:"italic,omitempty"`
-		Align         string         `json:"align,omitempty"`
-		VerticalAlign string         `json:"vertical_align,omitempty"`
-		Vert          string         `json:"vert,omitempty"`
-		Color         string         `json:"color,omitempty"`
-		Font          string         `json:"font,omitempty"`
-		InsetLeft     *float64       `json:"inset_left,omitempty"`
-		InsetRight    *float64       `json:"inset_right,omitempty"`
-		InsetTop      *float64       `json:"inset_top,omitempty"`
-		InsetBottom   *float64       `json:"inset_bottom,omitempty"`
-	}
+	var obj TextObjectInput
 	if err := json.Unmarshal(raw, &obj); err != nil {
 		return nil, fmt.Errorf("text must be a string, object with \"content\", or object with \"paragraphs\" array: %w", err)
 	}
