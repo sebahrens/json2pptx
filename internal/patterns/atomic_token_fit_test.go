@@ -71,8 +71,21 @@ func TestKPINupTooLongValueWarns(t *testing.T) {
 // label shrinks, and the label stays at a readable size.
 func TestProcessGrid2RowLabelsNeverBreakMidWord(t *testing.T) {
 	p := &processGrid2Row{}
-	vals := p.ExemplarValues().(*ProcessGrid2RowValues)
+	vals := &ProcessGrid2RowValues{
+		Row1Label: "DESIGN PROCESS", Row1Phases: []string{"DESIGN", "EDIT", "ASSETS", "UX / UI"},
+		Row2Label: "PRODUCTION", Row2Phases: []string{"PROTOTYPE", "DEVELOP", "USER TESTING", "RELEASE"},
+	}
+	tinted := &ProcessGrid2RowOverrides{Style: "tinted"}
 	for _, ctx := range []ExpandContext{kpiTestCtx(), substitutedFontCtx()} {
+		// The default lanes style keeps the words whole in its pentagons too.
+		for _, v := range []*ProcessGrid2RowValues{vals, p.ExemplarValues().(*ProcessGrid2RowValues)} {
+			if lanes := fitProcessGrid2RowLanes(ctx, v, &ProcessGrid2RowOverrides{}); len(lanes.unfit) != 0 || lanes.labelPt < 12 {
+				t.Errorf("font %q lanes: labels %v unfit at %.0fpt", ctx.Theme.BodyFont, lanes.unfit, lanes.labelPt)
+			}
+			if w := p.PostExpandWarnings(ctx, v, nil); len(w) != 0 {
+				t.Errorf("font %q lanes: warns: %v", ctx.Theme.BodyFont, w)
+			}
+		}
 		fit := fitProcessGrid2RowLabels(ctx, vals, 14)
 		if len(fit.unfit) != 0 {
 			t.Errorf("font %q: exemplar label words do not fit: %v", ctx.Theme.BodyFont, fit.unfit)
@@ -80,7 +93,7 @@ func TestProcessGrid2RowLabelsNeverBreakMidWord(t *testing.T) {
 		if fit.sizePt < 12 {
 			t.Errorf("font %q: label shrank to %.0fpt", ctx.Theme.BodyFont, fit.sizePt)
 		}
-		grid, err := p.Expand(ctx, vals, nil, nil)
+		grid, err := p.Expand(ctx, vals, tinted, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -91,7 +104,7 @@ func TestProcessGrid2RowLabelsNeverBreakMidWord(t *testing.T) {
 		if cols[0] != fit.colPct {
 			t.Errorf("label column %.0f%%, fit chose %.0f%%", cols[0], fit.colPct)
 		}
-		if w := p.PostExpandWarnings(ctx, vals, nil); len(w) != 0 {
+		if w := p.PostExpandWarnings(ctx, vals, tinted); len(w) != 0 {
 			t.Errorf("font %q: exemplar warns: %v", ctx.Theme.BodyFont, w)
 		}
 	}

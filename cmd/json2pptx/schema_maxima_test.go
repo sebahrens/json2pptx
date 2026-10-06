@@ -556,7 +556,9 @@ var schemaMaximaShrinkPt = map[string]float64{
 	// 12pt so no word breaks (go-slide-creator-csclk.113), and the maximum
 	// renders with nothing below the floor. Tracks floored at their written
 	// fit, header / outcome rows never below theirs (n1muf): 6.5 -> 9.6.
-	"process-grid-2row": 9.6,
+	// Lanes style: 4pt label margins inside the chevrons' own text
+	// rectangles and unfilled header / outcome lines (06bnr): 9.6 -> 11.5.
+	"process-grid-2row": 11.5,
 	// A long italic quote is prose, not a KPI value. With the 12pt prose floor,
 	// the schema-maximum quote remains readable beside its optional headshot;
 	// genuine sub-12pt shrink still produces a finding (tp23k.2).
@@ -625,7 +627,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"phase-roadmap":                7.4,
 	"process-flow":                 0,
 	"process-flow-compact":         0,    // band grows to the written fit (n1muf)
-	"process-grid-2row":            10.8, // rows floored at their written fit (n1muf)
+	"process-grid-2row":            0.00, // lanes style (06bnr); two decimals keep the neighbouring comment aligned
 	"pull-quote":                   0,
 	"pyramid":                      8.4,
 	"quote-cluster":                7.0,

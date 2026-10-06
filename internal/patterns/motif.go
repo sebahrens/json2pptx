@@ -140,7 +140,7 @@ var patternMotifs = map[string]patternMotif{
 	"phase-roadmap":        {base: MotifFlow},
 	"process-flow":         {base: MotifFlow},
 	"process-flow-compact": {base: MotifFlow},
-	"process-grid-2row":    {base: MotifTiles},
+	"process-grid-2row":    {base: MotifFlow, overrideStyles: map[string]Motif{"tinted": MotifTiles, "solid": MotifTiles}},
 	"pull-quote":           {base: MotifQuote},
 	"pyramid":              {base: MotifDiagram},
 	"quote-cluster": {base: MotifOpenColumns,

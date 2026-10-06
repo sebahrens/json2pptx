@@ -1,6 +1,7 @@
 package patterns
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -142,13 +143,137 @@ func TestProcessGrid2Row_Expand_DefaultLayout(t *testing.T) {
 	}
 }
 
-// TestProcessGrid2Row_Expand_TintedDefault: phase boxes are neutral tints
-// under a thin rule in the track colour, the second track a lighter step, so
-// two rows of phases are not a wall of accent blocks (go-slide-creator-fl11f).
-func TestProcessGrid2Row_Expand_TintedDefault(t *testing.T) {
+// TestProcessGrid2Row_Expand_LanesDefault: each track is a lane, a pentagon
+// label pointing into interlocking chevrons, in four depths of one accent
+// with at most one solid block; lanes are content-sized (go-slide-creator-06bnr).
+func TestProcessGrid2Row_Expand_LanesDefault(t *testing.T) {
+	p, _ := Default().Get("process-grid-2row")
+	for _, n := range []int{3, 4, 5, 6} {
+		v := validProcessGrid2RowValues(n)
+		for _, ovr := range []any{nil, &ProcessGrid2RowOverrides{Style: "lanes"}} {
+			grid, err := p.Expand(fullThemeCtx(), v, ovr, nil)
+			if err != nil {
+				t.Fatalf("n=%d: Expand failed: %v", n, err)
+			}
+			if len(grid.Rows) != 2 {
+				t.Fatalf("n=%d: want 2 lanes, got %d rows", n, len(grid.Rows))
+			}
+			fills := map[string]bool{}
+			solid := 0
+			for r, row := range grid.Rows {
+				if row.MinHeight <= 0 || row.MinHeight != row.MaxHeight {
+					t.Errorf("n=%d lane %d must be content-sized, got min=%v max=%v", n, r+1, row.MinHeight, row.MaxHeight)
+				}
+				if row.MaxHeight > processGrid2RowLaneMaxHPt {
+					t.Errorf("n=%d lane %d is %vpt tall, cap %v", n, r+1, row.MaxHeight, processGrid2RowLaneMaxHPt)
+				}
+				for i, c := range row.Cells {
+					want := "chevron"
+					if i == 0 {
+						want = "homePlate"
+					}
+					if c.Shape.Geometry != want {
+						t.Errorf("n=%d lane %d cell %d: geometry %q, want %q", n, r+1, i, c.Shape.Geometry, want)
+					}
+					if (c.BleedLeft > 0) != (i > 0) {
+						t.Errorf("n=%d lane %d cell %d: bleed_left %v (only chevrons tuck under the point before them)", n, r+1, i, c.BleedLeft)
+					}
+					if adj := c.Shape.Adjustments["adj"]; adj <= 0 || adj > 50000 {
+						t.Errorf("n=%d lane %d cell %d: adj %d", n, r+1, i, adj)
+					}
+					fill := string(c.Shape.Fill)
+					if !strings.Contains(fill, "accent1") {
+						t.Errorf("n=%d lane %d cell %d: fill %s is not a depth of the accent", n, r+1, i, fill)
+					}
+					if !strings.Contains(fill, "lumMod") {
+						solid++
+					}
+					if string(c.Shape.Line) != `"none"` || c.AccentBar != nil {
+						t.Errorf("n=%d lane %d cell %d: lanes carry no outline or rule", n, r+1, i)
+					}
+					fills[fill] = true
+					var text struct {
+						Paragraphs []struct {
+							Size float64 `json:"size"`
+						} `json:"paragraphs"`
+					}
+					if err := json.Unmarshal(c.Shape.Text, &text); err != nil || len(text.Paragraphs) != 1 || text.Paragraphs[0].Size < 12 {
+						t.Errorf("n=%d lane %d cell %d: text %s", n, r+1, i, c.Shape.Text)
+					}
+				}
+			}
+			if len(fills) != 4 {
+				t.Errorf("n=%d: want four depths (two labels, two phase tints), got %d: %v", n, len(fills), fills)
+			}
+			if solid != 1 {
+				t.Errorf("n=%d: want exactly one solid accent block (the first lane's label), got %d", n, solid)
+			}
+		}
+	}
+	// An authored row2_color is a second family at the first lane's depths.
+	v := validProcessGrid2RowValues(4)
+	v.Row2Color = "accent5"
+	grid, err := p.Expand(fullThemeCtx(), v, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, c := range grid.Rows[1].Cells {
+		if !strings.Contains(string(c.Shape.Fill), "accent5") {
+			t.Errorf("row2_color lane cell %d: fill %s", i, c.Shape.Fill)
+		}
+	}
+	for _, style := range processGrid2RowStyles {
+		if err := p.Validate(v, &ProcessGrid2RowOverrides{Style: style}, nil); err != nil {
+			t.Errorf("style %q: %v", style, err)
+		}
+	}
+}
+
+// TestProcessGrid2Row_Lanes_HeadersAndOutcomes: headers and outcomes are
+// plain bold text lines over and under the lanes: no underline, no pill.
+func TestProcessGrid2Row_Lanes_HeadersAndOutcomes(t *testing.T) {
 	p, _ := Default().Get("process-grid-2row")
 	v := validProcessGrid2RowValues(4)
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	v.ColumnHeaders = []string{"Segment", "Prospect", "Meet", "Retain"}
+	v.Outcomes = []string{"+5% wallet", "+5% win", "+15% coverage", "-3% attrition"}
+	cellOverrides := map[int]any{0: &ProcessGrid2RowCellOverride{AccentBar: true}}
+	grid, err := p.Expand(fullThemeCtx(), v, nil, cellOverrides)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(grid.Rows) != 4 {
+		t.Fatalf("want header + 2 lanes + outcomes, got %d rows", len(grid.Rows))
+	}
+	for _, r := range []int{0, 3} {
+		row := grid.Rows[r]
+		if row.MinHeight <= 0 || row.MinHeight != row.MaxHeight {
+			t.Errorf("row %d must be content-sized, got min=%v max=%v", r, row.MinHeight, row.MaxHeight)
+		}
+		if len(row.Cells) != 5 || row.Cells[0].Shape != nil {
+			t.Fatalf("row %d: want an empty label-column cell + 4 cells, got %d", r, len(row.Cells))
+		}
+		for i, c := range row.Cells[1:] {
+			if c.Shape.Geometry != "rect" || string(c.Shape.Fill) != `"none"` || c.AccentBar != nil {
+				t.Errorf("row %d cell %d: want unfilled text, got %s %s bar=%v", r, i, c.Shape.Geometry, c.Shape.Fill, c.AccentBar)
+			}
+		}
+	}
+	if !strings.Contains(string(grid.Rows[0].Cells[1].Shape.Text), "Segment") || !strings.Contains(string(grid.Rows[3].Cells[4].Shape.Text), "-3% attrition") {
+		t.Error("header / outcome text missing")
+	}
+	if grid.Rows[1].Cells[0].AccentBar == nil {
+		t.Error("cell_overrides[0] must still land on row1_label")
+	}
+	assertPatternGolden(t, grid, "testdata/process-grid-2row/lanes.golden.json")
+}
+
+// TestProcessGrid2Row_Expand_TintedStyle: under style tinted the phase boxes
+// are neutral tints under a thin rule in the track colour, the second track a
+// lighter step (the default before go-slide-creator-06bnr; go-slide-creator-fl11f).
+func TestProcessGrid2Row_Expand_TintedStyle(t *testing.T) {
+	p, _ := Default().Get("process-grid-2row")
+	v := validProcessGrid2RowValues(4)
+	grid, err := p.Expand(ExpandContext{}, v, &ProcessGrid2RowOverrides{Style: "tinted"}, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
@@ -334,7 +459,7 @@ func TestProcessGrid2Row_HeadersAndOutcomes_Expand(t *testing.T) {
 	v.ColumnHeaders = []string{"Segment", "Prospect", "Meet", "Retain"}
 	v.Outcomes = []string{"+5% wallet", "+5% win", "+15% coverage", "-3% attrition"}
 	cellOverrides := map[int]any{0: &ProcessGrid2RowCellOverride{AccentBar: true}}
-	grid, err := p.Expand(fullThemeCtx(), v, nil, cellOverrides)
+	grid, err := p.Expand(fullThemeCtx(), v, &ProcessGrid2RowOverrides{Style: "tinted"}, cellOverrides)
 	if err != nil {
 		t.Fatal(err)
 	}
