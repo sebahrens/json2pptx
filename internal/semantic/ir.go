@@ -251,6 +251,12 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title",
 		pattern: architecturePattern,
 	},
+	KindCycle: {
+		// A loop is a process that returns to its start: the process family,
+		// so a cycle after a process slide reads as the same treatment twice.
+		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title",
+		pattern: slides.CyclePattern,
+	},
 	KindTeam: {
 		role: RoleEvidence, family: FamilyCards, density: DensityMedium, layout: "blank-title",
 		pattern: teamPattern,
@@ -815,13 +821,21 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 			{Layout: "content", Reason: "bullets preserve more actions or longer copy"},
 		}
 	default:
-		return otherCompositionCandidates(kind)
+		return otherCompositionCandidates(kind, selected)
 	}
 }
 
 // otherCompositionCandidates lists the compositions of kinds the switch in
 // compositionCandidates leaves out.
-func otherCompositionCandidates(kind SlideKind) []CompositionCandidate {
+func otherCompositionCandidates(kind SlideKind, selected string) []CompositionCandidate {
+	if kind == KindCycle {
+		// The style field is the composition choice; there is no pattern or
+		// layout override.
+		if selected == "" {
+			selected = "cycle-ring"
+		}
+		return []CompositionCandidate{{Pattern: selected, Layout: "blank-title", Reason: "the style field picks the picture: ring (cycle-ring, default), nodes (cycle-nodes), figure_eight (cycle-figure-eight), radial (radial-hub) or concentric (concentric-rings)"}}
+	}
 	if kind == KindRegions {
 		// The arrangement field is the composition choice; there is no
 		// pattern or layout override.

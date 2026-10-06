@@ -27,6 +27,9 @@ const (
 	KindTable SlideKind = "table"
 	// KindArchitecture is a tiered architecture / platform stack.
 	KindArchitecture SlideKind = "architecture"
+	// KindCycle is a loop, a hub or nested rings: phases in a circular
+	// picture chosen by its style (go-slide-creator-53v5u).
+	KindCycle SlideKind = "cycle"
 	// KindAgenda is the deck's contents page.
 	KindAgenda SlideKind = "agenda"
 	// KindQuote highlights one attributed quote or a cluster of stakeholder voices.
@@ -154,6 +157,13 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		RequiredAliases: map[string][]string{"tiers": {"layers"}},
 		TypicalFields:   []string{"title", "rails", "takeaway"},
 	},
+	KindCycle: {
+		Kind:            KindCycle,
+		Summary:         "A loop, a hub or nested rings: the phases in order and a style. One ordered loop is ring (default; 4–8 segments) or nodes (3–8 circles joined by arrows); two coupled loops on a full-width slide are figure_eight (4–8); 4–8 peers around a center are radial; 3–5 things that contain one another are concentric (innermost first). highlight marks the one accent phase. Outside the style's count or text budgets it degrades to a numbered list. A sequence that does not loop back is process.",
+		RequiredFields:  []string{"phases"},
+		RequiredAliases: map[string][]string{"phases": {"steps", "items"}},
+		TypicalFields:   []string{"title", "style", "center", "highlight", "left_label", "right_label", "takeaway"},
+	},
 	KindAgenda: {
 		Kind:            KindAgenda,
 		Summary:         "The deck's contents page: the sections it covers, in order, optionally marking the one the deck is at. Renders as the numbered agenda list (2–10 sections), each subtitle as a muted line under its title and the current section bold with the rest dimmed; a subtitle over 120 characters uses agenda-with-images rows (3–6). Outside those bounds it degrades to a numbered bullet list.",
@@ -276,7 +286,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 			"arrangement is columns or rows (2–3 regions; size_pct is each one's width / height) or main_left / main_right / main_top / main_bottom " +
 			"(exactly 3: regions[0] is the main region and its size_pct its share, default 60; regions[1..2] stack beside it and split that side by their own size_pct). " +
 			"Each region is {kind, size_pct?, heading?, source?, …} with kind chart (chart, unit), stat (value, label, unit, context), kpis (2–4 kpis), " +
-			"table (headers, rows; ≤4 columns × 5 rows), timeline (3–7 milestones), image (image, caption) or text (body, bullets) — the fields of the like-named slide kind. " +
+			"table (headers, rows; ≤4 columns × 5 rows), timeline (3–7 milestones), image (image, caption), cycle (phases, style) or text (body, bullets) — the fields of the like-named slide kind. " +
 			"Region sources join the slide's source line. Use it only when the content types must be read together; one kind per slide stays the default.",
 		RequiredFields: []string{"regions"},
 		TypicalFields:  []string{"title", "arrangement", "takeaway", "source"},

@@ -386,6 +386,24 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 		"title":     {inject: func(s string) map[string]any { return covMatrix(map[string]any{"title": s}) }, rendered: true},
 		"takeaway":  {inject: func(s string) map[string]any { return covMatrix(map[string]any{"takeaway": s}) }, rendered: true},
 	},
+	// go-slide-creator-53v5u: every phase, the centre and the lobe titles
+	// have to reach the loop.
+	KindCycle: {
+		"phases": {inject: func(s string) map[string]any {
+			return covCycle(map[string]any{"phases": []any{"Plan", map[string]any{"label": s}, "Check", "Act"}})
+		}, rendered: true},
+		"style":     {inject: func(string) map[string]any { return covCycle(map[string]any{"style": "nodes"}) }, rendered: false, why: "style selects the picture rather than contributing text of its own"},
+		"center":    {inject: func(s string) map[string]any { return covCycle(map[string]any{"center": s}) }, rendered: true},
+		"highlight": {inject: func(string) map[string]any { return covCycle(map[string]any{"highlight": "Check"}) }, rendered: false, why: "highlight names the accent phase rather than contributing text of its own"},
+		"left_label": {inject: func(s string) map[string]any {
+			return covCycle(map[string]any{"style": "figure_eight", "left_label": s})
+		}, rendered: true},
+		"right_label": {inject: func(s string) map[string]any {
+			return covCycle(map[string]any{"style": "figure_eight", "right_label": s})
+		}, rendered: true},
+		"title":    {inject: func(s string) map[string]any { return covCycle(map[string]any{"title": s}) }, rendered: true},
+		"takeaway": {inject: func(s string) map[string]any { return covCycle(map[string]any{"takeaway": s}) }, rendered: true},
+	},
 	// go-slide-creator-ec74l: every named risk has to reach its cell.
 	KindRiskHeatmap: {
 		"items": {inject: func(s string) map[string]any {
@@ -589,6 +607,16 @@ func TestSemanticPayloadFieldCoverage(t *testing.T) {
 			})
 		}
 	}
+}
+
+// covCycle returns a minimal valid cycle payload with the given fields
+// overlaid.
+func covCycle(overlay map[string]any) map[string]any {
+	body := map[string]any{"title": "The loop", "phases": []any{"Plan", "Do", "Check", "Act"}}
+	for k, v := range overlay {
+		body[k] = v
+	}
+	return body
 }
 
 // covRiskHeatmap returns a minimal valid risk_heatmap payload with the given

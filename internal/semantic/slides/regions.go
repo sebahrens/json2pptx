@@ -39,10 +39,12 @@ const (
 	RegionTimeline = "timeline"
 	RegionImage    = "image"
 	RegionText     = "text"
+	// RegionCycle is a loop, hub or nested rings: the cycle kind's fields.
+	RegionCycle = "cycle"
 )
 
 // RegionKinds lists the region kinds in a stable order.
-var RegionKinds = []string{RegionChart, RegionStat, RegionKPIs, RegionTable, RegionTimeline, RegionImage, RegionText}
+var RegionKinds = []string{RegionChart, RegionStat, RegionKPIs, RegionTable, RegionTimeline, RegionImage, RegionText, RegionCycle}
 
 // Region arrangements.
 const (
@@ -144,7 +146,7 @@ func RegionSizePct(region map[string]any) float64 {
 // regionWeight is a region kind's claim on space a share was not authored
 // for: a stat needs less than the timeline or table stacked with it, and a
 // chart more than either (go-slide-creator-vae7f).
-var regionWeight = map[string]float64{RegionStat: 2, RegionChart: 4}
+var regionWeight = map[string]float64{RegionStat: 2, RegionChart: 4, RegionCycle: 4}
 
 func regionWeightOf(r map[string]any) float64 {
 	if w, ok := regionWeight[strField(r, "kind")]; ok {
@@ -238,6 +240,8 @@ func regionMinHeightPct(r map[string]any, chartFloor bool) float64 {
 		}
 	case RegionImage:
 		pct = 25
+	case RegionCycle:
+		pct = cycleRegionMinHeightPct
 	default:
 		pct = RegionMinSizePct
 	}
@@ -609,6 +613,8 @@ func compileRegion(in Input, idx int, r map[string]any) (regionBuild, error) {
 		content, err = regionImage(r)
 	case RegionText:
 		content, err = regionText(r)
+	case RegionCycle:
+		content, err = regionCycle(r)
 	default:
 		return regionBuild{}, fmt.Errorf("unknown region kind %q", kind)
 	}
@@ -868,6 +874,8 @@ func RegionPatterns(body map[string]any) []string {
 			if cells, _ := kpiCells(r); len(cells) > 0 {
 				out[i] = fmt.Sprintf("kpi-%dup", len(cells))
 			}
+		case RegionCycle:
+			out[i] = CyclePattern(r)
 		}
 	}
 	return out
