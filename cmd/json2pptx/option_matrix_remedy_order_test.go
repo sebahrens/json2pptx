@@ -164,9 +164,17 @@ func appetiteBoardSpec() map[string]any {
 // (go-slide-creator-dwha2). Both boards were refused on the four templates the
 // runs used, 5pt and 35pt taller than the 253pt content area (94pt on
 // modern-template, whose face wrapped the details).
+//
+// The short race run measures both boards on modern-template, the template
+// that refused them by the most, and on modern, the shortest content area; the
+// integration corpus job measures every template (go-slide-creator-efhg2).
 func TestStatusBoardWithDetailsIsReadableOnEveryTemplate(t *testing.T) {
 	mc := handleTestConfig(t)
-	for _, tmpl := range testutil.AllTestTemplateNames() {
+	templates := testutil.AllTestTemplateNames()
+	if testing.Short() {
+		templates = []string{"modern-template", "modern"}
+	}
+	for _, tmpl := range templates {
 		for name, spec := range map[string]map[string]any{"audit": statusBoardSpec(), "appetite": appetiteBoardSpec()} {
 			res, err := mc.handleValidateDeckSpec(context.Background(), makeRequest(map[string]any{"spec": spec, "template": tmpl}))
 			if err != nil {

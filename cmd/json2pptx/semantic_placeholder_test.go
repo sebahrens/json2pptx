@@ -274,6 +274,11 @@ func collectFillPaths(v any, pointer string, out map[string]bool) {
 
 // Every registered marker is detected in any text field, and a suggested
 // patch value applied verbatim is one of them.
+//
+// Markers by fields is forty-two validations. The short race run puts the
+// first marker in every field and each other marker in one field, the fields
+// in turn, so every marker and every field is still read; the integration
+// corpus job runs the whole product (go-slide-creator-efhg2).
 func TestProductPlaceholdersAreDetectedInAnyField(t *testing.T) {
 	mc := refusalTestConfig(t)
 	samples := map[string]string{
@@ -284,13 +289,17 @@ func TestProductPlaceholdersAreDetectedInAnyField(t *testing.T) {
 		placeholder.NameRecipeCopy:         placeholder.RecipeCopy(placeholder.SlotTakeaway),
 		placeholder.NameArgumentHint:       rewriteHint("INPUT.SEMANTIC_DENSITY", map[string]any{"max_chars": 40}),
 	}
-	for _, m := range placeholder.Registered() {
+	fields := []string{"/meta/subtitle", "/meta/date", "/meta/source", "/slides/1/title", "/slides/1/kpis/0/label", "/slides/1/takeaway", "/slides/1/notes"}
+	for mi, m := range placeholder.Registered() {
 		text, ok := samples[m.Name]
 		if !ok {
 			t.Errorf("registered marker %s has no sample here: add one, so its detection is tested", m.Name)
 			continue
 		}
-		for _, field := range []string{"/meta/subtitle", "/meta/date", "/meta/source", "/slides/1/title", "/slides/1/kpis/0/label", "/slides/1/takeaway", "/slides/1/notes"} {
+		for fi, field := range fields {
+			if testing.Short() && mi != 0 && fi != mi%len(fields) {
+				continue
+			}
 			spec := decodeSpecObject(t, `{"meta":{"title":"Churn review","subtitle":"Board, October","date":"October 2026","source":"Company data"},"slides":[
 			 {"kind":"title","title":"Churn rose to 4.2% in the second quarter","subtitle":"Board, October"},
 			 {"kind":"kpi_snapshot","title":"Churn rose while net retention fell to 108%","kpis":[{"value":"4.2%","label":"Churn"},{"value":"108%","label":"NRR"}],"takeaway":"Retention needs a dedicated pod.","notes":"Speaker notes."}]}`)

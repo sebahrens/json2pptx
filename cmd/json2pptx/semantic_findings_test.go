@@ -63,6 +63,43 @@ func templateSensitiveSpec(t *testing.T) map[string]any {
 	return decodeSpecObject(t, overfullExecSummarySpec)
 }
 
+// overfullOnModernVerdicts is what validate_deck_spec and render_deck_spec
+// answer for overfullExecSummarySpec on "modern", from a config of their own,
+// asked once per test binary. The pair is a search for the cut that clears the
+// slide, in each tool, more than a minute under -race, and four tests read
+// the answer to the same request: the parity corpus, the root cause and its
+// symptoms, the template echo, and the journey delight that an over-full
+// slide is refused (go-slide-creator-efhg2). An answer is kept only when the
+// asking test had not failed by then, so every test that asks reports a
+// broken one; read it only.
+func overfullOnModernVerdicts(t *testing.T) deckSpecVerdict {
+	t.Helper()
+	overfullOnModern.mu.Lock()
+	defer overfullOnModern.mu.Unlock()
+	if overfullOnModern.have {
+		return overfullOnModern.verdicts
+	}
+	failedBefore := t.Failed()
+	v := deckSpecVerdicts(t, refusalTestConfig(t), map[string]any{"spec": decodeSpecObject(t, overfullExecSummarySpec), "template": overfullTemplate})
+	if !failedBefore && !t.Failed() {
+		overfullOnModern.verdicts, overfullOnModern.have = v, true
+	}
+	return v
+}
+
+var overfullOnModern struct {
+	mu       sync.Mutex
+	have     bool
+	verdicts deckSpecVerdict
+}
+
+// overfullTemplate is the template that refuses overfullExecSummarySpec, and
+// overfullCorpusName the spec's name in parityCorpus.
+const (
+	overfullTemplate   = "modern"
+	overfullCorpusName = "overfull-exec-summary"
+)
+
 // topicTitleSpec trips the gate on an aggregate criterion alone: more than a
 // quarter of its slides carry a topic title, and no single finding blocks.
 const topicTitleSpec = `{"meta":{"title":"Market review","archetype":"market_analysis"},"slides":[
@@ -331,7 +368,7 @@ func parityCorpus(t *testing.T) map[string]map[string]any {
 		kinds = append(kinds, semantic.KindExample(k))
 	}
 	corpus["all-kinds"] = map[string]any{"meta": map[string]any{"title": "Every kind"}, "slides": kinds}
-	corpus["overfull-exec-summary"] = decodeSpecObject(t, overfullExecSummarySpec)
+	corpus[overfullCorpusName] = decodeSpecObject(t, overfullExecSummarySpec)
 	corpus["pitch"] = decodeSpecObject(t, pitchSpec(""))
 	corpus["pitch-waived"] = decodeSpecObject(t, pitchSpec(`,"archetype":"sales_pitch","waivers":[{"code":"CLOSING_WITHOUT_NEXT_STEPS","reason":"The brief fixes seven slides; the ask is made verbally."}]`))
 	corpus["topic-titles"] = decodeSpecObject(t, topicTitleSpec)
@@ -380,7 +417,13 @@ func runParityCorpus(t *testing.T, mc *mcpConfig, templates []string, corpus map
 	for _, tpl := range templates {
 		for _, name := range names {
 			label := tpl + "/" + name
-			v := deckSpecVerdicts(t, mc, map[string]any{"spec": corpus[name], "template": tpl})
+			var v deckSpecVerdict
+			if name == overfullCorpusName && tpl == overfullTemplate {
+				// The same request as the shared answer's.
+				v = overfullOnModernVerdicts(t)
+			} else {
+				v = deckSpecVerdicts(t, mc, map[string]any{"spec": corpus[name], "template": tpl})
+			}
 			run.Structured[label] = parityResponses{Validate: v.ValidateStructured, Render: v.RenderStructured}
 			run.Pairs++
 			run.Problems = append(run.Problems, findingParityProblems(t, label, v)...)
@@ -617,8 +660,7 @@ func TestDeckSpecStorylineWaivers(t *testing.T) {
 // go-slide-creator-3rn3s: the root cause carries the blocking severity and its
 // symptoms are grouped beneath it, identically in both tools.
 func TestDeckSpecRootCauseCarriesSymptoms(t *testing.T) {
-	mc := refusalTestConfig(t)
-	v := deckSpecVerdicts(t, mc, map[string]any{"spec": decodeSpecObject(t, overfullExecSummarySpec), "template": "modern"})
+	v := overfullOnModernVerdicts(t)
 	assertFindingParity(t, "overfull", v)
 	if v.Render.OK {
 		t.Fatal("fixture no longer refused on modern")
@@ -681,8 +723,9 @@ func TestValidateDeckSpecEchoesAndWarnsAboutTemplate(t *testing.T) {
 	}
 	// One validate of the over-full deck serves the echo and the parity with
 	// its render: each is a search for the cut that clears it
-	// (go-slide-creator-q7cpq).
-	onModern := deckSpecVerdicts(t, mc, map[string]any{"spec": spec, "template": "modern"})
+	// (go-slide-creator-q7cpq). templateSensitiveSpec is the over-full deck,
+	// so the pair is the one the test binary asks once.
+	onModern := overfullOnModernVerdicts(t)
 	modern := onModern.Validate
 	if modern.Template != "modern" || modern.TemplateSource != "template argument" || modern.OK {
 		t.Errorf("template=modern: template %q source %q ok=%v", modern.Template, modern.TemplateSource, modern.OK)
@@ -756,8 +799,18 @@ func TestValidateDeckSpecAcrossTemplates(t *testing.T) {
 		t.Errorf("checking other templates rebound the deck: %+v", h)
 	}
 
-	// "all" is every template shipped with the server.
-	all := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": spec, "templates": []any{"all"}}))
+	// "all" is every template shipped with the server. With the spec above it
+	// is a search for the cut on each template that refuses it, nine times the
+	// call above: the short race run asks for a deck of one title slide, which
+	// names the same nine, and the integration corpus job for the spec itself
+	// (go-slide-creator-efhg2).
+	onAll := spec
+	if testing.Short() {
+		onAll = map[string]any{"meta": map[string]any{"title": "Margin plan", "template": "midnight-blue"}, "slides": []any{
+			map[string]any{"kind": "title", "title": "Margin plan lifts EBITDA by two points", "subtitle": "Board, October 2026"},
+		}}
+	}
+	all := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": onAll, "templates": []any{"all"}}))
 	if len(all.TemplateResults) != len(embeddedTemplateNames()) {
 		t.Errorf("all: %d results for %d shipped templates", len(all.TemplateResults), len(embeddedTemplateNames()))
 	}

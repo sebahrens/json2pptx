@@ -2,6 +2,7 @@ package main
 
 import (
 	"path/filepath"
+	"sort"
 	"testing"
 )
 
@@ -10,6 +11,11 @@ import (
 // carried raw hex chart colors that constrained mode refuses, and nothing
 // validated that directory. Users copy these files, so each must pass
 // `json2pptx validate` without errors.
+//
+// The sweep is every deck, about a quarter of an hour of validation under
+// -race. The short race run validates every third deck in name order — the
+// concurrent validation -race is there to watch, on a third of the files — and
+// the integration corpus job validates each one (go-slide-creator-efhg2).
 func TestShippedExamplesValidate(t *testing.T) {
 	// Read-only inputs; writes go only to t.TempDir() (go-slide-creator-s2s53).
 	t.Parallel()
@@ -24,7 +30,11 @@ func TestShippedExamplesValidate(t *testing.T) {
 	if len(paths) == 0 {
 		t.Fatal("no example decks found")
 	}
-	for _, path := range paths {
+	sort.Strings(paths)
+	for i, path := range paths {
+		if testing.Short() && i%3 != 0 {
+			continue
+		}
 		t.Run(filepath.Base(filepath.Dir(path))+"/"+filepath.Base(path), func(t *testing.T) {
 			t.Parallel()
 			result := validateJSONFile(path, testTemplatesDir, "", false, "warn")

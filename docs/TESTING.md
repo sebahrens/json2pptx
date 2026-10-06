@@ -136,7 +136,11 @@ time and the slowest tests.
 - **Affinity.** Tests that share a once-per-binary fixture are listed as one
   group in `scripts/ci_test_affinity.txt` and land in one shard, so the
   fixture is computed once (the agent-journey group: the short parity corpus,
-  the short patch harness, the twelve-flaw journey).
+  the short patch harness, the twelve-flaw journey, the over-full summary's
+  answer on modern; the two `semantic kinds <kind>` tests; the two exemplar
+  deck tests). Before a test asks the tools for an answer another test of the
+  package already asks for — the same spec, template and arguments — give
+  both one fixture and one group.
 - **Short matrices.** A test whose cost is a matrix takes two templates (or a
   few decks) under `-short` and the whole matrix otherwise. The whole matrix
   must still run in CI: name the test `...AcrossTemplates` or `...Corpus`, or

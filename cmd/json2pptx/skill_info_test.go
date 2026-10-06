@@ -859,9 +859,22 @@ func TestAnalyzeTemplateForSkillInfo_CanonicalMetadataFull(t *testing.T) {
 	}
 }
 
+// Every layout_id a template's skill info advertises as derivable resolves to
+// a layout the template has. A full analysis of a template is seconds under
+// -race, so the short race run takes two templates — midnight-blue, whose
+// seven layouts and three addresses are what most templates have, and modern,
+// the one with nine layouts and a fourth address — and the integration corpus
+// job every one (go-slide-creator-efhg2).
 func TestDerivableLayoutAddressesExistInLocalCorpus(t *testing.T) {
 	cache := template.NewMemoryCache(24 * time.Hour)
-	for _, file := range testutil.TestTemplatePaths() {
+	files := testutil.TestTemplatePaths()
+	if testing.Short() {
+		files = []string{
+			filepath.Join(testutil.TemplatesDir(), "midnight-blue.pptx"),
+			filepath.Join(testutil.TemplatesDir(), "modern.pptx"),
+		}
+	}
+	for _, file := range files {
 		t.Run(filepath.Base(file), func(t *testing.T) {
 			info, err := analyzeTemplateForSkillInfo(file, cache, "full")
 			if err != nil {

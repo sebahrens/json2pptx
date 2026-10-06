@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -564,6 +565,38 @@ func lastLine(s string) string {
 	return lines[len(lines)-1]
 }
 
+// semanticKindDetailArgs is the command line that describes one kind. A
+// detail's budgets are measured on every shipped template unless one is named,
+// most of a second per run of the binary; the tests below run it for every
+// kind and read the kind's fields and example, which no template changes. The
+// short race run names a template for every kind but the
+// first, which keeps the default basis under test; the integration corpus job
+// runs the bare command for each (go-slide-creator-efhg2).
+func semanticKindDetailArgs(kind string, more ...string) []string {
+	args := append([]string{"semantic", "kinds", kind}, more...)
+	if testing.Short() && kind != string(semantic.AllSlideKinds()[0]) {
+		args = append(args, "--template", "midnight-blue")
+	}
+	return args
+}
+
+// semanticKindDetailText is what `json2pptx semantic kinds <kind>` prints and
+// its exit code, asked once per test binary: the catalogue test and the
+// example test both read it.
+func semanticKindDetailText(t *testing.T, kind string) (string, int) {
+	t.Helper()
+	if cached, ok := semanticKindTexts.Load(kind); ok {
+		return cached.(string), 0
+	}
+	text, _, code := cliRun(t, nil, semanticKindDetailArgs(kind)...)
+	if code == 0 {
+		semanticKindTexts.Store(kind, text)
+	}
+	return text, code
+}
+
+var semanticKindTexts sync.Map
+
 // TestSemanticKindsMatchesListSlideKinds keeps the CLI catalogue and the
 // list_slide_kinds MCP tool in sync: same kinds, same summaries' first
 // sentence, same required fields, and the same example for every kind
@@ -621,7 +654,7 @@ func TestSemanticKindsMatchesListSlideKinds(t *testing.T) {
 	// Per-kind detail: the JSON example is list_slide_kinds' example, and the
 	// text form carries the same example as YAML ready to paste.
 	for _, want := range mcpCatalogue.SlideKinds {
-		stdout, stderr, code := cliRun(t, nil, "semantic", "kinds", want.Kind, "--format", "json")
+		stdout, stderr, code := cliRun(t, nil, semanticKindDetailArgs(want.Kind, "--format", "json")...)
 		if code != 0 {
 			t.Errorf("semantic kinds %s exited %d: %s", want.Kind, code, stderr)
 			continue
@@ -642,7 +675,7 @@ func TestSemanticKindsMatchesListSlideKinds(t *testing.T) {
 			t.Errorf("%s: detail carries no item_schema", want.Kind)
 		}
 
-		text, _, code := cliRun(t, nil, "semantic", "kinds", want.Kind)
+		text, code := semanticKindDetailText(t, want.Kind)
 		if code != 0 {
 			t.Errorf("semantic kinds %s (text) exited %d", want.Kind, code)
 			continue
@@ -669,7 +702,7 @@ func TestSemanticKindsMatchesListSlideKinds(t *testing.T) {
 func TestSemanticKindExamplesValidate(t *testing.T) {
 	dir := t.TempDir()
 	for _, k := range semantic.AllSlideKinds() {
-		text, _, code := cliRun(t, nil, "semantic", "kinds", string(k))
+		text, code := semanticKindDetailText(t, string(k))
 		if code != 0 {
 			t.Fatalf("semantic kinds %s exited %d", k, code)
 		}

@@ -51,6 +51,14 @@ var shortSensitiveTests = map[string]func(*testing.T){
 	"TestValidateExpandsPatternsLikeGeneration":                TestValidateExpandsPatternsLikeGeneration,
 	"TestSchemaMaximaRunTemplateNames":                         TestSchemaMaximaRunTemplateNames,
 	"TestGetStartedSequences_Executable":                       TestGetStartedSequences_Executable,
+	// go-slide-creator-efhg2: two templates of nine, a third of the example
+	// decks, one field per marker, a named template for a kind's detail.
+	"TestStatusBoardWithDetailsIsReadableOnEveryTemplate": TestStatusBoardWithDetailsIsReadableOnEveryTemplate,
+	"TestSlideKindBudgetsAgreeWithRenderFindings":         TestSlideKindBudgetsAgreeWithRenderFindings,
+	"TestProductPlaceholdersAreDetectedInAnyField":        TestProductPlaceholdersAreDetectedInAnyField,
+	"TestShippedExamplesValidate":                         TestShippedExamplesValidate,
+	"TestSemanticKindsMatchesListSlideKinds":              TestSemanticKindsMatchesListSlideKinds,
+	"TestSemanticKindExamplesValidate":                    TestSemanticKindExamplesValidate,
 
 	// Skipped under -short.
 	"TestAppendixPageLabelsRawStructure":                              TestAppendixPageLabelsRawStructure,
