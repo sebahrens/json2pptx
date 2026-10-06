@@ -225,7 +225,7 @@ func (c *cycleNodes) Schema() *Schema {
 	overridesSchema.raw.Properties["header_size"] = NumberSchema(12, 28).WithDescription("Step label font size in points (default 14; steps down to 12 when the rows need it)")
 	overridesSchema.raw.Properties["body_size"] = NumberSchema(12, 20).WithDescription("Description font size in points (default 12)")
 	overridesSchema.raw.Properties["direction"] = EnumSchema(cycleNodesDirections...).WithDescription("Direction of travel from step 1 (default clockwise)").WithDefault(cycleNodesClockwise)
-	overridesSchema.raw.Properties["labels"] = EnumSchema(cycleNodesLabelModes...).WithDescription("outside (default): label rows in a column either side of the ring, each led by its step number; an area too narrow for two columns takes legend by itself. legend: one numbered list beside the ring. inside: the node carries the label and the number moves to a small badge (3-5 steps, labels of at most 14 characters, no descriptions)").WithDefault(cycleNodesLabelsOutside)
+	overridesSchema.raw.Properties["labels"] = EnumSchema(cycleNodesLabelModes...).WithDescription("outside (default): a label row beside each node, led by its step number; an area too narrow for two columns takes legend by itself. legend: one numbered list beside the ring. inside: the node carries the label and the number moves to a small badge (3-5 steps, labels of at most 14 characters, no descriptions)").WithDefault(cycleNodesLabelsOutside)
 	overridesSchema.raw.Properties["arrows"] = EnumSchema(cycleNodesArrowModes...).WithDescription("curved (default): an arrow from each node to the next. none: a nondirectional cycle with plain gaps").WithDefault(cycleNodesArrowsCurved)
 
 	return ObjectSchema(map[string]*Schema{
