@@ -99,6 +99,12 @@ slide, the rest in the appendix table — not two half-empty slides.
 instruction: unnumbered divider, A1-style pages, excluded from the agenda and
 from the rhythm checks.
 
+**The control cycle** — when the finding is about a control that recurs
+(identify → assess → respond → monitor → report), use the `cycle` kind
+(`style: ring`, 4–8 phases) and `highlight` the phase where the control
+failed; the title states the failure. A one-off remediation path is a
+`process`, not a cycle.
+
 ## Variants
 
 | Engagement | Spine changes |

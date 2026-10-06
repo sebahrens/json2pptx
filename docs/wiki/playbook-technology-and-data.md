@@ -96,6 +96,39 @@ beside the chart is the saving; the table is what the CFO will check.
 screenshot is often the strongest slide: it shows the audience what the
 operations team sees. Keep the text to the fact the picture proves.
 
+**Build and run as one loop.** When the operating model is two loops that
+feed each other (build ↔ run, plan ↔ deliver), the `cycle` kind with
+`style: figure_eight` draws one path round both; it needs the slide's full
+width, so use `style: ring` in a half-width region. Name the hand-over phase in
+`highlight`:
+
+```yaml
+meta:
+  title: Atlas Retail data platform
+  template: modern-template
+  date: October 2026
+slides:
+  - kind: cycle
+    style: figure_eight
+    title: Release is where the build loop hands over to the run loop
+    left_label: Build
+    right_label: Run
+    phases:
+      - label: Plan
+        description: Rank the backlog by customer value
+      - label: Code
+        description: Small changes, reviewed in a day
+      - label: Test
+        description: Automated checks gate every merge
+      - label: Release
+        description: Ship behind a feature flag
+      - label: Operate
+        description: On-call owns the service level
+      - label: Monitor
+        description: Usage and incidents feed the plan
+    highlight: Release
+```
+
 ## Variants
 
 | Engagement | Spine changes |
