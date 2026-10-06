@@ -159,6 +159,9 @@ const (
 	cycleIntakeDescInset  = 2.0
 	cycleIntakeMaxLabelPt = 280.0 // widest list column: the rest of a wide slide centres the block
 
+	cycleIntakeMaxShrink   = 0.15 // share of its side the ring gives the list when its rows would not keep one pitch
+	cycleIntakeShrinkSteps = 3
+
 	cycleIntakeStackedRingFrac = 0.45 // ring side as a share of the width when stacked
 
 	// Entry arrow: a block arrow with a head as long as the arrow is wide.
@@ -450,29 +453,14 @@ func cycleIntakeMeasure(ctx ExpandContext, v *CycleIntakeValues, ovr *CycleIntak
 	laneW := math.Max(w*cycleIntakeLaneFrac[nI], float64(nI)*cycleIntakeMinStepPt+gaps)
 	stepW := math.Min((laneW-gaps)/float64(nI), cycleIntakeMaxStepPt)
 	laneW = float64(nI)*stepW + gaps
-	side := cycleNodesRingSide(w, h, cycleIntakeRingFrac[nI])
-	fixed := laneW + cycleIntakeArrowGapPt + cycleIntakeArrowLenPt + side + cycleRingLegendGapPt + ringNumberColPt
-	labelW := w - fixed
-	if labelW < cycleRingLegendMinPt {
+	full := cycleNodesRingSide(w, h, cycleIntakeRingFrac[nI])
+	if w-cycleIntakeFixedPt(laneW, full) < cycleRingLegendMinPt {
 		return cycleIntakeStack(ctx, v, ovr, lay, stepPt)
 	}
-	labelW = math.Min(labelW, cycleIntakeMaxLabelPt)
-	lay.laneX0 = math.Max((w-fixed-labelW)/2, 0)
 
 	lay.fit = cycleIntakeFitLane(ctx, v, stepW, stepPt)
 	lay.unfit = lay.fit.unfit
 	laneH := math.Min(cycleIntakeLaneHeight(ctx, v, lay.fit), h)
-	lay.lane = cycleIntakeBox{x0: lay.laneX0, x1: lay.laneX0 + laneW, y0: (h - laneH) / 2, y1: (h + laneH) / 2}
-
-	lay.ringX = lay.lane.x1 + cycleIntakeArrowGapPt + cycleIntakeArrowLenPt
-	lay.entry = cycleIntakeBox{x0: lay.lane.x1 + cycleIntakeArrowGapPt, x1: lay.ringX, y0: (h - cycleIntakeArrowWPt) / 2, y1: (h + cycleIntakeArrowWPt) / 2}
-	if err := lay.placeRing(ctx, v, side, (h-math.Min(side, h))/2, cycleIntakeStartDeg); err != nil {
-		return lay, err
-	}
-
-	// Descriptions under the lane, each as wide as its arrow.
-	lay.descY0 = lay.lane.y1 + ctx.Gap(cycleIntakeDescGapPt)
-	lay.descRoom = math.Max(h-lay.descY0, 0)
 	lay.descNeed = make([]float64, nI)
 	for i, s := range v.Intake {
 		if d := strings.TrimSpace(s.Description); d != "" {
@@ -480,9 +468,61 @@ func cycleIntakeMeasure(ctx ExpandContext, v *CycleIntakeValues, ovr *CycleIntak
 		}
 	}
 
-	lay.listX0 = lay.ringX + lay.side + ctx.Gap(cycleRingLegendGapPt)
-	lay.placeList(ctx, v, ovr, math.Min(labelW, w-lay.listX0-ringNumberColPt), 0, h)
-	return lay, nil
+	// The ring takes its share of the width. When the list beside it cannot
+	// keep one pitch (a row measured a line taller than the others, and the
+	// height does not hold every row at that height), the ring gives up to
+	// cycleIntakeMaxShrink of its side to the list column, where the long row
+	// sets on the lines of the others (go-slide-creator-by2e3). A ring whose
+	// centre label would stop fitting keeps its side.
+	var first cycleIntakeLayout
+	for step := 0; step <= cycleIntakeShrinkSteps; step++ {
+		side := full * (1 - cycleIntakeMaxShrink*float64(step)/cycleIntakeShrinkSteps)
+		if step > 0 && side < ringMinSidePt {
+			break
+		}
+		try := lay
+		even, err := try.placeSideBySide(ctx, v, ovr, laneW, laneH, side)
+		if err != nil {
+			return try, err
+		}
+		if step == 0 {
+			first = try
+		}
+		if even && (step == 0 || try.centreFits || !first.centreFits) {
+			return try, nil
+		}
+	}
+	return first, nil
+}
+
+// cycleIntakeFixedPt is the width of the side-by-side layout without its list
+// labels: lane, entry arrow, ring, the gap to the list and the numerals.
+func cycleIntakeFixedPt(laneW, side float64) float64 {
+	return laneW + cycleIntakeArrowGapPt + cycleIntakeArrowLenPt + side + cycleRingLegendGapPt + ringNumberColPt
+}
+
+// placeSideBySide places the lane (laneW x laneH), the entry arrow, a ring of
+// the given side and the list, left to right and centred as a block. It
+// reports whether the list keeps one pitch with nothing cut or left off.
+func (l *cycleIntakeLayout) placeSideBySide(ctx ExpandContext, v *CycleIntakeValues, ovr *CycleIntakeOverrides, laneW, laneH, side float64) (bool, error) {
+	w, h := l.w, l.h
+	fixed := cycleIntakeFixedPt(laneW, side)
+	labelW := math.Min(math.Max(w-fixed, 1), cycleIntakeMaxLabelPt)
+	l.laneX0 = math.Max((w-fixed-labelW)/2, 0)
+	l.lane = cycleIntakeBox{x0: l.laneX0, x1: l.laneX0 + laneW, y0: (h - laneH) / 2, y1: (h + laneH) / 2}
+
+	l.ringX = l.lane.x1 + cycleIntakeArrowGapPt + cycleIntakeArrowLenPt
+	l.entry = cycleIntakeBox{x0: l.lane.x1 + cycleIntakeArrowGapPt, x1: l.ringX, y0: (h - cycleIntakeArrowWPt) / 2, y1: (h + cycleIntakeArrowWPt) / 2}
+	if err := l.placeRing(ctx, v, side, (h-math.Min(side, h))/2, cycleIntakeStartDeg); err != nil {
+		return false, err
+	}
+
+	// Descriptions under the lane, each as wide as its arrow.
+	l.descY0 = l.lane.y1 + ctx.Gap(cycleIntakeDescGapPt)
+	l.descRoom = math.Max(h-l.descY0, 0)
+
+	l.listX0 = l.ringX + l.side + ctx.Gap(cycleRingLegendGapPt)
+	return l.placeList(ctx, v, ovr, math.Min(labelW, w-l.listX0-ringNumberColPt), 0, h), nil
 }
 
 // cycleIntakeStack lays the pattern out for a narrow area: the lane across
@@ -636,8 +676,15 @@ func (l *cycleIntakeLayout) placeRing(ctx ExpandContext, v *CycleIntakeValues, s
 }
 
 // placeList measures the numbered list (cycle-ring's legend rows) in the
-// strip [top, bottom] with labels labelW wide.
-func (l *cycleIntakeLayout) placeList(ctx ExpandContext, v *CycleIntakeValues, ovr *CycleIntakeOverrides, labelW, top, bottom float64) {
+// strip [top, bottom] with labels labelW wide, and reports whether the list
+// keeps one pitch with nothing cut or left off.
+//
+// The rows share one pitch wherever the strip holds every row at the height
+// of the tallest, so the numbers step down evenly: at the default label size
+// and row gap first, then at the tighter gap and the 12pt floor. Only a list
+// that holds its rows at their own heights and no more keeps them (uneven),
+// and one that does not hold them at all is cut as cycle-ring's legend is.
+func (l *cycleIntakeLayout) placeList(ctx ExpandContext, v *CycleIntakeValues, ovr *CycleIntakeOverrides, labelW, top, bottom float64) bool {
 	l.listY = top
 	l.list = cycleRingLayout{
 		w: l.w, h: math.Max(bottom-top, 1),
@@ -649,30 +696,50 @@ func (l *cycleIntakeLayout) placeList(ctx ExpandContext, v *CycleIntakeValues, o
 	if ovr.HeaderSize == 0 {
 		sizes = append(sizes, shapegrid.MinTextSizePt)
 	}
-	cycleRingLegendRows(ctx, v.phases(), &l.list, sizes)
+	phases := v.phases()
+	if cycleIntakeEvenRows(ctx, phases, &l.list, sizes) {
+		return true
+	}
+	cycleRingLegendRows(ctx, phases, &l.list, sizes)
+	if !l.list.showDesc {
+		// The descriptions are left off: the labels alone keep one pitch where
+		// the strip holds them (at the 12pt floor when one wraps above it).
+		cycleIntakeEvenRows(ctx, phases, &l.list, sizes)
+	}
+	return false
+}
 
-	// One pitch for the whole list where the strip holds it: rows as tall as
-	// the tallest, so the numbers step down evenly.
-	rows := l.list.rows
-	if len(rows) < 2 {
-		return
-	}
-	gap, tallest := rows[1].y0-rows[0].y1, 0.0
-	for _, r := range rows {
-		if r.capped {
-			return
+// cycleIntakeEvenRows stacks one row per phase at one pitch, every row as
+// tall as the tallest, the block centred on the strip. It tries each label
+// size at the default and then the tighter row gap, and reports false (the
+// layout's rows untouched) when the strip holds none of them.
+func cycleIntakeEvenRows(ctx ExpandContext, v *CycleRingValues, lay *cycleRingLayout, sizes []float64) bool {
+	n := len(v.Phases)
+	try := *lay
+	for _, size := range sizes {
+		try.labelPt = size
+		need := try.needs(ctx, v, try.labelW)
+		tallest := 0.0
+		for _, x := range need {
+			tallest = math.Max(tallest, x)
 		}
-		tallest = math.Max(tallest, r.y1-r.y0)
+		for _, gap := range []float64{ctx.Gap(cycleRingRowGapPt), ctx.Gap(cycleRingMinRowGapPt)} {
+			total := float64(n)*tallest + float64(n-1)*gap
+			if total > try.h+0.01 {
+				continue
+			}
+			y := math.Max((try.h-total)/2, 0)
+			try.rows = make([]cycleRingRow, n)
+			for i := range try.rows {
+				try.rows[i] = cycleRingRow{side: ringSideRight, y0: y, y1: math.Min(y+tallest, try.h), need: need[i],
+					numX0: try.w - try.labelW - ringNumberColPt, labelX0: try.w - try.labelW, labelX1: try.w}
+				y += tallest + gap
+			}
+			*lay = try
+			return true
+		}
 	}
-	total := float64(len(rows))*tallest + float64(len(rows)-1)*gap
-	if total > l.list.h+0.01 {
-		return
-	}
-	y := math.Max((l.list.h-total)/2, 0)
-	for i := range rows {
-		rows[i].y0, rows[i].y1 = y, math.Min(y+tallest, l.list.h)
-		y += tallest + gap
-	}
+	return false
 }
 
 // ---------------------------------------------------------------------------
