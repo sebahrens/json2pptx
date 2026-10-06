@@ -190,6 +190,15 @@ func cycleShapeFields() map[string]payloadField {
 	}
 }
 
+// cycleRegionFields is a cycle region's contract: the shape fields under
+// their canonical names — a region takes no aliases.
+func cycleRegionFields() map[string]payloadField {
+	fields := cycleShapeFields()
+	delete(fields, "steps")
+	delete(fields, "items")
+	return fields
+}
+
 // cycleFields is the cycle slide's payload contract.
 func cycleFields() map[string]payloadField {
 	return withFields(map[string]payloadField{

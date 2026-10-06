@@ -62,7 +62,7 @@ var regionPayloadFields = map[string]map[string]payloadField{
 		"body":    strField("Narrative text, ≤400 chars; a newline starts a paragraph."),
 		"bullets": {typ: "array", itemStrings: true, desc: "Up to 6 bullets."},
 	}, regionCommonFields()),
-	slides.RegionCycle: withFields(cycleShapeFields(), regionCommonFields()),
+	slides.RegionCycle: withFields(cycleRegionFields(), regionCommonFields()),
 }
 
 // regionRequired lists each region kind's required content field.
