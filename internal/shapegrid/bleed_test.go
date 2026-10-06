@@ -43,6 +43,52 @@ func TestResolveBleedLeftExtendsTheShapeOnly(t *testing.T) {
 	}
 }
 
+// An interlocking chevron bleeds by its own notch. The notch is the "adj"
+// share of the shorter side, so it deepens when the composition policy grows
+// the row, and stops once the chevron is taller than wide: the bleed is scaled
+// with the row and held to the notch that is drawn, so the slanted gap keeps
+// its width (go-slide-creator-cuq95).
+func TestChevronBleedFollowsItsNotch(t *testing.T) {
+	pt := func(v float64) int64 { return PtToEMU(v) }
+	chevron := func(adj int64) *ShapeSpec {
+		return &ShapeSpec{Geometry: "chevron", Adjustments: map[string]int64{"adj": adj}}
+	}
+	for _, tc := range []struct {
+		name        string
+		spec        *ShapeSpec
+		bleed, w, h float64
+		want        float64
+	}{
+		// 18pt notch on a 100pt row: adj 18000. The bleed is the notch.
+		{"bleed equal to the notch is kept", chevron(18000), 18, 200, 100, 18},
+		// The row grown 1.5x with its bleed: the notch is 27pt, and so is it.
+		{"a scaled bleed matches a scaled notch", chevron(18000), 27, 200, 150, 27},
+		// Grown past square: the notch is adj of the bled width, 43.9pt.
+		{"taller than wide stops at the width's notch", chevron(18000), 54, 200, 300, 0.18 * 200 / 0.82},
+		{"a shallower bleed is the author's", chevron(18000), 6, 200, 100, 6},
+		{"no authored adj", &ShapeSpec{Geometry: "chevron"}, 40, 200, 100, 40},
+		{"another shape", &ShapeSpec{Geometry: "rect", Adjustments: map[string]int64{"adj": 18000}}, 40, 200, 100, 40},
+	} {
+		got := chevronBleedEMU(tc.spec, pt(tc.bleed), pt(tc.w), pt(tc.h))
+		if math.Abs(float64(got-pt(tc.want))) > 2 {
+			t.Errorf("%s: bleed = %.2fpt, want %.2fpt", tc.name, float64(got)/12700, tc.want)
+		}
+	}
+
+	// scaledGrid grows a chevron's bleed with its row and nothing else's.
+	grid := &Grid{Bounds: DefaultBounds(0, 0), Columns: []float64{50, 50}, Rows: []Row{{MaxHeight: 100, Cells: []Cell{
+		{Shape: &ShapeSpec{Geometry: "rect"}, BleedLeft: 2},
+		{Shape: chevron(18000), BleedLeft: 18},
+	}}}}
+	scaled := scaledGrid(grid, 1.5)
+	if got := scaled.Rows[0].Cells[0].BleedLeft; got != 2 {
+		t.Errorf("a rectangle's bleed was scaled to %.1fpt", got)
+	}
+	if got := scaled.Rows[0].Cells[1].BleedLeft; got != 27 {
+		t.Errorf("the chevron's bleed = %.1fpt after a 1.5x row growth, want 27pt", got)
+	}
+}
+
 func TestValidateTrackWeightsRejectsBadBleed(t *testing.T) {
 	for _, bad := range []float64{-1, math.NaN(), math.Inf(1)} {
 		grid := &Grid{Columns: []float64{100}, Rows: []Row{{Cells: []Cell{{Shape: &ShapeSpec{Geometry: "rect", Fill: json.RawMessage(`"accent1"`)}, BleedLeft: bad}}}}}

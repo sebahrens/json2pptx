@@ -89,7 +89,7 @@ func withTextInsetSides(text json.RawMessage, pt float64, sides ...string) json.
 // the step style.
 func processFlowOverridesSchema() *Schema {
 	s := textOverridesSchemaWithout("header_size")
-	s.raw.Properties["style"] = EnumSchema(processFlowStyles...).WithDescription("tinted (default): steps on a neutral tint with dark text and accent connectors; the solid accent fills only the highlighted step (steps[].highlight) or, when none is highlighted, a flow's single decision — further decisions get an accent outline. solid: every step filled with the accent, cell_accent_mode applies (legacy look)").WithDefault("tinted")
+	s.raw.Properties["style"] = EnumSchema(processFlowStyles...).WithDescription("chevrons (default): steps are interlocking arrows in a light accent tint, a pentagon first and chevrons tucked under the point before them, with no connector lines; the solid accent fills only the highlighted step (steps[].highlight) or, when none is highlighted, a flow's single decision — further decisions get an accent outline. tinted: the flowchart look, neutral boxes joined by accent connector arrows. solid: boxes all filled with the accent, cell_accent_mode applies (legacy look)").WithDefault(processFlowStyleChevrons)
 	return s
 }
 
@@ -98,8 +98,8 @@ func processFlowStepSchema(labelDesc string) *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"label":     StringSchema(80).WithDescription(labelDesc),
-			"type":      EnumSchema("step", "decision", "chevron", "arrow").WithDescription("Shape type: rectangle (step), diamond (decision), chevron, or right-arrow (arrow)").WithDefault("step"),
-			"highlight": BooleanSchema().WithDescription("Fill this step with the solid accent as the flow's one emphasised step (at most one step). Steps are otherwise a neutral tint").WithDefault(false),
+			"type":      EnumSchema("step", "decision", "chevron", "arrow").WithDescription("Shape type: step (an interlocking arrow; a rectangle in the tinted / solid styles), diamond (decision), chevron (free-standing, deep notch), or right-arrow (arrow)").WithDefault("step"),
+			"highlight": BooleanSchema().WithDescription("Fill this step with the solid accent as the flow's one emphasised step (at most one step). Steps are otherwise a light tint").WithDefault(false),
 		},
 		[]string{"label"},
 	).WithAdditionalProperties(false)
@@ -137,19 +137,28 @@ func validateProcessFlowStyle(name string, steps []ProcessFlowStep, overrides an
 }
 
 // buildProcessFlowCells builds the step cells shared by process-flow and
-// process-flow-compact.
-func buildProcessFlowCells(ctx ExpandContext, steps []ProcessFlowStep, ovr *ProcessFlowOverrides, cellOverrides map[int]any, bodySize float64) []*jsonschema.GridCellInput {
+// process-flow-compact. look is the flow's style and, for the default chevron
+// look, the geometry its plain steps are drawn at (processflow_chevrons.go).
+func buildProcessFlowCells(ctx ExpandContext, steps []ProcessFlowStep, ovr *ProcessFlowOverrides, cellOverrides map[int]any, bodySize float64, look processFlowLook) []*jsonschema.GridCellInput {
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	solid := ovr.Style == "solid"
+	solid := ovr.Style == processFlowStyleSolid
 	emphasis := processFlowEmphasisIndex(steps)
+	// The default look tints its steps with the accent; the flowchart look
+	// keeps them neutral.
+	stepTone, stepInk := neutralTone(ProcessFlowStepTintPct), "dk1"
+	if look.chevrons {
+		stepTone = inactiveTintTone(baseAccent)
+		stepInk = readableTextOn(ctx, stepTone, "dk1")
+	}
 	cells := make([]*jsonschema.GridCellInput, len(steps))
+	number := 0
 	for i, step := range steps {
 		accent := baseAccent
 		if solid {
 			accent = ctx.ResolveCellAccent(baseAccent, i, ovr.CellAccentMode)
 		}
 		geometry := "roundRect"
-		pointed := false
+		pointed, interlocked := false, false
 		switch step.Type {
 		case "decision":
 			geometry = "diamond"
@@ -159,11 +168,20 @@ func buildProcessFlowCells(ctx ExpandContext, steps []ProcessFlowStep, ovr *Proc
 		case "arrow":
 			geometry = "rightArrow"
 			pointed = true
+		default:
+			if look.chevrons {
+				geometry = look.stepGeometry(i)
+				interlocked = true
+			}
+		}
+		if step.Type != "decision" {
+			number++
 		}
 
-		fill, ink, line := neutralFillJSON(ProcessFlowStepTintPct), "dk1", noLine
+		fill, ink, line := stepTone.fillJSON(), stepInk, noLine
+		emphasised := solid || i == emphasis
 		switch {
-		case solid || i == emphasis:
+		case emphasised:
 			fill, ink, line = json.RawMessage(fmt.Sprintf(`"%s"`, accent)), "lt1", nil
 		case step.Type == "decision":
 			data, _ := json.Marshal(map[string]any{"color": accent, "width": processFlowDecisionLinePt})
@@ -178,6 +196,13 @@ func buildProcessFlowCells(ctx ExpandContext, steps []ProcessFlowStep, ovr *Proc
 		if geometry == "diamond" {
 			text = withTextInsets(text, processFlowDiamondInsetPt)
 		}
+		if interlocked {
+			numeralInk := ink
+			if !emphasised {
+				numeralInk = processFlowNumeralInk(ctx, stepTone, accent, ink)
+			}
+			text = look.stepText(label, bodySize, ink, number, numeralInk)
+		}
 
 		cell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
@@ -187,10 +212,12 @@ func buildProcessFlowCells(ctx ExpandContext, steps []ProcessFlowStep, ovr *Proc
 				Text:     text,
 			},
 		}
-		switch geometry {
-		case "chevron":
+		switch {
+		case interlocked:
+			cell.BleedLeft = look.bleedPt(i)
+		case geometry == "chevron":
 			cell.Shape.Adjustments = map[string]int64{"adj": chevronAdj}
-		case "rightArrow":
+		case geometry == "rightArrow":
 			cell.Shape.Adjustments = map[string]int64{"adj1": processFlowArrowShaftAdj, "adj2": processFlowArrowHeadAdj}
 			cell.Shape.Text = withTextInsetSides(text, processFlowArrowInsetPt, "inset_top", "inset_bottom")
 		}
@@ -236,6 +263,10 @@ func processFlowEmphasisIndex(steps []ProcessFlowStep) int {
 // was dk1, the one black connector in the pattern family) on a 2pt line with
 // the large arrowhead, so the direction reads at presentation size.
 func processFlowConnector(ctx ExpandContext, ovr *ProcessFlowOverrides) *jsonschema.ConnectorSpecInput {
+	if processFlowChevronStyle(ovr) {
+		// The interlocking arrows say which step follows which.
+		return nil
+	}
 	return &jsonschema.ConnectorSpecInput{
 		Style: "arrow",
 		Color: ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent),
