@@ -261,14 +261,37 @@ func TestHoistedItemSchemasPreserveEveryKindField(t *testing.T) {
 			}
 			afterField := afterProps[fieldName].(map[string]any)
 			afterItem := afterField["items"]
-			if ref, ok := afterItem.(map[string]any)["$ref"].(string); ok {
-				afterItem = afterDefs[strings.TrimPrefix(ref, "#/$defs/")]
-			}
+			// A region variant's lists are hoisted too: resolve every shared
+			// definition below the field before comparing.
+			afterItem = inlineItemRefs(afterItem, afterDefs)
 			if !reflect.DeepEqual(beforeItem, afterItem) {
 				t.Errorf("%s.%s changed when item schema was hoisted", kind, fieldName)
 			}
 		}
 	}
+}
+
+// inlineItemRefs replaces every reference to a hoisted item definition (I<n>)
+// below a schema node with the definition itself.
+func inlineItemRefs(node any, defs map[string]any) any {
+	switch t := node.(type) {
+	case map[string]any:
+		if ref, ok := t["$ref"].(string); ok && strings.HasPrefix(ref, "#/$defs/I") {
+			return defs[strings.TrimPrefix(ref, "#/$defs/")]
+		}
+		out := make(map[string]any, len(t))
+		for k, v := range t {
+			out[k] = inlineItemRefs(v, defs)
+		}
+		return out
+	case []any:
+		out := make([]any, len(t))
+		for i, v := range t {
+			out[i] = inlineItemRefs(v, defs)
+		}
+		return out
+	}
+	return node
 }
 
 func TestCompactInlineSchemaKeepsStructure(t *testing.T) {

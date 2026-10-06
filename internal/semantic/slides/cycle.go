@@ -464,9 +464,11 @@ func (p cyclePayload) patternIssues(info cycleStyleInfo) []CycleIssue {
 	}
 	var out []CycleIssue
 	for _, f := range findings {
-		field, what, value, known := p.authoredPath(info, f.Path)
+		// The findings arrive rooted at the pattern block ("values.spokes[2].label").
+		path := strings.TrimPrefix(f.Path, "values.")
+		field, what, value, known := p.authoredPath(info, path)
 		switch {
-		case f.Path == info.list, f.Path == "intake", f.Path == "highlight", f.Path == "center.label" && f.Code == patterns.ErrCodeRequired:
+		case path == info.list, path == "intake", path == "highlight", path == "center.label" && f.Code == patterns.ErrCodeRequired:
 			// The count, the highlight and the hub are reported above in the
 			// kind's own words.
 			continue

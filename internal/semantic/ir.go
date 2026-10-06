@@ -821,21 +821,15 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 			{Layout: "content", Reason: "bullets preserve more actions or longer copy"},
 		}
 	default:
-		return otherCompositionCandidates(kind, selected)
+		return otherCompositionCandidates(kind)
 	}
 }
 
 // otherCompositionCandidates lists the compositions of kinds the switch in
 // compositionCandidates leaves out.
-func otherCompositionCandidates(kind SlideKind, selected string) []CompositionCandidate {
-	if kind == KindCycle {
-		// The style field is the composition choice; there is no pattern or
-		// layout override.
-		if selected == "" {
-			selected = "cycle-ring"
-		}
-		return []CompositionCandidate{{Pattern: selected, Layout: "blank-title", Reason: "the style field picks the picture: ring (cycle-ring, default), nodes (cycle-nodes), intake (cycle-intake), figure_eight (cycle-figure-eight), radial (radial-hub) or concentric (concentric-rings)"}}
-	}
+func otherCompositionCandidates(kind SlideKind) []CompositionCandidate {
+	// cycle lists none: its style field is the composition choice, and a
+	// pattern listed here would have to be accepted as a pattern override.
 	if kind == KindRegions {
 		// The arrangement field is the composition choice; there is no
 		// pattern or layout override.

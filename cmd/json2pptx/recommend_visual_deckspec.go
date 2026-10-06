@@ -39,6 +39,12 @@ const recipeSlidePath = "slides[0]"
 // recipeExamplePath is the same slide addressed from next_tool_call.
 const recipeExamplePath = "next_tool_call.args_template.spec." + recipeSlidePath
 
+// cycleStyleOfPattern is the cycle kind's style for each circular pattern.
+var cycleStyleOfPattern = map[string]string{
+	"cycle-ring": "ring", "cycle-nodes": "nodes", "cycle-intake": "intake",
+	"cycle-figure-eight": "figure_eight", "radial-hub": "radial", "concentric-rings": "concentric",
+}
+
 // kindSlideForPattern returns a DeckSpec slide that compiles to the named
 // pattern, or nil when no kind reaches it. Most patterns are their kind's own
 // example; a kind that compiles to several patterns (comparison, quote,
@@ -52,6 +58,10 @@ func kindSlideForPattern(pattern string) map[string]any {
 	ex := semantic.KindExample(kind)
 	if ex == nil {
 		return nil
+	}
+	if style, ok := cycleStyleOfPattern[pattern]; ok {
+		// One kind draws the circular family; the style picks the pattern.
+		return semantic.CycleStyleExample(style)
 	}
 	switch pattern {
 	case "kpi-2up", "kpi-3up", "kpi-4up", "kpi-5up", "kpi-6up":
