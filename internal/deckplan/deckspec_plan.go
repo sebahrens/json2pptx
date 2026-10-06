@@ -1011,6 +1011,9 @@ func storylineDraft(brief, audience string, budget int, req *regionRequest, chap
 	// The slides the brief names by kind claim their sentences' facts; the
 	// storyline defaults are read from what is left (go-slide-creator-xbwlt).
 	named := detectNamedSlides(brief, facts)
+	if n := topicCycle(brief); n != nil {
+		named = mergeCycleUnits(append(named, *n))
+	}
 	claimed := make([]bool, len(facts))
 	for _, n := range named {
 		for _, fi := range n.factIdx {

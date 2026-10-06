@@ -251,6 +251,12 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title",
 		pattern: architecturePattern,
 	},
+	KindCycle: {
+		// A loop is a process that returns to its start: the process family,
+		// so a cycle after a process slide reads as the same treatment twice.
+		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title",
+		pattern: slides.CyclePattern,
+	},
 	KindTeam: {
 		role: RoleEvidence, family: FamilyCards, density: DensityMedium, layout: "blank-title",
 		pattern: teamPattern,
@@ -822,6 +828,8 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 // otherCompositionCandidates lists the compositions of kinds the switch in
 // compositionCandidates leaves out.
 func otherCompositionCandidates(kind SlideKind) []CompositionCandidate {
+	// cycle lists none: its style field is the composition choice, and a
+	// pattern listed here would have to be accepted as a pattern override.
 	if kind == KindRegions {
 		// The arrangement field is the composition choice; there is no
 		// pattern or layout override.

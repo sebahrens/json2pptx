@@ -63,6 +63,7 @@ var kindNeedsTakeaway = map[SlideKind]bool{
 	KindOptionMatrix:     true,
 	KindTable:            true,
 	KindArchitecture:     true,
+	KindCycle:            true,
 	KindProcess:          true,
 	KindRoadmap:          true,
 	KindDecision:         true,
@@ -195,6 +196,11 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 		"image_width_pct": shapeNumber,
 	},
 	KindProcess: {"title": shapeString, "steps": shapeArray, "takeaway": shapeString},
+	KindCycle: {
+		"title": shapeString, "phases": shapeArray, "steps": shapeArray, "items": shapeArray,
+		"intake": shapeArray, "style": shapeString, "center": shapeStringOrObject, "highlight": shapeStringOrInteger,
+		"left_label": shapeString, "right_label": shapeString, "left_count": shapeNumber, "takeaway": shapeString,
+	},
 	KindRoadmap: {
 		"title": shapeString, "phases": shapeArray, "takeaway": shapeString,
 		"parallel_tracks": shapeArray, "workstreams": shapeArray, "parallel_label": shapeString,
@@ -745,8 +751,11 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) { //nolint:goc
 // validateOtherKind applies the rules of kinds validateKindRules' switch
 // leaves out.
 func validateOtherKind(path string, slide SlideSpec, s *semDiags) {
-	if slide.Kind == KindRegions {
+	switch slide.Kind {
+	case KindRegions:
 		validateRegions(path, slide, s)
+	case KindCycle:
+		validateCycle(path, slide, s)
 	}
 }
 
@@ -953,6 +962,46 @@ func validateArchitecture(path string, slide SlideSpec, s *semDiags) {
 		s.degrade(path+".tiers",
 			fmt.Sprintf("architecture %s (otherwise it degrades to a bullet list)", over),
 			"arch-stack", degradeToBullets, degradeBudgetExceeded)
+	}
+}
+
+// validateCycle reports a loop its style cannot draw (go-slide-creator-53v5u).
+// An unknown style and a field the style does not draw are errors: the first
+// has no picture to fall back to and the second loses authored text. Anything
+// else — a count outside the style's range, an over-long label, a radial with
+// no center — still renders, as a numbered list, so each is reported at the
+// field to edit with where the content belongs.
+func validateCycle(path string, slide SlideSpec, s *semDiags) {
+	if style := strPayloadField(slide.Body, "style"); !slides.CycleStyleKnown(style) {
+		s.hard(path+".style", diagnostics.CodeSemanticFieldType,
+			fmt.Sprintf("unknown style %q; expected one of %s", style, joinQuoted(slides.CycleStyles)))
+		return
+	}
+	n := slides.UsableCyclePhaseCount(slide.Body)
+	if !s.requireUsableContent(path, "phases", slide.Body, n, "steps", "items") {
+		return
+	}
+	for _, d := range slides.CycleDroppedFields(slide.Body) {
+		s.hard(path+"."+d.Field, diagnostics.CodeSemanticUnknownField, d.Message)
+	}
+	visual := slides.CycleVisual(slide.Body)
+	const tail = " (otherwise it degrades to a numbered list)"
+	for _, issue := range slides.CycleIssues(slide.Body) {
+		at := path + "." + issue.Field
+		switch {
+		case issue.Max > 0:
+			s.degradeCount(at, "cycle "+issue.Message+tail, visual, degradeToBullets, issue.Min, issue.Max)
+		case issue.Allowed > 0:
+			before := len(s.out)
+			s.degradeFix(at, issue.Message+tail,
+				&diagnostics.Fix{Kind: "restore_visual", Params: map[string]any{"max_chars": issue.Allowed}},
+				visual, degradeToBullets, degradeBudgetExceeded)
+			if len(s.out) > before {
+				s.out[before].Details = map[string]any{"measured": issue.Measured, "allowed": issue.Allowed}
+			}
+		default:
+			s.degrade(at, "cycle "+issue.Message+tail, visual, degradeToBullets, degradeBudgetExceeded)
+		}
 	}
 }
 

@@ -107,8 +107,7 @@ repairs from advice.
   typography, anti-pattern rules.
 - [PATTERNS.md](PATTERNS.md): pattern selection, placement, text capacity,
   accent defaults; live catalog and schemas: `list_patterns` /
-  `show_pattern` (loop: `cycle-nodes`; steps and `radial-hub` spokes
-  take `icon`).
+  `show_pattern`.
 - [FINDINGS.md](FINDINGS.md): reading and repairing a finding (DeckSpec,
   raw).
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):

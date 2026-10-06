@@ -265,8 +265,8 @@ func TestRegionsContract(t *testing.T) {
 	props := item["properties"].(map[string]any)
 	regions := props["regions"].(map[string]any)
 	variants := regions["items"].(map[string]any)["oneOf"].([]any)
-	if len(variants) != 7 || regions["maxItems"] != 3 {
-		t.Fatalf("want 7 closed region variants and maxItems 3, got %d / %v", len(variants), regions["maxItems"])
+	if len(variants) != 8 || regions["maxItems"] != 3 {
+		t.Fatalf("want 8 closed region variants and maxItems 3, got %d / %v", len(variants), regions["maxItems"])
 	}
 	for _, v := range variants {
 		if v.(map[string]any)["additionalProperties"] != false {

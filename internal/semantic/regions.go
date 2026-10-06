@@ -62,6 +62,7 @@ var regionPayloadFields = map[string]map[string]payloadField{
 		"body":    strField("Narrative text, ≤400 chars; a newline starts a paragraph."),
 		"bullets": {typ: "array", itemStrings: true, desc: "Up to 6 bullets."},
 	}, regionCommonFields()),
+	slides.RegionCycle: withFields(cycleRegionFields(), regionCommonFields()),
 }
 
 // regionRequired lists each region kind's required content field.
@@ -72,6 +73,7 @@ var regionRequired = map[string]string{
 	slides.RegionTable:    "headers",
 	slides.RegionTimeline: "milestones",
 	slides.RegionImage:    "image",
+	slides.RegionCycle:    "phases",
 }
 
 // regionsSchema is the regions field's schema: a list of 2–3 entries, each one
@@ -152,6 +154,11 @@ func validateRegions(path string, slide SlideSpec, s *semDiags) {
 		}
 		if !validateRegion(rpath, region, s) {
 			sharesOK = false
+		}
+	}
+	for i := range raw {
+		if msg := slides.CycleRegionWidthIssue(slide.Body, i); msg != "" {
+			s.hard(fmt.Sprintf("%s.regions[%d].style", path, i), diagnostics.CodeSemanticDensity, "cycle region: "+msg)
 		}
 	}
 	if !sharesOK {
@@ -237,6 +244,18 @@ func validateRegion(rpath string, r map[string]any, s *semDiags) bool {
 func validateRegionField(rpath, where, key string, f payloadField, v any, s *semDiags) bool {
 	if v == nil {
 		return true
+	}
+	if f.schema != nil {
+		// A field with a schema of its own takes more than one JSON type (a
+		// cycle's center is a string or an object): the slide kind's shape
+		// table says which.
+		shape, typed := kindFieldShapes[KindCycle][key]
+		if !typed || shapeMatches(v, shape) {
+			return true
+		}
+		s.hard(rpath+"."+key, diagnostics.CodeSemanticFieldType,
+			fmt.Sprintf("%q must be %s but is %s; the %s drops it", key, shape.label(), jsonTypeName(v), where))
+		return false
 	}
 	if !regionValueTypeOK(f.typ, v) {
 		s.hard(rpath+"."+key, diagnostics.CodeSemanticFieldType,
@@ -359,6 +378,27 @@ var regionContentRules = map[string]func(regionCheck){
 			c.dense("caption", fmt.Sprintf("caption is %d characters; it holds 120", n))
 		}
 	},
+	slides.RegionCycle: func(c regionCheck) {
+		if style := strPayloadField(c.r, "style"); !slides.CycleStyleKnown(style) {
+			c.s.hard(c.path+".style", diagnostics.CodeSemanticFieldType,
+				fmt.Sprintf("unknown style %q; expected one of %s", style, joinQuoted(slides.CycleStyles)))
+			return
+		}
+		if slides.UsableCyclePhaseCount(c.r) == 0 {
+			c.required(slides.CyclePhasesField(c.r), "cycle region requires phases: 3–8 strings or {label, description?}")
+			return
+		}
+		for _, d := range slides.CycleDroppedFields(c.r) {
+			c.s.hard(c.path+"."+d.Field, diagnostics.CodeSemanticUnknownField, d.Message)
+		}
+		for _, issue := range slides.CycleIssues(c.r) {
+			if issue.Required {
+				c.required(issue.Field, "cycle region: "+issue.Message)
+				continue
+			}
+			c.dense(issue.Field, "cycle region: "+issue.Message)
+		}
+	},
 	slides.RegionText: func(c regionCheck) {
 		bodyRunes, bullets := slides.RegionTextCounts(c.r)
 		if bodyRunes == 0 && bullets == 0 {
@@ -426,6 +466,8 @@ func regionsFamily(body map[string]any) VisualFamily {
 		return FamilyKPI
 	case slides.RegionTimeline:
 		return FamilyTimeline
+	case slides.RegionCycle:
+		return FamilyProcess
 	case slides.RegionTable:
 		return FamilyTable
 	case slides.RegionText, slides.RegionImage:

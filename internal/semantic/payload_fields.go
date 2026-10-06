@@ -160,6 +160,64 @@ var archTierKeys = keyGroups(
 	[]string{"items", "components", "services", "elements"},
 )
 
+// cyclePhaseKeys are the keys a cycle phase object may carry.
+var cyclePhaseKeys = keyGroups([]string{"label", "name", "title"}, []string{"description", "detail"}, []string{"highlight"})
+
+// cycleIntakeKeys are the keys a cycle intake step may carry.
+var cycleIntakeKeys = keyGroups([]string{"label", "name", "title"}, []string{"description", "detail"})
+
+// cycleShapeFields are the fields a cycle slide and a cycle region share: the
+// phases, the style that picks the picture and what the styles add to it. The
+// names ride in every tools/list, so the contract keeps to one spelling per
+// field beyond the phases' two aliases.
+func cycleShapeFields() map[string]payloadField {
+	phases := func(desc string) payloadField {
+		return payloadField{typ: "array", desc: desc, itemStrings: true, itemKeys: cyclePhaseKeys,
+			itemKeySchemas: map[string]any{"highlight": map[string]any{"type": "boolean"}}}
+	}
+	return map[string]payloadField{
+		"phases": phases("The phases in order: strings or {label, description?, highlight?}. ring 4–8 (label ≤28 chars, description ≤90), nodes 3–8 (≤28, ≤70), intake 3–8 (≤26, ≤70, less as steps and phases add up: about 30 with 2 intake steps and 6 phases), figure_eight 4–8 (≤26, ≤60; ≤40 once a loop holds four), radial 4–8 items around the center (≤26, ≤60), concentric 3–5 layers, innermost first (≤24, ≤70)."),
+		"steps":  phases("Alias for phases."),
+		"items":  phases("Alias for phases."),
+		"intake": {typ: "array", itemStrings: true, itemKeys: cycleIntakeKeys,
+			desc: "intake: the 1–3 one-off steps that feed the loop, in order: strings or {label (≤24 chars), description? (≤60)}. Naming them selects style intake."},
+		"style": {typ: "string", enum: slides.CycleStyles,
+			desc: "The picture. One ordered loop: ring (default) or nodes; one-off steps feeding a loop: intake; two coupled loops on a full-width slide: figure_eight; peers around a center: radial; things that contain one another: concentric. Unset, a loop of 3 is drawn as nodes."},
+		"center": {typ: "object", schema: cycleCenterSchema, objectKeys: []string{"label", "sublabel"},
+			desc: "The text in the middle: a string, or {label (≤24 chars), sublabel? (≤32)}. Optional on ring, nodes and intake (only ring draws a sublabel; intake holds ≤20 chars), required on radial (the hub); figure_eight and concentric have none."},
+		"highlight": {typ: "string", schema: agendaCurrentSchema,
+			desc: "The one phase drawn in solid accent: its label or 1-based position (or phases[].highlight: true). concentric highlights its core unless told otherwise."},
+		"left_label":  strField("figure_eight: title inside the left loop (≤16 chars)."),
+		"right_label": strField("figure_eight: title inside the right loop (≤16 chars)."),
+		"left_count":  {typ: "number", desc: "figure_eight: how many phases sit on the left loop (2–4; default half, rounded up)."},
+	}
+}
+
+// cycleRegionFields is a cycle region's contract: the shape fields under
+// their canonical names — a region takes no aliases.
+func cycleRegionFields() map[string]payloadField {
+	fields := cycleShapeFields()
+	delete(fields, "steps")
+	delete(fields, "items")
+	return fields
+}
+
+// cycleFields is the cycle slide's payload contract.
+func cycleFields() map[string]payloadField {
+	return withFields(map[string]payloadField{
+		"title":    strField("Slide title."),
+		"takeaway": strField("One-line takeaway footer."),
+	}, cycleShapeFields())
+}
+
+// cycleCenterSchema is a cycle's centre: its label, or {label, sublabel}.
+func cycleCenterSchema() map[string]any {
+	return map[string]any{"anyOf": []any{
+		map[string]any{"type": "string"},
+		map[string]any{"type": "object", "properties": objectKeySchemas([]string{"label", "sublabel"}), "additionalProperties": false},
+	}}
+}
+
 // roadmapPhaseKeys are the keys roadmapPhases reads from a phase object.
 var roadmapPhaseKeys = keyGroups(
 	[]string{"name", "title", "label", "phase"}, []string{"date_label", "dates", "date", "period"},
@@ -337,6 +395,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"rails":      textList("Up to 3 cross-cutting concerns drawn as rails beside the stack, ≤30 chars each."),
 		"side_rails": textList("Alias for rails."),
 	}, compositionFields()), universalFields()),
+	KindCycle: withFields(cycleFields(), universalFields()),
 	KindAgenda: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title (optional; defaults to \"Agenda\")."),
 		"takeaway": strField("One-line takeaway footer."),

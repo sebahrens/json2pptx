@@ -129,6 +129,14 @@ var kindBudgets = map[string][]Budget{
 		{Field: "parallel_tracks[]", MaxChars: patterns.PhaseRoadmapTrackMax},
 		{Field: "parallel_label", MaxChars: patterns.PhaseRoadmapLabelMax},
 	},
+	"cycle": {
+		{Field: "phases", MinItems: 3, MaxItems: 8, Note: "nodes and intake; ring, figure_eight and radial hold 4–8, concentric 3–5"},
+		{Field: "intake", MinItems: 1, MaxItems: 3, Note: "style intake"},
+		{Field: "intake[].label", MaxChars: 24, Note: "its description holds 60"},
+		{Field: "phases[].label", MaxChars: 28, Note: "ring and nodes; 26 on figure_eight and radial, 24 on concentric"},
+		{Field: "phases[].description", MaxChars: 90, Note: "ring; 70 on nodes, intake and concentric, 60 on figure_eight (40 once a loop holds four phases) and radial; intake tightens with its counts (about 30 with 2 intake steps and 6 phases, 22 with 3 and 6; measured at render)"},
+		{Field: "center", MaxChars: 24, Note: "its sublabel holds 32"},
+	},
 	"process": {
 		{Field: "steps", MinItems: processStripMin, MaxItems: processStripMax, Note: "numbered rows (steps with a description); the flow diagram takes 3–8 bare labels"},
 		{Field: "steps[].label", MaxChars: processStripLabelMax, Note: "numbered rows; a flow box holds 80 for label and description together (7–8 steps are on two rows)"},

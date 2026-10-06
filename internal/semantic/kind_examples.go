@@ -286,6 +286,19 @@ var kindExamples = map[SlideKind]map[string]any{
 		"highlight_column": "Buy",
 		"takeaway":         "Buying wins on speed; building wins on control.",
 	},
+	KindCycle: {
+		"kind":  "cycle",
+		"title": "Every release feeds the next plan",
+		"phases": []any{
+			map[string]any{"label": "Plan", "description": "Set the quarter's bets"},
+			map[string]any{"label": "Build", "description": "Ship in two-week sprints"},
+			map[string]any{"label": "Measure", "description": "Read adoption and cost"},
+			map[string]any{"label": "Learn", "description": "Decide what to stop"},
+		},
+		"center":    "Product loop",
+		"highlight": "Measure",
+		"takeaway":  "Measurement is the phase that is skipped under deadline.",
+	},
 	KindProcess: {
 		"kind":     "process",
 		"title":    "How a deal closes",
@@ -354,6 +367,83 @@ var kindExamples = map[SlideKind]map[string]any{
 			},
 		},
 	},
+}
+
+// cycleStyleExamples holds one copy-ready cycle slide per style other than the
+// default ring, which is the kind's own example. recommend_visual hands the
+// one that matches the candidate, and list_slide_kinds previews each.
+var cycleStyleExamples = map[string]map[string]any{
+	"nodes": {
+		"kind": "cycle", "style": "nodes",
+		"title":     "Three habits keep the forecast honest",
+		"phases":    []any{"Commit", "Inspect", "Adjust"},
+		"center":    "Weekly",
+		"highlight": 2,
+		"takeaway":  "Inspection is the habit the other two depend on.",
+	},
+	"intake": {
+		"kind": "cycle", "style": "intake",
+		"title": "Two onboarding steps feed a quarterly service loop",
+		"intake": []any{
+			map[string]any{"label": "Sign contract", "description": "Scope and service levels agreed"},
+			map[string]any{"label": "Onboard", "description": "Data migrated, users trained"},
+		},
+		"phases": []any{
+			map[string]any{"label": "Plan the quarter", "description": "Agree priorities with the client"},
+			map[string]any{"label": "Deliver", "description": "Run the service to the agreed levels", "highlight": true},
+			map[string]any{"label": "Review", "description": "Report results against the targets"},
+			map[string]any{"label": "Improve", "description": "Fix root causes, adjust the scope"},
+		},
+		"takeaway": "Onboarding happens once; the loop is where the value compounds.",
+	},
+	"figure_eight": {
+		"kind": "cycle", "style": "figure_eight",
+		"title": "Build and run are one loop, not two teams",
+		"phases": []any{
+			"Plan", "Code", "Build", "Test",
+			map[string]any{"label": "Release", "highlight": true}, "Deploy", "Operate", "Monitor",
+		},
+		"left_label": "Build", "right_label": "Run",
+		"takeaway": "Release is where the two loops meet.",
+	},
+	"radial": {
+		"kind": "cycle", "style": "radial",
+		"title":  "Five teams draw on one customer record",
+		"center": map[string]any{"label": "Customer record", "sublabel": "One source of truth"},
+		"phases": []any{
+			map[string]any{"label": "Sales", "description": "Pipeline and quotes"},
+			map[string]any{"label": "Service", "description": "Cases and entitlements"},
+			map[string]any{"label": "Finance", "description": "Billing and credit"},
+			map[string]any{"label": "Marketing", "description": "Consent and campaigns"},
+			map[string]any{"label": "Product", "description": "Usage and feedback"},
+		},
+		"takeaway": "Every team reads the same record; only two may write to it.",
+	},
+	"concentric": {
+		"kind": "cycle", "style": "concentric",
+		"title": "Control starts at the data and works outwards",
+		"phases": []any{
+			map[string]any{"label": "Data", "description": "Classified and encrypted"},
+			map[string]any{"label": "Applications", "description": "Least-privilege access"},
+			map[string]any{"label": "Network", "description": "Segmented by trust zone"},
+			map[string]any{"label": "Perimeter", "description": "Monitored around the clock"},
+		},
+		"takeaway": "A breach of the perimeter still meets three more layers.",
+	},
+}
+
+// CycleStyleExample returns a deep copy of the copy-ready cycle slide for a
+// style ("" and "ring" are the kind's own example), or nil for an unknown one.
+func CycleStyleExample(style string) map[string]any {
+	if style == "" || style == "ring" {
+		return KindExample(KindCycle)
+	}
+	ex, ok := cycleStyleExamples[style]
+	if !ok {
+		return nil
+	}
+	cp, _ := deepCopyValue(ex).(map[string]any)
+	return cp
 }
 
 // KindExample returns a deep copy of the copy-ready example slide for a kind

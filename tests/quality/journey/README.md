@@ -25,6 +25,7 @@ A first-time agent's path through json2pptx (first contact, plan, author, valida
 | `personas/g-risk-consulting.md` | An ERM uplift proposal: risk-appetite status board, loss chart beside the number, named-risk heat map, three-lines today/target |
 | `personas/h-tech-data.md` | A data-platform business case on `--tools all`: TCO regions slide, architecture rails, screenshot callouts, KPI before/after |
 | `personas/i-risk-assurance.md` | An ITGC audit-committee readout: results board, seven-finding register, trend beside the opinion, maturity ladder, appendix |
+| `personas/j-ops-operating-rhythm.md` | An operations review built around a loop: plan_deck drafts the `cycle` slide, recommend_visual and the style previews pick `intake`, three deliberate breaks test the findings; `TestOpsLeadOperatingRhythmJourney` holds the plan-to-render half on every `go test` |
 | `fixtures/coldstart-board-update.json` | The deck the cold-start run of 2026-10-04 finished with; the tests send it as a first draft |
 | `results.jsonl` | The trend: one JSON row per recorded run |
 

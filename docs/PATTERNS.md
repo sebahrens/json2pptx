@@ -232,6 +232,8 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Narrative intro / foreword | `text-sidebar` | Main column (optional heading, 1–4 paragraphs, 0–6 bullets placed after the first paragraph ending in a colon) beside a sidebar panel with one large bold key message (≤200 chars). `sidebar_style` `tinted` (pale accent surface + top accent bar) or `filled` (solid accent); the sidebar ink is measured against the fill at the 3:1 large-text bar. `sidebar_side`, `sidebar_width_pct` (25–40), `body_size`, `sidebar_size`. Short copy is centred; body copy sets at 14pt and steps down to 12pt, then reports `BODY_TOO_LONG` |
 | Stakeholder quote cluster | `quote-cluster` | 3–8 attributed quotes in a 3-column grid (voice-of-customer slides): open quotes under a quote mark by default, `style` `bubble` / `tile`, one optional `highlight` |
 
+**The circular family on the DeckSpec path.** `cycle-ring`, `cycle-nodes`, `cycle-intake`, `cycle-figure-eight`, `radial-hub` and `concentric-rings` are reached by one DeckSpec kind, `cycle`, whose `style` (`ring` default, `nodes`, `intake`, `figure_eight`, `radial`, `concentric`) picks the pattern; the kind maps one payload (`phases`, `center`, `highlight`, `intake`) onto each pattern's own values (`internal/semantic/slides/cycle.go`, table in [SEMANTIC_COMPILER.md](SEMANTIC_COMPILER.md)). A new circular pattern needs a style there, its `internal/semantic/reach.go` entry, and a `recommend.go` rule whose keywords cover how a brief names it (`cycle-intake`: "loop fed by", "onboarding intake", "intake steps").
+
 ### Refined-consulting bias in the recommender (J2P-STYLE-008)
 
 The keyword scorer in `internal/patterns/recommend.go` (shared by `recommend_pattern` and

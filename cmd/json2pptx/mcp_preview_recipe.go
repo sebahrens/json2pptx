@@ -15,6 +15,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/semantic"
+	"github.com/sebahrens/json2pptx/internal/semantic/slides"
 )
 
 // Recipe previews (go-slide-creator-r1uy7, go-slide-creator-ueopl).
@@ -37,6 +38,9 @@ const (
 	// maxPreviewImages bounds the images one discovery call returns; each one
 	// not yet cached costs a LibreOffice conversion.
 	maxPreviewImages = 4
+	// maxStylePreviewImages is the ceiling of one call: the cycle kind asked
+	// for alone previews each of its styles, one more than there are today.
+	maxStylePreviewImages = 7
 )
 
 // previewSpecTemplate returns the template a preview spec pins.
@@ -122,12 +126,13 @@ type previewRequest struct {
 	Spec map[string]any
 }
 
-// renderPreviews renders up to maxPreviewImages recipes and returns one
+// renderPreviews renders up to maxStylePreviewImages recipes (callers hold
+// kinds and candidates to maxPreviewImages) and returns one
 // record per request plus the images, in content order after the JSON text.
 // A failed preview is reported on its record and never fails the call.
 func (mc *mcpConfig) renderPreviews(ctx context.Context, reqs []previewRequest) ([]patterns.VisualPreview, []api.MCPImage) {
-	if len(reqs) > maxPreviewImages {
-		reqs = reqs[:maxPreviewImages]
+	if len(reqs) > maxStylePreviewImages {
+		reqs = reqs[:maxStylePreviewImages]
 	}
 	out := make([]patterns.VisualPreview, 0, len(reqs))
 	var images []api.MCPImage
@@ -229,6 +234,18 @@ func previewableResult(ctx context.Context, v any, images []api.MCPImage) (*mcp.
 // kindPreviewRequests are the examples of the kinds a list_slide_kinds call
 // selected, in catalogue order.
 func kindPreviewRequests(kinds []string, templateName string) []previewRequest {
+	if len(kinds) == 1 && kinds[0] == string(semantic.KindCycle) {
+		// The cycle kind is six pictures behind one style field: asked for
+		// alone, its preview shows each style (go-slide-creator-53v5u).
+		reqs := make([]previewRequest, 0, len(slides.CycleStyles))
+		for _, style := range slides.CycleStyles {
+			reqs = append(reqs, previewRequest{
+				Name: "cycle style " + style,
+				Spec: recipeSpec("cycle "+strings.ReplaceAll(style, "_", " "), templateName, semantic.CycleStyleExample(style)),
+			})
+		}
+		return reqs
+	}
 	reqs := make([]previewRequest, 0, len(kinds))
 	for _, k := range kinds {
 		reqs = append(reqs, previewRequest{Name: k, Spec: kindPreviewSpec(semantic.SlideKind(k), templateName)})

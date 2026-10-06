@@ -508,9 +508,7 @@ func hoistRepeatedItemSchemas(root map[string]any) {
 		item   map[string]any
 	}
 	groups := map[string][]site{}
-	for _, kind := range AllSlideKinds() {
-		variant, _ := defs[kindDefName(kind)].(map[string]any)
-		properties, _ := variant["properties"].(map[string]any)
+	collect := func(properties map[string]any) {
 		for _, value := range properties {
 			field, _ := value.(map[string]any)
 			item, _ := field["items"].(map[string]any)
@@ -521,6 +519,25 @@ func hoistRepeatedItemSchemas(root map[string]any) {
 			if err == nil {
 				groups[string(encoded)] = append(groups[string(encoded)], site{parent: field, item: item})
 			}
+		}
+	}
+	for _, kind := range AllSlideKinds() {
+		variant, _ := defs[kindDefName(kind)].(map[string]any)
+		properties, _ := variant["properties"].(map[string]any)
+		collect(properties)
+		if kind != KindRegions {
+			continue
+		}
+		// A region reads the list entries of the like-named slide kind (a
+		// kpis region's KPIs, a cycle region's phases): its variants share
+		// those definitions instead of repeating them (go-slide-creator-53v5u).
+		regions, _ := properties["regions"].(map[string]any)
+		items, _ := regions["items"].(map[string]any)
+		variants, _ := items["oneOf"].([]any)
+		for _, v := range variants {
+			region, _ := v.(map[string]any)
+			regionProps, _ := region["properties"].(map[string]any)
+			collect(regionProps)
 		}
 	}
 	keys := make([]string, 0, len(groups))
@@ -635,6 +652,69 @@ func compactSchemaDefinitions(root map[string]any) {
 			}
 		}
 	}
+	compactRegionVariants(defs)
+}
+
+// compactRegionVariants closes the region union the way the slide union is
+// closed: the object type, the fields every region carries (kind, size_pct,
+// heading, source) and the closure are stated once at the union boundary, and
+// each variant keeps only its own fields (go-slide-creator-53v5u). The accepted
+// regions are the same; eight variants no longer repeat four properties each.
+func compactRegionVariants(defs map[string]any) {
+	variant, _ := defs[kindDefName(KindRegions)].(map[string]any)
+	properties, _ := variant["properties"].(map[string]any)
+	regions, _ := properties["regions"].(map[string]any)
+	items, _ := regions["items"].(map[string]any)
+	variants, _ := items["oneOf"].([]any)
+	if len(variants) == 0 {
+		return
+	}
+	common := map[string]any{}
+	for name := range regionCommonFields() {
+		if name == "kind" {
+			continue
+		}
+		first, _ := variants[0].(map[string]any)
+		firstProps, _ := first["properties"].(map[string]any)
+		shared := firstProps[name]
+		for _, v := range variants {
+			region, _ := v.(map[string]any)
+			regionProps, _ := region["properties"].(map[string]any)
+			if !reflect.DeepEqual(regionProps[name], shared) {
+				shared = nil
+				break
+			}
+		}
+		if shared != nil {
+			common[name] = shared
+		}
+	}
+	for _, v := range variants {
+		region, _ := v.(map[string]any)
+		regionProps, _ := region["properties"].(map[string]any)
+		for name := range common {
+			delete(regionProps, name)
+		}
+		delete(region, "type")
+		delete(region, "additionalProperties")
+		if required, ok := region["required"].([]any); ok {
+			filtered := required[:0]
+			for _, field := range required {
+				if field != "kind" {
+					filtered = append(filtered, field)
+				}
+			}
+			if len(filtered) == 0 {
+				delete(region, "required")
+			} else {
+				region["required"] = filtered
+			}
+		}
+	}
+	items["type"] = "object"
+	items["properties"] = common
+	items["required"] = []any{"kind"}
+	items["unevaluatedProperties"] = false
 }
 
 func rewriteSchemaRefs(value any, base string) {

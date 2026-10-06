@@ -39,8 +39,7 @@ Do NOT hand-roll shape grids when a named pattern exists.
 **Per-pattern copy targets** (BMC cells, driver-tree leaves, comparison rows,
 team bios,
 …) live in each field's `show_pattern` description, measured at default sizes
-per count. Limits: `state-shift-hub` 3–4 pairs, `radial-hub` 4–8 spokes,
-`dual-org-ladder` ≤4 rows, `concentric-rings` 3–5 layers, `cycle-ring` 4–8 phases.
+per count.
 
 Budgets assume the template's full content area. On a short or narrow
 template, or under a `takeaway`, content-sized patterns (`exec-summary`,
