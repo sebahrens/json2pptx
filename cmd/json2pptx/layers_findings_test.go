@@ -271,8 +271,9 @@ func TestLayerFrameOutOfCellHasOneVerdict(t *testing.T) {
 	}
 }
 
-// A layer shape is validated like a cell shape: an unknown geometry, a hex
-// colour in constrained mode and an icon are all reported at the layer.
+// A layer shape is validated like a cell shape: an unknown geometry and a hex
+// colour in constrained mode are reported at the layer, and an icon on one is
+// accepted as on a cell shape.
 func TestLayerShapeIsValidatedLikeACellShape(t *testing.T) {
 	grid := &ShapeGridInput{Rows: []GridRowInput{{Cells: []*GridCellInput{{Layers: []jsonschema.LayerInput{
 		{Frame: jsonschema.LayerFrameInput{W: 1, H: 1}, Shape: &ShapeSpecInput{Geometry: "blockArk", Fill: json.RawMessage(`"#FF0000"`)}},
@@ -311,10 +312,11 @@ func TestLayerShapeIsValidatedLikeACellShape(t *testing.T) {
 	out := captureStdout(t, func() {
 		_ = runJSONDryRun(path, "", testutil.TemplatesDir(), "", "", false)
 	})
-	for _, want := range []string{`cell 1 layer 1: unknown geometry \"blockArk\"`, `cell 1 layer 2: \"icon\" is not supported on a layer shape`} {
-		if !strings.Contains(out, want) {
-			t.Errorf("dry run does not report %s:\n%s", want, out)
-		}
+	if want := `cell 1 layer 1: unknown geometry \"blockArk\"`; !strings.Contains(out, want) {
+		t.Errorf("dry run does not report %s:\n%s", want, out)
+	}
+	if strings.Contains(out, "icon") {
+		t.Errorf("dry run objects to an icon on a layer shape:\n%s", out)
 	}
 }
 

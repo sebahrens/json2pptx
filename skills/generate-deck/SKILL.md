@@ -95,20 +95,21 @@ repairs from advice.
 - [QUALITY.md](QUALITY.md): storyline and visual choice (always read).
 - [DECKSPEC.md](DECKSPEC.md): semantic authoring, content budgets, degradation,
   chapter structure, footer chrome (`CHROME_TRUNCATED`), required layouts,
-  and spec-level iteration.
+  spec-level iteration.
 - [WORKFLOW.md](WORKFLOW.md): Plan → Vary → Render → Repair, the per-slide
-  review rubric (recorded in `submit_visual_review`), and the three-round
+  review rubric (recorded in `submit_visual_review`), the three-round
   repair cap. Read before the first render.
 - [RAW_PATH.md](RAW_PATH.md): raw preconditions, planning and rhythm, strict
-  output validation, repair, images and assets, SVG/diagram integration.
+  output validation, repair, images, assets, SVG/diagram integration.
 - [TOOLS.md](TOOLS.md): phase map, tool-profile discovery, MCP-only
-  operations, and composition recipes.
+  operations, composition recipes.
 - [RULES.md](RULES.md): shape-grid, chart, table, content, contrast,
-  typography, and anti-pattern rules.
-- [PATTERNS.md](PATTERNS.md): pattern selection, placement, text capacity and
-  accent defaults; the live catalog and schemas come from `list_patterns` /
-  `show_pattern` (loop: `cycle-nodes`).
-- [FINDINGS.md](FINDINGS.md): how to read and repair a finding (DeckSpec and
+  typography, anti-pattern rules.
+- [PATTERNS.md](PATTERNS.md): pattern selection, placement, text capacity,
+  accent defaults; live catalog and schemas: `list_patterns` /
+  `show_pattern` (loop: `cycle-nodes`; steps and `radial-hub` spokes
+  take `icon`).
+- [FINDINGS.md](FINDINGS.md): reading and repairing a finding (DeckSpec,
   raw).
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):
   template/layout fields and raw slide structure.

@@ -222,7 +222,7 @@ The `ActionRank(action)` function returns these numeric ranks. Unknown actions r
   an envelope finding. Nothing reported as `warning` or `info` blocks.
 - A fit finding is an `error` exactly when the default quality gate blocks on
   it alone (`deterministic.BlocksGate`): action `refuse` or `shrink_or_split`;
-  a substantive `review` defect (`BODY_TOO_LONG`, `SLIDE_NEARLY_EMPTY`,
+  a substantive `review` defect (`BODY_TOO_LONG`, `NODE_LABEL_TOO_LONG`, `SLIDE_NEARLY_EMPTY`,
   `LOW_CONTRAST_HIGHLIGHT`, and `TEXT_BELOW_READABLE_MIN` measured on authored
   or generated text); `takeaway_missing`; `accent_overload`;
   `NO_EXECUTIVE_SUMMARY` and `CLOSING_WITHOUT_NEXT_STEPS`. Every other fit
@@ -1625,6 +1625,32 @@ For pattern warnings, shorten the named value to the limit in its message, reduc
 **`phase-roadmap` beside parallel tracks: a height budget per field** (go-slide-creator-x1124). A roadmap with `parallel_tracks` pins every row in points and tightens padding before type (see [PATTERNS.md](PATTERNS.md)). When the rows still do not fit the content area (after any takeaway / source band or pattern callout), each over-long description gets its own finding at `/slides/N/pattern/values/phases/I/description` — "phases[1].description is 107 characters; beside 2 parallel tracks and the milestone row this content area (238pt high) holds about 45 description characters per phase (2 lines)" — with `fix` `{"kind": "rewrite_field", "params": {"path": …, "max_chars": 45, "pattern": "phase-roadmap"}}`; the budget is measured in the phase's column, so a description cut to it fits. When no description is the cause (too many tracks for the area), one finding sits at the last track, `/slides/N/pattern/values/parallel_tracks/K`, and says how many tracks the area has room for; it carries no `max_chars`, because shortening that track does not help. These replace the per-phase-count budgets for that slide, which would only repeat a larger number.
 
 **Paragraph cap (action `refuse`).** A single content block that renders more than 200 paragraphs into one placeholder (authored text lines, bullets, and the body / header / lead-out paragraphs of the bullet-bearing types) is refused with `BODY_TOO_LONG` at action `refuse`, replacing the review-level word-budget finding for that block. `fix` is `{kind: "reduce_text", params: {current_paragraphs, max_paragraphs: 200, strategy: "split"}}`: split the content across slides (go-slide-creator-8hg02).
+
+### `NODE_LABEL_TOO_LONG`
+
+**Action:** `review` (a substantive review defect: it blocks the default quality gate like the `BODY_TOO_LONG` it used to be reported as)
+**Pattern:** `cycle-nodes`, `radial-hub` with `overrides.labels: "inside"`
+**Fix kind:** `remove_key` (executable) — `params: {key: "labels", path: "overrides.labels", hint}`
+**Emitted at:** preflight and generation, from the pattern's `PostExpandWarnings`
+
+A label set **inside** a circle — a `cycle-nodes` node, a `radial-hub` satellite — does not fit it at the 12pt floor in the template's face: a word breaks, or the label runs past the circle's text square (go-slide-creator-ptf78). The schema's 14-character limit for an inside label is necessary, not sufficient: `"Infrastructure"` is 14 characters in one word and wider than a satellite. It used to be reported as a generic `BODY_TOO_LONG` whose only remedy was prose.
+
+The finding sits on the value (`/slides/N/pattern/values/steps/1/label`, `…/values/spokes/1/label`) and carries a fix `repair_slide` applies as written: `remove_key` with `key: "labels"` removes `overrides.labels`, so the labels return to their default place **outside** the ring (a legend beside it when the area is too narrow for two label columns), where the same text fits. `next_tool_call` names that `repair_slide` call. The other remedy is authoring: keep the labels inside and shorten the label to one or two short words.
+
+A slide-level pattern carries the fix. Inside a `compose` segment the finding is reported at `/slides/N/compose` with its `segment_index` and no fix (`repair_slide` edits the slide's own pattern block): remove the segment pattern's `overrides.labels` by hand. `expand_pattern` reports the same code and fix in its diagnostics. A centre label (`center.label`) that does not fit the ring or the hub has no outside place and stays `BODY_TOO_LONG`.
+
+```json
+{
+  "pattern": "cycle-nodes",
+  "path": "/slides/1/pattern/values/steps/1/label",
+  "code": "NODE_LABEL_TOO_LONG",
+  "message": "slide 2: cycle-nodes: cycle-nodes steps[1].label does not fit its 105pt node at 12pt on 2 lines (a word breaks or the label runs past the circle); keep inside labels to two short words, or remove overrides.labels so the labels stand \"outside\" the ring",
+  "fix": { "kind": "remove_key", "params": { "key": "labels", "path": "overrides.labels", "hint": "removes overrides.labels: the labels move to their default place outside the ring" } },
+  "action": "review"
+}
+```
+
+The same `remove_key` fix is on the two `cycle-nodes` validation errors that refuse inside labels outright (more than 5 steps, a label over 14 characters); they used to name `remove_field` with a dotted path `repair_slide` could not apply.
 
 ### `BULLET_NESTING_DEEP`
 

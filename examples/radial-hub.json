@@ -45,12 +45,12 @@
         "values": {
           "center": {"label": "Customer platform", "sublabel": "One governed source"},
           "spokes": [
-            {"label": "Marketing", "description": "Audiences and campaign attribution"},
-            {"label": "Sales", "description": "Account insight and next best action"},
-            {"label": "Service", "description": "Full history at every contact"},
-            {"label": "Finance", "description": "Billing and revenue assurance"},
-            {"label": "Risk and compliance", "description": "Consent, retention and audit trail"},
-            {"label": "Product", "description": "Usage signals for roadmap choices"}
+            {"label": "Marketing", "description": "Audiences and campaign attribution", "icon": "speakerphone"},
+            {"label": "Sales", "description": "Account insight and next best action", "icon": "trending-up"},
+            {"label": "Service", "description": "Full history at every contact", "icon": "headset"},
+            {"label": "Finance", "description": "Billing and revenue assurance", "icon": "report-money"},
+            {"label": "Risk and compliance", "description": "Consent, retention and audit trail", "icon": "shield-check"},
+            {"label": "Product", "description": "Usage signals for roadmap choices", "icon": "bulb"}
           ],
           "highlight": 5
         }

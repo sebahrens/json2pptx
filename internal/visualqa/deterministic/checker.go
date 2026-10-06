@@ -33,6 +33,7 @@ var SeverityWeight = map[string]int{
 // wrapped title), but let these specific defects move the quality gate.
 var substantiveReviewWeight = map[string]int{
 	patterns.ErrCodeBodyTooLong:          20,
+	patterns.ErrCodeNodeLabelTooLong:     20,
 	patterns.ErrCodeTextBelowReadableMin: 20,
 	patterns.ErrCodeSlideNearlyEmpty:     20,
 	patterns.ErrCodeLowContrastHighlight: 15,

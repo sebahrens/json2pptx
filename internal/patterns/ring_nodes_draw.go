@@ -106,11 +106,12 @@ func ringNodeTextJSON(align, vAlign string, insetPt float64, paras ...ringNodePa
 	return data
 }
 
-// ringNodePaint is how one node is painted: its fill and its text (nil for a
-// bare circle).
+// ringNodePaint is how one node is painted: its fill, its text (nil for a
+// bare circle) and an optional icon overlay (centred when there is no text).
 type ringNodePaint struct {
 	Fill json.RawMessage
 	Text json.RawMessage
+	Icon *jsonschema.IconInput
 }
 
 // ringNodeLayers is one ellipse layer per node, named "node-1".."node-N" in
@@ -122,7 +123,7 @@ func ringNodeLayers(nodes []ringNode, paint func(i int) ringNodePaint) []jsonsch
 		out[i] = jsonschema.LayerInput{
 			Name:  fmt.Sprintf("node-%d", n.Index+1),
 			Frame: ringLayerFrame(n.Frame),
-			Shape: &jsonschema.ShapeSpecInput{Geometry: "ellipse", Fill: p.Fill, Line: noLine, Text: p.Text},
+			Shape: &jsonschema.ShapeSpecInput{Geometry: "ellipse", Fill: p.Fill, Line: noLine, Text: p.Text, Icon: p.Icon},
 		}
 	}
 	return out

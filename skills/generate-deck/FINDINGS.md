@@ -1,6 +1,6 @@
 # Findings and repair decisions
 
-Use this guide when a deck tool returns findings. Do **not** load a static
+Do **not** load a
 finding-code catalog: call `describe_finding` for an unfamiliar code. Deeper
 rationale: [docs/FIT_FINDINGS.md](../../docs/FIT_FINDINGS.md).
 
@@ -74,6 +74,8 @@ A pattern text-budget warning (`BODY_TOO_LONG`, `HEADLINE_TOO_LONG`,
 `path` (`/slides/N/pattern/values/2/big`, `…/values/steps/3/label`) and,
 when it states a budget, `fix: {kind: "rewrite_field", params: {path,
 max_chars, pattern}}`: rewrite that field yourself within `max_chars`.
+`NODE_LABEL_TOO_LONG` (label inside a `cycle-nodes` / `radial-hub` circle):
+apply `fix` (`remove_key` `labels`: labels move outside).
 
 ### What to do with a finding
 
@@ -81,10 +83,10 @@ max_chars, pattern}}`: rewrite that field yourself within `max_chars`.
   Repair the source and validate again; a written artifact is not success.
 - `shrink_or_split`: the content needs more room or less text. Preserve facts;
   split the slide or rewrite copy, never truncate blindly.
-- `review` / `info`: a judgment for the author; inspect the rendered slide
+- `review` / `info`: a judgment for the author; inspect the render
   and decide. `fit_overflow` at `info` (one
   per slide): a `shape_grid` cell fits only through a stored autofit scale,
-  so its size differs between PowerPoint and LibreOffice. Apply `fix`
+  so its size differs between renderers. Apply `fix`
   (`reduce_cell_text`: `cell_path`, `max_chars`; `cells` lists every
   affected cell) or give the cells height.
 
@@ -106,11 +108,11 @@ max_topic_title_pct; `NO_EXECUTIVE_SUMMARY` (6+ slides) and
 
 On raw decks, `propose_repairs` turns findings into executable `directives`
 and `advisory[]`. The
-executable and advisory vocabularies are
+vocabularies are
 `get_capabilities().vocabularies.repair_fix_kinds` (params in
 `repair_fix_kind_params`) and `advisory_fix_kinds`. `repair_slide` applies
-one slide's executable directives. A finding's
-`fix.kind` is not necessarily executable: if it needs human judgment,
+one slide's executable directives. For a
+`fix.kind` that needs human judgment
 `repair_slide` returns `advisory_fix_kind` with alternatives.
 
 Text-reduction fixes refuse with `semantic_review_required` if they would

@@ -402,7 +402,7 @@ func appendLayers(cells []ResolvedCell, cell Cell, fitted, cellRect pptx.RectEmu
 		if layer.Shape == nil {
 			continue
 		}
-		cells = append(cells, ResolvedCell{
+		rc := ResolvedCell{
 			Kind:       CellKindShape,
 			Bounds:     layer.Frame.Rect(fitted),
 			CellBounds: cellRect,
@@ -414,7 +414,15 @@ func appendLayers(cells []ResolvedCell, cell Cell, fitted, cellRect pptx.RectEmu
 			Layer:      true,
 			LayerIdx:   i,
 			LayerName:  layer.Name,
-		})
+		}
+		if layer.Icon != nil {
+			// The icon overlay of a cell shape, in the layer's frame.
+			layout := iconOverlayBounds(layer.Icon, rc.Bounds, hasNonEmptyText(layer.Shape.Text))
+			rc.IconSpec = layer.Icon
+			rc.IconBounds = layout.Bounds
+			rc.TextInsets = layout.TextInsets
+		}
+		cells = append(cells, rc)
 	}
 	return cells
 }

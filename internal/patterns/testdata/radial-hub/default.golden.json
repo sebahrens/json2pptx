@@ -159,7 +159,13 @@
                   "lumMod": 16000,
                   "lumOff": 84000
                 },
-                "line": "none"
+                "line": "none",
+                "icon": {
+                  "name": "speakerphone",
+                  "fill": "accent1",
+                  "position": "center",
+                  "scale": 0.55
+                }
               },
               "name": "satellite-1"
             },
@@ -177,7 +183,13 @@
                   "lumMod": 16000,
                   "lumOff": 84000
                 },
-                "line": "none"
+                "line": "none",
+                "icon": {
+                  "name": "trending-up",
+                  "fill": "accent1",
+                  "position": "center",
+                  "scale": 0.55
+                }
               },
               "name": "satellite-2"
             },
@@ -195,7 +207,13 @@
                   "lumMod": 16000,
                   "lumOff": 84000
                 },
-                "line": "none"
+                "line": "none",
+                "icon": {
+                  "name": "headset",
+                  "fill": "accent1",
+                  "position": "center",
+                  "scale": 0.55
+                }
               },
               "name": "satellite-3"
             },
@@ -213,7 +231,13 @@
                   "lumMod": 16000,
                   "lumOff": 84000
                 },
-                "line": "none"
+                "line": "none",
+                "icon": {
+                  "name": "report-money",
+                  "fill": "accent1",
+                  "position": "center",
+                  "scale": 0.55
+                }
               },
               "name": "satellite-4"
             },
@@ -231,7 +255,13 @@
                   "lumMod": 16000,
                   "lumOff": 84000
                 },
-                "line": "none"
+                "line": "none",
+                "icon": {
+                  "name": "shield-check",
+                  "fill": "accent1",
+                  "position": "center",
+                  "scale": 0.55
+                }
               },
               "name": "satellite-5"
             },
@@ -249,7 +279,13 @@
                   "lumMod": 16000,
                   "lumOff": 84000
                 },
-                "line": "none"
+                "line": "none",
+                "icon": {
+                  "name": "bulb",
+                  "fill": "accent1",
+                  "position": "center",
+                  "scale": 0.55
+                }
               },
               "name": "satellite-6"
             }

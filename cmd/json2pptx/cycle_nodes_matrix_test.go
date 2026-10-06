@@ -88,7 +88,7 @@ func TestCycleNodesMatrixAcrossTemplates(t *testing.T) {
 						t.Errorf("%d runs written below their role floor", n)
 					}
 					for _, f := range collectFitFindings(input, geom.layouts, geom.width, geom.height, nil) {
-						if f.Code == patterns.ErrCodeBodyTooLong || f.Action == "refuse" {
+						if f.Code == patterns.ErrCodeBodyTooLong || f.Code == patterns.ErrCodeNodeLabelTooLong || f.Action == "refuse" {
 							t.Errorf("fit finding: %s (%s) %s", f.Code, f.Action, f.Message)
 						}
 					}

@@ -84,8 +84,14 @@ const (
 
 	// Content lint codes — emitted when slide text exceeds readability budgets
 	// or bullet lists nest more than two levels. Advisory; never block render.
-	ErrCodeHeadlineTooLong   = "HEADLINE_TOO_LONG"
-	ErrCodeBodyTooLong       = "BODY_TOO_LONG"
+	ErrCodeHeadlineTooLong = "HEADLINE_TOO_LONG"
+	ErrCodeBodyTooLong     = "BODY_TOO_LONG"
+	// ErrCodeNodeLabelTooLong: a label set INSIDE a circle of a circular
+	// pattern (a cycle-nodes node, a radial-hub satellite; overrides.labels
+	// "inside") does not fit it at the readable floor, by measurement. Unlike
+	// BODY_TOO_LONG it has a mechanical way out — the labels' default place
+	// beside the ring — carried as an executable fix (OutsideLabelsFix).
+	ErrCodeNodeLabelTooLong  = "NODE_LABEL_TOO_LONG"
 	ErrCodeBulletNestingDeep = "BULLET_NESTING_DEEP"
 	ErrCodeMissingAltText    = "MISSING_ALT_TEXT"
 	ErrCodeDuplicateTitle    = "DUPLICATE_TITLE"
@@ -319,6 +325,7 @@ var (
 
 	ErrHeadlineTooLong   = errors.New("headline exceeds word count budget")
 	ErrBodyTooLong       = errors.New("body text block exceeds word count budget")
+	ErrNodeLabelTooLong  = errors.New("label set inside a circle does not fit it")
 	ErrBulletNestingDeep = errors.New("bullet list nests more than two levels deep")
 	ErrMissingAltText    = errors.New("image or icon asset is missing alt text")
 	ErrDuplicateTitle    = errors.New("slide title duplicates another content slide's title")
@@ -408,6 +415,7 @@ var codeSentinel = map[string]error{
 	ErrCodeMatrixAxisImbalance:     ErrMatrixAxisImbalance,
 	ErrCodeHeadlineTooLong:         ErrHeadlineTooLong,
 	ErrCodeBodyTooLong:             ErrBodyTooLong,
+	ErrCodeNodeLabelTooLong:        ErrNodeLabelTooLong,
 	ErrCodeBulletNestingDeep:       ErrBulletNestingDeep,
 	ErrCodeMissingAltText:          ErrMissingAltText,
 	ErrCodeDuplicateTitle:          ErrDuplicateTitle,
@@ -484,6 +492,19 @@ func ReduceTextFix(path string, maxLength int) *FixSuggestion {
 // ReplaceValueFix creates a fix suggestion to set a field within bounds.
 func ReplaceValueFix(path string, min, max int) *FixSuggestion {
 	return &FixSuggestion{Kind: "replace_value", Params: map[string]any{"path": path, "min": min, "max": max}}
+}
+
+// OutsideLabelsFix is the fix of a circular pattern whose labels were asked
+// inside its circles (overrides.labels "inside") and do not fit there: remove
+// the override, and the labels return to their default place beside the ring
+// ("outside", or the legend the pattern takes by itself in a narrow area).
+// repair_slide applies it as it stands (remove_key).
+func OutsideLabelsFix() *FixSuggestion {
+	return &FixSuggestion{Kind: "remove_key", Params: map[string]any{
+		"key":  "labels",
+		"path": "overrides.labels",
+		"hint": "removes overrides.labels: the labels move to their default place outside the ring",
+	}}
 }
 
 // RemoveKeyFix creates a fix suggestion to remove an unknown key.
