@@ -558,12 +558,7 @@ func TestDetectSparsePreflightGrid(t *testing.T) {
 	const slideWidth, slideHeight = int64(12192000), int64(6858000)
 	findSparse := func(grid *ShapeGridInput) *patterns.FitFinding {
 		t.Helper()
-		for _, f := range checkShapeGridStructural(grid, 0, slideWidth, slideHeight, nil, GridGeometry{}, false, "") {
-			if f.Code == patterns.ErrCodeSparseLayout {
-				return &f
-			}
-		}
-		return nil
+		return detectSparseLayoutForGrid(grid, GridGeometry{}, 0, slideWidth, slideHeight)
 	}
 
 	t.Run("sparse raw grid emits finding", func(t *testing.T) {
@@ -697,7 +692,7 @@ func TestCheckShapeGridStructural_IncludesVisualCells(t *testing.T) {
 		},
 	}
 
-	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, GridGeometry{}, false, "")
+	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, GridGeometry{}, false)
 
 	// All three visual cells should produce bounds overflow findings.
 	boundsCount := 0
@@ -832,7 +827,7 @@ func TestCheckShapeGridStructural_PreflightDiagramNarrow(t *testing.T) {
 		},
 	}
 
-	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, GridGeometry{}, false, "")
+	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, GridGeometry{}, false)
 
 	found := false
 	for _, f := range findings {
@@ -896,7 +891,7 @@ func TestCheckShapeGridStructural_PreflightDiagramAspectMismatch(t *testing.T) {
 		},
 	}
 
-	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, GridGeometry{}, false, "")
+	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, GridGeometry{}, false)
 
 	found := false
 	for _, f := range findings {
@@ -960,7 +955,7 @@ func TestCheckShapeGridStructural_NoDiagramAspectMismatchWhenAligned(t *testing.
 		},
 	}
 
-	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, GridGeometry{}, false, "")
+	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, GridGeometry{}, false)
 	for _, f := range findings {
 		if f.Code == "diagram_aspect_mismatch" {
 			t.Errorf("should not emit diagram_aspect_mismatch for aligned aspect; got finding: %s", f.Message)
@@ -1006,7 +1001,7 @@ func TestCheckShapeGridStructural_NoDiagramAspectMismatchForUnsetSpec(t *testing
 		},
 	}
 
-	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, GridGeometry{}, false, "")
+	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, GridGeometry{}, false)
 	for _, f := range findings {
 		if f.Code == "diagram_aspect_mismatch" {
 			t.Errorf("should not emit diagram_aspect_mismatch for unset spec; got finding: %s", f.Message)
@@ -1052,7 +1047,7 @@ func TestCheckShapeGridStructural_NoDiagramNarrowForWideCell(t *testing.T) {
 		},
 	}
 
-	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, GridGeometry{}, false, "")
+	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, GridGeometry{}, false)
 
 	for _, f := range findings {
 		if f.Code == "grid_diagram_narrow" {
