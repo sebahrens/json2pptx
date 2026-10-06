@@ -103,6 +103,7 @@ var patternMotifs = map[string]patternMotif{
 	"chart-insights-split": {base: MotifChart},
 	"comparison-2col": {base: MotifOpenColumns,
 		overrideStyles: map[string]Motif{"tiles": MotifTiles}},
+	"concentric-rings":  {base: MotifDiagram},
 	"contact-directory": {base: MotifOpenColumns},
 	"driver-tree":       {base: MotifDiagram},
 	"dual-org-ladder": {base: MotifOpenColumns,

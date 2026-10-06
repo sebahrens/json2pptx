@@ -34,6 +34,7 @@
     {"intent": "risk register with mitigations and owners", "expect": ["table"]},
     {"intent": "P&L table for the last three years", "expect": ["table"]},
     {"intent": "pyramid of needs with four levels", "expect": ["pyramid"]},
+    {"intent": "an onion model of our core, adjacent and ecosystem businesses", "expect": ["concentric-rings"]},
     {"intent": "architecture layers of the platform stack", "expect": ["arch-stack"]},
     {"intent": "process flow with a decision point for approvals", "expect": ["process-flow", "process_flow"]},
     {"intent": "root cause analysis of late deliveries", "expect": ["fishbone"]},

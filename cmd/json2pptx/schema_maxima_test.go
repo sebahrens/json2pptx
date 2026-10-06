@@ -518,6 +518,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"card-grid":                    2.4,
 	"chart-insights-split":         2.4, // nested stacked-column cells measured (bzh34)
 	"comparison-2col":              4.5, // rows floored at written fit (n1muf)
+	"concentric-rings":             10.6,
 	"contact-directory":            3.8, // Still refused by the generated-font floor; not a readable schema budget.
 	"driver-tree":                  4.1,
 	"dual-org-ladder":              7.0,
@@ -591,6 +592,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"chart-insights-split":         2.4,
 	"contact-directory":            4.3,
 	"comparison-2col":              4.5,
+	"concentric-rings":             0,
 	"driver-tree":                  4.8,
 	"dual-org-ladder":              7.6,
 	"exec-summary":                 6.5,

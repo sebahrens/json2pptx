@@ -371,6 +371,7 @@ var visualNameAliases = map[string][]string{
 	"named_pattern:value-chain":            {"value chain"},
 	"named_pattern:driver-tree":            {"driver tree", "value driver tree", "issue tree"},
 	"named_pattern:scqa-summary":           {"scqa"},
+	"named_pattern:concentric-rings":       {"concentric rings", "concentric circles", "onion model", "onion diagram", "nested circles", "stacked venn"},
 	"named_pattern:exec-summary":           {"executive summary", "exec summary"},
 	"named_pattern:before-after":           {"before after", "before and after"},
 	"diagram:gantt":                        {"gantt chart", "gantt plan"},
