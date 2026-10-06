@@ -20,10 +20,7 @@ recipes are in [split-and-complex-layouts.md](split-and-complex-layouts.md).
 | "We recommend option 2" | `decision` (3–6 options) | One `recommended: true`, the ask in `recommendation`. |
 | "Today vs target" | `comparison` (2 aligned columns) | Rows correspond; keep it to ~6. |
 | "This is the sequence" | `process` (3–6 steps with descriptions → numbered rows; 7–8 or bare labels → flow boxes) | A straight sequence, not a branching flowchart. |
-| "It repeats: the last phase leads back to the first" | raw `cycle-ring` (4–8 phases) | A lifecycle, PDCA, an operating rhythm, a flywheel. One `highlight` phase at most; `style: arrows` for chasing arrows. Not for a sequence that runs once (use `process`); 3 phases or stations joined by arrows are `cycle-nodes`. |
-| "Two loops feed each other" (build ↔ run, plan ↔ deliver) | raw `cycle-figure-eight` (4–8 phases, 2–4 per lobe) | One path round both lobes, numbered along the way; `left_label` / `right_label` name the loops. Needs the slide's width: in a half-width segment it is refused — use `cycle-ring` there, and for one loop. |
-| "The work repeats in a loop" | `cycle-nodes` (raw path; 3–8 steps as numbered circles joined by arrows) | Use when the steps return to the start and the hand-offs matter (plan-do-check-act, a feedback loop). Avoid for a sequence that ends — that is `process`. Prefer `cycle-ring` when the phases are one continuous ring. `highlight` one step; in a split half the labels become a legend. Pending the `cycle` kind (go-slide-creator-53v5u). |
-| "A few one-off steps lead into a cycle that then repeats" | raw `cycle-intake` (1–3 intake steps, 3–8 loop phases) | Onboarding then the service cycle, deal intake then the portfolio review, ingest then the model loop. Intake arrows on the left, an accent arrow into the ring, the phases in one numbered list on the right; one `highlight` phase; `loop_style: nodes` for circles joined by arrows. Not when nothing feeds the loop (`cycle-ring`, `cycle-nodes`) or when the steps never loop back (`process`). With 3 intake steps keep loop labels to one line (22) and, from 6 phases, descriptions to about 22 characters; 8 phases are labels only on a short body. Pending the `cycle` kind (go-slide-creator-53v5u). |
+| "It repeats", "everything relates to the centre", "these contain one another" | `cycle` (3–8 `phases`, one `style`) | One rule picks the style: one ordered loop → `ring` (default; 4–8 segments) or `nodes` (3–8 circles joined by arrows, when the hand-offs matter); one-off steps that feed the loop → `intake` (1–3 `intake` steps); two loops that feed each other, on a full-width slide → `figure_eight` (`left_label` / `right_label`); unordered peers around a centre → `radial` (`center` is the hub); things that contain one another → `concentric` (3–5, innermost first). One `highlight` phase. Not for a sequence that runs once (`process`) or a ranked hierarchy (raw `pyramid`). See "The cycle family" below. |
 | "When things happen" | `timeline` (3–7 dated stops) · `roadmap` (3–6 phases, 0–4 `parallel_tracks`) | An `end_date` turns a timeline into bars. |
 | "Who does what by when" | `next_steps` | 2–6 actions `{action, owner, date}`, 0–3 `decisions`. Always the closer. |
 | "Who we are" | `team` (1–8, `photo` or initials `photo_label`) | Role on every card. |
@@ -31,7 +28,6 @@ recipes are in [split-and-complex-layouts.md](split-and-complex-layouts.md).
 | "Look at this" | `image_case` (picture + body + `callouts`) | For a comparable, a screenshot, a site. |
 | "The numbers in full" | `table` (≤ 6 columns, ≤ 9 data rows) | Right-align numbers; `totals_row: true`; backup detail to an appendix. |
 | "The walk from A to B" | `bridge` (3–10 columns) or a waterfall `chart` region beside text | Totals must sum (0.5% tolerance). |
-| "These layers contain one another" (core → adjacent → ecosystem) | raw `concentric-rings` (3–5 layers, inner → outer) | An onion with a side ladder of labels; one solid ring (`highlight`). Not for a ranked hierarchy (raw `pyramid`), a centre with satellites (`radial-hub`) or a loop (`cycle-ring`). Raw path: carry it as a `raw_json2pptx` slide. |
 | "Where things sit on two axes" | `matrix_2x2` | Four named quadrants; both axes labelled. |
 | "The deck's chapters" | `structure.sections` + `auto_agenda` (12+ slides) | Never hand-number dividers. |
 
@@ -106,18 +102,30 @@ heading, source on the slide, no legend when one series is labelled.
 
 `labeled-rows`, `capability-heatmap`, `roadmap-phased` (dated bars per
 workstream), `swimlane`, `value-chain`, `scqa-summary`,
-`driver-tree`, `journey-maturity-model`, `cycle-ring`, `cycle-nodes`, `cycle-figure-eight`, `cycle-intake`, `exec-summary` variants, and the
+`driver-tree`, `journey-maturity-model`, `exec-summary` variants, and the
 svggen diagrams (gantt, venn, org chart). Carry them as a `raw_json2pptx`
 slide inside the DeckSpec — the whole pattern block verbatim from
 `show_pattern` — not as a lowered raw deck; `recommend_visual` returns such a
 slide ready to run for any pattern or diagram candidate.
 
-`radial-hub` (raw path) — "everything relates to the centre": one hub with
-4–8 unordered peers around it (a platform and its capabilities, an
-operating-model hub, a stakeholder or ecosystem map). Short labels, at most a
-one-line description each; `highlight` one spoke when the title argues it.
-Avoid it when the items follow one another (use a `process`, or the cycle
-patterns), when they are today/future pairs (`state-shift-hub`) and when there
-is no centre (`pillars`, a card grid). In a half-width split it falls back to
-a keyed legend; give it 60% of the width or short labels with
-`labels: "inside"`.
+## The cycle family
+
+`cycle` draws six pictures from one payload — `phases` in order, an optional
+`center`, the one phase to `highlight` — and `style` names which:
+
+| The content is | `style` | Count | Notes |
+|---|---|---|---|
+| One loop: the last phase leads back to the first (lifecycle, PDCA, operating rhythm, flywheel) | `ring` (default) | 4–8 | Ring segments with numbered badges; `center` names the loop. Three phases are drawn as `nodes`. |
+| One loop whose hand-offs matter | `nodes` | 3–8 | Circles joined by arrows; a one-line `center`. |
+| One-off steps, then a loop (onboarding then the service cycle) | `intake` | 1–3 `intake` + 3–8 | Naming `intake` steps selects it. In a narrow region the lane stacks above the ring. |
+| Two loops that feed each other (build ↔ run, plan ↔ deliver) | `figure_eight` | 4–8, 2–4 per loop | `left_label` / `right_label` title the loops. Needs the full slide width: in a side-by-side region it is refused — use `ring` there. |
+| Unordered peers around one idea (hub and spoke, ecosystem) | `radial` | 4–8 | `center` is required: it is the hub. |
+| Things that contain one another (core → adjacent → ecosystem) | `concentric` | 3–5 | Innermost first; the core takes the accent unless `highlight` names a layer. |
+
+Outside a style's count or text budgets the slide degrades to a numbered list
+and the finding at `phases` says where the content belongs. A field a style
+does not draw (`center` on a figure eight, `left_label` on a ring) is an error
+rather than a silent drop. Avoid the family when the items follow one another
+once (`process`), when they are today/future pairs (raw `state-shift-hub`)
+and when there is neither a loop nor a centre (`pillars`, `comparison`). Beside
+a narrative use a `cycle` region (split layouts §13).

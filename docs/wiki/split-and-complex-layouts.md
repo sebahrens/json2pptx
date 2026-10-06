@@ -540,8 +540,51 @@ slides:
                 - {label: "Dec: Rollout"}
 ```
 
-Prefer `regions` whenever its seven region kinds suffice: it is validated field
+Prefer `regions` whenever its eight region kinds suffice: it is validated field
 by field, degrades nowhere, and patches by `path`.
+
+## 13. Cycle beside the narrative — `regions` with a `cycle` region
+
+A loop on its own slide is the `cycle` kind (`phases`, a `style`, one
+`highlight`; see [visual-vocabulary.md](visual-vocabulary.md), "The cycle
+family"). When the slide also has to say what the loop has achieved, put the
+loop in a `cycle` region and the words in a `text` region. The region takes
+the kind's own fields under their canonical names (`phases`, `style`,
+`center`, `highlight`, `intake`). Give it 50–60% of the width: there the ring
+keeps its shape and moves its labels into a numbered legend. `ring`, `nodes`,
+`radial`, `concentric` and `intake` (which stacks its lane above the ring)
+all fit a column; `figure_eight` needs the full width, so it is refused in a
+side-by-side region with the fix in the message — use `ring` there, or
+`arrangement: rows`. In a stacked group a cycle region takes at least 60% of
+the height.
+
+```yaml
+meta:
+  title: Northwind operations review
+  template: midnight-blue
+  date: October 2026
+  source: Northwind service desk data, January–September 2026
+slides:
+  - kind: regions
+    title: The monthly improvement loop has cut rework by a third
+    arrangement: columns
+    regions:
+      - kind: cycle
+        size_pct: 55
+        phases:
+          - Plan
+          - Do
+          - {label: Check, highlight: true}
+          - Act
+        center: Monthly
+      - kind: text
+        heading: What changed since January
+        bullets:
+          - Rework is down 34% across the three service lines
+          - Every phase has one named owner and one output
+          - Check now reads live defect data, not the month-end report
+    takeaway: The loop works because Check is no longer optional.
+```
 
 ## Choosing between them
 
@@ -560,3 +603,4 @@ by field, degrades nowhere, and patches by `path`.
 | Phases plus parallel workstreams | `roadmap` with `parallel_tracks` (§11) |
 | Shapes that share one place in a hand-built grid (ring segments, a badge on a shape) | raw `shape_grid` cell `layers` ([INPUT_FORMAT.md](../INPUT_FORMAT.md)) |
 | Whole patterns side by side or stacked | raw `compose` (§12) |
+| A loop, hub or nested rings beside the words about it | `regions` with a `cycle` region (§13) |

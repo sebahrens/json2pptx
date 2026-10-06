@@ -15,7 +15,7 @@ Write the storyline first ([QUALITY.md](QUALITY.md)). `plan_deck` with
 with `__FILL__` titles (and `meta.date`), `slots[]` each slot's `path`,
 guidance and routed facts, `unplaced_facts` every clause no slot holds, and
 `constraints[]` the deck instructions ("8 slides", "with an agenda"). A
-sentence naming a kind (bridge, heat map, team, options, roadmap, a series)
+sentence naming a kind (bridge, heat map, loop, team, options, roadmap, a series)
 becomes that kind, in brief order, facts in its fields: edit, do not
 retype. "Ask:" is the one closer; the cover title is the brief's deck name.
 A brief listing its slides gets one slide per item, in order; `budget_note`
@@ -114,7 +114,7 @@ numbers do not say:
 | `team` | 1–8 people, each with a role; a `photo` (path / url, or `{path|url, alt}`) or an initials `photo_label`. |
 | `image_case` | Picture + body, ≤5 bullets, ≤3 metrics. ≤6 `callouts: [{label, x, y, units?}]`: fractions 0–1 or `units: "px"`; `OVERLAY_TARGET_CROPPED` → `image.fit: "contain"`. `image_width_pct` 30–60 (default 45): a wide `contain` screenshot wants 55–60, else it is letterboxed. No image: a draft renders, but `SEMANTIC_IMAGE_MISSING` blocks readiness (`image_label` only labels the frame). `regions` images have no callouts. |
 | `framework`, `matrix_2x2` | Every canonical part (SWOT, Five Forces, BMC; four headed quadrants and both axes) or the slide degrades to grouped bullets. |
-| `risk_heatmap` | 1–20 `items` `{name, likelihood, impact}` on a 3 × 3 (`size: 5`: 5 × 5); a level is `low` / `medium` / `high`, 1–`size` or a `likelihood_levels` / `impact_levels` label. Risks sharing a cell stack. |
+| `risk_heatmap` | 1–20 `items` `{name, likelihood, impact}` on a 3 × 3 (`size: 5`: 5 × 5); a level is `low` / `medium` / `high`, 1–`size` or a `likelihood_levels` / `impact_levels` label. |
 | `timeline`, `roadmap` | 3–7 milestones; one with an `end_date` turns the line into bars drawn to scale. A roadmap: 3–6 phases (`milestone` ≤60 marks a phase); workstreams go in `parallel_tracks` (0–4, ≤90 each; `parallel_label` ≤24): bars under the phases. |
 | `stat` | One value; `unit` renders at 40% of its size on the baseline. |
 | `agenda` | 2–10 sections; `current` bolds one section and dims the rest. |
@@ -123,6 +123,7 @@ numbers do not say:
 | `pillars` | 3–5 pillars. A house needs `objective` and `foundation` (a string, or 1–3 levels, each a band or a row of 2–5 cells) and takes a `beam`; without them it is panels. |
 | `org` | One root, ≤7 nodes, 3 levels, ≤4 direct reports per node; larger trees degrade to attributed bullets. |
 | `architecture` | 3–6 tiers; a tier's `items` (1–12, ≤40 characters each) are drawn one block each, a `description` as one line. |
+| `cycle` | `style`: `ring` (4–8) / `nodes` (3–8) one loop, `intake` (+1–3 `intake` steps), `figure_eight` two loops (full width), `radial` round a `center`, `concentric` nested (3–5). One `highlight`. |
 | `process` | 3–6 steps with descriptions are numbered rows (label ≤60, description ≤180); 7–8 steps (on two rows), or bare labels, are flow boxes (label and description together ≤80). |
 | `next_steps` | The closer: 2–6 `actions` `{action, owner, date}` and 0–3 `decisions`. Keep `closing` for a Q&A page; its title budget depends on the template. |
 
