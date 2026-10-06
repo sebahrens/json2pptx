@@ -26,10 +26,11 @@ import (
 //
 // Labels stand outside the ring, each row beside its own node at one constant
 // gap from that node's circle (ringLabelEdgeX), so the labels follow the ring's
-// curve, and each is led by the step number that the node carries: the number
-// is the cue that ties a label to its circle. A step's optional icon takes the
-// numeral's place in the node; the number stays beside the label, and the
-// loop's order is still read from 12 o'clock along the arrows. Rows are lattice cells
+// curve. A step is numbered once, in its node; the label beside it is name
+// plus one line. A step's optional icon takes the numeral's place in the node,
+// and only then does the number lead the label instead (as it does in the
+// legend layout, whose rows stand away from their nodes); the loop's order is
+// still read from 12 o'clock along the arrows. Rows are lattice cells
 // (ringLattice) and the ring cell is the spine column through the ring's
 // centre (ringSpinePlacement), whose fitted square is the ring.
 // In an area too narrow for two label columns (a compose half) the labels move
@@ -387,6 +388,7 @@ type cycleNodesLayout struct {
 	bodySize   float64
 	numeralPt  float64
 	gap        float64 // node circle to its label block (legend: ring square to the list)
+	cueW       float64 // number cue column beside a label; 0 = the node's numeral is the only number
 	textW      float64 // label text frame width: the narrowest a row gets (beside 3 and 9 o'clock)
 	rows       []cycleNodesRow
 	rowsFit    bool
@@ -448,6 +450,31 @@ func cycleNodesNumeralPt(diaPt float64) float64 {
 	return cycleNodesFloorPt
 }
 
+// cycleNodesCueWidth is the width of the number cue column beside the labels.
+// A step is numbered ONCE: in its node. The numeral is repeated beside the
+// label only where the node cannot be read as that number — when a node shows
+// an icon in the numeral's place, or in the legend layout, whose rows do not
+// stand beside their own nodes (go-slide-creator-g8kdz).
+func cycleNodesCueWidth(v *CycleNodesValues, mode string) float64 {
+	switch mode {
+	case cycleNodesLabelsInside:
+		return 0
+	case cycleNodesLabelsLegend:
+		return cycleNodesCueColPt
+	}
+	for i := range v.Steps {
+		if cycleNodesStepHasIcon(v.Steps[i]) {
+			return cycleNodesCueColPt
+		}
+	}
+	return 0
+}
+
+// cycleNodesStepHasIcon reports whether the step's node shows an icon.
+func cycleNodesStepHasIcon(s CycleNodesStep) bool {
+	return s.Icon != nil && !s.Icon.IsEmpty()
+}
+
 // cycleNodesMeasure resolves the geometry: the ring square, its nodes, and
 // the label rows sized to the WRITTEN height of their text. The label size
 // steps from 14pt to the 12pt floor before any row is left to the writer's
@@ -463,6 +490,7 @@ func cycleNodesMeasure(ctx ExpandContext, v *CycleNodesValues, ovr *CycleNodesOv
 		bodySize: shapegrid.EffectiveTextSizePt(ResolveSize(ovr.BodySize, cycleNodesBodyPt)),
 		rowsFit:  true,
 	}
+	lay.cueW = cycleNodesCueWidth(v, lay.mode)
 	clockwise := ovr.Direction != cycleNodesCounter
 
 	lay.dia = ringNodeDiameter(n)
@@ -576,7 +604,7 @@ func (l *cycleNodesLayout) arrange(widthFrac float64) {
 			l.side = math.Min(l.side, l.sideCap)
 		}
 		l.ringX = (l.w - l.side) / 2
-		l.textW = math.Min(l.ringX-l.gap-cycleNodesCueColPt, cycleNodesMaxLabelColPt)
+		l.textW = math.Min(l.ringX-l.gap-l.cueW, cycleNodesMaxLabelColPt)
 		l.textW = math.Max(l.textW, 1)
 	}
 	l.ringY = (l.h - l.side) / 2
@@ -739,11 +767,11 @@ func (l *cycleNodesLayout) rowAt(r ringRow) cycleNodesRow {
 	cx, cy, rad := l.nodeCircle(r.Index)
 	edge := ringLabelEdgeX(cx, cy, rad, row.y0, row.y1, l.gap, r.Side)
 	if r.Side == ringSideRight {
-		row.cueX0, row.cueX1 = edge, edge+cycleNodesCueColPt
-		row.textX0, row.textX1 = row.cueX1, l.ringX+l.side+l.gap+cycleNodesCueColPt+l.textW
+		row.cueX0, row.cueX1 = edge, edge+l.cueW
+		row.textX0, row.textX1 = row.cueX1, l.ringX+l.side+l.gap+l.cueW+l.textW
 	} else {
-		row.cueX0, row.cueX1 = edge-cycleNodesCueColPt, edge
-		row.textX0, row.textX1 = l.ringX-l.gap-cycleNodesCueColPt-l.textW, row.cueX0
+		row.cueX0, row.cueX1 = edge-l.cueW, edge
+		row.textX0, row.textX1 = l.ringX-l.gap-l.cueW-l.textW, row.cueX0
 	}
 	return row
 }
@@ -913,9 +941,13 @@ func (c *cycleNodes) Expand(ctx ExpandContext, values, overrides any, _ map[int]
 			align = "r"
 			gapEdges[i] = r.cueX1
 		}
+		// The number cue: only where the node does not already say it (an
+		// icon node, or a legend row away from its node).
+		if lay.cueW > 0 && (lay.mode == cycleNodesLabelsLegend || cycleNodesStepHasIcon(v.Steps[i])) {
+			places = append(places, ringPlacement{X0: r.cueX0, X1: r.cueX1, Y0: r.y0, Y1: r.y1, Cell: cycleNodesTextCell(ringNodeTextJSON(align, "t", cycleNodesLabelInsetPt,
+				ringNodePara{Content: strconv.Itoa(i + 1), Size: lay.labelSize, Bold: true, Color: paints[i].cueInk}))})
+		}
 		places = append(places,
-			ringPlacement{X0: r.cueX0, X1: r.cueX1, Y0: r.y0, Y1: r.y1, Cell: cycleNodesTextCell(ringNodeTextJSON(align, "t", cycleNodesLabelInsetPt,
-				ringNodePara{Content: strconv.Itoa(i + 1), Size: lay.labelSize, Bold: true, Color: paints[i].cueInk}))},
 			ringPlacement{X0: r.textX0, X1: r.textX1, Y0: r.y0, Y1: r.y1, Cell: cycleNodesTextCell(cycleNodesLabelText(v.Steps[i], align, lay.labelSize, lay.bodySize))},
 		)
 	}
@@ -938,16 +970,16 @@ type cycleNodesPaint struct {
 	cueInk   string // number cue beside the label
 }
 
-// cycleNodesPaints colours the steps: every node a neutral tint with its
-// number in the accent, and the highlighted one the single solid accent
-// circle. cell_accent_mode alternate / progressive tints each node in its own
+// cycleNodesPaints colours the steps: every node the accent's content swatch
+// (tonalContent) with its number in measured ink, and the highlighted one the
+// single solid accent circle. cell_accent_mode alternate / progressive tints each node in its own
 // accent instead.
 func cycleNodesPaints(ctx ExpandContext, v *CycleNodesValues, ovr *CycleNodesOverrides, base string) []cycleNodesPaint {
 	out := make([]cycleNodesPaint, len(v.Steps))
 	varied := ovr.CellAccentMode != "" && ovr.CellAccentMode != CellAccentUniform
 	for i := range out {
 		accent := ctx.ResolveCellAccent(base, i, ovr.CellAccentMode)
-		tone := neutralTone(NeutralTint8)
+		tone := tonalContent(ctx, accent)
 		if varied {
 			tone = inactiveTintTone(accent)
 		}
@@ -955,13 +987,17 @@ func cycleNodesPaints(ctx ExpandContext, v *CycleNodesValues, ovr *CycleNodesOve
 			fill:     tone.fillJSON(),
 			ink:      accentInkOnTone(ctx, accent, tone, cycleNodesInkContrast),
 			labelInk: readableInkOn(ctx, tone, "dk1", cycleNodesInkContrast),
-			cueInk:   accentInkOnLight(ctx, accent, cycleNodesInkContrast),
+			cueInk:   "dk1",
 		}
 		if i == v.Highlight-1 {
 			solid := fillTone{Color: accent}
 			p.fill = accentFillJSON(accent)
 			p.ink = readableTextOn(ctx, solid, "lt1")
 			p.labelInk = p.ink
+			p.cueInk = accentInkOnLight(ctx, accent, cycleNodesInkContrast)
+		}
+		if varied {
+			p.cueInk = accentInkOnLight(ctx, accent, cycleNodesInkContrast)
 		}
 		out[i] = p
 	}

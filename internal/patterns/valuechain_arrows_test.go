@@ -78,8 +78,14 @@ func TestValueChainArrowsInterlock(t *testing.T) {
 		if got := string(row.Cells[2].Shape.Fill); !strings.Contains(got, "accent") {
 			t.Errorf("n=%d: the highlighted arrow lost its accent fill: %s", n, got)
 		}
-		if got := string(row.Cells[1].Shape.Fill); got != neutral16JSON {
-			t.Errorf("n=%d: a plain arrow is filled %s, want the neutral step tint", n, got)
+		// A plain arrow is the accent's Lighter 80% content swatch, with the
+		// ink measured on it.
+		step := valueChainStepTone(ctx, ctx.DefaultAccent())
+		if got := string(row.Cells[1].Shape.Fill); got != string(step.fillJSON()) || got != `{"color":"accent1","lumMod":20000,"lumOff":80000}` {
+			t.Errorf("n=%d: a plain arrow is filled %s, want accent1's Lighter 80%% swatch", n, got)
+		}
+		if ink := tonalInk(ctx, step); !strings.Contains(string(row.Cells[1].Shape.Text), `"color":"`+ink+`"`) {
+			t.Errorf("n=%d: a plain arrow's label is not in the measured ink %q: %s", n, ink, row.Cells[1].Shape.Text)
 		}
 	}
 }

@@ -583,6 +583,10 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 // slide. The slots are sized to their content by the pattern, so a sparse
 // payload is still a small block and still reports.
 var openColumnPatterns = map[string]bool{
+	// overrides.style "open" (the default): a heading on a rule over its
+	// body, where the tile was (go-slide-creator-mot7a). A filled card
+	// counts as its shape either way.
+	"card-grid":            true,
 	"icon-row":             true,
 	"quote-cluster":        true,
 	"comparison-2col":      true,

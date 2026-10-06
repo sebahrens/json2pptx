@@ -1,81 +1,181 @@
 {
-  "gap": 10,
+  "col_gap": 24,
+  "row_gap": 2,
   "columns": 3,
   "rows": [
     {
-      "max_height": 82,
+      "min_height": 28,
+      "max_height": 28,
       "cells": [
         {
           "shape": {
-            "geometry": "roundRect",
-            "fill": "accent1",
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
             "text": {
+              "align": "l",
+              "inset_bottom": 4,
+              "inset_top": 2,
               "paragraphs": [
                 {
+                  "align": "l",
+                  "bold": true,
+                  "color": "dk1",
                   "content": "Card 1",
-                  "size": 16,
-                  "bold": true,
-                  "color": "lt1",
-                  "align": "l"
-                },
-                {
-                  "content": "Description 1",
-                  "size": 12,
-                  "color": "lt1",
-                  "align": "l"
+                  "size": 18
                 }
               ],
-              "align": "l",
-              "vertical_align": "t"
+              "vertical_align": "b"
             }
           }
         },
         {
           "shape": {
-            "geometry": "roundRect",
-            "fill": "accent1",
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
             "text": {
+              "align": "l",
+              "inset_bottom": 4,
+              "inset_top": 2,
               "paragraphs": [
                 {
+                  "align": "l",
+                  "bold": true,
+                  "color": "dk1",
                   "content": "Card 2",
-                  "size": 16,
-                  "bold": true,
-                  "color": "lt1",
-                  "align": "l"
-                },
-                {
-                  "content": "Description 2",
-                  "size": 12,
-                  "color": "lt1",
-                  "align": "l"
+                  "size": 18
                 }
               ],
+              "vertical_align": "b"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
               "align": "l",
+              "inset_bottom": 4,
+              "inset_top": 2,
+              "paragraphs": [
+                {
+                  "align": "l",
+                  "bold": true,
+                  "color": "dk1",
+                  "content": "Card 3",
+                  "size": 18
+                }
+              ],
+              "vertical_align": "b"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 1,
+      "max_height": 1,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 60000,
+              "lumOff": 40000
+            },
+            "line": "none"
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 60000,
+              "lumOff": 40000
+            },
+            "line": "none"
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 60000,
+              "lumOff": 40000
+            },
+            "line": "none"
+          }
+        }
+      ]
+    },
+    {
+      "max_height": 32,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "align": "l",
+              "inset_bottom": 2,
+              "inset_top": 5,
+              "paragraphs": [
+                {
+                  "align": "l",
+                  "color": "dk1",
+                  "content": "Description 1",
+                  "size": 14
+                }
+              ],
               "vertical_align": "t"
             }
           }
         },
         {
           "shape": {
-            "geometry": "roundRect",
-            "fill": "accent1",
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
             "text": {
+              "align": "l",
+              "inset_bottom": 2,
+              "inset_top": 5,
               "paragraphs": [
                 {
-                  "content": "Card 3",
-                  "size": 16,
-                  "bold": true,
-                  "color": "lt1",
-                  "align": "l"
-                },
-                {
-                  "content": "Description 3",
-                  "size": 12,
-                  "color": "lt1",
-                  "align": "l"
+                  "align": "l",
+                  "color": "dk1",
+                  "content": "Description 2",
+                  "size": 14
                 }
               ],
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
               "align": "l",
+              "inset_bottom": 2,
+              "inset_top": 5,
+              "paragraphs": [
+                {
+                  "align": "l",
+                  "color": "dk1",
+                  "content": "Description 3",
+                  "size": 14
+                }
+              ],
               "vertical_align": "t"
             }
           }
@@ -83,79 +183,187 @@
       ]
     },
     {
-      "max_height": 82,
+      "min_height": 26,
+      "max_height": 26,
+      "cells": [
+        {
+          "col_span": 3
+        }
+      ]
+    },
+    {
+      "min_height": 28,
+      "max_height": 28,
       "cells": [
         {
           "shape": {
-            "geometry": "roundRect",
-            "fill": "accent1",
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
             "text": {
+              "align": "l",
+              "inset_bottom": 4,
+              "inset_top": 2,
               "paragraphs": [
                 {
+                  "align": "l",
+                  "bold": true,
+                  "color": "dk1",
                   "content": "Card 4",
-                  "size": 16,
-                  "bold": true,
-                  "color": "lt1",
-                  "align": "l"
-                },
-                {
-                  "content": "Description 4",
-                  "size": 12,
-                  "color": "lt1",
-                  "align": "l"
+                  "size": 18
                 }
               ],
-              "align": "l",
-              "vertical_align": "t"
+              "vertical_align": "b"
             }
           }
         },
         {
           "shape": {
-            "geometry": "roundRect",
-            "fill": "accent1",
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
             "text": {
+              "align": "l",
+              "inset_bottom": 4,
+              "inset_top": 2,
               "paragraphs": [
                 {
+                  "align": "l",
+                  "bold": true,
+                  "color": "dk1",
                   "content": "Card 5",
-                  "size": 16,
-                  "bold": true,
-                  "color": "lt1",
-                  "align": "l"
-                },
-                {
-                  "content": "Description 5",
-                  "size": 12,
-                  "color": "lt1",
-                  "align": "l"
+                  "size": 18
                 }
               ],
+              "vertical_align": "b"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
               "align": "l",
+              "inset_bottom": 4,
+              "inset_top": 2,
+              "paragraphs": [
+                {
+                  "align": "l",
+                  "bold": true,
+                  "color": "dk1",
+                  "content": "Card 6",
+                  "size": 18
+                }
+              ],
+              "vertical_align": "b"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 1,
+      "max_height": 1,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 60000,
+              "lumOff": 40000
+            },
+            "line": "none"
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 60000,
+              "lumOff": 40000
+            },
+            "line": "none"
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 60000,
+              "lumOff": 40000
+            },
+            "line": "none"
+          }
+        }
+      ]
+    },
+    {
+      "max_height": 32,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "align": "l",
+              "inset_bottom": 2,
+              "inset_top": 5,
+              "paragraphs": [
+                {
+                  "align": "l",
+                  "color": "dk1",
+                  "content": "Description 4",
+                  "size": 14
+                }
+              ],
               "vertical_align": "t"
             }
           }
         },
         {
           "shape": {
-            "geometry": "roundRect",
-            "fill": "accent1",
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
             "text": {
+              "align": "l",
+              "inset_bottom": 2,
+              "inset_top": 5,
               "paragraphs": [
                 {
-                  "content": "Card 6",
-                  "size": 16,
-                  "bold": true,
-                  "color": "lt1",
-                  "align": "l"
-                },
-                {
-                  "content": "Description 6",
-                  "size": 12,
-                  "color": "lt1",
-                  "align": "l"
+                  "align": "l",
+                  "color": "dk1",
+                  "content": "Description 5",
+                  "size": 14
                 }
               ],
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
               "align": "l",
+              "inset_bottom": 2,
+              "inset_top": 5,
+              "paragraphs": [
+                {
+                  "align": "l",
+                  "color": "dk1",
+                  "content": "Description 6",
+                  "size": 14
+                }
+              ],
               "vertical_align": "t"
             }
           }

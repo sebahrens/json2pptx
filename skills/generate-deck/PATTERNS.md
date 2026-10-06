@@ -28,9 +28,9 @@ KPI `values` is a JSON **array**, one cell per metric: an object `{"big", "small
 
 Do NOT hand-roll shape grids when a named pattern exists.
 
-**Callouts.** Patterns with `supports_callout=true` accept an envelope-level `callout: {text, emphasis?, accent?}` — the takeaway band below the pattern (3pt accent bar, 14pt bold dk1 text, no box; budget two lines). `emphasis`: `bold` (default), `italic`/`bold-italic`, `subtle` or `strong` (solid accent). KPI patterns refuse callouts (`callout_unsupported`). exec-summary `bottom_line`, metric-list `callout` and chart-insights-split `so_what` render the same band.
+**Callouts.** Patterns with `supports_callout=true` accept an envelope-level `callout: {text, emphasis?, accent?}` — the takeaway band below the pattern (3pt accent bar, 14pt bold dk1 text, no box; budget two lines). `emphasis`: `bold` (default), `italic`/`bold-italic`, `subtle` or `strong` (solid accent). KPI patterns refuse callouts (`callout_unsupported`). exec-summary `bottom_line`, metric-list `callout`, chart-insights-split `so_what` and next-steps decisions are a dark full-width band (`takeaway_emphasis: bar`: the bar).
 
-**Accent is restrained by default.** Patterns spend at most one solid accent block, in the template's `color_roles.primary_fill` (the default accent). Structural cells are neutral tints with dark text; accent rules, connectors and numerals mark structure. Many patterns are open by default (text on the canvas between rules) and take an `overrides.style` that restores tiles or solid fills (`tiles`, `panels`, `solid`, `ribbon`, …): each pattern's `show_pattern` overrides schema lists its values. A process flow spends its one solid accent on `steps[].highlight` (at most one) or its single decision. Ask for an accent fill only where it is the slide's one emphasis.
+**Accent is restrained by default.** Patterns spend at most one solid accent block, in the template's `color_roles.primary_fill` (the default accent). Shapes that carry content are light accent tints, panels the lightest neutral; flows, lanes and steps are interlocking arrows, not boxes and lines. Many patterns are open by default and take an `overrides.style` restoring the old look (`tiles`, `tinted`, `filled`, `solid`, `lines`, …): see each `show_pattern` overrides schema. A process flow spends its one solid accent on `steps[].highlight` (at most one) or its single decision. Ask for an accent fill only where it is the slide's one emphasis.
 
 **Chrome bands shrink row budgets.** A `takeaway` (and `source`) band takes 70–100pt off the content zone. `numbered-step-strip` stacked-box / toc rows are measured against what is left and report `BODY_TOO_LONG` when they cannot fit at 12pt: under a takeaway, keep them to labels only from five rows up, or drop the band. When every label and body is one short line, each row is `number | label | detail`.
 
@@ -72,8 +72,8 @@ digits and `kpi-6up` about 9 on the narrowest templates.
 Box patterns are content-sized: `kpi-Nup` cards, `card-grid`
 rows, `before-after` panels and `strategy-house` pillars hug their text (≤
 1.6× its height). A slide's own pattern block that needs under 75% of the
-content area is composed: its text steps up one type-scale step (12→14pt,
-14→18pt, KPI figures up to 48pt; skipped if a short label would wrap)
+content area is composed: rows grow (≤1.6×) and text steps up one or two
+sizes (12→14→18pt, headings to 24pt; skipped if a short label would wrap)
 and the block sits at the optical centre; a lone open `kpi-Nup` row also
 grows its divider band to half the area. Do not add filler, spacer rows or
 `bounds` to "fill" a sparse slide. `pattern.vertical_align` (default `auto`)

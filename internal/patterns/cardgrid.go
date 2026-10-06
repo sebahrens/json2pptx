@@ -347,7 +347,7 @@ var cardGridLastRowAligns = []string{"center", "left"}
 // hardcoding any template-specific color in the engine.
 type CardGridOverrides struct {
 	TextOverrides
-	Style string `json:"style,omitempty"` // "filled" (default), "accent-stripe", "numbered-badge", "icon-card", "tinted", "soft-card"
+	Style string `json:"style,omitempty"` // "open" (default), "filled", "accent-stripe", "numbered-badge", "icon-card", "tinted", "soft-card"
 	// CardFill overrides every card's fill with a caller-supplied hex (e.g. "#FFF5ED")
 	// or scheme color name. Applies across all styles.
 	CardFill string `json:"card_fill,omitempty"`
@@ -368,7 +368,8 @@ type CardGridOverrides struct {
 
 // validCardGridStyles enumerates the allowed style values.
 var validCardGridStyles = map[string]bool{
-	"":               true, // default = filled
+	"":               true, // default = open
+	"open":           true,
 	"filled":         true,
 	"accent-stripe":  true,
 	"numbered-badge": true,
@@ -426,7 +427,7 @@ func (c *cardGrid) Schema() *Schema {
 			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
 			"header_size":      NumberSchema(6, 120).WithDescription("Font size for headers in points"),
 			"body_size":        NumberSchema(6, 120).WithDescription("Font size for body text in points"),
-			"style":            EnumSchema("filled", "accent-stripe", "numbered-badge", "icon-card", "tinted", "soft-card").WithDescription("Visual style: filled (default solid accent cards), accent-stripe (left accent bar on light cards), numbered-badge (circled number badges), icon-card (bundled SVG icon badge above header), tinted (alternating lt1/lt2 backgrounds), soft-card (single pale surface, dark text, no border)").WithDefault("filled"),
+			"style":            EnumSchema("open", "filled", "accent-stripe", "numbered-badge", "icon-card", "tinted", "soft-card").WithDescription("Visual style: open (default: bold heading on one rule over the body, no tile; card_fill / border / secondary keep filled), filled (pale tile under an accent rule), accent-stripe (left accent bar on light cards), numbered-badge (circled number badges), icon-card (bundled SVG icon badge above header), tinted (alternating lt1/lt2 backgrounds), soft-card (single pale surface, dark text, no border)").WithDefault("open"),
 			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation: uniform (default, all cells same accent), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
 			"card_fill":        StringSchema(0).WithDescription("Override every card's fill with a hex color (e.g. \"#FFF5ED\") or scheme color name. Applies across all styles; pair with soft-card or accent-stripe for a pale surface."),
 			"line_color":       StringSchema(0).WithDescription("Card border color as a hex value or scheme color name. Takes precedence over border when set."),
@@ -581,10 +582,7 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	headerSize := ResolveSize(ovr.HeaderSize, sizeHeaderPt)
 	bodySize := ResolveSize(ovr.BodySize, scaleBodyPt)
-	style := ovr.Style
-	if style == "" {
-		style = "filled"
-	}
+	style := cardGridStyle(vals, ovr)
 	cellAccentMode := ovr.CellAccentMode
 
 	columns, gridRows, ok := vals.Shape()
@@ -600,6 +598,10 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	span := 1
 	if centred {
 		span = 2
+	}
+
+	if style == cardGridStyleOpen {
+		return c.expandOpen(ctx, vals, ovr, cellOverrides, columns, gridRows, span, centred, baseAccent, headerSize, bodySize), nil
 	}
 
 	var rows []jsonschema.GridRowInput
@@ -960,7 +962,7 @@ func validateCardGridOverrides(name string, overrides any) []error {
 			Pattern: name,
 			Path:    "overrides.style",
 			Code:    "invalid_enum",
-			Message: fmt.Sprintf("card-grid: overrides.style must be one of filled, accent-stripe, numbered-badge, icon-card, tinted, soft-card; got %q", ovr.Style),
+			Message: fmt.Sprintf("card-grid: overrides.style must be one of open, filled, accent-stripe, numbered-badge, icon-card, tinted, soft-card; got %q", ovr.Style),
 		})
 	}
 	if ovr.CardFill != "" && !isCardGridColor(ovr.CardFill) {

@@ -222,7 +222,12 @@ func (a *archStack) expandComponents(ctx ExpandContext, vals *ArchStackValues, o
 	}
 	colsJSON, _ := json.Marshal(cols)
 
-	railTone := inactiveTintTone(baseAccent)
+	// Roles (go-slide-creator-x5m8f): the tier band is a panel that groups
+	// its components, the component blocks are the content, and a rail —
+	// which crosses every tier — is the deeper rung of the same ladder.
+	railTone := tonalRung(ctx, baseAccent, TonalLighterDeep)
+	bandFill := tonalPanel(ctx, baseAccent).fillJSON()
+	blockFill := tonalContent(ctx, baseAccent).fillJSON()
 	var rows []jsonschema.GridRowInput
 	for i, tier := range vals.Tiers {
 		accent := ctx.ResolveCellAccent(baseAccent, i, ovr.CellAccentMode)
@@ -247,7 +252,7 @@ func (a *archStack) expandComponents(ctx ExpandContext, vals *ArchStackValues, o
 						// of its own, which the peer-growth resolver cannot see across:
 						// they keep the size the layout measured (go-slide-creator-riyh7).
 						TypeScale: peerTextTypeScale,
-						Fill:      json.RawMessage(`"bg1"`),
+						Fill:      blockFill,
 						Line:      noLine,
 						Text:      lay.blockText[i][k],
 					}})
@@ -307,7 +312,7 @@ func (a *archStack) expandComponents(ctx ExpandContext, vals *ArchStackValues, o
 			ColSpan: 3,
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     neutralFillJSON(NeutralTint8),
+				Fill:     bandFill,
 				Line:     noLine,
 				Text:     archStackText(pptx.ConvertMarkdownEmphasis(tier.Label), headerSize, true, "l", lay.areaW+padW+defaultShapeInsetLRPt),
 			},

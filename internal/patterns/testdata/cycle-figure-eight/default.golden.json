@@ -75,7 +75,7 @@
                   "content": "1",
                   "size": 14,
                   "bold": true,
-                  "color": "accent1",
+                  "color": "dk1",
                   "align": "l"
                 }
               ],
@@ -106,7 +106,7 @@
                   "content": "4",
                   "size": 14,
                   "bold": true,
-                  "color": "accent1",
+                  "color": "dk1",
                   "align": "r"
                 }
               ],
@@ -174,9 +174,9 @@
               "shape": {
                 "geometry": "rect",
                 "fill": {
-                  "color": "dk1",
-                  "lumMod": 16000,
-                  "lumOff": 84000
+                  "color": "accent1",
+                  "lumMod": 20000,
+                  "lumOff": 80000
                 },
                 "line": "none",
                 "rotation": 141.331717507
@@ -193,9 +193,9 @@
               "shape": {
                 "geometry": "rect",
                 "fill": {
-                  "color": "dk1",
-                  "lumMod": 16000,
-                  "lumOff": 84000
+                  "color": "accent1",
+                  "lumMod": 20000,
+                  "lumOff": 80000
                 },
                 "line": "none",
                 "rotation": 38.668282493
@@ -212,9 +212,9 @@
               "shape": {
                 "geometry": "blockArc",
                 "fill": {
-                  "color": "dk1",
-                  "lumMod": 16000,
-                  "lumOff": 84000
+                  "color": "accent1",
+                  "lumMod": 20000,
+                  "lumOff": 80000
                 },
                 "line": "none",
                 "adjustments": {
@@ -235,9 +235,9 @@
               "shape": {
                 "geometry": "blockArc",
                 "fill": {
-                  "color": "dk1",
-                  "lumMod": 16000,
-                  "lumOff": 84000
+                  "color": "accent1",
+                  "lumMod": 20000,
+                  "lumOff": 80000
                 },
                 "line": "none",
                 "adjustments": {
@@ -258,9 +258,9 @@
               "shape": {
                 "geometry": "blockArc",
                 "fill": {
-                  "color": "dk1",
-                  "lumMod": 16000,
-                  "lumOff": 84000
+                  "color": "accent1",
+                  "lumMod": 20000,
+                  "lumOff": 80000
                 },
                 "line": "none",
                 "adjustments": {
@@ -273,16 +273,17 @@
             },
             {
               "frame": {
-                "x": 0.827215,
-                "y": 0.276653,
-                "w": 0.074174,
-                "h": 0.107552
+                "x": 0.805703,
+                "y": 0.254251,
+                "w": 0.117197,
+                "h": 0.152357
               },
               "shape": {
                 "geometry": "triangle",
                 "fill": {
-                  "color": "dk1",
-                  "alpha": 60
+                  "color": "accent1",
+                  "lumMod": 60000,
+                  "lumOff": 40000
                 },
                 "line": "none",
                 "rotation": 321.331717507
@@ -298,7 +299,7 @@
               },
               "shape": {
                 "geometry": "ellipse",
-                "fill": "accent1",
+                "fill": "dk2",
                 "line": "none",
                 "text": {
                   "paragraphs": [
@@ -325,7 +326,7 @@
               },
               "shape": {
                 "geometry": "ellipse",
-                "fill": "accent1",
+                "fill": "dk2",
                 "line": "none",
                 "text": {
                   "paragraphs": [
@@ -352,7 +353,7 @@
               },
               "shape": {
                 "geometry": "ellipse",
-                "fill": "accent1",
+                "fill": "dk2",
                 "line": "none",
                 "text": {
                   "paragraphs": [
@@ -419,9 +420,9 @@
               "shape": {
                 "geometry": "rect",
                 "fill": {
-                  "color": "dk1",
-                  "lumMod": 16000,
-                  "lumOff": 84000
+                  "color": "accent1",
+                  "lumMod": 20000,
+                  "lumOff": 80000
                 },
                 "line": "none",
                 "rotation": 218.66828249300002
@@ -438,9 +439,9 @@
               "shape": {
                 "geometry": "rect",
                 "fill": {
-                  "color": "dk1",
-                  "lumMod": 16000,
-                  "lumOff": 84000
+                  "color": "accent1",
+                  "lumMod": 20000,
+                  "lumOff": 80000
                 },
                 "line": "none",
                 "rotation": 321.331717507
@@ -457,9 +458,9 @@
               "shape": {
                 "geometry": "blockArc",
                 "fill": {
-                  "color": "dk1",
-                  "lumMod": 16000,
-                  "lumOff": 84000
+                  "color": "accent1",
+                  "lumMod": 20000,
+                  "lumOff": 80000
                 },
                 "line": "none",
                 "adjustments": {
@@ -480,9 +481,9 @@
               "shape": {
                 "geometry": "blockArc",
                 "fill": {
-                  "color": "dk1",
-                  "lumMod": 16000,
-                  "lumOff": 84000
+                  "color": "accent1",
+                  "lumMod": 20000,
+                  "lumOff": 80000
                 },
                 "line": "none",
                 "adjustments": {
@@ -503,9 +504,9 @@
               "shape": {
                 "geometry": "blockArc",
                 "fill": {
-                  "color": "dk1",
-                  "lumMod": 16000,
-                  "lumOff": 84000
+                  "color": "accent1",
+                  "lumMod": 20000,
+                  "lumOff": 80000
                 },
                 "line": "none",
                 "adjustments": {
@@ -518,16 +519,17 @@
             },
             {
               "frame": {
-                "x": 0.098611,
-                "y": 0.276653,
-                "w": 0.074174,
-                "h": 0.107552
+                "x": 0.077099,
+                "y": 0.254251,
+                "w": 0.117197,
+                "h": 0.152357
               },
               "shape": {
                 "geometry": "triangle",
                 "fill": {
-                  "color": "dk1",
-                  "alpha": 60
+                  "color": "accent1",
+                  "lumMod": 60000,
+                  "lumOff": 40000
                 },
                 "line": "none",
                 "rotation": 38.668282493
@@ -543,7 +545,7 @@
               },
               "shape": {
                 "geometry": "ellipse",
-                "fill": "accent1",
+                "fill": "dk2",
                 "line": "none",
                 "text": {
                   "paragraphs": [
@@ -570,7 +572,7 @@
               },
               "shape": {
                 "geometry": "ellipse",
-                "fill": "accent1",
+                "fill": "dk2",
                 "line": "none",
                 "text": {
                   "paragraphs": [
@@ -597,7 +599,7 @@
               },
               "shape": {
                 "geometry": "ellipse",
-                "fill": "accent1",
+                "fill": "dk2",
                 "line": "none",
                 "text": {
                   "paragraphs": [
@@ -706,7 +708,7 @@
                   "content": "2",
                   "size": 14,
                   "bold": true,
-                  "color": "accent1",
+                  "color": "dk1",
                   "align": "l"
                 }
               ],
@@ -736,7 +738,7 @@
                   "content": "5",
                   "size": 14,
                   "bold": true,
-                  "color": "accent1",
+                  "color": "dk1",
                   "align": "r"
                 }
               ],
@@ -841,7 +843,7 @@
                   "content": "3",
                   "size": 14,
                   "bold": true,
-                  "color": "accent1",
+                  "color": "dk1",
                   "align": "l"
                 }
               ],
@@ -870,7 +872,7 @@
                   "content": "6",
                   "size": 14,
                   "bold": true,
-                  "color": "accent1",
+                  "color": "dk1",
                   "align": "r"
                 }
               ],

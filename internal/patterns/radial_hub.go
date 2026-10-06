@@ -215,7 +215,7 @@ func (p *radialHub) Schema() *Schema {
 		"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
 		"header_size":      NumberSchema(12, 24).WithDescription("Satellite label font size in points (default 14)"),
 		"body_size":        NumberSchema(12, 20).WithDescription("Description font size in points (default 12)"),
-		"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Satellite fills: uniform (default, neutral tint), alternate (accent / next accent), progressive (walks accent1-6)").WithDefault("uniform"),
+		"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Satellite fills: uniform (default, accent tint), alternate (accent / next accent), progressive (walks accent1-6)").WithDefault("uniform"),
 		"labels":           EnumSchema(rhLabelsOutside, rhLabelsInside, rhLabelsLegend).WithDescription("Where the labels go: outside (default; each label beside its satellite, legend in a narrow area), inside (label in a larger satellite: 4-6 spokes, labels of at most 14 characters in words of about 8, no descriptions), legend (ring on the left, keyed list A, B, C ... on the right)").WithDefault(rhLabelsOutside),
 		"spokes":           EnumSchema(rhSpokesLines, rhSpokesNone).WithDescription("lines (default) draws a thin spoke from the hub to each satellite; none leaves them unconnected").WithDefault(rhSpokesLines),
 	}, nil).WithAdditionalProperties(false)
@@ -850,7 +850,7 @@ func (p *radialHub) Expand(ctx ExpandContext, values, overrides any, _ map[int]a
 		Shape: &jsonschema.ShapeSpecInput{Geometry: "ellipse", Fill: accentFillJSON(accent), Line: noLine, Text: rhCircleText(hubParas...)},
 	})
 	for i, it := range lay.items {
-		tone := rhSatelliteTone(accent, i, v.Highlight == i+1, ovr.CellAccentMode)
+		tone := rhSatelliteTone(ctx, accent, i, v.Highlight == i+1, ovr.CellAccentMode)
 		shape := &jsonschema.ShapeSpecInput{Geometry: "ellipse", Fill: tone.fillJSON(), Line: noLine}
 		ink := readableTextOn(ctx, tone, "dk1")
 		icon := rhSpokeIcon(v.Spokes[i], iconFillOn(ctx, shape.Fill, accent), rhIconScale)
@@ -927,25 +927,28 @@ func rhKey(i int) string {
 	return string(rune('A' + i))
 }
 
-// rhSatelliteTone is a satellite's fill. Satellites are neutral tints — the
-// hub is the one solid accent block — and the highlighted one takes a pale
-// tint of the accent; cell_accent_mode alternate / progressive is the author
-// asking for accent-filled satellites.
-func rhSatelliteTone(accent string, i int, highlighted bool, mode string) fillTone {
+// rhSatelliteTone is a satellite's fill. Satellites are the accent's content
+// swatch (tonalContent) — the hub is the one solid accent block — and the
+// highlighted one takes a deeper rung of the same ladder; cell_accent_mode
+// alternate / progressive is the author asking for accent-filled satellites.
+func rhSatelliteTone(ctx ExpandContext, accent string, i int, highlighted bool, mode string) fillTone {
 	switch {
 	case mode == CellAccentAlternate || mode == CellAccentProgressive:
 		return fillTone{Color: ResolveCellAccent(accent, i, mode)}
 	case highlighted:
-		return rhHighlightTone(accent)
+		return rhHighlightTone(ctx, accent)
 	}
-	return neutralTone(NeutralTint16)
+	return tonalContent(ctx, accent)
 }
 
-// rhHighlightTone is the highlighted satellite's fill: the accent mixed
-// most of the way to white, clearly the accent's family beside the
-// neutral discs without being a second solid block.
-func rhHighlightTone(accent string) fillTone {
-	return fillTone{Color: accent, Tint: 40000}
+// rhHighlightLighter is the highlighted satellite's "Lighter N%" swatch.
+const rhHighlightLighter = 40
+
+// rhHighlightTone is the highlighted satellite's fill: a deeper rung of the
+// accent ladder, clearly apart from its siblings without being a second
+// solid block.
+func rhHighlightTone(ctx ExpandContext, accent string) fillTone {
+	return tonalRung(ctx, accent, rhHighlightLighter)
 }
 
 // rhSpokeFrame is a thin `rect` layer that reads as a line from fromR to toR

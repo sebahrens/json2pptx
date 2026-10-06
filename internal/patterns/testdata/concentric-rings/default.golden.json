@@ -28,9 +28,9 @@
               "shape": {
                 "geometry": "ellipse",
                 "fill": {
-                  "color": "dk1",
-                  "lumMod": 6000,
-                  "lumOff": 94000
+                  "color": "accent1",
+                  "lumMod": 10000,
+                  "lumOff": 90000
                 },
                 "line": "none"
               },
@@ -46,9 +46,9 @@
               "shape": {
                 "geometry": "ellipse",
                 "fill": {
-                  "color": "dk1",
-                  "lumMod": 11000,
-                  "lumOff": 89000
+                  "color": "accent1",
+                  "lumMod": 20000,
+                  "lumOff": 80000
                 },
                 "line": "none"
               },

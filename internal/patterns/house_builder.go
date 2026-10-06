@@ -83,6 +83,9 @@ type HouseStyle struct {
 	PillarAccent func(i int) string
 	// PillarSurface is the pillar fill; empty takes the neutral 4% step.
 	PillarSurface json.RawMessage
+	// BandFill is the fill of a band level (beam, foundation); empty takes
+	// the accent's Lighter 80% swatch, the tonal system's content tone.
+	BandFill json.RawMessage
 	// HeaderPt and BodyPt are the title and bullet sizes; BandPt is the band
 	// label size (default: two points under the header).
 	HeaderPt, BodyPt, BandPt float64
@@ -211,6 +214,9 @@ func BuildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLa
 	if len(st.PillarSurface) == 0 {
 		st.PillarSurface = neutralFillJSON(NeutralTint4)
 	}
+	if len(st.BandFill) == 0 {
+		st.BandFill = tonalLighter(st.Accent, TonalLighterContent).fillJSON()
+	}
 	cols := houseColumns(m.Levels)
 	if cols > shapegrid.MaxColumns {
 		return nil, fmt.Errorf("house: levels with %s cells cannot share one column grid; use cell counts that divide a common number of at most %d", houseCountList(m.Levels), shapegrid.MaxColumns)
@@ -267,8 +273,10 @@ func BuildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLa
 			span := cols / n
 			lr := levelRow{pillar: l.Kind == HousePillars, pad: houseBandPadPt, margin: bandMargin}
 			if lr.pillar {
-				// A pillar keeps the uniform margin: its text hangs under the
-				// accent rule along its top edge.
+				// A pillar keeps the uniform margin: it is a column of the
+				// house, a plain panel under the beam or the roof, and takes
+				// an accent rule along its top edge only where cell_overrides
+				// asks for one (go-slide-creator-mot7a).
 				lr.pad, lr.margin = cardPadPt, 2*defaultShapeInsetTBPt
 			}
 			anyBody := false
@@ -287,11 +295,10 @@ func BuildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLa
 						Fill:     st.PillarSurface,
 						Text:     buildHousePillarText(c, st.HeaderPt, st.BodyPt, accent, anyBody),
 					}
-					cell.AccentBar = &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: 4}
 				} else {
 					cell.Shape = &jsonschema.ShapeSpecInput{
 						Geometry: "rect",
-						Fill:     neutralFillJSON(NeutralTint16),
+						Fill:     st.BandFill,
 						Text:     buildHouseBandText(c, st.BandPt, st.BodyPt),
 					}
 				}

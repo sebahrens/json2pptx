@@ -206,11 +206,21 @@ func TestValueChain_Expand_HighlightDefaultColor(t *testing.T) {
 	if got := string(highlighted.Shape.Fill); got != `"accent1"` {
 		t.Errorf("highlighted label fill = %s, want accent1", got)
 	}
-	// Step 0 (not highlighted) is the neutral 16% step — never a solid dk1 /
-	// dk2 block (go-slide-creator-8xsj3).
-	plain := grid.Rows[0].Cells[0]
-	if got := string(plain.Shape.Fill); got != neutral16JSON {
-		t.Errorf("non-highlighted label fill = %s, want neutral 16%%", got)
+	// Step 0 (not highlighted) is the accent's Lighter 80% content swatch —
+	// never a solid dk1 / dk2 block (go-slide-creator-8xsj3) nor a mid-grey
+	// box (go-slide-creator-x5m8f) — with the ink measured on it.
+	for _, i := range []int{0, 1, 3, 4} {
+		plain := grid.Rows[0].Cells[i]
+		if got := string(plain.Shape.Fill); got != `{"color":"accent1","lumMod":20000,"lumOff":80000}` {
+			t.Errorf("non-highlighted label %d fill = %s, want accent1's Lighter 80%% swatch", i, got)
+		}
+		if got, want := string(plain.Shape.Fill), string(valueChainStepTone(ExpandContext{}, "accent1").fillJSON()); got != want {
+			t.Errorf("non-highlighted label %d fill = %s, want valueChainStepTone %s", i, got, want)
+		}
+		ink := tonalInk(ExpandContext{}, valueChainStepTone(ExpandContext{}, "accent1"))
+		if !strings.Contains(string(plain.Shape.Text), `"color":"`+ink+`"`) {
+			t.Errorf("non-highlighted label %d is not in the measured ink %q: %s", i, ink, plain.Shape.Text)
+		}
 	}
 }
 

@@ -224,7 +224,7 @@ func (p *cycleRing) Schema() *Schema {
 	overrides := textOverridesSchema()
 	overrides.raw.Properties["header_size"] = NumberSchema(12, 28).WithDescription("Phase label size in points (default 14, stepping down to 12 when the rows need it)")
 	overrides.raw.Properties["body_size"] = NumberSchema(12, 20).WithDescription("Description size in points (default 12)")
-	overrides.raw.Properties["cell_accent_mode"] = EnumSchema("uniform", "alternate", "progressive").WithDescription("uniform (default): neutral segments, badges in the accent. alternate / progressive: each segment takes a light tint of its own accent").WithDefault("uniform")
+	overrides.raw.Properties["cell_accent_mode"] = EnumSchema("uniform", "alternate", "progressive").WithDescription("uniform (default): accent-tint segments, dark badges. alternate / progressive: each segment takes a light tint of its own accent").WithDefault("uniform")
 	overrides.raw.Properties["style"] = EnumSchema(cycleRingStyles...).WithDescription("segments (default): ring segments. arrows: each phase is a curved arrow chasing the next").WithDefault(cycleRingStyleSegments)
 	overrides.raw.Properties["direction"] = EnumSchema(cycleRingDirections...).WithDescription("Direction of travel from phase 1 at 12 o'clock").WithDefault("clockwise")
 	overrides.raw.Properties["thickness"] = EnumSchema(cycleRingThicknesses...).WithDescription("Band width: thin, regular or thick (14% / 20% / 28% of the ring's diameter)").WithDefault("regular")
@@ -786,7 +786,7 @@ func (p *cycleRing) Expand(ctx ExpandContext, values, overrides any, _ map[int]a
 		places[0] = ringSpinePlacement(lay.x0+lay.side/2, lay.y0, lay.side, places[0].Cell)
 	}
 
-	places = append(places, lay.labelPlaces(ctx, v.Phases, paint.Accents)...)
+	places = append(places, lay.labelPlaces(ctx, v.Phases, paint.labelAccents(ctx, len(v.Phases)))...)
 
 	grid, err := ringLattice(places, lay.w, lay.h)
 	if err != nil {

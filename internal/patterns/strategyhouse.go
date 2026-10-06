@@ -605,7 +605,8 @@ func (v *StrategyHouseValues) style(ctx ExpandContext, ovr *StrategyHouseOverrid
 		// The pillar surface used to be lt1 — white on a white slide — so a
 		// column was invisible below its last bullet (go-slide-creator-pr3g).
 		// Generic light roles become the neutral 4% step (go-slide-creator-8xsj3).
-		PillarSurface: surfaceFillJSON(ctx, "subtle", NeutralTint4),
+		PillarSurface: tonalPanel(ctx, baseAccent).fillJSON(),
+		BandFill:      tonalContent(ctx, baseAccent).fillJSON(),
 		HeaderPt:      ResolveSize(ovr.HeaderSize, sizeHeaderPt),
 		BodyPt:        ResolveSize(ovr.BodySize, scaleBodyPt),
 		ColGapPt:      ctx.Gap(strategyHouseColGapPt),

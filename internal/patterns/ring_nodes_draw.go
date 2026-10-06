@@ -27,19 +27,24 @@ const (
 	// arrow that meets it.
 	ringNodeClearDeg = 4.0
 
-	// Link arrows (circularArrow), as shares of the ring square's side: a thin
-	// shaft with a small head. The head's half width stays well under the
+	// Link arrows (circularArrow), as shares of the ring square's side: a
+	// block arc of visible weight — nearly twice the hairline it replaces —
+	// under the head that hairline had (go-slide-creator-g8kdz). The head is
+	// not widened: a label now starts one gap from its node, and a wider head
+	// reaches into it. The head's half width stays well under the
 	// preset's 0.125 limit and the shaft under the head, where LibreOffice and
 	// PowerPoint draw the same outline.
-	ringLinkShaft    = 0.010
+	ringLinkShaft    = 0.018
 	ringLinkHeadHalf = 0.026
 	ringLinkHeadLen  = 0.050 // along the arc
 	// ringLinkHeadShare is the most of a link's arc its head may take.
 	ringLinkHeadShare = 0.45
 
-	// ringLinkTintPct is the dk1 coverage of a link arrow: a mid grey, so the
-	// arrows read as structure and the one solid accent stays the highlight.
-	ringLinkTintPct = 45
+	// ringLinkTintPct is the dk1 coverage of a link arrow: a neutral, so the
+	// arrows read as structure and the one solid accent stays the highlight;
+	// lighter than the hairline it replaces, since the block arc carries the
+	// weight.
+	ringLinkTintPct = 24
 
 	// ringCircleTextShare is the side of the square inscribed in a circle, the
 	// text rectangle of an ellipse, as a share of its diameter.

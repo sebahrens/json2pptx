@@ -446,7 +446,7 @@ func cfeAxisPoint(l jsonschema.LayerInput, d float64) (x, y float64) {
 }
 
 // The crossing: per lobe two rect arms and one arrowhead. Each arm is exactly
-// as wide as the band, in the band's neutral fill without an outline, lies on
+// as wide as the band, in the band's own tone without an outline, lies on
 // the line from the lobe's end to the crossing point (tangent to the lobe's
 // centreline there), starts inside the lobe's end segment and ends just past
 // the crossing point, where the other cell's arm overlaps it — so the ribbon
@@ -469,8 +469,8 @@ func TestFigureEightCrossingArms(t *testing.T) {
 					t.Fatalf("%q %s%s: %d layers", thickness, prefix, name, len(arms))
 				}
 				arm := arms[0]
-				if arm.Shape.Geometry != "rect" || string(arm.Shape.Line) != `"none"` || string(arm.Shape.Fill) != string(neutralFillJSON(ringSegmentTint)) {
-					t.Errorf("%q %s: %s line %s fill %s, want a rect in the band's neutral without outline", thickness, arm.Name, arm.Shape.Geometry, arm.Shape.Line, arm.Shape.Fill)
+				if arm.Shape.Geometry != "rect" || string(arm.Shape.Line) != `"none"` || string(arm.Shape.Fill) != string(ringBandTone(ExpandContext{}, "accent1").fillJSON()) {
+					t.Errorf("%q %s: %s line %s fill %s, want a rect in the band's tone without outline", thickness, arm.Name, arm.Shape.Geometry, arm.Shape.Line, arm.Shape.Fill)
 				}
 				if arm.Frame.X < 0 || arm.Frame.Y < 0 || arm.Frame.X+arm.Frame.W > 1+1e-9 || arm.Frame.Y+arm.Frame.H > 1+1e-9 {
 					t.Errorf("%q %s: frame %+v leaves the cell", thickness, arm.Name, arm.Frame)
@@ -516,7 +516,7 @@ func TestFigureEightCrossingArms(t *testing.T) {
 }
 
 // A segment with a colour of its own (the highlight, or any segment in a
-// tinted accent mode) keeps it to its end: the neutral arm beside it starts a
+// tinted accent mode) keeps it to its end: the band-toned arm beside it starts a
 // regular segment gap away instead of running under it.
 func TestFigureEightArmLeavesAGapAtAColouredSegment(t *testing.T) {
 	gapOf := func(v *CycleFigureEightValues, ovr *CycleFigureEightOverrides, li, ai int) float64 {
@@ -605,14 +605,14 @@ func TestFigureEightArrowheads(t *testing.T) {
 			}
 			head := found[0]
 			heads[li] = head
-			if head.Shape.Geometry != "triangle" || string(head.Shape.Line) != `"none"` || string(head.Shape.Fill) != string(fillTone{Color: "dk1", Alpha: cfeHeadAlpha}.fillJSON()) {
-				t.Errorf("%q %s: %s line %s fill %s, want a muted dk1 triangle without outline", thickness, head.Name, head.Shape.Geometry, head.Shape.Line, head.Shape.Fill)
+			if head.Shape.Geometry != "triangle" || string(head.Shape.Line) != `"none"` || string(head.Shape.Fill) != string(cfeHeadTone(ExpandContext{}, "accent1").fillJSON()) {
+				t.Errorf("%q %s: %s line %s fill %s, want a triangle in the deeper rung of the band's ladder without outline", thickness, head.Name, head.Shape.Geometry, head.Shape.Line, head.Shape.Fill)
 			}
 			if d := math.Mod(math.Abs(head.Shape.Rotation-in.Shape.Rotation), 360); math.Abs(d-180) > 1e-6 {
 				t.Errorf("%q %s: rotation %.2f° on an arm at %.2f°, want it pointing away from the crossing point", thickness, head.Name, head.Shape.Rotation, in.Shape.Rotation)
 			}
-			if head.Frame.H < 1.3*head.Frame.W || head.Frame.W > 0.5*spec.Thickness || head.Frame.W < 0.3*spec.Thickness {
-				t.Errorf("%q %s: %.4f x %.4f on a %.4f band, want it longer than wide and 30-50%% of the band across", thickness, head.Name, head.Frame.W, head.Frame.H, spec.Thickness)
+			if head.Frame.H < 1.29*head.Frame.W || head.Frame.W > 0.65*spec.Thickness || head.Frame.W < 0.45*spec.Thickness {
+				t.Errorf("%q %s: %.4f x %.4f on a %.4f band, want it longer than wide and 45-65%% of the band across", thickness, head.Name, head.Frame.W, head.Frame.H, spec.Thickness)
 			}
 			// On the arm's axis: its centre is collinear with the crossing point
 			// along the arm's direction.
@@ -788,7 +788,8 @@ func TestFigureEightRefusesNarrowArea(t *testing.T) {
 
 // By default no segment is a solid accent; a highlighted phase is the only
 // one — on either lobe and in every accent mode — and its badge flips to the
-// page colour.
+// page colour. The other badges are the neutral dark, so none of them is a
+// second solid accent; only a cell accent mode gives each badge its accent.
 func TestFigureEightHighlightIsTheOnlySolidAccent(t *testing.T) {
 	for _, mode := range []string{"", "alternate", "progressive"} {
 		ovr := &CycleFigureEightOverrides{TextOverrides: TextOverrides{CellAccentMode: mode}}
@@ -805,13 +806,18 @@ func TestFigureEightHighlightIsTheOnlySolidAccent(t *testing.T) {
 			v.Phases[hi].Highlight = true
 			lobes := cfeLobes(t, cfeExpand(t, ExpandContext{}, v, ovr))
 			var solid []string
-			accentBadges := 0
+			accentBadges, darkBadges := 0, 0
 			for li, lobe := range lobes {
 				prefix := []string{"left-", "right-"}[li]
 				solid = append(solid, cycleRingSolidAccents(lobe, prefix+"segment-")...)
 				solid = append(solid, cycleRingSolidAccents(lobe, prefix+"arm-")...)
 				solid = append(solid, cycleRingSolidAccents(lobe, prefix+"arrowhead")...)
 				accentBadges += len(cycleRingSolidAccents(lobe, prefix+"badge-"))
+				for _, b := range cycleRingLayers(lobe, prefix+"badge-") {
+					if string(b.Shape.Fill) == `"dk2"` {
+						darkBadges++
+					}
+				}
 				for _, b := range cycleRingLayers(lobe, fmt.Sprintf("%sbadge-%d", prefix, hi+1)) {
 					if string(b.Shape.Fill) != `"lt1"` {
 						t.Errorf("mode %q: the highlight's badge fill = %s, want lt1", mode, b.Shape.Fill)
@@ -821,8 +827,12 @@ func TestFigureEightHighlightIsTheOnlySolidAccent(t *testing.T) {
 			if len(solid) != 1 || !strings.Contains(solid[0], fmt.Sprintf("segment-%d=", hi+1)) {
 				t.Errorf("mode %q highlight %d: solid accent blocks = %v, want only segment-%d", mode, hi+1, solid, hi+1)
 			}
-			if accentBadges != 7 {
-				t.Errorf("mode %q highlight %d: %d accent badges, want 7", mode, hi+1, accentBadges)
+			wantAccent, wantDark := 7, 0
+			if mode == "" {
+				wantAccent, wantDark = 0, 7
+			}
+			if accentBadges != wantAccent || darkBadges != wantDark {
+				t.Errorf("mode %q highlight %d: %d accent and %d neutral-dark badges, want %d and %d", mode, hi+1, accentBadges, darkBadges, wantAccent, wantDark)
 			}
 		}
 	}
@@ -838,14 +848,20 @@ func TestCycleFigureEight_ExpandStyling(t *testing.T) {
 	if want := ctx.DefaultAccent(); want != "accent2" || !strings.Contains(string(raw), `"accent2"`) || strings.Contains(string(raw), `"accent1"`) {
 		t.Errorf("default accent %s not used throughout", want)
 	}
-	// Ink is measured: a light accent takes dark numerals in its badges.
+	// Ink is measured: the default badge is the neutral dark with the page
+	// colour as ink whatever the accent, and under a cell accent mode a light
+	// accent takes dark numerals in its badges.
 	lobes := cfeLobes(t, cfeExpand(t, ctx, cfeValues(4, 0), &CycleFigureEightOverrides{TextOverrides: TextOverrides{Accent: "accent1"}}))
-	if badge := cycleRingLayers(lobes[1], "right-badge-3")[0]; !strings.Contains(string(badge.Shape.Text), `"color":"dk2"`) {
-		t.Errorf("badge on a light accent: %s, want dk2 ink", badge.Shape.Text)
+	if badge := cycleRingLayers(lobes[1], "right-badge-3")[0]; string(badge.Shape.Fill) != `"dk2"` || !strings.Contains(string(badge.Shape.Text), `"color":"lt1"`) {
+		t.Errorf("default badge: fill %s text %s, want lt1 ink on dk2", badge.Shape.Fill, badge.Shape.Text)
+	}
+	lobes = cfeLobes(t, cfeExpand(t, ctx, cfeValues(4, 0), &CycleFigureEightOverrides{TextOverrides: TextOverrides{Accent: "accent1", CellAccentMode: "alternate"}}))
+	if badge := cycleRingLayers(lobes[0], "left-badge-1")[0]; string(badge.Shape.Fill) != `"accent1"` || !strings.Contains(string(badge.Shape.Text), `"color":"dk2"`) {
+		t.Errorf("badge on a light accent: fill %s text %s, want dk2 ink on accent1", badge.Shape.Fill, badge.Shape.Text)
 	}
 
-	// An accent override reaches badges, numerals and the highlight; sizes
-	// and lobe titles reach the text.
+	// An accent override reaches the segments, the highlight and its
+	// numerals; sizes and lobe titles reach the text.
 	v := cfeValues(4, 0)
 	v.Phases[2].Highlight = true
 	v.LeftLabel, v.RightLabel = "Demand", "Supply"
@@ -861,8 +877,9 @@ func TestCycleFigureEight_ExpandStyling(t *testing.T) {
 	}
 
 	// cell_accent_mode x base accent, running over the whole path (the right
-	// lobe continues the walk): uniform keeps neutral segments and one badge
-	// colour; the others tint each segment with its own accent.
+	// lobe continues the walk): uniform sets every segment in the base
+	// accent's Lighter 80% swatch under neutral-dark badges; the others tint
+	// each segment with its own accent and give each badge that accent.
 	for _, base := range []string{"accent1", "accent3"} {
 		for _, mode := range []string{"uniform", "alternate", "progressive"} {
 			ovr := &CycleFigureEightOverrides{TextOverrides: TextOverrides{Accent: base, CellAccentMode: mode}}
@@ -877,23 +894,31 @@ func TestCycleFigureEight_ExpandStyling(t *testing.T) {
 					_ = json.Unmarshal(b.Shape.Fill, &fill)
 					badgeFills[fill] = true
 					want := ResolveCellAccent(base, i, mode)
-					if fill != want {
-						t.Errorf("%s/%s badge %d fill = %s, want %s", base, mode, i+1, fill, want)
+					wantBadge := want
+					if mode == "uniform" {
+						wantBadge = "dk2"
 					}
+					if fill != wantBadge {
+						t.Errorf("%s/%s badge %d fill = %s, want %s", base, mode, i+1, fill, wantBadge)
+					}
+					// Uniform or not, a segment is the Lighter 80% swatch of
+					// its own accent (the base accent under uniform).
 					segFill := string(segments[bi].Shape.Fill)
-					switch {
-					case mode == "uniform":
-						if !strings.Contains(segFill, `"dk1"`) || !strings.Contains(segFill, `"lumMod":16000`) {
-							t.Errorf("%s/uniform segment %d fill = %s, want the dk1 16%% neutral", base, i+1, segFill)
-						}
-					case !strings.Contains(segFill, `"`+want+`"`) || !strings.Contains(segFill, `"lumMod"`):
-						t.Errorf("%s/%s segment %d fill = %s, want a tint of %s", base, mode, i+1, segFill, want)
+					if wantSeg := `{"color":"` + want + `","lumMod":20000,"lumOff":80000}`; segFill != wantSeg {
+						t.Errorf("%s/%s segment %d fill = %s, want %s", base, mode, i+1, segFill, wantSeg)
 					}
 					i++
 				}
+				// The arms that cross between the lobes take the base accent's
+				// swatch in every mode.
+				for _, arm := range cycleRingLayers(lobe, prefix+"arm-") {
+					if got, wantArm := string(arm.Shape.Fill), `{"color":"`+base+`","lumMod":20000,"lumOff":80000}`; got != wantArm {
+						t.Errorf("%s/%s %s fill = %s, want %s", base, mode, arm.Name, got, wantArm)
+					}
+				}
 			}
 			if want := map[string]int{"uniform": 1, "alternate": 2, "progressive": 6}[mode]; len(badgeFills) != want {
-				t.Errorf("%s/%s: %d badge accents, want %d", base, mode, len(badgeFills), want)
+				t.Errorf("%s/%s: %d badge fills, want %d", base, mode, len(badgeFills), want)
 			}
 		}
 	}

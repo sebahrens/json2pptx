@@ -128,7 +128,7 @@ func (vc *valueChain) Schema() *Schema {
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
 			"steps":           ArraySchema(stepSchema, 4, 10).WithDescription("Value-chain steps left-to-right (4-10)"),
-			"highlight_color": StringSchema(0).WithDescription("Scheme color used to fill highlighted label rows. Omit it: the default is chosen by measured contrast against the step fill for this template (the first accent clearing 3:1), because a fixed slot is invisible on some palettes. An authored colour is honoured, and reported as LOW_CONTRAST_HIGHLIGHT when it does not read as a highlight"),
+			"highlight_color": StringSchema(0).WithDescription("Scheme color used to fill highlighted label rows. Omit it: the default is chosen by measured contrast against the step fill for this template (the first accent clearing 1.6:1), because a fixed slot is invisible on some palettes. An authored colour is honoured, and reported as LOW_CONTRAST_HIGHLIGHT when it does not read as a highlight"),
 		},
 		[]string{"steps"},
 	).WithAdditionalProperties(false)
@@ -218,14 +218,14 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	descSize := ResolveSize(ovr.BodySize, sizeDenseCaptionPt)
 	cellAccentMode := ovr.CellAccentMode
 
-	highlightColor := resolveValueChainHighlight(ctx, vals.HighlightColor)
+	highlightColor := resolveValueChainHighlight(ctx, vals.HighlightColor, baseAccent)
 
 	n := len(vals.Steps)
 
 	labelCells := make([]*jsonschema.GridCellInput, n)
 	descCells := make([]*jsonschema.GridCellInput, n)
 	for i, step := range vals.Steps {
-		tone := valueChainLabelTone
+		tone := valueChainStepTone(ctx, baseAccent)
 		if step.Highlight {
 			tone = fillTone{Color: highlightColor}
 		}
@@ -238,7 +238,7 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		// WCAG AA (3:1 for large bold labels), else the theme's dark ink.
 		// A highlight accent lt1 misses is shaded until it reads rather than
 		// taking black type (go-slide-creator-v9tup).
-		ink := "dk1"
+		ink := tonalInk(ctx, tone)
 		if step.Highlight {
 			tone, ink = accentFillAndInk(ctx, tone, TextContrastThreshold(labelSize, true))
 		}
@@ -607,14 +607,17 @@ const valueChainDefaultHighlight = "accent1"
 // between two slots in whatever template the deck lands on: accent2 on dk2 is
 // 3.21 on midnight-blue and 1.48 on warm-coral, where the highlight vanished
 // (go-slide-creator-ah5s).
-func resolveValueChainHighlight(ctx ExpandContext, authored string) string {
+func resolveValueChainHighlight(ctx ExpandContext, authored, baseAccent string) string {
 	if authored != "" {
 		return authored
 	}
 	// The template's primary fill leads, so the highlight is the same slot
 	// every other pattern defaults to (go-slide-creator-2mia4).
 	candidates := append([]string{ctx.DefaultAccent()}, valueChainHighlightCandidates...)
-	if pick, ok := pickDistinctFill(ctx, valueChainLabelTone, valueChainHighlightMin, candidates...); ok {
+	// The base accent leads: the steps are its tint.
+	step := valueChainStepTone(ctx, baseAccent)
+	candidates = append([]string{baseAccent}, candidates...)
+	if pick, ok := pickDistinctFill(ctx, step, valueChainHighlightMin, candidates...); ok {
 		return pick
 	}
 	return valueChainDefaultHighlight
@@ -688,30 +691,48 @@ func (vc *valueChain) PostExpandWarnings(ctx ExpandContext, values, overrides an
 	if !highlighted {
 		return out
 	}
-	ratio, ok := fillContrast(ctx, valueChainLabelTone, fillTone{Color: v.HighlightColor})
+	// Measured against the fill the steps are drawn in: the tint of the
+	// accent the overrides resolve to.
+	baseAccent := ctx.DefaultAccent()
+	if ovr, isOvr := overrides.(*ValueChainOverrides); isOvr && ovr != nil {
+		baseAccent = ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
+	}
+	ratio, ok := fillContrast(ctx, valueChainStepTone(ctx, baseAccent), fillTone{Color: v.HighlightColor})
 	if !ok || ratio >= valueChainHighlightMin {
 		return out
 	}
 	return append(out, fmt.Sprintf(
 		"%s: value-chain highlight_color %q reads at %.2f:1 against the step fill (%s) — below %.1f:1 the highlighted step is not distinguishable from its neighbours; omit highlight_color to let the engine pick an accent that clears the bar",
-		ErrCodeLowContrastHighlight, v.HighlightColor, ratio, valueChainLabelFillName, valueChainHighlightMin))
+		ErrCodeLowContrastHighlight, v.HighlightColor, ratio, valueChainStepFillName(ctx, baseAccent), valueChainHighlightMin))
 }
 
-// valueChainLabelTone is the default (non-highlighted) label fill: a neutral
-// 16% tint of dk1 with dk1 text. The chain is structure, not emphasis — a
-// row of solid dk2 blocks is black on templates whose dk2 is black, and a
-// brand-coloured row leaves the highlighted step nothing to stand out from
-// (go-slide-creator-8xsj3). The one highlighted step carries the accent.
-var valueChainLabelTone = neutralTone(NeutralTint16)
+// valueChainStepTone is the default (non-highlighted) step fill: the content
+// swatch of the tonal system, the accent's Lighter 80% (tonalContent). The
+// steps ARE the content, so they take the accent's family rather than a row
+// of mid-grey boxes (go-slide-creator-x5m8f); the one highlighted step is the
+// solid accent.
+func valueChainStepTone(ctx ExpandContext, accent string) fillTone {
+	return tonalContent(ctx, accent)
+}
 
-// valueChainLabelFillName names valueChainLabelTone in findings.
-const valueChainLabelFillName = "dk1 at 16%"
+// valueChainLabelFillName names valueChainStepTone in findings.
+const valueChainLabelFillName = "the accent's Lighter 80% swatch"
+
+// valueChainStepFillName names the step fill a finding measured against: the
+// accent's swatch, or the neutral that stands in for it on a template whose
+// accent tint collides.
+func valueChainStepFillName(ctx ExpandContext, accent string) string {
+	if tonalAccentCollides(ctx, accent) {
+		return "dk1 at 16%"
+	}
+	return valueChainLabelFillName
+}
 
 // valueChainHighlightMin is the luminance contrast the highlight must clear
-// against the neutral step fill. The base is achromatic, so a saturated
-// accent is also separated by hue; 2:1 of lightness on top of that reads as
-// "this one" where two greys would need the full 3:1 (the WCAG non-text bar).
-const valueChainHighlightMin = 2.0
+// against the step fill: the bar the tonal system sets between the solid
+// accent and its own content swatch (tonalEmphasisMin), which every shipped
+// template's primary accent clears.
+const valueChainHighlightMin = tonalEmphasisMin
 
 func buildValueChainLabelText(label string, size float64, color string) json.RawMessage {
 	textObj := valueChainTextObj{

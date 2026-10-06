@@ -39,7 +39,7 @@ import (
 // when the lobe is a little smaller than its square (cfeBandRadius): the two
 // rings stop 1-5% of a side short of each other and the arms bridge it.
 //
-// The direction is a small dark arrowhead on each arm that leaves the crossing
+// The direction is a band-wide arrowhead, a deeper tint of the band, on each arm that leaves the crossing
 // INTO a lobe — the two upper arms, mirror images of each other.
 //
 // Labels are cycle-ring's rows (ring_draw.go, cycleRingOutsideRows): the left
@@ -157,12 +157,15 @@ const (
 
 	// The direction arrowhead on an entering arm: a triangle cfeHeadBaseFrac
 	// of the band wide and cfeHeadLength times that long (longer than wide,
-	// so its point is unmistakable), in the text colour at cfeHeadAlpha
-	// opacity. It sits midway along the part of the arm the other band does
-	// not cross.
-	cfeHeadBaseFrac = 0.38
-	cfeHeadLength   = 1.45
-	cfeHeadAlpha    = 60.0
+	// so its point is unmistakable), in the band's own colour family — the
+	// accent's Lighter cfeHeadLighter% swatch on the Lighter 80% band — so
+	// the direction is read from the band, not from a dark glyph laid on it
+	// (go-slide-creator-y21pc). It sits midway along the part of the arm the
+	// other band does not cross.
+	cfeHeadBaseFrac  = 0.62
+	cfeHeadLength    = 1.4
+	cfeHeadMinAspect = 1.3 // least length : base of a head
+	cfeHeadLighter   = 40
 )
 
 // cfeLeftCount is how many of n phases sit on the left lobe: the authored
@@ -219,7 +222,7 @@ func (p *cycleFigureEight) Schema() *Schema {
 	overrides := textOverridesSchema()
 	overrides.raw.Properties["header_size"] = NumberSchema(12, 28).WithDescription("Phase label size in points (default 14, stepping down to 12 when the rows need it)")
 	overrides.raw.Properties["body_size"] = NumberSchema(12, 20).WithDescription("Description size in points (default 12)")
-	overrides.raw.Properties["cell_accent_mode"] = EnumSchema("uniform", "alternate", "progressive").WithDescription("uniform (default): neutral segments, badges in the accent. alternate / progressive: each segment takes a light tint of its own accent, running along the whole path").WithDefault("uniform")
+	overrides.raw.Properties["cell_accent_mode"] = EnumSchema("uniform", "alternate", "progressive").WithDescription("uniform (default): accent-tint segments, dark badges. alternate / progressive: each segment takes a light tint of its own accent, running along the whole path").WithDefault("uniform")
 	overrides.raw.Properties["thickness"] = EnumSchema(cycleRingThicknesses...).WithDescription("Band width: thin, regular or thick (14% / 20% / 28% of a lobe's diameter)").WithDefault("regular")
 
 	return ObjectSchema(map[string]*Schema{
@@ -410,6 +413,9 @@ func cfeHeadAt(spec ringSpec, deg, touchX float64) cfeArm {
 	cx, cy := touchX-at*ux, 0.5-at*uy
 	base := spec.Thickness * cfeHeadBaseFrac
 	length := math.Min(base*cfeHeadLength, (dist-free)*0.8)
+	// A head the arm has no room to draw at full length keeps its
+	// proportion: a squat triangle does not say which way it points.
+	base = math.Min(base, length/cfeHeadMinAspect)
 	return cfeArm{
 		frame:  ringFrame{X: cx - base/2, Y: cy - length/2, W: base, H: length},
 		rotDeg: normDeg(radToDeg(math.Atan2(-ux, uy))), // a triangle points up at 0
@@ -632,11 +638,11 @@ func (p *cycleFigureEight) Expand(ctx ExpandContext, values, overrides any, _ ma
 		}
 		layers := [][]jsonschema.LayerInput{
 			{
-				cfeArmLayer(lobe.prefix+"arm-in", "rect", lobe.arms[0], neutralFillJSON(ringSegmentTint)),
-				cfeArmLayer(lobe.prefix+"arm-out", "rect", lobe.arms[1], neutralFillJSON(ringSegmentTint)),
+				cfeArmLayer(lobe.prefix+"arm-in", "rect", lobe.arms[0], ringBandTone(ctx, base).fillJSON()),
+				cfeArmLayer(lobe.prefix+"arm-out", "rect", lobe.arms[1], ringBandTone(ctx, base).fillJSON()),
 			},
 			ringSegmentLayers(ctx, lobe.spec, lobe.items, paint),
-			{cfeHeadLayer(lobe.prefix+"arrowhead", lobe.head)},
+			{cfeHeadLayer(lobe.prefix+"arrowhead", lobe.head, cfeHeadTone(ctx, base))},
 			ringBadgeLayers(ctx, lobe.spec, lobe.items, paint),
 		}
 		if centre, ok := ringCentreLayer(lobe.spec, lobe.label, "", lobe.labelPt, lobe.prefix); ok {
@@ -646,7 +652,9 @@ func (p *cycleFigureEight) Expand(ctx ExpandContext, values, overrides any, _ ma
 		// lobe's cell is the spine column through its centre.
 		places = append(places, ringSpinePlacement(lay.x0+(float64(li)+0.5)*lay.side, lay.y0, lay.side, ringCell(layers...)))
 	}
-	places = append(places, lay.labelPlaces(ctx, v.Phases, accents)...)
+	labelAccents := ringPaint{Accents: accents, Highlight: highlight,
+		Tinted: ovr.CellAccentMode == "alternate" || ovr.CellAccentMode == "progressive"}.labelAccents(ctx, n)
+	places = append(places, lay.labelPlaces(ctx, v.Phases, labelAccents)...)
 
 	grid, err := ringLattice(places, lay.w, lay.h)
 	if err != nil {
@@ -665,8 +673,14 @@ func cfeArmLayer(name, geometry string, a cfeArm, fill json.RawMessage) jsonsche
 	}
 }
 
-// cfeHeadLayer is the direction arrowhead on an entering arm: the text
-// colour, muted, so it reads on the band without being a second accent.
-func cfeHeadLayer(name string, a cfeArm) jsonschema.LayerInput {
-	return cfeArmLayer(name, "triangle", a, fillTone{Color: "dk1", Alpha: cfeHeadAlpha}.fillJSON())
+// cfeHeadLayer is the direction arrowhead on an entering arm.
+func cfeHeadLayer(name string, a cfeArm, tone fillTone) jsonschema.LayerInput {
+	return cfeArmLayer(name, "triangle", a, tone.fillJSON())
+}
+
+// cfeHeadTone is the arrowhead's fill: a deeper rung of the band's own
+// ladder, so the direction is read from the band rather than from a dark
+// glyph laid on it.
+func cfeHeadTone(ctx ExpandContext, accent string) fillTone {
+	return tonalRung(ctx, accent, cfeHeadLighter)
 }

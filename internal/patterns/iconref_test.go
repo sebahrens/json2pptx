@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
 
 func TestIconRef_UnmarshalJSON_StringShorthand(t *testing.T) {
@@ -195,30 +197,82 @@ func TestCardGrid_ExpandPassesThroughRichIcon(t *testing.T) {
 			{Header: "Other", Body: "Bundled", Icon: &IconRef{Name: "rocket"}},
 		},
 	}
-	grid, err := p.Expand(ExpandContext{}, vals, nil, nil)
-	if err != nil {
-		t.Fatalf("Expand: %v", err)
+	// checkIcons asserts the two icons arrive on the given cells untouched.
+	checkIcons := func(t *testing.T, c0, c1 *jsonschema.GridCellInput) {
+		t.Helper()
+		if c0.Shape == nil || c0.Shape.Icon == nil {
+			t.Fatal("expected first cell to have Shape.Icon populated")
+		}
+		if c0.Shape.Icon.Path != "/abs/logo.svg" {
+			t.Errorf("expected Path=/abs/logo.svg, got %q (full icon=%+v)", c0.Shape.Icon.Path, c0.Shape.Icon)
+		}
+		if c0.Shape.Icon.Name != "" {
+			t.Errorf("expected Name=empty (path-based), got %q", c0.Shape.Icon.Name)
+		}
+		if c0.Shape.Icon.Fill != "#FF0000" {
+			t.Errorf("expected caller-supplied Fill #FF0000, got %q", c0.Shape.Icon.Fill)
+		}
+		if c0.Shape.Icon.Alt != "brand" {
+			t.Errorf("expected caller-supplied Alt brand, got %q", c0.Shape.Icon.Alt)
+		}
+		if c1.Shape == nil || c1.Shape.Icon == nil || c1.Shape.Icon.Name != "rocket" {
+			t.Errorf("expected second cell Icon.Name=rocket, got %+v", c1.Shape)
+		}
 	}
-	if len(grid.Rows) != 1 || len(grid.Rows[0].Cells) != 2 {
-		t.Fatalf("expected 1 row × 2 cells, got %d rows", len(grid.Rows))
-	}
-	c0 := grid.Rows[0].Cells[0]
-	if c0.Shape == nil || c0.Shape.Icon == nil {
-		t.Fatal("expected first cell to have Shape.Icon populated")
-	}
-	if c0.Shape.Icon.Path != "/abs/logo.svg" {
-		t.Errorf("expected Path=/abs/logo.svg, got %q (full icon=%+v)", c0.Shape.Icon.Path, c0.Shape.Icon)
-	}
-	if c0.Shape.Icon.Name != "" {
-		t.Errorf("expected Name=empty (path-based), got %q", c0.Shape.Icon.Name)
-	}
-	if c0.Shape.Icon.Fill != "#FF0000" {
-		t.Errorf("expected caller-supplied Fill #FF0000, got %q", c0.Shape.Icon.Fill)
-	}
-	c1 := grid.Rows[0].Cells[1]
-	if c1.Shape.Icon == nil || c1.Shape.Icon.Name != "rocket" {
-		t.Errorf("expected second cell Icon.Name=rocket, got %+v", c1.Shape.Icon)
-	}
+
+	// The open default: three rows (heading, rule, body) of 2 cells; the icon
+	// sits on the heading cell, above the heading, in a reserved icon zone.
+	t.Run("open_default", func(t *testing.T) {
+		grid, err := p.Expand(ExpandContext{}, vals, nil, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		if len(grid.Rows) != 3 {
+			t.Fatalf("expected 3 rows (heading, rule, body), got %d rows", len(grid.Rows))
+		}
+		for r, row := range grid.Rows {
+			if len(row.Cells) != 2 {
+				t.Fatalf("row %d: expected 2 cells, got %d", r, len(row.Cells))
+			}
+		}
+		checkIcons(t, grid.Rows[0].Cells[0], grid.Rows[0].Cells[1])
+		for ci, cell := range grid.Rows[0].Cells {
+			if got := cell.Shape.Icon.Position; got != "top" {
+				t.Errorf("heading %d icon position = %q, want top", ci, got)
+			}
+		}
+		for r := 1; r < 3; r++ {
+			for ci, cell := range grid.Rows[r].Cells {
+				if cell.Shape.Icon != nil {
+					t.Errorf("row %d cell %d carries an icon; only the heading cell does: %+v", r, ci, cell.Shape.Icon)
+				}
+			}
+		}
+		// The heading row is taller by the icon zone than the same cards
+		// without icons.
+		plainVals := &CardGridValues{Columns: 2, Rows: 1, Cells: []CardGridCell{
+			{Header: "Brand", Body: "Custom"}, {Header: "Other", Body: "Bundled"},
+		}}
+		plain, err := p.Expand(ExpandContext{}, plainVals, nil, nil)
+		if err != nil {
+			t.Fatalf("Expand (no icons): %v", err)
+		}
+		if got, want := grid.Rows[0].MinHeight, plain.Rows[0].MinHeight+cardGridOpenIconPt; got != want || grid.Rows[0].MaxHeight != want {
+			t.Errorf("heading row height %v..%v, want the %vpt heading row + the %vpt icon zone", got, grid.Rows[0].MaxHeight, plain.Rows[0].MinHeight, cardGridOpenIconPt)
+		}
+	})
+
+	// The filled tile: one cell per card, the icon on the card.
+	t.Run("filled", func(t *testing.T) {
+		grid, err := p.Expand(ExpandContext{}, vals, &CardGridOverrides{Style: "filled"}, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		if len(grid.Rows) != 1 || len(grid.Rows[0].Cells) != 2 {
+			t.Fatalf("expected 1 row × 2 cells, got %d rows", len(grid.Rows))
+		}
+		checkIcons(t, grid.Rows[0].Cells[0], grid.Rows[0].Cells[1])
+	})
 }
 
 func TestIconRefSchema_AcceptsBothForms(t *testing.T) {

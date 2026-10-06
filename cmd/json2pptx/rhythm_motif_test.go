@@ -65,7 +65,9 @@ func TestRhythmMotif_LookAlikeDeckIsFlagged(t *testing.T) {
 	if got := result.PerSlide[0].Motif; got != string(patterns.MotifOpenColumns) {
 		t.Errorf("kpi-4up motif = %q", got)
 	}
-	if got := result.PerSlide[2].Motif; got != string(patterns.MotifTiles) {
+	// card-grid's default is the open card (a heading on a rule), so it is
+	// one more open-columns slide in the run.
+	if got := result.PerSlide[2].Motif; got != string(patterns.MotifOpenColumns) {
 		t.Errorf("card-grid motif = %q", got)
 	}
 

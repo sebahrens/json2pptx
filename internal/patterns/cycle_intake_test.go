@@ -505,20 +505,37 @@ func cycleIntakeFillOf(t *testing.T, raw json.RawMessage) string {
 	return string(raw)
 }
 
-// The intake stays neutral, the entry arrow is the accent cue, and the loop
-// spends at most one solid accent on the highlighted phase.
+// The intake lane is set in the loop's own band tone (the base accent's
+// Lighter 80% swatch, never a solid), the entry arrow is the accent cue, and
+// the loop spends at most one solid accent on the highlighted phase.
 func TestCycleIntake_ExpandStyling(t *testing.T) {
 	ctx := cycleRingCtx(828, 349)
 	v := cycleIntakeValues(3, 6)
 
+	// laneTone is the band tone of the base accent, spelled out.
+	laneTone := func(accent string) string {
+		return `{"color":"` + accent + `","lumMod":20000,"lumOff":80000}`
+	}
 	cells := cycleIntakeSort(t, cycleIntakeExpand(t, ctx, v, nil))
-	neutral := string(neutralTone(ProcessFlowStepTintPct).fillJSON())
+	if got := string(ringBandTone(ctx, "accent1").fillJSON()); got != laneTone("accent1") {
+		t.Fatalf("ringBandTone(accent1) = %s, want %s", got, laneTone("accent1"))
+	}
 	for i, c := range cells.lane {
-		if got := cycleIntakeFillOf(t, c.Shape.Fill); got != neutral {
-			t.Errorf("intake step %d fill = %s, want the neutral tint %s", i, got, neutral)
+		if got := cycleIntakeFillOf(t, c.Shape.Fill); got != laneTone("accent1") {
+			t.Errorf("intake step %d fill = %s, want the band tone %s", i, got, laneTone("accent1"))
 		}
 		if string(c.Shape.Line) != string(noLine) {
 			t.Errorf("intake step %d carries an outline", i)
+		}
+		// The label's ink is measured on the tone: the text ink on a light tint.
+		if !strings.Contains(string(c.Shape.Text), `"color":"dk1"`) {
+			t.Errorf("intake step %d text %s, want dk1 ink on the band tone", i, c.Shape.Text)
+		}
+	}
+	// The lane and the loop's segments share one tone.
+	for i, s := range cycleRingLayers(cells.ring, "segment-") {
+		if got := string(s.Shape.Fill); got != laneTone("accent1") {
+			t.Errorf("segment-%d fill = %s, want the lane's tone %s", i+1, got, laneTone("accent1"))
 		}
 	}
 	if got := string(cells.entry.Shape.Fill); got != `"accent1"` || string(cells.entry.Shape.Line) != string(noLine) {
@@ -556,11 +573,28 @@ func TestCycleIntake_ExpandStyling(t *testing.T) {
 			if got := string(cycleRingLayers(cells.ring, "segment-")[3].Shape.Fill); got != want {
 				t.Errorf("segment-4 fill = %s, want %s", got, want)
 			}
+			// The lane follows the same accent, as its Lighter 80% swatch.
+			for i, c := range cells.lane {
+				if got := string(c.Shape.Fill); got != laneTone(tc.accent) {
+					t.Errorf("intake step %d fill = %s, want %s", i, got, laneTone(tc.accent))
+				}
+			}
+			// The badges are the neutral dark; the highlight's is the page colour.
+			for i, b := range cycleRingLayers(cells.ring, "badge-") {
+				wantBadge := `"dk2"`
+				if i == 3 {
+					wantBadge = `"lt1"`
+				}
+				if got := string(b.Shape.Fill); got != wantBadge {
+					t.Errorf("badge-%d fill = %s, want %s", i+1, got, wantBadge)
+				}
+			}
 		})
 	}
 
-	// cell_accent_mode varies the loop only: tinted segments, each badge its
-	// own accent; the intake and its arrow keep the base accent.
+	// cell_accent_mode varies the loop only: each segment the tint of its own
+	// accent and each badge that accent (uniform: the base accent's tint under
+	// neutral-dark badges); the intake and its arrow keep the base accent.
 	for _, base := range []string{"accent1", "accent3"} {
 		for _, mode := range []string{"uniform", "alternate", "progressive"} {
 			t.Run(base+"/"+mode, func(t *testing.T) {
@@ -570,21 +604,37 @@ func TestCycleIntake_ExpandStyling(t *testing.T) {
 					t.Errorf("entry arrow fill = %s, want %s", got, base)
 				}
 				for i, c := range cells.lane {
-					if string(c.Shape.Fill) != neutral {
-						t.Errorf("intake step %d is not neutral under %s", i, mode)
+					if got := string(c.Shape.Fill); got != laneTone(base) {
+						t.Errorf("intake step %d fill = %s under %s, want the base accent's band tone %s", i, got, mode, laneTone(base))
 					}
 				}
 				badges := cycleRingLayers(cells.ring, "badge-")
 				for i, b := range badges {
 					want := `"` + ctx.ResolveCellAccent(base, i, mode) + `"`
+					if mode == "uniform" {
+						want = `"dk2"`
+					}
 					if got := string(b.Shape.Fill); got != want {
 						t.Errorf("badge-%d fill = %s, want %s", i+1, got, want)
 					}
 				}
+				// Segment 1 has the base accent in every mode, so its fill does
+				// not tell the modes apart: every segment is checked against its
+				// own accent, and segment 2 — whose accent a varied mode moves
+				// off the base — against the uniform tone.
 				segs := cycleRingLayers(cells.ring, "segment-")
-				tinted := string(segs[0].Shape.Fill) != string(neutralTone(ringSegmentTint).fillJSON())
+				for i, s := range segs {
+					want := string(inactiveTintTone(ctx.ResolveCellAccent(base, i, mode)).fillJSON())
+					if mode == "uniform" {
+						want = string(ringBandTone(ctx, base).fillJSON())
+					}
+					if got := string(s.Shape.Fill); got != want {
+						t.Errorf("mode %s: segment-%d fill = %s, want %s", mode, i+1, got, want)
+					}
+				}
+				tinted := string(segs[1].Shape.Fill) != string(ringBandTone(ctx, base).fillJSON())
 				if tinted != (mode != "uniform") {
-					t.Errorf("mode %s: segment tinted = %v", mode, tinted)
+					t.Errorf("mode %s: segment-2 tinted with its own accent = %v", mode, tinted)
 				}
 				if solid := cycleRingSolidAccents(cells.ring, "segment-"); len(solid) != 0 {
 					t.Errorf("mode %s without a highlight: solid segments %v", mode, solid)

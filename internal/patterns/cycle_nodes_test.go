@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -389,22 +390,33 @@ func TestCycleNodes_ExpandLayout(t *testing.T) {
 						t.Errorf("node %d does not carry its number: %s", i+1, l.Shape.Text)
 					}
 				}
-				// Labels: a number cue and a text frame per step, turned to
-				// the ring (right-aligned on the left).
+				// Labels: one text frame per step and no number cue beside it
+				// (the step is numbered once, in its node), turned to the ring
+				// (right-aligned on the left).
 				cells := cycleNodesTextCells(t, grid)
-				if len(cells) != 2*n {
-					t.Fatalf("%d text cells, want %d cues + %d labels", len(cells), n, n)
+				if len(cells) != n {
+					t.Fatalf("%d text cells, want %d labels and no number cues", len(cells), n)
 				}
 				left, right := 0, 0
+				labelled := map[string]bool{}
 				for _, c := range cells {
 					if c.align == "r" {
 						left++
 					} else {
 						right++
 					}
+					if _, err := strconv.Atoi(c.paras[0].Content); err == nil {
+						t.Errorf("a number cue %q stands beside a numbered node", c.paras[0].Content)
+					}
+					labelled[c.paras[0].Content] = true
 				}
-				if left == 0 || right == 0 || left+right != 2*n || absInt(left-right) > 2 {
-					t.Errorf("label cells: %d left, %d right", left/2, right/2)
+				for i, s := range v.Steps {
+					if !labelled[s.Label] {
+						t.Errorf("step %d has no label cell %q", i+1, s.Label)
+					}
+				}
+				if left == 0 || right == 0 || left+right != n || absInt(left-right) > 1 {
+					t.Errorf("label cells: %d left, %d right", left, right)
 				}
 			})
 		}
@@ -493,7 +505,21 @@ func TestCycleNodesNoOverlapForEveryCount(t *testing.T) {
 							v.Steps[i].Description = ""
 						}
 					}
-					grid := cycleNodesExpand(t, cycleNodesAreaCtx(area.w, area.h), v, &CycleNodesOverrides{Labels: labels})
+					ovr := &CycleNodesOverrides{Labels: labels}
+					lay, err := cycleNodesMeasure(cycleNodesAreaCtx(area.w, area.h), v, ovr)
+					if err != nil {
+						t.Fatal(err)
+					}
+					// Only a compose half turns the default layout into a legend.
+					if wantLegend := labels == "legend" || (labels == "" && area.name == "compose-half"); (lay.mode == cycleNodesLabelsLegend) != wantLegend {
+						t.Fatalf("layout mode %q, want legend = %v", lay.mode, wantLegend)
+					}
+					// The cue column exists in the legend layout only (no step
+					// carries an icon here).
+					if (lay.cueW > 0) != (lay.mode == cycleNodesLabelsLegend) {
+						t.Errorf("cue column %.1fpt in the %q layout", lay.cueW, lay.mode)
+					}
+					grid := cycleNodesExpand(t, cycleNodesAreaCtx(area.w, area.h), v, ovr)
 					res := cycleNodesResolveAt(t, grid, area.w, area.h)
 					var cells, nodes []shapegrid.ResolvedCell
 					for _, c := range res.Cells {
@@ -525,12 +551,17 @@ func TestCycleNodesNoOverlapForEveryCount(t *testing.T) {
 							}
 						}
 					}
-					wantCells := 2 * n
-					if labels == "inside" {
+					// Outside: one label per step (the node carries the number).
+					// Legend: a number cue and a label per step. Inside: none.
+					wantCells := n
+					switch lay.mode {
+					case cycleNodesLabelsLegend:
+						wantCells = 2 * n
+					case cycleNodesLabelsInside:
 						wantCells = 0
 					}
 					if len(cells) != wantCells {
-						t.Fatalf("%d lattice text cells, want %d", len(cells), wantCells)
+						t.Fatalf("%d lattice text cells in the %q layout, want %d", len(cells), lay.mode, wantCells)
 					}
 					for i, a := range cells {
 						for k, node := range nodes {
@@ -596,14 +627,20 @@ func cycleNodesNodeFills(t *testing.T, ring *jsonschema.GridCellInput) []string 
 }
 
 func TestCycleNodes_ExpandStyling(t *testing.T) {
-	// Default: every node the neutral tint, numerals in the default accent,
-	// no solid accent without a highlight.
+	// Default: every node the accent's Lighter 80% swatch, numerals in the
+	// default accent (nothing is measured without a theme), no solid accent
+	// without a highlight.
 	v := cycleNodesTestValues(5)
 	ring := cycleNodesRing(t, cycleNodesExpand(t, ExpandContext{}, v, nil))
-	neutral := string(neutralFillJSON(NeutralTint8))
+	swatch := func(accent string) string {
+		return `{"color":"` + accent + `","lumMod":20000,"lumOff":80000}`
+	}
+	if got := string(tonalContent(ExpandContext{}, "accent1").fillJSON()); got != swatch("accent1") {
+		t.Fatalf("tonalContent(accent1) = %s, want %s", got, swatch("accent1"))
+	}
 	for i, fill := range cycleNodesNodeFills(t, ring) {
-		if fill != neutral {
-			t.Errorf("node %d fill %s, want the neutral tint %s", i+1, fill, neutral)
+		if fill != swatch("accent1") {
+			t.Errorf("node %d fill %s, want the accent's swatch %s", i+1, fill, swatch("accent1"))
 		}
 	}
 	accent := ExpandContext{}.DefaultAccent()
@@ -620,13 +657,27 @@ func TestCycleNodes_ExpandStyling(t *testing.T) {
 			t.Errorf("layer %s has no fill", l.Name)
 		}
 	}
+	// The link arrows are the neutral dk1 at 24%: structure, not accent.
 	for _, l := range cycleNodesLayersNamed(ring, "link-") {
-		if string(l.Shape.Fill) != string(ringLinkFillJSON()) || strings.Contains(string(l.Shape.Fill), "accent") {
-			t.Errorf("%s fill %s, want the neutral link grey", l.Name, l.Shape.Fill)
+		if string(l.Shape.Fill) != string(ringLinkFillJSON()) || string(l.Shape.Fill) != `{"color":"dk1","lumMod":24000,"lumOff":76000}` {
+			t.Errorf("%s fill %s, want the neutral link grey (dk1 24%%)", l.Name, l.Shape.Fill)
 		}
 	}
 
-	// Highlight: exactly one solid accent circle, in the authored accent.
+	// cycleNodesCues collects the number cues (a lone numeral paragraph) of a
+	// grid: numeral -> ink.
+	cycleNodesCues := func(grid *jsonschema.ShapeGridInput) map[string]string {
+		cues := map[string]string{}
+		for _, c := range cycleNodesTextCells(t, grid) {
+			if _, err := strconv.Atoi(c.paras[0].Content); err == nil && len(c.paras) == 1 {
+				cues[c.paras[0].Content] = c.paras[0].Color
+			}
+		}
+		return cues
+	}
+
+	// Highlight: exactly one solid accent circle, in the authored accent; the
+	// others keep that accent's swatch.
 	for _, base := range []string{"accent1", "accent3"} {
 		v.Highlight = 4
 		ring = cycleNodesRing(t, cycleNodesExpand(t, ExpandContext{}, v, &CycleNodesOverrides{TextOverrides: TextOverrides{Accent: base}}))
@@ -635,38 +686,62 @@ func TestCycleNodes_ExpandStyling(t *testing.T) {
 			switch {
 			case fill == fmt.Sprintf("%q", base) && i == 3:
 				solid++
-			case fill != neutral:
-				t.Errorf("accent %s: node %d fill %s", base, i+1, fill)
+			case fill != swatch(base):
+				t.Errorf("accent %s: node %d fill %s, want %s", base, i+1, fill, swatch(base))
 			}
 		}
 		if solid != 1 {
 			t.Errorf("accent %s: %d solid accent nodes, want exactly the highlighted one", base, solid)
 		}
-		// The number cues beside the labels take the accent too.
-		cues := 0
-		for _, c := range cycleNodesTextCells(t, cycleNodesExpand(t, ExpandContext{}, v, &CycleNodesOverrides{TextOverrides: TextOverrides{Accent: base}})) {
-			if len(c.paras) == 1 && c.paras[0].Color == base {
-				cues++
-			}
+		// Outside labels: a step is numbered once, in its node — no cue.
+		if cues := cycleNodesCues(cycleNodesExpand(t, cycleNodesAreaCtx(899, 360), v, &CycleNodesOverrides{TextOverrides: TextOverrides{Accent: base}})); len(cues) != 0 {
+			t.Errorf("accent %s: number cues %v beside numbered nodes, want none", base, cues)
 		}
-		if cues != 5 {
-			t.Errorf("accent %s: %d number cues in the accent, want 5", base, cues)
+		// Legend rows stand away from their nodes, so each keeps its cue: in
+		// the text ink, and in the accent for the highlighted step only.
+		cues := cycleNodesCues(cycleNodesExpand(t, cycleNodesAreaCtx(899, 360), v, &CycleNodesOverrides{Labels: "legend", TextOverrides: TextOverrides{Accent: base}}))
+		if len(cues) != 5 {
+			t.Errorf("accent %s legend: %d number cues, want 5: %v", base, len(cues), cues)
+		}
+		for k, ink := range cues {
+			want := "dk1"
+			if k == "4" {
+				want = base
+			}
+			if ink != want {
+				t.Errorf("accent %s legend: cue %s ink %s, want %s", base, k, ink, want)
+			}
 		}
 	}
 
-	// cell_accent_mode: uniform keeps the neutral tint; alternate and
-	// progressive tint each node in its own accent.
+	// cell_accent_mode: uniform keeps the base accent's swatch and dk1 cues;
+	// alternate and progressive tint each node in its own accent and set its
+	// cue in that accent.
 	v.Highlight = 0
 	for _, base := range []string{"accent1", "accent3"} {
 		for _, mode := range []string{"uniform", "alternate", "progressive"} {
 			ring = cycleNodesRing(t, cycleNodesExpand(t, ExpandContext{}, v, &CycleNodesOverrides{TextOverrides: TextOverrides{Accent: base, CellAccentMode: mode}}))
 			for i, fill := range cycleNodesNodeFills(t, ring) {
-				want := neutral
+				want := swatch(base)
 				if mode != "uniform" {
 					want = string(inactiveTintTone(ResolveCellAccent(base, i, mode)).fillJSON())
 				}
 				if fill != want {
 					t.Errorf("%s %s: node %d fill %s, want %s", base, mode, i+1, fill, want)
+				}
+			}
+			cues := cycleNodesCues(cycleNodesExpand(t, cycleNodesAreaCtx(899, 360), v, &CycleNodesOverrides{Labels: "legend", TextOverrides: TextOverrides{Accent: base, CellAccentMode: mode}}))
+			if len(cues) != 5 {
+				t.Errorf("%s %s legend: %d number cues, want 5: %v", base, mode, len(cues), cues)
+			}
+			for k, ink := range cues {
+				i, _ := strconv.Atoi(k)
+				want := "dk1"
+				if mode != "uniform" {
+					want = ResolveCellAccent(base, i-1, mode)
+				}
+				if ink != want {
+					t.Errorf("%s %s legend: cue %s ink %s, want %s", base, mode, k, ink, want)
 				}
 			}
 		}
@@ -686,28 +761,60 @@ func TestCycleNodes_ExpandStyling(t *testing.T) {
 	}
 }
 
-// TestCycleNodes_MeasuredInk: on a theme whose accent does not read on the
-// neutral tint the numerals take a theme ink that does, and the highlighted
-// node's numeral is measured against the solid accent.
+// TestCycleNodes_MeasuredInk: the numeral is measured on the node's own fill.
+// An accent that does not read on its node's tint hands the numeral to a theme
+// ink that does; only an accent dark enough to read on its own Lighter 80%
+// swatch keeps it; and the highlighted node's numeral is measured against the
+// solid accent.
 func TestCycleNodes_MeasuredInk(t *testing.T) {
 	ctx := ExpandContext{Theme: types.ThemeInfo{Colors: []types.ThemeColor{
 		{Name: "dk1", RGB: "#000000"}, {Name: "lt1", RGB: "#FFFFFF"}, {Name: "dk2", RGB: "#1F2A44"}, {Name: "lt2", RGB: "#EEEEEE"},
-		{Name: "accent1", RGB: "#FFD54F"}, {Name: "accent2", RGB: "#1565C0"},
+		{Name: "accent1", RGB: "#FFD54F"}, {Name: "accent2", RGB: "#1565C0"}, {Name: "accent3", RGB: "#0B3D91"},
 	}}}
 	v := cycleNodesTestValues(4)
 	v.Highlight = 2
 	ring := cycleNodesRing(t, cycleNodesExpand(t, ctx, v, &CycleNodesOverrides{TextOverrides: TextOverrides{Accent: "accent1"}}))
 	nodes := cycleNodesLayersNamed(ring, "node-")
 	if strings.Contains(string(nodes[0].Shape.Text), `"color":"accent1"`) {
-		t.Errorf("a pale accent numeral on the neutral tint: %s", nodes[0].Shape.Text)
+		t.Errorf("a pale accent numeral on its node's tint: %s", nodes[0].Shape.Text)
 	}
 	if !strings.Contains(string(nodes[1].Shape.Text), `"color":"dk`) {
 		t.Errorf("numeral on a pale solid accent is not dark: %s", nodes[1].Shape.Text)
 	}
+	// A mid blue is under 4.5:1 on its own Lighter 80% swatch: the numeral
+	// takes the theme's dark instead.
 	ring = cycleNodesRing(t, cycleNodesExpand(t, ctx, v, &CycleNodesOverrides{TextOverrides: TextOverrides{Accent: "accent2"}}))
 	nodes = cycleNodesLayersNamed(ring, "node-")
-	if !strings.Contains(string(nodes[0].Shape.Text), `"color":"accent2"`) || !strings.Contains(string(nodes[1].Shape.Text), `"color":"lt1"`) {
+	if string(nodes[0].Shape.Fill) != `{"color":"accent2","lumMod":20000,"lumOff":80000}` {
+		t.Errorf("a mid accent: node fill %s, want its Lighter 80%% swatch", nodes[0].Shape.Fill)
+	}
+	if !strings.Contains(string(nodes[0].Shape.Text), `"color":"dk2"`) || !strings.Contains(string(nodes[1].Shape.Text), `"color":"lt1"`) {
+		t.Errorf("a mid accent: numeral %s, highlighted %s", nodes[0].Shape.Text, nodes[1].Shape.Text)
+	}
+	// A dark accent reads on its own swatch and stays the numeral's ink.
+	ring = cycleNodesRing(t, cycleNodesExpand(t, ctx, v, &CycleNodesOverrides{TextOverrides: TextOverrides{Accent: "accent3"}}))
+	nodes = cycleNodesLayersNamed(ring, "node-")
+	if !strings.Contains(string(nodes[0].Shape.Text), `"color":"accent3"`) || !strings.Contains(string(nodes[1].Shape.Text), `"color":"lt1"`) {
 		t.Errorf("a dark accent: numeral %s, highlighted %s", nodes[0].Shape.Text, nodes[1].Shape.Text)
+	}
+	// Whatever ink was chosen clears the bar on the fill it sits on.
+	for _, accent := range []string{"accent1", "accent2", "accent3"} {
+		ring = cycleNodesRing(t, cycleNodesExpand(t, ctx, v, &CycleNodesOverrides{TextOverrides: TextOverrides{Accent: accent}}))
+		for _, l := range cycleNodesLayersNamed(ring, "node-") {
+			var text struct {
+				Paragraphs []ringNodePara `json:"paragraphs"`
+			}
+			if err := json.Unmarshal(l.Shape.Text, &text); err != nil || len(text.Paragraphs) != 1 {
+				t.Fatalf("%s %s text %s: %v", accent, l.Name, l.Shape.Text, err)
+			}
+			fill, ok := parseFillTone(l.Shape.Fill)
+			if !ok {
+				t.Fatalf("%s %s: fill %s is not a tone", accent, l.Name, l.Shape.Fill)
+			}
+			if c, ok := fillContrast(ctx, fill, fillTone{Color: text.Paragraphs[0].Color}); !ok || c < cycleNodesInkContrast {
+				t.Errorf("%s %s: numeral ink %s on %s is %.2f:1, under %.1f:1", accent, l.Name, text.Paragraphs[0].Color, l.Shape.Fill, c, cycleNodesInkContrast)
+			}
+		}
 	}
 }
 
@@ -894,11 +1001,34 @@ func TestCycleNodes_RecommendIntents(t *testing.T) {
 	}
 }
 
+// cycleNodesLabelBlocks returns, per step number, the label block of the
+// outside layout without icons: the label cell alone, since the node carries
+// the number and no cue stands beside the label. It fails on a number cue.
+func cycleNodesLabelBlocks(t *testing.T, res *shapegrid.ResolveResult, v *CycleNodesValues) map[int]ringTestRect {
+	t.Helper()
+	blocks := map[int]ringTestRect{}
+	for _, text := range ringGapTexts(t, res) {
+		if _, err := strconv.Atoi(text.first); err == nil && text.paras == 1 {
+			t.Fatalf("number cue %q at %+v beside a numbered node", text.first, text.rect)
+		}
+		for i, s := range v.Steps {
+			if text.first == s.Label {
+				blocks[i+1] = text.rect
+			}
+		}
+	}
+	if len(blocks) != len(v.Steps) {
+		t.Fatalf("%d label blocks, want %d", len(blocks), len(v.Steps))
+	}
+	return blocks
+}
+
 // TestCycleNodesLabelsKeepOneGapFromTheirNode: in the outside layout every
-// label block (number cue + label) stands the same horizontal gap from its own
-// node's circle, for every count and direction in every body size, read from
-// the resolved grid; no block stands on another node or on a link arrow, and
-// the ring cell is the spine column whose square is the ring.
+// label block (the label alone: the node carries the number) stands the same
+// horizontal gap from its own node's circle, for every count and direction in
+// every body size, read from the resolved grid; no block stands on another
+// node or on a link arrow, and the ring cell is the spine column whose square
+// is the ring.
 func TestCycleNodesLabelsKeepOneGapFromTheirNode(t *testing.T) {
 	for _, body := range ringGapBodies {
 		for n := ringMinItems; n <= ringMaxItems; n++ {
@@ -914,7 +1044,10 @@ func TestCycleNodesLabelsKeepOneGapFromTheirNode(t *testing.T) {
 					t.Errorf("%s: ring cell fit = %q, want the spine's %q", name, ring.Fit, ringSpineFit)
 				}
 				res := cycleNodesResolveAt(t, grid, body.w, body.h)
-				blocks := ringGapNumberedBlocks(t, res, n)
+				if lay.cueW != 0 {
+					t.Fatalf("%s: a %.1fpt cue column beside numbered nodes, want none", name, lay.cueW)
+				}
+				blocks := cycleNodesLabelBlocks(t, res, v)
 				gaps := map[int]float64{}
 				for k, block := range blocks {
 					gaps[k] = ringGapLayerCircle(t, res, fmt.Sprintf("node-%d", k), false).hGap(block)
@@ -948,7 +1081,7 @@ func TestCycleNodesLabelsKeepOneGapFromTheirNode(t *testing.T) {
 							x, y := pointOnCircle(cx, cy, radius+dr, node.LinkFromDeg+lay.spec.dir()*a)
 							for k, block := range blocks {
 								if block.contains(x, y) {
-									t.Errorf("%s: label %d %+v stands on the arrow leaving node %d at (%.1f, %.1f)", name, k, block, node.Index+1, x, y)
+									t.Errorf("%s: label %d %+v stands on the arrow leaving node %d at (%.1f, %.1f), %.0f° of %.1f° along it and %+.1fpt off its centreline", name, k, block, node.Index+1, x, y, a, travel, dr)
 								}
 							}
 						}

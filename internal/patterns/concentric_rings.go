@@ -147,9 +147,10 @@ const (
 	crFrameRound = 1e5  // layer frames are rounded to 1/100000 of the square
 )
 
-// crTintLadder is the neutral ink coverage (percent of dk1) of a ring by its
-// rank from the outside: the outermost is the lightest.
-var crTintLadder = [crMaxLayers]int{6, 11, 17, 24, 32}
+// crTintLadder is the accent "Lighter N%" swatch of a ring by its rank from
+// the outside: the outermost is the lightest, and every ring is a rung of the
+// one ladder that ends in the solid core (tonalRung).
+var crTintLadder = [crMaxLayers]int{90, 80, 68, 56, 44}
 
 // ---------------------------------------------------------------------------
 // Schema / Validate
@@ -163,7 +164,7 @@ func (p *concentricRings) Schema() *Schema {
 
 	valuesSchema := ObjectSchema(map[string]*Schema{
 		"layers":    ArraySchema(RefSchema("layer"), crMinLayers, crMaxLayers).WithDescription("3-5 layers ordered inner → outer: layers[0] is the core, the last is the outermost ring (top ladder row)"),
-		"highlight": IntegerSchema(1, crMaxLayers).WithDescription("1-based index of the layer drawn in the solid accent (default 1, the core); every other ring is a neutral tint"),
+		"highlight": IntegerSchema(1, crMaxLayers).WithDescription("1-based index of the layer drawn in the solid accent (default 1, the core); every other ring is an accent tint"),
 	}, []string{"layers"}).WithAdditionalProperties(false)
 
 	return ObjectSchema(map[string]*Schema{
@@ -500,7 +501,7 @@ func isUniformAccentMode(mode string) bool {
 
 // crRingTone is the fill of layer i of m. By default (and with
 // cell_accent_mode uniform) the highlighted ring is the one solid accent and
-// every other ring a neutral tint, lightest outside; alternate / progressive
+// every other ring a rung of the accent ladder, lightest outside; alternate / progressive
 // paint every ring the solid accent the mode gives its index.
 func crRingTone(ctx ExpandContext, accent, mode string, i, m int, highlighted bool) fillTone {
 	switch {
@@ -509,7 +510,7 @@ func crRingTone(ctx ExpandContext, accent, mode string, i, m int, highlighted bo
 	case highlighted:
 		return fillTone{Color: accent}
 	default:
-		return neutralTone(crTintLadder[min(max(m-1-i, 0), crMaxLayers-1)])
+		return tonalRung(ctx, accent, crTintLadder[min(max(m-1-i, 0), crMaxLayers-1)])
 	}
 }
 

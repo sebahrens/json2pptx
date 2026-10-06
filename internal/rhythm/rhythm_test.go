@@ -116,7 +116,9 @@ func TestAnalyze_BreakSuggestionsUseContentHints(t *testing.T) {
 		{"diagram", "kpi-3up", "diagram", "", "journey-maturity-model"},
 		{"image", "kpi-3up", "image", "", "image-text-split"},
 		{"process", "process-flow", "", "", "journey-maturity-model"},
-		{"cards", "card-grid", "", "", "comparison-2col"},
+		// card-grid is open columns by default, so comparison-2col (open
+		// columns too) is no break from it; the next candidate is.
+		{"cards", "card-grid", "", "", "matrix-2x2"},
 		{"comparison", "pull-quote", "", "comparison", "comparison-2col"},
 		// Prose without numbers, options or dates gets text-shaped patterns,
 		// never an invented hero number.

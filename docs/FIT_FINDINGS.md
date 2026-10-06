@@ -1713,7 +1713,7 @@ The same rule holds outside placeholders. In `shape_grid` text, two or more cons
 **Pattern:** `value-chain`
 **Fix kind:** *(none — an authoring choice)*
 
-Emitted when a pattern's AUTHORED highlight colour does not read as a highlight against the structure it sits in. Value-chain steps are a neutral `dk1` 16% tint (go-slide-creator-8xsj3); against that achromatic base a saturated accent also separates by hue, so the bar is 2:1 of lightness contrast, below which the highlighted step merges into the chain.
+Emitted when a pattern's AUTHORED highlight colour does not read as a highlight against the structure it sits in. Value-chain steps are the accent's Lighter 80% swatch (go-slide-creator-x5m8f; a neutral `dk1` 16% tint before it); against that base the bar is 1.6:1 of lightness contrast (the tonal system's `tonalEmphasisMin`, which every shipped template's own accent clears against its swatch), below which the highlighted step merges into the chain.
 
 Contrast between two scheme slots is template-dependent, which is what made this invisible: value-chain's old fixed default of `accent2` on `dk2` measured 1.48:1 on warm-coral, where the highlighted step was indistinguishable from its neighbours (go-slide-creator-ah5s). The DEFAULT is chosen by that measurement — the first of `accent1`, `accent2` … `accent6`, `dk2` that clears the bar — so it cannot fail; only an authored `highlight_color` can, and it is honoured rather than overridden.
 
@@ -1721,7 +1721,7 @@ Contrast between two scheme slots is template-dependent, which is what made this
 {
   "path": "/slides/1/pattern",
   "code": "LOW_CONTRAST_HIGHLIGHT",
-  "message": "slide 2: value-chain: value-chain highlight_color \"accent3\" reads at 1.59:1 against the step fill (dk1 at 16%) — below 2.0:1 the highlighted step is not distinguishable from its neighbours; omit highlight_color to let the engine pick an accent that clears the bar",
+  "message": "slide 2: value-chain: value-chain highlight_color \"accent3\" reads at 1.59:1 against the step fill (the accent's Lighter 80% swatch) — below 1.6:1 the highlighted step is not distinguishable from its neighbours; omit highlight_color to let the engine pick an accent that clears the bar",
   "action": "review"
 }
 ```

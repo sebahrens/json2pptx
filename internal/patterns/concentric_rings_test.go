@@ -433,23 +433,35 @@ func crFillOf(t *testing.T, l jsonschema.LayerInput) fillTone {
 	return tone
 }
 
-func crIsTint(tone fillTone) bool { return tone.Color == "dk1" && tone.LumOff > 0 }
+// crIsTint reports whether tone is a rung of accent's "Lighter N%" ladder: the
+// accent lightened (lumOff > 0, lumMod + lumOff = 100%), which is a tint and
+// not a solid.
+func crIsTint(tone fillTone, accent string) bool {
+	return tone.Color == accent && tone.LumOff > 0 && tone.LumMod+tone.LumOff == 100000 && tone.Alpha == 0 && tone.Tint == 0 && tone.Shade == 0
+}
 
 func TestConcentricRings_ExpandStyling(t *testing.T) {
-	// Default: the core is the one solid accent, every other ring a neutral
-	// tint that gets lighter outwards.
+	// Default: the core is the one solid accent, every other ring a rung of
+	// the accent's Lighter ladder (crTintLadder) that gets lighter outwards.
+	if crTintLadder != [crMaxLayers]int{90, 80, 68, 56, 44} {
+		t.Errorf("tint ladder = %v, want Lighter 90 / 80 / 68 / 56 / 44%%", crTintLadder)
+	}
 	for m := crMinLayers; m <= crMaxLayers; m++ {
 		ring, _ := crParts(t, crExpand(t, crThemeCtx(0, 0), crValues(m), nil))
 		rings := crLayersNamed(ring, "ring-")
 		solid, prev := 0, 0
 		for i, l := range rings { // outermost first
 			tone := crFillOf(t, l)
-			if !crIsTint(tone) {
+			if !crIsTint(tone, "accent1") {
 				solid++
 				if i != m-1 || tone != (fillTone{Color: "accent1"}) {
 					t.Errorf("m=%d: solid fill %+v on ring %s, want accent1 on the core only", m, tone, l.Name)
 				}
 				continue
+			}
+			// Rank i from the outside is the ladder's rung i.
+			if want := (fillTone{Color: "accent1", LumMod: (100 - crTintLadder[i]) * 1000, LumOff: crTintLadder[i] * 1000}); tone != want {
+				t.Errorf("m=%d: %s fill %+v, want Lighter %d%% %+v", m, l.Name, tone, crTintLadder[i], want)
 			}
 			pct := tone.LumMod / 1000
 			if pct <= prev {
@@ -470,10 +482,10 @@ func TestConcentricRings_ExpandStyling(t *testing.T) {
 	ring, ladder := crParts(t, grid)
 	for _, l := range crLayersNamed(ring, "ring-") {
 		tone := crFillOf(t, l)
-		if want := l.Name == "ring-3"; crIsTint(tone) == want {
-			t.Errorf("%s: fill %+v (highlight is ring 3)", l.Name, tone)
-		} else if want && tone.Color != "accent3" {
-			t.Errorf("accent override not applied: %+v", tone)
+		if want := l.Name == "ring-3"; crIsTint(tone, "accent3") == want {
+			t.Errorf("%s: fill %+v (highlight is ring 3: the only solid, the others tints of accent3)", l.Name, tone)
+		} else if want && tone != (fillTone{Color: "accent3"}) {
+			t.Errorf("accent override not applied: %+v, want the solid accent3", tone)
 		}
 	}
 	raw, _ := json.Marshal(grid)
@@ -500,12 +512,14 @@ func TestConcentricRings_ExpandStyling(t *testing.T) {
 				tone := crFillOf(t, l)
 				switch {
 				case mode == CellAccentUniform && k == 1:
-					if tone.Color != base {
-						t.Errorf("%s/%s core = %+v", base, mode, tone)
+					if tone != (fillTone{Color: base}) {
+						t.Errorf("%s/%s core = %+v, want the solid %s", base, mode, tone, base)
 					}
 				case mode == CellAccentUniform:
-					if !crIsTint(tone) {
-						t.Errorf("%s/%s %s = %+v, want a neutral tint", base, mode, l.Name, tone)
+					// Layer k of 4 is rank 4-k from the outside.
+					pct := crTintLadder[4-k]
+					if want := (fillTone{Color: base, LumMod: (100 - pct) * 1000, LumOff: pct * 1000}); !crIsTint(tone, base) || tone != want {
+						t.Errorf("%s/%s %s = %+v, want the accent's Lighter %d%% %+v", base, mode, l.Name, tone, pct, want)
 					}
 				default:
 					if want := ResolveCellAccent(base, k-1, mode); tone != (fillTone{Color: want}) {

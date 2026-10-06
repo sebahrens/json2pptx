@@ -104,7 +104,7 @@ func TestMotif_RunAcrossPatterns(t *testing.T) {
 	}
 }
 
-// A deck alternating chart, table and tile row is varied.
+// A deck alternating chart, table and card grid is varied.
 func TestMotif_VariedDeckIsNotFlagged(t *testing.T) {
 	var slides []rhythm.Slide
 	for i := 0; i < 3; i++ {
@@ -123,7 +123,8 @@ func TestMotif_VariedDeckIsNotFlagged(t *testing.T) {
 			t.Errorf("unexpected %s: %+v", code, recs)
 		}
 	}
-	for motif, want := range map[string]float64{"chart": 0.33, "table": 0.33, "tiles": 0.33} {
+	// card-grid's default is the open card: open columns, not tiles.
+	for motif, want := range map[string]float64{"chart": 0.33, "table": 0.33, "open-columns": 0.33} {
 		if got := result.Aggregates.MotifShare[motif]; got != want {
 			t.Errorf("motif_share[%s] = %v, want %v", motif, got, want)
 		}
