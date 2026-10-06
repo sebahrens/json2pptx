@@ -3,6 +3,7 @@ package shapegrid
 import (
 	"encoding/json"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -26,12 +27,7 @@ import (
 // group needs. Groups where every cell fits are left alone (AutofitScale 0),
 // so a group that needs no shrink is unchanged.
 func shareRowAutofitScale(cells []ResolvedCell) {
-	type member struct {
-		idx    int
-		sizeHP int
-		scale  float64
-	}
-	var members []member
+	var members []autofitMember
 	for i := range cells {
 		c := &cells[i]
 		// A layer is not a row sibling: it shares its cell, not a row slot.
@@ -50,33 +46,47 @@ func shareRowAutofitScale(cells []ResolvedCell) {
 			tb.Insets[j] += c.TextInsets[j]
 		}
 		tb.ThemeFonts = c.ShapeSpec.ThemeFonts
-		members = append(members, member{idx: i, sizeHP: size, scale: pptx.AutofitScaleFor(tb, c.Bounds)})
+		members = append(members, autofitMember{idx: i, sizeHP: size, scale: pptx.AutofitScaleFor(tb, c.Bounds)})
 	}
 	if len(members) < 2 {
 		return
 	}
-	shrinks := false
-	for _, m := range members {
-		if m.scale < 1 {
-			shrinks = true
-			break
-		}
-	}
-	if !shrinks {
+	if !slices.ContainsFunc(members, func(m autofitMember) bool { return m.scale < 1 }) {
 		return
 	}
-	peers := peerGroups(cells)
-	group := make([]int, len(members))
-	for i := range group {
-		group[i] = i
-	}
-	var find func(int) int
-	find = func(i int) int {
-		if group[i] != i {
-			group[i] = find(group[i])
+	set := autofitSiblingSets(cells, members)
+	least := map[int]float64{}
+	count := map[int]int{}
+	for i, m := range members {
+		g := set.find(i)
+		count[g]++
+		if cur, ok := least[g]; !ok || m.scale < cur {
+			least[g] = m.scale
 		}
-		return group[i]
 	}
+	for i, m := range members {
+		g := set.find(i)
+		if count[g] < 2 || least[g] >= 1 {
+			continue
+		}
+		cells[m.idx].AutofitScale = least[g]
+		cells[m.idx].autofitGroup = g + 1
+	}
+}
+
+// autofitMember is one normAutofit text cell: its index in the resolved
+// cells, its first run's size and the shrink it needs on its own.
+type autofitMember struct {
+	idx    int
+	sizeHP int
+	scale  float64
+}
+
+// autofitSiblingSets joins the members that share a shrink: same-size cells
+// of one row, and same-size cells of one peer group.
+func autofitSiblingSets(cells []ResolvedCell, members []autofitMember) disjointSet {
+	peers := peerGroups(cells)
+	set := newDisjointSet(len(members))
 	for i := range members {
 		for j := i + 1; j < len(members); j++ {
 			a, b := members[i], members[j]
@@ -86,27 +96,11 @@ func shareRowAutofitScale(cells []ResolvedCell) {
 			sameRow := cells[a.idx].RowIdx == cells[b.idx].RowIdx
 			samePeers := peers[a.idx] >= 0 && peers[a.idx] == peers[b.idx]
 			if sameRow || samePeers {
-				group[find(i)] = find(j)
+				set.union(i, j)
 			}
 		}
 	}
-	least := map[int]float64{}
-	count := map[int]int{}
-	for i, m := range members {
-		g := find(i)
-		count[g]++
-		if cur, ok := least[g]; !ok || m.scale < cur {
-			least[g] = m.scale
-		}
-	}
-	for i, m := range members {
-		g := find(i)
-		if count[g] < 2 || least[g] >= 1 {
-			continue
-		}
-		cells[m.idx].AutofitScale = least[g]
-		cells[m.idx].autofitGroup = g + 1
-	}
+	return set
 }
 
 // A shared shrink is written as sizes, not as a stored scale

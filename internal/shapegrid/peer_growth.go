@@ -75,66 +75,76 @@ func peerAligned(a, b pptx.RectEmu) bool {
 // peerGroups returns, for each cell, the index of its peer group's
 // representative; -1 for a cell that carries no sized text.
 func peerGroups(cells []ResolvedCell) []int {
-	parent := make([]int, len(cells))
 	keys := make([]peerKey, len(cells))
+	keyed := make([]bool, len(cells))
 	for i := range cells {
-		parent[i] = -1
-		c := &cells[i]
-		if c.Kind != CellKindShape || c.ShapeSpec == nil || len(c.ShapeSpec.Text) == 0 || c.Bounds.CX <= 0 || c.Bounds.CY <= 0 {
-			continue
-		}
-		tb, err := ResolveTextInput(c.ShapeSpec.Text)
-		if err != nil || tb == nil {
-			continue
-		}
-		size, bold := 0, false
-		for _, p := range tb.Paragraphs {
-			for _, run := range p.Runs {
-				if run.FontSize > 0 && size == 0 {
-					size, bold = run.FontSize, run.Bold
-				}
-			}
-			if size > 0 {
-				break
-			}
-		}
-		if size == 0 {
-			continue
-		}
-		geometry := c.ShapeSpec.Geometry
-		if geometry == "" {
-			geometry = "rect"
-		}
-		keys[i] = peerKey{geometry: geometry, sizeHP: size, bold: bold}
-		parent[i] = i
+		keys[i], keyed[i] = peerKeyOf(&cells[i])
 	}
-	var find func(int) int
-	find = func(i int) int {
-		if parent[i] != i {
-			parent[i] = find(parent[i])
-		}
-		return parent[i]
-	}
+	set := newDisjointSet(len(cells))
 	for i := range cells {
-		if parent[i] < 0 {
+		if !keyed[i] {
 			continue
 		}
 		for j := i + 1; j < len(cells); j++ {
-			if parent[j] < 0 || keys[i] != keys[j] {
-				continue
-			}
-			if peerAligned(cells[i].Bounds, cells[j].Bounds) {
-				parent[find(i)] = find(j)
+			if keyed[j] && keys[i] == keys[j] && peerAligned(cells[i].Bounds, cells[j].Bounds) {
+				set.union(i, j)
 			}
 		}
 	}
-	for i := range parent {
-		if parent[i] >= 0 {
-			parent[i] = find(i)
+	groups := make([]int, len(cells))
+	for i := range groups {
+		groups[i] = -1
+		if keyed[i] {
+			groups[i] = set.find(i)
 		}
 	}
-	return parent
+	return groups
 }
+
+// peerKeyOf is the key of a cell that carries sized text in a real frame: its
+// geometry and the size and weight of its first sized run.
+func peerKeyOf(c *ResolvedCell) (peerKey, bool) {
+	if c.Kind != CellKindShape || c.ShapeSpec == nil || len(c.ShapeSpec.Text) == 0 || c.Bounds.CX <= 0 || c.Bounds.CY <= 0 {
+		return peerKey{}, false
+	}
+	tb, err := ResolveTextInput(c.ShapeSpec.Text)
+	if err != nil || tb == nil {
+		return peerKey{}, false
+	}
+	geometry := c.ShapeSpec.Geometry
+	if geometry == "" {
+		geometry = "rect"
+	}
+	for _, p := range tb.Paragraphs {
+		for _, run := range p.Runs {
+			if run.FontSize > 0 {
+				return peerKey{geometry: geometry, sizeHP: run.FontSize, bold: run.Bold}, true
+			}
+		}
+	}
+	return peerKey{}, false
+}
+
+// disjointSet is a union-find over n items.
+type disjointSet []int
+
+func newDisjointSet(n int) disjointSet {
+	set := make(disjointSet, n)
+	for i := range set {
+		set[i] = i
+	}
+	return set
+}
+
+func (s disjointSet) find(i int) int {
+	for s[i] != i {
+		s[i] = s[s[i]]
+		i = s[i]
+	}
+	return i
+}
+
+func (s disjointSet) union(a, b int) { s[s.find(a)] = s.find(b) }
 
 // sharePeerGrowth lowers every cell's growth to the smallest its peer group
 // measured.

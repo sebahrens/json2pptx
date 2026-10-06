@@ -10,14 +10,6 @@ import (
 	"github.com/sebahrens/json2pptx/internal/tokens"
 )
 
-// growShapeText writes measured sizes back to a private copy of the resolved
-// shape. Both OOXML generation and preflight consume that copy, so they cannot
-// disagree about the font that occupies the cell. Authored input is untouched.
-func growShapeText(spec *ShapeSpec, bounds pptx.RectEmu, overlay [4]int64, mode string) *ShapeSpec {
-	scale, paras := shapeGrowScale(spec, bounds, overlay, mode)
-	return writeGrownText(spec, paras, scale)
-}
-
 // minGrowScale is the smallest growth worth writing: under 2% the text keeps
 // the size it was given.
 const minGrowScale = 1.02
@@ -85,7 +77,9 @@ func shapeGrowScale(spec *ShapeSpec, bounds pptx.RectEmu, overlay [4]int64, mode
 }
 
 // writeGrownText returns a private copy of spec with every paragraph grown by
-// scale; spec itself when the scale is not worth writing.
+// scale; spec itself when the scale is not worth writing. Both OOXML
+// generation and preflight consume that copy, so they cannot disagree about
+// the font that occupies the cell. Authored input is untouched.
 func writeGrownText(spec *ShapeSpec, paras []scaleParagraph, scale float64) *ShapeSpec {
 	if spec == nil || len(paras) == 0 || scale < minGrowScale {
 		return spec
@@ -305,7 +299,7 @@ func scaledSize(fontPt, scale float64) float64 {
 // or more, such as a KPI value — keep their measured size, as does text under
 // the caption step (footnotes) or at the display step and above. Snapping only
 // shrinks, so fit and readability floors (which sit on scale steps) hold.
-// Like growShapeText it rewrites a private copy consumed by both OOXML
+// Like writeGrownText it rewrites a private copy consumed by both OOXML
 // generation and preflight; the authored input is untouched.
 func snapShapeTextToScale(spec *ShapeSpec) *ShapeSpec {
 	if spec == nil || len(spec.Text) == 0 {

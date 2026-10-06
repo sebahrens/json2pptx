@@ -65,25 +65,24 @@ type peerPara struct {
 }
 
 var (
-	peerOffRe     = regexp.MustCompile(`<a:off x="(-?\d+)" y="(-?\d+)"`)
-	peerExtRe     = regexp.MustCompile(`<a:ext cx="(\d+)" cy="(\d+)"`)
-	peerGeomRe    = regexp.MustCompile(`<a:prstGeom prst="([a-zA-Z0-9]+)"`)
-	peerSpPrRe    = regexp.MustCompile(`(?s)<p:spPr.*?</p:spPr>`)
-	peerLnRe      = regexp.MustCompile(`(?s)<a:ln[ >].*?</a:ln>|<a:ln[^>]*/>`)
-	peerFillRe    = regexp.MustCompile(`(?s)<a:solidFill>(.*?)</a:solidFill>`)
-	peerParaRe    = regexp.MustCompile(`(?s)<a:p>(.*?)</a:p>`)
-	peerRunRe     = regexp.MustCompile(`(?s)<a:r>(.*?)</a:r>`)
-	peerRPrRe     = regexp.MustCompile(`(?s)<a:rPr([^>]*?)(/>|>(.*?)</a:rPr>)`)
-	peerTagRe     = regexp.MustCompile(`<[^>]+>`)
-	peerValRe     = regexp.MustCompile(`val="([^"]+)"`)
-	peerAttrSzRe  = regexp.MustCompile(`\bsz="(\d+)"`)
-	peerBoldRe    = regexp.MustCompile(`\bb="1"`)
-	peerItalicRe  = regexp.MustCompile(`\bi="1"`)
-	peerSpaceRe   = regexp.MustCompile(`\s+`)
-	peerTxBodyRe  = regexp.MustCompile(`(?s)<p:txBody>.*?</p:txBody>`)
-	peerPhRe      = regexp.MustCompile(`<p:ph[ />]`)
-	peerNoFillRe  = regexp.MustCompile(`<a:noFill/>`)
-	peerGrpOpenRe = regexp.MustCompile(`<p:grpSpPr>`)
+	peerOffRe    = regexp.MustCompile(`<a:off x="(-?\d+)" y="(-?\d+)"`)
+	peerExtRe    = regexp.MustCompile(`<a:ext cx="(\d+)" cy="(\d+)"`)
+	peerGeomRe   = regexp.MustCompile(`<a:prstGeom prst="([a-zA-Z0-9]+)"`)
+	peerSpPrRe   = regexp.MustCompile(`(?s)<p:spPr.*?</p:spPr>`)
+	peerLnRe     = regexp.MustCompile(`(?s)<a:ln[ >].*?</a:ln>|<a:ln[^>]*/>`)
+	peerFillRe   = regexp.MustCompile(`(?s)<a:solidFill>(.*?)</a:solidFill>`)
+	peerParaRe   = regexp.MustCompile(`(?s)<a:p>(.*?)</a:p>`)
+	peerRunRe    = regexp.MustCompile(`(?s)<a:r>(.*?)</a:r>`)
+	peerRPrRe    = regexp.MustCompile(`(?s)<a:rPr([^>]*?)(/>|>(.*?)</a:rPr>)`)
+	peerTagRe    = regexp.MustCompile(`<[^>]+>`)
+	peerValRe    = regexp.MustCompile(`val="([^"]+)"`)
+	peerAttrSzRe = regexp.MustCompile(`\bsz="(\d+)"`)
+	peerBoldRe   = regexp.MustCompile(`\bb="1"`)
+	peerItalicRe = regexp.MustCompile(`\bi="1"`)
+	peerSpaceRe  = regexp.MustCompile(`\s+`)
+	peerTxBodyRe = regexp.MustCompile(`(?s)<p:txBody>.*?</p:txBody>`)
+	peerPhRe     = regexp.MustCompile(`<p:ph[ />]`)
+	peerNoFillRe = regexp.MustCompile(`<a:noFill/>`)
 )
 
 // peerColorKey flattens the colour children of a solidFill ("accent1+lumMod
@@ -648,14 +647,11 @@ func TestPatternPeersShareOneTypeSize(t *testing.T) {
 				t.Fatal(err)
 			}
 			tpl, p := tpl, p
-			// -short sweeps the exemplar on the first template only; the uneven
-			// payload, the one that provokes a per-cell fit, runs on both.
-			if !testing.Short() || tpl == templates[0] {
-				t.Run(tpl+"/"+p.Name()+"/exemplar", func(t *testing.T) {
-					t.Parallel()
-					peerRoleSweep(t, tpl, templatesDir, p.Name(), "exemplar", even)
-				})
-			}
+			// The whole sweep takes seconds, so -short runs all of it.
+			t.Run(tpl+"/"+p.Name()+"/exemplar", func(t *testing.T) {
+				t.Parallel()
+				peerRoleSweep(t, tpl, templatesDir, p.Name(), "exemplar", even)
+			})
 			var uneven []json.RawMessage
 			for _, stretch := range peerUnevenStretches {
 				if values, grew := peerUnevenValues(t, p, exemplar, stretch); grew {

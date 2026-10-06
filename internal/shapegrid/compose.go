@@ -498,7 +498,7 @@ func textParagraphSizes(raw json.RawMessage, keepSizes bool) []paragraphSize {
 }
 
 // stepShapeText returns a private copy of spec with every paragraph at its
-// stepped size; spec itself when nothing moves. Like growShapeText, the copy
+// stepped size; spec itself when nothing moves. Like writeGrownText, the copy
 // is what both OOXML generation and preflight read.
 func stepShapeText(spec *ShapeSpec, sizes map[float64]float64, keepSizes bool) *ShapeSpec {
 	step := func(size float64, content string, marked bool) (float64, bool) {
