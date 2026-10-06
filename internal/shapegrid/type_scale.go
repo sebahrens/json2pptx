@@ -14,24 +14,39 @@ import (
 // shape. Both OOXML generation and preflight consume that copy, so they cannot
 // disagree about the font that occupies the cell. Authored input is untouched.
 func growShapeText(spec *ShapeSpec, bounds pptx.RectEmu, overlay [4]int64, mode string) *ShapeSpec {
+	scale, paras := shapeGrowScale(spec, bounds, overlay, mode)
+	return writeGrownText(spec, paras, scale)
+}
+
+// minGrowScale is the smallest growth worth writing: under 2% the text keeps
+// the size it was given.
+const minGrowScale = 1.02
+
+// shapeGrowScale measures how far a shape's text may grow under the type-scale
+// policy mode: the largest scale, at most the policy's cap for the text's
+// role, at which the block still fits the policy's share of the shape and no
+// word breaks. It returns 1 and no paragraphs when the text does not grow.
+// The scale is the shape's OWN answer; peers share the smallest of theirs
+// (sharePeerGrowth).
+func shapeGrowScale(spec *ShapeSpec, bounds pptx.RectEmu, overlay [4]int64, mode string) (float64, []scaleParagraph) {
 	if spec == nil || len(spec.Text) == 0 {
-		return spec
+		return 1, nil
 	}
 	tb, err := ResolveTextInput(spec.Text)
 	if err != nil || len(tb.Paragraphs) == 0 {
-		return spec
+		return 1, nil
 	}
 	paras := scaleParagraphs(tb, spec.ThemeFonts)
 	if len(paras) == 0 {
-		return spec
+		return 1, nil
 	}
 	width, height := scaledTextRect(bounds, tb, overlay)
 	if width <= 0 || height <= 0 {
-		return spec
+		return 1, nil
 	}
 	target, caps := typeScalePolicy(mode)
 	if target == 0 {
-		return spec
+		return 1, nil
 	}
 	maxScale := math.Inf(1)
 	for i := range paras {
@@ -42,11 +57,11 @@ func growShapeText(spec *ShapeSpec, bounds pptx.RectEmu, overlay [4]int64, mode 
 	}
 	maxScale = math.Min(maxScale, tokenGrowthCap(paras, width))
 	if maxScale <= 1.01 {
-		return spec
+		return 1, nil
 	}
 	availablePt := float64(height) / 12700
 	if !scaleBlockFits(paras, width, availablePt*target, 1) {
-		return spec
+		return 1, nil
 	}
 	lo, hi := 1.0, maxScale
 	if scaleBlockFits(paras, width, availablePt*target, maxScale) {
@@ -63,10 +78,19 @@ func growShapeText(spec *ShapeSpec, bounds pptx.RectEmu, overlay [4]int64, mode 
 	}
 	// OOXML sizes are hundredths of a point. Rounding downward keeps the
 	// measured <=80% fit promise even at a wrap boundary.
-	if lo < 1.02 {
+	if lo < minGrowScale {
+		return 1, nil
+	}
+	return lo, paras
+}
+
+// writeGrownText returns a private copy of spec with every paragraph grown by
+// scale; spec itself when the scale is not worth writing.
+func writeGrownText(spec *ShapeSpec, paras []scaleParagraph, scale float64) *ShapeSpec {
+	if spec == nil || len(paras) == 0 || scale < minGrowScale {
 		return spec
 	}
-	text, ok := writeScaledText(spec.Text, paras, lo)
+	text, ok := writeScaledText(spec.Text, paras, scale)
 	if !ok {
 		return spec
 	}

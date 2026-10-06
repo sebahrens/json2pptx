@@ -494,12 +494,16 @@ func hbcTextOverride(co any) *CellOverride {
 
 // buildHorizontalBarRowCell constructs the left-column cell containing a
 // three-column sub-grid: [label, fill, rest].
+// Each bar row is a sub-grid of its own, which the peer-growth resolver cannot
+// see across, so the labels and values of the bars — peers by any reading —
+// are pinned at the size the pattern chose (go-slide-creator-riyh7).
 func buildHorizontalBarRowCell(ctx ExpandContext, bar HorizontalBarCalloutsBar, tone fillTone, bold bool, unit string, labelSize, valueSize, labelColPct, fillPct, restPct, barAreaWidthPt float64) *jsonschema.GridCellInput {
 	labelCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
-			Geometry: "rect",
-			Fill:     json.RawMessage(`{"color": "lt1", "alpha": 0}`),
-			Text:     buildHorizontalBarLabelText(pptx.ConvertMarkdownEmphasis(bar.Label), labelSize),
+			Geometry:  "rect",
+			TypeScale: peerTextTypeScale,
+			Fill:      json.RawMessage(`{"color": "lt1", "alpha": 0}`),
+			Text:      buildHorizontalBarLabelText(pptx.ConvertMarkdownEmphasis(bar.Label), labelSize),
 		},
 	}
 
@@ -513,8 +517,9 @@ func buildHorizontalBarRowCell(ctx ExpandContext, bar HorizontalBarCalloutsBar, 
 	labelInBar := valueLabelFitsInBar(valueLabel, valueSize, barAreaWidthPt*fillPct/100)
 
 	fillShape := &jsonschema.ShapeSpecInput{
-		Geometry: "rect",
-		Fill:     tone.fillJSON(),
+		Geometry:  "rect",
+		TypeScale: peerTextTypeScale,
+		Fill:      tone.fillJSON(),
 	}
 	inBarInk := readableTextOn(ctx, tone, "lt1")
 	if labelInBar {
@@ -526,8 +531,9 @@ func buildHorizontalBarRowCell(ctx ExpandContext, bar HorizontalBarCalloutsBar, 
 	cols := []float64{labelColPct, fillPct}
 	if restPct > 0.01 {
 		restShape := &jsonschema.ShapeSpecInput{
-			Geometry: "rect",
-			Fill:     json.RawMessage(`{"color": "lt1", "alpha": 0}`),
+			Geometry:  "rect",
+			TypeScale: peerTextTypeScale,
+			Fill:      json.RawMessage(`{"color": "lt1", "alpha": 0}`),
 		}
 		if !labelInBar {
 			restShape.Text = buildHorizontalBarOutsideValueText(valueLabel, valueSize, bold)

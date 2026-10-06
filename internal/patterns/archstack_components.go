@@ -243,9 +243,13 @@ func (a *archStack) expandComponents(ctx ExpandContext, vals *ArchStackValues, o
 				for k := r * perRow; k < min((r+1)*perRow, len(tier.Components)); k++ {
 					blocks = append(blocks, &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
 						Geometry: "rect",
-						Fill:     json.RawMessage(`"bg1"`),
-						Line:     noLine,
-						Text:     lay.blockText[i][k],
+						// The blocks of every tier are peers, and each tier is a sub-grid
+						// of its own, which the peer-growth resolver cannot see across:
+						// they keep the size the layout measured (go-slide-creator-riyh7).
+						TypeScale: peerTextTypeScale,
+						Fill:      json.RawMessage(`"bg1"`),
+						Line:      noLine,
+						Text:      lay.blockText[i][k],
 					}})
 				}
 				sub.Rows = append(sub.Rows, jsonschema.GridRowInput{Cells: blocks})
